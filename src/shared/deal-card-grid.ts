@@ -28,9 +28,9 @@ export const DEAL_ROW = {
   /** 줄 목록 격자 — 폰 1열, md+ 는 종전 4열 격자. */
   // ⚠️ 글자 그대로 적는다 — 조립하면 tailwind 가 클래스를 못 본다. md+ 간격은 `DEAL_GRID_GAP` 과 같은 값.
   grid: 'grid grid-cols-1 gap-y-6 md:grid-cols-4 md:gap-x-3 md:gap-y-8 lg:gap-x-4 lg:gap-y-8',
-  /** 링크 — 마지막 자식(본문)은 남은 폭을 다 쓰고 위 여백 0(사진 위끝과 글자 위끝을 맞춘다). */
+  /** 링크 — 둘째 자식(본문)은 (2026-11-01: 셋째 자식으로 하트가 붙을 수 있어 last-child → nth-child(2)) 남은 폭을 다 쓰고 위 여백 0(사진 위끝과 글자 위끝을 맞춘다). */
   // 기본(세로 카드) 클래스를 그대로 두고 폰(max-md)에서만 덮는다 — 카드가 기본 클래스 줄을 리터럴로 유지할 수 있게.
-  link: 'block group active:scale-[0.98] flex flex-col max-md:flex-row max-md:items-start max-md:gap-4 max-md:[&>*:last-child]:min-w-0 max-md:[&>*:last-child]:flex-1 max-md:[&>*:last-child]:pt-0',
-  /** 사진 칸 — 108px 정사각(md+ 는 종전 4:3 꽉 채움). */
-  mediaBox: 'w-[108px] shrink-0 [&>*]:aspect-square md:w-full md:[&>*]:aspect-[4/3]',
+  link: 'block group active:scale-[0.98] flex flex-col max-md:relative max-md:flex-row max-md:items-start max-md:gap-4 max-md:[&>*:nth-child(2)]:min-w-0 max-md:[&>*:nth-child(2)]:flex-1 max-md:[&>*:nth-child(2)]:pt-0',
+  /** 사진 칸 — 120px 정사각(md+ 는 종전 4:3 꽉 채움). 2026-11-01 대표 확정 안 B(108 → 120). */
+  mediaBox: 'w-[120px] shrink-0 [&>*]:aspect-square md:w-full md:[&>*]:aspect-[4/3]',
 } as const

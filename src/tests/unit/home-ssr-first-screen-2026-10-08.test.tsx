@@ -30,7 +30,7 @@ import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import {
   buildHomeFirstScreen, HOME_FS_CLASS, homeCardSizes, starFillPct,
 } from '@/worker/utils/home-first-screen'
-import { HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_ABOVE_FOLD, HOME_CARD_BASE_QUERY } from '@/shared/home-card-image'
+import { HOME_CARD_IMG_WIDTH_ROW, HOME_CARD_ABOVE_FOLD, HOME_CARD_ROW_QUERY } from '@/shared/home-card-image'
 import { buildHomeCardPreloadLinks } from '@/worker/utils/home-card-preload'
 import { HOME_DEAL_CAT_LABELS } from '@/shared/deal-cats'
 import { stripComments } from '../helpers/source-text'
@@ -85,7 +85,7 @@ function reactCard(p: Record<string, unknown>): HTMLAnchorElement {
     <QueryClientProvider client={qc}>
       <MemoryRouter>
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <GroupBuyFeedCard p={p as any} row imgWidth={HOME_CARD_IMG_WIDTH_BASE} aboveFold />
+        <GroupBuyFeedCard p={p as any} row imgWidth={HOME_CARD_IMG_WIDTH_ROW} aboveFold />{/* 🔁 2026-11-01 폰 줄 목록 폭(클라 `homeCardImgWidth`) */}
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -289,7 +289,7 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
   it('🔴 첫 화면 사진이 워커 preload 와 **같은 URL**이다', () => {
     const seed = seedJson([RICH])
     const img = workerCard(RICH).querySelector('img') as HTMLImageElement
-    const base = buildHomeCardPreloadLinks(seed).find((l) => l.includes(HOME_CARD_BASE_QUERY))
+    const base = buildHomeCardPreloadLinks(seed).find((l) => l.includes(`media="${HOME_CARD_ROW_QUERY}"`)) // 🔁 2026-11-01 폰 = 줄 목록 폭
     expect(base, 'base 폭 preload 링크가 없다').toBeTruthy()
     const attr = (name: string) => base!.match(new RegExp(`${name}="([^"]+)"`))?.[1]
     expect(img.getAttribute('src')).toBe(attr('href'))

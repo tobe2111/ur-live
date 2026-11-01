@@ -36,11 +36,11 @@ export default [
   {
     name: '🏠 홈 카드 사진 폭이 preload 와 갈린다 (같은 사진을 두 번 받는다)',
     file: UTIL,
-    find: 'cfImage(src, { width: HOME_CARD_IMG_WIDTH_BASE, format: \'auto\' })',
-    replace: 'cfImage(src, { width: 320, format: \'auto\' })',
+    find: 'const w = row ? HOME_CARD_IMG_WIDTH_ROW : HOME_CARD_IMG_WIDTH_BASE',
+    replace: 'const w = row ? 320 : HOME_CARD_IMG_WIDTH_BASE',
     test: T,
     why:
-      '워커는 이미 `home-card-preload` 로 base 폭(200) 사진을 당긴다. 첫 화면이 다른 폭을 그리면 ' +
+      '워커는 이미 `home-card-preload` 로 같은 폭(폰 줄 목록 120) 사진을 당긴다. 첫 화면이 다른 폭을 그리면 ' +
       '그 preload 가 **통째로 버려지고** 같은 사진을 다시 받는다 — 느려지고 트래픽만 두 배다.',
   },
   {

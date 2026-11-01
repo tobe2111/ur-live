@@ -13,7 +13,7 @@ import { HOME_DEAL_CATS } from '@/pages/pc-home/PcHomeRail'; import { isHomeVisi
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
-import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
+import { HOME_CARD_LG_QUERY, HOME_CARD_ROW_QUERY, homeCardImgWidth } from '@/shared/home-card-image'
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { deferSeeded, seededSectionProductIds } from '@/shared/home-section-ids'
 import { Link } from 'react-router-dom'
@@ -167,7 +167,8 @@ export default function GroupBuyFeed({
    *   ⚠️ 카드마다 `useMediaQuery` 를 부르면 리스너가 카드 수만큼(50+) 붙는다. 여기서 한 번만.
    */
   const isLgViewport = useMediaQuery(HOME_CARD_LG_QUERY)
-  const cardImgWidth = isLgViewport ? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE
+  const isRowViewport = useMediaQuery(HOME_CARD_ROW_QUERY) // 📋 폰 줄 목록(120px 칸)
+  const cardImgWidth = homeCardImgWidth(isLgViewport, isRowViewport, !pc)
 
   const gridCls = pc
     // 📐 2026-08-19 (대표 — "한 줄에 이용권 5개에서 4개로"): xl 5열을 뺀다. 카드가 커져 사진·가격이

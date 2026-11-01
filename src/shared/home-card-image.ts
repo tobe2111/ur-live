@@ -25,6 +25,24 @@ export const HOME_CARD_LG_QUERY = '(min-width: 1024px)'
 export const HOME_CARD_BASE_QUERY = '(max-width: 1023px)'
 
 /**
+ * 📋 2026-11-01 대표 확정 안 B — 폰(<768)의 홈 **줄 목록** 사진 칸은 120px(`DEAL_ROW.mediaBox`).
+ *   그 칸에 2열 시절 폭(200 → 2x 400)을 받으면 필요한 양의 약 3배를 받는다. 줄 목록은 120 → 2x 240.
+ *   ⚠️ 줄 목록에만 쓴다 — 격자 카드(찜·지갑 추천 등 2열 175px)는 종전 BASE 그대로.
+ *   ⚠️ 클라(`HomeSections`·`GroupBuyFeed`)·워커 preload·서버 첫 화면이 이 셋을 같이 읽는다(URL 이 갈리면 이중 다운로드).
+ */
+export const HOME_CARD_IMG_WIDTH_ROW = 120
+/** 줄 목록 구간 — `DEAL_ROW` 의 `max-md`(768 미만)와 같은 경계. */
+export const HOME_CARD_ROW_QUERY = '(max-width: 767px)'
+/** 태블릿(격자 4열, 사진 폭 BASE) — preload 를 줄 목록과 갈라 붙일 때 쓴다. */
+export const HOME_CARD_MID_QUERY = '(min-width: 768px) and (max-width: 1023px)'
+
+/** 홈 카드 사진 폭 — 열 수를 아는 쪽이 부른다. 클라와 워커가 같은 판정을 쓴다. */
+export function homeCardImgWidth(isLg: boolean, isRowViewport: boolean, row: boolean): number {
+  if (isLg) return HOME_CARD_IMG_WIDTH_LG
+  return row && isRowViewport ? HOME_CARD_IMG_WIDTH_ROW : HOME_CARD_IMG_WIDTH_BASE
+}
+
+/**
  * 첫 화면에서 **즉시(eager)** 로드하는 카드 수 = preload 대상 수.
  *
  * 이 숫자가 클라(`aboveFold={i < N && sIdx === 0}`)와 워커(preload 개수)에서 갈리면,

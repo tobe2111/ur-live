@@ -12,7 +12,7 @@ import DealCardPlaceholder from './DealCardPlaceholder'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { isHomeVisibleProduct } from '@/shared/deal-cats'
 import {
-  HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY, HOME_CARD_ABOVE_FOLD,
+  HOME_CARD_LG_QUERY, HOME_CARD_ROW_QUERY, homeCardImgWidth, HOME_CARD_ABOVE_FOLD,
 } from '@/shared/home-card-image'
 
 /**
@@ -89,7 +89,8 @@ export default function HomeSections(
   //   ⚠️ 폭·중단점·eager 개수는 **워커의 preload 와 같은 값이어야 한다**(`shared/home-card-image`).
   //     한 글자만 달라도 브라우저가 preload 를 안 쓰고 같은 사진을 두 번 받는다.
   const isLgViewport = useMediaQuery(HOME_CARD_LG_QUERY)
-  const cardImgWidth = isLgViewport ? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE
+  const isRowViewport = useMediaQuery(HOME_CARD_ROW_QUERY) // 📋 폰 줄 목록(120px 칸) — 사진 폭을 줄 목록에 맞춘다
+  const cardImgWidth = homeCardImgWidth(isLgViewport, isRowViewport, !rail)
 
   /**
    * 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 워커가 홈 HTML 에
