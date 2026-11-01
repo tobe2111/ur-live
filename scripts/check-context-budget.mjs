@@ -96,6 +96,29 @@ const BUDGETS = [
   },
 ]
 
+/**
+ * 🧭 2026-11-01 추가 — **"새 세션이 먼저 읽어라" 고 지시받은 문서**도 예산 대상이다.
+ *
+ * 첫 판은 `CLAUDE.md`·`CURRENT_WORK.md`·목차·역할정의·최근인계만 봤다. 그런데 `CLAUDE.md` 가
+ * *"새 세션은 이 문서로 전체 구조를 먼저 잡는다"* 로 지시하는 `urdeal-platform-model.md` 가
+ * **30,584 토큰**이었다 — 거의 모든 세션이 읽는데 **예산 밖**이었다(대표 질문 *"이제 다
+ * 개선한거야?"* 에 답하려 재서 발견했다). 세션이 자동으로 읽는 것만 세고 *지시받아* 읽는 것을
+ * 빼면, 같은 비용이 다른 파일로 옮겨 가며 자란다.
+ *
+ * ⚠️ 상한이 느슨하다(4만) — 이 문서들은 **구조 설명**이라 audit log 처럼 통째로 뺄 수 없다.
+ * 목적은 "줄여라" 가 아니라 **"이력을 구조 문서에 쌓지 마라"** 다(그게 CLAUDE.md 가 30만이 된
+ * 메커니즘이다). 넘으면 이력·로그 성격의 절을 먼저 분리할 것.
+ */
+const DIRECTED_READS = [
+  'docs/design/urdeal-platform-model.md',
+  'docs/design/ai-team-operating-model.md',
+  'docs/DEV_IMPLEMENTATION_PLAYBOOK.md',
+  'docs/ERROR_DEBUGGING_PLAYBOOK.md',
+  'docs/KNOWN_ERRORS.md',
+  'docs/FEATURE_STATUS.md',
+]
+const DIRECTED_LIMIT = 40_000
+
 /** 이 크기를 넘는 문서는 "통째로 읽지 말 것" 경고가 있어야 한다. */
 const LANDMINE_TOKENS = 120_000
 const LANDMINE_HINTS = ['통째로 읽지 말', '통째로 읽지 않', 'grep']
@@ -157,6 +180,24 @@ for (const b of BUDGETS) {
     violations.push({ line, why: b.why, files: present })
   } else if (pct >= 85) {
     console.log(`⚠️  ${line} — 상한에 가깝다. 지금 분리할 것.`)
+  }
+}
+
+// ── ①-2 "먼저 읽어라" 고 지시받은 문서 ─────────────────────────────
+for (const f of DIRECTED_READS) {
+  if (!existsSync(f) || exempt(f)) continue
+  checked++
+  const tk = tokensOf(readFileSync(f, 'utf8'))
+  const pct = Math.round((tk / DIRECTED_LIMIT) * 100)
+  const line = `${f}: ${tk.toLocaleString()} / ${DIRECTED_LIMIT.toLocaleString()} 토큰 (${pct}%)`
+  if (tk > DIRECTED_LIMIT) {
+    violations.push({
+      line,
+      why: 'CLAUDE.md 가 "새 세션이 먼저 읽어라" 고 지시하는 문서 — 거의 모든 세션이 이 비용을 낸다. 이력·로그 성격의 절을 분리할 것.',
+      files: [f],
+    })
+  } else if (pct >= 85) {
+    console.log(`⚠️  ${line} — 상한에 가깝다. 이력·로그 절을 먼저 분리할 것.`)
   }
 }
 

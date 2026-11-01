@@ -43,6 +43,22 @@ export default [
     why: '역순 정렬에서 INDEX.local.md 가 항상 상위 5건에 들어와 인계 예산을 부풀리고 목차를 이중 계산한다. 사람도 같은 함정을 밟았다(11,338 → 32,555 오독).',
   },
   {
+    name: '컨텍스트예산 — "먼저 읽어라" 문서 목록을 비운다',
+    file: G,
+    find: "  'docs/design/urdeal-platform-model.md',",
+    replace: '',
+    test: T,
+    why: 'CLAUDE.md 가 "새 세션은 이 문서로 구조를 먼저 잡는다" 고 지시하는 3만 토큰 문서가 예산 밖으로 나간다 — 첫 판이 정확히 그 상태였고, 그러면 비용이 그 파일로 옮겨 가며 자란다.',
+  },
+  {
+    name: '컨텍스트예산 — 지시받는 문서 상한을 10배로',
+    file: G,
+    find: 'const DIRECTED_LIMIT = 40_000',
+    replace: 'const DIRECTED_LIMIT = 400_000',
+    test: T,
+    why: '상한을 올리는 것이 이 칸을 끄는 가장 쉬운 길이다.',
+  },
+  {
     name: '컨텍스트예산 — 경고가 있어도 거대 문서를 잡는다(반대 방향)',
     file: G,
     find: "const LANDMINE_HINTS = ['통째로 읽지 말', '통째로 읽지 않', 'grep']",

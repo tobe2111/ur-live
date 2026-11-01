@@ -97,6 +97,31 @@ describe('① 가드가 실제로 동작한다 (합성 트리 실행)', () => {
   })
 })
 
+describe('①-2 "먼저 읽어라" 고 지시받은 문서도 예산 대상이다', () => {
+  // 🩸 첫 판은 이 칸이 비어 있었다 — `CLAUDE.md` 가 *"새 세션은 이 문서로 전체 구조를 먼저
+  //   잡는다"* 고 지시하는 `urdeal-platform-model.md` 가 **30,584 토큰**인데 예산 밖이었다.
+  //   세션이 *자동으로* 읽는 것만 세고 *지시받아* 읽는 것을 빼면, 같은 비용이 다른 파일로
+  //   옮겨 가며 자란다(대표 질문 "이제 다 개선한거야?" 에 답하려 재서 발견했다).
+  it('🔴 지시받는 문서가 상한을 넘기면 잡는다', () => {
+    const r = runIn(okTree({ 'docs/design/urdeal-platform-model.md': ko(45_000) })) // 상한 40,000
+    expect(r.code, '지시받는 문서가 상한을 넘겼는데 통과했다').not.toBe(0)
+    expect(r.out).toContain('urdeal-platform-model')
+  })
+
+  it('목록이 CLAUDE.md 의 실제 지시와 이어져 있다 (빈 목록이면 이 칸이 다시 눈먼다)', () => {
+    const g = read(GUARD)
+    const m = g.match(/const DIRECTED_READS = \[([\s\S]*?)\]/)
+    expect(m, 'DIRECTED_READS 가 없다').toBeTruthy()
+    const paths = [...m![1].matchAll(/'([^']+)'/g)].map((x) => x[1])
+    expect(paths.length, '목록이 비었다 — 검사가 아무것도 안 본다').toBeGreaterThanOrEqual(4)
+    // CLAUDE.md 가 실제로 그 문서를 가리키는지 — 손으로 적은 목록이 낡는 것을 막는다.
+    const md = read('CLAUDE.md')
+    const referenced = paths.filter((p) => md.includes(p))
+    expect(referenced.length, `CLAUDE.md 가 가리키지 않는 경로만 있다: ${paths.join(', ')}`)
+      .toBeGreaterThanOrEqual(3)
+  })
+})
+
 describe('② 지뢰 규칙 — 큰 파일을 금지하지 않는다, 경고를 강제한다', () => {
   it('🔴 경고 없는 거대 문서를 잡는다', () => {
     const r = runIn(okTree({ 'docs/huge.md': `# 제목\n\n${ko(130_000)}` }))
