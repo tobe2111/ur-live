@@ -146,7 +146,7 @@ app.get('/my-stores/summary', async (c) => {
     if (scope.agencyId) return c.json({ success: true, data: await agencySummary(c.env.DB, stores, scope.agencyId, currentSellerId ?? null) }) // 🤝 자기 이용권 숫자만
     const ids = stores.map(s => s.seller_id)
     const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
-    const [todayRows, pendingRows, activeRows, certRows, lifeRows] = await Promise.all([
+    const [todayRows, pendingRows, activeRows, certRows, lifeRows, imgRows] = await Promise.all([
       allInChunks(ids, (chunk, marks) => c.env.DB.prepare(
         `SELECT seller_id, COUNT(*) AS n, COALESCE(SUM(total_amount), 0) AS rev
            FROM orders
@@ -191,6 +191,18 @@ app.get('/my-stores/summary', async (c) => {
            FROM home_service_pros p LEFT JOIN home_service_credit_balance b ON b.seller_id = p.seller_id
           WHERE p.seller_id IN (${marks})`
       ).bind(...chunk).all<{ seller_id: number; n: number }>().then(r => r.results || [])).catch(() => [] as { seller_id: number; n: number }[]),
+      /**
+       * 🖼️ 2026-10-31 (대표 확정 9번 **B안** — 마이 '내 가게' 머리줄에 가게 사진 · 이름 · 가게 보기).
+       *   사진 = 가게 프로필, 없으면 판매 중 상품 첫 사진(빈 회색보다 그 가게를 알아보게 한다).
+       *   별도 쿼리 + fail-soft — 사진이 안 와도 요약은 온다(머리줄이 이니셜로 그린다).
+       */
+      allInChunks(ids, (chunk, marks) => c.env.DB.prepare(
+        `SELECT s.id AS seller_id, s.profile_image AS img,
+                (SELECT p.image_url FROM products p
+                  WHERE p.seller_id = s.id AND p.is_active = 1 AND COALESCE(p.status, '') != 'DELETED'
+                  ORDER BY p.id LIMIT 1) AS pimg
+           FROM sellers s WHERE s.id IN (${marks})`
+      ).bind(...chunk).all<{ seller_id: number; img: string | null; pimg: string | null }>().then(r => r.results || [])).catch(() => [] as { seller_id: number; img: string | null; pimg: string | null }[]),
     ])
     const today = { results: todayRows }, pending = { results: pendingRows }, active = { results: activeRows }, cert = { results: certRows }
     const tMap = new Map((today.results || []).map(r => [Number(r.seller_id), r]))
@@ -198,6 +210,7 @@ app.get('/my-stores/summary', async (c) => {
     const aMap = new Map((active.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
     const cMap = new Map((cert.results || []).map(r => [Number(r.seller_id), r.cert ?? null]))
     const lMap = new Map(lifeRows.map(r => [Number(r.seller_id), Number(r.n) || 0]))
+    const iMap = new Map(imgRows.map(r => [Number(r.seller_id), r.img || r.pimg || null]))
     const rows = stores.map(s => {
       const t = tMap.get(s.seller_id)
       return {
@@ -215,6 +228,9 @@ app.get('/my-stores/summary', async (c) => {
         active_products: aMap.get(s.seller_id) || 0,
         // 🏠 생활 견적 참여권 — 생활 업체가 아니면 null(마이가 줄을 안 그린다)
         life_credits: lMap.has(s.seller_id) ? lMap.get(s.seller_id)! : null,
+        // 🖼️ B안 머리줄 — 가게 사진과 손님이 보는 가게 주소(`/s/:username`)
+        image: iMap.get(s.seller_id) ?? null,
+        username: s.username ?? null,
       }
     })
     const totals = rows.reduce((a, r) => ({ today_revenue: a.today_revenue + r.today_revenue, today_orders: a.today_orders + r.today_orders, pending: a.pending + r.pending }), { today_revenue: 0, today_orders: 0, pending: 0 })

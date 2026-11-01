@@ -172,8 +172,9 @@ export default [
   {
     name: '🔗 초대 링크로 남의 매장(주인 아님)을 맡긴다',
     file: 'src/features/seller/api/store-agency-invite.routes.ts',
-    find: 'if (!(await isStoreOwner(DB, userId, sellerId))) {',
-    replace: 'if (false) {',
+    // 🎯 2026-10-31 재조준: 같은 파일에 제휴 요청 경로가 생겨 주인 확인이 두 곳 — 초대 링크 쪽(주석 줄)으로 앵커.
+    find: '  // 🔐 그 매장의 **주인**만 — 위임받은 운영자는 남의 매장을 다른 대행에 넘길 수 없다.\n  if (!(await isStoreOwner(DB, userId, sellerId))) {',
+    replace: '  // 🔐 그 매장의 **주인**만 — 위임받은 운영자는 남의 매장을 다른 대행에 넘길 수 없다.\n  if (false) {',
     test: STORES,
     why: '위임받은 운영자·아무 손님이 남의 매장을 다른 대행에 넘긴다.',
   },

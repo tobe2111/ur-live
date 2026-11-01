@@ -103,6 +103,27 @@
             "https://urdeal.kr/marketing/b2b/creator-partners/slide-4.jpg",
             "https://urdeal.kr/marketing/b2b/creator-partners/slide-5.jpg"
           ]
+        },
+        {
+          "set": "creator-link-one",
+          "images": [
+            "https://urdeal.kr/marketing/b2b/creator-link-one/slide-1.jpg",
+            "https://urdeal.kr/marketing/b2b/creator-link-one/slide-2.jpg",
+            "https://urdeal.kr/marketing/b2b/creator-link-one/slide-3.jpg",
+            "https://urdeal.kr/marketing/b2b/creator-link-one/slide-4.jpg",
+            "https://urdeal.kr/marketing/b2b/creator-link-one/slide-5.jpg",
+            "https://urdeal.kr/marketing/b2b/creator-link-one/slide-6.jpg"
+          ]
+        },
+        {
+          "set": "creator-checklist",
+          "images": [
+            "https://urdeal.kr/marketing/b2b/creator-checklist/slide-1.jpg",
+            "https://urdeal.kr/marketing/b2b/creator-checklist/slide-2.jpg",
+            "https://urdeal.kr/marketing/b2b/creator-checklist/slide-3.jpg",
+            "https://urdeal.kr/marketing/b2b/creator-checklist/slide-4.jpg",
+            "https://urdeal.kr/marketing/b2b/creator-checklist/slide-5.jpg"
+          ]
         }
       ]
     },
@@ -114,6 +135,30 @@
       "image_url": "",
       "topics": [
         "오늘의 딜 상품을 운영자 입장에서 솔직하게 소개(왜 골랐는지, 어떤 상황에 좋은지)"
+      ],
+      "media": [
+        {
+          "set": "deal-dalbit",
+          "product_id": 2919,
+          "images": [
+            "https://urdeal.kr/marketing/b2b/deal-dalbit/slide-1.jpg",
+            "https://urdeal.kr/marketing/b2b/deal-dalbit/slide-2.jpg",
+            "https://urdeal.kr/marketing/b2b/deal-dalbit/slide-3.jpg",
+            "https://urdeal.kr/marketing/b2b/deal-dalbit/slide-4.jpg",
+            "https://urdeal.kr/marketing/b2b/deal-dalbit/slide-5.jpg"
+          ]
+        },
+        {
+          "set": "deal-hongdae-donkatsu",
+          "product_id": 2915,
+          "images": [
+            "https://urdeal.kr/marketing/b2b/deal-hongdae-donkatsu/slide-1.jpg",
+            "https://urdeal.kr/marketing/b2b/deal-hongdae-donkatsu/slide-2.jpg",
+            "https://urdeal.kr/marketing/b2b/deal-hongdae-donkatsu/slide-3.jpg",
+            "https://urdeal.kr/marketing/b2b/deal-hongdae-donkatsu/slide-4.jpg",
+            "https://urdeal.kr/marketing/b2b/deal-hongdae-donkatsu/slide-5.jpg"
+          ]
+        }
       ]
     }
   }

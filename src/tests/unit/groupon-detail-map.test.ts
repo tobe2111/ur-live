@@ -18,14 +18,16 @@ const TOPBAR = 'src/pages/restaurant-map/MapTopBar.tsx'
  * ⚠️ 이 파일이 **못 막는 것**: 실제 렌더 결과(높이·겹침·읽기 쉬움). 소스 문자열만 본다.
  *   최종 판정은 라이브 스크린샷이다.
  */
-describe('이용권 상세 — 제목이 사진 위로 (대표 확정 1안)', () => {
-  it('제목 헤더가 갤러리보다 **먼저** 온다', () => {
-    const s = code(DETAIL)
-    const header = s.indexOf('<DetailTitleHeader')
-    const gallery = s.indexOf('<DetailGallery')
-    expect(header).toBeGreaterThan(-1)
-    expect(gallery).toBeGreaterThan(-1)
-    expect(header).toBeLessThan(gallery)
+describe('이용권 상세 — 제목은 사진 아래 (2026-10-31 대표 "이용권 이름을 사진 밑으로" — 08-19 1안 대체)', () => {
+  it('제목 헤더가 갤러리 **다음**에 온다 — 이용권·숙소 둘 다', () => {
+    for (const f of [DETAIL, 'src/pages/StayDetailPage.tsx']) {
+      const s = code(f)
+      const header = s.indexOf('<DetailTitleHeader')
+      const gallery = s.indexOf('<DetailGallery')
+      expect(header, f).toBeGreaterThan(-1)
+      expect(gallery, f).toBeGreaterThan(-1)
+      expect(header, `${f} — 제목이 다시 사진 위로 올라갔다`).toBeGreaterThan(gallery)
+    }
   })
 
   it('제목·가격이 PC 에서 두 벌로 나오지 않는다 (모바일 블록은 lg:hidden)', () => {

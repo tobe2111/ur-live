@@ -450,10 +450,15 @@ export async function sendSellerVoucherSoldAlimtalk(
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
-    const message = `[유어딜] 🎟️ 이용권 판매
+    // 🩸 2026-10-31 카카오 반려("수신자 액션 문구 · 변수 앞 고정 타이틀") 반영 — 등록 문서와 글자까지 같다.
+    const message = `[유어딜] 이용권 판매 안내
 
-${data.restaurantName}
-"${data.productName}" ${data.qty}장 · ₩${Number(data.amount).toLocaleString('ko-KR')}
+사장님 매장의 이용권을 손님이 구매했습니다.
+
+· 매장명: ${data.restaurantName}
+· 상품명: ${data.productName}
+· 수량: ${data.qty}장
+· 결제 금액: ${Number(data.amount).toLocaleString('ko-KR')}원
 
 손님이 오시면 아래 [사용 처리하기]를 눌러 주세요.
 

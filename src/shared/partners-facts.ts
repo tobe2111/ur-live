@@ -34,11 +34,17 @@ export const PARTNER_FACTS = {
   /** 등록 소요 — 기획 §7-3 확정값(1분·3분·5분 혼용을 이것 하나로 통일) */
   signupMinutes: '10분',
 
-  /** 📏 규모 실측 (2026-10-12 D1 실측으로 갱신). 정직 고지에 그대로 쓴다.
+  /** 📏 규모 실측. 정직 고지에 그대로 쓴다.
    * ⚠️ 이 값들은 `docs/business/proposals/deck-common.mjs` 의 FACTS 와 **같아야 한다** —
-   *    `partners-landing-2026-09-16.test.ts` R2 가 두 곳을 대조한다(덱만 고치면 푸시가 막힌다). */
+   *    `partners-landing-2026-09-16.test.ts` R2 가 두 곳을 대조한다(덱만 고치면 푸시가 막힌다).
+   * 🔀 2026-10-31 날짜를 둘로 갈랐다: `liveMeasuredAt`(2026-10-12)은 덱이 인플루언서 DB·소개 적립
+   *    문장의 기준일로도 쓴다. 판매 중 이용권만 다시 셌으므로 그 날짜를 올리면 **다시 안 센 숫자에
+   *    새 날짜가 붙는다.** 정직 고지는 `catalogMeasuredAt` 을 쓴다.
+   * 정의(2026-10-31 D1): is_active=1 · deal_only=0 · 이용권 4종 = 165건, 그중 seller_id 있는 것
+   *    (실제 매장) 2건(2915 홍대돈까스 · 2919 달빛한스푼). 2026-10-12 는 359건이었다(데모 정리분). */
   liveMeasuredAt: '2026-10-12',
-  activeVouchers: '359',
+  catalogMeasuredAt: '2026-10-31',
+  activeVouchers: '165',
   realStores: '2',
 
   /**

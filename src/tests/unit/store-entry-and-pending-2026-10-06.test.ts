@@ -24,6 +24,7 @@ describe('① 사장님이 된 뒤에도 마이에서 매장을 더할 수 있�
     expect(SHEET).toContain('매장 추가')
   })
   it('가게가 1곳이어도 시트를 열 수 있다', () => {
-    expect(SECTION).toMatch(/!awaiting && stores\.length >= 1 \?/)
+    // 🏪 2026-10-31 B안: 가게 머리줄 전체가 버튼이다 — 개수 조건 없이(기다리는 동안만 막는다) 시트를 연다.
+    expect(SECTION).toMatch(/disabled=\{awaiting\}\s*onClick=\{\(\) => setSheetOpen\(true\)\}/)
   })
 })

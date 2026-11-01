@@ -57,6 +57,8 @@
 | **S-CART** | `voucher_cart_enabled='true'` + 클라 `VOUCHER_CART_UI_ENABLED` | platform_settings + 배포 | 🔴 **머니 경로 · 2겹 게이트.** 이용권 장바구니로 여러 매장을 한 번에 결제. 절차 15항목: 아래 `## S-CART` 절 | ① 서로 다른 매장 이용권이 **전부** 발급되고 정산이 셀러별로 갈린다 ② 한 줄이라도 막히면 **결제창이 안 열린다**(부분 구매 0) ③ 교환권(`deal_only=1`)은 400 `DEAL_ONLY_NOT_SUPPORTED` — 딜로 살 것이 원화로 청구되지 않는다 ④ 환불 시 매장별로 각각 회수 | 🟡 **2026-09-15 서버 게이트 ① ON** (대표 "장바구니 켜줘"). ②`VOUCHER_CART_UI_ENABLED` 는 **여전히 OFF** — 담기 버튼이 없어 신규 유입 0(당시 장바구니 내 이용권 0건 실측). ①을 켠 이유는 **이 표를 실행할 수 있게 하려는 것**이다(게이트가 꺼져 있으면 S-CART 자체를 못 돈다). ⛔ **아래 15항목 실결제 미실시** — 통과 전에는 ②를 켜지 않는다. 롤백: 어드민에서 `voucher_cart_enabled='false'`(배포 불필요, 1초) |
 | **S11** | `review_bonus_owner_funded='true'` | platform_settings | 🔴 **머니 경로 · 매장 정산에서 돈이 나간다.** 매장이 셀러 대시보드에서 후기 보너스 금액 설정 → 그 매장 상품에 후기 제출 → 어드민 승인 | ① 유저에게 보너스가 **먼저** 지급되고, 그 뒤에만 매장 원장 debit ② debit **정확히 1회**(`reference_id='review:{id}'` 멱등 — 같은 건 재승인해도 추가 0) ③ 게이트 OFF 로 되돌리면 판정이 `platform` 이라 **차감 0**(즉시 현행 복귀) ④ 매장이 금액을 설정하지 않았으면 게이트가 켜져 있어도 `platform`(=차감 0) ⑤ 셀러 대시보드 문구가 서버 판정(`funded_by`)과 일치 ⑥ **유어딜 5% 불변식**([INV-#44]) 위반 0 | ⬜ 미검증 (2026-09-01 배선, 기본 OFF) |
 
+| **S-SEED** | `seeding_pass_charge_enabled='true'` | platform_settings | 🔴 **머니 경로(신청권 카드 구매).** `/my-seeding` → 5장 묶음 결제 → 체험 승인된 신청에 일정 제출 → 매장 사정 취소 | ① 결제 1건에 신청권 **정확히 5장**(새로고침·두 번 승인해도 5장 — `seeding_pass_tx(kind,ref)` UNIQUE) ② 금액이 묶음 가격과 다르면 승인 안 됨 ③ 일정 제출 시 **무료 칸부터** 1장 ④ 매장 사정 취소 시 쓴 칸으로 1장 반환 ⑤ 체험 이용권이 `is_experience=1` 로 발급되고 자동 정산에 안 잡힌다 ⑥ 안 쓴 묶음 구매 취소 → 토스 전액 취소 + 유료 칸 차감, 1장이라도 썼으면 거절 | ⬜ 미검증 (2026-10-31 배선, 기본 OFF — 가입 혜택 무료 3회는 게이트 무관하게 동작) |
+
 ## P# — 게이트 없는 staging-필수 검증 (코드 경로 변경분)
 
 | ID | 항목 | 시나리오 | 통과 기준 | 상태 |
@@ -830,3 +832,13 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 | S-STAYV-5 | 스캔 뒤 취소 시도 | 409 `STAY_VOUCHER_USED` · 환불 0 |
 | S-STAYV-6 | 숙박권 1건 → 사장님 관리 화면 '사용' 버튼 | 예약 `checked_out` + 이용권 `used` + 원장 1회(스캔 경로와 같은 함수) · 지갑에서 '사용 완료' |
 | (회귀) | 게이트 OFF 로 S-STAYV-1 | `vouchers` 0행 · 종전 수동 체크인 그대로 |
+
+### 🧪 데모 상품 결제 차단 (2026-10-26 대표 "데모 숙소에도 실제로 결제가 되면 안돼")
+
+공용 결제 검사(`fcfs-gate.ts` `checkFcfsPurchasable`)가 slug `demo-*` 를 먼저 막고, 숙소 예약 서버(`stays-public.routes.ts`)는 create · create-multi · confirm(Toss 승인 전) 세 곳에서 같은 판정을 부른다.
+
+| ID | 시나리오 | 기대 |
+|---|---|---|
+| S-DEMO-1 | 데모 숙소(`demo-stay-*`)에 `POST /api/group-buy/stays/bookings/create` 직접 호출 | 403 `DEMO_NOT_PURCHASABLE` · 예약·주문 행 0 |
+| S-DEMO-2 | 데모 이용권(`demo-deal-*`) `/join` 직접 호출(카드·딜 둘 다) | 403 `DEMO_NOT_PURCHASABLE` · 결제창 안 뜸 |
+| S-DEMO-3 | 실매장 숙소·이용권 카드 결제 1건 | 종전과 동일하게 승인까지(반대 방향 — 이게 깨지면 실매출이 막힌다) |

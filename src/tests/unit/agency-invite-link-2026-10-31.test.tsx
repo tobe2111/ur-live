@@ -137,6 +137,9 @@ describe('⑤ 링크로 들어와 가입하면 바로 연결된다', () => {
     const entrust = page.indexOf('await entrustToInviter(sellerId)')
     expect(handoff).toBeGreaterThan(0)
     expect(entrust, '중개 등록(주인 아님)보다 먼저 맡기면 NOT_OWNER 로 실패한다').toBeGreaterThan(handoff)
-    expect(entrust).toBeLessThan(page.indexOf('navigate(MY_PATH, { replace: true })', handoff))
+    // 🎯 2026-10-31 재조준: 착륙 줄이 `takePartnerReturn() ?? MY_PATH` 가 됐다(제휴 위젯 되돌아오기) — 순서 불변식 그대로.
+    const land = page.indexOf('navigate(takePartnerReturn() ?? MY_PATH, { replace: true })', handoff)
+    expect(land).toBeGreaterThan(0)
+    expect(entrust).toBeLessThan(land)
   })
 })

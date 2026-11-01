@@ -170,14 +170,14 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   },
   '/partners': {
     crumb: '매장 입점',
-    title: '매장 입점 안내 - 손님이 온 다음에만 비용',
+    title: '가게 홍보, 손님이 온 다음에만 비용 - 매장 입점 안내', // 2026-10-31 검색어("가게 홍보")를 앞으로
     // 🔴 2026-10-12: 수수료를 **손으로 적지 않는다.** 이 줄이 `수수료 5%` 로 하드코딩돼 있었는데
     //   같은 페이지 본문은 `PARTNER_FACTS.feeDirect`(= 10%, SSOT `fee-resolver.ts` 2026-08-20 대표 최종)를
     //   말하고 있었다 ⇒ 사장님이 **검색 스니펫에서 5% 를 보고 클릭해 10% 를 본다.** 그리고 이 문구는
     //   `llms.txt` 에 그대로 실려 **AI 엔진도 5% 를 인용**한다(라이브 실측).
     //   `partners-facts.ts` 머리말이 적어 둔 그 사고의 *메타 판*이다 — "두 값이 다른 순간 둘 다 신뢰를 잃는다".
-    description: `광고는 클릭에 돈이 나가지만 유어딜은 손님이 매장에 온 뒤에만 수수료 ${PARTNER_FACTS.feeDirect}`
-      + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered})가 붙습니다. 카카오맵에서 우리 가게를 찾아 등록하면 바로 이용권을 올릴 수 있어요.`,
+    description: `식당·카페·미용실·숙소 사장님을 위한 선결제 이용권. 광고는 클릭에 돈이 나가지만 유어딜은 손님이 매장에 온 뒤에만 수수료 ${PARTNER_FACTS.feeDirect}`
+      + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered}). 가입비·월 이용료·광고비 0원, 카카오맵에서 우리 가게를 찾아 바로 등록.`,
   },
 
   // ── 🗺️ 소비자 콘텐츠 표면 ─────────────────────────────────────────────

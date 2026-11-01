@@ -107,8 +107,21 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
       '가게에 오기 전에 온라인에서 먼저 값을 치릅니다',
       'QR을 찍거나 매장 확인코드 6자리를 넣습니다',
       '택배도 반품도 재고도 없습니다. 사장님이 만나는 건 결제를 마친 손님 한 명입니다.',
+      // 2026-10-31 — 장점·비교·도구 섹션의 문장도 옮긴다(종전 252자: "왜 체험단이 아니라 유어딜인가" 가 서버 HTML 에 없었다).
+      '가입비 0원, 월 이용료 0원, 광고비 0원',
+      '이용권이 팔리고 손님이 와서 쓴 뒤에야 수수료가 생깁니다. 안 팔리면 0원입니다.',
+      '공짜밥과 후기 개수가 아니라, 실제 방문과 결제로 증명합니다',
+      '체험단은 무료 식사를 드리고 후기를 받습니다. 그 사람이 손님이 됐는지는 아무도 모릅니다. 유어딜은 결제를 마친 손님이 QR을 찍고 들어옵니다.',
+      '상위 노출을 사는 광고비가 없습니다',
+      '예약과 포스는 이미 오기로 한 손님을 다룹니다. 유어딜은 아직 가게를 모르는 사람에게 이용권을 팔아 가게로 보냅니다.',
+      '손님이 내미는 QR을 매장 폰으로 찍으면 끝입니다. 폰이 안 잡히면 확인코드 여섯 자리를 넣으셔도 됩니다.',
+      '소개해 준 사람별로 몇 건이 팔렸고 소개비가 얼마 나갔는지가 쌓입니다. 그 손님이 실제로 와서 QR을 찍었는지까지 남으니, 성과가 나오는 사람에게만 다시 맡기시면 됩니다.',
+      '상품 등록과 주문 관리를 남에게 맡기실 수 있습니다. 정산 계좌는 사장님 것으로 남고, 권한은 언제든 회수합니다.',
     ],
-    source: ['src/pages/partners/PartnerHero.tsx', 'src/pages/partners/PartnerFlow.tsx', 'src/pages/PartnersPage.tsx'],
+    source: [
+      'src/pages/partners/PartnerHero.tsx', 'src/pages/partners/PartnerFlow.tsx', 'src/pages/PartnersPage.tsx',
+      'src/pages/partners/PartnerBenefits.tsx', 'src/pages/partners/PartnerCompare.tsx', 'src/pages/partners/PartnerTools.tsx',
+    ],
   },
   '/creators/apply': {
     lines: [

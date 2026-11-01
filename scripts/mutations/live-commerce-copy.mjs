@@ -18,10 +18,13 @@ export default [
     why: '**이것이 실제로 라이브에 있던 문구다.** 신규 가입자가 처음 보는 문장이 없는 서비스를 광고했다.',
   },
   {
-    name: '🎬 라이브 문구가 다른 언어로만 되살아난다 (zh 메타)',
+    // 2026-10-31 재조준: 지도 화면이 제목을 글자로 직접 적게 되면서(map-seo-parity) `restaurantMap.seoTitle`
+    //   을 부르는 소비자 코드가 0이 됐다 — 부르지 않는 키는 이 가드가 일부러 안 보므로 그 앵커가 헛돌았다.
+    //   불변식(다른 언어만 되살아남)은 그대로, 지금 실제로 렌더되는 zh 키(온보딩 첫 화면)로 옮겼다.
+    name: '🎬 라이브 문구가 다른 언어로만 되살아난다 (zh 온보딩)',
     file: 'public/locales/zh/translation.json',
-    find: '"seoTitle": "美食地图",',
-    replace: '"seoTitle": "直播电商美食地图",',
+    find: '"welcomeDesc2": "以折扣价买下，立刻使用",',
+    replace: '"welcomeDesc2": "直播电商，以折扣价买下",',
     test: TEST,
     why:
       '한국어만 고치고 끝내는 것이 이 클래스의 전형이다 — 다른 언어 locale 이 **검색 결과에 그대로** 뜬다. ' +

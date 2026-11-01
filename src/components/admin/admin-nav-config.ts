@@ -265,6 +265,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/blog',              label: '블로그 관리',   icon: BookOpen },
       { path: '/admin/home-service',      label: '생활 견적',     icon: Send },
+      { path: '/admin/seeding',           label: '무상 체험 신청', icon: Send },
       // 🥗 2026-07-15 소셜 자동화는 ur-ads 워커로 이전 — `/api/admin/social/*` 는 worker/index.ts 의 ADS 위임으로 살아 있다
       //   (메인의 직접 마운트만 주석 처리됐다. 그 주석만 보고 '죽은 화면' 으로 판정하면 틀린다 — 2026-10-20 실제로 그렇게 오판할 뻔했다).
       { path: '/admin/social',            label: '소셜 홍보',     icon: Share2 },

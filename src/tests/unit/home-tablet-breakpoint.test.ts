@@ -22,6 +22,7 @@
  * 이 테스트가 **못 막는 것**: 실제 레이아웃 붕괴. 브레이크포인트가 같아도 좁은 폭에서
  *   요소가 겹칠 수 있다 — 값을 바꿨으면 태블릿 폭으로 한 번 렌더해 봐야 한다.
  */
+import { DEAL_ROW } from '@/shared/deal-card-grid'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 
@@ -87,8 +88,10 @@ describe('태블릿 폭에서 카드가 줄을 채운다', () => {
 
   it('편성 섹션 그리드도 같은 열 수다 (한 화면에서 열이 갈리면 안 된다)', () => {
     const s = code(read(SECTIONS))
-    const hits = s.match(/grid-cols-2 sm:grid-cols-3 md:grid-cols-4/g) || []
-    expect(hits.length, '섹션 그리드 중 일부만 태블릿 4열이다').toBeGreaterThanOrEqual(2)
+    // 📋 2026-10-31 시안 10: 섹션 격자는 공용 `DEAL_ROW.grid`(폰 줄 목록 · md+ 4열)를 쓴다. 불변식은 그대로 — 태블릿 4열.
+    const hits = s.match(/DEAL_ROW\.grid/g) || []
+    expect(hits.length, '섹션 그리드 중 일부만 공용 격자다').toBeGreaterThanOrEqual(2)
+    expect(DEAL_ROW.grid, '공용 격자가 태블릿 4열이 아니다').toContain('md:grid-cols-4')
     expect(s, '섹션에 옛 lg:grid-cols-4 규칙이 남아 열이 갈린다').not.toMatch(
       /grid-cols-2 sm:grid-cols-3 lg:grid-cols-4/,
     )

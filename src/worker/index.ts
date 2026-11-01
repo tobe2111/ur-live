@@ -145,6 +145,7 @@ import { partnershipPublicRoutes, adminPartnershipRoutes } from './routes/partne
 import { platformMetricsRoutes } from '../features/admin/api/platform-metrics.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
+import { seedingRoutes, snsLinkCallbackRoutes } from '../features/seeding/api/seeding.routes'; import { seedingSellerRoutes, seedingAdminRoutes } from '../features/seeding/api/seeding-store.routes'; // 🎁 무상 체험 제공·SNS 연동(2026-10-31)
 import { homeServiceRoutes } from '../features/home-service/api/home-service.routes'; import { homeServiceProRoutes } from '../features/home-service/api/home-service-pro.routes'; import { homeServiceAdminRoutes } from '../features/home-service/api/home-service-admin.routes'; // 🏠 생활 견적(2026-10-24)
 // 🥗 2026-07-15 워커 다이어트 3차(대표 AskUserQuestion 4항목 명시 승인): 라이브커머스 영구중단 잔재 라우트 분리 —
 //   donations(라이브 후원·소비자 미호출)·youtube(라이브 유튜브 연동)·multi-platform(멀티스트림)·tiktok(아래). 도달 0. 재도입=원복.
@@ -167,7 +168,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 
 // 🛡️ 2026-04-26: 파일 중간 import 를 상단으로 이동 (CLAUDE.md 금지 패턴 — 2026-04-22 사고 재발 방지)
 import { blogRoutes } from '../features/blog/api/blog.routes';
-import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
+import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes'; import { embedRoutes } from './routes/embed.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
 import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body'; import { buildBlogDetailFirstScreen } from './utils/blog-detail-first-screen'; import { buildBlogListFirstScreen } from './utils/blog-list-first-screen';
 import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects';
@@ -1108,7 +1109,7 @@ app.route('/', killerSwRoutes);
 app.use('/sitemap.xml', publicCache(3600)); // 📉 2026-09-02: 크롤러·uptime 프로브 fetch 마다 D1 4쿼리(~1,300행 + 지역 집계 전수) → 1h 엣지(키에 호스트 포함 — 도매/소비자 안 섞임)
 app.route('/', sitemapRoutes);
 // 📝 2026-07-01 블로그 SEO 보조 — /blog/og/:slug(공유 배너 SVG) · /blog/rss(피드). SPA fallback 전에 등록.
-app.route('/', blogSeoRoutes);
+app.route('/', blogSeoRoutes); app.route('/', embedRoutes); // 🧩 2026-10-31 홈페이지 삽입 위젯 /embed/* (iframe 허용은 보안 헤더의 /embed/ 분기 — routes/embed.routes.ts)
 
 // ============================================================
 // 🎯 2026-07-14 유어애즈 독립 Worker(ur-ads) 게이트드 프록시 (Phase C)
@@ -1456,8 +1457,8 @@ app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, window
 app.route('/api/seller', sellerAuthRoutes);
 app.route('/api/seller', sellerOperatorsRoutes); // 🏪 my-stores · 매장 전환 · 운영자 관리
 app.use('/api/brands/*', edgeCache(300)); app.route('/api/brands', brandsPublicRoutes); // 🏷️ 2026-10-17 브랜드 페이지 — 읽기 전용, 콜로당 5분 캐시(지점 추가가 최대 5분 늦게 보인다)
-app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); app.route('/api/agency-console', agencyStoresRoutes); app.use('/api/store-agency-invite/accept', csrfProtection()); app.route('/api/store-agency-invite', storeAgencyInviteRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
-app.route('/api/seller/instagram-dm', instagramAutoDmSellerRoutes); app.route('/api/seller/urshorts', sellerUrshortsRoutes); // 💬 매장 인스타 자동 DM(좌석 토큰) · 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
+app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); app.route('/api/agency-console', agencyStoresRoutes); app.use('/api/store-agency-invite/accept', csrfProtection()); app.use('/api/store-agency-invite/partner-request', csrfProtection()); app.route('/api/store-agency-invite', storeAgencyInviteRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
+app.route('/api/seller/seeding', seedingSellerRoutes); app.route('/api/seller/instagram-dm', instagramAutoDmSellerRoutes); app.route('/api/seller/urshorts', sellerUrshortsRoutes); // 💬 매장 인스타 자동 DM(좌석 토큰) · 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
 app.route('/api/influencer-profile', influencerProfileRoutes); app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller', sellerWithdrawRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
 
 // 🔒 2026-07-28: Google/Firebase 로그인 마운트 해제 — 사유·복원법은 auth.ts 주석 / AUDIT_INVARIANTS.md
@@ -1806,6 +1807,7 @@ adminApp.route('/urshorts', adminUrshortsRoutes);
 // Feature flags / kill-switch (graceful degradation for traffic spikes)
 adminApp.route('/flags', adminFlagsRoutes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
+adminApp.route('/seeding', seedingAdminRoutes); // 🎁 무상 체험 신청 큐·설정
 adminApp.route('/blog', adminBlogRoutes); adminApp.route('/home-service', homeServiceAdminRoutes); // 🧾 생활 견적 대리 접수·직영 견적
 adminApp.route('/instagram-autodm', instagramAutoDmAdminRoutes); // 💬 인스타 자동 DM 설정·규칙·발송 기록
 // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 자동화 라우트 마운트 분리(위 import 참조). 게이트 OFF·미사용이라
@@ -1884,6 +1886,7 @@ app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 6
 app.route('/api/seller/alimtalk', alimtalkRoutes);
 // 🛡️ 2026-04-28: restaurant-map 옵션 B — 사용자 수요 신호 (셀러 영입/알림)
 app.route('/api/restaurant-suggestions', restaurantSuggestionsRoutes);
+app.route('/api/seeding', seedingRoutes); app.route('/', snsLinkCallbackRoutes); // 🎁 무상 체험 제공
 app.route('/api/home-service/pro', homeServiceProRoutes); app.route('/api/home-service', homeServiceRoutes);
 
 // ── 후원(도네이션) ── 🥗 2026-07-15 워커 다이어트 3차(대표 승인): 라이브 후원(소비자 미호출·라이브 영구중단) 마운트 분리. 재도입=원복.
@@ -2472,7 +2475,7 @@ app.get('*', async (c) => {
 <meta name="twitter:description" content="${esc(og.desc)}" />
 <meta name="twitter:image" content="${esc(og.image)}" />
 <meta name="robots" content="${ROBOTS_INDEX}" />
-<meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
+<meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" /><link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" /><link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" /><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 ${brandJsonLdScript()}</head>
 <body>
 <div id="root"></div>

@@ -40,7 +40,7 @@ import { isKnownAppPath } from '@/shared/seo/known-routes'
 import { shouldNoindexMissingEntity } from '@/worker/utils/surface-ssr-meta'
 import { buildStaticSurfaceNoscript } from '@/worker/utils/crawler-noscript'
 import {
-  INDEXNOW_ENDPOINT, INDEXNOW_CURSOR_KEY, buildIndexNowBody, indexNowKeyPath,
+  INDEXNOW_ENDPOINTS, INDEXNOW_CURSOR_KEY, buildIndexNowBody, indexNowKeyPath,
   isValidIndexNowKey, parseSitemapEntries, planIndexNow,
 } from '@/shared/seo/indexnow'
 
@@ -222,7 +222,10 @@ describe('③ IndexNow — 보낼 것만 보낸다', () => {
   })
 
   it('③-11 엔드포인트·커서 키가 상수다 (손으로 적으면 갈린다)', () => {
-    expect(INDEXNOW_ENDPOINT).toBe('https://api.indexnow.org/indexnow')
+    // 2026-10-31 — 공유 중계 하나가 429 면 전부 막혔다 → 엔진별 직접 제출(네이버·빙).
+    expect(INDEXNOW_ENDPOINTS).toEqual(['https://searchadvisor.naver.com/indexnow', 'https://www.bing.com/indexnow'])
+    // 하나라도 받으면 성공 — `every` 로 바뀌면 한 엔진의 429 가 커서를 영원히 묶는다.
+    expect(readCode('src/worker/cron/indexnow-submit.ts')).toMatch(/results\.some\(\(r\) => r\.ok\)/)
     expect(INDEXNOW_CURSOR_KEY).toBe('indexnow_cursor')
     // 🔴 구글은 IndexNow 를 지원하지 않는다 — 기대를 섞지 않도록 문서에 못 박혀 있어야 한다.
     expect(readFileSync('src/shared/seo/indexnow.ts', 'utf8')).toMatch(/구글은 IndexNow 를 지원하지 않는다/)

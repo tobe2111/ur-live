@@ -90,9 +90,10 @@ export async function runMealVoucherExpireCron(env: Env): Promise<{ d30: number;
       //    등록 본문과 글자까지 같아야 한다(docs/alimtalk-register-list.md).
       if (r.user_phone && daysLeft === 30) {
         const message =
-          `[유어딜] 이용권 유효기간 안내\n\n` +
-          `${productName}${where} 이용권이 ${daysLeft}일 후 만료됩니다.\n\n` +
-          `· 코드: ${r.code}\n` +
+          `[유어딜] 구매하신 이용권 유효기간 안내\n\n` +
+          `고객님께서 유어딜에서 구매하신 이용권의 유효기간이 ${daysLeft}일 남았습니다.\n\n` +
+          `· 이용권: ${productName}${where}\n` +
+          `· 이용권 코드: ${r.code}\n` +
           `· 만료일: ${r.expires_at.slice(0, 10)}\n\n` +
           `매장에서 아래 [내 이용권 보기]를 눌러 QR 을 보여주세요.`
         const result = await sendTextNotice(env, r.user_phone, { tpl: 'voucher_expire_soon', title: '이용권 유효기간 안내', text: message })

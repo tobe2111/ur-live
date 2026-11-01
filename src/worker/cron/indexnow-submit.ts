@@ -12,7 +12,7 @@
  *
  * ## 💰 비용
  *
- * 회차당 **self-fetch 1**(`/sitemap.xml` — 엣지 캐시 1시간) **+ 바깥 fetch 1** + D1 읽기·쓰기 1씩.
+ * 회차당 **self-fetch 1**(`/sitemap.xml` — 엣지 캐시 1시간) **+ 바깥 fetch 엔진 수(2)** + D1 읽기·쓰기 1씩.
  * 하루 **한 번**(19:50 UTC = 04:50 KST — 비어 있던 슬롯)이라 서브리퀘스트 예산(무료 50/인보케이션)에
  * 영향이 없다.
  *
@@ -24,7 +24,7 @@
  */
 import type { Env } from '../types/env'
 import {
-  INDEXNOW_ENDPOINT, INDEXNOW_CURSOR_KEY, INDEXNOW_MAX_URLS,
+  INDEXNOW_ENDPOINTS, INDEXNOW_CURSOR_KEY, INDEXNOW_MAX_URLS,
   INDEXNOW_BACKFILL_KEY, INDEXNOW_BACKFILL_VERSION, INDEXNOW_SPEC_MAX,
   buildIndexNowBody, indexNowKeyPath, isValidIndexNowKey, needsIndexNowBackfill,
   parseSitemapEntries, parseSitemapLocs, planIndexNow,
@@ -97,13 +97,17 @@ async function submitChanges(
 
 async function submitUrls(key: string, urls: string[]): Promise<{ ok: boolean; status: string }> {
   const body = buildIndexNowBody(new URL(ORIGIN).host, key, `${ORIGIN}${indexNowKeyPath(key)}`, urls)
-  const post = await fetch(INDEXNOW_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json; charset=utf-8' },
-    body: JSON.stringify(body),
-  }).catch(() => null)
-  if (!post) return { ok: false, status: 'fetch 실패' }
-  return { ok: post.status === 200 || post.status === 202, status: String(post.status) }
+  // 엔진마다 따로 보낸다 — 하나라도 받으면 성공(규격상 참여 엔진끼리 공유). 하트비트엔 엔진별 상태를 남긴다.
+  const results = await Promise.all(INDEXNOW_ENDPOINTS.map(async (ep) => {
+    const post = await fetch(ep, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify(body),
+    }).catch(() => null)
+    const host = new URL(ep).hostname.replace(/^(www|searchadvisor)\./, '')
+    return { ok: !!post && (post.status === 200 || post.status === 202), status: `${host} ${post ? post.status : 'fetch 실패'}` }
+  }))
+  return { ok: results.some((r) => r.ok), status: results.map((r) => r.status).join(' / ') }
 }
 
 async function upsertSetting(DB: D1Database, key: string, value: string): Promise<void> {

@@ -14,7 +14,7 @@ import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { getSupplyMeta } from '@/worker/utils/product-supply-meta'
 import { findNaverPlace } from '@/worker/utils/naver-place-photo'
-import { extractKakaoPlaceId } from '@/worker/utils/kakao-place-photos'
+import { extractKakaoPlaceId, fetchKakaoMyStoreAll } from '@/worker/utils/kakao-place-photos'
 import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 
 export const adminDemoPhotoSourceDiagRoutes = new Hono<{ Bindings: Env }>()
@@ -118,4 +118,16 @@ adminDemoPhotoSourceDiagRoutes.get('/dongnedeal/photo-source-diag', cors(), asyn
     console.error('[photo-source-diag]', err)
     return c.json({ success: false, error: '진단 중 오류가 발생했습니다' }, 500)
   }
+})
+
+/**
+ * 🖼️ 2026-10-27 (대표 "카카오에서도 들고와야 … 매장주 제공 사진들 중에서 내가 다른 사진으로 조정도 하고싶어"):
+ *   어드민 동네딜 수정 화면의 "카카오 매장주 사진" 버튼 — 그 장소의 매장주 제공 사진 목록(읽기 전용).
+ *   ?place= 카카오 장소 URL 또는 id. 외부 요청 ≤3.
+ */
+adminDemoPhotoSourceDiagRoutes.get('/dongnedeal/kakao-mystore-photos', cors(), async (c) => {
+  const place = String(c.req.query('place') || '').slice(0, 200)
+  if (!extractKakaoPlaceId(place)) return c.json({ success: false, error: '카카오 장소 주소가 없습니다' }, 400)
+  const photos = await fetchKakaoMyStoreAll(place, 3).catch(() => [] as string[])
+  return c.json({ success: true, data: { photos } })
 })
