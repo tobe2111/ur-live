@@ -20,7 +20,16 @@
  *
  * ## 사용
  *   node scripts/generate-handoff-index.mjs         # 목차 재생성(변경 있을 때만 파일 쓰기)
+ *   node scripts/generate-handoff-index.mjs --all    # 전체 나열(기본은 최근 RECENT_LIMIT 건)
  *   node scripts/generate-handoff-index.mjs --check  # 목차가 최신인지 검사만(비-0 이면 낡음)
+ *
+ * ## 🔴 왜 기본이 "최근 N건" 인가 (2026-11-01 실측 — 대표 *"크레딧을 너무 빨리 소비해"*)
+ * 이 목차는 **세션이 첫 액션으로 만들어 읽는다**(CLAUDE.md "🔄 진행 중 작업 인계"). 그런데
+ * 인계가 592건까지 자라자 산출물이 **53,291자 ≈ 23,835 토큰(664줄)** 이 됐다 — 세션이 실제로
+ * 필요한 것은 **최근 1~3건**인데 목차 한 장이 그만큼을 먹었다. 그리고 그 비용은 *매 세션* 든다.
+ * ⇒ 기본은 최근 `RECENT_LIMIT` 건만 낸다(약 1,600 토큰). 더 옛것은 **목차가 아니라 grep** 이 맞다:
+ *   `grep -rln '<키워드>' docs/handoff/`
+ * ⚠️ 상한을 올리면 그만큼 매 세션 비용이 늘어난다. 전체가 필요하면 `--all` 을 쓸 것(사람이 볼 때).
  */
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -35,6 +44,9 @@ const HANDOFF_DIR = 'docs/handoff'
 //   ⇒ 휘발성 생성물을 추적하는 것이 원인이다. 이제 `.gitignore` 된 사이드카에 쓰고,
 //      `docs/CURRENT_WORK.md` 는 **안 바뀌는 문서**로 남는다(= 다툴 줄이 없다).
 const INDEX_FILE = 'docs/handoff/INDEX.local.md'
+/** 기본 나열 건수. 세션이 읽는 비용이므로 늘리지 말 것 — 위 머리말 참조. */
+const RECENT_LIMIT = 40
+const SHOW_ALL = process.argv.includes('--all')
 const BEGIN = '<!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->'
 const END = '<!-- HANDOFF-INDEX:END -->'
 
@@ -66,12 +78,27 @@ function render(entries) {
   if (!entries.length) {
     out.push('_(아직 세션 인계 파일이 없다 — `docs/handoff/<날짜>-<슬러그>.md` 로 추가하면 여기에 자동 등록된다.)_')
   } else {
-    out.push(`_총 ${entries.length}건 · 최신순 · 이 목록은 자동 생성된다._`, '')
+    const shown = SHOW_ALL ? entries : entries.slice(0, RECENT_LIMIT)
+    const hidden = entries.length - shown.length
+    out.push(
+      hidden > 0
+        ? `_총 ${entries.length}건 중 **최근 ${shown.length}건** · 최신순 · 자동 생성._`
+        : `_총 ${entries.length}건 · 최신순 · 이 목록은 자동 생성된다._`,
+      '',
+    )
     let curDate = null
-    for (const e of entries) {
+    for (const e of shown) {
       if (e.date !== curDate) { curDate = e.date; out.push(`**${curDate || '(날짜 미상)'}**`) }
       out.push(`- [${e.title}](${e.file})`)
     }
+  }
+  if (entries.length > RECENT_LIMIT && !SHOW_ALL) {
+    out.push(
+      '',
+      `_나머지 ${entries.length - RECENT_LIMIT}건은 일부러 생략했다 — 이 목차는 세션이 매번 읽으므로 짧게 유지한다._`,
+      '- 옛 인계를 찾을 때: `grep -rln \'<키워드>\' docs/handoff/`',
+      '- 전체 목록이 필요할 때(사람이 볼 때): `node scripts/generate-handoff-index.mjs --all`',
+    )
   }
   out.push('', `📦 그 이전 기록: [\`archive/\`](archive/)`, END)
   return out.join('\n')

@@ -417,10 +417,28 @@ if [ -f scripts/generate-ops-handbook.mjs ]; then
 fi
 
 echo "==> Pre-commit: TypeScript check..."
-npx tsc --noEmit --skipLibCheck || {
-  echo "❌ Commit blocked. Fix TypeScript errors."
+# 🧠 2026-11-01: heap 상한을 명시한다. 이 레포는 node **기본** heap 으로 tsc 를 돌리면
+#   `FATAL ERROR: Reached heap limit`(OOM)로 죽는다 — 시스템 메모리가 14GB 남아 있어도
+#   그렇다(기본 상한에 걸리는 것이다). 그런데 아래 `||` 는 **죽은 이유를 구분하지 않아**
+#   OOM 을 "Fix TypeScript errors" 로 보고했다 ⇒ 세션이 **존재하지 않는 타입 에러를 찾아
+#   헤맨다**(2026-11-01 실제로 그럴 뻔했다). 실패 원인을 오진하게 만드는 메시지는 그 자체가 결함이다.
+TSC_LOG="$(mktemp)"
+NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=8192" npx tsc --noEmit --skipLibCheck 2>&1 | tee "$TSC_LOG"
+TSC_RC=${PIPESTATUS[0]}
+if [ "$TSC_RC" -ne 0 ]; then
+  if grep -q "heap out of memory\|Reached heap limit" "$TSC_LOG"; then
+    echo ""
+    echo "❌ Commit blocked — 하지만 **타입 에러가 아니다**: tsc 가 heap 부족으로 죽었다(OOM)."
+    echo "   → 타입 에러를 찾지 말 것. heap 을 더 올려 다시 돌려라:"
+    echo "     NODE_OPTIONS=--max-old-space-size=12288 npx tsc --noEmit --skipLibCheck"
+    echo "   (그래도 OOM 이면 환경 메모리 문제다 — CI 가 유일한 타입 판정이 된다.)"
+  else
+    echo "❌ Commit blocked. Fix TypeScript errors."
+  fi
+  rm -f "$TSC_LOG"
   exit 1
-}
+fi
+rm -f "$TSC_LOG"
 
 # 🛡️ 2026-04-22: 파일 중간 import 경고 (staged 파일의 NEW 라인만 — 기존 코드는 skip)
 # diff --cached 의 '+' 라인 중 import로 시작하는 것을 찾고,

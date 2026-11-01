@@ -139,6 +139,10 @@ if domain structure; then
   # 의도적으로 전수(-a) 유지 — 게이트는 repo 전체 건강 뷰. PR CI(verify.yml)만 --changed-only
   # (main 드리프트가 무관한 PR 을 실패시키던 문제, 2026-07-11). 드리프트는 --rebaseline 으로 정렬.
   run "파일 크기 래칫(god 파일)"          env STRICT_FILE_SIZE=1        node scripts/check-file-size.mjs -a
+  # 🧠 2026-11-01 — 세션 컨텍스트 예산. 위 file-size 래칫은 `src/**.ts(x)` 만 보므로 `.md` 는
+  #   **무제한으로 자랄 수 있었다** → CLAUDE.md 가 30만 토큰(세션 용량의 151%)이 되어 세션이
+  #   아예 안 켜졌다(대표 신고). 그 클래스를 보는 가드가 그때까지 **0개**였다.
+  run "세션 컨텍스트 예산(prompt too long)" env STRICT_CONTEXT_BUDGET=1   node scripts/check-context-budget.mjs -s
 fi
 
 if domain deploy; then
