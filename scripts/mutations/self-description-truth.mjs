@@ -17,7 +17,7 @@ export default [
   },
   {
     name: '/introduce 검색 제목이 다시 공동구매',
-    file: 'src/shared/seo/consumer-surfaces.ts',
+    file: 'src/shared/seo/consumer-surface-table.ts',
     find: "    title: '유어딜 소개 - 우리 동네 이용권 할인',",
     replace: "    title: '유어딜 소개 - 우리 동네 이용권 공동구매',",
     test: 'src/tests/unit/self-description-truth-2026-10-18.test.ts',

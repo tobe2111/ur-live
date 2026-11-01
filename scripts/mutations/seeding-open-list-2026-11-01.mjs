@@ -108,9 +108,9 @@ export default [
   },
   {
     name: '반대 방향 — 체험 목록을 색인 허용으로 바꾼다',
-    file: 'src/shared/seo/consumer-surfaces.ts',
-    find: '    noindex: true,\n    title: \'무료 체험 이용권\',',
-    replace: '    crumb: \'무료 체험\',\n    title: \'무료 체험 이용권\',',
+    file: 'src/shared/seo/consumer-surface-table.ts',
+    find: "'/influencer/seeding': { noindex: true,",
+    replace: "'/influencer/seeding': { crumb: '무료 체험',",
     test: T,
     why: '자리가 0 이면 본문이 비는 화면이다 — 색인 허용 + 빵부스러기는 thin content 를 제출하는 것.',
   },

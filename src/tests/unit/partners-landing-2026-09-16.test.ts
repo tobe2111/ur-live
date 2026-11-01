@@ -148,7 +148,7 @@ describe('R2 — 숫자가 대표 승인 덱(deck-common.mjs FACTS)과 같다', 
    * ⚠️ 숫자 비교로는 못 잡는다 — 하드코딩 값이 마침 같으면 늘 참이다. **소스를 본다.**
    */
   it('검색 스니펫(메타 description)도 SSOT 에서 읽는다 — llms.txt 가 이 문구를 쓴다', () => {
-    const src = stripComments(R('src/shared/seo/consumer-surfaces.ts'))
+    const src = stripComments(R('src/shared/seo/consumer-surface-table.ts')) // 🗂️ 2026-11-01 표 분리
     const i = src.indexOf("'/partners': {")
     expect(i, '/partners 항목을 못 찾았다 — 이 검사가 헛돈다').toBeGreaterThan(-1)
     const entry = src.slice(i, i + 900)

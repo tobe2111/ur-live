@@ -92,9 +92,14 @@ describe('robots · sitemap', () => {
 
 describe('공용 번들 무게', () => {
   it('consumer-surfaces(전 화면 공용)는 업종 데이터를 import 하지 않는다 — 실측 전 화면 +4.3KB 였다', () => {
-    const src = readCode('src/shared/seo/consumer-surfaces.ts')
-    expect(src).not.toMatch(/from ['"][^'"]*(life-seo|home-service)/)
-    expect(src).toMatch(/from ['"]\.\/life-hub-seo['"]/)
+    // 🗂️ 2026-11-01 표가 `consumer-surface-table.ts` 로 분리됐다 — 둘 다 전 화면 공용 번들에
+    //    들어가므로 **양쪽을 본다**(한쪽만 보면 import 를 다른 파일로 옮겨 규칙을 비껴갈 수 있다).
+    const files = ['src/shared/seo/consumer-surfaces.ts', 'src/shared/seo/consumer-surface-table.ts']
+    for (const f of files) {
+      expect(readCode(f), f).not.toMatch(/from ['"][^'"]*(life-seo|home-service)/)
+    }
+    // 가벼운 `life-hub-seo`(경로·메타 상수만)는 표 쪽에서 쓴다.
+    expect(readCode('src/shared/seo/consumer-surface-table.ts')).toMatch(/from ['"]\.\/life-hub-seo['"]/)
   })
   it('업종 메타는 워커가 등록한다(빠지면 업종 페이지가 홈 메타로 돌아간다)', () => {
     expect(readCode('src/worker/utils/surface-list-jsonld.ts')).toMatch(/registerDynamicSurfaceSeo\(lifeCategorySeo\)/)

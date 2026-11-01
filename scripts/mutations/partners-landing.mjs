@@ -233,7 +233,7 @@ export default [
   },
   {
     name: '🏪 검색 스니펫이 다시 수수료를 손으로 적는다 (5%)',
-    file: 'src/shared/seo/consumer-surfaces.ts',
+    file: 'src/shared/seo/consumer-surface-table.ts',
     find: '수수료 ${PARTNER_FACTS.feeDirect}`',
     replace: '수수료 5%`',
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
@@ -244,7 +244,7 @@ export default [
   },
   {
     name: '🏪 스니펫에서 중개 요율을 뺀다 (한쪽만 말해 또 갈린다)',
-    file: 'src/shared/seo/consumer-surfaces.ts',
+    file: 'src/shared/seo/consumer-surface-table.ts',
     // 2026-10-31: 설명 문장을 다듬으며("…가 붙습니다." → "…). 가입비…") 앵커만 재조준 — 결함은 그대로.
     find: '      + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered}). 가입비',
     replace: '      + `. 가입비',
