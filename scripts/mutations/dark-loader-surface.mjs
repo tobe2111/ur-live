@@ -20,8 +20,8 @@ export default [
   {
     name: '🌑 청크 로더 배선이 끊긴다 (술어는 남고 호출만 사라짐)',
     file: APP,
-    find: 'const PageLoader = () => <BootFirstScreenLoader forceDark={isDarkLoaderSurface(window.location.pathname)} />',
-    replace: 'const PageLoader = () => <BootFirstScreenLoader />',
+    find: 'const PageLoader = ({ pathname }: { pathname: string }) => <BootFirstScreenLoader forceDark={isDarkLoaderSurface(pathname)} />',
+    replace: 'const PageLoader = ({ pathname }: { pathname: string }) => <BootFirstScreenLoader />',
     test: TEST,
     why:
       '이 레포가 반복해 당한 모양 — 술어는 정의돼 있고 이름도 파일에 남아 있어서, 이름 존재만 ' +

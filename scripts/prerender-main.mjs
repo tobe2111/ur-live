@@ -132,12 +132,40 @@ async function main() {
 //   App entry tree 의 module-level 핸들 (타이머/리스너/싱글톤) 이 Node 이벤트 루프를
 //   살려둬 renderToString + 파일 쓰기 성공 후에도 프로세스가 안 죽음 → build/deploy 무한 hang.
 //   prerender 는 파일 1개 쓰는 게 전부라 성공 후 즉시 exit(0) 가 올바름.
+// 🔊 2026-11-01 (이 단계가 몇 달간 매 빌드 죽고 있었다 — 그런데 빌드는 초록이었다):
+//
+//   왜 안 보였나(실측 3겹):
+//     ① `entry-server` 의 안전판 warn 이 `drop_console` 로 번들에서 제거돼 있었다(같은 날 수리).
+//     ② 그 폴백(`renderToString`)이 **같은 에러를 React 콜백 안에서 다시** 던져 아래 `.catch`
+//        밖으로 나갔다 → 처리 안 된 예외로 프로세스 사망, `[prerender-main] 실패:` 줄도 없음.
+//     ③ `package.json` 의 `|| …` 가 exit code 를 삼켰다.
+//   아래 두 핸들러가 ②를 막는다 — 어떤 경로로 죽어도 **이 스크립트의 이름으로** 보고된다.
+//
+// 🧭 **왜 빌드를 깨뜨리지 않는가**(2026-11-01 결정):
+//   - 이 산출물은 **지금 아무도 안 쓴다**. 워커의 `#root` catch-all 이 홈까지 정적 로더로 덮으므로
+//     (CLAUDE.md 2026-07-07 — 구운 shell 이 `__SSR_INITIAL_MAIN__` 을 안 먹어 "순수 낭비") 이 단계가
+//     실패해도 사용자 피해가 0 이고, 오히려 `index.html` 이 워커가 기대하는 원형으로 남는다.
+//   - 그런데 여기서 `exit 1` 로 **배포를 막으면** 쓰지도 않는 단계 하나가 긴급 수정까지 세운다.
+//     이 스크립트는 앱 트리 전체를 Node 에서 렌더하므로, 의존성 하나가 모듈 평가 중 `window` 를
+//     읽기 시작하면 그날부터 main 배포가 통째로 멎는다 — 이 레포가 반복해 겪은 위험이다.
+//   - ⇒ **게이트는 PR 단위 시험**(`src/tests/unit/ssr-render-window-2026-11-01.test.tsx`)이 맡는다.
+//     같은 조건(node + 같은 스토리지 스텁)으로 렌더해 **1.9초**에 같은 결함을 잡고, 머지를 막는
+//     자리는 배포가 아니라 PR 이다. 여기서는 **크게 소리만** 낸다.
+//   ⚠️ 이 균형은 "산출물을 아무도 안 쓴다" 에 달려 있다. prerender 결과를 다시 쓰게 되는 날
+//      이 결정을 뒤집고(`exit 1` 을 빌드가 존중하게) 그 이유를 여기 적을 것.
+const fatal = (why) => (err) => {
+  console.error(`\n❌ [prerender-main] ${why} — prerender 산출물이 갱신되지 않았다(빌드는 계속된다).`)
+  console.error('   원인:', err && err.stack ? err.stack : String(err))
+  console.error('   렌더 중 window/document 접근이면 가드가 지목한다:')
+  console.error('   npx vitest run src/tests/unit/ssr-render-window-2026-11-01.test.tsx\n')
+  process.exit(1)
+}
+process.on('uncaughtException', fatal('처리 안 된 예외로 죽었다'))
+process.on('unhandledRejection', fatal('처리 안 된 거절로 죽었다'))
+
 main()
   .then(() => {
     console.log('[prerender-main] 종료 (exit 0)')
     process.exit(0)
   })
-  .catch((err) => {
-    console.error('[prerender-main] 실패:', err)
-    process.exit(1)
-  })
+  .catch(fatal('렌더 실패'))
