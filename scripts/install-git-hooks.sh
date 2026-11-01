@@ -416,29 +416,68 @@ if [ -f scripts/generate-ops-handbook.mjs ]; then
   fi
 fi
 
+# --- TSC_CHECK_BEGIN · 시험이 이 블록만 떼어 실제로 돌린다(마커를 지우지 말 것) ---
 echo "==> Pre-commit: TypeScript check..."
-# 🧠 2026-11-01: heap 상한을 명시한다. 이 레포는 node **기본** heap 으로 tsc 를 돌리면
-#   `FATAL ERROR: Reached heap limit`(OOM)로 죽는다 — 시스템 메모리가 14GB 남아 있어도
-#   그렇다(기본 상한에 걸리는 것이다). 그런데 아래 `||` 는 **죽은 이유를 구분하지 않아**
-#   OOM 을 "Fix TypeScript errors" 로 보고했다 ⇒ 세션이 **존재하지 않는 타입 에러를 찾아
-#   헤맨다**(2026-11-01 실제로 그럴 뻔했다). 실패 원인을 오진하게 만드는 메시지는 그 자체가 결함이다.
-TSC_LOG="$(mktemp)"
-NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=8192" npx tsc --noEmit --skipLibCheck 2>&1 | tee "$TSC_LOG"
-TSC_RC=${PIPESTATUS[0]}
-if [ "$TSC_RC" -ne 0 ]; then
-  if grep -q "heap out of memory\|Reached heap limit" "$TSC_LOG"; then
-    echo ""
-    echo "❌ Commit blocked — 하지만 **타입 에러가 아니다**: tsc 가 heap 부족으로 죽었다(OOM)."
-    echo "   → 타입 에러를 찾지 말 것. heap 을 더 올려 다시 돌려라:"
-    echo "     NODE_OPTIONS=--max-old-space-size=12288 npx tsc --noEmit --skipLibCheck"
-    echo "   (그래도 OOM 이면 환경 메모리 문제다 — CI 가 유일한 타입 판정이 된다.)"
+# 🩸 2026-11-01: 종전엔 `npx tsc … || { echo "Fix TypeScript errors."; exit 1; }` 한 줄이었다.
+#   `||` 는 "실패했다" 만 알고 **왜** 는 묻지 않는다. 그래서 이 레포에서 실제로 가장 자주 나는
+#   실패(**메모리 부족**)가 "타입 에러를 고쳐라" 로 보고됐고, 세션이 **없는 에러를 찾아 헤맸다**
+#   — 2026-11-01 실측: 훅이 그 문구를 냈는데 출력 꼬리는 `Aborted` + 힙 주소였고, 힙을 올려
+#   다시 돌리니 `error TS` **0건**이었다. CLAUDE.md 가 이미 두 번 기록한 클래스다.
+#
+#   실측 근거(2026-11-01, 이 레포 · 머신 16GB):
+#     node 기본 힙 상한 **2,096 MB → OOM**  /  4,096 MB → 통과  /  8,192 MB → 통과
+#     (도는 중 실제 tsc 프로세스 RSS 1,553 MB — 메모리가 없는 게 아니라 node 기본값이 2GB 다)
+#
+#   ⇒ ① 힙을 **머신에서 계산해** 애초에 안 죽게 한다. 숫자를 박으면 메모리 작은 기계에서
+#        OOM-killer 를 부르니 오히려 더 나쁘다.
+#      ② 그래도 실패하면 **원인을 가려** 말한다 — 타입 에러 / 설정·CLI / 끝까지 못 돎(메모리 등).
+#   ⚠️ `set -e` 아래다. 테스트되지 않은 실패는 훅을 **즉시 중단**시켜 이 메시지조차 못 나오게 하므로
+#      모든 실패 가능 명령을 `||` 또는 `if` 로 감싼다(종전 한 줄이 `||` 를 쓴 이유이기도 하다).
+TSC_LOG="$(mktemp 2>/dev/null || echo "/tmp/tsc-precommit.$$")"
+case "${NODE_OPTIONS:-}" in
+  *max-old-space-size*) : ;;   # 사람이 이미 정했으면 존중한다 — 덮지 않는다
+  *)
+    TSC_HEAP_MB="$(node -e 'const os=require("os"),v8=require("v8");const def=Math.round(v8.getHeapStatistics().heap_size_limit/1048576);const half=Math.floor(os.totalmem()/1048576/2);console.log(Math.max(def,Math.min(8192,half)))' 2>/dev/null || echo "")"
+    if [ -n "$TSC_HEAP_MB" ]; then
+      export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=$TSC_HEAP_MB"
+    fi
+    ;;
+esac
+TSC_EXIT=0
+npx tsc --noEmit --skipLibCheck > "$TSC_LOG" 2>&1 || TSC_EXIT=$?
+# ⚠️ 파이프를 거치지 않는다 — 파이프 뒤 exit code 는 tsc 의 것이 아니라 마지막 명령의 것이다
+#    (CLAUDE.md: `head` 의 exit 0 이 OOM 을 통과로 보이게 한 실사고).
+TSC_ERR_N="$(grep -c "error TS" "$TSC_LOG" 2>/dev/null)" || TSC_ERR_N=0
+cat "$TSC_LOG"
+if [ "$TSC_EXIT" -eq 0 ]; then
+  rm -f "$TSC_LOG"
+elif grep -qE "\([0-9]+,[0-9]+\): error TS" "$TSC_LOG"; then
+  echo ""
+  echo "❌ Commit blocked. 타입 에러 ${TSC_ERR_N}건 — 위 출력의 파일:줄 을 고칠 것."
+  rm -f "$TSC_LOG"
+  exit 1
+elif [ "$TSC_ERR_N" -gt 0 ]; then
+  echo ""
+  echo "❌ Commit blocked — **설정·CLI 오류**다(파일:줄 없는 error TS ${TSC_ERR_N}건). 코드 타입 에러가 아니다."
+  echo "   ⚠️ 설정이 거부되면 tsc 는 **파일을 하나도 안 보고** 멈춘다 — 코드를 뒤지지 말고 tsconfig/인자를 볼 것."
+  rm -f "$TSC_LOG"
+  exit 1
+else
+  echo ""
+  echo "❌ Commit blocked — **타입 에러가 아니다**(exit ${TSC_EXIT} · 'error TS' 0건). tsc 가 끝까지 돌지 못했다."
+  if grep -qE "heap out of memory|Aborted|FATAL ERROR|JS stacktrace" "$TSC_LOG"; then
+    echo "   원인: **메모리 부족**. 지금 힙 설정: ${NODE_OPTIONS:-(없음)}"
+    echo "   → 더 주고 다시:  NODE_OPTIONS=--max-old-space-size=12288 git commit ..."
+  elif [ "$TSC_EXIT" -eq 127 ]; then
+    echo "   원인: 명령을 찾을 수 없다(exit 127) — node/npx 설치 또는 PATH 문제."
   else
-    echo "❌ Commit blocked. Fix TypeScript errors."
+    echo "   원인: tsc 실행 실패(위 출력 참조)."
   fi
+  echo "   ⚠️ 없는 타입 에러를 찾지 말 것 — 위 출력의 'error TS' 가 0건이다."
   rm -f "$TSC_LOG"
   exit 1
 fi
-rm -f "$TSC_LOG"
+# --- TSC_CHECK_END ---
 
 # 🛡️ 2026-04-22: 파일 중간 import 경고 (staged 파일의 NEW 라인만 — 기존 코드는 skip)
 # diff --cached 의 '+' 라인 중 import로 시작하는 것을 찾고,

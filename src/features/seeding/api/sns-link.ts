@@ -18,6 +18,7 @@
  * state 는 JWT_SECRET 으로 서명한다 — 누구의 연결인지가 실려 있어, 서명 없이 믿으면 남의 계정에 붙는다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { rehostImageToR2 } from '../../../worker/utils/rehost-image'
 import { getAppConfig } from '../../instagram-autodm/api/autodm-store'
 import { decryptAtRest, encryptAtRest } from '../../../worker/utils/data-crypto'
 import { isSeedingPlatform, type SeedingPlatform } from '../../../shared/seeding'
@@ -37,6 +38,10 @@ export function safeSnsReturn(p: unknown): string {
 
 export interface SnsEnv {
   DB: D1Database
+  /** 🖼️ 프로필 사진 이관용. 없으면 사진은 그냥 안 쓴다(연동 자체는 멀쩡하다).
+   *  ⚠️ 타입은 **앰비언트 전역** `R2Bucket` 이다 — `@cloudflare/workers-types` 에서 import 하면
+   *     `rehostImageToR2` 가 쓰는 전역 타입과 **다른 타입**이 되어 안 맞는다(tsc 가 잡았다). */
+  MEDIA_BUCKET?: R2Bucket
   JWT_SECRET?: string
   DATA_ENCRYPTION_KEY?: string
   YOUTUBE_CLIENT_ID?: string
@@ -128,6 +133,9 @@ export interface FetchedAccount {
   profile_url: string | null
   follower_count: number | null
   account_type: string | null
+  /** 플랫폼이 준 **원본** 사진 주소. 저장 전에 R2 로 옮긴다(아래 `rehostAvatar` 참고). */
+  profile_image_url: string | null
+  post_count: number | null
   access_token: string
   refresh_token: string | null
   expires_in: number | null
@@ -135,6 +143,15 @@ export interface FetchedAccount {
 
 type Res = { ok: true; account: FetchedAccount } | { ok: false; error: string }
 const j = async (r: Response) => (await r.json().catch(() => ({}))) as Record<string, any>
+/**
+ * 유튜브 썸네일 — 큰 것부터 고른다. 카드에 40px 로 그리지만 2배 화면이 있고,
+ * `default` 는 88px 라 선명하지 않다. 셋 다 없으면 사진 없음(지어내지 않는다).
+ */
+const ytThumb = (t: unknown): string | null => {
+  const o = (t ?? {}) as Record<string, { url?: string } | undefined>
+  return o.high?.url || o.medium?.url || o.default?.url || null
+}
+
 const num = (v: unknown): number | null => (v === null || v === undefined || v === '' ? null : Number.isFinite(Number(v)) ? Math.floor(Number(v)) : null)
 
 /** 토큰만 있으면 읽을 수 있는 계정 정보(토큰 자체는 뺀다). */
@@ -151,13 +168,14 @@ type ProfileRes = { ok: true; profile: SnsProfile } | { ok: false; error: string
 export async function fetchProfile(p: SeedingPlatform, token: string): Promise<ProfileRes> {
   try {
     if (p === 'instagram') {
-      const me = await j(await fetch(`${IG_GRAPH}/me?fields=user_id,username,name,account_type,followers_count&access_token=${encodeURIComponent(token)}`))
+      const me = await j(await fetch(`${IG_GRAPH}/me?fields=user_id,username,name,account_type,followers_count,media_count,profile_picture_url&access_token=${encodeURIComponent(token)}`))
       const id = String(me.user_id || me.id || '')
       if (!id) return { ok: false, error: '인스타그램 계정 정보를 받지 못했어요' }
       return { ok: true, profile: {
         external_id: id, username: me.username || null, display_name: me.name || null,
         profile_url: me.username ? `https://www.instagram.com/${me.username}/` : null,
         follower_count: num(me.followers_count), account_type: me.account_type || null,
+        profile_image_url: me.profile_picture_url || null, post_count: num(me.media_count),
       } }
     }
     if (p === 'youtube') {
@@ -171,9 +189,11 @@ export async function fetchProfile(p: SeedingPlatform, token: string): Promise<P
         profile_url: custom ? `https://www.youtube.com/@${custom}` : `https://www.youtube.com/channel/${item.id}`,
         // 숨긴 구독자는 0 이 아니라 **모름**이다 — 0 으로 적으면 조건 판정이 거짓말을 한다.
         follower_count: hidden ? null : num(item.statistics?.subscriberCount), account_type: hidden ? 'hidden_subscribers' : 'channel',
+        // 🖼️ 둘 다 **이미 이 응답 안에 있다**(`part=snippet,statistics`). 종전엔 받아 놓고 버렸다.
+        profile_image_url: ytThumb(item.snippet?.thumbnails), post_count: num(item.statistics?.videoCount),
       } }
     }
-    const info = await j(await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,username,display_name,profile_deep_link,follower_count', { headers: { Authorization: `Bearer ${token}` } }))
+    const info = await j(await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,username,display_name,profile_deep_link,follower_count,avatar_url,video_count', { headers: { Authorization: `Bearer ${token}` } }))
     const u = info.data?.user
     if (!u?.open_id) return { ok: false, error: '틱톡 계정 정보를 받지 못했어요' }
     return { ok: true, profile: {
@@ -181,6 +201,7 @@ export async function fetchProfile(p: SeedingPlatform, token: string): Promise<P
       profile_url: u.username ? `https://www.tiktok.com/@${u.username}` : (u.profile_deep_link || null),
       // 심사 전에는 follower_count 가 안 온다 — 0 으로 위장하지 않고 null(= 읽지 못함).
       follower_count: num(u.follower_count), account_type: null,
+      profile_image_url: u.avatar_url || null, post_count: num(u.video_count),
     } }
   } catch {
     return { ok: false, error: '계정 정보를 읽지 못했어요' }
@@ -233,6 +254,71 @@ export async function exchangeAndFetch(env: SnsEnv, p: SeedingPlatform, code: st
   }
 }
 
+/**
+ * 🖼️ 프로필 사진을 **R2 로 옮긴다** — 플랫폼이 준 주소를 그대로 저장하면 며칠 만에 깨진다.
+ *
+ *   실측(2026-11-01): 인스타그램이 준 사진 주소는 서명돼 있고 `oe=` 가 **4일 뒤 만료**다.
+ *   틱톡 `avatar_url` 도 임시 주소다(유튜브 `yt3.ggpht.com` 만 안 변한다). 그대로 두면 연동 직후엔
+ *   사진이 보이다가 며칠 뒤 조용히 사라진다 — 사람 눈엔 "고장" 이고 에러는 어디에도 안 남는다.
+ *
+ *   `rehostImageToR2` 는 **내용 해시**를 키로 쓰므로 사진이 그대로면 다시 저장하지 않는다(`head()` 로 끝난다).
+ *   저장본은 `/api/media/...` 라 `cfImage` 가 리사이즈할 수 있는 same-origin 주소가 된다.
+ *
+ * 🔴 실패하면 `null` 을 돌려준다 — 호출부가 `COALESCE` 로 **예전 사진을 지키게** 하기 위해서다.
+ *    일시 장애로 멀쩡한 사진을 지우면, 다시 확인을 누를 때마다 사진이 깜빡이게 된다.
+ */
+async function rehostAvatar(env: SnsEnv, raw: string | null): Promise<string | null> {
+  if (!raw || !env.MEDIA_BUCKET) return null
+  return rehostImageToR2(env, raw, 'sns-avatar', 'uploads/sns').catch(() => null)
+}
+
+/** 오늘(KST). 한국 서비스의 "오늘" 이라 UTC 자정으로 끊으면 저녁에 누른 것이 다음 날로 간다. */
+const kstDay = (now = Date.now()): string => new Date(now + 9 * 3600_000).toISOString().slice(0, 10)
+
+/**
+ * 📈 팔로워 스냅샷 한 줄 — 하루 한 번(`INSERT OR IGNORE` + UNIQUE).
+ *
+ * 🔴 **못 읽은 값은 적지 않는다.** `follower_count` 가 null 인 날을 0 으로 적으면 다음 주 추이가
+ *    "+9,283" 같은 거짓말이 된다(모르는 것과 0 은 다르다).
+ * 🔒 같은 날 두 번 눌러도 **먼저 읽은 값**이 남는다 — 기준선은 움직이지 않는 편이 낫다.
+ */
+export async function recordFollowerSnapshot(
+  DB: D1Database, userId: number, p: SeedingPlatform, externalId: string, followers: number | null, now = Date.now(),
+): Promise<void> {
+  if (followers === null || !Number.isFinite(followers)) return
+  await DB.prepare(
+    `INSERT OR IGNORE INTO user_sns_follower_snapshots (user_id, platform, external_id, follower_count, taken_on)
+     VALUES (?, ?, ?, ?, ?)`,
+  ).bind(userId, p, externalId, Math.floor(followers), kstDay(now)).run().catch(() => null)
+}
+
+/** 추이를 재는 창 — 7일보다 오래된 가장 최근 스냅샷이 기준이고, 60일보다 오래된 것은 안 쓴다. */
+export const TREND_MIN_DAYS = 7
+export const TREND_MAX_DAYS = 60
+
+/**
+ * 기준 스냅샷을 찾아 증감을 낸다. 없으면 **`null` 이고 화면은 그 자리를 비운다**
+ * (대표 *"추이는 다음 주부터는 굳이 안넣어도 돼"* — 기다리라는 자리표시자를 두지 않는다).
+ *
+ * 🔒 `external_id` 로 거른다 — 다른 계정의 지난 숫자와 비교하면 거짓 성장이 찍힌다.
+ */
+export async function followerTrend(
+  DB: D1Database, userId: number, p: SeedingPlatform, externalId: string, current: number | null, now = Date.now(),
+): Promise<{ delta: number; days: number } | null> {
+  if (current === null || !Number.isFinite(current)) return null
+  const day = (offset: number) => kstDay(now - offset * 86400_000)
+  const base = await DB.prepare(
+    `SELECT follower_count, taken_on FROM user_sns_follower_snapshots
+      WHERE user_id = ? AND platform = ? AND external_id = ? AND taken_on <= ? AND taken_on >= ?
+      ORDER BY taken_on DESC LIMIT 1`,
+  ).bind(userId, p, externalId, day(TREND_MIN_DAYS), day(TREND_MAX_DAYS))
+    .first<{ follower_count: number; taken_on: string }>().catch(() => null)
+  if (!base) return null
+  const days = Math.round((Date.parse(`${kstDay(now)}T00:00:00Z`) - Date.parse(`${base.taken_on}T00:00:00Z`)) / 86400_000)
+  if (!Number.isFinite(days) || days < TREND_MIN_DAYS) return null
+  return { delta: Math.floor(current) - Math.floor(base.follower_count), days }
+}
+
 /** 저장 — 같은 SNS 계정이 다른 유어딜 계정에 붙어 있으면 거절한다. */
 export async function saveSnsLink(env: SnsEnv, userId: number, p: SeedingPlatform, a: FetchedAccount): Promise<{ ok: boolean; error?: string }> {
   const taken = await env.DB.prepare(`SELECT user_id FROM user_sns_links WHERE platform = ? AND external_id = ?`)
@@ -242,16 +328,21 @@ export async function saveSnsLink(env: SnsEnv, userId: number, p: SeedingPlatfor
   const at = await encryptAtRest(a.access_token, kek).catch(() => null)
   const rt = a.refresh_token ? await encryptAtRest(a.refresh_token, kek).catch(() => null) : null
   const exp = a.expires_in ? new Date(Date.now() + a.expires_in * 1000).toISOString().replace('T', ' ').slice(0, 19) : null
+  const avatar = await rehostAvatar(env, a.profile_image_url)
   await env.DB.prepare(
     `INSERT INTO user_sns_links (user_id, platform, external_id, username, display_name, profile_url, follower_count, account_type,
-       access_token_enc, refresh_token_enc, token_expires_at, verified_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+       profile_image_url, post_count, access_token_enc, refresh_token_enc, token_expires_at, verified_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
      ON CONFLICT(user_id, platform) DO UPDATE SET external_id = excluded.external_id, username = excluded.username,
        display_name = excluded.display_name, profile_url = excluded.profile_url, follower_count = excluded.follower_count,
-       account_type = excluded.account_type, access_token_enc = excluded.access_token_enc,
+       account_type = excluded.account_type, post_count = excluded.post_count,
+       profile_image_url = COALESCE(excluded.profile_image_url, user_sns_links.profile_image_url),
+       access_token_enc = excluded.access_token_enc,
        refresh_token_enc = COALESCE(excluded.refresh_token_enc, user_sns_links.refresh_token_enc),
        token_expires_at = excluded.token_expires_at, verified_at = datetime('now'), updated_at = datetime('now')`,
-  ).bind(userId, p, a.external_id, a.username, a.display_name, a.profile_url, a.follower_count, a.account_type, at, rt, exp).run()
+  ).bind(userId, p, a.external_id, a.username, a.display_name, a.profile_url, a.follower_count, a.account_type,
+    avatar, a.post_count, at, rt, exp).run()
+  await recordFollowerSnapshot(env.DB, userId, p, a.external_id, a.follower_count)
   return { ok: true }
 }
 
@@ -336,23 +427,37 @@ export async function refreshSnsLink(env: SnsEnv, userId: number, p: SeedingPlat
   const at = renewed ? await encryptAtRest(token, kek).catch(() => null) : null
   const rt = renewed?.refresh ? await encryptAtRest(renewed.refresh, kek).catch(() => null) : null
   const newExp = renewed?.expires ? new Date(Date.now() + renewed.expires * 1000).toISOString().replace('T', ' ').slice(0, 19) : null
+  const avatar = await rehostAvatar(env, a.profile_image_url)
   await env.DB.prepare(
     `UPDATE user_sns_links SET username = ?, display_name = ?, profile_url = ?, follower_count = ?, account_type = ?,
+       post_count = ?, profile_image_url = COALESCE(?, profile_image_url),
        access_token_enc = COALESCE(?, access_token_enc), refresh_token_enc = COALESCE(?, refresh_token_enc),
        token_expires_at = COALESCE(?, token_expires_at), verified_at = datetime('now'), updated_at = datetime('now')
      WHERE user_id = ? AND platform = ?`,
-  ).bind(a.username, a.display_name, a.profile_url, a.follower_count, a.account_type, at, rt, newExp, userId, p).run()
+  ).bind(a.username, a.display_name, a.profile_url, a.follower_count, a.account_type,
+    a.post_count, avatar, at, rt, newExp, userId, p).run()
+  await recordFollowerSnapshot(env.DB, userId, p, row.external_id, a.follower_count)
   return { ok: true }
 }
 
 export interface SnsLinkRow {
   platform: SeedingPlatform; username: string | null; display_name: string | null; profile_url: string | null
   follower_count: number | null; account_type: string | null; verified_at: string
+  profile_image_url: string | null; post_count: number | null
+  /** 📈 지난 스냅샷 대비 증감. 기준이 아직 없으면 `null` 이고 화면은 그 자리를 비운다. */
+  trend: { delta: number; days: number } | null
 }
 
 export async function listSnsLinks(DB: D1Database, userId: number): Promise<SnsLinkRow[]> {
+  // ⚠️ `external_id` 는 추이를 고르는 데만 쓰고 **화면으로 내보내지 않는다**(플랫폼 내부 식별자).
   const r = await DB.prepare(
-    `SELECT platform, username, display_name, profile_url, follower_count, account_type, verified_at FROM user_sns_links WHERE user_id = ?`,
-  ).bind(userId).all<SnsLinkRow>().catch(() => ({ results: [] as SnsLinkRow[] }))
-  return (r.results ?? []).filter((x) => isSeedingPlatform(x.platform))
+    `SELECT platform, username, display_name, profile_url, follower_count, account_type, verified_at,
+            profile_image_url, post_count, external_id
+       FROM user_sns_links WHERE user_id = ?`,
+  ).bind(userId).all<SnsLinkRow & { external_id: string }>().catch(() => ({ results: [] as (SnsLinkRow & { external_id: string })[] }))
+  const rows = (r.results ?? []).filter((x) => isSeedingPlatform(x.platform))
+  return Promise.all(rows.map(async ({ external_id, ...x }) => ({
+    ...x,
+    trend: await followerTrend(DB, userId, x.platform, external_id, x.follower_count).catch(() => null),
+  })))
 }

@@ -47,6 +47,26 @@ export const SEEDING_TABLES_SQL = [
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_user_sns_links_user_platform ON user_sns_links(user_id, platform)`,
   // 한 SNS 계정은 한 유어딜 계정에만 — 남의 인스타로 팔로워를 빌려 신청하는 것을 막는다.
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_user_sns_links_external ON user_sns_links(platform, external_id)`,
+  // 🖼️ 2026-11-01 (대표 확정 안 C) — 프로필 사진·게시물 수. 위 CREATE 는 **이미 있는 표에는 안 닿으므로**
+  //   ALTER 로 자가치유한다(컬럼이 이미 있으면 throw → ensure 루프의 try/catch 가 삼킨다).
+  `ALTER TABLE user_sns_links ADD COLUMN profile_image_url TEXT`,
+  `ALTER TABLE user_sns_links ADD COLUMN post_count INTEGER`,
+  /* 📈 팔로워 추이 — `user_sns_links.follower_count` 는 다시 확인할 때마다 **덮어쓴다**.
+   *   "이번 주에 얼마나 늘었나" 를 말하려면 지난 값이 따로 남아 있어야 한다.
+   *
+   *   🔒 `external_id` 를 함께 적는 이유: 사람이 플랫폼에서 다른 계정으로 갈아타면 지난 숫자와 지금 숫자가
+   *      **서로 다른 계정의 것**이 된다. 그걸 빼면 "+8,000" 같은 거짓 성장이 조용히 찍힌다.
+   *   📅 `taken_on` 은 KST 날짜다(한국 서비스의 "오늘"). 하루 한 행이라 같은 날 여러 번 눌러도 안 쌓인다. */
+  `CREATE TABLE IF NOT EXISTS user_sns_follower_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    platform TEXT NOT NULL,
+    external_id TEXT NOT NULL,
+    follower_count INTEGER NOT NULL,
+    taken_on TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_sns_snapshot_day ON user_sns_follower_snapshots(user_id, platform, taken_on)`,
   `CREATE TABLE IF NOT EXISTS seeding_applications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_id INTEGER NOT NULL,
