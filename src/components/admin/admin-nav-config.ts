@@ -312,6 +312,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/system-monitoring', label: '시스템 모니터링', icon: Monitor },
       { path: '/admin/kv-monitoring',     label: 'KV 모니터링',   icon: Monitor },
+      { path: '/admin/image-sizing',      label: '사진 크기별 저장', icon: Monitor },  // 2026-11-01 변환 한도 0
       { path: '/admin/health',            label: '헬스 체크',     icon: Shield },
       { path: '/admin/errors',            label: '에러 로그',     icon: AlertTriangle },
       { path: '/admin/env-check',         label: 'ENV 점검',      icon: Settings },

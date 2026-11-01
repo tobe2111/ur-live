@@ -20,6 +20,7 @@
  *   - 외부 URL (i.ibb.co 등) 는 그대로 반환
  *   - SVG 는 변환 불가 — 그대로 반환
  */
+import { parseSizedUrl, pickSizedWidth, sizedVariantUrl } from '../shared/sized-image'
 
 /**
  * 🖼️ 2026-10-18 기본 화질 85 → **75** (대표 *"다 이상적으로 해줘"* — 홈 사진이 첫 방문 470KB 였다).
@@ -258,6 +259,12 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
   //   달라고 하면 그게 전부 따로 센다. 실측: 코드에 폭 값이 40가지 넘게 있었다. 묶으면 한 사진의 변환이 몇 칸으로 준다.
   opts = snapResizeOptions(opts)
 
+  // 🖼️ 2026-11-01 [UNLOCK_LOADING] (대표 *"응 잠금 해제해줄게 진행해줘"*): 올릴 때 세 크기로 미리 저장한 사진은
+  //   그 파일을 **그대로** 쓴다 — 변환 0. 높이·크롭(`gravity`)은 무시된다(자르는 것은 화면의 object-fit 이 한다).
+  //   크기가 빠진 파일이면 `cfImageOnError` 가 저장 주소(가장 큰 크기)로 다시 시도한다.
+  const sized = parseSizedUrl(src)
+  if (sized) return sizedVariantUrl(sized, pickSizedWidth(opts.width, getSaveData()))
+
   // 🏭 2026-06-06 (사용자 신고 — 유어샵 배경/프로필 업로드 후 404): 워커가 R2 에서 서빙하는
   //   same-origin 업로드 이미지(/api/media/*, /api/upload/*)는 Cloudflare 의 /cdn-cgi/image/ URL
   //   리사이즈가 워커 서브요청 소스를 못 풀어 404 가 났음. 외부 이미지(Firebase 등)와 동일하게
@@ -418,6 +425,14 @@ export function cfSrcSet(src: string | undefined | null, baseWidth: number, maxD
   if (!src) return ''
   // 🎁 2026-10-31: 줄이지 않고 내는 교환권 사진 — 후보가 하나뿐이라 srcset 을 안 낸다.
   if (src.startsWith('/api/media/uploads/voucher/')) return ''
+  // 🖼️ 2026-11-01: 크기별로 저장한 사진 — 밀도마다 그 크기 이상인 파일을 고른다(같은 파일이면 한 번만).
+  if (parseSizedUrl(src)) {
+    const seen = new Set<string>()
+    return [1, 2, 3].filter((d) => d <= maxDpr)
+      .map((d) => ({ d, u: cfImage(src, { width: baseWidth * d }) }))
+      .filter(({ u }) => (seen.has(u) ? false : (seen.add(u), true)))
+      .map(({ d, u }) => `${u} ${d}x`).join(', ')
+  }
   // 🛡️ 2026-05-27: 외부 도메인은 worker proxy 1회만 (DPI별 변환은 cf.image 가 처리).
   //   1x/2x/3x 모두 별도 fetch 시 proxy 3회 → 비효율. 단일 high-res 만 반환.
   if (/^https?:\/\//i.test(src)) {

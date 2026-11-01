@@ -24,6 +24,8 @@ import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { BUSINESS_CERT_MAX_FILE_BYTES, BANNER_VIDEO_MAX_FILE_BYTES } from '../../../shared/upload-limits'
 import { requireAdmin } from '../../../worker/middleware/auth'
 import { safeError } from '../../../worker/utils/safe-error'
+import { SIZED_BATCH_RE, SIZED_KEY_PREFIX, SIZED_MAX_WIDTH, isSizedWidth, sizedKey, sizedStoredUrl, type SizedExt } from '../../../shared/sized-image'
+import { imageSizingAdminRoutes } from './image-sizing-admin.routes'
 
 type Bindings = {
   DB: D1Database
@@ -218,6 +220,47 @@ uploadRoutes.post('/upload/image', cors(), rateLimit({ action: 'image-upload', m
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[upload]')
   }
 })
+
+/**
+ * 🖼️ 2026-11-01 크기별 사진 업로드 — 브라우저가 줄인 세 크기를 **한 크기씩** 받는다(`lib/image-sized.ts`).
+ *   첫 요청은 가장 큰 크기(1280)여야 하고 묶음 이름을 돌려준다. 나머지 둘은 그 이름을 되돌려 보내 같은 자리에 들어간다.
+ *   키는 **서버가** 인증 주체로 만든다(`uploads/sized/{role}/{id}/{yyyy-mm}/{rand}/w{폭}.{ext}`) — 남의 자리에 못 쓴다.
+ *   여기서는 cdn-cgi 리사이즈(`resizeStoredImageInPlace`)를 **부르지 않는다** — 그것도 변환 한도를 쓴다.
+ */
+uploadRoutes.post('/upload/image-sized', cors(), rateLimit({ action: 'image-upload-sized', max: 300, windowSec: 600 }), async (c) => {
+  try {
+    const auth = await getRoleAndId(c)
+    if (!auth) return c.json({ success: false, error: '인증 필요' }, 401)
+    if (!c.env.MEDIA_BUCKET) return c.json({ success: false, error: 'R2 binding 미설정', code: 'R2_NOT_CONFIGURED' }, 503)
+    const form = await c.req.formData().catch(() => null)
+    if (!form) return c.json({ success: false, error: 'multipart/form-data 필요' }, 400)
+    const file = form.get('file')
+    const width = Number(form.get('width'))
+    const batchIn = String(form.get('batch') || '')
+    if (!(file instanceof File)) return c.json({ success: false, error: 'file field 필요' }, 400)
+    if (!isSizedWidth(width)) return c.json({ success: false, error: '허용되지 않는 폭' }, 400)
+    if (batchIn && !SIZED_BATCH_RE.test(batchIn)) return c.json({ success: false, error: '묶음 이름이 올바르지 않습니다' }, 400)
+    if (!batchIn && width !== SIZED_MAX_WIDTH) return c.json({ success: false, error: '가장 큰 크기를 먼저 올려야 합니다' }, 400)
+    if (file.size > MAX_SIZE || file.size < 100) return c.json({ success: false, error: '파일 크기가 올바르지 않습니다' }, 400)
+    const buffer = await file.arrayBuffer()
+    const detected = detectMime(new Uint8Array(buffer))
+    if (detected !== 'image/webp' && detected !== 'image/jpeg') return c.json({ success: false, error: 'webp/jpeg 만 허용' }, 415)
+    const ext: SizedExt = detected === 'image/webp' ? 'webp' : 'jpg'
+    const batch = batchIn || `${new Date().toISOString().slice(0, 7)}/${randomKey()}`
+    const ref = { base: `${SIZED_KEY_PREFIX}${auth.role}/${auth.id}/${batch}/`, ext }
+    const key = sizedKey(ref, width)
+    await c.env.MEDIA_BUCKET.put(key, buffer, {
+      httpMetadata: { contentType: detected, cacheControl: 'public, max-age=31536000, immutable' },
+      customMetadata: { uploader: `${auth.role}:${auth.id}`, uploaded_at: new Date().toISOString() },
+    })
+    return c.json({ success: true, data: { batch, key, url: sizedStoredUrl(ref, c.env.PUBLIC_R2_URL || '') } })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[upload-sized]')
+  }
+})
+
+// 🖼️ 2026-11-01 이미 올라간 사진을 크기별로 옮기는 어드민 도구(`/api/admin/image-sizing/*`).
+uploadRoutes.route('/', imageSizingAdminRoutes)
 
 /**
  * 🎬 2026-08-04 배너 영상 업로드 (어드민 전용) — 대표 "히어로도 브랜드 배경으로 영상으로".
