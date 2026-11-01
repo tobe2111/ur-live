@@ -19,7 +19,7 @@ import { HOME_DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
 import { ShortsIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
-import { regionHeroFor, REGION_HERO_SHADE } from '@/shared/home-region-hero'
+import { regionHeroFor, REGION_HERO_FADE_LIGHT, REGION_HERO_FADE_DARK } from '@/shared/home-region-hero'
 
 /**
  * 📱 모바일 메인 (2026-08-19 대표 확정 — 그루폰 모바일 홈 시안).
@@ -102,8 +102,9 @@ export default function MobileHomePage() {
 
   /**
    * 🌆 2026-10-31 대표 시안 8 — 고른 지역(또는 현재 위치) 도시 사진을 상단 배경으로. 사진이 있는 도시만(`region-hero.ts`).
-   *   높이는 **종전 헤더 그대로**라 사진이 생겨도 아래가 안 밀린다. 사진 위에선 `dark` 로 글자를 흰색으로 돌리고,
-   *   사진은 첫 화면이 다 뜬 뒤(지연 로딩 이미지) 남색 판 위로 서서히 나타난다.
+   *   높이는 **종전 헤더 그대로**라 사진이 생겨도 아래가 안 밀린다. 사진은 첫 화면이 다 뜬 뒤(지연 로딩 이미지) 서서히 나타난다.
+   *   🌤️ 2026-11-01 대표 *"밝은 사진 + 그라데이션, 지금은 어둡기만"* — `dark` 강제·남색 막을 걷었다. 글자는 테마 색 그대로이고
+   *   사진은 아래로 바탕색에 녹는다(라이트=흰색, 다크=#11141C).
    */
   const hero = regionHeroFor({ regionKey: region.regionKey, loc: userLoc })
   const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
@@ -142,7 +143,7 @@ export default function MobileHomePage() {
       <div
         data-region-hero={hero?.slug}
         className={hero
-          ? 'dark sticky top-0 z-30 overflow-hidden ur-region-hero'
+          ? 'sticky top-0 z-30 overflow-hidden ur-region-hero'
           : 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]'}
       >
         {hero && <RegionHeroBg key={hero.slug} src={hero.src} />}
@@ -269,14 +270,15 @@ export default function MobileHomePage() {
   )
 }
 
-/** 🌆 상단 사진 + 남색 막. 사진은 늦게 받아(`loading=lazy`·낮은 우선순위) 도착하면 서서히 보인다 — 첫 카드 사진과 회선을 다투지 않는다. */
+/** 🌆 상단 사진 + 바탕색으로 녹는 그라데이션. 사진은 늦게 받아(`loading=lazy`·낮은 우선순위) 도착하면 서서히 보인다 — 첫 카드 사진과 회선을 다투지 않는다. */
 function RegionHeroBg({ src }: { src: string }) {
   const [shown, setShown] = useState(false)
   return (
-    <div aria-hidden className="absolute inset-0 -z-10 pointer-events-none bg-gray-900">
+    <div aria-hidden className="absolute inset-0 -z-10 pointer-events-none bg-white dark:bg-[#11141C]">
       <img src={src} alt="" loading="lazy" decoding="async" fetchPriority="low" onLoad={() => setShown(true)}
         className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${shown ? 'opacity-100' : 'opacity-0'}`} />
-      <div className="absolute inset-0" style={{ background: REGION_HERO_SHADE }} />
+      <div className="absolute inset-0 dark:hidden" style={{ background: REGION_HERO_FADE_LIGHT }} />
+      <div className="absolute inset-0 hidden dark:block" style={{ background: REGION_HERO_FADE_DARK }} />
     </div>
   )
 }

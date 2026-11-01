@@ -44,12 +44,16 @@ describe('시안 8 — 지역 배경', () => {
       expect(existsSync(`public${src}`), src).toBe(true)
     }
   })
-  it('홈 배선 — 사진이면 dark(흰 글자) + 사진은 늦게(lazy·낮은 우선순위), 헤더 높이는 그대로', () => {
+  it('홈 배선 — 사진은 늦게(lazy·낮은 우선순위), 밝게(dark 강제·남색 막 없음) + 바탕색으로 녹는 그라데이션', () => {
     const src = readCode('src/pages/mobile-home/MobileHomePage.tsx')
     expect(src).toContain('regionHeroFor({ regionKey: region.regionKey, loc: userLoc })')
-    expect(src).toMatch(/hero\s*\?\s*'dark sticky top-0 z-30/)
+    // 🌤️ 2026-11-01 대표 "밝은 사진 + 그라데이션, 지금은 어둡기만" — 사진 위에서 dark 를 강제하지 않는다.
+    expect(src).toMatch(/hero\s*\?\s*'sticky top-0 z-30/)
+    expect(src).not.toMatch(/hero\s*\?\s*'dark /)
+    expect(src).not.toContain('bg-gray-900">')
     expect(src).toMatch(/loading="lazy"[^>]*fetchPriority="low"/)
-    expect(src).toContain('REGION_HERO_SHADE')
+    expect(src).toContain('REGION_HERO_FADE_LIGHT')
+    expect(src).toContain('REGION_HERO_FADE_DARK')
   })
 })
 
