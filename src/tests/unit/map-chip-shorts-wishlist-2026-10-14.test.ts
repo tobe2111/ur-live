@@ -140,16 +140,14 @@ describe('④ 교환권 페이지 상단 배너(라안) — 홈 배너와 같은
     expect(c).toMatch(/\$\{single \? 'top-2' : 'bottom-3'\}/)
     expect(c).toMatch(/single \? SINGLE_CARD_CLS : ''/)
   })
-  it('교환권 페이지 PC·모바일 두 곳 모두에 붙어 있다(한쪽만이면 두 화면이 갈린다)', () => {
+  // 🔀 2026-11-01 뒤집음 — 대표 *"배너 없는게 낫겠고"* (A안). 종전 이 검사는 *"PC·모바일 둘 다 붙어 있다"*
+  //   였다. 배너를 뺀 것이 결정이므로 **같은 자리를 반대 방향으로 잠근다** — 가드를 지우면 다음 세션이
+  //   "교환권에도 배너를 달자"로 조용히 되돌린다(그러면 첫 상품이 다시 196px 아래로 내려간다).
+  it('교환권 페이지에는 배너를 두지 않는다 (A안, 2026-11-01)', () => {
     const v = read('src/pages/VouchersPage.tsx')
-    expect(v.match(/<HomeBannerStrip variant="vouchers" \/>/g)?.length).toBe(2)
-    expect(v).toMatch(/<div className="-mx-\[14px\]"><HomeBannerStrip variant="vouchers" \/><\/div>/)
-    // 🔀 2026-10-14 안 C: 폰은 배너가 **머리**다(`VouchersHero` → `BannerHeroRail`, 같은 테이블·같은 캐러셀).
-    //   목록 위 띠는 쇼핑 탭 모드(탭 바가 머리일 때)로만 남는다.
-    expect(v).toMatch(/\{!embedded && !heroMode && <div className="ur-content-wide px-\[2px\] \[&:not\(:empty\)\]:pt-3"><HomeBannerStrip variant="vouchers" \/><\/div>\}/)
-    expect(v).toMatch(/\{heroMode && <VouchersHero>/)
-    const hero = read('src/pages/vouchers/VouchersHero.tsx')
-    expect(hero).toContain("useHomeBannersState('vouchers')")
-    expect(hero).toMatch(/<BannerHeroRail banners=\{banners\} \/>/)
+    expect(v).not.toMatch(/HomeBannerStrip/)
+    expect(v).toMatch(/\{heroMode && <VouchersTopRow\b/)
+    // 머리가 한 줄이라 배너 응답을 기다리는 '어두운 판' 예약 장치도 필요 없다.
+    expect(v).not.toMatch(/VouchersHero/)
   })
 })

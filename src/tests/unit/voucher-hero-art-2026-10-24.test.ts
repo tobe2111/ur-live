@@ -11,7 +11,14 @@ import { describe, it, expect } from 'vitest'
 import { readCode, stripComments } from '../helpers/source-text'
 import { HERO_CARD_CLS, heroEdgeFillStyle, heroEdgeFillCss } from '@/shared/home-strip-banners'
 
-describe('교환권 머리 배너 — 그림을 오른쪽 아래로', () => {
+/**
+ * 🔀 2026-11-01 — 교환권 머리에서 배너가 **걷혔다**(대표 확정 A안, `shared/vouchers-top-row`).
+ *   그래서 이 `hero` 변형(`BannerHeroRail`·`HERO_CARD_CLS`·`heroEdgeFill*`)은 **현재 사용처가 0** 이다.
+ *   코드를 지우지 않은 이유: 대표가 배너를 되돌리고 싶어질 때 한 줄이면 복원되고, 같은 파일을
+ *   **홈 배너가 계속 쓴다**(hero 가 아닌 strip/inline/wide 변형) — 섞어 지우면 홈이 깨진다.
+ *   ⚠️ 아래 단언들은 "되살릴 때 지켜야 할 모양" 을 보관하는 것이지 **지금 화면을 지키는 게 아니다.**
+ */
+describe('교환권 머리 배너(hero 변형 — 현재 사용처 0) — 그림을 오른쪽 아래로', () => {
   it('머리에서는 사진을 꽉 채우지 않고 줄여서 오른쪽 아래에 붙인다', () => {
     expect(HERO_CARD_CLS).toContain('[&>img]:!inset-auto')
     expect(HERO_CARD_CLS).toContain('[&>img]:!right-0')
@@ -34,10 +41,12 @@ describe('교환권 머리 배너 — 그림을 오른쪽 아래로', () => {
     expect(heroEdgeFillStyle('')).toBeUndefined()
   })
 
-  it('배선 — 화면(hero)과 서버 첫 화면이 그 함수를 쓴다', () => {
+  it('배선 — hero 변형을 쓰는 쪽은 그 함수를 쓴다 (화면만 남았다)', () => {
     const ui = stripComments(readCode('src/components/home/HomeBannerStrip.tsx'))
     expect(ui).toMatch(/hero \? heroEdgeFillStyle\(bg\)/)
+    // 🔀 서버 첫 화면 쪽 단언은 걷었다 — A안에서 워커는 교환권 배너를 그리지 않는다.
+    //   그 방향(배너가 서버 첫 화면으로 되살아남)은 `vouchers-hero-banner-ssr-2026-10-18` 이 잡는다.
     const fs = stripComments(readCode('src/worker/utils/vouchers-first-screen.ts'))
-    expect(fs).toMatch(/heroEdgeFillCss\(bg\)/)
+    expect(fs, 'A안: 워커가 배너를 그리지 않는다').not.toMatch(/heroEdgeFillCss/)
   })
 })

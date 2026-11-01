@@ -47,10 +47,15 @@ describe('① 헤더 주소 = 서버 첫 화면의 <img src> (byte-일치)', () 
     expect(href).toContain('seoul.jpg')
     expect(imgSrcs(buildHomeFirstScreen(HOME, LOADER))).toContain(href)
   })
-  it('교환권 — 머리 배너(다른 자리 배너는 고르지 않는다)', () => {
-    const href = vouchersLcpImage(BANNERS)
-    expect(href).toContain('head.jpg')
-    expect(imgSrcs(buildVouchersFirstScreen(VOUCHERS, LOADER, 'n', BANNERS))).toContain(href)
+  // 🔀 2026-11-01 뒤집음 — 대표 확정 A안으로 **교환권 머리에서 배너가 걷혔다**. 서버 첫 화면이 배너를
+  //   그리지 않으므로 그 화면의 LCP 는 더 이상 배너가 아니고, 워커도 preload 를 안 붙인다.
+  //   `vouchersLcpImage` 자체는 남겨 둔다(순수 함수 · 배너가 돌아오면 그대로 쓴다) — 여기서는
+  //   **워커가 그것을 쓰지 않는다**와 **첫 화면에 배너 사진이 없다**를 잠근다.
+  it('교환권 — 머리에 배너가 없어 LCP preload 를 안 붙인다 (A안)', () => {
+    expect(vouchersLcpImage(BANNERS), '함수 자체는 살아 있다(배너 복원용)').toContain('head.jpg')
+    const first = buildVouchersFirstScreen(VOUCHERS, LOADER, 'n')
+    expect(first, '첫 화면 자체가 비면 아무것도 판정하지 못한다').toBeTruthy()
+    expect(imgSrcs(first)).not.toContain(vouchersLcpImage(BANNERS))
   })
   it('숙소 상세 — 히어로', () => {
     const href = stayLcpImage(STAY)
@@ -96,11 +101,17 @@ describe('④ 워커 배선 — 첫 화면을 그렸을 때만', () => {
   const src = stripComments(fs.readFileSync('src/worker/index.ts', 'utf8'))
   it.each([
     ['홈', /const homeFirst = buildHomeFirstScreen\([^\n]*?\); if \(homeFirst\) appendLcpLink\(c\.res\.headers, homeLcpImage\(ssrExtraPayload\)\)/],
-    ['교환권', /const vouchersFirst = buildVouchersFirstScreen\([^\n]*?\); if \(vouchersFirst\) appendLcpLink\(c\.res\.headers, vouchersLcpImage\(ssrExtraPayload\)\)/],
     ['숙소', /const stayFirst = buildStayDetailFirstScreen\([^\n]*?\); if \(stayFirst && isMobileUserAgent\([^\n]*?\)\) appendLcpLink\(c\.res\.headers, stayLcpImage\(ssrPayload\)\)/],
     ['이용권', /const firstScreen = buildDetailFirstScreen\([^\n]*?\); if \(firstScreen\) appendLcpLink\(c\.res\.headers, hrefOfPreloadTag\(buildDetailHeroPreloadLink\(ssrPayload, false, isMobileUserAgent\(/],
   ])('%s', (_n, re) => {
     expect(src).toMatch(re)
+  })
+  // 🔀 2026-11-01 — 교환권은 목록에서 빠졌다. 대표 확정 A안으로 **머리에 배너가 없어져** 그 화면의
+  //   가장 큰 그림이 더는 배너가 아니다(배너 보조 시드 자체를 안 받는다). 같은 자리를 **반대 방향**으로
+  //   잠근다 — 되살아나면 self-fetch 하나와 쓰이지 않는 preload 가 조용히 돌아온다.
+  it('교환권은 LCP preload 를 붙이지 않는다 (A안 — 머리에 배너가 없다)', () => {
+    expect(src).not.toMatch(/vouchersLcpImage/)
+    expect(src, '배너 보조 시드가 되살아났다').not.toMatch(/ssrExtra = \{ slot: 'BANNERS'/)
   })
   it('헤더는 응답을 변환하기 전에 붙는다(변환 뒤엔 이미 나갔다)', () => {
     expect(src.indexOf('appendLcpLink(c.res.headers, homeLcpImage')).toBeLessThan(src.indexOf('const rewritten = rb.transform(c.res)'))

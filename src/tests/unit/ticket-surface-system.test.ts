@@ -39,8 +39,13 @@ describe('① 토큰 — 시안 실측값이 SSOT 에 있다', () => {
     expect(darkBlock).toMatch(/--surface:\s*#1D1F29/i)
     expect(css).not.toMatch(/--bg:\s*#0D0F12/i)
   })
-  it('화이트 바탕 #F8F7FC', () => {
-    expect(lightBlock).toMatch(/--bg:\s*#F8F7FC/i)
+  // 🤍 2026-11-01 대표 확정 — *"화이트 모드에서 배경색을 화이트로"*(범위: 소비자 전 화면).
+  //   2026-09-02 시안 실측값 #F8F7FC 를 대체한다. 카드(`--surface`)와 **밝기 차가 0** 이 되므로
+  //   둘을 가르는 `--lift` 를 6% → 12% 로 올렸다(대표 확정 "처방 1 그림자").
+  //   근거: `docs/design/vouchers-no-banner-2026-11.md`.
+  it('화이트 바탕 #FFFFFF', () => {
+    expect(lightBlock).toMatch(/--bg:\s*#FFFFFF/i)
+    expect(lightBlock, '구 오프화이트로 되돌아갔다').not.toMatch(/--bg:\s*#F8F7FC/i)
   })
   it('rule / rule-strong / lift 가 라이트·다크 양쪽에 정의', () => {
     expect((css.match(/--rule:/g) || []).length).toBeGreaterThanOrEqual(2)
