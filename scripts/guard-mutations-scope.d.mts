@@ -8,7 +8,10 @@
 export declare const ALWAYS_FULL: string[]
 
 /** 바뀐 파일 집합 → 전수로 돌 사유(좁혀도 되면 null). */
-export declare function fullReasonFor(files: Set<string> | string[] | null | undefined): string | null
+export declare function fullReasonFor(
+  files: Set<string> | string[] | null | undefined,
+  opts?: { exempt?: string },
+): string | null
 
 export interface MutationRef { file: string; test: string }
 export type Scope = { full: true; why?: string } | { full: false; files: Set<string> }
@@ -21,6 +24,8 @@ export declare function changedScope(o: {
   enabled: boolean
   run: (args: string[]) => string
   baseRef?: string
+  /** 작업트리 파일을 읽는다(시험에서 갈아끼운다). 기본은 fs.readFileSync. */
+  readFile?: (path: string) => string
 }): Scope
 
 /** 주입 러너 파일 경로 상수(`scripts/check-guard-mutations.mjs`). */
@@ -32,3 +37,12 @@ export declare const GUARD_RUNNER: string
  * 쓰는 주입을 함께 고른다.
  */
 export declare function touchesGuardScripts(files: Set<string> | string[] | null | undefined): boolean
+
+/** `.github/workflows/verify.yml` 경로 상수. */
+export declare const VERIFY_WORKFLOW: string
+
+/**
+ * verify.yml 변경이 **한 줄 run 단계의 추가뿐**인가(기존 줄 무변경 · 실행 환경 줄 0).
+ * 참이면 그 파일은 전수 사유가 아니다. 못 읽었거나(null) 애매하면 false = 전수.
+ */
+export declare function verifyChangeIsStepAdditionOnly(baseSrc: string | null, headSrc: string | null): boolean

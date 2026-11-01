@@ -17,6 +17,8 @@
  * PR 이 Y 만 바꿔 T 를 헛돌게 만들면 이 판정은 M 을 안 고른다.
  * ⇒ 전수는 `.github/workflows/guard-mutations-full.yml`(main push + 야간)이 반드시 돈다.
  */
+import { readFileSync } from 'node:fs'
+
 
 /**
  * diff 에 이게 있으면 **전수**. 가드 자신·러너 환경·공용 테스트 헬퍼가 바뀌면 무엇이 깨질지 모른다.
@@ -64,12 +66,57 @@ export function touchesGuardScripts(files) {
  * @param {Set<string>|string[]|null|undefined} files
  * @returns {string|null}
  */
-export function fullReasonFor(files) {
+export function fullReasonFor(files, { exempt } = {}) {
   const list = files ? [...files] : []
   // 🔴 "0개" 를 "바뀐 게 없으니 돌 것도 없다" 로 읽지 않는다. base 계산이 틀렸을 때도 0 이 나온다.
   if (list.length === 0) return '바뀐 파일이 0개로 보인다 — 믿지 않고 전수로 돈다'
-  const hit = list.find((f) => ALWAYS_FULL.some((p) => f.startsWith(p) || f.includes(p)))
+  const hit = list.find((f) => f !== exempt && ALWAYS_FULL.some((p) => f.startsWith(p) || f.includes(p)))
   return hit ? `${hit} 가 바뀌었다 — 가드 자신/러너 환경이라 전수` : null
+}
+
+export const VERIFY_WORKFLOW = '.github/workflows/verify.yml'
+
+/**
+ * 🧮 **`verify.yml` 에 단계를 *추가만* 했는가** — 2026-11-01 (대표 *"모든 세션에서 배포하는 과정이
+ * 순탄하지가 않아 … 왜 이러는거지?"* → *"모두 다 해줘"*).
+ *
+ * ## 왜
+ * `verify.yml` 은 `ALWAYS_FULL` 이라 **새 가드를 CI 에 등록하기만 해도** 주입 전수(5천 건, 1시간+)가 돌았다.
+ * 실측: PR #2069 가 가드 한 줄을 등록했을 뿐인데 "변경분" 단계가 전수로 떨어져 60분 넘게 걸렸고, 그동안
+ * main 이 움직여 충돌 → 재푸시 → **처음부터 다시**를 두 번 했다. 그런데 주입 판정은 각 주입의 vitest 만
+ * 돌린다 — **다른 CI 단계가 하나 더 생기는 것으로는 어떤 주입의 판정도 바뀌지 않는다.**
+ * 바뀔 수 있는 것은 *러너 환경*(체크아웃 깊이·node·npm ci·env·주입 단계 자신)이고, 그건 **추가가 아니라 수정**이다.
+ *
+ * ## 판정 (보수적 — 애매하면 false = 전수)
+ *   ① base 의 모든 줄이 head 에 **같은 순서로 그대로** 있다(지우거나 고친 줄 0)
+ *   ② 끼워 넣은 줄 중 **새 단계 머리(`      - name:`)** 가 하나 이상 있다
+ *   ③ 끼워 넣은 줄이 전부 `- name:` · 한 줄짜리 `run:` · `continue-on-error:` · 주석 · 빈 줄 뿐이다
+ *      (`uses:`·`env:`·`with:`·`if:`·다줄 `run: |` 이 끼면 false — 실행 환경을 바꿀 수 있다)
+ *
+ * ⚠️ **못 보는 것**: 추가한 단계가 *다른 가드를 약하게* 만드는지(그건 이 판정의 일이 아니다 —
+ * `check-guard-registry`·`local-ci-parity` 가 strict 여부를 따로 본다). 그리고 좁힌 만큼은
+ * 여전히 `guard-mutations-full.yml`(main push + 야간)이 전수로 되찾는다.
+ */
+const STEP_ADD_LINE = [
+  /^      - name: \S/,
+  /^        run: [^|>\s]/,
+  /^        continue-on-error: (true|false)\s*$/,
+  /^\s*#/,
+  /^\s*$/,
+]
+export function verifyChangeIsStepAdditionOnly(baseSrc, headSrc) {
+  if (typeof baseSrc !== 'string' || typeof headSrc !== 'string') return false
+  const base = baseSrc.split('\n')
+  const head = headSrc.split('\n')
+  let j = 0
+  const added = []
+  for (const line of head) {
+    if (j < base.length && line === base[j]) j++
+    else added.push(line)
+  }
+  if (j !== base.length) return false // ① 기존 줄이 지워지거나 바뀌었다
+  if (!added.some((l) => /^      - name: \S/.test(l))) return false // ② 새 단계가 아니다
+  return added.every((l) => STEP_ADD_LINE.some((re) => re.test(l))) // ③ 실행 환경 줄 0
 }
 
 /**
@@ -88,11 +135,12 @@ export function inScope(m, scope) {
  *   `run` 은 `git <args>` 를 돌려 stdout 을 주는 함수(테스트에서 갈아끼우기 쉽게 주입받는다).
  * @returns {{full:true, why:string} | {full:false, files:Set<string>}}
  */
-export function changedScope({ enabled, run, baseRef = 'origin/main' }) {
+export function changedScope({ enabled, run, baseRef = 'origin/main', readFile = (p) => readFileSync(p, 'utf8') }) {
   if (!enabled) return { full: true, why: '--changed 아님(전수)' }
   let files
+  let mb
   try {
-    const mb = run(['merge-base', baseRef, 'HEAD']).trim()
+    mb = run(['merge-base', baseRef, 'HEAD']).trim()
     // 커밋된 변경 + 아직 커밋 안 한 작업트리 — 로컬에서도 CI 와 같은 답이 나오게.
     const a = run(['diff', '--name-only', mb, 'HEAD'])
     const b = run(['diff', '--name-only', mb])
@@ -100,6 +148,22 @@ export function changedScope({ enabled, run, baseRef = 'origin/main' }) {
   } catch {
     return { full: true, why: `base(${baseRef}) 를 못 구했다 — shallow clone 이면 fetch-depth: 0 이 필요하다` }
   }
-  const why = fullReasonFor(files)
+  let why = fullReasonFor(files)
+  // 🧮 verify.yml 만이 전수 사유라면 — 단계를 *추가만* 했는지 실제 내용으로 본다(위 판정).
+  // 🔴 다른 전수 사유가 있으면 **그것을** 말한다 — 단계만 추가한 verify.yml 을 탓하면 원인을 오진하게
+  //    만든다(시험이 잡았다: package.json 이 진짜 사유인데 메시지가 verify.yml 을 가리켰다).
+  const other = why && files.has(VERIFY_WORKFLOW) ? fullReasonFor(files, { exempt: VERIFY_WORKFLOW }) : null
+  if (other) why = other
+  else if (why && files.has(VERIFY_WORKFLOW)) {
+    let baseSrc = null
+    let headSrc = null
+    try {
+      baseSrc = run(['show', `${mb}:${VERIFY_WORKFLOW}`])
+      headSrc = readFile(VERIFY_WORKFLOW)
+    } catch { /* 못 읽으면 아래에서 전수 */ }
+    why = verifyChangeIsStepAdditionOnly(baseSrc, headSrc)
+      ? null
+      : `${VERIFY_WORKFLOW} 의 기존 줄이 바뀌었거나 실행 환경 줄이 끼었다(단계 추가만이 아니다) — 전수`
+  }
   return why ? { full: true, why } : { full: false, files }
 }

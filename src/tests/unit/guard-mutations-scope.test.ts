@@ -23,7 +23,7 @@ import { describe, it, expect } from 'vitest'
 import { readRaw } from '../helpers/source-text'
 // 🔴 **텍스트가 아니라 동작을 잰다.** 이 레포가 반복해 당한 "문자열만 맞고 실제로는 안 도는" 가드가
 //    되지 않으려면 판정 함수를 실제로 불러야 한다 — 그래서 순수 모듈로 뽑았다.
-import { ALWAYS_FULL, fullReasonFor, inScope, changedScope } from '../../../scripts/guard-mutations-scope.mjs'
+import { ALWAYS_FULL, fullReasonFor, inScope, changedScope, verifyChangeIsStepAdditionOnly, VERIFY_WORKFLOW } from '../../../scripts/guard-mutations-scope.mjs'
 
 // 🩸 **워크플로는 `readRaw` 로 읽는다.** `readCode` 를 쓰면 `paths-ignore: ['docs/**', …]` 의
 //    `/**` 를 블록 주석 시작으로 읽어 **파일 가운데가 통째로 사라진다**(헬퍼 주석이 경고한 그 지뢰를
@@ -219,3 +219,96 @@ describe('📁 분할 매니페스트', () => {
     expect(f.split("\n    name: '").length - 1).toBeGreaterThan(0)
   })
 })
+
+describe('🧮 verify.yml 에 단계를 *추가만* 하면 전수가 아니다 (2026-11-01)', () => {
+  // 🩸 PR #2069 가 가드 한 줄을 CI 에 등록했을 뿐인데 "변경분" 단계가 주입 전수(5천 건)로 떨어져 60분+ 걸렸고,
+  //   그 사이 main 이 움직여 충돌 → 재푸시 → 처음부터 다시를 두 번 했다. 주입 판정은 각 주입의 vitest 만
+  //   돌리므로, 다른 CI 단계가 *추가*되는 것으로는 어떤 판정도 바뀌지 않는다.
+  const BASE = [
+    'jobs:',
+    '  verify:',
+    '    steps:',
+    '      - uses: actions/checkout@v4',
+    '        with:',
+    '          fetch-depth: 0',
+    '      - name: 가드 주입 검증 (변경분, strict)',
+    '        run: node scripts/check-guard-mutations.mjs --changed -s',
+    '        continue-on-error: false',
+    '      - name: 기존 가드',
+    '        run: node scripts/check-foo.mjs -s',
+    '',
+  ].join('\n')
+  const ADD = BASE.replace('      - name: 기존 가드',
+    '      # 새 가드 — 2026-11-01\n      - name: 새 가드 (strict)\n        run: node scripts/check-new.mjs -s\n        continue-on-error: false\n\n      - name: 기존 가드')
+
+  it('✅ 한 줄짜리 run 단계를 추가만 했으면 true', () => {
+    expect(verifyChangeIsStepAdditionOnly(BASE, ADD)).toBe(true)
+  })
+  it('🔴 기존 단계의 줄을 고치면 false (strict 를 뗀다 등)', () => {
+    expect(verifyChangeIsStepAdditionOnly(BASE, BASE.replace('check-foo.mjs -s', 'check-foo.mjs'))).toBe(false)
+  })
+  it('🔴 주입 단계 자신을 고치면 false (러너 환경)', () => {
+    expect(verifyChangeIsStepAdditionOnly(BASE, BASE.replace('--changed -s', '--changed'))).toBe(false)
+  })
+  it('🔴 단계를 지우면 false', () => {
+    expect(verifyChangeIsStepAdditionOnly(BASE, BASE.replace('      - name: 기존 가드\n        run: node scripts/check-foo.mjs -s\n', ''))).toBe(false)
+  })
+  it('🔴 실행 환경 줄(uses·env·with·if)이 끼면 false', () => {
+    for (const extra of ['        uses: actions/setup-node@v4', '        env:', '        with:', '        if: always()']) {
+      const head = ADD.replace('        run: node scripts/check-new.mjs -s', `        run: node scripts/check-new.mjs -s\n${extra}`)
+      expect(verifyChangeIsStepAdditionOnly(BASE, head), extra).toBe(false)
+    }
+  })
+  it('🔴 다줄 run(`run: |`)은 false — 무엇을 하는지 한 줄로 못 본다', () => {
+    const head = ADD.replace('        run: node scripts/check-new.mjs -s', '        run: |\n          npm ci\n          node x.mjs')
+    expect(verifyChangeIsStepAdditionOnly(BASE, head)).toBe(false)
+  })
+  it('🔴 새 단계 없이 기존 단계에 줄만 끼우면 false', () => {
+    expect(verifyChangeIsStepAdditionOnly(BASE, BASE.replace('        run: node scripts/check-foo.mjs -s', '        run: node scripts/check-foo.mjs -s\n        continue-on-error: true'))).toBe(false)
+  })
+  it('🔴 못 읽었으면(null) false = 전수', () => {
+    expect(verifyChangeIsStepAdditionOnly(null, ADD)).toBe(false)
+    expect(verifyChangeIsStepAdditionOnly(BASE, null)).toBe(false)
+  })
+  it('실제 레포의 verify.yml 로 — 자기 자신과 비교하면 "추가 없음" 이라 false(빈 diff 는 단계 추가가 아니다)', () => {
+    const real = readRaw(VERIFY_WORKFLOW)
+    expect(real.split('\n').length).toBeGreaterThan(500)
+    expect(verifyChangeIsStepAdditionOnly(real, real)).toBe(false)
+  })
+
+  describe('changedScope 배선 — git 응답을 그대로 먹인다', () => {
+    const scopeWith = (head: string, others: string[] = []) =>
+      changedScope({
+        enabled: true,
+        run: (args: string[]) =>
+          args[0] === 'merge-base' ? 'abc123\n'
+            : args[0] === 'show' ? BASE
+              : args.includes('HEAD') ? [VERIFY_WORKFLOW, ...others].join('\n') + '\n' : '',
+        readFile: () => head,
+      })
+    it('✅ 단계 추가만 + 평범한 파일 → 좁힌다 (verify.yml 은 files 에 남아 그 주입은 고른다)', () => {
+      const s = scopeWith(ADD, ['scripts/check-new.mjs'])
+      expect(s.full, JSON.stringify(s)).toBe(false)
+      expect((s as { files: Set<string> }).files.has(VERIFY_WORKFLOW)).toBe(true)
+    })
+    it('🔴 기존 줄 수정 → 전수, 이유를 말한다', () => {
+      const s = scopeWith(BASE.replace('--changed -s', '--changed'))
+      expect(s.full).toBe(true)
+      expect((s as { why: string }).why).toContain('단계 추가만이 아니다')
+    })
+    it('🔴 verify.yml 말고 다른 전수 사유가 있으면 그대로 전수 (package.json)', () => {
+      const s = scopeWith(ADD, ['package.json'])
+      expect(s.full).toBe(true)
+      expect((s as { why: string }).why).toContain('package.json')
+    })
+    it('🔴 base 를 못 읽으면 전수', () => {
+      const s = changedScope({
+        enabled: true,
+        run: (args: string[]) => { if (args[0] === 'show') throw new Error('bad'); return args[0] === 'merge-base' ? 'abc\n' : VERIFY_WORKFLOW + '\n' },
+        readFile: () => ADD,
+      })
+      expect(s.full).toBe(true)
+    })
+  })
+})
+
