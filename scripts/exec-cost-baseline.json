@@ -80,12 +80,12 @@
       ]
     },
     "교환권": {
-      "execKB": 281.7,
-      "loadedKB": 615.3,
+      "execKB": 263.7,
+      "loadedKB": 605.9,
       "top": [
         [
           "react-core.js",
-          61.4
+          59.7
         ],
         [
           "locale-ko.js",
@@ -93,27 +93,27 @@
         ],
         [
           "index.js",
-          35.2
-        ],
-        [
-          "app-utils.js",
-          21.9
+          35.9
         ],
         [
           "lz-common.js",
-          21.5
+          22.4
+        ],
+        [
+          "app-utils.js",
+          22
         ],
         [
           "lz-vouchers.js",
-          14.2
-        ],
-        [
-          "tanstack-query.js",
-          13
+          12.5
         ],
         [
           "react-router.js",
           10.2
+        ],
+        [
+          "app-shell.js",
+          8.5
         ]
       ]
     },
@@ -533,6 +533,13 @@
       "changes": [
         "홈(PC): 실행된 JS 374.6 → 379 KB (+4.4, 허용 4) · 늘어난 것: codes.js +1.6, lz-common.js +1.2, index.js +1.0, lz-home-homePc.js +0.8",
         "이용권 상세: 실행된 JS 317 → 321.6 KB (+4.6, 허용 4) · 늘어난 것: lz-gbDetail.js +4.3, lz-common.js +1.1, index.js +1.0"
+      ]
+    },
+    {
+      "date": "2026-11-01",
+      "reason": "A안 — 교환권 머리 배너 제거로 그 화면에서 실제로 돌는 코드가 줄었다. 교환권만 갱신하고 다른 9개는 커밋된 값 그대로 둔다(CI 측정은 전부 허용오차 안 — 에이전시 콘솔 +3.1 은 main #2060 분).",
+      "changes": [
+        "교환권: 281.7 → 263.7 KB — 배너 캐러셀·hero 변형 실행분 제거를 잠근다"
       ]
     }
   ]

@@ -200,30 +200,29 @@
       }
     },
     "vouchers": {
-      "totalKB": 190.43,
+      "totalKB": 184.5,
       "chunks": {
         "index.js": 15.53,
         "react-core.js": 38.65,
         "app-shared.js": 6.54,
         "tanstack-query.js": 9.5,
         "zustand.js": 2.5,
-        "app-utils.js": 21.92,
+        "app-utils.js": 21.9,
         "react-router.js": 7.11,
         "helmet.js": 4.93,
         "lucide-shell.js": 0.7,
         "app-stores.js": 2.18,
-        "app-shell.js": 7.98,
+        "app-shell.js": 7.95,
         "app-auth.js": 1.29,
-        "app-layout.js": 3.35,
-        "app-routes.js": 1.03,
-        "index.css": 28.67,
-        "VouchersPage.js": 4.26,
+        "app-layout.js": 3.34,
+        "app-routes.js": 1.04,
+        "index.css": 28.7,
+        "VouchersPage.js": 4.19,
         "lz-linkshop1-vouchers.js": 1.09,
-        "lz-common.js": 18.17,
+        "lz-common.js": 18.4,
         "lucide-home.js": 0.77,
         "lucide-desktop.js": 1.09,
-        "lz-home-homePc-vouchers.js": 6.05,
-        "lz-vouchers.js": 6.19,
+        "lz-vouchers.js": 6.17,
         "lz-browse-vouchers.js": 0.93
       }
     },
@@ -1030,6 +1029,13 @@
       "surfaces": [
         "life",
         "lifePro"
+      ]
+    },
+    {
+      "date": "2026-11-01",
+      "reason": "A안 — 교환권 머리 배너 제거로 배너 캐러셀·hero 변형이 그 화면 봉투에서 빠졌다. vouchers 만 갱신하고 다른 26개는 커밋된 값 그대로 둔다(±0.2 는 main 머지분 — 이 PR 변경 아님).",
+      "changes": [
+        "vouchers: 190.43 → 184.5 KB (-5.93) — 배너 코드 제거분을 잠근다"
       ]
     }
   ]

@@ -1,36 +1,35 @@
 // 🖼️ 2026-10-18 교환권 머리 배너를 서버 첫 화면에 — 가드: src/tests/unit/vouchers-hero-banner-ssr-2026-10-18.test.tsx
 export default [
   {
-    name: '🖼️ 교환권 첫 화면이 다시 빈 판만 그린다',
+    name: '🖼️ 교환권 머리에 배너가 되살아난다 (첫 상품이 다시 196px 아래로)',
     file: 'src/worker/utils/vouchers-first-screen.ts',
-    find: '`<div class="${C.hero}">${heroBannerHtml(bannersJson)}</div>` +',
-    replace: '`<div class="${C.hero}"></div>` +',
+    find: "  topRow: VOUCHERS_TOP_ROW.row,",
+    replace: "  topRow: 'relative h-[196px] overflow-hidden bg-gray-900 dark:bg-surface',",
     test: 'src/tests/unit/vouchers-hero-banner-ssr-2026-10-18.test.tsx',
-    why: '배너 사진이 화면 코드가 다 돈 뒤(느린 4G 3.8s)에야 출발해 LCP 가 4.3s 로 돌아간다. 판이 서 있어 밀림은 0 이라 화면은 멀쩡해 보인다.',
+    why: '2026-11-01 대표 확정 A안은 머리가 56px 한 줄이다. 196px 판으로 되돌리면 첫 상품이 y=230 → 432 로 내려가는데 빌드도 화면도 안 깨진다.',
   },
   {
-    name: '🖼️ 서버가 그리는 배너 사진 주소가 화면과 갈린다',
-    file: 'src/worker/utils/vouchers-first-screen.ts',
-    find: "const bg = stripBannerImageUrl(b.image_url, 'vouchers')",
-    replace: "const bg = stripBannerImageUrl(b.image_url, 'strip')",
+    name: '🖼️ 교환권이 다시 배너 보조 시드를 받는다 (self-fetch 가 하나 는다)',
+    file: 'src/worker/index.ts',
+    find: " // 🎟️ 2026-11-01 A안 — 머리에 배너가 없다",
+    replace: " if (!url.search) ssrExtra = { slot: 'BANNERS', path: '/api/banners' }; // 🎟️ 2026-11-01 A안 — 머리에 배너가 없다",
     test: 'src/tests/unit/vouchers-hero-banner-ssr-2026-10-18.test.tsx',
-    why: '주소가 한 글자라도 다르면 같은 사진을 두 번 받는다 — 서버가 먼저 받은 것은 버려진다.',
+    why: '머리에 배너가 없으니 그 시드는 쓰이지 않는다. 받아도 화면은 멀쩡하고 교환권 요청마다 self-fetch 하나가 조용히 늘 뿐이다(서브리퀘스트 예산).',
   },
+  // 🪦 2026-11-01 제거: '🖼️ 앱이 배너 시드를 안 읽는다 — 서버 배너가 사라졌다 다시 나타난다'
+  //   그 결함은 **더 이상 결함이 아니다.** A안으로 교환권 머리에 배너가 없어지면서 워커가
+  //   `__SSR_INITIAL_BANNERS__` 를 아예 안 싣고(주입처 0), 그러면 리더를 지워도 **행동이 안 변한다**
+  //   (늘 `undefined` 였다) — 실제로 CI 에서 "가드가 지키는 척만 한다"로 빨간불이 났다(run 41286191380).
+  //   처방은 가드 재조준이 아니라 **죽은 가지 제거**였다(`useHomeBanners.ts` 의 `readBannersSeed`).
+  //   ⚠️ 이 자리에 주입을 다시 만들려 하지 말 것 — 출력으로 판정할 수 없다. 되살아나는 방향은
+  //   위 '🖼️ 교환권이 다시 배너 보조 시드를 받는다' 가 잡는다.
   {
-    name: '🖼️ 교환권에 홈 띠 배너가 섞인다',
-    file: 'src/worker/utils/vouchers-first-screen.ts',
-    find: "banners = bannersOfSlot(JSON.parse(bannersJson), 'vouchers')",
-    replace: "banners = bannersOfSlot(JSON.parse(bannersJson), 'strip')",
-    test: 'src/tests/unit/vouchers-hero-banner-ssr-2026-10-18.test.tsx',
-    why: '첫 프레임에 홈 배너가 떴다가 마운트 때 교환권 배너로 바뀐다(에러 0).',
-  },
-  {
-    name: '🖼️ 앱이 배너 시드를 안 읽는다 — 서버 배너가 사라졌다 다시 나타난다',
+    name: '🖼️ 홈이 섹션 시드로 첫 배너를 안 세운다 — 상단 배너가 마운트 때 사라진다',
     file: 'src/components/home/useHomeBanners.ts',
-    find: '    const full = readBannersSeed()\n    if (full) return full\n',
-    replace: '',
+    find: '    const strip = stripBannersOf(raw)',
+    replace: '    const strip = [] as ReturnType<typeof stripBannersOf>',
     test: 'src/tests/unit/vouchers-hero-banner-ssr-2026-10-18.test.tsx',
-    why: '마운트 때 판이 빈 채로 응답을 기다린다 — 서버가 그린 사진이 지워졌다가 다시 그려진다.',
+    why: '교환권 BANNERS 시드를 걷으면서 홈의 *살아 있는* 시드 경로까지 같이 걷는 방향. 서버가 그린 상단 배너가 마운트 때 사라졌다가 응답 뒤 다시 나타나며 첫 섹션을 흔든다(빌드·화면 안 깨짐).',
   },
   {
     name: '🖼️ 상세 히어로 화질이 다시 85',

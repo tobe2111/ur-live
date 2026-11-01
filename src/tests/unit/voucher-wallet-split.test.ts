@@ -101,9 +101,11 @@ describe('③ 배선 — 두 페이지가 서로의 것을 담지 않는다', ()
     // 진입점은 파일 크기 래칫 때문에 컴포넌트로 분리돼 있다. 목적지와 배선을 함께 본다.
     expect(strip(read('src/pages/vouchers/GifticonBoxEntry.tsx'))).toContain("navigate('/my-gifticons')")
     const page = strip(read('src/pages/VouchersPage.tsx'))
-    // 모바일: 안 C(2026-10-14) — 머리 배너 위 아이콘이 보관함으로 간다. 쇼핑 탭 모드면 탭 바가 같은 일을 한다.
-    expect(page).toMatch(/<VouchersHero\b/)
-    expect(strip(read('src/pages/vouchers/VouchersHero.tsx'))).toContain("navigate('/my-gifticons')")
+    // 모바일: A안(2026-11-01) — 머리 한 줄 오른쪽 아이콘이 보관함으로 간다. 쇼핑 탭 모드면 탭 바가 같은 일을 한다.
+    //   🔀 불변식은 그대로이고(카탈로그에서 보관함으로 가는 길이 있다) 그 길이 `VouchersHero` → `VouchersTopRow` 로 옮겼다.
+    expect(page).toMatch(/<VouchersTopRow\b/)
+    expect(strip(read('src/pages/vouchers/VouchersTopRow.tsx'))).toContain('VOUCHERS_TOP_BOX_PATH')
+    expect(strip(read('src/shared/vouchers-top-row.ts'))).toContain("VOUCHERS_TOP_BOX_PATH = '/my-gifticons'")
     expect(page).toMatch(/<VouchersTopBar\b/)
     expect(strip(read('src/pages/vouchers/VouchersTopBar.tsx'))).toMatch(/<VoucherHeaderActions\b/)
     expect(page).toMatch(/<GifticonBoxRailRow\b/)      // PC: 좌 레일 행

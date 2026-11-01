@@ -126,9 +126,11 @@ describe('④ 배선 — 한쪽만 있으면 조용히 아무 일도 안 난다'
     // 2026-09-16: 이 줄에 `forceDark`(다크 도착 표면) 배선이 얹혔다. 여기가 지키는 불변식은
     //   "소비자 폴백이 **BootFirstScreenLoader 다**" 이지 프롭이 없다는 것이 아니므로 프롭을 허용한다.
     //   ⚠️ 다만 `BrandLoader fullScreen` 직접 호출로 되돌아가는 것은 그대로 막는다(그게 이 검사의 목적).
-    expect(app).toMatch(/const PageLoader = \(\) => <BootFirstScreenLoader\b/)
+    // 2026-11-01: 인자가 생겼다(`{ pathname }`) — 렌더 중 `window.location` 을 읽어 prerender 가
+    //   매 빌드 죽던 것을 라우터 경로로 바꿨다. 불변식은 그대로이므로 인자 목록만 허용한다.
+    expect(app).toMatch(/const PageLoader = \([^)]*\) => <BootFirstScreenLoader\b/)
     expect(app, '폴백이 다시 BrandLoader 직접 호출로 돌아갔다')
-      .not.toMatch(/const PageLoader = \(\) => <BrandLoader\b/)
+      .not.toMatch(/const PageLoader = \([^)]*\) => <BrandLoader\b/)
   })
 
   it('🔴 `main.tsx` 가 `createRoot` **앞에서** 노드를 잡는다 (뒤면 이미 비워진 뒤다)', () => {

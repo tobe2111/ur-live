@@ -89,8 +89,14 @@ vi.mock('@/lib/firebase-auth', () => ({
   }),
 }));
 
+// 🌐 2026-11-01: node 환경(= prerender 와 같은 조건의 SSR 렌더 시험)에는 `window` 가 없다.
+//   종전엔 이 줄이 바로 TypeError 를 내 **node 환경 시험 자체가 불가능**했고, 그래서
+//   "렌더 중 window 접근" 을 재는 가드를 아무도 못 썼다(App.tsx 의 그 결함이 몇 달 살아남은 이유).
+//   jsdom(기존 전 시험)에서는 `__win === window` 라 **byte-동일 동작**이다.
+const __win: any = typeof window !== 'undefined' ? window : {}
+
 // Mock window.Kakao
-global.window.Kakao = {
+__win.Kakao = {
   init: vi.fn(),
   isInitialized: vi.fn(() => true),
   Auth: {
@@ -138,8 +144,8 @@ vi.mock('@sentry/react', () => ({
 }));
 
 // Mock window.location
-delete (window as any).location;
-window.location = {
+delete __win.location;
+__win.location = {
   href: 'http://localhost:5173',
   hostname: 'localhost',
   pathname: '/',
