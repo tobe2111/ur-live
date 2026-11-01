@@ -97,26 +97,49 @@ const BUDGETS = [
 ]
 
 /**
- * 🧭 2026-11-01 추가 — **"새 세션이 먼저 읽어라" 고 지시받은 문서**도 예산 대상이다.
+ * 🧭 **CLAUDE.md 가 언급하는 문서는 전부 예산 대상이다 — 손으로 적은 목록이 아니다.**
  *
- * 첫 판은 `CLAUDE.md`·`CURRENT_WORK.md`·목차·역할정의·최근인계만 봤다. 그런데 `CLAUDE.md` 가
- * *"새 세션은 이 문서로 전체 구조를 먼저 잡는다"* 로 지시하는 `urdeal-platform-model.md` 가
- * **30,584 토큰**이었다 — 거의 모든 세션이 읽는데 **예산 밖**이었다(대표 질문 *"이제 다
- * 개선한거야?"* 에 답하려 재서 발견했다). 세션이 자동으로 읽는 것만 세고 *지시받아* 읽는 것을
- * 빼면, 같은 비용이 다른 파일로 옮겨 가며 자란다.
+ * 첫 판은 `DIRECTED_READS` 라는 **손으로 쓴 6줄**이었다. 그게 왜 위험한가: 내일 어떤 세션이
+ * CLAUDE.md 에 *"이건 먼저 읽어라"* 한 줄을 더하면 그 문서는 **예산 밖에서 자란다.** 실제로
+ * 그렇게 숨어 있었다 — `urdeal-platform-model.md` 가 **30,584 토큰**인데 거의 모든 세션이
+ * 읽고 있었고, 대표 질문(*"이제 다 개선한거야?"*)에 답하려 재 보고서야 발견했다.
+ * ⇒ **목록을 사람이 관리하면 반드시 낡는다.** 그래서 CLAUDE.md 를 파싱해 **자동으로** 뽑는다.
  *
- * ⚠️ 상한이 느슨하다(4만) — 이 문서들은 **구조 설명**이라 audit log 처럼 통째로 뺄 수 없다.
- * 목적은 "줄여라" 가 아니라 **"이력을 구조 문서에 쌓지 마라"** 다(그게 CLAUDE.md 가 30만이 된
- * 메커니즘이다). 넘으면 이력·로그 성격의 절을 먼저 분리할 것.
+ * 두 등급이다(둘 다 자동 판정):
+ *   - **A 먼저 읽어라** — 그 경로가 적힌 줄(과 앞 줄)에 `먼저 읽/먼저 스캔/필수 참조 …` 가 있다.
+ *     세션이 **통째로** 읽으라고 지시받은 문서라 **하드 상한 4만**이고, grep 머리말로 면제되지 않는다.
+ *   - **B 그 외 언급** — 4만을 넘으면 **"통째로 읽지 말고 grep 하라" 머리말이 있어야** 한다.
+ *     큰 것 자체는 죄가 아니다(이력은 값지다). **경고 없는** 큰 것이 지뢰다.
+ *
+ * ⚠️ **이 가드가 못 보는 것**: A 판정은 낱말 매칭이라 *"이 문서로 전체를 파악할 것"* 처럼
+ * 다르게 쓰면 B 로 떨어진다. **그래도 0 으로는 안 떨어진다** — B 가 받아서 머리말을 요구한다
+ * (약해지되 사라지지 않게 설계했다). A 로 올리고 싶으면 CLAUDE.md 의 그 문장에 `먼저 읽`
+ * 같은 표현을 쓰면 되고, 그게 사람에게도 더 분명하다.
  */
-const DIRECTED_READS = [
-  'docs/design/urdeal-platform-model.md',
-  'docs/design/ai-team-operating-model.md',
-  'docs/DEV_IMPLEMENTATION_PLAYBOOK.md',
-  'docs/ERROR_DEBUGGING_PLAYBOOK.md',
-  'docs/KNOWN_ERRORS.md',
-  'docs/FEATURE_STATUS.md',
+const DIRECTED_KEYWORDS = [
+  '먼저 읽', '먼저 스캔', '먼저 열', '먼저 볼', '먼저 확인', '먼저 판별',
+  '필수 참조', '먼저 잡는다',
 ]
+/** BUDGETS 가 이미 자기 상한으로 재는 파일 — 여기서 또 세면 이중 계산이다. */
+const BUDGETED = new Set(['CLAUDE.md', 'docs/CURRENT_WORK.md', 'docs/handoff/INDEX.local.md'])
+
+function directedDocs() {
+  const src = read('CLAUDE.md')
+  if (src == null) return []
+  const lines = src.split('\n')
+  const found = new Map() // path -> tierA(boolean)
+  for (let i = 0; i < lines.length; i++) {
+    // `docs/...md` 또는 루트 대문자 문서(TECHNICAL_DEBT.md 등)
+    for (const m of lines[i].matchAll(/(?:docs\/[A-Za-z0-9_\-./]*|[A-Z][A-Za-z_]*)\.md/g)) {
+      const p = m[0]
+      if (BUDGETED.has(p) || !existsSync(p)) continue
+      const win = (i ? lines[i - 1] : '') + ' ' + lines[i]
+      const tierA = DIRECTED_KEYWORDS.some((k) => win.includes(k))
+      found.set(p, (found.get(p) || false) || tierA)
+    }
+  }
+  return [...found].map(([file, tierA]) => ({ file, tierA }))
+}
 const DIRECTED_LIMIT = 40_000
 
 /** 이 크기를 넘는 문서는 "통째로 읽지 말 것" 경고가 있어야 한다. */
@@ -183,21 +206,37 @@ for (const b of BUDGETS) {
   }
 }
 
-// ── ①-2 "먼저 읽어라" 고 지시받은 문서 ─────────────────────────────
-for (const f of DIRECTED_READS) {
-  if (!existsSync(f) || exempt(f)) continue
+// ── ①-2 CLAUDE.md 가 언급하는 문서 (자동 추출) ─────────────────────
+const directed = directedDocs()
+for (const { file: f, tierA } of directed) {
+  if (exempt(f)) continue
   checked++
-  const tk = tokensOf(readFileSync(f, 'utf8'))
-  const pct = Math.round((tk / DIRECTED_LIMIT) * 100)
-  const line = `${f}: ${tk.toLocaleString()} / ${DIRECTED_LIMIT.toLocaleString()} 토큰 (${pct}%)`
-  if (tk > DIRECTED_LIMIT) {
+  const t = readFileSync(f, 'utf8')
+  const tk = tokensOf(t)
+  if (tk <= DIRECTED_LIMIT) {
+    const pct = Math.round((tk / DIRECTED_LIMIT) * 100)
+    if (tierA && pct >= 85) {
+      console.log(`⚠️  ${f}: ${tk.toLocaleString()} / ${DIRECTED_LIMIT.toLocaleString()} 토큰 (${pct}%) — 이력·로그 절을 먼저 분리할 것.`)
+    }
+    continue
+  }
+  const line = `${f}: ${tk.toLocaleString()} / ${DIRECTED_LIMIT.toLocaleString()} 토큰`
+  if (tierA) {
     violations.push({
-      line,
-      why: 'CLAUDE.md 가 "새 세션이 먼저 읽어라" 고 지시하는 문서 — 거의 모든 세션이 이 비용을 낸다. 이력·로그 성격의 절을 분리할 것.',
+      line: `${line} — CLAUDE.md 가 "먼저 읽어라" 고 지시하는 문서`,
+      why: '거의 모든 세션이 이 비용을 낸다. grep 머리말로 면제되지 않는다 — 통째로 읽으라고 지시한 문서이기 때문이다. 이력·로그 성격의 절을 분리할 것.',
       files: [f],
     })
-  } else if (pct >= 85) {
-    console.log(`⚠️  ${line} — 상한에 가깝다. 이력·로그 절을 먼저 분리할 것.`)
+    continue
+  }
+  // B 등급 — 커도 되지만 경고 머리말이 있어야 한다.
+  const head = t.split('\n').slice(0, 30).join('\n')
+  if (!LANDMINE_HINTS.some((h) => head.includes(h))) {
+    violations.push({
+      line: `${line} — CLAUDE.md 가 언급하는데 "통째로 읽지 말 것" 머리말이 없다`,
+      why: '세션이 이 문서를 열 수 있고, 통째로 읽으면 창의 20%+ 를 한 번에 쓴다. 크기를 줄이라는 게 아니라 머리말 30줄 안에 grep 안내를 두라는 것이다.',
+      files: [f],
+    })
   }
 }
 
@@ -215,12 +254,24 @@ for (const f of allDocs()) {
 
 // ── ③ 측정 대상 0건은 통과가 아니라 실패 ──────────────────────────
 //    (이 레포가 반복해 당한 "헛도는 가드" 클래스 — 경로가 낡아 조용히 비는 것을 막는다.)
+//    🔑 여기서 바로 exit 하지 않는다 — 그러면 **진짜 위반이 있어도 그 출력이 가려진다**
+//       (실측: CLAUDE.md 상한 초과 트리에서 자기점검 메시지만 뜨고 "왜 이 상한인가" 가 사라졌다).
+//       자기점검과 위반은 **둘 다** 보여야 한다.
+const selfcheck = []
 if (checked < 5) {
-  console.error(`❌ context-budget: 측정 대상이 ${checked}건뿐이다 — 경로가 낡아 가드가 헛돌고 있다.`)
-  process.exit(1)
+  selfcheck.push(`측정 대상이 ${checked}건뿐이다 — 경로가 낡아 가드가 헛돌고 있다.`)
 }
+// 🩸 CLAUDE.md 에서 뽑은 문서가 소수면 **추출 정규식이 깨진** 것이다. 같은 클래스의 침묵이지만
+//    원인이 달라 메시지를 가른다 — 원인을 구분 못 하는 메시지는 그 자체가 결함이다
+//    (CLAUDE.md 개발 룰 3-1).
+if (directed.length < 20) {
+  selfcheck.push(
+    `CLAUDE.md 에서 뽑은 문서가 ${directed.length}건뿐이다 — 추출 정규식이 깨졌다(헛도는 가드).`,
+  )
+}
+for (const m of selfcheck) console.error(`❌ context-budget: ${m}`)
 
-if (!violations.length && !landmines.length) {
+if (!violations.length && !landmines.length && !selfcheck.length) {
   console.log(`✅ context-budget: 세션 컨텍스트 예산 통과 (측정 ${checked}건).`)
   process.exit(0)
 }
@@ -243,5 +294,5 @@ console.log('   · 변경 이력 → docs/locks/*.md  · 가드 표 → docs/GUA
 console.log('   · 세션 인계 → docs/handoff/<날짜>-<슬러그>.md  · 옛 기록 → docs/handoff/archive/')
 console.log('   원래 자리에는 "그 파일을 grep 하라" 는 한 줄만 남긴다. 상세: CLAUDE.md "📚 문서 분할".')
 console.log('')
-if (STRICT) process.exit(1)
+if (STRICT || selfcheck.length) process.exit(1)
 console.log('(warn 모드 — 차단은 STRICT_CONTEXT_BUDGET=1)')

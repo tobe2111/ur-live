@@ -55,16 +55,37 @@ function runIn(files: Record<string, string>): { code: number; out: string } {
 /** 한글 n자 — 토큰 추정이 한글을 1.0/자로 세므로 n 토큰에 가깝다. */
 const ko = (n: number) => '가'.repeat(n)
 
-/** 예산 안의 최소 구성(측정 ≥5건을 채운다 — ④가 요구하는 하한). */
+/**
+ * 예산 안의 최소 구성.
+ * ④(측정 ≥5건)와, **CLAUDE.md 에서 뽑은 문서 ≥20건** 하한을 함께 채운다 —
+ * 후자는 추출 정규식이 깨졌을 때 가드가 조용히 비는 것을 막는 장치다(그래서 합성
+ * 트리도 실제처럼 여러 문서를 언급하는 CLAUDE.md 를 가져야 한다).
+ */
 function okTree(extra: Record<string, string> = {}) {
+  const docs: Record<string, string> = {}
+  const refs: string[] = []
+  for (let i = 0; i < 22; i++) {
+    const f = `docs/d${String(i).padStart(2, '0')}.md`
+    docs[f] = ko(100)
+    refs.push(`- 참조: \`${f}\``)
+  }
   return {
-    'CLAUDE.md': ko(1000),
+    // 🔑 CLAUDE.md 가 문서를 언급해야 ①-2 가 일한다. `먼저 읽` 이 붙은 줄은 A 등급이다.
+    'CLAUDE.md': [
+      ko(1000),
+      '',
+      '작업 전 `docs/design/urdeal-platform-model.md` 를 먼저 읽는다.',
+      '',
+      ...refs,
+    ].join('\n'),
+    'docs/design/urdeal-platform-model.md': ko(100),
     'docs/CURRENT_WORK.md': ko(100),
     'docs/handoff/INDEX.local.md': ko(100),
     '.claude/agents/dev.md': ko(100),
     '.claude/agents/ops.md': ko(100),
     'docs/handoff/2026-11-01-a.md': ko(100),
     'docs/handoff/2026-10-31-b.md': ko(100),
+    ...docs,
     ...extra,
   }
 }
@@ -97,28 +118,47 @@ describe('① 가드가 실제로 동작한다 (합성 트리 실행)', () => {
   })
 })
 
-describe('①-2 "먼저 읽어라" 고 지시받은 문서도 예산 대상이다', () => {
-  // 🩸 첫 판은 이 칸이 비어 있었다 — `CLAUDE.md` 가 *"새 세션은 이 문서로 전체 구조를 먼저
-  //   잡는다"* 고 지시하는 `urdeal-platform-model.md` 가 **30,584 토큰**인데 예산 밖이었다.
-  //   세션이 *자동으로* 읽는 것만 세고 *지시받아* 읽는 것을 빼면, 같은 비용이 다른 파일로
-  //   옮겨 가며 자란다(대표 질문 "이제 다 개선한거야?" 에 답하려 재서 발견했다).
-  it('🔴 지시받는 문서가 상한을 넘기면 잡는다', () => {
+describe('①-2 CLAUDE.md 가 언급하는 문서는 전부 예산 대상이다 (목록은 자동 추출)', () => {
+  // 🩸 첫 판은 이 칸이 비어 있었고, 두 번째 판은 **손으로 쓴 6줄 목록**이었다.
+  //   둘 다 같은 병이다 — `urdeal-platform-model.md` 가 30,584 토큰인데 예산 밖이었고
+  //   (1판), 손 목록은 **내일 추가되는 문서를 못 본다**(2판). 그래서 CLAUDE.md 를 파싱한다.
+  it('🔴 A등급(먼저 읽어라)이 상한을 넘기면 잡는다', () => {
     const r = runIn(okTree({ 'docs/design/urdeal-platform-model.md': ko(45_000) })) // 상한 40,000
     expect(r.code, '지시받는 문서가 상한을 넘겼는데 통과했다').not.toBe(0)
-    expect(r.out).toContain('urdeal-platform-model')
+    expect(r.out).toContain('먼저 읽어라')
   })
 
-  it('목록이 CLAUDE.md 의 실제 지시와 이어져 있다 (빈 목록이면 이 칸이 다시 눈먼다)', () => {
-    const g = read(GUARD)
-    const m = g.match(/const DIRECTED_READS = \[([\s\S]*?)\]/)
-    expect(m, 'DIRECTED_READS 가 없다').toBeTruthy()
-    const paths = [...m![1].matchAll(/'([^']+)'/g)].map((x) => x[1])
-    expect(paths.length, '목록이 비었다 — 검사가 아무것도 안 본다').toBeGreaterThanOrEqual(4)
-    // CLAUDE.md 가 실제로 그 문서를 가리키는지 — 손으로 적은 목록이 낡는 것을 막는다.
-    const md = read('CLAUDE.md')
-    const referenced = paths.filter((p) => md.includes(p))
-    expect(referenced.length, `CLAUDE.md 가 가리키지 않는 경로만 있다: ${paths.join(', ')}`)
-      .toBeGreaterThanOrEqual(3)
+  it('🔴 A등급은 grep 머리말로 면제되지 않는다 (통째로 읽으라고 지시한 문서다)', () => {
+    const r = runIn(
+      okTree({
+        'docs/design/urdeal-platform-model.md':
+          '# 제목\n\n> 통째로 읽지 말 것 — grep 하라.\n\n' + ko(45_000),
+      }),
+    )
+    expect(r.code, 'A등급이 머리말 하나로 면제됐다 — 그러면 상한이 무의미하다').not.toBe(0)
+  })
+
+  it('🔴 B등급(그 외 언급)이 크면서 경고 머리말이 없으면 잡는다', () => {
+    const r = runIn(okTree({ 'docs/d03.md': ko(45_000) }))
+    expect(r.code, '경고 없는 큰 문서가 통과했다').not.toBe(0)
+    expect(r.out).toContain('d03')
+  })
+
+  it('✅ B등급은 커도 grep 머리말이 있으면 통과한다 (이력은 값지다)', () => {
+    const r = runIn(
+      okTree({ 'docs/d03.md': '# 제목\n\n> 통째로 읽지 말 것 — grep 으로 찾아라.\n\n' + ko(45_000) }),
+    )
+    expect(r.code, `머리말이 있는데 막혔다: ${r.out}`).toBe(0)
+  })
+
+  it('🔴 추출이 비면 통과가 아니라 실패다 (정규식이 깨진 경우)', () => {
+    // CLAUDE.md 가 아무 문서도 언급하지 않는 트리 — 현실엔 없는 상태이므로
+    // 그렇게 보이면 가드 자신이 고장난 것이다.
+    const t = okTree()
+    const bare: Record<string, string> = { ...t, 'CLAUDE.md': ko(1000) }
+    const r = runIn(bare)
+    expect(r.code, '추출 0건인데 통과했다 — 헛도는 가드').not.toBe(0)
+    expect(r.out).toContain('추출 정규식')
   })
 })
 
