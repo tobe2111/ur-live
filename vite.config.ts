@@ -537,10 +537,12 @@ export default defineConfig({
           //   ⚠️⚠️ **왜 기존 청크(app-components)에 합치지 않고 전용 청크인가 — 실측으로 걸러낸 함정.**
           //   `manualChunks` 는 `build:ssr`(`vite build --ssr`, **같은 vite.config**)에도 적용돼
           //   **SSR 모듈 초기화 순서를 바꾼다.** 이 모듈을 `app-components` 로 보냈더니
-          //   `prerender:main` 출력이 **25,718 → 2,873 chars 로 붕괴**했다(SSR 중 컴포넌트가 던져
+          //   SSR 렌더 출력이 **25,718 → 2,873 chars 로 붕괴**했다(SSR 중 컴포넌트가 던져
           //   React 가 서브트리를 스트립 → "SSR-unsafe 경계" 경고). **빌드는 exit 0, tsc 도 0** 이라
           //   조용히 지나갈 뻔했다. 전용 leaf 청크로 두면 25,718 chars 그대로 + 같은 이득(216 KB).
-          //   ⇒ 청크를 옮길 때는 **번들 크기만 보지 말고 `prerender:main` 의 chars 도 같이 볼 것.**
+          //   ✅ 2026-11-01 — 이 교훈은 **가드로 환원됐다**: `scripts/check-ssr-render-window.mjs`
+          //      가 그 붕괴를 글자수 하한·Suspense 실패 마커로 잡고 `verify.yml` 이 PR 에서 막는다
+          //      (`npm run check:ssr-render`). 손으로 chars 를 비교하던 그 절차는 이제 자동이다.
           if (id.includes('/src/lib/utils')) return 'app-ui-utils'
           // 🪝 2026-10-20: 포커스 가두기 훅(react 만 import). 공용 묶음(app-components)의 장바구니 옵션 모달이 이것 하나를
           //   쓰는데, 규칙이 없어 쇼핑 상세 봉투(lz-productL — 사진 캐러셀·선물 모달 + embla 18.7KB)에 들어가 있었다 →

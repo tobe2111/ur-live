@@ -25,6 +25,9 @@ const WORKFLOW_DIR = '.github/workflows'
 
 /** CI 가 strict 로 돌리지만 **로컬 푸시 게이트에서는 뺀다** — 이유를 반드시 적는다. */
 export const EXCLUDE = {
+  'check-ssr-render-window.mjs':
+    'dist/server/entry-server.mjs 필요 — `npm run build:ssr` 를 먼저 돌려야 한다. 푸시 게이트가 빌드를 ' +
+    '돌리기 시작하면 20초 게이트가 깨진다(형제 check-surface-budgets·check-exec-cost 와 같은 이유).',
   'check-guard-mutations.mjs':
     '전수 주입은 실측 45분. PR 은 --changed, 전수는 guard-mutations-full.yml(main push + 야간).',
   'check-built-css.mjs':

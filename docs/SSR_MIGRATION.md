@@ -1,5 +1,10 @@
 # SSR 마이그레이션 가이드 (메인 페이지 우선)
 
+> 🔴 **이 문서의 2026-05~07 절은 역사 기록이다. 지금 상태는 맨 아래 [2026-11-01](#-2026-11-01--prerender-는-끝났다-그-단계는-검사기가-됐다) 절을 먼저 읽을 것.**
+> 그 절들이 약속하는 *"`view-source` 에 `data-ssr="main"` 이 보이면 확정"* 은 **더는 성립하지 않는다** —
+> prerender 는 2026-11-01 부터 **파일을 쓰지 않는다**(라이브가 그 산출물을 100% 버리기 때문).
+> 그 문장을 그대로 믿으면 멀쩡한 빌드를 "prerender 실패" 로 오진한다.
+
 **시작**: 2026-05-28
 **진행 책임자**: TBD
 **예상 완료**: 4-7일 (메인 페이지만)
@@ -181,3 +186,63 @@ Phase 4(`_routes.json`) / Phase 5(Lighthouse) 는 prerender 성공 확인 후 �
 **결론**: isLoggedInSync 수정이 포함된 현재 배포에서 prerender 가 **성공할 것**으로 높은 신뢰도. (이전 배포는 이 throw 로 skip → LCP 8-11s 유지였을 가능성.)
 
 **최종 확정(사용자/CI)**: Actions 빌드 로그 `[prerender-main] ... ✅` 또는 `view-source` 의 `<div id="root" data-ssr="main">`. 이 둘 중 하나만 확인하면 LCP 개선 확정.
+
+---
+
+## 🔬 2026-11-01 — prerender 는 끝났다. 그 단계는 **검사기**가 됐다
+
+`scripts/prerender-main.mjs` → **`scripts/check-ssr-render-window.mjs`**(`npm run check:ssr-render`).
+**HTML 을 파일에 쓰지 않는다.** 하는 일은 하나다 — 앱 트리 전체를 Node 에서 렌더해 **렌더 중
+`window`/`document` 접근을 잡는다.**
+
+### 왜 (전부 실측)
+
+| 실측 | 값 |
+|---|---|
+| 라이브가 구운 `#root` 를 쓰는가 | **아니오.** 워커가 모든 HTML 응답에서 교체(첫 화면 분기 + **catch-all `else`**) |
+| 우회 경로 | 없음. `/index.html` → Pages **308 → `/`** · 검색 크롤러는 봇 셸(`app.get('*')`) |
+| `#root` 를 읽는 가드 | **0개** |
+| 수리 전 구워진 내용 | `#root` **1,298B** · `role="status"` = **BrandLoader 스피너** |
+| 그 원인 | 호출부가 2번째 인자로 `null` → `renderAppComplete(url, timeoutMs = 20000)` → `setTimeout(…, null)` = **0ms** → 즉시 `renderToString` 폴백. **`allReady` 가 한 번도 돈 적이 없다** |
+| 인자를 빼면 | 107ms · **20,192자** · 에러 0 · Suspense 실패 **1 → 0** |
+| 그 대가 | `index.html` **28,568 → 47,860B (+19.3KB)** — 그 19KB 를 매 응답에서 워커가 파싱한 뒤 **버린다** |
+
+⇒ **둘을 같이** 했다: `allReady` 를 켜서 검사 범위를 **앱 트리 전체**로 넓히고(2026-07-05 가 고치려던
+*"스피너만 구워진다"* 해소) 산출물은 **쓰지 않아** 낭비를 0 으로 만든다.
+
+🔒 **안전 근거**: 이 단계는 몇 달간 매 빌드 죽어 있었고(= `index.html` 이 갱신되지 않았고) 그동안
+라이브는 멀쩡했다. "쓰지 않는 상태" 는 이미 프로덕션에서 검증된 상태다.
+
+### 실패를 어디서 막나 — **비대칭이 의도다**
+
+| 자리 | 동작 | 이유 |
+|---|---|---|
+| `npm run build` | **소리만** 낸다(`\|\| echo` 가 exit code 를 삼킨다) | 앱 트리 전체를 Node 에서 렌더하므로, 의존성 하나가 모듈 평가 중 `window` 를 읽으면 그날부터 **main 배포가 통째로 멎는다** |
+| `verify.yml`(PR) | **`--strict` → `exit 1`** | 머지를 막는 자리는 배포가 아니라 PR |
+
+⚠️ 이 비대칭을 지우지 말 것: strict 를 빌드 체인으로 옮기면 긴급 수정이 막히고, PR 게이트를 빼면
+이 검사가 **다시 로그 속 침묵**이 된다(그게 원 사고의 원인이었다).
+
+### 검증 방법 (지금의 올바른 절차)
+
+```bash
+npm run build:ssr && npm run check:ssr-render          # 빌드 체인과 같은 모드(소리만)
+npm run build:ssr && node scripts/check-ssr-render-window.mjs --strict   # PR 게이트와 같은 모드
+# 성공: "[ssr-render-window] ✅ 결함 0 — 렌더 중 브라우저 전역 접근 없음(앱 트리 전체)"
+```
+
+❌ **`dist/client/index.html` 에서 `data-ssr="main"` 을 찾지 말 것** — 이제 안 생긴다(그게 정상이다).
+
+### 짝 — 같은 불변식을 두 층에서
+
+- **소스 렌더**(PR, 1.9초): `src/tests/unit/ssr-render-window-2026-11-01.test.tsx` — `/`·`/videos`·`/seller`
+- **번들 렌더**(PR, 빌드 뒤): `scripts/check-ssr-render-window.mjs --strict` — 앱 트리 전체 + lazy 모듈
+
+🔴 **`entry-server.tsx` 머리말의 "lazy 는 safe" 는 2026-11-01 에 정정됐다** — `allReady` 는 lazy
+모듈을 끝까지 평가한다. 그 오해가 이 결함의 사각지대였다.
+
+### 아직 안 한 것
+
+렌더 중 `document.body` 를 읽는 **잠든** 두 자리(`CustomModal.tsx` · `main/AppDownloadModal.tsx` 의
+`createPortal`). 지금은 SSR 경로에 없어 검사기가 안 잡지만, 그 모달이 서버 렌더 경로에 들어오는 날
+같은 모양으로 터진다.
