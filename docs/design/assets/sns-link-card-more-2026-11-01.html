@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SNS 연동 카드 시안</title>
+<style>
+  :root{--brand:#1C69EF;--brand-tint:#EAF1FE;--bg:#F8F7FC;--surface:#fff;
+        --rule:rgb(22 24 28 / .08);--ink:#16181C;--soft:#666C72;--faint:#81868C;--sale:#DC2626;
+        --lift:0 2px 10px rgb(22 24 28 / .06)}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);padding:28px 16px 64px;
+       font-family:-apple-system,system-ui,"Apple SD Gothic Neo","Noto Sans KR","맑은 고딕",sans-serif;
+       -webkit-font-smoothing:antialiased}
+  h1{font-size:24px;font-weight:700;letter-spacing:-.01em}
+  .sub{font-size:13px;color:var(--soft);margin-top:6px;line-height:1.6;max-width:760px}
+  .row{display:flex;gap:16px;overflow-x:auto;padding:24px 0 8px;align-items:flex-start}
+  .col{flex:0 0 390px;width:390px}
+  .tag{font-size:12px;font-weight:500;color:var(--faint);letter-spacing:.02em}
+  .name{font-size:17px;font-weight:700;margin:4px 0 2px}
+  .why{font-size:12px;color:var(--soft);line-height:1.5;min-height:34px}
+  .card{background:var(--surface);border-radius:16px;box-shadow:var(--lift);padding:16px;margin-top:10px}
+  .cardTitle{font-size:15px;font-weight:500;margin-bottom:4px}
+  ul{list-style:none;padding:0}
+  li{padding:16px 0;border-top:1px solid var(--rule)}
+  li:first-child{border-top:0;padding-top:8px}
+  li:last-child{padding-bottom:0}
+  .top{display:flex;align-items:center;gap:12px}
+  .av{position:relative;flex:0 0 36px;width:36px;height:36px}
+  .av .ph{width:36px;height:36px;border-radius:999px;background:#E2E5E9;display:grid;place-items:center}
+  .av .lg{position:absolute;right:-2px;bottom:-2px;width:17px;height:17px;border-radius:999px;
+          background:#fff;display:grid;place-items:center;box-shadow:0 0 0 1.5px #fff}
+  .circ{flex:0 0 36px;width:36px;height:36px;border-radius:999px;display:grid;place-items:center;
+        background:var(--brand-tint);color:var(--brand)}
+  .circ.off{background:var(--bg);color:#CFD3D8}
+  .mid{min-width:0;flex:1}
+  .h{font-size:15px;font-weight:500;display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .h a{color:inherit;text-decoration:none}
+  .s{font-size:12px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .pill{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;background:var(--brand-tint);
+        color:var(--brand);border-radius:999px;padding:4px 8px;font-size:12px;font-weight:500}
+  .btn{flex:0 0 auto;background:var(--brand);color:#fff;border:0;border-radius:999px;
+       padding:8px 16px;font-size:13px;font-weight:500;font-family:inherit}
+  .btn.dim{background:var(--bg);color:var(--soft)}
+  .nums{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:12px}
+  .big{font-size:24px;font-weight:700;line-height:1}
+  .unit{font-size:13px;color:var(--soft);margin-left:4px}
+  .acts{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+  .act{display:inline-flex;align-items:center;gap:4px;border:0;background:0;color:var(--soft);
+       border-radius:999px;padding:4px 8px;font-size:13px;font-family:inherit}
+  .act.q{color:var(--faint)}
+  .stats{display:flex;gap:20px;margin-top:12px;align-items:flex-end}
+  .st{min-width:0}
+  .st .v{font-size:24px;font-weight:700;line-height:1}
+  .st .v.sm{font-size:17px}
+  .st .k{font-size:12px;color:var(--soft);margin-top:3px}
+  .note{display:flex;gap:6px;margin-top:10px;font-size:12px;color:var(--soft);line-height:1.5;align-items:flex-start}
+  .note b{font-weight:500;color:var(--ink)}
+  .note.warn{color:#8A5A00}
+  table{border-collapse:collapse;margin-top:14px;font-size:13px;width:100%}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{font-weight:500;color:var(--soft);font-size:12px}
+  td b{font-weight:500}
+  .ok{color:var(--brand);font-weight:500}
+  .no{color:var(--sale);font-weight:500}
+  .wrap{max-width:1680px;margin:0 auto}
+  .legend{font-size:12px;color:var(--faint);margin-top:18px;line-height:1.7}
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){--bg:#11141C;--surface:#1D1F29;--ink:#F8F7FC;--soft:#9FA3A8;
+      --faint:#6F747A;--brand-tint:#16243D;--brand:#4D8DF5;--rule:rgb(255 255 255 / .08);--lift:none}
+    :root:not([data-theme="light"]) .av .ph{background:#2A2E38}
+    :root:not([data-theme="light"]) .av .lg{background:#1D1F29;box-shadow:0 0 0 1.5px #1D1F29}
+  }
+</style></head><body><div class="wrap">
+
+<h1>SNS 연동 카드 — 정보를 더 띄우면</h1>
+<p class="sub">왼쪽이 지금 배포된 모양입니다. 오른쪽으로 갈수록 한 칸씩 더 띄웁니다.
+세 칸 모두 <b>플랫폼이 직접 준 값만</b> 씁니다 — 지어낸 숫자는 한 개도 없습니다.
+못 읽은 값은 <b>0 이 아니라 —</b> 입니다(모르는 것과 0 은 다릅니다).</p>
+
+<div class="row">
+
+<!-- ───────── 지금 ───────── -->
+<div class="col">
+  <p class="tag">지금 (배포됨)</p>
+  <p class="name">팔로워 + 신선도</p>
+  <p class="why">숫자 하나와 "언제 확인했나". 계정이 맞는지는 @아이디로만 압니다.</p>
+  <div class="card"><p class="cardTitle">SNS 연동</p>
+  <ul>
+    <li>
+      <div class="top">
+        <span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+        <div class="mid"><p class="h">@urdeal_jiwon</p><p class="s">인스타그램</p></div>
+        <span class="pill">✓ 연동됨</span>
+      </div>
+      <div class="nums">
+        <p><span class="big">12,480</span><span class="unit">팔로워</span></p>
+        <div class="acts"><button class="act">⟳ 방금 확인</button><button class="act q">해제</button></div>
+      </div>
+    </li>
+    <li>
+      <div class="top">
+        <span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="M11 9.5l4 2.5-4 2.5z" fill="currentColor" stroke="none"/></svg></span>
+        <div class="mid"><p class="h">@jiwon-table</p><p class="s">유튜브</p></div>
+        <span class="pill">✓ 연동됨</span>
+      </div>
+      <div class="nums">
+        <p><span class="big">3,210</span><span class="unit">구독자</span></p>
+        <div class="acts"><button class="act">⟳ 2일 전 확인</button><button class="act q">해제</button></div>
+      </div>
+    </li>
+    <li>
+      <div class="top">
+        <span class="circ off"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18a3 3 0 1 0 0-6v6zM12 12V4c1.2 2.2 2.8 3 5 3"/></svg></span>
+        <div class="mid"><p class="h">틱톡</p><p class="s">연동 준비 중</p></div>
+        <button class="btn dim">연동하기</button>
+      </div>
+    </li>
+  </ul></div>
+</div>
+
+<!-- ───────── 안 A ───────── -->
+<div class="col">
+  <p class="tag">안 A — 얼굴 · 계정 링크</p>
+  <p class="name">누른 계정이 맞는지 눈으로</p>
+  <p class="why">프로필 사진 + 이름 + 계정 열기. <b>계정 주소는 이미 저장돼 있는데 화면에서 안 쓰고 있었습니다.</b></p>
+  <div class="card"><p class="cardTitle">SNS 연동</p>
+  <ul>
+    <li>
+      <div class="top">
+        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
+          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></span></span>
+        <div class="mid"><p class="h">지원의 식탁 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@urdeal_jiwon · 인스타그램</p></div>
+        <span class="pill">✓ 연동됨</span>
+      </div>
+      <div class="nums">
+        <p><span class="big">12,480</span><span class="unit">팔로워</span></p>
+        <div class="acts"><button class="act">⟳ 방금 확인</button><button class="act q">해제</button></div>
+      </div>
+    </li>
+    <li>
+      <div class="top">
+        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
+          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="2.5" y="5" width="19" height="14" rx="4"/></svg></span></span>
+        <div class="mid"><p class="h">지원테이블 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@jiwon-table · 유튜브</p></div>
+        <span class="pill">✓ 연동됨</span>
+      </div>
+      <div class="nums">
+        <p><span class="big">3,210</span><span class="unit">구독자</span></p>
+        <div class="acts"><button class="act">⟳ 2일 전 확인</button><button class="act q">해제</button></div>
+      </div>
+    </li>
+    <li>
+      <div class="top">
+        <span class="circ off"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18a3 3 0 1 0 0-6v6zM12 12V4c1.2 2.2 2.8 3 5 3"/></svg></span>
+        <div class="mid"><p class="h">틱톡</p><p class="s">연동 준비 중</p></div>
+        <button class="btn dim">연동하기</button>
+      </div>
+    </li>
+  </ul></div>
+</div>
+
+<!-- ───────── 안 B ───────── -->
+<div class="col">
+  <p class="tag">안 B — 숫자를 더</p>
+  <p class="name">게시물 · 조회수까지</p>
+  <p class="why">유튜브는 <b>지금도 같은 응답에 들어오는데 버리고 있습니다</b>(추가 요청 0). 인스타는 게시물 수 한 줄 더.</p>
+  <div class="card"><p class="cardTitle">SNS 연동</p>
+  <ul>
+    <li>
+      <div class="top">
+        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
+          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></span></span>
+        <div class="mid"><p class="h">지원의 식탁 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@urdeal_jiwon · 인스타그램 · 크리에이터</p></div>
+        <span class="pill">✓ 연동됨</span>
+      </div>
+      <div class="stats">
+        <div class="st"><p class="v">12,480</p><p class="k">팔로워</p></div>
+        <div class="st"><p class="v sm">342</p><p class="k">게시물</p></div>
+        <div class="acts" style="margin-left:auto"><button class="act">⟳ 방금</button><button class="act q">해제</button></div>
+      </div>
+    </li>
+    <li>
+      <div class="top">
+        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
+          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="2.5" y="5" width="19" height="14" rx="4"/></svg></span></span>
+        <div class="mid"><p class="h">지원테이블 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@jiwon-table · 유튜브</p></div>
+        <span class="pill">✓ 연동됨</span>
+      </div>
+      <div class="stats">
+        <div class="st"><p class="v">3,210</p><p class="k">구독자</p></div>
+        <div class="st"><p class="v sm">87</p><p class="k">영상</p></div>
+        <div class="st"><p class="v sm">41.2만</p><p class="k">조회</p></div>
+        <div class="acts" style="margin-left:auto"><button class="act">⟳ 2일 전</button></div>
+      </div>
+    </li>
+    <li>
+      <div class="top">
+        <span class="circ off"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18a3 3 0 1 0 0-6v6zM12 12V4c1.2 2.2 2.8 3 5 3"/></svg></span>
+        <div class="mid"><p class="h">틱톡</p><p class="s">연동 준비 중</p></div>
+        <button class="btn dim">연동하기</button>
+      </div>
+    </li>
+  </ul></div>
+</div>
+
+<!-- ───────── 안 C ───────── -->
+<div class="col">
+  <p class="tag">안 C — 상태까지 (가장 많이 띄움)</p>
+  <p class="name">왜 못 읽었는지 · 언제 끊기는지</p>
+  <p class="why">숫자가 <b>—</b> 일 때 이유를 말해 줍니다. 토큰 만료도 미리 알려 줍니다. <b>새 조회 0</b> — 이미 저장된 값입니다.</p>
+  <div class="card"><p class="cardTitle">SNS 연동</p>
+  <ul>
+    <li>
+      <div class="top">
+        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
+          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></span></span>
+        <div class="mid"><p class="h">지원의 식탁 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@urdeal_jiwon · 인스타그램 · 크리에이터</p></div>
+        <span class="pill">✓ 연동됨</span>
+      </div>
+      <div class="stats">
+        <div class="st"><p class="v">12,480</p><p class="k">팔로워</p></div>
+        <div class="st"><p class="v sm">342</p><p class="k">게시물</p></div>
+        <div class="acts" style="margin-left:auto"><button class="act">⟳ 방금</button><button class="act q">해제</button></div>
+      </div>
+      <p class="note warn">⚠ <span><b>12일 뒤 연동이 끊겨요.</b> 그때 다시 눌러 주세요.</span></p>
+    </li>
+    <li>
+      <div class="top">
+        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
+          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="2.5" y="5" width="19" height="14" rx="4"/></svg></span></span>
+        <div class="mid"><p class="h">지원테이블 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@jiwon-table · 유튜브</p></div>
+        <span class="pill">✓ 연동됨</span>
+      </div>
+      <div class="stats">
+        <div class="st"><p class="v">—</p><p class="k">구독자</p></div>
+        <div class="st"><p class="v sm">87</p><p class="k">영상</p></div>
+        <div class="st"><p class="v sm">41.2만</p><p class="k">조회</p></div>
+        <div class="acts" style="margin-left:auto"><button class="act">⟳ 방금</button></div>
+      </div>
+      <p class="note">ⓘ <span><b>채널이 구독자 수를 숨겨 뒀어요.</b> 유튜브에서 공개로 바꾸면 바로 읽힙니다.</span></p>
+    </li>
+    <li>
+      <div class="top">
+        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
+          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><path d="M9 18a3 3 0 1 0 0-6v6zM12 12V4c1.2 2.2 2.8 3 5 3"/></svg></span></span>
+        <div class="mid"><p class="h">지원 jiwon <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@jiwon_eats · 틱톡</p></div>
+        <span class="pill">✓ 연동됨</span>
+      </div>
+      <div class="stats">
+        <div class="st"><p class="v">—</p><p class="k">팔로워</p></div>
+        <div class="acts" style="margin-left:auto"><button class="act">⟳ 방금</button><button class="act q">해제</button></div>
+      </div>
+      <p class="note">ⓘ <span><b>틱톡 승인을 기다리는 중이라 아직 못 읽어요.</b> 계정 확인은 끝났습니다.</span></p>
+    </li>
+  </ul></div>
+</div>
+
+</div><!-- /row -->
+
+<h1 style="margin-top:34px;font-size:17px">이 값이 어디서 오는가 — 지어낼 수 없는 것들</h1>
+<table>
+  <tr><th>띄울 값</th><th>인스타그램</th><th>유튜브</th><th>틱톡</th><th>비용</th></tr>
+  <tr><td><b>계정 링크 · 이름</b></td><td class="ok">이미 저장됨</td><td class="ok">이미 저장됨</td><td class="ok">이미 저장됨</td><td>0 — 화면만</td></tr>
+  <tr><td><b>프로필 사진</b></td><td>fields 한 줄 추가</td><td class="ok">이미 응답에 옴</td><td>fields 한 줄 추가</td><td>0 — 같은 요청</td></tr>
+  <tr><td><b>게시물 · 영상 수</b></td><td>fields 한 줄 추가</td><td class="ok">이미 응답에 옴</td><td class="no">심사 범위 필요</td><td>0 — 같은 요청</td></tr>
+  <tr><td><b>총 조회수</b></td><td class="no">없음</td><td class="ok">이미 응답에 옴</td><td class="no">심사 범위 필요</td><td>0</td></tr>
+  <tr><td><b>못 읽은 이유</b></td><td class="ok">계정 종류로 판정</td><td class="ok">숨김 여부가 옴</td><td class="ok">심사 전으로 판정</td><td>0 — 이미 저장됨</td></tr>
+  <tr><td><b>만료 안내</b></td><td class="ok">토큰 만료일 저장됨</td><td class="ok">저장됨</td><td class="ok">저장됨</td><td>0 — 이미 저장됨</td></tr>
+</table>
+<p class="legend">
+  ⓘ <b>안 A·C 는 새 조회가 0 입니다</b> — 이미 저장돼 있거나 같은 응답에 들어오는 값만 씁니다.<br>
+  ⓘ <b>안 B 의 유튜브도 추가 요청이 0</b> 입니다(`part=snippet,statistics` 를 이미 받아 그 안의 영상·조회 수를 버리고 있습니다).<br>
+  ⚠ <b>틱톡의 추가 숫자만 심사에 달려 있습니다</b> — 그래서 안 B·C 에서도 틱톡은 팔로워 한 칸입니다. 없는 칸을 빈 채로 두지 않습니다.<br>
+  ⚠ 넣을 자리는 코드 한 곳입니다 — `fetchProfile()`(연동과 다시 확인이 **같은 조회**를 씁니다).
+</p>
+</div></body></html>

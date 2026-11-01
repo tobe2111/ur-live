@@ -81,7 +81,8 @@ describe('🔴 대시보드는 다크에서도 흰색이다 (절대 규칙)', ()
 
   it('그 블록이 표면 세 토큰을 라이트 값으로 되박는다', () => {
     const { body } = lightForcedBlock()
-    expect(body, '--bg 되박기가 없다').toMatch(new RegExp(`--bg:\\s*${ink(50)}`, 'i'))
+    // 🤍 2026-11-01 — 대표 확정으로 바탕이 #FFFFFF 가 됐다(구 gray-50 #F8F7FC). 되박기도 같은 값이어야 한다.
+    expect(body, '--bg 되박기가 없다').toMatch(/--bg:\s*#FFFFFF/i)
     expect(body, '--surface 되박기가 없다').toMatch(/--surface:\s*#FFFFFF/i)
     expect(body, '--line 되박기가 없다').toMatch(new RegExp(`--line:\\s*${ink(200)}`, 'i'))
   })
@@ -89,11 +90,17 @@ describe('🔴 대시보드는 다크에서도 흰색이다 (절대 규칙)', ()
 
 describe('접은 짝은 값이 한 글자도 안 바뀐다', () => {
   it('토큰의 라이트 값이 접기 전 라이트 클래스와 같다', () => {
-    // bg-white(#FFFFFF) → bg-surface · border-gray-200(INK.200) → border-line · bg-gray-50(INK.50) → bg-warm
+    // bg-white(#FFFFFF) → bg-surface · border-gray-200(INK.200) → border-line
+    // 🤍 2026-11-01 — `--bg` 는 더 이상 gray-50 과 짝이 아니다. 대표 확정으로 **페이지 바탕이 흰색**이 됐고
+    //   (`docs/design/vouchers-no-banner-2026-11.md`), 그래서 `bg-warm` ↔ `bg-gray-50` 접기 짝은 끊겼다.
+    //   ⚠️ 지키려던 더 중요한 것(**`:root` 와 되박기 블록이 같은 값**)은 그대로 아래에서 본다 —
+    //   둘이 갈리면 같은 선이 섬 안팎에서 두 색이 된다.
     const { body } = lightForcedBlock()
     expect(body).toMatch(/--surface:\s*#FFFFFF/i)                               // = bg-white
     expect(body, '--line 이 gray-200 과 갈렸다').toMatch(new RegExp(`--line:\\s*${ink(200)}`, 'i'))
-    expect(body, '--bg 가 gray-50 과 갈렸다').toMatch(new RegExp(`--bg:\\s*${ink(50)}`, 'i'))
+    expect(body, '--bg 되박기가 #FFFFFF 가 아니다').toMatch(/--bg:\s*#FFFFFF/i)
+    const rootBg = CSS.slice(CSS.indexOf('  :root {'), CSS.indexOf('.dark, [data-theme="dark"]'))
+    expect(rootBg, ':root --bg 와 되박기 --bg 가 갈렸다').toMatch(/--bg:\s*#FFFFFF/i)
     // :root(라이트 기본)도 같은 값이어야 한다 — 되박기만 맞고 기본이 갈리면 섬 밖에서 선이 두 색이 된다.
     const root = CSS.slice(CSS.indexOf('  :root {'), CSS.indexOf('.dark, [data-theme="dark"]'))
     expect(root, ':root --line 이 gray-200 과 갈렸다').toMatch(new RegExp(`--line:\\s*${ink(200)}`, 'i'))

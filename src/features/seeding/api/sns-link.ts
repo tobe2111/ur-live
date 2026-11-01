@@ -19,7 +19,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { getAppConfig } from '../../instagram-autodm/api/autodm-store'
-import { encryptAtRest } from '../../../worker/utils/data-crypto'
+import { decryptAtRest, encryptAtRest } from '../../../worker/utils/data-crypto'
 import { isSeedingPlatform, type SeedingPlatform } from '../../../shared/seeding'
 
 export const SNS_ORIGIN = 'https://urdeal.kr'
@@ -137,10 +137,63 @@ type Res = { ok: true; account: FetchedAccount } | { ok: false; error: string }
 const j = async (r: Response) => (await r.json().catch(() => ({}))) as Record<string, any>
 const num = (v: unknown): number | null => (v === null || v === undefined || v === '' ? null : Number.isFinite(Number(v)) ? Math.floor(Number(v)) : null)
 
+/** 토큰만 있으면 읽을 수 있는 계정 정보(토큰 자체는 뺀다). */
+export type SnsProfile = Omit<FetchedAccount, 'access_token' | 'refresh_token' | 'expires_in'>
+type ProfileRes = { ok: true; profile: SnsProfile } | { ok: false; error: string }
+
+/**
+ * 토큰 하나로 계정·팔로워를 읽는다 — **연동(코드 교환)과 갱신이 같은 함수를 쓴다**.
+ *
+ * 🔁 2026-11-01 분리: 종전엔 이 조회가 `exchangeAndFetch` 안에 인라인이라, 제자리 갱신을 만들려면
+ *    같은 필드 목록과 같은 해석(숨긴 구독자 → null 등)을 **두 번째로 적어야** 했다. 두 벌이 되면
+ *    "연동했을 때와 다시 확인했을 때 숫자가 다른" 종류의 어긋남이 생기고 **에러는 안 난다**.
+ */
+export async function fetchProfile(p: SeedingPlatform, token: string): Promise<ProfileRes> {
+  try {
+    if (p === 'instagram') {
+      const me = await j(await fetch(`${IG_GRAPH}/me?fields=user_id,username,name,account_type,followers_count&access_token=${encodeURIComponent(token)}`))
+      const id = String(me.user_id || me.id || '')
+      if (!id) return { ok: false, error: '인스타그램 계정 정보를 받지 못했어요' }
+      return { ok: true, profile: {
+        external_id: id, username: me.username || null, display_name: me.name || null,
+        profile_url: me.username ? `https://www.instagram.com/${me.username}/` : null,
+        follower_count: num(me.followers_count), account_type: me.account_type || null,
+      } }
+    }
+    if (p === 'youtube') {
+      const ch = await j(await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true', { headers: { Authorization: `Bearer ${token}` } }))
+      const item = Array.isArray(ch.items) ? ch.items[0] : null
+      if (!item?.id) return { ok: false, error: '이 구글 계정에 유튜브 채널이 없어요' }
+      const hidden = item.statistics?.hiddenSubscriberCount === true
+      const custom = item.snippet?.customUrl ? String(item.snippet.customUrl).replace(/^@/, '') : null
+      return { ok: true, profile: {
+        external_id: String(item.id), username: custom, display_name: item.snippet?.title || null,
+        profile_url: custom ? `https://www.youtube.com/@${custom}` : `https://www.youtube.com/channel/${item.id}`,
+        // 숨긴 구독자는 0 이 아니라 **모름**이다 — 0 으로 적으면 조건 판정이 거짓말을 한다.
+        follower_count: hidden ? null : num(item.statistics?.subscriberCount), account_type: hidden ? 'hidden_subscribers' : 'channel',
+      } }
+    }
+    const info = await j(await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,username,display_name,profile_deep_link,follower_count', { headers: { Authorization: `Bearer ${token}` } }))
+    const u = info.data?.user
+    if (!u?.open_id) return { ok: false, error: '틱톡 계정 정보를 받지 못했어요' }
+    return { ok: true, profile: {
+      external_id: String(u.open_id), username: u.username || null, display_name: u.display_name || null,
+      profile_url: u.username ? `https://www.tiktok.com/@${u.username}` : (u.profile_deep_link || null),
+      // 심사 전에는 follower_count 가 안 온다 — 0 으로 위장하지 않고 null(= 읽지 못함).
+      follower_count: num(u.follower_count), account_type: null,
+    } }
+  } catch {
+    return { ok: false, error: '계정 정보를 읽지 못했어요' }
+  }
+}
+
 /** code → 토큰 → 계정·팔로워. throw 하지 않는다(이유를 돌려준다). */
 export async function exchangeAndFetch(env: SnsEnv, p: SeedingPlatform, code: string): Promise<Res> {
   const redirect = `${SNS_ORIGIN}${callbackPath(p)}`
   try {
+    let token = ''
+    let refresh: string | null = null
+    let expires: number | null = null
     if (p === 'instagram') {
       const ig = await getAppConfig(env.DB, env.DATA_ENCRYPTION_KEY)
       if (!ig.app_id || !ig.app_secret) return { ok: false, error: '인스타그램 연동이 아직 준비되지 않았어요' }
@@ -151,54 +204,30 @@ export async function exchangeAndFetch(env: SnsEnv, p: SeedingPlatform, code: st
       const b1 = await j(r1)
       const short = (Array.isArray(b1.data) ? b1.data[0] : b1) as { access_token?: string }
       if (!r1.ok || !short?.access_token) return { ok: false, error: '인스타그램 승인 코드를 바꾸지 못했어요' }
-      const r2 = await fetch(`https://graph.instagram.com/access_token?${new URLSearchParams({ grant_type: 'ig_exchange_token', client_secret: ig.app_secret, access_token: short.access_token })}`)
-      const b2 = await j(r2)
-      const token = String(b2.access_token || short.access_token)
-      const me = await j(await fetch(`${IG_GRAPH}/me?fields=user_id,username,name,account_type,followers_count&access_token=${encodeURIComponent(token)}`))
-      const id = String(me.user_id || me.id || '')
-      if (!id) return { ok: false, error: '인스타그램 계정 정보를 받지 못했어요' }
-      return { ok: true, account: {
-        external_id: id, username: me.username || null, display_name: me.name || null,
-        profile_url: me.username ? `https://www.instagram.com/${me.username}/` : null,
-        follower_count: num(me.followers_count), account_type: me.account_type || null,
-        access_token: token, refresh_token: null, expires_in: num(b2.expires_in),
-      } }
-    }
-    if (p === 'youtube') {
+      // 단기 토큰(1시간) → 장기 토큰(60일)으로 교환한다. 안 하면 다음 날 바로 끊긴다.
+      const b2 = await j(await fetch(`https://graph.instagram.com/access_token?${new URLSearchParams({ grant_type: 'ig_exchange_token', client_secret: ig.app_secret, access_token: short.access_token })}`))
+      token = String(b2.access_token || short.access_token)
+      expires = num(b2.expires_in)
+    } else if (p === 'youtube') {
       if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET) return { ok: false, error: '유튜브 연동이 아직 준비되지 않았어요' }
       const t = await j(await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ code, client_id: env.YOUTUBE_CLIENT_ID, client_secret: env.YOUTUBE_CLIENT_SECRET, redirect_uri: redirect, grant_type: 'authorization_code' }).toString(),
       }))
       if (!t.access_token) return { ok: false, error: '구글 승인 코드를 바꾸지 못했어요' }
-      const ch = await j(await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true', { headers: { Authorization: `Bearer ${t.access_token}` } }))
-      const item = Array.isArray(ch.items) ? ch.items[0] : null
-      if (!item?.id) return { ok: false, error: '이 구글 계정에 유튜브 채널이 없어요' }
-      const hidden = item.statistics?.hiddenSubscriberCount === true
-      const custom = item.snippet?.customUrl ? String(item.snippet.customUrl).replace(/^@/, '') : null
-      return { ok: true, account: {
-        external_id: String(item.id), username: custom, display_name: item.snippet?.title || null,
-        profile_url: custom ? `https://www.youtube.com/@${custom}` : `https://www.youtube.com/channel/${item.id}`,
-        follower_count: hidden ? null : num(item.statistics?.subscriberCount), account_type: hidden ? 'hidden_subscribers' : 'channel',
-        access_token: String(t.access_token), refresh_token: t.refresh_token || null, expires_in: num(t.expires_in),
-      } }
+      token = String(t.access_token); refresh = t.refresh_token || null; expires = num(t.expires_in)
+    } else {
+      if (!env.TIKTOK_CLIENT_KEY || !env.TIKTOK_CLIENT_SECRET) return { ok: false, error: '틱톡 연동이 아직 준비되지 않았어요' }
+      const t = await j(await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_key: env.TIKTOK_CLIENT_KEY, client_secret: env.TIKTOK_CLIENT_SECRET, code, grant_type: 'authorization_code', redirect_uri: redirect }).toString(),
+      }))
+      if (!t.access_token) return { ok: false, error: '틱톡 승인 코드를 바꾸지 못했어요' }
+      token = String(t.access_token); refresh = t.refresh_token || null; expires = num(t.expires_in)
     }
-    if (!env.TIKTOK_CLIENT_KEY || !env.TIKTOK_CLIENT_SECRET) return { ok: false, error: '틱톡 연동이 아직 준비되지 않았어요' }
-    const t = await j(await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
-      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ client_key: env.TIKTOK_CLIENT_KEY, client_secret: env.TIKTOK_CLIENT_SECRET, code, grant_type: 'authorization_code', redirect_uri: redirect }).toString(),
-    }))
-    if (!t.access_token) return { ok: false, error: '틱톡 승인 코드를 바꾸지 못했어요' }
-    const info = await j(await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,username,display_name,profile_deep_link,follower_count', { headers: { Authorization: `Bearer ${t.access_token}` } }))
-    const u = info.data?.user
-    if (!u?.open_id) return { ok: false, error: '틱톡 계정 정보를 받지 못했어요' }
-    return { ok: true, account: {
-      external_id: String(u.open_id), username: u.username || null, display_name: u.display_name || null,
-      profile_url: u.username ? `https://www.tiktok.com/@${u.username}` : (u.profile_deep_link || null),
-      // 심사 전에는 follower_count 가 안 온다 — 0 으로 위장하지 않고 null(= 읽지 못함).
-      follower_count: num(u.follower_count), account_type: null,
-      access_token: String(t.access_token), refresh_token: t.refresh_token || null, expires_in: num(t.expires_in),
-    } }
+    const got = await fetchProfile(p, token)
+    if (!got.ok) return got
+    return { ok: true, account: { ...got.profile, access_token: token, refresh_token: refresh, expires_in: expires } }
   } catch {
     return { ok: false, error: '연동 중 오류가 났어요' }
   }
@@ -223,6 +252,96 @@ export async function saveSnsLink(env: SnsEnv, userId: number, p: SeedingPlatfor
        refresh_token_enc = COALESCE(excluded.refresh_token_enc, user_sns_links.refresh_token_enc),
        token_expires_at = excluded.token_expires_at, verified_at = datetime('now'), updated_at = datetime('now')`,
   ).bind(userId, p, a.external_id, a.username, a.display_name, a.profile_url, a.follower_count, a.account_type, at, rt, exp).run()
+  return { ok: true }
+}
+
+/**
+ * 🔄 제자리 갱신 — 저장된 토큰으로 팔로워만 다시 읽는다 (2026-11-01 대표 *"새로고침도 있고 해야하지 않을까"*).
+ *
+ * 종전엔 "다시 확인" 이 플랫폼 로그인으로 **리다이렉트**였다(앱을 벗어났다가 돌아온다).
+ * 토큰은 처음부터 암호화 저장돼 있었으므로 그 왕복이 필요 없다.
+ *
+ * ⚠️ **수명이 플랫폼마다 다르다**: 구글 access token 은 ~1시간, 틱톡은 ~24시간이라 그냥 쓰면
+ *    가장 흔한 경우에 늘 실패한다 ⇒ `refresh_token` 으로 **먼저 갱신**한다. 인스타는 장기 토큰(60일)이라
+ *    만료가 가까울 때만 `ig_refresh_token` 으로 연장한다(24시간 안 된 토큰은 플랫폼이 거절하므로 실패해도 그냥 쓴다).
+ *
+ * 🔒 `external_id` 가 바뀌면 **갱신하지 않는다** — 플랫폼에서 다른 계정으로 로그인한 경우이고,
+ *    그대로 덮으면 "한 SNS 계정은 한 유어딜 계정" UNIQUE 가 지키던 것이 조용히 무너진다.
+ */
+export interface SnsRefreshResult { ok: boolean; error?: string; reconnect?: boolean }
+
+/** `YYYY-MM-DD HH:MM:SS`(Z 없는 UTC) 또는 ISO → epoch ms. 못 읽으면 NaN. */
+const expMs = (v: string | null | undefined): number =>
+  !v ? NaN : Date.parse(/[Z+]|\d{2}:\d{2}$/.test(v.slice(10)) ? v : `${v.replace(' ', 'T')}Z`)
+
+/** refresh_token 으로 access token 재발급. 못 하면 null(= 다시 연동해야 한다). */
+async function renewAccessToken(env: SnsEnv, p: SeedingPlatform, stored: { access: string; refresh: string | null }) {
+  try {
+    if (p === 'youtube') {
+      if (!stored.refresh || !env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET) return null
+      const t = await j(await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ refresh_token: stored.refresh, client_id: env.YOUTUBE_CLIENT_ID, client_secret: env.YOUTUBE_CLIENT_SECRET, grant_type: 'refresh_token' }).toString(),
+      }))
+      // 구글은 보통 새 refresh_token 을 안 준다 — 없으면 쓰던 것을 유지한다(COALESCE 와 짝).
+      return t.access_token ? { token: String(t.access_token), refresh: t.refresh_token || null, expires: num(t.expires_in) } : null
+    }
+    if (p === 'tiktok') {
+      if (!stored.refresh || !env.TIKTOK_CLIENT_KEY || !env.TIKTOK_CLIENT_SECRET) return null
+      const t = await j(await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_key: env.TIKTOK_CLIENT_KEY, client_secret: env.TIKTOK_CLIENT_SECRET, grant_type: 'refresh_token', refresh_token: stored.refresh }).toString(),
+      }))
+      return t.access_token ? { token: String(t.access_token), refresh: t.refresh_token || null, expires: num(t.expires_in) } : null
+    }
+    // 인스타: refresh_token 이 따로 없다 — 장기 토큰 자신을 연장한다.
+    const t = await j(await fetch(`https://graph.instagram.com/refresh_access_token?${new URLSearchParams({ grant_type: 'ig_refresh_token', access_token: stored.access })}`))
+    return t.access_token ? { token: String(t.access_token), refresh: null, expires: num(t.expires_in) } : null
+  } catch { return null }
+}
+
+export async function refreshSnsLink(env: SnsEnv, userId: number, p: SeedingPlatform): Promise<SnsRefreshResult> {
+  const row = await env.DB.prepare(
+    `SELECT external_id, access_token_enc, refresh_token_enc, token_expires_at FROM user_sns_links WHERE user_id = ? AND platform = ?`,
+  ).bind(userId, p).first<{ external_id: string; access_token_enc: string | null; refresh_token_enc: string | null; token_expires_at: string | null }>().catch(() => null)
+  if (!row) return { ok: false, error: '연동된 계정이 없어요' }
+
+  const kek = env.DATA_ENCRYPTION_KEY
+  const access = await decryptAtRest(row.access_token_enc, kek).catch(() => '')
+  if (!access) return { ok: false, error: '다시 연동해 주세요', reconnect: true }
+  const refresh = row.refresh_token_enc ? await decryptAtRest(row.refresh_token_enc, kek).catch(() => '') : ''
+
+  // 만료가 5분 안이면(또는 만료 시각을 모르면 유튜브·틱톡은) 먼저 재발급한다.
+  const exp = expMs(row.token_expires_at)
+  const soon = Number.isFinite(exp) ? exp - Date.now() < 5 * 60_000 : p !== 'instagram'
+  let token = access
+  let renewed: Awaited<ReturnType<typeof renewAccessToken>> = null
+  if (soon) {
+    renewed = await renewAccessToken(env, p, { access, refresh: refresh || null })
+    if (renewed) token = renewed.token
+  }
+
+  let got = await fetchProfile(p, token)
+  // 만료 예측이 빗나갔을 수 있다 — 한 번은 재발급해서 다시 시도한다(에러 문구로 판정하지 않는다).
+  if (!got.ok && !renewed) {
+    renewed = await renewAccessToken(env, p, { access, refresh: refresh || null })
+    if (renewed) { token = renewed.token; got = await fetchProfile(p, token) }
+  }
+  if (!got.ok) return { ok: false, error: '연동이 만료됐어요. 다시 연동해 주세요', reconnect: true }
+  if (got.profile.external_id !== row.external_id) {
+    return { ok: false, error: '플랫폼에 다른 계정으로 로그인돼 있어요. 해제한 뒤 다시 연동해 주세요', reconnect: true }
+  }
+
+  const a = got.profile
+  const at = renewed ? await encryptAtRest(token, kek).catch(() => null) : null
+  const rt = renewed?.refresh ? await encryptAtRest(renewed.refresh, kek).catch(() => null) : null
+  const newExp = renewed?.expires ? new Date(Date.now() + renewed.expires * 1000).toISOString().replace('T', ' ').slice(0, 19) : null
+  await env.DB.prepare(
+    `UPDATE user_sns_links SET username = ?, display_name = ?, profile_url = ?, follower_count = ?, account_type = ?,
+       access_token_enc = COALESCE(?, access_token_enc), refresh_token_enc = COALESCE(?, refresh_token_enc),
+       token_expires_at = COALESCE(?, token_expires_at), verified_at = datetime('now'), updated_at = datetime('now')
+     WHERE user_id = ? AND platform = ?`,
+  ).bind(a.username, a.display_name, a.profile_url, a.follower_count, a.account_type, at, rt, newExp, userId, p).run()
   return { ok: true }
 }
 
