@@ -27,7 +27,7 @@ export default [
   {
     name: '🎨 유어딜 아이콘을 import 만 하고 안 쓴다 (배선 끊김)',
     file: 'src/pages/user-profile/ShoppingGroup.tsx',
-    find: "  TicketStubIcon, CouponIcon, GiftBoxIcon, StayLineIcon, HeartIcon, StarIcon,\n  BellIcon, PinIcon, ReviewIcon,\n}",
+    find: "  TicketStubIcon, CouponIcon, GiftBoxIcon, StayLineIcon, HeartIcon, StarIcon,\n  BellIcon, PinIcon, ReviewIcon, HomeServiceLineIcon,\n}",
     replace: "  TicketStubIcon,\n}",
     test: TEST,
     why: '세트를 만들어 놓고 쓰지 않으면 화면은 종전 그대로다 — 종류 수 하한이 그 착각을 막는다.',
