@@ -37,6 +37,7 @@
  * 기본 warn-only(exit 0). 차단: STRICT_GUARD_REGISTRY=1 또는 `-s`.
  * 의도적 예외: 가드 파일 안에 `guard-registry-ok` 주석(미등록 허용 — 수동 전용 도구 등).
  */
+import { execFileSync } from 'node:child_process'
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -112,7 +113,7 @@ const guards = readdirSync('scripts')
 
 const runners = runnerText()
 const unregistered = []
-const danglingTargets = []
+let danglingTargets = []
 
 /**
  * R3 — **러너가 부르는 가드 스크립트가 실재하는가** (R1 의 역방향).
@@ -191,6 +192,41 @@ if (unregistered.length) {
   console.error(`   → audit-gate.sh 또는 .github/workflows 에 등록하세요.`)
   console.error(`     실행되지 않는 가드는 "보호받고 있다" 는 착각만 만듭니다.`)
   console.error(`     수동 전용 도구라면 파일에 \`guard-registry-ok\` 주석을 남기세요.`)
+}
+
+/**
+ * 🧩 2026-11-01 — **`.gitignore` 된 생성물은 dangling 이 아니다.**
+ *
+ * `check-context-budget` 가 `docs/handoff/INDEX.local.md`(인계 목차 사이드카)를 예산 대상으로
+ * 지목하는데, 그 파일은 **추적되지 않는다**(2026-10-06 에 "휘발성 생성물을 추적하면 머지마다
+ * 충돌한다" 로 사이드카가 됐다). 그래서 **로컬에는 있고 CI 체크아웃에는 없다** —
+ * R2 가 그걸 "존재하지 않는 파일을 지목" 으로 잡아 **로컬은 초록인데 CI 만 빨간불**이었다
+ * (실측: PR #2069 의 `Run unit tests` 실패 4건).
+ *
+ * ⚠️ 느슨해지지 않는다: 그 경로가 *낡는* 것은 생성기 쪽 가드가 따로 본다
+ * (`handoff-index-sidecar-2026-10-06.test.ts` 가 출력 경로를 고정한다). 여기서 거르는 것은
+ * **"추적되지 않아 CI 에 없을 수 있는 경로"** 뿐이고, 추적되는 파일의 오타·삭제는 그대로 잡는다.
+ */
+if (danglingTargets.length) {
+  try {
+    const ignored = new Set(
+      execFileSync('git', ['check-ignore', '--stdin'], {
+        input: [...new Set(danglingTargets.map((d) => d.target))].join('\n'),
+        encoding: 'utf8',
+      })
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean),
+    )
+    if (ignored.size) {
+      for (const d of danglingTargets) {
+        if (ignored.has(d.target)) console.log(`   ℹ️  ${d.guard} -> ${d.target} (.gitignore 된 생성물 — dangling 아님)`)
+      }
+      danglingTargets = danglingTargets.filter((d) => !ignored.has(d.target))
+    }
+  } catch {
+    // git 이 없거나 저장소 밖이면 거르지 않는다(보수적 — 종전 동작 유지).
+  }
 }
 
 if (danglingTargets.length) {
