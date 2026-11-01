@@ -50,6 +50,24 @@ export default function SnsLinkList({ links, available, only, returnTo, onChange
     } finally { setBusy('') }
   }
 
+  /**
+   * 🔄 제자리 갱신 — 저장된 토큰으로 팔로워만 다시 읽는다(앱을 안 벗어난다).
+   *   토큰이 죽었으면(`reconnect`) 그때만 플랫폼 로그인으로 보낸다 — 그게 실제로 고치는 길이고,
+   *   누른 사람의 의도("다시 확인")와도 같다. 조용히 실패하면 숫자가 왜 안 바뀌는지 알 수 없다.
+   */
+  async function refresh(p: SeedingPlatform) {
+    setBusy(p)
+    try {
+      const r = await api.post(`/api/seeding/sns/${p}/refresh`)
+      if (r.data?.success) { toast.success('다시 확인했어요'); onChanged?.(); return }
+      toast.error(r.data?.error || '다시 확인하지 못했어요')
+    } catch (e) {
+      const d = (e as { response?: { data?: { error?: string; reconnect?: boolean } } }).response?.data
+      toast.error(d?.error || '다시 확인하지 못했어요')
+      if (d?.reconnect) { await connect(p); return }
+    } finally { setBusy('') }
+  }
+
   async function unlink(p: SeedingPlatform) {
     setBusy(p)
     try { await api.delete(`/api/seeding/sns/${p}`); toast.success('연동을 해제했어요'); onChanged?.() }
@@ -101,10 +119,10 @@ export default function SnsLinkList({ links, available, only, returnTo, onChange
                   </span>
                 </p>
                 <div className="flex shrink-0 items-center gap-1">
-                  <button type="button" disabled={!!busy || !available[p]} onClick={() => connect(p)}
+                  <button type="button" disabled={!!busy || !available[p]} onClick={() => refresh(p)}
                     className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[13px] text-gray-600 hover:bg-warm disabled:opacity-50 dark:text-gray-300">
-                    <RefreshCw size={14} strokeWidth={1.6} aria-hidden="true" />
-                    {relativeFromNow(l.verified_at) || '확인'} 확인
+                    <RefreshCw size={14} strokeWidth={1.6} aria-hidden="true" className={busy === p ? 'animate-spin' : undefined} />
+                    {busy === p ? '확인 중' : `${relativeFromNow(l.verified_at) || '확인'} 확인`}
                   </button>
                   <button type="button" disabled={!!busy} onClick={() => unlink(p)}
                     className="rounded-full px-2 py-1 text-[13px] text-gray-400 hover:bg-warm dark:text-gray-500">해제</button>
