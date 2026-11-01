@@ -104,7 +104,7 @@ export default function MobileHomePage() {
    * 🌆 2026-10-31 대표 시안 8 — 고른 지역(또는 현재 위치) 도시 사진을 상단 배경으로. 사진이 있는 도시만(`region-hero.ts`).
    *   높이는 **종전 헤더 그대로**라 사진이 생겨도 아래가 안 밀린다. 사진은 첫 화면이 다 뜬 뒤(지연 로딩 이미지) 서서히 나타난다.
    *   🌤️ 2026-11-01 대표 *"밝은 사진 + 그라데이션, 지금은 어둡기만"* — `dark` 강제·남색 막을 걷었다. 글자는 테마 색 그대로이고
-   *   사진은 아래로 바탕색에 녹는다(라이트=흰색, 다크=#11141C).
+   *   사진은 아래로 바탕색에 녹는다(라이트=흰색, 다크=다크 바탕색).
    */
   const hero = regionHeroFor({ regionKey: region.regionKey, loc: userLoc })
   const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
@@ -274,7 +274,7 @@ export default function MobileHomePage() {
 function RegionHeroBg({ src }: { src: string }) {
   const [shown, setShown] = useState(false)
   return (
-    <div aria-hidden className="absolute inset-0 -z-10 pointer-events-none bg-white dark:bg-[#11141C]">
+    <div aria-hidden className="absolute inset-0 -z-10 pointer-events-none">
       <img src={src} alt="" loading="lazy" decoding="async" fetchPriority="low" onLoad={() => setShown(true)}
         className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${shown ? 'opacity-100' : 'opacity-0'}`} />
       <div className="absolute inset-0 dark:hidden" style={{ background: REGION_HERO_FADE_LIGHT }} />

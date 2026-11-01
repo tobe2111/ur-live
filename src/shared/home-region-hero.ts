@@ -56,9 +56,9 @@ export function regionHeroFor(input: { regionKey?: string | null; loc?: { lat: n
  * 🌤️ 2026-11-01 대표 *"밝은 사진들로 해서 그라데이션도 넣고 … 지금은 어둡기만 하네"* — 남색 막을 걷고 **밝게**.
  * 라이트: 사진은 그대로 밝게 두고 아래로 갈수록 흰색으로 녹아 목록과 이어진다(글자는 잉크색 그대로).
  *   왼쪽에 옅은 흰 막을 한 겹 더 깔아 로고·지역 이름이 사진 위에서도 읽힌다.
- * 다크: 같은 사진 위에 어두운 막을 얹고 아래로 다크 바탕색(#11141C)으로 녹인다(글자는 흰색 — 테마 그대로).
+ * 다크: 같은 사진 위에 어두운 막을 얹고 아래로 다크 바탕색(`--bg`)으로 녹인다(글자는 흰색 — 테마 그대로).
  */
 export const REGION_HERO_FADE_LIGHT =
-  'linear-gradient(90deg,rgba(255,255,255,.55),rgba(255,255,255,0) 50%),linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 28%,rgba(255,255,255,0) 52%,rgba(255,255,255,.8) 82%,#fff)'
+  'linear-gradient(90deg,rgba(255,255,255,.55),rgba(255,255,255,0) 50%),linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 28%,rgba(255,255,255,0) 52%,rgba(255,255,255,.8) 82%,white)'
 export const REGION_HERO_FADE_DARK =
-  'linear-gradient(180deg,rgba(17,20,28,.55),rgba(17,20,28,.35) 40%,rgba(17,20,28,.72) 75%,#11141C)'
+  'linear-gradient(180deg,rgba(17,20,28,.55),rgba(17,20,28,.35) 40%,rgba(17,20,28,.72) 75%,var(--bg))'
