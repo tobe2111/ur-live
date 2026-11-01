@@ -4,6 +4,7 @@
  *   ⚠️ 수집 ≠ 발송 — 공개 인허가 정보만. 자동 발송 경로 부존재.
  */
 import { csvResponse } from './pool-export'
+import { runBatchExport } from './pool-export-batch'
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
@@ -234,7 +235,9 @@ const EXPORT_MAX = 2000
  *   대표 우선업종은 **내보내기로 도달 자체가 불가능**했다.
  *   📞 도달 채널도 이메일이 아니라 **전화**다(이메일 8건 · 전화 27,831건) — `hasPhone=1` 이 이제 파일까지 간다.
  */
+// 📥 `newOnly`(기본 ON) — 받은 건 다시 안 준다: 미다운로드 500건 묶음 + 도장. `newOnly=0` 이면 종전 전체 덤프(도장 0).
 app.get('/export', async (c) => {
+  const newOnly = c.req.query('newOnly') !== '0'
   const filter: ProspectFilter = {
     category: c.req.query('category') || undefined,
     region: (c.req.query('region') || '').trim() || undefined,
@@ -244,13 +247,19 @@ app.get('/export', async (c) => {
     hasPhone: c.req.query('hasPhone') === '1',
     hasEmail: c.req.query('hasEmail') === '1',
     q: (c.req.query('q') || '').trim() || undefined,
+    notExported: newOnly,
   }
-  const rows = await listProspects(adsLeadsDb(c.env), { ...filter, limit: EXPORT_MAX })
+  const { rows, cap, notes } = await runBatchExport({
+    DB: adsLeadsDb(c.env), pool: 'store', newOnly, fullCap: EXPORT_MAX,
+    list: (limit, notExported) => listProspects(adsLeadsDb(c.env), { ...filter, notExported, limit }),
+    count: (notExported) => countProspects(adsLeadsDb(c.env), { ...filter, notExported }),
+  })
   return csvResponse({
     filename: 'store-prospects.csv',
     header: ['category', 'biz_name', 'region', 'phone', 'email', 'website', 'addr_road', 'status', 'is_new_open', 'apv_perm_ymd', 'collected_at'],
     rows: rows.map(r => [r.category, r.biz_name, r.region, r.phone, r.email, r.website, r.addr_road, r.status, r.is_new_open ? '개업' : '', r.apv_perm_ymd, (r.collected_at || '').slice(0, 10)]),
-    cap: EXPORT_MAX,
+    cap,
+    notes,
   })
 })
 

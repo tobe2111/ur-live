@@ -30,21 +30,6 @@ export interface Product {
 
 
 
-export interface SampleRequest {
-  id: number
-  seller_id: number
-  seller_name: string
-  seller_email: string
-  product_id: number
-  product_name: string
-  retail_price: number
-  supply_price: number
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
-  seller_memo: string | null
-  admin_memo: string | null
-  created_at: string
-  approved_at: string | null
-}
 
 export const EMPTY_FORM = {
   name: '', description: '', long_description: '', price: '', compare_at_price: '',

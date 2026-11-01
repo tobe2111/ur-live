@@ -2298,7 +2298,9 @@
       "categoryActivity": "Activity voucher",
       "categoryActivityDesc": "Escape room, bowling, class",
       "categoryEtc": "その他の券",
-      "categoryEtcDesc": "ペット·アクティビティ·クラス"
+      "categoryEtcDesc": "ペット·アクティビティ·クラス",
+      "categoryHome": "生活チケット",
+      "categoryHomeDesc": "引越し・入居清掃・エアコン清掃"
     },
     "gift": {
       "title": "ギフトを送る",
@@ -2443,7 +2445,8 @@
       "channelConfirm": "この方式で運営します",
       "channelSaving": "保存中…",
       "channelSaved": "運営方式を保存しました",
-      "channelSaveFailed": "運営方式を保存できませんでした"
+      "channelSaveFailed": "運営方式を保存できませんでした",
+      "seedingSaveFailed": "無料体験の設定を保存できませんでした。店舗のリクエスト画面でもう一度オンにしてください"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -3288,7 +3291,8 @@
       "brandWideTitleOff": "他店舗でも利用",
       "brandWideNote": "その店舗の確認コード・スキャンで使用処理されます。精算はこの店舗に入ります。",
       "brandWideTitleAll": "ブランド店舗{{count}}店でも利用",
-      "brandWideNoteCross": "同じオーナーの店舗で使うとこの店舗に、別オーナーの店舗で使うとその店舗に精算されます。紹介料が付いた利用券は同じオーナーの店舗でのみ使えます。"
+      "brandWideNoteCross": "同じオーナーの店舗で使うとこの店舗に、別オーナーの店舗で使うとその店舗に精算されます。紹介料が付いた利用券は同じオーナーの店舗でのみ使えます。",
+      "agencyMine": "当社が担当する利用券"
     },
     "ordersM3": {
       "today": "今日",
@@ -3380,6 +3384,30 @@
       "am": "午前",
       "pm": "午後",
       "hour": "{{n}}時"
+    },
+    "channelPerf": {
+      "title": "誰が売ったか",
+      "month": "今月",
+      "last30": "直近30日",
+      "all": "全期間",
+      "who": "誰が",
+      "sold": "販売",
+      "revenue": "売上",
+      "used": "使用",
+      "refunded": "返金",
+      "products": "担当利用券 {{n}}件",
+      "ended": "運営終了",
+      "pending": "承諾待ち",
+      "noAgency": "エージェンシーに任せると、エージェンシーごとに別々に集計されます(運営者管理 → エージェンシーに任せる)。",
+      "referralTitle": "紹介リンク経由の販売",
+      "noReferral": "この期間に紹介リンク経由で売れた利用券はありません。",
+      "unknownUser": "不明なユーザー",
+      "soldN": "{{n}}枚",
+      "commission": "インフルエンサー手数料 {{n}}ウォン",
+      "share": "取り分 {{pct}}% · {{n}}ウォン",
+      "shareUnset": "取り分 未設定",
+      "shareNote": "UrDealは支払う金額を計算して表示するだけです。お金は店舗がエージェンシーに直接送り、税金計算書はエージェンシーが店舗に発行します。",
+      "note": "紹介リンクの販売は上の販売に既に含まれています。同じ販売を「誰が担当したか」と「誰のリンクから来たか」の二つの視点で見ます。"
     }
   },
   "admin": {
@@ -5821,7 +5849,9 @@
     "sharedShareDesc": "Urdealで素晴らしい商品を見つけました",
     "sharedShareBtn": "商品を見る",
     "sellerReplyLabel": "販売者の返信",
-    "sponsoredBadge": "体験提供"
+    "sponsoredBadge": "体験提供",
+    "loadMore": "レビューをもっと見る（残り{{n}}件）",
+    "loadingMore": "読み込み中…"
   },
   "productOption": {
     "title": "商品オプション管理",
@@ -5928,6 +5958,7 @@
       "health": "ヘルス",
       "pet": "ペット",
       "stay": "宿泊",
+      "home": "生活",
       "activity": "アクティビティ",
       "etc": "その他"
     },
@@ -6017,7 +6048,9 @@
     "privacyLink": "プライバシーポリシー",
     "termsNoticeEnd": "に同意したものとみなされます",
     "agencyQuestion": "エージェンシーの方ですか？",
-    "agencyLogin": "エージェンシーログイン"
+    "agencyLogin": "エージェンシーログイン",
+    "heroTitle2": "ご近所のお店、先に買えばもっとお得",
+    "chipPass": "ご近所の利用券"
   },
   "guide": {
     "sectionTitlePlaceholder": "セクションタイトル",
@@ -6231,6 +6264,7 @@
     "coupons": "クーポン",
     "orders": "[TODO:ja] 주문 내역",
     "ordersSub": "[TODO:ja] 최근 3개월",
+    "paymentHistory": "決済履歴",
     "myStays": "宿泊予約",
     "myStaysSub": "チェックインコード / 有効期限",
     "interestList": "お気に入り店舗",

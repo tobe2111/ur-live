@@ -92,4 +92,28 @@ export default [
     test: TEST,
     why: '1세그먼트 미등록 경로는 몰 후보라 라우트 판정에서 제외된다 — MALL 슬롯이 받지 않으면 그 구멍이 다시 열린다.',
   },
+  {
+    name: '🧩 워커 화면(/embed) 집합이 비었다 — 위젯이 다시 404',
+    file: SSOT,
+    find: "new Set(['embed'])",
+    replace: "new Set<string>([])",
+    test: TEST,
+    why: '2026-10-31 라이브 실측 — 워커가 그리는 위젯·코드 만들기 화면이 본문은 멀쩡한데 HTTP 404 로 나갔다.',
+  },
+  {
+    name: '🧩 워커 화면 판정 줄이 사라졌다 — 위젯이 다시 404',
+    file: SSOT,
+    find: "  if (WORKER_SURFACE_SEGMENTS.has(segs[0])) return true",
+    replace: "  if (false) return true",
+    test: TEST,
+    why: '집합은 남아도 판정에서 안 읽으면 같은 404 가 돌아온다(계산과 사용은 다른 자리).',
+  },
+  {
+    name: '🧩 embed 를 몰 예약어에서 뺀다 — /embed 가 몰 후보로 가 404',
+    file: 'src/shared/mall/slug.ts',
+    find: "  'embed', 'experience',",
+    replace: "  'experience',",
+    test: TEST,
+    why: '2026-10-31 라이브 실측 — `/embed` 가 MALL 슬롯 self-fetch 404 를 받아 본문은 멀쩡한데 상태 404. 그 슬러그로 몰을 만들면 위젯 화면을 먹는다.',
+  },
 ]

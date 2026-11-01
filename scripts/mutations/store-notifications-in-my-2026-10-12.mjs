@@ -54,8 +54,8 @@ export default [
   {
     name: '[판매알림] 마이에서 종이 사라진다',
     file: MY,
-    find: "        {!awaiting && <StoreNotifButton currentSellerId={store.seller_id} onOpenPage={(p) => { void openPage(p, '') }} />}\n",
-    replace: '\n',
+    find: "          <StoreNotifButton variant=\"row\" currentSellerId={store.seller_id} onOpenPage={(p) => { void openPage(p, '') }} />\n",
+    replace: "          null\n",
     test: TEST,
     why: '대시보드 껍데기를 지우면 이 종이 판매 알림의 유일한 받은편지함이다.',
   },

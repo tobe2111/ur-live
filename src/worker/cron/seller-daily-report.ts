@@ -18,6 +18,7 @@
 import type { Env } from '../types/env'
 import { sendEmail } from '../../services/email'
 import { transactionalMailReady } from '../../lib/ncp-sens-mail'
+import { chunkForBinds } from '../../shared/db/d1-binds'
 import { getSellerMeta } from '../utils/seller-meta'
 import { settingOn, yesterdayKstRange, escHtml, SELLER_DAILY_REPORT_GATE } from '../utils/owner-nudges'
 
@@ -73,8 +74,11 @@ export async function handleSellerDailyReport(env: Env): Promise<{ sent: number;
     return v
   }
   const ids = targets.map(s => s.id)
-  for (let i = 0; i < ids.length; i += 100) {
-    const chunk = ids.slice(i, i + 100)
+  // 🔢 D1 은 **한 문장에 바인딩 100개**까지고 아래 네 쿼리는 기간 두 개를 더 쓴다 → id 는 98개씩.
+  //    🩸 2026-10-26 까지 100개씩 잘라 **102개**를 보냈다: 셀러가 100곳을 넘는 날 전 쿼리가
+  //    `too many SQL variables` 로 실패하고 `.catch` 가 빈 배열로 삼켜 **일일 리포트가 "어제 0건"**
+  //    이라고 말했을 것이다(라이브 셀러가 13곳이라 아직 안 터졌다). 청크 크기를 손으로 적지 않는다.
+  for (const chunk of chunkForBinds(ids, 2)) {
     const ph = chunk.map(() => '?').join(',')
     // 팔린 이용권 — 0원 체험권은 판매가 아니라서 뺀다(컬럼이 없는 옛 스키마면 그냥 센다).
     const soldSql = (exp: string) => `SELECT p.seller_id AS sid, COUNT(*) AS n, COALESCE(SUM(COALESCE(v.applied_price, p.price, 0)), 0) AS amt

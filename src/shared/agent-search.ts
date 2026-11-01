@@ -19,11 +19,14 @@ import { parseRegionFromAddress, regionLabel } from './constants/region-slugs'
 
 export const AGENT_SEARCH_GATE = 'agent_search_enabled'
 export const AGENT_SEARCH_MAX = 10
+/** 창구 주소 — 라우트 마운트(`public-utility.routes.ts` `/api/agent` + `agent-search.routes.ts` `/search`)와 같은 값. */
+export const AGENT_SEARCH_PATH = '/api/agent/search'
 
 export const AGENT_CATEGORY: Record<string, { key: string; label: string }> = {
   meal: { key: 'meal_voucher', label: '식사' },
   beauty: { key: 'beauty_voucher', label: '뷰티' },
   stay: { key: 'stay_voucher', label: '숙소' },
+  home: { key: 'home_voucher', label: '생활' },
   etc: { key: 'etc_voucher', label: '기타' },
 }
 
@@ -58,6 +61,8 @@ export interface AgentRow {
 }
 
 export interface AgentItem {
+  /** 결제 링크(`/api/agent/checkout?id=`)에 넘기는 상품 번호. */
+  id: number
   name: string
   store: string | null
   area: string | null
@@ -77,6 +82,7 @@ export function toAgentItem(row: AgentRow, origin: string): AgentItem | null {
   const ref = parseRegionFromAddress(row.restaurant_address)
   const label = Object.values(AGENT_CATEGORY).find(c => c.key === row.category)?.label ?? '이용권'
   return {
+    id: Number(row.id),
     name: String(row.name || '').trim(),
     store: row.restaurant_name ? String(row.restaurant_name).trim() : null,
     area: ref ? regionLabel(ref) : null,
@@ -91,3 +97,24 @@ export function toAgentItem(row: AgentRow, origin: string): AgentItem | null {
 
 /** AI 비서가 손님에게 그대로 옮길 수 있는 사용법 한 줄 — 지어내지 않는다(실제 흐름). */
 export const AGENT_HOW_TO_BUY = '상품 주소(url)에서 결제하면 이용권이 바로 발급되고, 매장에서 QR이나 확인코드로 사용합니다. 유효기간 안에 쓰지 않은 이용권은 자동으로 환불됩니다.'
+
+/**
+ * 🤖 `llms.txt` 에 싣는 창구 안내 (2026-10-20 대표 *"통로 열어줘"*).
+ *
+ * 창구를 켜도 AI 가 그 주소를 모르면 아무도 안 쓴다. `llms.txt` 는 AI 가 사이트를 읽을 때 처음 찾는 입구라
+ * 거기에 싣는다. 문구가 이 파일에 있는 이유: 창구의 규칙(필수 입력·상한·결제 위치)이 여기 있어서다 —
+ * 두 군데 적으면 상한을 바꿀 때 안내만 낡는다. **게이트가 켜져 있을 때만** 싣는 판단은 라우트가 한다.
+ */
+export function agentSearchLines(base: string): string[] {
+  const cats = Object.keys(AGENT_CATEGORY).join(', ')
+  return [
+    '## AI 비서용 이용권 검색',
+    '',
+    `- 주소: GET ${base}${AGENT_SEARCH_PATH}?q=검색어&region=지역&category=분류`,
+    '- 검색어(q)나 지역(region) 중 하나는 꼭 넣는다. 지역은 "서초구"처럼 동네 이름으로 쓴다.',
+    `- 분류(category)는 선택이다: ${cats}`,
+    `- 한 번에 최대 ${AGENT_SEARCH_MAX}건, 지금 살 수 있는 실제 매장 이용권만 돌려준다.`,
+    '- 결제는 응답의 url(유어딜 상세 페이지)에서 사람이 직접 한다.',
+    '',
+  ]
+}

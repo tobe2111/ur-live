@@ -8,7 +8,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { cfImage } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
-import { Eye, EyeOff, Pencil, Trash2, MapPin, RefreshCw, Target, Search, X } from 'lucide-react'
+import { Eye, EyeOff, Pencil, Trash2, MapPin, RefreshCw, Target, Search, X, SlidersHorizontal, Undo2 } from 'lucide-react'
 import type { DealRow } from './types'
 import { CAT_LABEL } from './types'
 import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
@@ -17,7 +17,14 @@ import { cleanSido, buildRegionParam } from './region-util'
 // 🎛️ 2026-07-04 (대표 "지원자 수·기간 각각 설정"): 행별 추첨 설정 인라인 편집 상태.
 interface FcfsDraft { id: number; spots: string; applied: string; deadline: string; loading: boolean }
 
-export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; onEdit: (d: DealRow) => void; onChanged: () => void }) {
+/**
+ * 🎟️ 2026-10-20 (대표 *"상품관리 + 이용권 공구 … 역할이 모호해"*): 이 목록이 **'이용권 관리' 화면의 본체**가 됐다.
+ *   옛 '공구 엔진 조종석'(판매 설정)과 '이용권 공구'(강제 환불)가 줄마다의 버튼으로 들어왔다 — 둘 다 선택 prop.
+ */
+export default function DealList({ nonce, onEdit, onChanged, onSettings, onRefund, refundingId }: {
+  nonce: number; onEdit: (d: DealRow) => void; onChanged: () => void
+  onSettings?: (d: DealRow) => void; onRefund?: (d: DealRow) => void; refundingId?: number | null
+}) {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
   const [rows, setRows] = useState<DealRow[]>([])
   const [total, setTotal] = useState(0)
@@ -117,7 +124,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
   }
 
   const remove = async (d: DealRow) => {
-    if (!confirm(`"${d.name}" 동네딜을 삭제할까요? (되돌릴 수 없음)`)) return
+    if (!confirm(`"${d.name}" 이용권을 삭제할까요? (되돌릴 수 없음)`)) return
     setBusyId(d.id)
     try {
       await api.delete(`/api/admin/products/${d.id}`, h)
@@ -139,7 +146,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
   const removeSelected = async () => {
     const ids = rows.filter((d) => selected.has(d.id)).map((d) => d.id)
     if (ids.length === 0) return
-    if (!confirm(`선택한 ${ids.length}개 동네딜을 삭제할까요? (되돌릴 수 없음 · 주문 이력이 있으면 자동으로 숨김 처리)`)) return
+    if (!confirm(`선택한 ${ids.length}개 이용권을 삭제할까요? (되돌릴 수 없음 · 주문 이력이 있으면 자동으로 숨김 처리)`)) return
     setBulkBusy(true)
     // 단건 DELETE 순회 — 각 요청이 부속 데이터 정리 + 주문이력 시 soft-retire 를 이미 처리(엔드포인트 정책 재사용).
     const results = await Promise.allSettled(ids.map((id) => api.delete(`/api/admin/products/${id}`, h)))
@@ -158,7 +165,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
     <div className="bg-white rounded-2xl border border-gray-200 p-5">
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-bold text-gray-900">{anyFilter ? '필터 결과' : '등록된 동네딜'} ({total > rows.length ? `${rows.length} / ${total}` : total})</p>
+          <p className="text-sm font-bold text-gray-900">{anyFilter ? '필터 결과' : '등록된 이용권'} ({total > rows.length ? `${rows.length} / ${total}` : total})</p>
           {selected.size > 0 && (
             <button
               onClick={removeSelected}
@@ -195,7 +202,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
             //   (Esc 는 브라우저가 type="search" 에서 이미 값을 비우고, 그러면 onChange 가 따라간다.)
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setFQuery(qInput.trim()) } }}
             placeholder="매장명 · 상품명 · 주소 · id (Enter 로 바로 검색)"
-            aria-label="동네딜 검색"
+            aria-label="이용권 검색"
             className="w-[220px] pl-8 pr-7 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white placeholder:text-gray-400"
           />
           {qInput && (
@@ -221,6 +228,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
           <option value="">전체 카테고리</option>
           <option value="meal_voucher">식사</option>
           <option value="beauty_voucher">미용</option>
+          <option value="home_voucher">생활</option>
           <option value="etc_voucher">기타</option>
           <option value="general">일반</option>
           <option value="stay_voucher">숙소</option>
@@ -256,9 +264,9 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
         <p className="text-sm text-gray-400 py-8 text-center">불러오는 중…</p>
       ) : rows.length === 0 ? (
         <p className="text-sm text-gray-400 py-8 text-center">
-          {fQuery ? `'${fQuery}' 로 찾은 동네딜이 없습니다. 매장명 · 상품명 · 주소 · id 로 찾을 수 있어요.`
-            : anyFilter ? '이 필터에 해당하는 동네딜이 없습니다. 필터를 조정해보세요.'
-            : '아직 등록된 동네딜이 없습니다. 위에서 추가해보세요.'}
+          {fQuery ? `'${fQuery}' 로 찾은 이용권이 없습니다. 매장명 · 상품명 · 주소 · id 로 찾을 수 있어요.`
+            : anyFilter ? '이 필터에 해당하는 이용권이 없습니다. 필터를 조정해보세요.'
+            : '아직 등록된 이용권이 없습니다. [이용권 등록]에서 올려 보세요.'}
         </p>
       ) : (
         <div className="divide-y divide-gray-100">
@@ -288,9 +296,15 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
                 <p className="text-[11px] text-gray-500 truncate">
                   {formatNumber(d.price)}원{d.restaurant_name ? ` · ${d.restaurant_name}` : ''}
                   {d.restaurant_lat ? <span className="text-emerald-600"> · 📍지도</span> : <span className="text-amber-500"> · 좌표없음</span>}
+                  {d.sold != null && <span> · 판매 {formatNumber(d.sold)}장 · 사용 {formatNumber(d.used ?? 0)}장</span>}
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                {onSettings && (
+                  <button onClick={() => onSettings(d)} title="판매 설정(공구 특가·마감·소개비율)" className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </button>
+                )}
                 <button onClick={() => openFcfs(d)} title="추첨 설정(지원자·정원·마감)" className={`p-2 rounded-lg hover:bg-gray-100 ${fcfsDraft?.id === d.id ? 'text-gray-900 bg-gray-100' : 'text-gray-500'}`}>
                   <Target className="w-4 h-4" />
                 </button>
@@ -300,6 +314,11 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
                 <button onClick={() => onEdit(d)} title="수정" className="p-2 rounded-lg hover:bg-gray-100 text-gray-600">
                   <Pencil className="w-4 h-4" />
                 </button>
+                {onRefund && (
+                  <button onClick={() => onRefund(d)} disabled={refundingId === d.id} title="강제 환불(미사용 이용권 전부 환불 · 판매 중지)" className="p-2 rounded-lg hover:bg-red-50 text-red-500 disabled:opacity-40">
+                    <Undo2 className="w-4 h-4" />
+                  </button>
+                )}
                 <button onClick={() => remove(d)} disabled={busyId === d.id} title="삭제" className="p-2 rounded-lg hover:bg-red-50 text-red-500 disabled:opacity-40">
                   <Trash2 className="w-4 h-4" />
                 </button>

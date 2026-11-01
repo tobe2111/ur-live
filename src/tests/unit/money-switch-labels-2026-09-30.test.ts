@@ -51,6 +51,7 @@ const KEYS_AT_CLEANUP = [
   'settlement_skip_ledgered', 'outreach_auto_send', 'review_bonus_owner_funded',
   // 2026-10-18 추가 — 다른 점주 가맹점 사용(결재 2026-10-18-franchise-cross-owner-redeem). 새 손잡이는 여기에 등록한다.
   'brand_cross_owner_redeem_enabled',
+  'stay_voucher_unify_enabled', // 🏡 2026-10-25 숙소=이용권 통일(결재 2026-10-25-stay-qr-checkin) — 새 손잡이
 ]
 
 describe('머니 스위치 라벨 — 짚을 수 있는가', () => {

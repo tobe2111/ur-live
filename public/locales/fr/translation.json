@@ -1579,7 +1579,9 @@
       "categoryActivity": "Activity voucher",
       "categoryActivityDesc": "Escape room, bowling, class",
       "categoryEtc": "Autre Bon",
-      "categoryEtcDesc": "Animaux·Activités·Cours"
+      "categoryEtcDesc": "Animaux·Activités·Cours",
+      "categoryHome": "Bon maison",
+      "categoryHomeDesc": "Déménagement, ménage, climatisation"
     },
     "gift": {
       "title": "Envoyer un Cadeau",
@@ -1724,7 +1726,8 @@
       "channelConfirm": "Confirmer",
       "channelSaving": "Enregistrement…",
       "channelSaved": "Mode de gestion enregistré",
-      "channelSaveFailed": "Impossible d’enregistrer le mode de gestion"
+      "channelSaveFailed": "Impossible d’enregistrer le mode de gestion",
+      "seedingSaveFailed": "Impossible d'enregistrer l'essai gratuit. Réactivez-le dans la boîte des demandes de votre boutique"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -2569,7 +2572,8 @@
       "brandWideTitleOff": "Valable dans d'autres établissements",
       "brandWideNote": "Validé avec le code ou le scan de cet établissement. Le règlement reste à cet établissement.",
       "brandWideTitleAll": "Aussi utilisable dans {{count}} établissements de la marque",
-      "brandWideNoteCross": "Utilisé chez le même propriétaire, il est réglé ici ; utilisé chez un autre propriétaire, il est réglé là-bas. Les bons avec commission de parrainage ne s'utilisent que chez le même propriétaire."
+      "brandWideNoteCross": "Utilisé chez le même propriétaire, il est réglé ici ; utilisé chez un autre propriétaire, il est réglé là-bas. Les bons avec commission de parrainage ne s'utilisent que chez le même propriétaire.",
+      "agencyMine": "Bons que nous gérons"
     },
     "ordersM3": {
       "today": "Aujourd'hui",
@@ -2661,6 +2665,30 @@
       "am": "matin",
       "pm": "après-midi",
       "hour": "{{n}}h"
+    },
+    "channelPerf": {
+      "title": "Qui a vendu",
+      "month": "Ce mois-ci",
+      "last30": "30 derniers jours",
+      "all": "Tout",
+      "who": "Qui",
+      "sold": "Vendus",
+      "revenue": "Chiffre d'affaires",
+      "used": "Utilisés",
+      "refunded": "Remboursés",
+      "products": "{{n}} bons confiés",
+      "ended": "Terminé",
+      "pending": "En attente d'acceptation",
+      "noAgency": "Confiez des bons à une agence pour voir chaque agence comptée séparément (Opérateurs → Confier à une agence).",
+      "referralTitle": "Vendus via liens de parrainage",
+      "noReferral": "Aucun bon vendu via un lien de parrainage sur cette période.",
+      "unknownUser": "Utilisateur inconnu",
+      "soldN": "{{n}} vendus",
+      "commission": "Commission influenceur {{n}} KRW",
+      "share": "Part {{pct}}% · {{n}} KRW",
+      "shareUnset": "Part non définie",
+      "shareNote": "UrDeal calcule seulement le montant dû. La boutique paie l'agence directement et l'agence émet la facture à la boutique.",
+      "note": "Les ventes par parrainage sont déjà incluses ci-dessus. Une même vente est vue de deux façons : qui l'a gérée et de quel lien elle vient."
     }
   },
   "admin": {
@@ -5821,7 +5849,9 @@
     "sharedShareDesc": "J'ai trouvé un super produit sur Urdeal",
     "sharedShareBtn": "Voir le produit",
     "sellerReplyLabel": "Réponse du vendeur",
-    "sponsoredBadge": "Sponsorisé"
+    "sponsoredBadge": "Sponsorisé",
+    "loadMore": "Plus d’avis ({{n}} restants)",
+    "loadingMore": "Chargement…"
   },
   "productOption": {
     "title": "Gestion des options produit",
@@ -5928,6 +5958,7 @@
       "health": "Santé",
       "pet": "Animal",
       "stay": "Hébergement",
+      "home": "Maison",
       "activity": "Activité",
       "etc": "Autres"
     },
@@ -6017,7 +6048,9 @@
     "privacyLink": "Politique de confidentialité",
     "termsNoticeEnd": "",
     "agencyQuestion": "Vous êtes une agence ?",
-    "agencyLogin": "Connexion agence"
+    "agencyLogin": "Connexion agence",
+    "heroTitle2": "Les adresses du quartier, moins chères en achetant à l'avance",
+    "chipPass": "Pass locaux"
   },
   "guide": {
     "sectionTitlePlaceholder": "Titre de section",
@@ -6231,6 +6264,7 @@
     "coupons": "Coupons",
     "orders": "[TODO:fr] 주문 내역",
     "ordersSub": "[TODO:fr] 최근 3개월",
+    "paymentHistory": "Historique des paiements",
     "myStays": "Mes Réservations",
     "myStaysSub": "Code check-in / expiration",
     "interestList": "Restaurants favoris",

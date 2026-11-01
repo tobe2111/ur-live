@@ -117,7 +117,7 @@ export default function PcHeroBanners() {
                   {paused ? <Play className="w-3 h-3" aria-hidden="true" /> : <span className="flex gap-[3px]" aria-hidden="true"><i className="block w-[3px] h-3 rounded-sm bg-white dark:bg-white" /><i className="block w-[3px] h-3 rounded-sm bg-white dark:bg-white" /></span>}
                 </button>
               )}
-              <span className="h-7 px-3 rounded-full bg-black/45 dark:bg-black/45 text-white dark:text-white text-[12px] font-bold tabular-nums inline-flex items-center" aria-live="polite">
+              <span className="h-7 px-3 rounded-full bg-black/45 dark:bg-black/45 text-white dark:text-white text-[12px] font-medium tabular-nums inline-flex items-center" aria-live="polite">
                 {i + 1} / {n}
               </span>
             </div>

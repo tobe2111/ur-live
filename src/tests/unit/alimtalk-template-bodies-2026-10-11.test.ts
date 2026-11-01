@@ -35,6 +35,7 @@ describe('본문에 조건부 줄이 없다', () => {
   const files = [
     'src/features/group-buy/api/helpers.ts',
     'src/worker/cron/appointment-reminder.ts',
+    'src/shared/home-service.ts',
   ]
   for (const f of files) {
     it(f, () => {

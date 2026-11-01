@@ -60,7 +60,7 @@ export default function WalletRow({ v, t, onOpen }: {
         )}
         <div className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</div>
         {/* 🎫 2026-10-14 안 B: 남은 기간은 이름 아래 한 줄로 내려왔다(오른쪽은 [사용] 자리). 값과 임박 색은 그대로. */}
-        <div className={`mt-1 flex items-center gap-1 text-[12px] tabular-nums ${urgent ? 'font-extrabold text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>
+        <div className={`mt-1 flex items-center gap-1 text-[12px] tabular-nums ${urgent ? 'font-medium text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>
           <ClockIcon className="w-[13px] h-[13px] shrink-0" aria-hidden />
           {d === null ? t('voucher.noExpiry', { defaultValue: '기한 없음' }) : d === 0 ? 'D-DAY' : `D-${d}`}
         </div>
@@ -68,7 +68,7 @@ export default function WalletRow({ v, t, onOpen }: {
 
       {/* 줄 전체가 버튼이라 이 알약은 그림이다 — 누를 곳이 어딘지 말해 준다. */}
       {v.status === 'unused' && (
-        <span aria-hidden className="shrink-0 inline-flex items-center h-8 px-3 rounded-full bg-brand text-white text-[13px] font-bold">
+        <span aria-hidden className="shrink-0 inline-flex items-center h-8 px-3 rounded-full bg-brand text-white text-[13px] font-medium">
           {t('voucher.use', { defaultValue: '사용' })}
         </span>
       )}

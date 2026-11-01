@@ -108,7 +108,7 @@ export const LANE_DOMAIN: Record<string, AdsDomain> = {
   'collect-store-kakao': 'prospect',
   'enrich-prospects': 'prospect',
 
-  // ── 도매몰(유통스타트) — 제조사/매수자
+  // ── 도매몰(유통스타트) — 제조사/매수자. 🧨 2026-10-20 collect-maker 레인 자체는 삭제(대표 "지워줘") — 표 항목은 옛 하트비트 분류용으로만 남는다.
   'collect-maker': 'wholesale',
 }
 

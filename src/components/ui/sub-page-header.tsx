@@ -38,7 +38,7 @@ export default function SubPageHeader({ title, onBack, right, backLabel = 'ë’¤ë¡
         >
           <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" strokeWidth={1.6} />
         </button>
-        <h1 className="text-center text-[17px] font-semibold text-gray-900 dark:text-white truncate">{title}</h1>
+        <h1 className="text-center text-[17px] font-bold text-gray-900 dark:text-white truncate">{title}</h1>
         <div className={`h-11 flex items-center ${wideSides ? 'justify-end pr-3' : 'w-11 justify-center'}`}>{right}</div>
       </div>
     </header>

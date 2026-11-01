@@ -36,6 +36,7 @@ export {
 } from './useProduct'
 export {
   useGroupBuyProduct,
+  seedDetailFromListRow,
   usePrefetchGroupBuyProduct,
   prefetchGroupBuyProduct,
   useHydrateGroupBuyCache,

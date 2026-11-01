@@ -5,6 +5,8 @@
  * 백엔드 sampling 1% 라 traffic 영향 0. App.tsx 또는 main.tsx 에서 1회 호출.
  */
 
+import { CLS_SOURCE_MIN, clsSourceString } from '@/shared/cls-source'
+
 let reported = false
 
 /**
@@ -158,10 +160,13 @@ export function reportWebVitals(): void {
   try {
     const cls = createClsTracker()
     let clsSent = false
+    // 🔬 2026-10-20: 가장 큰 밀림 한 건의 요소를 기억한다(`shared/cls-source`) — 실험실에서 재현 안 되는 실사용 CLS 의 원인.
+    let worst = 0, worstSrc = ''
     const flushCls = () => {
       if (clsSent) return
       clsSent = true
-      send('CLS', Math.round(cls.value() * 1000), page)  // CLS 는 0-1 범위 → ×1000 정수화
+      const v = Math.round(cls.value() * 1000)  // CLS 는 0-1 범위 → ×1000 정수화
+      send('CLS', v, page, v >= CLS_SOURCE_MIN && worstSrc ? { src: worstSrc } : undefined)
       clsObs.disconnect()
     }
     const clsObs = new PerformanceObserver((list) => {
@@ -169,8 +174,13 @@ export function reportWebVitals(): void {
       // 앱 안 이동(SPA)은 문서가 그대로라 관측이 이어진다 — 이 페이지 몫이 아니므로 받기 전에 끊는다.
       if (window.location.pathname !== page) { flushCls(); return }
       for (const entry of list.getEntries()) {
-        const e = entry as PerformanceEntry & { value?: number; hadRecentInput?: boolean }
-        if (!e.hadRecentInput) cls.add(e.value || 0, e.startTime)
+        const e = entry as PerformanceEntry & { value?: number; hadRecentInput?: boolean; sources?: Parameters<typeof clsSourceString>[0] }
+        if (e.hadRecentInput) continue
+        cls.add(e.value || 0, e.startTime)
+        if ((e.value || 0) > worst) {
+          worst = e.value || 0
+          try { worstSrc = clsSourceString(e.sources, e.startTime, window.innerWidth, window.scrollY) } catch { /* 원인 기록 실패는 CLS 보고를 막지 않는다 */ }
+        }
       }
     })
     clsObs.observe({ type: 'layout-shift', buffered: true })

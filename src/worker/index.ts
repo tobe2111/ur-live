@@ -12,6 +12,7 @@ import { timing } from 'hono/timing';
 import { ROUTE_CHUNK_MAP, ENTRY_CSS, BOOT_JS } from './generated/route-chunk-map'; // 🚀 2026-07-12 라우트 청크 modulepreload(빌드 시 자동 생성)
 import { docsRoutes } from './routes/docs.routes'; // 2026-04-27 TD-006 split (openapi/swagger)
 import { internalDiagnosticsRoutes } from './routes/internal-diagnostics.routes'; // 2026-04-27 TD-006 split
+import { opsAlertRoutes } from './routes/ops-alert.routes'; // 2026-10-20 봇 실패 → 대표 카톡
 import { internalAdminToolsRoutes } from './routes/internal-admin-tools.routes'; // 2026-04-27 TD-006 Phase C
 import { smokeTestRoutes } from './routes/smoke-test.routes'; // 2026-04-27 TD-006 Phase D
 import { repairSchemaRoutes } from './routes/repair-schema.routes'; // 2026-04-27 TD-006 Phase E
@@ -144,13 +145,14 @@ import { partnershipPublicRoutes, adminPartnershipRoutes } from './routes/partne
 import { platformMetricsRoutes } from '../features/admin/api/platform-metrics.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
 import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/api/restaurant-suggestions.routes';
+import { seedingRoutes, snsLinkCallbackRoutes } from '../features/seeding/api/seeding.routes'; import { seedingSellerRoutes, seedingAdminRoutes } from '../features/seeding/api/seeding-store.routes'; // 🎁 무상 체험 제공·SNS 연동(2026-10-31)
+import { homeServiceRoutes } from '../features/home-service/api/home-service.routes'; import { homeServiceProRoutes } from '../features/home-service/api/home-service-pro.routes'; import { homeServiceAdminRoutes } from '../features/home-service/api/home-service-admin.routes'; // 🏠 생활 견적(2026-10-24)
 // 🥗 2026-07-15 워커 다이어트 3차(대표 AskUserQuestion 4항목 명시 승인): 라이브커머스 영구중단 잔재 라우트 분리 —
 //   donations(라이브 후원·소비자 미호출)·youtube(라이브 유튜브 연동)·multi-platform(멀티스트림)·tiktok(아래). 도달 0. 재도입=원복.
 // import { donationsRoutes } from '../features/donations/api/donations.routes';
 // import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
 // import youtubeRoutes from '../features/youtube/api/youtube.routes';
 // import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
-import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
 import { requireAdmin, requireAuth, requireSeller } from './middleware/auth';
@@ -166,7 +168,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 
 // 🛡️ 2026-04-26: 파일 중간 import 를 상단으로 이동 (CLAUDE.md 금지 패턴 — 2026-04-22 사고 재발 방지)
 import { blogRoutes } from '../features/blog/api/blog.routes';
-import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
+import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes'; import { embedRoutes } from './routes/embed.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
 import { buildBlogPostBody, buildBlogListBody } from '../features/blog/api/blog-ssr-body'; import { buildBlogDetailFirstScreen } from './utils/blog-detail-first-screen'; import { buildBlogListFirstScreen } from './utils/blog-list-first-screen';
 import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects';
@@ -193,6 +195,7 @@ import { adsKakaoAuthRoutes } from '../features/marketing/api/ads-kakao-auth.rou
 // 🤝 B2B 파트너(업체) 풀 — 유어애즈 어드민(메인 JWT, 프록시 비위임). 격리 테이블 ad_company_leads.
 import { partnerPoolRoutes } from '../features/marketing/api/partner-pool.routes';
 import { storeProspectsRoutes } from '../features/marketing/api/store-prospects.routes';
+import { poolExportBatchRoutes } from '../features/marketing/api/pool-export-batches.routes';
 import { newOpeningsPublicRoutes } from '../features/marketing/api/new-openings-public.routes';
 import { areaReportPublicRoutes } from '../features/marketing/api/area-report-public.routes';
 import { govNoticesRoutes } from '../features/marketing/api/gov-notices.routes';
@@ -202,9 +205,6 @@ import { creatorClaimRoutes } from '../features/marketing/api/lead-claim'; // �
 import { campaignApplyRoutes } from '../features/marketing/api/campaign-apply.routes';
 import { adminCampaignApplicationsRoutes } from '../features/admin/api/admin-campaign-applications.routes'; import { mallAdminRoutes } from '../features/mall/api/mall-admin.routes'; // 🏬 몰 운영자 콘솔(공구 서비스) — 한 줄: 파일크기 래칫(2638) 안
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
-import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
-import { makerPoolRoutes } from '../features/supply/api/maker-pool.routes'; // 🧨 2026-10-11 도매 철거 — 종전엔 mount-wholesale(도매 번들)에만 있어 소비자 배포에선 죽은 링크였다. 읽는 것은 유어애즈 `ad_company_leads`(worker-ads 가 계속 수집)라 여기로 옮긴다.
-import { buyerIngestRoutes } from '../features/supply/api/buyer-ingest.routes';
 import { payoutCenterRoutes } from '../features/admin/api/admin-payout-center.routes';
 import { proxyRoutes } from './routes/proxy.routes';
 import { debugRoutes } from './routes/debug.routes';
@@ -290,7 +290,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { routeSurface } from '../shared/route-surface'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { buildVouchersFirstScreen } from './utils/vouchers-first-screen'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload, voucherFacetNoscript } from './utils/crawler-noscript'; import { buildSellerNoscript } from './utils/seller-noscript'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { routeSurface } from '../shared/route-surface'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { buildVouchersFirstScreen } from './utils/vouchers-first-screen'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload, voucherFacetNoscript } from './utils/crawler-noscript'; import { buildSellerNoscript } from './utils/seller-noscript'; import { buildLifeShareMeta, buildLifeShareNoscript } from './utils/life-share-ssr'; import { buildLifeBizMeta, buildLifeBizNoscript } from './utils/life-biz-ssr'; import { buildStoreInviteMeta } from './utils/store-invite-ssr'; import { homeFooterNoscript } from './utils/home-footer-noscript'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders, loaderImgPriorityAttr } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
 import { VOUCHERS_DEFAULT_SEED_PATH, voucherFacetSeedPath } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage, ushopDescFallback } from '../shared/ushop-share-card'; import { ogImageAlt, OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; import { nearKeyFromCookieHeader, nearLabelFromCookieHeader } from '../shared/home-near'; import { normalizeDocPath } from '../shared/seo/path-normalize'; import { ROBOTS_INDEX, ROBOTS_NOINDEX } from '../shared/seo/robots-directives'; import { BANNERS_SEED_PATH } from '../shared/home-strip-banners'; import { appendLcpLink, homeLcpImage, vouchersLcpImage, stayLcpImage, hrefOfPreloadTag } from './utils/lcp-image-link'; import { buildStaysFirstScreen } from './utils/stays-first-screen'; import { defaultStaysQs, kstYmd } from '../shared/stays-early'; import { guestTabOf, buildGuestFirstScreen } from './utils/guest-first-screen'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
@@ -385,12 +385,11 @@ adminApp.use('*', adminAuditMiddleware());
 app.use('*', timing());
 app.use('*', logger());
 // 📤 /api/* 본문 천장 — 기본 1MB, 경로별 예외는 `shared/upload-limits.ts` `API_BODY_LIMIT_OVERRIDES` 한 곳
-//   (buyer-ingest 1.5MB · 등록증 2.2MB · 히어로 영상 10MB — 2026-10-13 대표 승인, 결재 2026-10-11-upload-body-limit).
+//   (등록증 2.2MB · 히어로 영상 10MB — 2026-10-13 대표 승인, 결재 2026-10-11-upload-body-limit).
 //   업로드 라우트보다 **먼저** 등록돼 있어 여기서 자른 것이 실제 천장이다. 접두 일치로 넓히지 말 것.
 app.use('/api/*', bodyLimitByPath(apiBodyLimitFor));
 app.use('/api/*', i18nMiddleware);
-// 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지). /known 서브경로 포함.
-app.use('/api/*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') || c.req.path === '/api/instagram/webhook' ? next() : (rateLimiterMiddleware as any)(c, next));
+app.use('/api/*', (c, next) => c.req.path === '/api/instagram/webhook' ? next() : (rateLimiterMiddleware as any)(c, next));
 
 // CORS — multi-region support
 const _globalCors = cors({
@@ -415,8 +414,7 @@ const _globalCors = cors({
   credentials: true,
   maxAge: 86400,
 });
-// 🔖 북마클릿 인제스트(/api/buyer-ingest[/known])는 토큰 인증 + 자체 CORS(외부 B2B 오리진 허용) — 전역 cors(오리진 화이트리스트) 우회.
-app.use('*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') ? next() : _globalCors(c, next));
+app.use('*', _globalCors);
 
 // ============================================================
 // Security Headers (CSP etc.)
@@ -608,6 +606,9 @@ app.use('*', async (c, next) => {
       //   0-RTT. /api/blog/public/:slug 는 publicCache(180) → edge-hit. 아래 head rewrite 에서 payload 로 메타 생성.
       const blogSlug = decodeURIComponent(url.pathname.slice('/blog/'.length));
       if (blogSlug) ssrTarget = { slot: 'BLOGPOST', path: `/api/blog/public/${encodeURIComponent(blogSlug)}` };
+    } else if (/^\/life\/biz\/\d{1,9}$/.test(url.pathname)) { ssrTarget = { slot: 'LIFEBIZ', path: `/api/home-service/pros/${url.pathname.slice(10)}` }; // 🏠 2026-10-26 생활 업체 소개 — 서버 메타·본문(전화번호 없음). 사유: utils/life-biz-ssr.ts
+    } else if (/^\/life\/q\/[A-Za-z0-9]{12}$/.test(url.pathname)) { ssrTarget = { slot: 'LIFESHARE', path: `/api/home-service/share/${url.pathname.slice(8)}` }; // 🔗 2026-10-25 생활 요청 공유(업체 모집) — 서버 메타·본문. 사유·마스킹: utils/life-share-ssr.ts
+    } else if (/^\/store\/agency\/[^/]+$/.test(url.pathname)) { ssrTarget = { slot: 'STOREINVITE', path: `/api/store-agency-invite/${encodeURIComponent(url.pathname.slice(14))}` }; // 🔗 2026-10-31 에이전시 매장 초대 — 카톡 카드에 에이전시 이름 · 늘 noindex. 사유: utils/store-invite-ssr.ts
     } else {
       // 🛡️ 2026-05-30 (loading): /products/:id 상세 SSR inject — 기존엔 누락되어 마운트 후
       //   useProduct fetch 워터폴(HTML→JS→fetch 3-RTT). /api/products/:id 는 publicCache(120) → edge-hit.
@@ -789,6 +790,8 @@ app.use('*', async (c, next) => {
     // 📝 2026-07-01 블로그 서버측 메타/구조화데이터 주입 — JS 안 도는 크롤러(네이버/카카오/소셜)용.
     //   Googlebot 은 react-helmet(<SEO>)을 렌더해 보지만, 네이버·소셜 스크래퍼는 정적 HTML 메타만 봄.
     const origin2 = new URL(c.req.url).origin;
+    if (ssrSlot === 'LIFEBIZ' && ssrPayload) { const lb = buildLifeBizMeta(ssrPayload, origin2, url.pathname); if (lb) rb = applySurfaceMeta(rb, lb); } // 🏠 2026-10-26 카톡 카드 = 업체 이름·업종·별점(얇으면 noindex)
+    if (ssrSlot === 'STOREINVITE' && ssrPayload) { const sm = buildStoreInviteMeta(ssrPayload, origin2, url.pathname); if (sm) rb = applySurfaceMeta(rb, sm); } if (ssrSlot === 'LIFESHARE' && ssrPayload) { const lm = buildLifeShareMeta(ssrPayload, origin2, url.pathname); if (lm) rb = applySurfaceMeta(rb, lm); } // 🔗 2026-10-25 카톡 카드 = 요청 제목·남은 자리(마감이면 noindex)
     if (ssrSlot === 'BLOGPOST' && ssrPayload) {
       // 📝 순수 계산은 blog-ssr-meta.ts 로 추출(god 파일 성장 방지) — 여기선 rewriter 배선만.
       const m = buildBlogPostMeta(ssrPayload, origin2);
@@ -903,7 +906,7 @@ app.use('*', async (c, next) => {
     //   (값 SSOT `shared/udal-loader.ts`). 위상은 둘 다 첫 페인트 기준이라 교체 순간 안 튄다.
     const urdealLoaderHtml =
       '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
-        `<img src="${UDAL_LOADER_SRC}" alt="" aria-hidden="true" draggable="false" width="${udalLoaderWidth(34)}" height="${udalLoaderHeight(34)}" decoding="async" class="ur-udal-hop select-none pointer-events-none" style="width:${udalLoaderWidth(34)}px;height:auto">` +
+        `<img src="${UDAL_LOADER_SRC}"${loaderImgPriorityAttr(cssFirst)} alt="" aria-hidden="true" draggable="false" width="${udalLoaderWidth(34)}" height="${udalLoaderHeight(34)}" decoding="async" class="ur-udal-hop select-none pointer-events-none" style="width:${udalLoaderWidth(34)}px;height:auto">` +
         '<div class="ur-loader-breathe text-[#16181C] dark:text-[#F8F7FC]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
           'urdeal' +
           '<span class="bg-brand" style="display:inline-block;width:6.12px;height:6.12px;border-radius:50%;margin-left:2.72px"></span>' +
@@ -963,7 +966,7 @@ app.use('*', async (c, next) => {
     //   `/area-report/:region` 은 그 표의 **동적 항목** — 지역명이 경로에 있어 조회 없이 메타가 나오고,
     //   지어낸 세그먼트(도어웨이)는 리졸버가 noindex 로 표시해 준다.
     //   SSR inject·0-RTT·`caches.default`·#root 로더·edgeCache 전부 불변 — head rewrite 만 추가.
-    if (!needsRootBlank) {
+    if (!needsRootBlank && !(ssrSlot === 'STOREINVITE' && buildStoreInviteMeta(ssrPayload, origin2, url.pathname))) { // 🔗 초대 메타(에이전시 이름)가 있으면 이름 없는 공통 메타로 덮지 않는다
       const sm0 = resolveConsumerSurfaceSeo(url.pathname, url.search, origin2) ?? resolveRegionSeo(url.pathname, origin2);
       // 🪧 2026-10-12 [UNLOCK_LOADING] 딜 `REGION_INDEX_MIN_DEALS` 미만 지역은 **noindex**. `resolveRegionSeo` 가 DB 를 안 봐 그 게이트가 클라에만 있었고 `/region/인천`·`세종`·`울산`·`서울/없는구` 가 **200+index+본문 26자**였다(지어낸 구도 통과 = 무한 thin URL).
       //   요약이 KV 에 있어 **DB 조회 0**. 🔴 요약이 없으면 절대 noindex 안 한다(부재 ≠ thin) — `shared/seo/region-digest.ts`.
@@ -1018,7 +1021,7 @@ app.use('*', async (c, next) => {
       //   첫 섹션 카드 4장을 그리고 그 아래에만 로더를 둔다. PC 는 다른 레이아웃이라 UA 로 가른다.
       //   사유·경계·버린 길(워커 React 렌더 = 번들 gzip 게이트로 불가): `utils/home-first-screen.ts`.
       const homeFirst = buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml, nearLabelFromCookieHeader(c.req.header('cookie'))); if (homeFirst) appendLcpLink(c.res.headers, homeLcpImage(ssrExtraPayload)); // 🏁 2026-10-19 홈 LCP(배너)를 응답 헤더로
-      rb = rb.on('#root', { element(el) { el.setInnerContent(homeFirst || urdealLoaderHtml, { html: true }); } });
+      rb = rb.on('#root', { element(el) { el.setInnerContent((homeFirst || urdealLoaderHtml) + homeFooterNoscript(), { html: true }); } }); // 🦶 2026-10-24 폰 홈엔 푸터가 없어 크롤러가 소개·링크를 못 봤다 → PC 화면의 푸터 글자를 <noscript> 로(사람 화면 불변). 사유: utils/home-footer-noscript.ts
     } else if (ssrSlot === 'CURATOR' && ssrPayload && /^\/u\/[A-Za-z0-9_-]{1,40}\/?$/.test(url.pathname) && shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {
       // 🛍️ 2026-10-09 [UNLOCK_LOADING] (대표 "모두 다 하자"): 시드에 이름·소개·핀 4개(사진 URL까지)가
       //   이미 와 있는데 `#root` 는 로더가 덮고 있었다(실측 ~1초). 유어샵은 **공유해서 퍼지는 것**이라
@@ -1047,7 +1050,7 @@ app.use('*', async (c, next) => {
       //   <head> 주입(line 677)이라 #root 교체와 무관(0-RTT 불변). needsRootBlank/isBlogSurface 는 위에서 선처리.
       // 🧭 2026-10-12 `/faq`·`/about`·`/region/*` 크롤러 본문이 **33·30·26자** → `<noscript>` 요약을 **로더 앞에 덧붙인다**(대체 아님 — 사람 화면 byte-동일·밀림 0). SSOT: `utils/crawler-noscript.ts` + `shared/seo/concept-content.ts`.
       // 🏪 2026-10-14 `/s/:username`(SELLER 슬롯)은 첫 화면 빌더가 **없어** 크롤러 본문이 6자였다(실측 2건). 그 표면은 위 분기에 안 걸려 여기로 떨어지므로 `||` 로 이어 둔다 — 재료가 없으면 `''` → 종전과 byte-동일. 왜 구조 문제인지는 `utils/seller-noscript.ts` 머리말.
-      const staticNs = buildStaticSurfaceNoscript(url.pathname, crawlerPayload) || (ssrSlot === 'SELLER' ? buildSellerNoscript(ssrPayload) : '');
+      const staticNs = buildStaticSurfaceNoscript(url.pathname, crawlerPayload) || (ssrSlot === 'SELLER' ? buildSellerNoscript(ssrPayload) : ssrSlot === 'LIFESHARE' ? buildLifeShareNoscript(ssrPayload) : ssrSlot === 'LIFEBIZ' ? buildLifeBizNoscript(ssrPayload) : '');
       rb = rb.on('#root', { element(el) { el.setInnerContent(staticNs + urdealLoaderHtml, { html: true }); } });
     }
     const rewritten = rb.transform(c.res);
@@ -1106,7 +1109,7 @@ app.route('/', killerSwRoutes);
 app.use('/sitemap.xml', publicCache(3600)); // 📉 2026-09-02: 크롤러·uptime 프로브 fetch 마다 D1 4쿼리(~1,300행 + 지역 집계 전수) → 1h 엣지(키에 호스트 포함 — 도매/소비자 안 섞임)
 app.route('/', sitemapRoutes);
 // 📝 2026-07-01 블로그 SEO 보조 — /blog/og/:slug(공유 배너 SVG) · /blog/rss(피드). SPA fallback 전에 등록.
-app.route('/', blogSeoRoutes);
+app.route('/', blogSeoRoutes); app.route('/', embedRoutes); // 🧩 2026-10-31 홈페이지 삽입 위젯 /embed/* (iframe 허용은 보안 헤더의 /embed/ 분기 — routes/embed.routes.ts)
 
 // ============================================================
 // 🎯 2026-07-14 유어애즈 독립 Worker(ur-ads) 게이트드 프록시 (Phase C)
@@ -1166,6 +1169,7 @@ app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68.html', (c) => serveNaverVerify(c
 app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68', (c) => serveNaverVerify(c));
 app.route('/', docsRoutes);
 app.route('/', internalDiagnosticsRoutes);
+app.route('/', opsAlertRoutes);
 app.route('/', internalAdminToolsRoutes);
 app.route('/', smokeTestRoutes);
 app.route('/', kakaoSkillWebhookRoutes); // 💬 CS FAQ 봇 — read-only, 시크릿 게이트(기본 404)
@@ -1453,8 +1457,8 @@ app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, window
 app.route('/api/seller', sellerAuthRoutes);
 app.route('/api/seller', sellerOperatorsRoutes); // 🏪 my-stores · 매장 전환 · 운영자 관리
 app.use('/api/brands/*', edgeCache(300)); app.route('/api/brands', brandsPublicRoutes); // 🏷️ 2026-10-17 브랜드 페이지 — 읽기 전용, 콜로당 5분 캐시(지점 추가가 최대 5분 늦게 보인다)
-app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); app.route('/api/agency-console', agencyStoresRoutes); app.use('/api/store-agency-invite/accept', csrfProtection()); app.route('/api/store-agency-invite', storeAgencyInviteRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
-app.route('/api/seller/instagram-dm', instagramAutoDmSellerRoutes); app.route('/api/seller/urshorts', sellerUrshortsRoutes); // 💬 매장 인스타 자동 DM(좌석 토큰) · 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
+app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); app.route('/api/agency-console', agencyStoresRoutes); app.use('/api/store-agency-invite/accept', csrfProtection()); app.use('/api/store-agency-invite/partner-request', csrfProtection()); app.route('/api/store-agency-invite', storeAgencyInviteRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
+app.route('/api/seller/seeding', seedingSellerRoutes); app.route('/api/seller/instagram-dm', instagramAutoDmSellerRoutes); app.route('/api/seller/urshorts', sellerUrshortsRoutes); // 💬 매장 인스타 자동 DM(좌석 토큰) · 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
 app.route('/api/influencer-profile', influencerProfileRoutes); app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller', sellerWithdrawRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
 
 // 🔒 2026-07-28: Google/Firebase 로그인 마운트 해제 — 사유·복원법은 auth.ts 주석 / AUDIT_INVARIANTS.md
@@ -1663,19 +1667,11 @@ app.route('/api/admin/business-monitoring', adminBusinessMonitoringRoutes);
 app.route('/api/admin/ads', adminAdsRoutes); // 🎯 유어애즈 가입자 운영 어드민 (별개 기능 — 유지)
 app.route('/api/admin/partner-pool', partnerPoolRoutes); // 🤝 B2B 파트너(업체) 풀 — 메인 어드민 JWT(프록시 비위임), ad_company_leads 격리
 app.route('/api/admin/store-prospects', storeProspectsRoutes); // 🏪 매장 후보 — 인허가 발굴(store_prospects 격리), 메인 어드민 JWT
+app.route('/api/admin/pool-export-batches', poolExportBatchRoutes); // 🔓 내보낸 묶음 되돌리기 — 세 풀 공용(도장 취소)
 app.route('/api/public/new-openings', newOpeningsPublicRoutes); // 🎉 소비자 공개: 우리 동네 새 가게(연락처 미노출, CDN 캐시)
 app.route('/api/public/area-report', areaReportPublicRoutes); // 📊 소비자 공개: 상권 리포트(이메일 아웃리치 미끼, CDN 캐시)
 app.route('/api/admin/gov-notices', govNoticesRoutes); // 📢 공고 스캐너 — 나라장터+기업마당(gov_notices 격리), 메인 어드민 JWT
-// 🌐 해외 수출 바이어 풀 정규 마운트는 유통스타트(도매) 워커 → mount-wholesale.ts(소비자 번들 DCE·유어딜 무관).
-// ⏳ [TEMP-TEST 2026-07-20] 도매 워커가 아직 미배포라, 대표가 라이브 어드민(/admin/buyer-pool)에서 무료 소스
-//   수집을 검증할 수 있게 소비자 워커에 임시 마운트. admin 전용(requireAdmin)+격리 테이블+게이트라 유어딜 데이터
-//   무접촉. ur-wholesale 배포 시 이 3줄(import+mount) 제거 예정.
-app.route('/api/admin/buyer-pool', buyerPoolTestRoutes);
-app.route('/api/admin/maker-pool', makerPoolRoutes); // 🏭 제조사·판매사 후보 풀(격리 테이블 `supply_maker_leads` + 유어애즈 리드 읽기)
-// 📦 2026-10-11 대표 "유통 스타트는 다 필요없어": 제조사·판매사 후보 풀(유통스타트 밴드)의 [TEMP-TEST] 소비자 마운트 제거 —
-//   유통스타트 워커(mount-wholesale.ts)에만 남는다. 바이어 풀(위·아래)은 도매와 무관한 별개 사업이라 그대로 둔다.
-// 🔖 바이어 풀 북마클릿 인제스트 — requireAdmin 밖(크로스오리진, 토큰 인증+CORS). buyKorea 등에서 원클릭 전송.
-app.route('/api/buyer-ingest', buyerIngestRoutes);
+// 🧨 2026-10-20 대표 "지워줘": 해외 바이어 풀 · 제조사·판매사 후보 풀 · 북마클릿 인제스트 마운트 삭제(유어딜 무관).
 // app.route('/api/seller/castings', sellerCastingRoutes);
 // 🥗 2026-07-15 워커 다이어트: 라이브 후원 부스터(쓰는 컴포넌트 0) 마운트 분리.
 // app.route('/api/donation-boosters', donationBoosterRoutes);
@@ -1810,9 +1806,9 @@ adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/urshorts', adminUrshortsRoutes);
 // Feature flags / kill-switch (graceful degradation for traffic spikes)
 adminApp.route('/flags', adminFlagsRoutes);
-adminApp.route('/cafe24', cafe24Routes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
-adminApp.route('/blog', adminBlogRoutes);
+adminApp.route('/seeding', seedingAdminRoutes); // 🎁 무상 체험 신청 큐·설정
+adminApp.route('/blog', adminBlogRoutes); adminApp.route('/home-service', homeServiceAdminRoutes); // 🧾 생활 견적 대리 접수·직영 견적
 adminApp.route('/instagram-autodm', instagramAutoDmAdminRoutes); // 💬 인스타 자동 DM 설정·규칙·발송 기록
 // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 자동화 라우트 마운트 분리(위 import 참조). 게이트 OFF·미사용이라
 //   /api/admin/social/* 는 다이어트 기간 404 — 라이브 영향 0. 재도입=이 줄+import+크론 원복.
@@ -1825,7 +1821,7 @@ adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
 // 🧨 [도매몰 철거 2026-10-11 대표 "도매몰 잔해들은 아예 다 삭제해줘"] 도매(B2B) 라우트 마운트 제거.
 //   종전: `if (__INCLUDE_WHOLESALE__) { mountWholesale(app, adminApp) }` — `WHOLESALE_BUNDLE=1` 빌드에서만
 //   포함됐으므로 **소비자 배포는 이 블록을 원래 안 탔다**(DCE). 즉 이 삭제로 urdeal.kr 동작은 변하지 않는다.
-//   잔류: 정산 엔진(supply-settlement 등 4파일 — 소비자 주문확정·환불·cron 이 직접 부른다) · buyer/maker 풀 ·
+//   잔류: 정산 엔진(supply-settlement 등 4파일 — 소비자 주문확정·환불·cron 이 직접 부른다) ·
 //   몰 인프라(아래 `wholesale-malls`). 계획·경계: docs/design/wholesale-teardown-plan.md §1~§3.
 /**
  * 🏬 **몰 관리 CRUD 는 도매 게이트 밖이다** 〔2026-08-03 — 대표 실측 404〕
@@ -1844,8 +1840,6 @@ adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
  */
 app.route('/api/admin/wholesale-malls', adminWholesaleMallRoutes);
 app.route('/api/admin', adminApp);
-// Cafe24 public callback (no admin auth needed for OAuth redirect)
-app.route('/admin/cafe24/callback', cafe24Routes);
 
 // Push notifications
 app.route('/', pushRoutes);  // pushRoutes already uses full path /api/push/*
@@ -1892,6 +1886,8 @@ app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 6
 app.route('/api/seller/alimtalk', alimtalkRoutes);
 // 🛡️ 2026-04-28: restaurant-map 옵션 B — 사용자 수요 신호 (셀러 영입/알림)
 app.route('/api/restaurant-suggestions', restaurantSuggestionsRoutes);
+app.route('/api/seeding', seedingRoutes); app.route('/', snsLinkCallbackRoutes); // 🎁 무상 체험 제공
+app.route('/api/home-service/pro', homeServiceProRoutes); app.route('/api/home-service', homeServiceRoutes);
 
 // ── 후원(도네이션) ── 🥗 2026-07-15 워커 다이어트 3차(대표 승인): 라이브 후원(소비자 미호출·라이브 영구중단) 마운트 분리. 재도입=원복.
 // app.route('/api/donations', donationsRoutes);
@@ -2176,7 +2172,6 @@ app.get('/api/side-banners', edgeCache(600), async (c) => {
   }
 });
 
-// (Cafe24 is registered under adminApp above)
 
 
 // ============================================================
@@ -2480,7 +2475,7 @@ app.get('*', async (c) => {
 <meta name="twitter:description" content="${esc(og.desc)}" />
 <meta name="twitter:image" content="${esc(og.image)}" />
 <meta name="robots" content="${ROBOTS_INDEX}" />
-<meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
+<meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" /><link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" /><link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" /><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 ${brandJsonLdScript()}</head>
 <body>
 <div id="root"></div>

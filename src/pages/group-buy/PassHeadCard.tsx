@@ -1,61 +1,87 @@
 /**
- * 🎟️ 이용권 상세 머리 — 사진 **아래** 평면으로 놓인 [가게 · 제목 · 가격] (2026-10-12 대표 확정 "C안")
+ * 🎟️ 이용권 상세 머리 — 사진 **아래** 평면 (2026-10-24 대표 승인 "그루폰식으로 하자")
  *
- * 🔁 2026-10-12: 종전 D안은 사진 위로 **28px 겹쳐 올라오는 판**이었다. 대표 *"왜 사진을 가리고 있고,
- *   더 투박해졌지?"* → 시안 A(현재)·B(안 가림)·C(판까지 없앤 평면) 중 **C**. 판·겹침·틴트 상자를 걷었다.
- *   치수와 근거는 `shared/pass-head.ts` 의 `PASS_HEAD.card` 주석에 있다.
- *
- * 대표: *"더 세련되고 심플해져야 해. 지금은 부연설명도 많고 그래."* → 시안 C·D·E 중 **D(카드형)**.
- *
- * ## 종전에서 걷어낸 것 (라이브 /pass/2915 실측)
- * - 주소 줄 — 매장 카드가 지도와 함께 말한다(종전 한 화면에 주소 3번).
- * - *"결제 즉시 교환권 발급"* — 용어도 틀렸고(이 상품은 이용권), 무엇을 알려 주지도 않았다.
- * - 수량 카드 — 구매하기를 누르면 뜨는 창으로 옮겼다(`DealBottomBar`).
+ * 🔤 2026-10-25 대표 확정 **D안**(*"이용권 상세는 D"*) — 크기 위계:
+ *   [가게 · 종류 · 지역](작은 회색) → 제목(h1) → [별점 · 리뷰 · N명이 샀어요] → [주소 ····· 거리]
+ *   → **가격**(정가 취소선 / 할인율 빨강 + 판매가 28px). 가격이 머리로 올라왔다 — 사진 다음에 사람이 찾는 것은
+ *   "무엇 · 얼마" 이고, 옵션 카드는 고른 옵션과 구매만 말한다(한 화면에 큰 가격은 한 번).
  *
  * ## 서버가 먼저 그리는 범위
- * 가게 이름 · 제목(h1) 까지는 워커가 같은 클래스(`PASS_HEAD`)로 미리 그린다. 그 아래(거리 · 가격)는
- * 마운트 뒤 채워지지만 **제목 아래라** 위는 한 픽셀도 안 움직인다(`detail-ssr-body.ts`).
+ * 가게 줄 · 제목까지는 워커가 같은 클래스(`PASS_HEAD`)·같은 함수(`passSubLine`)로 미리 그린다
+ * (`worker/utils/detail-ssr-body.ts`). 주소·거리·별점은 그 **아래**라 나중에 채워져도 위가 안 움직인다.
+ * (거리는 내 위치 기준이라 서버가 모른다 — 2026-09-16 에 경계를 h1 로 잡은 이유 그대로다.)
  */
 import { formatNumber } from '@/utils/format'
-import { PASS_HEAD } from '@/shared/pass-head'
+import { PASS_HEAD, passSubLine } from '@/shared/pass-head'
+import StarRating from '@/components/deal/StarRating'
+
+const goTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
 export default function PassHeadCard({
-  merchant, onnuri, isPrelaunch, name, distKm, buyers,
-  unitPrice, refPrice, discountPct, unitSaving,
+  merchant, category, address, onnuri, isPrelaunch, name, distKm, buyers, rating, reviewCount,
+  unitPrice, refPrice, discountPct,
 }: {
   merchant?: string | null
+  category?: string | null
+  address?: string | null
   onnuri?: boolean
   isPrelaunch: boolean
   name: string
   distKm: string | number | null
   buyers: number
-  unitPrice: number
-  refPrice: number
-  discountPct: number
-  unitSaving: number
+  rating?: number | null
+  reviewCount?: number | null
+  unitPrice?: number
+  refPrice?: number
+  discountPct?: number
 }) {
-  const meta = [distKm != null ? `${distKm}km` : null, buyers > 0 ? `${formatNumber(buyers)}명 구매` : null].filter(Boolean)
+  const sub = passSubLine({ restaurant_name: merchant, category, restaurant_address: address })
+  const rv = Number(rating) || 0
+  const rc = Number(reviewCount) || 0
+  const hasReviews = rv > 0 && rc > 0
   return (
     <div className={PASS_HEAD.card}>
-      {merchant && (
+      {sub && (
         <div className={PASS_HEAD.merchant}>
-          {merchant}
+          {sub}
           {/* 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속) */}
           {onnuri && <span className={PASS_HEAD.onnuri}>온누리 사용 가능</span>}
         </div>
       )}
-      {isPrelaunch && <span className={PASS_HEAD.prelaunch}>오픈 예정 · 사전 응모 받는 중</span>}
       <h1 className={PASS_HEAD.h1}>{name}</h1>
-      {meta.length > 0 && <div className="mt-1 text-[13px] text-[var(--gbd-sub)]">{meta.join(' · ')}</div>}
+      {isPrelaunch && <span className={PASS_HEAD.prelaunch}>오픈 예정 · 사전 응모 받는 중</span>}
 
-      {/* 💰 할인율(빨강 — 2026-09-07 대표 SSOT `--sale`) · 판매가(가장 크게) · 정가(취소선) 한 줄 */}
-      <div className="mt-4 flex items-baseline flex-wrap gap-x-2">
-        {discountPct > 0 && <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
-        <span className="text-[28px] font-extrabold tracking-[-.03em] text-[var(--gbd-ink)]">{formatNumber(unitPrice)}원</span>
-        {unitSaving > 0 && <span className="text-[13px] line-through text-[var(--gbd-sub2)]">{formatNumber(refPrice)}원</span>}
-      </div>
-      {/* 🔁 2026-10-12 C안: `1장당 N원 아껴요` 틴트 상자 제거 — 판 안의 또 다른 상자였고(🎫 규칙 ①·⑥),
-          바로 윗줄의 `48%` 와 정가 취소선이 **이미 같은 말을 한다**(그 화면에서 가격이 여섯 번 나왔다). */}
+      {(hasReviews || buyers > 0) && (
+        <div className="mt-2 flex items-center flex-wrap gap-x-2 gap-y-1 text-[13px]">
+          {hasReviews && (
+            <>
+              <StarRating value={rv} size={13} />
+              <b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{rv.toFixed(1)}</b>
+              <button type="button" onClick={() => goTo('gb-sec-reviews')} className="bg-transparent border-0 p-0 underline underline-offset-[3px] cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>리뷰 {formatNumber(rc)}개</button>
+            </>
+          )}
+          {hasReviews && buyers > 0 && <span aria-hidden="true" style={{ color: 'var(--gbd-sub2)' }}>·</span>}
+          {buyers > 0 && <span style={{ color: 'var(--gbd-sub)' }}>{formatNumber(buyers)}명이 샀어요</span>}
+        </div>
+      )}
+      {(address || distKm != null) && (
+        <div className="mt-2 flex items-center justify-between gap-3 text-[13px]">
+          {address
+            ? <button type="button" onClick={() => goTo('gb-sec-location')} className="min-w-0 truncate text-left bg-transparent border-0 p-0 underline underline-offset-[3px] cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>{address}</button>
+            : <span />}
+          {distKm != null && <span className="shrink-0" style={{ color: 'var(--gbd-sub)' }}>{distKm}km</span>}
+        </div>
+      )}
+
+      {unitPrice != null && unitPrice > 0 && (
+        <div className="mt-4">
+          {refPrice != null && refPrice > unitPrice && <div className="text-[13px] line-through" style={{ color: 'var(--gbd-sub)' }}>{formatNumber(refPrice)}원</div>}
+          <div className="flex items-baseline gap-2">
+            {!!discountPct && discountPct > 0 && <span className="text-[24px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
+            <span className="text-[28px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

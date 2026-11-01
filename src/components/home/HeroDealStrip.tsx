@@ -118,7 +118,7 @@ function Tile({ tile, eager, priority, clone }: { tile: HeroTile; eager: boolean
         <div className="text-[15px] font-bold leading-tight truncate">{title}</div>
         {/* 🗺️ 지역 · 종류 — 둘 다 없으면 **줄 자체를 안 그린다**(빈 자리를 남기지 않는다). */}
         {sub && <div className="mt-1 text-[12px] text-white/70 truncate">{sub}</div>}
-        <div className="mt-1 text-[13px] font-extrabold whitespace-nowrap">
+        <div className="mt-1 text-[13px] font-medium whitespace-nowrap">
           {/* 🔴 할인율은 **가격 이득**이라 빨강이다(2026-09-07 대표 확정 — 블루는 행동 전용). */}
           {tile.discount > 0 && <span className="ur-hero-tile-off mr-1">{tile.discount}%</span>}
           {tile.origPrice > tile.price && (

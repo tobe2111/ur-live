@@ -26,6 +26,7 @@ import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchis
 import { STAT_PICK, fmtRun, runStamp, parseStamp, fetchRunStatus } from './partner-pool/job-completion'
 import { FilterChip, ActionMenu } from './partner-pool/Controls'
 import CompanyKeywordManager, { type CompanyKeyword } from './partner-pool/CompanyKeywordManager'
+import PoolExportButtons from './PoolExportButtons'
 
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
@@ -281,17 +282,6 @@ export default function AdminPartnerPoolPage() {
     } finally { setBusy('') }
   }, [loadLeads, loadStats])
 
-  // ⬇ CSV — <a href> 직링크는 관리자 토큰이 안 실려 FORBIDDEN(2026-07-27 대표 신고) → 인증 axios blob 다운로드.
-  async function downloadCsv(url: string, filename: string) {
-    try {
-      const r = await api.get(url, { responseType: 'blob' })
-      const blobUrl = URL.createObjectURL(new Blob([r.data], { type: 'text/csv;charset=utf-8' }))
-      const a = document.createElement('a')
-      a.href = blobUrl; a.download = filename; a.click()
-      URL.revokeObjectURL(blobUrl)
-    } catch { toast.error('내보내기 실패 — 관리자 세션 만료면 재로그인 후 시도') }
-  }
-
   async function deleteSelected() {
     const ids = [...selected]
     if (!ids.length) return
@@ -387,7 +377,7 @@ export default function AdminPartnerPoolPage() {
             { label: '규모 조회(국민연금)', desc: '대행사 우선 — 직원수(가입자수)로 실조직/1인 구분. 엄격 매칭만 저장', onClick: () => runAction('collect-nps', '국민연금 규모 조회') },
           ]} />
           <button onClick={() => setShowImport(v => !v)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="공정위 프랜차이즈 정보공개서·상인회 명부 CSV/TSV 붙여넣기(레인 B·C)">{showImport ? '닫기' : '명부 붙여넣기'}</button>
-          <button onClick={() => downloadCsv(`/api/admin/partner-pool/export?format=csv&${buildQuery().toString()}`, `partner-leads-${new Date().toISOString().slice(0, 10)}.csv`)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="⬇ 지금 화면 필터 그대로 CSV 로 — 엑셀 호환(BOM). 상한을 넘으면 파일 마지막 줄에 잘렸다고 적힙니다">⬇ CSV</button>
+          <PoolExportButtons pool="company" path="/api/admin/partner-pool/export" basename="partner-leads" query={buildQuery} />
           {selected.size > 0 && (
             <button onClick={deleteSelected} className="ur-btn ur-btn-md ur-btn-danger">선택 삭제 ({selected.size})</button>
           )}

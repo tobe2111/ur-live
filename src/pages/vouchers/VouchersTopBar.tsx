@@ -21,7 +21,7 @@ export default function VouchersTopBar({ activeTab, onVouchers, onShopping }: {
             return (
               <button key={key} type="button"
                 onClick={() => (key === 'shopping' ? onShopping() : onVouchers())}
-                className={`relative px-4 py-2 text-[15px] font-extrabold transition-colors ${active ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}
+                className={`relative px-4 py-2 text-[15px] font-bold transition-colors ${active ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}
               >
                 {label}
                 {active && <span className="absolute left-4 right-4 bottom-0 h-[2.5px] rounded-full bg-gray-900 dark:bg-white" />}

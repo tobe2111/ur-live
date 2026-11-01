@@ -68,7 +68,7 @@ function ReviewBonusButtonInner({ voucherCode, restaurantName, restaurantAddress
   return (
     <>
       <button onClick={() => setOpen(true)}
-        className="mt-4 w-full py-2 rounded-xl bg-brand text-white text-[12px] font-bold flex items-center justify-center gap-1">
+        className="mt-4 w-full py-2 rounded-xl bg-brand text-white text-[12px] font-medium flex items-center justify-center gap-1">
         ⭐ 카카오맵 후기 작성하고 보너스 받기
       </button>
       {/* 🪟 2026-10-12 대표 신고 스크린샷(시트 뒤로 카드가 비쳐 겹쳐 보임) — 이 버튼은 '지난 이용권' 카드 안에 있고
@@ -87,20 +87,20 @@ function ReviewBonusButtonInner({ voucherCode, restaurantName, restaurantAddress
             {/* 🗺️ 어느 매장 후기인지 못 찾아 헤매지 않게 — 매장명과 카카오맵 검색 링크를 바로 준다. */}
             {restaurantName && (
               <div className="mb-4 p-2 rounded-xl bg-gray-50 dark:bg-[#1D1F29]">
-                <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{restaurantName}</p>
+                <p className="text-[12px] font-medium text-gray-900 dark:text-white truncate">{restaurantName}</p>
                 {restaurantAddress && (
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate mt-1">{restaurantAddress}</p>
                 )}
                 <a
                   href={`https://map.kakao.com/?q=${encodeURIComponent(restaurantName)}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="inline-block mt-2 text-[12px] font-bold text-gray-900 dark:text-white underline"
+                  className="inline-block mt-2 text-[12px] font-medium text-gray-900 dark:text-white underline"
                 >카카오맵에서 이 매장 찾기 →</a>
               </div>
             )}
             <div className="grid grid-cols-2 gap-1 mb-3">
-              <button onClick={() => setMode('url')} className={`py-2 text-[12px] font-bold rounded ${mode === 'url' ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
-              <button onClick={() => setMode('screenshot')} className={`py-2 text-[12px] font-bold rounded ${mode === 'screenshot' ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200'}`}>스크린샷 (AI 자동 검증)</button>
+              <button onClick={() => setMode('url')} className={`py-2 text-[12px] font-medium rounded ${mode === 'url' ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
+              <button onClick={() => setMode('screenshot')} className={`py-2 text-[12px] font-medium rounded ${mode === 'screenshot' ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200'}`}>스크린샷 (AI 자동 검증)</button>
             </div>
             {mode === 'url' ? (
               <div>

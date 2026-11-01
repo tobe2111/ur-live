@@ -17,6 +17,7 @@
 
 import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
+import { VOUCHER_CATEGORY_SQL_IN } from '../../shared/constants/voucher-categories'
 
 interface SellerSignal {
   seller_id: number
@@ -44,7 +45,7 @@ export async function handleSellerChurnDetect(env: Env): Promise<void> {
       FROM sellers s
       LEFT JOIN products p ON p.seller_id = s.id
         AND p.created_at >= datetime('now', '-30 days')
-        AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+        AND p.category IN (${VOUCHER_CATEGORY_SQL_IN})
       WHERE s.status = 'approved'
       GROUP BY s.id
       HAVING days_since_last_post IS NOT NULL

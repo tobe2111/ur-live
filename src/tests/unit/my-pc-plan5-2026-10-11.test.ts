@@ -163,9 +163,11 @@ describe('🧾 오른쪽 칸 — 판을 걷고 폰과 같은 목록을 쓴다', 
   it('🔴 PC 에서 갈 길이 없던 목적지 넷이 이제 닿는다', () => {
     // 종전 PC 타일은 셋(숙소·단골·찜)뿐이라 아래 넷은 **PC 에서 문이 아예 없었다.**
     const SHOP = read('src/pages/user-profile/ShoppingGroup.tsx')
-    for (const p of ['/my-coupons', '/my-orders', '/mypage/addresses', '/my-reviews']) {
+    for (const p of ['/my-coupons', '/mypage/addresses', '/my-reviews']) {
       expect(SHOP, `${p} 이 공용 목록에서 빠졌다 — PC 가 다시 그 문을 잃는다`).toContain(`path: '${p}'`)
     }
+    // 🧾 2026-10-20: 주문 내역은 줄이 아니라 같은 부품의 구역 제목 링크('결제 내역 ›')다 — 문은 그대로 PC 에도 있다.
+    expect(SHOP, '/my-orders 로 가는 문이 공용 목록에서 빠졌다').toMatch(/onClick: \(\) => navigate\('\/my-orders'\)/)
     /**
      * 🩸 **첫 판이 헛돌았다 — 주입 러너가 잡았다.** 아래 `toContain` 과 위치 검사만 있었는데,
      *   `{!isPc && <ShoppingGroup counts={counts} />}` 로 바꾸는 주입에 **둘 다 통과**했다:

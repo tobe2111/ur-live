@@ -23,6 +23,7 @@ export default function CategoryTabs({ category, setCategory, navigate, searchPa
               { key: 'meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍽️ 이용권' }) },
               { key: 'beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
               { key: 'stay_voucher', label: t('groupBuy.categoryStay', { defaultValue: '🏨 숙소' }) },
+              { key: 'home_voucher', label: t('groupBuy.categoryHome', { defaultValue: '생활' }) },
               { key: 'etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
               { key: 'general', label: t('groupBuy.categoryGeneral', { defaultValue: '🛍️ 온라인 (배송)' }) },
             ] as const).map((tab) => (
@@ -38,7 +39,7 @@ export default function CategoryTabs({ category, setCategory, navigate, searchPa
                   if (tab.key === 'all') next.delete('category'); else next.set('category', tab.key)
                   setSearchParams(next, { replace: true })
                 }}
-                className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
+                className={`px-4 py-2 rounded-full text-[12px] font-medium whitespace-nowrap border transition-colors ${
                   category === tab.key
                     ? 'bg-brand text-white border-gray-900 dark:border-white'
                     : 'bg-white dark:bg-transparent text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35]'

@@ -77,9 +77,9 @@ export default function ProductCard({ product, highlightQuery }: ProductCardProp
       titleNode={highlightQuery ? highlightText(product.name, highlightQuery) : undefined}
       /* 🚩 품절·재고는 **본문 맨 위 한 줄**로 — 사진 위에 얹지 않는다(08-31 규칙). */
       flags={soldOut ? (
-        <p className="text-[12px] font-bold text-red-500 mb-1">품절</p>
+        <p className="text-[12px] font-medium text-red-500 mb-1">품절</p>
       ) : lowStock ? (
-        <p className="text-[12px] font-semibold text-red-500 mb-1">재고 {product.stock}개</p>
+        <p className="text-[12px] font-medium text-red-500 mb-1">재고 {product.stock}개</p>
       ) : undefined}
       /* 🛡️ 2026-05-25 큐레이터 핀 — 1탭 핀 추가(Phase 1-B 핵심 UX). 찜 하트 아래에 놓는다. */
       overlayExtra={<PinButton productId={product.id} price={product.price} variant="card-overlay" />}

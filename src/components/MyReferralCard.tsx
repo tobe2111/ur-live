@@ -68,7 +68,7 @@ export default function MyReferralCard() {
     <div className="rounded-2xl p-5 mt-3 bg-gray-100 dark:bg-white/[0.04] border border-line">
       <div className="flex items-center gap-2 mb-3">
         <GiftBoxIcon className="w-5 h-5 text-gray-700 dark:text-white" />
-        <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('inviteCard.title', { defaultValue: '친구 초대' })}</h3>
+        <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('inviteCard.title', { defaultValue: '친구 초대' })}</h3>
       </div>
 
       <p className="text-[15px] text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
@@ -80,15 +80,15 @@ export default function MyReferralCard() {
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div className="bg-surface rounded-xl px-3 py-2 text-center">
           <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('inviteCard.statEarned', { defaultValue: '획득 딜' })}</p>
-          <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatNumber(total)}</p>
+          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{formatNumber(total)}</p>
         </div>
         <div className="bg-surface rounded-xl px-3 py-2 text-center">
           <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('inviteCard.statDone', { defaultValue: '완료' })}</p>
-          <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{grantedCount}</p>
+          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{grantedCount}</p>
         </div>
         <div className="bg-surface rounded-xl px-3 py-2 text-center">
           <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('inviteCard.statPending', { defaultValue: '대기' })}</p>
-          <p className="text-[15px] font-extrabold text-gray-400">{pendingCount}</p>
+          <p className="text-[15px] font-bold text-gray-400">{pendingCount}</p>
         </div>
       </div>
 

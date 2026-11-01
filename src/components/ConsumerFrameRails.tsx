@@ -34,7 +34,7 @@ function QuickLink({ icon: Icon, label, onClick }: { icon: typeof HomeIcon; labe
       className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors text-left"
     >
       <Icon className="w-[18px] h-[18px] text-gray-700 dark:text-gray-300 shrink-0" aria-hidden="true" />
-      <span className="flex-1 text-[13px] font-semibold text-gray-900 dark:text-white">{label}</span>
+      <span className="flex-1 text-[13px] font-medium text-gray-900 dark:text-white">{label}</span>
       <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" aria-hidden="true" />
     </button>
   )
@@ -76,7 +76,7 @@ export default function ConsumerFrameRails() {
                   <v.icon className="w-[15px] h-[15px]" aria-hidden="true" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[12px] font-bold text-gray-900 dark:text-white leading-tight">{v.title}</span>
+                  <span className="block text-[12px] font-medium text-gray-900 dark:text-white leading-tight">{v.title}</span>
                   <span className="block text-[12px] text-gray-500 dark:text-gray-400 leading-snug">{v.desc}</span>
                 </span>
               </div>
@@ -86,7 +86,7 @@ export default function ConsumerFrameRails() {
           <div className={`${cardCls} p-4`}>
             <div className="flex items-center gap-2 mb-2">
               <Smartphone className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-              <p className="text-[12px] font-bold tracking-wide text-gray-500 dark:text-gray-400">
+              <p className="text-[12px] font-medium tracking-wide text-gray-500 dark:text-gray-400">
                 {t('frameRails.openMobile', { defaultValue: '모바일로 보기' })}
               </p>
             </div>
@@ -117,7 +117,7 @@ export default function ConsumerFrameRails() {
           {/* 🧭 2026-07-03 (대표 — 바로가기 업데이트): 하단 네비 정본 5탭과 통일
               (홈·쇼핑·이용권·유어샵·마이). 낡은 라벨(교환권/내 지갑)·중복 동네딜(→은퇴한 /group-buy) 제거. */}
           <div className={`${cardCls} p-2`}>
-            <p className="px-4 pt-2 pb-1 text-[12px] font-bold tracking-wide text-gray-500 dark:text-gray-400">
+            <p className="px-4 pt-2 pb-1 text-[12px] font-medium tracking-wide text-gray-500 dark:text-gray-400">
               {t('frameRails.quicklinks', { defaultValue: '바로가기' })}
             </p>
             <QuickLink icon={HomeIcon} label={t('nav.home', { defaultValue: '홈' })} onClick={() => navigate('/')} />
@@ -132,7 +132,7 @@ export default function ConsumerFrameRails() {
           {/* CTA: 홈이 곧 동네딜이라 '전체 동네딜'(은퇴)은 중복 → '지도로 동네딜 보기'로 (홈 목록과 상호보완). */}
           <button
             onClick={() => navigate('/map')}
-            className="pointer-events-auto w-full flex items-center justify-center gap-2 rounded-2xl bg-brand text-white px-4 py-4 text-[13px] font-bold hover:opacity-90 transition-opacity shadow-sm"
+            className="pointer-events-auto w-full flex items-center justify-center gap-2 rounded-2xl bg-brand text-white px-4 py-4 text-[13px] font-medium hover:opacity-90 transition-opacity shadow-sm"
           >
             <PinIcon className="w-4 h-4" aria-hidden="true" />
             {t('frameRails.exploreMap', { defaultValue: '지도로 동네딜 보기 →' })}

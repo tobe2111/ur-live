@@ -156,18 +156,18 @@ export default function InfluencerDashboardPage() {
           <>
             {/* 적립 누계 */}
             <div className="bg-gray-800/[0.15] border border-brand/30 rounded-2xl p-5">
-              <p className="text-[12px] font-bold text-brand-text opacity-70 tracking-[0.14em]">{t('influencer.earned', { defaultValue: '누적 적립' })}</p>
-              <p className="text-[28px] font-black text-brand-text mt-1">
+              <p className="text-[12px] font-medium text-brand-text opacity-70 tracking-[0.14em]">{t('influencer.earned', { defaultValue: '누적 적립' })}</p>
+              <p className="text-[28px] font-extrabold text-brand-text mt-1">
                 ₩{formatNumber(stats?.total_earned || 0)}
               </p>
               <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-brand/20">
                 <div>
                   <p className="text-[12px] text-brand-text opacity-70">{t('influencer.refCount', { defaultValue: '추천 결제' })}</p>
-                  <p className="text-[15px] font-extrabold text-white">{formatNumber(stats?.total_referrals || 0)}건</p>
+                  <p className="text-[15px] font-bold text-white">{formatNumber(stats?.total_referrals || 0)}건</p>
                 </div>
                 <div>
                   <p className="text-[12px] text-brand-text opacity-70">{t('influencer.refSales', { defaultValue: '유발 매출' })}</p>
-                  <p className="text-[15px] font-extrabold text-white">₩{formatNumber(stats?.total_sales || 0)}</p>
+                  <p className="text-[15px] font-bold text-white">₩{formatNumber(stats?.total_sales || 0)}</p>
                 </div>
               </div>
             </div>
@@ -185,7 +185,7 @@ export default function InfluencerDashboardPage() {
                   ].map((f) => (
                     <div key={f.label} className="p-2 bg-white/[0.04] rounded">
                       <p className="text-[12px] text-gray-400">{f.label}</p>
-                      <p className={`text-[15px] font-extrabold ${f.color}`}>{f.value}</p>
+                      <p className={`text-[15px] font-bold ${f.color}`}>{f.value}</p>
                     </div>
                   ))}
                 </div>
@@ -213,7 +213,7 @@ export default function InfluencerDashboardPage() {
                         {item.image_url ? <img src={cfImage(item.image_url, { width: 200, quality: 82, format: 'auto' }) || item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, item.image_url)} /> : null}
                       </Link>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-bold line-clamp-1">{item.name}</p>
+                        <p className="text-[12px] font-medium line-clamp-1">{item.name}</p>
                         <div className="flex gap-2 mt-1">
                           <span className="text-[12px] text-gray-400">
                             {item.type === 'stay' ? '🏨 숙소' :
@@ -221,10 +221,10 @@ export default function InfluencerDashboardPage() {
                              item.type === 'group-buy' ? '🏪 공구' : '🛍️ 상품'}
                           </span>
                           {item.discount_pct ? (
-                            <span className="text-[12px] text-brand-text font-bold">소비자 -{item.discount_pct}%</span>
+                            <span className="text-[12px] text-brand-text font-medium">소비자 -{item.discount_pct}%</span>
                           ) : null}
                           {item.commission_pct ? (
-                            <span className="text-[12px] text-emerald-300 font-bold">커미션 {item.commission_pct}%</span>
+                            <span className="text-[12px] text-emerald-300 font-medium">커미션 {item.commission_pct}%</span>
                           ) : null}
                         </div>
                       </div>
@@ -248,7 +248,7 @@ export default function InfluencerDashboardPage() {
 
             {/* 안내 카드 */}
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4">
-              <p className="text-[12px] font-bold text-blue-300 mb-1">{t('influencer.shareGuide', { defaultValue: '📌 referral 공유 가이드' })}</p>
+              <p className="text-[12px] font-medium text-blue-300 mb-1">{t('influencer.shareGuide', { defaultValue: '📌 referral 공유 가이드' })}</p>
               <ul className="text-[12px] text-blue-200/80 space-y-1">
                 <li>• 본인 SNS / 카톡 / 블로그에 링크 공유</li>
                 <li>• 소비자가 링크로 진입 + 결제 시 자동 적립</li>

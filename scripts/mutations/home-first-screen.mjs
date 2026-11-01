@@ -46,8 +46,8 @@ export default [
   {
     name: '🏠 홈 카드 제목 클래스가 카드와 갈린다 (마운트 때 제목이 튄다)',
     file: UTIL,
-    find: "title: 'text-[13px] font-bold line-clamp-2 leading-tight",
-    replace: "title: 'text-[14px] font-bold line-clamp-2 leading-tight",
+    find: "title: 'text-[15px] font-medium line-clamp-2 leading-snug",
+    replace: "title: 'text-[14px] font-bold line-clamp-2 leading-snug",
     test: T,
     why:
       '13 → 14px 은 두 줄 제목에서 높이를 바꾼다. 그 아래 주소·평점·가격이 통째로 밀리고 ' +
@@ -77,8 +77,8 @@ export default [
   {
     name: '🏠 홈 첫 화면이 lucide 를 워커로 끌고 들어온다 (번들 gzip 게이트)',
     file: UTIL,
-    find: "import { DEAL_CAT_LABELS } from '../../shared/deal-cats'",
-    replace: "import { DEAL_CATS as DEAL_CAT_LABELS } from '../../pages/pc-home/PcHomeRail'",
+    find: "import { HOME_DEAL_CAT_LABELS, isHomeVisibleProduct } from '../../shared/deal-cats'",
+    replace: "import { HOME_DEAL_CATS as HOME_DEAL_CAT_LABELS } from '../../pages/pc-home/PcHomeRail'; import { isHomeVisibleProduct } from '../../shared/deal-cats'",
     test: T,
     why:
       '라벨을 순수 모듈이 아니라 lucide 를 import 하는 파일에서 가져오면 `_worker.js` 가 lucide 를 ' +

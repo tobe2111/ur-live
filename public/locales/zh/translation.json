@@ -2298,7 +2298,9 @@
       "categoryActivity": "Activity voucher",
       "categoryActivityDesc": "Escape room, bowling, class",
       "categoryEtc": "其他使用券",
-      "categoryEtcDesc": "宠物·活动·课程"
+      "categoryEtcDesc": "宠物·活动·课程",
+      "categoryHome": "生活服务券",
+      "categoryHomeDesc": "搬家·入住清洁·空调清洗"
     },
     "gift": {
       "title": "送礼物",
@@ -2443,7 +2445,8 @@
       "channelConfirm": "确认",
       "channelSaving": "保存中…",
       "channelSaved": "已保存运营方式",
-      "channelSaveFailed": "无法保存运营方式"
+      "channelSaveFailed": "无法保存运营方式",
+      "seedingSaveFailed": "未能保存免费体验设置，请在门店申请页面重新开启"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -3288,7 +3291,8 @@
       "brandWideTitleOff": "其他门店也可使用",
       "brandWideNote": "用该门店的确认码或扫码核销。结算仍归本门店。",
       "brandWideTitleAll": "品牌{{count}}家门店也可使用",
-      "brandWideNoteCross": "在同一店主的门店使用则结算到本店，在其他店主的门店使用则结算到该门店。带推荐费的券仅可在同一店主的门店使用。"
+      "brandWideNoteCross": "在同一店主的门店使用则结算到本店，在其他店主的门店使用则结算到该门店。带推荐费的券仅可在同一店主的门店使用。",
+      "agencyMine": "我们负责的使用券"
     },
     "ordersM3": {
       "today": "今天",
@@ -3380,6 +3384,30 @@
       "am": "上午",
       "pm": "下午",
       "hour": "{{n}}点"
+    },
+    "channelPerf": {
+      "title": "谁卖出的",
+      "month": "本月",
+      "last30": "最近30天",
+      "all": "全部",
+      "who": "谁",
+      "sold": "销售",
+      "revenue": "销售额",
+      "used": "已使用",
+      "refunded": "退款",
+      "products": "负责的券 {{n}} 个",
+      "ended": "已结束",
+      "pending": "等待接受",
+      "noAgency": "交给代理商后，将按代理商分别统计(运营者管理 → 交给代理商)。",
+      "referralTitle": "通过推荐链接销售",
+      "noReferral": "此期间没有通过推荐链接售出的券。",
+      "unknownUser": "未知用户",
+      "soldN": "{{n}} 张",
+      "commission": "网红佣金 {{n}} 韩元",
+      "share": "分成 {{pct}}% · {{n}} 韩元",
+      "shareUnset": "分成未设定",
+      "shareNote": "UrDeal 只计算并显示应付金额。款项由门店直接支付给代理商，税务发票由代理商开给门店。",
+      "note": "推荐链接销售已包含在上方销售中。同一笔销售从“谁负责”和“来自谁的链接”两个角度查看。"
     }
   },
   "admin": {
@@ -5821,7 +5849,9 @@
     "sharedShareDesc": "在Urdeal发现了好商品",
     "sharedShareBtn": "查看商品",
     "sellerReplyLabel": "卖家回复",
-    "sponsoredBadge": "体验提供"
+    "sponsoredBadge": "体验提供",
+    "loadMore": "查看更多评价（还有{{n}}条）",
+    "loadingMore": "加载中…"
   },
   "productOption": {
     "title": "商品选项管理",
@@ -5928,6 +5958,7 @@
       "health": "健身",
       "pet": "宠物",
       "stay": "住宿",
+      "home": "生活",
       "activity": "活动",
       "etc": "其他"
     },
@@ -6017,7 +6048,9 @@
     "privacyLink": "隐私政策",
     "termsNoticeEnd": "",
     "agencyQuestion": "您是代理机构吗？",
-    "agencyLogin": "代理机构登录"
+    "agencyLogin": "代理机构登录",
+    "heroTitle2": "街坊好店，提前买更便宜",
+    "chipPass": "本地使用券"
   },
   "guide": {
     "sectionTitlePlaceholder": "章节标题",
@@ -6231,6 +6264,7 @@
     "coupons": "优惠券",
     "orders": "[TODO:zh] 주문 내역",
     "ordersSub": "[TODO:zh] 최근 3개월",
+    "paymentHistory": "支付记录",
     "myStays": "我的住宿预订",
     "myStaysSub": "入住码 / 有效期",
     "interestList": "收藏的餐厅",

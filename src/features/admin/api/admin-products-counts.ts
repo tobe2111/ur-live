@@ -10,6 +10,18 @@
  *   화면이 자기모순을 일으킨다 — 그건 섞여 있는 것보다 더 헷갈린다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
+
+/**
+ * 🧾 '교환권·쇼핑 상품' 화면 전용 — 이용권(식사·미용·숙소·기타)을 뺀다 〔2026-10-20 대표 *"역할이 모호해"*〕.
+ *   그 화면의 "쇼핑 상품" 430개 중 약 405개가 사실 이용권이었다(라이브 실측). 이용권은 '이용권 관리'가 맡는다.
+ *   ⚠️ 상품 고르기(홈 섹션·리뷰·유어쇼츠)도 같은 API 를 쓰고 거기선 이용권이 필요하다 ⇒ `?kind=goods` 일 때만.
+ */
+export function goodsOnlySql(kind: unknown, alias?: string): string {
+  if (String(kind ?? '') !== 'goods') return ''
+  const col = alias ? `${alias}.category` : 'category'
+  return ` AND COALESCE(${col}, '') NOT IN (${VOUCHER_CATEGORIES.map((c) => `'${c}'`).join(',')})`
+}
 
 export interface ProductTabCounts {
   all_count: number

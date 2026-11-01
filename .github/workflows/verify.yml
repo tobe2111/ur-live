@@ -729,6 +729,13 @@ jobs:
       - name: Comment stripper ratchet (strict)
         run: STRICT_COMMENT_STRIPPER=1 node scripts/check-comment-stripper.mjs
 
+      # 🧮 2026-10-26: 손으로 만든 `IN (?,?,…)` 표면 동결. D1 바인딩 한도는 **정확히 100**
+      #   (실측 99 OK · 100 OK · 101 ERR 7500). 그날 같은 병이 둘 터졌다 — 도장(101 바인딩,
+      #   `.catch` 가 삼켜 0건)과 `/api/fcfs/active`(활성 395개를 한 IN 에 넣어 `data:[]`, HTTP 200).
+      #   새 IN-목록은 `chunkForBinds`(src/shared/db/d1-binds.ts) 를 거쳐야 한다.
+      - name: D1 bind-limit ratchet (strict)
+        run: node scripts/check-d1-bind-limit.mjs
+
       # 🛡️ 2026-09-14: "CI 가 막는 것은 로컬도 막는다" — 실측 91개 가드가 CI strict 인데
       #   로컬은 무방비였다(합쳐 20초인데도). 위반 하나가 CI 57분을 태우던 원인.
       #   새 strict 가드는 pre-push 게이트가 돌리거나 EXCLUDE 에 사유를 적어야 한다.

@@ -25,6 +25,7 @@ export const LAST_LOC_KEY = 'ur_last_loc_v1'
  */
 export function rememberLoc(loc: { lat: number; lng: number }): void {
   try { localStorage.setItem(LAST_LOC_KEY, JSON.stringify(loc)) } catch { /* quota */ }
+  markHomePick('loc')
   writeNearCookie(nearKeyOf(loc), null)
 }
 
@@ -35,4 +36,18 @@ export function readCachedLoc(): { lat: number; lng: number } | null {
   } catch {
     return null
   }
+}
+
+/**
+ * 🧭 2026-10-31 (대표 "메인에서 지역을 선택하고 이용권 상세를 보고 뒤로가기를 하면 지역 선택하기 전 메인페이지가 나오네"):
+ * 홈은 다시 열릴 때 **마지막 측위가 있으면 저장된 지역을 무시**했다(2026-09-08 규칙). 그런데 지역을 고르는 순간
+ * 측위를 지우지 않으니, 지역을 골라 상세에 다녀오면 옛 측위가 다시 이겨 지역이 풀렸다.
+ * ⇒ 사람이 **마지막에 고른 쪽**을 적어 두고 그쪽을 따른다. 측위를 잡으면 'loc', 지역을 고르면 'region'.
+ */
+export const HOME_PICK_KEY = 'ur_home_pick_v1'
+export function markHomePick(kind: 'loc' | 'region'): void {
+  try { localStorage.setItem(HOME_PICK_KEY, kind) } catch { /* ignore */ }
+}
+export function readHomePick(): 'loc' | 'region' | null {
+  try { const v = localStorage.getItem(HOME_PICK_KEY); return v === 'loc' || v === 'region' ? v : null } catch { return null }
 }

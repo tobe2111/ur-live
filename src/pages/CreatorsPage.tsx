@@ -1,5 +1,7 @@
 /**
- * ✨ 소개 파트너 모집 랜딩 — `/creators` (2026-07-19 대표 "웹페이지 3종" ③)
+ * ✨ 소개 파트너 모집 랜딩 — `/influencer` (2026-07-19 대표 "웹페이지 3종" ③ · 2026-10-31 주소 이전)
+ *   📣 2026-10-31 대표 *"인플루언서용은 하나로 통일하자. /influencer 이걸로"* — 원래 `/creators` 에 있었고,
+ *   같은 말을 하던 짧은 판 `InfluencerLandingPage` 는 지웠다. 옛 주소는 301(`consumer-redirects.ts`).
  *   히어로 → 수익 구조(판매당 promo%) → 시작 3단계 → 실제 화면 → 시드 모집 폼.
  *
  * ■ 2026-09-16 PC 판 (대표 *"PC를 같은 수준으로 만들어주고"*)
@@ -26,6 +28,10 @@ import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 import PhoneShot, { SHOT } from './landing/PhoneShot'
+import { CountUp, Line, Reveal, ScrollProgress, Tilt, loadDelay } from './landing/motion'
+import FaqItem from './landing/FaqItem'
+// ❓ 2026-10-31 — 질문은 `shared/landing-faq` SSOT. 워커가 같은 배열로 서버 본문과 `FAQPage` 를 만든다.
+import { REFERRAL_FAQ } from '@/shared/landing-faq'
 
 /** 📋 시드 모집 폼 — 기본은 유어딜 네이티브 신청 폼(/creators/apply, 사전동의·풀 자동적재).
  *  대표가 별도 구글폼 URL 을 전달하면 여기에 넣어 iframe 임베드로 대체(없으면 네이티브 폼 사용). */
@@ -36,6 +42,9 @@ const STEPS = [
   { icon: MousePointerClick, t: '딜 선택', d: '동네 맛집·뷰티 딜 중 소개하고 싶은 걸 내 유어샵에 담아요' },
   { icon: Share2, t: '링크 공유', d: '인스타·블로그·카톡에 내 링크 하나만 올리면 끝' },
 ]
+
+/** 계단 — PC 에서 단계마다 오른쪽으로 한 칸씩 들어간다(폰은 그대로 세로 목록). 클래스는 정적으로 적는다(tailwind 가 줍는다). */
+const STAIR = ['', 'lg:ml-[14%]', 'lg:ml-[28%]']
 
 const TERMS = [
   '소개비율은 딜마다 표시되니 고르기 전에 미리 확인하세요',
@@ -49,22 +58,23 @@ export default function CreatorsPage() {
   return (
     <div className="min-h-[100dvh] bg-warm">
       {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
-      <SEO title={CONSUMER_SURFACE_SEO['/creators'].title} description={CONSUMER_SURFACE_SEO['/creators'].description} url="/creators" />
+      <SEO title={CONSUMER_SURFACE_SEO['/influencer'].title} description={CONSUMER_SURFACE_SEO['/influencer'].description} url="/influencer" />
 
       <header className="sticky top-0 z-20 ur-panel-ink">
         <div className="ur-content-wide mx-auto px-5 lg:px-10 h-14 lg:h-16 flex items-center justify-between">
           <Link to="/" aria-label="유어딜 홈" className="flex items-center gap-2">
             <UrDealLogo size={19} forceDark />
-            <span className="hidden sm:inline text-[12px] font-bold text-white/55">소개하기</span>
+            <span className="hidden sm:inline text-[12px] font-medium text-white/55">소개하기</span>
           </Link>
           <div className="flex items-center gap-2 lg:gap-3">
-            <Link to="/about" className="hidden sm:inline text-[12px] font-semibold text-white/70 px-2">서비스 소개</Link>
+            <Link to="/about" className="hidden sm:inline text-[12px] font-medium text-white/70 px-2">서비스 소개</Link>
             <ApplyLink href={applyHref}
-              className="h-9 lg:h-10 px-4 lg:px-5 rounded-full bg-brand text-white inline-flex items-center gap-2 text-[12px] lg:text-[13px] font-extrabold">
+              className="h-9 lg:h-10 px-4 lg:px-5 rounded-full bg-brand text-white inline-flex items-center gap-2 text-[12px] lg:text-[13px] font-medium">
               소개 파트너 지원 <ArrowRight className="w-3.5 h-3.5" />
             </ApplyLink>
           </div>
         </div>
+        <ScrollProgress />
       </header>
 
       <main className="pb-24 lg:pb-0">
@@ -73,24 +83,25 @@ export default function CreatorsPage() {
           <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-10 pb-14 lg:pt-16 lg:pb-24 grid gap-14 lg:grid-cols-[1fr_0.62fr] lg:gap-16 xl:gap-24 lg:items-center">
             <div>
               <h1 className="text-[28px] sm:text-[40px] lg:text-[48px] xl:text-[60px] leading-[1.22] font-extrabold tracking-[-0.035em]">
-                <span className="text-brand-text">링크 하나</span>로<br />
-                동네 맛집을 팔고<br />
-                커미션을 받으세요
+                {/* 🎬 2026-10-31: 한 줄씩 마스크 안에서 밀려 올라온다 */}
+                <Line i={0}><span className="text-brand-text">링크 하나</span>로</Line>
+                <Line i={1}>동네 맛집을 팔고</Line>
+                <Line i={2}>커미션을 받으세요</Line>
               </h1>
-              <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-[1.7] text-white/70 max-w-[26em]">
+              <p style={loadDelay(360)} className="ur-load mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-[1.7] text-white/70 max-w-[26em]">
                 팔로워가 많지 않아도 괜찮아요. 동네 이웃에게 진짜 좋은 딜을 소개하는 것부터 시작합니다.
               </p>
 
               {/* 숫자는 카드에 담지 않는다. 담는 순간 "3열 균등 카드" 가 된다 */}
-              <dl className="mt-10 lg:mt-12 flex flex-wrap gap-x-10 gap-y-6 lg:gap-x-14">
+              <dl style={loadDelay(480)} className="ur-load mt-10 lg:mt-12 flex flex-wrap gap-x-10 gap-y-6 lg:gap-x-14">
                 <Stat n="0원" d="시작에 드는 돈" />
                 <Stat n="promo%" d="매장이 건 소개 몫 (딜마다 다름)" />
                 <Stat n={F.minPayout} d="정산 최소 지급액" />
               </dl>
 
-              <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
+              <div style={loadDelay(600)} className="ur-load mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
                 <ApplyLink href={applyHref}
-                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-extrabold active:scale-[0.98] transition-transform">
+                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
                   소개 파트너 지원 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
                 </ApplyLink>
                 <Link to="/about"
@@ -100,10 +111,12 @@ export default function CreatorsPage() {
               </div>
             </div>
 
-            <div className="flex justify-center">
-              <PhoneShot src={SHOT('ushop')} alt="담은 딜이 진열된 내 유어샵 화면" priority
-                caption="유어샵 (라이브 화면)"
-                className="w-[58%] max-w-[16rem] lg:w-[19rem] xl:w-[21rem] lg:max-w-none" />
+            <div style={loadDelay(220)} className="ur-load">
+              <Tilt className="flex justify-center">
+                <PhoneShot src={SHOT('ushop')} alt="담은 딜이 진열된 내 유어샵 화면" priority
+                  caption="유어샵 (라이브 화면)"
+                  className="ur-float w-[58%] max-w-[16rem] lg:w-[19rem] xl:w-[21rem] lg:max-w-none" />
+              </Tilt>
             </div>
           </div>
         </section>
@@ -111,47 +124,43 @@ export default function CreatorsPage() {
         {/* ② 수익 구조 — 한 문장을 크게 두고 조건은 아래 헤어라인으로. PC 는 제목 고정 + 본문 분리. */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-20">
-            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] lg:self-start lg:sticky lg:top-24">
+            <Reveal className="lg:self-start lg:sticky lg:top-24"><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
               수익 구조는 단순합니다
-            </h2>
+            </h2></Reveal>
             <div>
-              <p className="flex items-start gap-2 lg:gap-4 text-[17px] lg:text-[34px] font-extrabold text-ink leading-[1.35] tracking-[-0.025em]">
+              <Reveal as="p" className="flex items-start gap-2 lg:gap-4 text-[17px] lg:text-[34px] font-bold text-ink leading-[1.35] tracking-[-0.025em]">
                 <Link2 className="w-5 h-5 lg:w-8 lg:h-8 mt-1 lg:mt-2 text-brand shrink-0" strokeWidth={1.9} aria-hidden />
                 <span>매장이 소개 몫을 건 딜이 내 링크로 팔리면 <span className="text-brand-text">판매액의 소개비(promo%)</span> 적립</span>
-              </p>
+              </Reveal>
               <ul className="mt-8 lg:mt-12 border-t border-rule">
-                {TERMS.map((t) => (
-                  <li key={t} className="py-4 lg:py-6 border-b border-rule text-[13px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400">
+                {TERMS.map((t, i) => (
+                  <Reveal as="li" key={t} delay={i * 90} className="py-4 lg:py-6 border-b border-rule text-[13px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400">
                     {t}
-                  </li>
+                  </Reveal>
                 ))}
               </ul>
             </div>
           </div>
         </section>
 
-        {/* ③ 시작 3단계 — 모바일은 세로 목록, PC 는 가로 타임라인(가로선 하나에 세 점). */}
-        <section className="ur-panel-ink text-white">
-          <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">시작은 3단계</h2>
+        {/* ③ 시작 3단계 — 🎬 2026-10-31: 점 세 개짜리 가로 타임라인(가장 흔한 AI 랜딩 그림)을 **계단**으로 바꿨다.
+            PC 에서 한 단계마다 오른쪽으로 한 칸씩 내려앉으며 차례로 들어온다. 큰 단어가 주인공이고 설명은 그 옆. */}
+        <section className="ur-panel-ink text-white overflow-hidden">
+          <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
+            <Reveal><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">시작은 3단계</h2></Reveal>
 
-            <ol className="mt-8 lg:mt-16 space-y-2 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-12 xl:gap-20">
+            <ol className="mt-8 lg:mt-16 space-y-2 lg:space-y-0">
               {STEPS.map(({ icon: Icon, t, d }, i) => (
-                <li key={t} className="flex items-start gap-4 rounded-2xl bg-white/[0.06] p-4 lg:bg-transparent lg:p-0 lg:block lg:rounded-none">
+                <Reveal as="li" key={t} kind="left" delay={i * 160}
+                  className={`flex items-start gap-4 rounded-2xl bg-white/[0.06] p-4 lg:bg-transparent lg:p-0 lg:rounded-none lg:items-baseline lg:gap-10 lg:py-8 lg:border-t lg:border-white/15 ${STAIR[i]}`}>
                   <span aria-hidden className="w-9 h-9 rounded-xl bg-white/[0.10] flex items-center justify-center shrink-0 lg:hidden">
                     <Icon className="w-[18px] h-[18px] text-brand-text" />
                   </span>
-                  <span aria-hidden className="hidden lg:flex items-center gap-3 mb-8">
-                    <i className="w-[13px] h-[13px] rounded-full bg-brand not-italic" />
-                    <i className="flex-1 h-px bg-white/20 not-italic" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[15px] lg:text-[28px] font-extrabold tracking-[-0.02em] leading-[1.3]">
-                      <span className="text-brand-text mr-1 lg:hidden">{i + 1}.</span>{t}
-                    </p>
-                    <p className="text-[12px] lg:text-[17px] text-white/60 mt-1 lg:mt-5 leading-snug lg:leading-relaxed">{d}</p>
-                  </div>
-                </li>
+                  <p className="text-[15px] lg:text-[76px] font-bold lg:font-extrabold tracking-[-0.02em] lg:tracking-[-0.04em] leading-[1.3] lg:leading-none lg:shrink-0">
+                    <span className="text-brand-text mr-1 lg:hidden">{i + 1}.</span>{t}
+                  </p>
+                  <p className="text-[12px] lg:text-[17px] text-white/60 mt-1 lg:mt-0 leading-snug lg:leading-relaxed lg:max-w-[22em]">{d}</p>
+                </Reveal>
               ))}
             </ol>
           </div>
@@ -160,20 +169,34 @@ export default function CreatorsPage() {
         {/* ④ 실제 화면 — 폰 갤러리. 캡션은 덱과 같은 문구로, 라이브인지 예시 데이터인지 밝힌다. */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">제안을 받고, 정산까지 앱에서</h2>
-            <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400 max-w-[34em] leading-relaxed">
+            <Reveal><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">제안을 받고, 정산까지 앱에서</h2></Reveal>
+            <Reveal as="p" delay={80} className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400 max-w-[34em] leading-relaxed">
               매장에 돈을 달라고 할 일이 없습니다. 제안 수락도 적립 확인도 같은 앱 안에서 끝납니다.
-            </p>
+            </Reveal>
+            {/* 🎬 폰 세 대가 엇박으로 올라오고 PC 에서는 서로 다른 높이에서 떠 있다 */}
             <div className="mt-10 lg:mt-16 flex flex-wrap justify-center gap-8 lg:gap-16">
-              <PhoneShot src={SHOT('influencer-offer')} alt="매장이 보낸 소개 제안 화면"
-                caption="매장이 보낸 제안 (예시 데이터로 렌더한 실제 화면)"
-                className="w-[42%] max-w-[13rem] lg:w-[17rem] lg:max-w-none" />
-              <PhoneShot src={SHOT('influencer-settlement')} alt="내 소개 적립과 정산 화면"
-                caption="내 정산 화면 (예시 데이터)"
-                className="w-[42%] max-w-[13rem] lg:w-[17rem] lg:max-w-none lg:mt-16" />
-              <PhoneShot src={SHOT('creators-apply')} alt="소개 파트너 신청 폼 화면"
-                caption="신청 폼 (라이브 화면)"
-                className="hidden lg:block lg:w-[17rem]" />
+              <Reveal kind="scale" className="w-[42%] max-w-[13rem] lg:w-[17rem] lg:max-w-none">
+                <PhoneShot src={SHOT('influencer-offer')} alt="매장이 보낸 소개 제안 화면"
+                  caption="매장이 보낸 제안 (예시 데이터로 렌더한 실제 화면)" className="ur-float" />
+              </Reveal>
+              <Reveal kind="scale" delay={140} className="w-[42%] max-w-[13rem] lg:w-[17rem] lg:max-w-none lg:mt-16">
+                <PhoneShot src={SHOT('influencer-settlement')} alt="내 소개 적립과 정산 화면"
+                  caption="내 정산 화면 (예시 데이터)" className="ur-float-late" />
+              </Reveal>
+              <Reveal kind="scale" delay={280} className="hidden lg:block lg:w-[17rem]">
+                <PhoneShot src={SHOT('creators-apply')} alt="소개 파트너 신청 폼 화면"
+                  caption="신청 폼 (라이브 화면)" className="ur-float" />
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
+        {/* ❓ 자주 묻는 것 — 화면 · 크롤러 본문 · FAQPage 가 같은 배열(landing-faq). 답은 접혀도 DOM 에 있다. */}
+        <section className="bg-warm">
+          <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-10 lg:grid-cols-[0.62fr_1.38fr] lg:gap-16">
+            <Reveal><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">자주 묻는 것</h2></Reveal>
+            <div>
+              {REFERRAL_FAQ.map(f => <FaqItem key={f.question} q={f.question} a={f.answer} />)}
             </div>
           </div>
         </section>
@@ -182,9 +205,9 @@ export default function CreatorsPage() {
         <section id="apply" className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
             <div className="max-w-[46rem] mx-auto text-center">
-              <h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
+              <Reveal kind="scale"><h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
                 1기 소개 파트너 모집
-              </h2>
+              </h2></Reveal>
               <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-relaxed text-white/70">
                 지금 지원하시면 온보딩 안내를 보내드립니다.
               </p>
@@ -197,7 +220,7 @@ export default function CreatorsPage() {
             ) : (
               <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 justify-center max-w-[32rem] mx-auto">
                 <ApplyLink href={applyHref}
-                  className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-extrabold active:scale-[0.98] transition-transform">
+                  className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
                   소개 파트너 지원 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
                 </ApplyLink>
                 <Link to="/partners"
@@ -220,7 +243,7 @@ export default function CreatorsPage() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur-md border-t border-rule px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <div className="max-w-xl mx-auto">
           <ApplyLink href={applyHref}
-            className="flex h-12 rounded-2xl bg-brand text-white items-center justify-center gap-2 text-[15px] font-extrabold active:scale-[0.98] transition-transform">
+            className="flex h-12 rounded-2xl bg-brand text-white items-center justify-center gap-2 text-[15px] font-bold active:scale-[0.98] transition-transform">
             소개 파트너 지원 <ArrowRight className="w-4 h-4" />
           </ApplyLink>
         </div>
@@ -245,7 +268,7 @@ function Stat({ n, d }: { n: string; d: string }) {
     <div>
       <dt className="sr-only">{d}</dt>
       <dd>
-        <span className="block text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.045em] tabular-nums leading-none">{n}</span>
+        <CountUp value={n} className="block text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.045em] tabular-nums leading-none" />
         <span className="block text-[12px] lg:text-[13px] text-white/55 mt-2 lg:mt-3 whitespace-nowrap">{d}</span>
       </dd>
     </div>

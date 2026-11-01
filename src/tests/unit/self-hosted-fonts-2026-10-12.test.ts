@@ -112,19 +112,72 @@ describe('🔤 첫 페인트를 막는 CSS 는 우리 오리진만 (2026-10-12)'
    *   웹 본문 글꼴이 되살아나면 첫 방문자가 약 14개 woff2 · 384KB 를 다시 받고, 받은 뒤 글자가 바뀌며
    *   문서 전체가 다시 배치된다(에러는 0).
    */
-  it('②-1 index.html 이 본문 웹폰트 시트를 받지 않는다', () => {
+  it('②-1 index.html 마크업이 본문 웹폰트 시트를 받지 않는다 (2026-10-26: PC 로더가 스크립트로만 넣는다)', () => {
     const hrefs = blockingStylesheetHrefs().concat(
       [...HTML.matchAll(/<link\b[^>]*>/g)].map((m) => (m[0].match(/href="([^"]+)"/) || [])[1] || ''),
     )
-    expect(hrefs.filter((h) => /pretendard/i.test(h)), 'Pretendard 시트가 되살아났다').toEqual([])
-    expect(HTML, '폰트 지연 로더가 되살아났다').not.toMatch(/ur_font_warm|id="ur-font-css"/)
+    expect(hrefs.filter((h) => /pretendard/i.test(h)), 'Pretendard 시트가 마크업 링크로 들어왔다 — 폰까지 받고 렌더를 막는다').toEqual([])
   })
 
-  it('②-2 본문 글꼴 목록에 Pretendard 가 없다 (index.html · index.css · tailwind)', () => {
+  it('②-2 기본 글꼴 목록에 Pretendard 가 없다 (index.html · index.css · tailwind — 폰은 기기 글꼴)', () => {
     expect(inlineCss(), '인라인 CSS 의 html 글꼴에 Pretendard').not.toMatch(/Pretendard/)
     expect(stripComments(readRaw('src/index.css')), 'index.css 에 Pretendard').not.toMatch(/Pretendard/)
     expect(stripComments(readRaw('tailwind.config.js')), 'tailwind sans 에 Pretendard').not.toMatch(/Pretendard/)
-    expect(existsSync('public/static/fonts/pretendard-dynamic-subset-v1.3.9.css'), '지운 사본이 되살아났다').toBe(false)
+    expect(existsSync('public/static/fonts/pretendard-dynamic-subset-v1.3.9.css'), '본문 규칙 없는 옛 판 파일이 되살아났다(1년 캐시와 충돌)').toBe(false)
+  })
+
+  /**
+   * 🔤 2026-10-26 (대표 *"프리텐다드로 하는게 좋지 않을까?"* → 추천안 승인): PC(윈도우·리눅스·크롬OS)만
+   *   Pretendard. 로더를 **실제로 돌려** UA 별 결과를 잰다 — 폰·맥은 링크 0, 처음 오는 PC 는 media=print
+   *   (적용 안 함 = 글꼴 요청 0) 로 넣고 load 뒤에 켜고, 한 번 받은 PC 는 처음부터 켠다.
+   */
+  const LOADER = (HTML.match(/<script id="ur-pret-loader">([\s\S]*?)<\/script>/) || [])[1] || ''
+  /** 로더를 돌린다. `afterLoad` 면 load 이벤트와 한가함 콜백까지 흘려 보낸다(타이머는 안 돈다). */
+  function runLoader(ua: string, warm: boolean, afterLoad = false) {
+    const added: Array<{ rel: string; href: string; media?: string }> = []
+    const head = { appendChild: (el: any) => { el.parentNode = head; added.push(el) } }
+    const doc = { head, readyState: 'loading', createElement: () => ({}), body: { textContent: '' }, fonts: { load: () => Promise.resolve([]) } }
+    const store: Record<string, string> = warm ? { ur_font_warm: '1' } : {}
+    let onLoad: (() => void) | null = null
+    const win = { requestIdleCallback: (f: () => void) => f() }
+    const fn = new Function('navigator', 'document', 'localStorage', 'addEventListener', 'setTimeout', 'window', LOADER)
+    fn({ userAgent: ua }, doc, { getItem: (k: string) => store[k] ?? null, setItem: () => {} },
+      (ev: string, f: () => void) => { if (ev === 'load') onLoad = f }, () => 0, win)
+    if (afterLoad && onLoad) (onLoad as () => void)()
+    return added
+  }
+  const WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+  const ANDROID = 'Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36'
+  const MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
+
+  it('②-3 PC 로더가 있고 실제로 돈다', () => { expect(LOADER.length, 'ur-pret-loader 스크립트가 없다').toBeGreaterThan(200) })
+  it('②-4 폰·맥은 Pretendard 를 받지 않는다 (아이폰 · 안드로이드 · 맥)', () => {
+    for (const ua of [IPHONE, ANDROID, MAC]) {
+      expect(runLoader(ua, false), ua).toEqual([])
+      expect(runLoader(ua, true), ua).toEqual([])
+    }
+  })
+  it('②-5 처음 오는 PC: load 전엔 아무것도 안 넣고, load 뒤 시트를 꺼 둔 채(media=print) 넣는다', () => {
+    expect(runLoader(WIN, false), '처음 오는 PC 가 load 전에 시트를 받으면 느린 회선에서 load 가 약 0.3초 늦는다(2026-10-26 실측)').toEqual([])
+    const a = runLoader(WIN, false, true)
+    expect(a.length).toBe(1)
+    expect(a[0].href).toBe('/static/fonts/pretendard-pc-v1.3.9-4.css')
+    expect(a[0].media, '처음 오는 PC 에서 바로 켜면 앱 스크립트와 회선을 나눠 쓴다(2026-10-12 실측 1.8초)').toBe('print')
+  })
+  it('②-6 한 번 받은 PC: 처음부터 켠다 (캐시 적중 — 글자 바뀜 0)', () => {
+    const a = runLoader(WIN, true)
+    expect(a.length).toBe(1)
+    expect(a[0].media ?? 'all').not.toBe('print')
+  })
+  it('②-7 PC 시트: 본문 규칙 + 상대경로 0 + 얼굴 90개 이상 + 로더 href 와 같은 파일', () => {
+    const f = 'public/static/fonts/pretendard-pc-v1.3.9-4.css'
+    expect(existsSync(f), 'PC 시트가 없다 — 로더가 404 를 받는다').toBe(true)
+    const css = readFileSync(f, 'utf-8')
+    expect(css).not.toMatch(/url\(\.\.\//)
+    expect((css.match(/@font-face/g) || []).length).toBeGreaterThan(90)
+    expect(css, '본문 규칙이 없으면 글꼴을 받고도 안 쓴다(에러 0)').toMatch(/html body\{font-family:"UrDigits","Pretendard Variable"/)
+    expect(LOADER).toContain("'/static/fonts/pretendard-pc-v1.3.9-4.css'")
   })
 
   it('④ Poppins 워드마크는 인라인 @font-face + 자가호스팅 woff2', () => {

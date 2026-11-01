@@ -23,6 +23,7 @@ import BrandLoader, { BootFirstScreenLoader } from '@/components/brand/BrandLoad
 import { trackFunnel } from '@/lib/funnel'
 import { registerRoutePreload } from '@/lib/route-preload'; import { lazyPage, registerBootPage } from '@/lib/boot-page'; import { isCuratorShopPath } from '@/shared/route-surface'
 import ConsumerTopChrome from '@/components/main/ConsumerTopChrome'
+import { isFullScreenPath, consumerChromeHiddenByPath } from '@/lib/consumer-chrome'
 import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
 import { featureFlags } from '@/shared/config/feature-flags'
@@ -40,7 +41,7 @@ import { isKorea } from '@/shared/config/region'
 import { isNativeShell } from '@/lib/native-platform'
 // TD-006: route group files
 import { sellerTopLevelRoutes } from './routes/seller-public.routes'; const SellerRouteTree = lazy(() => import('./routes/seller.routes')) // ⚡ 2026-10-18 셀러 표는 셀러 경로에서만 받는다(seller-public.routes 머리말)
-import { AgencyConsoleRoutes } from './routes/agency-console.routes'
+import { AgencyConsoleRoutes, AgencyAwareGuest } from './routes/agency-console.routes'
 const AdminRouteTree = lazy(() => import('./routes/admin.routes')) // ⚡ 2026-10-12 어드민 표는 어드민 경로에서만 받는다(admin.routes 머리말)
 
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
@@ -100,7 +101,7 @@ const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazyPage(() => import('./pages/MyVouchersPage')); registerRoutePreload('myVouchers', MyVouchersPage.load)
 const GuestPassPage = lazyPage(() => import('./pages/guest/GuestPassPage')); const GuestUrShopPage = lazyPage(() => import('./pages/guest/GuestUrShopPage')); const GuestMyPage = lazyPage(() => import('./pages/guest/GuestMyPage')); registerBootPage('guestPass', GuestPassPage.load); registerBootPage('guestUShop', GuestUrShopPage.load); registerBootPage('guestMy', GuestMyPage.load) // 🚪 로그인 전 탭 화면(2026-10-12)
 const MyGifticonsPage = lazy(() => import('./pages/MyGifticonsPage'))  // 🎟️ 2026-08-31 지갑 분리 — 교환권 보관함
-const StoreScanPage = lazy(() => import('./pages/StoreScanPage'))
+const StoreScanPage = lazy(() => import('./pages/StoreScanPage')); const StoreSeedingPage = lazy(() => import('./pages/StoreSeedingPage')); const MySeedingPage = lazy(() => import('./pages/MySeedingPage')) // 🎁 무상 체험(2026-10-31)
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
 const InfluencerDiscoverPage = lazy(() => import('./pages/InfluencerDiscoverPage'))
 const InfluencerAnalyticsPage = lazy(() => import('./pages/InfluencerAnalyticsPage'))
@@ -133,6 +134,7 @@ const GroupBuyDetailPage = lazyPage(() => import('./pages/GroupBuyDetailPage'));
 const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPaymentPage'))
 // 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
 const StaysSearchPage = lazyPage(() => import('./pages/StaysSearchPage')); registerBootPage('stays', StaysSearchPage.load); const SoonPage = lazy(() => import('./pages/SoonPage')) /* 🌱 오픈 예정 모아보기 */
+const LifePage = lazy(() => import('./pages/life/LifePage')); const LifeRequestFormPage = lazy(() => import('./pages/life/LifeRequestFormPage')); const LifeMyRequestsPage = lazy(() => import('./pages/life/LifeMyRequestsPage')); const LifeRequestDetailPage = lazy(() => import('./pages/life/LifeRequestDetailPage')); const LifeProPage = lazy(() => import('./pages/life/LifeProPage')); const LifeProRequestPage = lazy(() => import('./pages/life/LifeProRequestPage')); const LifeSharePage = lazy(() => import('./pages/life/LifeSharePage')); const LifeBizPage = lazy(() => import('./pages/life/LifeBizPage')) /* 🏠 생활 견적(2026-10-24) */
 const StayDetailPage = lazyPage(() => import('./pages/StayDetailPage')); registerBootPage('stayDetail', StayDetailPage.load); registerRoutePreload('stayDetail', StayDetailPage.load) // 숙소 카드·지도가 미리 받는다
 const MyStaysPage = lazy(() => import('./pages/MyStaysPage'))
 // 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 Toss 결제 returnUrl 경량 confirm 페이지.
@@ -140,7 +142,7 @@ const StayCheckoutReturnPage = lazy(() => import('./pages/StayCheckoutReturnPage
 // 🛡️ 2026-05-18: 인플루언서 referral 대시보드.
 const InfluencerDashboardPage = lazy(() => import('./pages/InfluencerDashboardPage'))
 // 🛡️ 2026-05-15: PC 랜딩 (자영업자/인플루언서/에이전시 영업)
-const InfluencerLandingPage = lazy(() => import('./pages/InfluencerLandingPage')); const InfluencerOfferAcceptPage = lazy(() => import('./pages/InfluencerOfferAcceptPage')); const InfluencerJoinPage = lazy(() => import('./pages/InfluencerJoinPage')) // 🔑 2026-09-19 협업 코드 착지
+const InfluencerOfferAcceptPage = lazy(() => import('./pages/InfluencerOfferAcceptPage')); const InfluencerJoinPage = lazy(() => import('./pages/InfluencerJoinPage')) // 🔑 2026-09-19 협업 코드 착지
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
 const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
 const GiftClaimPage = lazy(() => import('./pages/GiftClaimPage')); const VoucherGiftReceivePage = lazy(() => import('./pages/VoucherGiftReceivePage')) // 🎁 2026-10-11 이용권 선물 받기
@@ -522,11 +524,8 @@ function AppContent() {
     return () => { cancelled = true }
   }, [])
 
-  // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
-  //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
-  //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).
-  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos', '/design', '/mall-admin', '/agency']
-  const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
+  // 🧢 전체 화면 주소 목록·판정은 lib/consumer-chrome.ts(SSOT) — 부팅 전 PC 네비 준비(warmDesktopChrome)도 같은 함수를 쓴다.
+  const fullScreen = isFullScreenPath(location.pathname)
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   //   컴포넌트가 자기-차단에도 사용 → 1차(여기서 마운트 차단) + 2차(컴포넌트 self-guard) 이중 방어.
   // 🏁 2026-06-26 [UNLOCK_LOADING] (대표 결정 — "특정 링크로 들어온 방문자는 네비 숨김"):
@@ -547,8 +546,7 @@ function AppContent() {
   //   PC 에선 상단 네비와 사이드배너까지 붙고 있었다. 페이지가 아무리 조심해도 **셸이 새고 있었다.**
   //   ⇒ 판정은 `isMallSurfacePath`(shared SSOT, 워커와 같은 규칙) 하나로.
   const mallSurface = isMallSurfacePath(location.pathname)
-  const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
-    || isMarketingSurface(location.pathname) || embedHideNav
+  const hideBottomNav = consumerChromeHiddenByPath(location.pathname) || embedHideNav
     || mallSurface
   // 🗺️ 2026-06-20 (대표 — 홈=리스트 / 지도는 버튼 이동): 지도 페이지(/restaurant-map)만 h-screen 자체관리
   //   풀스크린(바텀시트가 하단 담당) → main 하단 네비 여백 제외. 홈(/)=리스트는 일반 페이지(여백 필요).
@@ -602,7 +600,7 @@ function AppContent() {
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/creators/apply" element={<CreatorApplyPage />} /><Route path="/creators/start" element={<CreatorStartPage />} />
             {CAMPAIGN_SIGNUP_ENABLED && <Route path="/campaign/:code" element={<CampaignApplyPage />} />}{/* 📣 캠페인 신청 — 기존 가입과 게이트 분리(이 플래그는 이 라우트만 가림) */}
-            <Route path="/about" element={<AboutServicePage />} /><Route path="/about/print" element={<AboutPage />} /><Route path="/partners" element={<PartnersPage />} /><Route path="/creators" element={<CreatorsPage />} /><Route path="/mall-admin" element={<MallAdminPage />} />{/* 🏬 몰 운영자 콘솔 — 게이트 없음(서버가 operator_user_id 로 403 = fail-closed 는 서버에) */}
+            <Route path="/about" element={<AboutServicePage />} /><Route path="/about/print" element={<AboutPage />} /><Route path="/partners" element={<PartnersPage />} /><Route path="/creators" element={<Navigate to="/influencer" replace />} /><Route path="/mall-admin" element={<MallAdminPage />} />{/* 🏬 몰 운영자 콘솔 — 게이트 없음(서버가 operator_user_id 로 403 = fail-closed 는 서버에) */}
             <Route path="/" element={<HomeRoute />} />{/* 🖥️ lg+ = 당근 PC 홈 / 그 외 = 지도(홈=지도, 대표 2026-07-15) */}
             {/* 🧨 2026-10-11 도매몰 철거(대표 "도매몰 잔해들은 아예 다 삭제해줘") — /wholesale/* 라우트 42줄 제거.
                 공구 서비스(운영자 몰, `/:mallSlug`)는 별개 레일이라 무접촉 — 계획: docs/design/wholesale-teardown-plan.md */}
@@ -644,6 +642,8 @@ function AppContent() {
             <Route path="/district/:slug" element={<ErrorBoundary><DistrictCouponPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6 */}
             <Route path="/stays" element={<StaysSearchPage />} /><Route path="/soon" element={<SoonPage />} />
+            <Route path="/life" element={<LifePage />} /><Route path="/life/pro" element={<LifeProPage />} /><Route path="/life/pro/requests/:id" element={<LifeProRequestPage />} /><Route path="/life/q/:token" element={<LifeSharePage />} /><Route path="/life/biz/:id" element={<LifeBizPage />} />
+            <Route path="/life/request/:category" element={<LifeRequestFormPage />} /><Route path="/life/requests" element={<ProtectedRoute requireUser><LifeMyRequestsPage /></ProtectedRoute>} /><Route path="/life/requests/:id" element={<ProtectedRoute requireUser><LifeRequestDetailPage /></ProtectedRoute>} />
             {/* 🛡️ 2026-06-12 (B-1): Toss returnUrl confirm 페이지 — :id 보다 구체적 path (정적 세그먼트 우선 매칭) */}
             <Route path="/stays/checkout-return" element={<ProtectedRoute requireUser><StayCheckoutReturnPage /></ProtectedRoute>} />
             <Route path="/stays/:id" element={<StayDetailPage />} />
@@ -652,7 +652,7 @@ function AppContent() {
             {/* 🛡️ 2026-05-15: B2B 랜딩 — PC 풀 너비, 영업/모집용. ⚠️ 2026-07-29: `/influencer` 가 중복 등록돼 이 랜딩이 두 달간 도달 불가였다(대시보드가 선점) → 대시보드를 /influencer/dashboard 로 이사. 가드: check-duplicate-routes */}
             {/* 🗑️ 2026-09-16 (대표 "지워줘") — 랜딩은 `/partners` 하나다. 앱 안 이동용 폴백(서버는 301). */}
             <Route path="/business" element={<Navigate to="/partners" replace />} />
-            <Route path="/influencer" element={<InfluencerLandingPage />} /><Route path="/i/offer/:token" element={<InfluencerOfferAcceptPage />} /><Route path="/i/join/:code" element={<InfluencerJoinPage />} />
+            <Route path="/influencer" element={<CreatorsPage />} />{/* 📣 2026-10-31 대표 "인플루언서용은 하나로 통일 · /influencer 로" — 옛 /creators 는 301 */}<Route path="/i/offer/:token" element={<InfluencerOfferAcceptPage />} /><Route path="/i/join/:code" element={<InfluencerJoinPage />} />
             {/* 🕳️ 2026-09-27: 셀러 라우트 셋(prospects · proxy-products · plus-friend-guide)을 아래
                 SellerRoutes 표로 이사했다 — 여기 홀로 있던 탓에 마이 시트가 열 수 없었다(시트가 그 표를
                 렌더한다). 같은 Routes 안이고 경로·element 가 그대로라 대시보드 동작은 불변.
@@ -736,7 +736,7 @@ function AppContent() {
               </ProtectedRoute>
             } />
             <Route path="/user/profile" element={
-              <ProtectedRoute requireUser guest={<GuestMyPage />}>
+              <ProtectedRoute requireUser guest={<AgencyAwareGuest guest={<GuestMyPage />} />}>
                 <UserProfilePage />
               </ProtectedRoute>
             } />
@@ -791,9 +791,10 @@ function AppContent() {
             <Route path="/my-store" element={<Navigate to="/user/profile" replace />} />
             {/* 🎟️ 계산대(seller_token·스캔기기키 자체가드 — 소비자 로그인 요구 X: 에이전시 직원·스캔 기기 링크가 막혔다, 2026-10-12) · 🏪 매장 등록.
                 한 줄 표기는 file-size 래칫 때문 — 동작은 블록 표기와 동일하다. */}
-            <Route path="/store/scan" element={<StoreScanPage />} />
+            <Route path="/store/scan" element={<StoreScanPage />} /><Route path="/store/seeding" element={<StoreSeedingPage />} />
             <Route path="/store/new" element={<ProtectedRoute requireUser><ErrorBoundary><StoreClaimPage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/store/find" element={<ProtectedRoute requireUser><ErrorBoundary><StoreOwnerClaimPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/agency/:token" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/store/find" element={<ProtectedRoute requireUser><ErrorBoundary><StoreOwnerClaimPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/agency/:token" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/partner/:agencyId" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/my-seeding" element={<ProtectedRoute requireUser><ErrorBoundary><MySeedingPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/store/go" element={<ProtectedRoute requireUser><ErrorBoundary><StoreGoPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/influencer/settlement" element={
               <ProtectedRoute requireUser>

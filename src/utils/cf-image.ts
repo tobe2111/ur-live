@@ -25,8 +25,7 @@
  * 🖼️ 2026-10-18 기본 화질 85 → **75** (대표 *"다 이상적으로 해줘"* — 홈 사진이 첫 방문 470KB 였다).
  *   실측: 홈 카드 사진 8장(폭 400) avif 합계 59.8 → 46.0KB(−23%) · webp 한 장 29.7 → 19.5KB(−34%),
  *   카드 크기에서 나란히 놓고 봐도 차이가 안 보였다(scratchpad qcmp/side.png).
- *   🔒 **큰 한 장은 85 를 그대로 쓴다** — 상세 히어로(`shared/detail-hero-image.ts`)는 사람이 확대해서 보는
- *   상품의 얼굴이라 `quality: DETAIL_HERO_QUALITY`(85) 를 명시한다. 기본값을 낮춘 것이지 모든 사진을 낮춘 게 아니다.
+ *   🔒 상세 히어로(`shared/detail-hero-image.ts`)는 화질을 **따로 명시**한다(`DETAIL_HERO_QUALITY` — 2026-10-20 부터 75).
  *   ⚠️ 값이 바뀌면 사진 주소가 바뀐다 — 워커 preload·서버 첫 화면이 같은 함수를 쓰므로 함께 바뀐다(따로 적지 말 것).
  */
 export const CF_IMAGE_DEFAULT_QUALITY = 75

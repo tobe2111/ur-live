@@ -67,11 +67,11 @@ export default function StoreScanPage() {
           className="flex items-center gap-1 pl-2 pr-2 py-2 rounded-full active:bg-gray-100 dark:active:bg-[#1D1F29]"
         >
           <ChevronLeft className="w-5 h-5 shrink-0 text-gray-700 dark:text-gray-200" />
-          {backToMy && <span className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">마이</span>}
+          {backToMy && <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200">마이</span>}
         </button>
         <div className="flex items-center gap-2">
           <StoreIcon className="w-4 h-4 text-gray-900 dark:text-white" aria-hidden="true" />
-          <h1 className="text-[15px] font-extrabold text-gray-900 dark:text-white">매장 계산대</h1>
+          <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">매장 계산대</h1>
         </div>
       </header>
       <div className="mx-auto max-w-xl p-4">

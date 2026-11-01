@@ -57,7 +57,7 @@ function Row({ n, to, onClick, thumb, name, sub, value, muted }: {
 }) {
   const inner = (
     <>
-      <span className={`w-3.5 shrink-0 text-[12px] font-extrabold tabular-nums ${n === 1 ? 'text-brand-text' : 'text-gray-400 dark:text-gray-500'}`}>{n}</span>
+      <span className={`w-3.5 shrink-0 text-[12px] font-medium tabular-nums ${n === 1 ? 'text-brand-text' : 'text-gray-400 dark:text-gray-500'}`}>{n}</span>
       {thumb && (
         <img
           src={cfImage(thumb, { width: 96, format: 'auto' }) || thumb}
@@ -71,10 +71,10 @@ function Row({ n, to, onClick, thumb, name, sub, value, muted }: {
         />
       )}
       <span className="flex-1 min-w-0">
-        <span className="block text-[13px] font-bold tracking-[-0.01em] truncate text-gray-900 dark:text-white">{name}</span>
+        <span className="block text-[13px] font-medium tracking-[-0.01em] truncate text-gray-900 dark:text-white">{name}</span>
         <span className="block text-[12px] text-gray-400 dark:text-gray-500 mt-px truncate">{sub}</span>
       </span>
-      <span className={`shrink-0 text-[13px] font-extrabold tabular-nums ${muted ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>{value}</span>
+      <span className={`shrink-0 text-[13px] font-medium tabular-nums ${muted ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>{value}</span>
     </>
   )
   const cls = 'w-full text-left flex items-center gap-2 py-2 border-t border-rule first:border-t-0'
@@ -116,7 +116,7 @@ export default function PerformancePanel({ stats, onProxy }: {
             key={k}
             type="button"
             onClick={() => setTab(k)}
-            className={`px-2 py-1 rounded-full text-[12px] font-extrabold ${
+            className={`px-2 py-1 rounded-full text-[12px] font-medium ${
               active === k ? 'bg-brand text-white' : 'text-gray-500 dark:text-gray-400'
             }`}
           >

@@ -24,6 +24,7 @@ import { partnerPoolRunStatusRoutes } from './partner-pool-run-status'
 import { partnerPoolKeywordRoutes } from './partner-pool-keywords.routes'
 import { judgeLanes } from './lane-yield-health'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
+import { runBatchExport } from './pool-export-batch'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -241,16 +242,10 @@ app.get('/stats', async (c) => {
   const cmRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_commerce_stats'").first<{ value: string }>().catch(() => null)
   let commerceRun: Record<string, unknown> | null = null; try { commerceRun = cmRow?.value ? JSON.parse(cmRow.value) : null } catch { commerceRun = null }
   // 원본 첫 항목에서 필드명 목록 + 이메일 형태 값 존재여부를 뽑아 UI 에 노출(추측 대신 실제 확인).
-  let commerceProbe: { keys?: string[]; hasEmail?: boolean; emailField?: string } | undefined
-  const sample = (commerceRun?.diag as Record<string, unknown> | undefined)?.sample as Record<string, unknown> | undefined
-  if (sample && typeof sample === 'object') {
-    const keys = Object.keys(sample).slice(0, 40)
-    // 이메일 필드 존재 = ① 키 이름이 이메일계열(eml/mail/emladr) 또는 ② 어떤 값이 이메일 형태.
-    //   (대표자 이메일 rprsvEmladr 은 선택입력이라 첫 레코드 값이 비어도 필드는 존재 — 키로 판정.)
-    const emailField = keys.find(k => /eml|email|mail/i.test(k))
-    const hasEmailVal = Object.values(sample).some(v => /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i.test(String(v ?? '')))
-    commerceProbe = { keys, hasEmail: !!emailField || hasEmailVal, emailField }
-  }
+  // 🔭 통신판매 원본 응답 탐침 — 필드 목록 · 이메일 필드 유무 · **엔드포인트별 취급품목**(코드표가
+  //   필요한지를 라이브가 답한다). 조립은 순수 모듈에 있다(근거·판정 규칙: commerce-goods-probe.ts).
+  const { buildCommerceProbe } = await import('./commerce-goods-probe')
+  const commerceProbe = buildCommerceProbe(commerceRun?.diag)
   // 🏢 공정위 가맹(프랜차이즈) 수집 상태(ads_franchise_stats).
   const frRow = await adsLeadsDb(c.env).prepare("SELECT value FROM platform_settings WHERE key = 'ads_franchise_stats'").first<{ value: string }>().catch(() => null)
   let franchiseRun: unknown = null; try { franchiseRun = frRow?.value ? JSON.parse(frRow.value) : null } catch { franchiseRun = null }
@@ -581,19 +576,24 @@ app.post('/delete-bulk', async (c) => {
 })
 
 // GET /api/admin/partner-pool/export?format=csv — 엑셀 호환(수식 인젝션 방어). 대표 동선표용.
-/** 내보내기 상한. 이스케이프·절단 고지·필터 파싱은 `pool-export.ts`(두 풀 공용) 에 있다. */
-const EXPORT_MAX = 5000
+/** 전체 덤프 상한 = `listCompanyLeads` 의 실제 클램프(2,000). 🩸 2026-10-25 까지 5,000 이라 **절단 고지가 한 번도 안 떴다** — 근거 `pool-export-batch.ts`. */
+const EXPORT_MAX = 2000
 
-// 🩸 화면 필터를 그대로 따른다(2026-08-03 수리 — 이전엔 무시했다). 배경·근거는 `pool-export.ts` 헤더.
+// 🩸 화면 필터를 그대로 따른다(2026-08-03 — `pool-export.ts` 헤더) · 📥 `newOnly`(기본 ON)=받은 건 안 준다(500 묶음+도장, `=0` 이면 종전 덤프).
 app.get('/export', async (c) => {
   await ensureCompanySchema(adsLeadsDb(c.env))
   const filter = parseCompanyExportFilter(k => c.req.query(k), intParam) as CompanyLeadFilter
-  const rows = await listCompanyLeads(adsLeadsDb(c.env), { ...filter, limit: EXPORT_MAX })
+  const { rows, cap, notes } = await runBatchExport({
+    DB: adsLeadsDb(c.env), pool: 'company', newOnly: c.req.query('newOnly') !== '0', fullCap: EXPORT_MAX,
+    list: (limit, notExported) => listCompanyLeads(adsLeadsDb(c.env), { ...filter, notExported, limit }),
+    count: (notExported) => countCompanyLeads(adsLeadsDb(c.env), { ...filter, notExported }),
+  })
   return csvResponse({
     filename: 'partner-leads.csv',
     header: ['tier', 'category', 'subcategory', 'company_name', 'region', 'phone', 'email', 'website', 'address', 'status', 'contact_channel', 'follow_up_at', 'memo', 'source', 'source_keyword', 'collected_at'],
     rows: rows.map(r => [r.tier ?? '', r.category, r.subcategory, r.company_name, r.region, r.phone, r.email, r.website, r.address, r.status, r.contact_channel, r.follow_up_at, r.memo, r.source, r.source_keyword, (r.collected_at || '').slice(0, 10)]),
-    cap: EXPORT_MAX,
+    cap,
+    notes,
   })
 })
 

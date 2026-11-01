@@ -58,7 +58,7 @@ export default function CommunityGroupBuyCard({
             />
           </button>
           <span
-            className={`text-[12px] font-bold px-2 py-1 rounded-md whitespace-nowrap ${badge.className}`}
+            className={`text-[12px] font-medium px-2 py-1 rounded-md whitespace-nowrap ${badge.className}`}
           >
             {badge.label}
           </span>
@@ -70,13 +70,13 @@ export default function CommunityGroupBuyCard({
         <div className="flex items-center gap-1">
           <HandCoins className="w-3.5 h-3.5 text-gray-900 dark:text-white" />
           <span className="text-[12px] text-gray-600 dark:text-gray-400">{t('groupBuy.proposedPrice', { defaultValue: '제안가' })}</span>
-          <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">
+          <span className="text-[13px] font-medium text-gray-900 dark:text-white">
             {formatPrice(g.proposed_price)}
           </span>
         </div>
         <div className="text-[12px] text-gray-400 dark:text-gray-600">|</div>
         <div className="text-[12px] text-gray-500 dark:text-gray-400">
-          {t('groupBuy.depositLabel', { defaultValue: '보증금' })} <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(g.deposit_per_person)}</span>
+          {t('groupBuy.depositLabel', { defaultValue: '보증금' })} <span className="font-medium text-gray-700 dark:text-gray-200">{formatPrice(g.deposit_per_person)}</span>
         </div>
       </div>
 
@@ -94,12 +94,12 @@ export default function CommunityGroupBuyCard({
           <p className="text-[12px] text-gray-600 dark:text-gray-400 flex items-center gap-1">
             <PeopleIcon className="w-3 h-3 text-gray-400" />
             {achieved ? (
-              <span className="text-emerald-600 font-semibold">
+              <span className="text-emerald-600 font-medium">
                 {t('groupBuy.goalReached', { defaultValue: '목표 달성!' })}
               </span>
             ) : (
               <>
-                <span className="font-semibold text-gray-900 dark:text-white">
+                <span className="font-medium text-gray-900 dark:text-white">
                   {g.current_count}
                 </span>
                 <span className="text-gray-400">/</span>
@@ -117,7 +117,7 @@ export default function CommunityGroupBuyCard({
       </div>
 
       {/* 참여하기 CTA — 부모가 이미 <button> 이라 중첩 불가, 표시용 div 유지 */}
-      <div className="mt-3 bg-brand text-white text-center py-2 rounded-xl text-[13px] font-bold">
+      <div className="mt-3 bg-brand text-white text-center py-2 rounded-xl text-[13px] font-medium">
         {t('groupBuy.joinCta', { defaultValue: '참여하기' })}
       </div>
     </button>

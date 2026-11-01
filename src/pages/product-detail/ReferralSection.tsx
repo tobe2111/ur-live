@@ -142,7 +142,7 @@ export default function ReferralSection({
       {/* 티어 미리보기 */}
       <div className="mb-3 rounded-lg bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] px-3 py-2">
         <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">할인 단계</p>
-        <p className="text-[12px] font-semibold text-gray-900 dark:text-white leading-snug break-keep">
+        <p className="text-[12px] font-medium text-gray-900 dark:text-white leading-snug break-keep">
           {tierPreview}
         </p>
       </div>
@@ -164,7 +164,7 @@ export default function ReferralSection({
         </div>
       ) : groups.length > 0 && (
         <div className="mt-4">
-          <p className="text-[12px] font-semibold text-gray-900 dark:text-white mb-2">진행 중인 공동구매</p>
+          <p className="text-[12px] font-medium text-gray-900 dark:text-white mb-2">진행 중인 공동구매</p>
           <div className="space-y-2">
             {groups.map((g) => {
               const progress = g.target_count > 0 ? (g.current_count / g.target_count) * 100 : 0
@@ -178,11 +178,11 @@ export default function ReferralSection({
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="text-[12px] font-semibold text-gray-900 dark:text-white truncate">
+                      <p className="text-[12px] font-medium text-gray-900 dark:text-white truncate">
                         {g.creator_name}님의 공동구매
                       </p>
                       {unlockedDiscount > 0 && (
-                        <span className="text-[12px] font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-[#1D1F29] px-2 py-1 rounded">
+                        <span className="text-[12px] font-medium text-gray-900 dark:text-white bg-gray-100 dark:bg-[#1D1F29] px-2 py-1 rounded">
                           {unlockedDiscount}% 할인 중
                         </span>
                       )}
@@ -206,7 +206,7 @@ export default function ReferralSection({
                     </div>
                   </div>
                   <div className="flex flex-col items-center gap-1 shrink-0">
-                    <span className="text-[12px] font-bold text-gray-900 dark:text-white">참여</span>
+                    <span className="text-[12px] font-medium text-gray-900 dark:text-white">참여</span>
                     <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   </div>
                 </button>

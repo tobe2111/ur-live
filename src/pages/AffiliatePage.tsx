@@ -108,7 +108,7 @@ export default function AffiliatePage() {
                 {data.share_url}
               </div>
               <button onClick={() => copyLink(data.share_url)}
-                className="px-5 py-2 bg-brand text-white rounded-xl text-[12px] font-bold flex items-center gap-2 shrink-0 active:scale-95">
+                className="px-5 py-2 bg-brand text-white rounded-xl text-[12px] font-medium flex items-center gap-2 shrink-0 active:scale-95">
                 <Copy className="w-3.5 h-3.5" /> {t('affiliate.copy')}
               </button>
             </div>
@@ -124,7 +124,7 @@ export default function AffiliatePage() {
                 { step: '3', text: t('affiliate.howToStep3'), color: 'bg-tone-ok-bg text-tone-ok' },
               ].map(s => (
                 <div key={s.step} className="flex items-center gap-3">
-                  <span className={`w-7 h-7 rounded-full ${s.color} text-[12px] font-bold flex items-center justify-center shrink-0`}>{s.step}</span>
+                  <span className={`w-7 h-7 rounded-full ${s.color} text-[12px] font-medium flex items-center justify-center shrink-0`}>{s.step}</span>
                   <p className="text-[15px] text-gray-700 dark:text-gray-200">{s.text}</p>
                 </div>
               ))}
@@ -222,12 +222,12 @@ function TopGroupsToShare() {
               <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-200 to-gray-300 shrink-0" />
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{g.name}</p>
+              <p className="text-[12px] font-medium text-gray-900 dark:text-white truncate">{g.name}</p>
               <p className="text-[12px] text-gray-500 truncate">{g.restaurant_name || ''} · {g.progress_pct}% · {g.group_buy_current}/{g.group_buy_target}명</p>
               {/* 💸 2026-10-06: 0 이면 **아무 말도 하지 않는다** — 라이브 `user_referral_bonus_pct` 가 0 인데
                   "친구 가입 시 +0딜 보너스" 를 적으면 없는 보상을 있는 것처럼 말하는 꼴이다. */}
               {(g.my_potential_bonus ?? 0) > 0 && (
-                <p className="text-[12px] text-brand-text font-bold mt-1">친구 가입 시 +{(g.my_potential_bonus ?? 0).toLocaleString()}딜 보너스</p>
+                <p className="text-[12px] text-brand-text font-medium mt-1">친구 가입 시 +{(g.my_potential_bonus ?? 0).toLocaleString()}딜 보너스</p>
               )}
             </div>
             <button
@@ -237,13 +237,13 @@ function TopGroupsToShare() {
                   toast.success('링크 복사됨')
                 } catch { toast.error('복사 실패') }
               }}
-              className="px-3 py-2 bg-brand-tint text-brand-text rounded-lg text-[12px] font-bold shrink-0 active:scale-95"
+              className="px-3 py-2 bg-brand-tint text-brand-text rounded-lg text-[12px] font-medium shrink-0 active:scale-95"
             >
               <Copy className="w-3 h-3 inline mr-1" /> 복사
             </button>
             <button
               onClick={() => navigate(`/pass/${g.id}`)}
-              className="px-2 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 rounded-lg text-[12px] font-bold shrink-0"
+              className="px-2 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 rounded-lg text-[12px] font-medium shrink-0"
               aria-label="상세 보기"
             >
               <ChevronRight className="w-3 h-3" />
@@ -277,7 +277,7 @@ function FunnelStats() {
       {/* 카테고리별 */}
       {data.by_category.length > 0 && (
         <div className="p-4 border-b border-gray-100 dark:border-[#2C2F35]">
-          <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 mb-2">카테고리별</p>
+          <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400 mb-2">카테고리별</p>
           <div className="space-y-2">
             {data.by_category.map(c => (
               <div key={c.category} className="flex items-center justify-between text-[12px]">
@@ -295,7 +295,7 @@ function FunnelStats() {
       {/* 일별 mini chart (간단한 bar) */}
       {data.daily.length > 0 && (
         <div className="p-4">
-          <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 mb-2">최근 14일</p>
+          <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400 mb-2">최근 14일</p>
           <div className="flex items-end gap-1 h-20">
             {data.daily.slice(0, 14).reverse().map((d, i) => {
               const h = Math.max(2, (d.count / maxDailyCount) * 80)

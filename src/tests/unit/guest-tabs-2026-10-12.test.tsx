@@ -67,7 +67,10 @@ describe('① 배선 — 하단 탭 셋에 게스트 화면', () => {
     ['/u/me', 'GuestUrShopPage'],
     ['/user/profile', 'GuestMyPage'],
   ])('%s → %s', (path, comp) => {
-    const re = new RegExp(`path="${path.replace(/\//g, '\\/')}" element=\\{\\s*<ProtectedRoute requireUser guest=\\{<${comp} />\\}>`)
+    // 🏢 2026-10-26 안 A — 마이 자리는 에이전시 이메일 로그인이면 에이전시 마이, 아니면 그대로 GuestMyPage
+    //   (`AgencyAwareGuest` 가 감싼다). 불변식(로그인 전엔 게스트 화면)은 그대로다.
+    const guest = path === '/user/profile' ? `<AgencyAwareGuest guest=\\{<${comp} />\\} />` : `<${comp} />`
+    const re = new RegExp(`path="${path.replace(/\//g, '\\/')}" element=\\{\\s*<ProtectedRoute requireUser guest=\\{${guest}\\}>`)
     expect(app).toMatch(re)
   })
 

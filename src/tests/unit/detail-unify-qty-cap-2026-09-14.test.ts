@@ -102,7 +102,7 @@ describe('안 B — 숙소 상세', () => {
     expect(s).toContain('부터')
     expect(s).toContain('객실 고르기')
     // 팔 수 있는 객실이 없으면 바를 안 그린다 — 만실 카드가 그 말을 대신한다
-    expect(s).toMatch(/if \(!hasCart && minPrice == null\) return null/)
+    expect(s).toMatch(/if \(!hasCart && minPrice == null(?: && !raffle)?\) return null/)  // 추첨 상품(2026-10-27)은 응모 버튼을 위해 남긴다
   })
 
   it('③ 리뷰가 붙었다 — 공구가 쓰는 그 컴포넌트를 재사용(새로 만들지 않는다)', () => {
@@ -113,9 +113,12 @@ describe('안 B — 숙소 상세', () => {
 
   it('④ 만실이 카드 + 주 행동이다 — 다만 객실 목록은 남긴다(어떤 객실이 있는 숙소인지 잃지 않게)', () => {
     expect(code(STAY_SECTIONS)).toContain('다른 날짜 고르기')
-    const s = code(STAY)
-    expect(s).toMatch(/rooms\.every\(\(r\) => !r\.available\) && \(/)
-    expect(s).toContain('{rooms.map((r) => (')
+    // 🛏️ 2026-10-25 E안: 객실 목록이 `StayRoomPicker` 로 옮겨갔다 — 성질(만실 카드 + 목록 유지)은 그대로.
+    expect(code(STAY)).toMatch(/<StayRoomPicker\b/)
+    const s = code('src/pages/stay-detail/StayRoomPicker.tsx')
+    expect(s).toMatch(/rooms\.every\(\(r\) => !r\.available\) && <StaySoldOutCard/)
+    expect(s).toContain('<StaySoldOutCard')
+    expect(s).toContain('{rooms.map((r) => {')
   })
 
   it('⑤ 상시 바에 마지막 콘텐츠가 가리지 않게 자리를 비운다', () => {

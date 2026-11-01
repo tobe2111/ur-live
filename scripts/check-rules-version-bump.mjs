@@ -50,12 +50,6 @@ const TARGETS = [
     why: '7일 시간 폴백이 있어 결국 재크롤된다 — 다만 그때까지 옛 결과가 유지된다.',
   },
   {
-    file: 'src/features/supply/api/maker-enrich.ts',
-    name: 'MAKER_CRAWL_VERSION',
-    severity: 'low',
-    why: '7일 시간 폴백이 있어 결국 재크롤된다.',
-  },
-  {
     file: 'src/features/marketing/api/influencer-region.ts',
     name: 'REGION_RULES_VERSION',
     severity: 'high',

@@ -9,6 +9,9 @@ import { Hono } from 'hono';
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product';
 import { canonicalShopPath } from '../../shared/seo/shop-canonical';
 import { buildLlmsTxt } from '../../shared/seo/llms-txt'
+import { AGENT_SEARCH_GATE } from '../../shared/agent-search'
+import { AGENT_CHECKOUT_GATE } from '../../shared/agent-checkout'
+import { settingOn } from '../utils/owner-nudges'
 import { buildLlmsCatalog } from '../../shared/seo/llms-catalog'
 import { REGION_DIGEST_KV_KEY, digestRowsOf } from '../../shared/seo/region-digest'
 import { indexNowKeyPath, isValidIndexNowKey } from '../../shared/seo/indexnow'
@@ -29,8 +32,13 @@ import { isIndexableImageUrl } from '../../shared/seo/indexable-image';
 import { canonicalDetailPath } from '../../shared/product-flow';
 // 🎁 교환권 필터 카테고리 SSOT — canonical 이 믿는 집합과 **같은 목록**을 읽는다.
 import { VOUCHER_FILTER_CATEGORIES } from '../../shared/seo/consumer-surfaces';
+import { HOME_SERVICE_CATEGORIES } from '../../shared/home-service-categories';
+import { lifeCategoryPath } from '../../shared/life-seo';
+import { LIFE_BIZ_MIN_INTRO } from '../../shared/life-biz-seo';
+import { PRO_OPEN_STATUS_SQL } from '../../shared/home-service';
 // 🎁 facet 주소 조립 + 재고 문턱 SSOT — canonical·허브 내부 링크와 **같은 함수**를 지난다.
 import { voucherFacetPath, voucherFacetsByStock } from '../../shared/seo/voucher-facet';
+import { VOUCHER_CATEGORY_SQL_IN } from '../../shared/constants/voucher-categories';
 
 /**
  * 🎁 교환권 facet 제출 — **집계가 비었을 때의 폴백**(2026-10-18 재규정).
@@ -99,7 +107,8 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/blog', priority: 0.6, changefreq: 'daily' },
     // 🆕 2026-07-27 모집/소개 표면 — 그간 sitemap 미등재라 **구글이 존재 자체를 몰랐음**(푸터 링크만
     //   있어 사실상 유입 0). 크리에이터 모집은 동의 리드 확보의 유일한 정문이라 우선순위 높게.
-    { loc: '/creators', priority: 0.85, changefreq: 'weekly' },
+    // 📣 2026-10-31: 모집 랜딩이 `/influencer` 로 옮겨갔다(옛 `/creators` 는 301 — 죽은 URL 을 제출하지 않는다).
+    { loc: '/influencer', priority: 0.85, changefreq: 'weekly' },
     { loc: '/creators/apply', priority: 0.8, changefreq: 'weekly' },
     { loc: '/partners', priority: 0.7, changefreq: 'weekly' },
     { loc: '/about', priority: 0.6, changefreq: 'monthly' },
@@ -134,9 +143,12 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/experience', priority: 0.7, changefreq: 'daily' },    // 무료 체험단 응모 — 검색 유입 강한 키워드
     { loc: '/new-openings', priority: 0.7, changefreq: 'daily' },  // 우리 동네 새로 생긴 가게(공공 데이터)
     { loc: '/area-report', priority: 0.6, changefreq: 'weekly' },  // 상권 리포트 허브(지역별은 아래 동적 블록)
-    { loc: '/influencer', priority: 0.7, changefreq: 'weekly' },   // 소개로 수익 랜딩
     { loc: '/introduce', priority: 0.6, changefreq: 'monthly' },   // 서비스 소개
     { loc: '/faq', priority: 0.6, changefreq: 'weekly' },          // FAQPage JSON-LD 보유 → 리치 결과 후보
+    // 🏠 2026-10-25 사장님 생활 서비스 — 허브 + 업종 견적 페이지(요청서). 업종 목록은 SSOT 에서 파생.
+    { loc: '/life', priority: 0.8, changefreq: 'weekly' },
+    ...HOME_SERVICE_CATEGORIES.map((d) => ({ loc: lifeCategoryPath(d.key), priority: 0.6, changefreq: 'monthly' })),
+    { loc: '/life/pro', priority: 0.5, changefreq: 'monthly' },     // 업체 모집 랜딩(로그인 전 화면)
     // 📜 약관·정책 — 유입은 적지만 **신뢰 신호**다(전자상거래 사업자 확인, 검색엔진 품질 평가).
     // 🧾 2026-10-13: 색인 대상(`CONSUMER_SURFACE_SEO` 에 항목 있고 noindex 아님)인데 제출이 빠져
     //   있던 둘. **본문이 있는 것만** 넣는다(실측 Googlebot: `/join` 134자 · `/terms/seller` 229자 —
@@ -211,7 +223,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       // 🏨 `category`·`deal_only` 는 `canonicalDetailPath` 가 정본 주소를 정하는 데 쓴다(아래).
       const groupBuys = await DB.prepare(
         `SELECT id, category, deal_only, image_url, updated_at FROM products
-         WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+         WHERE category IN (${VOUCHER_CATEGORY_SQL_IN})
            AND is_active = 1
            AND group_buy_status IN ('active','achieved')
            AND ${consumerVisibleProductSql('products')}${productScope}
@@ -246,7 +258,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
         `SELECT id FROM products
          WHERE is_active = 1
            AND COALESCE(deal_only, 0) = 0
-           AND category NOT IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+           AND category NOT IN (${VOUCHER_CATEGORY_SQL_IN})
            AND ${consumerVisibleProductSql('products')}${productScope}
          ORDER BY id DESC LIMIT 500`
       ).all<{ id: number }>();
@@ -391,6 +403,23 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       for (const b of blogs.results || []) {
         if (b.slug) urls.push({ loc: `/blog/${b.slug}`, priority: 0.5, changefreq: 'monthly', lastmod: b.updated_at });
       }
+      // 🔗 2026-10-25 생활 요청 공유 페이지 — **모집 중인 것만**(대표 "노출해줘"). 마감은 noindex 라 제출하지 않는다.
+      //   자리가 찬 요청도 빼서 "색인 요청 ↔ noindex" 모순을 만들지 않는다(`publicShareView.open` 과 같은 조건).
+      const shares = await DB.prepare(
+        `SELECT share_token FROM home_service_requests
+          WHERE status = 'open' AND quote_count < max_quotes AND share_token IS NOT NULL ORDER BY id DESC LIMIT 200`
+      ).all<{ share_token: string }>().catch(() => ({ results: [] as { share_token: string }[] }));
+      for (const r of shares.results || []) urls.push({ loc: `/life/q/${r.share_token}`, priority: 0.4, changefreq: 'daily' });
+      // 🏠 2026-10-26 생활 업체 소개 — **내용이 있는 업체만**(소개 LIFE_BIZ_MIN_INTRO 자 이상 또는 유어딜 후기 1건+).
+      //   화면·서버 메타의 noindex 판정(`lifeBizIndexable`)과 같은 조건이라 "색인 요청 ↔ noindex" 모순이 안 생긴다.
+      const bizs = await DB.prepare(
+        `SELECT p.seller_id FROM home_service_pros p JOIN sellers s ON s.id = p.seller_id
+          WHERE p.active = 1 AND s.status IN ${PRO_OPEN_STATUS_SQL}
+            AND (LENGTH(TRIM(COALESCE(p.intro, ''), ' ' || char(9, 10, 13))) >= ${LIFE_BIZ_MIN_INTRO}
+                 OR EXISTS (SELECT 1 FROM home_service_reviews r WHERE r.seller_id = p.seller_id AND r.hidden = 0))
+          ORDER BY p.seller_id DESC LIMIT 500`
+      ).all<{ seller_id: number }>().catch(() => ({ results: [] as { seller_id: number }[] }));
+      for (const r of bizs.results || []) urls.push({ loc: `/life/biz/${r.seller_id}`, priority: 0.4, changefreq: 'weekly' });
     } catch {
       // DB 쿼리 실패해도 정적 URL 은 응답
     }
@@ -459,8 +488,13 @@ export { sitemapRoutes };
 //   종전 404. 내용은 전부 SSOT(`CONCEPT_ABOUT_LINES`·`CONCEPT_FAQ`·`CONSUMER_SURFACE_SEO`)에서
 //   생성한다 — 손으로 적으면 화면·구조화 데이터와 어긋나는 네 번째 사본이 된다.
 //   `sitemapRoutes` 에 얹은 이유: `app.route('/', sitemapRoutes)` 라 `worker/index.ts` 무접촉이다.
-sitemapRoutes.get('/llms.txt', (c) => {
-  const body = buildLlmsTxt(new URL(c.req.url).origin)
+sitemapRoutes.get('/llms.txt', async (c) => {
+  // 🤖 2026-10-20 — AI 비서 검색 창구가 켜져 있으면 그 주소도 적는다(꺼지면 안 적는다 — 404 를 가리키지 않는다).
+  const DB = c.env.DB
+  const [agentSearch, agentCheckout] = DB
+    ? await Promise.all([AGENT_SEARCH_GATE, AGENT_CHECKOUT_GATE].map(k => settingOn(DB, k).catch(() => false)))
+    : [false, false]
+  const body = buildLlmsTxt(new URL(c.req.url).origin, { agentSearch, agentCheckout })
   return new Response(body, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',

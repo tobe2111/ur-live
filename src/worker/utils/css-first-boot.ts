@@ -178,3 +178,15 @@ export function appendEdgeHeaders(h: Headers, entryCss: readonly string[], colo:
   const c = (colo || '').replace(/[^A-Z]/g, '').slice(0, 4)
   if (c) h.append('Server-Timing', `colo;desc="${c}"`)
 }
+
+/**
+ * 🦦 2026-10-20: 첫 화면 아래 유달이 로더 `<img>` 는 낮은 우선순위로 받는다.
+ *   preload 를 지워도 로더 그림 자신이 보통 우선순위로 **첫 사진 요청**이 됐다(라이브 `/vouchers`·`/pass/:id`
+ *   첫 이미지가 유달이 12.5KB, LCP 사진은 그 뒤).
+ * 🩸 처음엔 위 재작성기에 `img[src=…]` 규칙으로 넣었는데 **라이브에서 한 번도 안 걸렸다** — 그 `<img>` 는
+ *   워커가 `#root` 에 `setInnerContent` 로 **넣는** 마크업이고, HTMLRewriter 는 핸들러가 삽입한 내용을
+ *   다시 파싱하지 않는다. 그래서 워커가 마크업을 만들 때 이 속성을 직접 붙인다(시험이 배선까지 본다).
+ */
+export function loaderImgPriorityAttr(cssFirst: boolean): string {
+  return cssFirst ? ' fetchpriority="low"' : ''
+}

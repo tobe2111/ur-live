@@ -33,8 +33,18 @@
  * 전부 순수 함수다 — 제출은 `worker/cron/indexnow-submit.ts` 가 하고, 그쪽에 **게이트**가 있다.
  */
 
-/** 다섯 엔진이 공유하는 제출 엔드포인트(한 번 보내면 전파된다). */
-export const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow'
+/**
+ * 제출 엔드포인트 — **엔진마다 직접** 보낸다(2026-10-31 대표 "모두 해줘").
+ *
+ * 🩸 종전엔 공유 중계 `api.indexnow.org` 하나만 썼는데 전수·변경분이 둘 다 **429** 를 받았고,
+ *    중계가 거절하면 어느 엔진에도 안 간다(한 곳이 막히면 전부 막힌다). 네이버(국내 검색의 본류)와
+ *    빙(빙·코파일럿·덕덕고)에 각각 보내면, 규격상 참여 엔진끼리 공유되므로 **한 곳만 받아도 전파된다.**
+ * ⇒ 판정은 "하나라도 200/202 면 성공" 이다(커서를 올린다). 전부 실패해야 커서를 유지한다.
+ */
+export const INDEXNOW_ENDPOINTS: readonly string[] = [
+  'https://searchadvisor.naver.com/indexnow',
+  'https://www.bing.com/indexnow',
+]
 
 /** 한 회차 상한. IndexNow 규격은 1회 10,000까지지만 우리 변경량은 하루 수십 건이다. */
 export const INDEXNOW_MAX_URLS = 100
@@ -110,6 +120,42 @@ export function planIndexNow(
     cursor: changed.length > max ? prev : (maxLastmod || prev),
     note: `변경 ${changed.length}건 중 ${urls.length}건 제출${changed.length > max ? ' (상한에 잘림, 커서 유지)' : ''}`,
   }
+}
+
+/**
+ * 🧺 2026-10-25 **일회성 전수 제출(backfill)** — 대표 *"코드로 할 수 있는 거 최대한 다 해줘"*.
+ *
+ * 위 *"첫 회차는 아무것도 보내지 않는다"* 는 **이미 알려진** URL 을 다시 밀지 않으려는 규칙이었는데,
+ * 실측해 보니 그 전제가 틀렸다 — 새 도메인(2026-07-20 이전)이라 구글 색인이 **1건**이고(서치콘솔),
+ * 빙·네이버도 대부분을 아직 모른다. 그런데 지금 설계는 **바뀐 것만** 보내므로, 안 바뀐 페이지
+ * (실측 476건 중 커서 2026-10-20 이전 전부 + `lastmod` 없는 90건)는 **영원히 한 번도 제출되지 않는다.**
+ * ChatGPT 검색은 빙 색인을 크게 쓰므로, 그 공백이 곧 AI 답변의 공백이다.
+ *
+ * ⇒ 버전 표식(`INDEXNOW_BACKFILL_KEY`)이 현재 값과 다르면 **sitemap 의 모든 `<loc>`** 를 한 번 보내고
+ *    표식을 세운다. 그 뒤로는 종전처럼 변경분만. 다시 전수를 보내야 할 일이 생기면(도메인 이전 등)
+ *    `INDEXNOW_BACKFILL_VERSION` 을 올린다.
+ *
+ * 🔒 선택 술어는 여전히 **sitemap 하나**다 — 여기서 URL 을 지어내지 않는다(noindex·thin 게이트 상속).
+ * 🔒 IndexNow 규격 상한은 1회 10,000건이고 우리는 ~500 이라 한 번에 간다. 넘으면 앞에서 자른다.
+ */
+export const INDEXNOW_BACKFILL_KEY = 'indexnow_backfill_v'
+export const INDEXNOW_BACKFILL_VERSION = '1'
+export const INDEXNOW_SPEC_MAX = 10000
+
+/** sitemap 의 **모든** `<loc>` (lastmod 유무 무관, 중복 제거, 순서 보존). */
+export function parseSitemapLocs(xml: string | null | undefined): string[] {
+  if (!xml) return []
+  const seen = new Set<string>()
+  for (const m of String(xml).matchAll(/<url>[\s\S]*?<loc>([\s\S]*?)<\/loc>[\s\S]*?<\/url>/g)) {
+    const loc = m[1].trim()
+    if (loc) seen.add(loc)
+  }
+  return [...seen]
+}
+
+/** 전수 제출이 필요한가 — 표식이 현재 버전과 다르면(비었으면 포함) 필요하다. */
+export function needsIndexNowBackfill(marker: string | null | undefined): boolean {
+  return (marker || '').trim() !== INDEXNOW_BACKFILL_VERSION
 }
 
 /** 제출 본문. 호스트가 섞이면 받는 쪽이 전체를 거절하므로 **한 호스트만** 담는다. */

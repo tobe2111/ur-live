@@ -11,6 +11,7 @@ import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import NearbyPassesCard, { useNearbyFeed } from './videos/NearbyPassesCard'
 import SwipeHint from './videos/SwipeHint'
+import { useSlideTransition } from './videos/useSlideTransition'
 import { YT_TITLE_CLIP_PX } from '@/shared/urshorts-display'
 
 /**
@@ -101,12 +102,13 @@ export default function VideosPage() {
   //    받는다(홈 피드와 같은 예열 주소라 엣지 캐시가 받는다 — 넘길 때마다 다시 부르지 않는다).
   const nearbyFeed = useNearbyFeed(!!cur && !cur.product_id)
 
-  const go = useMemo(() => (d: 1 | -1) => {
-    setItems((list) => {
-      if (list && list.length) setIdx((i) => Math.min(list.length - 1, Math.max(0, i + d)))
-      return list
-    })
-  }, [])
+  // 🎞️ 2026-10-19 — 넘김은 **밀어 올리는 전환**이다(`useSlideTransition`). 판정은 아래 제스처 층 그대로.
+  const { go, drag, settle, slideStyle, coverId, uncover } = useSlideTransition({
+    count: items?.length ?? 0,
+    idx,
+    setIdx,
+    idOf: (i) => items?.[i]?.video_id ?? null,
+  })
 
   // ▶️ **재생기를 한 번만 만든다.** YT 가 우리가 넣어 준 빈 div 를 iframe 으로 갈아치우므로,
   //    그 div 는 React 가 모르는 자식이어야 한다(React 가 지우려 들면 removeChild 로 터진다).
@@ -142,6 +144,8 @@ export default function VideosPage() {
           killCaptions(e.target)
           const st = window.YT?.PlayerState
           setPaused(e.data === (st?.PAUSED ?? 2))
+          // 🎞️ 재생이 시작되면 넘어올 때 씌운 썸네일 덮개를 걷는다.
+          if (e.data === (st?.PLAYING ?? 1)) uncover()
           // 🔁 끝나면 **다시 튼다**(쇼츠의 기본 동작). 이건 취향이 아니라 방어다 — 그냥 두면
           //    유튜브가 끝 화면에 관련 영상을 깔고, 그걸 누른 사람은 우리 화면을 떠난다.
           //    `rel=0` 도 같은 채널로 좁힐 뿐 끝 화면 자체를 없애지는 못한다.
@@ -214,6 +218,9 @@ export default function VideosPage() {
   //    직접 계산하면 같은 상품이 홈에서 30%, 여기서 0% 로 보이는 날이 온다 — 에러 없이.
   const pd = priceDisplay(cur ?? {})
   const thumb = cur?.thumb_url || cur?.product_image || ''
+  const thumbOf = (it?: UrShortItem) => it?.thumb_url || it?.product_image || ''
+  const prevThumb = thumbOf(items[idx - 1])
+  const nextThumb = thumbOf(items[idx + 1])
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden overscroll-none bg-[#0A0C12]">
@@ -231,6 +238,19 @@ export default function VideosPage() {
           유튜브가 만들고 우리가 destroy 한다. */}
       {/* ✂️ 2026-10-19 — 재생기를 위로 `YT_TITLE_CLIP_PX` 만큼 늘려 유튜브가 맨 위에 띄우는
           채널 로고·원제목 줄을 화면 밖으로 보낸다(루트가 overflow-hidden). 덮개를 그리지 않는다. */}
+      {/* 🎞️ **움직이는 무대** — 재생기 + 위아래 이웃 썸네일 + 넘어온 직후의 덮개가 함께 밀린다.
+          transform 이 쌓임 맥락을 만들므로 구매 바(z-20)는 이 안에 넣지 않고 같은 transform 을 따로 받는다. */}
+      <div className="absolute inset-0" style={slideStyle}>
+      {prevThumb && (
+        <img src={cfImage(prevThumb, { width: 480 })} alt="" aria-hidden="true"
+          className="absolute inset-x-0 h-full w-full object-cover" style={{ top: '-100%' }}
+          onError={(e) => cfImageOnError(e.currentTarget, prevThumb)} />
+      )}
+      {nextThumb && (
+        <img src={cfImage(nextThumb, { width: 480 })} alt="" aria-hidden="true"
+          className="absolute inset-x-0 h-full w-full object-cover" style={{ top: '100%' }}
+          onError={(e) => cfImageOnError(e.currentTarget, nextThumb)} />
+      )}
       {apiState === 'ready' && (
         <div
           ref={hostRef}
@@ -252,6 +272,12 @@ export default function VideosPage() {
           className="absolute inset-x-0 w-full border-0"
         />
       )}
+      {cur && coverId === cur.video_id && thumb && (
+        <img src={cfImage(thumb, { width: 480 })} alt="" aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+          onError={(e) => cfImageOnError(e.currentTarget, thumb)} />
+      )}
+      </div>
 
       {/* 🖐️ **제스처 레이어** (2026-09-08 대표 *"마우스 위아래 스크롤이나 스마트폰으로도 위아래 스와이프"*).
           🔴 왜 층이 필요한가: iframe 이 화면을 꽉 덮어서 **터치·휠이 전부 유튜브로 먹힌다.**
@@ -284,6 +310,7 @@ export default function VideosPage() {
           if (from == null || y == null || swiped.current) return
           const dy = y - from
           if (Math.abs(dy) > 60) { swiped.current = true; go(dy < 0 ? 1 : -1) }
+          else drag(dy)
         }}
         onTouchEnd={(e) => {
           const from = touchY.current
@@ -292,9 +319,10 @@ export default function VideosPage() {
           touchEndAt.current = Date.now()
           // 이미 이동 중에 넘겼으면 뗄 때 또 넘기지 않는다(두 칸 점프).
           if (swiped.current) { swiped.current = false; return }
-          if (from == null || end == null) return
+          if (from == null || end == null) { settle(); return }
           const dy = end - from
           if (Math.abs(dy) > 60) { go(dy < 0 ? 1 : -1); return }
+          settle()
           // 짧고 안 움직였으면 **탭**이다 — 길게 눌렀다 뗀 것은 아무것도 아니다.
           if (Math.abs(dy) < 12 && Date.now() - touchAt.current < 400) togglePlay()
         }}
@@ -302,6 +330,7 @@ export default function VideosPage() {
           // 브라우저가 제스처를 가져간 경우. 여기서 안 지우면 다음 터치가 옛 시작점으로 잰다.
           touchY.current = null
           touchEndAt.current = Date.now()
+          if (!swiped.current) settle()
           swiped.current = false
         }}
         onClick={() => {
@@ -352,7 +381,7 @@ export default function VideosPage() {
              위로 올리지 말 것 — 바는 이 화면의 본체이고, 올리면 영상을 더 가린다.
              (같은 날 대표 지시로 좌상단 닫기 X 는 제거됐다. 나가는 길은 브라우저 뒤로가기·Esc.) */}
       {cur && cur.product_id ? (
-        <div className="absolute inset-x-2.5 bottom-2.5 z-20 flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-2xl">
+        <div style={slideStyle} className="absolute inset-x-2.5 bottom-2.5 z-20 flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-2xl">
           {thumb && (
             <img
               src={cfImage(thumb, { width: 120 })} alt=""
@@ -378,7 +407,7 @@ export default function VideosPage() {
               <div className="truncate text-[12px] text-gray-500">{cur.store_name}</div>
             )}
             {cur.product_name && (
-              <div className="truncate text-[12px] font-semibold leading-tight">{cur.product_name}</div>
+              <div className="truncate text-[12px] font-medium leading-tight">{cur.product_name}</div>
             )}
             <div className="mt-[1px] flex items-baseline whitespace-nowrap text-[15px] font-bold tabular-nums">
               {pd.showOriginal && (
@@ -392,7 +421,7 @@ export default function VideosPage() {
           </div>
           <Link
             to={`/pass/${cur.product_id}`}
-            className="shrink-0 rounded-[10px] bg-brand px-[15px] py-[11px] text-[13px] font-bold text-white"
+            className="shrink-0 rounded-[10px] bg-brand px-[15px] py-[11px] text-[13px] font-medium text-white"
           >
             구매
           </Link>
@@ -400,7 +429,7 @@ export default function VideosPage() {
       ) : cur && nearbyFeed ? (
         /* 🎬 2026-10-14 대표 *"없을 때에도 흰색 프레임은 두고 안내"* — 같은 자리·같은 흰 카드에
            영상 속 지역의 인기 이용권 세 장. 고를 게 없으면(피드 실패·빈 목록) 종전처럼 안 그린다. */
-        <NearbyPassesCard feed={nearbyFeed} regionSi={cur.region_si} />
+        <NearbyPassesCard feed={nearbyFeed} regionSi={cur.region_si} style={slideStyle} />
       ) : null}
     </div>
   )

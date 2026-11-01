@@ -18,10 +18,13 @@
  */
 import type { Env } from '../types/env'
 import { replaceGalleryUrl, repairGalleryCover } from '../utils/gallery-cover-sync'
-import { rehostImageToR2, isExternalImageUrl, validateImageLoads } from '../utils/rehost-image'
+import { rehostImageToR2, isExternalImageUrl } from '../utils/rehost-image'
 import { hotlinkBlockedSql, isHotlinkBlockedUrl } from '../../shared/hotlink-blocked-hosts'
 import { getSupplyMeta, setSupplyMeta, ensureSupplyMetaTable } from '../utils/product-supply-meta'
-import { fetchDemoPhotos, isBlockedPhotoUrl, blockedPhotoSql } from '../utils/demo-photo-set'
+import { fetchDemoPhotos, collectJudgedDemoPhotos, isBlockedPhotoUrl, blockedPhotoSql, isSearchDerivedPhoto, DEMO_MIN_PHOTOS } from '../utils/demo-photo-set'
+import { demoPhotoJudgeOn } from '../utils/demo-photo-judge'
+import { fetchKakaoUsablePhotoCount } from '../utils/kakao-place-photos'
+import { swapDemoStore } from './demo-store-swap'
 
 // 🏷️ 데모 이미지 컨디션 버전 — bump 하면 전 데모가 한 번씩 재적용된다(대표사진 + 3~5장).
 //   v2 = 카카오 og 대표사진 커버 + 3~5장(2026-07-21).
@@ -37,9 +40,32 @@ import { fetchDemoPhotos, isBlockedPhotoUrl, blockedPhotoSql } from '../utils/de
 //      못 잡는다 → demo-stay 는 keepOld(옛 커버 유지) 경로를 **없앤다**(아래 주석).
 //   ② keepOld 가 isBlockedPhotoUrl 을 검사 안 해 외부 언론사 커버도 "로드만 되면" 살아남았다.
 //   ③ 이관 경로가 차단 URL 을 검사 안 해 언론사 사진을 R2 로 계속 세탁할 수 있었다.
-export const DEMO_COND_V = '5'
+// 🔴 2026-10-25 (대표 "블로그에서 사진 발췌해서 의미없는 것도" · "최소 3장 이상이 영구적으로 안 지켜져") — '5' → '6'.
+//   사진 출처를 **지도에 등록된 업체 사진뿐**으로 바꿨다(이미지검색·블로그 제거, demo-photo-set.ts).
+//   버전을 올려야 이미 박힌 블로그 사진까지 걷어낸다. 그리고 3장 미만이면 **숨기지 않고**(대표 확정)
+//   `demo_photo_retry_after` 로 주기적으로 다시 시도한다 — 종전엔 1장만 구해져도 버전 마킹으로 끝나서
+//   "최소 3장" 이 한 번도 강제된 적이 없었다.
+// 🏪 2026-10-26 (대표 "업체가 올린 사진이 가장 좋잖아" · "기존 데모 전체에 다 적용") — '6' → '7'.
+//   출처를 **업체가 올린 사진**(네이버 업체사진 탭 → 카카오 매장주·제휴사 사진)으로 좁혔다. 종전 1순위였던
+//   카카오 og:image 는 Cloudflare 에서 403 이라 라이브 수집이 0장이었다(재시도해도 3장이 안 찼던 원인).
+//   같은 커밋에서 사진이 없어 내려간 데모(`demo_hidden_no_photo=1`)도 재시도 대상에 넣었다 — 종전 쿼리는
+//   노출 중인 행만 골라 "자동 복귀" 분기가 한 번도 돌 수 없었다. 표식 없는 비노출 행(사람이 내린 것)은 그대로.
+export const DEMO_COND_V = '8'
+// 🤖 2026-10-27 (대표 "매장주 제공 사진이 있는 매장만 · 연관되게" → "AI로 사진 판정" · "숨기고 자동 교체"):
+//   AI 판정 모드(ANTHROPIC_API_KEY 있을 때)의 버전. 키를 넣는 순간 모든 데모가 '9' 기준으로 다시 검사된다
+//   — 매장주 사진만 받고 AI 가 통과시킨 것만 쓰며, 3장이 안 되면 다른 실제 매장으로 옮기거나 숨긴다.
+//   키가 없으면 '8' 그대로라 아무것도 바뀌지 않는다(키 없이 켜면 판정 전부 실패 → 데모 전멸).
+export const DEMO_COND_V_JUDGED = '9'
+export function demoCondV(env: Env): string {
+  return demoPhotoJudgeOn(env) ? DEMO_COND_V_JUDGED : DEMO_COND_V
+}
+/** 3장 미만·사진 확보 실패 데모를 다시 시도하기까지의 간격(일). */
+const PHOTO_RETRY_DAYS = 3
 
 const RECONDITION_PER_RUN = 3
+/** 매장 교체(다른 실제 매장으로 옮기기)는 외부 요청이 많아 회차당 1건만. */
+const SWAP_PER_RUN = 1
+const COALESCE_ACTIVE = (v: number | null) => (v ?? 1) === 1
 const REHOST_PER_RUN = 2
 const MAX_IMAGES_PER_PRODUCT = 5
 const MAX_TRIES = 3
@@ -156,6 +182,11 @@ export async function repairGalleryCoverDrift(env: Env, perRun = 40): Promise<{ 
   return { scanned: (results || []).length, fixed, remaining: Number(rem?.n ?? 0) }
 }
 
+/** 다음 재시도 시각 — D1 `datetime('now')` 와 같은 모양(UTC, 'YYYY-MM-DD HH:MM:SS')이라 문자열 비교가 된다. */
+export function retryAt(now = Date.now(), days = PHOTO_RETRY_DAYS): string {
+  return new Date(now + days * 86_400_000).toISOString().slice(0, 19).replace('T', ' ')
+}
+
 function isPlaceholderUrl(u: string | null | undefined): boolean {
   return !u || /picsum\.photos/.test(u)
 }
@@ -164,23 +195,32 @@ function isPlaceholderUrl(u: string | null | undefined): boolean {
  * ① 재조정 — 버전 마커(demo_cond_v)가 현재와 다른 데모를 현재 컨디션으로 맞춘다.
  *   커버 = 카카오 대표(og)사진(placeUrl 있을 때, imgs[0]) · 갤러리 = 3~5장. 성공 시 rehost 재큐잉.
  */
-export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): Promise<{ reconditioned: number; skipped: number }> {
+export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): Promise<{ reconditioned: number; skipped: number; swapped?: number }> {
   const DB = env.DB
-  const out = { reconditioned: 0, skipped: 0, hiddenNoPhoto: 0, revived: 0 }
+  const out = { reconditioned: 0, skipped: 0, hiddenNoPhoto: 0, revived: 0, swapped: 0 }
+  const judgeOn = demoPhotoJudgeOn(env)
+  const COND_V = demoCondV(env)
   const { results } = await DB.prepare(
-    `SELECT p.id, p.slug, p.image_url, p.images, p.restaurant_name, p.restaurant_address, p.restaurant_phone, p.restaurant_lat, p.restaurant_lng
+    `SELECT p.id, p.slug, p.name, p.price, p.is_active, p.category, p.image_url, p.images, p.restaurant_name, p.restaurant_address, p.restaurant_phone, p.restaurant_lat, p.restaurant_lng
        FROM products p
       WHERE p.slug LIKE 'demo-%'
-        AND COALESCE(p.is_active, 1) = 1
+        AND (COALESCE(p.is_active, 1) = 1 OR EXISTS (
+          SELECT 1 FROM product_supply_meta h
+           WHERE h.product_id = p.id AND h.key = 'demo_hidden_no_photo' AND h.value = '1'
+        ))
         AND p.restaurant_name IS NOT NULL
-        AND NOT EXISTS (
+        AND (NOT EXISTS (
           SELECT 1 FROM product_supply_meta m
            WHERE m.product_id = p.id AND m.key = 'demo_cond_v' AND m.value = ?
-        )
+        ) OR EXISTS (
+          SELECT 1 FROM product_supply_meta r
+           WHERE r.product_id = p.id AND r.key = 'demo_photo_retry_after'
+             AND r.value <> '' AND r.value <= datetime('now')
+        ))
       ORDER BY CASE WHEN ${blockedPhotoSql('p.image_url')} THEN 0 ELSE 1 END, p.id
       LIMIT ?`
-  ).bind(DEMO_COND_V, Math.max(1, perRun)).all<{ id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }>()
-    .catch(() => ({ results: [] as { id: number; slug: string; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }[] }))
+  ).bind(COND_V, Math.max(1, perRun)).all<{ id: number; slug: string; name: string; price: number | null; is_active: number | null; category: string | null; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }>()
+    .catch(() => ({ results: [] as { id: number; slug: string; name: string; price: number | null; is_active: number | null; category: string | null; image_url: string | null; images: string | null; restaurant_name: string; restaurant_address: string | null; restaurant_phone: string | null; restaurant_lat: number | null; restaurant_lng: number | null }[] }))
   const rows = results || []
   if (rows.length === 0) return out
   const metaMap = await getSupplyMeta(DB, rows.map((r) => r.id)).catch(() => new Map<number, Record<string, string>>())
@@ -193,7 +233,9 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
     // 🔢 2026-08-17: 시도 카운터는 **버전별**로 센다(demo_cond_try_v ≠ 현재버전이면 0 부터).
     //   안 그러면 v4 에서 3회 소진된 행이 v5 에 들어오자마자 처리 없이 버전-마킹돼, 버전을 올린
     //   의미(전량 재점검)가 정확히 문제 행들에서 무효가 된다.
-    const tries = meta.demo_cond_try_v === DEMO_COND_V ? Number(meta.demo_cond_tries || 0) : 0
+    // ♻️ 2026-10-25: 재시도 회차(버전은 이미 맞고 retry_after 가 도래)면 0 부터 — 안 그러면 한 번 소진된 행이 영영 다시 안 돈다.
+    const retryPass = meta.demo_cond_v === COND_V
+    const tries = !retryPass && meta.demo_cond_try_v === COND_V ? Number(meta.demo_cond_tries || 0) : 0
     if (tries >= MAX_TRIES) {
       // 반복 실패(매칭/사진 확보 불가) — 현재 상태 유지하고 버전만 마킹(큐에서 제외, 수렴).
       // 🚫 2026-08-17: 단, 커버가 차단 출처(언론사/스톡)로 판정되면 유지가 아니라 **내린다**(가역
@@ -204,17 +246,62 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
         await setSupplyMeta(DB, row.id, { demo_hidden_no_photo: '1' }).catch(() => {})
         out.hiddenNoPhoto++
       }
-      await setSupplyMeta(DB, row.id, { demo_cond_v: DEMO_COND_V }).catch(() => {})
+      // ♻️ 포기가 아니라 **나중에 다시** — 3장을 영구적으로 지키려면 끝내 멈추면 안 된다.
+      await setSupplyMeta(DB, row.id, { demo_cond_v: COND_V, demo_cond_tries: '0', demo_photo_retry_after: retryAt() }).catch(() => {})
       out.skipped++
       continue
     }
     const placeUrl = meta.kakao_place_url || null
-    const imgs = await fetchDemoPhotos(env, {
+    const photoOpts = {
       placeId: placeUrl,                  // 있으면 imgs[0] = 카카오 대표(og)사진 — 커버 교체 grounding
       nameQuery: row.restaurant_name,     // 실매장명 — 네이버 지도 대표사진 + 스코어링 grounding
       address: row.restaurant_address,    // 네이버 지도 대표사진 검색 정확도(동명 매장 구분)
       count: 3 + Math.floor(Math.random() * 3),
-    }).catch(() => [] as string[])
+      category: row.category,             // 분류 사진 태그(식사=음식 먼저)
+    }
+    // 🤖 2026-10-27 AI 판정 모드 — 매장주 사진 중 AI 가 통과시킨 것만. 판정을 못 했으면(모른다) 아무것도
+    //   바꾸지 않고 다음에 다시. 확정적으로 3장 미만이면 다른 실제 매장으로 옮기고, 못 찾으면 숨긴다(가역).
+    let imgs: string[] | null = null
+    if (judgeOn && !row.slug.startsWith('demo-linkshop-')) {
+      const judged = await collectJudgedDemoPhotos(env, photoOpts).catch(() => ({ photos: [] as string[], known: false }))
+      if (!judged.known) {
+        await setSupplyMeta(DB, row.id, retryPass
+          ? { demo_photo_retry_after: retryAt() }
+          : { demo_cond_tries: String(tries + 1), demo_cond_try_v: COND_V }).catch(() => {})
+        out.skipped++
+        continue
+      }
+      if (judged.photos.length < DEMO_MIN_PHOTOS) {
+        const swapped = row.slug.startsWith('demo-deal-') && out.swapped < SWAP_PER_RUN
+          && await swapDemoStore(env, row, meta, COND_V).catch(() => false)
+        if (swapped) { out.swapped++; continue }
+        if (COALESCE_ACTIVE(row.is_active)) {
+          await DB.prepare(`UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?`).bind(row.id).run().catch(() => {})
+          out.hiddenNoPhoto++
+        }
+        await setSupplyMeta(DB, row.id, { demo_hidden_no_photo: '1', demo_cond_v: COND_V, demo_photo_retry_after: retryAt() }).catch(() => {})
+        continue
+      }
+      imgs = judged.photos
+    }
+    imgs ??= await fetchDemoPhotos(env, photoOpts).catch(() => [] as string[])
+    // 🔁 2026-10-27 (대표 "그 방식으로 진행") — 동네딜 데모가 3장을 못 채웠고, 카카오가 **그 매장에 쓸 수 있는 사진이
+    //   3장 미만이라고 확인해 줄 때만**(응답을 못 받으면 아래 종전 경로) 다른 실제 매장으로 옮긴다. 회차당 1건.
+    //   옮길 곳을 못 찾으면 숨기고(가역) 나중에 다시 — 3장 미만 데모를 매대에 두지 않는다.
+    if (!judgeOn && row.slug.startsWith('demo-deal-') && imgs.length < DEMO_MIN_PHOTOS) {
+      const usable = await fetchKakaoUsablePhotoCount(placeUrl, row.category).catch(() => null)
+      if (usable != null && usable < DEMO_MIN_PHOTOS) {
+        const swapped = out.swapped < SWAP_PER_RUN
+          && await swapDemoStore(env, row, meta, COND_V).catch(() => false)
+        if (swapped) { out.swapped++; continue }
+        if (COALESCE_ACTIVE(row.is_active)) {
+          await DB.prepare(`UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?`).bind(row.id).run().catch(() => {})
+          out.hiddenNoPhoto++
+        }
+        await setSupplyMeta(DB, row.id, { demo_hidden_no_photo: '1', demo_cond_v: COND_V, demo_photo_retry_after: retryAt() }).catch(() => {})
+        continue
+      }
+    }
     if (imgs.length === 0) {
       // 🚫 2026-08-08 (대표 "사진이 아예 없으면 그 데모 이용권은 안올려져야지. 자체가"):
       //   근거 있는 사진(카카오/네이버 지도 대표사진·매장명 매칭)을 못 구했으면 **매대에서 내린다.**
@@ -232,8 +319,18 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
           .bind(row.id).run().catch(() => {})
         await setSupplyMeta(DB, row.id, { demo_hidden_no_photo: '1' }).catch(() => {})
         out.hiddenNoPhoto++
+      } else {
+        // 커버는 남기되 이미지검색·블로그에서 온 갤러리 칸은 걷어낸다(출처를 뺀 사진을 남겨 두지 않는다).
+        const kept = parseJsonArr(row.images).filter((u) => !isSearchDerivedPhoto(u))
+        if (kept.length !== parseJsonArr(row.images).length) {
+          await DB.prepare(`UPDATE products SET images = ?, updated_at = datetime('now') WHERE id = ?`)
+            .bind(JSON.stringify(kept.length ? kept : [row.image_url]), row.id).run().catch(() => {})
+        }
       }
-      await setSupplyMeta(DB, row.id, { demo_cond_tries: String(tries + 1), demo_cond_try_v: DEMO_COND_V }).catch(() => {})
+      // 재시도 회차에서 또 못 구했으면 다음 재시도를 예약(버전은 이미 마킹돼 있다).
+      await setSupplyMeta(DB, row.id, retryPass
+        ? { demo_photo_retry_after: retryAt() }
+        : { demo_cond_tries: String(tries + 1), demo_cond_try_v: COND_V }).catch(() => {})
       continue
     }
     // 📦 2026-08-11 (대표 "모두 진행해" — AB 스윕 §4-c): **쇼핑 데모는 지도 사진으로 못 채운다.**
@@ -250,7 +347,7 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
     if (row.slug.startsWith('demo-linkshop-')) {
       await DB.prepare(`UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?`)
         .bind(row.id).run().catch(() => {})
-      await setSupplyMeta(DB, row.id, { demo_hidden_no_photo: '1', demo_cond_v: DEMO_COND_V }).catch(() => {})
+      await setSupplyMeta(DB, row.id, { demo_hidden_no_photo: '1', demo_cond_v: COND_V }).catch(() => {})
       out.hiddenNoPhoto++
       continue
     }
@@ -262,10 +359,10 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
     // 🚫 2026-08-17: keepOld 는 ① 차단 출처(언론사/스톡) 커버 금지 ② demo-stay 금지 — 숙소의 옛 커버는
     //   7월 이관분(출처 불명·세탁된 언론사 사진 포함)이라 "로드된다"가 근거가 못 된다. 숙소 커버는
     //   항상 이번에 확보한 근거 있는 사진(imgs[0])으로 교체한다.
-    const keepOld = !row.slug.startsWith('demo-stay-') && !placeUrl && !isPlaceholderUrl(row.image_url)
-      && !isBlockedPhotoUrl(row.image_url || '') && await validateImageLoads(row.image_url)
-    const cover = keepOld ? (row.image_url as string) : imgs[0]
-    const gallery = Array.from(new Set([cover, ...imgs])).slice(0, 5)
+    // 🔴 2026-10-25: 옛 커버 유지(keepOld) 경로를 없앴다. 옛 커버는 R2 로 이관돼 출처를 알 수 없고,
+    //   실제로 블로그 사진이 그 경로로 살아남았다. 이번에 확보한 **업체 등록 사진**으로 항상 교체한다.
+    const cover = imgs[0]
+    const gallery = Array.from(new Set(imgs)).slice(0, MAX_IMAGES_PER_PRODUCT)
     await DB.prepare(`UPDATE products SET image_url = ?, images = ?, updated_at = datetime('now') WHERE id = ?`)
       .bind(cover, JSON.stringify(gallery), row.id).run().catch(() => {})
     // 🏨 숙소: 객실 썸네일도 새 갤러리로 정합(hero=새사진 / 객실=옛사진 불일치 방지). 객실별 로테이션 분배.
@@ -305,23 +402,42 @@ export async function reconditionDemos(env: Env, perRun = RECONDITION_PER_RUN): 
       out.revived++
     }
     // 버전 마킹(수렴) + rehost 재큐잉(새 외부 URL 을 R2 로 이관하도록 종결 마크 해제).
-    await setSupplyMeta(DB, row.id, { demo_cond_v: DEMO_COND_V, img_rehost_done: '0' }).catch(() => {})
+    //   3장 미만이면 숨기지 않고(대표 확정 2026-10-25) 다시 시도를 예약한다. 채워지면 예약을 지운다.
+    await setSupplyMeta(DB, row.id, {
+      demo_cond_v: COND_V, img_rehost_done: '0',
+      demo_photo_retry_after: gallery.length < DEMO_MIN_PHOTOS ? retryAt() : '',
+    }).catch(() => {})
     out.reconditioned++
   }
   return out
 }
 
-export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: number; migrated: number; images: number; done: number; galleryFixed?: number; galleryDeduped?: number; skipped?: string }> {
+/** 노출 중인 데모(쇼핑 데모 제외) 중 사진이 DEMO_MIN_PHOTOS 장 미만인 수. 실패는 호출부가 -1 로 남긴다. */
+export async function countDemoPhotoShort(env: Env): Promise<number> {
+  const r = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM products
+      WHERE slug LIKE 'demo-%' AND slug NOT LIKE 'demo-linkshop-%'
+        AND COALESCE(is_active, 1) = 1
+        AND (images IS NULL OR NOT json_valid(images) OR json_array_length(images) < ?)`
+  ).bind(DEMO_MIN_PHOTOS).first<{ n: number }>()
+  return Number(r?.n ?? 0)
+}
+
+export async function handleDemoImageRehost(env: Env): Promise<{ reconditioned: number; migrated: number; images: number; done: number; swapped?: number; galleryFixed?: number; galleryDeduped?: number; photoShort?: number; descWritten?: number; skipped?: string }> {
   const DB = env.DB
   const bucketEnv = env as unknown as { MEDIA_BUCKET?: R2Bucket }
   // ① 재조정 — R2 버킷 유무와 무관(외부 URL 저장도 표시엔 유효, ②가 이후 영구화). fail-soft.
-  const rc = await reconditionDemos(env).catch(() => ({ reconditioned: 0, skipped: 0, hiddenNoPhoto: 0, revived: 0 }))
-  const result: { reconditioned: number; migrated: number; images: number; done: number; galleryFixed?: number; galleryDeduped?: number; skipped?: string } =
+  const rc = await reconditionDemos(env).catch(() => ({ reconditioned: 0, skipped: 0, hiddenNoPhoto: 0, revived: 0, swapped: 0 }))
+  const result: { reconditioned: number; migrated: number; images: number; done: number; swapped?: number; galleryFixed?: number; galleryDeduped?: number; photoShort?: number; descWritten?: number; skipped?: string } =
     { reconditioned: rc.reconditioned, migrated: 0, images: 0, done: 0 }
-  // 🩹 갤러리 첫 칸 정합 — **R2 바인딩과 무관**(주소만 맞추는 DB 작업)이라 아래 조기반환보다 앞에 둔다.
-  //   여기 아래에 뒀다가는 바인딩 없는 배포에서 영영 안 돈다(바로 밑 주석이 기록한 넉 달 사고와 같은 자리).
+  if (rc.swapped) result.swapped = rc.swapped  // 🔁 다른 매장으로 옮긴 데모 수(2026-10-27)
+  // 🩹 갤러리 첫 칸 정합 — R2 무관(DB 작업)이라 조기반환보다 앞에(아래 두면 바인딩 없는 배포에서 영영 안 돈다).
   const gal = await repairGalleryCoverDrift(env).catch(() => ({ scanned: 0, fixed: 0, remaining: -1 }))
   if (gal.fixed) result.galleryFixed = gal.fixed
+  // 📏 2026-10-25: 사진 3장 미만 데모 수를 매 회차 하트비트에 — 아무도 안 세서 "최소 3장" 이 안 지켜졌다.
+  result.photoShort = await countDemoPhotoShort(env).catch(() => -1)
+  // ✍️ 2026-10-27: AI 상품 구성·가게 소개(`demo-description.ts` — 판정된 사진·이용권 내용만 근거). R2 무관.
+  const ds = await (await import('./demo-description')).writeDemoDescriptions(env).catch(() => ({ written: 0, rejected: 0 })); if (ds.written || ds.rejected) result.descWritten = ds.written
   // 🔴 2026-08-31: 여기서 조용히 반환하던 것이 **넉 달간 이관을 통째로 죽여 놨다.**
   //   cron 은 Pages 가 아니라 wrangler.toml 의 Workers 배포에서 도는데 거기에 MEDIA_BUCKET 이
   //   없었다(주석 처리돼 있었다). 그런데 반환값이 `migrated=0 done=0` 이라 하트비트에는

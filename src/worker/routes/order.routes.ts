@@ -74,7 +74,7 @@ const createOrderSchema = z.object({
   items: z.array(z.object({
     product_id: z.string().min(1),
     quantity: z.number().int().positive().max(99),
-    options: z.record(z.string()).optional(),
+    options: z.record(z.string(), z.string()).optional(),
     // 🛡️ 2026-07-02 (쇼핑 전수조사): 옵션 상품은 option_id 전달 → 서버가 price_adjustment 를 권위
     //   재계산(클라 snapshot 불신) + 옵션별 재고 CAS 차감. 없으면 기본 상품(옵션 없음).
     option_id: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).nullish(),

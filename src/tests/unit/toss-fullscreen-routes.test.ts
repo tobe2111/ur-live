@@ -18,6 +18,8 @@ import { join } from 'path'
 
 const SRC = join(__dirname, '..', '..', '..', 'src')
 const APP_TSX = join(SRC, 'App.tsx')
+// 2026-10-20: 목록이 lib/consumer-chrome.ts 로 옮겨갔다(App.tsx·부팅 PC 네비 준비가 같은 판정을 쓴다).
+const CHROME_TS = join(SRC, 'lib', 'consumer-chrome.ts')
 
 // 재귀적으로 .tsx 파일 수집
 function walk(dir: string, acc: string[] = []): string[] {
@@ -35,8 +37,8 @@ describe('Toss payment widget — fullscreen route guard', () => {
     const appSource = readFileSync(APP_TSX, 'utf8')
 
     // 1) fullScreenPrefixes 배열 추출
-    const prefixMatch = appSource.match(/const fullScreenPrefixes = \[([^\]]+)\]/)
-    expect(prefixMatch, 'App.tsx 에서 fullScreenPrefixes 배열을 찾을 수 없음').toBeTruthy()
+    const prefixMatch = readFileSync(CHROME_TS, 'utf8').match(/const fullScreenPrefixes = \[([^\]]+)\]/)
+    expect(prefixMatch, 'lib/consumer-chrome.ts 에서 fullScreenPrefixes 배열을 찾을 수 없음').toBeTruthy()
     const prefixes = (prefixMatch![1].match(/'([^']+)'/g) || []).map((s) => s.slice(1, -1))
     expect(prefixes.length).toBeGreaterThan(0)
 

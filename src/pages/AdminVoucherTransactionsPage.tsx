@@ -381,6 +381,7 @@ export default function AdminVoucherTransactionsPage() {
                 <option value="meal_voucher">이용권</option>
                 <option value="beauty_voucher">뷰티</option>
                 <option value="stay_voucher">숙박</option>
+                <option value="home_voucher">생활</option>
                 <option value="etc_voucher">기타</option>
                 <option value="health_voucher">건강</option>
                 <option value="pet_voucher">펫</option>

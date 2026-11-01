@@ -40,8 +40,9 @@ export default [
   {
     name: '🤖 데모 이용권을 AI 에게 건넨다',
     file: 'src/worker/routes/agent-search.routes.ts',
-    find: "        AND NOT ${demoSlugSql('p')}${scope}\n",
-    replace: '        ${scope}\n',
+    // 2026-10-20: 결제 링크 라우트가 같은 줄을 써서 두 곳에 맞게 됐다 — 검색 쿼리(다음 줄의 where)로 가른다.
+    find: "        AND NOT ${demoSlugSql('p')}${scope}\n        ${where.length",
+    replace: "        ${scope}\n        ${where.length",
     test: TEST,
     why: '실제 가게 이름의 가짜 딜을 AI 가 추천하면 손님이 없는 거래를 찾아간다.',
   },

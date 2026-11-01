@@ -32,7 +32,11 @@ describe('COMPANY_DDL', () => {
     //   20건 뽑으려고 387,003행을 읽었고 2시간마다 돌아 하루 460만 행이었다(신규는 6일 연속 0).
     //   ④ 와 같은 클래스 — 인덱스가 비활성 전량을 통과시키고 정렬을 임시 B-트리로 했다.
     //   근거·설계: company-ddl-indexes ⑨.
-    expect(COMPANY_DDL).toHaveLength(31)
+    // 2026-10-24: 보강 큐 정렬 키가 바뀌어(미착수 먼저) 인덱스를 **v2 로 다시 만들고 옛 것을 떨어뜨린다**
+    //   → 옛 CREATE 가 v2 CREATE 로 **교체**되고 `DROP INDEX IF EXISTS` 한 문장이 늘어 31 → 32.
+    //   🔑 이름을 바꾼 이유: `CREATE INDEX IF NOT EXISTS` 는 같은 이름이 있으면 컬럼이 달라도 **조용히
+    //   아무것도 안 한다** — 이름을 유지하면 라이브엔 옛 4키 인덱스가 남아 플래너가 무시한다(읽기 폭증 재발).
+    expect(COMPANY_DDL).toHaveLength(32)
   })
 
   it('두 테이블을 만든다 — 리드 본체 + 반송 억제', () => {
@@ -66,8 +70,20 @@ describe('COMPANY_DDL', () => {
   it('DDL 만 담는다 — 데이터 마이그레이션(UPDATE/DELETE)은 여기 들어오면 안 된다', () => {
     // runDdlOnce 는 체크섬이 같으면 **전부 건너뛴다**. 1회성 데이터 정리를 여기 넣으면
     // 체크섬이 바뀔 때마다 다시 돌아 라이브 데이터를 예상 밖으로 건드린다.
+    // 🔁 2026-10-24: `DROP INDEX IF EXISTS` 를 허용한다 — **데이터가 아니라 스키마**이고
+    //   `IF EXISTS` 라 재실행이 안전하다(체크섬이 바뀌어 다시 돌아도 멱등). 인덱스 키를 바꿀 때
+    //   옛 인덱스를 남겨 두면 쓰이지도 않으면서 모든 INSERT/UPDATE 가 그것까지 다시 쓴다.
+    //   ⚠️ `DROP TABLE`·bare `DROP INDEX`(IF EXISTS 없음)·UPDATE/DELETE 는 **여전히 금지**다.
     for (const sql of COMPANY_DDL) {
-      expect(/^\s*(CREATE TABLE|ALTER TABLE|CREATE INDEX|CREATE UNIQUE INDEX)/i.test(sql.trim())).toBe(true)
+      expect(
+        /^\s*(CREATE TABLE|ALTER TABLE|CREATE INDEX|CREATE UNIQUE INDEX|DROP INDEX IF EXISTS)/i.test(sql.trim()),
+        `DDL 아닌 문장: ${sql.trim().slice(0, 60)}`,
+      ).toBe(true)
+    }
+    // 🔒 금지 목록을 명시로 고정 — 위 정규식이 느슨해지는 것을 잡는다.
+    for (const sql of COMPANY_DDL) {
+      expect(/^\s*(UPDATE|DELETE|DROP TABLE|INSERT)\b/i.test(sql.trim()), `데이터를 건드리는 문장: ${sql.trim().slice(0, 60)}`).toBe(false)
+      if (/^\s*DROP INDEX/i.test(sql.trim())) expect(sql, 'DROP INDEX 는 IF EXISTS 여야 재실행이 안전하다').toMatch(/DROP INDEX IF EXISTS/i)
     }
   })
 })

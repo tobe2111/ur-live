@@ -125,6 +125,12 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     options: [{ value: 'false', label: 'OFF (현행 — 같은 주인 지점만, 정산은 판 지점)' }, { value: 'true', label: 'ON — 받기를 켠 다른 점주 지점도 받고, 그 지점이 정산받음' }],
     hint: '🔴 머니 경로(정산받는 매장이 바뀐다). 받는 지점 사장님이 "다른 점주 이용권 받기"를 켠 곳만 · 소개비가 붙은 이용권은 제외 · 수수료는 쓴 지점 요율. 끄면 앞으로의 사용만 막힌다(이미 받은 건 그 지점 정산). 손님 셀프 사용은 아직 다른 점주 지점을 못 쓴다(잠금 파일). 절차: S-BRANDX',
   },
+  // 🏡 2026-10-25 결재 `2026-10-25-stay-qr-checkin.md` — 숙소도 이용권 행을 갖는다(지갑 QR · 스캔 체크인 · 사용 시점 원장).
+  {
+    key: 'stay_voucher_unify_enabled', label: '숙소 = 이용권 통일', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 숙소는 체크인 코드 + 사장님 수동 처리)' }, { value: 'true', label: 'ON — 숙소 결제 확정 시 이용권 발급, 체크인 때 QR 스캔 · 사용 시점 정산 원장' }],
+    hint: '🔴 머니 경로(사용 처리 = 환불 종료 · 원장 기록). 끄면 새 발급만 멈춘다(이미 발급된 숙소 이용권은 숙소 규칙대로 계속 처리). 라이브 숙소 예약 0건이라 켜도 오늘 영향 0. 절차: S-STAYV',
+  },
   {
     key: 'invite_reward_monthly_budget_krw', label: '초대 보상 월 예산 (딜, 0=무제한)', default: '0',
     hint: '이달 지급 합계가 예산 초과 시 자동 skip',

@@ -504,6 +504,8 @@ export default function SellerStayNewPage() {
 
           {/* 4. 시설 (어메니티) */}
           <Section icon={<Sparkles className="w-5 h-5 text-gray-700" />} title="시설 / 어메니티">
+            {/* 🏨 2026-10-31 (대표 "없으면 없다고 표시되고, 업로드할 때도 선택이 되어야"): 여기서 고른 시설이 상세 '서비스 및 부대시설'에 뜬다. */}
+            <p className="mb-3 text-[13px] text-gray-500">고른 시설은 상세의 ‘서비스 및 부대시설’에 표시되고, 고르지 않은 대표 시설(주차·조식·수영장 등)은 ‘없음’으로 보여요.</p>
             <Field label="숙소 공통 시설">
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {propertyAmenities.map((a) => {

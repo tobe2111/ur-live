@@ -141,7 +141,9 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
         draggable: !coarsePointer,
         scrollwheel: false, // 미니맵은 페이지 스크롤 보호 (사용자가 카카오맵 앱으로 이동 가능)
       })
-      mapInstance.current.setZoomable(true)
+      // 📱 2026-10-27 (대표 "모바일 지도 부분에서 스크롤 하려고 하면 안먹혀"): 드래그를 꺼도 확대(핀치)가 켜져
+      //   있으면 카카오가 터치를 붙잡아 페이지가 안 내려갔다. 터치 기기는 확대도 끄고, 아래 덮개가 터치를 받는다.
+      mapInstance.current.setZoomable(!coarsePointer)
       // 마커 + InfoWindow (매장명 표시)
       const marker = new window.kakao.maps.Marker({ position: pos, map: mapInstance.current })
       if (name) {
@@ -189,7 +191,7 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
             href={kakaoMapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            className="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-blue-600 dark:text-blue-400 hover:underline"
           >
             카카오맵 <ExternalLink className="w-3 h-3" />
           </a>
@@ -207,7 +209,11 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
             <p className="text-[12px] text-gray-400">지도 로딩 중...</p>
           </div>
         ) : (
-          <div ref={mapRef} className="absolute inset-0" style={{ touchAction: 'pan-y' }} />
+          <>
+            <div ref={mapRef} className="absolute inset-0" style={{ touchAction: 'pan-y' }} />
+            {/* 📱 터치 기기 전용 투명 덮개 — 손가락이 지도(카카오 터치 처리)에 닿지 않아 페이지가 그대로 스크롤된다. */}
+            <div className="absolute inset-0 hidden [@media(pointer:coarse)]:block" style={{ touchAction: 'pan-y', zIndex: 2 }} aria-hidden="true" data-map-scroll-guard />
+          </>
         )}
       </div>
     </div>

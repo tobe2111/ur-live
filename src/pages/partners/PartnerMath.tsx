@@ -17,6 +17,7 @@
 import { useMemo, useState } from 'react'
 import { PARTNER_FACTS as F, FEE_DIRECT_RATE } from '@/shared/partners-facts'
 import { formatNumber } from '@/utils/format'
+import { Reveal, useTweened } from '../landing/motion'
 
 const POINTS = [
   { t: '결제가 먼저다', d: '이용권은 후기 약속이 아니라 이미 들어온 매출입니다.' },
@@ -34,6 +35,8 @@ export default function PartnerMath() {
     const fee = Math.round(s * FEE_DIRECT_RATE)
     return { fee, payout: s - fee, off: l > 0 ? Math.round((1 - s / l) * 100) : 0 }
   }, [list, sale])
+  // 🎬 숫자를 바꾸면 사장님 몫이 이전 값에서 새 값으로 미끄러진다
+  const payoutShown = useTweened(calc.payout)
 
   return (
     <section className="bg-warm">
@@ -46,8 +49,8 @@ export default function PartnerMath() {
             지금 팔리고 있는 실제 상품입니다. 숫자를 바꿔 내 가게로 맞춰 보세요.
           </p>
 
-          <div className="mt-8 lg:mt-12 rounded-2xl bg-surface shadow-lift p-5 lg:p-8">
-            <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400">{F.sample.name}</p>
+          <Reveal kind="scale" className="mt-8 lg:mt-12 rounded-2xl bg-surface shadow-lift p-5 lg:p-8">
+            <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{F.sample.name}</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Field label="정가 (원)" value={list} onChange={setList} />
               <Field label="이용권 판매가 (원)" value={sale} onChange={setSale} />
@@ -61,24 +64,24 @@ export default function PartnerMath() {
               <Row k={`유어딜 수수료 ${F.feeDirect}`} v={`−${formatNumber(calc.fee)}원`} />
               <Row k="카드 수수료" v="0원 (유어딜 부담)" accent />
               <div className="pt-3 border-t border-rule flex items-baseline justify-between">
-                <dt className="text-[15px] lg:text-[17px] font-extrabold text-ink">사장님 계좌에</dt>
+                <dt className="text-[15px] lg:text-[17px] font-bold text-ink">사장님 계좌에</dt>
                 <dd className="text-[28px] lg:text-[40px] font-extrabold text-brand-text tabular-nums tracking-[-0.03em]">
-                  {formatNumber(calc.payout)}원
+                  {formatNumber(payoutShown)}원
                 </dd>
               </div>
             </dl>
-          </div>
+          </Reveal>
           <p className="mt-4 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">
             가입비와 월 이용료, 선불 광고비, 정산 수수료가 모두 0원입니다. 중개(대행사)를 통해 들어오시면 수수료는 {F.feeBrokered}입니다.
           </p>
         </div>
 
         <ul className="space-y-8 lg:space-y-12">
-          {POINTS.map(({ t, d }) => (
-            <li key={t}>
-              <p className="text-[17px] lg:text-[24px] font-extrabold text-ink tracking-[-0.02em] leading-snug">{t}</p>
+          {POINTS.map(({ t, d }, i) => (
+            <Reveal as="li" key={t} kind="right" delay={i * 100}>
+              <p className="text-[17px] lg:text-[24px] font-bold text-ink tracking-[-0.02em] leading-snug">{t}</p>
               <p className="mt-2 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[30em]">{d}</p>
-            </li>
+            </Reveal>
           ))}
           <li className="text-[13px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400 border-t border-rule pt-8 max-w-[30em]">
             몇 장이 팔렸고 몇 명이 왔는지, 언제 왔는지가 매장 화면에 남습니다.{' '}
@@ -93,7 +96,7 @@ export default function PartnerMath() {
 function Field({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
   return (
     <label className="block">
-      <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">{label}</span>
+      <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{label}</span>
       <input type="number" inputMode="numeric" value={value} min={0} step={500}
         onChange={e => onChange(Number(e.target.value))}
         className="mt-1 w-full h-11 px-3 rounded-xl bg-warm text-[15px] font-bold text-gray-900 dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-brand" />

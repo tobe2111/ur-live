@@ -135,8 +135,10 @@ export default [
   {
     name: '🔔 제출 실패에도 커서를 올린다',
     file: 'src/worker/cron/indexnow-submit.ts',
-    find: "      return `indexnow: 제출 실패 (${post ? post.status : 'fetch 실패'}) · ${plan.urls.length}건, 커서 유지`",
-    replace: "      // 실패를 무시하고 아래로 내려간다",
+    // 🔁 2026-10-25 재조준: 제출이 `submitUrls()` 로 모였다(전수 제출과 같은 함수) — 불변식 그대로.
+    // 🔁 2026-10-26 재조준: 변경분 제출이 `submitChanges()` 로 빠졌다(전수 실패 시에도 부르려고) — 불변식 그대로.
+    find: "    if (!ok.ok) return `제출 실패 (${ok.status}) · ${plan.urls.length}건, 커서 유지`",
+    replace: "    // 실패를 무시하고 아래로 내려간다",
     test: TEST,
     why: '제출이 실패했는데 커서를 올리면 그 변경이 **영구히** 빠진다(다음 회차 대상에서 사라진다).',
   },

@@ -45,10 +45,17 @@ export function mapCommerceLead(it: RawCommerce): CompanyLead {
   //   등록부가 말해준 상태만 본다 — 상호/주소로 추측하지 않는다.
   const status = `${g(it, 'operSttusCdNm', 'operSttus')} ${g(it, 'bzmnRgsSttusSeNm', 'bzmnRgsSttusSe')}`
   const closed = /폐업|말소|휴업|취소/.test(status)
-  // 🏷️ 취급품목 — **실제로 존재하는 필드**로 겨눈다(구 별칭 `upteNm` 은 실응답에 없어 100% '통신판매' 고착).
-  //   원문은 description 에 남겨(정보 손실 0) 라이브 값을 보고 버킷 표를 정밀화할 수 있게 한다.
-  const goods = g(it, 'trtmntPrdlstNm', 'ntslPrdlstCn', 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm')
-  const method = g(it, 'ntslMthdNm')
+  // 🏷️ 취급품목 — **한글 필드를 먼저** 본다(2026-10-25 라이브 실측으로 순서를 뒤집었다).
+  //   같은 detail 레코드가 **같은 뜻을 두 벌**로 준다: `trtmntPrdlstNm`='01 02'(숫자 코드) ↔
+  //   `ntslPrdlstCn`='종합몰 교육/도서/완구/오락'(한글). coverage 가 둘 다 31%(155/500)로 **같은 행에 쌍으로** 온다.
+  //   🩸 코드가 앞에 있어서 한글을 가리고 있었다 — 분류기는 한글 정규식이라 코드엔 한 건도 안 맞아
+  //   업종이 발송 가능 리드의 93%에서 `'통신판매'` 로 고착됐다(2026-10-24~25 조사).
+  //   ⇒ 공정위 코드표(01~12)를 받을 필요가 **없어졌다**. 원문은 description 에 그대로 남는다(정보 손실 0).
+  //   ⚠️ 순서를 되돌리지 말 것: `ntslPrdlstCn` 은 **detail 전용**이라 status 레코드엔 없고(실측 18키),
+  //   그 경우 다음 별칭으로 넘어가므로 status 쪽 판정은 byte-불변이다.
+  const goods = g(it, 'ntslPrdlstCn', 'trtmntPrdlstNm', 'upteNm', 'dclsfNm', 'idustyNm', 'taskNm')
+  //   판매방식도 같은 쌍이다: `ntslMthdNm`='02 03' ↔ `ntslMthdCn`='인터넷 카탈로그'(한글).
+  const method = g(it, 'ntslMthdCn', 'ntslMthdNm')
   return {
     // 통신판매사업자 = 일반 온라인 판매업체(대행사 아님) → '온라인판매' tier 4. (이전 '대행사' tier1 오분류는
     //   보강 우선순위(tier1 우선)를 통신판매가 독식하게 만들어 실제 대행사 리드를 밀어냈음 — 정합 교정.)
@@ -92,11 +99,34 @@ export type RawCommerce = Record<string, unknown>
  *   (`upteNm` 은 실응답에 없다 — 라이브 키 목록으로 확인). 실제로 있는 건
  *   `trtmntPrdlstNm`(취급품목) · `ntslPrdlstCn`(판매품목) · `ntslMthdNm`(판매방식) 이다.
  *
- *   ⚠️ **한계를 분명히 한다**: 키가 존재하는 건 확인했지만, 이 환경에선 그 값의 **실제 문자열을 아직 못 봤다**
- *   (유일한 라이브 샘플이 폐업 행이라 전부 "N/A"). 그래서 매칭되면 버킷, **안 되면 현행 `'통신판매'` 유지**로
- *   두고 원문은 `description` 에 남긴다 — 라이브에서 실제 값을 본 뒤 이 표를 정밀화하면 된다(추측 최소화).
+ *   ✅ **2026-10-25: 실제 값을 봤다**(detail 레코드가 처음 도착한 16:00 회차) —
+ *   `ntslPrdlstCn` = `'종합몰 교육/도서/완구/오락'`, `trtmntPrdlstNm` = `'01 02'`. **같은 뜻의 쌍**이다.
+ *   ⇒ 분류는 **한글 쪽**으로 하고(호출부에서 그 별칭을 먼저 둔다) 코드표는 필요 없다.
+ *   ⚠️ 여기 적은 낱말은 **실측한 문자열에서 본 것만**이다(종합몰·교육·도서·완구·오락).
+ *   나머지 코드의 한글 라벨은 회차가 쌓이며 `description` 에 모이므로, 분포를 보고 그때 넓힌다 —
+ *   **표준 목록을 기억으로 적지 말 것**(추측 라벨은 `'통신판매'` 보다 나쁘다 — 승격 뒤 되돌리기 어렵다).
  */
 const PRODUCT_BUCKETS: Array<[string, RegExp]> = [
+  // 🥇 맨 앞: 여러 품목을 한 문자열로 주는 경우(코드 합성 '01 02' → '종합몰 교육/도서/…')가 있어
+  //   가장 포괄적인 라벨을 먼저 집는다. 아니면 뒤쪽 낱말 하나에 걸려 **좁은 업종으로 오분류**된다
+  //   (실측: '종합몰 교육/도서/완구/오락' 이 '완구' 때문에 유아동으로 갔다).
+  ['종합몰', /종합몰|종합 ?쇼핑|백화점/],
+  // 🔬 2026-10-26 실측으로 **오분류 둘**을 잡았다(라이브 `description` 한글 품목 1,393건 전수).
+  //   공정위 품목 라벨은 **닫힌 11종**(종합몰 · 의류/패션/잡화/뷰티 · 건강/식품 · 교육/도서/완구/오락 ·
+  //   레저/여행/공연 · 가구/수납용품 · 컴퓨터/사무용품 · 자동차/자동차용품 · 가전 · 성인/성인용품 · 기타)
+  //   이고, 그중 둘이 **아래 자유텍스트 규칙에 먼저 걸려 엉뚱한 버킷으로** 갔다:
+  //     `컴퓨터/사무용품` → `도서·문구`(그 정규식의 `사무용품` 이 2번째라 `컴퓨터` 를 가로챘다) — 라이브 **45행**
+  //     `가구/수납용품`   → `생활·주방`(그 정규식의 `수납` 이 7번째라 `가구` 를 가로챘다)   — 라이브 **28행**
+  //   🔴 **이미 찍힌 라벨은 코드로 안 고쳐진다** — `ON CONFLICT` 는 총칭(`통신판매`)만 승격하고 구체 라벨은
+  //   보존한다. 그 73행은 데이터 UPDATE(결재) 대상이고, 이 수리는 **그 뒤로 더 안 늘게** 막는 것이다.
+  //   🧷 앵커를 **슬래시째 리터럴**로 둔다 — 이 문자열은 공정위 라벨에서만 나오므로 자유 텍스트(블로그·크롤
+  //   문구)에는 걸릴 수 없다. 낱말(`컴퓨터`·`가구`)로 올리면 "도서/컴퓨터서적" 같은 자유 텍스트가 끌려온다.
+  //   ⚠️ 복합 라벨(`가구/수납용품 의류/…`)에서는 이 둘이 `패션·잡화` 를 이긴다 — 여러 품목을 신고한
+  //   판매자라 **어느 쪽도 정답**이고(실측 5행), `종합몰` 은 여전히 맨 앞이라 최상위 포괄 라벨은 안 밀린다.
+  ['가전·디지털', /컴퓨터\/사무용품/],
+  ['가구·인테리어', /가구\/수납용품/],
+  // 📚 유아동보다 **앞**이어야 한다 — 위 합성 문자열에서 '완구'(유아동)가 '교육·도서'를 가로채지 않게.
+  ['도서·문구', /교육|학습|도서|서적|문구|사무용품|음반|교재|오락/],
   ['패션·잡화', /의류|패션|의복|셔츠|바지|원피스|신발|구두|가방|잡화|악세|액세서리|주얼리|시계|모자/],
   ['뷰티', /화장품|뷰티|미용|스킨|헤어|향수|네일|마스크팩/],
   ['식품', /식품|농산|수산|축산|건강식품|가공식품|음료|커피|차\b|과자|반찬|정육|과일/],
@@ -107,7 +137,6 @@ const PRODUCT_BUCKETS: Array<[string, RegExp]> = [
   ['스포츠·레저', /스포츠|레저|등산|캠핑|자전거|골프|헬스|낚시/],
   ['반려동물', /반려|애완|펫\b|사료/],
   ['건강·의료', /건강|의료|의약|의료기기|보조식품|영양제/],
-  ['도서·문구', /도서|서적|문구|사무용품|음반|교재/],
   ['자동차·공구', /자동차|차량|타이어|공구|산업용품|부품/],
 ]
 
@@ -321,6 +350,20 @@ export interface CommerceStats {
     configured: boolean; error?: string; sample?: unknown
     /** 📊 원본 필드가 **실제로 몇 % 채워져 오는가** + 형식 예시(가려짐). 추가 요청 0(받아온 응답을 셀 뿐). */
     coverage?: FieldCoverage[]
+    /**
+     * 🔭 **엔드포인트별** 샘플·커버리지 (2026-10-24).
+     *
+     *   위 `sample`/`coverage` 는 두 서비스가 **한 변수를 공유**한다. `sample` 은 "이메일 든 쪽 우선"
+     *   이라 이메일을 주는 `status`(등록현황)가 **늘 이기고**, `coverage` 는 마지막 페이지가 덮는다.
+     *   ⇒ `detail`(등록상세) 응답의 필드 목록을 **한 번도 본 적이 없었다**(라이브 실측 2026-10-24:
+     *   저장된 coverage 18필드가 전부 status 것이고 `trtmntPrdlstNm`·`ntslPrdlstCn` 이 둘 다 없다).
+     *
+     *   그게 업종 분류가 비어 있는 이유와 직접 이어진다 — 취급품목은 detail 에만 오고, 지금 그 값은
+     *   숫자 코드(`'12'`·`'01 06'`)인데 **코드표를 모른다**. 차선 별칭 `ntslPrdlstCn`(판매품목)이
+     *   한글이면 코드표가 아예 필요 없는데, `g()` 는 첫 값만 쓰므로 그 필드를 한 번도 안 본다.
+     *   ⚠️ **추가 요청 0** — 이미 받는 응답을 저장만 나눈다.
+     */
+    by_service?: Record<string, { sample?: unknown; coverage?: FieldCoverage[] }>
     /** 빈 필드 한 줄 요약 — 상태줄용. */
     coverage_note?: string
   }
@@ -367,6 +410,26 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   const totalBudget = applyQuantum(Math.min(envSubreqCap(env), Math.max(4, envPlanValue(env.ADS_ENRICH_BUDGET || env.ADS_COMPANY_SUBREQUEST_BUDGET, 12, 60, env))), cfg.q, 4)
   const budget = { left: totalBudget }
   const perService = Math.max(2, Math.floor(totalBudget / services.length))
+  /**
+   * 🍽️ **레코드 상한도 서비스별로 나눈다** (2026-10-25 — `detail` 이 굶고 있었다).
+   *
+   * 🩸 종전엔 `found` 가 **서비스 공유 누적**이라 `MAX_RECORDS_PER_RUN`(700) 을 `status` 가 먼저 다 먹고,
+   *   `detail` 은 루프 첫 검사에서 즉시 빠져 **한 페이지도 못 받았다**. 라이브 실측(2026-10-25):
+   *   최근 12회차 **전부** `stopped_by: records` · `found` 999~1,000 · `by_service` 에 `status` 만 존재.
+   *   ⇒ 취급품목(`trtmntPrdlstNm`)은 `detail` 에만 오므로 **그 값을 여태 한 번도 못 봤고**, 업종이
+   *   발송 가능 리드의 92%에서 `통신판매` 로 남은 원인이 여기였다(탐침을 붙여도 값이 올 수 없었다).
+   *
+   * 🧮 **CPU 총량은 그대로다** — 상한은 페이지를 *받기 전에* 보므로 양수 몫이면 어느 서비스든 **정확히
+   *   한 페이지**(`PAGE_ROWS` 500)를 받는다. 종전: status 2장 + detail 0장 = 1,000행.
+   *   이후: status 1장 + detail 1장 = **1,000행**(같다). 즉 `status` 수확 절반을 `detail` 이 받는 교환이고,
+   *   파싱량 = CPU 는 안 늘어난다(위 `MAX_RECORDS_PER_RUN` docblock 의 천장 계산 그대로).
+   *
+   * ⚠️ **전역 상한(`MAX_RECORDS_PER_RUN`)은 그대로 둔다** — 그게 CPU 천장이고, 몫만 두면
+   *   `N × (몫 + PAGE_ROWS)` 로 총량이 넘친다. 둘이 짝이다.
+   * ⚠️ **서비스를 3개로 늘리면 전역 상한이 다시 셋째를 굶긴다**(500+500 에서 700 을 넘는다).
+   *   그때는 상한·마감선을 **재측정**하고 올릴 것 — 몫만 늘리면 CPU 사망으로 돌아간다.
+   */
+  const recordsPerService = Math.max(1, Math.floor(MAX_RECORDS_PER_RUN / services.length))
 
   const startedAt = Date.now()
   // 🎚️ 마감선도 요금제를 따른다 — 유료 CPU 한도가 커지는데 12초로 묶으면 회차가 일찍 끊긴다.
@@ -376,6 +439,9 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   // 📊 커버리지는 **가장 최근에 받은 한 페이지**로 잰다(누적하면 스냅샷이 커지고, 페이지마다 채움률이
   //   다를 이유도 없다). 이 값이 "필드 이름을 추측으로 쓰던" 반복 실패를 끝내는 유일한 근거다.
   let coverage: FieldCoverage[] = []
+  // 🔭 엔드포인트별로도 따로 남긴다 — 위 `sample`/`coverage` 는 한 변수를 공유해서 `detail` 응답을
+  //   한 번도 못 봤다(근거는 `CommerceStats.diag.by_service` docblock). 비용은 스냅샷 크기뿐이다.
+  const byService: Record<string, { sample?: unknown; coverage?: FieldCoverage[] }> = {}
   const msgs: string[] = []
   for (const svc of services) {
     // 첫 서비스가 마감선을 다 썼으면 두 번째는 시작하지 않는다(시작하면 그 회차가 통째로 죽는다).
@@ -383,6 +449,8 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     const ck = `${CURSOR_KEY}_${svc.name}`
     const curRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(ck).first<{ value: string }>().catch(() => null)
     let page = parseInt(curRaw?.value || '1', 10); if (!Number.isFinite(page) || page < 1) page = 1
+    // 📏 이 서비스가 이번 회차에 다룬 레코드(몫 판정용) — 전역 `found` 와 별개다.
+    let foundThisService = 0
     // 🧾 **부기 몫을 남긴다**(2026-07-30 라이브 실측). 루프를 `budget.left > 0` 까지 돌리면 뒤따르는
     //   D1 쓰기 — 서비스별 커서 + 마지막 `persist(s)` — 가 예산 밖이 되어 **조용히 사라진다**.
     //   실측: 00:00 회차가 하트비트는 남겼는데(= 완주) `ads_commerce_stats` 는 전날 14:00 그대로였다.
@@ -391,14 +459,35 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
     for (let p = 0; p < perService && budget.left > services.length + 1; p++) {
       // ⏱️ CPU 한도에 닿기 전에 끊는다 — 끊어야 아래 커서 저장이 실행되고, 그래야 다음 회차가 전진한다.
       if (Date.now() - startedAt > runDeadlineMs) { stoppedBy = 'deadline'; break }
-      if (found >= MAX_RECORDS_PER_RUN) { stoppedBy = 'records'; break }
+      if (found >= MAX_RECORDS_PER_RUN) { stoppedBy = 'records'; break }   // 🔒 CPU 천장(회차 전체)
+      // 🍽️ 자기 몫을 다 쓰면 **다음 서비스에 넘긴다**. `stoppedBy` 를 세우지 않는다 — 회차가 멈춘 게
+      //   아니라 몫을 소진한 정상 종료다. 특히 `'deadline'` 을 세우면 바깥 루프가 끊겨 **다음 서비스가
+      //   다시 굶는다**(그게 이 수리가 없앤 그 결함이다).
+      //
+      // 🩸 **`stopped_by` 는 이 수리의 E4 신호가 아니다**(2026-10-25 트레이스로 정정 — 이 주석이
+      //   한때 "수리 뒤 records 가 사라진다" 고 적어 뒀고 그건 거짓이었다). 추적하면 그대로 남는다:
+      //     status p0 → found 500 · 몫 500≥350 break(세우지 않음)
+      //     detail p0 → found 1000 · cursor 전진  ← **여기가 수리의 전부다**
+      //     detail p1 → `found 1000 >= 700` → `stoppedBy = 'records'`
+      //   `perService` 가 `max(2, …)` 라 그 p1 판정이 **반드시 한 번 돈다**. 그리고 그 값은 **옳다** —
+      //   1,000행 = 설계된 CPU 천장에 실제로 닿았다는 뜻이다(수리 전에도 같은 이유로 records 였다).
+      //   ⇒ E4 신호는 **`diag.by_service` 에 `detail` 키가 생기는 것**과 **`ads_commerce_cursor_detail`
+      //   전진** 둘뿐이다. `stopped_by` 로 판정하면 성공한 회차를 실패로 읽는다.
+      if (foundThisService >= recordsPerService) break
       const { items, count, msg } = await fetchCommercePage(svc.base, svc.op, key, page, budget)
       if (msg) msgs.push(`${svc.label}: ${msg}`)
       if (items[0]) { const hasE = anyEmail(items[0]) !== ''; if (!sample || (hasE && !sampleHasEmail)) { sample = items[0]; sampleHasEmail = hasE } } // 이메일 든 샘플 우선(probe 정확도)
       if (items.length) coverage = fieldCoverage(items)
+      // 🔭 같은 값을 **서비스별 칸**에도 둔다(위 둘은 공유 변수라 detail 이 늘 덮인다).
+      if (items[0] || items.length) {
+        const slot = (byService[svc.name] ??= {})
+        if (items[0] && !slot.sample) slot.sample = items[0]
+        if (items.length) slot.coverage = fieldCoverage(items)
+      }
       if (!count) break
       const leads = items.map(mapCommerceLead).filter(l => l.company_name.length >= 2)
       found += leads.length
+      foundThisService += leads.length
       closed += leads.filter(l => l.closed).length // 🪦 이번 회차에 걸러낸 폐업 — '수집량 하락'과 구분되게 보인다
       // 신규/재확인 분리(2026-07-29) — 원부를 다 훑으면 신규는 0 에 수렴한다. 그건 '죽음'이 아니라 '완주'다.
       const c = await saveCompanyLeadsCounted(DB, leads, { requireContact: true }).catch(() => ({ inserted: 0, upserted: 0 }))
@@ -410,7 +499,7 @@ export async function runCommerceCollect(env: Env): Promise<CommerceStats> {
   }
   // 저장 0인데 API 메시지가 있으면 진단에 노출(활용신청 미승인/키오류/파라미터 등 원인 표시).
   const error = saved === 0 && msgs.length ? `API: ${msgs.join(' | ')}` : undefined
-  const s: CommerceStats = { last_run: stamp, found, saved, upserted, closed, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, stopped_by: stoppedBy, elapsed_ms: Date.now() - startedAt, diag: { configured: true, error, sample, coverage, coverage_note: coverageNote(coverage) || undefined } }
+  const s: CommerceStats = { last_run: stamp, found, saved, upserted, closed, page: lastPage, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, stopped_by: stoppedBy, elapsed_ms: Date.now() - startedAt, diag: { configured: true, error, sample, coverage, coverage_note: coverageNote(coverage) || undefined, ...(Object.keys(byService).length ? { by_service: byService } : {}) } }
   await persist(s)
   return s
 }

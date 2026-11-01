@@ -59,8 +59,8 @@ describe('③ 위치 칩은 왼쪽 필터로 옮겼다', () => {
   })
   it('필터 값이 피드까지 간다', () => {
     expect(PAGE).toMatch(/filters=\{filters\}\s*\n\s*\/>/)
-    expect(FEED).toMatch(/\.filter\(p => passesFeedFilters\(p, filters, userLoc\)\)/)
-    expect(FEED).toContain('feedFiltersKey(filters)])')
+    expect(FEED).toMatch(/\.filter\(p => passesFeedFilters\(p, filters, userLoc\)(?: && life\.keep\(p\))?\)/) // 2026-10-25 생활 업종 거르기가 함께 붙는다
+    expect(FEED).toMatch(/feedFiltersKey\(filters\)(?:, life\.key)?\]\)/)
   })
   it('거리는 위치가 잡혔을 때만 보인다', () => {
     expect(SIDEBAR).toMatch(/\{located && \(\s*<Group label="거리">/)

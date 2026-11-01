@@ -135,8 +135,9 @@ describe('🔌 배선 — 고른 값이 서버까지 가는가', () => {
     // **말없이 딜이 빠지는** 상태로 남는다(에러도 안 난다 — 그래서 놓치기 쉽다).
     expect(page).toMatch(/dealSlot=\{<DealUseChooser /)
     const box = stripComments(readFileSync('src/pages/group-buy/DealPurchaseBox.tsx', 'utf8'))
-    const slotAt = box.indexOf('{dealSlot}')
-    const ctaAt = box.indexOf('onClick={isPrelaunch ? onPrelaunchApply : onBuy}')
+    // 2026-10-26: 추첨 상품은 슬롯을 안 그린다(`!raffle && dealSlot`) — 일반 상품은 그대로 CTA 위.
+    const slotAt = box.indexOf('{!raffle && dealSlot}')
+    const ctaAt = box.indexOf('onClick={isPrelaunch ? onPrelaunchApply : () => { if (!fcfs.pending) onBuy() }}')
     expect(slotAt).toBeGreaterThan(-1)
     expect(ctaAt).toBeGreaterThan(-1)
     expect(slotAt).toBeLessThan(ctaAt)

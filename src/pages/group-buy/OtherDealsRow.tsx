@@ -23,11 +23,10 @@ export default function OtherDealsRow({ deals, sellerHandle, sellerUsername }: {
   if (!deals.length) return null
   return (
     <>
-      <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
       <div style={{ padding: '22px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px' }}>
           <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.01em' }}>이 가게의 다른 이용권</div>
-          {(sellerHandle || sellerUsername) && <a href={sellerHandle ? `/u/${sellerHandle}` : `/profile/${sellerUsername}`} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>전체보기</a>}
+          {(sellerHandle || sellerUsername) && <a href={sellerHandle ? `/u/${sellerHandle}` : `/profile/${sellerUsername}`} style={{ fontSize: 12, fontWeight: 500, color: 'var(--gbd-accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>전체보기</a>}
         </div>
         <div className="scrollbar-hide" style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '14px 18px 2px', scrollSnapType: 'x proximity', scrollPaddingInline: 18 }}>
           {deals.map((o) => {
@@ -37,11 +36,11 @@ export default function OtherDealsRow({ deals, sellerHandle, sellerUsername }: {
               <a key={o.id} href={`/pass/${o.id}`} style={{ flex: '0 0 152px', textDecoration: 'none', scrollSnapAlign: 'start' }}>
                 <div style={{ position: 'relative', width: 152, height: 152, borderRadius: 14, overflow: 'hidden', backgroundColor: 'var(--gbd-chip)', backgroundImage: o.image_url ? `url("${cfImage(o.image_url, { width: 300, format: 'auto' }) || o.image_url}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
                 </div>
-                <div style={{ marginTop: 9, fontSize: 13, fontWeight: 600, color: 'var(--gbd-ink)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</div>
+                <div style={{ marginTop: 9, fontSize: 13, fontWeight: 500, color: 'var(--gbd-ink)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 4 }}>
-                  {pct > 0 && <span style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--gbd-danger)' }}>{pct}%</span>}
-                  <span style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--gbd-ink)' }}>{formatNumber(o.price)}원</span>
-                  {o.original_price && o.original_price > o.price && <span style={{ fontSize: 11.5, color: 'var(--gbd-sub2)', textDecoration: 'line-through' }}>{formatNumber(o.original_price)}원</span>}
+                  {pct > 0 && <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-danger)' }}>{pct}%</span>}
+                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)' }}>{formatNumber(o.price)}원</span>
+                  {o.original_price && o.original_price > o.price && <span style={{ fontSize: 12, color: 'var(--gbd-sub2)', textDecoration: 'line-through' }}>{formatNumber(o.original_price)}원</span>}
                 </div>
               </a>
             )

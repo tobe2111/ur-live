@@ -90,8 +90,8 @@ export default function GbMarketplacePage() {
                   className="!shadow-none !rounded-none"
                   meta={
                     <span className="inline-flex items-center gap-2">
-                      <span className="px-2 py-1 rounded bg-brand text-white text-[12px] font-bold">소개비 {d.promo_pct}%</span>
-                      {d.link_only && <span className="px-2 py-1 rounded bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-[12px] font-semibold">링크전용</span>}
+                      <span className="px-2 py-1 rounded bg-brand text-white text-[12px] font-medium">소개비 {d.promo_pct}%</span>
+                      {d.link_only && <span className="px-2 py-1 rounded bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-[12px] font-medium">링크전용</span>}
                     </span>
                   }
                 />
@@ -102,7 +102,7 @@ export default function GbMarketplacePage() {
                   <button
                     onClick={() => togglePin(d.product_id, d.gb_price)}
                     disabled={isPinning}
-                    className="w-full py-2 rounded-xl bg-brand hover:bg-brand-dark text-white text-[13px] font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-2 rounded-xl bg-brand hover:bg-brand-dark text-white text-[13px] font-medium flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <Plus className="w-4 h-4" /> 내 유어샵에 담기
                   </button>

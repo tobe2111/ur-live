@@ -57,7 +57,7 @@ export function onboardingEmail(name: string, claimCode?: string | null): { subj
 · 손님이 환불하면 적립도 자동 회수됩니다(원장 기준, 투명).
 · 적립금은 정산 계좌로 출금하실 수 있습니다(사업소득 원천징수 후 지급).
 
-자세한 내용은 https://urdeal.kr/creators 에서 확인하실 수 있습니다.
+자세한 내용은 https://urdeal.kr/influencer 에서 확인하실 수 있습니다.
 매장 협찬 매칭 제안도 조건이 맞을 때 따로 보내드리겠습니다.
 
 궁금한 점은 이 메일에 그대로 회신 주세요.`))

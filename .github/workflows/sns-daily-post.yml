@@ -2,11 +2,12 @@ name: SNS daily post
 on:
   schedule:
     # 슬롯 09:00 / 12:30 / 19:30 KST (스크립트가 오늘 슬롯만 게시)
-    # GitHub cron 은 지연/누락이 잦아 09~23시 KST 매시 깨움. 스크립트가 슬롯 시각 경과 + 미게시일 때만 게시(하루 1회)
     - cron: '0 0 * * *'
     - cron: '30 3 * * *'
     - cron: '30 10 * * *'
-    - cron: '17 0-14 * * *'
+    # 백업 회차: GitHub 가 정시 cron 을 종종 누락/지연(2026-10-20 03:30 UTC 회차 미실행) — 이미 게시했으면 스크립트가 건너뜀
+    - cron: '17 5 * * *'
+    - cron: '17 12 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -15,6 +16,7 @@ on:
 permissions:
   contents: write
   issues: write
+  id-token: write   # 실패 시 대표 카톡 알림 — GitHub OIDC 로 서버에 신원 증명(공유 비밀 0)
 concurrency:
   group: marketing-bot-data
   cancel-in-progress: false
@@ -30,18 +32,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Restore mutable data from marketing-data branch
-        # main 은 ruleset(필수 status check) 때문에 Actions 가 push 못 함 → 가변 데이터는 marketing-data 브랜치에 보관
+      - name: Load bot data from marketing-data branch
+        # 봇 데이터(게시 로그/중복 방지)는 main 이 아닌 marketing-data 브랜치에 저장됨 (main 은 보호 브랜치)
         run: |
           if git fetch --depth=1 origin marketing-data 2>/dev/null; then
-            for f in data/posts.json data/comments.json data/schedule.json data/mix-state.json; do
-              if git cat-file -e "FETCH_HEAD:marketing-bot/$f" 2>/dev/null; then
-                git show "FETCH_HEAD:marketing-bot/$f" > "$f"; echo "restored $f"
-              fi
-            done
+            git checkout FETCH_HEAD -- data/ 2>/dev/null && echo "loaded data/ from marketing-data" || echo "::warning::marketing-data has no marketing-bot/data yet"
           else
-            echo "marketing-data branch not found; using main's data (branch will be created on first save)"
+            echo "::warning::marketing-data branch not found; using data/ from main"
           fi
+          git reset -q -- data/ || true
       - name: Run
         env:
           DRY_RUN: ${{ inputs.dry_run || '0' }}
@@ -51,34 +50,35 @@ jobs:
           META_FB_PAGE_TOKEN: ${{ secrets.META_FB_PAGE_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node src/daily-post.mjs
-      - name: Save mutable data to marketing-data branch
+      - name: Commit data
         if: always()
+        continue-on-error: true
         run: |
-          set -u
-          BR=marketing-data
-          SNAP="$(mktemp -d)"
-          for f in data/posts.json data/comments.json data/schedule.json data/mix-state.json; do [ -f "$f" ] && cp "$f" "$SNAP/$(basename "$f")"; done
-          [ -n "$(ls -A "$SNAP")" ] || { echo "no data files"; exit 0; }
-          WT="$RUNNER_TEMP/marketing-data-wt"
-          git config --global user.name "urdeal-marketing-bot"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "urdeal-marketing-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -z "$(git status --porcelain -- data/)" ]; then echo "no data changes"; exit 0; fi
+          BR="marketing-data"
+          SNAP="$(mktemp -d)"; cp -a data/. "$SNAP/"
           for i in 1 2 3 4 5; do
-            rm -rf "$WT"; git worktree prune
             if git fetch --depth=1 origin "$BR" 2>/dev/null; then
-              git worktree add -q --detach "$WT" FETCH_HEAD
+              git reset -q --hard FETCH_HEAD
             else
-              # 최초 1회: main 기준으로 브랜치 생성
-              git worktree add -q --detach "$WT" HEAD
+              # 브랜치가 없으면 data 만 담은 orphan 브랜치로 생성
+              git checkout -q --orphan "tmp-$BR-$i" && git read-tree --empty  # 인덱스를 통째로 비운다(cwd 무관) — data 만 담는다
             fi
-            mkdir -p "$WT/marketing-bot/data"
-            cp -r "$SNAP/." "$WT/marketing-bot/data/"
-            git -C "$WT" add marketing-bot/data
-            if git -C "$WT" diff --cached --quiet; then
-              if git ls-remote --exit-code --heads origin "$BR" >/dev/null; then echo "no data changes"; exit 0; fi
-            else
-              git -C "$WT" commit -q -m "chore(marketing-bot): update data [skip ci]"
-            fi
-            if git -C "$WT" push origin "HEAD:refs/heads/$BR"; then exit 0; fi
+            rm -rf data && mkdir -p data && cp -a "$SNAP/." data/
+            git add data/
+            if git diff --cached --quiet; then echo "already up to date"; exit 0; fi
+            git commit -q -m "chore(marketing-bot): update data [skip ci]"
+            if git push origin "HEAD:refs/heads/$BR"; then exit 0; fi
             echo "push failed (attempt $i), retrying"; sleep $((i*5))
           done
-          echo "::error::could not push data after 5 attempts"; exit 1
+          echo "::warning::could not push bot data to $BR after 5 attempts (non-fatal)"; exit 0
+      - name: Kakao failure alert
+        if: failure()
+        env:
+          KAKAO_TOKEN: ${{ secrets.KAKAO_MEMO_ACCESS_TOKEN }}
+        run: |
+          [ -z "$KAKAO_TOKEN" ] && exit 0
+          URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -sS -X POST https://kapi.kakao.com/v2/api/talk/memo/default/send -H "Authorization: Bearer $KAKAO_TOKEN" --data-urlencode "template_object={\"object_type\":\"text\",\"text\":\"[유어딜 마케팅] ${{ github.workflow }} 실패\",\"link\":{\"web_url\":\"$URL\",\"mobile_web_url\":\"$URL\"}}" || true

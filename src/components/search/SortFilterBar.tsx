@@ -32,14 +32,14 @@ export default function SortFilterBar({ totalResults, sortBy, onSortChange }: So
           <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('browse.totalResultsPrefix', { defaultValue: '총' })}</span>
           {/* 🎨 2026-09-04: `text-red-500` → 잉크. 빨강은 이 레포에서 **기능 신호**(오류·위험)로 예약돼 있다 —
               검색 결과 개수는 그냥 숫자다. 강조는 굵기로 충분하다. */}
-          <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">{totalResults}</span>
+          <span className="text-[13px] font-medium text-gray-900 dark:text-white">{totalResults}</span>
           <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('browse.totalResultsSuffix', { defaultValue: '개' })}</span>
         </div>
         <div className="relative">
           <select
             value={sortBy}
             onChange={(e) => onSortChange(e.target.value as typeof sortBy)}
-            className="appearance-none pr-6 pl-3 py-2 text-[12px] font-semibold text-gray-900 dark:text-white bg-transparent focus:outline-none cursor-pointer"
+            className="appearance-none pr-6 pl-3 py-2 text-[12px] font-medium text-gray-900 dark:text-white bg-transparent focus:outline-none cursor-pointer"
           >
             <option value="relevance">{t('browse.sortRelevance', { defaultValue: '관련도순' })}</option>
             <option value="price_low">{t('browse.sortPriceLow', { defaultValue: '낮은가격' })}</option>

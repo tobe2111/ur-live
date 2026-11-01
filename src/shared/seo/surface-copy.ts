@@ -56,6 +56,8 @@
  * - 구글이 실제로 색인하는지(수일~수주 · 서치콘솔은 대표만 본다).
  */
 
+import { lifeCategoryLines, lifeChildLinks } from '../life-seo'
+
 export interface SurfaceCopy {
   /** 크롤러가 받을 문장. **전부 `source` 파일 소스에 실재해야 한다**(가드가 대조). */
   lines: readonly string[]
@@ -70,6 +72,27 @@ export interface SurfaceCopy {
  * JSON-LD 와 같은 배열을 써야 하고, `/about` 은 `WebPage.about` 에도 들어간다).
  */
 export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
+  // 🏠 2026-10-25 — 사장님 생활 서비스 허브. 업종 링크는 `lifeChildLinks` 가 덧붙인다(크롤러 본문 8자였다).
+  '/life': {
+    lines: [
+      '간판·방역·설비 수리까지 근처 업체 견적을 무료로 비교해요',
+      '견적은 무료이고, 비교해서 고른 한 곳에만 연락처가 전달돼요.',
+      '아직 업체를 모으는 일도 요청은 받아요. 업체가 들어오는 대로 보내 드려요.',
+    ],
+    source: ['src/pages/life/LifePage.tsx'],
+  },
+  // 🏠 2026-10-25 — 업체 모집 랜딩(로그인 전 `/life/pro`). 종전엔 robots 차단 + 로그인 안내 한 장이었다.
+  '/life/pro': {
+    lines: [
+      '식당·카페·숙소 사장님이 올린 요청에 원하는 것만 골라 견적을 보내요.',
+      '처음 무료 참여권',
+      '요청당 견적 자리',
+      '안 열어 보면 반환',
+      '로그인 후 한 화면이면 가입 끝 · 사업자등록증은 나중에',
+      '유어딜은 연결만 해요. 계약과 대금은 사장님과 직접 주고받아요.',
+    ],
+    source: ['src/pages/life/pro/ProLanding.tsx'],
+  },
   '/partners': {
     lines: [
       '손님이 온라인에서 먼저 결제하고, 이용권을 들고 가게로 옵니다.',
@@ -81,20 +104,21 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
       '가게에 오기 전에 온라인에서 먼저 값을 치릅니다',
       'QR을 찍거나 매장 확인코드 6자리를 넣습니다',
       '택배도 반품도 재고도 없습니다. 사장님이 만나는 건 결제를 마친 손님 한 명입니다.',
+      // 2026-10-31 — 장점·비교·도구 섹션의 문장도 옮긴다(종전 252자: "왜 체험단이 아니라 유어딜인가" 가 서버 HTML 에 없었다).
+      '가입비 0원, 월 이용료 0원, 광고비 0원',
+      '이용권이 팔리고 손님이 와서 쓴 뒤에야 수수료가 생깁니다. 안 팔리면 0원입니다.',
+      '공짜밥과 후기 개수가 아니라, 실제 방문과 결제로 증명합니다',
+      '체험단은 무료 식사를 드리고 후기를 받습니다. 그 사람이 손님이 됐는지는 아무도 모릅니다. 유어딜은 결제를 마친 손님이 QR을 찍고 들어옵니다.',
+      '상위 노출을 사는 광고비가 없습니다',
+      '예약과 포스는 이미 오기로 한 손님을 다룹니다. 유어딜은 아직 가게를 모르는 사람에게 이용권을 팔아 가게로 보냅니다.',
+      '손님이 내미는 QR을 매장 폰으로 찍으면 끝입니다. 폰이 안 잡히면 확인코드 여섯 자리를 넣으셔도 됩니다.',
+      '소개해 준 사람별로 몇 건이 팔렸고 소개비가 얼마 나갔는지가 쌓입니다. 그 손님이 실제로 와서 QR을 찍었는지까지 남으니, 성과가 나오는 사람에게만 다시 맡기시면 됩니다.',
+      '상품 등록과 주문 관리를 남에게 맡기실 수 있습니다. 정산 계좌는 사장님 것으로 남고, 권한은 언제든 회수합니다.',
     ],
-    source: ['src/pages/partners/PartnerHero.tsx', 'src/pages/partners/PartnerFlow.tsx', 'src/pages/PartnersPage.tsx'],
-  },
-  '/creators': {
-    lines: [
-      '팔로워가 많지 않아도 괜찮아요. 동네 이웃에게 진짜 좋은 딜을 소개하는 것부터 시작합니다.',
-      '매장에 돈을 달라고 할 일이 없습니다. 제안 수락도 적립 확인도 같은 앱 안에서 끝납니다.',
-      '제안을 받고, 정산까지 앱에서',
-      '카카오 로그인 1분이면 내 유어샵이 자동으로 생겨요',
-      '동네 맛집·뷰티 딜 중 소개하고 싶은 걸 내 유어샵에 담아요',
-      '인스타·블로그·카톡에 내 링크 하나만 올리면 끝',
-      '소개비율은 딜마다 표시되니 고르기 전에 미리 확인하세요',
+    source: [
+      'src/pages/partners/PartnerHero.tsx', 'src/pages/partners/PartnerFlow.tsx', 'src/pages/PartnersPage.tsx',
+      'src/pages/partners/PartnerBenefits.tsx', 'src/pages/partners/PartnerCompare.tsx', 'src/pages/partners/PartnerTools.tsx',
     ],
-    source: ['src/pages/CreatorsPage.tsx'],
   },
   '/creators/apply': {
     lines: [
@@ -107,14 +131,15 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
   },
   '/influencer': {
     lines: [
-      '매장을 직접 섭외하지 않아도 됩니다. 매장이 소개 몫을 건 동네 이용권을 내 유어샵에 담아',
-      '링크로 소개하면, 그 링크로 팔릴 때마다 매장이 정한 비율만큼 쌓여요.',
-      '내 가게가 있다면 직접 팔 수도 있어요',
-      '카카오 로그인만 하면 됩니다 · 별도 가입·심사 없음',
-      '모든 이용권에 소개 몫이 붙는 건 아니에요.',
-      '소개 몫이 걸린 이용권은 소개 마켓에서 찾을 수 있어요. 매장이 제안하거나 내가 신청하면, 수락된 순간부터 그 비율이 적용됩니다.',
+      '팔로워가 많지 않아도 괜찮아요. 동네 이웃에게 진짜 좋은 딜을 소개하는 것부터 시작합니다.',
+      '매장에 돈을 달라고 할 일이 없습니다. 제안 수락도 적립 확인도 같은 앱 안에서 끝납니다.',
+      '제안을 받고, 정산까지 앱에서',
+      '카카오 로그인 1분이면 내 유어샵이 자동으로 생겨요',
+      '동네 맛집·뷰티 딜 중 소개하고 싶은 걸 내 유어샵에 담아요',
+      '인스타·블로그·카톡에 내 링크 하나만 올리면 끝',
+      '소개비율은 딜마다 표시되니 고르기 전에 미리 확인하세요',
     ],
-    source: ['src/pages/InfluencerLandingPage.tsx'],
+    source: ['src/pages/CreatorsPage.tsx'],
   },
   '/experience': {
     lines: [
@@ -251,5 +276,9 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
 /** 이 경로에 줄 문장이 있는가. */
 export function surfaceCopyFor(pathname: string): SurfaceCopy | null {
   const path = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
-  return SURFACE_COPY[path] ?? null
+  // 🏠 업종 견적 페이지(17개)는 표에 줄을 늘리지 않고 업종 SSOT 에서 파생한다 — 요청서가 묻는 질문 그대로.
+  const life = lifeCategoryLines(path)
+  return SURFACE_COPY[path] ?? (life ? { lines: life, source: ['src/shared/home-service-categories.ts'] } : null)
 }
+
+export { lifeChildLinks }

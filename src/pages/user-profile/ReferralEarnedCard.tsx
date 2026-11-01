@@ -51,7 +51,7 @@ export default function ReferralEarnedCard() {
         </span>
       </span>
       {hasEarned && (
-        <span className="text-[12px] font-semibold text-gray-900 dark:text-white shrink-0">
+        <span className="text-[12px] font-medium text-gray-900 dark:text-white shrink-0">
           {/* 🛡️ 2026-07-02: raw toLocaleString → formatWon (null/NaN 가드 — 대시보드 ₩NaN 규칙) */}
           {formatWon(stats?.total_earned)}
         </span>

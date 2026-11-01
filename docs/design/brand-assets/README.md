@@ -27,6 +27,7 @@
 - `ur-icon-{rose,maskable}.svg` / `ur-icon-biz-navy.svg` — 아이콘 (Poppins 참조)
 - `wordmark-navy-2x.png`(662×220) / `hangul-lettering-2x.png`(740×288) — 실렌더 납품본
 - `kakao-channel-640.png` — 카카오 채널 프로필용 (대표 수동 업로드)
+- `urdeal-wordmark-blue-1181.png` / `urdeal-wordmark-white-blue-1181.png`(1181×420, 투명) — 현행 색(잉크 `#16181C` 또는 흰 글자 + 블루 점 `#1C69EF`) 워드마크 실렌더. 2026-10-26 나무위키·위키백과 문서용으로 `public/static/fonts/poppins-800-urdeal-v24.woff2` 로 렌더. ⚠️ `wordmark-navy-2x.png` 는 로즈 점(전환 전) 그대로다
 
 ## 사이트 반영 현황 (2026-07-19)
 - `public/favicon-32.png`·`favicon-16.png`·`favicon.svg`(32px 임베드) — 브라우저 탭 (index.html 링크)

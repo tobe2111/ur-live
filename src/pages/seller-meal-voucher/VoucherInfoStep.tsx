@@ -3,7 +3,7 @@
  *   기존 SellerMealVoucherNewPage 의 해당 블록을 그대로 추출 — 로직 불변, 배치만 위저드.
  */
 import { useTranslation } from '@/lib/i18n-lite'
-import { BedDouble, PartyPopper, Scissors, Utensils } from 'lucide-react'
+import { BedDouble, House, PartyPopper, Scissors, Utensils } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import { toast } from '@/hooks/useToast'
@@ -13,6 +13,7 @@ import NetProceedsCard from './NetProceedsCard'
 import PromoMarginCalculator, { promoGuideFor } from '../seller-product-new/PromoMarginCalculator'
 import VoucherPhotoSection from './VoucherPhotoSection'
 import CardPreview from './CardPreview'
+import LifeSubcatPicker from '@/components/life/LifeSubcatPicker'
 import DiscountPriceFields from './DiscountPriceFields'
 import type { VoucherCategory, VoucherForm } from './voucher-form'
 
@@ -37,7 +38,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
             {t('seller.voucher.categoryTitle', { defaultValue: '이용권 종류' })}
           </h2>
         </div>
-        {/* 🗂️ 실제로 존재하는 4종만 — 2026-09-02 전수조사.
+        {/* 🗂️ 실제로 존재하는 5종만(2026-10-20 생활 추가) — 2026-09-02 전수조사.
             종전엔 6개를 보여줬는데 health/pet/activity 는 2026-05-17 통합으로 사라진 값이라
             서버가 저장 직전 접어 넣었다(헬스→미용 · 반려/액티비티→기타). 셀러는 고른 것과
             **다른 카테고리로 등록되는 줄 몰랐다**(에러가 없으니 알 길도 없었다).
@@ -47,6 +48,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
             { key: 'meal_voucher' as const, Icon: Utensils, label: t('seller.voucher.categoryMeal', { defaultValue: '식사 이용권' }), desc: t('seller.voucher.categoryMealDesc', { defaultValue: '맛집·카페' }) },
             { key: 'beauty_voucher' as const, Icon: Scissors, label: t('seller.voucher.categoryBeauty', { defaultValue: '미용 이용권' }), desc: t('seller.voucher.categoryBeautyDesc', { defaultValue: '헤어·네일·피부·PT·요가' }) },
             { key: 'stay_voucher' as const, Icon: BedDouble, label: t('seller.voucher.categoryStay', { defaultValue: '숙박 이용권' }), desc: t('seller.voucher.categoryStayDesc', { defaultValue: '펜션·호텔·모텔' }) },
+            { key: 'home_voucher' as const, Icon: House, label: t('seller.voucher.categoryHome', { defaultValue: '생활 이용권' }), desc: t('seller.voucher.categoryHomeDesc', { defaultValue: '이사·입주청소·에어컨 청소' }) },
             { key: 'etc_voucher' as const, Icon: PartyPopper, label: t('seller.voucher.categoryEtc', { defaultValue: '기타 이용권' }), desc: t('seller.voucher.categoryEtcDesc', { defaultValue: '반려·액티비티·클래스' }) },
           ].map(c => (
             <button
@@ -66,6 +68,9 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
           ))}
         </div>
       </div>
+
+      {/* 🏠 생활 이용권이면 업종(2026-10-25 대표 "1번 방식") — 홈 '생활' 탭 칩에서 찾게 한다. */}
+      {form.category === 'home_voucher' && <LifeSubcatPicker value={form.life_subcat} onChange={(v) => update('life_subcat', v)} />}
 
       {/* 이용권 정보 */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -100,8 +105,8 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
           {/* 💸 2026-10-07: 정가 → 할인 [원 / %] → 판매가. 할인은 판매가를 쓰는 손잡이(저장 안 함). */}
           <DiscountPriceFields price={form.price} originalPrice={form.original_price} update={update} />
 
-          {/* 💰 판매 1건당 실수령가 — 항상 표시(채널별 수수료 SSOT). */}
-          <NetProceedsCard price={form.price} promoPct={form.promo_pct} />
+          {/* 💰 마진 계산기 — 정가 → 할인 → 유어딜 수수료 → 인플루언서 수수료 → 최종 마진(2026-10-24). 항상 표시. */}
+          <NetProceedsCard price={form.price} originalPrice={form.original_price} promoPct={form.promo_pct} />
 
           {/* 💰 소개비(promo)% + 매장 실수령 계산기 — SELLER_PROMO_FIELD_ENABLED 게이트. */}
           {SELLER_PROMO_FIELD_ENABLED && (

@@ -88,7 +88,7 @@ const WishlistPage: React.FC = () => {
           {/* 🎫 표면 규칙 ⑥ — 그라디언트 0. 주 행동은 브랜드 블루 면 하나. */}
           <button
             onClick={() => refetch()}
-            className="h-11 px-6 rounded-full bg-brand text-white text-[15px] font-semibold active:opacity-90"
+            className="h-11 px-6 rounded-full bg-brand text-white text-[15px] font-medium active:opacity-90"
           >
             {t('wishlist.retry')}
           </button>
@@ -123,7 +123,7 @@ const WishlistPage: React.FC = () => {
           <div className="rounded-2xl px-6 py-10 text-center bg-surface shadow-lift dark:shadow-none lg:max-w-xl lg:mx-auto lg:mt-4">
             {/* 🦦 2026-10-07 유달이 — 아직 찜한 게 없으면 졸린 얼굴(하트 아이콘 대체). */}
             <Udal mood="empty" size={104} className="mx-auto mb-3" />
-            <h2 className="text-[17px] font-extrabold text-[#16181C] dark:text-[#F8F7FC]">{t('wishlist.emptyTitle')}</h2>
+            <h2 className="text-[17px] font-bold text-[#16181C] dark:text-[#F8F7FC]">{t('wishlist.emptyTitle')}</h2>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('wishlist.emptyHint')}</p>
             <button
               onClick={() => navigate('/')}

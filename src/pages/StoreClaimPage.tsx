@@ -39,6 +39,7 @@ import api from '@/lib/api'
 import BrokerHandoffPanel from './store-claim/BrokerHandoffPanel'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MY_PATH } from '@/lib/seller-return'
+import { takePartnerReturn } from '@/utils/partner-return'
 import { X } from 'lucide-react'
 import SEO from '@/components/SEO'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
@@ -47,6 +48,7 @@ import { enterStoreSeat } from '@/utils/enter-store'
 import { isLoggedInSync } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
 import { captureStoreReferrer } from '@/utils/store-referrer'
+import { AGENCY_INVITE_QUERY, isAgencyInviteToken } from '@/shared/agency-store-invite'
 
 /**
  * 등록하면 할 수 있는 것 셋. **전부 코드에서 확인한 사실만 적는다** —
@@ -97,6 +99,30 @@ export default function StoreClaimPage() {
       .then((r) => { if (r.data?.success && !r.data.data?.converted) setProspect(r.data.data) })
       .catch(() => { /* 프리필 실패 — 빈 칸으로 시작 */ })
   }, [params])
+  /**
+   * 🔗 2026-10-31 대표 *"그 링크로 들어와서 가입하면 바로 에이전시와 매장이 연동되게"* — 에이전시 영입 링크에서
+   *   넘어온 등록이면(`?agency_invite=`) 어느 에이전시인지 먼저 말하고, 등록이 끝나는 순간 그 링크로 맡긴다.
+   *   맡기기는 사장님 링크 화면과 **같은 API**(`/api/store-agency-invite/accept`)라 소유 판정·에이전시 수 상한이 그대로다.
+   *   조회가 실패해도(만료된 링크) 등록은 막지 않는다 — 매장은 매장대로 생기고 연결만 안 된다.
+   */
+  const inviteToken = (() => { const v = params.get(AGENCY_INVITE_QUERY); return isAgencyInviteToken(v) ? v : null })()
+  const [inviteAgency, setInviteAgency] = useState<string | null>(null)
+  useEffect(() => {
+    if (!inviteToken || !isLoggedInSync()) return
+    api.get(`/api/store-agency-invite/${encodeURIComponent(inviteToken)}`)
+      .then((r) => { if (r.data?.success) setInviteAgency(r.data.agencyName || '에이전시') })
+      .catch(() => { /* 만료 — 등록은 그대로 */ })
+  }, [inviteToken])
+  async function entrustToInviter(sellerId: number | undefined): Promise<void> {
+    if (!inviteToken || !sellerId) return
+    try {
+      const r = await api.post('/api/store-agency-invite/accept', { token: inviteToken, seller_id: sellerId })
+      if (r.data?.success) { toast.success(`${r.data.agencyName || '에이전시'} 에이전시에 매장을 맡겼어요`); return }
+      throw new Error(r.data?.error)
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || '에이전시에 맡기지 못했어요. 받은 링크를 다시 열어 [맡기기] 를 눌러 주세요.')
+    }
+  }
   // 🔑 중개 등록 완료 — 승계 코드를 **고정**으로 보여 준다(종전엔 토스트 한 번이라 대행사가 놓쳤다).
   const [handoff, setHandoff] = useState<string | null>(null)
 
@@ -143,7 +169,7 @@ export default function StoreClaimPage() {
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
           {/* 왼쪽(PC) · 위(폰) — 무엇을 등록하는 곳인가 */}
           <div className="lg:pt-4">
-            <h1 className="text-[28px] lg:text-[40px] font-black tracking-[-0.03em] leading-[1.22] text-gray-900">
+            <h1 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.22] text-gray-900">
               매장 이용권<br className="hidden lg:block" /> 판매 등록
             </h1>
             <p className="mt-2 lg:mt-4 text-[15px] lg:text-[17px] leading-relaxed text-gray-600 lg:max-w-[460px]">
@@ -155,7 +181,7 @@ export default function StoreClaimPage() {
                 <li key={title} className="flex gap-3 lg:gap-4 items-start">
                   <Icon size={20} className="mt-1 shrink-0 text-brand" aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="text-[13px] lg:text-[15px] font-bold text-gray-900">{title}</p>
+                    <p className="text-[13px] lg:text-[15px] font-medium text-gray-900">{title}</p>
                     {/* 폰은 한 줄로 끊는다 — 설명까지 다 펴면 카드가 밀려 첫 화면에서 사라진다. */}
                     <p className="hidden lg:block mt-1 text-[13px] leading-relaxed text-gray-500">{desc}</p>
                   </div>
@@ -166,7 +192,7 @@ export default function StoreClaimPage() {
             <div className="hidden lg:flex mt-9 pt-5 border-t border-rule gap-9 lg:max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
-                  <div className="text-[24px] font-black text-gray-900">{value}</div>
+                  <div className="text-[24px] font-bold text-gray-900">{value}</div>
                   <div className="mt-1 text-[12px] text-gray-500">{label}</div>
                 </div>
               ))}
@@ -175,6 +201,11 @@ export default function StoreClaimPage() {
 
           {/* 오른쪽(PC) · 아래(폰) — 등록 카드 그대로 */}
           <div className="mt-4 lg:mt-0 lg:self-start">
+            {inviteAgency && !handoff && (
+              <p className="mb-3 rounded-[var(--dash-radius,16px)] bg-brand-tint px-4 py-3 text-[13px] leading-relaxed text-gray-700" data-testid="store-claim-agency-invite">
+                <b className="text-gray-900">{inviteAgency} 에이전시</b>가 보낸 링크예요. 등록을 마치면 바로 이 에이전시에 매장 운영이 맡겨져요.
+              </p>
+            )}
             {prospect?.store_name && !handoff && (
               <p className="mb-3 rounded-[var(--dash-radius,16px)] bg-brand-tint px-4 py-3 text-[13px] leading-relaxed text-gray-700">
                 <b className="text-gray-900">{prospect.store_name}</b> — 영입 담당자가 미리 준비한 매장이에요. 지도에서 이 가게를 찾아 진행해 주세요.
@@ -201,8 +232,11 @@ export default function StoreClaimPage() {
                   toast.success('매장이 등록됐어요 — 이제 이용권을 올릴 수 있어요')
                 }
                 if (opts?.ownerClaimCode) { setHandoff(opts.ownerClaimCode); return } // 중개 — 코드를 먼저 손에 쥐여 준다
+                // 🔗 에이전시 영입 링크로 온 사장님 — 등록과 동시에 맡긴다(중개 등록은 주인이 아니라 위에서 빠진다).
+                await entrustToInviter(sellerId)
                 // 🏠 2026-09-26: 방금 얻은 가게를 **마이의 내 가게**에서 본다(대시보드 학습 없이).
-                navigate(MY_PATH, { replace: true })
+                //   🤝 2026-10-31 제휴사 위젯으로 들어왔으면 그 제휴사 요청 화면으로 돌아간다(`utils/partner-return.ts`).
+                navigate(takePartnerReturn() ?? MY_PATH, { replace: true })
               }}
             />
             )}

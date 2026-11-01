@@ -64,7 +64,14 @@ export async function sendSystemAlimtalk(
   templateCode: string,
   message: string,
   /** 🔘 사장님 버튼의 매장 번호 — 버튼은 `alimtalk-buttons.ts` 표에서 템플릿 이름으로 꺼낸다. */
-  opts?: { sellerId?: unknown },
+  opts?: {
+    sellerId?: unknown
+    /**
+     * 🔁 중복 차단 단위를 좁힌다(2026-10-24 생활 견적). 기본은 (번호, 템플릿) 1시간 1통이라, 한 사장님에게
+     *   새 요청이 한 시간에 둘 오면 둘째가 조용히 막힌다. 요청·견적마다 따로 보내야 하는 알림은 그 번호를 넘긴다.
+     */
+    dedupKey?: string
+  },
 ): Promise<{ success: boolean; skipped?: boolean; error?: string; reason?: string }> {
   // 환경변수 미설정 시 silent skip (개발/스테이징 환경 호환)
   const e = env as Record<string, string | undefined>;
@@ -87,6 +94,7 @@ export async function sendSystemAlimtalk(
       await ensureGuardTables(db);
       const phoneHash = await hashShort(cleaned);
       const messageHash = await hashShort(message);
+      const logTemplate = opts?.dedupKey ? `${templateCode}:${opts.dedupKey}` : templateCode;
 
       // 1) Idempotency / Rate limit: 같은 phone+template 1시간 내 재발송 차단.
       const recent = await db.prepare(`
@@ -94,7 +102,7 @@ export async function sendSystemAlimtalk(
         WHERE phone_hash = ? AND template_code = ?
           AND sent_at > datetime('now', '-' || ? || ' seconds')
         ORDER BY sent_at DESC LIMIT 1
-      `).bind(phoneHash, templateCode, DEDUP_WINDOW_SEC).first<{ message_hash: string }>();
+      `).bind(phoneHash, logTemplate, DEDUP_WINDOW_SEC).first<{ message_hash: string }>();
       if (recent) {
         return {
           success: false,
@@ -133,7 +141,7 @@ export async function sendSystemAlimtalk(
         await db.prepare(`
           INSERT OR IGNORE INTO alimtalk_dispatch_log (phone_hash, template_code, message_hash)
           VALUES (?, ?, ?)
-        `).bind(phoneHash, templateCode, messageHash).run();
+        `).bind(phoneHash, opts?.dedupKey ? `${templateCode}:${opts.dedupKey}` : templateCode, messageHash).run();
         const today = new Date().toISOString().slice(0, 10);
         await db.prepare(`
           INSERT INTO alimtalk_budget (day, sent_count) VALUES (?, 1)

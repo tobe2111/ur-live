@@ -18,6 +18,7 @@ import { canonicalShopPath } from '../../shared/seo/shop-canonical'
 // 🗺️ 워커 전용 — 이 표를 크리티컬 패스(consumer-surfaces)에서 끌어오면 app-constants 청크가 첫 페인트로 딸려온다.
 import { normalizeSido, regionPath } from '../../shared/constants/region-slugs'
 import { ROBOTS_NOINDEX } from '../../shared/seo/robots-directives'
+import { isHubCanonical, NOIMAGEINDEX_META } from '../../shared/seo/image-hub'
 
 /** 시군구 형태 — '중구'·'파주시'·'양양군'. 접두부 1글자 허용(중구·동구·남구가 탈락하지 않게). */
 const SIGUNGU_RE = /^[가-힣]{1,10}(시|군|구)$/
@@ -82,6 +83,10 @@ export function applySurfaceMeta<T extends RewriterLike<T>>(rb: T, meta: Surface
   }
   const ld = meta.jsonLd
   let withCanon = applyCanonical(out, meta.canonical)
+  // 🖼️ 2026-10-24 허브 표면은 사진만 이미지 색인에서 뺀다 — 출처가 상세로 잡히게(`shared/seo/image-hub.ts`).
+  if (isHubCanonical(meta.canonical)) {
+    withCanon = withCanon.on('head', { element(el) { el.append(NOIMAGEINDEX_META, { html: true }) } })
+  }
   if (ld) {
     withCanon = withCanon.on('head', {
       element(el) { el.append(`<script type="application/ld+json">${ld}</script>`, { html: true }) },
@@ -176,6 +181,12 @@ export function buildSellerSurfaceMeta(
  */
 const ENTITY_SLOTS = new Set([
   'DETAIL', 'PRODUCT', 'STAYDETAIL', 'SELLER', 'CURATOR', 'BLOGPOST', 'MALL',
+  // 🔗 2026-10-25 생활 요청 공유(`/life/q/:token`) — 없는 토큰은 404 + noindex(추측 주소가 색인되지 않게).
+  'LIFESHARE',
+  // 🏠 2026-10-26 생활 업체 소개(`/life/biz/:id`) — 없는·내려간 업체는 404 + noindex.
+  'LIFEBIZ',
+  // 🔗 2026-10-31 에이전시 매장 초대 링크(`/store/agency/:token`) — 없거나 끊긴 링크는 404 + noindex.
+  'STOREINVITE',
   // 🩸 2026-10-14 — **형제 하나가 빠져 있었다.** 2026-10-12 에 `MALL` 을 넣으면서 `MALLPRODUCT`
   //   (`/{슬러그}/p/{id}` — 소개비 귀속 경로)를 놓쳤고, 그 경로가 **아무 슬러그·아무 id** 로
   //   무한 thin URL 이 됐다. 라이브 실측(Googlebot UA):

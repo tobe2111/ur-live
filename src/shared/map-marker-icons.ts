@@ -25,6 +25,9 @@ const MAP_ICON_INNER: Record<string, string> = {
   // StayLineIcon
   stay_voucher:
     '<path d="M3 19V9a2 2 0 0 1 2-2h2v4h10V9h2a2 2 0 0 1 2 2v8M3 15h18"/><rect x="7" y="7" width="10" height="4" rx="1"/>',
+  // HomeServiceLineIcon (2026-10-20 생활)
+  home_voucher:
+    '<path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M12 10.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
   // TicketStubIcon — 절취선은 마커 크기(13px)에서 뭉개져 뺀다(칩은 15px 라 유지).
   etc_voucher:
     '<path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/>',

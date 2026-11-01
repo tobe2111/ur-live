@@ -53,7 +53,7 @@ describe('이용권 판정은 SSOT 로 (한 종류로 박지 않는다)', () => 
 
 describe('SSOT 동작 — 네 종류 + 레거시를 모두 이용권으로 본다', () => {
   it('선언된 네 종류가 전부 이용권이다', () => {
-    expect(VOUCHER_CATEGORIES.length).toBe(4)
+    expect(VOUCHER_CATEGORIES.length).toBe(5)  // 2026-10-20 생활(home_voucher) 추가
     for (const c of VOUCHER_CATEGORIES) expect(isVoucherCategory(c), `${c} 가 이용권이 아니라고 나온다`).toBe(true)
   })
 

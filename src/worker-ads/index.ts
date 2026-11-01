@@ -117,19 +117,6 @@ app.post('/__ads/match-registry', async (c) => {
   }
 })
 
-// 🏭 도매몰 제조사·판매사 후보 수집 — 게이트 `SUPPLY_MAKER_COLLECT_ENABLED`(cron 측에서 검사, 수동은 무관).
-//   ⚠️ 서비스 분리: 이 워커에 두는 이유는 **매시간 트리거(`0 * * * *`)가 여기에만 있기 때문**이다
-//   (배포된 ur-live 워커의 트리거는 `*/5`·`0 18`·`0 19` 뿐 — 2026-07-28 Cloudflare API 실측).
-//   이 잡은 도매(supply) 테이블만 건드리고 소비자/마케팅 데이터에 쓰지 않는다.
-app.post('/__ads/collect-maker', async (c) => {
-  try {
-    const { runMakerCollect } = await import('@/features/supply/api/maker-collect')
-    return c.json({ ok: true, stats: await runMakerCollect(c.env) })
-  } catch (err) {
-    const e = err as { name?: string; message?: string } | null
-    return c.json({ ok: false, error: `${e?.name || 'Error'}: ${String(e?.message || '').slice(0, 200)}` }, 500)
-  }
-})
 
 // 🪦 `/__ads/sweep-kakao-phone` 제거 (2026-08-04) — **같은 일을 `sweep-kakao-chain` 이 한다**
 //   (`index.ts` 의 kick, 같은 `runKakaoPhoneSweep`). 이 라우트는 아무도 안 불렀는데 이름만 남아
@@ -450,19 +437,7 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
       return runReclassifyLane(env)
     }, { beat: 'reclassify-company?passes=5' })
   }
-  // 🏭 2026-07-28: 제조사·판매사 풀 자동 수집 — **배선 누락 수리**(대표 "제조사는 왜 저렇게 적어?").
-  //   `runMakerCollect` 는 어드민 수동 버튼에만 연결돼 있었고 **cron 이 어디에도 없어서** 제조사 풀이
-  //   수동 실행분(82건)에 고착했다. 게이트 `SUPPLY_MAKER_COLLECT_ENABLED` 도 상태 배지 표시에만 쓰여
-  //   "켜도 아무 일이 없는" 상태였다 → 여기서 실제 스케줄에 연결한다.
-  //   ⚠️ 이 워커에 두는 이유: **매시간 트리거가 여기에만 존재**(배포된 ur-live 워커는 `*/5`·`0 18`·`0 19`
-  //   뿐 — 2026-07-28 Cloudflare API 실측). kick = SELF 독립 인보케이션이라 보강 레인과 서브리퀘스트 예산을
-  //   나눠 쓰지 않는다. 도매(supply) 테이블만 건드리므로 서비스 분리 위반 아님.
-  if (env.SUPPLY_MAKER_COLLECT_ENABLED === 'true') {
-    kick('/__ads/collect-maker', async () => {
-      const { runMakerCollect } = await import('@/features/supply/api/maker-collect')
-      return runMakerCollect(env)
-    })
-  }
+  // 🧨 2026-10-20 제조사·판매사 풀 자동 수집(collect-maker) 삭제 — 대표 "지워줘"(유어딜 무관, 도매 용도).
   // 🏪 무인매장(아이스크림 할인점·무인판매점) — 매시간. 카카오 로컬 키워드 검색이라 인허가 승인과 무관하고
   //   **전화가 함께 들어온다**(네이버 지역검색은 전화가 빈값). 게이트 ADS_STORE_KAKAO_ENABLED(기본 OFF).
   if (!laneAlarmOn && (env as unknown as { ADS_STORE_KAKAO_ENABLED?: string }).ADS_STORE_KAKAO_ENABLED === 'true') {

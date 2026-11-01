@@ -11,6 +11,7 @@
  */
 import type { Env } from '@/worker/types/env'
 import { runDdlOnce } from './ads-schema-guard'
+import { NOT_EXPORTED_SQL } from './pool-export-batch'
 
 /**
  * 인허가 업종 ↔ REST 엔드포인트 슬러그(SSOT). 지방행정 인허가는 **업종별 개별 엔드포인트**다(단일 아님):
@@ -149,7 +150,52 @@ export function isNewOpen(apvPermYmd?: string | null, todayYmd?: string, withinD
   return diff >= 0 && diff <= withinDays
 }
 
-/** 멱등 upsert(복합키) — 인허가 변동분 재수신 시 상태/주소/전화 갱신 + active/개업 재계산. todayYmd 주입. */
+/**
+ * 🗓️ **재검증 도장 간격(일)** — `last_verified_at` 을 며칠에 한 번 다시 찍을 것인가.
+ *
+ * 🩸 **7 인 이유는 "재방문 주기보다 길어야 한다" 하나다**(2026-10-25 라이브 판정에서 값을 치르고 알았다).
+ *   2026-10-24 수리는 이 값이 **1일**이었고, 그래서 `collect-neis` 에서 **아무 효과가 없었다**:
+ *   그 레인은 전국 교육청을 순회해 같은 행을 **약 30~40시간 뒤에** 다시 만나는데(실측: 140,676행 ÷
+ *   회당 3,508행 ≈ 40회차 · 24시간 내 도장 비율 79%), 재방문이 **언제나 "하루 넘게 묵은" 상태**라
+ *   아래 마지막 OR 절이 매번 참이 되어 **한 행도 건너뛰지 못했다**(실측 13:00 KST 회차 `found 3,840 =
+ *   saved 3,840`, 스킵 0%). 같은 코드로 `collect-storeinfo` 는 19~31%, `collect-store-kakao` 는
+ *   8~25% 를 건너뛰었다 — 조건부 UPDATE 자체는 멀쩡했고 **창이 주기보다 짧았던 것**이다.
+ *
+ * 🔑 **이 컬럼을 읽는 곳은 이 조건 하나뿐이다**(전수 확인 — 필터·정렬·판정·화면 어디서도 안 읽는다).
+ *   그래서 창을 넓히는 비용은 *"원부에서 이 행을 마지막으로 확인한 시각"의 해상도가 하루 → 7일로
+ *   거칠어지는 것*뿐이고, 얻는 것은 재방문 ~5.6회 중 1회만 쓰는 것(**도장 쓰기 약 −82%**)이다.
+ *
+ * ⚠️ **올리기 전에 주기를 먼저 재라.** 창 < 주기면 이 값은 아무 일도 안 한다(위 사고). 레인이 더 느려지면
+ *   이 값을 함께 올려야 하고, 반대로 이 컬럼을 읽는 소비자가 생기면 그쪽 신선도 요구가 상한이 된다.
+ *
+ * ❌ **`is_new_open` 때문에 하루 1회가 필요하다는 말은 틀렸다**(2026-10-24 docblock 의 오기 — 정정).
+ *   그 값이 날짜 기준으로 뒤집히면 **자기 OR 절**(`is_new_open IS NOT excluded.is_new_open`)이 그 회차에
+ *   직접 참이 되어 갱신된다. 도장 간격과 무관하다.
+ */
+export const PROSPECT_VERIFY_STAMP_DAYS = 7
+
+/**
+ * 멱등 upsert(복합키) — 인허가 변동분 재수신 시 상태/주소/전화 갱신 + active/개업 재계산. todayYmd 주입.
+ *
+ * 💸 **조건부 UPDATE** (2026-10-24 — 쓰기 예산의 35% 를 돌려받은 수리).
+ *   종전 `DO UPDATE` 는 **조건이 없어** 값이 한 글자도 안 바뀌어도 매 회차 행을 다시 썼다. 게다가
+ *   `last_verified_at = datetime('now')` 는 **항상** 바뀌므로 건너뛸 수가 없는 구조였다.
+ *   공공 원부 레인들은 전국을 **영원히 순회**하는 설계라(수집이 끝나면 '갱신 순환') 그 재기록이 영구적이다.
+ *
+ *   라이브 실측(2026-10-24): `collect-neis` 가 시간당 8,000행 × 행당 5쓰기 = **40,004 쓰기/회차**,
+ *   하루 **328,794**(그날 유어애즈 쓰기 938,996 의 **35%**)를 태우면서 **신규 리드는 0건**이었다
+ *   (140,635행을 32번째 다시 쓰는 중). 쓰기 예산은 대표 확정 *"$5 이상 넘으면 절대 안돼"* 에 묶여
+ *   월 포함분에서 역산되므로, 그 35% 는 **이메일 보강 같은 값 있는 레인의 몫을 빼앗은 것**이다.
+ *
+ *   ⇒ SET 되는 값이 **실제로 달라질 때만** UPDATE 한다. `last_verified_at` 은
+ *   `PROSPECT_VERIFY_STAMP_DAYS` 에 한 번만 도장을 찍는다(그 컬럼은 필터·정렬·판정 어디서도 읽지 않는다
+ *   — 전수 확인). ⚠️ **그 간격이 레인의 재방문 주기보다 짧으면 이 수리는 아무 일도 안 한다** — 2026-10-25
+ *   에 `collect-neis` 가 정확히 그래서 효과 0 이었다. 근거·실측은 그 상수의 docblock 에 있다.
+ *
+ * 🔒 **WHERE 는 SET 을 전부 덮어야 한다** — 한 컬럼이라도 빠지면 그 변화가 **조용히 반영되지 않는다**
+ *   (에러도 안 난다). SET 에 컬럼을 추가할 때 WHERE 도 함께 늘릴 것. 가드가 그 짝을 고정한다:
+ *   `src/tests/unit/prospect-upsert-conditional-2026-10-24.test.ts`.
+ */
 export async function saveProspects(DB: D1Database, rows: StoreProspect[], todayYmd?: string): Promise<number> {
   if (!rows.length) return 0
   await ensureProspectSchema(DB)
@@ -181,7 +227,21 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
            last_mod_ts = excluded.last_mod_ts,
            active = excluded.active,
            is_new_open = excluded.is_new_open,
-           last_verified_at = datetime('now')`
+           last_verified_at = datetime('now')
+         WHERE store_prospects.biz_name IS NOT excluded.biz_name
+            OR store_prospects.trd_state IS NOT excluded.trd_state
+            OR store_prospects.trd_state_nm IS NOT excluded.trd_state_nm
+            OR store_prospects.last_mod_ts IS NOT excluded.last_mod_ts
+            OR store_prospects.active IS NOT excluded.active
+            OR store_prospects.is_new_open IS NOT excluded.is_new_open
+            OR (excluded.addr_road IS NOT NULL AND store_prospects.addr_road IS NOT excluded.addr_road)
+            OR (excluded.addr_lot IS NOT NULL AND store_prospects.addr_lot IS NOT excluded.addr_lot)
+            OR (excluded.phone IS NOT NULL AND store_prospects.phone IS NOT excluded.phone)
+            OR (excluded.region IS NOT NULL AND store_prospects.region IS NOT excluded.region)
+            OR (store_prospects.website IS NULL AND excluded.website IS NOT NULL)
+            OR (store_prospects.contact_source IS NULL AND excluded.contact_source IS NOT NULL)
+            OR store_prospects.last_verified_at IS NULL
+            OR store_prospects.last_verified_at < datetime('now', '-${PROSPECT_VERIFY_STAMP_DAYS} days')`
       ).bind(
         clamp(r.opn_svc_id, 40), clamp(r.opn_sf_team_code, 40), clamp(r.mgt_no, 60), (r.biz_name || '').slice(0, 120),
         clamp(r.category, 40), clamp(r.uptae, 60), clamp(r.addr_road, 300), clamp(r.addr_lot, 300), phone, clamp(r.website, 200), phone ? 'govreg' : null,
@@ -190,7 +250,13 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
       )
     })
     const res = await DB.batch(stmts).catch(() => null)
-    if (res) saved += slice.length
+    // 🔢 **`slice.length` 가 아니라 실제 변경 행 수**(2026-10-24). 종전엔 "보낸 개수" 를 세서
+    //   `total_saved` 가 실제 행의 **32배**까지 부풀었다(실측 neis: 누적 4,549,277 vs 실제 140,635).
+    //   그 숫자는 거짓말을 두 번 한다 — ① 수집이 잘 되는 것처럼 보이고 ② **신규 0건이 안 보인다**
+    //   (오늘 쓰기 328,794 를 태우고 새 리드가 0건인 것을 아무도 못 봤다). 위 조건부 UPDATE 와 짝이다:
+    //   건너뛴 행은 `changes = 0` 이므로 이 합계가 곧 "실제로 달라진 행" 이다(실측 7/7 확인).
+    //   ⚠️ 호출부 5곳은 이 값을 통계 표시에만 쓴다(성패 판정에 안 쓴다 — 전수 확인).
+    if (res) saved += res.reduce((n, r) => n + (r?.meta?.changes ?? 0), 0)
   }
   return saved
 }
@@ -199,6 +265,8 @@ export async function saveProspects(DB: D1Database, rows: StoreProspect[], today
 export interface ProspectFilter {
   category?: string; region?: string; status?: string; newOpenOnly?: boolean; includeClosed?: boolean
   hasPhone?: boolean; hasEmail?: boolean; q?: string; limit?: number; offset?: number
+  /** 📥 아직 내보내지 않은 행만. 근거·설계: `pool-export-batch.ts` 머리말. */
+  notExported?: boolean
 }
 /** WHERE 빌더 — 목록/카운트 공용(페이지네이션 총건수 정합). */
 function buildProspectWhere(filter: ProspectFilter): { sql: string; binds: (string | number)[] } {
@@ -210,6 +278,7 @@ function buildProspectWhere(filter: ProspectFilter): { sql: string; binds: (stri
   if (filter.status && PROSPECT_STATUSES.includes(filter.status)) { where.push('status = ?'); binds.push(filter.status) }
   if (filter.hasPhone) where.push("(phone IS NOT NULL AND phone != '')")
   if (filter.hasEmail) where.push("(email IS NOT NULL AND email != '')")
+  if (filter.notExported) where.push(NOT_EXPORTED_SQL) // 📥 미다운로드만 — 조건은 세 풀 공용 SSOT
   // 🔎 검색 — 상호/지역/전화 + **이메일·도로명주소**(2026-07-27). 여러 단어는 AND(모두 포함).
   if (filter.q) {
     for (const tok of filter.q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 5)) {

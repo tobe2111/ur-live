@@ -94,6 +94,9 @@ export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
   'order_confirm', 'shipping_start', 'order_cancel',
   // 📨 2026-10-12 SENS 전환 때 env 코드(`ALIGO_TPL_*` · 'TBD')를 이름으로 고정한 것들.
   'sample_approved', 'store_listed',
+  // 🎁 2026-10-31 무상 체험 제공 — 문안 docs/alimtalk-register-list.md §무상 체험(23~29). 등록·승인 전엔 앱 알림만 간다.
+  'seeding_request_store', 'seeding_slots_store', 'seeding_approved', 'seeding_rejected',
+  'seeding_scheduled', 'seeding_post_reminder', 'seeding_penalty',
 ] as const
 
 /**

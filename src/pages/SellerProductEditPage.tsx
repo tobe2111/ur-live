@@ -11,7 +11,7 @@ import VoucherFields from '@/pages/seller-product-edit/VoucherFields'
 import ProductPhotoField, { parseProductPhotos } from '@/pages/seller-product-edit/ProductPhotoField'
 import ProductShortsField from '@/pages/seller-product-edit/ProductShortsField'
 import PriceStockFields from '@/pages/seller-product-edit/PriceStockFields'
-import { isVoucherCategory } from '@/shared/constants/voucher-categories'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'; import LifeSubcatPicker from '@/components/life/LifeSubcatPicker' // 🏠 생활 업종
 import { 
   ArrowLeft, 
   Package,
@@ -67,7 +67,7 @@ export default function SellerProductEditPage() {
     detail_images: [] as string[],
     photos: [] as string[],  // 🖼️ 2026-09-03 사진 목록(첫 장 = 대표 = image_url) — 등록 폼과 같은 모델
     product_type: 'featured',
-    category: 'lifestyle',
+    category: 'lifestyle', life_subcat: '' as string,
     // 이용권 필드
     restaurant_name: '',
     restaurant_address: '',
@@ -114,7 +114,7 @@ export default function SellerProductEditPage() {
       group_buy_target: productData.group_buy_target ? String(productData.group_buy_target) : '', group_buy_deadline: productData.group_buy_deadline || '',
       store_verify_pin: productData.store_verify_pin || '',
       max_per_person: productData.max_per_person ? String(productData.max_per_person) : '',
-      promo_pct: promoPctFromProduct(productData),
+      promo_pct: promoPctFromProduct(productData), life_subcat: String((productData as { life_subcat?: string | null }).life_subcat || ''),
     })
     if (productData.options && Array.isArray(productData.options)) setProductOptions(productData.options)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,7 +154,7 @@ export default function SellerProductEditPage() {
         is_active: formData.is_active,
         detail_images: JSON.stringify(formData.detail_images),
         product_type: formData.product_type,
-        category: formData.category,
+        category: formData.category, life_subcat: formData.category === 'home_voucher' ? formData.life_subcat : undefined,
         ...(isVoucherCategory(formData.category) ? {
           restaurant_name: formData.restaurant_name || null,
           restaurant_address: formData.restaurant_address || null,
@@ -343,6 +343,7 @@ export default function SellerProductEditPage() {
             price={formData.price}
             originalPrice={formData.original_price}
             stock={formData.stock}
+            margin={isVoucherCategory(formData.category)}
             onChange={handleChange}
           />
 
@@ -408,6 +409,7 @@ export default function SellerProductEditPage() {
               <option value="meal_voucher">식사 이용권</option>
               <option value="beauty_voucher">뷰티 이용권</option>
               <option value="stay_voucher">숙박 이용권</option>
+              <option value="home_voucher">생활 이용권 (이사·청소)</option>
               <option value="etc_voucher">기타 이용권</option>
               {/* 레거시 카테고리 — 기존 상품이 갖고 있으면 그대로 보이게(정규화는 서버 SSOT 담당). */}
               {LEGACY_VOUCHER_OPTIONS.filter((o) => o.value === formData.category).map((o) => (
@@ -420,6 +422,7 @@ export default function SellerProductEditPage() {
               있도록". 실제 결함은 **이용권 4종 중 식사 하나에서만** 이 블록이 뜬 것이었다.
               그래서 뷰티/숙박/기타 이용권은 1인당 한도를 처음부터 끝까지 설정할 수 없었다.
               (서버는 원래 카테고리를 안 가린다 — 막고 있던 건 이 화면뿐이었다.) */}
+          {formData.category === 'home_voucher' && <LifeSubcatPicker value={formData.life_subcat} onChange={(v) => setFormData((f) => ({ ...f, life_subcat: v }))} />}
           {isVoucherCategory(formData.category) && (
             <><VoucherFields formData={formData} onChange={handleChange} />
               {/* 💰 2026-09-05: 등록 화면에만 있던 소개비 레버를 관리 화면에도. */}

@@ -31,7 +31,7 @@ export default function UrDealLogo({ size = 20, forceDark = false, forceLight = 
       className={`inline-flex items-baseline select-none ${textClass} ${className}`}
       style={{
         fontFamily: "'Poppins', system-ui, sans-serif",
-        fontWeight: 800,
+        fontWeight: 700,
         fontSize: size,
         letterSpacing: '-0.035em',
         lineHeight: 1,

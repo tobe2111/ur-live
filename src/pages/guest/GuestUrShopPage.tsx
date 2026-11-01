@@ -45,7 +45,7 @@ function ExamplePin({ p, n }: { p: PassItem; n: number }) {
       originalPrice={p.original_price}
       discountPct={p.discount_rate}
       leading={
-        <span className="shrink-0 w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-bold flex items-center justify-center">{n}</span>
+        <span className="shrink-0 w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-medium flex items-center justify-center">{n}</span>
       }
     />
   )
@@ -87,7 +87,7 @@ export default function GuestUrShopPage() {
               <span className="flex-1 min-w-0 text-[17px] font-bold text-gray-900 dark:text-white truncate">
                 {t('guest.shop.exampleName', { defaultValue: '유달의 유어샵' })}
               </span>
-              <span className="shrink-0 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-bold text-brand-text">
+              <span className="shrink-0 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">
                 {t('guest.shop.example', { defaultValue: '예시' })}
               </span>
             </div>
@@ -99,7 +99,7 @@ export default function GuestUrShopPage() {
         {pins.length > 0 && (
           <p className={`mt-3 flex items-center gap-2 px-1 text-[13px] text-gray-500 dark:text-gray-400${hide}`} aria-hidden={waiting || undefined}>
             <span>{t('guest.shop.linkLabel', { defaultValue: '프로필 링크' })}</span>
-            <span className="font-semibold text-brand-text">urdeal.kr/u/udal</span>
+            <span className="font-medium text-brand-text">urdeal.kr/u/udal</span>
           </p>
         )}
 

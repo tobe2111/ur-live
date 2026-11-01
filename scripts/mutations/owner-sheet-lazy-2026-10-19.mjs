@@ -11,8 +11,8 @@ export default [
   {
     name: '🏪 관리 시트 봉투를 묶음기 보호에서 뺀다',
     file: 'scripts/surface-chunks.mjs',
-    find: "new Set(['app-notification-panel', 'app-owner-sheet'])",
-    replace: "new Set(['app-notification-panel'])",
+    find: "'app-notification-panel', 'app-owner-sheet',", // 2026-10-25 재조준 — 목록에 app-life-banner 가 붙었다
+    replace: "'app-notification-panel',",
     why: '보호가 없으면 묶음기가 시트를 공용 봉투(lz-common)로 옮겨 lazy 경계가 무의미해진다.',
     test: 'src/tests/unit/owner-manage-sheet-2026-10-19.test.tsx',
   },

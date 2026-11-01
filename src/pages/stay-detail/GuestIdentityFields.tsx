@@ -77,15 +77,15 @@ export default function GuestIdentityFields({
     return (
       <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 dark:bg-white/[0.04] px-3 py-3">
         <div className="min-w-0">
-          <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400">투숙객</p>
-          <p className="truncate text-[15px] font-semibold text-gray-900 dark:text-white">
+          <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">투숙객</p>
+          <p className="truncate text-[15px] font-medium text-gray-900 dark:text-white">
             {value.guest_name} · {maskPhone(value.guest_phone)}
           </p>
         </div>
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="shrink-0 text-[12px] font-bold text-brand-text underline underline-offset-2"
+          className="shrink-0 text-[12px] font-medium text-brand-text underline underline-offset-2"
         >
           다른 분이 투숙해요
         </button>
@@ -96,15 +96,15 @@ export default function GuestIdentityFields({
   return (
     <>
       <div>
-        <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-1">{nameLabel} *</label>
+        <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">{nameLabel} *</label>
         <input value={value.guest_name} onChange={set('guest_name')} className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-[15px] text-gray-900 dark:text-white" />
       </div>
       <div>
-        <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-1">전화번호 *</label>
+        <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">전화번호 *</label>
         <input value={value.guest_phone} onChange={set('guest_phone')} placeholder="010-1234-5678" className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-[15px] text-gray-900 dark:text-white" />
       </div>
       <div>
-        <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-1">이메일</label>
+        <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">이메일</label>
         <input type="email" value={value.guest_email} onChange={set('guest_email')} className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-[15px] text-gray-900 dark:text-white" />
       </div>
     </>

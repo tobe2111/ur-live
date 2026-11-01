@@ -36,17 +36,16 @@ export default [
     name: '🧹 오늘 숫자가 매출 분석으로 안 간다 (닿는 길이 하나 줄어든다)',
     file: SECTION,
     // 🔁 2026-10-01 철거 재조준: 손수 시트 → 대시보드 화면(`openPage`). 불변식 동일.
-    find: "            onClick={() => openPage('/seller/analytics', '매출 분석')}",
-    replace: '            onClick={() => {}}',
+    find: "          onClick={() => openPage('/seller/analytics', '매출 분석')}",
+    replace: "          onClick={() => {}}",
     test: TEST,
     why: '바로가기에서 뺀 대신 오늘 숫자를 입구로 삼았다 — 그 배선이 끊기면 매출 분석은 전체 도구에만 남는다.',
   },
   {
     name: '🧹 클릭면이 말을 안 한다 (표시 없는 누름)',
     file: SECTION,
-    find: `                매출 분석
-                <ChevronRight className="w-4 h-4" aria-hidden="true" />`,
-    replace: '                <ChevronRight className="w-4 h-4" aria-hidden="true" />',
+    find: "<span className={ROW_LABEL_CLS}>오늘 매출</span>",
+    replace: "<span className={ROW_LABEL_CLS}></span>",
     test: TEST,
     why:
       '2026-07-02 상세의 "ChevronRight 로 클릭 유도하면서 onClick 없던 dead 어포던스" 의 **정반대**. ' +
@@ -67,7 +66,7 @@ export default [
   {
     name: '🧹 줄 세기가 헛돈다 (label 형태가 바뀌어 0개)',
     file: TEST,
-    find: "    const rows = [...code.matchAll(/^\\s*label=\"([^\"]+)\"$/gm)].map((m) => m[1])",
+    find: "    const rows = [...mainPlate.matchAll(/^\\s*label=\"([^\"]+)\"$/gm)].map((m) => m[1])",
     replace: "    const rows: string[] = []",
     test: TEST,
     why: '이 레포가 반복해 당한 헛도는 가드 — 0개를 세고도 "다섯 이하" 라 통과한다. 하한이 그것을 잡는다.',

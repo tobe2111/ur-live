@@ -77,7 +77,7 @@ export default function PaymentSection({
           custom tab + Toss widget = 중복 → 위젯만 표시. */}
       {dealOnly && (
         <div className="rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/10 p-3 mb-4">
-          <p className="text-[13px] font-bold text-blue-700 dark:text-blue-300">💎 딜 결제 전용</p>
+          <p className="text-[13px] font-medium text-blue-700 dark:text-blue-300">💎 딜 결제 전용</p>
           <p className="text-[12px] text-blue-600 dark:text-blue-400 mt-1">교환권은 딜 포인트로만 구매할 수 있습니다. 휴대폰 MMS 로 즉시 발송됩니다.</p>
         </div>
       )}

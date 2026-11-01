@@ -25,7 +25,7 @@ function Marked({ text, q }: { text: string; q: string }) {
   return (
     <span className="font-medium text-gray-600 dark:text-gray-300">
       {text.slice(0, i)}
-      <span className="font-extrabold text-gray-900 dark:text-white">{text.slice(i, i + q.length)}</span>
+      <span className="font-bold text-gray-900 dark:text-white">{text.slice(i, i + q.length)}</span>
       {text.slice(i + q.length)}
     </span>
   )

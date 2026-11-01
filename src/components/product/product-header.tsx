@@ -26,20 +26,20 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
           <div className="flex items-center gap-2">
             <div className="rounded-full flex items-center justify-center w-9 h-9 bg-brand-tint border border-rule">
-              <span className="text-[13px] font-extrabold text-brand-text">{sellerName.charAt(0)}</span>
+              <span className="text-[13px] font-medium text-brand-text">{sellerName.charAt(0)}</span>
             </div>
             <div>
               {sellerId ? (
-                <Link to={`/s/${sellerId}`} className="text-[13px] font-extrabold text-gray-900 dark:text-white hover:underline">{sellerName}</Link>
+                <Link to={`/s/${sellerId}`} className="text-[13px] font-medium text-gray-900 dark:text-white hover:underline">{sellerName}</Link>
               ) : (
-                <p className="text-[13px] font-extrabold text-gray-900 dark:text-white">{sellerName}</p>
+                <p className="text-[13px] font-medium text-gray-900 dark:text-white">{sellerName}</p>
               )}
               <p className="text-[12px] text-gray-400 dark:text-gray-500">브랜드</p>
             </div>
           </div>
           {/* 🧭 2026-06-22: dead '팔로우' 버튼 제거(onClick·팔로우 API 없음) — 셀러명 링크로 스토어 진입. */}
           {sellerId && (
-            <Link to={`/s/${sellerId}`} className="rounded-full px-3 py-2 border border-gray-300 dark:border-[#2C2F35] text-[12px] font-bold text-gray-700 dark:text-gray-200 active:scale-95 transition-transform">
+            <Link to={`/s/${sellerId}`} className="rounded-full px-3 py-2 border border-gray-300 dark:border-[#2C2F35] text-[12px] font-medium text-gray-700 dark:text-gray-200 active:scale-95 transition-transform">
               스토어
             </Link>
           )}
@@ -58,7 +58,7 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
             {avgRating && (
               <>
                 <span className="text-yellow-500 text-[12px]">★</span>
-                <span className="text-[12px] font-semibold text-gray-900 dark:text-white">{avgRating.toFixed(1)}</span>
+                <span className="text-[12px] font-medium text-gray-900 dark:text-white">{avgRating.toFixed(1)}</span>
               </>
             )}
             <span className="text-[12px] text-gray-400 dark:text-gray-500">
@@ -73,7 +73,7 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
           {/* 🔴 할인율은 `text-sale`(SSOT) — `red-500`(#EF4444)은 다크 값이 없어 다크 카드 위에서
               대비가 무너진다(2026-09 `--sale` 토큰이 생긴 이유가 정확히 그 사고다). */}
           {displayDiscount > 0 && (
-            <span className="text-[24px] font-extrabold text-sale">{displayDiscount}%</span>
+            <span className="text-[24px] font-bold text-sale">{displayDiscount}%</span>
           )}
           <span className="text-[28px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>
             {formatPrice(price)}

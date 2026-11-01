@@ -60,7 +60,7 @@ describe('찜 시점 가격 — 표시', () => {
   })
 
   it('⑦ 카드는 신호를 **사진 밖 본문**에 그린다 (사진 위 배지 금지 — 2026-08-31 대표 지시)', () => {
-    const body = CARD.match(/<div className="pt-2">[\s\S]{0,80}/)?.[0] || ''
+    const body = CARD.match(/<div className="pt-3">[\s\S]{0,80}/)?.[0] || ''
     expect(body, '본문 맨 위가 신호 자리다').toContain('{flags}')
     const overlay = CARD.match(/overlay=\{[\s\S]*?\n        \}/)?.[0] || ''
     expect(overlay, '사진 위 오버레이에 넣으면 상품 사진을 가린다').not.toContain('flags')

@@ -11,6 +11,7 @@ import { creditAffiliateForOrder, resolveCommissionRate } from '../../../worker/
 import type { Env } from '@/worker/types/env'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
 import { DEFAULT_AFFILIATE_RATE } from '../../../shared/affiliate-rate'
+import { VOUCHER_CATEGORY_SQL_IN } from '@/shared/constants/voucher-categories'
 
 export const affiliateRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -254,7 +255,7 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
       FROM products p
       LEFT JOIN sellers s ON s.id = p.seller_id
       WHERE p.is_active = 1
-        AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+        AND p.category IN (${VOUCHER_CATEGORY_SQL_IN})
         AND p.group_buy_status = 'active'
         AND p.group_buy_target > 0
       ORDER BY

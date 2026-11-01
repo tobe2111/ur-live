@@ -62,13 +62,13 @@ export default function ExperienceCampaignsPage() {
     <div className="min-h-[100dvh] bg-[#11141C] text-white pb-24">
       <SEO title={CONSUMER_SURFACE_SEO['/experience'].title} description={CONSUMER_SURFACE_SEO['/experience'].description} url="/experience" />
       <div className="ur-content-wide px-4 lg:px-8 pt-5">
-        <h1 className="text-[24px] font-black flex items-center gap-2"><GiftBoxIcon className="w-5 h-5 text-brand-text" />체험단</h1>
+        <h1 className="text-[24px] font-bold flex items-center gap-2"><GiftBoxIcon className="w-5 h-5 text-brand-text" />체험단</h1>
         <p className="text-[13px] text-gray-400 mt-1">무료 응모 · 공정 추첨 · 선정 시 체험권이 이용권 지갑에 발급돼요.</p>
         <p className="text-[13px] text-gray-400 mt-2 max-w-[34em] leading-relaxed">가게가 올린 체험 기회에 응모하면 추첨으로 참여자를 뽑습니다. 선정되면 그 매장에서 쓸 수 있는 체험권이 발급되고, 결과는 알림으로 알려드려요.</p>
 
         <div className="flex gap-2 mt-4 mb-4">
-          <button type="button" onClick={() => setTab('open')} className={`px-4 py-2 rounded-full text-[13px] font-semibold ${tab === 'open' ? 'bg-white text-black' : 'bg-[#1D1F29] text-gray-300'}`}>모집중</button>
-          <button type="button" onClick={() => setTab('mine')} className={`px-4 py-2 rounded-full text-[13px] font-semibold ${tab === 'mine' ? 'bg-white text-black' : 'bg-[#1D1F29] text-gray-300'}`}>내 응모현황</button>
+          <button type="button" onClick={() => setTab('open')} className={`px-4 py-2 rounded-full text-[13px] font-medium ${tab === 'open' ? 'bg-white text-black' : 'bg-[#1D1F29] text-gray-300'}`}>모집중</button>
+          <button type="button" onClick={() => setTab('mine')} className={`px-4 py-2 rounded-full text-[13px] font-medium ${tab === 'mine' ? 'bg-white text-black' : 'bg-[#1D1F29] text-gray-300'}`}>내 응모현황</button>
         </div>
 
         {loading ? <div className="py-16 text-center text-gray-500 text-[13px]">불러오는 중…</div>
@@ -91,7 +91,7 @@ export default function ExperienceCampaignsPage() {
                     </div>
                     {c.description && <p className="text-[12px] text-gray-400 mt-2 line-clamp-2">{c.description}</p>}
                     <button type="button" disabled={applied || applying === c.id} onClick={() => void apply(c.id)}
-                      className={`mt-3 w-full py-2 rounded-xl text-[13px] font-bold ${applied ? 'bg-[#1D1F29] text-gray-500' : 'bg-brand text-white'}`}>
+                      className={`mt-3 w-full py-2 rounded-xl text-[13px] font-medium ${applied ? 'bg-[#1D1F29] text-gray-500' : 'bg-brand text-white'}`}>
                       {applied ? <span className="flex items-center justify-center gap-1"><OkIcon className="w-4 h-4" />응모 완료</span> : applying === c.id ? '응모 중…' : '무료 응모하기'}
                     </button>
                   </div>
@@ -107,11 +107,11 @@ export default function ExperienceCampaignsPage() {
               <div key={m.campaign_id} className="bg-[#1D1F29] rounded-2xl border border-[#2C2F35] p-4 flex items-center gap-3">
                 {m.image_url && <img src={cfImage(m.image_url, { width: 120 })} alt="" className="w-14 h-14 rounded-xl object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, m.image_url)} />}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-white line-clamp-1">{m.title}</p>
+                  <p className="text-[13px] font-medium text-white line-clamp-1">{m.title}</p>
                   <p className="text-[12px] text-gray-500">{m.restaurant_name || m.product_name} · {formatKSTDate(m.created_at)}</p>
                 </div>
                 <div className="text-right">
-                  <span className={`text-[12px] font-bold ${m.status === 'selected' ? 'text-brand-text' : m.status === 'not_selected' ? 'text-gray-500' : 'text-blue-300'}`}>{entryLabel(m.status)}</span>
+                  <span className={`text-[12px] font-medium ${m.status === 'selected' ? 'text-brand-text' : m.status === 'not_selected' ? 'text-gray-500' : 'text-blue-300'}`}>{entryLabel(m.status)}</span>
                   {m.status === 'selected' && <button type="button" onClick={() => nav('/my-vouchers')} className="block mt-1 text-[12px] text-brand-text underline">체험권 보기</button>}
                 </div>
               </div>

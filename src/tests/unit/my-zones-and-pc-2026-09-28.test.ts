@@ -34,7 +34,8 @@ describe('이름 E — 제목이 붙은 구역이 파는 쪽', () => {
    *   그러면 다음에 값이 또 바뀌어도 두 자리가 갈리지 않는다.
    */
   it('판매 구역 제목이 공용 토큰에서 온다 (손으로 적지 않는다)', () => {
-    expect(SELLER).toMatch(/\$\{SECTION_TITLE_CLS\}`}>내 가게<\/h2>/)
+    // 🏪 2026-10-31 9번 B안: 판매 구역의 *보이는* 머리는 가게 머리줄이다. '내 가게' 는 읽기 도구용 제목으로만 남는다.
+    expect(SELLER).toContain('<h2 className="sr-only">내 가게</h2>')
     expect(SELLER, '크기를 손으로 적었다 — 오전 커밋이 이 제목에 안 닿은 이유가 그것이다')
       .not.toMatch(/text-\[\d+px\][^"]*">내 가게/)
   })
@@ -114,12 +115,11 @@ describe('구역 2 — 큰 제목 없이 그룹 라벨 셋', () => {
   it('🔵 모든 구역이 같은 부품으로 제목을 단다 (손으로 적지 않는다)', () => {
     for (const f of ['ShoppingGroup', 'EarningsGroup', 'SettingsGroup', 'RoleCtaGrid']) {
       const src = readCode(`src/pages/user-profile/${f}.tsx`)
-      expect(src, `${f} 에 구역 제목이 없다`).toContain('<SectionTitle>')
+      expect(src, `${f} 에 구역 제목이 없다`).toMatch(/<SectionTitle[\s>]/)
       expect(src, `${f} 이 제목 크기를 손으로 적었다`).not.toMatch(/text-\[2[0-9]px\]/)
     }
-    // 판매 구역은 제목 옆에 가게 전환 버튼이 붙어 한 줄을 이루므로 `SectionTitle` 대신
-    // **같은 토큰**을 쓴다(위 검사가 그 출처를 고정한다).
-    expect(SELLER).toContain('SECTION_TITLE_CLS')
+    // 🏪 2026-10-31 9번 B안: 판매 구역은 제목 대신 **가게 머리줄**(사진 · 이름 · 가게 보기)로 시작한다.
+    expect(SELLER).toMatch(/<StoreThumb[\s\S]{0,80}store\?\.image/)
   })
 
   /**
@@ -151,13 +151,21 @@ describe('PC 1안 — 오늘이 머리', () => {
    * 🔁 2026-09-29 재조준(안 C): [오늘 | 사용처리] 가로 배치를 걷고 **같은 판 안에 세로로** 쌓았다.
    * "오늘이 머리" 라는 09-28 결정의 내용은 그대로다 — 오늘 숫자가 판의 첫 블록이다.
    */
-  it('🔵 오늘 숫자가 판의 머리이고, 사용처리가 바로 다음이다', () => {
+  /**
+   * 🔁 **2026-10-25 재조준(대표 확정 내 가게 안 G)** — 사용처리는 판 **밖 위**의 진한 블루 칸이 됐고,
+   *   판의 머리는 `오늘 매출` 줄이다. 지키려던 것은 그대로다: *하루에 가장 많이 누르는 사용처리가 먼저 보이고,
+   *   오늘 숫자는 판의 머리에 있다.*
+   */
+  it('🔵 사용처리가 먼저(판 밖 위), 오늘 매출이 판의 머리다', () => {
+    const iScan = SELLER.indexOf("enterSeat('/store/scan')")
     const iPlate = SELLER.indexOf('<div className={LIST_PLATE_CLS}>')
-    const iToday = SELLER.indexOf('오늘</span>')
-    const iScan = SELLER.indexOf('이용권 사용처리')
+    const iToday = SELLER.indexOf('오늘 매출</span>')
     expect(iPlate, '판을 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
-    expect(iToday).toBeGreaterThan(iPlate)
-    expect(iScan, '사용처리가 오늘 숫자보다 앞이다').toBeGreaterThan(iToday)
+    expect(iScan, '사용처리 칸을 못 찾았다').toBeGreaterThan(-1)
+    expect(iScan, '사용처리가 판 뒤로 밀렸다').toBeLessThan(iPlate)
+    expect(iToday, '오늘 매출이 판의 머리가 아니다').toBeGreaterThan(iPlate)
+    const firstRowEnd = SELLER.indexOf('</button>', iPlate)
+    expect(iToday, '오늘 매출 앞에 다른 줄이 끼었다').toBeLessThan(firstRowEnd)
   })
 
   it('🔴 숫자 한 줄이 페이지 맨 위에 있다 (2열 래퍼 밖)', () => {
@@ -202,8 +210,9 @@ describe('조판 — 하네스 실측으로 잡은 두 결함', () => {
   it('🔴 가게 개수는 말줄임에 안 먹힌다 — 이름과 다른 span 이다', () => {
     // 한 span 에 붙여 두면 긴 이름에서 `… 본점 · …` 처럼 **개수부터** 잘린다.
     // 그런데 이 줄이 눌리는 이유가 그 개수다(2곳 이상일 때만 전환 버튼).
-    expect(SELLER).toContain('<span className="truncate">{store.name}</span>')
-    expect(SELLER).toContain('<span className="shrink-0">· {stores.length}곳</span>')
+    // 🏪 2026-10-31 B안: 개수는 이름 줄이 아니라 **둘째 줄**(판매 중 N개 · 매장 N곳)로 내려갔다 — 이름 말줄임과 아예 다른 줄이다.
+    expect(SELLER).toMatch(/truncate">\{blank\(store\?\.name/)
+    expect(SELLER).toContain('`매장 ${stores.length}곳`')
     expect(SELLER).not.toContain('{store.name} · {stores.length}곳')
   })
 

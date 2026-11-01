@@ -51,10 +51,14 @@ describe('③ 서버 배선', () => {
     expect(AGENT_SEARCH_GATE).toBe('agent_search_enabled')
   })
   it('데모·도매 원본·미승인 매장·교환권을 뺀다', () => {
-    expect(src).toMatch(/AND NOT \$\{demoSlugSql\('p'\)\}/)
-    expect(src).toMatch(/AND \$\{consumerVisibleProductSql\('p'\)\}/)
-    expect(src).toMatch(/AND \$\{approvedSellerProductSql\('p'\)\}/)
-    expect(src).toMatch(/COALESCE\(p\.deal_only, 0\) = 0/)
+    // 2026-10-20: 같은 파일에 결제 링크 라우트가 생겨 같은 조건을 쓴다 — 파일 전체로 보면 한쪽이 빠져도 통과한다.
+    const a = src.indexOf("agentSearchRoutes.get('/search'"), b = src.indexOf("agentSearchRoutes.get('/checkout'")
+    const search = src.slice(a, b > a ? b : undefined)
+    expect(a, '검색 라우트를 못 찾았다').toBeGreaterThan(-1)
+    expect(search).toMatch(/AND NOT \$\{demoSlugSql\('p'\)\}/)
+    expect(search).toMatch(/AND \$\{consumerVisibleProductSql\('p'\)\}/)
+    expect(search).toMatch(/AND \$\{approvedSellerProductSql\('p'\)\}/)
+    expect(search).toMatch(/COALESCE\(p\.deal_only, 0\) = 0/)
   })
   it('결제·주문 경로를 건드리지 않는다', () => {
     expect(src).not.toMatch(/INSERT|UPDATE|DELETE|confirmTossPayment|adjustUserPoints/)

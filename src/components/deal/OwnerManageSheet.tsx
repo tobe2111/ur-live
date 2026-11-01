@@ -78,7 +78,7 @@ export default function OwnerManageSheet({ productId, kind, view, onClose }: {
       <div className="relative w-full sm:max-w-md max-h-[86dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-surface px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between">
           <p className="text-[17px] font-bold text-gray-900 dark:text-white">관리</p>
-          {!active && <span className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">판매 중지됨</span>}
+          {!active && <span className="text-[13px] font-medium text-gray-500 dark:text-gray-400">판매 중지됨</span>}
         </div>
 
         <div className={`mt-4 grid ${copy.usedLabel ? 'grid-cols-2' : 'grid-cols-1'} gap-3`} data-testid="owner-stats">
@@ -107,17 +107,17 @@ export default function OwnerManageSheet({ productId, kind, view, onClose }: {
         {active ? (
           confirming ? (
             <div className="mt-4 rounded-xl bg-tone-bad-bg px-4 py-3" data-testid="owner-stop-confirm">
-              <p className="text-[15px] font-semibold text-tone-bad">손님 화면에서 바로 사라져요. 멈출까요?</p>
+              <p className="text-[15px] font-medium text-tone-bad">손님 화면에서 바로 사라져요. 멈출까요?</p>
               <div className="mt-3 flex gap-2">
                 <button type="button" onClick={() => setConfirming(false)} disabled={busy}
-                  className="flex-1 h-11 rounded-xl bg-surface text-[15px] font-semibold text-gray-900 dark:text-white">취소</button>
+                  className="flex-1 h-11 rounded-xl bg-surface text-[15px] font-medium text-gray-900 dark:text-white">취소</button>
                 <button type="button" onClick={() => setActive(false)} disabled={busy}
                   className="flex-1 h-11 rounded-xl bg-tone-bad text-[15px] font-bold text-white disabled:opacity-60">판매 중지</button>
               </div>
             </div>
           ) : (
             <button type="button" onClick={() => setConfirming(true)}
-              className="mt-2 flex w-full items-center gap-3 py-3 text-[15px] font-semibold text-tone-bad">
+              className="mt-2 flex w-full items-center gap-3 py-3 text-[15px] font-medium text-tone-bad">
               <AlertIcon className="w-[18px] h-[18px]" /> 판매 중지
             </button>
           )

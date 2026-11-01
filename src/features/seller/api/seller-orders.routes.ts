@@ -35,6 +35,7 @@ import { ORDER_STATUS_NOTICE } from '@/shared/order-status-notice'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 import { mallIdForSeller } from '../../../shared/mall/resolve';
 import { applySellerPromoRate } from '../../../worker/utils/seller-promo-rate';
+import { agencySeatOf, stampAgencyProduct } from '../../../worker/utils/agency-product-scope'; // 🤝 2026-10-24 한 매장 · 여러 에이전시
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -493,8 +494,9 @@ sellerOrdersRoutes.get('/products', async (c) => {
 
     // 🧾 목록 SQL 은 순수 빌더로 나가 있다(`seller-products-query.ts`) — 목록과 count 가 같은 필터를
     //   쓰도록 한 곳에서 정하고, 가드가 소스 grep 대신 그 함수를 불러 SQL 을 직접 본다.
+    const agencyId = (await agencySeatOf(c.req.header('Authorization'), c.env.JWT_SECRET))?.agencyId ?? null; // 🤝 에이전시는 자기 이용권만
     const { query, params, countQuery, countParams } = buildSellerProductsQuery({
-      sellerId, limit, offset, sort, search, includeDeleted,
+      sellerId, limit, offset, sort, search, includeDeleted, agencyId,
     });
 
     const products = await db.prepare(query).bind(...params).all();
@@ -579,14 +581,14 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
       if (raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0) max_per_person = Math.floor(Number(raw));
     } catch { /* fail-soft */ }
     // 🎯 2026-07-01 (카카오맵 매장 페이지): place_url prefill.
-    let kakao_place_url: string | null = null;
+    let kakao_place_url: string | null = null; let life_subcat: string | null = null; // 🏠 생활 업종(저장값, 없으면 이름 추정)
     try {
       const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
       const mm = await getSupplyMeta(db, [Number(productId)]).catch(() => null);
-      kakao_place_url = normalizeKakaoPlaceUrl(mm?.get(Number(productId))?.kakao_place_url);
+      kakao_place_url = normalizeKakaoPlaceUrl(mm?.get(Number(productId))?.kakao_place_url); life_subcat = (await import('../../../shared/life-deal-subcat')).resolveLifeSubcat(mm?.get(Number(productId))?.life_subcat, (product as { name?: string }).name);
     } catch { /* fail-soft */ }
 
-    return c.json({ success: true, data: { ...product, options, max_per_person, kakao_place_url } });
+    return c.json({ success: true, data: { ...product, options, max_per_person, kakao_place_url, life_subcat } });
   } catch (error: unknown) {
     console.error('Get seller product detail error:', error);
     return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
@@ -708,6 +710,7 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
 
 export type SellerProductCreateBody = {
   name: string;
+  life_subcat?: string; // 🏠 2026-10-25 생활 이용권 업종(shared/life-deal-subcat)
   description?: string;
   // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 — 이전엔 POST 에서 저장 안 돼 셀러가 쓴 상세가 소실.
   long_description?: string;
@@ -821,7 +824,7 @@ export async function createSellerProduct(c: Context<{ Bindings: Bindings }>, fo
     if (!result.success) throw new Error('Failed to create product');
 
     // 이용권/공동구매 필드 저장 (별도 UPDATE — INSERT fallback 구조 유지)
-    const productId = result.meta.last_row_id;
+    const productId = result.meta.last_row_id; await import('../../home-service/api/life-deal-subcat-store').then((m) => m.saveLifeSubcat(db, Number(productId), category, body.life_subcat)).catch(swallow('seller:life-subcat')) // 🏠 업종
 
     // 💰 2026-06-25: 정가(original_price) — 할인율 표시용. 별도 fail-soft UPDATE(컬럼 부재 대비).
     //   기존 INSERT 누락으로 이용권 등록 시 정가가 저장 안 돼 할인율이 안 떴음.
@@ -983,6 +986,7 @@ export async function createSellerProduct(c: Context<{ Bindings: Bindings }>, fo
       );
     }
 
+    if (!forced && newProduct) await stampAgencyProduct(db, c.req.header('Authorization'), c.env.JWT_SECRET, Number((newProduct as any).id), Number(sellerId)); // 🤝 에이전시 좌석이면 그 에이전시 이용권
     return c.json({ success: true, data: newProduct }, 201);
   } catch (error: unknown) {
     console.error('Create seller product error:', error);
@@ -1030,6 +1034,7 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       // 💰 2026-09-05: 소개비(promo%) — 등록 화면에만 있어 한번 정하면 못 바꿨다. POST 와 동일 게이트.
       referral_enabled?: boolean;
       referral_commission_rate?: number;
+      life_subcat?: string; // 🏠 2026-10-25 생활 이용권 업종
     }>();
 
     const db = c.env.DB;
@@ -1151,6 +1156,7 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
 
     // 💰 2026-09-05 (대표 확정 플로우 — 소개비는 매장이 정한다): 수정 화면에서도 변경 가능하게.
     await applySellerPromoRate(db, productId, sellerId, body)
+    await import('../../home-service/api/life-deal-subcat-store').then((m) => m.saveLifeSubcat(db, Number(productId), canonicalCategory(body.category) ?? existing.category, body.life_subcat)).catch(swallow('seller:life-subcat')) // 🏠 업종
 
     // 🛠️ 2026-09-21: 응답 SELECT 가 라이브에 없는 `image` 컬럼을 읽어 UPDATE 뒤 매번 500 — `seller-product-response.ts`
     const updated = await readSellerProductAfterUpdate(db, productId);

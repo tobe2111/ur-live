@@ -145,6 +145,38 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     text: true,
   },
   {
+    key: 'agent_checkout_enabled',
+    label: 'AI 비서 결제 링크(손님이 확인 후 결제)',
+    hint: "기본 꺼짐. 'true' 면 GET /api/agent/checkout 이 금액과 결제 링크를 준다 — 손님이 링크를 열면 구매 창이 그 수량으로 열리고 직접 결제한다(AI 는 결제 안 함). 검색 창구도 켜져 있어야 동작. 켜기 전 S-AGENT-5·6",
+    text: true,
+  },
+  {
+    // 🏠 2026-10-24 생활 견적 — 참여권 카드 충전. 꺼져 있어도 사장님은 가입 무료 참여권으로 견적을 보낸다.
+    key: 'home_service_charge_enabled',
+    label: '생활 견적 참여권 카드 충전',
+    hint: "기본 꺼짐. 'true' 면 /life/pro 에서 사장님이 참여권 묶음을 카드로 충전한다. 켜기 전 S-HOME 실결제 절차(5장 충전 → 견적 → 취소 반환).",
+    text: true,
+  },
+  {
+    // 🎁 2026-10-31 무상 체험 — 신청권(노쇼 방지 보증금) 카드 구매. 꺼져 있어도 가입 혜택 무료 3회는 쓴다. 화면: /admin/seeding
+    key: 'seeding_pass_charge_enabled',
+    label: '무상 체험 신청권 카드 구매',
+    hint: "기본 꺼짐. 'true' 면 /my-seeding 에서 신청권 묶음을 카드로 산다. 켜기 전 S-SEED 실결제 절차(5장 구매 → 일정 제출 1장 → 매장 취소 반환).",
+    text: true,
+  },
+  {
+    key: 'home_service_quotes_disabled',
+    label: '생활 견적 운영 중지(비상)',
+    hint: "기본 꺼짐(=운영). 'true' 면 손님 요청 접수와 사장님 견적 보내기가 멈춘다. 충전된 참여권은 그대로.",
+    text: true,
+  },
+  {
+    key: 'home_service_packages',
+    label: '생활 견적 참여권 묶음(JSON)',
+    hint: '예: [{"key":"p5","credits":5,"price":5000,"label":"5장"}] — 비우거나 형식이 틀리면 기본 묶음(5장 5,000 / 10장 9,000 / 30장 24,000).',
+    text: true,
+  },
+  {
     // 💬 2026-10-10: 카카오톡 채널 챗봇으로 매장 관리(연결·오늘 판매·사용 처리·판매 중지). 스킬 자체는
     //   `KAKAO_SKILL_SECRET` 가 따로 켠다 — 이 값은 그 위의 **매장 관리** 명령만 연다.
     //   ⚠️ `text: true` — 값이 'true'/'false' 문자열이라 숫자 검증 배열에 두면 저장이 거부된다.

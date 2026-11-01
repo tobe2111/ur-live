@@ -29,6 +29,7 @@ import {
 } from './license-url'
 import { fieldCoverage, coverageNote, type FieldCoverage } from './field-coverage'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
+import { rotatePending, MAX_CONSEC_UPJONG_FAILS, type PendingDay } from './localdata-pending'
 
 /**
  * 🧮 서브리퀘스트 예산 (2026-07-29 근본수리 — 이 레인이 `total_saved: 0` 이던 진짜 이유).
@@ -52,11 +53,11 @@ const outOfBudget = (b: FetchBudget): boolean => b.left <= 0 || !!b.limitHit || 
 const PENDING_KEY = 'ads_localdata_pending'
 /** 백필의 업종 인덱스(현재 커서 날짜 내부) — 날짜가 넘어가면 0 으로 리셋. */
 const BF_IDX_KEY = 'ads_localdata_backfill_idx'
-const MAX_PENDING_DAYS = 14 // 미완 일자 적체 상한(그 이상은 백필 레인이 담당)
+// 미완 일자 큐 순서/상한 + 업종 실패 격리 상수 = `localdata-pending.ts`(순수 모듈 · 라이브 근거 주석).
 /** 프로브가 쓸 수 있는 최대 요청 수 — 이만큼 여유가 없으면 아예 시작하지 않는다(반쯤 하다 끊기면 판정 불가). */
 const LICENSE_VARIANT_PROBE_COST = 6
 
-interface PendingDay { day: string; idx: number }
+
 
 /** 이 레인의 예산 산출(env × 관측 학습 상한) — 다른 레인 키와 절대 공유하지 않는다(collect-budget 주석 참조). */
 async function resolveLocalDataBudget(env: Env): Promise<{ budget: FetchBudget; envBudget: number; learnedCap: number; total: number }> {
@@ -358,13 +359,17 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
     return 0
   })
   const leftover: PendingDay[] = []
+  // 🔁 손댔는데 못 끝낸 날은 **꼬리로** 돌린다(교착 해소 — 근거는 `localdata-pending.ts`).
+  const retried: PendingDay[] = []
   for (let qi = 0; qi < queue.length; qi++) {
     const item = queue[qi]
     if (outOfBudget(budget)) { leftover.push(item); continue } // 예산 소진 — 손대지 않은 날은 그대로 보존
     let stoppedAt: number | null = null
+    let consecFail = 0, firstFail: number | null = null // 연속 업종 실패 수 / 이 날 **처음** 실패한 업종
     for (let ei = item.idx; ei < eps.length; ei++) {
       if (outOfBudget(budget)) { stoppedAt = ei; break }
       const [endpoint, category] = eps[ei]
+      let epErr = false // 이 업종이 에러로 끝났나 — 미완은 '이 업종'이고 '그 날'이 아니다
       for (let page = 1; page <= MAX_PAGES; page++) {
         if (outOfBudget(budget)) { stoppedAt = ei; break } // 이 업종은 아직 안 끝났다 → 다음 틱이 이 업종부터
         const { items, count, msg, size, url } = await fetchLicensePage(base, endpoint, key, item.day, page, variantId, sizeEnv, budget, opEnv)
@@ -391,7 +396,7 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
           }
         }
         // 🛑 백필과 동일 — 에러로 끝난 업종은 완료가 아니다(그날을 미완으로 남겨 다음 회차가 이어받는다).
-        if (msg && !count) { stoppedAt = ei; break }
+        if (msg && !count) { epErr = true; break }
         if (!count) break
         const rows: StoreProspect[] = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
         for (const r of rows) if (r.trd_state && r.trd_state !== '01') closed++
@@ -401,11 +406,19 @@ export async function runLocalDataCollect(env: Env): Promise<LocalDataStats> {
         if (count < size) break // 마지막 페이지(⚠️ 페이지 크기는 변종/env 로 달라진다 — 상수 비교 금지)
       }
       if (stoppedAt != null) break
+      // 🚑 업종 단위 실패 격리(위 MAX_CONSEC_UPJONG_FAILS 주석) — 이 업종만 미완, 다음 업종으로 간다.
+      //   ⚠️ 전역 장애로 끊을 때 커서는 **첫 실패 업종**에 둔다 — `ei` 에 두면 그 앞의 실패분
+      //   (연속이므로 전부 실패)이 그 날 영영 건너뛰어진다(날짜 커서는 한 방향으로만 간다).
+      if (epErr) { if (firstFail == null) firstFail = ei; if (++consecFail >= MAX_CONSEC_UPJONG_FAILS) { stoppedAt = firstFail; break } }
+      else consecFail = 0
     }
-    if (stoppedAt != null) leftover.push({ day: item.day, idx: stoppedAt })
+    // 예산으로 끊긴 지점은 커서로 남기고, 업종 에러만 있었으면 **첫 실패 업종**부터 재시도하게 남긴다
+    //   (그 앞은 이미 저장됐고, upsert 멱등이라 겹쳐도 해가 없다 — 실패한 업종이 다음 회차에 기회를 얻는다).
+    if (stoppedAt != null) retried.push({ day: item.day, idx: stoppedAt })
+    else if (firstFail != null) retried.push({ day: item.day, idx: firstFail })
   }
-  // 미완 일자 영속 — 오래된 것부터 최대 MAX_PENDING_DAYS 일(그 이상 밀리면 백필 레인이 담당하므로 버린다).
-  const nextPending = leftover.slice(-MAX_PENDING_DAYS)
+  // 미완 일자 영속 — 순서·상한 규칙은 `localdata-pending.ts`(저장 순서가 곧 회전 상태다).
+  const nextPending = rotatePending(leftover, retried)
   spendD1()
   if (nextPending.length) {
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(PENDING_KEY, JSON.stringify(nextPending)).run().catch(() => null)
@@ -499,9 +512,11 @@ export async function runLocalDataBackfill(env: Env, maxDaysArg?: number): Promi
     if (outOfBudget(budget)) break
     days.push(cur)
     let stoppedAt: number | null = null
+    let consecFail = 0, firstFail: number | null = null // 일일 레인과 동일(업종 단위 실패 격리)
     for (let ei = startIdx; ei < eps.length; ei++) {
       if (outOfBudget(budget)) { stoppedAt = ei; break }
       const [endpoint, category] = eps[ei]
+      let epErr = false
       for (let page = 1; page <= MAX_PAGES; page++) {
         if (outOfBudget(budget)) { stoppedAt = ei; break }
         const { items, count, size, msg } = await fetchLicensePage(base, endpoint, key, cur, page, bfVariant, bfSizeEnv, budget, opEnv)
@@ -525,7 +540,7 @@ export async function runLocalDataBackfill(env: Env, maxDaysArg?: number): Promi
         //   (라이브: `backfill_days:180 · pending_days:0 · total_saved:0`). 고쳐도 이미 지나간 날짜는
         //   되돌아오지 않는다 — 그게 이 클래스가 위험한 이유다(도장은 성공을 확인하고 찍어야 한다).
         //   ⚠️ `msg` 없이 `count===0` 은 **정상적으로 그날 변동이 없는 것**이므로 그대로 완료 처리한다.
-        if (msg && !count) { stoppedAt = ei; break }
+        if (msg && !count) { epErr = true; break }
         if (!count) break
         const rows = items.map(it => toProspect(it, endpoint, category)).filter(r => r.opn_sf_team_code && r.mgt_no && r.biz_name)
         found += rows.length
@@ -534,6 +549,16 @@ export async function runLocalDataBackfill(env: Env, maxDaysArg?: number): Promi
         if (count < size) break
       }
       if (stoppedAt != null) break
+      if (epErr) { if (firstFail == null) firstFail = ei; if (++consecFail >= MAX_CONSEC_UPJONG_FAILS) { stoppedAt = firstFail; break } }
+      else consecFail = 0
+    }
+    // 🚑 업종 에러만 있었으면 그 날을 **보존**하고 커서를 전진시키지 않는다(첫 실패 업종부터 재시도).
+    //   날짜 커서는 한 방향으로만 가므로, 전진시키면 실패한 업종의 그 날은 영영 돌아오지 않는다.
+    if (stoppedAt == null && firstFail != null) {
+      startIdx = firstFail
+      spendD1()
+      await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(BF_IDX_KEY, String(firstFail)).run().catch(() => null)
+      break
     }
     // ⚠️ 날짜 커서는 **그날을 다 훑었을 때만** 넘긴다 — 예산으로 중간에 끊겼는데 넘기면 그날 뒤쪽 업종이
     //   영구 누락된다(멱등 upsert 라 이어받기 재조회는 안전).

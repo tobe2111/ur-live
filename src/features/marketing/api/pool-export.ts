@@ -39,12 +39,16 @@ export function csvResponse(opts: {
   header: readonly string[]
   rows: readonly (readonly unknown[])[]
   cap: number
+  /** 파일 맨 아래에 덧붙일 안내(도장·남은 건수 등). 절단 고지와 **함께** 나간다. */
+  notes?: readonly string[]
 }): Response {
   const lines = [opts.header.join(',')]
   for (const r of opts.rows) lines.push(r.map(csvCell).join(','))
   if (opts.rows.length >= opts.cap) {
     lines.push(`⚠️ ${opts.cap}건에서 잘렸습니다 — 화면 필터를 더 좁혀 다시 내보내세요(내보내기는 화면 필터를 그대로 따릅니다)`)
   }
+  // 🔔 `cap` 과 무관한 안내 — 묶음 다운로드는 상한에 안 닿아도 "몇 명 남았나"를 말해야 한다.
+  for (const n of opts.notes || []) lines.push(csvCell(n))
   return new Response(`﻿${lines.join('\n')}`, {
     headers: { 'Content-Type': 'text/csv;charset=utf-8', 'Content-Disposition': `attachment; filename="${opts.filename}"` },
   })
