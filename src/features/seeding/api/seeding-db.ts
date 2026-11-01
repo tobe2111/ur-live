@@ -10,8 +10,10 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import {
-  DEFAULT_FREE_PASSES, PENALTY_WINDOW_DAYS, normalizeOffer, penaltyBlockDays, type SeedingOffer,
+  DEFAULT_FREE_PASSES, PENALTY_WINDOW_DAYS, SLOT_COUNTED_STATUSES, normalizeOffer, penaltyBlockDays,
+  sqlIn, type SeedingOffer,
 } from '../../../shared/seeding'
+import { approvedSellerProductSql, consumerVisibleProductSql } from '../../../shared/db/consumer-visible-product'
 
 export const SEEDING_TABLES_SQL = [
   `CREATE TABLE IF NOT EXISTS seeding_offers (
@@ -152,6 +154,72 @@ export async function saveOffer(DB: D1Database, productId: number, sellerId: num
     productId, sellerId, offer.enabled ? 1 : 0, offer.slots_per_month, offer.platforms.join(','), offer.min_followers,
     offer.post_requirement, offer.post_deadline_days, offer.offer_note || null,
   ).run()
+}
+
+/**
+ * 🔎 **지금 신청할 수 있는 체험 목록** — 모집 깔때기의 빠진 조각 (2026-11-01)
+ *
+ * 왜 필요했나: 2026-10-31 에 신청·승인·신청권까지 다 만들었는데 **인플루언서가 "무엇을 신청할 수 있는지"
+ * 볼 곳이 없었다.** 상세(`/pass/:id`)의 [이 이용권 팔아보기] 에서만 신청되므로, 그 상세 주소를 이미
+ * 아는 사람만 신청할 수 있었다 — `/my-seeding` 의 빈 상태 문구가 *"이용권 상세의 … 에서 신청할 수
+ * 있어요"* 라고 말하면서 **링크를 못 주고 있었던** 것이 그 증거다.
+ *
+ * ## 규율
+ * - 소비자에게 **보여도 되는 상품**만 — 도매 원본 제외(`consumerVisibleProductSql`) · 승인된 매장만
+ *   (`approvedSellerProductSql`). 둘 다 SSOT 를 지난다(손으로 베끼면 메인 피드와 갈린다).
+ * - **자리가 남은 것만**(이번 달 모집 인원 − 세는 상태 수). 자리가 0 이면 목록에서 빠진다 —
+ *   신청 버튼을 눌렀을 때 거절되는 쪽이 더 나쁘다.
+ * - 자격(팔로워·패널티·중복)은 **여기서 판정하지 않는다** — 그건 상세의 `checkEligibility` 가 한다.
+ *   이 목록은 로그인 없이도 보이고(모집 메일의 착지), 판정은 한 곳에만 둔다.
+ * - 상세 주소는 응답에 **담지 않는다**. `category`·`deal_only` 를 그대로 주고 화면이 `detailHref`
+ *   SSOT 로 만든다 — 주소 규칙이 두 벌이 되면 같은 상품이 두 URL 로 갈린다.
+ */
+export interface OpenOfferRow {
+  product_id: number; name: string; image_url: string | null; price: number; original_price: number | null
+  category: string | null; deal_only: number | null; restaurant_name: string | null; restaurant_address: string | null
+  platforms: string[]; min_followers: number; slots_left: number; post_requirement: string; post_deadline_days: number
+}
+
+export async function listOpenOffers(DB: D1Database, limit = 40): Promise<OpenOfferRow[]> {
+  const lim = Math.max(1, Math.min(60, Math.floor(Number(limit) || 40)))
+  const r = await DB.prepare(
+    `SELECT o.product_id, o.platforms, o.min_followers, o.slots_per_month, o.post_requirement, o.post_deadline_days,
+            p.name, p.image_url, p.price, p.original_price, p.category, p.deal_only,
+            p.restaurant_name, p.restaurant_address,
+            (SELECT COUNT(*) FROM seeding_applications a
+              WHERE a.product_id = o.product_id AND a.month_key = ?
+                AND a.status IN ${sqlIn(SLOT_COUNTED_STATUSES)}) AS used
+       FROM seeding_offers o
+       JOIN products p ON p.id = o.product_id
+      WHERE o.enabled = 1
+        AND COALESCE(p.is_active, 0) = 1
+        AND ${consumerVisibleProductSql('p')}
+        AND ${approvedSellerProductSql('p')}
+      ORDER BY used ASC, COALESCE(p.sold_count, 0) DESC, p.id DESC
+      LIMIT ?`,
+  ).bind(monthKeyKst(), lim).all<Record<string, unknown>>().catch(() => null)
+
+  return (r?.results ?? []).flatMap((row) => {
+    const offer = normalizeOffer({ ...row, platforms: String(row.platforms || '').split(',') })
+    const left = offer.slots_per_month - (Number(row.used) || 0)
+    if (!(left > 0)) return []
+    return [{
+      product_id: Number(row.product_id),
+      name: String(row.name ?? ''),
+      image_url: (row.image_url as string | null) ?? null,
+      price: Number(row.price) || 0,
+      original_price: row.original_price == null ? null : Number(row.original_price) || null,
+      category: (row.category as string | null) ?? null,
+      deal_only: row.deal_only == null ? null : Number(row.deal_only),
+      restaurant_name: (row.restaurant_name as string | null) ?? null,
+      restaurant_address: (row.restaurant_address as string | null) ?? null,
+      platforms: offer.platforms,
+      min_followers: offer.min_followers,
+      slots_left: left,
+      post_requirement: offer.post_requirement,
+      post_deadline_days: offer.post_deadline_days,
+    }]
+  })
 }
 
 // ── 신청권 ────────────────────────────────────────────────────────
