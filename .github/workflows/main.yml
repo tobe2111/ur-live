@@ -339,12 +339,28 @@ jobs:
           else
             echo "⚠️ 활성 공구 없음 — 공구 상세 smoke skip"
           fi
-          P_ID=$(curl -s --max-time 10 "$PROD/api/products?limit=1" | python3 -c "import sys,json;d=json.load(sys.stdin);items=(d.get('data') or {}).get('products') or d.get('data') or d.get('products') or [];print(items[0]['id'] if isinstance(items,list) and items else '')" 2>/dev/null || echo "")
-          if [ -n "$P_ID" ]; then
-            check "/api/products/$P_ID" "Product detail (id=$P_ID)"
-          else
-            echo "⚠️ 상품 목록 파싱 실패 — 상품 상세 smoke skip"
-          fi
+          # 🩸 2026-11-01: 종전 파서는 YAML 안 python 일행이었고
+          #   `(d.get('data') or {}).get('products') or …` 였다. 라이브 `/api/products` 는
+          #   `{success, data:[…], pagination}` 이라 **`data` 가 리스트**다(실측) → 리스트는 truthy 라
+          #   첫 분기 `.get` 에서 AttributeError 가 나고 뒤의 `or` 폴백 셋은 **도달조차 못 했다**.
+          #   그 예외를 `2>/dev/null` 이 숨기고 `|| echo ""` 가 빈 값으로 바꿔 "파싱 실패 → skip" 이 됐다.
+          #   ⇒ 이 검사는 **모든 배포에서 조용히 건너뛰어졌다**(2026-06-10 교환권 상세 500 사고를
+          #   잡으려고 만든 바로 그 검사다 — 목록은 멀쩡한데 상세만 깨지는 회귀).
+          #   판정을 `scripts/first-list-id.mjs`(순수 함수 + 시험)로 빼고, "못 찾았다" 와 "없다" 를
+          #   가른다. **못 재는 것은 통과가 아니다** — 못 찾으면 실패시킨다.
+          P_OUT=$(curl -s --max-time 10 "$PROD/api/products?limit=1" | node scripts/first-list-id.mjs 2>&1 || echo "__FAIL__ node 실행 실패")
+          case "$P_OUT" in
+            __EMPTY__)
+              echo "⚠️ 활성 상품 없음 — 상품 상세 smoke skip"
+              ;;
+            ''|*[!0-9]*)
+              echo "❌ 상품 목록에서 id 를 못 꺼냈다 — $P_OUT"
+              FAIL=$((FAIL + 1)); FAIL_DETAILS="$FAIL_DETAILS\n  - products 목록에서 id 추출: $P_OUT"
+              ;;
+            *)
+              check "/api/products/$P_OUT" "Product detail (id=$P_OUT)"
+              ;;
+          esac
           check "/api/wholesale/mall" "Wholesale mall info"
 
           # 🔗 초대코드 클레임(POST) — 스키마 ALTER(claim_code/linked_user_id/joined_at)가 prod D1 에 실제로

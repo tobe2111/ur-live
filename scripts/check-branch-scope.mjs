@@ -83,9 +83,25 @@ if (changedFiles === 0) {
   const headSha = sh('git rev-parse HEAD').trim()
   const baseSha = sh(`git rev-parse ${base}`).trim()
   if (headSha !== baseSha) {
-    console.error(`❌ branch-scope: 검사 대상이 0개인데 HEAD(${headSha.slice(0, 8)}) != ${base}(${baseSha.slice(0, 8)}) 다.`)
-    console.error('   base ref 가 낡았을 가능성이 크다(통과 아님). → git fetch origin main 후 다시 실행할 것.')
-    process.exit(1)
+    // 🩸 2026-11-01: 종전엔 여기서 **무조건** 실패시켰고, 그 처방(`git fetch origin main`)이
+    //   해결하지 못하는 경우가 있었다(실측 — fetch 후에도 같은 빨간불). 0건의 원인이 둘이다:
+    //     ⓐ base ref 가 낡았다 → 비교 대상이 틀렸으니 통과시키면 안 된다(종전 그대로)
+    //     ⓑ HEAD 가 base 의 **자손이고 내용 변화가 0** 이다(내용 없는 머지 커밋 · 빈 커밋)
+    //        → 3점 diff 의 merge-base 가 곧 base 라 2점 diff 와 같고, "비었다" 가 **참값**이다.
+    //          HEAD 의 트리가 base 의 트리와 같다는 뜻이므로 이 브랜치가 들여온 것이 literally 0 —
+    //          주입본이 숨을 자리가 구조적으로 없다.
+    //   구분 기준은 **base 가 HEAD 의 조상인가** 하나다. 가드 자신이 겪은 낡은-base 사례는
+    //   0건이 아니라 **608파일**로 나타났다(위 주석) — 즉 ⓐ 는 이 분기에 거의 오지 않는다.
+    //   ⚠️ 이 완화는 "0 = 통과 아님" 을 **약화하지 않는다**: 갈라진 경우(ⓐ)는 그대로 실패다.
+    let baseIsAncestor = false
+    try { sh(`git merge-base --is-ancestor ${baseSha} ${headSha}`); baseIsAncestor = true } catch { /* 갈라졌다 */ }
+    if (!baseIsAncestor) {
+      console.error(`❌ branch-scope: 검사 대상이 0개인데 HEAD(${headSha.slice(0, 8)}) 가 ${base}(${baseSha.slice(0, 8)}) 의 자손이 아니다.`)
+      console.error('   base ref 가 낡았거나 이력이 갈라졌다(통과 아님). → git fetch origin main 후 다시 실행할 것.')
+      process.exit(1)
+    }
+    console.log(`✅ branch-scope: HEAD(${headSha.slice(0, 8)}) 가 ${base} 의 자손인데 내용 변화가 0 — 검사할 변경이 없다.`)
+    process.exit(0)
   }
   console.log(`✅ branch-scope: ${base} 와 동일한 커밋 — 검사할 변경이 없다.`)
   process.exit(0)
