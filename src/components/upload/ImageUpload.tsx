@@ -10,6 +10,7 @@
  *   - 업로드 성공 시 URL 반환 (onChange callback)
  *   - 기존 URL 표시 (value prop)
  */
+import { uploadSizedImage } from '@/lib/image-sized'
 import { useState, useRef } from 'react'
 import { Upload, X, ImageIcon, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -64,6 +65,12 @@ export default function ImageUpload({
 
     setUploading(true)
     try {
+      // 🖼️ 2026-11-01: 먼저 브라우저가 세 크기로 줄여 올린다(변환 한도 0 — `lib/image-sized.ts`). 안 되면 아래 종전 경로.
+      const sizedUrl = await uploadSizedImage(file, async (fd) => {
+        const r = await fetch('/api/upload/image-sized', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd })
+        return r.ok ? r.json() : null
+      }).catch(() => null)
+      if (sizedUrl) { onChange(sizedUrl); toast.success('업로드 완료'); return }
       // 1600px · WebP 로 줄이고(천장 안 GIF 는 움직임 보존), 줄여도 1MB 를 넘으면 413 전에 우리 문구로 멈춘다.
       const optimized = await prepareImageForUpload(file, { size: PREP_SIZE })
       const fd = new FormData()

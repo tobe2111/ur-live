@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { uploadSizedImage } from '@/lib/image-sized'
 import { useTranslation } from '@/lib/i18n-lite'
 import { X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -55,6 +56,15 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
     setBusy(true)
     const added: string[] = []
     for (const f of Array.from(files).slice(0, room)) {
+      // 🖼️ 2026-11-01: 먼저 세 크기로 줄여 올린다(변환 한도 0). 안 되면 아래 종전 경로.
+      const sizedUrl = await uploadSizedImage(f, async (fd) => {
+        const token = getSellerToken()
+        const res = await api.post('/api/upload/image-sized', fd, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Content-Type': 'multipart/form-data' },
+        })
+        return res.data
+      }).catch(() => null)
+      if (sizedUrl) { added.push(sizedUrl); continue }
       let compressed: File
       try {
         // 🗜️ 2026-10-14: 압축 전 5MB 가드 제거 — 판정은 공용 준비 헬퍼(천장 1MB)가 한다.
