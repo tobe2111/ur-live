@@ -107,46 +107,20 @@ export default function MobileHomePage() {
    *   사진은 아래로 바탕색에 녹는다(라이트=흰색, 다크=다크 바탕색).
    */
   const hero = regionHeroFor({ regionKey: region.regionKey, loc: userLoc })
+  const heroEndRef = useRef<HTMLDivElement | null>(null)
+  const [heroPassed, setHeroPassed] = useState(false)
+  useEffect(() => {
+    const el = heroEndRef.current
+    if (!hero || !el || typeof IntersectionObserver === 'undefined') { setHeroPassed(false); return }
+    const io = new IntersectionObserver(([e]) => setHeroPassed(!e.isIntersecting && e.boundingClientRect.top < 0))
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hero?.slug]) // eslint-disable-line react-hooks/exhaustive-deps
   const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
   const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
 
-  return (
-    <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
-      {/* 🩸 2026-10-13 — 이 화면엔 제목 요소가 하나도 없었다(아래 2026-08-31 메모대로 **보이는**
-          머리글을 일부러 뺀 결과인데, 요소까지 같이 사라졌다). 보이는 디자인은 그대로 두고
-          `sr-only` 로 되살린다 — 박스 0이라 레이아웃 무영향이고, 워커 첫 화면과 **같은 값**이라
-          마운트 때 제목이 바뀌지 않는다. */}
-      <h1 className="sr-only">{HOME_H1}</h1>
-      {/* 🔁 2026-10-14 — 제목·설명을 **표에서 읽는다.** 손으로 적어 둔 값이 표와 갈려 있어서
-          **같은 URL 이 크롤러에 따라 다른 제목**을 냈다: JS 를 렌더하는 Googlebot 은 helmet 이
-          덮은 이 값을, Yeti 는 서버가 주입한 표의 값을 봤다(실측 두 값이 달랐다).
-          `jsonLd` 는 홈 전용이라 그대로 넘긴다. */}
-      <SEO
-        title={CONSUMER_SURFACE_SEO['/'].title}
-        description={CONSUMER_SURFACE_SEO['/'].description}
-        url="/"
-        jsonLd={[organizationJsonLd, webSiteJsonLd]}
-      />
-
-      {/* 상단 — 2026-08-31 (대표 "더 대기업 수준의 완성도"): 크롬 4층 → 2층.
-          ■ 무엇이 문제였나 (첫 400px 을 세어 보고 알았다)
-            컨트롤이 9개였고 **그중 다섯이 전부 같은 형태**였다 — 테두리 두른 둥근 알약
-            (지역·현위치·목록/지도·정렬) + 아이콘+라벨 세로 조합(카테고리 5개).
-            형태가 하나뿐이면 화면은 "무엇이 중요한지"를 말하지 못한다. 그게 AI 티의 정체다.
-          ■ 무엇을 없앴나 — 장식이 아니라 **줄**을 없앴다
-            · h2 "가까운 동네 딜" + 부제 "이용권 · 공동구매 · 교환권을 할인가로" → 삭제.
-              위치(동네 이름)가 곧 이 화면의 제목이다(당근·배민이 그렇다). 설명 부제는
-              정보가 0인데 한 줄을 먹는다.
-            · 지역 알약의 테두리·핀 아이콘, 현위치 알약 → 제목 + 옆의 작은 아이콘으로 흡수.
-            · 카테고리 아이콘 5개 → 텍스트만. 선 아이콘 + 11px 라벨 조합이 가장 "만들어진" 티가 난다.
-              활성은 잉크 + 밑줄로 — 색이 아니라 무게로 말한다(로즈는 하단 탭 하나에만 남긴다). */}
-      <div
-        data-region-hero={hero?.slug}
-        className={hero
-          ? 'sticky top-0 z-30 overflow-hidden ur-region-hero'
-          : 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]'}
-      >
-        {hero && <RegionHeroBg key={hero.slug} src={hero.src} />}
+  /** 🌤️ 로고 줄·카테고리 줄 — 사진 머리 안과 스크롤 뒤 고정 막대 **두 곳**이 같은 요소를 쓴다(갈리지 않게). */
+  const logoRow = (
         <div className="px-4 h-11 flex items-center justify-between gap-2">
           <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={17} /></Link>
           {/* ⚫ 2026-10-14 (대표 *"메인의 검색, 장바구니, 알림 버튼도 마찬가지로 똑같이"* — 하단 탭과 같은 규칙):
@@ -163,15 +137,9 @@ export default function MobileHomePage() {
             </button>
           </div>
         </div>
-
-        {/* 위치 = 제목. 🗺️ 2026-10-14 (대표 확정 다안·A) — 옆의 [목록|지도] 전환은 걷었다.
-            지도로 가는 길은 화면 아래 떠 있는 **지도 알약**(맨 아래 `MapPill`) 하나다. */}
-        <div className="px-4 pt-1 pb-3">
-          <div className="min-w-0">
-            <PcHomeLocationBar tone="title" value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} locatedLabel={dong?.dong} />
-          </div>
-        </div>
-
+  )
+  const catRow = (
+        <>
         {/* 카테고리 — 라벨 SSOT 는 PC 헤더와 같은 `DEAL_CATS`(둘이 갈리지 않게).
 
             🎬 2026-09-09 (대표 지시 — 캡처에 빨간 박스로 자리를 찍어 줬다): 이 줄 **오른쪽 끝**에
@@ -222,7 +190,68 @@ export default function MobileHomePage() {
           유어쇼츠<span className="-ml-[3px] text-brand-text">.</span>
         </Link>
         </div>
+        </>
+  )
+
+  return (
+    <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
+      {/* 🩸 2026-10-13 — 이 화면엔 제목 요소가 하나도 없었다(아래 2026-08-31 메모대로 **보이는**
+          머리글을 일부러 뺀 결과인데, 요소까지 같이 사라졌다). 보이는 디자인은 그대로 두고
+          `sr-only` 로 되살린다 — 박스 0이라 레이아웃 무영향이고, 워커 첫 화면과 **같은 값**이라
+          마운트 때 제목이 바뀌지 않는다. */}
+      <h1 className="sr-only">{HOME_H1}</h1>
+      {/* 🔁 2026-10-14 — 제목·설명을 **표에서 읽는다.** 손으로 적어 둔 값이 표와 갈려 있어서
+          **같은 URL 이 크롤러에 따라 다른 제목**을 냈다: JS 를 렌더하는 Googlebot 은 helmet 이
+          덮은 이 값을, Yeti 는 서버가 주입한 표의 값을 봤다(실측 두 값이 달랐다).
+          `jsonLd` 는 홈 전용이라 그대로 넘긴다. */}
+      <SEO
+        title={CONSUMER_SURFACE_SEO['/'].title}
+        description={CONSUMER_SURFACE_SEO['/'].description}
+        url="/"
+        jsonLd={[organizationJsonLd, webSiteJsonLd]}
+      />
+
+      {/* 상단 — 2026-08-31 (대표 "더 대기업 수준의 완성도"): 크롬 4층 → 2층.
+          ■ 무엇이 문제였나 (첫 400px 을 세어 보고 알았다)
+            컨트롤이 9개였고 **그중 다섯이 전부 같은 형태**였다 — 테두리 두른 둥근 알약
+            (지역·현위치·목록/지도·정렬) + 아이콘+라벨 세로 조합(카테고리 5개).
+            형태가 하나뿐이면 화면은 "무엇이 중요한지"를 말하지 못한다. 그게 AI 티의 정체다.
+          ■ 무엇을 없앴나 — 장식이 아니라 **줄**을 없앴다
+            · h2 "가까운 동네 딜" + 부제 "이용권 · 공동구매 · 교환권을 할인가로" → 삭제.
+              위치(동네 이름)가 곧 이 화면의 제목이다(당근·배민이 그렇다). 설명 부제는
+              정보가 0인데 한 줄을 먹는다.
+            · 지역 알약의 테두리·핀 아이콘, 현위치 알약 → 제목 + 옆의 작은 아이콘으로 흡수.
+            · 카테고리 아이콘 5개 → 텍스트만. 선 아이콘 + 11px 라벨 조합이 가장 "만들어진" 티가 난다.
+              활성은 잉크 + 밑줄로 — 색이 아니라 무게로 말한다(로즈는 하단 탭 하나에만 남긴다). */}
+      <div
+        data-region-hero={hero?.slug}
+        className={hero
+          ? 'relative z-30 overflow-hidden ur-region-hero'
+          : 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]'}
+      >
+        {hero && <RegionHeroBg key={hero.slug} src={hero.src} />}
+        {logoRow}
+        {/* 위치 = 제목. 🗺️ 2026-10-14 (대표 확정 다안·A) — 옆의 [목록|지도] 전환은 걷었다.
+            지도로 가는 길은 화면 아래 떠 있는 **지도 알약**(맨 아래 `MapPill`) 하나다. */}
+        <div className="px-4 pt-1 pb-3">
+          <div className="min-w-0">
+            <PcHomeLocationBar tone="title" value={region} onChange={handleRegion} onLocate={handleLocate} located={!!userLoc} locatedLabel={dong?.dong} />
+          </div>
+        </div>
+
+        {catRow}
+        {/* 🌤️ 2026-11-01 — 이 점이 화면 위로 지나가면 사진 머리를 접고 아래 '고정 두 줄'을 띄운다. */}
+        {hero && <div ref={heroEndRef} aria-hidden className="absolute bottom-0 h-px w-full" />}
       </div>
+      {/* 🌤️ 2026-11-01 대표 확정(스크롤 시안 ③) — 사진 머리가 있으면 그 머리는 페이지와 함께 스크롤되고,
+          지나가면 로고 줄 + 카테고리 줄 두 줄만 단색 바탕으로 위에 고정한다(사진이 화면을 계속 차지하지 않게).
+          사진 없는 지역은 종전처럼 머리 전체가 sticky 라 이 막대가 안 뜬다. */}
+      {hero && heroPassed && (
+        <div data-home-compact-bar className="fixed inset-x-0 top-0 z-30 bg-surface shadow-lift">
+          {logoRow}
+          <div className="pt-1">{catRow}</div>
+        </div>
+      )}
 
       {/* 어드민 편성(섹션·배너) — 카테고리를 고르면 숨긴다(PC 홈과 같은 규칙: 화면 맨 위가 그 카테고리여야 한다). */}
       {HOME_SHOWCASE_ENABLED && category === 'all' && (

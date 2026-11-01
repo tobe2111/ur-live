@@ -17,7 +17,7 @@ export type RouteSurface =
   | 'home' | 'homePc' | 'gbDetail' | 'voucherDetail' | 'product'
   | 'guestUShop' | 'guestMy' | 'guestPass'
   | 'cart' | 'search' | 'faq' | 'stays' | 'stayDetail' | 'region'
-  | 'linkshop' | 'vouchers' | 'browse' | 'map' | 'urshorts' | 'blog' | 'blogPost'
+  | 'linkshop' | 'vouchers' | 'browse' | 'map' | 'urshorts' | 'blog' | 'blogPost' | 'life' | 'lifePro'
 
 /**
  * 홈이 PC 홈을 그리는 경계 — `HomeRoute` 가 이 쿼리로 두 홈을 고른다(Tailwind \`md\`).
@@ -54,5 +54,7 @@ export function routeSurface(pathname: string, mobileUa: boolean, authed: boolea
   if (p === '/urshorts') return 'urshorts'
   if (p === '/blog') return 'blog' // 🏨 2026-10-15 색인 진입점(generate-route-chunk-map PRELOAD_ONLY_ROUTES)
   if (p.startsWith('/blog/')) return 'blogPost'
+  if (p === '/life') return 'life' // 🏠 2026-10-26 생활 허브·업체 등록(색인 진입점 — PRELOAD_ONLY_ROUTES)
+  if (p === '/life/pro') return 'lifePro'
   return null
 }

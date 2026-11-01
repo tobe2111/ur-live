@@ -52,8 +52,14 @@ describe('시안 8 — 지역 배경', () => {
     const src = readCode('src/pages/mobile-home/MobileHomePage.tsx')
     expect(src).toContain('regionHeroFor({ regionKey: region.regionKey, loc: userLoc })')
     // 🌤️ 2026-11-01 대표 "밝은 사진 + 그라데이션, 지금은 어둡기만" — 사진 위에서 dark 를 강제하지 않는다.
-    expect(src).toMatch(/hero\s*\?\s*'sticky top-0 z-30/)
-    expect(src).not.toMatch(/hero\s*\?\s*'dark /)
+    // 🌤️ 2026-11-01 대표 확정(스크롤 시안) — 사진 머리는 고정하지 않고 페이지와 함께 스크롤,
+    //   지나가면 로고 줄 + 카테고리 줄만 단색 바탕으로 고정한다(같은 요소 두 곳 재사용).
+    expect(src).toMatch(/hero\s*\?\s*'relative z-30 overflow-hidden ur-region-hero'/)
+    expect(src).not.toMatch(/hero\s*\?\s*'(dark )?sticky/)
+    expect(src).toMatch(/hero && heroPassed && \(/)
+    expect(src).toMatch(/data-home-compact-bar className="fixed inset-x-0 top-0 z-30 bg-surface shadow-lift"/)
+    expect(src.match(/\{logoRow\}/g)?.length).toBe(2)
+    expect(src.match(/\{catRow\}/g)?.length).toBe(2)
     expect(src).not.toContain('bg-gray-900">')
     expect(src).toMatch(/loading="lazy"[^>]*fetchPriority="low"/)
     expect(src).toContain('REGION_HERO_FADE_LIGHT')

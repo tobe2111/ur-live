@@ -69,6 +69,9 @@ export const PRELOAD_ONLY_ROUTES = {
   guestMy: ['src/pages/guest/GuestMyPage.tsx'],
   guestPass: ['src/pages/guest/GuestPassPage.tsx'],
   guestUShop: ['src/pages/guest/GuestUrShopPage.tsx'],
+  // 🏠 2026-10-26 (대표 "/life/pro 로딩이 상대적으로 많이 길어"): 생활 허브·업체 등록 — 색인되는 하드로드 진입점.
+  life: ['src/pages/life/LifePage.tsx'],
+  lifePro: ['src/pages/life/LifeProPage.tsx'],
 }
 // head 링크 스팸 방지 캡(핵심 큰 청크 우선 — closure 순서 = 페이지 청크 → 공유 청크).
 // 🗺️ 2026-10-19 (대표 *"지도랑 블로그도 상세히"*) 10 → 16: 이 목록은 그 페이지의 **정적 import 폐쇄**라 잘린 청크도
