@@ -3313,7 +3313,7 @@ canvas {
   {
     name: '홈 카드 preload 가 렌더와 다른 URL 을 만든다(같은 사진을 두 번 받는다)',
     file: 'src/components/home/HomeSections.tsx',
-    find: 'const cardImgWidth = isLgViewport ? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE',
+    find: 'const cardImgWidth = homeCardImgWidth(isLgViewport, isRowViewport, !rail)',
     replace: 'const cardImgWidth = isLgViewport ? 480 : 240',
     test: 'src/tests/unit/home-card-preload.test.ts',
     why:
@@ -9471,8 +9471,9 @@ canvas {
   {
     name: '유어샵 안3 — 헤더가 방문자에게 팔로우 버튼을 준다',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: "{canEdit ? (",
-    replace: "{!canEdit && <button type=\"button\" className={btnCls}>팔로우</button>}\n            {canEdit ? (",
+    // 🔄 2026-11-01 재조준(2안): 방문자 예약이 사라지며 삼항 → `&&`. 결함(팔로우 버튼)은 그대로.
+    find: "{canEdit && (",
+    replace: "{!canEdit && <button type=\"button\" className={btnCls}>팔로우</button>}\n      {canEdit && (",
     test: 'src/tests/unit/ushop-a3-p1.test.ts',
     why:
       '2026-09-02 대표: "그냥 방문자는 안보이면 되잖아". 시안 목업에 있던 "방문자일 때: 팔로우" 띠는 ' +

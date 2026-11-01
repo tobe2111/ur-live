@@ -47,6 +47,7 @@ import { snsUrl } from '@/utils/sns-url'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { SHARE_MASCOT_SRC } from '@/shared/ushop-share-card'
+import { ushopNameSizePx } from '@/shared/ushop-name-size'
 
 interface CuratorHeaderProps {
   curator: {
@@ -99,7 +100,7 @@ const manageBtnCls = 'h-9 px-3 rounded-full bg-brand text-white text-[15px] font
  *   **같은 그림**(`SHARE_MASCOT_SRC`)이라 카톡방에서 본 얼굴과 들어와서 본 얼굴이 같다.
  *   SNS 는 이름 줄 오른쪽 아이콘 → **이름 아래 줄의 작은 이름표**로 내려간다(그 줄 왼쪽은 숫자 한 줄).
  */
-const avatarCls = 'w-14 h-14 rounded-full overflow-hidden bg-wash shrink-0'
+const avatarCls = 'w-10 h-10 rounded-full overflow-hidden bg-wash shrink-0'
 /** 이름표 하나의 탭 영역(36px — 2026-09-16 의 하한 34px 를 지킨다). 보이는 알약은 안쪽 `snsPillCls`. */
 const snsHitCls = 'h-9 inline-flex items-center active:opacity-70'
 const snsPillCls = 'h-8 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[13px] font-medium text-gray-600 dark:text-gray-300'
@@ -113,7 +114,10 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
   const productsN = counts?.products ?? 0
   const sold = soldTotal ?? 0
   const showStats = pinsN > 0 || productsN > 0 || sold > 0
-  const photo = curator.profile_image ? cfImage(curator.profile_image, { width: 112, height: 112, fit: 'cover' }) : null
+  const photo = curator.profile_image ? cfImage(curator.profile_image, { width: 80, height: 80, fit: 'cover' }) : null
+  // 🏷️ 2026-11-01 (대표 확정 2안): 이름 글자 크기는 **글자만 보고** 정한다 — 워커 첫 화면이
+  //   같은 함수를 쓰므로 마운트 때 크기가 안 바뀌고, 따라서 머리 높이도 안 튄다.
+  const nameSize = ushopNameSizePx(curator.name)
 
   /** SNS 이름표 — 이름 아래 줄 오른쪽. 브랜드 이름은 번역하지 않는다.
    *  🔗 글리프는 `icons/sns-logos` 공용 부품(2026-11-01 — 체험 연동 목록이 같은 로고를 쓴다. path 를
@@ -147,76 +151,85 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
     </>
   ) : null
 
+  /**
+   * ⤴️ 버튼 묶음 — 2026-11-01 (대표 확정 **2안**) 부터 **로고 줄 오른쪽**에 산다.
+   *   종전엔 이름과 같은 줄이라 이름 칸을 132px 로 조였다(그게 두 줄의 원인이다).
+   *   🪑 2026-10-09 의 **`관리` 자리 예약은 여기서 사라진다** — 그 예약이 지키던 것은
+   *      *"이름 칸 폭이 주인/방문자에서 같다"* 였는데, 버튼이 이름 줄을 떠난 지금은 **구조적으로**
+   *      같다(이름 칸 = 폭 − 얼굴 − gap, 버튼과 무관). 줄 높이도 공유(h-9)와 관리(h-9)가 같아
+   *      안 바뀐다. 예약을 남기면 PC 프로필 열에서 공유 아이콘이 빈 알약만큼 **왼쪽으로 밀린다**(실측).
+   *      ⚠️ 버튼을 이름 줄로 되돌리면 그 예약도 같이 되살려야 한다.
+   */
+  const cluster = (
+    <div className="ml-auto flex items-center gap-2 shrink-0">
+      <button
+        type="button"
+        onClick={onCopyLink}
+        className={iconBtnCls}
+        aria-label={t('curator.share', { defaultValue: '공유' })}
+      >
+        <Share2 className="w-[18px] h-[18px]" strokeWidth={1.6} aria-hidden="true" />
+      </button>
+      {canEdit && (
+        <Link to="/u/me/manage" className={manageBtnCls}>
+          <EditIcon size={17} aria-hidden="true" />
+          {t('curator.manage', { defaultValue: '관리' })}
+        </Link>
+      )}
+    </div>
+  )
+
   return (
     <header className="bg-surface dark:bg-warm">
       <div className="max-w-3xl mx-auto">
-        {/* ① 브랜드 바 — 로고 = 홈. 표시로 꾸미지 않는다(로고=홈은 웹 관례라 밑줄·화살표가 군더더기다).
-            🖥️ 2026-09-28 (대표 *"둘 다 고치고"*): **PC 에서는 안 그린다.** lg+ 에서는 화면 맨 위에
+        {/* ① 맨 윗줄 — [로고(모바일만)] … [공유 · 관리].
+            🖥️ **로고는 PC 에서 안 그린다**(2026-09-28 대표 *"둘 다 고치고"*): lg+ 에는 화면 맨 위에
             전역 네비(`DesktopTopNav` — `urdeal.` + 검색·찜·장바구니·알림)가 이미 있는데 이 줄이
             좌측 프로필 카드 **안에서** 같은 말을 또 해서, 1440px 실측에서 소비자 상단 바가
-            화면에 **두 번** 있었다. 이 줄은 a3 의 **모바일용** 브랜드 바다.
-            ⚠️ `?embed=1`(깨끗한 매장 링크)은 PC 에서도 전역 네비가 없지만, 그 모드의 목적 자체가
-               "유어딜 chrome 을 안 보여 준다" 라 여기서도 안 그리는 쪽이 맞다. */}
-        <div className="lg:hidden flex items-center px-5 pt-3">
-          <Link to="/" aria-label={t('nav.homeAria', { defaultValue: '유어딜 홈' })} className="active:opacity-70">
+            화면에 **두 번** 있었다. ⚠️ `?embed=1` 도 마찬가지로 안 그린다(그 모드의 목적이
+            "유어딜 chrome 을 안 보여 준다" 다).
+            🔄 2026-11-01 (대표 확정 **2안**): 줄 **자체는 PC 에서도 그린다** — 버튼 묶음이 여기로
+            올라왔기 때문이다. PC 에서는 로고 없이 버튼만 오른쪽에 선다. 로고 중복이라는 09-28 의
+            불변식은 `lg:hidden` 이 그대로 지킨다(가드가 로고를 앵커로 본다). */}
+        <div className="flex items-center px-5 pt-3">
+          <Link to="/" aria-label={t('nav.homeAria', { defaultValue: '유어딜 홈' })} className="lg:hidden active:opacity-70">
             <UrDealLogo size={19} />
           </Link>
+          {cluster}
         </div>
 
-        {/* ③④ 상호명 줄 — [얼굴] [이름·소개] [공유 · 관리]. 그 위 선 없음(면으로 나뉜다). */}
-        {/* 🖥️ 2026-10-25 (대표 *"왜 정지원 이름이 1줄로 안되고 2줄이지?"*): PC 프로필 열은 300px 이라 [얼굴 56 · 공유 · 관리]가
-            한 줄에 서면 이름 칸이 ~60px 만 남아 '정지/원' 으로 끊겼다 → lg 에서만 버튼 줄을 이름 아래로 내린다(폰 불변). */}
-        <div className="flex items-center gap-4 px-5 pt-4 lg:flex-wrap lg:gap-y-3">
+        {/* ③④ 상호명 줄 — [얼굴] [이름·소개]. 그 위 선 없음(면으로 나뉜다).
+            🏷️ 2026-11-01 (대표 확정 **2안**, 신고 *"리스터코퍼레이션 이렇게 길게 하니까 두줄이 되네?"*):
+            버튼 묶음이 윗줄로 올라가 이 줄은 **얼굴 + 이름**뿐이다. 390px 실측으로 이름 칸이
+            **132 → 294px**(얼굴도 56 → 40). 그래서 두 줄의 원인 자체가 사라졌다.
+            ⚠️ 2026-10-25 의 `lg:flex-wrap`+`lg:basis-full`(PC 에서만 버튼 줄을 아래로)은 **더 필요 없다** —
+            버튼이 아예 다른 줄이라 PC 300px 열에서도 이름 칸이 244px 다. 그 장치를 되살리지 말 것. */}
+        <div className="flex items-center gap-4 px-5 pt-3">
           {/* 👤 얼굴 — 사진이 없으면 유달이(공유 카드와 같은 그림). 장식이라 alt 는 비운다(옆에 이름이 있다). */}
           <div className={avatarCls}>
             {photo ? (
-              <img src={photo} alt="" width={56} height={56} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, curator.profile_image)} />
+              <img src={photo} alt="" width={40} height={40} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, curator.profile_image)} />
             ) : (
-              <img src={SHARE_MASCOT_SRC} alt="" width={56} height={56} className="w-full h-full object-contain" />
+              <img src={SHARE_MASCOT_SRC} alt="" width={40} height={40} className="w-full h-full object-contain" />
             )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 min-w-0">
-              {/* 이름은 이 화면의 정체 자체라 자르지 않고 두 줄까지 허용한다(2026-09-30 실측 — 잘린 이름 사고). */}
-              <h1 className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2 break-keep">{curator.name}</h1>
+              {/* 🏷️ 2026-11-01 (대표 *"아무리 길어도 1줄"*): 크기는 `ushopNameSizePx` 가 글자만 보고 정하고,
+                  그 바닥(15px)으로도 안 들어가는 이름만 말줄임이 받는다. 2026-09-30 의 "두 줄까지 허용"을 대체한다 —
+                  칸이 132 → 294px 로 넓어져 한글 17자까지 한 줄이므로, 두 줄을 허용할 이유가 사라졌다. */}
+              <h1 style={{ fontSize: nameSize }} className="min-w-0 font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] truncate">{curator.name}</h1>
               {accountType === 'business' && <VerifiedSeal size={17} className="shrink-0" />}
             </div>
             {curator.bio && (
-              <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2">{curator.bio}</p>
-            )}
-          </div>
-          <div className="ml-3 flex items-center gap-2 shrink-0 lg:ml-[72px] lg:basis-full">
-            <button
-              type="button"
-              onClick={onCopyLink}
-              className={iconBtnCls}
-              aria-label={t('curator.share', { defaultValue: '공유' })}
-            >
-              <Share2 className="w-[18px] h-[18px]" strokeWidth={1.6} aria-hidden="true" />
-            </button>
-            {canEdit ? (
-              <Link to="/u/me/manage" className={manageBtnCls}>
-                <EditIcon size={17} aria-hidden="true" />
-                {t('curator.manage', { defaultValue: '관리' })}
-              </Link>
-            ) : (
-              /*
-               * 🪑 2026-10-09 — **방문자에게도 이 자리를 비워 둔다**(보이지 않는 같은 버튼).
-               *   서버가 첫 화면을 그리려면(`worker/utils/curator-ssr-body.ts`) 이름 칸의 폭이 **누가 보든
-               *   같아야** 한다 — 폭이 갈리면 `line-clamp-2` 가 1줄↔2줄로 갈려 마운트 때 아래가 밀린다.
-               *   `<span>` + `invisible` + `aria-hidden` — 탭 순서에도 스크린리더에도 안 잡힌다.
-               */
-              <span aria-hidden="true" className={`${manageBtnCls} invisible pointer-events-none`}>
-                <EditIcon size={17} aria-hidden="true" />
-                {t('curator.manage', { defaultValue: '관리' })}
-              </span>
+              <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-1">{curator.bio}</p>
             )}
           </div>
         </div>
 
         {/* 📊 이름 아래 한 줄 — 왼쪽 숫자(이용권 · 누적 구매), 오른쪽 SNS 이름표. 둘 다 없으면 줄 자체가 없다. */}
         {(showStats || hasSns) && (
-          <div className="mt-4 px-5 flex items-center justify-between gap-2">
+          <div className="mt-3 px-5 flex items-center justify-between gap-2">
             <p className="min-w-0 truncate text-[13px] text-gray-500 dark:text-gray-400 tabular-nums">
               {pinsN > 0 && <span>{t('curator.countVouchers', { defaultValue: '이용권' })} <b className="font-medium text-gray-900 dark:text-white">{pinsN}</b></span>}
               {pinsN > 0 && productsN > 0 && <span> · </span>}
@@ -227,7 +240,7 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
             {hasSns && <div className="flex items-center gap-1 shrink-0">{snsLinks}</div>}
           </div>
         )}
-        <div className="h-4" />
+        <div className="h-3" />
       </div>
     </header>
   )

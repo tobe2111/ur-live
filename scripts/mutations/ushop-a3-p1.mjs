@@ -42,7 +42,7 @@ export default [
     name: '🛍️ 안A — 클래스가 PinRow 가 아닌 칩 줄에 붙는다 (앵커가 옳은지)',
     file: 'src/pages/CuratorPage.tsx',
     // 🔁 2026-09-30 재조준(#1581 한 톤 머지) — 칩 줄이 `pt-3 pb-2` → `pt-2 border-b border-rule` 가 됐다.
-    find: 'className="max-w-3xl mx-auto px-5 pt-6 border-b border-rule flex items-center gap-2 empty:hidden"',
+    find: 'className="max-w-3xl mx-auto px-5 pt-3 border-b border-rule flex items-center gap-2 empty:hidden"',
     replace: 'className="max-w-3xl mx-auto px-5 pt-6 border-b border-rule flex items-center gap-2 empty:hidden ur-ushop-rows"',
     test: TEST,
     why:

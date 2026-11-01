@@ -334,6 +334,7 @@
           안 생긴다. 예전엔 양쪽에 hex 를 따로 적어 둬서 한쪽만 바꾸면 이음매가 드러났다.
        `--home-field-rgb` 는 스크림·페이드가 알파를 얹을 때 쓴다: rgb(var(--home-field-rgb) / .88) */
     --home-field: #16181C;
+    --home-band: #EDEFF3;   /* 폰 홈 섹션 사이 띠(안 B) — INK 100 과 같은 값 */
     --home-field-rgb: 22 24 28;
 
     /* 🚦 2026-09-03 상태 색(tone) — **대시보드에서 상태가 안 읽히던 실측 결함의 수리**
@@ -363,6 +364,7 @@
   .dark, [data-theme="dark"] {
     --bg: #11141C;          /* 다크 페이지 배경 — 2026-09-02 대표 "결제가 완료되었어요 뒷 배경색이 가장 마음에 들어" (시안 실측 #10131C~#11141D, 남색 기운 근검정). 구 중성 #0D0F12 */
     --surface: #1D1F29;     /* 카드/시트 — 시안 실측 #1D2029~#1D1F29 */
+    --home-band: #1D1F29;   /* 폰 홈 섹션 사이 띠 — 다크 페이지(#11141C) 위에서 보이는 카드 톤 */
     --line: #2C2F35;
     --ink: #F8F7FC;         /* 순백 아닌 오프화이트 — 라이트 --bg 와 같은 값(구 웜 #F5F3F1) */
     --ink2: #C5C9D0;        /* 🎫 중간 단계(라이트 짝은 #383D42) */
@@ -578,6 +580,7 @@
   --rule: rgb(22 24 28 / 0.08);
   --rule-strong: rgb(22 24 28 / 0.28);
   --wash: rgb(22 24 28 / 0.05);
+  --home-band: #EDEFF3;
   /* 🚦 상태 색도 라이트 값으로 되박는다 — 안 그러면 html.dark 에서 흰 카드 위에 다크용 밝은 초록이 뜬다. */
   --tone-ok: #0F7B45;      --tone-ok-bg: #E7F4EC;
   --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;
@@ -1283,6 +1286,18 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   box-shadow: 0 1px 2px rgba(10, 11, 14, .06), 0 8px 24px -12px rgba(10, 11, 14, .30);
 }
 @media (max-width: 1023px) { .ur-home-panel { padding: 14px; border-radius: 14px; margin-bottom: 14px; } }
+/* 📋 2026-11-01 대표 확정 안 B(사진 120) — 폰 줄 목록에선 섹션이 **판이 아니다**.
+   대표: *"이런 이용권은 어떠세요, 지금 인기 이용권 이런 부분은 배경 색이 다른데 그러지 말아줘. 띄워진 효과도 없애줘."*
+   ⇒ 폰(<768, 줄 목록 구간)에서 섹션은 페이지와 같은 바탕·그림자 0·모서리 0 이고, 섹션 사이는 **8px 회색 띠**로 나눈다(당근식).
+   🔴 유어쇼츠 잉크 패널(`.ur-panel-ink`)은 대상이 아니다 — 그 한 칸은 일부러 다른 바탕이다(2026-09-08 안 2).
+   태블릿·PC(768+) 는 격자 카드라 종전 흰 판 그대로. */
+@media (max-width: 767px) {
+  .ur-home-panel:not(.ur-panel-ink) {
+    background: transparent; box-shadow: none; border-radius: 0;
+    padding: 20px 16px 16px; margin-bottom: 0;
+    border-bottom: 8px solid var(--home-band);
+  }
+}
 
 /* 🌑 2026-09-08 (대표 확정 — 시안 "안 2"): **잉크 패널**. 홈의 모든 섹션이 같은 흰 패널이라
    유어쇼츠만 세로 9:16 카드인데도 "또 같은 섹션"으로 읽혔다(대표 *"바탕도 다른 이용권들 섹션이랑
