@@ -11,7 +11,8 @@ export default [
   {
     name: '🔵 공유가 다시 테두리 친 알약이 된다 (한 줄에 모양 두 종류)',
     file: HEADER,
-    find: "              className={iconBtnCls}\n              aria-label={t('curator.share'",
+    // 🔄 2026-11-01 재조준(2안): 버튼 묶음이 `cluster` 변수로 추출되며 들여쓰기가 줄었다. 결함은 그대로.
+    find: "        className={iconBtnCls}\n        aria-label={t('curator.share'",
     replace:
       "              className=\"h-[31px] px-2 rounded-lg border border-rule-strong bg-surface text-[12px] font-semibold text-gray-600 inline-flex items-center gap-2 shrink-0\"\n" +
       "              aria-label={t('curator.share'",
@@ -47,8 +48,9 @@ export default [
   {
     name: '🔵 헤더의 다른 자리에 색 면이 하나 더 생긴다',
     file: HEADER,
-    find: '<div className="lg:hidden flex items-center px-5 pt-3">',
-    replace: '<div className="lg:hidden flex items-center px-5 pt-3 bg-brand">',
+    // 🔄 2026-11-01 재조준(2안): 그 줄은 이제 `lg:hidden` 이 아니다(로고만 숨는다). 결함은 그대로.
+    find: '<div className="flex items-center px-5 pt-3">',
+    replace: '<div className="flex items-center px-5 pt-3 bg-brand">',
     test: A3,
     why:
       '🎫 규칙 ②(강조색 하나)를 어긴다. 헤더의 유일한 색 면이 **주인 전용 자리**라는 것이 ' +

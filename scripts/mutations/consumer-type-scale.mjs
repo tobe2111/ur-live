@@ -11,8 +11,8 @@ export default [
   {
     name: '🔠 본문 크기가 다시 반쪽 값으로 샌다 (12 · 12.5 · 13 이 한 화면에)',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: "className=\"mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2\"",
-    replace: "className=\"mt-1 text-[12.5px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2\"",
+    find: "className=\"mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-1\"",
+    replace: "className=\"mt-1 text-[12.5px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-1\"",
     test: TEST,
     why: '0.5px 는 눈에 거의 안 보이는데 체계는 통째로 무너진다 — 그래서 아무도 신고하지 않고 42단계까지 자랐다.',
   },

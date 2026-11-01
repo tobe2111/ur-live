@@ -31,9 +31,10 @@ export default [
   {
     name: '한톤 — GNB 세 개(검색·찜·내 이용권)가 브랜드 바로 돌아온다',
     file: HEADER,
-    find: "          </Link>\n        </div>",
+    // 🔄 2026-11-01 재조준(2안): 로고 줄에 버튼 묶음이 붙어 `</Link>` 다음 줄이 바뀌었다. 결함은 그대로.
+    find: "          </Link>\n          {cluster}",
     replace:
-      "          </Link>\n" +
+      "          </Link>\n          {cluster}\n" +
       "          <nav className=\"ml-auto flex items-center gap-4\">\n" +
       "            <Link to=\"/my-vouchers\">{t('nav.myVouchers', { defaultValue: '내 이용권' })}</Link>\n" +
       "          </nav>\n        </div>",
@@ -87,7 +88,7 @@ export default [
   {
     name: '한톤 — chrome 과 진열대를 나누는 실선을 뺀다',
     file: PAGE,
-    find: 'px-5 pt-6 border-b border-rule flex items-center gap-2 empty:hidden',
+    find: 'px-5 pt-3 border-b border-rule flex items-center gap-2 empty:hidden',
     replace: 'px-4 pt-2 flex items-center gap-2 empty:hidden',
     test: T_LIST,
     why:

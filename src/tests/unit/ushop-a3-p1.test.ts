@@ -65,14 +65,14 @@ describe('유어샵 안3 — 주인 띠 삭제 · 버튼 한 자리', () => {
   //   ⇒ 불변식을 "블루 면 0" → **"채운 면은 정확히 하나이고 그것이 `관리`"** 로 옮긴다.
   it('헤더의 주인 전용 자리는 [관리] 하나뿐이고, 채운 면은 그 하나뿐이다', () => {
     const src = codeOnly(read(HEADER))
-    // 🩸 2026-10-09 재조준: 앵커가 `{canEdit && (` 였는데 그 줄이 **삼항**이 됐다
-    //   (방문자에게도 그 자리를 `invisible` 로 비워 둔다 — 서버가 첫 화면을 그리려면 이름 칸의
-    //   폭이 누가 보든 같아야 한다. `CuratorHeader` 의 🪑 주석). 지키려던 것은 모양이 아니라
-    //   **주인 전용 게이트가 정확히 하나**라는 것이므로 `?`·`&&` 둘 다 세어 그걸 묻는다.
+    // 🩸 2026-10-09 재조준: 앵커가 `{canEdit && (` 였는데 그 줄이 **삼항**이 됐다. 지키려던 것은
+    //   모양이 아니라 **주인 전용 게이트가 정확히 하나**라는 것이므로 `?`·`&&` 둘 다 세어 그걸 묻는다.
+    // 🔄 2026-11-01 재조준(대표 확정 **2안**): 삼항이 다시 `&&` 가 됐다 — 방문자용 `invisible` 예약을
+    //   **없앴다.** 그 예약이 지키던 것은 *"이름 칸 폭이 주인/방문자에서 같다"* 였는데, 버튼 묶음이
+    //   이름 줄을 떠나 로고 줄로 올라가면서 **구조적으로** 같아졌다(이름 칸 = 폭 − 얼굴 − gap).
+    //   ⇒ 그 폭 불변식은 아래 `'이름 칸 폭은 주인/방문자에서 같다'` 가 **구조로** 다시 잠근다.
     expect(src.match(/canEdit (\?|&&)/g) || [], '주인 전용 게이트는 하나').toHaveLength(1)
     expect(src).toMatch(/<Link to="\/u\/me\/manage"/)
-    // 그 자리는 방문자에게 **보이지 않고 눌리지도 읽히지도 않는다**(자리만 차지한다).
-    expect(src, '방문자 예약은 invisible span').toMatch(/<span aria-hidden="true" className=\{`\$\{manageBtnCls\} invisible pointer-events-none`\}>/)
     // 채운 면은 `관리` 버튼 상수 한 곳에서만 나온다 — 다른 자리에 색 면이 생기면 빨간불.
     expect((src.match(/bg-brand/g) || []), '헤더의 브랜드 면').toHaveLength(1)
     expect(src, '그 한 곳은 관리 버튼 상수').toMatch(/const manageBtnCls = '[^']*bg-brand text-white/)
@@ -80,6 +80,26 @@ describe('유어샵 안3 — 주인 띠 삭제 · 버튼 한 자리', () => {
     // 공유는 방문자에게도 보인다 — 손님이 친구에게 넘기는 것이 유어샵의 확산 경로다.
     expect(src).toMatch(/onClick=\{onCopyLink\}/)
   })
+  /**
+   * 🪑 2026-11-01 — 2026-10-09 의 `invisible` 예약을 **대체**하는 단언.
+   *   서버 첫 화면(`curator-ssr-body.ts`)은 **누가 보는지 모른 채** 머리를 그린다. 그래서 이름 칸의
+   *   폭이 주인/방문자에서 갈리면 마운트 때 그 아래가 전부 밀린다. 종전엔 `관리` 자리를 비워 두는
+   *   것으로 맞췄는데, 2안이 버튼 묶음을 **이름 줄 밖**으로 옮겨 그 의존 자체를 없앴다.
+   *   ⇒ 이름 줄 안에 `canEdit` 이 **한 번도 안 나오는 것**이 그 보장이다. 버튼을 이름 줄로
+   *     되돌리려면 예약도 같이 되살려야 한다(그때 이 단언이 빨간불이 된다).
+   */
+  it('이름 칸 폭은 주인/방문자에서 같다 — 이름 줄에 소유권 분기가 없다', () => {
+    const src = codeOnly(read(HEADER))
+    // 🩸 앵커를 **코드로** 잡는다 — `codeOnly` 가 JSX 주석을 지우므로 주석은 앵커가 될 수 없다
+    //   (이 단언의 길이 하한이 그 실수를 그 자리에서 잡았다).
+    const row = src.slice(src.indexOf('className={avatarCls}'), src.indexOf('{(showStats || hasSns)'))
+    expect(row.length, '이름 줄을 못 찾았다(앵커가 낡았다)').toBeGreaterThan(200)
+    expect(row, '이름 줄에 소유권 분기 금지').not.toMatch(/canEdit/)
+    expect(row, '이름 줄에 버튼 묶음 금지').not.toMatch(/onCopyLink|manageBtnCls/)
+    // 버튼 묶음은 그 **위** 줄(로고 줄)에 있다 — 거기서 소유권이 갈려도 이름 칸에 영향이 없다.
+    expect(src, '버튼 묶음은 로고 줄(이름 줄보다 앞)').toMatch(/\{cluster\}[\s\S]{0,400}className=\{avatarCls\}/)
+  })
+
   it('방문자에게 팔로우 버튼을 주지 않는다(대표: "그냥 방문자는 안보이면 되잖아")', () => {
     expect(codeOnly(read(HEADER))).not.toMatch(/팔로우|follow/i)
   })
@@ -102,7 +122,8 @@ describe('유어샵 안3 — 주인 띠 삭제 · 버튼 한 자리', () => {
     expect(src).not.toMatch(/aspect-\[16\/9\]/)
     expect(src).not.toContain('uploadBanner')
     expect(src).not.toContain('profile_image.startsWith')
-    expect(src, '얼굴 자리').toMatch(/const avatarCls = 'w-14 h-14 rounded-full/)
+    // 🔄 2026-11-01 (2안): 얼굴 56 → 40. 금지 대상(이니셜 원)은 그대로이고 치수만 바뀌었다.
+    expect(src, '얼굴 자리').toMatch(/const avatarCls = 'w-10 h-10 rounded-full/)
     expect(src, '사진 없으면 유달이').toMatch(/photo \? \([\s\S]{0,400}\) : \([\s\S]{0,120}SHARE_MASCOT_SRC/)
     expect(src, '이니셜 글자로 채우지 않는다').not.toMatch(/name\.(charAt|slice)\(0/)
   })
