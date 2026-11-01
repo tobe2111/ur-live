@@ -255,7 +255,8 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
           갈리지 않는다. 잠금 계약(aboveFold eager/fetchPriority·fade-in·대표색 추출)은 그대로 승계. */}
       {wrapRowMedia(row, <DealCardMedia
         cover={p.image_url}
-        images={p.images}
+        /* 📋 2026-11-01 안 B — 줄 목록에선 대표 사진 한 장(좌우 화살표 없음 · 당근식). 격자는 종전 캐러셀. */
+        images={row ? null : p.images}
         /* 🔎 2026-10-11 SEO: 사진에 붙는 유일한 이름이라 **매장명을 함께** 싣는다
            (종전 `p.name` 은 "주말 1박 숙박권" 처럼 호텔 수십 곳이 공유하는 문자열이었다). */
         alt={cardImageAlt(p.name, p.restaurant_name, cat.label)}
@@ -301,16 +302,17 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
           <>
             {/* 🎯 추첨 응모 배지 — 💗 2026-08-19 우상단을 찜 하트에 내주고 **좌상단**으로 이동.
                 2026-09-07: 위에 있던 마감 배지가 사라져 좌상단이 비었다(종전 `top-9` 분기 제거). */}
-            {fcfs && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 left-2 z-[2]" />}
+            {/* 📋 2026-11-01 안 B — 줄 목록에선 사진 위 추첨 배지를 걷는다(대표 "사진 위에 올라와 있는 것 없애줘"). */}
+            {fcfs && !row && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 left-2 z-[2]" />}
             {/* 💗 찜 — 그루폰 카드 우상단 하트. hover 시 나타나고(찜된 건 항상 보임) 누르면 통 튄다. */}
             {/* 🧷 `hideWishlist` — 핀 고르기 화면은 이 자리에 '추가' 버튼이 온다(둘이 겹치면 하트가 묻힌다).
                 기본값 false 라 홈·찜·유어샵은 출력 불변. */}
-            {!hideWishlist && <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />}
+            {/* 📋 2026-11-01 — 줄 목록(폰)에선 사진 위 하트를 숨기고 아래 글자 칸 오른쪽 아래로 옮긴다(md+ 격자는 종전 그대로). */}
+            {!hideWishlist && <WishlistHeart productId={p.id} className={`absolute top-2 right-2 z-[3]${row ? ' max-md:hidden' : ''}`} />}
             {overlayExtra}
           </>
         }
       />)}
-
       {/* 🛍️ 2026-08-19 (대표 시안 — 그루폰 카드): 정보 위계를 그루폰과 같게 재배열.
           [머천트(작은 회색)] → [제목 2줄] → [주소 · 거리] → [★평점 (구매수)] → [정가취소선 · 판매가 · 할인 pill]
           이전엔 정가가 제목 **위**에 떠 있고 가격이 중간에 있어, 카드마다 눈이 가는 자리가 달랐다. */}
@@ -368,6 +370,9 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
           </p>
         </div>
       </div>
+      {/* 💗 2026-11-01 대표 *"사진 안 하트도 옮기는 게 좋겠다"* — 줄 목록(폰)은 카드 오른쪽 아래 맨 하트(당근식).
+          링크의 **셋째 자식**으로 둔다(`DEAL_ROW.link` 는 둘째 자식=본문을 늘린다 · 워커 첫 화면은 하트를 안 그린다). */}
+      {row && !hideWishlist && <WishlistHeart productId={p.id} variant="plain" className="md:hidden absolute right-0 bottom-0 -mr-3 -mb-3 z-[3]" />}
     </Link>
   )
 }

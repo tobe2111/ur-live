@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import {
-  HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
+  HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_IMG_WIDTH_ROW, HOME_CARD_ROW_QUERY, HOME_CARD_MID_QUERY,
   HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD,
 } from '@/shared/home-card-image'
 import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink } from '@/worker/utils/home-card-preload'
@@ -48,7 +48,8 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
     expect(worker).not.toMatch(/rel="preload" as="image" fetchpriority="high" media=/)
     // 클라: 렌더 폭과 eager 개수가 상수여야 한다(리터럴 200/400/4 로 되돌아가면 워커와 갈린다).
     expect(sections).toMatch(/useMediaQuery\(HOME_CARD_LG_QUERY\)/)
-    expect(sections).toMatch(/HOME_CARD_IMG_WIDTH_LG\s*:\s*HOME_CARD_IMG_WIDTH_BASE/)
+    expect(sections).toMatch(/homeCardImgWidth\(isLgViewport, isRowViewport, !rail\)/)
+    expect(sections).toMatch(/useMediaQuery\(HOME_CARD_ROW_QUERY\)/)
     expect(sections).toMatch(/i < HOME_CARD_ABOVE_FOLD/)
     expect(sections).not.toMatch(/useMediaQuery\('\(min-width: 1024px\)'\)/)
   })
@@ -58,18 +59,22 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
     expect(worker).toMatch(/buildHomeCardPreloadLinks\(ssrExtraPayload\)/)
   })
 
-  it('🔴 실제 시드로 링크를 만든다 — 사진 4장 × 뷰포트 2 = 8개', () => {
+  it('🔴 실제 시드로 링크를 만든다 — 사진 4장 × 뷰포트 3(폰 줄 목록·태블릿·PC) = 12개', () => {
     const seed = JSON.stringify({
       success: true,
       data: [{ products: [1, 2, 3, 4, 5, 6].map((n) => ({ image_url: `/api/media/uploads/demo/p${n}.jpg` })) }],
     })
     const links = buildHomeCardPreloadLinks(seed)
-    expect(links).toHaveLength(HOME_CARD_ABOVE_FOLD * 2)   // 5·6번째는 안 당긴다(eager 개수와 동일)
+    expect(links).toHaveLength(HOME_CARD_ABOVE_FOLD * 3)   // 5·6번째는 안 당긴다(eager 개수와 동일)
     for (const l of links) {
       expect(l).toMatch(/^<link rel="preload" as="image" fetchpriority="high" media="/)
     }
     // 뷰포트별로 갈라 붙는다 — 하나로 합치면 한쪽이 반드시 어긋난다.
-    expect(links.filter((l) => l.includes(HOME_CARD_BASE_QUERY))).toHaveLength(HOME_CARD_ABOVE_FOLD)
+    expect(links.filter((l) => l.includes(`media="${HOME_CARD_ROW_QUERY}"`))).toHaveLength(HOME_CARD_ABOVE_FOLD)
+    expect(links.filter((l) => l.includes(`media="${HOME_CARD_MID_QUERY}"`))).toHaveLength(HOME_CARD_ABOVE_FOLD)
+    // 폰 링크는 줄 목록 폭(ROW) — BASE 로 당기면 첫 화면 카드와 URL 이 갈려 같은 사진을 두 번 받는다.
+    const phone = links.find((l) => l.includes(`media="${HOME_CARD_ROW_QUERY}"`))!
+    expect(phone).toContain(cfImage('/api/media/uploads/demo/p1.jpg', { width: HOME_CARD_IMG_WIDTH_ROW, format: 'auto' })!)
     expect(links.filter((l) => l.includes(HOME_CARD_LG_QUERY))).toHaveLength(HOME_CARD_ABOVE_FOLD)
   })
 
@@ -128,14 +133,15 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
     // 2026-10-12: 카드 밀도 상한(HOME_CARD_MAX_DPR) — 카드·preload·서버 첫 화면이 **같은 상수**를 넘겨야 URL 이 같다.
     expect(media).toMatch(/cfSrcSet\(src, width, HOME_CARD_MAX_DPR\)/)
     expect(code('src/worker/utils/home-card-preload.ts')).toMatch(/cfSrcSet\(src, w, HOME_CARD_MAX_DPR\)/)
-    expect(code('src/worker/utils/home-first-screen.ts')).toMatch(/cfSrcSet\(src, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR\)/)
+    expect(code('src/worker/utils/home-first-screen.ts')).toMatch(/cfSrcSet\(src, w, HOME_CARD_MAX_DPR\)/)
+    expect(code('src/worker/utils/home-first-screen.ts')).toMatch(/const w = row \? HOME_CARD_IMG_WIDTH_ROW : HOME_CARD_IMG_WIDTH_BASE/)
 
     for (const src of [
       '/api/media/uploads/demo/2026-08/a8818855-f067-4e32-bf0f-f54d6d3f3626.jpg',
       'https://media.ur-team.com/uploads/demo/2026-07/40535721.jpg',
       'https://t1.daumcdn.net/local/kakaomapPhoto/review/abc?original',
     ]) {
-      for (const w of [HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_IMG_WIDTH_LG]) {
+      for (const w of [HOME_CARD_IMG_WIDTH_ROW, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_IMG_WIDTH_LG]) {
         // 카드가 만드는 것 === preload 가 만드는 것 (같은 함수·같은 인자라 항등이어야 한다)
         expect(cfImage(src, { width: w, format: 'auto' })).toBe(cfImage(src, { width: w, format: 'auto' }))
         expect(cfSrcSet(src, w)).toBe(cfSrcSet(src, w))
