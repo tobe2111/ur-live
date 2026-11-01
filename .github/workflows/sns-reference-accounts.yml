@@ -1,5 +1,7 @@
 name: SNS reference accounts
 # 참고 계정(배민사장님 등) 최근 게시물 벤치마크 수집 — 읽기 전용(GET only), 절대 게시하지 않음.
+# 매주: 반응 상위 게시물 → 패턴 추출 → data/reference-patterns.json (marketing-data) → 캡션/카드 생성 프롬프트에 자동 반영.
+# business_discovery 는 graph.facebook.com + META_FB_PAGE_TOKEN 으로만 동작 (IG 토큰 불가).
 on:
   schedule:
     # 월요일 09:00 KST
@@ -34,6 +36,7 @@ jobs:
       - name: Fetch reference accounts (read-only)
         env:
           META_FB_PAGE_TOKEN: ${{ secrets.META_FB_PAGE_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: node src/reference-accounts.mjs
       - name: Commit data
         if: always()
