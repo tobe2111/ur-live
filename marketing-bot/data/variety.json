@@ -88,5 +88,18 @@
     "hook": "confess",
     "media_set": "onboarding-steps",
     "date_kst": "2026-10-31"
+  },
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "date_kst": "2026-11-01"
+  },
+  {
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "단말기·포스 연동 없음: 쓰던 스마트폰으로 손님 QR 찍기, 폰이 꺼진 손님은 매장 확인코드 6자리로",
+    "hook": "scene",
+    "media_set": "short-owner-recruit",
+    "date_kst": "2026-11-01"
   }
 ]
