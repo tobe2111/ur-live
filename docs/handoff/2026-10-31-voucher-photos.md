@@ -28,3 +28,23 @@
 ## 대표 결정 (2026-10-31)
 - **무료 유지 + 변환 수 줄이기**("2번. 이용권 많아지면 무조건 유료 전환"). 구현: `cf-image.ts` `snapResizeOptions`(폭 8칸·화질 3칸) + srcset 기본 2x + 교환권 변환 0.
 - 다음: 이용권이 늘어 다시 한도 메일이 오면 유료 전환. 이번 달 사용량은 대시보드 Images 에서 대표만 본다.
+
+## 2026-11-01 후속 — 상품 사진 크기별 미리 저장 (대표 "응 잠금 해제해줄게 진행해줘")
+
+**왜**: 변환 한도는 *그달에 쓰인 사진 × 크기* 로 센다 → 이용권이 늘면 매달 사용량도 같이 큰다. 사진을 올릴 때 한 번 세 크기로 줄여 R2 에 넣으면 변환이 영원히 0.
+
+**한 것**
+- SSOT `src/shared/sized-image.ts` — 주소 모양 `uploads/sized/…/w{320|640|1280}.{webp|jpg}` 가 곧 표식(DB 조회 없음).
+- `cf-image.ts` — 그 모양이면 `media.ur-team.com` 파일 그대로(폭 고르기 · Save-Data 한 칸 아래). srcset 도.
+- 업로드: `src/lib/image-sized.ts`(브라우저 캔버스) → `POST /api/upload/image-sized`(한 크기씩, 서버가 키 생성, 리사이저 안 부름). `ImageUpload`·`PhotoGalleryEditor` 가 먼저 시도, 실패 시 종전 경로.
+- 기존 사진 이관: 어드민 `/admin/image-sizing` (브라우저가 줄임) + `/api/admin/image-sizing/{pending,store,commit}`. commit 은 R2 에 셋 다 있는지 확인 후에만 주소 교체. 옛 파일 안 지움.
+- 라이브 실측(D1): 교환권 아닌 활성 상품 184개 · 대표 사진 182 · 갤러리 697 — **전부 R2**(옮길 대상 전체).
+
+**대가**: 크기별 사진은 `gravity=auto`(피사체 찾아 자르기)가 없다 — 상세 히어로는 화면 object-fit 가운데 자르기.
+
+**다음 세션 첫 액션**
+1. 배포 후 어드민 `/admin/image-sizing` → 시작 → "남은 사진" 이 0 으로 가는지(실패 목록 사유 확인).
+2. 홈·상세 사진 주소가 `https://media.ur-team.com/uploads/sized/…/w640.webp` 인지(개발자 도구 네트워크).
+3. 셀러 화면에서 새 사진 하나 올려 저장 주소가 `…/uploads/sized/seller/…/w1280.webp` 인지.
+
+**범위 밖(남은 변환 사용처)**: 숙소 객실 사진·리뷰 사진·배너·프로필 등 상품 표 밖 R2 사진 — 종전대로 리사이저를 쓴다(양이 작다). 늘면 같은 도구를 표별로 넓힐 것.

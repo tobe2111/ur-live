@@ -8,6 +8,7 @@ import { ProtectedRoute, PublicRoute } from '@/components/auth/RouteGuards'
 
 const AdminPage = lazy(() => import('@/pages/AdminPage'))
 const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'))
+const AdminImageSizingPage = lazy(() => import('@/pages/admin/AdminImageSizingPage'))
 const AdminSettlementPage = lazy(() => import('@/pages/AdminSettlementPage'))
 const AdminBannersPage = lazy(() => import('@/pages/AdminBannersPage'))
 const AdminHomeSectionsPage = lazy(() => import('@/pages/admin/AdminHomeSectionsPage'))
@@ -411,6 +412,7 @@ export function AdminRoutes() {
           <ErrorBoundary><KVMonitoringPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
+      <Route path="/admin/image-sizing" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminImageSizingPage /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/admin/system-monitoring" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminSystemMonitoringPage /></ErrorBoundary>

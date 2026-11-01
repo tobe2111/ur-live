@@ -38,6 +38,8 @@ export const PRIVATE_UPLOAD_PREFIXES = [
 /** 카탈로그 사진이 사는 곳 — 테스트가 "분류됨" 으로 인정하는 접두사. */
 export const CATALOG_UPLOAD_PREFIXES = [
   'demo', 'seller', 'user', 'admin', 'district', 'product', 'blog', 'mall',
+  'voucher', // 2026-10-31 R2 로 옮긴 교환권 사진(cron/voucher-image-rehost)
+  'sized',   // 2026-11-01 크기별로 미리 저장한 상품 사진(shared/sized-image)
 ] as const
 
 /**

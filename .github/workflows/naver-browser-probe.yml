@@ -1,0 +1,34 @@
+name: Naver Browser Probe
+
+# 🔬 2026-10-26 일회성 진단 — 라이브 워커(Cloudflare)는 네이버 검색이 캡차로 막혔다(ncaptcha 실측).
+#   실제 브라우저(GitHub 러너)에서는 가게 번호와 업체사진이 얻히는지 먼저 잰다.
+#   읽기 전용 — 우리 DB·서비스를 바꾸지 않는다. 결과는 로그의 PROBE_RESULT 줄.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/naver-browser-probe.yml'
+      - 'scripts/naver-browser-probe.mjs'
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install playwright only
+        # 레포 package.json 과 섞이지 않게 별도 폴더에 설치한다(레포 안 npm i 는 의존 트리 충돌로 죽었다).
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw && npm init -y >/dev/null
+          npm i --no-audit --no-fund playwright@1.47.2
+          npx playwright install --with-deps chromium
+          cp "$GITHUB_WORKSPACE/scripts/naver-browser-probe.mjs" /tmp/pw/probe.mjs
+      - name: Probe
+        working-directory: /tmp/pw
+        run: |
+          node probe.mjs "55와인포차 산남점 청주" || true
+          node probe.mjs "달빛한스푼" || true
+          node probe.mjs "스타벅스 강남역점" || true
