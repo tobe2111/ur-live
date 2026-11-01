@@ -16,6 +16,12 @@ import { describe, it, expect } from 'vitest'
 import { readCode, sliceFrom } from '../helpers/source-text'
 
 const SRC = readCode('src/pages/curator-page/CuratorHeader.tsx')
+/**
+ * 🔀 2026-11-01 재조준 — 글리프가 `icons/sns-logos` **공용 부품**으로 옮겨갔다(체험 연동 목록이
+ *   같은 로고를 쓰게 됐다). 불변식(브랜드 색 면·그라디언트 0 · `currentColor` 단색)은 그대로이고
+ *   **지켜야 할 자리가 둘**이 됐다 ⇒ 둘 다 본다. 한쪽만 보면 나머지가 조용히 브랜드 색을 되찾는다.
+ */
+const LOGOS = readCode('src/components/icons/sns-logos.tsx')
 // SNS 블록만 본다 — 파일 전체를 보면 남의 색까지 걸린다.
 // 🔧 2026-09-28 끝 마커 수리: 'SNS 편집' 은 e3 재작성(편집이 /u/me/manage 로 나감)으로 **사라졌다**.
 //   `sliceFrom` 은 끝 마커가 없으면 maxLen 폴백이라, 슬라이스가 버튼 줄까지 삼켜 "SNS 자리"라는
@@ -29,10 +35,22 @@ describe('① 브랜드 색 면이 없다', () => {
     expect(SNS, 'SNS 자리에 색 면 없음').not.toMatch(/\bbg-\[#/)
   })
 
-  it('세 링크 다 currentColor 로 그린다', () => {
+  it('세 링크 다 공용 부품을 쓴다 — 손으로 그린 svg 0', () => {
+    expect(SNS, '유튜브').toMatch(/<YouTubeLogo\b/)
+    expect(SNS, '인스타그램').toMatch(/<InstagramLogo\b/)
+    expect(SNS, '틱톡').toMatch(/<TikTokLogo\b/)
+    // path 를 다시 베껴 오면 두 벌이 갈린다 — 그 순간을 막는다.
+    expect(SNS, 'SNS 자리에 인라인 svg 금지').not.toMatch(/<svg\b/)
+  })
+
+  it('공용 부품이 단색이다 — 브랜드 색이 되돌아오지 않았다', () => {
     // 색을 바깥 className 이 정하므로 테마·hover 를 저절로 따라간다.
-    expect(SNS.match(/currentColor/g)?.length ?? 0).toBeGreaterThanOrEqual(3)
-    expect(SNS, 'svg 안에 흰색 박기 금지').not.toMatch(/(fill|stroke)="#fff"/)
+    expect(LOGOS.match(/currentColor/g)?.length ?? 0, '세 글리프').toBeGreaterThanOrEqual(3)
+    expect(LOGOS, '유튜브 순수 빨강').not.toMatch(/#FF0000/i)
+    expect(LOGOS, '인스타 그라디언트').not.toMatch(/linear-gradient|<linearGradient/i)
+    expect(LOGOS, '어떤 hex 색도 박지 않는다').not.toMatch(/(fill|stroke)="#/)
+    // 🧪 이 파일을 읽고 있는지 — 경로가 낡아 빈 문자열이면 위 셋이 전부 조용히 통과한다.
+    expect(LOGOS.length, 'sns-logos.tsx 를 실제로 읽었는가').toBeGreaterThan(800)
   })
 })
 
