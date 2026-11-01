@@ -36,8 +36,7 @@ import { priceDisplay } from '../../shared/price-display'
 import { formatNumber } from '../../utils/format'
 import { cardImageAlt } from '../../utils/deal-title'
 import { VOUCHERS_DEFAULT_CATEGORY } from '../../shared/seo/voucher-facet'
-import { STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerImageUrl, bannersOfSlot, heroEdgeFillCss } from '../../shared/home-strip-banners'
-import { resolveBannerLink } from '../../components/home/banner-link'
+import { VOUCHERS_TOP_ROW } from '../../shared/vouchers-top-row'
 import {
   VOUCHER_TILE_CLASS, VOUCHER_CAT_TAB, VOUCHER_TILE_ABOVE_FOLD, VOUCHER_TILE_IMG_W, VOUCHER_TILE_SIZES, voucherSoldLabel,
 } from '../../shared/voucher-tile'
@@ -51,12 +50,13 @@ const PAGE_SIZE = 20
 
 export const VOUCHERS_FS_CLASS = {
   page: 'bg-warm dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]',
-  hero: 'relative h-[196px] overflow-hidden bg-gray-900 dark:bg-surface',
-  overlap: 'relative z-10 -mt-7 px-5',
+  /** 🎟️ 2026-11-01 A안 — 머리 한 줄. 클래스는 React 와 **같은 상수**(`shared/vouchers-top-row`). */
+  topRow: VOUCHERS_TOP_ROW.row,
+  topRule: VOUCHERS_TOP_ROW.rule,
+  topGuest: VOUCHERS_TOP_ROW.guest,
+  topActions: VOUCHERS_TOP_ROW.actions,
+  topIcBtn: VOUCHERS_TOP_ROW.icbtn,
   reveal: 'sticky top-0 z-20 bg-warm pt-1',
-  balanceBar: 'w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform h-11 px-4',
-  balanceText: 'text-[12px] text-gray-600 dark:text-gray-300 truncate text-left',
-  balanceLink: 'shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-brand-text',
   chipWrap: VOUCHER_CAT_TAB.wrap,
   chipRow: `${VOUCHER_CAT_TAB.row} invisible`,
   chip: `${VOUCHER_CAT_TAB.tab} ${VOUCHER_CAT_TAB.on}`,
@@ -147,47 +147,7 @@ export function vouchersFirstScreenGuardScript(nonce: string): string {
  * 교환권 목록 첫 화면 HTML — 실패하면 **빈 문자열**(호출부가 종전 로더로 되돌아간다. 무회귀).
  * @param seedJson `__SSR_INITIAL_VOUCHERS__` 본문(`{ success, data: [...] }`)
  */
-/**
- * 🖼️ 2026-10-18 머리 배너 첫 장을 **판 안에** 그린다 (대표 *"다 이상적으로 해줘"* — 교환권 LCP 가 배너였다).
- *
- * 실측(라이브 · 느린 4G · CPU 4배): 배너 사진 요청이 **3.8초에야** 출발했다 — 화면 코드가 다 돌고
- * `/api/banners` 응답을 받은 뒤에야 `<img>` 가 생겼기 때문이다. 판(196px)은 이미 서 있으니 사진만 늦었고,
- * 그 사진이 이 화면의 가장 큰 그림(LCP 4.3초)이었다. 워커가 같은 응답을 보조 시드로 받아(예열 키 —
- * 새 캐시 키 0) 첫 장을 **같은 클래스 · 같은 사진 주소**로 그리면 사진이 HTML 직후 출발한다.
- *
- * 🔒 마크업은 `StripRail` → `StripCard`(hero) 와 같다 — 레일·카드 클래스는 상수(`STRIP_CLS`·`HERO_*`)에서 오고
- *   사진 주소는 `stripBannerImageUrl` 한 함수다. 판 높이가 고정이라 마운트 때 무엇이 바뀌어도 아래는 안 밀린다.
- * ❌ 그리지 않는 것: 숫자 알약·넘김 버튼(위치가 absolute 라 높이를 안 만든다) · 둘째 장 이후.
- */
-function heroBannerHtml(bannersJson: string | null | undefined): string {
-  if (!bannersJson) return ''
-  let banners
-  try { banners = bannersOfSlot(JSON.parse(bannersJson), 'vouchers') } catch { return '' }
-  const b = banners[0]
-  if (!b) return ''
-  const many = banners.length > 1
-  const link = resolveBannerLink(b.link_url)
-  const bg = stripBannerImageUrl(b.image_url, 'vouchers')
-  const cls = `relative ${many ? STRIP_CLS.cardMany : STRIP_CLS.cardOne} ${many ? STRIP_CLS.pcCardW : ''} ${STRIP_CLS.card}  ${HERO_CARD_CLS}`
-  const style = bg ? ` style="${escAttr(heroEdgeFillCss(bg))}"` : ' style="background:var(--brand-grad)"'
-  const inner =
-    (bg ? `<img src="${escAttr(bg)}" alt="" aria-hidden="true" loading="eager" fetchpriority="high" decoding="async" class="${STRIP_CLS.img}">` +
-      `<div class="${STRIP_CLS.scrim}" aria-hidden="true"></div>` : '') +
-    `<strong class="${escAttr(STRIP_CLS.title)}">${escText(b.title)}</strong>` +
-    (b.description ? `<span class="${STRIP_CLS.desc}">${escText(b.description)}</span>` : '')
-  const card = link?.kind === 'internal'
-    ? `<a href="${escAttr(link.to)}" class="${escAttr(cls)}"${style}>${inner}</a>`
-    : link?.kind === 'external'
-      ? `<a href="${escAttr(link.href)}" target="_blank" rel="noopener noreferrer" class="${escAttr(cls)}"${style}>${inner}</a>`
-      : `<div class="${escAttr(cls)}"${style}>${inner}</div>`
-  return `<div class="${STRIP_CLS.root}" aria-roledescription="carousel" aria-label="이벤트 배너"><div class="relative">` +
-    `<div class="${STRIP_CLS.rail} ${many ? STRIP_CLS.railMany : ''} ${HERO_RAIL_CLS}">${card}</div></div></div>`
-}
-
-/**
- * @param bannersJson `/api/banners` 응답(보조 시드). 없거나 교환권 배너가 0장이면 종전처럼 빈 판.
- */
-export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, nonce: string, bannersJson?: string | null): string {
+export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, nonce: string): string {
   let rows: VoucherSeedRow[]
   try {
     const parsed = JSON.parse(seedJson) as { success?: boolean; data?: VoucherSeedRow[] }
@@ -206,11 +166,17 @@ export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, n
   const body =
     `<div class="${C.page}">` +
     `<h1 class="sr-only">교환권 - 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>` +
-    `<div class="${C.hero}">${heroBannerHtml(bannersJson)}</div>` +
-    `<div class="${C.overlap}"><div class="${C.balanceBar}">` +
-    `<span class="${C.balanceText}">딜을 모으면 더 싸게 살 수 있어요</span>` +
-    `<span class="${C.balanceLink}">모으는 방법 <span class="w-3 h-3 inline-block"></span></span>` +
+    // 🔴 첫 화면은 **비로그인 화면**이다(로그인 흔적이 있으면 아래 가드 스크립트가 이 노드를 걷어낸다).
+    // 그래서 잔액이 아니라 할 수 있는 일을 말한다 — 0 을 적지 않는다는 규칙과 같은 이유다.
+    // 🔴 아이콘(lucide·유어딜 세트)은 그리지 않는다 — path 를 문자열로 옮기면 두 벌이 갈린다.
+    //    같은 치수의 빈 span 으로 **가로 자리만** 세운다(줄 높이는 `h-14` 가 정한다).
+    `<div class="${C.topRow}">` +
+    `<span class="${C.topGuest}">딜 모으기<span class="w-4 h-4 inline-block"></span></span>` +
+    `<div class="${C.topActions}">` +
+    `<span class="${C.topIcBtn}"><span class="w-[22px] h-[22px] inline-block"></span></span>` +
+    `<span class="${C.topIcBtn}"><span class="w-[22px] h-[22px] inline-block"></span></span>` +
     `</div></div>` +
+    `<div class="${C.topRule}"></div>` +
     `<div class="${C.reveal}" style="transform:translateY(0);transition:transform 0.25s ease;will-change:transform">` +
     `<div aria-hidden="true"><div class="${C.chipWrap}"><div class="${C.chipRow}"><span class="${C.chip}">&nbsp;</span></div></div></div>` +
     `</div>` +

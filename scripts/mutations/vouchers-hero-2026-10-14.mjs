@@ -1,25 +1,27 @@
 /**
- * 🎟️ 교환권 머리 = 배너 (2026-10-14 대표 확정 안 C). 지키는 것 셋:
- *   ① 응답 전에도 배너 자리를 잡는다(접으면 그 아래 전부가 196px 밀린다 · 서버 첫 화면과 갈린다)
- *   ② 머리에서 보관함으로 가는 길(산 자리에서 내 교환권으로)
- *   ③ 배너 카드 높이 = 예약 판 높이
+ * 🎟️ 교환권 머리 — 2026-10-14 안 C(배너) → **2026-11-01 대표 확정 A안(한 줄)** 으로 재조준.
+ *
+ * 지키려던 불변식은 그대로다. 배너가 사라지며 *어디서* 지키는지만 옮겼다:
+ *   ① 머리 높이가 응답에 따라 변하지 않는다 (종전: 배너 판 예약 / 지금: `h-14` 고정)
+ *   ② 머리에서 보관함으로 가는 길 (종전: 배너 위 아이콘 / 지금: 한 줄 오른쪽 아이콘)
+ *   ③ 배너 카드 높이 = 예약 판 높이 — **홈이 계속 쓴다**(교환권만 빠졌다). 그대로 둔다.
  */
 export default [
   {
-    name: '🎟️ 교환권 머리가 응답 전에 접힌다 (도착 순간 목록 전체가 밀림)',
-    file: 'src/pages/vouchers/VouchersHero.tsx',
-    find: 'if (settled && banners.length === 0)',
-    replace: 'if (banners.length === 0)',
+    name: '🎟️ 교환권 머리 높이가 내용에 따라 변한다 (잔액이 오는 순간 목록이 밀림)',
+    file: 'src/shared/vouchers-top-row.ts',
+    find: "row: 'flex items-center justify-between h-14 pl-5 pr-3'",
+    replace: "row: 'flex items-center justify-between py-3 pl-5 pr-3'",
     test: 'src/tests/unit/vouchers-first-screen-2026-10-14.test.tsx',
-    why: '배너는 마운트 뒤에 온다. 그때 자리를 만들면 잔액·칩·목록이 통째로 196px 밀리고, 서버 첫 화면(판을 그린다)과도 갈린다. 에러는 0 이다.',
+    why: '높이를 글자가 정하게 두면 잔액 숫자가 도착할 때 줄 높이가 바뀌어 아래 목록이 통째로 밀린다. 고정 h-14 하나가 그걸 막는다(에러는 0 이다).',
   },
   {
     name: '🎟️ 교환권 머리에서 보관함으로 가는 길이 사라진다',
-    file: 'src/pages/vouchers/VouchersHero.tsx',
-    find: "navigate('/my-gifticons')",
-    replace: "navigate('/vouchers')",
+    file: 'src/shared/vouchers-top-row.ts',
+    find: "export const VOUCHERS_TOP_BOX_PATH = '/my-gifticons'",
+    replace: "export const VOUCHERS_TOP_BOX_PATH = '/vouchers'",
     test: 'src/tests/unit/voucher-wallet-split.test.ts',
-    why: '안 C 에서 모바일 보관함 진입점은 머리 배너 위 아이콘 하나다. 사라져도 화면은 멀쩡하고 "산 교환권을 못 찾는" 상태만 남는다.',
+    why: 'A안에서 모바일 보관함 진입점은 머리 한 줄 오른쪽 아이콘 하나다. 사라져도 화면은 멀쩡하고 "산 교환권을 못 찾는" 상태만 남는다.',
   },
   {
     name: '🎟️ 배너 카드 높이가 예약 판과 갈린다',

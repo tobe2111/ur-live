@@ -35,12 +35,11 @@ import { VOUCHERS_DEFAULT_CATEGORY } from '@/shared/seo/voucher-facet'
 import { resolveConsumerSurfaceSeo } from '@/shared/seo/consumer-surfaces'
 import { GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
 import VouchersTopBar from './vouchers/VouchersTopBar'
-import VouchersHero from './vouchers/VouchersHero'
+import VouchersTopRow from './vouchers/VouchersTopRow'
 import { SortMenu } from '@/components/ui/sort-menu'
 import { SORT_OPTIONS, type SortKey } from './vouchers/constants'
 import ShoppingGrid from './vouchers/ShoppingGrid'
 import { priceDisplay } from '@/shared/price-display'
-import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 
 interface BrandSummary {
   brand_name: string
@@ -462,7 +461,6 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
 
           {/* ── 우측 상품 그리드 ── */}
           <main>
-            <div className="-mx-[14px]"><HomeBannerStrip variant="vouchers" /></div>{/* 🎟️ 2026-10-14 대표 확정 라안 — 배너 자체 거터 14 를 상쇄해 그리드와 맞춤. 없으면 0px */}
             {/* 인기 브랜드 — 상단 가로 스트립(대표 — 좌레일 하단은 불편 → 상품 바로 위로). */}
             {currentBrands.length === 0 && !sectionsReady && !!category && <PcBrandStripReserve />}
             {currentBrands.length > 0 && (
@@ -553,10 +551,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 🔎 2026-07-29: 문서 제목용 h1 — 화면엔 제목 줄이 없어(안 C) 시각적으로 숨긴다(스크린리더·크롤러엔 노출). */}
       <h1 className="sr-only">{brand ? `${brand} 교환권` : '교환권'} — 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>
 
-      {/* 🎟️ 2026-10-14 대표 확정 안 C — 머리는 배너(검색·보관함이 그 위, 잔액 카드가 아래 끝에 걸침). 쇼핑 탭이
-          살아나면 교환권↔쇼핑 탭 바가 필요하므로 종전 구조로 돌아간다(플래그 하나). 근거: `./vouchers/VouchersHero`. */}
+      {/* 🎟️ 2026-11-01 대표 확정 A안 — 머리는 **한 줄**(잔액 + 검색·보관함, 56px). 2026-10-14 안 C 의
+          배너 히어로(196px)를 대체한다(대표 *"배너 없는게 낫겠고"*). 쇼핑 탭이 살아나면 교환권↔쇼핑 탭
+          바가 필요하므로 종전 구조로 돌아간다(플래그 하나). 근거: `@/shared/vouchers-top-row`. */}
       {!embedded && !SHOPPING_TAB_HIDDEN && <VouchersTopBar activeTab={activeTab} onVouchers={goToVouchers} onShopping={goToShopping} />}
-      {heroMode && <VouchersHero>{balanceCard}</VouchersHero>}
+      {heroMode && <VouchersTopRow balance={dealBalance} loggedIn={!!userId} />}
 
       {/* 🛡️ 2026-05-28: scroll-up reveal 그룹(headroom) — 내리면 숨고 살짝 올리면 내려온다. 안 C 에선 칩 줄만
             맨 위(top-0)에 붙는다(잔액은 배너에 걸쳐 있다). 쇼핑 섹션에 있을 땐 강제 숨김(카테고리 바는 한 번에 하나). */}
@@ -652,7 +651,6 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         </div>
       )}
 
-      {!embedded && !heroMode && <div className="ur-content-wide px-[2px] [&:not(:empty)]:pt-3"><HomeBannerStrip variant="vouchers" /></div>}{/* 탭 바 모드에서만 — 안 C 에선 배너가 머리다 */}
       {/* 🎫 2026-06-20 (사용자: 상품 시작 지점 구별 안 됨): 브라우즈 chrome ↔ 상품 리스트 경계 명확화.
           구분선(border-t) + '상품' 섹션 헤더(카테고리/브랜드 + 개수) + 정렬을 상품 바로 위로. /vouchers 전용. */}
       {!embedded && (

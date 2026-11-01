@@ -117,23 +117,28 @@ describe('② 페이지 크롬 클래스 = 소스', () => {
     expect(s, 'list').toMatch(/className=\{VOUCHER_TILE_CLASS\.grid\}>\s*\{displayProducts\.slice\(0, embedVisible\)[\s\S]{0,120}<VoucherTile /)
     expect(C.list).toBe(VOUCHER_TILE_CLASS.grid)
   })
-  it('머리 배너 판 · 걸침 = VouchersHero (안 C, 2026-10-14)', async () => {
-    const { VOUCHERS_HERO_CLS } = await import('@/pages/vouchers/VouchersHero')
-    expect(C.hero).toBe(VOUCHERS_HERO_CLS.hero)
-    expect(C.overlap).toBe(VOUCHERS_HERO_CLS.overlap)
-    // 응답 전에도 같은 판을 그린다 — '아직 모름'에서 접으면 서버 첫 화면과 갈린다.
-    const hero = code('src/pages/vouchers/VouchersHero.tsx')
-    expect(hero).toMatch(/if \(settled && banners\.length === 0\)/)
-    // 배너 카드 높이 = 예약 판 높이 — 다르면 배너가 도착하는 순간 판 안에서 잘리거나 빈 띠가 남는다.
-    const { HERO_CARD_CLS } = await import('@/components/home/HomeBannerStrip')
-    const h = VOUCHERS_HERO_CLS.hero.match(/h-\[(\d+)px\]/)?.[1]
-    expect(h).toBeTruthy()
-    expect(HERO_CARD_CLS).toContain(`!h-[${h}px]`)
+  // 🔀 2026-11-01 재조준 — 대표 확정 A안으로 머리가 **배너(196px) → 한 줄(56px)** 이 됐다.
+  //   지키려던 불변식은 그대로다: *"서버 첫 화면과 화면 부품이 같은 클래스를 쓴다"*(두 벌이면 마운트 때 밀린다).
+  //   앵커만 `VouchersHero` → `shared/vouchers-top-row` 로 옮겼다.
+  it('머리 한 줄 = VOUCHERS_TOP_ROW (A안, 2026-11-01)', async () => {
+    const { VOUCHERS_TOP_ROW } = await import('@/shared/vouchers-top-row')
+    expect(C.topRow).toBe(VOUCHERS_TOP_ROW.row)
+    expect(C.topRule).toBe(VOUCHERS_TOP_ROW.rule)
+    expect(C.topGuest).toBe(VOUCHERS_TOP_ROW.guest)
+    expect(C.topIcBtn).toBe(VOUCHERS_TOP_ROW.icbtn)
+    // 높이를 정하는 것은 `row` 의 h-14 하나다 — 숫자를 다른 곳에 또 적으면 두 벌이 된다.
+    expect(VOUCHERS_TOP_ROW.row).toMatch(/\bh-14\b/)
+    // 🔴 서버 첫 화면은 **비로그인 화면**이라 잔액이 아니라 할 수 있는 일을 말한다(0 을 적지 않는다).
+    const fs = code('src/worker/utils/vouchers-first-screen.ts')
+    expect(fs).toContain('딜 모으기')
+    expect(fs).not.toMatch(/C\.topRow[\s\S]{0,400}내 딜/)
+    // 🔴 배너는 더 이상 머리가 아니다 — 되살아나면 첫 상품이 다시 196px 아래로 내려간다.
+    expect(fs).not.toContain('heroBannerHtml')
+    expect(fs).not.toContain('bannersOfSlot')
   })
-  it('비로그인 잔액 바 · 칩 예약 · 정렬 버튼', async () => {
-    const bal = code('src/pages/vouchers/DealBalanceCard.tsx')
-    expect(bal).toContain(C.balanceBar.replace(' h-11 px-4', '')); expect(bal).toContain("'h-11 px-4'")
-    expect(bal).toContain(C.balanceText); expect(bal).toContain(C.balanceLink); expect(bal).toContain('딜을 모으면 더 싸게 살 수 있어요')
+  it('칩 예약 · 정렬 버튼', async () => {
+    // 🔀 2026-11-01 — 잔액 바(`DealBalanceCard`) 단언은 위 '머리 한 줄' 로 옮겼다. A안에서 교환권 머리는
+    //   그 카드를 쓰지 않는다(그 부품은 **마이가 계속 쓴다** — 그래서 지우지 않았고 여기서만 안 본다).
     const res = code('src/pages/vouchers/TopChromeReserve.tsx')
     // 🗂️ 2026-10-25 D안: 칩 줄 클래스는 SSOT `VOUCHER_CAT_TAB` — 워커와 예약이 같은 상수를 쓴다.
     const { VOUCHER_CAT_TAB } = await import('@/shared/voucher-tile')
@@ -206,7 +211,7 @@ describe('④ 폴백과 배선', () => {
     const line = w.split('\n').find(l => l.includes("ssrSlot === 'VOUCHERS' && ssrPayload"))
     expect(line, 'VOUCHERS 첫 화면 분기가 사라졌다').toBeTruthy()
     expect(line!).toContain("url.pathname === '/vouchers' && shouldRenderMobileFirstScreen(c.req.header('user-agent'))")
-    expect(line!).toContain('const vouchersFirst = buildVouchersFirstScreen(ssrPayload, urdealLoaderHtml, nonce, ssrExtraPayload)') // 2026-10-18 머리 배너 보조 시드
+    expect(line!).toContain('const vouchersFirst = buildVouchersFirstScreen(ssrPayload, urdealLoaderHtml, nonce)') // 🔀 2026-11-01 A안 — 머리에 배너가 없어 보조 시드 인자가 빠졌다
     expect(line!).toContain("rb = rb.on('#root', { element(el) { el.setInnerContent(vouchersFirst")
     expect(line!, '🔴 첫 화면을 못 그리면 **크롤러 요약**이 나와야 한다(본문이 통째로 비는 것 차단)')
       .toContain('buildStaticSurfaceNoscript(url.pathname, crawlerPayload) + urdealLoaderHtml')
