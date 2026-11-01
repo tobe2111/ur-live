@@ -145,7 +145,7 @@ export default function SnsLinkList({ links, available, only, returnTo, onChange
                   {l?.profile_url ? (
                     <a href={l.profile_url} target="_blank" rel="noopener noreferrer" className="hover:underline">
                       {handle}
-                      <ArrowUpRight size={12} strokeWidth={1.6} aria-hidden="true" className="ml-0.5 inline-block align-[1px] text-gray-400 dark:text-gray-500" />
+                      <ArrowUpRight size={12} strokeWidth={1.6} aria-hidden="true" className="ml-1 inline-block align-[1px] text-gray-400 dark:text-gray-500" />
                       <span className="sr-only">새 창에서 열기</span>
                     </a>
                   ) : handle}
