@@ -6,7 +6,6 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { resolveTossFlow } from '@/lib/toss-key-type'
 import { formatNumber } from '@/utils/format'
 import { formatKSTShort } from '@/utils/date'
 import { sellerHeaders } from '../life-shared'
@@ -36,6 +35,8 @@ export default function ProCredits({ me, onChanged }: { me: ProMe; onChanged: ()
       const r = await api.post('/api/home-service/pro/credits/charge', { package_key: key }, sellerHeaders())
       if (!r.data?.success) { toast.error(r.data?.error || '충전을 시작하지 못했어요'); return }
       const { orderId, amount, orderName, clientKey, flow } = r.data.data
+      // 🐢 2026-10-26: 정적 import 하면 그 파일이 든 이용권 상세 묶음(66KB)을 이 화면이 통째로 받는다 — 누를 때만 받는다.
+      const { resolveTossFlow } = await import('@/lib/toss-key-type')
       if (resolveTossFlow(flow, clientKey) === 'invalid') { toast.error('결제 설정을 확인할 수 없어요'); return }
       const params = new URLSearchParams({
         orderId, amount: String(amount), orderName, clientKey,

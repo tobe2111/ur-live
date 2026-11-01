@@ -14,7 +14,7 @@ import type { LucideIcon } from 'lucide-react'
 //    lucide 로 남는 건 화살표·닫기 같은 **조작** 뿐이고, 이 목록엔 그런 게 없어 0개가 됐다.
 import {
   TicketStubIcon, CouponIcon, GiftBoxIcon, StayLineIcon, HeartIcon, StarIcon,
-  BellIcon, PinIcon, ReviewIcon,
+  BellIcon, PinIcon, ReviewIcon, HomeServiceLineIcon,
 } from '@/components/icons/urdeal-icons'
 import { SectionTitle, ListRow, rowIcon } from './list-grammar'
 import type { MyCounts } from './types'
@@ -61,6 +61,8 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
     { Icon: GiftBoxIcon, label: t('shopping.gifticon', { defaultValue: '내 교환권' }), count: counts.gifticon || undefined, path: '/my-gifticons' },
     { Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), path: '/my-coupons' },
     { Icon: StayLineIcon, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), path: '/my-stays' },
+    // 🏠 2026-10-31 대표 *"견적을 낸 걸 마이페이지나 어디서 봐야하지 않을까?"* — 생활 견적 요청·받은 견적·공유 링크.
+    { Icon: HomeServiceLineIcon, label: t('shopping.lifeRequests', { defaultValue: '내 견적 요청' }), path: '/life/requests' },
     // 🧹 2026-09-02 (대표 "디지털 보관함도 필요없고"): 전자책·강의는 지금 파는 물건이 아니다.
     //   라우트(/my/digital)와 페이지는 남긴다 — 되살릴 때 이 줄만 되돌리면 된다.
     { Icon: HeartIcon, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), count: counts.wish || undefined, path: '/wishlist' },
