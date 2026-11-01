@@ -179,12 +179,8 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     description: `식당·카페·미용실·숙소 사장님을 위한 선결제 이용권. 광고는 클릭에 돈이 나가지만 유어딜은 손님이 매장에 온 뒤에만 수수료 ${PARTNER_FACTS.feeDirect}`
       + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered}). 가입비·월 이용료·광고비 0원, 카카오맵에서 우리 가게를 찾아 바로 등록.`,
   },
-  '/store/new': {
-    /* 🔒 2026-10-20 — 로그인 뒤 가입 도구(`ProtectedRoute requireUser`)이고 robots.txt 가 이미
-       `Disallow: /store/new` 다. 이 항목의 일은 **공유 카드(카톡 미리보기) 제목·설명**이지 색인이
-       아니다 ⇒ noindex · crumb 없음 · 크롤러 본문(surface-copy) 없음. 색인용 입점 랜딩은 `/partners`. */
-    title: '사장님 입점 신청',
-    noindex: true,
+  '/store/new': { // 로그인 뒤 가입 도구 + robots Disallow ⇒ noindex 공유 카드 메타만(색인 랜딩은 /partners)
+    title: '사장님 입점 신청', noindex: true,
     description: '사장님이 이용권을 올려 동네 손님을 모으는 무료 입점입니다. 가입하면 바로 가게를 열고 할인 이용권을 팔 수 있어요.',
   },
 
