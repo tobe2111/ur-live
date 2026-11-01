@@ -31,15 +31,15 @@ import { useTranslation } from '@/lib/i18n-lite'
 import { MAP_VOUCHER_DEFS, type MapVoucherType } from '@/pages/restaurant-map/voucher-types'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
 import { USHOP_TAB_CLS } from '@/shared/ushop-row'
+// 🧷 2026-11-01: 분류 판정은 순수 SSOT 로 나갔다 — **워커가 같은 답을 내야** 첫 화면의 칩 줄 자리가 맞는다
+//   (이 파일은 `voucher-types` → `urdeal-icons` 를 import 해서 워커가 못 읽는다).
+import { pinCategory as pinCategorySsot, showUShopChips } from '@/shared/ushop-pin-category'
 
 export type PinCategory = MapVoucherType | 'shop'
 
-/** 핀 → 칩 키. 교환권(deal_only)·voucher 카테고리는 4종 중 하나, 나머지는 '상품'. */
+/** 핀 → 칩 키. 판정은 순수 SSOT 한 곳에 있다(워커도 같은 함수를 쓴다) — 여기선 재수출만. */
 export function pinCategory(p: CuratorPin): Exclude<PinCategory, 'all'> {
-  const cat = p.category || ''
-  if (/^(meal|beauty|stay|etc)_voucher$/.test(cat)) return cat as Exclude<PinCategory, 'all' | 'shop'>
-  if (p.deal_only === 1 || /voucher/i.test(cat)) return 'etc_voucher'
-  return 'shop'
+  return pinCategorySsot(p) as Exclude<PinCategory, 'all'>
 }
 
 export default function PinCategoryChips({ pins, value, onChange }: { pins: CuratorPin[]; value: PinCategory; onChange: (v: PinCategory) => void }) {
@@ -53,7 +53,8 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
     ...((counts.get('shop') || 0) > 0 ? [{ key: 'shop' as const, labelKey: 'curator.chipShop', defaultLabel: '상품' }] : []),
   ]
   // 카테고리가 하나뿐이면 칩은 정보가 0 — 전체 + 그 하나 = 늘 같은 목록.
-  if (defs.length <= 2) return null
+  // 🔴 판정은 SSOT 하나로(`showUShopChips`) — 워커 첫 화면이 **같은 답**을 내야 칩 줄 자리가 맞는다.
+  if (!showUShopChips(pins)) return null
   return (
     <div className="flex-1 min-w-0 flex overflow-x-auto scrollbar-hide" role="tablist" aria-label={t('curator.chipsLabel', { defaultValue: '카테고리' })}>
       {defs.map((d) => {

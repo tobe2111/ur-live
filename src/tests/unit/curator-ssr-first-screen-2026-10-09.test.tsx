@@ -39,6 +39,7 @@ import {
 import { curatorHomePins } from '@/shared/curator-pin-order'
 import { cfImage } from '@/utils/cf-image'
 import { stripComments } from '../helpers/source-text'
+import { showUShopChips, showUShopSort } from '@/shared/ushop-pin-category'
 
 const root = process.cwd()
 const read = (p: string) => fs.readFileSync(path.join(root, p), 'utf8')
@@ -192,7 +193,15 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
   })
 
   // ─────────────────────────────────────────────── ④ 주인/방문자 폭 — 이 첫 화면의 전제
-  it('④ `CuratorHeader` 는 방문자에게도 `관리` 자리를 비워 둔다(폭이 같아야 서버가 그릴 수 있다)', () => {
+  /**
+   * 🔄 2026-11-01 재조준 (대표 확정 **2안**). 종전 단언은 *"방문자에게도 `관리` 자리를 `invisible` 로
+   *   비워 둔다"* 였고, 그것이 지키던 것은 **"이름 칸 폭이 주인/방문자에서 같다"** 하나였다.
+   *   2안이 버튼 묶음을 **이름 줄 밖**(로고 줄)으로 옮기면서 그 폭은 **구조적으로** 같아졌다 —
+   *   예약은 더 이상 필요 없고, 남겨 두면 PC 프로필 열에서 공유 아이콘이 빈 알약만큼 왼쪽으로 밀린다.
+   *   ⇒ **수단(예약) 대신 결과(폭이 같다)를 렌더해서 잰다.** 예약으로 되돌리면 이 단언은 그대로 통과하지만
+   *     버튼을 이름 줄로 되돌리면 빨간불이 된다 — 그것이 이 가드가 막으려는 회귀다.
+   */
+  it('④ 이름 칸의 폭·구조가 주인/방문자에서 같다(서버는 누가 보는지 모른 채 그린다)', () => {
     const curator = {
       id: 3, handle: 'jiwon1228', name: '지원의 동네가게 연남점', bio: '소개',
       profile_image: null, youtube_url: 'y', instagram_url: 'i', tiktok_url: '',
@@ -207,29 +216,29 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
     }
     const owner = renderHeader(true)
     const visitor = renderHeader(false)
-    const cluster = (c: Element) => c.querySelector('.ml-3')!
-    // 버튼 자리 개수가 같다(SNS 2 + 공유 + 관리 = 4)
-    expect(cluster(visitor).children.length).toBe(cluster(owner).children.length)
-    // 관리 자리의 클래스가 같다 — 폭을 정하는 것은 이 클래스들이다
-    const last = (c: Element) => cluster(c).lastElementChild!
-    for (const t of tokens(CURATOR_FS_CLASS.manageBtn)) {
-      expect(tokens(last(owner).className)).toContain(t)
-      expect(tokens(last(visitor).className)).toContain(t)
-    }
-    // 방문자 쪽은 보이지 않고, **누를 수도 읽힐 수도 없다**
-    expect(tokens(last(visitor).className)).toContain('invisible')
-    expect(last(visitor).tagName).toBe('SPAN')
-    expect(last(visitor).getAttribute('aria-hidden')).toBe('true')
-    // 주인 쪽은 진짜 링크다
-    expect(last(owner).tagName).toBe('A')
-    expect(last(owner).getAttribute('href')).toBe('/u/me/manage')
-    // 글자는 같은 번역 키 하나에서 온다(폭이 번역마다 달라도 둘이 같이 달라진다)
-    expect(last(visitor).textContent).toBe(last(owner).textContent)
+    // 이름 줄(= 얼굴 + 이름 칸)의 **구조가 같다** — 그 줄에 소유권으로 갈리는 것이 하나도 없어야 한다.
+    const nameRow = (c: Element) => c.querySelector(`.${CURATOR_FS_CLASS.nameRow.split(' ').join('.')}`)!
+    expect(nameRow(owner), '이름 줄을 못 찾았다(클래스가 갈렸다)').toBeTruthy()
+    expect(nameRow(visitor).outerHTML, '이름 줄은 누가 보든 같다').toBe(nameRow(owner).outerHTML)
+    // 버튼 묶음은 **그 줄 밖**에 있고, 거기서만 소유권이 갈린다.
+    const cluster = (c: Element) => c.querySelector(`.${CURATOR_FS_CLASS.cluster.split(' ').join('.')}`)!
+    expect(nameRow(owner).contains(cluster(owner)), '버튼 묶음이 이름 줄 안에 있으면 안 된다').toBe(false)
+    // 줄 높이는 공유(h-9)와 관리(h-9)가 같아 소유권과 무관하다 — 둘 다 같은 높이 토큰을 쓴다.
+    expect(tokens(CURATOR_FS_CLASS.iconBtn)).toContain('h-9')
+    expect(tokens(CURATOR_FS_CLASS.manageBtn)).toContain('h-9')
+    // 주인만 진짜 관리 링크를 갖고, 방문자에겐 그 자리가 아예 없다(예약하지 않는다).
+    const manage = (c: Element) => cluster(c).querySelector('a[href="/u/me/manage"]')
+    expect(manage(owner), '주인은 진짜 링크').toBeTruthy()
+    expect(manage(visitor), '방문자에겐 없다').toBeNull()
+    expect(cluster(visitor).querySelectorAll('.invisible').length, '빈 예약도 없다').toBe(0)
+    // 공유는 둘 다에게 보인다 — 손님이 친구에게 넘기는 것이 유어샵의 확산 경로다.
+    for (const c of [owner, visitor]) expect(cluster(c).querySelector('button')).toBeTruthy()
   })
 
-  it('④-1 워커도 그 자리를 같은 클래스로 비워 둔다 + 아이콘 path 는 안 옮긴다', () => {
+  it('④-1 워커도 같은 자리를 같은 클래스로 예약한다 + 아이콘 path 는 안 옮긴다', () => {
     const html = buildCuratorFirstScreen(SEED(), LOADER)
-    expect(html).toContain(`class="${CURATOR_FS_CLASS.manageBtn} invisible pointer-events-none"`)
+    // 🔄 2026-11-01 (2안): `관리` 예약은 사라졌다(④ 참조). 줄 높이는 공유 한 칸이 정한다.
+    expect(html, '관리 예약은 되살리지 않는다').not.toContain(CURATOR_FS_CLASS.manageBtn)
     // 🔄 2026-10-14 (유어샵 A): SNS 는 이름 아래 줄의 이름표로 내려갔다 ⇒ 이름 줄의 빈 원은 **공유 하나**.
     expect((html.match(new RegExp(`class="${CURATOR_FS_CLASS.iconBtn.replace(/[[\]]/g, '\\$&')}"`, 'g')) || []).length).toBe(1)
     // SNS 2 = 이름표 자리 2개(글자는 브랜드명, 아이콘은 빈 칸)
@@ -266,7 +275,9 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
         </MemoryRouter>,
       )
       const sImg = host.querySelector(`.${CURATOR_FS_CLASS.avatar.split(' ').join('.')} img`)!
-      const cImg = container.querySelector('.w-14.h-14 img')!
+      // 🩸 2026-11-01: 종전엔 `.w-14.h-14` 를 **손으로** 적어 두어 얼굴이 40px 로 바뀌자 null 이 됐다.
+      //   양쪽 다 같은 상수에서 선택자를 파생한다 — 그게 이 검사가 비교하려는 것이기도 하다.
+      const cImg = container.querySelector(`.${CURATOR_FS_CLASS.avatar.split(' ').join('.')} img`)!
       expect(sImg.getAttribute('src'), `얼굴 URL (${profile_image ? '사진' : '유달이'})`).toBe(cImg.getAttribute('src'))
       if (!profile_image) expect(sImg.getAttribute('src')).toBe(SHARE_MASCOT_SRC)
       // 숫자 줄 글자가 같다 — 마운트 때 숫자가 바뀌어 보이면 안 된다
@@ -303,17 +314,51 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
     expect(many).toContain(CURATOR_FS_CLASS.searchBox)
   })
 
-  it('④-3 칩 줄의 **높이를 만드는 두 자리**를 다 예약한다(칩 + 정렬 칸)', () => {
-    const html = buildCuratorFirstScreen(SEED(), LOADER)
-    // 칩은 `-mb-px` 로 1px 올라앉으므로 줄 높이는 **정렬 칸**(음수 마진 없음)이 정한다.
-    // 실측: 칩만 예약 44px vs React 45px — 1px 도 밀림이다.
-    expect(html).toContain(`class="${CURATOR_FS_CLASS.chip} invisible"`)
-    expect(html).toContain(`class="${CURATOR_FS_CLASS.sortSlot}"`)
-    expect(html).toContain(`class="${CURATOR_FS_CLASS.sortBtn} invisible"`)
-    // 페이지 소스에 그 두 자리가 실제로 그 모양으로 있는가
+  /**
+   * 🔄 2026-11-01 재조준 (대표 확정 **2안**). 종전엔 칩 줄의 두 자리를 **무조건** 예약했는데,
+   *   화면은 그 둘을 **조건부로** 그린다 — 분류가 하나뿐이면 `PinCategoryChips` 가 `null` 을 내고
+   *   (`showUShopChips`), 진열이 적으면 정렬이 안 뜬다(`showUShopSort`). 라이브 `/u/jiwon1228` 이
+   *   정확히 그 경우라(이용권 1개) 서버가 그린 줄을 마운트가 **통째로 접었다**.
+   *   ⇒ 불변식을 *"무조건 예약"* → **"화면이 그릴 때만, 그리고 그때는 반드시 예약"** 으로 옮긴다.
+   *   🔴 판정 함수는 화면과 **같은 것**을 쓴다 — 여기서 조건을 베껴 적으면 언젠가 갈린다.
+   */
+  it('④-3 칩 줄은 화면이 그리는 조건에서만, 그때는 두 자리를 다 예약한다', () => {
+    const mk = (pins: unknown[]) => buildCuratorFirstScreen(JSON.stringify({ success: true, curator: JSON.parse(SEED()).curator, pins }), LOADER)
+    const pin = (i: number, category: string) => ({ id: i, product_id: i, product_name: `p${i}`, price: 1000, category })
+
+    // ⓐ 분류 2종 + 진열 5개 이상 → 둘 다 예약한다.
+    //    칩은 `-mb-px` 로 1px 올라앉으므로 줄 높이는 **정렬 칸**(음수 마진 없음)이 정한다.
+    //    실측: 칩만 예약 44px vs React 45px — 1px 도 밀림이다.
+    const many = [1, 2, 3].map((i) => pin(i, 'meal_voucher')).concat([4, 5].map((i) => pin(i, 'stay_voucher')))
+    expect(showUShopChips(many) && showUShopSort(many), '픽스처 전제').toBe(true)
+    const full = mk(many)
+    expect(full).toContain(`class="${CURATOR_FS_CLASS.chip} invisible"`)
+    expect(full).toContain(`class="${CURATOR_FS_CLASS.sortSlot}"`)
+    expect(full).toContain(`class="${CURATOR_FS_CLASS.sortBtn} invisible"`)
+
+    // ⓑ 분류 1종 + 진열 1개 → **아무것도 예약하지 않는다**(빈 div → `empty:hidden` 이 여백까지 접는다).
+    const one = [pin(1, 'meal_voucher')]
+    expect(showUShopChips(one) || showUShopSort(one), '픽스처 전제').toBe(false)
+    const bare = mk(one)
+    expect(bare, '칩 자리 없음').not.toContain(`class="${CURATOR_FS_CLASS.chip} invisible"`)
+    expect(bare, '정렬 자리 없음').not.toContain(CURATOR_FS_CLASS.sortSlot)
+    expect(bare, '줄 자체는 남고 비어 있다').toContain(`<div class="${CURATOR_FS_CLASS.chipsRow}"></div>`)
+
+    // ⓒ 분류 2종이지만 진열 4개 → 칩만. (두 조건이 **따로** 걸린다는 증거)
+    const chipsOnly = [pin(1, 'meal_voucher'), pin(2, 'stay_voucher')]
+    expect(showUShopChips(chipsOnly), '픽스처 전제').toBe(true)
+    expect(showUShopSort(chipsOnly), '픽스처 전제').toBe(false)
+    const mid = mk(chipsOnly)
+    expect(mid).toContain(`class="${CURATOR_FS_CLASS.chip} invisible"`)
+    expect(mid).not.toContain(CURATOR_FS_CLASS.sortSlot)
+
+    // 페이지 소스에 그 두 자리가 실제로 그 모양으로, **같은 판정 함수 뒤에** 있는가
     const page = code('src/pages/CuratorPage.tsx')
     expect(page).toContain(`<div className="${CURATOR_FS_CLASS.sortSlot}">`)
     expect(page).toContain('<SortMenu')
+    expect(page, '정렬 게이트는 SSOT 함수').toMatch(/\{showUShopSort\(pins\) && \(/)
+    expect(code('src/pages/curator-page/PinCategoryChips.tsx'), '칩 게이트도 같은 SSOT')
+      .toMatch(/if \(!showUShopChips\(pins\)\) return null/)
   })
 
   it('⑤-2 로더는 첫 화면 **아래**로 — 34dvh 로 줄여 붙인다', () => {
