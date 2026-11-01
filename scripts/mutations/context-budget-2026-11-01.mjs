@@ -82,12 +82,4 @@ export default [
     test: T,
     why: '이 가드의 설계는 "큰 파일 금지" 가 아니라 "경고 강제" 다. 경고를 인정하지 않으면 이력 파일을 지우게 되고, 그 이력은 값지다.',
   },
-  {
-    name: '컨텍스트예산 — verify.yml 에서 strict 를 떼어 warn 으로 만든다',
-    file: '.github/workflows/verify.yml',
-    find: '        run: node scripts/check-context-budget.mjs -s',
-    replace: '        run: node scripts/check-context-budget.mjs',
-    test: T,
-    why: '-s 가 없으면 초과해도 exit 0 이라 CI 가 통과한다 — 등록은 됐는데 아무것도 막지 않는다.',
-  },
 ]

@@ -15,7 +15,7 @@
  *   ② 예산을 넘기면 **잡는다**, 넘기지 않으면 통과한다(양방향)
  *   ③ 경고 없는 거대 문서를 잡고, **경고가 있으면 통과**시킨다(큰 파일 금지가 아니다)
  *   ④ 측정 대상이 비면 **통과가 아니라 실패**다(이 레포가 반복해 당한 "헛도는 가드")
- *   ⑤ 실행 경로에 등록돼 있다(audit-gate + verify.yml strict)
+ *   ⑤ 실행 경로에 등록돼 있다(audit-gate strict — verify.yml 등록은 다음 PR)
  *   ⑥ 실제 레포가 지금 예산 안에 있다
  *
  * ⚠️ 이 시험이 **못 보는 것**: 토큰 추정은 근사다(한글 1.0 + 그 외 0.3, 과대추정=보수적) —
@@ -196,17 +196,10 @@ describe('④ 실행 경로에 등록돼 있다 (안 돌면 없는 것과 같다
     )
   })
 
-  it('verify.yml 이 strict 로 돌린다 (continue-on-error: false)', () => {
-    const y = read('.github/workflows/verify.yml')
-    const i = y.indexOf('check-context-budget.mjs')
-    expect(i, 'verify.yml 에 없다 — CI 가 안 본다').toBeGreaterThan(-1)
-    // 🩸 첫 판은 `-s` 를 호출 **앞** 300자에서 찾았다 — `-s` 는 같은 `run:` 줄의 **뒤**에 온다.
-    //   가드는 멀쩡한데 단언이 틀려 빨간불이 났다(내 오류). 한 창 안에서 둘 다 본다.
-    const win = y.slice(i, i + 220)
-    expect(win, 'strict 가 아니다').toContain('continue-on-error: false')
-    expect(win, '-s 없이 호출하면 warn 이라 실패해도 CI 가 통과한다').toMatch(/-s\b|STRICT_CONTEXT_BUDGET=1/)
-  })
-
+  // ⏱️ verify.yml(CI) 등록은 **다음 PR 로 옮겼다**(2026-11-01). verify.yml 은 `ALWAYS_FULL` 이라
+  //   등록만 해도 주입 전수(5천 건, 한 대에서 약 3시간)가 돈다 — 이 PR 이 실제로 그렇게 막혔다.
+  //   그 비용을 없애는 판정(단계 *추가만* 이면 좁힘)과 함께 다음 PR 에서 등록하고 이 단언도 되살린다.
+  //   그 사이 이 가드는 audit-gate(strict, 위)로 돈다.
   it('CLAUDE.md 가 이 규칙을 안내한다 (문서와 기계가 같은 말을 해야 한다)', () => {
     const s = read('CLAUDE.md')
     expect(s, 'CLAUDE.md 가 이 가드를 모른다 — 다음 세션이 왜 막히는지 알 수 없다')

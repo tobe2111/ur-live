@@ -562,17 +562,6 @@ jobs:
         run: node scripts/check-file-size.mjs --changed-only -s
         continue-on-error: false
 
-      # 🧠 2026-11-01: 세션 컨텍스트 예산 (strict). 위 래칫은 `src/**.ts(x)` 만 보므로 `.md` 는
-      #   **무제한으로 자랄 수 있었다** → CLAUDE.md 가 589,461자 ≈ 30만 토큰이 되어 세션 용량
-      #   (20만)의 151% 가 됐고, 대화 한 마디 전에 `prompt is too long` 이 났다(대표 신고).
-      #   같은 병이 하루에 셋이었다(CURRENT_WORK.md 24.4만 · INDEX.local.md 2.4만).
-      #   규칙은 이미 CLAUDE.md "📚 문서 분할" 에 있었다 — **강제가 없었다**.
-      #   래칫이 아니라 **하드 상한**이다: 래칫은 "조금씩 늘리기"를 허용하고 CLAUDE.md 는
-      #   정확히 그렇게(한 줄씩 284번) 30만이 됐다. 우회: `context-budget-ok` 주석.
-      - name: Session context budget (prompt-too-long guard, strict)
-        run: node scripts/check-context-budget.mjs -s
-        continue-on-error: false
-
       # 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 — 현재 위반 0 → strict.
       #   localStorage user_type === 'user' 로그인 게이트(세션 풀림 사고 근본원인) 신규 추가 차단.
       - name: Dual-login regression guard (strict)
