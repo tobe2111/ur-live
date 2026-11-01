@@ -14,6 +14,7 @@
 import type { Env } from '../types/env'
 import { evaluateVitals, describeFinding, poolDays, MIN_SAMPLES, WINDOW_DAYS, VITALS_SLO } from '../utils/vitals-slo'
 import { summarizeLcpParts, describeLcpParts } from '../utils/lcp-parts'
+import { describeClsSources } from '../../shared/cls-source'
 
 const DAY_MS = 86_400_000
 const ymd = (ms: number) => new Date(ms).toISOString().slice(0, 10)
@@ -56,6 +57,16 @@ async function lcpPartsLine(kv: KVNamespace, nowMs: number, page: string): Promi
   } catch { return '' }
 }
 
+/** 🔬 2026-10-20: 경보가 난 화면의 CLS 원인(무엇이 밀렸나)을 판정 창 그대로 모은다(없으면 빈 줄). */
+async function clsSourcesLine(kv: KVNamespace, nowMs: number, page: string): Promise<string> {
+  try {
+    const days = Array.from({ length: WINDOW_DAYS }, (_, i) => ymd(nowMs - (1 + i) * DAY_MS))
+    const raws = await Promise.all(days.map((d) => kv.get(`vitals:${d}:CLSS:${page}`)))
+    const rows = raws.flatMap((r) => { try { return r ? (JSON.parse(r) as string[]) : [] } catch { return [] } })
+    return describeClsSources(rows)
+  } catch { return '' }
+}
+
 export async function runVitalsSlo(env: Env, nowMs = Date.now()): Promise<string> {
   const e = env as Env & { ANALYTICS_KV?: KVNamespace; SESSION_KV?: KVNamespace }
   const kv = e.ANALYTICS_KV || e.SESSION_KV
@@ -86,6 +97,10 @@ export async function runVitalsSlo(env: Env, nowMs = Date.now()): Promise<string
       ? [blindReason, `창 ${WINDOW_DAYS}일 · 화면별 최소 표본 ${MIN_SAMPLES}`]
       : (await Promise.all(findings.slice(0, 8).map(async (f) => {
           const line = describeFinding(f)
+          if (f.metric === 'CLS') {
+            const src = await clsSourcesLine(kv, nowMs, f.page)
+            return src ? [line, src] : [line]
+          }
           if (f.metric !== 'LCP') return [line]
           const parts = await lcpPartsLine(kv, nowMs, f.page)
           return parts ? [line, parts] : [line]

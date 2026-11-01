@@ -14,6 +14,7 @@ import type { Env } from '@/worker/types/env'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { ensureInfluencerProfileTable, parseChannels, maxFollowers, parseJsonList } from '@/worker/utils/influencer-profile'
 import { intParam } from '@/shared/pagination'
+import { ALL_VOUCHER_CATEGORY_KEYS } from '@/shared/constants/voucher-categories'
 import { findActiveDealPctsBySeller } from '@/worker/utils/influencer-deal'
 
 type MarketingVars = {
@@ -138,7 +139,7 @@ export function registerDiscoveryRoutes(sellerApp: MarketingApp, discoverApp: Ma
   discoverApp.get('/products', async (c) => {
     const DB = c.env.DB
     const cat = c.req.query('category') || 'all'
-    const validCats = ['meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher']
+    const validCats = [...ALL_VOUCHER_CATEGORY_KEYS]
     const placeholders = cat === 'all' ? validCats.map(() => '?').join(',') : '?'
     const params = cat === 'all' ? validCats : [cat]
     const { results } = await DB.prepare(

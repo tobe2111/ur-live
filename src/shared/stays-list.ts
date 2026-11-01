@@ -42,14 +42,14 @@ export const STAYS_LIST = {
   h1: 'text-[15px] font-bold flex-1 flex items-center gap-2',
   filterBtn: 'p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.06]',
   chipRow: 'ur-content-wide px-4 lg:px-8 pb-2 flex gap-2 overflow-x-auto scrollbar-hide',
-  chip: 'shrink-0 flex items-center gap-1 px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap transition-all',
+  chip: 'shrink-0 flex items-center gap-1 px-4 py-2 rounded-full text-[12px] font-medium whitespace-nowrap transition-all',
   chipOn: 'bg-brand text-white',
   chipOff: 'bg-white dark:bg-[#1D1F29] text-brand-text shadow-lift',
   quickRow: 'ur-content-wide px-4 lg:px-8 pb-3 flex gap-2 overflow-x-auto scrollbar-hide',
   quick: 'flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] rounded-full text-[12px] whitespace-nowrap',
   results: 'ur-content-wide px-4 lg:px-8 py-4',
   curations: 'space-y-8 pb-2',
-  rowTitle: 'text-[17px] sm:text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white px-1',
+  rowTitle: 'text-[17px] sm:text-[17px] font-bold tracking-tight text-gray-900 dark:text-white px-1',
   row: 'mt-3 flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-4 px-4 lg:mx-0 lg:px-0',
   cell: 'shrink-0 snap-start w-[68%] sm:w-[42%] lg:w-[28%] xl:w-[23%]',
 } as const
@@ -63,6 +63,7 @@ export const STAYS_CHIPS: ReadonlyArray<{ key: string; label: string }> = [
   { key: 'meal_voucher', label: '식사' },
   { key: 'beauty_voucher', label: '뷰티·헬스' },
   { key: 'stay_voucher', label: '숙소' },
+  { key: 'home_voucher', label: '생활' },
   { key: 'etc_voucher', label: '기타' },
 ]
 

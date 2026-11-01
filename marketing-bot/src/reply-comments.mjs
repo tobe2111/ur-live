@@ -1,24 +1,27 @@
 // 2시간마다: 내 게시물 댓글 수집 → 분류 → 일반 댓글은 짧게 답글, 민감/불만/환불은 답글 없이 needs-owner 이슈.
-import { DRY, log, readJson, writeJson, claude, humanize, threads, insta, createIssue, THREADS_USER_ID, PARTNER_FACTS, PARTNER_LINKS } from './lib.mjs';
+// "이미 답했나·이미 올렸나"는 저장 파일이 아니라 실물로 판정한다(live.mjs 머리말):
+//   답했나 = 그 댓글의 답글 중 내 계정이 있는가 · 올렸나 = needs-owner 이슈 본문에 그 댓글 ID 가 있는가.
+import { DRY, log, claude, humanize, threads, insta, threadsPublish, createIssue, PARTNER_FACTS, PARTNER_LINKS, opsAlert } from './lib.mjs';
+import { campaignToTrack } from './attribution.mjs';
+import { myRecentPosts, myUsernames, repliesOf, findMyReplies, escalatedCommentIds, utmFromText, metaTime } from './live.mjs';
 
-const posts = readJson('data/posts.json', []);
-const state = readJson('data/comments.json', { replied: [], escalated: [] });
-state.recent_replies ||= [];
-const seen = new Set([...state.replied, ...state.escalated]);
-const cutoff = Date.now() - 14 * 86400e3;
-const recent = posts.filter((p) => p.id && !p.dry && !p.skipped && Date.parse(p.posted_at) > cutoff);
 const SENSITIVE = /환불|취소|불만|최악|사기|신고|고소|위생|배탈|식중독|아팠|결제\s*오류|안\s*돼요|안돼요|연락\s*안|답변\s*없|개인정보|소비자원/;
+// 이보다 오래된 댓글은 다시 보지 않는다 — 스팸은 기록이 없어 회차마다 다시 분류되므로 창을 좁게 둔다
+const COMMENT_WINDOW_MS = 7 * 86400e3;
 
-async function fetchComments() {
+async function fetchComments(posts, own) {
   const out = [];
-  for (const p of recent) {
+  const since = Date.now() - COMMENT_WINDOW_MS;
+  for (const p of posts) {
     try {
-      if (p.platform === 'threads') {
-        const r = await threads('GET', `${p.id}/replies`, { fields: 'id,text,username,timestamp' });
-        for (const c of r.data || []) if (c.username !== 'urdeal_official') out.push({ platform: 'threads', id: c.id, text: c.text || '', user: c.username, post: p });
-      } else {
-        const r = await insta('GET', `${p.id}/comments`, { fields: 'id,text,username,timestamp' });
-        for (const c of r.data || []) if (c.username !== 'urdeal_official') out.push({ platform: 'instagram', id: c.id, text: c.text || '', user: c.username, post: p });
+      const r = p.platform === 'threads'
+        ? await threads('GET', `${p.id}/replies`, { fields: 'id,text,username,timestamp' })
+        : await insta('GET', `${p.id}/comments`, { fields: 'id,text,username,timestamp' });
+      for (const c of r.data || []) {
+        if (own.has(c.username)) continue;
+        const ms = metaTime(c.timestamp);
+        if (Number.isFinite(ms) && ms < since) continue;
+        out.push({ platform: p.platform, id: c.id, text: c.text || '', user: c.username, post: p });
       }
     } catch (e) { log(`댓글 조회 실패 ${p.platform} ${p.id}: ${e.message}`); }
   }
@@ -43,31 +46,45 @@ async function classify(text) {
   return w.includes('sensitive') ? 'sensitive' : w.includes('spam') ? 'spam' : 'normal';
 }
 
+const TRACK_LABEL = { merchant: '사장님 입점 안내', creator: '크리에이터 파트너 안내', consumer: '소비자 딜 소개' };
+
 async function main() {
-  const comments = (await fetchComments()).filter((c) => !seen.has(c.id));
-  log(`새 댓글 ${comments.length}개`);
+  const own = await myUsernames();
+  const posts = await myRecentPosts({ days: 14 });
+  // 못 읽으면 실패시킨다(escalatedCommentIds 가 던진다) — 같은 민감 댓글로 이슈가 2시간마다 쌓이는 것보다 낫다
+  const escalated = await escalatedCommentIds();
+  const comments = (await fetchComments(posts, own)).filter((c) => !escalated.has(c.id));
+  log(`게시물 ${posts.length}개 · 아직 이슈 안 만든 댓글 ${comments.length}개`);
+  const recentReplies = [];
+  let replied = 0, skipped = 0;
   for (const c of comments) {
+    if (!DRY) {
+      // 답글을 달기 전에 그 댓글에 내 답글이 이미 있는지 직접 본다 — 이게 "같은 댓글에 두 번" 을 막는 유일한 판정이다.
+      // 조회가 실패하면 이 댓글은 건너뛴다(답을 못 단 날 < 같은 답 두 번).
+      let mine;
+      try { mine = findMyReplies(await repliesOf(c.platform, c.id), own); }
+      catch (e) { log(`답글 확인 실패 → 이번엔 건너뜀 ${c.platform} ${c.id}: ${e.message}`); skipped++; continue; }
+      recentReplies.push(...mine.mine);
+      if (mine.replied) { skipped++; continue; }
+    }
     const kind = await classify(c.text);
     if (kind === 'sensitive') {
       await createIssue(`[needs-owner] ${c.platform} 댓글 확인 필요 (@${c.user})`,
         `자동 답글을 달지 않았습니다. 사장님이 직접 확인해 주세요.\n\n- 플랫폼: ${c.platform}\n- 작성자: @${c.user}\n- 댓글 ID: ${c.id}\n- 게시물 ID: ${c.post.id}\n\n> ${c.text.replace(/\n/g, '\n> ')}`, ['needs-owner']);
-      state.escalated.push(c.id);
       continue;
     }
-    if (kind === 'spam') { state.replied.push(c.id); log(`스팸 무시 ${c.id}`); continue; }
-    const ctx = c.post.track ? `게시물 주제: ${c.post.track === 'merchant' ? '사장님 입점 안내' : c.post.track === 'creator' ? '크리에이터 파트너 안내' : '소비자 딜 소개'}\n` : '';
-    const recentR = state.recent_replies.slice(-8).map((r) => `- ${r}`).join('\n') || '- (없음)';
+    if (kind === 'spam') { log(`스팸 무시 ${c.id}`); continue; }
+    const utm = c.platform === 'threads' ? utmFromText(c.post.text) : null;
+    const track = utm ? campaignToTrack(utm.campaign) : null;
+    const ctx = track ? `게시물 주제: ${TRACK_LABEL[track]}\n` : '';
+    const recentR = recentReplies.slice(-8).map((r) => `- ${r}`).join('\n') || '- (없음)';
     const reply = (await humanize(await claude(`${REPLY_SYSTEM}\n\n[최근 내 답글 — 이 말투/첫마디 반복 금지]\n${recentR}`, `${ctx}@${c.user} 댓글: ${c.text}`, 220), '댓글 답글')).slice(0, 300);
-    state.recent_replies = [...state.recent_replies, reply].slice(-20);
+    recentReplies.push(reply);
     log(`답글(${c.platform} ${c.id}): ${reply}`);
-    if (c.platform === 'threads') {
-      const cr = await threads('POST', `${THREADS_USER_ID}/threads`, { media_type: 'TEXT', text: reply, reply_to_id: c.id });
-      await threads('POST', `${THREADS_USER_ID}/threads_publish`, { creation_id: cr.id });
-    } else {
-      await insta('POST', `${c.id}/replies`, { message: reply });
-    }
-    state.replied.push(c.id);
+    if (c.platform === 'threads') await threadsPublish({ media_type: 'TEXT', text: reply, reply_to_id: c.id });
+    else await insta('POST', `${c.id}/replies`, { message: reply });
+    replied++;
   }
-  if (!DRY) writeJson('data/comments.json', state);
+  log(`답글 ${replied}개 · 이미 답했거나 확인 실패로 건너뜀 ${skipped}개`);
 }
-main().catch((e) => { console.error(e.message); process.exit(1); });
+main().catch(async (e) => { console.error(e.message); await opsAlert('마케팅 봇 댓글 응답 실패', e.message); process.exit(1); });

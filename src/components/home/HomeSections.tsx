@@ -1,4 +1,4 @@
-import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
+import { DEAL_ROW } from '@/shared/deal-card-grid'
 import { Fragment, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { resolveSectionMoreHref, isDeadEndHref } from './section-more-href'
@@ -10,6 +10,7 @@ import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import SectionRail from './SectionRail'
 import DealCardPlaceholder from './DealCardPlaceholder'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { isHomeVisibleProduct } from '@/shared/deal-cats'
 import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY, HOME_CARD_ABOVE_FOLD,
 } from '@/shared/home-card-image'
@@ -135,7 +136,10 @@ export default function HomeSections(
     },
   )
 
-  const visible = sections.filter(s => Array.isArray(s.products) && s.products.length > 0)
+  // 🏠 2026-10-31 생활 이용권은 메인에 안 뜬다 — 그것만 있던 섹션은 줄째 빠진다(워커 첫 화면과 같은 규칙).
+  const visible = sections
+    .map(s => (Array.isArray(s.products) ? { ...s, products: s.products.filter(isHomeVisibleProduct) } : s))
+    .filter(s => Array.isArray(s.products) && s.products.length > 0)
 
   /**
    * 🧱 2026-08-19 (대표 신고 — "첫 접속하면 지금 인기 이용권이 먼저 안뜨고 … 시간 지나면 보여"):
@@ -152,7 +156,7 @@ export default function HomeSections(
       <>
         <section className="ur-home-panel" aria-hidden="true">
           <div className="mb-3">
-            <h3 className={`${rail ? 'text-[24px] font-bold tracking-[-.02em]' : 'text-[17px] font-black tracking-tight'} flex`}>
+            <h3 className={`${rail ? 'text-[24px] font-bold tracking-[-.02em]' : 'text-[17px] font-bold tracking-tight'} flex`}>
               <span className="rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none w-40">가</span>
             </h3>
             <p className="flex mt-1 text-[12px]"><span className="rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none w-56">가</span></p>
@@ -160,8 +164,8 @@ export default function HomeSections(
           {rail
             ? <SectionRail count={4}>{[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} />)}</SectionRail>
             : (
-              <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`}>
-                {[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} />)}
+              <div className={DEAL_ROW.grid}>
+                {[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} row />)}
               </div>
             )}
         </section>
@@ -190,12 +194,12 @@ export default function HomeSections(
             <div className="flex items-end justify-between gap-4 mb-3">
               <div className="min-w-0">
                 {/* ⚠️ 모바일 클래스 문자열은 워커 첫 화면(`home-first-screen`)이 글자 그대로 미러한다 — 통째로 둔다. */}
-                <h3 className={rail ? 'text-[24px] font-bold tracking-[-.02em] text-gray-900 dark:text-white' : 'text-[17px] font-black tracking-tight text-gray-900 dark:text-white'}>
+                <h3 className={rail ? 'text-[24px] font-bold tracking-[-.02em] text-gray-900 dark:text-white' : 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white'}>
                   {sec.title}
                 </h3>
                 {/* 📍 위치로 정렬된 줄은 그 사실을 말한다 — "가까운 곳부터" 같은 문구가 위치 없이 남으면 거짓말이다. */}
                 {(sec.near || sec.subtitle) && (
-                  <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">{sec.near ? nearSubtitle(near?.label) : sec.subtitle}</p>
+                  <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{sec.near ? nearSubtitle(near?.label) : sec.subtitle}</p>
                 )}
               </div>
               {more && !moreIsDeadEnd && (
@@ -210,7 +214,7 @@ export default function HomeSections(
                       파랑으로 물들이지 않는다. 눌러지는 신호는 hover 밑줄이 맡는다. */
                 <Link
                   to={more}
-                  className="shrink-0 text-[12px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"
+                  className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400 hover:underline underline-offset-4 whitespace-nowrap"
                 >
                   더보기
                 </Link>
@@ -218,12 +222,12 @@ export default function HomeSections(
             </div>
             {(() => {
               const cards = sec.products.map((p, i) => (
-                <GroupBuyFeedCard key={p.id} p={p} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} userLoc={sec.near ? near?.kmFrom : null} />
+                <GroupBuyFeedCard key={p.id} p={p} row={!rail} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} userLoc={sec.near ? near?.kmFrom : null} />
               ))
               // ↔️ 첫 섹션 앞 4장은 PC 에서도 첫 화면 근처 — 워커가 4열 폭(400)으로 미리 받는다(`home-card-preload`). 그 계약 그대로.
               return rail
                 ? <SectionRail count={sec.products.length}>{cards}</SectionRail>
-                : <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`}>{cards}</div>
+                : <div className={DEAL_ROW.grid}>{cards}</div> // 📋 2026-10-31 시안 10 — 폰 줄 목록, md+ 종전 4열
             })()}
           </section>
           {/* 🎬 2026-09-07 (대표 확정): 유어쇼츠는 **인기 이용권 다음**. 히어로 바로 아래로 올리면

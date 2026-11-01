@@ -219,14 +219,14 @@ export default function LinkshopPinPicker() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-[15px] font-extrabold leading-tight truncate">내 유어샵에 추가</h1>
+              <h1 className="text-[15px] font-bold leading-tight truncate">내 유어샵에 추가</h1>
               <p className="text-[12px] text-gray-400 dark:text-gray-500 leading-tight">
                 {pinnedCount > 0 ? `${pinnedCount}개 추가됨` : '마음에 든 상품·이용권을 담아보세요'}
               </p>
             </div>
             <button
               onClick={() => navigate('/u/me')}
-              className="shrink-0 px-4 h-9 rounded-lg bg-brand text-white text-[13px] font-bold active:opacity-80"
+              className="shrink-0 px-4 h-9 rounded-lg bg-brand text-white text-[13px] font-medium active:opacity-80"
             >
               완료
             </button>
@@ -237,7 +237,7 @@ export default function LinkshopPinPicker() {
               <button
                 key={key}
                 onClick={() => { setTab(key); setQuery('') }}
-                className={`relative flex-1 py-2 text-[13px] font-bold transition-colors ${
+                className={`relative flex-1 py-2 text-[13px] font-medium transition-colors ${
                   tab === key ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
                 }`}
               >
@@ -279,7 +279,7 @@ export default function LinkshopPinPicker() {
               {query ? '검색 결과가 없어요' : tab === 'shop' ? '담을 수 있는 상품이 없어요' : '담을 수 있는 이용권이 없어요'}
             </p>
             {!query && (
-              <Link to={tab === 'shop' ? '/browse' : '/group-buy'} className="inline-block mt-3 text-[13px] font-bold text-gray-500 dark:text-gray-400 underline">
+              <Link to={tab === 'shop' ? '/browse' : '/group-buy'} className="inline-block mt-3 text-[13px] font-medium text-gray-500 dark:text-gray-400 underline">
                 전체 {tab === 'shop' ? '쇼핑' : '동네딜'} 둘러보기 →
               </Link>
             )}
@@ -304,7 +304,7 @@ export default function LinkshopPinPicker() {
             <button
               onClick={() => { const next = shopPage + 1; setShopPage(next); loadShop(next, false) }}
               disabled={loadingMore}
-              className="w-full py-3 rounded-xl border border-line text-[13px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70 disabled:opacity-50"
+              className="w-full py-3 rounded-xl border border-line text-[13px] font-medium text-gray-700 dark:text-gray-200 active:opacity-70 disabled:opacity-50"
             >
               {loadingMore ? '불러오는 중…' : '더 보기'}
             </button>
@@ -344,13 +344,13 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full sm:max-w-md bg-surface rounded-t-3xl sm:rounded-3xl p-5 pb-7 animate-slideUp">
         <div className="flex items-start gap-2 mb-1">
-          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white flex-1"><Check className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />유어샵에 추가됨</span>
+          <span className="text-[15px] font-bold text-gray-900 dark:text-white flex-1"><Check className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />유어샵에 추가됨</span>
           <button onClick={onClose} aria-label="닫기" className="shrink-0 w-7 h-7 -mt-0.5 -mr-1 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <X className="w-4 h-4" />
           </button>
         </div>
         <p className="text-[13px] text-gray-500 dark:text-gray-400 line-clamp-1 mb-3">{productName}</p>
-        <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-2">추천 코멘트 <span className="font-medium text-gray-400">(선택 · 전환율 ↑)</span></label>
+        <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-2">추천 코멘트 <span className="font-medium text-gray-400">(선택 · 전환율 ↑)</span></label>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -361,8 +361,8 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
           className="w-full rounded-xl border border-line bg-warm px-4 py-2 text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A] resize-none"
         />
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-line text-[13px] font-bold text-gray-600 dark:text-gray-300 active:opacity-70">건너뛰기</button>
-          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl bg-brand text-white text-[13px] font-bold active:opacity-80 disabled:opacity-50">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-line text-[13px] font-medium text-gray-600 dark:text-gray-300 active:opacity-70">건너뛰기</button>
+          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl bg-brand text-white text-[13px] font-medium active:opacity-80 disabled:opacity-50">
             {saving ? '저장 중…' : '저장'}
           </button>
         </div>
@@ -406,7 +406,7 @@ function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: bo
             (affiliate-credit: holding → 이용권 status='used' → granted. 2026-06-17 대표 결정).
             "적립 N%" 는 담기만 해도 받는 것처럼 읽혀 과약속이었다. 동네딜은 데이터 없어 미표시. */}
       {commission != null && (
-        <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 h-6 px-2 rounded-full bg-black/55 backdrop-blur-md ring-1 ring-white/20 text-white text-[12px] font-bold pointer-events-none">
+        <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 h-6 px-2 rounded-full bg-black/55 backdrop-blur-md ring-1 ring-white/20 text-white text-[12px] font-medium pointer-events-none">
           쓰면 {commission}%
         </span>
       )}
@@ -417,7 +417,7 @@ function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: bo
         disabled={busy}
         aria-pressed={pinned}
         aria-label={pinned ? '유어샵에서 제거' : '유어샵에 추가'}
-        className={`absolute top-2 right-2 z-10 inline-flex items-center gap-1 h-8 pl-2 pr-2 rounded-full text-[12px] font-bold shadow-sm backdrop-blur-md ring-1 transition-colors active:scale-95 disabled:opacity-50 ${
+        className={`absolute top-2 right-2 z-10 inline-flex items-center gap-1 h-8 pl-2 pr-2 rounded-full text-[12px] font-medium shadow-sm backdrop-blur-md ring-1 transition-colors active:scale-95 disabled:opacity-50 ${
           pinned
             ? 'bg-brand text-white ring-white/30'
             : 'bg-white/90 dark:bg-black/55 text-gray-900 dark:text-white ring-black/10 dark:ring-white/25'

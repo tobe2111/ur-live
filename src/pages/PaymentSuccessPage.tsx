@@ -363,7 +363,7 @@ export default function PaymentSuccessPage() {
           {orderInfo && (
             <div className="space-y-3 sm:space-y-4 lg:space-y-6">
               <div className="bg-[#f5f5f7] dark:bg-[#1D1F29] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
-                <h2 className="text-[15px] sm:text-[15px] lg:text-[17px] font-semibold text-[#1d1d1f] dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
+                <h2 className="text-[15px] sm:text-[15px] lg:text-[17px] font-medium text-[#1d1d1f] dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
                   <BoxIcon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900 dark:text-white" />
                   주문 정보
                 </h2>
@@ -372,14 +372,14 @@ export default function PaymentSuccessPage() {
                   {/* 주문번호 */}
                   <div className="flex justify-between items-start gap-3">
                     <span className="text-[12px] sm:text-[15px] text-[#6e6e73] dark:text-gray-400 font-medium shrink-0">{t('paymentSuccess.orderNumber')}</span>
-                    <span className="text-[12px] sm:text-[15px] font-semibold text-gray-900 dark:text-white tabular-nums break-all text-right max-w-[65%]">
+                    <span className="text-[12px] sm:text-[15px] font-medium text-gray-900 dark:text-white tabular-nums break-all text-right max-w-[65%]">
                       {orderInfo.orderId || orderId}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center gap-3">
                     <span className="text-[12px] sm:text-[15px] text-[#6e6e73] dark:text-gray-400 font-medium shrink-0">{t('paymentSuccess.paymentMethod')}</span>
-                    <span className="text-[12px] sm:text-[15px] lg:text-[15px] font-semibold text-[#1d1d1f] dark:text-white">
+                    <span className="text-[12px] sm:text-[15px] lg:text-[15px] font-medium text-[#1d1d1f] dark:text-white">
                       {/* 🛡️ 2026-05-24 docs: '카드' / '가상계좌' / '계좌이체' / '휴대폰' / '문화상품권' / '해외간편결제'
                           간편결제 (토스페이/네이버페이/카카오페이 등) 면 method='카드' + easyPay.provider 표시. */}
                       {orderInfo.payment?.easyPay?.provider
@@ -439,7 +439,7 @@ export default function PaymentSuccessPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="flex items-center gap-2 text-[12px] sm:text-[15px] font-semibold text-[#1d1d1f] dark:text-white"><ReceiptIcon className="w-4 h-4 shrink-0" aria-hidden />영수증 보기</p>
+                      <p className="flex items-center gap-2 text-[12px] sm:text-[15px] font-medium text-[#1d1d1f] dark:text-white"><ReceiptIcon className="w-4 h-4 shrink-0" aria-hidden />영수증 보기</p>
                       <p className="text-[12px] sm:text-[12px] text-[#6e6e73] dark:text-gray-400 mt-1">토스페이먼츠 호스팅</p>
                     </div>
                     <span className="text-gray-400 text-[12px]">→</span>
@@ -457,7 +457,7 @@ export default function PaymentSuccessPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="flex items-center gap-2 text-[12px] sm:text-[15px] font-semibold text-[#1d1d1f] dark:text-white"><ReceiptText className="w-4 h-4 shrink-0" strokeWidth={1.8} aria-hidden />현금영수증 보기</p>
+                      <p className="flex items-center gap-2 text-[12px] sm:text-[15px] font-medium text-[#1d1d1f] dark:text-white"><ReceiptText className="w-4 h-4 shrink-0" strokeWidth={1.8} aria-hidden />현금영수증 보기</p>
                       <p className="text-[12px] sm:text-[12px] text-[#6e6e73] dark:text-gray-400 mt-1">
                         {orderInfo.payment.cashReceipt.type ? `${orderInfo.payment.cashReceipt.type} — ` : ''}국세청 발급 완료 후 홈택스 조회 가능
                       </p>
@@ -538,7 +538,7 @@ export default function PaymentSuccessPage() {
             <p className="text-[12px] sm:text-[15px] text-[#86868b] dark:text-gray-500 mb-2">
               궁금한 점이 있으신가요?
             </p>
-            <p className="text-[15px] sm:text-[15px] lg:text-[17px] font-semibold text-[#1d1d1f] dark:text-white mb-2">
+            <p className="text-[15px] sm:text-[15px] lg:text-[17px] font-medium text-[#1d1d1f] dark:text-white mb-2">
               고객센터: 카카오톡 채널 문의
             </p>
             <p className="text-[12px] sm:text-[15px] text-[#86868b] dark:text-gray-500">

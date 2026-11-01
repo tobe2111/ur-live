@@ -118,6 +118,8 @@ const LUCIDE_HOME_ICONS = new Set([
   'party-popper', 'paw-print', 'play', 'tag', 'ticket',
   // 🖥️ 2026-10-18: 셸(PC 네비)에서 넘어온 홈 아이콘 — 카테고리 줄·정렬·검색
   'bed-double', 'chevron-down', 'chevron-right', 'layout-grid', 'scissors', 'search', 'shapes', 'utensils',
+  // 🏠 2026-10-20: '생활'(이사·청소) 카테고리 — 홈 칩·카드 카테고리 표(deal-category-icon)가 쓴다
+  'house',
 ])
 
 /**
@@ -312,6 +314,8 @@ export default defineConfig({
           if (OWNER_KIT_MODULES.some((p) => id.includes(p))) return 'app-owner-kit'
           if (OWNER_UI_MODULES.some((p) => id.includes(p))) return 'app-owner-ui'
           if (id.includes('/src/components/deal/OwnerManageSheet')) return 'app-owner-sheet'
+          // 🏠 2026-10-25 생활 칩 견적 카드(lazy) — 업종 그림이 공용 봉투에 섞여 전 화면 첫 방문이 +2KB 를 받았다(실측).
+          if (id.includes('/src/pages/main-home/LifeQuoteBanner') || id.includes('/src/pages/life/life-tiles')) return 'app-life-banner'
           // 🗺️ 2026-10-19 지역 링크 표 — 근거는 위 REGION_GRID_MODULES 주석
           if (REGION_GRID_MODULES.some((p) => id.includes(p))) return 'app-region-grid'
           // Icons
@@ -394,6 +398,7 @@ export default defineConfig({
           //   (`home-chunk-diet` 의 거울 검사를 새로 넣자마자 드러났다 — 주석과 코드가 어긋난 전형).
           if (id.includes('/src/shared/config/') || id.includes('/src/shared/utils/')) return 'app-shared'
           if (id.includes('/src/shared/feature-flags')) return 'app-shared'
+          if (id.includes('/src/shared/category-palette')) return 'app-shared' // 🏠 2026-10-25 엔트리가 쓰는 색 표 — 생활 그림 봉투로 끌려가 첫 화면 청크가 하나 늘었다
           // 공유 타입/상수: 런타임 코드 없이 타입 + 상수 → 별도 캐싱
           if (id.includes('/src/shared/constants/') || id.includes('/src/shared/types/')) return 'app-constants'
           // 레이아웃 컴포넌트: BottomNav, DesktopTopNav, DesktopLiveSidebar 등
@@ -489,7 +494,7 @@ export default defineConfig({
             id.includes('/src/components/deal/StarRating') ||
             id.includes('/src/components/region/') || id.includes('/src/components/SEO') ||
             id.includes('/src/components/ui/sort-menu') || id.includes('/src/shared/seo/') ||
-            id.includes('/src/shared/home-') || id.includes('/src/shared/product-flow') ||
+            (id.includes('/src/shared/home-') && !id.includes('/src/shared/home-service')) || id.includes('/src/shared/product-flow') ||
             id.includes('/src/shared/deal-category-icon') ||
             id.includes('/src/features/group-buy/FcfsBadge') || id.includes('/src/features/group-buy/useFcfs')
           ) return 'app-home'
@@ -537,6 +542,11 @@ export default defineConfig({
           //   조용히 지나갈 뻔했다. 전용 leaf 청크로 두면 25,718 chars 그대로 + 같은 이득(216 KB).
           //   ⇒ 청크를 옮길 때는 **번들 크기만 보지 말고 `prerender:main` 의 chars 도 같이 볼 것.**
           if (id.includes('/src/lib/utils')) return 'app-ui-utils'
+          // 🪝 2026-10-20: 포커스 가두기 훅(react 만 import). 공용 묶음(app-components)의 장바구니 옵션 모달이 이것 하나를
+          //   쓰는데, 규칙이 없어 쇼핑 상세 봉투(lz-productL — 사진 캐러셀·선물 모달 + embla 18.7KB)에 들어가 있었다 →
+          //   app-components 를 정적으로 받는 어드민·셀러가 그 봉투를 통째로 받았다(라이브 /admin 실측).
+          //   app-components 가 이미 받는 leaf 봉투로 옮겨 요청 수를 늘리지 않는다.
+          if (id.includes('/src/hooks/useFocusTrap')) return 'app-ui-utils'
           // 🛡️ 2026-07-29 (서비스 분리 + critical path): 도매(B2B) 훅을 소비자 크리티컬 패스에서 제거.
           //   useWholesale(12.0 KB) · useWholesaleChat(3.7 KB) 이 `/src/hooks/` catch-all 로 app-utils 에
           //   들어가 **도매몰을 한 번도 안 여는 소비자도 매번 받고 있었다.** 엔트리 폐쇄집합에 없다(=lazy 전용).
@@ -606,6 +616,16 @@ export default defineConfig({
           //   Rollup 이 판매자 가입 화면과 함께 `app-seller-components` 에 넣었다 → 에이전시 콘솔이 매장 등록 카드에서
           //   `TERMS_CURRENT_VERSION` 하나를 읽느라 판매자 대시보드 봉투(+그 의존 전부)를 첫 화면에 받았다.
           if (id.includes('/src/pages/terms/terms-types')) return 'app-shared'
+          // 🏠 2026-10-25 같은 함정: 생활 업종 SSOT(`life-deal-subcat`, import 0 — 타입만)를 홈 피드와 사장님 수정 화면이 함께 써서
+          //   묶음기가 홈 봉투에 넣었고, 어드민이 홈 PC 봉투 넷(+23KB)을 끌고 왔다 → 자기 작은 봉투.
+          if (id.includes('/src/shared/life-deal-subcat')) return 'app-life-subcat' // 묶음기 보호 목록(LIBRARY_ENVELOPES)에 함께 — 안 그러면 다시 홈 봉투로 간다
+          // 🎁 2026-10-31 무상 체험 — 라벨은 공용으로, 나머지(신청 시트·제공 설정·연동 목록·규칙 표)는 자기 봉투로.
+          //   라벨이 상세 봉투에 들어가면 그걸 부르는 공용 묶음을 타고 어드민이 상세 봉투를 통째로 받는다(dash:admin +23KB 실측).
+          //   팔아보기 카드(SellThisCard)는 상세 첫 화면에 그려지므로 일부러 제외 — 상세 봉투로 간다.
+          if (id.includes('/src/shared/seeding-labels')) return 'app-shared'
+          if (id.includes('/src/shared/seeding') || (id.includes('/src/components/seeding/') && !id.includes('/SellThisCard'))) return 'app-seeding'
+          // 🏠 2026-10-26 같은 함정: 업체 소개 페이지 SEO 헬퍼(`life-biz-seo`)가 규칙 없이 묶음기로 가자 교환권 첫 화면 청크가 25→27 로 쪼개졌다 → 자기 봉투.
+          if (id.includes('/src/shared/life-biz-seo')) return 'app-life-biz'
           if (id.includes('/src/components/seller-layout/')) return 'app-seller-components'
           if (id.includes('/src/components/seller/')) return 'app-seller-components'
           if (id.includes('/src/components/SellerLayout')) return 'app-seller-components'

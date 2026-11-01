@@ -37,8 +37,8 @@ export default [
   {
     name: '유어샵 — 순번을 다시 사진 위 절대배치로',
     file: PIN,
-    find: '      surface="plain"\n      leading={',
-    replace: '      thumbSize="lg"\n      trailing={',
+    find: 'eyebrow={pin.restaurant_name ? `${order} · ${pin.restaurant_name}` : String(order)}',
+    replace: 'eyebrow={pin.restaurant_name || undefined}',
     test: T_NEW,
     why:
       '순번을 사진 위로 되돌리면 사진의 가장 좋은 자리를 흰 원이 덮는다 — 2026-08-31 대표 ' +
@@ -49,8 +49,8 @@ export default [
   {
     name: 'DealRow — 할인율을 브랜드 블루로 (행동 색과 가격 색이 섞인다)',
     file: ROW,
-    find: 'text-[15px] font-extrabold text-sale tracking-tight',
-    replace: 'text-[15px] font-extrabold text-brand tracking-tight',
+    find: 'text-[15px] font-bold text-sale tracking-tight',
+    replace: 'text-[15px] font-bold text-brand tracking-tight',
     test: 'src/tests/unit/discount-is-sale-red.test.ts',
     why:
       '할인율은 `--sale` **한 색**이고 브랜드 블루는 *행동* 전용이다(표면 규칙 ②). ' +
@@ -59,11 +59,11 @@ export default [
       '(그 가드는 7개 표면을 보지만 `DealRow` 를 겨누는 주입은 없었다.)',
   },
   {
-    name: '유어샵 — 순번의 숫자 폭 고정을 뺀다 (1 과 10 이 나란히 서면 칸이 흔들린다)',
+    name: '유어샵 — 순번을 다시 사진 쪽 leading 칸에 세운다 (2026-10-25 D안은 가게 줄 앞)',
     file: PIN,
-    find: 'font-bold tabular-nums text-gray-400',
-    replace: 'font-bold text-gray-400',
-    test: 'src/tests/unit/ushop-a3-p1.test.ts',
+    find: '      surface="plain"\n',
+    replace: '      surface="plain"\n      leading={<span className="absolute top-1 left-1 bg-white">{order}</span>}\n',
+    test: T_NEW,
     why:
       '순번이 사진 밖으로 나오면서 "흰 원" 계약이 녹았고, `ushop-a3-p1` 의 그 시험을 **남은 것으로 ' +
       '재조준**했다(순번 존재 + 숫자 폭 고정 + 흰 원 아님). 이 주입은 그 재조준이 실제로 일하는지 본다 — ' +
@@ -115,8 +115,8 @@ export default [
   {
     name: '유어샵 — 마퀴를 되살린다 (순수 검정 띠가 첫인상을 먹는다)',
     file: HEADER,
-    find: '  return (\n    <header className="bg-surface">',
-    replace: '  return (\n    <header className="bg-surface">\n      <div className="animate-marquee">{curator.headline}</div>',
+    find: '  return (\n    <header className="bg-surface dark:bg-warm">',
+    replace: '  return (\n    <header className="bg-surface dark:bg-warm">\n      <div className="animate-marquee">{curator.headline}</div>',
     test: T_TOP,
     why:
       '대표 *"배고프다 뭐먹지?는 아예 빼기"*. 라이브 실측에서 그 띠가 **순수 검정 `#000000`** 이었다 — ' +

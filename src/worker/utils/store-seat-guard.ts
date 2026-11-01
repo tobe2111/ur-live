@@ -50,6 +50,7 @@ import { verify } from 'hono/jwt'
 import type { OperatorRole } from './seller-operators'
 import { ensureAgencyConsoleTables, staffStoreAccessSql } from '../../features/agency-console/api/agency-schema'
 import { agencyActivityLabel, AGENCY_ACTIVITY_METHODS } from '../../shared/agency-activity-label'
+import { agencySeatFromClaims, agencyScopeDecision, agencyScopeDeniedResponse, agencyOwnsProduct } from './agency-product-scope'
 
 export const STORE_SEAT_REVOKED = 'STORE_SEAT_REVOKED'
 
@@ -374,6 +375,17 @@ export function storeSeatGuard() {
     try { p = await verify(token, env.JWT_SECRET, 'HS256') as SeatClaims } catch { return next() } // 무효 토큰은 라우트가 거절한다
     const v = await verifyStoreSeat(env.DB, p)
     if (v.kind === 'revoked') return c.json(storeSeatRevokedResponse(), 401)
+    // 🤝 2026-10-24 — 에이전시 좌석은 **기본이 차단**이다. 한 매장에 에이전시가 여럿이고 각자 자기 이용권만
+    //   본다(대표 확정). 매장 전체를 여는 셀러 API 가 하나라도 열려 있으면 남의 매출이 보이므로, 자기 몫으로
+    //   고친 길만 연다(`agency-product-scope`). 판정은 서명된 claim 이라 D1 이 흔들려도 그대로다.
+    const agencySeat = agencySeatFromClaims(p as Record<string, unknown>)
+    if (agencySeat) {
+      const d = agencyScopeDecision(c.req.method, c.req.path)
+      if (!d.allow) return c.json(agencyScopeDeniedResponse(), 403)
+      if (d.productId != null && (await agencyOwnsProduct(env.DB, agencySeat, d.productId)) !== true) {
+        return c.json({ success: false, error: '상품을 찾을 수 없어요.' }, 404) // 남의 것은 있다는 사실도 안 알린다
+      }
+    }
     // 📝 에이전시 좌석의 **성공한 변경**은 기록한다 — 사장님이 "에이전시가 내 매장에서 무엇을 했는지" 본다.
     //   응답 뒤(waitUntil)에 쓰므로 요청을 늦추지 않고, 기록 실패가 요청을 실패시키지 않는다.
     if (v.kind === 'live' && v.agency && AGENCY_ACTIVITY_METHODS.has(c.req.method)) {

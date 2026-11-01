@@ -32,6 +32,8 @@ import { registerAgencyStoreRegisterRoute } from './agency-store-register'
 import { registerStaffStoreRoutes } from './agency-staff-stores'
 import { agencyStoreToday } from './agency-store-today'
 import { registerAgencyNotificationRoutes } from './agency-store-notifications'
+import { releaseAgencyProducts } from './channel-sales'
+import { registerAgencySalesRoute } from './agency-store-sales'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; FRONTEND_URL?: string }
 type Vars = { agencyStaff: AgencyStaffContext }
@@ -67,7 +69,7 @@ agencyStoresRoutes.get('/stores', requireAgencyStaff(), async (c) => {
       business_name: string | null; seller_name: string | null; username: string | null; store_status: string | null
     }>()
     // 🔢 판 머리의 오늘 숫자 — 운영 중인 매장만 센다(맡김 요청 단계는 아직 우리 매장이 아니다).
-    const today = await agencyStoreToday(c.env.DB, (results || []).filter((r) => r.status === 'active').map((r) => r.seller_id))
+    const today = await agencyStoreToday(c.env.DB, (results || []).filter((r) => r.status === 'active').map((r) => r.seller_id), me.agencyId)
     return c.json({
       success: true,
       stores: (results || []).map((r) => ({
@@ -111,7 +113,8 @@ async function decide(
     `UPDATE agency_store_links SET ${set}, updated_at = datetime('now') WHERE id = ? AND agency_id = ? AND status = ?`,
   ).bind(me.staffId, linkId, me.agencyId, from).run()
   if ((r.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '이미 처리된 요청이에요.' }, 409)
-  if (to === 'ended') invalidateStoreSeatCache(DB, row.seller_id)
+  // 📊 내려놓으면 우리 이용권은 사장님께 돌아간다 — 그동안의 판매는 맡은 기간 기록에 남아 우리 성과로 계속 보인다.
+  if (to === 'ended') { await releaseAgencyProducts(DB, row.seller_id, me.agencyId); invalidateStoreSeatCache(DB, row.seller_id) }
   return { row }
 }
 
@@ -231,7 +234,9 @@ export function storeInviteUrl(env: { FRONTEND_URL?: string }, token: string): s
   return `${frontendBase(env)}/store/agency/${token}`
 }
 
-agencyStoresRoutes.get('/store-invite', requireAgencyStaff({ adminOnly: true }), async (c) => {
+// 🔗 2026-10-31 대표 *"모두 진행해줘"* — 읽기는 **직원도** 한다. 매장에 찾아가는 사람은 대개 직원이다.
+//   만들기·끊기는 관리자만(링크가 에이전시당 하나라 직원이 새로 만들면 다른 직원이 보낸 링크가 죽는다).
+agencyStoresRoutes.get('/store-invite', requireAgencyStaff(), async (c) => {
   try {
     const me = c.get('agencyStaff')
     await ensureAgencyConsoleTables(c.env.DB)
@@ -240,8 +245,11 @@ agencyStoresRoutes.get('/store-invite', requireAgencyStaff({ adminOnly: true }),
         WHERE agency_id = ? AND revoked_at IS NULL AND expires_at > datetime('now')
         ORDER BY id DESC LIMIT 1`,
     ).bind(me.agencyId).first<{ token: string; expires_at: string; use_count: number }>()
+    const ag = await c.env.DB.prepare('SELECT name FROM agency_accounts WHERE id = ? LIMIT 1')
+      .bind(me.agencyId).first<{ name: string | null }>().catch(() => null)
     return c.json({
       success: true,
+      agencyName: ag?.name || '',
       invite: row ? { url: storeInviteUrl(c.env, row.token), expiresAt: row.expires_at, useCount: row.use_count } : null,
     })
   } catch (err) {
@@ -287,3 +295,5 @@ registerAgencyStoreRegisterRoute(agencyStoresRoutes)
 registerStaffStoreRoutes(agencyStoresRoutes)
 // 🔔 맡은 매장들의 판매 알림(2026-10-12) — GET /notifications · POST /notifications/read. 본문은 형제 파일.
 registerAgencyNotificationRoutes(agencyStoresRoutes)
+// 📊 우리 이용권 판매 내역·통계(2026-10-24) — GET /stores/:sellerId/sales. 본문은 형제 파일.
+registerAgencySalesRoute(agencyStoresRoutes)

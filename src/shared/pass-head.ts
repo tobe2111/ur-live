@@ -10,7 +10,11 @@
  *
  * ⚠️ 이 파일은 워커 번들에도 들어간다 — React·아이콘을 import 하지 말 것(문자열만).
  */
-export const PASS_PAGE_BG = 'bg-[var(--gbd-bg)]'
+import { VOUCHER_CATEGORY_LABEL } from './constants/voucher-categories'
+import { parseRegionFromAddress } from './constants/region-slugs'
+
+/** 🎨 2026-10-31 (대표 "이용권 상세페이지 배경색 하나로 통일하자"): 바탕 = 카드색 하나. 회색 바탕·띠를 걷었다. */
+export const PASS_PAGE_BG = 'bg-[var(--gbd-card)]'
 
 export const PASS_HEAD = {
   /**
@@ -28,13 +32,37 @@ export const PASS_HEAD = {
    *   **이미 같은 말을 한다.**
    * ⚠️ 이 클래스는 워커 SSR(`detail-ssr-body.ts`)이 **같은 문자열로** 그린다 — 여기만 고치면 둘이 같이 간다.
    */
-  card: 'lg:hidden relative mx-3 mb-3 px-1 pt-4 pb-5',
-  merchant: 'text-[13px] font-semibold text-[var(--gbd-ink2)]',
-  prelaunch: 'inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full bg-[var(--gbd-ink)] text-[var(--gbd-card)] text-[12px] font-bold',
+  // 🛍️ 2026-10-24 (대표 승인 "그루폰식으로 하자"): 제목 + [가게 · 종류 · 지역] 한 줄.
+  // 🔤 2026-10-25 대표 확정 D안: 가게 줄이 **제목 위**로(작은 회색 → 큰 제목 위계). 가격은 머리 아래쪽(`PassHeadCard`).
+  //   가격은 머리에서 빠져 아래 '옵션 선택' 카드(`PassOptionCard`)로 갔다 — 한 화면에 가격이 두 번 서지 않게.
+  card: 'lg:hidden relative mx-3 mb-3 px-1 pt-5 pb-3',
+  /** [가게 · 종류 · 지역] 한 줄 — 값은 `passSubLine()`(서버·클라 같은 함수). 키 이름은 호환 때문에 `merchant`. */
+  merchant: 'mb-1 text-[13px] text-[var(--gbd-sub)]',
+  prelaunch: 'inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full bg-[var(--gbd-ink)] text-[var(--gbd-card)] text-[12px] font-medium',
   /** 온누리 뱃지 — 한 줄을 두 줄로 밀 수 있어 서버·클라가 모양까지 같아야 한다. */
-  onnuri: 'ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle',
-  h1: 'm-0 mt-1 text-[24px] leading-[1.3] font-bold tracking-[-.02em] text-[var(--gbd-ink)]',
+  onnuri: 'ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-medium align-middle',
+  h1: 'm-0 text-[24px] leading-[1.3] font-bold tracking-[-.02em] text-[var(--gbd-ink)]',
 } as const
 
 /** 섹션 카드 — 회색 바탕 위 흰 판. 2026-10-11 PC 도 같은 카드(대표 "PC도 해야하는거 아니야?"). */
-export const PASS_CARD = 'mx-3 mb-3 rounded-2xl bg-[var(--gbd-card)] shadow-lift overflow-hidden lg:mx-0 lg:mb-4'
+/**
+ * 🧱 2026-10-25 대표 확정 **E안**(*"공백도 쓸데없이 많고"* · 여기어때 참고): 모바일 섹션은 떠 있는 카드
+ *   (좌우 12px · 둥근 모서리 · 그림자 · 아래 12px)가 아니라 **폭 전체 흰 섹션 + 위 8px 회색 띠**다. 카드마다
+ *   양옆·위아래로 비던 여백이 사라지고 구분은 띠 하나가 맡는다. PC(lg+)는 종전 카드 그대로.
+ */
+/** 🎨 2026-10-31 배경색 하나로(대표) — 8px 회색 띠·PC 그림자 카드 → 같은 색 위 가는 선 하나(폰·PC 공통). */
+export const PASS_CARD = 'bg-[var(--gbd-card)] overflow-hidden border-t border-rule'
+
+/**
+ * 🛍️ 제목 아래 한 줄 `부용한우곱창 · 식사 · 파주시` (2026-10-24 그루폰식).
+ * 서버 첫 화면(`detail-ssr-body.ts`)과 `PassHeadCard` 가 **같은 함수**로 만든다 — 두 벌이면 마운트 때 그 줄이 바뀐다.
+ * 지역은 주소의 시군구(없으면 시/도). 모르는 값은 빼고, 지어내지 않는다.
+ */
+export function passSubLine(d: { restaurant_name?: string | null; category?: string | null; restaurant_address?: string | null }): string {
+  const region = parseRegionFromAddress(d.restaurant_address)
+  return [
+    (d.restaurant_name || '').trim(),
+    d.category ? VOUCHER_CATEGORY_LABEL[d.category]?.short : '',
+    region ? (region.sigungu || region.sido) : '',
+  ].filter(Boolean).join(' · ')
+}

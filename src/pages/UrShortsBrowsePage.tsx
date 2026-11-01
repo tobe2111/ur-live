@@ -89,7 +89,7 @@ export default function UrShortsBrowsePage() {
         >
           <ChevronLeft size={22} />
         </button>
-        <h1 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
+        <h1 className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">
           유어쇼츠
           <span aria-hidden="true" className="-ml-[3px] text-brand-text">.</span>
         </h1>
@@ -191,7 +191,7 @@ function Chip({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`shrink-0 inline-flex items-center gap-1 h-9 px-4 rounded-full text-[13px] font-bold transition-colors ${className}`}
+      className={`shrink-0 inline-flex items-center gap-1 h-9 px-4 rounded-full text-[13px] font-medium transition-colors ${className}`}
     >
       {children}
     </button>
@@ -201,7 +201,7 @@ function Chip({
 /** 개수는 항상 칩 안에 — "부산에 몇 편 있나" 가 누르기 전에 보여야 고를 수 있다. */
 function Count({ n, active }: { n: number; active: boolean }) {
   return (
-    <span className={`tabular-nums text-[12px] font-semibold ${active ? 'text-white/75' : 'text-gray-400 dark:text-gray-500'}`}>
+    <span className={`tabular-nums text-[12px] font-medium ${active ? 'text-white/75' : 'text-gray-400 dark:text-gray-500'}`}>
       {n}
     </span>
   )

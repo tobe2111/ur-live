@@ -47,6 +47,10 @@ const KNOWN_TABLES_EXTRA = new Set([
   //   테이블은 **프로덕션에 실재**하고(실측 `sqlite_master`), 읽는 코드도 부재를 `.catch` 로 처리한다
   //   (`wholesale-settlement.ts` 의 정산 hold 재계산). 테이블은 계획 §3 으로 **존치**(회계 증빙).
   'wholesale_claims',
+  // 🧨 2026-10-20 제조사 후보 풀 삭제(대표 "지워줘"): `CREATE TABLE` 을 담던 `maker-leads.ts` 가 사라졌다.
+  //   테이블은 프로덕션에 실재(실측 25,584행)하고 데이터 삭제는 결재 대상이라 **존치**. 리드 DB 라우팅 목록
+  //   (`shared/ads/leads-db.ts`)이 계속 이름을 갖는다.
+  'supply_maker_leads',
   // ── 프로덕션 존재(레포 CREATE 미기록) — 다중 파일 일관 사용으로 실재 확인 ──
   'user_sessions', 'sessions',           // 세션 추적 (admin-metrics / reconciliation)
   'interest_list',                       // 관심상품 (group-buy)

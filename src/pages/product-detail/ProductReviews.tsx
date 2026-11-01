@@ -122,7 +122,7 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
               <button
                 type="button"
                 onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-brand text-white rounded-full text-[12px] font-bold flex items-center justify-center"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-brand text-white rounded-full text-[12px] font-medium flex items-center justify-center"
                 aria-label="삭제"
               >×</button>
             </div>
@@ -304,6 +304,27 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
   const avgRating = summary?.avg_rating ?? 0
   const totalCount = summary?.total_count ?? 0
 
+  // 💬 2026-10-27 (대표 "리뷰 더 보기도 필요할 것 같은데?") — 첫 `limit` 개 뒤로는 다음 페이지를 이어 붙인다.
+  //   서버는 page 기반(limit 최대 50)이라 같은 limit 로 page 를 올린다. 남은 개수는 summary 의 total 로 센다.
+  const [page, setPage] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const remaining = Math.max(0, totalCount - reviews.length)
+  const loadMore = () => {
+    if (loadingMore) return
+    const next = page + 1
+    setLoadingMore(true)
+    api.get(`/api/reviews/product/${productId}?limit=${limit}&page=${next}`)
+      .then(r => {
+        const more = Array.isArray(r?.data?.data?.reviews) ? r.data.data.reviews as Review[] : []
+        if (more.length) {
+          setReviews(prev => { const seen = new Set(prev.map(x => x.id)); return [...prev, ...more.filter(x => !seen.has(x.id))] })
+          setPage(next)
+        }
+      })
+      .catch(() => { /* silent */ })
+      .finally(() => setLoadingMore(false))
+  }
+
   return (
     <div>
       {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 뷰포트 600px 안에 들어오면 리뷰 summary/목록 로드. */}
@@ -342,7 +363,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
       )}
 
       <ReviewForm productId={productId} onSubmitted={() => {
-        api.get(`/api/reviews/product/${productId}?limit=${limit}`).then(r => { if (r.data.success) setReviews(r.data.data.reviews) })
+        api.get(`/api/reviews/product/${productId}?limit=${limit}`).then(r => { if (r.data.success) { setReviews(r.data.data.reviews); setPage(1) } })
         api.get(`/api/reviews/product/${productId}/summary`).then(r => { if (r.data.success) setSummary(r.data.data) })
       }} />
 
@@ -357,6 +378,18 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
             </div>
           ))}
         </div>
+      )}
+      {reviews.length > 0 && remaining > 0 && (
+        <button
+          type="button"
+          onClick={loadMore}
+          disabled={loadingMore}
+          className="mt-4 w-full h-12 rounded-xl bg-warm text-[15px] font-medium text-ink disabled:opacity-60"
+        >
+          {loadingMore
+            ? t('reviews.loadingMore', { defaultValue: '불러오는 중…' })
+            : t('reviews.loadMore', { defaultValue: '리뷰 더 보기 ({{n}}개 남음)', n: remaining })}
+        </button>
       )}
     </div>
   )

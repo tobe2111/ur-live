@@ -17,7 +17,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { render, screen } from '@testing-library/react'
-import { pickStore, type StoreRow } from '@/pages/agency-console/agency-stores-model'
+import { pickStore, isAgencyScreen, AGENCY_PLATE_SCOPE_NOTE, type StoreRow } from '@/pages/agency-console/agency-stores-model'
 import { isMyAgencySeat } from '@/pages/agency-console/agency-api'
 import { storeRowHint } from '@/pages/agency-console/AgencyStoresPanel'
 import AgencyStorePlate from '@/pages/agency-console/AgencyStorePlate'
@@ -32,24 +32,32 @@ const row = (over: Partial<StoreRow> = {}): StoreRow => ({
 })
 const jwt = (claims: Record<string, unknown>) => `x.${btoa(JSON.stringify(claims)).replace(/=+$/, '')}.y`
 
-describe('① 오늘 숫자 — 마이와 같은 규칙', () => {
+describe('① 오늘 숫자 — 마이와 같은 판정 문장 · 🤝 이 에이전시 이용권만(2026-10-24 대표 확정)', () => {
   const agency = code('src/features/agency-console/api/agency-store-today.ts')
   const mine = code('src/features/seller/api/seller-operators.routes.ts')
+  // 상태·KST 날짜·배송 판정·판매 중 판정은 마이와 같은 말이다(별칭만 다르다). 갈리면 둘이 다른 숫자를 말한다.
   it.each([
-    "status IN ('PAID','DONE') AND DATE(created_at, '+9 hours') = ?",
-    "o.status IN ('PAID','DONE','PAY_COMPLETE') AND o.created_at >= datetime('now', '-30 days')",
-    '${shippingOrderSql(\'o\')}',
-    "is_active = 1 AND COALESCE(status, '') != 'DELETED'",
-  ])('두 파일이 같은 문장을 쓴다: %s', (frag) => {
-    expect(agency).toContain(frag)
-    expect(mine).toContain(frag)
+    ["o.status IN ('PAID','DONE') AND DATE(o.created_at, '+9 hours') = ?", "status IN ('PAID','DONE') AND DATE(created_at, '+9 hours') = ?"],
+    ["o.status IN ('PAID','DONE','PAY_COMPLETE') AND o.created_at >= datetime('now', '-30 days')", "o.status IN ('PAID','DONE','PAY_COMPLETE') AND o.created_at >= datetime('now', '-30 days')"],
+    ['${shippingOrderSql(\'o\')}', '${shippingOrderSql(\'o\')}'],
+    ["p.is_active = 1 AND COALESCE(p.status, '') != 'DELETED'", "is_active = 1 AND COALESCE(status, '') != 'DELETED'"],
+  ])('같은 판정: %s', (a, m) => {
+    expect(agency).toContain(a)
+    expect(mine).toContain(m)
+  })
+  it('🔴 세 숫자 모두 이 에이전시 이용권만 센다 — 판매는 맡은 기간(agency_product_periods), 판매 중은 지금 맡음', () => {
+    const fn = agency.slice(agency.indexOf('export async function agencyStoreToday'))
+    // 📊 2026-10-24 — 판매 귀속은 '판 순간 맡고 있던 에이전시'(사장님 성과표와 같은 문장 — channel-sales.periodMatchSql).
+    expect(fn).toContain("JOIN agency_product_periods pr ON ${periodMatchSql('pr', 'oi.product_id', 'o.seller_id')} AND pr.agency_id = ?")
+    expect(fn).toContain('JOIN agency_products ap ON ap.product_id = p.id AND ap.agency_id = ?')
+    expect(fn).not.toMatch(/SUM\(total_amount\)/) // 주문 총액이 아니라 자기 이용권 줄의 금액
   })
 })
 
 describe('② 운영 중인 매장만 센다', () => {
   const src = code('src/features/agency-console/api/agency-stores.routes.ts')
-  it('active 만 넘기고, 응답도 active 에만 숫자를 싣는다', () => {
-    expect(src).toContain("agencyStoreToday(c.env.DB, (results || []).filter((r) => r.status === 'active').map((r) => r.seller_id))")
+  it('active 만 넘기고(+ 이 에이전시 id), 응답도 active 에만 숫자를 싣는다', () => {
+    expect(src).toContain("agencyStoreToday(c.env.DB, (results || []).filter((r) => r.status === 'active').map((r) => r.seller_id), me.agencyId)")
     expect(src).toContain("today: r.status === 'active' ? today.get(r.seller_id) ?? null : null,")
   })
 })
@@ -85,33 +93,45 @@ describe('③ 좌석 — 누를 때만 · 내 좌석은 직원 id 까지', () =>
   })
 })
 
+/**
+ * 🔁 2026-10-25 — 대표가 **마이 '내 가게'** 를 안 G 로 확정했다(사용처리·등록 두 칸 + 목록 판). 이 확정은
+ *   마이 화면의 것이고 **에이전시 콘솔 판은 범위 밖**이라 그대로 둔다(콘솔은 자기 이용권만 다루는 다른 판이다 —
+ *   사용처리도 주문·정산도 없다). 그래서 두 판의 *같은 클래스* 대조는 **판 상수 · 진한 블루 면** 둘로 좁힌다.
+ *   ⚠️ 콘솔도 G 로 맞추라는 지시가 오면 이 목록을 다시 넓힐 것.
+ */
 describe('④ 생김새 — 마이 판과 같은 클래스', () => {
   const agency = code('src/pages/agency-console/AgencyStorePlate.tsx')
   const mine = code('src/pages/user-profile/SellerSection.tsx')
-  it.each([
-    'relative w-full flex items-stretch min-h-[64px] rounded-[10px] bg-brand-tint',
-    'absolute -left-[9px] top-1/2 -mt-[9px] w-[18px] h-[18px] rounded-full bg-surface',
-    'border-l-2 border-dashed border-brand/35',
-    'mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap',
-    'flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 등록 · 관리',
-    'bg-brand text-white text-left active:opacity-90',
-  ])('두 판이 같다: %s', (cls) => {
-    expect(agency).toContain(cls)
-    expect(mine).toContain(cls)
+  it('콘솔 판은 자기 모양(오늘 숫자 · 진한 블루 등록 줄)을 지킨다', () => {
+    expect(agency).toContain('mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap')
+    expect(agency).toContain('flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 등록 · 관리')
+  })
+  it('두 판의 진한 블루 면은 같은 클래스 묶음이다', () => {
+    expect(agency).toContain('bg-brand text-white text-left active:opacity-90')
+    expect(mine).toContain('bg-brand text-white text-left active:opacity-90')
   })
   it('판은 같은 판 상수를 쓴다', () => {
     expect(agency).toContain('<div className={LIST_PLATE_CLS}>')
   })
 })
 
-describe('⑤ 도구는 시트로 · 정산은 보기만', () => {
+describe('⑤ 🤝 판은 자기 이용권만 — 매장 전체 도구는 없다 (2026-10-24 대표 확정)', () => {
   const plate = code('src/pages/agency-console/AgencyStorePlate.tsx')
   const panel = code('src/pages/agency-console/AgencyStoresPanel.tsx')
-  it('주문 · 이용권 · 정산 · 매출 분석이 시트로 열린다', () => {
-    for (const p of ["'/seller/orders'", "'/seller/group-buy'", "'/seller/settlements'", "'/seller/analytics'"]) {
-      expect(plate).toContain(`openPage(${p}`)
-    }
+  it('이용권만 시트로 연다', () => {
+    expect(plate).toContain("openPage('/seller/group-buy'")
     expect(plate).toContain('<ToolPageSheet')
+  })
+  it('🔴 주문 · 정산 · 매출 분석 · 전체 도구 · 사용처리를 판에서 열지 않는다(서버도 에이전시 좌석에게 막는다)', () => {
+    for (const p of ["'/seller/orders'", "'/seller/settlements'", "'/seller/analytics'"]) expect(plate).not.toContain(`openPage(${p}`)
+    expect(plate).not.toMatch(/AllToolsSheet|goScan\(/)
+  })
+  it('깊은 링크도 에이전시 화면만 받는다 — 매장 전체 화면 주소면 판으로 연다', () => {
+    expect(plate).toContain('if (initialPath && !isAgencyScreen(initialPath)) initialPath = undefined')
+    expect(isAgencyScreen('/seller/group-buy')).toBe(true)
+    expect(isAgencyScreen('/seller/meal-voucher/new')).toBe(true)
+    expect(isAgencyScreen('/seller/products/12/edit')).toBe(true)
+    for (const p of ['/seller/orders', '/seller/settlements', '/seller/analytics', '/seller/scan', '/seller/products']) expect(isAgencyScreen(p)).toBe(false)
   })
   it('출금 시트를 두지 않는다(돈은 사장님만 — 서버가 주인만 받는다)', () => {
     expect(plate).not.toMatch(/WithdrawSheet|PinSheet|BankSheet/)
@@ -121,13 +141,9 @@ describe('⑤ 도구는 시트로 · 정산은 보기만', () => {
       expect(src).not.toMatch(/navigate\('\/seller'\)/)
     }
   })
-  // 🚪 2026-10-12 재조준 — 종전엔 *"에이전시엔 소비자 계정이 없어 /store/scan 이 아니라 /seller/scan"* 이었다.
-  //   그 이유(라우트의 소비자 로그인 요구)를 걷었으므로 마이와 **같은 계산대**로 간다. 대시보드 틀을 안 탄다.
-  it('사용처리는 카메라라 전체화면 — 마이와 같은 계산대(/store/scan), 대시보드 /seller/scan 아님', () => {
-    expect(plate).toContain('export const AGENCY_SCAN_PATH = STORE_SCAN_PATH')
-    expect(plate).toContain('onClick={() => goScan()}')
-    expect(plate).toContain('window.location.assign(AGENCY_SCAN_PATH)')
-    expect(plate).not.toContain("'/seller/scan'")
+  it('왜 주문·정산이 없는지 판이 직접 말한다', () => {
+    expect(plate).toContain('{AGENCY_PLATE_SCOPE_NOTE}')
+    expect(AGENCY_PLATE_SCOPE_NOTE).toMatch(/사장님/)
   })
 })
 
@@ -143,15 +159,18 @@ describe('⑥ PC — 소비자 액자 밖 · 두 칸', () => {
     expect(src).toContain('order-1 lg:order-2 min-w-0 flex-1')
   })
   it('페이지 폭이 PC 에서 넓어진다', () => {
-    expect(code('src/pages/agency-console/AgencyHomePage.tsx')).toContain('max-w-[720px] lg:max-w-[1040px]')
+    // 🏠 2026-10-26 안 A — 콘솔 화면이 마이로 옮겨갔다. 이메일 전용 에이전시 마이가 그 넓은 폭을 이어받는다
+    //   (`/agency` 는 이제 마이로 보내는 문이다). 손님 마이 안에서는 칸이 좁아 한 칸(`stacked`)으로 그린다.
+    expect(code('src/pages/agency-console/AgencyMyPage.tsx')).toContain('max-w-[720px] lg:max-w-[1040px]')
   })
 })
 
 describe('⑦ 그려 본다', () => {
-  it('숫자 · 확인 대기 · 판매 중', () => {
-    render(<AgencyStorePlate store={row()} staffId={7} />)
+  it('숫자 · 확인 대기 · 판매 중 — "우리 이용권" 몫이라고 말한다', () => {
+    const { container } = render(<AgencyStorePlate store={row()} staffId={7} />)
     expect(screen.getByText('412,000')).toBeTruthy()
-    expect(screen.getByText('확인 대기 2건')).toBeTruthy()
+    expect(screen.getByText('오늘 · 우리 이용권')).toBeTruthy()
+    expect(container.textContent).toContain('주문 9건 · 확인 대기 2건')
     expect(screen.getByText('판매 중 6개')).toBeTruthy()
   })
   it('숫자를 못 셌으면 0 으로 지어내지 않는다', () => {

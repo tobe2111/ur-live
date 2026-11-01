@@ -34,7 +34,7 @@ export default function SwipeHint({ idx }: { idx: number }) {
     <div className="pointer-events-none absolute inset-x-0 bottom-28 z-20 flex justify-center [@media(hover:hover)_and_(pointer:fine)]:hidden">
       <div className="flex flex-col items-center gap-1 rounded-2xl bg-black/55 px-4 py-3 text-white backdrop-blur">
         <ChevronUp size={22} className="animate-bounce" />
-        <span className="text-[13px] font-semibold">위로 넘기면 다음 영상</span>
+        <span className="text-[13px] font-medium">위로 넘기면 다음 영상</span>
       </div>
     </div>
   )

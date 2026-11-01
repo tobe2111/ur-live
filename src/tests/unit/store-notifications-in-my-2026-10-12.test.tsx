@@ -137,9 +137,11 @@ describe('③ 누르면', () => {
 })
 
 describe('④ 배선', () => {
-  it("마이 '내 가게' 머리에 종이 있다 — 가게를 알 때만", () => {
+  // 🔁 2026-10-25 재조준(대표 확정 내 가게 안 G) — 머리의 알약 → 판 안의 **목록 줄**(`variant="row"`).
+  //   불변식 그대로: 가게를 **알 때만** 진짜 부품을 그린다(기다리는 동안은 같은 높이의 투명 줄).
+  it("마이 '내 가게' 판에 판매 알림 줄이 있다 — 가게를 알 때만", () => {
     const src = stripComments(readFileSync('src/pages/user-profile/SellerSection.tsx', 'utf-8'))
-    expect(src).toContain("{!awaiting && <StoreNotifButton currentSellerId={store.seller_id} onOpenPage={(p) => { void openPage(p, '') }} />}")
+    expect(src).toMatch(/\{awaiting \? \([\s\S]{0,300}\) : \(\s*<StoreNotifButton variant="row" currentSellerId=\{store\.seller_id\} onOpenPage=\{\(p\) => \{ void openPage\(p, ''\) \}\} \/>/)
   })
   it('서버 라우트가 사람 기준 범위 함수로 등록된다', () => {
     const src = stripComments(readFileSync('src/features/seller/api/seller-operators.routes.ts', 'utf-8'))

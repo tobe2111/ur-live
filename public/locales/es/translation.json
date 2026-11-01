@@ -1579,7 +1579,9 @@
       "categoryActivity": "Activity voucher",
       "categoryActivityDesc": "Escape room, bowling, class",
       "categoryEtc": "Otro Vale",
-      "categoryEtcDesc": "Mascotas·Actividades·Clases"
+      "categoryEtcDesc": "Mascotas·Actividades·Clases",
+      "categoryHome": "Vale de hogar",
+      "categoryHomeDesc": "Mudanza, limpieza, aire acondicionado"
     },
     "gift": {
       "title": "Enviar Regalo",
@@ -1724,7 +1726,8 @@
       "channelConfirm": "Confirmar",
       "channelSaving": "Guardando…",
       "channelSaved": "Tipo de gestión guardado",
-      "channelSaveFailed": "No se pudo guardar el tipo de gestión"
+      "channelSaveFailed": "No se pudo guardar el tipo de gestión",
+      "seedingSaveFailed": "No se pudo guardar la prueba gratuita. Actívala de nuevo en la bandeja de solicitudes de tu tienda"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -2569,7 +2572,8 @@
       "brandWideTitleOff": "Válido en otras sucursales",
       "brandWideNote": "Se canjea con el código o escaneo de esa sucursal. La liquidación queda en esta sucursal.",
       "brandWideTitleAll": "También se puede usar en {{count}} sucursales de la marca",
-      "brandWideNoteCross": "Si se usa en una sucursal del mismo dueño, se liquida aquí; si se usa en la de otro dueño, se liquida allí. Los cupones con comisión de referido solo se usan en sucursales del mismo dueño."
+      "brandWideNoteCross": "Si se usa en una sucursal del mismo dueño, se liquida aquí; si se usa en la de otro dueño, se liquida allí. Los cupones con comisión de referido solo se usan en sucursales del mismo dueño.",
+      "agencyMine": "Bonos que gestionamos"
     },
     "ordersM3": {
       "today": "Hoy",
@@ -2661,6 +2665,30 @@
       "am": "a. m.",
       "pm": "p. m.",
       "hour": "{{n}}h"
+    },
+    "channelPerf": {
+      "title": "Quién vendió",
+      "month": "Este mes",
+      "last30": "Últimos 30 días",
+      "all": "Todo",
+      "who": "Quién",
+      "sold": "Vendidos",
+      "revenue": "Ingresos",
+      "used": "Usados",
+      "refunded": "Reembolsados",
+      "products": "{{n}} cupones asignados",
+      "ended": "Finalizado",
+      "pending": "Esperando aceptación",
+      "noAgency": "Si asignas cupones a una agencia, cada agencia se cuenta por separado (Operadores → Asignar a agencia).",
+      "referralTitle": "Vendidos por enlaces de referido",
+      "noReferral": "No se vendieron cupones por enlaces de referido en este período.",
+      "unknownUser": "Usuario desconocido",
+      "soldN": "{{n}} vendidos",
+      "commission": "Comisión de influencer {{n}} KRW",
+      "share": "Parte {{pct}}% · {{n}} KRW",
+      "shareUnset": "Parte sin definir",
+      "shareNote": "UrDeal solo calcula el importe a pagar. La tienda paga directamente a la agencia y la agencia emite la factura fiscal a la tienda.",
+      "note": "Las ventas por referido ya están incluidas arriba. La misma venta se ve de dos formas: quién la gestionó y de qué enlace vino."
     }
   },
   "admin": {
@@ -5821,7 +5849,9 @@
     "sharedShareDesc": "Encontré un gran producto en Urdeal",
     "sharedShareBtn": "Ver producto",
     "sellerReplyLabel": "Respuesta del vendedor",
-    "sponsoredBadge": "Patrocinado"
+    "sponsoredBadge": "Patrocinado",
+    "loadMore": "Más reseñas (quedan {{n}})",
+    "loadingMore": "Cargando…"
   },
   "productOption": {
     "title": "Gestión de opciones de producto",
@@ -5928,6 +5958,7 @@
       "health": "Salud",
       "pet": "Mascota",
       "stay": "Alojamiento",
+      "home": "Hogar",
       "activity": "Actividad",
       "etc": "Otros"
     },
@@ -6017,7 +6048,9 @@
     "privacyLink": "Política de Privacidad",
     "termsNoticeEnd": "",
     "agencyQuestion": "¿Eres una agencia?",
-    "agencyLogin": "Acceso para agencias"
+    "agencyLogin": "Acceso para agencias",
+    "heroTitle2": "Los locales de tu barrio, más baratos si compras antes",
+    "chipPass": "Pases locales"
   },
   "guide": {
     "sectionTitlePlaceholder": "Título de sección",
@@ -6231,6 +6264,7 @@
     "coupons": "Cupones",
     "orders": "[TODO:es] 주문 내역",
     "ordersSub": "[TODO:es] 최근 3개월",
+    "paymentHistory": "Historial de pagos",
     "myStays": "Mis Reservas",
     "myStaysSub": "Código check-in / vencimiento",
     "interestList": "Restaurantes guardados",

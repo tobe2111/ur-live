@@ -129,8 +129,10 @@ describe('장식이 정보를 덮지 않는다', () => {
 
   it('시설이 3분할 카드로 되돌아가지 않았다', () => {
     const src = code(read(STAY))
-    expect(src, '시설 인라인 흐름(AmenityFlow)이 사라졌다').toContain('<AmenityFlow')
+    // 🔁 2026-10-31 흐름(AmenityFlow) → 아이콘 그리드(AmenityGrid, 대표 여기어때). 불변식은 그대로 — 칸마다 테두리 카드 금지.
+    expect(src, '시설 그리드(AmenityGrid)가 사라졌다').toContain('<AmenityGrid')
     expect(src, '시설이 다시 grid 카드가 됐다').not.toMatch(/grid grid-cols-3 sm:grid-cols-4/)
+    expect(code(read('src/pages/stay-detail/AmenityGrid.tsx')), '시설 칸에 테두리가 생겼다').not.toMatch(/\bborder(?:-2)?\b|rounded-lg border/)
   })
 })
 
@@ -154,7 +156,7 @@ describe('같은 정보를 두 번 보여주지 않는다', () => {
 describe('위계가 살아 있다', () => {
   it('섹션 제목이 본문과 같은 크기로 주저앉지 않았다', () => {
     // 예전엔 전부 `text-sm font-bold` — 제목인지 굵은 본문인지 구분이 안 됐다.
-    expect(code(read(SECTIONS)), '섹션 제목 스펙(17px/800)이 바뀌었다').toContain('text-[17px] font-extrabold')
+    expect(code(read(SECTIONS)), '섹션 제목 스펙(17px/700 — 2026-10-25 굵기 체계)이 바뀌었다').toContain('text-[17px] font-bold')
     const src = code(read(STAY))
     expect(src, '섹션 제목이 SectionTitle 밖으로 흩어졌다').toContain('<SectionTitle')
     expect(src, '옛 13px 굵은 제목이 되살아났다').not.toMatch(/<h2 className="text-sm font-bold/)

@@ -30,7 +30,7 @@ export default function RecentlyViewedSection() {
     <div className="mb-5">
       <div className="flex items-center gap-2 mb-3">
         <ClockIcon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        <h2 className="text-[13px] font-bold text-gray-900 dark:text-white">최근 본 상품</h2>
+        <h2 className="text-[13px] font-medium text-gray-900 dark:text-white">최근 본 상품</h2>
       </div>
       <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 pt-1 px-1">
         {items.map(p => (

@@ -5,21 +5,21 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
-import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
+import { DEAL_GRID_GAP, DEAL_ROW } from '@/shared/deal-card-grid'
 import { ClockIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { Flame, Tag } from 'lucide-react'
 import Udal from '@/components/mascot/Udal'
-import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
+import { HOME_DEAL_CATS } from '@/pages/pc-home/PcHomeRail'; import { isHomeVisibleProduct } from '@/shared/deal-cats'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { deferSeeded, seededSectionProductIds } from '@/shared/home-section-ids'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import { queryKeys } from '@/hooks/queries'
+import { queryKeys, seedDetailFromListRow } from '@/hooks/queries'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
 import { useProgressiveCap } from '@/hooks/useProgressiveCap'
@@ -27,8 +27,8 @@ import type { Product } from './types'
 import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
 import { parseUTCDate } from '@/utils/date'
-import { passesFeedFilters, feedFiltersKey, type FeedFilters } from '@/shared/home-feed-filters'
-import { priceDisplay } from '@/shared/price-display'
+import { passesFeedFilters, feedFiltersKey, type FeedFilters } from '@/shared/home-feed-filters'; import { useLifeSubcat, LifeSubcatChips } from './life-subcat' // 🏠 생활 업종 칩
+import { priceDisplay } from '@/shared/price-display'; const LifeQuoteBanner = lazy(() => import('./LifeQuoteBanner')) // 🏠 생활 칩에서만 — 업종 그림을 홈 첫 화면 묶음에 싣지 않는다
 
 interface FeedProduct extends Product {
   group_buy_current?: number
@@ -71,7 +71,7 @@ function discountOf(p: FeedProduct): number {
  *      반드시 어긋난다"* 고 **미리 적어 뒀는데도** 두 번째 표가 생겨 그대로 어긋난 것이다.
  *      SSOT 는 선언이 아니라 **다른 표가 없을 때** 성립한다.
  */
-const CATEGORIES = DEAL_CATS
+const CATEGORIES = HOME_DEAL_CATS // 🏠 2026-10-31 생활 제외(메인)
 
 /**
  * 🖊️ 2026-08-30: 이모지 라벨 → 선 아이콘 + **공용 `SortMenu` 로 통일**.
@@ -113,7 +113,7 @@ export default function GroupBuyFeed({
   regionRef,
   userLoc,
   sectionNearKey = '',
-  filters,
+  filters, showLife = false,
 }: {
   pc?: boolean
   /**
@@ -148,12 +148,13 @@ export default function GroupBuyFeed({
   sectionNearKey?: string
   /** 🎚️ 2026-10-14 PC 홈 왼쪽 필터(거리·가격) — 받아 둔 페이지 안에서 거른다. 미지정이면 출력 불변. */
   filters?: FeedFilters
+  showLife?: boolean /** 🏠 2026-10-31 생활 이용권 노출. 기본 false = 메인(대표 "메인에서는 안보이게"), 지역 페이지만 true. */
 } = {}) {
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
   const category = categoryProp ?? categoryState
   const sort = sortProp ?? sortState
-  const setCategory = (c: CategoryKey) => { if (onCategoryChange) onCategoryChange(c); else setCategoryState(c) }
+  const setCategory = (c: CategoryKey) => { if (onCategoryChange) onCategoryChange(c); else setCategoryState(c) }; const life = useLifeSubcat(category) // 🏠 생활 탭 업종(2026-10-25)
   const setSort = (s: SortKey) => { if (onSortChange) onSortChange(s); else setSortState(s) }
   // 🖥️ PC 홈(pc): 모바일은 기존 2~3열. lg 미만 값은 `/region/*`(PC·모바일 공용 페이지)이 쓴다.
   // 📐 2026-08-17 (대표 — "카드가 커, 컴팩트하게" → 재지시 "1줄에 이용권 5개"): 2026-07-15 의
@@ -174,7 +175,7 @@ export default function GroupBuyFeed({
     // 📐 2026-08-24: md(768~1023, 태블릿)가 `sm` 규칙에 걸려 **3열**이었다. 편성 섹션은 4개를
     //   뿌리므로 마지막 하나가 줄에 혼자 남아 오른쪽이 텅 비었다 — 태블릿도 4열로 맞춘다.
     ? `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP} pb-8`
-    : `grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP} px-4 pb-8`
+    : `${DEAL_ROW.grid} px-4 pb-8` // 📋 2026-10-31 시안 10 — 폰은 줄 목록(NOL식)
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
   const { fcfsMap } = useFcfsMap()
@@ -222,9 +223,7 @@ export default function GroupBuyFeed({
       const res = await api.get(`/api/group-buy/products?status=active&category=${category}${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
       // hydrate individual detail cache (idempotent).
-      for (const p of arr) {
-        if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p)
-      }
+      for (const p of arr) seedDetailFromListRow(qc, p)
       return arr
     },
     initialData: nearKey ? undefined : ssrInitial,  // 시드는 위치 없는 인기순 — 가까운 후보 요청엔 안 맞는다
@@ -303,7 +302,7 @@ export default function GroupBuyFeed({
       const nextPage = extraPages.length + 2  // page1 = items → 다음은 2부터
       const res = await api.get(`/api/group-buy/products?status=active&category=${category}&page=${nextPage}&limit=50${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
-      for (const p of arr) { if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p) }
+      for (const p of arr) seedDetailFromListRow(qc, p)
       setExtraPages(prev => [...prev, arr])
       if (arr.length < 50) setReachedEnd(true)
     } catch { /* 실패 시 버튼 유지 — 다음 시도 가능 */ } finally { setLoadingMore(false) }
@@ -316,7 +315,7 @@ export default function GroupBuyFeed({
     const seen = new Set<number | string>()
     const out: FeedProduct[] = []
     const pushBand = (band: FeedProduct[], filterRegion: boolean) => {
-      const src = (filterRegion ? band.filter(inRegion) : band).filter(p => passesFeedFilters(p, filters, userLoc))
+      const src = (filterRegion ? band.filter(inRegion) : band).filter(p => showLife || isHomeVisibleProduct(p)).filter(p => passesFeedFilters(p, filters, userLoc) && life.keep(p))
       /**
        * 🖼️ 2026-09-06 (대표 — "메인에서 같은 이용권 사진이 두 번"의 나머지 절반):
        *   바로 위 편성 섹션('지금 인기 이용권'·'주말에 떠나는 숙소')에 이미 뜬 상품을
@@ -344,7 +343,7 @@ export default function GroupBuyFeed({
     // inRegion/sortBand 는 매 렌더 재생성(아래 deps 를 클로저) → deps 에 원천값만 나열.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // regionRef 는 객체라 참조가 매 렌더 바뀔 수 있어 원시값으로 분해해 넣는다(무한 재계산 방지).
-  }, [items, extraPages, sort, userLoc, sectionIds, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu, feedFiltersKey(filters)])
+  }, [items, extraPages, sort, userLoc, sectionIds, showLife, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu, feedFiltersKey(filters), life.key])
   // 📍 2026-10-17: 필터로 0건이면 **끝까지 더 찾아본 뒤에야** "없어요" — 불러온 1페이지만 보고 단정하지 않는다.
   const hunting = !!feedFiltersKey(filters).replace('|', '') && sorted.length === 0 && !reachedEnd && !isError
   useEffect(() => { if (hunting && !loading && !loadingMore) void loadMore() }, [hunting, loading, loadingMore, extraPages.length]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -392,7 +391,7 @@ export default function GroupBuyFeed({
               <button
                 key={c.key}
                 onClick={() => setCategory(c.key)}
-                className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-bold transition-colors ${
+                className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-medium transition-colors ${
                   active
                     ? 'bg-brand text-white'  /* 🎨 2026-09-07 안 B: 선택 = 브랜드 블루(서비스 공통) */
                     : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
@@ -412,7 +411,7 @@ export default function GroupBuyFeed({
           더 잘 하고 있어 **같은 사실을 두 번** 말하던 자리였다(대기업 앱은 0을 세지 않는다). */}
       {/* 🔇 정렬할 것이 없으면 정렬도 내린다. 카운트를 감추고 나니 이 알약만 오른쪽에
           홀로 떠서 **빈 줄 하나**처럼 보였다 — 컨트롤은 쓸 데가 있을 때만 자리를 갖는다. */}
-      {!pc && (loading || sorted.length > 0) && (
+      {life.on && <LifeSubcatChips value={life.sub} onChange={life.setSub} />}{!pc && (loading || sorted.length > 0) && (
       <div className="flex items-center justify-between px-4 py-2 text-[12px] text-gray-500 dark:text-gray-400">
         <span>{loading ? '불러오는 중…' : `딜 ${sorted.length}개`}</span>
         {/* ⚠️ `value` 가 `options` 안에 반드시 있어야 한다 — 없으면 알약이 남의 라벨을 조용히 그린다. */}
@@ -421,7 +420,7 @@ export default function GroupBuyFeed({
       </div>
       )}
 
-      {/* 피드 — 2열 그리드 (당근식) */}
+      {category === 'home_voucher' && <Suspense fallback={<div className="mx-4 mb-5 mt-2 h-[72px]" />}><LifeQuoteBanner sub={life.sub} /></Suspense>}{/* 피드 — 2열 그리드 (당근식) · 🏠 생활 칩이면 견적 받기 한 줄(2026-10-24) */}
       {loading ? (
         <div className={gridCls}>
           {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}
@@ -452,7 +451,7 @@ export default function GroupBuyFeed({
         {/* 🗺️ 2026-07-19: 지역 매칭 0 → 전체 폴백 사실을 명시(조용한 오표시 방지 — "부산인데 서울 딜?" 오해 차단). */}
         {regionFallback && (
           <div className={pc ? 'mb-4' : 'mx-4 mb-3'}>
-            <p className="px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 text-[13px] font-semibold">
+            <p className="px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 text-[13px] font-medium">
               선택한 지역에 아직 등록된 딜이 없어요 — 전체 지역 딜을 보여드릴게요.
             </p>
           </div>
@@ -468,7 +467,7 @@ export default function GroupBuyFeed({
           {sorted.slice(0, renderCap).map((p, idx) => {
             const emb = (p as { fcfs?: { enabled?: boolean; prelaunch?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }).fcfs
             const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null, prelaunch: !!emb.prelaunch } : undefined
-            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={firstScreen && idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} imgWidth={cardImgWidth} userLoc={userLoc} />
+            return <GroupBuyFeedCard key={p.id} p={p} row={!pc} aboveFold={firstScreen && idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} imgWidth={cardImgWidth} userLoc={userLoc} />
           })}
         </div>
         </>
@@ -578,7 +577,7 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
       {category !== 'all' && (
         <>
           <div className="flex items-center gap-2 mb-3 px-1">
-            <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400 tracking-wide">
+            <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400 tracking-wide">
               💡 다른 인기 공구
             </span>
           </div>

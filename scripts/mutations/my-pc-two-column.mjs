@@ -45,9 +45,9 @@ export default [
   {
     name: '🖥️PC2열 금액을 다시 두 줄로 갈라지게 둔다',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: 'tabular-nums leading-none whitespace-nowrap text-gray-900',
-    replace: 'tabular-nums leading-none text-gray-900',
+    find: "<span className=\"shrink-0 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums whitespace-nowrap\">",
+    replace: "<span className=\"shrink-0 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums\">",
     test: TEST,
-    why: '카드가 ≈340px 로 좁아져 `412,000` 과 `원` 이 갈라졌다 — 금액은 한 덩어리로 읽혀야 한다.',
+    why: "오늘 매출 줄의 값 묶음(`N원 · 주문 N건`)이 좁은 칸에서 줄바꿈되면 금액과 단위가 갈라진다(2026-10-25 안 G — 큰 숫자 → 줄의 값).",
   },
 ]

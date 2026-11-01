@@ -34,6 +34,12 @@ export interface StoreSummaryRow {
   pending: number
   /** ⚡ 판매 중 상품 수 — 이 값이 있어서 첫 화면이 상품 목록을 따로 안 받는다(2026-10-01) */
   active_products: number
+  /** 🏠 생활 견적 참여권 잔액 — 생활 업체가 아니면 null(2026-10-26) */
+  life_credits?: number | null
+  /** 🖼️ B안 머리줄 사진(가게 프로필 → 없으면 판매 중 상품 첫 사진) — 없으면 이니셜(2026-10-31) */
+  image?: string | null
+  /** 손님이 보는 가게 주소 `/s/:username` — 없으면 '가게 보기' 를 안 그린다 */
+  username?: string | null
 }
 
 export interface MyStoresState {

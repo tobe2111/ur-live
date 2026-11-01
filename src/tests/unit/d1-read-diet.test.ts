@@ -13,6 +13,7 @@
  *
  * 못 막는 것: 실제 rows_read(런타임) — 배포 후 `cron_hb` 의 rr 로 판정한다(PR #1299 계량기).
  */
+import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { handleGroupBuyFeedCache, computeFeedFingerprint, FEED_FP_KEY, FEED_FORCE_REFRESH_MS } from '@/worker/cron/group-buy-feed-cache'
@@ -26,6 +27,9 @@ const FEED = readFileSync('src/worker/cron/group-buy-feed-cache.ts', 'utf8')
 const HB = readFileSync('src/worker/utils/cron-heartbeat.ts', 'utf8')
 const ALIMTALK = readFileSync('src/worker/cron/retry-alimtalk.ts', 'utf8')
 
+/** status 4 × category(전체 + VOUCHER_CATEGORIES) — 2026-10-20 생활 추가로 20 → 24. 카테고리 수에서 계산한다. */
+const FULL_REFRESH = 4 * (1 + VOUCHER_CATEGORIES.length)
+
 describe('① 청소 티어', () => {
   it('호출부가 슬롯으로 티어를 넘긴다 — 매시 :10 / 매일 19:20 UTC(04:20 KST)', () => {
     expect(SCHEDULED).toMatch(/handleScheduled\(env, \{ hourly: slotOpen\(\{ minute: 10 \}\), daily: slotOpen\(\{ minute: 20, hour: 19 \}\) \}\)/)
@@ -37,9 +41,10 @@ describe('① 청소 티어', () => {
     // 2026-10-14: +1 — 숙소 소개 문구 백필(25). 치유 코드가 어드민 POST 하나에만 걸려 **한 번도
     //   안 돌았고**(색인 49건이 대표가 지적한 옛 문장이었다) 매일 도는 자리로 옮겼다.
     //   ⚠️ 이 수를 올리는 것은 "새 섹션이 daily 게이트 뒤에 있다" 는 뜻이다 — 아래 목록도 같이 올린다.
-    expect(main.length + daily.length).toBe(37)
+    // 2026-10-31: +1 — 데모 숙소 중복 합치기(26). 같은 숙소로 갈라진 데모 상품을 한 상세로(대표 "방 옵션은 한 상세에서").
+    expect(main.length + daily.length).toBe(38)
     // daily 섹션은 전부 분리 모듈에만 있다 — 본진 파일로 돌아오면 게이트 없이 5분마다 돈다.
-    for (const t of ['8', '9', '9b', '15', '16', '16b', '17', '18', '19', '22', '22b', '🏁', '23', '24', '25']) {
+    for (const t of ['8', '9', '9b', '15', '16', '16b', '17', '18', '19', '22', '22b', '🏁', '23', '24', '25', '26']) {
       expect(daily, t).toContain(t)
       expect(main, t).not.toContain(t)
     }
@@ -104,17 +109,17 @@ describe('② 피드 캐시 지문 게이트', () => {
   it('지문이 다르면 전부 갱신하고 지문을 저장한다', async () => {
     const { db, calls } = fakeFeedDb({ prevFp: 'old' })
     const out = await handleGroupBuyFeedCache({ DB: db } as never)
-    expect(out.refreshed).toBe(20)
-    expect(calls.filter((c) => c.startsWith('SELECT p.id')).length).toBe(20)
+    expect(out.refreshed).toBe(FULL_REFRESH)
+    expect(calls.filter((c) => c.startsWith('SELECT p.id')).length).toBe(FULL_REFRESH)
     expect(calls.some((c) => c.startsWith('INSERT OR REPLACE INTO platform_settings') )).toBe(true)
   })
   it('지문이 같아도 마지막 전체 갱신이 60분을 넘었으면 전부 갱신한다(안전망)', async () => {
     const { db } = fakeFeedDb({ prevFp: FP, prevAt: new Date(Date.now() - FEED_FORCE_REFRESH_MS - 1000).toISOString() })
-    expect((await handleGroupBuyFeedCache({ DB: db } as never)).refreshed).toBe(20)
+    expect((await handleGroupBuyFeedCache({ DB: db } as never)).refreshed).toBe(FULL_REFRESH)
   })
   it('지문 쿼리가 실패하면 종전대로 전부 갱신한다(게이트가 기능을 막지 않는다)', async () => {
     const { db, calls } = fakeFeedDb({ prevFp: FP, fpRow: null })
-    expect((await handleGroupBuyFeedCache({ DB: db } as never)).refreshed).toBe(20)
+    expect((await handleGroupBuyFeedCache({ DB: db } as never)).refreshed).toBe(FULL_REFRESH)
     expect(calls.some((c) => c.startsWith('INSERT OR REPLACE INTO platform_settings'))).toBe(false)
     expect(await computeFeedFingerprint({ prepare: () => ({ bind: () => ({ first: async () => { throw new Error('no such column') } }) }) })).toBeNull()
     expect(FEED_FP_KEY).toBe('gb_feed_cache_fp')

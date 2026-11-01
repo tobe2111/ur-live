@@ -27,13 +27,13 @@ function resolveCategories(param: string): readonly string[] {
   return VOUCHER_CATEGORY_SQL_VALUES; // unknown → 안전한 fallback (전체)
 }
 
-const NEW_CATS = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'] as const;
+const NEW_CATS = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'home_voucher', 'etc_voucher'] as const;
 const LEGACY_CATS = ['health_voucher', 'pet_voucher', 'activity_voucher'] as const;
 const ALL_CATS = [...NEW_CATS, ...LEGACY_CATS];
 
 describe('VOUCHER_CATEGORIES — 카테고리 enum (4종 통합)', () => {
   it('신규 4종 카테고리 존재', () => {
-    expect(VOUCHER_CATEGORIES).toHaveLength(4);
+    expect(VOUCHER_CATEGORIES).toHaveLength(5);  // 2026-10-20 생활(home_voucher) 추가
     expect(VOUCHER_CATEGORIES).toEqual(NEW_CATS);
   });
 
@@ -52,8 +52,8 @@ describe('VOUCHER_CATEGORIES — 카테고리 enum (4종 통합)', () => {
   });
 
   it('SQL placeholder 가 7개 (신규 4 + 레거시 3 — 마이그레이션 사이 graceful)', () => {
-    expect(VOUCHER_CATEGORY_SQL_PLACEHOLDERS).toBe('?,?,?,?,?,?,?');
-    expect(VOUCHER_CATEGORY_SQL_VALUES).toHaveLength(7);
+    expect(VOUCHER_CATEGORY_SQL_PLACEHOLDERS).toBe('?,?,?,?,?,?,?,?');
+    expect(VOUCHER_CATEGORY_SQL_VALUES).toHaveLength(8);
   });
 });
 
@@ -77,7 +77,7 @@ describe('resolveCategories — API 파라미터 → SQL list', () => {
 
 describe('SQL injection 방어 — placeholder 만 사용', () => {
   it('카테고리 값이 placeholder bind 로만 들어감 (SQL 문자열 직접 삽입 X)', () => {
-    expect(VOUCHER_CATEGORY_SQL_PLACEHOLDERS).toBe('?,?,?,?,?,?,?');
+    expect(VOUCHER_CATEGORY_SQL_PLACEHOLDERS).toBe('?,?,?,?,?,?,?,?');
     expect(VOUCHER_CATEGORY_SQL_PLACEHOLDERS).not.toMatch(/['"]/);
     expect(VOUCHER_CATEGORY_SQL_PLACEHOLDERS).not.toMatch(/\bvoucher\b/);
   });

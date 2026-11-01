@@ -135,7 +135,8 @@ describe('④ 마이 내 가게 — 첫 화면이 상품 목록을 안 받는다
 
   it('그 집계는 이미 돌고 있는 병렬 묶음 안이다 — 왕복이 안 늘어난다', () => {
     // 2026-10-17: 지점 다수 대응으로 묶음 안 각 집계가 `allInChunks` 로 조각나고 이름이 `*Rows` 가 됐다 — 불변식(같은 Promise.all 안) 그대로.
-    const at = ROUTE.indexOf('const [todayRows, pendingRows, activeRows, certRows] = await Promise.all([')
+    // 2026-10-26: 생활 참여권 집계(`lifeRows`)가 같은 묶음에 하나 더 붙었다 — 묶음 머리를 이름 목록 무관하게 찾는다.
+    const at = ROUTE.search(/const \[todayRows, pendingRows, activeRows, certRows(?:, \w+)*\] = await Promise\.all\(\[/)
     expect(at, '병렬 묶음을 못 찾았다').toBeGreaterThan(-1)
     // 묶음 안에서 products 집계를 한다(별도 await 로 빼면 왕복이 하나 는다).
     expect(ROUTE.slice(at, at + 2400)).toContain('FROM products')

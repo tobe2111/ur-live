@@ -28,7 +28,7 @@ export default [
   {
     name: '🏨 히어로 래퍼를 빼먹는다 — 풀블리드(-mx-4 -mt-5)가 깨진다',
     file: BUILDER,
-    find: '`<div class="${STAY_HEAD.heroWrap}">${hero}</div>` +',
+    find: '`<div class="${STAY_HEAD.heroWrap}">${hero}${mobileThumbRowHtml(images)}</div>` +',
     replace: 'hero +',
     test: TEST,
     why: '`/pass/:id` 는 래퍼에 모바일 치수가 없어 생략해도 됐다 — 숙소는 그 래퍼가 좌우 16px·위 20px 를 만든다. 베끼면 틀린다.',

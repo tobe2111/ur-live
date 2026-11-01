@@ -70,7 +70,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
                 <button
                   key={r.key}
                   onClick={() => setActiveRegion(r.key)}
-                  className={`w-full text-center py-4 px-2 text-[13px] font-semibold transition-colors whitespace-pre-line leading-tight ${
+                  className={`w-full text-center py-4 px-2 text-[13px] font-medium transition-colors whitespace-pre-line leading-tight ${
                     active
                       ? 'bg-white dark:bg-[#111] text-gray-900 dark:text-white border-l-[3px] border-brand'
                       : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'

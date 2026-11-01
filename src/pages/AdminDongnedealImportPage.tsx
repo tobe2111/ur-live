@@ -7,8 +7,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Upload, Download, PackagePlus, CheckCircle2, AlertTriangle } from 'lucide-react'
 import ManualDealForm from './admin-dongnedeal/ManualDealForm'
-import DealList from './admin-dongnedeal/DealList'
-import type { DealRow } from './admin-dongnedeal/types'
+import { Link } from 'react-router-dom'
 import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
 import { cleanSido, buildRegionParam } from './admin-dongnedeal/region-util'
 
@@ -20,7 +19,7 @@ const TEMPLATE_HEADERS = ['상품명', '카테고리', '판매가', '정가', '�
 const TEMPLATE_SAMPLE = '[강남] 한우 오마카세 2인,이용권,89000,140000,한우공방 강남점,서울 강남구 봉은사로,https://images.unsplash.com/photo-1,2인 한우 코스'
 
 const CAT_LABEL: Record<string, string> = {
-  meal_voucher: '맛집 이용권', beauty_voucher: '미용', etc_voucher: '기타', general: '일반 상품', stay_voucher: '숙소',
+  meal_voucher: '맛집 이용권', beauty_voucher: '미용', etc_voucher: '기타', general: '일반 상품', stay_voucher: '숙소', home_voucher: '생활',
 }
 
 // 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차로 세팅"): cleanSido/buildRegionParam 은
@@ -105,7 +104,7 @@ export default function AdminDongnedealImportPage() {
         }
       }
       toast.success(`사진 정리 완료 — R2 이관 ${rehosted}개 · 복구 ${healed}개`)
-      loadStats(); loadImgHealth(); setListNonce((n) => n + 1)
+      loadStats(); loadImgHealth()
     } catch { toast.error('사진 정리 중 오류') } finally {
       setFixing((s) => ({ ...s, running: false }))
     }
@@ -157,9 +156,6 @@ export default function AdminDongnedealImportPage() {
       else toast.error(r.data?.error || '저장 실패')
     } catch { toast.error('저장 실패') } finally { setBandsSaving(false) }
   }
-  // 🖊️ 2026-07-01 (대표 — 수정/삭제): 편집 대상 + 목록 새로고침 nonce.
-  const [editing, setEditing] = useState<DealRow | null>(null)
-  const [listNonce, setListNonce] = useState(0)
 
   const loadStats = () => {
     api.get('/api/admin/dongnedeal/stats', h)
@@ -200,7 +196,7 @@ export default function AdminDongnedealImportPage() {
         if (t.created > 0) toast.success(`데모 숙소 ${t.created}개 생성 · 실사진 ${t.photos}${healNote}${skipNote}`)
         else if (staySeedHealedAny(t)) toast.success(`신규 생성 0 — 기존 데모 정비 완료${healNote}${skipNote}`)
         else toast.error(t.skipped ? `생성 0 — ${t.skipped}개 모두 실숙소 미매칭/중복. 지역을 바꿔보세요` : '생성된 숙소가 없습니다')
-        loadStats(); setListNonce((nn) => nn + 1)
+        loadStats()
         setCleaning(false)
         return
       }
@@ -237,7 +233,7 @@ export default function AdminDongnedealImportPage() {
       } else {
         toast.success('생성된 상품이 없습니다')
       }
-      loadStats(); setListNonce((n) => n + 1)
+      loadStats()
     } catch { toast.error('데모 생성 중 오류') } finally { setCleaning(false) }
   }
 
@@ -289,9 +285,9 @@ export default function AdminDongnedealImportPage() {
   const input = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm'
 
   return (
-    <AdminLayout title="동네딜 상품 일괄 등록">
+    <AdminLayout title="이용권 등록">
       <div className="ur-content-wide px-4 lg:px-6 py-5 space-y-5">
-        <DashboardPageHeader title="동네딜 상품 일괄 등록" subtitle="CSV로 동네딜(오프라인 공동구매) 상품을 한 번에 등록 — 즉시 동네딜에 노출됩니다." />
+        <DashboardPageHeader title="이용권 등록" subtitle="매장 이용권(식사·미용·기타)을 직접 입력하거나 CSV로 한 번에 올립니다 — 등록 즉시 동네딜에 노출됩니다." />
 
         {/* 🩺 이미지 건강 진단 — 사진 반복 깨짐의 근본원인(R2 미바인딩/외부 커버) 가시화 */}
         {imgHealth && (
@@ -383,6 +379,7 @@ export default function AdminDongnedealImportPage() {
                   <option value="">전체 카테고리</option>
                   <option value="meal_voucher">맛집 이용권</option>
                   <option value="beauty_voucher">미용</option>
+                  <option value="home_voucher">생활 (이사·청소)</option>
                   <option value="etc_voucher">기타</option>
                   {/* 🏨 2026-07-20 (대표 — "데모 채우기 카테고리에서 숙소도"): 숙소는 별도 시드(/stays 검색용
                       객실·좌표 포함 생성형)로 분기 — seedDemo() 가 카테고리 보고 라우팅. */}
@@ -431,7 +428,7 @@ export default function AdminDongnedealImportPage() {
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap mt-3">
-              {['meal_voucher', 'beauty_voucher', 'etc_voucher', 'general'].map(cat => {
+              {['meal_voucher', 'beauty_voucher', 'home_voucher', 'etc_voucher', 'general'].map(cat => {
                 const found = stats.by_category.find(b => b.category === cat)
                 return <span key={cat} className="text-[12px] text-gray-500">{CAT_LABEL[cat]} <b className="text-gray-800">{found?.c ?? 0}</b></span>
               })}
@@ -544,34 +541,12 @@ export default function AdminDongnedealImportPage() {
             2026-07-21 (대표 "수정하려면 스크롤 위로 올라가야 해 불편"): 수정은 목록 제자리 모달로 분리 —
             아래 editing 모달 참조. 상단 폼은 더 이상 수정 모드로 전환되지 않음. */}
         <ManualDealForm
-          onSaved={() => { loadStats(); setListNonce((n) => n + 1) }}
+          onSaved={() => { loadStats() }}
         />
 
-        {/* 🖊️ 등록된 동네딜 목록 — 노출토글 / 수정(모달) / 삭제 */}
-        <DealList
-          nonce={listNonce}
-          onEdit={(d) => setEditing(d)}
-          onChanged={() => { loadStats(); setListNonce((n) => n + 1) }}
-        />
-
-        {/* 🖊️ 수정 모달 — 스크롤 위치 유지한 채 제자리 편집(표준 z-index 모달 스케일). 배경 클릭/취소로 닫힘. */}
-        {editing && (
-          <div
-            className="fixed inset-0 z-[10500] bg-black/50 overflow-y-auto overscroll-contain p-4"
-            onClick={() => setEditing(null)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="동네딜 수정"
-          >
-            <div className="max-w-3xl mx-auto my-6" onClick={(e) => e.stopPropagation()}>
-              <ManualDealForm
-                editDeal={editing}
-                onCancelEdit={() => setEditing(null)}
-                onSaved={() => { setEditing(null); loadStats(); setListNonce((n) => n + 1) }}
-              />
-            </div>
-          </div>
-        )}
+        {/* 🎟️ 2026-10-20: 등록된 이용권 목록(노출·수정·삭제·판매 설정·환불)은 '이용권 관리'(/admin/vouchers)로 옮겼다 —
+            이 화면은 **올리기만** 한다(대표 *"역할이 모호해"*). */}
+        <p className="text-[13px] text-gray-600">등록한 이용권의 노출·수정·삭제·판매 설정은 <Link to="/admin/vouchers" className="font-semibold text-brand-text hover:underline">이용권 관리</Link>에서 합니다.</p>
 
         <div className={card}>
           <div className="flex items-center justify-between gap-3 flex-wrap">

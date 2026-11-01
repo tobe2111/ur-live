@@ -246,14 +246,19 @@ describe('⑥ 판매 도구 — 한 판, 자주 쓰는 셋이 맨 위 (2026-09-2
    * 지키던 것은 그대로다: 바로가기가 늘지 않는다 · 이용권이 주문보다 앞(더 위로 갔을 뿐) ·
    * 마지막은 나머지로 가는 문.
    */
-  it('🔵 바로가기 줄은 셋이고, 이용권 등록·관리가 그 위의 진한 블루 줄이다', () => {
-    const labels = [...code.matchAll(/^\s*label="([^"]+)"$/gm)].map((m) => m[1])
+  it('🔵 바로가기 줄은 셋이고, 이용권 등록·관리가 그 위의 칸이다', () => {
+    // 🏠 2026-10-26 대표 "참여권 갯수·내역을 마이에서" — 생활 견적 업체만 뜨는 **판 밖 별도 판**은 이 셈에서 뺀다
+    //   (판매 판의 바로가기가 아니다). 그 판이 조건부·별도 판인지는 `life-credits-my-2026-10-26` 이 지킨다.
+    const mainPlate = code.replace(/\{store\?\.life_credits != null && \([\s\S]*?\n\s{6}\)\}/, '')
+    expect(mainPlate.length, '생활 판을 떼어 내지 못했다').toBeLessThan(code.length)
+    const labels = [...mainPlate.matchAll(/^\s*label="([^"]+)"$/gm)].map((m) => m[1])
     expect(labels.length, '도구 줄을 못 셌다 — 이 검사가 헛돌고 있다').toBe(3)
     expect(labels).toEqual(['주문', '정산', '전체 도구'])
-    const iBlue = code.indexOf('이용권 등록 · 관리')
-    expect(iBlue, '이용권 등록·관리 줄이 사라졌다 — 파는 물건을 만들 문이 없다').toBeGreaterThan(-1)
-    expect(iBlue, '이용권 줄이 주문보다 아래로 내려갔다').toBeLessThan(code.indexOf('label="주문"'))
-    expect(code, '이용권 줄이 진한 블루 면이 아니다(안 3)').toMatch(/bg-brand text-white[\s\S]{0,400}이용권 등록 · 관리/)
+    // 🔁 2026-10-25 재조준(대표 확정 안 G) — 이용권은 진한 블루 줄 → 판 밖 위의 **흰 칸**(`이용권 등록·관리`)이 됐다.
+    //   지키던 것 그대로: 파는 물건을 만들 문이 있다 · 주문보다 앞(더 위) · 바로가기는 셋.
+    const iReg = code.indexOf('이용권 등록·관리')
+    expect(iReg, '이용권 등록·관리 칸이 사라졌다 — 파는 물건을 만들 문이 없다').toBeGreaterThan(-1)
+    expect(iReg, '이용권 칸이 주문보다 아래로 내려갔다').toBeLessThan(code.indexOf('label="주문"'))
   })
 
   it('전체 도구가 예시를 나열하지 않는다 (적으면 반드시 낡는다)', () => {

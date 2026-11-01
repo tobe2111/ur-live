@@ -45,6 +45,10 @@ export interface LaneYieldStat {
   saved?: number
   total_runs?: number
   total_saved?: number
+  /** 📊 **재확인**(이미 있던 행을 다시 본 수) — 원부를 다 훑으면 신규는 0 에 수렴하고 이 수만 올라간다. */
+  total_upserted?: number
+  /** 🏁 이번 회차가 원부 끝에 닿았다(커서를 되돌렸다) — '저장 0' 의 정당한 이유다. */
+  completed?: boolean
   last_run?: string
   diag?: { configured?: boolean; error?: string } | null
 }
@@ -77,6 +81,13 @@ export function judgeLaneYield(lane: string, stat: LaneYieldStat | null | undefi
 
   // 🚫 미설정(키 없음)은 이 판정의 대상이 아니다 — 그건 '고장'이 아니라 '안 켰다'이고 다른 화면이 이미 말한다.
   if (stat.diag && stat.diag.configured === false) return null
+
+  // 🏁 **완주를 사망으로 읽지 않는다** (2026-10-24 라이브 — `collect-franchise`).
+  //   원부가 1만 건대인 소스는 다 훑으면 **신규 0 · 재확인만** 남는다. 그때 `total_saved === 0` 은
+  //   "한 번도 성공한 적 없다"가 아니라 "더 넣을 게 없다"다. 아래 warn 분기는 이미 `found > 0` 로
+  //   그 오경보를 피하고 있었는데(주석이 그렇게 말한다) **dead 분기에는 그 보호가 없었다** —
+  //   라이브에서 86회 연속 가짜 적색이 떴고, 그게 진짜 사망 레인을 가렸다.
+  if (runs >= DEAD_AFTER_RUNS && totalSaved === 0 && (Number(stat.total_upserted) > 0 || stat.completed)) return null
 
   // ⛔ 한 번도 성공한 적 없다 — 누적 저장이 0 인 채로 충분히 여러 번 돌았다.
   if (runs >= DEAD_AFTER_RUNS && totalSaved === 0) {

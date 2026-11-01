@@ -73,7 +73,16 @@ export function verdictChanged(before: VerdictBefore, written: VerdictWritten, b
       || before.classify_confidence !== written.confidence
       || (before.tier == null && written.tier != null)
   }
-  // registry·other: lead_type + confidence 만 쓴다(업종은 불가침 / 기존 값 보존).
+  if (branch === 'registry') {
+    // 🧭 2026-10-24: 등록부 분기도 **업종을 쓴다** — 상호의 국가자격 표기로 정밀화하기 때문이다
+    //   (`company-taxonomy.refineRegistryLabel`). 비교에서 업종을 빼면 `changed=false` 가 되어
+    //   **UPDATE 가 아예 실행되지 않고** 라벨 교정이 조용히 안 일어난다(도장만 찍힌다).
+    return before.category !== written.category
+      || before.subcategory !== written.subcategory
+      || before.lead_type !== written.lead_type
+      || before.classify_confidence !== written.confidence
+  }
+  // other: lead_type + confidence 만 쓴다(기존 업종 값 보존).
   return before.lead_type !== written.lead_type || before.classify_confidence !== written.confidence
 }
 
@@ -89,7 +98,7 @@ export interface VerdictDelta {
  * 계측 세대. **비교 규칙이 바뀌면 반드시 +1** — 안 올리면 옛 세대의 오염된 누계 위에 새 값이 얹혀
  * 영영 안 씻긴다(v1 은 날것 비교라 등록부 98% 라는 거짓 값을 쌓았다).
  */
-export const VERDICT_DELTA_VERSION = 2
+export const VERDICT_DELTA_VERSION = 3
 
 export const emptyDelta = (): VerdictDelta => ({ v: VERDICT_DELTA_VERSION, reg_seen: 0, reg_changed: 0, guess_seen: 0, guess_changed: 0, first: 0 })
 

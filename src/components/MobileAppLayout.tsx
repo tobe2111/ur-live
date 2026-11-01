@@ -4,6 +4,7 @@ import { useTheme } from '@/shared/stores/useTheme'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
 import { isMallSurfacePath } from '@/shared/mall/resolve'
+import { consumerChromeHiddenByPath } from '@/lib/consumer-chrome'
 
 /**
  * 🖥️ 2026-10-13: 사이드바는 `hidden md:flex` 라 폰에선 안 보이는데 정적 import 라 폰도 그 코드를 받았다.
@@ -12,7 +13,10 @@ import { isMallSurfacePath } from '@/shared/mall/resolve'
  */
 const loadSidebar = () => import('./DesktopLiveSidebar')
 const DesktopLiveSidebar = lazy(loadSidebar)
-if (typeof window !== 'undefined' && window.matchMedia?.('(min-width: 768px)').matches) void loadSidebar()
+// 🖥️ 2026-10-20: 상단 네비·사이드바가 둘 다 안 뜨는 화면(어드민·셀러·에이전시 등)에선 미리 받지 않는다 —
+//   폭만 보고 받던 탓에 라이브 `/admin` 이 어드민 코드보다 먼저 이 봉투와 홈 PC 봉투 18개를 받았다(실측).
+//   판정은 부팅 준비(`warmDesktopChrome`)·App.tsx 와 같은 함수다. 거기서도 사이드바가 마운트되면 Suspense 가 받는다.
+if (typeof window !== 'undefined' && window.matchMedia?.('(min-width: 768px)').matches && !consumerChromeHiddenByPath(window.location.pathname)) void loadSidebar()
 
 // 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 제거.
 const ConsumerFrameRails = lazy(() => import('./ConsumerFrameRails'))

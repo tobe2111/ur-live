@@ -6,7 +6,7 @@
  *
  * ## 지키는 것
  * ① 걷어낸 부연설명이 돌아오지 않는다("결제 즉시 교환권 발급" · "발급 후 사용 기간 적용")
- * ② 모바일 섹션은 회색 바탕 위 **카드**(같은 상수 `PASS_CARD`)
+ * ② 모바일 섹션은 같은 상수 `PASS_CARD`(2026-10-25 E안 — 폭 전체 흰 섹션 + 8px 띠, PC 는 카드)
  * ③ 바는 [가격][구매하기], 결제는 **구매 창 안**에서만 — 바에서 바로 결제로 새지 않는다
  * ④ 이용 안내는 늘 펼친 STEP 타일 3장
  *
@@ -43,11 +43,13 @@ describe('② 모바일 섹션은 같은 카드 상수를 쓴다', () => {
   it('정보·소개·메뉴·매장·리뷰·다른 이용권 — 6곳', () => {
     expect((PAGE.match(/PASS_CARD/g) || []).length - 1, 'import 1줄을 뺀 사용처').toBeGreaterThanOrEqual(6)
   })
-  it('PC 도 같은 카드다 (대표 "PC도 해야하는거 아니야?") — 좌측 열 폭에 맞춰 바깥 여백만 푼다', () => {
-    const cls = /PASS_CARD = '([^']+)'/.exec(readCode('src/shared/pass-head.ts'))![1].split(/\s+/)
-    expect(cls).toContain('lg:mx-0')
-    for (const t of ['lg:rounded-none', 'lg:shadow-none']) expect(cls, `PC 에서 카드가 다시 풀렸다(${t})`).not.toContain(t)
-    expect(readCode('src/shared/pass-head.ts'), 'PC 바탕이 다시 흰색이 됐다 — 흰 카드가 안 보인다').not.toContain('lg:bg-[var(--gbd-card)]')
+  it('배경색 하나 — 폰·PC 모두 같은 색 위 가는 선(대표 2026-10-31 "배경색 하나로 통일하자")', () => {
+    const src = readCode('src/shared/pass-head.ts')
+    const cls = /PASS_CARD = '([^']+)'/.exec(src)![1].split(/\s+/)
+    for (const t of ['border-t', 'border-rule']) expect(cls, `섹션 구분선이 사라졌다(${t})`).toContain(t)
+    // 2026-10-25 E안의 회색 띠 · PC 그림자 카드는 이 결정이 대체했다 — 되살아나면 바탕이 두 색이 된다.
+    for (const t of ['border-t-8', 'border-gray-100', 'lg:shadow-lift', 'lg:rounded-2xl']) expect(cls, `두 톤으로 돌아갔다(${t})`).not.toContain(t)
+    expect(/PASS_PAGE_BG = '([^']+)'/.exec(src)![1], '페이지 바탕이 카드색과 갈렸다').toBe('bg-[var(--gbd-card)]')
   })
 
   /**
@@ -82,6 +84,7 @@ describe('② 모바일 섹션은 같은 카드 상수를 쓴다', () => {
         '   2026-10-12 실측: 그 화면 하나에 가격이 여섯 번 나왔다.',
     ).not.toContain('아껴요')
     // 할인율·판매가·정가 한 줄은 남아 있어야 한다(지운 것은 상자이지 가격이 아니다)
+    // 🔁 2026-10-25 E안: 옵션 카드를 걷어 가격은 머리 한 곳 — 취소선도 거기서 본다.
     expect(head, '정가 취소선이 사라졌다 — 할인폭을 말할 방법이 없어진다').toContain('line-through')
   })
 })
@@ -91,7 +94,8 @@ describe('③ 결제는 구매 창 안에서만', () => {
     const sheetAt = BAR.indexOf('aria-label="구매 옵션"')
     expect(sheetAt).toBeGreaterThan(0)
     const bar = BAR.slice(0, sheetAt)
-    expect(bar).toContain('() => setOpen(true)')
+    // 2026-10-26: 추첨 여부를 모르는 틈엔 열지 않는다(`fcfs.pending`) — 여는 것 자체는 그대로.
+    expect(bar).toMatch(/\(\) => \{ if \(!fcfs\.pending\) setOpen\(true\) \}/)
     expect(bar, '바에서 onJoin 을 바로 부른다 — 수량을 못 고르고 결제된다').not.toMatch(/onJoin\(/)
   })
   it('창 안 결제 버튼이 종전과 같은 onJoin 을 부르고, 딜 대체·담기도 창 안에 있다', () => {

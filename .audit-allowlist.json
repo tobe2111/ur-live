@@ -10,12 +10,12 @@
       "review": "vite 6 호환 확인 시 업그레이드 후 제거."
     },
     {
-      "ghsa": "GHSA-vfj7-8cjw-p6xm",
-      "pkg": "braces",
-      "reason": "dev/빌드툴 전용(tailwindcss@3.4.19 -> chokidar/micromatch -> braces). 취약점 = 깊게 중첩된 brace 패턴으로 스택 소진 DoS — 빌드 시 **자체 신뢰된 glob 패턴만** 전개하고(외부 입력 부재) production Workers/브라우저 번들에 braces 미포함(src/ 미참조 확인) -> 런타임 도달 불가. ⚠️ **패치 버전이 존재하지 않는다** — npm 최신이 3.0.3 인데 취약 범위가 <=3.0.3 이라 업그레이드로는 해결 불가이고, 유일한 우회는 tailwindcss 4(메이저 + 소비자 화면 391개 전수 회귀)다. 2026-10-01 이후 신규 published advisory 가 전 PR 을 차단해 등재.",
-      "accepted_by": "대표(urteam.corp) 승인 — 2026-10-06 \"승인\" (결재 docs/decisions/archive/2026-10-06-npm-audit-three-new-advisories.md 기본안 1번). 같은 커밋에서 고칠 수 있는 둘(@capacitor critical · source-map-js/postcss)은 패치 버전으로 실제 상향.",
-      "date": "2026-10-06",
-      "review": "tailwindcss 4 이행 시 제거 — 그때 braces 체인 자체가 사라진다. 또는 braces 3.0.4+ 가 나오면 상향 후 제거."
+      "ghsa": "GHSA-587h-7wmj-h5pm",
+      "pkg": "vite",
+      "reason": "launch-editor: `fs.existsSync()` 존재검사 우회(Windows). **vite dev 서버의 에러 오버레이**가 \"스택 프레임 클릭 → 에디터 열기\" 를 할 때 쓰는 의존성이고, 공격엔 (a) dev 서버 실행 중 (b) Windows (c) 그 open-in-editor 엔드포인트에 요청 — 셋이 동시에 필요하다. **production 에는 vite 가 아예 없다** (Pages 가 `dist/client` 정적자산 + `_worker.js` 만 서빙 — 번들에 vite 미포함). 같은 파일에 이미 승인돼 있는 `GHSA-fx2h-pf6j-xcff`(vite `server.fs.deny` 우회, Windows)와 **같은 패키지·같은 도달경로·같은 판단**이다. 2026-10-24 실측: 취약 노드가 둘(`node_modules/vite` 5.4.21 = 우리 빌드 · `node_modules/vitest/node_modules/vite` 8.0.16 = 테스트 러너). 전자는 vite 6.4.4+ = **메이저**이고, 후자는 8.1.6+ 로 비-메이저 상향이 가능하지만 **npm 10 의 arborist 가 vitest 를 건드리면 터진다** (`Cannot read properties of null (reading 'edgesOut')` — vitest 가 `@vitest/ui` 등을 자기 버전으로 고정 peer 선언해서 중간 해석이 null 노드가 된다). npm 11 은 풀지만 그 lock 은 **npm 10 의 `npm ci` 가 거부**하고(`verify.yml` 은 `setup-node@v4 node-version: 22` = npm 10) 그러면 CI 가 통째로 선다 — 전자가 남는 한 이 GHSA 는 어차피 차단에 걸리므로 후자만 고쳐도 게이트 결과가 안 바뀐다. ⇒ 둘 다 보류.",
+      "accepted_by": "대표(urteam.corp) 승인 — 2026-10-21 AskUserQuestion \"허용목록 등재 (추천)\" · 세션 위임 확인: 2026-10-24 대표 \"3번은 알아서 해줘\"(같은 커밋에서 비-메이저 7건을 실제로 상향 — critical 1→0 · high 4→2 · 합계 21→16).",
+      "date": "2026-10-21",
+      "review": "vite 5→6(또는 7) 승격 시 제거 — **별건 PR**로 한다. 이 레포의 빌드는 커스텀이 많아(`esbuild.worker.config.js` · prerender · manualChunks · HTMLRewriter 주입 · route-chunk-map 생성기) 메이저 하나가 소비자 첫 화면 계약을 통째로 건드린다. 그때 `GHSA-fx2h-pf6j-xcff` 와 **함께** 지울 것. 덤으로 vitest>vite 를 8.1.6+ 로 올릴 수 있게 되면(npm 11 이 CI 기본이 되거나 arborist 수정) 같이 처리."
     }
   ]
 }

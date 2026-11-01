@@ -245,6 +245,11 @@ export async function handleCronScheduled(
       const { handleProspectsCommissionActivate } = await import('./cron/prospects-commission-activate')
       return handleProspectsCommissionActivate(env)
     }));
+    // 🏠 2026-10-24 생활 견적 — 안 열어 본 견적의 참여권 반환 · 날짜 지난 요청 만료(매시 :50).
+    if (slotOpen({ minute: 50 })) ctx.waitUntil(slotCron('50 * * * *')('home-service-sweep', async () => {
+      const { runHomeServiceSweep } = await import('./cron/home-service-sweep')
+      return runHomeServiceSweep(env)
+    }));
     // 🎯 [urads-split Phase E 2026-07-18] ads-autobid 는 ur-ads 로 이관(이중실행 방지). 재도입은 `autobid` 의 `runAutobidAll` 을 `ADS_AUTOBID_ENABLED` 게이트 뒤 safeCron 으로.
   }
 
@@ -316,11 +321,7 @@ export async function handleCronScheduled(
       const { runKtAlphaCatalogSync } = await import('./cron/kt-alpha-catalog-sync')
       await runKtAlphaCatalogSync(env as { DB: D1Database })
     }))
-    // 🌐 바이어 풀 완전 무인 — 저장 소스 자동 수집 + 웹사이트 이메일 보강(이중 게이트).
-    ctx.waitUntil(slotCron('30 3 * * *')('buyer-autofetch', async () => {
-      const { handleBuyerAutofetchCron } = await import('./cron/buyer-autofetch')
-      await handleBuyerAutofetchCron(env)
-    }))
+    // 🧨 2026-10-20 '바이어 풀 자동 수집'(buyer-autofetch) 삭제 — 대표 "지워줘"(해외 바이어 풀 · 유어딜 무관).
   }
 
   // 🛡️ 이용권 주소 → 좌표 일괄 변환. 페이지 진입마다 Kakao 호출하던 것을 여기로 모았다(일 1만 → ~10).
@@ -384,6 +385,11 @@ export async function handleCronScheduled(
     ctx.waitUntil(slotCron('40 9 * * *')('drop-d1-reminder', async () => {
       const { runDropD1Reminder } = await import('./cron/drop-d1-reminder')
       await runDropD1Reminder(env as Parameters<typeof runDropD1Reminder>[0])
+    }))
+    // 🎁 2026-10-31 무상 체험 — 게시 기한 리마인드 + 기한 경과 패널티(신청당 한 번).
+    ctx.waitUntil(slotCron('40 9 * * *')('seeding-sweep', async () => {
+      const { runSeedingSweep } = await import('../features/seeding/api/seeding-sweep')
+      return runSeedingSweep(env as Parameters<typeof runSeedingSweep>[0])
     }))
     ctx.waitUntil(slotCron('40 9 * * *')('experience-post-reminder', async () => {
       const { runExperiencePostReminder } = await import('./cron/experience-post-reminder')

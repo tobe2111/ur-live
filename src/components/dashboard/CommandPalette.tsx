@@ -105,7 +105,7 @@ export default function CommandPalette({ items, open, onClose }: Props) {
             aria-label="메뉴 검색"
             className="flex-1 bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none"
           />
-          <kbd className="text-[12px] font-bold text-gray-400 bg-gray-100 rounded px-2 py-1">ESC</kbd>
+          <kbd className="text-[12px] font-medium text-gray-400 bg-gray-100 rounded px-2 py-1">ESC</kbd>
         </div>
         <div ref={listRef} className="max-h-[52vh] overflow-y-auto py-2">
           {results.length === 0 ? (
@@ -123,7 +123,7 @@ export default function CommandPalette({ items, open, onClose }: Props) {
                   className={`w-full flex items-center gap-3 px-4 py-2 text-left transition-colors ${active ? 'bg-gray-100' : ''}`}
                 >
                   <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-gray-900' : 'text-gray-400'}`} strokeWidth={2} />
-                  <span className="flex-1 text-[13px] font-semibold text-gray-900 truncate">{it.label}</span>
+                  <span className="flex-1 text-[13px] font-medium text-gray-900 truncate">{it.label}</span>
                   <span className="text-[12px] text-gray-400 truncate max-w-[38%]">{it.group}</span>
                   {active && <CornerDownLeft className="w-3.5 h-3.5 text-gray-400 shrink-0" />}
                 </button>

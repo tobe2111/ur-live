@@ -1,5 +1,5 @@
-import { LayoutGrid, Utensils, Scissors, BedDouble, Shapes } from 'lucide-react'
-import { DEAL_CAT_LABELS, type DealCategory } from '@/shared/deal-cats'
+import { LayoutGrid, Utensils, Scissors, BedDouble, House, Shapes } from 'lucide-react'
+import { DEAL_CAT_LABELS, HOME_HIDDEN_CATEGORIES, type DealCategory } from '@/shared/deal-cats'
 
 /**
  * 🖥️ 2026-07-19 (대표 요청 — "왼쪽 카테고리보단 위에"): 좌측 세로 레일 → **상단 가로 카테고리 바**로 전환.
@@ -25,10 +25,13 @@ const CAT_ICON: Record<DealCategory, typeof LayoutGrid> = {
   meal_voucher: Utensils,
   beauty_voucher: Scissors,
   stay_voucher: BedDouble,
+  home_voucher: House,
   etc_voucher: Shapes,
 }
 export const DEAL_CATS: { key: DealCategory; label: string; icon: typeof LayoutGrid }[] =
   DEAL_CAT_LABELS.map(({ key, label }) => ({ key, label, icon: CAT_ICON[key] }))
+/** 🏠 홈(메인) 탭 — 생활 제외(2026-10-31). PC 상단 네비만 `DEAL_CATS` 전체를 쓴다(생활 → `/life`). */
+export const HOME_DEAL_CATS = DEAL_CATS.filter(c => !HOME_HIDDEN_CATEGORIES.has(c.key))
 
 export default function PcHomeRail({
   category,
@@ -39,7 +42,7 @@ export default function PcHomeRail({
 }) {
   return (
     <nav aria-label="동네딜 카테고리" className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-      {DEAL_CATS.map(({ key, label, icon: Icon }) => {
+      {HOME_DEAL_CATS.map(({ key, label, icon: Icon }) => {
         const active = category === key
         return (
           <button

@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { applyCssFirstBoot } from '@/worker/utils/css-first-boot'
+import { applyCssFirstBoot, loaderImgPriorityAttr } from '@/worker/utils/css-first-boot'
 import { UDAL_LOADER_SRC } from '@/shared/udal-loader'
 
 type H = { element?: (el: FakeEl) => void }
@@ -65,5 +65,23 @@ describe('② 지우는 주소가 index.html 의 실제 preload 와 같다', () 
 describe('③ 다른 preload 는 건드리지 않는다', () => {
   it('히어로 사진 preload 는 남는다', () => {
     expect(run(true, 'link', { rel: 'preload', as: 'image', href: '/cdn-cgi/image/w=400/x.jpg' }).removed).toBe(false)
+  })
+})
+
+describe('④ 첫 화면 아래 로더 그림은 낮은 우선순위(2026-10-20)', () => {
+  // 🩸 첫 판은 재작성기 규칙이었고 라이브에서 한 번도 안 걸렸다 — 그 <img> 는 워커가 #root 에 넣는 마크업이라
+  //   같은 HTMLRewriter 가 다시 파싱하지 않는다. 그래서 워커가 마크업에 직접 붙이는 것을 고정한다.
+  it('on → fetchpriority="low" · off(로더가 첫 화면) → 없음', () => {
+    expect(loaderImgPriorityAttr(true)).toBe(' fetchpriority="low"')
+    expect(loaderImgPriorityAttr(false)).toBe('')
+  })
+  it('워커 로더 마크업이 그 속성을 cssFirst 로 붙인다(배선)', () => {
+    expect(readFileSync('src/worker/index.ts', 'utf8'), '로더가 LCP 사진보다 먼저 받아진다').toMatch(
+      /<img src="\$\{UDAL_LOADER_SRC\}"\$\{loaderImgPriorityAttr\(cssFirst\)\}/,
+    )
+  })
+  it('재작성기 img 규칙은 되살리지 않는다(삽입된 마크업엔 안 걸려 지키는 척만 한다)', () => {
+    const src = readFileSync('src/worker/utils/css-first-boot.ts', 'utf8')
+    expect(src).not.toMatch(/\.on\(`img\[src=/)
   })
 })

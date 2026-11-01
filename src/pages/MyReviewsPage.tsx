@@ -140,7 +140,7 @@ export default function MyReviewsPage() {
             <p className="text-[15px] text-gray-900 dark:text-white mb-4">{t('myReviews.loadFailed')}</p>
             <button
               onClick={() => { vouchersQ.refetch(); writtenQ.refetch() }}
-              className="px-5 h-11 bg-brand text-white text-[15px] font-semibold rounded-full"
+              className="px-5 h-11 bg-brand text-white text-[15px] font-medium rounded-full"
             >
               {t('myReviews.retry')}
             </button>
@@ -151,16 +151,16 @@ export default function MyReviewsPage() {
             <Udal mood="tip" size={96} className="block mx-auto mb-4" />
             <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('myReviews.empty')}</h2>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('myReviews.emptySub')}</p>
-            {rewardHint && <p className="mt-3 text-[13px] font-semibold text-brand-text">{rewardHint}</p>}
+            {rewardHint && <p className="mt-3 text-[13px] font-medium text-brand-text">{rewardHint}</p>}
           </div>
         ) : (
           <>
             {toWrite.length > 0 && (
               <section data-testid="reviews-to-write">
-                <h2 className="px-1 text-[17px] font-semibold text-gray-900 dark:text-white">
+                <h2 className="px-1 text-[17px] font-bold text-gray-900 dark:text-white">
                   {t('myReviews.toWriteTitle', { defaultValue: '리뷰를 기다려요 {{count}}', count: toWrite.length })}
                 </h2>
-                {rewardHint && <p className="px-1 mt-1 text-[13px] text-brand-text font-semibold">{rewardHint}</p>}
+                {rewardHint && <p className="px-1 mt-1 text-[13px] text-brand-text font-medium">{rewardHint}</p>}
                 <div className="mt-3 rounded-2xl bg-surface shadow-lift dark:shadow-none overflow-hidden">
                   {toWrite.map((v) => {
                     const name = v.product_name || ''
@@ -171,7 +171,7 @@ export default function MyReviewsPage() {
                           {v.restaurant_name && (
                             <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{v.restaurant_name}</p>
                           )}
-                          <p className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">{name}</p>
+                          <p className="text-[15px] font-medium text-gray-900 dark:text-white truncate">{name}</p>
                           {v.used_at && (
                             <p className="text-[12px] text-gray-500 dark:text-gray-400">
                               {t('myReviews.usedOn', { defaultValue: '{{date}} 사용', date: formatKSTDate(v.used_at) })}
@@ -180,7 +180,7 @@ export default function MyReviewsPage() {
                         </div>
                         <Link
                           to={`${FLOW_CONFIG.group_buy_toss.detailPath(Number(v.product_id))}#${PASS_REVIEW_ANCHOR}`}
-                          className="shrink-0 h-9 px-4 inline-flex items-center rounded-full bg-brand text-white text-[13px] font-semibold"
+                          className="shrink-0 h-9 px-4 inline-flex items-center rounded-full bg-brand text-white text-[13px] font-medium"
                         >
                           {t('myReviews.writeReview')}
                         </Link>
@@ -193,7 +193,7 @@ export default function MyReviewsPage() {
 
             {written.length > 0 && (
               <section data-testid="reviews-written">
-                <h2 className="px-1 text-[17px] font-semibold text-gray-900 dark:text-white">
+                <h2 className="px-1 text-[17px] font-bold text-gray-900 dark:text-white">
                   {t('myReviews.writtenTitle', { defaultValue: '내가 쓴 리뷰 {{count}}', count: written.length })}
                 </h2>
                 <div className="mt-3 rounded-2xl bg-surface shadow-lift dark:shadow-none overflow-hidden">
@@ -205,7 +205,7 @@ export default function MyReviewsPage() {
                     >
                       <Thumb src={r.product_image} alt={r.product_name || ''} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">{r.product_name}</p>
+                        <p className="text-[15px] font-medium text-gray-900 dark:text-white truncate">{r.product_name}</p>
                         <div className="mt-1 flex items-center gap-1" aria-label={t('myReviews.ratingLabel', { defaultValue: '별점 {{n}}점', n: r.rating })}>
                           {[1, 2, 3, 4, 5].map((n) => (
                             <StarIcon key={n} filled={n <= r.rating} className={`w-4 h-4 ${n <= r.rating ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-gray-600'}`} />

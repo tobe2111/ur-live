@@ -49,7 +49,7 @@ function Card({ item, eager }: { item: UrShortItem; eager: boolean }) {
           <Play size={12} fill="currentColor" strokeWidth={0} />
         </span>
         {durLabel && (
-          <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1 py-px text-[12px] font-semibold tabular-nums text-white">
+          <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1 py-px text-[12px] font-medium tabular-nums text-white">
             {durLabel}
           </span>
         )}
@@ -59,7 +59,7 @@ function Card({ item, eager }: { item: UrShortItem; eager: boolean }) {
               <span className="block truncate text-[12px] opacity-90">{item.store_name}</span>
             )}
             {item.product_name && (
-              <span className="mt-px block truncate text-[12px] font-semibold leading-tight">
+              <span className="mt-px block truncate text-[12px] font-medium leading-tight">
                 {item.product_name}
               </span>
             )}
@@ -69,7 +69,7 @@ function Card({ item, eager }: { item: UrShortItem; eager: boolean }) {
               </span>
             )}
             {pd.price > 0 && (
-              <span className="mt-px block text-[12px] font-bold tabular-nums">
+              <span className="mt-px block text-[12px] font-medium tabular-nums">
                 {/* 사진 위 스크림은 테마와 무관하게 늘 어둡다 — 레일과 같은 다크용 세일 값. */}
                 {pd.discount > 0 && <b className="text-sale-on-media">{pd.discount}% </b>}
                 {formatNumber(pd.price)}원
@@ -80,7 +80,7 @@ function Card({ item, eager }: { item: UrShortItem; eager: boolean }) {
       </span>
       {/* 사진 밖 두 줄 — 제목은 두 줄까지, 그 아래 채널·동네. 목록에서는 무엇인지 읽고 고른다. */}
       {title && (
-        <span className="mt-2 block line-clamp-2 text-[12px] font-semibold leading-snug text-gray-900 dark:text-gray-100">
+        <span className="mt-2 block line-clamp-2 text-[12px] font-medium leading-snug text-gray-900 dark:text-gray-100">
           {title}
         </span>
       )}

@@ -38,7 +38,7 @@ export default function ReferralIndexPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-800 mb-4">
             <PeopleIcon className="h-8 w-8 text-white" />
           </div>
-          <h2 className="text-[24px] font-extrabold text-gray-900 dark:text-white leading-tight">
+          <h2 className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight">
             {t('referral.heroTitle1', { defaultValue: '친구와 함께' })}<br />
             <span className="text-brand-text">{t('referral.heroTitle2', { defaultValue: '더 저렴하게' })}</span> {t('referral.heroTitle3', { defaultValue: '쇼핑하세요' })}
           </h2>
@@ -49,7 +49,7 @@ export default function ReferralIndexPage() {
 
         {/* 이용 방법 */}
         <section className="mb-8">
-          <h3 className="text-[13px] font-bold text-gray-900 dark:text-white mb-3 px-1">{t('referral.howTitle', { defaultValue: '이용 방법' })}</h3>
+          <h3 className="text-[13px] font-medium text-gray-900 dark:text-white mb-3 px-1">{t('referral.howTitle', { defaultValue: '이용 방법' })}</h3>
           <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] divide-y divide-gray-100 dark:divide-[#2C2F35]">
             {[
               {
@@ -78,7 +78,7 @@ export default function ReferralIndexPage() {
                     <Icon className="h-5 w-5" strokeWidth={2} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-bold text-gray-900 dark:text-white">
+                    <p className="text-[13px] font-medium text-gray-900 dark:text-white">
                       <span className="text-brand-text mr-1">0{i + 1}</span>
                       {step.title}
                     </p>
@@ -102,7 +102,7 @@ export default function ReferralIndexPage() {
           </button>
           <button
             onClick={() => navigate('/group-buy')}
-            className="w-full py-4 bg-white dark:bg-[#11141C] text-gray-900 dark:text-white border border-line text-[15px] font-semibold rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+            className="w-full py-4 bg-white dark:bg-[#11141C] text-gray-900 dark:text-white border border-line text-[15px] font-medium rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
           >
             {t('referral.ctaList', { defaultValue: '진행 중인 공동구매 모아보기' })}
           </button>

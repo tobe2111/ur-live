@@ -32,7 +32,7 @@ import {
 } from './helpers'
 import { notifySellerVoucherSale } from './seller-sale-notify' // 📣 판매 알림톡 SSOT(딜·카드·장바구니)
 // 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 이용권 hardcode 제거 — getVoucherShortLabel 사용.
-import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
+import { getVoucherShortLabel, VOUCHER_CATEGORY_SQL_IN } from '@/shared/constants/voucher-categories'
 // 🎟️ 2026-08-12 (소비자 공구 결제 결함 3건): 자기참여 판정·주문번호·가상계좌 가드 → gb-purchase-guards.ts
 import { isVoucherDealPaymentAllowed, groupBuyJoinBlockReason, isSelfOwnedGroupBuy, isSelfReferral, pickGbRefSource, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
 import { resolvePartialDealPlan, derivePartialDeal, spendPartialDeal, recordOrderDealUsed, restorePartialDeal } from './partial-deal'
@@ -192,7 +192,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 상품 검증 (재고/마감/카테고리) — deal 흐름의 검증 로직 일부 재사용.
     // 🛡️ 2026-05-23: deal_only=1 도 매칭 (VouchersPage 필터 정합) — voucher category 없어도 deal-only 면 교환 가능.
     const product = await DB.prepare(
-      "SELECT id, name, price, group_buy_status, group_buy_deadline, voucher_expiry, seller_id, group_buy_tiers FROM products WHERE id = ? AND is_active = 1 AND (category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher') OR deal_only = 1)"
+      `SELECT id, name, price, group_buy_status, group_buy_deadline, voucher_expiry, seller_id, group_buy_tiers FROM products WHERE id = ? AND is_active = 1 AND (category IN (${VOUCHER_CATEGORY_SQL_IN}) OR deal_only = 1)`
     ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; voucher_expiry: string | null; seller_id: number; group_buy_tiers: string | null }>()
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
     if (await isSelfOwnedGroupBuy(DB, product.seller_id, userId)) {
@@ -243,7 +243,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     //   영구 fix: VOUCHER_CATEGORIES 통합 + 헬퍼와 동일 IN 절 사용.
     // 🛡️ 2026-05-23: deal_only=1 도 매칭 (위 query 와 동일 룰).
     const product = await DB.prepare(
-      `SELECT ${productDetailColsHealed('products')} FROM products WHERE id = ? AND is_active = 1 AND (category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher') OR deal_only = 1)`
+      `SELECT ${productDetailColsHealed('products')} FROM products WHERE id = ? AND is_active = 1 AND (category IN (${VOUCHER_CATEGORY_SQL_IN}) OR deal_only = 1)`
     ).bind(productId).first<GroupBuyProductRow>()
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)

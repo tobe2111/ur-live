@@ -19,8 +19,13 @@
  */
 import { cfImage } from '../utils/cf-image'
 
-/** 🖼️ 2026-10-18 상세 히어로만 85 — 기본값(75)을 낮출 때 상품의 큰 사진은 지킨다. 근거: `utils/cf-image.ts` CF_IMAGE_DEFAULT_QUALITY. */
-export const DETAIL_HERO_QUALITY = 85
+/**
+ * 🖼️ 상세 히어로 화질. 2026-10-18 에 기본값을 75 로 낮추며 히어로만 85 로 남겼다가,
+ *   2026-10-20 대표 *"가장 이상적으로 모두 진행해줘"* 로 **75** — 라이브 실측 같은 사진(900×600 avif):
+ *   숙소 131,639 → 104,700B(−20%) · 이용권 52,418 → 41,022B(−22%). 이 사진이 상세의 LCP 다.
+ *   🔒 기본값과 같아도 **명시**한다 — 기본값이 바뀔 때 상품의 큰 사진이 덩달아 움직이지 않게(따로 정하는 값이다).
+ */
+export const DETAIL_HERO_QUALITY = 75
 
 /** 모바일 히어로 프레임 3:2 (2026-08-31 대표 승인 — 네이버 사진 70장 실측 근거). */
 export const DETAIL_HERO_RATIO = 3 / 2
@@ -107,4 +112,20 @@ export function detailGalleryImages(src: {
 /** 워커 UA 판정 — 폰이면 모바일 히어로 URL 을, 아니면 PC 대형 URL 을 preload 한다. */
 export function isMobileUserAgent(ua: string | null | undefined): boolean {
   return /Mobi|Android|iPhone|iPad|iPod/i.test(ua || '')
+}
+
+/**
+ * 🖼️ 2026-10-27 (대표 "이용권 상세페이지도 그루폰처럼 … 지금은 사진 하나밖에 안 보여"):
+ *   모바일 큰 사진 **아래 썸네일 2칸**(그루폰 모바일 상세). 사진이 3장 이상일 때만 편다 — 없는 사진을 칸으로 채우지 않는다.
+ *   React(`DetailGallery`)와 서버 첫 화면(`detail-ssr-body`)이 **같은 상수**를 쓴다 — 갈리면 마운트 때 제목이 밀린다.
+ */
+export const DETAIL_MOBILE_THUMBS = 2
+export const DETAIL_MOBILE_THUMB_RATIO = 3 / 2
+export const DETAIL_MOBILE_THUMB_ROW_CLS = 'grid grid-cols-2 gap-2 px-4 pt-2 bg-surface'
+export const DETAIL_MOBILE_THUMB_CLS = 'relative block w-full overflow-hidden rounded-xl'
+export function showMobileThumbs(count: number): boolean {
+  return count >= DETAIL_MOBILE_THUMBS + 1
+}
+export function detailMobileThumbUrl(src: string): string {
+  return detailCropUrl(src, DETAIL_THUMB_WIDTH, DETAIL_MOBILE_THUMB_RATIO)
 }

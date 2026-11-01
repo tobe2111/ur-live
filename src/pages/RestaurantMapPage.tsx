@@ -70,7 +70,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [voucherType, setVoucherType] = useState<MapVoucherType>(() => {
     try {
       const q = new URLSearchParams(window.location.search).get('category')
-      return q && ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'].includes(q) ? (q as MapVoucherType) : 'all'
+      return q && ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'home_voucher', 'etc_voucher'].includes(q) ? (q as MapVoucherType) : 'all'
     } catch { return 'all' }
   })
   // 🩸 2026-09-03: 위치가 캐시되면 `useNearMeAuto` 가 '가까운 순'으로 바꿔 **두 번째 요청**이 생긴다 → 처음부터 거기서 시작.
@@ -639,7 +639,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200 min-w-0">
               <button onClick={() => setFilterSheetOpen(true)} className="flex items-center gap-1 min-w-0 text-left mr-1">
                 <PinIcon className="w-4 h-4 text-gray-900 dark:text-white shrink-0" />
-                <span className="text-[15px] font-extrabold text-gray-900 dark:text-white truncate">{regionLabel}</span>
+                <span className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{regionLabel}</span>
                 <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
               </button>
               <button onClick={() => navigate('/search')} aria-label="검색" className="p-2 shrink-0"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
@@ -710,8 +710,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
        지도 표면 높이를 그만큼 축소(여기어때식 [네비 위 + 지도 분할 아래]). <lg 는 기존 풀스크린 그대로. */
     <Screen fixed className="relative w-full bg-gray-100 dark:bg-[#1D1F29] overflow-hidden pb-16 lg:h-[calc(100dvh-102px)]">
       <SEO
-        title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })}
-        description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 이용권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 이용권 사용 가능 맛집을 지도에서 찾아보세요. 내 주변 동네 가게 할인 이용권.' })}
+        title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : '내 주변 동네딜 지도 - 걸어갈 수 있는 할인'} /* 🔎 /map 은 서버 메타(CONSUMER_SURFACE_SEO['/map'])와 같은 글자 — 표 import 는 홈 봉투를 쪼개 청크가 는다(2026-10-31 실측), 시험이 대조 */
+        description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 이용권을 가까운 순으로.' }) : '지금 있는 자리에서 가까운 순으로 동네 이용권을 봅니다. 맛집·카페·뷰티·숙소를 지도에서 고르고 할인가로 사서 그 매장에서 바로 쓰세요.'}
         url={home ? '/' : '/map'}
       />
 
@@ -749,7 +749,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       {/* 🧱 2026-10-17 대표 신고: 상단 바가 94px(검색+칩)까지라 62px 알약이 칩 사이에 끼었다 → 칩 아래로. PC 는 상단 바 없음. */}
       {locating && (
         <div className="absolute top-[104px] lg:top-4 left-1/2 -translate-x-1/2 lg:left-[calc(50%+200px)] z-20 pointer-events-none">
-          <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-900/85 text-white text-[12px] font-semibold shadow-lg backdrop-blur">
+          <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-900/85 text-white text-[12px] font-medium shadow-lg backdrop-blur">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             내 위치 찾는 중…
           </span>

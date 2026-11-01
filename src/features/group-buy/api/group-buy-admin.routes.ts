@@ -20,6 +20,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { mainScopeFor } from '@/worker/utils/consumer-scope'
 import { parseAdminMallScope } from '@/worker/utils/admin-mall-scope'
 import { clawbackVoucherCommission } from './helpers'
+import { VOUCHER_CATEGORY_SQL_IN } from '@/shared/constants/voucher-categories'
 
 const groupBuyAdminRoutes = new Hono<{ Bindings: Env }>()
 
@@ -46,7 +47,7 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
         SUM(group_buy_current) AS total_participants,
         SUM(group_buy_current * price) AS total_gmv
       FROM products
-      WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+      WHERE category IN (${VOUCHER_CATEGORY_SQL_IN})
         AND group_buy_target > 0
         ${scopeBare}
       GROUP BY category
@@ -60,7 +61,7 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
              s.name AS seller_name
       FROM products p
       LEFT JOIN sellers s ON s.id = p.seller_id
-      WHERE p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+      WHERE p.category IN (${VOUCHER_CATEGORY_SQL_IN})
         AND p.group_buy_target > 0
         AND p.group_buy_current > 0
         ${scopeP}
@@ -93,7 +94,7 @@ groupBuyAdminRoutes.get('/analytics', requireAdmin(), async (c) => {
         SUM(CASE WHEN group_buy_status = 'active' THEN 1 ELSE 0 END) AS active_groups,
         SUM(group_buy_current) AS total_participants
       FROM products
-      WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+      WHERE category IN (${VOUCHER_CATEGORY_SQL_IN})
         AND group_buy_target > 0
         ${scopeBare}
     `).first().catch(() => null)
@@ -146,7 +147,7 @@ groupBuyAdminRoutes.get('/list', requireAdmin(), async (c) => {
       FROM products p
       LEFT JOIN sellers s ON s.id = p.seller_id
       LEFT JOIN wholesale_malls m ON m.id = p.mall_id AND COALESCE(m.consumer_path, 0) = 1
-      WHERE p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+      WHERE p.category IN (${VOUCHER_CATEGORY_SQL_IN})
       ${scopeSql}
     `
     const binds: unknown[] = []

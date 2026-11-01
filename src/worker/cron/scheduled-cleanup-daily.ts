@@ -202,4 +202,10 @@ export async function runDailyCleanup(DB: D1Database, results: Record<string, nu
     const n = await healStayDescriptions(DB as never, STAY_TYPE_DESC_LIST);
     if (n > 0) results.stay_desc_healed = n;
   } catch (e) { logError('[Cron] stay_desc heal error:', { error: String(e) }); }
+  // ── 26. 🏨 2026-10-31: 같은 숙소로 갈라진 데모 숙소를 한 상세로(대표 "휴가스테이 3개"). 근거 `dedupe-demo-stays.ts`.
+  try {
+    const { mergeDuplicateDemoStays } = await import('../../features/admin/api/admin-stays/dedupe-demo-stays');
+    const n = await mergeDuplicateDemoStays(DB as never);
+    if (n > 0) results.demo_stay_merged = n;
+  } catch (e) { logError('[Cron] demo stay merge error:', { error: String(e) }); }
 }

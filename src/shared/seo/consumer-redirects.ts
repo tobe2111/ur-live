@@ -44,6 +44,11 @@ const ALIAS_EXACT: Readonly<Record<string, string>> = {
      고아였고(네비 한 곳에서만 링크), 적힌 수수료가 낡아 있었다(옛 5%/4%/3% 등급제 — `fee-resolver` 엔 그런 규칙이 없다).
      페이지는 지우되 URL 은 **301 로 살린다** — sitemap 에 올라가 있었고 밖에 뿌려진 링크를 죽이면 그 신호를 버리는 것이다. */
   '/business': '/partners',
+  /* 📣 2026-10-31 (대표 "인플루언서용은 하나로 통일하자. /influencer 이걸로") — `/creators` 와 `/influencer` 가
+     같은 사람(소개로 수익을 내려는 사람)에게 같은 말을 하는 두 랜딩이었다. 내용은 `/creators` 판(PC·캡처)을
+     `/influencer` 로 옮기고 옛 주소는 301 로 살린다(sitemap·푸터·안내 메일에 뿌려진 링크). 신청서
+     `/creators/apply`·`/creators/start` 는 다른 페이지라 그대로다(정확 일치 표라 걸리지 않는다). */
+  '/creators': '/influencer',
 }
 
 /** `/product/:id` → `/products/:id` (단수/복수 두 URL 이 같은 상품을 가리키던 것). */

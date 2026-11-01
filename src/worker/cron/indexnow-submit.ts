@@ -12,7 +12,7 @@
  *
  * ## 💰 비용
  *
- * 회차당 **self-fetch 1**(`/sitemap.xml` — 엣지 캐시 1시간) **+ 바깥 fetch 1** + D1 읽기·쓰기 1씩.
+ * 회차당 **self-fetch 1**(`/sitemap.xml` — 엣지 캐시 1시간) **+ 바깥 fetch 엔진 수(2)** + D1 읽기·쓰기 1씩.
  * 하루 **한 번**(19:50 UTC = 04:50 KST — 비어 있던 슬롯)이라 서브리퀘스트 예산(무료 50/인보케이션)에
  * 영향이 없다.
  *
@@ -24,8 +24,10 @@
  */
 import type { Env } from '../types/env'
 import {
-  INDEXNOW_ENDPOINT, INDEXNOW_CURSOR_KEY, INDEXNOW_MAX_URLS,
-  buildIndexNowBody, indexNowKeyPath, isValidIndexNowKey, parseSitemapEntries, planIndexNow,
+  INDEXNOW_ENDPOINTS, INDEXNOW_CURSOR_KEY, INDEXNOW_MAX_URLS,
+  INDEXNOW_BACKFILL_KEY, INDEXNOW_BACKFILL_VERSION, INDEXNOW_SPEC_MAX,
+  buildIndexNowBody, indexNowKeyPath, isValidIndexNowKey, needsIndexNowBackfill,
+  parseSitemapEntries, parseSitemapLocs, planIndexNow,
 } from '../../shared/seo/indexnow'
 
 const ORIGIN = 'https://urdeal.kr'
@@ -42,33 +44,75 @@ export async function handleIndexNowSubmit(env: Env): Promise<string> {
   const res = await fetch(`${ORIGIN}/sitemap.xml`, { headers: { 'User-Agent': 'ur-live-indexnow/1.0' } })
     .catch(() => null)
   if (!res || !res.ok) return `indexnow: sitemap 읽기 실패 (${res ? res.status : 'fetch 실패'})`
-  const entries = parseSitemapEntries(await res.text())
-  if (!entries.length) return 'indexnow: sitemap 에 lastmod 가 있는 항목이 0건, 보내지 않았다'
+  const xml = await res.text()
+  const entries = parseSitemapEntries(xml)
+
+  // 🧺 일회성 전수 제출 — 근거는 `shared/seo/indexnow.ts` 의 backfill 머리말.
+  const mark = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`)
+    .bind(INDEXNOW_BACKFILL_KEY).first<{ value: string }>().catch(() => null)
+  // 🩸 2026-10-26 — 전수가 실패해도 **변경분은 그대로 보낸다**. 첫 회차(10-25 19:50 UTC)가 429 를 받았는데
+  //    종전엔 여기서 반환해, 전수가 계속 거절되는 동안 **변경분 제출까지 통째로 멎었다**(에러 0 · 하트비트만
+  //    "실패, 표식 유지"). 전수는 다음 날 다시 시도되고, 그 사이 새로 바뀐 상품은 지금처럼 간다.
+  if (needsIndexNowBackfill(mark?.value)) {
+    const locs = parseSitemapLocs(xml).slice(0, INDEXNOW_SPEC_MAX)
+    // 🔴 0건이면 표식을 세우지 않는다 — sitemap 이 깨진 날 "보냈다" 로 기록되면 전수가 영영 안 간다.
+    if (!locs.length) {
+      return `indexnow: 전수 제출 대상 0건(sitemap 이상), 표식 유지 · ${await submitChanges(DB, key, entries)}`
+    }
+    const ok = await submitUrls(key, locs)
+    if (!ok.ok) {
+      return `indexnow: 전수 제출 실패 (${ok.status}) · ${locs.length}건, 표식 유지 · ${await submitChanges(DB, key, entries)}`
+    }
+    await upsertSetting(DB, INDEXNOW_BACKFILL_KEY, INDEXNOW_BACKFILL_VERSION)
+    // 전수에 이미 실렸으니 변경분 커서도 지금으로 맞춘다(다음 회차에 같은 URL 을 또 보내지 않게).
+    const maxLastmod = entries.reduce((a, e) => (e.lastmod > a ? e.lastmod : a), '')
+    if (maxLastmod) await upsertSetting(DB, INDEXNOW_CURSOR_KEY, maxLastmod)
+    return `indexnow: 전수 제출 ${locs.length}건 (v${INDEXNOW_BACKFILL_VERSION}) · 커서 ${maxLastmod || '(없음)'}`
+  }
+
+  return `indexnow: ${await submitChanges(DB, key, entries)}`
+}
+
+/** 변경분(lastmod 커서 이후)만 보낸다. 반환은 하트비트에 실릴 한 줄(접두어 없이). */
+async function submitChanges(
+  DB: D1Database, key: string, entries: ReturnType<typeof parseSitemapEntries>,
+): Promise<string> {
+  if (!entries.length) return 'sitemap 에 lastmod 가 있는 항목이 0건, 보내지 않았다'
 
   const cur = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`)
     .bind(INDEXNOW_CURSOR_KEY).first<{ value: string }>().catch(() => null)
   const plan = planIndexNow(entries, cur?.value, INDEXNOW_MAX_URLS)
 
   if (plan.urls.length) {
-    const body = buildIndexNowBody(
-      new URL(ORIGIN).host, key, `${ORIGIN}${indexNowKeyPath(key)}`, plan.urls,
-    )
-    const post = await fetch(INDEXNOW_ENDPOINT, {
+    const ok = await submitUrls(key, plan.urls)
+    // 🔴 실패하면 **커서를 올리지 않는다** — 올리면 그 변경이 영구히 빠진다.
+    if (!ok.ok) return `제출 실패 (${ok.status}) · ${plan.urls.length}건, 커서 유지`
+  }
+
+  if (plan.cursor && plan.cursor !== (cur?.value || '')) {
+    await upsertSetting(DB, INDEXNOW_CURSOR_KEY, plan.cursor)
+  }
+  return `${plan.note} · 커서 ${plan.cursor || '(없음)'}`
+}
+
+async function submitUrls(key: string, urls: string[]): Promise<{ ok: boolean; status: string }> {
+  const body = buildIndexNowBody(new URL(ORIGIN).host, key, `${ORIGIN}${indexNowKeyPath(key)}`, urls)
+  // 엔진마다 따로 보낸다 — 하나라도 받으면 성공(규격상 참여 엔진끼리 공유). 하트비트엔 엔진별 상태를 남긴다.
+  const results = await Promise.all(INDEXNOW_ENDPOINTS.map(async (ep) => {
+    const post = await fetch(ep, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json; charset=utf-8' },
       body: JSON.stringify(body),
     }).catch(() => null)
-    // 🔴 실패하면 **커서를 올리지 않는다** — 올리면 그 변경이 영구히 빠진다.
-    if (!post || (post.status !== 200 && post.status !== 202)) {
-      return `indexnow: 제출 실패 (${post ? post.status : 'fetch 실패'}) · ${plan.urls.length}건, 커서 유지`
-    }
-  }
+    const host = new URL(ep).hostname.replace(/^(www|searchadvisor)\./, '')
+    return { ok: !!post && (post.status === 200 || post.status === 202), status: `${host} ${post ? post.status : 'fetch 실패'}` }
+  }))
+  return { ok: results.some((r) => r.ok), status: results.map((r) => r.status).join(' / ') }
+}
 
-  if (plan.cursor && plan.cursor !== (cur?.value || '')) {
-    await DB.prepare(
-      `INSERT INTO platform_settings (key, value) VALUES (?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    ).bind(INDEXNOW_CURSOR_KEY, plan.cursor).run().catch(() => null)
-  }
-  return `indexnow: ${plan.note} · 커서 ${plan.cursor || '(없음)'}`
+async function upsertSetting(DB: D1Database, key: string, value: string): Promise<void> {
+  await DB.prepare(
+    `INSERT INTO platform_settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).bind(key, value).run().catch(() => null)
 }

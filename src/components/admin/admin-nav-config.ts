@@ -9,9 +9,9 @@
  */
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
-  Bell, Image, Monitor, Store, ClipboardList, Gift, Ticket, BookOpen, Building2, UserCheck, Settings, Send,
-  BarChart3, Shield, UserCog, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
-  RotateCcw, Upload, Scale, FileText, Rocket, Share2, LayoutList,
+  Bell, Image, Monitor, Store, Gift, Ticket, BookOpen, Building2, UserCheck, Settings, Send,
+  BarChart3, Shield, UserCog, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Mail, Crown,
+  RotateCcw, Upload, Scale, FileText, Share2, LayoutList,
   Video, Film, Gauge, Activity, Landmark, KeyRound,
   type LucideIcon, Inbox } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
@@ -112,9 +112,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/ads-services',     label: '서비스몰 주문', icon: Megaphone },
       { path: '/admin/influencer-pool',  label: '인플루언서 풀', icon: Megaphone },
       { path: '/admin/campaign-applications', label: '캠페인 신청자', icon: Megaphone }, // 캠페인 모집(/campaign/:code) 접수분 — 코드 필터+CSV
-      { path: '/admin/buyer-pool',       label: '해외 바이어 풀', icon: Megaphone }, // 도매 RBAC 스코프 밖 → 여기(전-어드민)
       { path: '/admin/partnership',      label: '광고·제휴 문의', icon: Mail }, // 🧨 2026-10-11 도매 밴드와 함께 사라질 뻔한 **도매 아닌** 접수함(광고/제휴 공개 문의) — 유어애즈 밴드가 제자리다
-      { path: '/admin/maker-pool',       label: '제조사·판매사 후보 풀', icon: Layers }, // 🧨 2026-10-11 도매 철거로 이 밴드로 이사 — 읽는 것은 유어애즈 `ad_company_leads`(worker-ads 가 계속 수집)
       { path: '/admin/partner-pool',     label: '파트너 풀', icon: Megaphone }, // B2B 파트너(업체) 수집 — 매장 입점 영업
       { path: '/admin/store-prospects',  label: '매장 후보', icon: Megaphone }, // 인허가 발굴 — 유어딜 입점 대상 매장(store_prospects)
       { path: '/admin/gov-notices',      label: '공고 스캐너', icon: Megaphone }, // 나라장터+기업마당 공고(gov_notices)
@@ -125,24 +123,25 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    // 🏪 오프라인 공구 (매장 공구 / 교환권 / 숙소)
-    title: '🏪 오프라인 공구',
+    /**
+     * 🎟️ **유어딜 · 이용권** — 2026-10-20 대표 *"상품관리 + 이용권 공구 이런 페이지들 각 역할이 모호해"*
+     *
+     * 같은 이용권이 '상품 관리'(쇼핑 상품으로 잘못 분류) · '이용권 공구'(전부 '진행중' — 즉시판매라 달성/미달성 탭이 무의미)
+     * · '동네딜 상품 등록'(안에 목록이 또) · '공구 엔진 조종석'(목록이 또) 네 화면에 흩어져 있었다.
+     * ⇒ **다루기는 '이용권 관리' 하나, 올리기는 '이용권 등록' 하나.** 조종석·이용권 공구 옛 주소는 이용권 관리로 보낸다.
+     */
+    title: '🎟️ 이용권',
     section: 'urdeal',
     items: [
-      // 🏷️ 2026-08-14 (대표 "이미 공동구매로 되어있는 것들이 있던데 · 페이지 구분을 잘 해야겠어"):
-      //   라벨이 '공동구매' 였는데 이 화면은 **유어딜 이용권 공구**다. 같은 이름의 별개 서비스
-      //   (🏪 공구 서비스 = 운영자 몰)가 아래 자기 섹션에 따로 있다. 이름이 겹치면 대표가 매번
-      //   "이건 어느 쪽이야?" 를 물어야 한다 ⇒ 명칭 SSOT 대로 **이용권**을 쓴다.
-      { path: '/admin/group-buy',        label: '이용권 공구',   icon: Ticket },
-      { path: '/admin/gb-cockpit',       label: '공구 엔진 조종석', icon: Rocket },
-      { path: '/admin/dongnedeal-import', label: '동네딜 상품 등록', icon: Upload },
+      { path: '/admin/vouchers',          label: '이용권 관리',   icon: Ticket, also: ['/admin/gb-cockpit'] },
+      { path: '/admin/dongnedeal-import', label: '이용권 등록',   icon: Upload },
       { path: '/admin/fcfs',             label: '추첨 응모 관리', icon: Gift },
       { path: '/admin/experience-campaigns', label: '체험 캠페인',   icon: Gift },
       { path: '/admin/voucher-disputes', label: '사용처리 분쟁',  icon: AlertOctagon },
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
       { path: '/admin/pending-sellers',  label: '매장 검수',     icon: UserCheck },
       { path: '/admin/coupons',          label: '쿠폰 관리',     icon: Ticket },
-      { path: '/admin/deals',            label: '딜 모니터링',   icon: Gift },
+      { path: '/admin/deals',            label: '딜 충전 모니터링', icon: Gift },
       { path: '/admin/restaurant-demand', label: '맛집 수요 신호', icon: TrendingUp },
     ],
   },
@@ -194,11 +193,11 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    // 🛒 온라인 쇼핑 (일반 상품 / 주문 / 교환권 발행)
-    title: '🛒 온라인 쇼핑',
+    // 🛒 교환권(기프티콘) · 쇼핑(배송) — 2026-10-20: 이용권은 위 '🎟️ 이용권' 으로 분리됐다.
+    title: '🛒 교환권·쇼핑',
     section: 'urdeal',
     items: [
-      { path: '/admin/products',         label: '상품 관리',     icon: Package },
+      { path: '/admin/products',         label: '교환권·쇼핑 상품', icon: Package },
       { path: '/admin/orders',           label: '주문 관리',     icon: ShoppingBag },
       // 🧭 2026-06-09 IA 정리: nav 미노출 고아 라우트 등재 — 반품/교환권 추적은 주문 운영 실무 페이지.
       { path: '/admin/returns',          label: '반품 검수',     icon: RotateCcw },
@@ -265,7 +264,10 @@ export const NAV_GROUPS: NavGroup[] = [
     section: 'common',
     items: [
       { path: '/admin/blog',              label: '블로그 관리',   icon: BookOpen },
-      // 🥗 2026-07-15 소셜 자동화는 ur-ads 워커로 이전(메인 슬림 유지). ur-ads 컷오버 완료 후 메뉴 재노출.
+      { path: '/admin/home-service',      label: '생활 견적',     icon: Send },
+      { path: '/admin/seeding',           label: '무상 체험 신청', icon: Send },
+      // 🥗 2026-07-15 소셜 자동화는 ur-ads 워커로 이전 — `/api/admin/social/*` 는 worker/index.ts 의 ADS 위임으로 살아 있다
+      //   (메인의 직접 마운트만 주석 처리됐다. 그 주석만 보고 '죽은 화면' 으로 판정하면 틀린다 — 2026-10-20 실제로 그렇게 오판할 뻔했다).
       { path: '/admin/social',            label: '소셜 홍보',     icon: Share2 },
       { path: '/admin/instagram-autodm',  label: '인스타 자동 DM', icon: MessageSquare },
       { path: '/admin/notices',           label: '공지사항',      icon: Send },
@@ -298,8 +300,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/platform-settings',      label: '플랫폼 설정',   icon: Settings },
       { path: '/admin/notification-settings',  label: '알림 채널 설정', icon: Bell },
       { path: '/admin/alimtalk',               label: '브랜드메시지',  icon: Bell },
-      { path: '/admin/sample-requests',   label: '샘플 신청',     icon: ClipboardList },
-      { path: '/admin/cafe24',            label: 'Cafe24 연동',   icon: Store },
+      // 🧨 2026-10-20 '샘플 신청' 제거 — 도매(공급가) 잔재. 새 신청을 만드는 셀러 API(`/api/supply`)가 도매 철거로 사라져 영원히 빈 큐였다.
+      // 🧨 2026-10-20 대표 "1,2,3번은 지워줘": 해외 바이어 풀 · 제조사·판매사 후보 풀 · Cafe24 연동 삭제(유어딜 무관).
     ],
   },
   {

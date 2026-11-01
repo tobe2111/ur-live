@@ -15,10 +15,10 @@
  *   - ⚠️ `app-frame-bar` 미사용 — 이 페이지는 `pc-fullbleed` 등재라 그 클래스를 쓰면 PC 에서 숨는다.
  *   - 팔 수 있는 객실이 하나도 없으면 **바를 안 그린다**(만실 카드가 그 말을 대신한다).
  */
-import { formatNumber } from '@/utils/format'
+import { BuyBarFrame, BuyBarPrice, BuyBarCta } from '@/components/deal/BuyBar'
 
 export default function StayStickyBar({
-  minPrice, nightsLabel, cartCount, cartTotalQty, cartSubtotal, onClear, onBook, onPickRoom,
+  minPrice, nightsLabel, cartCount, cartTotalQty, cartSubtotal, onClear, onBook, onPickRoom, raffle,
 }: {
   /** 팔 수 있는 객실 중 최저 총액. 없으면 null → 바를 안 그린다. */
   minPrice: number | null
@@ -30,35 +30,37 @@ export default function StayStickyBar({
   onClear: () => void
   onBook: () => void
   onPickRoom: () => void
+  /** 🎯 2026-10-27: 추첨 상품(당첨 전)이면 예약 대신 응모 — 이용권 하단 바와 같은 `useFcfsDetail` 값. */
+  raffle?: { label: string; disabled: boolean; onApply: () => void } | null
 }) {
   const hasCart = cartCount > 0
-  if (!hasCart && minPrice == null) return null
+  if (!hasCart && minPrice == null && !raffle) return null
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur border-t border-rule px-3 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))]">
-      <div className="max-w-md mx-auto flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 truncate">
-            {hasCart ? `${cartCount}종 객실 / ${cartTotalQty}객실` : nightsLabel}
-          </p>
-          <p className="mt-1 text-[17px] font-extrabold tracking-[-0.02em] tabular-nums text-gray-900 dark:text-white leading-none">
-            ₩{formatNumber(hasCart ? cartSubtotal : (minPrice ?? 0))}
-            {!hasCart && <span className="ml-1 text-[13px] font-bold text-gray-500 dark:text-gray-400">부터</span>}
-          </p>
-        </div>
+    /* 🩸 2026-10-25: 종전 `z-50` 이라 하단 탭 뒤에 깔렸다 — 이제 틀(`BuyBarFrame`)이 이용권 바와 같은 층을 쓴다.
+       🧾 2026-10-27: 틀·가격 칸·주 버튼을 이용권 바와 **같은 부품**으로(대표 "통일할 건 통일"). */
+    <BuyBarFrame>
+      <div className="flex items-center gap-3">
+        <BuyBarPrice
+          caption={hasCart ? `${cartCount}종 객실 / ${cartTotalQty}객실` : nightsLabel}
+          amount={hasCart ? cartSubtotal : (minPrice ?? 0)}
+          suffix={hasCart ? undefined : '부터'}
+        />
         {hasCart && (
-          <button type="button" onClick={onClear} className="px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+          <button type="button" onClick={onClear} className="shrink-0 px-2 py-2 text-[12px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
             비우기
           </button>
         )}
-        <button
-          type="button"
-          onClick={hasCart ? onBook : onPickRoom}
-          className="shrink-0 px-5 py-3 bg-brand text-white text-[15px] font-bold rounded-xl hover:bg-brand-dark"
-        >
-          {hasCart ? '묶음 예약 →' : '객실 고르기'}
-        </button>
+        {raffle ? (
+          <BuyBarCta on={!raffle.disabled} onClick={raffle.onApply} disabled={raffle.disabled}>
+            {raffle.label}
+          </BuyBarCta>
+        ) : (
+          <BuyBarCta on onClick={hasCart ? onBook : onPickRoom}>
+            {hasCart ? (cartTotalQty === 1 ? '예약하기' : '묶음 예약 →') : '객실 고르기'}
+          </BuyBarCta>
+        )}
       </div>
-    </div>
+    </BuyBarFrame>
   )
 }

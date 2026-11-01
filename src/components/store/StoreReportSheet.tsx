@@ -100,7 +100,7 @@ export default function StoreReportSheet({ sellerId, productId, storeName, onClo
           ))}
         </div>
 
-        <label className="block text-[12px] font-bold text-gray-900 dark:text-white mb-1">
+        <label className="block text-[12px] font-medium text-gray-900 dark:text-white mb-1">
           연락처 <span className="text-brand-text">*</span>
         </label>
         <input
@@ -111,7 +111,7 @@ export default function StoreReportSheet({ sellerId, productId, storeName, onClo
         />
         <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">확인을 위해 담당자가 연락드릴 수 있어요. 로그인은 필요 없어요.</p>
 
-        <label className="block text-[12px] font-bold text-gray-900 dark:text-white mb-1">자세한 내용 (선택)</label>
+        <label className="block text-[12px] font-medium text-gray-900 dark:text-white mb-1">자세한 내용 (선택)</label>
         <textarea
           value={detail}
           onChange={e => setDetail(e.target.value)}

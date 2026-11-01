@@ -6,6 +6,7 @@
  */
 
 import { loadRoute } from '@/lib/route-preload'
+import { DEAL_ROW } from '@/shared/deal-card-grid'
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { StarIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
@@ -121,7 +122,9 @@ function warmStay(id: number | string) {
  *   ⚠️ 사진 위가 아니라 **본문 맨 위**다 — 2026-08-31 대표 지시("할인율이 사진 안으로 들어가면
  *      안돼")와 같은 이유로, 사진은 상품을 보여주는 자리이지 배지를 얹는 자리가 아니다.
  */
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false, titleNode, overlayExtra, className = '' }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean; titleNode?: ReactNode; overlayExtra?: ReactNode; className?: string }) {
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false, titleNode, overlayExtra, className: classNameProp = '', row = false }: { p: FeedCardProduct; row?: boolean; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean; titleNode?: ReactNode; overlayExtra?: ReactNode; className?: string }) {
+  const className = row ? `${DEAL_ROW.link} ${classNameProp}` : classNameProp
+  // 📋 2026-10-31 시안 10: `row` = 폰에서 [108px 정사각 사진 | 정보] 한 줄(md+ 종전 격자). 사진 비율·본문 여백은 바깥 `DEAL_ROW` 가 자식 선택자로 바꾼다.
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetchGb = usePrefetchGroupBuyProduct()
   // 🏨 2026-10-15 (대표 승인 "허가 — 대상만 수정"): 미리받기 **대상**이 목적지를 따른다. 숙소 카드(/stays/:id)는
@@ -250,7 +253,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
       {/* 🖼️ 2026-08-19 (대표 시안 — 그루폰): 이미지 영역을 `DealCardMedia`(SSOT)로 교체 —
           hover 좌우 화살표 캐러셀 + 도트. 홈 섹션 카드도 **같은 컴포넌트**를 써서 두 카드가
           갈리지 않는다. 잠금 계약(aboveFold eager/fetchPriority·fade-in·대표색 추출)은 그대로 승계. */}
-      <DealCardMedia
+      {wrapRowMedia(row, <DealCardMedia
         cover={p.image_url}
         images={p.images}
         /* 🔎 2026-10-11 SEO: 사진에 붙는 유일한 이름이라 **매장명을 함께** 싣는다
@@ -306,13 +309,13 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
             {overlayExtra}
           </>
         }
-      />
+      />)}
 
       {/* 🛍️ 2026-08-19 (대표 시안 — 그루폰 카드): 정보 위계를 그루폰과 같게 재배열.
           [머천트(작은 회색)] → [제목 2줄] → [주소 · 거리] → [★평점 (구매수)] → [정가취소선 · 판매가 · 할인 pill]
           이전엔 정가가 제목 **위**에 떠 있고 가격이 중간에 있어, 카드마다 눈이 가는 자리가 달랐다. */}
       {/* 🧹 PC 는 카드 박스가 없으므로 좌우 패딩도 0 — 사진 왼쪽 끝과 글자가 딱 맞아야 그루폰처럼 보인다. */}
-      <div className="pt-2">
+      <div className="pt-3">
         {flags}
         {/* [시안 B] 08-19 그루폰 5줄 위계 유지 — 배지만 사진 위로 */}
         {(p.restaurant_name || brandName || p.onnuri_merchant) && (
@@ -323,11 +326,11 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
                 같은 딜이 홈·검색·유어샵에 뜰 땐 표시가 사라졌다 — 카드가 한 벌이 아니어서 생긴 누락.
                 이제 카드 SSOT 가 그리므로 그 딜이 어디에 뜨든 따라간다. */}
             {p.onnuri_merchant && (
-              <span className="shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-bold">온누리</span>
+              <span className="shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-medium">온누리</span>
             )}
           </p>
         )}
-        <p className={`text-[13px] font-bold line-clamp-2 leading-tight ${cText}`}>
+        <p className={`text-[15px] font-medium line-clamp-2 leading-snug ${cText}`}>
           {titleNode ?? stripStorePrefix(p.name, p.restaurant_name)}
         </p>
         {(addrShort || distKm != null) && (
@@ -339,7 +342,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
         {rating > 0 && (
           <p className={`flex items-center gap-2 mt-1 text-[12px] ${cSub}`}>
             <StarRating value={rating} />
-            <span className={`font-bold ${cText}`}>{rating.toFixed(1)}</span>
+            <span className={`font-medium ${cText}`}>{rating.toFixed(1)}</span>
             {reviewCount > 0 && <span>({formatNumber(reviewCount)})</span>}
           </p>
         )}
@@ -348,25 +351,30 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
             ① 할인율을 사진 위에 올리지 않는다(사진을 가린다).
             ② 할인율은 커머스에서 가장 강한 신호이므로 **로즈 굵게**로 세운다.
             ③ 정가와 판매가를 줄로 나누면 6자리 가격(119,000원)에서도 줄이 안 깨진다. */}
-        <div className="mt-1">
-          {(discount > 0 || (originalPrice > price && originalPrice > 0)) && (
+        {/* 🏠 2026-10-25 D안(대표 *"메인은 D로 하자"*): [정가 취소선] / [할인율 15 굵게 · 판매가 17] —
+            할인율이 판매가와 **같은 줄**에 선다(이용권 상세 머리 카드와 같은 위계). 워커 첫 화면이 그대로 미러한다. */}
+        <div className="mt-2">
+          {originalPrice > price && originalPrice > 0 && (
             <p className="flex items-baseline gap-1 leading-none">
-              {discount > 0 && <span className="text-[12px] font-extrabold text-sale">{discount}%</span>}
-              {originalPrice > price && originalPrice > 0 && (
-                <span className={`text-[12px] line-through ${cSub}`}>{formatNumber(originalPrice)}{unitLabel}</span>
-              )}
+              <span className={`text-[12px] line-through ${cSub}`}>{formatNumber(originalPrice)}{unitLabel}</span>
             </p>
           )}
           <p className="flex items-baseline gap-1 mt-1 leading-none">
-            <span className={`text-[17px] font-extrabold tracking-tight ${cText}`}>{formatNumber(price)}{unitLabel}</span>
+            {discount > 0 && <span className="text-[15px] font-bold text-sale">{discount}%</span>}
+            <span className={`text-[17px] font-bold tracking-tight ${cText}`}>{formatNumber(price)}{unitLabel}</span>
             {p.category === 'stay_voucher' && price > 0 && (
-              <span className={`text-[12px] font-semibold ${cSub}`}>/1박~</span>
+              <span className={`text-[12px] font-medium ${cSub}`}>/1박~</span>
             )}
           </p>
         </div>
       </div>
     </Link>
   )
+}
+
+/** 줄 모양이면 사진을 108px 칸에 담는다(사진 컴포넌트 자신은 칸 폭을 꽉 채운다). 격자는 종전 DOM 그대로. */
+function wrapRowMedia(row: boolean, media: ReactNode) {
+  return row ? <div className={DEAL_ROW.mediaBox}>{media}</div> : media
 }
 
 export default memo(GroupBuyFeedCard)

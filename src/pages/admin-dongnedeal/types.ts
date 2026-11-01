@@ -23,8 +23,11 @@ export interface DealRow {
   prelaunch?: number
   /** 🖼️ 현재 갤러리(images+detail_images 병합, 서버 동봉) — 수정 폼 프리필용. */
   gallery?: string[] | null
+  /** 🎟️ 2026-10-20 판매(환불 제외)·사용 장수 — 서버가 못 셌으면 null(모름, 0 아님). */
+  sold?: number | null
+  used?: number | null
 }
 
 export const CAT_LABEL: Record<string, string> = {
-  meal_voucher: '식사', beauty_voucher: '미용', etc_voucher: '기타', general: '일반', stay_voucher: '숙소',
+  meal_voucher: '식사', beauty_voucher: '미용', etc_voucher: '기타', general: '일반', stay_voucher: '숙소', home_voucher: '생활',
 }

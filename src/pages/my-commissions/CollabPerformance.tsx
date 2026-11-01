@@ -48,7 +48,7 @@ export default function CollabPerformance() {
           {perf.deals.map((d) => (
             <div key={d.id} className="py-2 flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+                <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate">
                   {d.seller_name || '매장'} <span className="text-gray-400 font-normal">· 커미션 {d.commission_pct}%</span>
                 </p>
                 <p className="text-[12px] text-gray-500 dark:text-gray-400">

@@ -168,13 +168,18 @@ describe('⑤-3 줄에 찜 하트를 달지 않는다', () => {
  */
 describe('⑤-4 한 톤 — 판 대신 실선이 나눈다', () => {
   it('페이지 바탕이 카드와 같은 톤이다', () => {
-    expect(page, '`bg-warm`(웜 바탕) 복귀 — 톤이 둘이 된다').not.toContain('bg-warm')
-    expect(page, '페이지 루트가 bg-surface').toMatch(/min-h-\[100dvh\] bg-surface/)
+    // 🌙 2026-10-24 대표 *"다크모드에선 원래 더 어두운 네이비 색 아니야?"* — 다크에서는 페이지·헤더가
+    //   둘 다 `dark:bg-warm`(#11141C) 이다. 한 톤은 그대로이고(헤더와 본문이 같은 값) 라이트만 `bg-surface`.
+    //   그래서 막는 것은 **접두 없는** `bg-warm`(라이트 웜 바탕 복귀)이다.
+    expect(page, '`bg-warm`(웜 바탕) 복귀 — 톤이 둘이 된다').not.toMatch(/(?<!dark:)\bbg-warm\b/)
+    expect(page, '페이지 루트가 bg-surface (다크는 페이지 네이비)').toMatch(/min-h-\[100dvh\] bg-surface dark:bg-warm/)
+    const header = stripComments(readCode('src/pages/curator-page/CuratorHeader.tsx'))
+    expect(header, '헤더도 같은 값이어야 한 톤이다').toContain('<header className="bg-surface dark:bg-warm">')
   })
 
   it('줄 사이는 실선으로 나눈다 (판·여백이 아니라)', () => {
     expect(page, '`space-y-2`(판 사이 여백) 복귀').not.toMatch(/px-4 pb-4 space-y-2/)
-    expect(page).toMatch(/px-4 pb-4 divide-y divide-rule/)
+    expect(page).toMatch(/px-5 pb-4 divide-y divide-rule/)  // 2026-10-25 D안 — 옆 여백 20px
   })
 
   it('PinRow 가 판 없는 표면을 쓴다 — 기본값은 안 건드린다', () => {

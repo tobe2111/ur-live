@@ -36,16 +36,16 @@ export default function FcfsBadge(
   if (info.prelaunch) {
     if (variant === 'overlay') {
       return (
-        <span className={`inline-flex items-center gap-1 rounded-full bg-amber-500/85 backdrop-blur-sm px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm ${className}`}>
+        <span className={`inline-flex items-center gap-1 rounded-full bg-amber-500/85 backdrop-blur-sm px-2 py-1 text-[12px] font-medium leading-none text-white shadow-sm ${className}`}>
           🔔 오픈 예정
         </span>
       )
     }
     return (
-      <span className={`inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-400/10 px-2.5 py-1 text-[10.5px] font-bold leading-none text-amber-800 dark:text-amber-300 ${className}`}>
+      <span className={`inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-400/10 px-2.5 py-1 text-[12px] font-medium leading-none text-amber-800 dark:text-amber-300 ${className}`}>
         <span>🔔 오픈 예정</span>
         <span className="opacity-40">·</span>
-        <span className="font-extrabold">{applied}명 사전응모</span>
+        <span className="font-medium">{applied}명 사전응모</span>
       </span>
     )
   }
@@ -53,10 +53,10 @@ export default function FcfsBadge(
   // 🎯 추첨 응모 현황 — 사진 위(overlay)면 소프트 글래스 알약, 아니면 조용한 라인(A안).
   if (variant === 'overlay') {
     return (
-      <span className={`inline-flex items-center gap-1 rounded-full bg-black/55 backdrop-blur-sm px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm ${className}`}>
+      <span className={`inline-flex items-center gap-1 rounded-full bg-black/55 backdrop-blur-sm px-2 py-1 text-[12px] font-medium leading-none text-white shadow-sm ${className}`}>
         <span className="animate-fcfs-flame">🔥</span>
-        {spots > 0 && <><span className="font-extrabold">{spots}</span>명 뽑기 <span className="opacity-50">·</span> </>}
-        <span className="font-extrabold animate-fcfs-spark">{applied}</span>명 응모
+        {spots > 0 && <><span className="font-medium">{spots}</span>명 뽑기 <span className="opacity-50">·</span> </>}
+        <span className="font-medium animate-fcfs-spark">{applied}</span>명 응모
       </span>
     )
   }
@@ -64,9 +64,9 @@ export default function FcfsBadge(
     <span className={`inline-flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500 ${className}`}>
       <span className="animate-fcfs-flame">🔥</span>
       {spots > 0
-        ? <span><b className="font-extrabold text-gray-900 dark:text-white">{spots}명</b> 뽑는데 <b className="font-extrabold text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b> 응모 중</span>
-        : <span>지금 <b className="font-extrabold text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b> 응모 중</span>}
-      {deadlineNear && <span className="font-semibold text-brand-text">· 마감 임박</span>}
+        ? <span><b className="font-medium text-gray-900 dark:text-white">{spots}명</b> 뽑는데 <b className="font-medium text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b> 응모 중</span>
+        : <span>지금 <b className="font-medium text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b> 응모 중</span>}
+      {deadlineNear && <span className="font-medium text-brand-text">· 마감 임박</span>}
     </span>
   )
 }

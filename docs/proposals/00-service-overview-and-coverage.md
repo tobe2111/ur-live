@@ -291,9 +291,9 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 2 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 96 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 76 | 275 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 78 | 275 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 24 | 87 |
-| **합계** | — | **131** | **462** |
+| **합계** | — | **133** | **462** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 331 | 1049 |
-| 도메인 버킷 (5개 소개서) | 131 | 462 |
-| 공통/인프라 (의도적 제외) | 153 | 491 |
-| **미커버 (점검 필요)** | **47** | **96** |
+| 전체 | 340 | 1027 |
+| 도메인 버킷 (5개 소개서) | 133 | 462 |
+| 공통/인프라 (의도적 제외) | 151 | 453 |
+| **미커버 (점검 필요)** | **56** | **112** |
 
-⚠️ **미커버 143건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 168건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -342,10 +342,19 @@
 - `/experience`
 - `/gb-market`
 - `/i/join/:code`
+- `/life`
+- `/life/biz/:id`
+- `/life/pro`
+- `/life/pro/requests/:id`
+- `/life/q/:token`
+- `/life/request/:category`
+- `/life/requests`
+- `/life/requests/:id`
 - `/local/:code`
 - `/mall-admin`
 - `/map`
 - `/my-gifticons`
+- `/my-seeding`
 - `/my-store`
 - `/new-openings`
 - `/partners`
@@ -372,14 +381,16 @@
 - `GET /agency-link` (`src/features/seller/api/seller-agency-link.routes.ts`)
 - `POST /agency-link` (`src/features/seller/api/seller-agency-link.routes.ts`)
 - `GET /agency-link/activity` (`src/features/seller/api/seller-agency-link.routes.ts`)
+- `POST /agency-link/assign` (`src/features/seller/api/seller-agency-performance.routes.ts`)
 - `POST /agency-link/end` (`src/features/seller/api/seller-agency-link.routes.ts`)
+- `GET /agency-link/performance` (`src/features/seller/api/seller-agency-performance.routes.ts`)
+- `GET /agency-link/products` (`src/features/seller/api/seller-agency-performance.routes.ts`)
+- `POST /agency-link/share` (`src/features/seller/api/seller-agency-performance.routes.ts`)
 - `POST /api/acquisition/claim` (`src/worker/routes/acquisition.routes.ts`)
 - `POST /api/acquisition/inflow` (`src/worker/routes/acquisition.routes.ts`)
 - `POST /api/acquisition/inflow/bind` (`src/worker/routes/acquisition.routes.ts`)
 - `POST /api/acquisition/landing` (`src/worker/routes/acquisition.routes.ts`)
 - `GET /api/acquisition/utm-report` (`src/worker/routes/acquisition.routes.ts`)
-- `POST /api/buyer-ingest/` (`src/features/supply/api/buyer-ingest.routes.ts`)
-- `POST /api/buyer-ingest/known` (`src/features/supply/api/buyer-ingest.routes.ts`)
 - `GET /api/consumer-settings` (`src/worker/routes/public-utility.routes.ts`)
 - `POST /api/cs/kakao-skill` (`src/worker/routes/kakao-skill-webhook.routes.ts`)
 - `GET /api/experience-campaigns/` (`src/features/group-buy/api/experience-campaign.routes.ts`)
@@ -399,6 +410,7 @@
 - `POST /api/gb-proposals/seller` (`src/features/group-buy/api/gb-proposals.routes.ts`)
 - `POST /api/gb-proposals/seller/:id/respond` (`src/features/group-buy/api/gb-proposals.routes.ts`)
 - `GET /api/gb-proposals/seller/list` (`src/features/group-buy/api/gb-proposals.routes.ts`)
+- `POST /api/ops/alert` (`src/worker/routes/ops-alert.routes.ts`)
 - `POST /api/partnership/inquiry` (`src/worker/routes/partnership.routes.ts`)
 - `GET /api/promo-bar` (`src/worker/routes/public-utility.routes.ts`)
 - `GET /api/regions/` (`src/features/group-buy/api/regions.routes.ts`)
@@ -413,6 +425,8 @@
 - `GET /api/seller-experience-campaigns/my/entries` (`src/features/group-buy/api/experience-campaign.routes.ts`)
 - `GET /api/store-agency-invite/:token` (`src/features/seller/api/store-agency-invite.routes.ts`)
 - `POST /api/store-agency-invite/accept` (`src/features/seller/api/store-agency-invite.routes.ts`)
+- `POST /api/store-agency-invite/partner-request` (`src/features/seller/api/store-agency-invite.routes.ts`)
+- `GET /api/store-agency-invite/partner/:agencyId` (`src/features/seller/api/store-agency-invite.routes.ts`)
 - `POST /api/voucher-dispute/:id/respond` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
 - `GET /api/voucher-dispute/against-me` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
 - `GET /api/voucher-dispute/mine` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
@@ -424,9 +438,20 @@
 - `GET /by-voucher/:code` (`src/features/group-buy/api/voucher-gift.routes.ts`)
 - `POST /cart/confirm-toss` (`src/features/group-buy/api/cart-checkout.routes.ts`)
 - `POST /cart/init` (`src/features/group-buy/api/cart-checkout.routes.ts`)
+- `GET /checkout` (`src/worker/routes/agent-search.routes.ts`)
 - `GET /cross-owner-accept` (`src/features/seller/api/seller-brands.routes.ts`)
 - `PUT /cross-owner-accept` (`src/features/seller/api/seller-brands.routes.ts`)
 - `GET /deal-plan/:productId` (`src/features/group-buy/api/deal-plan.routes.ts`)
+- `GET /dongnedeal/kakao-mystore-photos` (`src/features/admin/api/admin-demo-photo-source-diag.routes.ts`)
+- `GET /dongnedeal/photo-source-diag` (`src/features/admin/api/admin-demo-photo-source-diag.routes.ts`)
+- `GET /embed` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/agency/:id` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/partner/:id` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/pass/:id` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/region/:sido` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/region/:sido/:sigungu` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/store/:username` (`src/worker/routes/embed.routes.ts`)
+- `GET /embed/u/:handle` (`src/worker/routes/embed.routes.ts`)
 - `POST /fee-context/channel` (`src/features/seller/api/seller-store-channel.routes.ts`)
 - `POST /kakao-bot/link-code` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
 - `GET /kakao-bot/links` (`src/features/seller/api/seller-kakao-bot.routes.ts`)
@@ -771,7 +796,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (76개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (78개)
 
 - `/browse`
 - `/cart`
@@ -843,7 +868,9 @@
 - `/store/find`
 - `/store/go`
 - `/store/new`
+- `/store/partner/:agencyId`
 - `/store/scan`
+- `/store/seeding`
 - `/store/stats/:productId`
 - `/v/:code`
 - `/vouchers`
@@ -1616,7 +1643,7 @@
 
 
 
-> 마지막 생성: 2026-10-20T02:17:31.541Z
+> 마지막 생성: 2026-10-31T19:38:21.514Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

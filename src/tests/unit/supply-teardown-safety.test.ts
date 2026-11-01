@@ -55,32 +55,22 @@ describe('도매 철거 안전망 — 소비자가 부르는 supply 파일은 �
   }
 })
 
-describe('도매 철거 안전망 — 도매가 아닌 별개 사업은 함께 걷히면 안 된다', () => {
-  // `features/supply` 안에 있지만 도매몰과 무관하다. 소비자 번들이 마운트하고 cron 이 돈다.
-  const SEPARATE_BUSINESS = [
-    ['src/features/supply/api/buyer-pool.routes.ts', '해외 수출 바이어 파이프라인'],
-    ['src/features/supply/api/buyer-autofetch.ts', '바이어 자동수집(소비자 cron)'],
-    ['src/features/supply/api/maker-pool.routes.ts', '제조사·판매사 후보 풀'],
-  ] as const
-
-  for (const [f, why] of SEPARATE_BUSINESS) {
-    it(`${f.split('/').pop()} — ${why}`, () => {
-      expect(exists(f), `🔴 ${f} 삭제됨 — ${why} 는 도매몰과 무관하다`).toBe(true)
-    })
+describe('🧨 2026-10-20 해외 바이어 풀 · 제조사 후보 풀 · Cafe24 — 대표 "지워줘"로 삭제됐다', () => {
+  // 종전 이 블록은 "도매와 무관한 별개 사업이라 함께 걷히면 안 된다" 였다. 대표가 직접 삭제를 지시해 결정이 바뀌었다.
+  // 되살아나지 않게 반대 방향으로 고정한다. ⚠️ DB 테이블(수집해 둔 데이터)은 지우지 않았다 — 데이터 삭제는 별건(결재).
+  for (const f of [
+    'src/features/supply/api/buyer-pool.routes.ts', 'src/features/supply/api/buyer-autofetch.ts',
+    'src/features/supply/api/maker-pool.routes.ts', 'src/features/supply/api/maker-collect.ts',
+    'src/features/cafe24/api/cafe24.routes.ts',
+  ]) {
+    it(`${f.split('/').pop()} 가 없다`, () => { expect(exists(f)).toBe(false) })
   }
-
-  it('소비자 번들이 buyer-pool · maker-pool 어드민을 **둘 다** 마운트한다 (별개 사업)', () => {
-    // 🔁 2026-10-11 재조준(도매몰 철거): 종전엔 *"maker-pool 은 유통스타트 워커에만"* 이었다.
-    //   그 워커(`mount-wholesale.ts`)가 **삭제됐으므로** 그대로 두면 maker-pool 이 **어디에도** 마운트되지
-    //   않는다 — 그런데 `worker-ads` 가 `ad_company_leads` 를 계속 수집한다 ⇒ 수집은 돌고 볼 화면이 없다.
-    //   지키려던 것(별개 사업이 도매와 함께 죽지 않는다)은 그대로이고, 사는 곳만 소비자 번들로 옮겼다.
+  it('소비자 워커가 그 어드민 API 를 마운트하지 않는다', () => {
     const idx = read('src/worker/index.ts')
-    expect(idx.includes("'/api/admin/buyer-pool'")).toBe(true)
-    expect(idx.includes("'/api/admin/maker-pool'")).toBe(true)
+    for (const m of ["'/api/admin/buyer-pool'", "'/api/admin/maker-pool'", "'/api/buyer-ingest'", "cafe24Routes"]) expect(idx).not.toContain(m)
   })
-
-  it('바이어 자동수집 cron 이 살아 있다', () => {
-    expect(read('src/worker/scheduled.ts').includes("'buyer-autofetch'")).toBe(true)
+  it('바이어 자동수집 cron 이 돌지 않는다', () => {
+    expect(read('src/worker/scheduled.ts').includes("'buyer-autofetch'")).toBe(false)
   })
 })
 

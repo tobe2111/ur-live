@@ -52,8 +52,8 @@
 import { nearSubtitle } from '../../shared/home-near'
 import { HOME_H1 } from '../../shared/seo/consumer-surfaces'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
-import { DEAL_CAT_LABELS } from '../../shared/deal-cats'
-import { DEAL_GRID_GAP } from '../../shared/deal-card-grid'
+import { HOME_DEAL_CAT_LABELS, isHomeVisibleProduct } from '../../shared/deal-cats'
+import { DEAL_ROW } from '../../shared/deal-card-grid'
 import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_MAX_DPR } from '../../shared/home-card-image'
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { priceDisplay } from '../../shared/price-display'
@@ -83,37 +83,37 @@ export const HOME_FS_CLASS = {
   topRow: 'px-4 h-11 flex items-center justify-between gap-2',
   locRow: 'px-4 pt-1 pb-3',
   locTrigger: 'inline-flex items-center gap-1 -ml-0.5 max-w-full',
-  locLabel: 'text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
+  locLabel: 'text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
   catRow: 'flex items-end gap-3 px-4',
   catNav: 'flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide',
   catBase: 'shrink-0 pb-2 text-[15px] transition-colors border-b-2',
-  catOn: 'font-black text-gray-900 dark:text-white border-brand',
-  catOff: 'font-semibold text-gray-400 dark:text-gray-500 border-transparent',
+  catOn: 'font-bold text-gray-900 dark:text-white border-brand',
+  catOff: 'text-gray-500 dark:text-gray-400 border-transparent',
   panel: 'ur-home-panel',
   secHead: 'flex items-end justify-between gap-4 mb-3',
-  secTitle: 'text-[17px] font-black tracking-tight text-gray-900 dark:text-white',
-  secSub: 'mt-1 text-[12px] text-gray-500 dark:text-gray-400',
-  grid: `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`,
+  secTitle: 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white',
+  secSub: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400',
+  grid: DEAL_ROW.grid, // 📋 2026-10-31 시안 10 — 폰 줄 목록(md+ 종전 4열)
   cardLink: 'block group active:scale-[0.98] flex flex-col',
   media: 'relative aspect-[4/3] w-full overflow-hidden group/media rounded-xl bg-gray-100 dark:bg-[#222225]',
   cover: 'absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]',
-  body: 'pt-2',
+  body: 'pt-3',
   merchant: 'flex items-center gap-1 text-[12px] leading-none mb-1 text-gray-500 dark:text-gray-400',
-  onnuri: 'shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-bold',
-  title: 'text-[13px] font-bold line-clamp-2 leading-tight text-gray-900 dark:text-white',
+  onnuri: 'shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-medium',
+  title: 'text-[15px] font-medium line-clamp-2 leading-snug text-gray-900 dark:text-white',
   addr: 'flex items-center justify-between gap-2 mt-1 text-[12px] min-w-0 text-gray-500 dark:text-gray-400',
   rateRow: 'flex items-center gap-2 mt-1 text-[12px] text-gray-500 dark:text-gray-400',
   starWrap: 'relative inline-block shrink-0 leading-none select-none align-middle',
   starBase: 'text-gray-300 dark:text-gray-600',
   starFill: 'absolute left-0 top-0 overflow-hidden whitespace-nowrap text-yellow-400',
-  rateNum: 'font-bold text-gray-900 dark:text-white',
-  priceWrap: 'mt-1',
+  rateNum: 'font-medium text-gray-900 dark:text-white',
+  priceWrap: 'mt-2',
   priceTop: 'flex items-baseline gap-1 leading-none',
-  discount: 'text-[12px] font-extrabold text-sale',
+  discount: 'text-[15px] font-bold text-sale',
   orig: 'text-[12px] line-through text-gray-500 dark:text-gray-400',
   priceRow: 'flex items-baseline gap-1 mt-1 leading-none',
-  price: 'text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white',
-  perNight: 'text-[12px] font-semibold text-gray-500 dark:text-gray-400',
+  price: 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white',
+  perNight: 'text-[12px] font-medium text-gray-500 dark:text-gray-400',
 } as const
 
 /** `DealCardMedia` 의 커버 `sizes` — 그 파일의 템플릿과 같은 식이어야 한다. */
@@ -160,7 +160,8 @@ function starHtml(value: number): string {
 }
 
 /** 🏨 2026-10-19 숙소 목록 첫 화면도 이 카드를 쓴다(`stays-first-screen.ts`) — 카드는 한 벌이다. `href` 는 숙소의 날짜·인원 링크. */
-export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string): string {
+/** 📋 `row` = 2026-10-31 시안 10 홈 줄 목록 — 카드 `row` 와 같은 `DEAL_ROW` 클래스(숙소 목록은 종전 격자). */
+export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, row = false): string {
   const href = hrefOverride ?? canonicalDetailPath(p) ?? `/pass/${p.id}`
   const brandName = p.brand_name || p.gc_brand_name || null
   const merchant = p.restaurant_name || brandName
@@ -185,8 +186,10 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string):
     : ''
 
   return (
-    `<a href="${escAttr(href)}" class="${HOME_FS_CLASS.cardLink}">` +
-    `<div class="${HOME_FS_CLASS.media}">${img}</div>` +
+    `<a href="${escAttr(href)}" class="${row ? `${HOME_FS_CLASS.cardLink} ${DEAL_ROW.link}` : HOME_FS_CLASS.cardLink}">` +
+    (row
+      ? `<div class="${DEAL_ROW.mediaBox}"><div class="${HOME_FS_CLASS.media}">${img}</div></div>`
+      : `<div class="${HOME_FS_CLASS.media}">${img}</div>`) +
     `<div class="${HOME_FS_CLASS.body}">` +
     (merchant || onnuri
       ? `<p class="${HOME_FS_CLASS.merchant}"><span class="truncate">${escText(merchant || '')}</span>` +
@@ -201,22 +204,19 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string):
         `</p>`
       : '') +
     `<div class="${HOME_FS_CLASS.priceWrap}">` +
-    (discount > 0 || (originalPrice > price && originalPrice > 0)
-      ? `<p class="${HOME_FS_CLASS.priceTop}">` +
-        (discount > 0 ? `<span class="${HOME_FS_CLASS.discount}">${discount}%</span>` : '') +
-        (originalPrice > price && originalPrice > 0
-          ? `<span class="${HOME_FS_CLASS.orig}">${formatNumber(originalPrice)}${unit}</span>`
-          : '') +
-        `</p>`
+    (originalPrice > price && originalPrice > 0
+      ? `<p class="${HOME_FS_CLASS.priceTop}"><span class="${HOME_FS_CLASS.orig}">${formatNumber(originalPrice)}${unit}</span></p>`
       : '') +
-    `<p class="${HOME_FS_CLASS.priceRow}"><span class="${HOME_FS_CLASS.price}">${formatNumber(price)}${unit}</span>` +
+    `<p class="${HOME_FS_CLASS.priceRow}">` +
+    (discount > 0 ? `<span class="${HOME_FS_CLASS.discount}">${discount}%</span>` : '') +
+    `<span class="${HOME_FS_CLASS.price}">${formatNumber(price)}${unit}</span>` +
     (p.category === 'stay_voucher' && price > 0 ? `<span class="${HOME_FS_CLASS.perNight}">/1박~</span>` : '') +
     `</p></div></div></a>`
   )
 }
 
 function chromeHtml(): string {
-  const cats = DEAL_CAT_LABELS.map(({ key, label }) =>
+  const cats = HOME_DEAL_CAT_LABELS.map(({ key, label }) =>
     `<span class="${HOME_FS_CLASS.catBase} ${key === 'all' ? HOME_FS_CLASS.catOn : HOME_FS_CLASS.catOff}">${escText(label)}</span>`,
   ).join('')
   return (
@@ -275,7 +275,10 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
   let strip: SeededStripBanner[] = []
   try {
     const parsed = JSON.parse(sectionsSeedJson) as SectionsSeed
-    sec = (parsed?.data ?? []).find(s => Array.isArray(s?.products) && s.products.length > 0)
+    // 🏠 생활 이용권은 메인에 안 뜬다 — 화면(`HomeSections`)과 같은 규칙으로 거른 뒤 첫 줄을 고른다.
+    sec = (parsed?.data ?? [])
+      .map(s => (Array.isArray(s?.products) ? { ...s, products: s.products.filter(isHomeVisibleProduct) } : s))
+      .find(s => Array.isArray(s?.products) && s.products.length > 0)
     strip = stripBannersOf(parsed)
   } catch {
     return ''
@@ -283,7 +286,7 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
   const products = (sec?.products ?? []).filter(p => p && p.id != null).slice(0, HOME_CARD_ABOVE_FOLD)
   if (!sec || products.length === 0 || !sec.title) return ''
 
-  const cards = products.map((p, i) => cardHtml(p, i < HOME_CARD_ABOVE_FOLD)).join('')
+  const cards = products.map((p, i) => cardHtml(p, i < HOME_CARD_ABOVE_FOLD, undefined, true)).join('')
   const body =
     `<div class="${HOME_FS_CLASS.root}">` +
     // 🩸 2026-10-13 — 크롤러가 받는 홈 문서에 제목 요소가 h3 하나뿐이었다. `sr-only` 라 박스가

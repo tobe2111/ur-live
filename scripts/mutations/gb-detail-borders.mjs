@@ -50,8 +50,8 @@ export default [
   {
     name: '[테두리] PC 구매 박스가 하드코딩 그림자로 되돌아간다 (다크에서 안 꺼진다)',
     file: BOX,
-    find: "borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: 'var(--lift)'",
-    replace: "border: '1px solid var(--gbd-line2)', borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: '0 6px 24px rgba(0,0,0,.06)'",
+    find: "borderRadius: 16, padding: 18, background: 'var(--gbd-card)', boxShadow: 'var(--lift)'",
+    replace: "border: '1px solid var(--gbd-line2)', borderRadius: 16, padding: 18, background: 'var(--gbd-card)', boxShadow: '0 6px 24px rgba(0,0,0,.06)'",
     test: TEST,
     why: '다크는 `--lift: none` 이라 그림자가 꺼져야 하는데 하드코딩 값은 테마를 모른다.',
   },

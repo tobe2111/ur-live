@@ -21,6 +21,8 @@
  * ⚠️ 폼·검증·제출 payload·임시저장은 **한 글자도 안 바뀐다** — 시험이 그것을 고정한다.
  */
 import { useEffect, useRef, useState } from 'react'
+import SeedingOfferFields from '@/components/seeding/SeedingOfferFields'
+import { DEFAULT_OFFER, type SeedingOffer } from '@/shared/seeding'
 import { useTranslation } from '@/lib/i18n-lite'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Utensils, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -41,7 +43,7 @@ import VoucherInfoStep from './seller-meal-voucher/VoucherInfoStep'
 import SaleSettingsStep from './seller-meal-voucher/SaleSettingsStep'
 import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 import {
-  emptyVoucherForm, applyStoreContext,
+  emptyVoucherForm, applyStoreContext, lifeSubcatMissing,
   type StoreContext, type VoucherForm,
 } from './seller-meal-voucher/voucher-form'
 
@@ -57,6 +59,8 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [form, setForm] = useState<VoucherForm>(() => emptyVoucherForm())
+  // 🎁 2026-10-31 인플루언서 무상 체험 제공 — 등록 직후 같은 이용권에 저장(`PUT /api/seller/seeding/offers/:id`).
+  const [seeding, setSeeding] = useState<SeedingOffer>(DEFAULT_OFFER)
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
@@ -101,6 +105,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
             return list.length ? list : (str(src.image_url) ? [str(src.image_url)] : [])
           })(),
           category: (str(src.category) || f.category) as VoucherForm['category'],
+          life_subcat: str(src.life_subcat),
           restaurant_name: str(src.restaurant_name),
           restaurant_address: str(src.restaurant_address),
           restaurant_phone: str(src.restaurant_phone),
@@ -218,6 +223,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
       toast.error(t('seller.mealVoucher.requiredFields'))
       return false
     }
+    if (s === 1 && lifeSubcatMissing(form)) { toast.error('어떤 일인지(업종) 골라 주세요'); return false } // 🏠 생활 업종 필수
     const minErr = s === 1 ? voucherMinPriceError(form.category, form.price) : null // 💸 서버와 같은 SSOT
     if (minErr) { toast.error(minErr); return false }
     return true
@@ -231,6 +237,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
     }
     const minErr = voucherMinPriceError(form.category, form.price)
     if (minErr) { toast.error(minErr); return }
+    if (lifeSubcatMissing(form)) { toast.error('어떤 일인지(업종) 골라 주세요'); return }
     setSubmitting(true)
     try {
       const payload = {
@@ -243,6 +250,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
         //   첫 장은 `image_url` 과 같은 값(대표) — 서버가 그대로 저장한다.
         images: form.images.length ? JSON.stringify(form.images) : null,
         category: form.category,
+        life_subcat: form.category === 'home_voucher' ? form.life_subcat : undefined, // 🏠 생활 업종
         product_type: 'featured',
         stock: form.stock,
         restaurant_name: form.restaurant_name,
@@ -275,7 +283,12 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
 
       const res = await api.post('/api/seller/products', payload, { headers })
       if (res.data.success) {
-        setCreatedId(Number(res.data.data?.id) || null)
+        const newId = Number(res.data.data?.id) || null
+        setCreatedId(newId)
+        if (newId && seeding.enabled) {
+          await api.put(`/api/seller/seeding/offers/${newId}`, seeding, { headers })
+            .catch(() => toast.error(t('seller.mealVoucher.seedingSaveFailed', { defaultValue: '무상 체험 설정은 저장하지 못했어요. 매장 요청함에서 다시 켜 주세요' })))
+        }
         setDone(true)
         toast.success(t('seller.mealVoucher.registered'))
       } else {
@@ -404,6 +417,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
           {step === 2 && (
             <SaleSettingsStep form={form} update={update} showAdvanced={showAdvanced} setShowAdvanced={setShowAdvanced} />
           )}
+          {step === 2 && <SeedingOfferFields value={seeding} onChange={setSeeding} />}
 
           {/* 하단 내비게이션 — 이전/임시저장/다음(또는 등록) */}
           <div className="flex gap-3">

@@ -70,7 +70,7 @@ export default function DealEarnStrip() {
             <span className={`w-12 h-12 rounded-2xl ${tint} flex items-center justify-center transition-shadow group-hover:shadow-sm`}>
               <Icon className="w-[22px] h-[22px]" strokeWidth={2} />
             </span>
-            <span className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight">{label}</span>
+            <span className="text-[12px] font-medium text-gray-900 dark:text-white leading-tight">{label}</span>
             <span className="text-[12px] text-gray-400 dark:text-gray-500 leading-tight hidden sm:block">{desc}</span>
           </button>
         ))}

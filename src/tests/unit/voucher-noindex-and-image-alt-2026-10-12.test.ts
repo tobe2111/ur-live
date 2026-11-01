@@ -54,7 +54,7 @@ describe('🖼️ ① 상품 사진의 alt 은 제목에서 파생된다', () =>
     //   매치할 수 없어 무조건 통과. 주입이 잡았다. ⇒ 주석을 걷어낸 코드에서 **그 img 태그**를 앵커한다.
     const c = code('src/worker/index.ts')
     expect(c, '마스코트 img 자체가 사라졌다(= 이 단언이 지킬 대상이 없다)')
-      .toMatch(/UDAL_LOADER_SRC\}"\s+alt=""\s+aria-hidden="true"/)
+      .toMatch(/UDAL_LOADER_SRC\}"(?:\$\{loaderImgPriorityAttr\(cssFirst\)\})?\s+alt=""\s+aria-hidden="true"/) // 2026-10-20 우선순위 속성 보간 허용
     expect(c, '마스코트에 설명을 붙이면 스크린리더가 장식을 읽는다')
       .not.toMatch(/UDAL_LOADER_SRC\}"[^>]{0,80}alt="[^"]+"/)
   })

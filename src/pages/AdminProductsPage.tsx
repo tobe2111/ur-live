@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -19,9 +19,8 @@ import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 import { EMPTY_FORM } from './admin-products/types'
-import type { Product, SampleRequest } from './admin-products/types'
+import type { Product } from './admin-products/types'
 import ProductFormModal from './admin-products/ProductFormModal'
-import SampleRequestsTab from './admin-products/SampleRequestsTab'
 import type { ProductOption } from '@/components/ProductOptionForm'
 import { DEFAULT_AFFILIATE_RATE } from '@/shared/affiliate-rate'
 
@@ -30,20 +29,15 @@ const EMPTY_TABS = { all_count: 0, active_count: 0, inactive_count: 0, out_of_st
 export default function AdminProductsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   // 🧨 2026-10-11 도매몰 철거: '제조사 등록 상품'·'공급 매출' 두 탭과 wholesale 역할 분기 제거
-  //   (그 API 들이 `mount-wholesale` 과 함께 사라졌다). 남은 탭은 소비자 상품관리·샘플 신청 둘.
-  const [activeTab, setActiveTab] = useState<'products' | 'sample-requests'>(() => {
-    const urlTab = searchParams.get('tab')
-    return urlTab === 'sample-requests' ? 'sample-requests' : 'products'
-  })
+  //   (그 API 들이 `mount-wholesale` 과 함께 사라졌다). 
+  // 🧨 2026-10-20: '샘플 신청' 탭도 제거 — 도매 잔재(새 신청을 만드는 `/api/supply` 가 철거로 사라졌다). 이 화면은 탭이 하나다.
+  const activeTab = 'products' as const
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState<number | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [formData, setFormData] = useState(EMPTY_FORM)
-  const [actionLoading, setActionLoading] = useState<number | null>(null)
-  const [adminMemoMap, setAdminMemoMap] = useState<Record<number, string>>({})
   // 🏭 2026-06-07 공급상품 최저가 검수 체크 상태 (상품별).
   // 🆕 2026-06-19 (대표 확정) 제품별 플랫폼 마진 입력(미끼/마진 전략) + 저장중 상태.
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
@@ -83,7 +77,7 @@ export default function AdminProductsPage() {
     {
       enabled: activeTab === 'products',
       headers: adminAuth,
-      params: { page, limit: pageLimit, status: statusFilter, source: sourceFilter, sort: sortField, order: sortOrder, ...(search ? { q: search } : {}), ...(categoryFilter ? { category: categoryFilter } : {}), ...scopeParams },
+      params: { kind: 'goods', page, limit: pageLimit, status: statusFilter, source: sourceFilter, sort: sortField, order: sortOrder, ...(search ? { q: search } : {}), ...(categoryFilter ? { category: categoryFilter } : {}), ...scopeParams },
       select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], total: r?.total ?? 0, total_pages: r?.total_pages ?? 0, tabs: r?.tabs ?? EMPTY_TABS, categories: r?.categories ?? [] }),
     },
   )
@@ -96,27 +90,6 @@ export default function AdminProductsPage() {
   const loadProducts = () => productsQ.refetch()
   useEffect(() => { if (productsQ.isError) setError(t('admin.products.k001', { defaultValue: '상품 목록을 불러올 수 없습니다.' })) }, [productsQ.isError, t])
 
-  const sampleRequestsQ = useApiQuery<SampleRequest[]>(['admin', 'sample-requests'], '/api/admin/sample-requests', { enabled: activeTab === 'sample-requests', headers: adminAuth, select: (r: any) => (r?.success ? r.data?.items ?? [] : []) })
-  const sampleRequests = sampleRequestsQ.data ?? []
-  const srLoading = sampleRequestsQ.isLoading
-  const loadSampleRequests = () => sampleRequestsQ.refetch()
-
-
-  async function handleSampleAction(reqId: number, action: 'approve' | 'reject') {
-    setActionLoading(reqId)
-    try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      await api.patch(`/api/admin/sample-requests/${reqId}`, {
-        action,
-        admin_memo: adminMemoMap[reqId] || null,
-      }, { headers: { Authorization: `Bearer ${token}` } })
-      toast.success(action === 'approve' ? t('admin.products.k004', { defaultValue: '샘플 신청이 승인되었습니다.' }) : t('admin.products.k005', { defaultValue: '샘플 신청이 거부되었습니다.' }))
-      loadSampleRequests()
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } }
-      toast.error(axiosErr.response?.data?.error || t('admin.products.k006', { defaultValue: '처리에 실패했습니다.' }))
-    } finally { setActionLoading(null) }
-  }
 
   // 🆕 2026-06-19: 마진 입력 문자열 → API 값. '' / undefined → 미지정(undefined, 승인 시 컬럼 미변경).
 
@@ -285,7 +258,6 @@ export default function AdminProductsPage() {
     setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([])
   }
 
-  const pendingCount = sampleRequests.filter(r => r.status === 'PENDING').length
 
   if (loading) {
     return (
@@ -300,7 +272,7 @@ export default function AdminProductsPage() {
 
   return (
     <AdminLayout
-      title={t('admin.products.k017', { defaultValue: '상품 관리' })}
+      title="교환권·쇼핑 상품"
       headerRight={
         activeTab === 'products' ? (
           <div className="flex items-center gap-2">
@@ -326,26 +298,6 @@ export default function AdminProductsPage() {
         ) : undefined
       }
     >
-      {/* 탭 — 🧨 2026-10-11 도매몰 철거로 '공급 판매 현황' 탭과 wholesale 역할 분기 제거 */}
-      <div className="flex gap-1 mb-4 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('products')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'products' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          <span className="flex items-center gap-1.5"><Package className="w-4 h-4" /> {t('admin.products.k018', { defaultValue: '상품 목록' })}</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('sample-requests')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'sample-requests' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          <span className="flex items-center gap-1.5">
-            <Truck className="w-4 h-4" /> {t('admin.products.sampleRequestsTab', { defaultValue: '샘플 신청 목록' })}
-            {pendingCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{pendingCount}</span>
-            )}
-          </span>
-        </button>
-      </div>
 
       {error && <div className="p-4 bg-white border border-rule rounded-xl text-sm text-tone-bad mb-4">{error}</div>}
 
@@ -392,6 +344,10 @@ export default function AdminProductsPage() {
       )}
 
       {/* 🏪 2026-08-16: "누구 가게인가"는 "무엇인가"(아래 교환권/쇼핑)보다 상위 질문이라 위에 둔다. */}
+      {/* 🎟️ 2026-10-20: 이용권(식사·미용·숙소·기타)은 이 화면에서 뺐다(`kind=goods`) — '이용권 관리'가 맡는다. */}
+      {activeTab === 'products' && (
+        <p className="mb-3 text-[12px] text-gray-500">교환권(기프티콘)과 쇼핑 상품만 보입니다. 식사·미용·숙소 이용권은 왼쪽 메뉴 <b className="text-gray-700">이용권 › 이용권 관리</b>에서 다룹니다.</p>
+      )}
       {activeTab === 'products' && (
         <AdminServiceScopeTabs scope={mallScope} setScope={pickScope} className="mb-3"
           mixedHint="운영자 몰 상품이 함께 보입니다 — 유어딜 실적으로 읽지 마세요" />
@@ -747,16 +703,6 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {activeTab === 'sample-requests' && (
-        <SampleRequestsTab
-          loading={srLoading}
-          sampleRequests={sampleRequests}
-          adminMemoMap={adminMemoMap}
-          setAdminMemoMap={setAdminMemoMap}
-          actionLoading={actionLoading}
-          onAction={handleSampleAction}
-        />
-      )}
 
 
 

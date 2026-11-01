@@ -1,0 +1,72 @@
+name: SNS reference accounts
+# 참고 계정(배민사장님 등) 최근 게시물 벤치마크 수집 — 읽기 전용(GET only), 절대 게시하지 않음.
+# 매주: 반응 상위 게시물 → 패턴 추출 → data/reference-patterns.json (marketing-data) → 캡션/카드 생성 프롬프트에 자동 반영.
+# business_discovery 는 graph.facebook.com + META_FB_PAGE_TOKEN 으로만 동작 (IG 토큰 불가).
+on:
+  schedule:
+    # 월요일 09:00 KST
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: marketing-bot-data
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: marketing-bot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Load bot data from marketing-data branch
+        # 봇 데이터(게시 로그/중복 방지)는 main 이 아닌 marketing-data 브랜치에 저장됨 (main 은 보호 브랜치)
+        run: |
+          if git fetch --depth=1 origin marketing-data 2>/dev/null; then
+            git checkout FETCH_HEAD -- data/ 2>/dev/null && echo "loaded data/ from marketing-data" || echo "::warning::marketing-data has no marketing-bot/data yet"
+          else
+            echo "::warning::marketing-data branch not found; using data/ from main"
+          fi
+          git reset -q -- data/ || true
+      - name: Fetch reference accounts (read-only)
+        env:
+          META_FB_PAGE_TOKEN: ${{ secrets.META_FB_PAGE_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node src/reference-accounts.mjs
+      - name: Commit data
+        if: always()
+        continue-on-error: true
+        run: |
+          git config user.name "urdeal-marketing-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -z "$(git status --porcelain -- data/)" ]; then echo "no data changes"; exit 0; fi
+          BR="marketing-data"
+          SNAP="$(mktemp -d)"; cp -a data/. "$SNAP/"
+          for i in 1 2 3 4 5; do
+            if git fetch --depth=1 origin "$BR" 2>/dev/null; then
+              git reset -q --hard FETCH_HEAD
+            else
+              # 브랜치가 없으면 data 만 담은 orphan 브랜치로 생성
+              git checkout -q --orphan "tmp-$BR-$i" && git read-tree --empty  # 인덱스를 통째로 비운다(cwd 무관) — data 만 담는다
+            fi
+            rm -rf data && mkdir -p data && cp -a "$SNAP/." data/
+            git add data/
+            if git diff --cached --quiet; then echo "already up to date"; exit 0; fi
+            git commit -q -m "chore(marketing-bot): update reference-accounts data [skip ci]"
+            if git push origin "HEAD:refs/heads/$BR"; then exit 0; fi
+            echo "push failed (attempt $i), retrying"; sleep $((i*5))
+          done
+          echo "::warning::could not push bot data to $BR after 5 attempts (non-fatal)"; exit 0
+      - name: Kakao failure alert
+        if: failure()
+        env:
+          KAKAO_TOKEN: ${{ secrets.KAKAO_MEMO_ACCESS_TOKEN }}
+        run: |
+          [ -z "$KAKAO_TOKEN" ] && exit 0
+          URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -sS -X POST https://kapi.kakao.com/v2/api/talk/memo/default/send -H "Authorization: Bearer $KAKAO_TOKEN" --data-urlencode "template_object={\"object_type\":\"text\",\"text\":\"[유어딜 마케팅] ${{ github.workflow }} 실패\",\"link\":{\"web_url\":\"$URL\",\"mobile_web_url\":\"$URL\"}}" || true

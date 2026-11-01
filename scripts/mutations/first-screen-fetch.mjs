@@ -83,8 +83,8 @@ export default [
     //   그대로라 **같은 결함을 다른 자리**(힌트 출처)로 심는다.
     name: '첫화면 — 판매 중 개수를 2단계 응답에서 읽는다',
     file: SECTION,
-    find: "          {store?.active_products != null && (",
-    replace: "          {work.products.length > 0 && (",
+    find: "{store?.active_products != null && store.active_products > 0 ? `판매 중 ${formatNumber(store.active_products)}개` : '아직 0개'}",
+    replace: "{work.products.length > 0 ? `판매 중 ${formatNumber(work.products.length)}개` : '아직 0개'}",
     test: T,
     why:
       '이 한 줄이 상품 목록 전체를 끌어온다. 게다가 그 요청은 좌석이 정해진 **뒤에** 나가므로 ' +

@@ -206,7 +206,7 @@ export default function BottomNav() {
         {/* ⚫ 2026-10-14 (대표 시안 — 야놀자 NOL 하단바 *"버튼들 검정색에 클릭 시 색이 채워지는 식으로 … 더 깔끔하게"*):
             다섯 탭 모두 잉크색, 활성은 **아이콘이 채워지는 것(filled)과 라벨 굵기** 두 가지로만 말한다.
             종전(09-01)의 회색 비활성 + 아래 브랜드 점은 걷었다 — 회색은 눌러도 되는지 흐리게 보였고, 점은 신호가 겹쳤다. */}
-        <span className={`text-[12px] mt-1 text-gray-900 dark:text-white ${active ? 'font-semibold' : 'font-normal'}`}>
+        <span className={`text-[12px] mt-1 text-gray-900 dark:text-white ${active ? 'font-medium' : 'font-normal'}`}>
           {label}
         </span>
       </button>

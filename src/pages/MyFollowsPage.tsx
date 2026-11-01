@@ -108,7 +108,7 @@ export default function MyFollowsPage() {
                     {f.seller_avatar ? (
                       <img src={f.seller_avatar} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" loading="lazy" />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-wash shrink-0 flex items-center justify-center text-[15px] font-semibold text-gray-500 dark:text-gray-400">{(f.seller_name || '?').slice(0, 1)}</div>
+                      <div className="w-12 h-12 rounded-full bg-wash shrink-0 flex items-center justify-center text-[15px] font-medium text-gray-500 dark:text-gray-400">{(f.seller_name || '?').slice(0, 1)}</div>
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{f.seller_name}</p>
@@ -135,7 +135,7 @@ export default function MyFollowsPage() {
                             <BellOff className="w-4 h-4 text-gray-300 dark:text-gray-600 mt-1" />
                           )}
                           <div>
-                            <p className="text-[12px] font-bold text-gray-900 dark:text-white">{opt.label}</p>
+                            <p className="text-[12px] font-medium text-gray-900 dark:text-white">{opt.label}</p>
                             <p className="text-[12px] text-gray-500 dark:text-gray-400">{opt.desc}</p>
                           </div>
                         </div>

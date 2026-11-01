@@ -476,8 +476,8 @@ const MUTATIONS = [
   {
     name: '🏷️ 할인율이 다시 브랜드 블루로 (행동 색과 가격 색이 섞인다)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
-    find: "font-extrabold text-sale\">{discount}%",
-    replace: "font-extrabold text-brand\">{discount}%",
+    find: "font-bold text-sale\">{discount}%",
+    replace: "font-bold text-brand\">{discount}%",
     test: 'src/tests/unit/discount-is-sale-red.test.ts',
     why:
       '블루는 "누르는 것", 할인 빨강은 "가격 이득" 이다. 할인율이 블루로 돌아가면 목록에서 파랑이던 ' +
@@ -518,8 +518,8 @@ const MUTATIONS = [
   {
     name: '🎨 섹션 더보기가 다시 테두리 알약이 된다 (표면 규칙 ① 위반)',
     file: 'src/components/home/HomeSections.tsx',
-    find: '                  className="shrink-0 text-[12px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"',
-    replace: '                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 text-[12.5px] font-bold text-gray-600 whitespace-nowrap"',
+    find: '                  className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400 hover:underline underline-offset-4 whitespace-nowrap"',
+    replace: '                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 text-[12.5px] font-medium text-gray-600 whitespace-nowrap"',
     test: 'src/tests/unit/home-selected-is-brand.test.ts',
     why:
       '우리 표면 규칙 첫 줄이 테두리 0 이다. 이게 돌아오면 화면에서 **가장 안 중요한 것이 제일 ' +
@@ -909,7 +909,7 @@ const MUTATIONS = [
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
     // 🗺️ 2026-09-08: 대표 *"거리순이 가장 우선"* 으로 규칙에서 지역 조건이 빠졌다 — 지도도 따라간다.
     //    (안 옮기면 "낡은 지도"로 빨간불이고, 그게 이 검사가 하라고 만든 일이다. 실제로 그렇게 잡혔다.)
-    find: "    () => (readCachedLoc() ? 'near' : 'popular'),",
+    find: "    () => (homeStartLoc() ? 'near' : 'popular'),",
     replace: "    () => 'popular',",
     test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
     why:
@@ -2315,8 +2315,8 @@ const MUTATIONS = [
   {
     name: '숙소 시설이 다시 3분할 카드가 된다',
     file: 'src/pages/StayDetailPage.tsx',
-    find: '<AmenityFlow items=',
-    replace: '<div className="grid grid-cols-3 sm:grid-cols-4" /><AmenityFlow items=',
+    find: '<AmenityGrid items=',
+    replace: '<div className="grid grid-cols-3 sm:grid-cols-4" /><AmenityGrid items=',
     test: 'src/tests/unit/detail-page-plainness.test.ts',
     why:
       '"무료 주차" 세 글자마다 테두리 하나를 두르던 3분할 카드. 모든 블록이 같은 무게의 ' +
@@ -3232,15 +3232,14 @@ canvas {
       "'내 추천 링크'(GET /api/invite/my)가 통째로 죽는데, 화면엔 빈 카드로 보여 신고가 안 들어온다.",
   },
   {
-    name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
+    name: '이용권 상세 PC 제목이 사라진다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
     find: '<DetailTitleHeader name',
     replace: '<span data-broken name',
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
-      '2026-08-19 대표 확정(상세 1안 "그루폰 정석"). 제목·별점·주소가 사진 위에 있어야 첫 화면이 ' +
-      '"무엇을 파는지 / 얼마나 좋은지"를 말한다. 되돌아가도 화면은 멀쩡해 보여서(사진은 여전히 크다) ' +
-      '리뷰로는 안 걸린다 — 그래서 기계가 지킨다.',
+      '2026-10-31 대표 "이용권 이름을 사진 밑으로"(08-19 1안 대체) — PC 제목은 갤러리 바로 아래에 있다. ' +
+      '빠져도 화면은 멀쩡해 보여서 리뷰로는 안 걸린다.',
   },
   {
     name: '상세가 서버 raw 할인율로 되돌아간다(카드와 숫자가 갈린다)',
@@ -5559,9 +5558,10 @@ canvas {
   {
     name: '내보내기가 화면 필터를 무시(손에 안 잡히는 지표)',
     file: 'src/features/marketing/api/partner-pool.routes.ts',
-    find: 'listCompanyLeads(adsLeadsDb(c.env), { ...filter, limit: EXPORT_MAX })',
-    replace: 'listCompanyLeads(adsLeadsDb(c.env), { limit: EXPORT_MAX })',
-    // 2026-08-03: 파싱이 `pool-export.ts` 로 이동했지만 **넘기는 지점**은 여전히 여기다(지도 유효).
+    find: 'list: (limit, notExported) => listCompanyLeads(adsLeadsDb(c.env), { ...filter, notExported, limit }),',
+    replace: 'list: (limit, notExported) => listCompanyLeads(adsLeadsDb(c.env), { notExported, limit }),',
+    // 2026-08-03: 파싱이 `pool-export.ts` 로 이동. 2026-10-25: 넘기는 지점이 `runBatchExport` 의
+    //   `list` 콜백으로 옮겨갔다 — **불변식(화면 필터가 파일까지 간다)은 그대로**이고 앵커만 따라갔다.
     test: 'src/tests/unit/ads-export-filter-parity.test.ts',
     why:
       '이 DB 의 성공 지표는 총 인원이 아니라 **"제안 보낼 수 있는 리드 수"** 다. 화면은 그 정의로 세는데 ' +
@@ -5571,8 +5571,10 @@ canvas {
   {
     name: '내보내기 조립이 목록과 두 벌로 갈라짐',
     file: 'src/pages/admin/AdminStoreProspectsPage.tsx',
-    find: 'store-prospects/export?${buildQuery().toString()}',
-    replace: 'store-prospects/export',
+    // 2026-10-25: 세 버튼이 `PoolExportButtons` 로 묶이며 조립을 **prop 으로** 넘긴다.
+    //   결함은 같다 — 목록이 쓰는 조립(`buildQuery`)을 안 쓰고 빈 조립을 넘긴다.
+    find: 'query={buildQuery} batchHint=',
+    replace: 'query={() => new URLSearchParams()} batchHint=',
     test: 'src/tests/unit/ads-export-filter-parity.test.ts',
     why:
       '매장 풀은 **95%가 학원**이다(인허가 레인 사망으로 음식점·카페·미용·숙박 0). 화면 필터가 파일까지 ' +
@@ -9616,7 +9618,7 @@ canvas {
   {
     name: '딜 카드 격자 — 세로 간격이 다시 가로와 같아진다(카드 경계가 안 읽힌다)',
     file: 'src/shared/deal-card-grid.ts',
-    find: "'gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-7'",
+    find: "'gap-x-3 gap-y-8 lg:gap-x-4 lg:gap-y-8'",
     replace: "'gap-x-3 gap-y-3 lg:gap-x-4 lg:gap-y-4'",
     test: 'src/tests/unit/deal-card-grid-gap.test.ts',
     why:
@@ -9685,8 +9687,8 @@ canvas {
   {
     name: 'PC 홈 히어로 — 주 행동이 다시 테두리 고스트 알약이 된다',
     file: 'src/components/home/HomeHeroDefault.tsx',
-    find: 'rounded-full bg-brand text-white text-[13px] font-extrabold hover:bg-[#1557C8]',
-    replace: 'rounded-full border border-white/25 text-white text-[13px] font-extrabold hover:bg-white/10',
+    find: 'rounded-full bg-brand text-white text-[13px] font-medium hover:bg-[#1557C8]',
+    replace: 'rounded-full border border-white/25 text-white text-[13px] font-medium hover:bg-white/10',
     test: 'src/tests/unit/pc-home-hero-controls.test.ts',
     why: '표면 규칙 ② 강조색 하나, 자리 셋 — 히어로에서 그 자리는 주 행동이다. 블루가 빠지면 넷 다 같은 무게로 돌아간다.',
   },

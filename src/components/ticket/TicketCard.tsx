@@ -49,7 +49,7 @@ export function TicketCard({ bandLeft, bandRight, muted, children, className = '
 export function TicketRow({ left, right }: { left: ReactNode; right?: ReactNode }) {
   return (
     <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-rule text-[15px]">
-      <span className="font-semibold text-gray-900 dark:text-white">{left}</span>
+      <span className="font-medium text-gray-900 dark:text-white">{left}</span>
       {right !== undefined && <span className="text-gray-500 dark:text-gray-400">{right}</span>}
     </div>
   )

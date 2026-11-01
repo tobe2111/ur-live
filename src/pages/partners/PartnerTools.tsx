@@ -29,6 +29,7 @@
  *   자동인 것은 국세청 **진위확인**뿐이다.
  */
 import PartnerPhone, { SHOT } from './PartnerPhone'
+import { Marquee, Reveal } from '../landing/motion'
 
 const SCREENS = [
   { shot: 'seller-scan', cap: '손님 QR 한 번 찍으면 사용 처리' },
@@ -59,27 +60,41 @@ const NOTES = [
 export default function PartnerTools() {
   return (
     <section className="bg-surface">
-      <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
-        <h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+      <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-16 lg:pt-32">
+        <Reveal><h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
           사장님 폰에 뜨는 화면
-        </h2>
+        </h2></Reveal>
+      </div>
 
-        {/* 화면 넉 장 — 가로로 나란히. PC 에서 폰 한 대가 340px 쯤 되어 실제로 읽힌다 */}
-        <div className="mt-10 lg:mt-16 grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-4 lg:gap-8">
-          {SCREENS.map(({ shot, cap }) => (
-            <figure key={shot}>
+      {/* 🎬 2026-10-31: 화면 넉 장이 천천히 흐른다(PC — 마우스를 올리면 멈춘다). 칸에 가두지 않고 화면 끝까지
+          흘러가게 폭 컨테이너 밖에 둔다. 폰에서는 손가락으로 넘기는 가로 줄. */}
+      <Reveal kind="fade" className="hidden lg:block mt-16">
+        <Marquee seconds={52}>
+          {/* 넉 장을 두 번 이어 한 벌로 만든다 — 한 벌이 화면보다 좁으면 넓은 모니터에서 끝에 빈칸이 보인다 */}
+          {[...SCREENS, ...SCREENS].map(({ shot, cap }, i) => (
+            <figure key={`${shot}-${i}`} className="w-[17rem] xl:w-[19rem] mr-10 shrink-0">
               <PartnerPhone src={SHOT(shot)} alt={cap} />
-              <figcaption className="mt-3 lg:mt-4 text-[12px] lg:text-[15px] font-semibold text-gray-500 dark:text-gray-400">{cap}</figcaption>
+              <figcaption className="mt-4 text-[15px] font-medium text-gray-500 dark:text-gray-400">{cap}</figcaption>
             </figure>
           ))}
-        </div>
+        </Marquee>
+      </Reveal>
+      <div className="lg:hidden mt-10 flex gap-4 overflow-x-auto snap-x snap-mandatory px-5 pb-2 scrollbar-hide">
+        {SCREENS.map(({ shot, cap }) => (
+          <figure key={shot} className="w-[42%] shrink-0 snap-start">
+            <PartnerPhone src={SHOT(shot)} alt={cap} />
+            <figcaption className="mt-3 text-[12px] font-medium text-gray-500 dark:text-gray-400">{cap}</figcaption>
+          </figure>
+        ))}
+      </div>
 
+      <div className="ur-content-wide mx-auto px-5 lg:px-10 pb-16 lg:pb-32">
         <div className="mt-12 lg:mt-20 grid gap-9 sm:grid-cols-2 lg:gap-x-20 lg:gap-y-14 max-w-[64rem]">
-          {NOTES.map(({ t, d }) => (
-            <div key={t}>
-              <p className="text-[17px] lg:text-[24px] font-extrabold text-ink leading-snug tracking-[-0.02em]">{t}</p>
+          {NOTES.map(({ t, d }, i) => (
+            <Reveal key={t} delay={(i % 2) * 110}>
+              <p className="text-[17px] lg:text-[24px] font-bold text-ink leading-snug tracking-[-0.02em]">{t}</p>
               <p className="mt-3 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>

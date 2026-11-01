@@ -50,7 +50,11 @@ const SECTIONS = [
 ]
 /** 주석을 걷어낸 사용자-가시 소스. 설명 주석의 단어가 판정에 새면 가드가 헛돈다(이 레포의 반복 사고). */
 const visible = (p: string) => stripComments(R(p))
-const ALL_VISIBLE = [PAGE, ...SECTIONS].map(visible).join('\n')
+/** 2026-10-31 — FAQ 문장이 화면 파일에서 SSOT 로 옮겨갔다(워커가 같은 배열로 FAQPage 를 낸다).
+ *  빼면 R2(요율 SSOT)·R3(금지된 약속)가 FAQ 를 못 보게 된다 — 불변식은 그대로, 읽는 자리만 따라간다.
+ *  레이아웃 검사(ur-content-wide 등)는 화면 파일만 보므로 SECTIONS 에는 넣지 않는다. */
+const COPY_SOURCES = [...SECTIONS, 'src/shared/landing-faq.ts']
+const ALL_VISIBLE = [PAGE, ...COPY_SOURCES].map(visible).join('\n')
 
 describe('R1 — /partners 는 PC 소비자 액자를 쓰지 않는다', () => {
   const layout = visible('src/components/MobileAppLayout.tsx')
@@ -66,7 +70,8 @@ describe('R1 — /partners 는 PC 소비자 액자를 쓰지 않는다', () => {
   })
 
   it('App.tsx 가 /partners 를 fullScreen 으로 유지한다 (상·하단 소비자 네비 제외)', () => {
-    expect(visible('src/App.tsx')).toMatch(/fullScreenPrefixes[\s\S]{0,400}'\/partners'/)
+    expect(visible('src/lib/consumer-chrome.ts')).toMatch(/fullScreenPrefixes[\s\S]{0,400}'\/partners'/)
+    expect(visible('src/App.tsx')).toMatch(/isFullScreenPath\(location\.pathname\)/)
   })
 
   it('페이지가 풀너비에서 퍼지지 않게 ur-content-wide 로 중앙 정렬한다', () => {
@@ -102,6 +107,7 @@ describe('R2 — 숫자가 대표 승인 덱(deck-common.mjs FACTS)과 같다', 
     ['minPayout', PARTNER_FACTS.minPayout],
     ['reviewBonus', PARTNER_FACTS.reviewBonus],
     ['liveMeasuredAt', PARTNER_FACTS.liveMeasuredAt],
+    ['catalogMeasuredAt', PARTNER_FACTS.catalogMeasuredAt],
     ['activeVouchers', PARTNER_FACTS.activeVouchers],
     ['realStores', PARTNER_FACTS.realStores],
     ['influencerDb', PARTNER_FACTS.influencerDb],
@@ -123,7 +129,7 @@ describe('R2 — 숫자가 대표 승인 덱(deck-common.mjs FACTS)과 같다', 
   })
 
   it('숫자는 SSOT 에서만 읽는다 (섹션에 수수료율을 손으로 적지 않는다)', () => {
-    for (const f of SECTIONS) {
+    for (const f of COPY_SOURCES) {
       // "수수료 10%" 같은 하드코딩. 표기가 갈리는 길을 막는다.
       expect(visible(f), f).not.toMatch(/수수료\s*\d+%/)
     }
@@ -185,7 +191,7 @@ describe('R4 — 덱이 정한 설득 구조가 살아 있다', () => {
     const faq = visible('src/pages/partners/PartnerFaq.tsx')
     // 🩸 처음엔 `/초기 서비스/` 로 봤는데, 같은 파일 FAQ 답변에도 그 말이 있어
     //    고지 블록을 통째로 지워도 초록이었다(주입 러너가 잡았다). 그래서 **문장 전체**를 앵커로 둔다.
-    expect(faq).toMatch(/유어딜은 초기 서비스입니다\. \{F\.liveMeasuredAt\} 기준 판매 중인 이용권 \{F\.activeVouchers\}건/)
+    expect(faq).toMatch(/유어딜은 초기 서비스입니다\. \{F\.catalogMeasuredAt\} 기준 판매 중인 이용권 \{F\.activeVouchers\}건/)
     expect(faq).toMatch(/실제 매장이 등록한 것은 \{F\.realStores\}건/)
     expect(faq).toMatch(/트래픽을 약속하는 대신/)
   })
@@ -319,7 +325,8 @@ describe('R6 — PC 가 "넓어진 모바일" 로 되돌아가지 않는다 (202
    *   `main img` **0개** · h1 48px · h2 전부 38px · 전 섹션 `py-24` 동일.
    * 아래 셋은 그 세 가지가 조용히 되돌아가는 것을 막는다. **예쁜지는 못 본다** — 그건 렌더해서 볼 일이다.
    */
-  const usesPhone = SECTIONS.filter(f => visible(f).includes('<PartnerPhone'))
+  // 📱 2026-10-31: "손님이 오는 길" 은 고정 화면 스토리(`landing/StickyStory`)가 폰을 그린다 — 그것도 폰 프레임이다.
+  const usesPhone = SECTIONS.filter(f => /<PartnerPhone|<StickyStory/.test(visible(f)))
 
   it('안 B — 라이브 캡처를 폰 프레임으로 쓴다 (섹션 셋 이상)', () => {
     // "사진 0장" 으로의 회귀 차단. 히어로만 남기고 아래를 다 지우는 것도 막는다.

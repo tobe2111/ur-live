@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import PromoBar from './PromoBar'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { lazyPage, BOOT_PAGE_WAIT_MS } from '@/lib/boot-page'
+import { consumerChromeHiddenByPath } from '@/lib/consumer-chrome'
 
 /** PC 상단 네비가 뜨는 폭 — 아래 `useMediaQuery` 와 부팅 준비(`warmDesktopChrome`)가 같은 값을 쓴다. */
 export const DESKTOP_CHROME_QUERY = '(min-width: 768px)'
@@ -19,6 +20,10 @@ const DesktopTopNav = lazyPage(() => import('./DesktopTopNav'))
 export function warmDesktopChrome(): Promise<unknown> {
   try {
     if (typeof matchMedia !== 'function' || !matchMedia(DESKTOP_CHROME_QUERY).matches) return Promise.resolve()
+    // 🧢 2026-10-20: 상단 네비가 안 그려지는 주소(어드민·셀러·에이전시·결제·랜딩·몰)에선 받지도, 첫 렌더를 미루지도 않는다.
+    //   App.tsx 의 `hideBottomNav` 와 같은 함수다 — 둘이 갈리면 네비가 뜨는 화면에서 늦게 끼어들거나(밀림),
+    //   안 뜨는 화면에서 그 코드를 기다린다(라이브 `/admin` 실측: 어드민 라우트보다 먼저 홈 봉투 넷을 받았다).
+    if (typeof location !== 'undefined' && consumerChromeHiddenByPath(location.pathname)) return Promise.resolve()
   } catch { return Promise.resolve() }
   return Promise.race([DesktopTopNav.load().catch(() => undefined), new Promise((r) => setTimeout(r, BOOT_PAGE_WAIT_MS))])
 }

@@ -110,7 +110,7 @@ export default function BlogDetailPage() {
         <a key={x.id} href={`#${x.id}`}
           onClick={(e) => { e.preventDefault(); scrollToId(x.id); onNav?.() }}
           className={`block py-2 text-[13px] leading-snug transition-colors ${x.level === 3 ? 'pl-4' : ''} ${
-            activeId === x.id ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+            activeId === x.id ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
           }`}>
           {x.text}
         </a>
@@ -123,7 +123,7 @@ export default function BlogDetailPage() {
       {related.map((r) => (
         <Link key={r.slug} to={`/blog/${r.slug}`} className="flex gap-3 group items-start">
           <CoverImg post={r} className="w-14 h-14 rounded-lg shrink-0" />
-          <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-100 leading-snug line-clamp-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{stripBold(r.title)}</p>
+          <p className="text-[13px] font-medium text-gray-800 dark:text-gray-100 leading-snug line-clamp-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{stripBold(r.title)}</p>
         </Link>
       ))}
     </div>

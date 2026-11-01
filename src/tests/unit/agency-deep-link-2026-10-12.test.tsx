@@ -98,7 +98,7 @@ describe('③ 콘솔이 여는 규칙 — 좌석을 새로 받지 않는다', ()
     localStorage.clear()
     vi.mocked(toast.error).mockClear()
     replace = vi.fn()
-    Object.assign(window.location, { pathname: '/agency', search: '?tool=%2Fseller%2Forders', replace })
+    Object.assign(window.location, { pathname: '/agency', search: '?tool=%2Fseller%2Fgroup-buy', replace })
     vi.spyOn(window.history, 'replaceState').mockImplementation(() => {})
   })
   async function mount() {
@@ -108,9 +108,16 @@ describe('③ 콘솔이 여는 규칙 — 좌석을 새로 받지 않는다', ()
   it('이 직원의 그 매장 좌석이면 그 매장을 고르고 시트를 연다', async () => {
     localStorage.setItem('seller_token', jwt({ seller_id: 402, agency_staff_id: 7 }))
     await mount()
-    await waitFor(() => expect(screen.getByTestId('tool-sheet').textContent).toBe('/seller/orders'))
+    await waitFor(() => expect(screen.getByTestId('tool-sheet').textContent).toBe('/seller/group-buy'))
     expect(replace).not.toHaveBeenCalled()
     expect(localStorage.getItem('agency_console_store')).toBe('402')
+  })
+  it('🤝 매장 전체 화면(주문)을 가리키는 깊은 링크는 판만 연다 — 에이전시는 자기 이용권만(2026-10-24)', async () => {
+    Object.assign(window.location, { search: '?tool=%2Fseller%2Forders' })
+    localStorage.setItem('seller_token', jwt({ seller_id: 402, agency_staff_id: 7 }))
+    await mount()
+    await waitFor(() => expect(localStorage.getItem('agency_console_store')).toBe('402'))
+    expect(screen.queryByTestId('tool-sheet')).toBeNull()
   })
   it('🔴 다른 직원의 좌석이면 열지 않고 말한다 — 대시보드로 되돌리지 않는다(대시보드는 없다)', async () => {
     localStorage.setItem('seller_token', jwt({ seller_id: 402, agency_staff_id: 8 }))
@@ -136,11 +143,13 @@ describe('④ 배선', () => {
     const lib = stripComments(readFileSync('src/lib/seller-deep-link.ts', 'utf-8'))
     expect(lib).toContain('return toolRedirect(isAgencyWorker() ? AGENCY_CONSOLE_PATH : MY_PATH, pathname, search)')
   })
-  it('콘솔 도구는 전부 시트 — 계산대만 전체화면(대시보드 전체화면 goFull 은 없다)', () => {
+  it('콘솔 도구는 전부 시트(대시보드 전체화면 goFull 은 없다)', () => {
     const src = stripComments(readFileSync('src/pages/agency-console/AgencyStorePlate.tsx', 'utf-8'))
     expect(src).not.toContain('goFull')
     expect(src).not.toContain('dashboardFallback')
-    expect(src).toContain("if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }")
+    // 🤝 2026-10-24 — 전체 도구 시트는 없다(매장 전체 도구라 에이전시에게 막힌다). 열리는 건 이용권 시트뿐.
+    expect(src).not.toContain('AllToolsSheet')
+    expect(src).toContain('<ToolPageSheet')
   })
   it('깊은 링크는 한 번만 쓴다 — 다른 매장 갔다 돌아와도 다시 안 열린다', () => {
     const src = stripComments(readFileSync('src/pages/agency-console/AgencyStoresPanel.tsx', 'utf-8'))

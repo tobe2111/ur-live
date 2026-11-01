@@ -9,6 +9,10 @@ import { PinIcon } from '@/components/icons/urdeal-icons'
  * *"무엇을 파는지 / 얼마나 좋은지"* 는 스크롤해야 나왔다. 그루폰은 반대다 — 제목·별점·위치가
  * 사진 **위**에 있고 사진은 그 근거로 따라온다. 대표가 1안을 고른 이유가 이것이다.
  *
+ * ## 🔁 2026-10-31 사진 **아래**로 (대표 — 여기어때 화면: *"이용권 이름을 사진 밑으로 배치하는게 좋겠어"*)
+ * 위 '사진 위로 올린 이유'(2026-08-19 그루폰 1안)를 대체한다. 이제 좌측 열 안에서 갤러리 **바로 다음**에
+ * 그려진다 — 폰(사진 → 이름)과 같은 순서다. 그래서 바깥 폭(`max-w-[1200px] mx-auto`)을 안 갖는다(열 폭을 따른다).
+ *
  * ## 모바일은 왜 안 바꾸나
  * 세로 화면에서는 사진이 먼저 오는 게 자연스럽고(썸네일→상세의 시각적 연결), 제목은 바로 아래
  * 한 스크롤 안에 들어온다. PC 만 폭이 남아서 생기던 문제였다. ⇒ 이 컴포넌트는 `hidden lg:block`.
@@ -33,21 +37,21 @@ export default function DetailTitleHeader({
 }) {
   const hasRating = Number(rating) > 0
   return (
-    <header className="hidden lg:block lg:max-w-[1200px] lg:mx-auto lg:pt-6 lg:pb-3">
+    <header className="hidden lg:block lg:pt-6 lg:pb-2">
       {storeName && (
-        <div className="text-[12px] font-bold tracking-[.01em] text-brand">
+        <div className="text-[12px] font-medium tracking-[.01em] text-brand">
           {storeName} · 정식 등록 매장
           {onnuri && (
-            <span className="ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle">온누리 사용 가능</span>
+            <span className="ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-medium align-middle">온누리 사용 가능</span>
           )}
         </div>
       )}
-      <h1 className="mt-2 text-[28px] leading-[1.24] font-black tracking-[-.028em] text-gray-900 dark:text-white">{name}</h1>
+      <h1 className="mt-2 text-[24px] leading-[1.3] font-bold tracking-[-.02em] text-gray-900 dark:text-white">{name}</h1>
       <div className="mt-2 flex items-center gap-2 flex-wrap text-[13px] text-gray-500 dark:text-gray-400">
         {hasRating && (
           <span className="inline-flex items-center gap-2">
             <StarRating value={Number(rating)} size={15} />
-            <b className="font-extrabold text-gray-900 dark:text-white">{Number(rating).toFixed(1)}</b>
+            <b className="font-bold text-gray-900 dark:text-white">{Number(rating).toFixed(1)}</b>
             {Number(reviewCount) > 0 && <span className="text-gray-400 dark:text-gray-500">({reviewCount})</span>}
           </span>
         )}
@@ -59,7 +63,7 @@ export default function DetailTitleHeader({
           </span>
         )}
         {phone && (
-          <a href={`tel:${phone}`} className="font-semibold no-underline text-gray-700 dark:text-gray-200 border-b border-line">{phone}</a>
+          <a href={`tel:${phone}`} className="font-medium no-underline text-gray-700 dark:text-gray-200 border-b border-line">{phone}</a>
         )}
       </div>
     </header>

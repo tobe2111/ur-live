@@ -1,3 +1,4 @@
+import { DEAL_ROW } from '@/shared/deal-card-grid'
 /**
  * 🧱 이용권 카드 자리 — **진짜 카드(`GroupBuyFeedCard`)와 같은 줄 구조**로 세운다 (2026-10-14).
  *
@@ -15,15 +16,17 @@
  */
 const BAR = 'rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none'
 
-export default function DealCardPlaceholder() {
+/** `row` = 2026-10-31 줄 목록(진짜 카드의 `row` 와 같은 `DEAL_ROW` 클래스). */
+export default function DealCardPlaceholder({ row = false }: { row?: boolean } = {}) {
+  const photo = <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
   return (
-    <div aria-hidden="true" className="flex flex-col">
-      <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
-      <div className="pt-2">
+    <div aria-hidden="true" className={row ? DEAL_ROW.link : 'flex flex-col'}>
+      {row ? <div className={DEAL_ROW.mediaBox}>{photo}</div> : photo}
+      <div className="pt-3">
         {/* 가게 */}
         <p className="flex text-[12px] leading-none mb-1"><span className={`${BAR} w-1/2`}>가</span></p>
         {/* 이름 — 두 줄(그리드는 두 장 중 긴 쪽에 맞춰지므로 두 줄이 흔한 높이다) */}
-        <p className="text-[13px] font-bold leading-tight">
+        <p className="text-[15px] font-medium leading-snug">
           <span className={`${BAR} block w-full`}>가</span>
           <span className={`${BAR} block w-2/3`}>가</span>
         </p>
@@ -32,11 +35,11 @@ export default function DealCardPlaceholder() {
         {/* 평점 */}
         <p className="flex mt-1 text-[12px]"><span className={`${BAR} w-1/3`}>가</span></p>
         {/* 정가·할인 */}
-        <div className="mt-1">
+        <div className="mt-2">
           <p className="flex leading-none"><span className={`${BAR} text-[12px] w-1/3`}>가</span></p>
         </div>
         {/* 판매가 */}
-        <p className="flex mt-1 leading-none"><span className={`${BAR} text-[17px] font-extrabold w-1/2`}>가</span></p>
+        <p className="flex mt-1 leading-none"><span className={`${BAR} text-[17px] font-bold w-1/2`}>가</span></p>
       </div>
     </div>
   )

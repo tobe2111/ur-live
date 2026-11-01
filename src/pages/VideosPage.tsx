@@ -407,7 +407,7 @@ export default function VideosPage() {
               <div className="truncate text-[12px] text-gray-500">{cur.store_name}</div>
             )}
             {cur.product_name && (
-              <div className="truncate text-[12px] font-semibold leading-tight">{cur.product_name}</div>
+              <div className="truncate text-[12px] font-medium leading-tight">{cur.product_name}</div>
             )}
             <div className="mt-[1px] flex items-baseline whitespace-nowrap text-[15px] font-bold tabular-nums">
               {pd.showOriginal && (
@@ -421,7 +421,7 @@ export default function VideosPage() {
           </div>
           <Link
             to={`/pass/${cur.product_id}`}
-            className="shrink-0 rounded-[10px] bg-brand px-[15px] py-[11px] text-[13px] font-bold text-white"
+            className="shrink-0 rounded-[10px] bg-brand px-[15px] py-[11px] text-[13px] font-medium text-white"
           >
             구매
           </Link>

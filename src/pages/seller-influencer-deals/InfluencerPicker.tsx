@@ -33,7 +33,7 @@ export interface PickerRow {
 }
 
 const CAT_LABEL: Record<string, string> = {
-  meal_voucher: '식사', beauty_voucher: '뷰티', stay_voucher: '숙박', etc_voucher: '기타',
+  meal_voucher: '식사', beauty_voucher: '뷰티', stay_voucher: '숙박', home_voucher: '생활', etc_voucher: '기타',
 }
 const KIND_LABEL: Record<string, string> = {
   instagram: '인스타', youtube: '유튜브', blog: '블로그', tiktok: '틱톡', other: '채널',

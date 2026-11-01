@@ -9,9 +9,15 @@
  * 아직 `agency_token` 을 쓰는 경로가 남아 있어 섞이면 서로를 지운다.
  */
 export const AGENCY_TOKEN_KEY = 'agency_console_token'
-const PROFILE_KEY = 'agency_console_profile'
+export const PROFILE_KEY = 'agency_console_profile'
+/** 카카오로 이은 로그인을 그 손님에게 묶는 자리 — 정본은 `lib/agency-presence.ts`. */
+import { AGENCY_KAKAO_UID_KEY } from '@/lib/agency-presence'
 
-export interface AgencyStaffInfo { id: number; email: string; name: string | null; role: 'admin' | 'staff'; isOwner: boolean }
+export interface AgencyStaffInfo {
+  id: number; email: string; name: string | null; role: 'admin' | 'staff'; isOwner: boolean
+  /** kakao = 카카오로 만든 혼자 쓰는 계정(2026-10-26) · email = 이메일 계정. 옛 캐시엔 없을 수 있다. */
+  loginKind?: 'kakao' | 'email'
+}
 export interface AgencyInfo { id: number; name: string; kind: 'business' | 'individual'; businessNumber?: string | null }
 export interface AgencyLoginPayload { token: string; expiresAt: number; staff: AgencyStaffInfo; agency: AgencyInfo }
 
@@ -57,8 +63,19 @@ export function readAgencyProfile(): { staff: AgencyStaffInfo; agency: AgencyInf
 
 export function clearAgencySession(): void {
   for (const s of stores()) {
-    try { s.removeItem(AGENCY_TOKEN_KEY); s.removeItem(PROFILE_KEY) } catch { /* 무시 */ }
+    try { s.removeItem(AGENCY_TOKEN_KEY); s.removeItem(PROFILE_KEY); s.removeItem(AGENCY_KAKAO_UID_KEY) } catch { /* 무시 */ }
   }
+}
+
+/**
+ * 🏠 2026-10-26 대표 확정 **안 A** — 에이전시 화면은 마이 안 '에이전시' 구역이다(`/agency` 는 마이로 보낸다).
+ *   마이의 `?tool=` 은 이미 사장님 판매 구역이 쓰므로, 에이전시 깊은 링크는 **다른 이름**(`atool`)으로 싣는다 —
+ *   같은 이름이면 사장님 판과 에이전시 판이 같은 화면을 동시에 열려고 다툰다.
+ */
+export const AGENCY_TOOL_PARAM = 'atool'
+export const AGENCY_MY_PATH = '/user/profile'
+export function agencyMyPath(tool: string | null | undefined): string {
+  return tool ? `${AGENCY_MY_PATH}?${AGENCY_TOOL_PARAM}=${encodeURIComponent(tool)}` : AGENCY_MY_PATH
 }
 
 /** 로그인 후 돌아갈 곳 — 콘솔 안쪽(`/agency` 아래)만 받는다. 밖으로 보내는 주소는 버린다. */

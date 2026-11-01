@@ -16,8 +16,8 @@ export default [
   {
     name: '🤖 라우트가 게이트를 안 넘긴다 (켜도 안내가 안 실린다)',
     file: 'src/worker/routes/sitemap.routes.ts',
-    find: 'const body = buildLlmsTxt(new URL(c.req.url).origin, { agentSearch })',
-    replace: 'const body = buildLlmsTxt(new URL(c.req.url).origin, { agentSearch: false && agentSearch })',
+    find: 'const body = buildLlmsTxt(new URL(c.req.url).origin, { agentSearch, agentCheckout })',
+    replace: 'const body = buildLlmsTxt(new URL(c.req.url).origin, { agentSearch: false && agentSearch, agentCheckout })',
     test: TEST,
     why: '창구를 켰는데 AI 가 주소를 모르는 상태 — 이 작업이 고친 바로 그 상태다.',
   },

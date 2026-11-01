@@ -17,7 +17,7 @@ import type { Env } from '@/worker/types/env'
 import { executeQuery, executeRun } from '@/worker/utils/database'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { rehostImageToR2 } from '@/worker/utils/rehost-image'
-import { healStayAmenities, healStayDescriptions } from './admin-stays/heal-stay-descriptions'; import { propertyTypeDesc } from '../../../shared/stay-property-type' // 한 줄: 파일크기 래칫 안
+import { healStayAmenities, healStayDescriptions } from './admin-stays/heal-stay-descriptions'; import { propertyTypeDesc } from '../../../shared/stay-property-type'; import { findExistingStay, mergeDuplicateDemoStays } from './admin-stays/dedupe-demo-stays' // 한 줄: 파일크기 래칫 안
 
 // 🛡️ 2026-07-20: 데모 숙소 시드가 kakaoPlaceLookup / fetchNaverImageUrl(전체 Env 기대)를
 //   호출하는데 로컬 Bindings 가 { DB, JWT_SECRET } 로 좁아 c.env 타입 불일치(배포 차단 TS2345/2559).
@@ -339,7 +339,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
     //   ② 네이버 실사진(fetchNaverImageUrl — 매장명 우선, 실패 시 "{지역} {유형}" 일반 검색, 최후 picsum).
     //   실숙소 못 찾으면 skip(지어내지 않음 — 동네딜과 동일 규칙). ⚠️ 외부호출 한도 → 클라가 6개씩 청크.
     const { kakaoPlaceLookup } = await import('./admin-products.routes')
-    const { fetchDemoPhotos } = await import('../../../worker/utils/demo-photo-set')
+    const { fetchDemoPhotos, DEMO_MIN_PHOTOS } = await import('../../../worker/utils/demo-photo-set')
     // 🛡️ 이 파일의 로컬 Bindings 타입은 최소(DB/JWT)만 선언 — 런타임 c.env 엔 KAKAO/NAVER 키가 실재
     //   (같은 워커, admin-products 시드가 동일 키 사용). 헬퍼 파라미터 타입으로 1회 캐스팅.
     const extEnv = c.env as unknown as { KAKAO_REST_API_KEY?: string } & Parameters<typeof fetchDemoPhotos>[0]
@@ -381,7 +381,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       }
     } catch { /* restaurant_lat 컬럼 미존재 환경 등 — 치유는 best-effort, 시드 진행 */ }
     // 🏨 시설 백필 — 옛 데모의 시설 3개를 업종별 풍부 세트로. 상세: heal-stay-descriptions.ts
-    const amenityHealed = await healStayAmenities(DB as never, STAY_AMENITIES)
+    const amenityHealed = await healStayAmenities(DB as never, STAY_AMENITIES); const merged = await mergeDuplicateDemoStays(DB as never) // 🏨 같은 숙소로 갈라진 데모 합치기(dedupe-demo-stays.ts)
 
     // 📝 소개 문구 백필 — 옛 조립 문장("강릉의 호텔 — 접근성 좋은 호텔 — …")을 고친다.
     //   시드만 고치면 라이브는 안 바뀐다(INSERT 경로뿐이라). 상세: heal-stay-descriptions.ts
@@ -419,7 +419,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
             placeId: placeRef,
             nameQuery: row.restaurant_name,
             address: row.addr,  // 🖼️ 네이버 지도 대표사진 검색 정확도
-            count: 3 + Math.floor(Math.random() * 3),
+            count: 3 + Math.floor(Math.random() * 3), category: 'stay_voucher',
           }).catch(() => [] as string[])
           if (imgs.length === 0) continue
           // 대표가 placeholder(picsum/없음)면 실사진 1번째로 교체, 실사진이면 유지하고 갤러리에 병합.
@@ -438,10 +438,8 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       // ① 실숙소 매칭 — 스팟 좌표 반경 20km 거리순 + 랜덤 후보(같은 지역 재시드에도 다른 실숙소).
       const place = await kakaoPlaceLookup(extEnv, `${spot.label} ${ty.kakao}`, -1, { x: String(spot.lng), y: String(spot.lat) })
       if (!place?.name || place.lat == null || place.lng == null) { skipped++; continue }
-      // 같은 실숙소 중복 시드 방지(이름 정확일치).
-      const dup = await DB.prepare(`SELECT id FROM products WHERE category = 'stay_voucher' AND name = ? LIMIT 1`)
-        .bind(place.name).first<{ id: number }>().catch(() => null)
-      if (dup?.id) { skipped++; continue }
+      // 같은 실숙소 중복 시드 방지 — 숙소명은 restaurant_name 에 있다(dedupe-demo-stays.ts 머리말).
+      if (await findExistingStay(DB as never, place.name)) { skipped++; continue }
       n++
       const slug = `demo-stay-${n}`
       // ② 실사진 3~5장(랜덤 — 2026-07-20 대표 "사진 3~5장, 랜덤으로" + "카카오 플레이스 사진도 함께"):
@@ -453,11 +451,11 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         nameQuery: place.name,
         address: place.address || spot.addr,  // 🖼️ 네이버 지도 대표사진 검색 정확도
         fallbackQuery: `${spot.label} ${ty.kakao}`,
-        count: wantPhotos,
+        count: wantPhotos, category: 'stay_voucher',
       }).catch(() => [] as string[])
       if (imgs.length) realPhotos++
       // 🚫 2026-08-08 대표 "사진 없으면 자체가 안올려져야지" — picsum 더미 폴백 폐기. 사유: 동명 테스트.
-      if (imgs.length === 0) { skippedNoPhoto++; continue }
+      if (imgs.length < DEMO_MIN_PHOTOS) { skippedNoPhoto++; continue }  // 📸 2026-10-27 발행 때 사진 3장 보장
       // 🩹 2026-07-21 전수조사 #2: 숙소 커버도 R2 재호스팅(동네딜 시드와 대칭 — 숙소는 그간 커버를
       //   raw 외부 URL 로만 저장해 네이버 핫링크/삭제 시 카드에서 깨졌음). MEDIA_BUCKET 있으면 /api/media,
       //   없으면 null → 원본 폴백(현행과 동일). 커버 1장만(서브리퀘스트 예산 — 갤러리는 cron 이관).
@@ -606,7 +604,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(run); else await run
       }
     } catch { /* best-effort — 리뷰 실패가 시드를 막지 않음 */ }
-    return c.json({ success: true, data: { created, skipped, realPhotos, skippedNoPhoto, healed, amenityHealed, descHealed, photoHealed, varied, reviewed, requested: count, region: regionQ || null } })
+    return c.json({ success: true, data: { created, skipped, realPhotos, skippedNoPhoto, healed, amenityHealed, merged, descHealed, photoHealed, varied, reviewed, requested: count, region: regionQ || null } })
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
   }

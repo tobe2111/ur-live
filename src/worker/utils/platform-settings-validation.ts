@@ -107,6 +107,12 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   // 💸 2026-09-19 중개사 몫 직접 송금(결재 2026-09-16 안 1) — read-site: broker-share.ts creditBrokerShare.
   //   기본 OFF = 중개사는 장부 밖(2026-09-04 규칙). 켜기 전 STAGING S-BROKER 실결제.
   broker_share_enabled: boolStr,
+  // 🏠 2026-10-24 생활 견적 — read-site: features/home-service/api/home-service-pro.routes.ts · home-service.routes.ts
+  home_service_charge_enabled: boolStr,
+  seeding_pass_charge_enabled: boolStr,
+  seeding_auto_send_to_store: boolStr,
+  home_service_quotes_disabled: boolStr,
+  home_service_packages: optionalText(2000), // JSON 묶음 — 형식이 틀리면 읽는 쪽(parseCreditPackages)이 기본 묶음으로 떨어진다
   // 🏷️ 2026-10-18 브랜드 3단계(결재 2026-10-18-franchise-cross-owner-redeem) — read-site: brand-cross-owner.ts.
   //   OFF = 같은 주인 지점만(1·2단계). 켜면 "다른 점주 이용권 받기"를 켠 가맹점도 받고 정산은 쓴 지점. 켜기 전 S-BRANDX.
   brand_cross_owner_redeem_enabled: boolStr,
@@ -147,6 +153,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   review_request_enabled: boolStr,             // cron/review-request.ts (2026-10-18)
   seller_docs_nudge_enabled: boolStr,          // cron/seller-docs-nudge.ts (2026-10-18)
   agent_search_enabled: boolStr,               // routes/agent-search.routes.ts (2026-10-19)
+  agent_checkout_enabled: boolStr,             // routes/agent-search.routes.ts /checkout (2026-10-20)
   // 🕐 2026-09-21: 노출 유예(시간). 읽는 쪽(`getExposureGraceHours`)이 0 이하를 '유예 없음' 으로,
   //   168 초과를 168 로 클램프하므로 검증도 같은 범위로 맞춘다 — 화면이 받은 값과 코드가 쓰는 값이 갈리면
   //   "넣었는데 안 걸린다" 가 된다.

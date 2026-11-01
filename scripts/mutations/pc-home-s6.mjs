@@ -44,8 +44,8 @@ export default [
   {
     name: '🧩 피드가 필터를 받고도 안 거른다',
     file: FEED,
-    find: '.filter(p => passesFeedFilters(p, filters, userLoc))',
-    replace: '',
+    find: '.filter(p => passesFeedFilters(p, filters, userLoc) && life.keep(p))',
+    replace: '.filter(p => life.keep(p))',
     test: GUARD,
     why: '배선만 있고 판정이 빠진 경우 — 같은 증상.',
   },
