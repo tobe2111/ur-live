@@ -30,6 +30,7 @@ import { recordLedger, sellerLedgerAccount } from './ledger'
 import { getSellerMeta, setSellerMeta } from './seller-meta'
 import { canOperateStore } from './seller-operators'
 import { DEAL_PCT_MAX } from '../../features/group-buy/api/commission-rates'
+import { creditAgencyShare } from './agency-share-payout'
 
 export const BROKER_META = {
   userId: 'broker_user_id',
@@ -176,6 +177,10 @@ export interface CreditBrokerShareInput {
  */
 export async function creditBrokerShare(DB: D1Database, p: CreditBrokerShareInput): Promise<{ credited: number; brokerUserId: number | null }> {
   try {
+    // 🤝 2026-11-01: 에이전시가 맡은 이용권이면 에이전시 몫이 먼저다(게이트 `agency_share_payout_enabled`, 기본 OFF).
+    //   한 판매에서 매장 몫을 두 번 떼지 않도록, 에이전시 판매로 판정되면 옛 중개사 몫은 붙이지 않는다.
+    const ag = await creditAgencyShare(DB, p)
+    if (ag.matched) return { credited: 0, brokerUserId: null }
     if (!(await isBrokerShareEnabled(DB))) return { credited: 0, brokerUserId: null }
     if (!Number.isFinite(p.orderId) || p.orderId <= 0) return { credited: 0, brokerUserId: null }
     const terms = await readBrokerTerms(DB, p.sellerId)

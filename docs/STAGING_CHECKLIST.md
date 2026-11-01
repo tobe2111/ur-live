@@ -392,6 +392,24 @@ S3 `order:N`(✅ `order-ledger-credit.ts` 와 일치) · S5 `voucher:{id}` · S6
 
 상태: ⬜ 미검증 (2026-09-19 배선). 통과 전 프로덕션 ON 금지.
 
+## 🤝 S-AGENCYSHARE — 에이전시 몫 유어딜 지급 (2026-11-01)
+
+**S-AGENCYSHARE** — 결재 `docs/decisions/2026-10-11-agency-model-email-only.md` 3단계(대표 *"4번 승인도 해줄게"* +
+2026-11-01 "지금 만들고 꺼 두기"). 게이트 `platform_settings.agency_share_payout_enabled`(기본 `false`) ·
+SSOT `src/worker/utils/agency-share-payout.ts` · 적립은 `creditBrokerShare` 안에서 먼저(호출 2곳 무수정) ·
+회수 `voucher-clawback.ts` · 화면 API `/api/agency-console/payouts` · 어드민 `/api/admin/agency-payouts`. **켜는 것은 대표 판단.**
+
+| ID | 시나리오 | 통과 기준 |
+|---|---|---|
+| S-AGENCYSHARE-1 | 에이전시가 맡은 이용권(몫 10%) **카드** 결제 1건(10,000원) | `agency_share_credits` **1행**(1,000원) · 원장 `agency_share` debit=`seller:{id}` credit=`agency:{id}` |
+| S-AGENCYSHARE-2 | 옛 중개 매장을 이전한 뒤 결제 1건(broker_share_enabled 도 ON) | 에이전시 행 1개 · `broker_share` 행 **0**(매장 몫을 두 번 떼지 않는다) |
+| S-AGENCYSHARE-3 | S-AGENCYSHARE-1 주문 환불 | 그 행 `clawed_back`·amount 0 · 원장 `agency_share_reversal` 1건(같은 금액, 반대 방향) |
+| S-AGENCYSHARE-4 | 그 에이전시 직원의 소개 링크(`?ref=`)로 결제 | 에이전시 몫만 · 소개비(`influencer_attributions`) 0 (규칙 1) |
+| S-AGENCYSHARE-5 | 성숙 뒤 지급 신청 → 어드민 지급 처리 (사업자 1 · 개인 1) | 사업자 = 공제 0(`tax_invoice`) · 개인 = 3.3% 공제(`withholding_3_3`) · 행 `paid` |
+| S-AGENCYSHARE-6 | 게이트 OFF 복귀 후 결제 1건 | `agency_share_credits` 행 0 — 종전과 동일 |
+
+상태: ⬜ 미검증 (2026-11-01 배선). 통과 전 프로덕션 ON 금지.
+
 ## 🏷️ S-BRANDX — 가맹점 간 이용권 사용 + 쓴 지점 정산 (2026-10-18)
 
 **S-BRANDX** — 결재 `docs/decisions/2026-10-18-franchise-cross-owner-redeem.md`(대표 "결재해줄게" + ①②③ 권장안).

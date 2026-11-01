@@ -12,7 +12,7 @@ import { Hono } from 'hono'; import { getCookie } from 'hono/cookie'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'; import { transactionalMailReady } from '@/lib/ncp-sens-mail' // 📮 메일 수단 판정(Resend 또는 SENS)
-import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'; import { creditBrokerShare } from '@/worker/utils/broker-share' // 💸 2026-09-19 중개사 몫(게이트 OFF=no-op)
+import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'; import { creditBrokerShare } from '@/worker/utils/broker-share'; import { isOwnAgencyReferral } from '@/worker/utils/agency-share-payout' // 💸 2026-09-19 중개사 몫(게이트 OFF=no-op)
 import { purchaseCreditFields } from '@/worker/utils/payout-account' // 💸 2026-10-01 구매 적립 escrow 경유(이중적립 제거)
 import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
 import { swallow } from '@/worker/utils/swallow'
@@ -462,6 +462,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       ).bind(product.seller_id).first<{ marketing_enabled: number; referred_by_influencer: string | null; referral_bonus_until: string | null }>().catch(() => null)
       const productReferralDisabled = Number((product as { referral_disabled?: number }).referral_disabled) === 1
       influencerActive = !blocked && Number(sellerRow?.marketing_enabled ?? 1) === 1 && !productReferralDisabled
+        && !(await isOwnAgencyReferral(DB, referralInfluencerId, Number(product.seller_id), Number(productId))) // 🤝 규칙 1
 
       if (influencerActive) {
         // 🛡️ 2026-05-16: 영입 보너스 + 협업 deal cap 종합 계산
