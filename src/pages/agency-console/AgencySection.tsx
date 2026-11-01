@@ -8,6 +8,7 @@ import { AgencyInfoPanel } from './AgencyInfoPanel'
 import { AgencyMoveToEmailSheet } from './AgencyMoveToEmailSheet'
 import { agencyStaffLoginLabel } from '@/shared/agency-kakao'
 import { AgencyStoresPanel, FlatRow } from './AgencyStoresPanel'
+import AgencyPayoutSheet, { payoutRowHint, type AgencyPayoutsResponse } from './AgencyPayoutSheet'
 import {
   AGENCY_TOOL_PARAM, agencyRequest, clearAgencySession, readAgencyProfile,
   type AgencyInfo, type AgencyStaffInfo,
@@ -38,19 +39,23 @@ export default function AgencySection({ stacked = false, headless = false, onSes
   const [staff, setStaff] = useState<StaffRow[] | null>(null)
   const [canManage, setCanManage] = useState(cached?.staff.role === 'admin')
   const [loadError, setLoadError] = useState('')
-  const [sheet, setSheet] = useState<'staff' | 'info' | 'move' | null>(null)
+  const [sheet, setSheet] = useState<'staff' | 'info' | 'move' | 'payout' | null>(null)
+  // 💸 유어딜 지급(결재 3단계) — 꺼져 있으면 '정산' 줄을 안 그린다. 조회 실패도 줄을 숨긴다(없는 길을 안 보인다).
+  const [payouts, setPayouts] = useState<AgencyPayoutsResponse | null>(null)
 
   const load = useCallback(async () => {
     setLoadError('')
-    const [m, s] = await Promise.all([
+    const [m, s, p] = await Promise.all([
       agencyRequest<{ staff: AgencyStaffInfo; agency: AgencyInfo }>('/me'),
       agencyRequest<{ staff: StaffRow[]; canManage: boolean }>('/staff'),
+      agencyRequest<AgencyPayoutsResponse>('/payouts'),
     ])
     if (m.status === 401 || s.status === 401) { onSessionEnd('expired'); return }
     if (!m.ok || !s.ok) { setLoadError(m.data.error || s.data.error || '불러오지 못했어요.'); return }
     setMe({ staff: m.data.staff, agency: m.data.agency })
     setStaff(s.data.staff)
     setCanManage(!!s.data.canManage)
+    setPayouts(p.ok ? p.data : null)
   }, [onSessionEnd])
 
   useEffect(() => { void load() }, [load])
@@ -89,6 +94,7 @@ export default function AgencySection({ stacked = false, headless = false, onSes
             toolParam={AGENCY_TOOL_PARAM}
             agencyRows={(
               <>
+                {payouts?.enabled && <FlatRow label="정산" hint={payoutRowHint(payouts)} urgent={(payouts.balance?.available ?? 0) > 0} onClick={() => setSheet('payout')} />}
                 <FlatRow label="직원" hint={staff ? `${staff.length}명` : undefined} onClick={() => setSheet('staff')} />
                 {canManage && <FlatRow label="에이전시 정보" onClick={() => setSheet('info')} />}
                 {canMove && <FlatRow label="이메일 계정으로 옮기기" hint="직원과 함께 쓰기" onClick={() => setSheet('move')} />}
@@ -106,6 +112,9 @@ export default function AgencySection({ stacked = false, headless = false, onSes
               onMove={canMove ? () => setSheet('move') : undefined} />
           </div>
         </Sheet>
+      )}
+      {sheet === 'payout' && payouts?.enabled && (
+        <AgencyPayoutSheet canManage={canManage} initial={payouts} onChanged={setPayouts} onClose={() => setSheet(null)} />
       )}
       {sheet === 'move' && canMove && (
         <Sheet title="이메일 계정으로 옮기기" onClose={() => setSheet(null)}>
