@@ -69,6 +69,7 @@ function Device({ screen, className = '' }: { screen: DeviceScreen; className?: 
     const v = ref.current
     if (!v || prefersReducedMotion() || typeof IntersectionObserver === 'undefined') return
     const io = new IntersectionObserver(([e]) => {
+      // intentional: 자동 재생을 막은 브라우저(저전력 모드 등)는 포스터가 그대로 보인다 — 오류가 아니다
       if (e.isIntersecting) { v.play().catch(() => {}) } else v.pause()
     }, { threshold: 0.2 })
     io.observe(v)
