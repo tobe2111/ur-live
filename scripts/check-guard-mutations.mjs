@@ -3313,7 +3313,7 @@ canvas {
   {
     name: '홈 카드 preload 가 렌더와 다른 URL 을 만든다(같은 사진을 두 번 받는다)',
     file: 'src/components/home/HomeSections.tsx',
-    find: 'const cardImgWidth = isLgViewport ? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE',
+    find: 'const cardImgWidth = homeCardImgWidth(isLgViewport, isRowViewport, !rail)',
     replace: 'const cardImgWidth = isLgViewport ? 480 : 240',
     test: 'src/tests/unit/home-card-preload.test.ts',
     why:
