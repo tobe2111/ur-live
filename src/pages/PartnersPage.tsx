@@ -46,6 +46,7 @@ import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 import PartnerHero from './partners/PartnerHero'
+import PartnerShowcase from './partners/PartnerShowcase'
 import PartnerBenefits from './partners/PartnerBenefits'
 import PartnerCompare from './partners/PartnerCompare'
 import PartnerMath from './partners/PartnerMath'
@@ -54,10 +55,13 @@ import PartnerTools from './partners/PartnerTools'
 import PartnerPaths from './partners/PartnerPaths'
 import PartnerFaq from './partners/PartnerFaq'
 import { Reveal, ScrollProgress } from './landing/motion'
+import { useLandingFont } from './landing/premium'
 
 export default function PartnersPage() {
+  // 💎 2026-11-01 고급화 ⑥ — 제목 전용 글꼴(명조)을 이 페이지에서만 받는다
+  useLandingFont()
   return (
-    <div className="min-h-[100dvh] bg-warm">
+    <div className="min-h-[100dvh] bg-warm ur-landing-type overflow-x-clip">
       {/* 🔎 문구 SSOT = shared/seo/consumer-surfaces (워커가 주입하는 서버 메타와 같은 값) */}
       <SEO title={CONSUMER_SURFACE_SEO['/partners'].title} description={CONSUMER_SURFACE_SEO['/partners'].description} url="/partners" />
 
@@ -81,6 +85,7 @@ export default function PartnersPage() {
 
       <main className="pb-24 lg:pb-0">
         <PartnerHero />
+        <PartnerShowcase />
         <PartnerBenefits />
         <PartnerCompare />
         <PartnerMath />
