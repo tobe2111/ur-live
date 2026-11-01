@@ -29,7 +29,7 @@ export default [
   {
     name: '컨텍스트예산 — 측정 0건을 통과로 읽는다(헛도는 가드)',
     file: G,
-    find: 'if (measured < 5) {',
+    find: 'if (checked < 5) {',
     replace: 'if (false) {',
     test: T,
     why: '경로가 낡아 측정 대상이 비면 초록이 뜬다. 이 레포가 반복해 당한 "가드가 실패할 수 없음" 클래스.',

@@ -132,7 +132,11 @@ function allDocs() {
 }
 
 const violations = []
-let measured = 0
+// ⚠️ 이름이 `checked` 인 것은 취향이 아니다 — `check-guard-selfcheck` 가 "측정 0 = 실패"
+//   선언을 **정해진 어휘**(`length|size|count|total|scanned|checked|files|targets|entries|rows`)로만
+//   인정한다. 처음 `measured` 로 썼더니 **선언이 있는데도 미선언으로 잡혀** push 가 막혔다
+//   (그 가드 자신이 주석에 적어 둔 알려진 한계다). 바꾸려면 그 어휘 안에서 고를 것.
+let checked = 0
 
 // ── ① 예산 ─────────────────────────────────────────────────────────
 for (const b of BUDGETS) {
@@ -145,7 +149,7 @@ for (const b of BUDGETS) {
   // 생성물(사이드카)은 없을 수 있다 — 그건 위반이 아니다.
   if (!present.length) continue
   if (present.every(exempt)) continue
-  measured += present.length
+  checked += present.length
   const total = present.reduce((s, f) => s + tokensOf(readFileSync(f, 'utf8')), 0)
   const pct = Math.round((total / b.limit) * 100)
   const line = `${b.label}: ${total.toLocaleString()} / ${b.limit.toLocaleString()} 토큰 (${pct}%)`
@@ -162,7 +166,7 @@ for (const f of allDocs()) {
   const t = readFileSync(f, 'utf8')
   const tk = tokensOf(t)
   if (tk <= LANDMINE_TOKENS) continue
-  measured++
+  checked++
   if (exempt(f)) continue
   const head = t.split('\n').slice(0, 30).join('\n')
   if (!LANDMINE_HINTS.some((h) => head.includes(h))) landmines.push({ f, tk })
@@ -170,13 +174,13 @@ for (const f of allDocs()) {
 
 // ── ③ 측정 대상 0건은 통과가 아니라 실패 ──────────────────────────
 //    (이 레포가 반복해 당한 "헛도는 가드" 클래스 — 경로가 낡아 조용히 비는 것을 막는다.)
-if (measured < 5) {
-  console.error(`❌ context-budget: 측정 대상이 ${measured}건뿐이다 — 경로가 낡아 가드가 헛돌고 있다.`)
+if (checked < 5) {
+  console.error(`❌ context-budget: 측정 대상이 ${checked}건뿐이다 — 경로가 낡아 가드가 헛돌고 있다.`)
   process.exit(1)
 }
 
 if (!violations.length && !landmines.length) {
-  console.log(`✅ context-budget: 세션 컨텍스트 예산 통과 (측정 ${measured}건).`)
+  console.log(`✅ context-budget: 세션 컨텍스트 예산 통과 (측정 ${checked}건).`)
   process.exit(0)
 }
 
