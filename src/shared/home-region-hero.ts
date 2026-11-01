@@ -64,6 +64,6 @@ export function regionHeroFor(input: { regionKey?: string | null; loc?: { lat: n
  * 다크: 같은 사진 위에 어두운 막을 얹고 아래로 다크 바탕색(`--bg`)으로 녹인다(글자는 흰색 — 테마 그대로).
  */
 export const REGION_HERO_FADE_LIGHT =
-  'linear-gradient(90deg,rgba(255,255,255,.55),rgba(255,255,255,0) 50%),linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 28%,rgba(255,255,255,0) 52%,rgba(255,255,255,.8) 82%,white)'
+  'linear-gradient(90deg,rgba(255,255,255,.72),rgba(255,255,255,.35) 30%,rgba(255,255,255,0) 58%),linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 28%,rgba(255,255,255,0) 52%,rgba(255,255,255,.8) 82%,white)'
 export const REGION_HERO_FADE_DARK =
   'linear-gradient(180deg,rgba(17,20,28,.55),rgba(17,20,28,.35) 40%,rgba(17,20,28,.72) 75%,var(--bg))'
