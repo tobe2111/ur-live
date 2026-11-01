@@ -24,7 +24,7 @@ export const EMBED_MAX_COUNT = 12
 export const EMBED_DEFAULT_COUNT = 8
 
 /** 붙이는 쪽에 권하는 iframe 높이(px). 위젯 높이는 내용과 무관하게 고정이라 이 값으로 충분하다. */
-export const EMBED_HEIGHT: Record<'strip' | 'single' | 'partner', number> = { strip: 330, single: 172, partner: 400 }
+export const EMBED_HEIGHT: Record<'strip' | 'single' | 'partner', number> = { strip: 330, single: 172, partner: 360 }
 
 export interface EmbedParams { count: number; theme: EmbedTheme }
 
@@ -98,8 +98,8 @@ function won(n: number): string {
   return `${String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}원`
 }
 
-const LIGHT = '--tint:#E8F0FE;--bg:#FFFFFF;--card:#FFFFFF;--ink:#16181C;--soft:#666C72;--faint:#81868C;--rule:rgba(22,24,28,.08);--brand:#1C69EF;--sale:#DC2626;--ph:#EDEFF3'
-const DARK = '--tint:#1B2A48;--bg:#11141C;--card:#1D1F29;--ink:#F8F7FC;--soft:#9FA3A8;--faint:#6F747A;--rule:rgba(255,255,255,.08);--brand:#4D8DF5;--sale:#FF5C69;--ph:#262A33'
+const LIGHT = '--tint:#E8F0FE;--bg:#FFFFFF;--card:#FFFFFF;--ink:#16181C;--soft:#666C72;--faint:#81868C;--rule:rgba(22,24,28,.08);--brand:#1C69EF;--sale:#DC2626;--ph:#EDEFF3;--pbg:#F8F7FC;--lift:0 2px 10px rgba(22,24,28,.06);--glow:0 2px 10px rgba(28,105,239,.28)'
+const DARK = '--tint:#1B2A48;--bg:#11141C;--card:#1D1F29;--ink:#F8F7FC;--soft:#9FA3A8;--faint:#6F747A;--rule:rgba(255,255,255,.08);--brand:#4D8DF5;--sale:#FF5C69;--ph:#262A33;--pbg:#11141C;--lift:none;--glow:none'
 
 function themeCss(theme: EmbedTheme): string {
   if (theme === 'dark') return `:root{${DARK};color-scheme:dark}`
@@ -115,6 +115,10 @@ a{color:inherit;text-decoration:none}
 .logo i{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--brand);margin-left:1px}
 .tt{flex:1;min-width:0;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .more{flex:none;font-size:13px;font-weight:500;color:var(--brand)}
+.sep{flex:none;width:1px;height:14px;background:var(--rule)}
+.meta{flex:none;font-size:12px;color:var(--faint)}
+/* 회사 간판으로 읽히게 머리띠를 선으로 끊는다 — brand 를 준 위젯(에이전시)에만 붙는다. */
+.hd.co{padding-bottom:12px;border-bottom:1px solid var(--rule)}
 .row{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;scrollbar-width:thin}
 .c{flex:none;width:156px;scroll-snap-align:start;display:flex;flex-direction:column;gap:3px}
 .ph{width:156px;height:156px;border-radius:12px;background:var(--ph);overflow:hidden}
@@ -131,25 +135,32 @@ a{color:inherit;text-decoration:none}
 .one .nm{font-size:15px;min-height:0}
 .one .go{align-self:flex-start;margin-top:6px;background:var(--brand);color:#fff;font-size:13px;font-weight:700;padding:7px 14px;border-radius:999px}
 .one .logo{font-size:13px}
-.tk{margin:10px;border-radius:18px;overflow:hidden;word-break:keep-all;background:var(--card);box-shadow:0 2px 14px rgba(22,24,28,.08)}
-.tk .band{background:#1C69EF;color:#fff;padding:18px 20px 22px}
-.tk .band .hd{font-size:12px}.tk .band .logo{color:#fff}.tk .band .logo i{background:#fff}
-.tk .band .x{opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.tk h1{margin:12px 0 0;font-size:24px;line-height:1.3;font-weight:700;letter-spacing:-.02em}
-.tk .band p{margin:6px 0 0;font-size:13px;line-height:1.5;opacity:.92}
-.tk .perf{height:0;border-top:2px dashed var(--tint);margin:0 14px;position:relative}
-.tk .perf::before,.tk .perf::after{content:'';position:absolute;top:-9px;width:18px;height:18px;border-radius:50%;background:var(--bg)}
-.tk .perf::before{left:-23px}.tk .perf::after{right:-23px}
-.tk .body{padding:16px 20px 20px;display:flex;flex-direction:column;gap:14px}
-.tk .cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.tk .col{border-radius:12px;padding:12px;font-size:13px;line-height:1.55;min-width:0}
-.tk .col b{display:block;font-size:12px;font-weight:700;margin-bottom:6px}
-.tk .col span{display:block}
-.tk .old{background:var(--ph);color:var(--faint)}.tk .old b{color:var(--soft)}
-.tk .new{background:var(--tint);color:var(--ink)}.tk .new b{color:var(--brand)}
-.tk .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.tk .foot small{font-size:12px;color:var(--faint)}
-.tk .go{background:#1C69EF;color:#fff;font-size:15px;font-weight:700;padding:12px 20px;border-radius:12px}`
+/* 🤝 제휴사 입점 위젯 — 2026-11-01 대표 확정 시안 B "나란히 선 두 브랜드".
+   앞선 시안 A(파란 띠 + 절취선 + 회색/연파랑 비교 박스)를 대체한다. 바꾼 이유 셋:
+   ① 통짜 파란 면이 화면 1/3 을 덮어 전단지로 읽혔다 ② 비교 두 칸이 색 덩어리라 논리가 안 보였다
+   ③ 티켓 홈이 라이트에서 안 보였다(--bg 와 --card 가 둘 다 흰색이라 장치가 절반만 살아 있었다).
+   ⚠️ 바깥 바탕은 --pbg(제휴 위젯 전용)다. --bg 를 바꾸면 strip·single 위젯이 남의 흰 사이트에서
+      회색 사각형이 된다. */
+.pt{padding:10px;background:var(--pbg);min-height:100vh}
+.pt .k{background:var(--card);border-radius:18px;box-shadow:var(--lift);overflow:hidden;word-break:keep-all}
+.pt .bar{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--rule)}
+.pt .bar .logo{font-size:15px}
+.pt .co{min-width:0;font-size:13px;font-weight:500;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt .in{padding:24px;display:flex;flex-direction:column}
+.pt h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.3}
+.pt .sub{margin:8px 0 0;font-size:13px;line-height:1.6;color:var(--soft)}
+.pt .cmp{margin:20px 0 20px;display:grid;grid-template-columns:1fr 1fr}
+.pt .col{min-width:0;display:flex;flex-direction:column;gap:7px;padding-right:16px}
+.pt .col b{margin-bottom:4px;font-size:12px;font-weight:500;letter-spacing:.02em}
+.pt .col span{font-size:13px;line-height:1.4}
+.pt .old b,.pt .old span{color:var(--faint)}
+/* 비교 두 칸은 박스가 아니라 선 하나로 가른다 — 마크업은 col old/new 그대로다. */
+.pt .new{padding:0 0 0 20px;border-left:1px solid var(--rule)}
+.pt .new b{color:var(--brand)}
+.pt .new span{color:var(--ink);font-weight:500}
+.pt .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pt .foot small{font-size:12px;color:var(--faint)}
+.pt .go{background:var(--brand);color:#fff;font-size:15px;font-weight:700;padding:12px 20px;border-radius:12px;box-shadow:var(--glow)}`
 
 function cardHtml(c: EmbedCard): string {
   const img = c.img ? `<img src="${esc(c.img)}" alt="${esc(c.name)}" loading="lazy" width="156" height="156">` : ''
@@ -166,9 +177,18 @@ export interface StripInput {
   kind: EmbedKind
   theme: EmbedTheme
   title: string
-  moreHref: string
+  /** 갈 곳이 있을 때만. 없으면 '전체 보기' 를 안 그린다 — 링크는 도착지가 있을 때만 건다. */
+  moreHref?: string
   cards: EmbedCard[]
   emptyText?: string
+  /**
+   * 🤝 머리띠에 유어딜과 **나란히** 세울 회사 이름(에이전시). 주면 제목 대신 이 이름이 서고,
+   * 제휴 위젯(시안 B)과 같은 언어가 된다 — 두 브랜드가 대등해 보여야 "우리가 운영한다"에 무게가 실린다.
+   * ⚠️ 안 주면 머리띠 마크업은 종전과 **byte-동일**이다(유어샵·매장·지역 위젯 무접촉).
+   */
+  brand?: string
+  /** 머리띠 오른쪽 신뢰 지표(예: `운영 매장 8곳`). 0 곳이면 **주지 말 것** — 없는 것만 못하다. */
+  meta?: string
 }
 
 function doc(theme: EmbedTheme, title: string, body: string): string {
@@ -177,11 +197,17 @@ function doc(theme: EmbedTheme, title: string, body: string): string {
 
 /** 가로로 넘기는 카드 한 줄 — 유어샵·에이전시·매장·지역 공용. */
 export function renderStrip(i: StripInput): string {
-  const more = `<a class="more" href="${esc(i.moreHref)}" target="_blank" rel="noopener">전체 보기 ›</a>`
+  const more = i.moreHref
+    ? `<a class="more" href="${esc(i.moreHref)}" target="_blank" rel="noopener">전체 보기 ›</a>`
+    : ''
+  const head = i.brand
+    ? `${LOGO}<span class="sep"></span><span class="tt">${esc(i.brand)}</span>`
+      + (i.meta ? `<span class="meta">${esc(i.meta)}</span>` : '')
+    : `${LOGO}<span class="tt">${esc(i.title)}</span>${more}`
   const list = i.cards.length
     ? `<div class="row">${i.cards.map(cardHtml).join('')}</div>`
     : `<p class="empty">${esc(i.emptyText || '지금 판매 중인 이용권이 없어요.')}</p>`
-  return doc(i.theme, i.title, `<main class="w"><div class="hd">${LOGO}<span class="tt">${esc(i.title)}</span>${more}</div>${list}</main>`)
+  return doc(i.theme, i.title, `<main class="w"><div class="hd${i.brand ? ' co' : ''}">${head}</div>${list}</main>`)
 }
 
 /** 이용권 하나 — 블로그 글 속에 넣는 가로 카드. */
@@ -207,15 +233,19 @@ export function renderMissing(theme: EmbedTheme): string {
  * ⚠️ 문구에 숫자(수수료율 등)를 적지 않는다 — 요율은 어드민이 바꾸는 값이라 남의 사이트에 박힌 숫자는 곧 거짓말이 된다.
  */
 export function renderPartner(theme: EmbedTheme, agencyName: string, agencyId: number): string {
-  // 🎫 2026-10-31 대표 확정 시안 A — 유어딜 이용권 모양(파란 띠 + 절취선 + 본문)에 체험단과 나란히 비교.
-  //   대표: *"투박하고 … 우리 서비스의 아이덴티티를 나타내야지 차별점과. 체험단에 지치셨나요? 이런거"*.
-  //   비교 문구의 유어딜 쪽은 지금 정책과 맞는 것만(손님 선결제 · 매장 QR 사용 · 팔린 만큼 정산 · 가입비·월 이용료 0원).
+  // 🎫 2026-11-01 대표 확정 시안 B "나란히 선 두 브랜드" — 10-31 시안 A(파란 띠 + 절취선)를 대체한다.
+  //   이 위젯의 목적은 *제휴사가 사장님을 데려오는 것*이라 두 브랜드가 **대등**해 보여야 제안에 무게가 실린다.
+  //   A 는 유어딜 배너에 제휴사 이름이 곁다리로 붙은 모양이었다(대표: *"고급지고 세련되게"*).
+  //   ⚠️ 비교 블록(col old/new)의 마크업은 A 와 byte-동일하다 — 칸을 가르는 건 박스가 아니라 CSS 선 하나다.
+  //   비교 문구의 유어딜 쪽은 지금 정책과 맞는 것만(손님 선결제 · 매장 QR 사용 · 팔린 만큼 정산 · 가입비 0원).
   const href = withUtm(`/store/partner/${agencyId}`, 'partner')
-  const body = `<main class="tk"><div class="band"><div class="hd">${LOGO}<span class="x">× ${esc(agencyName)}</span></div>`
-    + '<h1>체험단에 지치셨나요?</h1><p>공짜로 내주는 홍보 대신, 손님이 먼저 결제하고 오는 할인 이용권</p></div>'
-    + '<div class="perf"></div><div class="body"><div class="cmp">'
+  const body = `<main class="pt"><div class="k"><div class="bar">${LOGO}<span class="sep"></span>`
+    + `<span class="co">${esc(agencyName)}</span></div><div class="in">`
+    + '<h1>체험단에 지치셨나요?</h1>'
+    + '<p class="sub">공짜로 내주는 홍보 대신, 손님이 먼저 결제하고 오는 할인 이용권</p><div class="cmp">'
     + '<div class="col old"><b>체험단</b><span>음식은 공짜로</span><span>후기만 남고</span><span>매출은 0원</span></div>'
     + '<div class="col new"><b>유어딜 이용권</b><span>손님이 선결제</span><span>QR로 바로 사용</span><span>팔린 만큼 정산</span></div>'
-    + `</div><div class="foot"><a class="go" href="${esc(href)}" target="_blank" rel="noopener">유어딜 입점 신청</a><small>가입비·월 이용료 0원</small></div></div></main>`
+    + `</div><div class="foot"><a class="go" href="${esc(href)}" target="_blank" rel="noopener">유어딜 입점 신청</a>`
+    + '<small>가입비·월 이용료 0원</small></div></div></div></main>'
   return doc(theme, `${agencyName} × 유어딜 입점`, body)
 }

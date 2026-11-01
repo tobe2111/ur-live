@@ -7936,7 +7936,8 @@ canvas {
   },
   {
     name: '🔎 검색결과 문구가 사람을 다시 신분으로 부른다',
-    file: 'src/shared/seo/consumer-surfaces.ts',
+    // 🗂️ 2026-11-01 표가 `consumer-surface-table.ts` 로 분리됐다(불변식 불변 — 대상 파일만 옮겨갔다).
+    file: 'src/shared/seo/consumer-surface-table.ts',
     find: "    title: '동네 딜 소개하고 수익 받기',",
     replace: "    title: '크리에이터 모집',",
     test: 'src/tests/unit/urshop-naming.test.ts',
@@ -9470,8 +9471,9 @@ canvas {
   {
     name: '유어샵 안3 — 헤더가 방문자에게 팔로우 버튼을 준다',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: "{canEdit ? (",
-    replace: "{!canEdit && <button type=\"button\" className={btnCls}>팔로우</button>}\n            {canEdit ? (",
+    // 🔄 2026-11-01 재조준(2안): 방문자 예약이 사라지며 삼항 → `&&`. 결함(팔로우 버튼)은 그대로.
+    find: "{canEdit && (",
+    replace: "{!canEdit && <button type=\"button\" className={btnCls}>팔로우</button>}\n      {canEdit && (",
     test: 'src/tests/unit/ushop-a3-p1.test.ts',
     why:
       '2026-09-02 대표: "그냥 방문자는 안보이면 되잖아". 시안 목업에 있던 "방문자일 때: 팔로우" 띠는 ' +

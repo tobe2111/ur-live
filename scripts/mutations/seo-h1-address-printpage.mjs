@@ -75,7 +75,7 @@ export default [
   },
   {
     name: '📄 /about/print 를 다시 색인 대상으로 (같은 내용의 두 URL 이 경쟁)',
-    file: 'src/shared/seo/consumer-surfaces.ts',
+    file: 'src/shared/seo/consumer-surface-table.ts',
     find: "    title: '유어딜 서비스 소개서 (인쇄용)',\n    description: '유어딜 서비스 소개서의 인쇄·PDF 판입니다. 웹 소개는 /about 에 있습니다.',\n    noindex: true,",
     replace: "    title: '유어딜 서비스 소개서 (인쇄용)',\n    description: '유어딜 서비스 소개서의 인쇄·PDF 판입니다. 웹 소개는 /about 에 있습니다.',",
     test: TEST,
@@ -83,7 +83,7 @@ export default [
   },
   {
     name: '📄 /about 본체까지 noindex 로 (반대 방향 — 조용히 색인에서 빠진다)',
-    file: 'src/shared/seo/consumer-surfaces.ts',
+    file: 'src/shared/seo/consumer-surface-table.ts',
     find: "  '/about': {",
     replace: "  '/about': {\n    noindex: true,",
     test: TEST,

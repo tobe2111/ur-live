@@ -22,36 +22,39 @@
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 import { SHOT } from './PartnerPhone'
 import { Reveal } from '../landing/motion'
-import StickyStory from '../landing/StickyStory'
+import StickyStory, { type StoryStep } from '../landing/StickyStory'
+import { ToneScroll } from '../landing/premium'
 
-const STEPS = [
-  { t: '찾는다', d: '지도와 유어샵, 유어쇼츠에서 동네 이용권을 봅니다', shot: 'home', alt: '손님이 보는 동네 이용권 목록' },
-  { t: '결제한다', d: '가게에 오기 전에 온라인에서 먼저 값을 치릅니다', shot: 'detail', alt: '이용권 상세와 결제 버튼' },
-  { t: '받는다', d: '이용권이 손님 폰으로 바로 발급됩니다', shot: 'use', alt: '손님 폰에 발급된 이용권과 사용 안내' },
-  { t: '가게에서 쓴다', d: 'QR을 찍거나 매장 확인코드 6자리를 넣습니다', shot: 'seller-scan', alt: '매장 폰으로 손님 QR 을 찍는 화면' },
+// 💎 2026-11-01 고급화 ④: 단계를 지날 때마다 바탕이 밝음 → 옅은 파랑 → 어둠으로 바뀌고, 마지막 어둠이
+//   바로 아래 '안 오면요?' 잉크 띠로 끊김 없이 이어진다.
+const STEPS: StoryStep[] = [
+  { t: '찾는다', d: '지도와 유어샵, 유어쇼츠에서 동네 이용권을 봅니다', shot: 'home', alt: '손님이 보는 동네 이용권 목록', tone: 'paper' },
+  { t: '결제한다', d: '가게에 오기 전에 온라인에서 먼저 값을 치릅니다', shot: 'detail', alt: '이용권 상세와 결제 버튼', tone: 'paper' },
+  { t: '받는다', d: '이용권이 손님 폰으로 바로 발급됩니다', shot: 'use', alt: '손님 폰에 발급된 이용권과 사용 안내', tone: 'tint' },
+  { t: '가게에서 쓴다', d: 'QR을 찍거나 매장 확인코드 6자리를 넣습니다', shot: 'seller-scan', alt: '매장 폰으로 손님 QR 을 찍는 화면', tone: 'ink' },
 ]
 
 const SAFETY = [
   {
     t: '안 온 손님 때문에 손해 볼 일이 없습니다',
-    d: '정산은 손님이 실제로 사용한 이용권만 대상입니다. 팔렸는데 아무도 안 오면 사장님이 부담하는 돈은 0원입니다.',
+    d: '정산은 실제로 쓴 이용권만 합니다. 아무도 안 오면 사장님 부담은 0원입니다.',
   },
   {
     t: '안 쓴 이용권은 유어딜이 알아서 환불합니다',
-    d: '유효기간은 사장님이 정합니다. 기간이 지나면 미사용분은 100% 자동으로 환불되고, 그 처리도 유어딜이 합니다. 사장님이 환불 응대를 할 일이 없습니다.',
+    d: '유효기간은 사장님이 정합니다. 지나면 유어딜이 100% 자동 환불하고 응대까지 합니다.',
   },
 ]
 
 export default function PartnerFlow() {
   return (
     <>
-      <section className="bg-surface">
+      <ToneScroll initial="paper"><section>
         <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
-          <Reveal><h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+          <Reveal><h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] ur-tone-fg leading-[1.2]">
             손님이 오는 길
           </h2></Reveal>
-          <Reveal as="p" delay={80} className="mt-4 text-[15px] lg:text-[17px] text-gray-500 dark:text-gray-400 max-w-[34em]">
-            택배도 반품도 재고도 없습니다. 사장님이 만나는 건 결제를 마친 손님 한 명입니다.
+          <Reveal as="p" delay={80} className="mt-4 text-[15px] lg:text-[17px] ur-tone-mu max-w-[34em]">
+            택배도 반품도 재고도 없습니다.
           </Reveal>
 
           {/* 🎬 2026-10-31 고정 화면 스토리 — PC 에서 폰은 멈춰 있고 글이 지나간다. 지금 화면 가운데를 지나는
@@ -61,7 +64,7 @@ export default function PartnerFlow() {
             <StickyStory steps={STEPS} shotUrl={SHOT} />
           </div>
         </div>
-      </section>
+      </section></ToneScroll>
 
       {/* 🌙 2026-10-31: 흰·회색만 이어지던 리듬을 끊는 어두운 띠. 같은 [제목 + 문단 세로 나열] 을 반복하지 않게
           두 칸 나란히 + 아래 넓은 줄로 나눈다. 사용 안내 화면은 위 스토리로 옮겼다. */}

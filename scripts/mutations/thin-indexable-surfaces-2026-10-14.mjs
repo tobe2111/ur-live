@@ -11,7 +11,7 @@
  */
 const TEST = 'src/tests/unit/thin-indexable-surfaces-2026-10-14.test.ts'
 const THIN = 'src/tests/unit/thin-surface-copy-2026-10-12.test.ts'
-const SEO = 'src/shared/seo/consumer-surfaces.ts'
+const SEO = 'src/shared/seo/consumer-surface-table.ts' // 🗂️ 2026-11-01 표 분리(불변식 불변 — 대상 파일만 옮겨갔다)
 const COPY = 'src/shared/seo/surface-copy.ts'
 const ROBOTS = 'public/robots.txt'
 

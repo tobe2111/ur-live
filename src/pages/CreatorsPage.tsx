@@ -28,7 +28,8 @@ import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 import PhoneShot, { SHOT } from './landing/PhoneShot'
-import { CountUp, Line, Reveal, ScrollProgress, Tilt, loadDelay } from './landing/motion'
+import { Line, Reveal, ScrollProgress, loadDelay } from './landing/motion'
+import { DeviceStage, GiantNumber, PhotoHero, ToneScroll, useLandingFont } from './landing/premium'
 import FaqItem from './landing/FaqItem'
 // ❓ 2026-10-31 — 질문은 `shared/landing-faq` SSOT. 워커가 같은 배열로 서버 본문과 `FAQPage` 를 만든다.
 import { REFERRAL_FAQ } from '@/shared/landing-faq'
@@ -54,9 +55,11 @@ const TERMS = [
 
 export default function CreatorsPage() {
   const applyHref = GOOGLE_FORM_URL || '/creators/apply'
+  // 💎 2026-11-01 고급화 ⑥ — 제목 전용 글꼴(명조)을 이 페이지에서만 받는다
+  useLandingFont()
 
   return (
-    <div className="min-h-[100dvh] bg-warm">
+    <div className="min-h-[100dvh] bg-warm ur-landing-type overflow-x-clip">
       {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
       <SEO title={CONSUMER_SURFACE_SEO['/influencer'].title} description={CONSUMER_SURFACE_SEO['/influencer'].description} url="/influencer" />
 
@@ -78,48 +81,61 @@ export default function CreatorsPage() {
       </header>
 
       <main className="pb-24 lg:pb-0">
-        {/* ① 히어로 — 잉크 색면 위 분할. 오른쪽은 실제 유어샵(라이브 화면) 한 대. */}
-        <section className="ur-panel-ink text-white overflow-hidden">
-          <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-10 pb-14 lg:pt-16 lg:pb-24 grid gap-14 lg:grid-cols-[1fr_0.62fr] lg:gap-16 xl:gap-24 lg:items-center">
-            <div>
-              <h1 className="text-[28px] sm:text-[40px] lg:text-[48px] xl:text-[60px] leading-[1.22] font-extrabold tracking-[-0.035em]">
-                {/* 🎬 2026-10-31: 한 줄씩 마스크 안에서 밀려 올라온다 */}
-                <Line i={0}><span className="text-brand-text">링크 하나</span>로</Line>
-                <Line i={1}>동네 맛집을 팔고</Line>
-                <Line i={2}>커미션을 받으세요</Line>
-              </h1>
-              <p style={loadDelay(360)} className="ur-load mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-[1.7] text-white/70 max-w-[26em]">
-                팔로워가 많지 않아도 괜찮아요. 동네 이웃에게 진짜 좋은 딜을 소개하는 것부터 시작합니다.
-              </p>
+        {/* ① 히어로 — 💎 2026-11-01 고급화 ①②: 실사진을 꽉 채운 첫 화면. 숫자 셋과 유어샵 폰은 바로 아래
+            거대한 숫자 · 실기기 무대로 옮겼다(첫 화면에는 제목 · 한 줄 · 버튼만). */}
+        <PhotoHero photo="influencer">
+          <div className="ur-content-wide mx-auto px-5 lg:px-10 min-h-[calc(100svh-56px)] lg:min-h-[calc(100svh-64px)] flex flex-col justify-end pt-40 pb-28">
+            <h1 className="text-[40px] sm:text-[48px] lg:text-[76px] xl:text-[96px] leading-[1.12] font-extrabold tracking-[-0.035em]">
+              {/* 🎬 한 줄씩 마스크 안에서 밀려 올라온다 */}
+              <Line i={0}><span className="text-brand-text">링크 하나</span>로</Line>
+              <Line i={1}>동네 맛집을 소개하세요</Line>
+            </h1>
+            <p style={loadDelay(320)} className="ur-load mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-[1.7] text-white/80 max-w-[26em]">
+              내 링크로 팔리면 소개비가 쌓입니다. 팔로워 수는 상관없어요.
+            </p>
 
-              {/* 숫자는 카드에 담지 않는다. 담는 순간 "3열 균등 카드" 가 된다 */}
-              <dl style={loadDelay(480)} className="ur-load mt-10 lg:mt-12 flex flex-wrap gap-x-10 gap-y-6 lg:gap-x-14">
-                <Stat n="0원" d="시작에 드는 돈" />
-                <Stat n="promo%" d="매장이 건 소개 몫 (딜마다 다름)" />
-                <Stat n={F.minPayout} d="정산 최소 지급액" />
-              </dl>
-
-              <div style={loadDelay(600)} className="ur-load mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
-                <ApplyLink href={applyHref}
-                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
-                  소개 파트너 지원 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
-                </ApplyLink>
-                <Link to="/about"
-                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
-                  서비스 먼저 보기
-                </Link>
-              </div>
-            </div>
-
-            <div style={loadDelay(220)} className="ur-load">
-              <Tilt className="flex justify-center">
-                <PhoneShot src={SHOT('ushop')} alt="담은 딜이 진열된 내 유어샵 화면" priority
-                  caption="유어샵 (라이브 화면)"
-                  className="ur-float w-[58%] max-w-[16rem] lg:w-[19rem] xl:w-[21rem] lg:max-w-none" />
-              </Tilt>
+            <div style={loadDelay(460)} className="ur-load mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
+              <ApplyLink href={applyHref}
+                className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
+                소개 파트너 지원 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
+              </ApplyLink>
+              <Link to="/about"
+                className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.12] border border-white/25 backdrop-blur-sm flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
+                서비스 먼저 보기
+              </Link>
             </div>
           </div>
-        </section>
+        </PhotoHero>
+
+        {/* 💎 고급화 ③④⑤ — 바탕이 어둠 → 밝음으로 넘어가는 한 묶음: 거대한 0원 · 실기기 폰 두 대 */}
+        <ToneScroll initial="ink">
+          <section data-tone="ink">
+            <div className="ur-content-wide mx-auto px-5 lg:px-10 py-24 lg:py-40 overflow-hidden">
+              <GiantNumber value="0" unit="원" label="시작에 드는 돈 0원" />
+              <div className="mt-10 lg:mt-14 grid gap-8 lg:grid-cols-2 lg:items-end lg:gap-20">
+                <Reveal><h2 className="ur-tone-fg text-[28px] lg:text-[48px] font-extrabold leading-[1.22]">
+                  시작에 드는 돈은<br />없습니다
+                </h2></Reveal>
+                <Reveal delay={120} as="p" className="text-[15px] lg:text-[17px] leading-[1.7] ur-tone-mu max-w-[26em]">
+                  소개비는 매장이 딜마다 정합니다. 정산은 {F.minPayout}부터 받을 수 있어요.
+                </Reveal>
+              </div>
+            </div>
+          </section>
+
+          <section data-tone="paper">
+            <div className="ur-content-wide mx-auto px-5 lg:px-10 py-20 lg:py-36 grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:items-center">
+              <Reveal><h2 className="ur-tone-fg text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold leading-[1.18]">
+                담으면 내 가게,<br />팔리면 내 소개비
+              </h2></Reveal>
+              <DeviceStage
+                back={{ shot: SHOT('ushop'), alt: '담은 딜이 진열된 내 유어샵 화면', tag: '내 유어샵' }}
+                front={{ shot: SHOT('influencer-settlement'), alt: '내 소개 적립과 정산 화면', tag: '정산 화면' }}
+                toast={{ title: '소개비가 적립됐어요', sub: '내 링크로 이용권이 팔렸어요' }}
+              />
+            </div>
+          </section>
+        </ToneScroll>
 
         {/* ② 수익 구조 — 한 문장을 크게 두고 조건은 아래 헤어라인으로. PC 는 제목 고정 + 본문 분리. */}
         <section className="bg-warm">
@@ -130,7 +146,7 @@ export default function CreatorsPage() {
             <div>
               <Reveal as="p" className="flex items-start gap-2 lg:gap-4 text-[17px] lg:text-[34px] font-bold text-ink leading-[1.35] tracking-[-0.025em]">
                 <Link2 className="w-5 h-5 lg:w-8 lg:h-8 mt-1 lg:mt-2 text-brand shrink-0" strokeWidth={1.9} aria-hidden />
-                <span>매장이 소개 몫을 건 딜이 내 링크로 팔리면 <span className="text-brand-text">판매액의 소개비(promo%)</span> 적립</span>
+                <span>내 링크로 팔리면 <span className="text-brand-text">판매액의 소개비</span> 적립</span>
               </Reveal>
               <ul className="mt-8 lg:mt-12 border-t border-rule">
                 {TERMS.map((t, i) => (
@@ -263,14 +279,3 @@ function ApplyLink({ href, className, children }: { href: string; className?: st
   return <Link to={href} className={className}>{children}</Link>
 }
 
-function Stat({ n, d }: { n: string; d: string }) {
-  return (
-    <div>
-      <dt className="sr-only">{d}</dt>
-      <dd>
-        <CountUp value={n} className="block text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.045em] tabular-nums leading-none" />
-        <span className="block text-[12px] lg:text-[13px] text-white/55 mt-2 lg:mt-3 whitespace-nowrap">{d}</span>
-      </dd>
-    </div>
-  )
-}

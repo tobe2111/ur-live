@@ -38,6 +38,7 @@ import EmptyUrShop from './curator-page/EmptyUrShop'
 // 🔧 2026-09-28 (e3): OwnerEarningsStrip · PinManageList 는 `/u/me/manage`(UShopManagePage) 로 옮겨 갔다.
 // 🎫 2026-09-02 (대표 확정 — 유어샵 안3 + PC 안P1): 카테고리 칩(지도 B안과 같은 그림) + PC 좌측 열 QR.
 import PinCategoryChips, { pinCategory, type PinCategory } from './curator-page/PinCategoryChips'
+import { showUShopSort } from '@/shared/ushop-pin-category'
 import UShopQrCard from './curator-page/UShopQrCard'
 import ShopInquiryLinks from './curator-page/ShopInquiryLinks'
 import { priceDisplay } from '@/shared/price-display'
@@ -53,6 +54,17 @@ import { priceDisplay } from '@/shared/price-display'
 //   진열대는 훑는 곳이지 질의하는 곳이 아니다 — 2열 그리드로 여섯 줄(=12개)을 넘어
 //   한 화면에 안 들어오기 시작할 때부터 낸다. 늘면 자동으로 다시 뜬다.
 const SEARCH_MIN_PINS = 12
+
+// 🎚️ 2026-11-01 (대표 *"공백 공간? 뭐 그런 전체적인 UI가 별로인데"* — 2안 구현 중 실측으로 발견):
+//   정렬 드롭다운에 **개수 게이트가 없었다.** 분류 칩은 카테고리가 1종이면 스스로 `null` 을 내는데
+//   (`PinCategoryChips`) 정렬만 빠져 있어서, 라이브 `/u/jiwon1228`(이용권 **1개**) 의 진열대 위에
+//   '추천순' 버튼이 **혼자** 떠 있었다. 2026-09-28 이 *"상품 3개짜리 진열대에 붙은 빈 껍데기"* 라고
+//   지적한 그 자리가 정렬 쪽에만 남아 있던 것이다.
+//   🔢 5 인 이유: s3 줄 카드가 128px 이고 2안 머리(146) + 칩 줄(56) + 하단 탭(60) 을 빼면
+//   844px 화면에 **4.5줄**이 들어간다 — 4개까지는 스크롤 없이 다 보이므로 정렬할 이유가 없다.
+//   ⚠️ 기준은 **전체 핀 수**다(칩과 같은 입력). 검색·분류로 걸러진 수가 아니다 — 걸러서 줄어들 때마다
+//      버튼이 사라지면 그 자체가 깜빡임이다.
+//   🔴 값과 판정은 `shared/ushop-pin-category` 한 곳 — 워커 첫 화면이 같은 답을 내야 자리가 맞는다.
 
 // 🎫 2026-09-28 (s3): 정렬은 **보기 순서만** 바꾼다 — 주인이 드래그로 정한 `position` 을 덮지 않는다
 //   (그 순서는 관리 화면에서만 바뀐다). 기본값 '추천순' = 주인 순서 그대로.
@@ -410,16 +422,18 @@ export default function CuratorPage() {
                     종전엔 헤더(`bg-surface`)와 본문(`bg-warm`)의 톤 차이가 그 일을 했는데(b2),
                     한 톤이 되면서 맞닿는 자리가 안 보이게 됐다. 밑줄 탭의 활성 표시(`border-b-2`)가
                     이 선 위에 앉으므로 선은 탭 체계의 일부이기도 하다. */}
-                <div className="max-w-3xl mx-auto px-5 pt-6 border-b border-rule flex items-center gap-2 empty:hidden">
+                <div className="max-w-3xl mx-auto px-5 pt-3 border-b border-rule flex items-center gap-2 empty:hidden">
                   <PinCategoryChips pins={pins} value={cat} onChange={setCat} />
                   {query.trim() && (
                     <span className="shrink-0 text-[12px] text-gray-500 dark:text-gray-400">
                       <b className="text-gray-900 dark:text-white tabular-nums">{visiblePins.length}{t('curator.countUnit', { defaultValue: '개' })}</b>
                     </span>
                   )}
-                  <div className="ml-auto shrink-0">
-                    <SortMenu value={sort} options={SORT_OPTIONS} onChange={setSort} />
-                  </div>
+                  {showUShopSort(pins) && (
+                    <div className="ml-auto shrink-0">
+                      <SortMenu value={sort} options={SORT_OPTIONS} onChange={setSort} />
+                    </div>
+                  )}
                 </div>
                 {visiblePins.length === 0 ? (
                   <div className="max-w-3xl mx-auto px-5 py-16 text-center">

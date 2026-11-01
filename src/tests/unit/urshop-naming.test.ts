@@ -223,8 +223,12 @@ describe('N7 검색결과에 사람을 신분으로 부르지 않는다', () => 
    */
   const BANNED = ['인플루언서', '크리에이터', '큐레이터']
   it('consumer-surfaces 의 title/description 에 0건', () => {
-    const src = readFileSync('src/shared/seo/consumer-surfaces.ts', 'utf-8')
-    const code = stripComments(src)  // 왜 안 쓰는지 설명한 문장이 위반이 되면 설명을 못 남긴다
+    // 🗂️ 2026-11-01 표가 `consumer-surface-table.ts` 로 분리됐다 — **둘 다** 본다(한쪽만 보면
+    //    항목을 다른 파일로 옮겨 이 규칙을 비껴갈 수 있다. 실제로 분리 직후 이 가드가 눈멀었고
+    //    주입 러너가 "결함을 심었는데 통과" 로 잡았다).
+    const code = ['src/shared/seo/consumer-surfaces.ts', 'src/shared/seo/consumer-surface-table.ts']
+      .map(f => stripComments(readFileSync(f, 'utf-8'))).join('\n')  // 왜 안 쓰는지 설명한 문장이 위반이 되면 설명을 못 남긴다
+    expect(code.length, '표를 못 읽었다 — 이 단언이 통째로 헛돈다').toBeGreaterThan(5000)
     const hits = BANNED.filter(w => code.includes(w))
     expect(hits, `SEO 문구에 신분어가 있다: ${hits.join(', ')}`).toEqual([])
   })

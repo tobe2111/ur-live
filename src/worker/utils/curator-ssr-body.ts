@@ -61,6 +61,8 @@ import { formatNumber } from '../../utils/format'
 import { curatorHomePins, curatorSoldTotal } from '../../shared/curator-pin-order'
 import { SHARE_MASCOT_SRC } from '../../shared/ushop-share-card'
 import { snsLinkStatus } from '../../shared/sns-link'
+import { ushopNameSizePx } from '../../shared/ushop-name-size'
+import { showUShopChips, showUShopSort } from '../../shared/ushop-pin-category'
 import { PLAIN_CLS, PLAIN_THUMB_CLS, USHOP_TAB_CLS } from '../../shared/ushop-row'
 import { buildCuratorNoscript } from './crawler-noscript'
 
@@ -82,29 +84,29 @@ export const CURATOR_FS_CLASS = {
   main: 'ur-ushop-main',
   header: 'bg-surface dark:bg-warm',
   headerInner: 'max-w-3xl mx-auto',
-  brandBar: 'lg:hidden flex items-center px-5 pt-3',
-  brandLink: 'active:opacity-70',
-  nameRow: 'flex items-center gap-4 px-5 pt-4 lg:flex-wrap lg:gap-y-3',
-  avatar: 'w-14 h-14 rounded-full overflow-hidden bg-wash shrink-0',
+  brandBar: 'flex items-center px-5 pt-3',
+  brandLogo: 'lg:hidden active:opacity-70',
+  nameRow: 'flex items-center gap-4 px-5 pt-3',
+  avatar: 'w-10 h-10 rounded-full overflow-hidden bg-wash shrink-0',
   avatarPhoto: 'w-full h-full object-cover',
   avatarUdal: 'w-full h-full object-contain',
   nameCol: 'min-w-0 flex-1',
   nameLine: 'flex items-center gap-2 min-w-0',
-  h1: 'text-[24px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2 break-keep',
-  bio: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2',
-  statsRow: 'mt-4 px-5 flex items-center justify-between gap-2',
+  h1: 'min-w-0 font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] truncate',
+  bio: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-1',
+  statsRow: 'mt-3 px-5 flex items-center justify-between gap-2',
   stats: 'min-w-0 truncate text-[13px] text-gray-500 dark:text-gray-400 tabular-nums',
   statNum: 'font-medium text-gray-900 dark:text-white',
   snsGroup: 'flex items-center gap-1 shrink-0',
   snsHit: 'h-9 inline-flex items-center active:opacity-70',
   snsPill: 'h-8 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[13px] font-medium text-gray-600 dark:text-gray-300',
-  headerPad: 'h-4',
-  cluster: 'ml-3 flex items-center gap-2 shrink-0 lg:ml-[72px] lg:basis-full',
+  headerPad: 'h-3',
+  cluster: 'ml-auto flex items-center gap-2 shrink-0',
   iconBtn: 'w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors',
   manageBtn: 'h-9 px-3 rounded-full bg-brand text-white text-[15px] font-bold inline-flex items-center gap-1 shrink-0 active:opacity-70',
   searchWrap: 'max-w-3xl mx-auto px-5 pt-3 pb-1',
   searchBox: 'flex items-center gap-2 h-11 px-4 rounded-xl bg-wash',
-  chipsRow: 'max-w-3xl mx-auto px-5 pt-6 border-b border-rule flex items-center gap-2 empty:hidden',
+  chipsRow: 'max-w-3xl mx-auto px-5 pt-3 border-b border-rule flex items-center gap-2 empty:hidden',
   chip: USHOP_TAB_CLS,
   sortSlot: 'ml-auto shrink-0',
   sortBtn: 'h-9 inline-flex items-center',
@@ -229,21 +231,20 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
     // 빈 유어샵은 `EmptyUrShop`(주인/방문자 문구가 갈린다) → 그리지 않는다.
     if (pins.length === 0) return ''
 
-    // 공유 = 빈 원 / 관리 = invisible 알약. 아이콘 path 는 옮기지 않는다(머리말 참조).
-    const cluster =
-      `<div class="${CURATOR_FS_CLASS.cluster}"><span class="${CURATOR_FS_CLASS.iconBtn}"></span>` +
-      `<span class="${CURATOR_FS_CLASS.manageBtn} invisible pointer-events-none">` +
-        `<span style="display:inline-block;width:17px;height:17px"></span>관리` +
-      '</span></div>'
+    // 공유 = 빈 원 하나. 아이콘 path 는 옮기지 않는다(머리말 참조).
+    // 🪑 2026-11-01: `관리` 자리 예약은 **없앴다**. 버튼이 이름 줄을 떠나(로고 줄로) 이름 칸 폭이
+    //   주인/방문자에서 구조적으로 같아졌고, 줄 높이도 공유(h-9)와 관리(h-9)가 같아 안 바뀐다.
+    //   ⇒ 서버가 공유 한 칸만 예약해도 주인 화면과 높이가 같다(`CuratorHeader` 의 🪑 주석과 쌍).
+    const cluster = `<div class="${CURATOR_FS_CLASS.cluster}"><span class="${CURATOR_FS_CLASS.iconBtn}"></span></div>`
 
     // 👤 얼굴(2026-10-14 대표 확정 유어샵 A) — `CuratorHeader` 와 같은 URL(cfImage 112·cover)·같은 유달이.
     const photo = (c.profile_image || '').trim()
-    const photoSrc = photo ? cfImage(photo, { width: 112, height: 112, fit: 'cover' }) || photo : ''
+    const photoSrc = photo ? cfImage(photo, { width: 80, height: 80, fit: 'cover' }) || photo : ''
     const avatar =
       `<div class="${CURATOR_FS_CLASS.avatar}">` +
         (photoSrc
-          ? `<img src="${escAttr(photoSrc)}" alt="" width="56" height="56" class="${CURATOR_FS_CLASS.avatarPhoto}">`
-          : `<img src="${escAttr(SHARE_MASCOT_SRC)}" alt="" width="56" height="56" class="${CURATOR_FS_CLASS.avatarUdal}">`) +
+          ? `<img src="${escAttr(photoSrc)}" alt="" width="40" height="40" class="${CURATOR_FS_CLASS.avatarPhoto}">`
+          : `<img src="${escAttr(SHARE_MASCOT_SRC)}" alt="" width="40" height="40" class="${CURATOR_FS_CLASS.avatarUdal}">`) +
       '</div>'
 
     // 📊 이름 아래 한 줄 — 숫자는 화면과 같은 함수(`curatorSoldTotal`)로. SNS 는 이름표 **자리만**(글자는 브랜드명 그대로).
@@ -261,21 +262,26 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
       : ''
     const statsRow = `<div class="${CURATOR_FS_CLASS.statsRow}"><p class="${CURATOR_FS_CLASS.stats}">${statsText}</p>${snsHtml}</div>`
 
+    // 🏷️ 2026-11-01 (대표 확정 2안): 이름 글자 크기는 화면(`CuratorHeader`)과 **같은 함수**로 정한다.
+    //   글자만 보고 정하므로 서버와 화면의 답이 같고, 그래서 마운트 때 머리 높이가 안 튄다.
+    const nameSize = ushopNameSizePx(c.name)
+
     const header =
       `<header class="${CURATOR_FS_CLASS.header}"><div class="${CURATOR_FS_CLASS.headerInner}">` +
+        // 맨 윗줄 — 로고(모바일만) + 버튼 묶음(항상, 오른쪽).
+        // 🩸 `<a>` 를 빼면 **바가 5px 낮아진다**(실측 36 → 31). 로고 span 은 `inline-flex` 라
+        //   직접 flex 아이템이 되면 19px 이지만, React 는 `<Link>` 로 감싸고 그 인라인 요소의
+        //   줄박스가 24px 다. 감싸는 것 자체가 치수를 만든다.
         `<div class="${CURATOR_FS_CLASS.brandBar}">`+
-          // 🩸 `<a>` 를 빼면 **바가 5px 낮아진다**(실측 36 → 31). 로고 span 은 `inline-flex` 라
-          //   직접 flex 아이템이 되면 19px 이지만, React 는 `<Link>` 로 감싸고 그 인라인 요소의
-          //   줄박스가 24px 다. 감싸는 것 자체가 치수를 만든다.
-          `<a href="/" aria-label="유어딜 홈" class="${CURATOR_FS_CLASS.brandLink}">${logoHtml(CURATOR_LOGO_SIZE)}</a>` +
+          `<a href="/" aria-label="유어딜 홈" class="${CURATOR_FS_CLASS.brandLogo}">${logoHtml(CURATOR_LOGO_SIZE)}</a>` +
+          cluster +
         '</div>' +
         `<div class="${CURATOR_FS_CLASS.nameRow}">` +
           avatar +
           `<div class="${CURATOR_FS_CLASS.nameCol}">` +
-            `<div class="${CURATOR_FS_CLASS.nameLine}"><h1 class="${CURATOR_FS_CLASS.h1}">${escText(c.name)}</h1></div>` +
+            `<div class="${CURATOR_FS_CLASS.nameLine}"><h1 style="font-size:${nameSize}px" class="${CURATOR_FS_CLASS.h1}">${escText(c.name)}</h1></div>` +
             (c.bio ? `<p class="${CURATOR_FS_CLASS.bio}">${escText(c.bio)}</p>` : '') +
           '</div>' +
-          cluster +
         '</div>' +
         // 핀이 1개 이상일 때만 첫 화면을 그리므로 숫자 줄은 늘 있다(화면도 pins>0 이면 그린다).
         statsRow +
@@ -289,11 +295,16 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
 
     // 칩·정렬 줄 — `empty:hidden` 이라 빈 div 로는 접힌다 ⇒ invisible 칩 하나로 높이를 만든다.
     // 🩸 칩만 넣으면 줄이 **1px 낮다**(실측 44 vs 45). 칩은 `-mb-px` 로 1px 올라앉고, 줄의 높이를
-    //   정하는 것은 그 옆 **정렬 버튼 칸**(`ml-auto shrink-0`, 음수 마진 없음 → 36px)이다. 둘 다 예약한다.
+    //   정하는 것은 그 옆 **정렬 버튼 칸**(`ml-auto shrink-0`, 음수 마진 없음 → 36px)이다.
+    // 🔴 2026-11-01: 둘 다 **화면이 그릴 때만** 예약한다. 종전엔 무조건 예약해서, 분류가 하나뿐이거나
+    //   (`PinCategoryChips` 가 null) 진열이 적어 정렬이 안 뜨는 유어샵에서는 서버가 그린 줄을
+    //   마운트가 **통째로 접었다**(라이브 `/u/jiwon1228` 이 그 경우다 — 이용권 1개). 판정은 화면과
+    //   **같은 함수**(`showUShopChips`/`showUShopSort`)라 갈릴 수 없다. 둘 다 거짓이면 빈 div 를
+    //   내보내고 `empty:hidden` 이 여백까지 접는다 — React 도 같은 모양이 된다.
     const chips =
       `<div class="${CURATOR_FS_CLASS.chipsRow}">` +
-        `<span class="${CURATOR_FS_CLASS.chip} invisible">&nbsp;</span>` +
-        `<div class="${CURATOR_FS_CLASS.sortSlot}"><span class="${CURATOR_FS_CLASS.sortBtn} invisible">&nbsp;</span></div>` +
+        (showUShopChips(pins) ? `<span class="${CURATOR_FS_CLASS.chip} invisible">&nbsp;</span>` : '') +
+        (showUShopSort(pins) ? `<div class="${CURATOR_FS_CLASS.sortSlot}"><span class="${CURATOR_FS_CLASS.sortBtn} invisible">&nbsp;</span></div>` : '') +
       '</div>'
 
     const ordered = curatorHomePins(pins)
