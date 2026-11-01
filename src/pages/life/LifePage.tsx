@@ -97,10 +97,26 @@ export default function LifePage() {
       {/* 🖥️ 2026-10-26 PC: 액자를 벗고(pc-fullbleed) 두 칸 — 왼쪽 업종, 오른쪽 바로 사기·질문·업체 안내. */}
       <div className="mx-auto w-full max-w-[720px] space-y-3 px-4 pb-10 pt-5 lg:max-w-[1120px] lg:px-8 lg:pt-8">
         {/* 신뢰 띠 — 오늘의집 "시공책임보장" 자리. 우리 약속은 무료 비교 + 연락처 보호. */}
+        {/* 2026-10-31 대표 *"직관적으로 해야할 것 같고 가게 사장님들을 위한 생활 견적 서비스 이런 식으로"* +
+            *"견적을 낸 걸 마이페이지나 어디서 봐야하지 않을까"* — 첫 카드가 ① 서비스 이름 ② 쓰는 법 세 단계
+            ③ 내 요청으로 가는 문을 함께 말한다. 종전엔 서비스 이름이 없고 '내 요청' 은 카드 중간에 묻혀 있었다. */}
         <section className="rounded-2xl bg-brand-tint px-5 py-5">
-          {/* 2026-10-25 대표 "사장님 대상이라는 걸 나타내 주면" — 숨고·미소와 갈리는 첫 줄. */}
-          <p className="text-[13px] text-gray-600 dark:text-gray-300">간판·방역·설비 수리까지 근처 업체 견적을 무료로 비교해요</p>
-          <h1 className="mt-1 text-[24px] font-bold leading-snug tracking-tight lg:text-[34px]">사장님, 가게 일은<br className="lg:hidden" /> 여기서 맡기세요</h1>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[13px] font-medium text-brand-text">사장님 생활 견적 서비스</span>
+            <Link to="/life/requests" className="flex shrink-0 items-center text-[13px] font-medium text-ink active:opacity-70">
+              내 견적 요청<ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <h1 className="mt-2 text-[24px] font-bold leading-snug tracking-tight lg:text-[34px]">사장님, 가게 일은<br className="lg:hidden" /> 여기서 맡기세요</h1>
+          <ol className="mt-4 grid grid-cols-3 gap-2 text-center">
+            {['요청서 1분 작성', `견적 최대 ${MAX_QUOTES_PER_REQUEST}곳 도착`, '비교하고 한 곳 고르기'].map((step, i) => (
+              <li key={step} className="rounded-xl bg-surface px-2 py-3">
+                <span className="block text-[12px] font-medium text-brand-text">{i + 1}</span>
+                <span className="mt-1 block text-[13px] leading-snug">{step}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-3 text-[13px] text-gray-600 dark:text-gray-300">간판·방역·설비 수리까지 견적은 무료, 연락처는 고른 한 곳에만 가요.</p>
           {!open && <p className="mt-2 text-[13px] font-medium text-tone-bad">지금은 잠시 요청을 받지 않아요.</p>}
         </section>
 
@@ -128,15 +144,6 @@ export default function LifePage() {
                 })}
               </ul>
             ) : <IconRow keys={g.keys} />}
-            {g.title === '가게 운영 중이라면' && (
-              <Link to="/life/requests" className="mt-5 flex items-center gap-3 rounded-2xl bg-brand-tint px-4 py-4 active:opacity-80">
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-medium">받은 견적, 한눈에 비교</span>
-                  <span className="mt-1 block text-[13px] text-gray-500 dark:text-gray-400">요청 한 번에 최대 {MAX_QUOTES_PER_REQUEST}곳 · 고른 곳에만 연락처</span>
-                </span>
-                <ChevronRight className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" />
-              </Link>
-            )}
           </section>
         ))}
 
