@@ -9,6 +9,7 @@
  * 주인 본인에게는 안 보인다(자기 가게를 담거나 신청할 일이 없다 — 서버도 막는다).
  */
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { usePinAction } from '@/features/curator/hooks/usePinAction'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
@@ -58,7 +59,13 @@ export default function SellThisCard({ productId, price, hideForOwner: isOwner }
       <p className={`mt-3 truncate text-[13px] text-gray-500 dark:text-gray-400 ${offer ? '' : 'invisible'}`}>
         {on
           ? `무상 체험 제공: ${on.platforms.map((p) => PLATFORM_LABEL[p]).join('·')} ${FOLLOWER_WORD[on.platforms[0]]} ${formatNumber(on.min_followers)}명 이상, 이번 달 남은 자리 ${formatNumber(on.slots_left)}`
-          : offer ? '이 매장은 무상 체험을 제공하지 않아요. 유어샵에 담아 판매만 할 수 있어요.' : '체험 정보를 확인하는 중'}
+          : offer ? (
+            <>
+              이 매장은 무상 체험을 제공하지 않아요.{' '}
+              {/* 🎁 2026-11-01: 종전엔 여기가 막다른 길이었다 — 제공을 안 켠 상세에 온 사람에게 다음 걸음을 준다. */}
+              <Link to="/influencer/seeding" className="font-medium text-brand-text underline">다른 체험 보기</Link>
+            </>
+          ) : '체험 정보를 확인하는 중'}
       </p>
       {open && on && <Suspense fallback={null}><SeedingApplySheet productId={productId} offer={on} onClose={() => setOpen(false)} /></Suspense>}
     </div>

@@ -40,6 +40,7 @@ const R = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8')
 const PAGE = 'src/pages/PartnersPage.tsx'
 const SECTIONS = [
   'src/pages/partners/PartnerHero.tsx',
+  'src/pages/partners/PartnerShowcase.tsx',
   'src/pages/partners/PartnerBenefits.tsx',
   'src/pages/partners/PartnerCompare.tsx',
   'src/pages/partners/PartnerMath.tsx',
@@ -148,7 +149,7 @@ describe('R2 — 숫자가 대표 승인 덱(deck-common.mjs FACTS)과 같다', 
    * ⚠️ 숫자 비교로는 못 잡는다 — 하드코딩 값이 마침 같으면 늘 참이다. **소스를 본다.**
    */
   it('검색 스니펫(메타 description)도 SSOT 에서 읽는다 — llms.txt 가 이 문구를 쓴다', () => {
-    const src = stripComments(R('src/shared/seo/consumer-surfaces.ts'))
+    const src = stripComments(R('src/shared/seo/consumer-surface-table.ts')) // 🗂️ 2026-11-01 표 분리
     const i = src.indexOf("'/partners': {")
     expect(i, '/partners 항목을 못 찾았다 — 이 검사가 헛돈다').toBeGreaterThan(-1)
     const entry = src.slice(i, i + 900)
@@ -326,12 +327,15 @@ describe('R6 — PC 가 "넓어진 모바일" 로 되돌아가지 않는다 (202
    * 아래 셋은 그 세 가지가 조용히 되돌아가는 것을 막는다. **예쁜지는 못 본다** — 그건 렌더해서 볼 일이다.
    */
   // 📱 2026-10-31: "손님이 오는 길" 은 고정 화면 스토리(`landing/StickyStory`)가 폰을 그린다 — 그것도 폰 프레임이다.
-  const usesPhone = SECTIONS.filter(f => /<PartnerPhone|<StickyStory/.test(visible(f)))
+  // 💎 2026-11-01 고급화: 폰 두 대는 히어로에서 바로 아래 실기기 무대(`DeviceStage`)로 옮겼다 — 그것도 폰 프레임이다.
+  const usesPhone = SECTIONS.filter(f => /<PartnerPhone|<StickyStory|<DeviceStage/.test(visible(f)))
 
   it('안 B — 라이브 캡처를 폰 프레임으로 쓴다 (섹션 셋 이상)', () => {
     // "사진 0장" 으로의 회귀 차단. 히어로만 남기고 아래를 다 지우는 것도 막는다.
     expect(usesPhone.length).toBeGreaterThanOrEqual(3)
-    expect(visible('src/pages/partners/PartnerHero.tsx')).toMatch(/<PartnerPhone[\s\S]{0,400}priority/)
+    // 💎 2026-11-01: 첫 화면은 실사진이 꽉 찬 화면이다(그 사진이 첫 페인트 우선순위를 받는다).
+    expect(visible('src/pages/partners/PartnerHero.tsx')).toMatch(/<PhotoHero photo="partners">/)
+    expect(visible('src/pages/landing/premium.tsx')).toMatch(/fetchpriority: 'high'/)
   })
 
   it('캡처 경로가 /static/ 이고 파일이 실제로 있다 (라이브 404 사고 재발 차단)', () => {
@@ -355,7 +359,10 @@ describe('R6 — PC 가 "넓어진 모바일" 로 되돌아가지 않는다 (202
   it('폰을 섹션 밖으로 흘려 잘리게 두지 않는다', () => {
     // 1차에서 작은 폰을 `absolute bottom-[-2.5rem]` 로 내렸더니 `overflow-hidden` 이 잘라
     // **고장처럼** 읽혔다. 랜딩에서 잘린 스크린샷은 의도가 아니라 실수로 보인다.
-    expect(visible('src/pages/partners/PartnerHero.tsx')).not.toMatch(/bottom-\[-/)
+    // 💎 2026-11-01: 폰은 이제 실기기 무대(`DeviceStage`)가 그린다 — 그 부품과 쓰는 자리를 함께 본다.
+    for (const f of ['src/pages/partners/PartnerHero.tsx', 'src/pages/partners/PartnerShowcase.tsx', 'src/pages/landing/premium.tsx']) {
+      expect(visible(f), f).not.toMatch(/bottom-\[-/)
+    }
   })
 
   it('PC 타이포 단계가 모바일 치수로 되돌아가지 않는다', () => {

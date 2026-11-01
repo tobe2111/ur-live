@@ -27,7 +27,7 @@ export default [
   },
   {
     name: '🔗 brand 축이 되살아난다 — 검증할 목록이 없는 축을 보존',
-    file: 'src/shared/seo/consumer-surfaces.ts',
+    file: 'src/shared/seo/consumer-surface-table.ts',
     find: "    canonicalParams: ['category'],\n    canonicalParamValues: { category: VOUCHER_FILTER_CATEGORIES },",
     replace: "    canonicalParams: ['category', 'brand'],\n    canonicalParamValues: { category: VOUCHER_FILTER_CATEGORIES },",
     test: TEST,
@@ -35,7 +35,7 @@ export default [
   },
   {
     name: '🔗 반대 방향 — 제목 축까지 떼서 살아 있는 딥링크의 제목을 죽인다',
-    file: 'src/shared/seo/consumer-surfaces.ts',
+    file: 'src/shared/seo/consumer-surface-table.ts',
     find: "    titleParams: ['brand', 'category'],\n",
     replace: "",
     test: TEST,
@@ -58,7 +58,7 @@ export default [
   },
   {
     name: '🔗 허용 집합이 비어 버린다 — 멀쩡한 카테고리가 통째로 통합된다',
-    file: 'src/shared/seo/consumer-surfaces.ts',
+    file: 'src/shared/seo/consumer-surface-table.ts',
     find: "export const VOUCHER_FILTER_CATEGORIES: readonly string[] = [\n  '커피/음료',",
     replace: "export const VOUCHER_FILTER_CATEGORIES: readonly string[] = [\n  // '커피/음료',",
     test: TEST,

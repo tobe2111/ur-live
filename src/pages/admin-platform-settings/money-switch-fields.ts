@@ -118,6 +118,12 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     options: [{ value: 'false', label: 'OFF (현행 — 중개사는 매장과 직접 정산)' }, { value: 'true', label: 'ON — 매장 등록 때 정한 % 를 유어딜이 중개사에게' }],
     hint: '🔴 머니 경로. 매장 몫에서 나간다(유어딜 5% 불변). 라이브 중개 매장 1곳·주문 0건이라 켜도 오늘 영향 0. 절차: S-BROKER',
   },
+  // 🤝 2026-11-01 결재 `2026-10-11-agency-model-email-only.md` 3단계 — 에이전시 몫을 유어딜이 걷어 지급.
+  {
+    key: 'agency_share_payout_enabled', label: '에이전시 몫 유어딜 지급', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 매장이 에이전시에 직접 송금)' }, { value: 'true', label: 'ON — 맡긴 이용권 판매마다 사장님이 정한 % 를 유어딜이 적립·지급' }],
+    hint: '🔴 머니 경로. 매장 몫에서 나간다(유어딜 수수료 불변). 에이전시 판매엔 옛 중개사 몫이 안 붙는다 · 에이전시 직원 링크로 팔면 소개비 없음 · 사업자는 세금계산서, 개인은 3.3% 공제. 라이브 에이전시 0곳이라 켜도 오늘 영향 0. 절차: S-AGENCYSHARE',
+  },
   // 🏷️ 2026-10-18 결재 `2026-10-18-franchise-cross-owner-redeem.md` — 점주가 다른 가맹점끼리 이용권 사용.
   //   🩸 `ops-gate-reachable` 이 이번에도 잡았다 — OPS_GATES 에 등재하고 손잡이를 안 만들었다.
   {

@@ -87,6 +87,7 @@ describe('③ 지어내지 않는다', () => {
   it('VideoObject 를 어디서도 선언하지 않는다 — 남의 유튜브 영상이다', () => {
     for (const f of [
       'src/shared/seo/consumer-surfaces.ts',
+      'src/shared/seo/consumer-surface-table.ts', // 🗂️ 2026-11-01 표 분리 — 안 넣으면 그 자리에 생겨도 못 본다
       'src/worker/utils/crawler-noscript.ts',
       // 🔁 2026-10-13 추가: `/urshorts` 본문 빌더가 모듈로 빠졌다(`crawler-noscript` 가 600줄 래칫을
       //   넘겼다). 목록에 안 넣으면 그 자리에 `VideoObject` 가 생겨도 이 검사가 못 본다.

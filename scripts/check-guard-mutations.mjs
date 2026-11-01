@@ -7936,7 +7936,8 @@ canvas {
   },
   {
     name: '🔎 검색결과 문구가 사람을 다시 신분으로 부른다',
-    file: 'src/shared/seo/consumer-surfaces.ts',
+    // 🗂️ 2026-11-01 표가 `consumer-surface-table.ts` 로 분리됐다(불변식 불변 — 대상 파일만 옮겨갔다).
+    file: 'src/shared/seo/consumer-surface-table.ts',
     find: "    title: '동네 딜 소개하고 수익 받기',",
     replace: "    title: '크리에이터 모집',",
     test: 'src/tests/unit/urshop-naming.test.ts',

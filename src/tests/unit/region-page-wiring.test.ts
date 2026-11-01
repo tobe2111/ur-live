@@ -116,7 +116,10 @@ describe('④ 서버 메타 — Yeti 는 JS 를 돌리지 않는다', () => {
   })
 
   it('문구 SSOT(consumer-surfaces)는 지역 표를 import 하지 않는다 — 크리티컬 청크 회귀 방지', () => {
-    expect(read('src/shared/seo/consumer-surfaces.ts')).not.toMatch(/region-slugs/)
+    // 🗂️ 2026-11-01 표 분리 — 둘 다 전 화면 공용 번들이므로 양쪽을 본다.
+    for (const f of ['src/shared/seo/consumer-surfaces.ts', 'src/shared/seo/consumer-surface-table.ts']) {
+      expect(read(f), f).not.toMatch(/region-slugs/)
+    }
   })
 
   it('기존 표면(/vouchers)·area-report 는 영향 없음', () => {

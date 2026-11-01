@@ -58,7 +58,7 @@ describe('① facet 판정 — 정확히 한 파라미터, 허용값만', () => 
     for (const c of VOUCHER_FILTER_CATEGORIES) {
       expect(voucherFacetSeedPath('?category=' + encodeURIComponent(c)), c).not.toBeNull()
     }
-    expect(code('src/shared/seo/consumer-surfaces.ts'))
+    expect(code('src/shared/seo/consumer-surface-table.ts')) // 🗂️ 2026-11-01 표 분리
       .toContain('canonicalParamValues: { category: VOUCHER_FILTER_CATEGORIES }')
   })
 })

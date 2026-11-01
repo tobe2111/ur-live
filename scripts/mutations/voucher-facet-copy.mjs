@@ -5,7 +5,7 @@
 export default [
   {
     name: '🏷️ 교환권 facet 이 다시 기본 문구에 값만 붙인다 (20개가 같은 브랜드 나열)',
-    file: 'src/shared/seo/consumer-surfaces.ts',
+    file: 'src/shared/seo/consumer-surface-table.ts',
     find: "    facetDescription: '{v} 기프티콘 교환권을 할인가로 사세요. 결제하면 바로 발송되고, 유효기간 안에 매장에서 쓰면 됩니다.',\n",
     replace: '',
     test: 'src/tests/unit/voucher-facet-copy-2026-10-18.test.ts',

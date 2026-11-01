@@ -448,6 +448,7 @@ const OPS_GATES: OpsGate[] = [
   //   OFF 면 종전(중개사는 매장과 장부 밖 거래). 켜면 중개 매장 결제마다 `broker_share_pct` 가 매장 몫에서
   //   중개사(유저)에게 적립되고 인플루언서와 같은 성숙·원천징수·지급센터를 탄다.
   { key: 'broker_share_enabled', kind: 'setting', label: '중개사 몫 직접 송금', default_value: 'false', staging_ref: 'S-BROKER', turn_on_when: 'S-BROKER 5건 통과 시 — 특히 ①(주문당 1행) ③(환불 시 회수) ⑤(OFF 복귀 시 종전과 동일). 라이브 중개 매장 1곳·주문 0건이라 켜도 오늘 영향 0' },
+  { key: 'agency_share_payout_enabled', kind: 'setting', label: '에이전시 몫 유어딜 지급', default_value: 'false', staging_ref: 'S-AGENCYSHARE', turn_on_when: 'S-AGENCYSHARE 6건 통과 시 — 특히 ②(에이전시 판매엔 중개사 몫이 안 붙음) ③(환불 시 비례 회수 + 원장 역전) ⑥(OFF 복귀 시 종전과 동일). 라이브 에이전시 0곳이라 켜도 오늘 영향 0' },
   { key: 'brand_cross_owner_redeem_enabled', kind: 'setting', label: '가맹점 간 이용권 사용 + 쓴 지점 정산', default_value: 'false', staging_ref: 'S-BRANDX', turn_on_when: 'S-BRANDX 5건 통과 시 — 특히 ②(정산이 쓴 지점 merchant 로 1회) ③(소개비 붙은 이용권은 거절) ⑤(OFF 복귀 시 1·2단계와 동일). 라이브 가맹점 0곳이라 켜도 오늘 영향 0' },
   { key: 'stay_voucher_unify_enabled', kind: 'setting', label: '숙소 = 이용권 통일(지갑 QR · 스캔 체크인 · 사용 시점 원장)', default_value: 'false', staging_ref: 'S-STAYV', turn_on_when: 'S-STAYV 6건 통과 시 — 특히 ②(스캔 1회에 원장 1회) ④(취소가 이용권을 먼저 잡음) ⑤(체크인한 예약 취소 거절). 라이브 숙소 예약 0건이라 켜도 오늘 영향 0' },
   // 💬 2026-10-10 (대표 "카카오톡으로 유어딜 세팅도 가능해? 이용권 관리같은거"): 채널 챗봇 매장 관리.

@@ -292,8 +292,8 @@
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 2 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 96 |
 | 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 78 | 275 |
-| 유어샵 / 담기·소개 | `linkshop-brief.md` | 24 | 87 |
-| **합계** | — | **133** | **462** |
+| 유어샵 / 담기·소개 | `linkshop-brief.md` | 25 | 87 |
+| **합계** | — | **134** | **462** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,8 +302,8 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 341 | 1027 |
-| 도메인 버킷 (5개 소개서) | 133 | 462 |
+| 전체 | 342 | 1027 |
+| 도메인 버킷 (5개 소개서) | 134 | 462 |
 | 공통/인프라 (의도적 제외) | 152 | 453 |
 | **미커버 (점검 필요)** | **56** | **112** |
 
@@ -1424,7 +1424,7 @@
 
 #### 유어샵 / 담기·소개
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (24개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (25개)
 
 - `/admin/influencer-disputes`
 - `/admin/influencer-payouts`
@@ -1436,6 +1436,7 @@
 - `/influencer/dashboard`
 - `/influencer/discover`
 - `/influencer/rankings`
+- `/influencer/seeding`
 - `/influencer/settlement`
 - `/profile/:sellerId`
 - `/referral`
@@ -1643,7 +1644,7 @@
 
 
 
-> 마지막 생성: 2026-11-01T03:57:10.522Z
+> 마지막 생성: 2026-11-01T04:34:49.105Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

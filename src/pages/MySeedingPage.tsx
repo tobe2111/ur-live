@@ -65,7 +65,10 @@ export default function MySeedingPage() {
     <div className="min-h-[100dvh] bg-warm pb-24">
       <SEO title="내 체험 신청 - 유어딜" description="무상 체험 신청과 SNS 연동, 신청권을 관리합니다" url="/my-seeding" />
       <div className="mx-auto max-w-xl space-y-4 px-4 pt-5">
-        <h1 className="text-[24px] font-bold text-gray-900 dark:text-white">내 체험 신청</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-[24px] font-bold text-gray-900 dark:text-white">내 체험 신청</h1>
+          <Link to="/influencer/seeding" className="ur-btn ur-btn-sm ur-btn-secondary shrink-0">체험 찾기</Link>
+        </div>
         {!me ? <p className="text-[13px] text-gray-500 dark:text-gray-400">정보를 불러오지 못했어요.</p> : (
           <>
             {me.penalty.blocked_until && (
@@ -82,9 +85,12 @@ export default function MySeedingPage() {
             <section className={card}>
               <p className="text-[17px] font-bold text-gray-900 dark:text-white">신청 내역</p>
               {me.applications.length === 0 ? (
-                <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">
-                  아직 신청이 없어요. 이용권 상세의 <span className="font-medium">이 이용권 팔아보기</span>에서 무료 체험을 신청할 수 있어요.
-                </p>
+                <>
+                  <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">
+                    아직 신청이 없어요. 지금 열린 무료 체험을 골라 신청해 보세요.
+                  </p>
+                  <Link to="/influencer/seeding" className="ur-btn ur-btn-md ur-btn-primary ur-btn-block mt-3">무료 체험 찾기</Link>
+                </>
               ) : (
                 <ul className="mt-2 divide-y divide-rule">
                   {me.applications.map((a) => <AppRow key={a.id} a={a} onDone={load} />)}
