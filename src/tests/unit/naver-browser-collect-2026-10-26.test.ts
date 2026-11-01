@@ -71,7 +71,10 @@ describe('④ 워커가 브라우저 수집분을 1순위로 쓴다', () => {
       ...(await orig<typeof import('@/worker/utils/naver-place-photo')>()),
       fetchNaverPlaceBusinessPhotos: vi.fn(async () => []),
     }))
-    vi.doMock('@/worker/utils/kakao-place-photos', () => ({ fetchKakaoPlacePhotos: vi.fn(async () => ['https://t1.daumcdn.net/k.jpg']) }))
+    vi.doMock('@/worker/utils/kakao-place-photos', async (orig) => ({
+      ...(await orig<typeof import('@/worker/utils/kakao-place-photos')>()),
+      fetchKakaoPlacePhotos: vi.fn(async () => ['https://t1.daumcdn.net/k.jpg']),
+    }))
     const { fetchDemoPhotos } = await import('@/worker/utils/demo-photo-set')
     const out = await fetchDemoPhotos({} as never, {
       nameQuery: '가게', placeId: '123', count: 3,

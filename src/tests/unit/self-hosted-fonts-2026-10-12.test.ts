@@ -162,7 +162,7 @@ describe('🔤 첫 페인트를 막는 CSS 는 우리 오리진만 (2026-10-12)'
     expect(runLoader(WIN, false), '처음 오는 PC 가 load 전에 시트를 받으면 느린 회선에서 load 가 약 0.3초 늦는다(2026-10-26 실측)').toEqual([])
     const a = runLoader(WIN, false, true)
     expect(a.length).toBe(1)
-    expect(a[0].href).toBe('/static/fonts/pretendard-pc-v1.3.9-3.css')
+    expect(a[0].href).toBe('/static/fonts/pretendard-pc-v1.3.9-4.css')
     expect(a[0].media, '처음 오는 PC 에서 바로 켜면 앱 스크립트와 회선을 나눠 쓴다(2026-10-12 실측 1.8초)').toBe('print')
   })
   it('②-6 한 번 받은 PC: 처음부터 켠다 (캐시 적중 — 글자 바뀜 0)', () => {
@@ -171,13 +171,13 @@ describe('🔤 첫 페인트를 막는 CSS 는 우리 오리진만 (2026-10-12)'
     expect(a[0].media ?? 'all').not.toBe('print')
   })
   it('②-7 PC 시트: 본문 규칙 + 상대경로 0 + 얼굴 90개 이상 + 로더 href 와 같은 파일', () => {
-    const f = 'public/static/fonts/pretendard-pc-v1.3.9-3.css'
+    const f = 'public/static/fonts/pretendard-pc-v1.3.9-4.css'
     expect(existsSync(f), 'PC 시트가 없다 — 로더가 404 를 받는다').toBe(true)
     const css = readFileSync(f, 'utf-8')
     expect(css).not.toMatch(/url\(\.\.\//)
     expect((css.match(/@font-face/g) || []).length).toBeGreaterThan(90)
     expect(css, '본문 규칙이 없으면 글꼴을 받고도 안 쓴다(에러 0)').toMatch(/html body\{font-family:"UrDigits","Pretendard Variable"/)
-    expect(LOADER).toContain("'/static/fonts/pretendard-pc-v1.3.9-3.css'")
+    expect(LOADER).toContain("'/static/fonts/pretendard-pc-v1.3.9-4.css'")
   })
 
   it('④ Poppins 워드마크는 인라인 @font-face + 자가호스팅 woff2', () => {

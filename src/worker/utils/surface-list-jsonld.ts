@@ -34,8 +34,12 @@ import { CONSUMER_SURFACE_SEO, CONSUMER_SITE_NAME, registerDynamicSurfaceSeo } f
 import { withCrumbRoot } from '../../shared/seo/breadcrumb'
 import { CONCEPT_FAQ } from '../../shared/seo/concept-content'
 import { lifeCategoryCrumb, lifeJsonLdNodes, lifeCategorySeo } from '../../shared/life-seo'
+import { landingJsonLdNodes } from './landing-seo'
+import { agencyInviteSurfaceSeo } from '../../shared/agency-store-invite'
 // 🏠 업종 페이지 서버 메타 — 여기서 끼운다(워커 index 가 이 모듈을 import 한다). 공용 번들엔 업종 데이터가 안 실린다.
 registerDynamicSurfaceSeo(lifeCategorySeo)
+// 🔗 에이전시 매장 영입 링크(2026-10-31) — 카톡에 주소를 붙여 넣으면 유어딜 홈 카드(`index, follow`)가 뜨던 것. 조회 없이 noindex.
+registerDynamicSurfaceSeo(agencyInviteSurfaceSeo)
 import { addressInRegion, parseRegionPath, regionPath, type RegionRef } from '../../shared/constants/region-slugs'
 import { REGION_PATH_RE } from '../../shared/seo/region-seed'
 
@@ -328,6 +332,7 @@ export function buildSurfaceListJsonLd(
   }
 
   nodes.push(...lifeJsonLdNodes(path, origin, meta.canonical)) // 🏠 생활 서비스: 허브=업종 목록 · 업종=Service(대상 사업자)
+  nodes.push(...landingJsonLdNodes(path, origin, meta.canonical)) // ❓ 입점·소개 랜딩: FAQPage(화면과 같은 배열) + 입점 Service(2026-10-31)
   nodes.push({
     '@type': items.length ? 'CollectionPage' : 'WebPage',
     '@id': meta.canonical,

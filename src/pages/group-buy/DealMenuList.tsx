@@ -10,7 +10,6 @@ export default function DealMenuList({ menuItems }: { menuItems: DealMenuItem[] 
   if (!menuItems.length) return null
   return (
     <>
-      <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
       <div style={{ padding: '22px 18px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>대표 메뉴</div>

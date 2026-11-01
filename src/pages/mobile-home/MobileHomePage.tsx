@@ -14,12 +14,12 @@ import HomeSections from '@/components/home/HomeSections'
 import { resolveHomeNear, syncNearCookie } from '@/components/home/home-near'
 import UrShortsRail from '@/components/home/UrShortsRail'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
-import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
-import { readCachedLoc } from '@/shared/utils/cached-loc'
-import { DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
+import PcHomeLocationBar, { readHomeRegion, homeStartLoc, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
+import { HOME_DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
 import { ShortsIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
+import { regionHeroFor, REGION_HERO_SHADE } from '@/shared/home-region-hero'
 
 /**
  * 📱 모바일 메인 (2026-08-19 대표 확정 — 그루폰 모바일 홈 시안).
@@ -50,7 +50,7 @@ export default function MobileHomePage() {
     onPointerLeave: () => setPressed(null),
     onPointerCancel: () => setPressed(null),
   })
-  const [region, setRegion] = useState<HomeRegion>(() => (readCachedLoc() ? {} : readHomeRegion()))
+  const [region, setRegion] = useState<HomeRegion>(() => (homeStartLoc() ? {} : readHomeRegion()))
   /**
    * 🧭 2026-09-05 (대표 "주말에 떠나는 숙소 섹션 아래의 일반 이용권들은 기본 디폴트가 현재 위치에서
    *   가까운 순대로"): **새로 묻지 않는다** — 지도 홈·위치바가 저장해 둔 마지막 측위만 읽는다
@@ -58,7 +58,7 @@ export default function MobileHomePage() {
    *   거부하면 아무것도 못 하므로 결국 기존 동작으로 돌아온다.
    *   ⇒ 위치를 한 번이라도 잡은 사람은 재방문부터 첫 페인트가 '가까운 순', 아니면 지금과 동일.
    */
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => readCachedLoc())
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => homeStartLoc())
   // 🧭 2026-08-30 (대표 "홈에선 현재 위치가 어딘지도 나와야지"): 좌표 → 동네 이름.
   //   서버 엔드포인트는 2026-07-07 부터 있었는데 **아무도 안 부르고 있었다**(useCurrentDong 주석).
   const dong = useCurrentDong(userLoc)
@@ -88,7 +88,7 @@ export default function MobileHomePage() {
    *   섹션 '더보기'(`/?sort=popular`)는 `useHomeQuerySync` 가 그 위를 덮는다(더보기 = 인기순 유지).
    */
   const [sort, setSort] = useState<'popular' | 'newest' | 'discount' | 'near'>(
-    () => (readCachedLoc() ? 'near' : 'popular'),
+    () => (homeStartLoc() ? 'near' : 'popular'),
   )
 
   /**
@@ -100,6 +100,12 @@ export default function MobileHomePage() {
   const gridHeaderRef = useRef<HTMLElement | null>(null)
   useHomeQuerySync({ setCategory, setSort, gridHeaderRef })
 
+  /**
+   * 🌆 2026-10-31 대표 시안 8 — 고른 지역(또는 현재 위치) 도시 사진을 상단 배경으로. 사진이 있는 도시만(`region-hero.ts`).
+   *   높이는 **종전 헤더 그대로**라 사진이 생겨도 아래가 안 밀린다. 사진 위에선 `dark` 로 글자를 흰색으로 돌리고,
+   *   사진은 첫 화면이 다 뜬 뒤(지연 로딩 이미지) 남색 판 위로 서서히 나타난다.
+   */
+  const hero = regionHeroFor({ regionKey: region.regionKey, loc: userLoc })
   const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
   const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
 
@@ -133,7 +139,13 @@ export default function MobileHomePage() {
             · 지역 알약의 테두리·핀 아이콘, 현위치 알약 → 제목 + 옆의 작은 아이콘으로 흡수.
             · 카테고리 아이콘 5개 → 텍스트만. 선 아이콘 + 11px 라벨 조합이 가장 "만들어진" 티가 난다.
               활성은 잉크 + 밑줄로 — 색이 아니라 무게로 말한다(로즈는 하단 탭 하나에만 남긴다). */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
+      <div
+        data-region-hero={hero?.slug}
+        className={hero
+          ? 'dark sticky top-0 z-30 overflow-hidden ur-region-hero'
+          : 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]'}
+      >
+        {hero && <RegionHeroBg key={hero.slug} src={hero.src} />}
         <div className="px-4 h-11 flex items-center justify-between gap-2">
           <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={17} /></Link>
           {/* ⚫ 2026-10-14 (대표 *"메인의 검색, 장바구니, 알림 버튼도 마찬가지로 똑같이"* — 하단 탭과 같은 규칙):
@@ -172,7 +184,7 @@ export default function MobileHomePage() {
                그래서 줄을 [스크롤 영역][고정 진입점] 두 칸으로 나눈다. */}
         <div className="flex items-end gap-3 px-4">
         <nav aria-label="카테고리" className="flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide">
-          {DEAL_CATS.map(({ key, label }) => {
+          {HOME_DEAL_CATS.map(({ key, label }) => {
             const on = category === key
             return (
               <button
@@ -253,6 +265,18 @@ export default function MobileHomePage() {
       <SellOnUrdealRow />
       <MapPill />
       {bell.sheet}
+    </div>
+  )
+}
+
+/** 🌆 상단 사진 + 남색 막. 사진은 늦게 받아(`loading=lazy`·낮은 우선순위) 도착하면 서서히 보인다 — 첫 카드 사진과 회선을 다투지 않는다. */
+function RegionHeroBg({ src }: { src: string }) {
+  const [shown, setShown] = useState(false)
+  return (
+    <div aria-hidden className="absolute inset-0 -z-10 pointer-events-none bg-gray-900">
+      <img src={src} alt="" loading="lazy" decoding="async" fetchPriority="low" onLoad={() => setShown(true)}
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${shown ? 'opacity-100' : 'opacity-0'}`} />
+      <div className="absolute inset-0" style={{ background: REGION_HERO_SHADE }} />
     </div>
   )
 }

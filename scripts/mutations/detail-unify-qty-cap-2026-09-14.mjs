@@ -63,8 +63,8 @@ export default [
   {
     name: '[상세0914] 🏨 숙소 하단 바가 다시 담아야만 뜬다 (가격 노출 0회로 회귀)',
     file: BAR,
-    find: '  if (!hasCart && minPrice == null) return null',
-    replace: '  if (!hasCart) return null',
+    find: '  if (!hasCart && minPrice == null && !raffle) return null',
+    replace: '  if (!hasCart && !raffle) return null',
     test: TEST,
     why: '담기 전 가격이 한 번도 안 보이던 것이 안 B 가 고친 결함이다.',
   },

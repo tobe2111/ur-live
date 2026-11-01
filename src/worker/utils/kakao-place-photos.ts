@@ -55,9 +55,23 @@ const KAKAO_PHOTO_HEADERS = {
 }
 
 interface KakaoTabPhoto { url?: string; type?: string; media_type?: string }
-interface KakaoTabPhotos { counts?: { mystore?: number; vendor?: number }; photos?: KakaoTabPhoto[] }
+interface KakaoTabPhotos { counts?: { mystore?: number; vendor?: number; food?: number; indoor?: number; outdoor?: number }; photos?: KakaoTabPhoto[] }
 
-async function fetchKakaoTabPhotos(id: string, tag: 'MYSTORE' | 'VENDOR'): Promise<KakaoTabPhotos | null> {
+/**
+ * 🏷️ 2026-10-27 (대표 확정 "업체사진→분류사진") — 카카오가 그 장소 사진을 분류해 둔 태그.
+ *   업체 사진(MYSTORE·VENDOR)이 있는 매장은 데모 40곳 중 6곳(15%)뿐이라(라이브 실측) 업체 사진만으로는
+ *   3장을 못 채웠다(photoShort 309 그대로). 카카오가 **그 장소에 묶고 장면을 분류한** 사진은 75% 에 있다.
+ *   손님 리뷰·블로그 사진이지만 분류 태그가 "무엇이 찍혔는가"를 보장한다 — 미용실에 강아지 같은
+ *   **분류 없는 사진은 받지 않는다**. MENU 는 메뉴판·글자 사진이 커버에 앉으므로 쓰지 않는다.
+ */
+export type KakaoClassifiedTag = 'FOOD' | 'INDOOR' | 'OUTDOOR'
+
+/** 상품 종류 → 분류 태그 순서. 식사는 음식이 먼저(커버), 그 밖은 가게 안·밖만(음식 사진 금지). */
+export function classifiedTagsFor(category: string | null | undefined): KakaoClassifiedTag[] {
+  return category === 'meal_voucher' ? ['FOOD', 'INDOOR', 'OUTDOOR'] : ['INDOOR', 'OUTDOOR']
+}
+
+async function fetchKakaoTabPhotos(id: string, tag: 'MYSTORE' | 'VENDOR' | KakaoClassifiedTag): Promise<KakaoTabPhotos | null> {
   try {
     const res = await fetch(`https://place-api.map.kakao.com/places/tab/photos/${id}?tag=${tag}&page=1`, {
       headers: KAKAO_PHOTO_HEADERS,
@@ -70,24 +84,114 @@ async function fetchKakaoTabPhotos(id: string, tag: 'MYSTORE' | 'VENDOR'): Promi
   }
 }
 
-/** 업체 사진(매장주·제휴사 제공)만 최대 `count` 장. 손님·블로그 사진은 받지 않는다. */
-export async function fetchKakaoPlacePhotos(placeUrlOrId: string | null | undefined, count = 5): Promise<string[]> {
+/**
+ * 업체 사진(매장주·제휴사 제공) 먼저, 모자라면 `classified` 태그 순서대로 분류 사진을 최대 `count` 장.
+ *   분류 태그는 첫 응답의 counts 가 0 이 아닐 때만 부른다(서브리퀘스트 예산 — 무료 50).
+ *   `classified` 를 안 넘기면 종전처럼 업체 사진만.
+ */
+export async function fetchKakaoPlacePhotos(
+  placeUrlOrId: string | null | undefined,
+  count = 5,
+  classified: readonly KakaoClassifiedTag[] = [],
+): Promise<string[]> {
   const id = extractKakaoPlaceId(placeUrlOrId)
   if (!id) return []
   const want = Math.max(1, Math.min(8, count))
   const out: string[] = []
   const seen = new Set<string>()
-  const take = (data: KakaoTabPhotos | null, tag: string) => {
+  const take = (data: KakaoTabPhotos | null, tag: string, strictType: boolean) => {
     for (const p of data?.photos || []) {
       if (out.length >= want) break
-      if (p.type !== tag) continue
+      // 업체 태그는 응답 type 이 태그와 같은 것만(손님·블로그가 섞여 오는 날 대비).
+      if (strictType && p.type !== tag) continue
       if (p.media_type && p.media_type !== 'PHOTO') continue
       const u = cleanKakaoUrl(p.url)
       if (u && !seen.has(u)) { seen.add(u); out.push(u) }
     }
   }
   const mine = await fetchKakaoTabPhotos(id, 'MYSTORE')
-  take(mine, 'MYSTORE')
-  if (out.length < want && (mine?.counts?.vendor ?? 0) > 0) take(await fetchKakaoTabPhotos(id, 'VENDOR'), 'VENDOR')
+  take(mine, 'MYSTORE', true)
+  if (out.length < want && (mine?.counts?.vendor ?? 0) > 0) take(await fetchKakaoTabPhotos(id, 'VENDOR'), 'VENDOR', true)
+  for (const tag of classified) {
+    if (out.length >= want) break
+    const key = tag.toLowerCase() as 'food' | 'indoor' | 'outdoor'
+    // counts 를 못 읽었으면(첫 응답 실패) 부르지 않는다 — 막힌 날 예산만 태우지 않게.
+    if ((mine?.counts?.[key] ?? 0) <= 0) continue
+    take(await fetchKakaoTabPhotos(id, tag), tag, false)
+  }
+  return out
+}
+
+/**
+ * 📊 2026-10-27 — 그 장소에서 **쓸 수 있는** 사진(업체 + 종류별 분류 태그) 총 개수. 응답을 못 받으면 null.
+ *   null 은 "모른다"이지 "0장"이 아니다 — 호출부는 null 일 때 데모를 내리거나 매장을 바꾸지 않는다
+ *   (카카오가 잠깐 막힌 날 멀쩡한 데모가 통째로 교체되면 안 된다).
+ */
+export async function fetchKakaoUsablePhotoCount(
+  placeUrlOrId: string | null | undefined,
+  category: string | null | undefined,
+): Promise<number | null> {
+  const id = extractKakaoPlaceId(placeUrlOrId)
+  if (!id) return null
+  const data = await fetchKakaoTabPhotos(id, 'MYSTORE')
+  const c = data?.counts
+  if (!c) return null
+  let n = (c.mystore ?? 0) + (c.vendor ?? 0)
+  for (const tag of classifiedTagsFor(category)) n += c[tag.toLowerCase() as 'food' | 'indoor' | 'outdoor'] ?? 0
+  return n
+}
+
+/**
+ * 🤖 2026-10-27 (대표 "매장주 제공 사진이 있는 매장만") — AI 판정 모드의 후보: **매장주 제공(MYSTORE)만**.
+ *   제휴사(VENDOR)·분류 사진(손님·블로그)은 받지 않는다. 한 장 한 장은 demo-photo-judge 가 거른다.
+ *   반환 `total` = 카카오가 말하는 매장주 사진 수(응답을 못 받으면 null — "모른다").
+ */
+export async function fetchKakaoMyStorePhotos(
+  placeUrlOrId: string | null | undefined,
+  count = 10,
+): Promise<{ photos: string[]; total: number | null }> {
+  const id = extractKakaoPlaceId(placeUrlOrId)
+  if (!id) return { photos: [], total: null }
+  const data = await fetchKakaoTabPhotos(id, 'MYSTORE')
+  if (!data) return { photos: [], total: null }
+  const want = Math.max(1, Math.min(12, count))
+  const photos: string[] = []
+  const seen = new Set<string>()
+  for (const p of data.photos || []) {
+    if (photos.length >= want) break
+    if (p.type !== 'MYSTORE') continue
+    if (p.media_type && p.media_type !== 'PHOTO') continue
+    const u = cleanKakaoUrl(p.url)
+    if (u && !seen.has(u)) { seen.add(u); photos.push(u) }
+  }
+  return { photos, total: data.counts ? (data.counts.mystore ?? 0) : null }
+}
+
+/**
+ * 🖼️ 2026-10-27 (대표 "카카오에서도 들고와야 … 매장주 제공 사진들 중에서 내가 다른 사진으로 조정도"):
+ *   어드민이 고르도록 그 장소의 **매장주 제공 사진 전부**(최대 `maxPages` 쪽). 응답 실패면 [].
+ */
+export async function fetchKakaoMyStoreAll(placeUrlOrId: string | null | undefined, maxPages = 3): Promise<string[]> {
+  const id = extractKakaoPlaceId(placeUrlOrId)
+  if (!id) return []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (let page = 1; page <= Math.max(1, Math.min(5, maxPages)); page++) {
+    let data: KakaoTabPhotos | null = null
+    try {
+      const res = await fetch(`https://place-api.map.kakao.com/places/tab/photos/${id}?tag=MYSTORE&page=${page}`, {
+        headers: KAKAO_PHOTO_HEADERS, signal: AbortSignal.timeout(6000),
+      })
+      if (res.ok) data = (await res.json()) as KakaoTabPhotos
+    } catch { /* 다음 쪽 없음으로 본다 */ }
+    const before = out.length
+    for (const p of data?.photos || []) {
+      if (p.type !== 'MYSTORE') continue
+      if (p.media_type && p.media_type !== 'PHOTO') continue
+      const u = cleanKakaoUrl(p.url)
+      if (u && !seen.has(u)) { seen.add(u); out.push(u) }
+    }
+    if (out.length === before || out.length >= (data?.counts?.mystore ?? 0)) break
+  }
   return out
 }

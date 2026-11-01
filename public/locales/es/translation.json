@@ -1726,7 +1726,8 @@
       "channelConfirm": "Confirmar",
       "channelSaving": "Guardando…",
       "channelSaved": "Tipo de gestión guardado",
-      "channelSaveFailed": "No se pudo guardar el tipo de gestión"
+      "channelSaveFailed": "No se pudo guardar el tipo de gestión",
+      "seedingSaveFailed": "No se pudo guardar la prueba gratuita. Actívala de nuevo en la bandeja de solicitudes de tu tienda"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -5848,7 +5849,9 @@
     "sharedShareDesc": "Encontré un gran producto en Urdeal",
     "sharedShareBtn": "Ver producto",
     "sellerReplyLabel": "Respuesta del vendedor",
-    "sponsoredBadge": "Patrocinado"
+    "sponsoredBadge": "Patrocinado",
+    "loadMore": "Más reseñas (quedan {{n}})",
+    "loadingMore": "Cargando…"
   },
   "productOption": {
     "title": "Gestión de opciones de producto",

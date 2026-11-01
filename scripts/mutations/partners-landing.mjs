@@ -124,9 +124,11 @@ export default [
   },
   {
     name: '🏪 안 B 가 사라진다 (사진 0장으로 회귀)',
-    file: 'src/pages/partners/PartnerTools.tsx',
-    find: `              <PartnerPhone src={SHOT(shot)} alt={cap} />`,
-    replace: `              <span />`,
+    file: 'src/pages/partners/PartnerFlow.tsx',
+    // 2026-10-31: 사장님 화면이 PC 흐르는 줄 + 폰 가로 줄 두 곳에 그려져 한 곳만 지워도 파일 단위 집계가 안 변한다.
+    //   폰 프레임을 그리는 다른 섹션(손님이 오는 길 — 고정 화면 스토리)을 지워 "섹션 셋 이상" 을 깨뜨린다.
+    find: `<StickyStory steps={STEPS} shotUrl={SHOT} />`,
+    replace: `<span />`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '대표가 1차 판을 보고 "지금 디자인이라곤 뭐가 없네" 라고 한 것의 정체는 취향이 아니라 ' +
@@ -149,8 +151,9 @@ export default [
     file: 'src/pages/partners/PartnerCompare.tsx',
     /* 🔧 2026-09-30 재조준: 디스플레이 7 rung 이행으로 `26/40/46` → `28/40/48`.
        결함은 그대로 — PC 단계를 한 rung 내려 "넓어진 모바일" 로 되돌린다(스케일 위 값으로). */
-    find: `        <h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[14em]">`,
-    replace: `        <h2 className="text-[28px] lg:text-[34px] font-extrabold tracking-[-0.02em] text-ink leading-[1.28] max-w-[14em]">`,
+    // 2026-10-31: h2 가 움직임 래퍼(`<Reveal>`) 안으로 들어갔다 — 앵커만 옮겼다(결함은 같다)
+    find: `<Reveal><h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[14em]">`,
+    replace: `<Reveal><h2 className="text-[28px] lg:text-[34px] font-extrabold tracking-[-0.02em] text-ink leading-[1.28] max-w-[14em]">`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '대표 *"PC 버전은 전혀 PC 버전 같지 않은데?"* 의 절반이 이것이었다 — 1440px 에서도 제목이 ' +
@@ -160,8 +163,8 @@ export default [
   {
     name: '🏪 히어로 폰이 다시 섹션 밖으로 잘린다',
     file: 'src/pages/partners/PartnerHero.tsx',
-    find: `              className="w-[38%] max-w-[12.5rem] lg:w-[44%] lg:mb-12" />`,
-    replace: `              className="w-[38%] max-w-[12.5rem] lg:absolute lg:w-[54%] lg:-right-2 lg:bottom-[-2.5rem]" />`,
+    find: `              className="w-[38%] max-w-[12.5rem] lg:w-[44%] lg:mb-12 ur-float-late" />`,
+    replace: `              className="w-[38%] max-w-[12.5rem] lg:absolute lg:w-[54%] lg:-right-2 lg:bottom-[-2.5rem] ur-float-late" />`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '1차에서 실제로 그랬다. 섹션이 `overflow-hidden` 이라 폰 아랫부분이 잘렸고, 랜딩에서 ' +
@@ -185,8 +188,8 @@ export default [
   {
     name: '🏪 h1 이 다시 "…입니다" 완결문이 된다',
     file: 'src/pages/partners/PartnerHero.tsx',
-    find: `            <span className="text-brand-text">계산하는 손님</span>`,
-    replace: `            <span className="text-brand-text">계산하는 손님</span>을 부르는 방법입니다`,
+    find: `<Line i={1}><span className="text-brand-text">계산하는 손님</span></Line>`,
+    replace: `<Line i={1}><span className="text-brand-text">계산하는 손님</span></Line>을 부르는 방법입니다`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '2차 판의 제목 아홉 개가 전부 "-습니다/-입니다" 로 끝났고, 그 균일함이 대표가 지적한 ' +
@@ -242,8 +245,9 @@ export default [
   {
     name: '🏪 스니펫에서 중개 요율을 뺀다 (한쪽만 말해 또 갈린다)',
     file: 'src/shared/seo/consumer-surfaces.ts',
-    find: '      + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered})가 붙습니다.',
-    replace: '      + `가 붙습니다.',
+    // 2026-10-31: 설명 문장을 다듬으며("…가 붙습니다." → "…). 가입비…") 앵커만 재조준 — 결함은 그대로.
+    find: '      + `(대행사를 통하면 ${PARTNER_FACTS.feeBrokered}). 가입비',
+    replace: '      + `. 가입비',
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '직접 10% 만 말하면 대행사 경유로 들어온 사장님이 자기 요율(5%)을 어디서도 못 읽는다. ' +

@@ -102,7 +102,7 @@ describe('안 B — 숙소 상세', () => {
     expect(s).toContain('부터')
     expect(s).toContain('객실 고르기')
     // 팔 수 있는 객실이 없으면 바를 안 그린다 — 만실 카드가 그 말을 대신한다
-    expect(s).toMatch(/if \(!hasCart && minPrice == null\) return null/)
+    expect(s).toMatch(/if \(!hasCart && minPrice == null(?: && !raffle)?\) return null/)  // 추첨 상품(2026-10-27)은 응모 버튼을 위해 남긴다
   })
 
   it('③ 리뷰가 붙었다 — 공구가 쓰는 그 컴포넌트를 재사용(새로 만들지 않는다)', () => {
