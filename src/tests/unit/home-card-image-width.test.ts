@@ -84,8 +84,9 @@ describe('요청 폭이 필요 폭을 넘지 않는다', () => {
    */
   function widths(file: string): { lg: number; belowLg: number } {
     const s = code(read(file))
-    expect(s, `${file}: cardImgWidth 가 SSOT 상수를 안 쓴다(리터럴로 되돌아갔다)`).toMatch(
-      /cardImgWidth\s*=\s*isLgViewport \? HOME_CARD_IMG_WIDTH_LG : HOME_CARD_IMG_WIDTH_BASE/,
+    // 🔁 2026-11-01: 폭 판정이 SSOT 함수 `homeCardImgWidth` 로 옮겨갔다(폰 줄 목록 120 추가) — 불변식은 그대로.
+    expect(s, `${file}: cardImgWidth 가 SSOT 함수를 안 쓴다(리터럴로 되돌아갔다)`).toMatch(
+      /cardImgWidth\s*=\s*homeCardImgWidth\(isLgViewport, isRowViewport,/,
     )
     return { lg: HOME_CARD_IMG_WIDTH_LG, belowLg: HOME_CARD_IMG_WIDTH_BASE }
   }

@@ -1,8 +1,8 @@
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, detailCropUrl, detailGalleryImages, detailHeroMobileUrl } from '../../shared/detail-hero-image'
 import {
-  HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
-  HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD, HOME_CARD_MAX_DPR,
+  HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_IMG_WIDTH_ROW,
+  HOME_CARD_LG_QUERY, HOME_CARD_ROW_QUERY, HOME_CARD_MID_QUERY, HOME_CARD_ABOVE_FOLD, HOME_CARD_MAX_DPR,
 } from '../../shared/home-card-image'
 import { HERO_STRIP_PRELOAD, heroTileUrl, pickHeroStripFromSeedJson } from '../../shared/home-hero-strip'
 import { HOME_HERO_MEDIA_QUERY } from '../../shared/home-hero-image'
@@ -54,7 +54,9 @@ export function buildHomeCardPreloadLinks(ssrExtraPayload: string): string[] {
     const src = p?.image_url
     if (!src) continue
     for (const [q, w] of [
-      [HOME_CARD_BASE_QUERY, HOME_CARD_IMG_WIDTH_BASE],
+      // 📋 2026-11-01 — 폰(<768)은 첫 섹션이 줄 목록(120px 칸)이라 ROW 폭. 태블릿은 격자 BASE.
+      [HOME_CARD_ROW_QUERY, HOME_CARD_IMG_WIDTH_ROW],
+      [HOME_CARD_MID_QUERY, HOME_CARD_IMG_WIDTH_BASE],
       [HOME_CARD_LG_QUERY, HOME_CARD_IMG_WIDTH_LG],
     ] as const) {
       const href = cfImage(src, { width: w, format: 'auto' })
