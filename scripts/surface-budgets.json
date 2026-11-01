@@ -708,6 +708,66 @@
         "AgencyHomePage.js": 0.28,
         "agency-api.js": 1.13
       }
+    },
+    "life": {
+      "totalKB": 180.4,
+      "chunks": {
+        "index.js": 15.52,
+        "react-core.js": 38.65,
+        "app-shared.js": 6.52,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.91,
+        "react-router.js": 7.11,
+        "helmet.js": 4.93,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.19,
+        "app-shell.js": 7.96,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.34,
+        "app-routes.js": 1.03,
+        "index.css": 28.66,
+        "LifePage.js": 3.02,
+        "app-life-subcat.js": 0.59,
+        "app-life-biz.js": 4.61,
+        "app-life-banner.js": 2.03,
+        "lucide-home.js": 0.77,
+        "home-service.js": 0.47,
+        "lz-common.js": 18.1
+      }
+    },
+    "lifePro": {
+      "totalKB": 196.32,
+      "chunks": {
+        "index.js": 15.52,
+        "react-core.js": 38.65,
+        "app-shared.js": 6.52,
+        "tanstack-query.js": 9.5,
+        "zustand.js": 2.5,
+        "app-utils.js": 20.91,
+        "react-router.js": 7.11,
+        "helmet.js": 4.93,
+        "lucide-shell.js": 0.7,
+        "app-stores.js": 2.19,
+        "app-shell.js": 7.96,
+        "app-auth.js": 1.29,
+        "app-layout.js": 3.34,
+        "app-routes.js": 1.03,
+        "index.css": 28.66,
+        "LifeProPage.js": 6.27,
+        "app-life-subcat.js": 0.59,
+        "lz-gbDetailL-productL.js": 0.96,
+        "lz-common.js": 18.1,
+        "lucide-home.js": 0.77,
+        "app-life-banner.js": 2.03,
+        "home-service.js": 0.47,
+        "join-params.js": 0.36,
+        "life-reviews.js": 2.39,
+        "life-shared.js": 1.3,
+        "app-utils-deferred.js": 6.42,
+        "app-life-biz.js": 4.61,
+        "app-owner-kit.js": 1.24
+      }
     }
   },
   "history": [
@@ -950,6 +1010,26 @@
       "changes": [
         "gbDetail: 199.9 → 201.9 KB (+2.0, 허용 1.5) · 늘어난 것: lz-gbDetail.js +1.2, index.css +0.3",
         "stayDetail: 204.8 → 207.5 KB (+2.7, 허용 1.5) · 늘어난 것: lz-gbDetail.js +1.2, StayDetailPage.js +0.7, index.css +0.3"
+      ]
+    },
+    {
+      "date": "2026-10-26",
+      "reason": "생활 허브(/life)·업체 등록(/life/pro) 표면 신설 — 하드로드 미리받기 + 부팅 준비. lifePro 는 이용권 상세 묶음(66KB raw) 끌림 제거 후 값",
+      "changes": [
+        "life: 기준에 없는 화면 (178.6 KB) — 예산을 갖고 들어와야 한다",
+        "lifePro: 기준에 없는 화면 (194.7 KB) — 예산을 갖고 들어와야 한다"
+      ]
+    },
+    {
+      "date": "2026-11-01",
+      "reason": "main 머지(2026-11-01) — 공용 index.css·lz-common 증가분(main 쪽 홈·마이 변경)을 life·lifePro 기준에만 반영. 이 PR 의 생활 코드 증가 아님. 다른 화면은 로컬 측정 편차라 손대지 않음",
+      "changes": [
+        "life: 178.6 → 180.4 KB (+1.8) · index.css +0.5, lz-common.js +0.4",
+        "lifePro: 194.7 → 196.3 KB (+1.7) · index.css +0.5, lz-common.js +0.4"
+      ],
+      "surfaces": [
+        "life",
+        "lifePro"
       ]
     }
   ]
