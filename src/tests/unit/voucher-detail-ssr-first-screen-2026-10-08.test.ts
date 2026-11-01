@@ -25,7 +25,8 @@ const SEED = JSON.stringify({
   data: {
     id: 2192,
     name: '치즈롤 존스 페이버릿(L)',
-    image_url: 'https://bizimg.giftishow.com/Resource/goods/x.jpg',
+    // 🎁 2026-10-31: 리사이저를 타는 모양(`/api/media` 일반 업로드)으로 URL 동치를 잰다 — giftishow 원본은 리사이저를 안 탄다(⑥).
+    image_url: '/api/media/uploads/rehost/h/x.jpg',
     category: '피자',
     deal_only: 1,
     price: 41760,
@@ -50,13 +51,21 @@ describe('교환권 상세 — 서버가 그리는 첫 화면', () => {
     expect(page).toContain(`cfSrcSet(product.image_url, ${VOUCHER_PHOTO_WIDTH})`)
     expect(page).toContain(VOUCHER_PHOTO_SIZES)
 
-    const raw = 'https://bizimg.giftishow.com/Resource/goods/x.jpg'
+    const raw = '/api/media/uploads/rehost/h/x.jpg'
     const html = buildVoucherDetailFirstScreen(SEED, LOADER)
     expect(html).toContain(`src="${cfImage(raw, { width: VOUCHER_PHOTO_WIDTH, format: 'auto' })}"`)
     const ss = cfSrcSet(raw, VOUCHER_PHOTO_WIDTH)
     expect(ss.length, 'srcSet 이 비면 이 단언은 아무것도 안 지킨다').toBeGreaterThan(10)
     expect(html).toContain('srcset="')
     expect(html).toContain(`sizes="${VOUCHER_PHOTO_SIZES}"`)
+  })
+
+  it('②-2 아직 안 옮긴 giftishow 원본은 그대로 쓴다 — 리사이저 주소를 만들면 CF 차단으로 깨진다(2026-10-31)', () => {
+    const raw = 'https://bizimg.giftishow.com/Resource/goods/x.jpg'
+    const html = buildVoucherDetailFirstScreen(SEED.replace('/api/media/uploads/rehost/h/x.jpg', raw), LOADER)
+    expect(html).toContain(`src="${raw}"`)
+    expect(html).not.toContain('/cdn-cgi/image/')
+    expect(cfSrcSet(raw, VOUCHER_PHOTO_WIDTH)).toBe('')
   })
 
   it('③ 경계 — **보이는** 영역은 제목(h1)까지만. 가격·잔액은 서버가 그리지 않는다', () => {

@@ -28,7 +28,9 @@ const CRON = readFileSync('src/worker/cron/demo-image-rehost.ts', 'utf-8')
 /** 2026-09-02 실측 승격분 — cf-resized: internal=ok 확인(w200/400/600). */
 const PROMOTED = ['cloudfront.net']  // DO-spaces 는 실측 403 이라 승격 철회(아래 ④ 참조)
 /** 이미 승격돼 있던 것 — 줄어들면 트래픽이 되돌아간다(잠금표 "제거 금지"). */
-const EXISTING = ['giftishow.com', 'pstatic.net', 'kakaocdn.net', 'daumcdn.net', 'media.ur-team.com', 'kt.com']
+// 🎁 2026-10-31: giftishow.com 은 대표 승인으로 **뺐다**(CF 차단 재발 — 라이브 30장 중 25장 리사이저 실패).
+//   그 호스트는 이제 원본 직행 + R2 이관(⑤). 다시 넣으면 교환권 사진이 7초 기다렸다 깨진다.
+const EXISTING = ['pstatic.net', 'kakaocdn.net', 'daumcdn.net', 'media.ur-team.com', 'kt.com']
 
 const verifiedLine = CF.split('\n').find((l) => l.includes('const CDN_CGI_VERIFIED = [')) || ''
 
@@ -95,7 +97,7 @@ describe('④ 미지 호스트는 원본 그대로 둔다 — onerror=redirect �
   })
 
   it('검증 호스트·업로드·상대경로·data: 는 종전 그대로다', () => {
-    expect(cfImage('https://bizimg.giftishow.com/a.jpg', { width: 400 })).toMatch(/^\/cdn-cgi\/image\/.*giftishow/)
+    expect(cfImage('https://bizimg.giftishow.com/a.jpg', { width: 400 }), 'giftishow 는 원본 직행(2026-10-31)').toBe('https://bizimg.giftishow.com/a.jpg')
     expect(cfImage('https://d2uja84sd90jmv.cloudfront.net/a.jpg', { width: 400 })).toMatch(/^\/cdn-cgi\/image\/.*cloudfront/)
     expect(cfImage('/api/media/uploads/a.jpg', { width: 400 })).toContain('media.ur-team.com')
     const d = 'data:image/png;base64,iVBORw0KGgo='
