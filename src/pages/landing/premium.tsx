@@ -106,7 +106,7 @@ export function DeviceStage({ back, front, toast, className = '' }: {
         <Device screen={front} className="ur-device-front" />
       </div>
       {toast ? (
-        <div className="ur-device-toast bg-white text-gray-900 dark:bg-[#1D1F29] dark:text-white">
+        <div className="ur-device-toast bg-surface text-ink">
           <span aria-hidden className="w-8 h-8 rounded-full bg-brand text-white grid place-items-center text-[15px] font-bold shrink-0">✓</span>
           <span className="text-[13px] leading-snug"><b className="block text-[15px] font-bold">{toast.title}</b>{toast.sub}</span>
         </div>
