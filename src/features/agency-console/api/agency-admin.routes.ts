@@ -13,8 +13,13 @@ import { requireAdminRole } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error'
 import { invalidateStoreSeatCache } from '@/worker/utils/store-seat-guard'
 import { ensureAgencyConsoleTables } from './agency-schema'
+import { registerAdminAgencyPayoutRoutes } from './agency-payout.routes'
 
 export const agencyAdminRoutes = new Hono<{ Bindings: Env }>()
+// 💸 2026-11-01 — 지급 신청 처리 · 옛 중개 매장 이전(dry_run 기본). 쓰기는 super·finance(이전은 super)만.
+agencyAdminRoutes.use('/agency-payouts/*', requireAdminRole('super', 'finance'))
+agencyAdminRoutes.use('/agency-accounts/migrate-broker', requireAdminRole('super'))
+registerAdminAgencyPayoutRoutes(agencyAdminRoutes)
 
 agencyAdminRoutes.get('/agency-accounts', async (c) => {
   try {

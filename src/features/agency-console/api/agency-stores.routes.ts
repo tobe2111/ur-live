@@ -34,6 +34,7 @@ import { agencyStoreToday } from './agency-store-today'
 import { registerAgencyNotificationRoutes } from './agency-store-notifications'
 import { releaseAgencyProducts } from './channel-sales'
 import { registerAgencySalesRoute } from './agency-store-sales'
+import { registerAgencyPayoutRoutes } from './agency-payout.routes' // 💸 2026-11-01 에이전시 몫 지급(게이트 OFF)
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; FRONTEND_URL?: string }
 type Vars = { agencyStaff: AgencyStaffContext }
@@ -297,3 +298,4 @@ registerStaffStoreRoutes(agencyStoresRoutes)
 registerAgencyNotificationRoutes(agencyStoresRoutes)
 // 📊 우리 이용권 판매 내역·통계(2026-10-24) — GET /stores/:sellerId/sales. 본문은 형제 파일.
 registerAgencySalesRoute(agencyStoresRoutes)
+registerAgencyPayoutRoutes(agencyStoresRoutes)

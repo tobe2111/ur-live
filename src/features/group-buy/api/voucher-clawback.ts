@@ -6,6 +6,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { adjustUserPoints } from '../../../worker/utils/point-ledger'
 // 💸 2026-10-10: attribution 회수와 같은 금액을 원장(seller:N → influencer:X)에서도 되돌린다(머니 룰 #2).
 import { reverseAttributionLedgerShares, type AttributionShareToReverse } from '../../../worker/utils/attribution-ledger-reversal'
+import { clawbackAgencyShare } from '../../../worker/utils/agency-share-payout'
 
 /**
  * 🛡️ 2026-05-30: 인플루언서 커미션 clawback — voucher 환불/취소 시 미지급 커미션 회수.
@@ -34,6 +35,13 @@ export async function clawbackVoucherCommission(
   //   → 환불/취소/만료 시 인플 커미션이 전혀 회수 안 됨(누수). order_id 로 연결하고 바우처 비례 clawback.
   const v = await DB.prepare('SELECT order_id FROM vouchers WHERE id = ?').bind(voucherId).first<{ order_id: number | null }>().catch(() => null)
   const orderId = v?.order_id ?? null
+  // 🤝 2026-11-01 [머니 룰 #2] 에이전시 몫(agency_share_credits)도 같은 비례로 되돌린다 — 인플 attribution 이
+  //   없는 주문에서도 돌아야 하므로 아래 조기 반환보다 **먼저** 둔다. 표가 없으면(게이트 OFF) 조용히 0.
+  if (orderId) {
+    const n = await DB.prepare(`SELECT COUNT(*) AS n FROM vouchers WHERE order_id = ? AND (id = ? OR status IN ('unused', 'used'))`)
+      .bind(orderId, voucherId).first<{ n: number }>().catch(() => null)
+    if (await clawbackAgencyShare(DB, { orderId, voucherId, denom: Math.max(1, Number(n?.n ?? 1)), reason })) clawed++
+  }
 
   // attribution 조회: order_id 우선(신규), 레거시 voucher_id fallback.
   const attrRows = orderId

@@ -1,0 +1,46 @@
+/**
+ * 🧬 주입 — 에이전시 몫 유어딜 지급(결재 2026-10-11 3단계, 2026-11-01).
+ * 가드: src/tests/unit/agency-share-payout-2026-11-01.test.ts
+ */
+const T = 'src/tests/unit/agency-share-payout-2026-11-01.test.ts'
+const F = 'src/worker/utils/agency-share-payout.ts'
+export default [
+  { name: '에이전시몫 — 게이트를 안 본다', file: F,
+    find: "    if (!(await isAgencySharePayoutEnabled(DB))) return none\n",
+    replace: '\n', test: T, why: '기본 OFF 인 머니 경로가 대표가 켜기 전에 돈을 움직인다.' },
+  { name: '에이전시몫 — 선점 없이 원장부터 쓴다(멱등 깨짐)', file: F,
+    find: '    if (!ins.meta?.changes) return { credited: 0, agencyId: ag.agencyId, matched: true }\n',
+    replace: '\n', test: T, why: '딜·카드 두 확정 경로가 같은 주문에 원장을 두 번 쓴다.' },
+  { name: '에이전시몫 — 끊긴 맡김에도 붙는다', file: F,
+    find: "AND l.status = 'active'", replace: "AND l.status IN ('active','ended')", test: T,
+    why: '사장님이 끊은 뒤에도 매 판매마다 매장 몫이 에이전시로 나간다.' },
+  { name: '에이전시몫 — 자동 정산 집계에 걸리는 계정 이름', file: F,
+    find: 'export const agencyLedgerAccount = (agencyId: number) => `agencyacct:${agencyId}`',
+    replace: 'export const agencyLedgerAccount = (agencyId: number) => `agency:${agencyId}`', test: T,
+    why: '주간 자동 정산이 같은 몫을 한 번 더 내고, 옛 에이전시 번호와 겹치면 남의 계좌로 간다.' },
+  { name: '에이전시몫 — 환불 역전 원장을 안 쓴다', file: F,
+    find: '      event_type: AGENCY_SHARE_REVERSAL_EVENT,', replace: "      event_type: 'agency_share_reversal_x',", test: T,
+    why: '환불된 주문의 에이전시 몫을 매장이 영구 부담한다.' },
+  { name: '에이전시몫 — 지급 신청에 묶인 몫도 회수', file: F,
+    find: '        WHERE id = ? AND amount = ? AND payout_id IS NULL`,',
+    replace: '        WHERE id = ? AND amount = ?`,', test: T, why: '송금 대기 중인 몫이 깎여 신청 합계와 실제 묶인 몫이 갈린다.' },
+  { name: '에이전시몫 — 개인도 공제 0', file: F,
+    find: "  if (kind === 'individual') {", replace: "  if (kind === 'individual_x') {", test: T,
+    why: '개인 에이전시에 원천징수 없이 지급한다(세법 위반).' },
+  { name: '에이전시몫 — 성숙 전 몫도 신청에 묶인다', file: F,
+    find: "      WHERE agency_id = ? AND payout_id IS NULL AND status IN ('pending','available')\n        AND available_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now')`,",
+    replace: "      WHERE agency_id = ? AND payout_id IS NULL AND status IN ('pending','available')`,", test: T,
+    why: '환불 창이 안 끝난 몫을 송금하면 그 뒤 환불은 회수할 수 없다.' },
+  { name: '에이전시몫 — 중개사 몫이 함께 붙는다', file: 'src/worker/utils/broker-share.ts',
+    find: '    if (ag.matched) return { credited: 0, brokerUserId: null }\n', replace: '\n', test: T,
+    why: '이전한 매장의 판매에서 매장 몫을 두 번 뗀다.' },
+  { name: '에이전시몫 — 회수가 인플 조기 반환 뒤로 밀린다', file: 'src/features/group-buy/api/voucher-clawback.ts',
+    find: "    if (await clawbackAgencyShare(DB, { orderId, voucherId, denom: Math.max(1, Number(n?.n ?? 1)), reason })) clawed++\n",
+    replace: '\n', test: T, why: '인플 소개가 없는 주문은 환불해도 에이전시 몫이 안 돌아온다.' },
+  { name: '에이전시몫 — 규칙1을 카드 경로에서 뺀다', file: 'src/features/group-buy/api/helpers.ts',
+    find: '    && !(await isOwnAgencyReferral(DB, p.referralInfluencerId, p.sellerId, p.productId))',
+    replace: '    && true', test: T, why: '에이전시가 자기 링크로 팔면 에이전시 몫과 소개비를 둘 다 받는다.' },
+  { name: '에이전시몫 — 이전이 dry_run 기본을 잃는다', file: 'src/features/agency-console/api/agency-payout.routes.ts',
+    find: '      const dryRun = body.dry_run !== false', replace: '      const dryRun = body.dry_run === true', test: T,
+    why: '본문 없이 한 번 눌러도 프로덕션 매장이 옮겨진다.' },
+]

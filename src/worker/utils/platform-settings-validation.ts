@@ -107,6 +107,9 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   // 💸 2026-09-19 중개사 몫 직접 송금(결재 2026-09-16 안 1) — read-site: broker-share.ts creditBrokerShare.
   //   기본 OFF = 중개사는 장부 밖(2026-09-04 규칙). 켜기 전 STAGING S-BROKER 실결제.
   broker_share_enabled: boolStr,
+  // 🤝 2026-11-01 에이전시 몫 유어딜 지급(결재 2026-10-11 3단계) — read-site: agency-share-payout.ts isAgencySharePayoutEnabled.
+  //   기본 OFF = 매장이 에이전시에 직접 송금(2026-10-24 1단계). 켜기 전 STAGING S-AGENCYSHARE 실결제.
+  agency_share_payout_enabled: boolStr,
   // 🏠 2026-10-24 생활 견적 — read-site: features/home-service/api/home-service-pro.routes.ts · home-service.routes.ts
   home_service_charge_enabled: boolStr,
   seeding_pass_charge_enabled: boolStr,
