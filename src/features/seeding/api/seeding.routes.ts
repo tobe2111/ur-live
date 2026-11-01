@@ -10,6 +10,7 @@
  *   POST   /api/seeding/applications/:id/cancel   [유저] 취소
  *   POST   /api/seeding/passes/charge|confirm     [유저] 신청권 묶음 구매(토스, 게이트 뒤)
  *   GET    /api/seeding/sns/:platform/start       [유저] 연동 시작 URL
+ *   POST   /api/seeding/sns/:platform/refresh     [유저] 제자리 갱신(팔로워 다시 읽기)
  *   DELETE /api/seeding/sns/:platform             [유저] 연동 해제
  *   GET    /api/sns-link/:platform/callback       공개 — 플랫폼 로그인 뒤 돌아오는 자리
  *
@@ -33,7 +34,7 @@ import {
   penaltyState, setting, spendPass, transition,
 } from './seeding-db'
 import {
-  authorizeUrlFor, exchangeAndFetch, listSnsLinks, platformAvailability, safeSnsReturn, saveSnsLink, signSnsState,
+  authorizeUrlFor, exchangeAndFetch, listSnsLinks, platformAvailability, refreshSnsLink, safeSnsReturn, saveSnsLink, signSnsState,
   verifySnsState, SNS_ORIGIN,
 } from './sns-link'
 import { APP_SELECT, influencerCancel, loadApp, sendToStore } from './seeding-actions'
@@ -345,6 +346,24 @@ seedingRoutes.get('/sns/:platform/start', requireAuth(), async (c) => {
     return c.json({ success: true, data: { url } })
   } catch (err) {
     return safeError(c, err, '연동을 시작하지 못했어요', '[seeding:sns-start]')
+  }
+})
+
+/**
+ * 🔄 제자리 갱신 — 저장된 토큰으로 팔로워만 다시 읽는다(플랫폼 로그인 왕복 없음).
+ *   실패해도 **연동을 지우지 않는다** — 일시적 장애로 사람의 연동을 끊으면 안 된다.
+ *   `reconnect:true` 면 화면이 "다시 연동" 을 권한다.
+ */
+seedingRoutes.post('/sns/:platform/refresh', requireAuth(), async (c) => {
+  try {
+    const p = c.req.param('platform')
+    if (!isSeedingPlatform(p)) return c.json({ success: false, error: '모르는 플랫폼이에요' }, 400)
+    const r = await refreshSnsLink(c.env, uid(c), p)
+    if (!r.ok) return c.json({ success: false, error: r.error, reconnect: !!r.reconnect }, r.reconnect ? 409 : 400)
+    const links = await listSnsLinks(c.env.DB, uid(c))
+    return c.json({ success: true, data: { links } })
+  } catch (err) {
+    return safeError(c, err, '다시 확인하지 못했어요', '[seeding:sns-refresh]')
   }
 })
 
