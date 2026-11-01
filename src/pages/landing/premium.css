@@ -1,0 +1,114 @@
+/*
+ * 💎 랜딩 고급화 키트 — `/partners` · `/influencer` · `/about` (2026-11-01 대표 *"전부 세 페이지에 모두 적용해줘"*)
+ *
+ * 시안(claude.ai 아티팩트 MkfmKhNgrXLLFBa1QXVtwM)의 여섯 가지 중 CSS 가 맡는 다섯:
+ *   ① 실사진 첫 화면 · ③ 실기기 폰 + 화면 영상 · ④ 스크롤 따라 바뀌는 바탕 · ⑤ 거대한 숫자 · ⑥ 제목 전용 글꼴
+ *   (② 문구 절반은 각 페이지 문구에서 했다)
+ *
+ * `motion.css` 와 같은 세 규칙을 지킨다 — transform·opacity 만 움직이고, 동작 줄이기면 전부 끄고,
+ * 아무것도 숨긴 채 기다리지 않는다(글자는 늘 보인다).
+ */
+
+/* ── ⑥ 제목 전용 글꼴 ─────────────────────────────────────────────
+   랜딩 세 페이지의 큰 제목(h1·h2)과 `.ur-display` 만 명조로 쓴다. 본문은 기기 글꼴 그대로(2026-10-15 결정).
+   글꼴이 오기 전에는 기기 명조(serif)로 먼저 그린다 — 글자는 처음부터 보인다(display=swap). */
+.ur-landing-type :is(h1, h2),
+.ur-landing-type .ur-display {
+  font-family: 'Noto Serif KR', 'Nanum Myeongjo', 'AppleMyungjo', serif;
+  letter-spacing: -0.035em;
+}
+
+/* ── ① 실사진 첫 화면 ─────────────────────────────────────────── */
+.ur-photo-hero { position: relative; isolation: isolate; overflow: hidden; }
+.ur-photo-hero > .ur-photo-hero-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2;
+  transform: scale(1.08); animation: ur-kenburns 18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes ur-kenburns { to { transform: scale(1); } }
+/* 사진 위 글자가 늘 읽히게 아래로 갈수록 짙어지는 막. 사진이 오기 전에는 이 막과 잉크 바탕만 보인다. */
+.ur-photo-hero::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, rgb(17 20 28 / 0.30) 0%, rgb(17 20 28 / 0.55) 45%, rgb(17 20 28 / 0.94) 100%);
+}
+@media (min-width: 1024px) {
+  .ur-photo-hero::after {
+    background: linear-gradient(90deg, rgb(17 20 28 / 0.92) 0%, rgb(17 20 28 / 0.72) 45%, rgb(17 20 28 / 0.25) 100%);
+  }
+}
+
+/* ── ③ 실기기 폰 + 화면 영상 ──────────────────────────────────────
+   둥근 금속 테두리 · 다이내믹 아일랜드 · 깊은 그림자. 화면 비율은 캡처(430×930)와 같다. */
+.ur-device {
+  position: relative; border-radius: 13% / 6%; padding: 3.6%;
+  background: linear-gradient(145deg, #3a3d44, #16181c 40%, #2b2e34);
+  box-shadow: 0 0 0 1.5px #55585f inset, 0 40px 80px -20px rgb(0 0 0 / 0.55), 0 20px 40px -10px rgb(0 0 0 / 0.30);
+}
+.ur-device::before {
+  content: ''; position: absolute; top: 4.4%; left: 50%; width: 30%; height: 3.2%; transform: translateX(-50%);
+  background: #000; border-radius: 999px; z-index: 3;
+}
+.ur-device-screen { position: relative; overflow: hidden; border-radius: 10% / 4.6%; background: #fff; aspect-ratio: 430 / 930; }
+.ur-device-screen > img, .ur-device-screen > video { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.ur-device-tag {
+  position: absolute; left: 7%; bottom: 3.5%; z-index: 4; display: inline-flex; align-items: center; gap: 6px;
+  background: rgb(0 0 0 / 0.62); color: #fff; font-size: 12px; font-weight: 500; line-height: 1; padding: 6px 9px; border-radius: 999px;
+}
+.ur-device-tag[data-live='1']::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%; background: #FF453A; animation: ur-blink 1.4s infinite;
+}
+@keyframes ur-blink { 50% { opacity: 0.25; } }
+.ur-device-back { transform: rotateY(14deg) rotateZ(-3deg); }
+.ur-device-front { transform: rotateY(-12deg) rotateZ(3deg); }
+.ur-device-stage { perspective: 1600px; }
+
+/* 사용 완료 알림 — 떴다가 사라지기를 반복한다 */
+.ur-device-toast {
+  position: absolute; left: 50%; bottom: 4%; z-index: 5; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; white-space: nowrap;
+  border-radius: 16px; padding: 12px 16px; box-shadow: 0 20px 40px rgb(0 0 0 / 0.25);
+  animation: ur-toast 6s ease-in-out infinite;
+}
+@keyframes ur-toast {
+  0%, 15% { opacity: 0; transform: translate3d(-50%, 16px, 0); }
+  25%, 80% { opacity: 1; transform: translate3d(-50%, 0, 0); }
+  95%, 100% { opacity: 0; transform: translate3d(-50%, -8px, 0); }
+}
+
+/* ── ④ 스크롤 따라 바뀌는 바탕 ─────────────────────────────────────
+   묶음(`.ur-tone`) 안에서 지금 화면 가운데를 지나는 구역의 `data-tone` 으로 바탕과 글자색이 **함께** 바뀐다.
+   둘이 같이 움직이므로 어느 순간에도 글자가 바탕에 묻히지 않는다. */
+.ur-tone {
+  background-color: var(--tone-bg);
+  color: var(--tone-fg);
+  transition: background-color 0.9s cubic-bezier(0.16, 1, 0.3, 1), color 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ur-tone[data-tone-active='ink'] { --tone-bg: #11141C; --tone-fg: #F8F7FC; --tone-mu: #9FA3A8; }
+.ur-tone[data-tone-active='paper'] { --tone-bg: var(--bg); --tone-fg: var(--ink); --tone-mu: var(--ink-soft); }
+.ur-tone[data-tone-active='tint'] { --tone-bg: #EAF1FE; --tone-fg: #16181C; --tone-mu: #4F545A; }
+.dark .ur-tone[data-tone-active='tint'] { --tone-bg: #16233D; --tone-fg: #F8F7FC; --tone-mu: #B5BBC4; }
+/* 묶음 밖에서 쓰여도 테마 기본색으로 떨어진다 */
+.ur-tone-fg { color: var(--tone-fg, var(--ink)); }
+.ur-tone-mu { color: var(--tone-mu, var(--ink-soft)); }
+
+/* ── ⑤ 거대한 숫자 ─────────────────────────────────────────────
+   글자가 아니라 그래픽이다(96px 를 넘는다) — 그래서 `select-none` + `aria-hidden` 이고 뜻은 옆의 숨은 글이 말한다.
+   스크롤로 지나가는 만큼 왼쪽부터 파랗게 차오른다(`--fill`). JS 가 없으면 끝까지 칠해진 채로 보인다. */
+.ur-giant {
+  margin: 0; line-height: 0.82; font-weight: 800; letter-spacing: -0.06em;
+  font-family: 'Inter Tight', 'Noto Serif KR', system-ui, sans-serif;
+  font-size: clamp(140px, 28vw, 380px);
+  background-image: linear-gradient(90deg, var(--brand) var(--fill, 100%), color-mix(in srgb, currentColor 22%, transparent) var(--fill, 100%));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.ur-giant small { font-size: 0.42em; letter-spacing: -0.03em; }
+.ur-share-bar { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, currentColor 18%, transparent); }
+.ur-share-bar > i { display: block; height: 100%; transform-origin: 0 50%; transform: scaleX(var(--fill-ratio, 1)); transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ur-photo-hero > .ur-photo-hero-img { animation: none; transform: none; }
+  .ur-device-tag[data-live='1']::before, .ur-device-toast { animation: none; }
+  .ur-device-toast { opacity: 1; }
+  .ur-device-back, .ur-device-front { transform: none; }
+  .ur-tone, .ur-share-bar > i { transition: none; }
+  .ur-giant { --fill: 100% !important; }
+}
