@@ -50,6 +50,7 @@
  * ⇒ 전수는 여전히 CI 담당이다. 이건 "가장 흔한 사고 하나"를 싸게 막는 그물이다.
  */
 import { execFileSync } from 'node:child_process'
+import { summarizeFailure } from './pre-push-failure-summary.mjs'
 // 🔎 판정은 순수 모듈에 있다 — 그래야 시험이 문자열이 아니라 **동작**을 잰다(2026-09-28 분리, 판정 불변).
 import { searchTermsFor, TREE_SCAN_PATTERN } from './pre-push-search-terms.mjs'
 
@@ -116,8 +117,8 @@ try {
   const out = `${err.stdout ?? ''}${err.stderr ?? ''}`
   console.error(`\n❌ pre-push 시험: 바뀐 코드를 보는 시험이 빨간불 (${((Date.now() - t0) / 1000).toFixed(1)}초).`)
   console.error('   코드를 옮기면 그 코드를 보던 **남의 가드**가 깨진다 — 풀지 말고 새 자리로 재조준할 것.\n')
-  const lines = out.split('\n').filter((l) => /FAIL|AssertionError|×|Error:|expected/.test(l))
-  console.error((lines.length ? lines : out.split('\n')).slice(0, 30).map((l) => `   ${l}`).join('\n'))
+  // 진짜 실패 줄을 먼저 — 같은 로그 잡음이 30줄을 채워 FAIL 을 가리던 것(그 모듈 머리말).
+  console.error(summarizeFailure(out).map((l) => `   ${l}`).join('\n'))
   console.error('\n우회가 정말 필요하면: SKIP_PREPUSH_GATE=1 git push …  (CI 가 다시 막는다)')
   process.exit(1)
 }
