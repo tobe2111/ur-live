@@ -41,13 +41,89 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ⏱️ 2026-11-01: **PR 에서 주입 전수가 걸리면 야간처럼 16대에 나눠 돈다.**
+  #   종전엔 전수가 `Verify` 한 잡 안에서 **한 대가 순서대로** 돌아 약 3시간이 걸렸다(실측 — 야간 전수는
+  #   같은 일을 16대가 대당 9~15분에 끝낸다). 그 사이 main 이 움직여 충돌 → 재푸시 → 처음부터를 반복했다.
+  #   좁을 때(대부분의 PR)는 종전 그대로 `Verify` 안의 `--changed` 단계가 돈다.
+  #   판정은 러너 자신의 스코프(`--scope-json`)다 — 워크플로가 흉내 내면 둘이 갈라진다.
+  mutation-plan:
+    runs-on: ubuntu-24.04
+    name: 주입 범위 판정
+    timeout-minutes: 5
+    outputs:
+      full: ${{ steps.p.outputs.full }}
+      matrix: ${{ steps.p.outputs.matrix }}
+      total: ${{ steps.p.outputs.total }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - id: p
+        run: |
+          SCOPE=$(node scripts/check-guard-mutations.mjs --changed --scope-json)
+          echo "범위: $SCOPE"
+          FULL=$(echo "$SCOPE" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(String(JSON.parse(s).full)))')
+          echo "full=$FULL" >> "$GITHUB_OUTPUT"
+          if [ "$FULL" = "true" ]; then
+            node scripts/guard-mutations-shard.mjs --plan "$(node scripts/check-guard-mutations.mjs --count)" >> "$GITHUB_OUTPUT"
+          else
+            # 분할 잡은 건너뛰지만 matrix 식이 빈 값을 받지 않게 자리값을 둔다.
+            echo 'matrix=[0]' >> "$GITHUB_OUTPUT"; echo 'total=1' >> "$GITHUB_OUTPUT"
+          fi
+
+  mutation-shards:
+    needs: mutation-plan
+    if: needs.mutation-plan.outputs.full == 'true'
+    runs-on: ubuntu-24.04
+    name: 주입 전수 ${{ matrix.shard }}/${{ needs.mutation-plan.outputs.total }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.mutation-plan.outputs.matrix) }}
+    timeout-minutes: 35
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: 가드 주입 전수 검증 — 조각 (strict)
+        run: node scripts/check-guard-mutations.mjs -s --shard ${{ matrix.shard }}/${{ needs.mutation-plan.outputs.total }}
+
   verify:
+    # 🔴 **`if: always()` 를 지우지 말 것 — 우회 구멍이 된다.** 필수 검사는 `Verify` 하나이고, GitHub 은
+    #   **건너뛴(skipped) 필수 검사를 통과로 친다.** 조각이 실패했다고 이 잡이 건너뛰어지면 실패한 PR 이
+    #   머지된다. 그래서 언제나 돌고, 아래 첫 단계가 조각 결과를 **명시적으로** 대조해 실패시킨다.
+    needs: [mutation-plan, mutation-shards]
+    if: always()
     runs-on: ubuntu-24.04
     name: Verify
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
+      - name: 주입 범위 판정·전수 조각 결과 대조
+        run: |
+          echo "판정: ${{ needs.mutation-plan.result }} · 전수? ${{ needs.mutation-plan.outputs.full }} · 조각: ${{ needs.mutation-shards.result }}"
+          if [ "${{ needs.mutation-plan.result }}" != "success" ]; then
+            echo "❌ 주입 범위 판정이 성공하지 않았다(${{ needs.mutation-plan.result }}) — 어느 길로도 주입이 검증되지 않는다."; exit 1
+          fi
+          if [ "${{ needs.mutation-plan.outputs.full }}" = "true" ] && [ "${{ needs.mutation-shards.result }}" != "success" ]; then
+            echo "❌ 주입 전수 조각이 성공하지 않았다(${{ needs.mutation-shards.result }}) — 위 '주입 전수 N/M' 잡을 볼 것."; exit 1
+          fi
+          if [ "${{ needs.mutation-plan.outputs.full }}" != "true" ] && [ "${{ needs.mutation-plan.outputs.full }}" != "false" ]; then
+            echo "❌ 판정 출력이 비었다(full='${{ needs.mutation-plan.outputs.full }}') — 판정이 헛돌았다."; exit 1
+          fi
+
       # fetch-depth: 0 — file-size ratchet 의 --changed-only 가 origin/main 과의 merge-base 를
       # 계산해야 함 (기본 shallow(depth 1) clone 엔 main 이력이 없어 merge-base 불가 → 전수 폴백돼
       # main 드리프트로 무관한 PR 이 실패하는 원래 문제가 재발). pull_request·workflow_dispatch 모두 커버.
@@ -223,6 +299,8 @@ jobs:
       #   🔴 전수는 `guard-mutations-full.yml`(main push + 야간)이 돈다 — **그걸 지우면 검사가 꺼진다.**
       #   애매하면 전수로 폴백한다(base 못 구함 · scripts/** · package.json · verify.yml 변경 시).
       - name: 가드 주입 검증 (변경분, strict)
+        # 전수면 위 분할 잡(mutation-shards)이 했다 — 여기서 또 돌면 3시간이 되살아난다.
+        if: needs.mutation-plan.outputs.full != 'true'
         run: node scripts/check-guard-mutations.mjs --changed -s
         continue-on-error: false
 
@@ -560,6 +638,17 @@ jobs:
       #   merge-base 는 위 checkout fetch-depth: 0 이 보장 (실패 시 스크립트가 전수 폴백 + 안내).
       - name: File-size ratchet (god file guard, strict)
         run: node scripts/check-file-size.mjs --changed-only -s
+        continue-on-error: false
+
+      # 🧠 2026-11-01: 세션 컨텍스트 예산 (strict). 위 래칫은 `src/**.ts(x)` 만 보므로 `.md` 는
+      #   **무제한으로 자랄 수 있었다** → CLAUDE.md 가 589,461자 ≈ 30만 토큰이 되어 세션 용량
+      #   (20만)의 151% 가 됐고, 대화 한 마디 전에 `prompt is too long` 이 났다(대표 신고).
+      #   같은 병이 하루에 셋이었다(CURRENT_WORK.md 24.4만 · INDEX.local.md 2.4만).
+      #   규칙은 이미 CLAUDE.md "📚 문서 분할" 에 있었다 — **강제가 없었다**.
+      #   래칫이 아니라 **하드 상한**이다: 래칫은 "조금씩 늘리기"를 허용하고 CLAUDE.md 는
+      #   정확히 그렇게(한 줄씩 284번) 30만이 됐다. 우회: `context-budget-ok` 주석.
+      - name: Session context budget (prompt-too-long guard, strict)
+        run: node scripts/check-context-budget.mjs -s
         continue-on-error: false
 
       # 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 — 현재 위반 0 → strict.

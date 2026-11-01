@@ -21,7 +21,14 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const MANIFEST = join(ROOT, 'dist/client/.vite/manifest.json')
-const OUT = join(ROOT, 'src/worker/generated/route-chunk-map.ts')
+// 🧩 2026-11-01 — **추적 안 하는 파일로 쓴다.** 종전엔 추적되는 `route-chunk-map.ts` 를 덮어썼다.
+//   그러면 ① 클라 빌드 없이 워커만 빌드하면(로컬 pre-commit 이 매번 그렇다) **빈 맵**이 그 파일을 덮어
+//   작업트리가 더러워졌고(실측 +3/−306) ② 그게 실수로 커밋됐다(최근 main 150커밋 중 5회) ③ 빌드마다
+//   청크 해시가 바뀌어 무관한 PR 끼리 이 파일에서 충돌했다. 배포는 어차피 매번 다시 만들므로 커밋본은
+//   **아무 데도 안 쓰였다** — 타입검사용 자리표시자만 추적하고, 진짜 맵은 `scripts/build-worker.js` 가
+//   번들할 때 이 파일로 바꿔 끼운다(그 플러그인 + 번들 대조가 "조용히 빈 맵으로 배포" 를 막는다).
+export const ROUTE_CHUNK_MAP_BUILD = join(ROOT, 'src/worker/generated/route-chunk-map.build.ts')
+const OUT = ROUTE_CHUNK_MAP_BUILD
 
 // 표면 키 → 페이지 소스 모듈(매니페스트 키). 워커(index.ts)의 라우트 매칭과 1:1.
 // 🧩 2026-10-13: vite.config.ts 도 이 표를 쓴다(손님 페이지별 청크 묶음 — `surfaceChunkName`). 그래서 export 하고,

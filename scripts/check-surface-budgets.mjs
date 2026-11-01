@@ -183,7 +183,7 @@ export function judge(measured, baseline, { tolerance = TOLERANCE_KB, slack = LO
 
 function main() {
   const htmlPath = path.join(ROOT, 'dist/client/index.html')
-  const mapPath = path.join(ROOT, 'src/worker/generated/route-chunk-map.ts')
+  const mapPath = path.join(ROOT, 'src/worker/generated/route-chunk-map.build.ts')
   if (!fs.existsSync(htmlPath)) {
     console.error('❌ surface-budgets: dist/client/index.html 없음 — `npm run build` 뒤에 돌릴 것(못 잰 것은 통과가 아니다).')
     process.exit(1)
