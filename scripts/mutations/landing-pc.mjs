@@ -40,8 +40,9 @@ export default [
     file: 'src/pages/AboutServicePage.tsx',
     /* 🔧 2026-09-30 재조준: 디스플레이 7 rung 이행 + 사다리 정리로 `30/38/46/52` → `28/40/48`
        (xl 이 lg 와 같은 rung 이 되어 잉여였다). 지키려던 것은 그대로 — PC 에서 제목이 커지는가. */
-    find: `text-[28px] sm:text-[40px] lg:text-[48px]`,
-    replace: `text-[28px] sm:text-[40px]`,
+    // 🔧 2026-11-01 재조준: 고급화 첫 화면 제목이 40/48/76 이 됐다 — PC 단계(lg)를 통째로 뺀다.
+    find: `text-[40px] sm:text-[48px] lg:text-[76px] leading-[1.14]`,
+    replace: `text-[40px] sm:text-[48px] leading-[1.14]`,
     test: T,
     why:
       '대표가 `/partners` 1차를 보고 지적한 것이 정확히 이것이다 — 1440 에서도 제목이 폰 크기라 ' +

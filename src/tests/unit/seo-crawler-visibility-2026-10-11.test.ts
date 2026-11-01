@@ -255,6 +255,7 @@ describe('③ 브랜드 — 사이트 이름 신호는 `index.html` 정적 블�
     // `#organization`·`#website` 노드를 조립하는 코드가 없어야 한다.
     for (const f of [
       'src/shared/seo/consumer-surfaces.ts',
+      'src/shared/seo/consumer-surface-table.ts', // 🗂️ 2026-11-01 표 분리
       'src/worker/utils/surface-ssr-meta.ts',
       'src/worker/utils/detail-ssr-meta.ts',
     ]) {

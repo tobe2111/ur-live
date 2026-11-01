@@ -125,6 +125,7 @@ describe('주석 제거기 두 벌 — 같은 판정인가 (2026-10-14)', () => 
       'src/worker/utils/surface-ssr-meta.ts',
       'src/worker/utils/crawler-noscript.ts',
       'src/shared/seo/consumer-surfaces.ts',
+      'src/shared/seo/consumer-surface-table.ts', // 🗂️ 2026-11-01 표 분리(주석 본산이 이쪽으로 갔다)
       'src/shared/seo/surface-copy.ts',
       'src/components/main/SiteFooter.tsx',
       'src/pages/CreatorsPage.tsx',

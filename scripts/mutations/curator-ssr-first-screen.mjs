@@ -23,20 +23,27 @@ export default [
     why: '드래그로 맞춘 `position` 이 사라지면 재정렬 기능이 무의미해진다 — filter 는 순서를 보존한다.',
   },
   {
-    name: '🛍️ 방문자의 `관리` 자리 예약이 사라진다(주인만 이름 칸이 좁아져 22px 밀림)',
+    name: '🛍️ 버튼 묶음이 이름 줄로 돌아간다(주인만 이름 칸이 좁아져 밀린다)',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: '              <span aria-hidden="true" className={`${manageBtnCls} invisible pointer-events-none`}>',
-    replace: '              <span aria-hidden="true" className="hidden">',
+    // 🔄 2026-11-01 재조준(대표 확정 2안): 종전 결함은 *방문자의 `관리` 자리 예약을 없애는 것* 이었다.
+    //   2안이 버튼 묶음을 **이름 줄 밖**으로 옮기면서 그 예약 자체가 없어졌다(폭이 구조적으로 같다).
+    //   지키려던 불변식(**이름 칸 폭이 주인/방문자에서 같다**)은 그대로이므로, 그걸 깨는 **현재의**
+    //   결함 — 버튼을 이름 줄로 되돌리는 것 — 으로 앵커를 옮긴다.
+    find: '          <div className="min-w-0 flex-1">',
+    replace: '          {cluster}\n          <div className="min-w-0 flex-1">',
     test: TEST,
-    why: '이 예약이 이 첫 화면의 **전제**다 — 빠지면 주인 화면만 헤더가 148px 이 되어 아래가 전부 밀린다(실측).',
+    why: '버튼이 이름 줄로 돌아가면 이름 칸이 다시 좁아지고 **주인/방문자 폭이 갈린다** — 서버는 누가 보는지 모른 채 그리므로 마운트 때 아래가 전부 밀린다(실측 22px).',
   },
   {
-    name: '🛍️ 예약을 `<Link>` 로 바꿔 보이지 않는 채 탭 순서에 끼어든다',
+    name: '🛍️ 방문자에게도 관리 링크를 준다(주인 전용 자리가 새어 나간다)',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: '              <span aria-hidden="true" className={`${manageBtnCls} invisible pointer-events-none`}>',
-    replace: '              <Link to="/u/me/manage" aria-hidden="true" className={`${manageBtnCls} invisible pointer-events-none`}>',
+    // 🔄 2026-11-01 재조준(2안): 종전 결함은 *예약 span 을 `<Link>` 로 바꿔 탭 순서에 끼워 넣는 것*
+    //   이었고, 예약이 사라지며 대상이 없어졌다. 살아 있는 불변식은 **방문자에게 관리 어포던스가
+    //   아예 없다** 이고, 그걸 깨는 결함으로 옮긴다(키보드·스크린리더에 잡히는 것도 같은 문제다).
+    find: '      {canEdit && (',
+    replace: '      {true && (',
     test: TEST,
-    why: '보이지 않는 링크는 키보드·스크린리더에 잡힌다 — 자리를 비우는 것과 기능을 주는 것은 다르다.',
+    why: '방문자에게 주인 전용 링크가 생기면 c2 가 정한 "주인/방문자 차이는 그 한 자리" 가 깨진다.',
   },
   {
     name: '🛍️ 썸네일 폭이 PinRow 와 갈린다(사진을 두 번 받는다)',
@@ -73,7 +80,7 @@ export default [
   {
     name: '🛍️ 브랜드 바의 `<a>` 래퍼가 사라진다(바가 5px 낮아져 아래 전부 밀린다)',
     file: MOD,
-    find: '`<a href="/" aria-label="유어딜 홈" class="${CURATOR_FS_CLASS.brandLink}">${logoHtml(CURATOR_LOGO_SIZE)}</a>`',
+    find: '`<a href="/" aria-label="유어딜 홈" class="${CURATOR_FS_CLASS.brandLogo}">${logoHtml(CURATOR_LOGO_SIZE)}</a>`',
     replace: 'logoHtml(CURATOR_LOGO_SIZE)',
     test: TEST,
     why: '감싸는 것 자체가 치수를 만든다(실측 36 → 31). 눈에 안 보이는 5px 가 줄 네 개를 밀어낸다.',
@@ -89,8 +96,9 @@ export default [
   {
     name: '🛍️ 아이콘 SVG 를 워커가 손으로 그린다(두 벌이 갈린다)',
     file: MOD,
-    find: '`<div class="${CURATOR_FS_CLASS.cluster}"><span class="${CURATOR_FS_CLASS.iconBtn}"></span>`',
-    replace: '`<div class="${CURATOR_FS_CLASS.cluster}"><span class="${CURATOR_FS_CLASS.iconBtn}"><svg width="18" height="18"><path d="M1 1"/></svg></span>`',
+    // 🔄 2026-11-01 재조준(2안): 관리 예약이 사라지며 cluster 가 한 줄이 됐다. 결함은 그대로다.
+    find: '<span class="${CURATOR_FS_CLASS.iconBtn}"></span></div>`',
+    replace: '<span class="${CURATOR_FS_CLASS.iconBtn}"><svg width="18" height="18"><path d="M1 1"/></svg></span></div>`',
     test: TEST,
     why: 'lucide·SNS path 를 옮기면 아이콘이 바뀌는 날 조용히 갈린다 — 빈 칸만 예약하고 아이콘은 마운트 때 그 안에서 나타나게 한다.',
   },

@@ -4,7 +4,7 @@
  */
 const TEST = 'src/tests/unit/surface-list-jsonld-2026-10-11.test.ts'
 const B = 'src/worker/utils/surface-list-jsonld.ts'
-const TABLE = 'src/shared/seo/consumer-surfaces.ts'
+const TABLE = 'src/shared/seo/consumer-surface-table.ts' // 🗂️ 2026-11-01 표 분리(불변식 불변 — 대상 파일만 옮겨갔다)
 const WORKER = 'src/worker/index.ts'
 
 export default [

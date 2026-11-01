@@ -113,9 +113,17 @@ embedRoutes.get('/embed/agency/:id', async (c) => {
       AND NOT EXISTS (SELECT 1 FROM agency_products ap WHERE ap.product_id = p.id AND ap.agency_id != ?)
       AND ${LIVE} ORDER BY ${ORDER} LIMIT ?`)
     .bind(id, id, ...VOUCHER_CATEGORIES, count).all<Row>().catch(() => ({ results: [] as Row[] }))
+  // 🤝 머리띠에 유어딜과 **나란히**(제휴 위젯 시안 B 와 같은 언어) + 운영 매장 수.
+  //   종전엔 유어샵·매장·지역과 똑같은 머리였고 '전체 보기' 가 **유어딜 홈**으로 갔다 —
+  //   에이전시가 자기 사이트에 건 위젯이 손님을 우리 쪽으로 보내고 있었다(에이전시 공개 페이지는 없다).
+  //   ⚠️ 0 곳이면 지표를 안 그린다. 신뢰를 주려고 넣은 자리에 0 이 서면 없는 것만 못하다.
+  const stores = await DB.prepare("SELECT COUNT(*) AS n FROM agency_store_links WHERE agency_id = ? AND status = 'active'")
+    .bind(id).first<{ n: number }>().catch(() => null)
+  const storeCount = Number(stores?.n || 0)
   return html(c, renderStrip({
     kind: 'agency', theme, title: `${agency.name} 운영 매장`,
-    moreHref: withUtm('/', 'agency'),
+    brand: agency.name,
+    meta: storeCount > 0 ? `운영 매장 ${storeCount}곳` : undefined,
     cards: (rows.results || []).map((r) => toEmbedCard(r, 'agency')),
   }))
 })

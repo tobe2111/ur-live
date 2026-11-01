@@ -21,7 +21,7 @@ import { issueAgencyStaffToken } from '@/features/agency-console/api/agency-sess
 import { agencyStoresRoutes } from '@/features/agency-console/api/agency-stores.routes'
 import { storeAgencyInviteRoutes } from '@/features/seller/api/store-agency-invite.routes'
 import { createSessionCookie } from '@/worker/utils/session'
-import { renderPartner } from '@/worker/utils/embed-widget'
+import { renderPartner, EMBED_HEIGHT } from '@/worker/utils/embed-widget'
 import { embedSrc, embedSnippet } from '@/worker/utils/embed-builder'
 import { rememberPartner, takePartnerReturn } from '@/utils/partner-return'
 
@@ -145,7 +145,8 @@ describe('④ 위젯 · ⑤ CSRF', () => {
     expect(html).toContain('&lt;i&gt;바른&lt;/i&gt;대행')
     const text = html.replace(/<style>[\s\S]*?<\/style>/, '').replace(/<[^>]+>/g, ' ')
     expect(text).toContain('유어딜 입점 신청') // 본문을 실제로 읽고 있다는 증거
-    // 🎫 대표 확정 시안 A — 훅 문장 + 체험단 ↔ 유어딜 비교. 비교의 유어딜 쪽은 정책과 맞는 말만.
+    // 🎫 대표 확정 시안 B(2026-11-01, 10-31 A 를 대체) — 훅 문장 + 체험단 ↔ 유어딜 비교.
+    //   비교의 유어딜 쪽은 정책과 맞는 말만. 비교 블록 마크업은 A 와 byte-동일이다(칸은 CSS 선이 가른다).
     expect(text).toContain('체험단에 지치셨나요?')
     expect(html).toMatch(/<div class="col old"><b>체험단<\/b>[\s\S]*?<\/div><div class="col new"><b>유어딜 이용권<\/b>/)
     for (const claim of ['손님이 선결제', 'QR로 바로 사용', '팔린 만큼 정산', '가입비·월 이용료 0원']) expect(text).toContain(claim)
@@ -153,8 +154,35 @@ describe('④ 위젯 · ⑤ CSRF', () => {
     expect(text).not.toMatch(/\d+(\.\d+)?\s*%/)
     expect(html).not.toMatch(/<script/i)
     expect(embedSrc('partner', '1', 8, 'light')).toBe('/embed/partner/1')
-    expect(embedSnippet('partner', '/embed/partner/1')).toContain('height:400px')
+    expect(embedSnippet('partner', '/embed/partner/1')).toContain(`height:${EMBED_HEIGHT.partner}px`)
   })
+  it('시안 B — 두 브랜드가 나란히, 비교는 박스가 아니라 선, 다른 위젯 바탕은 불변', () => {
+    const html = renderPartner('light', '한빛 마케팅', 3)
+    const src = readFileSync('src/worker/utils/embed-widget.ts', 'utf8')
+    // ① 시안 A 잔재 0 — 통짜 파란 띠·절취선·티켓 래퍼가 되살아나면 다시 전단지가 된다.
+    for (const dead of ['class="tk"', 'class="band"', 'class="perf"']) expect(html).not.toContain(dead)
+    // ② 머리띠에 유어딜 로고와 제휴사 이름이 **나란히**. 이 위젯은 제휴사가 자기 사이트에 거는 물건이라
+    //    한쪽이 곁다리로 보이면 제안의 무게가 사라진다.
+    expect(html).toMatch(/<div class="bar">[\s\S]*?class="logo"[\s\S]*?<span class="sep"><\/span><span class="co">한빛 마케팅<\/span>/)
+    // ③ 비교 두 칸은 색 박스가 아니라 선 하나로 가른다.
+    expect(src).toMatch(/\.pt \.new\{[^}]*border-left:1px solid var\(--rule\)/)
+    expect(src).not.toMatch(/\.pt \.(old|new)[^{]*\{[^}]*background:/)
+    // ④ 🔴 반대 방향 — 바깥 바탕은 제휴 전용 변수(--pbg)다. --bg 를 건드리면 strip·single 위젯이
+    //    남의 흰 사이트에서 회색 사각형이 된다(제휴 위젯을 고치다 다른 다섯을 망가뜨리는 길).
+    expect(src).toMatch(/\.pt\{[^}]*background:var\(--pbg\)/)
+    //    🩸 값을 **파싱해서** 본다. `toContain('--bg:#FFFFFF')` 로 쓰면 뒤에 `--bg:#F8F7FC` 를
+    //    덧붙이는 수법에 초록이 뜬다(CSS 는 나중 선언이 이기는데 옛 문자열은 그대로 남는다 — 주입이 잡았다).
+    const tok = (name: string) => {
+      const m = src.match(new RegExp(`^const ${name} = '([^']*)'`, 'm'))
+      if (!m) throw new Error(`${name} 토큰을 못 찾았다 — 이 가드가 헛돌고 있다`)
+      return m[1]
+    }
+    for (const [name, want] of [['LIGHT', '#FFFFFF'], ['DARK', '#11141C']] as const) {
+      const decls = tok(name).split(';').filter((d) => d.startsWith('--bg:'))
+      expect(decls).toEqual([`--bg:${want}`]) // 정확히 하나, 그리고 그 값
+    }
+  })
+
   it('요청 경로에 CSRF 가 걸린다', () => {
     const w = readFileSync('src/worker/index.ts', 'utf8')
     expect(w).toContain("app.use('/api/store-agency-invite/partner-request', csrfProtection())")

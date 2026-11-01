@@ -21,8 +21,10 @@ export default [
     file: 'src/pages/curator-page/CuratorHeader.tsx',
     // 🩸 2026-10-09 재조준: 그 줄이 **삼항**이 됐다(방문자에게도 자리를 `invisible` 로 비워 둔다 —
     //   `CuratorHeader` 의 🪑). 결함은 그대로 "주인이 관리 버튼을 못 본다" 이고 앵커만 옮긴다.
-    find: "            {canEdit ? (\n              <Link to=\"/u/me/manage\"",
-    replace: "            {false ? (\n              <Link to=\"/u/me/manage\"",
+    // 🔄 2026-11-01 재조준(2안): 버튼 묶음이 로고 줄로 올라가고 방문자 예약이 없어지며 삼항 → `&&`.
+    //   결함(관리 버튼을 없앤다)은 그대로다.
+    find: '      {canEdit && (\n        <Link to="/u/me/manage"',
+    replace: '      {false && (\n        <Link to="/u/me/manage"',
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:
       '대표가 시안을 보고 **직접 짚은 항목**이다(*"편집? 관리 버튼 들어가야 해"*). ' +
@@ -51,8 +53,9 @@ export default [
   {
     name: '상단1안 — 정렬만 든 줄을 다시 만든다',
     file: 'src/pages/CuratorPage.tsx',
-    find: '                  <div className="ml-auto shrink-0">\n                    <SortMenu value={sort} options={SORT_OPTIONS} onChange={setSort} />',
-    replace: '                  <div className="ml-auto shrink-0">\n                    <SortMenu value={sort} options={SORT_OPTIONS} onChange={setSort} />\n                    <SortMenu value={sort} options={SORT_OPTIONS} onChange={setSort} />',
+    // 🔄 2026-11-01 재조준(2안): 정렬에 개수 게이트가 생겨 한 겹 더 들어갔다. 결함은 그대로다.
+    find: '                    <div className="ml-auto shrink-0">\n                      <SortMenu value={sort} options={SORT_OPTIONS} onChange={setSort} />',
+    replace: '                    <div className="ml-auto shrink-0">\n                      <SortMenu value={sort} options={SORT_OPTIONS} onChange={setSort} />\n                      <SortMenu value={sort} options={SORT_OPTIONS} onChange={setSort} />',
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:
       '정렬이 두 자리에 그려지면 옛 32px 줄이 되살아난 것과 같다. 개수로 고정해 둔다 — ' +
@@ -69,8 +72,10 @@ export default [
   {
     name: '상단1안 — PC 에도 모바일 브랜드 바를 그린다 (상단 바 두 번)',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: '<div className="lg:hidden flex items-center px-5 pt-3">',
-    replace: '<div className="flex items-center px-4 pt-3">',
+    // 🔄 2026-11-01 재조준(2안): 줄 자체는 PC 에도 있다(버튼이 거기 산다) — **로고만** `lg:hidden`.
+    //   지키려던 것(PC 에 워드마크가 두 번 있지 않다)은 그대로이고 앵커만 로고로 옮긴다.
+    find: 'className="lg:hidden active:opacity-70"',
+    replace: 'className="active:opacity-70"',
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:
       '1440px 실측: 화면 맨 위 전역 네비(`urdeal.` + 검색·찜·장바구니)가 있는데 좌측 프로필 카드 ' +

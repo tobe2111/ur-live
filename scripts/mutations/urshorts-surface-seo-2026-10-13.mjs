@@ -5,7 +5,7 @@
  * `/videos` 는 클라가 `noindex` 를 선언하는데 서버가 `index, follow` 를 줬다.
  * 가드: `src/tests/unit/urshorts-surface-seo-2026-10-13.test.ts`.
  */
-const SEO = 'src/shared/seo/consumer-surfaces.ts'
+const SEO = 'src/shared/seo/consumer-surface-table.ts' // 🗂️ 2026-11-01 표 분리(불변식 불변 — 대상 파일만 옮겨갔다)
 const VID = 'src/pages/VideosPage.tsx'
 const BRW = 'src/pages/UrShortsBrowsePage.tsx'
 const T = 'src/tests/unit/urshorts-surface-seo-2026-10-13.test.ts'

@@ -11,8 +11,8 @@ export default [
   {
     name: '🔠 본문 크기가 다시 반쪽 값으로 샌다 (12 · 12.5 · 13 이 한 화면에)',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: "className=\"mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2\"",
-    replace: "className=\"mt-1 text-[12.5px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2\"",
+    find: "className=\"mt-1 text-[13px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-1\"",
+    replace: "className=\"mt-1 text-[12.5px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-1\"",
     test: TEST,
     why: '0.5px 는 눈에 거의 안 보이는데 체계는 통째로 무너진다 — 그래서 아무도 신고하지 않고 42단계까지 자랐다.',
   },
@@ -69,8 +69,9 @@ export default [
   {
     name: '🖼️ 디스플레이 크기가 다시 스케일 밖으로 샌다 (28 옆에 30)',
     file: 'src/pages/CreatorsPage.tsx',
-    find: '<h1 className="text-[28px] sm:text-[40px] lg:text-[48px] xl:text-[60px] leading-[1.22] font-extrabold tracking-[-0.035em]">',
-    replace: '<h1 className="text-[30px] sm:text-[40px] lg:text-[48px] xl:text-[60px] leading-[1.22] font-extrabold tracking-[-0.035em]">',
+    // 🔧 2026-11-01 재조준: 고급화로 첫 화면 제목이 40/48/76/96 이 됐다. 지키려던 것 그대로 — 스케일 밖 한 칸(42).
+    find: '<h1 className="text-[40px] sm:text-[48px] lg:text-[76px] xl:text-[96px] leading-[1.12] font-extrabold tracking-[-0.035em]">',
+    replace: '<h1 className="text-[42px] sm:text-[48px] lg:text-[76px] xl:text-[96px] leading-[1.12] font-extrabold tracking-[-0.035em]">',
     test: TEST,
     why: '28 과 30 은 눈에 거의 안 보이는 차이인데 체계는 무너진다 — 이행 전 25단계가 정확히 그렇게 자랐다.',
   },
@@ -97,8 +98,9 @@ export default [
     // 🩸 코드모드가 실제로 만든 결함 클래스 — 브레이크포인트가 아무 일도 안 한다.
     name: '🖼️ 반응형 사다리가 다시 붕괴한다 (sm 과 lg 가 같은 값)',
     file: 'src/pages/partners/PartnerHero.tsx',
-    find: '<h1 className="text-[34px] sm:text-[48px] lg:text-[60px] leading-[1.14] font-extrabold tracking-[-0.035em]">',
-    replace: '<h1 className="text-[34px] sm:text-[60px] lg:text-[60px] leading-[1.14] font-extrabold tracking-[-0.035em]">',
+    // 🔧 2026-11-01 재조준: 첫 화면 제목 40/48/76/96 — sm 을 lg 와 같게 만들어 사다리를 무너뜨린다.
+    find: '<h1 className="text-[40px] sm:text-[48px] lg:text-[76px] xl:text-[96px] leading-[1.12] font-extrabold tracking-[-0.035em]">',
+    replace: '<h1 className="text-[40px] sm:text-[76px] lg:text-[76px] xl:text-[96px] leading-[1.12] font-extrabold tracking-[-0.035em]">',
     test: TEST,
     why: 'sm 과 lg 가 같으면 그 브레이크포인트는 존재하지 않는 것과 같은데 빌드도 화면도 안 깨진다 — 조용한 결함.',
   },
