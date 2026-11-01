@@ -87,8 +87,8 @@ export default [
     file: 'src/App.tsx',
     // 2026-09-16: 이 줄에 `forceDark` 배선이 얹혔다(다크 도착 표면). 지키는 불변식은 그대로 —
     //   "라우터 폴백이 BootFirstScreenLoader 를 **실제로** 쓴다".
-    find: 'const PageLoader = () => <BootFirstScreenLoader forceDark={isDarkLoaderSurface(window.location.pathname)} />',
-    replace: 'const PageLoader = () => <BrandLoader fullScreen />',
+    find: 'const PageLoader = ({ pathname }: { pathname: string }) => <BootFirstScreenLoader forceDark={isDarkLoaderSurface(pathname)} />',
+    replace: 'const PageLoader = ({ pathname }: { pathname: string }) => <BrandLoader fullScreen />',
     test: BOOT_TEST,
     why: '컴포넌트가 있어도 라우터가 안 쓰면 없는 것과 같다(이 레포가 반복해 당한 "조용한 부재").',
   },
