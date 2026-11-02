@@ -17,6 +17,10 @@ import { notifTarget } from '@/lib/notif-target'
 import { ChevronRight } from 'lucide-react'
 import { MailIcon } from '@/components/icons/urdeal-icons'
 import { ROW_SHELL_CLS, ROW_LABEL_CLS } from '../list-grammar'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-ring', `@keyframes ur-ring { 0%,100% { transform: none; } 20% { transform: rotate(14deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(8deg); } 80% { transform: rotate(-4deg); } }.ur-ring { animation: ur-ring .6s ease-in-out; transform-origin: 50% 10%; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-ring{animation:none!important}}`)
+injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 const Sheet = lazy(() => import('./Sheet'))
 
@@ -91,12 +95,13 @@ export default function StoreNotifButton({ currentSellerId, onOpenPage, variant 
           aria-label={unread > 0 ? `판매 알림 ${unread}건` : '판매 알림'}
           className={`${ROW_SHELL_CLS} active:opacity-70`}
         >
-          <span className="shrink-0 text-gray-500 dark:text-gray-400"><MailIcon className="w-[18px] h-[18px]" aria-hidden="true" /></span>
+          {/* 🎬 2026-11-02 시안 B2: 새 알림이 있으면 봉투가 한 번 흔들리고 숫자가 톡 뜬다(값이 바뀔 때마다 key 로 다시). */}
+          <span key={`m${unread}`} className={`shrink-0 text-gray-500 dark:text-gray-400 ${unread > 0 ? 'ur-ring' : ''}`}><MailIcon className="w-[18px] h-[18px]" aria-hidden="true" /></span>
           <span className={ROW_LABEL_CLS}>판매 알림</span>
           {/* 🔵 새 알림이 있을 때만 블루 — 0 이면 회색 '새 알림 없음'(0 을 잉크로 굵게 쓰지 않는다). 아직 모르면 안 그린다. */}
           {items !== null && (
             unread > 0
-              ? <span className="shrink-0 text-[13px] font-bold text-brand-text tabular-nums">새 알림 {unread > 99 ? '99+' : unread}</span>
+              ? <span key={`n${unread}`} className="ur-popin shrink-0 text-[13px] font-bold text-brand-text tabular-nums">새 알림 {unread > 99 ? '99+' : unread}</span>
               : <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400">새 알림 없음</span>
           )}
           <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
@@ -113,7 +118,7 @@ export default function StoreNotifButton({ currentSellerId, onOpenPage, variant 
             알약 모양인 이유: 바로 옆 가게 이름과 붙어 "판매 알림 합정 살롱…" 한 덩어리로 읽혔다(하네스 렌더). */}
         <span>판매 알림</span>
         {unread > 0 && (
-          <span className="min-w-[16px] h-4 px-1 rounded-full bg-brand text-white text-[12px] leading-4 font-bold tabular-nums text-center">
+          <span key={`n${unread}`} className="ur-popin min-w-[16px] h-4 px-1 rounded-full bg-brand text-white text-[12px] leading-4 font-bold tabular-nums text-center">
             {unread > 99 ? '99+' : unread}
           </span>
         )}

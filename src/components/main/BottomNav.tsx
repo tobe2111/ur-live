@@ -168,6 +168,10 @@ export default function BottomNav() {
     return false
   }
 
+  // 🎬 2026-11-02 [UNLOCK_LOADING] 시안 D1(대표 승인 "셋 다 넣기"): 누른 탭 아이콘이 살짝 눌렸다 튀어 오른다.
+  //   누를 때만 — 페이지를 새로 열 때 활성 탭이 저절로 튀지 않게 마운트 상태와 무관한 카운터로 고른다.
+  const [press, setPress] = useState<{ path: string; n: number } | null>(null)
+
   const renderItem = ({ icon: Icon, label, path, prefetch }: typeof navItems[0] & { prefetch?: () => Promise<unknown> }) => {
     const active = isActivePath(path)
     const TabIcon = Icon
@@ -178,7 +182,7 @@ export default function BottomNav() {
     return (
       <button
         key={label}
-        onClick={() => navigate(path)}
+        onClick={() => { setPress((p) => ({ path, n: (p?.n ?? 0) + 1 })); navigate(path) }}
         onPointerDown={warm}
         onMouseEnter={warm}
         className="flex-1 flex flex-col items-center justify-center h-full"
@@ -196,12 +200,14 @@ export default function BottomNav() {
             onError={() => setProfileImage(null)}
           />
         ) : (
-          <TabIcon
-            size={22}
-            filled={active}
-            className="text-gray-900 dark:text-white"
-            strokeWidth={1.6}
-          />
+          <span key={press?.path === path ? press.n : 0} className={`block leading-none ${press?.path === path ? 'ur-press' : ''}`}>
+            <TabIcon
+              size={22}
+              filled={active}
+              className="text-gray-900 dark:text-white"
+              strokeWidth={1.6}
+            />
+          </span>
         )}
         {/* ⚫ 2026-10-14 (대표 시안 — 야놀자 NOL 하단바 *"버튼들 검정색에 클릭 시 색이 채워지는 식으로 … 더 깔끔하게"*):
             다섯 탭 모두 잉크색, 활성은 **아이콘이 채워지는 것(filled)과 라벨 굵기** 두 가지로만 말한다.

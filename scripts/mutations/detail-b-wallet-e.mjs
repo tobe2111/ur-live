@@ -102,8 +102,8 @@ export default [
   {
     name: '[상세B지갑E] 🎫접힌 줄이 아무것도 안 한다',
     file: 'src/pages/my-vouchers/WalletRow.tsx',
-    find: `      onClick={onOpen}`,
-    replace: `      onClick={() => {}}`,
+    find: `      onClick={(e) => { noteQrOrigin(e.currentTarget); onOpen() }}`,
+    replace: `      onClick={(e) => { noteQrOrigin(e.currentTarget) }}`,
     test: TEST,
     why:
       '접기는 **삭제가 아니다**. 줄을 눌러도 QR 이 안 열리면 그 이용권은 쓸 방법이 사라지는데, ' +
@@ -112,8 +112,8 @@ export default [
   {
     name: '[상세B지갑E] 🔴임박 강조가 툴킷 기본 빨강으로 돌아간다',
     file: 'src/pages/my-vouchers/WalletRow.tsx',
-    find: `urgent ? 'font-medium text-tone-bad'`,
-    replace: `urgent ? 'font-medium text-[#DC2626]'`,
+    find: `urgent ? 'ur-blink-once font-medium text-tone-bad'`,
+    replace: `urgent ? 'ur-blink-once font-medium text-[#DC2626]'`,
     test: TEST,
     why:
       '값이 우연히 비슷해 눈으로는 구분이 안 되지만, 다크에서 갈린다(`--tone-bad` 는 다크에서 밝힌다). ' +

@@ -46,6 +46,10 @@ import {
   emptyVoucherForm, applyStoreContext, lifeSubcatMissing,
   type StoreContext, type VoucherForm,
 } from './seller-meal-voucher/voucher-form'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-rise', `@keyframes ur-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }.ur-rise { animation: ur-rise .35s cubic-bezier(.16,1,.3,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-rise{animation:none!important}}`)
+injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 export default function SellerMealVoucherNewPage({ embedded = false, onClose, onCreated }: {
   /** 🪟 마이 안 시트에서 열렸는가 — 껍데기를 벗고, 라우팅 대신 콜백으로 끝낸다. */
@@ -313,8 +317,9 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
     return (
       <SellerLayout title={t('seller.mealVoucher.title')} bare={embedded}>
         <div className="mx-auto max-w-5xl">
-          <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-8 text-center mt-8">
-            <CheckCircle className="w-12 h-12 text-tone-ok mx-auto mb-3" />
+          {/* 🎬 2026-11-02 시안 3차: 완료 카드가 올라오고 체크가 톡 박힌다(index.css .ur-rise · .ur-popin). */}
+          <div className="ur-rise bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-8 text-center mt-8">
+            <CheckCircle className="ur-popin w-12 h-12 text-tone-ok mx-auto mb-3" style={{ animationDelay: '150ms' }} />
             <h2 className="text-lg font-bold text-gray-900">{t('seller.mealVoucher.doneTitle', { defaultValue: '이용권이 등록됐어요!' })}</h2>
             <p className="text-sm text-gray-500 mt-2">
               {t('seller.mealVoucher.doneDesc', { defaultValue: '소개해 줄 사람에게 제안을 보내면 소개 판매가 시작돼요. 커미션은 팔렸을 때만 발생합니다.' })}

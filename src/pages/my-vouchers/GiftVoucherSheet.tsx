@@ -14,6 +14,10 @@ import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { feedPayload, sendKakaoShare } from '@/lib/kakao-share'
 import { X } from 'lucide-react'
 import type { Voucher } from './types'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-gift', `@keyframes ur-draw { from { stroke-dashoffset: 120; } to { stroke-dashoffset: 0; } }.ur-gift-mark { animation: ur-popin .45s cubic-bezier(.3,1.3,.5,1) both; }.ur-gift-mark path { stroke-dasharray: 120; animation: ur-draw .45s ease-out .35s both; }.ur-gift-mark path + path { animation-delay: .7s; }.ur-gift-mark, .ur-gift-mark path,  .ur-upload-img, .ur-upload-bar > span { transition: none !important; }@media (prefers-reduced-motion: reduce){.ur-gift-mark,.ur-gift-mark path{animation:none!important}}`)
+injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 type Pending = { token: string; url: string }
 
@@ -42,6 +46,8 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
   const [pending, setPending] = useState<Pending | null>(null)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  // 🎬 2026-11-02 시안 4차 "선물하기 완료": 방금 만든 링크일 때만 상자가 톡 나타나고 리본이 그려진다.
+  const [justCreated, setJustCreated] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -60,6 +66,7 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
       const r = await api.post('/api/group-buy/gifts', { code: voucher.code, message: message.trim() || undefined })
       setPending(r.data?.data ?? null)
       onPendingChange?.(!!r.data?.data)
+      if (r.data?.data) setJustCreated(true)
     } catch (e) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선물 링크를 만들지 못했어요')
     } finally {
@@ -97,7 +104,7 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
         aria-modal="true"
         aria-label="이용권 선물하기"
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-[420px] bg-surface rounded-t-2xl sm:rounded-2xl px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))]"
+        className="ur-sheet-in w-full sm:max-w-[420px] bg-surface rounded-t-2xl sm:rounded-2xl px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -123,6 +130,14 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
           <div className="mt-5 h-[52px] rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
         ) : pending ? (
           <>
+            {justCreated && (
+              <svg className="ur-gift-mark mx-auto mt-5 block w-16 h-16" viewBox="0 0 110 110" aria-hidden="true">
+                <rect x="18" y="42" width="74" height="56" rx="8" fill="var(--brand-tint)" stroke="var(--brand-text)" strokeWidth="3" />
+                <rect x="12" y="30" width="86" height="16" rx="5" fill="var(--brand-tint)" stroke="var(--brand-text)" strokeWidth="3" />
+                <path d="M55 30 V98" stroke="var(--brand)" fill="none" strokeWidth="6" strokeLinecap="round" />
+                <path d="M55 30 C40 12 26 22 38 30 M55 30 C70 12 84 22 72 30" stroke="var(--brand)" fill="none" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
             <p className="mt-5 text-[13px] font-medium text-gray-900 dark:text-white">선물 링크가 준비됐어요. 친구에게 보내 주세요</p>
             <button type="button" onClick={() => share(pending.url)}
               className="mt-3 w-full py-4 rounded-2xl bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform">

@@ -31,6 +31,9 @@ import {
 import { extractCode } from './scan-code'  // 코드 정규화(대문자·공백 — 실사고 기록 포함)
 import { createScanSession, scanPlatform, sendScanReport, type ScanSession } from './scan-telemetry'
 import { primeScanSound, scanSignal } from './scan-feedback'
+import { injectMotionCss } from '@/lib/motion-css'
+injectMotionCss('ur-m-rise', `@keyframes ur-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }.ur-rise { animation: ur-rise .35s cubic-bezier(.16,1,.3,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-rise{animation:none!important}}`)
+injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 /** 확인을 기다리는 스캔. `status` 는 `/verify` 가 준 값(unused·used·expired·refunded…), 조회 실패면 없다. */
 type PendingUse = { code: string; loading: boolean; productName?: string; restaurantName?: string; status?: string }
@@ -514,10 +517,11 @@ export default function VoucherScanner() {
           매장에서 스캔했을 때 "통과" 와 "오류" 중 한쪽만 읽혔다. 사용 처리는 되돌릴 수 없는 동작이라
           이 한 쌍이 이 화면에서 가장 중요한 신호다. */}
       {latest && (
-        <div className={`rounded-2xl p-4 ${latest.ok ? 'bg-tone-ok-bg' : 'bg-tone-bad-bg'}`}>
+        // 🎬 2026-11-02 시안 B1: 결과가 나올 때마다(flash.n) 카드가 올라오고 성공 체크가 톡 박힌다 — 손님 앞에서 "됐다"를 1초 안에.
+        <div key={flash?.n ?? 0} className={`ur-rise rounded-2xl p-4 ${latest.ok ? 'bg-tone-ok-bg' : 'bg-tone-bad-bg'}`}>
           <div className="flex items-center gap-2">
             {latest.ok
-              ? <OkIcon className="w-7 h-7 text-tone-ok shrink-0" />
+              ? <OkIcon className="ur-popin w-7 h-7 text-tone-ok shrink-0" style={{ animationDelay: '120ms' }} />
               : <BadIcon className="w-7 h-7 text-tone-bad shrink-0" />}
             <div className="min-w-0">
               <p className={`text-[15px] font-bold ${latest.ok ? 'text-tone-ok' : 'text-tone-bad'}`}>{latest.message}</p>

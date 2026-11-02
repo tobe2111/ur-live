@@ -38,7 +38,7 @@ export function MobileHeader({ onShare }: MobileHeaderProps) {
         <button aria-label={t('productDetail.header.share', { defaultValue: '공유' })} className={btnClass} onClick={onShare}>
           <Share2 className="h-4 w-4 text-gray-900 dark:text-white" />
         </button>
-        <button aria-label={t('productDetail.header.cart', { defaultValue: '장바구니' })} className={btnClass} onClick={() => navigate('/cart')}>
+        <button aria-label={t('productDetail.header.cart', { defaultValue: '장바구니' })} className={btnClass} data-cart-icon onClick={() => navigate('/cart')}>
           <BagIcon className="h-4 w-4 text-gray-900 dark:text-white" />
         </button>
       </div>

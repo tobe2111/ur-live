@@ -1365,7 +1365,13 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 .ur-sheet-veil { animation: ur-overlay-in .18s ease-out both; }
 .ur-sheet-in { animation: ur-slide-up .24s cubic-bezier(.22,1,.36,1) both; }
 @media (min-width: 1024px) { .ur-sheet-in { animation: ur-overlay-in .18s ease-out both; } }
-@media (prefers-reduced-motion: reduce) { .ur-sheet-in, .ur-sheet-veil { animation: none; } }
+/* 🎬 2026-11-02 시안 3차: 닫힐 때도 같은 길로 — 더 빠르게 내려간다(lg+ 는 투명도만). Sheet.tsx 가 닫기를 220ms 늦춘다. */
+@keyframes ur-sheet-down { from { transform: none; } to { transform: translateY(100%); } }
+@keyframes ur-fade-out { from { opacity: 1; } to { opacity: 0; } }
+.ur-sheet-out { animation: ur-sheet-down .2s cubic-bezier(.4,0,1,1) both; }
+.ur-sheet-veil-out { animation: ur-fade-out .2s ease-in both; }
+@media (min-width: 1024px) { .ur-sheet-out { animation: ur-fade-out .16s ease-in both; } }
+@media (prefers-reduced-motion: reduce) { .ur-sheet-in, .ur-sheet-veil, .ur-sheet-out, .ur-sheet-veil-out { animation: none; } }
 
 /* 📐 2026-06-16: PC 컨슈머 프레임 (app-framed) — 모바일 완성도를 PC 로 그대로 (가운데 액자 + 배경).
    lg+ 에서만 적용. 모바일(<lg)은 풀너비(영향 없음). 대시보드/도매몰/비디오 제외.
@@ -1654,6 +1660,29 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 .ur-udal-hop { animation: ur-udal-hop 0.7s ease-in-out infinite; transform-origin: 50% 100%; }
 @media (prefers-reduced-motion: reduce) {
   .ur-udal-bob, .ur-udal-hop { animation: none; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   🎬 2026-11-02 작은 움직임 키트 (대표 *"이전에 만든 모션그래픽 다 적용해줘"* — 시안
+   `docs/design/motion-mockups-2026-11.md`). 규칙: transform·opacity·clip-path·stroke 만 ·
+   한 번(또는 두세 번) 돌고 멈춘다 · '동작 줄이기' 면 전부 끈다.
+   ────────────────────────────────────────────────────────────── */
+/* 찜 하트 — 점 여섯 개가 퍼진다(하트의 ur-pop 과 함께). */
+.ur-burst { position: absolute; inset: 0; pointer-events: none; }
+.ur-burst i { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: currentColor; opacity: 0; animation: ur-spark .5s ease-out .06s both; }
+@keyframes ur-spark { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-18px); } }
+
+/* 하단 탭 누름(BottomNav — 모든 화면) */
+@keyframes ur-press { 0% { transform: scale(1); } 40% { transform: scale(.82); } 100% { transform: scale(1); } }
+.ur-press { animation: ur-press .32s cubic-bezier(.3,1.4,.5,1); }
+/* 유어샵 탭 밑줄(PinCategoryChips)이 누른 탭으로 미끄러진다 */
+.ur-tab-bar { transition: transform .3s cubic-bezier(.2,1,.3,1), width .3s cubic-bezier(.2,1,.3,1); }
+/* 🎬 나머지 키트(도장·체크·숫자·핀·반짝·굴림·선물·줄 긋기·깜빡·흔들림·업로드)는 `src/styles/motion-lazy.css` —
+   쓰는 화면만 받는다(2026-11-02 화면별 첫 화면 무게 예산이 잡았다: index.css 에 두면 모든 화면이 +1.2KB). */
+
+@media (prefers-reduced-motion: reduce) {
+  .ur-burst i, .ur-press { animation: none !important; }
+  .ur-tab-bar { transition: none; }
 }
 
 /* ──────────────────────────────────────────────────────────────

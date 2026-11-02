@@ -73,7 +73,8 @@ function LiveHeart({ productId, className = '', variant }: HeartProps) {
     }
     const next = !on
     setOverride(next)
-    if (next) { setPopping(true); window.setTimeout(() => setPopping(false), 340) }
+    // 🎬 2026-11-02 시안 A1: 채울 때만 톡 + 점 여섯 개 + "찜했어요". 비울 땐 조용히(되돌리는 동작이라 축하할 일이 아니다).
+    if (next) { setPopping(true); window.setTimeout(() => setPopping(false), 560); toast.success('찜했어요') }
     try {
       await api.post('/api/wishlists/toggle', { product_id: productId })
       qc.invalidateQueries({ queryKey: queryKeys.wishlist() })
@@ -96,13 +97,18 @@ function HeartButton({ on, popping, className, onClick, variant = 'overlay' }: {
       aria-pressed={on}
       /* 찜된 카드의 하트는 **항상 보인다**(is-on) — 안 그러면 내가 찜했는지 hover 해야 알 수 있다. */
       className={plain
-        ? `w-11 h-11 flex items-center justify-center ${className}`
-        : `ur-appear ${on ? 'is-on' : ''} w-8 h-8 rounded-full bg-white/85 dark:bg-black/55 backdrop-blur-sm shadow-sm flex items-center justify-center hover:bg-white dark:hover:bg-black/75 ${className}`}
+        ? `relative w-11 h-11 flex items-center justify-center ${className}`
+        : `relative ur-appear ${on ? 'is-on' : ''} w-8 h-8 rounded-full bg-white/85 dark:bg-black/55 backdrop-blur-sm shadow-sm flex items-center justify-center hover:bg-white dark:hover:bg-black/75 ${className}`}
     >
       <HeartIcon
         className={`${plain ? 'w-5 h-5' : 'w-[17px] h-[17px]'} ${popping ? 'ur-pop' : ''} ${on ? 'text-brand' : plain ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-300'}`} filled={on}
         aria-hidden="true"
       />
+      {popping && (
+        <span className="ur-burst text-brand" aria-hidden="true">
+          {[0, 60, 120, 180, 240, 300].map((a) => <i key={a} style={{ ['--a' as string]: `${a}deg` }} />)}
+        </span>
+      )}
     </button>
   )
 }

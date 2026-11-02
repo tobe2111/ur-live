@@ -7,6 +7,9 @@ import { priceDisplay } from '@/shared/price-display'
 import { readRecentlyViewedIds } from '@/components/group-buy/RecentlyViewedStrip'
 import type { Restaurant, KakaoPlace } from './types'
 import { ensureKakaoMapsCore } from '@/lib/kakao-sdk'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-pin', `@keyframes ur-pin-pop { 0% { transform: scale(1); } 45% { transform: scale(1.22) translateY(-4px); } 100% { transform: scale(1); } }.ur-pin-pop { animation: ur-pin-pop .4s cubic-bezier(.3,1.4,.5,1); transform-origin: 50% 100%; }@media (prefers-reduced-motion: reduce){.ur-pin-pop{animation:none!important}}`)
 
 // 🗺️ 2026-06-22 (대표 — "중앙 기준이 하단 시트 크기에 따라 달라진다"): 선택 핀을 *보이는 지도 영역*
 //   (상단 검색바 아래 ~ 하단 시트 위)의 중앙으로 끌어올릴 px 오프셋을 시트 snap 별로 동적 계산.
@@ -552,6 +555,9 @@ export function useKakaoMap({
       })
       applyPinTierStyle(el, tier)
     })
+    // 🎬 2026-11-02 시안 3차: 고른 핀만 톡 튀어 오른다(index.css .ur-pin-pop · 동작 줄이기면 CSS 가 끈다).
+    const pill = selected ? pinElsRef.current.get(selected.id)?.querySelector('.ur-pin-pill') : null
+    if (pill) { pill.classList.remove('ur-pin-pop'); void (pill as HTMLElement).offsetWidth; pill.classList.add('ur-pin-pop') }
   }, [selected?.id])
 
   useEffect(() => {

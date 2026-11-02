@@ -370,6 +370,7 @@ export default function DesktopTopNav() {
 
           {/* 장바구니 */}
           <button
+            data-cart-icon
             onClick={() => navigate('/cart')}
             aria-label={t('liveList.ariaCart', { defaultValue: '장바구니' })}
             className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"

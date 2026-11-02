@@ -46,6 +46,7 @@ import { useToolDeepLink } from './seller-section/useToolDeepLink' // 🚪 대�
 import PendingOrders from './seller-section/PendingOrders'
 import StoreThumb from './seller-section/StoreThumb'
 import StoreNotifButton from './seller-section/StoreNotifications'
+import { useCountUp } from './useCountUp' // 🎬 2026-11-02 시안 B3: 오늘 매출이 0원부터 올라간다
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
 //   같은 화면에 목록 문법이 두 벌이었다 — 대표 *"허술해"*(09-28)의 실체 중 하나.
@@ -255,6 +256,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
 
   // 좌석 0곳(= 셀러가 아님) · 실패 → 아무것도 그리지 않는다.
   //   실패를 0 으로 그리면 "오늘 매출 0원" 이라는 거짓말이 된다(머니 표면 룰).
+  const todayShown = useCountUp(store?.today_revenue, { durationMs: 800, resetKey: store?.seller_id ?? null }) // 훅은 아래 조기 return 보다 앞에
   if (failed) return null
   if (!loading && !store) return null
 
@@ -406,7 +408,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           <span className={ROW_LABEL_CLS}>오늘 매출</span>
           <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums whitespace-nowrap">
             <span className={`text-[15px] font-bold ${(store?.today_revenue ?? 0) > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
-              {blank(formatNumber(store?.today_revenue))}
+              {blank(formatNumber(todayShown))}
             </span>
             <span className={awaiting ? 'invisible' : ''}>원 · 주문 {formatNumber(store?.today_orders)}건</span>
           </span>

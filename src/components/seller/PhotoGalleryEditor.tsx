@@ -6,6 +6,9 @@ import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import { prepareImageForUpload, UploadTooLargeError, uploadTooLargeMessage } from '@/lib/prepare-upload'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-upload', `.ur-upload-img { transition: filter .45s, opacity .45s; }.ur-uploading { filter: blur(6px) saturate(.6); opacity: .7; }.ur-upload-bar { position: absolute; left: 6px; right: 6px; bottom: 6px; height: 4px; border-radius: 999px; background: rgba(255,255,255,.5); overflow: hidden; }.ur-upload-bar > span { display: block; height: 100%; background: #fff; transition-property: width; transition-timing-function: ease-out; }.ur-gift-mark, .ur-gift-mark path,  .ur-upload-img, .ur-upload-bar > span { transition: none !important; }@media (prefers-reduced-motion: reduce){.ur-upload-img,.ur-upload-bar>span{transition:none!important}}`)
 
 /**
  * 🖼️ **사진 여러 장 편집기** (2026-09-03 대표 *"이용권에 사진 여러 장 올릴 수 있어야하는데
@@ -44,6 +47,8 @@ interface Props {
 export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, emptyHint }: Props) {
   const { t } = useTranslation()
   const [busy, setBusy] = useState(false)
+  // 🎬 2026-11-02 시안 4차 "사진 올리기": 고른 사진을 흐리게 먼저 보여 주고, 올라가면 선명해진다(진행 막대 포함).
+  const [previews, setPreviews] = useState<Array<{ url: string; done: boolean }>>([])
   const fileRef = useRef<HTMLInputElement>(null)
 
   const full = photos.length >= max
@@ -55,7 +60,11 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
     if (room <= 0) { toast.error(t('seller.photo.limit', { defaultValue: `사진은 최대 ${max}장까지 올릴 수 있어요` })); return }
     setBusy(true)
     const added: string[] = []
-    for (const f of Array.from(files).slice(0, room)) {
+    const picked = Array.from(files).slice(0, room)
+    const pv = picked.map((f) => ({ url: URL.createObjectURL(f), done: false }))
+    setPreviews(pv)
+    const markDone = (i: number) => setPreviews((ps) => ps.map((p, k) => (k === i ? { ...p, done: true } : p)))
+    for (const [fi, f] of picked.entries()) {
       // 🖼️ 2026-11-01: 먼저 세 크기로 줄여 올린다(변환 한도 0). 안 되면 아래 종전 경로.
       const sizedUrl = await uploadSizedImage(f, async (fd) => {
         const token = getSellerToken()
@@ -64,7 +73,7 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
         })
         return res.data
       }).catch(() => null)
-      if (sizedUrl) { added.push(sizedUrl); continue }
+      if (sizedUrl) { added.push(sizedUrl); markDone(fi); continue }
       let compressed: File
       try {
         // 🗜️ 2026-10-14: 압축 전 5MB 가드 제거 — 판정은 공용 준비 헬퍼(천장 1MB)가 한다.
@@ -84,6 +93,7 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
           const url = res.data?.data?.url
           if (!res.data?.success || !url) throw new Error('upload failed')
           added.push(url)
+          markDone(fi)
         } catch {
           const dataUrl: string = await new Promise((resolve) => {
             const r = new FileReader()
@@ -91,12 +101,14 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
             r.readAsDataURL(compressed)
           })
           added.push(dataUrl)
+          markDone(fi)
         }
       } catch {
         toast.error(t('common.uploadFailed', { defaultValue: '업로드 실패' }))
       }
     }
     setBusy(false)
+    window.setTimeout(() => { pv.forEach((p) => URL.revokeObjectURL(p.url)); setPreviews([]) }, 500)
     if (added.length) {
       onChange([...photos, ...added].slice(0, max))
       toast.success(t('common.uploadComplete', { defaultValue: '업로드 완료' }))
@@ -167,6 +179,18 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
         </div>
       )}
 
+      {previews.length > 0 && (
+        <div className="flex gap-2 mb-2" aria-live="polite">
+          {previews.map((p) => (
+            <div key={p.url} className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+              <img src={p.url} alt="" className={`ur-upload-img w-full h-full object-cover ${p.done ? '' : 'ur-uploading'}`} />
+              <span className="ur-upload-bar" aria-hidden="true">
+                <span style={{ width: p.done ? '100%' : '75%', transitionDuration: p.done ? '.2s' : '2s' }} />
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="flex items-center gap-2 flex-wrap">
         <button
           type="button"

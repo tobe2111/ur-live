@@ -23,6 +23,10 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { TicketStubIcon, ClockIcon } from '@/components/icons/urdeal-icons'
 import { safeDate } from '@/utils/safe-date'
 import type { Voucher } from './types'
+import { noteQrOrigin } from './qr-origin' // 🎬 2026-11-02 줄이 커져 QR 창이 된다
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-blink', `@keyframes ur-blink-once { 0%, 100% { opacity: 1; } 30%, 60% { opacity: .25; } }.ur-blink-once { animation: ur-blink-once 1.2s ease-in-out .4s 1; }.ur-strike::after, .ur-blink-once, .ur-shake { animation: none !important; }@media (prefers-reduced-motion: reduce){.ur-blink-once{animation:none!important}}`)
 
 /** 🔴 '곧 끝난다' 의 기준(남은 일수 이하). 접힌 줄의 빨간 D-N 과 지갑 위 만료 임박 줄이 **같은 값**을 쓴다
  *   — 둘이 갈리면 위에선 "곧 끝나요" 라는데 줄은 회색인 화면이 된다. */
@@ -45,7 +49,7 @@ export default function WalletRow({ v, t, onOpen }: {
   return (
     <button
       type="button"
-      onClick={onOpen}
+      onClick={(e) => { noteQrOrigin(e.currentTarget); onOpen() }}
       className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-black/[0.03] dark:active:bg-white/[0.04] transition-colors"
     >
       <div className="w-14 h-14 shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
@@ -60,7 +64,7 @@ export default function WalletRow({ v, t, onOpen }: {
         )}
         <div className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</div>
         {/* 🎫 2026-10-14 안 B: 남은 기간은 이름 아래 한 줄로 내려왔다(오른쪽은 [사용] 자리). 값과 임박 색은 그대로. */}
-        <div className={`mt-1 flex items-center gap-1 text-[12px] tabular-nums ${urgent ? 'font-medium text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>
+        <div className={`mt-1 flex items-center gap-1 text-[12px] tabular-nums ${urgent ? 'ur-blink-once font-medium text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>{/* 🎬 2026-11-02 시안 4차: 임박이면 한 번만 깜빡 */}
           <ClockIcon className="w-[13px] h-[13px] shrink-0" aria-hidden />
           {d === null ? t('voucher.noExpiry', { defaultValue: '기한 없음' }) : d === 0 ? 'D-DAY' : `D-${d}`}
         </div>

@@ -28,7 +28,7 @@
  * 규약과 그 근거는 `sheet-history.ts` 에 있다 — 여기서는 그 판정을 **따르기만** 한다.
  */
 import type { ReactNode } from 'react'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ChevronLeft, X } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 import {
@@ -59,11 +59,22 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
    */
   tall?: boolean
 }) {
+  // 🎬 2026-11-02 시안 3차 "올라오는 창 통일": 닫을 때도 같은 길로 내려간다(.ur-sheet-out, 200ms 뒤 onClose).
+  //   뒤로가기(popstate)는 브라우저가 이미 이동했으니 기다리지 않고 바로 닫는다. 동작 줄이기면 즉시.
+  const [closing, setClosing] = useState(false)
+  const requestClose = useCallback(() => {
+    let reduce = false
+    try { reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { /* 미지원 */ }
+    if (reduce) { onClose(); return }
+    setClosing(true)
+    window.setTimeout(onClose, 200)
+  }, [onClose])
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [requestClose])
 
   // 📱 뒤로가기 = 닫기. 칸은 **열려 있는 동안 하나**다(머리말 · `sheet-history.ts`).
   useEffect(() => {
@@ -92,7 +103,7 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/45 ur-sheet-veil" style={{ zIndex: Z.SHEET_BACKDROP }} onClick={onClose} aria-hidden="true" />
+      <div className={`fixed inset-0 bg-black/45 ur-sheet-veil${closing ? ' ur-sheet-veil-out' : ''}`} style={{ zIndex: Z.SHEET_BACKDROP }} onClick={requestClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
@@ -104,7 +115,7 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
              동작 줄이기=정지). 🔴 여기에 `animate-slide-up` 을 직접 쓰면 아래 `lg:-translate-*`
              가운데 정렬을 덮어 **PC 다이얼로그가 튄다**(실측 410,200 → 640,400). 근거·실측은
              `src/index.css` 의 `.ur-sheet-in` 머리말에 있다. */
-          + ' ur-sheet-in'
+          + ' ur-sheet-in' + (closing ? ' ur-sheet-out' : '') // 닫힘 클래스가 뒤에 정의돼 이긴다(index.css)
           // 🖥️ lg+ : 가운데 다이얼로그(위 머리말). 폰 값들을 여기서 되돌린다.
           + ' lg:inset-x-auto lg:left-1/2 lg:top-1/2 lg:bottom-auto lg:h-auto'
           + ' lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-[min(900px,92vw)]'
@@ -119,7 +130,7 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
             </button>
           )}
           <span className="flex-1 min-w-0 truncate text-[17px] font-extrabold text-gray-900 dark:text-white">{title}</span>
-          <button type="button" onClick={onClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
+          <button type="button" onClick={requestClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </button>
         </div>

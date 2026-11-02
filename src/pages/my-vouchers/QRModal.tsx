@@ -1,6 +1,6 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 이용권 사용(QR/PIN) 모달(verbatim 추출). 동작 불변.
 //   QRCodeSVG(lazy)·VoucherQRCode 는 모듈 내부 전용, QRModal 만 페이지가 사용.
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { OkIcon, PinIcon, BadIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
@@ -16,9 +16,13 @@ import { Phone, Share2, X } from 'lucide-react'
 import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
 import Udal from '@/components/mascot/Udal'
+import { takeQrOrigin, growFrom } from './qr-origin'
 import SameStoreDeals from './SameStoreDeals'
 import TalkCalendarButton from './TalkCalendarButton'
 import GiftVoucherSheet from './GiftVoucherSheet'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-stamp', `@keyframes ur-slam { 0% { opacity: 0; transform: rotate(-24deg) scale(1.9); } 60% { opacity: 1; transform: rotate(-12deg) scale(.94); } 100% { opacity: 1; transform: rotate(-12deg) scale(1); } }.ur-slam { animation: ur-slam .38s cubic-bezier(.3,1.4,.5,1) both; }@keyframes ur-thud { 0%,100% { transform: none; } 30% { transform: translateY(4px) scale(.995); } 60% { transform: translateY(-1px); } }.ur-thud { animation: ur-thud .35s ease-out .22s both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-slam,.ur-thud{animation:none!important}}`)
 
 // 🛡️ 2026-05-16: 외부 QR API (api.qrserver.com) 의존 제거 → qrcode.react 로컬 SVG.
 // 🛡️ 2026-06-01 (loading): qrcode.react 는 QR 모달 열 때만 필요 → lazy (페이지 chunk -10KB).
@@ -112,6 +116,11 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
     }
   }
 
+  const [justUsed, setJustUsed] = useState(false)
+  // 🎬 2026-11-02 시안 3차: 지갑 줄을 눌러 열었으면 그 줄 자리에서 커진다(qr-origin.ts). 아니면 종전처럼 올라온다.
+  const [fromRow] = useState(() => takeQrOrigin())
+  const panelRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => { growFrom(panelRef.current, fromRow) }, [fromRow])
   // 🛡️ 2026-05-16: 실시간 status 폴링 (5초마다) — 사장님이 스캔하면 즉시 "사용 완료" 표시
   //   백엔드 atomic CAS 로 재사용 자체는 차단되어 있음. UI 가 늦게 인지하는 것만 해결.
   useEffect(() => {
@@ -125,6 +134,11 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           const newStatus = res.data.data.status
           if (newStatus !== voucher.status) {
             setVoucher(v => ({ ...v, status: newStatus, used_at: res.data.data.used_at || v.used_at }))
+            // 🎬 2026-11-02 시안 2: 이 화면을 보는 동안 찍힌 경우에만 도장이 쾅 찍힌다(열 때 이미 쓴 표는 조용히).
+            if (newStatus === 'used') {
+              setJustUsed(true)
+              try { navigator.vibrate?.(40) } catch { /* 진동 미지원 */ }
+            }
           }
         }
       } catch { /* silent */ }
@@ -218,7 +232,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           높이 상한도 스크롤도 없어서, 내용이 화면보다 길면 **위쪽(상품명·매장명·QR 윗부분)이 화면 밖으로 넘쳐
           손댈 수도 없었다.** 인앱 브라우저(카톡)는 상단 바만큼 보이는 높이가 더 줄어 더 잘 난다.
           ⇒ 패널에 높이 상한 + 본문 스크롤. 100vh 는 모바일에서 주소창을 포함해 실제보다 크므로 dvh(레포 룰). */}
-      <div className="bg-surface rounded-t-3xl sm:rounded-3xl px-6 pt-3 pb-6 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative animate-slideUp flex flex-col max-h-[92dvh] sm:max-h-[88dvh]" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
+      <div ref={panelRef} className="bg-surface rounded-t-3xl sm:rounded-3xl px-6 pt-3 pb-6 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative animate-slideUp flex flex-col max-h-[92dvh] sm:max-h-[88dvh]" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))', animation: fromRow ? 'none' : undefined /* 줄에서 커질 땐 올라오기를 끈다(growFrom 이 대신) */ }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
         {/* 그래버 (모바일 바텀시트) */}
         <div className="sm:hidden mx-auto mb-4 h-1 w-9 shrink-0 rounded-full bg-gray-200 dark:bg-[#2C2F35]" aria-hidden />
         <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29] dark:bg-[#1D1F29]">
@@ -240,7 +254,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
             </p>
           )}
           <div className="flex justify-center mb-4">
-            <div className="relative p-4 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]" style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
+            <div className={`relative p-4 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35] ${justUsed ? 'ur-thud' : ''}`} style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
               {/* 스캔 프레임 코너 브래킷 (사용 가능 시) */}
               {!blocked && (
                 <>
@@ -267,7 +281,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   재사용을 시각적으로 명백히 차단(실제 재사용 차단은 서버 atomic CAS). */}
               {isUsed && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
-                  <div className="flex flex-col items-center rounded-xl border-[3px] border-tone-ok bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
+                  <div className={`flex flex-col items-center rounded-xl border-[3px] border-tone-ok bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm ${justUsed ? 'ur-slam' : ''}`}>
                     <div className="flex items-center gap-2">
                       <OkIcon className="w-5 h-5 text-tone-ok" />
                       <span className="text-[17px] font-bold tracking-tight text-tone-ok">사용 완료</span>

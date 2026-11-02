@@ -9,7 +9,8 @@ import { loadRoute } from '@/lib/route-preload'
 import { DEAL_ROW } from '@/shared/deal-card-grid'
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { StarIcon } from '@/components/icons/urdeal-icons'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { canRunDealTransition, runDealTransition } from '@/lib/deal-view-transition'
 import { formatNumber } from '@/utils/format'
 import DealCardMedia from '@/components/deal/DealCardMedia'
 import WishlistHeart from '@/components/deal/WishlistHeart'
@@ -139,6 +140,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   //   효과: 사용자가 스크롤로 카드를 보기만 해도 detail 데이터 미리 받아두기 → 클릭 시 0ms.
   //   aboveFold 카드는 즉시 prefetch (observer 없이) — 메인 페이지 진입 시 즉시.
   const linkRef = useRef<HTMLAnchorElement>(null)
+  const navigate = useNavigate()
   useEffect(() => {
     if (aboveFold) {
       /**
@@ -235,12 +237,20 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   const cText = 'text-gray-900 dark:text-white'
   const cAccent = 'text-brand-text'
 
+  const href = to ?? canonicalDetailPath(p) ?? `/pass/${p.id}`
   return (
     <Link
       ref={linkRef}
       // 🏨 2026-07-20 (숙소 상세 SSOT): 숙소 카드는 객실·날짜 예약이 있는 /stays/:id 로 —
       //   목적지는 canonicalDetailPath(라우팅 SSOT) 위임(그 외 카테고리는 기존 /group-buy/:id 동일).
       to={to ?? canonicalDetailPath(p) ?? `/pass/${p.id}`}
+      // 🎬 2026-11-02 [UNLOCK_LOADING] 시안 D3: 누른 사진이 상세 첫 사진으로 커진다(lib/deal-view-transition).
+      //   미리 받기(아래 세 줄)는 불변. 지원 안 하는 브라우저·새 탭 열기·동작 줄이기는 링크 기본 동작 그대로.
+      onClick={(e) => {
+        if (!canRunDealTransition(e)) return
+        e.preventDefault()
+        runDealTransition(e.currentTarget.querySelector('img'), () => navigate(href))
+      }}
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
       onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}

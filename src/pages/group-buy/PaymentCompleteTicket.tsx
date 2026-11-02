@@ -16,7 +16,7 @@
  * ■ 지키는 것
  *   체크 원 0 · 그라디언트 0 · 색깔 정보상자 0 · 카드 테두리 0(화이트만 shadow-lift). 로즈/블루는 밴드·outline 글자·강조 단어 셋에만.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, X } from 'lucide-react'
 import api from '@/lib/api'
@@ -25,6 +25,7 @@ import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { TicketCard, TicketRow, TicketOutlineButton, TicketNotes } from '@/components/ticket/TicketCard'
+import './payment-complete-motion.css'
 
 type ProductLite = {
   id: number
@@ -48,6 +49,46 @@ export function bandLeft(expiresRaw: string | null | undefined): string {
       .formatToParts(d).map((x) => [x.type, x.value]),
   )
   return `${parts.year}.${parts.month}.${parts.day} (${String(parts.weekday).replace('요일', '')})까지`
+}
+
+/**
+ * 🎬 2026-11-02 티켓 발급 움직임(대표 확정 — 모션 시안 1번 수정판). 약 1.4초 한 번 돌고 끝난다.
+ *   - `playing` 동안만 `.ur-pc-play` 가 붙는다(payment-complete-motion.css). 끝나면 떼어 완성 화면이 남는다.
+ *   - 화면을 누르면 즉시 끝난다 — 매장 앞에서 바로 이용권을 열어야 하는 손님을 기다리게 하지 않는다.
+ *   - 금액은 0 → 결제액으로 올라간다(0.55초 시작 · 0.45초). 끝나거나 건너뛰면 항상 실제 값이다.
+ *   - 휴대폰의 '동작 줄이기' 가 켜져 있으면 처음부터 움직이지 않는다.
+ */
+const MOTION_TOTAL_MS = 1500
+const COUNT_AT_MS = 550
+const COUNT_DUR_MS = 450
+
+function prefersReducedMotion(): boolean {
+  try { return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false }
+}
+
+export function useTicketMotion(amount: number) {
+  const [playing, setPlaying] = useState(() => !prefersReducedMotion())
+  const [count, setCount] = useState(0)
+  const raf = useRef(0)
+  useEffect(() => {
+    if (!playing) return
+    const start = window.setTimeout(() => {
+      const t0 = performance.now()
+      const step = (now: number) => {
+        const p = Math.min(1, (now - t0) / COUNT_DUR_MS)
+        setCount(1 - Math.pow(1 - p, 3))
+        if (p < 1) raf.current = requestAnimationFrame(step)
+      }
+      raf.current = requestAnimationFrame(step)
+    }, COUNT_AT_MS)
+    const end = window.setTimeout(() => setPlaying(false), MOTION_TOTAL_MS)
+    return () => { window.clearTimeout(start); window.clearTimeout(end); cancelAnimationFrame(raf.current) }
+  }, [playing])
+  return {
+    playing,
+    shownAmount: playing ? Math.round(amount * count) : amount,
+    skip: () => setPlaying(false),
+  }
 }
 
 export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed = 0 }: {
@@ -86,25 +127,30 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
   const original = product?.original_price ?? product?.price ?? null
   const pct = product?.current_discount_pct ?? (original && original > unit ? Math.round((1 - unit / original) * 100) : null)
   const kindLabel = getVoucherShortLabel(product?.category)
+  const motion = useTicketMotion(amount)
 
   return (
-    <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white">
+    <div
+      className={`min-h-[100dvh] bg-warm text-gray-900 dark:text-white ${motion.playing ? 'ur-pc-play' : ''}`}
+      onPointerDown={motion.playing ? motion.skip : undefined}
+    >
       <div className="ur-content-narrow px-4 lg:px-8 pt-3 pb-10">
         <div className="flex justify-end">
           <button type="button" onClick={() => navigate('/')} aria-label="닫기" className="w-10 h-10 -mr-2 flex items-center justify-center text-gray-700 dark:text-gray-200 active:opacity-60">
             <X className="w-6 h-6" strokeWidth={1.6} />
           </button>
         </div>
-        <h1 className="text-center text-[24px] font-bold tracking-[-0.02em] mt-3 mb-6">결제가 완료되었어요</h1>
+        <h1 className="ur-pc-title text-center text-[24px] font-bold tracking-[-0.02em] mt-3 mb-6">결제가 완료되었어요</h1>
 
-        <TicketCard bandLeft={bandLeft(issued?.expires_at)} bandRight={daysLeft !== null ? (daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`) : undefined}>
+        <TicketCard className="ur-pc-ticket" bandLeft={bandLeft(issued?.expires_at)} bandRight={daysLeft !== null ? (daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`) : undefined}>
+          <div className="ur-pc-body">
           <TicketRow left={`${kindLabel}`} right={`${qty}매`} />
           <div className="px-4 pt-4 pb-4">
-            {storeName && <p className="text-[13px] text-gray-500 dark:text-gray-400">{storeName}</p>}
-            <p className="text-[17px] font-bold tracking-[-0.01em] mt-1">{itemName}</p>
-            <div className="flex items-baseline gap-2 mt-3 mb-4 tabular-nums">
+            {storeName && <p className="ur-pc-step ur-pc-step-1 text-[13px] text-gray-500 dark:text-gray-400">{storeName}</p>}
+            <p className="ur-pc-step ur-pc-step-2 text-[17px] font-bold tracking-[-0.01em] mt-1">{itemName}</p>
+            <div className="ur-pc-step ur-pc-step-3 flex items-baseline gap-2 mt-3 mb-4 tabular-nums">
               {pct !== null && pct > 0 && <span className="text-[17px] font-bold text-brand-text">{pct}%</span>}
-              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(amount)}원</span>
+              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(motion.shownAmount)}원</span>
               {original !== null && original * qty > amount && <span className="text-[13px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(original * qty)}원</span>}
             </div>
             {dealUsed > 0 && (
@@ -113,11 +159,14 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
                 {amount > dealUsed && <> · 카드 {formatNumber(amount - dealUsed)}원</>}
               </p>
             )}
-            <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>이용권 확인</TicketOutlineButton>
+            <div className="ur-pc-step ur-pc-step-4">
+              <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>이용권 확인</TicketOutlineButton>
+            </div>
+          </div>
           </div>
         </TicketCard>
 
-        <div className="mt-5 mb-6">
+        <div className="ur-pc-notes mt-5 mb-6">
           <TicketNotes items={[
             '매장에서 QR 또는 코드로 사용해요.',
             '사용하지 않으면 기한이 지난 뒤 100% 자동 환불돼요.',

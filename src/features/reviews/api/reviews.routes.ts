@@ -289,6 +289,8 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
   // 구매 확인 — 보상 지급 여부는 order_id 소유/배송 상태에 따라 결정
   // order_id가 없어도 리뷰 자체는 저장되지만 보상은 지급되지 않음 (HIGH-3)
   let canGetReward = !!body.order_id;
+  // 🎬 2026-11-02 실제로 적립한 딜(응답 표시용 — 화면이 "+N딜" 을 올려 보인다). 적립 로직은 불변, 값만 읽는다.
+  let paidReward = 0;
   let rewardOrderId: number | null = body.order_id ?? null;
   if (body.order_id) {
     const order = await DB.prepare(
@@ -392,6 +394,7 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     const defaultReward = hasVideo ? 500 : hasImages ? 300 : 100;
     const settingsRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = ?").bind(rewardKey).first<{ value: string }>().catch(() => null);
     const rewardAmount = settingsRow?.value ? parseInt(settingsRow.value) : defaultReward;
+    paidReward = Number.isFinite(rewardAmount) ? rewardAmount : 0;
 
     const rewardDesc = hasVideo ? `[리뷰리워드] 영상 리뷰 작성 (product:${body.product_id})` : hasImages ? `[리뷰리워드] 사진 리뷰 작성 (product:${body.product_id})` : `[리뷰리워드] 텍스트 리뷰 작성 (product:${body.product_id})`;
 
@@ -457,6 +460,7 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     success: true,
     message: canGetReward ? '리뷰가 등록되었습니다' : '리뷰가 등록되었습니다 (구매 확인되지 않아 보상은 지급되지 않았습니다)',
     reward: canGetReward,
+    reward_amount: paidReward,
   }, 201);
 });
 
