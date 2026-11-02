@@ -166,7 +166,7 @@
       }
     },
     "linkshop": {
-      "totalKB": 195.15,
+      "totalKB": 195.14,
       "chunks": {
         "index.js": 15.6,
         "react-core.js": 38.65,
@@ -189,7 +189,7 @@
         "lz-common.js": 19.3,
         "lucide-home.js": 0.77,
         "lz-linkshop2.js": 3.09,
-        "CuratorPage.js": 2.92,
+        "CuratorPage.js": 2.91,
         "lz-linkshop1-vouchers.js": 1.07,
         "lz-boot-gbDetail-linkshop1.js": 0.5,
         "lz-gbDetail-linkshop1-product.js": 0.72,
@@ -384,7 +384,7 @@
       }
     },
     "stays": {
-      "totalKB": 178.85,
+      "totalKB": 178.82,
       "chunks": {
         "index.js": 15.6,
         "react-core.js": 38.65,
@@ -401,7 +401,7 @@
         "app-layout.js": 3.41,
         "app-routes.js": 1.04,
         "index.css": 29.38,
-        "StaysSearchPage.js": 2.92,
+        "StaysSearchPage.js": 2.89,
         "lucide-home.js": 0.77,
         "lz-gbDetail-voucherDetail.js": 0.58,
         "lz-common.js": 19.3,
@@ -409,7 +409,7 @@
       }
     },
     "stayDetail": {
-      "totalKB": 213.85,
+      "totalKB": 213.84,
       "chunks": {
         "index.js": 15.6,
         "react-core.js": 38.65,
@@ -426,7 +426,7 @@
         "app-layout.js": 3.41,
         "app-routes.js": 1.04,
         "index.css": 29.38,
-        "StayDetailPage.js": 12.43,
+        "StayDetailPage.js": 12.42,
         "lz-boot-gbDetail-linkshop1.js": 0.5,
         "lz-gbDetail-linkshop1-product.js": 0.72,
         "lz-gbDetail-product.js": 2.3,
@@ -636,7 +636,7 @@
       }
     },
     "lifePro": {
-      "totalKB": 201.29,
+      "totalKB": 201.3,
       "chunks": {
         "index.js": 15.6,
         "react-core.js": 38.65,
@@ -653,7 +653,7 @@
         "app-layout.js": 3.41,
         "app-routes.js": 1.04,
         "index.css": 29.38,
-        "LifeProPage.js": 7.07,
+        "LifeProPage.js": 7.08,
         "app-life-subcat.js": 0.59,
         "lz-gbDetailL-productL.js": 0.96,
         "lz-common.js": 19.3,
@@ -669,7 +669,7 @@
       }
     },
     "dash:my": {
-      "totalKB": 210.29,
+      "totalKB": 210.55,
       "chunks": {
         "index.js": 15.6,
         "react-core.js": 38.65,
@@ -686,13 +686,13 @@
         "app-layout.js": 3.41,
         "app-routes.js": 1.04,
         "index.css": 29.38,
-        "SellerSection.js": 7.03,
+        "SellerSection.js": 7.05,
         "app-owner-kit.js": 1.3,
         "lucide-home.js": 0.77,
         "order-stage.js": 0.35,
         "order-kind.js": 0.26,
         "lz-common.js": 19.3,
-        "UserProfilePage.js": 8.05,
+        "UserProfilePage.js": 8.29,
         "WalletRow.js": 1.3,
         "lz-gbDetail-product.js": 2.3,
         "lz-gbDetail-linkshop1-product.js": 0.72,

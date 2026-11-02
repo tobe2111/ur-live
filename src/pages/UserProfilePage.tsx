@@ -22,6 +22,8 @@ import ShoppingGroup from './user-profile/ShoppingGroup'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import SellerSection from './user-profile/SellerSectionLazy'
 import MyAgencyZone from './user-profile/MyAgencyZone'
+import { MY_TAB_DEFAULT, type MyTab } from './user-profile/my-role-tab'
+import { useAgencyPresence } from './user-profile/useAgencyPresence'
 import { useToolDeepLinkFallback } from './user-profile/seller-section/useToolDeepLink'
 import SettingsGroup from './user-profile/SettingsGroup'
 import { useMyCounts } from './user-profile/useMyCounts'
@@ -42,6 +44,8 @@ import AccountPcPane from './user-profile/AccountPcPane'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { loginPathFromHere } from '@/utils/login-return'
 const ProfileEditSheet = lazy(() => import('./user-profile/profile-edit/ProfileEditSheet'))
+// 🗂️ 탭 부품은 에이전시 로그인이 있을 때만 받는다(손님 첫 화면 무게 — `my-role-tab.ts` 머리말).
+const MyRoleTabs = lazy(() => import('./user-profile/MyRoleTabs'))
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -63,6 +67,14 @@ export default function UserProfilePage() {
   // 🖥️ 2026-09-02 (대표 — "PC 모드 답지 않은 페이지"): lg+ 는 우측 칸 상단을 `AccountPcPane`(내용)으로,
   //   모바일은 종전 세로 흐름 그대로. 동기 초기화 훅이라 첫 렌더부터 정확(모바일↔PC 플래시 없음).
   const isPc = useMediaQuery('(min-width: 1024px)')
+  // 🗂️ 2026-11-02 대표 확정 **안 1 + 에이전시 기본** — 에이전시 로그인이 있으면 폰 마이를 `나 | 에이전시` 탭으로
+  //   가른다(`MyRoleTabs` 머리말). 없으면 `tabbed=false` 라 둘 다 참 → 종전 화면 그대로.
+  //   ⚠️ PC 는 이미 왼쪽(판매)·오른쪽(손님) 두 열로 갈라 있어 탭을 세우지 않는다.
+  const agencyPresence = useAgencyPresence()
+  const [myTab, setMyTab] = useState<MyTab>(MY_TAB_DEFAULT)
+  const tabbed = !isPc && agencyPresence.on
+  const showMe = !tabbed || myTab === 'me'
+  const showAgency = !tabbed || myTab === 'agency'
 
   // ✅ Zustand 스토어 사용 (지역별)
   const authStore = useAuthKR // 🔥 2026-08-04: GLOBAL 스토어 제거(#804)
@@ -256,13 +268,15 @@ export default function UserProfilePage() {
                  모바일만 페이지로 떠나고 있었다(보던 목록의 스크롤·필터가 날아간다). */}
           <div className="flex items-center gap-1 flex-shrink-0">
             {/* 🔗 2026-11-02 대표 확정 버튼 ① — 에이전시 로그인이 있을 때만 선다. */}
-            <AgencyInviteDoor />
+            {showAgency && <AgencyInviteDoor />}
             <button onClick={bell.open} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-11 h-11 -mr-2 text-gray-900 dark:text-white active:opacity-70">
               <BellIcon className="w-6 h-6" aria-hidden="true" />
             </button>
           </div>
         </div>
       </div>
+      {/* ⏳ 자리를 미리 잡는다(56px = 탭 48 + 아래 8) — 부품이 늦게 와도 아래가 밀리지 않는다. */}
+      {tabbed && <Suspense fallback={<div className="h-14" aria-hidden="true" />}><MyRoleTabs value={myTab} onChange={setMyTab} /></Suspense>}
       </div>{/* /모바일 헤더 */}
 
       {/* 🧭 2026-09-28 (대표 *"PC 버전이나 모바일이나 너무 별로 · 허술해"*): **좌측 내비를 걷어냈다.**
@@ -328,9 +342,9 @@ export default function UserProfilePage() {
           onBell={bell.open}
           sellerSeats={sellerSeats}
         />
-      ) : (
+      ) : showMe ? (
         <MyStats voucher={counts.voucher} coupon={counts.coupon} />
-      )}
+      ) : null}
 
       {/* 🎬 2026-11-02 시안 마이 "구역 차례 등장"(대표 "다 해주고") — 하루 첫 방문에만 구역이 위에서부터 차례로 올라온다(CSS 는 MyStats). */}
       <div className={`${hasSeats ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}${introToday ? ' ur-my-intro' : ''}`}>
@@ -370,12 +384,14 @@ export default function UserProfilePage() {
       <>
       {/* 🏪 2026-09-25 (대표 확정 §14 — "하는 것도 마이에서"): 판매가 **맨 위**.
           사장님은 하루에 이 화면을 가장 많이 열고, 그때 보려는 건 오늘 숫자다. 셀러가 아니면 렌더 0. */}
-      <AgencyTitleDoor storeCount={sellerSeats.stores.length} />
-      <SellerSection state={sellerSeats} />
-      <MyAgencyZone ownSellerIds={ownSellerIds} />
+      {showAgency && <>
+        <AgencyTitleDoor storeCount={sellerSeats.stores.length} />
+        <SellerSection state={sellerSeats} />
+        <MyAgencyZone ownSellerIds={ownSellerIds} />
+      </>}
 
       {/* v4 광고 리워드 카드 — 딜 버는 수단이라 딜 잔액 바로 아래(웹은 null 렌더·네이티브 전용) */}
-      <RewardAdCard />
+      {showMe && <RewardAdCard />}
 
       {/* 🧹 2026-06-22 (대표 — '내 자산 먼저' IA 재배치): 소비자 본인 자산(주문현황+나의 이용내역)을
           역할 진입/수익 CTA 보다 위로. 순서: 딜 잔액(딜 벌기) → 나의 이용내역 → 수익·추천(접힘) → 역할 진입. */}
@@ -395,7 +411,7 @@ export default function UserProfilePage() {
             `!sellerSeats.loading` 을 더했다. 종전엔 좌석 조회가 **도는 동안에도** 이 카드가 떴다가
             응답이 오면 사라져(하네스 실측 — `사라짐: ["매장 계산대", …]`), 손님 줄 전체가 **+336px**
             밀렸다. 이 카드는 주석이 말하듯 *폴백*이다 — "아직 모른다" 는 "없다" 가 아니다. */}
-        {!!localStorage.getItem('seller_token') && !sellerSeats.loading && sellerSeats.stores.length === 0 && (
+        {showAgency && !!localStorage.getItem('seller_token') && !sellerSeats.loading && sellerSeats.stores.length === 0 && (
           <button
             type="button"
             onClick={() => navigate('/store/scan')}
@@ -434,7 +450,7 @@ export default function UserProfilePage() {
           종전엔 어느 구역에도 속하지 않은 채 떠 있었고, 사장님 화면에선 '내 가게' 판과 '내가 산 것' 제목
           사이에 끼어 있었다. 산 이용권의 기록이니 '내가 산 것' 이 그 집이다.
           PC 는 `AccountPcPane` 의 '곧 쓸 이용권' 카드 안에 이미 있어 여기서 또 그리지 않는다(두 번 서면 안 된다). */}
-      <ShoppingGroup counts={counts} />
+      {showMe && <ShoppingGroup counts={counts} />}
 
       {/* 🗑️ 2026-09-30 — **수익 · 추천 구역을 마이에서 뺐다** (대표 *"수익 추천은 지금은 아예
           마이에서 안보여도 될 것 같아"*).
@@ -451,13 +467,13 @@ export default function UserProfilePage() {
             ur-content-medium 부모 wrap — 다른 섹션과 동일 폭 정렬 (overflow 영구 fix). */}
       {/* 🧱 2026-09-29(안 C): 가로 패딩 없음 — 평면 줄이 자기 `px-4` 를 갖는다.
           여기서 또 주면 이 구역만 16px 들여쓰여 제목 줄이 옆 구역과 안 맞는다(첫 렌더에서 실제로 그랬다). */}
-      <RoleCtaGrid />
+      {showMe && <RoleCtaGrid />}
 
       {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관 InsetGroup 을 최하단 footer 로 이동(아래 로그아웃 다음). */}
 
       {/* 🧹 2026-06-19 (대표 신고 — 마이 번잡): 흩어진 설정(알림/테마/언어/앱정보)을 접이식 '설정' 그룹으로 합침.
            기능/데이터 로직 불변 — 표시만 1탭 뒤로. 탈퇴는 파괴적 동작이라 그룹 밖 최하단 유지. */}
-      {pcSplit ? null : settingsBlock}
+      {pcSplit || !showMe ? null : settingsBlock}
 
       {/* 🗑️ 2026-09-30 — **'셀러 대시보드로 전환' 버튼을 없앴다** (대표 *"셀러 대시보드로 전환도
           이젠 필요없잖아"*). 맞다. 2026-09-25 §14("하는 것도 마이에서") 이후 **매일 쓰는 판매 도구는
@@ -477,13 +493,13 @@ export default function UserProfilePage() {
           맨 아래는 **버전과 회원 탈퇴 한 줄**만 남긴다. 고객지원 링크는 설정 구역의 줄로 올라갔고(위 settingsBlock),
           회사·사업자 정보는 홈 맨 아래(`CompanyInfoFooter`)가 갖는다.
           🛡️ 회원 탈퇴는 파괴적 동작이라 조용한 링크 그대로(2026-08-30 판단) — 찾을 수는 있고 동선엔 안 걸린다. */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-2 pb-8 flex items-start justify-between gap-4">
+      {showMe && <div className="ur-content-medium px-4 lg:px-8 pt-2 pb-8 flex items-start justify-between gap-4">
         {/* 새 버전이 있을 때만 서는 파란 버튼이 이 칸 폭을 다 쓰도록 flex-1 */}
         <div className="flex-1 min-w-0"><AppVersionSection /></div>
         <div className="shrink-0 pt-2">
           <DeleteAccountLink />
         </div>
-      </div>
+      </div>}
 
         </div>{/* /우측 내용 칸 */}
       </div>{/* /ur-account-pc */}
