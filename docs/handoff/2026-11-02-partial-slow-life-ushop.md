@@ -24,6 +24,19 @@
 가드: `home-service-schema-probe-2026-11-02.test.ts`(진짜 SQLite · 주입 2) · `ushop-owner-waves-2026-11-02.test.ts`(주입 1).
 `linkshop-products-seed.test.ts` 한 줄 재조준(동봉은 그대로, 나란히 받도록 바뀐 모양).
 
+## 2차 (대표 *"모두 순서대로 해줘"*) — 같은 PR
+4. **마이 '내 가게'** — `listOperableStores` 소유·위임 두 읽기 나란히(요약·목록 모두 지난다).
+5. **마이 '내 이용권'** — `/api/vouchers/my` 가 매 요청 색인 DDL → isolate 당 1회.
+   로딩 잠금 파일 — 대표 *"허가 — 고쳐줘"*, 기록 `docs/locks/loading/2026-11-02-vouchers-my-ddl-memo.md`.
+6. **홈 맨 위 사진** — 대표 확정 *"중간 — 늦추기만 풀기"*: `lazy`·`low` 해제(기본 우선순위 = 카드 `high` 다음) ·
+   페이드 0.5→0.2초 · 이미 받은 사진은 페이드 없이.
+7. **유어쇼츠** — 홈 레일 카드가 `window.location.href` 로 **앱 전체를 다시 불러왔다**(목록 카드는 앱 안 이동이었다).
+   앱 안 이동으로 통일 + `pointerdown` 에 뷰어 청크·유튜브 API 미리 받기(`pages/videos/warm-viewer.ts`).
+   가드: `partial-slow-round2-2026-11-02.test.ts` + 주입 4.
+
+손대지 않은 것: 마이 '내 딜'(`/api/points/balance`)의 두 번째 직렬 읽기 — 딜·환급 경로라 결재 대상으로 남김.
+`seller/orders` 가 요약을 기다리는 2단 — 좌석 확인 뒤에 불러야 남의 가게 숫자를 안 그린다(의도된 순서).
+
 ## 이어받는 세션의 첫 액션(대표가 이어서 하라고 했을 때)
 배포 후:
 ```bash
@@ -36,6 +49,5 @@ UA='Mozilla/5.0 (iPhone)'; for i in 1 2 3; do curl -sS -o /dev/null -A "$UA" -D 
 - `npx tsc` 는 기본 힙에서 죽는다(`Aborted`) — `NODE_OPTIONS=--max-old-space-size=8192`.
 
 ## 남은 것(대표 판단·별건)
-- 마이페이지 칸들: `/api/seller/my-stores/summary` 앞단 `resolveStoreScope` 직렬 + 클라에서 `seller/orders` 가 이 응답을 기다리는 2단. **로그인 실측 후** 손댈 것.
-- 홈 맨 위 사진: 우선순위를 올리면 위는 빨라지고 첫 카드 사진이 늦어진다 — 대표 선택.
-- 유어쇼츠: 유튜브 재생기 미리 데우기(예: 카드에 손가락이 닿을 때 `preconnect`) — 별건.
+- 마이페이지는 로그인 실측을 못 했다 — 배포 후 대표 폰에서 체감 확인 필요.
+- '내 딜' 두 번째 읽기 병렬화는 딜·환급 경로(결재 C)라 손대지 않음.

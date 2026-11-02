@@ -100,20 +100,21 @@ export async function listOperableStores(DB: D1Database, userId: number): Promis
   if (!Number.isFinite(userId) || userId <= 0) return []
   await ensureSellerOperators(DB)
 
-  const owned = await DB.prepare(
+  // 🐢 2026-11-02 대표 *"부분적으로 느린 경우들이 많아서 유저들이 헷갈려해"* — 소유·위임 두 읽기는 서로 기다릴 이유가 없다.
+  //   마이 '내 가게' 요약(`/my-stores/summary`)이 이 함수를 지나며 직렬 2왕복을 냈다(원본 DB · 한국에서 ~0.17초씩).
+  const [owned, granted] = await Promise.all([DB.prepare(
     `SELECT id AS seller_id, business_name, name, status, username, address
        FROM sellers WHERE linked_user_id = ? LIMIT ${MAX_OPERABLE_STORES}`
   ).bind(userId).all<{ seller_id: number; business_name: string | null; name: string | null; status: string | null; username: string | null; address: string | null }>()
-    .catch(() => ({ results: [] as never[] }))
-
-  const granted = await DB.prepare(
+    .catch(() => ({ results: [] as never[] })),
+  DB.prepare(
     `SELECT o.seller_id, o.role, s.business_name, s.name, s.status, s.username, s.address
        FROM seller_operators o
        JOIN sellers s ON s.id = o.seller_id
       WHERE o.user_id = ? AND o.revoked_at IS NULL
       LIMIT ${MAX_OPERABLE_STORES}`
   ).bind(userId).all<{ seller_id: number; role: string; business_name: string | null; name: string | null; status: string | null; username: string | null; address: string | null }>()
-    .catch(() => ({ results: [] as never[] }))
+    .catch(() => ({ results: [] as never[] }))])
 
   const out = new Map<number, OperableStore>()
   for (const r of granted.results || []) {

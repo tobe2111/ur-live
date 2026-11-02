@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, memo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { warmShortsViewer } from '@/pages/videos/warm-viewer'
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
@@ -89,6 +90,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
     <button
       type="button"
       onClick={onOpen}
+      onPointerDown={warmShortsViewer}
       className="shrink-0 snap-start text-left"
       style={{ width: URSHORTS_CARD_W }}
       aria-label={`${item.store_name || ''} ${shortDisplayTitle(item) || '유어쇼츠 영상'}`}
@@ -169,6 +171,7 @@ function writeRailHint(n: number) {
 }
 
 export default function UrShortsRail() {
+  const navigate = useNavigate()
   // 🔁 이미 받아 둔 목록이 있으면(다시 마운트된 경우) 첫 렌더부터 그것으로 그린다.
   const [cached] = useState(() => freshRailList()?.items)
   const [items, setItems] = useState<UrShortItem[]>(() => cached ?? [])
@@ -318,7 +321,9 @@ export default function UrShortsRail() {
               key={it.id}
               item={it}
               load={near}
-              onOpen={() => { window.location.href = `${URSHORTS_VIEWER_PATH}?v=${it.video_id}` }}
+              // 🐢 2026-11-02 — 종전 `window.location.href` 는 **앱 전체를 처음부터** 다시 불러왔다(HTML·JS·로더 → 그 뒤 유튜브).
+              //   목록 화면(`BrowseCard`)과 같은 앱 안 이동으로 — 뷰어 코드·유튜브는 누를 때 이미 데워 둔다(`warmShortsViewer`).
+              onOpen={() => navigate(`${URSHORTS_VIEWER_PATH}?v=${it.video_id}`)}
             />
           ))}
           {/* 끝까지 민 사람은 이미 관심이 있다. 그 자리에 문을 둔다. */}
