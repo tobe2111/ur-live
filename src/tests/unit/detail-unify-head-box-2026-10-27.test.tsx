@@ -20,8 +20,9 @@ const panel = (raffle?: { label: string; disabled: boolean; onApply: () => void 
 
 describe('③ 머리·섹션 띠', () => {
   it('숙소 제목 크기 = 이용권 제목 크기', () => {
-    expect(STAY_HEAD.h1.split(' '), '폰 크기(접두 없는 토큰)가 24px 이 아니다').toContain('text-[24px]')
-    expect(PASS_HEAD.h1).toContain('text-[24px]')
+    // 📏 2026-11-02 대표 확정 상세 C안: 둘 다 24 → 17. 지키는 것은 "둘이 같다" 이다.
+    expect(STAY_HEAD.h1.split(' '), '폰 크기(접두 없는 토큰)가 17px 이 아니다').toContain('text-[17px]')
+    expect(PASS_HEAD.h1).toContain('text-[17px]')
   })
   it('섹션 띠는 흰 면이고, 손으로 적은 사본이 없다', () => {
     expect(STAY_BAND).toContain('bg-surface')

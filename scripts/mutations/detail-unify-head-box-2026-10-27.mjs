@@ -18,10 +18,11 @@ export default [
     why: '당첨 전 손님이 예약 창으로 간다 — 폰은 응모인데 PC 만 예약.',
   },
   {
-    name: 'detail-unify-head-box — 숙소 제목이 다시 작아진다',
+    name: 'detail-unify-head-box — 숙소 제목이 이용권 제목과 갈린다',
     file: 'src/shared/stay-head.ts',
-    find: "  h1: 'text-[24px] leading-[1.3] font-bold tracking-[-.02em]',",
-    replace: "  h1: 'text-[17px] lg:text-[24px] font-bold',",
+    // 📏 2026-11-02 상세 C안: 둘 다 17 — 숙소만 다른 크기로 갈리는 변형을 넣는다.
+    find: "  h1: 'text-[17px] leading-[1.4] font-bold tracking-[-.02em]',",
+    replace: "  h1: 'text-[15px] leading-[1.4] font-bold tracking-[-.02em]',",
     test: T,
     why: '이용권 상세 제목과 크기가 갈린다.',
   },
