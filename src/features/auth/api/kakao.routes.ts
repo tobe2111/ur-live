@@ -792,6 +792,12 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
           ]);
         } catch { /* fail-soft */ }
 
+        // 🔔 2026-11-02 (대표 "유저 가입 알림이 하나도 안 와"): 어드민 업무 알림 — 응답 뒤(waitUntil), 로그인 지연 0.
+        try {
+          const { scheduleAdminEvent } = await import('../../../worker/utils/admin-event-notify');
+          await scheduleAdminEvent(c, c.env.DB, { type: 'user_signup', title: '새 유저 가입', message: `${String(user.name || '이름 없음').slice(0, 30)} · 카카오`, link: '/admin/users' });
+        } catch { /* fail-soft */ }
+
         // 🛡️ 2026-05-01: Option B — 같은 카카오로 재가입이면 복원 동의 안내.
         //   30일 내 탈퇴 기록 있으면 'restorable=1&restored_user_id=X' 부착.
         //   프론트가 복원 동의 모달 표시 → 동의 시 /api/account/restore 호출.

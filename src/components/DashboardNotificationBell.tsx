@@ -40,6 +40,11 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  // 🔔 2026-11-02 (대표 "필요한 것과 불필요한 것 구별"): 어드민 종은 두 칸 — 업무(가입·구매·승인 대기)가 기본,
+  //   시스템(크론·성능·리포트)은 옆 칸. 빨간 숫자는 업무만 센다. 분류 SSOT `shared/notification-catalog.ts`.
+  const isAdmin = tokenKey === 'admin_token'
+  const [group, setGroup] = useState<'business' | 'system'>('business')
+  const [systemUnread, setSystemUnread] = useState(0)
 
   // 지수 백오프 — 연속 실패 시 폴링 간격을 30s → 60s → 120s → 240s 최대로 증가
   // 성공하면 즉시 30s 로 복귀. 백엔드 장애 시 클라이언트 대량 호출로 인한 D1 quota 소진 방지.
@@ -49,17 +54,20 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
     const tk = localStorage.getItem(tokenKey)
     if (!tk) return true
     try {
-      const res = await api.get('/api/dashboard-notifications?unread_only=false&limit=10', { headers: { Authorization: `Bearer ${tk}` } })
+      const q = isAdmin ? `&group=${group}` : ''
+      const res = await api.get(`/api/dashboard-notifications?unread_only=false&limit=${isAdmin ? 30 : 10}${q}`, { headers: { Authorization: `Bearer ${tk}` } })
       if (res.data?.notifications) {
         setNotifications(res.data.notifications)
-        setUnreadCount(res.data.unread_count || 0)
+        // 종의 숫자는 늘 '업무' 기준 — 시스템 칸을 보고 있을 땐 업무 숫자를 따로 못 받으므로 그대로 둔다.
+        if (!isAdmin || group === 'business') setUnreadCount(res.data.unread_count || 0)
+        if (isAdmin) setSystemUnread(Number(res.data.system_unread) || 0)
       }
       return true
     } catch (e) {
       if (import.meta.env.DEV) console.warn('[DashboardBell] fetch failed:', e)
       return false
     }
-  }, [tokenKey])
+  }, [tokenKey, isAdmin, group])
 
   useEffect(() => {
     let cancelled = false
@@ -111,9 +119,10 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
     const tk = localStorage.getItem(tokenKey)
     if (!tk) return
     try {
-      await api.put('/api/dashboard-notifications/read-all', null, { headers: { Authorization: `Bearer ${tk}` } })
+      await api.put(`/api/dashboard-notifications/read-all${isAdmin ? `?group=${group}` : ''}`, null, { headers: { Authorization: `Bearer ${tk}` } })
       setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })))
-      setUnreadCount(0)
+      if (!isAdmin || group === 'business') setUnreadCount(0)
+      else setSystemUnread(0)
     } catch { /* ignore */ }
   }
 
@@ -123,7 +132,8 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
     try {
       await api.put(`/api/dashboard-notifications/${id}/read`, null, { headers: { Authorization: `Bearer ${tk}` } })
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n))
-      setUnreadCount(prev => Math.max(0, prev - 1))
+      if (!isAdmin || group === 'business') setUnreadCount(prev => Math.max(0, prev - 1))
+      else setSystemUnread(prev => Math.max(0, prev - 1))
     } catch { /* ignore */ }
   }
 
@@ -170,7 +180,7 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
         <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden" role="dialog" aria-label={t('notifications.listAria', { defaultValue: '알림 목록' })}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <span className="text-[15px] font-medium text-gray-900">알림</span>
-            {unreadCount > 0 && (
+            {(isAdmin && group === 'system' ? systemUnread : unreadCount) > 0 && (
               <button
                 onClick={markAllRead}
                 className="text-[12px] text-blue-600 hover:text-blue-800 font-medium"
@@ -180,10 +190,26 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
             )}
           </div>
 
-          <div className="max-h-80 overflow-y-auto">
+          {isAdmin && (
+            <div className="flex border-b border-gray-100" role="tablist">
+              {([['business', '업무', unreadCount], ['system', '시스템', systemUnread]] as const).map(([g, label, n]) => (
+                <button
+                  key={g}
+                  role="tab"
+                  aria-selected={group === g}
+                  onClick={() => setGroup(g)}
+                  className={`flex-1 py-2 text-[13px] font-medium border-b-2 ${group === g ? 'border-blue-600 text-gray-900' : 'border-transparent text-gray-500'}`}
+                >
+                  {label}{n > 0 ? ` ${n > 99 ? '99+' : n}` : ''}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className={isAdmin ? 'max-h-96 overflow-y-auto' : 'max-h-80 overflow-y-auto'}>
             {notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-[15px] text-gray-400">
-                알림이 없습니다
+                {isAdmin && group === 'business' ? '새 가입·구매 소식이 없어요' : '알림이 없습니다'}
               </div>
             ) : (
               notifications.map(n => (

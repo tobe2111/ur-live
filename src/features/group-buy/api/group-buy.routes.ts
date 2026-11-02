@@ -736,6 +736,15 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
               ).catch(() => {})
             }
           } catch { /* fail-soft */ }
+          // 🔔 2026-11-02 (대표 "교환권 교환, 이용권 구입 알림이 안 와"): 어드민 업무 알림 — 딜 경로.
+          try {
+            const { notifyAdminEvent, summarizeItems } = await import('../../../worker/utils/admin-event-notify')
+            const gift = Number((product as { deal_only?: number }).deal_only) === 1
+            await notifyAdminEvent(DB, {
+              type: gift ? 'gifticon_purchased' : 'voucher_purchased', title: gift ? '교환권 교환' : '이용권 구매',
+              message: `${summarizeItems([product.name], qty)} · ${Number(totalAmount || 0).toLocaleString('ko-KR')}딜`, link: '/admin/orders',
+            })
+          } catch { /* fail-soft */ }
           try {
             const { grantInviteRewardForFirstPurchase } = await import('../../../worker/utils/invite-reward')
             await grantInviteRewardForFirstPurchase(DB, String(userId))
@@ -1253,6 +1262,15 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
               '/seller/group-buy',
             ).catch(() => {})
           }
+        } catch { /* fail-soft */ }
+        // 🔔 2026-11-02 — 어드민 업무 알림 — 카드 경로(딜 경로와 대칭).
+        try {
+          const { notifyAdminEvent, summarizeItems, won } = await import('../../../worker/utils/admin-event-notify')
+          const gift = Number((product as { deal_only?: number }).deal_only) === 1
+          await notifyAdminEvent(DB, {
+            type: gift ? 'gifticon_purchased' : 'voucher_purchased', title: gift ? '교환권 교환' : '이용권 구매',
+            message: `${summarizeItems([product.name], qty)} · ${won(expectedAmount)} · 카드`, link: '/admin/orders',
+          })
         } catch { /* fail-soft */ }
         try {
           const { grantInviteRewardForFirstPurchase } = await import('../../../worker/utils/invite-reward')

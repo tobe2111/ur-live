@@ -248,7 +248,9 @@ adminUsersRoutes.post('/users/:id/gift-deal', cors(), require2FA(), async (c) =>
     await DB.prepare(`
       INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
       VALUES (?, 'admin_gift', ?, ?, '/user/profile', datetime('now'))
-    `).bind(String(userId), '🎁 딜 선물 도착!', `${amount.toLocaleString()}딜을 선물받으셨어요. (${reason})`).run().catch(() => null);
+    `).bind(String(userId), '딜 선물이 도착했어요', `${amount.toLocaleString()}딜이 들어왔어요`).run().catch(() => null);
+    // 🔔 2026-11-02: 사유(reason)는 **어드민 메모**라 손님 알림에 넣지 않는다 — 감사 로그(아래 5)에만 남는다.
+    //   그 전엔 "(대표 지시 — 본인 계정 10만딜 추가)" 가 손님 알림함에 그대로 떴다.
 
     // 4. push 알림 (best-effort)
     try {

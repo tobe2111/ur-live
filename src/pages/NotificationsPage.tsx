@@ -91,7 +91,7 @@ export default function NotificationsPage() {
                 <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[15px] font-medium text-gray-900 dark:text-white">{n.title}</p>
-                  {n.message && <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{n.message}</p>}
+                  {n.message && <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{n.message}</p>}
                   <p className="text-[12px] text-gray-500 dark:text-gray-500 mt-1">
                     {/* 🛡️ 2026-06-26 (소비자 감사): safeDate — 사파리가 D1 datetime 을 Invalid Date 로 파싱하던 것 보정. */}
                     {safeDate(n.created_at)?.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) ?? ''}
