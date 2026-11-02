@@ -101,5 +101,18 @@
     "hook": "scene",
     "media_set": "short-owner-recruit",
     "date_kst": "2026-11-01"
+  },
+  {
+    "platform": "threads",
+    "track": "creator",
+    "date_kst": "2026-11-02"
+  },
+  {
+    "platform": "instagram",
+    "track": "creator",
+    "topic": "협찬 표기는 꼭: 소개 글엔 광고/소개 링크임을 밝히는 게 기본이고 유어딜도 그렇게 안내한다",
+    "hook": "udal",
+    "media_set": "creator-partners",
+    "date_kst": "2026-11-02"
   }
 ]
