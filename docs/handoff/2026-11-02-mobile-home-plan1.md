@@ -15,3 +15,4 @@
 ## 대기
 - 대전(옛 사진)·충북(없음) 일러스트, 전국 전용 그림 — 대표가 보내 주면 반영.
 - main 의 surface-budgets 빨간불(gbDetail·stayDetail +0.1KB 초과)은 이 작업 이전(15:30 KST~)부터다 — 다른 세션 몫.
+- ➖ 배너 위 8px 띠 제거(대표 "배너 위에 구분선이 신경쓰여 없애줘") — `ur-panel-flush` (화면·서버 첫 화면·CSS 같은 클래스). 가드 `mobile-home-flush-band-2026-11-02.test.ts` + 주입 2.

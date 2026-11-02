@@ -298,7 +298,7 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
     chromeHtml() +
     // 🏠 2026-11-02 대표 확정(모바일 안 1) — 첫 섹션은 **제목 줄 없이** 카드만, 배너는 그 **아래**.
     //    화면(`MobileHomePage` → `HomeSections bareFirst`)과 같은 순서여야 마운트 때 안 튄다.
-    `<div class="mt-3"><section class="${HOME_FS_CLASS.panel}">` +
+    `<div class="mt-3"><section class="${HOME_FS_CLASS.panel} ur-panel-flush">` +
     `<div class="${HOME_FS_CLASS.grid}">${cards}</div>` +
     `</section>${stripBannerHtml(strip)}</div></div>`
 

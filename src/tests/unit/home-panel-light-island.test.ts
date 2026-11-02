@@ -46,7 +46,8 @@ describe('홈 패널 3곳이 전부 섬이다', () => {
   it('ur-home-panel 은 light-island 를 붙이지 않는다 (테마를 따른다)', () => {
     for (const f of ['src/components/home/HomeSections.tsx', 'src/pages/pc-home/PcHomePage.tsx']) {
       const s = code(read(f))
-      const all = s.match(/className="ur-home-panel[^"]*"/g) || []
+      // 2026-11-02 — 첫 섹션 띠 제거로 템플릿 리터럴(className={`ur-home-panel${…}`})도 생겼다. 둘 다 센다.
+      const all = s.match(/className=(?:"|\{`)ur-home-panel[^"`]*["`]/g) || []
       expect(all.length, `${f}: 패널이 없다 — 이 검사가 헛돈다`).toBeGreaterThan(0)
       for (const m of all) {
         expect(
