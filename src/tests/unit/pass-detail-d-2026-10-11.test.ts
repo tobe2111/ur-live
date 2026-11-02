@@ -49,7 +49,11 @@ describe('② 모바일 섹션은 같은 카드 상수를 쓴다', () => {
     for (const t of ['border-t', 'border-rule']) expect(cls, `섹션 구분선이 사라졌다(${t})`).toContain(t)
     // 2026-10-25 E안의 회색 띠 · PC 그림자 카드는 이 결정이 대체했다 — 되살아나면 바탕이 두 색이 된다.
     for (const t of ['border-t-8', 'border-gray-100', 'lg:shadow-lift', 'lg:rounded-2xl']) expect(cls, `두 톤으로 돌아갔다(${t})`).not.toContain(t)
-    expect(/PASS_PAGE_BG = '([^']+)'/.exec(src)![1], '페이지 바탕이 카드색과 갈렸다').toBe('bg-[var(--gbd-card)]')
+    // 🌑 2026-11-02 (대표 "다크 모드일 때 배경이 연하다"): 하나의 색은 카드색이 아니라 **페이지 바탕**(--bg).
+    //   바탕과 구역이 **같은 값**이어야 한다 — 갈리면 다크에서 구역이 판처럼 떠 보인다.
+    const bg = /PASS_PAGE_BG = '([^']+)'/.exec(src)![1]
+    expect(bg, '페이지 바탕이 --bg 가 아니다(다크에서 연해진다)').toBe('bg-[var(--gbd-bg)]')
+    expect(cls, '구역 바탕이 페이지 바탕과 갈렸다').toContain(bg)
   })
 
   /**
@@ -110,10 +114,10 @@ describe('③ 결제는 구매 창 안에서만', () => {
   })
 })
 
-describe('④ 이용 안내 — 세로 타임라인 (대표 시안 6종 중 "1번", 2026-10-11)', () => {
-  it('세 단계 + 예외는 2단계(스캔) 바로 아래 갈래', () => {
+describe('④ 이용 안내 — 한 줄 흐름 (2026-11-02 대표 확정 상세 C안 · 종전 세로 타임라인 대체)', () => {
+  it('세 단계 + 예외 한 줄(스캔이 안 되면)', () => {
     expect((HOWTO.match(/\{ n: '\d'/g) || []).length).toBe(3)
-    expect(HOWTO, '예외 갈래가 2단계에 안 붙어 있다').toMatch(/n === '2' && \([\s\S]{0,300}스캔이 안 되면\?[\s\S]{0,80}\{REDEEM_FALLBACK\}/)
+    expect(HOWTO, '예외 한 줄이 없다').toMatch(/스캔이 안 되면\?[\s\S]{0,40}\{REDEEM_FALLBACK\}/)
   })
   it('단계는 접지 않는다 — 접히는 건 유의사항뿐', () => {
     const line = USAGE.split('\n').find((l) => l.includes('<RedeemHowTo />'))

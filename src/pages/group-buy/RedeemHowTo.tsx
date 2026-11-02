@@ -32,44 +32,34 @@
 
 /** 각 단계: 제목(무엇을) + 한 줄(어디서·누가). */
 const STEPS: readonly { n: string; t: string; d: string }[] = [
-  { n: '1', t: '내 이용권에서 QR 열기', d: '마이 → 내 이용권' },
-  { n: '2', t: '직원에게 QR 보여주기', d: '직원이 스캔해요' },
-  { n: '3', t: '바로 사용 완료', d: '따로 누를 건 없어요' },
+  { n: '1', t: 'QR 열기', d: '마이 → 내 이용권' },
+  { n: '2', t: '직원에게 보여주기', d: '직원이 스캔해요' },
+  { n: '3', t: '사용 완료', d: '따로 누를 건 없어요' },
 ]
 
 /** 스캔이 안 될 때의 길 — 매장 확인코드(4~6자리, `self-redeem-gate`)와 일치. 집에서 미리 쓸 수 없다. */
 export const REDEEM_FALLBACK = '직원에게 4~6자리 확인코드를 받아 입력해요. 확인코드는 매장에서만 알려 드려요.'
 
+/**
+ * ## 2026-11-02 — 세로 타임라인 → **한 줄 흐름** (대표 확정 상세 C안 — *"글자 크기들도 각각 너무 크고 공백이 많은 느낌"*)
+ * 세로 타임라인이 화면 반 가까이(라이브 실측 약 330px)를 먹었다. 세 동작은 그대로 두고
+ * [단계 › 단계 › 단계] 한 줄 + 예외 한 줄로 접는다. 순서·사실(1순위 QR · 확인코드는 스캔이 안 될 때)은 불변.
+ */
 export default function RedeemHowTo() {
   return (
-    <ol className="m-0 p-0 list-none">
-      {STEPS.map(({ n, t, d }, i) => {
-        const last = i === STEPS.length - 1
-        return (
-          <li key={n} className="flex gap-4">
-            {/* 번호 원 + 다음 단계로 잇는 세로선 */}
-            <div className="flex flex-col items-center shrink-0">
-              <span
-                aria-hidden
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-medium ${last ? 'text-brand-text' : 'bg-brand text-white'}`}
-                style={last ? { background: 'var(--gbd-accent-soft)' } : undefined}
-              >{n}</span>
-              {!last && <span aria-hidden className="w-[2px] flex-1 my-1 rounded-full" style={{ background: 'var(--gbd-accent-soft)' }} />}
-            </div>
-            <div className={`min-w-0 pt-1 ${last ? '' : 'pb-5'}`}>
-              <div className="text-[15px] font-medium" style={{ color: 'var(--gbd-ink)' }}>{t}</div>
-              <div className="mt-1 text-[13px]" style={{ color: 'var(--gbd-sub)' }}>{d}</div>
-              {/* 🔀 예외는 그 일이 일어나는 단계(2 — 스캔) 바로 아래에 갈래로 */}
-              {n === '2' && (
-                <div className="mt-3 rounded-xl px-3 py-3 text-[13px] leading-[1.5]" style={{ background: 'var(--gbd-chip)', color: 'var(--gbd-ink2)' }}>
-                  <b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>스캔이 안 되면?</b>
-                  <br />{REDEEM_FALLBACK}
-                </div>
-              )}
-            </div>
+    <div>
+      <ol className="m-0 p-0 list-none flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-medium" style={{ color: 'var(--gbd-ink)' }}>
+        {STEPS.map(({ n, t }, i) => (
+          <li key={n} className="flex items-center gap-1">
+            <span className="text-brand-text">{n}</span>
+            <span>{t}</span>
+            {i < STEPS.length - 1 && <span aria-hidden className="ml-1" style={{ color: 'var(--gbd-sub2)' }}>›</span>}
           </li>
-        )
-      })}
-    </ol>
+        ))}
+      </ol>
+      <p className="mt-2 mb-0 text-[12px] leading-[1.5]" style={{ color: 'var(--gbd-sub)' }}>
+        <b className="font-medium">스캔이 안 되면?</b> {REDEEM_FALLBACK}
+      </p>
+    </div>
   )
 }

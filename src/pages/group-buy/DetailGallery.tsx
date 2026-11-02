@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DEAL_HERO_VT } from '@/lib/deal-vt-name'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { getWarmImage } from '@/utils/image-warm'
+// 📦 2026-11-02: 크게 보기(폰)는 누를 때만 받는다 — 상세 첫 화면 무게 예산(surface-budgets)을 넘겼다(+1.6KB).
+const DetailLightboxMobile = lazy(() => import('./DetailLightboxMobile'))
 import {
   DETAIL_DESKTOP_QUERY, DETAIL_HERO_DESKTOP_WIDTH, DETAIL_HERO_MOBILE_WIDTH, DETAIL_THUMB_WIDTH,
   DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, DETAIL_PC_THUMB_RATIO,
@@ -43,7 +45,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
   const [active, setActive] = useState(0)
   const [lightbox, setLightbox] = useState(false)
   // 🎬 2026-11-02 시안 5차 "사진 크게 보기": 열 때 커지며 나타나고, 닫을 때 작아지며 사라진다.
-  //   폰에서는 사진을 아래로 끌면 따라오다가 충분히 내리면 닫힌다(좌우 넘기기는 그대로).
+  //   폰은 대표 확정 ③B 팝업(DetailLightboxMobile)이 손가락 따라가기를 따로 맡는다 — 여기선 열고 닫힘만.
   const [closing, setClosing] = useState(false)
   const closeLightbox = useCallback(() => {
     let reduce = false
@@ -52,8 +54,6 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
     setClosing(true)
     window.setTimeout(() => { setLightbox(false); setClosing(false) }, 180)
   }, [])
-  const touchY = useRef<number | null>(null)
-  const dragRef = useRef<HTMLDivElement | null>(null)
   const touchX = useRef<number | null>(null)
   const galRef = useRef<HTMLDivElement | null>(null)
 
@@ -78,6 +78,15 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
     const i = Math.round(el.scrollLeft / el.clientWidth)
     if (i !== active) setActive(i)
   }
+
+  // 🔁 2026-11-02 (②A — 작은 사진이 따라온다): 작은 사진이나 크게 보기에서 고른 사진으로 **큰 사진도** 옮긴다.
+  //   스크롤이 active 를 정하고(onGalScroll), 여기는 어긋났을 때만 민다 — 서로 부르지 않는다.
+  useEffect(() => {
+    const el = galRef.current
+    if (!el || lightbox) return
+    const cur = Math.round(el.scrollLeft / Math.max(1, el.clientWidth))
+    if (cur !== active) el.scrollLeft = active * el.clientWidth
+  }, [active, lightbox])
 
   const step = useCallback((delta: number) => {
     setActive((cur) => (cur + delta + images.length) % images.length)
@@ -244,12 +253,16 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
           서버 첫 화면(`detail-ssr-body`)도 같은 상수로 같은 줄을 그린다(마운트 때 안 밀린다). */}
       {showMobileThumbs(images.length) && (
         <div className={`lg:hidden ${DETAIL_MOBILE_THUMB_ROW_CLS}`}>
-          {images.slice(1, 1 + DETAIL_MOBILE_THUMBS).map((src, i) => {
+          {/* 🔁 2026-11-02 대표 확정 **②A**(*"옆으로 넘기는 경우, 아래 이미지들도 순차적으로 변경"*): 종전엔 늘 2·3번째
+              고정이었다. 이제 **지금 큰 사진의 다음 두 장**을 보여 준다(마지막 칸은 남은 장수 +N → 크게 보기).
+              첫 장면(active 0)은 종전과 같은 2·3번째라 서버 첫 화면(`detail-ssr-body`)과 그대로 맞는다. */}
+          {Array.from({ length: DETAIL_MOBILE_THUMBS }, (_, i) => (active + 1 + i) % images.length).map((idx, i) => {
+            const src = images[idx]
             const left = images.length - 1 - DETAIL_MOBILE_THUMBS
             const isLast = i === DETAIL_MOBILE_THUMBS - 1 && left > 0
             return (
-              <button key={src} type="button" onClick={() => { setActive(i + 1); setLightbox(true) }}
-                aria-label={isLast ? `전체 사진 ${images.length}장 보기` : `사진 ${i + 2}번째 크게 보기`}
+              <button key={`${i}-${src}`} type="button" onClick={() => { setActive(idx); if (isLast) setLightbox(true) }}
+                aria-label={isLast ? `전체 사진 ${images.length}장 크게 보기` : `사진 ${idx + 1} 보기`}
                 className={DETAIL_MOBILE_THUMB_CLS}
                 style={{ aspectRatio: String(DETAIL_MOBILE_THUMB_RATIO), ...bg(src, detailMobileThumbUrl(src)) }}>
                 {isLast && (
@@ -260,7 +273,6 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
           })}
         </div>
       )}
-
       {/* 🖥️ PC — 사진이 여러 장이면 그루폰식 [좌 대형 + 우 썸네일], 1장이면 단일 대형. */}
       <div className="hidden lg:block relative">
         <div className={multi ? 'grid grid-cols-[minmax(0,2.1fr)_minmax(0,1fr)] gap-2' : ''}>
@@ -310,7 +322,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
       {/* 🔍 전체 사진 모달 — 그루폰의 "See all images". */}
       {lightbox && (
         <div
-          className={`fixed inset-0 bg-black lg:bg-black/90 flex items-center justify-center ${closing ? 'ur-lb-out' : 'ur-lb-in'}`}
+          className={`fixed inset-0 bg-black/75 lg:bg-black/90 flex items-center justify-center ${closing ? 'ur-lb-out' : 'ur-lb-in'}`}
           style={{ zIndex: Z.MODAL_BODY }}
           onClick={closeLightbox}
           role="dialog"
@@ -318,24 +330,21 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
           aria-label={`${alt} 사진 ${images.length}장`}
         >
           <button type="button" onClick={closeLightbox} aria-label="닫기"
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 text-white flex items-center justify-center hover:bg-white/25">
+            className="hidden lg:flex absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 text-white items-center justify-center hover:bg-white/25">
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
-          <div ref={dragRef} className="ur-lb-pic relative w-full max-w-[1100px] px-4" onClick={(e) => e.stopPropagation()}
-            onTouchStart={(e) => { touchX.current = e.touches[0]?.clientX ?? null; touchY.current = e.touches[0]?.clientY ?? null }}
-            onTouchMove={(e) => {
-              const y0 = touchY.current, x0 = touchX.current, t0 = e.touches[0]
-              if (y0 == null || x0 == null || !t0 || !dragRef.current) return
-              const dy = t0.clientY - y0
-              if (dy > 0 && dy > Math.abs(t0.clientX - x0)) { dragRef.current.style.transition = 'none'; dragRef.current.style.transform = `translateY(${dy}px) scale(${Math.max(0.85, 1 - dy / 1200)})` }
-            }}
+          {/* 📱 폰 — 대표 확정 ③B 가운데 팝업(손가락을 따라 밀리고 옆 사진을 미리 받는다). */}
+          <Suspense fallback={null}>
+            <DetailLightboxMobile images={images} active={Math.min(active, images.length - 1)} alt={alt}
+              onActive={setActive} onClose={closeLightbox}
+              fullUrl={detailPlainUrl} placeholderUrl={(src) => heroUrl(src, DETAIL_HERO_MOBILE_WIDTH)}
+              onDead={(src) => setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src)))} />
+          </Suspense>
+          <div className="ur-lb-pic hidden lg:block relative w-full max-w-[1100px] px-4" onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => { touchX.current = e.touches[0]?.clientX ?? null }}
             onTouchEnd={(e) => {
               const x0 = touchX.current; touchX.current = null
-              const y0 = touchY.current; touchY.current = null
-              const x1 = e.changedTouches[0]?.clientX, y1 = e.changedTouches[0]?.clientY
-              const el = dragRef.current
-              if (el) { el.style.transition = 'transform .25s cubic-bezier(.2,1,.3,1)'; el.style.transform = '' }
-              if (y0 != null && y1 != null && y1 - y0 > 90 && (x0 == null || x1 == null || y1 - y0 > Math.abs(x1 - x0))) { closeLightbox(); return }
+              const x1 = e.changedTouches[0]?.clientX
               if (x0 != null && x1 != null && Math.abs(x1 - x0) > 40 && multi) step(x1 < x0 ? 1 : -1)
             }}>
             {/* 🖼️ 2026-08-19 (대표 신고 — "사진이 너무 커서 잘리는 문제" + "사진 클릭 시 안 나오는 문제가 다수"):
@@ -361,20 +370,6 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
                   className="hidden lg:flex absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 text-white items-center justify-center hover:bg-white/30">
                   <ChevronRight className="w-6 h-6" aria-hidden="true" />
                 </button>
-                {/* 📱 그루폰 모바일 — 아래에 큰 흰 원 화살표 + "2 / 8". 손가락으로 넘겨도 된다. */}
-                <div className="lg:hidden mt-4 flex items-center justify-between">
-                  <button type="button" onClick={() => step(-1)} aria-label="이전 사진"
-                    className="w-14 h-14 rounded-full bg-white text-gray-900 flex items-center justify-center">
-                    <ChevronLeft className="w-6 h-6" aria-hidden="true" />
-                  </button>
-                  <span className="px-3 py-2 rounded-md bg-white text-gray-900 text-[15px] font-bold">
-                    {Math.min(active, images.length - 1) + 1} / {images.length}
-                  </span>
-                  <button type="button" onClick={() => step(1)} aria-label="다음 사진"
-                    className="w-14 h-14 rounded-full bg-white text-gray-900 flex items-center justify-center">
-                    <ChevronRight className="w-6 h-6" aria-hidden="true" />
-                  </button>
-                </div>
                 <div className="mt-3 hidden lg:flex items-center justify-center gap-2 flex-wrap">
                   {images.map((src, i) => (
                     <button key={src} type="button" onClick={() => setActive(i)} aria-label={`${i + 1}번째 사진`}

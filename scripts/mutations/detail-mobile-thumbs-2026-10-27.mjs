@@ -10,10 +10,11 @@ export default [
     why: '마운트 때 썸네일 줄 높이만큼 제목이 아래로 밀린다.',
   },
   {
-    name: 'detail-mobile-thumbs — 썸네일을 눌러도 전체 화면이 안 열린다',
+    name: 'detail-mobile-thumbs — 마지막 칸(+N)을 눌러도 크게 보기가 안 열린다',
     file: 'src/pages/group-buy/DetailGallery.tsx',
-    find: '<button key={src} type="button" onClick={() => { setActive(i + 1); setLightbox(true) }}',
-    replace: '<button key={src} type="button" onClick={() => { setActive(i + 1) }}',
+    // 🔁 2026-11-02 ②A: 작은 사진은 큰 사진을 옮기고, 마지막 칸(+N)이 크게 보기를 연다 — 그 열림을 지운다.
+    find: '<button key={`${i}-${src}`} type="button" onClick={() => { setActive(idx); if (isLast) setLightbox(true) }}',
+    replace: '<button key={`${i}-${src}`} type="button" onClick={() => { setActive(idx) }}',
     test: T,
     why: '그루폰처럼 눌러서 크게 보는 동작이 사라진다.',
   },

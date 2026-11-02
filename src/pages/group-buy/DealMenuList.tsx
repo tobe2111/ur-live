@@ -10,7 +10,7 @@ export default function DealMenuList({ menuItems }: { menuItems: DealMenuItem[] 
   if (!menuItems.length) return null
   return (
     <>
-      <div style={{ padding: '22px 18px' }}>
+      <div style={{ padding: '20px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>대표 메뉴</div>
           <span style={{ fontSize: 12, color: 'var(--gbd-sub)' }}>교환권으로 주문 가능</span>

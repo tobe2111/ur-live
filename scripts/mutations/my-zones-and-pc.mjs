@@ -36,7 +36,8 @@ export default [
     // 🔁 2026-09-29 재조준(안 C): 경계선을 걷었다 — 아래 구역이 **자기 24px 제목**으로 시작하므로
     //   선이 할 일이 없다. 그래서 이제 지킬 것은 **그 제목이 있다** 는 것이다.
     // 🔁 2026-10-20: 제목 오른쪽에 '결제 내역 ›' 링크가 붙어 여는 태그가 action prop 을 갖는다(불변식 그대로).
-    find: "        {t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}\n      </SectionTitle>",
+    // 🔁 2026-11-02: 구역 이름이 '마이 딜' 로(대표) — 앵커만 새 문구로.
+    find: "        {t('shopping.sectionTitle', { defaultValue: '마이 딜' })}\n      </SectionTitle>",
     replace: '      </SectionTitle>',
     test: TEST,
     why: '손님 구역이 제목 없이 시작하면 판매 도구 목록과 손님 목록이 한 덩어리로 읽힌다(경계가 통째로 사라진다).',
@@ -44,7 +45,7 @@ export default [
   {
     name: '🧭 ko 로케일만 옛 라벨로 남는다 (코드는 맞는데 화면은 "나의 이용 내역")',
     file: 'public/locales/ko/translation.json',
-    find: '"sectionTitle": "내가 산 것"',
+    find: '"sectionTitle": "마이 딜"', // 2026-11-02 대표 '마이 딜' — 앵커만 새 문구로
     replace: '"sectionTitle": "나의 이용 내역"',
     test: TEST,
     why: '`t(key,{defaultValue})` 는 로케일이 이긴다 — 코드만 고치면 화면은 한 글자도 안 바뀐다(실제로 밟은 함정).',
