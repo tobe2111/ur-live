@@ -49,7 +49,7 @@ function lowYield(k: CompanyKeyword): { pct: number; found: number } | null {
   return rate < OK_RATE ? { pct: Math.round(rate * 1000) / 10, found } : null
 }
 
-/** 🛌 `active=2` = 포화로 자동 휴식(2026-11-02) — 찾는 업체가 전부 이미 저장된 키워드. 60일 뒤 자동으로 다시 돈다. */
+/** `active=2` = 포화로 자동 휴식(2026-11-02) — 찾는 업체가 전부 이미 저장된 키워드. 60일 뒤 자동으로 다시 돈다. */
 const RESTING = 2
 const isOn = (k: CompanyKeyword) => k.active === 1
 
@@ -61,7 +61,7 @@ function Chip({ k, onToggle }: { k: CompanyKeyword; onToggle: (k: CompanyKeyword
     <button onClick={() => onToggle(k)}
       title={`${tip || '미분류'}${k.tier ? ` · ${k.tier}순위` : ''}${k.saved_total ? ` · 누적 ${k.saved_total}곳` : ''}${k.last_run_at ? ` · ${kstShort(k.last_run_at)}` : ''}${resting ? ' · 포화로 쉬는 중(찾는 업체가 전부 이미 저장됨) — 60일 뒤 자동 재개, 누르면 지금 재개' : ''}`}
       className={`px-2.5 py-1 rounded-full text-xs border ${isOn(k) ? 'bg-brand text-white border-gray-900' : resting ? 'bg-white text-gray-500 border-gray-300' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
-      {resting ? '💤 ' : ''}
+      {resting ? '(휴식) ' : ''}
       {k.tier === 1 ? '★ ' : ''}{k.keyword}
       {k.saved_total
         ? <span className="text-gray-400"> · {formatNumber(k.saved_total)}</span>

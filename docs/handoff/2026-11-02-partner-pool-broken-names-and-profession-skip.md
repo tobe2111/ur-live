@@ -46,7 +46,7 @@ D1 `ad_company_leads`(DB `0e9a8f82…`) 에서:
 - ⑧ **등록부 대조 0건은 결함이 아니었다** — 스킵 사유 대부분이 `no_registry_row`(지도 업체가 통신판매 신고를 안 한 것). 국민연금은 그쪽 503. 코드 변경 없음.
 - ⑨ **중국 무료메일 온라인판매 보류**: `company-lead-hygiene.ts` 🌏 + 백로그 스윕 세대 2(`company-hygiene-sweep.ts`, 테이블 한 번 더 훑음).
 - 가드: `partner-pool-improvements-2026-11-02.test.ts` + 주입 7건 전부 빨간불.
-- 판정(배포 후): 보강 스냅샷 `p2.skip_email` 이 0 근처 · `enriched` 증가 / 카카오 `day_lookups` ~3배 / 키워드 화면 '포화 휴식' 수 / 국세청 `checked` 1,000 근처 / 프랜차이즈 `diag.save_error` 원문.
+- 판정(배포 후): 보강 스냅샷 `p2.skip_email` 이 0 근처 · `enriched` 증가 / 카카오 `day_lookups` ~3배 / 키워드 화면 '포화 휴식' 수(칩에 '(휴식)') / 국세청 `checked` 1,000 근처 / 프랜차이즈 `diag.save_error` 원문.
 
 ## 남은 것 (대표 판단)
 - (해결됨 → 위 3) 생활 업종·법무사 미수집.
