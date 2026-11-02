@@ -162,14 +162,16 @@ describe('②-2 워커 첫 화면 — 소제목이 화면과 같다', () => {
       products: [{ id: 5, name: '실매장', price: 1000, original_price: 2000, image_url: 'https://media.ur-team.com/a.jpg', category: 'meal_voucher' }] }],
   })
 
-  it('위치로 정렬된 줄은 "{라벨}에서 가까운 순" — 서버 문구("많이 팔린 순")를 그대로 그리면 거짓말이다', () => {
-    const html = buildHomeFirstScreen(seedJson(true), '', '동탄5동')
-    expect(html).toContain('동탄5동에서 가까운 순')
-    expect(html).not.toContain('많이 팔린 순')
-  })
-
-  it('위치가 없으면 서버 문구 그대로(종전)', () => {
-    expect(buildHomeFirstScreen(seedJson(false), '', '동탄5동')).toContain('많이 팔린 순으로 모았어요')
+  // 🏠 2026-11-02 대표 확정(모바일 안 1) — 첫 섹션 제목·부제 줄을 걷었다. 서버도 소제목을 **아예** 안 그린다
+  //   (화면 `HomeSections bareFirst` 와 같은 모양). 종전 '{라벨}에서 가까운 순' 대조 두 건을 이 하나로 대체.
+  it('첫 화면은 제목·부제 줄이 없다 — 위치가 있든 없든', () => {
+    for (const near of [true, false]) {
+      const html = buildHomeFirstScreen(seedJson(near), '', '동탄5동')
+      expect(html).toContain('실매장')
+      expect(html).not.toContain('이런 이용권은 어떠세요?')
+      expect(html).not.toContain('가까운 순')
+      expect(html).not.toContain('많이 팔린 순')
+    }
   })
 
   it('🔴 라벨은 쿠키(사용자 입력)라 탈출·길이 제한을 받는다', () => {

@@ -211,6 +211,17 @@ export default function XxxPage() {
 | 5번 추구 fix | ERROR_DEBUGGING_PLAYBOOK — 진단 페이지 먼저 |
 | "영구 fix" 라벨 검증 전 부여 | Step 6 — candidate fix 만 가능 |
 
+## 🧊 새 가드를 만들 때 — "늘지 않게" 는 **이 PR 의 차이**로 판정한다 (2026-11-02)
+
+여러 세션이 동시에 머지하는 레포에서 **main 의 절대값을 고정 상수와 견주는 시험**(예: `FROZEN = 977`)은
+경주로 main 을 막는다 — GitHub 은 "최신이어야 머지" 를 요구하지 않아서, 동결 *전에* 통과한 PR 이 *뒤에*
+머지된다. 2026-11-02 하루에 그 한 시험이 main 을 세 번 막았다(넘침 → 두 세션이 각자 같은 고침 → 이름 중복).
+
+- ✅ "이 PR 이 늘렸는가" 는 **merge-base 와 비교**하는 Verify 단계로(`check-inline-mutations-growth.mjs` · `check-claude-md-growth.mjs` 가 예)
+- ✅ 같은 고침이 두 세션에서 **두 번 들어와도** 결과가 같으면 막지 않는다(`foldDuplicateInjections`)
+- ❌ "줄였으면 상수도 같이 내려라"(상수 = 측정값) — 두 PR 이 각자 줄이면 둘 다 머지된 뒤 또 빨강이다
+- ✅ 도구는 **모르는 인자를 받으면 멈춘다** — 무시하고 기본 동작(전수)으로 떨어지면 오타가 사고가 된다
+
 ## 📎 관련 문서
 
 - `docs/ERROR_DEBUGGING_PLAYBOOK.md` — 에러 발생 시 절차

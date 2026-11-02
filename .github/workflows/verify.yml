@@ -657,6 +657,12 @@ jobs:
         run: node scripts/check-claude-md-growth.mjs
         continue-on-error: false
 
+      # 🧊 2026-11-02: 옛 인라인 주입 배열(scripts/check-guard-mutations.mjs)을 이 PR 이 늘렸는가 — merge-base 와 비교.
+      #   고정 상수(FROZEN) 대조는 경주로 머지된 조합이 main 을 막았다(같은 날 세 번). 근거: 스크립트 머리말.
+      - name: Inline mutations growth guard (strict)
+        run: node scripts/check-inline-mutations-growth.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 — 현재 위반 0 → strict.
       #   localStorage user_type === 'user' 로그인 게이트(세션 풀림 사고 근본원인) 신규 추가 차단.
       - name: Dual-login regression guard (strict)

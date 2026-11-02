@@ -37,12 +37,24 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { changedScope, inScope } from './guard-mutations-scope.mjs'
+import { changedScope, inScope, testReadsChangedFile } from './guard-mutations-scope.mjs'
 import { GUARD_RUNNER, touchesGuardScripts } from './guard-mutations-scope.mjs'
 import {
-  changedInjectionNames, runnerLogicChanged, testSpawnsSubprocess,
+  changedInjectionNames, foldDuplicateInjections, runnerLogicChanged, testSpawnsSubprocess,
 } from './guard-mutations-manifest-diff.mjs'
 import { assignShards, parseShard } from './guard-mutations-shard.mjs'
+import { unknownArgs } from './guard-mutations-args.mjs'
+
+// 🚫 모르는 인자 = 시작하지 않는다 — 조용히 전수로 떨어져 소스를 망가뜨리는 사고가 두 번 있었다(근거: guard-mutations-args.mjs).
+{
+  const bad = unknownArgs(process.argv.slice(2))
+  if (bad.length) {
+    console.error(`❌ check-guard-mutations: 모르는 인자 ${bad.join(' · ')} — 아무것도 주입하지 않고 멈춘다.`)
+    console.error('   쓸 수 있는 것: -s · --only <이름 일부> · --changed · --shard k/n · --verify-clean · --map-only · --count · --dump-manifest · --scope-json')
+    console.error('   (`--plan` 은 guard-mutations-shard.mjs 의 인자다)')
+    process.exit(2)
+  }
+}
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
@@ -885,13 +897,14 @@ const MUTATIONS = [
       '"내가 맞게 쳤나"를 손님 앞에서 의심하게 만든다.',
   },
   {
-    name: '🎫 상단 띠 배너가 첫 섹션 **아래로** 내려간다',
+    // 🔁 2026-11-02 재조준 — 대표 확정(모바일 안 1)으로 배너가 첫 섹션 **뒤**(midBanner 자리)로 갔다.
+    name: '🎫 모바일 상단 띠 배너 배선이 빠진다 (조용한 부재)',
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
-    find: '          <HomeBannerStrip variant="strip" />\n          <HomeSections',
-    replace: '          <HomeSections',
+    find: 'midBanner={<><HomeBannerStrip variant="strip" /><HomeBannerStrip variant="inline" /></>}',
+    replace: 'midBanner={<><HomeBannerStrip variant="inline" /></>}',
     test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
     why:
-      '대표 지시는 *"인기 이용권 섹션 **위**에"* 다. 배선이 빠지면 에러 없이 그냥 안 뜬다 — ' +
+      '배선이 빠지면 에러 없이 그냥 안 뜬다 — ' +
       '이 레포가 반복해 겪은 "조용한 부재" 클래스라 배선 자체를 고정한다.',
   },
   {
@@ -10558,15 +10571,16 @@ for (const f of SPLIT_FILES) {
   SPLIT_COUNT.set(f, arr.length)
 }
 /** 인라인 + 분할. 이 아래는 전부 이 목록으로 돈다. */
-const ALL = [...MUTATIONS, ...SPLIT]
-{
-  // 이름 중복은 `--only` 를 모호하게 만든다(부분일치라 둘 다 돌거나 엉뚱한 게 돈다).
-  const seen = new Set()
-  const dup = [...new Set(ALL.map((m) => m.name).filter((n) => (seen.has(n) ? true : (seen.add(n), false))))]
-  if (dup.length) {
-    console.error(`❌ 주입 이름 중복 ${dup.length}건 — --only 가 무엇을 돌렸는지 알 수 없게 된다\n   • ${dup.join('\n   • ')}`)
-    process.exit(1)
-  }
+// 🪞 이름 중복: 글자까지 같은 것은 접고(두 세션이 같은 고침을 따로 넣은 것 — 근거: foldDuplicateInjections),
+//    **같은 이름에 내용이 다를 때만** 멈춘다(그때 `--only` 가 무엇을 돌렸는지 알 수 없다).
+const FOLDED = foldDuplicateInjections([...MUTATIONS, ...SPLIT])
+const ALL = FOLDED.list
+if (FOLDED.conflicts.length) {
+  console.error(`❌ 주입 이름 중복 ${FOLDED.conflicts.length}건(내용이 다르다) — --only 가 무엇을 돌렸는지 알 수 없게 된다\n   • ${FOLDED.conflicts.join('\n   • ')}`)
+  process.exit(1)
+}
+if (FOLDED.identical.length && !process.argv.includes('--count') && !process.argv.includes('--scope-json')) {
+  console.warn(`⚠️ 글자까지 같은 주입 ${FOLDED.identical.length}건이 두 곳에 있다 — 하나로 접어 돌린다(한쪽을 지우면 이 경고가 사라진다)\n   • ${FOLDED.identical.join('\n   • ')}`)
 }
 
 /**
@@ -10662,6 +10676,18 @@ if (MANIFEST_SCOPE?.full) {
 }
 /** 매니페스트 diff 로 추가로 골라야 하는 주입 이름(없으면 빈 집합). */
 const CHANGED_NAMES = MANIFEST_SCOPE?.names ?? new Set()
+// 🕳️ 시험이 읽는 데이터 파일(.json)이 바뀌면 그 주입도 고른다(#2101 사진 변경이 주입을 낡게 만든 사고 — 2026-11-02).
+if (CHANGED && !SCOPE.full) {
+  const srcOf = new Map()
+  for (const m of ALL) {
+    if (!srcOf.has(m.test)) {
+      let src = ''
+      try { src = fs.readFileSync(path.join(ROOT, m.test), 'utf8') } catch { /* 없는 시험 — 다른 검사가 잡는다 */ }
+      srcOf.set(m.test, src)
+    }
+    if (testReadsChangedFile(srcOf.get(m.test), SCOPE.files)) CHANGED_NAMES.add(m.name)
+  }
+}
 
 /**
  * 🧭 `--scope-json` — **이번 PR 이 전수로 떨어지는가** 만 JSON 으로 찍고 끝낸다 (2026-11-01).

@@ -371,6 +371,13 @@ node scripts/check-migration-repair-drift.mjs || true
 # 🚨 주입 검증(check-guard-mutations)이 도는 중이면 커밋 금지 — 그 도구는 소스를 일부러
 #    망가뜨렸다가 되돌린다. 2026-08-25 에 실제로 그 중간 상태가 커밋에 담겼다(`721edf1`:
 #    백업의 읽기-실패 처리가 되돌려짐). 충돌 마커와 같은 클래스 — `git add -A` 가 무심코 담는다.
+# 🧭 브랜치 밖(detached HEAD) 커밋 금지 — 2026-11-02 실측: 경로를 빠뜨린 `git checkout <ref> --` 뒤 커밋하자
+#    push 가 "Everything up-to-date" 를 내고 고침이 아무 데도 안 올라갔다. rebase·cherry-pick 진행 중은 통과.
+node scripts/check-detached-head.mjs || {
+  echo "커밋 중단: 브랜치 밖이다. git switch <브랜치> 후 다시 커밋하라(우회: ALLOW_DETACHED_COMMIT=1)."
+  exit 1
+}
+
 bash scripts/check-no-injection-in-progress.sh || {
   echo "커밋 중단: 주입 검증이 실행 중이다. 끝난 뒤 git diff --stat 로 의도한 변경만 있는지 보고 커밋하라."
   exit 1

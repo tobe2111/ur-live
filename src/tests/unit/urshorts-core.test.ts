@@ -238,12 +238,13 @@ describe('대표가 확정한 값', () => {
     expect(URSHORTS_CARD_H).toBeLessThan(299)
   })
 
-  it('자리는 인기 이용권(첫 섹션) 다음이고 배너보다 앞이다', () => {
+  it('자리: PC 는 첫 섹션 다음·배너 앞 / 모바일(2026-11-02 안 1)은 둘째 섹션(지금 인기 이용권) 다음', () => {
     const H = code('src/components/home/HomeSections.tsx')
-    const rail = H.indexOf('{sIdx === 0 && shortsRail}')
+    const rail = H.indexOf('{shortsAfter === 0 && sIdx === 0 && shortsRail}')
     const banner = H.indexOf('{sIdx === 0 && midBanner}')
     expect(rail).toBeGreaterThan(-1)
     expect(banner).toBeGreaterThan(rail)
+    expect(code('src/pages/mobile-home/MobileHomePage.tsx')).toMatch(/shortsAfter=\{1\}/)
   })
 
   it('썸네일은 유튜브 것을 쓴다 (cf-image 허용 목록에 이미 있다)', () => {

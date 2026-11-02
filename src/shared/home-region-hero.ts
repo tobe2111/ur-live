@@ -22,21 +22,29 @@ const HEROES: ReadonlyArray<{
   /** 위·경도 사각형 [남, 북, 서, 동] — 여러 개면 어느 하나에 들면 된다. **표 순서대로 먼저 맞는 것**이 이긴다(광역시를 도보다 위에). */
   boxes: Array<[number, number, number, number]>
 }> = [
-  { slug: 'seoul', label: '서울', version: 3, regionKeys: ['서울'], boxes: [[37.43, 37.70, 126.80, 127.18]] },
-  { slug: 'busan', label: '부산', version: 3, regionKeys: ['부산'], boxes: [[35.00, 35.38, 128.85, 129.30]] },
-  { slug: 'daegu', label: '대구', version: 3, regionKeys: ['대구'], boxes: [[35.75, 36.00, 128.45, 128.75]] },
-  { slug: 'jeju', label: '제주', version: 3, regionKeys: ['제주'], boxes: [[33.10, 33.60, 126.10, 127.00]] },
+  { slug: 'seoul', label: '서울', version: 4, regionKeys: ['서울'], boxes: [[37.43, 37.70, 126.80, 127.18]] },
+  { slug: 'busan', label: '부산', version: 4, regionKeys: ['부산'], boxes: [[35.00, 35.38, 128.85, 129.30]] },
+  { slug: 'daegu', label: '대구', version: 4, regionKeys: ['대구'], boxes: [[35.75, 36.00, 128.45, 128.75]] },
+  { slug: 'jeju', label: '제주', version: 4, regionKeys: ['제주'], boxes: [[33.10, 33.60, 126.10, 127.00]] },
   // 2026-11-01 추가. 인천 상자는 서울 상자(서 126.80)와 겹치지 않게 그 서쪽까지만.
-  { slug: 'incheon', label: '인천', version: 2, regionKeys: ['인천'], boxes: [[37.35, 37.60, 126.35, 126.79]] },
+  { slug: 'incheon', label: '인천', version: 4, regionKeys: ['인천'], boxes: [[37.35, 37.60, 126.35, 126.79]] },
   // 2026-11-01 대표 *"16개잖아 우리 1차 도시 필터링은. 그거 다 해야지"* — 지역 고르기 16칸 전부에 사진.
   //   '충남세종' 칸은 세종 사진(충남 사진이 오면 바꾼다).
-  { slug: 'sejong', label: '세종', version: 2, regionKeys: ['충남세종'], boxes: [[36.45, 36.62, 127.20, 127.35]] },
+  { slug: 'sejong', label: '세종', version: 3, regionKeys: ['충남세종'], boxes: [[36.45, 36.62, 127.20, 127.35]] },
   { slug: 'daejeon', label: '대전', version: 1, regionKeys: ['대전'], boxes: [[36.20, 36.50, 127.25, 127.55]] },
   // 지역 키 '전북'의 화면 이름이 '전주/전북'이라 전주 사진을 쓴다(좌표는 전주 시내 + 전북 대략).
-  { slug: 'jeonju', label: '전주', version: 2, regionKeys: ['전북'], boxes: [[35.76, 35.90, 127.05, 127.20], [35.40, 36.10, 126.40, 127.90]] },
+  { slug: 'jeonju', label: '전주', version: 3, regionKeys: ['전북'], boxes: [[35.76, 35.90, 127.05, 127.20], [35.40, 36.10, 126.40, 127.90]] },
   // 도 단위는 대략 사각형 — 경계 근처는 이웃 도로 판정될 수 있다(광역시는 위에서 먼저 잡힌다).
-  { slug: 'gyeonggi', label: '경기', version: 1, regionKeys: ['경기'], boxes: [[36.90, 38.30, 126.40, 127.85]] },
-  { slug: 'gangwon', label: '강원', version: 1, regionKeys: ['강원'], boxes: [[37.00, 38.62, 127.85, 129.40]] },
+  { slug: 'gyeonggi', label: '경기', version: 2, regionKeys: ['경기'], boxes: [[36.90, 38.30, 126.40, 127.85]] },
+  { slug: 'gangwon', label: '강원', version: 2, regionKeys: ['강원'], boxes: [[37.00, 38.62, 127.85, 129.40]] },
+  // 2026-11-02 대표가 보낸 일러스트(부산·대구·제주 v4 · 광주 신규). 광주 상자는 광역시 도심 — 전남 상자보다 위에 있어야 먼저 잡힌다.
+  { slug: 'gwangju', label: '광주', version: 2, regionKeys: ['광주'], boxes: [[35.05, 35.25, 126.75, 127.00]] },
+  // 2026-11-02 대표 일러스트 — 울산(대왕암 출렁다리) · 경남(통영 항구). 울산 상자는 경남 상자보다 위(광역시가 먼저).
+  { slug: 'ulsan', label: '울산', version: 1, regionKeys: ['울산'], boxes: [[35.40, 35.72, 129.00, 129.45]] },
+  { slug: 'gyeongnam', label: '경남', version: 1, regionKeys: ['경남'], boxes: [[34.55, 35.90, 127.60, 129.20]] },
+  // 2026-11-02 대표 일러스트 — 경북(경주 첨성대) · 전남(순천만 갯벌). 도 단위 대략 상자 — 광역시(대구·광주)는 위에서 먼저 잡힌다.
+  { slug: 'gyeongbuk', label: '경북', version: 1, regionKeys: ['경북'], boxes: [[35.60, 37.10, 128.30, 129.60]] },
+  { slug: 'jeonnam', label: '전남', version: 1, regionKeys: ['전남'], boxes: [[34.20, 35.50, 125.90, 127.70]] },
 ]
 
 const toHero = (h: (typeof HEROES)[number]): RegionHero => ({
@@ -54,8 +62,11 @@ export function regionHeroFor(input: { regionKey?: string | null; loc?: { lat: n
     const h = HEROES.find(({ boxes }) => boxes.some(([s, n, w, e]) => loc.lat >= s && loc.lat <= n && loc.lng >= w && loc.lng <= e))
     return h ? toHero(h) : null
   }
-  return null
+  // 🇰🇷 2026-11-02 대표 *"일단 대한민국은 서울 그림으로 해둘래?"* — '전국'(지역도 위치도 없음)은 서울 그림을 빌린다.
+  //   전국 전용 그림이 오면 HEROES 에 'national' 을 더하고 이 줄만 바꾼다.
+  return NATIONAL_HERO()
 }
+const NATIONAL_HERO = (): RegionHero | null => { const h = HEROES.find(x => x.slug === 'seoul'); return h ? toHero(h) : null }
 
 /**
  * 🌤️ 2026-11-01 대표 *"밝은 사진들로 해서 그라데이션도 넣고 … 지금은 어둡기만 하네"* — 남색 막을 걷고 **밝게**.

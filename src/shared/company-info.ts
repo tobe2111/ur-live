@@ -52,7 +52,7 @@ export const BIZ_INFO_CHECK_URL = `https://www.ftc.go.kr/bizCommPop.do?wrkr_no=$
 
 /** 약관 제3조(통신판매중개자로서의 지위)를 한 문장으로 — 문구 출처: `pages/terms/consumer-terms-content.ts` */
 export const COMPANY_INTERMEDIARY_NOTICE =
-  `${COMPANY.legalName}는 통신판매중개자로서 판매자가 등록한 상품·이용권의 통신판매 당사자가 아니며, 상품의 정보·이용·환불 등에 관한 의무와 책임은 각 판매자에게 있습니다. 다만 회사가 직접 판매자로 표시된 상품은 회사가 당사자입니다.`
+  `${COMPANY.legalName}은 통신판매중개자로서 판매자가 등록한 상품·이용권의 통신판매 당사자가 아니며, 상품의 정보·이용·환불 등에 관한 의무와 책임은 각 판매자에게 있습니다. 다만 회사가 직접 판매자로 표시된 상품은 회사가 당사자입니다.`
 
 export const COMPANY_COPYRIGHT = `© ${COMPANY.copyrightYear} ${COMPANY.legalName}. All rights reserved.`
 

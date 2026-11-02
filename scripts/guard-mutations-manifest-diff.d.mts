@@ -26,3 +26,8 @@ export function runnerLogicChanged(baseSrc: string, headSrc: string): boolean
 
 /** 테스트 소스가 하위 프로세스를 띄우는가(가드 스크립트를 직접 돌리는 14개를 가려낸다). */
 export function testSpawnsSubprocess(src: string): boolean
+
+/** 글자까지 같은(file·find·replace·test) 같은 이름은 하나로 접고, 내용이 다른 같은 이름만 conflicts 로 돌려준다. */
+export function foldDuplicateInjections<T extends MutationIdentity>(
+  list: T[],
+): { list: T[]; identical: string[]; conflicts: string[] }

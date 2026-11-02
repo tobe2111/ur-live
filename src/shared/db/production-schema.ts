@@ -67,9 +67,8 @@ export interface OrdersTable {
 export interface OrderRefundHistoryTable {
   id: number
   order_id: number              // INTEGER NOT NULL (FK → orders.id)
-  amount: number                // INTEGER NOT NULL
+  refund_amount: number         // INTEGER NOT NULL — 2026-11-02 라이브 실측(옛 `amount`·`toss_transaction_key` 는 라이브에 없다)
   reason: string | null
-  toss_transaction_key: string | null
   created_at: string
 }
 
