@@ -33,7 +33,13 @@
 
 알림(라이트): ![](assets/popup-toast-light.png)
 
-## 구현 todo (B2)
+5. B2 렌더를 보고 *"뭔가 세련된 느낌이 없는데"* → 원인 진단(꽉 찬 빨강 버튼 · 카드가 폭을 다 씀 · 탁한 회색 막 · 각진 버튼과 장식 중복) 후 **3차 시안 세 방향**: 1 잉크(흑백 알약, 주 버튼 잉크 — 브랜드 규칙 예외 필요) · 2 블루 절제(규칙 안) · 3 유리(반투명 흐림, iOS 26 결). 대표 선택 대기.
+
+| 3차 · 라이트 | 3차 · 다크 |
+|---|---|
+| ![](assets/popup-r3-light.png) | ![](assets/popup-r3-dark.png) |
+
+## 구현 todo (확정안)
 - [ ] `components/ui/` 에 `Dialog`(가운데 확인) · `Sheet`(하단/PC 가운데) · 토스트 하나 — `seller-section/Sheet.tsx` 의 히스토리·Z 규약을 그대로 승격
 - [ ] `confirm-dialog.tsx` 를 새 Dialog 로 (잉크 버튼 → 브랜드)
 - [ ] 61곳 이행 (잠금표 파일은 승인 별도)
