@@ -119,7 +119,13 @@ export default function MobileHomePage() {
     return () => io.disconnect()
   }, [hero?.slug]) // eslint-disable-line react-hooks/exhaustive-deps
   const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
-  const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
+  // 🎬 2026-11-02 시안 7차 "동네 바꾸기" — 동네를 고르면 아래 목록이 한 번 살짝 올라오며 바뀐 걸 알린다(Web Animations · 동작 줄이기면 안 함).
+  const feedRef = useRef<HTMLElement | null>(null)
+  const nudgeFeed = () => {
+    try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { /* 미지원 */ }
+    feedRef.current?.animate?.([{ opacity: 0.4, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 350, easing: 'cubic-bezier(.2,1,.3,1)' })
+  }
+  const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)); nudgeFeed() }
 
   /** 🌤️ 로고 줄·카테고리 줄 — 사진 머리 안과 스크롤 뒤 고정 막대 **두 곳**이 같은 요소를 쓴다(갈리지 않게). */
   const logoRow = (
@@ -277,7 +283,7 @@ export default function MobileHomePage() {
         </div>
       )}
 
-      <section className="mt-4">
+      <section ref={feedRef} className="mt-4">
         {/* 🗺️ 지도로 가는 길은 화면 아래 **지도 알약**(`MapPill`)이 갖는다.
             2026-08-30 배너 → 08-31 위치 옆 [목록|지도] 전환 → 10-14 (대표 확정 다안·A) 떠 있는 알약.
             ⚠️ 하단 탭에 지도가 없으므로 그 알약이 **유일한 통로**다 — 지우지 말 것.

@@ -10,7 +10,19 @@ import { DEAL_ROW } from '@/shared/deal-card-grid'
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { StarIcon } from '@/components/icons/urdeal-icons'
 import { Link, useNavigate } from 'react-router-dom'
-import { canRunDealTransition, runDealTransition } from '@/lib/deal-view-transition'
+// ⚖️ 2026-11-02 [UNLOCK_LOADING] 화면 전환 코드는 첫 화면 묶음에서 뺐다(대표 "셋 다 해줘" — 공용 묶음 줄이기).
+//   카드가 화면에 들어오거나 손가락이 닿을 때(상세 미리 받기와 같은 때) 받는다. 아직 안 왔으면 그 클릭은
+//   종전 링크 이동이다 — 전환만 빠지고 이동은 늘 일어난다.
+type DealVT = typeof import('@/lib/deal-view-transition')
+let dealVT: DealVT | null = null
+let dealVTLoading = false
+function warmDealTransition() {
+  if (dealVT || dealVTLoading) return
+  dealVTLoading = true
+  import('@/lib/deal-view-transition').then((m) => { dealVT = m }).catch(() => { dealVTLoading = false })
+}
+const canRunDealTransition = (e: Parameters<DealVT['canRunDealTransition']>[0]): boolean => !!dealVT && dealVT.canRunDealTransition(e)
+const runDealTransition: DealVT['runDealTransition'] = (img, go) => { if (dealVT) dealVT.runDealTransition(img, go); else go() }
 import { formatNumber } from '@/utils/format'
 import DealCardMedia from '@/components/deal/DealCardMedia'
 import WishlistHeart from '@/components/deal/WishlistHeart'
@@ -94,6 +106,7 @@ function formatSoldCount(n: number): string {
 //   App.tsx 의 lazy import 와 동일 모듈 → Vite 가 같은 chunk 로 합침. (additive — 기존 데이터 prefetch 불변)
 let _detailChunkPrefetched = false
 function prefetchPassChunk() {
+  warmDealTransition()
   if (_detailChunkPrefetched) return
   _detailChunkPrefetched = true
   // 🚀 2026-10-15: `import()` 를 직접 부르면 코드는 받지만 상세 화면이 "준비됨" 으로 안 바뀌어, 누를 때마다
@@ -103,7 +116,7 @@ function prefetchPassChunk() {
 }
 
 /** 숙소는 `warmStayDetail` 이 화면 코드까지 데운다 — 이용권 화면을 받지 않는다. */
-function noopChunk() {}
+function noopChunk() { warmDealTransition() } // 숙소 카드도 사진이 이어지는 전환을 쓴다
 /** 동적 import — 정적으로 두면 홈 첫 화면이 숙소 청크를 끌고 온다(`home-chunk-diet`). 이 모듈은 숙소 상세 청크에 함께 실린다. */
 function warmStay(id: number | string) {
   import('../stays/stay-detail-warm').then((m) => m.warmStayDetail(id)).catch(() => {})

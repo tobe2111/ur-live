@@ -12,3 +12,10 @@
 
 ## 안 바꾼 것
 VoucherMap lazy · 목록·QR 열기 · 데이터 조회. 동작 줄이기면 `.ur-tab-bar` 전환이 꺼진다(index.css).
+
+## 같은 허가로 — 목록 → 상세 화면 전환을 첫 화면 묶음에서 뺐다 (대표 *"셋 다 해줘"* — 공용 묶음 줄이기)
+- **바꾼 잠금 파일**: `vite.config.ts` `manualChunks`(규칙 한 줄 **추가**: `/src/lib/deal-view-transition` → `app-deal-vt`) ·
+  `src/pages/main-home/GroupBuyFeedCard.tsx`(전환 모듈을 정적 import → 동적 import).
+- 카드가 화면에 들어오거나(이미 있던 상세 미리 받기와 **같은 때**) 손가락이 닿을 때 받는다. 아직 안 왔으면 그 클릭은 종전 링크 이동.
+- `scripts/surface-chunks.mjs` `LAZY_ENVELOPES` 에 `app-deal-vt` 추가 — 없으면 묶음기가 다시 `lz-common` 으로 옮긴다(빌드 실측: 동적 import 만으로는 안 갈라졌다).
+- 실측: **27개 화면 전부 −0.3~0.5KB**(brotli). 미리 받기 세 줄·viewport prefetch·`React.memo`·`rootMargin` 은 불변.

@@ -27,7 +27,7 @@ import { stripComments } from '../helpers/source-text'
 const R = (p: string) => readFileSync(p, 'utf8')
 const css = stripComments(R('src/index.css'))
 // 화면별로만 받는 CSS 는 부품 파일 안의 injectMotionCss(…) 문자열이다 — 그 문자열들을 모은다.
-const LAZY_USERS = ['src/components/voucher/ScanFrame.tsx', 'src/components/search/SearchStates.tsx', 'src/pages/restaurant-map/SheetFilterBar.tsx', 'src/pages/group-buy/DetailGallery.tsx', 'src/components/MyReferralCard.tsx', 'src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx', 'src/pages/group-buy/DealBottomBar.tsx', 'src/pages/group-buy/DealPurchaseBox.tsx', 'src/pages/checkout/OrderSummary.tsx', 'src/pages/wishlist/WishlistMobile.tsx', 'src/pages/mobile-home/BackToTop.tsx', 'src/pages/user-profile/profile-edit/EditRow.tsx', 'src/components/charts/svg-charts.tsx', 'src/pages/curator-page/CuratorHeader.tsx', 'src/pages/PaymentSuccessPage.tsx', 'src/pages/PaymentFailPage.tsx']
+const LAZY_USERS = ['src/components/voucher/ScanFrame.tsx', 'src/components/search/SearchStates.tsx', 'src/pages/restaurant-map/SheetFilterBar.tsx', 'src/pages/group-buy/DetailGallery.tsx', 'src/components/MyReferralCard.tsx', 'src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx', 'src/pages/group-buy/pay-spin-css.ts', 'src/pages/checkout/OrderSummary.tsx', 'src/pages/wishlist/WishlistMobile.tsx', 'src/pages/mobile-home/BackToTop.tsx', 'src/pages/user-profile/profile-edit/EditRow.tsx', 'src/components/charts/svg-charts.tsx', 'src/pages/curator-page/CuratorHeader.tsx', 'src/pages/PaymentSuccessPage.tsx', 'src/pages/PaymentFailPage.tsx', 'src/pages/pc-home/PcHomeLocationBar.tsx', 'src/pages/user-profile/MyStats.tsx', 'src/pages/VoucherGiftReceivePage.tsx', 'src/pages/NotificationsPage.tsx', 'src/pages/seller-orders/OrderNumber.tsx', 'src/pages/agency-console/AgencyPayoutSheet.tsx', 'src/pages/SellerReviewsPage.tsx']
 const lazyCss = LAZY_USERS.flatMap((f) => [...R(f).matchAll(/injectMotionCss\('[\w-]+', `([^`]*)`\)/g)].map((m) => m[1])).join('\n')
 const kit = css.slice(css.indexOf('.ur-burst {'), css.indexOf('.ur-tab-bar {')) + lazyCss
 
@@ -69,6 +69,28 @@ describe('① 움직임 키트 CSS', () => {
       for (const m of R(f).matchAll(/injectMotionCss\('([\w-]+)', `([^`]*)`\)/g)) { n++; expect(m[2], `${f} ${m[1]}`).not.toMatch(/,\s*@media/) }
     }
     expect(n, '검사한 움직임 문자열 수').toBeGreaterThan(20)
+  })
+  it('같은 이름의 움직임 CSS 는 내용도 같다 — 먼저 불린 쪽만 꽂히므로 다르면 뒤쪽 화면의 움직임이 조용히 사라진다', () => {
+    const files = execSync("git ls-files 'src/*.ts' 'src/*.tsx' 'src/**/*.ts' 'src/**/*.tsx'", { encoding: 'utf8' }).split('\n').filter((f) => f && !f.includes('/tests/'))
+    const byId = new Map<string, Set<string>>()
+    for (const f of files) for (const m of R(f).matchAll(/injectMotionCss\('([\w-]+)', `([^`]*)`\)/g)) {
+      if (!byId.has(m[1])) byId.set(m[1], new Set())
+      byId.get(m[1])!.add(m[2])
+    }
+    for (const [id, bodies] of byId) expect(bodies.size, id).toBe(1)
+  })
+  it('목록 → 상세 전환 코드는 첫 화면 묶음에 없다 — 카드가 보이거나 닿을 때 받고, 안 왔으면 종전 링크 이동', () => {
+    const card = R('src/pages/main-home/GroupBuyFeedCard.tsx')
+    expect(card).not.toMatch(/^import [^\n]*from '@\/lib\/deal-view-transition'/m)
+    expect(card).toContain("import('@/lib/deal-view-transition').then((m) => { dealVT = m })")
+    expect(card).toContain('function prefetchPassChunk() {\n  warmDealTransition()')
+    expect(card).toContain('=> !!dealVT && dealVT.canRunDealTransition(e)')
+  })
+  it('결제 처리 중 원의 CSS 는 상세 청크에 한 번만 — 모바일 바·PC 상자가 같은 파일을 쓴다', () => {
+    for (const f of ['src/pages/group-buy/DealBottomBar.tsx', 'src/pages/group-buy/DealPurchaseBox.tsx']) {
+      expect(R(f), f).toContain("import './pay-spin-css'")
+      expect(R(f), f).not.toContain("injectMotionCss('ur-m-pay'")
+    }
   })
   it('동작 줄이기면 키트 클래스와 화면 전환이 전부 꺼진다', () => {
     const reduceOf = (s: string) => s.split(/@media \(prefers-reduced-motion: reduce\)\s*/).slice(1).map((x) => x.slice(0, 700)).join('\n')

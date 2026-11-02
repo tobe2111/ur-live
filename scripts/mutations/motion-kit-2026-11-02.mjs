@@ -85,4 +85,20 @@ export default [
     test: TEST,
     why: '측정 뒤에도 옛 밑줄이 남으면 미끄러지는 동안 고른 탭 밑에 밑줄이 하나 더 보인다.',
   },
+  {
+    name: '🎬 목록 → 상세 전환 코드가 다시 첫 화면 묶음으로 들어간다',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: "type DealVT = typeof import('@/lib/deal-view-transition')",
+    replace: "import * as _vtEager from '@/lib/deal-view-transition'\ntype DealVT = typeof import('@/lib/deal-view-transition')",
+    test: TEST,
+    why: '카드는 모든 화면 공용 묶음에 있어서, 전환 코드를 정적으로 부르면 카드가 없는 화면까지 그 무게를 받는다(2026-11-02 대표 "셋 다 해줘").',
+  },
+  {
+    name: '🎬 결제 처리 중 원 CSS 가 상세 청크에 다시 두 번 실린다',
+    file: 'src/pages/group-buy/DealPurchaseBox.tsx',
+    find: "import './pay-spin-css'",
+    replace: "const injectMotionCss = (id: string, css: string) => {}; injectMotionCss('ur-m-pay', `x`)",
+    test: TEST,
+    why: '모바일 바와 PC 상자가 같은 CSS 를 각자 들면 같은 청크에 두 번 실린다(빌드 실측).',
+  },
 ]

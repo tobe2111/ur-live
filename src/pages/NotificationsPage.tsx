@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { BellIcon } from '@/components/icons/urdeal-icons'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { safeDate } from '@/utils/safe-date'
 import api from '@/lib/api'
 import { useTranslation } from '@/lib/i18n-lite'
@@ -11,6 +11,9 @@ import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
 import { toast } from '@/hooks/useToast'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/queries/useNotifications'
+// 🎬 2026-11-02 시안 7차 "새 알림 들어옴"(대표 "7차도 다 해주고") — 화면을 열어 둔 사이 새로 온 알림만 위에서 미끄러져 들어온다(처음 목록은 안 움직인다).
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-noti', `@keyframes ur-noti-in { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }.ur-noti-new { animation: ur-noti-in .4s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-noti-new{animation:none!important}}`)
 
 export default function NotificationsPage() {
   const { t } = useTranslation()
@@ -23,6 +26,15 @@ export default function NotificationsPage() {
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const notifications = [...firstPage, ...extra.filter(e => !firstPage.some(f => f.id === e.id))]
+  const seenIds = useRef<Set<string | number> | null>(null)
+  useEffect(() => {
+    if (!notifications.length) return
+    const set = seenIds.current ?? new Set<string | number>()
+    for (const n of notifications) set.add(n.id)
+    seenIds.current = set
+  })
+  // 더 불러오기로 아래에 붙는 옛 알림은 '새 알림' 이 아니다 — 첫 페이지(최신)에서 처음 보는 것만.
+  const isNewNoti = (id: string | number) => seenIds.current != null && !seenIds.current.has(id) && firstPage.some(f => f.id === id)
   async function loadMore() {
     if (loadingMore) return
     setLoadingMore(true)
@@ -86,7 +98,7 @@ export default function NotificationsPage() {
                   if (!n.is_read) markReadMut.mutate(n.id)
                   if (n.link) navigate(safeInternalPath(n.link, '/'))
                 }}
-                className={`w-full flex items-start gap-3 p-4 text-left border-b border-rule ${n.is_read ? 'opacity-50' : ''}`}
+                className={`w-full flex items-start gap-3 p-4 text-left border-b border-rule ${n.is_read ? 'opacity-50' : ''}${isNewNoti(n.id) ? ' ur-noti-new' : ''}`}
                 style={{ transition: 'opacity .3s' }}
               >
                 {/* 🎬 2026-11-02 시안 5차 "알림 읽음": 읽으면 파란 점이 작아지며 사라지고 줄이 서서히 흐려진다(모두 읽음에서 보인다). */}

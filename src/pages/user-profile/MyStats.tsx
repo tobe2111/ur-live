@@ -33,13 +33,17 @@
  * - 재시도 버튼이 없다. 실패하면 `—` 이고, 셀을 누르면 딜 내역 화면으로 간다(거기서 다시 읽는다).
  *   버튼을 세 칸짜리 줄 안에 넣으면 그 칸만 높이가 달라져 줄이 무너진다.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
+// 🎬 2026-11-02 시안 7차 "내 딜 늘어남"(대표 "7차도 다 해주고") — 화면을 보는 동안 잔액이 늘면(적립·선물) 숫자 위로 "+N딜" 이 떠올랐다 사라진다.
+//   처음 읽은 값·줄어든 값에는 안 뜬다. 숫자 자체는 그대로 바뀐다(지어내지 않는다).
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-gain', `@keyframes ur-gain { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }.ur-gain { position: absolute; right: 0; bottom: 100%; white-space: nowrap; pointer-events: none; animation: ur-gain 1s ease-out both; }@media (prefers-reduced-motion: reduce){.ur-gain{display:none}}`)
 
 /** 💸 충전은 2026-07-18 에 종료됐다 — 딜의 "자세히" 는 내역이다. */
 const DEAL_PATH = TOPUP_DISABLED ? '/my-deal-history' : '/points/charge'
@@ -99,6 +103,17 @@ export default function MyStats({ voucher, coupon, inline = false }: {
   /** `undefined` 아직 · `null` 실패 · 숫자 값 */
   const [balance, setBalance] = useState<number | null | undefined>(undefined)
   const [freeBalance, setFreeBalance] = useState(0)
+  const prevBal = useRef<number | null | undefined>(undefined)
+  const [gain, setGain] = useState<{ n: number; k: number } | null>(null)
+  useEffect(() => {
+    const was = prevBal.current
+    prevBal.current = balance
+    if (typeof was === 'number' && typeof balance === 'number' && balance > was) {
+      setGain((g) => ({ n: balance - was, k: (g?.k ?? 0) + 1 }))
+      const t = window.setTimeout(() => setGain(null), 1000)
+      return () => window.clearTimeout(t)
+    }
+  }, [balance])
   useEffect(() => {
     if (!getUserIdSync()) { setBalance(null); return }
     // ⚡ 2026-10-06 — `api` 정적 사용. 동적 import 는 이 요청을 다음 task 로 밀어
@@ -174,10 +189,13 @@ export default function MyStats({ voucher, coupon, inline = false }: {
       </span>
     )
   )
-  const row = (label: string, to: string, v: number | null | undefined, unit: string) => (
+  const row = (label: string, to: string, v: number | null | undefined, unit: string, up = to === DEAL_PATH ? gain : null) => (
     <Link to={to} className={rowCls}>
       <span className="flex-1 min-w-0 text-[15px] font-medium text-gray-900 dark:text-white truncate">{label}</span>
-      {valueOf(v, unit)}
+      <span className="relative">
+        {up && <span key={up.k} className="ur-gain text-[13px] font-bold text-brand-text">+{formatNumber(up.n)}{unit}</span>}
+        {valueOf(v, unit)}
+      </span>
       <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
     </Link>
   )

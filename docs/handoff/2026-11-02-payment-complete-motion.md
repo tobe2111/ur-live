@@ -100,3 +100,9 @@
 - `MyVouchersPage.tsx` 지갑 탭 밑줄 미끄러짐(3차 보류분) — `docs/locks/loading/2026-11-02-motion-wallet-tab-bar.md`
 - `PaymentSuccessPage.tsx` 결과 카드 올라옴 · 승인 실패 경고 흔들림 — `docs/locks/toss/2026-11-02-payment-result-motion.md` (결제 로직 byte-불변)
 - 잠금 밖 `PaymentFailPage.tsx` 도 같은 움직임(손님 취소는 안 흔듦). 유달이는 그대로.
+
+## 7차 + 최적화 (대표 *"7차도 다 해주고, 셋 다 해줘"*)
+표·결과: `docs/design/motion-mockups-2026-11.md` "7차". 11개 중 9개(카운트다운·카테고리 타일은 화면에 없다).
+- 🩸 **이번에 틀릴 뻔한 판단**: 전환 코드를 동적 import 로만 바꾸면 갈라질 줄 알았다 — `vite.config` 의 `/src/lib/` 규칙과
+  `surface-chunks` 묶음기가 다시 `lz-common` 으로 모았다(파일 해시까지 그대로). 두 군데(vite 규칙 + `LAZY_ENVELOPES`)를 다 고쳐야 갈라진다.
+- 🩸 같은 이름의 `injectMotionCss` 는 **먼저 불린 쪽만** 꽂힌다 — 이름이 같고 내용이 다르면 뒤 화면 움직임이 조용히 사라진다. 지금은 셋 다 같은 내용(실측)이고 가드가 막는다.

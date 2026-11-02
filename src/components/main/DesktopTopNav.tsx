@@ -77,6 +77,17 @@ export default function DesktopTopNav() {
   // 🛡️ 2026-05-22 v5: 공통 hook 사용. MainHomePage 와 자동 dedup + localStorage 즉시 표시.
   const { data: unreadCount = 0 } = useUnreadCount(isDesktop)
   const { data: cartCount = 0 } = useCartCount(isDesktop)
+  // 🎬 2026-11-02 시안 7차 "장바구니 숫자" — 담아서 숫자가 늘면 배지가 톡 튄다(처음 읽은 값엔 안 튄다).
+  //   CSS 를 더하지 않고 Web Animations 로 — 모든 PC 화면이 받는 부품이라 무게를 늘리지 않는다.
+  const cartBadgeRef = useRef<HTMLSpanElement | null>(null)
+  const prevCart = useRef(cartCount)
+  useEffect(() => {
+    const was = prevCart.current
+    prevCart.current = cartCount
+    if (cartCount <= was) return
+    try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { return }
+    cartBadgeRef.current?.animate?.([{ transform: 'scale(.6)' }, { transform: 'scale(1.3)', offset: .6 }, { transform: 'none' }], { duration: 400, easing: 'cubic-bezier(.3,1.3,.5,1)' })
+  }, [cartCount])
   // 💗 2026-08-19 (대표 확정): 상단 찜 아이콘 — 카드 하트와 **같은 훅**을 읽는다(네트워크 추가 0,
   //   카드에서 찜하면 헤더 숫자가 그 자리에서 같이 바뀐다). 비로그인은 훅이 disabled 라 항상 0.
   const { data: wishItems } = useWishlist()
@@ -377,7 +388,7 @@ export default function DesktopTopNav() {
           >
             <BagIcon className="w-5 h-5" />
             {cartCount > 0 && (
-              <span className="absolute top-1 right-1 bg-red-500 text-white text-[12px] font-medium w-4 h-4 rounded-full flex items-center justify-center">
+              <span ref={cartBadgeRef} className="absolute top-1 right-1 bg-red-500 text-white text-[12px] font-medium w-4 h-4 rounded-full flex items-center justify-center">
                 {cartCount > 9 ? '9+' : cartCount}
               </span>
             )}

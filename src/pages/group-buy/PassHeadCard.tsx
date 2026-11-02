@@ -16,6 +16,8 @@ import { PASS_HEAD, passSubLine } from '@/shared/pass-head'
 import StarRating from '@/components/deal/StarRating'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-strike', `@keyframes ur-strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }.ur-strike { position: relative; display: inline-block; text-decoration: none; }.ur-strike::after { content: ""; position: absolute; left: -2px; right: -2px; top: 52%; height: 1.5px; background: currentColor; transform-origin: left; animation: ur-strike .45s cubic-bezier(.65,0,.35,1) .3s both; }@media (prefers-reduced-motion: reduce){.ur-strike::after{animation:none!important}}`)
+// 🎬 2026-11-02 시안 7차 "할인율"(대표 "7차도 다 해주고") — 할인율이 한 번 톡 커졌다 제자리로. 숫자를 0부터 세지 않는 이유: 서버가 그린 첫 화면에 0% 가 보이면 안 된다.
+injectMotionCss('ur-m-pct', `@keyframes ur-pct-pop { 0% { transform: scale(.6); opacity: .3; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: none; } }.ur-pct-pop { display: inline-block; transform-origin: left center; animation: ur-pct-pop .45s cubic-bezier(.3,1.3,.5,1) .15s backwards; }@media (prefers-reduced-motion: reduce){.ur-pct-pop{animation:none!important}}`)
 
 const goTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
@@ -77,7 +79,7 @@ export default function PassHeadCard({
         <div className="mt-3">
           {refPrice != null && refPrice > unitPrice && <div className="text-[13px]" style={{ color: 'var(--gbd-sub)' }}><s className="ur-strike">{formatNumber(refPrice)}원</s></div>}
           <div className="flex items-baseline gap-2">
-            {!!discountPct && discountPct > 0 && <span className="text-[17px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
+            {!!discountPct && discountPct > 0 && <span className="ur-pct-pop text-[17px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
             <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>
           </div>
         </div>
