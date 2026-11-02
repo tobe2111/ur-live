@@ -154,7 +154,14 @@ function shell() {
     + (DETAIL_SEED ? `<script type="application/json" id="__SSR_INITIAL_DETAIL__">${JSON.stringify(DETAIL_SEED)}</script>` : '')
   html = html.replace('</head>', `${seed}\n</head>`)
   // prerender 된 #root 껍데기는 비운다 — 워커의 needsRootBlank 와 같은 효과
-  html = html.replace(/<div id="root">[\s\S]*?<\/div>\s*(?=<script)/, '<div id="root"></div>\n')
+  // 🩸 2026-11-01: 이 비우기가 **헛돌고 있었다**. 패턴이 `<div id="root">` 리터럴인데 실제 태그는
+  //   `<div id="root" role="application" aria-label="…">`(+prerender 가 붙이던 `data-ssr="main"`)라
+  //   **한 번도 매치되지 않았다** — 즉 하네스 첫 프레임에 소스의 `ur-pre-react` 로더가 그대로
+  //   남아 있었고, 라이브(워커가 교체)와 다른 것을 보고 있었다. 에러가 안 나서 아무도 몰랐다.
+  //   `[^>]*` 로 속성을 허용하면 정확히 닫는다(실측: 매치 1,186B · 대체 후 `#root` 안쪽 '').
+  //   ⚠️ non-greedy + `(?=<script)` 는 그대로 둘 것 — `ur-pre-react` 안에 `<script>` 가 있어
+  //      첫 `</div>` 에서 끊기려 하지만, lookahead 가 실패해 백트래킹하며 root 의 닫는 태그를 찾는다.
+  html = html.replace(/<div id="root"[^>]*>[\s\S]*?<\/div>\s*(?=<script)/, '<div id="root"></div>\n')
   return html
 }
 
