@@ -769,7 +769,7 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       // 🛡️ 2026-04-30: 신규 사용자 onboarding 트리거 — 환영 모달 + 카테고리 선택
       const userWithFlag = user as typeof user & { isNewUser?: boolean };
       if (userWithFlag.isNewUser) {
-        stateUrl.searchParams.set('new', '1');
+        stateUrl.searchParams.set('new', '1'); try { c.executionCtx.waitUntil(import('../../../worker/utils/admin-event-notify').then((m) => m.notifyAdminEvent(c.env.DB, { type: 'user_signup', title: '새 유저 가입', message: `${String(user.name || '이름 없음').slice(0, 30)} · 카카오`, link: '/admin/users' }))) } catch { /* 🔔 2026-11-02 어드민 가입 알림 — 응답 뒤(waitUntil), fail-soft */ }
 
         // 🔴 2026-08-31 (대표 "3000원 주는거 없어져야 해"): **신규 가입 보너스 지급 경로 제거.**
         //   2026-08-01 에 금액을 `platform_settings.signup_bonus_amount` 로 옮겨 0(=중단)으로 뒀지만,
@@ -790,12 +790,6 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
             { doc_type: 'service', agreed: true },
             { doc_type: 'privacy', agreed: true },
           ]);
-        } catch { /* fail-soft */ }
-
-        // 🔔 2026-11-02 (대표 "유저 가입 알림이 하나도 안 와"): 어드민 업무 알림 — 응답 뒤(waitUntil), 로그인 지연 0.
-        try {
-          const { scheduleAdminEvent } = await import('../../../worker/utils/admin-event-notify');
-          await scheduleAdminEvent(c, c.env.DB, { type: 'user_signup', title: '새 유저 가입', message: `${String(user.name || '이름 없음').slice(0, 30)} · 카카오`, link: '/admin/users' });
         } catch { /* fail-soft */ }
 
         // 🛡️ 2026-05-01: Option B — 같은 카카오로 재가입이면 복원 동의 안내.

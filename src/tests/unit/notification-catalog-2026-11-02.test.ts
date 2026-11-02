@@ -70,14 +70,15 @@ describe('② 핵심 사건 다섯은 업무 칸이고, 그 자리에서 실제�
   ]
   for (const [f, re] of WIRES) it(`${f} 가 보낸다`, () => expect(read(f)).toMatch(re))
 
-  it('이용권 결제 두 경로(딜 /join · 카드 확정)가 모두 교환권/이용권을 갈라 보낸다', () => {
+  it('이용권 결제 두 경로(딜 /join · 카드 확정)가 모두 교환권/이용권을 가르는 함수를 부른다', () => {
     const s = read('src/features/group-buy/api/group-buy.routes.ts')
-    expect((s.match(/gift \? 'gifticon_purchased' : 'voucher_purchased'/g) || []).length).toBe(2)
+    expect((s.match(/notifyAdminPurchase\(DB, \{ product, qty/g) || []).length).toBe(2)
+    expect(read('src/worker/utils/admin-event-notify.ts')).toMatch(/gift \? 'gifticon_purchased' : 'voucher_purchased'/)
   })
 
   it('유저 가입 알림은 응답 뒤에 보낸다(로그인 지연 0)', () => {
     const s = read('src/features/auth/api/kakao.routes.ts')
-    expect(s).toMatch(/scheduleAdminEvent\(c, c\.env\.DB, \{ type: 'user_signup'/)
+    expect(s).toMatch(/c\.executionCtx\.waitUntil\(import\('\.\.\/\.\.\/\.\.\/worker\/utils\/admin-event-notify'\)\.then\(\(m\) => m\.notifyAdminEvent\(c\.env\.DB, \{ type: 'user_signup'/)
   })
 
   it('교환권 딜 결제 알림이 무엇을 샀는지 말한다', () => {

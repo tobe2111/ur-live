@@ -52,3 +52,15 @@ export function won(n: unknown): string {
   const v = Number(n)
   return Number.isFinite(v) ? `${Math.round(v).toLocaleString('ko-KR')}원` : ''
 }
+
+/**
+ * 결제 확정 경로에서 쓰는 한 줄 — 교환권(deal_only=1)과 이용권을 같은 기준으로 가른다(`shared/product-flow.ts` 와 같은 판정).
+ * 결제 라우트는 god 파일 래칫에 닿아 있어 한 줄로 부를 수 있게 둔다.
+ */
+export async function notifyAdminPurchase(DB: D1Database, p: { product: { name?: string | null; deal_only?: number | null }; qty: number; price: string }): Promise<void> {
+  const gift = Number(p.product?.deal_only) === 1
+  await notifyAdminEvent(DB, {
+    type: gift ? 'gifticon_purchased' : 'voucher_purchased', title: gift ? '교환권 교환' : '이용권 구매',
+    message: `${summarizeItems([String(p.product?.name || '')], p.qty)} · ${p.price}`, link: '/admin/orders',
+  })
+}
