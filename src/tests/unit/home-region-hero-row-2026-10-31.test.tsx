@@ -19,7 +19,9 @@ describe('시안 8 — 지역 배경', () => {
     expect(regionHeroFor({ regionKey: '서울' })?.slug).toBe('seoul')
     expect(regionHeroFor({ regionKey: '부산', loc: { lat: 37.55, lng: 126.92 } })?.slug).toBe('busan')
     expect(regionHeroFor({ regionKey: '없는지역' })).toBeNull()
-    expect(regionHeroFor({})).toBeNull()
+    // 🇰🇷 2026-11-02 대표 *"일단 대한민국은 서울 그림으로"* — 지역도 위치도 없는 '전국' 은 서울 그림을 빌린다.
+    expect(regionHeroFor({})?.slug).toBe('seoul')
+    expect(regionHeroFor({ regionKey: null, loc: null })?.slug).toBe('seoul')
   })
   it('좌표로 도시를 찾는다 — 마포(서울)·광안리(부산)·성산(제주)·동성로(대구)·강릉(강원), 바다 위는 없음', () => {
     expect(regionHeroFor({ loc: { lat: 37.556, lng: 126.92 } })?.slug).toBe('seoul')
