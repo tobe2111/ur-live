@@ -46,6 +46,8 @@ const SYNONYM_GROUPS: ReadonlyArray<ReadonlyArray<string>> = [
   ['투썸', 'twosome'],
   ['김밥', '분식', '떡볶이', '라면'],
   ['삼겹살', '돼지고기', '소고기', '한우'],
+  // 📝 2026-11-02 표기 흔들림 — 상품명에 둘 다 쓰인다(라이브: 서로 다른 상품 1건씩).
+  ['돈가스', '돈까스', '돈카츠'],
 ]
 
 function expandSynonyms(token: string): string[] {
@@ -498,9 +500,13 @@ export class ProductRepository {
     //   migration 0273 으로 두 테이블 정식화. UPSERT 패턴으로 search_count 누적.
     const q = searchQuery.trim()
     if (!q || q.length < 1 || q.length > 200) return  // 비정상 입력 차단
+    // 🩸 2026-11-02: 컬럼 이름이 라이브와 달랐다 — 라이브 search_logs 는 `query`·`result_count`
+    //   (pragma_table_info 실측)인데 여기는 `search_query`·`results_count` 로 써서 **매번 실패**했고
+    //   아래 catch 가 경고만 찍고 삼켰다. 그래서 테이블이 **0행**이다 — 무엇을 찾다 0건이 났는지
+    //   한 번도 기록된 적이 없다(지역 검색 구멍을 손님 기록이 아니라 대표 신고로 알게 된 이유).
     try {
       await this.db.prepare(`
-        INSERT INTO search_logs (user_id, search_query, results_count, created_at)
+        INSERT INTO search_logs (user_id, query, result_count, created_at)
         VALUES (?, ?, ?, datetime('now'))
       `).bind(userId, q, resultsCount).run();
     } catch (error) {
@@ -530,11 +536,11 @@ export class ProductRepository {
     try {
       const result = await this.db.prepare(`
         SELECT 
-          search_query as query,
+          query,
           COUNT(*) as count
         FROM search_logs
         WHERE created_at > datetime('now', '-' || ? || ' days')
-        GROUP BY search_query
+        GROUP BY query
         ORDER BY count DESC
         LIMIT ?
       `).bind(days, limit).all<{ query: string; count: number }>();
