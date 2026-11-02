@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import CompanyInfoFooter from '@/components/main/CompanyInfoFooter'
 import SellOnUrdealRow from './SellOnUrdealRow'
 import MapPill from './MapPill'
 import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
@@ -300,6 +301,9 @@ export default function MobileHomePage() {
             8/26 에 지도 모달에서 뺀 것과 같은 물건이 되지 않으려면 위로 올리면 안 된다.
             사유·노출 규칙은 `./SellOnUrdealRow` 머리주석. */}
       <SellOnUrdealRow />
+      {/* 🏢 2026-11-02 대표 *"홈 페이지 맨 밑에 회사 정보들을 넣어줘"* — 폰 홈엔 사업자 표시가 하나도 없었다(PC 의 SiteFooter 에만).
+          피드 맨 끝·판매 진입점 다음이 자리다(NOL 과 같은 자리). 값 SSOT `shared/company-info.ts`. */}
+      <CompanyInfoFooter className="mt-6" />
       <MapPill />
       {bell.sheet}
     </div>
