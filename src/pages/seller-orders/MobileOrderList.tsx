@@ -28,7 +28,7 @@ import { formatWon } from '@/utils/format'
 import { orderStageOf, type OrderStage } from '@/shared/order-stage'
 import { orderKindOf } from '@/shared/order-kind'
 import type { Order } from './types'
-const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 🎬 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-flash', `@keyframes ur-flash { 0% { background-color: transparent; } 12%, 70% { background-color: var(--brand-tint); } 100% { background-color: transparent; } }.ur-flash { animation: ur-flash 1.6s ease both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-flash{animation:none!important}}`)
 
 type Tab = 'waiting' | 'preparing' | 'unused' | 'done' | 'refunded' | 'all'

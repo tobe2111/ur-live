@@ -4,7 +4,7 @@
  *   ⚠️ 글자 폭은 그대로다(같은 칸 안에서 위아래로만) — 옆 버튼이 밀리지 않는다. 동작 줄이기면 CSS 가 끈다.
  */
 import { useEffect, useRef, useState } from 'react'
-const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 🎬 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-roll', `@keyframes ur-roll-out-up { to { transform: translateY(-100%); opacity: 0; } }@keyframes ur-roll-in-up { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }@keyframes ur-roll-out-down { to { transform: translateY(100%); opacity: 0; } }@keyframes ur-roll-in-down { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }.ur-roll-out-up { animation: ur-roll-out-up .26s cubic-bezier(.65,0,.35,1) both; }.ur-roll-in-up { animation: ur-roll-in-up .26s cubic-bezier(.65,0,.35,1) both; }.ur-roll-out-down { animation: ur-roll-out-down .26s cubic-bezier(.65,0,.35,1) both; }.ur-roll-in-down { animation: ur-roll-in-down .26s cubic-bezier(.65,0,.35,1) both; }@media (prefers-reduced-motion: reduce){.ur-roll-out-up,.ur-roll-in-up,.ur-roll-out-down,.ur-roll-in-down{animation:none!important}}`)
 
 export default function RollingNumber({ value, format = (n) => String(n), className = '' }: {
