@@ -44,6 +44,8 @@ const LIGHT_ISLAND_COVERAGE: Record<string, { by: string; why: string }> = {
    *   `/user/profile` 방문만으로는 거기 못 닿는다. 그래서 여기 등재는 "무엇을 그리는가" 의
    *   기록이지 "측정됐다" 는 뜻이 아니다. 실제 판정은 staging **S-MYSELL-42**(다크로 등록 시트 열기).
    */
+  /** 🗺️ 2026-11-02 — 이용권 상세 매장 칸의 지도(`bare`) 위 [카카오맵] 알약. 지도 타일은 다크에서도 밝아 흰 표면 고정. */
+  'src/components/RestaurantMiniMap.tsx': { by: '/group-buy/2846', why: '이용권 상세 지도 위 카카오맵 버튼(항상 흰 표면)' },
   'src/pages/user-profile/seller-section/VoucherNewSheet.tsx': { by: '/user/profile', why: '마이 안 등록 시트 — 라이트 고정 대시보드 폼을 담는 섬' },
   /**
    * 🎟️ 2026-10-07 — **스캔받는 QR 부품**(`ScannableQr`). QR 은 테마를 따르는 그림이 아니라

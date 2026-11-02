@@ -9,12 +9,13 @@ const A = 'src/pages/agency-console/AgencyStoresPanel.tsx'
 const L = 'src/shared/embed-code-link.ts'
 export default [
   {
-    name: '에이전시위젯 — 머리띠를 다시 제목 하나로',
-    file: W,
-    find: "  const head = i.brand\n    ? `${LOGO}<span class=\"sep\"></span><span class=\"tt\">${esc(i.brand)}</span>`",
-    replace: "  const head = false\n    ? `${LOGO}<span class=\"sep\"></span><span class=\"tt\">${esc(i.brand)}</span>`",
+    name: '에이전시위젯 — 머리띠에서 회사 이름을 뺀다',
+    // 🔁 2026-11-02 재조준 — 에이전시는 전용 화면(embed-agency.ts)이 그린다.
+    file: 'src/worker/utils/embed-agency.ts',
+    find: '<span class="x">×</span><span class="tt">${esc(i.brand)}</span>',
+    replace: '<span class="tt">유어딜</span>',
     test: T,
-    why: '에이전시가 다시 유어샵·매장·지역과 똑같은 머리가 된다 — "우리가 운영한다"는 무게가 사라지는데 화면은 안 깨진다.',
+    why: '에이전시가 다시 유어딜 이름만 걸린 위젯이 된다 — "우리가 운영한다"는 무게가 사라지는데 화면은 안 깨진다.',
   },
   {
     name: '에이전시위젯 — 갈 곳 없는 전체 보기를 되살린다',
@@ -26,9 +27,9 @@ export default [
   },
   {
     name: '에이전시위젯 — 운영 매장 0곳도 그린다',
-    file: R,
-    find: "meta: storeCount > 0 ? `운영 매장 ${storeCount}곳` : undefined,",
-    replace: "meta: `운영 매장 ${storeCount}곳`,",
+    file: 'src/worker/utils/embed-agency.ts',
+    find: "i.storeCount > 0 ? stat('운영 매장', i.storeCount, '곳') : '',",
+    replace: "stat('운영 매장', i.storeCount, '곳'),",
     test: T,
     why: '신뢰를 주려고 넣은 자리에 "운영 매장 0곳" 이 선다 — 없느니만 못하고, 데이터가 없는 새 에이전시에서 바로 난다.',
   },

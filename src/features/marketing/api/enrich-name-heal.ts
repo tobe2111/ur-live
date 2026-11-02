@@ -19,6 +19,7 @@
 import type { Env } from '@/worker/types/env'
 // FetchBudget 의 선언처는 influencer-discovery(마케팅 레인 공용 타입) — contact-enrich 도 거기서 가져온다.
 import type { FetchBudget } from './influencer-discovery'
+import { hasBrokenText } from './html-decode'
 
 interface HealDeps {
   DB: Env['DB']
@@ -46,6 +47,11 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD
   //   `성장대로｜인천소상공인종합지원포털` 류. **엔티티·제목 구분자를 가진 상호는 없다**(구조적 사실).
   //   ⚠️ `evidence` 전체를 넣지는 않는다 — 그 187건 대부분은 `종합광고대행사 시월기획` 처럼 진짜 상호이고,
   //     다시 크롤하면 예산만 태운다(무료 플랜에선 그게 곧 수집량이다).
+  // 🔤 **깨진 상호(`�`) 먼저** (2026-11-02 — 라이브 222행). 옛 크롤러가 EUC-KR 사이트를 UTF-8 로 읽어
+  //   뭉갠 제목을 상호로 저장했다(`html-decode.ts` 머리말). 그 행 대부분은 이미 `name_verified=1` 이라 아래
+  //   전수 1회 쿼리가 **다시는 집지 않는다** → 여기서 따로 집어, 고친 크롤러로 실명을 받고 못 받으면 도메인으로 둔다.
+  //   대상이 바닥나면 이 쿼리는 빈 결과 1회(D1 1)만 쓴다.
+  await repairBrokenNames({ DB, budget, crawlContact, spendD1, bump, classifyLead })
   const healTargets = (await DB.prepare(`SELECT id, company_name, category, source_keyword, website FROM ad_company_leads
       WHERE source = 'webkr' AND merged_into IS NULL AND status = 'new'
         AND COALESCE(name_verified, 0) = 0
@@ -91,5 +97,35 @@ export async function healSuspectNames({ DB, budget, stamp, crawlContact, spendD
   if (verified.length) {
     spendD1()
     await DB.prepare(`UPDATE ad_company_leads SET name_verified = 1 WHERE id IN (${verified.join(',')})`).run().catch(() => null)
+  }
+}
+
+/** 깨진 상호 수리 — 사이트가 밝힌 실명(깨지지 않은 것)이 있으면 그걸로, 없으면 도메인으로. 허위 이름은 쓰지 않는다. */
+async function repairBrokenNames({ DB, budget, crawlContact, spendD1, bump, classifyLead }: Omit<HealDeps, 'stamp'> & {
+  classifyLead: typeof import('./company-classify')['classifyLead']
+}): Promise<void> {
+  spendD1()
+  const rows = (await DB.prepare(`SELECT id, company_name, category, source, source_keyword, website FROM ad_company_leads
+      WHERE merged_into IS NULL AND status = 'new' AND instr(company_name, char(65533)) > 0
+      ORDER BY id DESC LIMIT 8`)
+    .all<{ id: number; company_name: string; category: string | null; source: string | null; source_keyword: string | null; website: string | null }>().catch(() => null))?.results || []
+  for (const t of rows) {
+    if (budget.left <= 2 || budget.limitHit || (!!budget.deadline && Date.now() >= budget.deadline)) break
+    let host = ''
+    try { host = t.website ? new URL(/^https?:\/\//i.test(t.website) ? t.website : `https://${t.website}`).hostname.replace(/^www\./, '') : '' } catch { /* 빈 값 */ }
+    bump?.('broken_try')
+    const c = t.website ? await crawlContact(t.website, budget, undefined, t.category === '미디어') : null
+    if (budget.limitHit || c?.reason === 'subreq_limit' || c?.reason === 'deadline') break // 우리 사정으로 잘림 — 다음 회차가 다시 집는다
+    const real = c?.siteName && !hasBrokenText(c.siteName) ? c.siteName : null
+    const name = real || host
+    if (!name) { bump?.('broken_no_name'); continue }
+    const cls = real ? classifyLead({ company_name: real, category: t.category, source: t.source || 'webkr', source_keyword: t.source_keyword }) : null
+    bump?.(real ? 'broken_renamed' : 'broken_to_host')
+    spendD1()
+    await DB.prepare(`UPDATE ad_company_leads SET company_name = ?, name_verified = 1,
+        category = COALESCE(?, category), subcategory = COALESCE(?, subcategory)
+      WHERE id = ? AND status = 'new' AND instr(company_name, char(65533)) > 0`)
+      .bind(name.slice(0, 120), cls?.ok && cls.confidence === 'evidence' ? cls.category : null,
+        cls?.ok && cls.confidence === 'evidence' ? cls.subcategory : null, t.id).run().catch(() => null)
   }
 }

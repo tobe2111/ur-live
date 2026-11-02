@@ -2,8 +2,8 @@ export default [
   {
     name: '[home-placeholder] 자리 분기가 유어쇼츠 레일을 다시 빠뜨린다',
     file: 'src/components/home/HomeSections.tsx',
-    find: '        </section>\n        {shortsRail}\n        {midBanner}',
-    replace: '        </section>\n        {midBanner}',
+    find: "        {shortsAfter > 0 ? <>{midBanner}{shortsRail}</> : <>{shortsRail}{midBanner}</>}",
+    replace: "        {shortsAfter > 0 ? <>{midBanner}</> : <>{midBanner}</>}",
     test: 'src/tests/unit/home-sections-placeholder-2026-10-14.test.ts',
     why: '섹션 응답 순간 레일(~240px)이 끼어들어 피드를 민다(하네스 CLS 0.16).',
   },

@@ -68,6 +68,12 @@ const PROFESSION_RULES: ReadonlyArray<readonly [ProfessionSubcategory, RegExp]> 
   ['건축사', /건축사사무소/],
 ]
 
+/**
+ * 상호에 들어 있으면 `refineRegistryLabel` 이 업종을 바꿀 **수도 있는** 낱말 — 규칙에서 그대로 뽑는다(두 벌 금지).
+ * 쓰는 곳: 재분류 벌크 전진(`reclassify-registry-fastpath.ts`)이 이 낱말을 가진 행은 **건너뛰지 않는다.**
+ */
+export const PROFESSION_NAME_HINTS: readonly string[] = PROFESSION_RULES.flatMap(([, re]) => re.source.split('|'))
+
 /** 전문직 라벨은 전부 이 카테고리·티어를 쓴다(기존 `전문서비스` tier 5 와 동일 — 접촉 우선순위 불변). */
 export const PROFESSION_CATEGORY = '전문서비스'
 export const PROFESSION_TIER = 5

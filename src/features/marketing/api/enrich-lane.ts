@@ -156,9 +156,17 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //      2026-07-29 가 "출처별 발견 수율을 아직 재본 적이 없다" 고 남긴 바로 그 질문의 답이 된다.
   // 🚰 대상 상한 = 예산 비례(2026-07-27 대표 "언제 완전해지나" — 예산 800 인데 상한 200 고정이라 병목).
   //   실소비는 루프의 budget break 가 통제 — 상한은 "예산이 허락하면 몇 행까지 볼 수 있나"만 정함.
+  // 🩸 **이메일이 이미 있는 행은 대상이 아니다** (2026-11-02 라이브 실측). 예전 조건은
+  //   `(active = 0 OR email IS NULL …)` 이었는데, 이메일은 있지만 보류(active=0)인 통신판매 행 11,691건이
+  //   그 `active = 0` 에 걸려 들어왔고, 아래 `skip_email` 이 **도장 없이** 돌려보내 매 회차 큐 머리에 다시 섰다:
+  //   ```
+  //     하루 examined 50,339 · skip_email 50,131(99.6%) · enriched 102
+  //   ```
+  //   Phase 1(전화)은 기본 0(`ADS_ENRICH_PHONE_CAP`)이고 Phase 2 는 이메일 전용이라, 이메일 있는 행은
+  //   이 레인에서 할 일이 **하나도 없다.** 그래서 조건에서 아예 뺀다(도장을 찍어 7일마다 다시 줄 세우는 것보다 낫다).
   const targetCap = Math.min(400, Math.max(120, Math.floor(budget.left / 2)))
   const targets = (await DB.prepare(`SELECT id, company_name, category, region, address, website, phone, email, source, source_keyword, status FROM ad_company_leads
-      WHERE (active = 0 OR email IS NULL OR email = '')
+      WHERE (email IS NULL OR email = '')
         AND merged_into IS NULL
         AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})
       ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END),

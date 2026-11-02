@@ -49,7 +49,8 @@ describe('② 대체한 것이 되살아나지 않는다', () => {
     expect(PAGE).toMatch(/<HomeSections rail near=\{near\} shortsRail=\{<UrShortsRail \/>\}/)
     const SEC = stripComments(readFileSync('src/components/home/HomeSections.tsx', 'utf8'))
     expect(SEC).toMatch(/return rail\s*\n?\s*\? <SectionRail count=\{sec\.products\.length\}>\{cards\}<\/SectionRail>/)
-    expect(SEC).toContain('{sIdx === 0 && shortsRail}')
+    expect(SEC).toContain('{shortsAfter === 0 && sIdx === 0 && shortsRail}') // PC 는 shortsAfter 를 안 넘긴다(기본 0)
+    expect(PAGE).not.toMatch(/shortsAfter=/)
   })
 })
 

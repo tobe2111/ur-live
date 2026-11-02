@@ -271,11 +271,13 @@ export default function MobileHomePage() {
       {/* 어드민 편성(섹션·배너) — 카테고리를 고르면 숨긴다(PC 홈과 같은 규칙: 화면 맨 위가 그 카테고리여야 한다). */}
       {HOME_SHOWCASE_ENABLED && category === 'all' && (
         <div className="mt-3">
-          {/* 🎫 2026-09-05 (대표 "인기 이용권 섹션 위에 배너가 작게 있어야 할 것 같음" — 시안 안 2).
-              첫 섹션 **위** 가로 카드 1장. 등록된 배너가 없으면 통째로 null 이라 지금 화면과 같다. */}
-          <HomeBannerStrip variant="strip" />
+          {/* 🏠 2026-11-02 대표 확정(모바일 안 1) — 순서: 지역 사진 머리 → 첫 섹션 카드(제목·더보기 없음)
+              → 배너 → 지금 인기 이용권 → 유어쇼츠. 종전엔 배너가 첫 섹션 **위**였다(2026-09-05 안 2).
+              서버 첫 화면(`worker/utils/home-first-screen.ts`)이 같은 순서로 그린다 — 한쪽만 바꾸면 마운트 때 튄다. */}
           <HomeSections
-            midBanner={<HomeBannerStrip variant="inline" />}
+            bareFirst
+            shortsAfter={1}
+            midBanner={<><HomeBannerStrip variant="strip" /><HomeBannerStrip variant="inline" /></>}
             shortsRail={<UrShortsRail />}
             near={near}
           />

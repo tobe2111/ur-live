@@ -29,8 +29,9 @@ export default [
   {
     name: '[가게소개] 제목과 같은 설명도 소개로 친다(상품명이 두 번 찍힌다)',
     file: 'src/pages/group-buy/StoreIntro.tsx',
-    find: "  const spec = raw && raw !== (src.productName || '').trim() ? raw : ''\n  return !!((src.longDescription || '').trim() || (src.sellerBio || '').trim() || spec)",
-    replace: "  return !!((src.longDescription || '').trim() || (src.sellerBio || '').trim() || raw)",
+    // 🔁 2026-11-02: 판정이 `specOf` 로 모였다(대표 선택 ④) — 탭 판정이 그 함수를 건너뛰면 같은 사고다.
+    find: "  const spec = specOf(src.description, src.productName)\n",
+    replace: "  const spec = (src.description || '').trim()\n",
     test: 'src/tests/unit/store-intro-tab-parity-2026-09-25.test.ts',
     why: '라이브 상품 중 description 이 name 과 같은 문자열인 것이 있다 — 그러면 제목이 화면에 두 번 찍힌다(2026-09-14 규칙).',
   },

@@ -15,6 +15,7 @@
 import { priceDisplay } from '../../shared/price-display'
 import { detailHref } from '../../shared/product-flow'
 import { cfImage } from '../../utils/cf-image'
+import { PARTNER_MOTION_CSS } from './embed-partner-motion'
 
 export type EmbedKind = 'ushop' | 'agency' | 'store' | 'region' | 'pass' | 'partner'
 export type EmbedTheme = 'light' | 'dark' | 'auto'
@@ -94,7 +95,7 @@ export function esc(s: unknown): string {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
-function won(n: number): string {
+export function won(n: number): string {
   return `${String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}원`
 }
 
@@ -171,7 +172,7 @@ function cardHtml(c: EmbedCard): string {
     + `<span class="nm">${esc(c.name)}</span>${og}<span class="pr">${disc}${won(c.price)}</span></a>`
 }
 
-const LOGO = '<span class="logo" aria-label="유어딜">urdeal<i></i></span>'
+export const LOGO = '<span class="logo" aria-label="유어딜">urdeal<i></i></span>'
 
 export interface StripInput {
   kind: EmbedKind
@@ -191,8 +192,9 @@ export interface StripInput {
   meta?: string
 }
 
-function doc(theme: EmbedTheme, title: string, body: string): string {
-  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)} - 유어딜</title><style>${themeCss(theme)}\n${BASE_CSS}</style></head><body>${body}</body></html>`
+/** `extraCss` 는 한 위젯만 쓰는 스타일(에이전시). 안 주면 출력이 종전과 byte-동일하다. */
+export function doc(theme: EmbedTheme, title: string, body: string, extraCss = ''): string {
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)} - 유어딜</title><style>${themeCss(theme)}\n${BASE_CSS}${extraCss}</style></head><body>${body}</body></html>`
 }
 
 /** 가로로 넘기는 카드 한 줄 — 유어샵·에이전시·매장·지역 공용. */
@@ -247,5 +249,6 @@ export function renderPartner(theme: EmbedTheme, agencyName: string, agencyId: n
     + '<div class="col new"><b>유어딜 이용권</b><span>손님이 선결제</span><span>QR로 바로 사용</span><span>팔린 만큼 정산</span></div>'
     + `</div><div class="foot"><a class="go" href="${esc(href)}" target="_blank" rel="noopener">유어딜 입점 신청</a>`
     + '<small>가입비·월 이용료 0원</small></div></div></div></main>'
-  return doc(theme, `${agencyName} × 유어딜 입점`, body)
+  // 🎬 2026-11-02 대표 *"제휴사가 더 급해"* — 모션만 얹는다(마크업·문구 무변경). `embed-partner-motion.ts`
+  return doc(theme, `${agencyName} × 유어딜 입점`, body, PARTNER_MOTION_CSS)
 }

@@ -143,20 +143,20 @@ export default [
     why: '`--gbd-*` \ub294 `.gbd` \uc548\uc5d0\uc11c\ub9cc \ud480\ub9b0\ub2e4. \ud074\ub798\uc2a4\uac00 \uc5c6\uc73c\uba74 \uc81c\ubaa9\uc774 \uae30\ubcf8\uc0c9\uc774 \ub418\uace0 \ubc14\ud0d5\ub3c4 --bg \u2192 --surface \ub85c \ubc14\ub01c\ub2e4.',
   },
   {
-    name: '\u{1F3F7} \uacf5\uc720 \ubcf4\uc0c1 \ubc30\ub108\uac00 \ub2e4\uc2dc \uc81c\ubaa9 \uc704\ub85c \uc62c\ub77c\uac04\ub2e4 (\ub51c \ubcf4\uc720\uc790\ub9cc \uc81c\ubaa9\uc774 \ubc00\ub9b0\ub2e4)',
+    name: '🏷 딜 % 를 묻는 팔아보기 줄이 다시 제목 위로 올라간다 (딜 보유자만 제목이 밀린다)',
     file: PAGE,
-    // 🔁 2026-10-11 (D안): 제목 블록이 `PassHeadCard` 로 옮겨갔다 — 그 앞에 배너를 심는다.
+    // 🔁 2026-11-02: 배너(`ShareRewardBanner`)가 팔아보기 한 줄로 통합됐다 — per-user 조회는 이제 그 줄이 한다.
     find: '        <PassHeadCard merchant=',
-    replace: '        <div className="px-[18px]"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>\n        <PassHeadCard merchant=',
+    replace: '        <div><SellThisCard productId={detail.id} sellerId={detail.seller_id as number | null} /></div>\n        <PassHeadCard merchant=',
     test: TEST,
-    why: '\uc774 \ubc30\ub108\ub294 \uc11c\ubc84 \uc870\ud68c\uac00 \ub05d\ub098\uc57c \ub728\ub294\ub370 \uc81c\ubaa9 \uc704\uc5d0 \uc788\uc73c\uba74 \ub51c \uac00\uc9c4 \uc0ac\ub78c\uc5d0\uac8c\ub9cc \ub4a4\ub2a6\uac8c \uc81c\ubaa9\uc774 \uc544\ub798\ub85c \ubc00\ub9b0\ub2e4 \u2014 \uc11c\ubc84 \ub80c\ub354 \uc774\uc804\ubd80\ud130 \uc788\ub358 \ubc00\ub9bc\uc774\ub2e4.',
+    why: '딜 % 는 서버 조회가 끝나야 오는데 제목 위에 있으면 딜 가진 사람에게만 뒤늦게 제목이 아래로 밀린다.',
   },
   {
-    name: '\u{1F3F7} \ubc30\ub108 \uce78\uc758 `empty:hidden` \uc774 \ube60\uc838 \ube48 16px \uac00 \ub0a8\ub294\ub2e4',
-    file: PAGE,
-    find: 'className="px-[18px] pb-4 empty:hidden"',
-    replace: 'className="px-[18px] pb-4"',
+    name: '🏷 딜 % 자리 예약이 빠져 조회가 끝나는 순간 줄이 변한다',
+    file: 'src/components/seeding/SellThisCard.tsx',
+    find: "deal === 'loading' ? 'invisible' : ''",
+    replace: "''",
     test: TEST,
-    why: '\ubc30\ub108\ub294 \ub300\ubd80\ubd84\uc758 \uc0ac\ub78c\uc5d0\uac8c null \uc774\ub77c, \uc811\uc9c0 \uc54a\uc73c\uba74 \uac00\uaca9\uacfc \uc218\ub7c9 \uc0ac\uc774\uc5d0 \uc544\ubb34 \uc774\uc720 \uc5c6\ub294 \ube48\uce78\uc774 \uc0dd\uae34\ub2e4.',
+    why: '값 자리를 예약하지 않으면 조회 중 "딜 00%" 가 그대로 보이거나 늦게 생겨 줄이 흔들린다.',
   },
 ]

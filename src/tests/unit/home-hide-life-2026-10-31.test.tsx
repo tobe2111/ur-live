@@ -38,7 +38,8 @@ describe('메인에서 생활 숨김', () => {
     const text = host.textContent || ''
     expect(text).not.toContain('입주청소')
     expect(text).toContain('돈가스 세트')
-    expect(text).toContain('줄2')
+    // 2026-11-02 모바일 안 1 — 첫 섹션 제목 줄을 안 그린다(제목 '줄2' 는 더 이상 화면에 없다). 카드로 판정한다.
+    expect(text).not.toContain('줄2')
   })
 
   it('🏠 생활 버튼은 남는다 — 폰 홈 탭 줄에 있고 `/life` 로 간다(필터 아님)', () => {
