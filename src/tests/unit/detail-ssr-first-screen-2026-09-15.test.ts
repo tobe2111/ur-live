@@ -152,18 +152,21 @@ describe('③ 제목 — 컴포넌트와 같은 값으로 그린다', () => {
 describe('③-2 제목 위에 per-user 블록이 남아 있으면 안 된다', () => {
   const page = readCode('src/pages/GroupBuyDetailPage.tsx')
 
-  it('🔴 `ShareRewardBanner` 는 제목 **아래**에 있다 (위에 있으면 딜 보유자에게만 제목이 밀린다)', () => {
-    const banner = page.indexOf('<ShareRewardBanner')
+  // 🔁 2026-11-02 대표 *"통합"*: 딜 보유자 배너(`ShareRewardBanner`)는 팔아보기 한 줄(`SellThisCard` B안)로 합쳐졌다.
+  //   per-user 조회(딜 %)가 그 줄로 옮겨갔으니 불변식도 그 줄을 겨눈다 — 제목 **아래**, 그리고 값 자리는 예약.
+  it('🔴 딜 % 를 묻는 `SellThisCard` 는 제목 **아래**에 있다 (위에 있으면 딜 보유자에게만 제목이 밀린다)', () => {
+    const card = page.indexOf('<SellThisCard')
     const h1 = page.indexOf('<PassHeadCard ')
-    expect(banner).toBeGreaterThan(0)
+    expect(card).toBeGreaterThan(0)
     expect(h1).toBeGreaterThan(0)
-    expect(banner).toBeGreaterThan(h1)
+    expect(card).toBeGreaterThan(h1)
+    expect(page, '따로 뜨던 배너가 되살아났다 — 같은 % 를 두 곳에서 말한다').not.toContain('<ShareRewardBanner')
   })
 
-  it('배너가 null 이면 그 칸이 통째로 접힌다 (`empty:hidden`) — 안 그러면 16px 빈칸이 남는다', () => {
-    const line = page.split('\n').find(l => l.includes('<ShareRewardBanner'))
-    expect(line).toBeTruthy()
-    expect(line!).toContain('empty:hidden')
+  it('딜 % 는 늦게 와도 줄을 안 민다 — 조회 중엔 값 자리를 `invisible` 로 예약', () => {
+    const src = readCode('src/components/seeding/SellThisCard.tsx')
+    expect(src).toContain("deal === 'loading' ? 'invisible' : ''")
+    expect(src).toContain('h-[52px]')
   })
 
   it('🔴 `?ref=` 일 때는 제목을 접는다 — 추천 배너가 제목 위에 끼는 유일한 경우', () => {

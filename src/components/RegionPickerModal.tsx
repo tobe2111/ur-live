@@ -35,12 +35,12 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
 
   return (
     <div
-      className="fixed inset-0 z-[10500] flex items-stretch sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-[10500] flex items-stretch sm:items-center justify-center ur-veil"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="bg-surface w-full h-full sm:h-[600px] sm:max-w-2xl sm:rounded-2xl border border-line overflow-hidden flex flex-col"
+        className="ur-glass w-full h-full sm:h-[600px] sm:max-w-2xl overflow-hidden flex flex-col ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

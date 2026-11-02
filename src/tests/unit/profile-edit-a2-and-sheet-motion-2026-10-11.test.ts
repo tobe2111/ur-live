@@ -69,8 +69,10 @@ describe('① 시트가 올라온다', () => {
     for (const f of SHEETS) {
       const src = read(f)
       // 셸이 스스로 배경을 그리는 시트만 본다(`Sheet` 를 쓰는 자식들은 셸이 대신 그린다).
-      if (!/fixed inset-0 bg-black\//.test(src)) continue
-      expect(src, `${f}: 배경이 페이드 없이 켜진다`).toMatch(/fixed inset-0 bg-black\/\d+ ur-sheet-veil/)
+      // 🪟 2026-11-02: 뒤 막이 `bg-black/NN` → `.ur-veil` 로 통일됐다. 둘 다 알아봐야 한다 —
+      //   옛 정규식만 두면 모든 시트가 `continue` 로 빠져 **아무것도 안 보는 초록**이 된다(주입이 잡았다).
+      if (!/fixed inset-0 (?:bg-black\/|ur-veil\b)/.test(src)) continue
+      expect(src, `${f}: 배경이 페이드 없이 켜진다`).toMatch(/fixed inset-0 (?:bg-black\/\d+|ur-veil) ur-sheet-veil/)
     }
   })
 

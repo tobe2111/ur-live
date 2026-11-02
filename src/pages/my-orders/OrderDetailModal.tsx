@@ -42,8 +42,8 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
   const totalAmount = order.total_amount ?? order.amount ?? 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose} role="presentation">
-      <div className="bg-surface rounded-2xl w-full max-h-[80dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('orderDetail.title', { defaultValue: '주문 상세' })}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 ur-veil" onClick={onClose} role="presentation">
+      <div className="ur-glass ur-pop-card w-full max-h-[80dvh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('orderDetail.title', { defaultValue: '주문 상세' })}>
         <div className="sticky top-0 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] p-4 flex items-center justify-between">
           <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('orderDetail.title', { defaultValue: '주문 상세' })}</h3>
           <button

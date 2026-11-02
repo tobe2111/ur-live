@@ -41,7 +41,7 @@ describe('fastPathWhere — 절대 건너뛰지 않는 것', () => {
   function db() {
     const d = new DatabaseSync(':memory:')
     d.exec(`CREATE TABLE ad_company_leads (
-      id INTEGER PRIMARY KEY, company_name TEXT, source TEXT, category TEXT,
+      id INTEGER PRIMARY KEY, company_name TEXT, subcategory TEXT, source TEXT, category TEXT,
       classify_confidence TEXT, classified_v INTEGER, merged_into INTEGER)`)
     return d
   }

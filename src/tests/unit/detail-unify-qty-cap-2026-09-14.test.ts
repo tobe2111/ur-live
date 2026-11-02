@@ -47,7 +47,9 @@ describe('안 B — 공구 상세', () => {
        새 자리로 재조준한다 — 상세 페이지는 이제 값을 **넘기기만** 하고 판정은 부품이 한다.
        (주입 지도 검사가 이 어긋남을 먼저 잡아 줬다.) */
     const s = code(STORE_INTRO)
-    expect(s).toMatch(/raw\s*!==\s*\(productName \|\| ''\)\.trim\(\)/)
+    // 🔁 2026-11-02 (대표 선택 ④): 판정이 `specOf` 로 모였다 — 글자 그대로 같으면 숨김(이 규칙) + 제목을 되풀이하면 숨김(새 규칙).
+    expect(s).toContain('const spec = specOf(description, productName)')
+    expect(s).toMatch(/if \(!raw \|\| raw === name\) return ''/)
     // 상세 본문이 설명을 **직접** 그리던 자리로 되돌아가지 않는다(그러면 두 벌이 된다).
     expect(code(GB)).not.toMatch(/\{detail\.description &&[\s\S]{0,80}<p /)
   })

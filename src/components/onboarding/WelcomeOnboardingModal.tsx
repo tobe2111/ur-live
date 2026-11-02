@@ -131,11 +131,11 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
 
   return (
     <div
-      className="fixed inset-0 z-[10600] bg-black/60 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4"
       role="presentation"
     >
       <div
-        className="bg-surface w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
+        className="ur-glass w-full max-w-md ur-pop-card overflow-hidden flex flex-col max-h-[92dvh] ur-dialog-in"
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-title"

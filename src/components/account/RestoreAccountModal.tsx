@@ -103,11 +103,11 @@ export default function RestoreAccountModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[10600] bg-black/60 flex items-end sm:items-center justify-center p-4"
+      className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center p-4 ur-veil"
       role="presentation"
     >
       <div
-        className="bg-surface w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+        className="ur-glass w-full max-w-md ur-pop-card overflow-hidden ur-dialog-in"
         role="dialog"
         aria-modal="true"
         aria-labelledby="restore-title"

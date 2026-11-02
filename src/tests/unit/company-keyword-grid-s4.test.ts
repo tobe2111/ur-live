@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { S4_TRADES_LOCAL, S2_REGIONS, buildKeywordRows, seedPrefixHash } from '@/features/marketing/api/company-keyword-grid'
+import { S4_TRADES_LOCAL, S2_REGIONS, buildKeywordRows, seedPrefixHash, S5_TRADES_LIFE, S5_TRADES_PROFESSION, S5_TRADES_PROFESSION_CITY, CITY_REGIONS } from '@/features/marketing/api/company-keyword-grid'
 
 /**
  * 🧭 **4단계 — 고수율 광맥 심화** (2026-08-23, 대표 "모두 다 하자").
@@ -49,19 +49,21 @@ describe('무엇을 넓혔나 — 수율로 골랐다', () => {
 describe('시드 이어받기 — 앞부분을 밀면 안 된다', () => {
   const rows = buildKeywordRows()
   const s4Count = S2_REGIONS.length * S4_TRADES_LOCAL.length
+  // 🔁 2026-11-02: 5단계(생활·전문직)가 4단계 **뒤**에 붙었다 — 4단계 블록은 이제 '5단계 바로 앞' 이다.
+  const s5Count = S2_REGIONS.length * (S5_TRADES_LIFE.length + S5_TRADES_PROFESSION.length) + CITY_REGIONS.length * S5_TRADES_PROFESSION_CITY.length
 
   it('🩸 4단계는 **맨 뒤**에 붙는다 — 중간에 끼우면 4,500행을 처음부터 다시 훑는다', () => {
     const s4Kw = new Set(S4_TRADES_LOCAL.map(t => t.kw))
     const isS4 = (k: string) => [...s4Kw].some(t => k.endsWith(` ${t}`))
-    const tail = rows.slice(rows.length - s4Count)
-    expect(tail.every(r => isS4(r.keyword)), '꼬리가 전부 4단계여야 한다').toBe(true)
-    const head = rows.slice(0, rows.length - s4Count)
+    const tail = rows.slice(rows.length - s5Count - s4Count, rows.length - s5Count)
+    expect(tail.every(r => isS4(r.keyword)), '5단계 바로 앞이 전부 4단계여야 한다').toBe(true)
+    const head = rows.slice(0, rows.length - s5Count - s4Count)
     expect(head.some(r => isS4(r.keyword)), '앞부분에 4단계가 섞이면 안 된다').toBe(false)
   })
 
   it('🩸 앞부분 지문이 그대로다 — 이어받기의 근거', () => {
     // 이전 시드가 끝냈던 지점(=4단계 이전 전량)의 지문은 확장 전후로 같아야 한다.
-    const prefixLen = rows.length - s4Count
+    const prefixLen = rows.length - s5Count - s4Count
     expect(seedPrefixHash(rows, prefixLen)).toBe(seedPrefixHash(rows.slice(0, prefixLen), prefixLen))
   })
 

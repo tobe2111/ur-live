@@ -334,6 +334,12 @@
        🧾 2026-11-02 대표 확정 **A안 — 평면**(소비자 화면 전체): 흐름 속 판은 이 그림자를 **안 쓴다**(요소 단위로 걷었다 —
        `scripts/codemods/consumer-plate-flat.mjs`). 이제 이 값은 **떠 있는 면 전용**이다. 그래서 none 으로 바꾸지 않는다. */
     --lift: 0 2px 10px rgb(22 24 28 / 0.12); /* 화이트 카드 들림. 다크에선 none */
+    /* 🪟 2026-11-02 대표 확정 *"블러 없이 유리로 하자"* — 팝업(확인창·시트·알림) 한 벌.
+       `.ur-glass`(판) · `.ur-veil`(뒤 막) 두 클래스가 쓴다. 뒤 화면은 흐리지 않는다(판만 흐림). */
+    --glass: rgb(255 255 255 / 0.74);
+    --glass-rule: rgb(22 24 28 / 0.10);
+    --veil: rgb(10 12 18 / 0.22);
+    --pop-shadow: 0 20px 50px rgb(10 12 18 / 0.20);
 
     /* 🎨 2026-08-23 (대표 확정 — 시안 6종 비교 후 "차콜 블랙으로 가자"): **홈 색면**.
        그루폰식 홈은 어두운 색면 위에 흰 패널을 얹는데, 그 색면이 여기 하나에서 나온다.
@@ -386,6 +392,10 @@
     --rule: rgb(255 255 255 / 0.08);        /* 🎫 카드 안 구분선(다크) */
     --rule-strong: rgb(255 255 255 / 0.32); /* 🎫 outline 버튼·칩 테두리(다크 — 시안 실측 #6E7178 계열) */
     --lift: none;                            /* 🎫 다크는 그림자 0 */
+    --glass: rgb(29 31 41 / 0.72);
+    --glass-rule: rgb(255 255 255 / 0.10);
+    --veil: rgb(0 0 0 / 0.40);
+    --pop-shadow: 0 20px 50px rgb(0 0 0 / 0.40);
     /* 🎫 옅은 면(다크). 종전 `--gbd-chip` 다크값 #1E2023 은 **카드 #141517 기준**이라 카드가
        #1D1F29 로 정합된 뒤엔 거의 안 보인다 — 알파로 얹어 카드가 바뀌어도 한 단계 위를 유지한다. */
     --wash: rgb(255 255 255 / 0.06);
@@ -591,6 +601,11 @@
   --rule-strong: rgb(22 24 28 / 0.28);
   --wash: rgb(22 24 28 / 0.05);
   --home-band: #EDEFF3;
+  /* 🪟 2026-11-02 팝업 유리 — 위 `:root` 라이트와 쌍. 대시보드 위 확인창·알림이 html.dark 에서 검은 유리가 되지 않게. */
+  --glass: rgb(255 255 255 / 0.74);
+  --glass-rule: rgb(22 24 28 / 0.10);
+  --veil: rgb(10 12 18 / 0.22);
+  --pop-shadow: 0 20px 50px rgb(10 12 18 / 0.20);
   /* 🚦 상태 색도 라이트 값으로 되박는다 — 안 그러면 html.dark 에서 흰 카드 위에 다크용 밝은 초록이 뜬다. */
   --tone-ok: #0F7B45;      --tone-ok-bg: #E7F4EC;
   --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;
@@ -1364,6 +1379,35 @@ html.dark .gbd, [data-theme="dark"] .gbd {
  * ⚠️ `animation: none` 이면 `fill-mode: both` 의 시작 프레임도 같이 사라져 **제자리에 그냥 뜬다**
  *   (그게 맞다 — 시트의 정적 위치가 곧 최종 위치다).
  * 🔒 `ur-fade-in` 은 일부러 안 건드린다: 목록·카드가 널리 쓰고 있어 블라스트 반경이 다르다. */
+/* 🪟 2026-11-02 팝업 유리 (대표 *"블러 없이 유리로 하자"*, 시안 `docs/design/popup-system-2026-11.md`).
+ *   `.ur-veil`  — 팝업 뒤 막. 값 하나(라이트 22% · 다크 40%). **흐림 없음**(대표 결정).
+ *   `.ur-glass` — 확인창·시트·알림의 판. 반투명 + 판 자체만 흐림.
+ * ⚠️ 흐림을 못 쓰는 브라우저 · "투명도 줄이기"를 켠 기기는 불투명 `--surface` 로 떨어진다
+ *   (반투명만 남으면 뒤 글자가 비쳐 읽기 어렵다). */
+.ur-veil { background: var(--veil); }
+.ur-glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  box-shadow: var(--pop-shadow);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ur-glass { background: var(--surface); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .ur-glass { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+.ur-glass-rule { border-color: var(--glass-rule); }
+/* 팝업 모서리 — 파일마다 `rounded-[28px]` 를 적지 않고 여기 한 곳이 정한다(`check-shape-lock` 체계 밖 값을 이 셋으로 묶는다).
+ *   카드(확인창·가운데 창) 28 · 아래 시트 32(PC 가운데 창이 되면 28) · 알림 24. */
+.ur-pop-card { border-radius: 28px; }
+.ur-pop-sheet { border-radius: 32px; }
+@media (min-width: 1024px) { .ur-pop-sheet { border-radius: 28px; } }
+.ur-pop-toast { border-radius: 24px; }
+/* 확인창 등장: 살짝 커지며 나타난다(폰·PC 공통 — 가운데 정렬은 grid 라 transform 충돌 없음). */
+@keyframes ur-dialog-in { from { opacity: 0; transform: scale(.96) } to { opacity: 1; transform: none } }
+.ur-dialog-in { animation: ur-dialog-in .22s cubic-bezier(.22,1,.36,1) both; }
+@media (prefers-reduced-motion: reduce) { .ur-dialog-in { animation: none; } }
 .ur-sheet-veil { animation: ur-overlay-in .18s ease-out both; }
 .ur-sheet-in { animation: ur-slide-up .24s cubic-bezier(.22,1,.36,1) both; }
 @media (min-width: 1024px) { .ur-sheet-in { animation: ur-overlay-in .18s ease-out both; } }

@@ -109,7 +109,10 @@ describe('바꾼 것 — outline 컨트롤은 전용 토큰을 쓴다', () => {
     const strong = ((DETAIL + SELLER_CARD + BAR_SRC).match(/1px solid var\(--rule-strong\)/g) || []).length
     expect(strong, '상세의 outline 컨트롤(수량 −/+ · 셀러 방문)이 토큰을 잃었다').toBe(3)
     expect((SELLER_CARD.match(/1px solid var\(--rule-strong\)/g) || []).length, '셀러 방문 버튼이 토큰을 잃었다').toBe(1)
-    expect((STORE.match(/1px solid var\(--rule-strong\)/g) || []).length, '매장 위치 버튼이 토큰을 잃었다').toBe(1)
+    // 🔁 2026-11-02 대표 "매장 칸 테두리 걷기"(A안 평면): 전화·길찾기는 outline 이 아니라 옅은 회색 칸이 됐다.
+    //   불변식은 "테두리 0 · 회색 칸 손잡이"로 바뀐다(되살아나면 매장 칸만 다시 테두리가 남는다).
+    expect((STORE.match(/1px solid var\(--rule-strong\)/g) || []).length, '매장 위치 버튼에 테두리가 되살아났다').toBe(0)
+    expect(STORE).toContain("background: 'var(--gbd-chip)'")
   })
 
   it('상세·매장위치에 카드선(--gbd-line2) 테두리가 남아 있지 않다', () => {

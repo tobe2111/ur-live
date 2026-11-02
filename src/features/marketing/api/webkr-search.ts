@@ -21,6 +21,7 @@ import type { CompanyLead } from './company-discovery'
 import type { PickKeyword } from './company-keyword-pick'
 import { noteNaverCall } from './naver-api-usage'
 import { naverOpenapiBlocked, noteOpenapiStatus } from './naver-openapi-block'
+import { hasBrokenText } from './html-decode'
 
 export const NAVER_OPENAPI = 'https://openapi.naver.com'
 export const stripTag = (s: unknown): string => String(s || '').replace(/<[^>]+>/g, '').trim()
@@ -122,7 +123,9 @@ export async function searchNaverWeb(clientId: string, clientSecret: string, kw:
     seen.add(host)
     // 상호 라벨: 제목 첫 구획(구분자 앞) — 정체성은 도메인(company_key=w:host)이라 라벨 오차 무해.
     const cut = stripTag(it.title).split(/[|\-–—:·]/)[0].trim().slice(0, 60)
-    const name = cut.length >= 2 && !unbalancedBracket(cut) ? cut : host // 괄호 안에서 끊긴 파편("[광주")은 상호가 아니다 → 도메인(og:site_name 치유가 실명으로)
+    // 🔤 네이버가 EUC-KR 사이트 제목을 `�` 로 뭉개서 돌려주는 경우가 있다(2026-11-02 실측 — 수집 즉시 깨진 상호).
+    //   그런 제목은 상호가 아니다 → 도메인으로 두고 이름 치유가 사이트에서 실명을 받아 오게 한다.
+    const name = cut.length >= 2 && !unbalancedBracket(cut) && !hasBrokenText(cut) ? cut : host // 괄호 안에서 끊긴 파편("[광주")은 상호가 아니다 → 도메인(og:site_name 치유가 실명으로)
     out.push({
       company_name: name, category: kw.category, subcategory: kw.subcategory, tier: kw.tier, region: kw.region,
       website: u.origin, // origin 만 저장 — 도메인 dedup + 크롤 진입점

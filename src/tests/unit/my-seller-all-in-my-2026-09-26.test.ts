@@ -338,7 +338,7 @@ describe('⑧ 시트 UI 정리 — PC 폭 · 여백 · 제목 두 겹 (2026-09-2
     expect(sheet, '가운데로 모아야 한다').toContain('lg:left-1/2')
     expect(sheet).toContain('lg:-translate-x-1/2')
     // 폰은 한 글자도 안 바뀐다 — 바텀 시트가 맞다.
-    expect(sheet, '폰 바텀 시트 앵커가 사라졌다').toContain('fixed inset-x-0 bottom-0')
+    expect(sheet, '폰 바텀 시트 앵커가 사라졌다').toContain('fixed inset-x-2 bottom-2')
   })
 
   it('PC 에서 세로도 가운데다 (폰 값이 lg 로 새지 않는다)', () => {

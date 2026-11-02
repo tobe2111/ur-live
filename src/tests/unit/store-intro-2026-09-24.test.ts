@@ -66,8 +66,10 @@ describe('가게 소개가 실제로 그려진다', () => {
 
   it('설명이 상품명과 같은 말이면 두 번 쓰지 않는다 (이사 전 가드 승계)', () => {
     // 렌더 쪽(`spec`)과 판정 쪽(`hasStoreIntro`) 둘 다 같은 규칙을 쓴다.
-    expect(intro).toMatch(/raw !== \(productName \|\| ''\)\.trim\(\)/)
-    expect(intro).toMatch(/raw !== \(src\.productName \|\| ''\)\.trim\(\)/)
+    // 🔁 2026-11-02 (대표 선택 ④): 두 자리가 `specOf` 하나를 부른다 — 같은 말이면 숨김 + 제목 되풀이도 숨김.
+    expect(intro).toContain('const spec = specOf(description, productName)')
+    expect(intro).toContain('const spec = specOf(src.description, src.productName)')
+    expect(intro).toMatch(/if \(!raw \|\| raw === name\) return ''/)
   })
 
   it('상단 탭과 앵커 id 가 맞물린다', () => {
