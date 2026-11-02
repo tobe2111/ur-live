@@ -26,7 +26,8 @@
  *      `localStorage`(저장 지역·마지막 측위)에 달려 있어 서버가 모르고, **아는 척하면 돌아온
  *      사람에게 틀린 동네를 보여 준다.** 줄 높이는 위치 제목 줄과 카테고리 탭이 만든다
  *      (둘 다 **글자**라 안전하다 — 숫자로 예약하지 않는다). [목록|지도] 전환은 2026-10-14 에 걷혔다(지도 알약).
- *   2. **첫 섹션** — 패널 + 제목/부제 + 2열 그리드에 카드 **4장**(시드 그대로).
+ *   2. **첫 섹션** — 패널 + 카드 **4장**(시드 그대로). 2026-11-02 대표 확정(모바일 안 1)으로 제목/부제 줄은 없고
+ *      상단 배너가 이 섹션 **아래**로 내려갔다(`HomeSections bareFirst` 와 같은 모양).
  *      카드는 `GroupBuyFeedCard` 의 마크업을 그대로 옮기고 사진은 `DealCardMedia` 의 커버 한 장
  *      (`seen` 초기값이 `{0}` 이라 클라도 첫 렌더에 `<img>` 가 하나다).
  *      `src`/`srcSet`/`sizes` 는 **카드와 같은 함수**(`cfImage`/`cfSrcSet`)로 만든다 — 하나만
@@ -49,7 +50,6 @@
  *   다시 받는다(히어로 preload 가 2026-07-02 부터 안고 있는 것과 **같은** 트레이드오프).
  * - 마운트 전에는 탭·필터가 안 눌린다(카드 링크는 `<a href>` 라 **눌린다**).
  */
-import { nearSubtitle } from '../../shared/home-near'
 import { HOME_H1 } from '../../shared/seo/consumer-surfaces'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { DEAL_CAT_LABELS, isHomeVisibleProduct } from '../../shared/deal-cats'
@@ -270,10 +270,10 @@ function stripBannerHtml(banners: SeededStripBanner[]): string {
  *
  * @param sectionsSeedJson `__SSR_INITIAL_SECTIONS__` 본문(JSON 문자열)
  * @param loaderHtml 종전 유달이 로더 HTML — 그린 내용 **아래**에 짧게 붙인다
- * @param nearLabel 📍 2026-10-13 위치 라벨(쿠키 `ur_loc_n`). 첫 줄이 위치로 정렬됐으면 소제목을
- *   화면(`HomeSections`)과 **같은 함수**(`nearSubtitle`)로 그린다 — 다르면 마운트 때 글자가 바뀐다.
+ * @param _nearLabel 📍 2026-10-13 위치 라벨(쿠키 `ur_loc_n`). 2026-11-02 첫 섹션 제목 줄을 걷으면서 안 쓴다
+ *   (호출부 `worker/index.ts` 는 잠금 파일이라 시그니처를 그대로 둔다).
  */
-export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: string, nearLabel = ''): string {
+export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: string, _nearLabel = ''): string {
   let sec: { title?: string | null; subtitle?: string | null; near?: boolean; products?: SeedProduct[] } | undefined
   let strip: SeededStripBanner[] = []
   try {
@@ -296,13 +296,11 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
     //    0이고(= 첫 화면 잠금 무영향) React 쪽(`MobileHomePage`)도 **같은 자리에 같은 값**을 그린다.
     `<h1 class="sr-only">${escText(HOME_H1)}</h1>` +
     chromeHtml() +
-    `<div class="mt-3">${stripBannerHtml(strip)}<section class="${HOME_FS_CLASS.panel}">` +
-    `<div class="${HOME_FS_CLASS.secHead}"><div class="min-w-0">` +
-    `<h3 class="${HOME_FS_CLASS.secTitle}">${escText(sec.title)}</h3>` +
-    ((sec.near || sec.subtitle) ? `<p class="${HOME_FS_CLASS.secSub}">${escText(sec.near ? nearSubtitle(nearLabel) : (sec.subtitle as string))}</p>` : '') +
-    `</div></div>` +
+    // 🏠 2026-11-02 대표 확정(모바일 안 1) — 첫 섹션은 **제목 줄 없이** 카드만, 배너는 그 **아래**.
+    //    화면(`MobileHomePage` → `HomeSections bareFirst`)과 같은 순서여야 마운트 때 안 튄다.
+    `<div class="mt-3"><section class="${HOME_FS_CLASS.panel}">` +
     `<div class="${HOME_FS_CLASS.grid}">${cards}</div>` +
-    `</section></div></div>`
+    `</section>${stripBannerHtml(strip)}</div></div>`
 
   // 🧷 노드 id 는 `/pass/`·`/vouchers/` 와 같다 — `lib/boot-first-screen.ts` 가 경로를 안 가리고
   //   이 노드를 들고 있다가 Suspense 폴백 안에 **같은 노드로** 도로 붙인다(재파싱·재다운로드 0).

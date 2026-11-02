@@ -27,16 +27,15 @@ function skeletonBranch() {
 }
 
 describe('① 자리 분기의 순서', () => {
-  it('자리 섹션 → 유어쇼츠 레일 → 중간 배너 (진짜 분기와 같은 순서)', () => {
+  it('자리 섹션 → (기본) 유어쇼츠 레일 → 중간 배너 / (shortsAfter>0) 배너 → 레일 — 진짜 분기와 같은 순서', () => {
     const s = skeletonBranch()
     const sec = s.indexOf('</section>')
-    const rail = s.indexOf('{shortsRail}')
-    const mid = s.indexOf('{midBanner}')
     expect(sec).toBeGreaterThan(0)
-    expect(rail).toBeGreaterThan(sec)
-    expect(mid).toBeGreaterThan(rail)
-    // 진짜 분기도 첫 섹션 뒤에 레일 → 배너다(이게 바뀌면 자리도 같이 바꿔야 한다)
-    expect(sections).toMatch(/\{sIdx === 0 && shortsRail\}\s*\{sIdx === 0 && midBanner\}/)
+    // 🏠 2026-11-02 모바일 안 1 — 유어쇼츠가 둘째 섹션 뒤로 가면 자리에서도 배너가 먼저다.
+    expect(s.slice(sec)).toContain('shortsAfter > 0 ? <>{midBanner}{shortsRail}</> : <>{shortsRail}{midBanner}</>')
+    // 진짜 분기: 기본은 첫 섹션 뒤 레일 → 배너, shortsAfter>0 이면 배너 뒤 그 섹션 다음에 레일
+    expect(sections).toMatch(/\{shortsAfter === 0 && sIdx === 0 && shortsRail\}\s*\{sIdx === 0 && midBanner\}/)
+    expect(sections).toContain('{shortsAfter > 0 && sIdx === Math.min(shortsAfter, visible.length - 1) && shortsRail}')
   })
   it('자리 카드는 DealCardPlaceholder 로 그린다(13px 막대 둘로 돌아가지 않는다)', () => {
     const s = skeletonBranch()

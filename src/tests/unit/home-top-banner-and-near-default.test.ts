@@ -49,11 +49,11 @@ describe('① 상단 띠 배너 자리(strip)', () => {
     expect(parseBannerSlot('')).toBeNull()
   })
 
-  it('두 홈 모두 strip 배너를 맨 위 콘텐츠 앞에 그린다 (한쪽만 반영하면 두 홈이 갈린다)', () => {
+  it('두 홈 모두 strip 배너를 그린다 — PC 는 맨 위, 모바일은 첫 섹션 뒤(2026-11-02 안 1)', () => {
     const m = codeOnly(read('src/pages/mobile-home/MobileHomePage.tsx'))
-    const strip = m.indexOf('<HomeBannerStrip variant="strip" />')
-    expect(strip, '모바일: strip 배너 미배선').toBeGreaterThan(-1)
-    expect(strip, '모바일: strip 이 첫 섹션 아래에 있다').toBeLessThan(m.indexOf('<HomeSections'))
+    // 🏠 2026-11-02 대표 확정(모바일 안 1) — 모바일은 strip 배너를 첫 섹션 **뒤**(midBanner 자리)에 그린다.
+    expect(m, '모바일: strip 배너 미배선').toMatch(/midBanner=\{<><HomeBannerStrip variant="strip" \/>/)
+    expect(m).toMatch(/<HomeSections\s+bareFirst/)
     // 🧩 2026-10-14 시안 4: PC 는 같은 strip 배너를 `PcHeroBanners`(큰 1 + 작은 2)로 그리고, 그것이 맨 위다.
     const pc = codeOnly(read('src/pages/pc-home/PcHomePage.tsx'))
     const hero = pc.indexOf('<PcHeroBanners')

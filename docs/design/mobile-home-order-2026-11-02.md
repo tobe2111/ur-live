@@ -24,5 +24,10 @@
 - ⚠️ 첫 화면(LCP) 영향 — 배너가 첫 화면 이미지였다. 첫 이용권 카드 사진이 LCP 가 된다(워커 프리로드 `home-card-preload` 이미 첫 섹션 카드 대상). 배너 프리로드(`buildHomeHeroPreloadLink`)가 있으면 빼야 낭비가 없다 — 구현 때 확인.
 - PC 홈(`PcHomePage`)은 대상 아님(대표가 '모바일 기준' 이라고 했다).
 
-## ✅ 구현 완료
-(대기)
+## ✅ 구현 (2026-11-02 대표 *"그냥 안 1로 하되 … 더보기도 없애고"* + *"일단 대한민국은 서울 그림으로"*)
+- `HomeSections` 에 `bareFirst`(첫 섹션 제목 줄 없음) · `shortsAfter`(유어쇼츠 자리) — PC 는 안 넘겨 종전 그대로.
+- `MobileHomePage` — strip 배너를 midBanner 자리(첫 섹션 뒤)로, `shortsAfter={1}`.
+- 서버 첫 화면(`home-first-screen.ts`) — 제목 줄 없이 카드, 배너는 섹션 **뒤**(화면과 같은 순서 — 안 그러면 마운트 때 튄다).
+- '전국'(지역·위치 없음) → 서울 그림(`regionHeroFor` 의 `NATIONAL_HERO`). 전국 전용 그림이 오면 그 한 줄만 바꾼다.
+- 가드: 기존 시험 7파일 재조준 + 주입 `scripts/mutations/mobile-home-plan1-2026-11-02.mjs` 4건(전부 빨간불 확인).
+- ⚠️ 남은 것: 배너 사진을 응답 헤더로 먼저 받게 하는 처리(`homeLcpImage`)는 그대로다 — 배너가 첫 화면 아래로 내려가 이제 카드 사진과 회선을 나눈다. 라이브 LCP 를 재 보고 필요하면 뺀다.

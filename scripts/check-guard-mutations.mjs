@@ -897,13 +897,14 @@ const MUTATIONS = [
       '"내가 맞게 쳤나"를 손님 앞에서 의심하게 만든다.',
   },
   {
-    name: '🎫 상단 띠 배너가 첫 섹션 **아래로** 내려간다',
+    // 🔁 2026-11-02 재조준 — 대표 확정(모바일 안 1)으로 배너가 첫 섹션 **뒤**(midBanner 자리)로 갔다.
+    name: '🎫 모바일 상단 띠 배너 배선이 빠진다 (조용한 부재)',
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
-    find: '          <HomeBannerStrip variant="strip" />\n          <HomeSections',
-    replace: '          <HomeSections',
+    find: 'midBanner={<><HomeBannerStrip variant="strip" /><HomeBannerStrip variant="inline" /></>}',
+    replace: 'midBanner={<><HomeBannerStrip variant="inline" /></>}',
     test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
     why:
-      '대표 지시는 *"인기 이용권 섹션 **위**에"* 다. 배선이 빠지면 에러 없이 그냥 안 뜬다 — ' +
+      '배선이 빠지면 에러 없이 그냥 안 뜬다 — ' +
       '이 레포가 반복해 겪은 "조용한 부재" 클래스라 배선 자체를 고정한다.',
   },
   {
