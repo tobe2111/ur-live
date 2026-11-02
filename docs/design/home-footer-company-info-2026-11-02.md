@@ -15,6 +15,9 @@
 7. 얇은 구분선 → `© … All rights reserved.`
 
 ## 구현 todo
-- [ ] 홈 맨 아래(폰 포함)에 위 구조로 회사 정보 — 값은 기존 사업자 정보 SSOT(`SiteFooter` 등)에서
-- [ ] 마이 맨 아래 엉성한 영역 정리(법적 표시는 홈 쪽이 생긴 뒤에 뺄 것)
+- [x] 홈 맨 아래(폰 포함)에 위 구조로 회사 정보 — 값은 기존 사업자 정보 SSOT(`SiteFooter` 등)에서
+- [x] 마이 맨 아래 엉성한 영역 정리(법적 표시는 홈 쪽이 생긴 뒤에 뺄 것)
 - 담당: 세션 "소비자 화면 판 평면화"
+
+## ✅ 구현 완료
+- #2099 (`ac74dd9`) — `src/components/main/CompanyInfoFooter.tsx` + 값 SSOT `src/shared/company-info.ts`, 폰 홈 맨 아래. 마이 맨 아래 잔글씨 링크 → 설정 구역 줄. SNS 줄은 공식 계정이 없어 뺐다.
