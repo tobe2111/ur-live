@@ -74,17 +74,19 @@ export default [
   {
     name: '🧭 [랜딩SEO] 정직 고지가 다시 옛 실측일(liveMeasuredAt)을 쓴다',
     file: 'src/pages/partners/PartnerFaq.tsx',
-    find: `유어딜은 초기 서비스입니다. {F.catalogMeasuredAt} 기준`,
-    replace: `유어딜은 초기 서비스입니다. {F.liveMeasuredAt} 기준`,
+    // 🔄 2026-11-02 재조준: 숫자·기준일은 이제 라이브(c.measuredAt) — 손으로 적은 날짜로 되돌리는 것을 막는다.
+    find: `유어딜은 초기 서비스입니다. {c.measuredAt} 기준`,
+    replace: `유어딜은 초기 서비스입니다. {'2026-10-12'} 기준`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why: '2026-10-31 판매 중 이용권만 다시 셌다(165건). 옛 날짜를 붙이면 새 숫자에 다른 기준일이 붙는다.',
   },
   {
     name: '🧭 [랜딩SEO] 덱의 판매 중 이용권 수가 랜딩과 갈린다',
     file: 'docs/business/proposals/deck-common.mjs',
-    find: `  activeVouchers: '165', realStores: '2',`,
-    replace: `  activeVouchers: '359', realStores: '2',`,
-    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    // 🔄 2026-11-02 재조준: 덱과 랜딩이 같은 서버 숫자를 읽는다 — 덱이 라이브를 안 합치면 둘이 갈린다.
+    find: `  ...LIVE,\n`,
+    replace: ``,
+    test: 'src/tests/unit/proposal-auto-build-2026-11-02.test.ts',
     why: '사장님은 PDF 를 받고 사이트를 열어 본다. 숫자가 다르면 둘 다 신뢰를 잃는다.',
   },
   {

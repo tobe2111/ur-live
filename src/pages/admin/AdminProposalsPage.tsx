@@ -172,8 +172,8 @@ export default function AdminProposalsPage() {
           ) : auto.mode === 'loading' || (autoDeck && !pdf.failed) ? (
             <p data-testid="proposal-source" className="text-[12px] text-gray-500">자동 생성본을 확인하는 중…</p>
           ) : (
-            <p data-testid="proposal-source" className="text-[12px] text-red-700">
-              ⚠️ {auto.mode === 'fallback' ? auto.reason : '이 소개서의 자동 생성본을 불러오지 못했습니다'} — 저장소에 있는 판을 보여 줍니다(숫자가 낡았을 수 있습니다).
+            <p data-testid="proposal-source" className="text-[12px] font-bold text-tone-bad">
+              {auto.mode === 'fallback' ? auto.reason : '이 소개서의 자동 생성본을 불러오지 못했습니다'} — 저장소에 있는 판을 보여 줍니다(숫자가 낡았을 수 있습니다).
             </p>
           )}
           <p className="text-[12px] text-gray-500">
@@ -181,9 +181,9 @@ export default function AdminProposalsPage() {
             {' '}<code className="px-1 rounded bg-white border border-gray-200 text-[0.9em]">docs/business/proposals/{active.source.replace('.pptx', '.build.mjs')}</code> 수정을 요청해 주세요.
           </p>
           {warnings.length > 0 && (
-            <ul data-testid="proposal-warnings" className="mt-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-800 space-y-0.5">
+            <ul data-testid="proposal-warnings" className="mt-1 rounded-lg bg-tone-bad-bg px-3 py-2 text-[12px] text-tone-bad space-y-0.5">
               {warnings.map(w => (
-                <li key={w.id}>⚠️ {w.message}</li>
+                <li key={w.id}>덱 확인 필요: {w.message}</li>
               ))}
             </ul>
           )}
