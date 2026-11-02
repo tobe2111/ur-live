@@ -110,3 +110,32 @@ export function runnerLogicChanged(baseSrc, headSrc) {
 export function testSpawnsSubprocess(src) {
   return typeof src === 'string' && /\b(execFileSync|execSync|spawnSync|spawn)\s*\(/.test(src)
 }
+
+/**
+ * 🪞 **글자까지 같은 주입이 두 번 있으면 하나로 접는다 — 같은 이름에 내용이 다를 때만 멈춘다** (2026-11-02)
+ *
+ * 왜(실측): 동결 시험 하나가 main 을 빨갛게 만들자 **두 세션이 각자** 같은 처방을 했다 —
+ * 같은 주입 2건을 #2098 은 `live-schema-2026-11-02.mjs` 로, #2089 는 `search-live-schema-2026-11-02.mjs` 로 옮겼다.
+ * 둘 다 머지되자 이 러너의 이름 중복 검사가 **모든 PR 의 Verify 를 막았다**(main 도 빨강).
+ * 그런데 그 두 건은 `file·find·replace·test` 가 **한 글자도 다르지 않았다** — 무엇을 돌릴지가 모호하지 않다.
+ * 중복 검사의 목적(`--only` 가 엉뚱한 것을 돌리지 않게)은 *내용이 다른* 같은 이름에만 걸린다.
+ * ⇒ 동시에 여러 세션이 도는 레포에서 **같은 고침이 두 번 들어오는 것은 정상**이다. 그걸로 main 을 막지 않는다.
+ *
+ * @template {{name:string}} T
+ * @param {T[]} list
+ * @returns {{ list: T[], identical: string[], conflicts: string[] }}
+ *   identical = 접은 이름(경고만) · conflicts = 같은 이름에 내용이 다름(멈춘다)
+ */
+export function foldDuplicateInjections(list) {
+  const byName = new Map()
+  const out = []
+  const identical = new Set()
+  const conflicts = new Set()
+  for (const m of list) {
+    const prev = byName.get(m.name)
+    if (!prev) { byName.set(m.name, m); out.push(m); continue }
+    if (IDENTITY.every((k) => prev[k] === m[k])) identical.add(m.name)
+    else conflicts.add(m.name)
+  }
+  return { list: out, identical: [...identical], conflicts: [...conflicts] }
+}
