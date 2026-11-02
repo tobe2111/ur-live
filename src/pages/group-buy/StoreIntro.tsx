@@ -71,7 +71,7 @@ export default function StoreIntro({
   const avatar = sellerAvatar ? (cfImage(sellerAvatar, { width: 120, format: 'auto' }) || sellerAvatar) : null
 
   return (
-    <div id="gb-sec-store" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
+    <div id="gb-sec-store" style={{ padding: '20px 16px', scrollMarginTop: 116 }}>
       {spec && (
         <>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>상품 구성</div>

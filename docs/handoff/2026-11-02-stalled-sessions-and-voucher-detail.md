@@ -27,3 +27,11 @@
 - 🔴 담기 적립(`affiliate_program_enabled`)이 꺼져 있어 "팔리면 적립" 은 지금 사실이 아니다 — 대표께 보고함. 켜는 건 결재(C).
 - 다음 세션 첫 액션: 대표가 ①-2 · ④ 를 고르면 `docs/design/voucher-detail-sell-gallery-2026-11-02.md` todo 대로.
   ⚠️ `GroupBuyDetailPage.tsx` 는 로딩 잠금 파일 — ④ 는 그 파일을 반드시 건드리므로 `[UNLOCK_LOADING]` 승인 필요.
+
+## 3차 — 구현 (대표 "C안" + 잠금 해제 승인)
+- 상세 C안 · ②A · ③B · 다크 바탕 구현. 상세: `docs/locks/loading/2026-11-02-detail-c-tabs.md`.
+- 다음 세션 첫 액션: 머지·배포 후 폰 UA 로 `urdeal.kr/group-buy/2919` — h1 `text-[17px]` 실재, 다크 바탕 `#11141C`,
+  탭 `aria-label="상세 구역"` 존재. 크게 보기 체감 속도는 대표 눈.
+- 틀릴 뻔한 것: 하네스에서 `/group-buy/2919` 를 그냥 열면 시드가 비어 "0원·구매 불가" 로 그려진다 —
+  `--stub-file` 로 라이브 응답(`/api/group-buy/products/2919`)을 먹여야 한다. 결함 아님.
+- 남은 것: ①-2 팔아보기(이름·적립 문구 — 담기 적립 스위치가 꺼져 있다, 켜는 건 결재).
