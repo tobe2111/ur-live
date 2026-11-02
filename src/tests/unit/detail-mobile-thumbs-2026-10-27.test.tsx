@@ -44,13 +44,14 @@ describe('모바일 썸네일 2칸', () => {
     expect(screen.getByLabelText('사진 3 보기'), '다음 두 장(3·4)으로 안 바뀌었다').toBeTruthy()
     expect(screen.queryByLabelText('사진 2 보기'), '지금 큰 사진이 아래에 또 나온다').toBeNull()
   })
-  it('마지막 칸(+N)을 누르면 가운데 팝업이 열리고 "n / 전체" 를 보여 준다', () => {
+  // 팝업(폰)은 누를 때 받는다(lazy) — 그래서 기다려 찾는다.
+  it('마지막 칸(+N)을 누르면 가운데 팝업이 열리고 "n / 전체" 를 보여 준다', async () => {
     render(<DetailGallery images={IMGS} alt="가게" />)
     fireEvent.click(screen.getByLabelText('전체 사진 4장 크게 보기'))
     expect(screen.getByRole('dialog')).toBeTruthy()
-    expect(screen.getByText('3 / 4')).toBeTruthy()
+    expect(await screen.findByText('3 / 4')).toBeTruthy()
     fireEvent.click(screen.getAllByLabelText('4번째 사진')[0])
-    expect(screen.getByText('4 / 4')).toBeTruthy()
+    expect(await screen.findByText('4 / 4')).toBeTruthy()
   })
 })
 

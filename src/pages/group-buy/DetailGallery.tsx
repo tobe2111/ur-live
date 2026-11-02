@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { getWarmImage } from '@/utils/image-warm'
-import DetailLightboxMobile from './DetailLightboxMobile'
+// 📦 2026-11-02: 크게 보기(폰)는 누를 때만 받는다 — 상세 첫 화면 무게 예산(surface-budgets)을 넘겼다(+1.6KB).
+const DetailLightboxMobile = lazy(() => import('./DetailLightboxMobile'))
 import {
   DETAIL_DESKTOP_QUERY, DETAIL_HERO_DESKTOP_WIDTH, DETAIL_HERO_MOBILE_WIDTH, DETAIL_THUMB_WIDTH,
   DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, DETAIL_PC_THUMB_RATIO,
@@ -317,10 +318,12 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
           {/* 📱 폰 — 대표 확정 ③B 가운데 팝업(손가락을 따라 밀리고 옆 사진을 미리 받는다). */}
-          <DetailLightboxMobile images={images} active={Math.min(active, images.length - 1)} alt={alt}
-            onActive={setActive} onClose={() => setLightbox(false)}
-            fullUrl={detailPlainUrl} placeholderUrl={(src) => heroUrl(src, DETAIL_HERO_MOBILE_WIDTH)}
-            onDead={(src) => setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src)))} />
+          <Suspense fallback={null}>
+            <DetailLightboxMobile images={images} active={Math.min(active, images.length - 1)} alt={alt}
+              onActive={setActive} onClose={() => setLightbox(false)}
+              fullUrl={detailPlainUrl} placeholderUrl={(src) => heroUrl(src, DETAIL_HERO_MOBILE_WIDTH)}
+              onDead={(src) => setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src)))} />
+          </Suspense>
           <div className="hidden lg:block relative w-full max-w-[1100px] px-4" onClick={(e) => e.stopPropagation()}
             onTouchStart={(e) => { touchX.current = e.touches[0]?.clientX ?? null }}
             onTouchEnd={(e) => {
