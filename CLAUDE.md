@@ -1473,6 +1473,7 @@ Pre-commit hook 이 다음 파일 변경 시 `guide-seed.ts` 동시 수정 검�
 - 🛡️ **products 컬럼 추가 금지(예산제, 2026-06-10)**: 새 도매/브랜드/전시 메타는 `product_supply_meta`(K-V 사이드테이블, `src/worker/utils/product-supply-meta.ts`) 사용. products ALTER 가 정말 필요하면 `scripts/products-column-baseline.json` 에 등록 + PR 사유 — CI 가 차단함
 - 🛡️ **sellers 컬럼 추가 금지(2026-07-05 — 한도 도달)**: sellers 는 **정확히 100컬럼 = D1 결과셋 한도**. 새 셀러 메타/설정/플래그는 `seller_meta`(K-V 사이드테이블, `src/worker/utils/seller-meta.ts` — product_supply_meta 미러) 사용. ALTER 는 `scripts/sellers-column-baseline.json` 등록 필요 — CI 차단
 - 검증: `bash scripts/check-schema-refs.sh`
+- 🗄️ **라이브 컬럼 사진(2026-11-02)**: 컬럼 가드는 `src/shared/db/live-schema.snapshot.json`(라이브 D1 실측)에 **있는 표는 그것만** 믿는다 — 레포엔 같은 표의 정의가 여러 벌이라 합쳐 보면 틀린 컬럼도 통과했다(search_logs 0행 사고). 라이브에 표·컬럼을 더한 뒤엔 `node scripts/snapshot-live-schema.mjs` 로 다시 찍는다. 기존 불일치 47건은 `scripts/live-columns-baseline.json` 에 동결(줄이기만).
 
 ## 🔒 API 엔드포인트 보안 규칙 (필수)
 

@@ -435,6 +435,9 @@ export class ProductRepository {
   /**
    * Full-Text Search (FTS5) - 고성능 검색
    */
+  /** 🔦 직전 searchByText 가 정상(`ranked`)이었나 옛 검색으로 내려갔나(`fallback`). */
+  lastSearchMode: 'ranked' | 'fallback' | undefined = undefined
+
   async searchByText(
     query: string,
     filter: Omit<ProductFilter, 'search'>,
@@ -483,11 +486,15 @@ export class ProductRepository {
 
     try {
       const result = await this.db.prepare(sql).bind(...params).all<Product>();
+      this.lastSearchMode = 'ranked'
       // 🖼️ 2026-08-27: 검색 결과도 카드로 그려지니 갤러리를 같은 규칙으로 자른다(페이로드 축소).
       return capGalleries(result.results || []);
     } catch (error) {
       // 컬럼 자가치유(productDetailColsHealed)로도 못 살린 환경 — 최소 조건 검색으로 폴백.
-      console.warn('[ProductRepository] ranked search failed, falling back to findAll:', error);
+      // 🔦 2026-11-02: 내려간 사실을 응답에 싣는다(lastSearchMode → searchMode → `search_mode`).
+      //   경고 한 줄만 남기면 아무도 안 본다 — 2026-09 에 4주를 그렇게 보냈다.
+      this.lastSearchMode = 'fallback'
+      console.error('[ProductRepository] ranked search failed, falling back to findAll:', error);
       return this.findAll({ ...filter, search: query }, offset, limit);
     }
   }

@@ -61,3 +61,19 @@
 3. 동의어 `돈가스 · 돈까스 · 돈카츠`.
 
 ⚠️ 남은 것: 내 실측 검색(부산·대구·강남)이 `popular_searches` 에 몇 건 쌓였다 — 지우는 건 데이터 쓰기라 안 했다.
+
+## 4차 (대표 *"왜 망가지는거야? 안망가지게 할 수 없어?"*) — 재발 방지 구조
+**원인 진단**: 검색이 고칠 때마다 망가진 공통 원인 둘 — ① 레포엔 같은 표의 정의가 여러 벌(D1 마이그레이션이
+라이브에 안 들어감)인데 컬럼 가드가 그걸 **합쳐** 봐서 틀린 컬럼도 통과(search_logs 0행 · 2026-09 `rating`)
+② 망가져도 **조용함**(랭킹 검색이 죽으면 옛 검색으로 내려가며 경고 한 줄 — 4주).
+1. **라이브 컬럼 사진** `src/shared/db/live-schema.snapshot.json`(라이브 D1 셋, 390표) + `scripts/snapshot-live-schema.mjs`.
+   `check-sql-column-exists.mjs` 가 사진에 있는 표는 사진만 믿는다(기본 켬, `--no-live` 로 종전).
+   켜자마자 **코드 전체에서 47종(60곳) 불일치**가 나왔다 → `scripts/live-columns-baseline.json` 동결(새 것만 막음).
+   대부분 중단 기능(틱톡·경매·라이브)이지만 **머니 경로 의심 몇 곳**: `refund.ts:197` order_refund_history.amount ·
+   `returns` refund_amount_* · `supplier_settlements.payout_ref` · `checkout.ts:287` cart_items.created_at ·
+   `consignment-settlement` order_items.consignment_id. 일부는 런타임 ensure 가 첫 사용 때 컬럼을 만드는 경우일 수 있어
+   **전부 결함으로 단정하지 말 것** — 하나씩 코드로 확인(머니 경로는 결재).
+2. **검색 엔진 상태를 응답에** — `search_mode: ranked|fallback`.
+3. **배포 직후 라이브 검색 점검** `scripts/check-live-search.mjs`(main.yml 배포 뒤 + live-contracts 주간):
+   서울·부산·숙소·맛집 이용권 수 하한 · 전부 이용권인가 · `search_mode==='ranked'`.
+   배포 전 실행 → 숙소·맛집 0 과 search_mode 부재로 **빨간불(의도대로)**.
