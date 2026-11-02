@@ -21,12 +21,4 @@ export default [
     test: TEST,
     why: '크기·위치를 움직이면 옆 글자가 밀린다(로딩 밀림 클래스).',
   },
-  {
-    name: '🎬 유달이 상황 하나에 몸짓이 빠진다',
-    file: 'src/components/mascot/Udal.tsx',
-    find: "  empty: 'ur-udal-g-sway',\n",
-    replace: '',
-    test: TEST,
-    why: 'motion 을 켠 빈 화면 유달이가 "ur-udal-g undefined" 로 그려져 아예 안 움직인다.',
-  },
 ]

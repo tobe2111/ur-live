@@ -1661,22 +1661,6 @@ html.dark .gbd, [data-theme="dark"] .gbd {
    `docs/design/motion-mockups-2026-11.md`). 규칙: transform·opacity·clip-path·stroke 만 ·
    한 번(또는 두세 번) 돌고 멈춘다 · '동작 줄이기' 면 전부 끈다.
    ────────────────────────────────────────────────────────────── */
-/* 유달이 상황별 몸짓 — 등장 → 몸짓 두 번 → 둥실(무한). 뒤에 적힌 애니메이션이 같은 속성을 이긴다. */
-@keyframes ur-udal-in    { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-@keyframes ur-udal-wave  { 0%,100% { transform: rotate(0); } 20% { transform: rotate(-6deg); } 40% { transform: rotate(5deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(2deg); } }
-@keyframes ur-udal-sway  { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
-@keyframes ur-udal-look  { 0%,100% { transform: none; } 25% { transform: translateX(-6px) rotate(-5deg); } 60% { transform: translateX(6px) rotate(5deg); } }
-@keyframes ur-udal-tug   { 0%,100% { transform: none; } 20% { transform: translateX(-5px) rotate(-2deg); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px) rotate(-1deg); } 80% { transform: translateX(1px); } }
-@keyframes ur-udal-jump  { 0%,100% { transform: none; } 40% { transform: translateY(-10px); } 70% { transform: none; } 85% { transform: translateY(-3px); } }
-@keyframes ur-udal-popin { 0% { opacity: 0; transform: scale(.6); } 70% { opacity: 1; transform: scale(1.06); } 100% { opacity: 1; transform: none; } }
-.ur-udal-g { transform-origin: 50% 95%; }
-.ur-udal-g-wave { animation: ur-udal-in .45s cubic-bezier(.16,1,.3,1) both, ur-udal-wave 1.1s ease-in-out .45s 2, ur-udal-bob 3.2s ease-in-out 2.7s infinite; }
-.ur-udal-g-sway { animation: ur-udal-in .45s cubic-bezier(.16,1,.3,1) both, ur-udal-sway 1.2s ease-in-out .5s 2, ur-udal-bob 3.2s ease-in-out 2.9s infinite; }
-.ur-udal-g-look { animation: ur-udal-in .45s cubic-bezier(.16,1,.3,1) both, ur-udal-look 1.6s ease-in-out .45s 1, ur-udal-bob 3.2s ease-in-out 2.1s infinite; }
-.ur-udal-g-tug  { animation: ur-udal-in .45s cubic-bezier(.16,1,.3,1) both, ur-udal-tug .6s ease-in-out .6s 2, ur-udal-bob 3.2s ease-in-out 1.9s infinite; }
-.ur-udal-g-jump { animation: ur-udal-popin .45s cubic-bezier(.2,1.3,.4,1) both, ur-udal-jump .6s ease-out .9s 1, ur-udal-bob 3.2s ease-in-out 1.6s infinite; }
-.ur-udal-g-pop  { animation: ur-udal-popin .45s cubic-bezier(.2,1.3,.4,1) both, ur-udal-bob 3.2s ease-in-out .6s infinite; }
-
 /* 찜 하트 — 점 여섯 개가 퍼진다(하트의 ur-pop 과 함께). */
 .ur-burst { position: absolute; inset: 0; pointer-events: none; }
 .ur-burst i { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: currentColor; opacity: 0; animation: ur-spark .5s ease-out .06s both; }
@@ -1703,7 +1687,6 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
-  .ur-udal-g-wave, .ur-udal-g-sway, .ur-udal-g-look, .ur-udal-g-tug, .ur-udal-g-jump, .ur-udal-g-pop,
   .ur-burst i, .ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-press, .ur-ring { animation: none !important; }
 }
 

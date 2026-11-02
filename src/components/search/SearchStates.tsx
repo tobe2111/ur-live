@@ -73,7 +73,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
     return (
       <div className="flex flex-col items-center justify-center py-20">
         {/* 🦦 2026-10-07 유달이 — 오류는 '미안' 얼굴(빨간 경고 원 대체). */}
-        <Udal mood="oops" size={112} motion className="mb-4" />
+        <Udal mood="oops" size={112} className="mb-4" />
         <p className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">오류가 발생했습니다</p>
         <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{error}</p>
         <div className="flex gap-3">
@@ -175,7 +175,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
       <div className="py-10">
         <div className="flex flex-col items-center justify-center mb-6">
           {/* 🦦 2026-10-07 유달이 — 찾는 게 없을 땐 갸웃. */}
-          <Udal mood="notFound" size={112} motion className="mb-3" />
+          <Udal mood="notFound" size={112} className="mb-3" />
           <p className="text-[15px] font-medium text-gray-900 dark:text-white mb-1">'{query}' 검색 결과가 없어요</p>
           <p className="text-[13px] text-gray-500 dark:text-gray-400">다른 검색어를 시도해보세요</p>
         </div>

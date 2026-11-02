@@ -3,7 +3,7 @@
  *
  * 지키는 것:
  *   ① 움직임은 레이아웃을 건드리지 않는다(transform·opacity·stroke 만) · '동작 줄이기' 면 꺼진다.
- *   ② 유달이 몸짓은 **상황(mood)이 정한다** — 모든 mood 에 몸짓이 있고 CSS 가 실재한다.
+ *   ② (유달이 몸짓은 2026-11-02 대표 *"유달이는 빼고"* 로 넣지 않는다 — 종전 둥실 그대로.)
  *   ③ 숫자 올라가기는 늦게 온 값에서 시작하고, 끝은 정확한 값이며, "아직 모름" 을 망가뜨리지 않는다.
  *   ④ 잠금 파일(BottomNav · GroupBuyFeedCard)의 로딩 계약은 그대로다 — 미리 받기 · 링크 기본 동작 폴백.
  *   ⑤ 사용 완료 도장은 **보는 중에 찍힐 때만** 쾅 — 열 때 이미 쓴 표는 조용하다.
@@ -20,12 +20,12 @@ import { stripComments } from '../helpers/source-text'
 
 const R = (p: string) => readFileSync(p, 'utf8')
 const css = stripComments(R('src/index.css'))
-const kit = css.slice(css.indexOf('@keyframes ur-udal-in'), css.indexOf('::view-transition-old(root)'))
+const kit = css.slice(css.indexOf('.ur-burst {'), css.indexOf('::view-transition-old(root)'))
 
 describe('① 움직임 키트 CSS', () => {
   it('키트 키프레임은 transform · opacity 만 움직인다', () => {
     const frames = [...kit.matchAll(/@keyframes\s+([\w-]+)\s*\{([\s\S]*?)\}\s*\}/g)]
-    expect(frames.length).toBeGreaterThanOrEqual(14)
+    expect(frames.length).toBeGreaterThanOrEqual(7)
     for (const [, name, body] of frames) {
       const props = [...body.matchAll(/([a-z-]+)\s*:/g)].map((m) => m[1])
       for (const p of props) expect(['transform', 'opacity'], name).toContain(p)
@@ -34,27 +34,10 @@ describe('① 움직임 키트 CSS', () => {
   it('동작 줄이기면 키트 클래스와 화면 전환이 전부 꺼진다', () => {
     const reduce = css.slice(css.indexOf('::view-transition-old(root)'))
     const block = reduce.slice(reduce.indexOf('@media (prefers-reduced-motion: reduce)'))
-    for (const c of ['ur-udal-g-wave', 'ur-udal-g-sway', 'ur-udal-g-look', 'ur-udal-g-tug', 'ur-udal-g-jump', 'ur-udal-g-pop', 'ur-slam', 'ur-thud', 'ur-popin', 'ur-rise', 'ur-press', 'ur-ring', 'ur-burst i']) {
+    for (const c of ['ur-slam', 'ur-thud', 'ur-popin', 'ur-rise', 'ur-press', 'ur-ring', 'ur-burst i']) {
       expect(block.slice(0, 900)).toContain(c)
     }
     expect(block.slice(0, 900)).toMatch(/::view-transition-group\(\*\)[^{]*\{\s*animation:\s*none !important/)
-  })
-})
-
-describe('② 유달이 몸짓', () => {
-  const udal = R('src/components/mascot/Udal.tsx')
-  it('모든 mood 에 몸짓이 있고 그 클래스가 CSS 에 있다', () => {
-    const moods = [...udal.slice(udal.indexOf('export type UdalMood'), udal.indexOf('/**', udal.indexOf('export type UdalMood'))).matchAll(/\|\s*'(\w+)'/g)].map((m) => m[1])
-    expect(moods.length).toBeGreaterThanOrEqual(10)
-    const gesture = udal.slice(udal.indexOf('const GESTURE'), udal.indexOf('}', udal.indexOf('const GESTURE')))
-    for (const m of moods) {
-      const g = gesture.match(new RegExp(`\\b${m}: '(ur-udal-g-\\w+)'`))?.[1]
-      expect(g, m).toBeTruthy()
-      expect(css).toMatch(new RegExp(`\\.${g}\\s*\\{`))
-    }
-  })
-  it('motion 이면 몸짓 클래스를 쓴다(종전 bob 단독 아님)', () => {
-    expect(udal).toMatch(/motion \? `ur-udal-g \$\{GESTURE\[mood\]\}`/)
   })
 })
 

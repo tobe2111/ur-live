@@ -111,7 +111,7 @@ class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#1D1F29] px-4">
           <div className="max-w-md w-full bg-surface rounded-2xl shadow-lg p-8 text-center">
             {/* 🦦 2026-10-07 유달이 — 빨간 경고 삼각형 대신 미안한 얼굴. 무서운 화면이 아니라 사과하는 화면이다. */}
-            <Udal mood="oops" size={120} motion className="mx-auto mb-4" />
+            <Udal mood="oops" size={120} className="mx-auto mb-4" />
 
             <h2 className="text-[24px] font-bold text-gray-900 dark:text-white mb-2">
               문제가 발생했습니다
