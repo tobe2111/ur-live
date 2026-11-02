@@ -67,6 +67,12 @@ async function ensureFollowsTable(DB: D1Database): Promise<void> {
     await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_seller_follows_user ON seller_follows(user_id)`).run()
     // 🛡️ 기존 테이블 마이그레이션 (notify_group_buy 추가)
     try { await DB.prepare(`ALTER TABLE seller_follows ADD COLUMN notify_group_buy INTEGER DEFAULT 1`).run() } catch { /* exists */ }
+    // 🩸 2026-11-02 라이브 실측: 라이브 seller_follows 는 `notify_group_buy` 만 있고 아래 둘이 **없었다**
+    //   (CREATE 가 IF NOT EXISTS 라 옛 표에 안 들어갔다). 그래서 `GET /my/follows` 가 매번 'no such column'
+    //   으로 실패하고 catch 가 빈 목록을 돌려줬다 — 단골 3건이 있는데 '내 단골 가게' 가 늘 비어 보였다.
+    //   새 상품 알림(notify_new_product=1 대상 조회)도 같은 이유로 안 나갔다. 찾은 것: 라이브 컬럼 사진 가드.
+    try { await DB.prepare(`ALTER TABLE seller_follows ADD COLUMN notify_new_product INTEGER DEFAULT 1`).run() } catch { /* exists */ }
+    try { await DB.prepare(`ALTER TABLE seller_follows ADD COLUMN notify_live_start INTEGER DEFAULT 1`).run() } catch { /* exists */ }
   } catch { /* exists */ }
 }
 
