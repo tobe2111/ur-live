@@ -27,18 +27,21 @@ const HEROES: ReadonlyArray<{
   { slug: 'daegu', label: '대구', version: 4, regionKeys: ['대구'], boxes: [[35.75, 36.00, 128.45, 128.75]] },
   { slug: 'jeju', label: '제주', version: 4, regionKeys: ['제주'], boxes: [[33.10, 33.60, 126.10, 127.00]] },
   // 2026-11-01 추가. 인천 상자는 서울 상자(서 126.80)와 겹치지 않게 그 서쪽까지만.
-  { slug: 'incheon', label: '인천', version: 3, regionKeys: ['인천'], boxes: [[37.35, 37.60, 126.35, 126.79]] },
+  { slug: 'incheon', label: '인천', version: 4, regionKeys: ['인천'], boxes: [[37.35, 37.60, 126.35, 126.79]] },
   // 2026-11-01 대표 *"16개잖아 우리 1차 도시 필터링은. 그거 다 해야지"* — 지역 고르기 16칸 전부에 사진.
   //   '충남세종' 칸은 세종 사진(충남 사진이 오면 바꾼다).
-  { slug: 'sejong', label: '세종', version: 2, regionKeys: ['충남세종'], boxes: [[36.45, 36.62, 127.20, 127.35]] },
+  { slug: 'sejong', label: '세종', version: 3, regionKeys: ['충남세종'], boxes: [[36.45, 36.62, 127.20, 127.35]] },
   { slug: 'daejeon', label: '대전', version: 1, regionKeys: ['대전'], boxes: [[36.20, 36.50, 127.25, 127.55]] },
   // 지역 키 '전북'의 화면 이름이 '전주/전북'이라 전주 사진을 쓴다(좌표는 전주 시내 + 전북 대략).
   { slug: 'jeonju', label: '전주', version: 2, regionKeys: ['전북'], boxes: [[35.76, 35.90, 127.05, 127.20], [35.40, 36.10, 126.40, 127.90]] },
   // 도 단위는 대략 사각형 — 경계 근처는 이웃 도로 판정될 수 있다(광역시는 위에서 먼저 잡힌다).
-  { slug: 'gyeonggi', label: '경기', version: 1, regionKeys: ['경기'], boxes: [[36.90, 38.30, 126.40, 127.85]] },
+  { slug: 'gyeonggi', label: '경기', version: 2, regionKeys: ['경기'], boxes: [[36.90, 38.30, 126.40, 127.85]] },
   { slug: 'gangwon', label: '강원', version: 2, regionKeys: ['강원'], boxes: [[37.00, 38.62, 127.85, 129.40]] },
   // 2026-11-02 대표가 보낸 일러스트(부산·대구·제주 v4 · 광주 신규). 광주 상자는 광역시 도심 — 전남 상자보다 위에 있어야 먼저 잡힌다.
   { slug: 'gwangju', label: '광주', version: 1, regionKeys: ['광주'], boxes: [[35.05, 35.25, 126.75, 127.00]] },
+  // 2026-11-02 대표 일러스트 — 울산(대왕암 출렁다리) · 경남(통영 항구). 울산 상자는 경남 상자보다 위(광역시가 먼저).
+  { slug: 'ulsan', label: '울산', version: 1, regionKeys: ['울산'], boxes: [[35.40, 35.72, 129.00, 129.45]] },
+  { slug: 'gyeongnam', label: '경남', version: 1, regionKeys: ['경남'], boxes: [[34.55, 35.90, 127.60, 129.20]] },
 ]
 
 const toHero = (h: (typeof HEROES)[number]): RegionHero => ({
