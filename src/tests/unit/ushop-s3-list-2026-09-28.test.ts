@@ -188,7 +188,9 @@ describe('⑤-4 한 톤 — 판 대신 실선이 나눈다', () => {
     // 🔴 다른 다섯 화면은 바탕이 `bg-warm` 이라 거기선 판이 실제로 일한다. 기본값을 바꾸면
     //    유어샵 하나를 위해 그 다섯이 조용히 납작해진다.
     expect(dealRow, "DealRow 기본 표면은 card 그대로").toMatch(/surface = 'card'/)
-    expect(dealRow, '기본 표면의 판·들림이 살아 있다').toMatch(/rounded-2xl bg-white dark:bg-\[#1D1F29\] shadow-lift/)
+    // 🧾 2026-11-02 대표 확정 A안 — 평면(소비자 전체): 기본 표면도 판·들림을 걷었다. 'card' 는 이제
+    //    여백·모서리만 다르고(px-3 py-2), plain 은 줄 사이 실선이 나눈다. 두 갈래 자체는 유지한다.
+    expect(dealRow, '기본 표면은 판 없는 여백만').toMatch(/: 'px-3 py-2 rounded-2xl'/)
   })
 
   it('chrome 과 진열대를 나누는 실선이 탭 줄에 있다', () => {

@@ -14,7 +14,7 @@ export function WalletSkeleton() {
       <div className="rounded-[20px] bg-gray-200 dark:bg-[#1D1F29] h-[120px] mb-4" />
       {/* 패스 카드 2장 */}
       {[0, 1].map(i => (
-        <div key={i} className="rounded-[18px] bg-surface shadow-lift p-4 mb-4">
+        <div key={i} className="rounded-[18px] p-4 mb-4">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-[10px] bg-gray-200 dark:bg-[#2C2F35]" />
             <div className="h-3 w-28 rounded bg-gray-200 dark:bg-[#2C2F35]" />

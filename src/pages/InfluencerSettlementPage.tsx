@@ -169,7 +169,7 @@ export default function InfluencerSettlementPage() {
 
       <main className="ur-content-narrow mx-auto px-4 pt-4">
         {/* 받을 돈 — 이 화면의 주인공은 숫자 하나다(규칙 ③). 나머지 둘은 그 아래 한 줄. */}
-        <section className="rounded-2xl bg-surface shadow-lift p-5">
+        <section className="rounded-2xl p-5">
           <p className="text-[13px] text-gray-500 dark:text-gray-400">송금 대기</p>
           <p className="mt-1 text-[28px] font-bold tracking-[-0.02em] tabular-nums text-gray-900 dark:text-white">{won(balance?.available_amount)}</p>
           <div className="mt-4 pt-4 border-t border-rule grid grid-cols-2 gap-3">

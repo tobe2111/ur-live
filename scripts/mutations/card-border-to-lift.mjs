@@ -15,7 +15,8 @@ export default [
     //    내가 본 diff 가 **두 파일을 합친 것**이었다. 앵커는 재조준하고 결함(replace)은 그대로 둔다.
     file: 'src/pages/MyLedgerPage.tsx',
     // ⚠️ 같은 카드가 4칸이라 앵커는 **다음 줄까지** 잡아야 유일해진다(러너가 유일성을 요구한다).
-    find: '<div className="bg-white rounded-xl p-4 shadow-lift">\n              <div className="flex items-center gap-1 text-[12px] text-gray-500"><TrendingUp',
+    // 2026-11-02 앵커 재조준 — 그 카드는 A안 평면으로 판·그림자가 걷혔다.
+    find: '<div className="rounded-xl p-4">\n              <div className="flex items-center gap-1 text-[12px] text-gray-500"><TrendingUp',
     replace: '<div className="bg-white rounded-xl p-4 border border-gray-200">\n              <div className="flex items-center gap-1 text-[12px] text-gray-500"><TrendingUp',
     test: TEST,
     why:
@@ -56,7 +57,7 @@ export default [
   {
     name: '🎫 카드 래칫이 헐거워진다 (239 → 600)',
     file: 'src/components/guide/GuideViewer.tsx',
-    find: '<section key={s.section_key} id={`guide-${s.section_key}`} className="bg-white rounded-xl overflow-hidden scroll-mt-4 shadow-lift">',
+    find: '<section key={s.section_key} id={`guide-${s.section_key}`} className="rounded-xl overflow-hidden scroll-mt-4">',
     replace: '<section key={s.section_key} id={`guide-${s.section_key}`} className="bg-white rounded-xl overflow-hidden scroll-mt-4 border border-gray-200">',
     test: TEST,
     why:

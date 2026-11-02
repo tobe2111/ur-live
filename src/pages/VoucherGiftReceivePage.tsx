@@ -82,7 +82,7 @@ export default function VoucherGiftReceivePage() {
         </h1>
 
         {gift && (
-          <div className="mt-6 rounded-2xl bg-surface shadow-lift p-4 flex gap-3">
+          <div className="mt-6 rounded-2xl p-4 flex gap-3">
             <div className="w-[72px] h-[72px] shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
               {gift.product_image && (
                 <img src={cfImage(gift.product_image, { width: 200, quality: 82, format: 'auto' }) || gift.product_image} alt=""

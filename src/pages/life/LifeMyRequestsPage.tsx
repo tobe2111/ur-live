@@ -39,7 +39,7 @@ export default function LifeMyRequestsPage() {
         ) : (
           <ul className="space-y-3">
             {rows.map((r) => (
-              <li key={r.id} className="rounded-2xl bg-surface shadow-lift">
+              <li key={r.id} className="rounded-2xl">
                 <Link to={`/life/requests/${r.id}`} className="block p-4">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[15px] font-bold">{categoryLabel(r.category)}</span>

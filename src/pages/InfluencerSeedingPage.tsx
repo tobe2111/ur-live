@@ -89,7 +89,7 @@ export default function InfluencerSeedingPage() {
         )}
 
         {offers !== null && offers.length === 0 && (
-          <div className="mt-8 rounded-2xl bg-surface p-5 shadow-lift">
+          <div className="mt-8 rounded-2xl p-5">
             <p className="text-[15px] font-medium text-gray-900 dark:text-white">지금은 열린 체험이 없어요</p>
             <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">
               무상 제공은 매장이 직접 켜고 매달 모집 인원이 정해져 있어요. 이용권을 내 유어샵에 담아

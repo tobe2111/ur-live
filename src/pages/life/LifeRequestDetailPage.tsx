@@ -72,7 +72,7 @@ export default function LifeRequestDetailPage() {
       <SEO title="받은 견적 - 유어딜" description="받은 견적을 비교하고 고르세요" url={`/life/requests/${d.id}`} />
       <LifeHeader title={`${categoryLabel(d.category)} 견적`} back="/life/requests" />
       <div className="ur-content-narrow space-y-4 px-4 pb-10">
-        <section className="rounded-2xl bg-surface p-5 shadow-lift">
+        <section className="rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <span className="text-[13px] font-medium text-brand-text">{STATUS_LABEL[d.status] || d.status}</span>
             <span className="text-[13px] text-gray-500 dark:text-gray-400">받은 견적 {d.quote_count} / {d.max_quotes}</span>
@@ -82,7 +82,7 @@ export default function LifeRequestDetailPage() {
         </section>
 
         {chosen && (
-          <section className="rounded-2xl bg-surface p-5 shadow-lift">
+          <section className="rounded-2xl p-5">
             <p className="text-[13px] text-gray-500 dark:text-gray-400">고른 사장님</p>
             <p className="mt-1 text-[17px] font-bold">{chosen.pro_name}</p>
             {chosen.pro_phone && <a href={`tel:${chosen.pro_phone}`} className="ur-btn ur-btn-lg ur-btn-primary mt-3 flex w-full justify-center">{chosen.pro_phone} 전화하기</a>}
@@ -97,7 +97,7 @@ export default function LifeRequestDetailPage() {
         ) : (
           <ul className="space-y-3">
             {d.quotes.map((q) => (
-              <li key={q.id} className={`rounded-2xl bg-surface p-5 shadow-lift ${q.status === 'chosen' ? 'ring-2 ring-brand' : ''}`}>
+              <li key={q.id} className={`rounded-2xl p-5 ${q.status === 'chosen' ? 'ring-2 ring-brand' : ''}`}>
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-[15px] font-bold">{q.is_house ? q.pro_name : <Link to={`/life/biz/${q.seller_id}`} className="underline decoration-rule underline-offset-4">{q.pro_name}</Link>}{q.is_house ? <span className="ml-2 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">{q.partner ? '유어딜 제휴' : '유어딜 직영'}</span> : q.verified ? <span className="ml-2 rounded-full bg-warm px-2 py-1 text-[12px] font-medium text-gray-600 dark:text-gray-300">사업자 인증</span> : null}</span>
                   <span className="text-[17px] font-bold">{quotePriceText(q.price)}</span>
@@ -137,7 +137,7 @@ export default function LifeRequestDetailPage() {
         )}
 
         {d.status === 'open' && d.share_token && (
-          <section className="rounded-2xl bg-surface p-5 shadow-lift">
+          <section className="rounded-2xl p-5">
             <p className="text-[15px] font-bold">아는 업체가 있나요?</p>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">링크를 보내면 그 업체가 바로 가입해 견적을 보낼 수 있어요. 이름·연락처·상세 주소는 가려져요.</p>
             <button type="button" onClick={() => shareLifeRequest(d.share_token!, `${categoryLabel(d.category)} 견적 요청`)}

@@ -11,8 +11,9 @@ export default [
   {
     name: '🗂️ PC 카드 규칙이 lg 미디어쿼리 밖으로 샌다 (폰 마이까지 카드가 된다)',
     file: 'src/index.css',
-    find: '  .ur-account-pc .ur-pc-card {\n    background: var(--surface);',
-    replace: '}\n@supports (display: block) {\n  .ur-account-pc .ur-pc-card {\n    background: var(--surface);',
+    // 2026-11-02 앵커 재조준 — A안 평면으로 그 규칙의 바탕이 transparent 가 됐다(결함은 그대로: lg 밖으로 샌다).
+    find: '  .ur-account-pc .ur-pc-card {\n    background: transparent;',
+    replace: '}\n@supports (display: block) {\n  .ur-account-pc .ur-pc-card {\n    background: transparent;',
     test: 'src/tests/unit/my-zones-and-pc-2026-09-28.test.ts',
     why: '폰 마이는 안 C 평면(판은 파는 쪽에만)이다. 규칙이 lg 밖으로 새면 폰 손님 구역에 판이 서는데 빌드도 화면도 안 깨진다.',
   },
