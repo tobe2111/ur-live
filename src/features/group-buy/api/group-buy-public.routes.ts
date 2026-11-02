@@ -34,7 +34,7 @@ import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { intParam } from '@/shared/pagination'; import { publicReadDb } from '../../../worker/utils/d1-read-replica' // 한 줄: 래칫
 // 🏪 2026-09-16 (대표 — "승인이 되어야 메인에 노출"): 승인 전 매장의 이용권을 피드·지도에서 가린다.
 import { approvedSellerProductSql } from '@/shared/db/consumer-visible-product'
-import { voucherCanRedeem } from './voucher-can-redeem'; import { withGiftState, voucherHasPendingGift, noPendingGiftSql, GIFT_PENDING_USE_BLOCKED } from '../../../worker/utils/voucher-gift' // 🎁 선물 중·보낸 선물 표시
+import { voucherCanRedeem } from './voucher-can-redeem'; import { withGiftState, voucherHasPendingGift, noPendingGiftSql, GIFT_PENDING_USE_BLOCKED } from '../../../worker/utils/voucher-gift'; const _voucherIdxDone = new WeakSet<object>() // 🎁 선물 중·보낸 선물 표시 · 🐢 /my 색인 DDL isolate 당 1회
 
 // 🛡️ 2026-05-22 module-scope: gift_catalog JOIN 가능 여부 캐시.
 //   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
@@ -770,9 +770,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //     2) explicit SELECT (16 컬럼 — 카드 + 지도뷰 + 환불 표시에 필요한 것만).
     //     3) LIMIT 200 — 사용자가 voucher 1000개여도 응답 폭증 차단.
     //     4) idx_vouchers_user_created 복합 인덱스 lazy 생성 (멱등).
-    try {
-      await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_vouchers_user_created ON vouchers(user_id, created_at DESC)`).run()
-    } catch { /* exists or permission */ }
+    // 🐢 2026-11-02 [UNLOCK_LOADING] 대표 "허가 — 고쳐줘": 종전엔 **매 요청** 이 DDL 로 원본 DB 를 한 번 더 다녀왔다 → isolate 당 1회(repair-schema 도 보장).
+    if (!_voucherIdxDone.has(DB)) { _voucherIdxDone.add(DB); try { await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_vouchers_user_created ON vouchers(user_id, created_at DESC)`).run() } catch { /* exists or permission */ } }
 
     // 🛡️ 2026-05-24 P0 (사용자 신고 "내 교환권 안 보임"):
     //   - 원인: refund_status/gift_from_user_id/delivered_gift_name/applied_price 컬럼이 일부 환경에 없음.

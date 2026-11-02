@@ -26,9 +26,21 @@ interface BrandLoaderProps {
   forceLight?: boolean
   /** 다크 고정 표면(bg-[#11141C] 페이지 등)용 — 항상 흰 로고/바 (라이트 토글 사용자도 보이게). */
   forceDark?: boolean
+  /** 🫥 2026-11-02 — 그림·로고·바를 숨긴다(자리·배경·화면읽기 표시는 그대로). 첫 진입 로더(아래 BootFirstScreenLoader)가 쓴다. */
+  quiet?: boolean
 }
 
-export default function BrandLoader({ fullScreen = false, size = 34, label, forceLight = false, forceDark = false }: BrandLoaderProps) {
+export default function BrandLoader({ fullScreen = false, size = 34, label, forceLight = false, forceDark = false, quiet = false }: BrandLoaderProps) {
+  /**
+   * 🫥 2026-11-02 대표 *"처음에 우리 유어딜 서비스 들어갈 때는 로딩 페이지 안보이게 해줘. 최대한"* → 선택 *"아예 안 보이게"*.
+   *   전체 화면 로더는 **배경만** 남기고 유달이·로고·진행 바를 숨긴다(`invisible` = visibility:hidden — 자리는 그대로라
+   *   아무것도 안 밀린다). 배경 막(07-18 — 뒤 화면이 비치지 않게)과 화면읽기용 "로딩 중" 은 남는다.
+   *   워커가 HTML 에 박는 정적 로더(`urdealLoaderHtml`)도 같은 이유로 숨긴다 — 둘이 갈리면 교체 순간 유달이가 튄다.
+   *   그대로 두는 것 셋 — ① 인라인 로더(fullScreen=false — 섹션 안 '불러오는 중'): 그 칸의 상태다
+   *   ② 문구가 있는 로더(`label` — "결제 승인 중" 등): 지금 무슨 일이 일어나는지 말해 주는 화면이라 숨기면 멈춘 줄 안다
+   *   ③ 대시보드(`forceLight`): 손님 화면이 아니다.
+   */
+  const hide = quiet || (fullScreen && !forceLight && !label) ? ' invisible' : ''
   // 🎯 2026-07-01 (대표 "로딩이 2번 나뉘어" — 근본): 로더가 연달아 재마운트(Suspense 청크 로더 →
   //   페이지 데이터 로더)되면 CSS 애니메이션이 keyframe 0 부터 재시작 — breathe 는 opacity 0.5(로고 확
   //   어두워짐), sweep 바는 화면 밖(-120%)에서 시작(바 사라짐) → "떴다 안떴다 다시 뜨는" 블링크.
@@ -74,19 +86,19 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
           width={udalW}
           height={udalLoaderHeight(size)}
           decoding="async"
-          className="ur-udal-hop select-none pointer-events-none"
+          className={`ur-udal-hop select-none pointer-events-none${hide}`}
           style={{ width: udalW, height: 'auto', animationDelay: hopDelay }}
         />
       )}
       {/* 로고 — 은은한 호흡 (전역 위상 동기 — 재마운트에도 연속) */}
-      <div className="ur-loader-breathe" style={{ animationDelay: breatheDelay }}>
+      <div className={`ur-loader-breathe${hide}`} style={{ animationDelay: breatheDelay }}>
         <UrDealLogo size={size} forceLight={forceLight} forceDark={forceDark} />
       </div>
 
       {/* 인디터미넌트 진행 바 — 전역 위상 동기 스윕 (이전 200ms 지연은 재마운트 시 바가 사라지는
           블링크의 원인이라 제거 — 연속성이 우선). */}
       <div
-        className={`relative overflow-hidden rounded-full ${forceLight ? 'bg-gray-200/70' : forceDark ? 'bg-white/10' : 'bg-gray-200/70 dark:bg-white/10'}`}
+        className={`relative overflow-hidden rounded-full ${forceLight ? 'bg-gray-200/70' : forceDark ? 'bg-white/10' : 'bg-gray-200/70 dark:bg-white/10'}${hide}`}
         style={{ width: 96, height: 3 }}
         aria-hidden
       >
@@ -97,7 +109,7 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
       </div>
 
       {label ? (
-        <p className={`text-[13px] font-medium ${forceLight ? 'text-gray-500' : forceDark ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>{label}</p>
+        <p className={`text-[13px] font-medium ${forceLight ? 'text-gray-500' : forceDark ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400'}${hide}`}>{label}</p>
       ) : null}
       <span className="sr-only">{label || '페이지 로딩 중…'}</span>
     </div>
@@ -133,7 +145,7 @@ export function BootFirstScreenLoader({ forceDark = false }: { forceDark?: boole
     <>
       <div ref={(el) => { if (el && node.parentNode !== el) el.appendChild(node) }} />
       <div style={{ minHeight: '34dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <BrandLoader />
+        <BrandLoader quiet />
       </div>
     </>
   )

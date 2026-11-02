@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import api from '@/lib/api'
 import type { Restaurant } from '@/pages/restaurant-map/types'
-import { mapFeedParams, isMapSeedRequest } from '@/shared/map-feed-seed'
+import { mapFeedParams, isMapSeedRequest, MAP_SEED_SORT } from '@/shared/map-feed-seed'
 import { runAfterLoad } from '@/lib/after-load'
 
 const PAGE = 50
@@ -73,6 +73,28 @@ async function fetchPage(category: string, page: number, near: Near, sort: strin
   const items = (r.data?.success ? (r.data.data || []) : []) as Restaurant[]
   const total = typeof r.data?.total === 'number' ? (r.data.total as number) : null
   return { items, total }
+}
+
+/**
+ * 🐢 2026-11-02 대표 *"지도도 늦게 뜨네"* — 홈이 지도를 미리 데울 때 **첫 목록**도 함께 받아 둔다.
+ *   지도는 타일을 한 벌만 받으려고 첫 목록이 올 때까지 생성을 미룬다(`useKakaoMap` dataReady). 하드로드는 워커 시드
+ *   (`__SSR_INITIAL_MAP__`)가 있어 기다림이 없지만, 홈 알약으로 오는 SPA 이동은 시드가 없어 SDK 가 준비된 뒤에도
+ *   이 목록 한 왕복을 더 기다렸다. 여기서 같은 키(`keyOf`)로 모듈 캐시를 채우면 지도 화면이 마운트하자마자 적중한다.
+ *   이미 신선한 값이 있으면 아무것도 안 한다. 실패는 조용히 — 지도 화면이 평소처럼 받는다.
+ */
+/** 위치를 모르는 손님의 첫 요청(할인 큰 순 page1 — 워커 시드·cron 예열과 같은 문자열). */
+export function prefetchMapSeedFirstPage(): Promise<void> {
+  return prefetchMapFeedFirstPage('all', null, MAP_SEED_SORT)
+}
+
+export function prefetchMapFeedFirstPage(category: string, near: Near, sort: string): Promise<void> {
+  const k = keyOf(category, near, sort)
+  const c = _cache.get(k)
+  if (c && Date.now() - c.ts < CACHE_MS) return Promise.resolve()
+  return fetchPage(category, 1, near, sort).then((res) => {
+    if (!res || _cache.has(k)) return
+    _cache.set(k, { items: res.items, total: res.total, page: 1, done: res.items.length < PAGE, ts: Date.now() })
+  }, () => {})
 }
 
 export function useMapProducts(category: string, near?: Near, opts?: { sort?: string }) {

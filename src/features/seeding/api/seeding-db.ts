@@ -14,6 +14,7 @@ import {
   sqlIn, type SeedingOffer,
 } from '../../../shared/seeding'
 import { approvedSellerProductSql, consumerVisibleProductSql } from '../../../shared/db/consumer-visible-product'
+import { buildSchemaProbe, schemaComplete } from '../../../worker/utils/schema-probe'
 
 export const SEEDING_TABLES_SQL = [
   `CREATE TABLE IF NOT EXISTS seeding_offers (
@@ -125,9 +126,13 @@ export const SEEDING_TABLES_SQL = [
 ]
 
 const _done = new WeakSet<object>()
+const SEEDING_PROBE = buildSchemaProbe(SEEDING_TABLES_SQL)
+
 export async function ensureSeedingTables(DB: D1Database): Promise<void> {
   if (_done.has(DB)) return
   _done.add(DB)
+  // 🐢 2026-11-02 — 다 있으면 왕복 1회로 끝(종전: 서버 기동마다 19문장 직렬 · 이용권 상세 팔아보기 683ms). `schema-probe.ts`.
+  if (await schemaComplete(DB, SEEDING_PROBE)) return
   for (const s of SEEDING_TABLES_SQL) {
     try { await DB.prepare(s).run() } catch { /* exists */ }
   }

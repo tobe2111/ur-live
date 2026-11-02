@@ -1517,7 +1517,8 @@ const MUTATIONS = [
   {
     name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
     file: 'src/worker/routes/curator.routes.ts',
-    find: ', linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null,',
+    // 🐢 2026-11-02 셀러 페이로드와 나란히 받도록 바뀌어 앵커를 옮겼다(동봉 자체는 그대로).
+    find: ', linked_seller_products: linkedSellerProducts,',
     replace: ',',
     test: 'src/tests/unit/linkshop-products-seed.test.ts',
     why:

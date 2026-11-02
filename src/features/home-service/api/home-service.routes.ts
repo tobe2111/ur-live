@@ -32,6 +32,8 @@ import { isShareToken, publicShareView } from '@/shared/home-service-share'
 import { dispatchRequest } from './home-service-notify'
 import { customerListMessages, customerSendMessage } from './home-service-chat'
 
+import { publicCache } from '../../../worker/middleware/edge-cache'
+
 export const homeServiceRoutes = new Hono<{ Bindings: Env }>()
 
 /** 운영 중지 스위치(기본 꺼짐 = 운영). 문제가 생기면 어드민이 'true' 로. */
@@ -74,11 +76,15 @@ export async function notifyChosen(
   return row ? { pro_phone: row.pro_phone } : null
 }
 
-homeServiceRoutes.get('/config', async (c) => {
-  const stopped = await homeServiceStopped(c.env.DB)
+// 🐢 2026-11-02 대표 *"부분적으로 느린 경우들이 많아서 유저들이 헷갈려해"* — 이 응답은 누구에게나 같다(로그인 무관)
+//   그런데 엣지에 안 남아 손님마다 미국 DB 를 직렬 3왕복(중지 스위치 → 표 확인 → 업체 수) 했다. 실측 서버 시간 1,424ms.
+//   ⇒ 엣지 30초(브라우저 30·엣지 90) + 두 읽기를 나란히. 어드민 '운영 중지' 는 길어야 90초 뒤 반영된다.
+homeServiceRoutes.get('/config', publicCache(30), async (c) => {
   // 카테고리별 업체 수 — 못 읽으면 null(화면은 "모집 중" 을 안 띄운다. 모르는 것과 0 은 다르다).
-  let proCounts: Record<string, number> | null = null
-  try { await ensureHomeServiceTables(c.env.DB); proCounts = await proCountsByCategory(c.env.DB) } catch { proCounts = null }
+  const [stopped, proCounts] = await Promise.all([
+    homeServiceStopped(c.env.DB),
+    ensureHomeServiceTables(c.env.DB).then(() => proCountsByCategory(c.env.DB)).catch(() => null),
+  ])
   return c.json({ success: true, data: { open: !stopped, maxQuotes: MAX_QUOTES_PER_REQUEST, categories: HOME_SERVICE_CATEGORIES, proCounts } })
 })
 

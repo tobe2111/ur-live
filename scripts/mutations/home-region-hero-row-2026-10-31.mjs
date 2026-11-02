@@ -2,10 +2,11 @@
 const T = 'src/tests/unit/home-region-hero-row-2026-10-31.test.tsx'
 export default [
   {
+    // 🐢 2026-11-02 대표 확정 "중간 — 늦추기만 풀기" 로 lazy·low 는 풀렸다. 지키는 것은 "카드의 high 와 다투지 않는다".
     name: 'region-hero — 지역 사진을 첫 화면 사진과 같은 우선순위로 받는다',
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
-    find: 'loading="lazy" decoding="async" fetchPriority="low"',
-    replace: 'decoding="async"',
+    find: 'decoding="async" fetchPriority="auto"',
+    replace: 'decoding="async" fetchPriority="high"',
     test: T,
     why: '배경 사진이 첫 카드 사진과 회선을 다퉈 첫 화면이 늦어진다.',
   },

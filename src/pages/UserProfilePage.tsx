@@ -26,6 +26,7 @@ import { useToolDeepLinkFallback } from './user-profile/seller-section/useToolDe
 import SettingsGroup from './user-profile/SettingsGroup'
 import { useMyCounts } from './user-profile/useMyCounts'
 import { useMyStores } from './user-profile/useMyStores'
+import { readReservedHeight } from './user-profile/seller-reserve'
 import ThemeToggleSection from '@/components/settings/ThemeToggleSection'
 import LanguageSection from '@/components/settings/LanguageSection'
 import { CONSUMER_LANGUAGE_SWITCH_HIDDEN } from '@/shared/feature-flags'
@@ -149,11 +150,19 @@ export default function UserProfilePage() {
   }
 
   /**
+   * 🐢 2026-11-02 대표 *"부분적으로 느린 경우들이 많아서 유저들이 헷갈려해"* — 좌석 조회가 도는 동안엔 **지난번 값**으로 칸을 잡는다.
+   *   종전엔 조회가 끝나기 전까지 "가게 없음"(820px 한 칸)으로 그렸다가 도착하면 두 칸으로 **폭이 확 바뀌었다**
+   *   (실사용 기록: `div.ur-account-pane` 폭 519→909 · 602→1050, 2.7~3.3초). 판매 구역이 지난 렌더에서 잰 높이
+   *   (`seller-reserve.ts`)가 있으면 지난번에 가게가 있었다는 뜻이다. 조회가 끝나면 늘 실제 값으로 돌아간다.
+   */
+  const hasSeats = sellerSeats.loading ? sellerSeats.stores.length > 0 || readReservedHeight() > 0 : sellerSeats.stores.length > 0
+
+  /**
    * 🎗️ 2026-10-11 **안 5** — PC 에서 두 열로 쪼개는가. 설정 구역의 자리를 이 값이 정한다.
    * ⚠️ `isPc` 만으로는 안 된다 — 좌석이 0 곳이면 `ur-account-cols` 가 평범한 블록이라
    *   왼쪽·오른쪽이 그냥 세로로 이어지고, 설정이 본문보다 **먼저** 그려진다.
    */
-  const pcSplit = isPc && sellerSeats.stores.length > 0
+  const pcSplit = isPc && hasSeats
 
   /**
    * ⚙️ 설정 구역은 **한 벌만 만든다.** 안 5 에서 이 블록은 PC(두 열)면 왼쪽 아래, 아니면
@@ -270,7 +279,7 @@ export default function UserProfilePage() {
         {/* 📖 안 5 — 판매가 없으면 한 칸이고, 그때만 읽을 수 있는 폭(820px)으로 좁힌다.
             ⚠️ 조건식은 아래 두 열 래퍼와 **글자 그대로 같아야 한다** — 갈리면 한쪽은 좁고 한쪽은
                넓어져 띠·목록·푸터의 왼쪽 끝이 어긋난다(시험이 그 동일성을 대조한다). */}
-        <div className={sellerSeats.stores.length > 0 ? 'ur-account-pane min-w-0' : 'ur-account-pane ur-account-pane--single min-w-0'}>
+        <div className={hasSeats ? 'ur-account-pane min-w-0' : 'ur-account-pane ur-account-pane--single min-w-0'}>
       {/* 🧭 2026-10-11 **안 5** — 빵부스러기가 **칸 안으로** 들어왔다.
           종전엔 `.ur-account-pc` 바깥에서 자기 1200px 를 따로 잡았는데, 비셀러 화면에서 칸이
           820px 로 좁아지자 빵부스러기만 홀로 왼쪽 끝에 남았다(렌더로 확인 — 본문보다 350px 왼쪽).
@@ -324,7 +333,7 @@ export default function UserProfilePage() {
       )}
 
       {/* 🎬 2026-11-02 시안 마이 "구역 차례 등장"(대표 "다 해주고") — 하루 첫 방문에만 구역이 위에서부터 차례로 올라온다(CSS 는 MyStats). */}
-      <div className={`${sellerSeats.stores.length > 0 ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}${introToday ? ' ur-my-intro' : ''}`}>
+      <div className={`${hasSeats ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}${introToday ? ' ur-my-intro' : ''}`}>
       <div className="ur-account-col min-w-0">
 
       {/* 🖥️ 판매는 **넓은 쪽**(1.25)에 산다 — 시안 `PcFull1` 과 같은 자리다.
