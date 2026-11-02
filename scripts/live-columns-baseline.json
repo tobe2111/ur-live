@@ -44,7 +44,6 @@
   "src/worker/services/delete-account.service.ts|INSERT|deleted_accounts.reason",
   "src/worker/services/delete-account.service.ts|INSERT|deleted_accounts.reregister_available_at",
   "src/worker/services/delete-account.service.ts|UPDATE|users.deleted_at",
-  "src/worker/utils/checkout.ts|INSERT|order_items.consignment_id",
-  "src/worker/utils/refund.ts|INSERT|order_refund_history.amount"
+  "src/worker/utils/checkout.ts|INSERT|order_items.consignment_id"
  ]
 }
