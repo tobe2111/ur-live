@@ -40,14 +40,6 @@ export default [
     why: '매장이 없던 사장님은 등록을 거친다. 돌아오지 않으면 어느 제휴사에서 왔는지 잃고 요청이 안 간다(에러 0).',
   },
   {
-    name: '제휴입점 시안B — 비교 칸을 다시 색 박스로',
-    file: W,
-    find: '.pt .new{padding:0 0 0 20px;border-left:1px solid var(--rule)}',
-    replace: '.pt .new{padding:12px;border-radius:12px;background:var(--tint)}',
-    test: T,
-    why: '2026-11-01 대표 확정 B 가 걷어낸 바로 그 모양이다. 색 덩어리 두 개가 가장 전단지스러웠고, 되살아나도 빌드·화면은 안 깨진다.',
-  },
-  {
     name: '제휴입점 시안B — 제휴 위젯 바탕을 전역 --bg 로 바꾼다',
     file: W,
     find: "--brand:#1C69EF;--sale:#DC2626;--ph:#EDEFF3;--pbg:#F8F7FC;",
