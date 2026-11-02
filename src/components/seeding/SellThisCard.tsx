@@ -48,11 +48,11 @@ export default function SellThisCard({ productId, price, hideForOwner: isOwner }
       </p>
       <div className="mt-4 grid grid-cols-2 gap-2">
         <button type="button" disabled={isPinning} onClick={() => togglePin(productId, price)}
-          className="rounded-xl bg-warm px-3 py-3 text-[15px] font-medium text-gray-900 disabled:opacity-60 dark:text-white">
+          className="rounded-xl bg-wash px-3 py-3 text-[15px] font-medium text-gray-900 disabled:opacity-60 dark:text-white">
           내 유어샵에 담기
         </button>
         <button type="button" disabled={!on} onClick={() => setOpen(true)}
-          className="rounded-xl bg-brand px-3 py-3 text-[15px] font-medium text-white disabled:bg-warm disabled:text-gray-500">
+          className="rounded-xl bg-brand px-3 py-3 text-[15px] font-medium text-white disabled:bg-wash disabled:text-gray-500">
           무료 체험 신청
         </button>
       </div>
