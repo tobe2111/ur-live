@@ -22,8 +22,9 @@ export default [
   {
     name: '[카드표면] 🔴 선물 보내기 시트가 다크 페이지색으로 되돌아간다',
     file: 'src/components/gift/GiftSendModal.tsx',
-    find: 'className="bg-surface w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl',
-    replace: 'className="bg-white dark:bg-[#11141C] w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl',
+    // 🪟 2026-11-02 재조준: 시트 판이 `bg-surface` → `ur-glass`(유리)로 옮겨 갔다. 지키려는 것(다크 페이지색 회귀)은 그대로.
+    find: 'className="ur-glass w-full max-w-[430px] ur-pop-card',
+    replace: 'className="bg-white dark:bg-[#11141C] w-full max-w-[430px] ur-pop-card',
     test: TEST,
     why:
       '바텀시트는 테두리도 그림자도 없다(규칙 ① + 다크 `--lift: none`). 페이지색이 되면 ' +

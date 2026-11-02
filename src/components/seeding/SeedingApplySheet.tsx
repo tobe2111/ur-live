@@ -59,8 +59,8 @@ export default function SeedingApplySheet({ productId, offer, onClose }: { produ
 
   const el = me?.eligibility
   return (
-    <div className="ur-sheet-veil fixed inset-0 z-[10600] flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
-      <div className="ur-sheet-in w-full max-w-md rounded-t-2xl bg-surface p-5 pb-8 sm:rounded-2xl" onClick={(e) => e.stopPropagation()}
+    <div className="fixed inset-0 z-[10600] flex items-end justify-center sm:items-center ur-veil p-2 sm:p-4" onClick={onClose}>
+      <div className="w-full max-w-md ur-pop-card ur-glass p-5 pb-8 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()}
         role="dialog" aria-label="무료 체험 신청">
         <p className="text-[17px] font-bold text-gray-900 dark:text-white">무료 체험 신청</p>
         <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">

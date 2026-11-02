@@ -24,8 +24,8 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
   const { t } = useTranslation()
   useEscapeKey(onClose)
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={onClose} role="presentation">
-      <div className="w-full max-w-sm bg-surface rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
+      <div className="w-full max-w-sm ur-glass ur-pop-card p-6 overflow-hidden ur-dialog-in" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{title}</h3>

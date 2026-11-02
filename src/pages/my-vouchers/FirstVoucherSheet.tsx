@@ -51,13 +51,13 @@ export default function FirstVoucherSheet({ items, t }: {
   ]
 
   return (
-    <div className="fixed inset-0 z-[10600] bg-black/45 flex items-end sm:items-center justify-center" onClick={() => setOpen(false)} role="presentation">
+    <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={() => setOpen(false)} role="presentation">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="first-voucher-title"
         onClick={(e) => e.stopPropagation()}
-        className="ur-sheet-in w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl bg-surface px-6 pt-3 flex flex-col items-center text-center"
+        className="w-full max-w-[430px] ur-pop-card ur-glass px-6 pt-3 flex flex-col items-center text-center overflow-hidden ur-dialog-in"
         style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}
       >
         <div aria-hidden="true" className="w-10 h-1 rounded-full bg-rule-strong" />

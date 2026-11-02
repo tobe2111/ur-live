@@ -56,7 +56,9 @@ function pageColoredCards() {
       if (!cn.includes('dark:bg-[#11141C]')) continue
       if (!/\bbg-white\b/.test(cn)) continue                        // 오버레이(bg-white/90) 제외
       if (/bg-white\/\d|dark:bg-\[#11141C\]\/\d/.test(cn)) continue
-      if (!/rounded-(?!full\b)/.test(cn)) continue                  // 알약·아바타는 카드가 아니다
+      // 알약·아바타는 카드가 아니다. 🪟 2026-11-02: 팝업 판의 모서리는 `rounded-*` 대신 `.ur-pop-card|sheet`
+      //   (index.css 한 곳)로 옮겨 갔다 — 그걸 모양으로 안 보면 팝업 판을 통째로 못 본다(주입이 잡았다).
+      if (!/rounded-(?!full\b)|\bur-pop-(?:card|sheet)\b/.test(cn)) continue
       bad.push(`${f}:${src.slice(0, m.index).split('\n').length}  ${cn.slice(0, 80)}`)
     }
   }

@@ -298,7 +298,8 @@ describe('⑦ 6차 — 동작 계약', () => {
   })
   it('알림 메시지: 사라진 알림은 잠깐 남아 위로 빠지고, 화면 읽기 도구에선 숨긴다', () => {
     const src = R('src/components/ToastContainer.tsx')
-    expect(src).toContain("${out ? 'ur-toast-out' : 'animate-slide-down'}")
+    expect(src).toContain('data-out={out || undefined}')
+    expect(src).toContain('.ur-pop-toast[data-out] {')
     expect(src).toContain('aria-hidden={out || undefined}')
     expect(src).toContain('if (dy < -24) remove(t.id)')
   })
