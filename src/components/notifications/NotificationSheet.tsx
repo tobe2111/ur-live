@@ -36,7 +36,7 @@ export default function NotificationSheet({ onClose }: { onClose: () => void }) 
         role="dialog"
         aria-modal="true"
         aria-label="알림"
-        className="fixed inset-x-2 bottom-2 max-h-[80dvh] flex flex-col rounded-[32px] ur-glass overflow-hidden ur-sheet-in"
+        className="fixed inset-x-2 bottom-2 max-h-[80dvh] flex flex-col ur-pop-sheet ur-glass overflow-hidden ur-sheet-in"
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <NotificationPanelHeader onClose={onClose} />

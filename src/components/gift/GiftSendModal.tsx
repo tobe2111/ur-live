@@ -91,7 +91,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
     >
       <div
         ref={dialogRef}
-        className="ur-glass w-full max-w-[430px] rounded-[28px] max-h-[90dvh] overflow-y-auto ur-dialog-in"
+        className="ur-glass w-full max-w-[430px] ur-pop-card max-h-[90dvh] overflow-y-auto ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

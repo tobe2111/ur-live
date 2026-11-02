@@ -42,7 +42,7 @@ export default function AppDownloadModal({ onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[380px] rounded-[28px] ur-glass overflow-hidden ur-dialog-in"
+        className="w-full max-w-[380px] ur-pop-card ur-glass overflow-hidden ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}

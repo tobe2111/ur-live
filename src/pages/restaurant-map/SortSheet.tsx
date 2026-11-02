@@ -31,7 +31,7 @@ export default function SortSheet({
   return (
     <div className="fixed inset-0 flex items-end sm:items-center justify-center p-2 sm:p-4" style={{ zIndex: Z.SHEET_BODY }}>
       <div className="absolute inset-0 ur-veil" onClick={onClose} aria-hidden="true" />
-      <div className="relative w-full sm:max-w-sm ur-glass rounded-[28px] p-4 pb-8 sm:pb-4 ur-dialog-in">
+      <div className="relative w-full sm:max-w-sm ur-glass ur-pop-card p-4 pb-8 sm:pb-4 ur-dialog-in">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('map.sheet.sortAria', { defaultValue: '정렬' })}</h3>
           <button onClick={onClose} aria-label={t('common.close', { defaultValue: '닫기' })} className="p-2 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400">

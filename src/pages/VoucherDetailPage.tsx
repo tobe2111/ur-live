@@ -504,7 +504,7 @@ export default function VoucherDetailPage() {
       {/* 🛡️ 2026-05-24: KT Alpha 상품 phone 미등록 시 입력 모달 */}
       {showPhoneModal && (
         <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center p-4 ur-veil" onClick={() => setShowPhoneModal(false)}>
-          <div className="ur-glass rounded-[28px] w-full max-w-sm p-5 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()}>
+          <div className="ur-glass ur-pop-card w-full max-w-sm p-5 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2">휴대폰 번호 등록</h3>
             <p className="text-[12px] text-gray-600 dark:text-gray-300 mb-4">
               기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다.<br/>

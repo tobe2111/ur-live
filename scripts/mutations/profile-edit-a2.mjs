@@ -40,8 +40,8 @@ export default [
     name: '시트 — 알림만 등장 동작을 뺀다 (앱 안에 두 가지 동작)',
     file: NOTI,
     // 🪟 2026-11-02 재조준: 알림 시트가 유리 판으로 옮겨 갔다(지키는 것 — 등장 동작 — 은 그대로).
-    find: 'rounded-[32px] ur-glass overflow-hidden ur-sheet-in"',
-    replace: 'rounded-[32px] ur-glass overflow-hidden"',
+    find: 'ur-pop-sheet ur-glass overflow-hidden ur-sheet-in"',
+    replace: 'ur-pop-sheet ur-glass overflow-hidden"',
     test: T,
     why:
       '한 곳만 빠지면 그 화면이 **고장난 것처럼** 보인다. 시트가 아홉인데 여덟은 올라오고 하나는 ' +

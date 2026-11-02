@@ -237,7 +237,7 @@ export default function StaysSearchPage() {
           onClick={() => setShowFilters(false)}
           role="presentation"
         >
-          <div className="ur-glass w-full sm:max-w-md rounded-[28px] max-h-[90vh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
+          <div className="ur-glass w-full sm:max-w-md ur-pop-card max-h-[90vh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-white dark:bg-[#11141C] flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
               <h3 className="text-[15px] font-bold">검색 필터</h3>
               <button onClick={() => setShowFilters(false)} aria-label="닫기" className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/[0.06]"><X className="w-4 h-4" /></button>

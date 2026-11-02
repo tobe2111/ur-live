@@ -57,7 +57,7 @@ export default function FirstVoucherSheet({ items, t }: {
         aria-modal="true"
         aria-labelledby="first-voucher-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[430px] rounded-[28px] ur-glass px-6 pt-3 flex flex-col items-center text-center overflow-hidden ur-dialog-in"
+        className="w-full max-w-[430px] ur-pop-card ur-glass px-6 pt-3 flex flex-col items-center text-center overflow-hidden ur-dialog-in"
         style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}
       >
         <div aria-hidden="true" className="w-10 h-1 rounded-full bg-rule-strong" />

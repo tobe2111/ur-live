@@ -120,7 +120,7 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
   return createPortal((
     <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center p-2 sm:p-4 ur-veil" role="dialog" aria-modal="true">
       <div
-        className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto ur-glass rounded-[28px] p-5 ur-dialog-in"
+        className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto ur-glass ur-pop-card p-5 ur-dialog-in"
       >
         <div className="flex items-start justify-between mb-1">
           <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">

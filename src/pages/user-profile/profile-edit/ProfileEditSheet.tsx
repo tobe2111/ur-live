@@ -236,7 +236,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
       <div
         role="dialog" aria-modal="true" aria-label={t('userProfile.editProfile', { defaultValue: '프로필 편집' })}
         className={
-          'fixed inset-x-2 bottom-2 max-h-[85dvh] flex flex-col rounded-[32px] ur-glass overflow-hidden'
+          'fixed inset-x-2 bottom-2 max-h-[85dvh] flex flex-col ur-pop-sheet ur-glass overflow-hidden'
           /* 🎬 등장은 `.ur-sheet-in` 한 클래스가 소유한다(폰=올라옴 / lg+=투명도만 / 동작 줄이기=정지).
              여기에 `animate-slide-up` 을 직접 쓰면 아래 가운데 정렬 `transform` 을 덮어 **튄다**.
              근거·실측은 `src/index.css` 의 `.ur-sheet-in` 머리말. */

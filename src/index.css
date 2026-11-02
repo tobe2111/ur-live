@@ -1398,6 +1398,12 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   .ur-glass { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 .ur-glass-rule { border-color: var(--glass-rule); }
+/* 팝업 모서리 — 파일마다 `rounded-[28px]` 를 적지 않고 여기 한 곳이 정한다(`check-shape-lock` 체계 밖 값을 이 셋으로 묶는다).
+ *   카드(확인창·가운데 창) 28 · 아래 시트 32(PC 가운데 창이 되면 28) · 알림 24. */
+.ur-pop-card { border-radius: 28px; }
+.ur-pop-sheet { border-radius: 32px; }
+@media (min-width: 1024px) { .ur-pop-sheet { border-radius: 28px; } }
+.ur-pop-toast { border-radius: 24px; }
 /* 확인창 등장: 살짝 커지며 나타난다(폰·PC 공통 — 가운데 정렬은 grid 라 transform 충돌 없음). */
 @keyframes ur-dialog-in { from { opacity: 0; transform: scale(.96) } to { opacity: 1; transform: none } }
 .ur-dialog-in { animation: ur-dialog-in .22s cubic-bezier(.22,1,.36,1) both; }

@@ -342,7 +342,7 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center p-2 sm:p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 ur-veil" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md ur-glass rounded-[28px] p-5 pb-7 ur-dialog-in">
+      <div className="relative w-full sm:max-w-md ur-glass ur-pop-card p-5 pb-7 ur-dialog-in">
         <div className="flex items-start gap-2 mb-1">
           <span className="text-[15px] font-bold text-gray-900 dark:text-white flex-1"><Check className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />유어샵에 추가됨</span>
           <button onClick={onClose} aria-label="닫기" className="shrink-0 w-7 h-7 -mt-0.5 -mr-1 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">

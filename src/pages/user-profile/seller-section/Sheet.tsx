@@ -100,7 +100,7 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
         className={
           /* 🪟 2026-11-02 대표 확정 *"블러 없이 유리로 하자"* — 폰에서 화면 끝에서 8px 떠 있는 둥근 유리 판.
              판 색·흐림·그림자는 `.ur-glass` 한 곳(`index.css`)이 소유한다. */
-          'fixed inset-x-2 bottom-2 flex flex-col rounded-[32px] ur-glass overflow-hidden'
+          'fixed inset-x-2 bottom-2 flex flex-col ur-pop-sheet ur-glass overflow-hidden'
           + (tall ? ' top-6 h-auto' : ' max-h-[85dvh]')
           /* 🎬 2026-10-11 — 등장은 `.ur-sheet-in` 한 클래스가 소유한다(폰=올라옴 / lg+=투명도만 /
              동작 줄이기=정지). 🔴 여기에 `animate-slide-up` 을 직접 쓰면 아래 `lg:-translate-*`
@@ -110,7 +110,7 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
           // 🖥️ lg+ : 가운데 다이얼로그(위 머리말). 폰 값들을 여기서 되돌린다.
           + ' lg:inset-x-auto lg:left-1/2 lg:top-1/2 lg:bottom-auto lg:h-auto'
           + ' lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-[min(900px,92vw)]'
-          + ' lg:max-h-[86dvh] lg:rounded-[28px]'
+          + ' lg:max-h-[86dvh]'
         }
         style={{ zIndex: Z.SHEET_BODY }}
       >

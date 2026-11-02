@@ -65,7 +65,7 @@ export function Sheet({ title, onClose, children, footer }: {
   return (
     <div className="fixed inset-0 z-[10600] flex items-end justify-center p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={title}>
       <button type="button" aria-label="닫기" className="absolute inset-0 ur-veil" onClick={onClose} />
-      <div className="relative flex max-h-[88dvh] w-full max-w-[560px] flex-col rounded-[28px] ur-glass text-ink ur-dialog-in">
+      <div className="relative flex max-h-[88dvh] w-full max-w-[560px] flex-col ur-pop-card ur-glass text-ink ur-dialog-in">
         <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-rule-strong" />
         <div className="flex items-center justify-between px-5 pt-3 pb-4">
           <h2 className="text-[17px] font-bold">{title}</h2>

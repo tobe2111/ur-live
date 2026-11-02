@@ -75,7 +75,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
   return (
     <div className="fixed inset-0 z-[10000] flex items-end justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
       <div
-        className="ur-glass rounded-[28px] w-full max-w-[430px] max-h-[88dvh] flex flex-col sm:my-auto overflow-hidden ur-dialog-in"
+        className="ur-glass ur-pop-card w-full max-w-[430px] max-h-[88dvh] flex flex-col sm:my-auto overflow-hidden ur-dialog-in"
         onClick={e => e.stopPropagation()}
         role="dialog" aria-modal="true" aria-label={t('map.filter.ariaLabel', { defaultValue: '필터 설정' })}
       >

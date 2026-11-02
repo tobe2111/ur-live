@@ -620,7 +620,7 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose}>
-      <div className="ur-glass text-gray-900 dark:text-white w-full sm:max-w-md rounded-[28px] max-h-[90dvh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
+      <div className="ur-glass text-gray-900 dark:text-white w-full sm:max-w-md ur-pop-card max-h-[90dvh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-line">
           <h3 className="text-[15px] font-bold">예약 정보</h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{(stay.restaurant_name || stay.name)} · {room.name}</p>
@@ -747,7 +747,7 @@ function MultiBookingModal({
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose}>
-      <div className="ur-glass text-gray-900 dark:text-white w-full sm:max-w-md rounded-[28px] max-h-[90dvh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
+      <div className="ur-glass text-gray-900 dark:text-white w-full sm:max-w-md ur-pop-card max-h-[90dvh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-line">
           <h3 className="text-[15px] font-bold">묶음 예약 ({totalQty}객실)</h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{stay.restaurant_name || stay.name}</p>

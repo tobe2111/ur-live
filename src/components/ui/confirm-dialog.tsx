@@ -104,7 +104,7 @@ export function ConfirmHost() {
       role="presentation"
     >
       <div
-        className="ur-glass ur-dialog-in w-full max-w-[320px] rounded-[28px] overflow-hidden text-center"
+        className="ur-glass ur-dialog-in w-full max-w-[320px] ur-pop-card overflow-hidden text-center"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

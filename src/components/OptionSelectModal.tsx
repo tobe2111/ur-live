@@ -106,7 +106,7 @@ export default function OptionSelectModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
       <div
         ref={dialogRef}
-        className="ur-glass rounded-[28px] max-w-md md:max-w-lg w-full max-h-[80dvh] flex flex-col overflow-hidden ur-dialog-in"
+        className="ur-glass ur-pop-card max-w-md md:max-w-lg w-full max-h-[80dvh] flex flex-col overflow-hidden ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

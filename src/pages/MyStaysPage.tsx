@@ -220,7 +220,7 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose}>
-      <div className="ur-glass w-full sm:max-w-md rounded-[28px] max-h-[90vh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
+      <div className="ur-glass w-full sm:max-w-md ur-pop-card max-h-[90vh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">리뷰 작성</h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{booking.product_name}</p>

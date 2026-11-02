@@ -45,7 +45,7 @@ export function ProxyProductModal({ merchant, onClose }: { merchant: { id: numbe
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4 ur-veil" onClick={onClose}>
-      <div className="w-full max-w-md ur-glass rounded-[28px] p-5 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md ur-glass ur-pop-card p-5 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()}>
         <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">공구 대행 등록</p>
         <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{merchant.name} — 등록 후 매장 승인 시 공개됩니다.</p>
         <div className="space-y-2">
@@ -130,7 +130,7 @@ export function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalIn
 
   return (
     <div className="fixed inset-0 z-[10001] flex items-end sm:items-center justify-center p-2 sm:p-4 ur-veil" onClick={onClose}>
-      <div className="w-full sm:max-w-md ur-glass rounded-[28px] p-5 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full sm:max-w-md ur-glass ur-pop-card p-5 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">💰 출금 신청</h2>
 
         <div className="space-y-3">

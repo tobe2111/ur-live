@@ -84,7 +84,7 @@ export function CustomModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
-        className={`ur-glass rounded-[28px] ${getMaxWidth()} w-full ${isCustom ?'p-0' : 'p-6'} relative overflow-hidden ur-dialog-in`}
+        className={`ur-glass ur-pop-card ${getMaxWidth()} w-full ${isCustom ?'p-0' : 'p-6'} relative overflow-hidden ur-dialog-in`}
         onClick={(e) => e.stopPropagation()}
       >
         {isCustom ? (

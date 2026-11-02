@@ -107,7 +107,7 @@ export default function RestoreAccountModal() {
       role="presentation"
     >
       <div
-        className="ur-glass w-full max-w-md rounded-[28px] overflow-hidden ur-dialog-in"
+        className="ur-glass w-full max-w-md ur-pop-card overflow-hidden ur-dialog-in"
         role="dialog"
         aria-modal="true"
         aria-labelledby="restore-title"

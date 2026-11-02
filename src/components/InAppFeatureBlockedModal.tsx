@@ -88,7 +88,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
       role="presentation"
     >
       <div
-        className="ur-glass w-full max-w-md rounded-[28px] p-6 pt-5 max-h-[90dvh] overflow-y-auto ur-dialog-in"
+        className="ur-glass w-full max-w-md ur-pop-card p-6 pt-5 max-h-[90dvh] overflow-y-auto ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

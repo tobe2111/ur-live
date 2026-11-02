@@ -80,7 +80,7 @@ export default function GeoHelpSheet({
   return (
     <div className="fixed inset-0 flex items-end sm:items-center justify-center p-2 sm:p-4" style={{ zIndex: Z.SHEET_BODY }}>
       <div className="absolute inset-0 ur-veil" onClick={onClose} aria-hidden="true" />
-      <div className="relative w-full sm:max-w-sm ur-glass rounded-[28px] p-5 pb-8 sm:pb-6 ur-dialog-in">
+      <div className="relative w-full sm:max-w-sm ur-glass ur-pop-card p-5 pb-8 sm:pb-6 ur-dialog-in">
         <button
           onClick={onClose}
           aria-label="닫기"

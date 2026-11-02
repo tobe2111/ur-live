@@ -158,7 +158,7 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end justify-center p-2 sm:p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 ur-veil" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md ur-glass rounded-[28px] px-5 pt-2 pb-7 ur-dialog-in">
+      <div className="relative w-full sm:max-w-md ur-glass ur-pop-card px-5 pt-2 pb-7 ur-dialog-in">
         <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-[#2C2F35] mx-auto mt-2 mb-4" />
         <h2 className="text-[24px] font-bold text-gray-900 dark:text-white tracking-tight">내 유어샵에서 직접 팔아보세요</h2>
         <div className="flex items-center gap-2 mt-2 text-[13px] text-gray-500 dark:text-gray-400 flex-wrap">
