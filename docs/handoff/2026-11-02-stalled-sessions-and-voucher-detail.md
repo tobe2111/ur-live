@@ -44,3 +44,12 @@
   **시험이 따옴표째 읽는 `.json` 이 바뀌면 그 주입도 고른다.** 모든 파일로 넓히면 PR 당 주입 3~5배(실측)라 `.json` 만.
 - 낡은 주입 자체(`🩸 단골 목록이 다시 빈다`)는 그 주입을 만든 세션에 알렸다 — 이 세션은 안 고친다(같은 줄을 두 세션이 고치지 않게).
 - 틀린 판단: 인라인 주입을 옮길 때 **다른 세션이 같은 줄을 옮기는 중인지** 안 봤다. 공용 파일(`check-guard-mutations.mjs` 인라인 목록)을 옮기기 전엔 열린 PR 을 grep 할 것.
+## 5차 — 팔아보기 B안 + 배너 통합 + 수수료 요청 (대표 *"응 화면 B 안 해줘."*)
+- 라이브 판정(16:32 배포 `93ed8a5`, 폰 UA): 상세 h1 17px · 다크 바탕 rgb(17,20,28) · 구역 탭 · 팔아보기 여백 · 홈 '현 위치' 버튼 원판 ✅,
+  크게 보기 팝업(3119, 3/8) ✅. 작은 사진 '따라오기' 는 하네스 클릭이 안 먹어 라이브 미확인(대표 눈).
+- 구현: `SellThisCard`(한 줄) + `SellThisSheet`(창, lazy) · `POST /api/seeding/deal-request/:productId`(사장님 알림, 하루 1번) ·
+  `SellerInfluencerDealsPage` `?influencer=` 미리 고름 · `ShareRewardBanner` 삭제(통합). 잠금 기록 `docs/locks/loading/2026-11-02-sell-b-unify.md`.
+- 결재 올림: `docs/decisions/2026-11-02-influencer-commission-payout.md`(기본 딜 · 사업자 현금 · 세무 확인 둘). 토스 지급대행은 대표 보류.
+- 틀릴 뻔한 것: 대표께 *"사업자번호 없으면 8.8%"* 라고 말했는데 코드는 **신고 정보 없음 → 0%**(기타소득을 고른 사람만 8.8%). 결재 문서에서 정정.
+- 이어받는 세션의 첫 액션(대표가 이어서 하라고 할 때만): 머지 후 폰 UA·로그인으로 `/group-buy/2919` — `[data-sell-value]` 가 약정 유무대로 뜨는지,
+  [사장님께 수수료 요청] 뒤 `dashboard_notifications` 에 `type='influencer_deal_request'` 1행.
