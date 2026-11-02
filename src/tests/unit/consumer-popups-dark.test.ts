@@ -110,10 +110,13 @@ describe('③ 장바구니 (CartPage)', () => {
 
 describe('④ 토스트 표면 (ToastContainer)', () => {
   const src = R('components/ToastContainer.tsx')
-  it('라이트 흰 카드 + lift / 다크 surface — 잉크 상자·링·무거운 그림자 0', () => {
-    expect(src).toMatch(CARD_BG_RE)
-    expect(src).toMatch(/shadow-lift/)
-    expect(src).not.toMatch(/ring-1 ring-white/)
-    expect(src).not.toMatch(/text-emerald-|text-sky-/)
+  // 🪟 2026-11-02 대표 확정 *"블러 없이 유리로 하자"* — 흰 카드 + lift → 유리 알약(`.ur-glass`).
+  it('유리 판(.ur-glass) 하나 — 흰 카드·잉크 상자·링·초록/하늘 0, 글자 15', () => {
+    const code = src.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')
+    expect(code).toMatch(/className="ur-glass /)
+    expect(code).not.toMatch(/bg-surface|shadow-lift|[" ]bg-white[" ]/)
+    expect(code).not.toMatch(/ring-1 ring-white/)
+    expect(code).not.toMatch(/text-emerald-|text-sky-/)
+    expect(code).toMatch(/text-\[15px\]/)
   })
 })

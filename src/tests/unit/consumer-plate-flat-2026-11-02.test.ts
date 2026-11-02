@@ -47,7 +47,8 @@ describe('🧾 소비자 화면 — 흐름 속 판은 평면 (2026-11-02 A안)',
   })
 
   it('③ 떠 있는 면은 그림자를 지킨다 — 토스트 · 지도 위 가로 카드 · 캐러셀 화살표', () => {
-    expect(readFileSync('src/components/ToastContainer.tsx', 'utf8')).toMatch(/shadow-lift/)
+    // 🪟 2026-11-02: 토스트는 유리 판(`.ur-glass` — 자체 그림자 `--pop-shadow`)으로 옮겨 갔다.
+    expect(readFileSync('src/components/ToastContainer.tsx', 'utf8')).toMatch(/className="ur-glass /)
     expect(readFileSync('src/pages/MyVouchersPage.tsx', 'utf8')).toMatch(/snap-start shrink-0[^"`]*bg-surface shadow-lift/)
     expect(readFileSync('src/components/home/SectionRail.tsx', 'utf8')).toMatch(/rounded-full bg-surface[^"`]*shadow-lift/)
     // 토큰은 살아 있어야 한다 — 전역 none 이면 위 셋이 흰 바탕에서 사라진다.

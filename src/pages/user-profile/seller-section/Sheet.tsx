@@ -92,13 +92,15 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/45 ur-sheet-veil" style={{ zIndex: Z.SHEET_BACKDROP }} onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 ur-veil ur-sheet-veil" style={{ zIndex: Z.SHEET_BACKDROP }} onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className={
-          'fixed inset-x-0 bottom-0 flex flex-col rounded-t-2xl bg-surface'
+          /* 🪟 2026-11-02 대표 확정 *"블러 없이 유리로 하자"* — 폰에서 화면 끝에서 8px 떠 있는 둥근 유리 판.
+             판 색·흐림·그림자는 `.ur-glass` 한 곳(`index.css`)이 소유한다. */
+          'fixed inset-x-2 bottom-2 flex flex-col ur-pop-sheet ur-glass overflow-hidden'
           + (tall ? ' top-6 h-auto' : ' max-h-[85dvh]')
           /* 🎬 2026-10-11 — 등장은 `.ur-sheet-in` 한 클래스가 소유한다(폰=올라옴 / lg+=투명도만 /
              동작 줄이기=정지). 🔴 여기에 `animate-slide-up` 을 직접 쓰면 아래 `lg:-translate-*`
@@ -108,24 +110,25 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
           // 🖥️ lg+ : 가운데 다이얼로그(위 머리말). 폰 값들을 여기서 되돌린다.
           + ' lg:inset-x-auto lg:left-1/2 lg:top-1/2 lg:bottom-auto lg:h-auto'
           + ' lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-[min(900px,92vw)]'
-          + ' lg:max-h-[86dvh] lg:rounded-2xl lg:shadow-2xl'
+          + ' lg:max-h-[86dvh]'
         }
         style={{ zIndex: Z.SHEET_BODY }}
       >
-        <div className="flex items-center gap-1 px-4 h-14 border-b border-rule shrink-0">
+        <div className="lg:hidden shrink-0 pt-2" aria-hidden="true"><div className="mx-auto w-10 h-[5px] rounded-full bg-gray-400/40" /></div>
+        <div className="flex items-center gap-1 px-5 h-14 shrink-0">
           {onBack && (
             <button type="button" onClick={onBack} aria-label="뒤로" className="w-8 h-8 -ml-2 flex items-center justify-center shrink-0">
               <ChevronLeft className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
             </button>
           )}
-          <span className="flex-1 min-w-0 truncate text-[17px] font-extrabold text-gray-900 dark:text-white">{title}</span>
+          <span className="flex-1 min-w-0 truncate text-[17px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</span>
           <button type="button" onClick={onClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
         {footer && (
-          <div className="shrink-0 border-t border-rule px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">{footer}</div>
+          <div className="shrink-0 border-t ur-glass-rule px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">{footer}</div>
         )}
       </div>
     </>

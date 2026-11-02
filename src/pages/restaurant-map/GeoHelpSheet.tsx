@@ -78,9 +78,9 @@ export default function GeoHelpSheet({
   const retryLabel = effReason === 'prompt' ? '위치 허용' : '다시 시도'
 
   return (
-    <div className="fixed inset-0 flex items-end sm:items-center justify-center" style={{ zIndex: Z.SHEET_BODY }}>
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
-      <div className="relative w-full sm:max-w-sm bg-surface rounded-t-3xl sm:rounded-3xl p-5 pb-8 sm:pb-6 shadow-2xl">
+    <div className="fixed inset-0 flex items-end sm:items-center justify-center p-2 sm:p-4" style={{ zIndex: Z.SHEET_BODY }}>
+      <div className="absolute inset-0 ur-veil" onClick={onClose} aria-hidden="true" />
+      <div className="relative w-full sm:max-w-sm ur-glass ur-pop-card p-5 pb-8 sm:pb-6 ur-dialog-in">
         <button
           onClick={onClose}
           aria-label="닫기"
