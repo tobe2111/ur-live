@@ -70,16 +70,15 @@ export default function DetailLightboxMobile({
           {images.map((src, i) => {
             const near = Math.abs(i - active) <= 1
             return (
-              <div key={`${i}-${src}`} className="relative shrink-0 w-full"
-                style={{ scrollSnapAlign: 'center', aspectRatio: '4 / 5', backgroundColor: '#1D1F29',
+              <div key={`${i}-${src}`} className="relative shrink-0 w-full bg-black/40"
+                style={{ scrollSnapAlign: 'center', aspectRatio: '4 / 5',
                   backgroundImage: `url("${placeholderUrl(src)}")`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
                 <img
                   src={fullUrl(src, MOBILE_VIEW_WIDTH)}
                   alt={alt}
                   loading={near ? 'eager' : 'lazy'}
                   decoding="async"
-                  className="absolute inset-0 w-full h-full object-contain"
-                  style={{ backgroundColor: '#1D1F29' }}
+                  className="absolute inset-0 w-full h-full object-contain bg-black/40"
                   onError={() => onDead(src)}
                 />
               </div>
@@ -98,8 +97,8 @@ export default function DetailLightboxMobile({
           {images.map((src, i) => (
             <button key={`d-${i}-${src}`} type="button" role="tab" aria-selected={i === active} aria-label={`${i + 1}번째 사진`}
               onClick={() => onActive(i)} className="h-6 flex items-center">
-              <span className="block h-1.5 rounded-full transition-all"
-                style={{ width: i === active ? 18 : 6, background: i === active ? '#FFFFFF' : 'rgba(255,255,255,0.4)' }} />
+              <span className={`block h-1.5 rounded-full transition-all ${i === active ? 'bg-white' : 'bg-white/40'}`}
+                style={{ width: i === active ? 18 : 6 }} />
             </button>
           ))}
         </div>
