@@ -56,8 +56,9 @@ export default function StoreLocation({
    */
   const btn = {
     display: 'inline-flex', alignItems: 'center', gap: 5,
-    padding: '9px 14px', border: '1px solid var(--rule-strong)', borderRadius: 11,
-    background: 'var(--gbd-card)', color: 'var(--gbd-ink)',
+    padding: '9px 14px', border: 0, borderRadius: 11,
+    // 🪟 2026-11-02 대표 "매장 칸 테두리 걷기"(A안 평면): outline → 옅은 회색 칸(체험단 지원·수수료 요청 버튼과 같은 손잡이).
+    background: 'var(--gbd-chip)', color: 'var(--gbd-ink)',
     fontSize: 13, fontWeight: 500, textDecoration: 'none', whiteSpace: 'nowrap', flex: '0 0 auto',
   } as const
 

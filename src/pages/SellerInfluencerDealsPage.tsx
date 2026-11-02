@@ -44,12 +44,13 @@ interface Deal {
 
 export default function SellerInfluencerDealsPage() {
   const { t } = useTranslation()
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(() => { try { return new URLSearchParams(window.location.search).has('influencer') } catch { return false } })
   const [proposing, setProposing] = useState(false)
   const [responding, setResponding] = useState<number | null>(null)
   // 🔧 2026-09-19 케이스별 % 조정(대표 "매번 케이스마다 조정 가능하긴 해야해") — 활성·대기 딜의 % 를 바꾼다.
   const [editing, setEditing] = useState<{ id: number; pct: string } | null>(null)
-  const [form, setForm] = useState({ influencer_id: '', commission_pct: '1.5', ends_at: '', message: '', requires_content_proof: false })
+  // 🤝 2026-11-02: 이용권 상세의 [사장님께 수수료 요청] 알림에서 오면 그 사람이 미리 골라져 있다(`?influencer=`).
+  const [form, setForm] = useState(() => ({ influencer_id: (() => { try { return new URLSearchParams(window.location.search).get('influencer')?.replace(/[^0-9]/g, '') || '' } catch { return '' } })(), commission_pct: '1.5', ends_at: '', message: '', requires_content_proof: false }))
 
   // /api/seller-marketing prefix 는 api 인터셉터 자동 토큰 미주입 → 수동 헤더 (SellerMarketingPage 동일).
   const headers = { Authorization: `Bearer ${getSellerToken() || ''}` }

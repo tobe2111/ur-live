@@ -39,6 +39,8 @@ import {
 } from './sns-link'
 import { APP_SELECT, influencerCancel, loadApp, sendToStore } from './seeding-actions'
 import { toStore } from './seeding-notify'
+import { notifySeller } from '../../../lib/notifications'
+import { findActiveDealPct } from '../../../worker/utils/influencer-deal'
 
 type E = { Bindings: Env }
 const uid = (c: Parameters<typeof getCurrentUser>[0]) => Number(getCurrentUser(c)?.id) || 0
@@ -179,6 +181,45 @@ seedingRoutes.post('/apply', requireAuth(), rateLimit({ action: 'seeding_apply',
     })
   } catch (err) {
     return safeError(c, err, '신청하지 못했어요', '[seeding:apply]')
+  }
+})
+
+/**
+ * 🤝 수수료 요청 — 이용권 상세 '이 이용권 팔기' 창의 [사장님께 수수료 요청] (2026-11-02 대표 확정)
+ *
+ * 수수료는 **매장이 사람마다 따로** 정해 제안한다(`seller_influencer_deals` — `/seller/influencer-deals`).
+ * 반대 방향(소개자가 % 를 정해 보내는 길)은 없다 — 이 요청은 사장님께 **알림 한 통**만 보내고,
+ * 사장님은 그 링크에서 그 사람에게 맞는 % 를 정해 제안한다. 돈 경로를 건드리지 않는다.
+ * 같은 사람 → 같은 매장은 **하루 한 번**(알림 폭탄 방지).
+ */
+seedingRoutes.post('/deal-request/:productId', requireAuth(), rateLimit({ action: 'deal_request', max: 10, windowSec: 3600 }), async (c) => {
+  try {
+    const DB = c.env.DB
+    const me = uid(c)
+    const pid = Number(c.req.param('productId'))
+    if (!(pid > 0) || !(me > 0)) return c.json({ success: false, error: '이용권을 찾을 수 없어요' }, 400)
+    const product = await DB.prepare(`SELECT id, name, seller_id FROM products WHERE id = ? AND is_active = 1`)
+      .bind(pid).first<{ id: number; name: string | null; seller_id: number | null }>()
+    if (!product?.seller_id) return c.json({ success: false, error: '판매 중인 이용권이 아니에요' }, 404)
+    const own = await DB.prepare(`SELECT 1 AS x FROM sellers WHERE id = ? AND linked_user_id = ?`).bind(product.seller_id, me).first().catch(() => null)
+    if (own) return c.json({ success: false, error: '내 가게 이용권이에요' }, 400)
+    if (await findActiveDealPct(DB, product.seller_id, String(me))) {
+      return c.json({ success: false, error: '이미 이 매장과 수수료 약정이 있어요' }, 409)
+    }
+    const link = `/seller/influencer-deals?influencer=${me}`
+    const dup = await DB.prepare(
+      `SELECT 1 AS x FROM dashboard_notifications
+        WHERE recipient_type = 'seller' AND recipient_id = ? AND type = 'influencer_deal_request' AND link = ?
+          AND created_at >= datetime('now', '-1 day') LIMIT 1`,
+    ).bind(String(product.seller_id), link).first().catch(() => null)
+    if (dup) return c.json({ success: true, data: { already: true } })
+    const who = await DB.prepare(`SELECT name, handle FROM users WHERE id = ?`).bind(me).first<{ name: string | null; handle: string | null }>().catch(() => null)
+    const label = who?.handle ? `@${who.handle}` : (who?.name || `회원 #${me}`)
+    await notifySeller(DB, product.seller_id, 'influencer_deal_request', `수수료 요청 · ${label}`,
+      `${label}님이 '${String(product.name || '이용권').slice(0, 40)}'을(를) 내 링크로 팔고 싶어 해요. 이 분께 맞는 수수료를 정해 제안해 보세요.`, link)
+    return c.json({ success: true, data: { already: false } })
+  } catch (err) {
+    return safeError(c, err, '요청을 보내지 못했어요', '[seeding:deal-request]')
   }
 })
 

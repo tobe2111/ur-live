@@ -9986,7 +9986,7 @@ canvas {
   {
     name: '🎫 담기 토스트가 409(이미 담김)를 다시 "오류" 로 보고한다',
     file: 'src/features/curator/hooks/usePinAction.ts',
-    find: "      if (code === 'ALREADY_PINNED') toast.info(MSG.already)\n      else toast.error(error && error.length <= 30 ? error : MSG.failed)",
+    find: "      if (code === 'ALREADY_PINNED') {\n        const copied = await copyShareLink(productId, (user as { handle?: string })?.handle, user.id)\n        toast.info(MSG.already + (copied ? MSG.linkCopied : ''))\n      } else toast.error(error && error.length <= 30 ? error : MSG.failed)",
     replace: '      toast.error(MSG.failed)',
     test: 'src/tests/unit/consumer-popups-dark.test.ts',
     why:
