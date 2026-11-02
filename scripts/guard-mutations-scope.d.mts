@@ -19,6 +19,9 @@ export type Scope = { full: true; why?: string } | { full: false; files: Set<str
 /** 주입 하나가 이 스코프에 드는가. */
 export declare function inScope(m: MutationRef, scope: Scope): boolean
 
+/** 시험 소스가 바뀐 `.json` 파일을 따옴표째 읽는가(2026-11-02). */
+export declare function testReadsChangedFile(testSrc: string, files: Set<string>): boolean
+
 /** git 을 불러 스코프를 정한다. 실패하면 전수로 폴백. `run` 은 `git <args>` 의 stdout. */
 export declare function changedScope(o: {
   enabled: boolean
