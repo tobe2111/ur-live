@@ -1322,6 +1322,9 @@ html.dark .gbd, [data-theme="dark"] .gbd {
     padding: 20px 16px 16px; margin-bottom: 0;
     border-bottom: 8px solid var(--home-band);
   }
+  /* ➖ 2026-11-02 대표 *"배너 위에 구분선이 신경쓰여 없애줘"* — 모바일 안 1 의 첫 섹션(제목 없음) 바로 아래가
+     배너라 띠가 배너 위에 걸렸다. 그 섹션만 띠를 안 긋는다(`HomeSections bareFirst` · 서버 첫 화면 같은 클래스). */
+  .ur-home-panel.ur-panel-flush { border-bottom: 0; }
 }
 
 /* 🌑 2026-09-08 (대표 확정 — 시안 "안 2"): **잉크 패널**. 홈의 모든 섹션이 같은 흰 패널이라
