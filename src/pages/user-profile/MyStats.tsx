@@ -193,7 +193,7 @@ export default function MyStats({ voucher, coupon, inline = false }: {
     <Link to={to} className={rowCls}>
       <span className="flex-1 min-w-0 text-[15px] font-medium text-gray-900 dark:text-white truncate">{label}</span>
       <span className="relative">
-        {up && <span key={up.k} className="ur-gain text-[13px] font-bold text-brand-text">+{formatNumber(up.n)}{unit}</span>}
+        {up && <span key={up.k} className="ur-gain text-[13px] font-medium text-brand-text">+{formatNumber(up.n)}{unit}</span>}
         {valueOf(v, unit)}
       </span>
       <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
