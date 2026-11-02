@@ -15,7 +15,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { renderAgency, AGENCY_MARQUEE_MIN } from '@/worker/utils/embed-agency'
 import { renderStrip, renderSingle, renderPartner, toEmbedCard, type EmbedRow } from '@/worker/utils/embed-widget'
-import { PARTNER_MOTION_CSS } from '@/worker/utils/embed-partner-motion'
+import { PARTNER_CSS, PARTNER_SLIDES, PARTNER_IDENTITY } from '@/worker/utils/embed-partner-motion'
 
 const ROW = { id: 1, name: '닭도리탕', price: 31000, original_price: 35000, restaurant_name: '달빛한스푼', category: 'meal_voucher' } as EmbedRow
 const cards = (n: number) => Array.from({ length: n }, (_, i) => toEmbedCard({ ...ROW, id: i + 1 }, 'agency'))
@@ -60,7 +60,7 @@ describe('🎬 에이전시 위젯 모션', () => {
     ]) {
       expect(html).not.toContain('ag-')
       expect(html).not.toContain('@property')
-      expect(html).toMatch(/\.pt \.go\{[^}]*\}<\/style>/) // BASE_CSS 끝 바로 뒤에서 닫힌다(덧붙은 것 0)
+      expect(html).toMatch(/\.one \.logo\{font-size:13px\}<\/style>/) // BASE_CSS 끝 바로 뒤에서 닫힌다(덧붙은 것 0)
     }
   })
 
@@ -74,28 +74,39 @@ describe('🎬 에이전시 위젯 모션', () => {
 })
 
 /**
- * 🎬 제휴사 입점 위젯 모션 (같은 날 대표 *"에이전시도 그렇고 제휴사가 더 급해"*)
- *   ⑦ 확정 시안 B 의 마크업은 그대로 — 모션은 문서 끝에 붙는 CSS 뿐이다
- *   ⑧ 스크립트 0 · 움직임 줄이기면 전부 멈추고 줄은 그어진 상태로
- *   ⑨ 📱 좁은 폭에서 문서가 붙인 iframe 높이(360)를 넘지 않게 치수를 줄인다(종전 340px 에서 409px — 버튼이 잘렸다)
- *   ⑩ 🔴 에이전시 모션과 섞이지 않는다
- * ⚠️ 못 보는 것: 실제 높이(브라우저 레이아웃) — 2026-11-02 Playwright 실측 320~760px 전부 360 이었다(300 이하는 넘친다).
+ * 🎬 제휴사 입점 위젯 (2026-11-02 대표 확정 *"4번형태로 가되 유어딜의 정체성 한줄 고정"*)
+ *   ⑦ 정체성 한 줄은 무대 **밖**에 있다 — 장면이 넘어가도 그대로 선다(안에 넣으면 같이 사라진다)
+ *   ⑧ 장면 = 체험단의 한계 → 유어딜 장점, 세 장 · 음수 지연(첫 프레임에 1번 장이 서 있다) · 스크립트 0
+ *   ⑨ 움직임 줄이기면 1번 장만 정지 · 📱 폰 폭(≤480)에서 설명 줄을 빼 360 안에 든다
+ *   ⑩ 🔴 에이전시 모션과 섞이지 않는다 · 요율 숫자 0
+ * ⚠️ 못 보는 것: 실제 높이(브라우저 레이아웃) — 2026-11-02 Playwright 실측 300~760px 전부 문서 360, 장면이 무대 안에 들었다.
  */
-describe('🎬 제휴사 입점 위젯 모션', () => {
+describe('🎬 제휴사 입점 위젯', () => {
   const html = renderPartner('light', '한빛', 3)
-  it('⑦ 마크업은 그대로, 모션 CSS 는 BASE 뒤에 붙는다', () => {
-    expect(html).toMatch(/<div class="col old"><b>체험단<\/b><span>음식은 공짜로<\/span><span>후기만 남고<\/span><span>매출은 0원<\/span><\/div><div class="col new"><b>유어딜 이용권<\/b>/)
-    expect(html).toContain(PARTNER_MOTION_CSS + '</style>')
+  it('⑦ 정체성 한 줄은 무대 밖에 고정', () => {
+    expect(html).toContain(`<p class="id">${PARTNER_IDENTITY}</p><div class="stage">`)
+    const stage = html.slice(html.indexOf('<div class="stage">'), html.indexOf('<div class="ft">'))
+    expect(stage).not.toContain('class="id"')
   })
-  it('⑧ 스크립트 0 · 움직임 줄이기면 멈춤', () => {
+  it('⑧ 장면 셋 · 음수 지연 · 스크립트 0', () => {
+    expect((html.match(/<section class="sl">/g) || []).length).toBe(PARTNER_SLIDES.length)
+    expect(PARTNER_SLIDES.length).toBe(3)
+    for (const s of PARTNER_SLIDES) { expect(html).toContain(s.no); expect(html).toContain(s.yes) }
+    expect(PARTNER_CSS).toContain('.pt .sl:nth-child(1){animation-delay:-0s}')
+    expect(PARTNER_CSS).toContain('.pt .sl:nth-child(2){animation-delay:-8s}')
+    expect(PARTNER_CSS).toContain('.pt .sl:nth-child(3){animation-delay:-4s}')
+    expect(PARTNER_CSS).toMatch(/@keyframes pt-scene\{0%\{opacity:1/) // 첫 프레임 = 보이는 상태
     expect(html).not.toMatch(/<script/i)
-    expect(PARTNER_MOTION_CSS).toMatch(/@media \(prefers-reduced-motion:reduce\)\{\.pt \*,\.pt \*::before,\.pt \*::after\{animation:none!important;transition:none!important\}\.pt \.old span::after\{transform:none\}\}/)
   })
-  it('⑨ 좁은 폭 압축 블록이 있다', () => {
-    expect(PARTNER_MOTION_CSS).toMatch(/@media \(max-width:500px\)\{\.pt\{padding:6px\}[^@]*\.pt \.in\{padding:16px 18px\}[^@]*\.pt \.cmp\{margin:14px 0\}/)
+  it('⑨ 움직임 줄이기 · 폰 폭', () => {
+    expect(PARTNER_CSS).toMatch(/@media \(prefers-reduced-motion:reduce\)\{[^@]*\.pt \.sl:nth-child\(n\+2\)\{display:none\}/)
+    expect(PARTNER_CSS).toMatch(/@media \(max-width:480px\)\{[^@]*\.pt \.ds\{display:none\}/)
   })
-  it('⑩ 에이전시 모션과 섞이지 않는다', () => {
+  it('⑩ 에이전시 모션과 섞이지 않는다 · 요율 숫자 0', () => {
     expect(html).not.toContain('ag-')
-    expect(agency(5)).not.toContain('pm-')
+    expect(agency(5)).not.toContain('pt-scene')
+    const text = html.replace(/<style>[\s\S]*?<\/style>/, '').replace(/<[^>]+>/g, ' ')
+    expect(text).not.toMatch(/\d+(\.\d+)?\s*%/)
+    expect(text).not.toContain('—')
   })
 })

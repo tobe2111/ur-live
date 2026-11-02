@@ -1,49 +1,67 @@
 /**
- * 🎬 제휴사 입점 위젯 모션 (2026-11-02 대표 *"에이전시도 그렇고 제휴사가 더 급해"* — 같은 요청
- * *"모션그래픽도 넣어서 최대한 고급지게"* 를 제휴 위젯에 먼저).
+ * 🤝 제휴사 입점 위젯 — 화면 전부(2026-11-02 대표 확정 시안 3차 4번 + *"유어딜의 정체성 한줄 고정"*).
  *
- * 대표 확정 시안 B(2026-11-01 "나란히 선 두 브랜드")의 **마크업·문구·치수는 한 글자도 안 바꾼다** —
- * 움직임만 얹는다. 그래서 이 파일은 CSS 한 덩어리뿐이고 `renderPartner` 가 문서 끝에 붙인다.
+ * 흐름: 대표 *"제휴사 위젯 너무 촌스러워"* → 1·2차 시안 → *"이런 식이 아니라 제휴사에서 우리 유어딜 서비스를
+ * 홍보하는 차원이니 유어딜 장점을 소개해야지. 체험단의 단점 한계점을 나타내면서"* → 3차 →
+ * ***"4번형태로 가되 유어딜의 정체성 한줄 고정은 해야할듯"***.
  *
- * 순서(처음 한 번 — 1.8초 안에 끝나고 그 뒤엔 조용하다. 영업 문구는 읽혀야 한다):
- *   카드가 떠오름 → 머리 문장 → 체험단 쪽 세 줄에 **줄이 그어지며** 흐려짐 → 유어딜 쪽 세 줄이 파란 점과 함께 들어옴
- *   → 버튼. 그 뒤로는 두 가지만 계속 숨 쉰다: 카드 귀퉁이의 옅은 빛 덩어리, 버튼 위를 가끔 지나가는 빛.
+ * 화면(높이 360 고정 — 붙여 넣는 코드의 iframe 높이):
+ *   머리줄   urdeal | ○○ 추천
+ *   고정 줄  유어딜은 가게 할인 이용권을 미리 파는 서비스예요   ← 세 장이 넘어가도 **움직이지 않는다**
+ *   무대     세 장이 4초마다 넘어간다: [체험단의 한계 n/3] 지워진 한계 → 큰 장점 문장 → 설명 한 줄
+ *   바닥     진행 막대 셋 · [유어딜 입점 신청]
  *
- * 스크립트 0 줄(CSP nonce — `embed-widget.ts` 머리말). `prefers-reduced-motion` 이면 전부 끝 상태로 바로 선다.
+ * 움직임 이유: 한계→장점을 **한 번에 하나씩** 읽히게 하려는 것(장면 전환이 곧 이야기). 스크립트 0 줄
+ * (CSP nonce — `embed-widget.ts` 머리말). 장면은 **음수 지연**으로 돌린다 — 첫 프레임에 1번 장이 이미 서 있고
+ * (썸네일·빠른 스크롤이 빈 무대를 보지 않는다), 2·3번 장이 시작 전 상태로 겹치지 않는다.
+ * `prefers-reduced-motion` 이면 1번 장만 정지 상태로 선다.
+ *
+ * ⚠️ 문구는 지금 서비스에 있는 것만(손님 선결제 · QR 사용 · 지도·동네딜·유어샵 노출 · 팔렸을 때만 비용 · 가입비·월 이용료 0원).
+ *    요율·금액 숫자 0 — 어드민이 바꾸는 값이라 남의 사이트에 박힌 숫자는 곧 거짓말이 된다.
+ * ⚠️ 바깥 바탕은 --pbg(제휴 위젯 전용)다. --bg 를 바꾸면 strip·single 위젯이 남의 흰 사이트에서 회색 사각형이 된다.
  */
-export const PARTNER_MOTION_CSS = `
-.pt .k{position:relative;isolation:isolate;animation:pm-rise .7s cubic-bezier(.2,.7,.2,1) both}
-.pt .k::before{content:'';position:absolute;z-index:-1;width:320px;height:320px;right:-140px;top:-170px;border-radius:50%;background:radial-gradient(closest-side,rgba(28,105,239,.16),transparent);animation:pm-drift 9s ease-in-out infinite alternate;pointer-events:none}
-.pt .bar,.pt .in{position:relative}
-.pt h1{animation:pm-up .7s cubic-bezier(.2,.7,.2,1) .15s both}
-.pt .sub{animation:pm-up .7s cubic-bezier(.2,.7,.2,1) .25s both}
-.pt .col b{animation:pm-fade .5s ease .4s both}
-.pt .old span{position:relative;width:max-content;max-width:100%;animation:pm-dim .5s ease both}
-.pt .old span::after{content:'';position:absolute;left:0;right:0;top:52%;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left;animation:pm-strike .45s cubic-bezier(.6,0,.2,1) both}
-.pt .old span:nth-of-type(1),.pt .old span:nth-of-type(1)::after{animation-delay:.55s}
-.pt .old span:nth-of-type(2),.pt .old span:nth-of-type(2)::after{animation-delay:.7s}
-.pt .old span:nth-of-type(3),.pt .old span:nth-of-type(3)::after{animation-delay:.85s}
-.pt .new span{position:relative;padding-left:12px;animation:pm-in .55s cubic-bezier(.2,.7,.2,1) both}
-.pt .new span::before{content:'';position:absolute;left:0;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:var(--brand);animation:pm-pop .4s cubic-bezier(.3,1.6,.5,1) both;animation-delay:inherit}
-.pt .new span:nth-of-type(1){animation-delay:1.05s}
-.pt .new span:nth-of-type(2){animation-delay:1.2s}
-.pt .new span:nth-of-type(3){animation-delay:1.35s}
-.pt .new{animation:pm-line .6s ease .9s both}
-.pt .foot{animation:pm-up .6s cubic-bezier(.2,.7,.2,1) 1.5s both}
-.pt .go{position:relative;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease}
-.pt .go::after{content:'';position:absolute;top:-20%;bottom:-20%;width:40%;left:-60%;transform:skewX(-18deg);background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.35),rgba(255,255,255,0));animation:pm-shine 4.5s ease-in-out 2.2s infinite}
-.pt .go:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(28,105,239,.34)}
-@keyframes pm-rise{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
-@keyframes pm-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@keyframes pm-fade{from{opacity:0}to{opacity:1}}
-@keyframes pm-dim{from{opacity:0}to{opacity:1}}
-@keyframes pm-strike{to{transform:scaleX(1)}}
-@keyframes pm-in{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
-@keyframes pm-pop{from{transform:scale(0)}to{transform:scale(1)}}
-@keyframes pm-line{from{border-left-color:transparent}}
-@keyframes pm-drift{to{transform:translate(-60px,40px) scale(1.15)}}
-@keyframes pm-shine{0%{left:-60%}35%,100%{left:130%}}
-/* 📱 좁은 폭(폰) — 종전엔 340px 이하에서 문서가 409px 로 자라 붙인 iframe(360px)이 버튼을 잘랐다(2026-11-02 실측).
-   치수만 줄인다(글자 크기·문구 그대로). */
-@media (max-width:500px){.pt{padding:6px}.pt .bar{padding:12px 18px}.pt .in{padding:16px 18px}.pt .cmp{margin:14px 0}.pt .col{gap:5px;padding-right:10px}.pt .new{padding-left:14px}.pt .sub{margin-top:6px}.pt .go{padding:10px 16px}.pt .foot{gap:8px}}
-@media (prefers-reduced-motion:reduce){.pt *,.pt *::before,.pt *::after{animation:none!important;transition:none!important}.pt .old span::after{transform:none}}`
+
+/** 장면 하나 = 체험단의 한계 → 유어딜 장점. 순서가 곧 이야기다(결제 → 손님 → 비용). */
+export const PARTNER_SLIDES: ReadonlyArray<{ no: string; yes: string; desc: string }> = [
+  { no: '음식은 공짜로 나가고 매출은 그대로', yes: '유어딜은 <em>손님이 먼저 결제하고</em> 옵니다', desc: '할인 이용권을 사 둔 손님이 편한 날 찾아와 QR로 바로 사용합니다.' },
+  { no: '한 번 다녀가면 그걸로 끝', yes: '유어딜은 <em>새 손님이 계속</em> 찾아옵니다', desc: '지도와 동네딜에 노출되고, 유저들이 자기 유어샵에 담아 소개합니다.' },
+  { no: '효과가 없어도 비용은 먼저', yes: '유어딜은 <em>팔렸을 때만</em> 비용이 듭니다', desc: '가입비·월 이용료 0원. 정산은 팔린 만큼 받습니다.' },
+]
+
+/** 유어딜 정체성 한 줄 — 대표 *"정체성 한줄 고정"*. 장면이 넘어가도 이 줄은 그대로 선다. */
+export const PARTNER_IDENTITY = '유어딜은 <b>가게 할인 이용권</b>을 미리 파는 서비스예요'
+
+/** 한 장이 머무는 시간(초). 세 장 한 바퀴 = 3 × 이 값. */
+export const PARTNER_SLIDE_SEC = 4
+
+const CYCLE = PARTNER_SLIDES.length * PARTNER_SLIDE_SEC
+
+export const PARTNER_CSS = `
+.pt{min-height:100vh;background:var(--pbg);padding:10px}
+.pt .k{height:calc(100vh - 20px);min-height:300px;background:var(--card);border-radius:18px;box-shadow:var(--lift);padding:18px 22px;display:flex;flex-direction:column;gap:12px;word-break:keep-all;overflow:hidden}
+.pt .hd{gap:8px}
+.pt .hd .logo{font-size:15px}
+.pt .co{min-width:0;font-size:13px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt .id{margin:0;padding:9px 12px;border-radius:10px;background:var(--tint);color:var(--ink);font-size:13px;line-height:1.5}
+.pt .id b{font-weight:700;color:var(--brand)}
+.pt .stage{position:relative;flex:1;min-height:0}
+.pt .sl{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;animation:pt-scene ${CYCLE}s infinite}
+${PARTNER_SLIDES.map((_, i) => `.pt .sl:nth-child(${i + 1}){animation-delay:-${(CYCLE - i * PARTNER_SLIDE_SEC) % CYCLE}s}`).join('\n')}
+.pt .lb{font-size:12px;color:var(--faint)}
+.pt .lb i{font-style:normal;margin-left:6px;opacity:.7}
+.pt .no{margin:0;font-size:15px;color:var(--faint);text-decoration:line-through;text-decoration-thickness:1px}
+.pt .yes{margin:0;font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1.28;color:var(--ink)}
+.pt .yes em{font-style:normal;color:var(--brand)}
+.pt .ds{margin:0;font-size:13px;line-height:1.6;color:var(--soft)}
+.pt .ft{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pt .dots{display:flex;gap:6px}
+.pt .dots i{position:relative;width:18px;height:3px;border-radius:2px;background:var(--rule);overflow:hidden}
+.pt .dots i::after{content:'';position:absolute;inset:0;background:var(--brand);transform:scaleX(0);transform-origin:left;animation:pt-bar ${CYCLE}s linear infinite}
+${PARTNER_SLIDES.map((_, i) => `.pt .dots i:nth-child(${i + 1})::after{animation-delay:-${(CYCLE - i * PARTNER_SLIDE_SEC) % CYCLE}s}`).join('\n')}
+.pt .go{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;background:var(--brand);color:#fff;font-size:15px;font-weight:700;white-space:nowrap}
+.pt .go svg{width:16px;height:16px}
+@keyframes pt-scene{0%{opacity:1;transform:none}30%{opacity:1;transform:none}34%{opacity:0;transform:translateY(-6px)}96%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:none}}
+@keyframes pt-bar{0%{transform:scaleX(0)}33.3%{transform:scaleX(1)}33.4%,100%{transform:scaleX(0)}}
+/* 📱 폰 폭 — 설명 줄을 빼고 큰 문장을 줄인다. 버튼은 폭 전체(누르기 쉽게). 320~420px 에서 360 안에 든다. */
+@media (max-width:480px){.pt .k{padding:14px 16px;gap:10px}.pt .yes{font-size:24px}.pt .ds{display:none}.pt .ft{flex-direction:column;align-items:stretch;gap:10px}.pt .go{justify-content:center}}
+@media (prefers-reduced-motion:reduce){.pt *,.pt *::before,.pt *::after{animation:none!important;transition:none!important}.pt .sl:nth-child(n+2){display:none}.pt .dots{display:none}}`

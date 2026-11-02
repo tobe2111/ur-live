@@ -15,7 +15,7 @@
 import { priceDisplay } from '../../shared/price-display'
 import { detailHref } from '../../shared/product-flow'
 import { cfImage } from '../../utils/cf-image'
-import { PARTNER_MOTION_CSS } from './embed-partner-motion'
+import { PARTNER_CSS, PARTNER_SLIDES, PARTNER_IDENTITY } from './embed-partner-motion'
 
 export type EmbedKind = 'ushop' | 'agency' | 'store' | 'region' | 'pass' | 'partner'
 export type EmbedTheme = 'light' | 'dark' | 'auto'
@@ -135,33 +135,7 @@ a{color:inherit;text-decoration:none}
 .one .b{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .one .nm{font-size:15px;min-height:0}
 .one .go{align-self:flex-start;margin-top:6px;background:var(--brand);color:#fff;font-size:13px;font-weight:700;padding:7px 14px;border-radius:999px}
-.one .logo{font-size:13px}
-/* 🤝 제휴사 입점 위젯 — 2026-11-01 대표 확정 시안 B "나란히 선 두 브랜드".
-   앞선 시안 A(파란 띠 + 절취선 + 회색/연파랑 비교 박스)를 대체한다. 바꾼 이유 셋:
-   ① 통짜 파란 면이 화면 1/3 을 덮어 전단지로 읽혔다 ② 비교 두 칸이 색 덩어리라 논리가 안 보였다
-   ③ 티켓 홈이 라이트에서 안 보였다(--bg 와 --card 가 둘 다 흰색이라 장치가 절반만 살아 있었다).
-   ⚠️ 바깥 바탕은 --pbg(제휴 위젯 전용)다. --bg 를 바꾸면 strip·single 위젯이 남의 흰 사이트에서
-      회색 사각형이 된다. */
-.pt{padding:10px;background:var(--pbg);min-height:100vh}
-.pt .k{background:var(--card);border-radius:18px;box-shadow:var(--lift);overflow:hidden;word-break:keep-all}
-.pt .bar{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--rule)}
-.pt .bar .logo{font-size:15px}
-.pt .co{min-width:0;font-size:13px;font-weight:500;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pt .in{padding:24px;display:flex;flex-direction:column}
-.pt h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.3}
-.pt .sub{margin:8px 0 0;font-size:13px;line-height:1.6;color:var(--soft)}
-.pt .cmp{margin:20px 0 20px;display:grid;grid-template-columns:1fr 1fr}
-.pt .col{min-width:0;display:flex;flex-direction:column;gap:7px;padding-right:16px}
-.pt .col b{margin-bottom:4px;font-size:12px;font-weight:500;letter-spacing:.02em}
-.pt .col span{font-size:13px;line-height:1.4}
-.pt .old b,.pt .old span{color:var(--faint)}
-/* 비교 두 칸은 박스가 아니라 선 하나로 가른다 — 마크업은 col old/new 그대로다. */
-.pt .new{padding:0 0 0 20px;border-left:1px solid var(--rule)}
-.pt .new b{color:var(--brand)}
-.pt .new span{color:var(--ink);font-weight:500}
-.pt .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.pt .foot small{font-size:12px;color:var(--faint)}
-.pt .go{background:var(--brand);color:#fff;font-size:15px;font-weight:700;padding:12px 20px;border-radius:12px;box-shadow:var(--glow)}`
+.one .logo{font-size:13px}`
 
 function cardHtml(c: EmbedCard): string {
   const img = c.img ? `<img src="${esc(c.img)}" alt="${esc(c.name)}" loading="lazy" width="156" height="156">` : ''
@@ -235,20 +209,19 @@ export function renderMissing(theme: EmbedTheme): string {
  * ⚠️ 문구에 숫자(수수료율 등)를 적지 않는다 — 요율은 어드민이 바꾸는 값이라 남의 사이트에 박힌 숫자는 곧 거짓말이 된다.
  */
 export function renderPartner(theme: EmbedTheme, agencyName: string, agencyId: number): string {
-  // 🎫 2026-11-01 대표 확정 시안 B "나란히 선 두 브랜드" — 10-31 시안 A(파란 띠 + 절취선)를 대체한다.
-  //   이 위젯의 목적은 *제휴사가 사장님을 데려오는 것*이라 두 브랜드가 **대등**해 보여야 제안에 무게가 실린다.
-  //   A 는 유어딜 배너에 제휴사 이름이 곁다리로 붙은 모양이었다(대표: *"고급지고 세련되게"*).
-  //   ⚠️ 비교 블록(col old/new)의 마크업은 A 와 byte-동일하다 — 칸을 가르는 건 박스가 아니라 CSS 선 하나다.
-  //   비교 문구의 유어딜 쪽은 지금 정책과 맞는 것만(손님 선결제 · 매장 QR 사용 · 팔린 만큼 정산 · 가입비 0원).
+  // 🎬 2026-11-02 대표 확정 *"4번형태로 가되 유어딜의 정체성 한줄 고정"* — 체험단의 한계 → 유어딜 장점 세 장이
+  //   넘어가고, 정체성 한 줄은 고정. 화면·문구·이유는 전부 `embed-partner-motion.ts` 머리말.
+  //   (10-31 시안 A · 11-01 시안 B 의 비교 두 칸은 대체됐다 — 대표 *"제휴사 위젯 너무 촌스러워"*.)
+  //   머리줄은 "○○ 추천" — 조사(이/가)를 붙이지 않는다. 회사 이름의 받침을 알 수 없어서다.
   const href = withUtm(`/store/partner/${agencyId}`, 'partner')
-  const body = `<main class="pt"><div class="k"><div class="bar">${LOGO}<span class="sep"></span>`
-    + `<span class="co">${esc(agencyName)}</span></div><div class="in">`
-    + '<h1>체험단에 지치셨나요?</h1>'
-    + '<p class="sub">공짜로 내주는 홍보 대신, 손님이 먼저 결제하고 오는 할인 이용권</p><div class="cmp">'
-    + '<div class="col old"><b>체험단</b><span>음식은 공짜로</span><span>후기만 남고</span><span>매출은 0원</span></div>'
-    + '<div class="col new"><b>유어딜 이용권</b><span>손님이 선결제</span><span>QR로 바로 사용</span><span>팔린 만큼 정산</span></div>'
-    + `</div><div class="foot"><a class="go" href="${esc(href)}" target="_blank" rel="noopener">유어딜 입점 신청</a>`
-    + '<small>가입비·월 이용료 0원</small></div></div></div></main>'
-  // 🎬 2026-11-02 대표 *"제휴사가 더 급해"* — 모션만 얹는다(마크업·문구 무변경). `embed-partner-motion.ts`
-  return doc(theme, `${agencyName} × 유어딜 입점`, body, PARTNER_MOTION_CSS)
+  const n = PARTNER_SLIDES.length
+  const slides = PARTNER_SLIDES.map((s, i) => `<section class="sl"><span class="lb">체험단의 한계<i>${i + 1}/${n}</i></span>`
+    + `<p class="no">${s.no}</p><p class="yes">${s.yes}</p><p class="ds">${s.desc}</p></section>`).join('')
+  const body = `<main class="pt"><div class="k"><div class="hd">${LOGO}<span class="sep"></span>`
+    + `<span class="co">${esc(agencyName)} 추천</span></div>`
+    + `<p class="id">${PARTNER_IDENTITY}</p><div class="stage">${slides}</div>`
+    + `<div class="ft"><span class="dots" aria-hidden="true">${'<i></i>'.repeat(n)}</span>`
+    + `<a class="go" href="${esc(href)}" target="_blank" rel="noopener">유어딜 입점 신청`
+    + '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a></div></div></main>'
+  return doc(theme, `${agencyName} × 유어딜 입점`, body, PARTNER_CSS)
 }
