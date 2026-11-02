@@ -18,6 +18,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { createRequire } from 'node:module'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { buildSearchClause, regionVariants, SEARCH_COLUMNS } from '@/features/products/repositories/search-query'
 
 type Sqlite = import('node:sqlite').DatabaseSync
@@ -87,6 +89,15 @@ describe('② 시·도 표기 차이', () => {
     expect(search(db, '경상북도')).toEqual([4])
     expect(search(db, '경북')).toEqual([4])
   })
+  it('`광주` 는 광주광역시와 경기 광주시를 **둘 다** 잡는다 (낱말 첫머리 매칭)', () => {
+    const d = freshDb()
+    const ins = d.prepare('INSERT INTO products (id,name,restaurant_name,restaurant_address,category) VALUES (?,?,?,?,?)')
+    ins.run(21, '오리탕 2인', '오리집', '광주광역시 서구 상무대로 1', 'meal_voucher')
+    ins.run(22, '닭갈비 2인', '닭집', '경기 광주시 오포읍 2', 'meal_voucher')
+    ins.run(23, '갈비 2인', '갈비집', '경기 의정부시 광주로 3', 'meal_voucher') // 도로명에 '광주' — 낱말 첫머리라 함께 잡힌다
+    expect(search(d, '광주').sort()).toEqual([21, 22, 23])
+    expect(search(d, '광주광역시')).toEqual([21])
+  })
   it('`제주도` 로 치면 `제주특별자치도 …` 가 나온다', () => {
     expect(search(db, '제주도')).toEqual([5])
   })
@@ -106,5 +117,27 @@ describe('③ 랭킹 — 주소로 걸린 이용권이 설명에만 지명이 �
     const ids = search(db, '부산')
     expect(ids.indexOf(9)).toBeGreaterThan(ids.indexOf(1))
     expect(ids.indexOf(9)).toBeGreaterThan(ids.indexOf(2))
+  })
+})
+
+describe('④ 검색 범위는 서버가 거른다 (scope)', () => {
+  const read = (p: string) => readFileSync(resolve(__dirname, '../../', p), 'utf-8')
+  it('검색 훅이 scope 를 서버에 보내고, 캐시 키에도 넣는다', () => {
+    const hook = read('hooks/useSearch.ts')
+    expect(hook).toMatch(/queryKey: \['search-infinite', query, scope\]/)
+    expect(hook).toMatch(/limit: String\(SEARCH_PAGE_SIZE\), scope \}/)
+  })
+  it('검색 화면이 교환권 진입이면 exchange, 그 외는 voucher 를 넘긴다', () => {
+    expect(read('pages/SearchPage.tsx')).toContain("useSearchInfinite(query, scope === 'exchange' ? 'exchange' : 'voucher')")
+  })
+  it('라우트가 scope 를 필터로 바꾼다 (검색어가 있을 때만)', () => {
+    const r = read('features/products/api/products.routes.ts')
+    expect(r).toContain("const searchScope = safeSearch ? c.req.query('scope') : undefined")
+    expect(r).toContain("if (searchScope === 'voucher') filter.voucherOnly = true; else if (searchScope === 'exchange') filter.dealOnly = true;")
+  })
+  it('랭킹 검색(searchByText)과 폴백(findAll) 둘 다 범위를 건다', () => {
+    const repo = read('features/products/repositories/ProductRepository.ts')
+    expect(repo).toContain('if (filter.voucherOnly) sql += ` AND COALESCE(p.deal_only, 0) = 0 AND p.category IN (${VOUCHER_CATEGORY_SQL_IN})`')
+    expect(repo).toContain('query += ` AND COALESCE(deal_only, 0) = 0 AND category IN (${VOUCHER_CATEGORY_SQL_IN})`;')
   })
 })

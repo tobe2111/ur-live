@@ -5,7 +5,7 @@
 
 import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns';
 import type { Product, ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
-import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories';
+import { VOUCHER_CATEGORIES, VOUCHER_CATEGORY_SQL_IN } from '@/shared/constants/voucher-categories';
 import { capRowGalleries } from '@/features/group-buy/api/card-gallery'
 import { buildSearchClause } from './search-query'
 import { activeSellerProductSql } from '@/shared/db/consumer-visible-product'
@@ -182,7 +182,10 @@ export class ProductRepository {
     }
 
     // 🛡️ 2026-05-19: deal_only 기반 분리 (/browse 는 일반 상품, /vouchers 는 교환권만).
-    if (filter.dealOnly) {
+    if (filter.voucherOnly) {
+      // 📍 2026-11-02: 검색 범위 '이용권만' — searchByText 와 같은 조건(폴백에서도 범위가 안 새게).
+      query += ` AND COALESCE(deal_only, 0) = 0 AND category IN (${VOUCHER_CATEGORY_SQL_IN})`;
+    } else if (filter.dealOnly) {
       query += ` AND deal_only = 1`;
     } else if (filter.excludeDealOnly) {
       // 🛡️ 2026-05-31: /browse = 쇼핑 전용 — 공구상품 제외.
@@ -464,6 +467,9 @@ export class ProductRepository {
     if (filter.status) { sql += ` AND p.status = ?`; params.push(filter.status) }
     if (filter.minPrice !== undefined) { sql += ` AND p.price >= ?`; params.push(filter.minPrice) }
     if (filter.maxPrice !== undefined) { sql += ` AND p.price <= ?`; params.push(filter.maxPrice) }
+    // 📍 2026-11-02: 검색 범위를 서버가 거른다 — 이용권만 / 교환권만. (값은 상수 목록이라 사용자 입력 아님)
+    if (filter.voucherOnly) sql += ` AND COALESCE(p.deal_only, 0) = 0 AND p.category IN (${VOUCHER_CATEGORY_SQL_IN})`
+    else if (filter.dealOnly) sql += ` AND p.deal_only = 1`
 
     // 동점은 많이 팔린 것 → 평점 → 최신 순. `_rank` 는 위 SELECT 의 별칭이라 재계산 없음.
     // 🔴 평점 컬럼은 `avg_rating` 이다 — `rating` 은 products 에 **없다**(라이브 100컬럼 실측).
