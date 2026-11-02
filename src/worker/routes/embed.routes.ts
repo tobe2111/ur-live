@@ -33,6 +33,7 @@ import {
   type EmbedRow, type EmbedTheme,
 } from '../utils/embed-widget'
 import { renderEmbedBuilder } from '../utils/embed-builder'
+import { renderAgency } from '../utils/embed-agency'
 
 export const embedRoutes = new Hono<{ Bindings: Env }>()
 
@@ -120,11 +121,21 @@ embedRoutes.get('/embed/agency/:id', async (c) => {
   const stores = await DB.prepare("SELECT COUNT(*) AS n FROM agency_store_links WHERE agency_id = ? AND status = 'active'")
     .bind(id).first<{ n: number }>().catch(() => null)
   const storeCount = Number(stores?.n || 0)
-  return html(c, renderStrip({
-    kind: 'agency', theme, title: `${agency.name} 운영 매장`,
+  // 🎬 간판 칸의 '판매 중 이용권' — 위젯에 실린 장수(count 상한)가 아니라 **전체**를 센다(같은 노출 조건).
+  const live = await DB.prepare(`SELECT COUNT(*) AS n FROM products p
+    WHERE p.seller_id IN (SELECT seller_id FROM agency_store_links WHERE agency_id = ? AND status = 'active')
+      AND NOT EXISTS (SELECT 1 FROM agency_products ap WHERE ap.product_id = p.id AND ap.agency_id != ?)
+      AND ${LIVE}`)
+    .bind(id, id, ...VOUCHER_CATEGORIES).first<{ n: number }>().catch(() => null)
+  const cards = (rows.results || []).map((r) => toEmbedCard(r, 'agency'))
+  // 🎬 2026-11-02 대표 *"모션그래픽도 넣어서 최대한 고급지게"* → 에이전시만 전용 화면(`embed-agency.ts`).
+  //   0 곳·0 개는 간판에 안 그린다 — 신뢰를 주려고 넣은 자리에 0 이 서면 없는 것만 못하다.
+  return html(c, renderAgency({
+    theme, title: `${agency.name} 운영 매장`,
     brand: agency.name,
-    meta: storeCount > 0 ? `운영 매장 ${storeCount}곳` : undefined,
-    cards: (rows.results || []).map((r) => toEmbedCard(r, 'agency')),
+    storeCount,
+    liveCount: Math.max(Number(live?.n || 0), cards.length),
+    cards,
   }))
 })
 
