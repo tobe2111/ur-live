@@ -48,7 +48,7 @@ export const PROPOSAL_FACTS_SQL = {
   anchor: `SELECT id, name, price, original_price, is_active FROM products WHERE id = ?`,
   fallback: `SELECT id, name, price, original_price, is_active FROM products
              WHERE ${ACTIVE} AND ${REAL} AND category = 'meal_voucher' AND original_price > price ORDER BY id LIMIT 1`,
-  settings: `SELECT key, value FROM platform_settings WHERE key IN ('broker_share_enabled','payout_requires_voucher_use','fee_channel_rates_enabled','influencer_payout_min')`,
+  settings: `SELECT key, value FROM platform_settings WHERE key IN ('broker_share_enabled','agency_share_payout_enabled','payout_requires_voucher_use','fee_channel_rates_enabled','influencer_payout_min')`,
 } as const
 
 export interface SampleRow {
@@ -71,6 +71,8 @@ export interface ProposalLiveFacts {
   /** 덱 문장이 기대는 설정. null = 행이 없다(모름) — false 와 섞지 않는다 */
   flags: {
     brokerShareEnabled: boolean | null
+    /** 2026-11-01 새 에이전시 몫 지급 경로(agency-share-payout.ts) — 기본 OFF */
+    agencySharePayoutEnabled: boolean | null
     payoutRequiresVoucherUse: boolean | null
     feeChannelRatesEnabled: boolean | null
   }
@@ -123,6 +125,7 @@ export function shapeProposalFacts(x: {
     sampleMoved: !anchorOk,
     flags: {
       brokerShareEnabled: flag(s.broker_share_enabled),
+      agencySharePayoutEnabled: flag(s.agency_share_payout_enabled),
       payoutRequiresVoucherUse: flag(s.payout_requires_voucher_use),
       feeChannelRatesEnabled: flag(s.fee_channel_rates_enabled),
     },

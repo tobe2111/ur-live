@@ -28,6 +28,6 @@
 - 인플루언서 DB 규모도 자동으로 재려 했다 — 공개 경로에서 30만 행 COUNT 는 D1 읽기 한도를 태운다. 손으로 남겼다(기준일 표기).
 
 ## 남은 것
-- 🔴 **대표 판단**: 중개 몫 송금 문장 vs `broker_share_enabled=false` — 결재함에 올릴 것.
+- 🔴 **대표 판단(결재함)**: `docs/decisions/2026-11-02-proposal-broker-share-copy.md` — 중개 몫 송금 문장 vs 꺼진 지급(10-13 결재로 OFF). 새 경로 `agency_share_payout_enabled` 도 함께 본다.
 - 자동 생성이 E4 로 확인되면 저장소의 동결 판(약 40MB)과 화면 폴백을 지운다.
 - 화면 캡처(`shots/`) 주 1회 자동 · 랜딩(`/partners`) 계산기 예시 가격(아직 손으로 적은 값)도 같은 서버 숫자로.

@@ -123,6 +123,11 @@ describe('③ 덱이 말하는 것 ↔ 지금 설정', () => {
     expect(w[0].decks).toContain('urdeal-agency-proposal')
   })
 
+  it('새 에이전시 지급 경로가 켜져 있으면 중개 몫 경고는 없다 (둘 중 하나면 약속이 참)', () => {
+    const f = shapeProposalFacts({ ...base, settings: [{ key: 'broker_share_enabled', value: 'false' }, { key: 'agency_share_payout_enabled', value: 'true' }, ...base.settings.slice(1)] })
+    expect(claimWarnings(f).map((x) => x.id)).not.toContain('broker-share-payout')
+  })
+
   it('전부 맞으면 경고 0', () => {
     expect(claimWarnings(shapeProposalFacts(base))).toEqual([])
   })

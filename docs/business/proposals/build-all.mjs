@@ -37,8 +37,9 @@ export const CLAIMS = [
     id: 'broker-share-payout',
     decks: ['urdeal-agency-proposal', 'urdeal-influencer-deck', 'urdeal-merchant-association-deck'],
     says: '귀사(중개) 몫을 유어딜이 직접 보낸다',
-    holds: (f) => f.flags?.brokerShareEnabled === true,
-    setting: 'broker_share_enabled',
+    // 옛 경로(broker_share — 2026-10-13 결재로 OFF) 또는 새 경로(agency_share_payout — 2026-11-01, 기본 OFF) 중 하나라도 켜져야 참.
+    holds: (f) => f.flags?.brokerShareEnabled === true || f.flags?.agencySharePayoutEnabled === true,
+    setting: 'broker_share_enabled · agency_share_payout_enabled',
   },
   {
     id: 'payout-after-use',

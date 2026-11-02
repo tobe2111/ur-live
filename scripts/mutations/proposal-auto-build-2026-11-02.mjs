@@ -33,7 +33,7 @@ export default [
   {
     name: '소개서 자동 — 중개 몫 송금이 꺼져도 경고하지 않는다',
     file: 'docs/business/proposals/build-all.mjs',
-    find: '    holds: (f) => f.flags?.brokerShareEnabled === true,',
+    find: '    holds: (f) => f.flags?.brokerShareEnabled === true || f.flags?.agencySharePayoutEnabled === true,',
     replace: '    holds: () => true,',
     test: T,
     why: '덱이 대행사에게 "직접 보낸다" 고 약속하는데 스위치가 꺼져 있으면 아무도 모른다(11-02 실제 상태).',

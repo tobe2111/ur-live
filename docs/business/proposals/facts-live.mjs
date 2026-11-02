@@ -54,7 +54,7 @@ export const SAMPLE_LIVE = {
   measuredAt: '2026-11-02', activeVouchers: 160, realStores: 2,
   avg: { meal: 33724, beauty: 42683, stay: 147800, etc: 38598 },
   sample: { id: 2915, name: '프리미엄 돈가스 1인 세트', orig: 14500, price: 7500 }, sampleMoved: false,
-  flags: { brokerShareEnabled: false, payoutRequiresVoucherUse: true, feeChannelRatesEnabled: true },
+  flags: { brokerShareEnabled: false, agencySharePayoutEnabled: null, payoutRequiresVoucherUse: true, feeChannelRatesEnabled: true },
   influencerPayoutMin: 100000,
 };
 
