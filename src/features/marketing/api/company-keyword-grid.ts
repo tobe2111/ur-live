@@ -190,6 +190,42 @@ export const S4_TRADES_LOCAL: Trade[] = [
   { kw: '외식업 컨설팅', category: '창업', subcategory: '창업 컨설팅', tier: 1 },
 ]
 
+// ── 5단계: 생활 업종 + 전문직 (2026-11-02 — 대표 *"응 모아줘. 필요해. 전문직종과 생활 카테고리 모두 각자 넣어줘야지"*) ──
+//
+//   🔎 **왜 지금까지 없었나(라이브 실측 2026-11-02)**: 파트너 풀 54만 행 중 상호에 '이사' 가 든 업체 250 ·
+//   '청소' 225 · '방역' 20 — 그나마 대부분 `통신판매`·`대행사` 칸에 잘못 들어가 있었다. 분류가 틀린 게 아니라
+//   **검색어가 없어서 애초에 안 모였다.** 법무사도 35건(상가정보 업종코드가 세무사와 섞여 들어온 것뿐).
+//
+//   🏠 생활 4종은 유어딜 생활 칩(이사·청소·방역·소독·수리·설치)에 딜을 올릴 **입점 후보**다. 이메일보다
+//   **전화**로 닿는 업종이라(지도 등록 위주) 카카오 로컬 레인(키워드당 45건 + 전화)이 주력이다 — 그래서
+//   4단계의 "이메일 수율로 고른다" 기준을 여기엔 적용하지 않는다. 대신 검색어를 **업종당 한두 개**로 좁혀
+//   회전 주기가 늘어나는 비용을 줄였다(5종 × 235 지역).
+//   🧭 전문직은 국가자격 단위로 따로 넣는다. 세무사·회계사·노무사는 상가정보 업종코드가 이미 통째로 받으므로
+//   **없는 자격만** 넣는다: 흔한 셋(법무사·변호사·행정사)은 전국, 드문 넷(변리사·감정평가사·관세사·손해사정사)은
+//   사무소가 몰려 있는 서울·광역시·경기에만(시골 군 단위에 곱하면 빈 검색만 늘어난다).
+//
+//   ⚠️ **배열 끝 · 곱셈 순서 끝** — `buildKeywordRows()` 맨 뒤에 붙인다(앞 인덱스가 밀리면 시드 이어받기가 0).
+export const S5_TRADES_LIFE: Trade[] = [
+  { kw: '포장이사', category: '이사', subcategory: '포장이사', tier: 3 },
+  { kw: '입주청소', category: '청소', subcategory: '입주·이사청소', tier: 3 },
+  { kw: '에어컨 청소', category: '청소', subcategory: '에어컨·가전청소', tier: 3 },
+  { kw: '방역 소독', category: '방역·소독', subcategory: '방역·소독', tier: 3 },
+  { kw: '누수 설비', category: '수리·설치', subcategory: '설비·배관', tier: 3 },
+]
+export const S5_TRADES_PROFESSION: Trade[] = [
+  { kw: '법무사', category: '전문서비스', subcategory: '법무사', tier: 5 },
+  { kw: '변호사 사무소', category: '전문서비스', subcategory: '변호사', tier: 5 },
+  { kw: '행정사', category: '전문서비스', subcategory: '행정사', tier: 5 },
+]
+export const S5_TRADES_PROFESSION_CITY: Trade[] = [
+  { kw: '변리사', category: '전문서비스', subcategory: '변리사', tier: 5 },
+  { kw: '감정평가사', category: '전문서비스', subcategory: '감정평가사', tier: 5 },
+  { kw: '관세사', category: '전문서비스', subcategory: '관세사', tier: 5 },
+  { kw: '손해사정사', category: '전문서비스', subcategory: '손해사정사', tier: 5 },
+]
+/** 드문 전문직을 곱할 지역 — 서울 25구 · 광역시 6 · 경기 31. 값은 위 상수를 그대로 참조한다(복제 금지). */
+export const CITY_REGIONS: string[] = [...SEOUL, ...METRO_WIDE, ...GYEONGGI]
+
 export type KeywordSeedRow = { keyword: string; category: string; subcategory: string; region: string; tier: number }
 
 /** 시드 행 전체(1 → 2 → 3단계 순). 같은 keyword 는 UNIQUE + INSERT OR IGNORE 로 자동 dedup. */
@@ -202,6 +238,10 @@ export function buildKeywordRows(): KeywordSeedRow[] {
     ...S3_TRADES_NATIONWIDE.map(t => ({ keyword: t.kw, category: t.category, subcategory: t.subcategory, region: '', tier: t.tier })),
     // 4단계는 **맨 뒤**여야 한다 — 앞 인덱스가 하나라도 밀리면 시드 이어받기가 0 으로 떨어진다.
     ...S2_REGIONS.flatMap(r => S4_TRADES_LOCAL.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
+    // 5단계(2026-11-02) — 역시 **맨 뒤**. 생활 → 전문직(전국) → 전문직(도시) 순서를 바꾸지 말 것.
+    ...S2_REGIONS.flatMap(r => S5_TRADES_LIFE.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
+    ...S2_REGIONS.flatMap(r => S5_TRADES_PROFESSION.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
+    ...CITY_REGIONS.flatMap(r => S5_TRADES_PROFESSION_CITY.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),
   ]
 }
 

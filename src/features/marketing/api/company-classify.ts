@@ -102,7 +102,8 @@ export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
  *  자동으로 재검사 대상이 된다(안 올리면 이미 스탬프된 잘못된 행이 영구 방치 — 이 사고의 원인).
  *  v3 (2026-07-27): 안내-페이지 제목 어휘(위치안내/이용안내/오시는길/지정 게시대 — 대표 신고
  *  "지정 게시대 위치안내" 업체명) NOTICE_WORD 추가. */
-export const CLASSIFY_RULES_VERSION = 11 // 2026-11-02: v10 의 자격 정밀화가 벌크 전진에 건너뛰어진 행(법무사→세무사 · 세무·기장 4,162)을 다시 본다
+export const CLASSIFY_RULES_VERSION = 12 // 2026-11-02: 생활 업종 4종(이사·청소·방역·소독·수리·설치) 분류 규칙 — 대표 "이사, 청소 등등도"
+// v11 // 2026-11-02: v10 의 자격 정밀화가 벌크 전진에 건너뛰어진 행(법무사→세무사 · 세무·기장 4,162)을 다시 본다
 // v10 // 2026-10-24: 전문직을 국가자격 단위로(대표 "법조계 … 업종 구별이 더 체계적으로")
 // v9 // 2026-08-13: breadcrumb 구분자는 상호가 아니다(대표 '연락처는 실재하는데 업체명이 틀려')
 // v7 // 2026-08-08: or.kr=org · 잘린제목 거부 · 본문근거 불인정(대표 신고 진흥원)
@@ -175,6 +176,25 @@ const BIZ_RULES: Array<{ re: RegExp; category: string; subcategory: string; tier
   { re: /(CCTV|씨씨티비|보안\s*시스템)/i, category: 'POS·단말기', subcategory: 'CCTV·보안', tier: 4, type: 'partner' },
   // 간판 / 인테리어(대표 v3 — 독립 카테고리)
   { re: /(간판|사인\s*제작|현수막|실사출력)/, category: '간판', subcategory: '간판·광고물 제작', tier: 3, type: 'partner' },
+  // 🏠 생활 업종(2026-11-02 대표 *"이사, 청소 등등도"*) — **인테리어보다 먼저**: `방수시공` 은 인테리어가
+  //   아니라 수리다(뒤에 두면 `시공` 이 가로챈다). 순서가 곧 규칙이다 — 아래 함정은 전부 실제 상호 모양이다.
+  //   · `이사청소` 는 청소다(이사보다 먼저 · 소비자 칩의 '가장 긴 낱말이 이긴다' 와 같은 결론).
+  //   · bare `이사` 는 쓰지 않는다 — `대표이사`·`이사회`·`이사장` 이 걸린다. 이사 업종 어휘로만 좁힌다.
+  //   · `청소년` 은 청소가 아니다(`청소(?!년)`). `드라이클리닝` 은 세탁소다.
+  //   · `주방설비` 는 인테리어/주방설비 다(아래 규칙) — 수리의 `설비` 는 앞에 `주방` 이 없을 때만.
+  //   · bare `타일`·`전기` 는 쓰지 않는다 — `스타일`·`전기차` 가 걸린다.
+  { re: /(이사\s*청소|입주\s*청소|준공\s*청소)/, category: '청소', subcategory: '입주·이사청소', tier: 3, type: 'partner' },
+  { re: /(에어컨\s*(?:청소|세척|클리닝)|세탁기\s*(?:청소|세척)|가전\s*(?:청소|세척))/, category: '청소', subcategory: '에어컨·가전청소', tier: 3, type: 'partner' },
+  { re: /(청소(?!년)|(?<!드라이\s*)클리닝|크리닝|건물\s*위생|미화)/, category: '청소', subcategory: '사무실·상가청소', tier: 3, type: 'partner' },
+  { re: /(포장\s*이사|이삿짐|이사\s*(?:업체|전문|센터|대행|짐)|원룸\s*이사|보관\s*이사|이사[,·]\s*(?:운송|용달))/, category: '이사', subcategory: '포장이사', tier: 3, type: 'partner' },
+  { re: /(사무실\s*이사|기업\s*이사)/, category: '이사', subcategory: '사무실이사', tier: 3, type: 'partner' },
+  { re: /(용달|소형\s*이사|1톤\s*이사|용차)/, category: '이사', subcategory: '용달·소형이사', tier: 3, type: 'partner' },
+  { re: /(방역|소독|해충|방제|흰개미|세스코)/, category: '방역·소독', subcategory: '방역·소독', tier: 3, type: 'partner' },
+  { re: /(누수|방수|하수구|변기\s*막힘|배관\s*막힘)/, category: '수리·설치', subcategory: '누수·방수', tier: 3, type: 'partner' },
+  { re: /((?<!주방\s*)설비|배관|보일러|수도\s*(?:설비|공사|수리))/, category: '수리·설치', subcategory: '설비·배관', tier: 3, type: 'partner' },
+  { re: /(전기\s*(?:공사|설비|수리|기술)|조명\s*(?:설치|공사))/, category: '수리·설치', subcategory: '전기', tier: 3, type: 'partner' },
+  { re: /(열쇠|도어락|디지털\s*도어|키\s*카피)/, category: '수리·설치', subcategory: '열쇠·도어락', tier: 3, type: 'partner' },
+  { re: /(줄눈)/, category: '수리·설치', subcategory: '줄눈', tier: 3, type: 'partner' },
   { re: /(인테리어|리모델링|시공)/, category: '인테리어', subcategory: '인테리어·시공', tier: 3, type: 'partner' },
   { re: /(주방\s*설비|주방설비|주방\s*기구|업소용\s*주방)/, category: '인테리어', subcategory: '주방설비', tier: 3, type: 'partner' },
   // 전문 서비스(법률·세무·기장 등)
