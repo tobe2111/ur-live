@@ -36,7 +36,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -56,13 +56,15 @@ jobs:
         working-directory: docs/business/proposals
         run: npm ci --no-audit --no-fund
 
-      # main 머지 직후면 새 워커가 아직 안 올라왔을 수 있다 — 몇 번 기다린다(못 받으면 실패: 옛 숫자로 뽑지 않는다).
+      # main 머지 직후면 새 워커가 아직 안 올라왔을 수 있다 — 기다린다(못 받으면 실패: 옛 숫자로 뽑지 않는다).
+      # 🩸 2026-11-02 첫 실행: 6분만 기다렸는데 배포가 12분 걸렸고 그마저 다음 머지에 밀려 취소됐다 → 404 로 실패.
+      #    배포는 보통 15~30분이라 30분(20회 × 90초)까지 기다린다.
       - name: 라이브 숫자 받기
         working-directory: docs/business/proposals
         run: |
-          for i in 1 2 3 4 5 6; do
+          for i in $(seq 1 20); do
             node facts-live.mjs fetch && exit 0
-            echo "   ${i}번째 실패 — 60초 뒤 다시"; sleep 60
+            echo "   ${i}번째 실패 — 90초 뒤 다시 (배포가 아직일 수 있다)"; sleep 90
           done
           exit 1
 
