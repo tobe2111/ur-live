@@ -28,8 +28,6 @@
   "src/features/returns/api/return-amount.routes.ts|UPDATE|returns.refund_amount_note",
   "src/features/returns/api/return-amount.routes.ts|UPDATE|returns.refund_amount_set_at",
   "src/features/returns/api/return-amount.routes.ts|UPDATE|returns.refund_amount_set_by",
-  "src/features/seller-public/api/seller-public.routes.ts|SELECT|seller_follows.notify_live_start",
-  "src/features/seller-public/api/seller-public.routes.ts|SELECT|seller_follows.notify_new_product",
   "src/features/supply/api/supply-settlement.ts|UPDATE|supplier_settlements.payout_ref",
   "src/features/timedeal/api/timedeal.routes.ts|INSERT|cart_items.created_at",
   "src/lib/consignment-settlement.ts|SELECT|order_items.consignment_id",

@@ -273,7 +273,7 @@
   "seller_credits": "seller_id,balance,updated_at",
   "seller_deal_balances": "seller_id,gated_deal_amount,redeemable_deal_amount,created_at,updated_at",
   "seller_deal_transactions": "id,seller_id,amount,bucket,type,reference_id,memo,created_at",
-  "seller_follows": "id,user_id,seller_id,created_at,notify_group_buy",
+  "seller_follows": "id,user_id,seller_id,created_at,notify_group_buy,notify_new_product,notify_live_start",
   "seller_influencer_deals": "id,seller_id,influencer_id,commission_pct,starts_at,ends_at,status,proposed_by,message,created_at,responded_at,requires_content_proof,proof_url,proof_status",
   "seller_kpi_daily": "seller_id,date,unique_viewers,viewers_purchased,gmv,donation_total,cvr,arpu,refund_amount,refund_count",
   "seller_meta": "seller_id,key,value,updated_at",
