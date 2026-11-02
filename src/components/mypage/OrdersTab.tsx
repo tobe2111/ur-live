@@ -498,7 +498,7 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
     desc = t('ordersTab.emptyDesc', { defaultValue: '마음에 드는 상품을 둘러보세요' })
   }
   return (
-    <div className="bg-surface rounded-2xl shadow-lift dark:shadow-none p-12 text-center">
+    <div className="rounded-2xl p-12 text-center">
       {/* 🦦 2026-10-10 (대표 "다 해줘"): 상자 아이콘 → 유달이. 검색해서 0건은 갸웃(notFound), 아직 산 게 없으면 빈 지갑(empty) */}
       <Udal mood={searching ? 'notFound' : 'empty'} size={96} className="block mx-auto mb-5" />
       <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>

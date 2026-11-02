@@ -40,7 +40,7 @@ export default function ExpiryNotice({ items, t, onOpen }: {
     <button
       type="button"
       onClick={() => onOpen(first)}
-      className="mb-4 w-full flex items-center gap-3 rounded-2xl bg-surface shadow-lift py-3 pl-2 pr-4 text-left active:bg-black/[0.03] dark:active:bg-white/[0.04] transition-colors"
+      className="mb-4 w-full flex items-center gap-3 rounded-2xl py-3 pl-2 pr-4 text-left active:bg-black/[0.03] dark:active:bg-white/[0.04] transition-colors"
     >
       <Udal mood="paid" size={52} className="shrink-0" />
       <span className="min-w-0 flex-1">

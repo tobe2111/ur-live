@@ -31,10 +31,9 @@ const MINI = read('components/deal/DealMiniCard.tsx')
 const ROW = read('components/deal/DealRow.tsx')
 
 describe('딜 카드 형태 3종', () => {
-  it('① 미니·줄은 09-02 표면 규칙을 쓴다 — 흰 카드 + 들림, 테두리 0', () => {
+  it('① 미니·줄은 평면이다 — 판·들림·테두리 0 (2026-11-02 대표 확정 A안 — 평면)', () => {
     for (const [name, src] of [['DealMiniCard', MINI], ['DealRow', ROW]] as const) {
-      expect(src, `${name}: 흰 표면`).toMatch(CARD_BG_RE)
-      expect(src, `${name}: 들림 하나`).toContain('shadow-lift')
+      expect(src, `${name}: 들림 없음`).not.toMatch(/className=[^\n]*shadow-lift|'[^'\n]*shadow-lift[^'\n]*'/)
       // 카드 테두리는 0 — 표면 규칙 ①. (`border-` 가 아예 없어야 한다는 뜻은 아니고
       //  루트 컨테이너에 테두리를 두르지 않는다는 뜻이라 클래스 존재로 본다.)
       expect(src, `${name}: 카드 테두리 금지`).not.toMatch(/rounded-2xl[^"`]*\bborder\b/)

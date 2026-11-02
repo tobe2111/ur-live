@@ -19,7 +19,7 @@ import { WishlistFlag } from './WishlistParts'
 export function WishlistSummaryCard({ s }: { s: WishlistSummary }) {
   const headline = s.drops > 0 ? { n: s.drops, cap: '찜한 뒤 가격이 내렸어요' } : { n: s.total, cap: '찜한 이용권' }
   return (
-    <div className="lg:hidden flex items-center gap-4 rounded-2xl bg-surface shadow-lift dark:shadow-none px-4 py-4 mb-4">
+    <div className="lg:hidden flex items-center gap-4 rounded-2xl px-4 py-4 mb-4">
       <div className="text-[34px] font-extrabold leading-none tracking-tight tabular-nums text-gray-900 dark:text-white">
         {headline.n}
       </div>

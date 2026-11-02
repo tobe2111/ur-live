@@ -86,7 +86,7 @@ export default function MyDealHistoryPage() {
       {/* 🎫 2026-10-19 (대표 *"다 이상적으로 진행해줘 모두"*): 검정 그라디언트 판 → 흰 카드.
           숫자가 주인공이고(규칙 ③) 행동은 브랜드 블루 하나(규칙 ②) — 검정 판은 이 화면에만 있던 모양이었다. */}
       <div className="ur-content-medium px-4 lg:px-8 pt-2">
-        <div className="rounded-2xl bg-surface shadow-lift dark:shadow-none p-5">
+        <div className="rounded-2xl p-5">
           <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">현재 딜 잔액</p>
           <p className="mt-1 flex items-baseline gap-1 leading-none">
             <span className="text-[28px] font-extrabold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(balance)}</span>
@@ -147,7 +147,7 @@ export default function MyDealHistoryPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-2xl bg-surface shadow-lift dark:shadow-none overflow-hidden">
+          <div className="rounded-2xl overflow-hidden">
             {items.map((tx, i) => {
               const TxIcon = TYPE_ICON[tx.type] || List
               const isPositive = tx.amount > 0 || tx.type === 'charge' || tx.type === 'refund' || tx.type === 'referral_bonus' || tx.type === 'ad_reward'

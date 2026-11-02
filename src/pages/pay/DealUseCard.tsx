@@ -61,7 +61,7 @@ export default function DealUseCard({ goodsAmount, dealMax, value, onChange, dis
   const atMax = used === cap
 
   return (
-    <section className="bg-surface rounded-2xl shadow-lift p-4">
+    <section className="rounded-2xl p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-[15px] font-bold text-ink">딜 사용</h2>
         <span className="text-[12px] text-ink-faint">

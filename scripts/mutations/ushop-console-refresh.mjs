@@ -101,7 +101,7 @@ export default [
        지키는 것은 그대로 — **콘솔의 카드는 테두리 0 + 들림 한 값**. 콘솔에 남아 있는 카드로 옮긴다. */
     name: '소개 콘솔 — 카드에 테두리를 다시 그린다',
     file: CONSOLE,
-    find: '<div className="bg-surface shadow-lift rounded-2xl p-4 mb-3">',
+    find: '<div className="rounded-2xl p-4 mb-3">', // 2026-11-02 A안 평면 재조준
     replace: '<div className="bg-surface border border-line rounded-xl p-4 mb-3">',
     test: T_NEW,
     why: '표면 규칙 ①: 카드는 테두리 0 + 들림(`shadow-lift`) 한 값. 선을 그리면 면이 둘로 안 나뉜다.',

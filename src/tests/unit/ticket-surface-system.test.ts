@@ -96,10 +96,9 @@ describe('② 결제 완료 — 자동 이동 폐기, 티켓 화면', () => {
 
 describe('③ 티켓 부품 — 테두리·그림자 스택 없음', () => {
   const src = code(R('src/components/ticket/TicketCard.tsx'))
-  it('카드 밖 테두리(border border-*) 0, 그림자는 shadow-lift 만', () => {
+  it('카드 밖 테두리(border border-*) 0, 그림자 0 (2026-11-02 대표 *"티켓도 평면"*)', () => {
     expect(src).not.toMatch(/\bborder border-(gray|\[#)/)
-    expect(src).not.toMatch(/shadow-(sm|md|lg|xl|2xl)\b/)
-    expect(src).toMatch(/shadow-lift/)
+    expect(src).not.toMatch(/shadow-(sm|md|lg|xl|2xl|lift)\b/)
   })
   it('밴드는 bg-brand, 구분선은 border-rule', () => {
     expect(src).toMatch(/bg-brand/)

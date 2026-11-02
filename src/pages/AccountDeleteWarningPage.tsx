@@ -41,7 +41,7 @@ import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
 /** 탈퇴하면 **바로** 지워지는 것 — `delete-account.service.ts` 의 DELETE/소멸 대상과 같아야 한다(가드가 대조). */
 export const GONE_ON_DELETE = ['deal', 'coupons', 'wishlist', 'follows', 'notifications'] as const
 
-const CARD = 'rounded-2xl bg-surface shadow-lift dark:shadow-none p-5'
+const CARD = 'rounded-2xl p-5'
 
 export default function AccountDeleteWarningPage() {
   const { t } = useTranslation()

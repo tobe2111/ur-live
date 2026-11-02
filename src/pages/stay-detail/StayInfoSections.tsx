@@ -108,7 +108,7 @@ export function StayReviews({ productId }: { productId: number }) {
  */
 export function StaySoldOutCard({ onPickDates }: { onPickDates: () => void }) {
   return (
-    <div className="rounded-2xl bg-surface shadow-lift p-5 text-center">
+    <div className="rounded-2xl p-5 text-center">
       <p className="text-[15px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">고른 날짜는 모두 예약됐어요</p>
       <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">날짜를 바꾸면 남은 객실을 볼 수 있어요.</p>
       <button type="button" onClick={onPickDates} className="mt-4 w-full py-3 bg-brand text-white text-[15px] font-bold rounded-xl hover:bg-brand-dark">

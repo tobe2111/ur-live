@@ -125,9 +125,17 @@ export function GroupLabel({ children }: { children: React.ReactNode }) {
   return <div className="mt-6 mb-2 px-1 text-[12px] font-medium text-gray-400">{children}</div>
 }
 
+/**
+ * 🧾 2026-11-02 대표 확정 **A안 — 평면**(범위 소비자 화면 전체): 이 부품을 쓰는 곳(유어샵 관리 ·
+ *   내 정산)은 **판 없이** 줄과 구분선만 그린다. 그림자·흰 바탕을 걷은 같은 상자다.
+ *   ⚠️ `LIST_PLATE_CLS` 자체는 그대로 둔다 — 에이전시 콘솔(판 유지)과 마이 판매 구역이 그 문자열을 쓰고,
+ *      마이는 폰 `.ur-my-flat` · PC `.ur-pc-card` 가 CSS 로 평면화한다(그 선택자가 `shadow-lift` 를 잡는다).
+ */
+export const LIST_PLATE_FLAT_CLS = 'rounded-2xl overflow-hidden'
+
 /** 판 — 그룹 하나당 하나. 한 판에 여러 그룹을 담지 않는다(그 순간 그룹 라벨이 판 안으로 들어간다). */
 export function ListPlate({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={className ? `${className} ${LIST_PLATE_CLS}` : LIST_PLATE_CLS}>{children}</div>
+  return <div className={className ? `${className} ${LIST_PLATE_FLAT_CLS}` : LIST_PLATE_FLAT_CLS}>{children}</div>
 }
 
 /**
