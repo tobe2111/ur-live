@@ -18,7 +18,7 @@ const TABS: { key: MyTab; label: string }[] = [
 export default function MyRoleTabs({ value, onChange }: { value: MyTab; onChange: (v: MyTab) => void }) {
   return (
     <div className="px-4 pb-2" data-testid="my-role-tabs">
-      <div role="tablist" aria-label="마이 화면 고르기" className="flex p-1 rounded-xl bg-gray-200 dark:bg-[#1D1F29]">
+      <div role="tablist" aria-label="마이 화면 고르기" className="flex p-1 rounded-xl bg-gray-200 dark:bg-white/10">
         {TABS.map((tab) => {
           const on = tab.key === value
           return (
@@ -29,7 +29,7 @@ export default function MyRoleTabs({ value, onChange }: { value: MyTab; onChange
               aria-selected={on}
               onClick={() => onChange(tab.key)}
               className={`flex-1 h-9 rounded-lg text-[15px] transition-colors ${on
-                ? 'bg-white dark:bg-[#383D42] text-gray-900 dark:text-white font-bold'
+                ? 'bg-surface dark:bg-white/15 text-gray-900 dark:text-white font-bold'
                 : 'text-gray-600 dark:text-gray-300 font-medium'}`}
             >
               {tab.label}
