@@ -39,6 +39,12 @@
 |---|---|
 | ![](assets/popup-r3-light.png) | ![](assets/popup-r3-dark.png) |
 
+6. 대표 *"유리로 하고 뒷 배경 블러처리 하는건 어때?"* → **3 유리 선택**. 뒤 흐림 변형(3+: 뒤 화면 blur 10px + 옅은 막, 알림은 흐림 없음)을 시안으로 그림 — 흐림 여부 결정 대기. 흐림 미지원·투명도 줄이기 기기는 옅은 막으로 대체.
+
+| 유리 vs 유리+뒤 흐림 · 라이트 | 다크 |
+|---|---|
+| ![](assets/popup-glass-blur-light.png) | ![](assets/popup-glass-blur-dark.png) |
+
 ## 구현 todo (확정안)
 - [ ] `components/ui/` 에 `Dialog`(가운데 확인) · `Sheet`(하단/PC 가운데) · 토스트 하나 — `seller-section/Sheet.tsx` 의 히스토리·Z 규약을 그대로 승격
 - [ ] `confirm-dialog.tsx` 를 새 Dialog 로 (잉크 버튼 → 브랜드)
