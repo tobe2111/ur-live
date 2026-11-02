@@ -15,6 +15,7 @@
  * ⚠️ 못 보는 것: 실제 화면(배너 높이·카드 폭·다크 대비) — `visual-preview --pc` 로 봐야 한다.
  */
 import { pickRegionTiles } from '@/pages/pc-home/region-tiles'
+import { regionHeroForSido } from '@/shared/home-region-hero'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { stripComments } from '@/tests/helpers/source-text'
@@ -114,19 +115,36 @@ describe('⑥ 숫자를 지어내지 않는다', () => {
     expect(TILES).toMatch(/if \(tiles\.length < TILE_COUNT\) return null/)
     const sg = (n: string) => ({ sigungu: n, count: 3, indexable: true })
     const R = (sido: string, count: number, indexable = true) => ({ sido, count, indexable, sigungu: [sg('중구')] }) as never
-    const regions = [R('서울', 50), R('경기', 40), R('부산', 30), R('강원', 20), R('제주', 10), R('세종', 99, false)]
+    // 🔁 2026-11-02 재조준 — 1순위가 홈 머리와 같은 지역 사진이 됐다. 아래 폴백 규칙은 **그 사진이 없는**
+    //   지역(울산·경남·경북·광주·전남)으로 본다(서울·부산 등은 이제 늘 머리 사진이 있다).
+    const regions = [R('울산', 50), R('경남', 40), R('경북', 30), R('광주', 20), R('전남', 10), R('세종', 99, false)]
     const deal = (addr: string) => ({ image_url: `https://x/${addr}.jpg`, deal_only: 0, restaurant_address: `${addr} 중구 1` })
-    // 🖼️ 2026-10-14 대표 "사진 없는건 빼주면 돼" — 사진 없는 경기는 건너뛰고 제주로 채운다
-    const got = pickRegionTiles(regions, [deal('서울'), deal('부산'), deal('강원'), deal('제주')], [])
-    expect(got.map((t) => t.sido)).toEqual(['서울', '부산', '강원', '제주'])
+    // 🖼️ 2026-10-14 대표 "사진 없는건 빼주면 돼" — 사진 없는 경남은 건너뛰고 전남으로 채운다
+    const got = pickRegionTiles(regions, [deal('울산'), deal('경북'), deal('광주'), deal('전남')], [])
+    expect(got.map((t) => t.sido)).toEqual(['울산', '경북', '광주', '전남'])
     expect(got.every((t) => !!t.photo)).toBe(true)
     // 색인 게이트 밖(세종)은 사진이 있어도 안 들어온다
-    expect(pickRegionTiles(regions, [deal('세종'), deal('서울'), deal('부산'), deal('강원'), deal('제주')], []).map((t) => t.sido)).not.toContain('세종')
+    expect(pickRegionTiles(regions, [deal('세종'), deal('울산'), deal('경북'), deal('광주'), deal('전남')], []).map((t) => t.sido)).not.toContain('세종')
     // 사진 있는 곳이 넷이 안 되면 빈 배열(줄을 안 그린다)
-    expect(pickRegionTiles(regions, [deal('서울'), deal('부산')], [])).toEqual([])
+    expect(pickRegionTiles(regions, [deal('울산'), deal('경북')], [])).toEqual([])
     // 배너 사진이 이용권 사진보다 먼저
-    const b = [{ image_url: 'https://x/banner.jpg', link_url: 'https://urdeal.kr/region/%EC%84%9C%EC%9A%B8' }]
-    expect(pickRegionTiles(regions, [deal('서울'), deal('부산'), deal('강원'), deal('제주')], b)[0].photo).toBe('https://x/banner.jpg')
+    const b = [{ image_url: 'https://x/banner.jpg', link_url: 'https://urdeal.kr/region/%EC%9A%B8%EC%82%B0' }]
+    expect(pickRegionTiles(regions, [deal('울산'), deal('경북'), deal('광주'), deal('전남')], b)[0].photo).toBe('https://x/banner.jpg')
+  })
+  it('🗺️ 홈 머리와 같은 지역 사진이 배너·이용권 사진보다 먼저다 (2026-11-02 대표 "같이 적용")', () => {
+    const sg = (n: string) => ({ sigungu: n, count: 3, indexable: true })
+    const R = (sido: string, count: number) => ({ sido, count, indexable: true, sigungu: [sg('중구')] }) as never
+    const regions = [R('서울', 50), R('경기', 40), R('세종', 30), R('강원', 20)]
+    const adDeal = (addr: string) => ({ image_url: `https://x/gym-ad-${addr}.jpg`, deal_only: 0, restaurant_address: `${addr} 중구 1` })
+    const banner = [{ image_url: 'https://x/banner.jpg', link_url: 'https://urdeal.kr/region/%EC%84%9C%EC%9A%B8' }]
+    const got = pickRegionTiles(regions, ['서울', '경기', '세종', '강원'].map(adDeal), banner)
+    expect(got.map((t) => t.photo)).toEqual([
+      regionHeroForSido('서울')!.src, regionHeroForSido('경기')!.src, regionHeroForSido('세종')!.src, regionHeroForSido('강원')!.src,
+    ])
+    expect(got.every((t) => t.hero)).toBe(true)
+    expect(regionHeroForSido('세종')?.slug, '세종·충남은 고르기 칸이 하나라 같은 사진').toBe('sejong')
+    expect(regionHeroForSido('충남')?.slug).toBe('sejong')
+    expect(TILES, '정적 지역 사진을 리사이저로 줄이면 4:3 칸에서 흐려진다').toMatch(/const src = t\.hero \? t\.photo : cfImage\(/)
   })
   it('왼쪽 필터 열이 목록 카드보다 위 층이다 — 지역 드롭다운이 카드에 가려지지 않는다', () => {
     // sticky 는 쌓임 맥락을 연다: 열에 z 가 없으면 안쪽 드롭다운이 오른쪽 카드 밑으로 들어간다(대표 신고 2026-10-14)
