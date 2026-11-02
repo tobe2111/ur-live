@@ -1515,30 +1515,6 @@ const MUTATIONS = [
     why: '2026-09-02: 실상품은 비파괴 — 못 옮겨도 사진을 지우지 않는다.',
   },
   {
-    name: '🐢 생활 표 확인이 다시 매번 DDL 34문장 직렬(왕복 1회 확인을 건너뜀)',
-    file: 'src/features/home-service/api/home-service-db.ts',
-    find: '  if (await schemaComplete(DB)) return // 왕복 1회로 끝',
-    replace: '  if (false) return // 왕복 1회로 끝',
-    test: 'src/tests/unit/home-service-schema-probe-2026-11-02.test.ts',
-    why: '2026-11-02 실측: /api/home-service/config 서버 시간 1,424ms — 서버 기동마다 DDL 34문장을 하나씩 보냈다.',
-  },
-  {
-    name: '🐢 생활 표 확인이 색인 개수를 안 보고 통과(머니 멱등 UNIQUE 색인이 빠져도 건너뜀)',
-    file: 'src/features/home-service/api/home-service-db.ts',
-    find: '    return n === HS_PROBE[0].expect',
-    replace: '    return true',
-    test: 'src/tests/unit/home-service-schema-probe-2026-11-02.test.ts',
-    why: '2026-11-02: idx_hs_credit_tx_kind_ref 는 참여권 원장의 멱등 키다 — 있다고 가정하고 건너뛰면 안 된다.',
-  },
-  {
-    name: '🐢 유어샵 주인 보기 물결이 다시 쪼개짐(직렬 대기 3 → 4+)',
-    file: 'src/worker/routes/curator.routes.ts',
-    find: '    const headline = head?.linkshop_headline ?? null',
-    replace: '    await Promise.resolve()\n    const headline = head?.linkshop_headline ?? null',
-    test: 'src/tests/unit/ushop-owner-waves-2026-11-02.test.ts',
-    why: '2026-11-02: 주인 보기는 no-store·미국 원본 DB 라 직렬 대기 하나가 한국에서 ~0.17초씩 쌓인다.',
-  },
-  {
     name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
     file: 'src/worker/routes/curator.routes.ts',
     // 🐢 2026-11-02 셀러 페이로드와 나란히 받도록 바뀌어 앵커를 옮겼다(동봉 자체는 그대로).
