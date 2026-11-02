@@ -95,7 +95,8 @@ export default [
   {
     name: '⚙️ 설정 자리를 `isPc` 만으로 가른다 (좌석 0곳에서 본문보다 먼저 그려진다)',
     file: 'src/pages/UserProfilePage.tsx',
-    find: 'const pcSplit = isPc && sellerSeats.stores.length > 0',
+    // 🐢 2026-11-02 좌석 판정이 `hasSeats` 하나로 모였다(조회 중엔 지난번 값).
+    find: 'const pcSplit = isPc && hasSeats',
     replace: 'const pcSplit = isPc',
     test: TEST,
     why: '좌석이 없으면 두 열 래퍼가 평범한 블록이라 왼쪽·오른쪽이 세로로 이어진다 — 설정이 맨 위로 올라온다',

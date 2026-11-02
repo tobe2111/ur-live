@@ -40,7 +40,7 @@ import { useSearchPan, useSearchDeals } from './restaurant-map/useSearchPan'
 import GeoHelpSheet, { type GeoHelpReason } from './restaurant-map/GeoHelpSheet'
 import { detectInAppBrowser } from '@/lib/in-app-browser'
 import { checkPermission } from '@/lib/in-app-warning'
-import { readCachedLoc, rememberLoc } from '@/shared/utils/cached-loc'
+import { readCachedLoc, rememberLoc } from '@/shared/utils/cached-loc'; export { prefetchMapSeedFirstPage } from '@/hooks/queries/useMapProducts' // 🐢 2026-11-02 홈 map-warmup 이 이 모듈로 지도 첫 목록을 미리 받는다(홈이 직접 import 하면 묶음 봉투가 다시 짜인다) · 한 줄: 래칫
 
 // re-export so that any callers importing KakaoPlace from RestaurantMapPage 가 깨지지 않음
 export type { KakaoPlace }

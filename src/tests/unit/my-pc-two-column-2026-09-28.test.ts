@@ -35,7 +35,9 @@ describe('PC 마이 — 두 열', () => {
   })
 
   it('🔴 **좌석이 있을 때만** 쪼갠다 (없으면 왼쪽 열이 통째로 빈다)', () => {
-    expect(PAGE).toMatch(/sellerSeats\.stores\.length > 0 \?\s*'ur-account-cols ur-account-cols--split'/)
+    // 🐢 2026-11-02 — 좌석 판정은 `hasSeats` 하나(조회 중엔 지난번 값 · 끝나면 실제 좌석 수).
+    expect(PAGE).toMatch(/hasSeats \?\s*'ur-account-cols ur-account-cols--split'/)
+    expect(PAGE).toMatch(/: sellerSeats\.stores\.length > 0\n/)
   })
 
   it('🔴 균등 2열이 아니다 — 균등이면 한 칸이 폰보다 좁아진다', () => {

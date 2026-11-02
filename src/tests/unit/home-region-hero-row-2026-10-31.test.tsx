@@ -50,7 +50,7 @@ describe('시안 8 — 지역 배경', () => {
       expect(existsSync(`public${src}`), src).toBe(true)
     }
   })
-  it('홈 배선 — 사진은 늦게(lazy·낮은 우선순위), 밝게(dark 강제·남색 막 없음) + 바탕색으로 녹는 그라데이션', () => {
+  it('홈 배선 — 사진은 기본 우선순위(카드 다음)·짧은 페이드, 밝게(dark 강제·남색 막 없음) + 바탕색으로 녹는 그라데이션', () => {
     const src = readCode('src/pages/mobile-home/MobileHomePage.tsx')
     expect(src).toContain('regionHeroFor({ regionKey: region.regionKey, loc: userLoc })')
     // 🌤️ 2026-11-01 대표 "밝은 사진 + 그라데이션, 지금은 어둡기만" — 사진 위에서 dark 를 강제하지 않는다.
@@ -63,7 +63,13 @@ describe('시안 8 — 지역 배경', () => {
     expect(src.match(/\{logoRow\}/g)?.length).toBe(2)
     expect(src.match(/\{catRow\}/g)?.length).toBe(2)
     expect(src).not.toContain('bg-gray-900">')
-    expect(src).toMatch(/loading="lazy"[^>]*fetchPriority="low"/)
+    // 🐢 2026-11-02 대표 확정 "중간 — 늦추기만 풀기": lazy·low 를 풀고 기본 우선순위(카드 high 다음) + 짧은 페이드.
+    const hero = src.slice(src.indexOf('function RegionHeroBg'))
+    expect(hero).not.toMatch(/loading="lazy"/)
+    expect(hero).not.toMatch(/fetchPriority="(low|high)"/)
+    expect(hero).toMatch(/fetchPriority="auto"/)
+    expect(hero).not.toMatch(/duration-500/)
+    expect(hero).toMatch(/el\?\.complete && el\.naturalWidth > 0/)
     expect(src).toContain('REGION_HERO_FADE_LIGHT')
     expect(src).toContain('REGION_HERO_FADE_DARK')
   })

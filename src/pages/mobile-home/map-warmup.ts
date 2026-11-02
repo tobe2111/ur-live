@@ -23,7 +23,7 @@
  *   누르는 순간에도 한 번 더 부른다(한가할 때가 아직 안 왔으면 거기서 출발 — 한 번만 받는다).
  */
 import { runAfterLoad } from '@/lib/after-load'
-import { preloadRoute } from '@/lib/route-preload'
+import { preloadRoute, loadRoute } from '@/lib/route-preload'
 
 const TILE_HOST = 'https://mts.kakaocdn.net'
 
@@ -38,7 +38,12 @@ export function warmKakaoMapsAfterLoad(): () => void {
     if (saveData()) return
     import('@/lib/kakao-sdk').then((m) => m.ensureKakaoMaps())
       .catch(() => { /* 지도 화면이 다시 시도한다 */ })
-      .then(() => preloadRoute('map'))
+      // 🐢 2026-11-02 대표 *"지도도 늦게 뜨네"* — 지도는 첫 목록이 와야 만들어진다(타일 한 벌). 화면 코드를 받은 김에
+      //   위치를 모르는 손님의 첫 목록(엣지에 데워진 응답)도 받아 둔다. 함수는 **지도 화면 모듈이 내보낸다** —
+      //   홈이 그 모듈을 직접 import 하면 묶음기가 봉투를 다시 짠다(`RestaurantMapPage` 의 그 자리 주석).
+      .then(() => loadRoute('map'))
+      .then((m) => (m as { prefetchMapSeedFirstPage?: () => Promise<void> } | undefined)?.prefetchMapSeedFirstPage?.())
+      .catch(() => { /* 지도 화면이 평소처럼 받는다 */ })
   }, 4000)
 }
 
