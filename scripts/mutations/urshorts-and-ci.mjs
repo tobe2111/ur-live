@@ -97,8 +97,8 @@ export default [
   {
     name: '📁 분할 매니페스트를 안 읽는다 (로더 제거)',
     file: 'scripts/check-guard-mutations.mjs',
-    find: 'const ALL = [...MUTATIONS, ...SPLIT]',
-    replace: 'const ALL = [...MUTATIONS]',
+    find: 'const FOLDED = foldDuplicateInjections([...MUTATIONS, ...SPLIT])',
+    replace: 'const FOLDED = foldDuplicateInjections([...MUTATIONS])',
     test: 'src/tests/unit/guard-mutations-scope.test.ts',
     why:
       '분할 파일의 주입이 통째로 안 돌게 되는데 **개수만 줄고 에러는 없다**. 새 주입을 거기 넣은 ' +

@@ -84,6 +84,12 @@ function main() {
   try { baseSrc = git(['show', `${baseSha}:${RUNNER}`]) } catch { baseSrc = '' }
   const base = countInline(baseSrc)
   const head = countInline(fs.readFileSync(RUNNER, 'utf8'))
+  // 🛡️ 측정 0 = 실패 — 배열을 못 세면 "늘지 않았다" 가 아무것도 보장하지 않는다.
+  const headCount = head
+  if (headCount <= 0) {
+    console.error(`❌ inline-mutations-growth: 지금 러너의 인라인 배열을 못 셌다(${headCount}) — countInline 을 재조준할 것. 못 잰 것은 통과가 아니다.`)
+    process.exit(1)
+  }
   const errors = judgeInlineGrowth({ base, head })
   if (errors.length) {
     console.error('❌ inline-mutations-growth:')

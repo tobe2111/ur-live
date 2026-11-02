@@ -14,6 +14,8 @@
  * 이 레포의 세션은 언제나 브랜치 위에서 일한다(지정 브랜치에 푸시 → PR). 브랜치 밖 커밋이 정당한 경우는
  * rebase·cherry-pick·revert·bisect 진행 중뿐이고, 그때는 git 이 표시 파일을 남기므로 통과시킨다.
  * 우회: `ALLOW_DETACHED_COMMIT=1 git commit …`
+ *
+ * zero-scan-ok — 판정 대상이 "지금 HEAD 하나" 라 셀 개수가 없다(git 을 못 읽으면 아래에서 실패한다).
  */
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'

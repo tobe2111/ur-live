@@ -192,7 +192,7 @@ describe('📁 분할 매니페스트', () => {
   it('러너가 scripts/mutations/*.mjs 를 읽는다', () => {
     expect(RUNNER_RAW).toMatch(/const MUTATIONS_DIR = path\.join\(ROOT, 'scripts', 'mutations'\)/)
     expect(RUNNER_RAW).toMatch(/readdirSync\(MUTATIONS_DIR\)/)
-    expect(RUNNER_RAW, '인라인 + 분할을 합치지 않는다').toMatch(/const ALL = \[\.\.\.MUTATIONS, \.\.\.SPLIT\]/)
+    expect(RUNNER_RAW, '인라인 + 분할을 합치지 않는다').toMatch(/foldDuplicateInjections\(\[\.\.\.MUTATIONS, \.\.\.SPLIT\]\)/)
   })
 
   it('🔴 인라인 배열은 그대로 있다 — 옮기면 다른 세션 브랜치가 깨진다', () => {
