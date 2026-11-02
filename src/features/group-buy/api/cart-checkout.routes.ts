@@ -312,6 +312,14 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
           ).catch(() => {})
         }
       } catch { /* fail-soft */ }
+      // 🔔 2026-11-02 — 어드민 업무 알림(장바구니 카드 결제는 주문 하나 = 알림 하나).
+      try {
+        const { notifyAdminEvent, summarizeItems, won } = await import('../../../worker/utils/admin-event-notify')
+        await notifyAdminEvent(DB, {
+          type: 'voucher_purchased', title: '이용권 구매',
+          message: `${summarizeItems(priced.lines.map(l => l.name), totalQty)} · ${won(priced.lines.reduce((s, l) => s + l.subtotal, 0))} · 카드`, link: '/admin/orders',
+        })
+      } catch { /* fail-soft */ }
       // 아래 셋은 **주문당 1회**다(멱등이라 중복 지급 0 — 줄마다 부르면 안 된다).
       try {
         const { grantInviteRewardForFirstPurchase } = await import('../../../worker/utils/invite-reward')
