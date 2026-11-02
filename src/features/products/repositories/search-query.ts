@@ -161,12 +161,23 @@ export function buildSearchClause(
     const ors: string[] = []
     for (const v of variants) {
       const like = `%${escapeLike(v)}%`
-      // 🗺️ 시·도 이름은 주소 **맨 앞**에서만 맞춘다 — `%대구%` 는 `부산 해운대구 …` 를 잡는다
-      //   (2026-11-02 시험이 실제로 잡은 오매칭). 주소는 늘 시·도로 시작한다(라이브 실측).
-      const addrLike = isRegionName(v) ? `${escapeLike(v)}%` : like
+      // 🗺️ 시·도 이름은 주소의 **낱말 첫머리**에서만 맞춘다 — `%대구%` 는 `부산 해운대구 …` 를 잡는다
+      //   (2026-11-02 시험이 실제로 잡은 오매칭). 낱말 첫머리 = 주소 맨 앞(`대구 중구 …`) 또는
+      //   공백 바로 뒤(`경기 광주시 …`). 그래서 `광주` 는 광주광역시와 경기 광주시를 **둘 다** 잡는다.
+      //   ⚠️ 공백 뒤 매칭은 **사람이 직접 친 낱말**에만 — `광주광역시` 로 쳤는데 거기서 펼친 `광주` 가
+      //   경기 광주시까지 끌고 오면 안 된다(펼친 표기는 주소 맨 앞에서만).
+      const region = isRegionName(v)
       for (const col of SEARCH_COLUMNS) {
-        ors.push(`${p}${col} LIKE ? ESCAPE '\\'`)
-        whereParams.push(col === 'restaurant_address' ? addrLike : like)
+        if (col === 'restaurant_address' && region && v === token) {
+          ors.push(`(${p}${col} LIKE ? ESCAPE '\\' OR ${p}${col} LIKE ? ESCAPE '\\')`)
+          whereParams.push(`${escapeLike(v)}%`, `% ${escapeLike(v)}%`)
+        } else if (col === 'restaurant_address' && region) {
+          ors.push(`${p}${col} LIKE ? ESCAPE '\\'`)
+          whereParams.push(`${escapeLike(v)}%`)
+        } else {
+          ors.push(`${p}${col} LIKE ? ESCAPE '\\'`)
+          whereParams.push(like)
+        }
       }
     }
     whereParts.push(`(${ors.join(' OR ')})`)

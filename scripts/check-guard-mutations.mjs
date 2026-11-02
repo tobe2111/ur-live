@@ -9842,11 +9842,27 @@ canvas {
   {
     name: '📍 시·도 이름을 주소 어디서든 맞춘다 (대구 → 해운대구 오매칭)',
     file: 'src/features/products/repositories/search-query.ts',
-    find: "const addrLike = isRegionName(v) ? `${escapeLike(v)}%` : like",
-    replace: "const addrLike = like",
+    find: "whereParams.push(`${escapeLike(v)}%`, `% ${escapeLike(v)}%`)",
+    replace: "whereParams.push(like, like)",
     test: 'src/tests/unit/search-region-address-2026-11-02.test.ts',
     why:
-      '짧은 지명은 서로 겹친다 — `%대구%` 가 `부산 해운대구 …` 를 잡는다. 주소는 시·도로 시작하므로 맨 앞에서만 맞춘다.',
+      '짧은 지명은 서로 겹친다 — `%대구%` 가 `부산 해운대구 …` 를 잡는다. 시·도는 주소의 낱말 첫머리에서만 맞춘다.',
+  },
+  {
+    name: '📍 검색 화면이 scope 를 안 보낸다 (이용권·교환권·쇼핑이 다시 섞여 온다)',
+    file: 'src/hooks/useSearch.ts',
+    find: 'limit: String(SEARCH_PAGE_SIZE), scope })',
+    replace: 'limit: String(SEARCH_PAGE_SIZE) })',
+    test: 'src/tests/unit/search-region-address-2026-11-02.test.ts',
+    why: '섞인 50개를 화면이 거르면 넓은 검색어(서울)는 첫 장의 일부만 이용권이다.',
+  },
+  {
+    name: '📍 랭킹 검색이 이용권 범위를 무시한다',
+    file: 'src/features/products/repositories/ProductRepository.ts',
+    find: 'if (filter.voucherOnly) sql += ` AND COALESCE(p.deal_only, 0) = 0 AND p.category IN (${VOUCHER_CATEGORY_SQL_IN})`',
+    replace: 'if (false) sql += ``',
+    test: 'src/tests/unit/search-region-address-2026-11-02.test.ts',
+    why: '라우트가 voucherOnly 를 세워도 SQL 이 안 거르면 범위가 조용히 사라진다.',
   },
   {
     name: '🎫 검색 결과가 다시 쇼핑 카드로 (이용권에 장바구니·무료배송 UI)',
