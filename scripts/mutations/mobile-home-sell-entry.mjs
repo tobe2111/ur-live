@@ -11,9 +11,9 @@ export default [
   {
     name: '🏪판매 진입점이 피드 위로 올라간다',
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
-    find: `      <section className="mt-4">`,
+    find: `      <section ref={feedRef} className="mt-4">`,
     replace: `      <SellOnUrdealRow />
-      <section className="mt-4">`,
+      <section ref={feedRef} className="mt-4">`,
     test: TEST,
     why:
       '2026-08-26 에 지도 핀 모달의 같은 문구를 뺀 이유가 **존재가 아니라 자리**였다 — ' +
