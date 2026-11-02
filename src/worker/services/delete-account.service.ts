@@ -269,6 +269,9 @@ export async function deleteUserAccount(
     await db.prepare('ALTER TABLE deleted_accounts ADD COLUMN kakao_id TEXT').run().catch(() => null)
     await db.prepare('ALTER TABLE deleted_accounts ADD COLUMN original_name TEXT').run().catch(() => null)
     await db.prepare('ALTER TABLE deleted_accounts ADD COLUMN reregister_available_at DATETIME').run().catch(() => null)
+    // 🩸 2026-11-02 라이브 실측: 라이브 표엔 `reason` 도 없다(위 보강 목록에 빠져 있었다) → 아래 INSERT 가
+    //   매번 실패하고 swallow 가 삼켜 탈퇴 기록이 0행이었다(재가입 제한·복구 근거가 안 남는다).
+    await db.prepare('ALTER TABLE deleted_accounts ADD COLUMN reason TEXT').run().catch(() => null)
 
     await db
       .prepare(

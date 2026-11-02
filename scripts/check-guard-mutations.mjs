@@ -9831,6 +9831,22 @@ canvas {
       '"홍대돈가스" 처럼 매장으로 찾는 것이 이용권 검색의 절반인데 그 절반이 없었다.',
   },
   {
+    name: '🩸 단골 목록이 다시 빈다 (seller_follows.notify_new_product 보강 누락)',
+    file: 'src/features/seller-public/api/seller-public.routes.ts',
+    find: "    try { await DB.prepare(`ALTER TABLE seller_follows ADD COLUMN notify_new_product INTEGER DEFAULT 1`).run() } catch { /* exists */ }",
+    replace: '',
+    test: 'src/tests/unit/live-column-repairs-2026-11-02.test.ts',
+    why: '2026-11-02 라이브 — 단골 3건이 있는데 /my/follows 가 매번 실패해 빈 목록이었다.',
+  },
+  {
+    name: '🩸 탈퇴 기록이 다시 안 남는다 (deleted_accounts.reason 보강 누락)',
+    file: 'src/worker/services/delete-account.service.ts',
+    find: "    await db.prepare('ALTER TABLE deleted_accounts ADD COLUMN reason TEXT').run().catch(() => null)",
+    replace: '',
+    test: 'src/tests/unit/live-column-repairs-2026-11-02.test.ts',
+    why: '2026-11-02 라이브 — reason 이 없어 INSERT 가 매번 실패, 탈퇴 기록 0행.',
+  },
+  {
     name: '🗄️ 컬럼 가드가 라이브 사진을 안 읽는다 (여러 벌 정의를 합쳐 틀린 컬럼이 통과)',
     file: 'scripts/check-sql-column-exists.mjs',
     find: "const LIVE = !process.argv.includes('--no-live') && fs.existsSync(LIVE_SNAPSHOT)",
