@@ -1,3 +1,5 @@
+> 🧊 **2026-11-02 동결 — 이 문서는 더 이상 자동 갱신되지 않는다.** 실제 대외 소개서는 `docs/business/proposals/` 의 덱(어드민 `/admin/proposals`)이다. 아래 자동 블록은 그날의 사본이다 (다시 만들려면 `node scripts/generate-proposal-refs.mjs` — 커밋마다 돌지 않는다).
+
 # 유어딜 온라인 상품 입점 제안서 — 콘텐츠 브리프 (DESIGN AI 용 SOURCE MATERIAL)
 
 > ⚠️ 이 문서는 **디자인 결과물이 아니라, 디자인 AI 가 슬라이드 덱(제안서)을 레이아웃할 때 사용할 "정확하고 상세한 원천 자료(content brief)"** 입니다.

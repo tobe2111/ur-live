@@ -53,8 +53,8 @@ export default [
     name: '🎫 카드 바깥에 테두리 상자가 되돌아온다 (판정에서 잡힌 결함)',
     file: STAY,
     find: `    <div className={isVoucherMode
-      ? 'bg-white dark:bg-[#1D1F29] rounded-2xl p-4 shadow-lift'
-      : ''}>`,
+      ? 'rounded-2xl p-4'
+      : ''}>`, // 2026-11-02 A안 평면 재조준 — 결함(테두리 상자)은 그대로
     replace: '    <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4 shadow-sm">',
     test: TEST,
     why: '트리거 테두리만 걷고 바깥 래퍼를 남기면 화면엔 여전히 상자가 두 겹이다 — 유닛은 초록인데 눈에는 보인다.',

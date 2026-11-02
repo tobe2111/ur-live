@@ -14,7 +14,7 @@ export const GUEST_CLS = {
    *   밝기 차가 0 이라 남은 건 그림자 하나다. 대표가 시안 셋 중 **"처방 1 그림자"** 를 골라
    *   `--lift` 를 잉크 6% → 12% 로 올렸다(`index.css`) — 카드 구조는 그대로 두고 그림자만 진하게.
    */
-  card: 'mx-4 mt-2 rounded-2xl bg-surface shadow-lift p-5',
+  card: 'mt-2 rounded-2xl px-4 py-5',
   headline: 'text-[24px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white',
   benefits: 'flex flex-col gap-4',
   benefit: 'flex items-start gap-3',

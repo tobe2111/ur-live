@@ -49,7 +49,7 @@ export default function PartnerMath() {
             지금 팔리고 있는 실제 상품입니다. 숫자를 바꿔 내 가게로 맞춰 보세요.
           </p>
 
-          <Reveal kind="scale" className="mt-8 lg:mt-12 rounded-2xl bg-surface shadow-lift p-5 lg:p-8">
+          <Reveal kind="scale" className="mt-8 lg:mt-12 rounded-2xl p-5 lg:p-8">
             <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{F.sample.name}</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Field label="정가 (원)" value={list} onChange={setList} />

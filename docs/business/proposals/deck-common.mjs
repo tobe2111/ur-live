@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderPhone } from './phone-frame.mjs';
+import { formatLiveFacts, readLive } from './facts-live.mjs';
 
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -27,37 +28,30 @@ export const FONT = 'Pretendard';
 export const W = 13.333, H = 7.5, M = 0.75;
 
 // ── 네 덱이 글자 그대로 공유하는 사실 (바뀌면 여기 한 곳만) ──
+// 🔄 2026-11-02 — **라이브에서 재는 숫자는 여기 적지 않는다**(대표 "제안서는 계속 자동 업데이트가 안돼").
+//    판매 중 이용권 · 실제 매장 · 카테고리 평균 판매가(avgMeal…avgNums) · 셈법 예시 상품(sample*) ·
+//    catalogMeasuredAt 은 빌드 때 `facts-live.mjs` 가 서버에서 받아 아래 `...LIVE` 로 합친다.
+//    그 자리에 숫자를 다시 손으로 적지 말 것 — 2026-11-02 에 재니 손으로 적은 값이 이미 어긋나 있었다
+//    (판매 중 이용권 165 → 160 · 식사 평균 32,521 → 33,724 · 숙박 155,693 → 147,800).
+//    🗑️ introPct·introTerm(영입 2%·1년)은 2026-09-16 폐지된 커미션이라 지웠다 — 쓰는 덱이 없었다.
+const LIVE = formatLiveFacts(readLive().data);
 export const FACTS = {
   feeDirect: '10%', feeBrokered: '5%',
   pgNote: '카드 수수료(현재 약 2.75%, 카드사 정책에 따라 바뀔 수 있음)는 유어딜이 자기 몫 안에서 냅니다.',
-  introPct: '2%', introTerm: '1년',
   reviewBonus: '지금은 운영하지 않음', // 2026-10-12 종료(KAKAO_REVIEW_BONUS_ENABLED=false). 슬라이드에 약속하지 말 것
   minPayout: '1만원',
   liveMeasuredAt: '2026-10-12', // 인플루언서 DB·소개 적립 문장의 기준일. 정직 고지는 catalogMeasuredAt
-  catalogMeasuredAt: '2026-10-31', // 판매 중 이용권 재측정일(is_active=1 · deal_only=0 · 이용권 4종)
-  activeVouchers: '165', realStores: '2',
   // ⚠️ 승인 매장 수는 **슬라이드에 쓰지 않는다.** 2026-10-12 실측 10곳 중 2곳이 명시적 테스트 계정
   //    ([테스트] 클로드카페·클로드미용실)이고, 나머지에도 중복 등록(구서우성아파트 ×2)과 장소명
   //    (해운대해수욕장)이 섞여 있다 — "그 10곳이 어디냐" 는 질문에 답이 궁색해지는 숫자다.
   //    쓰려면 그때 다시 세고, 무엇을 뺀 수인지 같이 적을 것. 지금 방어 가능한 숫자는 realStores 뿐이다.
   approvedStoresRaw: '10',
-  avgMeal: '32,521원', avgStay: '155,693원', avgBeauty: '45,253원', avgEtc: '37,168원',
-  // 🔢 위 평균의 숫자형. 셈법 슬라이드가 문자열을 다시 파싱하거나 자기 파일에 베껴 적지 않게 한다
-  //    (베껴 적으면 "바꿀 때 같이 고친다" 주석에 의존하게 되고, 그 의존은 2026-10-06→10-12 사이에 실제로 어긋났다).
-  //    정의: 활성 이용권(deal_only=0, voucher 4종)의 **판매가** 평균 — 정가 평균이 아니다.
-  avgNums: { meal: 32521, beauty: 45253, stay: 155693, etc: 37168 },
   influencerDb: '337,842명', influencerReachable: '65,431명', influencerYoutube: '20,584명', influencerNaverBlog: '299,363명', influencerAsOf: '2026년 10월 기준',
-  // 💡 라이브에서 지금 팔리고 있는 실제 매장 이용권(상품 2915 · 홍대 돈가스 버크셔 · seller 14). 셈법 슬라이드는 전부 이 값을 쓴다.
-  //    ⚠️ 2026-09 까지 쓰던 상품 2888(치즈돈가스 25,000 → 16,500)은 is_active=0 이고 10-12 실측에서도 그대로다.
-  //    🩸 그때 숫자만 바꾸고 **이름은 안 바꾼** 자리가 상세판 덱에 남아 있었다 — 슬라이드가 "지금 팔리고 있는 실제
-  //       상품(치즈돈가스)" 이라면서 다른 상품의 가격을 보여 줬다. 이름과 숫자가 어긋나면 받는 사람이 확인할 수
-  //       없고, 확인하려 들면 거짓이 드러난다. ⇒ **이름도 반드시 FACTS 에서 읽을 것**(하드코딩 금지).
-  sampleName: '프리미엄 돈가스 1인 세트', sampleOrig: '14,500원', samplePrice: '7,500원', sampleFee: '−750원', sampleNet: '6,750원',
-  sampleOrigNum: 14500, samplePriceNum: 7500,
   // 💼 중개(상인회·대행사) 조건 상한 — broker-share.ts 의 상수와 같은 값. 바뀌면 그 파일과 함께 고친다.
   brokerShareMax: '50%', brokerTermsSumMax: '90%',
   influencerPayoutMin: '10만원', influencerPayoutDay: '매월 1일', clawbackWindow: '7일',
   contactEmail: 'jiwon@ur-team.com', kakaoChannel: 'pf.kakao.com/_AITdn', site: 'urdeal.kr', biz: '리스터코퍼레이션 · 사업자등록번호 479-09-02930',
+  ...LIVE,
 };
 
 export async function icon(name, color, px = 256) {

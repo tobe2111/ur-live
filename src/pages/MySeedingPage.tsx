@@ -29,7 +29,7 @@ interface Me {
   applications: App[]; packages: PassPackage[]; charge_enabled: boolean
 }
 
-const card = 'rounded-2xl bg-surface p-5 shadow-lift'
+const card = 'rounded-2xl p-5'
 const errMsg = (e: unknown, d: string) => (e as { response?: { data?: { error?: string } } }).response?.data?.error || d
 
 export default function MySeedingPage() {

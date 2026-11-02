@@ -282,7 +282,7 @@ export default function MyVouchersPage() {
                 return shown.length > 0 ? (
                   /* 🎫 2026-10-14 대표 확정 안 B: **모든** 이용권을 같은 한 줄로(2026-09-15 안 E 의 '첫 장만 펼친 티켓'을 대체 —
                      같은 물건이 첫 장만 다르게 보였다). 만료 가까운 순 정렬은 그대로. 줄을 누르면 종전과 같은 QR 모달. */
-                  <div className="overflow-hidden rounded-2xl bg-surface shadow-lift divide-y divide-rule">
+                  <div className="-mx-4 overflow-hidden divide-y divide-rule">
                     {shown.map(v => <WalletRow key={v.id} v={v} t={t} onOpen={() => setQrVoucher(v)} />)}
                   </div>
                 ) : (

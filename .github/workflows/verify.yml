@@ -651,6 +651,12 @@ jobs:
         run: node scripts/check-context-budget.mjs -s
         continue-on-error: false
 
+      # 🧱 2026-11-02: CLAUDE.md 에 기록을 쌓지 못하게 — PR 단위 증가 상한(4천 자) + 판정 기록 차단.
+      #   최근 머지 200건 중 20건이 CLAUDE.md 를 고쳤다(가장 많이 다투는 파일). 우회: 커밋 메시지 [CLAUDE_MD_GROWTH]
+      - name: CLAUDE.md growth guard (strict)
+        run: node scripts/check-claude-md-growth.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 — 현재 위반 0 → strict.
       #   localStorage user_type === 'user' 로그인 게이트(세션 풀림 사고 근본원인) 신규 추가 차단.
       - name: Dual-login regression guard (strict)

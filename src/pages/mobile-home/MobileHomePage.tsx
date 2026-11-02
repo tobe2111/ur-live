@@ -15,7 +15,7 @@ import { resolveHomeNear, syncNearCookie } from '@/components/home/home-near'
 import UrShortsRail from '@/components/home/UrShortsRail'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import PcHomeLocationBar, { readHomeRegion, homeStartLoc, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
-import { HOME_DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
+import { DEAL_CATS, HOME_TAB_LINKS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
 import { ShortsIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
@@ -153,8 +153,15 @@ export default function MobileHomePage() {
                그래서 줄을 [스크롤 영역][고정 진입점] 두 칸으로 나눈다. */}
         <div className="flex items-end gap-3 px-4">
         <nav aria-label="카테고리" className="flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide">
-          {HOME_DEAL_CATS.map(({ key, label }) => {
+          {DEAL_CATS.map(({ key, label }) => {
             const on = category === key
+            // 🏠 2026-11-02 생활은 버튼으로 남고 `/life` 로 간다(이용권만 메인에서 빠진다 — deal-cats.ts).
+            const to = HOME_TAB_LINKS[key]
+            if (to) return (
+              <Link key={key} to={to} className="shrink-0 pb-2 text-[15px] transition-colors border-b-2 text-gray-500 dark:text-gray-400 border-transparent">
+                {label}
+              </Link>
+            )
             return (
               <button
                 key={key}

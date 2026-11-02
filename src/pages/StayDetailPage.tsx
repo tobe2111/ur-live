@@ -283,7 +283,7 @@ export default function StayDetailPage() {
      ⚠️ 이용권 모드는 자체 표면이 없어 카드 유지. 경위: docs/design/stay-detail-booking-card-2026-09.md */
   const selectorBox = (
     <div className={isVoucherMode
-      ? 'bg-white dark:bg-[#1D1F29] rounded-2xl p-4 shadow-lift'
+      ? 'rounded-2xl p-4'
       : ''}>
       {isVoucherMode ? (
         <>

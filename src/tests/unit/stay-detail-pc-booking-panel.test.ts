@@ -65,7 +65,8 @@ describe('③ PC 예약 패널(B안) · 트리거 · 라벨', () => {
   it('패널: 객실 행 + 총액 + 단일 주 행동, 카드 테두리 0', () => {
     // 🖥️ 2026-10-27: 틀이 공용 상수(`PURCHASE_BOX_CLS` — 이용권 상자와 같은 값)로. 들림·테두리 0 은 그대로.
     expect(panel).toContain('${PURCHASE_BOX_CLS}')
-    expect(R('components/deal/BuyBar.tsx')).toMatch(new RegExp(`rounded-2xl ${CARD_BG} shadow-lift`))
+    // 2026-11-02 대표 확정 A안 — 평면: 구매 상자도 판·그림자 없이.
+    expect(R('components/deal/BuyBar.tsx')).toMatch(/PURCHASE_BOX_CLS = 'rounded-2xl p-\[18px\]'/)
     expect(panel).toMatch(/예약하기/)
     expect(panel).not.toMatch(/border border-gray/)
   })

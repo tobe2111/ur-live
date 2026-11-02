@@ -1,5 +1,31 @@
 # 대외 제안서
 
+## 🔄 2026-11-02 — 이제 **매일 자동으로** 다시 만든다 (손으로 뽑아 커밋하지 않는다)
+
+대표 *"제안서는 계속 자동 업데이트가 안돼"* → *"응 진행해줘. 가장 이상적으로."*
+
+| 무엇 | 어디서 |
+|---|---|
+| 라이브 숫자(판매 중 이용권 · 실제 매장 · 평균 판매가 · 예시 상품 · 덱이 기대는 설정) | 서버 `/api/public/proposal-facts` — 정의 SSOT `src/shared/proposal-live-facts.ts` |
+| 덱 다섯 + PDF + 기록(`manifest.json`) | 워크플로 `.github/workflows/proposals.yml` — 매일 새벽 5시 23분 + 이 폴더가 main 에 바뀔 때 |
+| 완성본이 사는 곳 | GitHub Release **`proposals-latest`** (git 기록이 아니다) → 어드민 `/admin/proposals` 가 거기서 읽는다 |
+| 덱이 지금 설정과 다른 말을 할 때 | `build-all.mjs` 의 `CLAIMS` 가 경고 → 어드민 화면에 빨갛게 · 워크플로 요약에 남는다 (문장은 자동으로 고치지 않는다) |
+
+손으로 미리 보려면:
+```bash
+cd docs/business/proposals && npm ci && node facts-live.mjs fetch && node build-all.mjs   # → out/
+```
+(오프라인이면 `node facts-live.mjs sample` — 그 사본은 CI 가 업로드를 거부한다.)
+
+🔴 **지켜야 할 것 셋** (가드 `src/tests/unit/proposal-auto-build-2026-11-02.test.ts`):
+1. **`deck-common.mjs` 의 FACTS 에 라이브 숫자를 다시 적지 말 것** — 2026-11-02 에 재니 손으로 적은 값이 이미 어긋나 있었다(165 → 160 · 식사 평균 32,521 → 33,724).
+2. **PDF·PPTX 를 다시 뽑아 커밋하지 말 것** — 저장소의 판은 *자동 생성이 실패했을 때 보여 줄 마지막 판*으로 동결됐다. 커밋하면 수 MB 가 git 에 영구로 쌓이고 세션들이 그 바이너리를 다툰다.
+3. **덱에 새 약속(스위치에 기대는 문장)을 쓰면 `CLAIMS` 에 한 줄 더할 것** — 그래야 스위치가 꺼졌을 때 누가 알려 준다.
+
+⚠️ 아직 손으로 남는 것: 인플루언서 DB 규모(`influencerDb` 등 — 30만 행 COUNT 라 공개 경로에서 안 잰다, 기준일과 함께) · 화면 캡처(`shots/`) · 문장.
+
+---
+
 소개서의 집은 **여기(`docs/business/proposals/`)** 입니다 — 생성기 `*.build.mjs` + `.pptx` + `.pdf`.
 어드민 **`/admin/proposals`** 가 그 PDF 다섯을 그대로 띄우고 내려받게 합니다
 (배포 때 `scripts/build-prepare.mjs` 가 `dist/client/static/proposals/` 로 **복사만** 합니다 —

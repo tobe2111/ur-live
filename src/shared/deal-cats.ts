@@ -38,8 +38,17 @@ export const DEAL_CAT_LABELS: ReadonlyArray<{ key: DealCategory; label: string }
  */
 export const HOME_HIDDEN_CATEGORIES: ReadonlySet<string> = new Set(['home_voucher'])
 
-/** 홈(메인) 카테고리 탭 — 생활 제외. */
+/** 홈(메인) 카테고리 **필터** — 생활 제외(피드를 거르는 값). */
 export const HOME_DEAL_CAT_LABELS = DEAL_CAT_LABELS.filter(c => !HOME_HIDDEN_CATEGORIES.has(c.key))
+
+/**
+ * 🏠 2026-11-02 (대표 *"아예 생활 버튼이 없어진 것 같아. 메인에서 생활 관련 이용권만 나오지 말아달라고 했던건데"*).
+ *
+ * 10-31 수리가 생활 **이용권**과 함께 **탭 버튼**까지 뺐다 — 대표가 뺀 것은 이용권뿐이다.
+ * ⇒ 폰 홈 탭 줄은 전체 표(`DEAL_CAT_LABELS`)를 그리고, 아래 탭은 **필터가 아니라 그 화면으로 가는 링크**다
+ *   (PC 상단 네비의 '생활' → `/life` 와 같은 동작). 피드에는 여전히 생활 이용권이 안 뜬다.
+ */
+export const HOME_TAB_LINKS: Readonly<Partial<Record<DealCategory, string>>> = { home_voucher: '/life' }
 
 /** 홈 피드·섹션에 그려도 되는 상품인가(생활 이용권이면 false). */
 export function isHomeVisibleProduct(p: { category?: string | null } | null | undefined): boolean {

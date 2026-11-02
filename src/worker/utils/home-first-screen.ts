@@ -52,7 +52,7 @@
 import { nearSubtitle } from '../../shared/home-near'
 import { HOME_H1 } from '../../shared/seo/consumer-surfaces'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
-import { HOME_DEAL_CAT_LABELS, isHomeVisibleProduct } from '../../shared/deal-cats'
+import { DEAL_CAT_LABELS, isHomeVisibleProduct } from '../../shared/deal-cats'
 import { DEAL_ROW } from '../../shared/deal-card-grid'
 import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_IMG_WIDTH_ROW, HOME_CARD_MAX_DPR } from '../../shared/home-card-image'
 import { canonicalDetailPath } from '../../shared/product-flow'
@@ -218,7 +218,8 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, 
 }
 
 function chromeHtml(): string {
-  const cats = HOME_DEAL_CAT_LABELS.map(({ key, label }) =>
+  // 🏠 2026-11-02 탭 줄은 전체 표(생활 포함 — 폰에선 `/life` 링크). 화면과 같은 글자를 그려야 마운트 때 안 바뀐다.
+  const cats = DEAL_CAT_LABELS.map(({ key, label }) =>
     `<span class="${HOME_FS_CLASS.catBase} ${key === 'all' ? HOME_FS_CLASS.catOn : HOME_FS_CLASS.catOff}">${escText(label)}</span>`,
   ).join('')
   return (
