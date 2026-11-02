@@ -82,6 +82,11 @@ function main() {
     baseText = ''
   }
   const headText = fs.readFileSync('CLAUDE.md', 'utf8')
+  // 🛡️ 측정 0 = 실패 — 비교할 원문이 비면 위반도 0 이라 초록이 뜨지만 아무것도 잰 게 아니다.
+  if (headText.length === 0 || baseText.length === 0) {
+    console.error(`❌ claude-md-growth: 비교할 CLAUDE.md 가 비었다(지금 ${headText.length}자 · base ${baseText.length}자) — 못 잰 것은 통과가 아니다.`)
+    process.exit(1)
+  }
   const addedLines = git(['diff', '-U0', base, '--', 'CLAUDE.md'])
     .split('\n')
     .filter((l) => l.startsWith('+') && !l.startsWith('+++'))
