@@ -40,9 +40,21 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { changedScope, inScope } from './guard-mutations-scope.mjs'
 import { GUARD_RUNNER, touchesGuardScripts } from './guard-mutations-scope.mjs'
 import {
-  changedInjectionNames, runnerLogicChanged, testSpawnsSubprocess,
+  changedInjectionNames, foldDuplicateInjections, runnerLogicChanged, testSpawnsSubprocess,
 } from './guard-mutations-manifest-diff.mjs'
 import { assignShards, parseShard } from './guard-mutations-shard.mjs'
+import { unknownArgs } from './guard-mutations-args.mjs'
+
+// 🚫 모르는 인자 = 시작하지 않는다 — 조용히 전수로 떨어져 소스를 망가뜨리는 사고가 두 번 있었다(근거: guard-mutations-args.mjs).
+{
+  const bad = unknownArgs(process.argv.slice(2))
+  if (bad.length) {
+    console.error(`❌ check-guard-mutations: 모르는 인자 ${bad.join(' · ')} — 아무것도 주입하지 않고 멈춘다.`)
+    console.error('   쓸 수 있는 것: -s · --only <이름 일부> · --changed · --shard k/n · --verify-clean · --map-only · --count · --dump-manifest · --scope-json')
+    console.error('   (`--plan` 은 guard-mutations-shard.mjs 의 인자다)')
+    process.exit(2)
+  }
+}
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
@@ -10558,15 +10570,16 @@ for (const f of SPLIT_FILES) {
   SPLIT_COUNT.set(f, arr.length)
 }
 /** 인라인 + 분할. 이 아래는 전부 이 목록으로 돈다. */
-const ALL = [...MUTATIONS, ...SPLIT]
-{
-  // 이름 중복은 `--only` 를 모호하게 만든다(부분일치라 둘 다 돌거나 엉뚱한 게 돈다).
-  const seen = new Set()
-  const dup = [...new Set(ALL.map((m) => m.name).filter((n) => (seen.has(n) ? true : (seen.add(n), false))))]
-  if (dup.length) {
-    console.error(`❌ 주입 이름 중복 ${dup.length}건 — --only 가 무엇을 돌렸는지 알 수 없게 된다\n   • ${dup.join('\n   • ')}`)
-    process.exit(1)
-  }
+// 🪞 이름 중복: 글자까지 같은 것은 접고(두 세션이 같은 고침을 따로 넣은 것 — 근거: foldDuplicateInjections),
+//    **같은 이름에 내용이 다를 때만** 멈춘다(그때 `--only` 가 무엇을 돌렸는지 알 수 없다).
+const FOLDED = foldDuplicateInjections([...MUTATIONS, ...SPLIT])
+const ALL = FOLDED.list
+if (FOLDED.conflicts.length) {
+  console.error(`❌ 주입 이름 중복 ${FOLDED.conflicts.length}건(내용이 다르다) — --only 가 무엇을 돌렸는지 알 수 없게 된다\n   • ${FOLDED.conflicts.join('\n   • ')}`)
+  process.exit(1)
+}
+if (FOLDED.identical.length && !process.argv.includes('--count') && !process.argv.includes('--scope-json')) {
+  console.warn(`⚠️ 글자까지 같은 주입 ${FOLDED.identical.length}건이 두 곳에 있다 — 하나로 접어 돌린다(한쪽을 지우면 이 경고가 사라진다)\n   • ${FOLDED.identical.join('\n   • ')}`)
 }
 
 /**
