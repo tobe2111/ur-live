@@ -93,7 +93,7 @@ describe('이름 E — 제목이 붙은 구역이 파는 쪽', () => {
 
 describe('구역 2 — 큰 제목 없이 그룹 라벨 셋', () => {
   const cases: [string, string, string][] = [
-    ['src/pages/user-profile/ShoppingGroup.tsx', 'shopping.sectionTitle', '내가 산 것'],
+    ['src/pages/user-profile/ShoppingGroup.tsx', 'shopping.sectionTitle', '마이 딜'], // 2026-11-02 대표 '마이 딜'
     ['src/pages/user-profile/EarningsGroup.tsx', 'my.earningsGroupTitle', '내가 소개한 것'],
     // 🔁 2026-09-30: `SettingsGroup` 은 접이식이 아니게 되면서 `my.settingsGroupTitle` 줄이 사라졌다
     //   (대표 *"왜 굳이 열고 닫게 해두는거지"*). 그 구역의 검사는 아래 '펼쳐져 있다' 로 옮겼다.

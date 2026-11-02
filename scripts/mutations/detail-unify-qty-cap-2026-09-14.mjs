@@ -18,8 +18,8 @@ export default [
     name: '[상세0914] 🎟️ 이용 안내에 매장명(사용처) 행이 되살아난다',
     file: USAGE,
     // 🔁 2026-10-11 (D안): 표 행이 사라졌다 — 같은 결함을 타일 위 한 줄로 심는다.
-    find: '      <div className="mt-5"><RedeemHowTo /></div>',
-    replace: '      <p>사용처: 전 지점</p>\n      <div className="mt-5"><RedeemHowTo /></div>',
+    find: '      <div className="mt-3"><RedeemHowTo /></div>',
+    replace: '      <p>사용처: 전 지점</p>\n      <div className="mt-3"><RedeemHowTo /></div>',
     test: TEST,
     why: '매장명이 제목 위·셀러 카드·위치 카드에서 이미 세 번 나온다. 네 번째는 정보가 아니라 소음이다.',
   },
@@ -47,7 +47,7 @@ export default [
     //   다시 **접히는** 것이 결함이다. 같은 자리를 반대 방향으로 지킨다.
     name: '[상세0914] 🎟️ 이용 안내 3단계가 다시 접힌다 (눌러야 보이는 절차)',
     file: USAGE,
-    find: '      <div className="mt-5"><RedeemHowTo /></div>',
+    find: '      <div className="mt-3"><RedeemHowTo /></div>',
     replace: '      <button aria-expanded={false}>매장에서 사용하는 방법</button>{false && <RedeemHowTo />}',
     test: TEST,
     why: '늘 펼쳐 두면 그 아래 유의사항·리뷰가 화면 밖으로 밀린다(안 B 가 고친 자리).',

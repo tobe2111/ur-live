@@ -6308,7 +6308,7 @@
     "loadFailed": "Could not load your library"
   },
   "shopping": {
-    "sectionTitle": "What I bought",
+    "sectionTitle": "My deals",
     "wishlist": "Saved",
     "voucher": "My vouchers",
     "voucherSub": "Use in store with QR or code",

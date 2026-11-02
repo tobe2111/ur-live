@@ -77,3 +77,15 @@
 3. **배포 직후 라이브 검색 점검** `scripts/check-live-search.mjs`(main.yml 배포 뒤 + live-contracts 주간):
    서울·부산·숙소·맛집 이용권 수 하한 · 전부 이용권인가 · `search_mode==='ranked'`.
    배포 전 실행 → 숙소·맛집 0 과 search_mode 부재로 **빨간불(의도대로)**.
+
+## 5차 (대표 *"모두 다 해줘"*)
+1. **사진 주간 대조** — `snapshot-live-schema.mjs --check` + `live-contracts.yml` 주간 단계(토큰은 d1-backup 과 같은 것).
+   되돌려-검증: 사진에 가짜 컬럼을 넣으면 🔴 로 잡힌다.
+2. **동결 47종 분류(전수)** — 실제 결함 셋을 찾았다:
+   - '내 단골 가게' 늘 빈 목록 + 새 상품 알림 미발송 (seller_follows `notify_new_product`·`notify_live_start` 라이브 부재, 단골 3건) → **고침**(ensure ALTER)
+   - 탈퇴 기록 0행 (deleted_accounts `reason` 보강 누락) → **고침**
+   - 부분 환불 내역 0행 (`refund.ts` 가 `amount`, 라이브는 `refund_amount`) → **잠금 파일이라 결재** `docs/decisions/2026-11-02-refund-history-column.md`
+   나머지: 중단 기능(틱톡·경매·라이브·후원 0건·타임딜·위탁 — consignment_partnerships 표 자체가 라이브에 없음) ·
+   런타임 ensure 가 첫 사용 때 만드는 컬럼(반품 금액·공급사 payout_ref·벌크업로드·유어애즈) · graceful(`users.terms_agreed_at`).
+   ⚠️ 동결 목록은 아직 47 — 위 고침은 **ensure 가 라이브에서 돈 뒤** 주간 대조가 "+" 로 잡으면 사진을 다시 찍어 내린다.
+3. **검색 기록**: #2092 배포 뒤 `search_logs` 0 → 12행(실측). 2026-11-05 에 0건 검색어를 뽑아 보고(예약).

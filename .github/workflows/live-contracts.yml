@@ -41,6 +41,14 @@ jobs:
       - name: Live search check
         if: always()
         run: node scripts/check-live-search.mjs
+      # 🗄️ 2026-11-02 라이브 컬럼 사진이 낡지 않았나 — 컬럼 가드가 믿는 기준(live-schema.snapshot.json)을
+      #   매주 라이브 D1 과 대조한다. 토큰은 d1-backup.yml 과 같은 것(D1 읽기 — 그 워크플로가 매주 성공 중).
+      - name: Live schema snapshot drift
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_BACKUP_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/snapshot-live-schema.mjs --check
 
       - name: 실패 시 요약 남기기
         if: failure()

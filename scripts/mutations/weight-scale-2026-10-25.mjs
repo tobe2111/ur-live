@@ -12,8 +12,8 @@ export default [
   {
     name: '🏋️ 이행 화면에 600(semibold)이 돌아온다',
     file: 'src/pages/group-buy/PassHeadCard.tsx',
-    find: '<span className="text-[28px] font-bold tracking-[-.02em]"',
-    replace: '<span className="text-[28px] font-semibold tracking-[-.02em]"',
+    find: '<span className="text-[24px] font-bold tracking-[-.02em]"',
+    replace: '<span className="text-[24px] font-semibold tracking-[-.02em]"',
     test: T,
     why: '세 단계 체계에서 600 은 없다 — 섞이면 굵기가 네 단계가 되어 다시 위계가 흐려진다.',
   },

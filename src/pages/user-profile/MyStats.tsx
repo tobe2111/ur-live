@@ -161,7 +161,7 @@ export default function MyStats({ voucher, coupon, inline = false }: {
    * 🔵 표면 규칙 ⑦ 의 *"판은 파는 쪽에만"* 은 이 판 하나를 **대표 승인으로** 예외로 둔다 — 위쪽 안 3 이 곧 이 판이다.
    *    판매 구역은 여전히 판 + 파란 사용처리 칸이 표시자라 구분이 사라지지 않는다.
    */
-  const rowCls = 'w-full flex items-center gap-3 px-4 min-h-[52px] py-2 text-left border-b border-rule last:border-b-0 active:opacity-70'
+  const rowCls = 'w-full flex items-center gap-3 px-4 min-h-[48px] py-2 text-left border-b border-rule last:border-b-0 active:opacity-70'
   const valueOf = (v: number | null | undefined, unit: string) => (
     v === undefined ? (
       /* 아직 안 왔다 — 숫자를 지어내지 않는다. 같은 높이 자리만. */

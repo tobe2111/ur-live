@@ -62,11 +62,11 @@ export default function StoreLocation({
   } as const
 
   return (
-    <div id="gb-sec-location" style={{ padding: '24px 18px', scrollMarginTop: 116 }}>
+    <div id="gb-sec-location" style={{ padding: '20px 16px', scrollMarginTop: 116 }}>
       {/* 🏪 2026-10-11 (D안): 제목을 '매장 위치' → **가게 이름**으로. 모바일에서 셀러 카드를 걷었으니
           가게로 가는 입구('가게 보기')가 여기 머리에 붙는다. 이름이 없으면 종전 제목. */}
       <div className="flex items-center justify-between gap-3" style={{ marginBottom: 12 }}>
-        <h2 className="m-0 text-[17px] font-bold tracking-[-.01em] truncate" style={{ color: 'var(--gbd-ink)' }}>{name || '매장 위치'}</h2>
+        <h2 className="m-0 text-[15px] font-bold tracking-[-.01em] truncate" style={{ color: 'var(--gbd-ink)' }}>{name || '매장 위치'}</h2>
         {onProfile && (
           <button type="button" onClick={onProfile} className="shrink-0 inline-flex items-center gap-1 min-h-[44px] -my-3 -mr-2 pl-3 pr-2 text-[13px] font-medium bg-transparent border-0 cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>{/* 👆 2026-10-11 대표 "눌러지지도 않는데": 글자만한 19px 였다 → 손가락 크기(44px) 눌림 영역, 줄 높이는 음수 여백으로 불변 */}
             가게 보기
