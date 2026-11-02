@@ -35,10 +35,10 @@ export default [
     why: '합쳐서 주면 어느 자리에 넣어야 하는지 아무도 모른다 — 그게 이 결함의 원인이었다.',
   },
   {
-    name: '🔎 랭킹 식의 값 하나를 빠뜨린다 (`?` 5개 · 값 4개)',
+    name: '🔎 랭킹 식의 값 하나를 빠뜨린다 (`?` 6개 · 값 5개)',
     file: SSOT,
-    find: 'const rankParams = [whole, `${esc}%`, `%${esc}%`, `%${esc}%`, `%${esc}%`]',
-    replace: 'const rankParams = [whole, `${esc}%`, `%${esc}%`, `%${esc}%`]',
+    find: 'const rankParams = [whole, `${esc}%`, `%${esc}%`, `%${esc}%`, `%${esc}%`, `%${esc}%`]',
+    replace: 'const rankParams = [whole, `${esc}%`, `%${esc}%`, `%${esc}%`, `%${esc}%`]',
     test: TEST,
     why: '식과 값의 개수가 갈리면 그 뒤 모든 바인드가 한 칸씩 밀린다 — 같은 클래스의 재발.',
   },
