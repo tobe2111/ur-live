@@ -25,7 +25,7 @@ import { safeDate } from '@/utils/safe-date'
 import type { Voucher } from './types'
 import { noteQrOrigin } from './qr-origin' // 🎬 2026-11-02 줄이 커져 QR 창이 된다
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
-injectMotionCss('ur-m-blink', `@keyframes ur-blink-once { 0%, 100% { opacity: 1; } 30%, 60% { opacity: .25; } }.ur-blink-once { animation: ur-blink-once 1.2s ease-in-out .4s 1; }.ur-strike::after, .ur-blink-once, .ur-shake { animation: none !important; }@media (prefers-reduced-motion: reduce){.ur-blink-once{animation:none!important}}`)
+injectMotionCss('ur-m-blink', `@keyframes ur-blink-once { 0%, 100% { opacity: 1; } 30%, 60% { opacity: .25; } }.ur-blink-once { animation: ur-blink-once 1.2s ease-in-out .4s 1; }@media (prefers-reduced-motion: reduce){.ur-blink-once{animation:none!important}}`)
 
 /** 🔴 '곧 끝난다' 의 기준(남은 일수 이하). 접힌 줄의 빨간 D-N 과 지갑 위 만료 임박 줄이 **같은 값**을 쓴다
  *   — 둘이 갈리면 위에선 "곧 끝나요" 라는데 줄은 회색인 화면이 된다. */

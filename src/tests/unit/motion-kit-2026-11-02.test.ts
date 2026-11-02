@@ -26,7 +26,7 @@ import { stripComments } from '../helpers/source-text'
 const R = (p: string) => readFileSync(p, 'utf8')
 const css = stripComments(R('src/index.css'))
 // 화면별로만 받는 CSS 는 부품 파일 안의 injectMotionCss(…) 문자열이다 — 그 문자열들을 모은다.
-const LAZY_USERS = ['src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx']
+const LAZY_USERS = ['src/components/voucher/ScanFrame.tsx', 'src/components/search/SearchStates.tsx', 'src/pages/restaurant-map/SheetFilterBar.tsx', 'src/pages/group-buy/DetailGallery.tsx', 'src/components/MyReferralCard.tsx', 'src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx']
 const lazyCss = LAZY_USERS.flatMap((f) => [...R(f).matchAll(/injectMotionCss\('[\w-]+', `([^`]*)`\)/g)].map((m) => m[1])).join('\n')
 const kit = css.slice(css.indexOf('.ur-burst {'), css.indexOf('.ur-tab-bar {')) + lazyCss
 
@@ -44,6 +44,16 @@ describe('① 움직임 키트 CSS', () => {
       const calls = [...R(f).matchAll(/injectMotionCss\('[\w-]+', `([^`]*)`\)/g)].map((m) => m[1])
       expect(calls.length, f).toBeGreaterThan(0)
       for (const c of calls) expect(c, f).toContain('@media (prefers-reduced-motion: reduce)')
+    }
+  })
+  it('부품 안 CSS 의 "끄기" 규칙은 동작 줄이기 조건 안에만 있다 — 밖에 있으면 그 움직임이 늘 꺼진다', () => {
+    // 🩸 2026-11-02: 파일 → 문자열로 옮기며 여러 줄 끄기 규칙의 조각이 조건 **밖**으로 새어
+    //   정가 줄 긋기·D-day 깜빡임·입력칸 흔들림·사진 올리기·선물 상자가 **아무에게도 안 움직였다**(에러 0).
+    for (const f of LAZY_USERS) {
+      for (const m of R(f).matchAll(/injectMotionCss\('([\w-]+)', `([^`]*)`\)/g)) {
+        const head = m[2].split('@media (prefers-reduced-motion')[0]
+        expect(head, `${f} ${m[1]}`).not.toMatch(/(animation|transition)\s*:\s*none/)
+      }
     }
   })
   it('동작 줄이기면 키트 클래스와 화면 전환이 전부 꺼진다', () => {

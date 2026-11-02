@@ -15,7 +15,7 @@ import { feedPayload, sendKakaoShare } from '@/lib/kakao-share'
 import { X } from 'lucide-react'
 import type { Voucher } from './types'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
-injectMotionCss('ur-m-gift', `@keyframes ur-draw { from { stroke-dashoffset: 120; } to { stroke-dashoffset: 0; } }.ur-gift-mark { animation: ur-popin .45s cubic-bezier(.3,1.3,.5,1) both; }.ur-gift-mark path { stroke-dasharray: 120; animation: ur-draw .45s ease-out .35s both; }.ur-gift-mark path + path { animation-delay: .7s; }.ur-gift-mark, .ur-gift-mark path,  .ur-upload-img, .ur-upload-bar > span { transition: none !important; }@media (prefers-reduced-motion: reduce){.ur-gift-mark,.ur-gift-mark path{animation:none!important}}`)
+injectMotionCss('ur-m-gift', `@keyframes ur-draw { from { stroke-dashoffset: 120; } to { stroke-dashoffset: 0; } }.ur-gift-mark { animation: ur-popin .45s cubic-bezier(.3,1.3,.5,1) both; }.ur-gift-mark path { stroke-dasharray: 120; animation: ur-draw .45s ease-out .35s both; }.ur-gift-mark path + path { animation-delay: .7s; }@media (prefers-reduced-motion: reduce){.ur-gift-mark,.ur-gift-mark path{animation:none!important}}`)
 injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 type Pending = { token: string; url: string }
@@ -73,8 +73,10 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
     }
   }
 
+  // 🎬 2026-11-02 시안 5차 "링크 복사됨": 위에 알림을 띄우는 대신 누른 버튼이 2초 동안 "복사했어요" 로 바뀐다.
+  const [copied, setCopied] = useState(false)
   const copy = async (url: string) => {
-    try { await navigator.clipboard.writeText(url); toast.success('선물 링크를 복사했어요') } catch { toast.error('복사하지 못했어요') }
+    try { await navigator.clipboard.writeText(url); setCopied(true); window.setTimeout(() => setCopied(false), 2000) } catch { toast.error('복사하지 못했어요') }
   }
 
   const share = (url: string) => {
@@ -144,8 +146,9 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
             </button>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button type="button" onClick={() => copy(pending.url)}
-                className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-medium">
-                링크 복사
+                aria-live="polite"
+                className={`py-3 rounded-xl border text-[13px] font-medium transition-colors ${copied ? 'border-transparent bg-brand-tint text-brand-text' : 'border-rule-strong text-gray-900 dark:text-white'}`}>
+                {copied ? <span key="ok" className="ur-popin inline-block">복사했어요</span> : '링크 복사'}
               </button>
               <button type="button" onClick={() => revoke(pending.token)} disabled={busy}
                 className="py-3 rounded-xl border border-rule-strong text-gray-500 dark:text-gray-400 text-[13px] font-medium disabled:opacity-50">

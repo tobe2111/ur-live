@@ -5,6 +5,8 @@ import { X } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePopularSearches } from '@/hooks/queries/usePopularSearches'
 import Udal from '@/components/mascot/Udal'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-rise', `@keyframes ur-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }.ur-rise { animation: ur-rise .35s cubic-bezier(.16,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-rise{animation:none!important}}`)
 
 interface SearchStatesProps {
   loading: boolean
@@ -113,10 +115,12 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {recent.map(q => (
+              {/* 🎬 2026-11-02 시안 5차: 최근 검색어가 하나씩 차례로 올라온다(처음 그릴 때만). */}
+              {recent.map((q, qi) => (
                 <div
                   key={q}
-                  className="inline-flex items-center gap-2 pl-3 pr-1 py-2 bg-gray-100 dark:bg-[#1D1F29] rounded-full text-[12px] text-gray-700 dark:text-gray-300"
+                  style={{ animationDelay: `${Math.min(qi, 8) * 40}ms` }}
+                  className="ur-rise inline-flex items-center gap-2 pl-3 pr-1 py-2 bg-gray-100 dark:bg-[#1D1F29] rounded-full text-[12px] text-gray-700 dark:text-gray-300"
                 >
                   <button
                     onClick={() => navigate(`/search?q=${encodeURIComponent(q)}`)}

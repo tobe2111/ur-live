@@ -87,8 +87,10 @@ export default function NotificationsPage() {
                   if (n.link) navigate(safeInternalPath(n.link, '/'))
                 }}
                 className={`w-full flex items-start gap-3 p-4 text-left border-b border-rule ${n.is_read ? 'opacity-50' : ''}`}
+                style={{ transition: 'opacity .3s' }}
               >
-                <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
+                {/* 🎬 2026-11-02 시안 5차 "알림 읽음": 읽으면 파란 점이 작아지며 사라지고 줄이 서서히 흐려진다(모두 읽음에서 보인다). */}
+                <div className="w-2 h-2 rounded-full mt-2 shrink-0 bg-brand" style={{ transition: 'transform .3s, opacity .3s', transform: n.is_read ? 'scale(0)' : undefined, opacity: n.is_read ? 0 : 1 }} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[15px] font-medium text-gray-900 dark:text-white">{n.title}</p>
                   {n.message && <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{n.message}</p>}

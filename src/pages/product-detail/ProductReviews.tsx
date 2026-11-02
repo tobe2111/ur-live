@@ -6,7 +6,8 @@ import { formatNumber } from '@/utils/format'
 import SharePrompt from '@/components/SharePrompt'
 import ReviewCard, { type ReviewItem } from './ReviewCard'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
-injectMotionCss('ur-m-shake', `.ur-strike::after, .ur-blink-once, .ur-shake { animation: none !important; }@keyframes ur-shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(3px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }.ur-shake { animation: ur-shake .4s cubic-bezier(.36,.07,.19,.97); }@media (prefers-reduced-motion: reduce){.ur-shake{animation:none!important}}`)
+injectMotionCss('ur-m-shake', `@keyframes ur-shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(3px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }.ur-shake { animation: ur-shake .4s cubic-bezier(.36,.07,.19,.97); }@media (prefers-reduced-motion: reduce){.ur-shake{animation:none!important}}`)
+injectMotionCss('ur-m-bar', `@keyframes ur-bar-grow { from { transform: scaleX(0); } to { transform: none; } }.ur-bar-grow { transform-origin: left; animation: ur-bar-grow .6s cubic-bezier(.16,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-bar-grow{animation:none!important}}`)
 /** 리뷰 최소 글자 수 — 버튼 비활성 조건과 안내 문구가 **같은 값**을 봐야 한다(따로 두면 갈린다). */
 const MIN_REVIEW_LEN = 10
 
@@ -373,7 +374,8 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
                 <div key={s} className="flex items-center gap-2">
                   <span className="text-[12px] text-gray-500 dark:text-gray-400 w-3">{s}</span>
                   <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#1D1F29] rounded-full overflow-hidden">
-                    <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
+                    {/* 🎬 2026-11-02 시안 5차 "별점 분포": 막대가 5점부터 차례로 차오른다(처음 그릴 때 한 번). */}
+                    <div className="ur-bar-grow h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%`, animationDelay: `${(5 - s) * 70}ms` }} />
                   </div>
                 </div>
               )

@@ -61,3 +61,21 @@
 | 버튼 처리 중 | profile-edit `RowActions` | 🟢 |
 | 당겨서 새로고침 | — | ⛔ 모바일 브라우저 자체 당겨서 새로고침과 겹친다 |
 | 판매 스위치 · 사진 올리기 · 매장 바꾸기 | VoucherRow · PhotoGalleryEditor · SellerSection(`useCountUp` resetKey) | 🟢 |
+
+## 5차 (대표 *"5차 시안 다 해주면 좋겠어"*)
+- 시안: `assets/motion-mockups-5-2026-11-02.html`(https://claude.ai/artifact/R938bBG3ZdQsxBbPPQq9zL)
+
+| 시안 | 적용 위치 | 상태 |
+|---|---|---|
+| 검색창 · 최근 검색어 | `search/SearchStates.tsx`(차례로 올라옴) · 입력칸은 이미 테두리 전환이 있다 | 🟢 |
+| 필터 → 개수 | `restaurant-map/SheetFilterBar.tsx` "N곳" 숫자가 바뀔 때 올라옴 | 🟢 |
+| 사진 넘김 점 | DetailGallery · DealCardMedia | ✅ 이미 있다(활성 점이 길어진다) |
+| 사진 크게 보기 | `group-buy/DetailGallery.tsx` 열고 닫을 때 커짐/작아짐 + 폰에서 아래로 끌어 닫기 | 🟢 |
+| 링크 복사됨 | GiftVoucherSheet · MyReferralCard(버튼이 "복사했어요") | 🟢 |
+| 알림 읽음 | NotificationsPage · NotificationPanel(점이 작아지며 사라짐) | 🟢 |
+| 지도 "이 지역 다시 찾기" | — | ⛔ 버튼이 없다 — 지도는 옮기면 자동으로 다시 불러온다(동작 변경은 별도 결정) |
+| 별점 분포 막대 | ProductReviews(차례로 차오름) | 🟢 |
+| 남은 수량 막대 | — | ⛔ 남은 수량 데이터가 없다(FcfsBadge 는 응모 수 · 이미 움직임 있음) |
+| 사장님 QR 틀 | `voucher/ScanFrame.tsx`(찾는 중 숨쉬기 → 잡으면 조여지며 파랑) | 🟢 |
+| 이번 달 목표 | — | ⛔ 목표 기능 자체가 없다(목표 정하기 화면 필요 — 대표 결정) |
+| 가게 설정 진행 | — | ⛔ 옛 체크리스트 부품은 있으나 안 쓰인다(`SellerOnboardingChecklist`) — 되살리면 새 화면·조회 추가(대표 결정) |

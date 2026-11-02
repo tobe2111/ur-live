@@ -11,6 +11,8 @@ import {
   DETAIL_MOBILE_THUMBS, DETAIL_MOBILE_THUMB_CLS, DETAIL_MOBILE_THUMB_RATIO, DETAIL_MOBILE_THUMB_ROW_CLS,
   detailMobileThumbUrl, showMobileThumbs,
 } from '@/shared/detail-hero-image'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-lightbox', `@keyframes ur-lb-bg { from { opacity: 0; } to { opacity: 1; } }@keyframes ur-lb-img { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }.ur-lb-in { animation: ur-lb-bg .22s ease-out both; }.ur-lb-in .ur-lb-pic { animation: ur-lb-img .3s cubic-bezier(.2,1,.3,1) backwards; }.ur-lb-out { animation: ur-lb-bg .18s ease-in reverse both; }.ur-lb-out .ur-lb-pic { animation: ur-lb-img .18s ease-in reverse both; }@media (prefers-reduced-motion: reduce){.ur-lb-in,.ur-lb-out,.ur-lb-in .ur-lb-pic,.ur-lb-out .ur-lb-pic{animation:none!important}}`)
 
 /**
  * 🖼️ 2026-08-19 (대표 시안 — 그루폰 상세): 이용권 상세 갤러리.
@@ -40,6 +42,18 @@ const PC_THUMBS = 2
 export default function DetailGallery({ images: rawImages, alt, badges, fallback, overlay }: Props) {
   const [active, setActive] = useState(0)
   const [lightbox, setLightbox] = useState(false)
+  // 🎬 2026-11-02 시안 5차 "사진 크게 보기": 열 때 커지며 나타나고, 닫을 때 작아지며 사라진다.
+  //   폰에서는 사진을 아래로 끌면 따라오다가 충분히 내리면 닫힌다(좌우 넘기기는 그대로).
+  const [closing, setClosing] = useState(false)
+  const closeLightbox = useCallback(() => {
+    let reduce = false
+    try { reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { /* 미지원 */ }
+    if (reduce) { setLightbox(false); return }
+    setClosing(true)
+    window.setTimeout(() => { setLightbox(false); setClosing(false) }, 180)
+  }, [])
+  const touchY = useRef<number | null>(null)
+  const dragRef = useRef<HTMLDivElement | null>(null)
   const touchX = useRef<number | null>(null)
   const galRef = useRef<HTMLDivElement | null>(null)
 
@@ -73,13 +87,13 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
   useEffect(() => {
     if (!lightbox) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setLightbox(false)
+      if (e.key === 'Escape') closeLightbox()
       else if (e.key === 'ArrowRight') step(1)
       else if (e.key === 'ArrowLeft') step(-1)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [lightbox, step])
+  }, [lightbox, step, closeLightbox])
 
   /**
    * 🎯 2026-08-31 (대표 승인 — "너가 얘기해준 가장 이상적인 방법들로"): 모바일 히어로 프레임.
@@ -296,22 +310,32 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
       {/* 🔍 전체 사진 모달 — 그루폰의 "See all images". */}
       {lightbox && (
         <div
-          className="fixed inset-0 bg-black lg:bg-black/90 flex items-center justify-center"
+          className={`fixed inset-0 bg-black lg:bg-black/90 flex items-center justify-center ${closing ? 'ur-lb-out' : 'ur-lb-in'}`}
           style={{ zIndex: Z.MODAL_BODY }}
-          onClick={() => setLightbox(false)}
+          onClick={closeLightbox}
           role="dialog"
           aria-modal="true"
           aria-label={`${alt} 사진 ${images.length}장`}
         >
-          <button type="button" onClick={() => setLightbox(false)} aria-label="닫기"
+          <button type="button" onClick={closeLightbox} aria-label="닫기"
             className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 text-white flex items-center justify-center hover:bg-white/25">
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
-          <div className="relative w-full max-w-[1100px] px-4" onClick={(e) => e.stopPropagation()}
-            onTouchStart={(e) => { touchX.current = e.touches[0]?.clientX ?? null }}
+          <div ref={dragRef} className="ur-lb-pic relative w-full max-w-[1100px] px-4" onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => { touchX.current = e.touches[0]?.clientX ?? null; touchY.current = e.touches[0]?.clientY ?? null }}
+            onTouchMove={(e) => {
+              const y0 = touchY.current, x0 = touchX.current, t0 = e.touches[0]
+              if (y0 == null || x0 == null || !t0 || !dragRef.current) return
+              const dy = t0.clientY - y0
+              if (dy > 0 && dy > Math.abs(t0.clientX - x0)) { dragRef.current.style.transition = 'none'; dragRef.current.style.transform = `translateY(${dy}px) scale(${Math.max(0.85, 1 - dy / 1200)})` }
+            }}
             onTouchEnd={(e) => {
               const x0 = touchX.current; touchX.current = null
-              const x1 = e.changedTouches[0]?.clientX
+              const y0 = touchY.current; touchY.current = null
+              const x1 = e.changedTouches[0]?.clientX, y1 = e.changedTouches[0]?.clientY
+              const el = dragRef.current
+              if (el) { el.style.transition = 'transform .25s cubic-bezier(.2,1,.3,1)'; el.style.transform = '' }
+              if (y0 != null && y1 != null && y1 - y0 > 90 && (x0 == null || x1 == null || y1 - y0 > Math.abs(x1 - x0))) { closeLightbox(); return }
               if (x0 != null && x1 != null && Math.abs(x1 - x0) > 40 && multi) step(x1 < x0 ? 1 : -1)
             }}>
             {/* 🖼️ 2026-08-19 (대표 신고 — "사진이 너무 커서 잘리는 문제" + "사진 클릭 시 안 나오는 문제가 다수"):

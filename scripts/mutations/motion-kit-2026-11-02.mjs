@@ -37,4 +37,12 @@ export default [
     test: TEST,
     why: '수량 칸에 1 과 2 가 겹쳐 보인다 — 몇 개를 골랐는지 읽을 수 없다.',
   },
+{
+    name: '🎬 부품 안 CSS 에 끄기 규칙이 조건 밖으로 샌다(움직임이 늘 꺼짐)',
+    file: 'src/pages/my-vouchers/WalletRow.tsx',
+    find: ".ur-blink-once { animation: ur-blink-once",
+    replace: ".ur-blink-once { animation: none !important; }.ur-x { animation: ur-blink-once",
+    test: TEST,
+    why: '조건 밖 끄기 규칙은 에러 없이 그 움직임을 모든 사람에게서 지운다(2026-11-02 실제로 다섯 곳).',
+  },
 ]
