@@ -646,11 +646,8 @@ api.interceptors.response.use(
         const { useAuthStore } = await import('@/client/stores/auth.store');
         useAuthStore.getState().clearAuth();
       } catch (_) {} // non-critical: best-effort clearAuth on 401
-      // 🛡️ 2026-11-02 (Sentry 'Buyer 401: Unauthorized' 반복 — 윈도우 크롬 홈 `/`):
-      //   여기 오는 길은 둘이다. ① 소비자 세션이 있었고 서버가 "죽었다(session:false)" 고 확정 → 진짜 로그아웃.
-      //   ② 소비자 세션 흔적(user_id·session_login)은 **애초에 없는데** 위 hasAnyAuth 가 어드민/셀러/에이전시
-      //   토큰이나 user_type 때문에 참 → 비로그인 손님과 같은 상황인데도 매 소비자 401 마다 에러를 보냈다
-      //   (대시보드에 로그인한 채 홈을 열면 화면을 열 때마다 1건). ②는 "로그아웃"이 아니므로 보고하지 않는다.
+      // 🛡️ 2026-11-02: 소비자 세션이 확정 사망했을 때만 보고. 소비자 흔적 없이 대시보드 토큰 때문에
+      //   hasAnyAuth 만 참인 경우(=비로그인 손님)는 로그아웃이 아니다 — 홈마다 Sentry 1건씩 쌓였다.
       if (isSessionCookieUser) {
         captureError(new Error('Buyer 401: Unauthorized'), { url });
       }
