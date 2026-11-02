@@ -54,6 +54,7 @@ export class ProductService {
       // FTS5 검색은 정확한 count 가 비싸므로 추정. 마지막 페이지 판단만 정확하면 충분.
       const estimatedTotal = products.length < limit ? offset + products.length : offset + limit + 1;
       return {
+        searchMode: this.repository.lastSearchMode,
         data: products,
         pagination: {
           page,

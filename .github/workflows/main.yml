@@ -401,6 +401,15 @@ jobs:
           fi
           echo "✅ All smoke tests passed (worker 정상 응답 중)"
 
+      # 🔎 2026-11-02 **검색이 조용히 망가지지 않았나** — 결과 수·종류·엔진 상태를 실제 사이트에 묻는다.
+      #   검색은 고칠 때마다 에러 없이 "결과가 적다" 로만 망가졌고 대표가 손으로 찾아냈다(4주 사례 포함).
+      #   단위 시험은 가짜 표로 돌아 못 본다 — 근거·판정은 scripts/check-live-search.mjs 머리말.
+      #   실패하면 아래 단계가 어드민에 기록한다(배포는 이미 끝났다 — 이건 되돌릴지 판단할 신호다).
+      - name: Live search check (검색이 조용히 망가지지 않았나)
+        run: |
+          sleep 10
+          node scripts/check-live-search.mjs
+
       # 🚨 **실패를 대표가 보는 곳에 남긴다** (2026-08-03 신설 — 근거는 scripts/report-deploy-failure.sh).
       #   배포 실패는 Actions 탭 안에만 있었고 아무도 안 봤다. 그 사이 라이브는 4개 머지만큼 뒤처졌다.
       #   ⚠️ `continue-on-error` — 관측이 배포 결과를 바꾸면 본말전도다.

@@ -80,4 +80,10 @@ export interface PaginatedResponse<T> {
     total: number;
     totalPages: number;
   };
+  /**
+   * 🔦 2026-11-02 검색일 때만 — 랭킹 검색이 정상으로 돌았나(`ranked`), 실패해 옛 검색으로 내려갔나(`fallback`).
+   *   2026-09-03~09-30 랭킹 검색이 매번 죽고 조용히 내려간 것을 4주간 아무도 몰랐다. 응답에 실어
+   *   배포 직후 점검(`scripts/check-live-search.mjs`)이 바로 본다.
+   */
+  searchMode?: 'ranked' | 'fallback';
 }
