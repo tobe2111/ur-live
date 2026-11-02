@@ -48,12 +48,12 @@ export const REDEEM_FALLBACK = '직원에게 4~6자리 확인코드를 받아 �
 export default function RedeemHowTo() {
   return (
     <div>
-      <ol className="m-0 p-0 list-none flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] font-medium" style={{ color: 'var(--gbd-ink)' }}>
+      <ol className="m-0 p-0 list-none flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-medium" style={{ color: 'var(--gbd-ink)' }}>
         {STEPS.map(({ n, t }, i) => (
-          <li key={n} className="flex items-center gap-1.5">
+          <li key={n} className="flex items-center gap-1">
             <span className="text-brand-text">{n}</span>
             <span>{t}</span>
-            {i < STEPS.length - 1 && <span aria-hidden className="ml-0.5" style={{ color: 'var(--gbd-sub2)' }}>›</span>}
+            {i < STEPS.length - 1 && <span aria-hidden className="ml-1" style={{ color: 'var(--gbd-sub2)' }}>›</span>}
           </li>
         ))}
       </ol>

@@ -93,11 +93,11 @@ export default function DetailLightboxMobile({
         </button>
       </div>
       {multi && (
-        <div className="flex items-center gap-1.5" role="tablist" aria-label="사진 고르기">
+        <div className="flex items-center gap-2" role="tablist" aria-label="사진 고르기">
           {images.map((src, i) => (
             <button key={`d-${i}-${src}`} type="button" role="tab" aria-selected={i === active} aria-label={`${i + 1}번째 사진`}
               onClick={() => onActive(i)} className="h-6 flex items-center">
-              <span className={`block h-1.5 rounded-full transition-all ${i === active ? 'bg-white' : 'bg-white/40'}`}
+              <span className={`block h-2 rounded-full transition-all ${i === active ? 'bg-white' : 'bg-white/40'}`}
                 style={{ width: i === active ? 18 : 6 }} />
             </button>
           ))}

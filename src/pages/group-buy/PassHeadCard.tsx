@@ -53,8 +53,8 @@ export default function PassHeadCard({
 
       {/* 📏 2026-11-02 상세 C안: 별점·구매 수와 거리를 **한 줄**로. 주소 줄은 아래 '매장' 구역이 이미 말해서 걷었다. */}
       {(hasReviews || buyers > 0 || distKm != null) && (
-        <div className="mt-1.5 flex items-center justify-between gap-3 text-[13px]">
-          <span className="min-w-0 flex items-center flex-wrap gap-x-1.5 gap-y-1">
+        <div className="mt-2 flex items-center justify-between gap-3 text-[13px]">
+          <span className="min-w-0 flex items-center flex-wrap gap-x-2 gap-y-1">
             {hasReviews && (
               <>
                 <StarRating value={rv} size={12} />
@@ -74,7 +74,7 @@ export default function PassHeadCard({
       {unitPrice != null && unitPrice > 0 && (
         <div className="mt-3">
           {refPrice != null && refPrice > unitPrice && <div className="text-[13px] line-through" style={{ color: 'var(--gbd-sub)' }}>{formatNumber(refPrice)}원</div>}
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex items-baseline gap-2">
             {!!discountPct && discountPct > 0 && <span className="text-[17px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
             <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>
           </div>
