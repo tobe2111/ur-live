@@ -57,7 +57,7 @@ export default function DeleteBlockers({
 
   if (failed) {
     return (
-      <section className="rounded-2xl bg-surface shadow-lift dark:shadow-none p-5" data-testid="delete-blockers-failed">
+      <section className="rounded-2xl p-5" data-testid="delete-blockers-failed">
         <div className="flex items-start gap-3">
           <AlertIcon className="w-5 h-5 mt-1 shrink-0 text-tone-bad" />
           <div className="flex-1 min-w-0">
@@ -128,7 +128,7 @@ export default function DeleteBlockers({
   if (rows.length === 0) return null
 
   return (
-    <section className="rounded-2xl bg-surface shadow-lift dark:shadow-none px-5 pt-5 pb-1" data-testid="delete-blockers">
+    <section className="rounded-2xl px-5 pt-5 pb-1" data-testid="delete-blockers">
       <h3 className="text-[15px] font-medium text-gray-900 dark:text-white">
         {t('accountDeleteWarning.blockersTitle', { defaultValue: '먼저 정리해 주세요' })}
       </h3>

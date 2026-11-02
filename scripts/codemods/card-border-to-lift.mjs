@@ -10,6 +10,11 @@
  *   - 틴트 상자(`bg-amber-50` 류) — `shadow-lift`(잉크 6%)가 그 면 위에서 거의 안 보인다
  *   - 잠금표 파일 — 색 하나도 대표 승인이 필요하다
  * 그래서 **흐름 속 평범한 흰 카드**만 바꾸고 나머지는 래칫으로 얼린다.
+ *
+ * 🧾 **2026-11-02 재조준 — 결과물이 '들림'이 아니라 '평면'이다.** 대표 확정 A안(*"A안 — 평면"*, 범위
+ * *"소비자 화면 전체"*): 흐름 속 판은 그림자도 흰 바탕도 없다. 그래서 테두리를 걷을 때 `shadow-lift` 를
+ * **더하지 않고** 판 바탕(`bg-white`/`bg-surface`)과 기존 그림자도 같이 걷는다. 이름은 파일·시험·주입이
+ * 참조하므로 그대로 둔다. 그림자 판 자체의 평면화는 `consumer-plate-flat.mjs` 가 맡는다.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
@@ -48,13 +53,14 @@ for (const f of files) {
     const base = cls.split(/\s+/).filter((t) => !t.includes(':')).join(' ')
     if (!/\bbg-(white|surface)\b/.test(base) || TINT.test(base)) continue
 
-    const kept = cls.split(/\s+/).filter((t) => !/^(dark:)?border(-(?!rule)[a-z0-9[\]#/.-]+)?$/.test(t))
-    if (!kept.some((t) => /^shadow-/.test(t))) kept.push('shadow-lift')
-    else for (let i = 0; i < kept.length; i++) if (/^shadow-(sm|md|lg)?$/.test(kept[i])) kept[i] = 'shadow-lift'
+    const kept = cls.split(/\s+/)
+      .filter((t) => !/^(dark:)?border(-(?!rule)[a-z0-9[\]#/.-]+)?$/.test(t))
+      // 2026-11-02 A안 — 평면: 들림을 더하지 않고, 판 바탕·그림자도 걷는다.
+      .filter((t) => !/^(shadow-(sm|md|lg|lift)?|shadow|bg-white|bg-surface|dark:bg-\[#1D1F29\])$/.test(t))
     out += orig.slice(last, m.index) + `className="${kept.join(' ')}"`
     last = m.index + m[0].length
     n++
   }
   if (last) { out += orig.slice(last); touched++; if (write) writeFileSync(f, out) }
 }
-console.log(`${write ? '✍️' : '👀'} 파일 ${touched} · 테두리 → 들림 ${n}건`)
+console.log(`${write ? '✍️' : '👀'} 파일 ${touched} · 테두리 → 들림 ${n}건`) // (형식 고정 — 시험이 '들림 N건' 을 읽는다. 결과물은 2026-11-02 부터 평면)

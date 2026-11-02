@@ -86,7 +86,7 @@ export default function DealBalanceCard({
         type="button"
         onClick={onRetry}
         disabled={!onRetry}
-        className={`w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform disabled:active:scale-100 ${compact ? 'px-3 py-2' : 'h-11 px-4'}`}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl active:scale-[0.99] transition-transform disabled:active:scale-100 ${compact ? 'px-3 py-2' : 'h-11 px-4'}`}
       >
         <span className="text-[12px] text-gray-600 dark:text-gray-300 truncate text-left">잔액을 불러오지 못했어요</span>
         {onRetry && <span className="shrink-0 text-[12px] font-medium text-brand-text">다시 시도</span>}
@@ -102,7 +102,7 @@ export default function DealBalanceCard({
       <button
         type="button"
         onClick={() => navigate(EARN_PATH)}
-        className={`w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform ${compact ? 'px-3 py-2' : 'h-11 px-4'}`}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl active:scale-[0.99] transition-transform ${compact ? 'px-3 py-2' : 'h-11 px-4'}`}
       >
         <span className="text-[12px] text-gray-600 dark:text-gray-300 truncate text-left">딜을 모으면 더 싸게 살 수 있어요</span>
         <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-brand-text">
@@ -138,7 +138,7 @@ export default function DealBalanceCard({
   )
 
   return (
-    <div className="w-full rounded-xl bg-surface shadow-lift px-4 py-3" aria-busy={awaiting || undefined}>
+    <div className="w-full rounded-xl px-4 py-3" aria-busy={awaiting || undefined}>
       <div className={compact ? undefined : 'flex items-center'}>
         <div className="min-w-0">
           <p className="text-gray-500 dark:text-gray-400 tracking-wide mb-1 text-[12px]">내 딜 잔액</p>

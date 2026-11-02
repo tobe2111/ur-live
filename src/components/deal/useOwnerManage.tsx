@@ -41,7 +41,7 @@ export function OwnerManageBar({ kind, onManage, framed = false }: { kind: Owned
 /** 🖥️ PC 우측 구매·예약 상자 자리. */
 export function OwnerManageCard({ kind, onManage }: { kind: OwnedKind; onManage: () => void }) {
   return (
-    <div className="rounded-2xl bg-surface shadow-lift p-5 [&>div]:mt-0">
+    <div className="rounded-2xl p-5 [&>div]:mt-0">
       <OwnerManagePanel kind={kind} onManage={onManage} />
     </div>
   )

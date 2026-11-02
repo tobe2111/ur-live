@@ -19,7 +19,7 @@ const PICKS: HomeServiceCategory[] = ['signage', 'store_pest', 'kitchen_hood']
 export default function LifeQuoteBanner({ sub = 'all' }: { sub?: 'all' | LifeSubcat }) {
   const d = sub === 'all' ? undefined : lifeSubcatDef(sub)
   return (
-    <Link to={d?.request ? `/life/request/${d.request}` : '/life'} className="mx-4 mb-5 mt-2 flex items-center gap-3 rounded-2xl bg-surface px-4 py-4 text-ink shadow-lift active:opacity-80">
+    <Link to={d?.request ? `/life/request/${d.request}` : '/life'} className="mb-5 mt-2 flex items-center gap-3 rounded-2xl px-4 py-4 text-ink active:opacity-80">
       <span className="flex shrink-0 -space-x-3">
         {PICKS.map((c) => (
           <span key={c} className="flex h-9 w-9 items-center justify-center rounded-full bg-warm ring-2 ring-[var(--surface)]">

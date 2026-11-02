@@ -34,7 +34,7 @@ export default function OwnerEarningsStrip() {
   //   자유롭지만 **색 규율은 브랜드 전체 규칙**이라 예외가 아니다. 숫자가 주인공이 되게 27px 로 올린다.
   return (
     // 🧭 2026-10-13: `/creator` 와 `/u/me/earnings` 는 같은 화면이다 — 관리 화면 안에서는 유어샵 주소 체계로 간다.
-    <Link to="/u/me/earnings" className="block max-w-3xl mx-auto rounded-xl bg-surface shadow-lift p-4 active:opacity-90">
+    <Link to="/u/me/earnings" className="block max-w-3xl mx-auto rounded-xl p-4 active:opacity-90">
       <div className="flex items-center">
         <span className="text-[12px] font-medium text-gray-500 dark:text-gray-400">
           {t('curator.earn30dConfirmed', { defaultValue: '최근 30일 적립' })}

@@ -131,7 +131,7 @@ export default function CuratorEarningsPage() {
 
               {/* 셀러 승급 안내 — 누적이 임계치를 넘은 사람에게만, 한 번만. */}
               {wdInfo?.seller_upgrade.eligible && !wdInfo.seller_upgrade.offered && (
-                <div className="bg-surface shadow-lift rounded-2xl p-4 mb-3">
+                <div className="rounded-2xl p-4 mb-3">
                   <p className="text-[15px] font-bold mb-1">셀러 승급 안내</p>
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">
                     누적 적립이 {formatWon(wdInfo.seller_upgrade.threshold)} 를 넘었어요. 셀러가 되면 직접 상품을 팔 수 있어요.
@@ -180,7 +180,7 @@ export default function CuratorEarningsPage() {
  */
 function QuickTile({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
   return (
-    <Link to={to} className="flex-1 bg-surface shadow-lift rounded-2xl px-4 py-3 flex items-center gap-2 active:opacity-70">
+    <Link to={to} className="flex-1 rounded-2xl px-4 py-3 flex items-center gap-2 active:opacity-70">
       <span className="text-gray-500 dark:text-gray-400">{icon}</span>
       <span className="text-[13px] font-medium tracking-[-0.02em]">{label}</span>
     </Link>

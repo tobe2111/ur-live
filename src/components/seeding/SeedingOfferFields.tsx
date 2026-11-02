@@ -17,7 +17,7 @@ export default function SeedingOfferFields({ value, onChange }: { value: Seeding
     if (next.length) set('platforms', next)
   }
   return (
-    <section className="rounded-2xl bg-surface p-5 shadow-lift">
+    <section className="rounded-2xl p-5">
       <label className="flex items-start justify-between gap-3">
         <span>
           <span className="block text-[15px] font-bold text-ink">인플루언서 무상 체험 제공</span>

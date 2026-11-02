@@ -64,5 +64,5 @@ export function BuyBarCta({ on, children, className = '', ...rest }: ButtonHTMLA
  * 숙소 예약 패널(`StayBookingPanel`)이 이 상수를 쓴다. 이용권 상자는 인라인 style 로 같은 값을 들고 있고
  * (기존 가드가 그 모양을 고정한다) 시험이 두 쪽 숫자를 대조한다.
  */
-export const PURCHASE_BOX_CLS = 'rounded-2xl bg-surface shadow-lift p-[18px]'
+export const PURCHASE_BOX_CLS = 'rounded-2xl p-[18px]'
 export const PURCHASE_CTA_CLS = 'w-full h-[50px] rounded-xl text-white text-[15px] font-bold flex items-center justify-center gap-2'

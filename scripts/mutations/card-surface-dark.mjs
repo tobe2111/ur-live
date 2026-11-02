@@ -11,7 +11,7 @@ export default [
   {
     name: '[카드표면] 🔴 영수증 등록 카드가 다크 페이지색으로 되돌아간다',
     file: 'src/pages/DistrictCouponPage.tsx',
-    find: 'rounded-2xl bg-surface p-4 space-y-3',
+    find: 'rounded-2xl p-4 space-y-3' /* 2026-11-02 A안 평면으로 bg-surface·그림자가 걷혔다 — 결함(다크 페이지색 판)은 그대로 */,
     replace: 'rounded-2xl bg-white dark:bg-[#11141C] p-4 space-y-3',
     test: TEST,
     why:

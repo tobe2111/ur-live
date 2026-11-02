@@ -222,7 +222,7 @@ export default function LifeRequestFormPage() {
       <div className="ur-content-narrow space-y-5 px-4 pb-10">
         <h2 className="text-[24px] font-bold leading-snug tracking-tight">이대로 견적을 받을까요?</h2>
         {recruiting}
-        <div className="divide-y divide-rule rounded-2xl bg-surface px-5 shadow-lift">
+        <div className="divide-y divide-rule rounded-2xl px-5">
           {def.fields.map((f, i) => {
             const v = shown(f, values)
             return (
@@ -237,7 +237,7 @@ export default function LifeRequestFormPage() {
           })}
         </div>
 
-        <label className="flex items-start gap-3 rounded-2xl bg-surface p-4 shadow-lift">
+        <label className="flex items-start gap-3 rounded-2xl p-4">
           <input type="checkbox" className="mt-1 h-4 w-4" checked={consent}
             onChange={(e) => setValues((s) => { const n = { ...s }; if (e.target.checked) n[CONSENT_KEY] = '1'; else delete n[CONSENT_KEY]; return n })} />
           <span className="text-[13px] leading-relaxed">

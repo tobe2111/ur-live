@@ -97,7 +97,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
       role={tappable ? 'button' : undefined}
       tabIndex={tappable ? 0 : undefined}
       onKeyDown={tappable ? (e) => { if (e.key === 'Enter') onShowQr() } : undefined}
-      className={`rounded-2xl bg-surface overflow-hidden ${inactive ? 'opacity-60' : 'shadow-lift'} ${tappable ? 'cursor-pointer' : ''}`}
+      className={`rounded-2xl overflow-hidden ${inactive ? 'opacity-60' : ''} ${tappable ? 'cursor-pointer' : ''}`}
     >
       <div className="flex gap-4 p-4">
         <div className="w-[72px] h-[72px] shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-white/10 flex items-center justify-center">
@@ -187,7 +187,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
     <div
       /* 🎨 2026-09-15: 회색 테두리 네모 → 흰 면 + 들림 한 값. 이 카드만 옛 체계(테두리 + 임의 그림자 +
          체계 밖 카드색)에 남아, 같은 지갑 안에서 티켓 카드와 **모양이 갈렸다**(대표 "AI로 만든 것 같아"). */
-      className={`relative rounded-2xl bg-surface p-[13px] ${muted ? '' : 'shadow-lift'}`}
+      className="relative rounded-2xl p-[13px]"
       style={{ opacity: muted ? 0.55 : 1 }}
     >
       <div className="flex items-stretch gap-3">

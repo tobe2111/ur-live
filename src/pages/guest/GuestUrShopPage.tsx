@@ -79,7 +79,7 @@ export default function GuestUrShopPage() {
         </p>
 
         {pins.length > 0 && (
-          <section className={`mt-5 rounded-2xl bg-surface shadow-lift px-4 pt-4 pb-1${hide}`} aria-hidden={waiting || undefined} aria-label={t('guest.shop.example', { defaultValue: '예시' })}>
+          <section className={`mt-5 rounded-2xl px-4 pt-4 pb-1${hide}`} aria-hidden={waiting || undefined} aria-label={t('guest.shop.example', { defaultValue: '예시' })}>
             <div className="flex items-center gap-3 pb-3 border-b border-rule">
               <span className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-brand-tint flex items-center justify-center">
                 <Udal mood="tip" size={48} />
@@ -123,7 +123,7 @@ export default function GuestUrShopPage() {
           </p>
         </div>
 
-        <Link to="/partners" className="mt-6 flex items-center gap-3 rounded-2xl bg-surface shadow-lift px-4 py-4 active:opacity-80">
+        <Link to="/partners" className="mt-6 flex items-center gap-3 rounded-2xl px-4 py-4 active:opacity-80">
           <span className="shrink-0 w-9 h-9 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 flex items-center justify-center">
             <StoreIcon size={ICON} />
           </span>

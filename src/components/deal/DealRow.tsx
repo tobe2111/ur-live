@@ -155,7 +155,7 @@ export default memo(function DealRow({
   )
   const skin = surface === 'plain'
     ? PLAIN_CLS.skin                                                // 판 없음 — 줄 사이 실선이 나눈다
-    : 'px-3 py-2 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift' // 기본(다섯 화면) — byte-불변
+    : 'px-3 py-2 rounded-2xl' // 기본(다섯 화면) — byte-불변
   const cls = `w-full flex items-center ${plain ? 'gap-4' : 'gap-3'} text-left ${skin} active:opacity-60 transition-opacity ${className}`
   const warm = prefetch
     ? { onMouseEnter: prefetch, onTouchStart: prefetch, onFocus: prefetch }

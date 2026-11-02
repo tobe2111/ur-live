@@ -24,7 +24,9 @@ const PAGE = readCode('src/pages/UserProfilePage.tsx')
 describe('① 딜 내역', () => {
   it('잔액은 흰 카드 — 검정 그라디언트 판이 아니다', () => {
     expect(DEAL, '이 화면에만 있던 검정 판').not.toMatch(/linear-gradient/)
-    expect(DEAL).toMatch(/bg-surface shadow-lift/)
+    // 2026-11-02 대표 확정 A안 — 평면: 잔액 판도 그림자·흰 바탕 없이 그린다.
+    expect(DEAL).toMatch(/<div className="rounded-2xl p-5">/)
+    expect(DEAL).not.toMatch(/shadow-lift/)
   })
 
   it("'추천' 칩이 없다 — 유저 추천 보너스는 지급된 적이 없고 주지 않는다(2026-10-16)", () => {
@@ -55,7 +57,8 @@ describe('② 주문 내역 — 필터는 한 줄', () => {
 
   it('빈 카드에 테두리가 없다 — 카드는 들림 하나', () => {
     const empty = TAB.slice(TAB.indexOf('function EmptyState'))
-    expect(empty).toMatch(/bg-surface rounded-2xl shadow-lift/)
+    expect(empty, '2026-11-02 A안 — 빈 카드도 평면').toMatch(/rounded-2xl p-12 text-center/)
+    expect(empty).not.toMatch(/shadow-lift/)
     expect(empty).not.toMatch(/bg-surface rounded-2xl border\b/)
   })
 })

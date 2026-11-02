@@ -40,7 +40,8 @@ export default [
   {
     name: '마이하위 — 딜 잔액이 검정 그라디언트 판으로 돌아간다',
     file: 'src/pages/MyDealHistoryPage.tsx',
-    find: '<div className="rounded-2xl bg-surface shadow-lift dark:shadow-none p-5">',
+    // 2026-11-02 앵커 재조준 — A안 평면으로 판·그림자가 걷혔다(결함은 그대로).
+    find: '<div className="rounded-2xl p-5">',
     replace: '<div className="rounded-2xl p-5" style={{ background: \'linear-gradient(135deg, #2b2b2e 0%, #0a0a0b 100%)\' }}>',
     test: T,
     why: '이 화면에만 있던 모양 — 숫자가 아니라 검은 판이 주인공이 된다.',
@@ -56,7 +57,7 @@ export default [
   {
     name: '마이하위 — 주문 빈 카드에 테두리가 돌아온다',
     file: 'src/components/mypage/OrdersTab.tsx',
-    find: '<div className="bg-surface rounded-2xl shadow-lift dark:shadow-none p-12 text-center">',
+    find: '<div className="rounded-2xl p-12 text-center">', // 2026-11-02 A안 평면 재조준
     replace: '<div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">',
     test: T,
     why: '카드는 테두리 0 · 들림 하나(표면 규칙 ①).',

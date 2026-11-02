@@ -66,7 +66,7 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
           aria-hidden="true"
         >
           {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="rounded-xl overflow-hidden bg-surface shadow-lift">
+            <div key={n} className="rounded-xl overflow-hidden">
               <div className="aspect-[3/2] relative bg-gray-200 dark:bg-[#1D1F29]">
                 <span className="absolute top-0 left-0 min-w-[1.5rem] h-6 px-2 bg-[#6b7280] text-white text-[13px] font-medium flex items-center justify-center rounded-br-[11px]">{n}</span>
               </div>

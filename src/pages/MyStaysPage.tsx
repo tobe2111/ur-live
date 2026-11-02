@@ -86,7 +86,7 @@ export default function MyStaysPage() {
         ) : bookings.length === 0 ? (
           /* 🧹 2026-10-19: 다른 빈 화면과 같은 모양 — 유달이 + 들림 카드 + 브랜드 알약. 버튼 글자 안의 "→" 는 뺐다
              (화살표를 글자로 쓰면 아이콘 체계 밖이다). */
-          <div className="bg-surface rounded-2xl shadow-lift dark:shadow-none px-6 py-10 text-center">
+          <div className="rounded-2xl px-6 py-10 text-center">
             <Udal mood="empty" size={96} className="block mx-auto mb-4" />
             <p className="text-[17px] font-bold text-gray-900 dark:text-white">예약 내역이 없어요</p>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">숙소 이용권을 사면 여기서 예약을 확인할 수 있어요</p>
@@ -101,7 +101,7 @@ export default function MyStaysPage() {
               const canCancel = ['confirmed', 'pending'].includes(b.status)
               const canReview = b.status === 'checked_out'
               return (
-                <div key={b.id} className="bg-surface rounded-xl p-4 shadow-lift">
+                <div key={b.id} className="rounded-xl p-4">
                   <div className="flex items-start gap-3">
                     <Link to={`/stays/${b.product_id}`} className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1D1F29]">
                       {b.image_url ? <img src={cfImage(b.image_url, { width: 200, quality: 82, format: 'auto' }) || b.image_url} alt={b.product_name} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, b.image_url)} /> : null}
