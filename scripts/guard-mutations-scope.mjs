@@ -130,6 +130,31 @@ export function inScope(m, scope) {
 }
 
 /**
+ * 🕳️ 순수 — 주입의 **테스트가 바뀐 파일을 직접 읽는가**(2026-11-02 — 위 머리말의 "못 고르는 경우" 를 좁힌다).
+ *
+ * 🩸 실측: #2101 이 `src/shared/db/live-schema.snapshot.json` **만** 바꿨는데, 그 사진을 읽는 시험
+ * (`live-column-repairs-2026-11-02.test.ts`)을 겨눈 주입은 `file`·`test` 가 diff 에 없어 안 골렸다.
+ * 사진에 컬럼이 들어가 그 주입이 **낡았는데**(되돌려도 초록) 그 PR 은 초록으로 머지됐고, 다음에 전수로
+ * 떨어진 **무관한 PR 들**(#2104·#2105)이 대신 빨간불을 맞았다.
+ * ⇒ 바뀐 **데이터 파일(`.json`)** 경로가 테스트 소스에 **따옴표째 리터럴**로 있으면 그 주입도 고른다.
+ * 📏 왜 `.json` 만인가(실측 — main 최근 25커밋): 모든 파일로 넓히면 PR 당 고르는 주입이 **3~5배**
+ *    (예 +281 · +397 · +761 — `App.tsx`·`index.css` 를 읽는 시험이 많다)로 늘어 Verify 가 수십 분 길어진다.
+ *    `.json`(라이브 사진·baseline·잠금 기준값)은 시험이 *진실*로 읽는 데이터라 바뀌면 주입이 낡기 쉽고,
+ *    늘어나는 양은 커밋당 **0~56건**이다. 소스 파일 쪽 구멍은 여전히 전수(main push + 야간)가 본다.
+ * ⚠️ 못 보는 것: 경로를 조립해 읽는 테스트(`path.join('src', x)`) · glob 으로 읽는 테스트 · `.json` 밖 데이터.
+ * @param {string} testSrc
+ * @param {Set<string>} files
+ */
+export function testReadsChangedFile(testSrc, files) {
+  if (!testSrc) return false
+  for (const f of files) {
+    if (!f || f.length < 6 || !f.endsWith('.json')) continue
+    if (testSrc.includes(`'${f}'`) || testSrc.includes(`"${f}"`) || testSrc.includes(`\`${f}\``)) return true
+  }
+  return false
+}
+
+/**
  * git 을 실제로 부른다(부수효과 있음). 실패하면 **전수로 폴백** — 애매하면 넓게.
  * @param {{enabled:boolean, root:string, run:(args:string[])=>string, baseRef?:string}} o
  *   `run` 은 `git <args>` 를 돌려 stdout 을 주는 함수(테스트에서 갈아끼우기 쉽게 주입받는다).

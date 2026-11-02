@@ -23,7 +23,7 @@ import { describe, it, expect } from 'vitest'
 import { readRaw } from '../helpers/source-text'
 // 🔴 **텍스트가 아니라 동작을 잰다.** 이 레포가 반복해 당한 "문자열만 맞고 실제로는 안 도는" 가드가
 //    되지 않으려면 판정 함수를 실제로 불러야 한다 — 그래서 순수 모듈로 뽑았다.
-import { ALWAYS_FULL, fullReasonFor, inScope, changedScope, verifyChangeIsStepAdditionOnly, VERIFY_WORKFLOW } from '../../../scripts/guard-mutations-scope.mjs'
+import { ALWAYS_FULL, fullReasonFor, inScope, changedScope, verifyChangeIsStepAdditionOnly, VERIFY_WORKFLOW, testReadsChangedFile } from '../../../scripts/guard-mutations-scope.mjs'
 
 // 🩸 **워크플로는 `readRaw` 로 읽는다.** `readCode` 를 쓰면 `paths-ignore: ['docs/**', …]` 의
 //    `/**` 를 블록 주석 시작으로 읽어 **파일 가운데가 통째로 사라진다**(헬퍼 주석이 경고한 그 지뢰를
@@ -312,3 +312,27 @@ describe('🧮 verify.yml 에 단계를 *추가만* 하면 전수가 아니다 (
   })
 })
 
+
+describe('🕳️ 시험이 읽는 데이터 파일이 바뀌면 그 주입도 고른다 (2026-11-02 #2101 낡은 주입)', () => {
+  const RUNNER = readRaw('scripts/check-guard-mutations.mjs')
+  const snapTest = "const snap = JSON.parse(read('src/shared/db/live-schema.snapshot.json')).tables"
+
+  it('#2101 실제 diff(사진 + baseline) — 사진을 읽는 시험을 고른다', () => {
+    const files = new Set(['scripts/live-columns-baseline.json', 'src/shared/db/live-schema.snapshot.json'])
+    expect(testReadsChangedFile(snapTest, files)).toBe(true)
+  })
+  it('그 파일을 안 읽는 시험은 안 고른다', () => {
+    expect(testReadsChangedFile("read('src/App.tsx')", new Set(['src/shared/db/live-schema.snapshot.json']))).toBe(false)
+  })
+  it('소스 파일(.json 밖)은 고르지 않는다 — 넓히면 PR 당 주입이 3~5배', () => {
+    expect(testReadsChangedFile("read('src/App.tsx')", new Set(['src/App.tsx']))).toBe(false)
+  })
+  it('따옴표 세 종류 모두 본다', () => {
+    const f = 'scripts/exec-cost-baseline.json'
+    for (const q of ["'", '"', '`']) expect(testReadsChangedFile(`read(${q}${f}${q})`, new Set([f]))).toBe(true)
+  })
+  it('러너가 이 판정을 실제로 쓴다(--changed 에서 CHANGED_NAMES 에 넣는다)', () => {
+    expect(RUNNER).toMatch(/import \{[^}]*testReadsChangedFile[^}]*\} from '\.\/guard-mutations-scope\.mjs'/)
+    expect(RUNNER).toMatch(/testReadsChangedFile\(srcOf\.get\(m\.test\), SCOPE\.files\)\) CHANGED_NAMES\.add\(m\.name\)/)
+  })
+})
