@@ -97,7 +97,7 @@ export default function NaverMiniMap({ name, address, lat, lng, height = 220 }: 
       const marker = new naver.maps.Marker({ position: pos, map: mapInstance.current })
       if (name) {
         const info = new naver.maps.InfoWindow({
-          content: `<div style="padding:6px 10px;font-size:12px;font-weight:700;color:#111;white-space:nowrap">${escapeHtml(name)}</div>`,
+          content: `<div style="padding:6px 10px;font-size:12px;font-weight:700;color:rgb(17 17 17);white-space:nowrap">${escapeHtml(name)}</div>`,
         })
         info.open(mapInstance.current, marker)
       }
@@ -124,11 +124,11 @@ export default function NaverMiniMap({ name, address, lat, lng, height = 220 }: 
       )}
       <div className="relative" style={{ height }}>
         {error ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-[#111]">
+          <div className="absolute inset-0 flex items-center justify-center bg-warm">
             <p className="text-[12px] text-gray-400">{error}</p>
           </div>
         ) : !coord ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-[#111]">
+          <div className="absolute inset-0 flex items-center justify-center bg-warm">
             <p className="text-[12px] text-gray-400">{t('map.loading', { defaultValue: '지도 로딩 중...' })}</p>
           </div>
         ) : (
