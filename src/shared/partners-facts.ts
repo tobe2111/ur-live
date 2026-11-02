@@ -43,9 +43,9 @@ export const PARTNER_FACTS = {
    * 정의(2026-10-31 D1): is_active=1 · deal_only=0 · 이용권 4종 = 165건, 그중 seller_id 있는 것
    *    (실제 매장) 2건(2915 홍대돈까스 · 2919 달빛한스푼). 2026-10-12 는 359건이었다(데모 정리분). */
   liveMeasuredAt: '2026-10-12',
-  catalogMeasuredAt: '2026-10-31',
-  activeVouchers: '165',
-  realStores: '2',
+  // 🔄 2026-11-02 — catalogMeasuredAt · activeVouchers · realStores 를 **지웠다**. 어떤 화면도 쓰지 않는 거울이었고
+  //    (덱과 같은지 시험만 대조했다), 덱 쪽은 이제 빌드 때 라이브에서 읽는다(src/shared/proposal-live-facts.ts).
+  //    거울을 남기면 다시 손으로 고칠 숫자가 된다 — 11-02 에 이미 165 ↔ 라이브 160 으로 어긋나 있었다.
 
   /**
    * 💴 실계산에 쓰는 **라이브 실제 상품**(id 2915, 홍대돈까스). 데모 시드 가격은 쓰지 않는다 — 기획 §2-5.
@@ -57,7 +57,8 @@ export const PARTNER_FACTS = {
    *      WHERE seller_id IS NOT NULL AND group_buy_status='active'
    *        AND category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher')
    */
-  sample: { name: '프리미엄 돈가스 1인 세트', list: 14500, sale: 7500 },
+  // 🔗 덱의 셈법 앵커(PROPOSAL_SAMPLE_PRODUCT_ID)와 같은 상품 — 시험이 id·이름을 대조한다. 가격은 이 화면의 계산기 값이다.
+  sample: { id: 2915, name: '프리미엄 돈가스 1인 세트', list: 14500, sale: 7500 },
 
   /** 🤝 소개 트랙 (기획 §0-3 실측). 사장님이 "손님을 더 부르는 법" 으로 보는 숫자 */
   influencerDb: '337,842명',

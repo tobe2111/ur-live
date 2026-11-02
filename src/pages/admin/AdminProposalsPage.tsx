@@ -33,6 +33,8 @@
  */
 import { useCallback, useState } from 'react'
 import { FileText, Download, Maximize2 } from 'lucide-react'
+import { formatKST } from '@/utils/date'
+import { useProposalManifest, useAutoPdf, deckNameOf } from './proposals/useAutoProposal'
 
 /**
  * 🔢 `slides` 는 손으로 적는 숫자가 아니다 — `src/tests/unit/admin-proposals-asset.test.ts` 가
@@ -91,10 +93,18 @@ type Key = (typeof PROPOSALS)[number]['key']
 export default function AdminProposalsPage() {
   const [tab, setTab] = useState<Key>('store-owner')
   const active = PROPOSALS.find(p => p.key === tab) ?? PROPOSALS[0]
+  // 📄 2026-11-02: 자동 생성 최신본(워크플로 proposals.yml → GitHub Release) 을 먼저 쓴다. 없으면 저장된 판.
+  const auto = useProposalManifest()
+  const deck = deckNameOf(active.url)
+  const autoDeck = auto.mode === 'auto' ? auto.manifest.decks.find(d => d.name === deck) : undefined
+  const pdf = useAutoPdf(deck, !!autoDeck)
+  const viewUrl = pdf.url ?? active.url
+  const usingAuto = !!pdf.url
+  const warnings = auto.mode === 'auto' ? auto.manifest.warnings.filter(w => w.decks.includes(deck)) : []
 
   const openFull = useCallback(() => {
-    window.open(active.url, '_blank', 'noopener')
-  }, [active.url])
+    window.open(viewUrl, '_blank', 'noopener')
+  }, [viewUrl])
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
@@ -103,8 +113,7 @@ export default function AdminProposalsPage() {
         <h1 className="text-xl font-extrabold text-gray-900">대외 소개서</h1>
       </div>
       <p className="text-[13px] text-gray-500 mb-4">
-        <code className="px-1 rounded bg-gray-100 text-[0.85em]">docs/business/proposals/</code> 의 PDF 를 그대로 띄웁니다.
-        소개서를 다시 뽑아 배포하면 이 화면도 자동으로 최신본이 됩니다.
+        매일 새벽 라이브 숫자로 다시 만든 최신본을 띄웁니다. 못 불러오면 저장소(<code className="px-1 rounded bg-gray-100 text-[0.85em]">docs/business/proposals/</code>)의 판으로 내려가고 아래에 그렇게 적힙니다.
       </p>
 
       {PROPOSALS.length > 1 && (
@@ -143,8 +152,8 @@ export default function AdminProposalsPage() {
               새 창에서 보기
             </button>
             <a
-              href={active.url}
-              download
+              href={viewUrl}
+              download={`${deck}.pdf`}
               className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 text-[13px]"
             >
               <Download className="w-4 h-4" />
@@ -153,21 +162,40 @@ export default function AdminProposalsPage() {
           </div>
         </div>
 
-        <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
+        <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 space-y-1">
+          {/* 🔴 지금 보는 것이 자동 생성본인지 저장된 판인지 숨기지 않는다 */}
+          {auto.mode === 'auto' && usingAuto ? (
+            <p data-testid="proposal-source" className="text-[12px] text-gray-700">
+              자동 생성본 · {formatKST(auto.manifest.builtAt)} 생성 · 숫자 기준 {auto.manifest.facts.measuredAt}
+              {' '}(판매 중 이용권 {auto.manifest.facts.activeVouchers}건 · 실제 매장 {auto.manifest.facts.realStores}건)
+            </p>
+          ) : auto.mode === 'loading' || (autoDeck && !pdf.failed) ? (
+            <p data-testid="proposal-source" className="text-[12px] text-gray-500">자동 생성본을 확인하는 중…</p>
+          ) : (
+            <p data-testid="proposal-source" className="text-[12px] text-red-700">
+              ⚠️ {auto.mode === 'fallback' ? auto.reason : '이 소개서의 자동 생성본을 불러오지 못했습니다'} — 저장소에 있는 판을 보여 줍니다(숫자가 낡았을 수 있습니다).
+            </p>
+          )}
           <p className="text-[12px] text-gray-500">
-            고쳐야 할 내용이 있으면 PowerPoint 원본 <code className="px-1 rounded bg-white border border-gray-200 text-[0.9em]">docs/business/proposals/{active.source}</code> 을 받아
-            쓰시거나 수정 요청을 남겨 주세요. 숫자(실측값)는 <code className="px-1 rounded bg-white border border-gray-200 text-[0.9em]">deck-common.mjs</code> 한 곳에서 와서
-            다섯 소개서가 함께 바뀝니다.
+            숫자(판매 중 이용권 · 평균 판매가 · 예시 상품)는 매일 새벽 라이브에서 다시 재서 다섯 소개서가 함께 바뀝니다. 문장을 고칠 일이 있으면
+            {' '}<code className="px-1 rounded bg-white border border-gray-200 text-[0.9em]">docs/business/proposals/{active.source.replace('.pptx', '.build.mjs')}</code> 수정을 요청해 주세요.
           </p>
+          {warnings.length > 0 && (
+            <ul data-testid="proposal-warnings" className="mt-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-800 space-y-0.5">
+              {warnings.map(w => (
+                <li key={w.id}>⚠️ {w.message}</li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* PDF 는 브라우저 기본 뷰어가 그린다 — 확대·페이지 이동·인쇄가 그 안에 있어 우리가 배율을 계산하지 않는다
             (종전 HTML 때는 1280px 시트를 `transform: scale()` 로 줄이고 `contentDocument` 로 높이를 읽었는데,
              PDF iframe 은 플러그인 문서라 `contentDocument` 가 null 이고 그 기계장치가 통째로 불필요하다). */}
         <iframe
-          key={active.url}
+          key={viewUrl}
           title={`${active.label} 소개서`}
-          src={active.url}
+          src={viewUrl}
           className="block w-full border-0 bg-[#EFEBE8]"
           style={{ height: 'max(420px, calc(100dvh - 300px))' }}
         />
