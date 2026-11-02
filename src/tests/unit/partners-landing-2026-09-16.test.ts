@@ -30,6 +30,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { stripComments } from '../helpers/source-text'
 import { PARTNER_FACTS, FEE_DIRECT_RATE } from '../../shared/partners-facts'
+import { PROPOSAL_SAMPLE_PRODUCT_ID, PROPOSAL_SAMPLE_DISPLAY_NAME } from '../../shared/proposal-live-facts'
 import { CONSUMER_SURFACE_SEO } from '../../shared/seo/consumer-surfaces'
 
 /** 검색 결과·AI 요약이 읽는 한 줄 — 사장님이 클릭 **전에** 보는 숫자다. */
@@ -108,9 +109,6 @@ describe('R2 — 숫자가 대표 승인 덱(deck-common.mjs FACTS)과 같다', 
     ['minPayout', PARTNER_FACTS.minPayout],
     ['reviewBonus', PARTNER_FACTS.reviewBonus],
     ['liveMeasuredAt', PARTNER_FACTS.liveMeasuredAt],
-    ['catalogMeasuredAt', PARTNER_FACTS.catalogMeasuredAt],
-    ['activeVouchers', PARTNER_FACTS.activeVouchers],
-    ['realStores', PARTNER_FACTS.realStores],
     ['influencerDb', PARTNER_FACTS.influencerDb],
     ['influencerReachable', PARTNER_FACTS.influencerReachable],
     ['contactEmail', PARTNER_FACTS.contactEmail],
@@ -192,8 +190,10 @@ describe('R4 — 덱이 정한 설득 구조가 살아 있다', () => {
     const faq = visible('src/pages/partners/PartnerFaq.tsx')
     // 🩸 처음엔 `/초기 서비스/` 로 봤는데, 같은 파일 FAQ 답변에도 그 말이 있어
     //    고지 블록을 통째로 지워도 초록이었다(주입 러너가 잡았다). 그래서 **문장 전체**를 앵커로 둔다.
-    expect(faq).toMatch(/유어딜은 초기 서비스입니다\. \{F\.catalogMeasuredAt\} 기준 판매 중인 이용권 \{F\.activeVouchers\}건/)
-    expect(faq).toMatch(/실제 매장이 등록한 것은 \{F\.realStores\}건/)
+    // 🔄 2026-11-02: 숫자는 라이브(`/api/public/proposal-facts`)에서 — 손으로 적은 거울(F.*)이 아니다.
+    expect(faq).toMatch(/유어딜은 초기 서비스입니다\. \{c\.measuredAt\} 기준 판매 중인 이용권 \{c\.activeVouchers\}건/)
+    expect(faq).toMatch(/실제 매장이 등록한 것은 \{c\.realStores\}건/)
+    expect(faq).toMatch(/fetch\('\/api\/public\/proposal-facts'\)/)
     expect(faq).toMatch(/트래픽을 약속하는 대신/)
   })
 
@@ -229,17 +229,10 @@ describe('R4 — 덱이 정한 설득 구조가 살아 있다', () => {
    * 가격은 `deck-common.mjs` 의 `FACTS.sample*` 에서 읽어 대조한다(R2 가 쓰는 방식과 같다).
    */
   it('계산기가 덱과 같은 라이브 실제 상품 가격으로 앵커돼 있다 (데모 시드 금지)', () => {
-    const deck = R('docs/business/proposals/deck-common.mjs')
-    const body = deck.slice(deck.indexOf('export const FACTS'))
-    const won = (k: string) => {
-      const m = body.match(new RegExp(`\\b${k}:\\s*'([\\d,]+)원'`))
-      if (!m) throw new Error(`deck-common.mjs 의 FACTS 에 ${k} 가 없다`)
-      return Number(m[1].replace(/,/g, ''))
-    }
-    // 0건이면 통과가 아니라 실패 — 파싱이 헛돌면 아래 대조가 무의미해진다.
-    expect(won('sampleOrig')).toBeGreaterThan(0)
-    expect(PARTNER_FACTS.sample.list).toBe(won('sampleOrig'))
-    expect(PARTNER_FACTS.sample.sale).toBe(won('samplePrice'))
+    // 🔄 2026-11-02 재조준: 덱의 예시 상품 가격은 이제 **빌드 때 라이브에서** 읽는다(deck-common 에 리터럴이 없다).
+    //    지킬 것은 그대로 "덱과 같은 라이브 상품" 이라 **앵커 id·이름**을 대조한다.
+    expect(PARTNER_FACTS.sample.id).toBe(PROPOSAL_SAMPLE_PRODUCT_ID)
+    expect(PARTNER_FACTS.sample.name).toBe(PROPOSAL_SAMPLE_DISPLAY_NAME[PROPOSAL_SAMPLE_PRODUCT_ID])
     // 데모 시드는 금액이 둥글게 떨어진다. 실제 매장 가격은 정가 > 판매가 이고 둘이 다르다.
     expect(PARTNER_FACTS.sample.list).toBeGreaterThan(PARTNER_FACTS.sample.sale)
     expect(visible('src/pages/partners/PartnerMath.tsx')).toMatch(/F\.sample\.(list|sale)/)
