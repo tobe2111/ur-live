@@ -3,6 +3,7 @@ import { BellIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 import { useTranslation } from '@/lib/i18n-lite'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import SegmentedTabs from '@/components/ui/segmented-tabs'
 
 interface Notification {
   id: number
@@ -191,19 +192,13 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
           </div>
 
           {isAdmin && (
-            <div className="flex border-b border-gray-100" role="tablist">
-              {([['business', '업무', unreadCount], ['system', '시스템', systemUnread]] as const).map(([g, label, n]) => (
-                <button
-                  key={g}
-                  role="tab"
-                  aria-selected={group === g}
-                  onClick={() => setGroup(g)}
-                  className={`flex-1 py-2 text-[13px] font-medium border-b-2 ${group === g ? 'border-blue-600 text-gray-900' : 'border-transparent text-gray-500'}`}
-                >
-                  {label}{n > 0 ? ` ${n > 99 ? '99+' : n}` : ''}
-                </button>
-              ))}
-            </div>
+            <SegmentedTabs<'business' | 'system'>
+              className="px-3 py-2 border-b border-gray-100"
+              ariaLabel="알림 종류"
+              value={group}
+              onChange={setGroup}
+              items={[{ id: 'business', label: '업무', count: unreadCount }, { id: 'system', label: '시스템', count: systemUnread }]}
+            />
           )}
 
           <div className={isAdmin ? 'max-h-96 overflow-y-auto' : 'max-h-80 overflow-y-auto'}>

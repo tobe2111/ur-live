@@ -101,8 +101,8 @@ describe('③ 시스템 소음은 업무 칸이 아니다', () => {
 
   it('종 화면이 두 칸을 그린다', () => {
     const s = read('src/components/DashboardNotificationBell.tsx')
-    expect(s).toMatch(/\['business', '업무'/)
-    expect(s).toMatch(/\['system', '시스템'/)
+    expect(s).toMatch(/id: 'business', label: '업무'/)
+    expect(s).toMatch(/id: 'system', label: '시스템'/)
   })
 })
 
