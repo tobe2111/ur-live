@@ -49,16 +49,22 @@ function lowYield(k: CompanyKeyword): { pct: number; found: number } | null {
   return rate < OK_RATE ? { pct: Math.round(rate * 1000) / 10, found } : null
 }
 
+/** `active=2` = 포화로 자동 휴식(2026-11-02) — 찾는 업체가 전부 이미 저장된 키워드. 60일 뒤 자동으로 다시 돈다. */
+const RESTING = 2
+const isOn = (k: CompanyKeyword) => k.active === 1
+
 function Chip({ k, onToggle }: { k: CompanyKeyword; onToggle: (k: CompanyKeyword) => void }) {
   const ly = lowYield(k)
+  const resting = k.active === RESTING
   const tip = [k.category, k.subcategory, k.region].filter(Boolean).join(' · ')
   return (
     <button onClick={() => onToggle(k)}
-      title={`${tip || '미분류'}${k.tier ? ` · ${k.tier}순위` : ''}${k.saved_total ? ` · 누적 ${k.saved_total}곳` : ''}${k.last_run_at ? ` · ${kstShort(k.last_run_at)}` : ''}`}
-      className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-brand text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
+      title={`${tip || '미분류'}${k.tier ? ` · ${k.tier}순위` : ''}${k.saved_total ? ` · 누적 ${k.saved_total}곳` : ''}${k.last_run_at ? ` · ${kstShort(k.last_run_at)}` : ''}${resting ? ' · 포화로 쉬는 중(찾는 업체가 전부 이미 저장됨) — 60일 뒤 자동 재개, 누르면 지금 재개' : ''}`}
+      className={`px-2.5 py-1 rounded-full text-xs border ${isOn(k) ? 'bg-brand text-white border-gray-900' : resting ? 'bg-white text-gray-500 border-gray-300' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
+      {resting ? '(휴식) ' : ''}
       {k.tier === 1 ? '★ ' : ''}{k.keyword}
       {k.saved_total
-        ? <span className={k.active ? 'text-gray-400' : 'text-gray-400'}> · {formatNumber(k.saved_total)}</span>
+        ? <span className="text-gray-400"> · {formatNumber(k.saved_total)}</span>
         : (k.last_run_at ? <span className="text-gray-400" title="여러 번 수집했지만 신규 0곳 — 비활성 검토">{' · 0'}</span> : '')}
       {ly && <span className="text-gray-400" title={`${formatNumber(ly.found)}건 찾아 ${formatNumber(k.saved_total || 0)}곳 저장 (수확률 ${ly.pct}%) — 검색 슬롯은 쓰는데 새 업체가 거의 안 남습니다. 이미 다 모았거나(고갈) 키워드가 안 맞는 경우입니다.`}>{ly.pct}%</span>}
     </button>
@@ -74,7 +80,8 @@ export default function CompanyKeywordManager({ keywords, onChanged }: { keyword
   const [newRegion, setNewRegion] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const active = useMemo(() => keywords.filter(k => k.active), [keywords])
+  const active = useMemo(() => keywords.filter(isOn), [keywords])
+  const resting = useMemo(() => keywords.filter(k => k.active === RESTING), [keywords])
   const paused = useMemo(() => keywords.filter(k => !k.active), [keywords])
   const filtered = useMemo(() => {
     const term = q.trim()
@@ -84,12 +91,12 @@ export default function CompanyKeywordManager({ keywords, onChanged }: { keyword
 
   const toggle = async (k: CompanyKeyword) => {
     try {
-      const r = await api.patch(`/api/admin/partner-pool/keywords/${k.id}`, { active: k.active ? 0 : 1 })
+      const r = await api.patch(`/api/admin/partner-pool/keywords/${k.id}`, { active: isOn(k) ? 0 : 1 })
       // ⚠️ 서버가 `success:false` 를 주면(없는 id 등) 성공 토스트를 띄우지 않는다 —
       //   화면만 바뀌고 실제론 안 꺼진 상태가 이 레포에서 반복된 "조용한 부재" 다.
       if (!r.data?.success) { toast.error('키워드 상태를 바꾸지 못했습니다'); return }
       await onChanged()
-      toast.success(k.active ? `⏸ '${k.keyword}' 수집 중지` : `▶'${k.keyword}' 수집 재개`)
+      toast.success(isOn(k) ? `⏸ '${k.keyword}' 수집 중지` : `▶'${k.keyword}' 수집 재개`)
     } catch { toast.error('키워드 상태를 바꾸지 못했습니다') }
   }
 
@@ -110,7 +117,7 @@ export default function CompanyKeywordManager({ keywords, onChanged }: { keyword
     <details open={open} onToggle={e => setOpen((e.currentTarget as HTMLDetailsElement).open)}
       className="rounded-xl border border-gray-200 bg-white">
       <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-gray-800">
-        수집 키워드 <span className="font-normal text-gray-500">— 수집 중 {formatNumber(active.length)} · 중지 {formatNumber(paused.length)}</span>
+        수집 키워드 <span className="font-normal text-gray-500">— 수집 중 {formatNumber(active.length)} · 포화 휴식 {formatNumber(resting.length)} · 중지 {formatNumber(paused.length)}</span>
       </summary>
       {open && (
         <div className="px-4 pb-4 space-y-3">

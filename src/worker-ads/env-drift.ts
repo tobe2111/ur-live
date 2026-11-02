@@ -55,6 +55,7 @@ export const ADS_ENV_KNOWN: readonly string[] = [
   'ADS_INFLUENCER_ENRICH_FANOUT', 'ADS_INFLUENCER_ENRICH_ROUNDS', 'ADS_KAKAO_SWEEP_CAP',
   'ADS_KAKAO_SWEEP_CHAIN', 'ADS_LANE', 'ADS_LANES_PER_TICK',
   'ADS_LANE_ALARM_ENABLED', 'ADS_LANE_ALARM_INTERVAL_MS', 'ADS_LANE_ALARM_RUNS_PER_HOUR',
+  'ADS_NTS_BATCHES', // 🏛️ 국세청 폐업 조회 회차당 묶음 수(기본 10 · 상한 20) — business-status-sweep.ts (2026-11-02)
   'ADS_LANES_PAUSED', // ⏸️ 레인 일시정지 스위치 하나(2026-09-02 D1 한도 사고) — lane-pause.ts
   'ADS_DAILY_READ_BUDGET', // 📉 유어애즈 일일 읽기 예산(행) — read-budget.ts. 0=끔, 기본 150만
   'ADS_DAILY_WRITE_BUDGET', // ✍️ 일일 **쓰기** 예산(행) — 같은 원장. 0=끔, 기본 150만(월 4,500만 < 유료 포함 5,000만)

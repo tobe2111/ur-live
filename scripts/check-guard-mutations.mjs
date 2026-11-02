@@ -2875,8 +2875,9 @@ canvas {
   {
     name: '🧭 4단계가 배열 중간에 끼어든다(시드 이어받기가 0 으로 떨어진다)',
     file: 'src/features/marketing/api/company-keyword-grid.ts',
-    find: "    ...S2_REGIONS.flatMap(r => S4_TRADES_LOCAL.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),\n  ]",
-    replace: "  ].concat(S2_REGIONS.flatMap(r => S4_TRADES_LOCAL.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier })))).sort((a, b) => a.keyword.localeCompare(b.keyword))",
+    // 🔁 2026-11-02: 5단계가 4단계 뒤에 붙어 배열의 끝이 바뀌었다 — 앵커를 새 끝(5단계 도시 줄)으로 옮겼다.
+    find: "    ...CITY_REGIONS.flatMap(r => S5_TRADES_PROFESSION_CITY.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),\n  ]",
+    replace: "    ...CITY_REGIONS.flatMap(r => S5_TRADES_PROFESSION_CITY.map(t => ({ keyword: `${r} ${t.kw}`, category: t.category, subcategory: t.subcategory, region: r, tier: t.tier }))),\n  ].sort((a, b) => a.keyword.localeCompare(b.keyword))",
     test: 'src/tests/unit/company-keyword-grid-s4.test.ts',
     why:
       'seedPrefixHash 는 앞부분이 그대로일 때만 이어받는다. 재정렬하면 지문이 어긋나 0 으로 떨어지고 ' +
@@ -2885,7 +2886,7 @@ canvas {
   {
     name: '🧭 시드 버전을 안 올린다(새 키워드가 기존 배포에 영영 안 들어간다)',
     file: 'src/features/marketing/api/company-collect.ts',
-    find: 'const KEYWORD_SEED_VERSION = 5',
+    find: 'const KEYWORD_SEED_VERSION = 6', // 2026-11-02 5단계로 6
     replace: 'const KEYWORD_SEED_VERSION = 4',
     test: 'src/tests/unit/company-keyword-grid-s4.test.ts',
     why:

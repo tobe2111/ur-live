@@ -8,6 +8,7 @@
 import { type FetchBudget, pickBusinessEmail } from './influencer-discovery'
 import { isSubrequestLimitError } from './collect-budget'
 import { noteNaverCall } from './naver-api-usage'
+import { decodeHtmlBytes, hasBrokenText } from './html-decode'
 
 // 예산 = 서브리퀘스트 수 + **시간**(budget.deadline). 정의는 influencer-discovery 의 FetchBudget 주석 참조.
 const outOfBudget = (b?: FetchBudget) => !!b && (b.left <= 0 || (!!b.deadline && Date.now() >= b.deadline))
@@ -400,7 +401,11 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
     const r = await safeFetch(u, { headers: BROWSER_HEADERS, timeoutMs: 8000 }, budget, errSink)
     if (!r) { lastStatus = -1; return '' }
     lastStatus = r.status
-    return r.ok ? await r.text().catch(() => '') : ''
+    // 🔤 바이트로 받아 페이지가 밝힌 문자셋으로 읽는다 — `text()` 는 무조건 UTF-8 이라 EUC-KR 사이트의
+    //   한글을 `�` 로 뭉갰고, 그 제목이 상호로 저장됐다(2026-11-02 실측 222행). 근거: `html-decode.ts`.
+    if (!r.ok) return ''
+    const buf = await r.arrayBuffer().catch(() => null)
+    return buf ? decodeHtmlBytes(new Uint8Array(buf), r.headers.get('content-type')) : ''
   }
   // 🔀 호스트 변형 폴백(2026-07-27 고도화) — 국내 사이트가 www↔non-www / https↔http 한쪽만 응답해 크롤
   //   전체가 날아가던 fetch_fail 버킷 축소. 홈 fetch 가 비면 대체 오리진을 1회만 시도해 살아있는 쪽으로 고정.
@@ -442,7 +447,8 @@ export async function crawlContact(website: string, budget?: FetchBudget, requir
       const og = slice.match(/property=["']og:site_name["'][^>]*content=["']([^"'<>]{2,40})["']/i)?.[1]
         || slice.match(/content=["']([^"'<>]{2,40})["'][^>]*property=["']og:site_name["']/i)?.[1]
       const cand = stripTag(og || (slice.match(/<title[^>]*>([^<]{2,80})</i)?.[1] || '').split(/[|\-–—:·]/)[0]).trim()
-      if (cand.length >= 2 && cand.length <= 30 && !/["“”‘’',?？]|공지|로그인|메인|홈페이지$/.test(cand)) siteName = cand
+      // 깨진 글자(`�`)가 섞인 이름은 버린다 — 디코더가 없는 런타임에서도 허위 상호가 저장되지 않게.
+      if (cand.length >= 2 && cand.length <= 30 && !hasBrokenText(cand) && !/["“”‘’',?？]|공지|로그인|메인|홈페이지$/.test(cand)) siteName = cand
     }
     if (!email) email = extractEmailFromHtml(slice, allowNewsHost)   // mailto: 우선 → 본문 문맥선별
     if (!phone) { const tel = (slice.match(/tel:([+\d\-.\s]{8,})/i)?.[1]) || slice; phone = pickPhone(tel) }

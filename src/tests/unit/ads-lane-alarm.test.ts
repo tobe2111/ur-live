@@ -242,11 +242,23 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
    */
   it('🔒 2차 이관 5레인 — 전부 runsPerHour 1 (외부 API 쿼터 증설 금지)', () => {
     const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
-    for (const lane of ["'collect-company'", "'sweep-kakao-chain'", "'reclassify-company?passes=5'", "'collect-store-kakao'", "'collect-neis'"]) {
+    for (const lane of ["'collect-company'", "'reclassify-company?passes=5'", "'collect-store-kakao'", "'collect-neis'"]) {
       expect(runners, `${lane} 등록 누락`).toContain(`${lane}: {`)
       const seg = runners.slice(runners.indexOf(`${lane}: {`), runners.indexOf(`${lane}: {`) + 200)
       expect(seg, `${lane} runsPerHour 1 아님`).toMatch(/runsPerHour: 1,/)
     }
+  })
+
+  /**
+   * 📞 카카오 전화 스윕만 3 (2026-11-02 대표 *"다 해줘"* — 개선 목록 ④). 실측: 하루 1,092조회 = 카카오 무료 쿼터
+   *   (10만/일)의 1%, 그 사이 전화 없는 업체 수십만. 3 은 `MAX_BOOST_RUNS_PER_HOUR`(외부 API 예의·CPU 안전선)와 같다.
+   */
+  it('🔒 카카오 전화 스윕 = 시간당 3(안전선 이하)', async () => {
+    const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
+    const seg = runners.slice(runners.indexOf("'sweep-kakao-chain': {"), runners.indexOf("'sweep-kakao-chain': {") + 200)
+    expect(seg).toMatch(/runsPerHour: 3,/)
+    const { MAX_BOOST_RUNS_PER_HOUR } = await import('@/worker-ads/lane-boost')
+    expect(3).toBeLessThanOrEqual(MAX_BOOST_RUNS_PER_HOUR)
   })
 
   it('🔒 2차 이관 — 알람이 몰면 cron 은 손을 뗀다(5곳 전부)', () => {
