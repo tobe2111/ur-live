@@ -215,7 +215,7 @@ export function renderPartner(theme: EmbedTheme, agencyName: string, agencyId: n
   //   머리줄은 "○○ 추천" — 조사(이/가)를 붙이지 않는다. 회사 이름의 받침을 알 수 없어서다.
   const href = withUtm(`/store/partner/${agencyId}`, 'partner')
   const n = PARTNER_SLIDES.length
-  const slides = PARTNER_SLIDES.map((s, i) => `<section class="sl"><span class="lb">체험단의 한계<i>${i + 1}/${n}</i></span>`
+  const slides = PARTNER_SLIDES.map((s, i) => `<section class="sl"><span class="lb">체험단의 문제<i>${i + 1}/${n}</i></span>`
     + `<p class="no">${s.no}</p><p class="yes">${s.yes}</p><p class="ds">${s.desc}</p></section>`).join('')
   const body = `<main class="pt"><div class="k"><div class="hd">${LOGO}<span class="sep"></span>`
     + `<span class="co">${esc(agencyName)} 추천</span></div>`

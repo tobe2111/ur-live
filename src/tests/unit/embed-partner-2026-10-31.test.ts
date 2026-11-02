@@ -147,8 +147,8 @@ describe('④ 위젯 · ⑤ CSRF', () => {
     expect(text).toContain('유어딜 입점 신청') // 본문을 실제로 읽고 있다는 증거
     // 🎬 2026-11-02 대표 확정(시안 3차 4번 + 정체성 한 줄) — 체험단의 한계 → 유어딜 장점 세 장 + 고정 정체성 줄.
     //   문구는 지금 서비스에 있는 것만. 세부 고정은 embed-agency-motion-2026-11-02.test.ts ⑦~⑩.
-    expect(text.replace(/\s+/g, '')).toContain('체험단은이제그만,인플루언서와함께팔아보세요') // 고정 줄
-    for (const claim of ['내 이용권을 직접', '먼저 결제하고', '팔렸을 때만', '사장님이 정합니다', '가입비·월 이용료는 0원']) expect(text).toContain(claim)
+    expect(text.replace(/\s+/g, '')).toContain('체험단의문제를해결하는인플루언서판매서비스') // 고정 줄
+    for (const claim of ['직접 판매', '먼저 결제', '판매된 만큼만', '사장님이 결정', '가입비·월 이용료 0원']) expect(text).toContain(claim)
     expect(text).not.toContain('—') // 대외 문구 em-dash 0(anti-slop)
     expect(text).not.toMatch(/\d+(\.\d+)?\s*%/)
     expect(html).not.toMatch(/<script/i)
