@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { DEAL_HERO_VT } from '@/lib/deal-view-transition'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -180,11 +181,14 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             const hi = src && near ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''
             return (
               <div key={i} className="flex items-center justify-center text-[60px]"
+                /* 🎬 2026-11-02 시안 D3: 목록 카드 사진이 이 첫 장으로 이어져 커진다(lib/deal-view-transition). */
+                data-vt-hero={i === 0 ? '' : undefined}
                 role={src ? 'button' : undefined} aria-label={src ? '사진 크게 보기' : undefined}
                 onClick={() => { if (src) { setActive(i); setLightbox(true) } }}
                 /* ⚠️ position 은 **인라인**이다 — 절대배치 <img> 의 포함 블록은 구조 요건이라
                    유틸 클래스(`relative`)가 번들에 있느냐에 맡기지 않는다. 서버 첫 화면도 같은 자리. */
                 style={{ position: 'relative', flex: '0 0 100%', scrollSnapAlign: 'center',
+                  viewTransitionName: i === 0 ? DEAL_HERO_VT : undefined,
                   backgroundColor: '#1D1F29',
                   /* 🔥 두 겹 배경은 **밑깔개로 남긴다** — 카드에서 이미 받은 저해상이 클릭 즉시 그려지고,
                      그 위에 아래 <img> 가 도착하면 덮는다(종전과 같은 체감, 추가 요청 0). */

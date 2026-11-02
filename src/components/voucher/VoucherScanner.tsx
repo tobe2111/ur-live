@@ -514,10 +514,11 @@ export default function VoucherScanner() {
           매장에서 스캔했을 때 "통과" 와 "오류" 중 한쪽만 읽혔다. 사용 처리는 되돌릴 수 없는 동작이라
           이 한 쌍이 이 화면에서 가장 중요한 신호다. */}
       {latest && (
-        <div className={`rounded-2xl p-4 ${latest.ok ? 'bg-tone-ok-bg' : 'bg-tone-bad-bg'}`}>
+        // 🎬 2026-11-02 시안 B1: 결과가 나올 때마다(flash.n) 카드가 올라오고 성공 체크가 톡 박힌다 — 손님 앞에서 "됐다"를 1초 안에.
+        <div key={flash?.n ?? 0} className={`ur-rise rounded-2xl p-4 ${latest.ok ? 'bg-tone-ok-bg' : 'bg-tone-bad-bg'}`}>
           <div className="flex items-center gap-2">
             {latest.ok
-              ? <OkIcon className="w-7 h-7 text-tone-ok shrink-0" />
+              ? <OkIcon className="ur-popin w-7 h-7 text-tone-ok shrink-0" style={{ animationDelay: '120ms' }} />
               : <BadIcon className="w-7 h-7 text-tone-bad shrink-0" />}
             <div className="min-w-0">
               <p className={`text-[15px] font-bold ${latest.ok ? 'text-tone-ok' : 'text-tone-bad'}`}>{latest.message}</p>

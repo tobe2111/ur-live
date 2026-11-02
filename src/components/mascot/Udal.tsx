@@ -55,6 +55,24 @@ const ART: Record<UdalMood, Art> = {
   showQr: { src: poseQr, w: 189, h: 238 },
 }
 
+/**
+ * 🎬 2026-11-02 상황별 몸짓(대표 *"이전에 만든 모션그래픽 다 적용해줘"* — 시안 `docs/design/motion-mockups-2026-11.md`).
+ *   `motion` 이면 등장 → 이 몸짓 한두 번 → 종전 둥실(ur-udal-bob)로 이어진다. 그림을 고르는 표처럼 **화면이 아니라 상황이 정한다**.
+ *   CSS 는 index.css 의 `.ur-udal-g-*` (동작 줄이기면 전부 꺼진다).
+ */
+const GESTURE: Record<UdalMood, string> = {
+  hello: 'ur-udal-g-wave',
+  done: 'ur-udal-g-pop',
+  paid: 'ur-udal-g-pop',
+  yay: 'ur-udal-g-jump',
+  lost: 'ur-udal-g-tug',
+  notFound: 'ur-udal-g-look',
+  empty: 'ur-udal-g-sway',
+  oops: 'ur-udal-g-tug',
+  tip: 'ur-udal-g-pop',
+  showQr: 'ur-udal-g-pop',
+}
+
 /** 흉상 그림의 아래 끝을 바탕으로 녹이는 마스크. */
 const BUST_FADE = 'linear-gradient(to bottom, black 86%, transparent)'
 
@@ -90,7 +108,7 @@ export default function Udal({ mood, size = 120, motion = false, priority = fals
       loading={priority ? 'eager' : 'lazy'}
       decoding="async"
       data-udal={mood}
-      className={`select-none pointer-events-none ${motion ? 'ur-udal-bob' : ''} ${className}`}
+      className={`select-none pointer-events-none ${motion ? `ur-udal-g ${GESTURE[mood]}` : ''} ${className}`}
       style={{ width: size, height: 'auto', ...mask }}
     />
   )

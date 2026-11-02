@@ -48,12 +48,15 @@ function useIsPinned(productId: number): { pinned: boolean; setPinned: (v: boole
 export default function PinButton({ productId, price, variant = 'card-overlay', className = '', icon: iconOverride }: PinButtonProps) {
   const { isPinning, togglePin } = usePinAction()
   const { pinned, setPinned } = useIsPinned(productId)
+  // 🎬 2026-11-02 시안 A5: 담기는 순간 아이콘이 도장처럼 톡 박힌다(index.css .ur-popin).
+  const [stamped, setStamped] = useState(0)
 
   async function handleClick(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
     await togglePin(productId, price)
     setPinned(true) // 낙관적 업데이트
+    setStamped((n) => n + 1)
   }
 
   const baseStyle =
@@ -80,7 +83,7 @@ export default function PinButton({ productId, price, variant = 'card-overlay', 
       disabled={isPinning}
       className={`${baseStyle} ${className} ${isPinning ? 'opacity-50 cursor-wait' : ''}`}
     >
-      <span className="inline-flex items-center justify-center">{icon}</span>
+      <span key={stamped} className={`inline-flex items-center justify-center ${stamped ? 'ur-popin' : ''}`}>{icon}</span>
       {variant === 'inline' && <span>{label}</span>}
     </button>
   )

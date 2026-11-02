@@ -112,6 +112,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
     }
   }
 
+  const [justUsed, setJustUsed] = useState(false)
   // 🛡️ 2026-05-16: 실시간 status 폴링 (5초마다) — 사장님이 스캔하면 즉시 "사용 완료" 표시
   //   백엔드 atomic CAS 로 재사용 자체는 차단되어 있음. UI 가 늦게 인지하는 것만 해결.
   useEffect(() => {
@@ -125,6 +126,11 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           const newStatus = res.data.data.status
           if (newStatus !== voucher.status) {
             setVoucher(v => ({ ...v, status: newStatus, used_at: res.data.data.used_at || v.used_at }))
+            // 🎬 2026-11-02 시안 2: 이 화면을 보는 동안 찍힌 경우에만 도장이 쾅 찍힌다(열 때 이미 쓴 표는 조용히).
+            if (newStatus === 'used') {
+              setJustUsed(true)
+              try { navigator.vibrate?.(40) } catch { /* 진동 미지원 */ }
+            }
           }
         }
       } catch { /* silent */ }
@@ -240,7 +246,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
             </p>
           )}
           <div className="flex justify-center mb-4">
-            <div className="relative p-4 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]" style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
+            <div className={`relative p-4 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35] ${justUsed ? 'ur-thud' : ''}`} style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
               {/* 스캔 프레임 코너 브래킷 (사용 가능 시) */}
               {!blocked && (
                 <>
@@ -267,7 +273,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   재사용을 시각적으로 명백히 차단(실제 재사용 차단은 서버 atomic CAS). */}
               {isUsed && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
-                  <div className="flex flex-col items-center rounded-xl border-[3px] border-tone-ok bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
+                  <div className={`flex flex-col items-center rounded-xl border-[3px] border-tone-ok bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm ${justUsed ? 'ur-slam' : ''}`}>
                     <div className="flex items-center gap-2">
                       <OkIcon className="w-5 h-5 text-tone-ok" />
                       <span className="text-[17px] font-bold tracking-tight text-tone-ok">사용 완료</span>

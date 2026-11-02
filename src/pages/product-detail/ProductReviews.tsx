@@ -16,6 +16,8 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
   const { t } = useTranslation()
   const [open, setOpen] = useState(initialOpen)
   const [rating, setRating] = useState(initialRating)
+  // 🎬 2026-11-02 시안 A2: 별을 누르면 왼쪽부터 차례로 톡톡 채워진다. bump 를 key 에 섞어 매번 다시 재생.
+  const [bump, setBump] = useState(0)
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showSharePrompt, setShowSharePrompt] = useState(false)
@@ -83,7 +85,7 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
       <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">{t('reviews.rewardBanner', { defaultValue: '텍스트 {{text}}딜, 사진 {{image}}딜, 영상 {{video}}딜 리워드', text: rewards.text, image: rewards.image, video: rewards.video })}</p>
       <div className="flex gap-1 mb-3" role="radiogroup" aria-label={t('reviews.rating', { defaultValue: '별점' })}>
         {[1, 2, 3, 4, 5].map(s => (
-          <button key={s} type="button" role="radio" aria-checked={s === rating} aria-label={`${s}`} onClick={() => setRating(s)} className={`text-[17px] ${s <= rating ? 'text-brand-text' : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</button>
+          <button key={`${s}-${s <= rating ? bump : 0}`} type="button" role="radio" aria-checked={s === rating} aria-label={`${s}`} onClick={() => { setRating(s); setBump((b) => b + 1) }} style={bump && s <= rating ? { animationDelay: `${(s - 1) * 60}ms` } : undefined} className={`text-[17px] ${s <= rating ? `text-brand-text ${bump ? 'ur-pop' : ''}` : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</button>
         ))}
       </div>
       <textarea

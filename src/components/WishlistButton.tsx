@@ -33,6 +33,8 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
   const { t } = useTranslation()
   const [isWishlisted, setIsWishlisted] = useState(initialWishlisted)
   const [isLoading, setIsLoading] = useState(false)
+  // 🎬 2026-11-02 시안 A1: 찜이 채워지는 순간만 톡 커진다(index.css .ur-pop · .ur-burst).
+  const [popping, setPopping] = useState(false)
   const [wishlistId, setWishlistId] = useState<number | null>(null)
 
   // 사이즈별 아이콘 크기
@@ -99,6 +101,8 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
         if (response.data.success) {
           setIsWishlisted(true)
           setWishlistId(response.data.data.id)
+          setPopping(true)
+          window.setTimeout(() => setPopping(false), 560)
           
           // 토스트 알림 (선택)
           showToast(t('common.wishlistAdded', { defaultValue: '찜 목록에 추가되었습니다.' }))
@@ -160,7 +164,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
       {isWishlisted ? (
         // 찜된 상태 (빨간 하트)
         <svg
-          className={`${sizeMap[size]} text-red-500 drop-shadow-sm`}
+          className={`${sizeMap[size]} text-red-500 drop-shadow-sm ${popping ? 'ur-pop' : ''}`}
           fill="currentColor"
           viewBox="0 0 24 24"
           xmlns="http://www.w3.org/2000/svg"
@@ -183,6 +187,12 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({
             d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
           />
         </svg>
+      )}
+
+      {popping && (
+        <span className="ur-burst text-red-500" aria-hidden="true">
+          {[0, 60, 120, 180, 240, 300].map((a) => <i key={a} style={{ ['--a' as string]: `${a}deg` }} />)}
+        </span>
       )}
 
       {/* 로딩 스피너 */}

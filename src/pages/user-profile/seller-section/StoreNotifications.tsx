@@ -91,12 +91,13 @@ export default function StoreNotifButton({ currentSellerId, onOpenPage, variant 
           aria-label={unread > 0 ? `판매 알림 ${unread}건` : '판매 알림'}
           className={`${ROW_SHELL_CLS} active:opacity-70`}
         >
-          <span className="shrink-0 text-gray-500 dark:text-gray-400"><MailIcon className="w-[18px] h-[18px]" aria-hidden="true" /></span>
+          {/* 🎬 2026-11-02 시안 B2: 새 알림이 있으면 봉투가 한 번 흔들리고 숫자가 톡 뜬다(값이 바뀔 때마다 key 로 다시). */}
+          <span key={`m${unread}`} className={`shrink-0 text-gray-500 dark:text-gray-400 ${unread > 0 ? 'ur-ring' : ''}`}><MailIcon className="w-[18px] h-[18px]" aria-hidden="true" /></span>
           <span className={ROW_LABEL_CLS}>판매 알림</span>
           {/* 🔵 새 알림이 있을 때만 블루 — 0 이면 회색 '새 알림 없음'(0 을 잉크로 굵게 쓰지 않는다). 아직 모르면 안 그린다. */}
           {items !== null && (
             unread > 0
-              ? <span className="shrink-0 text-[13px] font-bold text-brand-text tabular-nums">새 알림 {unread > 99 ? '99+' : unread}</span>
+              ? <span key={`n${unread}`} className="ur-popin shrink-0 text-[13px] font-bold text-brand-text tabular-nums">새 알림 {unread > 99 ? '99+' : unread}</span>
               : <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400">새 알림 없음</span>
           )}
           <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
@@ -113,7 +114,7 @@ export default function StoreNotifButton({ currentSellerId, onOpenPage, variant 
             알약 모양인 이유: 바로 옆 가게 이름과 붙어 "판매 알림 합정 살롱…" 한 덩어리로 읽혔다(하네스 렌더). */}
         <span>판매 알림</span>
         {unread > 0 && (
-          <span className="min-w-[16px] h-4 px-1 rounded-full bg-brand text-white text-[12px] leading-4 font-bold tabular-nums text-center">
+          <span key={`n${unread}`} className="ur-popin min-w-[16px] h-4 px-1 rounded-full bg-brand text-white text-[12px] leading-4 font-bold tabular-nums text-center">
             {unread > 99 ? '99+' : unread}
           </span>
         )}
