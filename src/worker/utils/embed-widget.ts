@@ -15,7 +15,7 @@
 import { priceDisplay } from '../../shared/price-display'
 import { detailHref } from '../../shared/product-flow'
 import { cfImage } from '../../utils/cf-image'
-import { PARTNER_CSS, PARTNER_SLIDES, PARTNER_IDENTITY } from './embed-partner-motion'
+import { PARTNER_CSS, PARTNER_SCENES, PARTNER_IDENTITY, PARTNER_SVG } from './embed-partner-motion'
 
 export type EmbedKind = 'ushop' | 'agency' | 'store' | 'region' | 'pass' | 'partner'
 export type EmbedTheme = 'light' | 'dark' | 'auto'
@@ -209,19 +209,31 @@ export function renderMissing(theme: EmbedTheme): string {
  * ⚠️ 문구에 숫자(수수료율 등)를 적지 않는다 — 요율은 어드민이 바꾸는 값이라 남의 사이트에 박힌 숫자는 곧 거짓말이 된다.
  */
 export function renderPartner(theme: EmbedTheme, agencyName: string, agencyId: number): string {
-  // 🎬 2026-11-02 대표 확정 *"4번형태로 가되 유어딜의 정체성 한줄 고정"* — 체험단의 한계 → 유어딜 장점 세 장이
-  //   넘어가고, 정체성 한 줄은 고정. 화면·문구·이유는 전부 `embed-partner-motion.ts` 머리말.
-  //   (10-31 시안 A · 11-01 시안 B 의 비교 두 칸은 대체됐다 — 대표 *"제휴사 위젯 너무 촌스러워"*.)
+  // 🎬 2026-11-02 대표 최종 확정(E2 형광펜 + P1 판매 수 + P3 +1) — 화면·문구·이유는 전부 `embed-partner-motion.ts` 머리말.
   //   머리줄은 "○○ 추천" — 조사(이/가)를 붙이지 않는다. 회사 이름의 받침을 알 수 없어서다.
   const href = withUtm(`/store/partner/${agencyId}`, 'partner')
-  const n = PARTNER_SLIDES.length
-  const slides = PARTNER_SLIDES.map((s, i) => `<section class="sl"><span class="lb">체험단의 문제<i>${i + 1}/${n}</i></span>`
-    + `<p class="no">${s.no}</p><p class="yes">${s.yes}</p><p class="ds">${s.desc}</p></section>`).join('')
-  const body = `<main class="pt"><div class="k"><div class="hd">${LOGO}<span class="sep"></span>`
-    + `<span class="co">${esc(agencyName)} 추천</span></div>`
-    + `<p class="id">${PARTNER_IDENTITY}</p><div class="stage">${slides}</div>`
-    + `<div class="ft"><span class="dots" aria-hidden="true">${'<i></i>'.repeat(n)}</span>`
-    + `<a class="go" href="${esc(href)}" target="_blank" rel="noopener">유어딜 입점 신청`
-    + '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a></div></div></main>'
+  const S = PARTNER_SVG
+  const cats = PARTNER_SCENES.map((x, i) => `<span class="c${i + 1}">${x.cat}</span>`).join(' · ')
+  const toasts = PARTNER_SCENES.map((x, i) => `<div class="toast t${i + 1}"><i></i><b>${x.cat}</b><span>1장 판매</span></div>`).join('')
+  const mlive = PARTNER_SCENES.map((x, i) => `<span class="m${i + 1}"><i></i>${x.store} 이용권 1장 판매</span>`).join('')
+  const rows = PARTNER_SCENES.map((x, i) => `<div class="it"><div class="th" style="background:${x.tint}">${S[x.icon]}</div>`
+    + `<div class="tx"><span>${i + 1} · ${x.store}</span><b>${x.item}</b><p><em>${x.pct}</em><strong>${x.price}</strong>원<s>${x.orig}원</s></p></div>`
+    + '<span class="plus">+1</span></div>').join('')
+  const tabs = `<b>전체 ${PARTNER_SCENES.length}</b>${PARTNER_SCENES.map((x) => `<span>${x.cat} 1</span>`).join('')}`
+  const shop = '<div class="us"><div class="ush"><span class="lg2">urdeal<i></i></span></div>'
+    + '<div class="pro"><span class="av2">수</span><div><b>수아</b><small>먹고 쉬고 가꾸는 동네 기록</small></div></div>'
+    + `<div class="sns"><span class="pill">${S.instagram}</span><span class="pill">${S.tiktok}</span><span class="pill">${S.youtube}</span></div>`
+    + `<div class="tabs">${tabs}</div>${rows}</div>`
+  const body = '<main class="pt"><div class="k"><div class="l">'
+    + `<div class="hd">${LOGO}<span class="co">${esc(agencyName)} 추천</span></div>`
+    + `<p class="cats">${cats}</p>`
+    + '<h3><span class="ln">성과 없는 체험단은 그만!</span><span class="ln"><span class="em-m">인플루언서와 함께</span> 파세요</span></h3>'
+    + `<p class="sub">${PARTNER_IDENTITY}</p><p class="mlive" aria-hidden="true">${mlive}</p>`
+    + '<ol class="facts"><li>공짜 체험 대신 할인 이용권으로 판매</li>'
+    + `<li><span class="sl"><span>${S.instagram}</span><span>${S.tiktok}</span><span>${S.youtube}</span></span>프로필 링크 하나로 판매</li>`
+    + '<li>소개비는 팔린 만큼만, 가입비 0원</li></ol>'
+    + `<a class="go" href="${esc(href)}" target="_blank" rel="noopener">유어딜 입점 신청</a></div>`
+    + `<div class="phone" aria-hidden="true"><div class="scr">${toasts}<div class="tally">이번 주 판매 <b></b>장</div>`
+    + `<div class="zoom">${shop}</div></div></div></div></main>`
   return doc(theme, `${agencyName} × 유어딜 입점`, body, PARTNER_CSS)
 }

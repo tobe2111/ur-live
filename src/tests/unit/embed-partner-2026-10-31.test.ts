@@ -147,10 +147,12 @@ describe('④ 위젯 · ⑤ CSRF', () => {
     expect(text).toContain('유어딜 입점 신청') // 본문을 실제로 읽고 있다는 증거
     // 🎬 2026-11-02 대표 확정(시안 3차 4번 + 정체성 한 줄) — 체험단의 한계 → 유어딜 장점 세 장 + 고정 정체성 줄.
     //   문구는 지금 서비스에 있는 것만. 세부 고정은 embed-agency-motion-2026-11-02.test.ts ⑦~⑩.
-    expect(text.replace(/\s+/g, '')).toContain('체험단의문제를해결하는인플루언서판매서비스') // 고정 줄
-    for (const claim of ['직접 판매', '먼저 결제', '판매된 만큼만', '사장님이 결정', '가입비·월 이용료 0원']) expect(text).toContain(claim)
+    expect(text.replace(/\s+/g, '')).toContain('체험단의문제를해결하는인플루언서판매서비스') // 고정 줄 — 세부는 embed-partner-final-2026-11-02
+    for (const claim of ['성과 없는 체험단은 그만!', '인플루언서와 함께', '프로필 링크 하나로 판매', '소개비는 팔린 만큼만, 가입비 0원']) expect(text).toContain(claim)
     expect(text).not.toContain('—') // 대외 문구 em-dash 0(anti-slop)
-    expect(text).not.toMatch(/\d+(\.\d+)?\s*%/)
+    // 요율 숫자 금지는 **문구 칸**에 건다 — 휴대폰 속 가상 이용권의 할인율(11% 등)은 요율이 아니라 예시 상품 값이다(2026-11-02 최종안).
+    const copy = html.slice(0, html.indexOf('<div class="phone"')).replace(/<style>[\s\S]*?<\/style>/, '').replace(/<[^>]+>/g, ' ')
+    expect(copy).not.toMatch(/\d+(\.\d+)?\s*%/)
     expect(html).not.toMatch(/<script/i)
     expect(embedSrc('partner', '1', 8, 'light')).toBe('/embed/partner/1')
     expect(embedSnippet('partner', '/embed/partner/1')).toContain(`height:${EMBED_HEIGHT.partner}px`)
@@ -162,7 +164,7 @@ describe('④ 위젯 · ⑤ CSRF', () => {
     // ① 옛 시안(A 티켓 · B 비교 두 칸) 잔재 0 — 대표 *"너무 촌스러워"* 로 대체됐다.
     for (const dead of ['class="tk"', 'class="band"', 'class="perf"', 'class="col old"', '체험단에 지치셨나요?']) expect(html).not.toContain(dead)
     // ② 머리줄: 유어딜 로고 | ○○ 추천 (조사 없이 — 회사 이름의 받침을 모른다).
-    expect(html).toMatch(/<div class="hd">[\s\S]*?class="logo"[\s\S]*?<span class="sep"><\/span><span class="co">한빛 마케팅 추천<\/span>/)
+    expect(html).toMatch(/<div class="hd">[\s\S]*?class="logo"[\s\S]*?<span class="co">한빛 마케팅 추천<\/span>/)
     // ④ 🔴 반대 방향 — 바깥 바탕은 제휴 전용 변수(--pbg)다. --bg 를 건드리면 strip·single 위젯이
     //    남의 흰 사이트에서 회색 사각형이 된다(제휴 위젯을 고치다 다른 다섯을 망가뜨리는 길).
     expect(css).toMatch(/\.pt\{[^}]*background:var\(--pbg\)/)

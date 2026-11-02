@@ -14,8 +14,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { renderAgency, AGENCY_MARQUEE_MIN } from '@/worker/utils/embed-agency'
-import { renderStrip, renderSingle, renderPartner, toEmbedCard, type EmbedRow } from '@/worker/utils/embed-widget'
-import { PARTNER_CSS, PARTNER_SLIDES, PARTNER_IDENTITY } from '@/worker/utils/embed-partner-motion'
+import { renderStrip, renderSingle, toEmbedCard, type EmbedRow } from '@/worker/utils/embed-widget'
 
 const ROW = { id: 1, name: '닭도리탕', price: 31000, original_price: 35000, restaurant_name: '달빛한스푼', category: 'meal_voucher' } as EmbedRow
 const cards = (n: number) => Array.from({ length: n }, (_, i) => toEmbedCard({ ...ROW, id: i + 1 }, 'agency'))
@@ -70,43 +69,5 @@ describe('🎬 에이전시 위젯 모션', () => {
     expect(block).toMatch(/SELECT COUNT\(\*\) AS n FROM products p[\s\S]*?AND \$\{LIVE\}`\)/)
     expect(block).toMatch(/ap\.agency_id != \?\)[\s\S]*?SELECT COUNT/) // 다른 에이전시 담당분 제외도 같다
     expect(block).toMatch(/liveCount: Math\.max\(Number\(live\?\.n \|\| 0\), cards\.length\)/)
-  })
-})
-
-/**
- * 🎬 제휴사 입점 위젯 (2026-11-02 대표 확정 *"4번형태로 가되 유어딜의 정체성 한줄 고정"*)
- *   ⑦ 정체성 한 줄은 무대 **밖**에 있다 — 장면이 넘어가도 그대로 선다(안에 넣으면 같이 사라진다)
- *   ⑧ 장면 = 체험단의 한계 → 유어딜 장점, 세 장 · 음수 지연(첫 프레임에 1번 장이 서 있다) · 스크립트 0
- *   ⑨ 움직임 줄이기면 1번 장만 정지 · 📱 폰 폭(≤480)에서 설명 줄을 빼 360 안에 든다
- *   ⑩ 🔴 에이전시 모션과 섞이지 않는다 · 요율 숫자 0
- * ⚠️ 못 보는 것: 실제 높이(브라우저 레이아웃) — 2026-11-02 Playwright 실측 300~760px 전부 문서 360, 장면이 무대 안에 들었다.
- */
-describe('🎬 제휴사 입점 위젯', () => {
-  const html = renderPartner('light', '한빛', 3)
-  it('⑦ 정체성 한 줄은 무대 밖에 고정', () => {
-    expect(html).toContain(`<p class="id">${PARTNER_IDENTITY}</p><div class="stage">`)
-    const stage = html.slice(html.indexOf('<div class="stage">'), html.indexOf('<div class="ft">'))
-    expect(stage).not.toContain('class="id"')
-  })
-  it('⑧ 장면 셋 · 음수 지연 · 스크립트 0', () => {
-    expect((html.match(/<section class="sl">/g) || []).length).toBe(PARTNER_SLIDES.length)
-    expect(PARTNER_SLIDES.length).toBe(3)
-    for (const s of PARTNER_SLIDES) { expect(html).toContain(s.no); expect(html).toContain(s.yes) }
-    expect(PARTNER_CSS).toContain('.pt .sl:nth-child(1){animation-delay:-0s}')
-    expect(PARTNER_CSS).toContain('.pt .sl:nth-child(2){animation-delay:-8s}')
-    expect(PARTNER_CSS).toContain('.pt .sl:nth-child(3){animation-delay:-4s}')
-    expect(PARTNER_CSS).toMatch(/@keyframes pt-scene\{0%\{opacity:1/) // 첫 프레임 = 보이는 상태
-    expect(html).not.toMatch(/<script/i)
-  })
-  it('⑨ 움직임 줄이기 · 폰 폭', () => {
-    expect(PARTNER_CSS).toMatch(/@media \(prefers-reduced-motion:reduce\)\{[^@]*\.pt \.sl:nth-child\(n\+2\)\{display:none\}/)
-    expect(PARTNER_CSS).toMatch(/@media \(max-width:480px\)\{[^@]*\.pt \.ds\{display:none\}/)
-  })
-  it('⑩ 에이전시 모션과 섞이지 않는다 · 요율 숫자 0', () => {
-    expect(html).not.toContain('ag-')
-    expect(agency(5)).not.toContain('pt-scene')
-    const text = html.replace(/<style>[\s\S]*?<\/style>/, '').replace(/<[^>]+>/g, ' ')
-    expect(text).not.toMatch(/\d+(\.\d+)?\s*%/)
-    expect(text).not.toContain('—')
   })
 })
