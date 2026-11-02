@@ -20,7 +20,7 @@ export default [
   {
     name: '🧩 합친 구역 — 에이전시 이름 제목이 매장 판 위에서 빠진다',
     file: 'src/pages/UserProfilePage.tsx',
-    find: '      <AgencyMergedTitle storeCount={sellerSeats.stores.length} />\n      <SellerSection',
+    find: '      <AgencyTitleDoor storeCount={sellerSeats.stores.length} />\n      <SellerSection',
     replace: '      <SellerSection',
     test: TEST,
     why: '매장이 어느 에이전시 아래인지 안 보인다 — 다시 따로 노는 것처럼 보인다.',

@@ -19,6 +19,7 @@ import { readCode } from '../helpers/source-text'
 const PANEL = readCode('src/pages/agency-console/AgencyStoresPanel.tsx')
 const PAGE = readCode('src/pages/UserProfilePage.tsx')
 const TITLE = readCode('src/pages/user-profile/AgencyMergedTitle.tsx')
+const DOORS = readCode('src/pages/user-profile/agency-doors.tsx')
 
 describe('마이 — 내 가게 + 에이전시 한 구역', () => {
   it('① 맡은 매장이 전부 내 가게 안이면 에이전시 매장 판을 숨긴다', () => {
@@ -29,7 +30,11 @@ describe('마이 — 내 가게 + 에이전시 한 구역', () => {
     expect(PANEL, '하나만 겹쳐도 숨긴다').not.toMatch(/active\.some\(\(r\) => ownSellerIds/)
   })
   it('③ 에이전시 이름이 매장 판 위 구역 제목이다 (내 가게가 있을 때만)', () => {
-    expect(PAGE).toMatch(/<AgencyMergedTitle storeCount=\{sellerSeats\.stores\.length\} \/>\s*<SellerSection/)
+    expect(PAGE).toMatch(/<AgencyTitleDoor storeCount=\{sellerSeats\.stores\.length\} \/>\s*<SellerSection/)
     expect(TITLE).toMatch(/if \(!on \|\| storeCount <= 0\) return null/)
+    // 🚪 에이전시가 아닌 손님은 그 코드를 안 받는다(문이 lazy) — 첫 화면 무게 예산(dash:my).
+    expect(DOORS).toMatch(/if \(!on \|\| storeCount <= 0\) return null/)
+    expect(DOORS).toContain("lazy(() => import('./AgencyMergedTitle'))")
+    expect(DOORS).toContain("lazy(() => import('./AgencyInviteButton'))")
   })
 })

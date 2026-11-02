@@ -108,8 +108,8 @@ describe('①② 마이 에이전시 구역 — 영입 버튼은 늘 판 위에'
   // 🔁 2026-11-02 재조준 — 대표 확정 버튼 ①: 영입 입구는 **마이 머리** 하나다(구역 안 큰 카드·빈 칸 버튼은 걷었다).
   //   매장 수와 무관하게 늘 서야 한다는 불변식은 그대로 — 머리는 매장 분기 밖이다.
   it('버튼이 마이 머리(폰·PC·에이전시 전용 마이)에 서고, 구역 안에는 두 번째 입구가 없다', () => {
-    expect(code('src/pages/UserProfilePage.tsx')).toMatch(/<AgencyInviteButton \/>\s*<button onClick=\{bell\.open\}/)
-    expect(code('src/pages/user-profile/AccountPcBand.tsx')).toContain('<AgencyInviteButton />')
+    expect(code('src/pages/UserProfilePage.tsx')).toMatch(/<AgencyInviteDoor \/>\s*<button onClick=\{bell\.open\}/)
+    expect(code('src/pages/user-profile/AccountPcBand.tsx')).toContain('<AgencyInviteDoor />')
     expect(code('src/pages/agency-console/AgencyMyPage.tsx')).toContain('<AgencyInviteButton className="ml-auto" />')
     expect(panel, '구역 안에 영입 입구가 다시 생겼다').not.toMatch(/setSheet\('invite'\)|agency-invite-entry/)
   })

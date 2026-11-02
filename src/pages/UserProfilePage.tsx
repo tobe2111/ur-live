@@ -12,8 +12,7 @@ import { ChevronRight } from 'lucide-react'
 import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 // 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(프로필 편집 화살표) 하나뿐 — 조작이라 그대로 둔다.
 //    2026-09-30 수익·추천 구역이 빠지며 `ReceiptIcon`·`UrShopIcon` 소비처는 사라졌다.
-import AgencyMergedTitle from '@/pages/user-profile/AgencyMergedTitle'
-import AgencyInviteButton from '@/pages/user-profile/AgencyInviteButton'
+import { AgencyInviteDoor, AgencyTitleDoor } from '@/pages/user-profile/agency-doors'
 import { BellIcon, LogOutIcon, ScanIcon } from '@/components/icons/urdeal-icons'
 import { ListRow, rowIcon } from './user-profile/list-grammar'
 import MyStats from './user-profile/MyStats'
@@ -230,7 +229,7 @@ export default function UserProfilePage() {
                  모바일만 페이지로 떠나고 있었다(보던 목록의 스크롤·필터가 날아간다). */}
           <div className="flex items-center gap-1 flex-shrink-0">
             {/* 🔗 2026-11-02 대표 확정 버튼 ① — 에이전시 로그인이 있을 때만 선다. */}
-            <AgencyInviteButton />
+            <AgencyInviteDoor />
             <button onClick={bell.open} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-11 h-11 -mr-2 text-gray-900 dark:text-white active:opacity-70">
               <BellIcon className="w-6 h-6" aria-hidden="true" />
             </button>
@@ -312,7 +311,7 @@ export default function UserProfilePage() {
       {/* 🖥️ 판매는 **넓은 쪽**(1.25)에 산다 — 시안 `PcFull1` 과 같은 자리다.
           목록 행이 [이름 + 설명 + ›] 이라 좁히면 설명이 먼저 잘린다. */}
       {/* 🧩 2026-11-02 통합 시안 v2 — 에이전시가 있으면 그 이름이 매장 판의 구역 제목이 된다. */}
-      {isPc ? <AgencyMergedTitle storeCount={sellerSeats.stores.length} /> : null}
+      {isPc ? <AgencyTitleDoor storeCount={sellerSeats.stores.length} /> : null}
       {isPc ? <SellerSection state={sellerSeats} /> : null}
       {/* 🏢 2026-10-26 안 A — '내 가게' 바로 아래 '에이전시' 구역(에이전시 로그인이 있을 때만). */}
       {isPc ? <MyAgencyZone ownSellerIds={ownSellerIds} /> : null}
@@ -343,7 +342,7 @@ export default function UserProfilePage() {
       <>
       {/* 🏪 2026-09-25 (대표 확정 §14 — "하는 것도 마이에서"): 판매가 **맨 위**.
           사장님은 하루에 이 화면을 가장 많이 열고, 그때 보려는 건 오늘 숫자다. 셀러가 아니면 렌더 0. */}
-      <AgencyMergedTitle storeCount={sellerSeats.stores.length} />
+      <AgencyTitleDoor storeCount={sellerSeats.stores.length} />
       <SellerSection state={sellerSeats} />
       <MyAgencyZone ownSellerIds={ownSellerIds} />
 

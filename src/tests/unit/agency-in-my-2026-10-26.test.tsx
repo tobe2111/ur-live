@@ -78,8 +78,8 @@ describe('② 손님 마이 안 구역', () => {
     const page = code('src/pages/UserProfilePage.tsx')
     // 🔁 2026-11-02 재조준(통합 시안 v2) — 에이전시 이름이 매장 판 위 제목(`AgencyMergedTitle`)이 되고,
     //   에이전시 구역은 판 바로 아래에서 '내 가게' 매장을 알고(`ownSellerIds`) 같은 매장을 다시 안 그린다.
-    expect(page).toMatch(/\{isPc \? <AgencyMergedTitle storeCount=\{sellerSeats\.stores\.length\} \/> : null\}\s*\{isPc \? <SellerSection state=\{sellerSeats\} \/> : null\}\s*(\{\s*\}\s*)?\{isPc \? <MyAgencyZone ownSellerIds=\{ownSellerIds\} \/> : null\}/)
-    expect(page).toMatch(/<AgencyMergedTitle storeCount=\{sellerSeats\.stores\.length\} \/>\s*<SellerSection state=\{sellerSeats\} \/>\s*<MyAgencyZone ownSellerIds=\{ownSellerIds\} \/>/)
+    expect(page).toMatch(/\{isPc \? <AgencyTitleDoor storeCount=\{sellerSeats\.stores\.length\} \/> : null\}\s*\{isPc \? <SellerSection state=\{sellerSeats\} \/> : null\}\s*(\{\s*\}\s*)?\{isPc \? <MyAgencyZone ownSellerIds=\{ownSellerIds\} \/> : null\}/)
+    expect(page).toMatch(/<AgencyTitleDoor storeCount=\{sellerSeats\.stores\.length\} \/>\s*<SellerSection state=\{sellerSeats\} \/>\s*<MyAgencyZone ownSellerIds=\{ownSellerIds\} \/>/)
   })
   it('마이 안에서는 한 칸(stacked)으로 — 마이의 PC 칸은 두 칸을 못 담는다', () => {
     expect(code('src/pages/user-profile/MyAgencyZone.tsx')).toContain('<AgencySection stacked headless={merged} ownSellerIds={merged ? ownSellerIds : undefined} onSessionEnd={onSessionEnd} />')
