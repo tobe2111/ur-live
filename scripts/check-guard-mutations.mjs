@@ -9823,12 +9823,30 @@ canvas {
   {
     name: '🔎 검색 대상에서 매장명이 빠진다 (이용권은 매장이 본질)',
     file: 'src/features/products/repositories/search-query.ts',
-    find: "export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'description', 'category'] as const",
-    replace: "export const SEARCH_COLUMNS = ['name', 'description', 'category'] as const",
+    find: "export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'restaurant_address', 'description', 'category'] as const",
+    replace: "export const SEARCH_COLUMNS = ['name', 'restaurant_address', 'description', 'category'] as const",
     test: 'src/tests/unit/search-engine-rebuild.test.ts',
     why:
       '옛 FTS 인덱스가 이 상태였다 — name/description/category 만 담아 **매장명으로는 검색이 안 됐다.** ' +
       '"홍대돈가스" 처럼 매장으로 찾는 것이 이용권 검색의 절반인데 그 절반이 없었다.',
+  },
+  {
+    name: '📍 검색 대상에서 매장 주소가 빠진다 (지역 검색 전멸)',
+    file: 'src/features/products/repositories/search-query.ts',
+    find: "export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'restaurant_address', 'description', 'category'] as const",
+    replace: "export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'description', 'category'] as const",
+    test: 'src/tests/unit/search-region-address-2026-11-02.test.ts',
+    why:
+      '2026-11-02 대표 신고 — "부산" 검색에 이용권이 안 나왔다. 주소를 안 봐서 부산 매장 7개 중 1개만 걸렸다.',
+  },
+  {
+    name: '📍 시·도 이름을 주소 어디서든 맞춘다 (대구 → 해운대구 오매칭)',
+    file: 'src/features/products/repositories/search-query.ts',
+    find: "const addrLike = isRegionName(v) ? `${escapeLike(v)}%` : like",
+    replace: "const addrLike = like",
+    test: 'src/tests/unit/search-region-address-2026-11-02.test.ts',
+    why:
+      '짧은 지명은 서로 겹친다 — `%대구%` 가 `부산 해운대구 …` 를 잡는다. 주소는 시·도로 시작하므로 맨 앞에서만 맞춘다.',
   },
   {
     name: '🎫 검색 결과가 다시 쇼핑 카드로 (이용권에 장바구니·무료배송 UI)',

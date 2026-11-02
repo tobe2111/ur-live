@@ -76,7 +76,7 @@ const ROWS = [
 function freshDb() {
   const db = new DatabaseSync(':memory:')
   db.exec(`CREATE TABLE products (
-    id INTEGER PRIMARY KEY, name TEXT, restaurant_name TEXT, description TEXT, category TEXT,
+    id INTEGER PRIMARY KEY, name TEXT, restaurant_name TEXT, restaurant_address TEXT, description TEXT, category TEXT,
     is_active INTEGER DEFAULT 1, sold_count INTEGER DEFAULT 0, avg_rating REAL DEFAULT 0)`)
   // 🩸 `rating` 을 만들지 않는다 — 라이브 products 에 없는 컬럼이다. 픽스처가 그걸 갖고 있으면
   //   진짜 스키마를 가리고, 바로 이 결함(2026-09-03~09-30 랭킹 쿼리 전멸)을 못 잡는다.
