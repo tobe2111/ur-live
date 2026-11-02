@@ -22,10 +22,15 @@
  *   - 자격: `CLOUDFLARE_API_TOKEN` · `CLOUDFLARE_ACCOUNT_ID` (CLAUDE.md "Cloudflare API 접근" 절 — D1 Read).
  *
  *   node scripts/snapshot-live-schema.mjs
+ *   node scripts/snapshot-live-schema.mjs --check   # 쓰지 않고 사진과 라이브를 비교만 — 다르면 exit 1
+ *
+ * 🔁 `--check` 는 `live-contracts.yml` 이 **매주** 돌린다(2026-11-02 대표 *"모두 다 해줘"*). 사진은 사람이
+ *   다시 찍어야 갱신되는데, 안 찍으면 조용히 낡는다 — 라이브에서 컬럼이 빠졌는데 사진엔 남아 있으면
+ *   그 컬럼을 쓰는 코드가 가드를 통과해 버린다(가드가 지키는 척). 그 낡음을 기계가 매주 잡는다.
  *
  * 🔒 읽기 전용이다(`pragma_table_info` SELECT 하나). 값은 하나도 안 가져오고 이름만 가져온다.
  */
-import { writeFileSync } from 'node:fs'
+import { writeFileSync, readFileSync } from 'node:fs'
 
 const TOKEN = process.env.CLOUDFLARE_API_TOKEN
 const ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID
@@ -78,6 +83,27 @@ for (const [name, uuid] of Object.entries(DBS)) {
 
 const sorted = Object.fromEntries(Object.keys(tables).sort().map((t) => [t, tables[t].join(',')]))
 const file = 'src/shared/db/live-schema.snapshot.json'
+
+if (process.argv.includes('--check')) {
+  const saved = JSON.parse(readFileSync(file, 'utf8')).tables
+  const lines = []
+  const cols = (v) => new Set(String(v || '').split(',').filter(Boolean))
+  for (const t of new Set([...Object.keys(saved), ...Object.keys(sorted)])) {
+    const was = cols(saved[t]); const now = cols(sorted[t])
+    if (!saved[t]) { lines.push(`  + 표 ${t} (라이브에 새로 생김 — 사진에 없음)`); continue }
+    if (!sorted[t]) { lines.push(`  🔴 표 ${t} (사진엔 있는데 라이브에 없음 — 그 표를 쓰는 코드가 가드를 통과해 버린다)`); continue }
+    for (const c of was) if (!now.has(c)) lines.push(`  🔴 ${t}.${c} (사진엔 있는데 라이브에 없음)`)
+    for (const c of now) if (!was.has(c)) lines.push(`  + ${t}.${c} (라이브에 새로 생김)`)
+  }
+  if (lines.length) {
+    console.error(`❌ 라이브 컬럼 사진이 낡았다 (${lines.length}건 — 사진 ${saved && Object.keys(saved).length}표 · 라이브 ${Object.keys(sorted).length}표):`)
+    console.error(lines.join('\n'))
+    console.error('\n   → 세션에서 `node scripts/snapshot-live-schema.mjs` 로 다시 찍고, `node scripts/check-sql-column-exists.mjs -s` 를 돌려 커밋할 것.')
+    process.exit(1)
+  }
+  console.log(`✅ 라이브 컬럼 사진 최신 — ${Object.keys(sorted).length}표 일치`)
+  process.exit(0)
+}
 writeFileSync(file, JSON.stringify({
   _readme: '라이브 D1 의 실제 테이블·컬럼(이름만). 손으로 고치지 말 것 — node scripts/snapshot-live-schema.mjs 로 다시 찍는다.',
   generatedAt: new Date().toISOString().slice(0, 10),
