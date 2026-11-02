@@ -103,7 +103,7 @@ export default [
   {
     name: '업종정본 — 규칙 버전을 안 올린 상태로 되돌린다',
     file: C,
-    find: 'export const CLASSIFY_RULES_VERSION = 10',
+    find: 'export const CLASSIFY_RULES_VERSION = 11',
     replace: 'export const CLASSIFY_RULES_VERSION = 9',
     test: T,
     why: '재검사 쿼리가 `classified_v < VERSION` 이고 시간 폴백이 없다 — 안 올리면 기존 41만 행이 옛 판정에 영구 갇힌다.',
