@@ -31,7 +31,7 @@
 import type { HygieneRow } from './company-lead-hygiene'
 
 /** 스윕 세대. 위생 규칙이 바뀌어 **과거 행을 다시 훑어야 할 때만** 올린다(랩 버전과 무관). */
-export const HYGIENE_SWEEP_VERSION = 1
+export const HYGIENE_SWEEP_VERSION = 2 // 2026-11-02: 해외(중국) 무료메일 온라인판매 보류 규칙 — 테이블을 한 번 더 훑는다
 
 const HYGIENE_STATE = 'ads_company_hygiene_sweep'
 /** id 창 크기 — 회차당 스캔량을 예측 가능하게 묶는다(이 레인은 CPU 로 죽은 이력이 있다). */
@@ -60,9 +60,13 @@ export const PHONE_SHAPE_SUSPECT_SQL = `(
     OR (phone LIKE '07%'  AND phone NOT LIKE '07_-%')
   )`
 
-/** 결함 후보 술어 — 전화 모양 + 이름에 남은 HTML 엔티티(`SM C&amp;C 성수`). */
+/** 🌏 중국 무료메일 도메인 — 위생 규칙(`company-lead-hygiene` 🌏)과 아래 좁히개가 **같은 목록**을 쓴다. */
+export const OVERSEAS_FREEMAIL_DOMAINS = ['163.com', '126.com', 'qq.com', 'sina.com', 'sina.cn', 'sohu.com', 'yeah.net', 'foxmail.com', '139.com', 'aliyun.com'] as const
+
+/** 결함 후보 술어 — 전화 모양 + 이름에 남은 HTML 엔티티(`SM C&amp;C 성수`) + 해외 무료메일 온라인판매(🌏). */
 export const HYGIENE_SUSPECT_SQL =
   `(company_name LIKE '%&%;%') OR (phone IS NOT NULL AND phone != '' AND ${PHONE_SHAPE_SUSPECT_SQL})`
+  + ` OR (active = 1 AND category = '온라인판매' AND (${OVERSEAS_FREEMAIL_DOMAINS.map(d => `email LIKE '%@${d}'`).join(' OR ')}))`
 
 export interface HygieneSweepResult {
   scanned: number

@@ -27,6 +27,7 @@
  * - 우선순위 티어(webkr·local) — 애초에 소스가 다르다.
  */
 import { REGISTRY_CATEGORY_SOURCES } from './company-classify'
+import { CANON_SUBCATEGORY, PROFESSION_NAME_HINTS } from './company-taxonomy'
 
 /** 이만큼은 진짜로 분류해 본 회차여야 벌크를 허용한다(표본이 얇으면 "안 바뀌었다"가 근거가 못 된다). */
 export const FASTPATH_MIN_SAMPLE = 150
@@ -64,6 +65,23 @@ export const registrySourcesSql = (): string =>
 export const fastPathWhere = (sources: string): string =>
   `merged_into IS NULL AND source IN (${sources}) AND classify_confidence = 'registry'`
   + ` AND category IS NOT NULL AND COALESCE(classified_v, 0) < ? AND id > ?`
+  + refinableExclusionSql()
+
+const sqlStr = (s: string): string => `'${s.replace(/'/g, "''")}'`
+
+/**
+ * 🩸 **표본에 안 걸리는 소수 행은 벌크로 건너뛰면 안 된다** (2026-11-02 라이브 실측).
+ *   표본 150행은 대부분 통신판매(`commerce`) 행이라 "변화 0" 이 나오고, 그 판정으로 5,000행씩 도장만 찍었다.
+ *   그 안에 `refineRegistryLabel` 이 고쳐야 할 행 — 상호에 자격명이 있는 행(`정민법무사사무소` 가 `세무사` 로)
+ *   과 중복 라벨(`세무·기장` 4,162행 · `회계` · `노무` · `법률`) — 이 섞여 있었고, 분류기를 한 번도 안 거친 채
+ *   현재 버전 도장을 받아 **영영 안 고쳐졌다.** 표본이 "평균적인 행" 을 대표해도 *소수 규칙* 은 대표하지 못한다.
+ *   ⇒ 규칙이 바꿀 수 있는 행은 조건으로 미리 빼서 **진짜 분류기**(평소 경로)로 보낸다.
+ */
+export function refinableExclusionSql(): string {
+  const canon = Object.keys(CANON_SUBCATEGORY).map(sqlStr).join(', ')
+  const names = PROFESSION_NAME_HINTS.map(w => `REPLACE(company_name, ' ', '') LIKE ${sqlStr(`%${w}%`)}`).join(' OR ')
+  return ` AND COALESCE(subcategory, '') NOT IN (${canon}) AND NOT (${names})`
+}
 
 /**
  * 벌크 전진 실행 — 판단(`decideRegistryFastPath`)과 SQL 을 한 자리에 둔다.

@@ -62,8 +62,11 @@ export function regionHeroFor(input: { regionKey?: string | null; loc?: { lat: n
     const h = HEROES.find(({ boxes }) => boxes.some(([s, n, w, e]) => loc.lat >= s && loc.lat <= n && loc.lng >= w && loc.lng <= e))
     return h ? toHero(h) : null
   }
-  return null
+  // 🇰🇷 2026-11-02 대표 *"일단 대한민국은 서울 그림으로 해둘래?"* — '전국'(지역도 위치도 없음)은 서울 그림을 빌린다.
+  //   전국 전용 그림이 오면 HEROES 에 'national' 을 더하고 이 줄만 바꾼다.
+  return NATIONAL_HERO()
 }
+const NATIONAL_HERO = (): RegionHero | null => { const h = HEROES.find(x => x.slug === 'seoul'); return h ? toHero(h) : null }
 
 /**
  * 🌤️ 2026-11-01 대표 *"밝은 사진들로 해서 그라데이션도 넣고 … 지금은 어둡기만 하네"* — 남색 막을 걷고 **밝게**.

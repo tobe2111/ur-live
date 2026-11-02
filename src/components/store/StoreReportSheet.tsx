@@ -66,9 +66,9 @@ export default function StoreReportSheet({ sellerId, productId, storeName, onClo
   }
 
   return (
-    <div className="fixed inset-0 flex items-end sm:items-center justify-center" style={{ zIndex: Z.SHEET_BODY }}>
-      <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 bg-black/40" />
-      <div className="relative w-full sm:max-w-md max-h-[86dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-surface p-5">
+    <div className="fixed inset-0 flex items-end sm:items-center justify-center p-2 sm:p-4" style={{ zIndex: Z.SHEET_BODY }}>
+      <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 ur-veil" />
+      <div className="relative w-full sm:max-w-md max-h-[86dvh] overflow-y-auto ur-pop-card ur-glass ur-dialog-in p-5">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-brand-text" />

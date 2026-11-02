@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
+import { getUserIdSync } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
 import SharePrompt from '@/components/SharePrompt'
 import ReviewCard, { type ReviewItem } from './ReviewCard'
@@ -64,7 +65,7 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
             setHint(null); setOpen(true)
           }}
           disabled={checking}
-          className="w-full py-2 border border-rule-strong rounded-xl text-[15px] font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29] disabled:opacity-50"
+          className="w-full h-11 bg-wash rounded-xl text-[15px] font-medium text-gray-900 dark:text-white disabled:opacity-50"
         >
           {checking ? t('reviews.checking', { defaultValue: '확인 중...' }) : t('reviews.writeBtn', { defaultValue: '리뷰 작성하기' })}
         </button>
@@ -359,13 +360,16 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
           </div>
         </div>
       ) : (
-        <p className="text-[12px] text-gray-500 dark:text-gray-400 py-6 text-center">{t('reviews.noReviews', { defaultValue: '아직 리뷰가 없습니다.' })}</p>
+        // 🧹 2026-11-02 대표 선택 ② "리뷰 없을 때 화면 정리": 가운데 큰 여백(py-6) → 왼쪽 한 줄. 빈 칸이 구역 하나를 차지하지 않게.
+        <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('reviews.emptyOneLine', { defaultValue: '아직 리뷰가 없어요. 이용권을 쓴 분이 첫 리뷰를 남길 수 있어요.' })}</p>
       )}
 
-      <ReviewForm productId={productId} onSubmitted={() => {
+      {/* 🔒 2026-11-02 (같은 선택 ②): 로그인 안 한 사람에게는 [리뷰 작성하기] 를 안 보인다 — 눌러도 "로그인 후" 안내뿐이었다.
+          로그인한 사람의 자격(이용권을 썼는가)은 여전히 **누를 때** 묻는다(2026-09-03 — 모든 방문자에게 조회를 물리지 않는다). */}
+      {getUserIdSync() && <ReviewForm productId={productId} onSubmitted={() => {
         api.get(`/api/reviews/product/${productId}?limit=${limit}`).then(r => { if (r.data.success) { setReviews(r.data.data.reviews); setPage(1) } })
         api.get(`/api/reviews/product/${productId}/summary`).then(r => { if (r.data.success) setSummary(r.data.data) })
-      }} />
+      }} />}
 
       {/* ⭐ 2026-08-19 (대표 시안 — 그루폰 리뷰): 카드 한 벌(`ReviewCard`) + **PC 2열**.
           한 줄에 하나씩 쌓으면 리뷰 5개가 화면을 다 먹는다(그루폰도 2열이다).

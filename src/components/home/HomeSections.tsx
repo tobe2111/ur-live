@@ -74,8 +74,15 @@ interface HomeSection {
  *   키가 있으면 서버가 규칙 섹션을 거리순으로 준다(어드민이 직접 고른 섹션은 그대로).
  */
 export default function HomeSections(
-  { midBanner, shortsRail, near, rail = false }: {
+  { midBanner, shortsRail, near, rail = false, bareFirst = false, shortsAfter = 0 }: {
     midBanner?: React.ReactNode; shortsRail?: React.ReactNode; near?: HomeNear
+    /**
+     * 🏠 2026-11-02 대표 *"이런 이용권은 어떠세요? … 를 없애는게 자연스럽지 않을까 … 더보기도 없애고"* (모바일 안 1).
+     *   첫 섹션의 제목·부제·더보기 줄을 걷는다 — 지역 사진 머리가 이미 '어디' 를 말한다. 카드는 그대로.
+     */
+    bareFirst?: boolean
+    /** 🎬 유어쇼츠를 몇 번째 섹션(0부터) 뒤에 둘지. 모바일 안 1 = 1(지금 인기 이용권 뒤). 섹션이 모자라면 마지막 뒤. */
+    shortsAfter?: number
     /** ↔️ 2026-10-14 PC 홈(시안 6): 그리드 대신 화살표로 넘기는 한 줄. 모바일은 기본(그리드) 그대로. */
     rail?: boolean
   },
@@ -155,13 +162,13 @@ export default function HomeSections(
     //   레일은 자기 자리를 스스로 잡는다(`UrShortsRail` — 지난 방문에 영상이 0개였으면 안 잡는다).
     return (
       <>
-        <section className="ur-home-panel" aria-hidden="true">
-          <div className="mb-3">
+        <section className={`ur-home-panel${bareFirst ? ' ur-panel-flush' : ''}`} aria-hidden="true">
+          {!bareFirst && <div className="mb-3">
             <h3 className={`${rail ? 'text-[24px] font-bold tracking-[-.02em]' : 'text-[17px] font-bold tracking-tight'} flex`}>
               <span className="rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none w-40">가</span>
             </h3>
             <p className="flex mt-1 text-[12px]"><span className="rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none w-56">가</span></p>
-          </div>
+          </div>}
           {rail
             ? <SectionRail count={4}>{[0, 1, 2, 3].map((i) => <DealCardPlaceholder key={i} />)}</SectionRail>
             : (
@@ -170,8 +177,7 @@ export default function HomeSections(
               </div>
             )}
         </section>
-        {shortsRail}
-        {midBanner}
+        {shortsAfter > 0 ? <>{midBanner}{shortsRail}</> : <>{shortsRail}{midBanner}</>}
       </>
     )
   }
@@ -191,8 +197,9 @@ export default function HomeSections(
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}
           {/* 📐 2026-08-17 (대표 — 컴팩트): 섹션 하단 여백·제목·그리드 gap 축소(피드 그리드와 동일 톤). */}
-          <section className="ur-home-panel">
-            <div className="flex items-end justify-between gap-4 mb-3">
+          {/* ➖ 2026-11-02 대표 *"배너 위에 구분선이 신경쓰여 없애줘"* — 제목 없는 첫 섹션은 아래 띠(8px)를 안 긋는다. */}
+          <section className={`ur-home-panel${bareFirst && sIdx === 0 ? ' ur-panel-flush' : ''}`}>
+            {!(bareFirst && sIdx === 0) && <div className="flex items-end justify-between gap-4 mb-3">
               <div className="min-w-0">
                 {/* ⚠️ 모바일 클래스 문자열은 워커 첫 화면(`home-first-screen`)이 글자 그대로 미러한다 — 통째로 둔다. */}
                 <h3 className={rail ? 'text-[24px] font-bold tracking-[-.02em] text-gray-900 dark:text-white' : 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white'}>
@@ -220,7 +227,7 @@ export default function HomeSections(
                   더보기
                 </Link>
               )}
-            </div>
+            </div>}
             {(() => {
               const cards = sec.products.map((p, i) => (
                 <GroupBuyFeedCard key={p.id} p={p} row={!rail} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} userLoc={sec.near ? near?.kmFrom : null} />
@@ -234,8 +241,10 @@ export default function HomeSections(
           {/* 🎬 2026-09-07 (대표 확정): 유어쇼츠는 **인기 이용권 다음**. 히어로 바로 아래로 올리면
               홈이 첫 딜을 보여 주는 시각(559ms→304ms로 당겨 둔 값)이 늦어지고, 4열 그리드가
               세 번 연달아 나오던 단조로움도 이 세로 레일이 끊는다. */}
-          {sIdx === 0 && shortsRail}
+          {shortsAfter === 0 && sIdx === 0 && shortsRail}
           {sIdx === 0 && midBanner}
+          {/* 🎬 2026-11-02 모바일 안 1 — 유어쇼츠는 '지금 인기 이용권'(둘째 섹션) 뒤. 섹션이 하나뿐이면 배너 뒤. */}
+          {shortsAfter > 0 && sIdx === Math.min(shortsAfter, visible.length - 1) && shortsRail}
           </Fragment>
         )
       })}

@@ -16,6 +16,7 @@
  * - **정부등록·카카오 번호는 무효화 대상이 아니다** — 출처가 권위 있다(포맷 교정만 적용).
  */
 import { isValidKrPhone, formatKrPhone, isPlatformRootUrl, NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
+import { OVERSEAS_FREEMAIL_DOMAINS } from './company-hygiene-sweep'
 
 /**
  * 🔤 **HTML 엔티티 디코딩** — 화면에 `SM C&amp;C 성수` 가 **글자 그대로** 보인다 (2026-08-13 실측 24건).
@@ -99,8 +100,21 @@ export function hygieneStatements<T>(
     out.push(prep("UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN phone IS NOT NULL AND phone != '' THEN contact_source ELSE NULL END, active = CASE WHEN phone IS NOT NULL AND phone != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
   }
 
+  // 🌏 **해외(중국) 무료메일 판매자는 영업 대상 밖** (2026-11-02 대표 *"다 해줘"* — 개선 목록 ⑨).
+  //   실측: 활성 행 중 `@163.com`·`@qq.com` 류 **2,489건**, 전부 통신판매 원부(`유한회사가바나코리아` 처럼
+  //   국내 법인 껍데기 + 중국 연락처 — 해외 셀러의 국내 판매 신고). 이메일 하나(`18822489716@163.com`)가
+  //   59개 법인에 붙어 있기도 하다. 오프라인 매장 입점·제휴 제안의 상대가 아니다.
+  //   ⚠️ **지우지 않고 보류만**(active=0) — 연락처·행은 그대로 남는다. 온라인판매 카테고리에만 적용한다
+  //     (다른 업종에서 중국 메일이 나오면 그건 사람이 볼 일이다).
+  if (r.email && r.category === '온라인판매' && OVERSEAS_FREEMAIL.test(r.email)) {
+    out.push(prep('UPDATE ad_company_leads SET active = 0 WHERE id = ? AND active = 1').bind(r.id))
+  }
+
   return out
 }
+
+/** 위 🌏 규칙의 판정식 — 도메인 목록 SSOT 는 `company-hygiene-sweep.ts`(좁히개 SQL 과 한 목록). */
+export const OVERSEAS_FREEMAIL = new RegExp(`@(?:${OVERSEAS_FREEMAIL_DOMAINS.map(d => d.replace(/\./g, '\\.')).join('|')})$`, 'i')
 
 /**
  * 📵 **반송 억제 스윕** — 레지스트리 재수집(COALESCE 백필)으로 되살아난 억제 이메일을 다시 비운다.

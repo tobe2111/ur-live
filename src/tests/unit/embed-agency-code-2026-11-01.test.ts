@@ -12,6 +12,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { renderStrip, toEmbedCard, type EmbedRow } from '@/worker/utils/embed-widget'
+import { renderAgency } from '@/worker/utils/embed-agency'
 import { embedCodePath } from '@/shared/embed-code-link'
 
 const ROW: EmbedRow = { id: 1, name: '닭도리탕', price: 31000, original_price: 35000, restaurant_name: '달빛한스푼' } as EmbedRow
@@ -19,30 +20,32 @@ const cards = [toEmbedCard(ROW, 'agency')]
 const code = (f: string) => readFileSync(f, 'utf8')
 
 describe('① 에이전시 위젯 — 두 브랜드 나란히', () => {
-  it('머리띠에 유어딜과 회사 이름이 나란히, 운영 매장 수가 붙는다', () => {
-    const html = renderStrip({ kind: 'agency', theme: 'light', title: '한빛 마케팅 운영 매장', brand: '한빛 마케팅', meta: '운영 매장 8곳', cards })
-    expect(html).toMatch(/<div class="hd co">.*?class="logo".*?<span class="sep"><\/span><span class="tt">한빛 마케팅<\/span><span class="meta">운영 매장 8곳<\/span>/)
+  // 🔁 2026-11-02 재조준 — 에이전시는 이제 전용 화면(`renderAgency`)이 그린다(모션 간판). 지키는 뜻은 그대로다:
+  //   유어딜과 회사 이름이 나란히 · 갈 곳 없는 '전체 보기' 없음 · 0 은 안 그림 · 이름 탈출.
+  it('머리띠에 유어딜 × 회사 이름, 간판에 운영 매장 수가 붙는다', () => {
+    const html = renderAgency({ theme: 'light', title: '한빛 마케팅 운영 매장', brand: '한빛 마케팅', storeCount: 8, liveCount: 3, cards })
+    expect(html).toMatch(/<div class="hd">.*?class="logo".*?<span class="x">×<\/span><span class="tt">한빛 마케팅<\/span>/)
+    expect(html).toContain('<span class="sr">8곳</span>')
     // 갈 곳이 없으면 링크를 안 건다(종전엔 유어딜 홈으로 갔다 — 에이전시 손님을 우리 쪽으로 보냈다).
     expect(html).not.toContain('전체 보기')
     // 🩸 렌더만 보면 호출부가 moreHref 를 되살려도 못 잡는다(주입이 잡았다) — 에이전시 핸들러를 직접 본다.
     const r = code('src/worker/routes/embed.routes.ts')
-    const agencyBlock = r.slice(r.indexOf("kind: 'agency'"), r.indexOf("kind: 'agency'") + 400)
+    const agencyBlock = r.slice(r.indexOf('renderAgency({'), r.indexOf('renderAgency({') + 400)
     expect(agencyBlock).not.toMatch(/moreHref/)
     expect(r).not.toMatch(/withUtm\('\/', 'agency'\)/)
   })
 
   it('이름을 탈출한다', () => {
-    const html = renderStrip({ kind: 'agency', theme: 'light', title: 't', brand: '<i>바른</i>대행', cards })
+    const html = renderAgency({ theme: 'light', title: 't', brand: '<i>바른</i>대행', storeCount: 1, liveCount: 1, cards })
     expect(html).toContain('&lt;i&gt;바른&lt;/i&gt;대행')
     expect(html).not.toMatch(/<i>바른/)
   })
 
   it('0 곳이면 지표를 안 그린다 — 신뢰 자리에 0 이 서면 없느니만 못하다', () => {
-    const html = renderStrip({ kind: 'agency', theme: 'light', title: 't', brand: '한빛', cards })
-    expect(html).not.toContain('class="meta"')
-    // 호출부가 0 을 undefined 로 바꿔 넘기는지도 본다(여기서 거르지 않으면 '운영 매장 0곳' 이 나간다).
-    const r = code('src/worker/routes/embed.routes.ts')
-    expect(r).toMatch(/storeCount > 0 \? `운영 매장 \$\{storeCount\}곳` : undefined/)
+    const html = renderAgency({ theme: 'light', title: 't', brand: '한빛', storeCount: 0, liveCount: 0, cards })
+    expect(html).not.toContain('운영 매장')
+    expect(html).not.toContain('판매 중 이용권')
+    expect(html).not.toContain('class="live"')
   })
 })
 

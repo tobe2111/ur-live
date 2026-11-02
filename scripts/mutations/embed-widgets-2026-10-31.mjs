@@ -9,8 +9,9 @@ export default [
   {
     name: '임베드 — 에이전시 위젯이 다른 에이전시 담당 이용권까지 보인다',
     file: R,
-    find: 'AND NOT EXISTS (SELECT 1 FROM agency_products ap WHERE ap.product_id = p.id AND ap.agency_id != ?)',
-    replace: 'AND (1=1 OR ? IS NULL)',
+    // 🔁 2026-11-02 재조준 — 같은 줄이 '판매 중 수' COUNT 에도 생겨 목록 쿼리의 다음 줄까지 앵커에 넣는다.
+    find: 'AND NOT EXISTS (SELECT 1 FROM agency_products ap WHERE ap.product_id = p.id AND ap.agency_id != ?)\n      AND ${LIVE} ORDER BY',
+    replace: 'AND (1=1 OR ? IS NULL)\n      AND ${LIVE} ORDER BY',
     test: T,
     why: '한 매장을 여러 에이전시가 맡는다. 남의 성과를 내 포트폴리오로 보이면 성과 분리가 깨진다.',
   },

@@ -76,6 +76,27 @@ const DESC_IS_PAGE_BODY = new Set(['webkr'])
 const NOTICE_WORD = /(모집|공고|공지사항|접수\s*안내|신청\s*안내|지원사업|보조사업|위탁사업|수행기관|선정\s*결과|결과\s*발표|보도자료|채용|구인|입찰|낙찰|공모전|공모\s*안내|설명회|간담회|기자회견|알림마당|열린마당|새소식|특강|세미나|워크숍|워크샵|교육\s*과정|아카데미\s*모집|위치\s*안내|이용\s*안내|오시는\s*길|지정\s*게시대)/
 /** 문장형 제목(업체명이 아님) — 종결어미/안내문투. */
 const SENTENCE_WORD = /(합니다|습니다|하세요|드립니다|바랍니다|입니다\b)/
+/**
+ * 🚧 **업체 이름이 아니라 '빈 페이지' 제목** (2026-11-02 라이브 실측 — webkr 이름 끝말 빈도 상위).
+ *   `사이트 수정중입니다` 100 · `403 Forbidden` 13 · `site move` 35 · `LED채널 1 페이지` 15 — 사이트가 공사 중이거나
+ *   막혀 있을 때의 `<title>` 이다. 업체가 실재할 수는 있지만 **이 이름으로는 누구인지 알 수 없다.**
+ *   ⚠️ 위 `SENTENCE_WORD` 의 `입니다\b` 는 이걸 못 잡는다 — `\b` 는 ASCII 단어 경계라 한글 뒤 문자열 끝에서
+ *     성립하지 않는다(그래서 `…수정중입니다` 100행이 들어와 있었다). 여기서는 경계 없이 끝(`$`)으로 본다.
+ */
+const PLACEHOLDER_TITLE = /(수정\s*중\s*입니다|준비\s*중\s*입니다|공사\s*중\s*입니다|점검\s*중\s*입니다|^\d{3}\s*(?:Forbidden|Not\s*Found|Error)|^site\s*move$|^index\s+of\b|페이지를\s*찾을\s*수|\s\d+\s*페이지$|역사문화대전|향토문화전자대전)/i
+/**
+ * 🕳️ **광고용 도어웨이 페이지** (2026-11-02 라이브 실측). `남양주 벌초대행` · `이천 벌초대행` · `가평 묘지이장` 이
+ *   **서로 다른 77개 사이트**(제과·튜닝·학원 도메인)에 올라가 있고 이메일은 전부 `obok5555@naver.com` 하나였다 —
+ *   남의 사이트에 심어 둔 지역명 광고 페이지다. 그리고 벌초·이장은 유어딜 파트너 업종도 아니다.
+ *   ⚠️ 낱말은 이 업종군에서만 좁게 고른다 — `이장` 단독은 `마을 이장`·`이장님` 이 걸리므로 `묘지/산소 이장` 만.
+ */
+const DOORWAY_WORD = /(벌초|묘지\s*이장|산소\s*이장|묘\s*이장|파묘|개장\s*유골)/
+/**
+ * 기존 행을 **지우지 않고 보류만** 하는 탈락 사유 — 재분류 랩(`company-discovery`)이 이 사유면 DELETE 대신
+ * `active = 0` 으로 내린다(2026-11-02 — 새로 만든 규칙이 라이브 행을 대량으로 지우는 일은 결재 사항이다).
+ * 새로 들어오는 행은 종전대로 저장하지 않는다.
+ */
+export const HOLD_NOT_DELETE_REASONS: ReadonlySet<string> = new Set(['PLACEHOLDER_TITLE', 'DOORWAY_SPAM'])
 /** 기관·비영리 접미 — 차단하진 않고 lead_type=org 로 분류(지역조직 파트너 가치 있음). */
 const ORG_WORD = /(구청|시청|도청|군청|읍사무소|면사무소|주민센터|행정복지센터|공단|공사|진흥원|진흥공단|재단|협회|연합회|조합|상인회|위원회|의회|교육청|보건소|센터장|정부|부처|청사)/
 /**
@@ -102,7 +123,9 @@ export type ClassifyConfidence = 'registry' | 'evidence' | 'keyword' | 'none'
  *  자동으로 재검사 대상이 된다(안 올리면 이미 스탬프된 잘못된 행이 영구 방치 — 이 사고의 원인).
  *  v3 (2026-07-27): 안내-페이지 제목 어휘(위치안내/이용안내/오시는길/지정 게시대 — 대표 신고
  *  "지정 게시대 위치안내" 업체명) NOTICE_WORD 추가. */
-export const CLASSIFY_RULES_VERSION = 10 // 2026-10-24: 전문직을 국가자격 단위로(대표 "법조계 … 업종 구별이 더 체계적으로")
+export const CLASSIFY_RULES_VERSION = 12 // 2026-11-02: 생활 업종 4종(이사·청소·방역·소독·수리·설치) 분류 규칙 — 대표 "이사, 청소 등등도"
+// v11 // 2026-11-02: v10 의 자격 정밀화가 벌크 전진에 건너뛰어진 행(법무사→세무사 · 세무·기장 4,162)을 다시 본다
+// v10 // 2026-10-24: 전문직을 국가자격 단위로(대표 "법조계 … 업종 구별이 더 체계적으로")
 // v9 // 2026-08-13: breadcrumb 구분자는 상호가 아니다(대표 '연락처는 실재하는데 업체명이 틀려')
 // v7 // 2026-08-08: or.kr=org · 잘린제목 거부 · 본문근거 불인정(대표 신고 진흥원)
 //  ⚠️ **6 이 아니라 7 인 이유** — 같은 신고를 두 세션이 각각 잡아 **둘 다 6 을 선점**했고(#1099 가 먼저
@@ -174,6 +197,25 @@ const BIZ_RULES: Array<{ re: RegExp; category: string; subcategory: string; tier
   { re: /(CCTV|씨씨티비|보안\s*시스템)/i, category: 'POS·단말기', subcategory: 'CCTV·보안', tier: 4, type: 'partner' },
   // 간판 / 인테리어(대표 v3 — 독립 카테고리)
   { re: /(간판|사인\s*제작|현수막|실사출력)/, category: '간판', subcategory: '간판·광고물 제작', tier: 3, type: 'partner' },
+  // 🏠 생활 업종(2026-11-02 대표 *"이사, 청소 등등도"*) — **인테리어보다 먼저**: `방수시공` 은 인테리어가
+  //   아니라 수리다(뒤에 두면 `시공` 이 가로챈다). 순서가 곧 규칙이다 — 아래 함정은 전부 실제 상호 모양이다.
+  //   · `이사청소` 는 청소다(이사보다 먼저 · 소비자 칩의 '가장 긴 낱말이 이긴다' 와 같은 결론).
+  //   · bare `이사` 는 쓰지 않는다 — `대표이사`·`이사회`·`이사장` 이 걸린다. 이사 업종 어휘로만 좁힌다.
+  //   · `청소년` 은 청소가 아니다(`청소(?!년)`). `드라이클리닝` 은 세탁소다.
+  //   · `주방설비` 는 인테리어/주방설비 다(아래 규칙) — 수리의 `설비` 는 앞에 `주방` 이 없을 때만.
+  //   · bare `타일`·`전기` 는 쓰지 않는다 — `스타일`·`전기차` 가 걸린다.
+  { re: /(이사\s*청소|입주\s*청소|준공\s*청소)/, category: '청소', subcategory: '입주·이사청소', tier: 3, type: 'partner' },
+  { re: /(에어컨\s*(?:청소|세척|클리닝)|세탁기\s*(?:청소|세척)|가전\s*(?:청소|세척))/, category: '청소', subcategory: '에어컨·가전청소', tier: 3, type: 'partner' },
+  { re: /(청소(?!년)|(?<!드라이\s*)클리닝|크리닝|건물\s*위생|미화)/, category: '청소', subcategory: '사무실·상가청소', tier: 3, type: 'partner' },
+  { re: /(포장\s*이사|이삿짐|이사\s*(?:업체|전문|센터|대행|짐)|원룸\s*이사|보관\s*이사|이사[,·]\s*(?:운송|용달))/, category: '이사', subcategory: '포장이사', tier: 3, type: 'partner' },
+  { re: /(사무실\s*이사|기업\s*이사)/, category: '이사', subcategory: '사무실이사', tier: 3, type: 'partner' },
+  { re: /(용달|소형\s*이사|1톤\s*이사|용차)/, category: '이사', subcategory: '용달·소형이사', tier: 3, type: 'partner' },
+  { re: /(방역|소독|해충|방제|흰개미|세스코)/, category: '방역·소독', subcategory: '방역·소독', tier: 3, type: 'partner' },
+  { re: /(누수|방수|하수구|변기\s*막힘|배관\s*막힘)/, category: '수리·설치', subcategory: '누수·방수', tier: 3, type: 'partner' },
+  { re: /((?<!주방\s*)설비|배관|보일러|수도\s*(?:설비|공사|수리))/, category: '수리·설치', subcategory: '설비·배관', tier: 3, type: 'partner' },
+  { re: /(전기\s*(?:공사|설비|수리|기술)|조명\s*(?:설치|공사))/, category: '수리·설치', subcategory: '전기', tier: 3, type: 'partner' },
+  { re: /(열쇠|도어락|디지털\s*도어|키\s*카피)/, category: '수리·설치', subcategory: '열쇠·도어락', tier: 3, type: 'partner' },
+  { re: /(줄눈)/, category: '수리·설치', subcategory: '줄눈', tier: 3, type: 'partner' },
   { re: /(인테리어|리모델링|시공)/, category: '인테리어', subcategory: '인테리어·시공', tier: 3, type: 'partner' },
   { re: /(주방\s*설비|주방설비|주방\s*기구|업소용\s*주방)/, category: '인테리어', subcategory: '주방설비', tier: 3, type: 'partner' },
   // 전문 서비스(법률·세무·기장 등)
@@ -219,6 +261,12 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
   // ② 공고/모집/기사 제목 → 업체명이 아님. ("…수행기관 모집" 사례)
   if (NOTICE_WORD.test(name)) return reject('NOTICE_TITLE')
   if (SENTENCE_WORD.test(name)) return reject('SENTENCE_TITLE')
+  // 🚧🕳️ 페이지 제목을 상호로 삼는 소스(webkr)에서만 — 등록부·지도 상호는 원부가 준 진짜 이름이다
+  //   (통신판매에 `○○벌초` 같은 실제 사업자가 있으면 그건 도어웨이가 아니다).
+  if (DESC_IS_PAGE_BODY.has(input.source || '')) {
+    if (PLACEHOLDER_TITLE.test(name)) return reject('PLACEHOLDER_TITLE')
+    if (DOORWAY_WORD.test(name)) return reject('DOORWAY_SPAM')
+  }
   // ②-b 뉴스 헤드라인 문형(2026-07-27 대표 신고 — "'이대 상권 살리기'에 진심인 서대문구…" 기사제목 수집).
   //   상호에는 없는 신호들: 인용부호("" '' ") · 「쉼표+공백」 제목체 · 어절 5개+ 장문 · 서술 종결(…다/높여).
   if (/["“”‘’']/.test(name)) return reject('HEADLINE_TITLE')

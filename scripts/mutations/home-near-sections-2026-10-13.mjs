@@ -68,12 +68,13 @@ export default [
     why: '범위 밖 좌표가 SQL 에 인라인된다.',
   },
   {
-    name: '📍 홈 위치 — 워커 첫 화면이 위치 줄에도 서버 소제목을 그린다',
+    // 🔁 2026-11-02 재조준 — 모바일 안 1 로 첫 섹션 제목·부제 줄 자체가 없어졌다.
+    name: '📍 홈 위치 — 워커 첫 화면이 서버 소제목을 다시 그린다',
     file: 'src/worker/utils/home-first-screen.ts',
-    find: "escText(sec.near ? nearSubtitle(nearLabel) : (sec.subtitle as string))",
-    replace: "escText((sec.subtitle as string) || '')",
+    find: "    `<div class=\"${HOME_FS_CLASS.grid}\">${cards}</div>` +",
+    replace: "    `<p class=\"${HOME_FS_CLASS.secSub}\">${escText((sec.subtitle as string) || '')}</p>` +\n    `<div class=\"${HOME_FS_CLASS.grid}\">${cards}</div>` +",
     test: T,
-    why: '거리순으로 고른 줄에 "많이 팔린 순" 이 찍히고, 마운트 때 글자가 바뀐다.',
+    why: '화면(`HomeSections bareFirst`)엔 없는 소제목이 서버에만 찍혀 마운트 때 한 줄만큼 튄다.',
   },
   {
     name: '📍 홈 위치 — 라벨 쿠키 길이를 안 자른다',

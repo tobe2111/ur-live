@@ -74,14 +74,14 @@ function renderStrip() {
 beforeEach(() => document.getElementById('__SSR_INITIAL_SECTIONS__')?.remove())
 afterEach(() => { cleanup(); document.getElementById('__SSR_INITIAL_SECTIONS__')?.remove() })
 
-describe('① 서버 첫 화면이 배너를 그린다 — 첫 섹션 **위**', () => {
-  it('배너가 있으면 첫 장이 패널보다 먼저 나온다', () => {
+describe('① 서버 첫 화면이 배너를 그린다 — 첫 섹션 **아래**(2026-11-02 모바일 안 1)', () => {
+  it('배너가 있으면 첫 장이 첫 패널 **다음**에 나온다', () => {
     const host = workerDom(seed(BANNERS))
     const banner = host.querySelector('[aria-roledescription="carousel"]')
     const panel = host.querySelector('section.ur-home-panel')
     expect(banner, '서버 첫 화면에 배너가 없다 — 마운트 뒤 끼어들며 카드를 197px 민다').toBeTruthy()
     expect(panel).toBeTruthy()
-    expect(banner!.compareDocumentPosition(panel!) & Node.DOCUMENT_POSITION_FOLLOWING, '배너는 첫 섹션 위여야 한다').toBeTruthy()
+    expect(banner!.compareDocumentPosition(panel!) & Node.DOCUMENT_POSITION_PRECEDING, '배너는 첫 섹션 아래여야 한다(화면 `HomeSections` midBanner 자리)').toBeTruthy()
     expect(banner!.textContent).toContain('서울에서 쓰는 이용권')
   })
 

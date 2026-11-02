@@ -33,9 +33,15 @@ interface Props {
   placeUrl?: string | null
   /** 지도 높이 (px). 기본 220px */
   height?: number
+  /**
+   * 🪟 2026-11-02 대표 확정(이용권 상세 "매장 칸 테두리 걷기" · `[UNLOCK_LOADING]` 허가): 테두리 상자와 안쪽 이름·주소 줄 없이
+   * **지도만** 그린다. 그 칸의 제목·주소는 감싸는 `StoreLocation` 이 이미 말한다(같은 이름이 세 번 나오던 원인).
+   * 카카오 장소 링크는 지도 위 작은 버튼으로 남는다. 기본 false — 숙소 상세는 종전 모양 그대로.
+   */
+  bare?: boolean
 }
 
-export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, height = 220 }: Props) {
+export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, height = 220, bare = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
@@ -177,8 +183,15 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
   if (!address && !resolvedCoord) return null
 
   return (
-    <div ref={containerRef} className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-surface overflow-hidden">
-      <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-[#2C2F35]">
+    <div ref={containerRef} className={bare ? 'relative overflow-hidden' : 'rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-surface overflow-hidden'}>
+      {bare && kakaoMapUrl && (
+        // 🗺️ 지도 위 UI 는 테마를 따르지 않는다(2026-09-02) — 흰 표면 고정. 그림자 대신 옅은 테두리 한 줄(그림자는 래칫 대상 — 2026-11-02 평면).
+        <a href={kakaoMapUrl} target="_blank" rel="noopener noreferrer"
+          className="light-island absolute right-2 top-2 z-[3] inline-flex h-8 items-center gap-1 rounded-full bg-white px-3 text-[12px] font-medium text-gray-900 ring-1 ring-black/10">
+          카카오맵 <ExternalLink className="w-3 h-3" />
+        </a>
+      )}
+      {!bare && <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="flex items-start gap-2 min-w-0">
           <PinIcon className="w-4 h-4 text-gray-400 mt-1 shrink-0" />
           <div className="min-w-0">
@@ -196,7 +209,7 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
             카카오맵 <ExternalLink className="w-3 h-3" />
           </a>
         )}
-      </div>
+      </div>}
 
       {/* 지도 영역 */}
       <div className="relative" style={{ height }}>

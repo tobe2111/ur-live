@@ -214,7 +214,7 @@ describe('🧭 배선', () => {
   })
 
   it('막다른 길이 이어져 있다 — 제공 안 켠 상세와 내 체험에서 목록으로', () => {
-    expect(readCode('src/components/seeding/SellThisCard.tsx')).toContain('/influencer/seeding')
+    expect(readCode('src/components/seeding/SellThisSheet.tsx')).toContain('/influencer/seeding') // 2026-11-02 B안: 창 안으로
     expect(readCode('src/pages/MySeedingPage.tsx')).toContain('/influencer/seeding')
   })
 })

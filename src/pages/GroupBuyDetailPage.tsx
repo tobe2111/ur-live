@@ -35,7 +35,7 @@ import { dealCategoryMeta } from '@/shared/deal-category-icon'
 // 🛡️ 2026-06-12 (감사 1단계 — 핀 표면): 공유 버튼 옆 핀 버튼 (additive — 잠금 항목 무변경).
 import PinButton from '@/components/curator/PinButton'
 import DetailSectionTabs from './group-buy/DetailSectionTabs' // 📑 2026-11-02 상세 C안 — 폰 구역 탭
-import SellThisCard from '@/components/seeding/SellThisCard' // 🎁 2026-10-31 팔아보기(유어샵 담기 · 무료 체험 신청)
+import SellThisCard from '@/components/seeding/SellThisCard' // 🎁 2026-10-31 팔아보기 → 2026-11-02 B안 한 줄(딜 % · 체험단)
 import { toast } from '@/hooks/useToast'
 import { safeDate, safeTime } from '@/utils/safe-date'
 import { publicSellerHandle } from '@/shared/seller-handle'
@@ -53,7 +53,6 @@ import DealPurchaseBox from './group-buy/DealPurchaseBox'
 import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import StoreLocation from './group-buy/StoreLocation'
 import OtherDealsRow from './group-buy/OtherDealsRow'
-import ShareRewardBanner from './group-buy/ShareRewardBanner'
 import DeferUntilVisible from './group-buy/DeferUntilVisible'
 import DealPayButton, { useCanPayWithDeal } from './group-buy/DealPayButton'
 import DealUseChooser, { useDealPlan, defaultDealUse, coversAll } from './group-buy/DealUseChooser'
@@ -703,15 +702,14 @@ export default function GroupBuyDetailPage() {
         {/* 🛍️ 2026-10-25 대표 확정 **E안**(*"구매하기 버튼이 2개가 동시에 있어"*): 본문 '옵션 선택' 카드를 걷었다 —
             구매하기는 하단 바 **하나**, 수량은 그 바가 여는 구매 창에서 고른다(PC 는 우측 구매 상자). */}
 
-        {/* 🎁 딜 보유자에게만(없으면 null·`empty:hidden`). 머리 카드 **아래**라 위가 안 밀린다(`detail-ssr-body.ts` 참조). */}
-        <div className="px-[18px] pb-4 empty:hidden"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>
+        {/* 🎁 2026-11-02 대표 *"통합"*: 따로 뜨던 '내 링크로 팔리면 N% 적립' 배너는 아래 팔아보기 한 줄(B안 '딜 N%')로 합쳤다. */}
 
         {/* 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 'D-N 마감' 배너 제거 — 마감이 아무것도 안 막는데
             남겨 두면 없는 마감을 소비자에게 알리는 거짓말이 된다. 구매 후 사용 기간은 별개 축이다. */}
 
         {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
         <div id="fcfs-apply-block"><FcfsApplyBlock productId={Number(id)} /></div>
-        <div className={`${PASS_CARD} empty:hidden`}><SellThisCard productId={detail.id} price={detail.price} hideForOwner={isOwnProduct} /></div>
+        <div className={`${PASS_CARD} empty:hidden`}><SellThisCard productId={detail.id} price={detail.price} sellerId={detail.seller_id as number | null} hideForOwner={isOwnProduct} /></div>
 
         {/* 📑 2026-11-02 대표 확정 상세 **C안**: 폰도 구역 탭(PC 탭과 같은 구역 id). 머리줄 밑에 붙어 따라온다. */}
         <DetailSectionTabs tabs={mobileTabs} />
@@ -738,7 +736,7 @@ export default function GroupBuyDetailPage() {
               map={(
                 <DeferUntilVisible minHeight={172}>
                   <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
-                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} placeUrl={detail.kakao_place_url} />
+                    <RestaurantMiniMap bare name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} placeUrl={detail.kakao_place_url} />
                   </Suspense>
                 </DeferUntilVisible>
               )}
