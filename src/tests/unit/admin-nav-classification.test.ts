@@ -49,9 +49,9 @@ const navReachable = (): Set<string> =>
  */
 const NOT_IN_NAV_OK: Record<string, string> = {
   '/admin/login': '로그인 화면 — nav 는 로그인 후에만 보인다',
+  '/admin/group-buy': '2026-11-02 옛 주소 — 이용권 관리로 보내기만 한다(화면 없음)',
   '/admin/2fa': '강제 보안 게이트 — ALWAYS_ALLOWED_ADMIN_PATHS 로 역할 무관 도달',
   '/admin/cafe24/callback': 'OAuth 콜백 — 사람이 누르는 화면이 아니다',
-  '/admin/kakao-test/callback': 'OAuth 콜백 — 사람이 누르는 화면이 아니다',
   '/admin/wholesale-integrity': '2026-06-17 의도적 강등 — 도매 통합 현황의 카드 링크로 진입',
 }
 
@@ -76,7 +76,8 @@ describe('R1 — 밴드는 선언이다 (폴백으로 정해지지 않는다)', 
     // 🔁 2026-10-11 재조준(도매몰 철거): 종전엔 `'wholesale'` 까지 **넷**을 요구했다. 도매 밴드가
     //   사라졌으므로 그 요구는 이제 "없는 서비스의 서랍을 만들라" 가 된다. 지키려던 것은 그대로다 —
     //   **살아 있는 서비스는 각자 밴드를 갖고, 폴백으로 정해지지 않는다.**
-    for (const key of ['urdeal', 'mall', 'ads'] as const) {
+    // 🧹 2026-11-02 대표 결정 "공구 서비스 어드민 화면 삭제" — 몰 밴드(`mall`)에 남은 화면이 없다.
+    for (const key of ['urdeal', 'ads'] as const) {
       expect(NAV_SECTIONS.some((s) => s.key === key), `밴드 '${key}' 미정의`).toBe(true)
       // 🔎 `navSectionOf` 경유 — `AdminLayout` 이 부르는 그 함수다(데이터만 맞고 함수가 틀리면 화면은 여전히 어긋난다).
       expect(NAV_GROUPS.some((g) => navSectionOf(g) === key), `밴드 '${key}' 에 그룹이 하나도 없다`).toBe(true)
@@ -134,12 +135,9 @@ describe('R4 — 단일 서비스 화면이 공통 서랍에 눌러앉지 않는
     return g ? navSectionOf(g) : undefined
   }
 
-  it('🔴 유어딜 상권/매장 5종이 유어딜 밴드에 있다', () => {
-    // 발굴(밀도) → 리워드(방문·후기) → 페이백(쿠폰) → 성과(리포트) 는 하나의 루프다.
-    for (const p of [
-      '/admin/region-density', '/admin/visit-rewards', '/admin/kakao-reviews',
-      '/admin/district-coupons', '/admin/district-report',
-    ]) {
+  it('🔴 유어딜 상권/매장 화면이 유어딜 밴드에 있다', () => {
+    // 🧹 2026-11-02 어드민 정리: 방문 리워드·카카오맵 후기·상권 쿠폰·상권 리포트(전부 0건)는 지웠다 — 밀도만 남는다.
+    for (const p of ['/admin/region-density']) {
       expect(bandOf(p), `${p} 가 유어딜 밴드 밖(현재: ${bandOf(p)})`).toBe('urdeal')
     }
   })

@@ -84,12 +84,5 @@ export default [
     test: BOUNDARY,
     why: '상품이 조용히 본진(mall_id=1)으로 들어가는데 운영자는 자기 가게에 안 뜨는 이유를 알 방법이 없다 — 이 기능이 존재하는 이유 그 자체다.',
   },
-  {
-    name: '[온보딩] 어드민 대기열이 조회 실패를 "신청 없음" 으로 위장',
-    file: 'src/pages/admin/wholesale-malls/MallApplicationsPanel.tsx',
-    find: '  if (isError) {',
-    replace: '  if (false) {',
-    test: BOUNDARY,
-    why: '일시 5xx 에 대기열이 통째로 사라지고 에러도 안 뜬다 — 신청한 운영자가 어드민 화면에서 증발한다(check-query-iserror 가 막는 클래스인데 이 파일은 그 스캔 범위 밖이다).',
-  },
+  // 🧹 2026-11-02: '어드민 대기열 위장' 주입은 걷었다 — 대표 결정으로 그 어드민 화면(MallApplicationsPanel)을 지웠다.
 ]

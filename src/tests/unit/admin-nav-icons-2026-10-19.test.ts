@@ -49,7 +49,8 @@ describe('어드민 첫 화면은 손님 봉투의 아이콘을 쓰지 않는다
   }
   it('메뉴 항목은 그대로 남아 있다(아이콘만 바뀌었다)', () => {
     const nav = readFileSync('src/components/admin/admin-nav-config.ts', 'utf8')
-    for (const p of ['/admin/env-readiness', '/admin/region-density', '/admin/visit-rewards', '/admin/replay', '/admin/login-history', '/admin/kakao-test', '/admin/kakao-login-diag', '/admin/youtube-quota']) {
+    // 🧹 2026-11-02 어드민 정리로 방문 리워드·다시보기·카카오 연동 테스트·YouTube 쿼터는 지웠다.
+    for (const p of ['/admin/env-readiness', '/admin/region-density', '/admin/login-history', '/admin/kakao-login-diag']) {
       expect(nav).toContain(`path: '${p}'`)
     }
   })
