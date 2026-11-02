@@ -53,8 +53,8 @@ describe('탭 부품', () => {
   it('누르면 그 탭을 알린다', () => {
     const onChange = vi.fn()
     render(<MyRoleTabs value="agency" onChange={onChange} />)
-    expect(screen.getByRole('tab', { name: '에이전시' }).getAttribute('aria-selected')).toBe('true')
-    fireEvent.click(screen.getByRole('tab', { name: '나' }))
+    expect(screen.getByRole('button', { name: '에이전시' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: '나' }))
     expect(onChange).toHaveBeenCalledWith('me')
   })
 })
