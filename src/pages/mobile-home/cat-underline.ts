@@ -17,7 +17,7 @@ export function slideCatUnderline(to: HTMLElement): void {
   bar.setAttribute('aria-hidden', 'true')
   Object.assign(bar.style, {
     position: 'fixed', left: `${a.left}px`, top: `${a.bottom - 2}px`, width: `${a.width}px`, height: '2px',
-    background: 'var(--brand, #1C69EF)', transformOrigin: 'left', pointerEvents: 'none', zIndex: '40',
+    background: 'var(--brand)', transformOrigin: 'left', pointerEvents: 'none', zIndex: '40',
   })
   document.body.appendChild(bar)
   to.style.borderBottomColor = 'transparent'

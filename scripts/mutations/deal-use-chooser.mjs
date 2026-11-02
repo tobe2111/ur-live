@@ -77,8 +77,8 @@ export default [
     file: 'src/pages/group-buy/DealUseChooser.tsx',
     // 🪙 2026-10-06: 접힌 줄이 [전부 딜 / 딜+카드] 두 갈래가 됐다 — 두 갈래를 통째로 지우는 것으로 재조준.
     find: `          {all
-            ? <>딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>으로 전부 결제</>
-            : <>딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>{' · '}카드 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(card)}원</b></>}`,
+            ? <>딜 <b style={{ color: 'var(--gbd-ink)' }}><RollingNumber value={used} format={formatNumber} /></b>으로 전부 결제</>
+            : <>딜 <b style={{ color: 'var(--gbd-ink)' }}><RollingNumber value={used} format={formatNumber} /></b>{' · '}카드 <b style={{ color: 'var(--gbd-ink)' }}><RollingNumber value={card} format={formatNumber} />원</b></>}`,
     replace: `          딜 사용 가능`,
     test: 'src/tests/unit/deal-use-chooser-2026-09-13.test.ts',
     why:
