@@ -96,8 +96,9 @@ export default [
   {
     name: '🌓 모바일 홈 패널에 light-island 가 돌아온다',
     file: 'src/components/home/HomeSections.tsx',
-    find: '<section className="ur-home-panel">',
-    replace: '<section className="ur-home-panel light-island">',
+    // 🔁 2026-11-02 재조준 — 첫 섹션 띠 제거로 className 이 템플릿 리터럴이 됐다.
+    find: "<section className={`ur-home-panel${bareFirst && sIdx === 0 ? ' ur-panel-flush' : ''}`}>",
+    replace: "<section className={`ur-home-panel light-island${bareFirst && sIdx === 0 ? ' ur-panel-flush' : ''}`}>",
     test: PANEL,
     why: '섬을 붙이면 --surface 가 #FFFFFF 로 되박혀 토큰을 고쳐도 다크에서 흰 판이 된다.',
   },

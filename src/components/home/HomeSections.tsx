@@ -162,7 +162,7 @@ export default function HomeSections(
     //   레일은 자기 자리를 스스로 잡는다(`UrShortsRail` — 지난 방문에 영상이 0개였으면 안 잡는다).
     return (
       <>
-        <section className="ur-home-panel" aria-hidden="true">
+        <section className={`ur-home-panel${bareFirst ? ' ur-panel-flush' : ''}`} aria-hidden="true">
           {!bareFirst && <div className="mb-3">
             <h3 className={`${rail ? 'text-[24px] font-bold tracking-[-.02em]' : 'text-[17px] font-bold tracking-tight'} flex`}>
               <span className="rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none w-40">가</span>
@@ -197,7 +197,8 @@ export default function HomeSections(
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}
           {/* 📐 2026-08-17 (대표 — 컴팩트): 섹션 하단 여백·제목·그리드 gap 축소(피드 그리드와 동일 톤). */}
-          <section className="ur-home-panel">
+          {/* ➖ 2026-11-02 대표 *"배너 위에 구분선이 신경쓰여 없애줘"* — 제목 없는 첫 섹션은 아래 띠(8px)를 안 긋는다. */}
+          <section className={`ur-home-panel${bareFirst && sIdx === 0 ? ' ur-panel-flush' : ''}`}>
             {!(bareFirst && sIdx === 0) && <div className="flex items-end justify-between gap-4 mb-3">
               <div className="min-w-0">
                 {/* ⚠️ 모바일 클래스 문자열은 워커 첫 화면(`home-first-screen`)이 글자 그대로 미러한다 — 통째로 둔다. */}
