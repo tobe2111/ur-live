@@ -1,4 +1,4 @@
-# [E3] 대외 소개서 자동 생성 — 라이브 숫자 · 매일 · Release (2026-11-02)
+# [E4] 대외 소개서 자동 생성 — 라이브 숫자 · 매일 · Release (2026-11-02)
 
 대표: *"제안서는 계속 자동 업데이트가 안돼. 3번은 더 이상적인 방법 알려줘."* → *"응 진행해줘. 가장 이상적으로."*
 
@@ -41,3 +41,11 @@
 - `inline-mutations-frozen` 은 **절대 개수**를 본다. 동결 **전에** Verify 를 통과한 #2094 가 동결 **뒤에** 머지되며 2건을 더 넣었고(981 > 979), main 배포의 단위 시험이 그 뒤 두 번(04:54 · 05:21) 실패했다. #2098 이 시험 메시지대로 그 주입을 `scripts/mutations/` 로 옮겨 15:04 배포가 다시 초록이 됐다.
 - 원인: GitHub 이 "최신 main 과 합친 뒤 다시 검사" 를 요구하지 않아, 래칫을 새로 세우는 순간 이미 초록인 PR 이 빠져나간다. **절대값 래칫은 세우는 날 한 번 이 경주가 난다.**
 - 다음에 래칫을 세울 때: 열린 PR 중 그 자리를 건드리는 것을 먼저 찾아 보거나, 시험을 *변경분 기준*(merge-base 대비 증가)으로 만든다.
+
+## ✅ E4 판정 (2026-11-02 15:28 KST — #2100 머지 `66633bf` 의 push 실행)
+- 워크플로 `Proposals (소개서 자동 생성)` 실행 41399938459 **전 단계 success**(라이브 숫자 받기 → 덱 다섯 + PDF → Release 업로드).
+- Release `proposals-latest` 자산 11개: PDF 5 · PPTX 5 · `manifest.json`.
+- 어드민 `GET /api/admin/proposals/manifest` → `success:true` · 숫자 출처 `https://urdeal.kr/api/public/proposal-facts` · 판매 중 160 · 쪽수 15/17/20/20/30 · 경고 `broker-share-payout` 1건.
+- 어드민 `GET /api/admin/proposals/file/urdeal-merchant-association-deck.pdf` → 200 `application/pdf` 1.6MB, 본문에 **"판매 중인 이용권 160건" · "2026-11-02 기준"**(옛 판은 165건 · 10-31).
+- 반대 방향: 토큰 없이 manifest → **401** · 파일 이름 `..%2Fsecret.pdf` → **400**.
+- ⚠️ 못 본 것: 어드민 화면(`/admin/proposals`)의 실제 렌더 — 경로·응답은 확인했고, 화면의 "자동 생성본 · … 생성" 문구와 빨간 경고는 대표 브라우저에서 보인다.
