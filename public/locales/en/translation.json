@@ -5011,7 +5011,8 @@
       "expired": "Expired",
       "refunded": "Refunded",
       "processing": "Sending",
-      "sendFailed": "Delivery failed"
+      "sendFailed": "Delivery failed",
+      "gifted": "Gifted"
     },
     "verify": {
       "codeLabel": "Voucher code",
@@ -5099,7 +5100,34 @@
     "mapShort": "Map",
     "recoTitle": "You might also like",
     "recoMore": "More",
-    "gifticonUsableTotal": "Usable gift vouchers"
+    "gifticonUsableTotal": "Usable gift vouchers",
+    "cancelConfirm": "Cancel this purchase and get a refund?\n(Only if unused and within 7 days of purchase)",
+    "cancelDone": "Your purchase has been cancelled",
+    "cancelFail": "This can't be cancelled",
+    "cancelError": "Something went wrong while cancelling",
+    "cancelling": "Cancelling…",
+    "contactSupportShort": "Support",
+    "expiryNoticeToday": "You have a voucher that expires today",
+    "expiryNoticeDays": "You have a voucher expiring in {{d}} day(s)",
+    "expiryNoticeMore": " +{{n}} more",
+    "firstTitle": "Your first voucher!",
+    "firstDesc": "Just show the voucher's QR at the store. Udal will stamp your card.",
+    "firstStampBuy": "First purchase",
+    "firstStampUse": "First use",
+    "firstStampReview": "First review",
+    "firstStampTodo": "Not yet",
+    "groupPast": "Past",
+    "ktCheckMmsShort": "Check your phone's messages",
+    "ktSendFailedShort": "Paid · Contact support to resend",
+    "ktSentSuffix": "sent by text",
+    "noDone": "No used vouchers yet",
+    "noExpiryShort": "No expiry",
+    "offlineUsable": "You can use this screen even offline",
+    "refundReasonPrompt": "Enter the reason for your refund request (e.g. visit cancelled)",
+    "refundRequested": "Refund request received. We'll process it after review.",
+    "refundFailed": "Refund request failed",
+    "usageInfo": "How it works",
+    "useNow": "Use at store"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",
@@ -6020,7 +6048,12 @@
       "dragHint": "Drag the pin to the exact spot, or tap the map to move it",
       "loadFailed": "Could not load the map",
       "searchStillWorks": "You can still search by store name or address above"
-    }
+    },
+    "addressNotFound": "Couldn't find this address on the map",
+    "loadFailed": "Couldn't load the map",
+    "showFailed": "Couldn't display the map",
+    "openNaver": "Naver Map",
+    "loading": "Loading map..."
   },
   "sellerSwitch": {
     "pending": "Under review",
@@ -7030,5 +7063,189 @@
     "gone": "Expired/Refunded",
     "empty": "You haven't bought a pass yet",
     "browse": "Browse passes"
+  },
+  "wallet": {
+    "ticket": {
+      "hintScanOnly": "Show the QR to staff",
+      "hintStoreCode": "Enter the store code",
+      "hintSelfFree": "Use instantly",
+      "giftedToName": "Gifted to {{name}}",
+      "giftedToFriend": "Gifted to a friend",
+      "giftPendingLocked": "Gift pending. You can't use it until your friend accepts",
+      "usedOn": "Used {{date}}",
+      "expiresUntil": "Until {{date}}",
+      "viewGiftStatus": "View gift status",
+      "couponBarcode": "Coupon barcode",
+      "giftishowChip": "Giftishow"
+    },
+    "qr": {
+      "stepScanOnly1": "At the store, show this QR screen to staff",
+      "stepScanOnly2": "Staff scan the QR to redeem it",
+      "stepCheckDone": "Check that the ‘Used’ screen appears",
+      "stepTapUseNow": "At the store, tap ‘Use at store’ below",
+      "stepStoreCode2": "Enter the store code displayed at the counter",
+      "stepSelfFree2": "It's redeemed right away (undo within 60 seconds if by mistake)",
+      "stepDefault1": "At the store, show this screen to staff",
+      "stepDefault2": "Staff confirm and redeem it",
+      "modeScanOnly": "Staff check",
+      "modeStoreCode": "Store code",
+      "modeSelfFree": "Instant use",
+      "modeOnSite": "Use at store",
+      "expiresUntil": "Until {{date}}",
+      "stampUsed": "Used",
+      "stampGifting": "Gift pending",
+      "stampExpired": "Expired",
+      "stampRefunded": "Refunded",
+      "howToUse": "How to use",
+      "validity": "Valid until",
+      "storeInfo": "Store info",
+      "cautions": "Please note",
+      "caution1": "No refund or cancellation after use",
+      "caution2": "Single-use voucher; it can't be used twice",
+      "caution3": "Not exchangeable for cash; no change given",
+      "caution4": "If it expires, it's refunded automatically to your payment method",
+      "giftPendingTitle": "Gift to a friend pending",
+      "giftPendingDesc1": "You can't use this voucher until your friend accepts it.",
+      "giftPendingDesc2": "Cancel the gift to use it again.",
+      "giftLinkOrCancel": "View gift link or cancel gift",
+      "gift": "Gift",
+      "receivedGiftNote": "This voucher was a gift · Contact support for cancellation or refund"
+    }
+  },
+  "pass": {
+    "usageGuide": {
+      "title": "How to use",
+      "expiryUntil": " is the last day to use",
+      "terms": "Terms & notes",
+      "defaultTermNoStacking": "Can't be combined with on-site discounts or other coupons.",
+      "defaultTermNoRefund": "Unused balance isn't refunded, so we recommend using it all at once."
+    },
+    "seller": {
+      "verified": "Verified seller",
+      "profile": "Profile"
+    },
+    "storeIntro": {
+      "composition": "What's included",
+      "title": "About the store",
+      "owner": "Owner",
+      "ownerOf": "{{name}}, owner"
+    },
+    "head": {
+      "onnuri": "Onnuri accepted",
+      "prelaunch": "Coming soon · Pre-registration open",
+      "buyers": "{{count}} bought"
+    },
+    "price": {
+      "won": "{{price}} won"
+    },
+    "title": {
+      "registeredStore": " · Registered store"
+    },
+    "tabs": {
+      "ariaLabel": "Detail sections",
+      "pcAriaLabel": "Detail sections",
+      "info": "Pass info",
+      "reviews": "Reviews",
+      "reviewsCount": "Reviews {{count}}",
+      "mobileProduct": "Details",
+      "mobileStore": "Store"
+    },
+    "menu": {
+      "title": "Signature menu",
+      "orderWithVoucher": "Order with your voucher",
+      "hot": "Popular"
+    },
+    "location": {
+      "title": "Store location",
+      "viewStore": "View store",
+      "callAria": "Call the store ({{phone}})",
+      "call": "Call",
+      "directions": "Directions"
+    },
+    "otherDeals": {
+      "title": "More passes from this store",
+      "viewAll": "View all"
+    },
+    "gallery": {
+      "enlarge": "Enlarge photo",
+      "allPhotosEnlarge": "Enlarge all {{count}} photos",
+      "viewPhotoN": "View photo {{n}}",
+      "allPhotosView": "View all {{count}} photos",
+      "viewPhotoOrdinal": "View photo {{n}}",
+      "allPhotosCount": "All {{count}} photos",
+      "lightboxAria": "{{alt}}: {{count}} photos",
+      "close": "Close",
+      "prev": "Previous photo",
+      "next": "Next photo",
+      "photoOrdinal": "Photo {{n}}"
+    },
+    "toast": {
+      "payFailedWithMsg": "Payment wasn't completed — {{msg}}{{code}}",
+      "payFailed": "Payment wasn't completed. Please try again.",
+      "invalidId": "Invalid ID",
+      "networkError": "Network error",
+      "voucherIssued": "🎁 Voucher issued",
+      "exchangeFailed": "Exchange failed",
+      "payInitFailed": "Couldn't start payment",
+      "paymentNotConfigured": "Payment system isn't set up. Please contact support.",
+      "retryLater": "Please try again in a moment.",
+      "joinFailed": "Purchase failed"
+    },
+    "notFound": "Item not found",
+    "backToList": "Back to deals",
+    "skipToContent": "Skip to main content",
+    "badge": {
+      "closed": "Closed",
+      "cancelled": "Cancelled"
+    },
+    "proposeToStore": "Propose a group deal to this store"
+  },
+  "passBuy": {
+    "invalidPaymentInfo": "Payment information is invalid.",
+    "paymentFailed": "Payment failed",
+    "approvalError": "Error while approving payment",
+    "seoComplete": "Payment complete - UrDeal",
+    "seoProcessing": "Processing payment",
+    "approving": "Approving payment",
+    "pleaseWait": "Please wait a moment",
+    "errorTitle": "We couldn't complete your payment",
+    "contactSupport": "Please contact customer support.",
+    "paymentRef": "Payment ref: {{ref}}",
+    "backToCart": "Back to cart",
+    "backToProduct": "Back to product page",
+    "buyWithAmount": "Buy for {{amount}} won",
+    "won": "{{amount}} won",
+    "savePerPrefix": "Save",
+    "savePerSuffix": "per voucher",
+    "quantity": "Quantity",
+    "maxPerPerson": "Max {{n}} per person",
+    "qtySheets": "{{n}}",
+    "qtyDecrease": "Decrease quantity",
+    "qtyIncrease": "Increase quantity",
+    "prelaunchApply": "Pre-apply",
+    "unavailable": "Unavailable",
+    "processing": "Processing…",
+    "openingSoon": "Opening soon",
+    "raffleNote": "Apply for free · We'll notify you if you win",
+    "safePayNote": "Secure 3-second Toss checkout, 100% auto-refund if unused",
+    "prelaunchNote": "Store opening under discussion · Applying is free, we'll notify you at launch",
+    "payWithBalanceAria": "Pay with your {{balance}} deal balance",
+    "payWithBalance": "Pay with deal ({{balance}} deal available)",
+    "voucher": "Voucher",
+    "close": "Close",
+    "completeTitle": "Payment complete",
+    "noExpiry": "No expiry date",
+    "sheets": "x{{n}}",
+    "dealUsed": "Deal {{amount}}",
+    "cardPaid": "Card {{amount}} won",
+    "viewVouchers": "View my vouchers",
+    "noteUseQr": "Show the QR or code at the store to use it.",
+    "noteAutoRefund": "If unused, you'll get a 100% automatic refund after it expires.",
+    "noteStoreRefund": "If the store can't serve you, we'll refund you right away.",
+    "moreFromStore": "More vouchers from {{store}}",
+    "moreVouchers": "See other vouchers",
+    "issuedBand": "Vouchers issued",
+    "kindsCount": "{{n}} types",
+    "expiryVaries": "Expiry dates vary by voucher"
   }
 }

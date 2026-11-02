@@ -16,7 +16,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import zlib from 'node:zlib'
-// @ts-expect-error — .mjs 스크립트(타입 선언 없음)
 import { splitTranslation, collectConsumerDashKeys, collectReferencedKeys } from '../../../scripts/i18n-split.mjs'
 import { stripComments } from '../helpers/source-text'
 
@@ -64,7 +63,8 @@ describe('④ 배선 · 안전망', () => {
   const src = stripComments(readFileSync('src/i18n.ts', 'utf-8'))
   it('플러그인이 refs 로 나누고 rest 청크를 낸다', () => {
     const plug = stripComments(readFileSync('scripts/i18n-split.mjs', 'utf-8'))
-    expect(plug).toMatch(/splitTranslation\(JSON\.parse\(code\), used, refs\)/)
+    // 🌐 2026-11-02: 파싱한 객체를 한 번 변수로 받는다(ko 기본값 중복 빼기가 같은 객체를 쓴다) — 모양만 바뀌고 배선은 같다.
+    expect(plug).toMatch(/const obj = JSON\.parse\(code\)\s*\n\s*let parts = splitTranslation\(obj, used, refs\)/)
     expect(plug).toMatch(/i18n-\(core\|dash\|rest\)/)
     expect(stripComments(readFileSync('vite.config.ts', 'utf-8'))).toMatch(/\?i18n-rest'\)\) return `locale-\$\{localeMatch\[1\]\}-rest`/)
   })

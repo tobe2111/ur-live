@@ -159,20 +159,108 @@ export function splitTranslation(obj, used, refs) {
   return { core, dash, rest }
 }
 
+/**
+ * 🌐 2026-11-02 — **한국어 core 에서 "기본값과 똑같은" 키를 뺀다** (외국인 관광객 영어화의 대가를 0 으로).
+ *
+ * 왜: 이용권 상세·구매·지갑의 문장을 `t('pass.x', { defaultValue: '원래 한국어' })` 로 바꾸면서 ko 파일에도 같은
+ *   문장을 넣었더니, 한국어 손님이 **모든 화면에서** 받는 `locale-ko` 가 +4.6 KB(실행 비용 예산 5건 빨간불)였다.
+ *   그런데 그 키들은 소스가 **똑같은 한국어를 기본값으로 이미 들고 있다** — ko 파일 값은 같은 글자를 두 번 싣는 것이다.
+ * 무엇: ko core 에서만, 아래를 **전부** 만족하는 잎을 rest 로 옮긴다(한국어 화면은 기본값을 그대로 그린다 —
+ *   `src/i18n.ts` missingKeyHandler 는 ko + 기본값 있는 키 때문에 rest 를 받지 않는다).
+ *   ① 이름공간이 `KO_DEFAULT_ONLY_NS` 안 ② 그 키 문자열이 소스에 나오는 **모든 자리**가 `t('키', { defaultValue: '…' })` 꼴
+ *   ③ 그 기본값이 전부 ko 값과 **같다** ④ 템플릿 접두어(`x.${…}`)나 조상 키 언급에 걸리지 않는다.
+ *   하나라도 어긋나면 남긴다(보수적 — 키 이름이 화면에 뜨는 쪽이 훨씬 나쁘다). 다른 언어(en 등)는 손대지 않는다.
+ */
+export const KO_DEFAULT_ONLY_NS = ['pass', 'passBuy', 'wallet', 'voucher', 'map']
+const DV_CALL_RE = /\b(?:t|tr)\(\s*'([A-Za-z][\w.]*)'\s*,\s*\{\s*defaultValue:\s*'((?:[^'\\]|\\.)*)'/g
+
+function getPath(obj, key) {
+  if (Object.prototype.hasOwnProperty.call(obj, key)) return obj[key]
+  let cur = obj
+  for (const p of key.split('.')) {
+    if (!cur || typeof cur !== 'object' || !Object.prototype.hasOwnProperty.call(cur, p)) return undefined
+    cur = cur[p]
+  }
+  return cur
+}
+
+/** 소스만 보고 "ko 에서 빼도 되는" 키 후보와 그 기본값을 모은다(값 대조는 koDefaultOnlyKeys 가 한다). */
+export function collectDefaultValueUses(root) {
+  const literal = new Map()   // key → 소스에 그 문자열이 나온 횟수
+  const dv = new Map()        // key → defaultValue 목록
+  const prefixes = new Set()
+  for (const f of walk(path.join(root, 'src'))) {
+    if (/\/tests?\//.test(f)) continue
+    const s = fs.readFileSync(f, 'utf-8')
+    for (const m of s.matchAll(ANY_KEY_RE)) { const k = m[1]; if (k.endsWith('.')) prefixes.add(k.slice(0, -1)); else literal.set(k, (literal.get(k) || 0) + 1) }
+    for (const m of s.matchAll(ANY_TEMPLATE_RE)) prefixes.add(m[1].replace(/\.$/, ''))
+    for (const m of s.matchAll(DV_CALL_RE)) { const arr = dv.get(m[1]) || []; arr.push(m[2].replace(/\\'/g, "'")); dv.set(m[1], arr) }
+  }
+  return { literal, dv, prefixes }
+}
+
+/** ko 번역 객체와 소스 사용처로 "빼도 한국어가 같은" 키 목록을 낸다(순수 — 시험이 직접 부른다). */
+export function koDefaultOnlyKeys(koObj, uses) {
+  const out = []
+  for (const [key, vals] of uses.dv) {
+    if (!KO_DEFAULT_ONLY_NS.includes(key.split('.')[0])) continue
+    if ((uses.literal.get(key) || 0) !== vals.length) continue
+    const ko = getPath(koObj, key)
+    if (typeof ko !== 'string' || vals.some((v) => v !== ko)) continue
+    const parts = key.split('.')
+    let blocked = uses.prefixes.has(key)
+    for (let i = 1; i < parts.length && !blocked; i++) {
+      const pre = parts.slice(0, i).join('.')
+      if (uses.prefixes.has(pre) || uses.literal.has(pre)) blocked = true
+    }
+    if (!blocked) out.push(key)
+  }
+  return out
+}
+
+/** core 에서 그 키들을 떼어 rest 로 옮긴다(원본 불변). */
+export function moveKeysToRest(parts, keys) {
+  const core = JSON.parse(JSON.stringify(parts.core))
+  const rest = JSON.parse(JSON.stringify(parts.rest))
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(core, key)) { rest[key] = core[key]; delete core[key]; continue }
+    const ps = key.split('.')
+    const chain = [core]
+    for (const p of ps.slice(0, -1)) { const nxt = chain[chain.length - 1]?.[p]; if (!nxt || typeof nxt !== 'object') { chain.length = 0; break } chain.push(nxt) }
+    if (!chain.length) continue
+    const leafParent = chain[chain.length - 1]
+    const leaf = ps[ps.length - 1]
+    if (!Object.prototype.hasOwnProperty.call(leafParent, leaf)) continue
+    let r = rest
+    for (const p of ps.slice(0, -1)) { if (typeof r[p] !== 'object' || r[p] === null) r[p] = {}; r = r[p] }
+    r[leaf] = leafParent[leaf]
+    delete leafParent[leaf]
+    for (let i = chain.length - 1; i > 0; i--) { if (Object.keys(chain[i]).length === 0) delete chain[i - 1][ps[i - 1]]; else break }
+  }
+  return { ...parts, core, rest }
+}
+
 /** Vite 플러그인 — `translation.json?i18n-core|dash` 를 나눠서 돌려준다(쿼리 없으면 그대로). */
 export function i18nSplitPlugin(root) {
   let used = null
   let refs = null
+  let dvUses = null
   return {
     name: 'i18n-split',
     enforce: 'pre',
-    buildStart() { used = collectConsumerDashKeys(root); refs = collectReferencedKeys(root) },
+    buildStart() { used = collectConsumerDashKeys(root); refs = collectReferencedKeys(root); dvUses = collectDefaultValueUses(root) },
     transform(code, id) {
       const m = id.match(/\/locales\/[a-z]{2}\/translation\.json\?i18n-(core|dash|rest)$/)
       if (!m) return null
       if (!used) used = collectConsumerDashKeys(root)
       if (!refs) refs = collectReferencedKeys(root)
-      const parts = splitTranslation(JSON.parse(code), used, refs)
+      const obj = JSON.parse(code)
+      let parts = splitTranslation(obj, used, refs)
+      // 🌐 2026-11-02: 한국어만 — 소스 기본값과 같은 문장은 core 에서 뺀다(위 KO_DEFAULT_ONLY_NS 머리말).
+      if (/\/locales\/ko\//.test(id) && m[1] !== 'dash') {
+        if (!dvUses) dvUses = collectDefaultValueUses(root)
+        parts = moveKeysToRest(parts, koDefaultOnlyKeys(obj, dvUses))
+      }
       return { code: JSON.stringify(parts[m[1]]), map: null }
     },
   }

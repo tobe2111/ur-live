@@ -22,6 +22,7 @@ import { ChevronRight, X } from 'lucide-react'
 import api from '@/lib/api'
 import { useMyVouchers } from '@/hooks/queries'
 import { formatNumber } from '@/utils/format'
+import { useTranslation } from '@/lib/i18n-lite'
 import { safeDate } from '@/utils/safe-date'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { TicketCard, TicketRow, TicketOutlineButton, TicketNotes } from '@/components/ticket/TicketCard'
@@ -101,6 +102,7 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
   dealUsed?: number
 }) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [product, setProduct] = useState<ProductLite | null>(null)
   // 방금 발급된 이용권 — 지갑 쿼리는 confirm 직후 invalidate 됐으므로 여기서 다시 읽으면 새 행이 있다.
   const { data: vouchersRaw } = useMyVouchers()
@@ -122,7 +124,7 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
   const expiresAt = safeDate(issued?.expires_at)
   const daysLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 86400000)) : null
   const storeName = product?.restaurant_name || issued?.restaurant_name || ''
-  const itemName = product?.name || issued?.product_name || '이용권'
+  const itemName = product?.name || issued?.product_name || t('passBuy.voucher', { defaultValue: '이용권' })
   const unit = qty > 0 ? Math.round(amount / qty) : amount
   const original = product?.original_price ?? product?.price ?? null
   const pct = product?.current_discount_pct ?? (original && original > unit ? Math.round((1 - unit / original) * 100) : null)
@@ -136,31 +138,31 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
     >
       <div className="ur-content-narrow px-4 lg:px-8 pt-3 pb-10">
         <div className="flex justify-end">
-          <button type="button" onClick={() => navigate('/')} aria-label="닫기" className="w-10 h-10 -mr-2 flex items-center justify-center text-gray-700 dark:text-gray-200 active:opacity-60">
+          <button type="button" onClick={() => navigate('/')} aria-label={t('passBuy.close', { defaultValue: '닫기' })} className="w-10 h-10 -mr-2 flex items-center justify-center text-gray-700 dark:text-gray-200 active:opacity-60">
             <X className="w-6 h-6" strokeWidth={1.6} />
           </button>
         </div>
-        <h1 className="ur-pc-title text-center text-[24px] font-bold tracking-[-0.02em] mt-3 mb-6">결제가 완료되었어요</h1>
+        <h1 className="ur-pc-title text-center text-[24px] font-bold tracking-[-0.02em] mt-3 mb-6">{t('passBuy.completeTitle', { defaultValue: '결제가 완료되었어요' })}</h1>
 
-        <TicketCard className="ur-pc-ticket" bandLeft={bandLeft(issued?.expires_at)} bandRight={daysLeft !== null ? (daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`) : undefined}>
+        <TicketCard className="ur-pc-ticket" bandLeft={expiresAt ? bandLeft(issued?.expires_at) : t('passBuy.noExpiry', { defaultValue: '사용 기한 없음' })} bandRight={daysLeft !== null ? (daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`) : undefined}>
           <div className="ur-pc-body">
-          <TicketRow left={`${kindLabel}`} right={`${qty}매`} />
+          <TicketRow left={`${kindLabel}`} right={t('passBuy.sheets', { defaultValue: '{{n}}매', n: qty })} />
           <div className="px-4 pt-4 pb-4">
             {storeName && <p className="ur-pc-step ur-pc-step-1 text-[13px] text-gray-500 dark:text-gray-400">{storeName}</p>}
             <p className="ur-pc-step ur-pc-step-2 text-[17px] font-bold tracking-[-0.01em] mt-1">{itemName}</p>
             <div className="ur-pc-step ur-pc-step-3 flex items-baseline gap-2 mt-3 mb-4 tabular-nums">
               {pct !== null && pct > 0 && <span className="text-[17px] font-bold text-brand-text">{pct}%</span>}
-              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(motion.shownAmount)}원</span>
-              {original !== null && original * qty > amount && <span className="text-[13px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(original * qty)}원</span>}
+              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(motion.shownAmount) })}</span>
+              {original !== null && original * qty > amount && <span className="text-[13px] text-gray-400 dark:text-gray-500 line-through">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(original * qty) })}</span>}
             </div>
             {dealUsed > 0 && (
               <p className="-mt-2.5 mb-4 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums">
-                딜 {formatNumber(Math.min(dealUsed, amount))}
-                {amount > dealUsed && <> · 카드 {formatNumber(amount - dealUsed)}원</>}
+                {t('passBuy.dealUsed', { defaultValue: '딜 {{amount}}', amount: formatNumber(Math.min(dealUsed, amount)) })}
+                {amount > dealUsed && <> · {t('passBuy.cardPaid', { defaultValue: '카드 {{amount}}원', amount: formatNumber(amount - dealUsed) })}</>}
               </p>
             )}
             <div className="ur-pc-step ur-pc-step-4">
-              <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>이용권 확인</TicketOutlineButton>
+              <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>{t('passBuy.viewVouchers', { defaultValue: '이용권 확인' })}</TicketOutlineButton>
             </div>
           </div>
           </div>
@@ -168,9 +170,9 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
 
         <div className="ur-pc-notes mt-5 mb-6">
           <TicketNotes items={[
-            '매장에서 QR 또는 코드로 사용해요.',
-            '사용하지 않으면 기한이 지난 뒤 100% 자동 환불돼요.',
-            '매장 사정으로 사용이 어려우면 즉시 환불해 드려요.',
+            t('passBuy.noteUseQr', { defaultValue: '매장에서 QR 또는 코드로 사용해요.' }),
+            t('passBuy.noteAutoRefund', { defaultValue: '사용하지 않으면 기한이 지난 뒤 100% 자동 환불돼요.' }),
+            t('passBuy.noteStoreRefund', { defaultValue: '매장 사정으로 사용이 어려우면 즉시 환불해 드려요.' }),
           ]} />
         </div>
 
@@ -183,7 +185,7 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
           onClick={() => navigate(product?.seller_id ? `/s/${product.seller_id}` : '/')}
           className="w-full flex items-center justify-between gap-2 px-1 py-4 border-t border-rule text-left active:opacity-70"
         >
-          <span className="text-[15px] font-bold">{storeName ? `${storeName} 다른 이용권 보기` : '다른 이용권 보기'}</span>
+          <span className="text-[15px] font-bold">{storeName ? t('passBuy.moreFromStore', { defaultValue: '{{store}} 다른 이용권 보기', store: storeName }) : t('passBuy.moreVouchers', { defaultValue: '다른 이용권 보기' })}</span>
           <ChevronRight className="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
         </button>
       </div>

@@ -165,8 +165,8 @@ export default function GroupBuyDetailPage() {
     const code = searchParams.get('code') || ''
     const safeMsg = rawMsg.slice(0, 120)
     toast.error(safeMsg
-      ? `결제가 완료되지 않았어요 — ${safeMsg}${code ? ` (${code})` : ''}`
-      : '결제가 완료되지 않았어요. 다시 시도해주세요.')
+      ? t('pass.toast.payFailedWithMsg', { defaultValue: '결제가 완료되지 않았어요 — {{msg}}{{code}}', msg: safeMsg, code: code ? ` (${code})` : '' })
+      : t('pass.toast.payFailed', { defaultValue: '결제가 완료되지 않았어요. 다시 시도해주세요.' }))
     try {
       const u = new URL(window.location.href)
       ;['fail', 'code', 'message', 'orderId'].forEach(k => u.searchParams.delete(k))
@@ -214,7 +214,7 @@ export default function GroupBuyDetailPage() {
 
   useEffect(() => {
     if (!Number.isFinite(productId) || productId <= 0) {
-      toast.error('잘못된 ID')
+      toast.error(t('pass.toast.invalidId', { defaultValue: '잘못된 ID' }))
       navigate('/map') // 🧹 2026-07-20: /group-buy 는 홈 리다이렉트(죽은 경로) → 동네딜 지도로
       return
     }
@@ -230,7 +230,7 @@ export default function GroupBuyDetailPage() {
       queryKey: queryKeys.groupBuyProduct(productId),
       queryFn: async () => {
         const r = await api.get(`/api/group-buy/products/${productId}`)
-        if (!r.data?.success) throw new Error(r.data?.error || '상품을 찾을 수 없습니다')
+        if (!r.data?.success) throw new Error(r.data?.error || t('pass.notFound', { defaultValue: '상품을 찾을 수 없습니다' }))
         // 🛡️ 2026-05-23 revert 유지: 받은 상품 그대로 렌더(카테고리 redirect 금지 — 과거 사고).
         return r.data.data as GroupBuyDetail
       },
@@ -254,7 +254,7 @@ export default function GroupBuyDetailPage() {
           })
         } catch { /* silent */ }
       }
-    }).catch((e) => toast.error((e as Error)?.message || '네트워크 오류'))
+    }).catch((e) => toast.error((e as Error)?.message || t('pass.toast.networkError', { defaultValue: '네트워크 오류' })))
       .finally(() => !cancelled && setLoading(false))
     return () => { cancelled = true }
   }, [productId, navigate, qc])
@@ -411,13 +411,13 @@ export default function GroupBuyDetailPage() {
           quantity, payment_method: 'deal', ref, idempotency_key,
         })
         if (res.data?.success) {
-          if (flow === 'voucher_deal') toast.success('🎁 교환권 발급 완료') // 이용권은 아래 완료 화면이 말한다
+          if (flow === 'voucher_deal') toast.success(t('pass.toast.voucherIssued', { defaultValue: '🎁 교환권 발급 완료' })) // 이용권은 아래 완료 화면이 말한다
           fireAffiliateTrack(res?.data?.data?.order_id ?? null, Number(id), detail?.name) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
           // 🎟️ 교환권은 교환권 보관함으로. 🪙 2026-10-06 이용권(딜 전액)은 카드 결제와 **같은 완료 화면**으로 — 종전엔 교환권 보관함으로 잘못 보냈다.
           navigate(flow === 'voucher_deal' ? '/my-gifticons' : `/group-buy/confirm-payment?deal=1&productId=${productId}&qty=${quantity}&amount=${Number(res.data?.data?.amount) || total}`)
         } else {
-          toast.error(res.data?.error || '교환 실패')
+          toast.error(res.data?.error || t('pass.toast.exchangeFailed', { defaultValue: '교환 실패' }))
         }
       } catch (err: unknown) {
         // 💰 실패 안내 3갈래(게이트 꺼짐 / 딜 부족 / 그 외)는 `./group-buy/deal-join-error`.
@@ -440,12 +440,12 @@ export default function GroupBuyDetailPage() {
         ...(dealUse == null ? {} : { deal_use: dealUse }),
       })
       if (!initRes.data?.success) {
-        toast.error(initRes.data?.error || '공구 결제 시작 실패')
+        toast.error(initRes.data?.error || t('pass.toast.payInitFailed', { defaultValue: '공구 결제 시작 실패' }))
         return
       }
       const { orderId, amount, orderName, clientKey: serverClientKey, flow: serverFlow, dealUsed: serverDealUsed } = initRes.data.data as { orderId: string; amount: number; orderName: string; clientKey?: string; flow?: 'redirect' | 'widget' | 'invalid'; dealUsed?: number }
       if (!serverClientKey) {
-        toast.error('결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.')
+        toast.error(t('pass.toast.paymentNotConfigured', { defaultValue: '결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.' }))
         return
       }
       // 🛡️ 2026-05-23 belt-and-suspenders: 클라이언트도 키 형식 직접 감지 →
@@ -453,7 +453,7 @@ export default function GroupBuyDetailPage() {
       //   SDK 의 "결제위젯 연동 키는 지원하지 않습니다" 에러 영구 차단.
       const flow = resolveTossFlow(serverFlow, serverClientKey)
       if (flow === 'invalid') {
-        toast.error('결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.')
+        toast.error(t('pass.toast.paymentNotConfigured', { defaultValue: '결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.' }))
         return
       }
 
@@ -489,10 +489,10 @@ export default function GroupBuyDetailPage() {
       const e = err as { response?: { status?: number; data?: { error?: string; code?: string } }; code?: string; message?: string }
       if (e?.code === 'USER_CANCEL') return  // 사용자 명시 취소
       if (e?.response?.status === 429) {
-        toast.error('잠시 후 다시 시도해주세요.')
+        toast.error(t('pass.toast.retryLater', { defaultValue: '잠시 후 다시 시도해주세요.' }))
         return
       }
-      const msg = e?.response?.data?.error || e?.message || '참여 실패'
+      const msg = e?.response?.data?.error || e?.message || t('pass.toast.joinFailed', { defaultValue: '참여 실패' })
       toast.error(msg)
     } finally {
       setJoining(false)
@@ -507,8 +507,8 @@ export default function GroupBuyDetailPage() {
   if (!detail) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#11141C] text-gray-900 dark:text-white">
-        <p className="font-bold mb-3">상품을 찾을 수 없습니다</p>
-        <button onClick={() => navigate('/map')} className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold">공구 목록으로</button>
+        <p className="font-bold mb-3">{t('pass.notFound', { defaultValue: '상품을 찾을 수 없습니다' })}</p>
+        <button onClick={() => navigate('/map')} className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold">{t('pass.backToList', { defaultValue: '공구 목록으로' })}</button>
       </div>
     )
   }
@@ -521,16 +521,16 @@ export default function GroupBuyDetailPage() {
             ...(hasStoreIntro({ description: detail.description, productName: detail.name,
               longDescription: (detail as { long_description?: string | null }).long_description,
               sellerBio: (detail as { seller_bio?: string | null }).seller_bio })
-              ? [{ id: 'gb-sec-store', label: '가게 소개' }] : []),
-            ...((detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) ? [{ id: 'gb-sec-location', label: '매장 위치' }] : []),
-            { id: 'gb-sec-info', label: '이용권 정보' },
-            ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: '리뷰' }] : []),
+              ? [{ id: 'gb-sec-store', label: t('pass.storeIntro.title', { defaultValue: '가게 소개' }) }] : []),
+            ...((detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) ? [{ id: 'gb-sec-location', label: t('pass.location.title', { defaultValue: '매장 위치' }) }] : []),
+            { id: 'gb-sec-info', label: t('pass.tabs.info', { defaultValue: '이용권 정보' }) },
+            ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: t('pass.tabs.reviews', { defaultValue: '리뷰' }) }] : []),
   ]
   /** 폰 탭은 칸이 좁아 이름만 짧게 — 구역(id)은 PC 와 같다. */
-  const MOBILE_TAB_LABEL: Record<string, string> = { 'gb-sec-store': '상품 정보', 'gb-sec-location': '매장', 'gb-sec-info': '이용 안내' }
+  const MOBILE_TAB_LABEL: Record<string, string> = { 'gb-sec-store': t('pass.tabs.mobileProduct', { defaultValue: '상품 정보' }), 'gb-sec-location': t('pass.tabs.mobileStore', { defaultValue: '매장' }), 'gb-sec-info': t('pass.usageGuide.title', { defaultValue: '이용 안내' }) }
   const mobileTabs = [
     ...sectionTabs.filter((t) => t.id !== 'gb-sec-reviews').map((t) => ({ id: t.id, label: MOBILE_TAB_LABEL[t.id] || t.label })),
-    { id: 'gb-sec-reviews', label: Number(detail.review_count || 0) > 0 ? `리뷰 ${formatNumber(Number(detail.review_count))}` : '리뷰' },
+    { id: 'gb-sec-reviews', label: Number(detail.review_count || 0) > 0 ? t('pass.tabs.reviewsCount', { defaultValue: '리뷰 {{count}}', count: formatNumber(Number(detail.review_count)) }) : t('pass.tabs.reviews', { defaultValue: '리뷰' }) },
   ]
 
   return (
@@ -590,7 +590,7 @@ export default function GroupBuyDetailPage() {
 
       {/* WCAG AA: skip-link */}
       <a href="#gb-main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-gray-900 focus:text-white focus:px-3 focus:py-2 focus:rounded-lg focus:text-[15px] focus:font-bold">
-        본문으로 건너뛰기
+        {t('pass.skipToContent', { defaultValue: '본문으로 건너뛰기' })}
       </a>
 
       <DetailFloatingHeader
@@ -645,8 +645,8 @@ export default function GroupBuyDetailPage() {
                 {/* 🧭 2026-08-30: 사진 위 카테고리 칩을 뺐다. 바로 위 빵부스러기가 같은 말을 하고 있어
                     중복이었고, 게다가 이 칩은 **자체 라벨 맵**을 들고 있어 명칭 SSOT 와 어긋났다
                     ('뷰티'/'숙박'/'액티비티' — SSOT 는 미용/숙소/기타). 사진 위엔 할인율만 남긴다. */}
-                {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 500 }}>마감</span>}
-                {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 500 }}>취소</span>}
+                {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 500 }}>{t('pass.badge.closed', { defaultValue: '마감' })}</span>}
+                {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 500 }}>{t('pass.badge.cancelled', { defaultValue: '취소' })}</span>}
               </div>
             </>
           }
@@ -659,7 +659,7 @@ export default function GroupBuyDetailPage() {
         onnuri={(detail as { onnuri_merchant?: boolean }).onnuri_merchant} />
       <main id="gb-main" role="main">
         {/* 🖥️ 2026-07-19 그루폰식 섹션 탭 — PC 전용(클릭 → 해당 섹션 스크롤). 모바일은 세로 스택이라 불필요. */}
-        <nav className="hidden lg:flex items-center gap-1 mt-4 mb-4 px-2 py-1 rounded-2xl bg-[var(--gbd-card)] shadow-lift" aria-label="상세 섹션">
+        <nav className="hidden lg:flex items-center gap-1 mt-4 mb-4 px-2 py-1 rounded-2xl bg-[var(--gbd-card)] shadow-lift" aria-label={t('pass.tabs.pcAriaLabel', { defaultValue: '상세 섹션' })}>
           {sectionTabs.map((tab) => (
             <button key={tab.id} onClick={() => document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               style={{ padding: '11px 15px', fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink2)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
@@ -783,7 +783,7 @@ export default function GroupBuyDetailPage() {
               style={{ marginTop: 14, width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 500 }}
               className="border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10"
             >
-              이 매장에 공구 제안하기
+              {t('pass.proposeToStore', { defaultValue: '이 매장에 공구 제안하기' })}
             </button>
           )}
         </div>

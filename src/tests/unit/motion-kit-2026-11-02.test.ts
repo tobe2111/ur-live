@@ -224,7 +224,8 @@ describe('⑦ 6차 — 동작 계약', () => {
     for (const f of ['src/pages/group-buy/DealBottomBar.tsx', 'src/pages/group-buy/DealPurchaseBox.tsx']) {
       const src = R(f)
       expect(src, f).not.toContain("joining ? '처리 중…'")
-      expect(src, f).toContain('<span className="ur-pay-spin" aria-hidden="true" />처리 중…')
+      // 2026-11-02 #2124 영어 번역: PC 박스는 글자를 t() 로 감싼다 — 도는 원 뒤에 그 글자가 오면 된다.
+      expect(src, f).toMatch(/<span className="ur-pay-spin" aria-hidden="true" \/>(처리 중…|\{t\('passBuy\.processing', \{ defaultValue: '처리 중…' \}\)\})/)
     }
   })
   it('찜 목록: 빠진 줄은 300ms 동안 원래 자리에 남아 밀려 나가고, 화면 읽기 도구에선 숨긴다', () => {

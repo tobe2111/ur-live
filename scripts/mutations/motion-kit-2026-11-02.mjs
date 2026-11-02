@@ -72,8 +72,9 @@ export default [
   {
     name: '🎬 결제 처리 중 표시에서 도는 원이 빠진다',
     file: 'src/pages/group-buy/DealPurchaseBox.tsx',
-    find: '{joining ? <span className="ur-pay-busy"><span className="ur-pay-spin" aria-hidden="true" />처리 중…</span>',
-    replace: "{joining ? '처리 중…'",
+    // 2026-11-02 #2124 영어 번역 재조준: 글자가 t() 로 감싸졌다.
+    find: `{joining ? <span className="ur-pay-busy"><span className="ur-pay-spin" aria-hidden="true" />{t('passBuy.processing', { defaultValue: '처리 중…' })}</span>`,
+    replace: `{joining ? t('passBuy.processing', { defaultValue: '처리 중…' })`,
     test: TEST,
     why: '눌렀는지 모르는 몇 초 동안 손님이 결제 버튼을 다시 누른다.',
   },

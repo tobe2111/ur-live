@@ -37,7 +37,8 @@ describe('이용권 상세 — 제목은 사진 아래 (2026-10-31 대표 "이�
     expect(card).toContain('className={PASS_HEAD.card}')
     expect(card).toContain('>{name}</h1>')
     // 🔁 2026-10-25 E안: '옵션 선택' 카드를 걷었다 — 모바일 가격은 머리 카드 한 곳(그 루트가 lg:hidden).
-    expect(card).toContain('{formatNumber(unitPrice)}원</span>')
+    // 🌐 2026-11-02: 가격 단위가 번역 함수로 들어갔다(영어 'won') — 한국어 기본값과 값 바인딩을 본다.
+    expect(card).toContain("defaultValue: '{{price}}원', price: formatNumber(unitPrice) })}</span>")
     const cls = /card:\s*'([^']+)'/.exec(code('src/shared/pass-head.ts'))
     expect(cls, 'PASS_HEAD.card 를 못 찾았다').toBeTruthy()
     expect(cls![1].split(/\s+/), '머리 카드가 lg:hidden 이 아니다 — PC 에서 제목·가격이 두 벌로 나온다').toContain('lg:hidden')

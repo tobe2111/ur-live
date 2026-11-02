@@ -9,8 +9,9 @@ export default [
   {
     name: '[가게소개] 탭을 다시 무조건 그린다(눌러도 안 가는 탭 부활)',
     file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: "              ? [{ id: 'gb-sec-store', label: '가게 소개' }] : []),",
-    replace: "              ? [{ id: 'gb-sec-store', label: '가게 소개' }] : [{ id: 'gb-sec-store', label: '가게 소개' }]),",
+    // 🌐 2026-11-02: 탭 라벨이 번역 함수로 들어갔다 — 앵커를 따라 옮긴다(불변식은 그대로: 조건 없이 그리면 안 된다).
+    find: "              ? [{ id: 'gb-sec-store', label: t('pass.storeIntro.title', { defaultValue: '가게 소개' }) }] : []),",
+    replace: "              ? [{ id: 'gb-sec-store', label: t('pass.storeIntro.title', { defaultValue: '가게 소개' }) }] : [{ id: 'gb-sec-store', label: '가게 소개' }]),",
     test: 'src/tests/unit/store-intro-tab-parity-2026-09-25.test.ts',
     why:
       '2026-09-25 라이브에서 실제로 이 상태였다 — 설명이 빈 상품(활성 2,620건 중 23건)에서 ' +

@@ -12,6 +12,7 @@ import { useFcfsDetail } from '@/features/group-buy/useFcfsDetail'
 import { BellIcon } from '@/components/icons/urdeal-icons'
 import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
 import { formatNumber } from '@/utils/format'
+import { useTranslation } from '@/lib/i18n-lite'
 import OwnerManagePanel from './OwnerManagePanel'
 import RollingNumber from '@/components/ui/RollingNumber' // 🎬 2026-11-02 수량이 굴러가며 바뀐다
 import './pay-spin-css' // 🎬 2026-11-02 시안 6차 결제 처리 중 도는 원 — 모바일 바·PC 상자가 같은 CSS 를 한 번만 싣게(같은 청크)
@@ -53,6 +54,7 @@ export default function DealPurchaseBox({
   // 🎯 2026-10-27 (대표 "구매하기 보다 응모하기"): 추첨 상품은 당첨자가 아니면 결제 대신 응모 — 모바일 바와 같은 훅.
   const { id } = useParams<{ id: string }>()
   const fcfs = useFcfsDetail(Number(id))
+  const { t } = useTranslation()
   const raffle = fcfs.gate && !isPrelaunch && !isOwner
   // 🎭 2026-10-12 (대표 *"데모인 것을 티내지마"*): 데모만 다른 라벨을 쓰던 분기를 **없앴다**.
   //   종전엔 데모 `결제하기`·`응모 불가` / 실상품 `구매하기`·`구매 불가` 라서 **라벨만 보고 데모를
@@ -71,6 +73,7 @@ export default function DealPurchaseBox({
   //   ⚠️ 그리고 종전 처방은 애초에 반쪽이었다: 실상품에 선착순이 켜지면 같은 오인이 가능한데
   //     그쪽은 `구매하기` 였다. 통일이 **더 정확한** 쪽이다.
   const ctaLabel = '구매하기'
+  const buyWithAmount = t('passBuy.buyWithAmount', { defaultValue: `{{amount}}원 ${ctaLabel}`, amount: formatNumber(total) })
   // 🪟 2026-09-15 안 3 예외 — **이 박스만 안 2(들림)**. 스크롤을 따라다니며 본문 위에 얹히는
   //   물건이라 정말로 떠 있어야 하고, 체계가 그 자리를 위해 `--lift` 를 정의해 뒀다.
   //   ⚠️ 하드코딩 그림자를 쓰면 안 된다 — 다크는 `--lift: none` 이라 그림자가 꺼져야 하는데
@@ -82,12 +85,12 @@ export default function DealPurchaseBox({
           "결제 즉시 교환권 발급"(용어 오류) · 이름·가격을 한 번 더 말하던 '구매 옵션' 상자. */}
       <div className="flex items-baseline flex-wrap gap-x-2">
         {discountPct > 0 && <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
-        <span className="text-[28px] font-extrabold tracking-[-.03em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>
-        {unitSaving > 0 && <s className="text-[13px]" style={{ color: 'var(--gbd-sub2)' }}>{formatNumber(refPrice)}원</s>}
+        <span className="text-[28px] font-extrabold tracking-[-.03em]" style={{ color: 'var(--gbd-ink)' }}>{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(unitPrice) })}</span>
+        {unitSaving > 0 && <s className="text-[13px]" style={{ color: 'var(--gbd-sub2)' }}>{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(refPrice) })}</s>}
       </div>
       {unitSaving > 0 && (
         <div className="mt-3 rounded-xl px-3 py-2 text-[13px]" style={{ background: 'var(--gbd-accent-soft)', color: 'var(--gbd-ink2)' }}>
-          1장당 <b className="font-bold text-brand-text">{formatNumber(unitSaving)}원</b> 아껴요
+          {t('passBuy.savePerPrefix', { defaultValue: '1장당' })} <b className="font-bold text-brand-text">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(unitSaving) })}</b> {t('passBuy.savePerSuffix', { defaultValue: '아껴요' })}
         </div>
       )}
 
@@ -100,14 +103,14 @@ export default function DealPurchaseBox({
       {!raffle && <div style={{ margin: '16px 0 12px' }}>
         <FieldCard>
           <FieldRow
-            label="수량"
-            hint={maxPerPerson && maxPerPerson > 0 ? `1인당 최대 ${maxPerPerson}개` : undefined}
-            value={`${quantity}장`}
+            label={t('passBuy.quantity', { defaultValue: '수량' })}
+            hint={maxPerPerson && maxPerPerson > 0 ? t('passBuy.maxPerPerson', { defaultValue: '1인당 최대 {{n}}개', n: maxPerPerson }) : undefined}
+            value={t('passBuy.qtySheets', { defaultValue: '{{n}}장', n: quantity })}
             right={
               <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} role="group" aria-label="수량 조절">
-                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 17, cursor: 'pointer', opacity: (!buyable || quantity <= 1) ? .35 : 1 }}>−</button>
+                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label={t('passBuy.qtyDecrease', { defaultValue: '수량 감소' })} style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 17, cursor: 'pointer', opacity: (!buyable || quantity <= 1) ? .35 : 1 }}>−</button>
                 <span style={{ minWidth: 28, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live="polite"><RollingNumber value={quantity} /></span>
-                <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 17, cursor: 'pointer', opacity: (!buyable || quantity >= maxQty) ? .35 : 1 }}>+</button>
+                <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label={t('passBuy.qtyIncrease', { defaultValue: '수량 증가' })} style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 17, cursor: 'pointer', opacity: (!buyable || quantity >= maxQty) ? .35 : 1 }}>+</button>
               </span>
             }
           />
@@ -131,22 +134,22 @@ export default function DealPurchaseBox({
       <button
         onClick={isPrelaunch ? onPrelaunchApply : () => { if (!fcfs.pending) onBuy() }}
         disabled={(!isJoinable && !isPrelaunch) || joining}
-        aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? (allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`) : '구매 불가'}
+        aria-label={isPrelaunch ? t('passBuy.prelaunchApply', { defaultValue: '사전 응모하기' }) : isJoinable ? (allDeal ? `${formatNumber(total)}딜로 결제하기` : buyWithAmount) : t('passBuy.unavailable', { defaultValue: '구매 불가' })}
         style={{ width: '100%', height: 50, border: 'none', borderRadius: 12, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 15, fontWeight: 700, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
       >
-        {joining ? <span className="ur-pay-busy"><span className="ur-pay-spin" aria-hidden="true" />처리 중…</span> : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? ('구매 불가') : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+        {joining ? <span className="ur-pay-busy"><span className="ur-pay-spin" aria-hidden="true" />{t('passBuy.processing', { defaultValue: '처리 중…' })}</span> : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />{t('passBuy.openingSoon', { defaultValue: '오픈 예정' })} — {t('passBuy.prelaunchApply', { defaultValue: '사전 응모하기' })}</> : !isJoinable ? (t('passBuy.unavailable', { defaultValue: '구매 불가' })) : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : buyWithAmount}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>
       )}
 
       {/* 🔒 안심 한 줄 — 모바일 구매 창과 같은 문구(2026-10-11 D안). 세 줄 배지는 "결제 즉시 교환권 발급"(용어 오류)을 담고 있었다. */}
       {raffle ? (
-        <div className="mt-3 text-[12px] text-center" style={{ color: 'var(--gbd-sub)' }}>결제 없이 응모해요 · 당첨되면 알려드려요</div>
+        <div className="mt-3 text-[12px] text-center" style={{ color: 'var(--gbd-sub)' }}>{t('passBuy.raffleNote', { defaultValue: '결제 없이 응모해요 · 당첨되면 알려드려요' })}</div>
       ) : <div className="mt-3 flex items-center justify-center gap-1 text-[12px]" style={{ color: 'var(--gbd-sub)' }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
-        토스로 3초 안전결제, 미사용 시 100% 자동환불
+        {t('passBuy.safePayNote', { defaultValue: '토스로 3초 안전결제, 미사용 시 100% 자동환불' })}
       </div>}
       {isPrelaunch && (
-        <div className="mt-2 text-[12px] text-center" style={{ color: 'var(--gbd-sub)' }}>오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요</div>
+        <div className="mt-2 text-[12px] text-center" style={{ color: 'var(--gbd-sub)' }}>{t('passBuy.prelaunchNote', { defaultValue: '오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요' })}</div>
       )}
       </>}
     </div>

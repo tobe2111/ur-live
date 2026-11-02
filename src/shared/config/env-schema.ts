@@ -42,6 +42,8 @@ const krEnvSchema = commonEnvSchema.extend({
   // NOTE: KAKAO_REST_API_KEY는 서버 전용. 프론트는 /auth/kakao/start 경유.
   VITE_KAKAO_JAVASCRIPT_KEY: z.string().min(1, 'Kakao JavaScript Key is required for KR region'),
   VITE_KAKAO_AUTH_URL: z.string().url('Invalid Kakao Auth URL').optional(),
+  // 🗺️ 2026-11-02: 외국어 손님용 네이버 지도(NCP Maps Client ID). 없으면 외국어 손님도 카카오맵.
+  VITE_NAVER_MAP_KEY_ID: z.string().optional(),
 
   // Toss 결제 설정 (KR 필수)
   VITE_TOSS_CLIENT_KEY: z.string().min(1, 'Toss Client Key is required for KR region'),

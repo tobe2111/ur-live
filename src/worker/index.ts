@@ -475,6 +475,8 @@ app.use('*', async (c, next) => {
     FIREBASE_RTDB_URL,
     "https://apis.google.com", "https://*.googleapis.com",
     "https://kauth.kakao.com", "https://*.kakao.com", "https://t1.kakaocdn.net", "https://*.daumcdn.net",
+    // 🗺️ 2026-11-02: 외국어 손님용 네이버 지도(NaverMiniMap) — 키(VITE_NAVER_MAP_KEY_ID) 없으면 안 불린다.
+    "https://oapi.map.naver.com",
     "https://www.youtube.com", "https://youtube.com", "https://s.ytimg.com", "https://*.youtube.com",
     "https://cdn.jsdelivr.net", "https://unpkg.com", "https://*.sentry.io",
     `https://*.firebaseapp.com`, FIREBASE_APP_URL,

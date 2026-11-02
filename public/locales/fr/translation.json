@@ -5011,7 +5011,8 @@
       "expired": "Expiré",
       "refunded": "Remboursé",
       "processing": "Envoi en cours",
-      "sendFailed": "Échec de l'envoi"
+      "sendFailed": "Échec de l'envoi",
+      "gifted": "[TODO:fr] 선물 완료"
     },
     "verify": {
       "codeLabel": "Code du bon",
@@ -5099,7 +5100,34 @@
     "mapShort": "Carte",
     "recoTitle": "Vous aimerez peut-être",
     "recoMore": "Voir plus",
-    "gifticonUsableTotal": "Bons utilisables"
+    "gifticonUsableTotal": "Bons utilisables",
+    "cancelConfirm": "[TODO:fr] 이 교환권 구매를 취소하고 환불받으시겠어요?\n(미사용 + 구매 7일 이내만 가능)",
+    "cancelDone": "[TODO:fr] 구매가 취소되었습니다",
+    "cancelFail": "[TODO:fr] 취소할 수 없습니다",
+    "cancelError": "[TODO:fr] 취소 중 오류가 발생했습니다",
+    "cancelling": "[TODO:fr] 취소 처리 중…",
+    "contactSupportShort": "[TODO:fr] 고객센터",
+    "expiryNoticeToday": "[TODO:fr] 오늘까지 써야 하는 이용권이 있어요",
+    "expiryNoticeDays": "[TODO:fr] {{d}}일 남은 이용권이 있어요",
+    "expiryNoticeMore": "[TODO:fr]  외 {{n}}장",
+    "firstTitle": "[TODO:fr] 첫 이용권이에요!",
+    "firstDesc": "[TODO:fr] 매장에서 이용권의 QR만 보여주면 끝이에요. 유달이가 도장 하나 찍어 둘게요.",
+    "firstStampBuy": "[TODO:fr] 첫 구매",
+    "firstStampUse": "[TODO:fr] 첫 사용",
+    "firstStampReview": "[TODO:fr] 첫 리뷰",
+    "firstStampTodo": "[TODO:fr] 아직 안 함",
+    "groupPast": "[TODO:fr] 지난 이용권",
+    "ktCheckMmsShort": "[TODO:fr] 휴대폰 메시지함에서 확인",
+    "ktSendFailedShort": "[TODO:fr] 결제 완료 · 재발송은 고객센터로 문의",
+    "ktSentSuffix": "[TODO:fr] 문자 발송",
+    "noDone": "[TODO:fr] 사용한 이용권이 아직 없어요",
+    "noExpiryShort": "[TODO:fr] 기한 없음",
+    "offlineUsable": "[TODO:fr] 오프라인에서도 이 화면으로 사용할 수 있어요",
+    "refundReasonPrompt": "[TODO:fr] 환불 요청 사유를 입력해주세요 (예: 방문 계획 취소)",
+    "refundRequested": "[TODO:fr] 환불 요청이 접수되었어요. 확인 후 처리해 드릴게요.",
+    "refundFailed": "[TODO:fr] 환불 요청에 실패했어요",
+    "usageInfo": "[TODO:fr] 이용 안내",
+    "useNow": "[TODO:fr] 현장에서 사용하기"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",
@@ -5967,7 +5995,12 @@
       "dragHint": "Faites glisser le repère à l’endroit exact, ou touchez la carte pour le déplacer",
       "loadFailed": "Impossible de charger la carte",
       "searchStillWorks": "Vous pouvez chercher par nom ou adresse ci-dessus"
-    }
+    },
+    "addressNotFound": "[TODO:fr] 주소를 지도에서 찾을 수 없습니다",
+    "loadFailed": "[TODO:fr] 지도 로드 실패",
+    "showFailed": "[TODO:fr] 지도 표시 실패",
+    "openNaver": "[TODO:fr] 네이버 지도",
+    "loading": "[TODO:fr] 지도 로딩 중..."
   },
   "sellerSwitch": {
     "pending": "En cours d'examen",
@@ -7030,5 +7063,189 @@
     "gone": "Expirés/Remboursés",
     "empty": "Vous n'avez pas encore acheté de pass",
     "browse": "Voir les pass"
+  },
+  "wallet": {
+    "ticket": {
+      "hintScanOnly": "[TODO:fr] 직원에게 QR 보여주기",
+      "hintStoreCode": "[TODO:fr] 매장에서 코드 입력",
+      "hintSelfFree": "[TODO:fr] 바로 사용",
+      "giftedToName": "[TODO:fr] {{name}}님에게 선물했어요",
+      "giftedToFriend": "[TODO:fr] 친구에게 선물했어요",
+      "giftPendingLocked": "[TODO:fr] 선물 중이에요. 친구가 받기 전까지 쓸 수 없어요",
+      "usedOn": "[TODO:fr] {{date}} 사용",
+      "expiresUntil": "[TODO:fr] {{date}}까지",
+      "viewGiftStatus": "[TODO:fr] 선물 상태 보기",
+      "couponBarcode": "[TODO:fr] 쿠폰 바코드",
+      "giftishowChip": "[TODO:fr] 기프티쇼"
+    },
+    "qr": {
+      "stepScanOnly1": "[TODO:fr] 매장 방문 후 이 QR 화면을 직원에게 보여주세요",
+      "stepScanOnly2": "[TODO:fr] 직원이 QR을 스캔해 사용 처리해요",
+      "stepCheckDone": "[TODO:fr] ‘사용 완료’ 화면을 확인하세요",
+      "stepTapUseNow": "[TODO:fr] 매장 방문 후 아래 ‘현장에서 사용하기’를 누르세요",
+      "stepStoreCode2": "[TODO:fr] 카운터에 비치된 매장 확인코드를 입력하세요",
+      "stepSelfFree2": "[TODO:fr] 바로 사용 처리돼요 (실수 시 60초 내 취소)",
+      "stepDefault1": "[TODO:fr] 매장 방문 후 이 화면을 직원에게 보여주세요",
+      "stepDefault2": "[TODO:fr] 직원 확인 후 사용 처리됩니다",
+      "modeScanOnly": "[TODO:fr] 직원 확인",
+      "modeStoreCode": "[TODO:fr] 매장 확인코드",
+      "modeSelfFree": "[TODO:fr] 바로 사용",
+      "modeOnSite": "[TODO:fr] 현장 사용",
+      "expiresUntil": "[TODO:fr] {{date}}까지",
+      "stampUsed": "[TODO:fr] 사용 완료",
+      "stampGifting": "[TODO:fr] 선물 중",
+      "stampExpired": "[TODO:fr] 만료됨",
+      "stampRefunded": "[TODO:fr] 환불됨",
+      "howToUse": "[TODO:fr] 사용 방법",
+      "validity": "[TODO:fr] 유효기간",
+      "storeInfo": "[TODO:fr] 매장 정보",
+      "cautions": "[TODO:fr] 주의사항",
+      "caution1": "[TODO:fr] 사용 후 환불·취소가 불가해요",
+      "caution2": "[TODO:fr] 1회용 이용권으로 중복 사용은 안 돼요",
+      "caution3": "[TODO:fr] 현금 교환·잔액 환급은 불가해요",
+      "caution4": "[TODO:fr] 유효기간이 지나면 결제 수단으로 자동 환불돼요",
+      "giftPendingTitle": "[TODO:fr] 친구에게 선물 중이에요",
+      "giftPendingDesc1": "[TODO:fr] 친구가 받기 전까지는 이 이용권을 쓸 수 없어요.",
+      "giftPendingDesc2": "[TODO:fr] 선물 보내기를 취소하면 다시 쓸 수 있어요.",
+      "giftLinkOrCancel": "[TODO:fr] 선물 링크 보기, 보내기 취소",
+      "gift": "[TODO:fr] 선물하기",
+      "receivedGiftNote": "[TODO:fr] 선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요"
+    }
+  },
+  "pass": {
+    "usageGuide": {
+      "title": "[TODO:fr] 이용 안내",
+      "expiryUntil": "[TODO:fr] 까지 사용",
+      "terms": "[TODO:fr] 유의사항",
+      "defaultTermNoStacking": "[TODO:fr] 현장에서 추가 할인이나 다른 쿠폰과 중복 적용되지 않아요.",
+      "defaultTermNoRefund": "[TODO:fr] 잔액은 환불되지 않으니 한 번에 사용하시길 권장해요."
+    },
+    "seller": {
+      "verified": "[TODO:fr] 검증 셀러",
+      "profile": "[TODO:fr] 프로필"
+    },
+    "storeIntro": {
+      "composition": "[TODO:fr] 상품 구성",
+      "title": "[TODO:fr] 가게 소개",
+      "owner": "[TODO:fr] 사장님",
+      "ownerOf": "[TODO:fr] {{name}} 사장님"
+    },
+    "head": {
+      "onnuri": "[TODO:fr] 온누리 사용 가능",
+      "prelaunch": "[TODO:fr] 오픈 예정 · 사전 응모 받는 중",
+      "buyers": "[TODO:fr] {{count}}명 구매"
+    },
+    "price": {
+      "won": "[TODO:fr] {{price}}원"
+    },
+    "title": {
+      "registeredStore": "[TODO:fr]  · 정식 등록 매장"
+    },
+    "tabs": {
+      "ariaLabel": "[TODO:fr] 상세 구역",
+      "pcAriaLabel": "[TODO:fr] 상세 섹션",
+      "info": "[TODO:fr] 이용권 정보",
+      "reviews": "[TODO:fr] 리뷰",
+      "reviewsCount": "[TODO:fr] 리뷰 {{count}}",
+      "mobileProduct": "[TODO:fr] 상품 정보",
+      "mobileStore": "[TODO:fr] 매장"
+    },
+    "menu": {
+      "title": "[TODO:fr] 대표 메뉴",
+      "orderWithVoucher": "[TODO:fr] 교환권으로 주문 가능",
+      "hot": "[TODO:fr] 인기"
+    },
+    "location": {
+      "title": "[TODO:fr] 매장 위치",
+      "viewStore": "[TODO:fr] 가게 보기",
+      "callAria": "[TODO:fr] 매장에 전화 ({{phone}})",
+      "call": "[TODO:fr] 전화",
+      "directions": "[TODO:fr] 길찾기"
+    },
+    "otherDeals": {
+      "title": "[TODO:fr] 이 가게의 다른 이용권",
+      "viewAll": "[TODO:fr] 전체보기"
+    },
+    "gallery": {
+      "enlarge": "[TODO:fr] 사진 크게 보기",
+      "allPhotosEnlarge": "[TODO:fr] 전체 사진 {{count}}장 크게 보기",
+      "viewPhotoN": "[TODO:fr] 사진 {{n}} 보기",
+      "allPhotosView": "[TODO:fr] 전체 사진 {{count}}장 보기",
+      "viewPhotoOrdinal": "[TODO:fr] 사진 {{n}}번째 보기",
+      "allPhotosCount": "[TODO:fr] 전체 사진 {{count}}장",
+      "lightboxAria": "[TODO:fr] {{alt}} 사진 {{count}}장",
+      "close": "[TODO:fr] 닫기",
+      "prev": "[TODO:fr] 이전 사진",
+      "next": "[TODO:fr] 다음 사진",
+      "photoOrdinal": "[TODO:fr] {{n}}번째 사진"
+    },
+    "toast": {
+      "payFailedWithMsg": "[TODO:fr] 결제가 완료되지 않았어요 — {{msg}}{{code}}",
+      "payFailed": "[TODO:fr] 결제가 완료되지 않았어요. 다시 시도해주세요.",
+      "invalidId": "[TODO:fr] 잘못된 ID",
+      "networkError": "[TODO:fr] 네트워크 오류",
+      "voucherIssued": "[TODO:fr] 🎁 교환권 발급 완료",
+      "exchangeFailed": "[TODO:fr] 교환 실패",
+      "payInitFailed": "[TODO:fr] 공구 결제 시작 실패",
+      "paymentNotConfigured": "[TODO:fr] 결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.",
+      "retryLater": "[TODO:fr] 잠시 후 다시 시도해주세요.",
+      "joinFailed": "[TODO:fr] 참여 실패"
+    },
+    "notFound": "[TODO:fr] 상품을 찾을 수 없습니다",
+    "backToList": "[TODO:fr] 공구 목록으로",
+    "skipToContent": "[TODO:fr] 본문으로 건너뛰기",
+    "badge": {
+      "closed": "[TODO:fr] 마감",
+      "cancelled": "[TODO:fr] 취소"
+    },
+    "proposeToStore": "[TODO:fr] 이 매장에 공구 제안하기"
+  },
+  "passBuy": {
+    "invalidPaymentInfo": "[TODO:fr] 결제 정보가 올바르지 않습니다.",
+    "paymentFailed": "[TODO:fr] 결제 처리 실패",
+    "approvalError": "[TODO:fr] 결제 승인 중 오류",
+    "seoComplete": "[TODO:fr] 결제 완료 - 유어딜",
+    "seoProcessing": "[TODO:fr] 공구 결제 처리",
+    "approving": "[TODO:fr] 결제 승인 중",
+    "pleaseWait": "[TODO:fr] 잠시만 기다려주세요",
+    "errorTitle": "[TODO:fr] 결제를 완료하지 못했어요",
+    "contactSupport": "[TODO:fr] 고객센터에 문의해주세요.",
+    "paymentRef": "[TODO:fr] 결제 정보: {{ref}}",
+    "backToCart": "[TODO:fr] 장바구니로 돌아가기",
+    "backToProduct": "[TODO:fr] 상품 페이지로 돌아가기",
+    "buyWithAmount": "[TODO:fr] {{amount}}원 구매하기",
+    "won": "[TODO:fr] {{amount}}원",
+    "savePerPrefix": "[TODO:fr] 1장당",
+    "savePerSuffix": "[TODO:fr] 아껴요",
+    "quantity": "[TODO:fr] 수량",
+    "maxPerPerson": "[TODO:fr] 1인당 최대 {{n}}개",
+    "qtySheets": "[TODO:fr] {{n}}장",
+    "qtyDecrease": "[TODO:fr] 수량 감소",
+    "qtyIncrease": "[TODO:fr] 수량 증가",
+    "prelaunchApply": "[TODO:fr] 사전 응모하기",
+    "unavailable": "[TODO:fr] 구매 불가",
+    "processing": "[TODO:fr] 처리 중…",
+    "openingSoon": "[TODO:fr] 오픈 예정",
+    "raffleNote": "[TODO:fr] 결제 없이 응모해요 · 당첨되면 알려드려요",
+    "safePayNote": "[TODO:fr] 토스로 3초 안전결제, 미사용 시 100% 자동환불",
+    "prelaunchNote": "[TODO:fr] 오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요",
+    "payWithBalanceAria": "[TODO:fr] 보유한 딜 {{balance}}딜로 결제하기",
+    "payWithBalance": "[TODO:fr] 딜로 결제 (보유 {{balance}}딜)",
+    "voucher": "[TODO:fr] 이용권",
+    "close": "[TODO:fr] 닫기",
+    "completeTitle": "[TODO:fr] 결제가 완료되었어요",
+    "noExpiry": "[TODO:fr] 사용 기한 없음",
+    "sheets": "[TODO:fr] {{n}}매",
+    "dealUsed": "[TODO:fr] 딜 {{amount}}",
+    "cardPaid": "[TODO:fr] 카드 {{amount}}원",
+    "viewVouchers": "[TODO:fr] 이용권 확인",
+    "noteUseQr": "[TODO:fr] 매장에서 QR 또는 코드로 사용해요.",
+    "noteAutoRefund": "[TODO:fr] 사용하지 않으면 기한이 지난 뒤 100% 자동 환불돼요.",
+    "noteStoreRefund": "[TODO:fr] 매장 사정으로 사용이 어려우면 즉시 환불해 드려요.",
+    "moreFromStore": "[TODO:fr] {{store}} 다른 이용권 보기",
+    "moreVouchers": "[TODO:fr] 다른 이용권 보기",
+    "issuedBand": "[TODO:fr] 이용권 발급 완료",
+    "kindsCount": "[TODO:fr] {{n}}종",
+    "expiryVaries": "[TODO:fr] 사용 기한은 이용권마다 달라요"
   }
 }

@@ -46,6 +46,7 @@ const LIGHT_ISLAND_COVERAGE: Record<string, { by: string; why: string }> = {
    */
   /** 🗺️ 2026-11-02 — 이용권 상세 매장 칸의 지도(`bare`) 위 [카카오맵] 알약. 지도 타일은 다크에서도 밝아 흰 표면 고정. */
   'src/components/RestaurantMiniMap.tsx': { by: '/group-buy/2846', why: '이용권 상세 지도 위 카카오맵 버튼(항상 흰 표면)' },
+  'src/components/NaverMiniMap.tsx': { by: '/group-buy/2846', why: '이용권 상세 지도 위 네이버 지도 버튼(항상 흰 표면) — 2026-11-02 외국어 손님용. ⚠️ 측정기는 한국어·키 없음으로 그려 카카오 쪽만 실제로 잰다' },
   'src/pages/user-profile/seller-section/VoucherNewSheet.tsx': { by: '/user/profile', why: '마이 안 등록 시트 — 라이트 고정 대시보드 폼을 담는 섬' },
   /**
    * 🎟️ 2026-10-07 — **스캔받는 QR 부품**(`ScannableQr`). QR 은 테마를 따르는 그림이 아니라

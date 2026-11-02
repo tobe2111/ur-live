@@ -16,3 +16,33 @@
 
 ## 남은 결정
 나라 · 팔 상품 · 결제 방식 · 통화 정책 · 해외 수수료율 — 전부 결재 파일에.
+
+---
+
+## 2차 — 1단계(외국인 관광객) 개발 착수 (같은 날)
+
+대표 *"필요한 개발 일단 다 해볼래?"* + 선택: 잠금 파일 문구 수정 허락 · 영어 먼저 · 외국어일 때만 네이버맵.
+
+### 한 것
+- 이용권 상세(`/pass/:id`)·구매/결제 완료·내 이용권 QR 의 한국어 문장을 번역 함수로 — 키 181개(`pass.*` 60 · `passBuy.*` 46 · `wallet.*` 42 + 기존 `voucher.*` 누락분 28 · `map.*` 5). ko·en 채움, ja·zh·es·fr 는 `[TODO:xx]`(화면엔 한국어로 나감).
+- 네이버 지도: `src/lib/naver-maps.ts` · `src/components/NaverMiniMap.tsx` · 고르는 곳 `src/pages/group-buy/StoreLocation.tsx` · CSP `oapi.map.naver.com` · env `VITE_NAVER_MAP_KEY_ID`(없으면 카카오).
+- 가드 `src/tests/unit/tourist-english-pass-flow-2026-11-02.test.ts`(① 한국어 불변 ② 영어 완비) — ko 값 하나를 바꾸는 주입으로 빨간불 확인.
+- 문구가 옮겨져 낡은 시험 3개·주입 앵커 2개 재조준(주입 둘 다 빨간불 재확인).
+
+### 아직 화면에 안 보인다 — 일부러
+`CONSUMER_LANGUAGE_SWITCH_HIDDEN = true`(2026-08-11 대표) 그대로다. 외국인이 끝까지 살 수 있게(해외 카드 결제 + 외국인 로그인) 된 뒤 연다.
+
+### 이번에 틀렸던 판단
+- 네이버 지도를 처음엔 잠금 파일(`GroupBuyDetailPage`)에 `lazy(` 로 넣었다 → 잠금 지문 시험 3개가 `lazy(` 개수 3을 센다. 잠금 파일엔 문구 말고 넣지 말 것.
+- 전체 `tsc` 가 기본 힙에서 죽는다 — `NODE_OPTIONS=--max-old-space-size=7000` 필요(죽은 것을 타입 에러로 읽지 말 것).
+
+### 남은 것 (대표 몫)
+1. 네이버 클라우드 Maps Client ID 발급 → Pages 환경변수 `VITE_NAVER_MAP_KEY_ID`.
+2. 해외 카드 결제: 토스 해외 간편결제 MID 계약 문의(결재 C).
+3. 외국인 로그인: 구글 OAuth 클라이언트 ID/시크릿 발급(구글 로그인 새로 짓기 — #804 로 끈 Firebase 경로는 되살리지 않는다).
+4. 남은 번역: 홈·목록·로그인·지도 화면, 가게 이름·메뉴(서버 데이터) 자동 번역, `passSubLine`·`getVoucherShortLabel`·날짜 형식(`ko-KR` 고정).
+
+### 3차 — CI 실행 비용 예산 수리
+- Verify `exec-cost` 5건 빨간불: ko 파일에 새 문구를 넣어 **모든 화면의 `locale-ko` +4.6KB**. ⇒ `scripts/i18n-split.mjs` 에 규칙 추가 — ko core 에서 **소스 기본값과 똑같은 문장**(이름공간 pass·passBuy·wallet·voucher·map, 모든 사용처가 `t('키', {defaultValue})` 꼴일 때만)은 rest 로 옮긴다. 278키, core 55.6→47.7KB raw.
+- 로컬 실측: surface-budgets 27화면 통과 · exec-cost 10화면 통과(전부 이전보다 가볍다, 홈만 +1.2 — main 의 homePc 증가분).
+- 틀렸던 판단: 처음엔 "ko 키는 무게에 안 들어간다"고 보고 넘어갔다. `locale-ko` 는 첫 화면에 **실행되는 JS** 로 잡힌다(surface 무게 표엔 안 보이지만 exec-cost 엔 보인다).

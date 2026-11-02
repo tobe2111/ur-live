@@ -25,6 +25,7 @@
  * "글·사진 조합"의 사진은 갤러리와 아바타가 맡는다.
  */
 import { cfImage } from '@/utils/cf-image'
+import { useTranslation } from '@/lib/i18n-lite'
 
 /** 이 상품에 '가게 소개' 로 보여 줄 것이 하나라도 있는가. */
 export interface StoreIntroSource {
@@ -77,6 +78,7 @@ export default function StoreIntro({
   sellerName?: string | null
   storeName?: string | null
 }) {
+  const { t } = useTranslation()
   const body = (longDescription || '').trim()
   const bio = (sellerBio || '').trim()
   // 설명이 제목을 되풀이할 뿐이면 두 번 쓰지 않는다 — 판정은 `specOf` 하나(탭과 같은 함수).
@@ -91,22 +93,22 @@ export default function StoreIntro({
     <div id="gb-sec-store" style={{ padding: '20px 16px', scrollMarginTop: 116 }}>
       {spec && (
         <>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>상품 구성</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>{t('pass.storeIntro.composition', { defaultValue: '상품 구성' })}</div>
           <p style={{ margin: '12px 0 0', fontSize: 15, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{spec}</p>
         </>
       )}
 
       {(body || bio) && (
         <>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.02em', marginTop: spec ? 26 : 0 }}>가게 소개</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.02em', marginTop: spec ? 26 : 0 }}>{t('pass.storeIntro.title', { defaultValue: '가게 소개' })}</div>
           {body && <p style={{ margin: '12px 0 0', fontSize: 15, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{body}</p>}
           {bio && (
             <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start', marginTop: body ? 16 : 12 }}>
               {avatar
-                ? <div role="img" aria-label={who || '사장님'} style={{ width: 36, height: 36, borderRadius: '50%', flex: '0 0 auto', backgroundColor: 'var(--gbd-chip)', backgroundImage: `url("${avatar}")`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                ? <div role="img" aria-label={who || t('pass.storeIntro.owner', { defaultValue: '사장님' })} style={{ width: 36, height: 36, borderRadius: '50%', flex: '0 0 auto', backgroundColor: 'var(--gbd-chip)', backgroundImage: `url("${avatar}")`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
                 : <div style={{ width: 36, height: 36, borderRadius: '50%', flex: '0 0 auto', background: 'var(--gbd-chip)' }} />}
               <div style={{ flex: 1, minWidth: 0, background: 'var(--gbd-chip)', borderRadius: 14, padding: '13px 15px' }}>
-                {who && <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--gbd-sub)' }}>{who} 사장님</div>}
+                {who && <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--gbd-sub)' }}>{t('pass.storeIntro.ownerOf', { defaultValue: '{{name}} 사장님', name: who })}</div>}
                 <p style={{ margin: who ? '6px 0 0' : 0, fontSize: 15, lineHeight: 1.7, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{bio}</p>
               </div>
             </div>

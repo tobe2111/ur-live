@@ -14,38 +14,40 @@
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, X } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { useTranslation } from '@/lib/i18n-lite'
 import { TicketCard, TicketRow, TicketOutlineButton, TicketNotes } from '@/components/ticket/TicketCard'
 
 export default function CartComplete({ qty, kinds, amount }: { qty: number; kinds: number; amount: number }) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   return (
     <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white">
       <div className="ur-content-narrow px-4 lg:px-8 pt-3 pb-10">
         <div className="flex justify-end">
-          <button type="button" onClick={() => navigate('/')} aria-label="닫기" className="w-10 h-10 -mr-2 flex items-center justify-center text-gray-500 dark:text-gray-400">
+          <button type="button" onClick={() => navigate('/')} aria-label={t('passBuy.close', { defaultValue: '닫기' })} className="w-10 h-10 -mr-2 flex items-center justify-center text-gray-500 dark:text-gray-400">
             <X className="w-6 h-6" strokeWidth={1.6} />
           </button>
         </div>
-        <h1 className="text-center text-[24px] font-bold tracking-[-0.02em] mt-3 mb-6">결제가 완료되었어요</h1>
+        <h1 className="text-center text-[24px] font-bold tracking-[-0.02em] mt-3 mb-6">{t('passBuy.completeTitle', { defaultValue: '결제가 완료되었어요' })}</h1>
 
         {/* 밴드 오른쪽에 D-N 을 못 쓴다 — 이용권마다 기한이 달라서 하나를 고르면 나머지가 거짓이 된다. */}
-        <TicketCard bandLeft="이용권 발급 완료" bandRight={`${kinds}종`}>
-          <TicketRow left="이용권" right={`${qty}매`} />
+        <TicketCard bandLeft={t('passBuy.issuedBand', { defaultValue: '이용권 발급 완료' })} bandRight={t('passBuy.kindsCount', { defaultValue: '{{n}}종', n: kinds })}>
+          <TicketRow left={t('passBuy.voucher', { defaultValue: '이용권' })} right={t('passBuy.sheets', { defaultValue: '{{n}}매', n: qty })} />
           <div className="px-4 pt-4 pb-4">
-            <p className="text-[13px] text-gray-500 dark:text-gray-400">사용 기한은 이용권마다 달라요</p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('passBuy.expiryVaries', { defaultValue: '사용 기한은 이용권마다 달라요' })}</p>
             <div className="flex items-baseline gap-2 mt-3 mb-4 tabular-nums">
-              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(amount)}원</span>
+              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(amount) })}</span>
             </div>
-            <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>이용권 확인</TicketOutlineButton>
+            <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>{t('passBuy.viewVouchers', { defaultValue: '이용권 확인' })}</TicketOutlineButton>
           </div>
         </TicketCard>
 
         <div className="mt-5 mb-6">
           <TicketNotes items={[
-            '매장에서 QR 또는 코드로 사용해요.',
-            '사용하지 않으면 기한이 지난 뒤 100% 자동 환불돼요.',
-            '매장 사정으로 사용이 어려우면 즉시 환불해 드려요.',
+            t('passBuy.noteUseQr', { defaultValue: '매장에서 QR 또는 코드로 사용해요.' }),
+            t('passBuy.noteAutoRefund', { defaultValue: '사용하지 않으면 기한이 지난 뒤 100% 자동 환불돼요.' }),
+            t('passBuy.noteStoreRefund', { defaultValue: '매장 사정으로 사용이 어려우면 즉시 환불해 드려요.' }),
           ]} />
         </div>
 
