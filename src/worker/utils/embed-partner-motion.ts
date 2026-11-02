@@ -7,7 +7,7 @@
  *
  * 화면(높이 360 고정 — 붙여 넣는 코드의 iframe 높이):
  *   머리줄   urdeal | ○○ 추천
- *   고정 줄  유어딜은 가게 할인 이용권을 미리 파는 서비스예요   ← 세 장이 넘어가도 **움직이지 않는다**
+ *   고정 줄  체험단은 이제 그만, 인플루언서와 함께 팔아보세요   ← 세 장이 넘어가도 **움직이지 않는다**
  *   무대     세 장이 4초마다 넘어간다: [체험단의 한계 n/3] 지워진 한계 → 큰 장점 문장 → 설명 한 줄
  *   바닥     진행 막대 셋 · [유어딜 입점 신청]
  *
@@ -16,20 +16,26 @@
  * (썸네일·빠른 스크롤이 빈 무대를 보지 않는다), 2·3번 장이 시작 전 상태로 겹치지 않는다.
  * `prefers-reduced-motion` 이면 1번 장만 정지 상태로 선다.
  *
- * ⚠️ 문구는 지금 서비스에 있는 것만(손님 선결제 · QR 사용 · 지도·동네딜·유어샵 노출 · 팔렸을 때만 비용 · 가입비·월 이용료 0원).
+ * ⚠️ 문구는 지금 서비스에 있는 것만(인플루언서 유어샵 판매 · 손님 선결제 · QR 사용 · 소개비는 팔렸을 때만·매장이 비율 결정 · 가입비·월 이용료 0원).
  *    요율·금액 숫자 0 — 어드민이 바꾸는 값이라 남의 사이트에 박힌 숫자는 곧 거짓말이 된다.
  * ⚠️ 바깥 바탕은 --pbg(제휴 위젯 전용)다. --bg 를 바꾸면 strip·single 위젯이 남의 흰 사이트에서 회색 사각형이 된다.
  */
 
-/** 장면 하나 = 체험단의 한계 → 유어딜 장점. 순서가 곧 이야기다(결제 → 손님 → 비용). */
+/**
+ * 장면 하나 = 체험단의 한계 → 인플루언서와 함께 파는 유어딜. 순서가 곧 이야기다(누가 파나 → 손님은 어떻게 오나 → 비용은).
+ * 🤝 2026-11-02 대표 *"이거 아니야, '체험단은 이제 그만, 인플루언서와 함께 팔아보자' 이런 느낌이 필요해"* —
+ *   앞선 판(손님 선결제 · 새 손님 · 팔렸을 때만 비용)은 유어딜 일반 장점이었고, 대표가 원한 축은 **인플루언서 판매**다.
+ * ⚠️ 사실 근거(지금 코드): 인플루언서가 이용권을 자기 유어샵에 담아 판다 · 소개비 %는 매장이 제안하고 매장이 부담 ·
+ *    주문당(팔렸을 때만) · 환불 시 회수(`urdeal-platform-model.md` §5 인플루언서 딜 커미션 행).
+ */
 export const PARTNER_SLIDES: ReadonlyArray<{ no: string; yes: string; desc: string }> = [
-  { no: '음식은 공짜로 나가고 매출은 그대로', yes: '유어딜은 <em>손님이 먼저 결제하고</em> 옵니다', desc: '할인 이용권을 사 둔 손님이 편한 날 찾아와 QR로 바로 사용합니다.' },
-  { no: '한 번 다녀가면 그걸로 끝', yes: '유어딜은 <em>새 손님이 계속</em> 찾아옵니다', desc: '지도와 동네딜에 노출되고, 유저들이 자기 유어샵에 담아 소개합니다.' },
-  { no: '효과가 없어도 비용은 먼저', yes: '유어딜은 <em>팔렸을 때만</em> 비용이 듭니다', desc: '가입비·월 이용료 0원. 정산은 팔린 만큼 받습니다.' },
+  { no: '공짜 식사 주고 후기 한 편', yes: '인플루언서가 <em>내 이용권을 직접</em> 팝니다', desc: '인플루언서가 자기 유어샵에 이용권을 담아 팔로워에게 소개합니다.' },
+  { no: '글 하나 올라가면 그걸로 끝', yes: '팔로워가 <em>먼저 결제하고</em> 찾아옵니다', desc: '할인 이용권을 산 손님이 편한 날 와서 QR로 바로 사용합니다.' },
+  { no: '효과가 없어도 비용은 먼저', yes: '소개비는 <em>팔렸을 때만</em> 나갑니다', desc: '소개비 비율은 사장님이 정합니다. 가입비·월 이용료는 0원입니다.' },
 ]
 
-/** 유어딜 정체성 한 줄 — 대표 *"정체성 한줄 고정"*. 장면이 넘어가도 이 줄은 그대로 선다. */
-export const PARTNER_IDENTITY = '유어딜은 <b>가게 할인 이용권</b>을 미리 파는 서비스예요'
+/** 고정 줄 — 대표 *"정체성 한줄 고정"* + *"체험단은 이제 그만, 인플루언서와 함께 팔아보자"*. 장면이 넘어가도 그대로 선다. */
+export const PARTNER_IDENTITY = '체험단은 이제 그만, <b>인플루언서와 함께 팔아보세요</b>'
 
 /** 한 장이 머무는 시간(초). 세 장 한 바퀴 = 3 × 이 값. */
 export const PARTNER_SLIDE_SEC = 4
@@ -42,7 +48,7 @@ export const PARTNER_CSS = `
 .pt .hd{gap:8px}
 .pt .hd .logo{font-size:15px}
 .pt .co{min-width:0;font-size:13px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pt .id{margin:0;padding:9px 12px;border-radius:10px;background:var(--tint);color:var(--ink);font-size:13px;line-height:1.5}
+.pt .id{margin:0;padding:10px 14px;border-radius:10px;background:var(--tint);color:var(--ink);font-size:15px;font-weight:500;line-height:1.45}
 .pt .id b{font-weight:700;color:var(--brand)}
 .pt .stage{position:relative;flex:1;min-height:0}
 .pt .sl{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;animation:pt-scene ${CYCLE}s infinite}
