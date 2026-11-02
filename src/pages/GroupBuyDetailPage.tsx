@@ -7,6 +7,7 @@ import { detailGalleryImages } from '@/shared/detail-hero-image'
 import UsageGuide from './group-buy/UsageGuide'
 import SellerCard from './group-buy/SellerCard'
 import StoreIntro, { hasStoreIntro } from './group-buy/StoreIntro'
+import { formatNumber } from '@/utils/format'
 import PassHeadCard from './group-buy/PassHeadCard'
 import { PASS_CARD, PASS_PAGE_BG } from '@/shared/pass-head'
 // 🏷️ 2026-10-15 (대표 승인): 제목은 서버와 **같은 SSOT** — 두 벌이면 Googlebot(JS 렌더)과 Yeti(서버 HTML)가 다른 제목을 본다.
@@ -33,6 +34,7 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import { dealCategoryMeta } from '@/shared/deal-category-icon'
 // 🛡️ 2026-06-12 (감사 1단계 — 핀 표면): 공유 버튼 옆 핀 버튼 (additive — 잠금 항목 무변경).
 import PinButton from '@/components/curator/PinButton'
+import DetailSectionTabs from './group-buy/DetailSectionTabs' // 📑 2026-11-02 상세 C안 — 폰 구역 탭
 import SellThisCard from '@/components/seeding/SellThisCard' // 🎁 2026-10-31 팔아보기(유어샵 담기 · 무료 체험 신청)
 import { toast } from '@/hooks/useToast'
 import { safeDate, safeTime } from '@/utils/safe-date'
@@ -512,6 +514,26 @@ export default function GroupBuyDetailPage() {
     )
   }
 
+  // 📑 구역 탭 목록 — PC 탭과 폰 탭(2026-11-02 C안)이 **같은 목록**을 쓴다(두 벌이면 갈린다).
+  const sectionTabs = [
+            // 🩸 2026-09-25: 이 탭이 **무조건** 떠서, 설명·소개가 빈 상품에선 눌러도 안 가는 탭이 됐다
+            //   (섹션은 내용이 없으면 스스로 사라진다). 이웃 탭들과 같은 모양으로 조건을 붙이고,
+            //   판정은 섹션과 **같은 함수**(`hasStoreIntro`)를 쓴다 — 두 벌이면 언젠가 갈린다.
+            ...(hasStoreIntro({ description: detail.description, productName: detail.name,
+              longDescription: (detail as { long_description?: string | null }).long_description,
+              sellerBio: (detail as { seller_bio?: string | null }).seller_bio })
+              ? [{ id: 'gb-sec-store', label: '가게 소개' }] : []),
+            ...((detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) ? [{ id: 'gb-sec-location', label: '매장 위치' }] : []),
+            { id: 'gb-sec-info', label: '이용권 정보' },
+            ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: '리뷰' }] : []),
+  ]
+  /** 폰 탭은 칸이 좁아 이름만 짧게 — 구역(id)은 PC 와 같다. */
+  const MOBILE_TAB_LABEL: Record<string, string> = { 'gb-sec-store': '상품 정보', 'gb-sec-location': '매장', 'gb-sec-info': '이용 안내' }
+  const mobileTabs = [
+    ...sectionTabs.filter((t) => t.id !== 'gb-sec-reviews').map((t) => ({ id: t.id, label: MOBILE_TAB_LABEL[t.id] || t.label })),
+    { id: 'gb-sec-reviews', label: Number(detail.review_count || 0) > 0 ? `리뷰 ${formatNumber(Number(detail.review_count))}` : '리뷰' },
+  ]
+
   return (
     <div className={`gbd ${PASS_PAGE_BG}`} style={{ color: 'var(--gbd-ink)', minHeight: '100dvh' }}>{/* 🎟️ 10-11 D안: 모바일 회색 바탕 위 흰 카드 */}
       {/* 🛡️ 2026-05-15: SEO 풀 적용 — JSON-LD Product/Offer schema + 동적 OG image */}
@@ -639,18 +661,7 @@ export default function GroupBuyDetailPage() {
       <main id="gb-main" role="main">
         {/* 🖥️ 2026-07-19 그루폰식 섹션 탭 — PC 전용(클릭 → 해당 섹션 스크롤). 모바일은 세로 스택이라 불필요. */}
         <nav className="hidden lg:flex items-center gap-1 mt-4 mb-4 px-2 py-1 rounded-2xl bg-[var(--gbd-card)] shadow-lift" aria-label="상세 섹션">
-          {[
-            // 🩸 2026-09-25: 이 탭이 **무조건** 떠서, 설명·소개가 빈 상품에선 눌러도 안 가는 탭이 됐다
-            //   (섹션은 내용이 없으면 스스로 사라진다). 이웃 탭들과 같은 모양으로 조건을 붙이고,
-            //   판정은 섹션과 **같은 함수**(`hasStoreIntro`)를 쓴다 — 두 벌이면 언젠가 갈린다.
-            ...(hasStoreIntro({ description: detail.description, productName: detail.name,
-              longDescription: (detail as { long_description?: string | null }).long_description,
-              sellerBio: (detail as { seller_bio?: string | null }).seller_bio })
-              ? [{ id: 'gb-sec-store', label: '가게 소개' }] : []),
-            ...((detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) ? [{ id: 'gb-sec-location', label: '매장 위치' }] : []),
-            { id: 'gb-sec-info', label: '이용권 정보' },
-            ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: '리뷰' }] : []),
-          ].map((tab) => (
+          {sectionTabs.map((tab) => (
             <button key={tab.id} onClick={() => document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               style={{ padding: '11px 15px', fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink2)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
               {tab.label}
@@ -701,6 +712,9 @@ export default function GroupBuyDetailPage() {
         {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
         <div id="fcfs-apply-block"><FcfsApplyBlock productId={Number(id)} /></div>
         <div className={`${PASS_CARD} empty:hidden`}><SellThisCard productId={detail.id} price={detail.price} hideForOwner={isOwnProduct} /></div>
+
+        {/* 📑 2026-11-02 대표 확정 상세 **C안**: 폰도 구역 탭(PC 탭과 같은 구역 id). 머리줄 밑에 붙어 따라온다. */}
+        <DetailSectionTabs tabs={mobileTabs} />
 
         {/* 🃏 2026-10-11 (대표 확정 D안 — PC 포함): 섹션 구분은 하이라인이 아니라 **카드**(`PASS_CARD`).
             셀러 카드는 모바일에선 걷고(가게 입구는 매장 카드 '가게 보기') PC 에선 카드로 남긴다 — SNS 링크가 여기만 있다. */}
@@ -757,7 +771,7 @@ export default function GroupBuyDetailPage() {
         {/* 👤 주인용 '관리하기' 는 구매 자리(PC 상자·모바일 바)로 옮겼다 — 2026-10-18 */}
 
         {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
-        <div id="gb-sec-reviews" className={PASS_CARD} style={{ padding: '24px 18px', scrollMarginTop: 116 }}>
+        <div id="gb-sec-reviews" className={PASS_CARD} style={{ padding: '20px 16px', scrollMarginTop: 116 }}>
           <DeferUntilVisible minHeight={80}>
             <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
               <ProductReviews productId={productId} limit={5} />
