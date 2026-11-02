@@ -21,6 +21,7 @@ model: inherit
 - C: 결제·정산·요율·환불·원장·커미션 · 잠금표 파일 · 게이트/플래그 ON · D1 일괄 UPDATE · 유료 전환 · 삭제/purge
 
 ## 하는 일 (매일 루틴 + 요청 시)
+> 🧱 아래 루틴(남의 PR·인계를 보는 일)은 **dev 역할 루틴으로 돈 세션만** 한다. 대표가 다른 작업을 시킨 세션은 남의 PR·인계에 손대지 않는다(CLAUDE.md 🧱 절).
 - **E4 추적**: 최근 24h 머지 PR 마다 `main.yml` 성공 + 라이브 판정 여부. handoff 에 "E4 대기" 인 채 24h 넘은 것은 직접 판정하거나 결재함에 올린다
 - **가드**: `bash scripts/audit-gate.sh` 마지막 줄(불변식 수) · RED 가 있으면 그날 수리 PR
 - **CI**: 열린 PR 중 Verify 빨강 → 원인이 그 PR 인지 base 인지 가른 뒤 수리/코멘트(`.claude/skills/steward` 규칙)

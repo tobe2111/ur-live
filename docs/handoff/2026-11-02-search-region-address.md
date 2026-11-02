@@ -49,3 +49,15 @@
 ## 틀렸던 판단
 - 처음엔 지명을 주소 어디서든 찾게 했는데 `대구`⊂`해운대구` 오매칭을 시험이 잡았다. 짧은 지명은 겹친다.
 - 광주광역시로 쳐도 펼친 `광주` 가 공백 뒤 매칭으로 경기 광주시를 끌고 왔다 — 시험이 잡았다. 펼친 표기는 맨 앞에서만.
+
+## 3차 (대표 *"더 개선할 건 없어?"*) — 라이브 실측으로 찾은 것
+1. **검색 기록이 0행이었다** — `logSearch` 가 `search_query`·`results_count` 로 INSERT 했는데 라이브
+   `search_logs` 는 `query`·`result_count`(pragma 실측). 매번 실패 → catch 가 삼킴. repair-schema.routes.ts 의
+   CREATE TABLE 만 옛 모양이었다(aux-tables.ts 는 라이브와 같음) → 둘 다 라이브 모양으로 맞췄다.
+   ⇒ **다음 세션**: 며칠 뒤 `SELECT query, COUNT(*) FROM search_logs WHERE result_count=0 GROUP BY query ORDER BY 2 DESC`
+   (메인 DB)로 손님이 찾다 0건 난 말을 보고 다음 개선을 고를 것. 이게 이번 수리의 진짜 목적이다.
+2. **분류 이름 검색** — `숙소` 0 → 20 · `맛집` 0 → 72 · `식사`·`식당` → 72 · `생활` → 22 (라이브 DB 에 새 SQL).
+   `헤어`·`네일`·`기타` 는 일부러 안 넓혔다(섞임).
+3. 동의어 `돈가스 · 돈까스 · 돈카츠`.
+
+⚠️ 남은 것: 내 실측 검색(부산·대구·강남)이 `popular_searches` 에 몇 건 쌓였다 — 지우는 건 데이터 쓰기라 안 했다.

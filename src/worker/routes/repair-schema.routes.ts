@@ -241,11 +241,14 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
         search_count INTEGER NOT NULL DEFAULT 1,
         last_searched_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )` },
+    // 🩸 2026-11-02: 라이브 search_logs 의 모양(`query`·`result_count` — aux-tables.ts 와 같다)에 맞췄다.
+    //   여기만 `search_query`·`results_count` 였고 코드가 이쪽을 믿고 써서 라이브 INSERT 가 매번 실패했다.
     { name: 'search_logs', sql: `CREATE TABLE IF NOT EXISTS search_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT,
-        search_query TEXT NOT NULL,
-        results_count INTEGER DEFAULT 0,
+        query TEXT NOT NULL,
+        result_count INTEGER NOT NULL DEFAULT 0,
+        clicked_product_id INTEGER,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )` },
     { name: 'push_subscriptions', sql: `CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -307,7 +310,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
   // 🔎 2026-09-30: 검색 로그/인기 검색어 인덱스 (위 CREATE TABLE 짝 — migration 0273 동등).
   for (const sql of [
     "CREATE INDEX IF NOT EXISTS idx_popular_searches_count ON popular_searches(search_count DESC)",
-    "CREATE INDEX IF NOT EXISTS idx_search_logs_query_created ON search_logs(search_query, created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_search_logs_query_created ON search_logs(query, created_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_search_logs_user_created ON search_logs(user_id, created_at DESC) WHERE user_id IS NOT NULL",
   ]) {
     try {
