@@ -362,7 +362,8 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
             <p className="text-[28px] font-bold text-gray-900 dark:text-white">{avgRating}</p>
             <div className="flex gap-1 mt-1">
               {[1, 2, 3, 4, 5].map(s => (
-                <span key={s} className={`text-[15px] ${s <= Math.round(avgRating) ? 'text-brand-text' : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</span>
+                // 🎬 2026-11-02 시안 8차 "평균 별점 채워짐"(대표 "8차에서는 QR 화면 밝아짐 빼고 다 넣어줘") — 채워진 별이 왼쪽부터 차례로 톡.
+                <span key={s} className={`inline-block text-[15px] ${s <= Math.round(avgRating) ? 'text-brand-text ur-pop' : 'text-gray-200 dark:text-[#3A3D44]'}`} style={s <= Math.round(avgRating) ? { animationDelay: `${(s - 1) * 80}ms`, animationFillMode: 'backwards' } : undefined}>★</span>
               ))}
             </div>
           </div>

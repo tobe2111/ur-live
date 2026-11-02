@@ -349,8 +349,10 @@ function DealCardMedia({
               //    (빈 칸 0 + "아직 그 사진이 아니다"가 0ms 에 읽힌다 — 위 주석의 2026-09-06 신고).
               style={{
                 opacity: i === painted ? (waiting ? 0.8 : 1) : 0,
-                filter: i === painted && waiting ? 'blur(10px)' : 'blur(0px)',
-                transform: i === painted && waiting ? 'scale(1.06)' : undefined,
+                // 🎬 2026-11-02 시안 8차 "사진이 선명해짐"(대표 "QR 화면 밝아짐 빼고 다 넣어줘") — 아직 안 그려진 장면도 흐린 채로 두어,
+                //   처음 도착한 사진이 흐림에서 선명으로 들어온다(투명 → 보임 전환과 같은 0.2초). 안 보이는 장면이라 흐림은 비용만 있고 화면엔 안 보인다.
+                filter: i === painted ? (waiting ? 'blur(10px)' : 'blur(0px)') : 'blur(8px)',
+                transform: i === painted ? (waiting ? 'scale(1.06)' : undefined) : 'scale(1.04)',
                 transition: 'opacity 220ms ease-out, filter 200ms ease-out, transform 200ms ease-out',
               }}
               className={`absolute inset-0 w-full h-full object-cover ${

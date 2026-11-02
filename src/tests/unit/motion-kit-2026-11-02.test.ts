@@ -27,7 +27,7 @@ import { stripComments } from '../helpers/source-text'
 const R = (p: string) => readFileSync(p, 'utf8')
 const css = stripComments(R('src/index.css'))
 // 화면별로만 받는 CSS 는 부품 파일 안의 injectMotionCss(…) 문자열이다 — 그 문자열들을 모은다.
-const LAZY_USERS = ['src/components/voucher/ScanFrame.tsx', 'src/components/search/SearchStates.tsx', 'src/pages/restaurant-map/SheetFilterBar.tsx', 'src/pages/group-buy/DetailGallery.tsx', 'src/components/MyReferralCard.tsx', 'src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx', 'src/pages/group-buy/pay-spin-css.ts', 'src/pages/checkout/OrderSummary.tsx', 'src/pages/wishlist/WishlistMobile.tsx', 'src/pages/mobile-home/BackToTop.tsx', 'src/pages/user-profile/profile-edit/EditRow.tsx', 'src/components/charts/svg-charts.tsx', 'src/pages/curator-page/CuratorHeader.tsx', 'src/pages/PaymentSuccessPage.tsx', 'src/pages/PaymentFailPage.tsx', 'src/pages/pc-home/PcHomeLocationBar.tsx', 'src/pages/user-profile/MyStats.tsx', 'src/pages/VoucherGiftReceivePage.tsx', 'src/pages/NotificationsPage.tsx', 'src/pages/seller-orders/OrderNumber.tsx', 'src/pages/agency-console/AgencyPayoutSheet.tsx', 'src/pages/SellerReviewsPage.tsx']
+const LAZY_USERS = ['src/components/voucher/ScanFrame.tsx', 'src/components/search/SearchStates.tsx', 'src/pages/restaurant-map/SheetFilterBar.tsx', 'src/pages/group-buy/DetailGallery.tsx', 'src/components/MyReferralCard.tsx', 'src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx', 'src/pages/group-buy/pay-spin-css.ts', 'src/pages/checkout/OrderSummary.tsx', 'src/pages/wishlist/WishlistMobile.tsx', 'src/pages/mobile-home/BackToTop.tsx', 'src/pages/user-profile/profile-edit/EditRow.tsx', 'src/components/charts/svg-charts.tsx', 'src/pages/curator-page/CuratorHeader.tsx', 'src/pages/PaymentSuccessPage.tsx', 'src/pages/PaymentFailPage.tsx', 'src/pages/pc-home/PcHomeLocationBar.tsx', 'src/pages/user-profile/MyStats.tsx', 'src/pages/VoucherGiftReceivePage.tsx', 'src/pages/NotificationsPage.tsx', 'src/pages/seller-orders/OrderNumber.tsx', 'src/pages/agency-console/AgencyPayoutSheet.tsx', 'src/pages/SellerReviewsPage.tsx', 'src/pages/mobile-home/MapPill.tsx', 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx', 'src/pages/CouponClaimPage.tsx', 'src/components/search/SortFilterBar.tsx']
 const lazyCss = LAZY_USERS.flatMap((f) => [...R(f).matchAll(/injectMotionCss\('[\w-]+', `([^`]*)`\)/g)].map((m) => m[1])).join('\n')
 const kit = css.slice(css.indexOf('.ur-burst {'), css.indexOf('.ur-tab-bar {')) + lazyCss
 
@@ -38,10 +38,11 @@ describe('① 움직임 키트 CSS', () => {
     for (const [, name, body] of frames) {
       const props = [...body.matchAll(/([a-z-]+)\s*:/g)].map((m) => m[1])
       // 예외 하나: 찜 목록에서 **빠지는** 줄은 높이를 접어야 아래 줄이 툭 끊기지 않고 올라온다(사라지는 줄이라 밀릴 글자가 없다).
-      const allowed = name === 'ur-wish-out' ? ['transform', 'opacity', 'max-height', 'margin-top'] : ['transform', 'opacity', 'background-color', 'stroke-dashoffset']
+      // 예외 둘: 지도 알약 → 지도 화면 전환은 브라우저가 찍은 새 화면(::view-transition-new)을 원으로 여는 것이라 clip-path 다(그 장면은 레이아웃이 없는 그림이다).
+      const allowed = name === 'ur-wish-out' ? ['transform', 'opacity', 'max-height', 'margin-top'] : name === 'ur-map-reveal' ? ['clip-path'] : ['transform', 'opacity', 'background-color', 'stroke-dashoffset']
       for (const p of props) expect(allowed, name).toContain(p)
     }
-    expect(frames.filter(([, n]) => n === 'ur-wish-out').length, '예외는 이름으로 하나만').toBeLessThanOrEqual(1)
+    expect(frames.filter(([, n]) => n === 'ur-wish-out' || n === 'ur-map-reveal').length, '예외는 이름으로 둘만').toBeLessThanOrEqual(2)
   })
   it('화면별 CSS 문자열은 등록한 곳 전부 있고, 문자열마다 동작 줄이기 끔을 함께 갖는다', () => {
     for (const f of LAZY_USERS) {
@@ -267,5 +268,24 @@ describe('⑦ 6차 — 동작 계약', () => {
     expect(ok).toContain('<AlertIcon className="ur-pr-shake h-20 w-20')
     expect(ok).toContain('<div className="ur-pr-rise bg-white dark:bg-[#1D1F29]')
     expect(R('src/pages/PaymentFailPage.tsx')).toContain("${isUserCancel ? '' : 'ur-pr-shake '}")
+  })
+  it('홈 지도 알약(8차 B·C): 내리는 동안 접히고, 누르면 그 자리에서 지도가 퍼진다 — 못 하는 경우는 종전 링크', () => {
+    const src = R('src/pages/mobile-home/MapPill.tsx')
+    expect(src).toContain('to="/map"')
+    expect(src).toContain("window.addEventListener('scroll', onScroll, { passive: true })")
+    expect(src).toContain("if (typeof doc.startViewTransition !== 'function') return")
+    expect(src).toContain("if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return")
+    expect(src).toMatch(/catch \{\s*done\(\)\s*navigate\('\/map'\)/)
+    expect(src).toContain('onPointerDown={preconnectMapTiles}')
+  })
+  it('쿠폰 받기 화면: 끝없이 통통 튀던 상자가 한 번만 톡 — 움직임은 한 번', () => {
+    const src = R('src/pages/CouponClaimPage.tsx')
+    expect(src).not.toContain('animate-bounce')
+    expect(src).toContain('shadow-lg ur-cp-pop')
+  })
+  it('프로필 사진: 새로 고른 사진만 커지며 들어온다(처음 연 사진은 그대로)', () => {
+    const src = R('src/pages/user-profile/profile-edit/ProfileEditSheet.tsx')
+    expect(src).toContain('const [photoChanged, setPhotoChanged] = useState(false)')
+    expect(src).toMatch(/setImage\(url\)\n\s*setPhotoChanged\(true\)/)
   })
 })

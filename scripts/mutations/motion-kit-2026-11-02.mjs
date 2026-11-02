@@ -101,4 +101,20 @@ export default [
     test: TEST,
     why: '모바일 바와 PC 상자가 같은 CSS 를 각자 들면 같은 청크에 두 번 실린다(빌드 실측).',
   },
+  {
+    name: '🎬 지도 알약이 새 탭 열기(⌘·Ctrl 클릭)까지 가로챈다',
+    file: 'src/pages/mobile-home/MapPill.tsx',
+    find: '    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return',
+    replace: '    if (e.defaultPrevented) return',
+    test: TEST,
+    why: '새 탭으로 지도를 열려던 사람이 같은 탭에서 이동해 버린다 — 하단 탭에 지도가 없어 이 알약이 유일한 길이다.',
+  },
+  {
+    name: '🎬 쿠폰 받기 상자가 다시 끝없이 튄다',
+    file: 'src/pages/CouponClaimPage.tsx',
+    find: 'shadow-lg ur-cp-pop">',
+    replace: 'shadow-lg animate-bounce">',
+    test: TEST,
+    why: '끝없이 움직이는 것은 눈을 계속 끌어 아래 버튼을 못 읽게 한다(움직임은 한 번만 재생).',
+  },
 ]

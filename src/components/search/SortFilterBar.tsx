@@ -14,6 +14,11 @@
  */
 import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronDown } from 'lucide-react'
+import { useRef } from 'react'
+// 🎬 2026-11-02 시안 8차 "검색 결과 개수" — 개수가 바뀌면 새 숫자가 아래에서 올라온다(처음엔 안 움직인다).
+//   ⚖️ 공용 `RollingNumber` 를 쓰지 않는다 — 그걸 import 하면 검색 화면이 상세 묶음을 끌고 와 +2.8KB 였다(화면별 무게 실측).
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-cnt', `@keyframes ur-cnt-in { from { opacity: 0; transform: translateY(60%); } to { opacity: 1; transform: none; } }.ur-cnt-in { display: inline-block; animation: ur-cnt-in .28s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-cnt-in{animation:none!important}}`)
 
 interface SortFilterBarProps {
   totalResults: number
@@ -23,6 +28,7 @@ interface SortFilterBarProps {
 
 export default function SortFilterBar({ totalResults, sortBy, onSortChange }: SortFilterBarProps) {
   const { t } = useTranslation()
+  const firstCount = useRef(totalResults) // 처음 받은 개수 — 그것과 다를 때만 움직인다
 
   return (
     <div className="mb-4">
@@ -32,7 +38,7 @@ export default function SortFilterBar({ totalResults, sortBy, onSortChange }: So
           <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('browse.totalResultsPrefix', { defaultValue: '총' })}</span>
           {/* 🎨 2026-09-04: `text-red-500` → 잉크. 빨강은 이 레포에서 **기능 신호**(오류·위험)로 예약돼 있다 —
               검색 결과 개수는 그냥 숫자다. 강조는 굵기로 충분하다. */}
-          <span className="text-[13px] font-medium text-gray-900 dark:text-white">{totalResults}</span>
+          <span key={totalResults} className={`text-[13px] font-medium text-gray-900 dark:text-white${firstCount.current !== totalResults ? ' ur-cnt-in' : ''}`}>{totalResults}</span>
           <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('browse.totalResultsSuffix', { defaultValue: '개' })}</span>
         </div>
         <div className="relative">

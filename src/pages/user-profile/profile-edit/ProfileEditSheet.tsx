@@ -44,6 +44,9 @@ import { toast } from '@/hooks/useToast'
 import { prepareImageForUpload, UploadTooLargeError } from '@/lib/prepare-upload'
 import { EditRow, RowActions, RowGroup, RowNote, ROW_INPUT } from './EditRow'
 import { snsLinkStatus, SNS_LABEL, type SnsPlatform } from '@/shared/sns-link'
+// 🎬 2026-11-02 시안 8차 "프로필 사진 바꾸기"(대표 "8차에서는 QR 화면 밝아짐 빼고 다 넣어줘") — 새 사진이 가운데에서 커지며 원 안을 채운다(처음 연 사진은 안 움직인다).
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-avatar', `@keyframes ur-avatar-in { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: none; } }.ur-avatar-in { animation: ur-avatar-in .45s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-avatar-in{animation:none!important}}`)
 
 type Field = 'name' | 'bio' | 'phone' | 'handle' | 'sns' | null
 
@@ -73,6 +76,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
   const { t } = useTranslation()
   const [me, setMe] = useState<Me | undefined>(undefined)
   const [image, setImage] = useState(() => getUserProfileImage() || '')
+  const [photoChanged, setPhotoChanged] = useState(false) // 🎬 새로 고른 사진일 때만 커지며 들어온다
   const [open, setOpen] = useState<Field>(null)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -145,6 +149,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
       const saved = await api.patch('/api/curator/me/profile', { profile_image: url })
       if (!saved.data?.success) throw new Error(saved.data?.error || '')
       setImage(url)
+      setPhotoChanged(true)
       try { localStorage.setItem('user_profile_image', url) } catch { /* quota */ }
       toast.success(t('accountSettings.photoUpdated', { defaultValue: '프로필 사진이 바뀌었습니다' }))
     } catch (err) {
@@ -257,8 +262,9 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
           {/* 📸 사진 — 고르는 즉시 저장(위 머리말) */}
           <div className="flex items-center gap-4 px-4 py-4">
             <img
+              key={image || 'none'}
               src={profileAvatarSrc(image, 160)}
-              alt="" className={`w-[72px] h-[72px] rounded-full shrink-0 bg-gray-100 dark:bg-white/[0.06] ${profileAvatarFitCls(image)}`}
+              alt="" className={`w-[72px] h-[72px] rounded-full shrink-0 bg-gray-100 dark:bg-white/[0.06] ${profileAvatarFitCls(image)}${photoChanged ? ' ur-avatar-in' : ''}`}
               onError={(e) => profileAvatarOnError(e.currentTarget, image)}
             />
             <div className="min-w-0">

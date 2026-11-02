@@ -1,0 +1,328 @@
+<title>유어딜 모션 시안 8차</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* 레이아웃: 손님 화면 9 + 사장님 화면 2 을 카드 격자로. 카드 = 작은 화면(직접 눌러 보기) + 이름 + 설명. */
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --surface: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE;
+  --lift: 0 2px 10px rgba(22,24,28,.06); --photo1: #C9D8F2; --photo2: #F2D9C9; --photo3: #D2E8D6; --photo4: #E6D6F0; --scrim: rgba(22,24,28,.4); --map: #E9EEE4; --road: #FFFFFF;
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --surface: #1D1F29; --sub: #191C25; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --lift: none; --photo1: #2B3A57; --photo2: #4A3729; --photo3: #2C4232; --photo4: #3D2F4A; --scrim: rgba(0,0,0,.55);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); }
+button { font-family: var(--font); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 62ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .replay:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.group { margin-bottom: 56px; }
+.group > h2 { font-size: 24px; font-weight: 700; margin: 0 0 4px; }
+.group > p { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 32px 20px; }
+@media (max-width: 360px) { .grid { grid-template-columns: 1fr; } }
+.card { min-width: 0; display: grid; gap: 12px; align-content: start; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.head h3 { font-size: 17px; font-weight: 700; margin: 0; }
+.head .rec { font-size: 12px; font-weight: 700; color: #fff; background: var(--brand); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+.replay { flex: none; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; font-weight: 500; cursor: pointer; }
+.desc { font-size: 13px; color: var(--page-soft); line-height: 1.6; margin: 0; }
+.scr { height: 340px; border-radius: 22px; background: var(--bg); color: var(--ink); position: relative; overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); transition: background .3s, color .3s; }
+.tap { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 12px; color: var(--ink-faint); pointer-events: none; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.btn { height: 44px; border-radius: 12px; border: 0; padding: 0 18px; font-weight: 700; font-size: 15px; cursor: pointer; }
+.btn-primary { background: var(--brand); color: #fff; }
+.btn-out { background: transparent; color: var(--brand-text); box-shadow: inset 0 0 0 1px var(--rule-strong); }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes popIn { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }
+.ease { --spring: cubic-bezier(.2,1,.3,1); }
+
+
+.roll { display: inline-block; height: 1.3em; overflow: hidden; position: relative; vertical-align: bottom; font-variant-numeric: tabular-nums; }
+.roll > span { display: block; line-height: 1.3em; }
+.roll .out { position: absolute; left: 0; top: 0; animation: outUp .28s cubic-bezier(.65,0,.35,1) both; }
+.roll .in { animation: inUp .28s cubic-bezier(.65,0,.35,1) both; }
+.roll.down .out { animation-name: outDown; } .roll.down .in { animation-name: inDown; }
+@keyframes outUp { to { transform: translateY(-100%); opacity: 0; } } @keyframes inUp { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes outDown { to { transform: translateY(100%); opacity: 0; } } @keyframes inDown { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
+.pad { padding: 18px; }
+
+/* 1 하단 구매 바 */
+.scrollbox { position: absolute; inset: 0; overflow-y: auto; padding: 14px 14px 80px; display: grid; gap: 10px; align-content: start; }
+.scrollbox .pic { height: 150px; border-radius: 14px; background: var(--photo1); }
+.scrollbox .buybox { border-radius: 14px; background: var(--sub); padding: 14px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+.scrollbox .filler { height: 60px; border-radius: 12px; background: var(--sub); }
+.bar1 { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 14px; background: var(--surface); box-shadow: 0 -2px 12px rgba(22,24,28,.08); display: flex; justify-content: space-between; align-items: center; transform: translateY(100%); transition: transform .3s cubic-bezier(.2,1,.3,1); }
+.bar1.on { transform: none; }
+.bar1 b { font-size: 17px; }
+
+/* 2 사진 선명해짐 */
+.blurpics { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bp { aspect-ratio: 1; border-radius: 12px; position: relative; overflow: hidden; background: var(--sub); }
+.bp i { position: absolute; inset: -10%; filter: blur(14px); transform: scale(1.05); transition: filter .5s ease-out, transform .5s ease-out; }
+.bp.sharp i { filter: none; transform: none; }
+
+/* 3 쿠폰 받기 */
+.cp { margin-top: 10px; border-radius: 14px; background: var(--brand-tint); padding: 16px; display: flex; justify-content: space-between; align-items: center; position: relative; }
+.cp b { font-size: 24px; font-weight: 800; color: var(--brand-text); }
+.cp small { display: block; font-size: 13px; color: var(--ink-soft); }
+.cp button { border: 0; border-radius: 10px; height: 36px; padding: 0 14px; background: var(--brand); color: #fff; font: 700 13px var(--font); cursor: pointer; }
+.cp.got button { background: var(--sub); color: var(--ink-faint); }
+.cp .fly { position: absolute; right: 30px; top: 22px; width: 26px; height: 18px; border-radius: 4px; background: var(--brand); opacity: 0; }
+.cp .fly.go { animation: cpFly .7s cubic-bezier(.65,0,.35,1) both; }
+@keyframes cpFly { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translate(0, -150px) scale(.4); } }
+.wallet3 { display: flex; justify-content: flex-end; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.wallet3 b { color: var(--ink); }
+.wallet3.pop b { animation: wPop .4s cubic-bezier(.3,1.3,.5,1); display: inline-block; }
+@keyframes wPop { 0% { transform: scale(.7); } 60% { transform: scale(1.25); } 100% { transform: none; } }
+
+/* 4 QR 밝아짐 */
+.qr4 { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bg); }
+.qr4 .glow { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.qr4.on .glow { animation: glow .6s ease-out both; }
+@keyframes glow { 0% { opacity: 0; } 30% { opacity: .9; } 100% { opacity: 0; } }
+.qr4 .code { width: 150px; height: 150px; border-radius: 12px; background: #fff; padding: 10px; box-shadow: 0 2px 10px rgba(22,24,28,.12); }
+.qr4 .code svg { width: 100%; height: 100%; }
+.qr4 p { position: absolute; bottom: 30px; margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+/* 5 달력 */
+.cal { padding: 16px; }
+.cal h5 { margin: 0 0 10px; font-size: 15px; }
+.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; position: relative; }
+.days button { position: relative; z-index: 1; border: 0; background: none; height: 38px; font: 500 13px var(--font); color: var(--ink); cursor: pointer; border-radius: 50%; transition: color .2s; font-variant-numeric: tabular-nums; }
+.days button.off { color: var(--ink-faint); }
+.days button.sel { color: #fff; }
+.dot5 { position: absolute; z-index: 0; width: 38px; height: 38px; border-radius: 50%; background: var(--brand); transition: transform .3s cubic-bezier(.2,1,.3,1); }
+
+/* 6 프로필 사진 */
+.avatar6 { width: 110px; height: 110px; border-radius: 50%; margin: 26px auto 0; position: relative; overflow: hidden; background: var(--photo3); cursor: pointer; }
+.avatar6 .new { position: absolute; inset: 0; background: var(--photo4); clip-path: circle(0% at 50% 50%); }
+.avatar6.swap .new { animation: reveal .55s cubic-bezier(.65,0,.35,1) forwards; }
+@keyframes reveal { to { clip-path: circle(75% at 50% 50%); } }
+.cap6 { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 14px; }
+
+/* 7 검색 결과 개수 */
+.sbox7 { height: 44px; border-radius: 12px; background: var(--sub); display: flex; align-items: center; padding: 0 12px; font-size: 15px; color: var(--ink); gap: 6px; }
+.res7 { margin-top: 14px; font-size: 15px; color: var(--ink-soft); }
+.res7 b { color: var(--ink); }
+
+/* 8 연결 끊김 띠 */
+.net { position: absolute; left: 0; right: 0; top: 0; padding: 10px 14px; font-size: 13px; font-weight: 500; color: #fff; background: #4F545A; transform: translateY(-100%); transition: transform .3s cubic-bezier(.2,1,.3,1), background .3s; display: flex; gap: 8px; align-items: center; }
+.net.on { transform: none; }
+.net.ok { background: #2E8B57; }
+.net i { width: 8px; height: 8px; border-radius: 50%; background: #fff; opacity: .8; }
+.page8 { padding: 56px 14px 14px; display: grid; gap: 10px; }
+.page8 div { height: 54px; border-radius: 12px; background: var(--sub); }
+
+/* 9 지도 핀 묶음 */
+.map9 { position: absolute; inset: 0; background: var(--map, #E9EEE4); }
+.scr[data-mode="dark"] .map9 { background: #1F2A22; }
+.map9 .road { position: absolute; background: var(--road, #fff); opacity: .8; }
+.cluster { position: absolute; left: 50%; top: 45%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 800; font-size: 17px; display: grid; place-items: center; cursor: pointer; transition: transform .25s, opacity .25s; z-index: 2; border: 3px solid #fff; }
+.map9.open .cluster { transform: scale(.4); opacity: 0; pointer-events: none; }
+.pin9 { position: absolute; left: 50%; top: 45%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: #fff; border: 2px solid #16181C; opacity: 0; transform: none; transition: transform .45s cubic-bezier(.3,1.3,.5,1), opacity .2s; transition-delay: calc(var(--i) * 40ms); }
+.map9.open .pin9 { opacity: 1; transform: translate(var(--x), var(--y)); }
+
+/* 10 평균 별점 */
+.rate { display: flex; align-items: center; gap: 14px; }
+.rate .big { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stars { position: relative; font-size: 22px; letter-spacing: 2px; color: var(--rule-strong); }
+.stars .fill { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: #F5B301; width: 0; transition: width .8s cubic-bezier(.2,1,.3,1); }
+.rate small { display: block; font-size: 13px; color: var(--ink-soft); }
+.newrev { margin-top: 18px; border-radius: 12px; background: var(--sub); padding: 12px; font-size: 13px; opacity: 0; transform: translateY(-8px); transition: opacity .25s, transform .3s; }
+.newrev.on { opacity: 1; transform: none; }
+
+/* 11 품절 도장 */
+.sold { position: relative; border-radius: 14px; overflow: hidden; }
+.sold .pic { height: 170px; background: var(--photo2); transition: filter .4s; }
+.sold.out .pic { filter: grayscale(1) brightness(.85); }
+.stamp { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 4px solid #E5484D; color: #E5484D; display: grid; place-items: center; font-size: 24px; font-weight: 800; transform: rotate(-14deg) scale(2); opacity: 0; background: rgba(255,255,255,.75); }
+.sold.out .stamp { animation: slam .35s cubic-bezier(.3,1.3,.5,1) forwards; }
+@keyframes slam { 0% { opacity: 0; transform: rotate(-14deg) scale(2); } 100% { opacity: 1; transform: rotate(-14deg) scale(1); } }
+.stock { margin-top: 12px; display: flex; justify-content: space-between; font-size: 15px; }
+
+@media (prefers-reduced-motion: reduce) { .scr *, .scr { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <h1>유어딜 모션 시안 8차</h1>
+  <p class="lede">손님 화면 아홉 곳과 사장님 화면 두 곳입니다. 유달이는 쓰지 않았습니다. 화면 안의 버튼과 날짜, 핀은 직접 눌러 볼 수 있습니다. 가게 이름과 숫자는 예시입니다.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all" type="button">전부 다시 재생</button>
+    <button class="ctl" id="mode" type="button">다크 모드로</button>
+  </div>
+
+  <section class="group">
+    <h2>손님 화면</h2>
+    <p>추천 표시가 붙은 셋이 매일 쓰는 화면이라 체감이 가장 큽니다.</p>
+    <div class="grid">
+      <div class="card"><div class="head"><h3>내리면 나타나는 구매 바<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="bar"><div class="scrollbox"><div class="pic"></div><div class="buybox"><span>39,000원</span><button class="btn btn-primary" type="button" style="height:36px;font-size:13px">구매하기</button></div><div class="filler"></div><div class="filler"></div><div class="filler"></div><div class="filler"></div><div class="filler"></div></div>
+          <div class="bar1"><b>39,000원</b><button class="btn btn-primary" type="button" style="height:40px;font-size:15px">구매하기</button></div></div>
+        <p class="desc">이용권 상세를 내려서 위의 구매 칸이 화면 밖으로 나가면, 같은 버튼이 아래에서 미끄러져 올라옵니다. 다시 올리면 내려갑니다.</p></div>
+
+      <div class="card"><div class="head"><h3>사진이 선명해짐<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="blur"><div class="blurpics">
+          <div class="bp"><i style="background:linear-gradient(135deg,#F2D9C9,#C9D8F2)"></i></div><div class="bp"><i style="background:linear-gradient(135deg,#D2E8D6,#E6D6F0)"></i></div>
+          <div class="bp"><i style="background:linear-gradient(135deg,#C9D8F2,#D2E8D6)"></i></div><div class="bp"><i style="background:linear-gradient(135deg,#E6D6F0,#F2D9C9)"></i></div></div></div>
+        <p class="desc">사진이 도착하기 전엔 흐릿한 색 덩어리가 자리를 지키고, 도착하면 흐림이 걷히며 선명해집니다. 회색 빈칸보다 덜 비어 보입니다.</p></div>
+
+      <div class="card"><div class="head"><h3>쿠폰 받기<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="coupon"><div class="pad">
+          <div class="wallet3">쿠폰함 <b><span class="roll wr"><span>2</span></span>장</b></div>
+          <div class="cp"><div><small>첫 구매 할인</small><b>3,000원</b></div><button type="button">받기</button><span class="fly"></span></div></div></div>
+        <p class="desc">받기를 누르면 작은 쿠폰이 위의 쿠폰함으로 날아가고, 쿠폰함 숫자가 굴러 하나 올라가며 톡 튑니다. 버튼은 "받음"으로 바뀝니다.</p></div>
+
+      <div class="card"><div class="head"><h3>QR 화면 밝아짐</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="qr"><div class="qr4"><div class="code"><svg viewBox="0 0 25 25" shape-rendering="crispEdges" class="qrsvg"></svg></div><p>매장 직원에게 보여 주세요</p><div class="glow"></div></div></div>
+        <p class="desc">QR 을 열면 화면이 한 번 하얗게 환해졌다 가라앉습니다. 어두운 곳에서도 스캐너가 잘 읽는다는 신호입니다(실제 밝기 조절은 별도 기능).</p></div>
+
+      <div class="card"><div class="head"><h3>날짜 고르기</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="cal"><div class="cal"><h5>11월</h5><div class="days"><span class="dot5"></span></div></div></div>
+        <p class="desc">숙소·예약 날짜를 고르면 파란 원이 이전 날짜에서 새 날짜로 미끄러집니다. 어디서 어디로 바꿨는지 보입니다.</p></div>
+
+      <div class="card"><div class="head"><h3>프로필 사진 바꾸기</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="avatar"><div class="pad"><div class="avatar6"><div class="new"></div></div><p class="cap6">사진을 눌러 보세요</p></div></div>
+        <p class="desc">새 사진을 고르면 가운데에서 원이 퍼지며 새 사진으로 덮입니다. 바뀐 순간이 분명합니다.</p></div>
+
+      <div class="card"><div class="head"><h3>검색 결과 개수</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="search"><div class="pad"><div class="sbox7"><span class="q"></span><span style="width:1.5px;height:18px;background:var(--brand)"></span></div>
+          <p class="res7">이용권 <b><span class="roll sr"><span>0</span></span>개</b></p></div></div>
+        <p class="desc">글자를 칠 때마다 결과 개수가 굴러 바뀝니다. 몇 개가 남는지 치는 동안 보입니다.</p></div>
+
+      <div class="card"><div class="head"><h3>연결이 끊겼을 때</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="net"><div class="net"><i></i><span class="t">인터넷 연결이 끊겼어요</span></div><div class="page8"><div></div><div></div><div></div><div></div></div></div>
+        <p class="desc">연결이 끊기면 위에서 회색 띠가 내려와 알려 주고, 다시 연결되면 초록으로 바뀌었다가 올라갑니다. 왜 안 되는지 헷갈리지 않습니다.</p></div>
+
+      <div class="card"><div class="head"><h3>지도 핀 묶음 펼치기</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="map"><div class="map9"><span class="road" style="left:0;right:0;top:40%;height:10px"></span><span class="road" style="top:0;bottom:0;left:30%;width:10px"></span>
+          <span class="pin9" style="--i:0;--x:-60px;--y:-50px"></span><span class="pin9" style="--i:1;--x:55px;--y:-40px"></span><span class="pin9" style="--i:2;--x:-40px;--y:55px"></span><span class="pin9" style="--i:3;--x:65px;--y:45px"></span><span class="pin9" style="--i:4;--x:5px;--y:-80px"></span>
+          <span class="cluster">5</span></div><p class="tap">숫자 원을 눌러 보세요</p></div>
+        <p class="desc">가까운 가게가 모인 숫자 원을 누르면 원이 작아지며 사라지고, 가게 핀이 사방으로 톡톡 퍼집니다.</p></div>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>사장님 화면</h2>
+    <p>가게 평판과 재고가 바뀌는 순간입니다.</p>
+    <div class="grid">
+      <div class="card"><div class="head"><h3>평균 별점 채워짐</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="rate"><div class="pad">
+          <div class="rate"><span class="big"><span class="roll rr"><span>4.6</span></span></span><div><span class="stars">★★★★★<span class="fill">★★★★★</span></span><small>리뷰 <span class="cnt">128</span>개</small></div></div>
+          <div class="newrev">★★★★★ 새 리뷰 · "고기가 정말 부드러웠어요!"</div></div></div>
+        <p class="desc">리뷰 화면을 열면 별이 왼쪽부터 평균만큼 차오르고, 새 리뷰가 들어오면 평균 숫자가 굴러 바뀝니다.</p></div>
+
+      <div class="card"><div class="head"><h3>품절 도장</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="sold"><div class="pad"><div class="sold"><div class="pic"></div><div class="stamp">품절</div></div>
+          <div class="stock"><span style="color:var(--ink-soft)">남은 수량</span><b><span class="roll kr"><span>1</span></span>장</b></div></div></div>
+        <p class="desc">마지막 한 장이 팔리면 남은 수량이 0으로 굴러 내려가고, 사진이 흑백으로 바래며 "품절" 도장이 쾅 찍힙니다.</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var wait = function (ms) { return new Promise(function (r) { setTimeout(r, reduce ? 0 : ms); }); };
+  function restart(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+  function roll(box, val, down) {
+    var cur = box.querySelector('span:last-child'); if (cur.textContent === String(val)) return;
+    box.querySelectorAll('.out').forEach(function (o) { o.remove(); });
+    box.classList.toggle('down', !!down);
+    if (reduce) { cur.textContent = val; return; }
+    cur.className = 'out'; var nx = document.createElement('span'); nx.className = 'in'; nx.textContent = val; box.appendChild(nx);
+    setTimeout(function () { cur.remove(); }, 300);
+  }
+  var N = 25, seed = 7, d = '';
+  function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+  function fin(x, y) { return (x < 8 && y < 8) || (x > N - 9 && y < 8) || (x < 8 && y > N - 9); }
+  function fon(x, y) { var ox = x < 8 ? 0 : N - 7, oy = y < 8 ? 0 : N - 7, dx = x - ox, dy = y - oy; return dx >= 0 && dy >= 0 && dx <= 6 && dy <= 6 && (dx === 0 || dy === 0 || dx === 6 || dy === 6 || (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4)); }
+  for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (fin(x, y) ? fon(x, y) : rnd() > .52) d += 'M' + x + ' ' + y + 'h1v1h-1z';
+  document.querySelectorAll('.qrsvg').forEach(function (s) { s.innerHTML = '<path d="' + d + '" fill="#16181C"/>'; });
+
+  var demos = {
+    bar: {
+      init: function (s) { var b = s.querySelector('.scrollbox'), bar = s.querySelector('.bar1'), box = s.querySelector('.buybox');
+        b.addEventListener('scroll', function () { bar.classList.toggle('on', box.offsetTop + box.offsetHeight < b.scrollTop); }); },
+      play: function (s) { var b = s.querySelector('.scrollbox'); b.scrollTo({ top: 0 }); wait(500).then(function () { b.scrollTo({ top: 300, behavior: reduce ? 'auto' : 'smooth' }); return wait(1800); }).then(function () { b.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); }); }
+    },
+    blur: {
+      init: function () {},
+      play: function (s) { var p = s.querySelectorAll('.bp'); p.forEach(function (x) { x.classList.remove('sharp'); }); p.forEach(function (x, i) { wait(500 + i * 260).then(function () { x.classList.add('sharp'); }); }); }
+    },
+    coupon: {
+      init: function (s) { var self = this; this.n = 2; s.querySelector('.cp button').addEventListener('click', function () { self.take(s); }); },
+      take: function (s) { var cp = s.querySelector('.cp'); if (cp.classList.contains('got')) return; restart(s.querySelector('.fly'), 'go');
+        var self = this; wait(600).then(function () { self.n++; roll(s.querySelector('.wr'), String(self.n)); restart(s.querySelector('.wallet3'), 'pop'); cp.classList.add('got'); cp.querySelector('button').textContent = '받음'; }); },
+      play: function (s) { var cp = s.querySelector('.cp'); cp.classList.remove('got'); cp.querySelector('button').textContent = '받기'; this.n = 2; roll(s.querySelector('.wr'), '2'); var self = this; wait(600).then(function () { self.take(s); }); }
+    },
+    qr: { init: function (s) { s.querySelector('.qr4').addEventListener('click', function () { restart(this, 'on'); }); }, play: function (s) { wait(400).then(function () { restart(s.querySelector('.qr4'), 'on'); }); } },
+    cal: {
+      init: function (s) { var self = this, dd = s.querySelector('.days');
+        for (var i = 1; i <= 28; i++) { var b = document.createElement('button'); b.type = 'button'; b.textContent = i; if (i < 3) b.className = 'off'; dd.appendChild(b); }
+        dd.querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { if (!b.classList.contains('off')) self.pick(s, b); }); });
+        this.pick(s, dd.querySelectorAll('button')[5]); },
+      pick: function (s, b) { s.querySelectorAll('.days button').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel');
+        var dot = s.querySelector('.dot5'); dot.style.transform = 'translate(' + (b.offsetLeft + (b.offsetWidth - 38) / 2) + 'px,' + b.offsetTop + 'px)'; },
+      play: function (s) { var self = this, bs = s.querySelectorAll('.days button'); self.pick(s, bs[5]); wait(600).then(function () { self.pick(s, bs[17]); return wait(900); }).then(function () { self.pick(s, bs[10]); }); }
+    },
+    avatar: {
+      cols: ['var(--photo3)', 'var(--photo4)', 'var(--photo1)'],
+      init: function (s) { var self = this; this.i = 0; var a = s.querySelector('.avatar6'), n = a.querySelector('.new');
+        a.style.background = this.cols[0]; n.style.background = this.cols[1];
+        a.addEventListener('click', function () { restart(a, 'swap'); setTimeout(function () { self.i = (self.i + 1) % self.cols.length; a.style.background = self.cols[self.i]; a.classList.remove('swap'); n.style.background = self.cols[(self.i + 1) % self.cols.length]; }, reduce ? 0 : 600); }); },
+      play: function (s) { wait(500).then(function () { s.querySelector('.avatar6').click(); }); }
+    },
+    search: {
+      word: '을지로 한우', counts: [128, 64, 31, 12, 9, 4],
+      init: function () {},
+      play: function (s) { var self = this, q = s.querySelector('.q'), r = s.querySelector('.sr'); q.textContent = ''; roll(r, '0');
+        var chain = wait(400); self.word.split('').forEach(function (ch, i) { chain = chain.then(function () { q.textContent += ch; var c = self.counts[Math.min(i, self.counts.length - 1)]; roll(r, String(c), true); return wait(320); }); }); }
+    },
+    net: {
+      init: function () {},
+      play: function (s) { var n = s.querySelector('.net'), t = n.querySelector('.t'); n.classList.remove('on', 'ok'); t.textContent = '인터넷 연결이 끊겼어요';
+        wait(500).then(function () { n.classList.add('on'); return wait(1600); }).then(function () { n.classList.add('ok'); t.textContent = '다시 연결됐어요'; return wait(1200); }).then(function () { n.classList.remove('on'); }); }
+    },
+    map: {
+      init: function (s) { var m = s.querySelector('.map9'); m.querySelector('.cluster').addEventListener('click', function () { m.classList.add('open'); }); m.addEventListener('click', function (e) { if (e.target === m) m.classList.remove('open'); }); },
+      play: function (s) { var m = s.querySelector('.map9'); m.classList.remove('open'); wait(700).then(function () { m.classList.add('open'); }); }
+    },
+    rate: {
+      init: function () {},
+      play: function (s) { var f = s.querySelector('.fill'), nr = s.querySelector('.newrev'); f.style.width = '0'; nr.classList.remove('on'); roll(s.querySelector('.rr'), '4.6'); s.querySelector('.cnt').textContent = '128';
+        wait(300).then(function () { f.style.width = (4.6 / 5 * 100) + '%'; return wait(1400); }).then(function () { nr.classList.add('on'); roll(s.querySelector('.rr'), '4.7'); s.querySelector('.cnt').textContent = '129'; f.style.width = (4.7 / 5 * 100) + '%'; }); }
+    },
+    sold: {
+      init: function () {},
+      play: function (s) { var b = s.querySelector('.sold'); b.classList.remove('out'); roll(s.querySelector('.kr'), '1'); wait(700).then(function () { roll(s.querySelector('.kr'), '0', true); return wait(300); }).then(function () { b.classList.add('out'); }); }
+    }
+  };
+
+  var screens = Array.prototype.slice.call(document.querySelectorAll('.scr'));
+  screens.forEach(function (s) { var dm = demos[s.dataset.demo]; dm.init(s); s.closest('.card').querySelector('.replay').addEventListener('click', function () { dm.play(s); }); });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { demos[e.target.dataset.demo].play(e.target); io.unobserve(e.target); } }); }, { threshold: .5 });
+    screens.forEach(function (s) { io.observe(s); });
+  }
+  document.getElementById('all').addEventListener('click', function () { screens.forEach(function (s) { demos[s.dataset.demo].play(s); }); });
+  var mb = document.getElementById('mode');
+  function setMode(m) { screens.forEach(function (s) { s.dataset.mode = m; }); mb.textContent = m === 'dark' ? '라이트 모드로' : '다크 모드로'; }
+  mb.addEventListener('click', function () { setMode(screens[0].dataset.mode === 'dark' ? 'light' : 'dark'); });
+  var r = document.documentElement;
+  setMode(r.dataset.theme === 'dark' || (!r.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+})();
+</script>
