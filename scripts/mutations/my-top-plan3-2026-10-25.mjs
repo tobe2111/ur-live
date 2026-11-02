@@ -16,12 +16,13 @@ export default [
     why: '세 숫자 중 하나가 빠지면 그 목적지(쿠폰함)로 가는 길이 위쪽에서 사라진다.',
   },
   {
-    name: '📋 환급 줄이 다시 "환급" 만 말한다 (무엇을 돌려받는지 모른다)',
+    name: '📋 위쪽 판에 환급 줄이 다시 생긴다',
     file: STATS,
-    find: '? `충전 딜 환급 ${formatNumber(refundPending)}원 · 입금 준비 중`',
-    replace: '? `환급 ${formatNumber(refundPending)}원 · 입금 준비 중`',
+    // 🔁 2026-11-02 재조준 — 대표 지시로 환급 줄을 없앴다.
+    find: "        {row('쿠폰', '/my-coupons', coupon, '장')}\n",
+    replace: "        {row('쿠폰', '/my-coupons', coupon, '장')}\n        {row('충전 딜 환급', '/my-deal-history', 0, '원')}\n",
     test: TEST,
-    why: '대표가 "환급은 뭐야? 정산이야?" 라고 물은 바로 그 문구다 — 충전 딜을 돌려받는 일이라고 말해야 한다.',
+    why: '대표 2026-11-02 *"충전 딜 환급 … 아예 없애달라는 뜻이야"*.',
   },
   {
     name: '📋 손님 쪽 다른 구역에도 판이 생긴다',
