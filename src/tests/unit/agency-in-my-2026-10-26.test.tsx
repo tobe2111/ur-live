@@ -76,11 +76,13 @@ describe('① /agency 는 마이로 보내는 문', () => {
 describe('② 손님 마이 안 구역', () => {
   it("'내 가게' 바로 아래 — 폰·PC 둘 다", () => {
     const page = code('src/pages/UserProfilePage.tsx')
-    expect(page).toMatch(/\{isPc \? <SellerSection state=\{sellerSeats\} \/> : null\}\s*(\{\s*\}\s*)?\{isPc \? <MyAgencyZone \/> : null\}/)
-    expect(page).toMatch(/<SellerSection state=\{sellerSeats\} \/>\s*<MyAgencyZone \/>/)
+    // 🔁 2026-11-02 재조준(통합 시안 v2) — 에이전시 이름이 매장 판 위 제목(`AgencyMergedTitle`)이 되고,
+    //   에이전시 구역은 판 바로 아래에서 '내 가게' 매장을 알고(`ownSellerIds`) 같은 매장을 다시 안 그린다.
+    expect(page).toMatch(/\{isPc \? <AgencyTitleDoor storeCount=\{sellerSeats\.stores\.length\} \/> : null\}\s*\{isPc \? <SellerSection state=\{sellerSeats\} \/> : null\}\s*(\{\s*\}\s*)?\{isPc \? <MyAgencyZone ownSellerIds=\{ownSellerIds\} \/> : null\}/)
+    expect(page).toMatch(/<AgencyTitleDoor storeCount=\{sellerSeats\.stores\.length\} \/>\s*<SellerSection state=\{sellerSeats\} \/>\s*<MyAgencyZone ownSellerIds=\{ownSellerIds\} \/>/)
   })
   it('마이 안에서는 한 칸(stacked)으로 — 마이의 PC 칸은 두 칸을 못 담는다', () => {
-    expect(code('src/pages/user-profile/MyAgencyZone.tsx')).toContain('<AgencySection stacked onSessionEnd={onSessionEnd} />')
+    expect(code('src/pages/user-profile/MyAgencyZone.tsx')).toContain('<AgencySection stacked headless={merged} ownSellerIds={merged ? ownSellerIds : undefined} onSessionEnd={onSessionEnd} />')
   })
   it('에이전시 로그인이 없으면 아무것도 안 그린다(코드도 안 받는다)', () => {
     const { container } = render(<MyAgencyZone />)
@@ -104,7 +106,7 @@ describe('④ 토큰 자리 이름은 한 벌', () => {
   it('거울은 한 곳(lib/agency-presence)이고 콘솔 이름과 같다 — 마이·마이 자리 둘 다 그걸 쓴다', () => {
     const mirror = /export const AGENCY_TOKEN_KEY_MIRROR = '([^']+)'/
     expect(code('src/lib/agency-presence.ts').match(mirror)?.[1]).toBe(AGENCY_TOKEN_KEY)
-    expect(code('src/pages/user-profile/MyAgencyZone.tsx')).toContain("import { hasAgencyLogin } from '@/lib/agency-presence'")
+    expect(code('src/pages/user-profile/MyAgencyZone.tsx')).toContain("import { announceAgencyPresence, hasAgencyLogin } from '@/lib/agency-presence'")
     expect(code('src/routes/agency-console.routes.tsx')).toContain("import { hasAgencyLogin } from '@/lib/agency-presence'")
     expect(code('src/pages/user-profile/MyAgencyZone.tsx')).not.toMatch(/AGENCY_TOKEN_KEY_MIRROR = /)
   })
