@@ -4,19 +4,24 @@
  * 가이드: docs/SSR_MIGRATION.md
  *
  * 사용:
- *   1. 빌드: npm run build:ssr → dist/server/entry-server.js
- *   2. prerender: scripts/prerender-main.mjs 가 dynamic import + renderApp() 호출
- *   3. 정적 HTML 생성 → dist/client/index.html inject
+ *   1. 빌드: npm run build:ssr → dist/server/entry-server.mjs
+ *   2. 검사: scripts/check-ssr-render-window.mjs 가 dynamic import + renderAppComplete() 호출
+ *   3. **산출물 없음** — 2026-11-01 부터 HTML 을 파일에 쓰지 않는다. 라이브는 워커가 `#root` 를
+ *      100% 교체하므로 구운 HTML 이 버려진다(사유·실측: 그 스크립트 머리말).
  *
  * SSR-safe 요건:
  *   - 메인 페이지 entry tree 의 모든 module 이 module-level 에서 window 미접근.
  *   - useEffect / onClick 안 접근은 SSR 시 실행 안 됨 (safe).
- *   - lazy import 페이지는 Suspense fallback 만 렌더 (실제 module 평가 안 됨, safe).
+ *   - 🔴 **lazy import 페이지도 안전하지 않다**(2026-11-01 정정). 여기 오래 *"Suspense fallback 만
+ *     렌더 — 실제 module 평가 안 됨, safe"* 라고 적혀 있었는데, 그것은 `renderToString`(=`renderApp`)
+ *     기준이다. `renderAppComplete` 의 **`onAllReady` 는 lazy 모듈을 끝까지 평가한다** — 그리고
+ *     검사기가 이제 그 경로로 돈다. 즉 lazy 페이지 모듈 본문의 `window` 접근도 잡힌다(그게 목적이다).
+ *     ⚠️ 이 문장을 "safe" 로 되돌리지 말 것: 그 오해가 2026-11-01 결함의 사각지대였다.
  */
 
 import { renderToString, renderToPipeableStream } from 'react-dom/server'
 // 🧵 2026-07-05 (prerender 스피너 근본수정): node:stream 은 이 번들의 유일 소비자가
-//   prerender-main.mjs(Node) 라서 안전 — worker 는 dist/server 를 임포트하지 않음.
+//   check-ssr-render-window.mjs(Node) 라서 안전 — worker 는 dist/server 를 임포트하지 않음.
 import { PassThrough } from 'node:stream'
 import { StaticRouter } from 'react-router-dom/server'
 import App, { type RouterLike } from './App'

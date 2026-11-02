@@ -994,6 +994,27 @@ jobs:
       - name: Build worker
         run: npm run build:worker
 
+      # 🔬 2026-11-01 (prerender 가 몇 달간 매 빌드 죽었는데 빌드는 초록이었다 — 로그 속 침묵):
+      #   앱 트리 전체를 Node 에서 렌더해 **렌더 중 window/document 접근**을 잡는다. 빌드 체인에서는
+      #   같은 검사가 `|| echo` 뒤에 있어 **소리만** 낸다(배포를 막지 않는다 — 의존성 하나가 모듈
+      #   평가 중 window 를 읽기 시작하면 main 배포가 통째로 멎는다). 머지를 막는 자리는 **여기**다.
+      #   ⚠️ 이 스텝을 지우면 그 검사가 다시 로그 속 침묵이 된다(그게 원 사고의 원인). 사유: scripts/check-ssr-render-window.mjs
+      - name: SSR 스모크 — 렌더 중 window 접근 (strict)
+        env:
+          # PR 검증용 더미 — production 배포 아님 (위 Build client 와 같은 값)
+          VITE_FIREBASE_API_KEY: 'pr-verify-dummy'
+          VITE_FIREBASE_AUTH_DOMAIN: 'pr.example.com'
+          VITE_FIREBASE_PROJECT_ID: 'pr-verify'
+          VITE_FIREBASE_STORAGE_BUCKET: 'pr.example.com'
+          VITE_FIREBASE_MESSAGING_SENDER_ID: '0'
+          VITE_FIREBASE_APP_ID: '0'
+          VITE_KAKAO_APP_KEY: 'pr-verify'
+          VITE_TOSS_CLIENT_KEY: 'pr-verify'
+        run: |
+          npm run build:ssr
+          node scripts/ci-run.mjs node scripts/check-ssr-render-window.mjs --strict
+
+
       # ── 5. 번들 예산 ──
       - name: Bundle size budget
         run: node scripts/ci-run.mjs npm run check:bundle:budget

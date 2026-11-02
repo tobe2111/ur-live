@@ -45,9 +45,32 @@ describe('① 래칫 여섯 자리가 전부 래퍼를 지난다', () => {
       })
     }
   }
-  it('래퍼를 지나는 자리가 여섯이다(한쪽 워크플로만 배선하면 반쪽이다)', () => {
-    const n = WORKFLOWS.reduce((a, wf) => a + read(wf).split('\n').filter((l) => l.includes('scripts/ci-run.mjs')).length, 0)
-    expect(n).toBe(6)
+  // 🔁 2026-11-01 재조준: 총량을 고정하던 것(`toBe(6)`)을 **래칫 자리**로 좁혔다. 래퍼는 래칫 전용
+  //   장치가 아니라 **실패 이유를 PR annotation 으로 띄우는 것**이라(이 시험이 생긴 이유가 정확히
+  //   "로그를 못 읽어 25분 썼다"다) 다른 strict 가드도 쓰는 것이 옳다. 지키려던 것(래칫 셋이 양쪽
+  //   워크플로에 **다** 배선됐는가)은 그대로이고, 위 6개 it 과 아래 둘이 그걸 각각 다른 각도로 잠근다.
+  //   ⚠️ 총량을 다시 `toBe(n)` 으로 박지 말 것 — 래퍼를 쓰는 가드가 하나 늘 때마다 낡고,
+  //      그러면 "숫자를 올리는" 수정이 관례가 되어 래칫 누락을 못 잡는다.
+  it('래칫 자리가 정확히 여섯이다(한쪽 워크플로만 배선하면 반쪽이다)', () => {
+    const ratchet = WORKFLOWS.flatMap((wf) =>
+      read(wf).split('\n').filter((l) => l.includes('scripts/ci-run.mjs') && RATCHETS.some((g) => l.includes(g))))
+    expect(ratchet.length, `래칫×워크플로 = 3×2 = 6 이어야 한다:\n${ratchet.join('\n')}`).toBe(6)
+  })
+
+  it('래퍼를 쓰는 비-래칫 가드는 **알려진 것뿐**이다(조용히 늘지 않게)', () => {
+    // 래칫이 아닌데 래퍼를 쓰는 자리는 여기 적힌 것만. 늘리려면 **왜 annotation 이 필요한지**를
+    // 함께 적을 것(실패 메시지가 숫자·목록이라 로그만으로는 못 읽는 가드가 그 대상이다).
+    const KNOWN = [
+      // 렌더 중 window 접근 검사(2026-11-01) — 실패 메시지가 "어느 결함 N건" 목록이라 annotation 이 필요하다.
+      'check-ssr-render-window.mjs',
+    ]
+    const others = WORKFLOWS.flatMap((wf) =>
+      read(wf).split('\n').filter((l) => l.includes('scripts/ci-run.mjs') && !RATCHETS.some((g) => l.includes(g))))
+    for (const l of others) {
+      expect(KNOWN.some((k) => l.includes(k)), `래퍼를 쓰는 새 자리가 등록 없이 생겼다:\n${l.trim()}`).toBe(true)
+    }
+    // 🛡️ 측정 0 = 통과가 아니다 — 이 시험이 아무것도 안 보는 상태로 굳는 것을 막는다.
+    expect(others.length).toBeGreaterThan(0)
   })
 })
 
