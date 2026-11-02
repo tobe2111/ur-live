@@ -49,3 +49,31 @@
 ## 틀렸던 판단
 - 처음엔 지명을 주소 어디서든 찾게 했는데 `대구`⊂`해운대구` 오매칭을 시험이 잡았다. 짧은 지명은 겹친다.
 - 광주광역시로 쳐도 펼친 `광주` 가 공백 뒤 매칭으로 경기 광주시를 끌고 왔다 — 시험이 잡았다. 펼친 표기는 맨 앞에서만.
+
+## 3차 (대표 *"더 개선할 건 없어?"*) — 라이브 실측으로 찾은 것
+1. **검색 기록이 0행이었다** — `logSearch` 가 `search_query`·`results_count` 로 INSERT 했는데 라이브
+   `search_logs` 는 `query`·`result_count`(pragma 실측). 매번 실패 → catch 가 삼킴. repair-schema.routes.ts 의
+   CREATE TABLE 만 옛 모양이었다(aux-tables.ts 는 라이브와 같음) → 둘 다 라이브 모양으로 맞췄다.
+   ⇒ **다음 세션**: 며칠 뒤 `SELECT query, COUNT(*) FROM search_logs WHERE result_count=0 GROUP BY query ORDER BY 2 DESC`
+   (메인 DB)로 손님이 찾다 0건 난 말을 보고 다음 개선을 고를 것. 이게 이번 수리의 진짜 목적이다.
+2. **분류 이름 검색** — `숙소` 0 → 20 · `맛집` 0 → 72 · `식사`·`식당` → 72 · `생활` → 22 (라이브 DB 에 새 SQL).
+   `헤어`·`네일`·`기타` 는 일부러 안 넓혔다(섞임).
+3. 동의어 `돈가스 · 돈까스 · 돈카츠`.
+
+⚠️ 남은 것: 내 실측 검색(부산·대구·강남)이 `popular_searches` 에 몇 건 쌓였다 — 지우는 건 데이터 쓰기라 안 했다.
+
+## 4차 (대표 *"왜 망가지는거야? 안망가지게 할 수 없어?"*) — 재발 방지 구조
+**원인 진단**: 검색이 고칠 때마다 망가진 공통 원인 둘 — ① 레포엔 같은 표의 정의가 여러 벌(D1 마이그레이션이
+라이브에 안 들어감)인데 컬럼 가드가 그걸 **합쳐** 봐서 틀린 컬럼도 통과(search_logs 0행 · 2026-09 `rating`)
+② 망가져도 **조용함**(랭킹 검색이 죽으면 옛 검색으로 내려가며 경고 한 줄 — 4주).
+1. **라이브 컬럼 사진** `src/shared/db/live-schema.snapshot.json`(라이브 D1 셋, 390표) + `scripts/snapshot-live-schema.mjs`.
+   `check-sql-column-exists.mjs` 가 사진에 있는 표는 사진만 믿는다(기본 켬, `--no-live` 로 종전).
+   켜자마자 **코드 전체에서 47종(60곳) 불일치**가 나왔다 → `scripts/live-columns-baseline.json` 동결(새 것만 막음).
+   대부분 중단 기능(틱톡·경매·라이브)이지만 **머니 경로 의심 몇 곳**: `refund.ts:197` order_refund_history.amount ·
+   `returns` refund_amount_* · `supplier_settlements.payout_ref` · `checkout.ts:287` cart_items.created_at ·
+   `consignment-settlement` order_items.consignment_id. 일부는 런타임 ensure 가 첫 사용 때 컬럼을 만드는 경우일 수 있어
+   **전부 결함으로 단정하지 말 것** — 하나씩 코드로 확인(머니 경로는 결재).
+2. **검색 엔진 상태를 응답에** — `search_mode: ranked|fallback`.
+3. **배포 직후 라이브 검색 점검** `scripts/check-live-search.mjs`(main.yml 배포 뒤 + live-contracts 주간):
+   서울·부산·숙소·맛집 이용권 수 하한 · 전부 이용권인가 · `search_mode==='ranked'`.
+   배포 전 실행 → 숙소·맛집 0 과 search_mode 부재로 **빨간불(의도대로)**.

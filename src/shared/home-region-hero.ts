@@ -67,3 +67,15 @@ export const REGION_HERO_FADE_LIGHT =
   'linear-gradient(90deg,rgba(255,255,255,.72),rgba(255,255,255,.35) 30%,rgba(255,255,255,0) 58%),linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 28%,rgba(255,255,255,0) 52%,rgba(255,255,255,.8) 82%,white)'
 export const REGION_HERO_FADE_DARK =
   'linear-gradient(180deg,rgba(17,20,28,.55),rgba(17,20,28,.35) 40%,rgba(17,20,28,.72) 75%,var(--bg))'
+
+/**
+ * 🗺️ 정규화된 시·도(`normalizeSido` — '서울'·'세종'·'충남'…) → 홈 머리와 **같은** 지역 사진.
+ *   2026-11-02 대표 *"이 부분들도 같이 적용되는걸로"* — PC 홈 「어디로 갈까요?」 타일이 그 지역 이용권 사진
+ *   (헬스장 광고 같은)을 쓰고 있었다. 머리와 같은 사진을 1순위로 쓴다.
+ *   세종·충남은 고르기 칸이 '충남세종' 하나라 같은 사진이다.
+ */
+export function regionHeroForSido(sido: string | null | undefined): RegionHero | null {
+  if (!sido) return null
+  const key = sido === '세종' || sido === '충남' ? '충남세종' : sido
+  return regionHeroFor({ regionKey: key })
+}

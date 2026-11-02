@@ -43,8 +43,9 @@ export default [
   {
     name: '홈페이지에넣기 — 번호를 몰라도 버튼을 그린다',
     file: A,
-    find: '{agencyId != null && (',
-    replace: '{true && (',
+    // 🔁 2026-11-02 재조준 — 큰 카드가 에이전시 줄이 됐다.
+    find: '{agencyId != null && <FlatRow label="홈페이지에 넣기"',
+    replace: '{true && <FlatRow label="홈페이지에 넣기"',
     test: T,
     why: '프로필이 아직 없을 때 `key=null` 로 코드 만들기 화면이 열린다 — 에이전시가 빈 위젯 코드를 복사해 홈페이지에 붙인다.',
   },

@@ -76,7 +76,7 @@ export default function EarningsPanel({ stats, info, onWithdraw }: {
   const belowMin = !!info && info.available < info.min_withdrawal
 
   return (
-    <section className="rounded-2xl overflow-hidden shadow-lift mb-3">
+    <section className="rounded-2xl overflow-hidden mb-3">
       {/* ── 티켓 밴드: 이 화면에 온 이유가 첫 줄에 온다 ── */}
       {info && (
         <div className="bg-brand text-white px-4 py-4 flex items-center justify-between gap-3">

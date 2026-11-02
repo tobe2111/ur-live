@@ -69,7 +69,7 @@ export default function LifeBizPage() {
       <LifeHeader title="업체 소개" back="/life" />
       <div className="mx-auto w-full max-w-[720px] px-4 pb-10 lg:grid lg:max-w-[1120px] lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5 lg:px-8">
         <div className="space-y-4">
-          <section className="rounded-2xl bg-surface p-5 shadow-lift">
+          <section className="rounded-2xl p-5">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[24px] font-bold">{b.name}</h2>
               {b.verified && <span className="rounded-full bg-warm px-2 py-1 text-[12px] font-medium text-gray-600 dark:text-gray-300">사업자 인증</span>}
@@ -97,7 +97,7 @@ export default function LifeBizPage() {
             )}
           </section>
 
-          <section className="rounded-2xl bg-surface p-5 shadow-lift">
+          <section className="rounded-2xl p-5">
             <p className="text-[17px] font-bold">유어딜 후기 {b.reviews?.count ? formatNumber(b.reviews.count) : ''}</p>
             {recent.length === 0 ? (
               <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">아직 유어딜 후기가 없어요.{b.links.length ? ' 위의 다른 곳 후기를 확인해 보세요.' : ''}</p>
@@ -117,14 +117,14 @@ export default function LifeBizPage() {
 
         <aside className="mt-4 space-y-4 lg:sticky lg:top-24 lg:mt-0">
           {first && (
-            <section className="rounded-2xl bg-surface p-5 shadow-lift">
+            <section className="rounded-2xl p-5">
               <p className="text-[15px] font-bold">이 업체에 견적 받기</p>
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">요청서를 쓰면 근처 업체들이 견적을 보내요. 연락처는 고른 한 곳에만 공개돼요.</p>
               <Link to={`/life/request/${first}`} className="ur-btn ur-btn-lg ur-btn-primary mt-3 flex w-full justify-center">{categoryLabel(first)} 견적 요청하기</Link>
             </section>
           )}
           {b.vouchers.length > 0 && (
-            <section className="rounded-2xl bg-surface p-5 shadow-lift">
+            <section className="rounded-2xl p-5">
               <p className="text-[15px] font-bold">정찰가 이용권</p>
               <ul className="mt-2 divide-y divide-rule">
                 {b.vouchers.map((v) => (

@@ -13,7 +13,7 @@
 **🔎 최근 인계를 찾는 법 — 목차는 이 파일에 없다.**
 
 ```bash
-ls docs/handoff/ | sort -r | head -5      # 파일명이 날짜 접두사라 정렬이 곧 최신순
+grep -ril '<내 작업 낱말>' docs/handoff/ | sort -r | head -3   # 주제로 찾는다 — 최신순으로 열지 말 것(최신 = 다른 세션의 일)
 node scripts/generate-handoff-index.mjs   # → docs/handoff/INDEX.local.md (제목까지 최신순, .gitignore)
 ```
 

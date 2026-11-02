@@ -64,7 +64,7 @@ export default function MyCouponsPage() {
         ) : coupons.length === 0 ? (
           /* 🧹 2026-10-19: 빈 화면이 같은 말을 두 번 했다(제목 "사용 가능한 쿠폰이 없습니다" + 설명 "받은 쿠폰이 없어요").
              설명은 **다음에 할 일**만 말한다 — 다른 빈 화면들과 같이 유달이 + 들림 카드. */
-          <div className="bg-surface rounded-2xl shadow-lift dark:shadow-none px-6 py-10 text-center">
+          <div className="rounded-2xl px-6 py-10 text-center">
             <Udal mood="empty" size={96} className="block mx-auto mb-4" />
             <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('myCoupons.empty')}</h2>
             <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('myCoupons.emptySub')}</p>
@@ -82,7 +82,7 @@ export default function MyCouponsPage() {
               return (
                 <article
                   key={c.id}
-                  className="relative bg-surface rounded-2xl shadow-lift dark:shadow-none overflow-hidden"
+                  className="relative rounded-2xl overflow-hidden"
                 >
                   <div className="flex">
                     {/* 할인 금액 */}

@@ -54,9 +54,13 @@ describe('① 숫자 줄은 폰·PC 같은 세 칸이다', () => {
 })
 
 describe('② 목록은 숫자 줄과 같은 숫자를 다시 안 단다', () => {
-  it("'내 이용권'·'쿠폰함' 줄엔 숫자가 없다 — 위 숫자 줄이 그 한 곳", () => {
-    expect(shopRow('/my-vouchers'), '이용권 장수가 다시 두 번 선다').not.toContain('count:')
-    expect(shopRow('/my-coupons'), '쿠폰 장수가 다시 두 번 선다').not.toContain('count:')
+  // 🔁 2026-11-02 재조준 — 대표 *"중복도 있고"* 로 '내 이용권'·'쿠폰함' 줄 자체를 뺐다. 위 숫자 줄이 **유일한 문**이다.
+  it("'내 이용권'·'쿠폰함' 줄이 목록에 다시 서지 않는다 — 위 숫자 줄이 그 한 곳", () => {
+    expect(SHOP, '이용권 줄이 목록에 돌아왔다').not.toContain("path: '/my-vouchers'")
+    expect(SHOP, '쿠폰함 줄이 목록에 돌아왔다').not.toContain("path: '/my-coupons'")
+    const stats = readCode('src/pages/user-profile/MyStats.tsx')
+    expect(stats, '숫자 줄의 이용권 문이 사라졌다').toContain("'/my-vouchers'")
+    expect(stats, '숫자 줄의 쿠폰 문이 사라졌다').toContain("'/my-coupons'")
   })
 
   it("반대 방향 — '내 교환권'·'찜한 상품' 은 숫자를 지킨다(그 숫자의 유일한 자리다)", () => {

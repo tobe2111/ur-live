@@ -32,12 +32,13 @@ describe('① 직원은 읽고, 관리자만 만들고 끊는다', () => {
     expect(ROUTES).toMatch(/post\('\/store-invite', cors\(\), requireAgencyStaff\(\{ adminOnly: true \}\)/)
     expect(ROUTES).toMatch(/post\('\/store-invite\/revoke', cors\(\), requireAgencyStaff\(\{ adminOnly: true \}\)/)
   })
+  // 🔁 2026-11-02 재조준 — 영입 입구가 마이 머리의 버튼 ①(`AgencyInviteButton`) 하나로 옮겨 갔다.
   it('영입 링크 버튼·시트가 직원에게도 열리고, 대신 등록만 관리자 전용', () => {
-    const i = PANEL.indexOf('data-testid="agency-invite-entry"')
-    expect(i).toBeGreaterThan(0)
-    expect(PANEL.slice(Math.max(0, i - 120), i)).not.toMatch(/canManage &&/)
-    expect(PANEL).toMatch(/sheet === 'invite' && \(/)
-    expect(PANEL).toMatch(/<AgencyInviteLinkCard canManage=\{canManage\} \/>/)
+    const BTN = readCode('src/pages/user-profile/AgencyInviteButton.tsx')
+    expect(BTN).toContain('data-testid="agency-invite-entry"')
+    expect(BTN, '직원에게 버튼이 숨는다').toMatch(/if \(!on\) return null/)
+    expect(BTN, '직원 판정이 버튼을 숨긴다').not.toMatch(/if \(!on \|\| !isAdmin\)/)
+    expect(readCode('src/pages/agency-console/AgencyInviteSheet.tsx')).toContain('<AgencyInviteLinkCard canManage={canManage} />')
     expect(PANEL).toMatch(/sheet === 'register' && canManage/)
   })
   it('카드의 새로 만들기·끊기는 canManage 안에만 있다', () => {

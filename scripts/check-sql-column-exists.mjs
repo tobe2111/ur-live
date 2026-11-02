@@ -386,6 +386,31 @@ function walkSelect(dir) {
 
 parseMigrations()
 walkDdl(path.join(ROOT, 'src'))  // 런타임 DDL 도 schema 에 반영
+
+/**
+ * 🗄️ 2026-11-02 `--live` — 라이브 사진(`src/shared/db/live-schema.snapshot.json`)에 **있는 테이블**은
+ *   레포 정의를 버리고 사진만 믿는다. 레포엔 같은 테이블의 정의가 여러 벌이라(마이그레이션이 라이브에
+ *   안 들어간다) 합쳐 보면 틀린 쪽으로 쓴 코드도 통과했다 — `search_logs` 가 정확히 그랬다(0행).
+ *   사진에 없는 테이블(라이브에 아직 없는 새 테이블)은 종전대로 레포 정의로 본다.
+ */
+//   2026-11-02: 기본으로 켠다(사진이 있으면). `--no-live` 로 종전 동작.
+const LIVE_SNAPSHOT = path.join(ROOT, 'src/shared/db/live-schema.snapshot.json')
+const LIVE = !process.argv.includes('--no-live') && fs.existsSync(LIVE_SNAPSHOT)
+const REBASELINE_LIVE = process.argv.includes('--rebaseline-live')
+const LIVE_BASELINE = path.join(ROOT, 'scripts/live-columns-baseline.json')
+let liveTables = 0
+if (LIVE) {
+  const snap = JSON.parse(fs.readFileSync(LIVE_SNAPSHOT, 'utf8'))
+  for (const [t, cols] of Object.entries(snap.tables)) {
+    schema.set(t.toLowerCase(), new Set(String(cols).split(',').map((c) => c.toLowerCase())))
+    liveTables++
+  }
+  if (liveTables < 100) {
+    console.error(`🚨 라이브 사진이 비었다(테이블 ${liveTables}개) — 검사가 아니라 사진이 깨진 것이다.`)
+    process.exit(1)
+  }
+}
+
 walk(path.join(ROOT, 'src'))
 walkSelect(path.join(ROOT, 'src'))
 
@@ -395,7 +420,32 @@ if (schema.size < 20) {
   process.exit(1)
 }
 
-const summary = `tables=${schema.size}, insert-checks=${stats.insertChecks}, update-checks=${stats.updateChecks}, select-hits=${stats.selectChecks}, dynamic-skip=${stats.dynamicSkip}`
+/**
+ * 🧊 라이브 기준으로 처음 켰을 때 이미 있던 불일치는 **동결**한다(2026-11-02 실측 60건 — 대부분 중단된
+ *   기능(틱톡·경매·라이브) 코드다). 새로 생기는 불일치만 막는다. 키에 줄 번호를 넣지 않는다 —
+ *   위에 한 줄만 더해도 동결이 깨지면 사람들이 이 검사를 끈다.
+ *   동결 목록은 줄어들기만 해야 한다: 고쳤으면 `--rebaseline-live` 로 내린다.
+ */
+const keyOf = (v) => `${v.file}|${v.op}|${v.table}.${v.missingCol}`
+if (LIVE && REBASELINE_LIVE) {
+  const keys = [...new Set(violations.map(keyOf))].sort()
+  fs.writeFileSync(LIVE_BASELINE, JSON.stringify({
+    _readme: '라이브 사진 기준 컬럼 불일치 동결 목록 — 늘리지 말 것. 고쳤으면 node scripts/check-sql-column-exists.mjs --rebaseline-live',
+    frozen: keys,
+  }, null, 1) + '\n')
+  console.log(`🧊 동결 목록 갱신: ${keys.length}건 → ${path.relative(ROOT, LIVE_BASELINE)}`)
+  process.exit(0)
+}
+if (LIVE && fs.existsSync(LIVE_BASELINE)) {
+  const frozen = new Set(JSON.parse(fs.readFileSync(LIVE_BASELINE, 'utf8')).frozen)
+  const before = violations.length
+  const kept = violations.filter((v) => !frozen.has(keyOf(v)))
+  violations.length = 0
+  violations.push(...kept)
+  console.log(`🧊 라이브 기준 동결 ${before - kept.length}건은 제외(목록 ${frozen.size}건 — scripts/live-columns-baseline.json).`)
+}
+
+const summary = `live-tables=${liveTables}, tables=${schema.size}, insert-checks=${stats.insertChecks}, update-checks=${stats.updateChecks}, select-hits=${stats.selectChecks}, dynamic-skip=${stats.dynamicSkip}`
 
 if (violations.length === 0) {
   console.log(`✅ 존재하지 않는 컬럼 참조 없음.\n   ${summary}`)

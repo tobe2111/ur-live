@@ -147,7 +147,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
         ) : (
           <>
             {/* 예약 요약 — 서버 데이터 그대로 표시 */}
-            <section className="bg-white rounded-2xl p-4 space-y-3 shadow-lift">
+            <section className="rounded-2xl p-4 space-y-3">
               <p className="text-[12px] text-gray-500">예약 내역 ({bookings.length}건)</p>
               {bookings.map((b) => (
                 <div key={b.id} className="flex items-start gap-3 pt-1">

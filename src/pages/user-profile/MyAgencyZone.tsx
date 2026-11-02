@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { toast } from '@/hooks/useToast'
 import { runAfterLoad } from '@/lib/after-load'
-import { hasAgencyLogin } from '@/lib/agency-presence'
+import { announceAgencyPresence, hasAgencyLogin } from '@/lib/agency-presence'
+import { useAgencyPresence } from './useAgencyPresence'
 
 export { hasAgencyLogin }
 
@@ -25,12 +26,20 @@ function probedThisTab(uid: string): boolean {
   try { return sessionStorage.getItem(KAKAO_PROBE_KEY_MIRROR) === uid } catch { return true }
 }
 
-export default function MyAgencyZone() {
-  const [on, setOn] = useState(hasAgencyLogin)
+/**
+ * @param ownSellerIds 이 사람이 운영자로 맡은 매장(위 '내 가게' 판). 있으면 **합친 구역**으로 그린다
+ *   (2026-11-02 통합 시안 v2) — 제목은 판 위의 `AgencyMergedTitle` 이 이미 세웠으므로 여기서는 '에이전시'
+ *   묶음 라벨과 할 일 줄만, 그리고 그 매장들은 다시 그리지 않는다.
+ */
+export default function MyAgencyZone({ ownSellerIds }: { ownSellerIds?: number[] } = {}) {
+  const presence = useAgencyPresence()
+  const [on, setOnState] = useState(hasAgencyLogin)
+  const setOn = useCallback((v: boolean) => { setOnState(v); announceAgencyPresence() }, [])
+  useEffect(() => { setOnState(presence.on) }, [presence.on])
   const onSessionEnd = useCallback((why: 'expired' | 'logout') => {
     if (why === 'expired') toast.error('에이전시 로그인이 끝났어요. 에이전시 화면은 다시 로그인하면 보여요.')
     setOn(false)
-  }, [])
+  }, [setOn])
 
   useEffect(() => {
     if (on) return
@@ -44,12 +53,14 @@ export default function MyAgencyZone() {
         .then((ok) => { if (ok) setOn(true) })
         .catch(() => { /* 없으면 그만 */ })
     })
-  }, [on])
+  }, [on, setOn])
 
   if (!on) return null
+  const merged = !!ownSellerIds && ownSellerIds.length > 0
   return (
     <Suspense fallback={null}>
-      <AgencySection stacked onSessionEnd={onSessionEnd} />
+      {merged && <p className="px-4 mt-6 mb-1 text-[12px] font-medium text-gray-500 dark:text-gray-400">에이전시</p>}
+      <AgencySection stacked headless={merged} ownSellerIds={merged ? ownSellerIds : undefined} onSessionEnd={onSessionEnd} />
     </Suspense>
   )
 }

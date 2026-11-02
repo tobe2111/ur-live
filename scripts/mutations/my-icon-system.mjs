@@ -27,8 +27,9 @@ export default [
   {
     name: '🎨 유어딜 아이콘을 import 만 하고 안 쓴다 (배선 끊김)',
     file: 'src/pages/user-profile/ShoppingGroup.tsx',
-    find: "  TicketStubIcon, CouponIcon, GiftBoxIcon, StayLineIcon, HeartIcon, StarIcon,\n  BellIcon, PinIcon, ReviewIcon, HomeServiceLineIcon,\n}",
-    replace: "  TicketStubIcon,\n}",
+    // 🔁 2026-11-02 재조준 — '내 이용권'·'쿠폰함' 줄을 빼며 두 아이콘 import 도 빠졌다.
+    find: "  GiftBoxIcon, StayLineIcon, HeartIcon, StarIcon,\n  BellIcon, PinIcon, ReviewIcon, HomeServiceLineIcon,\n}",
+    replace: "  GiftBoxIcon,\n}",
     test: TEST,
     why: '세트를 만들어 놓고 쓰지 않으면 화면은 종전 그대로다 — 종류 수 하한이 그 착각을 막는다.',
   },
@@ -54,8 +55,8 @@ export default [
     //   그대로라 같은 구역의 형제 파일로 옮긴다.
     name: '🎨 세트에 없는 이름을 import 한다',
     file: 'src/pages/user-profile/ShoppingGroup.tsx',
-    find: "  TicketStubIcon, CouponIcon, GiftBoxIcon,",
-    replace: "  TicketStubIcon, CouponIcon, GiftBoxIcon, GearIcon,",
+    find: "  GiftBoxIcon, StayLineIcon, HeartIcon, StarIcon,",
+    replace: "  GiftBoxIcon, GearIcon, StayLineIcon, HeartIcon, StarIcon,",
     test: TEST,
     why: '이름만 맞고 실물이 없으면 런타임에 빈 자리가 된다(번들러가 조용히 undefined 를 준다).',
   },

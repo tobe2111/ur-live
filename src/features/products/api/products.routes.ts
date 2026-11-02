@@ -420,7 +420,7 @@ productsRoutes.get('/', cors(), async (c) => {
       success: true,
       data: result.data,
       pagination: result.pagination,
-      ...(suggested_query ? { suggested_query } : {}),
+      ...(result.searchMode ? { search_mode: result.searchMode } : {}), ...(suggested_query ? { suggested_query } : {}), // 🔦 search_mode 2026-11-02
     });
     
   } catch (error) {

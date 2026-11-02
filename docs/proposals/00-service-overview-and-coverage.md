@@ -1,3 +1,5 @@
+> 🧊 **2026-11-02 동결 — 이 문서는 더 이상 자동 갱신되지 않는다.** 실제 대외 소개서는 `docs/business/proposals/` 의 덱(어드민 `/admin/proposals`)이다. 아래 자동 블록은 그날의 사본이다 (다시 만들려면 `node scripts/generate-proposal-refs.mjs` — 커밋마다 돌지 않는다).
+
 # 유어딜 / 유통스타트 — 전체 서비스 지도 & 소개서 커버리지 검증 (MECE)
 
 > **이 문서의 목적**: **4개 대표 소개서**(`wholesale-mall-brief` 도매몰 / `offline-groupbuy-brief` 오프라인 공구 / `online-listing-proposal-brief` 온라인 입점 / `linkshop-brief` 유어샵)가 **유어딜/유통스타트 서비스 전체를 빠짐없이(MECE) 커버하는지** 검증하기 위한 마스터 인벤토리 + 커버리지 매트릭스.

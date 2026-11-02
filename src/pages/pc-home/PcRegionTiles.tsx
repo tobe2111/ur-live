@@ -39,7 +39,9 @@ export default function PcRegionTiles() {
       <h2 id="pc-region-tiles" className="mb-3 text-[24px] font-bold tracking-[-.02em] text-gray-900 dark:text-white">어디로 갈까요?</h2>
       <div className="grid grid-cols-4 gap-4">
         {tiles.map((t) => {
-          const src = cfImage(t.photo, { width: 400, quality: 76 })
+          // 🗺️ 머리와 같은 지역 사진은 우리 정적 파일(1080×360, 장당 30~70KB)이라 리사이저를 거치지 않는다 —
+          //   400px 로 줄이면 높이가 133px 이 되어 4:3 칸을 채우려 다시 늘리며 흐려진다.
+          const src = t.hero ? t.photo : cfImage(t.photo, { width: 400, quality: 76 })
           return (
             <Link
               key={t.sido}

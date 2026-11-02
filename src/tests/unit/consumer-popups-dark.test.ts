@@ -69,8 +69,9 @@ describe('② 리뷰 작성란 (ProductReviews)', () => {
     expect(EMOJI.test(rendered)).toBe(false)
   })
 
-  it('작성 카드는 테두리 0 + shadow-lift (규칙 ①)', () => {
-    expect(src).toMatch(new RegExp(`rounded-2xl ${CARD_BG} shadow-lift`))
+  it('작성 카드는 테두리 0 + 판 없음(2026-11-02 대표 확정 A안 — 평면)', () => {
+    expect(src).toMatch(/mt-3 rounded-2xl p-4/)
+    expect(src).not.toMatch(/mt-3 rounded-2xl[^"]*shadow-lift/)
   })
 })
 
