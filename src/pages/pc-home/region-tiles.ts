@@ -17,7 +17,14 @@ export type RegionTile = SidoStat & { photo: string; places: string; hero?: bool
  *   사진이 없는 지역은 건너뛰고 다음 지역으로 채운다 — 종전엔 파란 면에 글자만 그려 한 칸만 비어 보였다.
  * 네 곳이 안 모이면 빈 배열(호출부가 줄 자체를 안 그린다).
  */
-export function pickRegionTiles(regions: SidoStat[], deals: Deal[], banners: Banner[]): RegionTile[] {
+/**
+ * @param heroFor 시·도 → 머리 사진. 기본은 홈 머리 표(`regionHeroForSido`). 시험이 폴백 규칙(배너 → 이용권)을
+ *   **어느 지역에 그림이 있느냐와 무관하게** 보도록 바꿔 끼울 수 있다 — 그림이 늘 때마다 시험이 깨지지 않게.
+ */
+export function pickRegionTiles(
+  regions: SidoStat[], deals: Deal[], banners: Banner[],
+  heroFor: (sido: string) => { src: string } | null = regionHeroForSido,
+): RegionTile[] {
   const out: RegionTile[] = []
   const ranked = regions.filter((r) => r.indexable && r.count > 0).sort((a, b) => b.count - a.count)
   for (const r of ranked) {
@@ -28,7 +35,7 @@ export function pickRegionTiles(regions: SidoStat[], deals: Deal[], banners: Ban
     const fromBanner = banners.find((b) => {
       try { return !!b.image_url && decodeURIComponent(new URL(b.link_url || '', 'https://urdeal.kr').pathname) === path } catch { return false }
     })?.image_url
-    const hero = regionHeroForSido(r.sido)?.src
+    const hero = heroFor(r.sido)?.src
     const photo = hero || fromBanner || deals.find((p) => p.image_url && p.deal_only !== 1 && addressInRegion(p.restaurant_address, { sido: r.sido }))?.image_url
     if (!photo) continue
     const places = r.sigungu.filter((s) => s.indexable).slice(0, 3).map((s) => s.sigungu).join('·')

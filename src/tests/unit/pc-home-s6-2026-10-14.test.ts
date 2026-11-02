@@ -117,22 +117,22 @@ describe('⑥ 숫자를 지어내지 않는다', () => {
     const R = (sido: string, count: number, indexable = true) => ({ sido, count, indexable, sigungu: [sg('중구')] }) as never
     // 🔁 2026-11-02 재조준 — 1순위가 홈 머리와 같은 지역 사진이 됐다. 아래 폴백 규칙은 **그 사진이 없는**
     //   지역(울산·경남·경북·광주·전남)으로 본다(서울·부산 등은 이제 늘 머리 사진이 있다).
-    // 🔁 2026-11-02 재조준(2) — 울산·경남도 머리 사진이 생겼다. 폴백 규칙은 아직 사진이 없는 충북·경북·전남으로 본다
-    //   (서울·제주는 머리 사진으로 칸을 채운다).
-    const regions = [R('충북', 50), R('경북', 40), R('전남', 30), R('서울', 20), R('제주', 10), R('세종', 99, false)]
+    // 🔁 2026-11-02 재조준(3) — 지역 그림이 계속 늘어서 시험이 매번 깨졌다. 폴백 규칙(배너 → 이용권)은
+    //   그림 표와 무관하게 보도록 **그림 없음**을 주입한다(`heroFor`). 그림이 1순위라는 건 아래 🗺️ 시험이 본다.
+    const noHero = () => null
+    const regions = [R('서울', 50), R('경기', 40), R('부산', 30), R('강원', 20), R('제주', 10), R('세종', 99, false)]
     const deal = (addr: string) => ({ image_url: `https://x/${addr}.jpg`, deal_only: 0, restaurant_address: `${addr} 중구 1` })
-    // 🖼️ 2026-10-14 대표 "사진 없는건 빼주면 돼" — 사진 없는 경북은 건너뛴다
-    const got = pickRegionTiles(regions, [deal('충북'), deal('전남')], [])
-    expect(got.map((t) => t.sido)).toEqual(['충북', '전남', '서울', '제주'])
+    // 🖼️ 2026-10-14 대표 "사진 없는건 빼주면 돼" — 사진 없는 경기는 건너뛰고 제주로 채운다
+    const got = pickRegionTiles(regions, [deal('서울'), deal('부산'), deal('강원'), deal('제주')], [], noHero)
+    expect(got.map((t) => t.sido)).toEqual(['서울', '부산', '강원', '제주'])
     expect(got.every((t) => !!t.photo)).toBe(true)
-    expect(got[0].photo, '사진 없는 지역은 이용권 사진').toBe('https://x/충북.jpg')
     // 색인 게이트 밖(세종)은 사진이 있어도 안 들어온다
-    expect(got.map((t) => t.sido)).not.toContain('세종')
+    expect(pickRegionTiles(regions, [deal('세종'), deal('서울'), deal('부산'), deal('강원'), deal('제주')], [], noHero).map((t) => t.sido)).not.toContain('세종')
     // 사진 있는 곳이 넷이 안 되면 빈 배열(줄을 안 그린다)
-    expect(pickRegionTiles([R('충북', 50), R('경북', 40), R('전남', 30)], [deal('충북')], [])).toEqual([])
+    expect(pickRegionTiles(regions, [deal('서울'), deal('부산')], [], noHero)).toEqual([])
     // 배너 사진이 이용권 사진보다 먼저
-    const b = [{ image_url: 'https://x/banner.jpg', link_url: 'https://urdeal.kr/region/%EC%B6%A9%EB%B6%81' }]
-    expect(pickRegionTiles(regions, [deal('충북'), deal('전남')], b)[0].photo).toBe('https://x/banner.jpg')
+    const b = [{ image_url: 'https://x/banner.jpg', link_url: 'https://urdeal.kr/region/%EC%84%9C%EC%9A%B8' }]
+    expect(pickRegionTiles(regions, [deal('서울'), deal('부산'), deal('강원'), deal('제주')], b, noHero)[0].photo).toBe('https://x/banner.jpg')
   })
   it('🗺️ 홈 머리와 같은 지역 사진이 배너·이용권 사진보다 먼저다 (2026-11-02 대표 "같이 적용")', () => {
     const sg = (n: string) => ({ sigungu: n, count: 3, indexable: true })
