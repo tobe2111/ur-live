@@ -56,6 +56,20 @@ function getReturnUrl(): string {
   return window.location.pathname + window.location.search
 }
 
+/**
+ * 🔗 내 유어샵 경유 추천 링크를 클립보드에 넣는다. 성공하면 true.
+ * 🔁 2026-11-02 대표 선택 ③ "팔기 창 복사 버튼 하나로": 이미 담은 상품이어도 링크는 복사한다 —
+ *   종전엔 "이미 담은 상품이에요" 만 뜨고 링크는 안 받아져서 '링크만 복사' 버튼이 따로 필요했다.
+ */
+async function copyShareLink(productId: number, handle: string | null | undefined, userId: string | number): Promise<boolean> {
+  try {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://urdeal.kr'
+    const shareUrl = handle ? `${origin}/u/${handle}/p/${productId}` : `${origin}/products/${productId}?ref=${userId}`
+    await navigator.clipboard.writeText(shareUrl)
+    return true
+  } catch { return false /* 클립보드 차단 환경 */ }
+}
+
 export function usePinAction(): UsePinActionResult {
   const [isPinning, setIsPinning] = useState(false)
   const user = useAuthStore((s: any) => s.user)
@@ -76,8 +90,10 @@ export function usePinAction(): UsePinActionResult {
     try {
       const result = await curatorApi.addPin(productId)
       if (!result.success) {
-        if (result.code === 'ALREADY_PINNED') toast.info(MSG.already)
-        else toast.error(result.error || MSG.failed)
+        if (result.code === 'ALREADY_PINNED') {
+          const copied = await copyShareLink(productId, (user as { handle?: string })?.handle, user.id)
+          toast.info(MSG.already + (copied ? MSG.linkCopied : ''))
+        } else toast.error(result.error || MSG.failed)
         return
       }
 
@@ -92,16 +108,7 @@ export function usePinAction(): UsePinActionResult {
 
       // 🛡️ 2026-05-28: 원클릭 추천 = 담기 + 추천 링크 클립보드 복사 동시 (사용자 결정).
       //   유어샵에 담김 + 단톡방/스토리에 바로 붙여넣을 추천 링크 복사 → 행동 1단계.
-      let linkCopied = false
-      try {
-        const handle = result.handle || (user as { handle?: string })?.handle
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://urdeal.kr'
-        const shareUrl = handle
-          ? `${origin}/u/${handle}/p/${productId}`
-          : `${origin}/products/${productId}?ref=${user.id}`
-        await navigator.clipboard.writeText(shareUrl)
-        linkCopied = true
-      } catch { /* 클립보드 차단 환경 — 담기는 이미 완료 */ }
+      const linkCopied = await copyShareLink(productId, result.handle || (user as { handle?: string })?.handle, user.id)
 
       const copySuffix = linkCopied ? MSG.linkCopied : ''
       // ✨ 2026-07-04 유어샵 1단계 1b: 매장 업주(스토어프론트 모드)가 담으면 하단 '추천' 섹션으로 간다는 것만
@@ -110,8 +117,10 @@ export function usePinAction(): UsePinActionResult {
       toast.success((isStoreOwner ? MSG.savedStore : MSG.saved) + copySuffix)
     } catch (err) {
       const { code, error } = readApiError(err)
-      if (code === 'ALREADY_PINNED') toast.info(MSG.already)
-      else toast.error(error && error.length <= 30 ? error : MSG.failed)
+      if (code === 'ALREADY_PINNED') {
+        const copied = await copyShareLink(productId, (user as { handle?: string })?.handle, user.id)
+        toast.info(MSG.already + (copied ? MSG.linkCopied : ''))
+      } else toast.error(error && error.length <= 30 ? error : MSG.failed)
     } finally {
       setIsPinning(false)
     }

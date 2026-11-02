@@ -43,9 +43,27 @@ export interface StoreIntroSource {
  * 조건을 두 벌로 두면 반드시 갈리므로 판정을 여기 하나로 모은다.
  */
 export function hasStoreIntro(src: StoreIntroSource): boolean {
-  const raw = (src.description || '').trim()
-  const spec = raw && raw !== (src.productName || '').trim() ? raw : ''
+  const spec = specOf(src.description, src.productName)
   return !!((src.longDescription || '').trim() || (src.sellerBio || '').trim() || spec)
+}
+
+/**
+ * '상품 구성' 으로 보여 줄 글 — 제목을 **되풀이할 뿐**이면 빈 문자열(그 블록이 안 뜬다).
+ *
+ * 🔁 2026-11-02 대표 선택 ④ "'상품 구성' 반복 줄 숨기기": 종전엔 설명이 제목과 **글자 그대로** 같을 때만 숨겼다.
+ * 라이브 2919 는 제목 `달빛한스푼 닭도리탕` · 설명 `달빛한스푼 이용권` — 글자는 달라도 새 정보가 0 인데 구역 하나를 차지했다.
+ * 규칙: 끝의 `이용권` 을 떼고 남은 말이 **제목 안에 이미 있으면** 되풀이로 본다. 숫자·구성(`2인`, `1개`, 쉼표 목록)이 있는
+ * 실제 구성은 제목에 없는 말이 남으므로 그대로 뜬다.
+ */
+export function specOf(description?: string | null, productName?: string | null): string {
+  const raw = (description || '').trim()
+  const name = (productName || '').trim()
+  if (!raw || raw === name) return ''
+  const core = raw.replace(/\s*이용권$/, '').trim()
+  if (!core) return ''
+  const squash = (v: string) => v.replace(/\s+/g, '')
+  if (core.length <= name.length && squash(name).includes(squash(core))) return ''
+  return raw
 }
 
 export default function StoreIntro({
@@ -61,9 +79,8 @@ export default function StoreIntro({
 }) {
   const body = (longDescription || '').trim()
   const bio = (sellerBio || '').trim()
-  // 종전 조건 그대로 — 설명이 제목과 같은 말이면 두 번 쓰지 않는다(이사 전 `GroupBuyDetailPage` 의 가드).
-  const raw = (description || '').trim()
-  const spec = raw && raw !== (productName || '').trim() ? raw : ''
+  // 설명이 제목을 되풀이할 뿐이면 두 번 쓰지 않는다 — 판정은 `specOf` 하나(탭과 같은 함수).
+  const spec = specOf(description, productName)
   // 판정은 `hasStoreIntro` 하나만 쓴다 — 탭이 같은 함수를 보고 뜰지 말지 정한다.
   if (!hasStoreIntro({ description, productName, longDescription, sellerBio })) return null
 

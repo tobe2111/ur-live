@@ -33,18 +33,9 @@ export default function SellThisSheet({ productId, price, sellerId, deal, offer,
   const [requesting, setRequesting] = useState(false)
   const on = offer && offer.enabled ? offer : null
   const pct = typeof deal === 'number' && deal > 0 ? deal : null
-  const handle = (() => { try { return localStorage.getItem('user_handle') } catch { return null } })()
 
   if (applying && on) {
     return <Suspense fallback={null}><SeedingApplySheet productId={productId} offer={on} onClose={onClose} /></Suspense>
-  }
-
-  async function copyLink() {
-    if (!handle) return
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}/u/${handle}/p/${productId}`)
-      toast.success('링크를 복사했어요')
-    } catch { toast.error('복사에 실패했어요') }
   }
 
   async function requestDeal() {
@@ -84,11 +75,7 @@ export default function SellThisSheet({ productId, price, sellerId, deal, offer,
             className="ur-btn ur-btn-lg ur-btn-primary mt-3 w-full disabled:opacity-60">
             내 유어샵에 담고 링크 복사
           </button>
-          {handle && (
-            <button type="button" onClick={copyLink} className="mt-2 h-11 w-full text-[13px] text-gray-500 dark:text-gray-400">
-              이미 담았다면 링크만 복사
-            </button>
-          )}
+          {/* 🔁 2026-11-02 대표 선택 ③: 이미 담은 상품이어도 이 버튼 하나가 링크를 복사한다(`usePinAction` ALREADY_PINNED) — '링크만 복사' 줄은 걷었다. */}
           {deal === 0 && sellerId != null && (
             <button type="button" disabled={requesting || requested} onClick={requestDeal}
               className="mt-2 h-11 w-full rounded-xl bg-wash text-[15px] font-medium text-gray-900 disabled:text-gray-500 dark:text-white">

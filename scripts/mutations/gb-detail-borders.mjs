@@ -65,11 +65,12 @@ export default [
     why: '규칙 ①이 금지하는 건 **카드 테두리**다 — 카드 안 구분선은 `--rule` 이 존재하는 이유다.',
   },
   {
-    name: '[테두리] 컨트롤이 다시 카드선 토큰을 쓴다',
+    // 🔁 2026-11-02 대표 "매장 칸 테두리 걷기": 전화·길찾기가 outline → 회색 칸이 됐다. 주입도 그 방향을 겨눈다.
+    name: '[테두리] 매장 칸 전화·길찾기에 테두리가 되살아난다',
     file: STORE,
-    find: "padding: '9px 14px', border: '1px solid var(--rule-strong)', borderRadius: 11",
-    replace: "padding: '9px 14px', border: '1px solid var(--gbd-line2)', borderRadius: 11",
+    find: "padding: '9px 14px', border: 0, borderRadius: 11",
+    replace: "padding: '9px 14px', border: '1px solid var(--rule-strong)', borderRadius: 11",
     test: TEST,
-    why: '체계가 outline 버튼·칩용으로 `--rule-strong` 을 따로 정의해 뒀다 — 카드선을 쓰면 너무 옅다.',
+    why: '2026-11-02 A안 평면 — 매장 칸만 테두리 버튼이 남아 다른 구역과 어긋났다(대표 선택 ①).',
   },
 ]
