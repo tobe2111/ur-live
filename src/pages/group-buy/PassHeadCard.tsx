@@ -14,6 +14,7 @@
 import { formatNumber } from '@/utils/format'
 import { PASS_HEAD, passSubLine } from '@/shared/pass-head'
 import StarRating from '@/components/deal/StarRating'
+import { useTranslation } from '@/lib/i18n-lite'
 
 const goTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
@@ -35,6 +36,7 @@ export default function PassHeadCard({
   refPrice?: number
   discountPct?: number
 }) {
+  const { t } = useTranslation()
   const sub = passSubLine({ restaurant_name: merchant, category, restaurant_address: address })
   const rv = Number(rating) || 0
   const rc = Number(reviewCount) || 0
@@ -45,11 +47,11 @@ export default function PassHeadCard({
         <div className={PASS_HEAD.merchant}>
           {sub}
           {/* 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속) */}
-          {onnuri && <span className={PASS_HEAD.onnuri}>온누리 사용 가능</span>}
+          {onnuri && <span className={PASS_HEAD.onnuri}>{t('pass.head.onnuri', { defaultValue: '온누리 사용 가능' })}</span>}
         </div>
       )}
       <h1 className={PASS_HEAD.h1}>{name}</h1>
-      {isPrelaunch && <span className={PASS_HEAD.prelaunch}>오픈 예정 · 사전 응모 받는 중</span>}
+      {isPrelaunch && <span className={PASS_HEAD.prelaunch}>{t('pass.head.prelaunch', { defaultValue: '오픈 예정 · 사전 응모 받는 중' })}</span>}
 
       {/* 📏 2026-11-02 상세 C안: 별점·구매 수와 거리를 **한 줄**로. 주소 줄은 아래 '매장' 구역이 이미 말해서 걷었다. */}
       {(hasReviews || buyers > 0 || distKm != null) && (
@@ -63,7 +65,7 @@ export default function PassHeadCard({
               </>
             )}
             {hasReviews && buyers > 0 && <span aria-hidden="true" style={{ color: 'var(--gbd-sub2)' }}>·</span>}
-            {buyers > 0 && <span style={{ color: 'var(--gbd-sub)' }}>{formatNumber(buyers)}명 구매</span>}
+            {buyers > 0 && <span style={{ color: 'var(--gbd-sub)' }}>{t('pass.head.buyers', { defaultValue: '{{count}}명 구매', count: formatNumber(buyers) })}</span>}
           </span>
           {distKm != null && (address
             ? <button type="button" onClick={() => goTo('gb-sec-location')} className="shrink-0 bg-transparent border-0 p-0 cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>{distKm}km</button>
@@ -73,10 +75,10 @@ export default function PassHeadCard({
 
       {unitPrice != null && unitPrice > 0 && (
         <div className="mt-3">
-          {refPrice != null && refPrice > unitPrice && <div className="text-[13px] line-through" style={{ color: 'var(--gbd-sub)' }}>{formatNumber(refPrice)}원</div>}
+          {refPrice != null && refPrice > unitPrice && <div className="text-[13px] line-through" style={{ color: 'var(--gbd-sub)' }}>{t('pass.price.won', { defaultValue: '{{price}}원', price: formatNumber(refPrice) })}</div>}
           <div className="flex items-baseline gap-2">
             {!!discountPct && discountPct > 0 && <span className="text-[17px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
-            <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>
+            <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{t('pass.price.won', { defaultValue: '{{price}}원', price: formatNumber(unitPrice) })}</span>
           </div>
         </div>
       )}

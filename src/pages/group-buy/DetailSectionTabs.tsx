@@ -11,6 +11,7 @@
  *    PC 는 이 부품을 쓰지 않는다(`lg:hidden`) — PC 에는 기존 섹션 탭이 있다.
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from '@/lib/i18n-lite'
 
 export interface DetailSectionTab { id: string; label: string }
 
@@ -18,6 +19,7 @@ export interface DetailSectionTab { id: string; label: string }
 export const DETAIL_TABS_STICKY_TOP = 'calc(max(0.625rem, env(safe-area-inset-top)) + 2.875rem)'
 
 export default function DetailSectionTabs({ tabs }: { tabs: DetailSectionTab[] }) {
+  const { t: tr } = useTranslation()
   const [current, setCurrent] = useState(tabs[0]?.id ?? '')
 
   // 부모가 매번 새 배열을 넘겨도(폴링 리렌더) 구역이 같으면 관찰자를 다시 달지 않는다.
@@ -39,7 +41,7 @@ export default function DetailSectionTabs({ tabs }: { tabs: DetailSectionTab[] }
   if (tabs.length < 2) return null
 
   return (
-    <nav aria-label="상세 구역" className="lg:hidden sticky z-30 bg-[var(--gbd-bg)] shadow-[inset_0_-1px_0_var(--gbd-line2)]"
+    <nav aria-label={tr('pass.tabs.ariaLabel', { defaultValue: '상세 구역' })} className="lg:hidden sticky z-30 bg-[var(--gbd-bg)] shadow-[inset_0_-1px_0_var(--gbd-line2)]"
       style={{ top: DETAIL_TABS_STICKY_TOP }}>
       <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((t) => {

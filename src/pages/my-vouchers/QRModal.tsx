@@ -38,7 +38,9 @@ import GiftVoucherSheet from './GiftVoucherSheet'
 const ACTION_COLS = ['grid-cols-1', 'grid-cols-2', 'grid-cols-3'] as const
 
 export default function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClose: () => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  // 🌐 2026-11-02: 시각 표기 로케일 — 한국어(및 미정)는 종전 그대로 'ko-KR', 그 밖의 언어만 그 언어로.
+  const dateLocale = i18n.language && !i18n.language.startsWith('ko') ? i18n.language : 'ko-KR'
   useEscapeKey(onClose)
   const isOnline = useOnlineStatus()
   const [voucher, setVoucher] = useState(initialVoucher)
@@ -202,15 +204,34 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
   // 🎟️ 2026-07-06 이용 안내 — 사용 절차(사용방식별) + 유효기간 + 매장정보 + 주의사항.
   const usageSteps = redemptionMode === 'scan_only'
-    ? ['매장 방문 후 이 QR 화면을 직원에게 보여주세요', '직원이 QR을 스캔해 사용 처리해요', '‘사용 완료’ 화면을 확인하세요']
+    ? [
+        t('wallet.qr.stepScanOnly1', { defaultValue: '매장 방문 후 이 QR 화면을 직원에게 보여주세요' }),
+        t('wallet.qr.stepScanOnly2', { defaultValue: '직원이 QR을 스캔해 사용 처리해요' }),
+        t('wallet.qr.stepCheckDone', { defaultValue: '‘사용 완료’ 화면을 확인하세요' }),
+      ]
     : redemptionMode === 'store_code'
-      ? ['매장 방문 후 아래 ‘현장에서 사용하기’를 누르세요', '카운터에 비치된 매장 확인코드를 입력하세요', '‘사용 완료’ 화면을 확인하세요']
+      ? [
+          t('wallet.qr.stepTapUseNow', { defaultValue: '매장 방문 후 아래 ‘현장에서 사용하기’를 누르세요' }),
+          t('wallet.qr.stepStoreCode2', { defaultValue: '카운터에 비치된 매장 확인코드를 입력하세요' }),
+          t('wallet.qr.stepCheckDone', { defaultValue: '‘사용 완료’ 화면을 확인하세요' }),
+        ]
       : redemptionMode === 'self_free'
-        ? ['매장 방문 후 아래 ‘현장에서 사용하기’를 누르세요', '바로 사용 처리돼요 (실수 시 60초 내 취소)', '‘사용 완료’ 화면을 확인하세요']
-        : ['매장 방문 후 이 화면을 직원에게 보여주세요', '직원 확인 후 사용 처리됩니다', '‘사용 완료’ 화면을 확인하세요']
-  const modeLabel = redemptionMode === 'scan_only' ? '직원 확인' : redemptionMode === 'store_code' ? '매장 확인코드' : redemptionMode === 'self_free' ? '바로 사용' : '현장 사용'
+        ? [
+            t('wallet.qr.stepTapUseNow', { defaultValue: '매장 방문 후 아래 ‘현장에서 사용하기’를 누르세요' }),
+            t('wallet.qr.stepSelfFree2', { defaultValue: '바로 사용 처리돼요 (실수 시 60초 내 취소)' }),
+            t('wallet.qr.stepCheckDone', { defaultValue: '‘사용 완료’ 화면을 확인하세요' }),
+          ]
+        : [
+            t('wallet.qr.stepDefault1', { defaultValue: '매장 방문 후 이 화면을 직원에게 보여주세요' }),
+            t('wallet.qr.stepDefault2', { defaultValue: '직원 확인 후 사용 처리됩니다' }),
+            t('wallet.qr.stepCheckDone', { defaultValue: '‘사용 완료’ 화면을 확인하세요' }),
+          ]
+  const modeLabel = redemptionMode === 'scan_only' ? t('wallet.qr.modeScanOnly', { defaultValue: '직원 확인' })
+    : redemptionMode === 'store_code' ? t('wallet.qr.modeStoreCode', { defaultValue: '매장 확인코드' })
+    : redemptionMode === 'self_free' ? t('wallet.qr.modeSelfFree', { defaultValue: '바로 사용' })
+    : t('wallet.qr.modeOnSite', { defaultValue: '현장 사용' })
   const expDate = safeDate(voucher.expires_at)
-  const expiresLabel = expDate ? `${expDate.getFullYear()}.${String(expDate.getMonth() + 1).padStart(2, '0')}.${String(expDate.getDate()).padStart(2, '0')}까지` : null
+  const expiresLabel = expDate ? t('wallet.qr.expiresUntil', { defaultValue: '{{date}}까지', date: `${expDate.getFullYear()}.${String(expDate.getMonth() + 1).padStart(2, '0')}.${String(expDate.getDate()).padStart(2, '0')}` }) : null
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
@@ -270,11 +291,11 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   <div className="flex flex-col items-center rounded-xl border-[3px] border-tone-ok bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
                     <div className="flex items-center gap-2">
                       <OkIcon className="w-5 h-5 text-tone-ok" />
-                      <span className="text-[17px] font-bold tracking-tight text-tone-ok">사용 완료</span>
+                      <span className="text-[17px] font-bold tracking-tight text-tone-ok">{t('wallet.qr.stampUsed', { defaultValue: '사용 완료' })}</span>
                     </div>
                     {voucher.used_at && (
                       <span className="mt-1 text-[12px] font-medium text-tone-ok">
-                        {safeDate(voucher.used_at)?.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}
+                        {safeDate(voucher.used_at)?.toLocaleString(dateLocale, { dateStyle: 'short', timeStyle: 'short' })}
                       </span>
                     )}
                   </div>
@@ -284,7 +305,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                 <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
                   <div className="flex items-center gap-2 rounded-xl border-[3px] border-brand bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
                     <GiftBoxIcon size={20} className="text-brand-text" />
-                    <span className="text-[17px] font-bold tracking-tight text-brand-text">선물 중</span>
+                    <span className="text-[17px] font-bold tracking-tight text-brand-text">{t('wallet.qr.stampGifting', { defaultValue: '선물 중' })}</span>
                   </div>
                 </div>
               )}
@@ -293,7 +314,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   <div className="flex items-center gap-2 rounded-xl border-[3px] border-red-500/90 bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
                     <BadIcon className="w-5 h-5 text-red-500" />
                     <span className="text-[17px] font-bold tracking-tight text-red-600 dark:text-red-400">
-                      {voucher.status === 'expired' ? '만료됨' : '환불됨'}
+                      {voucher.status === 'expired' ? t('wallet.qr.stampExpired', { defaultValue: '만료됨' }) : t('wallet.qr.stampRefunded', { defaultValue: '환불됨' })}
                     </span>
                   </div>
                 </div>
@@ -308,7 +329,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
             <div className="flex items-center justify-center gap-2 mt-2">
               <span className="w-[7px] h-[7px] rounded-full bg-tone-ok animate-pulse" aria-hidden />
               <span className="text-[12px] font-medium text-gray-400 dark:text-gray-500 tabular-nums">
-                {t('voucher.realtime', { defaultValue: '실시간' })} · {new Date(now).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                {t('voucher.realtime', { defaultValue: '실시간' })} · {new Date(now).toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             </div>
           )}
@@ -335,7 +356,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               <div className="px-4 py-3 space-y-3">
                 {/* 사용 방법 (단계) */}
                 <div>
-                  <p className="text-[12px] font-medium text-gray-900 dark:text-white mb-2">사용 방법 · {modeLabel}</p>
+                  <p className="text-[12px] font-medium text-gray-900 dark:text-white mb-2">{t('wallet.qr.howToUse', { defaultValue: '사용 방법' })} · {modeLabel}</p>
                   <ol className="space-y-1">
                     {usageSteps.map((s, i) => (
                       <li key={i} className="flex gap-2 text-[12px] text-gray-600 dark:text-gray-300 leading-snug">
@@ -366,7 +387,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                 {/* 유효기간 */}
                 {expiresLabel && (
                   <div className="flex items-center gap-2">
-                    <span className="text-[12px] font-medium text-gray-900 dark:text-white">유효기간</span>
+                    <span className="text-[12px] font-medium text-gray-900 dark:text-white">{t('wallet.qr.validity', { defaultValue: '유효기간' })}</span>
                     <span className="text-[12px] font-medium text-gray-600 dark:text-gray-300">{expiresLabel}</span>
                     {/* 📅 2026-10-11 만료일 톡캘린더 알림 — 게이트 꺼져 있으면 아무것도 안 그린다 */}
                     {voucher.status === 'unused' && voucher.source !== 'kt_alpha' && <span className="ml-auto"><TalkCalendarButton code={voucher.code} /></span>}
@@ -376,12 +397,12 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                 {/* 매장 정보 */}
                 {(voucher.restaurant_address || voucher.restaurant_phone) && (
                   <div>
-                    <p className="text-[12px] font-medium text-gray-900 dark:text-white mb-1">매장 정보</p>
+                    <p className="text-[12px] font-medium text-gray-900 dark:text-white mb-1">{t('wallet.qr.storeInfo', { defaultValue: '매장 정보' })}</p>
                     {voucher.restaurant_address && (
                       <p className="flex items-start gap-2 text-[12px] text-gray-500 dark:text-gray-400 leading-snug">
                         <PinIcon className="w-3 h-3 mt-1 shrink-0" />
                         <span>{voucher.restaurant_address}
-                          {mapUrl && <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="ml-1 font-medium text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60">길찾기</a>}
+                          {mapUrl && <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="ml-1 font-medium text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60">{t('voucher.directions', { defaultValue: '길찾기' })}</a>}
                         </span>
                       </p>
                     )}
@@ -396,9 +417,14 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
                 {/* 주의사항 */}
                 <div>
-                  <p className="text-[12px] font-medium text-gray-900 dark:text-white mb-1">주의사항</p>
+                  <p className="text-[12px] font-medium text-gray-900 dark:text-white mb-1">{t('wallet.qr.cautions', { defaultValue: '주의사항' })}</p>
                   <ul className="space-y-1">
-                    {['사용 후 환불·취소가 불가해요', '1회용 이용권으로 중복 사용은 안 돼요', '현금 교환·잔액 환급은 불가해요', '유효기간이 지나면 결제 수단으로 자동 환불돼요'].map((cn, i) => (
+                    {[
+                      t('wallet.qr.caution1', { defaultValue: '사용 후 환불·취소가 불가해요' }),
+                      t('wallet.qr.caution2', { defaultValue: '1회용 이용권으로 중복 사용은 안 돼요' }),
+                      t('wallet.qr.caution3', { defaultValue: '현금 교환·잔액 환급은 불가해요' }),
+                      t('wallet.qr.caution4', { defaultValue: '유효기간이 지나면 결제 수단으로 자동 환불돼요' }),
+                    ].map((cn, i) => (
                       <li key={i} className="flex gap-2 text-[12px] text-gray-400 dark:text-gray-500 leading-snug"><span aria-hidden>·</span><span>{cn}</span></li>
                     ))}
                   </ul>
@@ -422,11 +448,11 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               '선물하기'는 제거됨(2026-06-12): QR 링크 공유일 뿐 소유권 이전 아님 + 셀프취소 시 무효화 오해. */}
           {giftLocked && (
             <div className="mt-4 rounded-2xl bg-brand-tint px-4 py-4 text-center">
-              <p className="text-[15px] font-bold text-gray-900 dark:text-white">친구에게 선물 중이에요</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">친구가 받기 전까지는 이 이용권을 쓸 수 없어요.<br />선물 보내기를 취소하면 다시 쓸 수 있어요.</p>
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('wallet.qr.giftPendingTitle', { defaultValue: '친구에게 선물 중이에요' })}</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">{t('wallet.qr.giftPendingDesc1', { defaultValue: '친구가 받기 전까지는 이 이용권을 쓸 수 없어요.' })}<br />{t('wallet.qr.giftPendingDesc2', { defaultValue: '선물 보내기를 취소하면 다시 쓸 수 있어요.' })}</p>
               <button onClick={() => setShowGift(true)}
                 className="mt-3 w-full py-3 rounded-xl bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform">
-                선물 링크 보기, 보내기 취소
+                {t('wallet.qr.giftLinkOrCancel', { defaultValue: '선물 링크 보기, 보내기 취소' })}
               </button>
             </div>
           )}
@@ -442,12 +468,12 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               <div className={`mt-2 grid gap-2 ${ACTION_COLS[(canGift ? 1 : 0) + (canSelfCancel || canRequestRefund ? 1 : 0)]}`}>
                 <button onClick={shareVoucher}
                   className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
-                  <Share2 className="w-4 h-4" /> {t('voucher.share')}
+                  <Share2 className="w-4 h-4" /> {t('voucher.share', { defaultValue: '공유' })}
                 </button>
                 {canGift && (
                   <button onClick={() => setShowGift(true)}
                     className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
-                    <GiftBoxIcon size={16} /> 선물하기
+                    <GiftBoxIcon size={16} /> {t('wallet.qr.gift', { defaultValue: '선물하기' })}
                   </button>
                 )}
                 {canSelfCancel && (
@@ -464,7 +490,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                 )}
               </div>
               {gifted && (
-                <p className="text-[12px] text-gray-500 dark:text-gray-400 text-center mt-2">선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 text-center mt-2">{t('wallet.qr.receivedGiftNote', { defaultValue: '선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요' })}</p>
               )}
               {canSelfCancel && (
                 <p className="text-[12px] text-gray-400 dark:text-gray-500 text-center mt-2">

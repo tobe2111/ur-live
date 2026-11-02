@@ -23,27 +23,29 @@
 import { safeDate } from '@/utils/safe-date'
 import { ClockIcon } from '@/components/icons/urdeal-icons'
 import RedeemHowTo from './RedeemHowTo'
+import { useTranslation } from '@/lib/i18n-lite'
 
-const DEFAULT_TERMS = [
-  '현장에서 추가 할인이나 다른 쿠폰과 중복 적용되지 않아요.',
-  '잔액은 환불되지 않으니 한 번에 사용하시길 권장해요.',
+const DEFAULT_TERMS: ReadonlyArray<readonly [string, string]> = [
+  ['pass.usageGuide.defaultTermNoStacking', '현장에서 추가 할인이나 다른 쿠폰과 중복 적용되지 않아요.'],
+  ['pass.usageGuide.defaultTermNoRefund', '잔액은 환불되지 않으니 한 번에 사용하시길 권장해요.'],
 ]
 
 export default function UsageGuide({
   voucherExpiry, voucherTerms,
 }: { voucherExpiry?: string | null; voucherTerms?: string | null }) {
+  const { t } = useTranslation()
   const expiry = voucherExpiry ? safeDate(voucherExpiry)?.toLocaleDateString('ko-KR') : null
   const terms = voucherTerms
     ? voucherTerms.split('\n').map(s => s.trim()).filter(Boolean)
-    : DEFAULT_TERMS
+    : DEFAULT_TERMS.map(([key, ko]) => t(key, { defaultValue: ko }))
 
   return (
     <div style={{ padding: '20px 16px' }}>
-      <h2 className="m-0 text-[15px] font-bold tracking-[-.01em]" style={{ color: 'var(--gbd-ink)' }}>이용 안내</h2>
+      <h2 className="m-0 text-[15px] font-bold tracking-[-.01em]" style={{ color: 'var(--gbd-ink)' }}>{t('pass.usageGuide.title', { defaultValue: '이용 안내' })}</h2>
       {expiry && (
         <p className="mt-2 flex items-center gap-1 text-[13px]" style={{ color: 'var(--gbd-sub)' }}>
           <ClockIcon className="w-4 h-4" />
-          <span><b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{expiry}</b>까지 사용</span>
+          <span><b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{expiry}</b>{t('pass.usageGuide.expiryUntil', { defaultValue: '까지 사용' })}</span>
         </p>
       )}
       <div className="mt-3"><RedeemHowTo /></div>
@@ -52,7 +54,7 @@ export default function UsageGuide({
           `<details>` 라 상태가 없고(JS 0), 접혀도 화면 읽기 프로그램은 요약 줄을 읽는다. */}
       <details className="group mt-4 pt-3" style={{ borderTop: '1px solid var(--gbd-line2)' }}>
         <summary className="flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden text-[15px] font-medium" style={{ color: 'var(--gbd-ink)' }}>
-          유의사항
+          {t('pass.usageGuide.terms', { defaultValue: '유의사항' })}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="transition-transform group-open:rotate-180" style={{ color: 'var(--gbd-sub2)' }}><path d="M6 9l6 6 6-6" /></svg>
         </summary>
         <ul className="mt-2 m-0 p-0 list-none flex flex-col gap-1">

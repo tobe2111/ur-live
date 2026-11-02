@@ -1,5 +1,6 @@
 import StarRating from '@/components/deal/StarRating'
 import { PinIcon } from '@/components/icons/urdeal-icons'
+import { useTranslation } from '@/lib/i18n-lite'
 
 /**
  * 🏷️ 이용권 상세 **제목 헤더** — PC 전용 (2026-08-19 대표 확정: 상세 시안 **1안 "그루폰 정석"**).
@@ -35,14 +36,15 @@ export default function DetailTitleHeader({
   reviewCount?: number
   onnuri?: boolean
 }) {
+  const { t } = useTranslation()
   const hasRating = Number(rating) > 0
   return (
     <header className="hidden lg:block lg:pt-6 lg:pb-2">
       {storeName && (
         <div className="text-[12px] font-medium tracking-[.01em] text-brand">
-          {storeName} · 정식 등록 매장
+          {storeName}{t('pass.title.registeredStore', { defaultValue: ' · 정식 등록 매장' })}
           {onnuri && (
-            <span className="ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-medium align-middle">온누리 사용 가능</span>
+            <span className="ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-medium align-middle">{t('pass.head.onnuri', { defaultValue: '온누리 사용 가능' })}</span>
           )}
         </div>
       )}

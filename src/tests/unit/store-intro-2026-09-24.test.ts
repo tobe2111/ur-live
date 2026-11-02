@@ -74,7 +74,7 @@ describe('가게 소개가 실제로 그려진다', () => {
 
   it('상단 탭과 앵커 id 가 맞물린다', () => {
     // 탭이 스크롤할 앵커가 없으면 눌러도 아무 일도 안 일어난다(에러도 안 난다).
-    expect(readCode(PAGE)).toContain("{ id: 'gb-sec-store', label: '가게 소개' }")
+    expect(readCode(PAGE)).toContain("{ id: 'gb-sec-store', label: t('pass.storeIntro.title', { defaultValue: '가게 소개' }) }")
     expect(intro).toContain('id="gb-sec-store"')
   })
 

@@ -18,10 +18,20 @@
  * 지도 자체는 그리지 않는다 — `RestaurantMiniMap` 은 잠금 lazy(로딩 최적화 잠금표)라 호출부가
  * `map` 으로 넘긴다. 여기서 import 하면 그 lazy 경계가 이 파일로 옮겨져 잠긴 계약이 흔들린다.
  */
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import StoreReportLink from './StoreReportLink'
 import BrandBranchesLink from './BrandBranchesLink'
 import NeighborhoodLink from './NeighborhoodLink'
+import { useTranslation } from '@/lib/i18n-lite'
+import { isNaverMapAvailable } from '@/lib/naver-maps'
+
+/**
+ * 🗺️ 2026-11-02 대표 확정("외국어일 때만 네이버맵"): 카카오맵은 지명이 한국어뿐이라 외국어 손님에겐
+ * 네이버 지도를 그린다. 카카오 지도(잠금 lazy)는 그대로 호출부가 `map` 으로 넘기고, 외국어일 때는
+ * 그 노드를 **그리지 않으므로** 카카오 청크·SDK 도 안 받는다. 키(VITE_NAVER_MAP_KEY_ID)가 없거나
+ * 한국어면 종전과 한 픽셀도 다르지 않다.
+ */
+const NaverMiniMap = lazy(() => import('@/components/NaverMiniMap'))
 
 export default function StoreLocation({
   name, address, phone, lat, lng, map, sellerId, productId, onProfile,
@@ -44,7 +54,10 @@ export default function StoreLocation({
   /** 🏪 2026-10-11 (D안): 셀러 카드를 모바일에서 걷으면서 '가게 보기' 입구를 매장 카드 머리로 옮겼다. */
   onProfile?: () => void
 }) {
-  const directionsHref = `https://map.kakao.com/link/${
+  const { t, i18n } = useTranslation()
+  const useNaver = isNaverMapAvailable(i18n.language)
+  const naverHref = `https://map.naver.com/p/search/${encodeURIComponent([name, address].filter(Boolean).join(' '))}`
+  const directionsHref = useNaver ? naverHref : `https://map.kakao.com/link/${
     lat && lng
       ? `to/${encodeURIComponent(name || '매장')},${lat},${lng}`
       : `search/${encodeURIComponent(address || name || '')}`
@@ -67,10 +80,10 @@ export default function StoreLocation({
       {/* 🏪 2026-10-11 (D안): 제목을 '매장 위치' → **가게 이름**으로. 모바일에서 셀러 카드를 걷었으니
           가게로 가는 입구('가게 보기')가 여기 머리에 붙는다. 이름이 없으면 종전 제목. */}
       <div className="flex items-center justify-between gap-3" style={{ marginBottom: 12 }}>
-        <h2 className="m-0 text-[15px] font-bold tracking-[-.01em] truncate" style={{ color: 'var(--gbd-ink)' }}>{name || '매장 위치'}</h2>
+        <h2 className="m-0 text-[15px] font-bold tracking-[-.01em] truncate" style={{ color: 'var(--gbd-ink)' }}>{name || t('pass.location.title', { defaultValue: '매장 위치' })}</h2>
         {onProfile && (
           <button type="button" onClick={onProfile} className="shrink-0 inline-flex items-center gap-1 min-h-[44px] -my-3 -mr-2 pl-3 pr-2 text-[13px] font-medium bg-transparent border-0 cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>{/* 👆 2026-10-11 대표 "눌러지지도 않는데": 글자만한 19px 였다 → 손가락 크기(44px) 눌림 영역, 줄 높이는 음수 여백으로 불변 */}
-            가게 보기
+            {t('pass.location.viewStore', { defaultValue: '가게 보기' })}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
           </button>
         )}
@@ -78,7 +91,11 @@ export default function StoreLocation({
       {/* 🪟 안 3(경계 없음) — 상자를 없앤다. 지도는 둥근 사진 한 장, 주소는 그 아래 본문 한 줄.
           섹션 구획은 위아래 여백이 이미 하고 있어서 테두리는 같은 일을 두 번 했다. */}
       <div style={{ borderRadius: 14, overflow: 'hidden' }}>
-        {map}
+        {useNaver
+          ? <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
+              <NaverMiniMap name={name || undefined} address={address || undefined} lat={lat} lng={lng} />
+            </Suspense>
+          : map}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 0 0' }}>
         {/* 🧾 매장명은 제목 위(머천트 줄)와 지도 핀에 이미 두 번 나온다 — 여기까지 세 번은 "채워 넣은" 티다. */}
@@ -86,14 +103,14 @@ export default function StoreLocation({
           {address && <div style={{ fontSize: 13, color: 'var(--gbd-sub)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{address}</div>}
         </div>
         {phone && (
-          <a href={`tel:${phone}`} aria-label={`매장에 전화 (${phone})`} style={btn}>
+          <a href={`tel:${phone}`} aria-label={t('pass.location.callAria', { defaultValue: '매장에 전화 ({{phone}})', phone })} style={btn}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.68 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.32 1.85.55 2.81.68A2 2 0 0 1 22 16.92z" /></svg>
-            전화
+            {t('pass.location.call', { defaultValue: '전화' })}
           </a>
         )}
         <a href={directionsHref} target="_blank" rel="noopener noreferrer" style={btn}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg>
-          길찾기
+          {t('pass.location.directions', { defaultValue: '길찾기' })}
         </a>
       </div>
       {/* 🏷️ 2026-10-17 프랜차이즈 — 브랜드에 묶인 지점이면 "다른 지점 N곳 보기". 없으면 아무것도 안 그린다. */}
