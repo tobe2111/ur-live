@@ -17,6 +17,7 @@ import type { Env } from '@/worker/types/env'
 import { isSeatableStoreStatus } from '@/shared/seller-status'
 import { intParam } from '@/shared/pagination'
 import { safeError } from '@/worker/utils/safe-error'
+import { HIDDEN_FOR_SELLER, typeNotInSql, presentNotification } from '@/shared/notification-catalog'
 
 type Ctx = Context<{ Bindings: Env }>
 type Scope = { userId: number | null; agencyId?: number | null; stores: { seller_id: number; business_name?: string | null; name?: string | null; status?: string | null }[] } | null
@@ -48,7 +49,7 @@ export function registerStoreNotificationRoutes(app: Hono<{ Bindings: Env }>, re
         `SELECT id, recipient_id, type, title, message, link, is_read, created_at,
                 SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) OVER () AS _unread
            FROM dashboard_notifications
-          WHERE recipient_type = 'seller' AND recipient_id IN (${marks})
+          WHERE recipient_type = 'seller' AND recipient_id IN (${marks})${typeNotInSql(HIDDEN_FOR_SELLER)}
           ORDER BY created_at DESC LIMIT ?`,
       ).bind(...ids.map(String), limit).all<{
         id: number; recipient_id: string; type: string; title: string; message: string | null
@@ -62,7 +63,7 @@ export function registerStoreNotificationRoutes(app: Hono<{ Bindings: Env }>, re
           unread: rows.length > 0 ? Number(rows[0]._unread) || 0 : 0,
           items: rows.map((r) => ({
             id: r.id, sellerId: Number(r.recipient_id), storeName: names.get(Number(r.recipient_id)) ?? null,
-            type: r.type, title: r.title, message: r.message, link: r.link, isRead: !!r.is_read, createdAt: r.created_at,
+            type: r.type, ...presentNotification(r), link: r.link, isRead: !!r.is_read, createdAt: r.created_at,
           })),
         },
       })

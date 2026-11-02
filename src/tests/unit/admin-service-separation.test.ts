@@ -141,20 +141,11 @@ describe('어드민 몰 스코프 — 유어딜 숫자에 남의 가게가 안 �
 })
 
 describe('어드민 nav — 서비스가 넷이면 밴드도 넷', () => {
-  it('🔴 공구 서비스가 **자기 밴드**를 갖는다 (유어딜 서랍에 세 들지 않는다)', () => {
-    const g = NAV_GROUPS.find((x) => x.title.includes('공구 서비스'))
-    expect(g, '공구 서비스 그룹이 없다').toBeTruthy()
-    expect(navSectionOf(g!)).toBe('mall')
-    expect(NAV_SECTIONS.some((s) => s.key === 'mall')).toBe(true)
-  })
-
-  it('🔴 운영자 몰 관리가 유어딜 그룹에 남아 있지 않다', () => {
-    const urdeal = NAV_GROUPS.filter((g) => navSectionOf(g) === 'urdeal')
-    for (const g of urdeal) {
-      expect(g.items.some((i) => i.path === '/admin/wholesale-malls'), `${g.title} 에 몰 관리가 남아 있다`).toBe(false)
-    }
-    const mall = NAV_GROUPS.find((g) => navSectionOf(g) === 'mall')!
-    expect(mall.items.some((i) => i.path === '/admin/wholesale-malls')).toBe(true)
+  // 🧹 2026-11-02 대표 결정 "공구 서비스 어드민 화면 삭제": 몰 그룹과 그 두 화면이 메뉴에서 사라졌다.
+  //   지키려던 것(몰 관리가 유어딜 서랍에 세 들지 않는다)은 이제 "어디에도 없다" 로 더 강하게 남는다.
+  it('🔴 운영자 몰 화면이 어느 메뉴 그룹에도 없다', () => {
+    const paths = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.path))
+    expect(paths.filter((p) => p.startsWith('/admin/wholesale-malls') || p.includes('mall='))).toEqual([])
   })
 
   it('🔴 유어딜 항목 라벨이 **공동구매** 로 불리지 않는다 — 그 이름은 다른 서비스와 겹친다', () => {

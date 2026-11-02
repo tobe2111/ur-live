@@ -19,6 +19,7 @@ import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
+import { summarizeItems } from '@/worker/utils/admin-event-notify'
 import { ensureDealBuckets, PAID_BALANCE_SQL, creditFreePoints } from '@/worker/utils/point-buckets';
 import { intParam } from '@/shared/pagination'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
@@ -1064,7 +1065,8 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
         .bind(firstOrderId, couponIdNum, userId).run().catch(() => {});
     }
 
-    createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${Number(authoritativeTotal ?? 0).toLocaleString('ko-KR')}딜 상품 결제`, '/admin/orders').catch(swallow('points:api:points'));
+    // 🔔 2026-11-02: 상품 이름을 붙인다("딜 결제 12,000딜" 만으론 무엇이 팔렸는지 몰랐다 — 이 경로가 교환권 교환이다).
+    createDashboardNotification(DB, 'admin', null, 'deal_payment', '교환권 교환 · 딜 결제', `${summarizeItems(normalizedItems.map((i) => String(i.product_name || '')))} · ${Number(authoritativeTotal ?? 0).toLocaleString('ko-KR')}딜`, '/admin/orders').catch(swallow('points:api:points'));
 
     // 🛡️ 2026-05-19: KT Alpha 교환권 자동 발송 — 딜 교환 전용 상품 결제 시.
     // ⚡ 2026-07-02 (대표 승인 — 결제 체감속도): 응답 후(waitUntil) 실행으로 이동. KT/기프티쇼 외부 HTTP

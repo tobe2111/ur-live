@@ -2,7 +2,7 @@
  * Admin routes — TD-006 분리 (2026-05-06)
  */
 import { lazy, Children, cloneElement, isValidElement, type ReactElement } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { ProtectedRoute, PublicRoute } from '@/components/auth/RouteGuards'
 
@@ -19,12 +19,10 @@ const AdminOrdersPage = lazy(() => import('@/pages/AdminOrdersPage'))
 const AdminPendingSellersPage = lazy(() => import('@/pages/AdminPendingSellersPage'))
 const AdminProspectsPage = lazy(() => import('@/pages/AdminProspectsPage'))
 // 🛡️ 2026-05-25 (migration 0279): CSV 일괄 송장 업로드
-const AdminBulkTrackingPage = lazy(() => import('@/pages/AdminBulkTrackingPage'))
 // 🛡️ 2026-05-25: 어드민 반품 검수 페이지
 const AdminReturnsPage = lazy(() => import('@/pages/AdminReturnsPage'))
 const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage'))
 const AdminFcfsPage = lazy(() => import('@/pages/AdminFcfsPage'))
-const AdminExperienceCampaignsPage = lazy(() => import('@/pages/AdminExperienceCampaignsPage'))
 const AdminVoucherDisputesPage = lazy(() => import('@/pages/AdminVoucherDisputesPage'))
 const AdminDongnedealImportPage = lazy(() => import('@/pages/AdminDongnedealImportPage'))
 const AdminAgencyAccountsPage = lazy(() => import('@/pages/admin/AdminAgencyAccountsPage')) // 🏢 2026-10-11 새 에이전시 계정(옛 agencies 아님)
@@ -34,16 +32,13 @@ const AdminLoginHistoryPage = lazy(() => import('@/pages/AdminLoginHistoryPage')
 //   ⚠️ 같은 머지에서 main 이 더한 `AdminAgencyAccountsPage`(새 에이전시 계정)는 **도매가 아니다** — 남긴다.
 const AdminPartnershipPage = lazy(() => import('@/pages/AdminPartnershipPage'))
 // 🏬 Phase 1-b (2026-06-09): 멀티-몰 테넌시 — 도매 몰 관리.
-const AdminWholesaleMallsPage = lazy(() => import('@/pages/admin/AdminWholesaleMallsPage'))
 // 🏬 Phase 2 (2026-06-09): 크로스-몰 도매 통합 현황 (운영자 랜딩).
 // 🔧 2026-06-29: 환경 준비상태 진단(바인딩/시크릿 설정 여부 — 다른 운영자/브라우저 정상동작 확인).
 const AdminEnvReadinessPage = lazy(() => import('@/pages/admin/AdminEnvReadinessPage'))
 // 🏭 2026-06-29 (판매사 승인 통합): AdminDistributorApprovalPage 는 더 이상 라우트가 직접 렌더하지 않음 (AdminDistributorGradesPage 의 '승인' 탭에서 embedded 로 사용). 여기 import 제거.
 // 🗺️ 2026-06-18: 동네별 딜 밀도 (행정동 태깅 기반 영입 타겟).
 const AdminRegionDensityPage = lazy(() => import('@/pages/AdminRegionDensityPage'))
-const AdminDistrictReportPage = lazy(() => import('@/pages/AdminDistrictReportPage'))
 // 🏙️ 2026-07-05: 상권 방문 리워드 캠페인 (B2G — 첫 구매 무상 딜, 총액 캡).
-const AdminVisitRewardsPage = lazy(() => import('@/pages/AdminVisitRewardsPage'))
 // 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
 const AdminBusinessMetricsPage = lazy(() => import('@/pages/admin/AdminBusinessMetricsPage'))
 const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkPricingPage'))
@@ -58,14 +53,11 @@ const AdminPartnerPoolPage = lazy(() => import('@/pages/admin/AdminPartnerPoolPa
 const AdminStoreProspectsPage = lazy(() => import('@/pages/admin/AdminStoreProspectsPage'))
 const AdminGovNoticesPage = lazy(() => import('@/pages/admin/AdminGovNoticesPage'))
 const AdminErrorsPage = lazy(() => import('@/pages/AdminErrorsPage'))
-const AdminEnvCheckPage = lazy(() => import('@/pages/AdminEnvCheckPage'))
 // 🩺 2026-06-24: 카카오 로그인 진단 (서버 ms / iOS 성공률 / OIDC 작동여부) — 어드민 Bearer 로 조회
 const AdminKakaoLoginDiagPage = lazy(() => import('@/pages/AdminKakaoLoginDiagPage'))
 const AdminVoucherOrdersPage = lazy(() => import('@/pages/AdminVoucherOrdersPage'))
 // 🛡️ 2026-05-24 Q1: 교환권 거래 분리 표시 (누가 / 언제 / 어떤 교환권)
 const AdminVoucherTransactionsPage = lazy(() => import('@/pages/AdminVoucherTransactionsPage'))
-const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage'))
-const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
 const AdminOperationsGuidePage = lazy(() => import('@/pages/admin/AdminOperationsGuidePage'))
 const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformModelPage')); const AdminProposalsPage = lazy(() => import('@/pages/admin/AdminProposalsPage')); const AdminDecisionsPage = lazy(() => import('@/pages/admin/AdminDecisionsPage')) // 📥 2026-09-08 결재함(docs/decisions ?raw)
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
@@ -82,17 +74,12 @@ const AdminNoticesPage = lazy(() => import('@/pages/AdminNoticesPage'))
 const AdminPlatformSettingsPage = lazy(() => import('@/pages/AdminPlatformSettingsPage'))
 const AdminDealMonitorPage = lazy(() => import('@/pages/AdminDealMonitorPage'))
 const AdminReviewsPage = lazy(() => import('@/pages/AdminReviewsPage'))
-const AdminReplayPage = lazy(() => import('@/pages/AdminReplayPage'))
 const AdminCouponsPage = lazy(() => import('@/pages/AdminCouponsPage'))
 const AdminAuditLogPage = lazy(() => import('@/pages/AdminAuditLogPage'))
-const AdminAbusePage = lazy(() => import('@/pages/AdminAbusePage'))
-const AdminAdSlotsPage = lazy(() => import('@/pages/AdminAdSlotsPage'))
 const AdminCommissionSettingsPage = lazy(() => import('@/pages/AdminCommissionSettingsPage'))
 const AdminMerchantCommissionsPage = lazy(() => import('@/pages/AdminMerchantCommissionsPage'))
 const AdminInfluencerPayoutsPage = lazy(() => import('@/pages/AdminInfluencerPayoutsPage'))
 const AdminInfluencerDisputesPage = lazy(() => import('@/pages/AdminInfluencerDisputesPage'))
-const AdminKakaoReviewsPage = lazy(() => import('@/pages/AdminKakaoReviewsPage'))
-const AdminDistrictCouponsPage = lazy(() => import('@/pages/AdminDistrictCouponsPage'))
 // 📣 2026-08-09 캠페인 인플루언서 모집 신청자(코드 필터 + CSV)
 const AdminCampaignApplicationsPage = lazy(() => import('@/pages/admin/AdminCampaignApplicationsPage'))
 // 🎟️ 2026-10-20 (대표 "이용권 페이지 역할이 모호해"): 이용권은 '이용권 관리' 한 곳. 옛 조종석·이용권 공구 주소는 그리로 보낸다.
@@ -107,19 +94,14 @@ const AdminBusinessVerificationPage = lazy(() => import('@/pages/AdminBusinessVe
 const AdminKtAlphaPage = lazy(() => import('@/pages/AdminKtAlphaPage'))
 // 🛡️ 2026-05-19: 원천징수 + 지급조서 — 소득세법 §164/165 의무.
 const AdminWithholdingPage = lazy(() => import('@/pages/AdminWithholdingPage'))
-const AdminYoutubeQuotaPage = lazy(() => import('@/pages/AdminYoutubeQuotaPage'))
 const AdminHealthPage = lazy(() => import('@/pages/AdminHealthPage'))
 const AdminPolicyDashboardPage = lazy(() => import('@/pages/AdminPolicyDashboardPage'))
-const AdminFeeBreakdownComparePage = lazy(() => import('@/pages/AdminFeeBreakdownComparePage'))
 // 🧾 2026-07-10: promo/커미션 재원 원장 감사 콕핏 — 불변식 #44 검증 표면 (read-only).
-const AdminPromoLedgerPage = lazy(() => import('@/pages/AdminPromoLedgerPage'))
 const AdminFunnelPage = lazy(() => import('@/pages/AdminFunnelPage'))
 const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage'))
 const AdminReviewModerationPage = lazy(() => import('@/pages/AdminReviewModerationPage'))
-const AdminTikTokDiscoveryPage = lazy(() => import('@/pages/AdminTikTokDiscoveryPage'))
 const AdminRestaurantDemandPage = lazy(() => import('@/pages/AdminRestaurantDemandPage'))
 const AdminOpsInsightsPage = lazy(() => import('@/pages/AdminOpsInsightsPage'))
-const AdminGroupBuyPage = lazy(() => import('@/pages/AdminGroupBuyPage'))
 const AdminDisputesPage = lazy(() => import('@/pages/AdminDisputesPage'))
 const Admin2FASetupPage = lazy(() => import('@/pages/Admin2FASetupPage'))
 const AdminPinSetupPage = lazy(() => import('@/pages/AdminPinSetupPage'))
@@ -128,13 +110,6 @@ const AdminPayoutCenterPage = lazy(() => import('@/pages/AdminPayoutCenterPage')
 const AdminPayoutsPage = lazy(() => import('@/pages/AdminPayoutsPage'))
 // 📧 2026-06-09 Wave 3b: 어드민 단체메일 (filtered bulk email)
 const AdminBulkEmailPage = lazy(() => import('@/pages/AdminBulkEmailPage'))
-
-/** 옛 '/admin/group-buy' — 몰 스코프(`?mall=mall|all`)일 때만 그 화면, 아니면 '이용권 관리'. */
-function GroupBuyMallOnly() {
-  const { search } = useLocation()
-  const mall = new URLSearchParams(search).get('mall')
-  return mall === 'mall' || mall === 'all' ? <AdminGroupBuyPage /> : <Navigate to="/admin/vouchers" replace />
-}
 
 export function AdminRoutes() {
   return (
@@ -174,16 +149,6 @@ export function AdminRoutes() {
       <Route path="/admin/decisions" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminDecisionsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/district-report" element={
-        <ProtectedRoute requireAdmin>
-          <AdminDistrictReportPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/visit-rewards" element={
-        <ProtectedRoute requireAdmin>
-          <AdminVisitRewardsPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/ads-accounts" element={
@@ -234,11 +199,6 @@ export function AdminRoutes() {
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-23: 환경변수 점검 페이지 */}
-      <Route path="/admin/env-check" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminEnvCheckPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🩺 2026-06-24: 카카오 로그인 진단 (서버 ms / iOS 성공률 / OIDC 작동여부) */}
       <Route path="/admin/kakao-login-diag" element={
         <ProtectedRoute requireAdmin>
@@ -282,16 +242,6 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminPolicyDashboardPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      <Route path="/admin/fee-breakdown" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminFeeBreakdownComparePage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/promo-ledger" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminPromoLedgerPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       <Route path="/admin/funnel" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminFunnelPage /></ErrorBoundary>
@@ -318,11 +268,6 @@ export function AdminRoutes() {
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-25 (migration 0279): CSV 일괄 송장 업로드 */}
-      <Route path="/admin/shipping/bulk-tracking" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminBulkTrackingPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🛡️ 2026-05-25: 반품 검수 */}
       <Route path="/admin/returns" element={
         <ProtectedRoute requireAdmin>
@@ -337,11 +282,6 @@ export function AdminRoutes() {
       <Route path="/admin/fcfs" element={
         <ProtectedRoute requireAdmin>
           <AdminFcfsPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/experience-campaigns" element={
-        <ProtectedRoute requireAdmin>
-          <AdminExperienceCampaignsPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/voucher-disputes" element={
@@ -387,11 +327,6 @@ export function AdminRoutes() {
         </ProtectedRoute>
       } />
       {/* 🏬 Phase 1-b (2026-06-09): 멀티-몰 테넌시 — 도매 몰 관리 */}
-      <Route path="/admin/wholesale-malls" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleMallsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 */}
       {/* 🏭 BIZ-3 (2026-06-08): 도매 견적/발주(Quote/PO) */}
       {/* 🏭 TAX-1 (2026-06-08): 도매 세무/정산 (미수·미지급 aging + 매입 역발행) */}
@@ -449,13 +384,8 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminDealMonitorPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      {/* 🛡️ 2026-05-15: 공동구매 모니터링 + 강제 환불 */}
-      {/* 🎟️ 2026-10-20: 유어딜 본진(`?mall` 없음)은 '이용권 관리'로. 운영자 몰(`?mall=`)만 이 화면을 쓴다. */}
-      <Route path="/admin/group-buy" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><GroupBuyMallOnly /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
+      {/* 🧹 2026-11-02 어드민 정리: 옛 '이용권 공구'·운영자 몰 스코프(`?mall=`) 화면은 지웠다 — 옛 주소는 '이용권 관리'로. */}
+      <Route path="/admin/group-buy" element={<Navigate to="/admin/vouchers" replace />} />
       <Route path="/admin/vouchers" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminVouchersPage /></ErrorBoundary>
@@ -484,11 +414,6 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminReviewsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      <Route path="/admin/replay" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminReplayPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       <Route path="/admin/seller-approval" element={
         <ProtectedRoute requireAdmin><AdminSellerApprovalPage /></ProtectedRoute>
       } /><Route path="/admin/store-owner" element={<ProtectedRoute requireAdmin><AdminStoreOwnerPage /></ProtectedRoute>} />
@@ -500,19 +425,6 @@ export function AdminRoutes() {
       } />
       <Route path="/admin/platform-settings" element={
         <ProtectedRoute requireAdmin><AdminPlatformSettingsPage /></ProtectedRoute>
-      } />
-      <Route path="/admin/kakao-test" element={
-        <ProtectedRoute requireAdmin>
-          <AdminKakaoTestPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/kakao-test/callback" element={
-        <ProtectedRoute requireAdmin><AdminKakaoTestCallbackPage /></ProtectedRoute>
-      } />
-      <Route path="/admin/tiktok-discovery" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminTikTokDiscoveryPage /></ErrorBoundary>
-        </ProtectedRoute>
       } />
       <Route path="/admin/restaurant-demand" element={
         <ProtectedRoute requireAdmin>
@@ -531,16 +443,6 @@ export function AdminRoutes() {
       } />
       {/* 🌇 2026-09-04 에이전시 일몰 — `/admin/agencies` · `/admin/agency-creator-approval` 삭제.
           docs/design/store-operator-model.md */}
-      <Route path="/admin/abuse" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminAbusePage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/ad-slots" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminAdSlotsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       <Route path="/admin/commission-settings" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminCommissionSettingsPage /></ErrorBoundary>
@@ -559,16 +461,6 @@ export function AdminRoutes() {
       <Route path="/admin/influencer-disputes" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminInfluencerDisputesPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/kakao-reviews" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminKakaoReviewsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/district-coupons" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminDistrictCouponsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/campaign-applications" element={
@@ -610,11 +502,6 @@ export function AdminRoutes() {
       <Route path="/admin/withholding" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminWithholdingPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/youtube-quota" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminYoutubeQuotaPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/health" element={

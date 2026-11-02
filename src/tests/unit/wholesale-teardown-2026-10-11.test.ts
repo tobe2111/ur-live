@@ -114,7 +114,8 @@ describe('② 남긴 것이 함께 지워지지 않는다 (여기가 본문)', (
       'src/features/supply/api/wholesale-malls.ts',
       'src/features/supply/api/wholesale-malls-admin.routes.ts',
       'src/pages/MallHomePage.tsx',
-      'src/pages/admin/AdminWholesaleMallsPage.tsx',
+      // 🧹 2026-11-02 대표 결정("공구 서비스 어드민 화면 삭제")으로 `AdminWholesaleMallsPage` 는 뺐다 —
+      //   지운 것은 **어드민 화면뿐**이고 위 서버·손님 쪽 인프라는 그대로 지킨다.
     ]) {
       expect(existsSync(f), `${f} 는 공구 서비스다 — 이름이 wholesale 이어도 도매가 아니다`).toBe(true)
     }
