@@ -47,6 +47,11 @@ export type { KakaoPlace }
 
 // Window.kakao is declared in KakaoCallbackPage.tsx or similar global declaration
 
+// 🐢 2026-11-02 대표 *"지도도 늦게 뜨네"* — 홈이 이 화면 코드를 미리 받은 뒤(`map-warmup` → 등록부 'map') **이 모듈을 통해**
+//   첫 목록도 미리 받는다. 홈이 `useMapProducts` 를 직접 import 하면 묶음기가 그 모듈을 공용 묶음으로 옮겨 모든 화면의
+//   첫 화면 무게가 늘었다(`lib/route-preload` 머리말의 함정). 그래서 이 화면이 대신 내보낸다.
+export { prefetchMapSeedFirstPage } from '@/hooks/queries/useMapProducts'
+
 export default function RestaurantMapPage({ home = false, mode = 'map' }: { home?: boolean; mode?: 'map' | 'list' } = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate(); const prefetchDetail = usePrefetchMapDetail()

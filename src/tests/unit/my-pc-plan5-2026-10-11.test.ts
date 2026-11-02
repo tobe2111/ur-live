@@ -98,7 +98,8 @@ describe('📖 한 칸일 때는 읽을 수 있는 폭까지만', () => {
 
   it('🔴 좁히는 조건과 두 열로 쪼개는 조건이 **글자 그대로 같다**', () => {
     // 갈리면 한쪽은 좁고 한쪽은 넓어져 띠·목록·푸터의 왼쪽 끝이 어긋난다.
-    const COND = 'sellerSeats.stores.length > 0'
+    // 🐢 2026-11-02 — 조건이 변수 하나(`hasSeats`)로 모였다(조회 중엔 지난번 값). 같은 글자를 두 곳이 쓰는 건 그대로.
+    const COND = 'hasSeats'
     const pane = PAGE.match(new RegExp(`className=\\{${COND.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\? 'ur-account-pane`))
     expect(pane, '칸 좁히기가 좌석 수를 안 본다').not.toBeNull()
     expect(PAGE, '두 열 래퍼가 다른 조건을 쓴다')
@@ -196,12 +197,13 @@ describe('⚙️ 설정 — 한 벌을 자리만 바꿔 건다', () => {
 
   it('🔴 `pcSplit` 가 좌석 수를 본다 — `isPc` 만이면 설정이 본문보다 먼저 그려진다', () => {
     // 좌석 0곳이면 `ur-account-cols` 는 평범한 블록이라 두 칸이 그냥 세로로 이어진다.
-    expect(PAGE).toMatch(/const pcSplit = isPc && sellerSeats\.stores\.length > 0/)
+    expect(PAGE).toMatch(/const pcSplit = isPc && hasSeats/)
+    expect(PAGE).toMatch(/const hasSeats = sellerSeats\.loading \? sellerSeats\.stores\.length > 0 \|\| readReservedHeight\(\) > 0 : sellerSeats\.stores\.length > 0/)
   })
 
   it('🔴 그 짝인 CSS 조건이 그대로다 — 한쪽만 바뀌면 조용히 어긋난다', () => {
     expect(PAGE, '두 열 래퍼의 조건이 좌석 수에서 바뀌었다')
-      .toContain("sellerSeats.stores.length > 0 ? 'ur-account-cols ur-account-cols--split'")
+      .toContain("hasSeats ? 'ur-account-cols ur-account-cols--split'")
   })
 })
 

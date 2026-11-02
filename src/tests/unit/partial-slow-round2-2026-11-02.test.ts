@@ -40,10 +40,28 @@ describe('유어쇼츠 — 앱 안 이동 + 미리 받기', () => {
   it('목록 카드도 누르는 사이에 데운다', () => {
     expect(read('src/pages/urshorts/BrowseCard.tsx')).toMatch(/onPointerDown=\{warmShortsViewer\}/)
   })
-  it('데우기는 뷰어 청크 + 유튜브 API 둘 다, 동적으로만(홈 묶음에 안 끌려온다)', () => {
-    const s = read('src/pages/videos/warm-viewer.ts')
-    expect(s).toMatch(/import\('\.\.\/VideosPage'\)/)
-    expect(s).toMatch(/import\('\.\/youtube-player'\)\.then\(\(m\) => m\.loadYouTubePlayerApi\(\)\)/)
-    expect(s).not.toMatch(/^import /m)
+  it('데우기는 등록부 이름으로만(홈 묶음이 재생 화면 모듈을 직접 가리키지 않는다) + 화면 모듈이 유튜브를 스스로 출발', () => {
+    // 주석은 빼고 코드만 본다(머리말이 그 함정을 설명하느라 같은 글자를 쓴다).
+    const s = read('src/pages/videos/warm-viewer.ts').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    expect(s).toMatch(/preloadRoute\('videos'\)/)
+    expect(s).not.toMatch(/import\(['"][^'"]*VideosPage/)
+    expect(s).not.toMatch(/import\(['"][^'"]*youtube-player/)
+    expect(read('src/App.tsx')).toMatch(/const VideosPage = lazyPage\(\(\) => import\('\.\/pages\/VideosPage'\)\); registerRoutePreload\('videos', VideosPage\.load\)/)
+    expect(read('src/pages/VideosPage.tsx')).toMatch(/^if \(typeof window !== 'undefined'\) void loadYouTubePlayerApi\(\)$/m)
   })
 })
+
+describe('지도 — 홈에서 들어갈 때', () => {
+  it('홈이 지도를 데울 때 첫 목록(시드와 같은 요청)도 미리 받는다', () => {
+    const w = read('src/pages/mobile-home/map-warmup.ts')
+    expect(w).toMatch(/\.then\(\(\) => loadRoute\('map'\)\)\s*\.then\(\(m\) => \(m as \{ prefetchMapSeedFirstPage\?: \(\) => Promise<void> \} \| undefined\)\?\.prefetchMapSeedFirstPage\?\.\(\)\)/)
+    // 홈이 지도 모듈을 직접 가리키면 묶음기가 봉투를 다시 짠다(전 화면 첫 화면 무게 ↑) — 코드에 그 import 가 없어야 한다
+    const code = w.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    expect(code).not.toMatch(/useMapProducts|map-feed-seed/)
+    expect(read('src/pages/RestaurantMapPage.tsx')).toMatch(/^export \{ prefetchMapSeedFirstPage \} from '@\/hooks\/queries\/useMapProducts'$/m)
+    const h = read('src/hooks/queries/useMapProducts.ts')
+    expect(h).toMatch(/export function prefetchMapFeedFirstPage\(category: string, near: Near, sort: string\)/)
+    expect(h).toMatch(/const k = keyOf\(category, near, sort\)/) // 화면 훅과 같은 키라야 적중한다
+  })
+})
+

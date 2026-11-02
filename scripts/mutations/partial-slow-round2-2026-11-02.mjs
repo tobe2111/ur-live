@@ -35,4 +35,29 @@ export default [
     test: T,
     why: '뷰어 코드·유튜브 재생기를 누른 뒤에야 받기 시작한다.',
   },
+  {
+    name: '🐢 유어쇼츠 — 홈이 재생 화면 모듈을 직접 import(봉투가 다시 짜여 전 화면 첫 화면 무게 ↑)',
+    file: 'src/pages/videos/warm-viewer.ts',
+    find: "  preloadRoute('videos')",
+    replace: "  void import('../VideosPage')",
+    test: T,
+    why: '2026-11-02 CI surface-budgets 12화면 +1.5KB — lib/route-preload 머리말의 함정.',
+  },
+  {
+    name: '🐢 마이 PC — 좌석 조회 중 지난번 값을 안 써서 폭이 다시 튐',
+    file: 'src/pages/UserProfilePage.tsx',
+    find: 'sellerSeats.loading ? sellerSeats.stores.length > 0 || readReservedHeight() > 0 : sellerSeats.stores.length > 0',
+    // ⚠️ 바꾼 글자가 정상 코드에 이미 있으면(예: 'sellerSeats.stores.length > 0') 잔재 검사가 "주입이 남았다" 로 오판한다.
+    replace: 'sellerSeats.loading ? false : sellerSeats.stores.length > 0',
+    test: 'src/tests/unit/my-pc-plan5-2026-10-11.test.ts',
+    why: '실사용 CLS: div.ur-account-pane 폭 519→909 · 602→1050 (2.7~3.3초).',
+  },
+  {
+    name: '🐢 지도 — 홈이 지도 첫 목록을 미리 안 받음(SPA 진입 시 지도 생성이 목록 한 왕복을 기다림)',
+    file: 'src/pages/mobile-home/map-warmup.ts',
+    find: "      .then((m) => (m as { prefetchMapSeedFirstPage?: () => Promise<void> } | undefined)?.prefetchMapSeedFirstPage?.())\n",
+    replace: '',
+    test: T,
+    why: '2026-11-02 대표 "지도도 늦게 뜨네".',
+  },
 ]

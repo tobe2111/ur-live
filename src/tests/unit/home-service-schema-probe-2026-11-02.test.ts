@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { createRequire } from 'node:module'
 import { readFileSync } from 'node:fs'
 import { HS_TABLES_SQL, buildSchemaProbe, ensureHomeServiceTables } from '@/features/home-service/api/home-service-db'
+import { SEEDING_TABLES_SQL, ensureSeedingTables } from '@/features/seeding/api/seeding-db'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 
@@ -92,5 +93,15 @@ describe('생활 표 확인 — 왕복 1회', () => {
     const block = src.slice(src.indexOf("homeServiceRoutes.get('/config'"), src.indexOf("homeServiceRoutes.get('/config'") + 600)
     expect(block).toMatch(/get\('\/config', publicCache\(\d+\)/)
     expect(block).toMatch(/Promise\.all\(\[\s*homeServiceStopped/)
+  })
+
+  it('팔아보기(seeding)도 같은 확인 — 다 있으면 batch 1회, 빈 DB 면 DDL 전부', async () => {
+    const full = new DatabaseSync(':memory:')
+    for (const sql of SEEDING_TABLES_SQL) { try { full.exec(sql) } catch { /* */ } }
+    const a = d1(full); await ensureSeedingTables(a.DB)
+    expect(a.count).toEqual({ runs: 0, batches: 1 })
+    const empty = d1(new DatabaseSync(':memory:')); await ensureSeedingTables(empty.DB)
+    expect(empty.count.runs).toBe(SEEDING_TABLES_SQL.length)
+    expect(buildSchemaProbe(SEEDING_TABLES_SQL).length).toBeGreaterThan(1)
   })
 })

@@ -14,6 +14,11 @@ import SwipeHint from './videos/SwipeHint'
 import { useSlideTransition } from './videos/useSlideTransition'
 import { YT_TITLE_CLIP_PX } from '@/shared/urshorts-display'
 
+// 🐢 2026-11-02 대표 *"유어쇼츠도 느리더라"* — 이 화면 코드가 받아지는 **순간** 유튜브 재생기도 출발시킨다.
+//   홈·목록 카드를 누르는 사이(`pointerdown`) 이 코드를 미리 받으므로(`warm-viewer.ts` → 등록부 'videos'),
+//   재생기 스크립트가 화면보다 먼저 와 있는다. 같은 약속(`pending`)을 아래 effect 가 이어받는다 — 두 번 받지 않는다.
+if (typeof window !== 'undefined') void loadYouTubePlayerApi()
+
 /**
  * 🎬 `/videos` — 유어쇼츠 뷰어 (2026-09-07 대표 확정: 주소는 `/videos`).
  *
