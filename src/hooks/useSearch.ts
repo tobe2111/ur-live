@@ -19,11 +19,16 @@ export interface SearchResult {
 // 🛡️ 2026-05-19: cursor 무한스크롤 hook — SearchPage 에서 사용.
 //   페이지 단위로 누적 로드. backend /api/search?page=N&limit=M.
 const SEARCH_PAGE_SIZE = 50
-export function useSearchInfinite(query: string) {
+/**
+ * 📍 2026-11-02: `scope` 를 서버에 보낸다 — 서버가 이용권(또는 교환권)만 골라 보내므로 한 장 50개가
+ *   온전히 결과다. 종전엔 섞인 50개를 화면이 걸러 `서울` 은 첫 장이 40개였다.
+ *   ⚠️ 화면의 클라이언트 필터(SearchPage)는 그대로 둔다 — 캐시된 옛 응답에도 범위가 새지 않게.
+ */
+export function useSearchInfinite(query: string, scope: 'voucher' | 'exchange' = 'voucher') {
   return useInfiniteQuery({
-    queryKey: ['search-infinite', query],
+    queryKey: ['search-infinite', query, scope],
     queryFn: async ({ pageParam }) => {
-      const params = new URLSearchParams({ q: query, page: String(pageParam), limit: String(SEARCH_PAGE_SIZE) })
+      const params = new URLSearchParams({ q: query, page: String(pageParam), limit: String(SEARCH_PAGE_SIZE), scope })
       const response = await api.get(`/api/search?${params.toString()}`)
       return {
         products: response.data.data || [],

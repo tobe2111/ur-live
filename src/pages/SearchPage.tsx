@@ -62,7 +62,7 @@ export default function SearchPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useSearchInfinite(query)
+  } = useSearchInfinite(query, scope === 'exchange' ? 'exchange' : 'voucher')
   const loadMoreRef = useRef<HTMLDivElement>(null)
   // 모든 페이지의 products 합치기 + total 은 첫 페이지 값.
   const searchResult = infiniteData
