@@ -63,7 +63,7 @@ const plan = (db: InstanceType<typeof DatabaseSync>, sql: string) =>
 
 // enrich-lane 이 실제로 쓰는 대상 쿼리(소스에서 읽어 오지 않고 여기 고정 — 소스가 바뀌면 아래 짝-검사가 잡는다)
 const ENRICH_Q = `SELECT id FROM ad_company_leads
-  WHERE (active = 0 OR email IS NULL OR email = '') AND merged_into IS NULL
+  WHERE (email IS NULL OR email = '') AND merged_into IS NULL
     AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < 9)
   ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END),
            (CASE WHEN enrich_checked_at IS NULL THEN 0 ELSE 1 END),

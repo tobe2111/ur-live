@@ -132,7 +132,7 @@ async function fetchBrandPage(base: string, op: string, key: string, page: numbe
   return { items: arr, count: arr.length, msg, endOfRegistry }
 }
 
-export interface FranchiseStats { last_run: string; found: number; saved: number; upserted: number; completed?: boolean; page: number; total_runs: number; total_saved: number; total_upserted?: number; diag: { configured: boolean; error?: string; sample?: unknown }; health?: LaneHealth }
+export interface FranchiseStats { last_run: string; found: number; saved: number; upserted: number; completed?: boolean; page: number; total_runs: number; total_saved: number; total_upserted?: number; diag: { configured: boolean; error?: string; sample?: unknown; save_error?: string }; health?: LaneHealth }
 const STATS_KEY = 'ads_franchise_stats'
 const CURSOR_KEY = 'ads_franchise_cursor'
 
@@ -171,6 +171,7 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   const pagesPerRun = Math.min(30, Math.max(3, parseInt((env as unknown as { ADS_FRANCHISE_PAGES?: string }).ADS_FRANCHISE_PAGES || '', 10) || 8))
   const budget = { left: pagesPerRun }
   let found = 0, saved = 0, upserted = 0, completed = false, sample: unknown, lastMsg: string | undefined
+  let saveErr: string | undefined // 저장 단계 예외 원문(아래 🩺) — 진단줄 `diag.save_error`
   let useOp = op, useYr = yr
   // 🧾 **자기 기록 몫을 남긴다** — 이 루프는 이제 안에서 D1 을 쓸 수 있고(오퍼레이션 학습), 뒤에도 쓴다
   //   (통계·커서). D1 도 서브리퀘스트라, 0까지 태우면 그 쓰기들이 던지고 호출부가 전부 `.catch(() => null)`
@@ -226,7 +227,13 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
     found += leads.length
     // 📊 **신규/재확인 분리** — 원부를 다 훑으면 신규는 0 에 수렴한다. 그건 '죽음'이 아니라 '완주'다
     //   (commerce 레인이 2026-07-29 에 같은 이유로 분리했다). 이 수가 없으면 레인 건강이 완주를 사망으로 읽는다.
-    const c = await saveCompanyLeadsCounted(DB, leads, { requireContact: true }).catch(() => ({ inserted: 0, upserted: 0 })) // 보류 → enrichHeldLeads 가 홈페이지 검색으로 연락처 채움
+    // 🩺 **저장 실패를 삼키지 않는다** (2026-11-02 — 라이브 93회 실행 · 회당 600건 발견 · 저장 0 · 갱신 0).
+    //   같은 리드를 로컬 SQLite 로 같은 저장 함수에 넣으면 정상 저장된다 — 즉 원인은 라이브에서만 난다(한도·바인딩·
+    //   스키마 차이 중 하나). 예전엔 이 catch 가 오류를 0 으로 바꿔 **원인이 어디에도 안 남았다.** 원문을 남긴다.
+    const c = await saveCompanyLeadsCounted(DB, leads, { requireContact: true }).catch((e: unknown) => {
+      saveErr = saveErr || String((e as { message?: string } | null)?.message || e).slice(0, 300)
+      return { inserted: 0, upserted: 0 }
+    }) // 보류 → enrichHeldLeads 가 홈페이지 검색으로 연락처 채움
     saved += c.inserted; upserted += c.upserted
     page++
   }
@@ -236,8 +243,10 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   const hint = lastMsg === 'HTTP 404' ? ` — 경로/오퍼레이션명 불일치. 공공데이터포털의 '가맹정보 브랜드 목록' 스펙 확인 후 ADS_FRANCHISE_ENDPOINT/ADS_FRANCHISE_OP env 로 무배포 교정(현재: ${base}/${op})` : ''
   // 🏁 **완주는 오류가 아니다** — 원부 끝에 닿은 회차의 "items 0" 을 `diag.error` 로 올리면
   //   레인 건강 화면이 그것을 사망으로 읽는다(라이브에서 86회 연속 그랬다). 커서는 1로 되돌려 뒀다.
+  // ⚠️ 저장 예외는 `error` 에 섞지 않는다 — `error` 는 레인 건강(백오프)을 움직이므로, 진단을 남기려다 회차를
+  //   줄이면 원인을 볼 기회도 준다. 진단은 `diag.save_error` 한 자리로만.
   const error = found === 0 && lastMsg && !completed ? `API: ${lastMsg}${hint}` : undefined
-  const s: FranchiseStats = { last_run: stamp, found, saved, upserted, completed: completed || undefined, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, total_upserted: (prev?.total_upserted || 0) + upserted, diag: { configured: true, error, sample }, health: updateLaneHealth(prev?.health, error || null, now) }
+  const s: FranchiseStats = { last_run: stamp, found, saved, upserted, completed: completed || undefined, page, total_runs: (prev?.total_runs || 0) + 1, total_saved: (prev?.total_saved || 0) + saved, total_upserted: (prev?.total_upserted || 0) + upserted, diag: { configured: true, error, sample, ...(saveErr ? { save_error: saveErr } : {}) }, health: updateLaneHealth(prev?.health, error || null, now) }
   await persist(s)
   return s
 }

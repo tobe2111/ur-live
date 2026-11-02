@@ -12,7 +12,7 @@
 import { companyInflowByDay, type CompanyDayInflow, type CompanySegments } from './company-breakdown'
 import { COMPANY_CUBE_SQL, foldCube, type CubeRow } from './company-stats-cube'
 import type { Env } from '@/worker/types/env'
-import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
+import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION, HOLD_NOT_DELETE_REASONS } from './company-classify'
 import { refineRegistryLabel } from './company-taxonomy'
 import { hygieneStatements } from './company-lead-hygiene'
 import { emptyDelta, tallyVerdict, verdictChanged, writeReclassifyStats } from './reclassify-verdict-delta'
@@ -392,6 +392,12 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
   for (const r of rows) {
     const c = classifyLead(r)
     if (!c.ok) {
+      // 🛑 새 규칙의 탈락 사유(빈 페이지 제목·도어웨이)는 **지우지 않고 보류만** — 근거는 `HOLD_NOT_DELETE_REASONS`.
+      //   기관(org)으로 표시하지 않는다 — 기관이 아니라 '정체 불명' 이다(분류 확인 필요 · 액션 풀 밖).
+      if (HOLD_NOT_DELETE_REASONS.has(c.reason || '') && r.status === 'new' && !r.memo) {
+        stmts.push(DB.prepare("UPDATE ad_company_leads SET active = 0, lead_type = 'unknown', classify_confidence = 'none', classified_v = ? WHERE id = ?").bind(CLASSIFY_RULES_VERSION, r.id)); held++
+        continue
+      }
       const curated = r.status !== 'new' || !!r.memo
       if (curated) { stmts.push(DB.prepare("UPDATE ad_company_leads SET active = 0, lead_type = 'org', classify_confidence = 'evidence', classified_v = ? WHERE id = ?").bind(CLASSIFY_RULES_VERSION, r.id)); held++ }
       else { stmts.push(DB.prepare('DELETE FROM ad_company_leads WHERE id = ?').bind(r.id)); removed++ }

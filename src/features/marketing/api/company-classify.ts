@@ -76,6 +76,27 @@ const DESC_IS_PAGE_BODY = new Set(['webkr'])
 const NOTICE_WORD = /(모집|공고|공지사항|접수\s*안내|신청\s*안내|지원사업|보조사업|위탁사업|수행기관|선정\s*결과|결과\s*발표|보도자료|채용|구인|입찰|낙찰|공모전|공모\s*안내|설명회|간담회|기자회견|알림마당|열린마당|새소식|특강|세미나|워크숍|워크샵|교육\s*과정|아카데미\s*모집|위치\s*안내|이용\s*안내|오시는\s*길|지정\s*게시대)/
 /** 문장형 제목(업체명이 아님) — 종결어미/안내문투. */
 const SENTENCE_WORD = /(합니다|습니다|하세요|드립니다|바랍니다|입니다\b)/
+/**
+ * 🚧 **업체 이름이 아니라 '빈 페이지' 제목** (2026-11-02 라이브 실측 — webkr 이름 끝말 빈도 상위).
+ *   `사이트 수정중입니다` 100 · `403 Forbidden` 13 · `site move` 35 · `LED채널 1 페이지` 15 — 사이트가 공사 중이거나
+ *   막혀 있을 때의 `<title>` 이다. 업체가 실재할 수는 있지만 **이 이름으로는 누구인지 알 수 없다.**
+ *   ⚠️ 위 `SENTENCE_WORD` 의 `입니다\b` 는 이걸 못 잡는다 — `\b` 는 ASCII 단어 경계라 한글 뒤 문자열 끝에서
+ *     성립하지 않는다(그래서 `…수정중입니다` 100행이 들어와 있었다). 여기서는 경계 없이 끝(`$`)으로 본다.
+ */
+const PLACEHOLDER_TITLE = /(수정\s*중\s*입니다|준비\s*중\s*입니다|공사\s*중\s*입니다|점검\s*중\s*입니다|^\d{3}\s*(?:Forbidden|Not\s*Found|Error)|^site\s*move$|^index\s+of\b|페이지를\s*찾을\s*수|\s\d+\s*페이지$|역사문화대전|향토문화전자대전)/i
+/**
+ * 🕳️ **광고용 도어웨이 페이지** (2026-11-02 라이브 실측). `남양주 벌초대행` · `이천 벌초대행` · `가평 묘지이장` 이
+ *   **서로 다른 77개 사이트**(제과·튜닝·학원 도메인)에 올라가 있고 이메일은 전부 `obok5555@naver.com` 하나였다 —
+ *   남의 사이트에 심어 둔 지역명 광고 페이지다. 그리고 벌초·이장은 유어딜 파트너 업종도 아니다.
+ *   ⚠️ 낱말은 이 업종군에서만 좁게 고른다 — `이장` 단독은 `마을 이장`·`이장님` 이 걸리므로 `묘지/산소 이장` 만.
+ */
+const DOORWAY_WORD = /(벌초|묘지\s*이장|산소\s*이장|묘\s*이장|파묘|개장\s*유골)/
+/**
+ * 기존 행을 **지우지 않고 보류만** 하는 탈락 사유 — 재분류 랩(`company-discovery`)이 이 사유면 DELETE 대신
+ * `active = 0` 으로 내린다(2026-11-02 — 새로 만든 규칙이 라이브 행을 대량으로 지우는 일은 결재 사항이다).
+ * 새로 들어오는 행은 종전대로 저장하지 않는다.
+ */
+export const HOLD_NOT_DELETE_REASONS: ReadonlySet<string> = new Set(['PLACEHOLDER_TITLE', 'DOORWAY_SPAM'])
 /** 기관·비영리 접미 — 차단하진 않고 lead_type=org 로 분류(지역조직 파트너 가치 있음). */
 const ORG_WORD = /(구청|시청|도청|군청|읍사무소|면사무소|주민센터|행정복지센터|공단|공사|진흥원|진흥공단|재단|협회|연합회|조합|상인회|위원회|의회|교육청|보건소|센터장|정부|부처|청사)/
 /**
@@ -240,6 +261,12 @@ export function classifyLead(input: ClassifyInput): ClassifyResult {
   // ② 공고/모집/기사 제목 → 업체명이 아님. ("…수행기관 모집" 사례)
   if (NOTICE_WORD.test(name)) return reject('NOTICE_TITLE')
   if (SENTENCE_WORD.test(name)) return reject('SENTENCE_TITLE')
+  // 🚧🕳️ 페이지 제목을 상호로 삼는 소스(webkr)에서만 — 등록부·지도 상호는 원부가 준 진짜 이름이다
+  //   (통신판매에 `○○벌초` 같은 실제 사업자가 있으면 그건 도어웨이가 아니다).
+  if (DESC_IS_PAGE_BODY.has(input.source || '')) {
+    if (PLACEHOLDER_TITLE.test(name)) return reject('PLACEHOLDER_TITLE')
+    if (DOORWAY_WORD.test(name)) return reject('DOORWAY_SPAM')
+  }
   // ②-b 뉴스 헤드라인 문형(2026-07-27 대표 신고 — "'이대 상권 살리기'에 진심인 서대문구…" 기사제목 수집).
   //   상호에는 없는 신호들: 인용부호("" '' ") · 「쉼표+공백」 제목체 · 어절 5개+ 장문 · 서술 종결(…다/높여).
   if (/["“”‘’']/.test(name)) return reject('HEADLINE_TITLE')

@@ -16,6 +16,7 @@ import { envSubreqCap, envLaneBudget, companyRunDeadlineMs } from './collect-bud
 import { flushNaverCalls, armNaverAndReadSettings } from './naver-api-usage'
 import { saveCompanyLeads, ensureCompanySchema, type CompanyLead } from './company-discovery'
 // 🗺️ 지역×업종 그리드는 `company-keyword-grid.ts` SSOT (2026-07-28 전국 시군구 전면 확장 시 분리).
+import { keywordRestSql, paroleRestingKeywords } from './company-keyword-rest'
 import { S1_TRADES, S2_REGIONS, S2_TRADES, S3_TRADES_LOCAL, S4_TRADES_LOCAL, buildKeywordRows, resumeSeedIndex, seedPrefixHash } from './company-keyword-grid'
 import {
   PROMOTE_CHUNK, PROMOTE_KEY, SUBCAT_YIELD_KEY, nextPromotion, parsePromoteState, parseSubcatYield, suppressedSubcats,
@@ -276,7 +277,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
   const DB = adsLeadsDb(env)
   const schemaSpent = await ensureCompanySchema(DB) // 스키마 DDL 실비 — 아래 예산에서 차감
   // ⬆️ 승격은 시드 뒤에 붙는다 — 본 시드가 안 끝났으면 스스로 물러난다(같은 왕복에서 판정).
-  const seedSpent = await ensureCompanyKeywords(DB) + await promoteCompanyKeywords(DB)
+  const seedSpent = await ensureCompanyKeywords(DB) + await promoteCompanyKeywords(DB) + await paroleRestingKeywords(DB)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const clientId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const clientSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
@@ -370,8 +371,13 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
     // 연락처 필수(기본 ON): 전화·이메일 없는 리드는 active=0(보류) 로 저장 → 보강이 채우면 승격.
     const n = await saveCompanyLeads(DB, leads, { requireContact }).catch(() => 0)
     saved += n
-    await DB.prepare("UPDATE ad_company_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_run_at = datetime('now') WHERE id = ?")
-      .bind(leads.length, n, kw.id).run().catch(() => null)
+    // 🛌 **포화 휴식**(2026-11-02 라이브 실측 — 키워드 5,965개 중 2,628개가 신규 0, 평균 62건씩 찾는데 전부
+    //   이미 있는 업체). 이웃 지역 키워드가 같은 업체를 먼저 가져간 것이라 '쓸모없는' 게 아니라 '다 모은' 것이다.
+    //   그런데 회전 순번은 그대로 차지해서 신규가 나오는 키워드의 재방문이 늦어졌다. ⇒ 판정 조건과 되돌림은
+    //   `keywordRestSql` / `paroleRestingKeywords` 한 곳(`company-keyword-rest.ts`).
+    await DB.prepare(`UPDATE ad_company_keywords SET found_total = found_total + ?, saved_total = saved_total + ?, last_run_at = datetime('now'),
+        active = ${keywordRestSql('?', '?')} WHERE id = ?`)
+      .bind(leads.length, n, n, leads.length, kw.id).run().catch(() => null)
   }
 
   // 📧 이메일 보충(옵션 a) — 홈페이지 있고 이메일 없는 최근 리드를 예산 내에서 크롤. phone-first 위 additive.

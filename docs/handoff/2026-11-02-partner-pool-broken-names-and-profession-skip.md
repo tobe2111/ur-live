@@ -35,6 +35,21 @@ D1 `ad_company_leads`(DB `0e9a8f82…`) 에서:
 - 판정(배포 후 며칠): `SELECT category, COUNT(*), SUM(active=1) FROM ad_company_leads WHERE category IN ('이사','청소','방역·소독','수리·설치') GROUP BY 1` 이 늘어나는가 · `ad_company_keywords` 에서 5단계 키워드 `saved_total`.
 - ⚠️ **못 한 것**: 상가정보(정부 업종코드) 통째 수집에 생활·법무사 코드를 넣는 일. 코드표(2302)가 레포에 9개분만 있고 이 환경에서 `apis.data.go.kr` 이 막혀 코드를 확인할 수 없다 — 틀린 코드는 엉뚱한 업종을 대량으로 넣으므로 추측으로 넣지 않았다. 대표가 업종분류표를 다시 주면 `STOREINFO_TARGETS` 에 한 줄씩 추가하면 된다.
 
+## 4. 개선 묶음 (대표 *"개선할 것들 최대한 알아봐"* → *"2번 빼고 일단 다 해줘"*)
+라이브 실측으로 찾은 10개 중 ②(남의/가짜 연락처 공유 — 이메일 2,988행·전화 2,756행)는 **대표가 빼라고 했다. 손대지 않았다.**
+- ① **보강 레인 헛돌기**: `enrich-lane.ts` 대상 WHERE 에서 `active = 0 OR` 제거. 이메일 있는 보류 행 11,691건이 도장 없이 매 회차 큐 머리에 섰다(하루 examined 50,339 중 skip_email 50,131 · enriched 102). 짝 인덱스는 정렬 키라 무변경.
+- ③ **빈 페이지 제목·도어웨이**: `company-classify.ts` `PLACEHOLDER_TITLE`·`DOORWAY_WORD`(webkr 한정). 재분류는 이 사유면 **DELETE 대신 보류**(`HOLD_NOT_DELETE_REASONS`).
+- ④ **카카오 전화 스윕** 시간당 1→3(`lane-alarm-runners.ts`, `MAX_BOOST_RUNS_PER_HOUR` 와 같은 안전선). commerce 를 스윕에서 빼는 것은 안 했다 — 그 파일이 "증거로 가중" 원칙을 적어 둠(오늘 증거 18조회 0건뿐).
+- ⑤ **포화 키워드 휴식**: `company-keyword-rest.ts` — 찾은 게 40건+ 인데 신규 0 → `active=2`, 60일 뒤 복귀, 수동 키워드 제외. 어드민 칩에 💤 표시.
+- ⑥ **프랜차이즈 저장 0**: 로컬 SQLite 로 같은 리드를 같은 저장 함수에 넣으면 정상 저장된다 → 라이브 전용 실패. 원인은 못 찾았고, **저장 예외 원문을 `diag.save_error` 에 남기게** 했다(백오프에 영향 안 주게 `error` 와 분리).
+- ⑦ **국세청 폐업 조회**: 회차당 100건 × 10묶음(상한 20, env `ADS_NTS_BATCHES`). 조회 실패 묶음에서 커서 정지(예전엔 실패해도 넘어가 그 행이 빠졌다).
+- ⑧ **등록부 대조 0건은 결함이 아니었다** — 스킵 사유 대부분이 `no_registry_row`(지도 업체가 통신판매 신고를 안 한 것). 국민연금은 그쪽 503. 코드 변경 없음.
+- ⑨ **중국 무료메일 온라인판매 보류**: `company-lead-hygiene.ts` 🌏 + 백로그 스윕 세대 2(`company-hygiene-sweep.ts`, 테이블 한 번 더 훑음).
+- 가드: `partner-pool-improvements-2026-11-02.test.ts` + 주입 7건 전부 빨간불.
+- 판정(배포 후): 보강 스냅샷 `p2.skip_email` 이 0 근처 · `enriched` 증가 / 카카오 `day_lookups` ~3배 / 키워드 화면 '포화 휴식' 수 / 국세청 `checked` 1,000 근처 / 프랜차이즈 `diag.save_error` 원문.
+
 ## 남은 것 (대표 판단)
 - (해결됨 → 위 3) 생활 업종·법무사 미수집.
 - 상가정보 업종분류표(2302 xlsx) 재제공 여부 — 받으면 생활·법무사도 통째 수집으로 넓힌다.
+- ② 남의/가짜 연락처 공유 정리 — 대표가 이번엔 빼라고 함.
+- ⑥ 프랜차이즈 — 배포 후 `diag.save_error` 원문을 보고 다시 판단.
