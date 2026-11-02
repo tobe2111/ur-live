@@ -6,6 +6,9 @@ import { useTranslation } from '@/lib/i18n-lite'
 import { Button } from '@/components/ui/button'
 import { RotateCcw } from 'lucide-react'
 import SEO from '@/components/SEO'
+// 🎬 2026-11-02 시안 6차 "결제 버튼 누른 뒤"의 실패 쪽 — 카드가 올라오고, 진짜 실패면(손님 취소가 아니면) 제목이 한 번 짧게 흔들린다. 유달이는 움직이지 않는다.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-payresult', `@keyframes ur-pr-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }@keyframes ur-pr-shake { 0%,100% { transform: none; } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }.ur-pr-rise { animation: ur-pr-rise .4s cubic-bezier(.2,1,.3,1) backwards; }.ur-pr-shake { animation: ur-pr-shake .45s ease-out .1s backwards; }@media (prefers-reduced-motion: reduce){.ur-pr-rise,.ur-pr-shake{animation:none!important}}`)
 
 export default function PaymentFailPage() {
   const { t } = useTranslation()
@@ -96,11 +99,11 @@ export default function PaymentFailPage() {
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center p-4">
       <SEO title={isUserCancel ? '결제 취소' : t('paymentFail.title')} description={heroSub} url="/payment/fail" noindex />
       <div className="ur-content-narrow w-full">
-        <div className="bg-surface rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
+        <div className="ur-pr-rise bg-surface rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
           {/* hero 아이콘 + 제목 — code 별로 색/문구 분기 */}
           <div className="text-center mb-8">
             <Udal mood={heroMood} size={isUserCancel ? 72 : 112} priority className="block mx-auto mb-4" />
-            <h1 className="text-[28px] font-bold text-[#1d1d1f] dark:text-white mb-2">{heroTitle}</h1>
+            <h1 className={`${isUserCancel ? '' : 'ur-pr-shake '}text-[28px] font-bold text-[#1d1d1f] dark:text-white mb-2`}>{heroTitle}</h1>
             <p className="text-[#6e6e73] dark:text-gray-400">{heroSub}</p>
           </div>
 

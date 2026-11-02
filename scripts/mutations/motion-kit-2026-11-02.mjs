@@ -77,4 +77,12 @@ export default [
     test: TEST,
     why: '눌렀는지 모르는 몇 초 동안 손님이 결제 버튼을 다시 누른다.',
   },
+  {
+    name: '🎬 지갑 탭 밑줄이 두 개 그려진다(미끄러지는 밑줄 + 옛 밑줄)',
+    file: 'src/pages/MyVouchersPage.tsx',
+    find: '{tab === key && !tabBar && <span aria-hidden="true"',
+    replace: '{tab === key && <span aria-hidden="true"',
+    test: TEST,
+    why: '측정 뒤에도 옛 밑줄이 남으면 미끄러지는 동안 고른 탭 밑에 밑줄이 하나 더 보인다.',
+  },
 ]

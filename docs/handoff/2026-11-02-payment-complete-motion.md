@@ -95,3 +95,8 @@
 - 가드 `motion-kit-2026-11-02` 24건 + 주입 4건 추가(전부 빨간불 확인). 화면 무게: 홈만 기준 갱신(`surface-budgets-history/2026-11-02-home.json`).
 - 🩸 **이번에 잡은 결함**: 옛 공용 끄기 규칙의 선택자 조각(`.ur-slam, … .ur-flash,`)이 여섯 파일의 CSS 문자열 앞에 붙어 `…,@media(…)` 가 돼 있었다 — 브라우저가 규칙을 통째로 버려서 **동작 줄이기를 켠 사람에게도 움직였다**(에러 0). 5차 때 "끄기 규칙 누수" 를 고치며 *조건 밖 `animation:none`* 만 시험했고 이 모양은 못 봤다. 이제 레포 전체의 `injectMotionCss` 문자열에서 `,@media` 를 막는다.
 - ⚠️ 결제 버튼은 도는 원만 넣었다(성공 체크·실패 흔들림은 신호가 없다 — 성공이면 토스로 넘어가고, 버튼이 다시 켜지는 것은 실패와 취소를 구분 못 한다). 잠금표 파일(Toss·로딩)은 하나도 안 건드렸다.
+
+## 잠금 파일 허가분 (대표 *"허락해줄게 잠금 파일 부분도"*)
+- `MyVouchersPage.tsx` 지갑 탭 밑줄 미끄러짐(3차 보류분) — `docs/locks/loading/2026-11-02-motion-wallet-tab-bar.md`
+- `PaymentSuccessPage.tsx` 결과 카드 올라옴 · 승인 실패 경고 흔들림 — `docs/locks/toss/2026-11-02-payment-result-motion.md` (결제 로직 byte-불변)
+- 잠금 밖 `PaymentFailPage.tsx` 도 같은 움직임(손님 취소는 안 흔듦). 유달이는 그대로.

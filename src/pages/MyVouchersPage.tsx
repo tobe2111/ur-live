@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect, useMemo, useCallback } from 'react'
+import { lazy, Suspense, useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react'
 import { TicketStubIcon, OkIcon, BadIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { safeTime } from '@/utils/safe-date'
 import { useNavigate } from 'react-router-dom'
@@ -66,6 +66,13 @@ export default function MyVouchersPage() {
   // 🎫 2026-09-02 (대표 시안 — 코레일톡 화이트 지갑): [사용 가능 | 사용 완료] 밑줄 탭 + outline 칩 필터.
   //   접기 박스(WalletArchive)는 이 지갑에서 탭으로 대체(교환권 지갑 /my-gifticons 는 그대로 그 박스를 쓴다).
   const [tab, setTab] = useState<'unused' | 'done'>('unused')
+  const tabRowRef = useRef<HTMLDivElement | null>(null)
+  const [tabBar, setTabBar] = useState<{ x: number; w: number } | null>(null)
+  useLayoutEffect(() => { // 매 그림 뒤에 재되, 값이 같으면 안 바꾼다(탭 줄이 로딩 뒤에야 생기므로 의존성으로 못 잡는다)
+    const el = tabRowRef.current?.querySelector<HTMLElement>(`[data-tab="${tab}"]`)
+    const next = el ? { x: el.offsetLeft, w: el.offsetWidth } : null
+    setTabBar((prev) => (prev?.x === next?.x && prev?.w === next?.w ? prev : next))
+  })
   // 🎨 2026-06-20 흑백 리디자인 화면2(지도 전용) — 인-페이지 뷰(새 라우트 X)
   const [mapSelected, setMapSelected] = useState<Voucher | null>(null)
   const [mapFocusTick, setMapFocusTick] = useState(0) // 🗺️ 같은 카드를 다시 눌러도 핀으로 돌아가게(2026-10-12)
@@ -260,14 +267,17 @@ export default function MyVouchersPage() {
             <ExpiryNotice items={unusedItems} t={t} onOpen={setQrVoucher} />
             {/* 🎫 탭 — [사용 가능 N | 지난 이용권] + 오른쪽 '지도로 보기'(2026-10-07 A안). 칩 줄(전체·만료 임박·지도)은 걷었다:
                 '전체 N' 은 탭이 이미 말하고, 만료가 가까운 순서는 목록 정렬이 이미 맡는다. */}
-            <div className="flex items-end gap-5 mb-4 border-b border-rule">
+            {/* 🎬 2026-11-02 [UNLOCK_LOADING] 시안 3차 "탭 밑줄"(대표 "허락해줄게 잠금 파일 부분도") — 밑줄 하나가 고른 탭으로 미끄러진다.
+                측정 전(첫 그림)엔 종전처럼 탭 안에 밑줄을 그려 깜빡임이 없다. 유어샵 칩과 같은 `.ur-tab-bar`. */}
+            <div ref={tabRowRef} className="relative flex items-end gap-5 mb-4 border-b border-rule">
               {([['unused', t('voucher.groupUnused', { defaultValue: '사용 가능' })], ['done', t('voucher.groupPast', { defaultValue: '지난 이용권' })]] as const).map(([key, label]) => (
-                <button key={key} type="button" onClick={() => setTab(key)}
+                <button key={key} type="button" onClick={() => setTab(key)} data-tab={key}
                   className={`relative pb-2 text-[17px] tracking-[-0.02em] ${tab === key ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 font-bold'}`}>
                   {label}
-                  {tab === key && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}
+                  {tab === key && !tabBar && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}
                 </button>
               ))}
+              {tabBar && <span aria-hidden="true" className="ur-tab-bar absolute left-0 -bottom-px h-[2.5px] bg-brand pointer-events-none" style={{ width: tabBar.w, transform: `translateX(${tabBar.x}px)` }} />}
               {tab === 'unused' && mapVouchers.length > 0 && (
                 <button type="button" onClick={() => setViewMode('map')}
                   className="ml-auto pb-2 inline-flex items-center gap-1 text-[13px] font-medium text-gray-600 dark:text-gray-300">
