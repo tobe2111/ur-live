@@ -31,7 +31,6 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { QrScanIcon } from '@/components/icons/qr-scan-icon'
 import { ScanIcon, OkIcon } from '@/components/icons/urdeal-icons'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-02 12차 ① (대표 "응 바꿔줘") — 한 줄 글자 → **그림 셋**(QR 열기 · 직원에게 · 사용 완료).
@@ -41,7 +40,13 @@ injectMotionCss('ur-m-howto', `@keyframes ur-howto-c { 0% { background-color: tr
 
 /** 각 단계: 제목(무엇을) + 한 줄(어디서·누가). */
 const STEP_ICONS = [
-  <QrScanIcon key="qr" size={22} />,
+  // 📦 QR 그림은 여기 따로 그린다 — `QrScanIcon` 을 불러오면 그 파일이 이 화면 묶음에 들어가고,
+  //   같은 그림을 쓰는 마이(사용처리 칸)가 이 화면 묶음 통째(+20KB)를 받게 된다(2026-11-02 실측).
+  <svg key="qr" viewBox="0 0 32 32" width={22} height={22} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9V5.4A2.4 2.4 0 0 1 5.4 3H9M23 3h3.6A2.4 2.4 0 0 1 29 5.4V9M29 23v3.6a2.4 2.4 0 0 1-2.4 2.4H23M9 29H5.4A2.4 2.4 0 0 1 3 26.6V23" />
+    <rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1" /><rect x="18" y="8.5" width="5.5" height="5.5" rx="1" /><rect x="8.5" y="18" width="5.5" height="5.5" rx="1" />
+    <g fill="currentColor" stroke="none"><rect x="18" y="18" width="2.2" height="2.2" rx=".5" /><rect x="21.3" y="21.3" width="2.2" height="2.2" rx=".5" /></g>
+  </svg>,
   <ScanIcon key="scan" className="w-[22px] h-[22px]" />,
   <OkIcon key="ok" className="w-[22px] h-[22px]" />,
 ] as const

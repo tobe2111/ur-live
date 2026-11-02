@@ -360,8 +360,9 @@ describe('🔟 10차 (2026-11-02 대표 "모두 다 해줘")', () => {
   })
   it('⑦ 참여권 — 숫자가 굴러가고 늘어난 만큼만 +N장', () => {
     const s = R('src/pages/life/pro/ProCredits.tsx')
-    expect(s).toContain('<RollingNumber value={me.balance} format={formatNumber} />')
-    expect(s).toContain('if (d <= 0) return')
+    expect(s).toContain('{formatNumber(shown)}')
+    expect(s, '공용 RollingNumber 를 부르면 상세 묶음이 딸려 온다').not.toContain('RollingNumber')
+    expect(s).toContain('if (d <= 0) { setShown(me.balance); return }')
   })
   it('⑧ 별점 — 별 안쪽만 다시 그려 그 별까지 차례로 튄다(두 화면 같은 CSS)', () => {
     for (const f of ['src/pages/MyStaysPage.tsx', 'src/pages/life/life-reviews.tsx']) {
@@ -421,7 +422,7 @@ describe('1️⃣2️⃣ 12차 (2026-11-02 대표 "1,9,10번")', () => {
     const s = R('src/pages/group-buy/RedeemHowTo.tsx')
     expect(s).toContain("if (first) { first = false; if (e.isIntersecting) io.disconnect(); return }")
     expect(s).toContain('className="ur-howto-c mx-auto mb-2 w-12 h-12 rounded-full bg-brand-tint text-brand-text')
-    expect(s).toContain('<QrScanIcon key="qr" size={22} />')
+    expect(s, 'QrScanIcon 을 부르면 마이가 상세 묶음을 통째로 받는다').not.toContain('qr-scan-icon')
     expect((s.match(/\{ n: '\d'/g) || []).length).toBe(3)
   })
   it('⑨ 공유 버튼 — 링크를 **복사했을 때만** 체크가 뜬다(카카오 공유가 열리면 안 뜬다)', () => {
