@@ -22,7 +22,7 @@ import ShoppingGroup from './user-profile/ShoppingGroup'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import SellerSection from './user-profile/SellerSectionLazy'
 import MyAgencyZone from './user-profile/MyAgencyZone'
-import MyRoleTabs, { MY_TAB_DEFAULT, type MyTab } from './user-profile/MyRoleTabs'
+import { MY_TAB_DEFAULT, type MyTab } from './user-profile/my-role-tab'
 import { useAgencyPresence } from './user-profile/useAgencyPresence'
 import { useToolDeepLinkFallback } from './user-profile/seller-section/useToolDeepLink'
 import SettingsGroup from './user-profile/SettingsGroup'
@@ -43,6 +43,8 @@ import AccountPcPane from './user-profile/AccountPcPane'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { loginPathFromHere } from '@/utils/login-return'
 const ProfileEditSheet = lazy(() => import('./user-profile/profile-edit/ProfileEditSheet'))
+// 🗂️ 탭 부품은 에이전시 로그인이 있을 때만 받는다(손님 첫 화면 무게 — `my-role-tab.ts` 머리말).
+const MyRoleTabs = lazy(() => import('./user-profile/MyRoleTabs'))
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -255,7 +257,8 @@ export default function UserProfilePage() {
           </div>
         </div>
       </div>
-      {tabbed && <MyRoleTabs value={myTab} onChange={setMyTab} />}
+      {/* ⏳ 자리를 미리 잡는다(56px = 탭 48 + 아래 8) — 부품이 늦게 와도 아래가 밀리지 않는다. */}
+      {tabbed && <Suspense fallback={<div className="h-14" aria-hidden="true" />}><MyRoleTabs value={myTab} onChange={setMyTab} /></Suspense>}
       </div>{/* /모바일 헤더 */}
 
       {/* 🧭 2026-09-28 (대표 *"PC 버전이나 모바일이나 너무 별로 · 허술해"*): **좌측 내비를 걷어냈다.**

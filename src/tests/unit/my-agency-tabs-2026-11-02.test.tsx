@@ -12,14 +12,19 @@
 import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { render, screen, fireEvent } from '@testing-library/react'
-import MyRoleTabs, { MY_TAB_DEFAULT } from '@/pages/user-profile/MyRoleTabs'
+import MyRoleTabs from '@/pages/user-profile/MyRoleTabs'
+import { MY_TAB_DEFAULT } from '@/pages/user-profile/my-role-tab'
 
 const PAGE = readFileSync('src/pages/UserProfilePage.tsx', 'utf8')
 
 describe('① 탭이 서는 조건', () => {
   it('폰이고 에이전시 로그인이 있을 때만', () => {
     expect(PAGE).toContain('const tabbed = !isPc && agencyPresence.on')
-    expect(PAGE).toMatch(/\{tabbed && <MyRoleTabs value=\{myTab\} onChange=\{setMyTab\} \/>\}/)
+    expect(PAGE).toMatch(/\{tabbed && <Suspense fallback=\{<div className="h-14" aria-hidden="true" \/>\}><MyRoleTabs value=\{myTab\} onChange=\{setMyTab\} \/><\/Suspense>\}/)
+  })
+  it('탭 부품은 lazy — 손님 첫 화면에 안 실린다', () => {
+    expect(PAGE).toContain("const MyRoleTabs = lazy(() => import('./user-profile/MyRoleTabs'))")
+    expect(PAGE).not.toMatch(/import MyRoleTabs/)
   })
   it('탭이 없으면 양쪽이 다 보인다(종전 화면)', () => {
     expect(PAGE).toContain("const showMe = !tabbed || myTab === 'me'")

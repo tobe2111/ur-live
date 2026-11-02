@@ -9,9 +9,7 @@ import SegmentedTabs from '@/components/ui/segmented-tabs'
  * ⚠️ 에이전시 로그인이 없으면 이 탭은 서지 않고 마이는 종전 그대로다(손님·일반 사장님 무변경).
  * 🧭 모양은 공용 `SegmentedTabs`(선택 = 브랜드 블루 하나 · 줄바꿈 금지) — 손으로 그리지 않는다.
  */
-export type MyTab = 'agency' | 'me'
-
-export const MY_TAB_DEFAULT: MyTab = 'agency'
+import type { MyTab } from './my-role-tab'
 
 const ITEMS: { id: MyTab; label: string }[] = [
   { id: 'me', label: '나' },

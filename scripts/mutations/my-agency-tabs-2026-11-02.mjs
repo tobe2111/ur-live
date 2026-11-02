@@ -4,7 +4,7 @@ const PAGE = 'src/pages/UserProfilePage.tsx'
 export default [
   {
     name: '🗂️ 탭 — 기본이 에이전시가 아니다',
-    file: 'src/pages/user-profile/MyRoleTabs.tsx',
+    file: 'src/pages/user-profile/my-role-tab.ts',
     find: "export const MY_TAB_DEFAULT: MyTab = 'agency'",
     replace: "export const MY_TAB_DEFAULT: MyTab = 'me'",
     test: TEST,
