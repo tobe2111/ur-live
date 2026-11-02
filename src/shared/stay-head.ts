@@ -26,7 +26,7 @@ export const STAY_HEAD = {
    */
   metaRow: 'flex items-center gap-2 text-[12px] text-gray-500 dark:text-gray-400 mb-1',
   /** 제목(h1). 📏 2026-10-27: 폰도 24px — 이용권 상세 제목(`PASS_HEAD.h1`)과 같은 크기(대표 "통일할 건 통일"). */
-  h1: 'text-[24px] leading-[1.3] font-bold tracking-[-.02em]',
+  h1: 'text-[17px] leading-[1.4] font-bold tracking-[-.02em]', // 📏 2026-11-02 이용권 상세 C안과 같이 24 → 17(숙소 제목 = 이용권 제목)
 } as const
 
 /** 페이지 루트의 전체 클래스 — 화면과 서버가 같은 바탕에서 시작하게. */

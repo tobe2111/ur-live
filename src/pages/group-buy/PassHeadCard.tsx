@@ -51,34 +51,32 @@ export default function PassHeadCard({
       <h1 className={PASS_HEAD.h1}>{name}</h1>
       {isPrelaunch && <span className={PASS_HEAD.prelaunch}>오픈 예정 · 사전 응모 받는 중</span>}
 
-      {(hasReviews || buyers > 0) && (
-        <div className="mt-2 flex items-center flex-wrap gap-x-2 gap-y-1 text-[13px]">
-          {hasReviews && (
-            <>
-              <StarRating value={rv} size={13} />
-              <b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{rv.toFixed(1)}</b>
-              <button type="button" onClick={() => goTo('gb-sec-reviews')} className="bg-transparent border-0 p-0 underline underline-offset-[3px] cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>리뷰 {formatNumber(rc)}개</button>
-            </>
-          )}
-          {hasReviews && buyers > 0 && <span aria-hidden="true" style={{ color: 'var(--gbd-sub2)' }}>·</span>}
-          {buyers > 0 && <span style={{ color: 'var(--gbd-sub)' }}>{formatNumber(buyers)}명이 샀어요</span>}
-        </div>
-      )}
-      {(address || distKm != null) && (
-        <div className="mt-2 flex items-center justify-between gap-3 text-[13px]">
-          {address
-            ? <button type="button" onClick={() => goTo('gb-sec-location')} className="min-w-0 truncate text-left bg-transparent border-0 p-0 underline underline-offset-[3px] cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>{address}</button>
-            : <span />}
-          {distKm != null && <span className="shrink-0" style={{ color: 'var(--gbd-sub)' }}>{distKm}km</span>}
+      {/* 📏 2026-11-02 상세 C안: 별점·구매 수와 거리를 **한 줄**로. 주소 줄은 아래 '매장' 구역이 이미 말해서 걷었다. */}
+      {(hasReviews || buyers > 0 || distKm != null) && (
+        <div className="mt-1.5 flex items-center justify-between gap-3 text-[13px]">
+          <span className="min-w-0 flex items-center flex-wrap gap-x-1.5 gap-y-1">
+            {hasReviews && (
+              <>
+                <StarRating value={rv} size={12} />
+                <b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{rv.toFixed(1)}</b>
+                <button type="button" onClick={() => goTo('gb-sec-reviews')} className="bg-transparent border-0 p-0 cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>({formatNumber(rc)})</button>
+              </>
+            )}
+            {hasReviews && buyers > 0 && <span aria-hidden="true" style={{ color: 'var(--gbd-sub2)' }}>·</span>}
+            {buyers > 0 && <span style={{ color: 'var(--gbd-sub)' }}>{formatNumber(buyers)}명 구매</span>}
+          </span>
+          {distKm != null && (address
+            ? <button type="button" onClick={() => goTo('gb-sec-location')} className="shrink-0 bg-transparent border-0 p-0 cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>{distKm}km</button>
+            : <span className="shrink-0" style={{ color: 'var(--gbd-sub)' }}>{distKm}km</span>)}
         </div>
       )}
 
       {unitPrice != null && unitPrice > 0 && (
-        <div className="mt-4">
+        <div className="mt-3">
           {refPrice != null && refPrice > unitPrice && <div className="text-[13px] line-through" style={{ color: 'var(--gbd-sub)' }}>{formatNumber(refPrice)}원</div>}
-          <div className="flex items-baseline gap-2">
-            {!!discountPct && discountPct > 0 && <span className="text-[24px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
-            <span className="text-[28px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>
+          <div className="flex items-baseline gap-1.5">
+            {!!discountPct && discountPct > 0 && <span className="text-[17px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
+            <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>
           </div>
         </div>
       )}

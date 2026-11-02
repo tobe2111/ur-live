@@ -25,7 +25,7 @@ export default function OtherDealsRow({ deals, sellerHandle, sellerUsername }: {
     <>
       <div style={{ padding: '22px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px' }}>
-          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.01em' }}>이 가게의 다른 이용권</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)', letterSpacing: '-.01em' }}>이 가게의 다른 이용권</div>
           {(sellerHandle || sellerUsername) && <a href={sellerHandle ? `/u/${sellerHandle}` : `/profile/${sellerUsername}`} style={{ fontSize: 12, fontWeight: 500, color: 'var(--gbd-accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>전체보기</a>}
         </div>
         <div className="scrollbar-hide" style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '14px 18px 2px', scrollSnapType: 'x proximity', scrollPaddingInline: 18 }}>

@@ -40,8 +40,9 @@ export default function SellThisCard({ productId, price, hideForOwner: isOwner }
   const on = offer && offer.enabled ? offer : null
 
   return (
-    <div>
-      <p className="text-[17px] font-bold text-gray-900 dark:text-white">이 이용권 팔아보기</p>
+    // 📏 2026-11-02: 좌우 여백 0 이라 글자가 화면 끝에 붙어 잘렸다(라이브 left=0 실측). 다른 구역과 같은 20/16.
+    <div style={{ padding: '20px 16px' }}>
+      <p className="text-[15px] font-bold text-gray-900 dark:text-white">이 이용권 팔아보기</p>
       <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
         내 유어샵에 담아 고유 링크로 팔거나, 매장이 제공하면 무료로 체험해 볼 수 있어요.
       </p>

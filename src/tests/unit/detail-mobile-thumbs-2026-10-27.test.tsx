@@ -35,13 +35,22 @@ describe('모바일 썸네일 2칸', () => {
     expect((btns[0] as HTMLElement).style.backgroundImage).toContain(detailMobileThumbUrl(IMGS[1]))
     expect(btns[1].textContent).toBe('+1')
   })
-  it('썸네일을 누르면 전체 화면이 열리고 "n / 전체" 를 보여 준다', () => {
+  // 🔁 2026-11-02 대표 확정 ②A: 작은 사진은 **큰 사진을 그 사진으로 옮기고**, 다음 두 장으로 따라 바뀐다.
+  //   크게 보기는 마지막 칸(+N)에서 열린다.
+  it('작은 사진을 누르면 아래 두 칸이 그다음 두 장으로 따라 바뀐다', () => {
     render(<DetailGallery images={IMGS} alt="가게" />)
-    fireEvent.click(screen.getByLabelText('사진 2번째 크게 보기'))
+    expect(screen.getByLabelText('사진 2 보기')).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('사진 2 보기'))
+    expect(screen.getByLabelText('사진 3 보기'), '다음 두 장(3·4)으로 안 바뀌었다').toBeTruthy()
+    expect(screen.queryByLabelText('사진 2 보기'), '지금 큰 사진이 아래에 또 나온다').toBeNull()
+  })
+  it('마지막 칸(+N)을 누르면 가운데 팝업이 열리고 "n / 전체" 를 보여 준다', () => {
+    render(<DetailGallery images={IMGS} alt="가게" />)
+    fireEvent.click(screen.getByLabelText('전체 사진 4장 크게 보기'))
     expect(screen.getByRole('dialog')).toBeTruthy()
-    expect(screen.getByText('2 / 4')).toBeTruthy()
-    fireEvent.click(screen.getAllByLabelText('다음 사진')[1])
     expect(screen.getByText('3 / 4')).toBeTruthy()
+    fireEvent.click(screen.getAllByLabelText('4번째 사진')[0])
+    expect(screen.getByText('4 / 4')).toBeTruthy()
   })
 })
 
