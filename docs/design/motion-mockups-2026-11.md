@@ -29,3 +29,11 @@
 - `src/pages/group-buy/PaymentCompleteTicket.tsx` (`useTicketMotion`) + `payment-complete-motion.css`
 - 가드 `src/tests/unit/payment-complete-motion-2026-11-02.test.tsx`(7건, 주입 2건 빨간불 확인)
 - 결제 처리·잠금 파일 무접촉(이 부품은 잠금표 밖이다).
+
+## 작은 움직임 열네 가지 (같은 날 2차 — 대표 *"다 한번 시안 만들어볼래?"*)
+- 시안 원본: `docs/design/assets/micro-motion-mockups-2026-11-02.html` · 공유: https://claude.ai/artifact/1iyHahHtDA8M5vc5gnFhx4
+- **A 누르는 반응**: 찜 하트(톡 커짐 + 점 여섯 개) · 리뷰 별점(차례로 채움) · 쿠폰 받기(내 쿠폰으로 날아감, 숫자 2→3) · 유어샵 링크 복사(알림) · 이용권 담기("추천" 배지 도장)
+- **B 사장님**(유달이 금지 자리라 그림 없음): 사용처리 성공(스캔 줄 → 파란 원 + 체크 + 진동) · 새 주문(종 흔들림, 숫자 3→4, 줄 미끄러져 들어옴) · 오늘 매출(숫자 올라감 + 일주일 막대)
+- **C 첫 만남**: 가입 환영(stand 유달이 인사) · 검색 0건(curious 두리번) · 404(cable 걸어 들어옴)
+- **D 승인 필요(로딩 잠금)**: 하단 탭 선→면 전환 · 마감 카운트다운 숫자 넘김 · 목록→상세 사진 이어짐
+- 상태: 🟡 전부 시안, 대표 선택 대기
