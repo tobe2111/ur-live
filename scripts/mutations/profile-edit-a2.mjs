@@ -59,8 +59,8 @@ export default [
   {
     name: '동작 줄이기 — reduced-motion 해제 (멀미 설정을 무시한다)',
     file: CSS,
-    find: '@media (prefers-reduced-motion: reduce) { .ur-sheet-in, .ur-sheet-veil { animation: none; } }',
-    replace: '@media (prefers-reduced-motion: reduce) { .ur-sheet-veil { animation: none; } }',
+    find: '@media (prefers-reduced-motion: reduce) { .ur-sheet-in, .ur-sheet-veil, .ur-sheet-out, .ur-sheet-veil-out { animation: none; } }',
+    replace: '@media (prefers-reduced-motion: reduce) { .ur-sheet-veil, .ur-sheet-out, .ur-sheet-veil-out { animation: none; } }',
     test: T,
     why:
       '이 레포는 `.ur-lift`·`.ur-appear`·`.ur-pop` 에서 그 설정을 이미 지킨다. 화면 절반이 ' +

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
+import { useCountUp } from '@/hooks/useCountUp'
 import SharePrompt from '@/components/SharePrompt'
 import ReviewCard, { type ReviewItem } from './ReviewCard'
 /** 리뷰 최소 글자 수 — 버튼 비활성 조건과 안내 문구가 **같은 값**을 봐야 한다(따로 두면 갈린다). */
@@ -18,6 +20,9 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
   const [rating, setRating] = useState(initialRating)
   // 🎬 2026-11-02 시안 A2: 별을 누르면 왼쪽부터 차례로 톡톡 채워진다. bump 를 key 에 섞어 매번 다시 재생.
   const [bump, setBump] = useState(0)
+  // 🎬 2026-11-02 시안 3차 "리뷰 작성 완료": 서버가 실제로 적립한 딜(0 이면 종전 문구) — 0 부터 올라간다.
+  const [rewardPaid, setRewardPaid] = useState(0)
+  const rewardShown = useCountUp(rewardPaid > 0 ? rewardPaid : undefined, { delayMs: 200, durationMs: 600 })
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showSharePrompt, setShowSharePrompt] = useState(false)
@@ -198,6 +203,9 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
                 n: MIN_REVIEW_LEN - body.length,
               }))
               taRef.current?.focus()
+              // 🎬 2026-11-02 시안 4차 "입력칸 흔들림": 어디가 모자란지 글을 읽기 전에 보이게(index.css .ur-shake).
+              const ta = taRef.current
+              if (ta) { ta.classList.remove('ur-shake'); void ta.offsetWidth; ta.classList.add('ur-shake') }
               return
             }
             setHint(null)
@@ -207,7 +215,7 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
               if (res.data.success) {
                 setOpen(false); setContent(''); setRating(5); setImages([])
                 onSubmitted()
-                if (res.data.reward) setShowSharePrompt(true)
+                if (res.data.reward) { setRewardPaid(Number(res.data.reward_amount) || 0); setShowSharePrompt(true) }
               } else {
                 toast.error(res.data.error || t('reviews.writeFailed', { defaultValue: '리뷰 작성 실패' }))
               }
@@ -237,7 +245,9 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
       {showSharePrompt && (
         <SharePrompt
           title={t('reviews.sharedTitle', { defaultValue: '리뷰가 등록되었어요' })}
-          message={t('reviews.sharedMessage', { defaultValue: '딜 포인트가 지급되었어요. 이 상품을 친구에게 추천해보세요!' })}
+          message={rewardPaid > 0
+            ? t('reviews.sharedMessageAmount', { defaultValue: '+{{amount}}딜이 지급되었어요. 이 상품을 친구에게 추천해보세요!', amount: formatNumber(rewardShown ?? rewardPaid) })
+            : t('reviews.sharedMessage', { defaultValue: '딜 포인트가 지급되었어요. 이 상품을 친구에게 추천해보세요!' })}
           shareTitle={t('reviews.sharedShareTitle', { defaultValue: '이 상품 추천해요!' })}
           shareDescription={t('reviews.sharedShareDesc', { defaultValue: '유어딜에서 좋은 상품을 발견했어요' })}
           shareLink={`/products/${productId}`}

@@ -1,0 +1,460 @@
+<title>유어딜 모션 시안 3차</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* 레이아웃: 손님 화면 7 + 사장님 화면 3 을 카드 격자로. 카드 = 작은 화면(직접 눌러 보기) + 이름 + 설명. */
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --surface: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE;
+  --lift: 0 2px 10px rgba(22,24,28,.06); --photo1: #C9D8F2; --photo2: #F2D9C9; --photo3: #D2E8D6; --photo4: #E6D6F0; --scrim: rgba(22,24,28,.4); --map: #E9EEE4; --road: #FFFFFF;
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --surface: #1D1F29; --sub: #191C25; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --lift: none; --photo1: #2B3A57; --photo2: #4A3729; --photo3: #2C4232; --photo4: #3D2F4A; --scrim: rgba(0,0,0,.55);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); }
+button { font-family: var(--font); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 62ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .replay:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.group { margin-bottom: 56px; }
+.group > h2 { font-size: 24px; font-weight: 700; margin: 0 0 4px; }
+.group > p { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 32px 20px; }
+@media (max-width: 360px) { .grid { grid-template-columns: 1fr; } }
+.card { min-width: 0; display: grid; gap: 12px; align-content: start; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.head h3 { font-size: 17px; font-weight: 700; margin: 0; }
+.head .rec { font-size: 12px; font-weight: 700; color: #fff; background: var(--brand); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+.replay { flex: none; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; font-weight: 500; cursor: pointer; }
+.desc { font-size: 13px; color: var(--page-soft); line-height: 1.6; margin: 0; }
+.scr { height: 340px; border-radius: 22px; background: var(--bg); color: var(--ink); position: relative; overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); transition: background .3s, color .3s; }
+.tap { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 12px; color: var(--ink-faint); pointer-events: none; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.btn { height: 44px; border-radius: 12px; border: 0; padding: 0 18px; font-weight: 700; font-size: 15px; cursor: pointer; }
+.btn-primary { background: var(--brand); color: #fff; }
+.btn-out { background: transparent; color: var(--brand-text); box-shadow: inset 0 0 0 1px var(--rule-strong); }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes popIn { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }
+.ease { --spring: cubic-bezier(.2,1,.3,1); }
+
+/* 1 탭 밑줄 */
+.tabs { position: relative; display: flex; gap: 22px; padding: 18px 18px 0; border-bottom: 1px solid var(--rule); }
+.tabs button { border: 0; background: none; padding: 0 0 10px; font-size: 15px; font-weight: 400; color: var(--ink-faint); cursor: pointer; }
+.tabs button.on { color: var(--ink); font-weight: 500; }
+.tabs button small { font-size: 12px; margin-left: 3px; color: var(--ink-faint); }
+.bar { position: absolute; bottom: -1px; height: 2px; background: var(--ink); left: 0; width: 0; transition: transform .32s cubic-bezier(.2,1,.3,1), width .32s cubic-bezier(.2,1,.3,1); }
+.tlist { padding: 8px 18px; }
+.trow { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.trow i { width: 44px; height: 44px; border-radius: 10px; background: var(--photo1); flex: none; }
+.trow b { font-size: 15px; font-weight: 500; display: block; } .trow span { font-size: 13px; color: var(--ink-soft); }
+.tlist.swap { animation: fadeSlide .28s ease both; }
+@keyframes fadeSlide { from { opacity: 0; transform: translateX(var(--dx, 12px)); } to { opacity: 1; transform: none; } }
+
+/* 2 바텀시트 */
+.s2 .content { padding: 18px; display: grid; gap: 10px; }
+.s2 .content .btn { justify-self: start; }
+.scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .28s; pointer-events: none; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 10px 18px 22px; transform: translateY(105%); transition: transform .42s cubic-bezier(.2,1,.3,1); box-shadow: 0 -8px 30px rgba(0,0,0,.12); }
+.sheet .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--rule-strong); margin: 0 auto 14px; }
+.sheet h4 { margin: 0 0 12px; font-size: 17px; font-weight: 700; }
+.shareRow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; font-size: 12px; color: var(--ink-soft); }
+.shareRow i { display: block; width: 48px; height: 48px; border-radius: 50%; background: var(--sub); margin: 0 auto 6px; }
+.s2.open .scrim { opacity: 1; pointer-events: auto; }
+.s2.open .sheet { transform: none; }
+.s2.closing .sheet { transition: transform .26s cubic-bezier(.4,0,1,1); }
+.ph { height: 12px; border-radius: 6px; background: var(--sub); }
+
+/* 3 지도 핀 */
+.map { position: absolute; inset: 0; background: var(--map); }
+.scr[data-mode="dark"] .map { background: #1C2420; }
+.map .road { position: absolute; background: var(--road); }
+.scr[data-mode="dark"] .map .road { background: #2A332E; }
+.pin { position: absolute; transform: translate(-50%, -100%); border: 0; background: none; padding: 0; cursor: pointer; }
+.pin span { display: block; background: var(--surface); color: var(--ink); font-size: 12px; font-weight: 700; padding: 5px 9px; border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.18); white-space: nowrap; transition: background .2s, color .2s; }
+.pin.on span { background: var(--brand); color: #fff; }
+.pin.go span { animation: pinPop .4s cubic-bezier(.3,1.4,.5,1); }
+@keyframes pinPop { 0% { transform: scale(1); } 45% { transform: scale(1.25) translateY(-4px); } 100% { transform: scale(1); } }
+.pcard { position: absolute; left: 12px; right: 12px; bottom: 12px; background: var(--surface); border-radius: 16px; padding: 12px; display: flex; gap: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.14); transform: translateY(130%); transition: transform .4s cubic-bezier(.2,1,.3,1); }
+.pcard.on { transform: none; }
+.pcard i { width: 64px; height: 64px; border-radius: 12px; flex: none; }
+.pcard p { margin: 0; font-size: 13px; color: var(--ink-soft); } .pcard b { display: block; font-size: 15px; font-weight: 500; color: var(--ink); margin: 2px 0 4px; }
+.pcard .pr { font-weight: 700; color: var(--ink); font-size: 15px; }
+
+/* 4 이용권 → QR */
+.wallet { padding: 16px; display: grid; gap: 10px; }
+.vt { border: 0; padding: 0; cursor: pointer; text-align: left; width: 100%; background: var(--surface); border-radius: 16px; box-shadow: var(--lift), 0 0 0 1px var(--rule); display: flex; gap: 12px; padding: 10px; color: var(--ink); }
+.vt i { width: 56px; height: 56px; border-radius: 10px; flex: none; }
+.vt b { display: block; font-size: 15px; font-weight: 500; } .vt span { font-size: 13px; color: var(--ink-soft); }
+.qrv { position: absolute; inset: 0; background: var(--bg); display: none; padding: 16px; text-align: center; }
+.qrv.on { display: block; }
+.qrv .band { height: 44px; border-radius: 16px 16px 0 0; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; font-size: 15px; font-weight: 700; }
+.qrv .body { background: var(--surface); border-radius: 0 0 16px 16px; box-shadow: var(--lift), 0 0 0 1px var(--rule); padding: 14px; display: grid; justify-items: center; gap: 8px; opacity: 0; transform: translateY(10px); transition: opacity .25s .2s, transform .25s .2s; }
+.qrv.show .body { opacity: 1; transform: none; }
+.qrv .qr { width: 130px; height: 130px; background: #fff; border-radius: 8px; padding: 6px; }
+.qrv p { margin: 0; font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.qrv .x { position: absolute; top: 22px; right: 26px; width: 28px; height: 28px; border: 0; background: rgba(255,255,255,.2); color: #fff; border-radius: 50%; cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity .2s .25s; }
+.qrv.show .x { opacity: 1; }
+.ghost { position: absolute; z-index: 5; border-radius: 16px; background: var(--surface); box-shadow: 0 0 0 1px var(--rule); transition: all .38s cubic-bezier(.65,0,.35,1); overflow: hidden; }
+.ghost::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 0; background: var(--brand); transition: height .38s cubic-bezier(.65,0,.35,1); }
+.ghost.big::before { height: 44px; }
+
+/* 5 리뷰 리워드 */
+.rv { padding: 22px 18px; display: grid; gap: 12px; justify-items: center; text-align: center; height: 100%; align-content: center; }
+.rv .t { font-size: 17px; font-weight: 700; margin: 0; }
+.rv .s { font-size: 13px; color: var(--ink-soft); margin: 0; }
+.coin { font-size: 34px; font-weight: 800; color: var(--brand-text); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.coin small { font-size: 17px; font-weight: 700; margin-left: 2px; }
+.bal { font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.bal b { color: var(--ink); font-weight: 700; }
+.s5.go .t { animation: rise .35s cubic-bezier(.16,1,.3,1) both; }
+.s5.go .coin { animation: popIn .45s cubic-bezier(.3,1.3,.5,1) .15s both; }
+.s5.go .bal { animation: rise .35s cubic-bezier(.16,1,.3,1) .5s both; }
+
+/* 6 수량 */
+.qty { height: 100%; display: grid; place-items: center; align-content: center; gap: 16px; }
+.qty .name { font-size: 15px; font-weight: 500; text-align: center; }
+.stepper { display: flex; align-items: center; gap: 4px; background: var(--sub); border-radius: 14px; padding: 4px; }
+.stepper button { width: 44px; height: 44px; border-radius: 10px; border: 0; background: var(--surface); color: var(--ink); font-size: 24px; cursor: pointer; display: grid; place-items: center; }
+.stepper button:disabled { color: var(--ink-faint); cursor: default; }
+.num { width: 56px; height: 44px; overflow: hidden; position: relative; font-size: 24px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+.num span { position: absolute; inset: 0; display: grid; place-items: center; }
+.num span.out-up { animation: outUp .26s cubic-bezier(.65,0,.35,1) both; } .num span.in-up { animation: inUp .26s cubic-bezier(.65,0,.35,1) both; }
+.num span.out-down { animation: outDown .26s cubic-bezier(.65,0,.35,1) both; } .num span.in-down { animation: inDown .26s cubic-bezier(.65,0,.35,1) both; }
+@keyframes outUp { to { transform: translateY(-100%); opacity: 0; } } @keyframes inUp { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes outDown { to { transform: translateY(100%); opacity: 0; } } @keyframes inDown { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
+.qty .total { font-size: 15px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.qty .total b { color: var(--ink); font-weight: 700; }
+
+/* 7 목록 첫 등장 */
+.feed { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fc { opacity: 1; }
+.fc i { display: block; height: 92px; border-radius: 12px; }
+.fc p { margin: 6px 0 0; font-size: 13px; font-weight: 500; }
+.fc span { font-size: 13px; font-weight: 700; }
+.s7.go .fc { animation: rise .4s cubic-bezier(.16,1,.3,1) both; animation-delay: calc(var(--i) * 40ms); }
+
+/* 8 등록 완료 */
+.reg { height: 100%; display: grid; align-content: center; justify-items: center; gap: 14px; padding: 18px; text-align: center; }
+.reg .t { font-size: 17px; font-weight: 700; margin: 0; }
+.rcard { width: 100%; max-width: 260px; background: var(--surface); border-radius: 16px; box-shadow: var(--lift), 0 0 0 1px var(--rule); display: flex; gap: 12px; padding: 10px; text-align: left; position: relative; }
+.rcard i { width: 56px; height: 56px; border-radius: 10px; flex: none; }
+.rcard b { display: block; font-size: 15px; font-weight: 500; } .rcard span { font-size: 13px; color: var(--ink-soft); }
+.live { position: absolute; top: -9px; right: 10px; background: var(--brand); color: #fff; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+.live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+.s8.go .t { animation: rise .35s cubic-bezier(.16,1,.3,1) both; }
+.s8.go .rcard { animation: cardUp .5s cubic-bezier(.2,1,.3,1) .1s both; }
+.s8.go .live { animation: popIn .4s cubic-bezier(.3,1.3,.5,1) .55s both; }
+.s8.go .acts { animation: rise .35s cubic-bezier(.16,1,.3,1) .7s both; }
+@keyframes cardUp { from { opacity: 0; transform: translateY(30px) scale(.96); } to { opacity: 1; transform: none; } }
+.acts { display: flex; gap: 8px; }
+.acts .btn { height: 40px; font-size: 13px; }
+
+/* 9 정산 */
+.pay { padding: 22px 18px; }
+.pay p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.pay .big { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; margin: 4px 0 2px; }
+.pay .big small { font-size: 17px; font-weight: 700; margin-left: 2px; }
+.prow { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--rule); font-size: 15px; font-variant-numeric: tabular-nums; }
+.prow span:first-child { color: var(--ink-soft); }
+.plist { margin-top: 14px; }
+.s9.go .prow { animation: rise .35s cubic-bezier(.16,1,.3,1) both; animation-delay: calc(.5s + var(--i) * 70ms); }
+
+/* 10 주문 상태 */
+.ord { padding: 16px 18px; }
+.ord h4 { margin: 0 0 8px; font-size: 17px; font-weight: 700; }
+.orow { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; margin: 0 -10px; border-radius: 10px; font-size: 15px; }
+.orow + .orow { box-shadow: inset 0 1px 0 var(--rule); }
+.orow small { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.chip { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--sub); color: var(--ink-soft); white-space: nowrap; }
+.chip.done { background: var(--brand-tint); color: var(--brand-text); }
+.chip.go { animation: popIn .4s cubic-bezier(.3,1.3,.5,1); }
+.orow.flash { animation: flash 1.6s ease both; }
+@keyframes flash { 0% { background: transparent; } 12% { background: var(--brand-tint); } 70% { background: var(--brand-tint); } 100% { background: transparent; } }
+
+@media (prefers-reduced-motion: reduce) { .scr *, .scr { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <h1>유어딜 모션 시안 3차</h1>
+  <p class="lede">손님 화면 일곱 곳과 사장님 화면 세 곳입니다. 유달이는 쓰지 않았습니다. 화면에 보이면 한 번 재생되고, 화면 안의 탭·버튼·핀·카드는 직접 눌러 볼 수 있습니다. 가게 이름과 숫자는 예시입니다.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all" type="button">전부 다시 재생</button>
+    <button class="ctl" id="mode" type="button">다크 모드로</button>
+  </div>
+
+  <section class="group">
+    <h2>손님 화면</h2>
+    <p>추천 표시가 붙은 셋이 앱 전체 인상을 가장 많이 바꿉니다.</p>
+    <div class="grid">
+      <div class="card"><div class="head"><h3>탭 밑줄<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="tabs">
+          <div class="tabs"><button type="button" class="on">전체<small>12</small></button><button type="button">식사<small>7</small></button><button type="button">미용<small>3</small></button><button type="button">숙소<small>2</small></button><span class="bar"></span></div>
+          <div class="tlist"></div>
+          <p class="tap">탭을 눌러 보세요</p>
+        </div>
+        <p class="desc">밑줄이 누른 탭으로 미끄러지듯 옮겨 가고 폭도 글자에 맞게 늘거나 줄어듭니다. 목록은 옮겨 간 방향에서 살짝 밀려 들어옵니다. 유어샵 분류 탭, 내 이용권 탭에 씁니다.</p></div>
+
+      <div class="card"><div class="head"><h3>아래에서 올라오는 창<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr s2" data-demo="sheet">
+          <div class="content"><div class="ph" style="width:70%"></div><div class="ph" style="width:50%"></div><div class="ph" style="width:60%"></div><button class="btn btn-out" type="button">공유하기</button></div>
+          <div class="scrim"></div>
+          <div class="sheet"><div class="grab"></div><h4>공유하기</h4><div class="shareRow"><div><i></i>카카오톡</div><div><i></i>링크 복사</div><div><i></i>문자</div><div><i></i>더보기</div></div></div>
+          <p class="tap">공유하기를 누르고, 어두운 곳을 눌러 닫아 보세요</p>
+        </div>
+        <p class="desc">공유, 필터, 매장 고르기처럼 아래에서 올라오는 창이 모두 같은 속도와 탄력으로 올라옵니다. 닫을 때는 더 빠르게 내려갑니다. 지금은 창마다 제각각이라 하나로 맞추는 작업입니다.</p></div>
+
+      <div class="card"><div class="head"><h3>지도 핀 선택</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="map">
+          <div class="map"><div class="road" style="left:0;right:0;top:42%;height:14px"></div><div class="road" style="top:0;bottom:0;left:58%;width:12px"></div><div class="road" style="left:0;right:0;top:78%;height:10px"></div></div>
+          <button class="pin" type="button" style="left:28%;top:30%" data-n="을지로 소한우" data-p="39,000원" data-c="1"><span>39,000원</span></button>
+          <button class="pin" type="button" style="left:72%;top:28%" data-n="성수 브런치랩" data-p="28,000원" data-c="2"><span>28,000원</span></button>
+          <button class="pin" type="button" style="left:44%;top:56%" data-n="합정 두피케어" data-p="45,000원" data-c="3"><span>45,000원</span></button>
+          <div class="pcard"><i></i><div><p class="sn"></p><b>점심 한우 정식 2인</b><span class="pr"></span></div></div>
+        </div>
+        <p class="desc">누른 핀이 톡 튀어 오르며 파랗게 바뀌고, 아래에서 그 가게 카드가 올라옵니다. 다른 핀을 누르면 카드 내용만 바뀝니다.</p></div>
+
+      <div class="card"><div class="head"><h3>내 이용권 → QR 열기<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="qr">
+          <div class="wallet">
+            <button class="vt" type="button"><i style="background:var(--photo1)"></i><div><b>점심 한우 정식 2인</b><span>을지로 소한우 · D-30</span></div></button>
+            <button class="vt" type="button"><i style="background:var(--photo2)"></i><div><b>브런치 세트 2인</b><span>성수 브런치랩 · D-12</span></div></button>
+          </div>
+          <div class="qrv"><button class="x" type="button" aria-label="닫기"><svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            <div class="band"><span>2026.12.02 (수)까지</span></div>
+            <div class="body"><div class="qr"><svg class="qrsvg" viewBox="0 0 25 25" shape-rendering="crispEdges"></svg></div><p class="vn"></p><p>사용 코드 4821 0937</p></div></div>
+        </div>
+        <p class="desc">누른 이용권 카드가 그대로 커지면서 위쪽이 파란 띠로 물들고 QR 화면이 됩니다. 닫으면 원래 카드 자리로 줄어들어 돌아갑니다. 매장 앞에서 "내 표를 꺼냈다"는 느낌을 줍니다.</p></div>
+
+      <div class="card"><div class="head"><h3>리뷰 작성 완료</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr s5" data-demo="review">
+          <div class="rv"><p class="t">리뷰를 남겨 주셔서 고마워요</p><div class="coin">+<span class="cnt">500</span><small>딜</small></div><p class="bal">내 딜 <b class="bal-n">10,800</b>딜</p><p class="s">사진 리뷰는 다음 주 월요일에 한 번 더 적립돼요</p></div>
+        </div>
+        <p class="desc">"+500딜"이 톡 뜨며 0부터 올라가고, 이어서 내 딜이 10,300에서 10,800으로 채워집니다.</p></div>
+
+      <div class="card"><div class="head"><h3>수량 + / −</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="qty">
+          <div class="qty"><p class="name">점심 한우 정식 2인</p>
+            <div class="stepper"><button type="button" class="minus" aria-label="빼기">−</button><div class="num"><span>1</span></div><button type="button" class="plus" aria-label="더하기">+</button></div>
+            <p class="total">합계 <b class="tot">39,000</b>원</p></div>
+          <p class="tap">+ / − 를 눌러 보세요</p>
+        </div>
+        <p class="desc">더하면 숫자가 아래에서 올라오고, 빼면 위에서 내려옵니다. 합계도 같이 바뀝니다. 1개에서는 빼기가 흐려집니다.</p></div>
+
+      <div class="card"><div class="head"><h3>목록 첫 등장</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr s7" data-demo="feed">
+          <div class="feed"></div>
+        </div>
+        <p class="desc">처음 열 때 카드가 위에서부터 0.04초 간격으로 차례로 떠오릅니다. 처음 한 번만 하고, 스크롤해서 더 불러올 때는 하지 않습니다(계속 움직이면 산만합니다).</p></div>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>사장님 화면</h2>
+    <p>규칙대로 유달이 없이 움직임만 씁니다.</p>
+    <div class="grid">
+      <div class="card"><div class="head"><h3>이용권 등록 완료</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr s8" data-demo="reg">
+          <div class="reg"><p class="t">이용권을 등록했어요</p>
+            <div class="rcard"><i style="background:var(--photo3)"></i><div><b>두피 케어 60분</b><span>45,000원 · 30일 사용</span></div><span class="live">판매 중</span></div>
+            <div class="acts"><button class="btn btn-out" type="button">내 가게에서 보기</button><button class="btn btn-primary" type="button">공유하기</button></div></div>
+        </div>
+        <p class="desc">방금 만든 이용권 카드가 아래에서 올라오고, 오른쪽 위에 "판매 중" 배지가 톡 붙습니다. 그다음 할 일(보기·공유) 버튼이 나타납니다.</p></div>
+
+      <div class="card"><div class="head"><h3>정산 금액</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr s9" data-demo="pay">
+          <div class="pay"><p>이번 주 정산 예정</p><p class="big"><span class="num2">1,284,600</span><small>원</small></p><p>11월 7일 금요일에 들어와요</p>
+            <div class="plist">
+              <div class="prow" style="--i:0"><span>판매 금액</span><span>1,428,000원</span></div>
+              <div class="prow" style="--i:1"><span>수수료</span><span>−142,800원</span></div>
+              <div class="prow" style="--i:2"><span>환불</span><span>−600원</span></div>
+            </div></div>
+        </div>
+        <p class="desc">정산 예정 금액이 0원부터 올라가고, 아래 내역 줄이 차례로 나타납니다. 숫자는 끝에 반드시 정확한 금액으로 멈춥니다.</p></div>
+
+      <div class="card"><div class="head"><h3>주문 상태 바뀜</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="order">
+          <div class="ord"><h4>오늘 주문</h4>
+            <div class="orow" data-k="a"><span>점심 한우 정식 2인<small>11:05 · 김*진</small></span><span class="chip">사용 전</span></div>
+            <div class="orow" data-k="b"><span>브런치 세트 2인<small>11:42 · 박*아</small></span><span class="chip">사용 전</span></div>
+            <div class="orow" data-k="c"><span>두피 케어 60분<small>12:10 · 이*수</small></span><span class="chip done">사용 완료</span></div>
+          </div>
+          <p class="tap">"사용 전" 을 눌러 보세요</p>
+        </div>
+        <p class="desc">손님이 이용권을 쓰면 그 줄이 잠깐 옅은 파랑으로 빛났다가 사라지고, 상태 글자가 "사용 완료"로 톡 바뀝니다.</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var fmt = function (n) { return Math.round(n).toLocaleString('ko-KR'); };
+  function restart(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+  function countUp(el, from, to, dur, delay) {
+    el.textContent = fmt(from);
+    if (reduce) { el.textContent = fmt(to); return; }
+    setTimeout(function () { var t0 = performance.now(); (function s(now) { var p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3); el.textContent = fmt(from + (to - from) * e); if (p < 1) requestAnimationFrame(s); })(t0); }, delay || 0);
+  }
+  // 예시 QR
+  var N = 25, seed = 7, d = '';
+  function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+  function fin(x, y) { return (x < 8 && y < 8) || (x > N - 9 && y < 8) || (x < 8 && y > N - 9); }
+  function fon(x, y) { var ox = x < 8 ? 0 : N - 7, oy = y < 8 ? 0 : N - 7, dx = x - ox, dy = y - oy; return dx >= 0 && dy >= 0 && dx <= 6 && dy <= 6 && (dx === 0 || dy === 0 || dx === 6 || dy === 6 || (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4)); }
+  for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (fin(x, y) ? fon(x, y) : rnd() > .52) d += 'M' + x + ' ' + y + 'h1v1h-1z';
+  document.querySelectorAll('.qrsvg').forEach(function (s) { s.innerHTML = '<path d="' + d + '" fill="#16181C"/>'; });
+
+  var LISTS = { '전체': [['점심 한우 정식 2인', '을지로 소한우', 1], ['브런치 세트 2인', '성수 브런치랩', 2], ['두피 케어 60분', '합정 두피케어', 3]], '식사': [['점심 한우 정식 2인', '을지로 소한우', 1], ['브런치 세트 2인', '성수 브런치랩', 2], ['오마카세 런치', '을지로 스시혼', 4]], '미용': [['두피 케어 60분', '합정 두피케어', 3], ['젤 네일', '연남 네일룸', 4]], '숙소': [['오션뷰 1박', '강릉 바다숙소', 1], ['한옥 스테이', '북촌 한옥', 2]] };
+
+  var demos = {
+    tabs: {
+      init: function (s) {
+        var self = this, btns = s.querySelectorAll('.tabs button');
+        btns.forEach(function (b, i) { b.addEventListener('click', function () { self.go(s, i); }); });
+        this.cur = 0; this.go(s, 0, true);
+      },
+      go: function (s, i, first) {
+        var btns = s.querySelectorAll('.tabs button'), bar = s.querySelector('.bar'), list = s.querySelector('.tlist');
+        var prev = this.cur; this.cur = i;
+        btns.forEach(function (b, k) { b.classList.toggle('on', k === i); });
+        var b = btns[i], tr = s.querySelector('.tabs').getBoundingClientRect(), r = b.getBoundingClientRect();
+        bar.style.width = r.width + 'px'; bar.style.transform = 'translateX(' + (r.left - tr.left) + 'px)';
+        var key = b.childNodes[0].textContent;
+        list.innerHTML = LISTS[key].map(function (x) { return '<div class="trow"><i style="background:var(--photo' + x[2] + ')"></i><div><b>' + x[0] + '</b><span>' + x[1] + '</span></div></div>'; }).join('');
+        if (!first) { list.style.setProperty('--dx', (i >= prev ? 14 : -14) + 'px'); restart(list, 'swap'); }
+      },
+      play: function (s) { var self = this; self.go(s, 0); [1, 2, 0].forEach(function (k, j) { setTimeout(function () { self.go(s, k); }, 500 + j * 700); }); }
+    },
+    sheet: {
+      init: function (s) {
+        var self = this;
+        s.querySelector('.content .btn').addEventListener('click', function () { self.open(s); });
+        s.querySelector('.scrim').addEventListener('click', function () { self.close(s); });
+      },
+      open: function (s) { s.classList.remove('closing'); s.classList.add('open'); },
+      close: function (s) { s.classList.add('closing'); s.classList.remove('open'); setTimeout(function () { s.classList.remove('closing'); }, 300); },
+      play: function (s) { var self = this; self.close(s); setTimeout(function () { self.open(s); }, 500); setTimeout(function () { self.close(s); }, 2200); }
+    },
+    map: {
+      init: function (s) {
+        var self = this;
+        s.querySelectorAll('.pin').forEach(function (p) { p.addEventListener('click', function () { self.pick(s, p); }); });
+      },
+      pick: function (s, p) {
+        s.querySelectorAll('.pin').forEach(function (q) { q.classList.remove('on'); });
+        p.classList.add('on'); restart(p, 'go');
+        var c = s.querySelector('.pcard');
+        c.querySelector('.sn').textContent = p.dataset.n; c.querySelector('.pr').textContent = p.dataset.p;
+        c.querySelector('i').style.background = 'var(--photo' + p.dataset.c + ')';
+        c.classList.add('on');
+      },
+      play: function (s) {
+        var self = this, pins = s.querySelectorAll('.pin');
+        pins.forEach(function (q) { q.classList.remove('on'); }); s.querySelector('.pcard').classList.remove('on');
+        setTimeout(function () { self.pick(s, pins[0]); }, 500);
+        setTimeout(function () { self.pick(s, pins[2]); }, 1700);
+      }
+    },
+    qr: {
+      init: function (s) {
+        var self = this;
+        s.querySelectorAll('.vt').forEach(function (v) { v.addEventListener('click', function () { self.open(s, v); }); });
+        s.querySelector('.qrv .x').addEventListener('click', function () { self.close(s); });
+      },
+      open: function (s, v) {
+        var qv = s.querySelector('.qrv'), sr = s.getBoundingClientRect(), r = v.getBoundingClientRect();
+        qv.querySelector('.vn').textContent = v.querySelector('b').textContent;
+        this.from = v;
+        if (reduce) { qv.classList.add('on', 'show'); return; }
+        var g = document.createElement('div'); g.className = 'ghost';
+        g.style.cssText = 'left:' + (r.left - sr.left) + 'px;top:' + (r.top - sr.top) + 'px;width:' + r.width + 'px;height:' + r.height + 'px';
+        s.appendChild(g); v.style.visibility = 'hidden';
+        requestAnimationFrame(function () { requestAnimationFrame(function () { g.classList.add('big'); g.style.cssText += ';left:16px;top:16px;width:calc(100% - 32px);height:258px'; }); });
+        setTimeout(function () { qv.classList.add('on'); g.remove(); v.style.visibility = ''; requestAnimationFrame(function () { qv.classList.add('show'); }); }, 380);
+      },
+      close: function (s) {
+        var qv = s.querySelector('.qrv'); if (!qv.classList.contains('on')) return;
+        var v = this.from, sr = s.getBoundingClientRect(), r = v.getBoundingClientRect();
+        qv.classList.remove('show');
+        if (reduce) { qv.classList.remove('on'); return; }
+        var g = document.createElement('div'); g.className = 'ghost big';
+        g.style.cssText = 'left:16px;top:16px;width:calc(100% - 32px);height:258px'; qv.classList.remove('on'); s.appendChild(g); v.style.visibility = 'hidden';
+        requestAnimationFrame(function () { requestAnimationFrame(function () { g.classList.remove('big'); g.style.cssText = 'left:' + (r.left - sr.left) + 'px;top:' + (r.top - sr.top) + 'px;width:' + r.width + 'px;height:' + r.height + 'px'; }); });
+        setTimeout(function () { g.remove(); v.style.visibility = ''; }, 400);
+      },
+      play: function (s) { var self = this; self.close(s); setTimeout(function () { self.open(s, s.querySelector('.vt')); }, 600); setTimeout(function () { self.close(s); }, 2600); }
+    },
+    review: {
+      init: function () {},
+      play: function (s) { restart(s, 'go'); countUp(s.querySelector('.cnt'), 0, 500, 600, 200); countUp(s.querySelector('.bal-n'), 10300, 10800, 600, 800); }
+    },
+    qty: {
+      init: function (s) {
+        var self = this; this.n = 1;
+        s.querySelector('.plus').addEventListener('click', function () { self.set(s, self.n + 1); });
+        s.querySelector('.minus').addEventListener('click', function () { self.set(s, self.n - 1); });
+        this.set(s, 1, true);
+      },
+      set: function (s, n, first) {
+        if (n < 1 || n > 9) return;
+        var box = s.querySelector('.num'), up = n > this.n; this.n = n;
+        s.querySelector('.minus').disabled = n <= 1;
+        s.querySelector('.tot').textContent = fmt(39000 * n);
+        var cur = box.querySelector('span:last-child');
+        if (first || reduce) { cur.textContent = n; cur.className = ''; return; }
+        box.querySelectorAll('span').forEach(function (o) { if (o !== cur) o.remove(); });
+        cur.className = up ? 'out-up' : 'out-down';
+        var nx = document.createElement('span'); nx.className = up ? 'in-up' : 'in-down'; nx.textContent = n; box.appendChild(nx);
+        setTimeout(function () { cur.remove(); }, 280);
+      },
+      play: function (s) { var self = this; self.set(s, 1, true); [2, 3, 2].forEach(function (k, j) { setTimeout(function () { self.set(s, k); }, 500 + j * 550); }); }
+    },
+    feed: {
+      init: function (s) {
+        var items = [['점심 한우 정식', '39,000원'], ['브런치 세트', '28,000원'], ['두피 케어 60분', '45,000원'], ['오션뷰 1박', '129,000원'], ['오마카세 런치', '55,000원'], ['젤 네일', '33,000원']];
+        s.querySelector('.feed').innerHTML = items.map(function (x, i) { return '<div class="fc" style="--i:' + i + '"><i style="background:var(--photo' + (i % 4 + 1) + ')"></i><p>' + x[0] + '</p><span>' + x[1] + '</span></div>'; }).join('');
+      },
+      play: function (s) { restart(s, 'go'); }
+    },
+    reg: { init: function () {}, play: function (s) { restart(s, 'go'); } },
+    pay: { init: function () {}, play: function (s) { restart(s, 'go'); countUp(s.querySelector('.num2'), 0, 1284600, 900, 100); } },
+    order: {
+      init: function (s) {
+        var self = this;
+        s.querySelectorAll('.orow').forEach(function (r) { r.querySelector('.chip').addEventListener('click', function () { self.use(r); }); r.querySelector('.chip').style.cursor = 'pointer'; });
+      },
+      use: function (r) { var c = r.querySelector('.chip'); if (c.classList.contains('done')) return; restart(r, 'flash'); setTimeout(function () { c.textContent = '사용 완료'; c.classList.add('done'); restart(c, 'go'); }, 180); },
+      play: function (s) {
+        s.querySelectorAll('.orow').forEach(function (r) { if (r.dataset.k !== 'c') { var c = r.querySelector('.chip'); c.textContent = '사용 전'; c.classList.remove('done', 'go'); r.classList.remove('flash'); } });
+        var self = this; setTimeout(function () { self.use(s.querySelector('.orow[data-k="a"]')); }, 600);
+      }
+    }
+  };
+
+  var screens = Array.prototype.slice.call(document.querySelectorAll('.scr'));
+  screens.forEach(function (s) { var d = demos[s.dataset.demo]; d.init(s); s.closest('.card').querySelector('.replay').addEventListener('click', function () { d.play(s); }); });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { demos[e.target.dataset.demo].play(e.target); io.unobserve(e.target); } }); }, { threshold: .5 });
+    screens.forEach(function (s) { io.observe(s); });
+  }
+  document.getElementById('all').addEventListener('click', function () { screens.forEach(function (s) { demos[s.dataset.demo].play(s); }); });
+  var mb = document.getElementById('mode');
+  function setMode(m) { screens.forEach(function (s) { s.dataset.mode = m; }); mb.textContent = m === 'dark' ? '라이트 모드로' : '다크 모드로'; demos.tabs.go(document.querySelector('[data-demo=tabs]'), demos.tabs.cur, true); }
+  mb.addEventListener('click', function () { setMode(screens[0].dataset.mode === 'dark' ? 'light' : 'dark'); });
+  var r = document.documentElement;
+  setMode(r.dataset.theme === 'dark' || (!r.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+  window.addEventListener('resize', function () { demos.tabs.go(document.querySelector('[data-demo=tabs]'), demos.tabs.cur, true); });
+})();
+</script>

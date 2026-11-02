@@ -13,6 +13,7 @@ import { BellIcon } from '@/components/icons/urdeal-icons'
 import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
 import { formatNumber } from '@/utils/format'
 import OwnerManagePanel from './OwnerManagePanel'
+import RollingNumber from '@/components/ui/RollingNumber' // 🎬 2026-11-02 수량이 굴러가며 바뀐다
 
 interface Props {
   /** 2026-10-11 D안: '구매 옵션' 상자를 걷어 더는 안 쓴다(호출부 호환을 위해 남김). */
@@ -104,7 +105,7 @@ export default function DealPurchaseBox({
             right={
               <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} role="group" aria-label="수량 조절">
                 <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 17, cursor: 'pointer', opacity: (!buyable || quantity <= 1) ? .35 : 1 }}>−</button>
-                <span style={{ minWidth: 28, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live="polite">{quantity}</span>
+                <span style={{ minWidth: 28, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live="polite"><RollingNumber value={quantity} /></span>
                 <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 17, cursor: 'pointer', opacity: (!buyable || quantity >= maxQty) ? .35 : 1 }}>+</button>
               </span>
             }

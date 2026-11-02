@@ -75,9 +75,14 @@ export function RowActions({ onSave, onCancel, saving, disabled, saveLabel = '�
     <div className="flex gap-2 mt-3">
       <button
         type="button" onClick={onSave} disabled={saving || disabled}
-        className="flex-1 h-10 rounded-lg bg-brand text-white text-[15px] font-bold disabled:opacity-40"
+        className={`flex-1 h-10 rounded-lg bg-brand text-white text-[15px] font-bold flex items-center justify-center ${saving ? '' : 'disabled:opacity-40'}`}
+        aria-busy={saving || undefined}
       >
-        {saving ? '저장 중…' : saveLabel}
+        {/* 🎬 2026-11-02 시안 4차 "버튼 처리 중": 처리 중엔 글자 대신 도는 표시(버튼은 흐려지지 않는다 — 눌린 게 보이게).
+            끝나면 줄이 닫히고 "저장했어요" 알림이 뜬다. 두 번 눌림은 disabled 가 막는다. */}
+        {saving
+          ? <span role="status" aria-label="저장 중" className="w-5 h-5 rounded-full border-2 border-white/40 border-t-white motion-safe:animate-spin" />
+          : saveLabel}
       </button>
       <button
         type="button" onClick={onCancel}

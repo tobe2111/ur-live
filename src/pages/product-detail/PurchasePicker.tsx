@@ -28,6 +28,7 @@ import { InfoIcon } from '@/components/icons/urdeal-icons'
 import { Minus, Plus } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import type { ProductOption } from '@/hooks/useProduct'
+import RollingNumber from '@/components/ui/RollingNumber' // 🎬 2026-11-02 수량이 굴러가며 바뀐다
 
 interface Props {
   options: ProductOption[]
@@ -122,7 +123,7 @@ export default function PurchasePicker({
               <Minus className="w-4 h-4 text-[#6B6469] dark:text-[#7C7479]" strokeWidth={2.4} />
             </button>
             <span className="min-w-[40px] text-center text-[17px] font-bold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">
-              {quantity}
+              <RollingNumber value={quantity} />
             </span>
             <button type="button" aria-label="수량 증가" onClick={inc}
               className="w-11 h-11 rounded-[10px] flex items-center justify-center">
@@ -186,7 +187,7 @@ export default function PurchasePicker({
         <div className="flex items-center gap-3 border border-line rounded-xl px-2 py-1">
           <button type="button" aria-label="수량 감소" onClick={dec}
             className="w-8 h-8 flex items-center justify-center text-gray-900 dark:text-white font-bold disabled:opacity-30" disabled={quantity <= 1}>−</button>
-          <span className="min-w-[2ch] text-center text-[15px] font-bold text-gray-900 dark:text-white">{quantity}</span>
+          <span className="min-w-[2ch] text-center text-[15px] font-bold text-gray-900 dark:text-white"><RollingNumber value={quantity} /></span>
           <button type="button" aria-label="수량 증가" onClick={inc}
             className="w-8 h-8 flex items-center justify-center text-gray-900 dark:text-white font-bold">＋</button>
         </div>

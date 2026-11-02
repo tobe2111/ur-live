@@ -37,3 +37,27 @@
 - **C 첫 만남**: 가입 환영(stand 유달이 인사) · 검색 0건(curious 두리번) · 404(cable 걸어 들어옴)
 - **D 승인 필요(로딩 잠금)**: 하단 탭 선→면 전환 · 마감 카운트다운 숫자 넘김 · 목록→상세 사진 이어짐
 - 상태: 🟡 전부 시안, 대표 선택 대기
+
+## 3차 · 4차 (같은 날 — 대표 *"모두 좋다 그렇게 해줘. 유달이는 빼고"* → *"좋다 다 해주고"*)
+- 시안: `assets/motion-mockups-3-2026-11-02.html`(https://claude.ai/artifact/MT8Lh7LMBeu72xKiBYoboh) · `assets/motion-mockups-4-2026-11-02.html`(https://claude.ai/artifact/E9UeMT2dxVDykayXpeerum)
+- 🦦 **유달이 움직임은 쓰지 않는다**(대표 확정). 1~2차에 넣었던 상황별 몸짓도 뺐다.
+
+| 시안 | 적용 위치 | 상태 |
+|---|---|---|
+| 탭 밑줄 | `curator-page/PinCategoryChips.tsx`(유어샵) | 🟢 측정 뒤에만 움직이는 막대로 교체(첫 화면 불변) · 내 이용권 탭은 잠금 파일이라 보류 |
+| 올라오는 창 통일 | 공용 `seller-section/Sheet.tsx` 닫힘 애니메이션 + 등장 없던 시트 9개에 `.ur-sheet-in` | 🟢 |
+| 지도 핀 | `useKakaoMap.ts`(핀 톡) · `SelectedDealCard.tsx`(카드 올라옴) | 🟢 |
+| 이용권 → QR | `my-vouchers/qr-origin.ts` + WalletRow · QRModal | 🟢 부모(잠금 파일) 무접촉 |
+| 리뷰 리워드 | ProductReviews + 서버 응답 `reward_amount`(실제 적립액, 건너뛰면 0) | 🟢 |
+| 수량 굴림 | `ui/RollingNumber.tsx` → 딜 하단바·PC 구매칸·상품 상세 2곳·장바구니 | 🟢 |
+| 목록 첫 등장 | — | ⛔ 첫 화면을 서버가 그린다(로딩 잠금) — 흐리게 시작하면 보이는 시점이 늦어진다 |
+| 등록 완료 · 정산 · 주문 상태 | SellerMealVoucherNewPage · PayoutSheet · MobileOrderList | 🟢 |
+| 할인가 줄 긋기 | `group-buy/PassHeadCard.tsx` `.ur-strike` | 🟢 |
+| 머리 줄어듦 | `DetailFloatingHeader` | ✅ 이미 있다(스크롤 시 제목이 위 막대로) |
+| 장바구니 담기 | `lib/fly-to-cart.ts` → `[data-cart-icon]`(PC 네비 · 상품 머리) | 🟢 아이콘이 화면에 없으면 알림만 |
+| 선물 완료 | GiftVoucherSheet(방금 만든 링크일 때만) | 🟢 |
+| D-day 깜빡 | WalletRow(임박만, 한 번) | 🟢 |
+| 입력칸 흔들림 | ProductReviews(글자 수 모자람) | 🟢 |
+| 버튼 처리 중 | profile-edit `RowActions` | 🟢 |
+| 당겨서 새로고침 | — | ⛔ 모바일 브라우저 자체 당겨서 새로고침과 겹친다 |
+| 판매 스위치 · 사진 올리기 · 매장 바꾸기 | VoucherRow · PhotoGalleryEditor · SellerSection(`useCountUp` resetKey) | 🟢 |

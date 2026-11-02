@@ -75,7 +75,7 @@ export default function PassHeadCard({
 
       {unitPrice != null && unitPrice > 0 && (
         <div className="mt-4">
-          {refPrice != null && refPrice > unitPrice && <div className="text-[13px] line-through" style={{ color: 'var(--gbd-sub)' }}>{formatNumber(refPrice)}원</div>}
+          {refPrice != null && refPrice > unitPrice && <div className="text-[13px]" style={{ color: 'var(--gbd-sub)' }}><s className="ur-strike [text-decoration:none]">{formatNumber(refPrice)}원</s></div>}
           <div className="flex items-baseline gap-2">
             {!!discountPct && discountPct > 0 && <span className="text-[24px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
             <span className="text-[28px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>

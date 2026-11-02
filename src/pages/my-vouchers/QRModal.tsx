@@ -1,6 +1,6 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 이용권 사용(QR/PIN) 모달(verbatim 추출). 동작 불변.
 //   QRCodeSVG(lazy)·VoucherQRCode 는 모듈 내부 전용, QRModal 만 페이지가 사용.
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { OkIcon, PinIcon, BadIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
@@ -16,6 +16,7 @@ import { Phone, Share2, X } from 'lucide-react'
 import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
 import Udal from '@/components/mascot/Udal'
+import { takeQrOrigin, growFrom } from './qr-origin'
 import SameStoreDeals from './SameStoreDeals'
 import TalkCalendarButton from './TalkCalendarButton'
 import GiftVoucherSheet from './GiftVoucherSheet'
@@ -113,6 +114,10 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   }
 
   const [justUsed, setJustUsed] = useState(false)
+  // 🎬 2026-11-02 시안 3차: 지갑 줄을 눌러 열었으면 그 줄 자리에서 커진다(qr-origin.ts). 아니면 종전처럼 올라온다.
+  const [fromRow] = useState(() => takeQrOrigin())
+  const panelRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => { growFrom(panelRef.current, fromRow) }, [fromRow])
   // 🛡️ 2026-05-16: 실시간 status 폴링 (5초마다) — 사장님이 스캔하면 즉시 "사용 완료" 표시
   //   백엔드 atomic CAS 로 재사용 자체는 차단되어 있음. UI 가 늦게 인지하는 것만 해결.
   useEffect(() => {
@@ -224,7 +229,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           높이 상한도 스크롤도 없어서, 내용이 화면보다 길면 **위쪽(상품명·매장명·QR 윗부분)이 화면 밖으로 넘쳐
           손댈 수도 없었다.** 인앱 브라우저(카톡)는 상단 바만큼 보이는 높이가 더 줄어 더 잘 난다.
           ⇒ 패널에 높이 상한 + 본문 스크롤. 100vh 는 모바일에서 주소창을 포함해 실제보다 크므로 dvh(레포 룰). */}
-      <div className="bg-surface rounded-t-3xl sm:rounded-3xl px-6 pt-3 pb-6 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative animate-slideUp flex flex-col max-h-[92dvh] sm:max-h-[88dvh]" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
+      <div ref={panelRef} className="bg-surface rounded-t-3xl sm:rounded-3xl px-6 pt-3 pb-6 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative animate-slideUp flex flex-col max-h-[92dvh] sm:max-h-[88dvh]" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))', animation: fromRow ? 'none' : undefined /* 줄에서 커질 땐 올라오기를 끈다(growFrom 이 대신) */ }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
         {/* 그래버 (모바일 바텀시트) */}
         <div className="sm:hidden mx-auto mb-4 h-1 w-9 shrink-0 rounded-full bg-gray-200 dark:bg-[#2C2F35]" aria-hidden />
         <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29] dark:bg-[#1D1F29]">

@@ -313,8 +313,9 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
     return (
       <SellerLayout title={t('seller.mealVoucher.title')} bare={embedded}>
         <div className="mx-auto max-w-5xl">
-          <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-8 text-center mt-8">
-            <CheckCircle className="w-12 h-12 text-tone-ok mx-auto mb-3" />
+          {/* 🎬 2026-11-02 시안 3차: 완료 카드가 올라오고 체크가 톡 박힌다(index.css .ur-rise · .ur-popin). */}
+          <div className="ur-rise bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-8 text-center mt-8">
+            <CheckCircle className="ur-popin w-12 h-12 text-tone-ok mx-auto mb-3" style={{ animationDelay: '150ms' }} />
             <h2 className="text-lg font-bold text-gray-900">{t('seller.mealVoucher.doneTitle', { defaultValue: '이용권이 등록됐어요!' })}</h2>
             <p className="text-sm text-gray-500 mt-2">
               {t('seller.mealVoucher.doneDesc', { defaultValue: '소개해 줄 사람에게 제안을 보내면 소개 판매가 시작돼요. 커미션은 팔렸을 때만 발생합니다.' })}

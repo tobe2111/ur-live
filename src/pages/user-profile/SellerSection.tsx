@@ -256,7 +256,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
 
   // 좌석 0곳(= 셀러가 아님) · 실패 → 아무것도 그리지 않는다.
   //   실패를 0 으로 그리면 "오늘 매출 0원" 이라는 거짓말이 된다(머니 표면 룰).
-  const todayShown = useCountUp(store?.today_revenue, { durationMs: 800 }) // 훅은 아래 조기 return 보다 앞에
+  const todayShown = useCountUp(store?.today_revenue, { durationMs: 800, resetKey: store?.seller_id ?? null }) // 훅은 아래 조기 return 보다 앞에
   if (failed) return null
   if (!loading && !store) return null
 

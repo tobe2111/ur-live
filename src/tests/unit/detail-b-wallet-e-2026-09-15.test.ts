@@ -100,7 +100,7 @@ describe('상세 안 B — 같은 할인을 세 번 말하지 않는다', () => 
       .toBeGreaterThan(sizeOf(block, 'formatNumber(refPrice)'))
     expect(sizeOf(block, 'formatNumber(unitPrice)'), '판매가가 할인율보다 크지 않다')
       .toBeGreaterThan(sizeOf(block, '{discountPct}%'))
-    expect(block.split('\n').find((l) => l.includes('formatNumber(refPrice)'))!, '정가에 취소선이 없다').toContain('line-through')
+    expect(block.split('\n').find((l) => l.includes('formatNumber(refPrice)'))!, '정가에 취소선이 없다').toMatch(/line-through|ur-strike/) // 2026-11-02: 줄이 그어지는 취소선(.ur-strike)도 취소선이다
   })
 
   it('할인율이 --sale 이다 (상세만 쓰던 --gbd-danger 로 되돌아가지 않았다)', () => {
@@ -155,7 +155,7 @@ describe('지갑 안 E — 급한 한 장만 펴고 나머지는 한 줄', () =>
     //   빈 핸들러는 콘솔에도 안 남으므로 부품 쪽 배선을 함께 못 박는다.
     const comp = readCode('src/pages/my-vouchers/WalletRow.tsx')
     expect(comp, 'WalletRow 가 onOpen 을 클릭에 배선하지 않는다 — 줄이 죽은 버튼이 된다')
-      .toMatch(/onClick=\{onOpen\}/)
+      .toMatch(/onClick=\{(?:onOpen\}|\(e\) => \{[^}]*\bonOpen\(\))/) // 2026-11-02: 자리 기록(noteQrOrigin) 뒤 onOpen() 호출도 배선이다
   })
 
   it('임박(D-2 이하)을 체계 빨강으로 말한다', () => {

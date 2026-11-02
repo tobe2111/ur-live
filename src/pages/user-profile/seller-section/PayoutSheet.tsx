@@ -24,6 +24,7 @@ import { formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
 import { currentSeatId } from '@/lib/seller-seat'
 import Sheet from './Sheet'
+import { useCountUp } from '@/hooks/useCountUp' // 🎬 2026-11-02 시안 3차: 정산 예정 금액이 0원부터 올라간다
 
 interface PayoutRow {
   id: number
@@ -86,6 +87,7 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
   const payable = data?.payable ?? 0
   const held = Math.min(payable, Math.max(0, data?.held ?? 0))
   const nextRun = Math.max(0, payable - held)
+  const nextRunShown = useCountUp(data ? nextRun : undefined, { durationMs: 800 }) ?? nextRun
   const scheduled = data?.scheduled_total ?? 0
   const sent = data?.sent_total ?? 0
   const holdDays = data?.hold_days ?? 0
@@ -119,7 +121,7 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
         <div className="px-4 py-4">
           <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">다음 정산에 들어갈 돈</p>
           <p className="mt-1 text-[28px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white">
-            {formatNumber(nextRun)}
+            {formatNumber(nextRunShown)}
             <span className="ml-1 text-[15px] font-bold text-gray-500 dark:text-gray-400">원</span>
           </p>
           <p className="mt-2 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">

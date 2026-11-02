@@ -552,6 +552,9 @@ export function useKakaoMap({
       })
       applyPinTierStyle(el, tier)
     })
+    // 🎬 2026-11-02 시안 3차: 고른 핀만 톡 튀어 오른다(index.css .ur-pin-pop · 동작 줄이기면 CSS 가 끈다).
+    const pill = selected ? pinElsRef.current.get(selected.id)?.querySelector('.ur-pin-pill') : null
+    if (pill) { pill.classList.remove('ur-pin-pop'); void (pill as HTMLElement).offsetWidth; pill.classList.add('ur-pin-pop') }
   }, [selected?.id])
 
   useEffect(() => {

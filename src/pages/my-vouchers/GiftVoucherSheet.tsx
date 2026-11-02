@@ -42,6 +42,8 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
   const [pending, setPending] = useState<Pending | null>(null)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  // 🎬 2026-11-02 시안 4차 "선물하기 완료": 방금 만든 링크일 때만 상자가 톡 나타나고 리본이 그려진다.
+  const [justCreated, setJustCreated] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -60,6 +62,7 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
       const r = await api.post('/api/group-buy/gifts', { code: voucher.code, message: message.trim() || undefined })
       setPending(r.data?.data ?? null)
       onPendingChange?.(!!r.data?.data)
+      if (r.data?.data) setJustCreated(true)
     } catch (e) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선물 링크를 만들지 못했어요')
     } finally {
@@ -97,7 +100,7 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
         aria-modal="true"
         aria-label="이용권 선물하기"
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-[420px] bg-surface rounded-t-2xl sm:rounded-2xl px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))]"
+        className="ur-sheet-in w-full sm:max-w-[420px] bg-surface rounded-t-2xl sm:rounded-2xl px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -123,6 +126,14 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
           <div className="mt-5 h-[52px] rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
         ) : pending ? (
           <>
+            {justCreated && (
+              <svg className="ur-gift-mark mx-auto mt-5 block w-16 h-16" viewBox="0 0 110 110" aria-hidden="true">
+                <rect x="18" y="42" width="74" height="56" rx="8" className="fill-brand-tint stroke-brand-text" strokeWidth="3" />
+                <rect x="12" y="30" width="86" height="16" rx="5" className="fill-brand-tint stroke-brand-text" strokeWidth="3" />
+                <path d="M55 30 V98" className="stroke-brand" fill="none" strokeWidth="6" strokeLinecap="round" />
+                <path d="M55 30 C40 12 26 22 38 30 M55 30 C70 12 84 22 72 30" className="stroke-brand" fill="none" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
             <p className="mt-5 text-[13px] font-medium text-gray-900 dark:text-white">선물 링크가 준비됐어요. 친구에게 보내 주세요</p>
             <button type="button" onClick={() => share(pending.url)}
               className="mt-3 w-full py-4 rounded-2xl bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform">

@@ -21,4 +21,20 @@ export default [
     test: TEST,
     why: '크기·위치를 움직이면 옆 글자가 밀린다(로딩 밀림 클래스).',
   },
+{
+    name: '🎬 공용 시트 배경을 누르면 내려가지 않고 툭 사라진다',
+    file: 'src/pages/user-profile/seller-section/Sheet.tsx',
+    find: 'onClick={requestClose} aria-hidden="true"',
+    replace: 'onClick={onClose} aria-hidden="true"',
+    test: TEST,
+    why: '닫을 때만 다른 길로 사라지면 "같은 창" 이 아니라 두 개처럼 보인다(시안 3차 통일의 반쪽).',
+  },
+  {
+    name: '🎬 숫자 굴림이 끝나도 옛 숫자가 겹쳐 남는다',
+    file: 'src/components/ui/RollingNumber.tsx',
+    find: 'const t = window.setTimeout(() => setOut(null), 280)',
+    replace: 'const t = window.setTimeout(() => {}, 280)',
+    test: TEST,
+    why: '수량 칸에 1 과 2 가 겹쳐 보인다 — 몇 개를 골랐는지 읽을 수 없다.',
+  },
 ]

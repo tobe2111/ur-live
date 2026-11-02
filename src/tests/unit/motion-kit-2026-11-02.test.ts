@@ -16,6 +16,11 @@ import { readFileSync } from 'node:fs'
 import { renderHook, act } from '@testing-library/react'
 import { useCountUp } from '@/hooks/useCountUp'
 import { canRunDealTransition } from '@/lib/deal-view-transition'
+import { noteQrOrigin, takeQrOrigin } from '@/pages/my-vouchers/qr-origin'
+import { flyToCart } from '@/lib/fly-to-cart'
+import { render } from '@testing-library/react'
+import { createElement } from 'react'
+import RollingNumber from '@/components/ui/RollingNumber'
 import { stripComments } from '../helpers/source-text'
 
 const R = (p: string) => readFileSync(p, 'utf8')
@@ -23,21 +28,21 @@ const css = stripComments(R('src/index.css'))
 const kit = css.slice(css.indexOf('.ur-burst {'), css.indexOf('::view-transition-old(root)'))
 
 describe('① 움직임 키트 CSS', () => {
-  it('키트 키프레임은 transform · opacity 만 움직인다', () => {
+  it('키트 키프레임은 transform · opacity (+ 배경색 · 선 그리기) 만 움직인다 — 크기·위치는 안 건드린다', () => {
     const frames = [...kit.matchAll(/@keyframes\s+([\w-]+)\s*\{([\s\S]*?)\}\s*\}/g)]
     expect(frames.length).toBeGreaterThanOrEqual(7)
     for (const [, name, body] of frames) {
       const props = [...body.matchAll(/([a-z-]+)\s*:/g)].map((m) => m[1])
-      for (const p of props) expect(['transform', 'opacity'], name).toContain(p)
+      for (const p of props) expect(['transform', 'opacity', 'background-color', 'stroke-dashoffset'], name).toContain(p)
     }
   })
   it('동작 줄이기면 키트 클래스와 화면 전환이 전부 꺼진다', () => {
     const reduce = css.slice(css.indexOf('::view-transition-old(root)'))
     const block = reduce.slice(reduce.indexOf('@media (prefers-reduced-motion: reduce)'))
-    for (const c of ['ur-slam', 'ur-thud', 'ur-popin', 'ur-rise', 'ur-press', 'ur-ring', 'ur-burst i']) {
-      expect(block.slice(0, 900)).toContain(c)
+    for (const c of ['ur-pin-pop', 'ur-flash', 'ur-roll-in-up', 'ur-roll-out-down', 'ur-gift-mark', 'ur-strike::after', 'ur-blink-once', 'ur-shake', 'ur-slam', 'ur-thud', 'ur-popin', 'ur-rise', 'ur-press', 'ur-ring', 'ur-burst i']) {
+      expect(block.slice(0, 1400)).toContain(c)
     }
-    expect(block.slice(0, 900)).toMatch(/::view-transition-group\(\*\)[^{]*\{\s*animation:\s*none !important/)
+    expect(block.slice(0, 1400)).toMatch(/::view-transition-group\(\*\)[^{]*\{\s*animation:\s*none !important/)
   })
 })
 
@@ -95,5 +100,62 @@ describe('⑤ 사용 완료 도장', () => {
     expect(qr).toMatch(/if \(newStatus === 'used'\) \{\s*\n\s*setJustUsed\(true\)/)
     expect(qr).toContain("${justUsed ? 'ur-slam' : ''}")
     expect(qr).toContain("${justUsed ? 'ur-thud' : ''}")
+  })
+})
+
+describe('⑥ 3·4차 — 동작 계약', () => {
+  afterEach(() => { vi.useRealTimers() })
+  it('숫자 굴림: 처음엔 안 움직이고, 바뀌면 굴러간 뒤 끝은 새 값 하나만 남는다', () => {
+    vi.useFakeTimers()
+    const { container, rerender } = render(createElement(RollingNumber, { value: 1 }))
+    expect(container.querySelector('.ur-roll-in-up')).toBeNull()
+    rerender(createElement(RollingNumber, { value: 2 }))
+    expect(container.querySelector('.ur-roll-in-up')?.textContent).toBe('2')
+    expect(container.querySelector('.ur-roll-out-up')?.textContent).toBe('1')
+    act(() => { vi.advanceTimersByTime(400) })
+    expect(container.textContent).toBe('2')
+    rerender(createElement(RollingNumber, { value: 1 }))
+    expect(container.querySelector('.ur-roll-in-down')).not.toBeNull()
+  })
+  it('QR 시작점은 한 번만 꺼내지고, 0.8초가 지나면 버려진다', () => {
+    const el = document.createElement('button'); document.body.appendChild(el)
+    noteQrOrigin(el)
+    expect(takeQrOrigin()).not.toBeNull()
+    expect(takeQrOrigin()).toBeNull()
+    vi.useFakeTimers({ toFake: ['performance'] })
+    noteQrOrigin(el)
+    vi.advanceTimersByTime(900)
+    expect(takeQrOrigin()).toBeNull()
+  })
+  it('장바구니 아이콘이 화면에 없으면 아무것도 날리지 않는다', () => {
+    const btn = document.createElement('button'); document.body.appendChild(btn)
+    const before = document.body.children.length
+    flyToCart(btn)
+    expect(document.body.children.length).toBe(before)
+  })
+  it('매장을 바꾸면(resetKey) 숫자가 다시 올라간다', () => {
+    vi.useFakeTimers()
+    const { result, rerender } = renderHook(({ v, k }) => useCountUp(v, { durationMs: 300, resetKey: k }), { initialProps: { v: 100 as number | undefined, k: 1 } })
+    act(() => { vi.advanceTimersByTime(800) })
+    expect(result.current).toBe(100)
+    rerender({ v: 50, k: 2 })
+    act(() => { vi.advanceTimersByTime(1) })
+    expect(result.current).toBeLessThan(50)
+    act(() => { vi.advanceTimersByTime(800) })
+    expect(result.current).toBe(50)
+  })
+  it('공용 시트: 닫기(배경·X·Esc)는 내려가는 길로, 뒤로가기는 즉시 — 그리고 닫힘 클래스가 뒤에 정의돼 이긴다', () => {
+    const sheet = R('src/pages/user-profile/seller-section/Sheet.tsx')
+    expect(sheet).toContain("onClick={requestClose} aria-hidden=\"true\"")
+    expect(sheet).toContain("if (e.key === 'Escape') requestClose()")
+    expect(sheet).toMatch(/onPop = \(\) => \{[^}]*onClose\(\)/)
+    expect(css.indexOf('.ur-sheet-out {')).toBeGreaterThan(css.indexOf('.ur-sheet-in {'))
+  })
+  it('리뷰 리워드: 서버가 실제로 적립한 금액만 보낸다(건너뛰면 0)', () => {
+    const r = R('src/features/reviews/api/reviews.routes.ts')
+    expect(r).toContain('let paidReward = 0;')
+    expect(r).toContain('reward_amount: paidReward,')
+    const assignAt = r.indexOf('paidReward = Number.isFinite(rewardAmount)')
+    expect(assignAt).toBeGreaterThan(r.indexOf('if (existingProductReward)'))
   })
 })

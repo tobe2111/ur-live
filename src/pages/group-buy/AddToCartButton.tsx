@@ -12,10 +12,11 @@
  * ⚠️ 담았다고 가격이 고정되는 게 아니다 — 결제 시작(`/cart/init`)에서 서버가 **그 시점의 티어가**로
  *    다시 계산한다. 담을 때 값을 붙잡아 두면 며칠 뒤 결제에서 화면과 청구가 갈린다.
  */
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
+import { flyToCart } from '@/lib/fly-to-cart' // 🎬 2026-11-02 담으면 점이 장바구니로 날아간다
 import api from '@/lib/api'
 import { hasConsumerSession } from '@/utils/auth'
 import { useInvalidateCart } from '@/hooks/queries/useCartCount'
@@ -29,7 +30,8 @@ export default function AddToCartButton({ productId, qty, show }: { productId: n
   const [busy, setBusy] = useState(false)
   if (!show) return null
 
-  const add = async () => {
+  const add = async (e: MouseEvent<HTMLButtonElement>) => {
+    const btn = e.currentTarget
     if (!hasConsumerSession()) {
       navigate(`/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)
       return
@@ -43,6 +45,7 @@ export default function AddToCartButton({ productId, qty, show }: { productId: n
       qc.invalidateQueries({ queryKey: queryKeys.cartCount() })
       // 담고 나서 자동으로 장바구니로 끌고 가지 않는다 — 계속 둘러보려던 사람의 흐름이 끊긴다.
       // 헤더 장바구니 아이콘의 숫자가 방금 올라갔으므로 "어디에 담겼는지" 는 화면이 이미 말한다.
+      flyToCart(btn)
       toast.success('장바구니에 담았어요')
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
