@@ -33,4 +33,20 @@ export default [
     test: T,
     why: '메인 규칙이 지역 착지 페이지로 번져 생활 이용권이 거기서도 사라진다.',
   },
+  {
+    name: 'home-hide-life — 폰 홈 탭에서 생활 버튼이 다시 사라진다(2026-11-02)',
+    file: 'src/shared/deal-cats.ts',
+    find: "export const HOME_TAB_LINKS: Readonly<Partial<Record<DealCategory, string>>> = { home_voucher: '/life' }",
+    replace: 'export const HOME_TAB_LINKS: Readonly<Partial<Record<DealCategory, string>>> = {}',
+    test: T,
+    why: '대표가 남기라고 한 생활 버튼이 홈에서 없어진다(이용권만 빼라고 했다).',
+  },
+  {
+    name: 'home-hide-life — 워커 첫 화면 탭 줄이 생활을 뺀다(2026-11-02)',
+    file: 'src/worker/utils/home-first-screen.ts',
+    find: '  const cats = DEAL_CAT_LABELS.map(',
+    replace: "  const cats = DEAL_CAT_LABELS.filter(c => c.key !== 'home_voucher').map(",
+    test: T,
+    why: '서버 탭 줄과 화면 탭 줄이 갈려 마운트 때 탭이 하나 끼어든다.',
+  },
 ]

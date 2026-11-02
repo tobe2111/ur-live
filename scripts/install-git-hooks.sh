@@ -52,14 +52,12 @@ if git diff --cached --name-only --diff-filter=ACMR | grep -q '^docs/handoff/'; 
   git add docs/FEATURE_STATUS.md > /dev/null 2>&1 || true
 fi
 
-# 📑 소개서(docs/proposals/) 자동 동기화 블록 재생성 — 사용자 "무조건" 요구로 매 커밋 실행.
-#   (anti-churn 으로 실질 변경 있을 때만 파일을 다시 쓰고 stage 함.) 절대 차단 X (|| true).
-echo "==> Pre-commit: 소개서 자동 참조 재생성 (매 커밋)..."
-node scripts/generate-proposal-refs.mjs > /dev/null 2>&1 || true
-if ! git diff --quiet docs/proposals 2>/dev/null; then
-  git add docs/proposals/*.md 2>/dev/null || true
-  echo "   ✓ docs/proposals/*.md 재생성 + staged"
-fi
+# 📑 2026-11-02 — 옛 소개서(docs/proposals/) 자동 참조 재생성을 **커밋마다 하지 않는다**.
+#   대표 *"제안서는 계속 자동 업데이트가 안돼. 3번은 더 이상적인 방법"* → *"응 진행해줘. 가장 이상적으로."*
+#   그 블록(라우트 목록 · 상수)은 아무 화면도 띄우지 않는 옛 문서였는데, 라우트를 더한 **모든 브랜치가
+#   같은 블록을 고쳐** 최근 머지 200건 중 8건에서 다퉜다(휘발성 생성물을 추적한 것 — 인계 목차와 같은 병).
+#   실제 대외 소개서는 docs/business/proposals/ 의 덱이고, 그 자동 갱신은 따로 만든다.
+#   필요하면 손으로: `node scripts/generate-proposal-refs.mjs` (가드: proposal-refs-not-in-hook-2026-11-02.test.ts)
 
 # 📋 감사 레지스트리 개수 자동 갱신 — `docs/AUDIT_INVARIANTS.md` 의 "전체 (N개 불변식)" 한 줄.
 #   그 숫자는 `audit-gate.sh` 의 `run "` 줄 수에서 **기계적으로 나온다**. 손으로 두면 (a) 가드를 더한

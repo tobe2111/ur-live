@@ -77,8 +77,8 @@ export default [
   {
     name: '🏠 홈 첫 화면이 lucide 를 워커로 끌고 들어온다 (번들 gzip 게이트)',
     file: UTIL,
-    find: "import { HOME_DEAL_CAT_LABELS, isHomeVisibleProduct } from '../../shared/deal-cats'",
-    replace: "import { HOME_DEAL_CATS as HOME_DEAL_CAT_LABELS } from '../../pages/pc-home/PcHomeRail'; import { isHomeVisibleProduct } from '../../shared/deal-cats'",
+    find: "import { DEAL_CAT_LABELS, isHomeVisibleProduct } from '../../shared/deal-cats'",
+    replace: "import { DEAL_CATS as DEAL_CAT_LABELS } from '../../pages/pc-home/PcHomeRail'; import { isHomeVisibleProduct } from '../../shared/deal-cats'",
     test: T,
     why:
       '라벨을 순수 모듈이 아니라 lucide 를 import 하는 파일에서 가져오면 `_worker.js` 가 lucide 를 ' +

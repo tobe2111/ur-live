@@ -52,3 +52,23 @@ export function bindAgencyToKakao(): void {
   if (!uid) return
   try { localStorage.setItem(AGENCY_KAKAO_UID_KEY, uid) } catch { /* 막힘 — 이번 탭에서만 */ }
 }
+
+/**
+ * 📣 2026-11-02 — 에이전시 로그인이 생기거나 끊긴 순간을 마이의 다른 자리(머리의 '매장 영입' 버튼 ·
+ *   에이전시 구역 제목)에 알린다. 카카오로 이어진 에이전시는 첫 화면을 그린 **뒤에** 이어지므로
+ *   (MyAgencyZone 의 확인), 마운트 때 한 번 읽는 것만으로는 그 자리들이 영영 안 뜬다.
+ */
+export const AGENCY_PRESENCE_EVENT = 'ur-agency-presence'
+export function announceAgencyPresence(): void {
+  try { window.dispatchEvent(new Event(AGENCY_PRESENCE_EVENT)) } catch { /* SSR·테스트 */ }
+}
+
+/** 저장된 에이전시 이름·역할 — 응답 전에 제목을 그리려고 읽는다(없으면 null). */
+export function readAgencyProfileLite(): { agencyName: string; isAdmin: boolean } | null {
+  try {
+    const raw = read(AGENCY_PROFILE_KEY_MIRROR)
+    if (!raw) return null
+    const p = JSON.parse(raw) as { agency?: { name?: string }; staff?: { role?: string } }
+    return { agencyName: p.agency?.name || '', isAdmin: p.staff?.role === 'admin' }
+  } catch { return null }
+}

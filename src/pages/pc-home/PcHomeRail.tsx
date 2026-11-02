@@ -1,5 +1,6 @@
 import { LayoutGrid, Utensils, Scissors, BedDouble, House, Shapes } from 'lucide-react'
 import { DEAL_CAT_LABELS, HOME_HIDDEN_CATEGORIES, type DealCategory } from '@/shared/deal-cats'
+export { HOME_TAB_LINKS } from '@/shared/deal-cats' // 🏠 2026-11-02 폰 홈 탭 '생활' → `/life` (홈 청크가 deal-cats 를 직접 안 끌게 여기서 건넨다)
 
 /**
  * 🖥️ 2026-07-19 (대표 요청 — "왼쪽 카테고리보단 위에"): 좌측 세로 레일 → **상단 가로 카테고리 바**로 전환.

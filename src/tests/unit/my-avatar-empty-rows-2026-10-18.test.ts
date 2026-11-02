@@ -79,7 +79,8 @@ describe('③④ 쇼핑이 숨겨진 동안 빈 화면 두 줄을 감춘다', ()
     expect(s).toMatch(/\.\.\.\(SHOPPING_TAB_HIDDEN \? \[\] : \[\{[^\]]*'\/mypage\/addresses' \}\]\)/)
   })
   it('반대 방향 — 쓰이는 줄(이용권·교환권·쿠폰·숙소·찜·단골·리뷰)과 결제 내역 길은 조건 없이 그대로 있다', () => {
-    for (const p of ['/my-vouchers', '/my-gifticons', '/my-coupons', '/my-stays', '/wishlist', '/my/follows', '/my-reviews']) {
+    // 🔁 2026-11-02 — '내 이용권'·'쿠폰함' 줄은 대표 *"중복도 있고"* 로 뺐다(맨 위 숫자 줄 '이용권'·'쿠폰' 이 같은 곳으로 간다).
+    for (const p of ['/my-gifticons', '/my-stays', '/wishlist', '/my/follows', '/my-reviews']) {
       expect(s, p).toMatch(new RegExp(`^\\s*\\{ Icon: \\w+, label: [^\\n]*path: '${p.replace(/\//g, '\\/')}' \\},`, 'm'))
     }
     // 🧾 2026-10-20: '주문 내역' 은 줄이 아니라 구역 제목 오른쪽 '결제 내역 ›' 로 옮겼다 — 갈 길은 조건 없이 남는다.

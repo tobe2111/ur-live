@@ -13,7 +13,7 @@ import type { LucideIcon } from 'lucide-react'
 // 🎨 2026-09-28 (대표 *"앞으로 아이콘은 모두 저 컨셉"*): 뜻을 가진 아이콘은 전부 유어딜 것으로.
 //    lucide 로 남는 건 화살표·닫기 같은 **조작** 뿐이고, 이 목록엔 그런 게 없어 0개가 됐다.
 import {
-  TicketStubIcon, CouponIcon, GiftBoxIcon, StayLineIcon, HeartIcon, StarIcon,
+  GiftBoxIcon, StayLineIcon, HeartIcon, StarIcon,
   BellIcon, PinIcon, ReviewIcon, HomeServiceLineIcon,
 } from '@/components/icons/urdeal-icons'
 import { SectionTitle, ListRow, rowIcon } from './list-grammar'
@@ -57,9 +57,9 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
     // 🫥 2026-10-18 (대표 *"다 해줘"*): 줄 숫자는 **1 이상일 때만** 단다. 종전엔 '내 교환권 0'·'찜한 상품 0' 이
     //   0 을 적고, 숫자가 없는 '내 이용권'·'쿠폰함' 은 아무것도 안 적어 한 목록이 두 규칙으로 그려졌다.
     //   0 은 들어가 보면 아는 정보라 줄마다 적을 값이 아니다. 조회 실패(null)도 그대로 안 그린다.
-    { Icon: TicketStubIcon, label: t('shopping.voucher', { defaultValue: '내 이용권' }), path: '/my-vouchers' },
+    // 🧹 2026-11-02 대표 *"중복도 있고"* · *"확실히 길어지긴 하네 마이 페이지가"* — '내 이용권'·'쿠폰함' 줄을 뺐다.
+    //   맨 위 숫자 줄(`MyStats`)의 '이용권'·'쿠폰' 이 같은 곳(/my-vouchers · /my-coupons)으로 간다.
     { Icon: GiftBoxIcon, label: t('shopping.gifticon', { defaultValue: '내 교환권' }), count: counts.gifticon || undefined, path: '/my-gifticons' },
-    { Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), path: '/my-coupons' },
     { Icon: StayLineIcon, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), path: '/my-stays' },
     // 🏠 2026-10-31 대표 *"견적을 낸 걸 마이페이지나 어디서 봐야하지 않을까?"* — 생활 견적 요청·받은 견적·공유 링크.
     { Icon: HomeServiceLineIcon, label: t('shopping.lifeRequests', { defaultValue: '내 견적 요청' }), path: '/life/requests' },

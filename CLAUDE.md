@@ -1026,18 +1026,7 @@ WebFetch 도 403(봇 차단)이라 스펙 확인은 대표 화면 확인이 필�
 > 🔴 **버튼(공유·관리)을 이름 줄로 되돌리지 말 것** — 그게 긴 이름이 두 줄이 되던 원인이다(실측: 이름 칸 **132px**, 24px 한글 5자). 지금은 **294px**. 되돌리면 2026-10-09 의 `관리` 자리 예약(`invisible`)도 **같이** 되살려야 한다(주인/방문자 폭이 갈리면 서버 첫 화면이 마운트 때 아래를 전부 민다).
 > 🔴 **이름 크기를 손으로 박지 말 것** — SSOT `shared/ushop-name-size.ts` 의 `ushopNameSizePx(name)` 이 **글자만 보고** 정하고 워커가 같은 함수를 쓴다. 측정 기반(`ResizeObserver`)은 워커가 못 따라가 머리가 튄다.
 > 🔴 **칩·정렬 줄의 자리 예약은 조건부다** — 판정 SSOT `shared/ushop-pin-category.ts`(`showUShopChips` · `showUShopSort`, 정렬 최소 **5개**)를 화면·부품·워커가 **같이** 쓴다. 무조건 예약으로 되돌리면 이용권이 적은 유어샵에서 서버만 그 줄을 그려 밀린다.
-> ✅ **E4 판정 통과(배포 후 라이브 + 하네스, 머지 `26fe4a9`)**: 폰 UA 로 `urdeal.kr/u/jiwon1228` 을
-> 받아 **파싱해서** 재니 — h1 이 `style="font-size:17px"` 를 **실제로 들고 있다**(박힌 값이 아니라
-> `ushopNameSizePx` 가 정한 값) · `truncate`·`min-w-0` 실재 · 얼굴 `w-10 h-10`(옛 `w-14` **0**) ·
-> 버튼 묶음(`ml-auto`)이 **h1 보다 앞**(오프셋 695 < 1314 = 브랜드 바 줄에 있고 이름 줄에 없다) ·
-> 칩 줄 div 가 **비어 있다**(`empty:hidden` → 접힌다. 라이브 핀 1개라 `showUShopChips`·`showUShopSort`
-> 둘 다 거짓 ⇒ 서버가 자리를 **안 그렸다**). 🔴 **대조군도 함께 쟀다**(0 은 결함과 측정 실패를
-> 구분하지 못한다): 프로필 `<img>` 1 · 첫 이용권 링크 `/u/jiwon1228/p/2919` · 가격 숫자 실재.
-> 📐 하네스 박스(390px): h1 **h=21 · top=60** · 얼굴 40×40 · **첫 이용권 top=163**(종전 281 — 예측과 일치).
-> 🔑 **긴 이름을 경계까지 밀어 봤다**: 한글 20자 → **h=19 · w=291**(17 → 15px 로 줄고 말줄임) ·
-> 영문 45자 → **h=19 · w=294**. 어느 경우도 **38 이상(두 줄)이 나오지 않는다** ⇒ *"아무리 길어도 한 줄"*.
-> PC(1440) 한글 15자도 **h=21 한 줄**(회귀 0). ⚠️ **못 잰 것**: 실제 폰의 체감(렌더는 시스템 글꼴로
-> 떨어진다 — 자간·행간 판단 불가, 배치·높이만 유효) · 사업자 유어샵(`linked_seller`)의 아래 레이아웃.
+> 📎 배포 후 라이브 판정 기록(머지 `26fe4a9` · 긴 이름 경계 실측 포함)은 `docs/handoff/2026-11-02-claude-md-verdicts-moved.md` 로 옮겼다.
 > ⚠️ *누적 구매* 는 진열 상품의 전체 판매 수 합이다(이 유어샵을 거친 구매 수가 아니다 — 시안 A 의 정의). 시안·실측: `docs/design/ushop-compact-2026-11-01.md` · 가드 `ushop-compact-head-2026-11-01.test.ts`(주입 15).
 
 **🛍️ 유어샵 (2026-09-02 대표 확정 — 모바일 안3 · PC 안P1)**: 주인 상단 안내 띠 없음. 주인·방문자 차이는 헤더 버튼 **한 자리**뿐([유어샵 편집] 블루 ↔ 없음). **방문자에게 팔로우 같은 대체 버튼을 두지 않는다**(대표: "그냥 방문자는 안보이면 되잖아"). 헤더는 아바타+왼정렬(배너 히어로 렌더 없음), 카테고리 칩은 지도 B안과 같은 그림(핀 7개 이상), PC 는 `/u/:handle` 한 세그먼트만 액자를 벗고 좌 300px 프로필 열 + 우 진열대 칸. 🖥️ **2026-09-30 대표 확정 안 A — 그 칸 안에서 *카드*는 3열(`grid-cols-2`→3), *줄 목록*(s3)은 2열**(`.ur-ushop-main .ur-ushop-rows`). 줄은 폰 폭에 맞춰 확정된 형식이라 칸(796px)만큼 늘리면 64px 썸네일 하나에 오른쪽 절반이 빈 칸이 된다(2026-09-28 실측) — 2열이면 줄당 ~378px 로 폰과 같아 줄 형식이 한 글자도 안 바뀐다. ⚠️ tailwind `lg:grid-cols-2` 를 쓰지 않는다(액자 1열 오버라이드가 `/profile`·`/s` 에서 되돌린다). 맨 아래 유입 링크 세 줄도 **칸 안**에 둔다 — 밖에 두면 자기 `max-w-3xl mx-auto` 가 페이지 한가운데를 잡아 어느 칸과도 안 맞는다. ⚠️ 2026-07-07 "아바타·스탯 삭제"는 이 시안으로 갱신됐다. SSOT: `docs/design/ticket-completion-reference-2026-09.md` §9 · 가드 `ushop-a3-p1.test.ts`.
@@ -1128,6 +1117,10 @@ CLAUDE.md 는 매 작업마다 읽는 활성 규칙만 유지. 사고 후일담 
 > 것이 지뢰다). 🩸 **왜 자동인가**: 첫 판은 손으로 쓴 6줄이었고, 그 목록 밖에서
 > `urdeal-platform-model.md` 가 **3만 토큰**으로 자라 있었다(거의 모든 세션이 읽는데 예산 밖).
 > ⇒ **"이건 먼저 읽어라" 한 줄을 CLAUDE.md 에 더하는 순간 그 문서는 자동으로 예산에 들어온다.**
+>
+> 🛡️ **2026-11-02 — 이제 강제다**: `scripts/check-claude-md-growth.mjs`(verify strict) — PR 하나가 이 파일을
+> **4천 자 넘게** 늘리거나 **판정 결과(E등급 실측)를 적은 줄**을 더하면 막는다. 이 파일이 바뀔 때마다 다른 세션과
+> 충돌하고 모든 세션의 캐시가 깨진다(최근 머지 200건 중 20건이 이 파일). 대표가 긴 규칙을 직접 지시했으면 커밋 메시지 `[CLAUDE_MD_GROWTH]`.
 >
 > ⇒ **새 기록을 CLAUDE.md 본문에 쌓지 말 것.** `[UNLOCK*]` 은 위 `docs/locks/*`, 새 가드는
 > `docs/GUARD_RAILS.md`, 세션 인계는 `docs/handoff/<날짜>-<슬러그>.md`. CLAUDE.md 에는 **지금 유효한
@@ -1480,6 +1473,7 @@ Pre-commit hook 이 다음 파일 변경 시 `guide-seed.ts` 동시 수정 검�
 - 🛡️ **products 컬럼 추가 금지(예산제, 2026-06-10)**: 새 도매/브랜드/전시 메타는 `product_supply_meta`(K-V 사이드테이블, `src/worker/utils/product-supply-meta.ts`) 사용. products ALTER 가 정말 필요하면 `scripts/products-column-baseline.json` 에 등록 + PR 사유 — CI 가 차단함
 - 🛡️ **sellers 컬럼 추가 금지(2026-07-05 — 한도 도달)**: sellers 는 **정확히 100컬럼 = D1 결과셋 한도**. 새 셀러 메타/설정/플래그는 `seller_meta`(K-V 사이드테이블, `src/worker/utils/seller-meta.ts` — product_supply_meta 미러) 사용. ALTER 는 `scripts/sellers-column-baseline.json` 등록 필요 — CI 차단
 - 검증: `bash scripts/check-schema-refs.sh`
+- 🗄️ **라이브 컬럼 사진(2026-11-02)**: 컬럼 가드는 `src/shared/db/live-schema.snapshot.json`(라이브 D1 실측)에 **있는 표는 그것만** 믿는다 — 레포엔 같은 표의 정의가 여러 벌이라 합쳐 보면 틀린 컬럼도 통과했다(search_logs 0행 사고). 라이브에 표·컬럼을 더한 뒤엔 `node scripts/snapshot-live-schema.mjs` 로 다시 찍는다. 기존 불일치 47건은 `scripts/live-columns-baseline.json` 에 동결(줄이기만).
 
 ## 🔒 API 엔드포인트 보안 규칙 (필수)
 
@@ -1587,18 +1581,7 @@ navigate(returnUrl)
 >   (라이브 active 1건)와 상품별 `referral_commission_rate` 이고, 플랫폼이 깔아 주던 어필리에이트 2%는
 >   이미 꺼져 있다(2026-08-22 대표 *"어필리에이트 전략은 빼려고 해"* → `affiliate_program_enabled` 행 부재).
 >   ⚠️ 이름이 비슷해 0.5% 정리에 휩쓸리기 쉽다 — **그 둘은 지우지 말 것**(주입이 반대 방향을 고정).
-> ✅ **E4 판정 통과(배포 후 라이브, 머지 `0e58ab293`)** — 지급 경로 둘 중 설정을 안 읽던 B 를 지웠다.
->   **배포 전에 기준점을 먼저 잡고** 양방향으로 쟀다(0 만 보면 *지워졌다*와 *원래 없었다*를 구분할 수 없다):
->   라이브 어드민 정책 청크에서 `공구 양쪽 보너스` **1 → 0** · `REFERRAL_BONUS_BOTHSIDES_PCT` **2 → 0** ·
->   `추천인 + 피추천인` **1 → 0**, 대조군 `원천징수` **4 → 4** · `어필리에이트`·`커미션` **1 · 1 유지**
->   (청크 해시 `DGJunL-A` → `Dj4TW5DE`). 원장 `referral_bonus`·`invite_reward` **배포 전후 0행**이고
->   대조군이 다섯 유형을 실수로 돌려주므로 그 0 은 쿼리가 빈 것이 아니다(`donate 10 · charge 9 · refund 7
->   · legacy_reconcile 4 · bucket_reclass 2`). 🔴 **반대 방향도 살아 있다** — 소개비 약정 **1건**(매장 15 ↔
->   인플 37 · **5%** · `active`) · 귀속 원장 **1건**(`broker_share`) · 설정 `user_referral_bonus_pct` **0** 이
->   유일한 출처로 남았다. ⚠️ **못 잰 것**: 지운 모듈은 **워커** 모듈이라 `_worker.js` 가 공개로 안 읽히고,
->   행동 증명은 **소개 링크로 딜 참여**가 필요해 세션이 못 한다(머니 경로) — **①만 보고 "통과" 라고 하지 않는다.**
->   🩸 측정하며 컬럼 이름을 두 번 짐작해 틀렸다(`is_active`→`status` · `commission_rate`→`commission_pct`).
->   **`pragma_table_info` 로 먼저 확인할 것.** 상세: `docs/handoff/2026-10-16-referral-bonus-single-source.md`
+>   📎 배포 후 라이브 판정 기록(머지 `0e58ab293`)은 `docs/handoff/2026-11-02-claude-md-verdicts-moved.md` 로 옮겼다. 상세: `docs/handoff/2026-10-16-referral-bonus-single-source.md`
 
 ## 🆕 새 페이지 생성 체크리스트
 

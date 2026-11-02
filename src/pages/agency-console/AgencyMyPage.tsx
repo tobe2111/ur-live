@@ -6,6 +6,7 @@ import { SectionTitle, ListRow } from '@/pages/user-profile/list-grammar'
 import { useTheme, type ThemeMode } from '@/shared/stores/useTheme'
 import { toast } from '@/hooks/useToast'
 import AgencySection from './AgencySection'
+import AgencyInviteButton from '@/pages/user-profile/AgencyInviteButton'
 import { readAgencyProfile } from './agency-api'
 import { agencyStaffLoginLabel } from '@/shared/agency-kakao'
 
@@ -48,6 +49,8 @@ export default function AgencyMyPage() {
             <h1 className="truncate text-[17px] font-bold tracking-[-0.01em] text-gray-900 dark:text-white">{name}</h1>
             {who && <p className="mt-1 truncate text-[13px] text-gray-500 dark:text-gray-400">{who}</p>}
           </div>
+          {/* 🔗 2026-11-02 대표 확정 버튼 ① — 손님 마이와 같은 부품. */}
+          <AgencyInviteButton className="ml-auto" />
         </header>
 
         <div className="mt-6">

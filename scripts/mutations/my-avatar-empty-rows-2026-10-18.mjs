@@ -36,11 +36,11 @@ export default [
     why: '관심 등록 버튼은 숨겨진 쇼핑 목록에만 있다 — 줄을 누르면 늘 빈 화면이다.',
   },
   {
-    name: '👤 마이 점검: 쓰이는 줄(쿠폰함)까지 같이 감춘다',
+    name: '👤 마이 점검: 쓰이는 줄(숙소 예약)까지 같이 감춘다',
     file: 'src/pages/user-profile/ShoppingGroup.tsx',
-    // 🔁 2026-10-18 재조준: 쿠폰 숫자가 위 숫자 줄로 옮겨가 이 줄의 `count` 가 빠졌다. 불변식 그대로.
-    find: "    { Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), path: '/my-coupons' },",
-    replace: "    ...(SHOPPING_TAB_HIDDEN ? [] : [{ Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), path: '/my-coupons' }]),",
+    // 🔁 2026-11-02 재조준: 쿠폰함 줄은 대표 지시(중복)로 뺐다 — 같은 불변식을 쓰이는 다른 줄로 본다.
+    find: "    { Icon: StayLineIcon, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), path: '/my-stays' },",
+    replace: "    ...(SHOPPING_TAB_HIDDEN ? [] : [{ Icon: StayLineIcon, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), path: '/my-stays' }]),",
     test: TEST,
     why: '반대 방향 — 쿠폰은 라이브에 활성 쿠폰이 있어 살아 있다. 정리를 이유로 쓰이는 줄을 같이 지우면 안 된다.',
   },

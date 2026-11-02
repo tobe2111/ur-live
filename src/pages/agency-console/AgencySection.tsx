@@ -27,8 +27,10 @@ import {
  * 🔑 신원은 여전히 **에이전시 직원 토큰**(`agency_console_token`)이다. 손님 세션과 섞지 않는다 —
  *   성과·몫이 사람이 아니라 에이전시 단위로 잡혀야 하기 때문이다(2026-10-11 결정).
  */
-export default function AgencySection({ stacked = false, headless = false, onSessionEnd }: {
+export default function AgencySection({ stacked = false, headless = false, ownSellerIds, onSessionEnd }: {
   stacked?: boolean
+  /** 마이에서 이미 '내 가게' 판에 있는 매장(합친 구역 — `AgencyStoresPanel` 머리말). */
+  ownSellerIds?: number[]
   /** 페이지가 머리(에이전시 이름·직원)를 따로 그릴 때 — 같은 말을 두 번 하지 않게 구역 제목을 뺀다. */
   headless?: boolean
   /** 로그인이 끊기거나 로그아웃했을 때 — 손님 마이는 구역만 접고, 에이전시 전용 마이는 로그인으로 보낸다. */
@@ -91,6 +93,7 @@ export default function AgencySection({ stacked = false, headless = false, onSes
             onExpired={onExpired}
             staffId={me.staff.id}
             stacked={stacked}
+            ownSellerIds={ownSellerIds}
             toolParam={AGENCY_TOOL_PARAM}
             agencyRows={(
               <>

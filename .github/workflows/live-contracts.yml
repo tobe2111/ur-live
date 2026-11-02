@@ -37,6 +37,10 @@ jobs:
         env:
           BASE_URL: ${{ github.event.inputs.base_url || 'https://urdeal.kr' }}
         run: node scripts/check-live-contracts.mjs
+      # 🔎 2026-11-02 주간 재확인 — 배포가 없어도 상품 변동·데이터로 검색이 비는지 본다.
+      - name: Live search check
+        if: always()
+        run: node scripts/check-live-search.mjs
 
       - name: 실패 시 요약 남기기
         if: failure()
