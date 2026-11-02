@@ -31,6 +31,9 @@ import OwnerManagePanel from './OwnerManagePanel'
 import { BuyBarFrame, BuyBarPrice, BuyBarCta } from '@/components/deal/BuyBar'
 import { useAgentHandoff } from './useAgentHandoff'
 import RollingNumber from '@/components/ui/RollingNumber' // 🎬 2026-11-02 수량이 굴러가며 바뀐다
+// 🎬 2026-11-02 시안 6차 "결제 버튼 누른 뒤" — 처리 중엔 버튼 안에 도는 원이 뜬다(대표 "다 넣어줘").
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-pay', `@keyframes ur-pay-spin { to { transform: rotate(360deg); } }@keyframes ur-pay-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }.ur-pay-busy { display: inline-flex; align-items: center; gap: 8px; animation: ur-pay-in .2s ease-out both; }.ur-pay-spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid currentColor; border-top-color: transparent; opacity: .85; animation: ur-pay-spin .7s linear infinite; }@media (prefers-reduced-motion: reduce){.ur-pay-busy,.ur-pay-spin{animation:none!important}}`)
 
 const arrow = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
 
@@ -100,7 +103,7 @@ export default function DealBottomBar({
             disabled={raffle ? !ctaOn || fcfs.busy : (!isJoinable && !isPrelaunch) || joining}
             aria-haspopup={raffle || isPrelaunch ? undefined : 'dialog'}
           >
-            {raffle ? fcfs.ctaLabel : joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? '구매 불가' : verb}
+            {raffle ? fcfs.ctaLabel : joining ? <span className="ur-pay-busy"><span className="ur-pay-spin" aria-hidden="true" />처리 중…</span> : isPrelaunch ? '사전 응모하기' : !isJoinable ? '구매 불가' : verb}
           </BuyBarCta>
         </div>
         )}
@@ -144,7 +147,7 @@ export default function DealBottomBar({
             className="w-full h-[52px] border-0 rounded-xl text-[17px] font-bold flex items-center justify-center gap-2"
             style={{ background: buyable ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', cursor: buyable ? 'pointer' : 'default' }}
           >
-            {joining ? '처리 중…' : <>{payLabel}{arrow}</>}
+            {joining ? <span className="ur-pay-busy"><span className="ur-pay-spin" aria-hidden="true" />처리 중…</span> : <>{payLabel}{arrow}</>}
           </button>
           {/* 대체물 — 위 고르는 칸이 [전부 딜로] 를 이미 내면 같은 뜻의 버튼을 또 내지 않는다(칸이 안 뜰 때만). */}
           <DealPayButton show={canPayWithDeal && !isPrelaunch && isJoinable && !dealPlan?.can_pay_all_with_deal} joining={joining} dealBalance={dealBalance} onPay={() => onJoin(true)} />

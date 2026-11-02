@@ -14,6 +14,9 @@ import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
 import { formatNumber } from '@/utils/format'
 import OwnerManagePanel from './OwnerManagePanel'
 import RollingNumber from '@/components/ui/RollingNumber' // 🎬 2026-11-02 수량이 굴러가며 바뀐다
+// 🎬 2026-11-02 시안 6차 "결제 버튼 누른 뒤" — 처리 중엔 버튼 안에 도는 원이 뜬다(대표 "다 넣어줘").
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-pay', `@keyframes ur-pay-spin { to { transform: rotate(360deg); } }@keyframes ur-pay-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }.ur-pay-busy { display: inline-flex; align-items: center; gap: 8px; animation: ur-pay-in .2s ease-out both; }.ur-pay-spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid currentColor; border-top-color: transparent; opacity: .85; animation: ur-pay-spin .7s linear infinite; }@media (prefers-reduced-motion: reduce){.ur-pay-busy,.ur-pay-spin{animation:none!important}}`)
 
 interface Props {
   /** 2026-10-11 D안: '구매 옵션' 상자를 걷어 더는 안 쓴다(호출부 호환을 위해 남김). */
@@ -133,7 +136,7 @@ export default function DealPurchaseBox({
         aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? (allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`) : '구매 불가'}
         style={{ width: '100%', height: 50, border: 'none', borderRadius: 12, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 15, fontWeight: 700, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
       >
-        {joining ? '처리 중…' : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? ('구매 불가') : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+        {joining ? <span className="ur-pay-busy"><span className="ur-pay-spin" aria-hidden="true" />처리 중…</span> : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? ('구매 불가') : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>
       )}
 

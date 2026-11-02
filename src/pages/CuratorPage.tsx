@@ -229,7 +229,7 @@ export default function CuratorPage() {
   //   ⇒ 카카오 SDK 로 **우리가 카드를 지정**한다(선물 카드가 멀쩡했던 이유 — `lib/kakao-share.ts`).
   //   무엇을 실을지는 순수 SSOT `shared/ushop-share-card.ts` 가 정한다(워커 og:image 와 같은 규칙).
   //   폴백 계단은 그대로 둔다: 카카오 실패 → 네이티브 시트 → 클립보드 복사(한국 밖·PC 포함).
-  async function shareShop() {
+  async function shareShop(): Promise<boolean> {
     const origin = window.location.origin
     const fullUrl = `${origin}/u/${handle}`
     try {
@@ -242,17 +242,18 @@ export default function CuratorPage() {
         origin,
         fallbackImage: KAKAO_SHARE_FALLBACK_IMAGE,
       })
-      if (await shareViaKakao(ushopCardPayload(card))) return
+      if (await shareViaKakao(ushopCardPayload(card))) return false
     } catch { /* SDK 미설정·차단 — 아래 네이티브 시트로 */ }
     const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> }
     if (typeof nav.share === 'function') {
-      try { await nav.share({ title: data?.curator?.name || '유어샵', url: fullUrl }); return }
+      try { await nav.share({ title: data?.curator?.name || '유어샵', url: fullUrl }); return false }
       catch { /* 사용자가 취소했거나 미지원 — 복사로 폴백 */ }
     }
     try {
       await navigator.clipboard.writeText(fullUrl)
       toast.success(t('curator.linkCopied', { defaultValue: '링크가 복사되었어요' }))
-    } catch { /* ignore */ }
+      return true // 🎬 2026-11-02 시안 6차 — 복사로 끝났으면 헤더의 공유 버튼이 잠깐 체크로 바뀐다
+    } catch { return false }
   }
 
   if (loading) {

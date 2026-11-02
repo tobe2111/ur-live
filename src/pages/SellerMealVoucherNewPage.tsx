@@ -47,8 +47,9 @@ import {
   type StoreContext, type VoucherForm,
 } from './seller-meal-voucher/voucher-form'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
-injectMotionCss('ur-m-rise', `@keyframes ur-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }.ur-rise { animation: ur-rise .35s cubic-bezier(.16,1,.3,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-rise{animation:none!important}}`)
-injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
+injectMotionCss('ur-m-rise', `@keyframes ur-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }.ur-rise { animation: ur-rise .35s cubic-bezier(.16,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-rise{animation:none!important}}`)
+injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
+injectMotionCss('ur-m-step', `@keyframes ur-step-fwd { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }@keyframes ur-step-back { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }.ur-step-fwd { animation: ur-step-fwd .3s cubic-bezier(.2,1,.3,1) backwards; }.ur-step-back { animation: ur-step-back .3s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-step-fwd,.ur-step-back{animation:none!important}}`)
 
 export default function SellerMealVoucherNewPage({ embedded = false, onClose, onCreated }: {
   /** 🪟 마이 안 시트에서 열렸는가 — 껍데기를 벗고, 라우팅 대신 콜백으로 끝낸다. */
@@ -65,6 +66,9 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
   // 🎁 2026-10-31 인플루언서 무상 체험 제공 — 등록 직후 같은 이용권에 저장(`PUT /api/seller/seeding/offers/:id`).
   const [seeding, setSeeding] = useState<SeedingOffer>(DEFAULT_OFFER)
   const [step, setStep] = useState(0)
+  const stepDir = useRef(1) // 🎬 지난 단계보다 앞인가 뒤인가 — 칸이 들어오는 방향
+  const prevStep = useRef(0)
+  if (prevStep.current !== step) { stepDir.current = step > prevStep.current ? 1 : -1; prevStep.current = step }
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [createdId, setCreatedId] = useState<number | null>(null)
@@ -390,8 +394,13 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
             </button>
           ))}
         </div>
+        {/* 🎬 2026-11-02 시안 6차 "등록 단계"(대표 "다 넣어줘") — 진행선이 단계만큼 차오르고, 칸 내용은 앞으로 가면 오른쪽에서 · 뒤로 가면 왼쪽에서 들어온다. */}
+        <div className="h-1 rounded-full bg-gray-100 overflow-hidden" aria-hidden="true">
+          <div className="h-full bg-brand transition-[width] duration-500 ease-out motion-reduce:transition-none" style={{ width: `${((step + 1) / steps.length) * 100}%` }} />
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div key={step} className={`space-y-4 ${stepDir.current < 0 ? 'ur-step-back' : 'ur-step-fwd'}`}>
           {step === 0 && (
             <StoreStep
               form={form}
@@ -422,6 +431,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
             <SaleSettingsStep form={form} update={update} showAdvanced={showAdvanced} setShowAdvanced={setShowAdvanced} />
           )}
           {step === 2 && <SeedingOfferFields value={seeding} onChange={setSeeding} />}
+          </div>
 
           {/* 하단 내비게이션 — 이전/임시저장/다음(또는 등록) */}
           <div className="flex gap-3">

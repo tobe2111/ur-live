@@ -16,7 +16,7 @@ import { X } from 'lucide-react'
 import type { Voucher } from './types'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-gift', `@keyframes ur-draw { from { stroke-dashoffset: 120; } to { stroke-dashoffset: 0; } }.ur-gift-mark { animation: ur-popin .45s cubic-bezier(.3,1.3,.5,1) both; }.ur-gift-mark path { stroke-dasharray: 120; animation: ur-draw .45s ease-out .35s both; }.ur-gift-mark path + path { animation-delay: .7s; }@media (prefers-reduced-motion: reduce){.ur-gift-mark,.ur-gift-mark path{animation:none!important}}`)
-injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
+injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 type Pending = { token: string; url: string }
 

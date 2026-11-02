@@ -13,6 +13,7 @@
  */
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { execSync } from 'node:child_process'
 import { renderHook, act } from '@testing-library/react'
 import { useCountUp } from '@/pages/user-profile/useCountUp'
 import { canRunDealTransition } from '@/lib/deal-view-transition'
@@ -26,7 +27,7 @@ import { stripComments } from '../helpers/source-text'
 const R = (p: string) => readFileSync(p, 'utf8')
 const css = stripComments(R('src/index.css'))
 // 화면별로만 받는 CSS 는 부품 파일 안의 injectMotionCss(…) 문자열이다 — 그 문자열들을 모은다.
-const LAZY_USERS = ['src/components/voucher/ScanFrame.tsx', 'src/components/search/SearchStates.tsx', 'src/pages/restaurant-map/SheetFilterBar.tsx', 'src/pages/group-buy/DetailGallery.tsx', 'src/components/MyReferralCard.tsx', 'src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx']
+const LAZY_USERS = ['src/components/voucher/ScanFrame.tsx', 'src/components/search/SearchStates.tsx', 'src/pages/restaurant-map/SheetFilterBar.tsx', 'src/pages/group-buy/DetailGallery.tsx', 'src/components/MyReferralCard.tsx', 'src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx', 'src/pages/group-buy/DealBottomBar.tsx', 'src/pages/group-buy/DealPurchaseBox.tsx', 'src/pages/checkout/OrderSummary.tsx', 'src/pages/wishlist/WishlistMobile.tsx', 'src/pages/mobile-home/BackToTop.tsx', 'src/pages/user-profile/profile-edit/EditRow.tsx', 'src/components/charts/svg-charts.tsx', 'src/pages/curator-page/CuratorHeader.tsx']
 const lazyCss = LAZY_USERS.flatMap((f) => [...R(f).matchAll(/injectMotionCss\('[\w-]+', `([^`]*)`\)/g)].map((m) => m[1])).join('\n')
 const kit = css.slice(css.indexOf('.ur-burst {'), css.indexOf('.ur-tab-bar {')) + lazyCss
 
@@ -36,10 +37,13 @@ describe('① 움직임 키트 CSS', () => {
     expect(frames.length).toBeGreaterThanOrEqual(7)
     for (const [, name, body] of frames) {
       const props = [...body.matchAll(/([a-z-]+)\s*:/g)].map((m) => m[1])
-      for (const p of props) expect(['transform', 'opacity', 'background-color', 'stroke-dashoffset'], name).toContain(p)
+      // 예외 하나: 찜 목록에서 **빠지는** 줄은 높이를 접어야 아래 줄이 툭 끊기지 않고 올라온다(사라지는 줄이라 밀릴 글자가 없다).
+      const allowed = name === 'ur-wish-out' ? ['transform', 'opacity', 'max-height', 'margin-top'] : ['transform', 'opacity', 'background-color', 'stroke-dashoffset']
+      for (const p of props) expect(allowed, name).toContain(p)
     }
+    expect(frames.filter(([, n]) => n === 'ur-wish-out').length, '예외는 이름으로 하나만').toBeLessThanOrEqual(1)
   })
-  it('화면별 CSS 문자열은 13곳 전부 있고, 문자열마다 동작 줄이기 끔을 함께 갖는다', () => {
+  it('화면별 CSS 문자열은 등록한 곳 전부 있고, 문자열마다 동작 줄이기 끔을 함께 갖는다', () => {
     for (const f of LAZY_USERS) {
       const calls = [...R(f).matchAll(/injectMotionCss\('[\w-]+', `([^`]*)`\)/g)].map((m) => m[1])
       expect(calls.length, f).toBeGreaterThan(0)
@@ -55,6 +59,16 @@ describe('① 움직임 키트 CSS', () => {
         expect(head, `${f} ${m[1]}`).not.toMatch(/(animation|transition)\s*:\s*none/)
       }
     }
+  })
+  it('끄기 조건이 선택자 목록에 삼켜지지 않는다 — `,@media` 면 그 조건 전체가 무효가 된다', () => {
+    // 🩸 2026-11-02 실측: 옛 공용 규칙의 선택자 조각(`.ur-slam, … .ur-flash,`)이 여섯 파일의 문자열 앞에 붙어
+    //   `…,@media (prefers-reduced-motion…){…}` 가 됐다. 브라우저는 그 규칙을 통째로 버린다 — 동작 줄이기를 켠 사람에게도 움직였다.
+    const files = execSync("git ls-files 'src/*.ts' 'src/*.tsx' 'src/**/*.ts' 'src/**/*.tsx'", { encoding: 'utf8' }).split('\n').filter((f) => f && !f.includes('/tests/'))
+    let n = 0
+    for (const f of files) {
+      for (const m of R(f).matchAll(/injectMotionCss\('([\w-]+)', `([^`]*)`\)/g)) { n++; expect(m[2], `${f} ${m[1]}`).not.toMatch(/,\s*@media/) }
+    }
+    expect(n, '검사한 움직임 문자열 수').toBeGreaterThan(20)
   })
   it('동작 줄이기면 키트 클래스와 화면 전환이 전부 꺼진다', () => {
     const reduceOf = (s: string) => s.split(/@media \(prefers-reduced-motion: reduce\)\s*/).slice(1).map((x) => x.slice(0, 700)).join('\n')
@@ -179,5 +193,45 @@ describe('⑥ 3·4차 — 동작 계약', () => {
     expect(r).toContain('reward_amount: paidReward,')
     const assignAt = r.indexOf('paidReward = Number.isFinite(rewardAmount)')
     expect(assignAt).toBeGreaterThan(r.indexOf('if (existingProductReward)'))
+  })
+})
+
+describe('⑦ 6차 — 동작 계약', () => {
+  it('결제 버튼: 처리 중엔 도는 원이 뜨고 글자도 남는다(화면 읽기 도구용) — 모바일·PC 둘 다', () => {
+    for (const f of ['src/pages/group-buy/DealBottomBar.tsx', 'src/pages/group-buy/DealPurchaseBox.tsx']) {
+      const src = R(f)
+      expect(src, f).not.toContain("joining ? '처리 중…'")
+      expect(src, f).toContain('<span className="ur-pay-spin" aria-hidden="true" />처리 중…')
+    }
+  })
+  it('찜 목록: 빠진 줄은 300ms 동안 원래 자리에 남아 밀려 나가고, 화면 읽기 도구에선 숨긴다', () => {
+    const src = R('src/pages/wishlist/WishlistMobile.tsx')
+    expect(src).toContain('const rows = useLeavingRows(items)')
+    expect(src).toContain("className={leaving ? 'ur-wish-out' : undefined} aria-hidden={leaving || undefined}")
+    expect(src).toMatch(/out\.splice\(Math\.min\(g\.at, out\.length\), 0/)
+  })
+  it('새 주문: 처음 도착한 목록은 새 주문이 아니다 — 보는 동안 생긴 것만 움직인다', () => {
+    const src = R('src/pages/seller-orders/MobileOrderList.tsx')
+    expect(src).toContain('const first = seen.current == null || seen.current.size === 0')
+    expect(src).toContain('if (!num || !seen.current || seen.current.size === 0) return false')
+    expect(src).toContain("${isNewOrder(o.order_number) ? 'ur-order-new")
+  })
+  it('유어샵 공유: 체크는 링크 복사로 끝났을 때만 — 카카오·폰 시트로 보냈으면 false', () => {
+    const src = R('src/pages/CuratorPage.tsx')
+    expect(src).toContain('if (await shareViaKakao(ushopCardPayload(card))) return false')
+    expect(src).toMatch(/url: fullUrl \}\); return false \}/)
+    expect(src).toMatch(/linkCopied[^\n]*\n\s*return true/)
+    expect(R('src/pages/curator-page/CuratorHeader.tsx')).toContain('if ((await share()) === true) { setCopied(true)')
+  })
+  it('차트: 막대는 아래에서 자라고(기준점 아래) 선은 길이 1 로 정규화돼 그려진다', () => {
+    const src = R('src/components/charts/svg-charts.tsx')
+    expect(src).toContain('transform-box: fill-box; transform-origin: bottom;')
+    expect(src).toContain('<polyline className="ur-chart-line" pathLength={1}')
+    expect(src).toContain('className="ur-chart-bar"')
+  })
+  it('등록 단계: 칸 움직임은 끝나면 흔적을 안 남긴다(backwards) — 안의 지도·창이 기준 상자를 잃지 않게', () => {
+    const src = R('src/pages/SellerMealVoucherNewPage.tsx')
+    expect(src).toContain('.ur-step-fwd { animation: ur-step-fwd .3s cubic-bezier(.2,1,.3,1) backwards; }')
+    expect(src).toContain("<div key={step} className={`space-y-4 ${stepDir.current < 0 ? 'ur-step-back' : 'ur-step-fwd'}`}>")
   })
 })

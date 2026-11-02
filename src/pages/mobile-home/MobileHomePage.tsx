@@ -8,6 +8,7 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import CompanyInfoFooter from '@/components/main/CompanyInfoFooter'
 import SellOnUrdealRow from './SellOnUrdealRow'
 import MapPill from './MapPill'
+import BackToTop from './BackToTop' // 🎬 2026-11-02 시안 6차 맨 위로 버튼
 import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
@@ -305,6 +306,7 @@ export default function MobileHomePage() {
           피드 맨 끝·판매 진입점 다음이 자리다(NOL 과 같은 자리). 값 SSOT `shared/company-info.ts`. */}
       <CompanyInfoFooter className="mt-6" />
       <MapPill />
+      <BackToTop />
       {bell.sheet}
     </div>
   )

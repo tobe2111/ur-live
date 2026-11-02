@@ -21,6 +21,11 @@
 import type { ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 
+// 🎬 2026-11-02 시안 6차 "입력 칸 확인"(대표 "다 넣어줘") — 칸이 틀린 값으로 바뀌는 순간(aria-invalid) 짧게 흔들리고
+//   테두리가 빨개지며, 그 아래 이유 줄이 내려온다. 맞게 고치면 원래 테두리로 돌아간다. 판정은 각 화면이 하던 그대로다.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-field', `@keyframes ur-field-shake { 0%,100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }@keyframes ur-note-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }.ur-row-input[aria-invalid="true"] { border-color: var(--tone-bad); animation: ur-field-shake .4s ease-out; }.ur-note-bad { animation: ur-note-in .2s ease-out both; }@media (prefers-reduced-motion: reduce){.ur-row-input[aria-invalid="true"],.ur-note-bad{animation:none!important}}`)
+
 /** 접힌 줄 — 안 C 목록 문법(48px 평면 + hairline). 🎫 CLAUDE.md 표면 규칙 ⑦. */
 const SHUT = 'w-full flex items-center gap-2 px-4 h-12 border-b border-rule text-left active:opacity-70'
 const KEY = 'text-[15px] font-medium text-gray-900 dark:text-white shrink-0'
@@ -96,7 +101,7 @@ export function RowActions({ onSave, onCancel, saving, disabled, saveLabel = '�
 
 /** 펼친 줄의 입력칸 — 다섯 줄이 같은 치수를 쓰게. */
 export const ROW_INPUT =
-  'w-full h-11 px-3 rounded-lg border border-rule-strong bg-surface text-[15px] '
+  'ur-row-input w-full h-11 px-3 rounded-lg border border-rule-strong bg-surface text-[15px] '
   + 'text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none'
 
 /** 펼친 줄의 설명 한 줄. */
@@ -104,7 +109,7 @@ export function RowNote({ children, tone }: { children: ReactNode; tone?: 'ok' |
   const c = tone === 'ok' ? 'text-emerald-600 dark:text-emerald-400'
     : tone === 'bad' ? 'text-red-500'
       : 'text-gray-500 dark:text-gray-400'
-  return <p className={`mt-2 text-[12px] leading-relaxed ${c}`}>{children}</p>
+  return <p className={`mt-2 text-[12px] leading-relaxed ${c}${tone === 'bad' ? ' ur-note-bad' : ''}`}>{children}</p>
 }
 
 /** 묶음 라벨 — `내 정보` / `내 가게 주소`. 🎫 표면 규칙 ⑦ 의 그룹 라벨(12px 바닥). */
