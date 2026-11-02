@@ -28,8 +28,9 @@ export default [
     // 🔄 2026-09-24: 판정의 자리가 상세 본문 → '가게 소개' 부품으로 옮겨졌다(대표 문서 ①).
     //   불변식은 그대로라 주입을 지우지 않고 새 자리로 옮긴다.
     file: 'src/pages/group-buy/StoreIntro.tsx',
-    find: "  const spec = raw && raw !== (productName || '').trim() ? raw : ''",
-    replace: '  const spec = raw',
+    // 🔁 2026-11-02: 판정이 `specOf` 로 모였다(대표 선택 ④) — 같은 불변식을 그 자리에서 겨눈다.
+    find: "  if (!raw || raw === name) return ''",
+    replace: "  if (!raw) return ''",
     test: TEST,
     why: '라이브 상품(2888)은 description 이 name 과 같은 문자열이라 제목이 화면에 세 번 찍힌다.',
   },
