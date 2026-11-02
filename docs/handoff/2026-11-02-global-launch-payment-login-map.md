@@ -41,3 +41,8 @@
 2. 해외 카드 결제: 토스 해외 간편결제 MID 계약 문의(결재 C).
 3. 외국인 로그인: 구글 OAuth 클라이언트 ID/시크릿 발급(구글 로그인 새로 짓기 — #804 로 끈 Firebase 경로는 되살리지 않는다).
 4. 남은 번역: 홈·목록·로그인·지도 화면, 가게 이름·메뉴(서버 데이터) 자동 번역, `passSubLine`·`getVoucherShortLabel`·날짜 형식(`ko-KR` 고정).
+
+### 3차 — CI 실행 비용 예산 수리
+- Verify `exec-cost` 5건 빨간불: ko 파일에 새 문구를 넣어 **모든 화면의 `locale-ko` +4.6KB**. ⇒ `scripts/i18n-split.mjs` 에 규칙 추가 — ko core 에서 **소스 기본값과 똑같은 문장**(이름공간 pass·passBuy·wallet·voucher·map, 모든 사용처가 `t('키', {defaultValue})` 꼴일 때만)은 rest 로 옮긴다. 278키, core 55.6→47.7KB raw.
+- 로컬 실측: surface-budgets 27화면 통과 · exec-cost 10화면 통과(전부 이전보다 가볍다, 홈만 +1.2 — main 의 homePc 증가분).
+- 틀렸던 판단: 처음엔 "ko 키는 무게에 안 들어간다"고 보고 넘어갔다. `locale-ko` 는 첫 화면에 **실행되는 JS** 로 잡힌다(surface 무게 표엔 안 보이지만 exec-cost 엔 보인다).

@@ -10,7 +10,6 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-// @ts-expect-error — .mjs 스크립트(타입 선언 없음)
 import { splitTranslation, collectConsumerDashKeys, isDashOnlyFile, DASH_NAMESPACES } from '../../../scripts/i18n-split.mjs'
 import { stripComments } from '../helpers/source-text'
 

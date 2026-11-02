@@ -75,3 +75,32 @@ describe('외국인 관광객 영어 — 이용권 상세·구매·내 이용권
     expect(loc).toMatch(/: map\}/)
   })
 })
+
+// ── 한국어 core 무게 — 기본값과 같은 문장은 ko core 에서 뺀다(scripts/i18n-split.mjs KO_DEFAULT_ONLY_NS) ──
+// 이 규칙이 없으면 한국어 손님이 모든 화면에서 받는 locale-ko 가 +4.6KB 였다(실행 비용 예산 5건 빨간불, 2026-11-02 CI 실측).
+import { collectDefaultValueUses, koDefaultOnlyKeys, moveKeysToRest, splitTranslation, collectConsumerDashKeys, collectReferencedKeys } from '../../../scripts/i18n-split.mjs'
+
+describe('한국어 core 에서 기본값 중복 문장 빼기', () => {
+  const uses = collectDefaultValueUses('.')
+  const drop = new Set(koDefaultOnlyKeys(ko, uses))
+
+  it('이 흐름의 키는 ko core 에서 빠진다(한국어는 소스 기본값이 그린다)', () => {
+    expect(drop.has('pass.usageGuide.title')).toBe(true)
+    expect(drop.size).toBeGreaterThan(100)
+  })
+
+  it('기본값 없이 쓰는 키 · 템플릿 접두어 아래 키는 남긴다(키 이름이 화면에 뜨면 안 된다)', () => {
+    // voucher.status.* 는 `voucher.status.${s}` 템플릿으로 쓰인다.
+    for (const k of drop) expect(k.startsWith('voucher.status.'), k).toBe(false)
+    // 빠지는 키는 전부 기본값이 ko 값과 같다.
+    for (const k of drop) for (const v of uses.dv.get(k) || []) expect(v, k).toBe(get(ko, k))
+  })
+
+  it('옮긴 뒤 core 에는 없고 rest 에는 있다', () => {
+    const parts = splitTranslation(ko, collectConsumerDashKeys('.'), collectReferencedKeys('.'))
+    const moved = moveKeysToRest(parts, [...drop])
+    expect(get(moved.core, 'pass.usageGuide.title')).toBeUndefined()
+    expect(get(moved.rest, 'pass.usageGuide.title')).toBe(get(ko, 'pass.usageGuide.title'))
+    expect(JSON.stringify(moved.core).length).toBeLessThan(JSON.stringify(parts.core).length)
+  })
+})
