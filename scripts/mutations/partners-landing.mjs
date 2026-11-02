@@ -62,8 +62,9 @@ export default [
   {
     name: '🏪 정직 고지가 사라진다 (초기 서비스라는 사실)',
     file: 'src/pages/partners/PartnerFaq.tsx',
-    find: `            유어딜은 초기 서비스입니다.`,
-    replace: `            유어딜과 함께하세요.`,
+    // 🔄 2026-11-02 재조준: 숫자 있는 문장이 라이브로 바뀌며 줄 모양이 달라졌다(`<>` 조각 안).
+    find: `              <>유어딜은 초기 서비스입니다. {c.measuredAt}`,
+    replace: `              <>유어딜과 함께하세요. {c.measuredAt}`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '세 소개서(사장님·인플루언서·대행사)가 **같은 문장**으로 쓰기로 한 공통 블록이다. ' +
@@ -212,8 +213,9 @@ export default [
   {
     name: '🏪 계산기 앵커가 덱과 갈린다 (랜딩이 소개서와 다른 가격을 말한다)',
     file: 'src/shared/partners-facts.ts',
-    find: `  sample: { name: '프리미엄 돈가스 1인 세트', list: 14500, sale: 7500 },`,
-    replace: `  sample: { name: '프리미엄 돈가스 1인 세트', list: 25000, sale: 16500 },`,
+    // 🔄 2026-11-02 재조준: 덱의 가격은 이제 라이브에서 온다 — 지킬 것은 "같은 앵커 상품" 이라 id 를 비튼다.
+    find: `  sample: { id: 2915, name: '프리미엄 돈가스 1인 세트', list: 14500, sale: 7500 },`,
+    replace: `  sample: { id: 2888, name: '프리미엄 돈가스 1인 세트', list: 14500, sale: 7500 },`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '사장님은 카톡으로 PDF 를 받고 사이트를 열어 본다. 두 가격이 다른 순간 둘 다 신뢰를 잃는다. ' +
@@ -223,9 +225,11 @@ export default [
   },
   {
     name: '🏪 덱의 셈법 상품 이름표가 사라져 대조가 조용히 헛돈다',
-    file: 'docs/business/proposals/deck-common.mjs',
-    find: `  sampleName: '프리미엄 돈가스 1인 세트', sampleOrig: '14,500원',`,
-    replace: `  sampleName: '프리미엄 돈가스 1인 세트', sampleOrigX: '14,500원',`,
+    // 🔄 2026-11-02 재조준: 이름표는 이제 앵커 표시 이름(SSOT shared/proposal-live-facts.ts)이다 — 그것이 빠지면
+    //    덱은 긴 상품명을, 랜딩은 짧은 이름을 써서 둘이 다른 이름을 말한다.
+    file: 'src/shared/proposal-live-facts.ts',
+    find: `  2915: '프리미엄 돈가스 1인 세트',`,
+    replace: `  2915: '홍대 돈가스 세트',`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '덱은 .mjs 라 import 하지 않고 소스를 정규식으로 읽는다. 키 이름이 바뀌면 파싱이 0건이 되는데, ' +

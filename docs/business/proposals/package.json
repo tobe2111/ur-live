@@ -1,0 +1,17 @@
+{
+  "name": "urdeal-proposal-decks",
+  "private": true,
+  "type": "module",
+  "description": "대외 소개서 덱 생성기 — 앱 의존성과 분리(루트 npm ci 를 무겁게 하지 않는다). 워크플로 proposals.yml 이 쓴다.",
+  "scripts": {
+    "facts": "node facts-live.mjs fetch",
+    "build": "node build-all.mjs"
+  },
+  "dependencies": {
+    "pptxgenjs": "3.12.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-icons": "5.4.0",
+    "sharp": "0.33.5"
+  }
+}
