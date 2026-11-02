@@ -160,6 +160,24 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
     )`),
     DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_share_terms_pair ON agency_share_terms(seller_id, agency_id, effective_from)'),
   ])
+  // ⚡ 2026-11-02 대표 *"매장 영입 링크 생성하는데에도 시간이 왜이리 걸려?"* — 아래 뒷정리(채우기 1 + 열 추가 5
+  //   + 인덱스 1)는 **하나씩 차례로** 돌아 새 워커마다 DB 왕복이 7번 더 붙었다(영입 링크 시트는 읽기 → 만들기
+  //   두 요청이라 최대 두 번). 열이 이미 다 있으면(= 라이브 평상시) 한 묶음으로 끝낸다 — 묶음이 하나라도 실패하면
+  //   (열이 아직 없는 첫 배포) 종전 경로를 그대로 탄다. 하는 일은 같고 순서만 같다.
+  try {
+    await DB.batch([
+      DB.prepare('SELECT business_status FROM agency_accounts LIMIT 0'),
+      DB.prepare('SELECT store_scope, user_id, pending_email, pending_password_hash FROM agency_staff LIMIT 0'),
+      DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_staff_user ON agency_staff(user_id) WHERE user_id IS NOT NULL'),
+      DB.prepare(
+        `INSERT INTO agency_product_periods (product_id, seller_id, agency_id, started_at)
+         SELECT ap.product_id, ap.seller_id, ap.agency_id, ap.created_at FROM agency_products ap
+          WHERE NOT EXISTS (SELECT 1 FROM agency_product_periods pr WHERE pr.product_id = ap.product_id AND pr.ended_at IS NULL)`,
+      ),
+    ])
+    _ensured.add(DB)
+    return
+  } catch { /* 열이 아직 없다 — 아래 종전 경로 */ }
   // 기간 기록보다 먼저 생긴 맡음(1단계)에 기간을 채운다 — 맡은 날부터. 멱등(열린 기간이 있으면 건너뛴다).
   try {
     await DB.prepare(

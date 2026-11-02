@@ -55,12 +55,13 @@ export default [
     why: '리워드 딜로 산 이용권이 만료되면 그 딜이 현금 환급 가능한 딜로 돌아온다.',
   },
   {
-    name: '💸딜현금 환급 버튼이 늘 뜬다 (돌려받을 딜이 없어도)',
+    name: '💸딜현금 마이에 환급 시트가 다시 붙는다',
     file: 'src/pages/user-profile/MyStats.tsx',
-    find: "  const refundButton = refundable > 0 || refundPending > 0 ? (",
-    replace: "  const refundButton = true ? (",
+    // 🔁 2026-11-02 재조준 — 대표 지시로 마이의 환급 입구를 없앴다.
+    find: "const DEAL_PATH = TOPUP_DISABLED ? '/my-deal-history' : '/points/charge'",
+    replace: "const DEAL_PATH = TOPUP_DISABLED ? '/my-deal-history' : '/points/charge'\nexport const __r = () => import('./RefundSheet')",
     test: TEST,
-    why: '누르면 "돌려받을 딜이 없어요" 만 뜬다 — 무상 딜만 가진 사람에게 환급되는 것처럼 말한다.',
+    why: '대표 2026-11-02 *"충전 딜 환급 … 아예 없애"* — 마이에 환급 입구가 다시 생긴다.',
   },
   {
     name: '💸딜현금 시트가 잔액으로 한도를 지어낸다',

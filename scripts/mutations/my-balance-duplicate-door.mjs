@@ -39,8 +39,9 @@ export default [
     // 🔁 2026-10-11 재조준(안 5): 같은 조건이 `refundable` 로 이름이 생겼다(띠 모드가 값 아래
     //   한 줄로 같은 사실을 말해야 해서 두 곳이 쓴다). 지키는 것은 그대로 — **안내가 사라지지 않는다.**
     // 🔁 2026-10-12 재조준: 조건 이름이 `showNote` 로 바뀌었다(`refundable` 은 이제 서버가 준 환급액 숫자).
-    find: ") : showNote && freeBalance > 0 ? (",
-    replace: ") : false ? (",
+    // 🔁 2026-11-02 재조준: 환급 줄이 사라져 무상 안내가 첫 가지가 됐다.
+    find: "{showNote && freeBalance > 0 ? (",
+    replace: "{false ? (",
     test: TEST,
     why: '무상 딜은 현금 환급 제외다(약관) — 안 알리면 사장님이 환급되는 줄 안다.',
   },

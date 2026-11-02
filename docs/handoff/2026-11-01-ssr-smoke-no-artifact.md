@@ -96,6 +96,16 @@ strict 를 빌드로 옮기면 긴급 수정이 막히고, PR 게이트를 빼�
    안 들어갔는데 "✅" 가 찍혔다. ⇒ **모든 치환에 앵커 assert.**
 5. **내 단언 하나가 헛돌았다**(주입이 잡았다). 폴백 감시를 *장치의 존재*로만 봐서, 가로채기를 남기고
    **모으는 줄만** 지우면 통과했다. ⇒ **체인**(담는다 → 읽는다)으로 판정.
+6. **위 2의 우려는 실측으로 완전히 기각됐다**(머지 뒤 확인). `visual-preview` 의 `#root` 비우기가 헛돌아
+   `ur-pre-react` 로더가 남아 있었지만, 그 하네스들은 **JS 를 실행**하므로 첫 스냅(750ms) 전에 React 가
+   `#root` 를 갈아엎는다 — **로더가 측정에 닿은 적이 없다.** 로컬 `check-layout-shift`(보이는 곳 밀림 0)·
+   `check-duplicate-fetch`(첫 화면 중복 0) 둘 다 초록이고 CI 22개도 전부 초록이었다.
+   ⇒ 앞으로 `shift`·`dup` 이 빨간불이면 **이 비우기 수리가 원인이 아니다**(다른 원인을 찾을 것).
+7. **CLAUDE.md 에 `[UNLOCK_LOADING]`/`[LOADING_ADDITIVE]` 기록을 인라인으로 쓰지 말 것** — 이 PR 이
+   그렇게 썼고, 머지 직전 main 이 그 audit log **239건을 `docs/locks/loading-audit-log.md` 로 추출·동결**
+   하면서 GitHub 측 충돌(`mergeable_state: dirty`)이 났다. 해소는 **main 구조 채택**(인라인 블록 제거) +
+   내 한 줄을 글자 그대로 `docs/locks/loading/2026-11-01-prerender-to-ssr-check.md` 로 옮긴 것이다.
+   🔴 인라인으로 되돌리지 말 것 — 그 추출이 *"prompt is too long"*(CLAUDE.md 30만 토큰) 사고의 처방이다.
 
 ---
 

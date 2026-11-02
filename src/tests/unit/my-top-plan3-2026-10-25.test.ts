@@ -44,11 +44,10 @@ describe('마이 위쪽 안 3', () => {
     expect(phone).toMatch(/\{unit\}/)
   })
 
-  it('④ 환급 줄은 "충전 딜" 이라고 말한다 — 정산과 섞이지 않는다', () => {
-    expect(phone).toMatch(/충전 딜 환급 \$\{formatNumber\(refundPending\)\}원 · 입금 준비 중/)
-    expect(phone).toMatch(/충전 딜 \$\{formatNumber\(refundable\)\}딜/)
-    expect(phone, '환급 줄이 정산이라고 말한다 — 둘은 다른 일이다').not.toMatch(/정산/)
-    expect(phone, '환급 줄이 시트를 안 연다').toContain('onClick={() => setRefundOpen(true)}')
+  // 🔁 2026-11-02 재조준 — 대표 *"충전 딜 환급 … 아예 없애달라는 뜻이야"*: 위쪽 판은 세 줄(내 딜·이용권·쿠폰)뿐이다.
+  it('④ 위쪽 판에 환급 줄이 없다 (대표 2026-11-02)', () => {
+    expect(phone, '환급 줄이 다시 생겼다').not.toMatch(/충전 딜|setRefundOpen/)
+    expect((phone.match(/\{row\('/g) ?? []).length, '위쪽 판의 줄이 세 개가 아니다').toBe(3)
   })
 
   it('⑤ 손님 쪽 판은 이 하나뿐이다 (예외가 번지지 않는다)', () => {
