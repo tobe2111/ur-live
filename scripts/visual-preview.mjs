@@ -660,6 +660,18 @@ function serve() {
           return res.end(JSON.stringify({ success: true, data: WALLET_VOUCHERS }))
         if (args.deals) {
           if (p === '/api/vouchers/categories') return res.end(JSON.stringify({ success: true, data: VOUCHER_SECTIONS }))
+          /**
+           * 🏠 2026-11-02 — 홈 편성 섹션(`/api/sections`) 스텁. 종전엔 기본값(빈 배열)으로 떨어져서
+           *   하네스의 홈은 **[섹션 자리 잡기 → 섹션 0건이라 자리 걷기]** 를 탔다 — 라이브에는 없는 경로다
+           *   (라이브는 섹션이 늘 있고 워커가 `__SSR_INITIAL_SECTIONS__` 로 시드한다). 그 가짜 경로가
+           *   모바일 안 1(유어쇼츠를 둘째 섹션 뒤로) 뒤로 레일을 첫 화면 경계(841px) 안에 들여놓아
+           *   `shift` 가 홈을 🔴 로 잡았다(문서 4867→2126). 라이브와 같은 모양(섹션 둘)을 준다.
+           */
+          if (p === '/api/sections')
+            return res.end(JSON.stringify({ success: true, data: [
+              { id: 1, title: '이런 이용권은 어떠세요?', subtitle: null, more_href: null, near: false, products: DEALS.slice(0, 4) },
+              { id: 2, title: '지금 인기 이용권', subtitle: null, more_href: '/group-buy', near: false, products: DEALS },
+            ] }))
           // 🏨 2026-10-27: 숙소 상세(`/stays/:id`) 스텁 — 통일 작업에서 두 상세를 나란히 떠 보려고 넣었다.
           //   합성 데이터다(객실 2개 · 사진 5장).
           const st = p.match(/^\/api\/group-buy\/stays\/(\d+)(\/availability)?$/)

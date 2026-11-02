@@ -32,9 +32,10 @@
  *   그 선택이면 카드를 아예 안 타는 흐름(`payment_method='deal'`)으로 간다(`coversAll` 이 판정).
  *   이제 `DealPayButton` 은 이 칸이 안 뜰 때(부분결제 게이트 OFF)의 대체물로만 남는다.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
+import RollingNumber from '@/components/ui/RollingNumber'
 
 export interface DealPlan {
   enabled: boolean
@@ -87,6 +88,14 @@ export default function DealUseChooser({ plan, value, onChange }: {
 }) {
   const [mode, setMode] = useState<Mode | null>(null)
   const [open, setOpen] = useState(false)
+  // 🎬 2026-11-02 12차 ⑩ — 고른 칸을 칠하는 대신 **알약 하나가 미끄러져 간다**(잰 자리 · 못 재면 종전처럼 칸을 칠한다).
+  const rowRef = useRef<HTMLDivElement>(null)
+  const [pill, setPill] = useState<{ x: number; w: number } | null>(null)
+  useLayoutEffect(() => {
+    const on = rowRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    const next = on ? { x: on.offsetLeft, w: on.offsetWidth } : null
+    setPill((p) => (p?.x === next?.x && p?.w === next?.w ? p : next))
+  })
 
   // 게이트가 꺼졌거나 쓸 딜이 없으면 아무것도 그리지 않는다.
   if (!plan || !plan.enabled || plan.max_deal_usable <= 0) return null
@@ -114,7 +123,8 @@ export default function DealUseChooser({ plan, value, onChange }: {
       style={{
         flex: 1, height: 36, borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer',
         border: 'none',
-        background: current === m ? 'var(--gbd-cta-bg)' : 'var(--gbd-chip-bg, rgba(127,127,127,.10))',
+        position: 'relative', zIndex: 1, transition: 'color .2s',
+        background: current === m ? (pill ? 'transparent' : 'var(--gbd-cta-bg)') : 'var(--gbd-chip-bg, rgba(127,127,127,.10))',
         color: current === m ? 'var(--gbd-cta-fg, #fff)' : 'var(--gbd-text, var(--gbd-ink))',
       }}
     >{label}</button>
@@ -126,8 +136,8 @@ export default function DealUseChooser({ plan, value, onChange }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 30 }}>
         <span style={{ flex: 1, fontSize: 12, color: 'var(--gbd-sub)', letterSpacing: '-.01em' }}>
           {all
-            ? <>딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>으로 전부 결제</>
-            : <>딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>{' · '}카드 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(card)}원</b></>}
+            ? <>딜 <b style={{ color: 'var(--gbd-ink)' }}><RollingNumber value={used} format={formatNumber} /></b>으로 전부 결제</>
+            : <>딜 <b style={{ color: 'var(--gbd-ink)' }}><RollingNumber value={used} format={formatNumber} /></b>{' · '}카드 <b style={{ color: 'var(--gbd-ink)' }}><RollingNumber value={card} format={formatNumber} />원</b></>}
         </span>
         <button
           type="button"
@@ -145,7 +155,13 @@ export default function DealUseChooser({ plan, value, onChange }: {
           <p style={{ fontSize: 12, color: 'var(--gbd-sub)', margin: '0 0 8px' }}>
             보유 딜 {formatNumber(plan.balance)}딜{canAll ? ', 전부 딜로 낼 수 있어요' : `, 이 결제엔 최대 ${formatNumber(max)}딜까지`}
           </p>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div ref={rowRef} style={{ display: 'flex', gap: 6, position: 'relative' }}>
+            {pill && (
+              <span aria-hidden="true" className="motion-reduce:transition-none" style={{
+                position: 'absolute', top: 0, left: 0, height: 36, width: pill.w, borderRadius: 10, background: 'var(--gbd-cta-bg)',
+                transform: `translateX(${pill.x}px)`, transition: 'transform .3s cubic-bezier(.2,.9,.3,1), width .3s cubic-bezier(.2,.9,.3,1)',
+              }} />
+            )}
             {canAll ? btn('all', '전부 딜로') : btn('max', '최대로 쓰기')}
             {btn('part', '직접 입력')}
             {btn('none', '안 쓰기')}

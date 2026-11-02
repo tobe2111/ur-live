@@ -14,6 +14,9 @@ import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { feedPayload, sendKakaoShare } from '@/lib/kakao-share'
 import { X } from 'lucide-react'
 import type { Voucher } from './types'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-gift', `@keyframes ur-draw { from { stroke-dashoffset: 120; } to { stroke-dashoffset: 0; } }.ur-gift-mark { animation: ur-popin .45s cubic-bezier(.3,1.3,.5,1) both; }.ur-gift-mark path { stroke-dasharray: 120; animation: ur-draw .45s ease-out .35s both; }.ur-gift-mark path + path { animation-delay: .7s; }@media (prefers-reduced-motion: reduce){.ur-gift-mark,.ur-gift-mark path{animation:none!important}}`)
+injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 type Pending = { token: string; url: string }
 
@@ -42,6 +45,8 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
   const [pending, setPending] = useState<Pending | null>(null)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  // 🎬 2026-11-02 시안 4차 "선물하기 완료": 방금 만든 링크일 때만 상자가 톡 나타나고 리본이 그려진다.
+  const [justCreated, setJustCreated] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -60,6 +65,7 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
       const r = await api.post('/api/group-buy/gifts', { code: voucher.code, message: message.trim() || undefined })
       setPending(r.data?.data ?? null)
       onPendingChange?.(!!r.data?.data)
+      if (r.data?.data) setJustCreated(true)
     } catch (e) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선물 링크를 만들지 못했어요')
     } finally {
@@ -67,8 +73,10 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
     }
   }
 
+  // 🎬 2026-11-02 시안 5차 "링크 복사됨": 위에 알림을 띄우는 대신 누른 버튼이 2초 동안 "복사했어요" 로 바뀐다.
+  const [copied, setCopied] = useState(false)
   const copy = async (url: string) => {
-    try { await navigator.clipboard.writeText(url); toast.success('선물 링크를 복사했어요') } catch { toast.error('복사하지 못했어요') }
+    try { await navigator.clipboard.writeText(url); setCopied(true); window.setTimeout(() => setCopied(false), 2000) } catch { toast.error('복사하지 못했어요') }
   }
 
   const share = (url: string) => {
@@ -123,6 +131,14 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
           <div className="mt-5 h-[52px] rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
         ) : pending ? (
           <>
+            {justCreated && (
+              <svg className="ur-gift-mark mx-auto mt-5 block w-16 h-16" viewBox="0 0 110 110" aria-hidden="true">
+                <rect x="18" y="42" width="74" height="56" rx="8" fill="var(--brand-tint)" stroke="var(--brand-text)" strokeWidth="3" />
+                <rect x="12" y="30" width="86" height="16" rx="5" fill="var(--brand-tint)" stroke="var(--brand-text)" strokeWidth="3" />
+                <path d="M55 30 V98" stroke="var(--brand)" fill="none" strokeWidth="6" strokeLinecap="round" />
+                <path d="M55 30 C40 12 26 22 38 30 M55 30 C70 12 84 22 72 30" stroke="var(--brand)" fill="none" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
             <p className="mt-5 text-[13px] font-medium text-gray-900 dark:text-white">선물 링크가 준비됐어요. 친구에게 보내 주세요</p>
             <button type="button" onClick={() => share(pending.url)}
               className="mt-3 w-full py-4 rounded-2xl bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform">
@@ -130,8 +146,9 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
             </button>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button type="button" onClick={() => copy(pending.url)}
-                className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-medium">
-                링크 복사
+                aria-live="polite"
+                className={`py-3 rounded-xl border text-[13px] font-medium transition-colors ${copied ? 'border-transparent bg-brand-tint text-brand-text' : 'border-rule-strong text-gray-900 dark:text-white'}`}>
+                {copied ? <span key="ok" className="ur-popin inline-block">복사했어요</span> : '링크 복사'}
               </button>
               <button type="button" onClick={() => revoke(pending.token)} disabled={busy}
                 className="py-3 rounded-xl border border-rule-strong text-gray-500 dark:text-gray-400 text-[13px] font-medium disabled:opacity-50">

@@ -9,6 +9,8 @@
  *   영구성: 새 코드는 window.confirm 대신 이 함수만 쓰면 자동으로 통일 디자인.
  */
 import { useEffect, useRef, useState } from 'react'
+// 🎬 2026-11-02 시안 9차 "확인 창"(대표 "다 해주고") — 뒤가 어두워지며 창이 폰에선 아래에서 올라오고 PC 에선 서서히 뜬다.
+//   ⚖️ 새 CSS 없이 공용 등장(`.ur-sheet-veil`·`.ur-dialog-in`, index.css — 동작 줄이기 처리 포함)을 쓴다. 이 창은 모든 화면이 싣는 셸에 있다.
 
 export interface ConfirmOptions {
   title?: string
@@ -104,6 +106,7 @@ export function ConfirmHost() {
       role="presentation"
     >
       <div
+        key={queue.length}
         className="ur-glass ur-dialog-in w-full max-w-[320px] ur-pop-card overflow-hidden text-center"
         onClick={(e) => e.stopPropagation()}
         role="dialog"

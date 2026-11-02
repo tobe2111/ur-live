@@ -16,6 +16,10 @@ import { getUserIdSync } from '@/utils/auth'
 import { loginPathFromHere } from '@/utils/login-return'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { safeDate } from '@/utils/safe-date'
+// 🎬 2026-11-02 시안 7차 "선물 받기"(대표 "7차도 다 해주고") — 선물 카드가 살짝 기운 채 아래에서 쏙 올라와 바로 서고, 메시지가 뒤따라 들어온다.
+//   시안의 '상자 뚜껑'은 그리지 않았다: 이 화면의 주인공은 유달이라(새 몸짓 금지) 상자를 더하면 그림이 둘이 된다.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-giftin', `@keyframes ur-gift-up { from { opacity: 0; transform: translateY(28px) rotate(-3deg) scale(.94); } to { opacity: 1; transform: none; } }.ur-gift-up { animation: ur-gift-up .5s cubic-bezier(.2,1,.3,1) .15s backwards; }.ur-gift-msg { animation: ur-gift-up .45s cubic-bezier(.2,1,.3,1) .4s backwards; }@media (prefers-reduced-motion: reduce){.ur-gift-up,.ur-gift-msg{animation:none!important}}`)
 
 type GiftView = {
   state: 'pending' | 'accepted' | 'cancelled' | 'unavailable'
@@ -82,7 +86,7 @@ export default function VoucherGiftReceivePage() {
         </h1>
 
         {gift && (
-          <div className="mt-6 rounded-2xl p-4 flex gap-3">
+          <div className="ur-gift-up mt-6 rounded-2xl p-4 flex gap-3">
             <div className="w-[72px] h-[72px] shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
               {gift.product_image && (
                 <img src={cfImage(gift.product_image, { width: 200, quality: 82, format: 'auto' }) || gift.product_image} alt=""
@@ -98,7 +102,7 @@ export default function VoucherGiftReceivePage() {
         )}
 
         {gift?.message && !dead && (
-          <p className="mt-4 rounded-2xl bg-surface px-4 py-3 text-[15px] text-gray-900 dark:text-white whitespace-pre-wrap">“{gift.message}”</p>
+          <p className="ur-gift-msg mt-4 rounded-2xl bg-surface px-4 py-3 text-[15px] text-gray-900 dark:text-white whitespace-pre-wrap">“{gift.message}”</p>
         )}
 
         {dead ? (

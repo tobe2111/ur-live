@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { slideCatUnderline } from './cat-underline'
 import { HOME_H1, CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { useCurrentDong } from '@/hooks/useCurrentDong'
 import { Link, useNavigate } from 'react-router-dom'
@@ -8,6 +9,7 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import CompanyInfoFooter from '@/components/main/CompanyInfoFooter'
 import SellOnUrdealRow from './SellOnUrdealRow'
 import MapPill from './MapPill'
+import BackToTop from './BackToTop' // 🎬 2026-11-02 시안 6차 맨 위로 버튼
 import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
@@ -21,6 +23,9 @@ import { ShortsIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
 import { regionHeroFor, REGION_HERO_FADE_LIGHT, REGION_HERO_FADE_DARK } from '@/shared/home-region-hero'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 13차 ① — 사진 머리를 지나 나타나는 고정 막대가 툭 생기지 않고 위에서 스르르 내려온다(고정 위치라 아래 내용은 안 밀린다).
+injectMotionCss('ur-m-cbar', `@keyframes ur-cbar-in { from { transform: translateY(-100%); } }.ur-cbar-in { animation: ur-cbar-in .26s cubic-bezier(.2,.9,.3,1); }@media (prefers-reduced-motion: reduce){.ur-cbar-in{animation:none!important}}`)
 
 /**
  * 📱 모바일 메인 (2026-08-19 대표 확정 — 그루폰 모바일 홈 시안).
@@ -118,7 +123,13 @@ export default function MobileHomePage() {
     return () => io.disconnect()
   }, [hero?.slug]) // eslint-disable-line react-hooks/exhaustive-deps
   const handleLocate = (loc: { lat: number; lng: number }) => { setUserLoc(loc); setRegion({}); setSort('near') }
-  const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)) }
+  // 🎬 2026-11-02 시안 7차 "동네 바꾸기" — 동네를 고르면 아래 목록이 한 번 살짝 올라오며 바뀐 걸 알린다(Web Animations · 동작 줄이기면 안 함).
+  const feedRef = useRef<HTMLElement | null>(null)
+  const nudgeFeed = () => {
+    try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { /* 미지원 */ }
+    feedRef.current?.animate?.([{ opacity: 0.4, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 350, easing: 'cubic-bezier(.2,1,.3,1)' })
+  }
+  const handleRegion = (r: HomeRegion) => { setRegion(r); setUserLoc(null); setSort((s) => (s === 'near' ? 'popular' : s)); nudgeFeed() }
 
   /** 🌤️ 로고 줄·카테고리 줄 — 사진 머리 안과 스크롤 뒤 고정 막대 **두 곳**이 같은 요소를 쓴다(갈리지 않게). */
   const logoRow = (
@@ -166,7 +177,7 @@ export default function MobileHomePage() {
             return (
               <button
                 key={key}
-                onClick={() => setCategory(key)}
+                onClick={(e) => { if (!on) { slideCatUnderline(e.currentTarget); nudgeFeed() } setCategory(key) }}
                 aria-pressed={on}
                 className={`shrink-0 pb-2 text-[15px] transition-colors border-b-2 ${
                   on
@@ -255,7 +266,7 @@ export default function MobileHomePage() {
           지나가면 로고 줄 + 카테고리 줄 두 줄만 단색 바탕으로 위에 고정한다(사진이 화면을 계속 차지하지 않게).
           사진 없는 지역은 종전처럼 머리 전체가 sticky 라 이 막대가 안 뜬다. */}
       {hero && heroPassed && (
-        <div data-home-compact-bar className="fixed inset-x-0 top-0 z-30 bg-surface shadow-lift">
+        <div data-home-compact-bar className="fixed inset-x-0 top-0 z-30 bg-surface shadow-lift ur-cbar-in">
           {logoRow}
           <div className="pt-1">{catRow}</div>
         </div>
@@ -278,7 +289,7 @@ export default function MobileHomePage() {
         </div>
       )}
 
-      <section className="mt-4">
+      <section ref={feedRef} className="mt-4">
         {/* 🗺️ 지도로 가는 길은 화면 아래 **지도 알약**(`MapPill`)이 갖는다.
             2026-08-30 배너 → 08-31 위치 옆 [목록|지도] 전환 → 10-14 (대표 확정 다안·A) 떠 있는 알약.
             ⚠️ 하단 탭에 지도가 없으므로 그 알약이 **유일한 통로**다 — 지우지 말 것.
@@ -307,6 +318,7 @@ export default function MobileHomePage() {
           피드 맨 끝·판매 진입점 다음이 자리다(NOL 과 같은 자리). 값 SSOT `shared/company-info.ts`. */}
       <CompanyInfoFooter className="mt-6" />
       <MapPill />
+      <BackToTop />
       {bell.sheet}
     </div>
   )

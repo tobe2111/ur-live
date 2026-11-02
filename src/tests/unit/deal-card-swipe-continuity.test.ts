@@ -29,7 +29,7 @@ describe('① 빈 칸 없는 넘김', () => {
     // 🩸 2026-09-06: 어둡게만 하는 건 신호가 아니다(대표 "이전 사진과 똑같이 나온다").
     //   받는 중인 것을 **흐림**으로 알린다 — 밝은 사진에서도 0ms 에 읽힌다.
     expect(MEDIA, '받는 중 표시(블러)가 사라졌다 — 직전 사진이 선명해 안 넘어간 것으로 보인다')
-      .toMatch(/filter: i === painted && waiting \? 'blur\(10px\)' : 'blur\(0px\)'/)
+      .toMatch(/filter: i === painted (?:&& waiting \? 'blur\(10px\)' : 'blur\(0px\)'|\? \(waiting \? 'blur\(10px\)' : 'blur\(0px\)'\))/) // 2026-11-02 8차: 안 그린 장면도 흐리게(첫 도착이 흐림→선명) — 받는 중 블러는 그대로
     expect(MEDIA, 'waiting 판정이 사라졌다').toMatch(/const waiting = painted !== shown/)
   })
   it('onLoad 가 loaded 집합을 채우고, 직전 장면은 로드 완료 뒤에만 painted 가 바뀐다', () => {

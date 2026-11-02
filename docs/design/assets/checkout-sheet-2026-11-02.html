@@ -1,0 +1,250 @@
+<title>이용권 결제창 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* 레이아웃: 현재 결제창 + 개선안 둘(A 정돈형 · B 티켓형)을 폰 화면으로 나란히. 각 화면에서 직접 열고 수량·딜을 바꿔 본다. */
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --surface: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --sale: #DC2626;
+  --photo: linear-gradient(135deg,#F2D9C9,#C9D8F2); --scrim: rgba(22,24,28,.45);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --surface: #1D1F29; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D; --sale: #FF5C69;
+  --photo: linear-gradient(135deg,#4A3729,#2B3A57); --scrim: rgba(0,0,0,.6);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 32px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px 20px; }
+.card { min-width: 0; display: grid; gap: 12px; align-content: start; }
+.head h3 { font-size: 17px; font-weight: 700; margin: 0; }
+.head .rec { font-size: 12px; font-weight: 700; color: #fff; background: var(--brand); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+.desc { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0; }
+.desc b { color: var(--page-fg); }
+.scr { position: relative; height: 640px; max-width: 390px; width: 100%; border-radius: 26px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 뒤 상세 화면 */
+.page .hero { height: 260px; background: var(--photo); }
+.page .body { padding: 16px; }
+.page .store { font-size: 13px; color: var(--ink-soft); }
+.page .name { font-size: 20px; font-weight: 700; margin: 4px 0 10px; letter-spacing: -.01em; }
+.page .price { display: flex; align-items: baseline; gap: 8px; }
+.page .price .pct { color: var(--sale); font-weight: 700; font-size: 17px; }
+.page .price b { font-size: 24px; font-weight: 800; }
+.page .line { height: 12px; border-radius: 6px; background: var(--sub); margin-top: 14px; }
+.buybar { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 16px 18px; background: var(--surface); border-top: 1px solid var(--rule); display: flex; align-items: center; gap: 12px; }
+.buybar .p { flex: 1; } .buybar .p small { display: block; font-size: 12px; color: var(--ink-faint); text-decoration: line-through; } .buybar .p b { font-size: 17px; }
+.cta { border: 0; height: 48px; border-radius: 12px; padding: 0 22px; background: var(--brand); color: #fff; font: 700 15px var(--font); cursor: pointer; }
+
+/* 시트 공통 */
+.veil { position: absolute; inset: 0; background: var(--scrim); opacity: 0; pointer-events: none; transition: opacity .25s ease-out; z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--bg); border-radius: 22px 22px 0 0; padding: 10px 16px 18px; transform: translateY(105%); }
+.scr.open .veil { opacity: 1; pointer-events: auto; }
+.grab { width: 36px; height: 4px; border-radius: 2px; background: var(--rule-strong); margin: 0 auto 14px; }
+
+/* 현재: 움직임 없음 */
+.cur .sheet { transition: none; }
+.cur.open .sheet { transform: none; }
+.cur .veil { transition: none; }
+.fc { border-radius: 14px; background: var(--sub); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; }
+.fc small { display: block; font-size: 12px; color: var(--ink-faint); }
+.step { display: flex; align-items: center; gap: 4px; }
+.step button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--rule-strong); background: transparent; color: var(--ink); font-size: 17px; cursor: pointer; }
+.step span { min-width: 32px; text-align: center; font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.dealbox { margin-top: 12px; border-radius: 14px; background: var(--sub); padding: 12px 14px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+.tot { margin-top: 16px; display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px; }
+.tot span { font-size: 15px; color: var(--ink-soft); } .tot b { font-size: 24px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.trust { margin: 12px 0 8px; text-align: center; font-size: 12px; color: var(--ink-faint); }
+.pay { width: 100%; height: 52px; border: 0; border-radius: 12px; background: var(--brand); color: #fff; font: 700 17px var(--font); cursor: pointer; }
+
+/* 개선안 공통 움직임 */
+.anim .sheet { transition: transform .38s cubic-bezier(.2,1,.3,1); }
+.anim.open .sheet { transform: none; }
+.anim.closing .sheet { transition-duration: .22s; transition-timing-function: cubic-bezier(.4,0,1,1); }
+.anim .row { opacity: 0; transform: translateY(10px); transition: opacity .25s, transform .35s cubic-bezier(.2,1,.3,1); }
+.anim.open .row { opacity: 1; transform: none; transition-delay: calc(80ms + var(--i) * 45ms); }
+
+/* 안 A 정돈형 */
+.prod { display: flex; gap: 12px; align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+.prod i { width: 52px; height: 52px; border-radius: 12px; background: var(--photo); flex: none; }
+.prod div { min-width: 0; } .prod small { display: block; font-size: 13px; color: var(--ink-soft); } .prod b { display: block; font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rowline { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--rule); font-size: 15px; }
+.rowline .lab small { display: block; font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+.toggle { width: 46px; height: 28px; border-radius: 14px; background: var(--rule-strong); border: 0; position: relative; cursor: pointer; transition: background .2s; flex: none; }
+.toggle i { position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .3s cubic-bezier(.3,1.3,.5,1); }
+.toggle.on { background: var(--brand); } .toggle.on i { transform: translateX(18px); }
+.sum { padding: 14px 0 4px; display: grid; gap: 8px; }
+.sum .r { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.sum .r.save span:last-child { color: var(--sale); font-weight: 500; }
+.sum .r.deal { overflow: hidden; max-height: 0; opacity: 0; transition: max-height .3s cubic-bezier(.2,1,.3,1), opacity .2s; }
+.sum .r.deal.on { max-height: 24px; opacity: 1; }
+.sum .r.deal span:last-child { color: var(--brand-text); font-weight: 500; }
+.big { display: flex; justify-content: space-between; align-items: baseline; padding-top: 8px; }
+.big span { font-size: 15px; font-weight: 500; } .big b { font-size: 28px; font-weight: 800; letter-spacing: -.02em; }
+.savechip { display: inline-block; margin-left: 6px; font-size: 12px; font-weight: 500; color: var(--sale); background: color-mix(in srgb, var(--sale) 10%, transparent); padding: 2px 8px; border-radius: 999px; vertical-align: 3px; }
+.savechip.pop { animation: chipPop .4s cubic-bezier(.3,1.3,.5,1); }
+@keyframes chipPop { 0% { transform: scale(.7); } 60% { transform: scale(1.15); } 100% { transform: none; } }
+.payA { margin-top: 14px; width: 100%; height: 54px; border: 0; border-radius: 14px; background: var(--brand); color: #fff; font: 700 17px var(--font); cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; transition: transform .12s; }
+.payA:active { transform: scale(.98); }
+.trustA { margin-top: 10px; display: flex; justify-content: center; gap: 14px; font-size: 12px; color: var(--ink-faint); }
+.trustA span { display: inline-flex; align-items: center; gap: 4px; }
+.trustA svg { width: 13px; height: 13px; }
+
+/* 굴림 숫자 */
+.roll { display: inline-block; height: 1.25em; overflow: hidden; position: relative; vertical-align: bottom; font-variant-numeric: tabular-nums; }
+.roll > span { display: block; line-height: 1.25em; }
+.roll .out { position: absolute; left: 0; top: 0; animation: outUp .28s cubic-bezier(.65,0,.35,1) both; }
+.roll .in { animation: inUp .28s cubic-bezier(.65,0,.35,1) both; }
+.roll.down .out { animation-name: outDown; } .roll.down .in { animation-name: inDown; }
+@keyframes outUp { to { transform: translateY(-100%); opacity: 0; } } @keyframes inUp { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes outDown { to { transform: translateY(100%); opacity: 0; } } @keyframes inDown { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 안 B 티켓형 */
+.ticket { border-radius: 16px; overflow: hidden; background: var(--surface); box-shadow: 0 0 0 1px var(--rule); }
+.scr[data-mode="dark"] .ticket { box-shadow: none; }
+.band { background: var(--brand); color: #fff; padding: 14px 16px; display: flex; gap: 12px; align-items: center; }
+.band i { width: 44px; height: 44px; border-radius: 10px; background: var(--photo); flex: none; box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
+.band small { display: block; font-size: 12px; opacity: .8; } .band b { display: block; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notch { position: relative; height: 0; border-top: 1.5px dashed var(--rule-strong); margin: 0 14px; }
+.notch::before, .notch::after { content: ""; position: absolute; top: -9px; width: 18px; height: 18px; border-radius: 50%; background: var(--bg); }
+.notch::before { left: -23px; } .notch::after { right: -23px; }
+.tb { padding: 6px 16px 14px; }
+.tb .rowline:last-child { border-bottom: 0; }
+.tfoot { padding: 14px 16px; background: var(--sub); display: flex; justify-content: space-between; align-items: baseline; }
+.tfoot span { font-size: 13px; color: var(--ink-soft); } .tfoot b { font-size: 28px; font-weight: 800; letter-spacing: -.02em; }
+.stamp { display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 500; color: var(--sale); }
+
+.opener { position: absolute; left: 50%; bottom: 76px; transform: translateX(-50%); font-size: 12px; color: var(--ink-faint); pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) { .scr *, .scr { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <h1>이용권 결제창 시안</h1>
+  <p class="lede">이용권 상세에서 "구매하기"를 누르면 아래에서 올라오는 창입니다. 지금 창은 <b>무엇을 사는지가 안 보이고</b>, 할인으로 얼마 아끼는지도 안 보이며, 창이 툭 나타납니다. 왼쪽이 지금 모습, 가운데와 오른쪽이 개선안입니다. 각 화면의 "구매하기"를 눌러 열고, 수량과 딜 사용을 바꿔 보세요. 가게 이름과 숫자는 예시입니다.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all" type="button">세 화면 같이 열기</button>
+    <button class="ctl" id="mode" type="button">다크 모드로</button>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="head"><h3>지금</h3></div>
+      <div class="scr cur" data-kind="cur"></div>
+      <p class="desc">수량 칸 · 딜 칸 · 총액 · 결제 버튼만 있습니다. 어떤 이용권인지, 정가에서 얼마 빠졌는지가 없어 결제 직전에 다시 확인할 단서가 없습니다. 창은 움직임 없이 바로 나타납니다.</p></div>
+
+    <div class="card"><div class="head"><h3>안 A · 정돈형<span class="rec">추천</span></h3></div>
+      <div class="scr anim" data-kind="a"></div>
+      <p class="desc"><b>맨 위에 사는 것</b>(사진·매장·이름) 한 줄, 그 아래 수량과 딜 사용을 같은 줄 모양으로. 금액은 <b>상품 금액 → 할인 → 딜 사용 → 총 결제</b> 순으로 내려와 영수증처럼 읽힙니다. 아낀 금액은 빨간 칩으로, 결제 버튼엔 총액이 같이 들어갑니다.<br>움직임: 창이 탄력 있게 올라오고 줄이 차례로 들어옵니다 · 수량을 바꾸면 총액이 굴러 바뀌고 아낀 금액 칩이 톡 · 딜을 켜면 "딜 사용" 줄이 펼쳐지며 총액이 내려갑니다.</p></div>
+
+    <div class="card"><div class="head"><h3>안 B · 티켓형</h3></div>
+      <div class="scr anim" data-kind="b"></div>
+      <p class="desc">디자인 시스템의 <b>티켓 은유</b>(파란 밴드 + 본문, 결제 완료 화면과 같은 언어)를 결제창에도 씁니다. 사기 전과 산 뒤가 같은 모양이라 "이게 그 티켓이 된다"가 이어집니다. 총액은 티켓 아래칸에 크게.<br>움직임은 안 A 와 같고, 티켓이 살짝 아래에서 올라와 자리 잡습니다.</p></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var fmt = function (n) { return Math.round(n).toLocaleString('ko-KR'); };
+  var UNIT = 39000, LIST = 45000, DEAL = 1200;
+  function roll(box, val, down) {
+    if (!box) return; var cur = box.querySelector('span:last-child'); if (cur.textContent === String(val)) return;
+    box.querySelectorAll('.out').forEach(function (o) { o.remove(); });
+    box.classList.toggle('down', !!down);
+    if (reduce) { cur.textContent = val; return; }
+    cur.className = 'out'; var nx = document.createElement('span'); nx.className = 'in'; nx.textContent = val; box.appendChild(nx);
+    setTimeout(function () { cur.remove(); }, 300);
+  }
+  var PAGE = '<div class="page"><div class="hero"></div><div class="body"><div class="store">을지로 소담 · 서울 중구</div><div class="name">한우 오마카세 런치 2인</div><div class="price"><span class="pct">13%</span><b>39,000원</b></div><div class="line"></div><div class="line" style="width:70%"></div><div class="line" style="width:50%"></div></div></div>' +
+    '<div class="buybar"><div class="p"><small>45,000원</small><b>39,000원</b></div><button class="cta open-btn" type="button">구매하기</button></div><div class="veil"></div>';
+  var CUR = '<div class="sheet"><div class="grab"></div>' +
+    '<div class="fc"><div>수량<small>1인당 최대 4개</small></div><div class="step"><button class="minus" type="button" aria-label="수량 감소">−</button><span class="q">1장</span><button class="plus" type="button" aria-label="수량 증가">+</button></div></div>' +
+    '<div class="dealbox"><span>딜 1,200 쓰기</span><button class="toggle" type="button" aria-label="딜 사용"><i></i></button></div>' +
+    '<div class="tot"><span>총 결제 금액</span><b class="total">39,000원</b></div>' +
+    '<p class="trust">토스로 3초 안전결제 · 미사용 시 100% 자동환불</p><button class="pay" type="button"><span class="paytxt">39,000원 결제하기</span></button></div>';
+  var SHIELD = '<svg class="ico" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>';
+  var BACK = '<svg class="ico" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4"/></svg>';
+  var ROWS_COMMON = function (i0) {
+    return '<div class="rowline row" style="--i:' + i0 + '"><div class="lab">수량<small>1인당 최대 4개</small></div><div class="step"><button class="minus" type="button" aria-label="수량 감소">−</button><span><span class="roll qr"><span>1</span></span>장</span><button class="plus" type="button" aria-label="수량 증가">+</button></div></div>' +
+      '<div class="rowline row" style="--i:' + (i0 + 1) + '"><div class="lab">딜 쓰기<small>보유 1,200딜</small></div><button class="toggle" type="button" aria-label="딜 사용"><i></i></button></div>';
+  };
+  var SUM = function (i0) {
+    return '<div class="sum row" style="--i:' + i0 + '"><div class="r"><span>상품 금액</span><span class="listsum">45,000원</span></div><div class="r save"><span>할인</span><span class="savesum">−6,000원</span></div><div class="r deal"><span>딜 사용</span><span>−1,200딜</span></div></div>';
+  };
+  var A = '<div class="sheet"><div class="grab"></div>' +
+    '<div class="prod row" style="--i:0"><i></i><div><small>을지로 소담</small><b>한우 오마카세 런치 2인</b></div></div>' +
+    ROWS_COMMON(1) + SUM(3) +
+    '<div class="big row" style="--i:4"><span>총 결제 <span class="savechip">6,000원 아껴요</span></span><b><span class="roll tr"><span>39,000</span></span>원</b></div>' +
+    '<button class="payA row" type="button" style="--i:5"><span class="roll pr"><span>39,000</span></span>원 결제하기</button>' +
+    '<div class="trustA row" style="--i:6"><span>' + SHIELD + '토스 안전결제</span><span>' + BACK + '안 쓰면 자동 환불</span></div></div>';
+  var B = '<div class="sheet"><div class="grab"></div>' +
+    '<div class="ticket row" style="--i:0"><div class="band"><i></i><div><small>을지로 소담 · 이용권</small><b>한우 오마카세 런치 2인</b></div></div>' +
+    '<div class="tb">' + ROWS_COMMON(1) + SUM(3) + '</div><div class="notch"></div>' +
+    '<div class="tfoot"><div><span>총 결제</span><br><span class="stamp savechip">6,000원 아껴요</span></div><b><span class="roll tr"><span>39,000</span></span>원</b></div></div>' +
+    '<button class="payA row" type="button" style="--i:5"><span class="roll pr"><span>39,000</span></span>원 결제하기</button>' +
+    '<div class="trustA row" style="--i:6"><span>' + SHIELD + '토스 안전결제</span><span>' + BACK + '안 쓰면 자동 환불</span></div></div>';
+
+  function setup(s) {
+    var kind = s.dataset.kind;
+    s.innerHTML = PAGE + (kind === 'cur' ? CUR : kind === 'a' ? A : B) + '<span class="opener">구매하기를 눌러 보세요</span>';
+    var st = { q: 1, deal: false };
+    function update(prevTotal) {
+      var list = LIST * st.q, total = UNIT * st.q - (st.deal ? DEAL : 0), save = (LIST - UNIT) * st.q;
+      if (kind === 'cur') {
+        s.querySelector('.q').textContent = st.q + '장';
+        s.querySelector('.total').textContent = fmt(total) + '원';
+        s.querySelector('.paytxt').textContent = fmt(total) + '원 결제하기';
+        return;
+      }
+      var down = prevTotal != null && total < prevTotal;
+      roll(s.querySelector('.qr'), String(st.q), prevTotal != null && st.q < s._lastQ);
+      roll(s.querySelector('.tr'), fmt(total), down); roll(s.querySelector('.pr'), fmt(total), down);
+      s.querySelector('.listsum').textContent = fmt(list) + '원';
+      s.querySelector('.savesum').textContent = '−' + fmt(save) + '원';
+      s.querySelectorAll('.savechip').forEach(function (c) { c.textContent = fmt(save) + '원 아껴요'; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); });
+      s.querySelector('.r.deal').classList.toggle('on', st.deal);
+      s._lastQ = st.q;
+    }
+    function total() { return UNIT * st.q - (st.deal ? DEAL : 0); }
+    s.querySelector('.plus').addEventListener('click', function () { if (st.q >= 4) return; var t = total(); st.q++; update(t); });
+    s.querySelector('.minus').addEventListener('click', function () { if (st.q <= 1) return; var t = total(); st.q--; update(t); });
+    var tg = s.querySelector('.toggle'); tg.addEventListener('click', function () { var t = total(); st.deal = !st.deal; tg.classList.toggle('on', st.deal); update(t); });
+    s._lastQ = 1;
+    function open() { s.classList.remove('closing'); s.classList.add('open'); }
+    function close() { if (kind === 'cur') { s.classList.remove('open'); return; } s.classList.add('closing'); s.classList.remove('open'); setTimeout(function () { s.classList.remove('closing'); }, 240); }
+    s.querySelector('.open-btn').addEventListener('click', open);
+    s.querySelector('.veil').addEventListener('click', close);
+    s._open = open; s._close = close;
+  }
+  var screens = Array.prototype.slice.call(document.querySelectorAll('.scr'));
+  screens.forEach(setup);
+  document.getElementById('all').addEventListener('click', function () {
+    screens.forEach(function (s) { s._close(); });
+    setTimeout(function () { screens.forEach(function (s) { s._open(); }); }, reduce ? 0 : 300);
+  });
+  var mb = document.getElementById('mode');
+  function setMode(m) { screens.forEach(function (s) { s.dataset.mode = m; }); mb.textContent = m === 'dark' ? '라이트 모드로' : '다크 모드로'; }
+  mb.addEventListener('click', function () { setMode(screens[0].dataset.mode === 'dark' ? 'light' : 'dark'); });
+  var r = document.documentElement;
+  setMode(r.dataset.theme === 'dark' || (!r.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { setTimeout(function () { e.target._open(); }, reduce ? 0 : 500); io.unobserve(e.target); } }); }, { threshold: .6 });
+    screens.forEach(function (s) { io.observe(s); });
+  }
+})();
+</script>

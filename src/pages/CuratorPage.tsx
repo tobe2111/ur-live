@@ -23,6 +23,7 @@ import { KAKAO_SHARE_FALLBACK_IMAGE, shareViaKakao, ushopCardPayload } from '@/l
 import { useAuthStore } from '@/client/stores/auth.store'
 // 🎫 2026-09-28 (대표 확정 s3 밀도형): 2열 격자 → 줄. 줄 카드는 `components/deal/DealRow` SSOT 를 쓴다.
 import PinRow from './curator-page/PinRow'
+import { useRevealRows } from './curator-page/use-reveal-rows'
 import { SortMenu } from '@/components/ui/sort-menu'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { Search, X } from 'lucide-react'
@@ -202,6 +203,7 @@ export default function CuratorPage() {
   //   정렬·필터로 화면 순서가 바뀌어도 이 숫자는 안 움직인다. SNS 의 "3번 이용권" 이 가리키는 것이
   //   화면마다 달라지면 소개비가 엉뚱한 상품으로 샌다.
   const orderOf = useMemo(() => new Map(homePins.map((p, i) => [p.id, i])), [homePins])
+  const rowsRef = useRevealRows<HTMLDivElement>(`${cat}|${sort}|${query}|${data?.pins?.length ?? 0}`)
   const prefetchGb = usePrefetchGroupBuyProduct()
   const prefetchPin = (productId: number) => { try { prefetchGb(String(productId)) } catch { /* prefetch 실패는 무해 */ } }
 
@@ -229,7 +231,7 @@ export default function CuratorPage() {
   //   ⇒ 카카오 SDK 로 **우리가 카드를 지정**한다(선물 카드가 멀쩡했던 이유 — `lib/kakao-share.ts`).
   //   무엇을 실을지는 순수 SSOT `shared/ushop-share-card.ts` 가 정한다(워커 og:image 와 같은 규칙).
   //   폴백 계단은 그대로 둔다: 카카오 실패 → 네이티브 시트 → 클립보드 복사(한국 밖·PC 포함).
-  async function shareShop() {
+  async function shareShop(): Promise<boolean> {
     const origin = window.location.origin
     const fullUrl = `${origin}/u/${handle}`
     try {
@@ -242,17 +244,18 @@ export default function CuratorPage() {
         origin,
         fallbackImage: KAKAO_SHARE_FALLBACK_IMAGE,
       })
-      if (await shareViaKakao(ushopCardPayload(card))) return
+      if (await shareViaKakao(ushopCardPayload(card))) return false
     } catch { /* SDK 미설정·차단 — 아래 네이티브 시트로 */ }
     const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> }
     if (typeof nav.share === 'function') {
-      try { await nav.share({ title: data?.curator?.name || '유어샵', url: fullUrl }); return }
+      try { await nav.share({ title: data?.curator?.name || '유어샵', url: fullUrl }); return false }
       catch { /* 사용자가 취소했거나 미지원 — 복사로 폴백 */ }
     }
     try {
       await navigator.clipboard.writeText(fullUrl)
       toast.success(t('curator.linkCopied', { defaultValue: '링크가 복사되었어요' }))
-    } catch { /* ignore */ }
+      return true // 🎬 2026-11-02 시안 6차 — 복사로 끝났으면 헤더의 공유 버튼이 잠깐 체크로 바뀐다
+    } catch { return false }
   }
 
   if (loading) {
@@ -441,7 +444,7 @@ export default function CuratorPage() {
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.tryOtherKeyword', { defaultValue: '다른 키워드로 찾아보세요.' })}</p>
                   </div>
                 ) : (
-                  <div className="max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows">
+                  <div ref={rowsRef} className="max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows">
                     {visiblePins.map((pin) => (
                       <PinRow
                         key={pin.id}

@@ -85,6 +85,15 @@ export default function UserProfilePage() {
   const hasProcessedToken = useRef(false)
   // 🛡️ 2026-05-24: 프로필 편집 모달 — /account/settings 에서 흡수.
   const [editOpen, setEditOpen] = useState(false)
+  // 🎬 하루 첫 방문인가 — 그날 처음 열 때만 구역이 차례로 올라온다(두 번째부터는 바로 보인다). 저장소가 막히면 움직이지 않는다.
+  const [introToday] = useState(() => {
+    try {
+      const today = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10) // 한국 날짜(UTC+9) — 자정 기준이 한국 자정이 되게
+      if (localStorage.getItem('ur_my_intro_day') === today) return false
+      localStorage.setItem('ur_my_intro_day', today)
+      return true
+    } catch { return false }
+  })
   const bell = useNotificationSheet()  // 🔔 벨 → 올라오는 시트. 배선은 `NotificationSheet` 머리말.
   /* 🧹 2026-10-11 — 여기 있던 `profileForm` + `/api/auth/me` 조회를 **시트 안으로** 옮겼다.
      A-2 시트는 전화번호 말고도 소개·주소·SNS 를 읽어야 해서 조회가 한 곳에 모여야 하고,
@@ -337,7 +346,8 @@ export default function UserProfilePage() {
         <MyStats voucher={counts.voucher} coupon={counts.coupon} />
       ) : null}
 
-      <div className={hasSeats ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}>
+      {/* 🎬 2026-11-02 시안 마이 "구역 차례 등장"(대표 "다 해주고") — 하루 첫 방문에만 구역이 위에서부터 차례로 올라온다(CSS 는 MyStats). */}
+      <div className={`${hasSeats ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}${introToday ? ' ur-my-intro' : ''}`}>
       <div className="ur-account-col min-w-0">
 
       {/* 🖥️ 판매는 **넓은 쪽**(1.25)에 산다 — 시안 `PcFull1` 과 같은 자리다.

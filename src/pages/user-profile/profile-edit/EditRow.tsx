@@ -20,13 +20,19 @@
  */
 import type { ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
+import { OkIcon } from '@/components/icons/urdeal-icons'
+
+// 🎬 2026-11-02 시안 6차 "입력 칸 확인"(대표 "다 넣어줘") — 칸이 틀린 값으로 바뀌는 순간(aria-invalid) 짧게 흔들리고
+//   테두리가 빨개지며, 그 아래 이유 줄이 내려온다. 맞게 고치면 원래 테두리로 돌아간다. 판정은 각 화면이 하던 그대로다.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-field', `@keyframes ur-field-shake { 0%,100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }@keyframes ur-note-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }.ur-row-input[aria-invalid="true"] { border-color: var(--tone-bad); animation: ur-field-shake .4s ease-out; }.ur-note-bad { animation: ur-note-in .2s ease-out both; }@keyframes ur-row-saved { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.2); } 100% { opacity: 1; transform: none; } }.ur-row-saved { animation: ur-row-saved .34s cubic-bezier(.3,1.4,.5,1) both; }@media (prefers-reduced-motion: reduce){.ur-row-input[aria-invalid="true"],.ur-note-bad,.ur-row-saved{animation:none!important}}`)
 
 /** 접힌 줄 — 안 C 목록 문법(48px 평면 + hairline). 🎫 CLAUDE.md 표면 규칙 ⑦. */
 const SHUT = 'w-full flex items-center gap-2 px-4 h-12 border-b border-rule text-left active:opacity-70'
 const KEY = 'text-[15px] font-medium text-gray-900 dark:text-white shrink-0'
 const VAL = 'ml-auto min-w-0 truncate text-[13px] text-gray-500 dark:text-gray-400'
 
-export function EditRow({ label, value, empty, required, open, onOpen, children }: {
+export function EditRow({ label, value, empty, required, open, saved, onOpen, children }: {
   label: string
   /** 접혔을 때 오른쪽에 보일 값. 비면 `empty` 가 대신 뜬다. */
   value?: string | null
@@ -35,6 +41,8 @@ export function EditRow({ label, value, empty, required, open, onOpen, children 
   /** 없으면 **안 되는** 값인가(위 머리말) — 비었을 때 빨갛게 적는다. */
   required?: boolean
   open: boolean
+  /** 방금 저장해 닫힌 줄 — 값 옆에 체크가 잠깐 뜬다(13차 ⑧). */
+  saved?: boolean
   onOpen: () => void
   /** 펼쳤을 때의 입력·안내·버튼 */
   children: ReactNode
@@ -58,6 +66,7 @@ export function EditRow({ label, value, empty, required, open, onOpen, children 
       }>
         {shown || empty || '아직 없어요'}
       </span>
+      {saved && <OkIcon className="ur-row-saved w-4 h-4 shrink-0 text-brand-text" aria-label="저장했어요" />}
       <ChevronRight className="w-4 h-4 shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true" />
     </button>
   )
@@ -75,9 +84,14 @@ export function RowActions({ onSave, onCancel, saving, disabled, saveLabel = '�
     <div className="flex gap-2 mt-3">
       <button
         type="button" onClick={onSave} disabled={saving || disabled}
-        className="flex-1 h-10 rounded-lg bg-brand text-white text-[15px] font-bold disabled:opacity-40"
+        className={`flex-1 h-10 rounded-lg bg-brand text-white text-[15px] font-bold flex items-center justify-center ${saving ? '' : 'disabled:opacity-40'}`}
+        aria-busy={saving || undefined}
       >
-        {saving ? '저장 중…' : saveLabel}
+        {/* 🎬 2026-11-02 시안 4차 "버튼 처리 중": 처리 중엔 글자 대신 도는 표시(버튼은 흐려지지 않는다 — 눌린 게 보이게).
+            끝나면 줄이 닫히고 "저장했어요" 알림이 뜬다. 두 번 눌림은 disabled 가 막는다. */}
+        {saving
+          ? <span role="status" aria-label="저장 중" className="w-5 h-5 rounded-full border-2 border-white/40 animate-spin" style={{ borderTopColor: 'white' }} />
+          : saveLabel}
       </button>
       <button
         type="button" onClick={onCancel}
@@ -91,7 +105,7 @@ export function RowActions({ onSave, onCancel, saving, disabled, saveLabel = '�
 
 /** 펼친 줄의 입력칸 — 다섯 줄이 같은 치수를 쓰게. */
 export const ROW_INPUT =
-  'w-full h-11 px-3 rounded-lg border border-rule-strong bg-surface text-[15px] '
+  'ur-row-input w-full h-11 px-3 rounded-lg border border-rule-strong bg-surface text-[15px] '
   + 'text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none'
 
 /** 펼친 줄의 설명 한 줄. */
@@ -99,7 +113,7 @@ export function RowNote({ children, tone }: { children: ReactNode; tone?: 'ok' |
   const c = tone === 'ok' ? 'text-emerald-600 dark:text-emerald-400'
     : tone === 'bad' ? 'text-red-500'
       : 'text-gray-500 dark:text-gray-400'
-  return <p className={`mt-2 text-[12px] leading-relaxed ${c}`}>{children}</p>
+  return <p className={`mt-2 text-[12px] leading-relaxed ${c}${tone === 'bad' ? ' ur-note-bad' : ''}`}>{children}</p>
 }
 
 /** 묶음 라벨 — `내 정보` / `내 가게 주소`. 🎫 표면 규칙 ⑦ 의 그룹 라벨(12px 바닥). */

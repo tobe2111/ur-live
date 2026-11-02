@@ -28,7 +28,7 @@ import { execSync } from 'node:child_process'
 const run = (a: string) => execSync(`node scripts/codemods/consumer-plate-flat.mjs --dry ${a}`, { encoding: 'utf8' })
 
 /** 남겨 둔 그림자 실측(2026-11-02). 줄이는 건 자유, 늘리는 건 차단. */
-const KEPT_BASELINE = 69
+const KEPT_BASELINE = 70 // +1 (2026-11-02 모션 6차): 폰 홈의 맨 위로 버튼 `mobile-home/BackToTop.tsx` — fixed 로 떠 있는 면(규칙이 허용하는 자리)
 
 describe('🧾 소비자 화면 — 흐름 속 판은 평면 (2026-11-02 A안)', () => {
   it('① 자동으로 걷을 판이 남아 있지 않다 (코드모드와 한 벌)', () => {

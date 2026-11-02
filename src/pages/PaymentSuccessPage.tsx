@@ -15,6 +15,11 @@ import SellerConversionNudge from './payment-success/SellerConversionNudge'
 import MallOriginBanner from '@/components/mall/MallOriginBanner'
 import ContinueShoppingLink from '@/components/mall/ContinueShoppingLink'
 import Udal from '@/components/mascot/Udal'
+// 🎬 2026-11-02 [UNLOCK] 시안 6차 "결제 버튼 누른 뒤"의 나머지(대표 "허락해줄게 잠금 파일 부분도") — 결제 결과 화면 쪽.
+//   성공: 결과 카드가 아래에서 올라온다(유달이는 종전 그대로 — 새 몸짓 없음). 실패: 경고 표시가 한 번 짧게 흔들린다.
+//   ⚠️ 표시만 바꾼다. 결제 확정·금액 검증·TossPaymentObject 표시 로직은 byte-불변.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-payresult', `@keyframes ur-pr-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }@keyframes ur-pr-shake { 0%,100% { transform: none; } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }.ur-pr-rise { animation: ur-pr-rise .4s cubic-bezier(.2,1,.3,1) backwards; }.ur-pr-shake { animation: ur-pr-shake .45s ease-out .1s backwards; }@media (prefers-reduced-motion: reduce){.ur-pr-rise,.ur-pr-shake{animation:none!important}}`)
 
 export default function PaymentSuccessPage() {
   const { t } = useTranslation()
@@ -293,7 +298,7 @@ export default function PaymentSuccessPage() {
     return (
       <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
-          <AlertIcon className="h-20 w-20 text-red-500 mx-auto mb-6" />
+          <AlertIcon className="ur-pr-shake h-20 w-20 text-red-500 mx-auto mb-6" />
           <h1 className="text-[24px] font-bold text-[#1d1d1f] dark:text-white mb-4">{t('paymentSuccess.approveFailed')}</h1>
           <p className="text-[#6e6e73] dark:text-gray-400 mb-8">{error}</p>
           <div className="flex gap-3">
@@ -319,7 +324,7 @@ export default function PaymentSuccessPage() {
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center px-4 py-6">
       <SEO title={t('payment.successSeoTitle', { defaultValue: '결제 완료 - 유어딜' })} description={t('payment.successSeoDesc', { defaultValue: '주문이 성공적으로 완료되었습니다' })} url="/payment/success" noindex />
       <div className="max-w-2xl w-full">
-        <div className="bg-white dark:bg-[#1D1F29] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
+        <div className="ur-pr-rise bg-white dark:bg-[#1D1F29] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
           {/* 성공 표시 — 🦦 2026-10-07 (대표 허가 "결제 완료"): 초록 체크 원 → 웃는 유달이(둥실). 마크업만. */}
           <div className="text-center mb-5 sm:mb-6 lg:mb-8">
             <Udal mood="paid" size={96} motion priority className="mx-auto mb-3 sm:mb-4" />

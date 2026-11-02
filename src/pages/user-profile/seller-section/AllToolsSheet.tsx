@@ -26,6 +26,9 @@ import { useSellerNavModel } from '@/components/seller-layout/useSellerNavModel'
 import { canOpenInSheet, ownPathFor, type OwnPath } from './tool-pages'
 import Sheet from './Sheet'
 import SellerSupportContact from './SellerSupportContact'
+// 🎬 2026-11-02 시안 마이 "전체 도구 열기"(대표 "다 해주고") — 도구 묶음이 위에서부터 차례로 올라온다.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-tools', `@keyframes ur-tools-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }.ur-tools-in { animation: ur-tools-in .35s cubic-bezier(.2,1,.3,1) backwards; animation-delay: calc(80ms + var(--i, 0) * 60ms); }@media (prefers-reduced-motion: reduce){.ur-tools-in{animation:none!important}}`)
 
 export default function AllToolsSheet({ storeName, onPick, onClose }: {
   storeName: string
@@ -88,8 +91,8 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
       )}
 
       <div className="px-4 pb-4 space-y-4">
-        {groups.map(([group, items]) => (
-          <section key={group}>
+        {groups.map(([group, items], gi) => (
+          <section key={group} className="ur-tools-in" style={{ ['--i' as string]: gi }}>
             {group && <h3 className="px-1 mb-2 text-[12px] font-bold text-gray-400">{group}</h3>}
             <div className="overflow-hidden rounded-xl bg-surface shadow-lift">
               {items.map(({ path, label, icon: Icon }) => {

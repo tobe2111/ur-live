@@ -6,6 +6,9 @@ import { KOREA_REGIONS } from '@/shared/constants/korea-regions'
 import { toast } from '@/hooks/useToast'
 import { rememberLoc, markHomePick, readHomePick, readCachedLoc } from '@/shared/utils/cached-loc'
 import { homeLocationLabel } from './home-location-label'
+// 🎬 2026-11-02 시안 7차 "동네 바꾸기"(대표 "7차도 다 해주고") — 고른 동네 이름이 바뀔 때 아래에서 올라온다(처음 그릴 때는 안 움직인다).
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-loc', `@keyframes ur-loc-in { from { opacity: 0; transform: translateY(60%); } to { opacity: 1; transform: none; } }.ur-loc-in { display: inline-block; animation: ur-loc-in .3s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-loc-in{animation:none!important}}`)
 
 /**
  * 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): "현재 위치 어디인지 + 장소 설정 + 가까운 이용권 필터".
@@ -157,6 +160,7 @@ export default function PcHomeLocationBar({
   const [open, setOpen] = useState(false)
   const [locating, setLocating] = useState(false)
   // 피커에서 펼쳐볼 시/도(우측 세부지역 표시용) — 선택 지역 또는 첫 항목.
+  const firstLabel = useRef<string | null>(null) // 처음 보인 이름 — 그것과 다를 때만 움직인다
   const [activeSido, setActiveSido] = useState<string>(value.regionKey || KOREA_REGIONS[0]?.key || '')
   const boxRef = useRef<HTMLDivElement | null>(null)
 
@@ -236,7 +240,7 @@ export default function PcHomeLocationBar({
           aria-expanded={open}
         >
           {t.pin && <PinIcon className={t.pin} />}
-          <span className={t.label}>{homeLocationLabel({ located, dongLabel: locatedLabel, region: value })}</span>
+          {(() => { const lbl = homeLocationLabel({ located, dongLabel: locatedLabel, region: value }); const moved = firstLabel.current !== null && firstLabel.current !== lbl; if (firstLabel.current === null) firstLabel.current = lbl; return <span key={lbl} className={moved ? `${t.label} ur-loc-in` : t.label}>{lbl}</span> })()}
           <ChevronDown className={`${t.chevron} transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
         {/* 두 칸을 가르는 실선 — 한 알약 안에서 "지역 고르기"와 "현 위치"가 다른 일임을 말한다. */}

@@ -1,0 +1,331 @@
+<title>모션 12차 시안</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --star: #F5A524;
+  --photo1: linear-gradient(135deg,#F2D9C9,#C9D8F2); --photo2: linear-gradient(135deg,#D3E8D6,#E9DCC6); --photo3: linear-gradient(135deg,#E6D3EB,#D0DEF0);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --photo1: linear-gradient(135deg,#4A3729,#2B3A57); --photo2: linear-gradient(135deg,#2C4430,#4A3E2B); --photo3: linear-gradient(135deg,#40304A,#293A52);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-inline: 16px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.list { display: grid; gap: 40px; }
+.item { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+.item h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.item h3 .n { color: var(--brand); margin-right: 6px; }
+.item p { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0 0 8px; }
+.item p b { color: var(--page-fg); font-weight: 500; }
+.replay { margin-top: 4px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; cursor: pointer; }
+.scr { position: relative; height: 300px; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); font-size: 15px; }
+.pad { padding: 16px; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 공통 */
+.sec-t { font-size: 15px; font-weight: 700; margin: 0 0 10px; }
+.run .st { animation: rise .4s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 90ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+/* 1 사용 방법 */
+.how { display: flex; align-items: flex-start; gap: 6px; }
+.how .st { flex: 1; text-align: center; }
+.how .ic { width: 52px; height: 52px; margin: 0 auto 8px; border-radius: 50%; background: var(--sub); color: var(--ink-faint); display: grid; place-items: center; transition: background-color .3s, color .3s; }
+.how .ic svg { width: 26px; height: 26px; }
+.how .st.lit .ic { background: var(--brand-tint); color: var(--brand-text); }
+.how b { display: block; font-size: 13px; } .how small { font-size: 12px; color: var(--ink-soft); }
+.how .ar { color: var(--ink-faint); margin-top: 18px; font-size: 17px; opacity: 0; }
+.run .how .ar { animation: fade .3s ease forwards; animation-delay: calc(var(--i) * 90ms + 200ms); }
+@keyframes fade { to { opacity: 1; } }
+.how .ok { position: relative; }
+.how .ok svg path { stroke-dasharray: 24; stroke-dashoffset: 24; }
+.run .how .ok svg path { animation: draw .4s ease 1.3s forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+/* 2 매장 위치 */
+.map { position: relative; height: 170px; border-radius: 14px; overflow: hidden; background:
+  linear-gradient(90deg, transparent 48%, rgba(255,255,255,.7) 48% 52%, transparent 52%),
+  linear-gradient(0deg, transparent 58%, rgba(255,255,255,.7) 58% 62%, transparent 62%),
+  linear-gradient(135deg, #DCE8D8, #E8E4D6); }
+[data-mode="dark"] .map { background: linear-gradient(90deg, transparent 48%, rgba(255,255,255,.12) 48% 52%, transparent 52%), linear-gradient(0deg, transparent 58%, rgba(255,255,255,.12) 58% 62%, transparent 62%), linear-gradient(135deg, #24322A, #2E2C24); }
+.pin { position: absolute; left: 50%; top: 42%; width: 34px; height: 34px; margin: -34px 0 0 -17px; }
+.pin svg { width: 34px; height: 34px; }
+.pin i { position: absolute; left: 50%; bottom: -4px; width: 14px; height: 5px; margin-left: -7px; border-radius: 50%; background: rgba(0,0,0,.25); }
+.run .pin svg { animation: drop .55s cubic-bezier(.3,1.4,.5,1) .2s backwards; }
+.run .pin i { animation: shadow .55s ease .2s backwards; }
+@keyframes drop { 0% { transform: translateY(-60px); opacity: 0; } 60% { transform: translateY(4px); opacity: 1; } 100% { transform: none; } }
+@keyframes shadow { 0% { transform: scale(.3); opacity: 0; } 60% { transform: scale(1.2); } }
+.addr { margin-top: 10px; font-size: 13px; color: var(--ink-soft); }
+
+/* 3 다른 이용권 */
+.od { display: flex; gap: 10px; overflow: hidden; }
+.od .st { flex: 0 0 120px; }
+.od .ph { height: 100px; border-radius: 10px; }
+.od b { display: block; font-size: 13px; font-weight: 500; margin-top: 6px; }
+.od em { font-style: normal; font-size: 15px; font-weight: 700; }
+.od em s { font-size: 12px; color: var(--ink-faint); font-weight: 400; margin-left: 4px; }
+.run .od .st { animation-name: slideL; }
+@keyframes slideL { from { opacity: 0; transform: translateX(20px); } }
+
+/* 4 대표 메뉴 */
+.mn .st { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--rule); font-size: 15px; }
+.mn .st span { color: var(--ink-soft); }
+
+/* 5·6 사진 */
+.gal { position: relative; height: 210px; border-radius: 14px; overflow: hidden; background: var(--photo1); }
+.gal .slides { display: flex; height: 100%; transition: transform .35s cubic-bezier(.2,.9,.3,1); }
+.gal .slides div { flex: 0 0 100%; height: 100%; }
+.dots { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; gap: 5px; }
+.dots i { height: 7px; width: 7px; border-radius: 4px; background: rgba(255,255,255,.55); transition: width .3s cubic-bezier(.2,.9,.3,1), background-color .3s; }
+.dots i.on { width: 18px; background: #fff; }
+.thumbs { display: flex; gap: 6px; margin-top: 8px; }
+.thumbs button { width: 54px; height: 54px; border-radius: 8px; border: 0; cursor: pointer; padding: 0; }
+.lb { position: absolute; inset: 0; background: rgba(0,0,0,.92); display: none; z-index: 5; }
+.lb.open { display: block; }
+.lb .big { position: absolute; left: 0; right: 0; top: 50%; height: 220px; margin-top: -110px; transform-origin: 0 0; }
+.lb .x { position: absolute; right: 12px; top: 12px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(255,255,255,.15); color: #fff; font-size: 17px; cursor: pointer; }
+
+/* 7 진열 순서 */
+.pins .row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 14px; background: var(--bg); margin-bottom: 8px; transition: transform .25s cubic-bezier(.2,.9,.3,1), box-shadow .2s; touch-action: none; user-select: none; }
+.pins .row .ph { width: 44px; height: 44px; border-radius: 8px; flex: none; }
+.pins .row b { flex: 1; font-size: 15px; font-weight: 500; }
+.pins .row .grip { color: var(--ink-faint); font-size: 17px; cursor: grab; padding: 4px 6px; }
+.pins .row.drag { transform: scale(1.03); box-shadow: 0 10px 24px rgba(0,0,0,.18); z-index: 2; position: relative; transition: box-shadow .2s; }
+.pins { position: relative; }
+
+/* 8 매장 등록 숫자 */
+.claim { text-align: center; padding-top: 20px; }
+.claim h4 { font-size: 17px; margin: 0 0 18px; }
+.claim .nums { display: flex; justify-content: center; gap: 22px; }
+.claim .nums div b { display: block; font-size: 28px; font-weight: 800; color: var(--brand-text); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.claim .nums div small { font-size: 12px; color: var(--ink-soft); }
+.claim button { margin-top: 24px; height: 48px; padding: 0 28px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font: 700 15px var(--font); }
+
+/* 9 공유 버튼 */
+.hdr { display: flex; justify-content: flex-end; gap: 4px; padding: 12px; }
+.ib { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--sub); color: var(--ink); display: grid; place-items: center; cursor: pointer; position: relative; }
+.ib svg { width: 20px; height: 20px; }
+.ib .ok { position: absolute; inset: 0; display: grid; place-items: center; color: var(--brand-text); opacity: 0; }
+.ib.done .base { animation: out .2s forwards; }
+.ib.done .ok { animation: okin .35s cubic-bezier(.3,1.4,.5,1) .12s forwards; }
+@keyframes out { to { opacity: 0; transform: scale(.5); } }
+@keyframes okin { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+.tip { position: absolute; right: 12px; top: 58px; background: var(--ink); color: var(--bg); font-size: 12px; padding: 6px 10px; border-radius: 8px; opacity: 0; transform: translateY(-4px); transition: opacity .2s, transform .2s; }
+.tip.show { opacity: 1; transform: none; }
+
+/* 10 딜 쓰기 */
+.use { position: relative; display: flex; background: var(--sub); border-radius: 12px; padding: 4px; }
+.use button { flex: 1; position: relative; z-index: 1; border: 0; background: none; height: 40px; font: 500 15px var(--font); color: var(--ink-soft); cursor: pointer; transition: color .2s; }
+.use button.on { color: var(--ink); font-weight: 700; }
+.use .pill { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 9px; background: var(--bg); box-shadow: 0 1px 4px rgba(0,0,0,.12); transition: transform .3s cubic-bezier(.2,.9,.3,1); }
+.use.r .pill { transform: translateX(100%); }
+.pay { margin-top: 16px; display: grid; gap: 8px; font-size: 15px; }
+.pay div { display: flex; justify-content: space-between; }
+.pay div span { color: var(--ink-soft); }
+.pay .tot { border-top: 1px solid var(--rule); padding-top: 10px; font-weight: 700; font-size: 17px; }
+.pay b { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) { .scr *, .scr *::before { animation-duration: 0.01ms !important; animation-delay: 0s !important; transition-duration: 0.01ms !important; } }
+</style>
+
+<div class="wrap">
+  <h1>모션 12차 시안</h1>
+  <p class="lede">이번엔 <b>이용권 상세 화면</b>을 중심으로 골랐어요. 손님이 가장 오래 보는 화면이에요. 직접 눌러 보거나 "다시 보기"로 재생해 보세요.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all">전부 다시 보기</button>
+    <button class="ctl" id="mode">다크 모드로 보기</button>
+  </div>
+  <div class="list">
+
+    <div class="item">
+      <div class="scr" id="s1"><div class="pad">
+        <div class="sec-t">사용 방법</div>
+        <div class="how">
+          <div class="st" style="--i:0"><div class="ic"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2"/></svg></div><b>QR 열기</b><small>마이 → 내 이용권</small></div>
+          <div class="ar" style="--i:1">›</div>
+          <div class="st" style="--i:2"><div class="ic"><svg class="ico" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3M4 12h16"/></svg></div><b>직원에게</b><small>직원이 스캔해요</small></div>
+          <div class="ar" style="--i:3">›</div>
+          <div class="st ok" style="--i:4"><div class="ic"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><b>사용 완료</b><small>누를 건 없어요</small></div>
+        </div>
+      </div></div>
+      <div><h3><span class="n">1</span>사용 방법 그림</h3>
+        <p>지금은 "1 QR 열기 › 2 직원에게 보여주기 › 3 사용 완료" 한 줄 글자예요. 이걸 <b>그림 셋이 차례로 켜지고</b>, 마지막에 체크가 그려지는 모양으로 바꿔요. 처음 사는 사람도 한눈에 이해해요.</p>
+        <button class="replay" data-r="1">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s2"><div class="pad">
+        <div class="sec-t">매장 위치</div>
+        <div class="map"><div class="pin"><svg viewBox="0 0 24 24"><path fill="#1C69EF" d="M12 2a7 7 0 00-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 00-7-7z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg><i></i></div></div>
+        <div class="addr">서울 마포구 와우산로 21 · 홍대입구역 5분</div>
+      </div></div>
+      <div><h3><span class="n">2</span>매장 위치 핀</h3>
+        <p>지도가 화면에 들어오면 매장 핀이 <b>위에서 톡 떨어지고</b> 그림자가 생겨요. 어디인지 눈이 바로 가요.</p>
+        <button class="replay" data-r="2">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s3"><div class="pad">
+        <div class="sec-t">이 가게의 다른 이용권</div>
+        <div class="od">
+          <div class="st" style="--i:0"><div class="ph" style="background:var(--photo1)"></div><b>치즈돈가스 1인</b><em>9,500원<s>12,000</s></em></div>
+          <div class="st" style="--i:1"><div class="ph" style="background:var(--photo2)"></div><b>돈가스 2인 세트</b><em>17,900원<s>24,000</s></em></div>
+          <div class="st" style="--i:2"><div class="ph" style="background:var(--photo3)"></div><b>우동 세트</b><em>8,900원<s>11,000</s></em></div>
+        </div>
+      </div></div>
+      <div><h3><span class="n">3</span>다른 이용권 줄</h3>
+        <p>화면에 들어올 때 카드가 <b>오른쪽에서 차례로</b> 미끄러져 들어와요. 옆으로 더 있다는 느낌도 함께 줘요.</p>
+        <button class="replay" data-r="3">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s4"><div class="pad">
+        <div class="sec-t">대표 메뉴</div>
+        <div class="mn">
+          <div class="st" style="--i:0">버크셔 돈가스<span>12,000원</span></div>
+          <div class="st" style="--i:1">치즈 돈가스<span>13,000원</span></div>
+          <div class="st" style="--i:2">냉모밀<span>8,000원</span></div>
+          <div class="st" style="--i:3">수제 우동<span>9,000원</span></div>
+        </div>
+      </div></div>
+      <div><h3><span class="n">4</span>대표 메뉴 · 이용 안내</h3>
+        <p>메뉴와 이용 안내 줄이 <b>위에서부터 차례로</b> 떠올라요. 같은 방식을 이용 안내(유효기간·사용 시간·주의사항)에도 써요.</p>
+        <button class="replay" data-r="4">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s5" style="height:330px"><div class="pad">
+        <div class="gal" id="gal"><div class="slides" id="slides"><div style="background:var(--photo1)"></div><div style="background:var(--photo2)"></div><div style="background:var(--photo3)"></div></div><div class="dots" id="dots"><i class="on"></i><i></i><i></i></div></div>
+        <div class="thumbs"><button style="background:var(--photo1)" data-t="0" aria-label="사진 1"></button><button style="background:var(--photo2)" data-t="1" aria-label="사진 2"></button><button style="background:var(--photo3)" data-t="2" aria-label="사진 3"></button></div>
+      </div>
+      <div class="lb" id="lb"><div class="big" id="big"></div><button class="x" id="lbx" aria-label="닫기">×</button></div></div>
+      <div><h3><span class="n">5·6</span>사진 넘김 점 · 크게 보기</h3>
+        <p><b>⑤</b> 큰 사진을 누르면 그 사진이 <b>제자리에서 커지며</b> 크게 보기가 열려요. 닫으면 다시 제자리로 줄어들어요. 지금은 검은 화면이 툭 덮여요.</p>
+        <p><b>⑥</b> 사진을 넘기면 아래 점이 <b>길쭉한 알약으로 늘어나며</b> 옮겨 가요. 몇 번째 사진인지 더 잘 보여요. 아래 작은 사진을 눌러 넘겨 보세요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s7"><div class="pad" style="background:var(--sub);height:100%">
+        <div class="sec-t">진열 순서 (끌어서 바꾸기)</div>
+        <div class="pins" id="pins"></div>
+      </div></div>
+      <div><h3><span class="n">7</span>유어샵 진열 순서 바꾸기</h3>
+        <p>오른쪽 손잡이(≡)를 잡으면 그 줄이 <b>살짝 떠오르고</b>, 끌고 지나가는 동안 다른 줄이 <b>부드럽게 비켜나요.</b> 지금은 테두리만 바뀌고 줄이 툭툭 자리를 바꿔요. 직접 끌어 보세요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s8"><div class="claim">
+        <h4>매장 등록, 이렇게 끝나요</h4>
+        <div class="nums">
+          <div class="st" style="--i:0"><b id="n1">0</b><small>원 · 등록비</small></div>
+          <div class="st" style="--i:1"><b id="n2">0</b><small>분이면 끝</small></div>
+          <div class="st" style="--i:2"><b id="n3">0</b><small>단계</small></div>
+        </div>
+        <button>매장 등록 시작</button>
+      </div></div>
+      <div><h3><span class="n">8</span>매장 등록 첫 화면</h3>
+        <p>"등록비 0원 · 5분 · 4단계" 숫자가 <b>차례로 떠오르며 세어 올라가요.</b> 부담 없다는 말을 숫자가 먼저 해 줘요.</p>
+        <button class="replay" data-r="8">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s9" style="height:200px">
+        <div class="hdr">
+          <button class="ib" aria-label="찜"><svg class="ico" viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.5-7 10-7 10z"/></svg></button>
+          <button class="ib" id="share" aria-label="링크 복사"><svg class="ico base" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg><span class="ok"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>
+        </div>
+        <div class="tip" id="tip">링크를 복사했어요</div>
+      </div>
+      <div><h3><span class="n">9</span>상세 위쪽 링크 버튼</h3>
+        <p>링크 버튼을 누르면 아이콘이 <b>체크로 바뀌고</b> "링크를 복사했어요"가 버튼 아래 잠깐 떠요. 지금은 화면 위 알림만 떠서 눌렀는지 버튼에서는 안 보여요. 눌러 보세요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s10"><div class="pad">
+        <div class="sec-t">결제 방법</div>
+        <div class="use" id="use"><span class="pill"></span><button class="on" data-v="0">카드로만</button><button data-v="1">딜 먼저 쓰기</button></div>
+        <div class="pay">
+          <div><span>이용권</span><b>15,900원</b></div>
+          <div><span>딜 사용</span><b id="dealv">0딜</b></div>
+          <div class="tot"><span>결제할 금액</span><b id="totv">15,900원</b></div>
+        </div>
+      </div></div>
+      <div><h3><span class="n">10</span>딜 쓰기 고르기</h3>
+        <p>"카드로만 / 딜 먼저 쓰기"를 고르면 흰 알약이 <b>옆으로 미끄러지고</b>, 딜 사용액과 결제할 금액이 <b>굴러가며</b> 바뀌어요. 얼마가 빠지는지 눈으로 따라갈 수 있어요.</p></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const restart = (el) => { el.classList.remove('run'); void el.offsetWidth; el.classList.add('run') }
+// 1
+function r1() { const s = $('#s1'); restart(s); const sts = [...s.querySelectorAll('.how .st')]; sts.forEach((x) => x.classList.remove('lit')); sts.forEach((x, i) => setTimeout(() => x.classList.add('lit'), 350 + i * 380)) }
+// 2,3,4
+const r2 = () => restart($('#s2')), r3 = () => restart($('#s3')), r4 = () => restart($('#s4'))
+// 5·6
+let cur = 0
+function go(i) { cur = i; $('#slides').style.transform = `translateX(${-100 * i}%)`; [...$('#dots').children].forEach((d, k) => d.classList.toggle('on', k === i)) }
+document.querySelectorAll('.thumbs button').forEach((b) => b.onclick = () => go(+b.dataset.t))
+const PH = ['var(--photo1)', 'var(--photo2)', 'var(--photo3)']
+$('#gal').onclick = () => { const scr = $('#s5'); const g = $('#gal').getBoundingClientRect(), s = scr.getBoundingClientRect(); const lb = $('#lb'), big = $('#big'); big.style.background = PH[cur]; lb.classList.add('open')
+  const t = big.getBoundingClientRect(); const sx = g.width / t.width, sy = g.height / t.height
+  big.animate([{ transform: `translate(${g.left - t.left}px, ${g.top - t.top}px) scale(${sx}, ${sy})`, borderRadius: '14px' }, { transform: 'none', borderRadius: '0px' }], { duration: 320, easing: 'cubic-bezier(.2,.9,.3,1)' })
+  lb.animate([{ backgroundColor: 'rgba(0,0,0,0)' }, { backgroundColor: 'rgba(0,0,0,.92)' }], { duration: 250 }) }
+$('#lbx').onclick = () => { const g = $('#gal').getBoundingClientRect(); const lb = $('#lb'), big = $('#big'); const t = big.getBoundingClientRect(); const sx = g.width / t.width, sy = g.height / t.height
+  const a = big.animate([{ transform: 'none' }, { transform: `translate(${g.left - t.left}px, ${g.top - t.top}px) scale(${sx}, ${sy})`, borderRadius: '14px' }], { duration: 260, easing: 'cubic-bezier(.4,0,.2,1)' })
+  lb.animate([{ backgroundColor: 'rgba(0,0,0,.92)' }, { backgroundColor: 'rgba(0,0,0,0)' }], { duration: 260 }); a.onfinish = () => lb.classList.remove('open') }
+// 7
+const NAMES = ['홍대돈까스 1인', '네일앤 젤네일', '솔숲 펜션 1박', '카페 온 브런치']
+function r7() { $('#pins').innerHTML = NAMES.map((n, i) => `<div class="row" data-k="${i}"><div class="ph" style="background:${PH[i % 3]}"></div><b>${n}</b><span class="grip" aria-label="끌어서 순서 바꾸기">≡</span></div>`).join('') ; bindDrag() }
+function bindDrag() { const box = $('#pins'); box.querySelectorAll('.grip').forEach((g) => g.onpointerdown = (e) => {
+  const row = g.closest('.row'); g.setPointerCapture(e.pointerId); row.classList.add('drag'); const y0 = e.clientY; const H = row.offsetHeight + 8
+  const rows = () => [...box.children]
+  g.onpointermove = (ev) => { const dy = ev.clientY - y0; row.style.transform = `translateY(${dy}px) scale(1.03)`; const idx = rows().indexOf(row); const shift = Math.round(dy / H)
+    rows().forEach((r, k) => { if (r === row) return; let t = 0; if (shift > 0 && k > idx && k <= idx + shift) t = -H; if (shift < 0 && k < idx && k >= idx + shift) t = H; r.style.transform = t ? `translateY(${t}px)` : '' }) }
+  g.onpointerup = (ev) => { const dy = ev.clientY - y0; const list = rows(); const idx = list.indexOf(row); let to = Math.max(0, Math.min(list.length - 1, idx + Math.round(dy / H)))
+    const firsts = new Map(list.map((r) => [r, r.getBoundingClientRect().top]))
+    list.forEach((r) => r.style.transform = ''); row.classList.remove('drag')
+    if (to !== idx) { list.splice(idx, 1); list.splice(to, 0, row); list.forEach((r) => box.appendChild(r)) }
+    list.forEach((r) => { const d = firsts.get(r) - r.getBoundingClientRect().top; if (d) r.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.9,.3,1)' }) })
+    g.onpointermove = g.onpointerup = null } }) }
+// 8
+function count(el, to, ms, delay) { setTimeout(() => { const t0 = performance.now(); const f = (t) => { const p = Math.min(1, (t - t0) / ms); el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }, delay) }
+function r8() { restart($('#s8')); $('#n1').textContent = '0'; count($('#n2'), 5, 600, 150); count($('#n3'), 4, 600, 300) }
+// 9
+$('#share').onclick = () => { const b = $('#share'), t = $('#tip'); b.classList.remove('done'); void b.offsetWidth; b.classList.add('done'); t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => { t.classList.remove('show'); b.classList.remove('done') }, 1600) }
+// 10
+function roll(el, from, to, unit, ms) { const t0 = performance.now(); const f = (t) => { const p = Math.min(1, (t - t0) / ms); el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))).toLocaleString('ko-KR') + unit; if (p < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }
+let useDeal = 0
+document.querySelectorAll('#use button').forEach((b) => b.onclick = () => { const v = +b.dataset.v; if (v === useDeal) return; document.querySelectorAll('#use button').forEach((x) => x.classList.toggle('on', x === b)); $('#use').classList.toggle('r', v === 1)
+  roll($('#dealv'), v ? 0 : 4200, v ? 4200 : 0, '딜', 450); roll($('#totv'), v ? 15900 : 11700, v ? 11700 : 15900, '원', 450); useDeal = v })
+
+const R = { 1: r1, 2: r2, 3: r3, 4: r4, 8: r8 }
+document.querySelectorAll('.replay').forEach((b) => b.onclick = () => R[b.dataset.r]())
+$('#all').onclick = () => Object.values(R).forEach((f) => f())
+let dark = matchMedia('(prefers-color-scheme: dark)').matches
+const applyMode = () => { document.querySelectorAll('.scr').forEach((s) => s.dataset.mode = dark ? 'dark' : 'light'); $('#mode').textContent = dark ? '라이트 모드로 보기' : '다크 모드로 보기' }
+$('#mode').onclick = () => { dark = !dark; applyMode() }
+applyMode(); r7()
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; io.unobserve(e.target); const id = +e.target.id.slice(1); if (R[id]) R[id]() }), { threshold: .4 })
+document.querySelectorAll('.scr').forEach((s) => io.observe(s))
+</script>

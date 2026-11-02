@@ -121,7 +121,8 @@ export function NotificationPanelBody({ onClose }: { onClose: () => void }) {
           }}
           className={`w-full flex items-start gap-3 px-4 py-3 text-left border-b border-rule hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors ${n.is_read ? 'opacity-60' : ''}`}
         >
-          <span className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
+          {/* 🎬 2026-11-02 시안 5차: 읽으면 점이 작아지며 사라진다(모두 읽음에서 보인다). */}
+          <span className="w-2 h-2 rounded-full mt-2 shrink-0 bg-brand" style={{ transition: 'transform .3s, opacity .3s', transform: n.is_read ? 'scale(0)' : undefined, opacity: n.is_read ? 0 : 1 }} />
           <span className="flex-1 min-w-0">
             <span className="block text-[13px] font-medium text-gray-900 dark:text-white truncate">{n.title}</span>
             {n.message && <span className="block text-[12px] text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">{n.message}</span>}

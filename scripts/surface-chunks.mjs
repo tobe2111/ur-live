@@ -54,7 +54,8 @@ export const LIBRARY_ENVELOPES = new Set(['sentry', 'capacitor', 'tosspayments',
  *  알림 시트는 `lazy()` 인데 거의 모든 화면이 그 훅(`useNotificationSheet`)을 갖고 있어 묶음기가 `lz-common` 에 넣었다.
  *  `lz-common` 은 대부분의 첫 화면이 받으므로 **lazy 경계가 무의미**해지고, 시트가 끌고 오는 패널·아이콘 봉투까지
  *  폰 첫 화면에 실렸다(실측). 이름을 지키면 벨을 누를 때만 받는다. */
-export const LAZY_ENVELOPES = new Set(['app-notification-panel', 'app-owner-sheet', 'app-life-banner'])
+// 🎬 2026-11-02 `app-deal-vt` — 목록 → 상세 화면 전환. 카드가 보이거나 닿을 때 동적으로 받는다(GroupBuyFeedCard 머리말).
+export const LAZY_ENVELOPES = new Set(['app-notification-panel', 'app-owner-sheet', 'app-life-banner', 'app-deal-vt'])
 
 /** 🖥️ 엔트리가 **동적으로** 부르지만 첫 렌더 전에 기다려 받는 모듈 — 엔트리 폐쇄로 센다(2026-10-18).
  *  PC 상단 네비는 폰 첫 방문에서 빼려고 동적 import 로 바꿨다(`ConsumerTopChrome`). 그 모듈 자신은 vite 규칙의 이름

@@ -1,9 +1,12 @@
 /** 🏠 사장님 요청함 — 내 지역·카테고리의 새 요청 / 내가 보낸 견적. */
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { quotePriceText } from '@/shared/home-service'
 import { categoryLabel, sellerHeaders } from '../life-shared'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 13차 ⑥ — 탭을 바꾸면 밑줄이 옆으로 미끄러지고(잰 자리 · 못 재면 종전 밑줄), 목록이 살짝 떠오르며 바뀐다.
+injectMotionCss('ur-m-proinbox', `@keyframes ur-pi-in { from { opacity: 0; transform: translateY(8px); } }.ur-pi-row { animation: ur-pi-in .3s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }@media (prefers-reduced-motion: reduce){.ur-pi-row{animation:none!important}}`)
 
 interface Row {
   id: number; category: string; summary: string; desired_date: string; status: string
@@ -23,15 +26,23 @@ export default function ProInbox({ refreshKey }: { refreshKey: number }) {
   }, [refreshKey])
 
   const rows = data ? data[tab] : []
+  const tabsRef = useRef<HTMLDivElement>(null)
+  const [bar, setBar] = useState<{ x: number; w: number } | null>(null)
+  useLayoutEffect(() => {
+    const on = tabsRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    const next = on ? { x: on.offsetLeft, w: on.offsetWidth } : null
+    setBar((p) => (p?.x === next?.x && p?.w === next?.w ? p : next))
+  })
   return (
     <section className="rounded-2xl bg-surface p-5 shadow-lift">
-      <div className="flex gap-4 border-b border-rule">
+      <div ref={tabsRef} className="relative flex gap-4 border-b border-rule">
         {(['open', 'mine'] as const).map((k) => (
-          <button key={k} type="button" onClick={() => setTab(k)}
-            className={`-mb-px border-b-2 pb-2 text-[15px] font-bold ${tab === k ? 'border-ink text-ink' : 'border-transparent text-gray-500 dark:text-gray-400'}`}>
+          <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={tab === k}
+            className={`-mb-px border-b-2 pb-2 text-[15px] font-bold transition-colors ${tab === k ? `${bar ? 'border-transparent' : 'border-ink'} text-ink` : 'border-transparent text-gray-500 dark:text-gray-400'}`}>
             {k === 'open' ? `새 요청 ${data?.open.length ?? ''}` : `보낸 견적 ${data?.mine.length ?? ''}`}
           </button>
         ))}
+        {bar && <span aria-hidden="true" className="absolute -bottom-px left-0 h-[2px] bg-ink transition-[transform,width] duration-300 ease-[cubic-bezier(.2,.9,.3,1)] motion-reduce:transition-none" style={{ width: bar.w, transform: `translateX(${bar.x}px)` }} />}
       </div>
       {failed ? (
         <p className="py-8 text-center text-[13px] text-tone-bad">요청을 불러오지 못했어요.</p>
@@ -43,8 +54,8 @@ export default function ProInbox({ refreshKey }: { refreshKey: number }) {
         </p>
       ) : (
         <ul className="divide-y divide-rule">
-          {rows.map((r) => (
-            <li key={`${tab}-${r.id}`}>
+          {rows.map((r, ri) => (
+            <li key={`${tab}-${r.id}`} className="ur-pi-row" style={{ '--i': Math.min(ri, 8) } as React.CSSProperties}>
               <Link to={`/life/pro/requests/${r.id}`} className="block py-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-[15px] font-bold">{categoryLabel(r.category)}</span>

@@ -6,6 +6,9 @@ import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { CONCEPT_FAQ } from '@/shared/seo/concept-content'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 11차 ② — 답이 툭 생기며 아래 질문을 한 번에 미는 대신, 높이가 부드럽게 열리고 닫힌다(grid 0fr→1fr).
+injectMotionCss('ur-m-faq', `.ur-faq-a { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.2,.9,.3,1); }.ur-faq-a > div { overflow: hidden; }.ur-faq-a.is-open { grid-template-rows: 1fr; }.ur-faq-a p { opacity: 0; transition: opacity .2s ease; }.ur-faq-a.is-open p { opacity: 1; transition-delay: .08s; }@media (prefers-reduced-motion: reduce){.ur-faq-a,.ur-faq-a p{transition:none!important}}`)
 
 interface FAQ {
   id: number
@@ -128,11 +131,14 @@ export default function FAQPage() {
                     />
                   </button>
 
-                  {isOpen && (
-                    <div className="pb-4 pl-9 pr-4 -mt-1">
-                      <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">{faq.answer}</p>
+                  {/* 답은 늘 그려 두고 높이만 연다 — 닫힌 동안은 읽기 프로그램·탭 이동에서 빠진다(inert). */}
+                  <div className={`ur-faq-a${isOpen ? ' is-open' : ''}`} aria-hidden={!isOpen} {...(isOpen ? {} : { inert: '' })}>
+                    <div>
+                      <div className="pb-4 pl-9 pr-4 -mt-1">
+                        <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">{faq.answer}</p>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               )
             })}

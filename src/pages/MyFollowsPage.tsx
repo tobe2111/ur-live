@@ -53,6 +53,20 @@ export default function MyFollowsPage() {
 
   async function unfollow(sellerId: number) {
     if (!(await confirmDialog('단골을 해제하시겠습니까?'))) return
+    // 🎬 2026-11-02 11차 ⑤ — 해제한 줄이 옆으로 밀려 사라지고 높이를 접은 뒤에 목록에서 뺀다(아래 줄이 툭 끊기지 않게).
+    //   줄 높이는 제각각이라(알림 설정 펼침) CSS 고정값 대신 잰 높이로 접는다. 동작 줄이기·미지원이면 바로 뺀다.
+    const el = document.querySelector<HTMLElement>(`[data-follow-row="${sellerId}"]`)
+    let reduce = false
+    try { reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { /* 미지원 */ }
+    if (el && !reduce && typeof el.animate === 'function') {
+      const h = el.offsetHeight
+      el.style.pointerEvents = 'none'
+      await el.animate([
+        { opacity: 1, transform: 'none', height: `${h}px`, marginBottom: '0px' },
+        { opacity: 0, transform: 'translateX(24px)', height: `${h}px`, offset: 0.45 },
+        { opacity: 0, transform: 'translateX(24px)', height: '0px', marginBottom: '-12px' },
+      ], { duration: 340, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }).finished.catch(() => undefined)
+    }
     unfollowMut.mutate(sellerId, {
       onSuccess: () => toast.info('단골 해제'),
       onError: () => toast.error('해제 실패'),
@@ -99,7 +113,7 @@ export default function MyFollowsPage() {
 
             <div className="space-y-3">
               {follows.map(f => (
-                <div key={f.seller_id} className="rounded-2xl overflow-hidden">
+                <div key={f.seller_id} data-follow-row={f.seller_id} className="rounded-2xl overflow-hidden">
                   {/* 셀러 정보 */}
                   <button
                     onClick={() => navigate(`/profile/${f.seller_username || f.seller_id}`)}
@@ -143,11 +157,11 @@ export default function MyFollowsPage() {
                           type="button"
                           onClick={() => toggle(f.seller_id, opt.key)}
                           disabled={savingId === f.seller_id}
-                          className={`relative w-10 h-6 rounded-full transition-colors ${f[opt.key] ? 'bg-brand' : 'bg-gray-300 dark:bg-gray-600'} disabled:opacity-50`}
+                          className={`group relative w-10 h-6 rounded-full transition-colors ${f[opt.key] ? 'bg-brand' : 'bg-gray-300 dark:bg-gray-600'} disabled:opacity-50`}
                           aria-label={`${opt.label} 알림 ${f[opt.key] ? '끄기' : '켜기'}`}
                           aria-pressed={f[opt.key]}
                         >
-                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white dark:bg-[#11141C] shadow transition-transform ${f[opt.key] ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white dark:bg-[#11141C] shadow transition-[transform,width] duration-300 ease-[cubic-bezier(.3,1.3,.5,1)] motion-reduce:transition-none group-active:w-[25px] ${f[opt.key] ? 'translate-x-[18px] group-active:translate-x-[13px]' : 'translate-x-0.5'}`} />
                         </button>
                       </label>
                     ))}

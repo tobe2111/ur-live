@@ -1,0 +1,408 @@
+<title>유어딜 모션 시안 6차</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* 레이아웃: 손님 화면 8 + 사장님 화면 3 을 카드 격자로. 카드 = 작은 화면(직접 눌러 보기) + 이름 + 설명. */
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --surface: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE;
+  --lift: 0 2px 10px rgba(22,24,28,.06); --photo1: #C9D8F2; --photo2: #F2D9C9; --photo3: #D2E8D6; --photo4: #E6D6F0; --scrim: rgba(22,24,28,.4); --map: #E9EEE4; --road: #FFFFFF;
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --surface: #1D1F29; --sub: #191C25; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --lift: none; --photo1: #2B3A57; --photo2: #4A3729; --photo3: #2C4232; --photo4: #3D2F4A; --scrim: rgba(0,0,0,.55);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); }
+button { font-family: var(--font); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 62ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .replay:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.group { margin-bottom: 56px; }
+.group > h2 { font-size: 24px; font-weight: 700; margin: 0 0 4px; }
+.group > p { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 32px 20px; }
+@media (max-width: 360px) { .grid { grid-template-columns: 1fr; } }
+.card { min-width: 0; display: grid; gap: 12px; align-content: start; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.head h3 { font-size: 17px; font-weight: 700; margin: 0; }
+.head .rec { font-size: 12px; font-weight: 700; color: #fff; background: var(--brand); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+.replay { flex: none; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; font-weight: 500; cursor: pointer; }
+.desc { font-size: 13px; color: var(--page-soft); line-height: 1.6; margin: 0; }
+.scr { height: 340px; border-radius: 22px; background: var(--bg); color: var(--ink); position: relative; overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); transition: background .3s, color .3s; }
+.tap { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 12px; color: var(--ink-faint); pointer-events: none; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.btn { height: 44px; border-radius: 12px; border: 0; padding: 0 18px; font-weight: 700; font-size: 15px; cursor: pointer; }
+.btn-primary { background: var(--brand); color: #fff; }
+.btn-out { background: transparent; color: var(--brand-text); box-shadow: inset 0 0 0 1px var(--rule-strong); }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes popIn { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }
+.ease { --spring: cubic-bezier(.2,1,.3,1); }
+
+
+/* 공통 굴림 숫자 */
+.roll { display: inline-block; height: 1.3em; overflow: hidden; position: relative; vertical-align: bottom; font-variant-numeric: tabular-nums; }
+.roll > span { display: block; line-height: 1.3em; }
+.roll .out { position: absolute; left: 0; top: 0; animation: outUp .28s cubic-bezier(.65,0,.35,1) both; }
+.roll .in { animation: inUp .28s cubic-bezier(.65,0,.35,1) both; }
+.roll.down .out { animation-name: outDown; } .roll.down .in { animation-name: inDown; }
+@keyframes outUp { to { transform: translateY(-100%); opacity: 0; } } @keyframes inUp { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes outDown { to { transform: translateY(100%); opacity: 0; } } @keyframes inDown { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes shake { 0%,100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+.pad { padding: 18px; }
+.row { display: flex; justify-content: space-between; align-items: center; font-size: 15px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.row span:first-child { color: var(--ink-soft); }
+
+/* 1 결제 버튼 */
+.paybtn { position: relative; width: 100%; height: 52px; border: 0; border-radius: 14px; background: var(--brand); color: #fff; font: 700 15px var(--font); cursor: pointer; overflow: hidden; transition: transform .12s, width .3s; }
+.paybtn:active { transform: scale(.97); }
+.paybtn .lbl, .paybtn .spin, .paybtn .ok { position: absolute; inset: 0; display: grid; place-items: center; transition: opacity .2s, transform .25s cubic-bezier(.2,1,.3,1); }
+.paybtn .spin, .paybtn .ok { opacity: 0; transform: translateY(10px); }
+.paybtn .spin i { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,.35); border-top-color: #fff; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.paybtn .ok svg { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; }
+.paybtn.busy .lbl, .paybtn.done .lbl { opacity: 0; transform: translateY(-10px); }
+.paybtn.busy .spin { opacity: 1; transform: none; }
+.paybtn.done .ok { opacity: 1; transform: none; } .paybtn.done .ok svg { stroke-dashoffset: 0; transition: stroke-dashoffset .3s .05s; }
+.paybtn.fail { animation: shake .4s; }
+.payerr { margin: 10px 0 0; font-size: 13px; color: #D93A3A; opacity: 0; transform: translateY(-4px); transition: opacity .2s, transform .2s; }
+.payerr.on { opacity: 1; transform: none; }
+.paybtns { display: flex; gap: 8px; margin-top: 18px; }
+.paybtns .btn { height: 36px; font-size: 13px; flex: 1; }
+
+/* 2 쿠폰 적용 */
+.coupon { margin-top: 12px; height: 44px; width: 100%; border: 0; border-radius: 12px; background: var(--brand-tint); color: var(--brand-text); font: 700 15px var(--font); cursor: pointer; }
+.disc { overflow: hidden; max-height: 0; opacity: 0; transition: max-height .3s cubic-bezier(.2,1,.3,1), opacity .25s; }
+.disc.on { max-height: 44px; opacity: 1; }
+.disc .row span:last-child { color: #E5484D; font-weight: 700; }
+.total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 14px; }
+.total b { font-size: 28px; font-weight: 800; }
+
+/* 3 단골 */
+.store { display: flex; align-items: center; gap: 12px; }
+.store .ph { width: 52px; height: 52px; border-radius: 50%; background: var(--photo2); flex: none; }
+.store h4 { margin: 0; font-size: 17px; font-weight: 700; }
+.store p { margin: 2px 0 0; font-size: 13px; color: var(--ink-soft); }
+.fav { margin-top: 18px; height: 44px; border: 0; border-radius: 12px; font: 700 15px var(--font); cursor: pointer; padding: 0 18px; display: inline-flex; align-items: center; gap: 6px; background: var(--brand); color: #fff; transition: background .25s, color .25s, box-shadow .25s; }
+.fav svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.fav.on { background: transparent; color: var(--brand-text); box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.fav.on svg { fill: currentColor; animation: popIn .35s cubic-bezier(.2,1,.3,1); }
+
+/* 4 찜 목록 삭제 */
+.wl { padding: 6px 18px; }
+.wl .it { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); overflow: hidden; max-height: 72px; transition: max-height .3s cubic-bezier(.65,0,.35,1) .12s, padding .3s .12s, opacity .2s, transform .25s; }
+.wl .it .ph { width: 48px; height: 48px; border-radius: 10px; flex: none; }
+.wl .it div { flex: 1; min-width: 0; font-size: 15px; }
+.wl .it small { display: block; font-size: 13px; color: var(--ink-soft); }
+.wl .it button { border: 0; background: none; color: var(--ink-faint); font: 500 13px var(--font); cursor: pointer; padding: 8px; }
+.wl .it.gone { opacity: 0; transform: translateX(30px); max-height: 0; padding-block: 0; border-color: transparent; }
+.toast { position: absolute; left: 14px; right: 14px; bottom: 14px; background: #16181C; color: #fff; border-radius: 12px; padding: 12px 14px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; transform: translateY(80px); transition: transform .3s cubic-bezier(.2,1,.3,1); }
+.scr[data-mode="dark"] .toast { background: #2A2E3A; }
+.toast.on { transform: none; }
+.toast button { border: 0; background: none; color: #7FB0FF; font: 700 13px var(--font); cursor: pointer; }
+
+/* 5 위로 가기 */
+.feed { position: absolute; inset: 0; overflow-y: auto; padding: 14px; display: grid; gap: 10px; align-content: start; }
+.feed div { height: 70px; border-radius: 12px; background: var(--sub); flex: none; }
+.up { position: absolute; right: 14px; bottom: 14px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--surface); color: var(--ink); box-shadow: 0 2px 10px rgba(22,24,28,.16); cursor: pointer; display: grid; place-items: center; opacity: 0; transform: translateY(16px) scale(.8); transition: opacity .2s, transform .3s cubic-bezier(.2,1,.3,1); pointer-events: none; }
+.up.on { opacity: 1; transform: none; pointer-events: auto; }
+.up svg { width: 20px; height: 20px; }
+
+/* 6 이용권 진행 타임라인 */
+.tl { padding: 22px 18px; display: grid; gap: 0; }
+.st { display: grid; grid-template-columns: 22px 1fr; gap: 12px; }
+.st .dot { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--rule-strong); background: var(--surface); display: grid; place-items: center; position: relative; z-index: 1; transition: background .25s, box-shadow .25s; }
+.st .dot svg { width: 12px; height: 12px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset .25s .1s; }
+.st.on .dot { background: var(--brand); box-shadow: none; } .st.on .dot svg { stroke-dashoffset: 0; }
+.st .line { width: 2px; height: 40px; margin-left: 10px; background: var(--rule-strong); position: relative; overflow: hidden; grid-column: 1; }
+.st .line i { position: absolute; inset: 0; background: var(--brand); transform: scaleY(0); transform-origin: top; transition: transform .35s cubic-bezier(.65,0,.35,1); }
+.st.fill .line i { transform: none; }
+.st h4 { margin: 1px 0 0; font-size: 15px; font-weight: 500; color: var(--ink-faint); transition: color .25s; }
+.st.on h4 { color: var(--ink); }
+.st small { display: block; font-size: 13px; color: var(--ink-faint); }
+
+/* 7 입력 오류 */
+.field label { font-size: 13px; color: var(--ink-soft); }
+.inp { margin-top: 6px; height: 48px; border-radius: 12px; background: var(--sub); display: flex; align-items: center; padding: 0 14px; font-size: 17px; font-variant-numeric: tabular-nums; position: relative; overflow: hidden; }
+.inp::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: #D93A3A; transform: scaleX(0); transition: transform .3s cubic-bezier(.2,1,.3,1); }
+.field.bad .inp { animation: shake .4s; } .field.bad .inp::after { transform: none; }
+.field .msg { margin: 8px 0 0; font-size: 13px; color: #D93A3A; opacity: 0; transform: translateY(-4px); transition: opacity .2s, transform .2s; }
+.field.bad .msg { opacity: 1; transform: none; }
+.field.good .inp::after { background: var(--brand); transform: none; }
+.field .msg.okm { color: var(--brand-text); }
+
+/* 8 공유 시트 */
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 18px; transform: translateY(100%); transition: transform .32s cubic-bezier(.2,1,.3,1); box-shadow: 0 -4px 24px rgba(0,0,0,.08); }
+.veil { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .25s; pointer-events: none; }
+.sh.on .sheet { transform: none; } .sh.on .veil { opacity: 1; pointer-events: auto; }
+.sheet h4 { margin: 0 0 14px; font-size: 17px; font-weight: 700; }
+.ways { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ways span { display: grid; justify-items: center; gap: 6px; font-size: 12px; color: var(--ink-soft); opacity: 0; transform: translateY(12px); transition: opacity .25s, transform .3s cubic-bezier(.2,1,.3,1); transition-delay: calc(var(--i) * 45ms + 120ms); }
+.sh.on .ways span { opacity: 1; transform: none; }
+.ways i { width: 48px; height: 48px; border-radius: 50%; display: block; }
+.copy { margin-top: 16px; width: 100%; height: 44px; border: 0; border-radius: 12px; background: var(--sub); color: var(--ink); font: 700 15px var(--font); cursor: pointer; position: relative; overflow: hidden; }
+.copy span { display: block; transition: transform .25s cubic-bezier(.2,1,.3,1), opacity .2s; }
+.copy .c2 { position: absolute; inset: 0; display: grid; place-items: center; color: var(--brand-text); transform: translateY(100%); opacity: 0; }
+.copy.done .c1 { transform: translateY(-100%); opacity: 0; } .copy.done .c2 { transform: none; opacity: 1; }
+.opensh { margin: 18px; }
+
+/* 9 새 주문 */
+.ol { padding: 6px 18px; }
+.ol .o { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--rule); font-size: 15px; background: transparent; transition: background 1.2s; }
+.ol .o small { display: block; font-size: 13px; color: var(--ink-soft); }
+.ol .o b { font-variant-numeric: tabular-nums; }
+.ol .o.new { animation: slideIn .4s cubic-bezier(.2,1,.3,1); background: var(--brand-tint); margin-inline: -18px; padding-inline: 18px; }
+.ol .o.new.fade { background: transparent; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-16px); max-height: 0; } to { opacity: 1; transform: none; max-height: 70px; } }
+.badge { font-size: 12px; font-weight: 700; color: #fff; background: var(--brand); border-radius: 999px; padding: 2px 8px; margin-left: 6px; }
+
+/* 10 매출 막대 */
+.chart { padding: 18px; }
+.chart .sum { font-size: 13px; color: var(--ink-soft); } .chart .sum b { display: block; font-size: 28px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bars { margin-top: 18px; height: 150px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; align-items: end; }
+.bars div { display: grid; gap: 6px; justify-items: center; height: 100%; align-content: end; }
+.bars i { width: 100%; border-radius: 6px 6px 2px 2px; background: var(--rule-strong); transform-origin: bottom; transform: scaleY(0); transition: transform .5s cubic-bezier(.2,1,.3,1); transition-delay: calc(var(--i) * 50ms); }
+.bars .today i { background: var(--brand); }
+.bars small { font-size: 12px; color: var(--ink-faint); }
+.chart.on .bars i { transform: none; }
+
+/* 11 등록 단계 */
+.steps { padding: 18px; }
+.track6 { height: 4px; border-radius: 2px; background: var(--sub); overflow: hidden; }
+.track6 i { display: block; height: 100%; background: var(--brand); width: 25%; transition: width .45s cubic-bezier(.65,0,.35,1); }
+.stepnm { margin-top: 10px; font-size: 13px; color: var(--ink-soft); }
+.stepnm b { color: var(--brand-text); }
+.stage { margin-top: 16px; position: relative; height: 150px; overflow: hidden; }
+.stage section { position: absolute; inset: 0; display: grid; gap: 10px; align-content: start; transition: transform .35s cubic-bezier(.2,1,.3,1), opacity .25s; }
+.stage section h4 { margin: 0; font-size: 17px; font-weight: 700; }
+.stage section div { height: 40px; border-radius: 10px; background: var(--sub); }
+.stage section.next { transform: translateX(40px); opacity: 0; } .stage section.prev { transform: translateX(-40px); opacity: 0; }
+.stepbtns { display: flex; gap: 8px; }
+.stepbtns .btn { flex: 1; height: 40px; font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) { .scr *, .scr { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <h1>유어딜 모션 시안 6차</h1>
+  <p class="lede">손님 화면 여덟 곳과 사장님 화면 세 곳입니다. 유달이는 쓰지 않았습니다. 화면 안의 버튼과 칸은 직접 눌러 볼 수 있습니다. 가게 이름과 숫자는 예시입니다.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all" type="button">전부 다시 재생</button>
+    <button class="ctl" id="mode" type="button">다크 모드로</button>
+  </div>
+
+  <section class="group">
+    <h2>손님 화면</h2>
+    <p>추천 표시가 붙은 셋이 돈과 직접 이어지는 순간이라 체감이 가장 큽니다.</p>
+    <div class="grid">
+      <div class="card"><div class="head"><h3>결제 버튼 누른 뒤<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="pay"><div class="pad">
+          <div class="row"><span>을지로 한우 오마카세</span><span>1매</span></div>
+          <div class="row"><span>결제 금액</span><b>39,000원</b></div>
+          <div style="margin-top:18px"><button class="paybtn" type="button"><span class="lbl">39,000원 결제하기</span><span class="spin"><i></i></span><span class="ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button></div>
+          <p class="payerr">카드사 응답이 늦어요. 다시 눌러 주세요.</p>
+          <div class="paybtns"><button class="btn btn-out" type="button" data-r="ok">성공으로</button><button class="btn btn-out" type="button" data-r="fail">실패로</button></div></div></div>
+        <p class="desc">누르면 글자가 위로 빠지고 버튼 안에 도는 원이 뜹니다. 성공이면 체크가 그려지고, 실패면 버튼이 좌우로 흔들리며 이유가 아래에 나옵니다. 두 번 누르는 실수도 줄어듭니다.</p></div>
+
+      <div class="card"><div class="head"><h3>쿠폰 적용<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="coupon"><div class="pad">
+          <div class="row"><span>상품 금액</span><span>42,000원</span></div>
+          <div class="disc"><div class="row"><span>첫 구매 쿠폰</span><span>-3,000원</span></div></div>
+          <div class="total"><span style="color:var(--ink-soft);font-size:15px">총 결제</span><b><span class="roll"><span>42,000</span></span>원</b></div>
+          <button class="coupon" type="button">쿠폰 적용하기</button></div></div>
+        <p class="desc">쿠폰을 고르면 할인 줄이 펼쳐지듯 들어오고, 총액이 아래로 굴러 내려가며 줄어듭니다. 얼마가 빠졌는지 눈으로 따라갈 수 있습니다.</p></div>
+
+      <div class="card"><div class="head"><h3>단골 맺기<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="fav"><div class="pad">
+          <div class="store"><span class="ph"></span><div><h4>성수 브런치 하우스</h4><p>단골 <span class="roll"><span>128</span></span>명</p></div></div>
+          <button class="fav" type="button"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span class="t">단골 맺기</span></button></div>
+          <p class="tap">버튼을 눌러 보세요</p></div>
+        <p class="desc">누르면 버튼이 채움에서 테두리로 바뀌며 하트가 톡 차오르고, 단골 수가 하나 굴러 올라갑니다. 다시 누르면 반대로 돌아갑니다.</p></div>
+
+      <div class="card"><div class="head"><h3>찜 목록에서 지우기</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="wish"><div class="wl"></div>
+          <div class="toast"><span>찜에서 뺐어요</span><button type="button">되돌리기</button></div></div>
+        <p class="desc">지우면 그 줄이 옆으로 밀려 나가고 아래 줄이 부드럽게 올라와 빈자리를 채웁니다. 아래에 되돌리기가 잠깐 뜹니다.</p></div>
+
+      <div class="card"><div class="head"><h3>맨 위로 버튼</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="up"><div class="feed"></div>
+          <button class="up" type="button" aria-label="맨 위로"><svg class="ico" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div>
+        <p class="desc">목록을 한참 내리면 오른쪽 아래에서 버튼이 솟아오르고, 누르면 부드럽게 맨 위로 올라가며 버튼이 사라집니다.</p></div>
+
+      <div class="card"><div class="head"><h3>이용권 진행 단계</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="tl"><div class="tl">
+          <div class="st"><span class="dot"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><h4>결제 완료</h4><small>11월 2일 14:05</small></div><span class="line"><i></i></span></div>
+          <div class="st"><span class="dot"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><h4>사용 가능</h4><small>12월 31일까지</small></div><span class="line"><i></i></span></div>
+          <div class="st"><span class="dot"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><h4>사용 완료</h4><small>매장에서 QR 확인</small></div></div></div></div>
+        <p class="desc">주문 상세를 열면 지나온 단계의 점이 차례로 채워지고, 점 사이 선이 위에서 아래로 차오릅니다. 지금 어디쯤인지 바로 보입니다.</p></div>
+
+      <div class="card"><div class="head"><h3>입력 칸 확인</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="field"><div class="pad"><div class="field">
+          <label>휴대폰 번호</label><div class="inp"><span class="v">010-123</span></div>
+          <p class="msg">번호가 짧아요. 11자리를 넣어 주세요.</p></div>
+          <div class="paybtns"><button class="btn btn-out" type="button" data-r="bad">틀리게</button><button class="btn btn-out" type="button" data-r="good">맞게</button></div></div></div>
+        <p class="desc">틀린 채로 넘어가려 하면 칸이 짧게 흔들리고 밑줄이 빨갛게 그어지며 이유가 내려옵니다. 맞게 고치면 밑줄이 파랗게 바뀝니다.</p></div>
+
+      <div class="card"><div class="head"><h3>유어샵 공유하기</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr sh" data-demo="share"><button class="btn btn-primary opensh" type="button">공유</button><div class="veil"></div>
+          <div class="sheet"><h4>내 유어샵 공유</h4>
+            <div class="ways"><span style="--i:0"><i style="background:#FEE500"></i>카카오톡</span><span style="--i:1"><i style="background:#C9D8F2"></i>문자</span><span style="--i:2"><i style="background:#F2D9C9"></i>인스타</span><span style="--i:3"><i style="background:var(--sub)"></i>더보기</span></div>
+            <button class="copy" type="button"><span class="c1">링크 복사</span><span class="c2">복사했어요</span></button></div></div>
+        <p class="desc">시트가 올라오면 공유 수단이 하나씩 차례로 떠오릅니다. 링크 복사를 누르면 글자가 위로 넘어가며 "복사했어요"로 바뀝니다.</p></div>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>사장님 화면</h2>
+    <p>장사 중에 바로 알아차려야 하는 것들입니다.</p>
+    <div class="grid">
+      <div class="card"><div class="head"><h3>새 주문 들어옴</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="order"><div class="ol"></div></div>
+        <p class="desc">새 주문이 목록 맨 위로 미끄러져 들어오고, 그 줄만 옅은 파랑으로 잠깐 칠해졌다가 천천히 빠집니다. 다른 줄은 밀려 내려갑니다.</p></div>
+
+      <div class="card"><div class="head"><h3>이번 주 매출 막대</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="chart"><div class="chart"><span class="sum">이번 주 매출<b class="num">0원</b></span>
+          <div class="bars"></div></div></div>
+        <p class="desc">매출 분석을 열면 막대가 월요일부터 차례로 자라고, 합계가 함께 세어 올라갑니다. 오늘 막대만 파랗습니다.</p></div>
+
+      <div class="card"><div class="head"><h3>이용권 등록 단계</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="steps"><div class="steps">
+          <div class="track6"><i></i></div><p class="stepnm"><b>1</b> / 4 · <span class="nm">사진</span></p>
+          <div class="stage"></div>
+          <div class="stepbtns"><button class="btn btn-out" type="button" data-d="-1">이전</button><button class="btn btn-primary" type="button" data-d="1">다음</button></div></div></div>
+        <p class="desc">다음을 누르면 위 진행선이 앞으로 차오르고, 지금 칸은 왼쪽으로 빠지며 다음 칸이 오른쪽에서 들어옵니다. 몇 단계 남았는지 보입니다.</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var fmt = function (n) { return Math.round(n).toLocaleString('ko-KR'); };
+  var wait = function (ms) { return new Promise(function (r) { setTimeout(r, reduce ? 0 : ms); }); };
+  function restart(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+  function roll(box, val, down) {
+    var cur = box.querySelector('span:last-child'); if (cur.textContent === String(val)) return;
+    box.querySelectorAll('.out').forEach(function (o) { o.remove(); });
+    box.classList.toggle('down', !!down);
+    if (reduce) { cur.textContent = val; return; }
+    cur.className = 'out'; var nx = document.createElement('span'); nx.className = 'in'; nx.textContent = val; box.appendChild(nx);
+    setTimeout(function () { cur.remove(); }, 300);
+  }
+  function countUp(el, to, dur, suf) { if (reduce) { el.textContent = fmt(to) + suf; return; } var t0 = performance.now(); (function s(n) { var p = Math.min(1, (n - t0) / dur), e = 1 - Math.pow(1 - p, 3); el.textContent = fmt(to * e) + suf; if (p < 1) requestAnimationFrame(s); })(t0); }
+
+  var demos = {
+    pay: {
+      init: function (s) { var self = this; this.mode = 'ok';
+        s.querySelector('.paybtn').addEventListener('click', function () { self.go(s); });
+        s.querySelectorAll('[data-r]').forEach(function (b) { b.addEventListener('click', function () { self.mode = b.dataset.r; self.go(s); }); }); },
+      go: function (s) { var b = s.querySelector('.paybtn'), e = s.querySelector('.payerr'), m = this.mode;
+        b.classList.remove('done', 'fail'); e.classList.remove('on'); b.classList.add('busy');
+        wait(1100).then(function () { b.classList.remove('busy'); if (m === 'ok') b.classList.add('done'); else { restart(b, 'fail'); e.classList.add('on'); } return wait(1800); })
+          .then(function () { if (m === 'ok') b.classList.remove('done'); }); },
+      play: function (s) { this.mode = 'ok'; this.go(s); }
+    },
+    coupon: {
+      init: function (s) { var self = this; this.on = false; s.querySelector('.coupon').addEventListener('click', function () { self.set(s, !self.on); }); },
+      set: function (s, on) { this.on = on; s.querySelector('.disc').classList.toggle('on', on); roll(s.querySelector('.roll'), on ? '39,000' : '42,000', on); s.querySelector('.coupon').textContent = on ? '쿠폰 빼기' : '쿠폰 적용하기'; },
+      play: function (s) { var self = this; self.set(s, false); wait(600).then(function () { self.set(s, true); }); }
+    },
+    fav: {
+      init: function (s) { var self = this; this.on = false; s.querySelector('.fav').addEventListener('click', function () { self.set(s, !self.on); }); },
+      set: function (s, on) { this.on = on; var b = s.querySelector('.fav'); b.classList.toggle('on', on); b.querySelector('.t').textContent = on ? '단골' : '단골 맺기'; roll(s.querySelector('.roll'), on ? '129' : '128', !on); },
+      play: function (s) { var self = this; if (self.on) self.set(s, false); wait(600).then(function () { self.set(s, true); }); }
+    },
+    wish: {
+      items: [['을지로 한우 오마카세', '39,000원', 'var(--photo1)'], ['성수 브런치 세트', '18,000원', 'var(--photo2)'], ['두피 스케일링', '29,000원', 'var(--photo3)'], ['강릉 바다 숙소', '89,000원', 'var(--photo4)']],
+      init: function (s) { var self = this; this.fill(s);
+        s.querySelector('.toast button').addEventListener('click', function () { self.fill(s); s.querySelector('.toast').classList.remove('on'); }); },
+      fill: function (s) { var self = this, wl = s.querySelector('.wl'); wl.innerHTML = '';
+        this.items.forEach(function (it) { var d = document.createElement('div'); d.className = 'it';
+          d.innerHTML = '<span class="ph" style="background:' + it[2] + '"></span><div>' + it[0] + '<small>' + it[1] + '</small></div><button type="button">지우기</button>';
+          d.querySelector('button').addEventListener('click', function () { self.drop(s, d); }); wl.appendChild(d); }); },
+      drop: function (s, d) { d.classList.add('gone'); var t = s.querySelector('.toast'); t.classList.add('on'); clearTimeout(this.t); this.t = setTimeout(function () { t.classList.remove('on'); }, 2600); },
+      play: function (s) { var self = this; self.fill(s); s.querySelector('.toast').classList.remove('on'); wait(700).then(function () { self.drop(s, s.querySelectorAll('.it')[1]); }); }
+    },
+    up: {
+      init: function (s) { var f = s.querySelector('.feed'), u = s.querySelector('.up');
+        for (var i = 0; i < 14; i++) f.appendChild(document.createElement('div'));
+        f.addEventListener('scroll', function () { u.classList.toggle('on', f.scrollTop > 160); });
+        u.addEventListener('click', function () { f.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); }); },
+      play: function (s) { var f = s.querySelector('.feed'); f.scrollTo({ top: 0 }); wait(400).then(function () { f.scrollTo({ top: 420, behavior: reduce ? 'auto' : 'smooth' }); return wait(1500); }).then(function () { f.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); }); }
+    },
+    tl: {
+      init: function () {},
+      play: function (s) { var st = s.querySelectorAll('.st'); st.forEach(function (x) { x.classList.remove('on', 'fill'); });
+        wait(300).then(function () { st[0].classList.add('on'); return wait(280); }).then(function () { st[0].classList.add('fill'); return wait(380); }).then(function () { st[1].classList.add('on'); }); }
+    },
+    field: {
+      init: function (s) { var self = this; s.querySelectorAll('[data-r]').forEach(function (b) { b.addEventListener('click', function () { self.set(s, b.dataset.r); }); }); },
+      set: function (s, r) { var f = s.querySelector('.field'), m = s.querySelector('.msg'), v = s.querySelector('.v');
+        f.classList.remove('bad', 'good'); m.classList.remove('okm'); void f.offsetWidth;
+        if (r === 'bad') { v.textContent = '010-123'; m.textContent = '번호가 짧아요. 11자리를 넣어 주세요.'; f.classList.add('bad'); }
+        else { v.textContent = '010-1234-5678'; m.textContent = '확인했어요'; m.classList.add('okm'); f.classList.add('good', 'bad'); f.classList.remove('bad'); m.style.opacity = 1; m.style.transform = 'none'; }
+        if (r === 'bad') { m.style.opacity = ''; m.style.transform = ''; } },
+      play: function (s) { var self = this; self.set(s, 'good'); s.querySelector('.msg').style.opacity = 0; wait(500).then(function () { self.set(s, 'bad'); }); }
+    },
+    share: {
+      init: function (s) { s.querySelector('.opensh').addEventListener('click', function () { s.classList.add('on'); });
+        s.querySelector('.veil').addEventListener('click', function () { s.classList.remove('on'); s.querySelector('.copy').classList.remove('done'); });
+        s.querySelector('.copy').addEventListener('click', function () { var c = this; c.classList.add('done'); setTimeout(function () { c.classList.remove('done'); }, 1600); }); },
+      play: function (s) { s.classList.remove('on'); s.querySelector('.copy').classList.remove('done'); wait(400).then(function () { s.classList.add('on'); return wait(1200); }).then(function () { s.querySelector('.copy').classList.add('done'); return wait(1600); }).then(function () { s.querySelector('.copy').classList.remove('done'); }); }
+    },
+    order: {
+      base: [['두피 스케일링', '14:02', '29,000'], ['성수 브런치 세트', '13:48', '18,000'], ['성수 브런치 세트', '13:31', '18,000'], ['을지로 한우 오마카세', '12:57', '39,000']],
+      row: function (it, isNew) { var d = document.createElement('div'); d.className = 'o' + (isNew ? ' new' : '');
+        d.innerHTML = '<div>' + it[0] + (isNew ? '<span class="badge">새 주문</span>' : '') + '<small>' + it[1] + '</small></div><b>' + it[2] + '원</b>'; return d; },
+      init: function (s) { var self = this, ol = s.querySelector('.ol'); this.base.forEach(function (it) { ol.appendChild(self.row(it, false)); }); },
+      play: function (s) { var self = this, ol = s.querySelector('.ol'); ol.innerHTML = ''; this.base.forEach(function (it) { ol.appendChild(self.row(it, false)); });
+        wait(700).then(function () { var n = self.row(['을지로 한우 오마카세 2매', '방금', '78,000'], true); ol.insertBefore(n, ol.firstChild); if (ol.children.length > 4) ol.lastChild.remove(); return wait(1400); })
+          .then(function () { var n = ol.querySelector('.new'); if (n) n.classList.add('fade'); }); }
+    },
+    chart: {
+      vals: [42, 55, 38, 70, 64, 88, 76], days: ['월', '화', '수', '목', '금', '토', '일'],
+      init: function (s) { var b = s.querySelector('.bars'), self = this;
+        this.vals.forEach(function (v, i) { var d = document.createElement('div'); if (i === 6) d.className = 'today';
+          d.innerHTML = '<i style="height:' + v + '%;--i:' + i + '"></i><small>' + self.days[i] + '</small>'; b.appendChild(d); }); },
+      play: function (s) { var c = s.querySelector('.chart'); c.classList.remove('on'); s.querySelector('.num').textContent = '0원'; void c.offsetWidth;
+        wait(200).then(function () { c.classList.add('on'); countUp(s.querySelector('.num'), 1284000, 900, '원'); }); }
+    },
+    steps: {
+      names: ['사진', '이름과 가격', '사용 조건', '확인'],
+      init: function (s) { var self = this, st = s.querySelector('.stage'); this.i = 0;
+        this.names.forEach(function (n, i) { var sec = document.createElement('section'); sec.className = i === 0 ? '' : 'next';
+          sec.innerHTML = '<h4>' + n + '</h4><div></div><div style="width:70%"></div>'; st.appendChild(sec); });
+        s.querySelectorAll('[data-d]').forEach(function (b) { b.addEventListener('click', function () { self.go(s, self.i + Number(b.dataset.d)); }); }); },
+      go: function (s, n) { if (n < 0 || n > 3) return; this.i = n; var self = this;
+        s.querySelectorAll('.stage section').forEach(function (sec, i) { sec.className = i === n ? '' : (i < n ? 'prev' : 'next'); });
+        s.querySelector('.track6 i').style.width = ((n + 1) * 25) + '%';
+        s.querySelector('.stepnm b').textContent = String(n + 1); s.querySelector('.nm').textContent = self.names[n]; },
+      play: function (s) { var self = this; self.go(s, 0); wait(600).then(function () { self.go(s, 1); return wait(900); }).then(function () { self.go(s, 2); }); }
+    }
+  };
+
+  var screens = Array.prototype.slice.call(document.querySelectorAll('.scr'));
+  screens.forEach(function (s) { var dm = demos[s.dataset.demo]; dm.init(s); s.closest('.card').querySelector('.replay').addEventListener('click', function () { dm.play(s); }); });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { demos[e.target.dataset.demo].play(e.target); io.unobserve(e.target); } }); }, { threshold: .5 });
+    screens.forEach(function (s) { io.observe(s); });
+  }
+  document.getElementById('all').addEventListener('click', function () { screens.forEach(function (s) { demos[s.dataset.demo].play(s); }); });
+  var mb = document.getElementById('mode');
+  function setMode(m) { screens.forEach(function (s) { s.dataset.mode = m; }); mb.textContent = m === 'dark' ? '라이트 모드로' : '다크 모드로'; }
+  mb.addEventListener('click', function () { setMode(screens[0].dataset.mode === 'dark' ? 'light' : 'dark'); });
+  var r = document.documentElement;
+  setMode(r.dataset.theme === 'dark' || (!r.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+})();
+</script>

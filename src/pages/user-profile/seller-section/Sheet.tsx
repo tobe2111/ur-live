@@ -28,7 +28,7 @@
  * 규약과 그 근거는 `sheet-history.ts` 에 있다 — 여기서는 그 판정을 **따르기만** 한다.
  */
 import type { ReactNode } from 'react'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, X } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 import {
@@ -59,11 +59,56 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
    */
   tall?: boolean
 }) {
+  // 🎬 2026-11-02 시안 3차 "올라오는 창 통일": 닫을 때도 같은 길로 내려간다(.ur-sheet-out, 200ms 뒤 onClose).
+  //   뒤로가기(popstate)는 브라우저가 이미 이동했으니 기다리지 않고 바로 닫는다. 동작 줄이기면 즉시.
+  const [closing, setClosing] = useState(false)
+  const requestClose = useCallback(() => {
+    let reduce = false
+    try { reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { /* 미지원 */ }
+    if (reduce) { onClose(); return }
+    setClosing(true)
+    window.setTimeout(onClose, 200)
+  }, [onClose])
+
+  // 🎬 2026-11-02 시안 9차 "창 끌어서 닫기"(대표 "다 해주고") — 폰에서 머리줄을 잡고 끌어내리면 손가락을 따라오고,
+  //   90px 넘게 내리면 그대로 내려가며 닫힌다(덜 내리면 제자리로). PC 가운데 창과 동작 줄이기에선 끄지 않는 대신 따라오지 않는다.
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const drag = useRef<{ y0: number; dy: number } | null>(null)
+  const dragOk = () => {
+    try { return !window.matchMedia?.('(min-width: 1024px)').matches && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { return false }
+  }
+  const onDragStart = (e: React.PointerEvent) => {
+    if (!dragOk() || (e.target as HTMLElement).closest('button')) return
+    drag.current = { y0: e.clientY, dy: 0 }
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* 미지원 */ }
+  }
+  const onDragMove = (e: React.PointerEvent) => {
+    const d = drag.current, el = panelRef.current
+    if (!d || !el) return
+    d.dy = Math.max(0, e.clientY - d.y0)
+    el.style.transition = 'none'
+    el.style.transform = d.dy ? `translateY(${d.dy}px)` : ''
+  }
+  const onDragEnd = () => {
+    const d = drag.current, el = panelRef.current
+    drag.current = null
+    if (!d || !el) return
+    if (d.dy > 90) {
+      el.style.transition = 'transform .2s cubic-bezier(.4,0,1,1)'
+      el.style.transform = 'translateY(100%)'
+      // ⚠️ `setClosing` 은 부르지 않는다 — `.ur-sheet-out` 애니메이션이 위 인라인 transform 을 덮어 창이 제자리로 튀었다가 다시 내려간다.
+      window.setTimeout(onClose, 200)
+      return
+    }
+    el.style.transition = 'transform .25s cubic-bezier(.2,1,.3,1)'
+    el.style.transform = ''
+  }
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [requestClose])
 
   // 📱 뒤로가기 = 닫기. 칸은 **열려 있는 동안 하나**다(머리말 · `sheet-history.ts`).
   useEffect(() => {
@@ -92,7 +137,7 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
 
   return (
     <>
-      <div className="fixed inset-0 ur-veil ur-sheet-veil" style={{ zIndex: Z.SHEET_BACKDROP }} onClick={onClose} aria-hidden="true" />
+      <div className={`fixed inset-0 ur-veil ur-sheet-veil${closing ? ' ur-sheet-veil-out' : ''}`} style={{ zIndex: Z.SHEET_BACKDROP }} onClick={requestClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
@@ -106,23 +151,25 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
              동작 줄이기=정지). 🔴 여기에 `animate-slide-up` 을 직접 쓰면 아래 `lg:-translate-*`
              가운데 정렬을 덮어 **PC 다이얼로그가 튄다**(실측 410,200 → 640,400). 근거·실측은
              `src/index.css` 의 `.ur-sheet-in` 머리말에 있다. */
-          + ' ur-sheet-in'
+          + ' ur-sheet-in' + (closing ? ' ur-sheet-out' : '') // 닫힘 클래스가 뒤에 정의돼 이긴다(index.css)
           // 🖥️ lg+ : 가운데 다이얼로그(위 머리말). 폰 값들을 여기서 되돌린다.
           + ' lg:inset-x-auto lg:left-1/2 lg:top-1/2 lg:bottom-auto lg:h-auto'
           + ' lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-[min(900px,92vw)]'
           + ' lg:max-h-[86dvh]'
         }
         style={{ zIndex: Z.SHEET_BODY }}
+        ref={panelRef}
       >
         <div className="lg:hidden shrink-0 pt-2" aria-hidden="true"><div className="mx-auto w-10 h-[5px] rounded-full bg-gray-400/40" /></div>
-        <div className="flex items-center gap-1 px-5 h-14 shrink-0">
+        <div className="flex items-center gap-1 px-5 h-14 shrink-0 touch-none lg:touch-auto"
+          onPointerDown={onDragStart} onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}>
           {onBack && (
             <button type="button" onClick={onBack} aria-label="뒤로" className="w-8 h-8 -ml-2 flex items-center justify-center shrink-0">
               <ChevronLeft className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
             </button>
           )}
           <span className="flex-1 min-w-0 truncate text-[17px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</span>
-          <button type="button" onClick={onClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
+          <button type="button" onClick={requestClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </button>
         </div>

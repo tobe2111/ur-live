@@ -43,14 +43,17 @@ export default function DetailSectionTabs({ tabs }: { tabs: DetailSectionTab[] }
   return (
     <nav aria-label={tr('pass.tabs.ariaLabel', { defaultValue: '상세 구역' })} className="lg:hidden sticky z-30 bg-[var(--gbd-bg)] shadow-[inset_0_-1px_0_var(--gbd-line2)]"
       style={{ top: DETAIL_TABS_STICKY_TOP }}>
-      <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+      <div className="relative grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+        {/* 🎬 2026-11-02 시안 9차 "상세 구역 탭"(대표 "다 해주고") — 밑줄 하나가 지금 구역 탭으로 미끄러진다(칸이 같은 폭이라 칸 수로 자리를 정한다). */}
+        <span aria-hidden="true" className="absolute bottom-0 left-0 h-0.5 pointer-events-none transition-transform duration-300 ease-out motion-reduce:transition-none"
+          style={{ width: `${100 / tabs.length}%`, background: 'var(--gbd-ink)', transform: `translateX(${Math.max(0, tabs.findIndex((t) => t.id === current)) * 100}%)` }} />
         {tabs.map((t) => {
           const on = t.id === current
           return (
             <button key={t.id} type="button" aria-current={on ? 'true' : undefined}
               onClick={() => { setCurrent(t.id); document.getElementById(t.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
               className={`h-11 text-[15px] ${on ? 'font-bold' : 'font-medium'} bg-transparent border-0 cursor-pointer`}
-              style={{ color: on ? 'var(--gbd-ink)' : 'var(--gbd-sub)', boxShadow: on ? 'inset 0 -2px 0 var(--gbd-ink)' : undefined }}>
+              style={{ color: on ? 'var(--gbd-ink)' : 'var(--gbd-sub)' }}>
               {t.label}
             </button>
           )

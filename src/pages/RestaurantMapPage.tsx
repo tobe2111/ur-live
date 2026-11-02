@@ -818,7 +818,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             aria-valuenow={sheetSnap === 'peek' ? 0 : sheetSnap === 'mid' ? 1 : 2}
             tabIndex={0}
           >
-            <div className="w-10 h-1 rounded-full bg-gray-300" />
+            <div className={`h-1 rounded-full transition-[width,background-color] duration-200 motion-reduce:transition-none ${sheetDragging ? 'w-14 bg-gray-400' : 'w-10 bg-gray-300'}`} />
           </div>
 
           {/* 🗺️ 2026-08-19 (대표 — "지도 위 검색·버튼들을 왼쪽 상품 리스트 상단으로"): PC 전용 헤더.

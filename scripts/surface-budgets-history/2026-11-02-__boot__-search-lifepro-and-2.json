@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-02",
+  "reason": "모션 10~12차(2026-11-02 대표 '모두 다 해줘'): 공용 셸·CSS 에 스위치 손잡이·공유 복사 체크·홈 카테고리 밑줄 등 소량(+0.5~0.8KB/화면). 상세 묶음이 딸려 오던 +20KB(마이)·+4KB(생활 고수)는 그림·숫자 굴림을 화면 안에 따로 두어 0 으로 되돌림",
+  "surfaces": [
+    "__boot__",
+    "search",
+    "lifePro",
+    "dash:my",
+    "dash:agency"
+  ],
+  "changes": [
+    "__boot__: 151.9 → 153.5 KB (+1.7, 허용 1.5) · 늘어난 것: index.css +0.8, app-shell.js +0.6",
+    "search: 178.9 → 180.6 KB (+1.7, 허용 1.5) · 늘어난 것: app-search.js +0.8, app-shell.js +0.5, index.css +0.4",
+    "lifePro: 199.3 → 201.1 KB (+1.7, 허용 1.5) · 늘어난 것: app-shell.js +0.5, index.css +0.4, LifeProPage.js +0.4",
+    "dash:my: 208.5 → 210.4 KB (+1.9, 허용 1.5) · 늘어난 것: app-shell.js +0.5, UserProfilePage.js +0.4, index.css +0.4",
+    "dash:agency: 153.3 → 154.9 KB (+1.7, 허용 1.5) · 늘어난 것: index.css +0.8, app-shell.js +0.6"
+  ]
+}

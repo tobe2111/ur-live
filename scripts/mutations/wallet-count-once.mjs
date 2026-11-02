@@ -16,10 +16,10 @@ export default [
   {
     name: '🎟️ 지갑 탭에 개수 배지가 돌아온다 (요약 카드와 같은 숫자를 두 번)',
     file: VPAGE,
-    find: '                  {tab === key && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}',
+    find: '                  {tab === key && !tabBar && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}',
     replace:
       "                  {key === 'unused' && unusedItems.length > 0 && <span className=\"ml-1 text-[13px] font-bold text-brand-text tabular-nums\">{unusedItems.length}</span>}\n" +
-      '                  {tab === key && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}',
+      '                  {tab === key && !tabBar && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}',
     test: T,
     why:
       '정확히 종전 코드다. 탭에 개수를 붙이는 건 늘 그럴듯해 보여서 다시 붙기 쉽고, ' +

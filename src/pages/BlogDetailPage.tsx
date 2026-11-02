@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ClockIcon, HomeIcon } from '@/components/icons/urdeal-icons'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
@@ -13,6 +13,24 @@ import { useBlogPost, type BlogPost } from '@/hooks/queries/useBlogPost'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 // 🧱 2026-10-19 골격 클래스·날짜·읽는 시간은 서버 첫 화면과 같은 SSOT(`shared/blog-page.ts`).
 import { BLOG_DETAIL, blogDateLabel, blogReadMin } from '@/shared/blog-page'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 11차 ③ — 읽어 내려간 만큼 맨 위 얇은 막대가 찬다(스크롤마다 한 프레임에 한 번 · transform 만).
+injectMotionCss('ur-m-readbar', `.ur-readbar { position: fixed; left: 0; right: 0; top: 0; height: 3px; z-index: 60; pointer-events: none; }.ur-readbar > i { display: block; height: 100%; background: var(--brand); transform-origin: left; transform: scaleX(0); }@media (prefers-reduced-motion: reduce){.ur-readbar{display:none}}`)
+
+/** 문서 스크롤 비율을 막대 하나에 그린다 — 상태를 안 쓴다(스크롤마다 다시 그리지 않게). */
+function ReadingBar() {
+  const ref = useRef<HTMLElement>(null)
+  useEffect(() => {
+    let raf = 0
+    const paint = () => { raf = 0; const d = document.documentElement; const p = d.scrollTop / Math.max(1, d.scrollHeight - d.clientHeight); if (ref.current) ref.current.style.transform = `scaleX(${Math.min(1, Math.max(0, p))})` }
+    const on = () => { if (!raf) raf = requestAnimationFrame(paint) }
+    paint()
+    window.addEventListener('scroll', on, { passive: true })
+    window.addEventListener('resize', on)
+    return () => { window.removeEventListener('scroll', on); window.removeEventListener('resize', on); if (raf) cancelAnimationFrame(raf) }
+  }, [])
+  return <div className="ur-readbar" aria-hidden="true"><i ref={ref} /></div>
+}
 
 // 📝 제목/요약 등 일반 텍스트에서 마크다운 볼드 표기(**) 제거 — 글자로 노출 방지(AI 생성/편집 글 방탄).
 const stripBold = (s?: string | null) => (s || '').replace(/\*\*/g, '')
@@ -131,6 +149,7 @@ export default function BlogDetailPage() {
 
   return (
     <div className={BLOG_DETAIL.root}>
+      <ReadingBar />
       <SEO
         title={post.title}
         description={stripBold(post.summary)}

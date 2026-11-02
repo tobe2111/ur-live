@@ -22,6 +22,7 @@
  * 이미 받아 둔 검색 결과를 **클라에서 가른다.** 새 API·새 쿼리가 없다(숙소 49건, 한 번에 온다).
  * 섹션에 3장이 못 차면 그 줄은 **스스로 사라진다**(두 장짜리 캐러셀은 캐러셀이 아니다).
  */
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { stayRegionLabel } from '@/shared/stay-address'
@@ -29,6 +30,27 @@ import { STAYS_LIST, buildStayCurations, stayCardHref, type StaySearchItem } fro
 
 // 🏨 2026-10-19 큐레이션 규칙·치수 클래스는 `shared/stays-list.ts` 로 옮겼다 — 워커 첫 화면이 같은 것을 쓴다.
 export { buildStayCurations, type StayCurationRow } from '@/shared/stays-list'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 10차 ④ — 아래에서 **스크롤로 들어오는** 추천 줄만 카드가 왼쪽부터 차례로 떠오른다(한 번).
+//   첫 화면에 이미 보이는 줄은 안 움직인다 — 서버가 그려 둔 사진을 지웠다 다시 띄우면 첫 화면이 늦어 보인다.
+injectMotionCss('ur-m-stayrow', `@keyframes ur-sc-rise { from { opacity: 0; transform: translateY(14px); } }.ur-sc-on [data-sc] { animation: ur-sc-rise .45s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 70ms); }@media (prefers-reduced-motion: reduce){.ur-sc-on [data-sc]{animation:none!important}}`)
+
+/** 처음엔 화면 밖이었다가 들어올 때만 `ur-sc-on` 을 붙인다. 처음부터 보이면 아무것도 안 한다. */
+function useRevealOnEnter<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    let first = true
+    const io = new IntersectionObserver(([e]) => {
+      if (first) { first = false; if (e.isIntersecting) io.disconnect(); return }
+      if (e.isIntersecting && e.boundingClientRect.top > 0) { el.classList.add('ur-sc-on'); io.disconnect() }
+    }, { threshold: 0.15 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  return ref
+}
 
 export function StayCardRow({
   items, checkIn, checkOut, guests, firstAboveFold = false,
@@ -36,7 +58,7 @@ export function StayCardRow({
   return (
     <div className={STAYS_LIST.row}>
       {items.map((s, i) => (
-        <div key={s.id} className={STAYS_LIST.cell}>
+        <div key={s.id} className={STAYS_LIST.cell} data-sc style={{ '--i': Math.min(i, 5) } as React.CSSProperties}>
           <GroupBuyFeedCard
             p={{
               id: s.id,
@@ -70,11 +92,11 @@ export default function StayCurations({
   return (
     <div className={STAYS_LIST.curations}>
       {rows.map((row, ri) => (
-        <section key={row.key}>
+        <RevealSection key={row.key}>
           <h2 className={STAYS_LIST.rowTitle}>{row.title}</h2>
           {/* 가로 스크롤 — 한 장을 크게 보여 주는 것이 목적이라 폭을 % 로 잡는다(사진이 커진다). */}
           <StayCardRow items={row.items} checkIn={checkIn} checkOut={checkOut} guests={guests} firstAboveFold={ri === 0} />
-        </section>
+        </RevealSection>
       ))}
       <div className="flex items-center justify-between px-1 pt-2">
         <h2 className="text-[17px] sm:text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">전체 숙소</h2>
@@ -82,4 +104,9 @@ export default function StayCurations({
       </div>
     </div>
   )
+}
+
+function RevealSection({ children }: { children: React.ReactNode }) {
+  const ref = useRevealOnEnter<HTMLElement>()
+  return <section ref={ref}>{children}</section>
 }

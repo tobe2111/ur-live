@@ -14,6 +14,8 @@ import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
 import { formatNumber } from '@/utils/format'
 import { useTranslation } from '@/lib/i18n-lite'
 import OwnerManagePanel from './OwnerManagePanel'
+import RollingNumber from '@/components/ui/RollingNumber' // 🎬 2026-11-02 수량이 굴러가며 바뀐다
+import './pay-spin-css' // 🎬 2026-11-02 시안 6차 결제 처리 중 도는 원 — 모바일 바·PC 상자가 같은 CSS 를 한 번만 싣게(같은 청크)
 
 interface Props {
   /** 2026-10-11 D안: '구매 옵션' 상자를 걷어 더는 안 쓴다(호출부 호환을 위해 남김). */
@@ -107,7 +109,7 @@ export default function DealPurchaseBox({
             right={
               <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} role="group" aria-label="수량 조절">
                 <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label={t('passBuy.qtyDecrease', { defaultValue: '수량 감소' })} style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 17, cursor: 'pointer', opacity: (!buyable || quantity <= 1) ? .35 : 1 }}>−</button>
-                <span style={{ minWidth: 28, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live="polite">{quantity}</span>
+                <span style={{ minWidth: 28, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live="polite"><RollingNumber value={quantity} /></span>
                 <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label={t('passBuy.qtyIncrease', { defaultValue: '수량 증가' })} style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 17, cursor: 'pointer', opacity: (!buyable || quantity >= maxQty) ? .35 : 1 }}>+</button>
               </span>
             }
@@ -135,7 +137,7 @@ export default function DealPurchaseBox({
         aria-label={isPrelaunch ? t('passBuy.prelaunchApply', { defaultValue: '사전 응모하기' }) : isJoinable ? (allDeal ? `${formatNumber(total)}딜로 결제하기` : buyWithAmount) : t('passBuy.unavailable', { defaultValue: '구매 불가' })}
         style={{ width: '100%', height: 50, border: 'none', borderRadius: 12, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 15, fontWeight: 700, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
       >
-        {joining ? t('passBuy.processing', { defaultValue: '처리 중…' }) : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />{t('passBuy.openingSoon', { defaultValue: '오픈 예정' })} — {t('passBuy.prelaunchApply', { defaultValue: '사전 응모하기' })}</> : !isJoinable ? (t('passBuy.unavailable', { defaultValue: '구매 불가' })) : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : buyWithAmount}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+        {joining ? <span className="ur-pay-busy"><span className="ur-pay-spin" aria-hidden="true" />{t('passBuy.processing', { defaultValue: '처리 중…' })}</span> : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />{t('passBuy.openingSoon', { defaultValue: '오픈 예정' })} — {t('passBuy.prelaunchApply', { defaultValue: '사전 응모하기' })}</> : !isJoinable ? (t('passBuy.unavailable', { defaultValue: '구매 불가' })) : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : buyWithAmount}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>
       )}
 

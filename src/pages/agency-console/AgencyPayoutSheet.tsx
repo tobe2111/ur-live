@@ -13,6 +13,10 @@ import { formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import { agencyRequest } from './agency-api'
+// 🎬 2026-11-02 시안 7차 "정산 요청"(대표 "7차도 다 해주고") — 신청하면 '지금 받을 수 있어요' 금액이 새 값으로 올라와 바뀌고,
+//   신청한 돈이 옮겨 간 '처리 중' 칸이 옅은 파랑으로 한 번 켜진다. 사장님 정산은 신청 버튼이 없어(매주 자동) 이 화면에만 있다.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-payout', `@keyframes ur-po-flash { 0% { background-color: transparent; } 20%, 70% { background-color: var(--brand-tint); } 100% { background-color: transparent; } }@keyframes ur-po-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }.ur-po-flash { border-radius: 8px; animation: ur-po-flash 1.4s ease both; }.ur-po-in { display: inline-block; animation: ur-po-in .35s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-po-flash,.ur-po-in{animation:none!important}}`)
 
 export interface AgencyShareBalance { pending: number; available: number; requested: number; paid: number }
 export interface AgencyPayoutRow {
@@ -58,6 +62,7 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
   const hasOpen = (data?.payouts || []).some((p) => p.status === 'requested')
   const canRequest = canManage && !!b && b.available >= min && !hasOpen
 
+  const [sent, setSent] = useState(0) // 🎬 신청이 끝난 횟수 — 바뀔 때 금액·처리 중 칸이 한 번 움직인다
   async function request() {
     if (!b) return
     if (!(await confirmDialog(`${formatNumber(b.available)}원 지급을 신청할까요? 확인되면 유어딜이 보내 드려요.`))) return
@@ -67,6 +72,7 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
     if (!r.ok) { toast.error(r.data.error || '신청하지 못했어요'); return }
     toast.success('지급을 신청했어요.')
     await load()
+    setSent((n) => n + 1)
   }
 
   return (
@@ -86,7 +92,7 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
             <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-5 shadow-lift">
               <p className="text-[13px] text-gray-500 dark:text-gray-400">지금 받을 수 있어요</p>
               <p className="mt-1 text-[28px] font-extrabold tabular-nums tracking-[-0.01em] text-gray-900 dark:text-white">
-                {formatNumber(b.available)}<span className="ml-1 text-[17px] font-bold">원</span>
+                <span key={sent} className={sent ? 'ur-po-in' : undefined}>{formatNumber(b.available)}</span><span className="ml-1 text-[17px] font-bold">원</span>
               </p>
               <dl className="mt-4 grid grid-cols-3 gap-2">
                 {[
@@ -94,7 +100,7 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
                   ['처리 중', b.requested],
                   ['받은 돈', b.paid],
                 ].map(([k, v]) => (
-                  <div key={k as string} className="min-w-0">
+                  <div key={`${k as string}-${k === '처리 중' ? sent : 0}`} className={`min-w-0${sent && k === '처리 중' ? ' ur-po-flash -mx-1 px-1' : ''}`}>
                     <dt className="text-[12px] text-gray-400 dark:text-gray-500">{k}</dt>
                     <dd className={`truncate text-[15px] font-bold tabular-nums ${Number(v) > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                       {formatNumber(Number(v))}

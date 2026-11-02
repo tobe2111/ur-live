@@ -4,9 +4,14 @@
  * - 해외: navigator.share 또는 링크 복사
  */
 import { toast } from '@/hooks/useToast'
+import { useEffect, useState } from 'react'
 import { isKorea } from '@/shared/config/region'
 import { useTranslation } from '@/lib/i18n-lite'
 import { buildCommerce, commercePayload, feedPayload, shareViaKakao } from '@/lib/kakao-share'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 12차 ⑨ — 링크가 **복사됐을 때** 동그란 공유 버튼의 그림이 체크로 바뀌었다 돌아온다(버튼에서 눌렸다는 게 보인다).
+//   ⚠️ 한국에선 이 버튼이 카카오톡 공유 창을 연다 — 체크는 카카오가 실패해 링크 복사로 넘어갔을 때(또는 해외)만 뜬다.
+injectMotionCss('ur-m-sharecopy', `@keyframes ur-share-ok { from { opacity: 0; transform: scale(.4); } }.ur-share-copied { color: var(--brand-text); animation: ur-share-ok .32s cubic-bezier(.3,1.4,.5,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-share-copied{animation:none!important}}`)
 
 interface ShareButtonProps {
   title: string
@@ -52,13 +57,15 @@ async function shareKakao(
   }))
 }
 
-async function shareNative(title: string, description: string, fullUrl: string) {
+/** @returns 링크를 클립보드에 복사했으면 true(그때만 버튼에 체크를 띄운다). */
+async function shareNative(title: string, description: string, fullUrl: string): Promise<boolean> {
   if (navigator.share) {
     await navigator.share({ title, text: description, url: fullUrl })
-  } else {
-    await navigator.clipboard.writeText(fullUrl)
-    toast.success('링크가 복사되었습니다')
+    return false
   }
+  await navigator.clipboard.writeText(fullUrl)
+  toast.success('링크가 복사되었습니다')
+  return true
 }
 
 export default function KakaoShareButton({ title, description, imageUrl, link, buttonText, className, compact, style, regularPrice, salePrice, discountRate, secondaryButtonText }: ShareButtonProps) {
@@ -67,16 +74,24 @@ export default function KakaoShareButton({ title, description, imageUrl, link, b
   const kr = isKorea()
   const commerce = buildCommerce(regularPrice, salePrice, discountRate)
 
+  const [copied, setCopied] = useState(0)
+  useEffect(() => {
+    if (!copied) return
+    const t = window.setTimeout(() => setCopied(0), 1600)
+    return () => window.clearTimeout(t)
+  }, [copied])
+  const markCopied = (ok: boolean | void) => { if (ok) setCopied(Date.now()) }
+
   const handleShare = async () => {
     if (kr) {
       try {
         await shareKakao(title, description, imageUrl, fullUrl, buttonText, commerce, secondaryButtonText)
       } catch {
         // 카카오 실패 시 일반 공유로 폴백
-        await shareNative(title, description, fullUrl).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
+        markCopied(await shareNative(title, description, fullUrl).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }))
       }
     } else {
-      await shareNative(title, description, fullUrl).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
+      markCopied(await shareNative(title, description, fullUrl).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }))
     }
   }
 
@@ -85,7 +100,11 @@ export default function KakaoShareButton({ title, description, imageUrl, link, b
     const isCircle = className?.includes('rounded-full')
     return (
       <button onClick={handleShare} className={className || "flex items-center gap-1 px-2 py-2 rounded-lg text-[12px] font-medium bg-[#FEE500] text-[#3C1E1E] active:scale-95"} style={style} aria-label={t('common.share', { defaultValue: '공유' })}>
-        {isCircle ? (
+        {isCircle && copied ? (
+          <svg key={copied} className="ur-share-copied" style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+        ) : isCircle ? (
           <svg style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
           </svg>

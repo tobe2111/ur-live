@@ -34,6 +34,8 @@ import {
   OrdersIcon, WonCoinIcon, TicketStubIcon, ChartIcon,
 } from '@/components/icons/urdeal-icons'
 import { QrScanIcon } from '@/components/icons/qr-scan-icon' // 32 그리드라 24 그리드 세트와 파일을 나눴다
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-scansweep', `@keyframes ur-scan-sweep { from { transform: translateY(-120%); } to { transform: translateY(260%); } }.ur-scan-sweep { position: absolute; left: 0; right: 0; top: 0; height: 40%; pointer-events: none; background: linear-gradient(180deg, transparent, rgba(255,255,255,.28), transparent); transform: translateY(-120%); animation: ur-scan-sweep 1s cubic-bezier(.65,0,.35,1) .4s backwards; }@keyframes ur-store-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }.ur-store-in { animation: ur-store-in .3s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-scan-sweep{display:none}.ur-store-in{animation:none!important}}`) // 🎬 2026-11-02 시안 마이 — 사용처리 칸에 스캐너 빛줄기 한 번 · 매장을 바꾸면 가게 줄이 새로 올라온다
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
 import { clearMyReturn, withMyReturn } from '@/lib/seller-return'
@@ -46,6 +48,7 @@ import { useToolDeepLink } from './seller-section/useToolDeepLink' // 🚪 대�
 import PendingOrders from './seller-section/PendingOrders'
 import StoreThumb from './seller-section/StoreThumb'
 import StoreNotifButton from './seller-section/StoreNotifications'
+import { useCountUp } from './useCountUp' // 🎬 2026-11-02 시안 B3: 오늘 매출이 0원부터 올라간다
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
 //   같은 화면에 목록 문법이 두 벌이었다 — 대표 *"허술해"*(09-28)의 실체 중 하나.
@@ -146,6 +149,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     return stores.find((s) => s.seller_id === currentSellerId) ?? stores[0]
   }, [stores, currentSellerId])
 
+  const firstStore = useRef<number | null>(null) // 🎬 처음 보인 매장 — 다른 매장으로 바꿨을 때만 가게 줄이 새로 올라온다
+  if (firstStore.current === null && store) firstStore.current = store.seller_id
   const seated = store != null && seatId === store.seller_id
   /** 좌석에 앉았을 때만 일감을 부른다(안 앉았으면 요청 0). 좌석이 어긋나면 안내하고 다시 부른다. */
   const work = useSellerWork(store?.seller_id ?? 0, seated, () => {
@@ -255,6 +260,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
 
   // 좌석 0곳(= 셀러가 아님) · 실패 → 아무것도 그리지 않는다.
   //   실패를 0 으로 그리면 "오늘 매출 0원" 이라는 거짓말이 된다(머니 표면 룰).
+  const todayShown = useCountUp(store?.today_revenue, { durationMs: 800, resetKey: store?.seller_id ?? null }) // 훅은 아래 조기 return 보다 앞에
   if (failed) return null
   if (!loading && !store) return null
 
@@ -319,7 +325,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           className="flex-1 min-w-0 flex items-center gap-3 text-left active:opacity-70"
         >
           <StoreThumb src={store?.image ?? null} name={store?.name ?? ''} hidden={awaiting} />
-          <span className="min-w-0">
+          <span key={store?.seller_id} className={`min-w-0${firstStore.current !== null && firstStore.current !== store?.seller_id ? ' ur-store-in' : ''}`}>
             <span className="flex items-center gap-1 min-w-0">
               <span className="text-[17px] font-bold text-gray-900 dark:text-white truncate">{blank(store?.name ?? '가게 이름')}</span>
               {!awaiting && stores.length >= 2 && <ChevronDown className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />}
@@ -362,8 +368,9 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           type="button"
           disabled={entering}
           onClick={() => enterSeat('/store/scan')}
-          className="min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
+          className="relative overflow-hidden min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
         >
+          <span aria-hidden="true" className="ur-scan-sweep" />
           {/* ⚠️ **어느 가게로 소각되는지는 좌석이 정한다** — 먼저 이 가게 좌석에 앉히고 보낸다(되돌릴 수 없다). */}
           <span className="shrink-0">
             {entering
@@ -406,7 +413,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           <span className={ROW_LABEL_CLS}>오늘 매출</span>
           <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums whitespace-nowrap">
             <span className={`text-[15px] font-bold ${(store?.today_revenue ?? 0) > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
-              {blank(formatNumber(store?.today_revenue))}
+              {blank(formatNumber(todayShown))}
             </span>
             <span className={awaiting ? 'invisible' : ''}>원 · 주문 {formatNumber(store?.today_orders)}건</span>
           </span>

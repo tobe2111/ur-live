@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { DashboardCard, DashboardStatCard } from '@/components/dashboard'
@@ -39,6 +39,24 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-600' },
 }
 
+/** 🎬 2026-11-02 13차 ⑨ — 값이 **처음 도착할 때** 0 에서 굴러 올라간다(그 뒤 새로고침은 바로 그 값). 동작 줄이기면 바로. */
+function useCountUpOnce(value: number, ready: boolean, ms = 800): number {
+  const [shown, setShown] = useState(0)
+  const done = useRef(false)
+  useEffect(() => {
+    if (!ready) return
+    let reduce = false
+    try { reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { reduce = true }
+    if (done.current || reduce || value <= 0) { done.current = true; setShown(value); return }
+    done.current = true
+    const t0 = performance.now(); let raf = 0
+    const f = (t: number) => { const p = Math.min(1, (t - t0) / ms); setShown(Math.round(value * (1 - Math.pow(1 - p, 3)))); if (p < 1) raf = requestAnimationFrame(f) }
+    raf = requestAnimationFrame(f)
+    return () => cancelAnimationFrame(raf)
+  }, [value, ready]) // eslint-disable-line react-hooks/exhaustive-deps
+  return shown
+}
+
 export default function AutoPayoutSection() {
   const { t } = useTranslation()
   const [data, setData] = useState<PayoutData | null>(null)
@@ -56,6 +74,9 @@ export default function AutoPayoutSection() {
   const payable = data?.payable ?? 0
   const scheduled = data?.scheduled_total ?? 0
   const sent = data?.sent_total ?? 0
+  const payableShown = useCountUpOnce(payable, !!data)
+  const scheduledShown = useCountUpOnce(scheduled, !!data)
+  const sentShown = useCountUpOnce(sent, !!data)
   const payouts = data?.payouts ?? []
   // 🕙 2026-09-24 (유보 10일의 짝): 이 화면은 '미지급' 힌트로 **"다음 집계 대상"** 이라고 적고
   //   맨 위 카드는 **"매주 자동으로 처리됩니다"** 라고 말해 왔다. 유보가 생긴 뒤 그건 방금 적립된
@@ -100,9 +121,9 @@ export default function AutoPayoutSection() {
       {/* 📱 2026-09-15 모바일 특화: 폰은 세 숫자를 한 줄 타일로(세로로 쌓으면 첫 화면이 숫자 셋으로 끝난다). PC 는 스탯 카드. */}
       <div className="grid grid-cols-3 gap-2 sm:hidden">
         {[
-          { label: t('seller.autoPayout.payableShort', { defaultValue: '미지급' }), value: payable, tone: 'text-tone-warn' },
-          { label: t('seller.autoPayout.scheduledShort', { defaultValue: '지급 예정' }), value: scheduled, tone: 'text-brand-text' },
-          { label: t('seller.autoPayout.sentShort', { defaultValue: '지급 완료' }), value: sent, tone: 'text-gray-900' },
+          { label: t('seller.autoPayout.payableShort', { defaultValue: '미지급' }), value: payableShown, tone: 'text-tone-warn' },
+          { label: t('seller.autoPayout.scheduledShort', { defaultValue: '지급 예정' }), value: scheduledShown, tone: 'text-brand-text' },
+          { label: t('seller.autoPayout.sentShort', { defaultValue: '지급 완료' }), value: sentShown, tone: 'text-gray-900' },
         ].map((c) => (
           <div key={c.label} className="min-w-0 rounded-[var(--dash-radius,16px)] border border-rule bg-white px-3 py-2.5">
             <p className="truncate text-[11px] font-semibold text-gray-500">{c.label}</p>
@@ -113,7 +134,7 @@ export default function AutoPayoutSection() {
       <div className="hidden gap-3 sm:grid sm:grid-cols-3">
         <DashboardStatCard
           label={t('seller.autoPayout.payable', { defaultValue: '미지급 (정산 예정 잔액)' })}
-          value={`₩${formatNumber(payable)}`}
+          value={`₩${formatNumber(payableShown)}`}
           hint={held > 0
             ? t('seller.autoPayout.payableHintHold', {
                 ready: formatNumber(readyNow),
@@ -126,14 +147,14 @@ export default function AutoPayoutSection() {
         />
         <DashboardStatCard
           label={t('seller.autoPayout.scheduled', { defaultValue: '지급 예정 (송금 대기)' })}
-          value={`₩${formatNumber(scheduled)}`}
+          value={`₩${formatNumber(scheduledShown)}`}
           hint={t('seller.autoPayout.scheduledHint', { defaultValue: '집계 완료 · 순차 송금' })}
           icon={<Send className="h-4 w-4" />}
           accent="blue"
         />
         <DashboardStatCard
           label={t('seller.autoPayout.sent', { defaultValue: '지급 완료' })}
-          value={`₩${formatNumber(sent)}`}
+          value={`₩${formatNumber(sentShown)}`}
           hint={t('seller.autoPayout.sentHint', { defaultValue: '누적 송금액' })}
           icon={<CheckCircle className="h-4 w-4" />}
           accent="green"

@@ -1,0 +1,296 @@
+<title>모션 13차 시안</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --star: #F5A524;
+  --photo1: linear-gradient(135deg,#F2D9C9,#C9D8F2); --photo2: linear-gradient(135deg,#D3E8D6,#E9DCC6); --photo3: linear-gradient(135deg,#E6D3EB,#D0DEF0);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --photo1: linear-gradient(135deg,#4A3729,#2B3A57); --photo2: linear-gradient(135deg,#2C4430,#4A3E2B); --photo3: linear-gradient(135deg,#40304A,#293A52);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-inline: 16px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.list { display: grid; gap: 40px; }
+.item { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+.item h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.item h3 .n { color: var(--brand); margin-right: 6px; }
+.item p { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0 0 8px; }
+.item p b { color: var(--page-fg); font-weight: 500; }
+.replay { margin-top: 4px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; cursor: pointer; }
+.scr { position: relative; height: 300px; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); font-size: 15px; }
+.pad { padding: 16px; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.run .st { animation: rise .4s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 70ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+/* 1 홈 고정 막대 */
+#s1 .feedsc { position: absolute; inset: 0; overflow-y: auto; }
+#s1 .hero { height: 150px; background: linear-gradient(160deg, #BFD5F5, #EAD9C8); padding: 14px 16px; color: #16181C; }
+[data-mode="dark"] #s1 .hero { background: linear-gradient(160deg, #23324A, #3A3026); color: #F8F7FC; }
+#s1 .hero b { font-size: 24px; font-weight: 800; display: block; margin-top: 50px; }
+#s1 .cards { padding: 12px 16px; display: grid; gap: 10px; }
+#s1 .cards div { height: 64px; border-radius: 12px; background: var(--sub); }
+.cbar { position: absolute; top: 0; left: 0; right: 0; background: var(--bg); box-shadow: 0 2px 10px rgba(0,0,0,.12); padding: 10px 16px; display: flex; gap: 18px; font-size: 15px; transform: translateY(-110%); transition: transform .28s cubic-bezier(.2,.9,.3,1); z-index: 2; }
+.cbar.show { transform: none; }
+.cbar span:first-child { font-weight: 800; color: var(--brand-text); }
+.cbar.plain { transition: none; }
+
+/* 2 알림 모두 읽음 */
+.nt { display: flex; gap: 10px; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+.nt i { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); flex: none; transition: transform .25s ease, opacity .25s ease; transition-delay: calc(var(--i) * 60ms); }
+.nt.read i { transform: scale(0); opacity: 0; }
+.nt b { font-weight: 500; flex: 1; }
+.nt small { color: var(--ink-faint); font-size: 12px; }
+.nthead { display: flex; justify-content: space-between; padding: 12px 16px; font-size: 15px; font-weight: 700; }
+.nthead button { border: 0; background: none; color: var(--brand-text); font: 500 13px var(--font); cursor: pointer; }
+
+/* 3 쿠폰 */
+.cp { display: flex; border-radius: 12px; background: var(--brand-tint); margin: 0 16px 10px; overflow: hidden; }
+.cp .l { width: 86px; display: grid; place-items: center; font-size: 17px; font-weight: 800; color: var(--brand-text); border-right: 1.5px dashed var(--rule-strong); }
+.cp .r { padding: 12px; font-size: 13px; } .cp .r b { display: block; font-size: 15px; font-weight: 500; }
+.cp .r small { color: var(--ink-soft); font-size: 12px; }
+
+/* 4 생활 3단계 */
+.lf { display: flex; align-items: flex-start; padding: 22px 12px 0; }
+.lf .st { flex: 1; text-align: center; font-size: 13px; }
+.lf .nb { width: 36px; height: 36px; margin: 0 auto 8px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 700; display: grid; place-items: center; }
+.run .lf .nb { animation: nbpop .4s cubic-bezier(.3,1.4,.5,1) backwards; animation-delay: calc(var(--i) * 300ms); }
+@keyframes nbpop { from { transform: scale(.3); opacity: 0; } }
+.lf .ln { flex: 0 0 24px; height: 2px; margin-top: 17px; background: var(--brand); transform-origin: left; transform: scaleX(1); }
+.run .lf .ln { animation: lnfill .3s ease backwards; animation-delay: calc(var(--i) * 300ms + 180ms); }
+@keyframes lnfill { from { transform: scaleX(0); } }
+
+/* 5 생활 타일 */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 6px; padding: 16px; }
+.tiles .st { text-align: center; font-size: 12px; }
+.tiles .tl { width: 52px; height: 52px; margin: 0 auto 6px; border-radius: 16px; display: grid; place-items: center; font-size: 22px; transition: transform .15s ease; cursor: pointer; }
+.tiles .tl:active { transform: scale(.88); }
+.tiles .tl.pop { animation: tpop .3s cubic-bezier(.3,1.5,.5,1); }
+@keyframes tpop { 0% { transform: scale(.88); } 60% { transform: scale(1.08); } 100% { transform: none; } }
+
+/* 6 탭 밑줄 */
+.tabs { position: relative; display: flex; gap: 22px; padding: 14px 16px 0; border-bottom: 1px solid var(--rule); }
+.tabs button { border: 0; background: none; padding: 0 0 8px; font: 700 15px var(--font); color: var(--ink-faint); cursor: pointer; }
+.tabs button.on { color: var(--ink); }
+.tabs .ul { position: absolute; bottom: -1px; left: 0; height: 2px; background: var(--ink); transition: transform .3s cubic-bezier(.2,.9,.3,1), width .3s cubic-bezier(.2,.9,.3,1); }
+.rq { padding: 12px 16px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+.rq b { display: block; font-size: 15px; font-weight: 500; }
+.rq small { color: var(--ink-soft); }
+.rqs.swap .rq { animation: rise .3s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 50ms); }
+
+/* 7 유어샵 진열 */
+.us { padding: 12px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.us .st .ph { height: 92px; border-radius: 10px; }
+.us .st b { display: block; font-size: 13px; font-weight: 500; margin-top: 6px; }
+.us .st em { font-style: normal; font-size: 15px; font-weight: 700; }
+
+/* 8 저장 버튼 */
+.er { padding: 16px; }
+.er label { font-size: 12px; color: var(--ink-soft); }
+.er .row { display: flex; gap: 8px; margin-top: 6px; }
+.er input { flex: 1; height: 44px; border-radius: 10px; border: 1px solid var(--rule-strong); background: transparent; color: var(--ink); padding: 0 12px; font: 15px var(--font); }
+.er button { width: 72px; height: 44px; border-radius: 10px; border: 0; background: var(--brand); color: #fff; font: 700 15px var(--font); cursor: pointer; display: grid; place-items: center; transition: background-color .2s; }
+.er button.ok { background: #16A34A; }
+.er button svg { width: 20px; height: 20px; stroke: #fff; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 22; stroke-dashoffset: 22; animation: draw .35s ease forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.er .spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 9 정산 */
+.stl { padding: 18px 16px; }
+.stl .l { font-size: 13px; color: var(--ink-soft); }
+.stl .v { font-size: 34px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin: 4px 0 14px; }
+.stl .rw { display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--rule); font-size: 15px; }
+.stl .rw span { color: var(--ink-soft); }
+.stl .rw b { font-variant-numeric: tabular-nums; }
+
+/* 10 시트 손잡이 */
+#s10 .mapbg { position: absolute; inset: 0; background: linear-gradient(135deg, #DCE8D8, #E8E4D6); }
+[data-mode="dark"] #s10 .mapbg { background: linear-gradient(135deg, #24322A, #2E2C24); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 260px; background: var(--bg); border-radius: 20px 20px 0 0; box-shadow: 0 -4px 24px rgba(0,0,0,.12); transform: translateY(150px); touch-action: none; }
+.sheet .hd { padding: 10px 0 14px; cursor: grab; }
+.sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--rule-strong); margin: 0 auto; transition: width .2s ease, background-color .2s; }
+.sheet.drag .grab { width: 56px; background: var(--ink-faint); }
+.sheet .li { margin: 0 16px 10px; height: 44px; border-radius: 10px; background: var(--sub); }
+.sheet .t { padding: 0 16px 10px; font-size: 15px; font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) { .scr *, .scr *::before { animation-duration: 0.01ms !important; animation-delay: 0s !important; transition-duration: 0.01ms !important; } }
+</style>
+
+<div class="wrap">
+  <h1>모션 13차 시안</h1>
+  <p class="lede">홈·알림·쿠폰·생활·유어샵·사장님 화면에서 아직 모션이 없는 곳 열 군데예요. 직접 눌러 보거나 "다시 보기"로 재생해 보세요.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all">전부 다시 보기</button>
+    <button class="ctl" id="mode">다크 모드로 보기</button>
+  </div>
+  <div class="list">
+
+    <div class="item">
+      <div class="scr" id="s1"><div class="cbar" id="cbar"><span>urdeal.</span><span>전체</span><span>식사</span><span>뷰티</span><span>숙소</span></div>
+        <div class="feedsc" id="fsc"><div class="hero"><b>부산</b></div><div class="cards"><div></div><div></div><div></div><div></div><div></div><div></div></div></div></div>
+      <div><h3><span class="n">1</span>홈 위쪽 고정 막대</h3>
+        <p>지역 사진 머리를 지나 내려가면 로고·카테고리 막대가 <b>위에서 스르르 내려와요.</b> 다시 올라가면 위로 사라져요. 지금은 막대가 툭 나타나요. 화면 안을 스크롤해 보세요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s2">
+        <div class="nthead">알림<button id="readall">모두 읽음</button></div>
+        <div id="nts"></div>
+      </div>
+      <div><h3><span class="n">2</span>알림 모두 읽음</h3>
+        <p>"모두 읽음"을 누르면 안 읽은 표시(파란 점)가 <b>위에서부터 하나씩 사라져요.</b> 지금은 한 번에 꺼져서 눌렸는지 헷갈려요.</p>
+        <button class="replay" data-r="2">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s3"><div style="padding-top:16px">
+        <div class="cp st" style="--i:0"><div class="l">3,000</div><div class="r"><b>첫 이용권 할인</b><small>11월 30일까지</small></div></div>
+        <div class="cp st" style="--i:1"><div class="l">10%</div><div class="r"><b>뷰티 할인</b><small>11월 15일까지</small></div></div>
+        <div class="cp st" style="--i:2"><div class="l">2,000</div><div class="r"><b>동네 가게 할인</b><small>12월 31일까지</small></div></div>
+      </div></div>
+      <div><h3><span class="n">3</span>내 쿠폰함</h3>
+        <p>열면 쿠폰이 <b>위에서부터 차례로</b> 떠올라요. 받은 쿠폰이 하나씩 손에 들어오는 느낌이에요.</p>
+        <button class="replay" data-r="3">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s4">
+        <div class="lf">
+          <div class="st" style="--i:0"><div class="nb">1</div>요청서<br>1분 작성</div>
+          <div class="ln" style="--i:0"></div>
+          <div class="st" style="--i:1"><div class="nb">2</div>견적 최대<br>5곳 도착</div>
+          <div class="ln" style="--i:1"></div>
+          <div class="st" style="--i:2"><div class="nb">3</div>비교하고<br>한 곳 고르기</div>
+        </div>
+      </div>
+      <div><h3><span class="n">4</span>생활 홈 이용 순서</h3>
+        <p>"요청서 → 견적 도착 → 고르기" 세 단계가 <b>차례로 켜지고 사이 선이 이어져요.</b> 처음 온 사람이 어떻게 쓰는지 바로 알아요.</p>
+        <button class="replay" data-r="4">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s5"><div class="tiles" id="tiles"></div></div>
+      <div><h3><span class="n">5</span>생활 서비스 타일</h3>
+        <p>열면 타일이 <b>차례로 떠오르고</b>, 누르면 살짝 눌렸다가 <b>톡 튀어</b> 돌아와요. 눌러 보세요.</p>
+        <button class="replay" data-r="5">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s6">
+        <div class="tabs" id="tabs"><button class="on" data-k="open">열린 요청</button><button data-k="mine">내 견적</button><span class="ul" id="tul"></span></div>
+        <div class="rqs" id="rqs"></div>
+      </div>
+      <div><h3><span class="n">6</span>생활 고수 받은 요청함</h3>
+        <p>"열린 요청 / 내 견적"을 바꾸면 밑줄이 <b>옆으로 미끄러지고</b>, 아래 목록이 살짝 떠오르며 바뀌어요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s7"><div class="us">
+        <div class="st" style="--i:0"><div class="ph" style="background:var(--photo1)"></div><b>홍대돈까스 1인</b><em>8,900원</em></div>
+        <div class="st" style="--i:1"><div class="ph" style="background:var(--photo2)"></div><b>네일앤 젤네일</b><em>19,000원</em></div>
+        <div class="st" style="--i:2"><div class="ph" style="background:var(--photo3)"></div><b>솔숲 펜션 1박</b><em>98,000원</em></div>
+        <div class="st" style="--i:3"><div class="ph" style="background:var(--photo1)"></div><b>카페 온 브런치</b><em>24,000원</em></div>
+      </div></div>
+      <div><h3><span class="n">7</span>유어샵 진열대</h3>
+        <p>스크롤로 내려오면 진열된 이용권 카드가 <b>차례로 떠올라요.</b> 처음 열었을 때 이미 보이는 카드는 움직이지 않아요(첫 화면이 늦어 보이지 않게).</p>
+        <button class="replay" data-r="7">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s8"><div class="er">
+        <label>이름</label>
+        <div class="row"><input id="nm" value="정지원" aria-label="이름"><button id="sv">저장</button></div>
+      </div></div>
+      <div><h3><span class="n">8</span>마이 프로필 저장</h3>
+        <p>[저장]을 누르면 버튼 안에 <b>도는 표시 → 체크가 그려지며</b> 저장됐다는 게 버튼에서 바로 보여요. 잠시 뒤 다시 [저장]으로 돌아와요. 눌러 보세요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s9"><div class="stl">
+        <div class="l">이번 달 정산 예정</div>
+        <div class="v"><span id="sv9">0</span>원</div>
+        <div class="rw"><span>판매 금액</span><b id="a1">0원</b></div>
+        <div class="rw"><span>수수료</span><b id="a2">0원</b></div>
+        <div class="rw"><span>입금 예정일</span><b>11월 15일</b></div>
+      </div></div>
+      <div><h3><span class="n">9</span>사장님 정산 화면</h3>
+        <p>열면 정산 예정 금액과 세부 금액이 <b>0에서 굴러 올라가요.</b> 사장님이 가장 먼저 보는 숫자라 눈이 바로 가요.</p>
+        <button class="replay" data-r="9">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s10"><div class="mapbg"></div>
+        <div class="sheet" id="sheet"><div class="hd" id="hd"><div class="grab"></div></div><div class="t">근처 이용권 24개</div><div class="li"></div><div class="li"></div><div class="li"></div></div>
+      </div>
+      <div><h3><span class="n">10</span>지도 목록 시트</h3>
+        <p>손잡이를 잡으면 <b>손잡이가 늘어나 진해지고</b>, 놓으면 시트가 가까운 높이로 <b>톡 튀며 자리를 잡아요.</b> 손잡이를 위아래로 끌어 보세요.</p></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const restart = (el) => { el.classList.remove('run'); void el.offsetWidth; el.classList.add('run') }
+const PH = ['var(--photo1)', 'var(--photo2)', 'var(--photo3)']
+// 1
+$('#fsc').addEventListener('scroll', (e) => $('#cbar').classList.toggle('show', e.target.scrollTop > 130))
+// 2
+const NT = [['홍대돈까스 이용권을 받았어요', '방금'], ['쿠폰이 곧 끝나요', '1시간 전'], ['새 이용권이 올라왔어요', '어제'], ['리뷰에 답글이 달렸어요', '어제']]
+function r2() { $('#nts').innerHTML = NT.map(([t, w], i) => `<div class="nt" style="--i:${i}"><i></i><b>${t}</b><small>${w}</small></div>`).join('') }
+$('#readall').onclick = () => document.querySelectorAll('#nts .nt').forEach((n) => n.classList.add('read'))
+// 3,4,7
+const r3 = () => restart($('#s3')), r4 = () => restart($('#s4')), r7 = () => restart($('#s7'))
+// 5
+const TL = [['❄️', '에어컨 청소', '#E3F0FF'], ['🧹', '입주 청소', '#FFF3DD'], ['🚚', '이사', '#E7F7EC'], ['🪟', '방충망', '#F2EAFE'], ['🔧', '수리', '#FFE9E6'], ['🛋️', '가구 조립', '#EAF6F6'], ['🐜', '방역', '#FFF0F6'], ['💡', '전기', '#FEF9E1']]
+function r5() { $('#tiles').innerHTML = TL.map(([e, t, c], i) => `<div class="st" style="--i:${i}"><div class="tl" style="background:${c}">${e}</div>${t}</div>`).join(''); restart($('#s5'))
+  document.querySelectorAll('#tiles .tl').forEach((t) => t.onclick = () => { t.classList.remove('pop'); void t.offsetWidth; t.classList.add('pop') }) }
+// 6
+const RQ = { open: [['에어컨 청소 1대', '부산 해운대구 · 이번 주'], ['입주 청소 32평', '부산 수영구 · 다음 주'], ['방충망 교체 3짝', '부산 남구 · 날짜 상관없음']], mine: [['이사 청소', '견적 120,000원 · 손님 확인 전'], ['에어컨 청소 2대', '견적 110,000원 · 선택됨']] }
+function drawRq(k, swap) { const r = $('#rqs'); r.classList.remove('swap'); r.innerHTML = RQ[k].map(([a, b], i) => `<div class="rq" style="--i:${i}"><b>${a}</b><small>${b}</small></div>`).join(''); if (swap) { void r.offsetWidth; r.classList.add('swap') } }
+function moveTul(b) { const u = $('#tul'); u.style.width = b.offsetWidth + 'px'; u.style.transform = `translateX(${b.offsetLeft}px)` }
+document.querySelectorAll('#tabs button').forEach((b) => b.onclick = () => { document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b)); moveTul(b); drawRq(b.dataset.k, true) })
+// 8
+$('#sv').onclick = () => { const b = $('#sv'); if (b.dataset.busy) return; b.dataset.busy = 1; b.innerHTML = '<span class="spin"></span>'
+  setTimeout(() => { b.classList.add('ok'); b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' }, 700)
+  setTimeout(() => { b.classList.remove('ok'); b.textContent = '저장'; delete b.dataset.busy }, 2200) }
+// 9
+function roll(el, to, unit, ms, d = 0) { setTimeout(() => { const t0 = performance.now(); const f = (t) => { const p = Math.min(1, (t - t0) / ms); el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))).toLocaleString('ko-KR') + unit; if (p < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }, d) }
+function r9() { roll($('#sv9'), 1284000, '', 900); roll($('#a1'), 1426700, '원', 800, 150); roll($('#a2'), 142700, '원', 800, 250) }
+// 10
+;(() => { const sh = $('#sheet'), hd = $('#hd'); let y0 = 0, base = 150, cur = 150
+  hd.onpointerdown = (e) => { hd.setPointerCapture(e.pointerId); y0 = e.clientY; base = cur; sh.classList.add('drag'); sh.style.transition = 'none' }
+  hd.onpointermove = (e) => { if (!sh.classList.contains('drag')) return; cur = Math.max(0, Math.min(200, base + e.clientY - y0)); sh.style.transform = `translateY(${cur}px)` }
+  hd.onpointerup = () => { sh.classList.remove('drag'); const snaps = [0, 150, 200]; cur = snaps.reduce((a, b) => Math.abs(b - cur) < Math.abs(a - cur) ? b : a); sh.style.transition = 'transform .4s cubic-bezier(.3,1.25,.5,1)'; sh.style.transform = `translateY(${cur}px)` } })()
+
+const R = { 2: r2, 3: r3, 4: r4, 5: r5, 7: r7, 9: r9 }
+document.querySelectorAll('.replay').forEach((b) => b.onclick = () => R[b.dataset.r]())
+$('#all').onclick = () => Object.values(R).forEach((f) => f())
+let dark = matchMedia('(prefers-color-scheme: dark)').matches
+const applyMode = () => { document.querySelectorAll('.scr').forEach((s) => s.dataset.mode = dark ? 'dark' : 'light'); $('#mode').textContent = dark ? '라이트 모드로 보기' : '다크 모드로 보기' }
+$('#mode').onclick = () => { dark = !dark; applyMode() }
+applyMode(); r2(); drawRq('open', false); requestAnimationFrame(() => moveTul($('#tabs button.on')))
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; io.unobserve(e.target); const id = +e.target.id.slice(1); if ([3, 4, 5, 7, 9].includes(id)) R[id]() }), { threshold: .4 })
+document.querySelectorAll('.scr').forEach((s) => io.observe(s))
+</script>

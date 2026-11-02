@@ -19,7 +19,7 @@
  * ⚠️ 날짜는 전부 `@/utils/date` SSOT 경유 — D1 타임스탬프는 `Z` 없는 UTC 문자열이라 `new Date()` 로 읽으면
  *   9시간 어긋난다(`check-utc-date-parse`). 픽업일(`pickup_date`)이 있으면 "사용 예정" 한 줄로 보여 준다.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { shortOrderNo } from '@/shared/order-number-display'
 import { useTranslation } from '@/lib/i18n-lite'
 import SegmentedTabs from '@/components/ui/segmented-tabs'
@@ -28,6 +28,10 @@ import { formatWon } from '@/utils/format'
 import { orderStageOf, type OrderStage } from '@/shared/order-stage'
 import { orderKindOf } from '@/shared/order-kind'
 import type { Order } from './types'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-flash', `@keyframes ur-flash { 0% { background-color: transparent; } 12%, 70% { background-color: var(--brand-tint); } 100% { background-color: transparent; } }.ur-flash { animation: ur-flash 1.6s ease both; }@keyframes ur-order-in { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }.ur-order-new { animation: ur-order-in .4s cubic-bezier(.2,1,.3,1) both, ur-flash 1.8s ease .1s both; }@media (prefers-reduced-motion: reduce){.ur-flash,.ur-order-new{animation:none!important}}`)
+// 🎬 2026-11-02 시안 6차 "새 주문 들어옴"(대표 "다 넣어줘") — 화면을 보는 동안 새로 생긴 주문 줄은 위에서 미끄러져 들어오고
+//   옅은 파랑으로 잠깐 칠해진다. 처음 열 때 이미 있던 주문은 움직이지 않는다(본 적 있는 주문 번호를 기억해 둔다).
 
 type Tab = 'waiting' | 'preparing' | 'unused' | 'done' | 'refunded' | 'all'
 
@@ -55,6 +59,20 @@ export default function MobileOrderList({ orders, onSelect, onConfirm, confirmin
   /** 단계는 한 번만 계산한다 — 탭 숫자·필터·행 표시가 같은 값을 읽어야 서로 안 어긋난다. */
   const stageOf = useMemo(() => new Map(orders.map((o) => [o.order_number, orderStageOf(o)] as const)), [orders])
   const st = (o: Order): OrderStage => stageOf.get(o.order_number) ?? 'other'
+  const seen = useRef<Set<string> | null>(null)
+  const fresh = useRef(new Map<string, number>()) // 새 주문으로 그린 시각 — 그 사이 다시 그려도 움직임이 끊기지 않게 2초 동안 유지
+  useEffect(() => {
+    const first = seen.current == null || seen.current.size === 0 // 빈 목록 → 첫 목록 도착은 '새 주문' 이 아니다
+    const next = seen.current ?? new Set<string>()
+    for (const o of orders) if (o.order_number && !next.has(o.order_number)) { next.add(o.order_number); if (!first) fresh.current.set(o.order_number, Date.now()) }
+    seen.current = next
+  }, [orders])
+  const isNewOrder = (num: string | undefined): boolean => {
+    if (!num || !seen.current || seen.current.size === 0) return false
+    if (!seen.current.has(num)) return true
+    const at = fresh.current.get(num)
+    return at != null && Date.now() - at < 2000
+  }
   const n = (x: OrderStage) => orders.filter((o) => st(o) === x).length
   const counts = { waiting: n('waiting'), preparing: n('preparing'), unused: n('unused'), done: n('done'), refunded: n('refunded') }
   const kinds = new Set(orders.map((o) => orderKindOf(o.order_kind)))
@@ -67,6 +85,8 @@ export default function MobileOrderList({ orders, onSelect, onConfirm, confirmin
   const today = todayKey(), yesterday = yesterdayKey()
 
   /** 탭 필터 → 주문 시각(KST) 내림차순 → 날짜별 묶음(오늘이 위). */
+  // 🎬 2026-11-02 시안 3차: 상태가 바뀐 줄만 잠깐 옅은 파랑으로 빛난다(index.css .ur-flash). 처음 그릴 땐 안 빛난다.
+  const prevStage = useRef<Map<string, OrderStage> | null>(null)
   const groups = useMemo(() => {
     const filtered = orders.filter((o) => tab === 'all' || st(o) === tab)
     const withTime = filtered.map((o) => ({ o, k: kstParts(o.created_at) })).sort((a, b) => (b.k?.ms ?? 0) - (a.k?.ms ?? 0))
@@ -106,6 +126,7 @@ export default function MobileOrderList({ orders, onSelect, onConfirm, confirmin
         <p className="py-16 text-center text-[14px] font-bold text-gray-500">{t('seller.ordersM3.none', { defaultValue: '해당하는 주문이 없어요' })}</p>
       )}
 
+      <StageMemo groups={groups} st={st} store={prevStage} />
       {groups.map(([key, g]) => (
         <section key={key} className="mt-5">
           <h3 className="mb-2 flex items-baseline justify-between px-1 text-[13px] font-extrabold text-gray-900">
@@ -121,7 +142,7 @@ export default function MobileOrderList({ orders, onSelect, onConfirm, confirmin
               const unusedN = (o.vouchers ?? []).filter((v) => v.status === 'unused').length
               const pick = o.pickup_date ? kstParts(o.pickup_date) : null
               return (
-                <li key={o.order_number} className="relative py-3 pl-6 [&+&]:border-t [&+&]:border-rule">
+                <li key={`${o.order_number}-${stage}`} className={`relative py-3 pl-6 [&+&]:border-t [&+&]:border-rule ${isNewOrder(o.order_number) ? 'ur-order-new -mx-2 px-2 pl-8 rounded-lg' : prevStage.current?.has(o.order_number) && prevStage.current.get(o.order_number) !== stage ? 'ur-flash -mx-2 px-2 pl-8 rounded-lg' : ''}`}>
                   <span aria-hidden className={`absolute left-[-1px] top-[18px] h-[9px] w-[9px] rounded-full border-2 border-white ${hot ? 'bg-brand' : 'bg-gray-300'}`} />
                   <button type="button" onClick={() => onSelect(o)} className="block w-full text-left">
                     <p className="text-[11.5px] font-semibold text-gray-400">{k ? `${k.hh}:${k.mm}` : '-'}{o.order_number ? ` · ${shortOrderNo(o.order_number)}` : ''}</p>
@@ -154,4 +175,18 @@ export default function MobileOrderList({ orders, onSelect, onConfirm, confirmin
       ))}
     </div>
   )
+}
+
+/** 그린 뒤에 이번 상태를 기억한다 — 다음 렌더에서 "바뀐 줄" 을 고르는 기준(렌더 중엔 읽기만). */
+function StageMemo({ groups, st, store }: {
+  groups: Array<[string, { rows: Array<{ o: Order }> }]>
+  st: (o: Order) => OrderStage
+  store: { current: Map<string, OrderStage> | null }
+}) {
+  useEffect(() => {
+    const m = new Map<string, OrderStage>()
+    for (const [, g] of groups) for (const { o } of g.rows) if (o.order_number) m.set(o.order_number, st(o))
+    store.current = m
+  })
+  return null
 }

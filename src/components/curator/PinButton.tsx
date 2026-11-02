@@ -12,6 +12,8 @@ import { Pin, Plus } from 'lucide-react'
 import { usePinAction } from '@/features/curator/hooks/usePinAction'
 import { useAuthStore } from '@/client/stores/auth.store'
 import { curatorApi } from '@/features/curator/api/curator-api'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 interface PinButtonProps {
   productId: number
@@ -48,12 +50,15 @@ function useIsPinned(productId: number): { pinned: boolean; setPinned: (v: boole
 export default function PinButton({ productId, price, variant = 'card-overlay', className = '', icon: iconOverride }: PinButtonProps) {
   const { isPinning, togglePin } = usePinAction()
   const { pinned, setPinned } = useIsPinned(productId)
+  // 🎬 2026-11-02 시안 A5: 담기는 순간 아이콘이 도장처럼 톡 박힌다(index.css .ur-popin).
+  const [stamped, setStamped] = useState(0)
 
   async function handleClick(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
     await togglePin(productId, price)
     setPinned(true) // 낙관적 업데이트
+    setStamped((n) => n + 1)
   }
 
   const baseStyle =
@@ -80,7 +85,7 @@ export default function PinButton({ productId, price, variant = 'card-overlay', 
       disabled={isPinning}
       className={`${baseStyle} ${className} ${isPinning ? 'opacity-50 cursor-wait' : ''}`}
     >
-      <span className="inline-flex items-center justify-center">{icon}</span>
+      <span key={stamped} className={`inline-flex items-center justify-center ${stamped ? 'ur-popin' : ''}`}>{icon}</span>
       {variant === 'inline' && <span>{label}</span>}
     </button>
   )

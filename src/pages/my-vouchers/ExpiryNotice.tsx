@@ -13,6 +13,10 @@
 import Udal from '@/components/mascot/Udal'
 import { daysLeftOf, URGENT_DAYS } from './WalletRow'
 import type { Voucher } from './types'
+// 🎬 2026-11-02 시안 9차 "곧 끝나는 이용권"(대표 "다 해주고") — 열 때 빨간 D-N 표시만 한 번 살짝 흔들린다.
+//   줄 전체를 흔들지 않는 이유: 이 줄엔 유달이가 있다(대표 "유달이 움직이는건 더 쓰지 말자").
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-expiry', `@keyframes ur-exp-nudge { 0%,100% { transform: none; } 20% { transform: translateX(-3px) rotate(-4deg); } 40% { transform: translateX(3px) rotate(4deg); } 60% { transform: translateX(-2px); } 80% { transform: translateX(1px); } }.ur-exp-nudge { display: inline-block; animation: ur-exp-nudge .6s cubic-bezier(.36,.07,.19,.97) .4s backwards; }@media (prefers-reduced-motion: reduce){.ur-exp-nudge{animation:none!important}}`)
 
 export function pickExpiring(items: Voucher[]): Voucher[] {
   return items.filter((v) => {
@@ -47,7 +51,7 @@ export default function ExpiryNotice({ items, t, onOpen }: {
         <span className="block text-[15px] font-bold text-gray-900 dark:text-white">{title}</span>
         <span className="mt-1 block truncate text-[13px] text-gray-500 dark:text-gray-400">{name}</span>
       </span>
-      <span className="shrink-0 text-[15px] font-bold tabular-nums text-tone-bad">{d === 0 ? 'D-DAY' : `D-${d}`}</span>
+      <span className="ur-exp-nudge shrink-0 text-[15px] font-bold tabular-nums text-tone-bad">{d === 0 ? 'D-DAY' : `D-${d}`}</span>
     </button>
   )
 }
