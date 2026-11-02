@@ -13,10 +13,11 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { renderHook, act } from '@testing-library/react'
 import { useTicketMotion } from '@/pages/group-buy/PaymentCompleteTicket'
+import { stripComments } from '../helpers/source-text'
 
 const css = readFileSync('src/pages/group-buy/payment-complete-motion.css', 'utf8')
 const tsx = readFileSync('src/pages/group-buy/PaymentCompleteTicket.tsx', 'utf8')
-const cssCode = css.replace(/\/\*[\s\S]*?\*\//g, '')
+const cssCode = stripComments(css)
 
 describe('① 레이아웃을 움직이지 않는다', () => {
   it('키프레임 안 속성은 opacity · transform · clip-path 뿐', () => {
