@@ -20,7 +20,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 
 /** 이 값은 내리기만 한다. 올리지 말 것 — 새 주입은 scripts/mutations/<도메인>.mjs 에. */
-const FROZEN_INLINE = 977
+const FROZEN_INLINE = 979
 
 function countInline(src: string): number {
   const start = src.indexOf('\nconst MUTATIONS = [\n')

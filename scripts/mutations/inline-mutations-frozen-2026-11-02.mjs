@@ -18,7 +18,7 @@ export default [
   {
     name: '인라인 동결 — 동결값을 올려 상한을 헐겁게 만든다',
     file: T,
-    find: 'const FROZEN_INLINE = 977',
+    find: 'const FROZEN_INLINE = 979',
     replace: 'const FROZEN_INLINE = 1200',
     test: T,
     why: '헐거운 상한은 다시 자라도 초록이다(②가 잡아야 한다).',

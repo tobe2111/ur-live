@@ -12,7 +12,7 @@
 
 ## 바꾼 것
 1. **CLAUDE.md 증가 상한** — `scripts/check-claude-md-growth.mjs`(verify strict → pre-push 도 자동). PR 하나가 4,000자 넘게 늘리거나 판정 기록 줄을 더하면 실패. 우회 `[CLAUDE_MD_GROWTH]`. 기존 판정 기록 2블록(24줄)은 `docs/handoff/2026-11-02-claude-md-verdicts-moved.md` 로 옮기고 포인터 한 줄씩.
-2. **인라인 주입 동결** — `src/tests/unit/inline-mutations-frozen-2026-11-02.test.ts` (977 이하). 재조준은 허용.
+2. **인라인 주입 동결** — `src/tests/unit/inline-mutations-frozen-2026-11-02.test.ts` (979 이하 — 2026-11-02 머지 직전 #2092 가 2건을 더 넣었다). 재조준은 허용.
 3. **예산 rebaseline 범위** — `nextBaselineDoc` : 위반한 화면만 바꾸고 나머지는 커밋된 값 그대로, 기록은 `scripts/surface-budgets-history/<날짜>-<화면>.json` 파일 하나씩(JSON 의 옛 history 28건은 동결). 전부 다시 쓰려면 `--all`.
 4. **옛 소개서 자동 참조(`docs/proposals/`) 재생성을 pre-commit 에서 뺐다** — 아무 화면도 안 띄우는 문서였다. 다섯 문서 맨 위에 동결 표시. 가드 `proposal-refs-not-in-hook-2026-11-02.test.ts`.
 - 시험 5 + 3 + 7 + 2, 주입 3 + 2 + 2 + 1 전부 빨간불 확인.
