@@ -23,6 +23,7 @@ import { KAKAO_SHARE_FALLBACK_IMAGE, shareViaKakao, ushopCardPayload } from '@/l
 import { useAuthStore } from '@/client/stores/auth.store'
 // 🎫 2026-09-28 (대표 확정 s3 밀도형): 2열 격자 → 줄. 줄 카드는 `components/deal/DealRow` SSOT 를 쓴다.
 import PinRow from './curator-page/PinRow'
+import { useRevealRows } from './curator-page/use-reveal-rows'
 import { SortMenu } from '@/components/ui/sort-menu'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { Search, X } from 'lucide-react'
@@ -202,6 +203,7 @@ export default function CuratorPage() {
   //   정렬·필터로 화면 순서가 바뀌어도 이 숫자는 안 움직인다. SNS 의 "3번 이용권" 이 가리키는 것이
   //   화면마다 달라지면 소개비가 엉뚱한 상품으로 샌다.
   const orderOf = useMemo(() => new Map(homePins.map((p, i) => [p.id, i])), [homePins])
+  const rowsRef = useRevealRows<HTMLDivElement>(`${cat}|${sort}|${query}|${data?.pins?.length ?? 0}`)
   const prefetchGb = usePrefetchGroupBuyProduct()
   const prefetchPin = (productId: number) => { try { prefetchGb(String(productId)) } catch { /* prefetch 실패는 무해 */ } }
 
@@ -442,7 +444,7 @@ export default function CuratorPage() {
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.tryOtherKeyword', { defaultValue: '다른 키워드로 찾아보세요.' })}</p>
                   </div>
                 ) : (
-                  <div className="max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows">
+                  <div ref={rowsRef} className="max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows">
                     {visiblePins.map((pin) => (
                       <PinRow
                         key={pin.id}

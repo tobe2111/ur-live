@@ -23,6 +23,9 @@ import { ShortsIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
 import { regionHeroFor, REGION_HERO_FADE_LIGHT, REGION_HERO_FADE_DARK } from '@/shared/home-region-hero'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 13차 ① — 사진 머리를 지나 나타나는 고정 막대가 툭 생기지 않고 위에서 스르르 내려온다(고정 위치라 아래 내용은 안 밀린다).
+injectMotionCss('ur-m-cbar', `@keyframes ur-cbar-in { from { transform: translateY(-100%); } }.ur-cbar-in { animation: ur-cbar-in .26s cubic-bezier(.2,.9,.3,1); }@media (prefers-reduced-motion: reduce){.ur-cbar-in{animation:none!important}}`)
 
 /**
  * 📱 모바일 메인 (2026-08-19 대표 확정 — 그루폰 모바일 홈 시안).
@@ -263,7 +266,7 @@ export default function MobileHomePage() {
           지나가면 로고 줄 + 카테고리 줄 두 줄만 단색 바탕으로 위에 고정한다(사진이 화면을 계속 차지하지 않게).
           사진 없는 지역은 종전처럼 머리 전체가 sticky 라 이 막대가 안 뜬다. */}
       {hero && heroPassed && (
-        <div data-home-compact-bar className="fixed inset-x-0 top-0 z-30 bg-surface shadow-lift">
+        <div data-home-compact-bar className="fixed inset-x-0 top-0 z-30 bg-surface shadow-lift ur-cbar-in">
           {logoRow}
           <div className="pt-1">{catRow}</div>
         </div>

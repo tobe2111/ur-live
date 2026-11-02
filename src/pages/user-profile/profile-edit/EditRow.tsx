@@ -20,18 +20,19 @@
  */
 import type { ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
+import { OkIcon } from '@/components/icons/urdeal-icons'
 
 // 🎬 2026-11-02 시안 6차 "입력 칸 확인"(대표 "다 넣어줘") — 칸이 틀린 값으로 바뀌는 순간(aria-invalid) 짧게 흔들리고
 //   테두리가 빨개지며, 그 아래 이유 줄이 내려온다. 맞게 고치면 원래 테두리로 돌아간다. 판정은 각 화면이 하던 그대로다.
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
-injectMotionCss('ur-m-field', `@keyframes ur-field-shake { 0%,100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }@keyframes ur-note-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }.ur-row-input[aria-invalid="true"] { border-color: var(--tone-bad); animation: ur-field-shake .4s ease-out; }.ur-note-bad { animation: ur-note-in .2s ease-out both; }@media (prefers-reduced-motion: reduce){.ur-row-input[aria-invalid="true"],.ur-note-bad{animation:none!important}}`)
+injectMotionCss('ur-m-field', `@keyframes ur-field-shake { 0%,100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }@keyframes ur-note-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }.ur-row-input[aria-invalid="true"] { border-color: var(--tone-bad); animation: ur-field-shake .4s ease-out; }.ur-note-bad { animation: ur-note-in .2s ease-out both; }@keyframes ur-row-saved { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.2); } 100% { opacity: 1; transform: none; } }.ur-row-saved { animation: ur-row-saved .34s cubic-bezier(.3,1.4,.5,1) both; }@media (prefers-reduced-motion: reduce){.ur-row-input[aria-invalid="true"],.ur-note-bad,.ur-row-saved{animation:none!important}}`)
 
 /** 접힌 줄 — 안 C 목록 문법(48px 평면 + hairline). 🎫 CLAUDE.md 표면 규칙 ⑦. */
 const SHUT = 'w-full flex items-center gap-2 px-4 h-12 border-b border-rule text-left active:opacity-70'
 const KEY = 'text-[15px] font-medium text-gray-900 dark:text-white shrink-0'
 const VAL = 'ml-auto min-w-0 truncate text-[13px] text-gray-500 dark:text-gray-400'
 
-export function EditRow({ label, value, empty, required, open, onOpen, children }: {
+export function EditRow({ label, value, empty, required, open, saved, onOpen, children }: {
   label: string
   /** 접혔을 때 오른쪽에 보일 값. 비면 `empty` 가 대신 뜬다. */
   value?: string | null
@@ -40,6 +41,8 @@ export function EditRow({ label, value, empty, required, open, onOpen, children 
   /** 없으면 **안 되는** 값인가(위 머리말) — 비었을 때 빨갛게 적는다. */
   required?: boolean
   open: boolean
+  /** 방금 저장해 닫힌 줄 — 값 옆에 체크가 잠깐 뜬다(13차 ⑧). */
+  saved?: boolean
   onOpen: () => void
   /** 펼쳤을 때의 입력·안내·버튼 */
   children: ReactNode
@@ -63,6 +66,7 @@ export function EditRow({ label, value, empty, required, open, onOpen, children 
       }>
         {shown || empty || '아직 없어요'}
       </span>
+      {saved && <OkIcon className="ur-row-saved w-4 h-4 shrink-0 text-brand-text" aria-label="저장했어요" />}
       <ChevronRight className="w-4 h-4 shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true" />
     </button>
   )

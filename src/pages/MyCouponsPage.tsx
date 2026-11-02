@@ -10,6 +10,9 @@ import SEO from '@/components/SEO'
 import { requireLogin, isLoggedInSync } from '@/utils/auth'
 import { formatNumber } from '@/utils/format'
 import { useMyCoupons, type Coupon } from '@/hooks/queries/useMyCoupons'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 13차 ③ — 쿠폰이 위에서부터 차례로 떠오른다(처음 그릴 때 한 번).
+injectMotionCss('ur-m-coupons', `@keyframes ur-cp-row { from { opacity: 0; transform: translateY(10px); } }.ur-cp-row { animation: ur-cp-row .38s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 60ms); }@media (prefers-reduced-motion: reduce){.ur-cp-row{animation:none!important}}`)
 
 export default function MyCouponsPage() {
   const { t } = useTranslation()
@@ -72,7 +75,7 @@ export default function MyCouponsPage() {
         ) : (
           <div className="space-y-3">
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-2">{t('myCoupons.available', { count: coupons.length })}</p>
-            {coupons.map(c => {
+            {coupons.map((c, ci) => {
               const expiry = formatExpiry(c.expires_at)
               const isUrgent = !!c.expires_at && (() => {
                 const d = parseUTCDate(c.expires_at!)
@@ -82,7 +85,8 @@ export default function MyCouponsPage() {
               return (
                 <article
                   key={c.id}
-                  className="relative rounded-2xl overflow-hidden"
+                  style={{ '--i': Math.min(ci, 8) } as React.CSSProperties}
+                  className="ur-cp-row relative rounded-2xl overflow-hidden"
                 >
                   <div className="flex">
                     {/* 할인 금액 */}

@@ -41,7 +41,9 @@ export const SHEET_SNAP_TRANSLATE: Record<SheetSnap, string> = {
   mid: 'translateY(calc(40dvh - env(safe-area-inset-top, 0px) - 104px))',
   peek: `translateY(calc(100dvh - ${SHEET_PEEK_VISIBLE_PX}px - env(safe-area-inset-top, 0px) - 104px))`,
 }
-export const SHEET_SNAP_TRANSITION = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)'
+// 🎬 2026-11-02 13차 ⑩ — 놓으면 가까운 높이로 **살짝 튀며** 자리 잡는다(종전 0.3s 감속 곡선 → 0.42s 약한 되튐 곡선).
+//   되튐은 몇 px 이라 '전체' 높이에서 시트 머리가 잠깐 위로 넘쳐도 상단 막대 뒤에 가려진다.
+export const SHEET_SNAP_TRANSITION = 'transform 0.42s cubic-bezier(0.3, 1.18, 0.5, 1)'
 
 interface DragSession {
   ty0: number            // 드래그 시작 시점의 translateY(px)

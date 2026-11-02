@@ -78,6 +78,10 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
   const [image, setImage] = useState(() => getUserProfileImage() || '')
   const [photoChanged, setPhotoChanged] = useState(false) // 🎬 새로 고른 사진일 때만 커지며 들어온다
   const [open, setOpen] = useState<Field>(null)
+  // 🎬 2026-11-02 13차 ⑧ — 저장이 끝나 줄이 닫히면 그 줄 값 옆에 체크가 잠깐 톡 뜬다(어느 줄이 바뀌었는지 보이게).
+  const [saved, setSaved] = useState<Field>(null)
+  useEffect(() => { if (!saved) return; const t = window.setTimeout(() => setSaved(null), 1800); return () => window.clearTimeout(t) }, [saved])
+  const closeSaved = () => { setSaved(open); setOpen(null) }
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [draft, setDraft] = useState('')
@@ -170,7 +174,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
       const r = await api.patch('/api/curator/me/profile', body)
       if (!r.data?.success) throw new Error(r.data?.error || '')
       setMe(m => (m ? { ...m, ...next } : m))
-      setOpen(null)
+      closeSaved()
       toast.success(done)
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } }
@@ -202,7 +206,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
       const r = await api.patch('/api/auth/profile', { phone: v })
       if (!r.data?.success) throw new Error('')
       setMe(m => (m ? { ...m, phone: v } : m))
-      setOpen(null)
+      closeSaved()
       toast.success(t('profileEdit.phoneSaved', { defaultValue: '전화번호가 바뀌었어요' }))
     } catch (err) {
       const e = err as { response?: { data?: { error?: string | { message?: string } } } }
@@ -220,7 +224,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
       if (!r.success || !r.handle) throw new Error(r.error || '')
       setMe(m => (m ? { ...m, handle: r.handle as string } : m))
       try { localStorage.setItem('user_handle', r.handle) } catch { /* quota */ }
-      setOpen(null)
+      closeSaved()
       toast.success(t('profileEdit.handleSaved', { defaultValue: '유어샵 주소가 바뀌었어요' }))
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } }; message?: string }
@@ -281,13 +285,13 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
 
           <RowGroup>{t('profileEdit.groupMe', { defaultValue: '내 정보' })}</RowGroup>
           <EditRow label={t('accountSettings.editName', { defaultValue: '이름' })} value={me?.name} empty={me ? t('profileEdit.none', { defaultValue: '아직 없어요' }) : t('profileEdit.loading', { defaultValue: '불러오는 중…' })}
-            open={open === 'name'} onOpen={() => start('name', me?.name || '')}>
+            open={open === 'name'} saved={saved === 'name'} onOpen={() => start('name', me?.name || '')}>
             <input className={ROW_INPUT} value={draft} onChange={e => setDraft(e.target.value)} placeholder={t('profileEdit.namePh', { defaultValue: '홍길동' })} maxLength={40} />
             <RowActions onSave={saveName} onCancel={() => setOpen(null)} saving={saving} />
           </EditRow>
 
           <EditRow label={t('profileEdit.bio', { defaultValue: '한 줄 소개' })} value={me?.bio} empty={me ? t('profileEdit.none', { defaultValue: '아직 없어요' }) : t('profileEdit.loading', { defaultValue: '불러오는 중…' })}
-            open={open === 'bio'} onOpen={() => start('bio', me?.bio || '')}>
+            open={open === 'bio'} saved={saved === 'bio'} onOpen={() => start('bio', me?.bio || '')}>
             <input className={ROW_INPUT} value={draft} onChange={e => setDraft(e.target.value)}
               placeholder={t('profileEdit.bioPh', { defaultValue: '예) 동네 맛집만 모읍니다' })} maxLength={60} />
             <RowNote>{t('profileEdit.bioNote', { defaultValue: '내 유어샵에 뜨는 한 줄이에요.' })}</RowNote>
@@ -297,7 +301,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
 
           <EditRow label={t('accountSettings.editPhone', { defaultValue: '전화번호' })} value={me?.phone}
             required empty={me ? t('profileEdit.phoneMissing', { defaultValue: '입력 필요' }) : t('profileEdit.loading', { defaultValue: '불러오는 중…' })}
-            open={open === 'phone'} onOpen={() => start('phone', me?.phone || '')}>
+            open={open === 'phone'} saved={saved === 'phone'} onOpen={() => start('phone', me?.phone || '')}>
             <input className={ROW_INPUT} type="tel" inputMode="numeric" maxLength={13}
               value={draft} onChange={e => setDraft(formatPhone(e.target.value))} placeholder="010-0000-0000" />
             <RowNote>{t('profileEdit.phoneNote', { defaultValue: '교환권·알림톡이 이 번호로 갑니다. 회원 탈퇴 시까지 보유.' })}</RowNote>
@@ -309,7 +313,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
             <>
               <RowGroup>{t('profileEdit.groupShop', { defaultValue: '내 가게 주소' })}</RowGroup>
               <EditRow label={t('profileEdit.handle', { defaultValue: '내 주소' })} value={`urdeal.kr/u/${me.handle}`}
-                open={open === 'handle'} onOpen={() => start('handle', me.handle)}>
+                open={open === 'handle'} saved={saved === 'handle'} onOpen={() => start('handle', me.handle)}>
                 <div className="flex items-center gap-1">
                   <span className="text-[15px] text-gray-500 dark:text-gray-400 shrink-0">urdeal.kr/u/</span>
                   <input className={ROW_INPUT} value={draft} maxLength={30}
@@ -322,7 +326,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
               </EditRow>
 
               <EditRow label={t('profileEdit.sns', { defaultValue: 'SNS 링크' })} value={snsSummary} empty={me ? t('profileEdit.none', { defaultValue: '아직 없어요' }) : t('profileEdit.loading', { defaultValue: '불러오는 중…' })}
-                open={open === 'sns'}
+                open={open === 'sns'} saved={saved === 'sns'}
                 onOpen={() => { setOpen('sns'); setSns({ instagram_url: me.instagram_url, youtube_url: me.youtube_url, tiktok_url: me.tiktok_url }) }}>
                 {SNS.map(([key, label]) => {
                   // 🔒 2026-10-26 대표 — 그 칸은 그 플랫폼 주소·아이디만. 서버도 같은 함수로 거절한다.
