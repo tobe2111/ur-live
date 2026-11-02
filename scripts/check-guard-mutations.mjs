@@ -1366,8 +1366,8 @@ const MUTATIONS = [
   {
     name: '🎞️ 받는 중인데 직전 사진이 선명하게 남아 "안 넘어갔다"로 보인다 (블러 신호 소실)',
     file: 'src/components/deal/DealCardMedia.tsx',
-    find: "                filter: i === painted && waiting ? 'blur(10px)' : 'blur(0px)',\n",
-    replace: '',
+    find: "                filter: i === painted ? (waiting ? 'blur(10px)' : 'blur(0px)') : 'blur(8px)',\n",
+    replace: "                filter: i === painted ? 'blur(0px)' : 'blur(8px)',\n",
     test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
     why:
       '2026-09-06 대표 신고: 모바일 4G 첫 넘김이 **2,180ms** 인데 그동안 직전 사진이 0.65 로 어둡게만 ' +
