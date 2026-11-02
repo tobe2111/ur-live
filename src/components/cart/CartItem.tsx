@@ -5,7 +5,6 @@ import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useTranslation } from '@/lib/i18n-lite'
 import { priceDisplay } from '@/shared/price-display'
-import RollingNumber from '@/components/ui/RollingNumber' // 🎬 2026-11-02 수량이 굴러가며 바뀐다
 
 interface CartItem {
   id: number
@@ -171,7 +170,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
               <Minus size={14} aria-hidden="true" />
             </button>
             <span aria-live="polite" aria-label={t('cart.qtyLabel', { qty: item.quantity, defaultValue: '수량 {{qty}}' })} className="w-8 text-center text-[13px] font-medium text-gray-900 dark:text-white border-x border-line">
-              <RollingNumber value={item.quantity} />
+              {item.quantity}
             </span>
             <button
               type="button"

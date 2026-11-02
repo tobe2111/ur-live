@@ -14,7 +14,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { renderHook, act } from '@testing-library/react'
-import { useCountUp } from '@/hooks/useCountUp'
+import { useCountUp } from '@/pages/user-profile/useCountUp'
 import { canRunDealTransition } from '@/lib/deal-view-transition'
 import { noteQrOrigin, takeQrOrigin } from '@/pages/my-vouchers/qr-origin'
 import { flyToCart } from '@/lib/fly-to-cart'
@@ -25,7 +25,10 @@ import { stripComments } from '../helpers/source-text'
 
 const R = (p: string) => readFileSync(p, 'utf8')
 const css = stripComments(R('src/index.css'))
-const kit = css.slice(css.indexOf('.ur-burst {'), css.indexOf('::view-transition-old(root)'))
+// 화면별로만 받는 CSS 는 부품 파일 안의 injectMotionCss(…) 문자열이다 — 그 문자열들을 모은다.
+const LAZY_USERS = ['src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx']
+const lazyCss = LAZY_USERS.flatMap((f) => [...R(f).matchAll(/injectMotionCss\('[\w-]+', `([^`]*)`\)/g)].map((m) => m[1])).join('\n')
+const kit = css.slice(css.indexOf('.ur-burst {'), css.indexOf('.ur-tab-bar {')) + lazyCss
 
 describe('① 움직임 키트 CSS', () => {
   it('키트 키프레임은 transform · opacity (+ 배경색 · 선 그리기) 만 움직인다 — 크기·위치는 안 건드린다', () => {
@@ -36,13 +39,21 @@ describe('① 움직임 키트 CSS', () => {
       for (const p of props) expect(['transform', 'opacity', 'background-color', 'stroke-dashoffset'], name).toContain(p)
     }
   })
-  it('동작 줄이기면 키트 클래스와 화면 전환이 전부 꺼진다', () => {
-    const reduce = css.slice(css.indexOf('::view-transition-old(root)'))
-    const block = reduce.slice(reduce.indexOf('@media (prefers-reduced-motion: reduce)'))
-    for (const c of ['ur-pin-pop', 'ur-flash', 'ur-roll-in-up', 'ur-roll-out-down', 'ur-gift-mark', 'ur-strike::after', 'ur-blink-once', 'ur-shake', 'ur-slam', 'ur-thud', 'ur-popin', 'ur-rise', 'ur-press', 'ur-ring', 'ur-burst i']) {
-      expect(block.slice(0, 1400)).toContain(c)
+  it('화면별 CSS 문자열은 13곳 전부 있고, 문자열마다 동작 줄이기 끔을 함께 갖는다', () => {
+    for (const f of LAZY_USERS) {
+      const calls = [...R(f).matchAll(/injectMotionCss\('[\w-]+', `([^`]*)`\)/g)].map((m) => m[1])
+      expect(calls.length, f).toBeGreaterThan(0)
+      for (const c of calls) expect(c, f).toContain('@media (prefers-reduced-motion: reduce)')
     }
-    expect(block.slice(0, 1400)).toMatch(/::view-transition-group\(\*\)[^{]*\{\s*animation:\s*none !important/)
+  })
+  it('동작 줄이기면 키트 클래스와 화면 전환이 전부 꺼진다', () => {
+    const reduceOf = (s: string) => s.split(/@media \(prefers-reduced-motion: reduce\)\s*/).slice(1).map((x) => x.slice(0, 700)).join('\n')
+    const off = reduceOf(css) + reduceOf(lazyCss)
+    for (const c of ['ur-pin-pop', 'ur-flash', 'ur-roll-in-up', 'ur-roll-out-down', 'ur-gift-mark', 'ur-strike::after', 'ur-blink-once', 'ur-shake', 'ur-slam', 'ur-thud', 'ur-popin', 'ur-rise', 'ur-press', 'ur-ring', 'ur-burst i', 'ur-tab-bar']) {
+      expect(off, c).toContain(c)
+    }
+    // 화면 전환 CSS 는 전환 코드가 받을 때 꽂는다 — 거기에도 동작 줄이기 끔이 있어야 한다.
+    expect(R('src/lib/deal-view-transition.ts')).toMatch(/prefers-reduced-motion: reduce\)\{::view-transition-group\(\*\)[^}]*animation:none!important/)
   })
 })
 
@@ -84,6 +95,7 @@ describe('④ 잠금 파일 계약', () => {
     const gal = R('src/pages/group-buy/DetailGallery.tsx')
     expect(gal).toContain("data-vt-hero={i === 0 ? '' : undefined}")
     expect(gal).toContain('viewTransitionName: i === 0 ? DEAL_HERO_VT : undefined')
+    expect(gal, '상세는 이름 상수만 받는다').toContain("from '@/lib/deal-vt-name'")
     expect(R('src/lib/deal-view-transition.ts')).toMatch(/const HERO_WAIT_MS = 300\b/)
   })
   it('하단 탭: 누름 반응은 클릭에서만, linkshop·prefetch 계약 불변', () => {

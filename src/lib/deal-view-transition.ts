@@ -13,9 +13,26 @@
  *   - 지원 안 하는 브라우저 · '동작 줄이기' · 새 탭 열기(⌘/Ctrl/가운데 클릭)는 **종전 그대로** 이동한다.
  */
 import { flushSync } from 'react-dom'
+import { DEAL_HERO_VT } from './deal-vt-name'
 
-export const DEAL_HERO_VT = 'ur-deal-hero'
 const HERO_WAIT_MS = 300
+
+/**
+ * ⚖️ 전환용 CSS 는 여기서 한 번만 꽂는다 — index.css 에 두면 카드가 없는 화면까지 받는다(2026-11-02 화면별 무게 예산 실측).
+ *   (이 파일을 동적 import 로 미뤄도 묶음기가 공용 청크에 그대로 둬서 이득이 없었다 — 측정 후 되돌렸다.)
+ */
+let styled = false
+function ensureStyle(): void {
+  if (styled || typeof document === 'undefined') return
+  styled = true
+  const s = document.createElement('style')
+  s.textContent = `::view-transition-old(root),::view-transition-new(root){animation-duration:.2s}`
+    + `::view-transition-group(${DEAL_HERO_VT}){animation-duration:.34s;animation-timing-function:cubic-bezier(.65,0,.35,1)}`
+    + `::view-transition-old(${DEAL_HERO_VT}),::view-transition-new(${DEAL_HERO_VT}){height:100%;object-fit:cover}`
+    + `@media (prefers-reduced-motion: reduce){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}}`
+  document.head.appendChild(s)
+}
+ensureStyle()
 
 type VTDoc = Document & { startViewTransition?: (cb: () => Promise<void> | void) => { finished: Promise<void> } }
 

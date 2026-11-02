@@ -17,6 +17,10 @@ import { notifTarget } from '@/lib/notif-target'
 import { ChevronRight } from 'lucide-react'
 import { MailIcon } from '@/components/icons/urdeal-icons'
 import { ROW_SHELL_CLS, ROW_LABEL_CLS } from '../list-grammar'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-ring', `@keyframes ur-ring { 0%,100% { transform: none; } 20% { transform: rotate(14deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(8deg); } 80% { transform: rotate(-4deg); } }.ur-ring { animation: ur-ring .6s ease-in-out; transform-origin: 50% 10%; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-ring{animation:none!important}}`)
+injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 const Sheet = lazy(() => import('./Sheet'))
 

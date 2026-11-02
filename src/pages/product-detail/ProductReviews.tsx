@@ -3,9 +3,11 @@ import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
-import { useCountUp } from '@/hooks/useCountUp'
 import SharePrompt from '@/components/SharePrompt'
 import ReviewCard, { type ReviewItem } from './ReviewCard'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-shake', `.ur-strike::after, .ur-blink-once, .ur-shake { animation: none !important; }@keyframes ur-shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(3px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }.ur-shake { animation: ur-shake .4s cubic-bezier(.36,.07,.19,.97); }@media (prefers-reduced-motion: reduce){.ur-shake{animation:none!important}}`)
 /** 리뷰 최소 글자 수 — 버튼 비활성 조건과 안내 문구가 **같은 값**을 봐야 한다(따로 두면 갈린다). */
 const MIN_REVIEW_LEN = 10
 
@@ -22,7 +24,16 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
   const [bump, setBump] = useState(0)
   // 🎬 2026-11-02 시안 3차 "리뷰 작성 완료": 서버가 실제로 적립한 딜(0 이면 종전 문구) — 0 부터 올라간다.
   const [rewardPaid, setRewardPaid] = useState(0)
-  const rewardShown = useCountUp(rewardPaid > 0 ? rewardPaid : undefined, { delayMs: 200, durationMs: 600 })
+  // ⚖️ 공용 useCountUp 을 쓰지 않는다 — 이 부품은 상세 화면 청크에 실리는데, 그 훅을 마이(SellerSection)와
+  //   함께 쓰면 마이 첫 화면이 상세 청크를 통째로 받았다(화면별 무게 예산 실측 +4.9KB). 여섯 줄 복제가 더 싸다.
+  const [rewardShown, setRewardShown] = useState(0)
+  useEffect(() => {
+    if (rewardPaid <= 0) return
+    let raf = 0; const t0 = performance.now()
+    const step = (now: number) => { const p = Math.min(1, (now - t0) / 600); setRewardShown(Math.round(rewardPaid * (1 - Math.pow(1 - p, 3)))); if (p < 1) raf = requestAnimationFrame(step) }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [rewardPaid])
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showSharePrompt, setShowSharePrompt] = useState(false)
@@ -246,7 +257,7 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
         <SharePrompt
           title={t('reviews.sharedTitle', { defaultValue: '리뷰가 등록되었어요' })}
           message={rewardPaid > 0
-            ? t('reviews.sharedMessageAmount', { defaultValue: '+{{amount}}딜이 지급되었어요. 이 상품을 친구에게 추천해보세요!', amount: formatNumber(rewardShown ?? rewardPaid) })
+            ? t('reviews.sharedMessageAmount', { defaultValue: '+{{amount}}딜이 지급되었어요. 이 상품을 친구에게 추천해보세요!', amount: formatNumber(rewardShown || rewardPaid) })
             : t('reviews.sharedMessage', { defaultValue: '딜 포인트가 지급되었어요. 이 상품을 친구에게 추천해보세요!' })}
           shareTitle={t('reviews.sharedShareTitle', { defaultValue: '이 상품 추천해요!' })}
           shareDescription={t('reviews.sharedShareDesc', { defaultValue: '유어딜에서 좋은 상품을 발견했어요' })}

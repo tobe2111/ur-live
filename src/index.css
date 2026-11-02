@@ -1672,58 +1672,17 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 .ur-burst i { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: currentColor; opacity: 0; animation: ur-spark .5s ease-out .06s both; }
 @keyframes ur-spark { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-18px); } }
 
-/* 도장·체크·숫자 */
-@keyframes ur-slam { 0% { opacity: 0; transform: rotate(-24deg) scale(1.9); } 60% { opacity: 1; transform: rotate(-12deg) scale(.94); } 100% { opacity: 1; transform: rotate(-12deg) scale(1); } }
-.ur-slam { animation: ur-slam .38s cubic-bezier(.3,1.4,.5,1) both; }
-@keyframes ur-thud { 0%,100% { transform: none; } 30% { transform: translateY(4px) scale(.995); } 60% { transform: translateY(-1px); } }
-.ur-thud { animation: ur-thud .35s ease-out .22s both; }
-@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }
-.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }
-@keyframes ur-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.ur-rise { animation: ur-rise .35s cubic-bezier(.16,1,.3,1) both; }
+/* 하단 탭 누름(BottomNav — 모든 화면) */
 @keyframes ur-press { 0% { transform: scale(1); } 40% { transform: scale(.82); } 100% { transform: scale(1); } }
 .ur-press { animation: ur-press .32s cubic-bezier(.3,1.4,.5,1); }
-@keyframes ur-ring { 0%,100% { transform: none; } 20% { transform: rotate(14deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(8deg); } 80% { transform: rotate(-4deg); } }
-.ur-ring { animation: ur-ring .6s ease-in-out; transform-origin: 50% 10%; }
-/* 🎬 시안 3차 — 지도 핀 고름 · 바뀐 줄 반짝 · 숫자 굴림(RollingNumber) */
-@keyframes ur-pin-pop { 0% { transform: scale(1); } 45% { transform: scale(1.22) translateY(-4px); } 100% { transform: scale(1); } }
-.ur-pin-pop { animation: ur-pin-pop .4s cubic-bezier(.3,1.4,.5,1); transform-origin: 50% 100%; }
-@keyframes ur-flash { 0% { background-color: transparent; } 12%, 70% { background-color: var(--brand-tint); } 100% { background-color: transparent; } }
-.ur-flash { animation: ur-flash 1.6s ease both; }
-@keyframes ur-roll-out-up { to { transform: translateY(-100%); opacity: 0; } }
-@keyframes ur-roll-in-up { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes ur-roll-out-down { to { transform: translateY(100%); opacity: 0; } }
-@keyframes ur-roll-in-down { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
-.ur-roll-out-up { animation: ur-roll-out-up .26s cubic-bezier(.65,0,.35,1) both; }
-.ur-roll-in-up { animation: ur-roll-in-up .26s cubic-bezier(.65,0,.35,1) both; }
-.ur-roll-out-down { animation: ur-roll-out-down .26s cubic-bezier(.65,0,.35,1) both; }
-.ur-roll-in-down { animation: ur-roll-in-down .26s cubic-bezier(.65,0,.35,1) both; }
-/* 🎬 시안 4차 — 선물 상자(톡 + 리본 그림) · 정가 줄 긋기 · D-day 한 번 깜빡 · 입력칸 흔들림 · 업로드 흐림→선명 */
-@keyframes ur-draw { from { stroke-dashoffset: 120; } to { stroke-dashoffset: 0; } }
-.ur-gift-mark { animation: ur-popin .45s cubic-bezier(.3,1.3,.5,1) both; }
-.ur-gift-mark path { stroke-dasharray: 120; animation: ur-draw .45s ease-out .35s both; }
-.ur-gift-mark path + path { animation-delay: .7s; }
-@keyframes ur-strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-.ur-strike { position: relative; display: inline-block; }
-.ur-strike::after { content: ""; position: absolute; left: -2px; right: -2px; top: 52%; height: 1.5px; background: currentColor; transform-origin: left; animation: ur-strike .45s cubic-bezier(.65,0,.35,1) .3s both; }
-@keyframes ur-blink-once { 0%, 100% { opacity: 1; } 30%, 60% { opacity: .25; } }
-.ur-blink-once { animation: ur-blink-once 1.2s ease-in-out .4s 1; }
-@keyframes ur-shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(3px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }
-.ur-shake { animation: ur-shake .4s cubic-bezier(.36,.07,.19,.97); }
-.ur-upload-img { transition: filter .45s, opacity .45s; }
-.ur-uploading { filter: blur(6px) saturate(.6); opacity: .7; }
-
-/* 목록 → 상세 사진 이어짐(lib/deal-view-transition). 화면 전체는 짧게 교차, 사진은 조금 길게. */
-::view-transition-old(root), ::view-transition-new(root) { animation-duration: .2s; }
-::view-transition-group(ur-deal-hero) { animation-duration: .34s; animation-timing-function: cubic-bezier(.65,0,.35,1); }
-::view-transition-old(ur-deal-hero), ::view-transition-new(ur-deal-hero) { height: 100%; object-fit: cover; }
+/* 유어샵 탭 밑줄(PinCategoryChips)이 누른 탭으로 미끄러진다 */
+.ur-tab-bar { transition: transform .3s cubic-bezier(.2,1,.3,1), width .3s cubic-bezier(.2,1,.3,1); }
+/* 🎬 나머지 키트(도장·체크·숫자·핀·반짝·굴림·선물·줄 긋기·깜빡·흔들림·업로드)는 `src/styles/motion-lazy.css` —
+   쓰는 화면만 받는다(2026-11-02 화면별 첫 화면 무게 예산이 잡았다: index.css 에 두면 모든 화면이 +1.2KB). */
 
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
-  .ur-burst i, .ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-press, .ur-ring, .ur-pin-pop, .ur-flash,
-  .ur-roll-out-up, .ur-roll-in-up, .ur-roll-out-down, .ur-roll-in-down,
-  .ur-gift-mark, .ur-gift-mark path, .ur-strike::after, .ur-blink-once, .ur-shake { animation: none !important; }
-  .ur-upload-img { transition: none !important; }
+  .ur-burst i, .ur-press { animation: none !important; }
+  .ur-tab-bar { transition: none; }
 }
 
 /* ──────────────────────────────────────────────────────────────

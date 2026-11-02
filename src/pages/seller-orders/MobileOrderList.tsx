@@ -28,6 +28,9 @@ import { formatWon } from '@/utils/format'
 import { orderStageOf, type OrderStage } from '@/shared/order-stage'
 import { orderKindOf } from '@/shared/order-kind'
 import type { Order } from './types'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-flash', `@keyframes ur-flash { 0% { background-color: transparent; } 12%, 70% { background-color: var(--brand-tint); } 100% { background-color: transparent; } }.ur-flash { animation: ur-flash 1.6s ease both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-flash{animation:none!important}}`)
 
 type Tab = 'waiting' | 'preparing' | 'unused' | 'done' | 'refunded' | 'all'
 

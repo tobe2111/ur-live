@@ -24,7 +24,7 @@ import { formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
 import { currentSeatId } from '@/lib/seller-seat'
 import Sheet from './Sheet'
-import { useCountUp } from '@/hooks/useCountUp' // 🎬 2026-11-02 시안 3차: 정산 예정 금액이 0원부터 올라간다
+import { useCountUp } from '../useCountUp' // 🎬 2026-11-02 시안 3차: 정산 예정 금액이 0원부터 올라간다
 
 interface PayoutRow {
   id: number

@@ -138,7 +138,7 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
         {/* 🎬 2026-11-02 시안 4차 "판매 켜기/끄기": 끄면 줄이 흐려지고 사진이 회색이 된다(켜면 되돌아온다). */}
         <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-brand-tint">
           {v.image_url && (
-            <img src={cfImage(v.image_url, { width: 160 })} alt="" loading="lazy" className={`h-full w-full object-cover transition-[filter] duration-300 ${v.is_active ? '' : 'grayscale'}`}
+            <img src={cfImage(v.image_url, { width: 160 })} alt="" loading="lazy" className="h-full w-full object-cover" style={{ transition: 'filter .3s', filter: v.is_active ? undefined : 'grayscale(1)' }}
               onError={(e) => cfImageOnError(e.currentTarget, v.image_url)} />
           )}
         </div>
@@ -164,7 +164,7 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
           onClick={() => toggleActive(!v.is_active)}
           className={`relative h-[26px] w-11 shrink-0 rounded-full transition-colors disabled:opacity-60 ${v.is_active ? 'bg-brand' : 'bg-gray-300'}`}
         >
-          <span className={`absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-white transition-transform duration-300 [transition-timing-function:cubic-bezier(.3,1.4,.5,1)] ${v.is_active ? 'translate-x-[18px]' : ''}`} />
+          <span className="absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-white" style={{ transition: 'transform .3s cubic-bezier(.3,1.4,.5,1)', transform: v.is_active ? 'translateX(18px)' : undefined }} />
         </button>
         {/* 편집은 행에 하나 — 폰은 아이콘만, PC 는 라벨까지. 펼침 안에 또 두지 않는다(진입점이 둘이면 한쪽이 조용히 죽는다). */}
         <button type="button" onClick={goEdit} aria-label={t('seller.vouchers.edit', { defaultValue: '편집' })} className={`${GHOST} px-2 md:px-3`}>

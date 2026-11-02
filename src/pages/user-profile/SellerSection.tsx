@@ -46,7 +46,7 @@ import { useToolDeepLink } from './seller-section/useToolDeepLink' // 🚪 대�
 import PendingOrders from './seller-section/PendingOrders'
 import StoreThumb from './seller-section/StoreThumb'
 import StoreNotifButton from './seller-section/StoreNotifications'
-import { useCountUp } from '@/hooks/useCountUp' // 🎬 2026-11-02 시안 B3: 오늘 매출이 0원부터 올라간다
+import { useCountUp } from './useCountUp' // 🎬 2026-11-02 시안 B3: 오늘 매출이 0원부터 올라간다
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
 //   같은 화면에 목록 문법이 두 벌이었다 — 대표 *"허술해"*(09-28)의 실체 중 하나.

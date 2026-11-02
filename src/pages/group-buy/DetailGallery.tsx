@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DEAL_HERO_VT } from '@/lib/deal-view-transition'
+import { DEAL_HERO_VT } from '@/lib/deal-vt-name'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 import { useMediaQuery } from '@/hooks/useMediaQuery'

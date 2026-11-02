@@ -20,6 +20,9 @@ import { takeQrOrigin, growFrom } from './qr-origin'
 import SameStoreDeals from './SameStoreDeals'
 import TalkCalendarButton from './TalkCalendarButton'
 import GiftVoucherSheet from './GiftVoucherSheet'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-stamp', `@keyframes ur-slam { 0% { opacity: 0; transform: rotate(-24deg) scale(1.9); } 60% { opacity: 1; transform: rotate(-12deg) scale(.94); } 100% { opacity: 1; transform: rotate(-12deg) scale(1); } }.ur-slam { animation: ur-slam .38s cubic-bezier(.3,1.4,.5,1) both; }@keyframes ur-thud { 0%,100% { transform: none; } 30% { transform: translateY(4px) scale(.995); } 60% { transform: translateY(-1px); } }.ur-thud { animation: ur-thud .35s ease-out .22s both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-slam,.ur-thud{animation:none!important}}`)
 
 // 🛡️ 2026-05-16: 외부 QR API (api.qrserver.com) 의존 제거 → qrcode.react 로컬 SVG.
 // 🛡️ 2026-06-01 (loading): qrcode.react 는 QR 모달 열 때만 필요 → lazy (페이지 chunk -10KB).

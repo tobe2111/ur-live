@@ -78,7 +78,8 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
             role="tab"
             aria-selected={on}
             onClick={() => onChange(d.key as PinCategory)}
-            className={`${USHOP_TAB_CLS} ${on ? 'border-brand font-bold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400'} ${on && bar ? '!border-transparent' : ''}`}
+            className={`${USHOP_TAB_CLS} ${on ? 'border-brand font-bold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400'} `}
+            style={on && bar ? { borderBottomColor: 'transparent' } : undefined}
           >
             {t(d.labelKey, { defaultValue: d.defaultLabel })}
             {/* 🩸 2026-09-30 — `text-gray-300 dark:text-gray-600` 으로 썼다가 **CI 의 `contrast` 가 잡았다**
@@ -92,7 +93,7 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
         )
       })}
       {bar && (
-        <span aria-hidden="true" className="absolute left-0 h-0.5 bg-brand pointer-events-none motion-safe:transition-[transform,width] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(.2,1,.3,1)]"
+        <span aria-hidden="true" className="ur-tab-bar absolute left-0 h-0.5 bg-brand pointer-events-none"
           style={{ top: bar.y, width: bar.w, transform: `translateX(${bar.x}px)` }} />
       )}
     </div>

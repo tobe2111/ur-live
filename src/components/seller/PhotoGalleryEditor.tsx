@@ -6,6 +6,9 @@ import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import { prepareImageForUpload, UploadTooLargeError, uploadTooLargeMessage } from '@/lib/prepare-upload'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-upload', `.ur-upload-img { transition: filter .45s, opacity .45s; }.ur-uploading { filter: blur(6px) saturate(.6); opacity: .7; }.ur-upload-bar { position: absolute; left: 6px; right: 6px; bottom: 6px; height: 4px; border-radius: 999px; background: rgba(255,255,255,.5); overflow: hidden; }.ur-upload-bar > span { display: block; height: 100%; background: #fff; transition-property: width; transition-timing-function: ease-out; }.ur-gift-mark, .ur-gift-mark path,  .ur-upload-img, .ur-upload-bar > span { transition: none !important; }@media (prefers-reduced-motion: reduce){.ur-upload-img,.ur-upload-bar>span{transition:none!important}}`)
 
 /**
  * 🖼️ **사진 여러 장 편집기** (2026-09-03 대표 *"이용권에 사진 여러 장 올릴 수 있어야하는데
@@ -181,8 +184,8 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
           {previews.map((p) => (
             <div key={p.url} className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
               <img src={p.url} alt="" className={`ur-upload-img w-full h-full object-cover ${p.done ? '' : 'ur-uploading'}`} />
-              <span className="absolute left-1.5 right-1.5 bottom-1.5 h-1 rounded-full bg-white/50 overflow-hidden" aria-hidden="true">
-                <span className={`block h-full bg-white transition-[width] ease-out ${p.done ? 'w-full duration-200' : 'w-3/4 duration-[2000ms]'}`} />
+              <span className="ur-upload-bar" aria-hidden="true">
+                <span style={{ width: p.done ? '100%' : '75%', transitionDuration: p.done ? '.2s' : '2s' }} />
               </span>
             </div>
           ))}

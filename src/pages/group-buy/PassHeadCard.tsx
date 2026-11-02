@@ -14,6 +14,9 @@
 import { formatNumber } from '@/utils/format'
 import { PASS_HEAD, passSubLine } from '@/shared/pass-head'
 import StarRating from '@/components/deal/StarRating'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-strike', `@keyframes ur-strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }.ur-strike { position: relative; display: inline-block; text-decoration: none; }.ur-strike::after { content: ""; position: absolute; left: -2px; right: -2px; top: 52%; height: 1.5px; background: currentColor; transform-origin: left; animation: ur-strike .45s cubic-bezier(.65,0,.35,1) .3s both; }.ur-strike::after, .ur-blink-once, .ur-shake { animation: none !important; }@media (prefers-reduced-motion: reduce){.ur-strike::after{animation:none!important}}`)
 
 const goTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
@@ -75,7 +78,7 @@ export default function PassHeadCard({
 
       {unitPrice != null && unitPrice > 0 && (
         <div className="mt-4">
-          {refPrice != null && refPrice > unitPrice && <div className="text-[13px]" style={{ color: 'var(--gbd-sub)' }}><s className="ur-strike [text-decoration:none]">{formatNumber(refPrice)}원</s></div>}
+          {refPrice != null && refPrice > unitPrice && <div className="text-[13px]" style={{ color: 'var(--gbd-sub)' }}><s className="ur-strike">{formatNumber(refPrice)}원</s></div>}
           <div className="flex items-baseline gap-2">
             {!!discountPct && discountPct > 0 && <span className="text-[24px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
             <span className="text-[28px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{formatNumber(unitPrice)}원</span>

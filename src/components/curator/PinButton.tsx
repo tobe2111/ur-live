@@ -12,6 +12,9 @@ import { Pin, Plus } from 'lucide-react'
 import { usePinAction } from '@/features/curator/hooks/usePinAction'
 import { useAuthStore } from '@/client/stores/auth.store'
 import { curatorApi } from '@/features/curator/api/curator-api'
+import { injectMotionCss } from '@/lib/motion-css'
+// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }.ur-slam, .ur-thud, .ur-popin, .ur-rise, .ur-ring, .ur-flash,@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 interface PinButtonProps {
   productId: number
