@@ -841,6 +841,7 @@ export default function GroupBuyDetailPage() {
         dealPlan={!isPrelaunch && isJoinable ? dealPlan : null} dealUse={dealUse} setDealUse={setDealUse}
         canPayWithDeal={canPayWithDeal} dealBalance={dealBalance}
         productId={productId} onJoin={handleJoin} isOwner={isOwnProduct} onManage={manageOwn}
+        summary={{ name: detail.name, store: detail.restaurant_name, image: galleryImages[0] }}
       />
       {ownerSheet}
     </div>

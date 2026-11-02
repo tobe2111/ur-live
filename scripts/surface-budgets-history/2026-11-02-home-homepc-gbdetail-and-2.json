@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-02",
+  "reason": "2026-11-02 대표 \"다 해주고\" — 결제창 안 A(무엇을 사는지 줄·영수증 줄 = 새 내용, lz-gbDetail +1.2) · 9차(알림 메시지 사라짐·밀어 닫기 app-shell +0.5 — 모든 화면 공용, 확인 창은 새 CSS 0 으로 기존 시트 등장 재사용) · 정렬 메뉴(lz-common). homePc·region 의 lz-home-homePc +5.6 은 이 브랜치 코드가 아니라 main 에서 함께 들어온 지역 일러스트 변경(#2106)이다.",
+  "surfaces": [
+    "home",
+    "homePc",
+    "gbDetail",
+    "stayDetail",
+    "region"
+  ],
+  "changes": [
+    "home: 199.0 → 200.5 KB (+1.5, 허용 1.5) · 늘어난 것: lz-home.js +0.6, app-shell.js +0.5, lz-home-homePc.js +0.3",
+    "homePc: 202.3 → 204.3 KB (+2.0, 허용 1.5) · 늘어난 것: lz-home-homePc.js +5.6, lz-common.js +1.2, app-shell.js +0.5, index.css +0.5",
+    "gbDetail: 206.4 → 208.2 KB (+1.8, 허용 1.5) · 늘어난 것: lz-gbDetail.js +1.2, app-shell.js +0.5",
+    "stayDetail: 212.1 → 213.8 KB (+1.7, 허용 1.5) · 늘어난 것: lz-gbDetail.js +1.2, app-shell.js +0.5",
+    "region: 200.0 → 201.9 KB (+2.0, 허용 1.5) · 늘어난 것: lz-home-homePc.js +5.6, lz-common.js +1.2, app-shell.js +0.5, index.css +0.5"
+  ]
+}

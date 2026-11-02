@@ -43,7 +43,7 @@ import { TOPUP_DISABLED } from '@/shared/feature-flags'
 // 🎬 2026-11-02 시안 7차 "내 딜 늘어남"(대표 "7차도 다 해주고") — 화면을 보는 동안 잔액이 늘면(적립·선물) 숫자 위로 "+N딜" 이 떠올랐다 사라진다.
 //   처음 읽은 값·줄어든 값에는 안 뜬다. 숫자 자체는 그대로 바뀐다(지어내지 않는다).
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
-injectMotionCss('ur-m-gain', `@keyframes ur-gain { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }.ur-gain { position: absolute; right: 0; bottom: 100%; white-space: nowrap; pointer-events: none; animation: ur-gain 1s ease-out both; }@media (prefers-reduced-motion: reduce){.ur-gain{display:none}}`)
+injectMotionCss('ur-m-gain', `@keyframes ur-gain { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }.ur-gain { position: absolute; right: 0; bottom: 100%; white-space: nowrap; pointer-events: none; animation: ur-gain 1s ease-out both; }@keyframes ur-vin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }.ur-vin { display: inline-block; animation: ur-vin .35s cubic-bezier(.2,1,.3,1) backwards; }@keyframes ur-my-zone { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }.ur-my-intro > .ur-account-col > * { animation: ur-my-zone .4s cubic-bezier(.2,1,.3,1) backwards; }.ur-my-intro > .ur-account-col > *:nth-child(2) { animation-delay: 70ms; }.ur-my-intro > .ur-account-col > *:nth-child(3) { animation-delay: 140ms; }.ur-my-intro > .ur-account-col > *:nth-child(4) { animation-delay: 210ms; }.ur-my-intro > .ur-account-col > *:nth-child(n+5) { animation-delay: 280ms; }@media (prefers-reduced-motion: reduce){.ur-gain{display:none}.ur-vin{animation:none!important}.ur-my-intro > .ur-account-col > *{animation:none!important}}`) // 🎬 시안 마이 "숫자 도착" — 늦게 온 숫자가 회색 자리에서 살짝 올라오며 나타난다 · "구역 차례 등장"(.ur-my-intro, 하루 첫 방문만 — UserProfilePage 가 붙인다) CSS 도 여기 둔다(마이 화면이 늘 이 부품을 싣는다)
 
 /** 💸 충전은 2026-07-18 에 종료됐다 — 딜의 "자세히" 는 내역이다. */
 const DEAL_PATH = TOPUP_DISABLED ? '/my-deal-history' : '/points/charge'
@@ -184,7 +184,7 @@ export default function MyStats({ voucher, coupon, inline = false }: {
     ) : v === null ? (
       <span className="text-[15px] font-bold text-gray-400 dark:text-gray-500">—</span>
     ) : (
-      <span className={`text-[15px] font-bold tabular-nums ${v > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+      <span className={`ur-vin text-[15px] font-bold tabular-nums ${v > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
         {formatNumber(v)}<span className="ml-1 text-[13px] font-medium text-gray-500 dark:text-gray-400">{unit}</span>
       </span>
     )

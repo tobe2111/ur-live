@@ -19,3 +19,7 @@ VoucherMap lazy · 목록·QR 열기 · 데이터 조회. 동작 줄이기면 `.
 - 카드가 화면에 들어오거나(이미 있던 상세 미리 받기와 **같은 때**) 손가락이 닿을 때 받는다. 아직 안 왔으면 그 클릭은 종전 링크 이동.
 - `scripts/surface-chunks.mjs` `LAZY_ENVELOPES` 에 `app-deal-vt` 추가 — 없으면 묶음기가 다시 `lz-common` 으로 옮긴다(빌드 실측: 동적 import 만으로는 안 갈라졌다).
 - 실측: **27개 화면 전부 −0.3~0.5KB**(brotli). 미리 받기 세 줄·viewport prefetch·`React.memo`·`rootMargin` 은 불변.
+
+## 같은 허가로 — 이용권 상세 결제창 안 A (대표 *"응 다 해주고"*)
+- **바꾼 잠금 파일**: `src/pages/GroupBuyDetailPage.tsx` — `DealBottomBar` 에 `summary`(이름·매장·첫 사진) prop **한 줄 추가**. 
+  `__SSR_INITIAL_DETAIL__` 즉시 사용 · CountdownRing/폴링/below-fold lazy 는 불변.

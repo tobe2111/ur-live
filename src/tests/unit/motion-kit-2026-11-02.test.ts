@@ -27,7 +27,7 @@ import { stripComments } from '../helpers/source-text'
 const R = (p: string) => readFileSync(p, 'utf8')
 const css = stripComments(R('src/index.css'))
 // 화면별로만 받는 CSS 는 부품 파일 안의 injectMotionCss(…) 문자열이다 — 그 문자열들을 모은다.
-const LAZY_USERS = ['src/components/voucher/ScanFrame.tsx', 'src/components/search/SearchStates.tsx', 'src/pages/restaurant-map/SheetFilterBar.tsx', 'src/pages/group-buy/DetailGallery.tsx', 'src/components/MyReferralCard.tsx', 'src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx', 'src/pages/group-buy/pay-spin-css.ts', 'src/pages/checkout/OrderSummary.tsx', 'src/pages/wishlist/WishlistMobile.tsx', 'src/pages/mobile-home/BackToTop.tsx', 'src/pages/user-profile/profile-edit/EditRow.tsx', 'src/components/charts/svg-charts.tsx', 'src/pages/curator-page/CuratorHeader.tsx', 'src/pages/PaymentSuccessPage.tsx', 'src/pages/PaymentFailPage.tsx', 'src/pages/pc-home/PcHomeLocationBar.tsx', 'src/pages/user-profile/MyStats.tsx', 'src/pages/VoucherGiftReceivePage.tsx', 'src/pages/NotificationsPage.tsx', 'src/pages/seller-orders/OrderNumber.tsx', 'src/pages/agency-console/AgencyPayoutSheet.tsx', 'src/pages/SellerReviewsPage.tsx', 'src/pages/mobile-home/MapPill.tsx', 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx', 'src/pages/CouponClaimPage.tsx', 'src/components/search/SortFilterBar.tsx']
+const LAZY_USERS = ['src/components/voucher/ScanFrame.tsx', 'src/components/search/SearchStates.tsx', 'src/pages/restaurant-map/SheetFilterBar.tsx', 'src/pages/group-buy/DetailGallery.tsx', 'src/components/MyReferralCard.tsx', 'src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx', 'src/pages/group-buy/pay-spin-css.ts', 'src/pages/checkout/OrderSummary.tsx', 'src/pages/wishlist/WishlistMobile.tsx', 'src/pages/mobile-home/BackToTop.tsx', 'src/pages/user-profile/profile-edit/EditRow.tsx', 'src/components/charts/svg-charts.tsx', 'src/pages/curator-page/CuratorHeader.tsx', 'src/pages/PaymentSuccessPage.tsx', 'src/pages/PaymentFailPage.tsx', 'src/pages/pc-home/PcHomeLocationBar.tsx', 'src/pages/user-profile/MyStats.tsx', 'src/pages/VoucherGiftReceivePage.tsx', 'src/pages/NotificationsPage.tsx', 'src/pages/seller-orders/OrderNumber.tsx', 'src/pages/agency-console/AgencyPayoutSheet.tsx', 'src/pages/SellerReviewsPage.tsx', 'src/pages/mobile-home/MapPill.tsx', 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx', 'src/pages/CouponClaimPage.tsx', 'src/components/search/SortFilterBar.tsx', 'src/pages/group-buy/DealBottomBar.tsx', 'src/components/ToastContainer.tsx', 'src/components/ui/sort-menu.tsx', 'src/pages/my-vouchers/ExpiryNotice.tsx', 'src/components/ui/segmented-tabs.tsx', 'src/pages/user-profile/seller-section/AllToolsSheet.tsx', 'src/pages/user-profile/SellerSection.tsx']
 const lazyCss = LAZY_USERS.flatMap((f) => [...R(f).matchAll(/injectMotionCss\('[\w-]+', `([^`]*)`\)/g)].map((m) => m[1])).join('\n')
 const kit = css.slice(css.indexOf('.ur-burst {'), css.indexOf('.ur-tab-bar {')) + lazyCss
 
@@ -287,5 +287,38 @@ describe('⑦ 6차 — 동작 계약', () => {
     const src = R('src/pages/user-profile/profile-edit/ProfileEditSheet.tsx')
     expect(src).toContain('const [photoChanged, setPhotoChanged] = useState(false)')
     expect(src).toMatch(/setImage\(url\)\n\s*setPhotoChanged\(true\)/)
+  })
+  it('결제창 안 A: 맨 위에 무엇을 사는지 · 금액 영수증 줄 · 결제 호출은 종전 onJoin 그대로', () => {
+    const src = R('src/pages/group-buy/DealBottomBar.tsx')
+    expect(src).toContain('{summary?.name && (')
+    expect(src).toContain('<span>상품 금액</span>')
+    expect(src).toContain('onClick={() => onJoin()}')
+    expect(src).toContain('onClick={requestClose} className={`ur-sheet-veil')
+    expect(R('src/pages/GroupBuyDetailPage.tsx')).toContain('summary={{ name: detail.name, store: detail.restaurant_name, image: galleryImages[0] }}')
+  })
+  it('알림 메시지: 사라진 알림은 잠깐 남아 위로 빠지고, 화면 읽기 도구에선 숨긴다', () => {
+    const src = R('src/components/ToastContainer.tsx')
+    expect(src).toContain("${out ? 'ur-toast-out' : 'animate-slide-down'}")
+    expect(src).toContain('aria-hidden={out || undefined}')
+    expect(src).toContain('if (dy < -24) remove(t.id)')
+  })
+  it('탭 파란 칸: 측정 전엔 고른 탭이 스스로 파랗다(깜빡임 0)', () => {
+    expect(R('src/components/ui/segmented-tabs.tsx')).toContain("${on ? (pill ? 'text-white' : 'bg-brand text-white')")
+  })
+  it('창 끌어서 닫기: 폰에서만 · 끌어 닫을 땐 닫힘 애니메이션을 겹치지 않는다(튀는 것 방지)', () => {
+    const src = R('src/pages/user-profile/seller-section/Sheet.tsx')
+    expect(src).toContain("!window.matchMedia?.('(min-width: 1024px)').matches")
+    const end = src.slice(src.indexOf('const onDragEnd'), src.indexOf('useEffect(() => {', src.indexOf('const onDragEnd')))
+    expect(end).not.toMatch(/setClosing\(true\)/)
+  })
+  it('마이 구역 차례 등장: 하루 한 번 · 날짜는 한국 날짜', () => {
+    const src = R('src/pages/UserProfilePage.tsx')
+    expect(src).toContain("localStorage.getItem('ur_my_intro_day') === today")
+    expect(src).toContain('new Date(Date.now() + 9 * 3600_000)')
+  })
+  it('곧 끝나는 이용권: 흔드는 것은 D-N 표시뿐 — 유달이는 안 움직인다', () => {
+    const src = R('src/pages/my-vouchers/ExpiryNotice.tsx')
+    expect(src).toContain('<span className="ur-exp-nudge shrink-0')
+    expect(src).toContain('<Udal mood="paid" size={52} className="shrink-0" />')
   })
 })

@@ -28,7 +28,7 @@
  * 규약과 그 근거는 `sheet-history.ts` 에 있다 — 여기서는 그 판정을 **따르기만** 한다.
  */
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, X } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 import {
@@ -69,6 +69,40 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
     setClosing(true)
     window.setTimeout(onClose, 200)
   }, [onClose])
+
+  // 🎬 2026-11-02 시안 9차 "창 끌어서 닫기"(대표 "다 해주고") — 폰에서 머리줄을 잡고 끌어내리면 손가락을 따라오고,
+  //   90px 넘게 내리면 그대로 내려가며 닫힌다(덜 내리면 제자리로). PC 가운데 창과 동작 줄이기에선 끄지 않는 대신 따라오지 않는다.
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const drag = useRef<{ y0: number; dy: number } | null>(null)
+  const dragOk = () => {
+    try { return !window.matchMedia?.('(min-width: 1024px)').matches && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { return false }
+  }
+  const onDragStart = (e: React.PointerEvent) => {
+    if (!dragOk() || (e.target as HTMLElement).closest('button')) return
+    drag.current = { y0: e.clientY, dy: 0 }
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* 미지원 */ }
+  }
+  const onDragMove = (e: React.PointerEvent) => {
+    const d = drag.current, el = panelRef.current
+    if (!d || !el) return
+    d.dy = Math.max(0, e.clientY - d.y0)
+    el.style.transition = 'none'
+    el.style.transform = d.dy ? `translateY(${d.dy}px)` : ''
+  }
+  const onDragEnd = () => {
+    const d = drag.current, el = panelRef.current
+    drag.current = null
+    if (!d || !el) return
+    if (d.dy > 90) {
+      el.style.transition = 'transform .2s cubic-bezier(.4,0,1,1)'
+      el.style.transform = 'translateY(100%)'
+      // ⚠️ `setClosing` 은 부르지 않는다 — `.ur-sheet-out` 애니메이션이 위 인라인 transform 을 덮어 창이 제자리로 튀었다가 다시 내려간다.
+      window.setTimeout(onClose, 200)
+      return
+    }
+    el.style.transition = 'transform .25s cubic-bezier(.2,1,.3,1)'
+    el.style.transform = ''
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
@@ -122,8 +156,10 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
           + ' lg:max-h-[86dvh] lg:rounded-2xl lg:shadow-2xl'
         }
         style={{ zIndex: Z.SHEET_BODY }}
+        ref={panelRef}
       >
-        <div className="flex items-center gap-1 px-4 h-14 border-b border-rule shrink-0">
+        <div className="flex items-center gap-1 px-4 h-14 border-b border-rule shrink-0 touch-none lg:touch-auto"
+          onPointerDown={onDragStart} onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}>
           {onBack && (
             <button type="button" onClick={onBack} aria-label="뒤로" className="w-8 h-8 -ml-2 flex items-center justify-center shrink-0">
               <ChevronLeft className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />

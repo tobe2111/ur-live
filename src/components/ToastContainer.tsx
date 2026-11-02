@@ -1,7 +1,13 @@
+import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { OkIcon, AlertIcon, InfoIcon } from '@/components/icons/urdeal-icons'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from '@/lib/i18n-lite'
+// 🎬 2026-11-02 시안 9차 "알림 메시지"(대표 "다 해주고") — 사라질 때도 위로 올라가며 빠지고(종전엔 툭 사라졌다), 손가락으로 위로 밀면 바로 닫힌다.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-toast', `@keyframes ur-toast-out { to { opacity: 0; transform: translateY(-120%); } }.ur-toast-out { pointer-events: none; animation: ur-toast-out .24s cubic-bezier(.4,0,1,1) both; }@media (prefers-reduced-motion: reduce){.ur-toast-out{animation:none!important;display:none}}`)
+
+type ToastItem = { id: string; message: string; type: 'success' | 'error' | 'info' }
 
 // 🎨 2026-06-22 (대표 — "팝업 디자인 촌스러워"): 파스텔 색박스(green-50/red-50/blue-50) → 단일 잉크 토스트.
 // 🎫 2026-09-02 (대표 — "이 팝업들도 디자인 시스템에 맞게"): 잉크 상자 → 코레일톡 표면 체계.
@@ -12,8 +18,23 @@ import { useTranslation } from '@/lib/i18n-lite'
 export default function ToastContainer() {
   const { toasts, remove } = useToast()
   const { t: tl } = useTranslation()
+  // 사라진 토스트를 0.24초 동안 붙잡아 위로 빠지는 움직임을 보여 준다(원래 자리 그대로).
+  const prev = useRef<ToastItem[]>(toasts)
+  const [leaving, setLeaving] = useState<{ t: ToastItem; at: number }[]>([])
+  useEffect(() => {
+    const now = new Set(toasts.map((t) => t.id))
+    const gone = prev.current.map((t, at) => ({ t, at })).filter((g) => !now.has(g.t.id))
+    prev.current = toasts
+    if (!gone.length) return
+    setLeaving((l) => [...l, ...gone])
+    window.setTimeout(() => setLeaving((l) => l.filter((x) => !gone.some((g) => g.t.id === x.t.id))), 260)
+  }, [toasts])
+  const drag = useRef<{ id: ToastItem['id']; y0: number } | null>(null)
 
-  if (toasts.length === 0) return null
+  const rows: { t: ToastItem; out: boolean }[] = toasts.map((t) => ({ t, out: false }))
+  for (const g of [...leaving].sort((a, b) => a.at - b.at)) if (!toasts.some((t) => t.id === g.t.id)) rows.splice(Math.min(g.at, rows.length), 0, { t: g.t, out: true })
+
+  if (rows.length === 0) return null
 
   const icons = {
     success: <OkIcon className="w-[18px] h-[18px] text-brand-text shrink-0" />,
@@ -27,11 +48,16 @@ export default function ToastContainer() {
       aria-live="polite"
       aria-atomic="true"
     >
-      {toasts.map((t) => (
+      {rows.map(({ t, out }) => (
         <div
           key={t.id}
           role={t.type === 'error' ? 'alert' : 'status'}
-          className="flex items-center gap-2 pl-4 pr-2 py-2 rounded-2xl bg-surface text-gray-900 dark:text-white shadow-lift pointer-events-auto animate-slide-down max-w-full"
+          aria-hidden={out || undefined}
+          className={`flex items-center gap-2 pl-4 pr-2 py-2 rounded-2xl bg-surface text-gray-900 dark:text-white shadow-lift pointer-events-auto max-w-full touch-pan-x ${out ? 'ur-toast-out' : 'animate-slide-down'}`}
+          onPointerDown={(e) => { if (!out) drag.current = { id: t.id, y0: e.clientY } }}
+          onPointerMove={(e) => { const d = drag.current; if (!d || d.id !== t.id) return; const dy = Math.min(0, e.clientY - d.y0); e.currentTarget.style.transform = dy ? `translateY(${dy}px)` : '' }}
+          onPointerUp={(e) => { const d = drag.current; drag.current = null; if (!d || d.id !== t.id) return; const dy = e.clientY - d.y0; e.currentTarget.style.transform = ''; if (dy < -24) remove(t.id) }}
+          onPointerCancel={(e) => { drag.current = null; e.currentTarget.style.transform = '' }}
         >
           {icons[t.type]}
           <p className="flex-1 text-[13px] font-medium leading-snug line-clamp-2">{t.message}</p>

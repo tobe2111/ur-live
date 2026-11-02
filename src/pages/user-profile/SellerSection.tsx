@@ -34,6 +34,8 @@ import {
   OrdersIcon, WonCoinIcon, TicketStubIcon, ChartIcon,
 } from '@/components/icons/urdeal-icons'
 import { QrScanIcon } from '@/components/icons/qr-scan-icon' // 32 그리드라 24 그리드 세트와 파일을 나눴다
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-scansweep', `@keyframes ur-scan-sweep { from { transform: translateY(-120%); } to { transform: translateY(260%); } }.ur-scan-sweep { position: absolute; left: 0; right: 0; top: 0; height: 40%; pointer-events: none; background: linear-gradient(180deg, transparent, rgba(255,255,255,.28), transparent); transform: translateY(-120%); animation: ur-scan-sweep 1s cubic-bezier(.65,0,.35,1) .4s backwards; }@keyframes ur-store-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }.ur-store-in { animation: ur-store-in .3s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-scan-sweep{display:none}.ur-store-in{animation:none!important}}`) // 🎬 2026-11-02 시안 마이 — 사용처리 칸에 스캐너 빛줄기 한 번 · 매장을 바꾸면 가게 줄이 새로 올라온다
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
 import { clearMyReturn, withMyReturn } from '@/lib/seller-return'
@@ -147,6 +149,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     return stores.find((s) => s.seller_id === currentSellerId) ?? stores[0]
   }, [stores, currentSellerId])
 
+  const firstStore = useRef<number | null>(null) // 🎬 처음 보인 매장 — 다른 매장으로 바꿨을 때만 가게 줄이 새로 올라온다
+  if (firstStore.current === null && store) firstStore.current = store.seller_id
   const seated = store != null && seatId === store.seller_id
   /** 좌석에 앉았을 때만 일감을 부른다(안 앉았으면 요청 0). 좌석이 어긋나면 안내하고 다시 부른다. */
   const work = useSellerWork(store?.seller_id ?? 0, seated, () => {
@@ -321,7 +325,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           className="flex-1 min-w-0 flex items-center gap-3 text-left active:opacity-70"
         >
           <StoreThumb src={store?.image ?? null} name={store?.name ?? ''} hidden={awaiting} />
-          <span className="min-w-0">
+          <span key={store?.seller_id} className={`min-w-0${firstStore.current !== null && firstStore.current !== store?.seller_id ? ' ur-store-in' : ''}`}>
             <span className="flex items-center gap-1 min-w-0">
               <span className="text-[17px] font-bold text-gray-900 dark:text-white truncate">{blank(store?.name ?? '가게 이름')}</span>
               {!awaiting && stores.length >= 2 && <ChevronDown className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />}
@@ -364,8 +368,9 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           type="button"
           disabled={entering}
           onClick={() => enterSeat('/store/scan')}
-          className="min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
+          className="relative overflow-hidden min-w-0 flex items-center gap-2 h-16 px-3 rounded-2xl bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
         >
+          <span aria-hidden="true" className="ur-scan-sweep" />
           {/* ⚠️ **어느 가게로 소각되는지는 좌석이 정한다** — 먼저 이 가게 좌석에 앉히고 보낸다(되돌릴 수 없다). */}
           <span className="shrink-0">
             {entering

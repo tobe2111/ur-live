@@ -5,6 +5,9 @@
  */
 import { useState } from 'react'
 import { ChevronDown, type LucideIcon } from 'lucide-react'
+// 🎬 2026-11-02 시안 9차 "정렬 메뉴"(대표 "다 해주고") — 목록이 버튼 쪽에서 살짝 커지며 펼쳐지고 항목이 차례로 나타난다.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-sortmenu', `@keyframes ur-sm-open { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }@keyframes ur-sm-item { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }.ur-sm-open { animation: ur-sm-open .2s cubic-bezier(.2,1,.3,1) backwards; }.ur-sm-item { animation: ur-sm-item .22s cubic-bezier(.2,1,.3,1) backwards; animation-delay: calc(40ms + var(--i, 0) * 30ms); }@media (prefers-reduced-motion: reduce){.ur-sm-open,.ur-sm-item{animation:none!important}}`)
 
 export interface SortOptionItem<T extends string> {
   key: T
@@ -47,16 +50,18 @@ export function SortMenu<T extends string>({
           <div className="fixed inset-0 z-[10500]" onClick={() => setOpen(false)} />
           <div
             role="listbox"
-            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-2 z-[10501] min-w-[150px] rounded-xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] shadow-xl py-1 overflow-hidden`}
+            style={{ transformOrigin: align === 'right' ? 'top right' : 'top left' }}
+            className={`ur-sm-open absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-2 z-[10501] min-w-[150px] rounded-xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] shadow-xl py-1 overflow-hidden`}
           >
-            {options.map((o) => {
+            {options.map((o, i) => {
               const selected = o.key === value
               return (
                 <button
                   key={o.key}
+                  style={{ ['--i' as string]: i }}
                   type="button"
                   onClick={() => { onChange(o.key); setOpen(false) }}
-                  className={`w-full text-left px-4 py-2 text-[13px] inline-flex items-center gap-2 transition-colors ${
+                  className={`ur-sm-item w-full text-left px-4 py-2 text-[13px] inline-flex items-center gap-2 transition-colors ${
                     selected
                       ? 'font-medium text-brand-text  bg-brand-tint bg-brand/10'
                       : 'font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.06]'

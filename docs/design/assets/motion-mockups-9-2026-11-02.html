@@ -1,0 +1,342 @@
+<title>유어딜 모션 시안 9차</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* 레이아웃: 9차 후보 7 + 마이 6 을 카드 격자로. 카드 = 작은 화면(직접 눌러 보기) + 이름 + 설명. */
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --surface: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE;
+  --lift: 0 2px 10px rgba(22,24,28,.06); --photo1: #C9D8F2; --photo2: #F2D9C9; --photo3: #D2E8D6; --photo4: #E6D6F0; --scrim: rgba(22,24,28,.4); --map: #E9EEE4; --road: #FFFFFF;
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --surface: #1D1F29; --sub: #191C25; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --lift: none; --photo1: #2B3A57; --photo2: #4A3729; --photo3: #2C4232; --photo4: #3D2F4A; --scrim: rgba(0,0,0,.55);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); }
+button { font-family: var(--font); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 62ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .replay:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.group { margin-bottom: 56px; }
+.group > h2 { font-size: 24px; font-weight: 700; margin: 0 0 4px; }
+.group > p { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 32px 20px; }
+@media (max-width: 360px) { .grid { grid-template-columns: 1fr; } }
+.card { min-width: 0; display: grid; gap: 12px; align-content: start; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.head h3 { font-size: 17px; font-weight: 700; margin: 0; }
+.head .rec { font-size: 12px; font-weight: 700; color: #fff; background: var(--brand); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+.replay { flex: none; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; font-weight: 500; cursor: pointer; }
+.desc { font-size: 13px; color: var(--page-soft); line-height: 1.6; margin: 0; }
+.scr { height: 340px; border-radius: 22px; background: var(--bg); color: var(--ink); position: relative; overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); transition: background .3s, color .3s; }
+.tap { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 12px; color: var(--ink-faint); pointer-events: none; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.btn { height: 44px; border-radius: 12px; border: 0; padding: 0 18px; font-weight: 700; font-size: 15px; cursor: pointer; }
+.btn-primary { background: var(--brand); color: #fff; }
+.btn-out { background: transparent; color: var(--brand-text); box-shadow: inset 0 0 0 1px var(--rule-strong); }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes popIn { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }
+.ease { --spring: cubic-bezier(.2,1,.3,1); }
+
+
+.roll { display: inline-block; height: 1.3em; overflow: hidden; position: relative; vertical-align: bottom; font-variant-numeric: tabular-nums; }
+.roll > span { display: block; line-height: 1.3em; }
+.roll .out { position: absolute; left: 0; top: 0; animation: outUp .28s cubic-bezier(.65,0,.35,1) both; }
+.roll .in { animation: inUp .28s cubic-bezier(.65,0,.35,1) both; }
+.roll.down .out { animation-name: outDown; } .roll.down .in { animation-name: inDown; }
+@keyframes outUp { to { transform: translateY(-100%); opacity: 0; } } @keyframes inUp { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes outDown { to { transform: translateY(100%); opacity: 0; } } @keyframes inDown { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
+.pad { padding: 16px; }
+.lines div { height: 14px; border-radius: 7px; background: var(--sub); margin-bottom: 10px; }
+
+/* 1 확인 창 */
+.veil { position: absolute; inset: 0; background: var(--scrim); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 4; }
+.on .veil { opacity: 1; pointer-events: auto; }
+.dlg { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 5; background: var(--surface); border-radius: 20px; padding: 20px 18px 14px; transform: translateY(115%); transition: transform .34s cubic-bezier(.2,1,.3,1); }
+.on .dlg { transform: none; }
+.dlg h4 { margin: 0 0 6px; font-size: 17px; } .dlg p { margin: 0 0 16px; font-size: 13px; color: var(--ink-soft); }
+.dlg .bs { display: flex; gap: 8px; } .dlg .bs button { flex: 1; height: 46px; border: 0; border-radius: 12px; font: 700 15px var(--font); cursor: pointer; }
+.dlg .no { background: var(--sub); color: var(--ink); } .dlg .yes { background: var(--brand); color: #fff; }
+
+/* 2 상세 구역 탭 */
+.dt { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.dtabs { display: flex; gap: 20px; padding: 0 16px; border-bottom: 1px solid var(--rule); position: relative; flex: none; }
+.dtabs button { border: 0; background: none; padding: 14px 0 12px; font: 500 15px var(--font); color: var(--ink-faint); cursor: pointer; }
+.dtabs button.on { color: var(--ink); }
+.dbar { position: absolute; bottom: -1px; left: 0; height: 2px; background: var(--brand); transition: transform .3s cubic-bezier(.2,1,.3,1), width .3s cubic-bezier(.2,1,.3,1); }
+.dscroll { flex: 1; overflow-y: auto; padding: 0 16px 120px; }
+.dscroll section { padding: 18px 0; } .dscroll h5 { margin: 0 0 10px; font-size: 15px; }
+.dscroll section div { height: 50px; border-radius: 10px; background: var(--sub); margin-bottom: 8px; }
+
+/* 3 알림 메시지 */
+.toasts { position: absolute; left: 12px; right: 12px; top: 12px; z-index: 3; touch-action: none; }
+.toast9 { background: var(--surface); box-shadow: 0 4px 16px rgba(22,24,28,.14); border-radius: 16px; padding: 12px 14px; font-size: 15px; display: flex; gap: 8px; align-items: center; transform: translateY(-140%); opacity: 0; transition: transform .32s cubic-bezier(.2,1,.3,1), opacity .2s; cursor: grab; }
+.scr[data-mode="dark"] .toast9 { box-shadow: none; }
+.toast9.in { transform: none; opacity: 1; }
+.toast9.out { transform: translateY(-140%); opacity: 0; transition-duration: .24s; transition-timing-function: cubic-bezier(.4,0,1,1); }
+.toast9 i { width: 20px; height: 20px; border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; font-style: normal; font-size: 12px; flex: none; }
+
+/* 4 정렬 메뉴 */
+.sortbtn { border: 1px solid var(--rule-strong); background: var(--surface); color: var(--ink); border-radius: 999px; height: 34px; padding: 0 12px; font: 500 13px var(--font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.sortbtn svg { width: 14px; height: 14px; transition: transform .25s; }
+.sm.on .sortbtn svg { transform: rotate(180deg); }
+.menu { position: absolute; left: 16px; top: 58px; width: 170px; background: var(--surface); border-radius: 14px; box-shadow: 0 6px 22px rgba(22,24,28,.16); padding: 6px; transform-origin: top left; transform: scale(.9); opacity: 0; pointer-events: none; transition: transform .22s cubic-bezier(.2,1,.3,1), opacity .15s; }
+.sm.on .menu { transform: none; opacity: 1; pointer-events: auto; }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 10px 12px; border-radius: 10px; font: 400 13px var(--font); color: var(--ink); cursor: pointer; opacity: 0; transform: translateY(-4px); transition: opacity .2s, transform .25s; }
+.sm.on .menu button { opacity: 1; transform: none; transition-delay: calc(40ms + var(--i) * 35ms); }
+.menu button.sel { color: var(--brand-text); font-weight: 500; }
+
+/* 5 곧 끝나는 이용권 */
+.exp { border-radius: 14px; background: var(--brand-tint); padding: 12px 14px; display: flex; gap: 10px; align-items: center; font-size: 15px; }
+.exp b { color: var(--brand-text); }
+.exp i { width: 30px; height: 30px; border-radius: 50%; background: var(--brand); flex: none; display: grid; place-items: center; color: #fff; font-style: normal; font-size: 13px; font-weight: 700; }
+.exp.nudge { animation: nudge .6s cubic-bezier(.36,.07,.19,.97) .3s; }
+@keyframes nudge { 0%,100% { transform: none; } 20% { transform: translateX(-4px) rotate(-.6deg); } 40% { transform: translateX(4px) rotate(.6deg); } 60% { transform: translateX(-2px); } 80% { transform: translateX(2px); } }
+.wl9 { margin-top: 12px; }
+.wl9 div { height: 54px; border-bottom: 1px solid var(--rule); }
+
+/* 6 주문 탭 */
+.seg { position: relative; display: flex; gap: 2px; background: var(--sub); border-radius: 12px; padding: 3px; }
+.seg button { position: relative; z-index: 1; flex: 1; border: 0; background: none; height: 38px; font: 500 13px var(--font); color: var(--ink-soft); cursor: pointer; transition: color .2s; white-space: nowrap; }
+.seg button.on { color: #fff; }
+.seg .pill9 { position: absolute; top: 3px; bottom: 3px; left: 0; border-radius: 9px; background: var(--brand); transition: transform .3s cubic-bezier(.2,1,.3,1), width .3s cubic-bezier(.2,1,.3,1); }
+.seg em { font-style: normal; margin-left: 3px; }
+.ol9 { margin-top: 14px; }
+.ol9 div { height: 48px; border-bottom: 1px solid var(--rule); animation: fadeIn .3s backwards; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } }
+
+/* 7 끌어서 닫기 */
+.sheet7 { position: absolute; left: 0; right: 0; bottom: 0; height: 74%; background: var(--surface); border-radius: 22px 22px 0 0; padding: 10px 16px; z-index: 5; transform: translateY(105%); transition: transform .34s cubic-bezier(.2,1,.3,1); touch-action: none; }
+.on .sheet7 { transform: none; }
+.sheet7 .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--rule-strong); margin: 0 auto 14px; cursor: grab; }
+.sheet7 h4 { margin: 0 0 12px; font-size: 17px; }
+.sheet7 .r { height: 46px; border-bottom: 1px solid var(--rule); }
+.openbtn { margin: 16px; }
+
+/* M 마이 */
+.myhead { display: flex; gap: 12px; align-items: center; padding: 16px; }
+.myhead i { width: 48px; height: 48px; border-radius: 50%; background: var(--photo3); flex: none; }
+.myhead b { font-size: 17px; } .myhead small { display: block; font-size: 13px; color: var(--ink-soft); }
+.myrows { padding: 0 16px; }
+.myrow { display: flex; justify-content: space-between; align-items: center; min-height: 48px; border-bottom: 1px solid var(--rule); font-size: 15px; font-weight: 500; position: relative; cursor: pointer; }
+.myrow .v { font-weight: 700; font-variant-numeric: tabular-nums; }
+.myrow .v small { font-size: 13px; font-weight: 500; color: var(--ink-soft); margin-left: 3px; }
+.skel { display: inline-block; width: 44px; height: 15px; border-radius: 4px; background: var(--sub); vertical-align: middle; }
+.vin { display: inline-block; animation: vin .35s cubic-bezier(.2,1,.3,1) backwards; }
+@keyframes vin { from { opacity: 0; transform: translateY(6px); } }
+.myrow .chev { color: var(--ink-faint); transition: transform .2s; display: inline-block; margin-left: 6px; }
+.myrow::before { content: ""; position: absolute; left: -16px; right: -16px; top: 0; bottom: 0; background: var(--ink); opacity: 0; transition: opacity .15s; pointer-events: none; }
+.myrow.press::before { opacity: .05; }
+.myrow.press .chev { transform: translateX(3px); }
+.scan { margin: 14px 16px 0; position: relative; overflow: hidden; border-radius: 14px; background: var(--brand); color: #fff; padding: 14px; display: flex; gap: 10px; align-items: center; font-size: 15px; font-weight: 700; }
+.scan svg { width: 26px; height: 26px; }
+.scan small { display: block; font-size: 12px; font-weight: 400; opacity: .85; }
+.scan .sweep { position: absolute; left: 0; right: 0; top: 0; height: 40%; background: linear-gradient(180deg, transparent, rgba(255,255,255,.28), transparent); transform: translateY(-120%); }
+.scan.go .sweep { animation: sweep 1s cubic-bezier(.65,0,.35,1) .3s; }
+@keyframes sweep { to { transform: translateY(260%); } }
+.tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 8px; padding: 18px 16px; }
+.tools span { display: grid; justify-items: center; gap: 6px; font-size: 12px; color: var(--ink-soft); }
+.tools span i { width: 44px; height: 44px; border-radius: 12px; background: var(--sub); display: block; }
+.tools.go span { animation: tin .35s cubic-bezier(.2,1,.3,1) backwards; animation-delay: calc(var(--i) * 35ms); }
+@keyframes tin { from { opacity: 0; transform: translateY(12px) scale(.95); } }
+.zones.go .zone { animation: tin .4s cubic-bezier(.2,1,.3,1) backwards; animation-delay: calc(var(--i) * 70ms); }
+.zone h6 { margin: 16px 16px 6px; font-size: 13px; color: var(--ink-soft); font-weight: 500; }
+.zone .myrow { margin: 0 16px; }
+.storehead { display: flex; gap: 10px; align-items: center; padding: 16px; cursor: pointer; }
+.storehead i { width: 40px; height: 40px; border-radius: 10px; background: var(--photo2); flex: none; transition: background .3s; }
+.storehead b { font-size: 17px; } .storehead small { display: block; font-size: 13px; color: var(--ink-soft); }
+.stores { padding: 0 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+.stores button { border: 0; border-radius: 999px; height: 32px; padding: 0 12px; background: var(--sub); color: var(--ink); font: 500 13px var(--font); cursor: pointer; }
+.stores button.on { background: var(--brand); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) { .scr *, .scr { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <h1>유어딜 모션 시안 9차</h1>
+  <p class="lede">이번엔 지금 서비스에 실제로 있는 화면만 골랐습니다. 9차 후보 일곱 곳과 마이 화면 여섯 곳입니다. 유달이는 쓰지 않았습니다. 화면 안의 버튼·탭·줄은 직접 눌러 보거나 끌어 볼 수 있습니다. 숫자와 가게 이름은 예시입니다.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all" type="button">전부 다시 재생</button>
+    <button class="ctl" id="mode" type="button">다크 모드로</button>
+  </div>
+
+  <section class="group">
+    <h2>9차 후보</h2>
+    <p>추천 셋은 여러 화면이 함께 쓰는 부품이라 한 번 고치면 넓게 바뀝니다.</p>
+    <div class="grid">
+      <div class="card"><div class="head"><h3>확인 창<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="dlg"><div class="pad lines"><div></div><div style="width:70%"></div><div style="width:85%"></div></div><button class="btn btn-primary openbtn" type="button">이용권 취소</button><div class="veil"></div>
+          <div class="dlg"><h4>이용권을 취소할까요?</h4><p>39,000원이 결제한 카드로 돌아가요.</p><div class="bs"><button class="no" type="button">닫기</button><button class="yes" type="button">취소하기</button></div></div></div>
+        <p class="desc">"정말 ~할까요?" 확인 창이 지금은 툭 나타납니다. 뒤가 어두워지며 창이 아래에서 올라오고, 닫을 땐 내려갑니다. 101곳이 같은 창을 써서 한 번에 바뀝니다.</p></div>
+
+      <div class="card"><div class="head"><h3>상세 구역 탭<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="dtabs"><div class="dt"><div class="dtabs"><button class="on" type="button" data-s="0">정보</button><button type="button" data-s="1">사용 방법</button><button type="button" data-s="2">리뷰</button><button type="button" data-s="3">매장</button><span class="dbar"></span></div>
+          <div class="dscroll"><section><h5>정보</h5><div></div><div></div></section><section><h5>사용 방법</h5><div></div><div></div><div></div></section><section><h5>리뷰</h5><div></div><div></div><div></div></section><section><h5>매장</h5><div></div><div></div></section></div></div></div>
+        <p class="desc">오늘 들어간 이용권 상세의 탭입니다. 내리면서 구역이 바뀌면 밑줄이 뚝 옮겨 가는 대신 그 탭으로 미끄러집니다. (직접 내리거나 탭을 눌러 보세요)</p></div>
+
+      <div class="card"><div class="head"><h3>알림 메시지<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="toast"><div class="toasts"><div class="toast9"><i>✓</i>링크를 복사했어요</div></div><div class="pad lines" style="padding-top:80px"><div></div><div></div><div style="width:60%"></div></div><button class="btn btn-out openbtn" type="button">알림 다시 띄우기</button></div>
+        <p class="desc">위쪽 알림이 내려오는 건 같고, 사라질 때도 위로 올라가며 빠집니다(지금은 툭 사라짐). 손가락으로 위로 밀면 바로 닫힙니다.</p></div>
+
+      <div class="card"><div class="head"><h3>정렬 메뉴</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr sm" data-demo="sort"><div class="pad"><button class="sortbtn" type="button"><span class="cur">추천순</span><svg class="ico" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="menu"><button class="sel" type="button" style="--i:0">추천순</button><button type="button" style="--i:1">가까운 순</button><button type="button" style="--i:2">낮은 가격순</button><button type="button" style="--i:3">새로 올라온 순</button></div></div></div>
+        <p class="desc">찜·유어샵의 정렬 목록이 버튼 쪽에서 살짝 커지며 펼쳐지고 항목이 차례로 나타납니다. 화살표도 같이 뒤집힙니다.</p></div>
+
+      <div class="card"><div class="head"><h3>곧 끝나는 이용권</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="exp"><div class="pad"><div class="exp"><i>D-1</i><span><b>을지로 한우 런치</b>가 내일까지예요</span></div><div class="wl9"><div></div><div></div><div></div></div></div></div>
+        <p class="desc">내 이용권 맨 위의 마감 알림이 열릴 때 한 번만 살짝 흔들립니다. 마감이 이틀 이내인 날에만이라 매번 흔들리지 않습니다.</p></div>
+
+      <div class="card"><div class="head"><h3>주문 탭 전환 · 사장님<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="seg"><div class="pad"><div class="seg"><span class="pill9"></span><button class="on" type="button">새 주문<em class="n0"><span class="roll"><span>3</span></span></em></button><button type="button">사용 대기<em><span class="roll"><span>5</span></span></em></button><button type="button">완료</button></div><div class="ol9"></div></div></div>
+        <p class="desc">사장님 주문 화면의 탭에서 파란 칸이 고른 탭으로 미끄러지고, 새 주문이 오면 탭의 숫자가 굴러 올라갑니다. 같은 탭 부품을 쓰는 두 화면도 함께 바뀝니다.</p></div>
+
+      <div class="card"><div class="head"><h3>창 끌어서 닫기 · 사장님</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="drag"><div class="pad lines"><div></div><div style="width:70%"></div></div><button class="btn btn-primary openbtn" type="button">정산 보기</button><div class="veil"></div>
+          <div class="sheet7"><div class="grab"></div><h4>정산</h4><div class="r"></div><div class="r"></div><div class="r"></div></div></div>
+        <p class="desc">아래에서 올라오는 창(정산·매장 고르기 등)을 손잡이를 잡고 끌어내리면 손가락을 따라오고, 충분히 내리면 닫힙니다. 덜 내리면 제자리로 돌아갑니다.</p></div>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>마이 화면</h2>
+    <p>하루에 여러 번 여는 화면이라 작고 빠른 움직임만 골랐습니다.</p>
+    <div class="grid">
+      <div class="card"><div class="head"><h3>숫자 도착<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="arrive"><div class="myhead"><i></i><div><b>정지원</b><small>프로필 편집 ›</small></div></div><div class="myrows">
+          <div class="myrow"><span>내 딜</span><span class="v" data-v="10,300" data-u="딜"></span></div><div class="myrow"><span>이용권</span><span class="v" data-v="3" data-u="장"></span></div><div class="myrow"><span>쿠폰</span><span class="v" data-v="2" data-u="장"></span></div></div></div>
+        <p class="desc">내 딜·이용권·쿠폰 숫자는 늦게 도착합니다. 지금은 회색 자리가 숫자로 툭 바뀌는데, 숫자가 살짝 올라오며 나타나게 합니다. 셋이 차례로 들어옵니다.</p></div>
+
+      <div class="card"><div class="head"><h3>줄 누름 반응<span class="rec">추천</span></h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="press"><div class="myrows" style="padding-top:12px">
+          <div class="myrow"><span>내 이용권</span><span class="chev">›</span></div><div class="myrow"><span>찜</span><span class="chev">›</span></div><div class="myrow"><span>쿠폰</span><span class="chev">›</span></div><div class="myrow"><span>설정</span><span class="chev">›</span></div></div><p class="tap">줄을 눌러 보세요</p></div>
+        <p class="desc">줄을 누르는 순간 줄 전체가 옅게 어두워지고 오른쪽 화살표가 살짝 앞으로 갑니다. 눌렸다는 게 손끝에서 바로 느껴집니다.</p></div>
+
+      <div class="card"><div class="head"><h3>사용처리 칸 · 사장님</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="scan"><div class="storehead"><i></i><div><b>을지로 소담</b><small>판매 중 4개 · 매장 2곳</small></div></div>
+          <div class="scan"><svg class="ico" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/></svg><div>사용처리<small>손님 QR 찍기</small></div><span class="sweep"></span></div></div>
+        <p class="desc">마이를 열 때 파란 "사용처리" 칸에 스캐너 빛줄기가 한 번 위에서 아래로 지나갑니다. 사장님이 매일 가장 많이 누르는 칸을 눈에 띄게 합니다.</p></div>
+
+      <div class="card"><div class="head"><h3>전체 도구 열기 · 사장님</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="tools"><div class="tools"><span style="--i:0"><i></i>주문</span><span style="--i:1"><i></i>정산</span><span style="--i:2"><i></i>이용권</span><span style="--i:3"><i></i>매출 분석</span><span style="--i:4"><i></i>가게</span><span style="--i:5"><i></i>소개 파트너</span><span style="--i:6"><i></i>메시지</span><span style="--i:7"><i></i>리뷰</span><span style="--i:8"><i></i>쿠폰</span><span style="--i:9"><i></i>예약</span><span style="--i:10"><i></i>알림</span><span style="--i:11"><i></i>설정</span></div></div>
+        <p class="desc">"전체 도구"를 열면 도구 아이콘이 왼쪽 위부터 물결처럼 차례로 올라옵니다. 열두 개가 한꺼번에 뜨는 것보다 눈이 따라가기 쉽습니다.</p></div>
+
+      <div class="card"><div class="head"><h3>구역 차례 등장</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr zones" data-demo="zones"><div class="zone" style="--i:0"><h6>내 가게</h6><div class="myrow"><span>주문</span><span class="chev">›</span></div></div><div class="zone" style="--i:1"><h6>내가 산 것</h6><div class="myrow"><span>내 이용권</span><span class="chev">›</span></div><div class="myrow"><span>찜</span><span class="chev">›</span></div></div><div class="zone" style="--i:2"><h6>설정·고객지원</h6><div class="myrow"><span>설정</span><span class="chev">›</span></div></div></div>
+        <p class="desc">마이를 처음 열 때(하루 한 번) 구역이 위에서부터 차례로 올라옵니다. 두 번째부터는 바로 보여 매번 기다리지 않습니다.</p></div>
+
+      <div class="card"><div class="head"><h3>매장 바꾸기 · 사장님</h3><button class="replay" type="button">다시 재생</button></div>
+        <div class="scr" data-demo="store"><div class="storehead"><i></i><div><b><span class="roll sn"><span>을지로 소담</span></span></b><small>오늘 매출 <span class="roll sv"><span>284,000</span></span>원</small></div></div>
+          <div class="stores"><button class="on" type="button" data-n="을지로 소담" data-v="284,000" data-c="var(--photo2)">을지로 소담</button><button type="button" data-n="성수 소담" data-v="156,000" data-c="var(--photo1)">성수 소담</button></div></div>
+        <p class="desc">가게 머리줄에서 매장을 바꾸면 가게 이름과 오늘 매출이 굴러 바뀌고, 가게 사진이 부드럽게 바뀝니다. 지금 어느 매장을 보고 있는지 헷갈리지 않습니다.</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var wait = function (ms) { return new Promise(function (r) { setTimeout(r, reduce ? 0 : ms); }); };
+  function restart(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+  function roll(box, val, down) {
+    var cur = box.querySelector('span:last-child'); if (cur.textContent === String(val)) return;
+    box.querySelectorAll('.out').forEach(function (o) { o.remove(); });
+    box.classList.toggle('down', !!down);
+    if (reduce) { cur.textContent = val; return; }
+    cur.className = 'out'; var nx = document.createElement('span'); nx.className = 'in'; nx.textContent = val; box.appendChild(nx);
+    setTimeout(function () { cur.remove(); }, 300);
+  }
+  function barTo(bar, el) { bar.style.width = el.offsetWidth + 'px'; bar.style.transform = 'translateX(' + el.offsetLeft + 'px)'; }
+
+  var demos = {
+    dlg: {
+      init: function (s) { s.querySelector('.openbtn').addEventListener('click', function () { s.classList.add('on'); });
+        s.querySelectorAll('.veil, .dlg button').forEach(function (b) { b.addEventListener('click', function () { s.classList.remove('on'); }); }); },
+      play: function (s) { s.classList.remove('on'); wait(500).then(function () { s.classList.add('on'); return wait(1800); }).then(function () { s.classList.remove('on'); }); }
+    },
+    dtabs: {
+      init: function (s) { var tabs = s.querySelectorAll('.dtabs button'), bar = s.querySelector('.dbar'), sc = s.querySelector('.dscroll'), secs = s.querySelectorAll('.dscroll section');
+        function mark(i) { tabs.forEach(function (t, j) { t.classList.toggle('on', i === j); }); barTo(bar, tabs[i]); }
+        requestAnimationFrame(function () { mark(0); });
+        tabs.forEach(function (t, i) { t.addEventListener('click', function () { sc.scrollTo({ top: secs[i].offsetTop - 4, behavior: reduce ? 'auto' : 'smooth' }); }); });
+        sc.addEventListener('scroll', function () { var k = 0; secs.forEach(function (x, j) { if (x.offsetTop - 40 <= sc.scrollTop) k = j; }); mark(k); }); },
+      play: function (s) { var sc = s.querySelector('.dscroll'), secs = s.querySelectorAll('.dscroll section'); sc.scrollTo({ top: 0 }); var c = wait(500);
+        [1, 2, 3, 0].forEach(function (i) { c = c.then(function () { sc.scrollTo({ top: secs[i].offsetTop - 4, behavior: reduce ? 'auto' : 'smooth' }); return wait(900); }); }); }
+    },
+    toast: {
+      init: function (s) { var self = this, t = s.querySelector('.toast9'); s.querySelector('.openbtn').addEventListener('click', function () { self.show(s); });
+        var y0 = null; t.addEventListener('pointerdown', function (e) { y0 = e.clientY; t.setPointerCapture(e.pointerId); t.style.transition = 'none'; });
+        t.addEventListener('pointermove', function (e) { if (y0 == null) return; var dy = Math.min(0, e.clientY - y0); t.style.transform = 'translateY(' + dy + 'px)'; });
+        t.addEventListener('pointerup', function (e) { if (y0 == null) return; var dy = e.clientY - y0; y0 = null; t.style.transition = ''; t.style.transform = ''; if (dy < -24) self.hide(s); }); },
+      show: function (s) { var t = s.querySelector('.toast9'), self = this; clearTimeout(this.t); t.classList.remove('out'); t.classList.add('in'); this.t = setTimeout(function () { self.hide(s); }, 2600); },
+      hide: function (s) { var t = s.querySelector('.toast9'); clearTimeout(this.t); t.classList.add('out'); t.classList.remove('in'); setTimeout(function () { t.classList.remove('out'); }, 260); },
+      play: function (s) { var self = this; wait(400).then(function () { self.show(s); }); }
+    },
+    sort: {
+      init: function (s) { s.querySelector('.sortbtn').addEventListener('click', function (e) { e.stopPropagation(); s.classList.toggle('on'); });
+        s.querySelectorAll('.menu button').forEach(function (b) { b.addEventListener('click', function () { s.querySelectorAll('.menu button').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); s.querySelector('.cur').textContent = b.textContent; s.classList.remove('on'); }); });
+        s.addEventListener('click', function () { s.classList.remove('on'); }); },
+      play: function (s) { s.classList.remove('on'); wait(500).then(function () { s.classList.add('on'); return wait(1600); }).then(function () { s.classList.remove('on'); }); }
+    },
+    exp: { init: function () {}, play: function (s) { restart(s.querySelector('.exp'), 'nudge'); } },
+    seg: {
+      init: function (s) { var bs = s.querySelectorAll('.seg button'), p = s.querySelector('.pill9'), self = this;
+        function pick(i) { bs.forEach(function (b, j) { b.classList.toggle('on', i === j); }); barTo(p, bs[i]); var ol = s.querySelector('.ol9'); ol.innerHTML = ''; for (var k = 0; k < 4; k++) { var d = document.createElement('div'); d.style.animationDelay = (k * 40) + 'ms'; ol.appendChild(d); } }
+        this.pick = pick; requestAnimationFrame(function () { pick(0); }); bs.forEach(function (b, i) { b.addEventListener('click', function () { pick(i); }); }); this.n = 3; },
+      play: function (s) { var self = this; self.pick(0); self.n = 3; roll(s.querySelector('.n0 .roll'), '3'); wait(600).then(function () { self.pick(1); return wait(900); }).then(function () { self.pick(0); return wait(600); }).then(function () { self.n++; roll(s.querySelector('.n0 .roll'), String(self.n)); }); }
+    },
+    drag: {
+      init: function (s) { var sh = s.querySelector('.sheet7'), g = sh.querySelector('.grab'), y0 = null;
+        s.querySelector('.openbtn').addEventListener('click', function () { s.classList.add('on'); });
+        s.querySelector('.veil').addEventListener('click', function () { s.classList.remove('on'); });
+        sh.addEventListener('pointerdown', function (e) { if (e.target !== g && e.target !== sh.querySelector('h4')) return; y0 = e.clientY; sh.setPointerCapture(e.pointerId); sh.style.transition = 'none'; });
+        sh.addEventListener('pointermove', function (e) { if (y0 == null) return; var dy = Math.max(0, e.clientY - y0); sh.style.transform = 'translateY(' + dy + 'px)'; });
+        sh.addEventListener('pointerup', function (e) { if (y0 == null) return; var dy = e.clientY - y0; y0 = null; sh.style.transition = ''; sh.style.transform = ''; if (dy > 90) s.classList.remove('on'); }); },
+      play: function (s) { var sh = s.querySelector('.sheet7'); s.classList.remove('on'); wait(500).then(function () { s.classList.add('on'); return wait(900); }).then(function () {
+        if (reduce) { s.classList.remove('on'); return; } sh.style.transition = 'transform .5s ease-in-out'; sh.style.transform = 'translateY(60px)'; return wait(600); }).then(function () { sh.style.transform = ''; return wait(500); }).then(function () { sh.style.transition = ''; return wait(400); }).then(function () { s.classList.remove('on'); }); }
+    },
+    arrive: {
+      init: function (s) { s.querySelectorAll('.v').forEach(function (v) { v.innerHTML = v.dataset.v + '<small>' + v.dataset.u + '</small>'; }); },
+      play: function (s) { var vs = s.querySelectorAll('.v'); vs.forEach(function (v) { v.innerHTML = '<span class="skel"></span>'; });
+        vs.forEach(function (v, i) { wait(600 + i * 140).then(function () { v.innerHTML = '<span class="vin">' + v.dataset.v + '<small>' + v.dataset.u + '</small></span>'; }); }); }
+    },
+    press: {
+      init: function (s) { s.querySelectorAll('.myrow').forEach(function (r) { r.addEventListener('pointerdown', function () { r.classList.add('press'); }); ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { r.addEventListener(ev, function () { setTimeout(function () { r.classList.remove('press'); }, 120); }); }); }); },
+      play: function (s) { var rs = s.querySelectorAll('.myrow'); rs.forEach(function (r, i) { wait(400 + i * 350).then(function () { r.classList.add('press'); return wait(220); }).then(function () { r.classList.remove('press'); }); }); }
+    },
+    scan: { init: function (s) { s.querySelector('.scan').addEventListener('click', function () { restart(this, 'go'); }); }, play: function (s) { restart(s.querySelector('.scan'), 'go'); } },
+    tools: { init: function () {}, play: function (s) { var t = s.querySelector('.tools'); t.classList.remove('go'); void t.offsetWidth; wait(200).then(function () { t.classList.add('go'); }); } },
+    zones: { init: function () {}, play: function (s) { s.classList.remove('go'); void s.offsetWidth; wait(200).then(function () { s.classList.add('go'); }); } },
+    store: {
+      init: function (s) { var bs = s.querySelectorAll('.stores button');
+        bs.forEach(function (b) { b.addEventListener('click', function () { bs.forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); roll(s.querySelector('.sn'), b.dataset.n); roll(s.querySelector('.sv'), b.dataset.v); s.querySelector('.storehead i').style.background = b.dataset.c; }); }); },
+      play: function (s) { var bs = s.querySelectorAll('.stores button'); wait(600).then(function () { bs[1].click(); return wait(1400); }).then(function () { bs[0].click(); }); }
+    }
+  };
+
+  var screens = Array.prototype.slice.call(document.querySelectorAll('.scr'));
+  screens.forEach(function (s) { var dm = demos[s.dataset.demo]; dm.init(s); s.closest('.card').querySelector('.replay').addEventListener('click', function () { dm.play(s); }); });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { demos[e.target.dataset.demo].play(e.target); io.unobserve(e.target); } }); }, { threshold: .5 });
+    screens.forEach(function (s) { io.observe(s); });
+  } else { screens.forEach(function (s) { demos[s.dataset.demo].play(s); }); }
+  document.getElementById('all').addEventListener('click', function () { screens.forEach(function (s) { demos[s.dataset.demo].play(s); }); });
+  var mb = document.getElementById('mode');
+  function setMode(m) { screens.forEach(function (s) { s.dataset.mode = m; }); mb.textContent = m === 'dark' ? '라이트 모드로' : '다크 모드로'; }
+  mb.addEventListener('click', function () { setMode(screens[0].dataset.mode === 'dark' ? 'light' : 'dark'); });
+  var r = document.documentElement;
+  setMode(r.dataset.theme === 'dark' || (!r.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+})();
+</script>

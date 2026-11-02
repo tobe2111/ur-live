@@ -141,3 +141,25 @@
 | 지도 핀 묶음 | — | ⛔ 지도에 핀 묶음(클러스터) 기능이 없다(새 기능) |
 | 평균 별점 | `product-detail/ProductReviews.tsx` 채워진 별이 차례로 톡 | 🟢 손님 화면(사장님 리뷰 화면엔 평균 표시가 없다) |
 | 품절 도장 | `search/ProductCard.tsx` "품절" 이 톡 | 🟢 작은 표시만 · 사장님 화면엔 품절 표시가 없다 |
+
+## 9차 + 마이 + 결제창 안 A (2026-11-02 대표 *"응 다 해주고"*)
+
+시안 원본: [9차·마이](./assets/motion-mockups-9-2026-11-02.html) · [결제창](./assets/checkout-sheet-2026-11-02.html) · [하단 구매 바(검토용 · 선택 대기)](./assets/buybar-2026-11-02.html)
+
+| 시안 | 적용 위치 | 상태 |
+|---|---|---|
+| 결제창 **안 A 정돈형** | `group-buy/DealBottomBar.tsx` 맨 위 사는 것 한 줄 · 상품 금액/할인 줄 · 아낀 금액 칩 · 총액 굴림 · 줄 차례 등장 · 닫을 때 내려감 | 🟢 결제 호출(`onJoin`)·금액 계산 불변 |
+| 확인 창 | `ui/confirm-dialog.tsx`(공용 `.ur-sheet-in` 재사용 — 새 CSS 0) | 🟢 |
+| 상세 구역 탭 | `group-buy/DetailSectionTabs.tsx` 밑줄 하나가 미끄러짐 | 🟢 |
+| 알림 메시지 | `ToastContainer.tsx` 사라질 때 위로 · 위로 밀어 닫기 | 🟢 |
+| 정렬 메뉴 | `ui/sort-menu.tsx` 커지며 펼침 + 항목 차례 | 🟢 |
+| 곧 끝나는 이용권 | `my-vouchers/ExpiryNotice.tsx` D-N 표시만 한 번 흔들림(유달이 불변) | 🟢 |
+| 주문 탭(사장님) | `ui/segmented-tabs.tsx` 파란 칸 미끄러짐 + 숫자 올라옴(쓰는 세 화면 모두) | 🟢 |
+| 창 끌어서 닫기(사장님) | `seller-section/Sheet.tsx` 폰에서 머리줄 끌어 닫기 | 🟢 |
+| 마이 숫자 도착 | `user-profile/MyStats.tsx` | 🟢 |
+| 마이 줄 누름 | `user-profile/list-grammar.tsx` `ListRow` | 🟢 |
+| 사용처리 칸 빛줄기 | `user-profile/SellerSection.tsx` | 🟢 |
+| 전체 도구 | `seller-section/AllToolsSheet.tsx` 묶음 차례 | 🟢 |
+| 마이 구역 차례 | `UserProfilePage.tsx` 하루 첫 방문만(한국 날짜) | 🟢 |
+| 매장 바꾸기 | `SellerSection.tsx` 가게 줄이 새로 올라옴 | 🟢 |
+| 하단 구매 바 개선 | — | 🟡 시안만(안 1·2·3 선택 대기) |

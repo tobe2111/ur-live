@@ -9,6 +9,8 @@
  *   영구성: 새 코드는 window.confirm 대신 이 함수만 쓰면 자동으로 통일 디자인.
  */
 import { useEffect, useRef, useState } from 'react'
+// 🎬 2026-11-02 시안 9차 "확인 창"(대표 "다 해주고") — 뒤가 어두워지며 창이 폰에선 아래에서 올라오고 PC 에선 서서히 뜬다.
+//   ⚖️ 새 CSS 없이 이미 있는 공용 시트 등장(`.ur-sheet-veil`·`.ur-sheet-in`, index.css — 동작 줄이기 처리 포함)을 쓴다. 이 창은 모든 화면이 싣는 셸에 있다.
 
 export interface ConfirmOptions {
   title?: string
@@ -95,12 +97,13 @@ export function ConfirmHost() {
 
   return (
     <div
-      className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="ur-sheet-veil fixed inset-0 z-[100000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={() => close(false)}
       role="presentation"
     >
       <div
-        className="w-full sm:max-w-sm bg-white dark:bg-[#161616] rounded-t-2xl sm:rounded-2xl p-5 sm:mx-4 shadow-2xl"
+        key={queue.length}
+        className="ur-sheet-in w-full sm:max-w-sm bg-white dark:bg-[#161616] rounded-t-2xl sm:rounded-2xl p-5 sm:mx-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

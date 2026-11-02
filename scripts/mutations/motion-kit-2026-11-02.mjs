@@ -117,4 +117,20 @@ export default [
     test: TEST,
     why: '끝없이 움직이는 것은 눈을 계속 끌어 아래 버튼을 못 읽게 한다(움직임은 한 번만 재생).',
   },
+  {
+    name: '🎬 사라지는 알림이 화면 읽기 도구엔 그대로 남는다',
+    file: 'src/components/ToastContainer.tsx',
+    find: '          aria-hidden={out || undefined}\n',
+    replace: '',
+    test: TEST,
+    why: '이미 닫힌 알림을 화면 읽기 도구가 한 번 더 읽는다(0.24초 붙잡아 두는 동안).',
+  },
+  {
+    name: '🎬 탭 파란 칸이 측정 전에도 비어 첫 화면에 고른 탭이 안 보인다',
+    file: 'src/components/ui/segmented-tabs.tsx',
+    find: "${on ? (pill ? 'text-white' : 'bg-brand text-white')",
+    replace: "${on ? 'text-white'",
+    test: TEST,
+    why: '첫 그림에서 고른 탭이 흰 글자에 흰 바탕이라 안 보인다(측정 뒤에야 파란 칸이 생긴다).',
+  },
 ]
