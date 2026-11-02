@@ -268,8 +268,15 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
       return runWebkrCollect(env)
     },
   },
+  /**
+   * 📞 **시간당 3** (2026-11-02 대표 *"다 해줘"* — 파트너 풀 개선 목록 ④). 위 '2차 이관 공통 규약'의 1 에서 올렸다.
+   *   근거(라이브): 하루 조회 1,092 = 카카오 로컬 무료 쿼터 10만/일의 **1%**, 그런데 전문서비스 전화 보유 10% ·
+   *   인테리어 19% · 간판 26%. 회차는 `stopped_by: deadline` 으로 끝나는 자기 인보케이션이라(12초 마감 · 자기 예산)
+   *   회차를 늘려도 다른 레인 예산을 안 뺏는다. 3 은 `MAX_BOOST_RUNS_PER_HOUR` 와 같은 안전선이다.
+   *   🔻 롤백: 이 값을 1 로.
+   */
   'sweep-kakao-chain': {
-    runsPerHour: 1,
+    runsPerHour: 3,
     run: async (env) => {
       if ((env as unknown as { ADS_ENRICH_DISABLED?: string }).ADS_ENRICH_DISABLED === 'true') return { skipped: 'gate_off' }
       const { runKakaoPhoneSweep } = await import('@/features/marketing/api/company-collect')

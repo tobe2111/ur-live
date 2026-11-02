@@ -38,6 +38,8 @@ const ok = (data: unknown) => Promise.resolve({ data: { success: true, data } })
 
 beforeEach(() => {
   get.mockReset(); post.mockReset()
+  // 🔒 2026-11-02: [리뷰 작성하기] 는 로그인한 사람에게만 보인다 — 이 파일의 시험은 로그인 상태를 전제한다.
+  localStorage.clear(); localStorage.setItem('user_id', '3')
   get.mockImplementation((url: string) => {
     if (String(url).includes('/eligibility')) return ok({ ok: true })
     if (String(url).includes('/summary')) return ok({ avg: 0, count: 0 })
@@ -122,7 +124,16 @@ describe('③ 자격은 쓰기 전에 알려 준다 (대표 — "이용권 사�
     await waitFor(() => expect(screen.getByLabelText('리뷰 내용')).toBeTruthy())
   })
 
-  it('비로그인은 로그인 안내', async () => {
+  it('🔒 로그아웃이면 [리뷰 작성하기] 가 아예 없다 — 눌러도 로그인 안내뿐이던 버튼 (2026-11-02 대표 선택 ②)', async () => {
+    localStorage.clear()
+    render(<ProductReviews productId={2888} />)
+    // 같은 렌더에서 로그인 상태면 버튼이 뜬다(아래 시험들) — 여기선 리뷰 제목이 그려진 뒤에도 없어야 한다.
+    await screen.findByRole('heading', { name: /리뷰/ })
+    expect(screen.queryByRole('button', { name: /리뷰 작성하기/ })).toBeNull()
+    expect(get.mock.calls.some(([u]) => String(u).includes('/eligibility')), '로그아웃인데 자격을 물었다').toBe(false)
+  })
+
+  it('세션이 만료된 로그인 사용자(401)는 로그인 안내', async () => {
     get.mockImplementation((url: string) => {
       if (String(url).includes('/eligibility')) return Promise.reject({ response: { status: 401 } })
       if (String(url).includes('/summary')) return ok({ avg: 0, count: 0 })

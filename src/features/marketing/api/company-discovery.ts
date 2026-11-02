@@ -12,7 +12,7 @@
 import { companyInflowByDay, type CompanyDayInflow, type CompanySegments } from './company-breakdown'
 import { COMPANY_CUBE_SQL, foldCube, type CubeRow } from './company-stats-cube'
 import type { Env } from '@/worker/types/env'
-import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
+import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION, HOLD_NOT_DELETE_REASONS } from './company-classify'
 import { refineRegistryLabel } from './company-taxonomy'
 import { hygieneStatements } from './company-lead-hygiene'
 import { emptyDelta, tallyVerdict, verdictChanged, writeReclassifyStats } from './reclassify-verdict-delta'
@@ -29,7 +29,9 @@ import { NOT_EXPORTED_SQL } from './pool-export-batch'
 //   (매장인프라/정기납품/창업생태계)를 폐기하고 부르는 이름 그대로. 기존 행은 cat_v3 1회 마이그레이션.
 export const COMPANY_CATEGORIES: Record<string, string[]> = {
   '대행사': ['마케팅대행', '종합광고기획', '행사·이벤트', '병원·뷰티마케팅', '체험단·플레이스', '조달등록'],
-  '전문서비스': ['법률', '세무·기장', '회계', '노무', '정책자금컨설팅'],
+  // 🧭 전문직은 국가자격 단위(`company-taxonomy.ts` PROFESSION_SUBCATEGORIES 와 같은 값 — 시험이 대조한다).
+  //   옛 값('법률'·'세무·기장'·'회계'·'노무')은 2026-10-24 에 통합된 중복 라벨이었다.
+  '전문서비스': ['변호사', '법무사', '행정사', '노무사', '세무사', '회계사', '변리사', '감정평가사', '건축사', '관세사', '손해사정사', '정책자금컨설팅'],
   '간판': ['간판·광고물 제작'],
   '인테리어': ['인테리어·시공', '주방설비'],
   'POS·단말기': ['POS·카드단말기', 'VAN', '키오스크', '테이블오더', 'CCTV·보안'],
@@ -44,6 +46,14 @@ export const COMPANY_CATEGORIES: Record<string, string[]> = {
   //   ⚠️ 도매몰(유통스타트) 제조사 풀과 혼동 금지 — 여기는 유어딜 파트너 풀(ad_company_leads)이고,
   //      B2B 도매 공급자 발굴은 `supply-maker-collect` 의 별개 레인이다(서비스 분리 룰).
   '공동구매': ['창고형 공동구매', '공동구매 총판·벤더', '공동구매 대행', '공동구매 플랫폼'],
+  // 🏠 **생활 업종 — 유어딜 생활 카테고리와 같은 이름**(2026-11-02 대표 *"생활 카테고리 모두 각자 넣어줘야지"*).
+  //   유어딜 소비자 화면의 생활 칩(`src/shared/life-deal-subcat.ts` — 이사·청소·방역·소독·수리·설치·간판)에
+  //   딜을 올릴 업체 후보다. 이름이 갈리면 "이 업체를 어느 칩에 올리나" 를 사람이 매번 번역해야 한다 —
+  //   그래서 카테고리 이름을 그 칩 라벨과 **똑같이** 쓴다(시험이 대조한다. 간판은 위에 이미 있다).
+  '이사': ['포장이사', '용달·소형이사', '사무실이사'],
+  '청소': ['입주·이사청소', '에어컨·가전청소', '사무실·상가청소'],
+  '방역·소독': ['방역·소독'],
+  '수리·설치': ['설비·배관', '누수·방수', '전기', '열쇠·도어락', '줄눈'],
 }
 export const COMPANY_CATEGORY_KEYS = Object.keys(COMPANY_CATEGORIES)
 
@@ -382,6 +392,12 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
   for (const r of rows) {
     const c = classifyLead(r)
     if (!c.ok) {
+      // 🛑 새 규칙의 탈락 사유(빈 페이지 제목·도어웨이)는 **지우지 않고 보류만** — 근거는 `HOLD_NOT_DELETE_REASONS`.
+      //   기관(org)으로 표시하지 않는다 — 기관이 아니라 '정체 불명' 이다(분류 확인 필요 · 액션 풀 밖).
+      if (HOLD_NOT_DELETE_REASONS.has(c.reason || '') && r.status === 'new' && !r.memo) {
+        stmts.push(DB.prepare("UPDATE ad_company_leads SET active = 0, lead_type = 'unknown', classify_confidence = 'none', classified_v = ? WHERE id = ?").bind(CLASSIFY_RULES_VERSION, r.id)); held++
+        continue
+      }
       const curated = r.status !== 'new' || !!r.memo
       if (curated) { stmts.push(DB.prepare("UPDATE ad_company_leads SET active = 0, lead_type = 'org', classify_confidence = 'evidence', classified_v = ? WHERE id = ?").bind(CLASSIFY_RULES_VERSION, r.id)); held++ }
       else { stmts.push(DB.prepare('DELETE FROM ad_company_leads WHERE id = ?').bind(r.id)); removed++ }

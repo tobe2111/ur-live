@@ -92,7 +92,8 @@ export default [
   },
   {
     name: '체험목록 — 막다른 길로 되돌린다(제공 안 켠 상세)',
-    file: 'src/components/seeding/SellThisCard.tsx',
+    // 🔁 2026-11-02: 팔아보기가 B안 한 줄 + 창이 되면서 이 링크는 창(`SellThisSheet`)의 (?) 설명 안으로 옮겨갔다.
+    file: 'src/components/seeding/SellThisSheet.tsx',
     find: '<Link to="/influencer/seeding" className="font-medium text-brand-text underline">다른 체험 보기</Link>',
     replace: '<span className="font-medium">유어샵에 담아 판매만 할 수 있어요</span>',
     test: T,
