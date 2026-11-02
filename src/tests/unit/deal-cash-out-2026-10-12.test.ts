@@ -258,12 +258,13 @@ describe('📱 화면 — 마이에서 신청하고, 화면이 금액을 만들�
   const MY = readCode('src/pages/user-profile/MyStats.tsx')
   const SHEET = readCode('src/pages/user-profile/RefundSheet.tsx')
 
-  it('버튼은 서버가 준 환급 가능액(또는 처리 중 신청)이 있을 때만 뜬다', () => {
+  // 🔁 2026-11-02 재조준 — 대표 *"충전 딜 환급 … 아예 없애달라는 뜻이야"*: 마이에는 환급 입구가 없다.
+  //   신청 시트(`RefundSheet`)는 탈퇴 화면에 남고, 거기서는 누를 때만 받는다.
+  it('마이에는 환급 줄·버튼이 없다 (대표 2026-11-02) · 시트는 탈퇴 화면에서 누를 때만 받는다', () => {
     const code = stripComments(MY)
-    expect(code).toContain('r.data.data.refundable')
-    expect(code).toContain('r.data.data.refund_pending')
-    expect(code).toMatch(/const refundButton = refundable > 0 \|\| refundPending > 0 \?/)
-    expect(code, '시트는 누를 때만 받는다').toContain("lazy(() => import('./RefundSheet'))")
+    expect(code, '마이에 환급 시트가 다시 붙었다').not.toContain('RefundSheet')
+    expect(code, '마이에 환급 문구가 다시 붙었다').not.toMatch(/충전 딜|환급 신청|setRefundOpen/)
+    expect(stripComments(readCode('src/pages/account-delete/DeleteBlockers.tsx'))).toContain("lazy(() => import('@/pages/user-profile/RefundSheet'))")
   })
 
   it('시트는 서버 한도만 쓰고, 새 문을 부른다', () => {
