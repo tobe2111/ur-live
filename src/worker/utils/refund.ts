@@ -192,9 +192,12 @@ export async function processRefund(
       .run()
 
     // 4. 개별 환불 내역 기록 (best-effort)
+    // 🩸 2026-11-02 [UNLOCK] 대표 결재 "응 고쳐도 돼" — 라이브 컬럼은 `refund_amount` 다(pragma 실측).
+    //   종전 `amount` 는 라이브에 없어 이 INSERT 가 매번 실패했고 아래 swallow 가 삼켜 내역이 0행이었다.
+    //   금액 처리(위 3단계·Toss 취소)는 원래 정상 — 이 줄은 기록만 남긴다. docs/locks/toss/2026-11-02-refund-history-column.md
     await db
       .prepare(
-        'INSERT INTO order_refund_history (order_id, amount, reason) VALUES (?, ?, ?)'
+        'INSERT INTO order_refund_history (order_id, refund_amount, reason) VALUES (?, ?, ?)'
       )
       .bind(orderId, requested, reason || '')
       .run()

@@ -72,9 +72,8 @@ export const orders = sqliteTable('orders', {
 export const order_refund_history = sqliteTable('order_refund_history', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   order_id: integer('order_id').notNull(),
-  amount: integer('amount').notNull(),
+  refund_amount: integer('refund_amount').notNull(), // 2026-11-02 라이브 실측 — 옛 `amount` 는 라이브에 없다
   reason: text('reason'),
-  toss_transaction_key: text('toss_transaction_key'),
   created_at: text('created_at').notNull(),
 })
 
