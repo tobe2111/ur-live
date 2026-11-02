@@ -14,6 +14,7 @@ import { VOUCHER_DEAL_PAYMENT_ENABLED } from '@/shared/feature-flags'
 import { useBalance } from '@/hooks/queries/useBalance'
 import { resolveProductFlow } from '@/shared/product-flow'
 import { formatNumber } from '@/utils/format'
+import { useTranslation } from '@/lib/i18n-lite'
 
 export function useCanPayWithDeal(opts: { isLoggedIn: boolean; detail: unknown; total: number }) {
   const { data: dealBalance = 0, isError } = useBalance()
@@ -30,15 +31,16 @@ export function useCanPayWithDeal(opts: { isLoggedIn: boolean; detail: unknown; 
 export default function DealPayButton({ show, joining, dealBalance, onPay }: {
   show: boolean; joining: boolean; dealBalance: number; onPay: () => void
 }) {
+  const { t } = useTranslation()
   if (!show) return null
   return (
     <button
       onClick={onPay}
       disabled={joining}
-      aria-label={`보유한 딜 ${formatNumber(dealBalance)}딜로 결제하기`}
+      aria-label={t('passBuy.payWithBalanceAria', { defaultValue: '보유한 딜 {{balance}}딜로 결제하기', balance: formatNumber(dealBalance) })}
       style={{ width: '100%', height: 42, marginTop: 8, borderRadius: 12, background: 'transparent', border: '1.5px solid var(--gbd-cta-bg)', color: 'var(--gbd-cta-bg)', fontSize: 15, fontWeight: 700, letterSpacing: '-.01em', cursor: joining ? 'default' : 'pointer' }}
     >
-      {joining ? '처리 중…' : `딜로 결제 (보유 ${formatNumber(dealBalance)}딜)`}
+      {joining ? t('passBuy.processing', { defaultValue: '처리 중…' }) : t('passBuy.payWithBalance', { defaultValue: '딜로 결제 (보유 {{balance}}딜)', balance: formatNumber(dealBalance) })}
     </button>
   )
 }

@@ -20,7 +20,10 @@ describe('지도 섹션 위치', () => {
     expect(usage).toBeGreaterThan(loc)
   })
   it('상단 탭도 같은 순서(매장 위치 → 이용권 정보)', () => {
-    expect(PAGE.indexOf("label: '매장 위치'")).toBeLessThan(PAGE.indexOf("label: '이용권 정보'"))
+    // 🌐 2026-11-02: 라벨이 번역 함수로 들어갔다 — 한국어 기본값으로 순서를 본다(-1 이면 앵커가 낡은 것).
+    const a = PAGE.indexOf("defaultValue: '매장 위치' }) }"), b = PAGE.indexOf("defaultValue: '이용권 정보' }) }")
+    expect(a).toBeGreaterThan(0)
+    expect(a).toBeLessThan(b)
   })
 })
 
