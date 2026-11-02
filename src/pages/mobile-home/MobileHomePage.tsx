@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { slideCatUnderline } from './cat-underline'
 import { HOME_H1, CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { useCurrentDong } from '@/hooks/useCurrentDong'
 import { Link, useNavigate } from 'react-router-dom'
@@ -173,7 +174,7 @@ export default function MobileHomePage() {
             return (
               <button
                 key={key}
-                onClick={() => setCategory(key)}
+                onClick={(e) => { if (!on) { slideCatUnderline(e.currentTarget); nudgeFeed() } setCategory(key) }}
                 aria-pressed={on}
                 className={`shrink-0 pb-2 text-[15px] transition-colors border-b-2 ${
                   on

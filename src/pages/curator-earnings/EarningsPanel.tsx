@@ -26,10 +26,31 @@
  * ⇒ 여기서는 **30칸을 날짜로 채운다**(빈 날은 0). 키는 서버와 같은 **UTC 날짜**다
  *    (`date(created_at)` 이 UTC 이므로 KST 로 만들면 하루가 어긋난다).
  */
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatWon, formatNumber, safeNum } from '@/utils/format'
 import type { DashboardStats } from '@/features/curator/api/curator-api'
 import type { WithdrawalInfo } from '../CuratorEarningsPage'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 11차 ⑥ — 열면 30일 막대가 왼쪽부터 차례로 자라고, 30일 적립 금액이 0에서 굴러 올라간다(처음 한 번).
+injectMotionCss('ur-m-earn', `@keyframes ur-earn-bar { from { transform: scaleY(0); } }.ur-earn-bar { transform-origin: bottom; animation: ur-earn-bar .45s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 18ms); }@media (prefers-reduced-motion: reduce){.ur-earn-bar{animation:none!important}}`)
+
+/** 처음 그릴 때만 0 → 값으로 굴린다. 그 뒤 값이 바뀌면 바로 그 값(새로고침 때마다 다시 굴리지 않는다). */
+function useCountUpOnce(value: number, ms = 800): number {
+  const [shown, setShown] = useState(() => {
+    try { return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? value : 0 } catch { return value }
+  })
+  const done = useRef(false)
+  useEffect(() => {
+    if (done.current || shown === value) { done.current = true; setShown(value); return }
+    done.current = true
+    const t0 = performance.now(); let raf = 0
+    const f = (t: number) => { const p = Math.min(1, (t - t0) / ms); setShown(Math.round(value * (1 - Math.pow(1 - p, 3)))); if (p < 1) raf = requestAnimationFrame(f) }
+    raf = requestAnimationFrame(f)
+    return () => cancelAnimationFrame(raf)
+  }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
+  return shown
+}
 
 /** 서버 `date(created_at)`(UTC) 와 같은 키. 클라 TZ 와 무관하게 같은 문자열이 나온다. */
 const utcDay = (offsetDays: number) =>
@@ -74,6 +95,7 @@ export default function EarningsPanel({ stats, info, onWithdraw }: {
   const pending = safeNum(stats.pending_earnings)
   const isCash = info?.payout_mode === 'cash'
   const belowMin = !!info && info.available < info.min_withdrawal
+  const monthShown = useCountUpOnce(safeNum(stats.month_earnings))
 
   return (
     <section className="rounded-2xl overflow-hidden mb-3">
@@ -109,7 +131,7 @@ export default function EarningsPanel({ stats, info, onWithdraw }: {
       <div className="bg-surface px-4 pt-4 pb-4">
         <div className="flex items-baseline gap-2 mb-3">
           <span className="text-[24px] font-bold tracking-[-0.03em] tabular-nums text-gray-900 dark:text-white">
-            {formatWon(stats.month_earnings)}
+            {formatWon(monthShown)}
           </span>
           <span className="text-[12px] text-gray-500 dark:text-gray-400">30일 적립</span>
           {delta && (
@@ -124,8 +146,8 @@ export default function EarningsPanel({ stats, info, onWithdraw }: {
             <div
               key={d.date}
               title={`${d.date}: ${formatWon(d.amount)}`}
-              className={`flex-1 rounded-[2px] ${i === slots.length - 1 && d.amount > 0 ? 'bg-brand' : 'bg-brand/25'}`}
-              style={{ height: `${Math.max(2, (d.amount / max) * 56)}px` }}
+              className={`ur-earn-bar flex-1 rounded-[2px] ${i === slots.length - 1 && d.amount > 0 ? 'bg-brand' : 'bg-brand/25'}`}
+              style={{ height: `${Math.max(2, (d.amount / max) * 56)}px`, '--i': i } as React.CSSProperties}
             />
           ))}
         </div>

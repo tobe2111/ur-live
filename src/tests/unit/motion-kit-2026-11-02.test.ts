@@ -27,7 +27,7 @@ import { stripComments } from '../helpers/source-text'
 const R = (p: string) => readFileSync(p, 'utf8')
 const css = stripComments(R('src/index.css'))
 // 화면별로만 받는 CSS 는 부품 파일 안의 injectMotionCss(…) 문자열이다 — 그 문자열들을 모은다.
-const LAZY_USERS = ['src/components/voucher/ScanFrame.tsx', 'src/components/search/SearchStates.tsx', 'src/pages/restaurant-map/SheetFilterBar.tsx', 'src/pages/group-buy/DetailGallery.tsx', 'src/components/MyReferralCard.tsx', 'src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx', 'src/pages/group-buy/pay-spin-css.ts', 'src/pages/checkout/OrderSummary.tsx', 'src/pages/wishlist/WishlistMobile.tsx', 'src/pages/mobile-home/BackToTop.tsx', 'src/pages/user-profile/profile-edit/EditRow.tsx', 'src/components/charts/svg-charts.tsx', 'src/pages/curator-page/CuratorHeader.tsx', 'src/pages/PaymentSuccessPage.tsx', 'src/pages/PaymentFailPage.tsx', 'src/pages/pc-home/PcHomeLocationBar.tsx', 'src/pages/user-profile/MyStats.tsx', 'src/pages/VoucherGiftReceivePage.tsx', 'src/pages/NotificationsPage.tsx', 'src/pages/seller-orders/OrderNumber.tsx', 'src/pages/agency-console/AgencyPayoutSheet.tsx', 'src/pages/SellerReviewsPage.tsx', 'src/pages/mobile-home/MapPill.tsx', 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx', 'src/pages/CouponClaimPage.tsx', 'src/components/search/SortFilterBar.tsx', 'src/pages/group-buy/DealBottomBar.tsx', 'src/components/ToastContainer.tsx', 'src/components/ui/sort-menu.tsx', 'src/pages/my-vouchers/ExpiryNotice.tsx', 'src/components/ui/segmented-tabs.tsx', 'src/pages/user-profile/seller-section/AllToolsSheet.tsx', 'src/pages/user-profile/SellerSection.tsx', 'src/components/search/SearchSuggestPanel.tsx', 'src/pages/stay-detail/StayDateGuestPicker.tsx', 'src/pages/stays/StayCurations.tsx', 'src/pages/life/QuoteChat.tsx', 'src/pages/life/request/Sheet.tsx', 'src/pages/life/pro/ProCredits.tsx', 'src/pages/MyStaysPage.tsx', 'src/pages/life/life-reviews.tsx']
+const LAZY_USERS = ['src/components/voucher/ScanFrame.tsx', 'src/components/search/SearchStates.tsx', 'src/pages/restaurant-map/SheetFilterBar.tsx', 'src/pages/group-buy/DetailGallery.tsx', 'src/components/MyReferralCard.tsx', 'src/pages/my-vouchers/QRModal.tsx', 'src/components/voucher/VoucherScanner.tsx', 'src/components/curator/PinButton.tsx', 'src/pages/SellerMealVoucherNewPage.tsx', 'src/pages/user-profile/seller-section/StoreNotifications.tsx', 'src/pages/seller-orders/MobileOrderList.tsx', 'src/pages/my-vouchers/GiftVoucherSheet.tsx', 'src/pages/my-vouchers/WalletRow.tsx', 'src/components/seller/PhotoGalleryEditor.tsx', 'src/components/ui/RollingNumber.tsx', 'src/pages/group-buy/PassHeadCard.tsx', 'src/pages/restaurant-map/useKakaoMap.ts', 'src/pages/product-detail/ProductReviews.tsx', 'src/pages/group-buy/pay-spin-css.ts', 'src/pages/checkout/OrderSummary.tsx', 'src/pages/wishlist/WishlistMobile.tsx', 'src/pages/mobile-home/BackToTop.tsx', 'src/pages/user-profile/profile-edit/EditRow.tsx', 'src/components/charts/svg-charts.tsx', 'src/pages/curator-page/CuratorHeader.tsx', 'src/pages/PaymentSuccessPage.tsx', 'src/pages/PaymentFailPage.tsx', 'src/pages/pc-home/PcHomeLocationBar.tsx', 'src/pages/user-profile/MyStats.tsx', 'src/pages/VoucherGiftReceivePage.tsx', 'src/pages/NotificationsPage.tsx', 'src/pages/seller-orders/OrderNumber.tsx', 'src/pages/agency-console/AgencyPayoutSheet.tsx', 'src/pages/SellerReviewsPage.tsx', 'src/pages/mobile-home/MapPill.tsx', 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx', 'src/pages/CouponClaimPage.tsx', 'src/components/search/SortFilterBar.tsx', 'src/pages/group-buy/DealBottomBar.tsx', 'src/components/ToastContainer.tsx', 'src/components/ui/sort-menu.tsx', 'src/pages/my-vouchers/ExpiryNotice.tsx', 'src/components/ui/segmented-tabs.tsx', 'src/pages/user-profile/seller-section/AllToolsSheet.tsx', 'src/pages/user-profile/SellerSection.tsx', 'src/components/search/SearchSuggestPanel.tsx', 'src/pages/stay-detail/StayDateGuestPicker.tsx', 'src/pages/stays/StayCurations.tsx', 'src/pages/life/QuoteChat.tsx', 'src/pages/life/request/Sheet.tsx', 'src/pages/life/pro/ProCredits.tsx', 'src/pages/MyStaysPage.tsx', 'src/pages/life/life-reviews.tsx', 'src/pages/FAQPage.tsx', 'src/pages/BlogDetailPage.tsx', 'src/pages/MyDealHistoryPage.tsx', 'src/pages/curator-earnings/EarningsPanel.tsx', 'src/pages/UrShortsBrowsePage.tsx']
 const lazyCss = LAZY_USERS.flatMap((f) => [...R(f).matchAll(/injectMotionCss\('[\w-]+', `([^`]*)`\)/g)].map((m) => m[1])).join('\n')
 const kit = css.slice(css.indexOf('.ur-burst {'), css.indexOf('.ur-tab-bar {')) + lazyCss
 
@@ -367,6 +367,51 @@ describe('🔟 10차 (2026-11-02 대표 "모두 다 해줘")', () => {
     for (const f of ['src/pages/MyStaysPage.tsx', 'src/pages/life/life-reviews.tsx']) {
       expect(R(f), f).toContain("className={n <= ")
       expect(R(f), f).toMatch(/key=\{n <= (val|rating) \? `on\$\{(val|rating)\}` : 'off'\}/)
+    }
+  })
+})
+
+describe('1️⃣1️⃣ 11차 (2026-11-02 대표 "전부 다 해주고")', () => {
+  it('①⑩ 홈 카테고리 — 밑줄은 떠 있는 막대로만 미끄러지고(버튼 클래스 불변 — 첫 화면 미러), 목록도 한 번 떠오른다', () => {
+    const p = R('src/pages/mobile-home/MobileHomePage.tsx')
+    expect(p).toContain('onClick={(e) => { if (!on) { slideCatUnderline(e.currentTarget); nudgeFeed() } setCategory(key) }}')
+    expect(p).toContain("? 'font-bold text-gray-900 dark:text-white border-brand'")
+    const u = R('src/pages/mobile-home/cat-underline.ts')
+    expect(u).toContain("to.style.borderBottomColor = 'transparent'")
+    expect(u).toContain('window.setTimeout(done, 600)')
+    expect(u).toContain("(prefers-reduced-motion: reduce)')")
+  })
+  it('② 자주 묻는 질문 — 답은 늘 그려 두고 높이만 연다(닫히면 inert)', () => {
+    const s = R('src/pages/FAQPage.tsx')
+    expect(s).toContain("className={`ur-faq-a${isOpen ? ' is-open' : ''}`} aria-hidden={!isOpen}")
+    expect(s).not.toContain('{isOpen && (')
+  })
+  it('③ 블로그 — 읽기 막대는 상태 없이 한 프레임에 한 번 그린다', () => {
+    const s = R('src/pages/BlogDetailPage.tsx')
+    expect(s).toContain('<ReadingBar />')
+    expect(s).toContain('if (!raf) raf = requestAnimationFrame(paint)')
+  })
+  it('④ 딜 내역 — 줄이 차례로', () => {
+    expect(R('src/pages/MyDealHistoryPage.tsx')).toContain('className={`ur-tx-in w-full')
+  })
+  it('⑤ 단골 해제 — 확인 뒤 접는 움직임이 끝나야 목록에서 뺀다', () => {
+    const s = R('src/pages/MyFollowsPage.tsx')
+    const i = s.indexOf("confirmDialog('단골을 해제하시겠습니까?')"), j = s.indexOf('.finished.catch'), k = s.indexOf('unfollowMut.mutate(sellerId')
+    expect(i).toBeGreaterThan(0); expect(j).toBeGreaterThan(i); expect(k).toBeGreaterThan(j)
+    expect(s).toContain('data-follow-row={f.seller_id}')
+  })
+  it('⑥ 수익 — 막대가 차례로 자라고 30일 적립이 처음 한 번 굴러간다', () => {
+    const s = R('src/pages/curator-earnings/EarningsPanel.tsx')
+    expect(s).toContain('className={`ur-earn-bar flex-1')
+    expect(s).toContain('{formatWon(monthShown)}')
+  })
+  it('⑧ 유어쇼츠 목록 — 카드가 차례로', () => {
+    expect(R('src/pages/UrShortsBrowsePage.tsx')).toContain(`<li key={it.id} className="ur-vc-in" style={{ '--i': Math.min(i, 8) } as React.CSSProperties}>`)
+  })
+  it('⑨ 설정 스위치 — 누르는 동안 손잡이가 늘고 튀는 곡선으로 붙는다(동작 줄이기면 끔)', () => {
+    for (const f of ['src/pages/user-profile/AccountControlsSection.tsx', 'src/pages/MyFollowsPage.tsx']) {
+      expect(R(f), f).toMatch(/group-active:w-\[2[56]px\]/)
+      expect(R(f), f).toContain('motion-reduce:transition-none')
     }
   })
 })

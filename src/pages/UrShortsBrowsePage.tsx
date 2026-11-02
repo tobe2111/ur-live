@@ -10,6 +10,9 @@ import {
   cityFacets, categoryFacets, filterShorts, pruneFilter,
   MIN_FACETS_TO_SHOW, type Facet, type ShortsFilter,
 } from './urshorts/facets'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 11차 ⑧ — 영상 카드가 차례로 살짝 커지며 나타난다(처음 받은 줄 + 칩을 바꿔 새로 그려진 카드). 앞 8장까지만 차례를 준다.
+injectMotionCss('ur-m-shortsgrid', `@keyframes ur-vc-in { from { opacity: 0; transform: scale(.94); } }.ur-vc-in { animation: ur-vc-in .38s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 50ms); }@media (prefers-reduced-motion: reduce){.ur-vc-in{animation:none!important}}`)
 
 /**
  * 🎬 `/urshorts` — 유어쇼츠 전체 보기 (2026-09-21 대표 확정 **시안 A + 카테고리**).
@@ -134,7 +137,7 @@ export default function UrShortsBrowsePage() {
           ) : (
             <ul className="grid grid-cols-2 gap-x-2 gap-y-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {shown.map((it, i) => (
-                <li key={it.id}>
+                <li key={it.id} className="ur-vc-in" style={{ '--i': Math.min(i, 8) } as React.CSSProperties}>
                   {/* 첫 줄만 즉시 로드 — 아래는 스크롤할 때. 2열이면 두 장이 첫 화면이다. */}
                   <BrowseCard item={it} eager={i < 2} />
                 </li>
