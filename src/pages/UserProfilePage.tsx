@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, lazy, Suspense } from 'react'
+import { useEffect, useMemo, useState, useRef, lazy, Suspense } from 'react'
 import { useNavigate, useSearchParams, Navigate, Link } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -12,6 +12,8 @@ import { ChevronRight } from 'lucide-react'
 import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 // 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(프로필 편집 화살표) 하나뿐 — 조작이라 그대로 둔다.
 //    2026-09-30 수익·추천 구역이 빠지며 `ReceiptIcon`·`UrShopIcon` 소비처는 사라졌다.
+import AgencyMergedTitle from '@/pages/user-profile/AgencyMergedTitle'
+import AgencyInviteButton from '@/pages/user-profile/AgencyInviteButton'
 import { BellIcon, LogOutIcon, ScanIcon } from '@/components/icons/urdeal-icons'
 import { ListRow, rowIcon } from './user-profile/list-grammar'
 import MyStats from './user-profile/MyStats'
@@ -55,6 +57,7 @@ export default function UserProfilePage() {
   // 🪑 2026-09-25 (설계 §14 단계 1): 좌석(내 가게)은 **이 페이지가 한 번만** 묻고 둘에게 나눠 준다 —
   //   이름 옆 칩과 "내 가게" 섹션이 각자 물으면 같은 화면이 서로 다른 답을 말하는 날이 온다.
   const sellerSeats = useMyStores()
+  const ownSellerIds = useMemo(() => sellerSeats.stores.map((s) => s.seller_id), [sellerSeats.stores])
   // 🚪 대시보드 깊은 링크(`?tool=`)인데 판매 구역이 못 뜨면 대시보드로 되돌린다(2026-10-12 — `useToolDeepLink` 머리말).
   useToolDeepLinkFallback({ loading: sellerSeats.loading, failed: sellerSeats.failed, storeCount: sellerSeats.stores.length })
   // 🖥️ 2026-09-02 (대표 — "PC 모드 답지 않은 페이지"): lg+ 는 우측 칸 상단을 `AccountPcPane`(내용)으로,
@@ -226,6 +229,8 @@ export default function UserProfilePage() {
                  `/notifications` 이동 → **올라오는 시트**. PC 는 2026-07-18 부터 이미 그 자리에서 열렸고
                  모바일만 페이지로 떠나고 있었다(보던 목록의 스크롤·필터가 날아간다). */}
           <div className="flex items-center gap-1 flex-shrink-0">
+            {/* 🔗 2026-11-02 대표 확정 버튼 ① — 에이전시 로그인이 있을 때만 선다. */}
+            <AgencyInviteButton />
             <button onClick={bell.open} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-11 h-11 -mr-2 text-gray-900 dark:text-white active:opacity-70">
               <BellIcon className="w-6 h-6" aria-hidden="true" />
             </button>
@@ -306,9 +311,11 @@ export default function UserProfilePage() {
 
       {/* 🖥️ 판매는 **넓은 쪽**(1.25)에 산다 — 시안 `PcFull1` 과 같은 자리다.
           목록 행이 [이름 + 설명 + ›] 이라 좁히면 설명이 먼저 잘린다. */}
+      {/* 🧩 2026-11-02 통합 시안 v2 — 에이전시가 있으면 그 이름이 매장 판의 구역 제목이 된다. */}
+      {isPc ? <AgencyMergedTitle storeCount={sellerSeats.stores.length} /> : null}
       {isPc ? <SellerSection state={sellerSeats} /> : null}
       {/* 🏢 2026-10-26 안 A — '내 가게' 바로 아래 '에이전시' 구역(에이전시 로그인이 있을 때만). */}
-      {isPc ? <MyAgencyZone /> : null}
+      {isPc ? <MyAgencyZone ownSellerIds={ownSellerIds} /> : null}
 
       {/* ⚙️ 2026-10-11 **안 5** — 설정이 **넓은 왼쪽 칸 아래**로 내려왔다.
           안 5 에서 오른쪽은 손님 쪽(곧 쓸 이용권 · 내가 산 것)만 남는데, 설정까지 거기 두면
@@ -336,8 +343,9 @@ export default function UserProfilePage() {
       <>
       {/* 🏪 2026-09-25 (대표 확정 §14 — "하는 것도 마이에서"): 판매가 **맨 위**.
           사장님은 하루에 이 화면을 가장 많이 열고, 그때 보려는 건 오늘 숫자다. 셀러가 아니면 렌더 0. */}
+      <AgencyMergedTitle storeCount={sellerSeats.stores.length} />
       <SellerSection state={sellerSeats} />
-      <MyAgencyZone />
+      <MyAgencyZone ownSellerIds={ownSellerIds} />
 
       {/* v4 광고 리워드 카드 — 딜 버는 수단이라 딜 잔액 바로 아래(웹은 null 렌더·네이티브 전용) */}
       <RewardAdCard />

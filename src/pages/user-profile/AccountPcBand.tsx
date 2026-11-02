@@ -26,6 +26,7 @@
  */
 import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight } from 'lucide-react'
+import AgencyInviteButton from './AgencyInviteButton'
 import { BellIcon } from '@/components/icons/urdeal-icons'
 import { profileAvatarSrc, profileAvatarOnError, profileAvatarFitCls } from '@/pages/user-profile/profile-avatar'
 import MyStats from './MyStats'
@@ -82,6 +83,8 @@ export default function AccountPcBand({ counts, userName, profileImage, onEditPr
       <div className="ml-auto min-w-0 pl-5 border-l border-rule">
         <MyStats inline voucher={counts.voucher} coupon={counts.coupon} />
       </div>
+      {/* 🔗 2026-11-02 대표 확정 버튼 ① — 폰 머리와 같은 부품. */}
+      <AgencyInviteButton />
       <button
         type="button"
         onClick={onBell}

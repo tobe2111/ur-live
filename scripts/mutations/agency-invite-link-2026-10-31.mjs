@@ -18,12 +18,13 @@ export default [
     why: '토큰이 든 초대 주소가 검색 색인 대상이 된다(그 에이전시만의 열쇠다).',
   },
   {
-    name: '영입 링크 — 버튼이 빈 화면 분기 안으로 숨는다',
-    file: 'src/pages/agency-console/AgencyStoresPanel.tsx',
-    find: "        <button type=\"button\" onClick={() => setSheet('invite')} data-testid=\"agency-invite-entry\"",
-    replace: "        {rows?.length === 0 && <button type=\"button\" onClick={() => setSheet('invite')} data-testid=\"agency-invite-entry\"",
+    name: '영입 링크 — 폰 마이 머리에서 버튼이 빠진다',
+    // 🔁 2026-11-02 재조준 — 대표 확정 버튼 ①: 입구가 구역 안 카드 → 마이 머리로 옮겨 갔다.
+    file: 'src/pages/UserProfilePage.tsx',
+    find: '            <AgencyInviteButton />\n',
+    replace: '',
     test: T,
-    why: '매장이 한 곳이라도 생기면 영입 버튼이 사라진다 — 대표가 짚은 바로 그 결함.',
+    why: '매장 영입 입구가 폰에서 사라진다 — 대표가 "맨 위에 매장 영입 버튼을 넣는 건 맞는데" 라고 정한 자리.',
   },
   {
     name: '영입 링크 — 관리자 판정이 응답을 기다린다',

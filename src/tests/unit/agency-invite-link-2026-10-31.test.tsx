@@ -105,14 +105,16 @@ describe('③ 영입 시트 — 열자마자 링크 · 카카오톡 카드', () 
 describe('①② 마이 에이전시 구역 — 영입 버튼은 늘 판 위에', () => {
   const panel = code('src/pages/agency-console/AgencyStoresPanel.tsx')
   // 🧑‍🤝‍🧑 2026-10-31 대표 *"모두 진행해줘"* — 직원도 영입 링크를 보낸다(만들기·끊기만 관리자). 조건 없이 늘 선다.
-  it('버튼이 조건 없이 서고, 맡은 매장 분기(로딩·고른 매장·빈 화면)보다 앞에 있다', () => {
-    const entry = panel.indexOf('data-testid="agency-invite-entry"')
-    expect(entry, '영입 버튼이 사라졌다').toBeGreaterThan(0)
-    expect(panel.slice(Math.max(0, entry - 400), entry)).toMatch(/\{\}\s*<button type="button" onClick=\{\(\) => setSheet\('invite'\)\}\s*$/)
-    expect(entry, '빈 화면/고른 매장 분기 안으로 들어가면 매장이 생기는 순간 사라진다').toBeLessThan(panel.indexOf('rows === null ?'))
+  // 🔁 2026-11-02 재조준 — 대표 확정 버튼 ①: 영입 입구는 **마이 머리** 하나다(구역 안 큰 카드·빈 칸 버튼은 걷었다).
+  //   매장 수와 무관하게 늘 서야 한다는 불변식은 그대로 — 머리는 매장 분기 밖이다.
+  it('버튼이 마이 머리(폰·PC·에이전시 전용 마이)에 서고, 구역 안에는 두 번째 입구가 없다', () => {
+    expect(code('src/pages/UserProfilePage.tsx')).toMatch(/<AgencyInviteButton \/>\s*<button onClick=\{bell\.open\}/)
+    expect(code('src/pages/user-profile/AccountPcBand.tsx')).toContain('<AgencyInviteButton />')
+    expect(code('src/pages/agency-console/AgencyMyPage.tsx')).toContain('<AgencyInviteButton className="ml-auto" />')
+    expect(panel, '구역 안에 영입 입구가 다시 생겼다').not.toMatch(/setSheet\('invite'\)|agency-invite-entry/)
   })
   it('영입 시트는 영입 링크만 연다(대신 등록은 따로)', () => {
-    const inv = panel.slice(panel.indexOf("{sheet === 'invite' && ("), panel.indexOf("{sheet === 'register' && canManage && ("))
+    const inv = code('src/pages/agency-console/AgencyInviteSheet.tsx')
     expect(inv).toContain('<AgencyInviteLinkCard canManage={canManage} />')
     expect(inv).not.toContain('AgencyRegisterStoreCard')
   })

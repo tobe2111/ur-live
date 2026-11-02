@@ -79,9 +79,9 @@ describe('③ "홈페이지에 넣기" — 번호를 몰라도 되게', () => {
   it('에이전시 콘솔이 로그인 응답의 번호를 그대로 쓴다 — 사람이 타이핑하지 않는다', () => {
     const s = code('src/pages/agency-console/AgencyStoresPanel.tsx')
     expect(s).toMatch(/const agencyId = readAgencyProfile\(\)\?\.agency\.id \?\? null/)
-    expect(s).toMatch(/agencyId != null && \(/)          // 번호를 모르면 버튼을 안 그린다
+    // 🔁 2026-11-02 재조준 — 큰 카드가 에이전시 줄('홈페이지에 넣기 · 코드 받기')이 됐다.
+    expect(s).toMatch(/agencyId != null && <FlatRow label="홈페이지에 넣기"/)          // 번호를 모르면 줄을 안 그린다
     expect(s).toMatch(/openEmbedCode\('agency', agencyId\)/)
-    expect(s).toContain('agency-embed-entry')
   })
 
   it('유어샵 관리가 자기 handle 로 연다', () => {
