@@ -417,10 +417,11 @@ describe('1️⃣1️⃣ 11차 (2026-11-02 대표 "전부 다 해주고")', () =
 })
 
 describe('1️⃣2️⃣ 12차 (2026-11-02 대표 "1,9,10번")', () => {
-  it('① 사용 방법 — 한 줄 모양(C안) 그대로, 화면에 들어올 때만 1·2·3 이 차례로 켜진다', () => {
+  it('① 사용 방법 — 그림 셋(대표 "응 바꿔줘"), 원은 늘 켜진 색이고 화면에 들어올 때만 차례로 켜지는 움직임', () => {
     const s = R('src/pages/group-buy/RedeemHowTo.tsx')
     expect(s).toContain("if (first) { first = false; if (e.isIntersecting) io.disconnect(); return }")
-    expect(s).toContain('<span className="ur-howto-n text-brand-text">{n}</span>')
+    expect(s).toContain('className="ur-howto-c mx-auto mb-2 w-12 h-12 rounded-full bg-brand-tint text-brand-text')
+    expect(s).toContain('<QrScanIcon key="qr" size={22} />')
     expect((s.match(/\{ n: '\d'/g) || []).length).toBe(3)
   })
   it('⑨ 공유 버튼 — 링크를 **복사했을 때만** 체크가 뜬다(카카오 공유가 열리면 안 뜬다)', () => {
