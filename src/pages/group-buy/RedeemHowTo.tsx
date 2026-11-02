@@ -30,6 +30,12 @@
  * 순간의 일인지가 자리로 읽힌다. 3단계 원은 옅게(끝났다는 표시), 1·2는 브랜드 면.
  */
 
+import { useEffect, useRef } from 'react'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 12차 ① — 스크롤로 이 줄에 닿으면 1 › 2 › 3 이 **차례로 켜진다**(번호가 톡 튀고 글자가 진해진다, 한 번).
+//   모양은 오늘(#2089 C안) 정한 한 줄 그대로 둔다 — 시안의 그림 셋 버전은 그 결정을 되돌리는 일이라 대표 확인 대기.
+injectMotionCss('ur-m-howto', `@keyframes ur-howto-n { 0% { transform: scale(.6); opacity: .3; } 70% { transform: scale(1.2); opacity: 1; } 100% { transform: none; } }@keyframes ur-howto-t { from { opacity: .35; } }.ur-howto-on .ur-howto-n { display: inline-block; animation: ur-howto-n .34s cubic-bezier(.3,1.4,.5,1) backwards; animation-delay: calc(var(--i, 0) * 320ms); }.ur-howto-on .ur-howto-t { animation: ur-howto-t .3s ease backwards; animation-delay: calc(var(--i, 0) * 320ms); }@media (prefers-reduced-motion: reduce){.ur-howto-on .ur-howto-n,.ur-howto-on .ur-howto-t{animation:none!important}}`)
+
 /** 각 단계: 제목(무엇을) + 한 줄(어디서·누가). */
 const STEPS: readonly { n: string; t: string; d: string }[] = [
   { n: '1', t: 'QR 열기', d: '마이 → 내 이용권' },
@@ -46,13 +52,26 @@ export const REDEEM_FALLBACK = '직원에게 4~6자리 확인코드를 받아 �
  * [단계 › 단계 › 단계] 한 줄 + 예외 한 줄로 접는다. 순서·사실(1순위 QR · 확인코드는 스캔이 안 될 때)은 불변.
  */
 export default function RedeemHowTo() {
+  // 처음엔 화면 밖이었다가 들어올 때만 켠다 — 처음부터 보이는 자리면 그대로 둔다.
+  const ref = useRef<HTMLOListElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    let first = true
+    const io = new IntersectionObserver(([e]) => {
+      if (first) { first = false; if (e.isIntersecting) io.disconnect(); return }
+      if (e.isIntersecting) { el.classList.add('ur-howto-on'); io.disconnect() }
+    }, { threshold: 0.6 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
   return (
     <div>
-      <ol className="m-0 p-0 list-none flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-medium" style={{ color: 'var(--gbd-ink)' }}>
+      <ol ref={ref} className="m-0 p-0 list-none flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-medium" style={{ color: 'var(--gbd-ink)' }}>
         {STEPS.map(({ n, t }, i) => (
-          <li key={n} className="flex items-center gap-1">
-            <span className="text-brand-text">{n}</span>
-            <span>{t}</span>
+          <li key={n} className="flex items-center gap-1" style={{ '--i': i } as React.CSSProperties}>
+            <span className="ur-howto-n text-brand-text">{n}</span>
+            <span className="ur-howto-t">{t}</span>
             {i < STEPS.length - 1 && <span aria-hidden className="ml-1" style={{ color: 'var(--gbd-sub2)' }}>›</span>}
           </li>
         ))}
