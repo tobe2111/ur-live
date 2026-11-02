@@ -14,8 +14,7 @@
 import { formatNumber } from '@/utils/format'
 import { PASS_HEAD, passSubLine } from '@/shared/pass-head'
 import StarRating from '@/components/deal/StarRating'
-import { injectMotionCss } from '@/lib/motion-css'
-// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 🎬 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-strike', `@keyframes ur-strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }.ur-strike { position: relative; display: inline-block; text-decoration: none; }.ur-strike::after { content: ""; position: absolute; left: -2px; right: -2px; top: 52%; height: 1.5px; background: currentColor; transform-origin: left; animation: ur-strike .45s cubic-bezier(.65,0,.35,1) .3s both; }.ur-strike::after, .ur-blink-once, .ur-shake { animation: none !important; }@media (prefers-reduced-motion: reduce){.ur-strike::after{animation:none!important}}`)
 
 const goTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })

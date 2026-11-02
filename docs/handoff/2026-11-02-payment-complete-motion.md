@@ -78,3 +78,5 @@
   3. 키트 CSS 가 index.css 에 있어 모든 화면 +1.2 → **부품 파일 안 문자열 + `lib/motion-css.ts` `injectMotionCss`**. 🩸 중간에 `.css` 파일 import 로 나눴더니 묶음기가 그 CSS 를 따라 청크를 재편해 **마이가 상세 청크(19KB)를 받는 더 나쁜 결과** — CSS import 는 청크 묶음에 영향을 준다. 공유 상수 모듈도 공용 청크로 간다 ⇒ 부품마다 문자열을 둔다.
   4. 목록→상세 전환 CSS 는 `deal-view-transition.ts` 가 꽂는다. 그 파일을 동적 import 로 미뤄도 묶음기가 공용 청크에 그대로 둬서 이득 0 → 되돌림.
   5. 남은 증가(공용 +0.7~0.8 · 상세 +2.2 · 마이 +2.4)는 `--rebaseline --reason` 으로 기록. ⚠️ **main 자체가 이미 기준 대비 +1.0** 이었다(다른 세션 누적) — 측정은 main 워크트리 빌드와 나란히 비교해서 내 몫만 셌다.
+- 6. 그 뒤 `chunks`(surface-chunk-runtime) 빨간불: 지도 첫 화면 청크 29 → 30. 공용 도우미 `lib/motion-css.ts` 를 **묶음기가 따로 청크로 뺐다**(lazy 부품만 쓰니 app-utils 에 안 남았다). ⇒ 각 부품에 **한 줄짜리** `injectMotionCss` 를 둔다(줄 수 불변). 이제 지도 29 · 이용권 상세 32→31.
+- 🧭 교훈: 이 레포에서 "공용 모듈로 빼기" 는 공짜가 아니다 — CSS import·상수 모듈·작은 도우미 모두 묶음기가 청크를 다시 짠다. **바꾼 뒤엔 `check-surface-budgets` 와 `check-surface-chunk-runtime` 을 로컬에서 둘 다 돌릴 것**(빌드 필요).

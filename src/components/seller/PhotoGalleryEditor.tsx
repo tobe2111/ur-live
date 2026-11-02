@@ -6,8 +6,7 @@ import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import { prepareImageForUpload, UploadTooLargeError, uploadTooLargeMessage } from '@/lib/prepare-upload'
-import { injectMotionCss } from '@/lib/motion-css'
-// 🎬 이 부품이 쓰는 움직임 CSS 만 — 불러올 때 한 번 꽂는다(lib/motion-css.ts 머리말)
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 🎬 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-upload', `.ur-upload-img { transition: filter .45s, opacity .45s; }.ur-uploading { filter: blur(6px) saturate(.6); opacity: .7; }.ur-upload-bar { position: absolute; left: 6px; right: 6px; bottom: 6px; height: 4px; border-radius: 999px; background: rgba(255,255,255,.5); overflow: hidden; }.ur-upload-bar > span { display: block; height: 100%; background: #fff; transition-property: width; transition-timing-function: ease-out; }.ur-gift-mark, .ur-gift-mark path,  .ur-upload-img, .ur-upload-bar > span { transition: none !important; }@media (prefers-reduced-motion: reduce){.ur-upload-img,.ur-upload-bar>span{transition:none!important}}`)
 
 /**
