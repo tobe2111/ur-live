@@ -37,7 +37,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { changedScope, inScope } from './guard-mutations-scope.mjs'
+import { changedScope, inScope, testReadsChangedFile } from './guard-mutations-scope.mjs'
 import { GUARD_RUNNER, touchesGuardScripts } from './guard-mutations-scope.mjs'
 import {
   changedInjectionNames, runnerLogicChanged, testSpawnsSubprocess,
@@ -10662,6 +10662,18 @@ if (MANIFEST_SCOPE?.full) {
 }
 /** 매니페스트 diff 로 추가로 골라야 하는 주입 이름(없으면 빈 집합). */
 const CHANGED_NAMES = MANIFEST_SCOPE?.names ?? new Set()
+// 🕳️ 시험이 읽는 데이터 파일(.json)이 바뀌면 그 주입도 고른다(#2101 사진 변경이 주입을 낡게 만든 사고 — 2026-11-02).
+if (CHANGED && !SCOPE.full) {
+  const srcOf = new Map()
+  for (const m of ALL) {
+    if (!srcOf.has(m.test)) {
+      let src = ''
+      try { src = fs.readFileSync(path.join(ROOT, m.test), 'utf8') } catch { /* 없는 시험 — 다른 검사가 잡는다 */ }
+      srcOf.set(m.test, src)
+    }
+    if (testReadsChangedFile(srcOf.get(m.test), SCOPE.files)) CHANGED_NAMES.add(m.name)
+  }
+}
 
 /**
  * 🧭 `--scope-json` — **이번 PR 이 전수로 떨어지는가** 만 JSON 으로 찍고 끝낸다 (2026-11-01).
