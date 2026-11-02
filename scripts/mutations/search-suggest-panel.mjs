@@ -81,8 +81,8 @@ export default [
   {
     name: '🔎검색이 매장명을 못 찾는데 매장명을 제안한다',
     file: 'src/features/products/repositories/search-query.ts',
-    find: `export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'description', 'category'] as const`,
-    replace: `export const SEARCH_COLUMNS = ['name', 'description', 'category'] as const`,
+    find: `export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'restaurant_address', 'description', 'category'] as const`,
+    replace: `export const SEARCH_COLUMNS = ['name', 'restaurant_address', 'description', 'category'] as const`,
     test: T,
     why:
       '제안과 검색은 **짝**이다. 검색이 restaurant_name 을 안 보면 매장명 제안을 눌러도 0건이라 ' +
