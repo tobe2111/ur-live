@@ -102,3 +102,7 @@ docs/handoff/INDEX.local.md
 
 # 🧩 2026-11-01 — 라우트 청크 맵의 진짜 값(빌드 산출물). 추적되는 route-chunk-map.ts 는 자리표시자다.
 src/worker/generated/route-chunk-map.build.ts
+
+# 📄 2026-11-02: 소개서 라이브 숫자(빌드 때 서버에서 받는다 — 추적하면 다시 손으로 고친 숫자가 된다) · 생성물
+docs/business/proposals/facts.live.json
+docs/business/proposals/out/

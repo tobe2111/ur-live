@@ -5,15 +5,38 @@
  * 정직 고지 문장은 `deck-common.mjs` 의 공통 문구와 같은 내용을 쓴다 —
  * 세 소개서와 랜딩이 **같은 말**을 해야 한다(기획 §1 공통 블록 ③).
  */
-import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 import { Reveal } from '../landing/motion'
 import FaqItem from '../landing/FaqItem'
 // ❓ 2026-10-31 — 질문은 `shared/landing-faq` SSOT 로 옮겼다. 워커가 같은 배열로 서버 본문과
 //   `FAQPage` JSON-LD 를 만든다(종전엔 이 파일 안에만 있어 크롤러가 한 글자도 못 받았다).
 import { PARTNER_FAQ } from '@/shared/landing-faq'
+import { useQuery } from '@tanstack/react-query'
+import type { ProposalLiveFacts } from '@/shared/proposal-live-facts'
+
+/**
+ * 🔄 2026-11-02 — 정직 고지의 숫자는 **라이브에서** 읽는다(대표 *"제안서는 계속 자동 업데이트가 안돼"* → *"가장 이상적으로"*).
+ *   종전엔 `partners-facts.ts` 에 손으로 적은 그날 값(165건)이었고 11-02 라이브는 160건이었다 — 소개서와 같은 병.
+ *   소개서 생성기와 **같은 서버 숫자**(`/api/public/proposal-facts`, 정의 SSOT `shared/proposal-live-facts.ts`)를 쓴다.
+ *   못 받으면 숫자 없는 문장으로 말한다 — 옛 숫자를 보여 주지 않는다(이 블록은 페이지 맨 아래라 늦게 떠도 위를 밀지 않는다).
+ */
+function useLiveCatalog() {
+  return useQuery({
+    queryKey: ['proposal-facts'],
+    queryFn: async (): Promise<ProposalLiveFacts> => {
+      const res = await fetch('/api/public/proposal-facts')
+      const body: { success?: boolean; data?: ProposalLiveFacts } = await res.json()
+      if (!res.ok || !body?.success || !body.data) throw new Error('proposal-facts')
+      return body.data
+    },
+    staleTime: 60 * 60 * 1000,
+    retry: 1,
+  })
+}
 
 
 export default function PartnerFaq() {
+  const live = useLiveCatalog()
+  const c = live.isError ? undefined : live.data
   return (
     <section className="bg-surface">
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
@@ -35,8 +58,12 @@ export default function PartnerFaq() {
         <Reveal className="mt-14 lg:mt-20 pt-10 lg:pt-14 border-t border-rule">
           <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400 mb-4">숨기지 않고 말씀드립니다</p>
           <p className="text-[15px] lg:text-[24px] leading-[1.75] text-ink max-w-[40em] font-medium">
-            유어딜은 초기 서비스입니다. {F.catalogMeasuredAt} 기준 판매 중인 이용권 {F.activeVouchers}건 가운데
-            실제 매장이 등록한 것은 {F.realStores}건이고, 나머지는 시범 운영을 위한 예시입니다.
+            {c ? (
+              <>유어딜은 초기 서비스입니다. {c.measuredAt} 기준 판매 중인 이용권 {c.activeVouchers}건 가운데
+              실제 매장이 등록한 것은 {c.realStores}건이고, 나머지는 시범 운영을 위한 예시입니다.</>
+            ) : (
+              <>유어딜은 초기 서비스입니다. 지금 판매 중인 이용권은 대부분 시범 운영을 위한 예시이고, 실제 매장은 이제 막 들어오고 있습니다.</>
+            )}
             트래픽을 약속하는 대신 조건을 숫자로 먼저 공개합니다.
             지금 들어오시는 매장이 그 지역과 카테고리의 첫 자리를 가져갑니다.
           </p>

@@ -206,6 +206,7 @@ import { storeProspectsRoutes } from '../features/marketing/api/store-prospects.
 import { poolExportBatchRoutes } from '../features/marketing/api/pool-export-batches.routes';
 import { newOpeningsPublicRoutes } from '../features/marketing/api/new-openings-public.routes';
 import { areaReportPublicRoutes } from '../features/marketing/api/area-report-public.routes';
+import { proposalFactsPublicRoutes, adminProposalsRoutes } from './routes/proposal-facts.routes'; // 📄 대외 소개서 자동 갱신(라이브 숫자 · 최신 덱)
 import { govNoticesRoutes } from '../features/marketing/api/gov-notices.routes';
 import { influencerApplyRoutes } from '../features/marketing/api/influencer-apply.routes';
 import { creatorClaimRoutes } from '../features/marketing/api/lead-claim'; // 🔗 신청 → 가입 연결(초대 코드 클레임)
@@ -1678,6 +1679,7 @@ app.route('/api/admin/store-prospects', storeProspectsRoutes); // 🏪 매장 �
 app.route('/api/admin/pool-export-batches', poolExportBatchRoutes); // 🔓 내보낸 묶음 되돌리기 — 세 풀 공용(도장 취소)
 app.route('/api/public/new-openings', newOpeningsPublicRoutes); // 🎉 소비자 공개: 우리 동네 새 가게(연락처 미노출, CDN 캐시)
 app.route('/api/public/area-report', areaReportPublicRoutes); // 📊 소비자 공개: 상권 리포트(이메일 아웃리치 미끼, CDN 캐시)
+app.route('/api/public/proposal-facts', proposalFactsPublicRoutes); // 📄 소개서 라이브 숫자(건수·평균만, CDN 1h)
 app.route('/api/admin/gov-notices', govNoticesRoutes); // 📢 공고 스캐너 — 나라장터+기업마당(gov_notices 격리), 메인 어드민 JWT
 // 🧨 2026-10-20 대표 "지워줘": 해외 바이어 풀 · 제조사·판매사 후보 풀 · 북마클릿 인제스트 마운트 삭제(유어딜 무관).
 // app.route('/api/seller/castings', sellerCastingRoutes);
@@ -1763,6 +1765,7 @@ adminApp.route('/metrics', adminMetricsRoutes);
 adminApp.route('/business-metrics', platformMetricsRoutes); // 비즈니스 지표(GMV·순수익률·반복구매·여신미수)
 // 🛡️ 2026-05-07: Cron / 알림톡 실패 모니터링 (admin 가시성)
 adminApp.route('/', adminSystemMonitoringRoutes); adminApp.route('/', adminBrandCrossOwnerRoutes); adminApp.route('/', agencyAdminRoutes); // 🏢 /agency-accounts — 새 에이전시 계정 목록·정지(옛 agencies 아님)
+adminApp.route('/', adminProposalsRoutes); // 📄 /proposals/manifest · /proposals/file/:name — GitHub Release 의 최신 덱
 adminApp.route('/', adminManagementRoutes);
 // 🛡️ 2026-04-22 배치 138 (TD-006 부분): admin-coupons 분리 — admin-management.routes.ts 줄임
 adminApp.route('/', adminCouponsRoutes);
