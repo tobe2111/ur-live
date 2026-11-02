@@ -1,3 +1,5 @@
+> 🧊 **2026-11-02 동결 — 이 문서는 더 이상 자동 갱신되지 않는다.** 실제 대외 소개서는 `docs/business/proposals/` 의 덱(어드민 `/admin/proposals`)이다. 아래 자동 블록은 그날의 사본이다 (다시 만들려면 `node scripts/generate-proposal-refs.mjs` — 커밋마다 돌지 않는다).
+
 # 유통스타트(UtongStart) 도매몰 소개서 — 디자인 AI용 콘텐츠 브리프 (SSOT)
 
 > **이 문서의 성격**: 디자인 AI가 "도매몰(B2B 유통 플랫폼) 소개서/세일즈 덱"을 레이아웃하기 위한 **원본 콘텐츠 소스**입니다.
