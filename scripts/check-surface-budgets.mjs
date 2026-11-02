@@ -34,7 +34,8 @@
  *   - 측정 0건 / 지도 비었음   → ❌ **통과가 아니라 실패**(못 잰 것을 예산 안으로 읽지 않는다).
  *
  * ## 정말 늘려야 할 때 (기능이 그 무게를 정당화할 때)
- *   `--rebaseline --reason "무엇을 왜 더했는가"` — 사유가 `history` 에 남는다. 사유 없는 상향은 거부한다.
+ *   `--rebaseline --reason "무엇을 왜 더했는가"` — 사유가 `scripts/surface-budgets-history/` 에 파일 하나로
+ *   남는다. 사유 없는 상향은 거부한다. **위반한 화면만** 바뀐다(나머지는 커밋된 값 그대로 — `--all` 로만 전부).
  *   ⚠️ 먼저 그 무게가 **첫 화면에 꼭 있어야 하는지** 묻는다: 대부분은 lazy(눌렀을 때)로 내릴 수 있다.
  *
  * ## 못 보는 것
@@ -52,8 +53,12 @@ import { ROUTES, PRELOAD_ONLY_ROUTES } from './generate-route-chunk-map.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const BASELINE = path.join(ROOT, 'scripts', 'surface-budgets.json')
+/** 🗂️ rebaseline 기록 — 한 번에 파일 하나(2026-11-02). 아래 `nextBaselineDoc` 머리말 참고. */
+const HISTORY_DIR = path.join(ROOT, 'scripts', 'surface-budgets-history')
 const args = process.argv.slice(2)
 const REBASE = args.includes('--rebaseline')
+/** `--all` — 위반 없는 화면까지 전부 새 측정값으로 다시 쓴다(드물게: 측정 방식을 바꿨을 때만). */
+const REBASE_ALL = args.includes('--all')
 const reasonIdx = args.indexOf('--reason')
 const REASON = reasonIdx >= 0 ? (args[reasonIdx + 1] || '').trim() : ''
 
@@ -181,6 +186,56 @@ export function judge(measured, baseline, { tolerance = TOLERANCE_KB, slack = LO
   return errors
 }
 
+/**
+ * 🧩 **rebaseline 은 고칠 화면만 바꾼다** (2026-11-02 대표 *"이러니까 계속 충돌이 되었지"*).
+ *
+ * 종전엔 `--rebaseline` 이 **27개 화면 전부**를 새 측정값으로 다시 썼다. 화면 하나만 늘어도
+ * 나머지 26개의 숫자가 ±0.02 씩 흔들려(로컬 빌드 편차 · 공용 청크) **모든 줄이 바뀌었고**,
+ * 다른 세션도 같은 줄을 같은 식으로 고치니 머지마다 충돌했다(최근 머지 200건 중 7건이 이 파일).
+ * 세션들은 이미 손으로 피해 가고 있었다 — 기록에 *"vouchers 만 갱신하고 다른 26개는 커밋된 값
+ * 그대로 둔다"* 가 남아 있다. 그걸 기본값으로 만든다.
+ *
+ * 그리고 `history` 를 JSON **끝에 덧붙이던 것**도 같은 병이었다(모든 rebaseline 이 같은 자리에 쓴다 —
+ * 잠금 기록이 2026-11-01 에 고친 것과 같은 클래스). ⇒ 기록은 `scripts/surface-budgets-history/`
+ * 에 **한 번에 파일 하나**로 쓰고, JSON 안의 옛 `history` 는 **동결**(그대로 옮겨 적기만 한다).
+ *
+ * 순수 함수다 — 시험이 실제 판정 결과를 넣어 돌린다.
+ * @returns {{ doc: object, entry: object | null }}
+ */
+export function nextBaselineDoc(measured, baseline, errs, { reason = '', date, all = false } = {}) {
+  const touch = new Set(errs.map((e) => e.s))
+  const prev = baseline.surfaces || {}
+  /** @type {Record<string, any>} */
+  const surfaces = {}
+  // 기존 순서를 지킨다 — 순서가 바뀌면 그것만으로 diff 가 생긴다.
+  for (const s of Object.keys(prev)) {
+    if (!measured[s]) continue // 사라진 화면은 뺀다(gone)
+    surfaces[s] = all || touch.has(s) ? measured[s] : prev[s]
+  }
+  for (const s of Object.keys(measured)) if (!(s in surfaces)) surfaces[s] = measured[s] // 새 화면
+  const doc = {
+    _doc: '화면별 첫 화면 무게 예산(brotli KB). 손으로 고치지 말 것 — scripts/check-surface-budgets.mjs --rebaseline [--reason ...]',
+    toleranceKB: TOLERANCE_KB,
+    lockSlackKB: LOCK_SLACK_KB,
+    surfaces,
+    // 🧊 동결 — 2026-11-02 이전 기록. 새 기록은 surface-budgets-history/ 에 파일 하나로.
+    history: baseline.history || [],
+  }
+  const entry = errs.length || all
+    ? { date, reason: reason || '개선 잠금(줄어든 값 반영)', surfaces: all ? Object.keys(measured) : [...touch], changes: errs.map((e) => e.msg) }
+    : null
+  return { doc, entry }
+}
+
+/** 기록 파일 이름 — `<날짜>-<화면들>.json`, 같은 이름이 있으면 `-2`, `-3`. */
+export function historyFileName(entry, exists) {
+  const slug = (entry.surfaces.length > 3 ? `${entry.surfaces.slice(0, 3).join('-')}-and-${entry.surfaces.length - 3}` : entry.surfaces.join('-'))
+    .replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'rebaseline'
+  let name = `${entry.date}-${slug}.json`
+  for (let i = 2; exists(name); i++) name = `${entry.date}-${slug}-${i}.json`
+  return name
+}
+
 function main() {
   const htmlPath = path.join(ROOT, 'dist/client/index.html')
   const mapPath = path.join(ROOT, 'src/worker/generated/route-chunk-map.build.ts')
@@ -240,13 +295,18 @@ function main() {
       console.error('   먼저 그 무게가 첫 화면에 꼭 있어야 하는지 볼 것 — 대부분은 lazy 로 내릴 수 있다.')
       process.exit(1)
     }
-    const history = baseline.history || []
-    if (errs.length) history.push({ date: new Date().toISOString().slice(0, 10), reason: REASON || '개선 잠금(줄어든 값 반영)', changes: errs.map((e) => e.msg) })
-    fs.writeFileSync(BASELINE, JSON.stringify({
-      _doc: '화면별 첫 화면 무게 예산(brotli KB). 손으로 고치지 말 것 — scripts/check-surface-budgets.mjs --rebaseline [--reason ...]',
-      toleranceKB: TOLERANCE_KB, lockSlackKB: LOCK_SLACK_KB, surfaces: measured, history: history.slice(-40),
-    }, null, 2) + '\n')
-    console.log(`✅ 기준 갱신 → scripts/surface-budgets.json (${Object.keys(measured).length}개 화면)`)
+    const { doc, entry } = nextBaselineDoc(measured, baseline, errs, {
+      reason: REASON, date: new Date().toISOString().slice(0, 10), all: REBASE_ALL,
+    })
+    fs.writeFileSync(BASELINE, JSON.stringify(doc, null, 2) + '\n')
+    if (entry) {
+      fs.mkdirSync(HISTORY_DIR, { recursive: true })
+      const name = historyFileName(entry, (n) => fs.existsSync(path.join(HISTORY_DIR, n)))
+      fs.writeFileSync(path.join(HISTORY_DIR, name), JSON.stringify(entry, null, 2) + '\n')
+      console.log(`   기록 → scripts/surface-budgets-history/${name}`)
+    }
+    const changed = REBASE_ALL ? Object.keys(measured).length : new Set(errs.map((e) => e.s)).size
+    console.log(`✅ 기준 갱신 → scripts/surface-budgets.json (바꾼 화면 ${changed}개 · 나머지는 그대로${REBASE_ALL ? ' — --all: 전부 다시 씀' : ''})`)
     return
   }
 
