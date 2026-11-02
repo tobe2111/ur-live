@@ -68,7 +68,7 @@ console.log(`${strict ? '❌' : '⚠️'}  인계 문서 미갱신 — 다음 �
 console.log(`   이 브랜치가 소스 ${source.length}개를 바꿨는데 ${HANDOFF} 는 그대로다.`)
 console.log(`   예: ${source.slice(0, 3).join(', ')}${source.length > 3 ? ' …' : ''}`)
 console.log('')
-console.log(`   고치는 법: ${HANDOFF} 파일을 새로 만들고, 무엇을 왜 바꿨는지 + **다음 세션의 첫 액션**을 적는다.`)
+console.log(`   고치는 법: ${HANDOFF} 파일을 새로 만들고, 무엇을 왜 바꿨는지 + **이어받는 세션의 첫 액션**(대표가 이어서 하라고 했을 때만 실행된다)을 적는다.`)
 console.log('     · 목차는 손대지 마라 — `node scripts/generate-handoff-index.mjs` 가 추적 안 하는 사이드카로 만든다.')
 console.log('     · 완료분은 commit/PR 해시와 함께 (다음 세션이 "이미 된 것"을 또 파지 않게)')
 console.log('     · 이번에 틀렸던 판단이 있으면 그것도 (같은 오진 반복 방지 — 이게 제일 값지다)')
