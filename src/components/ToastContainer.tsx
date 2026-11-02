@@ -33,7 +33,7 @@ export default function ToastContainer() {
         <div
           key={t.id}
           role={t.type === 'error' ? 'alert' : 'status'}
-          className="ur-glass flex items-center gap-2.5 min-h-12 pl-5 pr-2 py-2 rounded-[24px] text-gray-900 dark:text-white pointer-events-auto animate-slide-down max-w-full"
+          className="ur-glass flex items-center gap-2 min-h-12 pl-5 pr-2 py-2 rounded-[24px] text-gray-900 dark:text-white pointer-events-auto animate-slide-down max-w-full"
         >
           {icons[t.type]}
           <p className="flex-1 text-[15px] font-medium leading-snug line-clamp-2">{t.message}</p>

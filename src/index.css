@@ -601,6 +601,11 @@
   --rule-strong: rgb(22 24 28 / 0.28);
   --wash: rgb(22 24 28 / 0.05);
   --home-band: #EDEFF3;
+  /* 🪟 2026-11-02 팝업 유리 — 위 `:root` 라이트와 쌍. 대시보드 위 확인창·알림이 html.dark 에서 검은 유리가 되지 않게. */
+  --glass: rgb(255 255 255 / 0.74);
+  --glass-rule: rgb(22 24 28 / 0.10);
+  --veil: rgb(10 12 18 / 0.22);
+  --pop-shadow: 0 20px 50px rgb(10 12 18 / 0.20);
   /* 🚦 상태 색도 라이트 값으로 되박는다 — 안 그러면 html.dark 에서 흰 카드 위에 다크용 밝은 초록이 뜬다. */
   --tone-ok: #0F7B45;      --tone-ok-bg: #E7F4EC;
   --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;

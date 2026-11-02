@@ -114,7 +114,7 @@ export function ConfirmHost() {
           {current.title && (
             <p className="text-[17px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{current.title}</p>
           )}
-          <p className={`${current.title ? 'mt-1.5 text-gray-600 dark:text-gray-300' : 'text-gray-900 dark:text-white'} text-[15px] leading-relaxed whitespace-pre-line`}>{current.message}</p>
+          <p className={`${current.title ? 'mt-2 text-gray-600 dark:text-gray-300' : 'text-gray-900 dark:text-white'} text-[15px] leading-relaxed whitespace-pre-line`}>{current.message}</p>
 
           {current.prompt && (
             current.prompt.multiline ? (
