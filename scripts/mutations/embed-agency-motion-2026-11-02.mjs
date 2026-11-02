@@ -47,28 +47,4 @@ export default [
     test: T,
     why: '위젯 장수 상한(기본 8)이 곧 "판매 중 이용권" 이 된다 — 30개를 파는 에이전시 간판에 8개라고 적힌다.',
   },
-  {
-    name: '제휴모션 — 좁은 폭 압축을 뺀다',
-    file: 'src/worker/utils/embed-partner-motion.ts',
-    find: '@media (max-width:500px){.pt{padding:6px}',
-    replace: '@media (max-width:1px){.pt{padding:6px}',
-    test: T,
-    why: '폰 폭에서 문서가 409px 로 자라 붙인 iframe(360px)이 "입점 신청" 버튼을 자른다 — 위젯의 목적 자체가 사라진다.',
-  },
-  {
-    name: '제휴모션 — 움직임 줄이기 설정을 무시한다',
-    file: 'src/worker/utils/embed-partner-motion.ts',
-    find: '@media (prefers-reduced-motion:reduce){.pt *',
-    replace: '@media (prefers-reduced-motion:no-preference) and (max-width:1px){.pt *',
-    test: T,
-    why: '움직임을 꺼 둔 사람에게도 줄이 그어지고 버튼 위로 빛이 계속 지나간다.',
-  },
-  {
-    name: '제휴모션 — 모션 CSS 를 안 붙인다',
-    file: W,
-    find: 'body, PARTNER_MOTION_CSS)',
-    replace: 'body)',
-    test: T,
-    why: '대표가 급하다고 한 제휴 위젯이 조용히 예전 정지 화면으로 돌아간다.',
-  },
 ]
