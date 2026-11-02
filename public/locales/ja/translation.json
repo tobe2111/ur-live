@@ -6255,7 +6255,7 @@
     "loadFailed": "ライブラリを読み込めませんでした"
   },
   "shopping": {
-    "sectionTitle": "購入したもの",
+    "sectionTitle": "マイディール",
     "wishlist": "お気に入り",
     "voucher": "交換券",
     "voucherSub": "店舗でQR・コードで使用",

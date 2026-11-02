@@ -84,7 +84,8 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
        여기에 px-4 를 또 주면 글자가 32px 들어가 구역 제목과 왼쪽 끝이 어긋난다. */
     <div className="ur-content-medium lg:px-4 ur-pc-card">
       <SectionTitle action={{ label: t('shopping.paymentHistory', { defaultValue: '결제 내역' }), onClick: () => navigate('/my-orders') }}>
-        {t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}
+        {/* 🏷️ 2026-11-02 대표 *"마이페이지에 '내가 산 것' 이 아니라 '마이 딜'로 해줘"* */}
+        {t('shopping.sectionTitle', { defaultValue: '마이 딜' })}
       </SectionTitle>
       <div>
         {items.map((item) => (

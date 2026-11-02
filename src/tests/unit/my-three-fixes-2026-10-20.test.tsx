@@ -52,8 +52,8 @@ describe('④ 주문 내역 → 구역 제목의 결제 내역', () => {
   })
   it('SectionTitle 의 action 은 제목 옆 버튼으로 그려진다', () => {
     const onClick = vi.fn()
-    render(<SectionTitle action={{ label: '결제 내역', onClick }}>내가 산 것</SectionTitle>)
-    expect(screen.getByRole('heading', { name: '내가 산 것' })).toBeTruthy()
+    render(<SectionTitle action={{ label: '결제 내역', onClick }}>마이 딜</SectionTitle>)
+    expect(screen.getByRole('heading', { name: '마이 딜' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '결제 내역' }))
     expect(onClick).toHaveBeenCalledTimes(1)
   })

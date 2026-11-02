@@ -13,7 +13,7 @@ import { useNotificationSheet } from '@/components/notifications/useNotification
 // 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(프로필 편집 화살표) 하나뿐 — 조작이라 그대로 둔다.
 //    2026-09-30 수익·추천 구역이 빠지며 `ReceiptIcon`·`UrShopIcon` 소비처는 사라졌다.
 import { AgencyInviteDoor, AgencyTitleDoor } from '@/pages/user-profile/agency-doors'
-import { BellIcon, LogOutIcon, ScanIcon } from '@/components/icons/urdeal-icons'
+import { BellIcon, LogOutIcon, ScanIcon, MessageIcon, InfoIcon, ReceiptIcon } from '@/components/icons/urdeal-icons'
 import { ListRow, rowIcon } from './user-profile/list-grammar'
 import MyStats from './user-profile/MyStats'
 import AccountPcBand from './user-profile/AccountPcBand'
@@ -165,7 +165,16 @@ export default function UserProfilePage() {
           할 것 같아"*). 종전엔 페이지 맨 아래 흰 판 버튼이었는데, ⓐ 로그아웃은 설정이지 독립 구역이
           아니고 ⓑ 안 C 에서 **흰 판은 "파는 쪽" 표시자**라 손님 구역에 판이 하나 떠 있으면 그 표시가
           무의미해진다(표면 규칙 ⑦). ⇒ 다른 줄과 같은 평면 줄로. */}
+      {/* 🧹 2026-11-02 대표 *"마이페이지 맨 밑에도 엉성하고"* — 맨 아래 잔글씨 링크 뭉치(카카오톡 상담·FAQ·
+          약관·개인정보·환불)를 **설정 · 고객지원 구역의 정식 줄 셋**으로 올렸다. 잔글씨는 누를 자리가 작고
+          줄바꿈 위치가 화면마다 달라 엉성해 보였다. 약관·개인정보·환불·사업자 정보는 **홈 맨 아래 회사 정보**
+          (`CompanyInfoFooter`)가 갖고, 여기 `약관·정책` 줄이 `/terms` 로 간다(손님 마이와 같은 줄). */}
       <div>
+        <ListRow icon={rowIcon(MessageIcon)} label={t('userProfile.kakaoConsult', { defaultValue: '카카오톡 상담' })}
+          hint={t('userProfile.kakaoConsultHours', { defaultValue: '평일 10~18시' })}
+          onClick={() => window.open('http://pf.kakao.com/_AITdn/chat', '_blank', 'noopener,noreferrer')} />
+        <ListRow icon={rowIcon(InfoIcon)} label={t('userProfile.faq', { defaultValue: '자주 묻는 질문' })} to="/faq" />
+        <ListRow icon={rowIcon(ReceiptIcon)} label={t('guest.my.terms', { defaultValue: '약관·정책' })} to="/terms" />
         <ListRow icon={rowIcon(LogOutIcon)} label={t('userProfile.logout')} onClick={handleLogout} />
       </div>
     </SettingsGroup>
@@ -445,45 +454,14 @@ export default function UserProfilePage() {
       </div>{/* /오른쪽 열 — 손님 */}
       </div>{/* /ur-account-cols */}
 
-      {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관을 최하단 footer 로.
-            볼드 헤더+카드 InsetGroup → 점 구분 muted 텍스트 링크(항목/경로 불변). */}
-      <div className="ur-content-medium px-4 lg:px-8 pb-10 pt-4">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          {[
-            { label: t('userProfile.kakaoConsult', { defaultValue: '카카오톡 상담' }), emphasize: true, action: () => window.open('http://pf.kakao.com/_AITdn/chat', '_blank', 'noopener,noreferrer') },
-            { label: t('userProfile.faq'), path: '/faq' },
-            { label: t('userProfile.terms'), path: '/terms' },
-            { label: t('userProfile.privacy'), path: '/privacy' },
-            // 🛡️ 2026-07-02: '배송정책' 라벨이 /refund(환불·반품 정책)로 리다이렉트돼 라벨-도착지 불일치 — 정합.
-            { label: t('userProfile.refundPolicy', { defaultValue: '환불·반품 정책' }), path: '/refund' },
-          ].map((item) => (
-            /* 🧹 2026-09-30 (대표 *"맨 하단도 좀 정리해야 할 것 같아"*) — **가운뎃점 구분자를 없앴다.**
-               줄이 넘칠 때 `·` 가 **다음 줄 맨 앞**에 혼자 떨어졌다(실측: `· 환불·반품 정책`).
-               간격만으로 충분히 갈리고, 대외 문구 룰(*"가운뎃점은 줄당 1개"*)에도 맞는다.
-               ⚠️ `환불·반품` 의 붙여 쓴 가운뎃점은 한국어 표준이라 대상이 아니다. */
-            <span key={item.label} className="flex items-center">
-              <button
-                type="button"
-                onClick={() => (item as any).action ? (item as any).action() : item.path && navigate(item.path)}
-                className={`text-[12px] ${(item as any).emphasize ? 'font-medium text-gray-600 dark:text-white/55' : 'text-gray-500 dark:text-white/40'} active:text-gray-800 dark:active:text-white/75`}
-              >
-                {item.label}
-              </button>
-            </span>
-          ))}
-        </div>
-        <p className="text-[12px] text-gray-400 dark:text-white/30 mt-2">{t('userProfile.kakaoConsultSub', { defaultValue: '평일 10:00~18:00 응대' })}</p>
-        {/* 📱 앱 정보 — 페이지 맨 밑(대표 2026-09-02). 설정 그룹에서 이동, 컴포넌트 자체는 불변. */}
-        <AppVersionSection />
-        {/* 🛡️ 회원 탈퇴 — 파괴적 동작이다.
-            🩸 2026-08-30: 그런데 **빨강 아웃라인 박스**라서 바로 위 로그아웃(회색)보다
-               시각적으로 **더 강했다.** 화면이 "탈퇴를 누르라" 고 말하고 있던 셈이다 —
-               파괴적 동작은 눈에 띄면 안 되고, 찾을 수는 있어야 한다.
-            ⇒ 조용한 텍스트 링크로 격하. 라우트·경고 화면(/account/delete-warning)은 그대로다.
-            🧹 2026-09-30: 로그아웃이 설정 구역으로 올라가면서, 탈퇴는 **페이지의 마지막 줄**이 됐다.
-               찾을 수 있는 자리이면서 어떤 동선에도 안 걸린다. */}
-        {/* 📐 2026-10-18: 링크·버전과 같은 왼쪽 선. 종전엔 이것과 버전만 가운데라 맨 아래가 두 정렬로 갈렸다. */}
-        <div className="mt-4">
+      {/* 🧹 2026-11-02 대표 *"마이페이지 맨 밑에도 엉성하고, 대신 홈 페이지 맨 밑에 회사 정보들을 넣어줘"* —
+          맨 아래는 **버전과 회원 탈퇴 한 줄**만 남긴다. 고객지원 링크는 설정 구역의 줄로 올라갔고(위 settingsBlock),
+          회사·사업자 정보는 홈 맨 아래(`CompanyInfoFooter`)가 갖는다.
+          🛡️ 회원 탈퇴는 파괴적 동작이라 조용한 링크 그대로(2026-08-30 판단) — 찾을 수는 있고 동선엔 안 걸린다. */}
+      <div className="ur-content-medium px-4 lg:px-8 pt-2 pb-8 flex items-start justify-between gap-4">
+        {/* 새 버전이 있을 때만 서는 파란 버튼이 이 칸 폭을 다 쓰도록 flex-1 */}
+        <div className="flex-1 min-w-0"><AppVersionSection /></div>
+        <div className="shrink-0 pt-2">
           <DeleteAccountLink />
         </div>
       </div>
