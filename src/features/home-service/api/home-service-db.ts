@@ -239,9 +239,55 @@ export function withPrivateDetails(details: unknown, privateJson: unknown): Reco
   } catch { return base }
 }
 
+/**
+ * 🩺 "표가 다 있나" 를 **한 번에** 묻는 질문들 — `HS_TABLES_SQL` 에서 자동으로 뽑는다(손으로 적으면 새 표·칸을 빠뜨린다).
+ *
+ * 🐢 2026-11-02 대표 *"부분적으로 느린 경우들이 많아서 유저들이 헷갈려해"* — 생활 화면의 모든 요청이 서버가 새로 켜질
+ *   때마다 위 DDL **34문장을 하나씩** 미국 DB 에 보냈다(ALTER 13개는 칸이 이미 있어 매번 실패하면서). 한국에서 왕복
+ *   ~0.17초 × 34 ≈ 5초+. 라이브 실측: `/api/home-service/config` 서버 시간 1,424ms(같은 서버 재요청은 42ms).
+ *   ⇒ 이 질문들을 **batch 한 번(=왕복 1회)** 으로 던지고, 다 통과하면 DDL 을 건너뛴다. 하나라도 실패하면(표·칸·색인이
+ *   없다) 종전처럼 DDL 을 전부 돈다 — 그래서 틀려도 느려질 뿐 표가 빠지는 일은 없다.
+ *   색인은 개수로 본다 — UNIQUE 색인이 머니 멱등 키(`idx_hs_credit_tx_kind_ref`)라 "있겠지" 로 건너뛰면 안 된다.
+ */
+export function buildSchemaProbe(sqls: readonly string[] = HS_TABLES_SQL): { sql: string; expect?: number }[] {
+  const tables = new Set<string>()
+  const indexes = new Set<string>()
+  const cols = new Map<string, Set<string>>()
+  for (const raw of sqls) {
+    const s = raw.replace(/\s+/g, ' ').trim()
+    let m = /^CREATE TABLE IF NOT EXISTS (\w+)/i.exec(s)
+    if (m) { tables.add(m[1]); continue }
+    m = /^CREATE (?:UNIQUE )?INDEX IF NOT EXISTS (\w+)/i.exec(s)
+    if (m) { indexes.add(m[1]); continue }
+    m = /^ALTER TABLE (\w+) ADD COLUMN (\w+)/i.exec(s)
+    if (m) { if (!cols.has(m[1])) cols.set(m[1], new Set()); cols.get(m[1])!.add(m[2]); continue }
+    return [] // 모르는 모양의 DDL — 확인을 포기하고 종전대로 DDL 전부(던지면 모듈 로드에서 워커가 죽는다). 시험이 0 건을 고정.
+  }
+  const q = (xs: Iterable<string>) => [...xs].map((x) => `'${x}'`).join(',')
+  const out: { sql: string; expect?: number }[] = [{
+    sql: `SELECT COUNT(*) AS n FROM sqlite_master WHERE (type = 'table' AND name IN (${q(tables)})) OR (type = 'index' AND name IN (${q(indexes)}))`,
+    expect: tables.size + indexes.size,
+  }]
+  // 칸은 "그 칸을 고르는 빈 질의" 로 — 없으면 batch 가 통째로 실패한다(→ DDL 전체).
+  for (const [t, cs] of cols) out.push({ sql: `SELECT ${[...cs].join(', ')} FROM ${t} LIMIT 0` })
+  return out
+}
+const HS_PROBE = buildSchemaProbe()
+
+/** 표·칸·색인이 전부 있으면 true. 묻다가 실패하면 false(모르는 것은 "없다" 쪽으로). */
+async function schemaComplete(DB: D1Database): Promise<boolean> {
+  if (!HS_PROBE.length) return false
+  try {
+    const rs = await DB.batch(HS_PROBE.map((p) => DB.prepare(p.sql)))
+    const n = Number((rs?.[0]?.results?.[0] as { n?: number } | undefined)?.n)
+    return n === HS_PROBE[0].expect
+  } catch { return false }
+}
+
 export async function ensureHomeServiceTables(DB: D1Database): Promise<void> {
   if (_done.has(DB)) return
   _done.add(DB)
+  if (await schemaComplete(DB)) return // 왕복 1회로 끝 — 평상시 경로
   for (const sql of HS_TABLES_SQL) {
     try { await DB.prepare(sql).run() } catch { /* 이미 있음 */ }
   }
