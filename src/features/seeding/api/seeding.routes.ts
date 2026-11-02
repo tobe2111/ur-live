@@ -371,6 +371,10 @@ seedingRoutes.delete('/sns/:platform', requireAuth(), async (c) => {
   const p = c.req.param('platform')
   if (!isSeedingPlatform(p)) return c.json({ success: false, error: '모르는 플랫폼이에요' }, 400)
   await c.env.DB.prepare(`DELETE FROM user_sns_links WHERE user_id = ? AND platform = ?`).bind(uid(c), p).run().catch(() => null)
+  // 📈 지난 팔로워 기록도 함께 지운다 — 해제는 "이 계정을 떼겠다" 는 뜻이고, 그 사람의 성장 기록을
+  //   남겨 둘 이유가 없다. 게다가 **다른 계정으로 다시 연동하면** 남은 기록이 엉뚱한 기준이 된다
+  //   (추이 조회가 `external_id` 로 한 번 더 거르지만, 지우는 쪽이 놀랄 일이 없다).
+  await c.env.DB.prepare(`DELETE FROM user_sns_follower_snapshots WHERE user_id = ? AND platform = ?`).bind(uid(c), p).run().catch(() => null)
   return c.json({ success: true, message: '연동을 해제했어요' })
 })
 

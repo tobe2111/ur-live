@@ -79,6 +79,24 @@ export function labelsOf(surface, surfaces = SURFACES) {
 export const lzLabels = (s) => s.slice(3).split('-').filter(Boolean)
 
 /** 판정(순수 함수) — 위반 문자열 배열. */
+/**
+ * 🎲 **표본으로 불려 오는 청크는 세지 않는다** — 2026-11-01.
+ *
+ * `src/main.tsx:170` 의 `envSampled = DEV || Math.random() < 0.01` — 환경변수 검사기(zod)를 운영에서
+ * **방문 100번 중 1번만** 불러온다(그 파일 주석: 검사 대상이 빌드 때 정해지는 값이라 1% 면 충분). 측정이
+ * 그 1% 에 걸리면 `env-validator` + `validation` 둘이 더 실려 **청크 수 래칫이 무작위로 빨간불**이 된다.
+ * 실측: PR #2080 CI 에서 교환권 26개 > 기준 25개 — 같은 기계에서 main·그 PR 을 각각 재면 둘 다 24개였다.
+ *
+ * 🔑 `validation` 은 **`env-validator` 와 함께 왔을 때만** 뺀다 — zod 가 **혼자** 첫 화면에 실리면 그건
+ *    진짜 회귀(잠금표: "validateEnvForRuntime dynamic import — eager 금지")라 그대로 센다.
+ *    `src/main.tsx` 는 로딩 잠금 파일이라 표본 쪽을 고치지 않고 측정 쪽에서 다룬다.
+ */
+export function dropSampled(chunks) {
+  const list = [...chunks]
+  if (!list.includes('env-validator')) return list
+  return list.filter((c) => c !== 'env-validator' && c !== 'validation')
+}
+
 export function judge(chunks, surface, surfaces = SURFACES) {
   // `<표면>L` = 그 페이지가 나중에(lazy) 쓰는 부품 봉투 — 자기 것이다(scripts/surface-chunks.mjs).
   const mine = new Set([...labelsOf(surface, surfaces).flatMap((l) => [l, l + 'L']), ...(PREFETCH_OK[surface] ?? []), 'common', 'boot'])
@@ -114,7 +132,7 @@ function main() {
     const r = spawnSync('node', ['scripts/visual-preview.mjs', ...pg.args, '--trace-api', '--no-idle'], { cwd: ROOT, encoding: 'utf8', timeout: 180_000 })
     const res = parse(r.stdout)
     if (!res || !Array.isArray(res.chunks)) { console.error(`❌ ${pg.name}: 측정 결과를 못 읽었다(하네스 형식 변경·실패) — 통과가 아니다.`); bad++; continue }
-    const chunks = [...new Set(res.chunks.map(stem))]
+    const chunks = dropSampled([...new Set(res.chunks.map(stem))])
     if (chunks.length < 10) { console.error(`❌ ${pg.name}: 청크 ${chunks.length}개 — 렌더가 깨졌거나 측정이 헛돌았다.`); bad++; continue }
     measured++
     const v = judge(res.chunks, pg.surface)

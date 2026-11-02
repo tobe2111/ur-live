@@ -2,6 +2,14 @@
 // Cloudflare Worker - Main Entry Point (Unified)
 // Global Marketplace API — ALL routes consolidated here
 // Legacy src/index.tsx has been retired.
+//
+// 🔴 이 파일을 통째로 읽지 말 것 — 약 61,700 토큰(Claude Code 한 세션 용량 20만의 31%).
+//    `cat` 한 번에 창의 3분의 1을 쓴다. 필요한 자리만 읽을 것:
+//      grep -n '<심볼>' src/worker/index.ts      → 줄 번호를 먼저 찾고
+//      sed -n '900,1060p' src/worker/index.ts    → 그 창만 읽는다
+//    (2026-11-01 측정 — 41% 가 주석이고 그 주석은 이 레포의 자산이라 줄이지 않는다.
+//     분할도 하지 않는다: 잠금 심볼이 전 파일에 흩어져 안전한 분할선이 없다
+//     — `caches.default` 968~2508 · `Cache-Control` 311~2353.)
 // ============================================================
 
 import { Hono } from 'hono';

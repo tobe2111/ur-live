@@ -13,7 +13,7 @@ model: inherit
 1. `docs/design/ai-team-operating-model.md` (§2, §4)
 2. `CLAUDE.md` 전체 — 특히 잠금표 2개(Toss V2 · 로딩), 서비스 분리, 머니 룰, 방어선 표
 3. `docs/CURRENT_WORK.md` 상단 3건 · `docs/DEV_IMPLEMENTATION_PLAYBOOK.md` · `docs/ERROR_DEBUGGING_PLAYBOOK.md`
-4. 세션 첫 액션: `bash scripts/install-git-hooks.sh` (훅은 클론에 안 딸려 온다) · `npm view ms version` (npm 가용 확인)
+4. 세션 첫 액션: git 검사는 **시작 스크립트가 자동 설치**한다(로그에 `설치 완료` 확인, 실패 시 `bash scripts/install-git-hooks.sh`) · `npm view ms version` (npm 가용 확인)
 
 ## 결정권 (§2)
 - A: 버그 수정 · 테스트/가드 추가 · 리팩토링(동작 불변) · 문서 · 죽은 코드 제거

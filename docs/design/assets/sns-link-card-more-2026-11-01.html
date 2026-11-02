@@ -1,275 +1,542 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8">
+<html lang="ko">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SNS 연동 카드 시안</title>
 <style>
-  :root{--brand:#1C69EF;--brand-tint:#EAF1FE;--bg:#F8F7FC;--surface:#fff;
-        --rule:rgb(22 24 28 / .08);--ink:#16181C;--soft:#666C72;--faint:#81868C;--sale:#DC2626;
-        --lift:0 2px 10px rgb(22 24 28 / .06)}
-  *{box-sizing:border-box;margin:0}
-  body{background:var(--bg);color:var(--ink);padding:28px 16px 64px;
-       font-family:-apple-system,system-ui,"Apple SD Gothic Neo","Noto Sans KR","맑은 고딕",sans-serif;
-       -webkit-font-smoothing:antialiased}
-  h1{font-size:24px;font-weight:700;letter-spacing:-.01em}
-  .sub{font-size:13px;color:var(--soft);margin-top:6px;line-height:1.6;max-width:760px}
-  .row{display:flex;gap:16px;overflow-x:auto;padding:24px 0 8px;align-items:flex-start}
-  .col{flex:0 0 390px;width:390px}
-  .tag{font-size:12px;font-weight:500;color:var(--faint);letter-spacing:.02em}
-  .name{font-size:17px;font-weight:700;margin:4px 0 2px}
-  .why{font-size:12px;color:var(--soft);line-height:1.5;min-height:34px}
-  .card{background:var(--surface);border-radius:16px;box-shadow:var(--lift);padding:16px;margin-top:10px}
-  .cardTitle{font-size:15px;font-weight:500;margin-bottom:4px}
-  ul{list-style:none;padding:0}
-  li{padding:16px 0;border-top:1px solid var(--rule)}
-  li:first-child{border-top:0;padding-top:8px}
-  li:last-child{padding-bottom:0}
-  .top{display:flex;align-items:center;gap:12px}
-  .av{position:relative;flex:0 0 36px;width:36px;height:36px}
-  .av .ph{width:36px;height:36px;border-radius:999px;background:#E2E5E9;display:grid;place-items:center}
-  .av .lg{position:absolute;right:-2px;bottom:-2px;width:17px;height:17px;border-radius:999px;
-          background:#fff;display:grid;place-items:center;box-shadow:0 0 0 1.5px #fff}
-  .circ{flex:0 0 36px;width:36px;height:36px;border-radius:999px;display:grid;place-items:center;
-        background:var(--brand-tint);color:var(--brand)}
-  .circ.off{background:var(--bg);color:#CFD3D8}
-  .mid{min-width:0;flex:1}
-  .h{font-size:15px;font-weight:500;display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .h a{color:inherit;text-decoration:none}
-  .s{font-size:12px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-  .pill{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;background:var(--brand-tint);
-        color:var(--brand);border-radius:999px;padding:4px 8px;font-size:12px;font-weight:500}
-  .btn{flex:0 0 auto;background:var(--brand);color:#fff;border:0;border-radius:999px;
-       padding:8px 16px;font-size:13px;font-weight:500;font-family:inherit}
-  .btn.dim{background:var(--bg);color:var(--soft)}
-  .nums{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:12px}
-  .big{font-size:24px;font-weight:700;line-height:1}
-  .unit{font-size:13px;color:var(--soft);margin-left:4px}
-  .acts{display:flex;align-items:center;gap:2px;flex:0 0 auto}
-  .act{display:inline-flex;align-items:center;gap:4px;border:0;background:0;color:var(--soft);
-       border-radius:999px;padding:4px 8px;font-size:13px;font-family:inherit}
-  .act.q{color:var(--faint)}
-  .stats{display:flex;gap:20px;margin-top:12px;align-items:flex-end}
-  .st{min-width:0}
-  .st .v{font-size:24px;font-weight:700;line-height:1}
-  .st .v.sm{font-size:17px}
-  .st .k{font-size:12px;color:var(--soft);margin-top:3px}
-  .note{display:flex;gap:6px;margin-top:10px;font-size:12px;color:var(--soft);line-height:1.5;align-items:flex-start}
-  .note b{font-weight:500;color:var(--ink)}
-  .note.warn{color:#8A5A00}
-  table{border-collapse:collapse;margin-top:14px;font-size:13px;width:100%}
-  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
-  th{font-weight:500;color:var(--soft);font-size:12px}
-  td b{font-weight:500}
-  .ok{color:var(--brand);font-weight:500}
-  .no{color:var(--sale);font-weight:500}
-  .wrap{max-width:1680px;margin:0 auto}
-  .legend{font-size:12px;color:var(--faint);margin-top:18px;line-height:1.7}
-  @media (prefers-color-scheme:dark){
-    :root:not([data-theme="light"]){--bg:#11141C;--surface:#1D1F29;--ink:#F8F7FC;--soft:#9FA3A8;
-      --faint:#6F747A;--brand-tint:#16243D;--brand:#4D8DF5;--rule:rgb(255 255 255 / .08);--lift:none}
-    :root:not([data-theme="light"]) .av .ph{background:#2A2E38}
-    :root:not([data-theme="light"]) .av .lg{background:#1D1F29;box-shadow:0 0 0 1.5px #1D1F29}
-  }
-</style></head><body><div class="wrap">
+/* 🎫 토큰은 src/index.css 실측값 그대로 (손으로 베낀 사본이 아니라 그 파일에서 읽어 옮겼다) */
+:root{
+  --brand:#1C69EF; --brand-tint:#EAF1FE; --brand-text:#1C69EF;
+  --bg:#F8F7FC; --surface:#FFFFFF; --warm:#F8F7FC;
+  --rule:rgb(22 24 28 / 0.08); --lift:0 2px 10px rgb(22 24 28 / 0.06);
+  --g400:#81868C; --g500:#666C72; --g600:#4F545A; --g900:#16181C;
+  --page:#EDEFF3; --note:#666C72;
+}
+.dark{
+  --brand-tint:#16243D; --brand-text:#4D8DF5;
+  --bg:#11141C; --surface:#1D1F29; --warm:#11141C;
+  --rule:rgb(255 255 255 / 0.08); --lift:none;
+  --g400:#6F747A; --g500:#9FA3A8; --g600:#C5C9D0; --g900:#F8F7FC;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,system-ui,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+  background:var(--page); color:#16181C; padding:40px 16px 80px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto}
 
-<h1>SNS 연동 카드 — 정보를 더 띄우면</h1>
-<p class="sub">왼쪽이 지금 배포된 모양입니다. 오른쪽으로 갈수록 한 칸씩 더 띄웁니다.
-세 칸 모두 <b>플랫폼이 직접 준 값만</b> 씁니다 — 지어낸 숫자는 한 개도 없습니다.
-못 읽은 값은 <b>0 이 아니라 —</b> 입니다(모르는 것과 0 은 다릅니다).</p>
+/* 머리 */
+h1{font-size:28px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px}
+.lede{font-size:15px;color:var(--note);max-width:62ch}
+.lede b{font-weight:500;color:#16181C}
 
-<div class="row">
+.measured{
+  margin:24px 0 40px; background:#fff; border-radius:16px; box-shadow:0 2px 10px rgb(22 24 28/.06);
+  padding:20px 22px;
+}
+.measured h2{font-size:15px;font-weight:500;margin-bottom:12px}
+.measured table{border-collapse:collapse;font-size:13px;width:100%}
+.measured td{padding:5px 0;vertical-align:top}
+.measured td:first-child{width:118px;color:var(--note);font-weight:400}
+.measured code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:#EDEFF3;padding:1px 5px;border-radius:4px}
+.tag{display:inline-block;font-size:11px;font-weight:500;padding:2px 7px;border-radius:999px;background:#EAF1FE;color:#1C69EF;vertical-align:1px}
+.tag.no{background:#FDE8E8;color:#B42318}
 
-<!-- ───────── 지금 ───────── -->
-<div class="col">
-  <p class="tag">지금 (배포됨)</p>
-  <p class="name">팔로워 + 신선도</p>
-  <p class="why">숫자 하나와 "언제 확인했나". 계정이 맞는지는 @아이디로만 압니다.</p>
-  <div class="card"><p class="cardTitle">SNS 연동</p>
-  <ul>
-    <li>
-      <div class="top">
-        <span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/></svg></span>
-        <div class="mid"><p class="h">@urdeal_jiwon</p><p class="s">인스타그램</p></div>
-        <span class="pill">✓ 연동됨</span>
-      </div>
-      <div class="nums">
-        <p><span class="big">12,480</span><span class="unit">팔로워</span></p>
-        <div class="acts"><button class="act">⟳ 방금 확인</button><button class="act q">해제</button></div>
-      </div>
-    </li>
-    <li>
-      <div class="top">
-        <span class="circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="M11 9.5l4 2.5-4 2.5z" fill="currentColor" stroke="none"/></svg></span>
-        <div class="mid"><p class="h">@jiwon-table</p><p class="s">유튜브</p></div>
-        <span class="pill">✓ 연동됨</span>
-      </div>
-      <div class="nums">
-        <p><span class="big">3,210</span><span class="unit">구독자</span></p>
-        <div class="acts"><button class="act">⟳ 2일 전 확인</button><button class="act q">해제</button></div>
-      </div>
-    </li>
-    <li>
-      <div class="top">
-        <span class="circ off"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18a3 3 0 1 0 0-6v6zM12 12V4c1.2 2.2 2.8 3 5 3"/></svg></span>
-        <div class="mid"><p class="h">틱톡</p><p class="s">연동 준비 중</p></div>
-        <button class="btn dim">연동하기</button>
-      </div>
-    </li>
-  </ul></div>
+/* 시안 구역 */
+section{margin:0 0 56px}
+.shead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.shead h2{font-size:24px;font-weight:700;letter-spacing:-.015em}
+.shead .pick{font-size:12px;font-weight:500;color:#1C69EF;background:#EAF1FE;padding:3px 9px;border-radius:999px}
+.what{font-size:14px;color:var(--note);max-width:66ch;margin-bottom:20px}
+.what strong{font-weight:500;color:#16181C}
+
+.pair{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.theme{flex:0 0 auto}
+.theme>span{display:block;font-size:11px;font-weight:500;color:var(--note);margin-bottom:7px;padding-left:2px}
+
+/* 폰 폭 390 — 아이폰 13 */
+.phone{width:390px;background:var(--bg);border-radius:14px;padding:14px;color:var(--g900)}
+.phone.dk{color:#F8F7FC}
+/* /my-seeding 의 `SNS 연동` 카드 — 목록은 이 안에 있다(그래서 블록마다 또 판을 깔지 않는다) */
+.card{background:var(--surface);border-radius:16px;box-shadow:var(--lift);padding:14px 16px}
+.card>h3{font-size:15px;font-weight:500;margin-bottom:2px}
+.card>p.cd{font-size:12px;color:var(--g500);font-weight:400;margin-bottom:4px}
+
+ul.list{list-style:none}
+ul.list>li{padding:16px 0;border-top:1px solid var(--rule)}
+ul.list>li:first-child{border-top:0;padding-top:8px}
+ul.list>li:last-child{padding-bottom:0}
+
+.r1{display:flex;align-items:center;gap:12px}
+.av{width:36px;height:36px;border-radius:999px;display:grid;place-items:center;flex:0 0 auto;background:var(--brand-tint);color:var(--brand-text)}
+.av.off{background:var(--warm);color:var(--g400)}
+.av svg{display:block}
+/* 사진 자리 (안 B-1 · C) — 40px + 로고 배지 */
+.avp{position:relative;width:40px;height:40px;flex:0 0 auto}
+.avp .ph{width:40px;height:40px;border-radius:999px;display:block;background:#CFD3D8;object-fit:cover}
+.dark .avp .ph{background:#383D42}
+.avp .bdg{
+  position:absolute;right:-2px;bottom:-2px;width:17px;height:17px;border-radius:999px;
+  background:var(--surface);display:grid;place-items:center;color:var(--g900);
+  box-shadow:0 0 0 1.5px var(--surface);
+}
+.mid{min-width:0;flex:1 1 auto}
+.ttl{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ttl a{color:inherit;text-decoration:none}
+.ttl .ext{font-size:11px;color:var(--g400);margin-left:3px;vertical-align:1px}
+.sub{font-size:12px;font-weight:400;color:var(--g500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.okb{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;border-radius:999px;
+  background:var(--brand-tint);color:var(--brand-text);padding:4px 8px;font-size:12px;font-weight:500;
+}
+.cta{
+  flex:0 0 auto;border:0;border-radius:999px;background:var(--brand);color:#fff;
+  padding:8px 16px;font-size:13px;font-weight:500;font-family:inherit;cursor:default;
+}
+.cta.dim{background:var(--warm);color:var(--g500)}
+
+.r2{margin-top:12px;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 12px}
+.stats{min-width:0;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.big{font-size:24px;font-weight:700;line-height:1;letter-spacing:-.01em}
+.bigw{font-size:13px;font-weight:400;color:var(--g500);margin-left:4px}
+/* 보조 숫자 — 13px 이라 700 금지(굵기 체계 ⑨). 숫자만 500. */
+.sec{font-size:13px;color:var(--g500);font-weight:400;padding-bottom:1px}
+.sec b{font-weight:500;color:var(--g600)}
+.trend{font-size:13px;font-weight:500;color:var(--g600);padding-bottom:1px}
+.trend.wait{font-weight:400;color:var(--g400)}
+.acts{flex:0 0 auto;display:flex;align-items:center;gap:4px}
+.btn{
+  border:0;background:none;font-family:inherit;border-radius:999px;padding:4px 8px;
+  font-size:13px;font-weight:400;color:var(--g600);display:inline-flex;align-items:center;gap:4px;cursor:default;
+}
+.btn.un{color:var(--g400)}
+.btn svg{display:block}
+
+.hint{margin-top:10px;font-size:12px;color:var(--g400);font-weight:400}
+
+/* 꼬리 */
+.tail{background:#fff;border-radius:16px;box-shadow:0 2px 10px rgb(22 24 28/.06);padding:22px 24px;margin-top:8px}
+.tail h2{font-size:17px;font-weight:700;margin-bottom:12px}
+.tail ul{list-style:none;font-size:14px}
+.tail li{padding:7px 0 7px 20px;position:relative;color:#383D42}
+.tail li:before{content:"";position:absolute;left:4px;top:15px;width:5px;height:5px;border-radius:999px;background:#CFD3D8}
+.tail li b{font-weight:500;color:#16181C}
+.foot{margin-top:28px;font-size:12px;color:#81868C}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>SNS 연동 카드에 정보를 더</h1>
+<p class="lede">지금 카드는 <b>아이디 · 플랫폼 · 연동 배지 · 팔로워 수 · 신선도 · 다시 확인 · 해제</b>를 보여 준다.
+무엇을 더 띄울 수 있는지 실제로 재서 네 가지로 추렸다. 아래 카드는 전부 폰 폭 390px 이고
+색·크기·간격은 <code>src/index.css</code>와 <code>tailwind.config.js</code>의 실측 토큰을 그대로 쓴다.</p>
+
+<div class="measured">
+  <h2>무엇이 실제로 가능한가 (2026-11-01 실측)</h2>
+  <table>
+    <tr><td>이미 저장 중</td><td><code>profile_url</code> · <code>account_type</code> · <code>token_expires_at</code> · <code>display_name</code> <span class="tag">화면이 안 쓴다</span></td></tr>
+    <tr><td>인스타그램</td><td>연동 계정에 직접 물어봤다. <code>media_count</code> 13 · <code>profile_picture_url</code> 둘 다 <b>왔다</b> <span class="tag">권한 범위 안</span></td></tr>
+    <tr><td>유튜브</td><td><code>part=snippet,statistics</code> 로 <code>thumbnails</code> · <code>videoCount</code> 를 <b>이미 받아 놓고 버린다</b> <span class="tag">비용 0</span></td></tr>
+    <tr><td>틱톡</td><td><code>avatar_url</code> · <code>video_count</code> 가 지금 권한(<code>user.info.basic</code> · <code>profile</code> · <code>stats</code>) 안이고 요청 목록에만 없다 <span class="tag">낱말 추가</span></td></tr>
+    <tr><td>안 되는 것</td><td>참여율 · 평균 조회수 <span class="tag no">Meta 심사 별도</span> &nbsp; 팔로워 추이 <span class="tag no">스냅샷 테이블 필요</span></td></tr>
+  </table>
 </div>
 
-<!-- ───────── 안 A ───────── -->
-<div class="col">
-  <p class="tag">안 A — 얼굴 · 계정 링크</p>
-  <p class="name">누른 계정이 맞는지 눈으로</p>
-  <p class="why">프로필 사진 + 이름 + 계정 열기. <b>계정 주소는 이미 저장돼 있는데 화면에서 안 쓰고 있었습니다.</b></p>
-  <div class="card"><p class="cardTitle">SNS 연동</p>
+<!-- ───────────── 현재 ───────────── -->
+<section>
+  <div class="shead"><h2>지금</h2></div>
+  <p class="what">팔로워 수가 주인공이고 그 옆에 언제 확인한 숫자인지가 붙어 있다. 사장님이 "팔로워 1,000명 이상" 조건을 걸면 이 숫자로 판정되므로 신선도와 다시 확인 버튼은 짝으로 둔다.</p>
+  <div class="pair">
+    <div class="theme"><span>라이트</span>
+      <div class="phone"><div class="card">
+        <h3>SNS 연동</h3><p class="cd">연동하면 팔로워 수를 플랫폼에서 직접 확인해요</p>
+        <ul class="list">
+          <li>
+            <div class="r1">
+              <span class="av"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+              <div class="mid"><p class="ttl">@urdeal_official</p><p class="sub">인스타그램</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats"><span><span class="big">9,283</span><span class="bigw">팔로워</span></span></p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 4일 전 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+          <li>
+            <div class="r1">
+              <span class="av"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z"/></svg></span>
+              <div class="mid"><p class="ttl">@urdeal</p><p class="sub">유튜브</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats"><span><span class="big">&mdash;</span><span class="bigw">구독자 수를 읽지 못했어요</span></span></p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 방금 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+          <li>
+            <div class="r1">
+              <span class="av off"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z"/></svg></span>
+              <div class="mid"><p class="ttl">틱톡</p><p class="sub">연동 안 됨</p></div>
+              <button class="cta">연동하기</button>
+            </div>
+          </li>
+        </ul>
+      </div></div>
+    </div>
+    <div class="theme"><span>다크</span>
+      <div class="phone dk dark"><div class="card">
+        <h3>SNS 연동</h3><p class="cd">연동하면 팔로워 수를 플랫폼에서 직접 확인해요</p>
+        <ul class="list">
+          <li>
+            <div class="r1">
+              <span class="av"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+              <div class="mid"><p class="ttl">@urdeal_official</p><p class="sub">인스타그램</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats"><span><span class="big">9,283</span><span class="bigw">팔로워</span></span></p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 4일 전 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+          <li>
+            <div class="r1">
+              <span class="av off"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z"/></svg></span>
+              <div class="mid"><p class="ttl">틱톡</p><p class="sub">연동 안 됨</p></div>
+              <button class="cta">연동하기</button>
+            </div>
+          </li>
+        </ul>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 안 A ───────────── -->
+<section>
+  <div class="shead"><h2>안 A. 이미 저장된 것만</h2></div>
+  <p class="what">서버 호출과 DB를 한 글자도 안 바꾼다. 아이디를 누르면 <strong>그 계정으로 가고</strong>(저장돼 있는 <code>profile_url</code>),
+  플랫폼 이름 옆에 계정 종류가 붙는다. 가장 값나가는 변화는 마지막 줄이다. 종전엔 팔로워를 못 읽었을 때 그냥
+  "읽지 못했어요" 였는데, <strong>왜 못 읽었는지</strong>를 말해 준다(구독자를 숨긴 채널 · 비즈니스 계정이 아님 · 틱톡 심사 전).</p>
+  <div class="pair">
+    <div class="theme"><span>라이트</span>
+      <div class="phone"><div class="card">
+        <h3>SNS 연동</h3><p class="cd">연동하면 팔로워 수를 플랫폼에서 직접 확인해요</p>
+        <ul class="list">
+          <li>
+            <div class="r1">
+              <span class="av"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+              <div class="mid"><p class="ttl"><a href="#">@urdeal_official<span class="ext">&#x2197;</span></a></p><p class="sub">인스타그램 &middot; 비즈니스 계정</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats"><span><span class="big">9,283</span><span class="bigw">팔로워</span></span></p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 4일 전 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+          <li>
+            <div class="r1">
+              <span class="av"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z"/></svg></span>
+              <div class="mid"><p class="ttl"><a href="#">@urdeal<span class="ext">&#x2197;</span></a></p><p class="sub">유튜브 &middot; 구독자 비공개</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats"><span><span class="big">&mdash;</span><span class="bigw">구독자 수를 숨긴 채널이에요</span></span></p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 방금 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+            <p class="hint">유튜브 스튜디오에서 구독자 수를 공개하면 읽을 수 있어요</p>
+          </li>
+        </ul>
+      </div></div>
+    </div>
+    <div class="theme"><span>다크</span>
+      <div class="phone dk dark"><div class="card">
+        <h3>SNS 연동</h3><p class="cd">연동하면 팔로워 수를 플랫폼에서 직접 확인해요</p>
+        <ul class="list">
+          <li>
+            <div class="r1">
+              <span class="av"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+              <div class="mid"><p class="ttl"><a href="#">@urdeal_official<span class="ext">&#x2197;</span></a></p><p class="sub">인스타그램 &middot; 비즈니스 계정</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats"><span><span class="big">9,283</span><span class="bigw">팔로워</span></span></p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 4일 전 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 안 B-1 ───────────── -->
+<section>
+  <div class="shead"><h2>안 B-1. 사진이 로고 자리를 대체</h2><span class="pick">사진 자리 후보 1</span></div>
+  <p class="what">안 A 전부에 <strong>프로필 사진</strong>과 <strong>게시물 수</strong>를 더한다. 원이 36에서 40px로 커지고
+  플랫폼 로고는 오른쪽 아래 작은 배지로 내려간다. 다른 서비스 연동 화면들이 대개 이 방식이고,
+  "내 계정이 붙어 있다"는 느낌이 바로 온다. 사진이 없거나 못 받으면 지금 로고 원으로 그대로 떨어진다.</p>
+  <div class="pair">
+    <div class="theme"><span>라이트</span>
+      <div class="phone"><div class="card">
+        <h3>SNS 연동</h3><p class="cd">연동하면 팔로워 수를 플랫폼에서 직접 확인해요</p>
+        <ul class="list">
+          <li>
+            <div class="r1">
+              <span class="avp">
+                <svg class="ph" viewBox="0 0 40 40"><rect width="40" height="40" rx="20" fill="#CFD3D8"/><circle cx="20" cy="15.5" r="6" fill="#fff" opacity=".9"/><path d="M8 40c1.6-7.4 6.2-11.5 12-11.5S30.4 32.6 32 40Z" fill="#fff" opacity=".9"/></svg>
+                <span class="bdg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="17.3" cy="6.7" r="1.3" fill="currentColor" stroke="none"/></svg></span>
+              </span>
+              <div class="mid"><p class="ttl"><a href="#">@urdeal_official<span class="ext">&#x2197;</span></a></p><p class="sub">인스타그램 &middot; 비즈니스 계정</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats">
+                <span><span class="big">9,283</span><span class="bigw">팔로워</span></span>
+                <span class="sec"><b>13</b> 게시물</span>
+              </p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 4일 전 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+          <li>
+            <div class="r1">
+              <span class="avp">
+                <svg class="ph" viewBox="0 0 40 40"><rect width="40" height="40" rx="20" fill="#CFD3D8"/><circle cx="20" cy="15.5" r="6" fill="#fff" opacity=".9"/><path d="M8 40c1.6-7.4 6.2-11.5 12-11.5S30.4 32.6 32 40Z" fill="#fff" opacity=".9"/></svg>
+                <span class="bdg"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z"/></svg></span>
+              </span>
+              <div class="mid"><p class="ttl"><a href="#">@urdeal<span class="ext">&#x2197;</span></a></p><p class="sub">유튜브</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats">
+                <span><span class="big">1,204</span><span class="bigw">구독자</span></span>
+                <span class="sec"><b>37</b> 영상</span>
+              </p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 방금 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+          <li>
+            <div class="r1">
+              <span class="av off"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z"/></svg></span>
+              <div class="mid"><p class="ttl">틱톡</p><p class="sub">연동 안 됨</p></div>
+              <button class="cta">연동하기</button>
+            </div>
+          </li>
+        </ul>
+      </div></div>
+    </div>
+    <div class="theme"><span>다크</span>
+      <div class="phone dk dark"><div class="card">
+        <h3>SNS 연동</h3><p class="cd">연동하면 팔로워 수를 플랫폼에서 직접 확인해요</p>
+        <ul class="list">
+          <li>
+            <div class="r1">
+              <span class="avp">
+                <svg class="ph" viewBox="0 0 40 40"><rect width="40" height="40" rx="20" fill="#383D42"/><circle cx="20" cy="15.5" r="6" fill="#9FA3A8"/><path d="M8 40c1.6-7.4 6.2-11.5 12-11.5S30.4 32.6 32 40Z" fill="#9FA3A8"/></svg>
+                <span class="bdg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="17.3" cy="6.7" r="1.3" fill="currentColor" stroke="none"/></svg></span>
+              </span>
+              <div class="mid"><p class="ttl"><a href="#">@urdeal_official<span class="ext">&#x2197;</span></a></p><p class="sub">인스타그램 &middot; 비즈니스 계정</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats">
+                <span><span class="big">9,283</span><span class="bigw">팔로워</span></span>
+                <span class="sec"><b>13</b> 게시물</span>
+              </p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 4일 전 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 안 B-2 ───────────── -->
+<section>
+  <div class="shead"><h2>안 B-2. 로고 원을 그대로 두고 숫자만</h2><span class="pick">사진 자리 후보 2</span></div>
+  <p class="what">게시물 수는 더하지만 사진은 안 쓴다. 지금의 상태 표시(연동이면 파란 원 · 미연동이면 회색 원)가
+  <strong>그대로 유지된다</strong>는 것이 이 안의 값이다. 사진을 쓰면 그 원의 색이 사라지므로 연동 여부를 배지 하나로만 말하게 된다.
+  대신 줄이 덜 개인적이고 다른 연동 화면들보다 밋밋하다.</p>
+  <div class="pair">
+    <div class="theme"><span>라이트</span>
+      <div class="phone"><div class="card">
+        <h3>SNS 연동</h3><p class="cd">연동하면 팔로워 수를 플랫폼에서 직접 확인해요</p>
+        <ul class="list">
+          <li>
+            <div class="r1">
+              <span class="av"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+              <div class="mid"><p class="ttl"><a href="#">@urdeal_official<span class="ext">&#x2197;</span></a></p><p class="sub">인스타그램 &middot; 비즈니스 계정</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats">
+                <span><span class="big">9,283</span><span class="bigw">팔로워</span></span>
+                <span class="sec"><b>13</b> 게시물</span>
+              </p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 4일 전 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+          <li>
+            <div class="r1">
+              <span class="av"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z"/></svg></span>
+              <div class="mid"><p class="ttl"><a href="#">@urdeal<span class="ext">&#x2197;</span></a></p><p class="sub">유튜브</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats">
+                <span><span class="big">1,204</span><span class="bigw">구독자</span></span>
+                <span class="sec"><b>37</b> 영상</span>
+              </p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 방금 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div></div>
+    </div>
+    <div class="theme"><span>다크</span>
+      <div class="phone dk dark"><div class="card">
+        <h3>SNS 연동</h3><p class="cd">연동하면 팔로워 수를 플랫폼에서 직접 확인해요</p>
+        <ul class="list">
+          <li>
+            <div class="r1">
+              <span class="av"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+              <div class="mid"><p class="ttl"><a href="#">@urdeal_official<span class="ext">&#x2197;</span></a></p><p class="sub">인스타그램 &middot; 비즈니스 계정</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats">
+                <span><span class="big">9,283</span><span class="bigw">팔로워</span></span>
+                <span class="sec"><b>13</b> 게시물</span>
+              </p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 4일 전 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── 안 C ───────────── -->
+<section>
+  <div class="shead"><h2>안 C. 안 B에 팔로워 추이</h2></div>
+  <p class="what">사장님이 "성장 중인 계정"을 고를 수 있어 설득력은 가장 크다. 다만 지금은 다시 확인할 때마다 팔로워를
+  <strong>덮어쓰므로</strong> 스냅샷 테이블을 새로 만들어야 하고, <strong>데이터가 쌓여야 보인다</strong>. 라이브 연동이 0건이라
+  첫 연동부터 모으기 시작해도 처음 한두 주는 오른쪽 아래 둘째 줄처럼 빈 칸이다.
+  그리고 이 팔레트에는 초록이 없어서(장식 색조가 전부 잉크로 중화돼 있다) 증감은 색이 아니라 화살표로만 말한다.</p>
+  <div class="pair">
+    <div class="theme"><span>라이트 &middot; 쌓인 뒤</span>
+      <div class="phone"><div class="card">
+        <h3>SNS 연동</h3><p class="cd">연동하면 팔로워 수를 플랫폼에서 직접 확인해요</p>
+        <ul class="list">
+          <li>
+            <div class="r1">
+              <span class="avp">
+                <svg class="ph" viewBox="0 0 40 40"><rect width="40" height="40" rx="20" fill="#CFD3D8"/><circle cx="20" cy="15.5" r="6" fill="#fff" opacity=".9"/><path d="M8 40c1.6-7.4 6.2-11.5 12-11.5S30.4 32.6 32 40Z" fill="#fff" opacity=".9"/></svg>
+                <span class="bdg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="17.3" cy="6.7" r="1.3" fill="currentColor" stroke="none"/></svg></span>
+              </span>
+              <div class="mid"><p class="ttl"><a href="#">@urdeal_official<span class="ext">&#x2197;</span></a></p><p class="sub">인스타그램 &middot; 비즈니스 계정</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats">
+                <span><span class="big">9,283</span><span class="bigw">팔로워</span></span>
+                <span class="trend">&#x2191; 120 이번 주</span>
+                <span class="sec"><b>13</b> 게시물</span>
+              </p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 4일 전 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div></div>
+    </div>
+    <div class="theme"><span>라이트 &middot; 쌓이기 전 (첫 한두 주)</span>
+      <div class="phone"><div class="card">
+        <h3>SNS 연동</h3><p class="cd">연동하면 팔로워 수를 플랫폼에서 직접 확인해요</p>
+        <ul class="list">
+          <li>
+            <div class="r1">
+              <span class="avp">
+                <svg class="ph" viewBox="0 0 40 40"><rect width="40" height="40" rx="20" fill="#CFD3D8"/><circle cx="20" cy="15.5" r="6" fill="#fff" opacity=".9"/><path d="M8 40c1.6-7.4 6.2-11.5 12-11.5S30.4 32.6 32 40Z" fill="#fff" opacity=".9"/></svg>
+                <span class="bdg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="17.3" cy="6.7" r="1.3" fill="currentColor" stroke="none"/></svg></span>
+              </span>
+              <div class="mid"><p class="ttl"><a href="#">@urdeal_official<span class="ext">&#x2197;</span></a></p><p class="sub">인스타그램 &middot; 비즈니스 계정</p></div>
+              <span class="okb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> 연동됨</span>
+            </div>
+            <div class="r2">
+              <p class="stats">
+                <span><span class="big">9,283</span><span class="bigw">팔로워</span></span>
+                <span class="trend wait">추이는 다음 주부터</span>
+                <span class="sec"><b>13</b> 게시물</span>
+              </p>
+              <div class="acts">
+                <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg> 방금 확인</button>
+                <button class="btn un">해제</button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<div class="tail">
+  <h2>지킬 것</h2>
   <ul>
-    <li>
-      <div class="top">
-        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
-          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></span></span>
-        <div class="mid"><p class="h">지원의 식탁 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@urdeal_jiwon · 인스타그램</p></div>
-        <span class="pill">✓ 연동됨</span>
-      </div>
-      <div class="nums">
-        <p><span class="big">12,480</span><span class="unit">팔로워</span></p>
-        <div class="acts"><button class="act">⟳ 방금 확인</button><button class="act q">해제</button></div>
-      </div>
-    </li>
-    <li>
-      <div class="top">
-        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
-          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="2.5" y="5" width="19" height="14" rx="4"/></svg></span></span>
-        <div class="mid"><p class="h">지원테이블 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@jiwon-table · 유튜브</p></div>
-        <span class="pill">✓ 연동됨</span>
-      </div>
-      <div class="nums">
-        <p><span class="big">3,210</span><span class="unit">구독자</span></p>
-        <div class="acts"><button class="act">⟳ 2일 전 확인</button><button class="act q">해제</button></div>
-      </div>
-    </li>
-    <li>
-      <div class="top">
-        <span class="circ off"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18a3 3 0 1 0 0-6v6zM12 12V4c1.2 2.2 2.8 3 5 3"/></svg></span>
-        <div class="mid"><p class="h">틱톡</p><p class="s">연동 준비 중</p></div>
-        <button class="btn dim">연동하기</button>
-      </div>
-    </li>
-  </ul></div>
+    <li><b>블록마다 카드를 씌우지 않는다.</b> 이 목록은 이미 "SNS 연동" 카드 안이고 신청 시트 안이다. 안에 또 판을 깔면 카드 안에 카드가 된다.</li>
+    <li><b>못 읽은 숫자를 0으로 위장하지 않는다.</b> 사장님의 팔로워 조건이 이 숫자로 판정되므로 모르는 것과 0은 다르다. 안 A가 하는 일은 그 빈 칸에 이유를 붙이는 것이다.</li>
+    <li><b>로고는 단색으로 둔다.</b> 플랫폼 공식 색을 쓰면 그 줄에서 가장 먼저 읽히는 것이 남의 브랜드가 된다. 사진을 넣는 안에서도 배지 로고는 단색이다.</li>
+    <li><b>굵은 글자는 덩어리마다 하나.</b> 팔로워가 주인공이므로 게시물 수는 13px 중간 굵기로 둔다.</li>
+    <li><b>사진이 없으면 지금 로고 원으로 떨어진다.</b> 빈 동그라미를 남기지 않는다.</li>
+  </ul>
 </div>
 
-<!-- ───────── 안 B ───────── -->
-<div class="col">
-  <p class="tag">안 B — 숫자를 더</p>
-  <p class="name">게시물 · 조회수까지</p>
-  <p class="why">유튜브는 <b>지금도 같은 응답에 들어오는데 버리고 있습니다</b>(추가 요청 0). 인스타는 게시물 수 한 줄 더.</p>
-  <div class="card"><p class="cardTitle">SNS 연동</p>
-  <ul>
-    <li>
-      <div class="top">
-        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
-          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></span></span>
-        <div class="mid"><p class="h">지원의 식탁 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@urdeal_jiwon · 인스타그램 · 크리에이터</p></div>
-        <span class="pill">✓ 연동됨</span>
-      </div>
-      <div class="stats">
-        <div class="st"><p class="v">12,480</p><p class="k">팔로워</p></div>
-        <div class="st"><p class="v sm">342</p><p class="k">게시물</p></div>
-        <div class="acts" style="margin-left:auto"><button class="act">⟳ 방금</button><button class="act q">해제</button></div>
-      </div>
-    </li>
-    <li>
-      <div class="top">
-        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
-          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="2.5" y="5" width="19" height="14" rx="4"/></svg></span></span>
-        <div class="mid"><p class="h">지원테이블 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@jiwon-table · 유튜브</p></div>
-        <span class="pill">✓ 연동됨</span>
-      </div>
-      <div class="stats">
-        <div class="st"><p class="v">3,210</p><p class="k">구독자</p></div>
-        <div class="st"><p class="v sm">87</p><p class="k">영상</p></div>
-        <div class="st"><p class="v sm">41.2만</p><p class="k">조회</p></div>
-        <div class="acts" style="margin-left:auto"><button class="act">⟳ 2일 전</button></div>
-      </div>
-    </li>
-    <li>
-      <div class="top">
-        <span class="circ off"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18a3 3 0 1 0 0-6v6zM12 12V4c1.2 2.2 2.8 3 5 3"/></svg></span>
-        <div class="mid"><p class="h">틱톡</p><p class="s">연동 준비 중</p></div>
-        <button class="btn dim">연동하기</button>
-      </div>
-    </li>
-  </ul></div>
+<p class="foot">프로필 사진 자리는 대역 그림이다. 실제 사진 주소는 연동 계정에서 받아 확인했지만 그 CDN 호스트가 이 세션에서 막혀 있어 내려받아 넣지 못했다.
+유튜브 구독자 1,204 · 영상 37은 예시 값이고, 인스타그램 9,283 · 게시물 13 · 비즈니스 계정은 실측값이다.</p>
+
 </div>
-
-<!-- ───────── 안 C ───────── -->
-<div class="col">
-  <p class="tag">안 C — 상태까지 (가장 많이 띄움)</p>
-  <p class="name">왜 못 읽었는지 · 언제 끊기는지</p>
-  <p class="why">숫자가 <b>—</b> 일 때 이유를 말해 줍니다. 토큰 만료도 미리 알려 줍니다. <b>새 조회 0</b> — 이미 저장된 값입니다.</p>
-  <div class="card"><p class="cardTitle">SNS 연동</p>
-  <ul>
-    <li>
-      <div class="top">
-        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
-          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></span></span>
-        <div class="mid"><p class="h">지원의 식탁 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@urdeal_jiwon · 인스타그램 · 크리에이터</p></div>
-        <span class="pill">✓ 연동됨</span>
-      </div>
-      <div class="stats">
-        <div class="st"><p class="v">12,480</p><p class="k">팔로워</p></div>
-        <div class="st"><p class="v sm">342</p><p class="k">게시물</p></div>
-        <div class="acts" style="margin-left:auto"><button class="act">⟳ 방금</button><button class="act q">해제</button></div>
-      </div>
-      <p class="note warn">⚠ <span><b>12일 뒤 연동이 끊겨요.</b> 그때 다시 눌러 주세요.</span></p>
-    </li>
-    <li>
-      <div class="top">
-        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
-          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><rect x="2.5" y="5" width="19" height="14" rx="4"/></svg></span></span>
-        <div class="mid"><p class="h">지원테이블 <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@jiwon-table · 유튜브</p></div>
-        <span class="pill">✓ 연동됨</span>
-      </div>
-      <div class="stats">
-        <div class="st"><p class="v">—</p><p class="k">구독자</p></div>
-        <div class="st"><p class="v sm">87</p><p class="k">영상</p></div>
-        <div class="st"><p class="v sm">41.2만</p><p class="k">조회</p></div>
-        <div class="acts" style="margin-left:auto"><button class="act">⟳ 방금</button></div>
-      </div>
-      <p class="note">ⓘ <span><b>채널이 구독자 수를 숨겨 뒀어요.</b> 유튜브에서 공개로 바꾸면 바로 읽힙니다.</span></p>
-    </li>
-    <li>
-      <div class="top">
-        <span class="av"><span class="ph"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9FA3A8" stroke-width="1.8"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20c1-3.3 3.5-5 6.5-5s5.5 1.7 6.5 5"/></svg></span>
-          <span class="lg"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16181C" stroke-width="2.4"><path d="M9 18a3 3 0 1 0 0-6v6zM12 12V4c1.2 2.2 2.8 3 5 3"/></svg></span></span>
-        <div class="mid"><p class="h">지원 jiwon <span style="color:#81868C;font-size:13px">↗</span></p><p class="s">@jiwon_eats · 틱톡</p></div>
-        <span class="pill">✓ 연동됨</span>
-      </div>
-      <div class="stats">
-        <div class="st"><p class="v">—</p><p class="k">팔로워</p></div>
-        <div class="acts" style="margin-left:auto"><button class="act">⟳ 방금</button><button class="act q">해제</button></div>
-      </div>
-      <p class="note">ⓘ <span><b>틱톡 승인을 기다리는 중이라 아직 못 읽어요.</b> 계정 확인은 끝났습니다.</span></p>
-    </li>
-  </ul></div>
-</div>
-
-</div><!-- /row -->
-
-<h1 style="margin-top:34px;font-size:17px">이 값이 어디서 오는가 — 지어낼 수 없는 것들</h1>
-<table>
-  <tr><th>띄울 값</th><th>인스타그램</th><th>유튜브</th><th>틱톡</th><th>비용</th></tr>
-  <tr><td><b>계정 링크 · 이름</b></td><td class="ok">이미 저장됨</td><td class="ok">이미 저장됨</td><td class="ok">이미 저장됨</td><td>0 — 화면만</td></tr>
-  <tr><td><b>프로필 사진</b></td><td>fields 한 줄 추가</td><td class="ok">이미 응답에 옴</td><td>fields 한 줄 추가</td><td>0 — 같은 요청</td></tr>
-  <tr><td><b>게시물 · 영상 수</b></td><td>fields 한 줄 추가</td><td class="ok">이미 응답에 옴</td><td class="no">심사 범위 필요</td><td>0 — 같은 요청</td></tr>
-  <tr><td><b>총 조회수</b></td><td class="no">없음</td><td class="ok">이미 응답에 옴</td><td class="no">심사 범위 필요</td><td>0</td></tr>
-  <tr><td><b>못 읽은 이유</b></td><td class="ok">계정 종류로 판정</td><td class="ok">숨김 여부가 옴</td><td class="ok">심사 전으로 판정</td><td>0 — 이미 저장됨</td></tr>
-  <tr><td><b>만료 안내</b></td><td class="ok">토큰 만료일 저장됨</td><td class="ok">저장됨</td><td class="ok">저장됨</td><td>0 — 이미 저장됨</td></tr>
-</table>
-<p class="legend">
-  ⓘ <b>안 A·C 는 새 조회가 0 입니다</b> — 이미 저장돼 있거나 같은 응답에 들어오는 값만 씁니다.<br>
-  ⓘ <b>안 B 의 유튜브도 추가 요청이 0</b> 입니다(`part=snippet,statistics` 를 이미 받아 그 안의 영상·조회 수를 버리고 있습니다).<br>
-  ⚠ <b>틱톡의 추가 숫자만 심사에 달려 있습니다</b> — 그래서 안 B·C 에서도 틱톡은 팔로워 한 칸입니다. 없는 칸을 빈 채로 두지 않습니다.<br>
-  ⚠ 넣을 자리는 코드 한 곳입니다 — `fetchProfile()`(연동과 다시 확인이 **같은 조회**를 씁니다).
-</p>
-</div></body></html>
+</body>
+</html>
