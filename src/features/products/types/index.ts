@@ -37,6 +37,12 @@ export interface ProductFilter {
   // 🛡️ 2026-05-19: /browse vs /vouchers 분리 — deal_only 기준 필터링.
   dealOnly?: boolean;       // true → 교환권만 (deal_only=1). /vouchers 페이지.
   excludeDealOnly?: boolean; // true → 일반 상품만 (deal_only=0). /browse 페이지.
+  /**
+   * 📍 2026-11-02: true → **이용권만**(이용권 카테고리 + deal_only=0). 검색 화면 기본 범위.
+   *   종전엔 서버가 이용권·교환권·쇼핑을 섞어 50개씩 주고 화면이 걸러서, `서울` 같은 넓은 검색어는
+   *   첫 장의 일부만 이용권이었다(라이브: 50개 중 40개). 거를 것을 서버가 거르면 한 장이 온전히 이용권이다.
+   */
+  voucherOnly?: boolean;
 }
 
 export interface ProductCreateInput {

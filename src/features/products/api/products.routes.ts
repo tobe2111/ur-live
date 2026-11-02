@@ -334,6 +334,8 @@ productsRoutes.get('/', cors(), async (c) => {
       dealOnly: c.req.query('deal_only') === '1',
       excludeDealOnly: c.req.query('exclude_deal_only') === '1',
     };
+    const searchScope = safeSearch ? c.req.query('scope') : undefined
+    if (searchScope === 'voucher') filter.voucherOnly = true; else if (searchScope === 'exchange') filter.dealOnly = true; // 📍 2026-11-02 검색 범위(없으면 전부)
     
     const pagination = {
       page: c.req.query('page') ? Number(c.req.query('page')) : 1,
