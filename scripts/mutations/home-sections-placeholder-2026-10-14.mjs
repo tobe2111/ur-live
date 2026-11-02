@@ -2,10 +2,18 @@ export default [
   {
     name: '[home-placeholder] 자리 분기가 유어쇼츠 레일을 다시 빠뜨린다',
     file: 'src/components/home/HomeSections.tsx',
-    find: "        {shortsAfter > 0 ? <>{midBanner}{shortsRail}</> : <>{shortsRail}{midBanner}</>}",
-    replace: "        {shortsAfter > 0 ? <>{midBanner}</> : <>{midBanner}</>}",
+    find: "        {shortsAfter > 0 ? midBanner : <>{shortsRail}{midBanner}</>}",
+    replace: "        {shortsAfter > 0 ? midBanner : <>{midBanner}</>}",
     test: 'src/tests/unit/home-sections-placeholder-2026-10-14.test.ts',
     why: '섹션 응답 순간 레일(~240px)이 끼어들어 피드를 민다(하네스 CLS 0.16).',
+  },
+  {
+    name: '[home-placeholder] 둘째 섹션 뒤 레일을 자리에서 미리 그린다',
+    file: 'src/components/home/HomeSections.tsx',
+    find: "        {shortsAfter > 0 ? midBanner : <>{shortsRail}{midBanner}</>}",
+    replace: "        {shortsAfter > 0 ? <>{midBanner}{shortsRail}</> : <>{shortsRail}{midBanner}</>}",
+    test: 'src/tests/unit/home-sections-placeholder-2026-10-14.test.ts',
+    why: '자리는 섹션 하나인데 진짜 레일은 섹션 둘 뒤 — 응답 순간 레일이 +841px 밀린다(2026-11-02 홈 🔴).',
   },
   {
     name: '[home-placeholder] 자리 카드가 이름을 한 줄로 잡는다',

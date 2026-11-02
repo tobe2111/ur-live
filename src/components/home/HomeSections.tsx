@@ -177,7 +177,10 @@ export default function HomeSections(
               </div>
             )}
         </section>
-        {shortsAfter > 0 ? <>{midBanner}{shortsRail}</> : <>{shortsRail}{midBanner}</>}
+        {/* 🎬 2026-11-02 — 유어쇼츠를 둘째 섹션 뒤에 두는 화면(shortsAfter>0)에선 기다리는 동안 레일을 **안 그린다**.
+            자리는 섹션 하나만 잡는데 진짜 레일은 섹션 둘 뒤에 서므로, 미리 그리면 응답 순간 +841px 밀린다(하네스 실측).
+            안 그리면 레일은 아래에서 *생기기만* 한다 — 읽던 줄은 안 움직인다. 섹션 개수를 추측해 자리를 늘리지 않는다. */}
+        {shortsAfter > 0 ? midBanner : <>{shortsRail}{midBanner}</>}
       </>
     )
   }
