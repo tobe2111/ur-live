@@ -7,7 +7,13 @@
  *  - **바텀시트**(그 밖 — 함께 신청 안내 등).
  * z-index 는 표준 시트 단(10600) — 하단 네비 위로 뜬다(`constants/z-index.ts`).
  */
-import { createContext, useContext, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 10차 ⑥ — 단계마다 시트가 새로 그려져서 막대가 '차오르지' 않고 끝값으로 바로 떴다.
+//   막대는 직전 단계 비율(--ls-from)에서 차오르고, 질문은 앞으로 가면 오른쪽에서 · 뒤로 가면 왼쪽에서 들어온다.
+injectMotionCss('ur-m-lifestep', `@keyframes ur-ls-bar { from { transform: scaleX(var(--ls-from, 1)); } }@keyframes ur-ls-fwd { from { opacity: 0; transform: translateX(32px); } }@keyframes ur-ls-back { from { opacity: 0; transform: translateX(-32px); } }.ur-ls-bar { transform-origin: left; animation: ur-ls-bar .45s cubic-bezier(.2,.9,.3,1) backwards; }.ur-ls-fwd { animation: ur-ls-fwd .32s cubic-bezier(.2,.9,.3,1) backwards; }.ur-ls-back { animation: ur-ls-back .32s cubic-bezier(.2,.9,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-ls-bar,.ur-ls-fwd,.ur-ls-back{animation:none!important}}`)
+/** 직전에 그린 단계 — 시트가 단계마다 새로 그려지므로 모듈에 둔다(한 화면에 단계 시트는 하나뿐이다). */
+let lastStep = 0
 import { ChevronLeft, X } from 'lucide-react'
 
 export interface StepFrame {
@@ -31,6 +37,8 @@ export function Sheet({ title, onClose, children, footer }: {
   footer?: ReactNode
 }) {
   const frame = useContext(StepFrameContext)
+  // 마운트 때 한 번만 '어디서 왔나' 를 정한다 — 렌더마다 다시 재면 입력 중 다시 그려질 때 움직임이 끊긴다.
+  const [from] = useState(() => { const prev = lastStep; if (frame) lastStep = frame.step; return prev })
   useEffect(() => {
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -41,6 +49,9 @@ export function Sheet({ title, onClose, children, footer }: {
 
   if (frame) {
     const pct = Math.round((frame.step / frame.total) * 100)
+    const prev = from
+    const moved = prev > 0 && prev !== frame.step
+    const barFrom = moved ? Math.max(0, Math.min(4, prev / frame.step)) : 1
     return (
       <div className="fixed inset-0 z-[10600] flex flex-col bg-surface text-ink" role="dialog" aria-modal="true" aria-label={title}>
         <div className="mx-auto flex w-full max-w-[560px] flex-1 flex-col min-h-0">
@@ -50,12 +61,14 @@ export function Sheet({ title, onClose, children, footer }: {
             <span className="w-9 text-right text-[13px] font-medium tabular-nums text-gray-500 dark:text-gray-400">{frame.step}/{frame.total}</span>
           </div>
           <div className="mx-5 h-1 overflow-hidden rounded-full bg-rule" role="progressbar" aria-valuenow={frame.step} aria-valuemin={1} aria-valuemax={frame.total}>
-            <div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${pct}%` }} />
+            <div className={`h-full rounded-full bg-brand transition-[width] duration-300${moved ? ' ur-ls-bar' : ''}`} style={{ width: `${pct}%`, '--ls-from': barFrom } as React.CSSProperties} />
           </div>
           {frame.step === 1 && frame.intro && <div className="px-5 pt-5">{frame.intro}</div>}
           {frame.step === 1 && frame.notice && <div className="px-5 pt-4">{frame.notice}</div>}
-          <h2 className="px-5 pt-6 pb-5 text-[24px] font-bold leading-snug tracking-tight">{title}</h2>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">{children}</div>
+          <div className={`flex min-h-0 flex-1 flex-col${moved ? (frame.step > prev ? ' ur-ls-fwd' : ' ur-ls-back') : ''}`}>
+            <h2 className="px-5 pt-6 pb-5 text-[24px] font-bold leading-snug tracking-tight">{title}</h2>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">{children}</div>
+          </div>
           {footer && <div className="px-5 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">{footer}</div>}
         </div>
       </div>

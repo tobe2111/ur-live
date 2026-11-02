@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChartIcon, ClockIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
@@ -6,6 +6,8 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { usePopularSearches } from '@/hooks/queries/usePopularSearches'
 import Udal from '@/components/mascot/Udal'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 10차 ② — 지운 검색어는 작아지며 사라지고, 남은 검색어는 제자리로 미끄러져 빈자리를 채운다(FLIP).
+injectMotionCss('ur-m-chipout', `@keyframes ur-chip-out { to { opacity: 0; transform: scale(.6); } }.ur-rise.ur-chip-out { pointer-events: none; animation: ur-chip-out .2s ease-in forwards; }@media (prefers-reduced-motion: reduce){.ur-rise.ur-chip-out{animation:none!important;opacity:0}}`)
 injectMotionCss('ur-m-rise', `@keyframes ur-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }.ur-rise { animation: ur-rise .35s cubic-bezier(.16,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-rise{animation:none!important}}`)
 
 interface SearchStatesProps {
@@ -57,11 +59,32 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
     if (!query) setRecent(loadRecent())
   }, [query])
 
+  // 지우는 중인 검색어 — 사라지는 0.2초 동안만 둔다. 그 뒤 실제로 빼고, 남은 칩을 옛 자리에서 새 자리로 미끄러뜨린다.
+  const [leaving, setLeaving] = useState<string | null>(null)
+  const chipRefs = useRef(new Map<string, HTMLDivElement>())
+  const before = useRef<Map<string, DOMRect> | null>(null)
   const removeOne = (q: string) => {
-    const next = recent.filter(x => x !== q)
-    setRecent(next)
-    saveRecent(next)
+    if (leaving) return
+    setLeaving(q)
+    window.setTimeout(() => {
+      before.current = new Map([...chipRefs.current].filter(([k]) => k !== q).map(([k, el]) => [k, el.getBoundingClientRect()]))
+      setLeaving(null)
+      setRecent((cur) => { const next = cur.filter(x => x !== q); saveRecent(next); return next })
+    }, 200)
   }
+  useLayoutEffect(() => {
+    const prev = before.current
+    if (!prev) return
+    before.current = null
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    for (const [k, el] of chipRefs.current) {
+      const a = prev.get(k)
+      if (!a || typeof el.animate !== 'function') continue
+      const b = el.getBoundingClientRect()
+      const dx = a.left - b.left, dy = a.top - b.top
+      if (dx || dy) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2,.9,.3,1)' })
+    }
+  }, [recent])
   const clearAll = () => {
     setRecent([])
     saveRecent([])
@@ -119,8 +142,10 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
               {recent.map((q, qi) => (
                 <div
                   key={q}
-                  style={{ animationDelay: `${Math.min(qi, 8) * 40}ms` }}
-                  className="ur-rise inline-flex items-center gap-2 pl-3 pr-1 py-2 bg-gray-100 dark:bg-[#1D1F29] rounded-full text-[12px] text-gray-700 dark:text-gray-300"
+                  ref={(el) => { if (el) chipRefs.current.set(q, el); else chipRefs.current.delete(q) }}
+                  aria-hidden={leaving === q || undefined}
+                  style={{ animationDelay: leaving === q ? '0ms' : `${Math.min(qi, 8) * 40}ms` }}
+                  className={`ur-rise${leaving === q ? ' ur-chip-out' : ''} inline-flex items-center gap-2 pl-3 pr-1 py-2 bg-gray-100 dark:bg-[#1D1F29] rounded-full text-[12px] text-gray-700 dark:text-gray-300`}
                 >
                   <button
                     onClick={() => navigate(`/search?q=${encodeURIComponent(q)}`)}

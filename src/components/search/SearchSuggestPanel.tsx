@@ -17,6 +17,9 @@
  * 패널이 결과를 덮지 않으므로 "닫아서 뒤를 봐야 하는" 경우 자체가 없다.
  */
 import { Search } from 'lucide-react'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 10차 ① — 새로 생긴 제안 줄만 위에서부터 한 줄씩 내려온다(글자를 더 쳐서 남는 줄은 그대로 — key 가 글자다).
+injectMotionCss('ur-m-sug', `@keyframes ur-sug-in { from { opacity: 0; transform: translateY(-6px); } }.ur-sug-in { animation: ur-sug-in .26s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--si, 0) * 40ms); }@media (prefers-reduced-motion: reduce){.ur-sug-in{animation:none!important}}`)
 
 /** 친 글자를 굵게 — "내가 친 것 + 이어지는 말" 로 읽히게. */
 function Marked({ text, q }: { text: string; q: string }) {
@@ -42,8 +45,8 @@ export default function SearchSuggestPanel({ query, suggestions, onPick }: Searc
   if (suggestions.length === 0) return null
   return (
     <ul className="ur-content-wide px-1 lg:px-5 py-1" role="listbox" aria-label="검색 제안">
-      {suggestions.map((text) => (
-        <li key={text}>
+      {suggestions.map((text, i) => (
+        <li key={text} className="ur-sug-in" style={{ '--si': Math.min(i, 7) } as React.CSSProperties}>
           <button
             type="button"
             role="option"
