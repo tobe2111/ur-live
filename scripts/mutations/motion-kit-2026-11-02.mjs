@@ -128,7 +128,7 @@ export default [
   {
     name: '🎬 탭 파란 칸이 측정 전에도 비어 첫 화면에 고른 탭이 안 보인다',
     file: 'src/components/ui/segmented-tabs.tsx',
-    find: "${on ? (pill ? 'text-white' : 'bg-brand text-white')",
+    find: "${on ? (!pill ? 'bg-brand text-white' : 'text-white')",
     replace: "${on ? 'text-white'",
     test: TEST,
     why: '첫 그림에서 고른 탭이 흰 글자에 흰 바탕이라 안 보인다(측정 뒤에야 파란 칸이 생긴다).',

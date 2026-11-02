@@ -168,7 +168,7 @@ export default function DealBottomBar({
             <span className="text-[15px] font-medium" style={{ color: 'var(--gbd-ink2)' }}>
               총 결제 금액
               {refPrice > unitPrice && !allDeal && (
-                <span key={quantity} className="ur-buy-save ml-1.5 inline-block rounded-full px-2 py-0.5 align-[2px] text-[12px] font-medium" style={{ color: 'var(--sale)', background: 'color-mix(in srgb, var(--sale) 10%, transparent)' }}>{formatNumber((refPrice - unitPrice) * quantity)}원 아껴요</span>
+                <span key={quantity} className="ur-buy-save ml-2 inline-block rounded-full px-2 py-1 align-[2px] text-[12px] font-medium" style={{ color: 'var(--sale)', background: 'color-mix(in srgb, var(--sale) 10%, transparent)' }}>{formatNumber((refPrice - unitPrice) * quantity)}원 아껴요</span>
               )}
             </span>
             <span className="text-[28px] font-extrabold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}><RollingNumber value={total} format={formatNumber} />{allDeal ? '딜' : '원'}</span>

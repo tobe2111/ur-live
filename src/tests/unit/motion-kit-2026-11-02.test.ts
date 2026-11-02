@@ -303,7 +303,7 @@ describe('⑦ 6차 — 동작 계약', () => {
     expect(src).toContain('if (dy < -24) remove(t.id)')
   })
   it('탭 파란 칸: 측정 전엔 고른 탭이 스스로 파랗다(깜빡임 0)', () => {
-    expect(R('src/components/ui/segmented-tabs.tsx')).toContain("${on ? (pill ? 'text-white' : 'bg-brand text-white')")
+    expect(R('src/components/ui/segmented-tabs.tsx')).toContain("${on ? (!pill ? 'bg-brand text-white' : 'text-white')")
   })
   it('창 끌어서 닫기: 폰에서만 · 끌어 닫을 땐 닫힘 애니메이션을 겹치지 않는다(튀는 것 방지)', () => {
     const src = R('src/pages/user-profile/seller-section/Sheet.tsx')

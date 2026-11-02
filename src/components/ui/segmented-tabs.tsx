@@ -71,7 +71,7 @@ export default function SegmentedTabs<K extends string | number>({
             onClick={() => onChange(it.id)}
             aria-pressed={on}
             style={{ flex: '1 0 auto' }}
-            className={`relative inline-flex min-h-[40px] items-center justify-center gap-1 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${on ? (pill ? 'text-white' : 'bg-brand text-white') : 'text-gray-400 hover:text-gray-700'}`}
+            className={`relative inline-flex min-h-[40px] items-center justify-center gap-1 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${on ? (!pill ? 'bg-brand text-white' : 'text-white') : 'text-gray-400 hover:text-gray-700'}`}
           >
             <span>{it.label}</span>
             {it.count != null && <span key={it.count} className={`tabular-nums${moved ? ' ur-seg-n' : ''}`}>{it.count.toLocaleString('ko-KR')}</span>}
