@@ -40,8 +40,67 @@ export function escapeLike(raw: string): string {
   return String(raw).replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
 }
 
-/** 검색 대상 컬럼 — **매장명 포함**이 이 SSOT 의 핵심(이용권은 매장이 본질). */
-export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'description', 'category'] as const
+/**
+ * 검색 대상 컬럼 — **매장명 포함**이 이 SSOT 의 핵심(이용권은 매장이 본질).
+ *
+ * 📍 2026-11-02 (대표 — *"부산 같이 지역을 검색 시에 이용권이 왜이렇게 안나오지?"*): **매장 주소**를 더했다.
+ *   종전엔 주소를 아무 데서도 안 봐서, 지역 검색은 상품명·설명에 그 지명이 *우연히* 적힌 것만 잡았다.
+ *   라이브 실측(활성 이용권 182개): 주소가 부산인 것 **7 → 검색에 걸린 것 1** · 해운대 3 → 0 ·
+ *   서울 86 → 2 · 강남 8 → 1. 지역은 이용권 검색의 가장 흔한 축인데 그 축이 통째로 비어 있었다.
+ */
+export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'restaurant_address', 'description', 'category'] as const
+
+/**
+ * 🗺️ 시·도 표기 차이 — 주소는 `부산 해운대구…` 처럼 **짧은 이름**으로도, `부산광역시…` 처럼 긴 이름으로도
+ *   들어온다(라이브: `경북`·`경남`·`충북` 은 짧게, `제주특별자치도`·`전북특별자치도` 는 길게).
+ *   부분매칭이라 `부산` 은 둘 다 잡지만, 사람이 `부산시`·`경상북도` 로 치면 어느 쪽에도 안 걸린다.
+ *   ⇒ 같은 시·도의 표기들을 한 묶음으로 두고, 검색어가 그중 하나면 나머지를 같이 찾는다.
+ *   ⚠️ 시·군·구(해운대구 등)는 여기 넣지 않는다 — 주소에 늘 같은 꼴로 적혀 부분매칭으로 충분하다.
+ */
+const REGION_GROUPS: ReadonlyArray<ReadonlyArray<string>> = [
+  ['서울', '서울시', '서울특별시'],
+  ['부산', '부산시', '부산광역시'],
+  ['대구', '대구시', '대구광역시'],
+  ['인천', '인천시', '인천광역시'],
+  ['광주', '광주광역시'],
+  ['대전', '대전시', '대전광역시'],
+  ['울산', '울산시', '울산광역시'],
+  ['세종', '세종시', '세종특별자치시'],
+  ['경기', '경기도'],
+  ['강원', '강원도', '강원특별자치도'],
+  ['충북', '충청북도'],
+  ['충남', '충청남도'],
+  ['전북', '전라북도', '전북특별자치도'],
+  ['전남', '전라남도'],
+  ['경북', '경상북도'],
+  ['경남', '경상남도'],
+  ['제주', '제주도', '제주특별자치도'],
+]
+
+/** 시·도 표기인가 (`부산`·`부산광역시`·`경상북도` …). */
+export function isRegionName(token: string): boolean {
+  const t = token.trim()
+  return REGION_GROUPS.some(g => g.includes(t))
+}
+
+/**
+ * 검색어가 시·도 표기면 같은 시·도의 **다른 표기**들을 돌려준다.
+ * 긴 표기는 짧은 표기를 포함하므로(`부산광역시` ⊃ `부산`) 짧은 것 하나만 있어도 부분매칭이 다 잡는다 —
+ * 그래서 **가장 짧은 표기**와, 짧은 것이 긴 것의 접두사가 아닌 표기(`경상북도` ↔ `경북`)만 더한다.
+ */
+export function regionVariants(token: string): string[] {
+  const t = token.trim()
+  const group = REGION_GROUPS.find(g => g.includes(t))
+  if (!group) return []
+  // 짧은 것부터 보며, 이미 고른 표기(검색어 포함)가 **안에 들어 있는** 표기는 버린다 — `%부산%` 이
+  //   `부산광역시` 를 이미 잡으므로 둘 다 넣으면 LIKE 만 늘어난다.
+  const kept: string[] = [t]
+  for (const v of [...group].sort((a, b) => a.length - b.length)) {
+    if (kept.some(k => v.includes(k))) continue
+    kept.push(v)
+  }
+  return kept.slice(1)
+}
 
 const MAX_TOKENS = 5
 const MAX_TOKEN_LEN = 40
@@ -98,20 +157,23 @@ export function buildSearchClause(
   const whereParams: string[] = []
 
   for (const token of tokens) {
-    const variants = [token, ...expand(token)]
+    const variants = [...new Set([token, ...regionVariants(token), ...expand(token)])]
     const ors: string[] = []
     for (const v of variants) {
       const like = `%${escapeLike(v)}%`
+      // 🗺️ 시·도 이름은 주소 **맨 앞**에서만 맞춘다 — `%대구%` 는 `부산 해운대구 …` 를 잡는다
+      //   (2026-11-02 시험이 실제로 잡은 오매칭). 주소는 늘 시·도로 시작한다(라이브 실측).
+      const addrLike = isRegionName(v) ? `${escapeLike(v)}%` : like
       for (const col of SEARCH_COLUMNS) {
         ors.push(`${p}${col} LIKE ? ESCAPE '\\'`)
-        whereParams.push(like)
+        whereParams.push(col === 'restaurant_address' ? addrLike : like)
       }
     }
     whereParts.push(`(${ors.join(' OR ')})`)
   }
 
   // 🏅 랭킹 — 전체 입력 문자열 기준. 사람은 "이름이 그 말로 시작하는 것"을 먼저 보고 싶어 한다.
-  //   상품명 정확일치 > 상품명 시작 > 상품명 포함 > 매장명 포함 > 카테고리 > 그 외(설명만 걸린 것).
+  //   상품명 정확일치 > 상품명 시작 > 상품명 포함 > 매장명 포함 > 매장 주소 포함 > 카테고리 > 그 외(설명만 걸린 것).
   const whole = tokens.join(' ')
   const esc = escapeLike(whole)
   const rank = `CASE
@@ -119,9 +181,10 @@ export function buildSearchClause(
       WHEN ${p}name LIKE ? ESCAPE '\\' THEN 800
       WHEN ${p}name LIKE ? ESCAPE '\\' THEN 600
       WHEN ${p}restaurant_name LIKE ? ESCAPE '\\' THEN 500
+      WHEN ${p}restaurant_address LIKE ? ESCAPE '\\' THEN 400
       WHEN ${p}category LIKE ? ESCAPE '\\' THEN 300
       ELSE 100 END`
-  const rankParams = [whole, `${esc}%`, `%${esc}%`, `%${esc}%`, `%${esc}%`]
+  const rankParams = [whole, `${esc}%`, `%${esc}%`, `%${esc}%`, `%${esc}%`, `%${esc}%`]
 
   return { where: whereParts.join(' AND '), rank, whereParams, rankParams }
 }
