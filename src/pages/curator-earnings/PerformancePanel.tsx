@@ -109,7 +109,7 @@ export default function PerformancePanel({ stats, onProxy }: {
   if (!products.length && !hasStores && !earnings.length) return null
 
   return (
-    <section className="bg-surface shadow-lift rounded-2xl px-4 pt-3 pb-2 mb-3">
+    <section className="rounded-2xl px-4 pt-3 pb-2 mb-3">
       <div className="flex items-center gap-2 mb-1">
         {tabs.map(([k, label]) => (
           <button

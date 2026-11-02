@@ -18,7 +18,7 @@ export default function UShopQrCard() {
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   if (!isDesktop) return null
   return (
-    <div className="hidden lg:flex items-center gap-3 mt-4 rounded-2xl bg-surface shadow-lift p-4">
+    <div className="hidden lg:flex items-center gap-3 mt-4 rounded-2xl p-4">
       <div className="rounded-lg bg-white dark:bg-white p-2 shrink-0">
         <Suspense fallback={<div className="w-[76px] h-[76px] rounded bg-gray-100 dark:bg-gray-100 animate-pulse" />}>
           {url ? <QRCodeSVG value={url} size={76} level="M" /> : <div className="w-[76px] h-[76px]" />}

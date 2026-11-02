@@ -391,7 +391,7 @@ export default function UserGroupBuyCreatePage() {
             </h2>
 
             {/* Summary card */}
-            <div className="rounded-xl p-4 space-y-3 bg-surface shadow-lift">
+            <div className="rounded-xl p-4 space-y-3">
               <div>
                 <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">{catMeta ? catMeta.place : t('groupbuy.summaryRestaurant', { defaultValue: '맛집' })}</p>
                 <p className="text-[15px] font-bold text-gray-900 dark:text-white">

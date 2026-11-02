@@ -129,7 +129,7 @@ export default function ReferralSection({
   if (REFERRAL_GROUP_DISCOUNT_DISABLED) return null
 
   return (
-    <div className="mx-4 mb-3 bg-surface rounded-xl p-4 shadow-lift">
+    <div className="mb-3 rounded-xl p-4">
       {/* 헤더 */}
       <div className="flex items-center gap-2 mb-2">
         <GiftBoxIcon className="w-4 h-4 text-gray-900 dark:text-white" />

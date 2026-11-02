@@ -57,7 +57,7 @@ export default function MallOriginBanner({ className = '' }: { className?: strin
   //   가게가 정한 색이 있으면 인라인 style 이 이긴다.
 
   return (
-    <div className={`flex items-center gap-3 rounded-xl bg-surface shadow-lift px-4 py-3 ${className}`}>
+    <div className={`flex items-center gap-3 rounded-xl px-4 py-3 ${className}`}>
       {brand.logoUrl ? (
         <img src={brand.logoUrl} alt="" className="h-9 w-9 rounded-lg object-cover" width={36} height={36} />
       ) : (
