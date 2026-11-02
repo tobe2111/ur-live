@@ -91,13 +91,13 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
   }
 
   return (
-    <div className="fixed inset-0 z-[10700] flex items-end sm:items-center justify-center bg-black/60" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-[10700] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
       <div
         role="dialog"
         aria-modal="true"
         aria-label="이용권 선물하기"
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-[420px] bg-surface rounded-t-2xl sm:rounded-2xl px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))]"
+        className="w-full sm:max-w-[420px] ur-glass rounded-[28px] px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))] overflow-hidden ur-dialog-in"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2">

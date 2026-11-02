@@ -83,12 +83,12 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
 
   return (
     <div
-      className="fixed inset-0 z-[10600] bg-black/60 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="bg-surface w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 pt-5 max-h-[90dvh] overflow-y-auto"
+        className="ur-glass w-full max-w-md rounded-[28px] p-6 pt-5 max-h-[90dvh] overflow-y-auto ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

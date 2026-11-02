@@ -118,9 +118,9 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
   //   물리적으로 위로 밀어올린다. sm:hidden(데스크톱 네비바 없음). z-index 가 이기든 지든 버튼은 항상 보임.
   if (typeof document === 'undefined') return null
   return createPortal((
-    <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center p-2 sm:p-4 ur-veil" role="dialog" aria-modal="true">
       <div
-        className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-surface rounded-t-3xl sm:rounded-3xl border border-line p-5 animate-sheet-rise"
+        className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto ur-glass rounded-[28px] p-5 ur-dialog-in"
       >
         <div className="flex items-start justify-between mb-1">
           <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">

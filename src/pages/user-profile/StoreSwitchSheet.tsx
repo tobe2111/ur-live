@@ -80,7 +80,7 @@ export default function StoreSwitchSheet({ currentSellerId, summaries = [], onCl
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/45 ur-sheet-veil"
+        className="fixed inset-0 ur-veil ur-sheet-veil"
         style={{ zIndex: Z.SHEET_BACKDROP }}
         onClick={onClose}
         aria-hidden="true"
@@ -89,7 +89,7 @@ export default function StoreSwitchSheet({ currentSellerId, summaries = [], onCl
         role="dialog"
         aria-modal="true"
         aria-label="매장 고르기"
-        className="fixed inset-x-0 bottom-0 max-h-[80dvh] flex flex-col rounded-t-2xl bg-surface ur-sheet-in"
+        className="fixed inset-x-2 bottom-2 max-h-[80dvh] flex flex-col rounded-[32px] ur-glass overflow-hidden ur-sheet-in"
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <div className="flex items-center justify-between px-4 h-14 border-b border-rule shrink-0">

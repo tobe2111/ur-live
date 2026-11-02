@@ -310,9 +310,9 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
   }
 
   return (
-    <div className="fixed inset-0 z-[10600] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose}>
       <div
-        className="bg-surface w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2C2F35] max-h-[90vh] overflow-y-auto"
+        className="ur-glass w-full sm:max-w-md rounded-[28px] max-h-[90vh] overflow-y-auto ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">

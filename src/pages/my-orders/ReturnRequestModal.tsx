@@ -50,9 +50,9 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 ur-veil">
       <div
-        className="bg-surface rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slideUp"
+        className="ur-glass rounded-[28px] max-w-md w-full p-6 overflow-hidden ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

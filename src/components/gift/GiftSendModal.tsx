@@ -85,13 +85,13 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
 
   return (
     <div
-      className="fixed inset-0 z-[10600] bg-black/50 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4"
       onClick={onClose}
       role="presentation"
     >
       <div
         ref={dialogRef}
-        className="bg-surface w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl max-h-[90dvh] overflow-y-auto"
+        className="ur-glass w-full max-w-[430px] rounded-[28px] max-h-[90dvh] overflow-y-auto ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

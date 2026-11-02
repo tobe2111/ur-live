@@ -130,8 +130,8 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
   }
   if (doneBridge) {
     return (
-      <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60" onClick={onClose} role="presentation">
-        <div className="w-full sm:max-w-xs sm:mx-4 rounded-t-3xl sm:rounded-3xl bg-surface p-6 text-center" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
+        <div className="w-full sm:max-w-xs sm:mx-4 rounded-[28px] ur-glass p-6 text-center overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
           <p className="text-[28px]" aria-hidden>✅</p>
           <p className="mt-2 text-[17px] font-bold text-gray-900 dark:text-white">사용 완료!</p>
           <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">결제 금액에서 쿠폰 금액을 빼고 결제하세요</p>
@@ -146,8 +146,8 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
     )
   }
   return (
-    <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60" onClick={onClose} role="presentation">
-      <div className="w-full sm:max-w-xs sm:mx-4 rounded-t-3xl sm:rounded-3xl bg-surface p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
+      <div className="w-full sm:max-w-xs sm:mx-4 rounded-[28px] ur-glass p-6 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <p className="text-center text-[17px] font-bold text-gray-900 dark:text-white">{formatWon(coupon.face_value)} 상권 쿠폰</p>
         <p className="mt-1 text-center tabular-nums text-[15px] font-bold tracking-widest text-gray-500 dark:text-gray-400">{coupon.code}</p>
         <div className="mt-4 space-y-3">

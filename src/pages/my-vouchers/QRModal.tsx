@@ -213,12 +213,12 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   const expiresLabel = expDate ? `${expDate.getFullYear()}.${String(expDate.getMonth() + 1).padStart(2, '0')}.${String(expDate.getDate()).padStart(2, '0')}까지` : null
 
   return (
-    <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-[2px]" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
       {/* 🩹 2026-09-21 (대표 신고 "이용권 페이지에 잘려서 안보임"): 바텀시트가 `items-end` 로 아래에 붙는데
           높이 상한도 스크롤도 없어서, 내용이 화면보다 길면 **위쪽(상품명·매장명·QR 윗부분)이 화면 밖으로 넘쳐
           손댈 수도 없었다.** 인앱 브라우저(카톡)는 상단 바만큼 보이는 높이가 더 줄어 더 잘 난다.
           ⇒ 패널에 높이 상한 + 본문 스크롤. 100vh 는 모바일에서 주소창을 포함해 실제보다 크므로 dvh(레포 룰). */}
-      <div className="bg-surface rounded-t-3xl sm:rounded-3xl px-6 pt-3 pb-6 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative animate-slideUp flex flex-col max-h-[92dvh] sm:max-h-[88dvh]" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
+      <div className="ur-glass rounded-[28px] px-6 pt-3 pb-6 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative flex flex-col max-h-[92dvh] sm:max-h-[88dvh] overflow-hidden ur-dialog-in" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
         {/* 그래버 (모바일 바텀시트) */}
         <div className="sm:hidden mx-auto mb-4 h-1 w-9 shrink-0 rounded-full bg-gray-200 dark:bg-[#2C2F35]" aria-hidden />
         <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29] dark:bg-[#1D1F29]">

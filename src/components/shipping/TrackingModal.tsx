@@ -120,9 +120,9 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
   }
 
   return (
-    <div className="fixed inset-0 z-[10001] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[10001] flex items-end sm:items-center justify-center p-2 sm:p-4 ur-veil" onClick={onClose}>
       <div
-        className="w-full sm:max-w-md max-h-[85vh] bg-surface rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden"
+        className="w-full sm:max-w-md max-h-[85vh] ur-glass rounded-[28px] flex flex-col overflow-hidden ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">

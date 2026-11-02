@@ -93,67 +93,68 @@ export function ConfirmHost() {
     setQueue((q) => q.slice(1))
   }
 
+  // 🪟 2026-11-02 대표 확정 — **유리 확인창** (*"블러 없이 유리로 하자"*, `docs/design/popup-system-2026-11.md`).
+  //   폰·PC 모두 화면 가운데 작은 카드(종전: 폰은 아래 시트). 판은 `.ur-glass`, 뒤 막은 `.ur-veil`(흐림 없음).
+  //   버튼은 얇은 선으로 나눈 글자 버튼 둘 — 색 면 버튼을 두지 않는다(B2 렌더에서 꽉 찬 빨강이
+  //   "화면에서 가장 시끄러운 것" 이라 세련되지 않다는 지적을 받았다). 위험만 빨간 글자, 나머지는 브랜드 글자.
   return (
     <div
-      className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[100000] grid place-items-center px-8 ur-veil ur-sheet-veil"
       onClick={() => close(false)}
       role="presentation"
     >
       <div
-        className="w-full sm:max-w-sm bg-white dark:bg-[#161616] rounded-t-2xl sm:rounded-2xl p-5 sm:mx-4 shadow-2xl"
+        className="ur-glass ur-dialog-in w-full max-w-[320px] rounded-[28px] overflow-hidden text-center"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-label={current.title || current.message}
       >
-        {current.title && (
-          <p className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{current.title}</p>
-        )}
-        <p className="text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-line">{current.message}</p>
+        <div className="px-6 pt-7 pb-5">
+          {current.title && (
+            <p className="text-[17px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{current.title}</p>
+          )}
+          <p className={`${current.title ? 'mt-1.5 text-gray-600 dark:text-gray-300' : 'text-gray-900 dark:text-white'} text-[15px] leading-relaxed whitespace-pre-line`}>{current.message}</p>
 
-        {current.prompt && (
-          current.prompt.multiline ? (
-            <textarea
-              key={queue.length}
-              ref={inputRef}
-              defaultValue={current.prompt.defaultValue}
-              placeholder={current.prompt.placeholder}
-              autoFocus
-              rows={3}
-              className="mt-3 w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-[#333] text-[15px] text-gray-900 dark:text-white bg-white dark:bg-[#0f0f0f] outline-none resize-none focus:border-gray-500"
-            />
-          ) : (
-            <input
-              key={queue.length}
-              ref={inputRef}
-              defaultValue={current.prompt.defaultValue}
-              placeholder={current.prompt.placeholder}
-              autoFocus
-              onKeyDown={(e) => { if (e.key === 'Enter') close(true) }}
-              className="mt-3 w-full h-11 px-3 rounded-xl border border-gray-300 dark:border-[#333] text-[15px] text-gray-900 dark:text-white bg-white dark:bg-[#0f0f0f] outline-none focus:border-gray-500"
-            />
-          )
-        )}
+          {current.prompt && (
+            current.prompt.multiline ? (
+              <textarea
+                key={queue.length}
+                ref={inputRef}
+                defaultValue={current.prompt.defaultValue}
+                placeholder={current.prompt.placeholder}
+                autoFocus
+                rows={3}
+                className="mt-4 w-full px-3 py-2 rounded-xl bg-surface text-left text-[15px] text-gray-900 dark:text-white outline-none resize-none focus:ring-2 focus:ring-brand/40"
+              />
+            ) : (
+              <input
+                key={queue.length}
+                ref={inputRef}
+                defaultValue={current.prompt.defaultValue}
+                placeholder={current.prompt.placeholder}
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') close(true) }}
+                className="mt-4 w-full h-11 px-3 rounded-xl bg-surface text-left text-[15px] text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand/40"
+              />
+            )
+          )}
+        </div>
 
-        <div className="mt-5 flex gap-2">
+        <div className={`grid ${current.alert ? 'grid-cols-1' : 'grid-cols-2'} border-t ur-glass-rule`}>
           {!current.alert && (
             <button
+              type="button"
               onClick={() => close(false)}
-              className="ur-btn ur-btn-lg flex-1 text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#262626]"
+              className="h-[52px] text-[15px] font-medium text-gray-700 dark:text-gray-200 active:bg-black/5 dark:active:bg-white/5 focus:outline-none focus-visible:bg-black/5"
             >
               {current.cancelText || '취소'}
             </button>
           )}
           <button
+            type="button"
             onClick={() => close(true)}
-            className="ur-btn ur-btn-lg flex-1 text-white"
-            // 🎨 2026-08-30: 기본 확인 버튼이 `linear-gradient(135deg,#6b7280,#6b7280)` —
-            //   **같은 색 두 개짜리 가짜 그라디언트**였고, 그 #6b7280 은 MONO 흑백 시절
-            //   (2026-06-19)의 잔재다. 브랜드 컬러 롤아웃(2026-07-19)에서 갱신되지 않아
-            //   108개 다이얼로그의 주 버튼만 홀로 중간 회색이었다(다른 주요 CTA 는 전부 잉크).
-            //   → 잉크(#16181C — 2026-08-30 차콜 이행 반영)로 정렬. 로즈로 가지 않는 이유는 브랜드 60-30-10(로즈 ≤10%)
-            //   결정을 108곳에서 한꺼번에 깨지 않기 위해서다.
-            //   danger 는 기능색이라 불변(지시서 §4 "성공/오류 기능색 유지").
-            style={{ background: current.danger ? 'linear-gradient(135deg, #ef4444, #dc2626)' : '#16181C' }}
+            className={`h-[52px] text-[15px] font-bold ${current.alert ? '' : 'border-l ur-glass-rule'} ${current.danger ? 'text-red-500' : 'text-brand-text'} active:bg-black/5 dark:active:bg-white/5 focus:outline-none focus-visible:bg-black/5`}
           >
             {current.confirmText || '확인'}
           </button>

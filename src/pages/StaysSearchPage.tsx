@@ -233,11 +233,11 @@ export default function StaysSearchPage() {
       {/* Filters Modal */}
       {showFilters && (
         <div
-          className="fixed inset-0 z-[10600] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center"
+          className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4"
           onClick={() => setShowFilters(false)}
           role="presentation"
         >
-          <div className="bg-surface w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2C2F35] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="ur-glass w-full sm:max-w-md rounded-[28px] max-h-[90vh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-white dark:bg-[#11141C] flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
               <h3 className="text-[15px] font-bold">검색 필터</h3>
               <button onClick={() => setShowFilters(false)} aria-label="닫기" className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/[0.06]"><X className="w-4 h-4" /></button>

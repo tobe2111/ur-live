@@ -71,7 +71,7 @@ export function CustomModal({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 ur-veil"
       onClick={(e) => {
         // Only close modal if clicking the overlay (not the modal content)
         if (e.target === e.currentTarget) {
@@ -84,7 +84,7 @@ export function CustomModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
-        className={`bg-surface rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ?'p-0' : 'p-6'} animate-slideUp relative`}
+        className={`ur-glass rounded-[28px] ${getMaxWidth()} w-full ${isCustom ?'p-0' : 'p-6'} relative overflow-hidden ur-dialog-in`}
         onClick={(e) => e.stopPropagation()}
       >
         {isCustom ? (

@@ -122,9 +122,9 @@ export default function VoucherRedeemModal({
   const clock = new Date(now).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 
   return (
-    <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center" onClick={phase === 'confirm' ? onClose : undefined} role="presentation">
+    <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={phase === 'confirm' ? onClose : undefined} role="presentation">
       <div
-        className="relative bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-[430px] max-h-[92dvh] overflow-y-auto p-6"
+        className="relative ur-glass rounded-[28px] w-full max-w-[430px] max-h-[92dvh] overflow-y-auto p-6 ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

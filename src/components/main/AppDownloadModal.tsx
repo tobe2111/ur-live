@@ -35,14 +35,14 @@ export default function AppDownloadModal({ onClose }: Props) {
   //   렌더 → 진짜 뷰포트 기준 fixed(전체 딤 + 중앙 정렬).
   return createPortal(
     <div
-      className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+      className="fixed inset-0 z-[10500] flex items-center justify-center px-4 ur-veil"
       role="dialog"
       aria-modal="true"
       aria-label="폰에서 유어딜 열기"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[380px] rounded-3xl bg-surface overflow-hidden shadow-2xl"
+        className="w-full max-w-[380px] rounded-[28px] ur-glass overflow-hidden ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}

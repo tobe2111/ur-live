@@ -36,8 +36,8 @@ export default function GbProposeModal({ productId, listPrice, productName, onCl
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-sm bg-surface rounded-t-2xl sm:rounded-2xl p-5 space-y-3" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center p-2 sm:p-4 ur-veil" onClick={onClose}>
+      <div className="w-full sm:max-w-sm ur-glass rounded-[28px] p-5 space-y-3 overflow-hidden ur-dialog-in" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">공구 제안하기</h3>
           <button onClick={onClose} aria-label="닫기" className="text-gray-400"><X className="w-5 h-5" /></button>
