@@ -21,8 +21,6 @@ import { describe, it, expect } from 'vitest'
 import { readCode, sliceFrom } from '../helpers/source-text'
 
 const ROUTES = 'src/features/supply/api/wholesale-malls-admin.routes.ts'
-const PANEL = 'src/pages/admin/wholesale-malls/MallSellersPanel.tsx'
-const PAGE = 'src/pages/admin/AdminWholesaleMallsPage.tsx'
 
 describe('🔴 R1 — 연결/해제 라우트가 있고 슈퍼 전용이다', () => {
   const code = readCode(ROUTES)
@@ -89,22 +87,4 @@ describe('🔴 R4 — 비활성 몰로는 못 옮긴다', () => {
   })
 })
 
-describe('🔴 R5 — 어드민 화면이 실제로 부른다', () => {
-  it('패널이 세 엔드포인트를 모두 호출한다', () => {
-    const code = readCode(PANEL)
-    expect(code).toContain('/api/admin/wholesale-malls/${mallId}/sellers')
-    expect(code).toContain('api.post(')
-    expect(code).toContain('api.delete(')
-  })
-
-  it('몰 목록 페이지가 패널을 렌더한다', () => {
-    const code = readCode(PAGE)
-    expect(code).toContain('MallSellersPanel')
-    expect(code).toMatch(/<MallSellersPanel[\s\S]{0,120}mallId=/)
-  })
-
-  it('패널이 로드 실패를 "매장 0개"로 위장하지 않는다', () => {
-    // 도매 감사 룰(check-query-iserror)과 같은 취지 — 빈 목록과 에러는 다른 사실이다.
-    expect(readCode(PANEL)).toContain('isError')
-  })
-})
+// 🧹 R5(어드민 화면 배선)는 걷었다: 2026-11-02 대표 결정(공구 서비스 어드민 화면 "삭제")으로 어드민 몰 화면(`AdminWholesaleMallsPage`·`wholesale-malls/*`)을 지웠다 — 서버 API 는 남아 있다.

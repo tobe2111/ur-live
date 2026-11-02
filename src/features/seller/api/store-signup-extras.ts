@@ -47,4 +47,14 @@ export async function afterStoreCreated(DB: D1Database, p: {
     }
   } catch { /* 귀속 실패가 등록을 막지 않는다 */ }
   if (p.acq?.src) await recordAcquisitionConversion(DB, p.acq.src, 'store_apply', { campaign: p.acq.campaign, content: p.acq.content }) // fail-soft
+  // 🔔 2026-11-02 — 입점 신청은 어드민이 승인해야 시작된다. 그 신호가 종에 없었다.
+  try {
+    const s = await DB.prepare('SELECT business_name, name, status FROM sellers WHERE id = ? LIMIT 1').bind(p.sellerId)
+      .first<{ business_name: string | null; name: string | null; status: string | null }>().catch(() => null)
+    const { notifyAdminEvent } = await import('../../../worker/utils/admin-event-notify')
+    await notifyAdminEvent(DB, {
+      type: 'store_registered', title: s?.status === 'approved' ? '새 매장 입점' : '매장 입점 신청 · 승인 대기',
+      message: String(s?.business_name || s?.name || `매장 ${p.sellerId}`).slice(0, 40), link: '/admin/seller-approval',
+    })
+  } catch { /* fail-soft */ }
 }

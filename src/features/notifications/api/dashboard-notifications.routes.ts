@@ -11,6 +11,7 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { intParam } from '@/shared/pagination'
+import { ADMIN_SYSTEM_TYPES, HIDDEN_FOR_SELLER, typeNotInSql, presentNotification } from '@/shared/notification-catalog'
 const dashboardNotificationsRoutes = new Hono<{ Bindings: Env }>();
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
@@ -125,6 +126,25 @@ dashboardNotificationsRoutes.get('/', requireAuth(), async (c) => {
     params = [recipientId];
   }
 
+  // 🔔 2026-11-02 (대표 "필요한 것과 불필요한 것 구별"): 칸 나누기 — SSOT `shared/notification-catalog.ts`.
+  //   어드민: group=business(기본) → 가입·구매·승인 대기·환불 / group=system → 크론·성능·리포트.
+  //   빨간 숫자(unread_count)는 **업무만** 센다. 시스템 미읽음은 system_unread 로 따로 준다.
+  //   사장님: 내부 지표(tier_change 등)는 안 보인다.
+  const group = c.req.query('group') === 'system' ? 'system' : c.req.query('group') === 'all' ? 'all' : 'business';
+  const systemIn = ADMIN_SYSTEM_TYPES.map((t) => `'${t}'`).join(',');
+  let systemUnread = 0;
+  if (recipientType === 'admin') {
+    try {
+      const r = await DB.prepare(`SELECT COUNT(*) AS n FROM dashboard_notifications WHERE ${whereClause} AND is_read = 0 AND type IN (${systemIn})`)
+        .bind(...params).first<{ n: number }>();
+      systemUnread = Number(r?.n) || 0;
+    } catch { /* 숫자만 못 준다 */ }
+    if (group === 'business') whereClause += ` AND type NOT IN (${systemIn})`;
+    else if (group === 'system') whereClause += ` AND type IN (${systemIn})`;
+  } else if (recipientType === 'seller') {
+    whereClause += typeNotInSql(HIDDEN_FOR_SELLER);
+  }
+
   if (unreadOnly) {
     whereClause += ' AND is_read = 0';
   }
@@ -138,12 +158,16 @@ dashboardNotificationsRoutes.get('/', requireAuth(), async (c) => {
 
   const unreadCount = (results && results.length > 0) ? (results[0]._unread_total ?? 0) : 0;
   // _unread_total 제거 후 반환 (내부 계산 컬럼)
-  const notifications = (results ?? []).map(({ _unread_total: _, ...n }) => n);
+  const notifications = (results ?? []).map(({ _unread_total: _, ...n }) => (
+    // 어드민은 원문 그대로(내부 값이 곧 정보다), 사장님·에이전시는 다듬은 말로.
+    recipientType === 'admin' ? n : { ...n, ...presentNotification(n as { type?: string; title?: string; message?: string }) }
+  ));
 
   return c.json({
     success: true,
     notifications,
     unread_count: unreadCount,
+    ...(recipientType === 'admin' ? { group, system_unread: systemUnread } : {}),
   });
 });
 
@@ -159,8 +183,12 @@ dashboardNotificationsRoutes.put('/read-all', requireAuth(), async (c) => {
   const recipientId = String(user.id);
 
   if (recipientType === 'admin') {
+    // 🔔 2026-11-02: 열어 둔 칸만 읽음 — 업무 칸에서 '모두 읽음' 을 눌러 시스템 경보까지 지우지 않게.
+    const g = c.req.query('group');
+    const systemIn = ADMIN_SYSTEM_TYPES.map((t) => `'${t}'`).join(',');
+    const scope = g === 'system' ? ` AND type IN (${systemIn})` : g === 'business' ? ` AND type NOT IN (${systemIn})` : '';
     await DB.prepare(
-      `UPDATE dashboard_notifications SET is_read = 1 WHERE recipient_type = 'admin' AND (recipient_id IS NULL OR recipient_id = ?) AND is_read = 0`
+      `UPDATE dashboard_notifications SET is_read = 1 WHERE recipient_type = 'admin' AND (recipient_id IS NULL OR recipient_id = ?) AND is_read = 0${scope}`
     ).bind(recipientId).run();
   } else if (recipientType === 'agency') {
     await DB.prepare(

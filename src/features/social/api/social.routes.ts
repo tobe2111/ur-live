@@ -4,6 +4,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow';
 import { intParam } from '@/shared/pagination'
+import { HIDDEN_FOR_USER, typeNotInSql, presentRow } from '@/shared/notification-catalog'
 const socialRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
@@ -84,19 +85,20 @@ socialRoutes.get('/notifications', requireAuth(), async (c) => {
   try {
     const { results } = await DB.prepare(
       `SELECT ('un_' || id) AS id, type, title, message, link, is_read, created_at
-       FROM user_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`
+       FROM user_notifications WHERE user_id = ?${typeNotInSql(HIDDEN_FOR_USER)} ORDER BY created_at DESC LIMIT ?`
     ).bind(userId, need).all()
     all.push(...(results ?? []))
   } catch { /* 테이블 없음 */ }
   try {
     const { results } = await DB.prepare(
       `SELECT ('n_' || id) AS id, type, title, message, link, is_read, created_at
-       FROM notifications WHERE user_id = ? AND user_type = 'user' ORDER BY created_at DESC LIMIT ?`
+       FROM notifications WHERE user_id = ? AND user_type = 'user'${typeNotInSql(HIDDEN_FOR_USER)} ORDER BY created_at DESC LIMIT ?`
     ).bind(userId, need).all()
     all.push(...(results ?? []))
   } catch { /* 테이블 없음 */ }
   all.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
-  const page = all.slice(offset, offset + limit)
+  // 🔔 2026-11-02: 보여 줄 말만 다듬는다(이모지·영문 상태·어드민 메모·꼬리 안내) — SSOT notification-catalog.
+  const page = all.slice(offset, offset + limit).map(presentRow)
   return c.json({ success: true, data: page, has_more: all.length > offset + limit })
 })
 

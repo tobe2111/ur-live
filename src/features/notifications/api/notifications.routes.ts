@@ -15,6 +15,7 @@ import { requireAuth } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import type { AuthUser } from '@/worker/middleware/auth';
 import { intParam } from '@/shared/pagination'
+import { HIDDEN_FOR_USER, typeNotInSql, presentRow } from '@/shared/notification-catalog'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; FIREBASE_PROJECT_ID?: string };
 type Variables = { user: AuthUser };
@@ -42,13 +43,13 @@ notificationsRoutes.get('/unread-count', async (c) => {
     let count = 0;
     try {
       const r1 = await DB.prepare(
-        `SELECT COUNT(*) as c FROM user_notifications WHERE user_id = ? AND is_read = 0`
+        `SELECT COUNT(*) as c FROM user_notifications WHERE user_id = ? AND is_read = 0${typeNotInSql(HIDDEN_FOR_USER)}`
       ).bind(userId).first<{ c: number }>();
       count += r1?.c ?? 0;
     } catch {}
     try {
       const r2 = await DB.prepare(
-        `SELECT COUNT(*) as c FROM notifications WHERE user_id = ? AND user_type = ? AND is_read = 0`
+        `SELECT COUNT(*) as c FROM notifications WHERE user_id = ? AND user_type = ? AND is_read = 0${typeNotInSql(HIDDEN_FOR_USER)}`
       ).bind(userId, userType).first<{ c: number }>();
       count += r2?.c ?? 0;
     } catch {}
@@ -71,7 +72,7 @@ async function fetchUnifiedNotifications(DB: D1Database, userId: string, userTyp
   try {
     let q = `SELECT id, ('un_' || id) AS unified_id, 'user_notifications' AS source,
                     user_id, NULL AS user_type, type, title, message, link, is_read, created_at
-             FROM user_notifications WHERE user_id = ?`;
+             FROM user_notifications WHERE user_id = ?${typeNotInSql(HIDDEN_FOR_USER)}`;
     if (opts.unreadOnly) q += ` AND is_read = 0`;
     q += ` ORDER BY created_at DESC LIMIT ?`;
     const r = await DB.prepare(q).bind(userId, opts.limit).all();
@@ -81,7 +82,7 @@ async function fetchUnifiedNotifications(DB: D1Database, userId: string, userTyp
   try {
     let q = `SELECT id, ('n_' || id) AS unified_id, 'notifications' AS source,
                     user_id, user_type, type, title, message, link, is_read, created_at
-             FROM notifications WHERE user_id = ? AND user_type = ?`;
+             FROM notifications WHERE user_id = ? AND user_type = ?${typeNotInSql(HIDDEN_FOR_USER)}`;
     if (opts.unreadOnly) q += ` AND is_read = 0`;
     q += ` ORDER BY created_at DESC LIMIT ?`;
     const r = await DB.prepare(q).bind(userId, userType, opts.limit).all();
@@ -89,7 +90,7 @@ async function fetchUnifiedNotifications(DB: D1Database, userId: string, userTyp
   } catch { /* 테이블 없음 */ }
   // created_at 기준 통합 정렬 + limit
   all.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-  return all.slice(0, opts.limit);
+  return all.slice(0, opts.limit).map(presentRow);
 }
 
 // ─── GET /api/notifications ─────────────────────────────────────────────────

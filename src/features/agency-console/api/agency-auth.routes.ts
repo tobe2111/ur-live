@@ -20,6 +20,7 @@ import { buildSystemEmailHtml, sendSystemEmail } from '@/lib/system-email'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout'
 import { safeError } from '@/worker/utils/safe-error'
+import { scheduleAdminEvent } from '@/worker/utils/admin-event-notify'
 import { ntsCheckStatus } from '@/worker/utils/nts-business-verify'
 import { swallow } from '@/worker/utils/swallow'
 import { sensMailConfigured } from '@/lib/ncp-sens-mail'
@@ -259,6 +260,15 @@ agencyConsoleRoutes.post('/verify', cors(), rateLimit({ action: 'agency_verify',
       DB.prepare("UPDATE agency_staff SET status = 'active', updated_at = datetime('now') WHERE id = ? AND status = 'pending'").bind(r.staffId),
       DB.prepare("UPDATE agency_accounts SET status = 'active', updated_at = datetime('now') WHERE id = ? AND status = 'pending'").bind(s.agency_id),
     ])
+    // 🔔 2026-11-02 (대표 "에이전시 가입 알림이 하나도 안 와"): 이메일 인증 = 가입 완료 시점. 응답 뒤.
+    {
+      const a = await DB.prepare('SELECT name, kind FROM agency_accounts WHERE id = ? LIMIT 1').bind(s.agency_id)
+        .first<{ name: string | null; kind: string | null }>().catch(() => null)
+      await scheduleAdminEvent(c, DB, {
+        type: 'agency_signup', title: '새 에이전시 가입',
+        message: `${String(a?.name || '이름 없음').slice(0, 30)} · ${a?.kind === 'business' ? '사업자' : '개인'} · 이메일`, link: '/admin/agencies',
+      })
+    }
     const payload = await loginPayload(c.env, r.staffId)
     if (!payload) return c.json({ success: false, error: '계정을 찾지 못했어요.' }, 404)
     return c.json({ success: true, ...payload })

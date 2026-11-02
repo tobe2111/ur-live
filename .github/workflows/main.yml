@@ -384,7 +384,7 @@ jobs:
             echo ""
             echo "조치: Cloudflare Dashboard → Pages → ur-live → Settings"
             echo "      → Environment variables and secrets → Production tab"
-            echo "      → /admin/env-check 에서 정확한 issue 확인 가능"
+            echo "      → /admin/env-readiness 에서 정확한 issue 확인 가능"
           elif echo "$PAY_HEALTH" | grep -q '"healthy":true'; then
             echo "OK 결제 healthcheck"
           else

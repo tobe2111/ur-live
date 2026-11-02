@@ -535,6 +535,10 @@
 - **채널**: ① 인앱(`notifyUser`/`createDashboardNotification` — 유저/셀러 벨) ② 알림톡(알리고, `alimtalk`) ③ 웹푸시(`push`) ④ Discord(운영). 
 - **재시도 크론**: `retry-notifications`·`retry-alimtalk`·`webhook-failed-drain`·`bulk-email-drain`.
 - 확정/취소/발송/정산/영입/초대/공구확정 등 이벤트별 발화. 양 확정경로(confirm/webhook) 대칭 배선.
+- 🔔 **알림 카탈로그 SSOT `src/shared/notification-catalog.ts`** (2026-11-02 대표 *"TMI 많고, 가입·구매 알림은 하나도 안 와"*):
+  ① **어드민 종 = 두 칸** — `업무`(가입·입점 신청·이용권 구매·교환권 교환·승인 대기·환불·정산)가 기본이고 빨간 숫자는 업무만 센다 / `시스템`(크론·성능·리포트)은 옆 칸. 모든 어드민 type 은 이 표에 칸을 정해 등록(시험이 코드를 훑어 강제).
+  ② **핵심 사건 알림** — `user_signup`(카카오 신규) · `agency_signup`(이메일 인증·카카오 생성) · `store_registered`(`afterStoreCreated`) · `voucher_purchased`/`gifticon_purchased`(group-buy 딜·카드 · 장바구니) — 보내는 함수 하나 `worker/utils/admin-event-notify.ts`(fail-soft · 응답 뒤).
+  ③ **유저·사장님 화면은 읽을 때 다듬는다**(`presentNotification`) — 이모지·영문 상태·어드민 메모·꼬리 안내를 떼고 한 줄로. 숨김 종류(`HIDDEN_FOR_USER`·`HIDDEN_FOR_SELLER`)는 목록·미읽음 숫자 둘 다에서 빠진다. 옛 알림도 같이 깨끗해진다.
 
 ## 18. 백그라운드 잡 (크론 60+, `wrangler.toml` 스케줄)
 - **정산/재무**: auto-settlement·payouts-generate·influencer-payout·reconciliation·ledger-reconcile·ledger-integrity-check·prospects-commission-activate
