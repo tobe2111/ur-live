@@ -110,7 +110,8 @@ describe('📖 한 칸일 때는 읽을 수 있는 폭까지만', () => {
 describe('🎗️ 머리 띠 — 사람과 숫자가 한 줄', () => {
   it('PC 에서만 띠를 그리고, 폰은 종전 숫자 줄 그대로다', () => {
     expect(PAGE).toMatch(/\{isPc \? \(\s*<AccountPcBand/)
-    expect(PAGE, '폰에서 숫자 한 줄이 사라졌다').toMatch(/\) : \(\s*<MyStats voucher=/)
+    // 🗂️ 2026-11-02 안 1 — 폰 숫자 줄은 `showMe`(에이전시 탭이 아닐 때 — 에이전시 로그인이 없으면 늘 참)로만 가린다.
+    expect(PAGE, '폰에서 숫자 한 줄이 사라졌다').toMatch(/\) : showMe \? \(\s*<MyStats voucher=/)
   })
 
   it('🔢 숫자는 **같은 부품**이다 — 두 호출부가 같은 prop 을 넘긴다', () => {
@@ -179,7 +180,11 @@ describe('🧾 오른쪽 칸 — 판을 걷고 폰과 같은 목록을 쓴다', 
      * ⇒ 조건으로 감싸는 것 자체를 본다 — 줄머리에서 **조건 없이** 렌더돼야 한다.
      */
     expect(PAGE, 'ShoppingGroup 이 조건으로 감싸였다 — 한쪽 기기가 손님 목록을 통째로 잃는다')
-      .toMatch(/\n {6}<ShoppingGroup counts=\{counts\} \/>/)
+      .toMatch(/\n {6}\{showMe && <ShoppingGroup counts=\{counts\} \/>\}/)
+    // 🗂️ 2026-11-02 안 1 — 허용되는 조건은 `showMe` 하나다. 그리고 `showMe` 는 PC·비에이전시에서 **늘 참**이어야 한다
+    //   (`tabbed` 가 `!isPc && 에이전시 로그인` 일 때만 참) — 그래서 위 결함("한쪽 기기가 목록을 잃는다")은 여전히 막힌다.
+    expect(PAGE).toContain('const tabbed = !isPc && agencyPresence.on')
+    expect(PAGE).toContain("const showMe = !tabbed || myTab === 'me'")
     // 🔁 2026-10-19: 이용권 현황 바를 걷어 `statusBar` prop 이 사라졌다. 목록은 여전히 조건 없이 두 기기 모두에 선다.
   })
 })
@@ -192,7 +197,7 @@ describe('⚙️ 설정 — 한 벌을 자리만 바꿔 건다', () => {
 
   it('두 열일 때만 왼쪽, 아니면 종전 자리 — 둘 다 걸려 있다', () => {
     expect(PAGE, '왼쪽 자리가 없다').toContain('{pcSplit ? settingsBlock : null}')
-    expect(PAGE, '종전 자리가 없다 — 폰에서 설정이 통째로 사라진다').toContain('{pcSplit ? null : settingsBlock}')
+    expect(PAGE, '종전 자리가 없다 — 폰에서 설정이 통째로 사라진다').toContain('{pcSplit || !showMe ? null : settingsBlock}')
   })
 
   it('🔴 `pcSplit` 가 좌석 수를 본다 — `isPc` 만이면 설정이 본문보다 먼저 그려진다', () => {

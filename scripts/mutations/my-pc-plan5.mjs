@@ -130,8 +130,9 @@ export default [
     name: '🧾 PC 가 공용 손님 목록을 다시 분기 안으로 넣는다',
     file: 'src/pages/UserProfilePage.tsx',
     // 🔁 2026-10-19 재조준: 현황 바를 걷어 `statusBar` prop 이 사라졌다. 불변식 그대로.
-    find: '      <ShoppingGroup counts={counts} />',
-    replace: '      {!isPc && <ShoppingGroup counts={counts} />}',
+    // 🔁 2026-11-02 재조준(안 1 탭) — 폰 마이가 `나 | 에이전시` 탭으로 갈려 게이트(`showMe`/`showAgency`)가 끼었다. 불변식 그대로.
+    find: '      {showMe && <ShoppingGroup counts={counts} />}',
+    replace: '      {showMe && !isPc && <ShoppingGroup counts={counts} />}',
     test: TEST,
     why: 'PC 가 다시 쿠폰함·주문 내역·배송지·내 리뷰로 갈 길을 잃는다(종전 타일 셋이 그 상태였다)',
   },
