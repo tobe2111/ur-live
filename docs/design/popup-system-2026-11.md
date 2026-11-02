@@ -45,9 +45,22 @@
 |---|---|
 | ![](assets/popup-glass-blur-light.png) | ![](assets/popup-glass-blur-dark.png) |
 
+7. **확정: 유리(뒤 흐림 없음)** — 대표 *"아니다 그냥 블러 없이 유리로 하자."*
+
+## ✅ 구현 (PR #2112)
+빌드된 CSS 로 실제 클래스를 그린 캡처(확인창 · 시트 · 알림):
+
+| 라이트 | 다크 |
+|---|---|
+| ![](assets/popup-glass-real-light.png) | ![](assets/popup-glass-real-dark.png) |
+
+- 클래스 SSOT: `src/index.css` `.ur-veil` · `.ur-glass` · `.ur-glass-rule` · `.ur-pop-card|sheet|toast` · `.ur-dialog-in`
+- 가드: `src/tests/unit/popup-glass-2026-11-02.test.ts`
+- 범위 밖(그대로): 대시보드 팝업 · 전체화면 뷰어 · 운영자 몰 · 유어애즈 · 잠금표 파일 · z-index 통일
+
 ## 구현 todo (확정안)
-- [ ] `components/ui/` 에 `Dialog`(가운데 확인) · `Sheet`(하단/PC 가운데) · 토스트 하나 — `seller-section/Sheet.tsx` 의 히스토리·Z 규약을 그대로 승격
-- [ ] `confirm-dialog.tsx` 를 새 Dialog 로 (잉크 버튼 → 브랜드)
-- [ ] 61곳 이행 (잠금표 파일은 승인 별도)
-- [ ] 옛 `Toast.tsx` 호출부를 `ToastContainer` 쪽으로 합치고 삭제
-- [ ] 가드: 소비자 화면에서 `fixed inset-0` + `bg-black/` 직접 작성 금지(래칫)
+- [x] `components/ui/` 에 `Dialog`(가운데 확인) · `Sheet`(하단/PC 가운데) · 토스트 하나 — `seller-section/Sheet.tsx` 의 히스토리·Z 규약을 그대로 승격
+- [x] `confirm-dialog.tsx` 를 새 Dialog 로 (잉크 버튼 → 브랜드)
+- [x] 화면별 팝업 이행 (잠금표 파일 · 대시보드 · 다른 서비스 제외)
+- [x] 옛 `Toast.tsx` 호출부를 `ToastContainer` 쪽으로 합치고 삭제
+- [x] 가드: 소비자 화면에서 `fixed inset-0` + `bg-black/` 직접 작성 금지(래칫)
