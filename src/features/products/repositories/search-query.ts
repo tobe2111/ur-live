@@ -77,6 +77,27 @@ const REGION_GROUPS: ReadonlyArray<ReadonlyArray<string>> = [
   ['제주', '제주도', '제주특별자치도'],
 ]
 
+/**
+ * 🏷️ 2026-11-02 — 업종 낱말 → 카테고리 키. 화면의 분류 버튼이 `식사 · 미용 · 숙소 · 생활` 인데
+ *   그 말로 검색하면 0건이었다(라이브: `숙소` 0 · `맛집` 0 — 숙소 이용권 20 · 식사 72 가 있는데).
+ *   카테고리 칸에는 영문 키(`stay_voucher`)가 들어 있어 한글 낱말이 영영 안 걸렸다.
+ *   ⇒ 업종 낱말이면 **그 키를 변형으로 더한다**(카테고리 칸이 이미 검색 대상이라 SQL 모양은 그대로).
+ *   ⚠️ `기타` 는 넣지 않는다 — 아무 뜻도 없어 전부를 끌고 온다. `헤어`·`네일` 처럼 업종 *안쪽* 낱말도
+ *   넣지 않는다 — 넣으면 `헤어` 검색에 네일숍이 섞인다(상품명·설명으로 이미 정확히 걸린다).
+ */
+const CATEGORY_WORDS: Readonly<Record<string, string>> = {
+  식사: 'meal_voucher', 식당: 'meal_voucher', 맛집: 'meal_voucher', 음식: 'meal_voucher', 음식점: 'meal_voucher',
+  숙소: 'stay_voucher', 숙박: 'stay_voucher', 호텔: 'stay_voucher', 펜션: 'stay_voucher', 모텔: 'stay_voucher', 리조트: 'stay_voucher',
+  미용: 'beauty_voucher', 뷰티: 'beauty_voucher', 미용실: 'beauty_voucher',
+  생활: 'home_voucher', 생활서비스: 'home_voucher',
+}
+
+/** 업종 낱말이면 그 카테고리 키를 돌려준다(`숙소` → `['stay_voucher']`). */
+export function categoryVariants(token: string): string[] {
+  const key = CATEGORY_WORDS[token.trim()]
+  return key ? [key] : []
+}
+
 /** 시·도 표기인가 (`부산`·`부산광역시`·`경상북도` …). */
 export function isRegionName(token: string): boolean {
   const t = token.trim()
@@ -157,7 +178,7 @@ export function buildSearchClause(
   const whereParams: string[] = []
 
   for (const token of tokens) {
-    const variants = [...new Set([token, ...regionVariants(token), ...expand(token)])]
+    const variants = [...new Set([token, ...regionVariants(token), ...categoryVariants(token), ...expand(token)])]
     const ors: string[] = []
     for (const v of variants) {
       const like = `%${escapeLike(v)}%`

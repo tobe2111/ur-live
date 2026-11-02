@@ -9831,6 +9831,22 @@ canvas {
       '"홍대돈가스" 처럼 매장으로 찾는 것이 이용권 검색의 절반인데 그 절반이 없었다.',
   },
   {
+    name: '📝 검색 기록이 라이브에 없는 컬럼으로 쓴다 (search_logs 0행)',
+    file: 'src/features/products/repositories/ProductRepository.ts',
+    find: 'INSERT INTO search_logs (user_id, query, result_count, created_at)',
+    replace: 'INSERT INTO search_logs (user_id, search_query, results_count, created_at)',
+    test: 'src/tests/unit/search-category-words-and-log-2026-11-02.test.ts',
+    why: '2026-11-02 실측 — 이 모양이라 INSERT 가 매번 실패하고 catch 가 삼켜 검색 기록이 한 줄도 없었다.',
+  },
+  {
+    name: '🏷️ 분류 이름(숙소)으로 검색하면 0건',
+    file: 'src/features/products/repositories/search-query.ts',
+    find: "  숙소: 'stay_voucher', ",
+    replace: '  ',
+    test: 'src/tests/unit/search-category-words-and-log-2026-11-02.test.ts',
+    why: '화면 분류 버튼이 숙소인데 그 말로 검색하면 0건이었다(숙소 이용권 20개가 있는데).',
+  },
+  {
     name: '📍 검색 대상에서 매장 주소가 빠진다 (지역 검색 전멸)',
     file: 'src/features/products/repositories/search-query.ts',
     find: "export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'restaurant_address', 'description', 'category'] as const",
