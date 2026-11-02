@@ -28,7 +28,10 @@ describe('① 서버 동봉', () => {
     //   지키던 불변식(*curator 동봉은 100* — 아래 시험의 클라 `limit=100` 과 짝)은 그대로라, 호출 모양 대신
     //   **기본값**을 고정한다. 기본값이 흔들리면 그 짝이 소리 없이 깨지고 진열대에서 상품이 사라진다.
     expect(UTIL).toMatch(/sellerId: number, limit = 100\b/)
-    expect(ROUTE).toMatch(/linked_seller_products: linkedSeller\?\.id \? await loadLinkedSellerProducts\(c\.env\.DB, Number\(linkedSeller\.id\)\) : null,/)
+    // 🐢 2026-11-02 셀러 공개 페이로드와 **나란히** 받도록 바뀌었다(직렬 2물결 → 1). 동봉 자체는 그대로다.
+    expect(ROUTE).toMatch(/linked_seller_products: linkedSellerProducts,/)
+    expect(ROUTE).toMatch(/linkedSeller\.id \? loadLinkedSellerProducts\(c\.env\.DB, Number\(linkedSeller\.id\)\)/)
+    expect(ROUTE).toMatch(/\[null, linkedSeller\?\.id \? await loadLinkedSellerProducts\(c\.env\.DB, Number\(linkedSeller\.id\)\) : null\]/)
     expect(API).toMatch(/linked_seller_products\?: unknown\[\] \| null/)
   })
   it('limit 이 클라 요청(limit=100)과 같다 — 다르면 진열대에서 상품이 조용히 사라진다', () => {

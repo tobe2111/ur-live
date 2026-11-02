@@ -65,8 +65,9 @@ export default [
   {
     name: '밀림 — 계산대 폴백이 로딩 중에도 뜬다(떴다 사라진다)',
     file: PAGE,
-    find: "{!!localStorage.getItem('seller_token') && !sellerSeats.loading && sellerSeats.stores.length === 0 && (",
-    replace: "{!!localStorage.getItem('seller_token') && sellerSeats.stores.length === 0 && (",
+    // 🔁 2026-11-02 재조준(안 1 탭) — 폰 마이가 `나 | 에이전시` 탭으로 갈려 게이트(`showMe`/`showAgency`)가 끼었다. 불변식 그대로.
+    find: "{showAgency && !!localStorage.getItem('seller_token') && !sellerSeats.loading && sellerSeats.stores.length === 0 && (",
+    replace: "{showAgency && !!localStorage.getItem('seller_token') && sellerSeats.stores.length === 0 && (",
     test: T_SHIFT,
     why:
       '실측에서 `사라짐: ["매장 계산대", …]` 로 잡힌 그 줄이다. "아직 모른다" 를 "없다" 로 읽으면 ' +

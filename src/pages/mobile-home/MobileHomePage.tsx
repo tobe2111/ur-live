@@ -312,13 +312,20 @@ export default function MobileHomePage() {
   )
 }
 
-/** 🌆 상단 사진 + 바탕색으로 녹는 그라데이션. 사진은 늦게 받아(`loading=lazy`·낮은 우선순위) 도착하면 서서히 보인다 — 첫 카드 사진과 회선을 다투지 않는다. */
+/**
+ * 🌆 상단 사진 + 바탕색으로 녹는 그라데이션.
+ * 🐢 2026-11-02 대표 확정 *"중간 — 늦추기만 풀기"* — 종전엔 `loading=lazy`·`fetchPriority=low` + 0.5초 페이드라
+ *   카드 사진(0.5~0.6초 도착)보다 한참 뒤(1.26초 + 0.5초)에야 맨 위가 찼다(실측). 이제 `lazy` 를 풀고 우선순위는
+ *   **기본값**(카드의 `high` 다음)으로 둔다 — 첫 카드 사진과 회선을 다투지 않는 건 그대로다. 페이드 0.2초,
+ *   이미 받아 둔 사진(재방문)은 페이드 없이 바로.
+ */
 function RegionHeroBg({ src }: { src: string }) {
   const [shown, setShown] = useState(false)
   return (
     <div aria-hidden className="absolute inset-0 -z-10 pointer-events-none">
-      <img src={src} alt="" loading="lazy" decoding="async" fetchPriority="low" onLoad={() => setShown(true)}
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${shown ? 'opacity-100' : 'opacity-0'}`} />
+      <img src={src} alt="" decoding="async" fetchPriority="auto" onLoad={() => setShown(true)}
+        ref={(el) => { if (el?.complete && el.naturalWidth > 0 && !shown) setShown(true) }}
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${shown ? 'opacity-100' : 'opacity-0'}`} />
       <div className="absolute inset-0 dark:hidden" style={{ background: REGION_HERO_FADE_LIGHT }} />
       <div className="absolute inset-0 hidden dark:block" style={{ background: REGION_HERO_FADE_DARK }} />
     </div>

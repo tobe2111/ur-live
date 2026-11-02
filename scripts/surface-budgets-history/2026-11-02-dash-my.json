@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-02",
+  "reason": "2026-11-02 마이 나|에이전시 탭(대표 확정 안 1) — 탭 부품은 lazy, 남은 +1.6KB 는 게이트 코드·CSS",
+  "surfaces": [
+    "dash:my"
+  ],
+  "changes": [
+    "dash:my: 204.7 → 206.4 KB (+1.6, 허용 1.5) · 늘어난 것: lz-common.js +0.6, index.css +0.4"
+  ]
+}

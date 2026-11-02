@@ -916,7 +916,7 @@ app.use('*', async (c, next) => {
     // 🦦 2026-10-07 [UNLOCK_LOADING] (대표 허가 "로딩 화면"): 로고 위에 유달이 — BrandLoader 와 같은 파일·크기·마스크
     //   (값 SSOT `shared/udal-loader.ts`). 위상은 둘 다 첫 페인트 기준이라 교체 순간 안 튄다.
     const urdealLoaderHtml =
-      '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
+      '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;visibility:hidden">' + // 🫥 2026-11-02 [UNLOCK_LOADING] 대표 "아예 안 보이게" — 자리만 두고 그림은 숨긴다(BrandLoader quiet 와 짝)
         `<img src="${UDAL_LOADER_SRC}"${loaderImgPriorityAttr(cssFirst)} alt="" aria-hidden="true" draggable="false" width="${udalLoaderWidth(34)}" height="${udalLoaderHeight(34)}" decoding="async" class="ur-udal-hop select-none pointer-events-none" style="width:${udalLoaderWidth(34)}px;height:auto">` +
         '<div class="ur-loader-breathe text-[#16181C] dark:text-[#F8F7FC]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
           'urdeal' +

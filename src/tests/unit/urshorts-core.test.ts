@@ -173,7 +173,8 @@ describe('③ 홈 첫 화면이 비용을 안 문다', () => {
 
   it('뷰어는 lazy 라우트다 — 홈 번들이 유튜브 재생 코드를 받으면 안 된다', () => {
     const APP = code('src/App.tsx')
-    expect(APP).toMatch(/const VideosPage = lazy\(\(\) => import\('\.\/pages\/VideosPage'\)\)/)
+    // 🐢 2026-11-02 `lazyPage` 로 바뀌었다(등록부 'videos' — 카드를 누르는 사이 미리 받기). 여전히 lazy 다.
+    expect(APP).toMatch(/const VideosPage = lazyPage\(\(\) => import\('\.\/pages\/VideosPage'\)\)/)
     expect(APP).toMatch(/path="\/videos"/)
   })
 })

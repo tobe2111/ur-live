@@ -95,7 +95,8 @@ export default [
   {
     name: '⚙️ 설정 자리를 `isPc` 만으로 가른다 (좌석 0곳에서 본문보다 먼저 그려진다)',
     file: 'src/pages/UserProfilePage.tsx',
-    find: 'const pcSplit = isPc && sellerSeats.stores.length > 0',
+    // 🐢 2026-11-02 좌석 판정이 `hasSeats` 하나로 모였다(조회 중엔 지난번 값).
+    find: 'const pcSplit = isPc && hasSeats',
     replace: 'const pcSplit = isPc',
     test: TEST,
     why: '좌석이 없으면 두 열 래퍼가 평범한 블록이라 왼쪽·오른쪽이 세로로 이어진다 — 설정이 맨 위로 올라온다',
@@ -129,8 +130,9 @@ export default [
     name: '🧾 PC 가 공용 손님 목록을 다시 분기 안으로 넣는다',
     file: 'src/pages/UserProfilePage.tsx',
     // 🔁 2026-10-19 재조준: 현황 바를 걷어 `statusBar` prop 이 사라졌다. 불변식 그대로.
-    find: '      <ShoppingGroup counts={counts} />',
-    replace: '      {!isPc && <ShoppingGroup counts={counts} />}',
+    // 🔁 2026-11-02 재조준(안 1 탭) — 폰 마이가 `나 | 에이전시` 탭으로 갈려 게이트(`showMe`/`showAgency`)가 끼었다. 불변식 그대로.
+    find: '      {showMe && <ShoppingGroup counts={counts} />}',
+    replace: '      {showMe && !isPc && <ShoppingGroup counts={counts} />}',
     test: TEST,
     why: 'PC 가 다시 쿠폰함·주문 내역·배송지·내 리뷰로 갈 길을 잃는다(종전 타일 셋이 그 상태였다)',
   },

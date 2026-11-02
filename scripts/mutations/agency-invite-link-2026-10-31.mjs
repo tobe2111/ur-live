@@ -21,7 +21,8 @@ export default [
     name: '영입 링크 — 폰 마이 머리에서 버튼이 빠진다',
     // 🔁 2026-11-02 재조준 — 대표 확정 버튼 ①: 입구가 구역 안 카드 → 마이 머리로 옮겨 갔다.
     file: 'src/pages/UserProfilePage.tsx',
-    find: '            <AgencyInviteDoor />\n',
+    // 🔁 2026-11-02 재조준(안 1 탭) — 폰 마이가 `나 | 에이전시` 탭으로 갈려 게이트(`showMe`/`showAgency`)가 끼었다. 불변식 그대로.
+    find: '            {showAgency && <AgencyInviteDoor />}\n',
     replace: '',
     test: T,
     why: '매장 영입 입구가 폰에서 사라진다 — 대표가 "맨 위에 매장 영입 버튼을 넣는 건 맞는데" 라고 정한 자리.',
