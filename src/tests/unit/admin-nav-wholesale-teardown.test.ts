@@ -83,10 +83,9 @@ describe('🔴 R2 — 도매 도메인에선 그대로 보인다 (머니 게이�
       setHost(host)
       const paths = withoutWholesaleOnConsumer(VISIBLE_NAV_GROUPS).flatMap((g) => g.items.map((i) => i.path))
       expect(paths).not.toContain('/admin/wholesale-overview')
-      expect(paths.filter((p) => /^\/admin\/(wholesale|distributor|suppliers)/.test(p) && p !== '/admin/wholesale-malls'))
+      expect(paths.filter((p) => /^\/admin\/(wholesale|distributor|suppliers)/.test(p)))
         .toEqual([])
-      // 🏬 몰 관리는 공구 서비스다 — 함께 사라지면 안 된다(R3 와 같은 이유).
-      expect(paths).toContain('/admin/wholesale-malls')
+      // 🧹 2026-11-02: 몰 관리(공구 서비스)도 대표 결정 "삭제" 로 메뉴에서 사라졌다.
     }
   })
 })
@@ -97,10 +96,10 @@ describe('🔴 R3 — 몰 관리는 도매 밴드에 없다', () => {
     expect(inWholesale).not.toContain('/admin/wholesale-malls')
   })
 
-  it('소비자 도메인에서 몰 관리가 **보인다** (파일럿 몰을 여기서 만든다)', () => {
+  it('🧹 2026-11-02 대표 결정 "공구 서비스 어드민 화면 삭제" — 어느 도메인에서도 몰 관리가 메뉴에 없다', () => {
     setHost(CONSUMER)
     const paths = withoutWholesaleOnConsumer(VISIBLE_NAV_GROUPS).flatMap((g) => g.items.map((i) => i.path))
-    expect(paths).toContain('/admin/wholesale-malls')
+    expect(paths).not.toContain('/admin/wholesale-malls')
   })
 })
 

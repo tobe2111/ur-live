@@ -619,20 +619,9 @@ describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', 
     }
   })
 
-  it('🔴 어드민 대기열이 조회 실패를 "신청 없음" 으로 위장하지 않는다', () => {
-    // 2026-09-16: `items.length === 0 → null` 만 있었다. 일시 5xx 면 대기열이 통째로 사라지고
-    //   신청한 운영자는 어드민 화면에서 안 보인다 — 에러도 안 뜬다.
-    const panel = readF('src/pages/admin/wholesale-malls/MallApplicationsPanel.tsx')
-    const at = panel.indexOf('if (isError)')
-    // ⚠️ 존재부터 본다. `indexOf` 는 없으면 **-1** 이라 `toBeLessThan` 이 늘 통과한다 —
-    //   이 단언을 먼저 안 쓰면 분기를 통째로 지워도 초록이다(주입이 그 자리를 실제로 잡았다).
-    expect(at, 'isError 분기가 없다 — 5xx 가 "신청 없음" 으로 보인다').toBeGreaterThan(0)
-    expect(at).toBeLessThan(panel.indexOf('items.length === 0'))
-  })
+  // 🧹 어드민 대기열 시험은 걷었다: 2026-11-02 대표 결정(공구 서비스 어드민 화면 "삭제")으로 어드민 몰 화면(`AdminWholesaleMallsPage`·`wholesale-malls/*`)을 지웠다 — 서버 API 는 남아 있다.
 
-  it('화면이 배선돼 있다 — 운영자 신청 폼 · 어드민 대기열', () => {
-    const noImp = (x: string) => stripComments(x.replace(/^\s*import[^\n]*$/gm, ''))
+  it('화면이 배선돼 있다 — 운영자 신청 폼', () => {
     expect(/mall\/apply/.test(readF('src/components/seller/MyMallAddress.tsx'))).toBe(true)
-    expect(/<MallApplicationsPanel\b/.test(noImp(readF('src/pages/admin/AdminWholesaleMallsPage.tsx')))).toBe(true)
   })
 })
