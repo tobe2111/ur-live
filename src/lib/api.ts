@@ -646,7 +646,11 @@ api.interceptors.response.use(
         const { useAuthStore } = await import('@/client/stores/auth.store');
         useAuthStore.getState().clearAuth();
       } catch (_) {} // non-critical: best-effort clearAuth on 401
-      captureError(new Error('Buyer 401: Unauthorized'), { url });
+      // 🛡️ 2026-11-02: 소비자 세션이 확정 사망했을 때만 보고. 소비자 흔적 없이 대시보드 토큰 때문에
+      //   hasAnyAuth 만 참인 경우(=비로그인 손님)는 로그아웃이 아니다 — 홈마다 Sentry 1건씩 쌓였다.
+      if (isSessionCookieUser) {
+        captureError(new Error('Buyer 401: Unauthorized'), { url });
+      }
 
       // 🛡️ 2026-04-28: alert 제거 (카톡 인앱이 alert 차단 → throw → 흰화면).
       //   대신 toast 로 안내 + redirect (콘솔에는 로그).
