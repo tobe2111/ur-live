@@ -10,9 +10,9 @@
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, Store, Gift, Ticket, BookOpen, Building2, UserCheck, Settings, Send,
-  BarChart3, Shield, UserCog, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Mail, Crown,
-  RotateCcw, Upload, Scale, FileText, Share2, LayoutList,
-  Video, Film, Gauge, Activity, Landmark, KeyRound,
+  BarChart3, Shield, UserCog, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Mail,
+  RotateCcw, Upload, FileText, Share2, LayoutList,
+  Video, Gauge, Activity, Landmark, KeyRound,
   type LucideIcon, Inbox } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { isUtongstart } from '@/utils/domain'
@@ -98,7 +98,6 @@ export const NAV_GROUPS: NavGroup[] = [
       // 🗺️ 2026-08-16: 상권 3종(동네별 딜 밀도·상권 성과·방문 리워드)은 **유어딜 전용**이라
       //   전사 상황판에서 유어딜 밴드의 '상권/매장' 그룹으로 이동.
       //   ⚠️ 체리픽(2026-09-16): `/admin/proposals` 는 그 뒤 main 에 생긴 전사 항목이라 여기 남긴다.
-      { path: '/admin/abuse',            label: '어뷰징 탐지',   icon: AlertOctagon },
       { path: '/admin/env-readiness',    label: '환경 준비상태', icon: Gauge },
     ],
   },
@@ -136,7 +135,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/vouchers',          label: '이용권 관리',   icon: Ticket, also: ['/admin/gb-cockpit'] },
       { path: '/admin/dongnedeal-import', label: '이용권 등록',   icon: Upload },
       { path: '/admin/fcfs',             label: '추첨 응모 관리', icon: Gift },
-      { path: '/admin/experience-campaigns', label: '체험 캠페인',   icon: Gift },
       { path: '/admin/voucher-disputes', label: '사용처리 분쟁',  icon: AlertOctagon },
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
       { path: '/admin/pending-sellers',  label: '매장 검수',     icon: UserCheck },
@@ -165,31 +163,6 @@ export const NAV_GROUPS: NavGroup[] = [
     section: 'urdeal',
     items: [
       { path: '/admin/region-density',   label: '동네별 딜 밀도', icon: Landmark },
-      { path: '/admin/visit-rewards',    label: '상권 방문 리워드', icon: Landmark },
-      { path: '/admin/kakao-reviews',    label: '카카오맵 후기 검증', icon: MessageSquare },
-      { path: '/admin/district-coupons', label: '상권 쿠폰(영수증 페이백)', icon: Ticket },
-      { path: '/admin/district-report',  label: '상권 성과 리포트', icon: BarChart3 },
-    ],
-  },
-  {
-    /**
-     * 🏪 **공구 서비스 (운영자 몰 SaaS)** — 2026-08-14 신설 (대표 "페이지 구분을 잘 해야겠어")
-     *
-     * 그전까지 이 서비스의 어드민은 **페이지 1개**(`운영자 몰 관리`)였고, 그것이 유어딜 그룹
-     * (`🏪 오프라인 공구`) 안에 섞여 있었다. 같은 그룹의 첫 항목 라벨이 하필 **'공동구매'**(유어딜
-     * 이용권)라, 대표가 화면만 보고는 **어느 서비스의 공동구매인지 알 수 없었다.**
-     *
-     * 🔴 서비스가 넷이면 밴드도 넷이어야 한다(`navSectionOf`). 한 서비스가 다른 서비스의 서랍에
-     *   세 들어 살면, 그 서비스의 할 일이 남의 목록에 섞이고 보고도 섞인다 — 이 레포가 8/3 에
-     *   실제로 겪은 사고다(CLAUDE.md §서비스 철저 분리 도입 배경).
-     */
-    title: '🏪 공구 서비스 (운영자 몰)',
-    section: 'mall',
-    items: [
-      { path: '/admin/wholesale-malls',  label: '운영자 몰 관리', icon: Building2 },
-      // 같은 '이용권 공구' 화면을 **몰 스코프로** 연다 — 유어딜 본진 목록과 섞이지 않게.
-      //   (쿼리 파라미터 하나로 갈린다: 유어딜=본진 기본값 / 여기=몰 전용)
-      { path: '/admin/group-buy?mall=all', label: '몰 상품·공구',  icon: Ticket },
     ],
   },
   {
@@ -202,7 +175,6 @@ export const NAV_GROUPS: NavGroup[] = [
       // 🧭 2026-06-09 IA 정리: nav 미노출 고아 라우트 등재 — 반품/교환권 추적은 주문 운영 실무 페이지.
       { path: '/admin/returns',          label: '반품 검수',     icon: RotateCcw },
       // 🧭 2026-08-16 (고아 라우트 등재): 송장 일괄 등록도 주문 운영 실무인데 nav 에 없어 URL 전용이었다.
-      { path: '/admin/shipping/bulk-tracking', label: '송장 일괄 등록', icon: Upload },
       { path: '/admin/kt-alpha',         label: 'KT Alpha (교환권)', icon: Gift },
       { path: '/admin/voucher-orders',   label: 'KT 발송 추적',  icon: Send },
       { path: '/admin/voucher-transactions', label: '교환권 거래', icon: Ticket },
@@ -241,7 +213,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/commission-settings', label: '정산 마진 설정', icon: Settings },
       { path: '/admin/merchant-commissions', label: '매장 커미션', icon: Store },
       // 🧾 2026-07-10: 불변식 #44 콕핏 — promo 재원/원장 platform:revenue 대칭 감사 (read-only, 8월 flip 검증 표면).
-      { path: '/admin/promo-ledger',     label: 'promo 재원 원장', icon: FileText },
       // 🔧 2026-07-01 (대표 "무슨 말인지 모르겠어"): '수수료 규칙 비교'(fee-resolver 그림자검증 — 개발/검증 전용,
       //   기본 OFF·돈 안 움직임)는 재무 실무 메뉴에서 오해 소지 → 아래 '개발자 도구' 그룹으로 이동.
     ],
@@ -276,20 +247,6 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    // 📺 라이브커머스 — 잠정 중단(LIVE_COMMERCE_SUSPENDED). 그룹째 숨김, 재개 시 플래그만 false → 복원.
-    // 🧭 2026-08-16 (죽은 링크 제거): `/admin/live-monitor`·`/admin/castings` 는 **라우트도 페이지 파일도
-    //   이미 없다**(중단 정리 때 화면만 지우고 이 표는 안 고쳤다). 그룹이 숨겨져 있어 사용자 피해는
-    //   없었지만, 재개하겠다고 플래그를 false 로 돌리면 **곧장 깨진 링크 2개**가 뜬다 — 그때가
-    //   가장 확인이 안 될 때다. 복원하려면 화면부터 되살려야 한다.
-    title: '📺 라이브커머스',
-    section: 'common',
-    items: [
-      { path: '/admin/ad-slots',         label: '광고 슬롯',     icon: Megaphone },
-      { path: '/admin/tiktok-discovery', label: 'TikTok 발굴',   icon: Sparkles },
-      { path: '/admin/replay',           label: '다시보기 관리', icon: Video },
-    ],
-  },
-  {
     title: '시스템',
     section: 'common',
     items: [
@@ -315,12 +272,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/image-sizing',      label: '사진 크기별 저장', icon: Monitor },  // 2026-11-01 변환 한도 0
       { path: '/admin/health',            label: '헬스 체크',     icon: Shield },
       { path: '/admin/errors',            label: '에러 로그',     icon: AlertTriangle },
-      { path: '/admin/env-check',         label: 'ENV 점검',      icon: Settings },
-      { path: '/admin/kakao-test',        label: '카카오 연동 테스트', icon: Activity },
       // 🧭 2026-08-16 (고아 라우트 등재): 카카오 로그인 진단(브라우저별 success/error)도 URL 전용이었다.
       { path: '/admin/kakao-login-diag',  label: '카카오 로그인 진단', icon: Activity },
-      { path: '/admin/youtube-quota',     label: 'YouTube 쿼터',  icon: Film },
-      { path: '/admin/fee-breakdown',     label: '수수료 규칙 검증(개발)', icon: Scale },
     ],
   },
 ]

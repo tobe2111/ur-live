@@ -66,9 +66,7 @@ describe('🔴 R4 — 게이트가 **실제로 배선돼 있다**', () => {
     expect(route.slice(i, i + 400)).toContain('validateMallColor')
   })
 
-  it('어드민 폼이 제출 전에 보여준다', () => {
-    expect(readCode('src/pages/admin/AdminWholesaleMallsPage.tsx')).toContain('validateMallColor')
-  })
+  // 🧹 '어드민 폼이 제출 전에 보여준다' 는 걷었다: 2026-11-02 대표 결정(공구 서비스 어드민 화면 "삭제")으로 어드민 몰 화면(`AdminWholesaleMallsPage`·`wholesale-malls/*`)을 지웠다 — 서버 API 는 남아 있다(서버 게이트 둘은 위에서 그대로 지킨다).
 })
 
 describe('validateMallColor — 저장 전 게이트', () => {
