@@ -34,20 +34,29 @@ const read = (rel) => {
 
 /** @type {{file:string,name:string,must:RegExp[],mustNot?:RegExp[],hint:string}[]} */
 const CHECKS = [
+  // ⏳ 2026-11-02 재조준 (대표 *"유달이 뜨는게 별로 … 위쪽 얇은 막대 + 화면 모양 미리 보여주기로"*):
+  //   로고 숨쉬기·왕복 막대·유달이를 걷고 `shared/brand-loader-markup.ts` 한 벌로 바꿨다. 지키는 불변식은 그대로다 —
+  //   ① 서버 정적 로더 = 앱 로더 = 첫 HTML 로더가 **같은 글자** ② 앱 로더는 첫 페인트 기준 음수 delay 로 위상을 잇는다.
+  {
+    file: 'src/shared/brand-loader-markup.ts',
+    name: '로더 그림 SSOT (막대·화면 모양 · 주기 상수가 CSS 문자열을 만든다)',
+    must: [
+      /export const LOADER_TOP_S\s*=/,
+      /export const LOADER_SHINE_S\s*=/,
+      /animation:ur-ldr-top \$\{LOADER_TOP_S\}s/,
+      /animation:ur-ldr-shine \$\{LOADER_SHINE_S\}s/,
+      /animation-delay:var\(--ur-ldr-top-d,0s\)/,
+      /animation-delay:var\(--ur-ldr-shine-d,0s\)/,
+    ],
+    mustNot: [/ur-udal-hop/, /<img/],
+    hint: '주기는 이 파일의 상수 하나로만 바꾸세요(CSS 문자열이 그 상수로 만들어진다). 로더에 그림을 다시 넣지 마세요.',
+  },
   {
     file: 'src/components/brand/BrandLoader.tsx',
-    name: 'BrandLoader 위상 전역동기 (재마운트 연속)',
-    must: [
-      /performance\.now\(\)/,          // 전역 시계 기반 위상
-      /%\s*1\.5/,                       // breathe 주기 동기 (index.css 와 일치)
-      /%\s*1\.15/,                      // sweep 주기 동기
-      /animationDelay:\s*breatheDelay/, // 음수 delay 적용
-      /animationDelay:\s*sweepDelay/,
-    ],
-    mustNot: [
-      /animationDelay:\s*['"]200ms['"]/, // 고정 지연 재유입 = 재마운트 시 바 사라짐
-    ],
-    hint: 'performance.now() 기반 음수 animation-delay 를 유지하세요 (고정 200ms 금지 — 재마운트 블링크 원인).',
+    name: 'BrandLoader = 같은 문자열 + 첫 페인트 기준 위상',
+    must: [/performance\.now\(\)/, /brandLoaderMarkup\(/, /loaderPhaseVars\(sinceFirstPaintS\(\)\)/],
+    mustNot: [/animationDelay:\s*['"]200ms['"]/, /UDAL_LOADER_SRC/],
+    hint: '앱 로더는 SSOT 문자열을 그대로 그리고, 첫 페인트 이후 흐른 시간만큼 음수 delay(loaderPhaseVars)를 주세요.',
   },
   {
     file: 'src/worker/index.ts',
@@ -65,7 +74,7 @@ const CHECKS = [
       //   **대체하는** 쪽은 `geo-concept-surfaces-2026-10-12.test.ts` 가 따로 막는다.
       //   ⚠️ 느슨해진 게 아니다: `urdealLoaderHtml` 이 그 자리에 **반드시** 있어야 한다.
       /}\s*else\s*\{[\s\S]*?setInnerContent\((?:[A-Za-z_$][\w$]*\s*\+\s*)?urdealLoaderHtml/, // catch-all else 가 로더 주입(홈 포함 전 라우트)
-      /ur-loader-breathe/,                 // 주입 HTML 에 로더 존재
+      /const\s+urdealLoaderHtml\s*=[^\n]*brandLoaderMarkup\(/, // 주입 HTML = SSOT 로더(2026-11-02 재조준)
     ],
     mustNot: [
       // 로더 주입이 `else if (...isMainPage...)` 로 게이트되면 홈(또는 그 조건 밖 라우트)이 다시 홈 shell 노출.
@@ -83,45 +92,11 @@ const CHECKS = [
     hint: 'freshness fetch 는 qc.fetchQuery(groupBuyProduct 키) 로 — raw axios 로 되돌리면 prefetch 와 중복됩니다.',
   },
   {
-    file: 'src/index.css',
-    name: '로더 주기 상수 동기 (breathe 1.5s / sweep 1.15s)',
-    must: [
-      /ur-loader-breathe\s+1\.5s/,  // BrandLoader 의 % 1.5 와 일치해야 위상 계산 유효
-      /ur-loader-sweep\s+1\.15s/,   // BrandLoader 의 % 1.15 와 일치
-    ],
-    hint: '주기를 바꾸려면 index.css 와 BrandLoader.tsx(% 상수) 를 함께 바꾸고 이 가드도 갱신하세요.',
-  },
-  // 🦦 2026-10-07 (대표 허가 "로딩 화면"): 로더의 유달이 — 정적(워커)↔앱(BrandLoader)이 같은 파일·같은 위상.
-  //   하나만 빠져도 [유달이 있는 로더 → 없는 로더] 로 바뀌는 순간 화면이 튄다("로딩 화면 2~3개" 클래스).
-  {
-    file: 'src/shared/udal-loader.ts',
-    name: '유달이 로더 값 SSOT (경로·주기)',
-    must: [/UDAL_LOADER_SRC\s*=\s*'\/assets\/mascot\/udal-loader-v\d+\.webp'/, /UDAL_HOP_PERIOD_S\s*=\s*0\.7\b/],
-    hint: '경로·주기는 이 파일 한 곳에서만 바꾸세요. 그림을 바꾸면 파일명 버전(-v2)을 올릴 것(/assets 는 1년 캐시).',
-  },
-  {
-    file: 'src/index.css',
-    name: '유달이 통통 주기 동기 (0.7s)',
-    must: [/ur-udal-hop\s+0\.7s/],
-    hint: 'index.css 의 ur-udal-hop 주기와 shared/udal-loader.ts 의 UDAL_HOP_PERIOD_S 를 함께 바꾸세요.',
-  },
-  {
-    file: 'src/components/brand/BrandLoader.tsx',
-    name: '앱 로더 유달이 = 같은 파일 + 위상 동기',
-    must: [/src=\{UDAL_LOADER_SRC\}/, /%\s*UDAL_HOP_PERIOD_S/, /animationDelay:\s*hopDelay/],
-    hint: '앱 로더의 유달이는 UDAL_LOADER_SRC 와 FCP 기준 음수 delay(% UDAL_HOP_PERIOD_S) 를 쓰세요.',
-  },
-  {
-    file: 'src/worker/index.ts',
-    name: '정적 로더 유달이 = 같은 파일',
-    must: [/const\s+urdealLoaderHtml\s*=[\s\S]{0,400}?src="\$\{UDAL_LOADER_SRC\}"[\s\S]{0,300}?class="ur-udal-hop/],
-    hint: '워커 정적 로더(urdealLoaderHtml)에 BrandLoader 와 같은 유달이(UDAL_LOADER_SRC, ur-udal-hop)를 유지하세요.',
-  },
-  {
     file: 'index.html',
-    name: '로더 유달이 preload (늦게 튀어나오기 방지)',
-    must: [/<link rel="preload" as="image" href="\/assets\/mascot\/udal-loader-v\d+\.webp"/],
-    hint: '첫 페인트 로더가 바로 그리는 그림이라 head 에서 미리 받아야 합니다(경로는 UDAL_LOADER_SRC 와 동일).',
+    name: '첫 HTML 로더 = 같은 막대·화면 모양(유달이 preload 없음)',
+    must: [/id="ur-pre-react"[\s\S]{0,800}?<style>\.ur-ldr\{/, /class="ur-ldr-top"/],
+    mustNot: [/udal-loader-v\d+\.webp/],
+    hint: 'index.html 의 #ur-pre-react 는 brandLoaderMarkup(4) 출력과 같은 글자여야 합니다(시험이 글자 단위로 대조).',
   },
   {
     file: 'src/hooks/useOnlineStatus.ts',
@@ -198,17 +173,11 @@ const CHECKS = [
   },
   {
     file: 'src/utils/kakao-login-overlay.ts',
-    name: '카카오 로그인 오버레이 = BrandLoader 클래스/위상 재사용 (별도 keyframes 금지)',
-    // 🚑 2026-07-10 (대표 "카카오 로그인 스플래시도 모두 이상적으로"): 순수 DOM 오버레이(iOS freeze 제약)가
-    //   번들 클래스(ur-loader-breathe/sweep) + FCP-기준 음수 delay 를 재사용해야 전체 로더와 픽셀·위상 일치.
-    //   자체 keyframes(위상 0 리셋)로 되돌리면 로그인 순간만 "다른 로더" 블링크가 재발.
-    must: [
-      /ur-loader-breathe/,
-      /ur-loader-sweep/,
-      /%\s*1\.5/,
-      /%\s*1\.15/,
-    ],
-    hint: '카카오 오버레이는 번들 클래스(ur-loader-breathe/sweep) + BrandLoader 와 동일한 음수 delay 계산을 유지하세요 — 자체 keyframes 재유입 금지.',
+    name: '카카오 로그인 오버레이 = 같은 막대 + 같은 위상 (별도 로더 금지)',
+    // ⏳ 2026-11-02 재조준: 순수 DOM(iOS freeze 제약)이지만 그림은 SSOT 문자열, 위상은 BrandLoader 와 같은 계산.
+    must: [/brandLoaderMarkup\(0\)/, /loaderPhaseVars\(since\)/],
+    mustNot: [/ur-loader-breathe/, /ur-loader-sweep/],
+    hint: '카카오 오버레이는 brandLoaderMarkup(0) + loaderPhaseVars 를 쓰세요 — 자체 로고·막대 재유입 금지.',
   },
   {
     file: 'src/worker/routes/curator.routes.ts',

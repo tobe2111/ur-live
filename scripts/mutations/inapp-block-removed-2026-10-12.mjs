@@ -82,8 +82,9 @@ export default [
   {
     name: '인앱안내 — 잠금표 항목(히어로 preload)에 crossorigin 을 붙인다',
     file: HTML,
-    find: '<link rel="preload" as="image" href="/assets/mascot/udal-loader-v2.webp" />',
-    replace: '<link rel="preload" as="image" href="/assets/mascot/udal-loader-v2.webp" crossorigin />',
+    // ⏳ 2026-11-02: 유일한 preload(로딩 유달이)가 빠져 '있는 preload 에 붙이기' 대신 '붙인 채로 새로 생기기' 로 재조준.
+    find: '<link rel="dns-prefetch" href="https://js.tosspayments.com" />',
+    replace: '<link rel="preload" as="image" href="/static/hero.webp" crossorigin />\n    <link rel="dns-prefetch" href="https://js.tosspayments.com" />',
     test: T,
     why:
       '같은 파일을 만지는 작업이 잠금표 항목까지 번지는 경우. same-origin 인데 crossOrigin 을 붙이면 ' +
