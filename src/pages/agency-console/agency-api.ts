@@ -11,7 +11,7 @@
 export const AGENCY_TOKEN_KEY = 'agency_console_token'
 export const PROFILE_KEY = 'agency_console_profile'
 /** 카카오로 이은 로그인을 그 손님에게 묶는 자리 — 정본은 `lib/agency-presence.ts`. */
-import { AGENCY_KAKAO_UID_KEY } from '@/lib/agency-presence'
+import { AGENCY_KAKAO_UID_KEY, clearAgencyOptOut } from '@/lib/agency-presence'
 
 export interface AgencyStaffInfo {
   id: number; email: string; name: string | null; role: 'admin' | 'staff'; isOwner: boolean
@@ -47,6 +47,7 @@ export function readAgencyToken(): string {
  */
 export function saveAgencySession(p: AgencyLoginPayload, remember = true): void {
   clearAgencySession()
+  clearAgencyOptOut() // 🚪 직접 로그인했으니 '자동 연결 안 함' 표시를 푼다(2026-11-03)
   try {
     const s = remember ? localStorage : sessionStorage
     s.setItem(AGENCY_TOKEN_KEY, p.token)

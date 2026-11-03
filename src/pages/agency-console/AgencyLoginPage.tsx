@@ -4,6 +4,7 @@ import SEO from '@/components/SEO'
 import { AgencyAuthShell, Field, FormError, inputCls, primaryBtnCls } from './AgencyAuthShell'
 import { AgencyIntro } from './AgencyIntro'
 import { agencyRequest, safeAgencyReturn, saveAgencySession, type AgencyLoginPayload } from './agency-api'
+import { clearAgencyOptOut } from '@/lib/agency-presence'
 
 /** 안 A · Login2 — 에이전시 로그인(이메일 전용). */
 export default function AgencyLoginPage() {
@@ -72,7 +73,10 @@ export default function AgencyLoginPage() {
         <div className="flex items-center gap-3 text-[12px] text-gray-500" aria-hidden="true">
           <span className="h-px flex-1 bg-gray-200" />또는<span className="h-px flex-1 bg-gray-200" />
         </div>
+        {/* 🚪 2026-11-03 — 로그아웃한 사람이 다시 들어오는 문이다. 누르면 '자동 연결 안 함' 표시와 이번 탭의
+            확인 기록을 지워, 마이가 그 카카오 계정의 에이전시를 다시 잇게 한다(`agency-presence.ts` AGENCY_OPTOUT_KEY). */}
         <Link to="/login?returnUrl=%2Fuser%2Fprofile"
+          onClick={() => { clearAgencyOptOut(); try { sessionStorage.removeItem('ur_agency_kakao_probe' /* 짝: agency-kakao-client KAKAO_AGENCY_PROBE_KEY */) } catch { /* 막힘 */ } }}
           className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-medium tracking-tight transition-all flex items-center justify-center gap-2">
           <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#3C1E1E" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>

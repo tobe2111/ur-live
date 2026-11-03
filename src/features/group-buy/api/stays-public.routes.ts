@@ -14,7 +14,7 @@ import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { publicCache } from '../../../worker/middleware/edge-cache'
 import { releaseStayInventory } from '../../../worker/utils/stay-inventory'
 import { parseSessionCookie } from '../../../worker/utils/session'
-import { stayOrderNumber, kstToday } from './stay-order-number'
+import { stayOrderNumber, kstToday } from './stay-order-number'; import { unifiedStayReferrer, clawbackStayReferral } from './stay-referral' // 🏨 ③
 
 type Bindings = { DB: D1Database }
 export const staysPublicRoutes = new Hono<{ Bindings: Bindings }>()
@@ -451,8 +451,8 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
     // 🛡️ 2026-05-18: 인플루언서 referral 할인 + 커미션 계산.
     let discountAmount = 0
     let commissionAmount = 0
-    let validatedReferrerId: string | null = null
-    if (body?.referrer_id && room.referral_enabled && (room.influencer_discount_pct || 0) > 0) {
+    let validatedReferrerId: string | null = null; const uni = await unifiedStayReferrer(c.env.DB, body?.referrer_id, userId); if (uni.on) validatedReferrerId = uni.id // 🏨 ③ 이용권과 같은 길: 할인·객실 수수료 없이 소개자만(적립은 결제 확정 때 이용권 장부로)
+    if (!uni.on && body?.referrer_id && room.referral_enabled && (room.influencer_discount_pct || 0) > 0) {
       const refId = String(body.referrer_id).trim()
       // self-referral 차단.
       if (refId !== String(userId)) {
@@ -735,8 +735,8 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ actio
     // 3. Referral — 1 order 단위로 적용 (모든 booking 에 분산은 안 함, order 합계 기준).
     let discountAmount = 0
     let commissionAmount = 0
-    let validatedReferrerId: string | null = null
-    if (body?.referrer_id && firstRoom.referral_enabled && (firstRoom.influencer_discount_pct || 0) > 0) {
+    let validatedReferrerId: string | null = null; const uni = await unifiedStayReferrer(c.env.DB, body?.referrer_id, userId); if (uni.on) validatedReferrerId = uni.id // 🏨 ③ 위와 같다
+    if (!uni.on && body?.referrer_id && firstRoom.referral_enabled && (firstRoom.influencer_discount_pct || 0) > 0) {
       const refId = String(body.referrer_id).trim()
       if (refId !== String(userId)) {
         const referrer = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(refId).first<{ id: string }>().catch(() => null)
@@ -1059,7 +1059,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
       // 🛡️ 2026-05-31: 오버부킹 자동 환불 시 인플 affiliate 커미션도 reverse (출금 누수 차단).
       await c.env.DB.prepare(
         "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending', 'holding')"
-      ).bind(orderId).run().catch(() => { /* noop */ })
+      ).bind(orderId).run().catch(() => { /* noop */ }); await clawbackStayReferral(c.env.DB, { orderId: Number(orderId), bookingId: 0, full: true, reason: 'stay_overbooked' }).catch(() => 0) // 🏨 ③ 이용권 장부도
       return c.json({
         success: false,
         error: '선택하신 날짜의 객실이 매진되었습니다. 결제는 자동 환불 처리됩니다.',
@@ -1251,6 +1251,7 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action
       await c.env.DB.prepare(
         "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending', 'holding')"
       ).bind(booking.order_id).run().catch(() => null)
+      await clawbackStayReferral(c.env.DB, { orderId: Number(booking.order_id), bookingId: Number(id), refundAmount, reason: 'stay_cancel' }).catch(() => 0) // 🏨 ③ 이용권 장부도 비례 회수
     }
 
     // 🛡️ 2026-05-31: confirmed 였던 예약은 차감된 객실 야간 재고 복원 (취소 시 영구 unavailable 방지).

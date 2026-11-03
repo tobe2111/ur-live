@@ -131,10 +131,11 @@ describe('③ 유어샵 이번 주 픽', () => {
     const both = pickFeatured([v(1, { image_url: 'x.jpg' }), v(2)], [s(8)])
     expect(both.showChips).toBe(true)
   })
-  it('배선: 히어로 링크는 SSOT(detailHref), 칩 조건은 showChips', () => {
+  // 🎯 2026-11-03 재조준 — 대표 확정 안 1 로 큰 히어로를 걷었다. `pickFeatured` 는 이제 **가게 얼굴 폴백**만 고른다.
+  it('배선: 히어로는 없고(FeaturedCard 미사용) 가게 얼굴 폴백이 pickFeatured 를 쓴다 · 칩 조건은 showChips', () => {
     const c = readCode('src/pages/SellerPublicPage.tsx')
-    expect(c).toMatch(/to=\{detailHref\(featured\)\}/)
-    expect(c).not.toMatch(/to=\{`\/products\/\$\{featured\.id\}`\}/)
+    expect(c).not.toMatch(/<FeaturedCard\b/)
+    expect(c).toMatch(/storeFaceFrom\(products\)/)
     expect(c).toMatch(/\{showChips && \(/)
   })
 })

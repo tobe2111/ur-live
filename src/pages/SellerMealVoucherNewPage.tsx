@@ -41,6 +41,10 @@ import StoreStep from './seller-meal-voucher/StoreStep'
 import StoreChannelRequired from './seller-meal-voucher/StoreChannelRequired'
 import VoucherInfoStep from './seller-meal-voucher/VoucherInfoStep'
 import SaleSettingsStep from './seller-meal-voucher/SaleSettingsStep'
+import BookingModeSection from './seller-meal-voucher/BookingModeSection'
+import { attachBooking } from './seller-meal-voucher/booking-submit'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
+import { slotsError, stayRoomsError } from './seller-meal-voucher/booking-mode'
 import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 import {
   emptyVoucherForm, applyStoreContext, lifeSubcatMissing,
@@ -62,7 +66,8 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [form, setForm] = useState<VoucherForm>(() => emptyVoucherForm())
+  // 🏨 2026-11-03 ?category=stay_voucher — 옛 숙소 등록 주소(`/seller/stays/new`)가 여기로 온다(같은 위저드, 숙박으로 시작).
+  const [form, setForm] = useState<VoucherForm>(() => { const f = emptyVoucherForm(); const c = searchParams.get('category'); return c && isVoucherCategory(c) ? { ...f, category: c as VoucherForm['category'] } : f })
   // 🎁 2026-10-31 인플루언서 무상 체험 제공 — 등록 직후 같은 이용권에 저장(`PUT /api/seller/seeding/offers/:id`).
   const [seeding, setSeeding] = useState<SeedingOffer>(DEFAULT_OFFER)
   const [step, setStep] = useState(0)
@@ -161,7 +166,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
   const headers = { Authorization: `Bearer ${token}` }
   const KAKAO_JS_KEY = import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || ''
   // 🖼️ 2026-09-03: 사진 목록(`images`)이 배열이라 값 타입을 넓혔다.
-  const update = (key: string, value: string | number | string[]) => setForm(f => ({ ...f, [key]: value }))
+  const update = (key: string, value: unknown) => setForm(f => ({ ...f, [key]: value })) // 🗓️ 예약 방식(객실·시간표 배열)까지 받는다
 
   function searchImages(query: string) {
     setLoadingImages(true)
@@ -226,6 +231,9 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
       toast.error(t('seller.mealVoucher.channelFirst', { defaultValue: '이 매장을 누가 운영하는지 먼저 골라주세요' }))
       return false
     }
+    const stayErr = s === 1 && form.category === 'stay_voucher' ? stayRoomsError(form.stay_rooms) : null // 🏨 객실부터(판매가는 객실에서 나온다)
+    if (stayErr) { toast.error(stayErr); return false }
+    if (s === 2 && form.category !== 'stay_voucher' && form.booking_mode === 'time') { const e = slotsError(form.time_slots); if (e) { toast.error(e); return false } } // 🗓️ 시간 예약
     if (s === 1 && (!form.name.trim() || !(form.price > 0))) {
       toast.error(t('seller.mealVoucher.requiredFields'))
       return false
@@ -245,6 +253,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
     const minErr = voucherMinPriceError(form.category, form.price)
     if (minErr) { toast.error(minErr); return }
     if (lifeSubcatMissing(form)) { toast.error('어떤 일인지(업종) 골라 주세요'); return }
+    if (!validateStep(1) || !validateStep(2)) return // 🗓️ 객실·시간표 판정은 단계와 같은 함수
     setSubmitting(true)
     try {
       const payload = {
@@ -274,7 +283,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
         //   종전엔 datetime-local 값을 그대로 보내 서버가 UTC 로 읽어 **마감이 9시간 늦게** 걸렸다.
         group_buy_deadline: kstInputToUTC(form.group_buy_deadline) || null,
         store_verify_pin: form.store_verify_pin || null,
-        external_booking_url: form.external_booking_url || null,
+        external_booking_url: form.booking_mode === 'external' && form.category !== 'stay_voucher' ? (form.external_booking_url || null) : null, // 🗓️ 외부 예약을 고른 때만
         // 지역 자동 파싱 — restaurant_address 첫 단어 = region_si.
         region_si: form.region_si || (form.restaurant_address ? form.restaurant_address.split(/\s+/)[0]?.replace(/(특별시|광역시|특별자치시|특별자치도|도)$/, '').slice(0, 4) : null),
         region_gu: form.region_gu || (form.restaurant_address ? form.restaurant_address.split(/\s+/)[1] || null : null),
@@ -292,6 +301,9 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
       if (res.data.success) {
         const newId = Number(res.data.data?.id) || null
         setCreatedId(newId)
+        // 🗓️ 2026-11-03 예약 방식 — 숙박이면 숙소 정보·객실, 시간 예약이면 시간표를 붙인다(실패해도 상품은 남긴다).
+        const attachErr = newId ? await attachBooking(newId, form, headers) : null
+        if (attachErr) toast.error(attachErr)
         if (newId && seeding.enabled) {
           await api.put(`/api/seller/seeding/offers/${newId}`, seeding, { headers })
             .catch(() => toast.error(t('seller.mealVoucher.seedingSaveFailed', { defaultValue: '무상 체험 설정은 저장하지 못했어요. 매장 요청함에서 다시 켜 주세요' })))
@@ -334,13 +346,13 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
                   title={form.name || t('seller.mealVoucher.title')}
                   description={form.restaurant_name ? `${form.restaurant_name} · ${t('seller.mealVoucher.shareDesc', { defaultValue: '유어딜에서 할인가로 만나요' })}` : t('seller.mealVoucher.shareDesc', { defaultValue: '유어딜에서 할인가로 만나요' })}
                   imageUrl={form.image_url && !form.image_url.startsWith('data:') ? form.image_url : undefined}
-                  link={`/pass/${createdId}`}
+                  link={`${form.category === 'stay_voucher' ? '/stays' : '/pass'}/${createdId}`}
                   regularPrice={form.original_price > form.price ? form.original_price : undefined}
                   salePrice={form.price || undefined}
                 />
                 <button
                   onClick={() => {
-                    navigator.clipboard?.writeText(`https://urdeal.kr/pass/${createdId}`)
+                    navigator.clipboard?.writeText(`https://urdeal.kr${form.category === 'stay_voucher' ? '/stays' : '/pass'}/${createdId}`)
                       .then(() => toast.success(t('seller.mealVoucher.linkCopied', { defaultValue: '링크가 복사됐어요 — 단골 채팅방에 붙여넣어 보세요' })))
                       .catch(() => toast.error(t('common.copyFailed', { defaultValue: '복사에 실패했습니다' })))
                   }}
@@ -430,6 +442,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
           {step === 2 && (
             <SaleSettingsStep form={form} update={update} showAdvanced={showAdvanced} setShowAdvanced={setShowAdvanced} />
           )}
+          {step === 2 && form.category !== 'stay_voucher' && <BookingModeSection form={form} update={update} />}
           {step === 2 && <SeedingOfferFields value={seeding} onChange={setSeeding} />}
           </div>
 

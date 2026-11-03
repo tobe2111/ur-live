@@ -603,6 +603,9 @@ paymentsRouter.post('/confirm', async (c) => {
         // 🛡️ 2026-06-04 [UNLOCK]: 달력 차감·오버부킹 가드·status='confirmed' 는 Toss 승인 *전* 으로 이동(위 reserve 블록).
         //   여기선 확정된 예약(confirmed)에 대해 인플루언서 affiliate 적립만 수행(멱등). 미확정/취소는 skip.
         if (!booking || booking.status !== 'confirmed') continue
+        // 🏨 2026-11-03 숙소·예약 통일 ③ [UNLOCK 대표 허가 — docs/locks/toss/2026-11-03-stay-referral-unify.md]: 이용권과 같은 장부(딜 N% 약정 ·
+        //   applyGroupBuyReferral). 스위치 없음(대표 2026-11-03). 새 예약은 옛 금액이 0 이라 아래 affiliate_earnings 가 안 돈다(이중 적립 0).
+        if (booking.referrer_id && !(booking.influencer_commission_amount > 0)) { const sr = await import('../../features/group-buy/api/stay-referral'); await sr.creditStayReferral(c.env.DB, { orderId: Number((order as unknown as { id: number }).id), orderNumber: String((order as unknown as { order_number?: string }).order_number || ''), referrerId: String(booking.referrer_id), userId: String(booking.user_id), sellerId: booking.seller_id, productId: booking.product_id, productName: `숙소 #${booking.product_id}`, totalAmount: Number((order as unknown as { total_amount?: number }).total_amount ?? booking.total_amount) }).catch((e) => logError('payment.stay_referral_unified_failed', { orderId: (order as unknown as { id: number }).id, error: String(e).slice(0, 200) })) }
 
         // 🛡️ 2026-05-18: 인플루언서 attribution 자동 INSERT (referrer_id 있을 시).
         //   stay_bookings.referrer_id + influencer_commission_amount 가 있으면
