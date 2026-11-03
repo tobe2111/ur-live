@@ -12,6 +12,7 @@ import { ArrowLeft, QrCode } from 'lucide-react'
 import { useMyVouchers } from '@/hooks/queries'
 import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import WalletSummaryCard from './my-vouchers/WalletSummaryCard'
+import { formatNumber } from '@/utils/format'
 import WalletRecommend from './my-vouchers/WalletRecommend'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import VoucherDisputeBanner from '@/components/voucher/VoucherDisputeBanner'
@@ -232,9 +233,18 @@ export default function MyVouchersPage() {
       <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" />
 
       {/* 🎫 2026-10-14 대표 확정 안 B — 요약 카드(장수 크게 · 합계 작게). 제목 줄은 2026-09-03 결정대로 sr-only.
-          장수는 이 카드 **한 곳**에서만 말한다(아래 탭엔 개수를 안 붙인다). 근거: `./my-vouchers/WalletSummaryCard`. */}
-      <h1 className="sr-only">{t('voucher.myVouchers')}</h1>
-      {shownVouchers.length > 0 && <WalletSummaryCard count={unusedItems.length} total={heroTotal} t={t} />}
+          (2026-11-03 토스 참고로 대체 — 장수는 목록 판 머리, 합계는 목록 아래 판.) */}
+      {/* 🧾 2026-11-03 대표 *"이용권 페이지는 마음에 들어"*(토스 참고 시안 I1) — 제목이 다시 보인다(24·700) · 지도는 제목 줄 오른쪽.
+          판(카드)으로 묶는다: [곧 끝나는 이용권] · [쓸 수 있는 이용권 N] · [합계]. 2026-11-02 평면(A안)의 이 화면 한정 예외다. */}
+      <div className="ur-content-narrow px-4 lg:px-8 pt-4 pb-3 flex items-center justify-between">
+        <h1 className="text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{t('voucher.myVouchers')}</h1>
+        {mapVouchers.length > 0 && viewMode === 'list' && (
+          <button type="button" onClick={() => setViewMode('map')}
+            className="inline-flex items-center gap-1 h-9 px-3 rounded-full bg-surface text-[13px] font-medium text-gray-700 dark:text-gray-200">
+            <PinIcon className="w-4 h-4" aria-hidden />{t('voucher.mapShort', { defaultValue: '지도' })}
+          </button>
+        )}
+      </div>
 
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
@@ -278,12 +288,6 @@ export default function MyVouchersPage() {
                 </button>
               ))}
               {tabBar && <span aria-hidden="true" className="ur-tab-bar absolute left-0 -bottom-px h-[2.5px] bg-brand pointer-events-none" style={{ width: tabBar.w, transform: `translateX(${tabBar.x}px)` }} />}
-              {tab === 'unused' && mapVouchers.length > 0 && (
-                <button type="button" onClick={() => setViewMode('map')}
-                  className="ml-auto pb-2 inline-flex items-center gap-1 text-[13px] font-medium text-gray-600 dark:text-gray-300">
-                  <PinIcon className="w-4 h-4" aria-hidden />{t('voucher.mapShort', { defaultValue: '지도' })}
-                </button>
-              )}
             </div>
 
             {tab === 'unused' ? (
@@ -292,7 +296,11 @@ export default function MyVouchersPage() {
                 return shown.length > 0 ? (
                   /* 🎫 2026-10-14 대표 확정 안 B: **모든** 이용권을 같은 한 줄로(2026-09-15 안 E 의 '첫 장만 펼친 티켓'을 대체 —
                      같은 물건이 첫 장만 다르게 보였다). 만료 가까운 순 정렬은 그대로. 줄을 누르면 종전과 같은 QR 모달. */
-                  <div className="-mx-4 overflow-hidden divide-y divide-rule">
+                  /* 🧾 토스 참고 — 줄들을 판 하나에 담고 판의 머리가 장수를 말한다(장수는 이 한 곳). */
+                  <div className="rounded-2xl bg-surface overflow-hidden" data-testid="wallet-list-card">
+                    <p className="px-5 pt-4 pb-1 text-[16px] font-semibold text-gray-900 dark:text-white">
+                      {t('voucher.walletEyebrow', { defaultValue: '쓸 수 있는 이용권' })} <span className="tabular-nums text-brand-text">{formatNumber(shown.length)}</span>
+                    </p>
                     {shown.map(v => <WalletRow key={v.id} v={v} t={t} onOpen={() => setQrVoucher(v)} />)}
                   </div>
                 ) : (
@@ -308,6 +316,8 @@ export default function MyVouchersPage() {
                 <p className="py-8 text-center text-[13px] text-gray-400 dark:text-gray-500">{t('voucher.noDone', { defaultValue: '사용한 이용권이 아직 없어요' })}</p>
               )
             )}
+            {/* 🧾 합계 판 — 종전 맨 위 요약 카드가 목록 아래로 내려왔다(장수는 목록 판 머리가 말한다). */}
+            {tab === 'unused' && unusedItems.length > 0 && <WalletSummaryCard total={heroTotal} t={t} />}
             {/* 🎫 안 B 아래쪽 — 남는 자리를 다음에 살 것으로(홈 피드와 같은 요청 · 가진 상품은 뺀다). */}
             {tab === 'unused' && <WalletRecommend ownedProductIds={ownedProductIds} t={t} />}
           </>

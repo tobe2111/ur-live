@@ -37,8 +37,10 @@ describe('이용권 지갑', () => {
     const pageCode = stripComments(page)
     expect(pageCode.length, '주석 제거기가 파일을 통째로 먹었다').toBeGreaterThan(page.length * 0.4)
     // 🔀 2026-10-14 대표 확정 안 B: 장수를 말하는 **한 곳**이 탭 배지 → 요약 카드로 옮겨갔다(불변식은 그대로 '한 번').
-    expect(pageCode, '요약 카드가 장수를 안 받는다 — 이제 장수를 말하는 곳이 한 곳도 없다')
-      .toMatch(/<WalletSummaryCard count=\{unusedItems\.length\}/)
+    // 🔁 2026-11-03 토스 참고(대표 "이용권 페이지는 마음에 들어") — 장수의 한 곳이 요약 카드 → **목록 판 머리**로 옮겨갔다.
+    expect(pageCode, '목록 판 머리가 장수를 안 말한다 — 이제 장수를 말하는 곳이 한 곳도 없다')
+      .toMatch(/formatNumber\(shown\.length\)/)
+    expect(pageCode, '요약 카드가 다시 장수를 받는다 — 같은 숫자를 두 번 말한다').not.toMatch(/<WalletSummaryCard count=/)
     expect(pageCode, '탭에 개수 배지가 돌아왔다 — 요약 카드와 같은 숫자를 두 번 말한다')
       .not.toMatch(/key === 'unused' && unusedItems\.length/)
     expect(pageCode, '머리글에 장수가 돌아왔다').not.toMatch(/countText=/)
@@ -70,9 +72,9 @@ describe('이용권 지갑', () => {
     expect(stripComments(page), '지갑이 추천을 안 붙였다').toMatch(/<WalletRecommend ownedProductIds=\{ownedProductIds\}/)
   })
 
-  it('제목 줄은 화면에 안 뜨지만 sr-only h1 로 남아 있다', () => {
-    // 🔀 2026-10-14 안 B: 지갑은 요약 카드를 쓰고 제목은 페이지가 직접 sr-only h1 으로 남긴다.
-    expect(stripComments(page)).toMatch(/<h1 className="sr-only">\{t\('voucher\.myVouchers'\)\}<\/h1>/)
+  it('제목 줄 — 2026-11-03 토스 참고로 다시 보인다(24·700), 머리 부품은 종전 규칙', () => {
+    // 🔁 2026-11-03 시안 I1: 제목이 보이는 h1 이 됐다(지도 버튼이 그 줄 오른쪽).
+    expect(stripComments(page)).toMatch(/<h1 className="text-\[24px\] font-bold[^"]*">\{t\('voucher\.myVouchers'\)\}<\/h1>/)
     const header = R('pages/my-vouchers/WalletHeader.tsx')
     expect(header).toMatch(/hideTitle && <h1 className="sr-only">\{title\}<\/h1>/)
     // 보이는 제목은 hideTitle 이면 렌더되지 않는다(그냥 색만 바꾸는 식이면 위반).
