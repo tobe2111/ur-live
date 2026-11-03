@@ -2215,7 +2215,10 @@
       "photoNoQr": "Aucun QR code trouvé sur cette photo. Rapprochez-vous et éclairez mieux.",
       "helpTitle": "Le QR code ne se scanne pas ?",
       "helpBody": "1) Demandez au client d’augmenter la luminosité 2) Approchez-vous à 10-20 cm 3) Inclinez pour éviter les reflets 4) Toujours rien ? Utilisez « Scanner depuis une photo » ci-dessus",
-      "switchCamera": "Essayer un autre objectif"
+      "switchCamera": "Essayer un autre objectif",
+      "aimHint": "Placez le QR du bon dans le cadre",
+      "photoChip": "Photo",
+      "codeChip": "Saisir le code"
     },
     "gbSettle": {
       "title": "Règlements automatiques d'achat groupé",
