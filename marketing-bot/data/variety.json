@@ -119,5 +119,13 @@
     "platform": "threads",
     "track": "merchant",
     "date_kst": "2026-11-03"
+  },
+  {
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "먼저 나가는 돈이 없는 구조: 가입비·월 이용료·광고비 0원, 이용권이 팔리고 손님이 와서 쓴 뒤에만 수수료",
+    "hook": "compare",
+    "media_set": "owner-3-changes",
+    "date_kst": "2026-11-03"
   }
 ]
