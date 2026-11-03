@@ -5,7 +5,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoading, DashboardLoadError } from '@/components/dashboard'
 import { UserCog, Plus, Trash2, Key, Edit2, X, ShieldOff, Monitor } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -59,7 +59,7 @@ export default function AdminAccountsPage() {
     return null
   }
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
-  const { data: admins = [], isLoading: loading, refetch } = useApiQuery<Admin[]>(
+  const { data: admins = [], isLoading: loading, isError, error, refetch } = useApiQuery<Admin[]>(
     ['admin', 'admins'], '/api/admin/admins',
     { select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -212,7 +212,9 @@ export default function AdminAccountsPage() {
             </button>
           }
         />
-      {loading ? (
+      {isError ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="관리자 계정" />
+        ) : loading ? (
         <DashboardLoading />
       ) : (
         <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">

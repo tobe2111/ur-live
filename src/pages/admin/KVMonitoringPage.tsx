@@ -21,7 +21,7 @@ export default function KVMonitoringPage() {
 
   // 🛡️ 2026-06-10: 수동 useState+useEffect+setInterval 폴링 → useApiQuery refetchInterval (RQ SSOT).
   //   자동 갱신 ON 시 30초 폴링(foreground 만) — 기존 setInterval 30000 과 동일 주기.
-  const { data = null, isFetching: loading, error: queryError, refetch } = useApiQuery<KVUsageData | null>(
+  const { data = null, isFetching: loading, isError, error: queryError, refetch } = useApiQuery<KVUsageData | null>(
     ['admin', 'kv-usage'],
     '/api/debug/kv-usage',
     {
@@ -86,7 +86,7 @@ export default function KVMonitoringPage() {
       </div>
 
       {/* Error */}
-      {error && (
+      {isError && error && (
         <div className="bg-white border border-rule text-tone-bad px-4 py-3 rounded-lg mb-6">
           {error}
         </div>

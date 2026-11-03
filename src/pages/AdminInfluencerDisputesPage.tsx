@@ -12,7 +12,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoading, DashboardLoadError } from '@/components/dashboard'
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 
@@ -39,7 +39,7 @@ export default function AdminInfluencerDisputesPage() {
   const [tab, setTab] = useState<'open' | 'resolved' | 'rejected'>('open')
   const [processing, setProcessing] = useState<number | null>(null)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (tab별 캐시).
-  const { data: list = [], isLoading: loading, refetch } = useApiQuery<Dispute[]>(
+  const { data: list = [], isLoading: loading, isError, error, refetch } = useApiQuery<Dispute[]>(
     ['admin', 'influencer-disputes', tab], '/api/admin-payouts/disputes',
     { params: { status: tab }, select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -85,7 +85,7 @@ export default function AdminInfluencerDisputesPage() {
           ))}
         </div>
 
-        {loading ? <DashboardLoading /> : list.length === 0 ? (
+        {isError ? <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="커미션 분쟁" /> : loading ? <DashboardLoading /> : list.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl p-10 text-center">
             <p className="text-sm text-gray-500">해당 상태의 분쟁이 없습니다.</p>
           </div>

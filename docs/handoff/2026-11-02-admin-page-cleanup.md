@@ -20,3 +20,9 @@ SSOT: `docs/design/admin-page-audit-2026-11-02.md` (분류표 · 대표 결정 �
 
 ## 이어받는 세션의 첫 액션
 `curl .../api/admin/instagram-autodm/status` 로 `available`·`connected` 를 본다. 둘 다 true 가 되면 규칙을 만들고 `enabled` 를 켠다(발송이라 대표 확인 후).
+
+## 2026-11-03 후속 — 어드민 17곳 "조회 실패 = 0건" 위장 수리 (대표 "응 고쳐줘")
+- 17개 화면에 `isError` → `DashboardLoadError`(다시 시도 · 다시 로그인) 분기를 달았다. 매출 차트는 작은 칸이라 인라인 재시도.
+  KV 모니터링은 원래 에러 문구가 있었고 `isError` 로 조건만 맞췄다.
+- `check-query-iserror.mjs` 동결 목록 17 → **0**. 이제 새 어드민 화면이 같은 실수를 하면 바로 빨간불.
+- 검증: tsc 0 · 관련 시험 53파일 874건 통과 · 대시보드 dark: 0건.

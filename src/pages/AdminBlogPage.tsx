@@ -9,7 +9,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Button } from '@/components/ui/button'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import ImageUpload from '@/components/upload/ImageUpload'
@@ -65,7 +65,7 @@ export default function AdminBlogPage() {
 
   const [view, setView] = useState<View>(editId ? 'edit' : 'list')
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
-  const { data: posts = [], isLoading: loading, refetch } = useApiQuery<BlogPost[]>(
+  const { data: posts = [], isLoading: loading, isError, error, refetch } = useApiQuery<BlogPost[]>(
     ['admin', 'blog'], '/api/admin/blog',
     { select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -227,7 +227,9 @@ export default function AdminBlogPage() {
           }
         />
 
-        {loading ? (
+        {isError ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="블로그 글" />
+        ) : loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
         ) : posts.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-[var(--dash-radius,16px)] border border-gray-200">
