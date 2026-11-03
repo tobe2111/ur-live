@@ -72,7 +72,7 @@ export function BookingModal({ stay, room, checkIn, checkOut, guests, nights, sa
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose}>
       <div className="ur-glass text-gray-900 dark:text-white w-full sm:max-w-md ur-pop-card max-h-[90dvh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-line">
+        <div className="sticky top-0 bg-warm px-5 py-4 border-b border-line">
           <h3 className="text-[15px] font-bold">예약 정보</h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{(stay.restaurant_name || stay.name)} · {room.name}</p>
         </div>
@@ -102,7 +102,7 @@ export function BookingModal({ stay, room, checkIn, checkOut, guests, nights, sa
           />
           <div>
             <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">특이 요청</label>
-            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 늦은 체크인 / 유아 침구 요청" className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-[15px] text-gray-900 dark:text-white resize-none" />
+            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 늦은 체크인 / 유아 침구 요청" className="w-full px-3 py-2 bg-surface border border-rule-strong rounded-lg text-[15px] text-gray-900 dark:text-white resize-none" />
           </div>
           <div className="flex gap-2">
             <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-white text-[15px] font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.1] disabled:opacity-50">취소</button>
@@ -199,7 +199,7 @@ export function MultiBookingModal({
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose}>
       <div className="ur-glass text-gray-900 dark:text-white w-full sm:max-w-md ur-pop-card max-h-[90dvh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-line">
+        <div className="sticky top-0 bg-warm px-5 py-4 border-b border-line">
           <h3 className="text-[15px] font-bold">묶음 예약 ({totalQty}객실)</h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{stay.restaurant_name || stay.name}</p>
         </div>
@@ -228,7 +228,7 @@ export function MultiBookingModal({
           />
           <div>
             <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">특이 요청 (전체 객실 공통)</label>
-            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 인접 객실 배정 요청" className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-[15px] text-gray-900 dark:text-white resize-none" />
+            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 인접 객실 배정 요청" className="w-full px-3 py-2 bg-surface border border-rule-strong rounded-lg text-[15px] text-gray-900 dark:text-white resize-none" />
           </div>
           {/* 🗑️ 2026-09-15 (대표 — "유저가 보면 어색하잖아"): 안내문 제거.
               `sale_mode` 는 **코드 식별자**인데 소비자 화면에 그대로 새어 나와 있었다. 게다가 이 모달은
