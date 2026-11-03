@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-03",
+  "reason": "PR #2143 — 홈 줄 카드 안 2(대표 확정 2026-11-03, app-map-row 카드 코드)와 에이전시 로그아웃 자동 재로그인 수정(공용 agency-presence). main 단독은 예산 안, 이 PR 몫 +1.5~1.9KB",
+  "surfaces": [
+    "product",
+    "map",
+    "dash:my"
+  ],
+  "changes": [
+    "product: 197.1 → 198.8 KB (+1.7, 허용 1.5) · 늘어난 것: app-shell.js +0.6, lz-gbDetailL-product.js +0.5",
+    "map: 218.3 → 220.2 KB (+1.9, 허용 1.5) · 늘어난 것: app-map-row.js +0.7, app-shell.js +0.6",
+    "dash:my: 210.6 → 212.3 KB (+1.7, 허용 1.5) · 늘어난 것: app-shell.js +0.6, app-settings.js +0.4"
+  ]
+}
