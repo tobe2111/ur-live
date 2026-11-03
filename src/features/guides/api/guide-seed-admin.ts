@@ -123,7 +123,18 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
   },
   {
     key: 'settlement', icon: '💰', title: '정산 처리', order: 60,
-    content: `### 🏦 지급 센터 (\`/admin/payout-center\`) — 2026-06-12 신설, 권장 진입점
+    content: `### 📅 정산 달력 (2026-11-03 대표 확정 — 결재 \`docs/decisions/2026-11-03-settlement-structure.md\`)
+| 받는 사람 | 언제 | 어디서 처리 |
+|---|---|---|
+| 매장(이용권 판매 대금) | **매주 목요일**(월~일 사용분) | \`/admin/payouts\` — 일괄 승인 → 이체 파일(또는 토스 지급대행이 켜지면 **[토스로 보내기]**) |
+| 인플루언서(소개·영입 커미션) | **매월 10일** — 그날만 지급 대기 알림이 뜬다(성숙은 매일) | \`/admin/influencer-payouts\` |
+| 에이전시(유어딜이 걷는 몫 — 게이트 켜졌을 때) | **매월 10일** — 신청 안 한 곳도 그날 자동으로 묶인다 | \`/admin/agencies\` 지급 카드 |
+| 매장 월간 명세서 | **매월 10일** 자동 발송(소개비·에이전시 몫) | 할 일 없음 — 매장 알림으로 간다 |
+
+- 월 정산일은 \`platform_settings.commission_payout_day\`(1~28, 기본 10)로 바꾼다.
+- 💸 **토스 지급대행**(\`toss_payouts_enabled\`, 기본 꺼짐): 12-17 개정 전금법 대응. 켜지면 매장 정산은 토스가 매장 계좌로 직접 보내고, 토스가 완료를 알리면(웹훅 \`/api/webhooks/toss-payouts\`) 장부가 자동으로 '송금 완료'가 된다. 켜기 전 staging **S-TOSSPAYOUT** 8건.
+
+### 🏦 지급 센터 (\`/admin/payout-center\`) — 2026-06-12 신설, 권장 진입점
 셀러 정산 · 소개 환급의 **모든 지급 요청이 한 화면**에 모입니다.
 1. 매주 금요일 지급 센터 열기 (정산 센터 탭 맨 앞)
 2. 줄 서 있는 신청의 계좌로 폰뱅킹 이체

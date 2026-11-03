@@ -409,7 +409,7 @@ const UNIT = (() => {
     ], { rowH: 0.48 });
     card(s, 9.55, 4.95, W - M - 9.55, 1.72, { fill: C.tint });
     T(s, '적립은 시작됐고, 송금은 아직입니다', { x: 9.8, y: 5.09, w: W - M - 9.8 - 0.2, h: 0.26, fontSize: 11, bold: true, color: C.ink, charSpacing: -0.3 });
-    T(s, '이 기능은 켜져 있고 ' + FACTS.liveMeasuredAt + ' 기준 실제 주문에서 적립이 1건 생겼습니다. 다만 적립은 송금이 아닙니다 — 손님이 이용권을 쓴 것이 확인되면 익고, 쌓인 금액이 ' + FACTS.influencerPayoutMin + ' 을 넘으면 매월 1일에 보냅니다. 아직 보낸 건은 없습니다.', { x: 9.8, y: 5.37, w: W - M - 9.8 - 0.2, h: 1.15, fontSize: 9.8, color: C.ink, lineSpacingMultiple: 1.38, valign: 'top' });
+    T(s, '이 기능은 켜져 있고 ' + FACTS.liveMeasuredAt + ' 기준 실제 주문에서 적립이 1건 생겼습니다. 다만 적립은 송금이 아닙니다 — 손님이 이용권을 쓴 것이 확인되면 익고, 쌓인 금액이 ' + FACTS.influencerPayoutMin + ' 을 넘으면 ' + FACTS.influencerPayoutDay + '에 보냅니다. 아직 보낸 건은 없습니다.', { x: 9.8, y: 5.37, w: W - M - 9.8 - 0.2, h: 1.15, fontSize: 9.8, color: C.ink, lineSpacingMultiple: 1.38, valign: 'top' });
     s.addNotes('구조: broker-share.ts — 재원은 매장 몫(debit seller:{id}), 유어딜 5% 불변. 상한 BROKER_SHARE_PCT_MAX=50 · BROKER_TERMS_SUM_MAX=90. 적립 레일은 인플루언서와 같다(influencer_attributions source=broker_share → 성숙·원천징수·지급센터 그대로). ✅ 2026-10-12 라이브 실측: broker_share_enabled=true 이고 influencer_attributions(source=broker_share) **1행**(seller 26 · 620원 · pending · 10-07) — 10-06 의 0행에서 바뀌었다. 슬라이드도 "적립 1건 · 송금은 아직" 으로 고쳤다(적립≠송금: 성숙은 payout_requires_voucher_use=true 게이트, 송금은 어드민 [송금 처리]). 대행사 덱 §14 도 같은 커밋에서 뒤집었다 — 두 덱이 어긋나지 않는다. 최소 지급액 10만원도 두 덱에 같이 적었다(중개 몫은 인플루언서 레일이라 매장 레일의 1만원과 다르다 — cron/influencer-payout.ts DEFAULT_PAYOUT_MIN=100_000 · 라이브 influencer_payout_min=100000).');
   }
 

@@ -1,5 +1,6 @@
 /**
- * 🛡️ 2026-05-16: 인플루언서 매월 정산 cron — 매월 1일 KST 18시.
+ * 🛡️ 2026-05-16: 인플루언서 정산 cron — 매일 04:00 KST 실행.
+ *    📅 2026-11-03: 성숙은 매일, **지급 대기는 매월 정산일(기본 10일) 하루만**(아래 블록).
  *
  * 1) influencer_attributions 중 status='pending' AND available_at <= now → status='available'
  *    + balance pending → available 전환
@@ -19,6 +20,11 @@ import { swallow } from '../utils/swallow'
 // 🛡️ 2026-06-26 원천징수율 SSOT — 3.3/8.8 literal 하드코딩 금지(CLAUDE.md). 마스터 상수만 사용.
 import { computeCashPayout, resolveCashFeePct } from '../../shared/influencer-payout-math'
 import { resolvePayoutUseGate } from '../utils/payout-use-gate'
+import { autoRequestAgencyPayouts } from '../utils/agency-share-payout'
+import { sendStoreMonthlyStatements } from '../utils/store-monthly-statement'
+import {
+  COMMISSION_PAYOUT_DAY_KEY, resolveCommissionPayoutDay, isCommissionPayoutDay,
+} from '../../shared/commission-payout-day'
 
 interface InfluencerToPayout {
   influencer_id: string
@@ -79,6 +85,20 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
           pending_amount = COALESCE((SELECT SUM(commission_amount) FROM influencer_attributions WHERE influencer_id = ? AND status = 'pending'), 0),
           updated_at = datetime('now')
       `).bind(row.influencer_id, row.amt, row.influencer_id, row.amt, row.influencer_id).run().catch(swallow('cron:influencer-payout:balance-upsert'))
+    }
+
+    // 📅 2026-11-03 대표 확정 — **지급 대기는 매월 정산일(기본 10일, KST) 하루만** 올린다.
+    //   *"인플루언서 정산은 월 1회 정해진 날로 묶자"* · *"10일로 할까?"*
+    //   성숙(pending → available)과 잔액 동기화는 위에서 **매일** 한다 — 소개자 화면의
+    //   '받을 수 있는 금액'은 매일 정확해야 하기 때문이다. 묶는 것은 지급 대기 알림뿐이다.
+    //   SSOT: `shared/commission-payout-day.ts` · 결재 `docs/decisions/2026-11-03-settlement-structure.md`
+    const dayRow = await DB.prepare(
+      'SELECT value FROM platform_settings WHERE key = ?'
+    ).bind(COMMISSION_PAYOUT_DAY_KEY).first<{ value: string }>().catch(() => null)
+    const payoutDay = resolveCommissionPayoutDay(dayRow?.value)
+    if (!isCommissionPayoutDay(Date.now(), payoutDay)) {
+      logInfo(`[cron:influencer-payout] transitioned=${transitioned} payout_day=${payoutDay} queue=wait_for_payout_day`)
+      return
     }
 
     // 2) 송금 대상 인플루언서 추출
@@ -211,7 +231,31 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       }
     }
 
-    logInfo(`[cron:influencer-payout] transitioned=${transitioned} payouts_queued=${payoutCount} deal_queued=${dealCount} total_net=${payoutTotal} missing_bank=${missingBank.length}`)
+    // 📅 같은 정산일에 에이전시 몫도 묶는다(대표 *"에이전시도 같은 날로"*). 게이트 OFF 면 no-op.
+    let agencyQueued = 0
+    try {
+      const ag = await autoRequestAgencyPayouts(DB)
+      agencyQueued = ag.requested
+      if (ag.requested > 0) {
+        await DB.prepare(
+          `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+           VALUES ('admin', 'all', 'agency_payout_pending', ?, ?, '/admin/agencies', datetime('now'))`
+        ).bind('🏢 에이전시 월 정산 대기', `${ag.requested}곳 · 실지급 ${ag.total.toLocaleString()}원`).run()
+          .catch(swallow('cron:influencer-payout:agency-notify'))
+      }
+    } catch (e) {
+      logError('[cron:influencer-payout] agency auto-request failed', { error: String(e) })
+    }
+
+    // 🧾 같은 날 매장 월간 명세서(지난달 소개비·중개사 몫·에이전시 몫). 돈을 옮기지 않는다 — 알림만.
+    let statementsSent = 0
+    try {
+      statementsSent = (await sendStoreMonthlyStatements(DB, Date.now())).sent
+    } catch (e) {
+      logError('[cron:influencer-payout] store statements failed', { error: String(e) })
+    }
+
+    logInfo(`[cron:influencer-payout] statements=${statementsSent} agency_queued=${agencyQueued} transitioned=${transitioned} payouts_queued=${payoutCount} deal_queued=${dealCount} total_net=${payoutTotal} missing_bank=${missingBank.length}`)
   } catch (e) {
     // 🔔 2026-07-08 (무인운영 감사): 이전엔 삼켜 safeCron 실패 알림에 안 닿았음(성숙 전환/송금대기
     //   집계가 조용히 실패해도 경보 0). 재throw → safeCron → notifyCronFailure(Discord + cron_failures + 벨).

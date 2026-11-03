@@ -304,6 +304,32 @@ export async function requestAgencyPayout(
   return { ok: true, payoutId, ...plan }
 }
 
+/**
+ * 📅 2026-11-03 대표 *"에이전시도 같은 날로 해주고"* — 매월 정산일(기본 10일, 인플루언서와 같은 날)에
+ * 아직 신청하지 않은 에이전시의 성숙분을 **자동으로 신청**으로 묶는다. 어드민은 그날 한 번에 보낸다.
+ * 에이전시가 그 전에 직접 신청한 것은 그대로 두고(처리 중 신청은 에이전시당 하나 — UNIQUE), 이 함수는
+ * 신청이 없는 에이전시만 줍는다. 게이트 OFF 면 아무것도 안 한다(`requestAgencyPayout` 이 먼저 막는다).
+ * 호출: `cron/influencer-payout.ts` 의 정산일 블록. SSOT `shared/commission-payout-day.ts`.
+ */
+export async function autoRequestAgencyPayouts(DB: D1Database): Promise<{ requested: number; total: number }> {
+  if (!(await isAgencySharePayoutEnabled(DB))) return { requested: 0, total: 0 }
+  await ensureAgencyShareTables(DB)
+  const { results } = await DB.prepare(
+    `SELECT agency_id, SUM(amount) AS s FROM agency_share_credits
+      WHERE payout_id IS NULL AND status IN ('pending','available')
+        AND available_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        AND agency_id NOT IN (SELECT agency_id FROM agency_share_payouts WHERE status = 'requested')
+      GROUP BY agency_id HAVING SUM(amount) >= ?`,
+  ).bind(AGENCY_PAYOUT_MIN).all<{ agency_id: number; s: number }>()
+  let requested = 0
+  let total = 0
+  for (const row of results || []) {
+    const r = await requestAgencyPayout(DB, Number(row.agency_id), null)
+    if (r.ok) { requested++; total += r.net }
+  }
+  return { requested, total }
+}
+
 /** 어드민이 송금을 마친 뒤 — 신청(requested)일 때만 paid 로(CAS). 묶인 몫도 함께 paid. */
 export async function markAgencyPayoutPaid(DB: D1Database, payoutId: number, adminId: number, memo?: string): Promise<boolean> {
   await ensureAgencyShareTables(DB)
