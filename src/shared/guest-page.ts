@@ -24,6 +24,8 @@ export const GUEST_CLS = {
   benefitDesc: 'block mt-1 text-[13px] text-gray-500 dark:text-gray-400',
   kakao: 'w-full h-[52px] rounded-xl bg-[#FEE500] text-[#3C1E1E] text-[15px] font-bold flex items-center justify-center gap-2 active:opacity-80',
   kakaoIcon: 'w-[18px] h-[18px]',
+  /** 🎬 2026-11-03 카카오 버튼을 지나가는 빛 칸 — 앱과 서버 첫 화면이 같은 모양이어야 해서 여기 둔다(CSS 는 GuestKakaoButton). */
+  kakaoShine: 'ur-gk-shine absolute inset-0 pointer-events-none',
   /** 유어샵 탭 — 카드가 아니라 바탕 위 문단이다. */
   shopBody: 'px-4',
   shopHeadline: 'mt-2 text-[24px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white',
