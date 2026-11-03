@@ -4,9 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Sparkles, Trophy, Zap, Bot, Download, Printer, ArrowRight, Rocket, Globe } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
-
-const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
-// 🎬 2026-11-03 20차 ⑥ — 문장이 화면에 들어오면 중요한 말에 형광펜이 왼쪽부터 그어진다.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 · 🎬 20차 ⑥ 형광펜
 injectMotionCss('ur-m-marker', `.ur-mk { color: inherit; background: linear-gradient(transparent 60%, rgba(28,105,239,.22) 60%) no-repeat 0 0 / 0% 100%; transition: background-size .7s cubic-bezier(.3,.8,.3,1); }.ur-mk.ur-mk-on { background-size: 100% 100%; }@media (prefers-reduced-motion: reduce){.ur-mk{transition:none!important}}`)
 
 /**
@@ -30,13 +28,10 @@ export default function AboutPage() {
     }
   }, [isPrintMode])
 
-  // 🎬 20차 ⑥ — 형광펜은 그 문장이 다 보일 때 한 번 그어진다. 인쇄면 처음부터 다 그어 둔다.
-  useEffect(() => {
-    const marks = Array.from(document.querySelectorAll<HTMLElement>('.ur-mk'))
-    if (isPrintMode || typeof IntersectionObserver === 'undefined') { marks.forEach((m) => m.classList.add('ur-mk-on')); return }
+  useEffect(() => { // 🎬 20차 ⑥ — 형광펜은 그 문장이 다 보일 때 한 번 그어진다. 인쇄면 처음부터 다 그어 둔다.
+    const marks = Array.from(document.querySelectorAll<HTMLElement>('.ur-mk')); if (isPrintMode || typeof IntersectionObserver === 'undefined') { marks.forEach((m) => m.classList.add('ur-mk-on')); return }
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('ur-mk-on'); io.unobserve(e.target) } }), { threshold: 1, rootMargin: '0px 0px -10% 0px' })
-    marks.forEach((m) => io.observe(m))
-    return () => io.disconnect()
+    marks.forEach((m) => io.observe(m)); return () => io.disconnect()
   }, [isPrintMode])
 
   const handleDownloadPdf = () => {
