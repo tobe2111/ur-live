@@ -218,6 +218,7 @@ export default function SearchPage() {
         onSearch={handleSearch}
         onLoadSuggestions={loadSuggestions}
         onPanelChange={(open, value) => setPanel({ open, value })}
+        hints={popularSearches}
       />
 
       {/* 🔎 제안 — 결과를 덮지 않고 **대신한다**. 하나라도 있을 때만(없으면 종전 화면 그대로). */}

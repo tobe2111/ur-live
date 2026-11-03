@@ -14,6 +14,8 @@ const injectMotionCss = (id: string, css: string) => { if (typeof document !== '
 // 🎬 2026-11-03 15차 ②⑩ — 비밀번호 확인이 같으면 체크가 그려지고, 다르면 칸을 떠날 때 좌우로 살짝 흔들린다.
 //   약관 칸은 켜질 때 톡 튀고, '전체 동의' 를 누르면 아래 칸이 위에서부터 하나씩 켜진다.
 injectMotionCss('ur-m-register', `@keyframes ur-rg-ck { to { stroke-dashoffset: 0; } }@keyframes ur-rg-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.18); } 100% { transform: none; } }.ur-rg-ck path { stroke-dasharray: 20; stroke-dashoffset: 20; animation: ur-rg-ck .3s ease-out forwards; }.ur-rg-agree:checked { animation: ur-rg-pop .3s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-rg-agree:checked{animation:none!important}.ur-rg-ck path{animation:none!important;stroke-dashoffset:0}}`)
+// 🎬 2026-11-03 18차 ⑦ — 가입 처리 중엔 버튼 테두리를 따라 빛이 돈다(리뷰 등록과 같은 문자열).
+injectMotionCss('ur-m-busyring', `@keyframes ur-busy-spin { to { transform: rotate(360deg); } }.ur-busy-ring { position: relative; isolation: isolate; overflow: hidden; }.ur-busy-ring::before { content: ''; position: absolute; inset: -60%; z-index: -2; background: conic-gradient(from 0deg, transparent 0 65%, rgba(255,255,255,.95) 82%, transparent 100%); animation: ur-busy-spin 1.1s linear infinite; }.ur-busy-ring::after { content: ''; position: absolute; inset: 2px; z-index: -1; border-radius: inherit; background: var(--brand); }@media (prefers-reduced-motion: reduce){.ur-busy-ring::before{animation:none!important;opacity:0}}`)
 
 export default function RegisterPage() {
   const { t } = useTranslation()
@@ -356,7 +358,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-medium tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+            className={`w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-medium tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2${loading ? ' ur-busy-ring !opacity-100' : ''}`}
           >
             {loading ? t('register.submitLoading', { defaultValue: '가입 중...' }) : t('register.submit', { defaultValue: '가입하기' })}
           </button>
