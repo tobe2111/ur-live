@@ -40,3 +40,4 @@
 - 시간 예약 실측: 코드(`appointments.routes.ts`·`SellerBookingSlotsPage`)는 5월부터 있었는데 **설정 화면에 들어가는 길이 0**, 라이브 `product_booking_slots` 0 · `appointment_bookings` 0. 에이전시도 같은 좌석 토큰이라 같은 상태였다.
 - 한 것(90fa583): 이용권 등록 위저드에 숙박(유형·체크인/아웃·객실·시설) + 예약 방식(바로 사용/시간 예약/외부 예약). 숙소 상품도 `POST /api/seller/products` 로 만들고 `POST /api/seller/stays/:id/info` 로 숙소 정보를 붙인다(옛 소개 할인·수수료는 0 고정). 이용권 행 [예약 시간] · 주문 탭 옆 [예약]·[숙소 예약]. 옛 `SellerStayNewPage` 삭제(주소는 위저드로 리다이렉트).
 - 남은 순서: ② 상세 화면 하나(로딩 잠금 — 대표 허가 2026-11-03) → ③ 소개 적립 통일(결제 잠금 — 허가, staging 실결제 필요) → ④ 옛 숙소 화면 정리.
+- ② 상세(같은 PR): 숙소 상세에 이용권 상세와 같은 폰 구역 탭(`DetailSectionTabs` + `stay-detail/stay-tabs.ts`) · `/pass/<숙소id>` → `/stays/<id>`(`GroupBuyDetailPage`, 로딩 잠금 대표 허가 → `docs/locks/loading/2026-11-03-pass-stay-redirect.md`). 두 상세를 한 파일로 합치는 것은 하지 않았다 — SSR 첫 화면(`stay-detail-ssr-body`·`detail-ssr-body`)이 둘 다 따로 있어 한 번에 합치면 첫 페인트·무게 예산이 통째로 흔들린다. 대신 부품을 공유한다(구역 탭·찜/담기/공유·바탕·제목 크기).
