@@ -92,7 +92,7 @@ export default function UrShortsBrowsePage() {
         >
           <ChevronLeft size={22} />
         </button>
-        <h1 className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">
+        <h1 className="text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white">
           유어쇼츠
           <span aria-hidden="true" className="-ml-[3px] text-brand-text">.</span>
         </h1>

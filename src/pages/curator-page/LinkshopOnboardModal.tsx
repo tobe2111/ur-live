@@ -123,7 +123,7 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
         className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto ur-glass ur-pop-card p-5 ur-dialog-in"
       >
         <div className="flex items-start justify-between mb-1">
-          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">
+          <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">
             {step === 1 ? '유어샵을 어떻게 쓰실 건가요?' : '내 유어샵 꾸미기'}
           </h2>
           <button onClick={dismissPermanently} aria-label="닫기" className="p-1 -m-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">

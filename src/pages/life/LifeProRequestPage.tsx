@@ -73,12 +73,12 @@ export default function LifeProRequestPage() {
         {d.my_quote_id ? (
           <section className="rounded-2xl bg-surface p-5 shadow-lift">
             <p className="text-[13px] text-gray-500 dark:text-gray-400">보낸 견적</p>
-            <p className="mt-1 text-[17px] font-bold">{quotePriceText(d.my_price)}</p>
+            <p className="mt-1 text-[16px] font-bold">{quotePriceText(d.my_price)}</p>
             <p className="mt-2 whitespace-pre-wrap text-[13px]">{d.my_message}</p>
             {d.customer_phone ? (
               <div className="mt-4 rounded-xl bg-warm p-4">
                 <p className="text-[13px]">손님이 사장님을 골랐어요</p>
-                <p className="mt-1 text-[17px] font-bold">{d.customer_name || '손님'}</p>
+                <p className="mt-1 text-[16px] font-semibold">{d.customer_name || '손님'}</p>
                 <a href={`tel:${d.customer_phone}`} className="ur-btn ur-btn-lg ur-btn-primary mt-3 flex w-full justify-center">{d.customer_phone} 전화하기</a>
               </div>
             ) : d.my_quote_status === 'refunded' ? (

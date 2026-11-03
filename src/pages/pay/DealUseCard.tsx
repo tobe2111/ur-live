@@ -79,7 +79,7 @@ export default function DealUseCard({ goodsAmount, dealMax, value, onChange, dis
           placeholder="0"
           disabled={disabled}
           onChange={(e) => onChange(clampDealUse(e.target.value, cap))}
-          className="flex-1 min-w-0 h-12 px-4 rounded-xl bg-warm border border-line text-right text-[17px] font-bold tabular-nums text-ink disabled:opacity-50"
+          className="flex-1 min-w-0 h-12 px-4 rounded-xl bg-warm border border-line text-right text-[16px] font-bold tabular-nums text-ink disabled:opacity-50"
         />
         <span className="text-[13px] text-ink-soft">딜</span>
         <button

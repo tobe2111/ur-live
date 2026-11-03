@@ -164,7 +164,7 @@ export default function HomeSections(
       <>
         <section className={`ur-home-panel${bareFirst ? ' ur-panel-flush' : ''}`} aria-hidden="true">
           {!bareFirst && <div className="mb-3">
-            <h3 className={`${rail ? 'text-[24px] font-bold tracking-[-.02em]' : 'text-[17px] font-bold tracking-tight'} flex`}>
+            <h3 className={`${rail ? 'text-[20px] font-semibold tracking-[-.02em]' : 'text-[16px] font-semibold tracking-tight'} flex`}>
               <span className="rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none w-40">가</span>
             </h3>
             <p className="flex mt-1 text-[12px]"><span className="rounded bg-gray-100 dark:bg-white/[0.06] text-transparent select-none w-56">가</span></p>
@@ -205,7 +205,7 @@ export default function HomeSections(
             {!(bareFirst && sIdx === 0) && <div className="flex items-end justify-between gap-4 mb-3">
               <div className="min-w-0">
                 {/* ⚠️ 모바일 클래스 문자열은 워커 첫 화면(`home-first-screen`)이 글자 그대로 미러한다 — 통째로 둔다. */}
-                <h3 className={rail ? 'text-[24px] font-bold tracking-[-.02em] text-gray-900 dark:text-white' : 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white'}>
+                <h3 className={rail ? 'text-[20px] font-semibold tracking-[-.02em] text-gray-900 dark:text-white' : 'text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white'}>
                   {sec.title}
                 </h3>
                 {/* 📍 위치로 정렬된 줄은 그 사실을 말한다 — "가까운 곳부터" 같은 문구가 위치 없이 남으면 거짓말이다. */}

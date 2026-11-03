@@ -18,7 +18,7 @@ export default function StoreThumb({ src, name, size = 48, hidden = false }: {
   if (!src || dead) {
     return (
       <span
-        className="shrink-0 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center text-[17px] font-bold"
+        className="shrink-0 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center text-[16px] font-semibold"
         style={box}
         aria-hidden="true"
       >

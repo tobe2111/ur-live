@@ -1,6 +1,7 @@
 /**
  * 🏠 요청서 시트 — 선택지·숫자·여러 개·메모. 날짜는 `DateSheet`, 주소는 `AddressSheet`.
- * 고르기만 하는 시트는 고르는 순간 닫히고 다음 질문이 열린다(오늘의집 흐름 — 확인 버튼 한 번을 줄인다).
+ * 🔄 2026-11-03 대표 *"휙휙 지나가서 뭘 선택했는지 잘 모르겠어 … 옵션 선택하면 아래에 다음 버튼"* — 고르는 순간
+ *   넘어가던 것(2026-10-25 "쭉쭉 자동으로")을 멈췄다. 고르면 그 칸이 표시되고, 아래 **다음** 버튼으로 넘어간다.
  */
 import { useState } from 'react'
 import type { RequestField } from '@/shared/home-service'
@@ -25,17 +26,23 @@ export function sheetTitle(f: RequestField): string {
 export function OptionSheet({ f, value, onPick, onClose }: {
   f: RequestField; value: string; onPick: (v: string) => void; onClose: () => void
 }) {
+  const [picked, setPicked] = useState(value)
   return (
-    <Sheet title={sheetTitle(f)} onClose={onClose}>
+    <Sheet
+      title={sheetTitle(f)}
+      onClose={onClose}
+      footer={<button type="button" disabled={!picked} className={DONE} onClick={() => onPick(picked)}>다음</button>}
+    >
       <div className="space-y-2 pb-2">
         {(f.options || []).map((o) => {
-          const on = value === o
+          const on = picked === o
           const hint = f.optionHints?.[o]
           return (
             <button
               key={o}
               type="button"
-              onClick={() => onPick(o)}
+              aria-pressed={on}
+              onClick={() => setPicked(o)}
               className={`flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-4 text-left ${on ? 'bg-brand-tint ring-2 ring-brand' : 'bg-surface shadow-lift'}`}
             >
               <span className="min-w-0">
@@ -58,7 +65,7 @@ export function NumberSheet({ f, value, onDone, onClose }: {
   const n = Number(v)
   const ok = v !== '' && Number.isFinite(n) && n > 0 && n <= 1000
   return (
-    <Sheet title={sheetTitle(f)} onClose={onClose} footer={<button type="button" disabled={!ok} className={DONE} onClick={() => onDone(String(Math.round(n)))}>완료</button>}>
+    <Sheet title={sheetTitle(f)} onClose={onClose} footer={<button type="button" disabled={!ok} className={DONE} onClick={() => onDone(String(Math.round(n)))}>다음</button>}>
       <div className="flex items-center gap-2 pb-2">
         <input
           autoFocus
@@ -88,7 +95,7 @@ export function MultiSheet({ f, value, onDone, onClose }: {
       footer={
         <div className="grid grid-cols-2 gap-2">
           <button type="button" className={SKIP} onClick={() => onDone('')}>건너뛰기</button>
-          <button type="button" disabled={!picked.length} className={DONE} onClick={() => onDone(picked.join(', '))}>완료</button>
+          <button type="button" disabled={!picked.length} className={DONE} onClick={() => onDone(picked.join(', '))}>다음</button>
         </div>
       }
     >
@@ -120,7 +127,7 @@ export function TextSheet({ f, value, onDone, onClose }: {
       footer={
         <div className={required ? '' : 'grid grid-cols-2 gap-2'}>
           {!required && <button type="button" className={SKIP} onClick={() => onDone('')}>건너뛰기</button>}
-          <button type="button" disabled={required && !v.trim()} className={DONE} onClick={() => onDone(v.trim())}>완료</button>
+          <button type="button" disabled={required && !v.trim()} className={DONE} onClick={() => onDone(v.trim())}>다음</button>
         </div>
       }
     >

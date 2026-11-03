@@ -437,7 +437,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                 onClick={() => { navigate(c.key === 'all' ? '/browse' : `/browse?category=${c.key}`); setShowCount(ITEMS_PER_PAGE) }}
                 className="shrink-0 flex flex-col items-center gap-2 active:scale-95 transition-transform min-w-[56px]"
               >
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-[24px] transition-colors ${
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-[20px] transition-colors ${
                   active
                     ? 'bg-brand text-white shadow-md'
                     : 'bg-gray-100 dark:bg-[#1D1F29]'
@@ -460,7 +460,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         {/* 섹션 헤더 — 🏭 2026-06-04: 기본('전체')에선 '오늘의 핫딜' 타이틀 숨김(핫딜 섹션 제거). 카테고리 선택 시엔 라벨 표시. */}
         {category !== 'all' && (
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-[17px] lg:text-[28px] font-bold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'lifestyle':t('browse.categoryLiving'),'electronics':t('browse.categoryDigital'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':'식사','beauty_voucher':'뷰티 교환권','health_voucher':'건강 교환권','pet_voucher':'반려 교환권','stay_voucher':'숙박 교환권','activity_voucher':'액티비티 교환권','etc_voucher':'기타 교환권'} as Record<string, string>)[category] || category)}</h1>
+            <h1 className="text-[16px] lg:text-[24px] font-semibold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'lifestyle':t('browse.categoryLiving'),'electronics':t('browse.categoryDigital'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':'식사','beauty_voucher':'뷰티 교환권','health_voucher':'건강 교환권','pet_voucher':'반려 교환권','stay_voucher':'숙박 교환권','activity_voucher':'액티비티 교환권','etc_voucher':'기타 교환권'} as Record<string, string>)[category] || category)}</h1>
           </div>
         )}
 

@@ -243,7 +243,7 @@ export default function BlogDetailPage() {
 
           {/* CTA */}
           <div className="mt-12 bg-gray-50 dark:bg-[#141414] rounded-2xl p-6 text-center">
-            <p className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">유어딜에서 시작하세요</p>
+            <p className="text-[16px] font-bold text-gray-900 dark:text-white mb-2">유어딜에서 시작하세요</p>
             <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-4">이용권·교환권·동네딜을 한곳에, 나만의 유어샵까지</p>
             <div className="flex gap-3 justify-center">
               <Link to="/" className="px-5 py-2 bg-brand text-white rounded-xl text-[15px] font-bold hover:opacity-90">둘러보기</Link>

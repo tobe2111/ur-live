@@ -106,7 +106,7 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
       <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">{t('reviews.rewardBanner', { defaultValue: '텍스트 {{text}}딜, 사진 {{image}}딜, 영상 {{video}}딜 리워드', text: rewards.text, image: rewards.image, video: rewards.video })}</p>
       <div className="flex gap-1 mb-3" role="radiogroup" aria-label={t('reviews.rating', { defaultValue: '별점' })}>
         {[1, 2, 3, 4, 5].map(s => (
-          <button key={`${s}-${s <= rating ? bump : 0}`} type="button" role="radio" aria-checked={s === rating} aria-label={`${s}`} onClick={() => { setRating(s); setBump((b) => b + 1) }} style={bump && s <= rating ? { animationDelay: `${(s - 1) * 60}ms` } : undefined} className={`text-[17px] ${s <= rating ? `text-brand-text ${bump ? 'ur-pop' : ''}` : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</button>
+          <button key={`${s}-${s <= rating ? bump : 0}`} type="button" role="radio" aria-checked={s === rating} aria-label={`${s}`} onClick={() => { setRating(s); setBump((b) => b + 1) }} style={bump && s <= rating ? { animationDelay: `${(s - 1) * 60}ms` } : undefined} className={`text-[16px] ${s <= rating ? `text-brand-text ${bump ? 'ur-pop' : ''}` : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</button>
         ))}
       </div>
       <textarea
@@ -164,7 +164,7 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
                 <span className="text-[12px]">업로드 중</span>
               ) : (
                 <>
-                  <span className="text-[17px]">+</span>
+                  <span className="text-[16px]">+</span>
                   <span className="text-[12px]">{images.length}/5</span>
                 </>
               )}
@@ -372,7 +372,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
       {totalCount > 0 ? (
         <div className="flex items-center gap-4 mb-4">
           <div className="text-center">
-            <p className="text-[28px] font-bold text-gray-900 dark:text-white">{avgRating}</p>
+            <p className="text-[24px] font-bold text-gray-900 dark:text-white">{avgRating}</p>
             <div className="flex gap-1 mt-1">
               {[1, 2, 3, 4, 5].map(s => (
                 // 🎬 2026-11-02 시안 8차 "평균 별점 채워짐"(대표 "8차에서는 QR 화면 밝아짐 빼고 다 넣어줘") — 채워진 별이 왼쪽부터 차례로 톡.

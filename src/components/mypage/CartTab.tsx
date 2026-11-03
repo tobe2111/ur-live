@@ -31,7 +31,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
           <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
             <BagIcon className="h-10 w-10 text-gray-400 dark:text-gray-500" />
           </div>
-          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">
+          <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">
             {t('cart.emptyTitle', { defaultValue: '장바구니가 비어있습니다' })}
           </h2>
           <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">
@@ -62,7 +62,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
                   {t('cart.option', { value: item.option_value, defaultValue: '옵션 · {{value}}' })}
                 </p>
               )}
-              <p className="text-[17px] font-bold text-gray-900 dark:text-white mt-2">
+              <p className="text-[16px] font-bold text-gray-900 dark:text-white mt-2">
                 {formatNumber(item.price_snapshot * item.quantity)}
                 <span className="text-[15px] font-medium text-gray-600 dark:text-gray-300 ml-1">원</span>
               </p>

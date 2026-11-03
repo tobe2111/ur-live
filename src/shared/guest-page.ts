@@ -8,14 +8,14 @@
 
 export const GUEST_CLS = {
   root: 'min-h-[100dvh] bg-warm pb-8',
-  title: 'px-4 pt-4 pb-2 text-[17px] font-bold tracking-tight text-gray-900 dark:text-white',
+  title: 'px-4 pt-4 pb-2 text-[16px] font-bold tracking-tight text-gray-900 dark:text-white',
   /**
    * 🤍 2026-11-01 — 바탕이 흰색이 되면서(대표 확정) 이 카드는 **바탕과 같은 색**이 됐다. 둘을 가르던
    *   밝기 차가 0 이라 남은 건 그림자 하나다. 대표가 시안 셋 중 **"처방 1 그림자"** 를 골라
    *   `--lift` 를 잉크 6% → 12% 로 올렸다(`index.css`) — 카드 구조는 그대로 두고 그림자만 진하게.
    */
   card: 'mt-2 rounded-2xl px-4 py-5',
-  headline: 'text-[24px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white',
+  headline: 'text-[20px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-white',
   benefits: 'flex flex-col gap-4',
   benefit: 'flex items-start gap-3',
   benefitIcon: 'shrink-0 w-9 h-9 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center',
@@ -28,15 +28,15 @@ export const GUEST_CLS = {
   kakaoShine: 'ur-gk-shine absolute inset-0 pointer-events-none',
   /** 유어샵 탭 — 카드가 아니라 바탕 위 문단이다. */
   shopBody: 'px-4',
-  shopHeadline: 'mt-2 text-[24px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white',
+  shopHeadline: 'mt-2 text-[20px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-white',
   shopSub: 'mt-2 text-[15px] text-gray-500 dark:text-gray-400',
   /** 마이 탭 카드 머리 — 마스코트 + 인사. */
   myHead: 'flex items-center gap-4',
   myHeadText: 'min-w-0',
-  myHello: 'text-[17px] font-bold text-gray-900 dark:text-white',
+  myHello: 'text-[16px] font-semibold text-gray-900 dark:text-white',
   myHelloSub: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400',
   myStats: 'mt-4 grid grid-cols-3 border-t border-rule pt-4 text-center',
-  myStatValue: 'text-[17px] font-bold text-gray-400 dark:text-gray-500',
+  myStatValue: 'text-[16px] font-semibold text-gray-400 dark:text-gray-500',
   myStatLabel: 'mt-1 text-[12px] text-gray-500 dark:text-gray-400',
 } as const
 

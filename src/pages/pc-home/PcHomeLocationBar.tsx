@@ -114,7 +114,7 @@ export const LOCATION_BAR_TONES: Record<LocationBarTone, ToneStyle> = {
     row: 'flex items-center gap-2',
     pick: 'inline-flex items-center gap-1 -ml-0.5 max-w-full',
     pin: null,
-    label: 'text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
+    label: 'text-[20px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
     // 🔎 2026-11-02 (대표 "지역 이름 옆 버튼들(도시 선택, 지금 위치)이 배경 색에 묻혀서 안 보여"):
     //   gray-400/다크 gray-500 은 흰 바탕 3.6:1 · 다크 바탕 약 3:1 이라 아이콘이 배경에 묻혔다.
     //   화살표는 한 단계 진하게, 위치 버튼은 옅은 원판을 깔아 **버튼으로** 보이게 한다.

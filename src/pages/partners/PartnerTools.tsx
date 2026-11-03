@@ -61,7 +61,7 @@ export default function PartnerTools() {
   return (
     <section className="bg-surface">
       <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-16 lg:pt-32">
-        <Reveal><h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+        <Reveal><h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">
           사장님 폰에 뜨는 화면
         </h2></Reveal>
       </div>
@@ -92,7 +92,7 @@ export default function PartnerTools() {
         <div className="mt-12 lg:mt-20 grid gap-9 sm:grid-cols-2 lg:gap-x-20 lg:gap-y-14 max-w-[64rem]">
           {NOTES.map(({ t, d }, i) => (
             <Reveal key={t} delay={(i % 2) * 110}>
-              <p className="text-[17px] lg:text-[24px] font-bold text-ink leading-snug tracking-[-0.02em]">{t}</p>
+              <p className="text-[16px] lg:text-[20px] font-semibold text-ink leading-snug tracking-[-0.02em]">{t}</p>
               <p className="mt-3 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
             </Reveal>
           ))}

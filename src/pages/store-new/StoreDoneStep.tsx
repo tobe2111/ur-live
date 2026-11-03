@@ -31,7 +31,7 @@ export default function StoreDoneStep({ storeName, agencyName, onFirstVoucher, o
         <div className="flex flex-col items-center text-center pt-2">
           <Udal mood="yay" size={120} motion priority />
           <p className="mt-4 text-[13px] font-medium text-brand-text">{storeName}</p>
-          <h1 className="mt-2 text-[24px] font-bold tracking-[-0.02em] leading-snug text-gray-900 dark:text-white">가게 등록이 끝났어요</h1>
+          <h1 className="mt-2 text-[20px] font-semibold tracking-[-0.02em] leading-snug text-gray-900 dark:text-white">가게 등록이 끝났어요</h1>
           <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
             {agencyName
               ? <>이제 <b className="font-medium text-gray-900 dark:text-white">{agencyName}</b> 에이전시가<br />이 가게의 이용권 판매를 도와요.</>

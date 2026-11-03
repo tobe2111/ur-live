@@ -224,7 +224,7 @@ export default function AddressManagementPage() {
         <div className="flex items-end justify-between mb-4">
           <div>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">등록된 배송지</p>
-            <p className="text-[24px] font-bold text-gray-900 dark:text-white">
+            <p className="text-[20px] font-semibold text-gray-900 dark:text-white">
               {addresses.length}<span className="text-[15px] font-medium text-gray-500 dark:text-gray-400 ml-1">개</span>
             </p>
           </div>
@@ -286,7 +286,7 @@ export default function AddressManagementPage() {
                               {labelEmoji} {address.label}
                             </span>
                           )}
-                          <p className="text-[17px] font-bold text-gray-900 dark:text-white">{address.recipient_name}</p>
+                          <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{address.recipient_name}</p>
                           {isDefault && (
                             <span className="rounded-full bg-gray-800 text-white px-2 py-1 text-[12px] font-medium tracking-wide">
                               기본 배송지
@@ -576,14 +576,14 @@ export default function AddressManagementPage() {
             <button
               type="button"
               onClick={handleSaveAddress}
-              className="flex-1 py-4 bg-brand text-white rounded-2xl text-[17px] font-bold hover:bg-brand-dark hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+              className="flex-1 py-4 bg-brand text-white rounded-2xl text-[16px] font-semibold hover:bg-brand-dark hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               {editingId ? t('address.edit') : t('address.save')}
             </button>
             <button
               type="button"
               onClick={closeForm}
-              className="flex-1 py-4 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 rounded-2xl text-[17px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+              className="flex-1 py-4 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 rounded-2xl text-[16px] font-semibold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               취소
             </button>

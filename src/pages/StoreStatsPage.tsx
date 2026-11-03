@@ -199,7 +199,7 @@ export default function StoreStatsPage() {
           <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-orange-100 flex items-center justify-center">
             <Lock className="w-7 h-7 text-orange-600" />
           </div>
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-1">식당 통계</h1>
+          <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-1">식당 통계</h1>
           <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-2">사장님께 알림톡으로 발송된 링크로 접속하시면 비밀번호 없이 바로 확인할 수 있어요.</p>
           <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-6">또는 인플루언서에게 받은 비밀번호를 입력하세요</p>
 
@@ -210,7 +210,7 @@ export default function StoreStatsPage() {
             onChange={e => setPin(e.target.value)}
             type="password"
             placeholder={t('storeStats.passwordPlaceholder')}
-            className="w-full px-4 py-4 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-[17px] text-gray-900 dark:text-white tracking-widest focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 mb-4"
+            className="w-full px-4 py-4 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-[16px] text-gray-900 dark:text-white tracking-widest focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 mb-4"
             onKeyDown={e => e.key === 'Enter' && authenticate()}
           />
           <button
@@ -235,7 +235,7 @@ export default function StoreStatsPage() {
       <div className="ur-content-narrow">
         {/* 헤더 */}
         <div className="text-center mb-6">
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{stats.restaurant_name || t('storeStats.fallbackRestaurant')}</h1>
+          <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">{stats.restaurant_name || t('storeStats.fallbackRestaurant')}</h1>
           <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{stats.product_name}</p>
         </div>
 
@@ -254,7 +254,7 @@ export default function StoreStatsPage() {
                   <s.icon className={`w-4 h-4 ${s.color}`} />
                 </div>
               </div>
-              <p className={`text-[24px] font-bold ${s.color}`}>{s.value}</p>
+              <p className={`text-[20px] font-semibold ${s.color}`}>{s.value}</p>
             </div>
           ))}
         </div>

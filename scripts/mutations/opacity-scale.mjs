@@ -17,7 +17,7 @@ export default [
   {
     name: '🫥 유어쇼츠 구매 바가 다시 투명해진다 (실사고 원본 — bg-white/97)',
     file: VIDEOS,
-    find: 'rounded-2xl bg-white/95 p-2 shadow-2xl',
+    find: 'rounded-2xl bg-white p-2 shadow-2xl', // 🔄 2026-11-03 재조준 — 구매 바가 불투명 흰 판이 됐다(막는 것은 그대로)
     replace: 'rounded-2xl bg-white/97 p-2 shadow-2xl',
     test: GUARD,
     why:
@@ -27,7 +27,7 @@ export default [
   {
     name: '🫥 구매 바 배경 클래스를 통째로 뗀다 (테스트가 바닥을 보는지)',
     file: VIDEOS,
-    find: 'rounded-2xl bg-white/95 p-2 shadow-2xl',
+    find: 'rounded-2xl bg-white p-2 shadow-2xl', // 🔄 2026-11-03 재조준 — 구매 바가 불투명 흰 판이 됐다(막는 것은 그대로)
     replace: 'rounded-2xl p-2 shadow-2xl',
     test: BAR_TEST,
     why:

@@ -37,7 +37,7 @@ export default function ServerErrorPage() {
         </h1>
 
         {/* Description */}
-        <p className="mb-8 text-[17px] sm:text-[17px] leading-[1.47059] font-normal text-[#6e6e73] dark:text-gray-400 smooth-appear whitespace-pre-line" style={{ animationDelay: '0.3s' }}>
+        <p className="mb-8 text-[16px] sm:text-[16px] leading-[1.47059] font-normal text-[#6e6e73] dark:text-gray-400 smooth-appear whitespace-pre-line" style={{ animationDelay: '0.3s' }}>
           {t('serverError.description')}
         </p>
 

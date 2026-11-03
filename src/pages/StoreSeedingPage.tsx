@@ -46,17 +46,17 @@ export default function StoreSeedingPage() {
       <SEO title="무상 체험 요청함 - 유어딜" description="인플루언서 무상 체험 신청을 승인하고 일정을 정합니다" url="/store/seeding" />
       <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-rule bg-surface px-3 py-3">
         <button type="button" onClick={() => navigate(MY_PATH)} aria-label="뒤로" className="p-1 text-ink"><ChevronLeft className="h-6 w-6" /></button>
-        <h1 className="text-[17px] font-bold text-ink">무상 체험 요청함</h1>
+        <h1 className="text-[16px] font-semibold text-ink">무상 체험 요청함</h1>
       </header>
       <div className="mx-auto max-w-xl space-y-4 px-4 pt-4">
         <section className={card}>
-          <p className="text-[17px] font-bold text-ink">받은 신청</p>
+          <p className="text-[16px] font-semibold text-ink">받은 신청</p>
           {reqs === null ? <p className="mt-2 text-[13px] text-ink-soft">불러오는 중…</p>
             : reqs.length === 0 ? <p className="mt-2 text-[13px] text-ink-soft">아직 받은 신청이 없어요.</p>
             : <ul className="mt-2 divide-y divide-rule">{reqs.map((r) => <ReqRow key={r.id} r={r} onDone={load} />)}</ul>}
         </section>
         <section className={card}>
-          <p className="text-[17px] font-bold text-ink">이용권별 제공 설정</p>
+          <p className="text-[16px] font-semibold text-ink">이용권별 제공 설정</p>
           <p className="mt-1 text-[13px] text-ink-soft">켜 둔 이용권에만 인플루언서가 무료 체험을 신청할 수 있어요.</p>
           <ul className="mt-2 divide-y divide-rule">{offers.map((o) => <OfferEdit key={o.id} o={o} />)}</ul>
           {offers.length === 0 && <p className="mt-2 text-[13px] text-ink-soft">판매 중인 이용권이 없어요.</p>}

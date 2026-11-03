@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-03",
+  "reason": "2026-11-03 안 C 클래스 치환(굵기·크기 토큰) + main 머지분 — stayDetail +1.5KB, 새 코드 경로 없음",
+  "surfaces": [
+    "stayDetail"
+  ],
+  "changes": [
+    "stayDetail: 213.8 → 215.4 KB (+1.5, 허용 1.5) · 늘어난 것: lz-gbDetail.js +0.8, app-shell.js +0.4, StayDetailPage.js +0.3"
+  ]
+}

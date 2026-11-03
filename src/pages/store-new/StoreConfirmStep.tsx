@@ -92,7 +92,7 @@ export default function StoreConfirmStep({ place, phone, phoneFromAccount, onPho
 
         <div className="mt-4 flex items-start gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-[17px] font-bold text-gray-900 dark:text-white">{place.name}</p>
+            <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{place.name}</p>
             {sub && <p className="mt-1 text-[13px] text-ink-soft">{sub}</p>}
             {kind && <p className="mt-1 text-[13px] text-ink-soft">{kind}</p>}
           </div>
@@ -104,7 +104,7 @@ export default function StoreConfirmStep({ place, phone, phoneFromAccount, onPho
           <span className={`ur-sn-field flex items-center gap-2 h-14 px-4 rounded-xl border-[1.5px] ${phoneBad ? 'border-tone-bad' : 'border-line focus-within:border-brand'}`} aria-invalid={phoneBad}>
             <input value={formatPhone(phone)} onChange={(e) => onPhone(e.target.value)} onBlur={() => setTouched(true)}
               inputMode="tel" autoComplete="tel" placeholder="010-0000-0000" aria-invalid={phoneBad}
-              className="flex-1 min-w-0 bg-transparent border-0 outline-none focus-visible:outline-none text-[17px] font-medium tracking-wide text-gray-900 dark:text-white placeholder:text-ink-faint" />
+              className="flex-1 min-w-0 bg-transparent border-0 outline-none focus-visible:outline-none text-[16px] font-medium tracking-wide text-gray-900 dark:text-white placeholder:text-ink-faint" />
             {phoneFromAccount && phoneOk && <span className="shrink-0 rounded-md bg-brand-tint px-2 py-1 text-[12px] text-brand-text">계정 번호</span>}
           </span>
         </label>

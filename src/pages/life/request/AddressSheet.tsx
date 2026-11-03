@@ -74,7 +74,7 @@ export function AddressSheet({ f, onDone, onClose }: {
       <Sheet
         title="상세 주소를 알려 주세요"
         onClose={onClose}
-        footer={<button type="button" className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center" onClick={finish}>완료</button>}
+        footer={<button type="button" className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center" onClick={finish}>다음</button>}
       >
         <div className="space-y-2 pb-2">
           <button type="button" onClick={() => setMode('search')} className={`${INPUT} text-left text-gray-600 dark:text-gray-300`}>{label}</button>
@@ -92,7 +92,7 @@ export function AddressSheet({ f, onDone, onClose }: {
       <Sheet
         title={`${eulReul(f.label)} 알려 주세요`}
         onClose={onClose}
-        footer={<button type="button" disabled={!ok} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center disabled:opacity-50" onClick={() => onDone(manual.trim(), '')}>완료</button>}
+        footer={<button type="button" disabled={!ok} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center disabled:opacity-50" onClick={() => onDone(manual.trim(), '')}>다음</button>}
       >
         <input autoFocus className={INPUT} maxLength={60} placeholder="예) 서울 강남구 역삼동 (동까지만)" value={manual} onChange={(e) => setManual(e.target.value)} />
         <p className="pt-2 pb-2 text-[13px] text-gray-500 dark:text-gray-400">주소 검색을 불러오지 못해 직접 적어 주세요. 시·구까지는 꼭 적어 주세요.</p>
@@ -102,7 +102,11 @@ export function AddressSheet({ f, onDone, onClose }: {
 
   return (
     <Sheet title={`${eulReul(f.label)} 알려 주세요`} onClose={onClose}>
-      <div className="relative h-[60dvh] w-full pb-2">
+      {/* 🩸 2026-11-03 대표 신고 *"주소입력하는 란 때문에 아래가 안보이고 이동이 안되는"* — 종전 `h-[60dvh]` 고정이라
+          첫 질문(위에 소개·모집 안내 카드 둘)에서는 남은 자리보다 커서 아래가 잘렸고, 손가락이 검색창(iframe) 안에서만
+          움직여 바깥을 못 내렸다. 이제 **남은 자리만큼만** 채운다(`h-full` — 부모 스크롤 칸이 flex-1 min-h-0).
+          너무 좁아지면 최소 320px 을 지키고 그때만 바깥이 내려간다. */}
+      <div className="relative h-full min-h-[320px] w-full pb-2">
         {!ready && <p className="absolute inset-x-0 top-0 py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">주소 검색을 불러오는 중</p>}
         <div ref={box} className="h-full w-full" />
       </div>

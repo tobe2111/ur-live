@@ -103,19 +103,19 @@ export default function MyLedgerPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="rounded-xl p-4">
               <div className="flex items-center gap-1 text-[12px] text-gray-500"><TrendingUp className="w-3.5 h-3.5" /> 누적 발생액</div>
-              <p className="text-[17px] font-bold text-gray-900 mt-1">{formatWon(data.summary.total_earned)}</p>
+              <p className="text-[16px] font-bold text-gray-900 mt-1">{formatWon(data.summary.total_earned)}</p>
             </div>
             <div className="rounded-xl p-4">
               <div className="flex items-center gap-1 text-[12px] text-gray-500"><Send className="w-3.5 h-3.5" /> 송금 완료</div>
-              <p className="text-[17px] font-bold text-emerald-600 mt-1">{formatWon(data.summary.total_paid)}</p>
+              <p className="text-[16px] font-bold text-emerald-600 mt-1">{formatWon(data.summary.total_paid)}</p>
             </div>
             <div className="rounded-xl p-4">
               <div className="flex items-center gap-1 text-[12px] text-gray-500"><ClockIcon className="w-3.5 h-3.5" /> 미정산 잔액</div>
-              <p className="text-[17px] font-bold text-amber-600 mt-1">{formatWon(data.summary.pending)}</p>
+              <p className="text-[16px] font-bold text-amber-600 mt-1">{formatWon(data.summary.pending)}</p>
             </div>
             <div className="rounded-xl p-4">
               <div className="text-[12px] text-gray-500">총 entries</div>
-              <p className="text-[17px] font-bold text-gray-900 mt-1">{data.summary.entry_count}건</p>
+              <p className="text-[16px] font-bold text-gray-900 mt-1">{data.summary.entry_count}건</p>
             </div>
           </div>
 

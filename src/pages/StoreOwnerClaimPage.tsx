@@ -205,10 +205,10 @@ export default function StoreOwnerClaimPage() {
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
           {/* 왼쪽(PC) · 위(폰) — 무엇을 하는 곳인가 */}
           <div className="lg:pt-4">
-            <h1 className="hidden lg:block text-[40px] font-extrabold tracking-[-0.03em] leading-[1.22] text-gray-900">
+            <h1 className="hidden lg:block text-[40px] font-bold tracking-[-0.03em] leading-[1.22] text-gray-900">
               내 가게<br /> 찾기
             </h1>
-            <p className="text-[13px] lg:text-[17px] lg:mt-4 text-gray-600 leading-relaxed lg:max-w-[460px]">
+            <p className="text-[13px] lg:text-[16px] lg:mt-4 text-gray-600 leading-relaxed lg:max-w-[460px]">
               이미 유어딜에 등록된 가게의 <b className="text-gray-900">진짜 사장님</b>이시면, 사업자등록증을 올려
               소유권을 신청해주세요. 확인되면 그 매장의 주인으로 등록해 드립니다 —
               <b className="text-gray-900"> 지금까지 쌓인 상품·주문·리뷰·정산 이력은 그대로 남습니다.</b>
@@ -230,7 +230,7 @@ export default function StoreOwnerClaimPage() {
             <div className="hidden lg:flex mt-9 pt-5 border-t border-rule gap-9 lg:max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
-                  <div className="text-[17px] font-bold text-gray-900">{value}</div>
+                  <div className="text-[16px] font-semibold text-gray-900">{value}</div>
                   <div className="mt-1 text-[12px] text-gray-500">{label}</div>
                 </div>
               ))}

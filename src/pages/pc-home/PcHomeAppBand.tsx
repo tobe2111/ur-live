@@ -85,7 +85,7 @@ function PhoneDetail() {
     <div className="w-[236px] shrink-0 rounded-[34px] bg-[#0c0c0e] p-2 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
       <div className="rounded-[26px] overflow-hidden bg-white">
         {/* hero image */}
-        <div className="aspect-[4/3] w-full grid place-items-center text-white text-[24px] font-bold" style={{ background: 'linear-gradient(140deg,#e67e22,#a04000)' }}>NA</div>
+        <div className="aspect-[4/3] w-full grid place-items-center text-white text-[20px] font-semibold" style={{ background: 'linear-gradient(140deg,#e67e22,#a04000)' }}>NA</div>
         <div className="p-4">
           <div className="flex items-center gap-2">
             <span className="w-7 h-7 rounded-full bg-gradient-to-br from-brand to-rose-500" />
@@ -124,10 +124,10 @@ export default function PcHomeAppBand() {
       <div className="pointer-events-none absolute -right-20 -top-24 w-[420px] h-[420px] rounded-full blur-3xl opacity-25" style={{ background: 'radial-gradient(circle,#ff6a3d,transparent 70%)' }} />
       <div className="max-w-[1600px] mx-auto px-6 lg:px-10 py-14 flex items-center justify-between gap-10 relative">
         <div className="min-w-0">
-          <h2 className="text-[28px] lg:text-[34px] font-extrabold leading-[1.25] tracking-tight text-white">
+          <h2 className="text-[28px] lg:text-[34px] font-bold leading-[1.25] tracking-tight text-white">
             유어딜에서 <span className="text-[#ff8a5c]">우리 동네 딜</span>과<br />함께해요
           </h2>
-          <p className="mt-3 text-[17px] font-bold text-white/70">설치 없이 폰에서 바로 열려요</p>
+          <p className="mt-3 text-[16px] font-semibold text-white/70">설치 없이 폰에서 바로 열려요</p>
           <div className="mt-7 flex items-center gap-4">
             <div className="rounded-2xl bg-white p-2 shrink-0">{/* QR 은 스캔을 위해 항상 흰 배경 — light-fixed */}
               <Suspense fallback={<div className="w-[92px] h-[92px]" />}>

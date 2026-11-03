@@ -84,7 +84,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           <div className="w-9 h-1 rounded-full bg-gray-200 dark:bg-[#2C2F35] mx-auto" />
         </div>
         <div className="px-5 pt-3 pb-3 flex items-center justify-between shrink-0">
-          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('map.filter.title', { defaultValue: '필터' })}</h3>
+          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('map.filter.title', { defaultValue: '필터' })}</h3>
           <button
             onClick={() => { setRegion(''); setDistrict(''); setSort(hasUserLoc ? 'distance' : 'discount'); setRadius(0); setPrice('all') }}
             className="text-[13px] font-medium text-gray-400 dark:text-gray-500 active:text-gray-900 dark:active:text-white"

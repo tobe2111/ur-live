@@ -110,7 +110,7 @@ export default function LifePage() {
               내 견적 요청<ChevronRight className="h-4 w-4" />
             </Link>
           </div>
-          <h1 className="mt-2 text-[24px] font-bold leading-snug tracking-tight lg:text-[34px]">사장님, 가게 일은<br className="lg:hidden" /> 여기서 맡기세요</h1>
+          <h1 className="mt-2 text-[20px] font-semibold leading-snug tracking-tight lg:text-[34px]">사장님, 가게 일은<br className="lg:hidden" /> 여기서 맡기세요</h1>
           <ol className="mt-4 grid grid-cols-3 gap-2 text-center">
             {['요청서 1분 작성', `견적 최대 ${MAX_QUOTES_PER_REQUEST}곳 도착`, '비교하고 한 곳 고르기'].map((step, i) => (
               <li key={step} className="ur-life-step rounded-xl bg-surface px-2 py-3" style={{ '--i': i } as React.CSSProperties}>
@@ -127,7 +127,7 @@ export default function LifePage() {
         <div className="space-y-3">
         {GROUPS.map((g) => (
           <section key={g.title} className={CARD}>
-            <h2 className="text-[17px] font-bold">{g.title}</h2>
+            <h2 className="text-[16px] font-semibold">{g.title}</h2>
             {g.big ? (
               <ul className="mt-2 divide-y divide-rule">
                 {g.keys.map((k) => {
@@ -160,7 +160,7 @@ export default function LifePage() {
         <aside className="space-y-3 lg:sticky lg:top-24">
         {deals.length > 0 && (
           <section className={CARD}>
-            <h2 className="text-[17px] font-bold">정해진 가격으로 바로 사기</h2>
+            <h2 className="text-[16px] font-semibold">정해진 가격으로 바로 사기</h2>
             <ul className="mt-2 divide-y divide-rule">
               {deals.map((v) => (
                 <li key={v.id}>
@@ -176,7 +176,7 @@ export default function LifePage() {
 
         {/* 자주 묻는 질문 — 크롤러 본문·FAQPage JSON-LD 와 같은 배열(`shared/life-faq.ts`). */}
         <section className={CARD} aria-labelledby="life-faq">
-          <h2 id="life-faq" className="text-[17px] font-bold">자주 묻는 질문</h2>
+          <h2 id="life-faq" className="text-[16px] font-semibold">자주 묻는 질문</h2>
           <div className="mt-2 divide-y divide-rule">
             {LIFE_FAQ.map((f) => (
               <details key={f.question} className="group py-3">

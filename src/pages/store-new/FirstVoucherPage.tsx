@@ -125,7 +125,7 @@ export default function FirstVoucherPage() {
   }
 
   const fieldCls = (bad: boolean) => `ur-fv-field flex items-center gap-1 h-[52px] px-4 rounded-xl border-[1.5px] ${bad ? 'border-tone-bad' : 'border-line focus-within:border-brand'}`
-  const inputCls = 'flex-1 min-w-0 bg-transparent border-0 outline-none focus-visible:outline-none text-[17px] text-gray-900 dark:text-white placeholder:text-ink-faint'
+  const inputCls = 'flex-1 min-w-0 bg-transparent border-0 outline-none focus-visible:outline-none text-[16px] text-gray-900 dark:text-white placeholder:text-ink-faint'
 
   return (
     <div className="h-dvh lg:h-auto lg:min-h-dvh bg-warm text-gray-900 dark:text-white flex flex-col">
@@ -142,7 +142,7 @@ export default function FirstVoucherPage() {
           <div className="ur-rise flex-1 min-h-0 flex flex-col px-5 pb-[calc(16px+env(safe-area-inset-bottom,0px))]" data-testid="first-voucher-done">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <Udal mood="done" size={120} motion priority />
-              <h1 className="mt-5 text-[24px] font-bold tracking-[-0.02em]">첫 이용권을 올렸어요</h1>
+              <h1 className="mt-5 text-[20px] font-semibold tracking-[-0.02em]">첫 이용권을 올렸어요</h1>
               <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">승인되면 손님에게 보여요.<br />사진과 사용 조건을 더하면 더 잘 팔려요.</p>
             </div>
             <div className="shrink-0 flex flex-col gap-1">
@@ -154,7 +154,7 @@ export default function FirstVoucherPage() {
           <div className="flex-1 min-h-0 flex flex-col px-5 pb-[calc(16px+env(safe-area-inset-bottom,0px))]">
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-1 px-1">
               <p className="text-[13px] font-medium text-brand-text truncate">{store?.name ? `${store.name} · 첫 이용권` : '첫 이용권'}</p>
-              <h1 className="mt-2 text-[24px] font-bold tracking-[-0.02em] leading-snug">무엇을 얼마에 팔까요?</h1>
+              <h1 className="mt-2 text-[20px] font-semibold tracking-[-0.02em] leading-snug">무엇을 얼마에 팔까요?</h1>
 
               <div role="radiogroup" aria-label="이용권 종류" className="mt-5 flex flex-wrap gap-2">
                 {KINDS.map((k) => (
@@ -199,8 +199,8 @@ export default function FirstVoucherPage() {
                   <div className="mt-5 rounded-xl bg-wash px-4">
                     <div className="flex items-baseline gap-2 py-3 border-b border-rule">
                       <span className="w-[72px] shrink-0 text-[13px] text-ink-soft">손님 화면</span>
-                      {pct > 0 && <span className="text-[17px] font-bold text-sale">{pct}%</span>}
-                      <span className="text-[17px] font-bold">{priceN ? `${formatNumber(priceN)}원` : '—'}</span>
+                      {pct > 0 && <span className="text-[16px] font-bold text-sale">{pct}%</span>}
+                      <span className="text-[16px] font-bold">{priceN ? `${formatNumber(priceN)}원` : '—'}</span>
                       {pct > 0 && <span className="text-[13px] text-ink-soft line-through">{formatNumber(origN)}원</span>}
                     </div>
                     <div className={`flex items-center py-3${feePct !== null && priceN > 0 ? ' border-b border-rule' : ''}`}>

@@ -102,7 +102,7 @@ export default function BankSheet({ sellerId, onClose, onDone, onFixPin }: {
     }
   }
 
-  const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[17px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+  const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[16px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
   return (
     <Sheet

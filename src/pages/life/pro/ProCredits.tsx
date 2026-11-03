@@ -72,7 +72,7 @@ export default function ProCredits({ me, onChanged }: { me: ProMe; onChanged: ()
   return (
     <section className="rounded-2xl bg-surface p-5 shadow-lift">
       <p className="text-[13px] text-gray-500 dark:text-gray-400">남은 참여권</p>
-      <p className="mt-1 flex items-baseline gap-2 text-[28px] font-extrabold">
+      <p className="mt-1 flex items-baseline gap-2 text-[28px] font-bold">
         <span className="inline-flex items-baseline tabular-nums">{formatNumber(shown)}<span className="ml-1 text-[15px] font-bold">장</span></span>
         {gain && <span key={gain.k} className="ur-cr-gain text-[13px] font-medium text-brand-text">+{formatNumber(gain.n)}장</span>}
       </p>

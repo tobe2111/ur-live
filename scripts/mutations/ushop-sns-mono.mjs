@@ -10,12 +10,13 @@ const SRC = 'src/pages/curator-page/CuratorHeader.tsx'
  *   브랜드 색 면 복귀 · 그라디언트 복귀 · 터치 영역 축소.
  */
 const TILE = '{snsHitCls}' // 🔄 2026-10-14 유어샵 A — SNS 는 이름표(탭 영역 상수)
+// 🔄 2026-11-03 재조준 — aria 가 팔로워 수까지 말하게 되어 `snsPillText(…, true)` 로 시작한다(막는 것은 그대로).
 
 export default [
   {
     name: '🎨 유튜브 타일이 순수 빨강으로 돌아온다 (표면 규칙 ② 위반)',
     file: SRC,
-    find: `aria-label="YouTube" className=${TILE}`,
+    find: `aria-label={snsPillText('youtube', 'YouTube', curator.sns_followers, true)} className=${TILE}`,
     replace: 'aria-label="YouTube" className="w-[34px] h-[34px] rounded-[10px] bg-[#FF0000] flex items-center justify-center"',
     test: TEST,
     why: '바로 아래 블루 버튼까지 치면 한 화면에 색 면이 넷이 된다. 링크는 자랑거리가 아니라 링크다.',
@@ -23,7 +24,7 @@ export default [
   {
     name: '🎨 인스타 그라디언트가 돌아온다 (표면 규칙 ⑥ "그라디언트 0")',
     file: SRC,
-    find: `aria-label="Instagram" className=${TILE}`,
+    find: `aria-label={snsPillText('instagram', 'Instagram', curator.sns_followers, true)} className=${TILE}`,
     replace: 'aria-label="Instagram" className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center" style={{ background: \'linear-gradient(45deg,#F9CE34,#EE2A7B,#6228D7)\' }}',
     test: TEST,
     why: '3-stop 그라디언트는 디자인 시스템이 이름 대고 금지한 것이다.',
@@ -41,7 +42,7 @@ export default [
   {
     name: '🎨 탭 영역이 36 → 34px 로 줄어든다 (접근성 회귀)',
     file: SRC,
-    find: `aria-label="TikTok" className=${TILE}`,
+    find: `aria-label={snsPillText('tiktok', 'TikTok', curator.sns_followers, true)} className=${TILE}`,
     replace: 'aria-label="TikTok" className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors"',
     test: TEST,
     why: '타일을 없애면서 터치 영역까지 없애면 안 된다 — 셋이 한 글자까지 같아야 한 줄로 읽힌다.',

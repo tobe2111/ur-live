@@ -101,7 +101,7 @@ describe('유어샵 안3 — 주인 띠 삭제 · 버튼 한 자리', () => {
   })
 
   it('방문자에게 팔로우 버튼을 주지 않는다(대표: "그냥 방문자는 안보이면 되잖아")', () => {
-    expect(codeOnly(read(HEADER))).not.toMatch(/팔로우|follow/i)
+    expect(codeOnly(read(HEADER))).not.toMatch(/팔로우|follow(?!er)/i) // 📈 2026-11-03 '팔로워 수'(SNS 이름표)는 버튼이 아니다
   })
   it('두 페이지 모두 헤더에 canEdit 을 넘긴다(소유권 신호는 그대로 prop)', () => {
     for (const f of [PAGE, SELLER]) {

@@ -199,10 +199,10 @@ export default function StoreClaimPage() {
         <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
           {/* PC 왼쪽 — 무엇을 등록하는 곳인가 */}
           <div className="hidden lg:block lg:pt-16">
-            <h1 className="text-[40px] font-extrabold tracking-[-0.03em] leading-[1.22]">
+            <h1 className="text-[40px] font-bold tracking-[-0.03em] leading-[1.22]">
               매장 이용권<br /> 판매 등록
             </h1>
-            <p className="mt-4 text-[17px] leading-relaxed text-ink-soft max-w-[460px]">손님이 유어딜에서 할인가로 이용권을 미리 삽니다. 매장에 와서 QR 을 보여주면 그걸로 끝입니다.</p>
+            <p className="mt-4 text-[16px] leading-relaxed text-ink-soft max-w-[460px]">손님이 유어딜에서 할인가로 이용권을 미리 삽니다. 매장에 와서 QR 을 보여주면 그걸로 끝입니다.</p>
             <ul className="mt-8 flex flex-col gap-4 max-w-[460px]">
               {BENEFITS.map(({ Icon, title, desc }) => (
                 <li key={title} className="flex gap-4 items-start">
@@ -217,7 +217,7 @@ export default function StoreClaimPage() {
             <div className="flex mt-9 pt-5 border-t border-rule gap-9 max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
-                  <div className="text-[24px] font-bold">{value}</div>
+                  <div className="text-[20px] font-semibold">{value}</div>
                   <div className="mt-1 text-[12px] text-ink-soft">{label}</div>
                 </div>
               ))}
@@ -261,13 +261,13 @@ export default function StoreClaimPage() {
                   {step === 'find' && (
                     <>
                       <p className="text-[13px] font-medium text-brand-text lg:hidden">매장 이용권 판매 등록 · 무료</p>
-                      <h1 className="mt-2 lg:mt-0 text-[24px] font-bold tracking-[-0.02em] leading-snug">가게 이름을 검색해 주세요</h1>
+                      <h1 className="mt-2 lg:mt-0 text-[20px] font-semibold tracking-[-0.02em] leading-snug">가게 이름을 검색해 주세요</h1>
                       <StoreFindStep onPick={pick} hasAgency={!!inviteAgency} />
                     </>
                   )}
                   {step === 'confirm' && place && (
                     <>
-                      <h1 className="text-[24px] font-bold tracking-[-0.02em] leading-snug">이 가게로 등록할게요</h1>
+                      <h1 className="text-[20px] font-semibold tracking-[-0.02em] leading-snug">이 가게로 등록할게요</h1>
                       <StoreConfirmStep place={place} phone={phone} phoneFromAccount={phoneFromAccount}
                         onPhone={(v) => { setPhone(v); setPhoneFromAccount(false) }} agencyName={inviteAgency}
                         onChangePlace={() => go('find', -1)} onRegistered={(id, code) => void onRegistered(id, code)}

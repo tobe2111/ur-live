@@ -125,13 +125,13 @@ export default function LifeSharePage() {
           </span>
           <span className="rounded-full bg-warm px-3 py-1 text-gray-500 dark:text-gray-400">{ageLabel(v.createdAt)}</span>
         </div>
-        <h1 className="mt-4 text-[28px] font-bold leading-snug tracking-tight">{v.title}</h1>
+        <h1 className="mt-4 text-[24px] font-bold leading-snug tracking-tight">{v.title}</h1>
         <p className="mt-2 text-[15px] text-gray-500 dark:text-gray-400">{v.region}{date ? ` · 희망 ${date}` : ''}</p>
 
         <section className="mt-6 rounded-2xl bg-warm p-5">
           <div className="flex items-baseline justify-between">
-            <p className="text-[17px]">남은 견적 자리</p>
-            <p className="text-[17px] font-bold tabular-nums text-brand-text">{v.seatsLeft} / {v.maxQuotes}</p>
+            <p className="text-[16px]">남은 견적 자리</p>
+            <p className="text-[16px] font-bold tabular-nums text-brand-text">{v.seatsLeft} / {v.maxQuotes}</p>
           </div>
           <div className="mt-3 flex gap-2">
             {seats.map((taken, i) => <span key={i} className={`h-2 flex-1 rounded-full ${taken ? 'bg-brand' : 'bg-gray-200 dark:bg-gray-700'}`} />)}
@@ -139,7 +139,7 @@ export default function LifeSharePage() {
           <p className="mt-3 text-[13px] text-gray-500 dark:text-gray-400">먼저 보낸 {v.maxQuotes}곳까지만 견적을 낼 수 있어요</p>
         </section>
 
-        <h2 className="mt-8 text-[17px] font-bold">요청 내용</h2>
+        <h2 className="mt-8 text-[16px] font-semibold">요청 내용</h2>
         <dl className="mt-1">
           {v.rows.map((r) => (
             <div key={r.label} className={ROW}>
@@ -149,7 +149,7 @@ export default function LifeSharePage() {
           ))}
         </dl>
 
-        <h2 className="mt-8 text-[17px] font-bold">손님 정보</h2>
+        <h2 className="mt-8 text-[16px] font-semibold">손님 정보</h2>
         <dl className="mt-1">
           {[['이름', v.masked.name], ['연락처', v.masked.phone], ['상세 주소', v.masked.address]].map(([k, val]) => (
             <div key={k} className={ROW}>

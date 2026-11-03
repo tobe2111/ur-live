@@ -62,7 +62,7 @@ export default function ExperienceCampaignsPage() {
     <div className="min-h-[100dvh] bg-[#11141C] text-white pb-24">
       <SEO title={CONSUMER_SURFACE_SEO['/experience'].title} description={CONSUMER_SURFACE_SEO['/experience'].description} url="/experience" />
       <div className="ur-content-wide px-4 lg:px-8 pt-5">
-        <h1 className="text-[24px] font-bold flex items-center gap-2"><GiftBoxIcon className="w-5 h-5 text-brand-text" />체험단</h1>
+        <h1 className="text-[20px] font-semibold flex items-center gap-2"><GiftBoxIcon className="w-5 h-5 text-brand-text" />체험단</h1>
         <p className="text-[13px] text-gray-400 mt-1">무료 응모 · 공정 추첨 · 선정 시 체험권이 이용권 지갑에 발급돼요.</p>
         <p className="text-[13px] text-gray-400 mt-2 max-w-[34em] leading-relaxed">가게가 올린 체험 기회에 응모하면 추첨으로 참여자를 뽑습니다. 선정되면 그 매장에서 쓸 수 있는 체험권이 발급되고, 결과는 알림으로 알려드려요.</p>
 

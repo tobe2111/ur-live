@@ -61,6 +61,7 @@ import { formatNumber } from '../../utils/format'
 import { curatorHomePins, curatorSoldTotal } from '../../shared/curator-pin-order'
 import { SHARE_MASCOT_SRC } from '../../shared/ushop-share-card'
 import { snsLinkStatus } from '../../shared/sns-link'
+import { snsFollowerLabel } from '../../shared/ushop-sns-followers'
 import { ushopNameSizePx } from '../../shared/ushop-name-size'
 import { showUShopChips, showUShopSort } from '../../shared/ushop-pin-category'
 import { PLAIN_CLS, PLAIN_THUMB_CLS, USHOP_TAB_CLS } from '../../shared/ushop-row'
@@ -78,11 +79,13 @@ function escText(s: string): string {
  *    글자 하나까지 같아야 한다.** 갈리면 마운트 때 그 자리가 튄다 — 테스트가 소스를 읽어 대조한다.
  */
 export const CURATOR_FS_CLASS = {
-  root: 'min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white pb-28',
+  root: 'min-h-[100dvh] bg-warm text-gray-900 dark:text-white pb-28',
   pcGrid: 'ur-ushop-pc',
   side: 'ur-ushop-side',
   main: 'ur-ushop-main',
-  header: 'bg-surface dark:bg-warm',
+  header: 'bg-warm',
+  /** 🧾 2026-11-03 유어샵 B — 이름·숫자 줄을 담는 흰 판(바탕은 `bg-warm`). 화면(`CuratorHeader`)과 한 글자까지 같다. */
+  headCard: 'mx-3 mt-2 rounded-2xl bg-surface pt-1 pb-1',
   headerInner: 'max-w-3xl mx-auto',
   brandBar: 'flex items-center px-5 pt-3',
   brandLogo: 'lg:hidden active:opacity-70',
@@ -110,6 +113,8 @@ export const CURATOR_FS_CLASS = {
   chip: USHOP_TAB_CLS,
   sortSlot: 'ml-auto shrink-0',
   sortBtn: 'h-9 inline-flex items-center',
+  /** 🧾 2026-11-03 유어샵 B — 진열 줄을 담는 흰 판. PC(lg+)는 2열 칸이라 판을 걷는다. */
+  rowsCard: 'mx-3 mt-3 rounded-2xl bg-surface lg:mx-0 lg:mt-0 lg:rounded-none lg:bg-transparent',
   rows: 'max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows',
   row: `w-full flex items-center gap-4 text-left ${PLAIN_CLS.skin} active:opacity-60 transition-opacity`,
   rowThumb: `relative ${PLAIN_THUMB_CLS} shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#222225]`,
@@ -119,7 +124,7 @@ export const CURATOR_FS_CLASS = {
   rowTitle: PLAIN_CLS.title,
   rowPriceLine: PLAIN_CLS.priceLine,
   rowDiscount: 'text-[15px] font-bold text-sale tracking-tight',
-  rowPrice: 'text-[17px] font-bold text-gray-900 dark:text-white tracking-tight',
+  rowPrice: 'text-[16px] font-bold text-gray-900 dark:text-white tracking-tight',
   rowUnit: 'text-[12px] font-medium text-gray-900 dark:text-white',
   rowStrike: 'text-[12px] ml-1 leading-none line-through text-gray-400 dark:text-gray-500',
 } as const
@@ -159,6 +164,7 @@ interface CuratorSeed {
     youtube_url?: string | null
     instagram_url?: string | null
     tiktok_url?: string | null
+    sns_followers?: Partial<Record<'youtube' | 'instagram' | 'tiktok', number>> // 📈 2026-11-03 연동 팔로워 수
     ushop_sold?: number | null // 🛍️ 이 유어샵을 거쳐 팔린 수(머리의 '누적 구매')
   }
   pins?: CuratorSeedPin[]
@@ -254,7 +260,9 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
       `<span>이용권 ${num(pins.length)}</span>` +
       (sold > 0 ? `<span> · </span><span>누적 구매 ${num(sold)}</span>` : '')
     // 🔒 화면(`CuratorHeader`)과 같은 판정 — 엉뚱한 주소면 이름표가 없고, 두 곳이 갈리면 마운트 때 줄이 바뀐다.
-    const snsNames = [snsLinkStatus('youtube', c.youtube_url).kind === 'ok' && 'YouTube', snsLinkStatus('instagram', c.instagram_url).kind === 'ok' && 'Instagram', snsLinkStatus('tiktok', c.tiktok_url).kind === 'ok' && 'TikTok'].filter(Boolean) as string[]
+    // 📈 2026-11-03 유어샵 B + SNS: 연동 팔로워 수가 있으면 [로고 + 1.2만] — 화면(`snsPillText`)과 같은 글자.
+    const fl = (p: 'youtube' | 'instagram' | 'tiktok', name: string) => { const n = c.sns_followers?.[p]; return n == null ? name : snsFollowerLabel(n) }
+    const snsNames = [snsLinkStatus('youtube', c.youtube_url).kind === 'ok' && fl('youtube', 'YouTube'), snsLinkStatus('instagram', c.instagram_url).kind === 'ok' && fl('instagram', 'Instagram'), snsLinkStatus('tiktok', c.tiktok_url).kind === 'ok' && fl('tiktok', 'TikTok')].filter(Boolean) as string[]
     const snsHtml = snsNames.length
       ? `<div class="${CURATOR_FS_CLASS.snsGroup}">` +
           snsNames.map((n) => `<span class="${CURATOR_FS_CLASS.snsHit}"><span class="${CURATOR_FS_CLASS.snsPill}"><span style="display:inline-block;width:15px;height:15px"></span>${n}</span></span>`).join('') +
@@ -276,6 +284,7 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
           `<a href="/" aria-label="유어딜 홈" class="${CURATOR_FS_CLASS.brandLogo}">${logoHtml(CURATOR_LOGO_SIZE)}</a>` +
           cluster +
         '</div>' +
+        `<div class="${CURATOR_FS_CLASS.headCard}">` +
         `<div class="${CURATOR_FS_CLASS.nameRow}">` +
           avatar +
           `<div class="${CURATOR_FS_CLASS.nameCol}">` +
@@ -286,6 +295,7 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
         // 핀이 1개 이상일 때만 첫 화면을 그리므로 숫자 줄은 늘 있다(화면도 pins>0 이면 그린다).
         statsRow +
         `<div class="${CURATOR_FS_CLASS.headerPad}"></div>` +
+        '</div>' +
       '</div></header>'
 
     // 검색창은 핀 12개 이상일 때만 뜬다 — 자리 **높이만** 예약(입력칸 내용은 안 그린다).
@@ -323,7 +333,7 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
         `<div class="${CURATOR_FS_CLASS.pcGrid}">` +
           `<div class="${CURATOR_FS_CLASS.side}">${header}</div>` +
           `<div class="${CURATOR_FS_CLASS.main}">${search}${chips}` +
-            `<div class="${CURATOR_FS_CLASS.rows}">${rows}</div>` +
+            `<div class="${CURATOR_FS_CLASS.rowsCard}"><div class="${CURATOR_FS_CLASS.rows}">${rows}</div></div>` +
           '</div>' +
         '</div>' +
         // 📰 2026-10-11: 첫 화면은 진열 **줄 4개**만 그린다 — 유어샵은 공유로 퍼지는 표면이라

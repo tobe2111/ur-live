@@ -83,7 +83,7 @@ describe('🔠 구역 제목 — 무게와 자간', () => {
     const cls = GRAMMAR.match(/SECTION_TITLE_CLS = '([^']+)'/)![1]
     expect(cls, '24px 로 되돌아갔다 — 대표가 두 번 지적한 그 무게다').not.toContain('text-[24px]')
     expect(cls, '순잉크로 되돌아갔다 — 구역을 가르기만 하면 되는 글자다').not.toContain('text-gray-900')
-    expect(cls).toContain('text-[17px]')
+    expect(cls).toContain('text-[16px]') // 🔁 2026-11-03 안 C: 17→16
   })
 })
 

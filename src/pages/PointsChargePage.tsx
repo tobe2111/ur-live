@@ -215,9 +215,9 @@ export default function PointsChargePage() {
               <Zap className="w-4 h-4 fill-white" strokeWidth={0} />
               <span className="text-[12px] font-medium opacity-90">{t('pointsCharge.balance', { defaultValue: '내 딜 잔액' })}</span>
             </div>
-            <p className="text-[34px] font-extrabold leading-none tracking-tight">
+            <p className="text-[34px] font-bold leading-none tracking-tight">
               {formatNumber(balance)}
-              <span className="text-[17px] font-bold ml-1">딜</span>
+              <span className="text-[16px] font-bold ml-1">딜</span>
             </p>
             <p className="text-[12px] font-medium opacity-80 mt-2">{t('pointsCharge.rate', { defaultValue: '1원 = 1딜 · 수수료 없음' })}</p>
           </div>
@@ -251,7 +251,7 @@ export default function PointsChargePage() {
                           <Check className="w-3 h-3 text-white" strokeWidth={3} />
                         </span>
                       )}
-                      <p className={`text-[17px] font-bold ${isSelected ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>
+                      <p className={`text-[16px] font-bold ${isSelected ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>
                         {formatNumber(opt.amount)}
                         <span className="text-[12px] font-medium ml-1">원</span>
                       </p>
@@ -277,7 +277,7 @@ export default function PointsChargePage() {
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-between">
                   <span className="text-[13px] font-medium text-gray-900 dark:text-white">{t('pointsCharge.afterBalance', { defaultValue: '충전 후 잔액' })}</span>
-                  <span className="text-[17px] font-bold text-gray-900 dark:text-white">
+                  <span className="text-[16px] font-bold text-gray-900 dark:text-white">
                     {formatNumber(balance + pointsPreview)}
                     <span className="text-[13px] font-medium ml-1">딜</span>
                   </span>

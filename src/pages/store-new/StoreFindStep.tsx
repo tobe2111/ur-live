@@ -53,17 +53,17 @@ export default function StoreFindStep({ onPick, hasAgency }: { onPick: (p: Regis
     const ok = manualName.trim().length >= 2
     return (
       <div className="ur-step-fwd">
-        <h1 className="text-[24px] font-bold tracking-[-0.02em] leading-snug text-gray-900 dark:text-white">가게 이름을 직접 적어 주세요</h1>
+        <h1 className="text-[20px] font-semibold tracking-[-0.02em] leading-snug text-gray-900 dark:text-white">가게 이름을 직접 적어 주세요</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">지도에 없는 가게는 핀이 바로 뜨지 않아요. 카카오맵에 등록되면 다시 고를 수 있어요.</p>
         <label className="mt-6 block">
           <span className="block text-[13px] text-ink-soft mb-2">가게 이름</span>
           <input value={manualName} onChange={(e) => setManualName(e.target.value)} autoFocus maxLength={60}
-            className="w-full h-[52px] px-4 rounded-xl border-[1.5px] border-line bg-transparent text-[17px] text-gray-900 dark:text-white placeholder:text-ink-faint focus:border-brand focus:outline-none" />
+            className="w-full h-[52px] px-4 rounded-xl border-[1.5px] border-line bg-transparent text-[16px] text-gray-900 dark:text-white placeholder:text-ink-faint focus:border-brand focus:outline-none" />
         </label>
         <label className="mt-4 block">
           <span className="block text-[13px] text-ink-soft mb-2">주소 (선택)</span>
           <input value={manualAddr} onChange={(e) => setManualAddr(e.target.value)} maxLength={120}
-            className="w-full h-[52px] px-4 rounded-xl border-[1.5px] border-line bg-transparent text-[17px] text-gray-900 dark:text-white placeholder:text-ink-faint focus:border-brand focus:outline-none" />
+            className="w-full h-[52px] px-4 rounded-xl border-[1.5px] border-line bg-transparent text-[16px] text-gray-900 dark:text-white placeholder:text-ink-faint focus:border-brand focus:outline-none" />
         </label>
         <button type="button" disabled={!ok} onClick={() => onPick({ name: manualName.trim(), address: manualAddr.trim() })}
           className="ur-btn ur-btn-lg ur-btn-primary w-full mt-6 disabled:opacity-40">이 가게로 진행</button>
@@ -79,7 +79,7 @@ export default function StoreFindStep({ onPick, hasAgency }: { onPick: (p: Regis
         <span className="sr-only">가게 이름 또는 주소</span>
         <input value={query} onChange={(e) => setQuery(e.target.value)} autoFocus enterKeyHint="search"
           placeholder="예: 성수 김밥천국"
-          className="flex-1 min-w-0 bg-transparent border-0 outline-none focus-visible:outline-none text-[17px] text-gray-900 dark:text-white placeholder:text-ink-faint" />
+          className="flex-1 min-w-0 bg-transparent border-0 outline-none focus-visible:outline-none text-[16px] text-gray-900 dark:text-white placeholder:text-ink-faint" />
         {query && (
           <button type="button" aria-label="검색어 지우기" onClick={() => setQuery('')}
             className="w-10 h-10 flex items-center justify-center text-ink-soft"><X size={18} strokeWidth={1.6} aria-hidden="true" /></button>

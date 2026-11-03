@@ -136,7 +136,7 @@ export default function AccountDeleteWarningPage() {
 
       <main className="ur-content-narrow px-4 pt-2 pb-safe-nav flex flex-col gap-3">
         <div className="px-1 pt-2 pb-3">
-          <h2 className="text-[24px] font-bold text-gray-900 dark:text-white tracking-[-0.01em]">
+          <h2 className="text-[20px] font-semibold text-gray-900 dark:text-white tracking-[-0.01em]">
             {t('accountDeleteWarning.headline', { defaultValue: '탈퇴하기 전에 확인해 주세요' })}
           </h2>
           <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">

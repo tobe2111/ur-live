@@ -54,7 +54,7 @@ describe('② 자리 카드 = 진짜 카드의 줄 구조', () => {
     ['주소·평점 줄', /mt-1 text-\[12px\]/, /mt-1 text-\[12px\]/],
     ['정가 묶음', /<div className="mt-2">/, /<div className="mt-2">/],
     ['판매가 줄', /mt-1 leading-none/, /mt-1 leading-none/],
-    ['판매가 크기', /text-\[17px\] font-bold/, /text-\[17px\] font-bold/],
+    ['판매가 크기', /text-\[16px\] font-bold/, /text-\[16px\] font-bold/], // 🔁 2026-11-03 안 C
   ]
   for (const [label, inCard, inPh] of rows) {
     it(label, () => {

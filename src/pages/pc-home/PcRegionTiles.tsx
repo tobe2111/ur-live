@@ -36,7 +36,7 @@ export default function PcRegionTiles() {
 
   return (
     <section aria-labelledby="pc-region-tiles" className="ur-home-panel !mb-0">
-      <h2 id="pc-region-tiles" className="mb-3 text-[24px] font-bold tracking-[-.02em] text-gray-900 dark:text-white">어디로 갈까요?</h2>
+      <h2 id="pc-region-tiles" className="mb-3 text-[20px] font-semibold tracking-[-.02em] text-gray-900 dark:text-white">어디로 갈까요?</h2>
       <div className="grid grid-cols-4 gap-4">
         {tiles.map((t) => {
           // 🗺️ 머리와 같은 지역 사진은 우리 정적 파일(1080×360, 장당 30~70KB)이라 리사이저를 거치지 않는다 —
@@ -52,7 +52,7 @@ export default function PcRegionTiles() {
                 className="absolute inset-0 -z-10 w-full h-full object-cover"
                 onError={(e) => cfImageOnError(e.currentTarget, t.photo)} />
               <div className="absolute inset-x-0 bottom-0 h-[70%] -z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent" aria-hidden="true" />
-              <strong className="text-[24px] font-bold leading-none text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.3)]">{t.sido}</strong>
+              <strong className="text-[20px] font-semibold leading-none text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.3)]">{t.sido}</strong>
               <span className="mt-2 text-[12px] text-white/90 dark:text-white/90 line-clamp-1">
                 {t.places ? `${t.places} · ` : ''}이용권 {formatNumber(t.count)}개
               </span>

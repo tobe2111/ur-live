@@ -34,8 +34,8 @@ export default [
   {
     name: '🧭 [랜딩SEO] 랜딩 FAQ 줄이 접힌 답을 DOM 에서 지운다',
     file: 'src/pages/landing/FaqItem.tsx',
-    find: `          <p className="pb-5 pr-8 text-[13px] lg:text-[17px] leading-[1.8] text-gray-600 dark:text-gray-300 max-w-[44em]">{a}</p>`,
-    replace: `          {open && <p className="pb-5 pr-8 text-[13px] lg:text-[17px] leading-[1.8] text-gray-600 dark:text-gray-300 max-w-[44em]">{a}</p>}`,
+    find: `          <p className="pb-5 pr-8 text-[13px] lg:text-[16px] leading-[1.8] text-gray-600 dark:text-gray-300 max-w-[44em]">{a}</p>`,
+    replace: `          {open && <p className="pb-5 pr-8 text-[13px] lg:text-[16px] leading-[1.8] text-gray-600 dark:text-gray-300 max-w-[44em]">{a}</p>}`,
     test: T,
     why: '종전 모양이다 — 렌더하는 크롤러도 접힌 답을 못 읽었다. 2026-10-31 두 랜딩이 이 부품 하나를 쓰게 모았다.',
   },

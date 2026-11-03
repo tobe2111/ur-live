@@ -73,7 +73,7 @@ export default function StoreReportSheet({ sellerId, productId, storeName, onClo
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-brand-text" />
             <div>
-              <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">이 매장 제보하기</h2>
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">이 매장 제보하기</h2>
               {storeName && <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{storeName}</p>}
             </div>
           </div>

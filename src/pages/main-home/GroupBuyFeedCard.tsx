@@ -41,7 +41,7 @@ import { runAfterLoad } from '@/lib/after-load'
 /**
  * 🖼️ 사진 없는 카드의 자리표시 (2026-08-30 — 이모지 → 선 아이콘)
  *
- *   이전엔 `🍽️ 💇 🏨 🎯 💪 🐶 🎉` 이모지를 `text-[28px]` 로 띄웠다. 두 가지가 문제였다 —
+ *   이전엔 `🍽️ 💇 🏨 🎯 💪 🐶 🎉` 이모지를 `text-[24px]` 로 띄웠다. 두 가지가 문제였다 —
  *   ① **OS 마다 완전히 다른 그림이 나온다**(애플 컬러 이모지 / 노토 / Segoe). 우리가 고른
  *      색·형태가 아니라 남의 그림이 우리 카드 한복판에 뜬다.
  *   ② 이모지는 화면 어디서든 "임시로 채워 둔 것" 으로 읽힌다 — 실제로 임시가 아닌데도.
@@ -388,7 +388,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
           )}
           <p className="flex items-baseline gap-1 mt-1 leading-none">
             {discount > 0 && <span className="text-[15px] font-bold text-sale">{discount}%</span>}
-            <span className={`text-[17px] font-bold tracking-tight ${cText}`}>{formatNumber(price)}{unitLabel}</span>
+            <span className={`text-[16px] font-bold tracking-tight ${cText}`}>{formatNumber(price)}{unitLabel}</span>
             {p.category === 'stay_voucher' && price > 0 && (
               <span className={`text-[12px] font-medium ${cSub}`}>/1박~</span>
             )}

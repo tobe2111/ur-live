@@ -104,7 +104,7 @@ function CheckoutForm({
         type="submit"
         disabled={!stripe || isProcessing}
         className={`
-          w-full py-4 rounded-lg font-bold text-white text-[17px]
+          w-full py-4 rounded-lg font-bold text-white text-[16px]
           ${!stripe || isProcessing
             ? 'bg-gray-300 cursor-not-allowed'
             : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'

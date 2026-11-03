@@ -49,7 +49,7 @@ export default function WalletRow({ v, t, onOpen }: {
     <button
       type="button"
       onClick={(e) => { noteQrOrigin(e.currentTarget); onOpen() }}
-      className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-black/[0.03] dark:active:bg-white/[0.04] transition-colors"
+      className="w-full flex items-center gap-3 px-5 py-3 text-left active:bg-black/[0.03] dark:active:bg-white/[0.04] transition-colors"
     >
       <div className="w-14 h-14 shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
         {v.product_image
@@ -61,7 +61,7 @@ export default function WalletRow({ v, t, onOpen }: {
         {v.restaurant_name && (
           <div className="text-[13px] text-gray-500 dark:text-gray-400 truncate">{v.restaurant_name}</div>
         )}
-        <div className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</div>
+        <div className="text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</div>
         {/* 🎫 2026-10-14 안 B: 남은 기간은 이름 아래 한 줄로 내려왔다(오른쪽은 [사용] 자리). 값과 임박 색은 그대로. */}
         <div className={`mt-1 flex items-center gap-1 text-[12px] tabular-nums ${urgent ? 'ur-blink-once font-medium text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>{/* 🎬 2026-11-02 시안 4차: 임박이면 한 번만 깜빡 */}
           <ClockIcon className="w-[13px] h-[13px] shrink-0" aria-hidden />

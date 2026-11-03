@@ -106,14 +106,14 @@ export default function PointsChargeSuccessPage() {
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
           <OkIcon className="w-10 h-10 text-green-600 dark:text-green-400" />
         </div>
-        <h1 className="text-[24px] font-bold text-gray-900 dark:text-white mb-2">{t('pointsCharge.successHeading', { defaultValue: '충전 완료!' })}</h1>
+        <h1 className="text-[20px] font-semibold text-gray-900 dark:text-white mb-2">{t('pointsCharge.successHeading', { defaultValue: '충전 완료!' })}</h1>
         {/* 🎨 2026-06-17: 분홍 그라데이션 → 프리미엄 다크 카드(교환권/잔액 카드 톤) + 브랜드 옐로우 액센트 */}
         <div className="rounded-2xl p-5 my-6" style={{ background: 'linear-gradient(135deg,#211d3a 0%,#15131f 45%,#050505 100%)' }}>
           <div className="flex items-center justify-center gap-2 mb-2">
             <Zap className="w-4 h-4 text-[#d1d5db]" />
             <span className="text-[12px] text-white/55">{t('pointsCharge.chargedDeals', { defaultValue: '충전된 딜' })}</span>
           </div>
-          <p className="text-[34px] font-extrabold text-white leading-none tracking-tight">+{formatNumber(result?.points_added)}<span className="text-[24px] font-bold ml-1">딜</span></p>
+          <p className="text-[34px] font-bold text-white leading-none tracking-tight">+{formatNumber(result?.points_added)}<span className="text-[24px] font-bold ml-1">딜</span></p>
           <p className="text-[12px] text-white/55 mt-2">{t('pointsCharge.successBalance', { balance: formatNumber(result?.balance), defaultValue: '현재 잔액: {{balance}}딜' })}</p>
         </div>
         {/* 🔗 2026-07-03 [UNLOCK_LOADING] (대표 승인 "1~4번 전부, 가장 이상적으로" — 딜포인트 락인 강화):

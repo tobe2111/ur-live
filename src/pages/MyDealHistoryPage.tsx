@@ -94,7 +94,7 @@ export default function MyDealHistoryPage() {
         <div className="rounded-2xl p-5">
           <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">현재 딜 잔액</p>
           <p className="mt-1 flex items-baseline gap-1 leading-none">
-            <span className="text-[28px] font-extrabold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(balance)}</span>
+            <span className="text-[28px] font-bold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(balance)}</span>
             <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400">딜</span>
           </p>
           <div className="mt-4 flex gap-2">
