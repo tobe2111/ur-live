@@ -204,7 +204,9 @@ describe('④ 재생기는 항상 하나만', () => {
     expect(V, '폴백이 API 경로와 동시에 뜨면 재생기가 둘이 된다').toMatch(/\{apiState === 'off' && cur && \(/)
     // 🩸 `/key=\{cur\.video_id\}/` 로 쓰면 주입본 `data-key={cur.video_id}` 도 매치된다
     //    (부분문자열이라). 앞의 공백을 요구해 속성 이름 자체를 앵커로 삼는다.
-    expect(V).toMatch(/\skey=\{cur\.video_id\}/)
+    // 🩸 2026-11-03 — 덮개 그림(`<img key={cur.video_id}>`)도 같은 key 를 쓰게 되면서 파일 전체 매치가 그쪽을 집어
+    //    iframe 의 key 를 지워도 통과했다(주입이 잡았다). ⇒ **`<iframe` 바로 다음 줄**의 key 로 앵커를 좁힌다.
+    expect(V).toMatch(/<iframe\s*\n\s*key=\{cur\.video_id\}/)
   })
 
   it('목록은 열 때 한 번만 받는다 — 넘길 때마다 부르면 D1 읽기가 스와이프 수만큼 는다', () => {
