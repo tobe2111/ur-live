@@ -10,12 +10,13 @@ export default [
     why: '작은 글자를 굵게 하면 뭉친다 — 교환권 화면이 굵은 글자 73% 였던 원인 중 하나.',
   },
   {
-    name: '🏋️ 이행 화면에 600(semibold)이 돌아온다',
+    name: '🏋️ 이행 화면의 작은 글자에 600(semibold)이 돌아온다',
     file: 'src/pages/group-buy/PassHeadCard.tsx',
-    find: '<span className="text-[24px] font-bold tracking-[-.02em]"',
-    replace: '<span className="text-[24px] font-semibold tracking-[-.02em]"',
+    // 🔁 2026-11-03 재조준(안 C) — 600 은 16px 이상 제목에 허용됐다. 작은 글자(13px)의 600 은 여전히 금지다.
+    find: '<div className="mt-2 flex items-center justify-between gap-3 text-[13px]">',
+    replace: '<div className="mt-2 flex items-center justify-between gap-3 text-[13px] font-semibold">',
     test: T,
-    why: '세 단계 체계에서 600 은 없다 — 섞이면 굵기가 네 단계가 되어 다시 위계가 흐려진다.',
+    why: '작은 글자를 굵게 하면 뭉친다 — 600 은 16px 이상 제목에만.',
   },
   {
     name: '🏋️ 인라인 style 의 800 을 못 본다',
