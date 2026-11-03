@@ -29,6 +29,13 @@ try {
   if (err?.status === 1) process.exit(1)
 }
 
+// 🚧 2026-11-03 — 큰 PR · 다른 세션의 열린 PR 과의 겹침을 알린다(경고만 — 막지 않는다). 근거: check-pr-collision.mjs 머리말.
+try {
+  execFileSync('node', ['scripts/check-pr-collision.mjs'], { stdio: 'inherit', timeout: 20_000 })
+} catch {
+  /* 안내일 뿐 — 실패·시간 초과로 푸시를 막지 않는다 */
+}
+
 // 🔀 2026-10-06 — **CI 가 아예 안 도는 경우**를 먼저 막는다(가드보다 앞).
 //   `.gitattributes` 의 `merge=union` 덕에 로컬 머지는 깨끗한데 **GitHub 서버측은 그 규칙을
 //   안 쓴다** → PR 이 conflicted 로 남고, 그러면 GitHub 이 머지 커밋을 못 만들어
