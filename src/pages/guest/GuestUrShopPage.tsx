@@ -11,6 +11,7 @@
  * ⚠️ 혜택에 "팔리면 소개비" 를 쓰지 말 것 — 담기(소개) 커미션은 꺼져 있다(`affiliate_program_enabled`).
  *   지금 실제로 돈이 되는 길은 매장이 주는 **협업 코드**다(`redeemInfluencerCode` — 매장이 정한 몫).
  */
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight } from 'lucide-react'
@@ -25,6 +26,42 @@ import { usePopularPasses, type PassItem } from './usePopularPasses'
 import { GUEST_CLS, GUEST_COPY } from '@/shared/guest-page'
 
 const ICON = 20
+
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
+/**
+ * 🎬 2026-11-03 로그아웃 유어샵(대표 *"로그아웃 시 나타나는 유어샵, 마이페이지에서도 모션그래픽 넣어줘 중요해"*).
+ *   서버 첫 화면이 그리는 위쪽(제목·헤드라인)은 **안 움직인다** — 이미 보이는 글자를 흐렸다 다시 띄우면 깜빡인다.
+ *   움직이는 건 그 아래, 앱이 그리는 부분뿐이다:
+ *   ① 예시 진열대 — 이용권이 도착하면 세 줄이 오른쪽에서 차례로 들어오고 번호가 톡 붙는다
+ *   ② 프로필 링크 — 'udal' 이 한 글자씩 쳐진다(진짜로 내 주소가 생기는 느낌)
+ *   ③ 혜택 셋·사장님 줄 — 화면에 들어올 때 아래에서 차례로 떠오르고 아이콘이 톡
+ */
+injectMotionCss('ur-m-guestshop', `@keyframes ur-gs-row { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }@keyframes ur-gs-pop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: none; } }@keyframes ur-gs-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }@keyframes ur-gs-caret { 50% { opacity: 0; } }.ur-gs-shelf .ur-gs-rows > * { animation: ur-gs-row .5s cubic-bezier(.2,1,.3,1) backwards; }.ur-gs-shelf .ur-gs-rows > :nth-child(2) { animation-delay: .09s; }.ur-gs-shelf .ur-gs-rows > :nth-child(3) { animation-delay: .18s; }.ur-gs-shelf .ur-gs-n { animation: ur-gs-pop .4s cubic-bezier(.3,1.4,.5,1) .3s backwards; }.ur-gs-shelf .ur-gs-rows > :nth-child(2) .ur-gs-n { animation-delay: .39s; }.ur-gs-shelf .ur-gs-rows > :nth-child(3) .ur-gs-n { animation-delay: .48s; }.ur-gs-caret { display: inline-block; width: 1px; height: 1em; margin-left: 1px; vertical-align: -2px; background: currentColor; animation: ur-gs-caret 1s steps(1) infinite; }.ur-gs-reveal li, .ur-gs-reveal-one { opacity: 0; }.ur-gs-reveal.ur-gs-on li, .ur-gs-reveal-one.ur-gs-on { animation: ur-gs-up .5s cubic-bezier(.2,1,.3,1) both; }.ur-gs-reveal.ur-gs-on li:nth-child(2) { animation-delay: .08s; }.ur-gs-reveal.ur-gs-on li:nth-child(3) { animation-delay: .16s; }.ur-gs-reveal.ur-gs-on li > span:first-child, .ur-gs-reveal-one.ur-gs-on > span:first-child { animation: ur-gs-pop .4s cubic-bezier(.3,1.4,.5,1) .15s backwards; }@media (prefers-reduced-motion: reduce){.ur-gs-shelf .ur-gs-rows > *,.ur-gs-shelf .ur-gs-n,.ur-gs-caret,.ur-gs-reveal.ur-gs-on li,.ur-gs-reveal-one.ur-gs-on,.ur-gs-reveal.ur-gs-on li > span:first-child,.ur-gs-reveal-one.ur-gs-on > span:first-child{animation:none!important}.ur-gs-reveal li,.ur-gs-reveal-one{opacity:1}}`)
+
+/** 화면에 들어오면 `ur-gs-on` 을 한 번 붙인다. 관찰기가 없으면 바로 붙인다(보이기는 해야 한다). */
+function useRevealOnce<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (typeof IntersectionObserver === 'undefined') { el.classList.add('ur-gs-on'); return }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { el.classList.add('ur-gs-on'); io.disconnect() } }, { threshold: 0.2 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  return ref
+}
+
+/** 'udal' 을 한 글자씩 친다. 동작 줄이기면 처음부터 다 보인다. */
+function useTyped(word: string, start: boolean) {
+  const [n, setN] = useState(() => { try { return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? word.length : 0 } catch { return word.length } })
+  useEffect(() => {
+    if (!start || n >= word.length) return
+    const id = window.setTimeout(() => setN((x) => x + 1), n === 0 ? 650 : 110)
+    return () => window.clearTimeout(id)
+  }, [start, n, word.length])
+  return { text: word.slice(0, n), done: n >= word.length }
+}
 
 /** 자리 잡기용 — 화면엔 안 보인다(`invisible`). 줄 높이를 정하는 칸(눈썹·한 줄 제목·가격)만 채운다. */
 const PLACEHOLDER_PINS = [1, 2, 3].map((i) => ({ id: -i, name: '\u00a0', restaurant_name: '\u00a0', price: 0, image_url: null })) as unknown as PassItem[]
@@ -45,7 +82,7 @@ function ExamplePin({ p, n }: { p: PassItem; n: number }) {
       originalPrice={p.original_price}
       discountPct={p.discount_rate}
       leading={
-        <span className="shrink-0 w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-medium flex items-center justify-center">{n}</span>
+        <span className="ur-gs-n shrink-0 w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-medium flex items-center justify-center">{n}</span>
       }
     />
   )
@@ -61,6 +98,9 @@ export default function GuestUrShopPage() {
   const waiting = isLoading && real.length === 0
   const pins: PassItem[] = waiting ? PLACEHOLDER_PINS : real
   const hide = waiting ? ' invisible' : ''
+  const typed = useTyped('udal', !waiting && pins.length > 0)
+  const benefitsRef = useRevealOnce<HTMLDivElement>()
+  const ownerRef = useRevealOnce<HTMLAnchorElement>()
 
   return (
     <div className={GUEST_CLS.root}>
@@ -79,7 +119,7 @@ export default function GuestUrShopPage() {
         </p>
 
         {pins.length > 0 && (
-          <section className={`mt-5 rounded-2xl px-4 pt-4 pb-1${hide}`} aria-hidden={waiting || undefined} aria-label={t('guest.shop.example', { defaultValue: '예시' })}>
+          <section className={`mt-5 rounded-2xl px-4 pt-4 pb-1${hide}${waiting ? '' : ' ur-gs-shelf'}`} aria-hidden={waiting || undefined} aria-label={t('guest.shop.example', { defaultValue: '예시' })}>
             <div className="flex items-center gap-3 pb-3 border-b border-rule">
               <span className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-brand-tint flex items-center justify-center">
                 <Udal mood="tip" size={48} />
@@ -91,7 +131,7 @@ export default function GuestUrShopPage() {
                 {t('guest.shop.example', { defaultValue: '예시' })}
               </span>
             </div>
-            <div className="divide-y divide-rule">
+            <div className="ur-gs-rows divide-y divide-rule">
               {pins.map((p, i) => <ExamplePin key={p.id} p={p} n={i + 1} />)}
             </div>
           </section>
@@ -99,12 +139,12 @@ export default function GuestUrShopPage() {
         {pins.length > 0 && (
           <p className={`mt-3 flex items-center gap-2 px-1 text-[13px] text-gray-500 dark:text-gray-400${hide}`} aria-hidden={waiting || undefined}>
             <span>{t('guest.shop.linkLabel', { defaultValue: '프로필 링크' })}</span>
-            <span className="font-medium text-brand-text">urdeal.kr/u/udal</span>
+            <span className="font-medium text-brand-text" aria-label="urdeal.kr/u/udal">urdeal.kr/u/{typed.text}{!typed.done && <span className="ur-gs-caret" aria-hidden="true" />}</span>
           </p>
         )}
 
 
-        <div className="mt-6">
+        <div ref={benefitsRef} className="mt-6 ur-gs-reveal">
           <GuestBenefits
             items={[
               { icon: <UrShopIcon size={ICON} />, title: t('guest.shop.b1', { defaultValue: '여러 가게를 링크 하나로' }), desc: t('guest.shop.b1d', { defaultValue: '담은 이용권이 내 페이지 한곳에 진열돼요' }) },
@@ -123,7 +163,7 @@ export default function GuestUrShopPage() {
           </p>
         </div>
 
-        <Link to="/partners" className="mt-6 flex items-center gap-3 rounded-2xl px-4 py-4 active:opacity-80">
+        <Link ref={ownerRef} to="/partners" className="ur-gs-reveal-one mt-6 flex items-center gap-3 rounded-2xl px-4 py-4 active:opacity-80">
           <span className="shrink-0 w-9 h-9 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 flex items-center justify-center">
             <StoreIcon size={ICON} />
           </span>

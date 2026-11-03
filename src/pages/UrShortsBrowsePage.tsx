@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { URSHORTS_BROWSE_PATH, type UrShortItem } from '@/shared/urshorts'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import BrowseCard from './urshorts/BrowseCard'
+import { useSafeBack } from '@/hooks/useSafeBack'
 import {
   cityFacets, categoryFacets, filterShorts, pruneFilter,
   MIN_FACETS_TO_SHOW, type Facet, type ShortsFilter,
@@ -42,8 +43,7 @@ injectMotionCss('ur-m-shortsgrid', `@keyframes ur-vc-in { from { opacity: 0; tra
 export default function UrShortsBrowsePage() {
   const [items, setItems] = useState<UrShortItem[] | null>(null)
   const [params, setParams] = useSearchParams()
-  const navigate = useNavigate()
-
+  const goBack = useSafeBack('/')
   useEffect(() => {
     let alive = true
     fetch('/api/urshorts?all=1')
@@ -87,7 +87,7 @@ export default function UrShortsBrowsePage() {
         <button
           type="button"
           aria-label="뒤로"
-          onClick={() => navigate(-1)}
+          onClick={goBack}
           className="grid h-9 w-9 place-items-center rounded-full text-gray-700 dark:text-gray-200"
         >
           <ChevronLeft size={22} />

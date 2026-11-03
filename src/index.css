@@ -739,17 +739,8 @@
   animation-fill-mode: both;
 }
 
-/* 🛠️ 2026-06-16: flex(justify-center) 로 가운데 정렬된 시트용 — translateX 없이 위로만 슬라이드.
-   ⚠️ animate-sheet-up 은 `left-1/2 -translate-x-1/2` 시트 전용(translateX(-50%) 포함). flex 중앙정렬
-   시트(예: 유어샵 온보딩 모달, w-full 자식)에 쓰면 fill-mode 로 -50% 가 영구 유지돼 화면 왼쪽으로 잘림. */
-@keyframes sheet-rise {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.animate-sheet-rise {
-  animation: sheet-rise 0.28s cubic-bezier(0.28, 0.11, 0.32, 1);
-  animation-fill-mode: both;
-}
+/* 🧹 2026-11-03: `.animate-sheet-rise` 삭제 — #2112(팝업 유리 통일)가 마지막 사용처를 걷은 뒤 아무도 안 쓴다.
+   커밋돼 있던 첫 화면 CSS 생성물이 그 정의를 담고 있어 죽은 클래스 검사가 '쓰는 곳' 으로 잘못 셌다. */
 
 /* Card with subtle shadow */
 .apple-card {
@@ -1595,8 +1586,7 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fadeIn { animation: fadeIn 350ms ease-out; }
-/* 🛡️ 2026-05-20: CustomModal 의 inline \3c style> 제거하면서 글로벌화 (CSP unsafe-inline 제거) */
-.animate-slideUp { animation: slideUp 300ms ease-out; }
+/* 🧹 2026-11-03: `.animate-slideUp` 삭제 — 같은 이유(#2112 뒤 사용처 0). `@keyframes slideUp` 은 남긴다. */
 
 /* 🛡️ 2026-05-20: 사이드바 active gradient — Seller/Admin/Agency Layout 의 inline style 대체. */
 /* 🧭 2026-09-14 (대표 Rinda 시안 — `docs/design/dashboard-rinda-2026-09.md`):

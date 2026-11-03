@@ -31,7 +31,7 @@ const HEROES: ReadonlyArray<{
   // 2026-11-01 대표 *"16개잖아 우리 1차 도시 필터링은. 그거 다 해야지"* — 지역 고르기 16칸 전부에 사진.
   //   '충남세종' 칸은 세종 사진(충남 사진이 오면 바꾼다).
   { slug: 'sejong', label: '세종', version: 3, regionKeys: ['충남세종'], boxes: [[36.45, 36.62, 127.20, 127.35]] },
-  { slug: 'daejeon', label: '대전', version: 1, regionKeys: ['대전'], boxes: [[36.20, 36.50, 127.25, 127.55]] },
+  { slug: 'daejeon', label: '대전', version: 2, regionKeys: ['대전'], boxes: [[36.20, 36.50, 127.25, 127.55]] },
   // 지역 키 '전북'의 화면 이름이 '전주/전북'이라 전주 사진을 쓴다(좌표는 전주 시내 + 전북 대략).
   { slug: 'jeonju', label: '전주', version: 3, regionKeys: ['전북'], boxes: [[35.76, 35.90, 127.05, 127.20], [35.40, 36.10, 126.40, 127.90]] },
   // 도 단위는 대략 사각형 — 경계 근처는 이웃 도로 판정될 수 있다(광역시는 위에서 먼저 잡힌다).
@@ -45,6 +45,11 @@ const HEROES: ReadonlyArray<{
   // 2026-11-02 대표 일러스트 — 경북(경주 첨성대) · 전남(순천만 갯벌). 도 단위 대략 상자 — 광역시(대구·광주)는 위에서 먼저 잡힌다.
   { slug: 'gyeongbuk', label: '경북', version: 1, regionKeys: ['경북'], boxes: [[35.60, 37.10, 128.30, 129.60]] },
   { slug: 'jeonnam', label: '전남', version: 1, regionKeys: ['전남'], boxes: [[34.20, 35.50, 125.90, 127.70]] },
+  // 2026-11-03 대표 확정 3D 일러스트 — 대전 v2(한빛탑·엑스포 다리) · 충북(단양 도담삼봉) · 전국(동네 가게 거리).
+  //   충북 상자는 대략 사각형이고 표 맨 뒤라, 겹치는 경기·강원·경북·대전·세종이 먼저 잡힌다.
+  { slug: 'chungbuk', label: '충북', version: 1, regionKeys: ['충북'], boxes: [[36.00, 37.25, 127.25, 128.30]] },
+  // '전국'(지역·위치 없음) 전용 — 상자 없음(좌표로는 안 잡힌다). 동네 가게 거리 = 유어딜이 파는 것.
+  { slug: 'national', label: '전국', version: 1, regionKeys: [], boxes: [] },
 ]
 
 const toHero = (h: (typeof HEROES)[number]): RegionHero => ({
@@ -62,11 +67,10 @@ export function regionHeroFor(input: { regionKey?: string | null; loc?: { lat: n
     const h = HEROES.find(({ boxes }) => boxes.some(([s, n, w, e]) => loc.lat >= s && loc.lat <= n && loc.lng >= w && loc.lng <= e))
     return h ? toHero(h) : null
   }
-  // 🇰🇷 2026-11-02 대표 *"일단 대한민국은 서울 그림으로 해둘래?"* — '전국'(지역도 위치도 없음)은 서울 그림을 빌린다.
-  //   전국 전용 그림이 오면 HEROES 에 'national' 을 더하고 이 줄만 바꾼다.
+  // 🇰🇷 '전국'(지역도 위치도 없음) — 2026-11-02 임시로 서울 그림 → 2026-11-03 대표 확정 전용 그림(동네 가게 거리).
   return NATIONAL_HERO()
 }
-const NATIONAL_HERO = (): RegionHero | null => { const h = HEROES.find(x => x.slug === 'seoul'); return h ? toHero(h) : null }
+const NATIONAL_HERO = (): RegionHero | null => { const h = HEROES.find(x => x.slug === 'national'); return h ? toHero(h) : null }
 
 /**
  * 🍪 2026-11-02 대표 *"처음 유어딜 켤 때 꽤 로딩 걸려"* — 서버 첫 화면이 **같은 사진**을 처음부터 그리게, 화면이 고른 사진을 쿠키로 남긴다.

@@ -17,6 +17,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { formatNumber } from '@/utils/format'
+import { markOrderPaid } from '@/lib/paid-orders'
 
 type State = 'confirming' | 'success' | 'overbooked' | 'fail'
 
@@ -65,6 +66,7 @@ export default function StayCheckoutReturnPage() {
         if (r.data?.success) {
           setAmountDone(Number(r.data.data?.amount) || amount)
           setState('success')
+          markOrderPaid(tossOrderId) // 🔙 이 뒤에 폰 뒤로를 눌러도 이미 쓴 결제창을 다시 띄우지 않는다(lib/paid-orders.ts)
         } else {
           setState('fail')
           setMessage(r.data?.error || '결제 승인에 실패했습니다.')

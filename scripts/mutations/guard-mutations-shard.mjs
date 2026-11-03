@@ -58,9 +58,9 @@ export default [
     why: '0건 조각이 초록이면 "조각 전부 초록 = 전수 초록" 이라는 전제가 통째로 거짓이 된다.',
   },
   {
-    name: '🧩 `--shard` 가 `--changed`·`--only` 와 겹쳐도 통과한다',
+    name: '🧩 `--shard` 가 `--only` 와 겹쳐도 통과한다',
     file: 'scripts/check-guard-mutations.mjs',
-    find: 'if (SHARD && (CHANGED || ONLY)) {',
+    find: 'if (SHARD && ONLY) {',
     replace: 'if (false) {',
     test: TEST,
     why: '겹치면 돈 것이 두 선택의 교집합이라 초록이 무엇을 보증하는지 말할 수 없다.',
@@ -88,5 +88,13 @@ export default [
     replace: '',
     test: TEST,
     why: '첫 빨간불에서 끊기면 "어디가 깨졌나" 를 한 번에 못 봐 전수를 여러 번 돌려야 한다.',
+  },
+  {
+    name: '🧩 변경분 조각이 시험 파일 수를 넘는다 (빈 조각 = 실패로 PR 이 막힌다)',
+    file: 'scripts/guard-mutations-shard.mjs',
+    find: '  const total = Math.max(1, Math.min(CHANGED_MAX_SHARDS, want, groups))',
+    replace: '  const total = Math.max(1, Math.min(CHANGED_MAX_SHARDS, want))',
+    test: TEST,
+    why: '배분이 시험 파일 단위라 그보다 많이 나누면 빈 조각이 생기고, 빈 조각은 실패다 — 좁은 PR 이 이유 없이 빨개진다.',
   },
 ]

@@ -26,6 +26,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
 import PaymentCompleteTicket from './group-buy/PaymentCompleteTicket'
 import CartComplete from './group-buy/CartComplete'
+import { markOrderPaid } from '@/lib/paid-orders'
 
 export default function GroupBuyConfirmPaymentPage() {
   const navigate = useNavigate()
@@ -84,6 +85,7 @@ export default function GroupBuyConfirmPaymentPage() {
       .then((r) => {
         if (r.data?.success) {
           setState('success')
+          markOrderPaid(orderId) // 🔙 이 뒤에 폰 뒤로를 눌러도 이미 쓴 결제창을 다시 띄우지 않는다(lib/paid-orders.ts)
           {
             const d = r.data?.data as { amount?: number; deal_used?: number } | undefined
             const goods = Number(d?.amount)

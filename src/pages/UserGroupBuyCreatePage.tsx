@@ -11,6 +11,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
 import { loginPathFromHere } from '@/utils/login-return'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 interface SelectedRestaurant {
   name: string
@@ -35,6 +36,7 @@ const CREATE_CATEGORY_META: Record<string, { label: string; place: string }> = {
 export default function UserGroupBuyCreatePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const [searchParams] = useSearchParams()
   const catMeta = CREATE_CATEGORY_META[searchParams.get('category') || ''] || null
 
@@ -113,7 +115,7 @@ export default function UserGroupBuyCreatePage() {
           >
             🎤 인플루언서 활동 시작 (카탈로그)
           </button>
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기"
+          <button onClick={goBack} aria-label="뒤로 가기"
             className="w-full py-3 border border-line text-gray-700 dark:text-gray-300 rounded-xl font-bold text-[15px]"
           >
             돌아가기
@@ -194,7 +196,7 @@ export default function UserGroupBuyCreatePage() {
       <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="flex items-center h-12 px-2">
           <button
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             className="p-2 -ml-1"
             aria-label={t('groupbuy.backAria', { defaultValue: '뒤로' })}
           >

@@ -49,6 +49,7 @@ import { isLoggedInSync } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
 import { captureStoreReferrer } from '@/utils/store-referrer'
 import { AGENCY_INVITE_QUERY, isAgencyInviteToken } from '@/shared/agency-store-invite'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 /**
  * 등록하면 할 수 있는 것 셋. **전부 코드에서 확인한 사실만 적는다** —
@@ -131,11 +132,7 @@ export default function StoreClaimPage() {
    * 링크처럼 **직접 주소로** 열리는 자리라(그게 이 페이지의 존재 이유다) 돌아갈 이력이 없을 수 있고,
    * 그때 `-1` 은 아무 일도 안 하거나 앱 밖으로 나간다. 이력이 없으면 홈으로 보낸다.
    */
-  const goBack = () => {
-    const idx = (window.history.state as { idx?: number } | null)?.idx
-    if (typeof idx === 'number' ? idx > 0 : window.history.length > 1) navigate(-1)
-    else navigate('/', { replace: true })
-  }
+  const goBack = useSafeBack('/')
 
   return (
     /* 🕳️ 2026-09-07 (실측 1.09:1): `force-light-theme` 이 없으면 **다크모드에서 입력 글자가 안 보인다.**

@@ -3,7 +3,8 @@
  *
  * 이 테스트가 고정하는 것:
  *   ① 워커가 `#root` 첫 화면을 그리는 모듈이 **전부** 생성기의 ROOTS 에 있다(빠지면 그 화면 클래스가 CSS 에 없다)
- *   ② 커밋된 산출물이 **지금 소스로 다시 만든 것과 같다**(첫 화면 모듈을 고치고 재생성을 잊으면 빨간불)
+ *   ② 생성기가 지금 소스로 만든 CSS 가 상한 안·인라인 가능하다(2026-11-03 부터 산출물은 커밋하지 않는다 —
+ *      빌드가 매번 만든다. 추적 파일은 빈 자리표시자: `critical-css-placeholder-2026-11-03.test.ts`)
  *   ③ 첫 화면이 쓰는 대표 클래스(로더 · 상세 머리 · 배너)가 실제로 그 CSS 에 있다
  *   ④ 재작성기 — CSS 가 있으면 `<style>` + 앱 CSS 링크 `media=print`, 비었으면 **종전과 같다**
  *   ⑤ 부팅 스크립트 — 앱 CSS 가 오면 **스크립트보다 먼저** `media=all`, 백스톱은 길게
@@ -14,7 +15,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
-import { CRITICAL_CSS } from '@/worker/generated/critical-css'
 import {
   applyCssFirstBoot, cssFirstBootScript, criticalCssUsable, CRITICAL_BACKSTOP_MS, CSS_FIRST_BACKSTOP_MS, CRITICAL_STYLE_ID,
 } from '@/worker/utils/css-first-boot'
@@ -46,14 +46,12 @@ describe('① 워커의 첫 화면 모듈이 전부 ROOTS 에 있다', () => {
   })
 })
 
-describe('② 산출물이 최신이다', () => {
-  it('지금 소스로 다시 만든 CSS 와 커밋된 것이 같다', () => {
-    // 별도 node 프로세스 — esbuild 는 jsdom 안에서 돌지 않는다.
-    const css = execFileSync(process.execPath, ['--no-warnings', '-e',
-      "import('./scripts/generate-critical-css.mjs').then(m=>m.generateCriticalCss()).then(r=>process.stdout.write(r.css))"],
-      { encoding: 'utf8', maxBuffer: 8 << 20 })
-    expect(css === CRITICAL_CSS, '첫 화면 CSS 가 낡았다 — `node scripts/generate-critical-css.mjs` 로 다시 만들어 커밋할 것').toBe(true)
-  }, 60_000)
+/** 지금 소스로 만든 첫 화면 CSS — 별도 node 프로세스(esbuild 는 jsdom 안에서 돌지 않는다). 빌드가 만드는 것과 같은 함수다. */
+const CRITICAL_CSS = execFileSync(process.execPath, ['--no-warnings', '-e',
+  "import('./scripts/generate-critical-css.mjs').then(m=>m.generateCriticalCss()).then(r=>process.stdout.write(r.css))"],
+  { encoding: 'utf8', maxBuffer: 8 << 20, timeout: 60_000 })
+
+describe('② 생성기 산출물', () => {
   it('상한 안 · 인라인 가능', () => {
     expect(CRITICAL_CSS.length).toBeGreaterThan(10_000)
     expect(CRITICAL_CSS.length).toBeLessThanOrEqual(CRITICAL_CSS_MAX_BYTES)

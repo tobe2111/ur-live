@@ -37,6 +37,7 @@ import StayCheckout from './checkout/StayCheckout'
 import { isNoShippingProduct } from '@/shared/product-flow'
 import MallOriginBanner from '@/components/mall/MallOriginBanner'
 import { loginPathFromHere } from '@/utils/login-return'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 const clientKey = getTossClientKey()
 
@@ -71,6 +72,8 @@ function CartCheckout() {
   const isAuthReady = krIsAuthReady
 
   const navigate = useNavigate()
+
+  const goBack = useSafeBack('/cart')
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
@@ -412,7 +415,8 @@ function CartCheckout() {
       })
       if (res.data.success) {
         const paid = Number(res.data.data?.amount_paid)
-        navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${Number.isFinite(paid) && paid >= 0 ? paid : totalAmount}`)
+        // replace — 완료 화면에서 뒤로를 누르면 이미 결제한 이 결제 화면이 아니라 그 전(상품)으로 간다(2026-11-03).
+        navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${Number.isFinite(paid) && paid >= 0 ? paid : totalAmount}`, { replace: true })
       } else {
         toast.error(res.data.error || t('payment.errors.paymentFailed'))
       }
@@ -448,10 +452,7 @@ function CartCheckout() {
             결과: /cart 에서 뒤로 → /checkout (사용자 의도와 반대).
             영구: navigate(-1) → browser back → history stack 안 늘어남.
             예외: 첫 진입 (history.length<=1) 이면 /cart 로 명시 (외부 링크 진입 대응). */}
-      <CheckoutHeader onBack={() => {
-        if (window.history.length > 1) navigate(-1)
-        else navigate('/cart', { replace: true })
-      }} />
+      <CheckoutHeader onBack={goBack} />
 
       <main className="ur-content-narrow pb-52" style={{ background: '#F4F4F4' }}>
         {/* 🛡️ 2026-05-21: cartItems 로드 전엔 결제 섹션 자체 렌더 금지 — race condition 영구 fix.

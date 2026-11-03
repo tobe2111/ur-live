@@ -18,7 +18,7 @@ import { SettingsIcon } from '@/components/icons/urdeal-icons'
  *   View Transitions 로 바꾸기 전/후 화면을 찍고, 새 화면에 원형 clip-path 를 Web Animations 로 건다(키프레임 0 —
  *   지도 알약(`ur-map-reveal`)과 같은 처방). 지원 안 되는 브라우저·동작 줄이기면 종전처럼 바로 바뀐다.
  */
-function revealTheme(e: React.MouseEvent<HTMLButtonElement>, apply: () => void) {
+export function revealTheme(e: { clientX: number; clientY: number }, apply: () => void) { // 🎬 로그아웃 마이의 '화면 테마' 줄도 같이 쓴다
   const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void> } }
   let reduce = false
   try { reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { /* 미지원 */ }

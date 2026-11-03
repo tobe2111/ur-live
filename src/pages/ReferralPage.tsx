@@ -14,6 +14,7 @@ import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 /** 로그인 여부 판단 (localStorage) — user_type 비의존 (듀얼 로그인 충돌 방지) */
 function useCurrentUserId(): string | null {
@@ -47,6 +48,7 @@ export default function ReferralPage() {
   const { t } = useTranslation()
   const { code } = useParams<{ code: string }>()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   const userId = useCurrentUserId()
   // 🛡️ 2026-06-01 Tier2: 수동 2-fetch → useReferral 단일 쿼리(code별 캐시). join 후 refetch.
   const { data, isLoading: loading, refetch } = useReferral(code)
@@ -146,7 +148,7 @@ export default function ReferralPage() {
         {/* Header */}
         <div className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="ur-content-narrow flex items-center justify-between px-3 lg:px-8 py-3">
-            <button onClick={() => navigate(-1)} aria-label={t('groupbuy.backAria', { defaultValue: '뒤로' })} className="w-9 h-9 flex items-center justify-center">
+            <button onClick={goBack} aria-label={t('groupbuy.backAria', { defaultValue: '뒤로' })} className="w-9 h-9 flex items-center justify-center">
               <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
             </button>
             <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('groupbuy.communityTitle', { defaultValue: '맛집 공구' })}</h1>
@@ -265,7 +267,7 @@ export default function ReferralPage() {
       {/* v4 Header */}
       <div className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-3 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
+          <button onClick={goBack} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
           <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">공동구매</h1>

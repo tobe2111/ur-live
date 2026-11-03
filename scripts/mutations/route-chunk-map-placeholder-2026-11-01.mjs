@@ -35,8 +35,8 @@ export default [
   {
     name: '라우트맵 — 워커 빌드가 플러그인을 안 쓴다',
     file: 'scripts/build-worker.js',
-    find: '      plugins: [routeChunkMapPlugin()],',
-    replace: '      plugins: [],',
+    find: '      plugins: [routeChunkMapPlugin(), criticalCssPlugin()],',
+    replace: '      plugins: [criticalCssPlugin()],',
     test: T,
     why: '번들이 자리표시자(빈 맵)를 집는다 — 배포 HTML 미리받기 0.',
   },

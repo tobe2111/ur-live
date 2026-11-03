@@ -1,0 +1,1 @@
+| **💸 벤더 커미션 Pass-through 분할**(소속 여부 자동분기 A/B + 딜단위 per-promo, order-commissions.ts 위에 얹기) | 2026-07-08 | 🅿️ 설계/구현 파킹 — 실벤더 1곳 이주 의사 시 그 벤더 분배방식에 맞춰 착수(단독 세션+staging). 규모 ≈10~14일 | [vendor-commission-passthrough.md](./vendor-commission-passthrough.md) |

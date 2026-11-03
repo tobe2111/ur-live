@@ -1,17 +1,17 @@
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { HomeIcon, GiftBoxIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import Udal from '@/components/mascot/Udal'
+import { useSafeBack } from '@/hooks/useSafeBack'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 14차 ⑨ — '404' 글자가 톡 떨어지고, 아래 바로가기 버튼이 차례로 올라온다(유달이 그림은 그대로 — 대표 '유달이 움직임 금지').
 injectMotionCss('ur-m-404', `@keyframes ur-nf-drop { 0% { opacity: 0; transform: translateY(-16px); } 70% { opacity: 1; transform: translateY(2px); } 100% { transform: none; } }@keyframes ur-nf-up { from { opacity: 0; transform: translateY(10px); } }.ur-nf-drop { animation: ur-nf-drop .45s cubic-bezier(.3,1.3,.5,1) .15s backwards; }.ur-nf-go > * { animation: ur-nf-up .4s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: .3s; }.ur-nf-go > *:nth-child(2) { animation-delay: .37s; }.ur-nf-go > *:nth-child(3) { animation-delay: .44s; }.ur-nf-go > *:nth-child(4) { animation-delay: .51s; }.ur-nf-go > *:nth-child(5) { animation-delay: .58s; }@media (prefers-reduced-motion: reduce){.ur-nf-drop,.ur-nf-go > *{animation:none!important}}`)
 
 export default function NotFoundPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-
+  const goBack = useSafeBack('/')
   // 🧭 2026-08-11 (AB 스윕): 세 칩이 전부 낡아 있었다 —
   //   ① `라이브` 는 **영구 중단된 라이브커머스**(LIVE_COMMERCE_SUSPENDED) 라벨
   //   ② `맛집딜` 은 폐기 명칭(현재 SSOT: 동네딜 / 이용권 / 교환권)
@@ -85,7 +85,7 @@ export default function NotFoundPage() {
               {t('notFound.goHome')}
             </Link>
             <button
-              type="button" onClick={() => navigate(-1)} aria-label="뒤로 가기"
+              type="button" onClick={goBack} aria-label="뒤로 가기"
               className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl border border-line bg-surface text-gray-700 dark:text-gray-300 font-bold text-[15px] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-all duration-200 active:scale-[0.98]"
             >
               <ArrowLeft className="h-4 w-4" />

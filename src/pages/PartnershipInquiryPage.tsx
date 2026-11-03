@@ -11,6 +11,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 const TYPES = [
   { v: 'ad', l: '📣 광고 문의' },
@@ -24,6 +25,7 @@ const inputCls = 'w-full h-12 rounded-xl border border-gray-200 dark:border-[#2C
 
 export default function PartnershipInquiryPage() {
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const [form, setForm] = useState({ type: 'partnership', company: '', name: '', phone: '', email: '', message: '' })
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
@@ -71,7 +73,7 @@ export default function PartnershipInquiryPage() {
       <SEO title={CONSUMER_SURFACE_SEO['/partnership'].title} description={CONSUMER_SURFACE_SEO['/partnership'].description} url="/partnership" />
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center px-4 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로"
+          <button onClick={goBack} aria-label="뒤로"
             className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06]">
             <ChevronLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>

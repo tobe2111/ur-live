@@ -36,7 +36,7 @@ const header = (body: string) => body.slice(0, body.indexOf('\n    steps:'))
 describe('① Verify 는 언제나 돈다 — 건너뛴 필수 검사 = 통과 라는 구멍', () => {
   it('needs 로 판정·분할 잡을 기다리고 if: always() 다', () => {
     const h = header(job('verify'))
-    expect(h).toMatch(/\n    needs: \[mutation-plan, mutation-shards\]/)
+    expect(h).toMatch(/\n    needs: \[mutation-plan, mutation-shards, mutation-changed, unit-tests, exec-cost\]/)
     expect(h).toMatch(/\n    if: always\(\)\n/)
     expect(h).toMatch(/\n    name: Verify\n/)
   })
@@ -63,14 +63,42 @@ describe('② 첫 단계가 결과를 대조해 성공이 아니면 실패한다
   })
 })
 
-describe('③ 좁은 PR 은 종전대로 --changed 를 돈다', () => {
-  it("변경분 단계의 조건이 정확히 full != 'true' 다 (뒤집히면 좁은 PR 이 주입 0건으로 통과)", () => {
+describe('③ 좁은 PR 은 --changed 를 돈다 — 2026-11-03 부터 자기 잡(여러 대)에서', () => {
+  it("변경분 잡의 조건이 정확히 full != 'true' 다 (뒤집히면 좁은 PR 이 주입 0건으로 통과)", () => {
+    const c = job('mutation-changed')
+    expect(header(c)).toMatch(/\n    if: needs\.mutation-plan\.outputs\.full != 'true'\n/)
+    expect(c).toContain('node scripts/check-guard-mutations.mjs --changed -s\n')
+    expect(c).toContain('node scripts/check-guard-mutations.mjs --changed -s --shard ${{ matrix.shard }}/${{ needs.mutation-plan.outputs.changed_total }}')
+    expect(c).toContain('continue-on-error: false')
+    expect(c).toContain('fail-fast: false')
+    expect(c, '대수를 손으로 적었다 — 판정 잡이 센 값을 써야 한다').toContain('shard: ${{ fromJSON(needs.mutation-plan.outputs.changed_matrix) }}')
+  })
+  it('Verify 안에 변경분 단계가 다시 생기지 않았다 (두 번 돌면 38분이 되살아난다)', () => {
+    expect(job('verify')).not.toContain('run: node scripts/check-guard-mutations.mjs --changed -s')
+  })
+  it('대조 단계가 변경분·단위 시험 결과를 확인한다 (건너뛴 필수 검사 = 통과 구멍)', () => {
     const v = job('verify')
-    const i = v.indexOf('- name: 가드 주입 검증 (변경분, strict)')
-    const step = v.slice(i, i + 400)
-    expect(step).toMatch(/\n\s+if: needs\.mutation-plan\.outputs\.full != 'true'\n/)
-    expect(step).toContain('run: node scripts/check-guard-mutations.mjs --changed -s')
-    expect(step).toContain('continue-on-error: false')
+    const first = v.slice(v.indexOf('\n    steps:'), v.indexOf('\n      - uses: actions/checkout@v4'))
+    expect(first).toMatch(/outputs\.full \}\}" = "false" \] && \[ "\$\{\{ needs\.mutation-changed\.result \}\}" != "success" \]; then\n\s+echo "❌[^\n]*"; exit 1/)
+    expect(first).toMatch(/needs\.unit-tests\.result \}\}" != "success" \]; then\n\s+echo "❌[^\n]*"; exit 1/)
+  })
+  it('판정 잡이 변경분 대수를 러너 출력에서 센다', () => {
+    const p = job('mutation-plan')
+    expect(p).toContain('node scripts/guard-mutations-shard.mjs --plan-changed $CG >> "$GITHUB_OUTPUT"')
+    expect(p).toContain('changed_matrix: ${{ steps.p.outputs.changed_matrix }}')
+  })
+})
+
+describe('⑥ 단위 시험은 세 대로 나눠 돈다 — 그리고 Verify 안에서는 다시 안 돈다', () => {
+  it('3조각 · fail-fast 없음 · 조각 인자', () => {
+    const u = job('unit-tests')
+    expect(u).toContain('shard: [1, 2, 3]')
+    expect(u).toContain('fail-fast: false')
+    expect(u).toContain('run: npx vitest run --shard=${{ matrix.shard }}/3')
+    expect(header(u), '단위 시험 잡에 조건을 붙이면 건너뛰어질 수 있다').not.toMatch(/\n    if: /)
+  })
+  it('Verify 가 단위 시험을 또 돌지 않는다', () => {
+    expect(job('verify')).not.toMatch(/npm test|vitest run/)
   })
 })
 
@@ -99,3 +127,20 @@ describe('⑤ --scope-json 이 실제로 판정을 낸다', () => {
     expect(j.total).toBeGreaterThan(1000)
   })
 })
+
+describe('⑦ 무거운 둘은 따로 동시에 (2026-11-03 — Verify 나머지 9.3분 중 5.7분)', () => {
+  it('실행 비용은 자기 잡에서 빌드 → 크롬 → 측정 순서로, 경고 아님', () => {
+    const e = job('exec-cost')
+    const b = e.indexOf('run: npm run build:worker'), i = e.indexOf('Install chromium'), r = e.indexOf('scripts/check-exec-cost.mjs')
+    expect(b).toBeGreaterThan(0); expect(i).toBeGreaterThan(b); expect(r).toBeGreaterThan(i)
+    expect(e.slice(r, r + 200)).not.toMatch(/continue-on-error:\s*true/)
+    expect(header(e), '조건을 붙이면 건너뛰어질 수 있다').not.toMatch(/\n    if: /)
+  })
+  it('Verify 가 실행 비용 결과를 확인하고, 안에서 다시 돌지 않는다', () => {
+    const v = job('verify')
+    expect(v).toMatch(/needs\.exec-cost\.result \}\}" != "success" \]; then\n\s+echo "❌[^\n]*"; exit 1/)
+    expect(v).not.toContain('scripts/check-exec-cost.mjs')
+    expect(v).not.toContain('scripts/check-naming-conflicts.sh')
+  })
+})
+

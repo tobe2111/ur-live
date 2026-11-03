@@ -1,0 +1,1 @@
+| **🔗 픽업 공구 + 도매몰 연계**(대표 원문 아카이브 + 코드 대조 검증. 모드 A/B/C · 역할분담 · 정산 분리) | 2026-07-29 | 🟡 설계 · **대표 확인 A1 대기**(§4 HTTP 연계 폐기 제안 — 같은 D1 이라 불필요·역효과). 모드 C(상권 공동몰)는 `wholesale_malls` 멀티테넌트로 **신규 개발 거의 0 사실 확인** | [pickup-groupbuy-wholesale-link.md](./pickup-groupbuy-wholesale-link.md) |

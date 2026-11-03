@@ -9,6 +9,8 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { readPaySummary, displayDiscountPct } from '@/shared/pay-summary'
 import DealUseCard, { dealUseCap, clampDealUse } from './pay/DealUseCard'
 import { loginPathFromHere } from '@/utils/login-return'
+import { useSafeBack } from '@/hooks/useSafeBack'
+import { isOrderPaid } from '@/lib/paid-orders'
 
 type TossWidgets = ReturnType<Awaited<ReturnType<typeof getTossPayments>>['widgets']>
 
@@ -35,6 +37,7 @@ type TossWidgets = ReturnType<Awaited<ReturnType<typeof getTossPayments>>['widge
  */
 export default function TossWidgetPayPage() {
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const [searchParams] = useSearchParams()
   const [state, setState] = useState<'loading' | 'ready' | 'processing' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
@@ -95,8 +98,18 @@ export default function TossWidgetPayPage() {
   const successUrl = `${window.location.origin}${safePaymentReturnPath(successUrlRaw, '/')}`
   const failUrl = `${window.location.origin}${safePaymentReturnPath(failUrlRaw, '/')}`
 
+  // 🔙 2026-11-03 [UNLOCK] 대표 승인(결재 ②): 이미 결제를 마친 주문이면 결제창을 다시 띄우지 않고 한 칸 더 뒤로.
+  //   완료 화면에서 폰 뒤로를 누르면 이 화면으로 온다(토스가 문서를 바꿔 돌아와 앞 칸을 못 지운다). 표시: lib/paid-orders.ts
+  //   bfcache 로 되살아난 경우(pageshow persisted)도 같다. 결제 요청·금액·위젯 초기화 코드는 byte-불변.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => { if (e.persisted && isOrderPaid(orderId)) goBack() }
+    window.addEventListener('pageshow', onShow)
+    return () => window.removeEventListener('pageshow', onShow)
+  }, [orderId, goBack])
+
   useEffect(() => {
     if (initializedRef.current) return
+    if (isOrderPaid(orderId)) { goBack(); return }
     if (!orderId || !Number.isFinite(amount) || amount <= 0 || !orderName || !clientKey) {
       setErrorMsg('결제 정보가 올바르지 않습니다.')
       setState('error')
@@ -268,7 +281,7 @@ export default function TossWidgetPayPage() {
 
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로">
+          <button onClick={goBack} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로">
             <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
           <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">결제</h1>

@@ -1,12 +1,12 @@
 import { ChevronLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import InstagramConnectSection from './privacy/InstagramConnectSection'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 export default function PrivacyPolicyPage() {
-  const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const isKR = isKorea()
 
   return (
@@ -16,7 +16,7 @@ export default function PrivacyPolicyPage() {
       {/* Header */}
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
+          <button onClick={goBack} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">

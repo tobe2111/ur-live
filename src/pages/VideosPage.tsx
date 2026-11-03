@@ -13,6 +13,7 @@ import NearbyPassesCard, { useNearbyFeed } from './videos/NearbyPassesCard'
 import SwipeHint from './videos/SwipeHint'
 import { useSlideTransition } from './videos/useSlideTransition'
 import { YT_TITLE_CLIP_PX } from '@/shared/urshorts-display'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 // 🐢 2026-11-02 대표 *"유어쇼츠도 느리더라"* — 이 화면 코드가 받아지는 **순간** 유튜브 재생기도 출발시킨다.
 //   홈·목록 카드를 누르는 사이(`pointerdown`) 이 코드를 미리 받으므로(`warm-viewer.ts` → 등록부 'videos'),
@@ -54,6 +55,7 @@ export default function VideosPage() {
   const [idx, setIdx] = useState(0)
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const startVideo = params.get('v')
   const touchY = useRef<number | null>(null)
   const touchAt = useRef(0)
@@ -194,7 +196,7 @@ export default function VideosPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') navigate(-1)
+      if (e.key === 'Escape') goBack()
       if (e.key === 'ArrowDown') { e.preventDefault(); go(1) }
       if (e.key === 'ArrowUp') { e.preventDefault(); go(-1) }
       if (e.key === ' ') { e.preventDefault(); togglePlay() }

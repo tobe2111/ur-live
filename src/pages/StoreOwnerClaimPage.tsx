@@ -27,6 +27,7 @@ import { ChevronLeft, Search } from 'lucide-react'
 
 import BrokerTermsConsent, { type BrokerTerms } from './store-claim/BrokerTermsConsent'
 import { formatBizNo } from '@/utils/format-kr' // 🔢 사업자등록번호 000-00-00000 자동 하이픈(2026-11-03 대표 — 모든 입력란)
+import { useSafeBack } from '@/hooks/useSafeBack'
 import { formatPhone } from '@/utils/format-phone' // 📞 휴대폰 000-0000-0000 자동 하이픈(2026-11-03 대표)
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 15차 ⑥ — 1·2·3 동그라미가 차례로 톡 켜지고, 사이 선이 아래로 이어진다(PC 안내 열 · 들어올 때 한 번).
@@ -71,6 +72,7 @@ const FACTS = [
 
 export default function StoreOwnerClaimPage() {
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const [params] = useSearchParams()
   const [bno, setBno] = useState('')
   // 🔑 2026-09-19 (대표 확정 플로우 3번): 대행사가 준 **사장님 승계 코드**로 매장을 찾는다 — 사업자번호 조회의 대안 입구.
@@ -183,7 +185,7 @@ export default function StoreOwnerClaimPage() {
       {/* 📱 폰 전용 헤더 — PC 는 아래 왼쪽 칸의 h1 이 제목을 맡으므로 같은 말이 두 층에 겹치지 않는다. */}
       <header className="lg:hidden sticky top-0 z-10 bg-white border-b border-gray-100">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center gap-2">
-          <button onClick={() => navigate(-1)} className="p-1 -ml-1 text-gray-600" aria-label="뒤로">
+          <button onClick={goBack} className="p-1 -ml-1 text-gray-600" aria-label="뒤로">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <h1 className="text-[15px] font-bold text-gray-900">내 가게 찾기</h1>
@@ -195,7 +197,7 @@ export default function StoreOwnerClaimPage() {
           카드 아래가 네비 밑으로 잘렸다(CLAUDE.md 모바일 뷰포트 룰). */}
       <main className="mx-auto w-full max-w-[1180px] px-4 pt-5 pb-6 lg:px-10 lg:pt-8 lg:pb-16">
         {/* PC 전용 뒤로 — 폰은 위 sticky 헤더가 같은 일을 한다. */}
-        <button onClick={() => navigate(-1)} aria-label="뒤로"
+        <button onClick={goBack} aria-label="뒤로"
           className="hidden lg:flex -ml-1 mb-2 w-9 h-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100">
           <ChevronLeft className="w-5 h-5" />
         </button>

@@ -20,6 +20,7 @@ import { queryKeys } from '@/hooks/queries/queryKeys'
 import { isLoggedInSync } from '@/utils/auth'
 import { useDigitalLibrary, type DigitalAccess } from '@/hooks/queries/useDigitalLibrary'
 import { parseUTCDate } from '@/utils/date'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 const KIND_LABEL: Record<string, string> = {
   digital: '📄 디지털 파일',
@@ -41,6 +42,7 @@ const FORMAT_ICON: Record<string, typeof Download> = {
 export default function MyDigitalLibraryPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (보관함 목록 캐싱).
   // 🛡️ 2026-07-02: isError 분기 — 훅이 캐시 없는 실패를 throw 하게 바뀜(빈 보관함 위장 방지).
   const { data: items = [], isLoading: loading, isError, refetch } = useDigitalLibrary()
@@ -102,7 +104,7 @@ export default function MyDigitalLibraryPage() {
       <div className="ur-content-narrow px-4 py-6 lg:py-10 mx-auto" style={{ width: '100%' }}>
         <header className="mb-6">
           {/* 🛡️ 2026-07-02: 위성 페이지 이탈 동선 — 뒤로가기 (다른 My* 페이지와 통일) */}
-          <button onClick={() => navigate(-1)} className="mb-2 -ml-1.5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]" aria-label={t('common.back', { defaultValue: '뒤로' })}>
+          <button onClick={goBack} className="mb-2 -ml-1.5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]" aria-label={t('common.back', { defaultValue: '뒤로' })}>
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
           <h1 className="text-[16px] lg:text-[24px] font-semibold text-gray-900 dark:text-white">{t('digitalLibrary.title', { defaultValue: '디지털 보관함' })}</h1>

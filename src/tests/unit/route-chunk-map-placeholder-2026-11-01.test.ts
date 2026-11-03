@@ -118,7 +118,7 @@ describe('④ 번들 대조 — 빌드 파일엔 있는데 번들엔 없으면 �
 describe('⑤ 배선 — 워커 빌드와 두 검사', () => {
   it('워커 빌드가 플러그인을 쓰고 번들 뒤에 대조한다', () => {
     const b = code('scripts/build-worker.js')
-    expect(b).toMatch(/plugins: \[routeChunkMapPlugin\(\)\]/)
+    expect(b).toMatch(/plugins: \[routeChunkMapPlugin\(\)[,\]]/) // 2026-11-03 첫 화면 CSS 플러그인이 뒤에 붙었다
     expect(b).toMatch(/assertRouteChunkMapBundled\('dist\/_worker\.js'\)/)
   })
   it('맵을 읽는 두 검사가 빌드 파일을 본다(자리표시자를 재면 늘 0)', () => {

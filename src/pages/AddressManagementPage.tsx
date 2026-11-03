@@ -13,6 +13,7 @@ import { useAddresses, type EntryMethod, type ShippingAddress } from '@/hooks/qu
 import BrandLoader from '@/components/brand/BrandLoader'
 import { ListLoadError } from '@/components/ui/list-load-error'
 import { loginPathFromHere } from '@/utils/login-return'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 const EMPTY_FORM = {
   recipient_name: '',
@@ -43,6 +44,7 @@ export default function AddressManagementPage() {
     t('address.msgPresetFragile'),
   ]
   const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query. CRUD mutation 후 refetch.
   const { data: addresses = [], isLoading: loading, isError, refetch } = useAddresses()
   const [showForm, setShowForm] = useState(false)
@@ -204,7 +206,7 @@ export default function AddressManagementPage() {
       {/* Header */}
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} aria-label={t('address.back')} className="text-gray-900 dark:text-white">
+          <button onClick={goBack} aria-label={t('address.back')} className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">{t('address.title')}</h1>

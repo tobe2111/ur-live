@@ -63,6 +63,7 @@ import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 import { passShareCardUrl } from '@/shared/pass-share-card'
 import { priceDisplay } from '@/shared/price-display'
 import { passDetailDescription } from '@/shared/seo/detail-description'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -142,7 +143,7 @@ function CategoryFallbackIcon({ cat }: { cat: string }) {
 
 export default function GroupBuyDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+  const navigate = useNavigate(); const goBack = useSafeBack('/') // ← 링크로 바로 들어오면 홈으로(2026-11-03)
   const invalidateVouchers = useInvalidateMyVouchers()
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
@@ -514,7 +515,7 @@ export default function GroupBuyDetailPage() {
   }
 
   // 🏨 2026-11-03 숙소·예약 통일 ② [UNLOCK_LOADING 대표 허가]: 숙소가 이 화면(/pass)으로 들어오면 객실·날짜 없이 열렸다 — 숙소 상세로(꼬리표 ?aff 그대로).
-  if (detail.category === 'stay_voucher') return <Navigate replace to={`/stays/${detail.id}${window.location.search}`} />
+  if (detail.category === 'stay_voucher' && !searchParams.get('nostay')) return <Navigate replace to={`/stays/${detail.id}${window.location.search}`} />
   // 📑 구역 탭 목록 — PC 탭과 폰 탭(2026-11-02 C안)이 **같은 목록**을 쓴다(두 벌이면 갈린다).
   const sectionTabs = [
             // 🩸 2026-09-25: 이 탭이 **무조건** 떠서, 설명·소개가 빈 상품에선 눌러도 안 가는 탭이 됐다
@@ -615,7 +616,7 @@ export default function GroupBuyDetailPage() {
         price={Number((detail as { deal_only?: number }).deal_only) === 1 ? undefined : detail.price}
         discountPct={displayDiscountPct}
         heroRef={heroRef}
-        onBack={() => navigate(-1)}
+        onBack={goBack}
         overPhoto
       />
 

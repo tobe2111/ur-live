@@ -46,6 +46,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { STORAGE_LABEL, STORAGE_NOTICE, type StorageKind } from '@/shared/pickup'
 import MyMallAddress from '@/components/seller/MyMallAddress'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 /** 마감 프리셋 — 날짜 피커 대신. 한 손으로 누를 수 있는 것만 남긴다. */
 const DEADLINE_PRESETS = [
@@ -92,6 +93,7 @@ const CHIP_OFF = 'bg-[#F1EDEF] text-[#4A4448]'
 
 export default function SellerQuickGbPage() {
   const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   const [imageUrl, setImageUrl] = useState('')
   const [name, setName] = useState('')
   const [listPrice, setListPrice] = useState('')
@@ -162,7 +164,7 @@ export default function SellerQuickGbPage() {
 
       <header className="bg-white border-b border-[#EDE9EB] px-5 pt-1.5 pb-5">
         <div className="max-w-lg mx-auto">
-          <button type="button" onClick={() => navigate(-1)} aria-label="뒤로"
+          <button type="button" onClick={goBack} aria-label="뒤로"
             className="h-[38px] flex items-center -ml-1">
             <ChevronLeft className="w-[22px] h-[22px] text-[#1A1719]" strokeWidth={2} />
           </button>

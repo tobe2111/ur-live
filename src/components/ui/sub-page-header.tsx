@@ -9,7 +9,7 @@
  * 제목은 가운데 17px · 오른쪽 칸은 같은 폭으로 비워 제목이 늘 정중앙에 선다.
  */
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useSafeBack } from '@/hooks/useSafeBack'
 import { ArrowLeft } from 'lucide-react'
 
 /** 하위 화면 바탕 — 머리줄과 같은 톤이어야 머리줄이 떠 보이지 않는다. */
@@ -17,22 +17,24 @@ export const SUB_PAGE_CLS = 'min-h-[100dvh] bg-warm'
 
 export const SUB_PAGE_HEADER_CLS = 'sticky top-0 md:top-14 z-40 bg-warm'
 
-export default function SubPageHeader({ title, onBack, right, backLabel = '뒤로', wideSides = false }: {
+export default function SubPageHeader({ title, onBack, right, backLabel = '뒤로', wideSides = false, fallback = '/user/profile' }: {
   title: ReactNode
   /** 오른쪽에 글자 버튼('모두 읽음' 등)을 둘 때 — 양쪽 칸을 같이 넓혀 제목이 정중앙에 남는다. */
   wideSides?: boolean
   /** 기본은 브라우저 뒤로. 진입 기록이 없을 수 있는 화면은 목적지를 직접 준다. */
   onBack?: () => void
+  /** 앱 안에 돌아갈 칸이 없을 때(링크로 바로 들어옴) ← 가 갈 곳. 하위 화면 대부분이 마이 아래라 기본은 마이. */
+  fallback?: string
   right?: ReactNode
   backLabel?: string
 }) {
-  const navigate = useNavigate()
+  const goBack = useSafeBack(fallback)
   return (
     <header className={SUB_PAGE_HEADER_CLS}>
       <div className={`ur-content-narrow grid ${wideSides ? 'grid-cols-[88px_1fr_88px]' : 'grid-cols-[44px_1fr_44px]'} items-center h-[52px] px-1`}>
         <button
           type="button"
-          onClick={onBack ?? (() => navigate(-1))}
+          onClick={onBack ?? goBack}
           aria-label={backLabel}
           className="w-11 h-11 flex items-center justify-center rounded-full active:bg-wash"
         >

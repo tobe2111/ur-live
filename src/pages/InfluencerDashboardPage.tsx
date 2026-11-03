@@ -18,6 +18,7 @@ import { ChevronLeft, Share2, TrendingUp, DollarSign, Copy, Building2 } from 'lu
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { hasConsumerSession } from '@/utils/auth'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 interface Stats {
   total_referrals: number
@@ -43,6 +44,7 @@ interface TopItem {
 
 export default function InfluencerDashboardPage() {
   const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   const { t } = useTranslation()
   const [stats, setStats] = useState<Stats | null>(null)
   const [funnel, setFunnel] = useState<Funnel | null>(null)
@@ -144,7 +146,7 @@ export default function InfluencerDashboardPage() {
 
       <div className="sticky top-0 z-30 bg-[#11141C]/95 backdrop-blur-md border-b border-[#2C2F35]">
         <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1"><ChevronLeft className="w-5 h-5" /></button>
+          <button onClick={goBack} aria-label="뒤로 가기" className="p-1"><ChevronLeft className="w-5 h-5" /></button>
           <h1 className="text-[15px] font-bold flex-1">{t('influencer.dashTitle', { defaultValue: '💸 인플 대시보드' })}</h1>
         </div>
       </div>

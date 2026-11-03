@@ -9,10 +9,12 @@ import { formatNumber } from '@/utils/format'
 import { useAffiliateStats, useAffiliateTopGroups, useAffiliateFunnel } from '@/hooks/queries/useAffiliate'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 export default function AffiliatePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query.
   const { data = null, isLoading: loading, isError } = useAffiliateStats()
   useEffect(() => { if (isError) toast.error(t('affiliate.loginRequired')) }, [isError, t])
@@ -28,7 +30,7 @@ export default function AffiliatePage() {
       {/* 헤더 */}
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center gap-3 px-4 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
+          <button onClick={goBack} aria-label="뒤로 가기" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
           <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('affiliate.title')}</h1>

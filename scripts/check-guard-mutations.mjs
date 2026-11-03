@@ -133,8 +133,12 @@ const CHANGED = process.argv.includes('--changed')
  * 무엇이 돌았는지가 둘의 교집합이 되어 *초록이 무엇을 보증하는지* 말할 수 없게 된다.
  */
 const SHARD = parseShard(process.argv)
-if (SHARD && (CHANGED || ONLY)) {
-  console.error('❌ --shard 는 --changed·--only 와 같이 쓸 수 없다 — 초록이 무엇을 보증하는지 모호해진다.')
+// ⏱️ 2026-11-03: `--changed --shard k/n` 은 허용한다 — **변경분을 n 대가 나눠** 돈다(PR 검사가 한 대에서
+//   14~27분 걸려, 그 사이 새 푸시·main 이동으로 42% 가 취소됐다). 그때 조각 배분은 ALL 이 아니라
+//   **변경분 목록**에서 한다(아래 SHARD_PICK) — 그래야 n 개 조각의 합이 정확히 변경분이다.
+//   `--only` 와는 여전히 같이 쓰지 않는다(이름 필터 위에 조각을 얹으면 무엇이 돌았는지 말할 수 없다).
+if (SHARD && ONLY) {
+  console.error('❌ --shard 는 --only 와 같이 쓸 수 없다 — 초록이 무엇을 보증하는지 모호해진다.')
   process.exit(1)
 }
 const SCOPE = changedScope({
@@ -10701,8 +10705,13 @@ if (CHANGED && !SCOPE.full) {
  * 따로 흉내 내면 둘이 갈라지고, 갈라지면 "전수여야 하는 PR 이 좁혀 돈다" 가 된다.
  * 소스를 안 고치고 자물쇠도 안 건다(그 아래로 가지 않는다).
  */
+/** 변경분 판정(조각 배분과 `--scope-json` 이 같은 술어를 쓴다 — 둘이 갈리면 조각의 합이 변경분이 아니게 된다). */
+const inChanged = (m) => inScope(m, SCOPE) || CHANGED_NAMES.has(m.name)
 if (process.argv.includes('--scope-json')) {
-  process.stdout.write(JSON.stringify({ full: !!SCOPE.full, why: SCOPE.full ? String(SCOPE.why || '') : '', total: ALL.length }))
+  // changed·groups: 좁혀 돌 때 PR 검사가 변경분을 몇 대로 나눌지 정하는 재료(guard-mutations-shard.mjs --plan-changed).
+  const picked = SCOPE.full ? [] : ALL.filter(inChanged)
+  const groups = new Set(picked.map((m) => m.test)).size
+  process.stdout.write(JSON.stringify({ full: !!SCOPE.full, why: SCOPE.full ? String(SCOPE.why || '') : '', total: ALL.length, changed: picked.length, groups }))
   process.exit(0)
 }
 /**
@@ -10985,12 +10994,13 @@ if (integrity.length) {
  * (실측: 최대 조각 vitest 호출 396 → 245, −38%). 근거·수치는 `guard-mutations-shard.mjs`.
  * 조각이 아니면 전부 통과한다(`has` 가 null 이면 무조건 true).
  */
+const SHARD_BASE = SHARD && CHANGED && !SCOPE.full ? ALL.filter(inChanged) : ALL
 const SHARD_PICK = SHARD
-  ? new Set(assignShards(ALL, SHARD.total).map((k, i) => (k === SHARD.index ? ALL[i].name : null)).filter(Boolean))
+  ? new Set(assignShards(SHARD_BASE, SHARD.total).map((k, i) => (k === SHARD.index ? SHARD_BASE[i].name : null)).filter(Boolean))
   : null
 const inShard = (m) => !SHARD_PICK || SHARD_PICK.has(m.name)
 
-const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && inShard(m) && (inScope(m, SCOPE) || CHANGED_NAMES.has(m.name))).length
+const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && inShard(m) && inChanged(m)).length
 if (SHARD) {
   console.log(
     `🧬 guard-mutations(--shard ${SHARD.index}/${SHARD.total}): 전체 ${ALL.length}건 중 **${planned}건**.\n` +

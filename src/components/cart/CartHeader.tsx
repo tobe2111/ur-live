@@ -1,7 +1,7 @@
 import React from 'react'
 import { X } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 interface CartHeaderProps {
   itemCount: number
@@ -23,16 +23,10 @@ export const CartHeader = React.memo(function CartHeader({
   onDeleteSelected,
   onDeleteInactive,
 }: CartHeaderProps) {
-  const navigate = useNavigate()
   const { t } = useTranslation()
 
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1)
-    } else {
-      navigate('/')
-    }
-  }
+  // ← 판정은 useSafeBack 한 곳(history.length 는 앱 밖 칸도 센다 — 2026-11-03).
+  const handleBack = useSafeBack('/')
 
   return (
     <>

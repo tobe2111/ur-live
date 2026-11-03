@@ -216,10 +216,45 @@ export function parseShard(argv) {
 }
 
 /**
+ * ⏱️ **PR 검사의 변경분도 나눠 돈다** (2026-11-03 — 대표 *"낭비 없이 빨리 각 세션의 배포들을"* → *"가장 이상적으로 해줘"*).
+ *
+ * 실측(최근 3일 PR 검사 300회): 변경분 주입이 **한 대에서 360~540건 · 14~27분** 돌았고, Verify 한 번이 중앙 38분이었다.
+ * 그 사이 새 푸시·main 이동으로 **42%(125회)가 취소**됐다 — 취소된 것들이 평균 42분씩, 3일간 약 87시간을 버렸다.
+ * ⇒ 변경분을 여러 대로 나눠 한 대당 몇 분으로 만든다. 다시 올려도 버리는 시간이 그만큼 작아진다.
+ *
+ * 조각 수 = 변경분 벽시계 / 목표(`CHANGED_TARGET_MINUTES`), 상한 `CHANGED_MAX_SHARDS`, 그리고 **시험 파일 수 이하**
+ * (배분이 시험 파일 단위라 그보다 많으면 빈 조각이 생기고, 빈 조각은 실패다).
+ * 변경분이 0 이면 1 — 그 한 대가 종전과 같이 "0건" 을 보고한다.
+ */
+export const CHANGED_TARGET_MINUTES = 4
+export const CHANGED_MAX_SHARDS = 8
+
+/**
+ * @param {number} changed 변경분 주입 수
+ * @param {number} groups 그 주입들이 쓰는 시험 파일 수
+ * @returns {{ total: number, estMinutes: number }}
+ */
+export function planChangedShards(changed, groups) {
+  if (!Number.isFinite(changed) || changed < 0) throw new Error(`planChangedShards: 변경분 수가 숫자가 아니다 — ${changed}`)
+  if (!Number.isFinite(groups) || groups < 0) throw new Error(`planChangedShards: 시험 파일 수가 숫자가 아니다 — ${groups}`)
+  const want = Math.ceil((changed * SECONDS_PER_INJECTION) / 60 / CHANGED_TARGET_MINUTES)
+  const total = Math.max(1, Math.min(CHANGED_MAX_SHARDS, want, groups))
+  return { total, estMinutes: (Math.ceil(changed / total) * SECONDS_PER_INJECTION) / 60 }
+}
+
+/**
  * 🖨️ `--plan <주입수>` — GitHub Actions 출력 형태로 계획을 찍는다.
  * 행렬을 사람이 적지 않게 하는 자리. 주입 수는 호출부(`--dump-manifest`)가 센 값을 넘긴다.
  */
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop() ?? '')) {
+  const ci = process.argv.indexOf('--plan-changed')
+  if (ci !== -1) {
+    const changed = Number(process.argv[ci + 1])
+    const groups = Number(process.argv[ci + 2])
+    const { total, estMinutes } = planChangedShards(changed, groups)
+    process.stdout.write(`changed_matrix=${JSON.stringify([...Array(total).keys()])}\nchanged_total=${total}\n`)
+    process.stderr.write(`🧩 변경분 ${changed}건(시험 ${groups}개) → ${total}대 × 약 ${estMinutes.toFixed(1)}분\n`)
+  }
   const pi = process.argv.indexOf('--plan')
   if (pi !== -1) {
     const count = Number(process.argv[pi + 1])

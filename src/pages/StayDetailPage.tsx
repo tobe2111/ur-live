@@ -36,6 +36,9 @@ import DetailSectionTabs from './group-buy/DetailSectionTabs'; import { stayTabs
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'; import StayPcActions from './stay-detail/StayPcActions' // 🏨 PC 찜·담기·공유(폰 머리는 lg:hidden)
 import BrandLoader from '@/components/brand/BrandLoader'; import { useOwnerManage, OwnerManageBar, OwnerManageCard } from '@/components/deal/useOwnerManage'
 import { peekWarmStay, stayDetailRequest } from './stays/stay-detail-warm'
+import { useSafeBack } from '@/hooks/useSafeBack'
+import { storeAffiliateRef } from '@/utils/affiliate-track'; import { readAffiliateRef } from '@/utils/affiliate-ref-store'
+import SellThisCard from '@/components/seeding/SellThisCard' // 🏨 ③ 이용권 상세와 같은 '팔아보기' 한 줄
 
 // 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): 딜 상세와 동일한 잠금 lazy 패턴 —
 //   IntersectionObserver 게이트(RestaurantMiniMap 내부)라 스크롤 도달 전 Kakao SDK 0 fetch.
@@ -124,6 +127,7 @@ function readStaySeed(productId: number): StayDetail | null {
 export default function StayDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const [params, setParams] = useSearchParams()
   const productId = Number(id)
   // 🏪 2026-10-19: 주인이 보면 예약 자리에 [관리하기](이용권·쇼핑과 같은 훅 — 판정은 구매 차단과 같은 서버 함수).
@@ -148,7 +152,8 @@ export default function StayDetailPage() {
   const [multiBookingOpen, setMultiBookingOpen] = useState(false)
 
   // 🛡️ 2026-05-18: 인플 referral — URL ?ref=USER_ID 유지.
-  const referrerId = params.get('ref') || ''
+  const referrerId = params.get('ref') || params.get('aff') || readAffiliateRef()?.ref || '' // 🏨 ③ 유어샵 담기(?aff)·24시간 저장값도 — 이용권과 같은 꼬리표
+  useEffect(() => { storeAffiliateRef(params.get('aff') || params.get('ref')) }, [params])
 
   // 판매 모드 탭 (both 일 때만 사용자 선택).
   const [activeMode, setActiveMode] = useState<'date' | 'voucher'>(
@@ -196,7 +201,7 @@ export default function StayDetailPage() {
         // 🏨 2026-07-20 (숙소 상세 SSOT 안전판): stay_info 미보유 stay_voucher(구형 딜 등)는
         //   죽은 화면 대신 일반 딜 상세로 폴백 — canonicalDetailPath 가 숙소를 /stays 로 보내는
         //   단방향 정규화의 역방향 안전판(딜 상세는 숙소로 재리다이렉트 안 하므로 루프 0).
-        else navigate(`/pass/${productId}`, { replace: true })
+        else navigate(`/pass/${productId}?nostay=1`, { replace: true }) // 🩸 2026-11-03 `nostay` — /pass 가 숙소를 /stays 로 보내므로(②) 표시 없이 보내면 둘이 서로를 끝없이 보낸다
       })
       .catch((err) => {
         const st = (err as { response?: { status?: number } }).response?.status
@@ -358,7 +363,7 @@ export default function StayDetailPage() {
         productId={stay.id} title={stay.restaurant_name || stay.name}
         shareDescription={stayRegionLabel(stay.region_sido, stay.region_sigungu, stay.address) || '숙소 이용권'}
         shareImageUrl={stay.image_url || ''} shareLink={`https://urdeal.kr/stays/${stay.id}`}
-        myUserId={localStorage.getItem('user_id') || ''} heroRef={heroRef} onBack={() => navigate(-1)}
+        myUserId={localStorage.getItem('user_id') || ''} heroRef={heroRef} onBack={goBack}
         overPhoto
       />
       {/* 📱 2026-10-27 (대표 "통일할 건 통일"): 폰에선 사진이 맨 위 — 이용권 상세와 같다(빵부스러기는 PC 만). */}
@@ -425,6 +430,7 @@ export default function StayDetailPage() {
           </div>
         )}
 
+        {!own && <div className="-mx-4 empty:hidden"><SellThisCard productId={stay.id} sellerId={stay.seller_id} hideForOwner={own} /></div>}{/* 🏨 ③ 팔아보기 — 이용권 상세와 같은 한 줄(적립도 같은 장부) */}
         {/* 📑 2026-11-03 숙소·예약 통일 ②: 이용권 상세와 같은 폰 구역 탭(C안) — 같은 부품, 숙소 구역 id. */}
         <div className="-mx-4"><DetailSectionTabs tabs={stayTabs({ intro: !!stay.description_full, map: !!(stay.address || (stay.latitude != null && stay.longitude != null)) })} /></div>
         {/* 모드 탭 + 날짜/인원 선택 — 모바일 인라인 (PC 는 우측 아사이드가 동일 JSX 렌더) */}
