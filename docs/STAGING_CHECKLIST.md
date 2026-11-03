@@ -858,6 +858,7 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 | S-HOME-6 | 손님이 견적 고르기 | 사장님 화면에 손님 번호 · 손님 화면에 사장님 번호 · 다른 사장님 화면엔 번호 없음 |
 
 ## 🏡 S-STAYV — 숙소 = 이용권 통일 (2026-10-25)
+⚠️ 2026-11-03 대표 *"합쳐줘"* — 게이트(`stay_voucher_unify_enabled`)를 **제거**했다(한 번도 켜진 적 없음). 이제 숙소 결제 확정 때 언제나 지갑 이용권이 생긴다. 아래 항목은 **배포 뒤 첫 숙소 결제**에서 확인한다.
 
 **S-STAYV** — 결재 `docs/decisions/2026-10-25-stay-qr-checkin.md`(대표 "1번" → "숙소를 이용권 방식으로 합치는 안으로 진행하자. 끝까지."). 게이트 `stay_voucher_unify_enabled`(기본 OFF). 코드 SSOT `src/features/group-buy/api/stay-voucher-unify.ts`.
 

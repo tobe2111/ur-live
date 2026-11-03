@@ -32,8 +32,9 @@ export default [
   {
     name: '[stay-first] 숙소 상세가 공용 lucide 아이콘을 다시 부른다',
     file: 'src/pages/StayDetailPage.tsx',
-    find: "import { Calendar, Sparkles } from 'lucide-react'",
-    replace: "import { Calendar, Sparkles, Hotel } from 'lucide-react'",
+    // 🔁 2026-11-03 재조준: 예약 창이 `stay-detail/StayBookingModals.tsx` 로 옮겨 가며 페이지의 lucide import 가 사라졌다.
+    find: "import SEO from '@/components/SEO'",
+    replace: "import SEO from '@/components/SEO'\nimport { Hotel } from 'lucide-react'",
     test: TEST,
     why: 'Hotel 하나 때문에 공용 lucide 봉투(10KB br)가 숙소 상세 첫 화면에 다시 실린다.',
   },

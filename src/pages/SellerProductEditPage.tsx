@@ -1,5 +1,5 @@
 import { useTranslation } from '@/lib/i18n-lite'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'; const StayManagePanel = lazy(() => import('./seller-product-edit/StayManagePanel')) // 🏨 숙소면 객실·달력·정책(2026-11-03 수정 화면 하나로)
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { confirmPriceChange } from '@/pages/seller-product-edit/confirm-price-change'
@@ -593,7 +593,7 @@ export default function SellerProductEditPage() {
               </div>
             </div>
           </div>
-        </form>
+        </form>{formData.category === 'stay_voucher' && <div className="mt-6"><Suspense fallback={null}><StayManagePanel productId={Number(id)} /></Suspense></div>}
       </div>
     </SellerLayout>
   )

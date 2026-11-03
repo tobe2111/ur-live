@@ -5,9 +5,9 @@ const T = 'src/tests/unit/stay-voucher-unify-2026-10-25.test.ts'
 const M = 'src/features/group-buy/api/stay-voucher-unify.ts'
 export default [
   {
-    name: '숙소이용권 — 게이트를 무시하고 발급한다',
-    file: M, find: "  if (!(await stayVoucherUnifyEnabled(DB))) return 0\n", replace: '\n', test: T,
-    why: '기본 OFF 가 깨지면 staging 실결제 전에 라이브 숙소 결제가 이용권을 만든다.',
+    name: '숙소이용권 — 결제 확정된 숙소에 이용권이 안 생긴다(스위치가 되살아남)',
+    file: M, find: "  if (!opts.bookingIds.length) return 0\n", replace: "  if (!opts.bookingIds.length || true) return 0\n", test: T,
+    why: '숙소만 지갑 QR 이 없다 — 이용권과 다시 갈린다.',
   },
   {
     name: '숙소이용권 — 미확정 예약에도 발급한다',
