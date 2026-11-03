@@ -71,7 +71,7 @@ export default function InfluencerSeedingPage() {
     <div className="min-h-[100dvh] bg-warm pb-24">
       <SEO title={withSiteName(SURFACE_SEO.title)} description={SURFACE_SEO.description} url="/influencer/seeding" noindex />
       <div className="mx-auto max-w-xl px-4 pt-5">
-        <h1 className="text-[24px] font-bold text-gray-900 dark:text-white">무료 체험 이용권</h1>
+        <h1 className="text-[20px] font-semibold text-gray-900 dark:text-white">무료 체험 이용권</h1>
         <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">
           매장이 무상으로 제공하는 이용권이에요. 신청하면 사장님 확인 뒤 방문 날짜를 정해요.
         </p>

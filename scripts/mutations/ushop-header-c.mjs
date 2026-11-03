@@ -25,7 +25,7 @@ export default [
   {
     name: '🔵 SNS 세 링크가 상수 대신 손으로 적은 치수로 돌아간다',
     file: HEADER,
-    find: "aria-label=\"Instagram\" className={snsHitCls}>",
+    find: "aria-label={snsPillText('instagram', 'Instagram', curator.sns_followers, true)} className={snsHitCls}>", // 🔄 2026-11-03 재조준(aria 에 팔로워 수)
     replace:
       'aria-label="Instagram" className="h-9 inline-flex items-center active:opacity-70">',
     test: SNS,

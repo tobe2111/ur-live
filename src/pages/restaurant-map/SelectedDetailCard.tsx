@@ -53,7 +53,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
             })()}
           </p>
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-[17px] font-bold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
+            <span className="text-[16px] font-bold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
             {selected.original_price > selected.price && (
               <>
                 <span className="text-[12px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>

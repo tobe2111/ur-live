@@ -27,7 +27,9 @@ describe('① 탭이 서는 조건', () => {
     expect(PAGE).toMatch(/\{showMe && <div className=\{tabbed \?/)
     expect(PAGE).toContain('{tabbed && !showMe && <AgencyHeadDoor storeCount={sellerSeats.stores.length} />}')
     // 탭이면 판 위 제목은 '맡은 매장', 구역은 이름 없이 '에이전시 운영'(이름이 머리와 두 번 서지 않는다)
-    expect(PAGE).toContain("{tabbed ? (sellerSeats.stores.length > 0 && <SectionTitle>맡은 매장</SectionTitle>) : <AgencyTitleDoor storeCount={sellerSeats.stores.length} />}")
+    // 🔁 2026-11-03 토스 참고 안 — 탭이면 매장 판을 카드에 담고(제목 없음), 탭이 아니면 종전 제목(합친 구역).
+    expect(PAGE).toContain('{!tabbed && <AgencyTitleDoor storeCount={sellerSeats.stores.length} />}')
+    expect(PAGE).toContain('data-testid="agency-store-card"><SellerSection state={sellerSeats} /></div>')
     expect(PAGE).toContain('<MyAgencyZone ownSellerIds={ownSellerIds} inHead={tabbed} />')
   })
   it('탭 부품은 lazy — 손님 첫 화면에 안 실린다', () => {
@@ -57,7 +59,7 @@ describe('③ 탭마다 그 역할 것만', () => {
     expect(PAGE).toMatch(/\{showMe && <div className="ur-content-medium px-4 lg:px-8 pt-2 pb-8/)
   })
   it('에이전시 것은 showAgency 로', () => {
-    expect(PAGE).toMatch(/\{showAgency && <>[\s\S]{0,400}?<SellerSection state=\{sellerSeats\} \/>\s*<MyAgencyZone [^>]*\/>\s*<\/>\}/)
+    expect(PAGE).toMatch(/\{showAgency && <>[\s\S]{0,900}?<SellerSection state=\{sellerSeats\} \/>\}\s*<MyAgencyZone [^>]*\/>\s*<\/>\}/)
   })
 })
 

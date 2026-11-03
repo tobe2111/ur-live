@@ -99,7 +99,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
       <div className="flex flex-col items-center justify-center py-20">
         {/* 🦦 2026-10-07 유달이 — 오류는 '미안' 얼굴(빨간 경고 원 대체). */}
         <Udal mood="oops" size={112} className="mb-4" />
-        <p className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">오류가 발생했습니다</p>
+        <p className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">오류가 발생했습니다</p>
         <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{error}</p>
         <div className="flex gap-3">
           <button
@@ -216,7 +216,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
             <button
               type="button"
               onClick={() => navigate(`/search?q=${encodeURIComponent(suggestedQuery)}`)}
-              className="text-[17px] font-bold text-rose-600 dark:text-rose-300 hover:underline"
+              className="text-[16px] font-semibold text-rose-600 dark:text-rose-300 hover:underline"
             >
               {suggestedQuery} →
             </button>

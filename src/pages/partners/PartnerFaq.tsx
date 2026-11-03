@@ -42,10 +42,10 @@ export default function PartnerFaq() {
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
         <div className="grid gap-10 lg:grid-cols-[0.62fr_1.38fr] lg:gap-16">
           <div>
-            <Reveal><h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">
+            <Reveal><h2 className="text-[20px] lg:text-[40px] xl:text-[48px] font-semibold tracking-[-0.03em] text-ink leading-[1.2]">
               자주 묻는 것
             </h2></Reveal>
-            <p className="mt-5 lg:mt-7 text-[13px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400">
+            <p className="mt-5 lg:mt-7 text-[13px] lg:text-[16px] leading-[1.8] text-gray-500 dark:text-gray-400">
               여기에 없는 것은 카카오톡 채널로 물어보세요. 사람이 답합니다.
             </p>
           </div>

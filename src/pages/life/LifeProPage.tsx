@@ -89,7 +89,7 @@ export default function LifeProPage() {
         )}
         {!hasToken && loggedIn ? (
           <>
-            <h2 className="pt-2 text-[17px] font-bold">업체 가입</h2>
+            <h2 className="pt-2 text-[16px] font-semibold">업체 가입</h2>
             <p className="-mt-2 text-[13px] text-gray-500 dark:text-gray-400">한 화면이면 끝나요. 가입하면 바로 근처 요청을 받고 견적을 보낼 수 있어요.</p>
             <ProSetupForm me={SIGNUP_ME} prefill={prefill} signup onSaved={() => { setHasToken(!!getSellerToken()); onSaved() }} />
           </>
@@ -123,7 +123,7 @@ export default function LifeProPage() {
                 </div>
               </section>
             ) : null}
-            <h2 className="pt-2 text-[17px] font-bold">{me.registered ? '등록 정보' : '처음 등록'}</h2>
+            <h2 className="pt-2 text-[16px] font-semibold">{me.registered ? '등록 정보' : '처음 등록'}</h2>
             <ProSetupForm me={me} onSaved={onSaved} prefill={prefill} />
           </>
         )}

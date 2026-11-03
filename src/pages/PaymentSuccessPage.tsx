@@ -299,7 +299,7 @@ export default function PaymentSuccessPage() {
       <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <AlertIcon className="ur-pr-shake h-20 w-20 text-red-500 mx-auto mb-6" />
-          <h1 className="text-[24px] font-bold text-[#1d1d1f] dark:text-white mb-4">{t('paymentSuccess.approveFailed')}</h1>
+          <h1 className="text-[20px] font-semibold text-[#1d1d1f] dark:text-white mb-4">{t('paymentSuccess.approveFailed')}</h1>
           <p className="text-[#6e6e73] dark:text-gray-400 mb-8">{error}</p>
           <div className="flex gap-3">
             <Button
@@ -328,7 +328,7 @@ export default function PaymentSuccessPage() {
           {/* 성공 표시 — 🦦 2026-10-07 (대표 허가 "결제 완료"): 초록 체크 원 → 웃는 유달이(둥실). 마크업만. */}
           <div className="text-center mb-5 sm:mb-6 lg:mb-8">
             <Udal mood="paid" size={96} motion priority className="mx-auto mb-3 sm:mb-4" />
-            <h1 className="text-[17px] sm:text-[24px] lg:text-[28px] font-bold text-[#1d1d1f] dark:text-white mb-1 sm:mb-2">{t('paymentSuccess.title')}</h1>
+            <h1 className="text-[16px] sm:text-[20px] lg:text-[24px] font-semibold text-[#1d1d1f] dark:text-white mb-1 sm:mb-2">{t('paymentSuccess.title')}</h1>
             <p className="text-[12px] sm:text-[15px] lg:text-[15px] text-[#6e6e73] dark:text-gray-400">{t('paymentSuccess.subtitle')}</p>
           </div>
 
@@ -368,7 +368,7 @@ export default function PaymentSuccessPage() {
           {orderInfo && (
             <div className="space-y-3 sm:space-y-4 lg:space-y-6">
               <div className="bg-[#f5f5f7] dark:bg-[#1D1F29] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
-                <h2 className="text-[15px] sm:text-[15px] lg:text-[17px] font-medium text-[#1d1d1f] dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
+                <h2 className="text-[15px] sm:text-[15px] lg:text-[16px] font-medium text-[#1d1d1f] dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
                   <BoxIcon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900 dark:text-white" />
                   주문 정보
                 </h2>
@@ -417,8 +417,8 @@ export default function PaymentSuccessPage() {
                   )}
 
                   <div className="flex justify-between items-center pt-2 sm:pt-3 mt-1 border-t border-[#d2d2d7] dark:border-[#2C2F35]">
-                    <span className="text-[15px] sm:text-[15px] lg:text-[17px] font-medium text-[#1d1d1f] dark:text-white">{t('paymentSuccess.paymentAmount')}</span>
-                    <span className="text-[17px] sm:text-[17px] lg:text-[24px] font-bold text-gray-900 dark:text-white">
+                    <span className="text-[15px] sm:text-[15px] lg:text-[16px] font-medium text-[#1d1d1f] dark:text-white">{t('paymentSuccess.paymentAmount')}</span>
+                    <span className="text-[16px] sm:text-[16px] lg:text-[24px] font-bold text-gray-900 dark:text-white">
                       {formatNumber(parseInt(amount || '0'))}원
                     </span>
                   </div>
@@ -543,7 +543,7 @@ export default function PaymentSuccessPage() {
             <p className="text-[12px] sm:text-[15px] text-[#86868b] dark:text-gray-500 mb-2">
               궁금한 점이 있으신가요?
             </p>
-            <p className="text-[15px] sm:text-[15px] lg:text-[17px] font-medium text-[#1d1d1f] dark:text-white mb-2">
+            <p className="text-[15px] sm:text-[15px] lg:text-[16px] font-medium text-[#1d1d1f] dark:text-white mb-2">
               고객센터: 카카오톡 채널 문의
             </p>
             <p className="text-[12px] sm:text-[15px] text-[#86868b] dark:text-gray-500">

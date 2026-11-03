@@ -17,7 +17,7 @@ export default function EmptyShowcase({ catEmpty, showcaseCards, createPath, sta
               <div className="space-y-4 py-8">
                 {/* 🛡️ 2026-05-15: 빈 화면 → "곧 오픈 예정" Coming Soon 카드 (3 AI 합의) */}
                 <div className="text-center mb-4">
-                  <p className="text-[28px] mb-2">🚀</p>
+                  <p className="text-[24px] mb-2">🚀</p>
                   <p className="text-gray-900 dark:text-white font-bold text-[15px]">
                     {t('groupBuy.emptySellerNew', { defaultValue: '곧 오픈 예정' })}
                   </p>

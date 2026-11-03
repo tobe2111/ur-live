@@ -26,10 +26,11 @@ export default [
       '그때 바로 위 요약 카드가 같은 숫자를 크게 말하고 있다는 것은 눈에 안 띈다.',
   },
   {
-    name: '🎟️ 지갑 요약 카드가 장수를 안 받는다 — 장수를 말하는 곳이 0이 된다',
+    name: '🎟️ 지갑 목록 판 머리가 장수를 안 말한다 — 장수를 말하는 곳이 0이 된다',
     file: VPAGE,
-    find: '<WalletSummaryCard count={unusedItems.length}',
-    replace: '<WalletSummaryCard count={0}',
+    // 🔁 2026-11-03 재조준(지갑 토스 참고 — 판은 허용, 그림자는 여전히 0 / 장수는 목록 판 머리).
+    find: 'formatNumber(shown.length)',
+    replace: 'formatNumber(0)',
     test: T,
     why:
       '중복을 걷는 방향으로만 가드를 걸면 **둘 다 없어지는 것**은 못 막는다. 요약 카드가 장수를 말하는 ' +

@@ -12,8 +12,9 @@ export default [
   {
     name: '🧩 합친 구역 — 에이전시 매장 판이 다시 두 번 그려진다',
     file: 'src/pages/agency-console/AgencyStoresPanel.tsx',
-    find: "className={coveredByMine ? 'hidden' :",
-    replace: "className={false ? 'hidden' :",
+    // 🔁 2026-11-03 재조준(토스 참고 안 · '홈페이지에 넣기' 걷음). 불변식 그대로.
+    find: "className={`${coveredByMine ? 'hidden' :",
+    replace: "className={`${false ? 'hidden' :",
     test: TEST,
     why: '같은 매장이 내 가게와 맡은 매장에 두 번 — 대표가 "왜 따로 노는 형태인거지?" 라고 짚은 그 모양.',
   },
@@ -21,8 +22,8 @@ export default [
     name: '🧩 합친 구역 — 에이전시 이름 제목이 매장 판 위에서 빠진다',
     file: 'src/pages/UserProfilePage.tsx',
     // 🔁 2026-11-02 재조준(안 1 탭) — 폰 마이가 `나 | 에이전시` 탭으로 갈려 게이트(`showMe`/`showAgency`)가 끼었다. 불변식 그대로.
-    find: '<AgencyTitleDoor storeCount={sellerSeats.stores.length} />}\n        <SellerSection',
-    replace: 'null}\n        <SellerSection',
+    find: '{!tabbed && <AgencyTitleDoor storeCount={sellerSeats.stores.length} />}',
+    replace: '{null}',
     test: TEST,
     why: '매장이 어느 에이전시 아래인지 안 보인다 — 다시 따로 노는 것처럼 보인다.',
   },

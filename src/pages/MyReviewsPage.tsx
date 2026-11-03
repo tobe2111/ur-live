@@ -149,7 +149,7 @@ export default function MyReviewsPage() {
           <div className="rounded-2xl px-6 py-10 text-center">
             {/* 🦦 2026-10-10 (대표 "다 해줘"): 빈 리뷰 → 윙크 유달이(안내 — 리뷰 보상이 있다는 걸 알려주는 자리) */}
             <Udal mood="tip" size={96} className="block mx-auto mb-4" />
-            <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('myReviews.empty')}</h2>
+            <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('myReviews.empty')}</h2>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('myReviews.emptySub')}</p>
             {rewardHint && <p className="mt-3 text-[13px] font-medium text-brand-text">{rewardHint}</p>}
           </div>
@@ -157,7 +157,7 @@ export default function MyReviewsPage() {
           <>
             {toWrite.length > 0 && (
               <section data-testid="reviews-to-write">
-                <h2 className="px-1 text-[17px] font-bold text-gray-900 dark:text-white">
+                <h2 className="px-1 text-[16px] font-bold text-gray-900 dark:text-white">
                   {t('myReviews.toWriteTitle', { defaultValue: '리뷰를 기다려요 {{count}}', count: toWrite.length })}
                 </h2>
                 {rewardHint && <p className="px-1 mt-1 text-[13px] text-brand-text font-medium">{rewardHint}</p>}
@@ -193,7 +193,7 @@ export default function MyReviewsPage() {
 
             {written.length > 0 && (
               <section data-testid="reviews-written">
-                <h2 className="px-1 text-[17px] font-bold text-gray-900 dark:text-white">
+                <h2 className="px-1 text-[16px] font-bold text-gray-900 dark:text-white">
                   {t('myReviews.writtenTitle', { defaultValue: '내가 쓴 리뷰 {{count}}', count: written.length })}
                 </h2>
                 <div className="mt-3 rounded-2xl overflow-hidden">

@@ -100,7 +100,7 @@ export default function YouTubeCallbackPage() {
             {/* 브랜드 플로우 */}
             <div className="flex items-center justify-center gap-2">
               <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 dark:border-[#2C2F35] shadow-sm flex items-center justify-center">
-                <span className="text-[24px] font-bold" style={{ color: '#4285F4' }}>G</span>
+                <span className="text-[20px] font-semibold" style={{ color: '#4285F4' }}>G</span>
               </div>
               <ConnectDots />
               <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shadow-sm">
@@ -114,7 +114,7 @@ export default function YouTubeCallbackPage() {
 
             {/* 타이틀 */}
             <div>
-              <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-2">
+              <h2 className="text-[20px] font-semibold text-[#1d1d1f] mb-2">
                 YouTube 계정 연동 중
               </h2>
               <p className="text-[13px] text-[#8e8e93]">잠시만 기다려주세요</p>
@@ -166,7 +166,7 @@ export default function YouTubeCallbackPage() {
               </div>
             </div>
             <div>
-              <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-1">연동 완료!</h2>
+              <h2 className="text-[20px] font-semibold text-[#1d1d1f] mb-1">연동 완료!</h2>
               <p className="text-[15px] font-medium text-[#1d1d1f]">{message}</p>
               <p className="text-[13px] text-[#8e8e93] mt-2">잠시 후 자동으로 이동합니다</p>
             </div>
@@ -180,7 +180,7 @@ export default function YouTubeCallbackPage() {
               <AlertIcon className="h-10 w-10 text-red-500" />
             </div>
             <div>
-              <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-2">연동 실패</h2>
+              <h2 className="text-[20px] font-semibold text-[#1d1d1f] mb-2">연동 실패</h2>
               <p className="text-[13px] text-[#6e6e73] bg-gray-50 rounded-xl px-4 py-3 text-left break-all">
                 {message}
               </p>

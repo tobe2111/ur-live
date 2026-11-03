@@ -21,8 +21,8 @@ const panel = (raffle?: { label: string; disabled: boolean; onApply: () => void 
 describe('③ 머리·섹션 띠', () => {
   it('숙소 제목 크기 = 이용권 제목 크기', () => {
     // 📏 2026-11-02 대표 확정 상세 C안: 둘 다 24 → 17. 지키는 것은 "둘이 같다" 이다.
-    expect(STAY_HEAD.h1.split(' '), '폰 크기(접두 없는 토큰)가 17px 이 아니다').toContain('text-[17px]')
-    expect(PASS_HEAD.h1).toContain('text-[17px]')
+    expect(STAY_HEAD.h1.split(' '), '폰 크기(접두 없는 토큰)가 16px 이 아니다(2026-11-03 안 C)').toContain('text-[16px]')
+    expect(PASS_HEAD.h1).toContain('text-[16px]')
   })
   it('섹션 띠는 흰 면이고, 손으로 적은 사본이 없다', () => {
     // 🌙 2026-11-03 재조준: 이용권 상세 띠(`PASS_CARD`)가 페이지 바탕(--bg)이라 숙소 띠도 페이지 바탕 — 다크에서 둘이 같은 색.

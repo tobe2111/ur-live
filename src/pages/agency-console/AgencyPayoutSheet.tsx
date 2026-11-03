@@ -94,8 +94,8 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
           <>
             <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-5 shadow-lift">
               <p className="text-[13px] text-gray-500 dark:text-gray-400">지금 받을 수 있어요</p>
-              <p className="mt-1 text-[28px] font-extrabold tabular-nums tracking-[-0.01em] text-gray-900 dark:text-white">
-                <span key={sent} className={sent ? 'ur-po-in' : undefined}>{formatNumber(b.available)}</span><span className="ml-1 text-[17px] font-bold">원</span>
+              <p className="mt-1 text-[28px] font-bold tabular-nums tracking-[-0.01em] text-gray-900 dark:text-white">
+                <span key={sent} className={sent ? 'ur-po-in' : undefined}>{formatNumber(b.available)}</span><span className="ml-1 text-[16px] font-bold">원</span>
               </p>
               <dl className="mt-4 grid grid-cols-3 gap-2">
                 {[

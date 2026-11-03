@@ -17,20 +17,22 @@ export { usePopularPassFeed as useNearbyFeed } from '@/hooks/usePopularPassFeed'
  */
 
 export default function NearbyPassesCard({ feed, regionSi, style }: { feed: FeedPass[]; regionSi?: string | null; style?: CSSProperties }) {
+  // 🩸 2026-11-03 대표 신고 *"아래 부분도 수정 필요"* — 반투명(`bg-white/95`)이라 아래 유튜브 Shorts 글자·검은 띠가
+  //   비쳐 카드가 반쯤 찢어진 것처럼 보였다 ⇒ **불투명 흰 판** + 여백 12 · 사진 44 · [더 보기]는 구매 바와 같은 둥근 사각.
   const picks = pickNearbyPasses(feed, regionSi)
   if (picks.items.length === 0) return null
   return (
     <div style={style} className="absolute inset-x-[10px] bottom-[10px] z-20">
-    <div className="ur-np-in flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-2xl">
+    <div className="ur-np-in flex items-center gap-3 rounded-2xl bg-white p-3 shadow-2xl" data-testid="shorts-nearby-card">
       <div className="min-w-0 flex-1 text-gray-900">
-        <div className="truncate text-[12px] font-medium">{picks.label}</div>
-        <div className="mt-1 flex gap-2">
+        <div className="truncate text-[13px] font-medium">{picks.label}</div>
+        <div className="mt-2 flex gap-2">
           {picks.items.map((it) => (
             <Link key={it.id} to={it.to} aria-label={it.name || '이용권 보기'} className="shrink-0">
               <img
                 src={cfImage(it.image, { width: 120 })} alt=""
-                width={40} height={40}
-                className="h-10 w-10 rounded-md object-cover"
+                width={44} height={44}
+                className="h-11 w-11 rounded-lg object-cover"
                 onError={(e) => cfImageOnError(e.currentTarget, it.image)}
               />
             </Link>
@@ -39,7 +41,7 @@ export default function NearbyPassesCard({ feed, regionSi, style }: { feed: Feed
       </div>
       <Link
         to={picks.more}
-        className="shrink-0 rounded-full bg-brand px-[13px] py-[11px] text-[13px] font-medium text-white"
+        className="shrink-0 h-11 px-4 rounded-xl bg-brand text-[13px] font-medium text-white inline-flex items-center"
       >
         더 보기
       </Link>

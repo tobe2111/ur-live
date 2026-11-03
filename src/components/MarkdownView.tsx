@@ -56,8 +56,8 @@ export default function MarkdownView({ source, className = '' }: { source: strin
     if (h) {
       const lvl = h[1].length
       const txt = h[2]
-      const cls = lvl === 1 ? 'text-[24px] font-medium mt-2 mb-4'
-        : lvl === 2 ? 'text-[17px] font-medium mt-8 mb-3 pb-1 border-b border-gray-100 dark:border-[#2C2F35]'
+      const cls = lvl === 1 ? 'text-[20px] font-medium mt-2 mb-4'
+        : lvl === 2 ? 'text-[16px] font-medium mt-8 mb-3 pb-1 border-b border-gray-100 dark:border-[#2C2F35]'
         : lvl === 3 ? 'text-[15px] font-medium mt-5 mb-2'
         : 'text-[13px] font-medium mt-4 mb-2 text-gray-600 dark:text-gray-300'
       blocks.push(<div key={key++} className={`text-gray-900 dark:text-white ${cls}`}>{renderInline(txt)}</div>)

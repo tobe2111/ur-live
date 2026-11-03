@@ -88,8 +88,8 @@ export default [
     file: CONSOLE,
     /* 🔧 2026-09-29 재조준(B안 + 규칙 ⑧): 제목 줄에 자간이 붙고 `text-lg` 가 정본 17px 로
        이행되며 앵커가 두 번 낡았다. 계약은 그대로 — 이모지 0. */
-    find: "<h1 className=\"text-[17px] font-bold tracking-[-0.02em]\">{t('curator.console.title'",
-    replace: "<h1 className=\"text-[17px] font-bold tracking-[-0.02em]\">🎤 {t('curator.console.title'",
+    find: "<h1 className=\"text-[16px] font-semibold tracking-[-0.02em]\">{t('curator.console.title'",
+    replace: "<h1 className=\"text-[16px] font-semibold tracking-[-0.02em]\">🎤 {t('curator.console.title'",
     test: T_NEW,
     why:
       '확정 디자인 시스템 규칙 ⑥(이모지 0). 이 화면에만 12개가 남아 있어서 다른 화면과 따로 놀았다. ' +
@@ -115,8 +115,9 @@ export default [
   {
     name: '유어샵 — 마퀴를 되살린다 (순수 검정 띠가 첫인상을 먹는다)',
     file: HEADER,
-    find: '  return (\n    <header className="bg-surface dark:bg-warm">',
-    replace: '  return (\n    <header className="bg-surface dark:bg-warm">\n      <div className="animate-marquee">{curator.headline}</div>',
+    // 🔄 2026-11-03 재조준 — 유어샵 B 로 머리 바탕이 `bg-warm` 이 됐다(막는 것은 그대로: 마퀴 복귀).
+    find: '  return (\n    <header className="bg-warm">',
+    replace: '  return (\n    <header className="bg-warm">\n      <div className="animate-marquee">{curator.headline}</div>',
     test: T_TOP,
     why:
       '대표 *"배고프다 뭐먹지?는 아예 빼기"*. 라이브 실측에서 그 띠가 **순수 검정 `#000000`** 이었다 — ' +

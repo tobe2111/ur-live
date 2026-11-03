@@ -111,7 +111,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
         </div>
         <div className="min-w-0 flex-1">
           {store && <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 truncate">{store}{dong ? ` · ${dong}` : ''}</p>}
-          <p className="mt-1 text-[17px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{menu}</p>
+          <p className="mt-1 text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white truncate">{menu}</p>
           <p className={`mt-2 text-[13px] truncate ${urgent ? 'text-tone-bad font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
             {expiryText}{howText ? ` · ${howText}` : ''}
           </p>
@@ -224,7 +224,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
           </div>
 
           {/* 제목 */}
-          <p className="text-gray-900 dark:text-white font-bold text-[17px] leading-tight tracking-tight truncate">{v.product_name}</p>
+          <p className="text-gray-900 dark:text-white font-semibold text-[16px] leading-tight tracking-tight truncate">{v.product_name}</p>
 
           {/* 서브: 발송/실패/바코드 안내 */}
           {sendFailed ? (

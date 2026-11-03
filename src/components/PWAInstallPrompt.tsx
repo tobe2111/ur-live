@@ -225,7 +225,7 @@ export default function PWAInstallPrompt() {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-medium text-[12px]">1</span>
                   <span dangerouslySetInnerHTML={{ __html: t('pwa.install.androidStep1', { defaultValue: '우상단 <strong class="text-brand-text">⋮ 메뉴</strong> 누르기' }) }} />
-                  <span className="ml-auto font-bold text-[17px] leading-none">⋮</span>
+                  <span className="ml-auto font-semibold text-[16px] leading-none">⋮</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-medium text-[12px]">2</span>

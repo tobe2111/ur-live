@@ -82,7 +82,7 @@ class ErrorBoundary extends Component<Props, State> {
               {!exhausted && (
                 <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-line border-t-gray-900 dark:border-t-white animate-spin" />
               )}
-              <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">
                 {exhausted ? '새 버전이 배포됐어요' : '화면을 업데이트하고 있어요'}
               </h2>
               <p className="text-gray-500 dark:text-gray-400 text-[15px] mb-6 leading-relaxed">
@@ -113,7 +113,7 @@ class ErrorBoundary extends Component<Props, State> {
             {/* 🦦 2026-10-07 유달이 — 빨간 경고 삼각형 대신 미안한 얼굴. 무서운 화면이 아니라 사과하는 화면이다. */}
             <Udal mood="oops" size={120} className="mx-auto mb-4" />
 
-            <h2 className="text-[24px] font-bold text-gray-900 dark:text-white mb-2">
+            <h2 className="text-[20px] font-semibold text-gray-900 dark:text-white mb-2">
               문제가 발생했습니다
             </h2>
 

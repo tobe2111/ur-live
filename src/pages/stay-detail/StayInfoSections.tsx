@@ -26,7 +26,7 @@ const ProductReviews = lazy(() => import('../product-detail/ProductReviews'))
 /** 섹션 제목 — 상세 페이지 전체에서 이것 하나만 쓴다(공구 상세 16/800/-.02em 와 동일 스펙). */
 export function SectionTitle({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <h2 className={`text-[17px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white ${className}`}>
+    <h2 className={`text-[16px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white ${className}`}>
       {children}
     </h2>
   )

@@ -128,7 +128,7 @@ export default function NotificationsPage() {
           //   종 아이콘은 "알림이 없다" 만 말하고 끝났다 — 무엇을 하면 소식이 오는지와 그 입구를 준다.
           <div className="text-center py-16 px-6">
             <Udal mood="notFound" size={128} className="mx-auto" />
-            <p className="mt-5 text-[17px] text-gray-900 dark:text-white font-bold">{t('notifications.empty')}</p>
+            <p className="mt-5 text-[16px] text-gray-900 dark:text-white font-semibold">{t('notifications.empty')}</p>
             <p className="text-[15px] leading-relaxed text-gray-600 dark:text-gray-400 mt-2">{t('notifications.emptyDesc')}</p>
             <button type="button" onClick={() => navigate('/')} className="ur-btn ur-btn-md ur-btn-primary mt-6">
               {t('notifications.emptyCta', { defaultValue: '내 주변 이용권 보기' })}

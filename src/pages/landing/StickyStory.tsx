@@ -49,8 +49,8 @@ export default function StickyStory({ steps, shotUrl }: { steps: StoryStep[]; sh
               </div>
             </div>
             <div>
-              <p className="text-[24px] font-bold lg:text-[48px] xl:text-[60px] lg:font-extrabold ur-tone-fg ur-display tracking-[-0.03em] leading-tight">{t}</p>
-              <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] leading-[1.75] ur-tone-mu max-w-[26em]">{d}</p>
+              <p className="text-[20px] font-semibold lg:text-[48px] xl:text-[60px] lg:font-bold ur-tone-fg ur-display tracking-[-0.03em] leading-tight">{t}</p>
+              <p className="mt-3 lg:mt-5 text-[13px] lg:text-[16px] leading-[1.75] ur-tone-mu max-w-[26em]">{d}</p>
             </div>
           </li>
         ))}

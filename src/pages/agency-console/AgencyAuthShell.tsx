@@ -29,7 +29,7 @@ export function AgencyAuthShell({ title, lead, children, footer, aside }: {
   )
   const form = (
     <div>
-      <h1 className="text-[24px] font-bold leading-tight tracking-[-0.01em] text-gray-900">{title}</h1>
+      <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.01em] text-gray-900">{title}</h1>
       {lead && <p className="mt-2 text-[13px] leading-relaxed text-gray-500">{lead}</p>}
       <div className="mt-6 rounded-2xl bg-white p-6 shadow-lift">{children}</div>
       {footer && <div className="mt-6 text-center text-[13px] text-gray-500">{footer}</div>}

@@ -50,7 +50,7 @@ export const VOUCHERS_TOP_ROW = {
   /** 잔액 묶음. */
   deal: 'flex items-baseline gap-1 min-w-0',
   dealLabel: 'text-[12px] text-gray-500 dark:text-gray-400 mr-0.5',
-  dealNum: 'text-[17px] font-bold tracking-[-0.4px] text-gray-900 dark:text-white',
+  dealNum: 'text-[16px] font-semibold tracking-[-0.4px] text-gray-900 dark:text-white',
   dealUnit: 'text-[13px] font-medium text-gray-600 dark:text-gray-300',
   /** 비로그인 — 잔액 대신 할 수 있는 일. */
   guest: 'inline-flex items-center gap-1 text-[15px] font-medium text-brand-text',

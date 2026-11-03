@@ -77,7 +77,8 @@ const files = execSync(
   .filter((f) => MY_SURFACE.test(f) || !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
 
 /** 본문 스케일 — 이 범위(≤25px)에서는 이것뿐이다. */
-const BODY = new Set(['12px', '13px', '15px', '17px', '24px'])
+// 🔤 2026-11-03 안 C(대표) — 17→16 · 24→20 · 페이지 제목 28→24. 본문 스케일이 12/13/15/16/20/24 가 됐다.
+const BODY = new Set(['12px', '13px', '15px', '16px', '20px', '24px'])
 /** 디스플레이 경계 — 이 이상은 아래 `DISPLAY` 스케일이 강제한다. */
 const DISPLAY_FROM = 26
 /** 디스플레이 정본 — 7 rung 모듈러 스케일 (2026-09-30 대표 결정). */
@@ -136,7 +137,7 @@ const scan = {
 }
 
 describe('소비자 — 본문 타입 스케일', () => {
-  it('🔠 본문 크기(≤25px)는 12/13/15/17/24 뿐이다', () => {
+  it('🔠 본문 크기(≤25px)는 12/13/15/16/20/24 뿐이다', () => {
     const { bad, seen } = scan.size(open)
     // 대상이 0이면 통과가 아니라 실패다 — 경로가 낡아 조용히 비는 것을 막는다.
     expect(seen, `본문 크기 토큰을 ${seen}개밖에 못 찾았다 — 이 검사가 헛돌고 있다`).toBeGreaterThan(3000)

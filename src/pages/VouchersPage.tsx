@@ -479,7 +479,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               </div>
             )}
             <div className="flex items-center justify-between gap-2 mb-4">
-              <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
                 <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
                 {/* 🐛 2026-08-17 (UX 전수검사 P1): 로드분 개수를 총계 자리에 그대로 쓰면 "커피/음료 775개"
                     카테고리가 "20"으로 읽힌다 — 더 있으면 `20+` 로 표기(정확한 총계 API 없음). */}
@@ -658,7 +658,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           {/* 🧹 2026-08-31: ① 선물 아이콘 제거 — 바로 아래 하단 탭의 '교환권' 아이콘과 **같은 그림**이라
               같은 화면에서 두 번 같은 말을 했고, 앰버 한 점이 이 화면의 유일한 색이라 시선만 끌었다.
               ② 0 은 세지 않는다 — 곧바로 아래 빈 상태가 같은 사실을 더 잘 말한다. */}
-          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-baseline gap-2 min-w-0">
+          <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-baseline gap-2 min-w-0">
             <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
             {!loading && products.length > 0 && (
               <span className="text-[15px] text-gray-500 dark:text-gray-400 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>

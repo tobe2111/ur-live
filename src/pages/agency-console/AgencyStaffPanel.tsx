@@ -71,7 +71,7 @@ export function AgencyStaffPanel({ staff, canManage, onChanged, bare = false, so
 
   return (
     <section className={bare ? '' : 'mt-8'}>
-      {!bare && <h2 className="text-[17px] font-bold text-gray-500 dark:text-gray-400">직원</h2>}
+      {!bare && <h2 className="text-[16px] font-bold text-gray-500 dark:text-gray-400">직원</h2>}
       <div className={`${bare ? '' : 'mt-3 '}rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift`}>
         {staff === null ? (
           <p className="p-6 text-[13px] text-gray-500 dark:text-gray-400">불러오는 중…</p>

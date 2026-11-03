@@ -62,7 +62,7 @@ export default function SeedingApplySheet({ productId, offer, onClose }: { produ
     <div className="fixed inset-0 z-[10600] flex items-end justify-center sm:items-center ur-veil p-2 sm:p-4" onClick={onClose}>
       <div className="w-full max-w-md ur-pop-card ur-glass p-5 pb-8 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()}
         role="dialog" aria-label="무료 체험 신청">
-        <p className="text-[17px] font-bold text-gray-900 dark:text-white">무료 체험 신청</p>
+        <p className="text-[16px] font-semibold text-gray-900 dark:text-white">무료 체험 신청</p>
         <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
           {offer.platforms.map((p) => PLATFORM_LABEL[p]).join('·')} {FOLLOWER_WORD[offer.platforms[0]]} {formatNumber(offer.min_followers)}명 이상이면 신청할 수 있어요.
         </p>

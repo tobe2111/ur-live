@@ -29,7 +29,7 @@ export default function CartComplete({ qty, kinds, amount }: { qty: number; kind
             <X className="w-6 h-6" strokeWidth={1.6} />
           </button>
         </div>
-        <h1 className="text-center text-[24px] font-bold tracking-[-0.02em] mt-3 mb-6">{t('passBuy.completeTitle', { defaultValue: '결제가 완료되었어요' })}</h1>
+        <h1 className="text-center text-[20px] font-semibold tracking-[-0.02em] mt-3 mb-6">{t('passBuy.completeTitle', { defaultValue: '결제가 완료되었어요' })}</h1>
 
         {/* 밴드 오른쪽에 D-N 을 못 쓴다 — 이용권마다 기한이 달라서 하나를 고르면 나머지가 거짓이 된다. */}
         <TicketCard bandLeft={t('passBuy.issuedBand', { defaultValue: '이용권 발급 완료' })} bandRight={t('passBuy.kindsCount', { defaultValue: '{{n}}종', n: kinds })}>
@@ -37,7 +37,7 @@ export default function CartComplete({ qty, kinds, amount }: { qty: number; kind
           <div className="px-4 pt-4 pb-4">
             <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('passBuy.expiryVaries', { defaultValue: '사용 기한은 이용권마다 달라요' })}</p>
             <div className="flex items-baseline gap-2 mt-3 mb-4 tabular-nums">
-              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(amount) })}</span>
+              <span className="text-[28px] font-bold tracking-[-0.03em] leading-none">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(amount) })}</span>
             </div>
             <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>{t('passBuy.viewVouchers', { defaultValue: '이용권 확인' })}</TicketOutlineButton>
           </div>

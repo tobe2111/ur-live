@@ -142,8 +142,8 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
     return (
       <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
         <div className="w-full sm:max-w-xs sm:mx-4 ur-pop-card ur-glass p-6 text-center overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-          <p className="text-[28px]" aria-hidden>✅</p>
-          <p className="mt-2 text-[17px] font-bold text-gray-900 dark:text-white">사용 완료!</p>
+          <p className="text-[24px]" aria-hidden>✅</p>
+          <p className="mt-2 text-[16px] font-semibold text-gray-900 dark:text-white">사용 완료!</p>
           <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">결제 금액에서 쿠폰 금액을 빼고 결제하세요</p>
           <button type="button" onClick={() => navigate(`/pass/${doneBridge.product_id}`)}
             className="mt-4 w-full rounded-2xl border border-line px-3 py-3 text-left active:scale-[0.98] transition-transform">
@@ -158,7 +158,7 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
       <div className="w-full sm:max-w-xs sm:mx-4 ur-pop-card ur-glass p-6 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <p className="text-center text-[17px] font-bold text-gray-900 dark:text-white">{formatWon(coupon.face_value)} 상권 쿠폰</p>
+        <p className="text-center text-[16px] font-bold text-gray-900 dark:text-white">{formatWon(coupon.face_value)} 상권 쿠폰</p>
         <p className="mt-1 text-center tabular-nums text-[15px] font-bold tracking-widest text-gray-500 dark:text-gray-400">{coupon.code}</p>
         <div className="mt-4 space-y-3">
           <select value={storeId} onChange={(e) => setStoreId(e.target.value)}
@@ -168,7 +168,7 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
           </select>
           <input inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 8))}
             placeholder="매장 확인코드 (직원에게 문의)"
-            className="w-full rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2 text-center tabular-nums text-[17px] tracking-[0.3em] text-gray-900 dark:text-white" />
+            className="w-full rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2 text-center tabular-nums text-[16px] tracking-[0.3em] text-gray-900 dark:text-white" />
           <p className="text-[12px] leading-relaxed text-gray-400 dark:text-gray-500">
             직원 앞에서 눌러주세요 — 사용 즉시 이 매장으로 정산돼요. 결제 금액에서 쿠폰 금액을 빼고 결제하세요.
           </p>

@@ -92,7 +92,7 @@ export const LIST_PLATE_CLS = 'rounded-2xl bg-surface shadow-lift overflow-hidde
  * ⚠️ (기록) 크기를 줄인 만큼 **위 여백을 늘린다**(mt-7 → mt-8). 경계를 이제 공백이 만들기 때문이고,
  *    둘은 짝이다 — 한쪽만 하면 목록이 도로 한 덩어리로 읽힌다.
  */
-export const SECTION_TITLE_CLS = 'text-[17px] font-bold tracking-[-0.01em] text-gray-500 dark:text-white/45'
+export const SECTION_TITLE_CLS = 'text-[16px] font-semibold tracking-[-0.01em] text-gray-500 dark:text-white/45'
 
 export function SectionTitle({ children, as: Tag = 'h2', action }: {
   children: React.ReactNode

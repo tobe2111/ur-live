@@ -166,10 +166,10 @@ export default function StoreClaimPage() {
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
           {/* 왼쪽(PC) · 위(폰) — 무엇을 등록하는 곳인가 */}
           <div className="lg:pt-4">
-            <h1 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.22] text-gray-900">
+            <h1 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] leading-[1.22] text-gray-900">
               매장 이용권<br className="hidden lg:block" /> 판매 등록
             </h1>
-            <p className="mt-2 lg:mt-4 text-[15px] lg:text-[17px] leading-relaxed text-gray-600 lg:max-w-[460px]">
+            <p className="mt-2 lg:mt-4 text-[15px] lg:text-[16px] leading-relaxed text-gray-600 lg:max-w-[460px]">
               손님이 유어딜에서 할인가로 이용권을 미리 삽니다. 매장에 와서 QR 을 보여주면 그걸로 끝입니다.
             </p>
 
@@ -189,7 +189,7 @@ export default function StoreClaimPage() {
             <div className="hidden lg:flex mt-9 pt-5 border-t border-rule gap-9 lg:max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
-                  <div className="text-[24px] font-bold text-gray-900">{value}</div>
+                  <div className="text-[20px] font-semibold text-gray-900">{value}</div>
                   <div className="mt-1 text-[12px] text-gray-500">{label}</div>
                 </div>
               ))}

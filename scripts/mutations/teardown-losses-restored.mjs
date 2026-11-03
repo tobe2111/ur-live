@@ -13,7 +13,7 @@ export default [
   },
   {
     name: '잃은것① 취소해도 환불이 나간다',
-    file: 'src/pages/SellerOrdersPage.tsx',
+    file: 'src/pages/seller-orders/useOrderActions.ts', // 🔀 2026-11-03 재조준(주문 동작 훅으로 옮김)
     find: 'if (reason === null) return',
     replace: 'if (reason === null) { /* 그대로 진행 */ }',
     test: 'src/tests/unit/teardown-losses-restored-2026-10-06.test.ts',
@@ -21,7 +21,7 @@ export default [
   },
   {
     name: '잃은것① 사유가 서버로 안 간다(빈 본문)',
-    file: 'src/pages/SellerOrdersPage.tsx',
+    file: 'src/pages/seller-orders/useOrderActions.ts', // 🔀 2026-11-03 재조준
     find: `/refund\`, {
         reason: reason.trim() || REFUND_REASON_FALLBACK,
       })`,

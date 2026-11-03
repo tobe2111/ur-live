@@ -41,7 +41,7 @@ export default function RedeemReviewCard({ productId }: { productId: number }) {
     <div className="mt-5 text-left">
       {picked === 0 ? (
         <div className="ur-rr-in rounded-2xl bg-warm px-4 py-4">
-          <p className="text-[17px] font-bold text-gray-900 dark:text-white">어떠셨어요?</p>
+          <p className="text-[16px] font-semibold text-gray-900 dark:text-white">어떠셨어요?</p>
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">리뷰를 남기면 딜 리워드를 드려요</p>
           <div className="mt-3 flex justify-between" role="radiogroup" aria-label="별점">
             {[1, 2, 3, 4, 5].map((n) => (

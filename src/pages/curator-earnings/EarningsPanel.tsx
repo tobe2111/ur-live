@@ -106,7 +106,7 @@ export default function EarningsPanel({ stats, info, onWithdraw }: {
             <span className="block text-[12px] font-medium opacity-80">
               {isCash ? '지금 받을 수 있는 돈' : '내 딜 잔액'}
             </span>
-            <span className="block text-[28px] leading-none font-extrabold tracking-[-0.04em] tabular-nums mt-1">
+            <span className="block text-[28px] leading-none font-bold tracking-[-0.04em] tabular-nums mt-1">
               {isCash ? formatWon(info.available) : `${formatNumber(info.deal_balance)}딜`}
             </span>
           </span>

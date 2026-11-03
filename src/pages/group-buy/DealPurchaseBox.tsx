@@ -85,7 +85,7 @@ export default function DealPurchaseBox({
           "결제 즉시 교환권 발급"(용어 오류) · 이름·가격을 한 번 더 말하던 '구매 옵션' 상자. */}
       <div className="flex items-baseline flex-wrap gap-x-2">
         {discountPct > 0 && <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
-        <span className="text-[28px] font-extrabold tracking-[-.03em]" style={{ color: 'var(--gbd-ink)' }}>{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(unitPrice) })}</span>
+        <span className="text-[28px] font-bold tracking-[-.03em]" style={{ color: 'var(--gbd-ink)' }}>{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(unitPrice) })}</span>
         {unitSaving > 0 && <s className="text-[13px]" style={{ color: 'var(--gbd-sub2)' }}>{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(refPrice) })}</s>}
       </div>
       {unitSaving > 0 && (

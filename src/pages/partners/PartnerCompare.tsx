@@ -50,7 +50,7 @@ export default function PartnerCompare() {
   return (
     <section className="bg-surface">
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-        <Reveal><h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[14em]">
+        <Reveal><h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-bold tracking-[-0.03em] text-ink leading-[1.2] max-w-[14em]">
           그 광고비, 효과 보셨어요?
         </h2></Reveal>
 
@@ -58,15 +58,15 @@ export default function PartnerCompare() {
         <div className="mt-10 lg:mt-16">
           <Reveal className="max-w-[46rem]">
             <p className="text-[12px] lg:text-[15px] font-medium text-brand-text">{lead.vs}</p>
-            <p className="mt-3 lg:mt-4 text-[24px] lg:text-[34px] font-bold text-ink leading-[1.3] tracking-[-0.025em]">{lead.t}</p>
-            <p className="mt-4 text-[15px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400">{lead.d}</p>
+            <p className="mt-3 lg:mt-4 text-[20px] lg:text-[34px] font-semibold text-ink leading-[1.3] tracking-[-0.025em]">{lead.t}</p>
+            <p className="mt-4 text-[15px] lg:text-[16px] leading-[1.8] text-gray-500 dark:text-gray-400">{lead.d}</p>
           </Reveal>
 
           <div className="mt-10 lg:mt-14 grid gap-8 sm:grid-cols-2 lg:gap-14">
             {rest.map(({ vs, t, d }, i) => (
               <Reveal key={vs} delay={i * 110}>
                 <p className="text-[12px] lg:text-[13px] font-medium text-brand-text">{vs}</p>
-                <p className="mt-2 text-[17px] lg:text-[24px] font-bold text-ink leading-[1.35] tracking-[-0.02em]">{t}</p>
+                <p className="mt-2 text-[16px] lg:text-[20px] font-semibold text-ink leading-[1.35] tracking-[-0.02em]">{t}</p>
                 <p className="mt-3 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
               </Reveal>
             ))}
@@ -85,7 +85,7 @@ export default function PartnerCompare() {
             {ROWS.map(({ k, cells, ours }, ri) => (
               <Reveal key={k} delay={ri * 120}
                 className={`grid ${GRID} gap-x-8 items-center ${ours ? 'ur-sweep mt-3 rounded-2xl px-7 py-7 -mx-7' : 'px-0 py-6'}`}>
-                <p className={`text-[17px] xl:text-[17px] font-bold tracking-[-0.01em] ${ours ? 'text-brand-text' : 'text-ink'}`}>{k}</p>
+                <p className={`text-[16px] xl:text-[16px] font-semibold tracking-[-0.01em] ${ours ? 'text-brand-text' : 'text-ink'}`}>{k}</p>
                 {cells.map((c, i) => (
                   <p key={i} className={`text-[15px] leading-relaxed ${ours ? 'font-bold text-ink' : 'text-gray-500 dark:text-gray-400'}`}>{c}</p>
                 ))}
@@ -110,7 +110,7 @@ export default function PartnerCompare() {
           ))}
         </div>
 
-        <Reveal as="p" className="mt-12 lg:mt-20 text-[17px] lg:text-[28px] leading-[1.55] tracking-[-0.02em] text-ink font-bold max-w-[18em]">
+        <Reveal as="p" className="mt-12 lg:mt-20 text-[16px] lg:text-[24px] leading-[1.55] tracking-[-0.02em] text-ink font-semibold max-w-[18em]">
           체험단은 밥을 공짜로 드립니다. 여기는 손님이 돈을 내고 옵니다.
         </Reveal>
         <p className="mt-5 text-[12px] lg:text-[15px] text-gray-500 dark:text-gray-400 max-w-[44em]">

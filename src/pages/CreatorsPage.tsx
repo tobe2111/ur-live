@@ -85,22 +85,22 @@ export default function CreatorsPage() {
             거대한 숫자 · 실기기 무대로 옮겼다(첫 화면에는 제목 · 한 줄 · 버튼만). */}
         <PhotoHero photo="influencer">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 min-h-[calc(100svh-56px)] lg:min-h-[calc(100svh-64px)] flex flex-col justify-end pt-40 pb-28">
-            <h1 className="text-[40px] sm:text-[48px] lg:text-[76px] xl:text-[96px] leading-[1.12] font-extrabold tracking-[-0.035em]">
+            <h1 className="text-[40px] sm:text-[48px] lg:text-[76px] xl:text-[96px] leading-[1.12] font-bold tracking-[-0.035em]">
               {/* 🎬 한 줄씩 마스크 안에서 밀려 올라온다 */}
               <Line i={0}><span className="text-brand-text">링크 하나</span>로</Line>
               <Line i={1}>동네 맛집을 소개하세요</Line>
             </h1>
-            <p style={loadDelay(320)} className="ur-load mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-[1.7] text-white/80 max-w-[26em]">
+            <p style={loadDelay(320)} className="ur-load mt-6 lg:mt-8 text-[15px] lg:text-[16px] leading-[1.7] text-white/80 max-w-[26em]">
               내 링크로 팔리면 소개비가 쌓입니다. 팔로워 수는 상관없어요.
             </p>
 
             <div style={loadDelay(460)} className="ur-load mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
               <ApplyLink href={applyHref}
-                className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
+                className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold active:scale-[0.98] transition-transform">
                 소개 파트너 지원 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
               </ApplyLink>
               <Link to="/about"
-                className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.12] border border-white/25 backdrop-blur-sm flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
+                className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.12] border border-white/25 backdrop-blur-sm flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold text-white">
                 서비스 먼저 보기
               </Link>
             </div>
@@ -113,10 +113,10 @@ export default function CreatorsPage() {
             <div className="ur-content-wide mx-auto px-5 lg:px-10 py-24 lg:py-40 overflow-hidden">
               <GiantNumber value="0" unit="원" label="시작에 드는 돈 0원" />
               <div className="mt-10 lg:mt-14 grid gap-8 lg:grid-cols-2 lg:items-end lg:gap-20">
-                <Reveal><h2 className="ur-tone-fg text-[28px] lg:text-[48px] font-extrabold leading-[1.22]">
+                <Reveal><h2 className="ur-tone-fg text-[24px] lg:text-[48px] font-bold leading-[1.22]">
                   시작에 드는 돈은<br />없습니다
                 </h2></Reveal>
-                <Reveal delay={120} as="p" className="text-[15px] lg:text-[17px] leading-[1.7] ur-tone-mu max-w-[26em]">
+                <Reveal delay={120} as="p" className="text-[15px] lg:text-[16px] leading-[1.7] ur-tone-mu max-w-[26em]">
                   소개비는 매장이 딜마다 정합니다. 정산은 {F.minPayout}부터 받을 수 있어요.
                 </Reveal>
               </div>
@@ -125,7 +125,7 @@ export default function CreatorsPage() {
 
           <section data-tone="paper">
             <div className="ur-content-wide mx-auto px-5 lg:px-10 py-20 lg:py-36 grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:items-center">
-              <Reveal><h2 className="ur-tone-fg text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold leading-[1.18]">
+              <Reveal><h2 className="ur-tone-fg text-[24px] lg:text-[48px] xl:text-[60px] font-bold leading-[1.18]">
                 담으면 내 가게,<br />팔리면 내 소개비
               </h2></Reveal>
               <DeviceStage
@@ -140,17 +140,17 @@ export default function CreatorsPage() {
         {/* ② 수익 구조 — 한 문장을 크게 두고 조건은 아래 헤어라인으로. PC 는 제목 고정 + 본문 분리. */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-20">
-            <Reveal className="lg:self-start lg:sticky lg:top-24"><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+            <Reveal className="lg:self-start lg:sticky lg:top-24"><h2 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">
               수익 구조는 단순합니다
             </h2></Reveal>
             <div>
-              <Reveal as="p" className="flex items-start gap-2 lg:gap-4 text-[17px] lg:text-[34px] font-bold text-ink leading-[1.35] tracking-[-0.025em]">
+              <Reveal as="p" className="flex items-start gap-2 lg:gap-4 text-[16px] lg:text-[34px] font-semibold text-ink leading-[1.35] tracking-[-0.025em]">
                 <Link2 className="w-5 h-5 lg:w-8 lg:h-8 mt-1 lg:mt-2 text-brand shrink-0" strokeWidth={1.9} aria-hidden />
                 <span>내 링크로 팔리면 <span className="text-brand-text">판매액의 소개비</span> 적립</span>
               </Reveal>
               <ul className="mt-8 lg:mt-12 border-t border-rule">
                 {TERMS.map((t, i) => (
-                  <Reveal as="li" key={t} delay={i * 90} className="py-4 lg:py-6 border-b border-rule text-[13px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400">
+                  <Reveal as="li" key={t} delay={i * 90} className="py-4 lg:py-6 border-b border-rule text-[13px] lg:text-[16px] leading-relaxed text-gray-500 dark:text-gray-400">
                     {t}
                   </Reveal>
                 ))}
@@ -163,7 +163,7 @@ export default function CreatorsPage() {
             PC 에서 한 단계마다 오른쪽으로 한 칸씩 내려앉으며 차례로 들어온다. 큰 단어가 주인공이고 설명은 그 옆. */}
         <section className="ur-panel-ink text-white overflow-hidden">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
-            <Reveal><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">시작은 3단계</h2></Reveal>
+            <Reveal><h2 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] leading-[1.2]">시작은 3단계</h2></Reveal>
 
             <ol className="mt-8 lg:mt-16 space-y-2 lg:space-y-0">
               {STEPS.map(({ icon: Icon, t, d }, i) => (
@@ -172,10 +172,10 @@ export default function CreatorsPage() {
                   <span aria-hidden className="w-9 h-9 rounded-xl bg-white/[0.10] flex items-center justify-center shrink-0 lg:hidden">
                     <Icon className="w-[18px] h-[18px] text-brand-text" />
                   </span>
-                  <p className="text-[15px] lg:text-[76px] font-bold lg:font-extrabold tracking-[-0.02em] lg:tracking-[-0.04em] leading-[1.3] lg:leading-none lg:shrink-0">
+                  <p className="text-[15px] lg:text-[76px] font-bold lg:font-bold tracking-[-0.02em] lg:tracking-[-0.04em] leading-[1.3] lg:leading-none lg:shrink-0">
                     <span className="text-brand-text mr-1 lg:hidden">{i + 1}.</span>{t}
                   </p>
-                  <p className="text-[12px] lg:text-[17px] text-white/60 mt-1 lg:mt-0 leading-snug lg:leading-relaxed lg:max-w-[22em]">{d}</p>
+                  <p className="text-[12px] lg:text-[16px] text-white/60 mt-1 lg:mt-0 leading-snug lg:leading-relaxed lg:max-w-[22em]">{d}</p>
                 </Reveal>
               ))}
             </ol>
@@ -185,8 +185,8 @@ export default function CreatorsPage() {
         {/* ④ 실제 화면 — 폰 갤러리. 캡션은 덱과 같은 문구로, 라이브인지 예시 데이터인지 밝힌다. */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <Reveal><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">제안을 받고, 정산까지 앱에서</h2></Reveal>
-            <Reveal as="p" delay={80} className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400 max-w-[34em] leading-relaxed">
+            <Reveal><h2 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">제안을 받고, 정산까지 앱에서</h2></Reveal>
+            <Reveal as="p" delay={80} className="mt-3 lg:mt-5 text-[13px] lg:text-[16px] text-gray-500 dark:text-gray-400 max-w-[34em] leading-relaxed">
               매장에 돈을 달라고 할 일이 없습니다. 제안 수락도 적립 확인도 같은 앱 안에서 끝납니다.
             </Reveal>
             {/* 🎬 폰 세 대가 엇박으로 올라오고 PC 에서는 서로 다른 높이에서 떠 있다 */}
@@ -210,7 +210,7 @@ export default function CreatorsPage() {
         {/* ❓ 자주 묻는 것 — 화면 · 크롤러 본문 · FAQPage 가 같은 배열(landing-faq). 답은 접혀도 DOM 에 있다. */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-10 lg:grid-cols-[0.62fr_1.38fr] lg:gap-16">
-            <Reveal><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">자주 묻는 것</h2></Reveal>
+            <Reveal><h2 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">자주 묻는 것</h2></Reveal>
             <div>
               {REFERRAL_FAQ.map(f => <FaqItem key={f.question} q={f.question} a={f.answer} />)}
             </div>
@@ -221,10 +221,10 @@ export default function CreatorsPage() {
         <section id="apply" className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
             <div className="max-w-[46rem] mx-auto text-center">
-              <Reveal kind="scale"><h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
+              <Reveal kind="scale"><h2 className="text-[24px] lg:text-[48px] xl:text-[60px] font-bold tracking-[-0.03em] leading-[1.22]">
                 1기 소개 파트너 모집
               </h2></Reveal>
-              <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-relaxed text-white/70">
+              <p className="mt-6 lg:mt-8 text-[15px] lg:text-[16px] leading-relaxed text-white/70">
                 지금 지원하시면 온보딩 안내를 보내드립니다.
               </p>
             </div>
@@ -236,11 +236,11 @@ export default function CreatorsPage() {
             ) : (
               <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 justify-center max-w-[32rem] mx-auto">
                 <ApplyLink href={applyHref}
-                  className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
+                  className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold active:scale-[0.98] transition-transform">
                   소개 파트너 지원 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
                 </ApplyLink>
                 <Link to="/partners"
-                  className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
+                  className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold text-white">
                   내 가게를 올리고 싶어요
                 </Link>
               </div>

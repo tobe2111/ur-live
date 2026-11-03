@@ -270,7 +270,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
         {/* 🩹 본문만 스크롤한다 — 닫기(X)·그래버는 패널에 고정되어 스크롤 밖에 남는다.
             `flex-1 min-h-0` 없이 `overflow-y-auto` 만 주면 flex 자식이 안 줄어들어 스크롤이 안 생긴다(레포 룰). */}
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
-          <p className="text-center text-[17px] font-bold tracking-tight text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
+          <p className="text-center text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
           {voucher.restaurant_name && (
             <p className="flex items-center justify-center gap-1 text-center text-[12px] text-gray-500 dark:text-gray-400 mb-4">
               <PinIcon className="w-3 h-3 shrink-0" />{voucher.restaurant_name}
@@ -318,7 +318,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   <div className={`flex flex-col items-center rounded-xl border-[3px] border-tone-ok bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm ${justUsed ? 'ur-slam' : ''}`}>
                     <div className="flex items-center gap-2">
                       <OkIcon className="w-5 h-5 text-tone-ok" />
-                      <span className="text-[17px] font-bold tracking-tight text-tone-ok">{t('wallet.qr.stampUsed', { defaultValue: '사용 완료' })}</span>
+                      <span className="text-[16px] font-semibold tracking-tight text-tone-ok">{t('wallet.qr.stampUsed', { defaultValue: '사용 완료' })}</span>
                     </div>
                     {voucher.used_at && (
                       <span className="mt-1 text-[12px] font-medium text-tone-ok">
@@ -332,7 +332,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                 <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
                   <div className="flex items-center gap-2 rounded-xl border-[3px] border-brand bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
                     <GiftBoxIcon size={20} className="text-brand-text" />
-                    <span className="text-[17px] font-bold tracking-tight text-brand-text">{t('wallet.qr.stampGifting', { defaultValue: '선물 중' })}</span>
+                    <span className="text-[16px] font-semibold tracking-tight text-brand-text">{t('wallet.qr.stampGifting', { defaultValue: '선물 중' })}</span>
                   </div>
                 </div>
               )}
@@ -340,7 +340,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                 <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
                   <div className="flex items-center gap-2 rounded-xl border-[3px] border-red-500/90 bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
                     <BadIcon className="w-5 h-5 text-red-500" />
-                    <span className="text-[17px] font-bold tracking-tight text-red-600 dark:text-red-400">
+                    <span className="text-[16px] font-semibold tracking-tight text-red-600 dark:text-red-400">
                       {voucher.status === 'expired' ? t('wallet.qr.stampExpired', { defaultValue: '만료됨' }) : t('wallet.qr.stampRefunded', { defaultValue: '환불됨' })}
                     </span>
                   </div>

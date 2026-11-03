@@ -41,7 +41,7 @@ export function DateSheet({ f, value, lucky, onDone, onClose }: {
       footer={<button type="button" disabled={!picked} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center disabled:opacity-50" onClick={() => onDone(picked)}>선택 완료</button>}
     >
       <div className="flex items-center justify-between pb-3">
-        <span className="text-[17px] font-bold">{cursor.y}년 {cursor.m}월</span>
+        <span className="text-[16px] font-semibold">{cursor.y}년 {cursor.m}월</span>
         <span className="flex gap-1">
           <button type="button" aria-label="이전 달" disabled={!canPrev} onClick={() => move(-1)} className="p-2 disabled:opacity-30"><ChevronLeft className="h-5 w-5" /></button>
           <button type="button" aria-label="다음 달" disabled={!canNext} onClick={() => move(1)} className="p-2 disabled:opacity-30"><ChevronRight className="h-5 w-5" /></button>

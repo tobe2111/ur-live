@@ -138,7 +138,7 @@ export function ReviewForm({ requestId, mine, onDone }: {
       <div className="mt-3 flex gap-1" role="radiogroup" aria-label="별점">
         {[1, 2, 3, 4, 5].map((n) => (
           <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={`${n}점`} onClick={() => setRating(n)}
-            className={`text-[28px] leading-none ${n <= rating ? 'text-brand-text' : 'text-gray-300 dark:text-gray-600'}`}><span key={n <= rating ? `on${rating}` : 'off'} className={n <= rating ? 'ur-star-pick' : 'inline-block'} style={{ '--sn': n - 1 } as React.CSSProperties}>★</span></button>
+            className={`text-[24px] leading-none ${n <= rating ? 'text-brand-text' : 'text-gray-300 dark:text-gray-600'}`}><span key={n <= rating ? `on${rating}` : 'off'} className={n <= rating ? 'ur-star-pick' : 'inline-block'} style={{ '--sn': n - 1 } as React.CSSProperties}>★</span></button>
         ))}
       </div>
       <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={REVIEW_BODY_MAX} rows={3}

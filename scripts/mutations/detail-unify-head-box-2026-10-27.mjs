@@ -22,7 +22,7 @@ export default [
     name: 'detail-unify-head-box — 숙소 제목이 이용권 제목과 갈린다',
     file: 'src/shared/stay-head.ts',
     // 📏 2026-11-02 상세 C안: 둘 다 17 — 숙소만 다른 크기로 갈리는 변형을 넣는다.
-    find: "  h1: 'text-[17px] leading-[1.4] font-bold tracking-[-.02em]',",
+    find: "  h1: 'text-[16px] leading-[1.4] font-semibold tracking-[-.02em]',",
     replace: "  h1: 'text-[15px] leading-[1.4] font-bold tracking-[-.02em]',",
     test: T,
     why: '이용권 상세 제목과 크기가 갈린다.',

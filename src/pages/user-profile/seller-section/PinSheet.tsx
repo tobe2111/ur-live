@@ -92,7 +92,7 @@ export default function PinSheet({ sellerId, onClose, onDone }: {
     }
   }
 
-  const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[17px] font-bold tabular-nums tracking-[0.2em] text-gray-900 dark:text-white placeholder:font-normal placeholder:tracking-normal placeholder:text-gray-400 dark:placeholder:text-gray-500'
+  const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[16px] font-bold tabular-nums tracking-[0.2em] text-gray-900 dark:text-white placeholder:font-normal placeholder:tracking-normal placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
   return (
     <Sheet
@@ -163,7 +163,7 @@ export default function PinSheet({ sellerId, onClose, onDone }: {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="매장 로그인 비밀번호"
-                className="w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[17px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                className="w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[16px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
               />
               <span className="block mt-2 text-[13px] text-gray-500 dark:text-gray-400">
                 이 매장은 소비자 계정과 따로 만들어져서 한 번 확인이 필요해요.

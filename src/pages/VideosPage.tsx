@@ -356,10 +356,14 @@ export default function VideosPage() {
 
       {/* ⏸️ 멈춘 것이 **우리 탓인지 유튜브 탓인지** 화면이 말해 준다. `controls=0` 이라 유튜브가
           가운데 아이콘을 안 그려서, 이게 없으면 탭한 뒤 "멈춘 건가 고장인가"를 알 수 없다. */}
+      {/* 🩸 2026-11-03 대표 신고 *"재생버튼 2개 생기고"* — 멈추면 **유튜브도 자기 재생 버튼을** 재생기 한가운데 그린다.
+          재생기를 제목 줄을 가리려고 위로 `YT_TITLE_CLIP_PX` 늘려 놨으므로 그 한가운데는 화면 한가운데보다
+          **절반만큼 위**다 → 두 버튼이 36px 어긋나 둘로 보였다(유튜브 것은 교차 출처라 못 끈다).
+          ⇒ 우리 버튼을 **그 자리로 옮기고 더 크고 진하게** 그려 유튜브 버튼을 덮는다. 투명도를 내리면 다시 비친다. */}
       {paused && (
-        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
-          <div className="grid h-16 w-16 place-items-center rounded-full bg-black/45 backdrop-blur">
-            <Play size={26} className="ml-[3px] fill-white text-white" />
+        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center" style={{ transform: `translateY(-${YT_TITLE_CLIP_PX / 2}px)` }} data-testid="shorts-paused">
+          <div className="grid h-[76px] w-[76px] place-items-center rounded-full bg-black/85">
+            <Play size={30} className="ml-1 fill-white text-white" />
           </div>
         </div>
       )}
@@ -388,7 +392,7 @@ export default function VideosPage() {
              위로 올리지 말 것 — 바는 이 화면의 본체이고, 올리면 영상을 더 가린다.
              (같은 날 대표 지시로 좌상단 닫기 X 는 제거됐다. 나가는 길은 브라우저 뒤로가기·Esc.) */}
       {cur && cur.product_id ? (
-        <div style={slideStyle} className="absolute inset-x-2.5 bottom-2.5 z-20 flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-2xl">
+        <div style={slideStyle} className="absolute inset-x-2.5 bottom-2.5 z-20 flex items-center gap-2 rounded-2xl bg-white p-2 shadow-2xl">
           {thumb && (
             <img
               src={cfImage(thumb, { width: 120 })} alt=""

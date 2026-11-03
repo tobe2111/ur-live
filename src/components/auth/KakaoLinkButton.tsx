@@ -138,7 +138,7 @@ export function KakaoLinkButton({ role }: Props) {
         {status.user.profile_image ? (
           <img src={status.user.profile_image} alt="" className="w-10 h-10 rounded-full" loading="lazy" />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-yellow-300 flex items-center justify-center text-[17px]">💬</div>
+          <div className="w-10 h-10 rounded-full bg-yellow-300 flex items-center justify-center text-[16px]">💬</div>
         )}
         <div className="flex-1 min-w-0">
           <p className="text-[12px] text-tone-ok font-medium">{t('kakaoLink.linkedStatus', { defaultValue: '✓ 카카오 계정 연동됨' })}</p>
@@ -158,7 +158,7 @@ export function KakaoLinkButton({ role }: Props) {
   return (
     <div className="bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-xl p-4 space-y-3">
       <div className="flex items-start gap-2">
-        <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-[17px] shrink-0">💬</div>
+        <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-[16px] shrink-0">💬</div>
         <div className="flex-1 min-w-0">
           <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('kakaoLink.title')}</p>
           <p className="text-[12px] text-gray-600 mt-1 leading-relaxed">

@@ -25,7 +25,7 @@ export default function RefundPolicyPage() {
           <button onClick={goBack} aria-label="뒤로 가기" className="text-ink">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-[17px] font-bold text-ink">환불 및 교환/반품 정책</h1>
+          <h1 className="text-[16px] font-semibold text-ink">환불 및 교환/반품 정책</h1>
           <div className="w-6" />
         </div>
       </div>

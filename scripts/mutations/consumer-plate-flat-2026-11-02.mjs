@@ -11,10 +11,11 @@ const CODEMOD = 'scripts/codemods/consumer-plate-flat.mjs'
 
 export default [
   {
-    name: '🧾 지갑 요약에 그림자 판이 돌아온다',
-    file: 'src/pages/my-vouchers/WalletSummaryCard.tsx',
-    find: '<div className="-mx-4 px-4 py-4 flex items-end justify-between gap-4">',
-    replace: '<div className="rounded-2xl bg-surface shadow-lift px-5 py-4 flex items-end justify-between gap-4">',
+    name: '🧾 지갑 목록 판에 그림자가 돌아온다',
+    file: 'src/pages/MyVouchersPage.tsx',
+    // 🔁 2026-11-03 재조준(지갑 토스 참고 — 판은 허용, 그림자는 여전히 0 / 장수는 목록 판 머리).
+    find: '<div className="rounded-2xl bg-surface overflow-hidden" data-testid="wallet-list-card">',
+    replace: '<div className="rounded-2xl bg-surface shadow-lift overflow-hidden" data-testid="wallet-list-card">',
     test: TEST,
     why: '대표가 지갑을 세 안으로 보고 고른 것이 평면이다. 판 하나가 돌아오면 같은 화면에 두 문법이 선다.',
   },

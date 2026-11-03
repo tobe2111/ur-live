@@ -104,7 +104,7 @@ export default function CuratorEarningsPage() {
             페이지는 `bg-warm`, 헤더는 `bg-surface` 라 두 면이 맞닿는 자리가 곧 구분선이다. */}
         <header className="sticky top-0 z-20 bg-surface px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-[17px] font-bold tracking-[-0.02em]">{t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
+            <h1 className="text-[16px] font-semibold tracking-[-0.02em]">{t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
             {handle && (
               <Link to={`/u/${handle}`} className="text-[12px] text-gray-500 dark:text-gray-400">@{handle}</Link>
             )}

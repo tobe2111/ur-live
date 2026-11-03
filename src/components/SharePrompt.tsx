@@ -28,7 +28,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
       <div className="w-full max-w-sm ur-glass ur-pop-card p-6 overflow-hidden ur-dialog-in" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{title}</h3>
+            <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">{title}</h3>
             <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{message}</p>
           </div>
           <button onClick={onClose} aria-label={t('sharePrompt.closeAria', { defaultValue: '공유 프롬프트 닫기' })} className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">

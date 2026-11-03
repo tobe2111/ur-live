@@ -58,7 +58,7 @@ export default function BrandPage() {
       <SEO title={`${brand.name} - 유어딜`} description={`${brand.name} 지점 ${branches.length}곳의 이용권을 한 곳에서. 가까운 지점부터 보여 드려요.`} url={`/brand/${brand.slug}`} />
       <div className="ur-content-wide px-4 lg:px-8">
         <header className="pt-6 pb-4">
-          <h1 className="text-[24px] font-bold text-gray-900 dark:text-white">{brand.name}</h1>
+          <h1 className="text-[20px] font-semibold text-gray-900 dark:text-white">{brand.name}</h1>
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
             지점 {branches.length}곳{userLoc ? ' · 가까운 순' : ''}
           </p>
@@ -90,7 +90,7 @@ export default function BrandPage() {
         )}
 
         <section aria-label="이용권" className="pt-8">
-          <h2 className="pb-3 text-[17px] font-bold text-gray-900 dark:text-white">
+          <h2 className="pb-3 text-[16px] font-semibold text-gray-900 dark:text-white">
             {onlyStore != null ? `${branches.find((b) => b.seller_id === onlyStore)?.name ?? ''} 이용권` : '이용권'}
           </h2>
           {products.length === 0 ? (

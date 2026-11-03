@@ -10,31 +10,20 @@
  */
 import { formatNumber } from '@/utils/format'
 
-export default function WalletSummaryCard({ count, total, t }: {
-  count: number
+export default function WalletSummaryCard({ total, t }: {
   total: number
   t: (key: string, opts?: Record<string, unknown>) => string
 }) {
+  // 🧾 2026-11-03 토스 참고(시안 I1) — 맨 위 요약에서 **목록 아래 합계 판**으로. 장수는 목록 판 머리가 말한다(한 곳).
   return (
-    <div className="ur-content-narrow px-4 lg:px-8 pt-4">
-      <div className="-mx-4 px-4 py-4 flex items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">
-            {t('voucher.walletEyebrow', { defaultValue: '쓸 수 있는 이용권' })}
-          </p>
-          <p className="mt-1 flex items-baseline gap-1 leading-none">
-            <span className="text-[28px] font-extrabold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(count)}</span>
-            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400">{t('voucher.heroCountUnit', { defaultValue: '장' })}</span>
-          </p>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('voucher.walletTotal', { defaultValue: '합계' })}</p>
-          <p className="mt-1 text-[17px] font-bold tabular-nums text-gray-900 dark:text-white">
-            {formatNumber(total)}{t('voucher.won', { defaultValue: '원' })}
-          </p>
-        </div>
+    <div className="mt-3 rounded-2xl bg-surface px-5 py-4 flex items-center justify-between gap-4" data-testid="wallet-summary-card">
+      <div className="min-w-0">
+        <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('voucher.walletTotalTitle', { defaultValue: '쓸 수 있는 이용권 합계' })}</p>
+        <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('voucher.walletTotalSub', { defaultValue: '산 가격 기준' })}</p>
       </div>
-      <div className="mt-4" />
+      <p className="shrink-0 text-[20px] font-bold tabular-nums text-gray-900 dark:text-white">
+        {formatNumber(total)}{t('voucher.won', { defaultValue: '원' })}
+      </p>
     </div>
   )
 }

@@ -24,13 +24,15 @@ const DOORS = readCode('src/pages/user-profile/agency-doors.tsx')
 describe('마이 — 내 가게 + 에이전시 한 구역', () => {
   it('① 맡은 매장이 전부 내 가게 안이면 에이전시 매장 판을 숨긴다', () => {
     expect(PANEL).toMatch(/const coveredByMine = !!ownSellerIds && ownSellerIds\.length > 0 && !error\s*&& \(rows === null \|\| active\.every\(\(r\) => ownSellerIds\.includes\(r\.sellerId\)\)\)/)
-    expect(PANEL).toContain("className={coveredByMine ? 'hidden' :")
+    expect(PANEL).toContain("className={`${coveredByMine ? 'hidden' :")
   })
   it('② 하나라도 밖이면 그린다 — every 를 some 으로 바꾸면 그 매장의 길이 사라진다', () => {
     expect(PANEL, '하나만 겹쳐도 숨긴다').not.toMatch(/active\.some\(\(r\) => ownSellerIds/)
   })
   it('③ 에이전시 이름이 매장 판 위 구역 제목이다 (내 가게가 있을 때만)', () => {
-    expect(PAGE).toMatch(/<AgencyTitleDoor storeCount=\{sellerSeats\.stores\.length\} \/>\}?\s*<SellerSection/)
+    // 🔁 2026-11-03 — 폰은 탭이 아닐 때만 제목을 세운다(에이전시 탭은 카드). PC 는 종전 그대로.
+    expect(PAGE).toContain('{!tabbed && <AgencyTitleDoor storeCount={sellerSeats.stores.length} />}')
+    expect(PAGE).toContain('{isPc ? <AgencyTitleDoor storeCount={sellerSeats.stores.length} /> : null}')
     expect(TITLE).toMatch(/if \(!on \|\| storeCount <= 0\) return null/)
     // 🚪 에이전시가 아닌 손님은 그 코드를 안 받는다(문이 lazy) — 첫 화면 무게 예산(dash:my).
     expect(DOORS).toMatch(/if \(!on \|\| storeCount <= 0\) return null/)

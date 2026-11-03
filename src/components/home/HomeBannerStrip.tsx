@@ -78,7 +78,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
           {bg && <img src={bg} alt="" aria-hidden="true" className="absolute inset-0 -z-10 w-full h-full object-cover" />}
           <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/60 to-black/25" aria-hidden="true" />
           <div className="min-w-0">
-            <strong className="block text-[17px] font-bold tracking-tight text-white">{b.title}</strong>
+            <strong className="block text-[16px] font-semibold tracking-tight text-white">{b.title}</strong>
             {b.description && <span className="block mt-1 text-[13px] text-white/80">{b.description}</span>}
           </div>
           {link && (

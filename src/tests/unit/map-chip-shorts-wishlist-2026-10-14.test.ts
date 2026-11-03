@@ -59,7 +59,7 @@ describe('② 이용권 없는 쇼츠 — 이 지역 인기 이용권 세 장', 
     expect(v).toMatch(/cur && cur\.product_id \? \(/)
     expect(v).toMatch(/: cur && nearbyFeed \? \(/)
     // 🎬 2026-11-03 16차 ⑦ — 바깥(자리·넘김 transform) / 안쪽(흰 카드·올라오는 움직임)으로 나뉘었다. 자리와 흰 바탕은 그대로.
-    expect(read('src/pages/videos/NearbyPassesCard.tsx')).toMatch(/absolute inset-x-\[10px\] bottom-\[10px\] z-20">\s*<div className="ur-np-in[^"]*bg-white\/95/)
+    expect(read('src/pages/videos/NearbyPassesCard.tsx')).toMatch(/absolute inset-x-\[10px\] bottom-\[10px\] z-20">\s*<div className="ur-np-in[^"]*bg-white /) // 🔄 2026-11-03 불투명 흰 판(반투명이면 아래 Shorts 글자가 비친다)
   })
   it('홈 피드와 같은 예열 주소를 쓴다(새 캐시 키 0)', () => {
     expect(read('src/worker/cron/cache-prewarm.ts')).toContain(`'${POPULAR_PASS_FEED_URL}'`)

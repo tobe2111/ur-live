@@ -19,7 +19,7 @@ export default function PrivacyPolicyPage() {
           <button onClick={goBack} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">
+          <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">
             {isKR ? '개인정보 처리방침' : 'Privacy Policy'}
           </h1>
           <div className="w-6" />

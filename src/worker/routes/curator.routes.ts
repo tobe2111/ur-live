@@ -14,7 +14,7 @@
  */
 
 import { Hono } from 'hono'
-import { curatorAdminDiagnostic } from './curator/admin-diagnostic.routes'; import { findPin, logPinClick } from '../utils/pin-click-log'
+import { curatorAdminDiagnostic } from './curator/admin-diagnostic.routes'; import { curatorSnsPosts } from './curator/sns-posts.routes'; import { findPin, logPinClick } from '../utils/pin-click-log'
 import { findActiveDealPctsBySeller } from '@/worker/utils/influencer-deal'
 import type { Env } from '../types/env'
 import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth'
@@ -30,7 +30,7 @@ import { isVoucherCategory, voucherMinPriceError } from '../../shared/constants/
 import { getPolicy } from '../utils/dynamic-policy'
 import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'; import { snsLinkStatus, SNS_LABEL, type SnsPlatform } from '../../shared/sns-link'
-import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'
+import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'; import { loadUShopSnsFollowers } from '../utils/ushop-sns-followers'
 import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'; import { countUShopSales } from '../utils/ushop-sales'; import { publicReadDb, userReadDb } from '../utils/d1-read-replica' // 한 줄: 래칫
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
@@ -220,7 +220,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     const userId = user.id
     // 🐢 2026-11-02 대표 *"부분적으로 느린 경우들이 많아서 유저들이 헷갈려해"* — 주인 보기는 캐시 없이 미국 원본이라 왕복이 곧 체감이다.
     //   userId 만 있으면 되는 읽기 여섯(가게·핀·딜%·누적구매·소개 스위치·머리 문구)을 **한 물결**로. 종전 직렬 4물결 → 1.
-    const [linkedSeller, pinsResult, dealBySeller, ushopSold, affiliateOn, head] = await Promise.all([
+    const [linkedSeller, pinsResult, dealBySeller, ushopSold, affiliateOn, head, snsFollowers] = await Promise.all([
       DB.prepare(`SELECT s.id, s.username, s.name, s.status FROM sellers s WHERE ${OWNED_STORE_WHERE_SQL} LIMIT 1`).bind(userId, userId, userId)
         .first<{ id: number; username: string; name: string; status: string }>()
         .catch(() => DB.prepare("SELECT id, username, name, status FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1").bind(userId).first<{ id: number; username: string; name: string; status: string }>().catch(() => null)),
@@ -242,6 +242,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       DB.prepare('SELECT linkshop_headline, linkshop_accent, COALESCE(linkshop_show_recommend, 0) AS show_recommend FROM users WHERE id = ? LIMIT 1')
         .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent?: string | null; show_recommend?: number }>()
         .catch(() => DB.prepare('SELECT linkshop_headline FROM users WHERE id = ? LIMIT 1').bind(userId).first<{ linkshop_headline: string | null; linkshop_accent?: string | null; show_recommend?: number }>().catch(() => null)),
+      loadUShopSnsFollowers(DB, user), // 📈 2026-11-03 유어샵 B + SNS — 같은 물결
     ])
     // 🤝 2026-08-27 (대표 "직접 매장과 매칭이 되어진 이용권이 위에 노출"):
     //   핀마다 **이 유어샵 주인이 그 매장과 맺은 활성 딜의 %** 를 실어 보낸다.
@@ -304,6 +305,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         youtube_url: user.youtube_url ?? null,
         instagram_url: user.instagram_url ?? null,
         tiktok_url: user.tiktok_url ?? null,
+        sns_followers: snsFollowers, // 📈 2026-11-03 연동 팔로워 수(이름표 주소와 같은 계정일 때만)
         // 🎨 2026-06-17 유어샵 랜딩 리디자인: 상단 마퀴 헤드라인 + 액센트 색.
         headline,
         accent,
@@ -1347,6 +1349,6 @@ curatorRoutes.post('/me/proxy-product', requireAuth(), async (c) => {
 // 🔬 어드민 진단(read-only)은 별도 파일 — 2026-08-27 파일크기 래칫에 걸려 **분리**했다
 //   (rebaseline 이 아니라 추출. 이 파일이 god 파일로 자라는 걸 막는 게 그 래칫의 목적이다).
 //   어드민 전용 · 읽기 전용이라 소비자 경로와 섞일 이유가 없다.
-curatorRoutes.route('/', curatorAdminDiagnostic)
+curatorRoutes.route('/', curatorAdminDiagnostic); curatorRoutes.route('/', curatorSnsPosts) // 🖼️ 2026-11-03 유어샵 SNS 최근 게시물
 
 export { curatorRoutes }
