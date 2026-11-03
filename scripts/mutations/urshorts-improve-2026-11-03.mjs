@@ -25,4 +25,12 @@ export default [
     test: 'src/tests/unit/urshorts-improve-2026-11-03.test.ts',
     why: '앱 안에서 넘어온 사람은 뒤로가기가 있다 — 화면 위에 버튼이 하나 더 는다.',
   },
+  {
+    name: '🎬 쇼츠 개선 — 연결 안 된 쇼츠 아래가 다시 흰 판 하나(가로 넘기기 사라짐)',
+    file: 'src/pages/videos/NearbyPassesCard.tsx',
+    find: 'overflow-x-auto scrollbar-hide px-3 snap-x snap-mandatory',
+    replace: 'flex-wrap px-3',
+    test: 'src/tests/unit/map-chip-shorts-wishlist-2026-10-14.test.ts',
+    why: '대표 확정 안 C(가로로 넘기기)가 조용히 사라진다.',
+  },
 ]
