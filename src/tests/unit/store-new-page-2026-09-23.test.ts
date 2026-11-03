@@ -57,7 +57,9 @@ describe('① 페이지가 무엇을 등록하는 곳인지 말한다', () => {
    */
   it('비용·준비물·단계 수를 숫자로 말한다 (등록증은 선택이라고)', () => {
     const s = visible(PAGE)
-    for (const t of ['0원', '4단계']) expect(s).toContain(t)
+    expect(s).toContain('0원')
+    // 🔁 2026-11-03: 단계 수는 손으로 적지 않는다 — 위저드가 내보내는 값을 쓴다(운영 방식 단계가 스위치로 빠졌다).
+    expect(s).toMatch(/\$\{STORE_REGISTER_STEP_COUNT\}단계/)
     expect(s, '등록증이 필수처럼 읽힌다 — 2026-09-21 부터 선택이다').not.toContain('사진 1장')
     expect(s).toMatch(/사업자등록증[\s\S]{0,40}(선택|나중에)/)
   })
@@ -130,27 +132,35 @@ describe('⑤ 2026-09-07 수리 둘이 살아 있다', () => {
   })
 })
 
-describe('⑥ 렌더 실측이 잡은 결함 둘의 처방', () => {
-  it('ⓐ 페이지가 뷰포트 높이를 잡지 않는다 (하단 네비에 잘렸다)', () => {
-    const s = visible(PAGE)
-    // `main` 이 padding-bottom:56px 로 이미 네비 자리를 예약한다. 거기에 100dvh 를 얹으면 잘린다.
-    // ⚠️ `\b` 로는 못 쓴다 — `min-h-[100dvh]` 의 `-h` 앞에서도 경계가 성립해 **정답까지 잡는다**(실제로 잡혔다).
-    expect(s).not.toMatch(/(?<!min-)h-\[100dvh\]/)
-    expect(s).toMatch(/min-h-\[100dvh\]/)
+describe('⑥ 렌더 실측이 잡은 결함의 처방 (2026-11-03 재조준 — 폰 전체 화면 위저드)', () => {
+  /**
+   * 🔁 2026-11-03 (대표 *"플로우가 이상적이지 않고 UI 도 별로야"*): 2026-09-23 처방은 하단 탭이 **있는** 전제였다
+   *   ("main 이 56px 를 예약하니 100dvh 를 얹으면 잘린다"). 그 전제 때문에 [다음] 버튼이 첫 화면 밖·탭 뒤에 있었다.
+   *   이제 `/store/new` 는 탭을 숨기는 전체 화면이고, 그래서 페이지가 화면 높이를 잡아 버튼을 늘 바닥에 둔다.
+   */
+  it('ⓐ /store/new 는 소비자 하단 탭을 숨긴다 — 그래서 페이지가 화면 높이를 잡아도 잘리지 않는다', async () => {
+    const { consumerChromeHiddenByPath } = await import('@/lib/consumer-chrome')
+    expect(consumerChromeHiddenByPath('/store/new')).toBe(true)
+    expect(consumerChromeHiddenByPath('/store/find')).toBe(false) // 정확히 그 주소만
+    expect(visible(PAGE)).toMatch(/\bh-dvh\b/)
   })
 
-  it('ⓐ 카드가 자기 높이를 바운드한다 (지도 단계가 0px 로 접히지 않게)', () => {
+  it('ⓐ 카드가 높이를 바운드한다 (지도 단계가 0px 로 접히지 않게) — 폰은 남은 높이 전부, PC 는 고정 상한', () => {
     const s = visible(MODAL)
     const at = s.indexOf('const panelCls')
     const truthy = s.slice(at, at + 320).split('?')[1]?.split(':')[0] ?? ''
-    expect(truthy).toMatch(/max-h-\[\d+dvh\]/)
+    expect(truthy).toMatch(/flex-1 min-h-0/)
+    expect(s.slice(at, at + 320)).toMatch(/lg:h-\[min\(\d+px,\d+dvh\)\]/) // ':' 로 자른 truthy 에는 lg: 가 잘려 안 보인다
+    // 바깥 틀도 flex 여야 flex-1 이 먹는다(첫 렌더에서 버튼이 바닥에 안 붙은 원인).
+    expect(s).toMatch(/\? 'w-full flex-1 min-h-0 flex flex-col lg:block'/)
   })
 
-  it('ⓑ page 1단계에서는 카드의 ✕ 를 그리지 않는다 (페이지 ✕ 와 중복)', () => {
-    expect(visible(MODAL)).toMatch(/asPage && step === 0 \?/)
+  it('ⓑ 닫기 버튼은 하나 — 위저드 머리의 ✕/← 가 맡고 페이지는 따로 두지 않는다', () => {
+    expect(visible(PAGE)).not.toMatch(/aria-label="닫기"/)
+    expect(visible(MODAL)).toMatch(/aria-label=\{step === 0 \? '닫기' : '이전 단계'\}/)
   })
 
-  it('ⓑ 페이지가 자기 닫기 버튼을 갖는다', () => {
-    expect(visible(PAGE)).toMatch(/aria-label="닫기"/)
+  it('ⓒ 페이지 설명은 ① 단계 머리에만 — 2~3단계에서 같은 설명이 화면 절반을 차지하지 않게', () => {
+    expect(visible(MODAL)).toContain('{asPage && step === 0 && lead}')
   })
 })

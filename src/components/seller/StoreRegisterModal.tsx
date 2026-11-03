@@ -1,40 +1,15 @@
 /**
  * 🏪 매장 등록 — 한 화면 한 질문 위저드 (2026-09-07 대표 "당근 참고한 내용 진행 · 구멍들 다 막아주고")
  *
- * ## 왜 스텝으로 바꿨나 (당근 시안 원칙 ①)
- * 종전엔 네 질문(①매장 ②담당자 ③운영방식 ④사업자)이 **한 시트에 세로로** 쌓여 있었고,
- * 아래 [매장 등록] 버튼은 넷이 다 채워져야 켜졌다. 그런데 **무엇이 빠졌는지는 아무 데도 안 적혀
- * 있었다** — 사장님은 셋을 채우고 회색 버튼을 바라보게 된다. 이건 이 레포가 토스 결제에서 한 번
- * 고쳤던 "구조적으로 잠기는 버튼"과 같은 클래스다(2026-06-26 audit log).
- *
- * 스텝으로 나누면 그 구멍이 **구조적으로 사라진다**: 화면에 질문이 하나뿐이라 [다음]이 회색이면
- * 이유가 자명하고, 그래도 남는 애매함은 버튼 아래 한 줄(`blockReason`)이 말해 준다.
- *
- * ## 필수/선택을 제목에 적는다 (당근 원칙 ②)
- * 사업자번호는 **선택**이다(서버가 `|| undefined` 로 받는다). 그런데 종전 화면은 ④의 첫 칸으로
- * 놓고 아무 표시가 없어 필수처럼 보였다. 그래서 "안 쓰면 못 넘어가나?"를 사장님이 고민한다.
- *
- * ## 🕳️ 함께 막은 막다른 길 — 이미 등록된 매장(409 STORE_EXISTS)
- * 서버는 중복이면 `code:'STORE_EXISTS'` 와 **그 매장의 `seller_id` 까지** 돌려준다
- * (`seller-stores.routes.ts:357`). 그런데 화면은 `alert('이미 유어딜에 등록된 매장입니다')` 하나
- * 띄우고 끝이었다 — 자기 매장을 다른 계정으로 등록해 둔 사장님은 거기서 갈 곳이 없다.
- *
- * ⚠️ **소유권을 자동으로 넘기지 않는다.** 매장 귀속은 정산이 따라가는 **머니 경로**이고,
- *   진짜 승계(`owner_verified`)는 아직 설계만 있고 코드가 없다(`store-operator-model.md` §5).
- *   대신 **이미 갖고 있는 권한 검사를 그대로 시험지로 쓴다** — 좌석 토큰(`/stores/:id/token`)은
- *   `canOperateStore` 를 통과해야만 발급된다(그 파일이 "유일한 방어선"이라고 못 박은 곳). 그러니
- *   `enterStoreSeat` 가 성공하면 **원래 내 매장**이었던 것이다(서버 무수정 · 새 권한 0).
- *
- * ⚠️ 실패 문구는 **누구 것인지 단정하지 않는다** — 대기·반려도 좌석에 앉지만(`isSeatableStoreStatus`) 정지·회수로
- *   실패할 수 있다. "남이 등록했다"고 하면 거짓말이 된다(10-10 정정: 옛 "pending 이면 403" 은 틀렸다).
- *
- * ## 종전 계약(무접촉)
- *   - `initialPlace` 프리필: 주면 ①을 건너뛰고 ②부터 시작한다(이용권 위저드가 쓰는 다리).
- *   - `POST /api/seller/stores` 바디·`referrer_user_id` 귀속·중복 409 — 서버 무수정.
- *   ⚠️ 2026-08-26 (대표): **선택지에 수수료율을 표시하지 않는다.** 채널은 사실(누가 운영하는가)이지
- *   고르는 요금제가 아니다. 실제 수수료는 이용권 등록의 '실수령가' 카드가 건별로 보여 준다.
+ * 핵심 규칙(경위 전문은 `docs/design/store-new-onboarding-2026-09.md` §부록 — 2026-11-03 옮김):
+ *  - 화면에 질문은 하나. [다음]이 회색이면 이유를 버튼 아래 한 줄(`blockReason`)로 말한다.
+ *  - 선택인 것은 제목에 "(선택)" 이라고 적는다(사업자번호·등록증).
+ *  - 409 STORE_EXISTS 는 막다른 alert 가 아니라 안내 화면(`taken`). 소유권은 **자동으로 넘기지 않는다** —
+ *    좌석 토큰(`enterStoreSeat` → `canOperateStore`)이 성공하면 원래 내 매장이다. 누구 것인지 단정하지 않는다.
+ *  - `initialPlace` 프리필이면 ①을 건너뛴다. `POST /api/seller/stores` 바디·귀속·409 는 서버 무수정.
+ *  - ⚠️ 선택지에 수수료율을 표시하지 않는다(2026-08-26 대표) — 채널은 사실이지 요금제가 아니다.
  */
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
@@ -46,7 +21,7 @@ import { enterStoreSeat } from '@/utils/enter-store'
 import { toast } from '@/hooks/useToast'
 import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck, FileImage, ArrowLeft, X } from 'lucide-react'
 import ManualPlaceForm from './ManualPlaceForm'; import BrokeredViaAgencyNote, { PERSONAL_BROKER_SIGNUP_DISABLED, BROKERED_VIA_AGENCY_MSG } from './BrokeredViaAgencyNote' // 🏢 2026-10-11
-import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'; import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
+import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'; import { AGENCY_SIGNUP_PATH } from '@/shared/agency-copy'; import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 
 export interface RegisterPlace {
   id?: string
@@ -84,6 +59,8 @@ interface Props {
   onDone: (sellerId?: number, opts?: { existing?: boolean; ownerClaimCode?: string | null }) => void
   /** 📋 영입자 초대(`?prospect=`)가 준비해 둔 담당자 번호 — 빈 칸일 때만 채운다(2026-10-10). */
   initialManagerPhone?: string
+  /** 🖥️ 2026-11-03: page 변형 ① 단계에서만 질문 위에 얹는 안내(무엇을 등록하는 곳인가). 다음 단계부턴 안 보인다. */
+  lead?: ReactNode
   /**
    * 배경(어두운 여백)을 눌렀을 때 닫을지. 기본 `true` — 대시보드에서 목록 위에 겹쳐 뜰 때는
    * 바깥 클릭으로 닫히는 게 맞다(뒤에 돌아갈 화면이 보인다).
@@ -108,12 +85,21 @@ interface Props {
 }
 
 /** 질문 넷. 순서가 곧 진행바이고, 각 단계는 **하나만** 묻는다. */
-const STEPS = [
+const ALL_STEPS = [
   { key: 'place', title: '내 매장을 찾아주세요', hint: '카카오맵에서 검색하면 주소·전화번호가 자동으로 채워져요' },
   { key: 'manager', title: '담당자 전화번호를 알려주세요', hint: '승인·사용 문의·정산 확인 때 연락드릴 번호예요' },
   { key: 'channel', title: '이 매장, 누가 운영하나요?', hint: '사장님인지 대행사인지에 따라 정산 방식이 달라져요' },
   { key: 'business', title: '사업자등록증을 올려주세요 (선택)', hint: '지금 없으면 건너뛰어도 등록돼요. 다만 승인 전에는 메인에 노출되지 않아요' },
 ] as const
+/**
+ * 🚪 2026-11-03 (대표 *"플로우가 이상적이지 않다"*): 개인 계정의 '중개' 등록이 닫힌 동안(`PERSONAL_BROKER_SIGNUP_DISABLED`)
+ *   ③ "누가 운영하나요?" 는 **답이 하나뿐인 질문**이었다 — 둘째 답은 "에이전시로 가세요" 막다른 길. 그 단계를 빼고
+ *   'direct' 로 시작한다(성공한 등록은 원래 전부 direct 였다 — 결과 불변). 에이전시 길은 ① 아래 한 줄로 남는다.
+ */
+const STEPS = ALL_STEPS.filter((s) => !(PERSONAL_BROKER_SIGNUP_DISABLED && s.key === 'channel'))
+/** 페이지 안내 문구("N단계")가 이 값을 쓴다 — 단계 수를 손으로 적으면 스위치가 바뀔 때 거짓말이 된다. */
+export const STORE_REGISTER_STEP_COUNT = STEPS.length
+const stepIndex = (key: (typeof ALL_STEPS)[number]['key']) => STEPS.findIndex((s) => s.key === key)
 
 /**
  * 📄 2026-10-10 대표 결재(2026-10-06-broker-business-cert, 안 1): 중개사가 등록할 때도 받는 서류는
@@ -131,11 +117,11 @@ function stepCopy(step: number, channel: string | null): { title: string; hint: 
   return STEPS[step]
 }
 
-export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true, variant = 'overlay', initialManagerPhone }: Props) {
+export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true, variant = 'overlay', initialManagerPhone, lead }: Props) {
   const navigate = useNavigate()
   const [picked, setPicked] = useState<RegisterPlace | null>(initialPlace ?? null)
   const [showMap, setShowMap] = useState(!initialPlace)
-  const [channel, setChannel] = useState<'direct' | 'brokered' | null>(null)
+  const [channel, setChannel] = useState<'direct' | 'brokered' | null>(PERSONAL_BROKER_SIGNUP_DISABLED ? 'direct' : null)
   // 💸 2026-09-19 (결재 2026-09-16 부속 확정): 중개 매장은 등록 때 **두 요율**을 정한다 — 중개사 몫 % · 인플루언서 상한 %.
   //   둘 다 매장 몫(95%) 안에서 나가고, 케이스별 조정은 딜에서 한다. 비우면 0 / 상한 없음.
   const [brokerShare, setBrokerShare] = useState('')
@@ -194,12 +180,13 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
    * 회색 버튼만 두고 이유를 안 적으면 사장님은 무엇을 고쳐야 할지 모른다.
    */
   function blockReason(i: number): string | null {
-    if (i === 0) return picked ? null : manual ? '가게 이름을 적고 "이 가게로 진행" 을 눌러주세요' : '지도에서 매장을 선택해주세요'
-    if (i === 1) {
+    const key = STEPS[i].key
+    if (key === 'place') return picked ? null : manual ? '가게 이름을 적고 "이 가게로 진행" 을 눌러주세요' : '지도에서 매장을 선택해주세요'
+    if (key === 'manager') {
       if (!managerPhone) return '휴대폰 번호를 입력해주세요'
       return managerOk ? null : '휴대폰 번호(01x)로 입력해주세요'
     }
-    if (i === 2) {
+    if (key === 'channel') {
       if (!channel) return '둘 중 하나를 골라주세요'
       if (channel === 'brokered' && PERSONAL_BROKER_SIGNUP_DISABLED) return BROKERED_VIA_AGENCY_MSG // 🏢 2026-10-11 대신 등록은 에이전시 계정으로
       if (channel === 'brokered') {
@@ -216,6 +203,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
   }
   // 🗺️ 지도가 보이는 단계인가 — 바디 스크롤을 끌지 정한다(위 주석)
   const mapStep = step === 0 && (!picked || showMap)
+  const cur = STEPS[step].key
   const blocked = blockReason(step)
   const last = step === STEPS.length - 1
 
@@ -298,22 +286,22 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
    */
   const asPage = variant === 'page'
   const shellCls = asPage
-    ? 'w-full'
+    ? 'w-full flex-1 min-h-0 flex flex-col lg:block'
     : 'fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4'
   const shellClick = asPage ? undefined : (dismissOnBackdrop ? onClose : undefined)
   // 🩸 2026-09-23: 반경은 셀러 D3 래칫(`rounded-2xl` 금지) 때문에 overlay 와 같은 `--dash-radius` 토큰.
   const panelCls = asPage
-    ? 'light-island w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift flex flex-col min-h-0 max-h-[78dvh] lg:max-h-[82dvh]'
+    ? 'light-island w-full bg-white flex flex-col flex-1 min-h-0 lg:flex-none lg:h-[min(760px,88dvh)]'
     : 'light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col'
 
   if (taken) {
     return (
       <div className={shellCls} onClick={shellClick}>
         <div className={asPage
-          ? 'light-island w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift'
+          ? 'light-island w-full bg-white'
           : 'light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]'} onClick={e => e.stopPropagation()}>
           <div className="p-5">
-            <h2 className="text-base font-bold text-gray-900">이미 유어딜에 등록된 매장이에요</h2>
+            <h2 className="text-[17px] font-bold text-gray-900">이미 유어딜에 등록된 매장이에요</h2>
             {/* ⚠️ 누구 것인지 단정하지 않는다 — 내 매장이어도 승인 대기면 좌석이 안 열려 여기로 온다. */}
             <p className="text-[13px] text-gray-600 mt-2 leading-relaxed">
               {picked?.name ? <b className="text-gray-900">{picked.name}</b> : '이 매장'} 은(는) 이미 등록돼 있어요.
@@ -328,7 +316,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
               )}
               {hasSellerSeat && (
                 <button onClick={() => { onClose(); navigate('/seller/stores') }}
-                  className="w-full py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50">
+                  className="w-full py-3 rounded-xl border border-gray-200 text-[15px] font-medium text-gray-700 hover:bg-gray-50">
                   내 매장 목록 보기
                 </button>
               )}
@@ -336,16 +324,16 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                 * **부재의 완곡어**였다(받은 뒤에 주인을 바꿀 수단이 코드에 없었다). 이제 진짜 창구가 있다. */}
               {taken.sellerId && (
                 <button onClick={() => { onClose(); navigate(`/store/find?seller_id=${taken.sellerId}`) }}
-                  className="w-full py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50">
+                  className="w-full py-3 rounded-xl border border-gray-200 text-[15px] font-medium text-gray-700 hover:bg-gray-50">
                   제 가게예요 — 소유권 신청하기
                 </button>
               )}
               <button onClick={() => setTaken(null)}
-                className="w-full py-2 text-[12.5px] text-gray-500 hover:text-gray-700">
+                className="w-full py-2 text-[13px] text-gray-500 hover:text-gray-700">
                 다른 매장으로 다시 찾기
               </button>
             </div>
-            <p className="text-[11px] text-gray-400 mt-4 leading-relaxed">
+            <p className="text-[12px] text-gray-400 mt-4 leading-relaxed">
               사장님이신데 들어갈 수 없다면 사업자등록증으로 소유권을 신청해주세요. 확인 후 그 매장의 주인으로
               등록해 드리고, 지금까지 쌓인 상품·주문·정산 이력은 그대로 남습니다.
             </p>
@@ -374,24 +362,25 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
             {/* 🖥️ 2026-09-23: page 에서는 1단계의 ✕ 를 그리지 않는다 — 페이지가 이미 자기 ✕ 를 갖고 있어
                 같은 일을 하는 버튼이 둘이 된다(렌더해 보고 발견했다). 2단계부터의 ← 는 페이지가 못 하는
                 일이라 그대로 남는다. `justify-between` 이므로 자리는 빈 span 으로 지켜 `1 / 4` 가 안 밀린다. */}
-            {asPage && step === 0 ? <span aria-hidden="true" /> : (
+            {(
               <button
                 onClick={() => (step === 0 ? onClose() : setStep(step - 1))}
                 aria-label={step === 0 ? '닫기' : '이전 단계'}
-                className="-ml-1 p-1 text-gray-400 hover:text-gray-700"
+                className={asPage ? '-ml-2 w-10 h-10 flex items-center justify-center rounded-full text-gray-700 hover:bg-gray-100' : '-ml-1 p-1 text-gray-400 hover:text-gray-700'}
               >
-                {step === 0 ? <X className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+                {step === 0 ? <X className={asPage ? 'w-5 h-5' : 'w-4 h-4'} /> : <ArrowLeft className={asPage ? 'w-5 h-5' : 'w-4 h-4'} />}
               </button>
             )}
-            <span className="text-[11px] font-bold text-gray-400 tabular-nums">{step + 1} / {STEPS.length}</span>
+            <span className="text-[12px] font-medium text-gray-400 tabular-nums">{step + 1} / {STEPS.length}</span>
           </div>
           {/* 진행바 — 몇 개 남았는지가 보이면 중간 이탈이 줄어든다(당근 시안 공통) */}
           <div className="mt-2 h-1 rounded-full bg-gray-100 overflow-hidden">
             <div className="h-full bg-brand transition-[width] duration-300"
               style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
           </div>
-          <h2 className="mt-3 text-[17px] font-bold text-gray-900 leading-snug">{stepCopy(step, channel).title}</h2>
-          <p className="mt-1 text-[12px] text-gray-500 leading-relaxed">{stepCopy(step, channel).hint}</p>
+          {asPage && step === 0 && lead}
+          <h2 className={`${asPage ? 'mt-5 text-[24px] tracking-[-0.02em]' : 'mt-3 text-[17px]'} font-bold text-gray-900 leading-snug`}>{stepCopy(step, channel).title}</h2>
+          <p className="mt-1 text-[13px] text-gray-500 leading-relaxed">{stepCopy(step, channel).hint}</p>
         </div>
 
         {/**
@@ -412,17 +401,17 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
           )}
           {step === 0 && !manual && (
             picked && !showMap ? (
-              <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 flex items-start justify-between">
+              <div className="p-4 rounded-xl bg-brand-tint flex items-start justify-between">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">{picked.name}</p>
-                  <p className="text-[11px] text-gray-500 flex items-center gap-1 truncate">
+                  <p className="text-[15px] font-bold text-gray-900 truncate">{picked.name}</p>
+                  <p className="text-[12px] text-gray-500 flex items-center gap-1 truncate">
                     <MapPin className="w-3 h-3 shrink-0" />{picked.address}
                   </p>
                 </div>
-                <button onClick={() => setShowMap(true)} className="text-[11px] text-gray-400 underline shrink-0 ml-2">다시 선택</button>
+                <button onClick={() => setShowMap(true)} className="text-[13px] font-medium text-brand shrink-0 ml-2">다시 선택</button>
               </div>
             ) : (
-              <div className="flex-1 min-h-0 flex flex-col rounded-lg border border-gray-200 p-2">
+              <div className="flex-1 min-h-0 flex flex-col">
                 <KakaoMapPicker
                   fill
                   kakaoJsKey={KAKAO_JS_KEY}
@@ -431,15 +420,23 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                   } : null}
                   onSelect={(p) => { setPicked(toRegisterPlace(p)); setShowMap(false) }}
                 />
-                <button type="button" onClick={() => setManual(true)} className="shrink-0 mt-2 text-[12px] text-gray-500 underline self-center">
-                  지도에 없는 가게예요 — 직접 적기
-                </button>
+                <div className="shrink-0 mt-3 flex flex-col items-center gap-2">
+                  <button type="button" onClick={() => setManual(true)} className="text-[13px] text-gray-500 underline">
+                    지도에 없는 가게예요 — 직접 적기
+                  </button>
+                  {/* 🚪 운영 방식 단계를 뺀 대신 에이전시의 길을 여기 남긴다(막다른 선택지 → 처음부터 다른 문) */}
+                  {PERSONAL_BROKER_SIGNUP_DISABLED && (
+                    <button type="button" onClick={() => { onClose(); navigate(AGENCY_SIGNUP_PATH) }} className="text-[12px] text-gray-400 underline">
+                      사장님 대신 등록하는 대행사라면 — 에이전시로 가입
+                    </button>
+                  )}
+                </div>
               </div>
             )
           )}
 
           {/* ② 담당자 연락처 — 매장 대표번호(위에서 자동입력)와 별개인 '사람' 연락처 */}
-          {step === 1 && (
+          {cur === 'manager' && (
             <div>
               <input
                 value={formatPhone(managerPhone)}
@@ -448,9 +445,9 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                 inputMode="tel"
                 autoComplete="tel"
                 autoFocus
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400"
+                className="w-full h-14 px-4 rounded-xl border border-gray-200 text-[17px] font-medium tracking-wide text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none"
               />
-              <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">
+              <p className="text-[13px] text-gray-500 mt-2 leading-relaxed">
                 이 매장을 관리하는 분의 휴대폰 번호예요.
                 {picked?.phone && <span className="text-gray-400"> 매장 대표번호({picked.phone})와는 별개예요.</span>}
               </p>
@@ -458,16 +455,16 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
           )}
 
           {/* ③ 운영 방식 */}
-          {step === 2 && (
+          {cur === 'channel' && (
             <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => setChannel('direct')}
-                className={`p-3 rounded-xl border text-left transition ${channel === 'direct' ? 'border-brand bg-[#EAF1FE]' : 'border-gray-200 hover:bg-gray-50'}`}>
-                <p className="text-sm font-bold text-gray-900">내 가게에요</p><p className="text-[11px] text-gray-500 mt-0.5">제가 사장이고, 직접 운영해요</p>
+                className={`p-3 rounded-xl border text-left transition ${channel === 'direct' ? 'border-brand bg-brand-tint' : 'border-gray-200 hover:bg-gray-50'}`}>
+                <p className="text-[15px] font-bold text-gray-900">내 가게에요</p><p className="text-[12px] text-gray-500 mt-0.5">제가 사장이고, 직접 운영해요</p>
               </button>
               <button onClick={() => setChannel('brokered')}
-                className={`p-3 rounded-xl border text-left transition ${channel === 'brokered' ? 'border-brand bg-[#EAF1FE]' : 'border-gray-200 hover:bg-gray-50'}`}>
-                <p className="text-sm font-bold text-gray-900">중개·대행사에요</p><p className="text-[11px] text-gray-500 mt-0.5">{PERSONAL_BROKER_SIGNUP_DISABLED ? '에이전시 계정으로 등록해요' : '사장님을 대신해 등록·관리해요'}</p>
+                className={`p-3 rounded-xl border text-left transition ${channel === 'brokered' ? 'border-brand bg-brand-tint' : 'border-gray-200 hover:bg-gray-50'}`}>
+                <p className="text-[15px] font-bold text-gray-900">중개·대행사에요</p><p className="text-[12px] text-gray-500 mt-0.5">{PERSONAL_BROKER_SIGNUP_DISABLED ? '에이전시 계정으로 등록해요' : '사장님을 대신해 등록·관리해요'}</p>
               </button>
             </div>
             {/* 💸 중개 매장의 두 요율 — 매장 몫 안에서 나간다. 인플루언서 % 는 여기 상한 안에서 케이스별로 정한다. */}
@@ -477,46 +474,46 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                 <p className="text-[12px] font-bold text-gray-900">정산 조건 <span className="font-normal text-gray-500">(나중에 매장 관리에서 바꿀 수 있어요)</span></p>
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block">
-                    <span className="block text-[11px] text-gray-600 mb-1">중개사 몫 %</span>
+                    <span className="block text-[12px] text-gray-600 mb-1">중개사 몫 %</span>
                     <input type="number" inputMode="decimal" min="0" max="50" step="0.5" value={brokerShare} placeholder="예: 10"
                       onChange={e => setBrokerShare(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400" />
                   </label>
                   <label className="block">
-                    <span className="block text-[11px] text-gray-600 mb-1">인플루언서 상한 %</span>
+                    <span className="block text-[12px] text-gray-600 mb-1">인플루언서 상한 %</span>
                     <input type="number" inputMode="decimal" min="0" max="50" step="0.5" value={infCap} placeholder="비우면 상한 없음"
                       onChange={e => setInfCap(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400" />
                   </label>
                 </div>
-                <p className="text-[11px] text-gray-500 leading-relaxed">둘 다 매장 매출에서 나가요. 인플루언서마다 다른 % 는 협업 코드·딜에서 이 상한 안에서 정합니다. 등록이 끝나면 <b className="text-gray-900">사장님께 드릴 코드</b>가 생겨요.</p>
+                <p className="text-[12px] text-gray-500 leading-relaxed">둘 다 매장 매출에서 나가요. 인플루언서마다 다른 % 는 협업 코드·딜에서 이 상한 안에서 정합니다. 등록이 끝나면 <b className="text-gray-900">사장님께 드릴 코드</b>가 생겨요.</p>
               </div>
             )}
             </div>
           )}
 
           {/* ④ 사업자 확인 — 사진·번호 **둘 다 선택**(2026-09-21 대표 확정). 심사는 어드민이 한다. */}
-          {step === 3 && (
+          {cur === 'business' && (
             <div className="space-y-3">
               {/* 🪞 당근 원칙 ⑤ "매 단계 결과 미리보기" — 마지막 문턱에서 **무엇이 등록되는지** 보여 준다.
                   앞 세 단계는 답하고 나면 화면에서 사라지므로, 여기서 다시 안 보여 주면 사장님은
                   자기가 무엇을 골랐는지 기억에만 의존해 [매장 등록]을 누르게 된다. 매장명이 한 글자
                   다른 지점을 골랐어도 이 카드가 없으면 등록 후에야 안다.
                   새 데이터를 부르지 않는다 — 이미 손에 든 값만 다시 보여 준다(요청 0). */}
-              <div className="rounded-xl bg-gray-50 border border-gray-200 divide-y divide-gray-200">
+              <div className="rounded-xl bg-gray-50 divide-y divide-rule">
                 {[
-                  { k: '매장', v: picked?.name, sub: picked?.address, to: 0 },
-                  { k: '담당자', v: formatPhone(managerPhone), to: 1 },
-                  { k: '운영', v: channel === 'direct' ? '내 가게' : channel === 'brokered' ? '중개·대행' : '', to: 2 },
-                ].map((r) => (
+                  { k: '매장', v: picked?.name, sub: picked?.address, to: stepIndex('place') },
+                  { k: '담당자', v: formatPhone(managerPhone), to: stepIndex('manager') },
+                  { k: '운영', v: channel === 'direct' ? '내 가게' : channel === 'brokered' ? '중개·대행' : '', to: stepIndex('channel') },
+                ].filter((r) => r.to >= 0).map((r) => (
                   <div key={r.k} className="flex items-start gap-3 px-3 py-2.5">
-                    <span className="text-[11px] font-bold text-gray-400 w-11 shrink-0 pt-0.5">{r.k}</span>
+                    <span className="text-[13px] text-gray-500 w-12 shrink-0 pt-0.5">{r.k}</span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[13px] font-bold text-gray-900 truncate">{r.v}</span>
-                      {r.sub && <span className="block text-[11px] text-gray-500 truncate">{r.sub}</span>}
+                      <span className="block text-[15px] font-medium text-gray-900 truncate">{r.v}</span>
+                      {r.sub && <span className="block text-[12px] text-gray-500 truncate">{r.sub}</span>}
                     </span>
                     {/* 틀린 걸 발견해도 되돌아갈 길이 없으면 미리보기는 불안만 준다. */}
-                    <button onClick={() => setStep(r.to)} className="text-[11px] text-gray-400 underline shrink-0 pt-0.5">수정</button>
+                    <button onClick={() => setStep(r.to)} className="text-[13px] font-medium text-brand shrink-0 pt-0.5">수정</button>
                   </div>
                 ))}
               </div>
@@ -530,10 +527,10 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                   : certUrl ? <CheckCircle2 className="w-4 h-4 text-tone-ok shrink-0" />
                   : <FileImage className="w-4 h-4 text-gray-400 shrink-0" />}
                 <span className="min-w-0">
-                  <span className="block text-[12.5px] font-bold text-gray-900">
+                  <span className="block text-[15px] font-medium text-gray-900">
                     {uploading ? '올리는 중…' : certUrl ? '사업자등록증 첨부됨' : channel === 'brokered' ? '매장 사업자등록증 사진 첨부' : '사업자등록증 사진 첨부'}
                   </span>
-                  <span className="block text-[11px] text-gray-500 mt-0.5">
+                  <span className="block text-[12px] text-gray-500 mt-0.5">
                     {certUrl ? '다시 누르면 교체할 수 있어요' : '내용이 잘 보이는 사진으로 · 큰 사진은 자동으로 줄여요'}
                   </span>
                 </span>
@@ -544,7 +541,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                   ⚠️ 여기 적는 말은 실제 동작과 같아야 한다: 승인 전에는 `approvedSellerProductSql` 이
                   메인 노출을 막고, 등록증은 어드민 승인 화면이 본다. */}
               {!certOk && !uploading && (
-                <p className="text-[11px] text-gray-500 leading-relaxed">
+                <p className="text-[12px] text-gray-500 leading-relaxed">
                   지금 건너뛰어도 매장은 등록돼요. 다만 <span className="font-bold text-gray-700">승인 전까지는 메인에 노출되지 않고</span>,
                   등록증이 없으면 확인에 더 오래 걸려요. 나중에 <span className="font-bold text-gray-700">마이 '내 가게' › 전체 도구 › 사업자 정보</span>에서 올릴 수 있어요.
                 </p>
@@ -552,19 +549,19 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
 
               {/* 🏷️ 당근 원칙 ②: 선택인 것은 제목에 적는다 — 안 쓰면 못 넘어가나 고민하지 않게. */}
               <div className="pt-1">
-                <p className="text-[12px] font-bold text-gray-700 mb-1.5">
+                <p className="text-[13px] font-medium text-gray-700 mb-2">
                   {channel === 'brokered' ? '매장 사업자번호' : '사업자번호'} <span className="font-normal text-gray-400">(선택 — 지금 안 적어도 등록돼요)</span>
                 </p>
                 {/* 🔢 2026-09-21 (대표 "000-00-00000 형태로 자동 입력되게"): 타이핑하는 대로 하이픈이 붙는다.
                     포매터는 가입 폼과 **같은 함수**(SSOT) — 두 벌이면 언젠가 갈린다. 전송은 그대로 숫자만(`replace(/-/g,'')`). */}
                 <input value={bno} onChange={e => setBno(formatBusinessNumber(e.target.value))} placeholder="000-00-00000" inputMode="numeric" maxLength={12}
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400" />
+                  className="w-full h-12 px-4 rounded-xl border border-gray-200 text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none" />
                 <button onClick={verify} disabled={verifying || !bno}
-                  className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                  className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-[13px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                   {verifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BadgeCheck className="w-3.5 h-3.5" />} 국세청 확인
                 </button>
                 {nts && (
-                  <p className={`text-[11px] flex items-center gap-1 mt-1.5 ${nts.valid === true ? 'text-tone-ok' : nts.valid === false ? 'text-tone-bad' : 'text-gray-500'}`}>
+                  <p className={`text-[12px] flex items-center gap-1 mt-1.5 ${nts.valid === true ? 'text-tone-ok' : nts.valid === false ? 'text-tone-bad' : 'text-gray-500'}`}>
                     {nts.valid === true ? <CheckCircle2 className="w-3.5 h-3.5" /> : nts.valid === false ? <XCircle className="w-3.5 h-3.5" /> : null}
                     {nts.valid === true ? `국세청에 등록된 번호예요${nts.message ? ` (${nts.message})` : ''}` : nts.valid === false ? '조회되지 않는 번호예요 — 입력을 확인해주세요' : (nts.message || '확인 불가 — 등록 후 검토됩니다')}
                   </p>
@@ -574,7 +571,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
           )}
         </div>
 
-        <div className="p-4 border-t border-gray-100 shrink-0">
+        <div className={`shrink-0 ${asPage ? 'px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom,0px))] border-t border-rule' : 'p-4 border-t border-gray-100'}`}>
           {last && (
             <label className="flex items-start gap-2 mb-3 cursor-pointer">
               <input type="checkbox" checked={termsAgreed} onChange={(e) => setTermsAgreed(e.target.checked)} className="mt-0.5 w-4 h-4 shrink-0 accent-brand" />
@@ -592,7 +589,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
             {submitting ? '등록 중…' : last ? '매장 등록' : '다음'}
           </button>
           {/* 🔓 회색 버튼만 두고 이유를 안 적으면 사장님은 무엇을 고쳐야 할지 모른다. */}
-          {blocked && <p className="text-[11.5px] text-gray-500 text-center mt-2">{blocked}</p>}
+          {blocked && <p className="text-[12px] text-gray-500 text-center mt-2">{blocked}</p>}
         </div>
       </div>
     </div>

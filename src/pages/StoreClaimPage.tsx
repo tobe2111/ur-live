@@ -40,9 +40,8 @@ import BrokerHandoffPanel from './store-claim/BrokerHandoffPanel'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MY_PATH } from '@/lib/seller-return'
 import { takePartnerReturn } from '@/utils/partner-return'
-import { X } from 'lucide-react'
 import SEO from '@/components/SEO'
-import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
+import StoreRegisterModal, { STORE_REGISTER_STEP_COUNT } from '@/components/seller/StoreRegisterModal'
 import { TicketStubIcon, ReceiptIcon, WonCoinIcon } from '@/components/icons/urdeal-icons'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { isLoggedInSync } from '@/utils/auth'
@@ -70,7 +69,7 @@ const BENEFITS = [
 const FACTS = [
   { value: '0원', label: '등록 비용' },
   { value: '선택', label: '사업자등록증' },
-  { value: '4단계', label: '지금 시작하면 끝' },
+  { value: `${STORE_REGISTER_STEP_COUNT}단계`, label: '지금 시작하면 끝' },
 ] as const
 
 export default function StoreClaimPage() {
@@ -134,59 +133,44 @@ export default function StoreClaimPage() {
    */
   const goBack = useSafeBack('/')
 
-  return (
-    /* 🕳️ 2026-09-07 (실측 1.09:1): `force-light-theme` 이 없으면 **다크모드에서 입력 글자가 안 보인다.**
-       전역 `.dark input:not(...)`(특이도 0,5,1)이 모달의 `text-gray-900`(0,1,0)을 이겨 글자를
-       gray-100 으로 덮는데, 모달 배경은 `bg-white` 다 → 흰 배경 위 흰 글자(브라우저 실측
-       rgb(243,244,246) on rgb(255,255,255)). 대표가 2026-09-03 지도 검색창에서 신고한 것과
-       **같은 버그**가, 하필 매장 유치 퍼널에 있었다.
-       ⚠️ 이건 임기응변이 아니라 `index.css` 가 명시한 규칙이다 —
-       *"신규 standalone 라이트 페이지(로그인/가입/대시보드 외부)는 루트 div 에 `force-light-theme` 추가할 것"*.
-       대시보드 안(`MyStoresPanel`)에서 열릴 땐 `.seller-light-theme` 래퍼가 이미 같은 일을 한다.
-       ⚠️ 그리고 이 클래스는 `--lift`·`--rule` 같은 🎫 토큰도 라이트 값으로 되박는다(index.css:511) —
-       그래서 아래 `shadow-lift`·`border-rule` 이 **다크 상태에서도** 제대로 보인다.
+  /** 무엇을 등록하는 곳인가 — PC 왼쪽 열(`full`)과 폰 ① 단계 머리(짧게) 두 자리에 같은 문장을 쓴다. */
+  const pitch = '손님이 유어딜에서 할인가로 이용권을 미리 삽니다. 매장에 와서 QR 을 보여주면 그걸로 끝입니다.'
 
-       📏 높이는 **페이지가 정하지 않는다**(`min-h` 만). 🩸 첫 판에서 폰을 `h-[100dvh]` 로 잡았다가
-       렌더해 보니 카드 아래 24px 이 **하단 네비(고정 57px) 밑으로 잘렸다** — `main` 이 이미
-       `padding-bottom:56px` 로 그 자리를 예약하는데 거기에 뷰포트 높이를 또 얹은 것이다.
-       카드는 자기 `max-h` 로 바운드하므로(page variant) 페이지는 평범하게 흐르면 된다. */
-    <div className="force-light-theme min-h-[100dvh] bg-gray-50">
+  return (
+    /* 🕳️ 2026-09-07 (실측 1.09:1): `force-light-theme` 이 없으면 **다크모드에서 입력 글자가 안 보인다**
+       (전역 `.dark input` 0,5,1 이 `text-gray-900` 을 이긴다). index.css 가 명시한 standalone 라이트 페이지 규칙이다.
+
+       📱 2026-11-03 (대표 *"플로우가 이상적이지 않고 UI 도 별로야"*) — 폰은 **전체 화면 위저드**다.
+       종전엔 [큰 제목 + 설명 + 혜택 셋] 아래에 그림자 카드가 붙고, 그 카드가 자기 높이(78dvh)로 따로 스크롤했다.
+       그래서 ① [다음] 버튼이 첫 화면 밖·하단 탭 뒤에 있었고 ② 2~4단계에서도 같은 설명이 화면 절반을 차지했고
+       ③ 스크롤 표면이 둘(페이지·카드)이었다. 이제 하단 탭을 숨기고(`consumer-chrome.ts` `/store/new`),
+       화면 높이를 이 페이지가 잡아 [머리 · 질문 · 버튼]이 늘 한 화면에 들어간다. 설명은 ① 단계 머리에만 짧게.
+       ⚠️ 높이를 잡아도 되는 이유: 하단 탭이 없다(2026-09-23 의 "24px 잘림" 은 탭 여백 위에 높이를 얹어서였다). */
+    <div className="force-light-theme h-dvh lg:h-auto lg:min-h-dvh bg-white flex flex-col">
       <SEO title="매장 이용권 판매 등록 - 유어딜" description="내 가게를 유어딜에 등록하고 이용권을 판매하세요. 등록 비용 0원." noindex />
 
-      <div className="mx-auto w-full max-w-[1180px] px-5 pt-3 pb-6 lg:px-10 lg:pt-8 lg:pb-16">
-        <button
-          type="button"
-          onClick={goBack}
-          aria-label="닫기"
-          className="-ml-1 mb-2 w-9 h-9 shrink-0 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
-          {/* 왼쪽(PC) · 위(폰) — 무엇을 등록하는 곳인가 */}
-          <div className="lg:pt-4">
-            <h1 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.22] text-gray-900">
-              매장 이용권<br className="hidden lg:block" /> 판매 등록
+      <div className="mx-auto w-full max-w-[1180px] flex-1 min-h-0 flex flex-col lg:block lg:px-10 lg:pt-10 lg:pb-16">
+        <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
+          {/* PC 왼쪽 — 무엇을 등록하는 곳인가 (폰은 아래 lead 가 짧게 말한다) */}
+          <div className="hidden lg:block lg:pt-16">
+            <h1 className="text-[40px] font-extrabold tracking-[-0.03em] leading-[1.22] text-gray-900">
+              매장 이용권<br /> 판매 등록
             </h1>
-            <p className="mt-2 lg:mt-4 text-[15px] lg:text-[17px] leading-relaxed text-gray-600 lg:max-w-[460px]">
-              손님이 유어딜에서 할인가로 이용권을 미리 삽니다. 매장에 와서 QR 을 보여주면 그걸로 끝입니다.
-            </p>
+            <p className="mt-4 text-[17px] leading-relaxed text-gray-600 max-w-[460px]">{pitch}</p>
 
-            <ul className="mt-4 lg:mt-8 flex flex-col gap-3 lg:gap-4 lg:max-w-[460px]">
+            <ul className="mt-8 flex flex-col gap-4 max-w-[460px]">
               {BENEFITS.map(({ Icon, title, desc }) => (
-                <li key={title} className="flex gap-3 lg:gap-4 items-start">
+                <li key={title} className="flex gap-4 items-start">
                   <Icon size={20} className="mt-1 shrink-0 text-brand" aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="text-[13px] lg:text-[15px] font-medium text-gray-900">{title}</p>
-                    {/* 폰은 한 줄로 끊는다 — 설명까지 다 펴면 카드가 밀려 첫 화면에서 사라진다. */}
-                    <p className="hidden lg:block mt-1 text-[13px] leading-relaxed text-gray-500">{desc}</p>
+                    <p className="text-[15px] font-medium text-gray-900">{title}</p>
+                    <p className="mt-1 text-[13px] leading-relaxed text-gray-500">{desc}</p>
                   </div>
                 </li>
               ))}
             </ul>
 
-            <div className="hidden lg:flex mt-9 pt-5 border-t border-rule gap-9 lg:max-w-[460px]">
+            <div className="flex mt-9 pt-5 border-t border-rule gap-9 max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
                   <div className="text-[24px] font-bold text-gray-900">{value}</div>
@@ -196,31 +180,35 @@ export default function StoreClaimPage() {
             </div>
           </div>
 
-          {/* 오른쪽(PC) · 아래(폰) — 등록 카드 그대로 */}
-          <div className="mt-4 lg:mt-0 lg:self-start">
+          {/* 등록 위저드 — 폰은 화면 전체, PC 는 오른쪽 열 */}
+          <div className="flex-1 min-h-0 flex flex-col lg:self-start">
             {inviteAgency && !handoff && (
-              <p className="mb-3 rounded-[var(--dash-radius,16px)] bg-brand-tint px-4 py-3 text-[13px] leading-relaxed text-gray-700" data-testid="store-claim-agency-invite">
+              <p className="mx-4 mt-3 lg:mx-0 lg:mt-0 lg:mb-3 rounded-xl bg-brand-tint px-4 py-3 text-[13px] leading-relaxed text-gray-700" data-testid="store-claim-agency-invite">
                 <b className="text-gray-900">{inviteAgency} 에이전시</b>가 보낸 링크예요. 등록을 마치면 바로 이 에이전시에 매장 운영이 맡겨져요.
               </p>
             )}
             {prospect?.store_name && !handoff && (
-              <p className="mb-3 rounded-[var(--dash-radius,16px)] bg-brand-tint px-4 py-3 text-[13px] leading-relaxed text-gray-700">
+              <p className="mx-4 mt-3 lg:mx-0 lg:mt-0 lg:mb-3 rounded-xl bg-brand-tint px-4 py-3 text-[13px] leading-relaxed text-gray-700">
                 <b className="text-gray-900">{prospect.store_name}</b> — 영입 담당자가 미리 준비한 매장이에요. 지도에서 이 가게를 찾아 진행해 주세요.
               </p>
             )}
-            {handoff ? <BrokerHandoffPanel code={handoff} onDone={() => navigate(MY_PATH, { replace: true })} /> : (
+            {handoff ? <div className="px-4 pt-6 lg:px-0 lg:pt-0"><BrokerHandoffPanel code={handoff} onDone={() => navigate(MY_PATH, { replace: true })} /></div> : (
             <StoreRegisterModal
               /**
                * 🖥️ `variant="page"` — 검은 오버레이 없이 이 칸의 본문으로 렌더한다(2026-09-23 안 B).
-               * 🩸 2026-09-07 (대표 *"흰 섹션 바깥쪽을 클릭하니까 페이지가 꺼져"*): 여기선 모달이 곧
-               *   페이지라 배경 뒤에 아무것도 없다 — 바깥 클릭은 닫을 것이 아니라 **폼을 날리는 사고**다.
-               *   `dismissOnBackdrop={false}` 를 **남겨 둔다**: page 에는 배경이 없어 구조적으로 못 닫히지만,
-               *   누군가 variant 를 되돌리는 날 이 한 줄이 그 사고를 다시 막는다(방어를 겹쳐 둔다).
+               * 🩸 2026-09-07 (대표 *"흰 섹션 바깥쪽을 클릭하니까 페이지가 꺼져"*): `dismissOnBackdrop={false}` 를
+               *   **남겨 둔다** — page 에는 배경이 없어 구조적으로 못 닫히지만, variant 를 되돌리는 날 이 한 줄이 막는다.
                */
               variant="page"
               dismissOnBackdrop={false}
               onClose={goBack}
               initialManagerPhone={prospect?.contact_phone || undefined}
+              lead={
+                <div className="mt-3 lg:hidden">
+                  <h1 className="text-[13px] font-medium text-brand">매장 이용권 판매 등록 · 등록 0원</h1>
+                  <p className="mt-1 text-[13px] leading-relaxed text-gray-500">손님은 할인가로 미리 사고, 매장에서 QR 로 씁니다. 사업자등록증은 나중에 올려도 돼요.</p>
+                </div>
+              }
               onDone={async (sellerId, opts) => {
                 // `existing` = 새로 만든 게 아니라 **원래 갖고 있던 매장**으로 들어간 경우(중복 409 분기).
                 //   그때 "등록됐어요" 라고 말하면 사장님에게 거짓말이고, 좌석도 이미 잡혀 있다.
@@ -237,10 +225,6 @@ export default function StoreClaimPage() {
               }}
             />
             )}
-            {/* 폰에서는 위 FACTS 줄 대신 이 한 줄이 같은 말을 한다(세 숫자를 다 펴면 카드가 밀린다). */}
-            <p className="lg:hidden mt-2 text-center text-[12px] text-gray-400">
-              등록 0원, 사업자등록증은 나중에 올려도 됩니다.
-            </p>
           </div>
         </div>
       </div>

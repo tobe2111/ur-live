@@ -26,7 +26,8 @@ export const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/p
  *   `/influencer/dashboard`·`/settlement`·`/discover`·`/analytics` 는 폰 폭 도구라 네비가 남아야 한다
  *   (`pc-fullbleed.ts` 가 같은 이유로 정확 일치로 둔다).
  */
-export const fullScreenExactPaths = ['/influencer']
+//   🏪 2026-11-03 `/store/new` = 매장 등록 위저드 — 하단 탭이 [다음] 버튼을 가리고 화면 높이를 뺏었다(대표 신고).
+export const fullScreenExactPaths = ['/influencer', '/store/new']
 
 /** 소비자 네비 없이 화면 전체를 쓰는 주소인가. */
 export function isFullScreenPath(pathname: string): boolean {
