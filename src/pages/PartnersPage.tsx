@@ -96,19 +96,19 @@ export default function PartnersPage() {
 
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-36 text-center">
-            <Reveal kind="scale"><h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
+            <Reveal kind="scale"><h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-bold tracking-[-0.03em] leading-[1.22]">
               안 팔리면 0원입니다
             </h2></Reveal>
-            <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-relaxed text-white/70 max-w-[32em] mx-auto">
+            <p className="mt-6 lg:mt-8 text-[15px] lg:text-[16px] leading-relaxed text-white/70 max-w-[32em] mx-auto">
               첫 이용권 초안은 저희가 만들어 드립니다. 확인하고 승인만 하시면 됩니다.
             </p>
             <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 justify-center max-w-[32rem] mx-auto">
               <Link to="/store/new"
-                className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
+                className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold active:scale-[0.98] transition-transform">
                 내 가게 등록하기 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
               </Link>
               <a href={F.kakaoChannel} target="_blank" rel="noopener noreferrer"
-                className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
+                className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold text-white">
                 <MessageIcon className="w-4 h-4 lg:w-[18px] lg:h-[18px]" /> 카카오로 물어보기
               </a>
             </div>

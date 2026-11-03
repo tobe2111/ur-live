@@ -91,7 +91,7 @@ export default function MyStaysPage() {
              (화살표를 글자로 쓰면 아이콘 체계 밖이다). */
           <div className="rounded-2xl px-6 py-10 text-center">
             <Udal mood="empty" size={96} className="block mx-auto mb-4" />
-            <p className="text-[17px] font-bold text-gray-900 dark:text-white">예약 내역이 없어요</p>
+            <p className="text-[16px] font-semibold text-gray-900 dark:text-white">예약 내역이 없어요</p>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">숙소 이용권을 사면 여기서 예약을 확인할 수 있어요</p>
             <Link to="/stays" className="mt-5 inline-flex items-center h-11 px-6 rounded-full bg-brand text-white text-[15px] font-bold">
               숙소 둘러보기

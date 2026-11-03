@@ -43,7 +43,7 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
         <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">{eyebrow}</p>
         {amount !== null && (
           <p className="mt-1 flex items-baseline gap-2 leading-none">
-            <span className="text-[34px] font-extrabold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(amount)}</span>
+            <span className="text-[34px] font-bold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(amount)}</span>
             <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400">{unit}</span>
           </p>
         )}
@@ -65,7 +65,7 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
               </button>
             )}
             {!hideTitle && (
-              <h1 className="text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white leading-none truncate">{title}</h1>
+              <h1 className="text-[20px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white leading-none truncate">{title}</h1>
             )}
           </div>
         )}

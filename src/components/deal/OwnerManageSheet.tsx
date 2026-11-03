@@ -77,7 +77,7 @@ export default function OwnerManageSheet({ productId, kind, view, onClose }: {
       <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 ur-veil" />
       <div className="relative w-full sm:max-w-md max-h-[86dvh] overflow-y-auto ur-pop-card ur-glass ur-dialog-in px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between">
-          <p className="text-[17px] font-bold text-gray-900 dark:text-white">관리</p>
+          <p className="text-[16px] font-semibold text-gray-900 dark:text-white">관리</p>
           {!active && <span className="text-[13px] font-medium text-gray-500 dark:text-gray-400">판매 중지됨</span>}
         </div>
 

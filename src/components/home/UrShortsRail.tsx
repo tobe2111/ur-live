@@ -273,7 +273,7 @@ export default function UrShortsRail() {
         {/* 🌑 잉크 패널 위라 글자는 **테마 분기 없이 늘 밝다**(위 .ur-panel-ink 주석).
             흰 알파를 쓰는 이유: 회색 토큰은 라이트 토큰으로 읽혀 짝(dark:)을 요구받는데,
             여기엔 짝지을 라이트 상태가 아예 없다. */}
-        <h3 className="text-[17px] font-bold tracking-tight text-white">
+        <h3 className="text-[16px] font-semibold tracking-tight text-white">
           유어쇼츠
           <span className="ml-2 text-[12px] font-normal text-white/60">
             눌러서 보고 바로 구매

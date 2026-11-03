@@ -37,7 +37,7 @@ export function BuyBarPrice({ caption, strike, discountPct = 0, amount, suffix }
       {strike ? <div className="text-[12px] line-through" style={{ color: 'var(--ink-faint)' }}>{formatNumber(strike)}원</div> : null}
       {!strike && caption ? <div className="text-[12px] truncate" style={{ color: 'var(--ink-soft)' }}>{caption}</div> : null}
       <div className="text-[24px] font-bold tracking-[-.02em] leading-tight" style={{ color: 'var(--ink)' }}>
-        {discountPct > 0 && <span className="mr-1 text-[17px]" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
+        {discountPct > 0 && <span className="mr-1 text-[16px]" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
         {formatNumber(amount)}원
         {suffix ? <span className="ml-1 text-[13px] font-medium" style={{ color: 'var(--ink-soft)' }}>{suffix}</span> : null}
       </div>
@@ -51,7 +51,7 @@ export function BuyBarCta({ on, children, className = '', ...rest }: ButtonHTMLA
     <button
       type="button"
       {...rest}
-      className={`flex-1 h-[52px] border-0 rounded-xl text-[17px] font-bold flex items-center justify-center text-white ${className}`}
+      className={`flex-1 h-[52px] border-0 rounded-xl text-[16px] font-semibold flex items-center justify-center text-white ${className}`}
       style={{ background: on ? 'var(--brand)' : 'var(--ink-faint)', cursor: on ? 'pointer' : 'default' }}
     >
       {children}

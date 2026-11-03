@@ -142,17 +142,17 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
             <X className="w-6 h-6" strokeWidth={1.6} />
           </button>
         </div>
-        <h1 className="ur-pc-title text-center text-[24px] font-bold tracking-[-0.02em] mt-3 mb-6">{t('passBuy.completeTitle', { defaultValue: '결제가 완료되었어요' })}</h1>
+        <h1 className="ur-pc-title text-center text-[20px] font-semibold tracking-[-0.02em] mt-3 mb-6">{t('passBuy.completeTitle', { defaultValue: '결제가 완료되었어요' })}</h1>
 
         <TicketCard className="ur-pc-ticket" bandLeft={expiresAt ? bandLeft(issued?.expires_at) : t('passBuy.noExpiry', { defaultValue: '사용 기한 없음' })} bandRight={daysLeft !== null ? (daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`) : undefined}>
           <div className="ur-pc-body">
           <TicketRow left={`${kindLabel}`} right={t('passBuy.sheets', { defaultValue: '{{n}}매', n: qty })} />
           <div className="px-4 pt-4 pb-4">
             {storeName && <p className="ur-pc-step ur-pc-step-1 text-[13px] text-gray-500 dark:text-gray-400">{storeName}</p>}
-            <p className="ur-pc-step ur-pc-step-2 text-[17px] font-bold tracking-[-0.01em] mt-1">{itemName}</p>
+            <p className="ur-pc-step ur-pc-step-2 text-[16px] font-semibold tracking-[-0.01em] mt-1">{itemName}</p>
             <div className="ur-pc-step ur-pc-step-3 flex items-baseline gap-2 mt-3 mb-4 tabular-nums">
-              {pct !== null && pct > 0 && <span className="text-[17px] font-bold text-brand-text">{pct}%</span>}
-              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(motion.shownAmount) })}</span>
+              {pct !== null && pct > 0 && <span className="text-[16px] font-bold text-brand-text">{pct}%</span>}
+              <span className="text-[28px] font-bold tracking-[-0.03em] leading-none">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(motion.shownAmount) })}</span>
               {original !== null && original * qty > amount && <span className="text-[13px] text-gray-400 dark:text-gray-500 line-through">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(original * qty) })}</span>}
             </div>
             {dealUsed > 0 && (

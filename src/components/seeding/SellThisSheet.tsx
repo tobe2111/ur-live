@@ -56,7 +56,7 @@ export default function SellThisSheet({ productId, price, sellerId, deal, offer,
       <div className="w-full max-w-md ur-pop-card ur-glass overflow-hidden ur-dialog-in px-5 pb-8 pt-3" onClick={(e) => e.stopPropagation()}
         role="dialog" aria-label="이 이용권 팔기">
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-gray-200 dark:bg-white/20 sm:hidden" aria-hidden="true" />
-        <p className="text-[17px] font-bold text-gray-900 dark:text-white">이 이용권 팔기</p>
+        <p className="text-[16px] font-semibold text-gray-900 dark:text-white">이 이용권 팔기</p>
 
         {/* ① 내 링크로 팔기 */}
         <div className="mt-4 border-t border-rule pt-4">

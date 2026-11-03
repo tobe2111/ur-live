@@ -419,7 +419,7 @@ function OrderCard({
       <div className="px-4 pb-4 pt-3 flex items-center justify-between border-t border-gray-100 dark:border-[#2C2F35]">
         <div>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">{t('ordersTab.paymentAmount', { defaultValue: '결제금액' })}</p>
-          <p className="text-[17px] font-bold text-gray-900 dark:text-white">
+          <p className="text-[16px] font-bold text-gray-900 dark:text-white">
             {formatNumber(order.total_amount ?? order.amount ?? 0)}
             <span className="text-[13px] font-medium text-gray-600 dark:text-gray-300 ml-1">{t('ordersTab.won', { defaultValue: '원' })}</span>
           </p>
@@ -503,7 +503,7 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
     <div className="rounded-2xl p-12 text-center">
       {/* 🦦 2026-10-10 (대표 "다 해줘"): 상자 아이콘 → 유달이. 검색해서 0건은 갸웃(notFound), 아직 산 게 없으면 빈 지갑(empty) */}
       <Udal mood={searching ? 'notFound' : 'empty'} size={96} className="block mx-auto mb-5" />
-      <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
+      <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">{title}</h2>
       <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{desc}</p>
       {!searching && (
         <Link

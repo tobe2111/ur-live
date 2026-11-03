@@ -172,7 +172,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
       {/* ── 왼쪽(PC) / 아래(폰) ─────────────────────────────── */}
       <div className={stacked ? 'order-2' : 'order-2 lg:order-1 lg:w-[300px] lg:shrink-0'}>
         <nav aria-label="맡은 매장" className={stacked ? 'hidden' : 'hidden lg:block mb-8'}>
-          <h2 className="text-[17px] font-bold text-gray-500 dark:text-gray-400">
+          <h2 className="text-[16px] font-semibold text-gray-500 dark:text-gray-400">
             맡은 매장{active.length > 0 && ` · ${active.length}곳`}
           </h2>
           <div className="mt-3 flex flex-col gap-1">
@@ -202,7 +202,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
 
         {/* 🏠 마이 안에서는 구역 제목('에이전시 · 이름')이 이미 있어 같은 말을 또 하지 않는다. */}
 
-        {!stacked && <h2 className="text-[17px] font-bold text-gray-500 dark:text-gray-400">에이전시</h2>}
+        {!stacked && <h2 className="text-[16px] font-semibold text-gray-500 dark:text-gray-400">에이전시</h2>}
         <div className={stacked ? '' : 'mt-1'}>
           <FlatRow
             icon={<MailIcon className="h-[18px] w-[18px]" aria-hidden="true" />}
@@ -232,8 +232,8 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
             종전엔 이 자리에 큰 카드 + 빈 칸 안 버튼으로 두 번 있었다. '홈페이지에 넣기' 는 아래 줄로 내려갔다. */}
         <div className="flex items-center gap-2">
           {/* 🖥️ PC 는 매장 이름이 제목이다(왼쪽 목록이 고르기를 맡는다). 폰은 '맡은 매장' + 고르기 칩. */}
-          {!stacked && <h2 className="hidden lg:block min-w-0 truncate text-[17px] font-bold text-gray-500 dark:text-gray-400">{picked?.name ?? '맡은 매장'}</h2>}
-          <h2 className={stacked ? 'text-[13px] font-medium text-gray-500 dark:text-gray-400' : 'lg:hidden text-[17px] font-bold text-gray-500 dark:text-gray-400'}>맡은 매장</h2>
+          {!stacked && <h2 className="hidden lg:block min-w-0 truncate text-[16px] font-semibold text-gray-500 dark:text-gray-400">{picked?.name ?? '맡은 매장'}</h2>}
+          <h2 className={stacked ? 'text-[13px] font-medium text-gray-500 dark:text-gray-400' : 'lg:hidden text-[16px] font-semibold text-gray-500 dark:text-gray-400'}>맡은 매장</h2>
           <div className="flex-1" />
           {active.length > 0 && picked && (
             <button

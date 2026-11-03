@@ -49,7 +49,7 @@ export default function GbMarketplacePage() {
       <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide flex items-center gap-3 px-4 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로" className="text-gray-900 dark:text-white"><ChevronLeft className="w-5 h-5" /></button>
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Megaphone className="w-4 h-4 text-emerald-500" /> 공구 마켓
           </h1>
         </div>

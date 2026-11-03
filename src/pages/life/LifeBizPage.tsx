@@ -71,7 +71,7 @@ export default function LifeBizPage() {
         <div className="space-y-4">
           <section className="rounded-2xl p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[24px] font-bold">{b.name}</h2>
+              <h2 className="text-[20px] font-semibold">{b.name}</h2>
               {b.verified && <span className="rounded-full bg-warm px-2 py-1 text-[12px] font-medium text-gray-600 dark:text-gray-300">사업자 인증</span>}
             </div>
             <div className="mt-1 flex flex-wrap gap-x-3 text-[13px] text-gray-500 dark:text-gray-400">
@@ -98,7 +98,7 @@ export default function LifeBizPage() {
           </section>
 
           <section className="rounded-2xl p-5">
-            <p className="text-[17px] font-bold">유어딜 후기 {b.reviews?.count ? formatNumber(b.reviews.count) : ''}</p>
+            <p className="text-[16px] font-bold">유어딜 후기 {b.reviews?.count ? formatNumber(b.reviews.count) : ''}</p>
             {recent.length === 0 ? (
               <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">아직 유어딜 후기가 없어요.{b.links.length ? ' 위의 다른 곳 후기를 확인해 보세요.' : ''}</p>
             ) : (

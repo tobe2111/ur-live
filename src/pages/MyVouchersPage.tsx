@@ -163,7 +163,7 @@ export default function MyVouchersPage() {
             aria-label={t('common.back', { defaultValue: '뒤로가기' })}>
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">{t('voucher.mapTitle', { defaultValue: '지도에서 보기' })}</h1>
+          <h1 className="text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white">{t('voucher.mapTitle', { defaultValue: '지도에서 보기' })}</h1>
         </div>
         <div className="relative">
           <Suspense fallback={<div className={`flex items-center justify-center text-[15px] text-gray-500 dark:text-gray-400 ${MAP_FILL}`}>{t('voucher.mapLoading', { defaultValue: '지도 불러오는 중...' })}</div>}>
@@ -272,7 +272,7 @@ export default function MyVouchersPage() {
             <div ref={tabRowRef} className="relative flex items-end gap-5 mb-4 border-b border-rule">
               {([['unused', t('voucher.groupUnused', { defaultValue: '사용 가능' })], ['done', t('voucher.groupPast', { defaultValue: '지난 이용권' })]] as const).map(([key, label]) => (
                 <button key={key} type="button" onClick={() => setTab(key)} data-tab={key}
-                  className={`relative pb-2 text-[17px] tracking-[-0.02em] ${tab === key ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 font-bold'}`}>
+                  className={`relative pb-2 text-[16px] tracking-[-0.02em] ${tab === key ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 font-semibold'}`}>
                   {label}
                   {tab === key && !tabBar && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}
                 </button>

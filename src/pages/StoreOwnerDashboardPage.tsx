@@ -81,21 +81,21 @@ export default function StoreOwnerDashboardPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-white rounded-xl p-4 shadow-lift">
                   <div className="flex items-center gap-1 text-[12px] text-gray-500"><BagIcon className="w-3.5 h-3.5" /> 총 매출</div>
-                  <p className="text-[17px] font-bold text-gray-900 mt-1">{formatWon(stats.revenue_total)}</p>
+                  <p className="text-[16px] font-bold text-gray-900 mt-1">{formatWon(stats.revenue_total)}</p>
                   <p className="text-[12px] text-gray-400 mt-1">누적</p>
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-lift">
                   <div className="flex items-center gap-1 text-[12px] text-gray-500">📅 이번 달 매출</div>
-                  <p className="text-[17px] font-bold text-blue-600 mt-1">{formatWon(stats.revenue_this_month)}</p>
+                  <p className="text-[16px] font-bold text-blue-600 mt-1">{formatWon(stats.revenue_this_month)}</p>
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-lift">
                   <div className="flex items-center gap-1 text-[12px] text-gray-500"><WalletIcon className="w-3.5 h-3.5" /> 미정산 잔액</div>
-                  <p className="text-[17px] font-bold text-amber-600 mt-1">{formatWon(stats.pending_payout)}</p>
+                  <p className="text-[16px] font-bold text-amber-600 mt-1">{formatWon(stats.pending_payout)}</p>
                   <a href="/seller/ledger" className="text-[12px] text-blue-600 underline">상세 →</a>
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-lift">
                   <div className="text-[12px] text-gray-500">활성 상품</div>
-                  <p className="text-[17px] font-bold text-gray-900 mt-1">{stats.active_products}/{stats.total_products}</p>
+                  <p className="text-[16px] font-bold text-gray-900 mt-1">{stats.active_products}/{stats.total_products}</p>
                 </div>
               </div>
 
@@ -105,19 +105,19 @@ export default function StoreOwnerDashboardPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
                     <div className="text-gray-500">발급</div>
-                    <div className="text-[17px] font-bold text-gray-900">{formatNumber(stats.total_vouchers_sold)}</div>
+                    <div className="text-[16px] font-bold text-gray-900">{formatNumber(stats.total_vouchers_sold)}</div>
                   </div>
                   <div className="text-center p-3 bg-emerald-50 rounded-lg">
                     <div className="text-emerald-600 flex items-center justify-center gap-1"><OkIcon className="w-3 h-3" /> 사용</div>
-                    <div className="text-[17px] font-bold text-emerald-700">{formatNumber(stats.vouchers_used)}</div>
+                    <div className="text-[16px] font-bold text-emerald-700">{formatNumber(stats.vouchers_used)}</div>
                   </div>
                   <div className="text-center p-3 bg-amber-50 rounded-lg">
                     <div className="text-amber-600">미사용</div>
-                    <div className="text-[17px] font-bold text-amber-700">{formatNumber(stats.vouchers_unused)}</div>
+                    <div className="text-[16px] font-bold text-amber-700">{formatNumber(stats.vouchers_unused)}</div>
                   </div>
                   <div className="text-center p-3 bg-red-50 rounded-lg">
                     <div className="text-red-600 flex items-center justify-center gap-1"><BadIcon className="w-3 h-3" /> 환불</div>
-                    <div className="text-[17px] font-bold text-red-700">{formatNumber(stats.vouchers_refunded)}</div>
+                    <div className="text-[16px] font-bold text-red-700">{formatNumber(stats.vouchers_refunded)}</div>
                   </div>
                 </div>
                 <p className="text-[12px] text-gray-500 mt-3 text-center">
@@ -128,19 +128,19 @@ export default function StoreOwnerDashboardPage() {
               {/* 빠른 진입 */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <a href="/seller/products" className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:bg-gray-50">
-                  <div className="text-[24px]">📦</div>
+                  <div className="text-[20px]">📦</div>
                   <div className="text-[12px] font-medium text-gray-700 mt-1">상품 관리</div>
                 </a>
                 <a href="/seller/appointments" className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:bg-gray-50">
-                  <div className="text-[24px]">📅</div>
+                  <div className="text-[20px]">📅</div>
                   <div className="text-[12px] font-medium text-gray-700 mt-1">예약 관리</div>
                 </a>
                 <a href="/seller/ledger" className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:bg-gray-50">
-                  <div className="text-[24px]">💰</div>
+                  <div className="text-[20px]">💰</div>
                   <div className="text-[12px] font-medium text-gray-700 mt-1">정산 내역</div>
                 </a>
                 <a href="/seller/analytics" className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:bg-gray-50">
-                  <div className="text-[24px]">📊</div>
+                  <div className="text-[20px]">📊</div>
                   <div className="text-[12px] font-medium text-gray-700 mt-1">분석</div>
                 </a>
               </div>

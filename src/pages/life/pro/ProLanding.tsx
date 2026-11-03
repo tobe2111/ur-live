@@ -30,7 +30,7 @@ export default function ProLanding() {
   return (
     <div className="space-y-8 pt-2">
       <section>
-        <h2 className="text-[24px] font-bold leading-snug tracking-tight">근처 가게 일 견적 요청,<br />알림톡으로 받으세요</h2>
+        <h2 className="text-[20px] font-semibold leading-snug tracking-tight">근처 가게 일 견적 요청,<br />알림톡으로 받으세요</h2>
         <p className="mt-2 text-[15px] leading-relaxed text-gray-600 dark:text-gray-300">식당·카페·숙소 사장님이 올린 요청에 원하는 것만 골라 견적을 보내요.</p>
       </section>
       <div className="grid grid-cols-3 gap-2">
@@ -42,7 +42,7 @@ export default function ProLanding() {
         ))}
       </div>
       <section>
-        <h3 className="text-[17px] font-bold">이런 일을 받아요</h3>
+        <h3 className="text-[16px] font-semibold">이런 일을 받아요</h3>
         <ul className="mt-4 grid grid-cols-4 gap-x-1 gap-y-5">
           {store.map((d) => (
             <li key={d.key} className="flex flex-col items-center gap-2">

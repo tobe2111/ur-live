@@ -99,7 +99,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
             <span className="inline-block px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[12px] font-medium mb-2 border border-amber-200">
               ⚠️ {inAppLabel} 인앱 브라우저
             </span>
-            <h2 id="iafm-title" className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight">
+            <h2 id="iafm-title" className="text-[16px] font-semibold text-gray-900 dark:text-white leading-tight">
               <span className="mr-2">{info.icon}</span>
               {info.title}
             </h2>

@@ -63,7 +63,7 @@ export default function MyCommissionsPage() {
         {/* 잔액 카드 — 확정된 수익은 이미 **딜**로 들어가 있다(현금 출금 아님, 2026-10-12). */}
         <div className="rounded-3xl p-6 bg-gray-900 dark:bg-[#1D1F29] text-white mb-4">
           <p className="text-[12px] opacity-80">딜로 적립된 추천 수익</p>
-          <p className="text-[34px] font-extrabold leading-tight mt-1">{formatNumber(summary.total_granted)}<span className="ml-1 text-[17px] font-bold opacity-80">딜</span></p>
+          <p className="text-[34px] font-bold leading-tight mt-1">{formatNumber(summary.total_granted)}<span className="ml-1 text-[16px] font-bold opacity-80">딜</span></p>
           <p className="mt-3 text-[12px] opacity-80">
             확정 대기 {formatNumber(summary.total_pending)}딜 — 확정되면 딜로 들어와요
           </p>

@@ -330,7 +330,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           <StoreThumb src={store?.image ?? null} name={store?.name ?? ''} hidden={awaiting} />
           <span key={store?.seller_id} className={`min-w-0${firstStore.current !== null && firstStore.current !== store?.seller_id ? ' ur-store-in' : ''}`}>
             <span className="flex items-center gap-1 min-w-0">
-              <span className="text-[17px] font-bold text-gray-900 dark:text-white truncate">{blank(store?.name ?? '가게 이름')}</span>
+              <span className="text-[16px] font-semibold text-gray-900 dark:text-white truncate">{blank(store?.name ?? '가게 이름')}</span>
               {!awaiting && stores.length >= 2 && <ChevronDown className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />}
             </span>
             <span className="block text-[13px] text-gray-500 dark:text-gray-400 tabular-nums truncate">

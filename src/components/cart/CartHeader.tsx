@@ -44,7 +44,7 @@ export const CartHeader = React.memo(function CartHeader({
           <button type="button" onClick={handleBack} aria-label={t('common.back', { defaultValue: '뒤로 가기' })} className="w-9 h-9 flex items-center justify-center">
             <X size={22} className="text-gray-900 dark:text-white" aria-hidden="true" />
           </button>
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">
+          <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">
             {t('cart.title', { defaultValue: '장바구니' })}{' '}
             {itemCount > 0 && <span className="text-brand-text tabular-nums">{itemCount}</span>}
           </h1>

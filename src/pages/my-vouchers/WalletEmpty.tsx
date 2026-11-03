@@ -74,7 +74,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
       {/* 🦦 히어로 — 유달이(아직 아무것도 없음 = 졸린 얼굴). 교환권·이용권 공통. */}
       <Udal mood="empty" size={120} motion priority className="mb-6" />
 
-      <h2 className="text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</h2>
+      <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</h2>
       <p className="mt-2 max-w-[264px] text-[13px] leading-relaxed text-gray-500 dark:text-gray-400 whitespace-pre-line">{desc}</p>
 
       {/* 사용 흐름 — 로즈 틴트 아이콘 칩 + 연결 트랙(헤어라인) + 작은 스텝 번호 */}

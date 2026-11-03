@@ -137,7 +137,7 @@ export default function CommunityGroupBuyMessagesPage() {
   if (notFound || !group) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-4">
-        <p className="text-gray-900 dark:text-white font-bold text-[17px]">
+        <p className="text-gray-900 dark:text-white font-semibold text-[16px]">
           {t('groupbuyMessages.notFound', { defaultValue: '공동구매를 찾을 수 없습니다' })}
         </p>
         <Link to="/group-buy" className="mt-4 text-gray-900 dark:text-white text-[15px] font-medium underline">

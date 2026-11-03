@@ -308,7 +308,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
                   >
                     {isLast && (
                       <span className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 text-white text-[13px] font-medium">
-                        <span className="text-[17px] font-bold">+{rest}</span>
+                        <span className="text-[16px] font-semibold">+{rest}</span>
                         {t('pass.gallery.allPhotosCount', { defaultValue: '전체 사진 {{count}}장', count: images.length })}
                       </span>
                     )}

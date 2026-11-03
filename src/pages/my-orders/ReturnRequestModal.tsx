@@ -56,7 +56,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">
+          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">
             {t('returnRequest.title', { defaultValue: '반품/교환 신청' })}
           </h3>
           <button

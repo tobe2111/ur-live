@@ -124,7 +124,7 @@ export default function RestoreAccountModal() {
           <div className="w-14 h-14 mb-4 rounded-2xl bg-gray-100 dark:bg-warm flex items-center justify-center">
             <RotateCcw className="w-7 h-7 text-brand-text" />
           </div>
-          <h2 id="restore-title" className="text-[17px] font-bold text-gray-900 dark:text-white">
+          <h2 id="restore-title" className="text-[16px] font-semibold text-gray-900 dark:text-white">
             {t('user.restoreTitle', { defaultValue: '이전에 가입했던 계정이 있어요' })}
           </h2>
           <p className="text-[13px] text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">

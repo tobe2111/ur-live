@@ -50,10 +50,10 @@ export default function PartnerFlow() {
     <>
       <ToneScroll initial="paper"><section>
         <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
-          <Reveal><h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] ur-tone-fg leading-[1.2]">
+          <Reveal><h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-bold tracking-[-0.03em] ur-tone-fg leading-[1.2]">
             손님이 오는 길
           </h2></Reveal>
-          <Reveal as="p" delay={80} className="mt-4 text-[15px] lg:text-[17px] ur-tone-mu max-w-[34em]">
+          <Reveal as="p" delay={80} className="mt-4 text-[15px] lg:text-[16px] ur-tone-mu max-w-[34em]">
             택배도 반품도 재고도 없습니다.
           </Reveal>
 
@@ -70,22 +70,22 @@ export default function PartnerFlow() {
           두 칸 나란히 + 아래 넓은 줄로 나눈다. 사용 안내 화면은 위 스토리로 옮겼다. */}
       <section className="ur-panel-ink text-white">
         <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
-          <Reveal><h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.2]">
+          <Reveal><h2 className="text-[24px] lg:text-[48px] xl:text-[60px] font-bold tracking-[-0.03em] leading-[1.2]">
             안 오면요? 안 쓰면요?
           </h2></Reveal>
 
           <div className="mt-10 lg:mt-16 grid gap-10 lg:grid-cols-2 lg:gap-16">
             {SAFETY.map(({ t, d }, i) => (
               <Reveal key={t} delay={i * 120} className="pt-8 border-t border-white/15">
-                <p className="text-[17px] lg:text-[28px] font-bold tracking-[-0.02em] leading-snug">{t}</p>
-                <p className="mt-3 text-[13px] lg:text-[17px] leading-[1.8] text-white/65 max-w-[36em]">{d}</p>
+                <p className="text-[16px] lg:text-[24px] font-semibold tracking-[-0.02em] leading-snug">{t}</p>
+                <p className="mt-3 text-[13px] lg:text-[16px] leading-[1.8] text-white/65 max-w-[36em]">{d}</p>
               </Reveal>
             ))}
           </div>
 
           <Reveal className="mt-12 lg:mt-20 rounded-2xl bg-white/[0.06] p-6 lg:p-10 lg:flex lg:items-center lg:justify-between lg:gap-12">
-            <p className="text-[24px] lg:text-[34px] font-bold tracking-[-0.02em] leading-snug shrink-0">돈은 매주 들어옵니다</p>
-            <p className="mt-3 lg:mt-0 text-[13px] lg:text-[17px] leading-[1.8] text-white/65 max-w-[36em]">
+            <p className="text-[20px] lg:text-[34px] font-semibold tracking-[-0.02em] leading-snug shrink-0">돈은 매주 들어옵니다</p>
+            <p className="mt-3 lg:mt-0 text-[13px] lg:text-[16px] leading-[1.8] text-white/65 max-w-[36em]">
               사용된 이용권을 주 단위로 모아 등록하신 계좌로 보냅니다. 최소 지급액은 {F.minPayout}입니다.
               보내기 전에 담당자가 내역을 눈으로 확인합니다. 기계가 알아서 쏘는 구조가 아닙니다.
             </p>

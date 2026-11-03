@@ -132,7 +132,7 @@ export default function LocalTownPage() {
         {/* 체험단(추첨) 섹션 */}
         {fcfsCount > 0 && (
           <section>
-            <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <Target className="w-4 h-4 text-gray-400" aria-hidden="true" /> {t('local.fcfsTitle', { defaultValue: '체험단 모집' })}
             </h2>
             <div className="space-y-2">
@@ -154,7 +154,7 @@ export default function LocalTownPage() {
 
         {/* 동네딜 그리드 */}
         <section>
-          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-3">
+          <h2 className="text-[16px] font-bold text-gray-900 dark:text-white mb-3">
             <span className="inline-flex items-center gap-2"><StoreIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />{t('local.dealsTitle', { defaultValue: '동네딜' })} {dealCount > 0 ? dealCount : ''}</span>
           </h2>
           {loading ? (

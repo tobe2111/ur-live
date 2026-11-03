@@ -270,7 +270,7 @@ export default function LoginPage() {
           <Udal mood="hello" size={64} priority motion className="block mb-4" />
           <UrDealLogo size={34} />
           {/* "같이 사면 더 싸다" 는 없는 기제였다 — 이용권은 즉시판매 단일가(2026-05-30)라 인원이 가격을 안 움직인다. */}
-          <h1 className="ur-lg-h mt-6 text-[24px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
+          <h1 className="ur-lg-h mt-6 text-[20px] font-semibold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
             {t('login.heroTitle2', { defaultValue: '우리 동네 가게, 미리 사면 더 싸게' })}
           </h1>
           <div className="ur-lg-chips flex flex-wrap items-center justify-center gap-2 mt-5">

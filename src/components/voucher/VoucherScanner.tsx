@@ -570,7 +570,7 @@ function UseConfirmSheet({ pending, onCancel, onConfirm }: { pending: PendingUse
         ) : (
           <>
             <p className="text-[13px] text-gray-500 dark:text-gray-400">{pending.restaurantName || pending.code}</p>
-            <p className="mt-1 text-[17px] font-bold text-gray-900 dark:text-white">{pending.productName || pending.code}</p>
+            <p className="mt-1 text-[16px] font-semibold text-gray-900 dark:text-white">{pending.productName || pending.code}</p>
             <h2 id="use-confirm-title" className={`mt-4 text-[15px] font-bold ${blocked ? 'text-tone-bad' : 'text-gray-900 dark:text-white'}`}>
               {blocked ?? t('seller.scan.confirmQ', { defaultValue: '사용 처리하시겠습니까?' })}
             </h2>

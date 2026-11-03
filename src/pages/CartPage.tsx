@@ -54,7 +54,7 @@ export default function CartPage() {
             <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
               <X className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
             </button>
-            <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('cart.title')}</h1>
+            <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('cart.title')}</h1>
             <div className="w-9" />
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function CartPage() {
             <BagIcon className="h-10 w-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-[17px] font-bold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
+            <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
             <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">{t('cart.loginRequired')}</p>
           </div>
           <button

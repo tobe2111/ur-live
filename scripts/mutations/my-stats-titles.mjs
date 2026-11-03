@@ -42,8 +42,8 @@ export default [
     //   ⇒ 17px 흐린 잉크 + 값은 `SECTION_TITLE_CLS` 한 곳. 되돌리려는 사고는 그대로다.
     name: '구역 제목 — 24px extrabold 로 되돌아간다(대표가 두 번 지적한 그 인상)',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: "SECTION_TITLE_CLS = 'text-[17px] font-bold tracking-[-0.01em]",
-    replace: "SECTION_TITLE_CLS = 'text-[24px] font-bold tracking-[-0.03em]",
+    find: "SECTION_TITLE_CLS = 'text-[16px] font-semibold tracking-[-0.01em]",
+    replace: "SECTION_TITLE_CLS = 'text-[20px] font-semibold tracking-[-0.03em]",
     test: 'src/tests/unit/my-zones-and-pc-2026-09-28.test.ts',
     why: '대표가 **두 번** 지적한 그 인상이다. 아침엔 무게·자간만 고쳤는데 판매 구역이 제목을 손으로 적고 있어 화면에 안 닿았다 — 그래서 이제 *값*이 아니라 *출처*를 지키는 시험(my-zones)으로 옮겼다. 되돌아가도 빌드는 초록이라 조용히 재발한다.',
   },

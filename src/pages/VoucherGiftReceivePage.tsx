@@ -81,7 +81,7 @@ export default function VoucherGiftReceivePage() {
         <div className="flex justify-center">
           <Udal mood={dead ? 'lost' : 'yay'} size={112} />
         </div>
-        <h1 className="mt-4 text-center text-[24px] font-bold text-gray-900 dark:text-white">
+        <h1 className="mt-4 text-center text-[20px] font-semibold text-gray-900 dark:text-white">
           {dead ? dead : `${gift?.sender_name || '친구'}님이 이용권을 선물했어요`}
         </h1>
 

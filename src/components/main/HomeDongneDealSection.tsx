@@ -46,7 +46,7 @@ export default function HomeDongneDealSection() {
   return (
     <section ref={ref} className="ur-content-wide px-4 lg:px-8 mt-8 mb-2">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <h2 className="text-[16px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <PinIcon className="w-4 h-4 text-emerald-400" /> {t('home.dongneTitle', { defaultValue: '우리 동네딜' })}
         </h2>
         <Link to="/group-buy" className="text-[12px] font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">

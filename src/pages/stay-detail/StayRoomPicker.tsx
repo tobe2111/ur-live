@@ -67,7 +67,7 @@ export default function StayRoomPicker({ rooms, loading, guests, nights, selecte
                   )}
                 </span>
                 <span className="shrink-0 text-right">
-                  <span className="block text-[17px] font-bold text-gray-900 dark:text-white">{formatNumber(r.total_price)}원</span>
+                  <span className="block text-[16px] font-bold text-gray-900 dark:text-white">{formatNumber(r.total_price)}원</span>
                   <span className={`block mt-1 text-[12px] ${on ? 'text-brand-text font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
                     {tooMany ? `최대 ${r.max_guests}명` : on ? (
                       <span className="inline-flex items-center gap-1"><svg key={r.room_id} aria-hidden="true" viewBox="0 0 24 24" className="ur-room-ck w-3 h-3" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>선택됨</span>

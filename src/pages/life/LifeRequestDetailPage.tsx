@@ -84,7 +84,7 @@ export default function LifeRequestDetailPage() {
         {chosen && (
           <section className="rounded-2xl p-5">
             <p className="text-[13px] text-gray-500 dark:text-gray-400">고른 사장님</p>
-            <p className="mt-1 text-[17px] font-bold">{chosen.pro_name}</p>
+            <p className="mt-1 text-[16px] font-semibold">{chosen.pro_name}</p>
             {chosen.pro_phone && <a href={`tel:${chosen.pro_phone}`} className="ur-btn ur-btn-lg ur-btn-primary mt-3 flex w-full justify-center">{chosen.pro_phone} 전화하기</a>}
             {d.status === 'chosen' && <ReviewForm requestId={d.id} mine={d.my_review ?? null} onDone={load} />}
           </section>
@@ -100,7 +100,7 @@ export default function LifeRequestDetailPage() {
               <li key={q.id} className={`rounded-2xl p-5 ${q.status === 'chosen' ? 'ring-2 ring-brand' : ''}`}>
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-[15px] font-bold">{q.is_house ? q.pro_name : <Link to={`/life/biz/${q.seller_id}`} className="underline decoration-rule underline-offset-4">{q.pro_name}</Link>}{q.is_house ? <span className="ml-2 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">{q.partner ? '유어딜 제휴' : '유어딜 직영'}</span> : q.verified ? <span className="ml-2 rounded-full bg-warm px-2 py-1 text-[12px] font-medium text-gray-600 dark:text-gray-300">사업자 인증</span> : null}</span>
-                  <span className="text-[17px] font-bold">{quotePriceText(q.price)}</span>
+                  <span className="text-[16px] font-bold">{quotePriceText(q.price)}</span>
                 </div>
                 {!q.is_house && <div className="mt-1"><RatingLine r={q.reviews} /></div>}
                 <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-gray-700 dark:text-gray-200">{q.message}</p>

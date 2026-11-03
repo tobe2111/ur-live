@@ -38,7 +38,7 @@ export default function ReferralIndexPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-800 mb-4">
             <PeopleIcon className="h-8 w-8 text-white" />
           </div>
-          <h2 className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight">
+          <h2 className="text-[20px] font-semibold text-gray-900 dark:text-white leading-tight">
             {t('referral.heroTitle1', { defaultValue: '친구와 함께' })}<br />
             <span className="text-brand-text">{t('referral.heroTitle2', { defaultValue: '더 저렴하게' })}</span> {t('referral.heroTitle3', { defaultValue: '쇼핑하세요' })}
           </h2>

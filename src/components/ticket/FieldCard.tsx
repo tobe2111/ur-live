@@ -114,7 +114,7 @@ export function FieldSplit({
     <RowShell onClick={onClick} ariaLabel={onClick ? '날짜 변경' : undefined} divider={divider} minH="min-h-[66px] py-2">
       <span className="flex-1 min-w-0">
         <span className={`block ${LABEL}`}>{leftLabel}</span>
-        <span className="block mt-[3px] text-[17px] font-bold tracking-[-0.02em] tabular-nums text-gray-900 dark:text-white">
+        <span className="block mt-[3px] text-[16px] font-bold tracking-[-0.02em] tabular-nums text-gray-900 dark:text-white">
           {leftValue}
           {leftSub ? <span className="ml-[3px] text-[13px] font-medium">{leftSub}</span> : null}
         </span>
@@ -124,7 +124,7 @@ export function FieldSplit({
       </span>
       <span className="flex-1 min-w-0 text-right">
         <span className={`block ${LABEL}`}>{rightLabel}</span>
-        <span className="block mt-[3px] text-[17px] font-bold tracking-[-0.02em] tabular-nums text-gray-900 dark:text-white">
+        <span className="block mt-[3px] text-[16px] font-bold tracking-[-0.02em] tabular-nums text-gray-900 dark:text-white">
           {rightValue}
           {rightSub ? <span className="ml-[3px] text-[13px] font-medium">{rightSub}</span> : null}
         </span>

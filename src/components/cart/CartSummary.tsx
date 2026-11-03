@@ -100,7 +100,7 @@ export const CartSummary = React.memo(function CartSummary({
         <>
           <div className="flex justify-between items-baseline">
             <span className="text-[15px] font-bold text-gray-900 dark:text-white">{t('cart.paymentAmount', { defaultValue: '결제예정금액' })}</span>
-            <span className="text-[17px] font-bold text-gray-900 dark:text-white tabular-nums">
+            <span className="text-[16px] font-bold text-gray-900 dark:text-white tabular-nums">
               {dealOnly ? `${fmt(dealAmount)}딜` : `${fmt(total)}${won}`}
             </span>
           </div>

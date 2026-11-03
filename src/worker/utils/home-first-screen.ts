@@ -83,7 +83,7 @@ export const HOME_FS_CLASS = {
   topRow: 'px-4 h-11 flex items-center justify-between gap-2',
   locRow: 'px-4 pt-1 pb-3',
   locTrigger: 'inline-flex items-center gap-1 -ml-0.5 max-w-full',
-  locLabel: 'text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
+  locLabel: 'text-[20px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
   catRow: 'flex items-end gap-3 px-4',
   catNav: 'flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide',
   catBase: 'shrink-0 pb-2 text-[15px] transition-colors border-b-2',
@@ -91,7 +91,7 @@ export const HOME_FS_CLASS = {
   catOff: 'text-gray-500 dark:text-gray-400 border-transparent',
   panel: 'ur-home-panel',
   secHead: 'flex items-end justify-between gap-4 mb-3',
-  secTitle: 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white',
+  secTitle: 'text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white',
   secSub: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400',
   grid: DEAL_ROW.grid, // 📋 2026-10-31 시안 10 — 폰 줄 목록(md+ 종전 4열)
   cardLink: 'block group active:scale-[0.98] flex flex-col',
@@ -112,7 +112,7 @@ export const HOME_FS_CLASS = {
   discount: 'text-[15px] font-bold text-sale',
   orig: 'text-[12px] line-through text-gray-500 dark:text-gray-400',
   priceRow: 'flex items-baseline gap-1 mt-1 leading-none',
-  price: 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white',
+  price: 'text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white',
   perNight: 'text-[12px] font-medium text-gray-500 dark:text-gray-400',
 } as const
 

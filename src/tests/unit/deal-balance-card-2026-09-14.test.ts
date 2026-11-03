@@ -23,7 +23,7 @@ const page = stripComments(readFileSync('src/pages/VouchersPage.tsx', 'utf8'))
 describe('🪙 확정 구조 (안 A3)', () => {
   it('숫자는 28px — 안 B 의 치수 — 대표 확정 B + main #1568 타입 스케일(28/24/17/15/13/12)', () => {
     expect(card).toMatch(/text-\[28px\]/)
-    expect(card).toMatch(/text-\[17px\]/)
+    expect(card).toMatch(/text-\[16px\]/) // 🔁 2026-11-03 안 C: 17→16
     /* 🔴 종전 두 층 카드로 되돌아가면 빨간불 — 그게 152px 짜리였다.
        🔧 머지 재조준: main #1579 의 디스플레이 스케일 이행으로 그 값이 **42 → 40**. 42 는 이제
           코드 어디에도 없어(스케일 밖), 그대로 두면 이 단언이 아무것도 안 지킨다. */

@@ -44,7 +44,7 @@ export const PASS_HEAD = {
   /** 온누리 뱃지 — 한 줄을 두 줄로 밀 수 있어 서버·클라가 모양까지 같아야 한다. */
   onnuri: 'ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-medium align-middle',
   // 📏 2026-11-02 대표 확정 상세 C안(*"글자 크기들도 각각 너무 크고 공백이 많은 느낌 · 대기업스러움"*): 24 → **17**.
-  h1: 'm-0 text-[17px] leading-[1.4] font-bold tracking-[-.02em] text-[var(--gbd-ink)]',
+  h1: 'm-0 text-[16px] leading-[1.4] font-semibold tracking-[-.02em] text-[var(--gbd-ink)]',
 } as const
 
 /** 섹션 카드 — 회색 바탕 위 흰 판. 2026-10-11 PC 도 같은 카드(대표 "PC도 해야하는거 아니야?"). */

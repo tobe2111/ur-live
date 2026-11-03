@@ -66,7 +66,7 @@ export default function MySeedingPage() {
       <SEO title="내 체험 신청 - 유어딜" description="무상 체험 신청과 SNS 연동, 신청권을 관리합니다" url="/my-seeding" />
       <div className="mx-auto max-w-xl space-y-4 px-4 pt-5">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-[24px] font-bold text-gray-900 dark:text-white">내 체험 신청</h1>
+          <h1 className="text-[20px] font-semibold text-gray-900 dark:text-white">내 체험 신청</h1>
           <Link to="/influencer/seeding" className="ur-btn ur-btn-sm ur-btn-secondary shrink-0">체험 찾기</Link>
         </div>
         {!me ? <p className="text-[13px] text-gray-500 dark:text-gray-400">정보를 불러오지 못했어요.</p> : (
@@ -77,13 +77,13 @@ export default function MySeedingPage() {
               </p>
             )}
             <section className={card}>
-              <p className="text-[17px] font-bold text-gray-900 dark:text-white">SNS 연동</p>
+              <p className="text-[16px] font-semibold text-gray-900 dark:text-white">SNS 연동</p>
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">연동한 계정의 팔로워로 신청 조건이 자동 확인돼요.</p>
               <div className="mt-2"><SnsLinkList links={me.links} available={me.available} returnTo="/my-seeding" onChanged={load} /></div>
             </section>
             <PassSection me={me} onChanged={load} />
             <section className={card}>
-              <p className="text-[17px] font-bold text-gray-900 dark:text-white">신청 내역</p>
+              <p className="text-[16px] font-semibold text-gray-900 dark:text-white">신청 내역</p>
               {me.applications.length === 0 ? (
                 <>
                   <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">
@@ -123,7 +123,7 @@ function PassSection({ me, onChanged }: { me: Me; onChanged: () => void }) {
   return (
     <section className={card}>
       <p className="text-[13px] text-gray-500 dark:text-gray-400">남은 신청권</p>
-      <p className="mt-1 text-[28px] font-extrabold text-gray-900 dark:text-white">{formatNumber(me.passes.total)}<span className="ml-1 text-[15px] font-bold">장</span></p>
+      <p className="mt-1 text-[28px] font-bold text-gray-900 dark:text-white">{formatNumber(me.passes.total)}<span className="ml-1 text-[15px] font-bold">장</span></p>
       <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">
         무료 {formatNumber(me.passes.free_left)}장 · 구매 {formatNumber(me.passes.paid_left)}장. 사장님이 승인한 체험의 일정을 낼 때 노쇼 방지 보증금으로 1장 써요.
         일정이 확정되기 전에 취소하거나 매장 사정으로 취소되면 돌려드려요.

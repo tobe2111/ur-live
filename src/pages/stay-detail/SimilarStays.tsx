@@ -67,7 +67,7 @@ export default function SimilarStays({
       {items.length >= MIN_SHOWN && (
         // 🎬 2026-11-03 14차 ⑩ — 스크롤로 들어올 때 카드가 차례로 떠오른다(숙소 추천 줄과 같은 움직임 · 처음부터 보이면 안 함).
         <RevealSection className={`${STAY_BAND} lg:mb-6`}>
-          <h2 className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">이곳과 비슷한 스테이</h2>
+          <h2 className="text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white">이곳과 비슷한 스테이</h2>
           <StayCardRow items={items} checkIn={checkIn} checkOut={checkOut} guests={guests} />
         </RevealSection>
       )}

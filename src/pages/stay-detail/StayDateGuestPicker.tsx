@@ -295,10 +295,10 @@ export default function StayDateGuestPicker({
               <span className="text-[15px] font-bold text-gray-900 dark:text-white">{label}</span>
               <span className="flex items-center gap-3">
                 <button type="button" onClick={() => set(Math.max(min, v - 1))} disabled={v <= min} aria-label={`${label} 감소`}
-                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-200 text-[17px] leading-none disabled:opacity-40">−</button>
+                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-200 text-[16px] leading-none disabled:opacity-40">−</button>
                 <span className="w-6 text-center text-[15px] font-bold text-gray-900 dark:text-white" aria-live="polite">{v}</span>
                 <button type="button" onClick={() => set(Math.min(maxGuests, v + 1))} disabled={adults + kids >= maxGuests} aria-label={`${label} 증가`}
-                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-200 text-[17px] leading-none disabled:opacity-40">+</button>
+                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-200 text-[16px] leading-none disabled:opacity-40">+</button>
               </span>
             </div>
           ))}

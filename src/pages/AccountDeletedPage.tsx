@@ -29,7 +29,7 @@ export default function AccountDeletedPage() {
           </div>
 
           {/* 제목 */}
-          <h1 className="text-[24px] font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-[20px] font-semibold text-gray-900 dark:text-white mb-4">
             {t('accountDeleted.title')}
           </h1>
 

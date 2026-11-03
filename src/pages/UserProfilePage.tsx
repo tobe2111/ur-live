@@ -268,7 +268,7 @@ export default function UserProfilePage() {
                 이메일은 이 줄을 누르면 열리는 편집 화면이 보여 주고, 이름 줄 오른쪽 끝의 12px 글자 + 화살표가
                 이름과 같은 줄에서 다퉈 붐볐다(대표 *"분산되고 복잡해 보여"*). 아바타도 64 → 48px. */}
             <span className="flex-1 min-w-0">
-              <span className="block text-[17px] font-bold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</span>
+              <span className="block text-[16px] font-semibold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</span>
               <span className="flex items-center gap-1 mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}<ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" /></span>
             </span>
           </button>

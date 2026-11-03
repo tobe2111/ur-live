@@ -23,13 +23,13 @@ export default function WalletSummaryCard({ count, total, t }: {
             {t('voucher.walletEyebrow', { defaultValue: '쓸 수 있는 이용권' })}
           </p>
           <p className="mt-1 flex items-baseline gap-1 leading-none">
-            <span className="text-[28px] font-extrabold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(count)}</span>
+            <span className="text-[28px] font-bold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(count)}</span>
             <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400">{t('voucher.heroCountUnit', { defaultValue: '장' })}</span>
           </p>
         </div>
         <div className="shrink-0 text-right">
           <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('voucher.walletTotal', { defaultValue: '합계' })}</p>
-          <p className="mt-1 text-[17px] font-bold tabular-nums text-gray-900 dark:text-white">
+          <p className="mt-1 text-[16px] font-bold tabular-nums text-gray-900 dark:text-white">
             {formatNumber(total)}{t('voucher.won', { defaultValue: '원' })}
           </p>
         </div>

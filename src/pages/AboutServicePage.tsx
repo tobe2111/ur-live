@@ -86,21 +86,21 @@ export default function AboutServicePage() {
         {/* ① 히어로 — 💎 2026-11-01 고급화 ①②: 실사진을 꽉 채운 첫 화면. 폰 두 대는 바로 아래 실기기 무대로. */}
         <PhotoHero photo="about">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 min-h-[calc(100svh-56px)] lg:min-h-[calc(100svh-64px)] flex flex-col justify-end pt-40 pb-28">
-            <h1 className="text-[40px] sm:text-[48px] lg:text-[76px] leading-[1.14] font-extrabold tracking-[-0.035em]">
+            <h1 className="text-[40px] sm:text-[48px] lg:text-[76px] leading-[1.14] font-bold tracking-[-0.035em]">
               {/* 🎬 한 줄씩 마스크 안에서 밀려 올라온다 */}
               <Line i={0}>동네 가게 할인 이용권을</Line>
               <Line i={1}><span className="text-brand-text">앱에서 사고, 매장에서 QR</span>로</Line>
             </h1>
-            <p style={loadDelay(320)} className="ur-load mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-[1.7] text-white/80 max-w-[26em]">
+            <p style={loadDelay(320)} className="ur-load mt-6 lg:mt-8 text-[15px] lg:text-[16px] leading-[1.7] text-white/80 max-w-[26em]">
               서울 서초구 상권 활성화 사업을 수행하고 있어요.
             </p>
             <div style={loadDelay(460)} className="ur-load mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
               <Link to="/"
-                className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
+                className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold active:scale-[0.98] transition-transform">
                 내 주변 딜 보러가기 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
               </Link>
               <Link to="/partners"
-                className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.12] border border-white/25 backdrop-blur-sm flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
+                className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.12] border border-white/25 backdrop-blur-sm flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold text-white">
                 매장 입점 안내
               </Link>
             </div>
@@ -111,10 +111,10 @@ export default function AboutServicePage() {
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-20 lg:py-36 grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:items-center">
             <div>
-              <Reveal><h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] text-ink leading-[1.18]">
+              <Reveal><h2 className="text-[24px] lg:text-[48px] xl:text-[60px] font-bold tracking-[-0.03em] text-ink leading-[1.18]">
                 고르고, 사고,<br />QR 한 번
               </h2></Reveal>
-              <Reveal as="p" delay={80} className="mt-5 lg:mt-7 text-[15px] lg:text-[17px] leading-[1.7] text-gray-500 dark:text-gray-400 max-w-[24em]">
+              <Reveal as="p" delay={80} className="mt-5 lg:mt-7 text-[15px] lg:text-[16px] leading-[1.7] text-gray-500 dark:text-gray-400 max-w-[24em]">
                 손님 화면은 실제 앱을 녹화한 영상입니다.
               </Reveal>
             </div>
@@ -130,7 +130,7 @@ export default function AboutServicePage() {
             목록만 오른쪽에서 커진다(제목이 목록 위에 또 한 줄 쌓이면 폰을 늘린 그림이 된다). */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-20">
-            <Reveal className="lg:self-start lg:sticky lg:top-24"><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+            <Reveal className="lg:self-start lg:sticky lg:top-24"><h2 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">
               소비자에게는
             </h2></Reveal>
             <div className="border-t border-rule">
@@ -138,8 +138,8 @@ export default function AboutServicePage() {
                 <Reveal key={t} delay={i * 90} className="flex items-baseline gap-3 lg:gap-6 py-4 lg:py-8 border-b border-rule">
                   <Icon className="w-4 h-4 lg:w-[22px] lg:h-[22px] shrink-0 translate-y-0.5 text-brand" strokeWidth={1.9} aria-hidden />
                   <div className="min-w-0">
-                    <p className="text-[15px] lg:text-[28px] font-bold text-ink tracking-[-0.02em]">{t}</p>
-                    <p className="text-[12px] lg:text-[17px] text-gray-500 dark:text-gray-400 leading-snug lg:leading-relaxed mt-1 lg:mt-2 max-w-[34em]">{d}</p>
+                    <p className="text-[15px] lg:text-[24px] font-bold text-ink tracking-[-0.02em]">{t}</p>
+                    <p className="text-[12px] lg:text-[16px] text-gray-500 dark:text-gray-400 leading-snug lg:leading-relaxed mt-1 lg:mt-2 max-w-[34em]">{d}</p>
                   </div>
                 </Reveal>
               ))}
@@ -151,15 +151,15 @@ export default function AboutServicePage() {
             ⚠️ 카드로 감싸지 않는다(테두리 셋이 나란히 서면 곧바로 "3열 균등 카드" 가 된다). */}
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <Reveal><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">셋이 함께 커지는 구조</h2></Reveal>
-            <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-white/60">누구도 먼저 돈을 내지 않습니다.</p>
+            <Reveal><h2 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] leading-[1.2]">셋이 함께 커지는 구조</h2></Reveal>
+            <p className="mt-3 lg:mt-5 text-[13px] lg:text-[16px] text-white/60">누구도 먼저 돈을 내지 않습니다.</p>
 
             <ol className="mt-8 lg:mt-16 relative pl-5 lg:pl-0 lg:grid lg:grid-cols-3 lg:gap-12 xl:gap-20">
               <span aria-hidden className="absolute left-[5px] top-2 bottom-2 w-px bg-white/25 lg:hidden" />
               {TRIANGLE.map(({ icon: Icon, t, gives, gets }, i) => (
                 <Reveal as="li" key={t} delay={i * 140} className="relative pb-5 last:pb-0 lg:pb-0 lg:border-t lg:border-white/20 lg:pt-7">
                   <span aria-hidden className="absolute -left-5 top-1.5 w-[11px] h-[11px] rounded-full bg-[var(--home-field)] ring-2 ring-brand lg:hidden" />
-                  <p className="flex items-center gap-2 lg:gap-2 text-[15px] lg:text-[28px] font-bold tracking-[-0.02em]">
+                  <p className="flex items-center gap-2 lg:gap-2 text-[15px] lg:text-[24px] font-bold tracking-[-0.02em]">
                     <Icon className="w-[15px] h-[15px] lg:w-6 lg:h-6 text-brand-text" strokeWidth={1.9} aria-hidden />{t}
                   </p>
                   <p className="text-[12px] lg:text-[15px] text-white/60 leading-snug lg:leading-relaxed mt-1 lg:mt-6">
@@ -184,8 +184,8 @@ export default function AboutServicePage() {
         <ToneScroll initial="paper">
         <section>
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <Reveal><h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] ur-tone-fg leading-[1.2]">사장님은 이렇게 진행해요</h2></Reveal>
-            <Reveal as="p" delay={80} className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] ur-tone-mu">가입부터 정산까지 한 곳에서.</Reveal>
+            <Reveal><h2 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] ur-tone-fg leading-[1.2]">사장님은 이렇게 진행해요</h2></Reveal>
+            <Reveal as="p" delay={80} className="mt-3 lg:mt-5 text-[13px] lg:text-[16px] ur-tone-mu">가입부터 정산까지 한 곳에서.</Reveal>
             <div className="mt-8 lg:mt-16">
               <StickyStory steps={STEPS} shotUrl={SHOT} />
             </div>
@@ -195,10 +195,10 @@ export default function AboutServicePage() {
         {/* ⑤ 숫자 — 💎 2026-11-01 고급화 ⑤: 확정된 숫자 하나를 화면을 채우는 그래픽으로. 앞 스토리의 어둠이 이어진다. */}
         <section data-tone="ink">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-8 pb-20 lg:pb-36 overflow-hidden">
-            <h2 className="ur-tone-fg text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2] mb-6 lg:mb-10">숫자와 이야기</h2>
+            <h2 className="ur-tone-fg text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] leading-[1.2] mb-6 lg:mb-10">숫자와 이야기</h2>
             <GiantNumber value="19" unit="조 원" label="글로벌 동일 모델 시장 규모 19조 원" />
             <div className="mt-8 lg:mt-12 grid gap-8 lg:grid-cols-2 lg:gap-24 lg:items-end">
-              <p className="text-[15px] lg:text-[17px] ur-tone-mu">글로벌 동일 모델 시장 규모</p>
+              <p className="text-[15px] lg:text-[16px] ur-tone-mu">글로벌 동일 모델 시장 규모</p>
               <div>
                 <dl className="text-[12px] lg:text-[15px] leading-relaxed border-t border-white/15 pt-4 lg:pt-6">
                   <div className="flex gap-3 lg:gap-6 py-1 lg:py-3 border-b border-white/15">
@@ -222,19 +222,19 @@ export default function AboutServicePage() {
         {/* ⑥ 마무리 — 색면 한 장. PC 에서 마지막 화면이 흰 여백으로 끝나면 페이지가 잘린 것처럼 보인다. */}
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-36 text-center">
-            <Reveal kind="scale"><h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
+            <Reveal kind="scale"><h2 className="text-[24px] lg:text-[48px] xl:text-[60px] font-bold tracking-[-0.03em] leading-[1.22]">
               지금 내 주변부터 열어 보세요
             </h2></Reveal>
-            <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-relaxed text-white/70 max-w-[32em] mx-auto">
+            <p className="mt-6 lg:mt-8 text-[15px] lg:text-[16px] leading-relaxed text-white/70 max-w-[32em] mx-auto">
               가입하면 내 유어샵이 함께 생깁니다. 좋았던 가게를 담아 두면 그대로 소개가 됩니다.
             </p>
             <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 justify-center max-w-[32rem] mx-auto">
               <Link to="/"
-                className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold active:scale-[0.98] transition-transform">
+                className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold active:scale-[0.98] transition-transform">
                 내 주변 딜 보러가기 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
               </Link>
               <Link to="/influencer"
-                className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
+                className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold text-white">
                 소개하고 커미션 받기
               </Link>
             </div>

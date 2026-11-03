@@ -105,7 +105,7 @@ export default function IntroducePage() {
               맛집·뷰티·숙소,<br />
               <span className="text-transparent bg-clip-text bg-gray-800 italic">할인가로 바로.</span>
             </h1>
-            <p className="text-[17px] text-gray-400 mt-6 max-w-[480px] leading-relaxed">
+            <p className="text-[16px] text-gray-400 mt-6 max-w-[480px] leading-relaxed">
               온라인에서 할인가로 미리 사고, 매장에서 QR로 바로 써요.<br />
               쓰지 못하면 유효기간이 지난 뒤 자동으로 환불돼요.
             </p>
@@ -194,7 +194,7 @@ export default function IntroducePage() {
             { n: '3초', l: '토스 간편결제' },
           ].map(s => (
             <div key={s.l} className="text-center">
-              <p className="text-[34px] md:text-[40px] font-extrabold text-white leading-none">{s.n}</p>
+              <p className="text-[34px] md:text-[40px] font-bold text-white leading-none">{s.n}</p>
               <p className="text-[12px] font-medium text-gray-500 mt-2">{s.l}</p>
             </div>
           ))}
@@ -220,7 +220,7 @@ export default function IntroducePage() {
                 >
                   <Icon className="w-5 h-5" style={{ color: f.color }} />
                 </div>
-                <h3 className="text-[17px] font-bold text-white mb-2">{f.title}</h3>
+                <h3 className="text-[16px] font-semibold text-white mb-2">{f.title}</h3>
                 <p className="text-[13px] text-gray-500 leading-relaxed">{f.desc}</p>
               </div>
             )
@@ -302,9 +302,9 @@ export default function IntroducePage() {
               { n: '03', Icon: Utensils, title: '매장 방문·사용', desc: '매장에서 QR 또는 PIN을 보여 주면 사용 처리돼요. 숙소는 예약한 날짜에 맞춰 이용하시면 돼요.' },
             ].map(s => (
               <div key={s.n} className="relative p-8 rounded-3xl bg-[#111] border border-[#2C2F35] overflow-hidden">
-                <div className="absolute -top-4 -right-2 text-[100px] font-extrabold opacity-[0.04] text-white select-none">{s.n}</div>
+                <div className="absolute -top-4 -right-2 text-[100px] font-bold opacity-[0.04] text-white select-none">{s.n}</div>
                 <s.Icon className="w-9 h-9 mx-auto mb-5 text-gray-400" aria-hidden="true" />
-                <h3 className="text-[24px] font-bold text-white mb-3">{s.title}</h3>
+                <h3 className="text-[20px] font-semibold text-white mb-3">{s.title}</h3>
                 <p className="text-[15px] text-gray-500 leading-relaxed">{s.desc}</p>
               </div>
             ))}
@@ -356,7 +356,7 @@ export default function IntroducePage() {
                     <Check className="w-4 h-4 text-red-400" strokeWidth={3} />
                   </div>
                   <div>
-                    <p className="text-[17px] font-bold text-white">{b.title}</p>
+                    <p className="text-[16px] font-semibold text-white">{b.title}</p>
                     <p className="text-[13px] text-gray-500 mt-1">{b.desc}</p>
                   </div>
                 </div>
@@ -398,7 +398,7 @@ export default function IntroducePage() {
               >
                 <span className="text-[15px] font-bold text-white">{f.q}</span>
                 <span
-                  className="text-[24px] text-gray-500 shrink-0 ml-4 transition-transform duration-200"
+                  className="text-[20px] text-gray-500 shrink-0 ml-4 transition-transform duration-200"
                   style={{ transform: faqOpen === i ? 'rotate(45deg)' : 'none' }}
                 >
                   ＋

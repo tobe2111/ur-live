@@ -88,8 +88,8 @@ export default [
     file: CONSOLE,
     /* 🔧 2026-09-29 재조준(B안 + 규칙 ⑧): 제목 줄에 자간이 붙고 `text-lg` 가 정본 17px 로
        이행되며 앵커가 두 번 낡았다. 계약은 그대로 — 이모지 0. */
-    find: "<h1 className=\"text-[17px] font-bold tracking-[-0.02em]\">{t('curator.console.title'",
-    replace: "<h1 className=\"text-[17px] font-bold tracking-[-0.02em]\">🎤 {t('curator.console.title'",
+    find: "<h1 className=\"text-[16px] font-semibold tracking-[-0.02em]\">{t('curator.console.title'",
+    replace: "<h1 className=\"text-[16px] font-semibold tracking-[-0.02em]\">🎤 {t('curator.console.title'",
     test: T_NEW,
     why:
       '확정 디자인 시스템 규칙 ⑥(이모지 0). 이 화면에만 12개가 남아 있어서 다른 화면과 따로 놀았다. ' +

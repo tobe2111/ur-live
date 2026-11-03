@@ -142,7 +142,7 @@ export default function PcHomePage() {
           {/* 🏷️ 2026-08-08: 카테고리를 고르면 제목이 **그 카테고리를 말한다**(걸러졌다는 신호). */}
           <header ref={gridHeaderRef} className="mb-4 scroll-mt-24 flex items-center justify-between gap-4 flex-wrap">
             <div>
-            <h1 className="text-[24px] font-bold tracking-tight text-gray-900 dark:text-white">
+            <h1 className="text-[20px] font-semibold tracking-tight text-gray-900 dark:text-white">
               {catLabel
                 ? `${catLabel} 이용권`
                 : homeFeedTitle({ located: !!userLoc, dongLabel: dong?.dong, region })}

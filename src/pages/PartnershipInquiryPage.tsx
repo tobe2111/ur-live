@@ -53,7 +53,7 @@ export default function PartnershipInquiryPage() {
         <SEO title={CONSUMER_SURFACE_SEO['/partnership'].title} description={CONSUMER_SURFACE_SEO['/partnership'].description} url="/partnership" />
         <div className="text-center max-w-sm">
           <OkIcon className="w-14 h-14 mx-auto text-emerald-500" />
-          <h1 className="mt-4 text-[17px] font-bold text-gray-900 dark:text-white">접수됐어요!</h1>
+          <h1 className="mt-4 text-[16px] font-semibold text-gray-900 dark:text-white">접수됐어요!</h1>
           <p className="mt-2 text-[15px] text-gray-600 dark:text-gray-300 leading-relaxed">
             담당자가 확인 후 남겨주신 연락처/이메일로<br />영업일 기준 2일 내 회신드릴게요.
           </p>
@@ -85,7 +85,7 @@ export default function PartnershipInquiryPage() {
             <Handshake className="w-6 h-6 text-gray-900 dark:text-white" />
           </div>
           <div>
-            <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">함께 성장할 파트너를 찾습니다</h2>
+            <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">함께 성장할 파트너를 찾습니다</h2>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">광고 · 제휴 · 매장 입점 · 상품 공급 — 무엇이든 편하게 남겨주세요</p>
           </div>
         </div>

@@ -132,7 +132,7 @@ export default memo(function DealRow({
             {pd.discount > 0 && (
               <span className="text-[15px] font-bold text-sale tracking-tight">{pd.discount}%</span>
             )}
-            <span className="text-[17px] font-bold text-gray-900 dark:text-white tracking-tight">{formatNumber(price)}</span>
+            <span className="text-[16px] font-bold text-gray-900 dark:text-white tracking-tight">{formatNumber(price)}</span>
             <span className="text-[12px] font-medium text-gray-900 dark:text-white">{unit}</span>
             {hasStrike && (
               /*

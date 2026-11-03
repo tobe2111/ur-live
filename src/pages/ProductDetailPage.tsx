@@ -435,10 +435,10 @@ export default function ProductDetailPage() {
         {/* 이름 + 가격 */}
         <div className="px-5 text-center">
           {brandName && <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-1">{brandName}</p>}
-          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight">{product.name}</h2>
+          <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white leading-tight">{product.name}</h2>
           <div className="mt-3 inline-flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-full">
             <span className="w-5 h-5 rounded-full bg-amber-400 text-white text-[12px] font-medium flex items-center justify-center">딜</span>
-            <span className="text-[17px] font-bold text-amber-700">{formatNumber(displayPrice)} 딜</span>
+            <span className="text-[16px] font-bold text-amber-700">{formatNumber(displayPrice)} 딜</span>
           </div>
         </div>
 
@@ -486,7 +486,7 @@ export default function ProductDetailPage() {
         {/* 하단 노란 CTA */}
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-amber-400 app-frame-bar">
           <button onClick={handleBuyNow}
-            className="w-full py-4 text-center text-[17px] font-bold text-gray-900 dark:text-white active:bg-amber-500"
+            className="w-full py-4 text-center text-[16px] font-bold text-gray-900 dark:text-white active:bg-amber-500"
             style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
           >
             딜로 교환하기

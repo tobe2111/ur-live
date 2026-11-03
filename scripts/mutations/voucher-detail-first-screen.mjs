@@ -42,8 +42,8 @@ export default [
   {
     name: '🎁 교환권 상세 제목 클래스가 페이지와 갈린다 (마운트 때 제목이 튄다)',
     file: BODY,
-    find: "h1: 'mt-[7px] text-[24px]",
-    replace: "h1: 'mt-2 text-[24px]",
+    find: "h1: 'mt-[7px] text-[20px]",
+    replace: "h1: 'mt-2 text-[20px]",
     test: T,
     why:
       'React 는 `createRoot`(비-hydrate)라 마운트 때 `#root` 를 갈아엎는다. 서버가 그린 제목의 ' +

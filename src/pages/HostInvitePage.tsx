@@ -72,7 +72,7 @@ export default function HostInvitePage() {
           {data.host_profile ? (
             <img src={data.host_profile} alt={data.host_name} className="w-16 h-16 rounded-full object-cover mx-auto mb-2 bg-[#1D1F29]" />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-[#1D1F29] flex items-center justify-center text-[24px] font-bold text-brand-text mx-auto mb-2">
+            <div className="w-16 h-16 rounded-full bg-[#1D1F29] flex items-center justify-center text-[20px] font-semibold text-brand-text mx-auto mb-2">
               {(data.host_name || '?').slice(0, 1)}
             </div>
           )}

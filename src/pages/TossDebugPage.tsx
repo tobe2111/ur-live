@@ -124,7 +124,7 @@ export default function TossDebugPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow p-6">
-        <h1 className="text-[17px] font-bold mb-4 text-gray-900">Toss 결제 진단</h1>
+        <h1 className="text-[16px] font-semibold mb-4 text-gray-900">Toss 결제 진단</h1>
         <div className="space-y-2 mb-4 text-[15px] text-gray-700">
           <p><strong>VITE env key:</strong> <code>{mask(clientKeyEnv)}</code> (type={detectTossClientKeyType(clientKeyEnv)})</p>
           <p><strong>server response key:</strong> <code>{mask(clientKeyServer)}</code> (type={detectTossClientKeyType(clientKeyServer)})</p>

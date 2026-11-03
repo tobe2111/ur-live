@@ -27,7 +27,7 @@ export function AgencyInfoPanel({ agency, onSaved, bare = false }: { agency: Age
 
   return (
     <section className={bare ? '' : 'mt-8'}>
-      {!bare && <h2 className="text-[17px] font-bold text-gray-500 dark:text-gray-400">에이전시 정보</h2>}
+      {!bare && <h2 className="text-[16px] font-semibold text-gray-500 dark:text-gray-400">에이전시 정보</h2>}
       <form onSubmit={save} className={`${bare ? '' : 'mt-3 '}flex flex-col gap-4 rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift`}>
         <Field label="에이전시 이름">
           <input required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} disabled={busy} className={panelInputCls} />

@@ -97,7 +97,7 @@ export default function DealBottomBar({
   const fcfs = useFcfsDetail(productId)
   const raffle = fcfs.gate && !isPrelaunch && !isOwner
   const ctaOn = raffle ? !(fcfs.applied || fcfs.closed) : buyable || isPrelaunch
-  const stepBtn = 'w-9 h-9 rounded-full flex items-center justify-center text-[17px] bg-transparent cursor-pointer disabled:opacity-40'
+  const stepBtn = 'w-9 h-9 rounded-full flex items-center justify-center text-[16px] bg-transparent cursor-pointer disabled:opacity-40'
 
   return (
     <>
@@ -171,7 +171,7 @@ export default function DealBottomBar({
                 <span key={quantity} className="ur-buy-save ml-2 inline-block rounded-full px-2 py-1 align-[2px] text-[12px] font-medium" style={{ color: 'var(--sale)', background: 'color-mix(in srgb, var(--sale) 10%, transparent)' }}>{formatNumber((refPrice - unitPrice) * quantity)}원 아껴요</span>
               )}
             </span>
-            <span className="text-[28px] font-extrabold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}><RollingNumber value={total} format={formatNumber} />{allDeal ? '딜' : '원'}</span>
+            <span className="text-[28px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}><RollingNumber value={total} format={formatNumber} />{allDeal ? '딜' : '원'}</span>
           </div>
           <div className="ur-buy-row mt-3 mb-2 flex items-center justify-center gap-1 text-[12px]" style={{ color: 'var(--gbd-sub)', ['--i' as string]: 5 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
@@ -181,7 +181,7 @@ export default function DealBottomBar({
             onClick={() => onJoin()}
             disabled={!isJoinable || joining}
             aria-label={isJoinable ? payLabel : '구매 불가'}
-            className="w-full h-[52px] border-0 rounded-xl text-[17px] font-bold flex items-center justify-center gap-2"
+            className="w-full h-[52px] border-0 rounded-xl text-[16px] font-semibold flex items-center justify-center gap-2"
             style={{ background: buyable ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', cursor: buyable ? 'pointer' : 'default' }}
           >
             {joining ? <span className="ur-pay-busy"><span className="ur-pay-spin" aria-hidden="true" />처리 중…</span> : <>{payLabel}{arrow}</>}

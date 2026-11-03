@@ -56,10 +56,10 @@ export default function PartnerPaths() {
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
         {/* 🧹 2026-10-31: 제목 오른쪽 구석에 혼자 떠 있던 작은 폰(카카오맵 가게 찾기)을 뺐다 — 화면 안이 거의
             비어 보여 실수처럼 읽혔다. 등록 화면은 "손님이 오는 길" 과 사장님 화면 줄이 이미 보여 준다. */}
-        <Reveal><h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+        <Reveal><h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">
           시작하는 길, 세 가지
         </h2></Reveal>
-        <Reveal as="p" delay={80} className="mt-4 text-[15px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[28em]">
+        <Reveal as="p" delay={80} className="mt-4 text-[15px] lg:text-[16px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[28em]">
           어느 길이든 손님이 낸 돈은 사장님 계좌로만 갑니다.
         </Reveal>
 
@@ -69,7 +69,7 @@ export default function PartnerPaths() {
             <Reveal as="article" key={title} delay={pi * 120} {...spotHandlers()}
               className={`ur-spot rounded-2xl flex flex-col ${hi ? 'bg-surface shadow-lift p-6 lg:p-10' : 'bg-black/[0.03] dark:bg-white/[0.04] p-6 lg:p-8'}`}>
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className={`font-bold text-ink tracking-[-0.02em] ${hi ? 'text-[24px] lg:text-[28px]' : 'text-[17px] lg:text-[24px]'}`}>{title}</h3>
+                <h3 className={`font-semibold text-ink tracking-[-0.02em] ${hi ? 'text-[20px] lg:text-[24px]' : 'text-[16px] lg:text-[20px]'}`}>{title}</h3>
                 <span className={`text-[12px] lg:text-[15px] font-medium shrink-0 ${hi ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>{fee}</span>
               </div>
               <ol className="mt-6 lg:mt-8 space-y-2 lg:space-y-4 flex-1">

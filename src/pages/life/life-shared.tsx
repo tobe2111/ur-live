@@ -91,7 +91,7 @@ export function LifeHeader({ title, back }: { title: string; back?: string }) {
   return (
     <header className="ur-content-narrow flex h-14 items-center gap-3 px-4">
       {back && <Link to={back} aria-label="뒤로" className="-ml-2 p-2 text-ink"><ChevronLeft className="h-5 w-5" /></Link>}
-      <h1 className="text-[17px] font-bold text-ink">{title}</h1>
+      <h1 className="text-[16px] font-semibold text-ink">{title}</h1>
     </header>
   )
 }

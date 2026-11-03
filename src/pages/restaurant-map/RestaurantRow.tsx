@@ -82,9 +82,9 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
         <div className="flex items-baseline gap-2 mt-2">
           {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 순수 빨강 → 웜 로즈 brand 토큰(라이트/다크 var 보정). */}
           {discount > 0 && (
-            <span className="text-[17px] font-bold text-sale">{discount}%</span>
+            <span className="text-[16px] font-bold text-sale">{discount}%</span>
           )}
-          <span className="text-[17px] font-bold text-gray-900 dark:text-white">{formatNumber(r.price)}원</span>
+          <span className="text-[16px] font-bold text-gray-900 dark:text-white">{formatNumber(r.price)}원</span>
           {r.original_price > r.price && (
             <span className="text-[12px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(r.original_price)}원</span>
           )}

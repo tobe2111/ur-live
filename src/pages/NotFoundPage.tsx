@@ -66,7 +66,7 @@ export default function NotFoundPage() {
           <Udal mood="lost" size={128} motion priority className="mx-auto" />
           <p className="mt-4 text-[13px] font-medium tracking-[0.2em] text-gray-400 dark:text-gray-500 ur-nf-drop" aria-hidden="true">404</p>
 
-          <h1 className="mt-1 text-[24px] font-bold text-gray-900 dark:text-white">
+          <h1 className="mt-1 text-[20px] font-semibold text-gray-900 dark:text-white">
             {t('notFound.title')}
           </h1>
 

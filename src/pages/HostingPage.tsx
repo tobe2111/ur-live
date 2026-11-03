@@ -70,7 +70,7 @@ export default function HostingPage() {
       <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-24">
         <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-[17px] font-bold">🎉 {t('hosting.title', { defaultValue: '내 공구 호스팅' })}</h1>
+            <h1 className="text-[16px] font-semibold">🎉 {t('hosting.title', { defaultValue: '내 공구 호스팅' })}</h1>
             <button
               onClick={() => navigate('/host/new')}
               className="px-3 py-2 bg-brand hover:bg-brand-dark text-white text-[15px] font-bold rounded-lg"

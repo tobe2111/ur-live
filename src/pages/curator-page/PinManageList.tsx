@@ -92,7 +92,7 @@ export default function PinManageList({ pins, onReorder, onDeleted }: { pins: Cu
               <span
                 onPointerDown={(e) => { e.preventDefault(); dragIdxRef.current = idx; setDraggingId(pin.id) }}
                 style={{ touchAction: 'none', cursor: 'grab' }}
-                className="text-gray-300 dark:text-gray-600 text-[17px] px-1 select-none leading-none"
+                className="text-gray-300 dark:text-gray-600 text-[16px] px-1 select-none leading-none"
                 aria-label={t('curator.dragToReorder', { defaultValue: '끌어서 정렬' })}
               >⋮⋮</span>
               {img

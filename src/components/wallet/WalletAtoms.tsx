@@ -26,7 +26,7 @@ export function LargeTitle({ theme = 'dark', title, subtitle }: {
   const t = tokens(theme)
   return (
     <div className="px-4 pt-3 pb-3">
-      <h1 style={{ fontSize: 32, fontWeight: 800, color: t.label, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+      <h1 style={{ fontSize: 32, fontWeight: 700, color: t.label, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
         {title}
       </h1>
       {subtitle && (

@@ -119,7 +119,7 @@ export const CURATOR_FS_CLASS = {
   rowTitle: PLAIN_CLS.title,
   rowPriceLine: PLAIN_CLS.priceLine,
   rowDiscount: 'text-[15px] font-bold text-sale tracking-tight',
-  rowPrice: 'text-[17px] font-bold text-gray-900 dark:text-white tracking-tight',
+  rowPrice: 'text-[16px] font-bold text-gray-900 dark:text-white tracking-tight',
   rowUnit: 'text-[12px] font-medium text-gray-900 dark:text-white',
   rowStrike: 'text-[12px] ml-1 leading-none line-through text-gray-400 dark:text-gray-500',
 } as const

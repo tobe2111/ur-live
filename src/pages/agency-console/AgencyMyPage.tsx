@@ -42,11 +42,11 @@ export default function AgencyMyPage() {
       <SEO title="마이 - 유어딜" description="유어딜 에이전시" url="/user/profile" noindex />
       <div className="mx-auto w-full max-w-[720px] lg:max-w-[1040px] lg:px-2">
         <header className="flex items-center gap-3 px-4 pt-5 pb-1">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-tint text-[17px] font-bold text-brand-text" aria-hidden="true">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-tint text-[16px] font-semibold text-brand-text" aria-hidden="true">
             {name.slice(0, 1)}
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-[17px] font-bold tracking-[-0.01em] text-gray-900 dark:text-white">{name}</h1>
+            <h1 className="truncate text-[16px] font-semibold tracking-[-0.01em] text-gray-900 dark:text-white">{name}</h1>
             {who && <p className="mt-1 truncate text-[13px] text-gray-500 dark:text-gray-400">{who}</p>}
           </div>
           {/* 🔗 2026-11-02 대표 확정 버튼 ① — 손님 마이와 같은 부품. */}

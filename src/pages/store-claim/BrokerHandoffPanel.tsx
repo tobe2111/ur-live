@@ -20,7 +20,7 @@ export default function BrokerHandoffPanel({ code, onDone }: { code: string; onD
   }
   return (
     <div className="w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift p-5">
-      <h2 className="text-[17px] font-bold text-gray-900">등록됐어요 — 사장님께 이 링크를 보내 주세요</h2>
+      <h2 className="text-[16px] font-semibold text-gray-900">등록됐어요 — 사장님께 이 링크를 보내 주세요</h2>
       <p className="mt-2 text-[13px] leading-relaxed text-gray-600">
         사장님이 링크를 열면 <b className="text-gray-900">정산 조건을 확인하고 동의</b>한 뒤, 사업자등록증으로 이 매장의 주인이 됩니다.
         그 전까지는 대행사님이 관리해요.

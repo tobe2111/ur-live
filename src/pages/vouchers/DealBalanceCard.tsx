@@ -143,7 +143,7 @@ export default function DealBalanceCard({
         <div className="min-w-0">
           <p className="text-gray-500 dark:text-gray-400 tracking-wide mb-1 text-[12px]">내 딜 잔액</p>
           <div className="flex items-baseline gap-1">
-            <span className={`font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums ${compact ? 'text-[17px]' : 'text-[28px]'}`}>
+            <span className={`font-bold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums ${compact ? 'text-[16px]' : 'text-[28px]'}`}>
               {/* ⏳ 숫자를 모를 땐 빈 자리를 둔다 — 0 을 적으면 거짓말이고, 비워 두면 높이만 잡힌다. */}
               {awaiting ? <span className="inline-block w-[2.2em] h-[0.72em] rounded bg-wash align-baseline" aria-hidden="true" /> : formatNumber(balance)}
             </span>

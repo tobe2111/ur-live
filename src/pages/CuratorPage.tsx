@@ -269,7 +269,7 @@ export default function CuratorPage() {
   if (error || !data) {
     return (
       <div className="min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-[24px] font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '유어샵을 찾을 수 없어요' })}</h1>
+        <h1 className="text-[20px] font-semibold mb-2">{t('curator.notFoundTitle', { defaultValue: '유어샵을 찾을 수 없어요' })}</h1>
         <p className="text-gray-500 dark:text-gray-400 mb-6">@{handle}</p>
         <Link to="/" className="px-6 py-3 bg-brand rounded-xl text-white font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
       </div>

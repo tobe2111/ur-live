@@ -152,7 +152,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
                 <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">
                   {data.courier?.name || '택배사'} · {data.tracking_number}
                 </p>
-                <p className={`text-[17px] font-bold ${STATUS_LABELS[data.status || 'unknown']?.color || 'text-gray-500'}`}>
+                <p className={`text-[16px] font-semibold ${STATUS_LABELS[data.status || 'unknown']?.color || 'text-gray-500'}`}>
                   {STATUS_LABELS[data.status || 'unknown']?.label || data.status}
                 </p>
                 {data.cached && (

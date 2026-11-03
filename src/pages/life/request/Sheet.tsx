@@ -66,7 +66,7 @@ export function Sheet({ title, onClose, children, footer }: {
           {frame.step === 1 && frame.intro && <div className="px-5 pt-5">{frame.intro}</div>}
           {frame.step === 1 && frame.notice && <div className="px-5 pt-4">{frame.notice}</div>}
           <div className={`flex min-h-0 flex-1 flex-col${moved ? (frame.step > prev ? ' ur-ls-fwd' : ' ur-ls-back') : ''}`}>
-            <h2 className="px-5 pt-6 pb-5 text-[24px] font-bold leading-snug tracking-tight">{title}</h2>
+            <h2 className="px-5 pt-6 pb-5 text-[20px] font-semibold leading-snug tracking-tight">{title}</h2>
             <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">{children}</div>
           </div>
           {footer && <div className="px-5 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">{footer}</div>}
@@ -81,7 +81,7 @@ export function Sheet({ title, onClose, children, footer }: {
       <div className="relative flex max-h-[88dvh] w-full max-w-[560px] flex-col ur-pop-card ur-glass text-ink ur-dialog-in">
         <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-rule-strong" />
         <div className="flex items-center justify-between px-5 pt-3 pb-4">
-          <h2 className="text-[17px] font-bold">{title}</h2>
+          <h2 className="text-[16px] font-semibold">{title}</h2>
           <button type="button" aria-label="닫기" onClick={onClose} className="-mr-2 p-2"><X className="h-5 w-5" /></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">{children}</div>

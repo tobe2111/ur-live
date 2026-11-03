@@ -69,7 +69,7 @@ export default function MyCouponsPage() {
              설명은 **다음에 할 일**만 말한다 — 다른 빈 화면들과 같이 유달이 + 들림 카드. */
           <div className="rounded-2xl px-6 py-10 text-center">
             <Udal mood="empty" size={96} className="block mx-auto mb-4" />
-            <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('myCoupons.empty')}</h2>
+            <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">{t('myCoupons.empty')}</h2>
             <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('myCoupons.emptySub')}</p>
           </div>
         ) : (

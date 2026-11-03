@@ -186,11 +186,11 @@ export default function MallHomePage() {
               onError={(e) => cfImageOnError(e.currentTarget, mall.logoUrl)}
             />
           ) : (
-            <div className="w-[50px] h-[50px] rounded-[15px] flex items-center justify-center text-white dark:text-[#1A1719] text-[24px] font-bold tracking-[-0.02em] flex-none"
+            <div className="w-[50px] h-[50px] rounded-[15px] flex items-center justify-center text-white dark:text-[#1A1719] text-[20px] font-semibold tracking-[-0.02em] flex-none"
               style={{ backgroundColor: 'var(--mall)' }} aria-hidden>{mall.initial}</div>
           )}
           <div className="min-w-0">
-            <h1 className="text-[17px] font-bold tracking-[-0.035em] leading-tight text-[#1A1719] dark:text-[#F3EFF1] truncate">{mall.name}</h1>
+            <h1 className="text-[16px] font-semibold tracking-[-0.035em] leading-tight text-[#1A1719] dark:text-[#F3EFF1] truncate">{mall.name}</h1>
             <p className="mt-1 text-[13px] tracking-[-0.015em] text-[#776F74] dark:text-[#9C9398] truncate">{mall.intro}</p>
           </div>
         </div>

@@ -149,7 +149,7 @@ export default function ReferralPage() {
             <button onClick={() => navigate(-1)} aria-label={t('groupbuy.backAria', { defaultValue: '뒤로' })} className="w-9 h-9 flex items-center justify-center">
               <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
             </button>
-            <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('groupbuy.communityTitle', { defaultValue: '맛집 공구' })}</h1>
+            <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('groupbuy.communityTitle', { defaultValue: '맛집 공구' })}</h1>
             <div className="w-9" />
           </div>
         </div>
@@ -157,12 +157,12 @@ export default function ReferralPage() {
         <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32">
           {/* 식당 + 가격 */}
           <section className="rounded-2xl p-4">
-            <p className="text-[17px] font-bold text-gray-900 dark:text-white">{community.restaurant_name}</p>
+            <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{community.restaurant_name}</p>
             {community.restaurant_address && (
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{community.restaurant_address}</p>
             )}
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-[17px] font-bold text-brand-text">{formatNumber(cgPrice)}원</span>
+              <span className="text-[16px] font-bold text-brand-text">{formatNumber(cgPrice)}원</span>
               <span className="text-[12px] text-gray-400 dark:text-gray-500">{t('groupbuy.summaryPriceLabel', { defaultValue: '희망 가격' })}</span>
             </div>
             <div className="mt-2 flex items-center gap-2 text-[13px] text-gray-600 dark:text-gray-300">
@@ -229,7 +229,7 @@ export default function ReferralPage() {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-4">
         <GiftBoxIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
-        <p className="text-gray-900 dark:text-white font-bold text-[17px]">유효하지 않은 초대입니다</p>
+        <p className="text-gray-900 dark:text-white font-semibold text-[16px]">유효하지 않은 초대입니다</p>
         <Link to="/" className="mt-4 text-gray-900 dark:text-white text-[15px] font-medium underline">홈으로 돌아가기</Link>
       </div>
     )
@@ -268,7 +268,7 @@ export default function ReferralPage() {
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">공동구매</h1>
+          <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">공동구매</h1>
           <div className="w-9" />
         </div>
       </div>
@@ -286,11 +286,11 @@ export default function ReferralPage() {
                 <div className="mt-2 flex items-baseline gap-2">
                   {currentDiscount > 0 ? (
                     <>
-                      <span className="text-[17px] font-bold text-brand-text">{formatNumber(discountedPrice)}원</span>
+                      <span className="text-[16px] font-bold text-brand-text">{formatNumber(discountedPrice)}원</span>
                       <span className="text-[12px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(product.price)}원</span>
                     </>
                   ) : (
-                    <span className="text-[17px] font-bold text-gray-900 dark:text-white">{formatNumber(product.price)}원</span>
+                    <span className="text-[16px] font-bold text-gray-900 dark:text-white">{formatNumber(product.price)}원</span>
                   )}
                 </div>
               </div>
@@ -583,7 +583,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
         ].filter((t, i) => i > 0 || t.v > 0).map((t, i, arr) => (
           <span key={t.l} className="contents">
             <div className="rounded-lg px-2 py-2 bg-brand-tint">
-              <span className="text-[17px] font-bold text-brand-text" style={{ fontFamily: 'ui-monospace, monospace' }}>
+              <span className="text-[16px] font-semibold text-brand-text" style={{ fontFamily: 'ui-monospace, monospace' }}>
                 {String(t.v).padStart(2, '0')}
               </span>
               <span className="text-[12px] block leading-none mt-1 text-brand-text">{t.l}</span>

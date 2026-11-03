@@ -33,7 +33,7 @@ export default function CommunityGroupBuyCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center flex-shrink-0">
-            <span className="text-[17px]">🙋</span>
+            <span className="text-[16px]">🙋</span>
           </div>
           <div className="min-w-0">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">

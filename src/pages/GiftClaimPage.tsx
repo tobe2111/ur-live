@@ -98,7 +98,7 @@ export default function GiftClaimPage() {
         <SEO title={t('giftClaim.notFoundSeoTitle')} description={t('giftClaim.notFoundSeoDesc')} url={`/gift/claim/${token}`} />
         <div className="text-center max-w-sm">
           <BadIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('giftClaim.notFoundTitle')}</h1>
+          <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">{t('giftClaim.notFoundTitle')}</h1>
           <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{t('giftClaim.notFoundDesc')}</p>
           <button onClick={() => navigate('/')} className="px-6 py-3 bg-brand text-white rounded-full text-[15px] font-bold">
             {t('common.back')}
@@ -126,7 +126,7 @@ export default function GiftClaimPage() {
         <div className="text-center mb-8">
           {/* 🦦 2026-10-10 (대표 "다 해줘"): 선물 상자 아이콘 → 하이파이브 유달이 — 받는 사람은 대개 처음 오는 사람이다 */}
           <Udal mood="yay" size={104} priority motion className="block mx-auto mb-3" />
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-1">
+          <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-1">
             <Trans
               i18nKey="giftClaim.fromSender"
               values={{ name: gift.sender_name }}
