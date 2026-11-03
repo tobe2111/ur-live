@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { PinIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
-import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation, useNavigationType, Link } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 // Firebase Auth will be lazy loaded when needed
 import { isKorea } from '@/config/region'
@@ -19,6 +19,7 @@ import { resolveLoginReturnUrl, clearLoginReturnUrl } from '@/utils/login-return
 import { showKakaoLoadingOverlay, removeKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
 import { canUseTalkLogin, prepareTalkLogin, scheduleTalkLoginPrepare, startTalkLogin } from '@/lib/kakao-talk-login'
 import { hasConsumerSession } from '@/utils/auth'
+import { canGoBackInApp } from '@/hooks/useSafeBack'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 15차 ① — 제목 → 서비스 칩(하나씩 톡) → 카카오 버튼이 차례로 떠오른다. 들어올 때 한 번뿐이고, 버튼을 **누를 때**는 아무 움직임도 없다(iOS 멈춤 — 10차 ⑨).
 injectMotionCss('ur-m-login', `@keyframes ur-lg-up { from { opacity: 0; transform: translateY(12px); } }@keyframes ur-lg-pop { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.08); } 100% { transform: none; } }.ur-lg-h { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .05s backwards; }.ur-lg-chips > * { animation: ur-lg-pop .35s cubic-bezier(.3,1.3,.5,1) .22s backwards; }.ur-lg-chips > *:nth-child(2) { animation-delay: .29s; }.ur-lg-chips > *:nth-child(3) { animation-delay: .36s; }.ur-lg-btn { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .34s backwards; }@media (prefers-reduced-motion: reduce){.ur-lg-h,.ur-lg-chips > *,.ur-lg-btn{animation:none!important}}`)
@@ -53,6 +54,7 @@ export default function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  const navType = useNavigationType()
   const [searchParams] = useSearchParams()
   const hasRedirected = useRef(false)
   // 🛡️ 2026-06-23: 카카오 로그인 진행 가드 — 반복 클릭 방지 (ref = re-render 없음 → iOS freeze 회피)
@@ -120,9 +122,27 @@ export default function LoginPage() {
     if (isLoggedIn && !hasRedirected.current) {
       hasRedirected.current = true
       clearLoginReturnUrl()   // 복귀했으면 지운다 — 남겨 두면 다음 로그인이 옛 주소로 간다
-      navigate(returnUrlRef.current!, { replace: true })
+      // 🔙 2026-11-03: 로그인을 마친 뒤 폰 뒤로로 이 화면에 다시 왔으면 앞으로 보내지 않고 한 칸 더 뒤로 간다.
+      //   앞으로(replace) 보내면 같은 상세가 두 번 쌓여 '뒤로를 눌러도 그대로'가 된다. 판정 SSOT: useSafeBack.
+      if (navType === 'POP' && canGoBackInApp()) navigate(-1)
+      else navigate(returnUrlRef.current!, { replace: true })
     }
-  }, [isLoggedIn, navigate, wantsSwitch])
+  }, [isLoggedIn, navigate, wantsSwitch, navType])
+
+  // 🔙 2026-11-03: 카카오 화면에서 폰 뒤로로 돌아오면 브라우저가 이 화면을 **얼어 있던 그대로**(bfcache) 되살린다 —
+  //   '카카오로 이동 중' 가림막이 덮인 채 버튼도 안 눌린다. 되살아난 순간 가림막을 걷고, 그새 로그인이 끝났으면 비킨다.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return
+      removeKakaoLoadingOverlay()
+      kakaoNavRef.current = false
+      if (!hasConsumerSession()) return
+      if (canGoBackInApp()) navigate(-1)
+      else navigate(returnUrlRef.current!, { replace: true })
+    }
+    window.addEventListener('pageshow', onShow)
+    return () => window.removeEventListener('pageshow', onShow)
+  }, [navigate])
 
   // ✅ returnUrl 저장 (KR만)
   // 🛡️ 2026-05-04: Kakao SDK pre-load 제거 — 로그인은 server-side OAuth redirect 만 사용해 SDK 불필요.
@@ -172,7 +192,8 @@ export default function LoginPage() {
         return
       }
       showKakaoLoadingOverlay() // 공용 SSOT — 순수 DOM, iOS freeze 없음
-      window.location.href = `/auth/kakao/start?${params.toString()}`
+      // 🔙 2026-11-03: replace — 로그인 화면을 이력에 남기지 않는다. 남기면 돌아온 뒤 폰 뒤로가 로그인 화면을 다시 거친다.
+      window.location.replace(`/auth/kakao/start?${params.toString()}`)
     } catch (err: unknown) {
       kakaoNavRef.current = false // 실패 시 재시도 허용
       removeKakaoLoadingOverlay()
