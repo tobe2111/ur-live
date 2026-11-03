@@ -7259,10 +7259,5 @@
     "issuedBand": "Vouchers issued",
     "kindsCount": "{{n}} types",
     "expiryVaries": "Expiry dates vary by voucher"
-  },
-  "guest": {
-    "my": {
-      "statTip": "Log in to see"
-    }
   }
 }

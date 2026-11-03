@@ -40,17 +40,10 @@ function passBody(): string {
     `<div class="mt-5"><ul class="${GUEST_CLS.benefits}">${items}</ul></div><div class="mt-6">${kakao()}</div></section>`
 }
 
-/** 헤드라인 안의 한 구절을 형광펜 칸으로 감싼다 — React(`GuestUrShopPage.MarkedLine`)와 같은 모양. 구절이 없으면 그대로. */
-function markHtml(line: string, mark: string): string {
-  const i = line.indexOf(mark)
-  if (i < 0) return esc(line)
-  return `${esc(line.slice(0, i))}<span class="${GUEST_CLS.shopMark}">${esc(mark)}</span>${esc(line.slice(i + mark.length))}`
-}
-
 function shopBody(): string {
   const c = GUEST_COPY.shop
   return `<h1 class="${GUEST_CLS.title}">${esc(c.title)}</h1>` +
-    `<div class="${GUEST_CLS.shopBody}" data-guest="urshop"><h2 class="${GUEST_CLS.shopHeadline}">${esc(c.headline1)}<br>${markHtml(c.headline2, c.headline2Mark)}</h2><p class="${GUEST_CLS.shopSub}">${esc(c.sub)}</p></div>`
+    `<div class="${GUEST_CLS.shopBody}" data-guest="urshop"><h2 class="${GUEST_CLS.shopHeadline}">${esc(c.headline1)}<br>${esc(c.headline2)}</h2><p class="${GUEST_CLS.shopSub}">${esc(c.sub)}</p></div>`
 }
 
 function myBody(): string {

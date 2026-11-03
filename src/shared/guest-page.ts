@@ -26,8 +26,6 @@ export const GUEST_CLS = {
   kakaoIcon: 'w-[18px] h-[18px]',
   /** 🎬 2026-11-03 카카오 버튼을 지나가는 빛 칸 — 앱과 서버 첫 화면이 같은 모양이어야 해서 여기 둔다(CSS 는 GuestKakaoButton). */
   kakaoShine: 'ur-gk-shine absolute inset-0 pointer-events-none',
-  /** 🎬 유어샵 헤드라인 형광펜 칸 — 글자는 그대로, 밑에 덧칠만(서버가 그린 글자를 숨기지 않는다). CSS 는 GuestUrShopPage. */
-  shopMark: 'ur-gs-mark',
   /** 유어샵 탭 — 카드가 아니라 바탕 위 문단이다. */
   shopBody: 'px-4',
   shopHeadline: 'mt-2 text-[24px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white',
@@ -63,10 +61,8 @@ export const GUEST_COPY = {
   },
   shop: {
     title: '유어샵',
-    headline1: '팔아보고 싶은 가게 이용권,',
+    headline1: '좋아하는 가게 이용권,',
     headline2: '내 SNS 링크 하나에 모아요',
-    /** 🎬 2026-11-03 형광펜이 그어질 말 — 앱과 서버 첫 화면이 같은 칸(`GUEST_CLS.shopMark`)으로 감싼다. */
-    headline2Mark: 'SNS 링크 하나',
     sub: '프로필에 걸어 두면 팔로워가 거기서 바로 사요',
   },
   my: {

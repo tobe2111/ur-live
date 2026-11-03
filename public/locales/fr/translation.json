@@ -7259,10 +7259,5 @@
     "issuedBand": "[TODO:fr] 이용권 발급 완료",
     "kindsCount": "[TODO:fr] {{n}}종",
     "expiryVaries": "[TODO:fr] 사용 기한은 이용권마다 달라요"
-  },
-  "guest": {
-    "my": {
-      "statTip": "Connectez-vous pour voir"
-    }
   }
 }

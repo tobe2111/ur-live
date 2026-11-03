@@ -11,7 +11,7 @@
  * ⚠️ 혜택에 "팔리면 소개비" 를 쓰지 말 것 — 담기(소개) 커미션은 꺼져 있다(`affiliate_program_enabled`).
  *   지금 실제로 돈이 되는 길은 매장이 주는 **협업 코드**다(`redeemInfluencerCode` — 매장이 정한 몫).
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight } from 'lucide-react'
@@ -37,14 +37,6 @@ const injectMotionCss = (id: string, css: string) => { if (typeof document !== '
  *   ③ 혜택 셋·사장님 줄 — 화면에 들어올 때 아래에서 차례로 떠오르고 아이콘이 톡
  */
 injectMotionCss('ur-m-guestshop', `@keyframes ur-gs-row { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }@keyframes ur-gs-pop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: none; } }@keyframes ur-gs-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }@keyframes ur-gs-caret { 50% { opacity: 0; } }.ur-gs-shelf .ur-gs-rows > * { animation: ur-gs-row .5s cubic-bezier(.2,1,.3,1) backwards; }.ur-gs-shelf .ur-gs-rows > :nth-child(2) { animation-delay: .09s; }.ur-gs-shelf .ur-gs-rows > :nth-child(3) { animation-delay: .18s; }.ur-gs-shelf .ur-gs-n { animation: ur-gs-pop .4s cubic-bezier(.3,1.4,.5,1) .3s backwards; }.ur-gs-shelf .ur-gs-rows > :nth-child(2) .ur-gs-n { animation-delay: .39s; }.ur-gs-shelf .ur-gs-rows > :nth-child(3) .ur-gs-n { animation-delay: .48s; }.ur-gs-caret { display: inline-block; width: 1px; height: 1em; margin-left: 1px; vertical-align: -2px; background: currentColor; animation: ur-gs-caret 1s steps(1) infinite; }.ur-gs-reveal li, .ur-gs-reveal-one { opacity: 0; }.ur-gs-reveal.ur-gs-on li, .ur-gs-reveal-one.ur-gs-on { animation: ur-gs-up .5s cubic-bezier(.2,1,.3,1) both; }.ur-gs-reveal.ur-gs-on li:nth-child(2) { animation-delay: .08s; }.ur-gs-reveal.ur-gs-on li:nth-child(3) { animation-delay: .16s; }.ur-gs-reveal.ur-gs-on li > span:first-child, .ur-gs-reveal-one.ur-gs-on > span:first-child { animation: ur-gs-pop .4s cubic-bezier(.3,1.4,.5,1) .15s backwards; }@media (prefers-reduced-motion: reduce){.ur-gs-shelf .ur-gs-rows > *,.ur-gs-shelf .ur-gs-n,.ur-gs-caret,.ur-gs-reveal.ur-gs-on li,.ur-gs-reveal-one.ur-gs-on,.ur-gs-reveal.ur-gs-on li > span:first-child,.ur-gs-reveal-one.ur-gs-on > span:first-child{animation:none!important}.ur-gs-reveal li,.ur-gs-reveal-one{opacity:1}}`)
-/**
- * 🎬 2026-11-03 로그아웃 2차(대표 *"시안들 다 마음에 든다"*):
- *   ① 헤드라인 'SNS 링크 하나' 형광펜 — 서버가 그린 글자를 **숨기지 않고** 밑에 덧칠만(`ur-gs-mark` 에 `ur-on`)
- *   ② 예시 진열대가 3초마다 한 줄씩 다른 인기 이용권으로 바뀐다(줄이 새로 들어오는 움직임은 ①차 등장 그대로)
- *   ③ 주소가 다 쳐지면 옆에 SNS 색 조각 셋이 톡톡 ④ 혜택 아이콘이 저마다 움직인다(고리 흔들림·톡·동전 돌기)
- *   ⑤ 사장님 줄 화살표가 들어오면 오른쪽으로 두 번 밀린다
- */
-injectMotionCss('ur-m-guestshop2', `@keyframes ur-gs-wig { 0%, 100% { transform: none; } 30% { transform: rotate(-14deg); } 65% { transform: rotate(10deg); } }@keyframes ur-gs-flip { 0%, 100% { transform: none; } 50% { transform: scaleX(-1); } }@keyframes ur-gs-nudge { 0%, 100% { transform: none; } 35% { transform: translateX(5px); } }@keyframes ur-gs-chip { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: none; } }.ur-gs-mark { background: linear-gradient(transparent 60%, rgba(28,105,239,.25) 60%) no-repeat 0 0 / 0% 100%; transition: background-size .8s cubic-bezier(.3,.8,.3,1); }.ur-gs-mark.ur-on { background-size: 100% 100%; }.ur-gs-reveal.ur-gs-on li:nth-child(1) svg { animation: ur-gs-wig .6s ease-in-out .55s; }.ur-gs-reveal.ur-gs-on li:nth-child(3) svg { animation: ur-gs-flip .8s ease-in-out .75s; }.ur-gs-reveal-one.ur-gs-on .ur-gs-chev { animation: ur-gs-nudge 1.1s ease-in-out .6s 2; }.ur-gs-chips > i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; animation: ur-gs-chip .35s cubic-bezier(.3,1.4,.5,1) backwards; }.ur-gs-chips > i:nth-child(2) { animation-delay: .1s; }.ur-gs-chips > i:nth-child(3) { animation-delay: .2s; }@media (prefers-reduced-motion: reduce){.ur-gs-mark{transition:none!important}.ur-gs-reveal.ur-gs-on li svg,.ur-gs-reveal-one.ur-gs-on .ur-gs-chev,.ur-gs-chips > i{animation:none!important}}`)
 
 /** 화면에 들어오면 `ur-gs-on` 을 한 번 붙인다. 관찰기가 없으면 바로 붙인다(보이기는 해야 한다). */
 function useRevealOnce<T extends HTMLElement>() {
@@ -58,38 +50,6 @@ function useRevealOnce<T extends HTMLElement>() {
     return () => io.disconnect()
   }, [])
   return ref
-}
-
-/** 헤드라인 안의 한 구절을 형광펜 칸으로 감싼다 — 서버 첫 화면(`guest-first-screen.markHtml`)과 같은 모양. */
-function MarkedLine({ line, mark }: { line: string; mark: string }) {
-  const ref = useRef<HTMLSpanElement | null>(null)
-  // 테스트·서버 모양 비교에 끼지 않게 조금 뒤에 붙인다(붙는 순간 밑줄이 왼쪽부터 그어진다).
-  useEffect(() => { const id = window.setTimeout(() => ref.current?.classList.add('ur-on'), 450); return () => window.clearTimeout(id) }, [])
-  const i = line.indexOf(mark)
-  if (i < 0) return <>{line}</>
-  return <>{line.slice(0, i)}<span ref={ref} className={GUEST_CLS.shopMark}>{mark}</span>{line.slice(i + mark.length)}</>
-}
-
-/** 예시 진열대 — 3초마다 한 줄씩 다음 인기 이용권으로 바꾼다. 인기 이용권이 셋 이하이거나 동작 줄이기면 그대로. */
-function useRotatingPins(pool: PassItem[], enabled: boolean): PassItem[] {
-  const [slots, setSlots] = useState<number[]>([0, 1, 2])
-  // 🩸 목록이 새 배열로 와도(빈 목록 기본값 등) 내용이 같으면 다시 시작하지 않는다 — 안 그러면 setSlots 가 다시 그리기를 부르고 끝없이 돈다.
-  const sig = pool.map((p) => p.id).join(',')
-  useEffect(() => {
-    setSlots((s) => (s[0] === 0 && s[1] === 1 && s[2] === 2 ? s : [0, 1, 2]))
-    if (!enabled || pool.length <= 3) return
-    try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { return }
-    let tick = 0, next = 3
-    const id = window.setInterval(() => {
-      if (document.visibilityState !== 'visible') return
-      const row = tick++ % 3
-      const pick = next++ % pool.length
-      setSlots((s) => (s.includes(pick) ? s : s.map((v, k) => (k === row ? pick : v))))
-    }, 3000)
-    return () => window.clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sig, enabled])
-  return slots.map((i) => pool[i]).filter(Boolean)
 }
 
 /** 'udal' 을 한 글자씩 친다. 동작 줄이기면 처음부터 다 보인다. */
@@ -131,8 +91,7 @@ function ExamplePin({ p, n }: { p: PassItem; n: number }) {
 export default function GuestUrShopPage() {
   const { t } = useTranslation()
   const { data: items = [], isLoading } = usePopularPasses()
-  const withPhoto = useMemo(() => items.filter((p) => !!p.image_url).slice(0, 9), [items])
-  const real = useRotatingPins(withPhoto, true)
+  const real = items.filter((p) => !!p.image_url).slice(0, 3)
   // 🧱 2026-10-19 — 예시 진열대는 인기 이용권 응답이 와야 그려지는데, 그 전엔 자리가 없어서
   //   도착하는 순간 아래 혜택·가입 버튼이 통째로 425px 밀렸다(라이브 실측 CLS 0.39).
   //   기다리는 동안 **같은 부품(DealRow)으로 같은 개수**를 안 보이게 세워 자리를 잡는다(숫자로 예약하지 않는다).
@@ -153,7 +112,7 @@ export default function GuestUrShopPage() {
       <div className={GUEST_CLS.shopBody} data-guest="urshop">
         <h2 className={GUEST_CLS.shopHeadline}>
           {t('guest.shop.headline1', { defaultValue: GUEST_COPY.shop.headline1 })}<br />
-          <MarkedLine line={t('guest.shop.headline2', { defaultValue: GUEST_COPY.shop.headline2 })} mark={GUEST_COPY.shop.headline2Mark} />
+          {t('guest.shop.headline2', { defaultValue: GUEST_COPY.shop.headline2 })}
         </h2>
         <p className={GUEST_CLS.shopSub}>
           {t('guest.shop.sub', { defaultValue: GUEST_COPY.shop.sub })}
@@ -181,13 +140,6 @@ export default function GuestUrShopPage() {
           <p className={`mt-3 flex items-center gap-2 px-1 text-[13px] text-gray-500 dark:text-gray-400${hide}`} aria-hidden={waiting || undefined}>
             <span>{t('guest.shop.linkLabel', { defaultValue: '프로필 링크' })}</span>
             <span className="font-medium text-brand-text" aria-label="urdeal.kr/u/udal">urdeal.kr/u/{typed.text}{!typed.done && <span className="ur-gs-caret" aria-hidden="true" />}</span>
-            {typed.done && (
-              <span className="ur-gs-chips inline-flex gap-1" aria-hidden="true">
-                <i style={{ background: 'linear-gradient(45deg, rgb(249,206,52), rgb(238,42,123), rgb(98,40,215))' }} />
-                <i style={{ background: 'rgb(255,0,0)' }} />
-                <i style={{ background: 'rgb(3,199,90)' }} />
-              </span>
-            )}
           </p>
         )}
 
@@ -219,7 +171,7 @@ export default function GuestUrShopPage() {
             <span className="block text-[15px] font-bold text-gray-900 dark:text-white">{t('guest.owner.title', { defaultValue: '사장님이세요?' })}</span>
             <span className="block mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('guest.owner.desc', { defaultValue: '내 가게 이용권을 등록하고 팔아 보세요' })}</span>
           </span>
-          <ChevronRight className="ur-gs-chev w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+          <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
         </Link>
       </div>
     </div>
