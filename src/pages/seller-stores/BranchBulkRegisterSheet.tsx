@@ -20,6 +20,7 @@ import type { KakaoPlace } from '@/components/KakaoMapPicker'
 import { toRegisterPlace, type RegisterPlace } from '@/components/seller/StoreRegisterModal'
 import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phone'
 import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
+import { formatBizNo } from '@/utils/format-kr' // 🔢 사업자등록번호 000-00-00000 자동 하이픈(2026-11-03 대표 — 모든 입력란)
 
 type Outcome = { kind: 'ok' } | { kind: 'exists' } | { kind: 'fail'; error: string }
 
@@ -150,7 +151,7 @@ export default function BranchBulkRegisterSheet({ onClose, onDone }: { onClose: 
               </label>
               <label className="block">
                 <span className="text-[13px] font-semibold text-gray-700">사업자등록번호 (선택)</span>
-                <input inputMode="numeric" value={bno} onChange={(e) => setBno(e.target.value.replace(/[^0-9-]/g, '').slice(0, 12))} placeholder="숫자 10자리"
+                <input inputMode="numeric" value={bno} onChange={(e) => setBno(formatBizNo(e.target.value))} maxLength={12} placeholder="000-00-00000"
                   className="mt-1 w-full rounded-xl border border-rule-strong px-3 py-3 text-[15px] text-gray-900 outline-none focus:border-brand" />
                 <span className="mt-1 block text-[12px] text-gray-500">직영점처럼 지점이 같은 사업자면 넣어 주세요. 가맹점은 점주가 각자 등록하는 게 맞아요.</span>
                 {!bnoOk && <span className="mt-1 block text-[12px] text-tone-bad">사업자번호는 숫자 10자리예요</span>}

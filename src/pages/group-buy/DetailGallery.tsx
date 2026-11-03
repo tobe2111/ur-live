@@ -42,6 +42,10 @@ interface Props {
 /** PC 우측 썸네일 칸 수 — 그루폰은 2칸. 그 이상은 `+N` 으로 접는다. */
 const PC_THUMBS = 2
 
+/** 🎬 17차 ⑦ — 흐림→선명 시작값과 도착 처리(키프레임이 아니라 전환이라 움직임 묶음 규칙 밖 — filter 는 이 한 곳). */
+const BLUR_START = { filter: 'blur(10px)', transform: 'scale(1.04)', transition: 'filter .45s ease, transform .45s ease' } as const
+const sharpen = (e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.transform = 'none' }
+
 export default function DetailGallery({ images: rawImages, alt, badges, fallback, overlay }: Props) {
   const { t } = useTranslation()
   const [active, setActive] = useState(0)
@@ -58,6 +62,25 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
   }, [])
   const touchX = useRef<number | null>(null)
   const galRef = useRef<HTMLDivElement | null>(null)
+  /**
+   * 🎬 2026-11-03 17차 ② — 폰 큰 사진 **시차**: 화면을 내리면 사진이 글보다 천천히(0.4배) 올라가 깊이감이 생긴다.
+   *   사진 칸(바깥)은 그대로 두고 안쪽 가로 스크롤 줄만 transform 으로 내린다 — 자리는 안 바뀌어 아래가 밀리지 않는다.
+   *   사진 높이를 지나면 멈추고, PC·동작 줄이기에선 안 한다.
+   */
+  useEffect(() => {
+    const el = galRef.current
+    if (!el || typeof window === 'undefined') return
+    try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || window.matchMedia?.('(min-width: 1024px)').matches) return } catch { return }
+    let raf = 0
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => { raf = 0; const h = el.offsetHeight || 0; const y = Math.min(Math.max(window.scrollY, 0), h); el.style.transform = y > 0 ? `translateY(${Math.round(y * 0.4)}px)` : '' })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf); el.style.transform = '' }
+  }, [])
+  /** 🎬 17차 ⑦ — 둘째 장부터는 도착할 때 흐렸다가 선명해진다(첫 장은 빨리 보여야 하므로 그대로). 동작 줄이기면 안 한다. */
+  const blurUp = useMemo(() => { try { return !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { return false } }, [])
 
   /**
    * 💀 2026-08-19 (대표 확정 B): **원본까지 죽은 사진**을 목록에서 뺀다.
@@ -197,7 +220,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
       ))}
 
       {/* 📱 모바일 — 기존 스와이프 갤러리(불변). */}
-      <div className={`relative lg:hidden`}>
+      <div className={`relative lg:hidden overflow-hidden`}>
         <div ref={galRef} onScroll={onGalScroll} className="scrollbar-hide" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '3/2', scrollSnapType: 'x mandatory' }}>
           {(has ? images : ['']).map((src, i) => {
             // 💰 보이는 장면 ±1 만 받는다. 이전엔 5장을 한꺼번에 요청해(각 136~220KB, 콜드 2~4s)
@@ -230,7 +253,8 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
                     loading="eager"
                     fetchPriority={i === 0 ? 'high' : 'auto'}
                     decoding="async"
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', ...(i > 0 && blurUp ? BLUR_START : null) }}
+                    onLoad={i > 0 && blurUp ? sharpen : undefined}
                     onError={() => setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src)))}
                   />
                 )}

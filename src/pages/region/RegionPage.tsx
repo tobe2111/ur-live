@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { PinIcon } from '@/components/icons/urdeal-icons'
 import { Link, useParams } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
@@ -16,6 +16,9 @@ import {
   type SidoStat,
 } from '@/shared/constants/region-slugs'
 import NotFoundPage from '@/pages/NotFoundPage'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 16차 ④ — 종류 칩을 고르면 칩이 톡 켜지고, 아래 딜 목록이 살짝 떠오르며 바뀐다(홈의 카테고리 바꾸기와 같은 움직임).
+injectMotionCss('ur-m-region', `@keyframes ur-rg-chip { 0% { transform: scale(.9); } 60% { transform: scale(1.06); } 100% { transform: none; } }.ur-rg-chip { animation: ur-rg-chip .3s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-rg-chip{animation:none!important}}`)
 
 /**
  * 🗺️ 2026-08-03 (대표 — "도시별로도 보이게" + "구글에 페이지가 쭉 나오게"): 지역 착지 페이지.
@@ -51,6 +54,14 @@ export default function RegionPage() {
   const { sido: sidoParam, sigungu: sigunguParam } = useParams()
   const ref = useMemo(() => parseRegionPath(sidoParam, sigunguParam), [sidoParam, sigunguParam])
   const [category, setCategory] = useState<CategoryKey>('all')
+  const [picked, setPicked] = useState(false) // 🎬 16차 ④ — 사람이 고른 뒤에만 칩이 톡(첫 화면은 그대로)
+  const feedWrap = useRef<HTMLDivElement | null>(null)
+  const pickCategory = (k: CategoryKey) => {
+    if (k === category) return
+    setPicked(true); setCategory(k)
+    try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { return }
+    feedWrap.current?.animate?.([{ opacity: 0.4, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 350, easing: 'cubic-bezier(.2,1,.3,1)' })
+  }
 
   const { data: regions = [] } = useApiQuery<SidoStat[]>(
     ['regions', 'stats'],
@@ -130,13 +141,13 @@ export default function RegionPage() {
             return (
               <button
                 key={ch.key}
-                onClick={() => setCategory(ch.key)}
+                onClick={() => pickCategory(ch.key)}
                 aria-pressed={on}
                 className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-medium border transition-colors ${
                   on
                     ? 'bg-brand text-white border-brand'
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
-                }`}
+                }${on && picked ? ' ur-rg-chip' : ''}`}
               >
                 {ch.label}
               </button>
@@ -152,6 +163,7 @@ export default function RegionPage() {
         </div>
 
         {/* 딜 그리드 — 홈과 같은 GroupBuyFeed(데이터/prefetch/페이지네이션 공유, 중복 fetch 0) */}
+        <div ref={feedWrap}>
         <GroupBuyFeed
           pc
           category={category}
@@ -159,6 +171,7 @@ export default function RegionPage() {
           regionRef={ref}
           showLife
         />
+        </div>
       </div>
 
       {/* 같은 시/도의 다른 지역 — 사용자 탐색 + 크롤러가 이웃 지역 페이지로 넘어가는 통로 */}

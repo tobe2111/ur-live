@@ -23,6 +23,9 @@ import { readCachedLoc } from '@/shared/utils/cached-loc'
 import { distanceKm } from '@/pages/restaurant-map/utils'
 import { PinIcon } from '@/components/icons/urdeal-icons'
 import { sortBranchesByDistance, type BrandStore } from './brand-branches'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 16차 ⑥ — 가까운 지점이 위에서부터 차례로 나온다(첫 여덟 줄).
+injectMotionCss('ur-m-brand', `@keyframes ur-br-up { from { opacity: 0; transform: translateY(8px); } }.ur-br-list > *:nth-child(-n+8) { animation: ur-br-up .32s cubic-bezier(.2,.9,.3,1) backwards; }.ur-br-list > *:nth-child(2) { animation-delay: 50ms; }.ur-br-list > *:nth-child(3) { animation-delay: 100ms; }.ur-br-list > *:nth-child(4) { animation-delay: 150ms; }.ur-br-list > *:nth-child(5) { animation-delay: 200ms; }.ur-br-list > *:nth-child(6) { animation-delay: 250ms; }.ur-br-list > *:nth-child(7) { animation-delay: 300ms; }.ur-br-list > *:nth-child(8) { animation-delay: 350ms; }@media (prefers-reduced-motion: reduce){.ur-br-list > *{animation:none!important}}`)
 
 interface BrandPayload {
   brand: { slug: string; name: string }
@@ -63,7 +66,7 @@ export default function BrandPage() {
 
         {branches.length > 0 && (
           <section aria-label="지점">
-            <ul className="divide-y divide-rule">
+            <ul className="ur-br-list divide-y divide-rule">
               {branches.slice(0, 20).map((s) => {
                 const on = onlyStore === s.seller_id
                 const km = userLoc && s.lat != null && s.lng != null ? distanceKm(userLoc.lat, userLoc.lng, s.lat, s.lng) : null

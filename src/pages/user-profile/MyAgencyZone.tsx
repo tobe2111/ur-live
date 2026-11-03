@@ -35,6 +35,14 @@ function probedThisTab(uid: string): boolean {
 export default function MyAgencyZone({ ownSellerIds, inHead = false }: { ownSellerIds?: number[]; inHead?: boolean } = {}) {
   const presence = useAgencyPresence()
   const [on, setOnState] = useState(hasAgencyLogin)
+  /**
+   * 🐢 2026-11-03 대표 *"마이페이지도 확인해주고"* — 화면이 뜬 **뒤** 카카오 자동 연결(아래 probe)이 성공하면 이 구역이
+   *   흐름 한가운데 끼어들어 아래를 밀었고(#2090), 폰 탭(#2128 '에이전시 기본')까지 붙자 보던 '나' 화면이 통째로 사라졌다.
+   *   실사용 CLS 원인 기록: `div.ur-content-medium.lg:px-4 | y657→0 h70→0 | t1376`(설정 줄이 1.4초에 사라짐).
+   *   ⇒ 이번 화면에선 **아무것도 바꾸지 않는다** — 연결은 저장되므로 다음에 마이를 열면 처음부터 탭·구역이 있다.
+   *   사람이 직접 하는 일(로그아웃·세션 만료)은 그대로 즉시 반영된다.
+   */
+  const [lateConnected, setLateConnected] = useState(false)
   const setOn = useCallback((v: boolean) => { setOnState(v); announceAgencyPresence() }, [])
   useEffect(() => { setOnState(presence.on) }, [presence.on])
   const onSessionEnd = useCallback((why: 'expired' | 'logout') => {
@@ -51,12 +59,12 @@ export default function MyAgencyZone({ ownSellerIds, inHead = false }: { ownSell
       try { sessionStorage.setItem(KAKAO_PROBE_KEY_MIRROR, uid) } catch { /* 막힘 */ }
       void import('@/pages/agency-console/agency-kakao-client')
         .then((m) => m.connectKakaoAgency())
-        .then((ok) => { if (ok) setOn(true) })
+        .then((ok) => { if (ok) { setLateConnected(true); setOn(true) } })
         .catch(() => { /* 없으면 그만 */ })
     })
   }, [on, setOn])
 
-  if (!on) return null
+  if (!on || lateConnected) return null
   const merged = !!ownSellerIds && ownSellerIds.length > 0
   return (
     <Suspense fallback={null}>

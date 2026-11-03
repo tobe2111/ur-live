@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { toast } from '@/hooks/useToast'
 import { Field, panelInputCls } from './AgencyAuthShell'
 import { agencyRequest, type AgencyInfo } from './agency-api'
+import { formatBizNo } from '@/utils/format-kr' // 🔢 사업자등록번호 000-00-00000 자동 하이픈(2026-11-03 대표 — 모든 입력란)
 
 /** 에이전시 정보(관리자만) — 이름·사업자등록번호. */
 export function AgencyInfoPanel({ agency, onSaved, bare = false }: { agency: AgencyInfo; onSaved: () => void; bare?: boolean }) {
@@ -34,7 +35,7 @@ export function AgencyInfoPanel({ agency, onSaved, bare = false }: { agency: Age
         </Field>
         {agency.kind === 'business' ? (
           <Field label="사업자등록번호">
-            <input inputMode="numeric" value={bizNo} onChange={(e) => setBizNo(e.target.value)} disabled={busy} className={panelInputCls} />
+            <input inputMode="numeric" value={bizNo} onChange={(e) => setBizNo(formatBizNo(e.target.value))} maxLength={12} disabled={busy} className={panelInputCls} />
           </Field>
         ) : (
           <p className="text-[13px] text-gray-500 dark:text-gray-400">개인 에이전시예요. 정산 때 3.3% 원천징수 후 지급돼요.</p>

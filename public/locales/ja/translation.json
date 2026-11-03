@@ -6117,7 +6117,8 @@
   },
   "search": {
     "inputPlaceholder": "商品名・ブランド・セラーを検索",
-    "related": {}
+    "related": {},
+    "endOfList": "ここまでですべてです"
   },
   "register": {
     "title": "[TODO:ja] 회원가입",

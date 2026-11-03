@@ -31,7 +31,7 @@ import { getPolicy } from '../utils/dynamic-policy'
 import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'; import { snsLinkStatus, SNS_LABEL, type SnsPlatform } from '../../shared/sns-link'
 import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'
-import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'; import { countUShopSales } from '../utils/ushop-sales'; import { publicReadDb } from '../utils/d1-read-replica' // 한 줄: 래칫
+import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'; import { countUShopSales } from '../utils/ushop-sales'; import { publicReadDb, userReadDb } from '../utils/d1-read-replica' // 한 줄: 래칫
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -174,7 +174,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     if (!handle || !isValidHandleFormat(handle)) {
       return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
     }
-    const DB = getAuthUserId(c) == null ? publicReadDb(c.env.DB) : c.env.DB // 🌏 2026-10-15 D1 읽기 복제 — 익명만 사본(로그인=주인일 수 있어 편집 직후 옛 값 금지)
+    const DB = getAuthUserId(c) == null ? publicReadDb(c.env.DB) : userReadDb(c.env.DB, c.req.header('cookie')) // 🌏 2026-10-15 익명=사본 · 👤 2026-11-03 로그인도 사본, 단 방금 고친 브라우저(주인 편집 직후)는 원본
     // 🏭 2026-06-04 (perf 전수조사): DDL 6종을 응답 경로에서 분리 — 테이블은 0278 + repair cron 이 보장.
     try { c.executionCtx?.waitUntil?.(ensureCuratorTables(DB).catch(() => {})) } catch { /* no ctx — skip */ }
 

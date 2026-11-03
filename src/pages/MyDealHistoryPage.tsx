@@ -13,12 +13,14 @@ import { REFERRAL_GROUP_DISCOUNT_DISABLED, TOPUP_DISABLED } from '@/shared/featu
 import { useBalance } from '@/hooks/queries'
 import { useDealHistory, type Transaction } from '@/hooks/queries/useDealHistory'
 import { formatNumber } from '@/utils/format'
-import { Clapperboard, CreditCard, List, RotateCcw, Link as LinkIcon, type LucideIcon } from 'lucide-react'
+import { Clapperboard, CreditCard, List, RotateCcw, RotateCw, Link as LinkIcon, type LucideIcon } from 'lucide-react'
 import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
 import Udal from '@/components/mascot/Udal'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { parseUTCDate } from '@/utils/date'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+/** 🎬 2026-11-03 17차 ⑥ — 다시 시도 화살표 회전. */
+const spinRetry = (e: React.MouseEvent<HTMLButtonElement>) => { try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { return } e.currentTarget.querySelector('svg')?.animate?.([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], { duration: 700, iterations: 2, easing: 'cubic-bezier(.4,0,.2,1)' }) }
 // 🎬 2026-11-02 11차 ④ — 내역 줄이 위에서부터 차례로 떠오른다(새로 그려지는 줄만 — 필터·페이지를 바꾸면 그 줄들이).
 injectMotionCss('ur-m-txrow', `@keyframes ur-tx-in { from { opacity: 0; transform: translateY(8px); } }.ur-tx-in { animation: ur-tx-in .34s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }@media (prefers-reduced-motion: reduce){.ur-tx-in{animation:none!important}}`)
 type FilterType = '' | 'charge' | 'donate' | 'refund' | 'ad_reward'
@@ -138,7 +140,8 @@ export default function MyDealHistoryPage() {
           <div className="py-16 text-center">
             <WarnIcon className="w-9 h-9 mx-auto mb-3 text-gray-300 dark:text-gray-600" aria-hidden />
             <p className="text-[15px] text-gray-500 dark:text-gray-400">거래 내역을 불러오지 못했어요</p>
-            <button onClick={() => refetch()} className="mt-3 text-[12px] font-medium text-gray-900 dark:text-white underline">다시 시도 →</button>
+            {/* 🎬 2026-11-03 17차 ⑥ — 누르면 화살표가 한 바퀴 돈다. */}
+            <button onClick={(e) => { spinRetry(e); refetch() }} className="mt-3 inline-flex items-center gap-1 text-[12px] font-medium text-gray-900 dark:text-white underline"><RotateCw className="w-3 h-3" aria-hidden="true" />다시 시도</button>
           </div>
         ) : items.length === 0 ? (
           <div className="py-16 text-center">

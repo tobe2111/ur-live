@@ -1,4 +1,5 @@
 import BusinessCertUpload from '@/components/BusinessCertUpload' // 🪪 2026-10-10 등록증 전용 업로드(가입 폼과 같은 자리)
+import { formatBizNo } from '@/utils/format-kr' // 🔢 사업자등록번호 000-00-00000 자동 하이픈(2026-11-03 대표 — 모든 입력란)
 
 // 🛡️ 2026-06-10: SellerSettlementsPage 분해 — 순수 이동 (동작 변화 0).
 // 🛡️ 2026-05-18: 사업자등록증 제출 모달.
@@ -40,7 +41,7 @@ export default function BizRegSubmitModal({ submitting, imageUrl, businessNumber
             <input
               type="text"
               value={businessNumber}
-              onChange={(e) => onBusinessNumberChange(e.target.value)}
+              onChange={(e) => onBusinessNumberChange(formatBizNo(e.target.value))}
               placeholder="123-45-67890"
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               disabled={submitting}

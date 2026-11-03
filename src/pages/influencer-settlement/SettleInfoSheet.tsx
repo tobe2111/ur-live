@@ -8,6 +8,7 @@
  * 저장 계약은 종전 그대로다 — `PUT /api/influencer-settlement/me`, 같은 필드.
  */
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
+import { formatBizNo } from '@/utils/format-kr' // 🔢 사업자등록번호 000-00-00000 자동 하이픈(2026-11-03 대표 — 모든 입력란)
 
 export type PayoutMethod = 'cash' | 'deal'
 export type TaxType = 'business_income' | 'other_income' | 'unreported'
@@ -83,7 +84,7 @@ export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, on
           {form.tax_type === 'business_income' && (
             <input
               value={form.business_number}
-              onChange={(e) => setForm(f => ({ ...f, business_number: e.target.value.replace(/[^\d-]/g, '') }))}
+              onChange={(e) => setForm(f => ({ ...f, business_number: formatBizNo(e.target.value) }))}
               placeholder="사업자번호 000-00-00000"
               inputMode="numeric"
               className={`${inputCls} mt-2 tabular-nums`}
