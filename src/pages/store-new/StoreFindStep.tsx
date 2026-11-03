@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, ChevronRight } from 'lucide-react'
+import { Search, ChevronRight, X } from 'lucide-react'
 import { PinIcon } from '@/components/icons/urdeal-icons'
 import { toRegisterPlace, type RegisterPlace } from '@/components/seller/StoreRegisterModal'
 import type { KakaoPlace } from '@/components/KakaoMapPicker'
@@ -82,7 +82,7 @@ export default function StoreFindStep({ onPick, hasAgency }: { onPick: (p: Regis
           className="flex-1 min-w-0 bg-transparent border-0 outline-none focus-visible:outline-none text-[17px] text-gray-900 dark:text-white placeholder:text-ink-faint" />
         {query && (
           <button type="button" aria-label="검색어 지우기" onClick={() => setQuery('')}
-            className="w-10 h-10 flex items-center justify-center text-ink-soft text-[20px] leading-none">×</button>
+            className="w-10 h-10 flex items-center justify-center text-ink-soft"><X size={18} strokeWidth={1.6} aria-hidden="true" /></button>
         )}
       </label>
 
