@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Search, X } from 'lucide-react'
+import { ChevronLeft, X } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n-lite'
 import { useSafeBack } from '@/hooks/useSafeBack'
+
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
+// 🎬 2026-11-03 20차 ③ — 검색창을 누르면 돋보기가 선을 따라 지워지고 그 자리에 '닫기' 화살표가 그려진다(같은 그림이 이어서 바뀐다).
+injectMotionCss('ur-m-searchmorph', `.ur-sm-lens, .ur-sm-arrow { transition: stroke-dashoffset .3s cubic-bezier(.2,.9,.3,1), opacity .2s; }.ur-sm-lens { stroke-dasharray: 50; stroke-dashoffset: 0; }.ur-sm-arrow { stroke-dasharray: 30; stroke-dashoffset: 30; opacity: 0; }.ur-sm-on .ur-sm-lens { stroke-dashoffset: 50; opacity: 0; }.ur-sm-on .ur-sm-arrow { stroke-dashoffset: 0; opacity: 1; }@media (prefers-reduced-motion: reduce){.ur-sm-lens,.ur-sm-arrow{transition:none!important}}`)
 
 interface SearchHeaderProps {
   query: string
@@ -113,7 +117,20 @@ export default function SearchHeader({
         </button>
         <div className="flex-1 relative">
           <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+            {/* 🎬 20차 ③ — 누르기 전엔 돋보기, 쓰는 중엔 화살표. 화살표를 누르면 키보드를 닫고 쓰기 전으로 돌아간다. */}
+            <button
+              type="button"
+              tabIndex={isFocused ? 0 : -1}
+              aria-hidden={!isFocused}
+              aria-label={t('search.closeTyping', { defaultValue: '검색 닫기' })}
+              onClick={(e) => { if (!isFocused) return; e.currentTarget.form?.querySelector('input')?.blur(); setIsFocused(false); onPanelChange(false, inputValue) }}
+              className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-400 dark:text-gray-500 ${isFocused ? 'ur-sm-on' : 'pointer-events-none'}`}
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path className="ur-sm-lens" d="M10.5 4a6.5 6.5 0 1 1 0 13a6.5 6.5 0 1 1 0-13M15.3 15.3L20 20" />
+                <path className="ur-sm-arrow" d="M19 12H5M11 6l-6 6l6 6" />
+              </svg>
+            </button>
             <input
               type="text"
               value={inputValue}

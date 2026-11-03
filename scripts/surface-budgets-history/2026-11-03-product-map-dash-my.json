@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-03",
+  "reason": "모션 20차 — 누른 자리 물결 연결·검색 아이콘 변신·내 위치 파동·찜 진동 + 19차 휴대폰 하이픈 공용 서식",
+  "surfaces": [
+    "product",
+    "map",
+    "dash:my"
+  ],
+  "changes": [
+    "product: 197.1 → 198.7 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.7, app-shell.js +0.5, lz-gbDetailL-product.js +0.5",
+    "map: 218.3 → 220.2 KB (+2.0, 허용 1.5) · 늘어난 것: app-map-row.js +0.7, app-utils.js +0.7, app-shell.js +0.5",
+    "dash:my: 210.6 → 212.2 KB (+1.7, 허용 1.5) · 늘어난 것: app-utils.js +0.7, app-shell.js +0.5, app-settings.js +0.4"
+  ]
+}

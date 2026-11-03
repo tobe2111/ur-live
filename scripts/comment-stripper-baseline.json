@@ -68,7 +68,6 @@
     "src/tests/unit/kr-phone-format.test.ts",
     "src/tests/unit/loading-followups-2026-09-02.test.ts",
     "src/tests/unit/mobile-home.test.ts",
-    "src/tests/unit/mypage-cleanup-2026-09-02.test.ts",
     "src/tests/unit/naver-crawl-block.test.ts",
     "src/tests/unit/notice-scan-deadline.test.ts",
     "src/tests/unit/partner-pool-lazy-keywords.test.ts",

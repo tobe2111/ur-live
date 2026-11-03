@@ -7,7 +7,7 @@
  *   3) 캘린더 — 객실별 날짜 가용 + 가격 override (Bulk UPSERT)
  */
 import { useEffect, useState } from 'react'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
@@ -483,8 +483,8 @@ function CalendarTab({ productId, rooms, calendar, onChanged }: {
     } finally { setSaving(false) }
   }
 
-  function applyBulkInventory() {
-    const v = prompt(`이번 달 모든 날짜에 적용할 잔여 객실 수 (현재 재고 ${room.total_inventory}):`, String(room.total_inventory))
+  async function applyBulkInventory() {
+    const v = (await promptDialog({ message: `이번 달 모든 날짜에 적용할 잔여 객실 수 (현재 재고 ${room.total_inventory}):`, prompt: { defaultValue: String(room.total_inventory) } }))
     if (v === null) return
     const n = Number(v)
     if (!Number.isFinite(n) || n < 0) { toast.error('숫자 입력 필요'); return }
@@ -566,7 +566,7 @@ function CalendarTab({ productId, rooms, calendar, onChanged }: {
                 key={i}
                 type="button"
                 disabled={past}
-                onClick={() => {
+                onClick={async () => {
                   if (past) return
                   const ds = eff.ds
                   const cur = effectiveFor(cell)
@@ -574,7 +574,7 @@ function CalendarTab({ productId, rooms, calendar, onChanged }: {
                   if (cur.is_blocked) {
                     updateDay(ds, { is_blocked: false, available_count: room.total_inventory })
                   } else {
-                    const newPrice = prompt(`${ds} 가격 (비워두면 ${isWeekend ? '주말' : '평일'} ${formatNumber(priceFor(cell))}원), 잔여 수 / 차단:`, String(price))
+                    const newPrice = (await promptDialog({ message: `${ds} 가격 (비워두면 ${isWeekend ? '주말' : '평일'} ${formatNumber(priceFor(cell))}원), 잔여 수 / 차단:`, prompt: { defaultValue: String(price) } }))
                     if (newPrice === null) return
                     if (newPrice === '') updateDay(ds, { price_override: null })
                     else {

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { formatKSTDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 import AdminHomeServiceReviews from './home-service/AdminHomeServiceReviews'
+import { promptDialog } from '@/components/ui/confirm-dialog'
 
 interface Field { key: string; label: string; type: string; required: boolean; options?: string[]; unit?: string; placeholder?: string }
 interface Cat { key: string; label: string; fields: Field[] }
@@ -173,7 +174,7 @@ export default function AdminHomeServicePage() {
                       <div className="flex flex-wrap items-center gap-2">
                         {/* 🔗 2026-10-25 업체 모집 영업 — 커뮤니티에 붙일 링크(이름·연락처·상세 주소·메모·사진은 가려진다) */}
                         <a className="text-blue-600 underline" href={`/life/q/${r.share_token}`} target="_blank" rel="noopener noreferrer">공유 페이지 보기</a>
-                        <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/life/q/${r.share_token}`).then(() => toast.success('링크를 복사했습니다'), () => window.prompt('링크를 복사해 주세요', `${window.location.origin}/life/q/${r.share_token}`))}>업체 모집 링크 복사</Button>
+                        <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/life/q/${r.share_token}`).then(() => toast.success('링크를 복사했습니다'), async () => (await promptDialog({ message: '링크를 복사해 주세요', prompt: { defaultValue: `${window.location.origin}/life/q/${r.share_token}` } })))}>업체 모집 링크 복사</Button>
                       </div>
                     )}
                     <ul className="space-y-2">

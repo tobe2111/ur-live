@@ -271,8 +271,9 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
         <div className="space-y-6">
           {groups.map(group => (
             <section key={group.label}>
-              {/* 날짜 그룹 헤더 */}
-              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2 px-1">
+              {/* 날짜 그룹 헤더 — 🎬 20차 ② 내리면 위(화면 머리 52px · PC 네비 56px 아래)에 붙어 따라오고,
+                  다음 날짜 묶음이 올라오면 그 머리를 밀어 올린다(묶음마다 section 이라 sticky 가 묶음 안에서만 붙는다). */}
+              <h2 className="sticky top-[52px] md:top-[108px] z-30 bg-warm text-[15px] font-bold text-gray-900 dark:text-white py-2 px-1">
                 {group.label}
               </h2>
               <div className="space-y-3">
