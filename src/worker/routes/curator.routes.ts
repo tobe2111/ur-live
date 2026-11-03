@@ -14,7 +14,7 @@
  */
 
 import { Hono } from 'hono'
-import { curatorAdminDiagnostic } from './curator/admin-diagnostic.routes'; import { findPin, logPinClick } from '../utils/pin-click-log'
+import { curatorAdminDiagnostic } from './curator/admin-diagnostic.routes'; import { curatorSnsPosts } from './curator/sns-posts.routes'; import { findPin, logPinClick } from '../utils/pin-click-log'
 import { findActiveDealPctsBySeller } from '@/worker/utils/influencer-deal'
 import type { Env } from '../types/env'
 import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth'
@@ -1347,6 +1347,6 @@ curatorRoutes.post('/me/proxy-product', requireAuth(), async (c) => {
 // 🔬 어드민 진단(read-only)은 별도 파일 — 2026-08-27 파일크기 래칫에 걸려 **분리**했다
 //   (rebaseline 이 아니라 추출. 이 파일이 god 파일로 자라는 걸 막는 게 그 래칫의 목적이다).
 //   어드민 전용 · 읽기 전용이라 소비자 경로와 섞일 이유가 없다.
-curatorRoutes.route('/', curatorAdminDiagnostic)
+curatorRoutes.route('/', curatorAdminDiagnostic); curatorRoutes.route('/', curatorSnsPosts) // 🖼️ 2026-11-03 유어샵 SNS 최근 게시물
 
 export { curatorRoutes }

@@ -58,3 +58,6 @@
 - SNS 이름표 팔로워 수: `user_sns_links`(플랫폼에서 받은 값)만, **이름표 주소와 같은 계정일 때만**(`sameSnsAccount`).
   API 첫 물결에 실림(왕복 +0). 숫자 있으면 [로고 + 1.2만]. 가드 `ushop-sns-followers-2026-11-03`(주입 4).
 - ⚠️ 틀릴 뻔한 것: 이 페이지 바탕이 `bg-surface` 라 직전 커밋의 주인 요약 판(흰 판)이 **바탕과 같은 색이라 안 보였다** — 판 모양 전환으로 같이 해소.
+- SNS 최근 게시물: `GET /api/curator/:handle/sns-posts`(`worker/routes/curator/sns-posts.routes.ts`) — 인스타(연동 토큰 `/me/media`)·유튜브(공개 키 업로드 목록).
+  틱톡은 `video.list` 권한을 연동 때 안 받아 **아직 없음**. 사람마다 6시간 D1 캐시(`user_sns_recent_posts`, 실패도 빈 캐시). 화면은 진열 아래 lazy.
+  가드 `ushop-sns-posts-2026-11-03`(주입 4).

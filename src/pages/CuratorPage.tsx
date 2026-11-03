@@ -29,6 +29,7 @@ import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { Search, X } from 'lucide-react'
 // 🧾 2026-11-03 유어샵 B — 주인만 보는 요약 판(방문자 번들에 안 실리게 lazy).
 const OwnerSummaryCard = lazy(() => import('./curator-page/OwnerSummaryCard'))
+const UShopSnsPosts = lazy(() => import('./curator-page/UShopSnsPosts')) // 🖼️ 2026-11-03 SNS 최근 게시물(진열 아래)
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
@@ -466,6 +467,8 @@ export default function CuratorPage() {
                 )}
               </>
             )}
+            {/* 🖼️ 2026-11-03 유어샵 B + SNS — 최근 게시물. 진열 **아래**라 늦게 와도 읽던 줄을 안 민다(자리 예약 없음). */}
+            {pins.length > 0 && <Suspense fallback={null}><UShopSnsPosts handle={curator.handle} /></Suspense>}
             {/* 🧾 2026-09-28 (대표 확정 **B안** — *"B가 낫겠는데?"*): 맨 아래 유입 링크 세 줄.
                 ⚠️ 위 2026-06-19 결정과 **모순이 아니다.** 그때 문제였던 둘을 피한다 —
                   ① 따라다니는 고정 CTA 가 아니라 **목록이 끝난 뒤**의 조용한 링크(상품을 안 민다)
