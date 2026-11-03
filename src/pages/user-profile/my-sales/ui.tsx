@@ -47,7 +47,7 @@ export function SaleSwitch({ on, busy, onChange, label }: { on: boolean; busy?: 
       onClick={(e) => { e.stopPropagation(); onChange(!on) }}
       className={`relative h-[26px] w-11 shrink-0 rounded-full transition-colors disabled:opacity-60 ${on ? 'bg-brand' : 'bg-gray-300 dark:bg-white/20'}`}
     >
-      <span className="absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-white" style={{ transition: 'transform .3s cubic-bezier(.3,1.4,.5,1)', transform: on ? 'translateX(18px)' : undefined }} />
+      <span className="absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-white dark:bg-white" style={{ transition: 'transform .3s cubic-bezier(.3,1.4,.5,1)', transform: on ? 'translateX(18px)' : undefined }} />
     </button>
   )
 }
@@ -65,7 +65,7 @@ export function PlateRow({ label, value, onClick, danger, right }: {
       <span className={`flex-1 min-w-0 truncate text-[15px] ${danger ? 'text-tone-bad' : 'text-gray-900 dark:text-white'}`}>{label}</span>
       {value != null && <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums">{value}</span>}
       {right}
-      {onClick && !right && <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />}
+      {onClick && !right && <ChevronRight className="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />}
     </>
   )
   const cls = 'w-full flex items-center gap-2 min-h-[52px] py-3 text-left border-b border-rule last:border-b-0'

@@ -189,7 +189,9 @@ function VoucherDetail({ v, stat, busy, onSale, onRestore, onEdit, onReissue, on
         <div className="flex-1 min-w-0">
           <p className="text-[16px] font-semibold text-gray-900 dark:text-white line-clamp-2">{v.name}</p>
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums">
-            {isDeleted ? '삭제됨 · 새 판매만 멈췄어요' : `${v.is_active ? '판매 중' : '판매 중지'} · ${formatNumber(v.sold)}건 판매`}
+            {isDeleted
+              ? '삭제됨 · 새 판매만 멈췄어요'
+              : `${v.is_active ? '판매 중' : '판매 중지'} · ${formatNumber(v.sold)}건 판매`}
           </p>
         </div>
       </Card>
@@ -200,7 +202,7 @@ function VoucherDetail({ v, stat, busy, onSale, onRestore, onEdit, onReissue, on
           <Card className="px-5 py-1">
             <PlateRow label="판매" right={<SaleSwitch on={!!v.is_active} busy={busy} label={v.is_active ? '판매 중' : '판매 중지'} onChange={onSale} />} />
             <PlateRow label="가격" value={orig > safeNum(v.price) ? `${formatWon(orig)} → ${formatWon(v.price)}` : formatWon(v.price)} onClick={onEdit} />
-            <PlateRow label="수량 · 사용 기간 · 사진 · 설명" onClick={onEdit} />
+            <PlateRow label="수량·사용 기간·사진·설명" onClick={onEdit} />
             {stat && <PlateRow label="사용" value={`${formatNumber(stat.used)} / ${formatNumber(stat.total)}장${stat.expired > 0 ? ` · 만료 ${formatNumber(stat.expired)}` : ''}`} />}
           </Card>
           <Card className="px-5 py-1">

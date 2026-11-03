@@ -119,7 +119,8 @@ export default function MyOrdersSheet({ onClose }: { onClose: () => void }) {
                       <span className="flex-1 min-w-0">
                         <span className={`block truncate text-[15px] font-medium ${stage === 'done' || stage === 'refunded' ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>{title}</span>
                         <span className="mt-1 block truncate text-[13px] text-gray-500 dark:text-gray-400 tabular-nums">
-                          {k ? `${k.hh}:${k.mm}` : '-'} · {o.shipping_name || o.user_name || '-'} · {formatWon(o.total_amount)}
+                          {k ? `${k.hh}:${k.mm}` : '-'}&nbsp;&nbsp;{o.shipping_name || o.user_name || '-'}
+                          {' · '}{formatWon(o.total_amount)}
                         </span>
                       </span>
                       {badge && <span className={`shrink-0 rounded-md px-2 py-1 text-[12px] font-medium ${hot ? 'bg-brand-tint text-brand-text' : 'bg-wash text-gray-500 dark:text-gray-400'}`}>{badge}</span>}

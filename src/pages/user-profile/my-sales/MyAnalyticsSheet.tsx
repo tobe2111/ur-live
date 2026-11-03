@@ -61,7 +61,7 @@ export default function MyAnalyticsSheet({ onClose, onOpenPage, onNew }: {
             {perfQ.data && <WhoSold perf={perfQ.data} />}
             {idleQ.data?.enough && idleQ.data.quietest && <IdleCard block={idleQ.data.quietest} onNew={onNew} />}
             <Card className="px-5 py-1">
-              <PlateRow label="고객 · 상품별 · 추천 수익 더 보기" onClick={() => onOpenPage('/seller/analytics', '매출 분석')} />
+              <PlateRow label="고객·상품별·추천 수익 더 보기" onClick={() => onOpenPage('/seller/analytics', '매출 분석')} />
             </Card>
           </>
         )}
@@ -127,7 +127,7 @@ function NoSales({ onNew }: { onNew: () => void }) {
       </Card>
       <p className="px-5 pt-8 text-[13px] font-medium text-gray-500 dark:text-gray-400">판매가 생기면 보이는 것</p>
       <Card className="mt-2 px-5 py-1">
-        {[['매출 추이', '하루·주별 매출 막대'], ['고객 · 재구매', '몇 명이 샀고 몇 명이 다시 샀는지'], ['누가 팔았나', '매장 직접 · 소개 링크'], ['빈 시간대', '가장 한가한 시간을 알려 드려요']].map(([a, b]) => (
+        {[['매출 추이', '하루·주별 매출 막대'], ['고객·재구매', '몇 명이 샀고 몇 명이 다시 샀는지'], ['누가 팔았나', '매장 직접·소개 링크'], ['빈 시간대', '가장 한가한 시간을 알려 드려요']].map(([a, b]) => (
           <div key={a} className="py-3 border-b border-rule last:border-b-0">
             <p className="text-[15px] font-medium text-gray-900 dark:text-white">{a}</p>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{b}</p>
