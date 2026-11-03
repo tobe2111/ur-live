@@ -71,7 +71,7 @@ describe('① 카톡 간편로그인', () => {
     const talk = h.indexOf('startTalkLogin()')
     expect(talk).toBeGreaterThan(0)
     expect(h.slice(talk - 40, talk)).toMatch(/!wantsSwitch && $/) // '다른 계정으로'는 웹 로그인 창
-    expect(h.indexOf("window.location.href = `/auth/kakao/start?")).toBeGreaterThan(talk) // 폴백은 그 뒤
+    expect(h.indexOf("window.location.replace(`/auth/kakao/start?")).toBeGreaterThan(talk) // 폴백은 그 뒤 (2026-11-03: href→replace, 로그인 화면을 이력에 안 남긴다)
     expect(page).toMatch(/if \(wantsSwitch \|\| !canUseTalkLogin\(\)\) return\s*\n\s*return scheduleTalkLoginPrepare\(/)
   })
   it('SDK 호출은 카톡 실행을 요청하고 state 를 1회용으로 쓴다', () => {
