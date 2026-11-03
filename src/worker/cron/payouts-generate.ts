@@ -120,7 +120,15 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
       const summary = `주간 정산 생성: ${created}건 (${periodStart} ~ ${periodEnd})`
       try {
         const { createDashboardNotification } = await import('../../features/notifications/api/dashboard-notifications.routes')
-        await createDashboardNotification(DB, 'admin', null, 'payouts_generated', '💸 주간 정산 생성', summary, '/admin/payouts')
+        // 🔔 2026-11-02 (대표 "업무 칸 소음 정리"): 0건이면 할 일이 없다 — 하트비트(돌았다는 기록)는 남기되 **시스템 칸**으로.
+        //   그 전엔 "주간 정산 생성: 0건" 이 매주 업무 칸에 쌓였다(12장 미읽음 실측). 1건 이상이면 지급 승인이 필요하므로 업무 칸.
+        //   남아 있던 0건 미읽음도 이때 읽음 처리(멱등).
+        if (created > 0) {
+          await createDashboardNotification(DB, 'admin', null, 'payouts_generated', '주간 정산 생성 · 지급 승인 필요', summary, '/admin/payouts')
+        } else {
+          await createDashboardNotification(DB, 'admin', null, 'payouts_heartbeat', '주간 정산 확인 · 대상 없음', summary, '/admin/payouts')
+          await DB.prepare(`UPDATE dashboard_notifications SET is_read = 1 WHERE recipient_type = 'admin' AND type = 'payouts_generated' AND is_read = 0 AND message LIKE '주간 정산 생성: 0건%'`).run().catch(() => null)
+        }
       } catch { /* 벨 실패 무시 */ }
       const webhook = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL
       if (webhook) {

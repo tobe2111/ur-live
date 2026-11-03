@@ -15,7 +15,13 @@ export async function handleSellerApprovalReminder(env: Env): Promise<{ pending:
        FROM sellers WHERE status = 'pending' AND created_at < datetime('now', '-24 hours')`
   ).first<{ cnt: number; oldest: string | null }>().catch(() => null)
   const pending = Number(row?.cnt || 0)
-  if (!pending) return { pending: 0, notified: false }
+  // 🔔 2026-11-02 (대표 "업무 칸 소음 정리"): 리마인드는 **가장 최근 한 장만** 안 읽음으로 남긴다.
+  //   그 전엔 하루 한 장씩 쌓여 같은 "승인 대기 1건" 이 8장 미읽음이었다(실측). 대기가 0 이 되면 남은 장도 지운다(읽음).
+  const clearOld = () => DB.prepare(
+    `UPDATE dashboard_notifications SET is_read = 1
+      WHERE recipient_type = 'admin' AND type = 'seller_pending_reminder' AND is_read = 0`,
+  ).run().catch(() => null)
+  if (!pending) { await clearOld(); return { pending: 0, notified: false } }
 
   // dedup: 최근 20시간 내 같은 리마인드가 이미 있으면 skip (하루 1회꼴).
   const dup = await DB.prepare(
@@ -29,6 +35,7 @@ export async function handleSellerApprovalReminder(env: Env): Promise<{ pending:
     ? Math.max(1, Math.floor((Date.now() - Date.parse(row.oldest.replace(' ', 'T') + 'Z')) / 86_400_000))
     : 1
   const { createDashboardNotification } = await import('../../features/notifications/api/dashboard-notifications.routes')
+  await clearOld()
   await createDashboardNotification(
     DB, 'admin', null, 'seller_pending_reminder',
     `⏰ 셀러 승인 대기 ${pending}건`,

@@ -27,3 +27,11 @@
 - E4 판정: 배포 뒤 어드민 종 `업무` 칸이 비어 있다가 첫 가입·구매 때 뜨는지. `SELECT type, COUNT(*) FROM dashboard_notifications WHERE type IN ('user_signup','agency_signup','store_registered','voucher_purchased','gifticon_purchased') GROUP BY 1`.
 - 쓰는 쪽 문구 정리(30곳+)는 화면에서 다듬어지므로 급하지 않다. 새 TMI 패턴이 보이면 `presentNotification` 에 한 줄 추가.
 - 이용권 **사용(QR)** 어드민 알림은 넣지 않았다(하루 수백 건이 될 수 있어 소음). 원하면 `voucher_redeemed` 를 업무 칸에 추가.
+
+## 2차 (2026-11-03 대표 "2번만") — 업무 칸 소음 정리
+- 배포 후 실측: 업무 칸 미읽음 20 = `주간 정산 생성: 0건` 12 + 같은 `셀러 승인 대기 1건` 8. 시스템 칸 351.
+- `payouts-generate.ts`: 0건이면 `payouts_heartbeat`(시스템 칸)로, 1건 이상만 `payouts_generated`(업무, "지급 승인 필요"). 0건 미읽음 옛 행은 그 회차에 읽음 처리. 정산 생성 로직 무변경.
+- `seller-approval-reminder.ts`: 새 리마인드 전에 옛 미읽음 리마인드를 읽음 처리(최근 한 장만), 대기 0 이면 남은 장도 읽음.
+- 가드 ⑥ 2건 추가 + 주입 2건 빨간불 확인.
+- ⚠️ 이미 쌓인 12·8장은 **다음 회차**(정산: 매주 월요일 / 리마인드: 매시간 검사)에 정리된다 — 일회성 SQL 은 쓰지 않았다.
+- 대표가 고르지 않은 것: ③ 휴대폰 알림(알림톡/메일)은 결재 사항이라 미착수.
