@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { BoxIcon, TruckIcon, MessageIcon, TicketStubIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import Udal from '@/components/mascot/Udal'
@@ -16,7 +16,7 @@ import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
 // 🎬 2026-11-03 19차 ⑤ — 종류 탭을 바꾸면 목록이 고른 탭 쪽에서 밀려 들어온다(오른쪽 탭 → 오른쪽에서, 왼쪽 탭 → 왼쪽에서).
-injectMotionCss('ur-m-ordertabs', `@keyframes ur-ot-r { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }@keyframes ur-ot-l { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }.ur-ot-r { animation: ur-ot-r .26s cubic-bezier(.2,1,.3,1) both; }.ur-ot-l { animation: ur-ot-l .26s cubic-bezier(.2,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-ot-r,.ur-ot-l{animation:none!important}}`)
+injectMotionCss('ur-m-ordertabs', `@keyframes ur-ot-r { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }@keyframes ur-ot-l { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }.ur-ot-r { animation: ur-ot-r .26s cubic-bezier(.2,1,.3,1) backwards; }.ur-ot-l { animation: ur-ot-l .26s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-ot-r,.ur-ot-l{animation:none!important}}`)
 
 interface OrdersTabProps {
   orders: Order[]
@@ -136,6 +136,9 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
   const { t } = useTranslation()
   const [kindFilter, setKindFilter] = useState<KindFilter>('all')
   const [slideDir, setSlideDir] = useState<0 | 1 | -1>(0) // 🎬 19차 ⑤ — 탭 순서로 정한 방향(처음엔 0 = 안 움직임)
+  // 🎬 21차 ⑤ — 목록을 옆으로 밀면 옆 탭으로 넘어간다(손가락을 살짝 따라오다가, 충분히 밀면 넘어감). 세로 스크롤과 갈리게 가로가 확실할 때만.
+  const swipe = useRef<{ x: number; y: number; dx: number; on: boolean } | null>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
   const [search, setSearch] = useState('')
 
   function handleSellerContact(order: Order) {
@@ -264,7 +267,31 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
       </div>
 
       {/* 목록 — 탭이 바뀔 때마다 새로 그려 방향대로 밀려 들어온다(19차 ⑤) */}
-      <div key={kindFilter} className={slideDir > 0 ? 'ur-ot-r' : slideDir < 0 ? 'ur-ot-l' : undefined}>
+      <div
+        key={kindFilter}
+        ref={listRef}
+        className={slideDir > 0 ? 'ur-ot-r' : slideDir < 0 ? 'ur-ot-l' : undefined}
+        onTouchStart={(e) => { const p = e.touches[0]; swipe.current = { x: p.clientX, y: p.clientY, dx: 0, on: false } }}
+        onTouchMove={(e) => {
+          const st = swipe.current; const p = e.touches[0]; if (!st || !p) return
+          const dx = p.clientX - st.x, dy = p.clientY - st.y
+          if (!st.on && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.5) st.on = true
+          if (!st.on) return
+          st.dx = dx
+          if (listRef.current) listRef.current.style.transform = `translateX(${Math.round(dx * 0.35)}px)`
+        }}
+        onTouchEnd={() => {
+          const st = swipe.current; swipe.current = null
+          const el = listRef.current
+          if (el) { el.style.transition = 'transform .2s'; el.style.transform = ''; window.setTimeout(() => { el.style.transition = '' }, 220) }
+          if (!st?.on || Math.abs(st.dx) < 60) return
+          const i = KIND_TABS.findIndex((k) => k.key === kindFilter)
+          const next = KIND_TABS[i + (st.dx < 0 ? 1 : -1)]
+          if (!next) return
+          setSlideDir(st.dx < 0 ? 1 : -1)
+          setKindFilter(next.key)
+        }}
+      >
       {filtered.length === 0 ? (
         <EmptyState kindFilter={kindFilter} searching={!!q} t={t} />
       ) : (

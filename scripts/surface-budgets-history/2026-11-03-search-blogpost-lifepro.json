@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-03",
+  "reason": "모션 21차 — 하위 화면 큰 제목 접힘(공용 머리줄)·잘린 이름 흐르기 연결 + 로그아웃 탭 모션이 공용 묶음(app-utils·app-shell)에 쌓였다",
+  "surfaces": [
+    "search",
+    "blogPost",
+    "lifePro"
+  ],
+  "changes": [
+    "search: 182.7 → 184.2 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.0, app-search.js +0.3",
+    "blogPost: 191.3 → 192.8 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +1.1, app-shell.js +0.6",
+    "lifePro: 201.3 → 202.9 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.1, app-shell.js +0.6"
+  ]
+}
