@@ -62,7 +62,7 @@ export default function FAQPage() {
     <div className={SUB_PAGE_CLS}>
       <SEO title={t('faq.seoTitle', { defaultValue: CONSUMER_SURFACE_SEO['/faq'].title })} description={t('faq.seoDesc', { defaultValue: CONSUMER_SURFACE_SEO['/faq'].description })} url="/faq" jsonLd={faqJsonLd} />
 
-      <SubPageHeader title={t('faq.title', { defaultValue: '자주 묻는 질문' })} backLabel={t('common.back', { defaultValue: '뒤로가기' })} />
+      <SubPageHeader title={t('faq.title', { defaultValue: '자주 묻는 질문' })} fallback="/" backLabel={t('common.back', { defaultValue: '뒤로가기' })} />
 
       <div className="ur-content-medium px-4 lg:px-8 pt-4 pb-20">
         {/* Hero */}

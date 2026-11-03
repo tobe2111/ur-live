@@ -101,7 +101,7 @@ export default function NotificationsPage() {
     <div className={`${SUB_PAGE_CLS} pb-safe-nav md:pb-20`}>
       <SEO title={t('notifications.seoTitle', { defaultValue: '알림 - 유어딜' })} description={t('notifications.seoDesc', { defaultValue: '새로운 알림을 확인하세요' })} url="/notifications" noindex />
       {/* ← 2026-10-19: 마이 하위 화면 공용 머리줄. '모두 읽음' 은 안 읽은 게 있을 때만(누를 것이 없으면 안 선다). */}
-      <SubPageHeader
+      <SubPageHeader fallback="/"
         title={t('notifications.title')}
         backLabel={t('notifications.back')}
         wideSides

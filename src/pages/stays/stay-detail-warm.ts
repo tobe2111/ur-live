@@ -12,7 +12,7 @@
 import api from '@/lib/api'
 import { loadRoute } from '@/lib/route-preload' // App.tsx 가 등록한 같은 로더 — 받으면 화면이 '준비됨'이 된다
 
-export interface WarmStayResponse { success?: boolean; data?: { product?: unknown; rooms?: unknown; referral_unified?: boolean } }
+export interface WarmStayResponse { success?: boolean; data?: { product?: unknown; rooms?: unknown } }
 
 let chunkWarm = false
 const inflight = new Map<number, Promise<WarmStayResponse>>()

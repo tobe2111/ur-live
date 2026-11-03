@@ -18,3 +18,8 @@
 
 ## ✅ 구현 완료
 - 브랜치 `claude/quirky-sagan-xu0mh4` · 가드 `src/tests/unit/home-row-plan2-2026-11-03.test.tsx`
+
+## 🔄 같은 날 오후 — 대표 **안 1** 로 대체 (시안 https://claude.ai/artifact/CEJKc4RPYp3Yo3QZhn7joP)
+대표: *"부산 연제구 정도까지만 보이게 하고 옆에 km보이게"* → **"안1"**.
+순서는 08-19 그대로 [업체명] → [제목] → **[시·구 · 거리]** → [별점] → [가격]. 위 '안 2(제목 먼저 · 거리 오른쪽 위)'는 걷었다.
+`shortRegion` 은 유지, `DEAL_ROW_TEXT` 는 삭제.

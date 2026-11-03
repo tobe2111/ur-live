@@ -109,7 +109,7 @@ describe('② 뒤로 버튼은 브라우저 히스토리를 쓴다 — 목적지
         if (!hard) continue
         // 히스토리 폴백이면 통과 — 그게 올바른 형태다.
         expect(region, `${file}: 뒤로가 목적지를 고정하고 있다 — history.length 폴백이 필요하다\n${hard[0]}`)
-          .toMatch(/history\.length|navigate\(\s*-1\s*\)/)
+          .toMatch(/history\.length|navigate\(\s*-1\s*\)|goBack|useSafeBack/) // 2026-11-03: 히스토리 폴백 SSOT = useSafeBack
       }
     })
   }

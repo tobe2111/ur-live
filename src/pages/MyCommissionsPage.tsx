@@ -15,6 +15,7 @@ import { formatNumber, formatWon } from '@/utils/format'
 import { useMyCommissions } from '@/hooks/queries/useMyCommissions'
 import CollabPerformance from './my-commissions/CollabPerformance'
 import { formatKST, formatKSTDate } from '@/utils/date'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof OkIcon }> = {
   pending: { label: '심사 대기', cls: 'bg-tone-warn-bg text-tone-warn', icon: ClockIcon },
@@ -26,6 +27,7 @@ const STATUS_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1D1F2
 
 export default function MyCommissionsPage() {
   const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   // 🛡️ 2026-06-01 Tier2: 수동 Promise.all → useMyCommissions 단일 쿼리.
   // 🛡️ 2026-07-02: isError 분기 — 훅이 양 엔드포인트 전멸 시 throw 하게 바뀜("적립 0원" 위장 방지).
   const { data, isLoading: loading, isError, refetch } = useMyCommissions()
@@ -38,7 +40,7 @@ export default function MyCommissionsPage() {
 
       <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로가기">
+          <button onClick={goBack} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로가기">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
           </button>
           <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">추천 수익</h1>

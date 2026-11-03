@@ -12,8 +12,8 @@ export default [
   {
     name: 'stay-photo-top — 숙소 헤더가 원 버튼으로 돌아간다',
     file: 'src/pages/StayDetailPage.tsx',
-    find: "onBack={() => navigate(-1)}\n        overPhoto\n",
-    replace: "onBack={() => navigate(-1)}\n",
+    find: "onBack={goBack}\n        overPhoto\n",
+    replace: "onBack={goBack}\n",
     test: T,
     why: '이용권 상세와 상단 버튼 모양이 다시 갈린다.',
   },

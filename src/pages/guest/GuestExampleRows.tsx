@@ -13,9 +13,10 @@ import { GUEST_EXAMPLE_PASSES } from '@/shared/guest-page'
 
 const KIND_IMG = { cafe: brunchImg, beauty: nailImg, meal: pastaImg } as const
 
-export default function GuestExampleRows({ numbered = false }: { numbered?: boolean }) {
+/** `motion` — 유어샵 탭의 차례 등장 모션(`ur-gs-*`, CSS 는 GuestUrShopPage) 표식을 붙인다. */
+export default function GuestExampleRows({ numbered = false, motion = false }: { numbered?: boolean; motion?: boolean }) {
   return (
-    <div className="divide-y divide-rule" data-guest-example="">
+    <div className={`divide-y divide-rule${motion ? ' ur-gs-rows' : ''}`} data-guest-example="">
       {GUEST_EXAMPLE_PASSES.map((p, i) => {
         return (
         <DealRow
@@ -27,7 +28,7 @@ export default function GuestExampleRows({ numbered = false }: { numbered?: bool
           price={p.price}
           discountPct={p.pct}
           leading={numbered ? (
-            <span className="shrink-0 w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-medium flex items-center justify-center">{i + 1}</span>
+            <span className="ur-gs-n shrink-0 w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-medium flex items-center justify-center">{i + 1}</span>
           ) : undefined}
         />
         )

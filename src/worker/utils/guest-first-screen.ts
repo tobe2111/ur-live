@@ -30,7 +30,7 @@ export function guestTabOf(pathname: string): GuestTab | null {
 }
 
 const kakao = () =>
-  `<button type="button" class="${GUEST_CLS.kakao}"><svg class="${GUEST_CLS.kakaoIcon}" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="${KAKAO_BUBBLE_PATH}"></path></svg><span>${esc(GUEST_COPY.kakaoStart)}</span></button>`
+  `<button type="button" class="${GUEST_CLS.kakao}"><svg class="${GUEST_CLS.kakaoIcon}" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="${KAKAO_BUBBLE_PATH}"></path></svg><span>${esc(GUEST_COPY.kakaoStart)}</span><span class="${GUEST_CLS.kakaoShine}" aria-hidden="true"></span></button>`
 
 /** 아래 고정 카카오 버튼 — `GuestDock` 과 같은 모양. */
 const dock = (note?: string) =>

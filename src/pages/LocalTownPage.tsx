@@ -22,6 +22,7 @@ import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import DealRow from '@/components/deal/DealRow'
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 interface TownProduct {
   id: number
@@ -43,6 +44,7 @@ interface TownFcfs extends TownProduct {
 export default function LocalTownPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const { code: rawCode } = useParams<{ code: string }>()
   const [sp] = useSearchParams()
   const code = /^\d{5,12}$/.test(String(rawCode || '')) ? String(rawCode) : ''
@@ -106,7 +108,7 @@ export default function LocalTownPage() {
       {/* 헤더 */}
       <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="flex items-center gap-2 px-3 h-12">
-          <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} aria-label={t('common.back', { defaultValue: '뒤로' })} className="p-2 -ml-1 text-gray-700 dark:text-gray-200">
+          <button type="button" onClick={goBack} aria-label={t('common.back', { defaultValue: '뒤로' })} className="p-2 -ml-1 text-gray-700 dark:text-gray-200">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <h1 className="text-[15px] font-bold text-gray-900 dark:text-white truncate">

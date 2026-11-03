@@ -1,11 +1,11 @@
 import { ChevronLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 export default function RefundPolicyPage() {
-  const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const { t } = useTranslation()
 
   return (
@@ -22,7 +22,7 @@ export default function RefundPolicyPage() {
           (불투명하면 `backdrop-blur` 는 보이는 일이 없으므로 함께 뺀다). */}
       <div className="sticky top-0 md:top-14 z-40 bg-surface border-b border-rule">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-ink">
+          <button onClick={goBack} aria-label="뒤로 가기" className="text-ink">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-[17px] font-bold text-ink">환불 및 교환/반품 정책</h1>

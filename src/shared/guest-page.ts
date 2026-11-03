@@ -41,6 +41,8 @@ export const GUEST_CLS = {
   dockNote: 'mt-2 text-center text-[12px] text-gray-500 dark:text-gray-400',
   kakao: 'w-full h-[52px] rounded-xl bg-[#FEE500] text-[#3C1E1E] text-[15px] font-bold flex items-center justify-center gap-2 active:opacity-80',
   kakaoIcon: 'w-[18px] h-[18px]',
+  /** 🎬 2026-11-03 카카오 버튼을 지나가는 빛 칸 — 앱과 서버 첫 화면이 같은 모양이어야 해서 여기 둔다(CSS 는 GuestKakaoButton). */
+  kakaoShine: 'ur-gk-shine absolute inset-0 pointer-events-none',
   /** 마이 탭 머리 — 마스코트 + 인사. */
   myHead: 'flex items-center gap-4',
   myHeadText: 'min-w-0',

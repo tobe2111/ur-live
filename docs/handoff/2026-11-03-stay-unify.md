@@ -44,3 +44,4 @@
 - ③ 소개 적립(대표 *"계속 진행해"*): `features/group-buy/api/stay-referral.ts` — 스위치 `stay_referral_unify_enabled`(기본 OFF, 어드민 플랫폼 설정 돈 스위치·OPS_GATES·값 검증 등재). ON 이면 예약 생성은 옛 객실 할인·수수료를 건너뛰고 소개자만 기록, 결제 확정(`payment.routes`, Toss 잠금 허가 → `docs/locks/toss/2026-11-03-stay-referral-unify.md`)에서 `applyGroupBuyReferral`(이용권과 같은 함수), 취소·오버부킹·어드민 환불 세 곳에서 `clawbackStayReferral`(원장 역분개 포함). 숙소 상세에 `?aff` 저장 + 스위치 ON 일 때만 `SellThisCard`.
 - 🩸 **이번에 틀렸던 판단**: ②에서 /pass → /stays 리다이렉트를 넣을 때 숙소 상세의 2026-07-20 안전판(숙소 정보 없는 상품은 /pass 로 보냄)을 못 봐서 **서로 보내기 루프**를 만들었다(#2151 머지됨, 라이브 숙소 102개는 전부 정보가 있어 실발생 0). ③ 커밋에서 `?nostay=1` 로 끊었다.
 - **켜기 전**: `docs/STAGING_CHECKLIST.md` **S-STAYREF** 5건. 이 세션은 실결제를 못 해 스위치는 OFF 로 남긴다.
+- ③ 후속: 대표 *"그냥 너가 해줘 내가 스위치 키는거 말고 … 허가해줄게"* → 스위치(`stay_referral_unify_enabled`) 제거. 숙소 소개 적립은 언제나 이용권 장부 · 숙소 상세 '팔아보기' 항상. **배포 뒤 첫 숙소 소개 결제가 생기면 S-STAYREF 5건을 원장·`influencer_attributions` 로 확인할 것**(staging 선확인은 대표 결정으로 생략).

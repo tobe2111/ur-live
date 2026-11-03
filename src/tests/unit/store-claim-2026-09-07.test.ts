@@ -82,7 +82,7 @@ describe('/store/new 매장 등록 — 2026-09-07 대표 신고 회귀 가드', 
     // 직접 주소로 열리는 페이지라 `-1` 만으로는 갈 곳이 없을 수 있다.
     expect(s, 'onClose 가 navigate(-1) 단독이다 — 직접 진입 시 갈 곳이 없다')
       .not.toContain('onClose={() => navigate(-1)}')
-    expect(s, '이력 없음 폴백이 없다').toMatch(/history\.state|history\.length/)
-    expect(s).toMatch(/navigate\('\/'/)
+    // 2026-11-03: 이력 판정·홈 폴백은 useSafeBack 한 벌로 옮겼다(safe-back-2026-11-03.test.ts 가 판정 자체를 지킨다).
+    expect(s, '이력 없음 폴백이 없다').toMatch(/useSafeBack\('\/'\)/)
   })
 })

@@ -24,11 +24,11 @@ import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
 import BrandLoader from '@/components/brand/BrandLoader'
 import ContinueShoppingLink from '@/components/mall/ContinueShoppingLink'
+import { useSafeBack } from '@/hooks/useSafeBack'
 // ⚡ 2026-10-18: 옵션 변경 창은 열 때만 받는다(정적이면 첫 화면이 상품 봉투·embla 까지 받았다). 가드: cross-envelope-2026-10-18.test.ts
 const OptionSelectModal = lazy(() => import('@/components/OptionSelectModal'))
 
 // 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출(그 아이콘도 그 파일로).
-
 /** 📦 2026-09-01: 배송비 판정은 SSOT 하나로 — 여기와 결제 화면이 갈려 총액이 달랐다(product-flow.ts). */
 function isNoShippingItem(item: CartItem): boolean {
   return isNoShippingProduct({ deal_only: item.deal_only, category: item.category })
@@ -41,7 +41,7 @@ function isUserLoggedIn(): boolean {
 
 export default function CartPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const navigate = useNavigate(); const goBack = useSafeBack('/')
   const loggedIn = isUserLoggedIn()
 
   // 비로그인 상태: v4 clean white design
@@ -51,7 +51,7 @@ export default function CartPage() {
         <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
         <div className="sticky top-0 z-10 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="ur-content-narrow flex items-center justify-between px-4 py-3">
-            <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
+            <button type="button" onClick={goBack} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
               <X className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
             </button>
             <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('cart.title')}</h1>

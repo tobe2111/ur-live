@@ -40,6 +40,7 @@ import { parseUTCDate } from '@/utils/date'
 import { storeAffiliateRef, arrivedViaSomeoneElsesRef } from '@/utils/affiliate-track'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 import { effectiveAffiliateRate } from '@/shared/affiliate-rate'; import { priceDisplay } from '@/shared/price-display'; import { useOwnerManage, OwnerManageBar } from '@/components/deal/useOwnerManage'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 // 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection 을
 //   ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage, SharePrompt, toast, Users, Clock, Product type, lucide 일부) 제거.
@@ -50,13 +51,12 @@ const ProductImageCarousel = lazy(() => import('@/components/product/product-ima
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 const GiftSendModal = lazy(() => import('@/components/gift/GiftSendModal'))
 
-
 export default function ProductDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   // 👁️ 홈 인기순의 클릭 신호 — 세션당 1회(훅이 가드).
   useProductViewBeacon(id)
-  const navigate = useNavigate()
+  const navigate = useNavigate(); const goBack = useSafeBack('/')
   const invalidateVouchers = useInvalidateMyVouchers()
   const [searchParams] = useSearchParams()
 
@@ -415,7 +415,7 @@ export default function ProductDetailPage() {
         {/* 노란 헤더 */}
         <div className="sticky top-0 z-40 bg-amber-400 text-gray-900 dark:text-white">
           <div className="flex items-center justify-between px-3 py-3">
-            <button onClick={() => navigate(-1)} className="p-1" aria-label="뒤로">
+            <button onClick={goBack} className="p-1" aria-label="뒤로">
               <ChevronLeft className="w-6 h-6" />
             </button>
             <h1 className="text-[15px] font-bold">모바일 교환권</h1>

@@ -3,13 +3,13 @@
  * 소비자 라우트라 다크 토글 대응(dark: variants).
  */
 import { ChevronLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import type { TermsDoc } from './terms-types'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 export default function TermsDocument({ doc, url }: { doc: TermsDoc; url: string }) {
-  const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   // 메타는 서버(비-JS 크롤러)와 같은 표에서 읽는다 — 두 벌이면 갈라진다.
   // 표에 없는 약관(도매 등 향후 추가분)은 기존처럼 문서에서 파생.
   const seo = CONSUMER_SURFACE_SEO[url]
@@ -23,7 +23,7 @@ export default function TermsDocument({ doc, url }: { doc: TermsDoc; url: string
 
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
+          <button onClick={goBack} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{doc.title}</h1>

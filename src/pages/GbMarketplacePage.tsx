@@ -5,7 +5,6 @@
  *   소비자/인플루언서 대면 — 다크 토글 지원.
  */
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Megaphone, Loader2, Plus } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -17,6 +16,7 @@ import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import GbMyProposals from './gb-market/GbMyProposals'
 import GbMyPerformance from './gb-market/GbMyPerformance'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 interface GbDeal {
   product_id: number; name: string; image_url: string | null; category: string
@@ -26,7 +26,7 @@ interface GbDeal {
 }
 
 export default function GbMarketplacePage() {
-  const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const [deals, setDeals] = useState<GbDeal[]>([])
   const [loading, setLoading] = useState(true)
   const { togglePin, isPinning } = usePinAction()
@@ -48,7 +48,7 @@ export default function GbMarketplacePage() {
       <SEO title={CONSUMER_SURFACE_SEO['/gb-market'].title} description={CONSUMER_SURFACE_SEO['/gb-market'].description} url="/gb-market" noindex />
       <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide flex items-center gap-3 px-4 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로" className="text-gray-900 dark:text-white"><ChevronLeft className="w-5 h-5" /></button>
+          <button onClick={goBack} aria-label="뒤로" className="text-gray-900 dark:text-white"><ChevronLeft className="w-5 h-5" /></button>
           <h1 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Megaphone className="w-4 h-4 text-emerald-500" /> 공구 마켓
           </h1>
