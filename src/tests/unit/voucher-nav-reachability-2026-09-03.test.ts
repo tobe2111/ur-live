@@ -136,7 +136,8 @@ describe('④ 관리 → 수정 진입점이 살아 있다', () => {
   it('관리 페이지에 수정 링크가 있다 — 이 버튼이 유일한 이용권 수정 진입점이다', () => {
     // `/seller/products`(목록)는 SELLER_STORE_ONLY_MODE 로 nav 에서 빠져 있어, 이 링크가 끊기면
     // 이용권을 수정할 방법이 화면에서 사라진다.
-    expect(MANAGE_PAGE).toMatch(/navigate\(`\/seller\/products\/\$\{v\.id\}\/edit`\)/)
+    // 🏨 2026-11-03 재조준: 숙소 행만 숙소 편집으로 가르고(객실·달력), 그 밖은 같은 수정 화면.
+    expect(MANAGE_PAGE).toMatch(/navigate\(isStay \? `\/seller\/stays\/\$\{v\.id\}` : `\/seller\/products\/\$\{v\.id\}\/edit`\)/)
     expect(ROUTES).toContain('path="/seller/products/:id/edit"')
   })
 
@@ -153,7 +154,7 @@ describe('④ 관리 → 수정 진입점이 살아 있다', () => {
     expect(phoneBranch, '연락처 분기를 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
     expect(editBtn, '수정 진입점이 연락처 분기 안에만 있다').toBeLessThan(phoneBranch)
     // 그리고 그 진입점이 실제로 수정 화면으로 간다(이름만 남고 몸통이 빈 경우 차단).
-    expect(code).toMatch(/const goEdit = \(\) => navigate\(`\/seller\/products\/\$\{v\.id\}\/edit`\)/)
+    expect(code).toMatch(/const goEdit = \(\) => navigate\(isStay \? `\/seller\/stays\/\$\{v\.id\}` : `\/seller\/products\/\$\{v\.id\}\/edit`\)/)
   })
 })
 
