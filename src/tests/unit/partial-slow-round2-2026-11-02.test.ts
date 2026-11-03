@@ -25,7 +25,7 @@ describe('마이 — 내 가게·내 이용권', () => {
   it('/api/vouchers/my 의 색인 DDL 은 isolate 당 한 번', () => {
     const s = read('src/features/group-buy/api/group-buy-public.routes.ts')
     expect(s).toMatch(/const _voucherIdxDone = new WeakSet<object>\(\)/)
-    expect(s).toMatch(/if \(!_voucherIdxDone\.has\(DB\)\) \{ _voucherIdxDone\.add\(DB\); try \{ await DB\.prepare\(`CREATE INDEX IF NOT EXISTS idx_vouchers_user_created/)
+    expect(s).toMatch(/if \(!_voucherIdxDone\.has\(dbKey\(DB\)\)\) \{ _voucherIdxDone\.add\(dbKey\(DB\)\); try \{ await c\.env\.DB\.prepare\(`CREATE INDEX IF NOT EXISTS idx_vouchers_user_created/) // 👤 2026-11-03 사본 세션 → 메모 키는 원본, DDL 은 원본으로
     // 메모 없는 맨 DDL 이 다시 생기면 빨간불
     expect(s.match(/CREATE INDEX IF NOT EXISTS idx_vouchers_user_created/g)?.length).toBe(1)
   })

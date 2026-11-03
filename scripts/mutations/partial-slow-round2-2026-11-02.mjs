@@ -14,7 +14,7 @@ export default [
   {
     name: '🐢 내 이용권 — 색인 DDL 메모가 빠져 매 요청 다시 보냄',
     file: 'src/features/group-buy/api/group-buy-public.routes.ts',
-    find: 'if (!_voucherIdxDone.has(DB)) { _voucherIdxDone.add(DB); try {',
+    find: 'if (!_voucherIdxDone.has(dbKey(DB))) { _voucherIdxDone.add(dbKey(DB)); try {', // 👤 2026-11-03 재조준 — 사본 세션이라 메모 키가 dbKey(원본)
     replace: 'if (true) { try {',
     test: T,
     why: '종전엔 매 요청 DDL 로 원본 DB 를 한 번 더 다녀왔다.',
