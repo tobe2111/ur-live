@@ -13,6 +13,7 @@ import { formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import { agencyRequest } from './agency-api'
+import { commissionPayoutDayLabel, resolveCommissionPayoutDay } from '@/shared/commission-payout-day'
 // 🎬 2026-11-02 시안 7차 "정산 요청"(대표 "7차도 다 해주고") — 신청하면 '지금 받을 수 있어요' 금액이 새 값으로 올라와 바뀌고,
 //   신청한 돈이 옮겨 간 '처리 중' 칸이 옅은 파랑으로 한 번 켜진다. 사장님 정산은 신청 버튼이 없어(매주 자동) 이 화면에만 있다.
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
@@ -24,7 +25,7 @@ export interface AgencyPayoutRow {
   tax_mode: 'tax_invoice' | 'withholding_3_3'; status: string; created_at: string; paid_at: string | null
 }
 export interface AgencyPayoutsResponse {
-  enabled: boolean; minAmount?: number; balance: AgencyShareBalance | null; payouts: AgencyPayoutRow[]
+  enabled: boolean; minAmount?: number; payoutDay?: number; balance: AgencyShareBalance | null; payouts: AgencyPayoutRow[]
 }
 
 const STATUS_LABEL: Record<string, string> = { requested: '처리 중', paid: '지급 완료', rejected: '반려' }
@@ -59,13 +60,15 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
 
   const b = data?.balance
   const min = data?.minAmount ?? 10_000
+  // 📅 2026-11-03 대표 *"에이전시도 같은 날로"* — 신청한 몫은 인플루언서와 같은 월 정산일에 보낸다.
+  const payDay = commissionPayoutDayLabel(resolveCommissionPayoutDay(data?.payoutDay))
   const hasOpen = (data?.payouts || []).some((p) => p.status === 'requested')
   const canRequest = canManage && !!b && b.available >= min && !hasOpen
 
   const [sent, setSent] = useState(0) // 🎬 신청이 끝난 횟수 — 바뀔 때 금액·처리 중 칸이 한 번 움직인다
   async function request() {
     if (!b) return
-    if (!(await confirmDialog(`${formatNumber(b.available)}원 지급을 신청할까요? 확인되면 유어딜이 보내 드려요.`))) return
+    if (!(await confirmDialog(`${formatNumber(b.available)}원 지급을 신청할까요? ${payDay}에 유어딜이 보내 드려요.`))) return
     setBusy(true)
     const r = await agencyRequest<{ net?: number }>('/payouts/request', { method: 'POST' })
     setBusy(false)
@@ -120,6 +123,7 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
             <p className="mt-3 px-1 text-[12px] leading-[1.55] text-gray-500 dark:text-gray-400">
               팔린 이용권의 우리 몫은 환불 기간이 지나면 받을 수 있어요(기다리는 중). 환불되면 그만큼 빠져요.
               사업자는 세금계산서로 공제 없이, 개인은 3.3%를 떼고 받아요.
+              지급은 {payDay}에 한 번 해요. 신청하지 않아도 그날 {formatNumber(min)}원 이상이면 자동으로 묶여요.
             </p>
 
             <h3 className="mt-6 px-1 text-[15px] font-bold text-gray-900 dark:text-white">지급 내역</h3>

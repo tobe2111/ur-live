@@ -154,7 +154,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       T(s, p, { x: x + 0.25, y: cy2 + 0.44, w: cw2 - 0.5, h: 0.68, fontSize: 9.5, color: C.inkSoft, lineSpacingMultiple: 1.35, valign: 'top' });
     });
     takeaway(s, '유어딜 정산은 매장, 귀사, 인플루언서 각자의 계좌로 갑니다. 귀사 몫을 매장에 청구할 일이 없습니다.', { y: 6.52, h: 0.34, size: 10.5 });
-    s.addNotes('5%: 2026-09-04 대표 확정. 귀사 몫·소개비 직접 송금: 2026-09-16 결재(broker-payout-model 안 1) + 09-19 플로우(매장 등록 때 두 요율). ✅ 2026-10-12 실측: broker_share_enabled=ON, 적립 1건(송금은 사용 확인 뒤 월 1일). PG 2.75% 는 commission-budget.ts 실측 상수(플랫폼 부담). 정산은 used 이용권만 주간(auto-settlement.ts).');
+    s.addNotes('5%: 2026-09-04 대표 확정. 귀사 몫·소개비 직접 송금: 2026-09-16 결재(broker-payout-model 안 1) + 09-19 플로우(매장 등록 때 두 요율). ✅ 2026-10-12 실측: broker_share_enabled=ON, 적립 1건(송금은 사용 확인 뒤 매월 10일 — 2026-11-03 대표 확정). PG 2.75% 는 commission-budget.ts 실측 상수(플랫폼 부담). 정산은 used 이용권만 주간(auto-settlement.ts).');
   }
 
   // ───────── 04-2 직접 입점 vs 대행사 경유 (강조 열 표) ─────────
@@ -181,7 +181,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       { text: '5%와 10%의 차이는 귀사 몫이 아니라 유어딜이 덜 받는 것. ', options: { color: C.inkSoft } },
       { text: '귀사 몫은 95% 안에서 등록 때 정하고, 유어딜이 보냅니다.', options: { bold: true, color: C.ink } },
     ], { y: 6.42, h: 0.42, size: 11 });
-    s.addNotes('09-15 참고 덱 "플랜별 기능 비교" 장치. 사실: fee-resolver.ts(직접 10 / 중개 5) · store-operator-model §7·§9(운영자 권한·계좌 owner 전용·회수·코드). 영입 2% 행은 09-16 폐지로 삭제. 귀사 몫 송금·코드는 09-19 확정 — 2026-10-12 실측에서 broker_share_enabled=ON, 적립 1건(송금은 사용 확인 뒤 월 1일).');
+    s.addNotes('09-15 참고 덱 "플랜별 기능 비교" 장치. 사실: fee-resolver.ts(직접 10 / 중개 5) · store-operator-model §7·§9(운영자 권한·계좌 owner 전용·회수·코드). 영입 2% 행은 09-16 폐지로 삭제. 귀사 몫 송금·코드는 09-19 확정 — 2026-10-12 실측에서 broker_share_enabled=ON, 적립 1건(송금은 사용 확인 뒤 매월 10일 — 2026-11-03 대표 확정).');
   }
 
   // ───────── 05 매장 1곳 단위 경제 + 규모별 계산 ─────────
@@ -411,7 +411,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     const obj = [
       ['"할인하면 손해 아니에요?"', '남는 메뉴만, 사장님이 정한 할인율로만 올립니다. 안 팔리면 0원이고, 팔리면 새 손님입니다.'],
       ['"배달앱이랑 뭐가 달라요?"', '배달이 없고 손님이 가게에 옵니다. 수수료는 5%이고, 가게 페이지가 사장님 것으로 남습니다. 병행해도 됩니다.'],
-      ['"정산은 언제 들어와요?"', '손님이 매장에서 쓴 이용권만 매주 정산돼 매장 계좌로 들어옵니다. 안 쓴 건 손님에게 자동 환불이라 분쟁이 없습니다.'],
+      ['"정산은 언제 들어와요?"', '손님이 매장에서 쓴 이용권만 ' + FACTS.storePayoutDay + '(' + FACTS.storePayoutRange + ') 정산돼 매장 계좌로 들어옵니다. 안 쓴 건 손님에게 자동 환불이라 분쟁이 없습니다.'],
       ['"귀찮은 일 있어요?"', '손님 QR을 폰으로 찍는 것 하나입니다. 등록, 이용권 관리, 인플루언서 섭외는 제가 합니다.'],
       ['"계약서 써야 해요?"', '유어딜과는 가입뿐입니다. 제 몫은 등록할 때 적힌 %로 유어딜이 보내고, 마음에 안 들면 오늘이라도 사장님이 제 권한을 빼시면 됩니다.'],
     ];
@@ -656,13 +656,13 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       { x: lx + 0.35, y: 3.15, w: lw - 0.7, h: 1.1, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
     card(s, lx, 4.55, lw, 1.45, { fill: C.tint });
     T(s, '5%의 경계, 권한, 코드, 귀사 몫 직접 송금까지 라이브입니다', { x: lx + 0.35, y: 4.72, w: lw - 0.7, h: 0.3, fontSize: 12.5, bold: true, color: C.ink, charSpacing: -0.3 });
-    T(s, '5%와 95%의 경계, 정산계좌 차단, 매장 코드와 협업 코드, 성과 화면이 지금 작동합니다. 귀사 몫을 유어딜이 직접 보내는 레일도 켜져 있고, 실제 주문에서 적립이 시작됐습니다. 다만 적립은 송금이 아닙니다 — 손님이 이용권을 실제로 쓴 것이 확인되면 익고, 쌓인 금액이 ' + FACTS.influencerPayoutMin + ' 을 넘으면 매월 1일에 보냅니다. 아직 보낸 횟수가 많지 않다는 점은 그대로 말씀드립니다.',
+    T(s, '5%와 95%의 경계, 정산계좌 차단, 매장 코드와 협업 코드, 성과 화면이 지금 작동합니다. 귀사 몫을 유어딜이 직접 보내는 레일도 켜져 있고, 실제 주문에서 적립이 시작됐습니다. 다만 적립은 송금이 아닙니다 — 손님이 이용권을 실제로 쓴 것이 확인되면 익고, 쌓인 금액이 ' + FACTS.influencerPayoutMin + ' 을 넘으면 ' + FACTS.influencerPayoutDay + '에 보냅니다. 아직 보낸 횟수가 많지 않다는 점은 그대로 말씀드립니다.',
       { x: lx + 0.35, y: 5.05, w: lw - 0.7, h: 0.9, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.42, valign: 'top' });
     s.addShape(pres.shapes.LINE, { x: lx, y: 6.24, w: 0, h: 0.5, line: { color: C.brand, width: 2 } });
     T(s, '"매장 등록. 이때 매장 코드가 자동 생성되고, 중개사 몫 %와 인플루언서 커미션 %도 같이 정한다." "대행사 몫은 유어딜이 직접 송금."', { x: lx + 0.25, y: 6.2, w: lw - 0.25, h: 0.4, fontSize: 10.5, italic: true, color: C.ink, lineSpacingMultiple: 1.35, valign: 'top' });
     T(s, '유어딜 대표, 2026년 9월 19일 확정', { x: lx + 0.25, y: 6.55, w: lw, h: 0.22, fontSize: 9, color: C.gray });
     phone(s, 'seller-operating', 10.05, 1.15, 5.15, { caption: '운영 매장 요약. 화면이 그 경계를 직접 말합니다' });
-    s.addNotes('귀사 몫은 매장 단위 %(seller_meta.broker_share_pct). ✅ 2026-10-12 실측으로 문장을 뒤집었다 — broker_share_enabled=**true(ON)** 이고 influencer_attributions(source=broker_share) 에 실제 적립 1건(seller 26 · 620원 · status=pending · 2026-10-07). 종전 문장 "켜기 전입니다 / 종전대로 매장과 직접 정산" 은 **지금 사실과 다르다**(대행사에게 돈 얘기를 틀리게 말하는 자리라 가장 먼저 고쳤다). 🔑 그래도 "송금했다" 고는 말하지 않는다 — pending 은 적립이고, 성숙은 payout_requires_voucher_use=true(라이브) 게이트가 이용권 사용을 확인한 뒤이고, 실제 송금은 어드민 [송금 처리] 가 한 번 더 있다. 최소 지급액은 **10만원**(cron/influencer-payout.ts DEFAULT_PAYOUT_MIN=100_000 · 라이브 influencer_payout_min=100000 · 매월 1일) — 🩸 초안에 "1만원" 이라고 썼다가 코드를 확인하고 고쳤다. 1만원은 매장(셀러) 레일의 최소액이고 중개 몫은 인플루언서 레일이라 다르다(딜로 받으면 최소액 없음). 그래서 "적립이 시작됐다 / 적립은 송금이 아니다" 두 문장으로 쪼갰다. 오른쪽은 /seller/operating 실제 UI + 예시 데이터.');
+    s.addNotes('귀사 몫은 매장 단위 %(seller_meta.broker_share_pct). ✅ 2026-10-12 실측으로 문장을 뒤집었다 — broker_share_enabled=**true(ON)** 이고 influencer_attributions(source=broker_share) 에 실제 적립 1건(seller 26 · 620원 · status=pending · 2026-10-07). 종전 문장 "켜기 전입니다 / 종전대로 매장과 직접 정산" 은 **지금 사실과 다르다**(대행사에게 돈 얘기를 틀리게 말하는 자리라 가장 먼저 고쳤다). 🔑 그래도 "송금했다" 고는 말하지 않는다 — pending 은 적립이고, 성숙은 payout_requires_voucher_use=true(라이브) 게이트가 이용권 사용을 확인한 뒤이고, 실제 송금은 어드민 [송금 처리] 가 한 번 더 있다. 최소 지급액은 **10만원**(cron/influencer-payout.ts DEFAULT_PAYOUT_MIN=100_000 · 라이브 influencer_payout_min=100000 · 매월 10일, 2026-11-03 대표 확정) — 🩸 초안에 "1만원" 이라고 썼다가 코드를 확인하고 고쳤다. 1만원은 매장(셀러) 레일의 최소액이고 중개 몫은 인플루언서 레일이라 다르다(딜로 받으면 최소액 없음). 그래서 "적립이 시작됐다 / 적립은 송금이 아니다" 두 문장으로 쪼갰다. 오른쪽은 /seller/operating 실제 UI + 예시 데이터.');
   }
 
   // ───────── PART 4 구분 장 ─────────
@@ -749,7 +749,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       ['수수료가 두 번 나가나요?', '아닙니다. 유어딜이 떼는 것은 중개 매장 5% 하나뿐입니다. 귀사 몫은 매장 몫 95% 안에서 등록 때 정한 %이고, 유어딜이 원천징수를 계산해 귀사 계좌로 직접 보냅니다. 매장에 청구할 일이 없습니다.'],
       ['사장님이 직접 계정을 만들면 우리 관계는요?', '계정 양도가 아니라 권한 변경입니다. 상품, 주문, 리뷰, 정산 이력은 매장에 그대로 남고, 귀사는 운영자로 계속 일할 수 있습니다.'],
       ['대행사가 유어딜에 내는 돈이 있나요?', '없습니다. 가입비, 월 이용료, 매장당 등록비 전부 없습니다. 매장에서 팔린 만큼만 유어딜 수수료가 나갑니다.'],
-      ['매장 정산은 언제 되나요?', '손님이 매장에서 실제로 사용한 이용권만 주간 정산으로 매장 계좌에 들어옵니다. 안 쓴 이용권은 손님에게 자동 환불됩니다.'],
+      ['매장 정산은 언제 되나요?', '손님이 매장에서 실제로 사용한 이용권만 ' + FACTS.storePayoutDay + '(' + FACTS.storePayoutRange + ') 매장 계좌에 들어옵니다. 안 쓴 이용권은 손님에게 자동 환불됩니다.'],
     ];
     const cw = 5.6;
     faqs.forEach(([q, a], i) => {

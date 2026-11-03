@@ -49,7 +49,8 @@ export const FACTS = {
   influencerDb: '337,842명', influencerReachable: '65,431명', influencerYoutube: '20,584명', influencerNaverBlog: '299,363명', influencerAsOf: '2026년 10월 기준',
   // 💼 중개(상인회·대행사) 조건 상한 — broker-share.ts 의 상수와 같은 값. 바뀌면 그 파일과 함께 고친다.
   brokerShareMax: '50%', brokerTermsSumMax: '90%',
-  influencerPayoutMin: '10만원', influencerPayoutDay: '매월 1일', clawbackWindow: '7일',
+  influencerPayoutMin: '10만원', influencerPayoutDay: '매월 10일', clawbackWindow: '7일', // 📅 2026-11-03 대표 확정 "10일로 할까? 에이전시도 같은 날로" (결재 2026-11-03-settlement-structure)
+  storePayoutDay: '매주 목요일', storePayoutRange: '월~일 사용분',
   contactEmail: 'jiwon@ur-team.com', kakaoChannel: 'pf.kakao.com/_AITdn', site: 'urdeal.kr', biz: '리스터코퍼레이션 · 사업자등록번호 479-09-02930',
   ...LIVE,
 };

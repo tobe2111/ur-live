@@ -118,6 +118,12 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     options: [{ value: 'false', label: 'OFF (현행 — 중개사는 매장과 직접 정산)' }, { value: 'true', label: 'ON — 매장 등록 때 정한 % 를 유어딜이 중개사에게' }],
     hint: '🔴 머니 경로. 매장 몫에서 나간다(유어딜 5% 불변). 라이브 중개 매장 1곳·주문 0건이라 켜도 오늘 영향 0. 절차: S-BROKER',
   },
+  // 💸 2026-11-03 결재 `2026-11-03-settlement-structure.md` — 매장 정산을 토스 지급대행으로(12-17 개정 전금법).
+  {
+    key: 'toss_payouts_enabled', label: '토스 지급대행(매장 정산 송금)', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 은행 이체 파일로 송금)' }, { value: 'true', label: 'ON — 정산 화면에 [토스로 보내기], 토스가 매장 계좌로 직접 송금' }],
+    hint: '🔴 머니 경로. 시크릿 TOSS_PAYOUT_SECRET_KEY·TOSS_PAYOUT_SECURITY_KEY 가 없으면 켜도 동작 안 함. 매장 정산만(커미션은 은행 이체). 장부는 토스가 완료를 알려야 송금 완료. 절차: 토스 계약 → S-TOSSPAYOUT',
+  },
   // 🤝 2026-11-01 결재 `2026-10-11-agency-model-email-only.md` 3단계 — 에이전시 몫을 유어딜이 걷어 지급.
   {
     key: 'agency_share_payout_enabled', label: '에이전시 몫 유어딜 지급', default: 'false',
