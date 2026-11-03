@@ -103,8 +103,8 @@ export default [
   {
     name: '🏪 입력칸에 흰 바탕이 돌아온다 (다크에서 흰 바탕 위 흰 글자) (force-light-theme 소실)',
     file: `src/pages/store-new/StoreFindStep.tsx`,
-    find: `className="flex-1 min-w-0 bg-transparent border-0 outline-none focus-visible:outline-none text-[17px] text-gray-900 dark:text-white placeholder:text-ink-faint" />`,
-    replace: `className="flex-1 min-w-0 bg-white border-0 outline-none focus-visible:outline-none text-[17px] text-gray-900 dark:text-white placeholder:text-ink-faint" />`,
+    find: `className="flex-1 min-w-0 bg-transparent border-0 outline-none focus-visible:outline-none text-[16px] text-gray-900 dark:text-white placeholder:text-ink-faint" />`,
+    replace: `className="flex-1 min-w-0 bg-white border-0 outline-none focus-visible:outline-none text-[16px] text-gray-900 dark:text-white placeholder:text-ink-faint" />`,
     test: `src/tests/unit/store-register-wizard.test.ts`,
     why:
       '전역 `.dark input`(특이도 0,5,1)이 `text-gray-900`(0,1,0)을 이겨 흰 배경 위 흰 글자가 된다 ' +
