@@ -273,6 +273,8 @@ installImageProtection()
 import('@/lib/version-check').then(({ startVersionCheck }) => startVersionCheck()).catch(swallow('main:version-check'))
 // 🎬 2026-11-03 모션 20차 ① — 파란 주 버튼 누른 자리 물결. 장식이라 첫 화면이 다 뜬 뒤에 받는다.
 runAfterLoad(() => { import('@/lib/press-ripple').then((m) => m.installPressRipple()).catch(swallow('main:press-ripple')) })
+// 🎬 21차 ⑥ — PC 에서 잘린 이름에 마우스를 올리면 흐른다(마우스 있는 기기만, 첫 화면 뒤에).
+runAfterLoad(() => { import('@/lib/hover-marquee').then((m) => m.installHoverMarquee()).catch(swallow('main:hover-marquee')) })
 
 // 🛡️ 2026-04-29: Web Vitals (LCP/CLS/INP) Sentry 추적 — 프로덕션만, lazy.
 //   sentry init 후 (1초 deferred) PerformanceMonitor 시작 — 초기 LCP 측정 누락 방지.

@@ -24,6 +24,8 @@ const injectMotionCss = (id: string, css: string) => { if (typeof document !== '
 injectMotionCss('ur-m-stamp', `@keyframes ur-slam { 0% { opacity: 0; transform: rotate(-24deg) scale(1.9); } 60% { opacity: 1; transform: rotate(-12deg) scale(.94); } 100% { opacity: 1; transform: rotate(-12deg) scale(1); } }.ur-slam { animation: ur-slam .38s cubic-bezier(.3,1.4,.5,1) both; }@keyframes ur-thud { 0%,100% { transform: none; } 30% { transform: translateY(4px) scale(.995); } 60% { transform: translateY(-1px); } }.ur-thud { animation: ur-thud .35s ease-out .22s both; }@media (prefers-reduced-motion: reduce){.ur-slam,.ur-thud{animation:none!important}}`)
 // 🎬 2026-11-03 19차 ② — 쓰기 전 QR 화면엔 파란 점이 천천히 숨 쉬듯 퍼진다 — 화면이 멈춘 게 아니라 '연결되어 기다리는 중'(실제로 5초마다 사용 여부를 확인한다).
 injectMotionCss('ur-m-qrlive', `@keyframes ur-qr-breathe { from { transform: scale(1); opacity: .55; } to { transform: scale(3); opacity: 0; } }.ur-qr-live { position: relative; }.ur-qr-live::after { content: ''; position: absolute; inset: 0; border-radius: 9999px; background: inherit; animation: ur-qr-breathe 2s ease-out infinite; }@media (prefers-reduced-motion: reduce){.ur-qr-live::after{animation:none!important;opacity:0}}`)
+// 🎬 2026-11-03 21차 ① — 보는 동안 매장에서 찍히면 카드 아래 띠가 절취선을 따라 찢겨 떨어지고, 이어서 '사용 완료' 도장이 찍힌다.
+injectMotionCss('ur-m-qrtear', `@keyframes ur-qr-tear { 0% { transform: none; opacity: 1; } 30% { transform: rotate(-4deg) translateY(4px); opacity: 1; } 100% { transform: rotate(-14deg) translate(-20px, 160px); opacity: 0; } }.ur-qr-tear { transform-origin: 8% 0; animation: ur-qr-tear .75s cubic-bezier(.5,0,.7,.4) .15s forwards; }@media (prefers-reduced-motion: reduce){.ur-qr-tear{animation:none!important;opacity:0}}`)
 
 // 🛡️ 2026-05-16: 외부 QR API (api.qrserver.com) 의존 제거 → qrcode.react 로컬 SVG.
 // 🛡️ 2026-06-01 (loading): qrcode.react 는 QR 모달 열 때만 필요 → lazy (페이지 chunk -10KB).
@@ -306,6 +308,11 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               {/* 🛡️ 2026-05-16 → 2026-07-06 (대표 "QR 위에 사용 완료 도장처럼 박기"): 사용/만료 시
                   고무도장 스타일 오버레이 — 비스듬히 박힌 이중 테두리 스탬프 + QR grayscale(위 div) 로
                   재사용을 시각적으로 명백히 차단(실제 재사용 차단은 서버 atomic CAS). */}
+              {justUsed && (
+                <div aria-hidden="true" className="ur-qr-tear pointer-events-none absolute left-0 right-0 bottom-0 h-8 rounded-b-2xl bg-surface border-t-2 border-dashed border-gray-300 dark:border-white/30 flex items-center justify-center text-[12px] text-gray-500 dark:text-gray-400">
+                  {t('wallet.qr.stampUsed', { defaultValue: '사용 완료' })}
+                </div>
+              )}
               {isUsed && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
                   <div className={`flex flex-col items-center rounded-xl border-[3px] border-tone-ok bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm ${justUsed ? 'ur-slam' : ''}`}>

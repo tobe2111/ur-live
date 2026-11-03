@@ -8,7 +8,7 @@
  * 규칙: 바탕은 페이지와 같은 `bg-warm` · 뒤로는 `←`(조작 아이콘이라 lucide — CLAUDE.md 아이콘 경계) ·
  * 제목은 가운데 17px · 오른쪽 칸은 같은 폭으로 비워 제목이 늘 정중앙에 선다.
  */
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useSafeBack } from '@/hooks/useSafeBack'
 import { ArrowLeft } from 'lucide-react'
 
@@ -29,8 +29,21 @@ export default function SubPageHeader({ title, onBack, right, backLabel = '뒤�
   backLabel?: string
 }) {
   const goBack = useSafeBack(fallback)
+  // 🎬 2026-11-03 21차 ③ (대표 승인) — 들어오면 제목이 아래에 **크게** 있고, 내리면 작아지며 머리줄 가운데로 올라간다.
+  //   머리줄의 h1 은 그대로 하나다(읽기 프로그램용). 큰 제목은 그림일 뿐이라 aria-hidden.
+  const [collapsed, setCollapsed] = useState(false)
+  const [k, setK] = useState(0)
+  useEffect(() => {
+    let raf = 0
+    const read = () => { raf = 0; const y = Math.max(0, window.scrollY); setK(Math.min(1, y / 44)); setCollapsed(y > 40) }
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(read) }
+    read()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf) }
+  }, [])
   return (
-    <header className={SUB_PAGE_HEADER_CLS}>
+    <>
+    <header className={`${SUB_PAGE_HEADER_CLS} transition-shadow ${collapsed ? 'shadow-[0_1px_0_var(--rule)]' : ''}`}>
       <div className={`ur-content-narrow grid ${wideSides ? 'grid-cols-[88px_1fr_88px]' : 'grid-cols-[44px_1fr_44px]'} items-center h-[52px] px-1`}>
         <button
           type="button"
@@ -40,9 +53,16 @@ export default function SubPageHeader({ title, onBack, right, backLabel = '뒤�
         >
           <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" strokeWidth={1.6} />
         </button>
-        <h1 className="text-center text-[16px] font-semibold text-gray-900 dark:text-white truncate">{title}</h1>
+        <h1 className={`text-center text-[16px] font-semibold text-gray-900 dark:text-white truncate transition-[opacity,transform] duration-200 ${collapsed ? 'opacity-100' : 'opacity-0 translate-y-2'}`}>{title}</h1>
         <div className={`h-11 flex items-center ${wideSides ? 'justify-end pr-3' : 'w-11 justify-center'}`}>{right}</div>
       </div>
     </header>
+    <div aria-hidden="true" className="ur-content-narrow px-4 pt-1 pb-3 overflow-hidden">
+      <p
+        className="origin-left text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white truncate"
+        style={{ transform: `scale(${1 - k * 0.35}) translateY(${-k * 10}px)`, opacity: 1 - k }}
+      >{title}</p>
+    </div>
+    </>
   )
 }
