@@ -39,10 +39,13 @@ describe('숙소 통일 A', () => {
     expect(row).toMatch(/\{isStay \? \(\s*<button[^\n]*navigate\('\/seller\/stays\/bookings'\)/)
   })
 
-  it('③ 등록 폼의 숙박은 숙소 등록 화면으로', () => {
+  it('③ 등록 폼의 숙박은 같은 위저드 안에서 객실까지 받는다(①, 같은 날 A 의 숙소 화면 우회를 대체)', () => {
     const step = read('src/pages/seller-meal-voucher/VoucherInfoStep.tsx')
-    expect(step).toContain("if (c === 'stay_voucher') { navigate('/seller/stays/new'); return }")
-    expect(step).toContain('onClick={() => pick(c.key)}')
-    expect(step).not.toContain('onClick={() => setCategory(c.key)}')
+    expect(step).toContain("const isStay = form.category === 'stay_voucher'")
+    expect(step).toContain('{isStay ? <StayRoomsFields form={form} update={update} /> : <DiscountPriceFields')
+    expect(step).not.toContain("navigate('/seller/stays/new')")
+    const page = read('src/pages/SellerMealVoucherNewPage.tsx')
+    expect(page).toContain('const attachErr = newId ? await attachBooking(newId, form, headers) : null')
+    expect(page).toContain("{step === 2 && form.category !== 'stay_voucher' && <BookingModeSection form={form} update={update} />}")
   })
 })

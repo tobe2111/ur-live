@@ -80,70 +80,23 @@ sellerStaysRoutes.get('/stays', cors(), async (c) => {
 })
 
 // ─── 2. 숙소 상품 생성 (products + stay_info 동시) ─────────────────────
-sellerStaysRoutes.post('/stays', cors(), async (c) => {
-  const sellerId = await getSellerId(c)
-  if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
-  try {
-    const body = await c.req.json<Record<string, any>>()
-    const {
-      name, description, image_url,
-      property_type, star_rating, total_rooms,
-      check_in_time, check_out_time,
-      address, address_detail, postal_code, region_sido, region_sigungu, latitude, longitude,
-      amenities, room_amenities,
-      cancellation_policy, custom_cancellation_text,
-      house_rules, check_in_instructions,
-      description_full, nearby_attractions,
-      min_nights, max_nights, advance_booking_days,
-      // 🛡️ 2026-05-18: 판매 모드 + 인플 referral.
-      sale_mode, voucher_validity_days, voucher_weekday_only, voucher_weekend_only,
-      referral_enabled, influencer_discount_pct, influencer_commission_pct,
-    } = body
-
-    if (!name || typeof name !== 'string' || name.length < 2) {
-      return c.json({ success: false, error: '상품명은 2자 이상 필요합니다' }, 400)
-    }
-
-    // 🛡️ 2026-05-18: 셀러 등급별 voucher 한도 검증.
-    const { checkVoucherLimit, canEnableReferral } = await import('../../../worker/utils/seller-tier-limits')
-    const limit = await checkVoucherLimit(c.env, sellerId)
-    if (!limit.ok) {
-      return c.json({
-        success: false,
-        error: limit.reason || 'voucher 발행 한도 초과',
-        code: 'VOUCHER_LIMIT_EXCEEDED',
-        data: { tier: limit.tier_name, current: limit.current_count, limit: limit.monthly_limit },
-      }, 403)
-    }
-
-    if (referral_enabled) {
-      const allowed = await canEnableReferral(c.env, sellerId)
-      if (!allowed) {
-        return c.json({
-          success: false,
-          error: 'referral 활성화는 실버 이상 등급에서만 가능합니다',
-          code: 'TIER_INSUFFICIENT',
-        }, 403)
-      }
-    }
-
-    // 1. products 테이블 INSERT (카테고리 강제 'stay_voucher')
-    const insertProduct = await c.env.DB.prepare(
-      `INSERT INTO products (
-         seller_id, name, description, image_url, price,
-         category, product_type, is_active,
-         created_at, updated_at
-       ) VALUES (?, ?, ?, ?, 0, 'stay_voucher', 'featured', 1,
-                 datetime('now'), datetime('now'))`
-    ).bind(sellerId, name, description || '', image_url || '').run()
-
-    const productId = Number(insertProduct.meta.last_row_id)
-    if (!productId) {
-      return c.json({ success: false, error: '상품 생성 실패' }, 500)
-    }
-
-    // 2. product_stay_info INSERT (1:1)
-    await c.env.DB.prepare(
+// 🏨 2026-11-03 숙소 통일 ①: 숙소 정보 INSERT 를 한 곳에 — `POST /stays`(옛 숙소 등록)와
+//   `POST /stays/:productId/info`(이용권 등록 위저드가 만든 상품에 숙소 정보를 붙인다)가 같이 쓴다.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function insertStayInfo(DB: D1Database, productId: number, body: Record<string, any>): Promise<void> {
+  const {
+    property_type, star_rating, total_rooms,
+    check_in_time, check_out_time,
+    address, address_detail, postal_code, region_sido, region_sigungu, latitude, longitude,
+    amenities, room_amenities,
+    cancellation_policy, custom_cancellation_text,
+    house_rules, check_in_instructions,
+    description_full, nearby_attractions,
+    min_nights, max_nights, advance_booking_days,
+    sale_mode, voucher_validity_days, voucher_weekday_only, voucher_weekend_only,
+    referral_enabled, influencer_discount_pct, influencer_commission_pct,
+  } = body
+    await DB.prepare(
       `INSERT INTO product_stay_info (
          product_id, property_type, star_rating, total_rooms,
          check_in_time, check_out_time,
@@ -191,6 +144,59 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
       Math.max(0, Math.min(50, Number(influencer_discount_pct) || 0)),
       Math.max(0, Math.min(20, Number(influencer_commission_pct) || 0)),
     ).run().catch((e: Error) => { throw new Error(`stay_info INSERT 실패: ${e.message}`) })
+}
+
+sellerStaysRoutes.post('/stays', cors(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
+  try {
+    const body = await c.req.json<Record<string, any>>()
+    const { name, description, image_url, referral_enabled } = body
+
+    if (!name || typeof name !== 'string' || name.length < 2) {
+      return c.json({ success: false, error: '상품명은 2자 이상 필요합니다' }, 400)
+    }
+
+    // 🛡️ 2026-05-18: 셀러 등급별 voucher 한도 검증.
+    const { checkVoucherLimit, canEnableReferral } = await import('../../../worker/utils/seller-tier-limits')
+    const limit = await checkVoucherLimit(c.env, sellerId)
+    if (!limit.ok) {
+      return c.json({
+        success: false,
+        error: limit.reason || 'voucher 발행 한도 초과',
+        code: 'VOUCHER_LIMIT_EXCEEDED',
+        data: { tier: limit.tier_name, current: limit.current_count, limit: limit.monthly_limit },
+      }, 403)
+    }
+
+    if (referral_enabled) {
+      const allowed = await canEnableReferral(c.env, sellerId)
+      if (!allowed) {
+        return c.json({
+          success: false,
+          error: 'referral 활성화는 실버 이상 등급에서만 가능합니다',
+          code: 'TIER_INSUFFICIENT',
+        }, 403)
+      }
+    }
+
+    // 1. products 테이블 INSERT (카테고리 강제 'stay_voucher')
+    const insertProduct = await c.env.DB.prepare(
+      `INSERT INTO products (
+         seller_id, name, description, image_url, price,
+         category, product_type, is_active,
+         created_at, updated_at
+       ) VALUES (?, ?, ?, ?, 0, 'stay_voucher', 'featured', 1,
+                 datetime('now'), datetime('now'))`
+    ).bind(sellerId, name, description || '', image_url || '').run()
+
+    const productId = Number(insertProduct.meta.last_row_id)
+    if (!productId) {
+      return c.json({ success: false, error: '상품 생성 실패' }, 500)
+    }
+
+    // 2. product_stay_info INSERT (1:1) — 🏨 2026-11-03 helper 로(이용권 등록 위저드도 같은 INSERT 를 쓴다)
+    await insertStayInfo(c.env.DB, productId, body)
 
     return c.json({ success: true, data: { product_id: productId } })
   } catch (err) {
@@ -200,6 +206,29 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
 })
 
 // ─── 3. 숙소 상세 (stay_info + rooms + 최근 30일 캘린더) ────────────────
+// 🏨 2026-11-03 숙소 통일 ①: 이용권 등록 위저드가 `POST /api/seller/products`(category=stay_voucher)로 만든
+//   상품에 숙소 정보를 붙인다 — 매장·사진·사장님 링크·매장 프로필은 일반 이용권과 같은 길로 이미 저장됐다.
+//   멱등: 이미 붙어 있으면 409 없이 그대로 성공(위저드 재시도).
+sellerStaysRoutes.post('/stays/:productId/info', cors(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
+  try {
+    const productId = Number(c.req.param('productId'))
+    if (!Number.isFinite(productId) || productId <= 0) return c.json({ success: false, error: 'Invalid productId' }, 400)
+    if (!(await ensureOwnsProduct(c, productId, sellerId))) return c.json({ success: false, error: '권한 없음' }, 403)
+    const cat = await c.env.DB.prepare('SELECT category FROM products WHERE id = ?').bind(productId).first<{ category: string | null }>()
+    if (cat?.category !== 'stay_voucher') return c.json({ success: false, error: '숙소 이용권이 아니에요' }, 400)
+    const exists = await c.env.DB.prepare('SELECT 1 AS x FROM product_stay_info WHERE product_id = ?').bind(productId).first()
+    if (exists) return c.json({ success: true, data: { product_id: productId, already: true } })
+    const body = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
+    // 소개 할인·수수료(옛 숙소 방식)는 받지 않는다 — 소개 적립은 이용권과 같은 길(딜 N% 약정)로 간다.
+    await insertStayInfo(c.env.DB, productId, { ...body, referral_enabled: 0, influencer_discount_pct: 0, influencer_commission_pct: 0, sale_mode: 'date' })
+    return c.json({ success: true, data: { product_id: productId } })
+  } catch (err) {
+    return safeError(c, err, '숙소 정보를 저장하지 못했어요', '[seller-stays]')
+  }
+})
+
 sellerStaysRoutes.get('/stays/:productId', cors(), async (c) => {
   const sellerId = await getSellerId(c)
   if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)

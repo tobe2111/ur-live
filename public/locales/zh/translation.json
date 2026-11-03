@@ -3295,7 +3295,9 @@
       "brandWideNote": "用该门店的确认码或扫码核销。结算仍归本门店。",
       "brandWideTitleAll": "品牌{{count}}家门店也可使用",
       "brandWideNoteCross": "在同一店主的门店使用则结算到本店，在其他店主的门店使用则结算到该门店。带推荐费的券仅可在同一店主的门店使用。",
-      "agencyMine": "我们负责的使用券"
+      "agencyMine": "我们负责的使用券",
+      "stayBookings": "预订情况",
+      "bookingSlots": "预约时间"
     },
     "ordersM3": {
       "today": "今天",
