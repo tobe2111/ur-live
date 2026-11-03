@@ -13,8 +13,8 @@ export default [
   {
     name: '🛏️E 객실 카드에 예약 문구가 돌아온다',
     file: 'src/pages/stay-detail/StayRoomPicker.tsx',
-    find: "on ? '선택됨' : `${r.nights || nights}박`",
-    replace: "on ? '이 객실 예약' : `${r.nights || nights}박`",
+    find: "strokeLinejoin=\"round\"><path d=\"M5 12.5l4.5 4.5L19 7.5\" /></svg>선택됨</span>",
+    replace: "strokeLinejoin=\"round\"><path d=\"M5 12.5l4.5 4.5L19 7.5\" /></svg>이 객실 예약</span>",
     test: TEST,
     why: '카드마다 예약 버튼 + 바의 예약하기 = 대표가 지적한 "구매하기 버튼 2개"가 되살아난다.',
   },

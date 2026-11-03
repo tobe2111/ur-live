@@ -16,6 +16,9 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { formatWon } from '@/utils/format'
 import { ArrowLeft, Camera, TicketPercent } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 14차 ⑧ — 영수증을 등록하면 버튼 안에 체크가 그려지고 '접수됐어요', 비워진 칸들이 아래에서 다시 올라온다.
+injectMotionCss('ur-m-receipt', `@keyframes ur-rc-ck { to { stroke-dashoffset: 0; } }@keyframes ur-rc-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.12); } 100% { transform: none; } }@keyframes ur-rc-up { from { opacity: 0; transform: translateY(10px); } }.ur-rc-ok svg { animation: ur-rc-pop .35s cubic-bezier(.3,1.3,.5,1); }.ur-rc-ok path { stroke-dasharray: 20; stroke-dashoffset: 20; animation: ur-rc-ck .3s .12s ease-out forwards; }.ur-rc-fresh > div { animation: ur-rc-up .35s cubic-bezier(.2,.9,.3,1) backwards; }.ur-rc-fresh > div:nth-child(3) { animation-delay: 60ms; }.ur-rc-fresh > div:nth-child(4) { animation-delay: 120ms; }.ur-rc-fresh > div:nth-child(5) { animation-delay: 180ms; }@media (prefers-reduced-motion: reduce){.ur-rc-ok svg,.ur-rc-fresh > div{animation:none!important}.ur-rc-ok path{animation:none!important;stroke-dashoffset:0}}`)
 
 interface Tier { min_amount: number; face_value: number }
 interface Campaign { id: number; slug: string; name: string; description?: string | null; status: string; reward_tiers: Tier[]; coupon_expires_days: number }
@@ -40,6 +43,9 @@ function ReceiptForm({ campaign, stores, onDone }: { campaign: Campaign; stores:
   const [approvalNo, setApprovalNo] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
+  const [okAt, setOkAt] = useState(0) // 🎬 14차 ⑧ — 접수 성공 순간(0 = 아님) · 1.8초 뒤 버튼 문구만 돌아온다
+  const [freshN, setFreshN] = useState(0) // 접수마다 +1 — 칸 묶음을 다시 그려 올라오게(되돌릴 때는 다시 그리지 않아 입력 중 포커스가 안 날아간다)
+  useEffect(() => { if (!okAt) return; const id = setTimeout(() => setOkAt(0), 1800); return () => clearTimeout(id) }, [okAt])
   const minTier = campaign.reward_tiers.length ? campaign.reward_tiers[campaign.reward_tiers.length - 1].min_amount : 0
 
   const submit = async () => {
@@ -57,6 +63,7 @@ function ReceiptForm({ campaign, stores, onDone }: { campaign: Campaign; stores:
       if (r.data?.success) {
         toast.success(r.data.message || '접수되었습니다 — 검수 후 쿠폰이 지급돼요')
         setStoreId(''); setAmount(''); setApprovalNo(''); setFile(null)
+        setOkAt(Date.now()); setFreshN((n) => n + 1)
         onDone()
       } else toast.error(r.data?.error || '접수에 실패했습니다')
     } catch (e) {
@@ -65,7 +72,7 @@ function ReceiptForm({ campaign, stores, onDone }: { campaign: Campaign; stores:
   }
 
   return (
-    <div className="rounded-2xl p-4 space-y-3">
+    <div key={freshN} className={`rounded-2xl p-4 space-y-3${freshN ? ' ur-rc-fresh' : ''}`}>
       <h2 className="flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white"><ReceiptIcon className="w-4 h-4" />영수증 등록</h2>
       <div>
         <label className="mb-1 block text-[12px] font-medium text-gray-700 dark:text-gray-200">구매 매장</label>
@@ -98,7 +105,9 @@ function ReceiptForm({ campaign, stores, onDone }: { campaign: Campaign; stores:
       </div>
       <button type="button" disabled={busy} onClick={submit}
         className="w-full rounded-2xl bg-brand py-4 text-[15px] font-bold text-white disabled:opacity-50 active:scale-[0.98] transition-transform">
-        {busy ? '접수 중…' : '영수증 등록하고 쿠폰 받기'}
+        {busy ? '접수 중…' : okAt ? (
+          <span className="ur-rc-ok inline-flex items-center gap-2"><svg aria-hidden="true" viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>접수됐어요</span>
+        ) : '영수증 등록하고 쿠폰 받기'}
       </button>
     </div>
   )

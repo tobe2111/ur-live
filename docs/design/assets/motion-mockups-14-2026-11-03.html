@@ -1,0 +1,280 @@
+<title>모션 14차 시안</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --star: #F5A524;
+  --photo1: linear-gradient(135deg,#F2D9C9,#C9D8F2); --photo2: linear-gradient(135deg,#D3E8D6,#E9DCC6); --photo3: linear-gradient(135deg,#E6D3EB,#D0DEF0);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --photo1: linear-gradient(135deg,#4A3729,#2B3A57); --photo2: linear-gradient(135deg,#2C4430,#4A3E2B); --photo3: linear-gradient(135deg,#40304A,#293A52);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-inline: 16px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.list { display: grid; gap: 40px; }
+.item { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+.item h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.item h3 .n { color: var(--brand); margin-right: 6px; }
+.item p { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0 0 8px; }
+.item p b { color: var(--page-fg); font-weight: 500; }
+.replay { margin-top: 4px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; cursor: pointer; }
+.scr { position: relative; height: 300px; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); font-size: 15px; }
+.pad { padding: 16px; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.run .st { animation: rise .4s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 70ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+/* 공통 */
+.hd { padding: 14px 16px 6px; font-size: 17px; font-weight: 700; }
+.tabs { position: relative; display: flex; gap: 20px; padding: 0 16px; border-bottom: 1px solid var(--rule); font-size: 15px; }
+.tabs button { border: 0; background: none; padding: 10px 0; color: var(--ink-soft); font: 500 15px var(--font); cursor: pointer; }
+.tabs button.on { color: var(--ink); }
+.tabs .ul { position: absolute; bottom: -1px; left: 0; height: 2px; background: var(--brand); transition: transform .3s cubic-bezier(.2,.9,.3,1), width .3s cubic-bezier(.2,.9,.3,1); }
+.row { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+.row .ph { width: 52px; height: 52px; border-radius: 10px; background: var(--photo1); flex: none; }
+.row:nth-child(2n) .ph { background: var(--photo2); } .row:nth-child(3n) .ph { background: var(--photo3); }
+.row b { display: block; font-size: 15px; font-weight: 500; }
+.row small { color: var(--ink-soft); font-size: 13px; }
+.row .p { margin-left: auto; font-weight: 700; font-size: 15px; }
+.swap .row { animation: rise .32s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 50ms); }
+
+/* 1 찜 해제 */
+.wl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px; }
+.wl .c { border-radius: 12px; overflow: hidden; transition: opacity .2s, transform .2s; }
+.wl .c .im { height: 92px; background: var(--photo1); position: relative; }
+.wl .c:nth-child(2) .im { background: var(--photo2); } .wl .c:nth-child(3) .im { background: var(--photo3); }
+.wl .c .im button { position: absolute; right: 6px; top: 6px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(255,255,255,.9); color: #E5484D; cursor: pointer; display: grid; place-items: center; }
+.wl .c .im svg { width: 16px; height: 16px; fill: currentColor; }
+.wl .c b { display: block; font-size: 13px; font-weight: 500; padding: 6px 2px 0; }
+.wl .c.out { opacity: 0; transform: scale(.85); }
+.wl .badge { grid-column: 1 / -1; font-size: 13px; color: var(--brand-text); font-weight: 500; }
+.wl .badge i { font-style: normal; display: inline-block; }
+.pop { animation: pop .4s cubic-bezier(.3,1.4,.5,1); }
+@keyframes pop { 40% { transform: scale(1.35); } }
+
+/* 2 내 교환권 탭 — 공통 tabs */
+
+/* 3 객실 고르기 */
+.rm { margin: 10px 16px 0; padding: 12px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--rule-strong); display: flex; align-items: center; gap: 10px; cursor: pointer; transition: box-shadow .2s, background .2s; font-size: 13px; }
+.rm b { font-size: 15px; font-weight: 500; display: block; }
+.rm small { color: var(--ink-soft); }
+.rm .ck { margin-left: auto; width: 24px; height: 24px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--rule-strong); display: grid; place-items: center; transition: background .2s, box-shadow .2s; }
+.rm .ck svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; }
+.rm.on { box-shadow: inset 0 0 0 2px var(--brand); background: var(--brand-tint); }
+.rm.on .ck { background: var(--brand); box-shadow: none; }
+.rm.on .ck svg { animation: draw .3s .08s ease-out forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+/* 4 인원·합계 */
+.gq { display: flex; align-items: center; justify-content: space-between; padding: 16px; font-size: 15px; border-bottom: 1px solid var(--rule); }
+.st2 { display: flex; align-items: center; gap: 14px; }
+.st2 button { width: 34px; height: 34px; border-radius: 50%; border: 0; box-shadow: inset 0 0 0 1px var(--rule-strong); background: none; color: var(--ink); font-size: 18px; cursor: pointer; }
+.num { width: 22px; height: 22px; overflow: hidden; position: relative; text-align: center; font-weight: 700; }
+.num span { position: absolute; inset: 0; transition: transform .25s cubic-bezier(.2,.9,.3,1), opacity .25s; }
+.tot { padding: 16px; display: flex; justify-content: space-between; align-items: baseline; }
+.tot b { font-size: 24px; font-weight: 800; }
+
+/* 5 숙소 검색 결과 · 7 주문 내역 — row */
+.cnt { padding: 6px 16px 8px; font-size: 13px; color: var(--ink-soft); } .cnt b { color: var(--ink); font-weight: 700; }
+.row.del { transition: height .28s, opacity .2s, transform .25s, padding .28s; overflow: hidden; }
+.row.gone { opacity: 0; transform: translateX(-30px); height: 0 !important; padding-top: 0; padding-bottom: 0; border-width: 0; }
+.row .x { margin-left: auto; border: 0; background: none; color: var(--ink-faint); font-size: 13px; cursor: pointer; }
+
+/* 8 영수증 */
+.rc { margin: 16px auto 0; width: 200px; background: var(--sub); border-radius: 6px 6px 0 0; padding: 14px; font-size: 12px; color: var(--ink-soft); line-height: 1.8; transform-origin: top; position: relative; }
+.rc::after { content: ""; position: absolute; left: 0; right: 0; bottom: -8px; height: 8px; background: linear-gradient(-45deg, transparent 6px, var(--sub) 0) 0 0/12px 8px, linear-gradient(45deg, transparent 6px, var(--sub) 0) 0 0/12px 8px; }
+.rc b { color: var(--ink); font-weight: 700; }
+.rc.in { animation: rcin .55s cubic-bezier(.5,0,.75,0) forwards; }
+@keyframes rcin { to { transform: translateY(-40px) scaleY(.05); opacity: 0; } }
+.rcok { position: absolute; left: 0; right: 0; top: 70px; text-align: center; opacity: 0; font-size: 15px; font-weight: 700; }
+.rcok i { display: grid; place-items: center; margin: 0 auto 8px; width: 48px; height: 48px; border-radius: 50%; background: var(--brand); }
+.rcok svg { width: 26px; height: 26px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 30; stroke-dashoffset: 30; }
+.rcok.on { opacity: 1; transition: opacity .2s .45s; }
+.rcok.on svg { animation: draw .35s .6s ease-out forwards; }
+.btm { position: absolute; left: 16px; right: 16px; bottom: 16px; height: 48px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font: 700 15px var(--font); cursor: pointer; }
+
+/* 9 404 */
+.nf { text-align: center; padding-top: 40px; }
+.nf .big { font-size: 76px; font-weight: 800; letter-spacing: -0.04em; color: var(--brand-text); display: flex; justify-content: center; }
+.nf .big span { display: inline-block; }
+.run9 .big span { animation: drop .6s cubic-bezier(.3,1.5,.5,1) backwards; animation-delay: calc(var(--i) * 90ms); }
+@keyframes drop { from { transform: translateY(-120px); opacity: 0; } }
+.nf p { font-size: 15px; margin: 4px 0 18px; color: var(--ink-soft); }
+.nf .go { display: flex; gap: 8px; justify-content: center; }
+.nf .go span { padding: 8px 14px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--rule-strong); font-size: 13px; font-weight: 500; }
+.run9 .go span { animation: rise .35s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(.4s + var(--i) * 70ms); }
+
+/* 10 비슷한 숙소 */
+.rail { display: flex; gap: 10px; padding: 12px 16px; overflow: hidden; }
+.rail div { flex: none; width: 128px; }
+.rail i { display: block; height: 96px; border-radius: 12px; background: var(--photo1); }
+.rail div:nth-child(2) i { background: var(--photo2); } .rail div:nth-child(3) i { background: var(--photo3); }
+.rail b { display: block; font-size: 13px; font-weight: 500; margin-top: 6px; }
+.rail small { font-size: 12px; color: var(--ink-soft); }
+.run10 .rail div { animation: fromR .45s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 80ms); }
+@keyframes fromR { from { opacity: 0; transform: translateX(40px); } }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; } }
+</style>
+<div class="wrap">
+  <h1>모션 14차 시안</h1>
+  <p class="lede">찜·교환권·숙소·검색·주문 내역·영수증 등록·404 화면에서 아직 움직임이 없는 열 군데예요. 직접 눌러 보거나 "다시 보기"로 재생해 보세요.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all">전부 다시 보기</button>
+    <button class="ctl" id="mode">다크 모드로 보기</button>
+  </div>
+  <div class="list">
+
+    <div class="item">
+      <div class="scr" id="s1"><div class="hd">찜한 상품</div><div class="wl" id="wl"></div></div>
+      <div><h3><span class="n">1</span>찜 목록 · 찜 풀기</h3>
+        <p>하트를 누르면 카드가 <b>작아지며 사라지고</b> 옆 카드가 당겨와 빈자리를 채워요. 위 "가격 내린 것 N개"도 숫자가 바뀔 때 톡 튀어요.</p>
+        <button class="replay" data-r="1">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s2"><div class="hd">내 교환권</div>
+        <div class="tabs" id="t2"><button class="on" data-k="a">사용 가능 3</button><button data-k="b">사용 완료</button><button data-k="c">기간 만료</button><i class="ul"></i></div>
+        <div id="l2"></div></div>
+      <div><h3><span class="n">2</span>내 교환권 · 탭 바꾸기</h3>
+        <p>위 탭을 누르면 <b>파란 밑줄이 옆으로 미끄러지고</b> 아래 목록이 살짝 떠오르며 바뀌어요. 지금은 밑줄이 툭 옮겨 가요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s3"><div class="hd">객실 선택</div>
+        <div class="rm" data-i="0"><div><b>디럭스 더블</b><small>2인 · 조식 포함</small></div><div class="ck"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div>
+        <div class="rm" data-i="1"><div><b>스탠다드 트윈</b><small>2인 · 조식 없음</small></div><div class="ck"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div>
+        <div class="rm" data-i="2"><div><b>패밀리 스위트</b><small>4인 · 조식 포함</small></div><div class="ck"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div></div></div>
+      <div><h3><span class="n">3</span>숙소 · 객실 고르기</h3>
+        <p>객실을 누르면 테두리가 파랗게 바뀌고 오른쪽 동그라미 안에 <b>체크가 그려져요.</b> 어느 방을 골랐는지 한눈에 보여요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s4"><div class="hd">인원 · 금액</div>
+        <div class="gq">어른<div class="st2"><button id="m4">−</button><div class="num" id="n4"><span>2</span></div><button id="p4">+</button></div></div>
+        <div class="gq">숙박<span>2박</span></div>
+        <div class="tot"><span>합계</span><b id="tot4">240,000원</b></div></div>
+      <div><h3><span class="n">4</span>숙소 · 인원 바꾸기</h3>
+        <p>− + 를 누르면 숫자가 <b>위아래로 넘어가고</b> 아래 합계 금액이 굴러가며 바뀌어요. 금액이 왜 바뀌었는지 눈으로 따라가요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s5"><div class="hd">해운대 · 11월 8일~10일</div><div class="cnt"><b id="c5">0</b>곳</div><div id="l5"></div></div>
+      <div><h3><span class="n">5</span>숙소 검색 결과</h3>
+        <p>결과가 오면 <b>"N곳" 숫자가 세어 올라가고</b> 카드가 위에서부터 차례로 떠올라요.</p>
+        <button class="replay" data-r="5">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s6"><div style="padding:12px 16px 4px"><div style="height:40px;border-radius:999px;background:var(--sub);display:flex;align-items:center;padding:0 14px;font-size:15px">삼겹살</div></div>
+        <div class="tabs" id="t6"><button class="on" data-k="a">전체</button><button data-k="b">이용권</button><button data-k="c">교환권</button><i class="ul"></i></div>
+        <div id="l6"></div></div>
+      <div><h3><span class="n">6</span>통합 검색 · 결과 탭</h3>
+        <p>전체 · 이용권 · 교환권 탭을 바꾸면 <b>밑줄이 미끄러지고</b> 결과가 살짝 떠오르며 바뀌어요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s7"><div class="hd">구매 내역</div><div id="l7"></div></div>
+      <div><h3><span class="n">7</span>구매 내역 · 지우기</h3>
+        <p>"삭제"를 누르면 그 줄이 <b>왼쪽으로 밀려 사라지고</b> 아래 줄이 부드럽게 올라와요. 지금은 한 번에 툭 빠져서 무엇이 지워졌는지 놓쳐요.</p>
+        <button class="replay" data-r="7">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s8">
+        <div class="rc" id="rc"><b>유어딜 김밥천국</b><br>2026.11.03 12:41<br>결제 금액 <b>8,500원</b><br>카드 승인 30158822</div>
+        <div class="rcok" id="rcok"><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i>등록됐어요</div>
+        <button class="btm" id="b8">영수증 등록</button></div>
+      <div><h3><span class="n">8</span>동네 쿠폰 · 영수증 등록</h3>
+        <p>등록을 누르면 영수증이 <b>위로 말려 들어가고</b> 그 자리에 체크가 그려져요. 접수됐다는 걸 확실히 알려 줘요.</p>
+        <button class="replay" data-r="8">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s9"><div class="nf"><div class="big"><span style="--i:0">4</span><span style="--i:1">0</span><span style="--i:2">4</span></div><p>찾는 페이지가 없어요</p>
+        <div class="go"><span style="--i:0">홈</span><span style="--i:1">교환권</span><span style="--i:2">내 주변 동네딜</span></div></div></div>
+      <div><h3><span class="n">9</span>없는 페이지(404)</h3>
+        <p>큰 '404' 숫자가 <b>위에서 하나씩 톡톡 떨어지고</b> 아래 바로가기 버튼이 차례로 나와요. 막다른 화면이 덜 딱딱해 보여요.</p>
+        <button class="replay" data-r="9">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s10"><div class="hd">비슷한 숙소</div><div class="rail"><div style="--i:0"><i></i><b>오션뷰 스테이</b><small>1박 98,000원</small></div><div style="--i:1"><i></i><b>해운대 호텔 포레</b><small>1박 132,000원</small></div><div style="--i:2"><i></i><b>달맞이 게스트하우스</b><small>1박 54,000원</small></div></div></div>
+      <div><h3><span class="n">10</span>숙소 상세 · 비슷한 숙소</h3>
+        <p>스크롤해서 이 줄이 보이면 카드가 <b>오른쪽에서 차례로 들어와요</b>(한 번만). 이용권 상세의 "다른 이용권" 줄과 같은 움직임이에요.</p>
+        <button class="replay" data-r="10">다시 보기</button></div>
+    </div>
+
+  </div>
+</div>
+<script>
+const $ = (s) => document.querySelector(s)
+const restart = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls) }
+const heart = '<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>'
+// 1
+const WL = [['삼겹살 2인 세트', 1], ['네일 젤 원컬러', 0], ['해운대 오션뷰 1박', 1], ['아메리카노 2잔', 0]]
+function r1() { const w = $('#wl'); const items = WL.slice(); const cnt = () => items.filter((x) => x[1]).length
+  const draw = () => { w.innerHTML = `<div class="badge">가격 내린 것 <i id="bc">${cnt()}</i>개</div>` + items.map(([n], i) => `<div class="c" data-i="${i}"><div class="im"><button aria-label="찜 풀기">${heart}</button></div><b>${n}</b></div>`).join('') 
+    w.querySelectorAll('.c button').forEach((b) => b.onclick = () => { const c = b.closest('.c'); const first = [...w.querySelectorAll('.c')].map((e) => e.getBoundingClientRect()); c.classList.add('out')
+      setTimeout(() => { const idx = +c.dataset.i; const before = [...w.querySelectorAll('.c')].filter((e) => e !== c).map((e) => [e, e.getBoundingClientRect()]); items.splice(idx, 1); draw()
+        const now = [...w.querySelectorAll('.c')]; now.forEach((e, k) => { const r0 = before[k] && before[k][1]; if (!r0) return; const r1 = e.getBoundingClientRect(); e.animate([{ transform: `translate(${r0.left - r1.left}px,${r0.top - r1.top}px)` }, { transform: 'none' }], { duration: 300, easing: 'cubic-bezier(.2,.9,.3,1)' }) })
+        restart($('#bc'), 'pop') }, 200) }) }
+  draw() }
+// 2 / 6 tabs
+function tabs(id, lid, data) { const t = $(id), ul = t.querySelector('.ul'); const move = (b) => { ul.style.width = b.offsetWidth + 'px'; ul.style.transform = `translateX(${b.offsetLeft - 16}px)`; ul.style.left = '16px' }
+  const draw = (k, sw) => { const l = $(lid); l.classList.remove('swap'); l.innerHTML = data[k].map(([a, b, p], i) => `<div class="row" style="--i:${i}"><div class="ph"></div><div><b>${a}</b><small>${b}</small></div>${p ? `<span class="p">${p}</span>` : ''}</div>`).join(''); if (sw) { void l.offsetWidth; l.classList.add('swap') } }
+  t.querySelectorAll('button').forEach((b) => b.onclick = () => { t.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); move(b); draw(b.dataset.k, true) })
+  draw('a', false); requestAnimationFrame(() => move(t.querySelector('button.on'))) }
+tabs('#t2', '#l2', { a: [['스타벅스 아메리카노', '12월 31일까지'], ['배스킨라빈스 파인트', '1월 15일까지'], ['CU 5천원권', '2월 2일까지']], b: [['메가커피 라떼', '11월 1일 사용']], c: [['GS25 3천원권', '10월 20일 만료'], ['투썸 조각케이크', '10월 2일 만료']] })
+tabs('#t6', '#l6', { a: [['돼지명가 삼겹살 2인', '이용권 · 부산 서면', '19,900원'], ['삼겹살 밀키트', '교환권', '12,000원'], ['고기굽는집 세트', '이용권 · 해운대', '29,000원']], b: [['돼지명가 삼겹살 2인', '부산 서면', '19,900원'], ['고기굽는집 세트', '해운대', '29,000원']], c: [['삼겹살 밀키트', 'GS25', '12,000원']] })
+// 3
+document.querySelectorAll('.rm').forEach((r) => r.onclick = () => document.querySelectorAll('.rm').forEach((x) => x.classList.toggle('on', x === r)))
+// 4
+;(() => { let n = 2; const box = $('#n4'); const price = (k) => 60000 * k * 2; let shown = price(2)
+  const set = (d) => { const nn = Math.max(1, Math.min(6, n + d)); if (nn === n) return; const old = box.querySelector('span'); const nw = document.createElement('span'); nw.textContent = nn; nw.style.transform = `translateY(${d > 0 ? 100 : -100}%)`; box.appendChild(nw); void nw.offsetWidth
+    old.style.transform = `translateY(${d > 0 ? -100 : 100}%)`; old.style.opacity = 0; nw.style.transform = 'none'; setTimeout(() => old.remove(), 260); n = nn
+    const from = shown, to = price(n), t0 = performance.now(); const f = (t) => { const p = Math.min(1, (t - t0) / 450); shown = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))); $('#tot4').textContent = shown.toLocaleString('ko-KR') + '원'; if (p < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }
+  $('#p4').onclick = () => set(1); $('#m4').onclick = () => set(-1) })()
+// 5
+const ST = [['오션뷰 스테이', '해운대 · 별 4.8', '98,000원'], ['해운대 호텔 포레', '해운대 · 별 4.6', '132,000원'], ['달맞이 게스트하우스', '중동 · 별 4.7', '54,000원']]
+function r5() { const l = $('#l5'); l.classList.remove('swap'); l.innerHTML = ST.map(([a, b, p], i) => `<div class="row" style="--i:${i}"><div class="ph"></div><div><b>${a}</b><small>${b}</small></div><span class="p">${p}</span></div>`).join(''); void l.offsetWidth; l.classList.add('swap')
+  const el = $('#c5'), to = 23, t0 = performance.now(); const f = (t) => { const p = Math.min(1, (t - t0) / 600); el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }
+// 7
+const OR = [['돼지명가 삼겹살 2인', '11월 1일 · 사용 완료'], ['네일 젤 원컬러', '10월 28일 · 사용 완료'], ['아메리카노 2잔', '10월 20일 · 기간 만료'], ['해운대 오션뷰 1박', '10월 12일 · 이용 완료']]
+function r7() { const l = $('#l7'); l.innerHTML = OR.map(([a, b]) => `<div class="row del"><div class="ph"></div><div><b>${a}</b><small>${b}</small></div><button class="x">삭제</button></div>`).join('')
+  l.querySelectorAll('.row').forEach((r) => { r.style.height = r.offsetHeight + 'px'; r.querySelector('.x').onclick = () => { r.classList.add('gone'); setTimeout(() => r.remove(), 300) } }) }
+// 8
+function r8() { const rc = $('#rc'), ok = $('#rcok'); rc.classList.remove('in'); ok.classList.remove('on'); void rc.offsetWidth; $('#b8').textContent = '영수증 등록'; $('#b8').disabled = false }
+$('#b8').onclick = () => { const b = $('#b8'); if (b.disabled) return; b.disabled = true; $('#rc').classList.add('in'); $('#rcok').classList.add('on'); setTimeout(() => b.textContent = '등록 완료', 700) }
+// 9 / 10
+const r9 = () => restart($('#s9'), 'run9'), r10 = () => restart($('#s10'), 'run10')
+
+const R = { 1: r1, 5: r5, 7: r7, 8: r8, 9: r9, 10: r10 }
+document.querySelectorAll('.replay').forEach((b) => b.onclick = () => R[b.dataset.r]())
+$('#all').onclick = () => Object.values(R).forEach((f) => f())
+let dark = matchMedia('(prefers-color-scheme: dark)').matches
+const applyMode = () => { document.querySelectorAll('.scr').forEach((s) => s.dataset.mode = dark ? 'dark' : 'light'); $('#mode').textContent = dark ? '라이트 모드로 보기' : '다크 모드로 보기' }
+$('#mode').onclick = () => { dark = !dark; applyMode() }
+applyMode(); r1(); r7(); r8()
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; io.unobserve(e.target); const id = +e.target.id.slice(1); if ([5, 9, 10].includes(id)) R[id]() }), { threshold: .4 })
+document.querySelectorAll('.scr').forEach((s) => io.observe(s))
+</script>

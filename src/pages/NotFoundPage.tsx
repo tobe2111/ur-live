@@ -4,6 +4,9 @@ import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import Udal from '@/components/mascot/Udal'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 14차 ⑨ — '404' 글자가 톡 떨어지고, 아래 바로가기 버튼이 차례로 올라온다(유달이 그림은 그대로 — 대표 '유달이 움직임 금지').
+injectMotionCss('ur-m-404', `@keyframes ur-nf-drop { 0% { opacity: 0; transform: translateY(-16px); } 70% { opacity: 1; transform: translateY(2px); } 100% { transform: none; } }@keyframes ur-nf-up { from { opacity: 0; transform: translateY(10px); } }.ur-nf-drop { animation: ur-nf-drop .45s cubic-bezier(.3,1.3,.5,1) .15s backwards; }.ur-nf-go > * { animation: ur-nf-up .4s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: .3s; }.ur-nf-go > *:nth-child(2) { animation-delay: .37s; }.ur-nf-go > *:nth-child(3) { animation-delay: .44s; }.ur-nf-go > *:nth-child(4) { animation-delay: .51s; }.ur-nf-go > *:nth-child(5) { animation-delay: .58s; }@media (prefers-reduced-motion: reduce){.ur-nf-drop,.ur-nf-go > *{animation:none!important}}`)
 
 export default function NotFoundPage() {
   const { t } = useTranslation()
@@ -61,7 +64,7 @@ export default function NotFoundPage() {
           {/* 🦦 2026-10-07 유달이 — 거대한 '404' 글자 대신 길 잃은(놀란) 얼굴.
               숫자는 작게 남긴다(무슨 일인지 아는 사람에겐 그게 가장 빠른 신호다). */}
           <Udal mood="lost" size={128} motion priority className="mx-auto" />
-          <p className="mt-4 text-[13px] font-medium tracking-[0.2em] text-gray-400 dark:text-gray-500" aria-hidden="true">404</p>
+          <p className="mt-4 text-[13px] font-medium tracking-[0.2em] text-gray-400 dark:text-gray-500 ur-nf-drop" aria-hidden="true">404</p>
 
           <h1 className="mt-1 text-[24px] font-bold text-gray-900 dark:text-white">
             {t('notFound.title')}
@@ -73,7 +76,7 @@ export default function NotFoundPage() {
           </p>
 
           {/* Action Buttons */}
-          <div className="mt-10 grid grid-cols-2 gap-3">
+          <div className="mt-10 grid grid-cols-2 gap-3 ur-nf-go">
             <Link
               to="/"
               className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-brand text-white font-bold text-[15px] shadow-sm hover:bg-brand-dark hover:shadow-md transition-all duration-200 active:scale-[0.98]"
@@ -95,7 +98,7 @@ export default function NotFoundPage() {
             <p className="mb-4 text-[15px] font-medium text-gray-500 dark:text-gray-400">
               {t('notFound.popularPages')}
             </p>
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex flex-wrap justify-center gap-2 ur-nf-go">
               {popularLinks.map(({ to, label, Icon }) => (
                 <Link
                   key={to}

@@ -265,8 +265,9 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
               </h2>
               <div className="space-y-3">
                 {group.rows.map(({ order, kind }) => (
+                  // 🎬 2026-11-03 14차 ⑦ — 지울 때 이 줄을 찾아 접는 표지(MyOrdersPage `collapseOrderRow`).
+                  <div key={order.id} data-order-row={order.id}>
                   <OrderCard
-                    key={order.id}
                     order={order}
                     kind={kind}
                     onSelectOrder={onSelectOrder}
@@ -277,6 +278,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                     onSellerContact={handleSellerContact}
                     t={t}
                   />
+                  </div>
                 ))}
               </div>
             </section>

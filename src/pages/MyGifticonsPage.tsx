@@ -25,6 +25,9 @@ import VoucherTicket from './my-vouchers/VoucherTicket'
 import { EmptyVouchers } from './my-vouchers/WalletEmpty'
 import { isFailedGifticon, isGifticonVoucher, isUsableWalletItem } from '@/shared/voucher-wallet'
 import type { Voucher } from './my-vouchers/types'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 14차 ② — '사용 가능' 교환권이 위에서부터 차례로 떠오른다(첫 여섯 장 · 한 번).
+injectMotionCss('ur-m-gifticon', `@keyframes ur-gc-in { from { opacity: 0; transform: translateY(12px); } }.ur-gc-list > *:nth-child(-n+6) { animation: ur-gc-in .4s cubic-bezier(.2,.9,.3,1) backwards; }.ur-gc-list > *:nth-child(2) { animation-delay: 60ms; }.ur-gc-list > *:nth-child(3) { animation-delay: 120ms; }.ur-gc-list > *:nth-child(4) { animation-delay: 180ms; }.ur-gc-list > *:nth-child(5) { animation-delay: 240ms; }.ur-gc-list > *:nth-child(6) { animation-delay: 300ms; }@media (prefers-reduced-motion: reduce){.ur-gc-list > *{animation:none!important}}`)
 
 export default function MyGifticonsPage() {
   const navigate = useNavigate()
@@ -141,7 +144,7 @@ export default function MyGifticonsPage() {
             </div>
 
             {usable.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-3 ur-gc-list">
                 {usable.map(v => <VoucherTicket key={v.id} v={v} muted={false} locale={locale} t={t} onShowQr={() => {}} />)}
               </div>
             ) : (
