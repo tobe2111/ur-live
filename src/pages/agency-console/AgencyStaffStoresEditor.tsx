@@ -61,7 +61,7 @@ export function AgencyStaffStoresEditor({ staffId, who, onClose, onSaved }: {
 
   return (
     <div className="border-t border-rule bg-[#F8F7FC] dark:bg-[#11141C] px-6 py-4">
-      <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">{who} 님이 들어갈 수 있는 매장</p>
+      <p className="text-[13px] font-medium text-gray-700 dark:text-gray-200">{who} 님이 들어갈 수 있는 매장</p>
       {error ? (
         <p role="alert" className="mt-2 text-[13px] text-tone-bad">{error}</p>
       ) : stores === null ? (
@@ -71,7 +71,7 @@ export function AgencyStaffStoresEditor({ staffId, who, onClose, onSaved }: {
           <div className="mt-3 flex gap-2">
             {(['all', 'assigned'] as const).map((v) => (
               <button key={v} type="button" onClick={() => setScope(v)} aria-pressed={scope === v}
-                className={`h-9 rounded-full px-4 text-[13px] font-semibold ${scope === v ? 'bg-brand text-white' : 'bg-white dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 shadow-lift'}`}>
+                className={`h-9 rounded-full px-4 text-[13px] font-medium ${scope === v ? 'bg-brand text-white' : 'bg-white dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 shadow-lift'}`}>
                 {v === 'all' ? '맡은 매장 전부' : '고른 매장만'}
               </button>
             ))}
@@ -95,9 +95,9 @@ export function AgencyStaffStoresEditor({ staffId, who, onClose, onSaved }: {
           )}
           {problem && <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">{problem}</p>}
           <div className="mt-4 flex gap-2">
-            <button type="button" onClick={onClose} className="h-10 rounded-xl px-4 text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-[#1D1F29]">닫기</button>
+            <button type="button" onClick={onClose} className="h-10 rounded-xl px-4 text-[13px] font-medium text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-[#1D1F29]">닫기</button>
             <button type="button" disabled={busy || !!problem} onClick={save}
-              className="h-10 flex-1 rounded-xl bg-brand px-4 text-[15px] font-semibold text-white disabled:opacity-50">
+              className="h-10 flex-1 rounded-xl bg-brand px-4 text-[15px] font-medium text-white disabled:opacity-50">
               {busy ? '저장 중…' : '저장'}
             </button>
           </div>

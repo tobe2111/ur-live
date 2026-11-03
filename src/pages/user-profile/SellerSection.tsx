@@ -505,7 +505,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           onClick={() => enterSeat()}
           className="w-full flex items-center gap-2 mt-3 px-4 h-12 rounded-2xl bg-surface shadow-lift text-left active:opacity-70 disabled:opacity-50"
         >
-          <span className="flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate">
+          <span className="flex-1 min-w-0 text-[15px] font-medium text-gray-900 dark:text-white truncate">
             {awaiting ? <span className="invisible">주문 확인</span> : `주문 확인${store.pending > 0 ? ` ${formatNumber(store.pending)}건` : ''}`}
           </span>
           {entering

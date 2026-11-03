@@ -64,7 +64,7 @@ export default function SellerSupportContact() {
       <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
         주문·정산·상품 등록에서 막히면 아래로 연락 주세요. 파일럿 기간에는 담당자가 직접 답변합니다.
       </p>
-      <p className="mt-2 text-[15px] font-semibold text-gray-900 dark:text-white break-all">
+      <p className="mt-2 text-[15px] font-medium text-gray-900 dark:text-white break-all">
         {href ? (
           <a href={href} className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">{contact}</a>
         ) : contact}

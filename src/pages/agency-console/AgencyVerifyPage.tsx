@@ -38,11 +38,11 @@ export default function AgencyVerifyPage() {
 
   if (!error) return <BrandLoader fullScreen forceLight label={move ? '이메일 계정으로 옮기는 중이에요' : '에이전시를 만드는 중이에요'} />
   return (
-    <AgencyAuthShell title="링크를 쓸 수 없어요" footer={<Link to="/agency/login" className="font-semibold text-gray-700">로그인으로</Link>}>
+    <AgencyAuthShell title="링크를 쓸 수 없어요" footer={<Link to="/agency/login" className="font-medium text-gray-700">로그인으로</Link>}>
       <SEO title="에이전시 인증 - 유어딜" description="유어딜 에이전시 이메일 인증" url="/agency/verify" noindex />
       <p className="text-[15px] text-gray-700">{error}</p>
       <p className="mt-3 text-[13px] leading-relaxed text-gray-500">
-        이미 인증했다면 바로 로그인하면 돼요. 아니라면 <Link to="/agency/signup" className="font-semibold text-brand-text">같은 이메일로 다시 가입</Link>해
+        이미 인증했다면 바로 로그인하면 돼요. 아니라면 <Link to="/agency/signup" className="font-medium text-brand-text">같은 이메일로 다시 가입</Link>해
         새 인증 메일을 받아 주세요.
       </p>
     </AgencyAuthShell>

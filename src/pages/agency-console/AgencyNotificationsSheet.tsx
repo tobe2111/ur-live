@@ -36,7 +36,7 @@ export default function AgencyNotificationsSheet({ items, unread, onPick, onRead
         <>
           {unread > 0 && (
             <div className="flex justify-end px-4 pt-3">
-              <button type="button" onClick={onReadAll} className="text-[13px] font-semibold text-brand-text">모두 읽음</button>
+              <button type="button" onClick={onReadAll} className="text-[13px] font-medium text-brand-text">모두 읽음</button>
             </div>
           )}
           <ul className="divide-y divide-rule">
@@ -45,7 +45,7 @@ export default function AgencyNotificationsSheet({ items, unread, onPick, onRead
                 <button type="button" onClick={() => onPick(n)} className="flex w-full gap-3 px-4 py-3 text-left active:bg-gray-50 dark:active:bg-white/5">
                   <span aria-hidden="true" className={`mt-2 h-2 w-2 shrink-0 rounded-full ${n.isRead ? 'bg-transparent' : 'bg-brand'}`} />
                   <span className="min-w-0 flex-1">
-                    <span className={`block truncate text-[15px] ${n.isRead ? 'font-semibold text-gray-700 dark:text-gray-200' : 'font-bold text-gray-900 dark:text-white'}`}>{n.title}</span>
+                    <span className={`block truncate text-[15px] ${n.isRead ? 'font-medium text-gray-700 dark:text-gray-200' : 'font-bold text-gray-900 dark:text-white'}`}>{n.title}</span>
                     {n.message && <span className="mt-1 block line-clamp-2 text-[13px] text-gray-500 dark:text-gray-400">{n.message}</span>}
                     <span className="mt-1 block text-[12px] text-gray-400 dark:text-gray-500">{n.storeName ? `${n.storeName} · ` : ''}{formatKSTShort(n.createdAt)}</span>
                   </span>

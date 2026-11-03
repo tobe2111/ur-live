@@ -106,7 +106,7 @@ export default function AgencyStorePlate({ store, staffId, initialPath, onOpenSa
         {/* 🤝 오늘 숫자 = **이 에이전시가 맡은 이용권** 몫. 매장 전체 매출이 아니라서 매출 분석(매장 전체)으로 보내지 않는다. */}
         <div className="border-b border-rule px-4 pt-4 pb-4 lg:px-5 lg:py-5">
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[12px] font-bold text-gray-400 dark:text-gray-500">오늘 · 우리 이용권</span>
+            <span className="text-[12px] font-medium text-gray-400 dark:text-gray-500">오늘 · 우리 이용권</span>
             <span className="text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">{todayLabelKST()}</span>
           </div>
           <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
@@ -127,7 +127,7 @@ export default function AgencyStorePlate({ store, staffId, initialPath, onOpenSa
           className="w-full flex items-center gap-3 px-4 lg:px-5 min-h-[52px] py-2 rounded-[10px] bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
         >
           <Plus className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
-          <span className="flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 등록 · 관리</span>
+          <span className="flex-1 min-w-0 text-[15px] font-bold truncate">이용권 등록 · 관리</span>
           {today && (
             <span className="shrink-0 text-[13px] text-white/75 tabular-nums">
               {today.activeProducts > 0 ? `판매 중 ${formatNumber(today.activeProducts)}개` : '아직 0개'}
@@ -143,7 +143,7 @@ export default function AgencyStorePlate({ store, staffId, initialPath, onOpenSa
             onClick={onOpenSales}
             className="mt-2 w-full flex items-center gap-3 px-4 lg:px-5 min-h-[48px] rounded-[10px] text-left active:bg-gray-50 dark:active:bg-white/5"
           >
-            <span className="flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate">판매 내역 · 통계</span>
+            <span className="flex-1 min-w-0 text-[15px] font-medium text-gray-900 dark:text-white truncate">판매 내역 · 통계</span>
             <ChevronRight className="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
           </button>
         )}

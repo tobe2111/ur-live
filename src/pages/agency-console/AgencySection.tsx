@@ -8,6 +8,7 @@ import { AgencyInfoPanel } from './AgencyInfoPanel'
 import { AgencyMoveToEmailSheet } from './AgencyMoveToEmailSheet'
 import { agencyStaffLoginLabel } from '@/shared/agency-kakao'
 import { AgencyStoresPanel, FlatRow } from './AgencyStoresPanel'
+import { WalletIcon, PeopleIcon, InfoIcon, PersonIcon, LogOutIcon } from '@/components/icons/urdeal-icons'
 import AgencyPayoutSheet, { payoutRowHint, type AgencyPayoutsResponse } from './AgencyPayoutSheet'
 import {
   AGENCY_TOOL_PARAM, agencyRequest, clearAgencySession, readAgencyProfile,
@@ -97,13 +98,13 @@ export default function AgencySection({ stacked = false, headless = false, ownSe
             toolParam={AGENCY_TOOL_PARAM}
             agencyRows={(
               <>
-                {payouts?.enabled && <FlatRow label="에이전시 정산" hint={payoutRowHint(payouts)} urgent={(payouts.balance?.available ?? 0) > 0} onClick={() => setSheet('payout')} />}
-                <FlatRow label="직원" hint={staff ? `${staff.length}명` : undefined} onClick={() => setSheet('staff')} />
-                {canManage && <FlatRow label="에이전시 정보" onClick={() => setSheet('info')} />}
-                {canMove && <FlatRow label="이메일 계정으로 옮기기" hint="직원과 함께 쓰기" onClick={() => setSheet('move')} />}
+                {payouts?.enabled && <FlatRow icon={<WalletIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="에이전시 정산" hint={payoutRowHint(payouts)} urgent={(payouts.balance?.available ?? 0) > 0} onClick={() => setSheet('payout')} />}
+                <FlatRow icon={<PeopleIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="직원" hint={staff ? `${staff.length}명` : undefined} onClick={() => setSheet('staff')} />
+                {canManage && <FlatRow icon={<InfoIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="에이전시 정보" onClick={() => setSheet('info')} />}
+                {canMove && <FlatRow icon={<PersonIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="이메일 계정으로 옮기기" hint="직원과 함께 쓰기" onClick={() => setSheet('move')} />}
               </>
             )}
-            trailingRows={<FlatRow label="에이전시 로그아웃" onClick={() => { void logout() }} last />}
+            trailingRows={<FlatRow icon={<LogOutIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="에이전시 로그아웃" onClick={() => { void logout() }} last />}
           />
         )}
       </div>

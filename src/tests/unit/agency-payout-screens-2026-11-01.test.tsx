@@ -79,7 +79,7 @@ describe('배선', () => {
   it('정산 줄은 스위치가 켜졌을 때만 뜬다', () => {
     const s = code('src/pages/agency-console/AgencySection.tsx')
     // 🔁 2026-11-03 — 이름이 '에이전시 정산'(매장 판의 '매장 정산' 과 가르려고).
-    expect(s).toMatch(/\{payouts\?\.enabled && <FlatRow label="에이전시 정산"/)
+    expect(s).toMatch(/\{payouts\?\.enabled && <FlatRow icon=\{[^\n]*?\} label="에이전시 정산"/)
     expect(s).toMatch(/sheet === 'payout' && payouts\?\.enabled &&/)
   })
   it('정산 조회는 다른 조회와 같은 묶음에서 나간다(직렬 왕복 금지)', () => {

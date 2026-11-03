@@ -58,7 +58,7 @@ export function AgencyAuthShell({ title, lead, children, footer, aside }: {
 export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[13px] font-semibold text-gray-700">{label}</span>
+      <span className="mb-2 block text-[13px] font-medium text-gray-700">{label}</span>
       {children}
       {hint && <span className="mt-2 block text-[12px] text-gray-500">{hint}</span>}
     </label>
@@ -76,7 +76,7 @@ export const inputCls =
 export const panelInputCls = `${inputCls} dark:border-[#2A2A2A] dark:bg-[#11141C] dark:placeholder:text-gray-500 dark:disabled:bg-[#1A1A1A]`
 
 export const primaryBtnCls =
-  'w-full h-12 rounded-xl bg-brand text-white text-[15px] font-semibold transition-opacity disabled:opacity-50 disabled:cursor-not-allowed'
+  'w-full h-12 rounded-xl bg-brand text-white text-[15px] font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed'
 
 export function FormError({ message }: { message: string }) {
   if (!message) return null
@@ -87,7 +87,7 @@ export function PasswordRules({ rules }: { rules: Array<{ label: string; ok: boo
   return (
     <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
       {rules.map((r) => (
-        <li key={r.label} className={`text-[12px] ${r.ok ? 'text-brand-text font-semibold' : 'text-gray-400'}`}>
+        <li key={r.label} className={`text-[12px] ${r.ok ? 'text-brand-text font-medium' : 'text-gray-400'}`}>
           {r.ok ? '✓' : '·'} {r.label}
         </li>
       ))}
