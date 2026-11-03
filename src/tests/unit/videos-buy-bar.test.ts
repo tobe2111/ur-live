@@ -159,8 +159,10 @@ describe('구매 바는 배경이 있는 카드다 (2026-09-16 실사고)', () =
 
   it('🔒 불투명도 값이 **실제 스케일 안**이다 — 밖이면 클래스가 안 만들어진다', () => {
     const m = bar.match(/\bbg-white\/([\w.[\]]+)/)
-    expect(m, 'bg-white 에 불투명도 수식어가 없으면 이 검사는 무의미해진다(있어도 되고 없어도 된다)').toBeTruthy()
-    const v = m![1]
+    // 🔄 2026-11-03 구매 바가 **불투명 흰 판**이 됐다(반투명이면 아래 유튜브 Shorts 글자가 비친다 — 대표 신고).
+    //   수식어가 없으면 완전 불투명이라 스케일 밖일 수가 없다. 있는 경우만 스케일을 본다.
+    if (!m) { expect(bar).toMatch(/\bbg-white\b(?!\/)/); return }
+    const v = m[1]
     // 대괄호 임의값(`/[.97]`)은 Tailwind 가 그대로 만들어 준다 — 통과.
     if (!v.startsWith('[')) {
       const scale = Object.keys(defaultTheme.opacity ?? {})
