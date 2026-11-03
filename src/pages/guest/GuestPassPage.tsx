@@ -55,9 +55,11 @@ export default function GuestPassPage() {
         <div className="mt-1 px-4">
           <GuestExampleRows />
         </div>
-        <Link to="/" className="mx-4 mt-4 flex h-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-white/5 text-[15px] font-medium text-gray-900 dark:text-white active:opacity-80">
-          {t('guest.pass.browse', { defaultValue: '지금 파는 이용권 보러 가기' })}
-        </Link>
+        <div className="mt-5 px-4">
+          <Link to="/" className="flex h-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-white/5 text-[15px] font-medium text-gray-900 dark:text-white active:opacity-80">
+            {t('guest.pass.browse', { defaultValue: '지금 파는 이용권 보러 가기' })}
+          </Link>
+        </div>
       </section>
 
       {/* 2026-11-03 대표 *"맨 밑에 3초만에 끝나요 문장 빼줘"* — 이용권 탭은 버튼 아래 한 줄 없이. */}

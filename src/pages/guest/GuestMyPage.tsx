@@ -75,7 +75,7 @@ export default function GuestMyPage() {
         </div>
       </section>
 
-      <div className="mt-4">
+      <div className="mt-5">
         {locked.map((r) => (
           <ListRow key={r.label} icon={r.icon} label={r.label} hint={lockedHint} onClick={() => startGuestKakaoLogin('/user/profile')} />
         ))}
