@@ -60,7 +60,7 @@ export function NotificationPanelHeader({ onClose, title = '알림', closeLabel 
   const hasUnread = items.some((n) => !n.is_read)
   return (
     <div className="flex items-center justify-between px-4 h-14 border-b border-rule shrink-0">
-      <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{title}</h3>
+      <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">{title}</h3>
       <div className="flex items-center gap-1">
         {hasUnread && (
           <button

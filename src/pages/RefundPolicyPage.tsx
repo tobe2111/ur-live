@@ -25,14 +25,14 @@ export default function RefundPolicyPage() {
           <button onClick={goBack} aria-label="뒤로 가기" className="text-ink">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-[17px] font-bold text-ink">환불 및 교환/반품 정책</h1>
+          <h1 className="text-[16px] font-semibold text-ink">환불 및 교환/반품 정책</h1>
           <div className="w-6" />
         </div>
       </div>
 
       {/* Content */}
       <div className="ur-content-medium px-5 pt-6">
-        <p className="text-[12px] text-ink-faint mb-6">시행일자: 2026년 10월 13일</p>
+        <p className="text-[12px] text-ink-faint mb-8">시행일자: 2026년 10월 13일</p>
 
         {/* 회사 정보 */}
         <section>
@@ -46,8 +46,8 @@ export default function RefundPolicyPage() {
         </section>
 
         {/* 이용권 환불 */}
-        <section className="border-t border-rule pt-6 mt-6">
-          <h2 className="text-[15px] font-bold text-ink mb-4">이용권 환불</h2>
+        <section className="border-t border-rule pt-6 mt-8">
+          <h2 className="text-[15px] font-bold text-ink mb-5">이용권 환불</h2>
 
           <div className="space-y-3">
             <div className="bg-surface rounded-lg p-4">
@@ -87,8 +87,8 @@ export default function RefundPolicyPage() {
         </section>
 
         {/* 딜 환급 */}
-        <section className="border-t border-rule pt-6 mt-6">
-          <h2 className="text-[15px] font-bold text-ink mb-4">딜(충전 잔액) 환급</h2>
+        <section className="border-t border-rule pt-6 mt-8">
+          <h2 className="text-[15px] font-bold text-ink mb-5">딜(충전 잔액) 환급</h2>
 
           <div className="space-y-3">
             <div className="bg-surface rounded-lg p-4">
@@ -115,8 +115,8 @@ export default function RefundPolicyPage() {
         </section>
 
         {/* 교환 및 반품 안내 */}
-        <section className="border-t border-rule pt-6 mt-6">
-          <h2 className="text-[15px] font-bold text-ink mb-4">배송 상품 교환 및 반품</h2>
+        <section className="border-t border-rule pt-6 mt-8">
+          <h2 className="text-[15px] font-bold text-ink mb-5">배송 상품 교환 및 반품</h2>
 
           {/* 신청 방법 */}
           <div className="mb-5">
@@ -169,8 +169,8 @@ export default function RefundPolicyPage() {
         </section>
 
         {/* 배송 안내 */}
-        <section className="border-t border-rule pt-6 mt-6">
-          <h2 className="text-[15px] font-bold text-ink mb-4">배송 안내</h2>
+        <section className="border-t border-rule pt-6 mt-8">
+          <h2 className="text-[15px] font-bold text-ink mb-5">배송 안내</h2>
 
           <div className="space-y-3">
             <div className="bg-surface rounded-lg p-4">
@@ -199,7 +199,7 @@ export default function RefundPolicyPage() {
           </div>
 
           {/* 배송 유의사항 */}
-          <div className="mt-4 bg-surface rounded-lg p-4">
+          <div className="mt-5 bg-surface rounded-lg p-4">
             <h3 className="text-[13px] font-medium text-ink mb-2">유의 사항</h3>
             <ul className="space-y-2 text-[13px] text-ink-soft leading-relaxed">
               <li className="flex items-start gap-2">
@@ -215,8 +215,8 @@ export default function RefundPolicyPage() {
         </section>
 
         {/* 환불 처리 절차 */}
-        <section className="border-t border-rule pt-6 mt-6">
-          <h2 className="text-[15px] font-bold text-ink mb-4">환불 처리 절차</h2>
+        <section className="border-t border-rule pt-6 mt-8">
+          <h2 className="text-[15px] font-bold text-ink mb-5">환불 처리 절차</h2>
           <div className="space-y-3">
             {[
               { step: '1', title: '취소/반품 신청', desc: '마이페이지에서 신청 또는 고객센터 문의' },
@@ -238,8 +238,8 @@ export default function RefundPolicyPage() {
         </section>
 
         {/* 배송비 부담 테이블 */}
-        <section className="border-t border-rule pt-6 mt-6">
-          <h2 className="text-[15px] font-bold text-ink mb-4">배송비 부담 안내</h2>
+        <section className="border-t border-rule pt-6 mt-8">
+          <h2 className="text-[15px] font-bold text-ink mb-5">배송비 부담 안내</h2>
           <div className="overflow-x-auto rounded-lg border border-rule">
             <table className="w-full text-[13px]">
               <thead>
@@ -279,8 +279,8 @@ export default function RefundPolicyPage() {
         </section>
 
         {/* 환불 방법 */}
-        <section className="border-t border-rule pt-6 mt-6">
-          <h2 className="text-[15px] font-bold text-ink mb-4">환불 방법 및 소요기간</h2>
+        <section className="border-t border-rule pt-6 mt-8">
+          <h2 className="text-[15px] font-bold text-ink mb-5">환불 방법 및 소요기간</h2>
           <div className="space-y-2">
             <div className="bg-surface rounded-lg p-4">
               <h3 className="text-[13px] font-medium text-ink mb-1">신용카드</h3>
@@ -302,7 +302,7 @@ export default function RefundPolicyPage() {
         </section>
 
         {/* 고객센터 문의 */}
-        <section className="border-t border-rule pt-6 mt-6">
+        <section className="border-t border-rule pt-6 mt-8">
           <h2 className="text-[15px] font-bold text-ink mb-3">고객센터 문의</h2>
           <div className="bg-surface rounded-lg p-4 space-y-2">
             <p className="text-[13px] text-ink-soft">
@@ -315,7 +315,7 @@ export default function RefundPolicyPage() {
         </section>
 
         {/* Footer */}
-        <div className="border-t border-rule pt-6 mt-6 text-center space-y-1">
+        <div className="border-t border-rule pt-6 mt-8 text-center space-y-1">
           <p className="text-[13px] text-ink-soft">
             <span className="font-medium text-ink">상호명:</span> 리스터코퍼레이션 (LISTER Corporation)
           </p>

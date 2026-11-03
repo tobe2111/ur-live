@@ -92,7 +92,7 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
     for (const [k, v] of Object.entries(CURATOR_FS_CLASS)) {
       // `row` 는 DealRow 가 조립한다(skin 삽입) — 조각으로 확인
       if (k === 'row') {
-        for (const part of ['w-full flex items-center', "'gap-4'", 'text-left', 'px-0 py-5', 'active:opacity-60 transition-opacity']) {
+        for (const part of ['w-full flex items-center', 'gap-3', 'text-left', 'px-0 py-5', 'active:opacity-60 transition-opacity']) {
           if (!sources.includes(part)) missing.push(`${k}:${part}`)
         }
         continue
@@ -187,7 +187,7 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
   it('③-1 줄은 최대 CURATOR_FS_ROWS 개만 그린다', () => {
     const pins = Array.from({ length: 9 }, (_, i) => PIN({ id: i + 1, product_id: 500 + i }))
     const html = buildCuratorFirstScreen(SEED({ pins }), LOADER)
-    const n = (html.match(/class="w-full flex items-center gap-4 text-left/g) || []).length
+    const n = (html.match(/class="w-full flex items-center gap-3 text-left/g) || []).length
     expect(n).toBe(CURATOR_FS_ROWS)
     expect(CURATOR_FS_ROWS).toBeLessThanOrEqual(6)
   })

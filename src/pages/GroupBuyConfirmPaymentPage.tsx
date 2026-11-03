@@ -137,12 +137,12 @@ export default function GroupBuyConfirmPaymentPage() {
         {state === 'error' && (
           <>
             {/* 🎫 아이콘 없이 제목 한 줄 — 시안의 "없는 것을 지킨다"(빨간 X 원 폐기). */}
-            <p className="text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{t('passBuy.errorTitle', { defaultValue: '결제를 완료하지 못했어요' })}</p>
+            <p className="text-[20px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white">{t('passBuy.errorTitle', { defaultValue: '결제를 완료하지 못했어요' })}</p>
             <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">{errorMsg}</p>
             <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-3">{t('passBuy.contactSupport', { defaultValue: '고객센터에 문의해주세요.' })}<br/>{t('passBuy.paymentRef', { defaultValue: '결제 정보: {{ref}}', ref: orderId.slice(0, 20) })}</p>
             <button
               onClick={() => navigate(isCart ? '/cart' : `/pass/${productId}`)}
-              className="mt-6 px-6 py-3 bg-brand text-white rounded-full text-[15px] font-bold active:opacity-80"
+              className="mt-8 px-6 py-3 bg-brand text-white rounded-full text-[15px] font-bold active:opacity-80"
             >
               {isCart ? t('passBuy.backToCart', { defaultValue: '장바구니로 돌아가기' }) : t('passBuy.backToProduct', { defaultValue: '상품 페이지로 돌아가기' })}
             </button>

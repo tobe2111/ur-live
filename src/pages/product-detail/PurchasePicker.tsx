@@ -122,7 +122,7 @@ export default function PurchasePicker({
               className="w-11 h-11 rounded-[10px] flex items-center justify-center disabled:opacity-40">
               <Minus className="w-4 h-4 text-[#6B6469] dark:text-[#7C7479]" strokeWidth={2.4} />
             </button>
-            <span className="min-w-[40px] text-center text-[17px] font-bold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">
+            <span className="min-w-[40px] text-center text-[16px] font-semibold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">
               <RollingNumber value={quantity} />
             </span>
             <button type="button" aria-label="수량 증가" onClick={inc}

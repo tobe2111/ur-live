@@ -94,10 +94,10 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
           <>
             <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-5 shadow-lift">
               <p className="text-[13px] text-gray-500 dark:text-gray-400">지금 받을 수 있어요</p>
-              <p className="mt-1 text-[28px] font-extrabold tabular-nums tracking-[-0.01em] text-gray-900 dark:text-white">
-                <span key={sent} className={sent ? 'ur-po-in' : undefined}>{formatNumber(b.available)}</span><span className="ml-1 text-[17px] font-bold">원</span>
+              <p className="mt-1 text-[28px] font-bold tabular-nums tracking-[-0.01em] text-gray-900 dark:text-white">
+                <span key={sent} className={sent ? 'ur-po-in' : undefined}>{formatNumber(b.available)}</span><span className="ml-1 text-[16px] font-bold">원</span>
               </p>
-              <dl className="mt-4 grid grid-cols-3 gap-2">
+              <dl className="mt-5 grid grid-cols-3 gap-2">
                 {[
                   ['기다리는 중', b.pending],
                   ['처리 중', b.requested],
@@ -117,7 +117,7 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
                   {hasOpen ? '처리 중인 신청이 있어요' : b.available < min ? `${formatNumber(min)}원부터 신청할 수 있어요` : '지급 신청'}
                 </button>
               ) : (
-                <p className="mt-4 text-[13px] text-gray-500 dark:text-gray-400">지급 신청은 관리자가 할 수 있어요.</p>
+                <p className="mt-5 text-[13px] text-gray-500 dark:text-gray-400">지급 신청은 관리자가 할 수 있어요.</p>
               )}
             </div>
             <p className="mt-3 px-1 text-[12px] leading-[1.55] text-gray-500 dark:text-gray-400">
@@ -126,7 +126,7 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
               지급은 {payDay}에 한 번 해요. 신청하지 않아도 그날 {formatNumber(min)}원 이상이면 자동으로 묶여요.
             </p>
 
-            <h3 className="mt-6 px-1 text-[15px] font-bold text-gray-900 dark:text-white">지급 내역</h3>
+            <h3 className="mt-8 px-1 text-[15px] font-bold text-gray-900 dark:text-white">지급 내역</h3>
             {data.payouts.length === 0 ? (
               <p className="py-6 text-center text-[13px] text-gray-500 dark:text-gray-400">아직 신청한 지급이 없어요.</p>
             ) : (

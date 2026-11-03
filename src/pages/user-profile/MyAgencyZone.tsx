@@ -4,7 +4,6 @@ import { runAfterLoad } from '@/lib/after-load'
 import { announceAgencyPresence, hasAgencyLogin } from '@/lib/agency-presence'
 import { agencyAutoConnectBlocked } from '@/lib/agency-presence'
 import { useAgencyPresence } from './useAgencyPresence'
-import { SectionTitle } from './list-grammar'
 
 export { hasAgencyLogin }
 
@@ -29,7 +28,7 @@ function probedThisTab(uid: string): boolean {
 }
 
 /**
- * @param inHead 폰 '에이전시' 탭 — 이름은 머리에 있으니 '에이전시 운영' 제목만 세운다(2026-11-03).
+ * @param inHead 폰 '에이전시' 탭 — 이름은 머리에 있고, 구역은 토스 참고 안(판)으로 그린다(2026-11-03).
  * @param ownSellerIds 이 사람이 운영자로 맡은 매장(위 '내 가게' 판). 있으면 **합친 구역**으로 그린다
  *   (2026-11-02 통합 시안 v2) — 제목은 판 위의 `AgencyMergedTitle` 이 이미 세웠으므로 여기서는 '에이전시'
  *   묶음 라벨과 할 일 줄만, 그리고 그 매장들은 다시 그리지 않는다.
@@ -73,9 +72,9 @@ export default function MyAgencyZone({ ownSellerIds, inHead = false }: { ownSell
   return (
     <Suspense fallback={null}>
       {/* 🗂️ 2026-11-03 — 폰 '에이전시' 탭(`inHead`)이면 에이전시 이름은 맨 위 머리가 갖는다 → 여기는 '에이전시 운영' 제목만. */}
-      {inHead ? <SectionTitle>에이전시 운영</SectionTitle>
-        : merged && <p className="px-4 mt-6 mb-1 text-[12px] font-medium text-gray-500 dark:text-gray-400">에이전시</p>}
-      <AgencySection stacked headless={merged || inHead} ownSellerIds={merged ? ownSellerIds : undefined} onSessionEnd={onSessionEnd} />
+      {/* 🧾 2026-11-03 폰 '에이전시' 탭(`inHead`)은 토스 참고 안 — 판(카드)이 스스로 묶으니 구역 제목을 세우지 않는다. */}
+      {!inHead && merged && <p className="px-4 mt-8 mb-1 text-[12px] font-medium text-gray-500 dark:text-gray-400">에이전시</p>}
+      <AgencySection stacked headless={merged || inHead} toss={inHead} ownSellerIds={merged ? ownSellerIds : undefined} onSessionEnd={onSessionEnd} />
     </Suspense>
   )
 }

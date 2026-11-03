@@ -88,7 +88,7 @@ export default function DesktopLiveSidebar() {
     >
       {/* 로고 — xl: 풀 로고, md~xl: 'U' 아이콘. sticky 로 사이드바 스크롤 시 항상 표시 */}
       <Link to="/" className="sticky top-0 z-10 bg-white dark:bg-[#11141C] flex items-center justify-center xl:justify-start xl:px-4 h-14 shrink-0">
-        <span className="xl:hidden text-[17px] font-bold text-gray-900 dark:text-white select-none">U</span>
+        <span className="xl:hidden text-[16px] font-semibold text-gray-900 dark:text-white select-none">U</span>
         <span className="hidden xl:block"><UrDealLogo size={20} /></span>
       </Link>
 

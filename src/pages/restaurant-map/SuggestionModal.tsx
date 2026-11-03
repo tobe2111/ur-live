@@ -60,10 +60,10 @@ export default function SuggestionModal({ place, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
-      <div className="ur-glass ur-pop-card w-full max-w-[430px] p-5 space-y-4 overflow-hidden ur-dialog-in" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${place.place_name} 추천 보내기`}>
+      <div className="ur-glass ur-pop-card w-full max-w-[430px] p-5 space-y-3 overflow-hidden ur-dialog-in" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${place.place_name} 추천 보내기`}>
         <div>
           <p className="text-[12px] text-gray-500 dark:text-gray-400">{place.category_name?.split('>').slice(-1)[0]?.trim() || '맛집'}</p>
-          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{place.place_name}</h3>
+          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">{place.place_name}</h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
             <PinIcon className="w-3 h-3" />
             {place.road_address_name || place.address_name}

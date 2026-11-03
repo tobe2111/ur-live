@@ -56,23 +56,23 @@ export default function PartnerPaths() {
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
         {/* 🧹 2026-10-31: 제목 오른쪽 구석에 혼자 떠 있던 작은 폰(카카오맵 가게 찾기)을 뺐다 — 화면 안이 거의
             비어 보여 실수처럼 읽혔다. 등록 화면은 "손님이 오는 길" 과 사장님 화면 줄이 이미 보여 준다. */}
-        <Reveal><h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+        <Reveal><h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">
           시작하는 길, 세 가지
         </h2></Reveal>
-        <Reveal as="p" delay={80} className="mt-4 text-[15px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[28em]">
+        <Reveal as="p" delay={80} className="mt-5 text-[15px] lg:text-[16px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[28em]">
           어느 길이든 손님이 낸 돈은 사장님 계좌로만 갑니다.
         </Reveal>
 
-        <div className="mt-12 lg:mt-20 grid gap-5 lg:grid-cols-[1.25fr_1fr_1fr] lg:gap-7 lg:items-start">
+        <div className="mt-12 lg:mt-20 grid gap-5 lg:grid-cols-[1.25fr_1fr_1fr] lg:gap-8 lg:items-start">
           {/* 🎬 카드가 차례로 들어오고, 마우스를 올리면 커서를 따라 빛이 돌며 살짝 떠오른다 */}
           {PATHS.map(({ title, fee, hi, steps, note, cta }, pi) => (
             <Reveal as="article" key={title} delay={pi * 120} {...spotHandlers()}
               className={`ur-spot rounded-2xl flex flex-col ${hi ? 'bg-surface shadow-lift p-6 lg:p-10' : 'bg-black/[0.03] dark:bg-white/[0.04] p-6 lg:p-8'}`}>
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className={`font-bold text-ink tracking-[-0.02em] ${hi ? 'text-[24px] lg:text-[28px]' : 'text-[17px] lg:text-[24px]'}`}>{title}</h3>
+                <h3 className={`font-semibold text-ink tracking-[-0.02em] ${hi ? 'text-[20px] lg:text-[24px]' : 'text-[16px] lg:text-[20px]'}`}>{title}</h3>
                 <span className={`text-[12px] lg:text-[15px] font-medium shrink-0 ${hi ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>{fee}</span>
               </div>
-              <ol className="mt-6 lg:mt-8 space-y-2 lg:space-y-4 flex-1">
+              <ol className="mt-8 lg:mt-8 space-y-2 lg:space-y-3 flex-1">
                 {steps.map(s => (
                   <li key={s} className="flex gap-2 text-[13px] lg:text-[15px] leading-snug text-gray-600 dark:text-gray-300">
                     <Check className="w-3.5 h-3.5 mt-[3px] shrink-0 text-brand-text" strokeWidth={2.4} />
@@ -80,15 +80,15 @@ export default function PartnerPaths() {
                   </li>
                 ))}
               </ol>
-              <p className="mt-6 pt-5 border-t border-rule text-[12px] lg:text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">{note}</p>
+              <p className="mt-8 pt-5 border-t border-rule text-[12px] lg:text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">{note}</p>
               {'to' in cta ? (
                 <Link to={cta.to}
-                  className="mt-6 h-12 lg:h-14 rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] font-bold active:scale-[0.98] transition-transform">
+                  className="mt-8 h-12 lg:h-14 rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] font-bold active:scale-[0.98] transition-transform">
                   {cta.label} <ArrowRight className="w-4 h-4" />
                 </Link>
               ) : (
                 <a href={cta.href} target="_blank" rel="noopener noreferrer"
-                  className="mt-6 h-12 lg:h-14 rounded-2xl border border-rule-strong flex items-center justify-center gap-2 text-[15px] font-bold text-ink">
+                  className="mt-8 h-12 lg:h-14 rounded-2xl border border-rule-strong flex items-center justify-center gap-2 text-[15px] font-bold text-ink">
                   {cta.label} <ArrowRight className="w-4 h-4" />
                 </a>
               )}
@@ -96,7 +96,7 @@ export default function PartnerPaths() {
           ))}
         </div>
 
-        <p className="mt-8 lg:mt-14 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[54em]">
+        <p className="mt-8 lg:mt-12 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[54em]">
           어느 길이든 사업자등록번호는 국세청에 자동으로 조회됩니다. 등록증 사본은 사람이 한 번 보고 승인합니다.
           가짜 매장이 섞이면 먼저 들어오신 사장님이 손해라서, 이 한 단계는 사람이 맡습니다.
         </p>

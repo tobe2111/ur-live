@@ -32,7 +32,7 @@ export default function CurationStrip({
     ? t('groupBuy.curBadgeClosing', { defaultValue: '오늘 마감' })
     : t('groupBuy.curBadgeGoal', { defaultValue: '달성 🎉' })
   return (
-    <section className="mb-6">
+    <section className="mb-8">
       <div className="flex items-baseline justify-between mb-2 px-1">
         <h3 className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight">{title}</h3>
         <span className="text-[12px] text-gray-400">{subtitle}</span>

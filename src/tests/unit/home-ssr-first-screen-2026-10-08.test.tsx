@@ -192,13 +192,13 @@ describe('② 경계 — 서버가 그리는 범위', () => {
   it('🔴 위치 이름은 쿠키(화면이 남긴 글자)에서만 — 없으면 화면 규칙과 같은 \'전국\'', () => {
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seedJson([BARE]), LOADER)
-    const label = host.querySelector(`#ur-first-screen .${CSS.escape('text-[24px]')}`)
+    const label = host.querySelector(`#ur-first-screen .${CSS.escape('text-[20px]')}`)
     expect(label).toBeTruthy()
     expect(label?.textContent?.trim()).toBe('전국')
     const txt = host.querySelector('#ur-first-screen')?.textContent || ''
     expect(txt).not.toContain('내 주변')
     host.innerHTML = buildHomeFirstScreen(seedJson([BARE]), LOADER, '', 'ur_home_loc=%EB%8F%99%ED%83%845%EB%8F%99')
-    expect(host.querySelector(`#ur-first-screen .${CSS.escape('text-[24px]')}`)?.textContent).toBe('동탄5동')
+    expect(host.querySelector(`#ur-first-screen .${CSS.escape('text-[20px]')}`)?.textContent).toBe('동탄5동')
   })
 
   it('🔴 거리(km)와 찜 하트는 안 그린다 (클라 상태 · absolute)', () => {
@@ -272,7 +272,7 @@ describe('⑤ 크롬·섹션 머리글 — 페이지 소스에서 파싱해 대�
     const needles =
       // 📋 2026-10-31 시안 10: 격자는 공용 상수(`DEAL_ROW.grid`)를 쓴다 — 워커도 같은 상수라 값 대신 **사용**을 대조한다.
       key === 'grid' ? ['DEAL_ROW.grid']
-        : key === 'locLabel' ? ['text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white', 'max-w-[220px] truncate']
+        : key === 'locLabel' ? ['text-[20px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white', 'max-w-[220px] truncate']
           : [want]
     for (const n of needles) {
       expect(src(), `${key} 가 갈렸다(${n}) — 마운트 때 그 자리가 튄다`).toContain(n)

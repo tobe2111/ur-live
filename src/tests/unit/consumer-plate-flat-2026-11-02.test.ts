@@ -58,7 +58,10 @@ describe('🧾 소비자 화면 — 흐름 속 판은 평면 (2026-11-02 A안)',
 
   it('④ 지갑 · 티켓 · PC 마이 카드가 평면이다 (대표가 직접 고른 자리)', () => {
     const wallet = readFileSync('src/pages/MyVouchersPage.tsx', 'utf8')
-    expect(wallet).toMatch(/<div className="-mx-4 overflow-hidden divide-y divide-rule">/)
+    // 🔁 2026-11-03 대표 *"이용권 페이지는 마음에 들어"*(토스 참고 시안 I1) — 지갑은 이 결정의 **명시적 예외**가 됐다:
+    //   판(카드)으로 묶되 **그림자는 여전히 0**(바탕 면만). 그림자가 돌아오지 않게 지킨다.
+    expect(wallet).toContain('<div className="rounded-2xl bg-surface overflow-hidden" data-testid="wallet-list-card">')
+    expect(wallet).not.toMatch(/wallet-list-card[^\n]*shadow-lift/)
     expect(readFileSync('src/components/ticket/TicketCard.tsx', 'utf8')).not.toMatch(/className=[^\n]*shadow-lift/)
     const css = readFileSync('src/index.css', 'utf8')
     const pc = css.slice(css.indexOf('.ur-account-pc .ur-pc-card {'))

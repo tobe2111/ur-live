@@ -57,8 +57,8 @@ export default function RegionLinkGrid({
 
   return (
     <section className={`border-t border-gray-100 dark:border-[#2C2F35] ${className}`} aria-labelledby="region-grid-heading">
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-10 py-8">
-        <h2 id="region-grid-heading" className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">
+      <div className="max-w-[1600px] mx-auto px-5 lg:px-10 py-8">
+        <h2 id="region-grid-heading" className="text-[15px] font-bold text-gray-900 dark:text-white mb-5">
           {title}
         </h2>
 
@@ -84,7 +84,7 @@ export default function RegionLinkGrid({
         </div>
 
         {/* 시군구 링크 — 모바일 3열 → PC 6열. 여기어때 하단 그리드와 같은 밀도. */}
-        <ul className="mt-3 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-2">
+        <ul className="mt-3 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-3 gap-y-2">
           <li>
             <Link
               to={regionPath({ sido: active.sido })}

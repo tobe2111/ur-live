@@ -109,7 +109,7 @@ export default function AgencyStorePlate({ store, staffId, initialPath, onOpenSa
             <span className="text-[12px] font-medium text-gray-400 dark:text-gray-500">오늘 · 우리 이용권</span>
             <span className="text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">{todayLabelKST()}</span>
           </div>
-          <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
+          <p className="mt-2 text-[28px] font-bold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
             {today ? formatNumber(today.todayRevenue) : '—'}
             <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
           </p>

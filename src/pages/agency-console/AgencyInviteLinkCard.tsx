@@ -134,7 +134,7 @@ export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean
       ) : (
         <button type="button" disabled={busy}
           onClick={async () => { setBusy(true); const n = await create(); setBusy(false); if (n) toast.success('영입 링크를 만들었어요.') }}
-          className="mt-4 h-10 rounded-xl bg-brand px-4 text-[13px] font-medium text-white disabled:opacity-50">영입 링크 만들기</button>
+          className="mt-5 h-10 rounded-xl bg-brand px-4 text-[13px] font-medium text-white disabled:opacity-50">영입 링크 만들기</button>
       )}
     </div>
   )

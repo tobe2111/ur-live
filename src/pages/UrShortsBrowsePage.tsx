@@ -92,7 +92,7 @@ export default function UrShortsBrowsePage() {
         >
           <ChevronLeft size={22} />
         </button>
-        <h1 className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">
+        <h1 className="text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white">
           유어쇼츠
           <span aria-hidden="true" className="-ml-[3px] text-brand-text">.</span>
         </h1>
@@ -135,7 +135,7 @@ export default function UrShortsBrowsePage() {
               {all.length === 0 ? '아직 올라온 영상이 없어요' : '고른 조건에 맞는 영상이 없어요'}
             </p>
           ) : (
-            <ul className="grid grid-cols-2 gap-x-2 gap-y-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <ul className="grid grid-cols-2 gap-x-2 gap-y-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {shown.map((it, i) => (
                 <li key={it.id} className="ur-vc-in" style={{ '--i': Math.min(i, 8) } as React.CSSProperties}>
                   {/* 첫 줄만 즉시 로드 — 아래는 스크롤할 때. 2열이면 두 장이 첫 화면이다. */}

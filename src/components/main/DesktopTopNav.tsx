@@ -252,8 +252,8 @@ export default function DesktopTopNav() {
     <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
       {/* 📐 2026-08-19: 검색바가 46px 로 커져 행 높이도 56→68px(그루폰 헤더 비율). */}
       <div className={isHome
-        ? 'flex items-center gap-4 h-[68px] max-w-[1440px] mx-auto w-full px-6 lg:px-8'
-        : 'flex items-center gap-4 px-4 md:pl-[76px] lg:pl-[76px] xl:pl-60 h-[68px]'}>
+        ? 'flex items-center gap-3 h-[68px] max-w-[1440px] mx-auto w-full px-5 lg:px-8'
+        : 'flex items-center gap-3 px-4 md:pl-[76px] lg:pl-[76px] xl:pl-60 h-[68px]'}>
         {/* 로고 — xl 이상에서는 사이드바에 있으므로 숨김(홈은 사이드바 없음 → 항상 표시) */}
         <Link to="/" className={isHome ? 'flex items-center shrink-0' : 'flex items-center shrink-0 xl:hidden'}>
           <UrDealLogo size={20} />
@@ -445,7 +445,7 @@ export default function DesktopTopNav() {
           {/* 🎬 2026-09-09 (대표 "추천대로 할게" — 모바일과 같은 자리): 유어쇼츠 진입점은 카테고리
               **스크롤 영역 밖**에 고정한다. 이 줄은 overflow-x-auto 라 안에 넣으면 카테고리가 느는 날
               밀려 사라지고, 그건 에러가 안 나서 아무도 모른다(모바일에서 같은 함정을 이미 밟았다). */}
-          <div className="max-w-[1440px] mx-auto w-full px-6 lg:px-8 flex items-center gap-3">
+          <div className="max-w-[1440px] mx-auto w-full px-5 lg:px-8 flex items-center gap-3">
             <div className="relative flex-1 min-w-0">
             <nav
               ref={catScrollRef}

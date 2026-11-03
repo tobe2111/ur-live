@@ -35,8 +35,8 @@ export default [
     file: 'src/pages/VideosPage.tsx',
     // 🩸 2026-09-08: `{ autoplay: true, controls: false }` 만 쓰면 **대상이 2곳**이 됐다
     //    (IFrame API 경로 `youTubePlayerVars(...)` + 폴백 `youTubeEmbedUrl(...)`). 함수 이름까지 앵커.
-    find: 'youTubePlayerVars({ autoplay: true, controls: false })',
-    replace: 'youTubePlayerVars({ autoplay: true })',
+    find: 'youTubePlayerVars({ autoplay: true, controls: false, muted: true })', // 🔄 2026-11-03 재조준(음소거 자동 재생)
+    replace: 'youTubePlayerVars({ autoplay: true, muted: true })',
     test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
     why:
       '실측(430×608): 유튜브 진행 바 56px · Shorts 로고 18px, 구매 바는 10~76px — 이용권을 붙이면 ' +
@@ -299,8 +299,8 @@ export default [
   {
     name: '🌑 잉크 패널 위에 라이트 회색 글자가 돌아온다',
     file: 'src/components/home/UrShortsRail.tsx',
-    find: 'text-[17px] font-bold tracking-tight text-white',
-    replace: 'text-[17px] font-bold tracking-tight text-gray-900',
+    find: 'text-[16px] font-semibold tracking-tight text-white',
+    replace: 'text-[16px] font-semibold tracking-tight text-gray-900',
     test: 'src/tests/unit/urshorts-rail-ink-panel.test.ts',
     why:
       '패널이 늘 어두우므로 라이트 회색 토큰은 어느 테마에서도 안 읽힌다. 그런데 `check-theme-consistency` ' +

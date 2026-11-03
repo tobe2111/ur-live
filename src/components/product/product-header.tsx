@@ -69,13 +69,13 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
         )}
 
         {/* v4 Price cluster */}
-        <div className="flex items-baseline gap-2 mt-4">
+        <div className="flex items-baseline gap-2 mt-5">
           {/* 🔴 할인율은 `text-sale`(SSOT) — `red-500`(#EF4444)은 다크 값이 없어 다크 카드 위에서
               대비가 무너진다(2026-09 `--sale` 토큰이 생긴 이유가 정확히 그 사고다). */}
           {displayDiscount > 0 && (
             <span className="text-[24px] font-bold text-sale">{displayDiscount}%</span>
           )}
-          <span className="text-[28px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>
+          <span className="text-[28px] font-bold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>
             {formatPrice(price)}
           </span>
           <span className="text-[15px] text-gray-900 dark:text-white">원</span>

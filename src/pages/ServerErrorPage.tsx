@@ -14,7 +14,7 @@ export default function ServerErrorPage() {
   return (
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center px-4">
       <SEO title={t('serverError.title')} description={t('serverError.seoDescription')} url="/500" noindex />
-      <div className="max-w-lg w-full text-center px-4 lg:px-8">
+      <div className="max-w-lg w-full text-center px-5 lg:px-8">
         {/* Error Icon */}
         <div className="mb-8 smooth-appear">
           <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#ff3b30]/10 to-[#9ca3af]/10">
@@ -25,24 +25,24 @@ export default function ServerErrorPage() {
         </div>
 
         {/* Error Code */}
-        <div className="mb-4 smooth-appear" style={{ animationDelay: '0.1s' }}>
+        <div className="mb-5 smooth-appear" style={{ animationDelay: '0.1s' }}>
           <span className="inline-block px-4 py-2 rounded-full bg-[#ff3b30]/10 text-[#ff3b30] text-[15px] font-medium tracking-tight">
             500 ERROR
           </span>
         </div>
 
         {/* Title */}
-        <h1 className="mb-4 text-[34px] sm:text-[40px] md:text-[48px] font-bold leading-[1.0625] tracking-tight text-[#1d1d1f] dark:text-white smooth-appear" style={{ animationDelay: '0.2s' }}>
+        <h1 className="mb-5 text-[34px] sm:text-[40px] md:text-[48px] font-bold leading-[1.0625] tracking-tight text-[#1d1d1f] dark:text-white smooth-appear" style={{ animationDelay: '0.2s' }}>
           {t('serverError.heading')}
         </h1>
 
         {/* Description */}
-        <p className="mb-8 text-[17px] sm:text-[17px] leading-[1.47059] font-normal text-[#6e6e73] dark:text-gray-400 smooth-appear whitespace-pre-line" style={{ animationDelay: '0.3s' }}>
+        <p className="mb-8 text-[16px] sm:text-[16px] leading-[1.47059] font-normal text-[#6e6e73] dark:text-gray-400 smooth-appear whitespace-pre-line" style={{ animationDelay: '0.3s' }}>
           {t('serverError.description')}
         </p>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center smooth-appear" style={{ animationDelay: '0.4s' }}>
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-3 justify-center smooth-appear" style={{ animationDelay: '0.4s' }}>
           <Button
             className="apple-button"
             onClick={handleRefresh}
@@ -61,7 +61,7 @@ export default function ServerErrorPage() {
 
         {/* Customer Support */}
         <div className="mt-12 pt-8 border-t border-black/5 dark:border-white/10 smooth-appear" style={{ animationDelay: '0.5s' }}>
-          <p className="mb-4 text-[15px] font-normal text-[#6e6e73] dark:text-gray-400">
+          <p className="mb-5 text-[15px] font-normal text-[#6e6e73] dark:text-gray-400">
             {t('serverError.stillIssue')}
           </p>
           <a

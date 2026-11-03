@@ -29,8 +29,10 @@ import {
  * 🔑 신원은 여전히 **에이전시 직원 토큰**(`agency_console_token`)이다. 손님 세션과 섞지 않는다 —
  *   성과·몫이 사람이 아니라 에이전시 단위로 잡혀야 하기 때문이다(2026-10-11 결정).
  */
-export default function AgencySection({ stacked = false, headless = false, ownSellerIds, onSessionEnd }: {
+export default function AgencySection({ stacked = false, headless = false, ownSellerIds, onSessionEnd, toss = false }: {
   stacked?: boolean
+  /** 🧾 2026-11-03 대표 *"에이전시 화면은 토스 참고 안으로"* — 판(카드) · 두 줄 행 · 오늘 매출 합계(`agency-toss.tsx`). */
+  toss?: boolean
   /** 마이에서 이미 '내 가게' 판에 있는 매장(합친 구역 — `AgencyStoresPanel` 머리말). */
   ownSellerIds?: number[]
   /** 페이지가 머리(에이전시 이름·직원)를 따로 그릴 때 — 같은 말을 두 번 하지 않게 구역 제목을 뺀다. */
@@ -81,7 +83,7 @@ export default function AgencySection({ stacked = false, headless = false, ownSe
   return (
     <section aria-label="에이전시" data-testid="my-agency-section">
       {!headless && <SectionTitle>{me ? `에이전시 · ${me.agency.name}` : '에이전시'}</SectionTitle>}
-      <div className="px-4">
+      <div className={toss ? 'px-3 pt-3' : 'px-4'}>
         {me && !headless && <p className="mb-3 text-[13px] text-gray-500 dark:text-gray-400">{me.staff.name || agencyStaffLoginLabel(me.staff.email)} · {role}</p>}
 
         {loadError && (
@@ -98,6 +100,7 @@ export default function AgencySection({ stacked = false, headless = false, ownSe
             stacked={stacked}
             ownSellerIds={ownSellerIds}
             toolParam={AGENCY_TOOL_PARAM}
+            toss={toss}
             agencyRows={(
               <>
                 {payouts?.enabled && <FlatRow icon={<WalletIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="에이전시 정산" hint={payoutRowHint(payouts)} urgent={(payouts.balance?.available ?? 0) > 0} onClick={() => setSheet('payout')} />}
@@ -106,7 +109,10 @@ export default function AgencySection({ stacked = false, headless = false, ownSe
                 {canMove && <FlatRow icon={<PersonIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="이메일 계정으로 옮기기" hint="직원과 함께 쓰기" onClick={() => setSheet('move')} />}
               </>
             )}
-            trailingRows={<FlatRow icon={<LogOutIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="에이전시 로그아웃" onClick={() => { void logout() }} last />}
+            trailingRows={toss ? (
+              // 🧾 토스 참고 안 — 로그아웃은 일하는 줄과 같은 무게가 아니다. 맨 아래 조용한 글자.
+              <button type="button" onClick={() => { void logout() }} className="mx-auto mt-2 mb-5 block min-h-[44px] px-5 text-[13px] text-gray-500 dark:text-gray-400 active:opacity-70">에이전시 로그아웃</button>
+            ) : <FlatRow icon={<LogOutIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="에이전시 로그아웃" onClick={() => { void logout() }} last />}
           />
         )}
       </div>

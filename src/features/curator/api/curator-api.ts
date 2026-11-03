@@ -58,6 +58,8 @@ export interface CuratorProfile {
   youtube_url?: string | null
   instagram_url?: string | null
   tiktok_url?: string | null
+  /** 📈 2026-11-03: 연동으로 받은 팔로워 수 — 이름표 주소와 같은 계정일 때만 온다. 옛 캐시 응답엔 없다. */
+  sns_followers?: Partial<Record<'youtube' | 'instagram' | 'tiktok', number>>
   /** ✨ 2026-07-04 유어샵 1단계: 매장 유어샵 하단 추천(핀) 섹션 opt-in (0/1, 기본 0). */
   linkshop_show_recommend?: number
   /** 🛍️ 2026-10-15: 이 유어샵을 거쳐 팔린 수(머리의 '누적 구매'). 옛 캐시 응답엔 없다 → 0 으로 친다. */

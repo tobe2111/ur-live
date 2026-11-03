@@ -44,19 +44,19 @@ export default function MyReturnsPage() {
       <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-24">
         <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-[17px] font-bold">↩️ {t('returns.title', { defaultValue: '내 반품' })}</h1>
+            <h1 className="text-[16px] font-semibold">↩️ {t('returns.title', { defaultValue: '내 반품' })}</h1>
             <Link to="/my-orders" className="text-[15px] text-gray-600 dark:text-gray-300 hover:underline">
               {t('returns.backToOrders', { defaultValue: '주문 목록' })}
             </Link>
           </div>
         </header>
 
-        <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="max-w-3xl mx-auto px-5 py-6">
           {loading ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : error ? (
             <div className="text-center py-12">
-              <p className="text-[15px] text-red-500 mb-4">{error}</p>
+              <p className="text-[15px] text-red-500 mb-5">{error}</p>
               <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
                 {t('common.retry', { defaultValue: '다시 시도' })}
               </button>

@@ -76,7 +76,7 @@ export default function HomeTopHeader() {
 
   return (
     <div className="md:hidden lg:block sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
-      <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-2 space-y-2">
+      <div className="ur-content-wide px-5 lg:px-8 pt-2 pb-2 space-y-2">
         {/* 1행: 로고 + 검색 + 기록 + 알림 */}
         <div className="flex items-center gap-2">
           <button onClick={() => navigate('/')} aria-label="홈" className="shrink-0">

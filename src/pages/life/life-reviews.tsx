@@ -89,7 +89,7 @@ export function ReviewForm({ requestId, mine, onDone }: {
 
   if (mine) {
     return (
-      <div className="mt-4 border-t border-rule pt-3">
+      <div className="mt-5 border-t border-rule pt-3">
         <p className="text-[13px] text-gray-500 dark:text-gray-400">내 후기</p>
         <p className="mt-1 text-[15px] font-bold">{'★'.repeat(mine.rating)}</p>
         <p className="mt-1 whitespace-pre-wrap text-[13px] text-gray-700 dark:text-gray-200">{mine.body}</p>
@@ -132,13 +132,13 @@ export function ReviewForm({ requestId, mine, onDone }: {
   }
 
   return (
-    <div className="mt-4 border-t border-rule pt-3">
+    <div className="mt-5 border-t border-rule pt-3">
       <p className="text-[15px] font-bold">일은 어떠셨어요?</p>
       <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">후기는 다음 손님이 업체를 고를 때 보여요.</p>
       <div className="mt-3 flex gap-1" role="radiogroup" aria-label="별점">
         {[1, 2, 3, 4, 5].map((n) => (
           <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={`${n}점`} onClick={() => setRating(n)}
-            className={`text-[28px] leading-none ${n <= rating ? 'text-brand-text' : 'text-gray-300 dark:text-gray-600'}`}><span key={n <= rating ? `on${rating}` : 'off'} className={n <= rating ? 'ur-star-pick' : 'inline-block'} style={{ '--sn': n - 1 } as React.CSSProperties}>★</span></button>
+            className={`text-[24px] leading-none ${n <= rating ? 'text-brand-text' : 'text-gray-300 dark:text-gray-600'}`}><span key={n <= rating ? `on${rating}` : 'off'} className={n <= rating ? 'ur-star-pick' : 'inline-block'} style={{ '--sn': n - 1 } as React.CSSProperties}>★</span></button>
         ))}
       </div>
       <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={REVIEW_BODY_MAX} rows={3}

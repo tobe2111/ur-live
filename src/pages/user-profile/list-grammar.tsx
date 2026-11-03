@@ -87,12 +87,13 @@ export const LIST_PLATE_CLS = 'rounded-2xl bg-surface shadow-lift overflow-hidde
  * 글자가 **제목**이 된다. 그런데 이 화면의 주인공은 오늘 매출(28px)과 행 제목(15px)이고 제목은
  * **구역을 가르기만** 하면 된다. ⇒ 17px · semibold · 흐린 잉크.
  * 🧹 2026-11-02 대표 *"마이페이지도 되게 필요없이 공백이 많은 느낌인데"* → **mt-8 → mt-6**(32 → 24px).
+ *   📏 2026-11-03 공백 체계(4·8·12·20·32·48)에 24 가 없어 **mt-5(20px)** — 32 로 올리면 11-02 의 지적으로 되돌아간다.
  *   구역이 셋으로 줄고 판도 걷혀(A안 평면) 구역 사이 32px 가 줄 하나 높이(48)의 2/3 를 비워 두고 있었다.
  *   위쪽 숫자 줄도 같은 날 52 → 48px 로 목록 줄과 맞췄다(`MyStats`).
  * ⚠️ (기록) 크기를 줄인 만큼 **위 여백을 늘린다**(mt-7 → mt-8). 경계를 이제 공백이 만들기 때문이고,
  *    둘은 짝이다 — 한쪽만 하면 목록이 도로 한 덩어리로 읽힌다.
  */
-export const SECTION_TITLE_CLS = 'text-[17px] font-bold tracking-[-0.01em] text-gray-500 dark:text-white/45'
+export const SECTION_TITLE_CLS = 'text-[16px] font-semibold tracking-[-0.01em] text-gray-500 dark:text-white/45'
 
 export function SectionTitle({ children, as: Tag = 'h2', action }: {
   children: React.ReactNode
@@ -102,13 +103,13 @@ export function SectionTitle({ children, as: Tag = 'h2', action }: {
 }) {
   if (!action) {
     return (
-      <Tag className={`mt-6 mb-1 px-4 ${SECTION_TITLE_CLS}`}>
+      <Tag className={`mt-5 mb-1 px-4 ${SECTION_TITLE_CLS}`}>
         {children}
       </Tag>
     )
   }
   return (
-    <div className="mt-6 mb-1 px-4 flex items-center justify-between gap-3">
+    <div className="mt-5 mb-1 px-4 flex items-center justify-between gap-3">
       <Tag className={SECTION_TITLE_CLS}>{children}</Tag>
       <button type="button" onClick={action.onClick} className="shrink-0 inline-flex items-center gap-1 h-9 -my-2 text-[13px] font-medium text-gray-500 dark:text-gray-400 active:opacity-70">
         {action.label}
@@ -125,7 +126,7 @@ export function SectionTitle({ children, as: Tag = 'h2', action }: {
  *   그 순간 한 화면에 제목 층이 셋이 된다(24 구역 · 12 그룹 · 15 행).
  */
 export function GroupLabel({ children }: { children: React.ReactNode }) {
-  return <div className="mt-6 mb-2 px-1 text-[12px] font-medium text-gray-400">{children}</div>
+  return <div className="mt-8 mb-2 px-1 text-[12px] font-medium text-gray-400">{children}</div>
 }
 
 /**

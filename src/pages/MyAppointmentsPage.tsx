@@ -131,7 +131,7 @@ export default function MyAppointmentsPage() {
     <div className="min-h-screen bg-white dark:bg-[#11141C]">
       <SEO title="내 예약 - 유어딜" description="뷰티/액티비티 예약 관리" url="/my-appointments" noindex />
       <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
+        <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 h-[52px]">
           <button onClick={goBack} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로가기">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
           </button>
@@ -140,7 +140,7 @@ export default function MyAppointmentsPage() {
         </div>
       </header>
 
-      <main className="ur-content-narrow px-4 lg:px-8 pb-20 pt-4">
+      <main className="ur-content-narrow px-5 lg:px-8 pb-20 pt-4">
         {/* 🛡️ 2026-06-12 (B-5): 예약 가능한 구매 — 예약 생성 입구 (기존엔 백엔드만 있고 UI 0). */}
         {bookable.length > 0 && (
           <section className="mb-5">
@@ -176,7 +176,7 @@ export default function MyAppointmentsPage() {
         ) : isError ? (
           <div className="text-center py-20">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">예약 내역을 불러오지 못했어요</p>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
             <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
               다시 시도
             </button>
@@ -191,7 +191,7 @@ export default function MyAppointmentsPage() {
             {items.map(a => {
               const meta = STATUS_LABEL[a.status] ?? STATUS_LABEL_FALLBACK
               return (
-                <div key={a.id} className={`rounded-2xl border border-line p-4${justCancelled.has(a.id) && a.status === 'cancelled' ? ' ur-ap-dim' : ''}`}>
+                <div key={a.id} className={`rounded-2xl border border-line p-5${justCancelled.has(a.id) && a.status === 'cancelled' ? ' ur-ap-dim' : ''}`}>
                   <div className="flex items-start gap-3">
                     <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1D1F29] overflow-hidden flex-shrink-0">
                       {a.image_url ? (
@@ -327,7 +327,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
           </h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{item.product_name}</p>
         </div>
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-3">
           <div>
             <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.dateLabel', { defaultValue: '날짜' })}

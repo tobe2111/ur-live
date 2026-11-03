@@ -40,18 +40,18 @@ export function stripBannersOf(raw: unknown): SeededStripBanner[] {
  */
 export const STRIP_CLS = {
   root: 'pb-4',
-  rail: 'flex gap-7 px-[14px]',
+  rail: 'flex gap-8 px-[14px]', // 📏 2026-11-03 공백 체계 — 간격 28 → 32(STRIP_GAP_PX 와 짝). 양옆 14 는 홈 패널 안쪽 여백과 같은 값이라 그대로
   railMany: 'overflow-x-auto snap-x snap-mandatory scroll-px-[14px] scroll-smooth overscroll-x-contain scrollbar-hide',
   /** shape-lock-ok — 14px 는 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다. */
   card: 'overflow-hidden rounded-[14px] isolate aspect-[2/1] flex flex-col justify-end px-5 pt-4 pb-4 transition-transform active:scale-[.995]', // shape-lock-ok
   cardMany: 'snap-start shrink-0 w-full',
   cardOne: 'flex-1',
-  /** PC(lg+) 한 줄 세 장 = (칸 − 간격 28 × 2) ÷ 3. */
-  pcCardW: 'lg:w-[calc((100%-56px)/3)]',
+  /** PC(lg+) 한 줄 세 장 = (칸 − 간격 32 × 2) ÷ 3. */
+  pcCardW: 'lg:w-[calc((100%-64px)/3)]',
   img: 'absolute inset-0 -z-10 w-full h-full object-cover',
   scrim: 'absolute inset-x-0 bottom-0 h-[70%] -z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent',
   /** 끊는 자리는 어드민 제목의 줄바꿈이 정한다(`whitespace-pre-line`) — 폭이 끊으면 '부산 / 합리적으로' 처럼 구 가운데서 잘린다(2026-10-15 실측). */
-  title: 'block max-w-[64%] text-[17px] font-bold leading-[1.25] tracking-[-.02em] whitespace-pre-line [word-break:keep-all] line-clamp-2 text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.25)]',
+  title: 'block max-w-[64%] text-[16px] font-bold leading-[1.25] tracking-[-.02em] whitespace-pre-line [word-break:keep-all] line-clamp-2 text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.25)]',
   desc: 'block max-w-[64%] mt-1 text-[12px] line-clamp-1 text-white/90 dark:text-white/90',
 } as const
 

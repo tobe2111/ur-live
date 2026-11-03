@@ -21,7 +21,7 @@ export default function ReferralIndexPage() {
       <SEO title={t('referral.seoTitle', { defaultValue: '친구초대 - 유어딜' })} description={t('referral.seoDesc', { defaultValue: '친구와 함께 공동구매로 더 저렴하게 쇼핑하세요' })} url="/referral" />
 
       <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
+        <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 h-[52px]">
           <button
             onClick={goBack}
             className="w-9 h-9 flex items-center justify-center"
@@ -34,13 +34,13 @@ export default function ReferralIndexPage() {
         </div>
       </header>
 
-      <main className="ur-content-narrow px-4 lg:px-8 pb-20">
+      <main className="ur-content-narrow px-5 lg:px-8 pb-20">
         {/* Hero */}
         <section className="pt-6 pb-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-800 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-800 mb-5">
             <PeopleIcon className="h-8 w-8 text-white" />
           </div>
-          <h2 className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight">
+          <h2 className="text-[20px] font-semibold text-gray-900 dark:text-white leading-tight">
             {t('referral.heroTitle1', { defaultValue: '친구와 함께' })}<br />
             <span className="text-brand-text">{t('referral.heroTitle2', { defaultValue: '더 저렴하게' })}</span> {t('referral.heroTitle3', { defaultValue: '쇼핑하세요' })}
           </h2>
@@ -111,7 +111,7 @@ export default function ReferralIndexPage() {
         </section>
 
         {/* 안내 */}
-        <p className="mt-6 text-[12px] text-gray-400 dark:text-gray-500 text-center leading-relaxed">
+        <p className="mt-8 text-[12px] text-gray-400 dark:text-gray-500 text-center leading-relaxed">
           {t('referral.footerNote', { defaultValue: '친구가 보낸 공동구매 링크를 받았다면 해당 링크를 눌러 그룹에 참여할 수 있습니다' })}
         </p>
       </main>

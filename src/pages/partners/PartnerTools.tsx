@@ -61,25 +61,25 @@ export default function PartnerTools() {
   return (
     <section className="bg-surface">
       <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-16 lg:pt-32">
-        <Reveal><h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+        <Reveal><h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">
           사장님 폰에 뜨는 화면
         </h2></Reveal>
       </div>
 
       {/* 🎬 2026-10-31: 화면 넉 장이 천천히 흐른다(PC — 마우스를 올리면 멈춘다). 칸에 가두지 않고 화면 끝까지
           흘러가게 폭 컨테이너 밖에 둔다. 폰에서는 손가락으로 넘기는 가로 줄. */}
-      <Reveal kind="fade" className="hidden lg:block mt-16">
+      <Reveal kind="fade" className="hidden lg:block mt-12">
         <Marquee seconds={52}>
           {/* 넉 장을 두 번 이어 한 벌로 만든다 — 한 벌이 화면보다 좁으면 넓은 모니터에서 끝에 빈칸이 보인다 */}
           {[...SCREENS, ...SCREENS].map(({ shot, cap }, i) => (
-            <figure key={`${shot}-${i}`} className="w-[17rem] xl:w-[19rem] mr-10 shrink-0">
+            <figure key={`${shot}-${i}`} className="w-[17rem] xl:w-[19rem] mr-12 shrink-0">
               <PartnerPhone src={SHOT(shot)} alt={cap} />
-              <figcaption className="mt-4 text-[15px] font-medium text-gray-500 dark:text-gray-400">{cap}</figcaption>
+              <figcaption className="mt-5 text-[15px] font-medium text-gray-500 dark:text-gray-400">{cap}</figcaption>
             </figure>
           ))}
         </Marquee>
       </Reveal>
-      <div className="lg:hidden mt-10 flex gap-4 overflow-x-auto snap-x snap-mandatory px-5 pb-2 scrollbar-hide">
+      <div className="lg:hidden mt-12 flex gap-3 overflow-x-auto snap-x snap-mandatory px-5 pb-2 scrollbar-hide">
         {SCREENS.map(({ shot, cap }) => (
           <figure key={shot} className="w-[42%] shrink-0 snap-start">
             <PartnerPhone src={SHOT(shot)} alt={cap} />
@@ -89,10 +89,10 @@ export default function PartnerTools() {
       </div>
 
       <div className="ur-content-wide mx-auto px-5 lg:px-10 pb-16 lg:pb-32">
-        <div className="mt-12 lg:mt-20 grid gap-9 sm:grid-cols-2 lg:gap-x-20 lg:gap-y-14 max-w-[64rem]">
+        <div className="mt-12 lg:mt-20 grid gap-8 sm:grid-cols-2 lg:gap-x-20 lg:gap-y-12 max-w-[64rem]">
           {NOTES.map(({ t, d }, i) => (
             <Reveal key={t} delay={(i % 2) * 110}>
-              <p className="text-[17px] lg:text-[24px] font-bold text-ink leading-snug tracking-[-0.02em]">{t}</p>
+              <p className="text-[16px] lg:text-[20px] font-semibold text-ink leading-snug tracking-[-0.02em]">{t}</p>
               <p className="mt-3 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
             </Reveal>
           ))}

@@ -55,7 +55,7 @@ const STATUS: Record<RefundRow['status'], string> = {
   rejected: '반려',
 }
 
-const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[17px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[16px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
 export default function RefundSheet({ onClose, onDone }: {
   onClose: () => void
@@ -160,7 +160,7 @@ export default function RefundSheet({ onClose, onDone }: {
       {state?.pending && (
         <div className="px-4 py-4">
           <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">환급 처리 중</p>
-          <p className="mt-1 text-[28px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white">
+          <p className="mt-1 text-[28px] font-bold tabular-nums leading-none text-gray-900 dark:text-white">
             {formatNumber(state.pending.amount)}
             <span className="ml-1 text-[15px] font-bold text-gray-500 dark:text-gray-400">원</span>
           </p>
@@ -185,7 +185,7 @@ export default function RefundSheet({ onClose, onDone }: {
       {canForm && (
         <div className="px-4 py-4">
           <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">돌려받을 수 있는 금액</p>
-          <p className="mt-1 text-[28px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white">
+          <p className="mt-1 text-[28px] font-bold tabular-nums leading-none text-gray-900 dark:text-white">
             {formatNumber(refundable)}
             <span className="ml-1 text-[15px] font-bold text-gray-500 dark:text-gray-400">원</span>
           </p>
@@ -193,7 +193,7 @@ export default function RefundSheet({ onClose, onDone }: {
             충전하고 쓰지 않은 딜이에요. 1딜은 1원이고, 수수료나 세금 없이 그대로 돌려드려요.
           </p>
 
-          <div className="mt-4 pt-4 border-t border-rule space-y-3">
+          <div className="mt-5 pt-4 border-t border-rule space-y-3">
             <label className="block">
               <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">금액</span>
               <input

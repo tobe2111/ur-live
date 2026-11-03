@@ -77,11 +77,11 @@ export default function OwnerManageSheet({ productId, kind, view, onClose }: {
       <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 ur-veil" />
       <div className="relative w-full sm:max-w-md max-h-[86dvh] overflow-y-auto ur-pop-card ur-glass ur-dialog-in px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between">
-          <p className="text-[17px] font-bold text-gray-900 dark:text-white">관리</p>
+          <p className="text-[16px] font-semibold text-gray-900 dark:text-white">관리</p>
           {!active && <span className="text-[13px] font-medium text-gray-500 dark:text-gray-400">판매 중지됨</span>}
         </div>
 
-        <div className={`mt-4 grid ${copy.usedLabel ? 'grid-cols-2' : 'grid-cols-1'} gap-3`} data-testid="owner-stats">
+        <div className={`mt-5 grid ${copy.usedLabel ? 'grid-cols-2' : 'grid-cols-1'} gap-3`} data-testid="owner-stats">
           <div className="rounded-xl bg-warm px-4 py-3">
             <p className="text-[13px] text-gray-500 dark:text-gray-400">판매</p>
             <p className="mt-1 text-[24px] font-bold tabular-nums text-gray-900 dark:text-white">{fmt(view?.stats?.sold)}</p>
@@ -94,7 +94,7 @@ export default function OwnerManageSheet({ productId, kind, view, onClose }: {
           )}
         </div>
 
-        <div className="mt-4">
+        <div className="mt-5">
           <ListRow icon={<EditIcon className="w-[18px] h-[18px]" />} label={copy.edit} onClick={() => go(copy.editPath(productId))} />
           <ListRow icon={<OrdersIcon className="w-[18px] h-[18px]" />} label={copy.sales} onClick={() => go(copy.salesPath(productId))} />
           {copy.usage && copy.usagePath && (
@@ -106,7 +106,7 @@ export default function OwnerManageSheet({ productId, kind, view, onClose }: {
             (뷰어 프레임은 confirm() 을 안 띄우고, 시스템 대화상자는 이 화면 문법이 아니다). */}
         {active ? (
           confirming ? (
-            <div className="mt-4 rounded-xl bg-tone-bad-bg px-4 py-3" data-testid="owner-stop-confirm">
+            <div className="mt-5 rounded-xl bg-tone-bad-bg px-4 py-3" data-testid="owner-stop-confirm">
               <p className="text-[15px] font-medium text-tone-bad">손님 화면에서 바로 사라져요. 멈출까요?</p>
               <div className="mt-3 flex gap-2">
                 <button type="button" onClick={() => setConfirming(false)} disabled={busy}
@@ -123,7 +123,7 @@ export default function OwnerManageSheet({ productId, kind, view, onClose }: {
           )
         ) : (
           <button type="button" onClick={() => setActive(true)} disabled={busy}
-            className="mt-4 flex w-full h-[52px] items-center justify-center gap-2 rounded-xl bg-brand text-[15px] font-bold text-white disabled:opacity-60">
+            className="mt-5 flex w-full h-[52px] items-center justify-center gap-2 rounded-xl bg-brand text-[15px] font-bold text-white disabled:opacity-60">
             <OkIcon className="w-[18px] h-[18px]" /> 다시 판매하기
           </button>
         )}

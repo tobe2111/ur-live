@@ -61,7 +61,7 @@ export default function LifeProRequestPage() {
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
       <SEO title="생활 요청 - 유어딜" description="요청 상세" url={`/life/pro/requests/${d.id}`} />
       <LifeHeader title={`${categoryLabel(d.category)} 요청`} back="/life/pro" />
-      <div className="ur-content-narrow space-y-4 px-4 pb-10">
+      <div className="ur-content-narrow space-y-3 px-5 pb-10">
         <section className="rounded-2xl bg-surface p-5 shadow-lift">
           <div className="flex items-center justify-between text-[13px]">
             <b className="text-brand-text">{STATUS_LABEL[d.status] || d.status}</b>
@@ -73,18 +73,18 @@ export default function LifeProRequestPage() {
         {d.my_quote_id ? (
           <section className="rounded-2xl bg-surface p-5 shadow-lift">
             <p className="text-[13px] text-gray-500 dark:text-gray-400">보낸 견적</p>
-            <p className="mt-1 text-[17px] font-bold">{quotePriceText(d.my_price)}</p>
+            <p className="mt-1 text-[16px] font-bold">{quotePriceText(d.my_price)}</p>
             <p className="mt-2 whitespace-pre-wrap text-[13px]">{d.my_message}</p>
             {d.customer_phone ? (
-              <div className="mt-4 rounded-xl bg-warm p-4">
+              <div className="mt-5 rounded-xl bg-warm p-4">
                 <p className="text-[13px]">손님이 사장님을 골랐어요</p>
-                <p className="mt-1 text-[17px] font-bold">{d.customer_name || '손님'}</p>
+                <p className="mt-1 text-[16px] font-semibold">{d.customer_name || '손님'}</p>
                 <a href={`tel:${d.customer_phone}`} className="ur-btn ur-btn-lg ur-btn-primary mt-3 flex w-full justify-center">{d.customer_phone} 전화하기</a>
               </div>
             ) : d.my_quote_status === 'refunded' ? (
               <p className="mt-3 text-[13px] text-gray-500 dark:text-gray-400">이 요청의 참여권은 돌려드렸어요.</p>
             ) : null}
-            <div className="mt-4 border-t border-rule pt-3">
+            <div className="mt-5 border-t border-rule pt-3">
               <p className="text-[15px] font-bold">손님 질문</p>
               <QuoteChat base={`/api/home-service/pro/quotes/${d.my_quote_id}/messages`} me="pro" otherName={d.customer_name || '손님'}
                 canSend={(d.status === 'open' && d.my_quote_status === 'sent') || d.my_quote_status === 'chosen'} />
@@ -93,7 +93,7 @@ export default function LifeProRequestPage() {
         ) : d.status !== 'open' || full ? (
           <p className="py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">이미 마감된 요청이에요.</p>
         ) : (
-          <section className="space-y-4 rounded-2xl bg-surface p-5 shadow-lift">
+          <section className="space-y-3 rounded-2xl bg-surface p-5 shadow-lift">
             <div>
               <p className="mb-2 text-[15px] font-bold">예상 금액 <span className="text-[12px] font-normal text-gray-500 dark:text-gray-400">(선택 · 비우면 방문 후 견적)</span></p>
               <input className={INPUT} inputMode="numeric" placeholder="예) 450000" value={price} onChange={(e) => setPrice(e.target.value)} />

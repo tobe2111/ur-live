@@ -90,14 +90,14 @@ export default function MyDealHistoryPage() {
 
       {/* 🎫 2026-10-19 (대표 *"다 이상적으로 진행해줘 모두"*): 검정 그라디언트 판 → 흰 카드.
           숫자가 주인공이고(규칙 ③) 행동은 브랜드 블루 하나(규칙 ②) — 검정 판은 이 화면에만 있던 모양이었다. */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-2">
+      <div className="ur-content-medium px-5 lg:px-8 pt-2">
         <div className="rounded-2xl p-5">
           <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">현재 딜 잔액</p>
           <p className="mt-1 flex items-baseline gap-1 leading-none">
-            <span className="text-[28px] font-extrabold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(balance)}</span>
+            <span className="text-[28px] font-bold tabular-nums tracking-[-0.02em] text-gray-900 dark:text-white">{formatNumber(balance)}</span>
             <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400">딜</span>
           </p>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-5 flex gap-2">
             {/* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 버튼 → 딜 모으기(마이 리워드 카드) 유도 */}
             <button onClick={() => navigate(TOPUP_DISABLED ? '/user/profile' : '/points/charge')}
               className="flex-1 h-11 rounded-xl bg-wash text-[15px] font-medium text-gray-900 dark:text-white active:opacity-70">
@@ -113,7 +113,7 @@ export default function MyDealHistoryPage() {
       </div>
 
       {/* 필터 */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-4">
+      <div className="ur-content-medium px-5 lg:px-8 pt-4">
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
           {FILTER_OPTIONS.map(opt => (
             <button
@@ -132,7 +132,7 @@ export default function MyDealHistoryPage() {
       </div>
 
       {/* 리스트 */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-4">
+      <div className="ur-content-medium px-5 lg:px-8 pt-4">
         {loading ? (
           /* 🚑 2026-07-10 로더 통일: ad-hoc 스피너 → BrandLoader */
           <BrandLoader />
@@ -188,7 +188,7 @@ export default function MyDealHistoryPage() {
 
       {/* 페이지네이션 */}
       {total > PAGE_SIZE && (
-        <div className="ur-content-medium px-4 lg:px-8 pt-4 flex items-center justify-between">
+        <div className="ur-content-medium px-5 lg:px-8 pt-4 flex items-center justify-between">
           <p className="text-[12px] text-gray-500 dark:text-gray-400">{formatNumber(total)}건 · {page + 1}/{totalPages} 페이지</p>
           <div className="flex gap-2">
             <button

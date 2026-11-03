@@ -189,10 +189,10 @@ export default function UserProfilePage() {
     <SettingsGroup>
       <NotificationToggleSection />
       {/* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다(2026-09-30 안 C 정합). */}
-      <ThemeToggleSection className="ur-content-medium lg:px-4" />
+      <ThemeToggleSection className="ur-content-medium lg:px-5" />
       {/* 🌐 2026-08-11: 번역이 반쯤 빈 상태(언어당 [TODO] 289개)에서 전환을 열어 두면
           어중간한 화면이 된다. 한국 전용 서비스라 문을 닫는다 — 플래그 false 로 즉시 복원. */}
-      {!CONSUMER_LANGUAGE_SWITCH_HIDDEN && <LanguageSection className="ur-content-medium px-4 lg:px-8 pt-3" />}
+      {!CONSUMER_LANGUAGE_SWITCH_HIDDEN && <LanguageSection className="ur-content-medium px-5 lg:px-8 pt-3" />}
       {/* 🧹 2026-09-02 (대표 "앱 정보는 맨 밑에 넣어줘"): 버전 표기는 **찾을 수 있으면 되는 정보**라
           설정 그룹을 열어야 보이는 자리가 아니라 페이지 맨 아래(약관·FAQ 옆)로 내렸다. */}
       {/* 🚪 2026-09-30 — 로그아웃이 **설정 · 계정 안**으로 들어왔다 (대표 *"맨 하단도 좀 정리해야
@@ -245,7 +245,7 @@ export default function UserProfilePage() {
           </button>
         </div>
       )}
-      {showMe && <div className={tabbed ? 'ur-content-medium px-4 lg:px-8 pt-3 pb-5' : 'ur-content-medium px-4 lg:px-8 pt-5 pb-5'}>
+      {showMe && <div className={tabbed ? 'ur-content-medium px-5 lg:px-8 pt-3 pb-5' : 'ur-content-medium px-5 lg:px-8 pt-5 pb-5'}>
         <div className="flex items-center gap-3">
           <img
             src={profileAvatarSrc(profileImage, 128)}
@@ -275,7 +275,7 @@ export default function UserProfilePage() {
               {/* 👤 2026-11-03 대표 *"사장님이라고도 표시가 되어있어야 할 것 같은데"* — 가게가 있으면 이름 옆에 `사장님 · 매장 N곳`.
                   같은 줄 안이라 늦게 떠도 아래가 밀리지 않는다. 모르는 동안(loading)엔 안 그린다. */}
               <span className="flex items-center gap-2 min-w-0">
-                <span className="min-w-0 truncate text-[17px] font-bold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.01em' }}>{userName}</span>
+                <span className="min-w-0 truncate text-[16px] font-semibold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.01em' }}>{userName}</span>
                 {!sellerSeats.loading && sellerSeats.stores.length > 0 && (
                   <span data-testid="my-owner-chip" className="shrink-0 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">
                     {t('userProfile.ownerChip', { defaultValue: '사장님 · 매장 {{n}}곳', n: sellerSeats.stores.length })}
@@ -413,9 +413,12 @@ export default function UserProfilePage() {
              끼어들면 판 전체가 49px 밀린다(CI `layout-shift` 마이(셀러) 첫 방문에서 실측). */}
       {!tabbed && !agencyPresence.on && ownerSectionShown && <SectionTitle>{t('userProfile.ownerTitle', { defaultValue: '사장님 · 내 가게' })}</SectionTitle>}
       {showAgency && <>
-        {/* 🗂️ 탭일 때는 에이전시 이름이 이미 머리에 있으니 판 위 제목은 '맡은 매장', 아래 묶음은 '에이전시 운영'. */}
-        {tabbed ? (sellerSeats.stores.length > 0 && <SectionTitle>맡은 매장</SectionTitle>) : <AgencyTitleDoor storeCount={sellerSeats.stores.length} />}
-        <SellerSection state={sellerSeats} />
+        {/* 🧾 2026-11-03 토스 참고 안 — 에이전시 탭에서는 매장 판도 둥근 판(카드) 하나에 담는다. 제목 대신 판이 묶는다. */}
+        {!tabbed && <AgencyTitleDoor storeCount={sellerSeats.stores.length} />}
+        {/* ⏳ 좌석 조회 중에도 판을 세워 둔다(SellerSection 이 자리를 예약한다) — 늦게 생기면 아래가 밀린다. */}
+        {tabbed ? ((sellerSeats.loading || sellerSeats.stores.length > 0) && (
+          <div className="mx-3 mt-3 rounded-2xl bg-surface overflow-hidden py-2" data-testid="agency-store-card"><SellerSection state={sellerSeats} /></div>
+        )) : <SellerSection state={sellerSeats} />}
         <MyAgencyZone ownSellerIds={ownSellerIds} inHead={tabbed} />
       </>}
 
@@ -429,7 +432,7 @@ export default function UserProfilePage() {
       {/* 🎟️ 2026-09-02 (대표 "매장 계산대는 셀러 계정이라면 위에 있어야하지 않을까"): 최상단으로.
           손님 앞에서 QR 을 찍는 동작이라 **하루에 가장 많이 누르는 버튼**인데, 그동안 로그아웃·탈퇴
           바로 위(페이지 최하단)에 있어 매번 끝까지 스크롤해야 했다. 셀러 계정에서만 뜬다. */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-4">
+      <div className="ur-content-medium px-5 lg:px-8 pt-4">
         {/* 🎟️ 2026-07-06 (대표 — 계산대 스캔을 셀러 대시보드 말고 메인에서): 사업자 유저 '매장 계산대'
             강조 카드. 손님 이용권 QR 스캔 = 매일 수십 번 쓰는 계산대 동선 → 최상단·큰 카드로 노출.
             🎟️ 2026-09-25 (설계 §18 단계 3): 평소엔 "내 가게" 섹션의 브랜드 줄이 이 자리를 대신한다
@@ -444,7 +447,7 @@ export default function UserProfilePage() {
           <button
             type="button"
             onClick={() => navigate('/store/scan')}
-            className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gray-900 dark:bg-white active:scale-[0.99] transition-transform"
+            className="w-full flex items-center gap-3 p-5 rounded-2xl bg-gray-900 dark:bg-white active:scale-[0.99] transition-transform"
           >
             <span className="w-11 h-11 rounded-xl bg-white/15 dark:bg-gray-900/10 flex items-center justify-center shrink-0">
               <ScanIcon className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
@@ -525,12 +528,12 @@ export default function UserProfilePage() {
       {/* 🏢 2026-11-03 대표 *"에이전시 로그아웃이 된 상태에서 … 맨 밑에 에이전시 로그인 버튼 넣어줄래?"* — 로그인 화면 맨 아래와
           같은 한 줄(2026-10-11 안 A). 에이전시 로그인이 이미 있으면 안 그린다(그땐 '나 | 에이전시' 탭이 있다). */}
       {showMe && !agencyPresence.on && (
-        <p data-testid="my-agency-login" className="ur-content-medium px-4 lg:px-8 pt-6 flex items-center justify-center gap-2 text-[13px]">
+        <p data-testid="my-agency-login" className="ur-content-medium px-5 lg:px-8 pt-8 flex items-center justify-center gap-2 text-[13px]">
           <span className="text-gray-500 dark:text-gray-400">{t('login.agencyQuestion', { defaultValue: '에이전시이신가요?' })}</span>
           <Link to="/agency/login" className="font-medium text-brand-text active:opacity-70">{t('login.agencyLogin', { defaultValue: '에이전시 로그인' })}</Link>
         </p>
       )}
-      {showMe && <div className="ur-content-medium px-4 lg:px-8 pt-2 pb-8 flex items-start justify-between gap-4">
+      {showMe && <div className="ur-content-medium px-5 lg:px-8 pt-2 pb-8 flex items-start justify-between gap-3">
         {/* 새 버전이 있을 때만 서는 파란 버튼이 이 칸 폭을 다 쓰도록 flex-1 */}
         <div className="flex-1 min-w-0"><AppVersionSection /></div>
         <div className="shrink-0 pt-2">

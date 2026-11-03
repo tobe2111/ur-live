@@ -73,7 +73,7 @@ export function WishlistSummaryRail({ s }: { s: WishlistSummary }) {
 
   return (
     <aside className="hidden lg:block rounded-2xl bg-surface shadow-lift dark:shadow-none p-5 self-start sticky top-20">
-      <div className="text-[40px] font-extrabold leading-none tracking-tight tabular-nums text-gray-900 dark:text-white">
+      <div className="text-[40px] font-bold leading-none tracking-tight tabular-nums text-gray-900 dark:text-white">
         {headline.n}
       </div>
       <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">{headline.cap}</p>
@@ -83,7 +83,7 @@ export function WishlistSummaryRail({ s }: { s: WishlistSummary }) {
       )}
       {rows.length > 0 && (
         <>
-          <hr className="my-4 border-0 border-t border-rule" />
+          <hr className="my-5 border-0 border-t border-rule" />
           <dl className="space-y-2">
             {rows.map((r) => (
               <div key={r.label} className="flex items-center justify-between gap-3 text-[13px]">

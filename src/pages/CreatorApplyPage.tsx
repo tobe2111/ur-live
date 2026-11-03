@@ -46,7 +46,7 @@ export default function CreatorApplyPage() {
       {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
       <SEO title={CONSUMER_SURFACE_SEO['/creators/apply'].title} description={CONSUMER_SURFACE_SEO['/creators/apply'].description} url="/creators/apply" />
       <div className="mx-auto max-w-lg">
-        <div className="mb-6 text-center">
+        <div className="mb-8 text-center">
           <h1 className="text-[24px] font-bold text-gray-900">유어딜 소개 파트너 신청</h1>
           <p className="mt-2 text-[15px] text-gray-600">동네 맛집·카페·뷰티·네일·숙소 이용권을 소개해 주실 분을 찾습니다.<br />신청해주시면 제휴 담당자가 검토 후 연락드립니다.</p>
         </div>
@@ -54,7 +54,7 @@ export default function CreatorApplyPage() {
         {done ? (
           <div className="rounded-xl p-8 text-center">
             <div className="text-[34px] mb-3">✅</div>
-            <div className="text-[17px] font-bold text-gray-900">신청이 접수되었습니다</div>
+            <div className="text-[16px] font-semibold text-gray-900">신청이 접수되었습니다</div>
             <p className="mt-2 text-[15px] text-gray-600">검토 후 제휴 담당자가 입력해주신 연락처로 연락드립니다. 감사합니다.</p>
             {/* 🔗 기다릴 필요 없이 바로 시작 — 이 링크의 코드가 신청↔가입을 이어 붙인다(lead-claim). */}
             <a href={claimCode ? `/creators/start?ic=${claimCode}` : '/login'}
@@ -64,7 +64,7 @@ export default function CreatorApplyPage() {
             <p className="mt-2 text-[12px] text-gray-500">가입하면 내 유어샵이 자동으로 생기고, 마음에 든 이용권을 담아 진열하고 소개하면 됩니다.</p>
           </div>
         ) : (
-          <div className="rounded-xl p-6 space-y-4">
+          <div className="rounded-xl p-6 space-y-3">
             <div>
               <label className="block text-[15px] font-medium text-gray-700 mb-1">이름 · 채널명 <span className="text-rose-500">*</span></label>
               <input value={f.name} onChange={set('name')} placeholder="예: 방배동 미식가" className={input} />

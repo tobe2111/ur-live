@@ -94,7 +94,7 @@ export function AgencyStaffStoresEditor({ staffId, who, onClose, onSaved }: {
             )
           )}
           {problem && <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">{problem}</p>}
-          <div className="mt-4 flex gap-2">
+          <div className="mt-5 flex gap-2">
             <button type="button" onClick={onClose} className="h-10 rounded-xl px-4 text-[13px] font-medium text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-[#1D1F29]">닫기</button>
             <button type="button" disabled={busy || !!problem} onClick={save}
               className="h-10 flex-1 rounded-xl bg-brand px-4 text-[15px] font-medium text-white disabled:opacity-50">

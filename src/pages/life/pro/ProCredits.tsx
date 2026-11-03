@@ -72,7 +72,7 @@ export default function ProCredits({ me, onChanged }: { me: ProMe; onChanged: ()
   return (
     <section className="rounded-2xl bg-surface p-5 shadow-lift">
       <p className="text-[13px] text-gray-500 dark:text-gray-400">남은 참여권</p>
-      <p className="mt-1 flex items-baseline gap-2 text-[28px] font-extrabold">
+      <p className="mt-1 flex items-baseline gap-2 text-[28px] font-bold">
         <span className="inline-flex items-baseline tabular-nums">{formatNumber(shown)}<span className="ml-1 text-[15px] font-bold">장</span></span>
         {gain && <span key={gain.k} className="ur-cr-gain text-[13px] font-medium text-brand-text">+{formatNumber(gain.n)}장</span>}
       </p>
@@ -80,7 +80,7 @@ export default function ProCredits({ me, onChanged }: { me: ProMe; onChanged: ()
         견적을 보낼 때 업종에 맞는 장수가 빠져요. 손님이 요청을 취소하거나 48시간 동안 견적을 안 열어 보면 돌려드려요.
       </p>
       {me.chargeEnabled ? (
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-5 grid grid-cols-3 gap-2">
           {me.packages.map((p) => (
             <button key={p.key} type="button" disabled={!!busy} onClick={() => charge(p.key)}
               className="rounded-xl bg-warm px-2 py-3 text-center disabled:opacity-60">
@@ -90,7 +90,7 @@ export default function ProCredits({ me, onChanged }: { me: ProMe; onChanged: ()
           ))}
         </div>
       ) : (
-        <p className="mt-4 rounded-xl bg-warm px-4 py-3 text-[13px] text-ink">참여권 충전은 곧 열려요. 지금은 무료 참여권으로 견적을 보낼 수 있어요.</p>
+        <p className="mt-5 rounded-xl bg-warm px-4 py-3 text-[13px] text-ink">참여권 충전은 곧 열려요. 지금은 무료 참여권으로 견적을 보낼 수 있어요.</p>
       )}
       <CreditHistory rows={me.history ?? []} />
     </section>

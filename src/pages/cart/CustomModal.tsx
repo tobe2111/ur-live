@@ -25,8 +25,8 @@ export default function CustomModal({ isOpen, onClose, onConfirm, title, message
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 ur-veil" style={{ zIndex: Z.MODAL_BACKDROP }} onClick={onClose} role="presentation">
       <div className="w-full max-w-sm ur-pop-card ur-glass p-6 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={title ? 'cart-modal-title' : undefined}>
-        {title && <h2 id="cart-modal-title" className={`mb-2 text-center text-[17px] font-bold ${titleTone}`}>{title}</h2>}
-        <p className="mb-6 text-center text-[15px] text-gray-600 dark:text-gray-300">{message}</p>
+        {title && <h2 id="cart-modal-title" className={`mb-2 text-center text-[16px] font-semibold ${titleTone}`}>{title}</h2>}
+        <p className="mb-8 text-center text-[15px] text-gray-600 dark:text-gray-300">{message}</p>
         <div className="flex gap-2">
           {type === 'confirm' && (
             <button

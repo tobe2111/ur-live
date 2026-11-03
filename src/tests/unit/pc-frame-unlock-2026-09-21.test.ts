@@ -88,7 +88,7 @@ describe('③ 풀너비로 풀었을 때 깨지던 두 곳', () => {
     // 🩸 첫 판은 `toContain('ur-content-wide')` 였는데, 그 토큰을 헤더에도 넣어 둔 탓에
     //    **본문에서 지워도 초록**이었다(주입 러너가 잡았다). 본문 컨테이너로 앵커를 옮긴다.
     //    없으면 1440px 로 퍼져 "넓어진 모바일" 이 된다.
-    expect(visible('src/pages/GbMarketplacePage.tsx')).toContain('ur-content-wide px-4 pt-4')
+    expect(visible('src/pages/GbMarketplacePage.tsx')).toContain('ur-content-wide px-5 pt-4')
   })
 })
 

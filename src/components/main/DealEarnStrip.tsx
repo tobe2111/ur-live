@@ -50,7 +50,7 @@ export default function DealEarnStrip() {
   ]
 
   return (
-    <section className="ur-content-wide px-4 lg:px-8 pt-3 pb-1">
+    <section className="ur-content-wide px-5 lg:px-8 pt-3 pb-1">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">
           <Coins className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('dealEarn.title', { defaultValue: '딜 모으는 법' })}

@@ -95,8 +95,8 @@ export default function StayCheckoutReturnPage() {
         {state === 'confirming' && <BrandLoader label="결제 승인 중 · 페이지를 닫지 마세요" />}
         {state === 'success' && (
           <>
-            <OkIcon className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
-            <p className="text-[17px] font-bold text-gray-900">예약이 확정되었습니다 🎉</p>
+            <OkIcon className="w-12 h-12 text-emerald-500 mx-auto mb-5" />
+            <p className="text-[16px] font-semibold text-gray-900">예약이 확정되었습니다 🎉</p>
             {amountDone > 0 && (
               <p className="text-[13px] text-gray-600 mt-1">결제 금액: ₩{formatNumber(amountDone)}</p>
             )}
@@ -115,8 +115,8 @@ export default function StayCheckoutReturnPage() {
         )}
         {state === 'overbooked' && (
           <>
-            <AlertIcon className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-            <p className="text-[17px] font-bold text-gray-900">객실이 매진되었습니다</p>
+            <AlertIcon className="w-12 h-12 text-amber-500 mx-auto mb-5" />
+            <p className="text-[16px] font-semibold text-gray-900">객실이 매진되었습니다</p>
             <p className="text-[13px] text-gray-600 mt-2">{message}</p>
             <p className="text-[12px] text-gray-500 mt-1">결제는 자동 환불 처리됩니다 (영업일 기준 3-5일).</p>
             <button onClick={() => navigate('/stays', { replace: true })}
@@ -127,8 +127,8 @@ export default function StayCheckoutReturnPage() {
         )}
         {state === 'fail' && (
           <>
-            <BadIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-[17px] font-bold text-gray-900">결제가 완료되지 않았습니다</p>
+            <BadIcon className="w-12 h-12 text-red-500 mx-auto mb-5" />
+            <p className="text-[16px] font-semibold text-gray-900">결제가 완료되지 않았습니다</p>
             {message && <p className="text-[13px] text-gray-600 mt-2 break-words">{message}</p>}
             <div className="mt-5 space-y-2">
               {Number.isFinite(orderId) && orderId > 0 && (

@@ -101,13 +101,13 @@ export default function MyDigitalLibraryPage() {
   return (
     <>
       <SEO title={t('digitalLibrary.seoTitle', { defaultValue: '디지털 보관함 - 유어딜' })} description={t('digitalLibrary.seoDesc', { defaultValue: '구매한 전자책, 강의, 가이드 보관함' })} url="/my/digital" />
-      <div className="ur-content-narrow px-4 py-6 lg:py-10 mx-auto" style={{ width: '100%' }}>
-        <header className="mb-6">
+      <div className="ur-content-narrow px-5 py-6 lg:py-10 mx-auto" style={{ width: '100%' }}>
+        <header className="mb-8">
           {/* 🛡️ 2026-07-02: 위성 페이지 이탈 동선 — 뒤로가기 (다른 My* 페이지와 통일) */}
           <button onClick={goBack} className="mb-2 -ml-1.5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]" aria-label={t('common.back', { defaultValue: '뒤로' })}>
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
-          <h1 className="text-[17px] lg:text-[28px] font-bold text-gray-900 dark:text-white">{t('digitalLibrary.title', { defaultValue: '디지털 보관함' })}</h1>
+          <h1 className="text-[16px] lg:text-[24px] font-semibold text-gray-900 dark:text-white">{t('digitalLibrary.title', { defaultValue: '디지털 보관함' })}</h1>
           <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{t('digitalLibrary.subtitle', { defaultValue: '전자책 · 강의 · 가이드 · 영상 — 구매한 콘텐츠 모음' })}</p>
         </header>
 
@@ -120,7 +120,7 @@ export default function MyDigitalLibraryPage() {
         ) : isError ? (
           <div className="text-center py-16">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('digitalLibrary.loadFailed', { defaultValue: '보관함을 불러오지 못했어요' })}</p>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
             <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
               {t('common.retry', { defaultValue: '다시 시도' })}
             </button>
@@ -129,7 +129,7 @@ export default function MyDigitalLibraryPage() {
           <div className="text-center py-16">
             <BookOpen className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-[15px] text-gray-500 dark:text-gray-400">{t('digitalLibrary.empty', { defaultValue: '아직 구매한 디지털 상품이 없습니다' })}</p>
-            <button onClick={() => navigate('/browse')} className="mt-4 px-5 py-2 bg-brand text-white text-[15px] font-medium rounded-xl hover:bg-brand">
+            <button onClick={() => navigate('/browse')} className="mt-5 px-5 py-2 bg-brand text-white text-[15px] font-medium rounded-xl hover:bg-brand">
               {t('digitalLibrary.browseCta', { defaultValue: '상품 둘러보기' })}
             </button>
           </div>

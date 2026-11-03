@@ -93,7 +93,7 @@ export default function GuestUrShopPage() {
             <span className="shrink-0 w-10 h-10 rounded-full overflow-hidden bg-brand-tint flex items-center justify-center">
               <Udal mood="tip" size={40} />
             </span>
-            <span className="flex-1 min-w-0 text-[17px] font-bold text-gray-900 dark:text-white truncate">
+            <span className="flex-1 min-w-0 text-[16px] font-semibold text-gray-900 dark:text-white truncate">
               {t('guest.shop.exampleName', { defaultValue: '유달의 유어샵' })}
             </span>
             <span className="shrink-0 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">

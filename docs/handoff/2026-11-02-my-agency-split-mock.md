@@ -30,3 +30,47 @@
 - 고침: 네 가드에 `MY_SURFACE`(user-profile · agency-console) 포함 · `weight-scale` 코드모드 104곳 · 반쪽 간격 2곳 · 에이전시 줄(`FlatRow`)에 아이콘 + `ROW_LABEL_CLS`.
 - 가드 `my-surface-type-system-2026-11-03` + 주입 2(빨간불 확인). 전체 vitest 16,333건 통과.
 - ⚠️ 아직 체계 밖: `src/components/seller/*`·`seller-public/*` 처럼 대시보드와 같이 쓰는 부품은 여전히 이름으로 빠진다(손님 화면에 뜨는 것만 골라 넣어야 함 — 다음 단계).
+
+## v5 (2026-11-03) — 큰 글자 안 C · 토스 참고
+- 대표 *"안 C, 레포 규칙 허용도 할게. 모든 페이지들에 적용해줘"* → `scripts/codemods/type-scale-c.mjs`(17→16 · 24→20·600 · 28 글자→24·700 · 800→700, 숫자는 굵게 유지) 소비자 245파일.
+- 🩸 첫 판은 클래스만 보고 숫자를 판별해 가격·잔액(24px)이 20·600 으로 주저앉았다 → 그 요소가 그리는 내용(가격·%·원·딜·count)도 본다. 서버 첫 화면 문자열은 내용이 없어 판별이 갈려 3곳(curator rowPrice · vouchers sortTitle · PC 위치 이름)을 손으로 맞췄다.
+- Toss 잠금 3파일은 대표 허가로 클래스만(`docs/locks/toss/2026-11-03-type-scale-c.md`). 시험 16,334 통과 · 주입 재조준 18 + 빨간불 37 확인.
+- 남은 것: 공백·배치 토스식(대표 요청, 시안 먼저) · 토스 방식 판(카드) 적용 범위 결정.
+
+## v6 (2026-11-03) — 에이전시 화면 토스 참고 안 + '홈페이지에 넣기' 걷음
+- 대표 *"마이페이지에 에이전시 측에서 볼 때 … 홈페이지에 넣기는 빼줘"* · *"에이전시 화면은 토스 참고 안으로"*.
+- `agency-toss.tsx`(판 · 타일 · 오늘 매출 합계) · `AgencyStoresPanel toss` · `AgencySection toss`(로그아웃 = 조용한 글자) · 마이 에이전시 탭 매장 판을 카드에 · 에이전시 전용 마이도 toss.
+- 순서(실제): 머리 → 매장 카드 → 오늘 매출 → 할 일 → 관리 → 로그아웃. 시안 H1 은 매출이 매장보다 위였는데, 매장 판(SellerSection)과 에이전시 구역이 다른 부품이라 그 순서로 쪼개지 않았다.
+- 가드 `agency-toss-2026-11-03` + 주입 2 · 재조준 5 · vitest 16,337 · tsc 0 · surface stayDetail 기준 갱신(+1.5, 안 C 클래스 치환).
+- 대기: 이용권 탭·유어샵 토스식 시안(I1·I2) 대표 확인.
+
+## v7 (2026-11-03) — 이용권 탭 토스 안 · 유어샵 B
+- 대표 *"이용권 페이지는 마음에 들어"* → 지갑: 제목(24·700)+지도 한 줄 · 목록 판(머리가 장수) · 합계 판(목록 아래). 판은 그림자 0.
+- 대표 *"유어샵은 B"* + *"인스타그램, 틱톡 등 연동도 해서 나타날텐데"* → `curator-page/OwnerSummaryCard.tsx`(주인 전용 · lazy · 수익 콘솔과 같은 RQ 키 · 모르면 '—') + SNS 없으면 '+ SNS 연결하기'.
+  ⚠️ SNS 연결 줄은 **머리가 아니라 주인 판 안**에 뒀다 — 머리의 주인 자리 '관리' 하나 규칙과 서버 첫 화면 짝(가드 3건)을 지키려고.
+- 아직 안 한 것(유어샵 B 시안의 나머지): 머리·진열 줄을 판(카드)으로 감싸기(서버 첫 화면 짝을 같이 바꿔야 함) · SNS 알약에 팔로워 수(유어샵 응답에 `user_sns_links` 값이 없음 — API 추가 필요) · SNS 최근 게시물.
+
+## v8 (2026-11-03) — 공백 체계 시안 · 유어샵 B 판 모양 · SNS 팔로워 수
+- 공백 체계 시안 7장(캔버스 S0~S6) + `docs/design/spacing-system-2026-11-03.md`. **대표 확정 대기** — 구현 전.
+- 유어샵 B 판 모양: 바탕 `bg-warm`, 이름·숫자 줄과 진열 줄을 흰 판(`mx-3 rounded-2xl bg-surface`)에 담음.
+  2026-09-30 '한 톤' 을 대체(대표 B 확정). 서버 첫 화면 `CURATOR_FS_CLASS.headCard`·`rowsCard` 짝. PC 진열은 판을 걷는다(lg 리셋).
+  가드 재조준: `ushop-s3-list` ⑤-4 · 주입 `ushop-one-tone.mjs`(한톤 바탕 → 진열 판 걷기).
+- SNS 이름표 팔로워 수: `user_sns_links`(플랫폼에서 받은 값)만, **이름표 주소와 같은 계정일 때만**(`sameSnsAccount`).
+  API 첫 물결에 실림(왕복 +0). 숫자 있으면 [로고 + 1.2만]. 가드 `ushop-sns-followers-2026-11-03`(주입 4).
+- ⚠️ 틀릴 뻔한 것: 이 페이지 바탕이 `bg-surface` 라 직전 커밋의 주인 요약 판(흰 판)이 **바탕과 같은 색이라 안 보였다** — 판 모양 전환으로 같이 해소.
+- SNS 최근 게시물: `GET /api/curator/:handle/sns-posts`(`worker/routes/curator/sns-posts.routes.ts`) — 인스타(연동 토큰 `/me/media`)·유튜브(공개 키 업로드 목록).
+  틱톡은 `video.list` 권한을 연동 때 안 받아 **아직 없음**. 사람마다 6시간 D1 캐시(`user_sns_recent_posts`, 실패도 빈 캐시). 화면은 진열 아래 lazy.
+  가드 `ushop-sns-posts-2026-11-03`(주입 4).
+
+## v9 (2026-11-03) — 마이 판매 시트 마이용 (M1~M5, 대표 "좋다 다 해줘")
+- 이용권·주문·매출 분석을 `ToolPageSheet`(셀러 화면 그대로) 대신 `user-profile/my-sales/*` 마이용 시트로. `COVERED_BY_SHEET` 에 세 주소.
+- 데이터 한 벌: 이용권=`useSellerHome` 훅 + `voucher-actions`(같은 PUT/DELETE) · 주문=같은 캐시 키 + **`seller-orders/useOrderActions`**(셀러 주문 화면의 상태·환불·운송장 코드를 한 글자도 안 바꾸고 옮김 — 두 화면이 같이 씀) · 매출=같은 엔드포인트.
+- 깊은 화면(고치기·재발행·더 보기)은 `openRawPage` 로 셀러 화면을 시트로(닫으면 마이 시트로 복귀). `openPage` 로 열면 자기 자신으로 되돌아와 루프 — 가드가 막음.
+- 가드 `my-sales-sheets-2026-11-03`(주입 5) · 환불 사유 가드 `teardown-losses-restored` 를 훅 파일로 재조준.
+- 렌더 확인: `visual-preview --route=/user/profile --stores=1 --click=…` 세 장(빈 데이터 상태).
+- ⚠️ 범위 밖: 에이전시 콘솔 매장 판(`AgencyStorePlate`)의 '우리 이용권' 은 아직 셀러 화면 그대로. 주문 상세창(`OrderDetailModal`)도 셀러 화면 모양 그대로.
+
+## v10 (2026-11-03) — 남은 두 묶음을 #2139 에 합침
+- 대표 *"모두 다 자동 머지로 처리 완료해줘"* → 검사 1시간을 세 번 기다리지 않게 공백 체계(ec3ef38·7f7089f) + 유어쇼츠 1·2·7·10·안 C(d68d1dc·9cb9fa2)를 같은 PR 에 합쳤다.
+- 충돌 해소: 공백 충돌 16파일은 현재본에 `spacing-scale.mjs` 를 다시 적용(멱등) · VideosPage 는 main 의 `useSafeBack` 과 홈 버튼 `landedDirect` 둘 다 유지 · 쇼츠 아래 카드는 안 C 판 채택(카드마다 불투명 흰 바탕) — `urshorts-ui` 시험·주입을 안 C 카드로 재조준.
+- 전체 시험 16,100건 중 위 1건만 실패 → 재조준 후 통과.

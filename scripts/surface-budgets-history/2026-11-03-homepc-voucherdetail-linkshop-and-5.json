@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-03",
+  "reason": "2026-11-03 PR #2139 main 병합 — 공용 묶음 app-utils +0.8KB·app-shell +0.6KB 는 이 PR 변경이 아니라 main 에 먼저 머지된 #2146(버튼 물결·진동)·#2144(유리 확인창)의 누적분. 이 PR 의 화면 변경은 lazy 시트라 첫 화면 무게 0",
+  "surfaces": [
+    "homePc",
+    "voucherDetail",
+    "linkshop",
+    "browse",
+    "urshorts",
+    "cart",
+    "faq",
+    "life"
+  ],
+  "changes": [
+    "homePc: 204.7 → 206.3 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-shell.js +0.6",
+    "voucherDetail: 178.7 → 180.3 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-shell.js +0.6",
+    "linkshop: 195.1 → 197.3 KB (+2.2, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-shell.js +0.6, CuratorPage.js +0.3",
+    "browse: 180.9 → 182.4 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-shell.js +0.6",
+    "urshorts: 177.0 → 178.6 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-shell.js +0.6",
+    "cart: 184.4 → 186.0 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-shell.js +0.6",
+    "faq: 178.9 → 180.4 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-shell.js +0.6",
+    "life: 184.6 → 186.2 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-shell.js +0.6"
+  ]
+}

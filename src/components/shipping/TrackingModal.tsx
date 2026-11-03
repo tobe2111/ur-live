@@ -152,7 +152,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
                 <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">
                   {data.courier?.name || '택배사'} · {data.tracking_number}
                 </p>
-                <p className={`text-[17px] font-bold ${STATUS_LABELS[data.status || 'unknown']?.color || 'text-gray-500'}`}>
+                <p className={`text-[16px] font-semibold ${STATUS_LABELS[data.status || 'unknown']?.color || 'text-gray-500'}`}>
                   {STATUS_LABELS[data.status || 'unknown']?.label || data.status}
                 </p>
                 {data.cached && (
@@ -162,11 +162,11 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
 
               {/* Timeline */}
               {data.events && data.events.length > 0 ? (
-                <ol className="relative border-l-2 border-line ml-2 space-y-4">
+                <ol className="relative border-l-2 border-line ml-2 space-y-3">
                   {[...data.events].reverse().map((ev, i) => {
                     const isLatest = i === 0
                     return (
-                      <li key={i} className="ml-4">
+                      <li key={i} className="ml-5">
                         <div className={`absolute -left-[7px] w-3 h-3 rounded-full ${isLatest ? 'bg-brand ring-2 ring-brand/30' : 'bg-gray-300 dark:bg-[#2C2F35]'}`} />
                         <p className={`text-[15px] ${isLatest ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                           {getEventStatus(ev)}

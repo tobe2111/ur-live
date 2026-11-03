@@ -112,7 +112,7 @@ export default function PcHomePage() {
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />
 
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-8 pt-6 pb-10 flex flex-col gap-6">
+      <div className="max-w-[1440px] mx-auto px-5 lg:px-8 pt-6 pb-10 flex flex-col gap-5">
         {/* 🎯 2026-08-08 대표 규칙 유지 — 카테고리를 고르면 맨 위가 **그 카테고리**여야 한다(위 세 줄은 카테고리를 모른다).
             상단 네비의 식사·미용·숙소는 `/?category=` 로 오므로, 그때는 아래 탐색 패널이 맨 위로 온다. */}
         {category === 'all' && (
@@ -140,9 +140,9 @@ export default function PcHomePage() {
           />
           <main className="min-w-0 flex-1">
           {/* 🏷️ 2026-08-08: 카테고리를 고르면 제목이 **그 카테고리를 말한다**(걸러졌다는 신호). */}
-          <header ref={gridHeaderRef} className="mb-4 scroll-mt-24 flex items-center justify-between gap-4 flex-wrap">
+          <header ref={gridHeaderRef} className="mb-5 scroll-mt-24 flex items-center justify-between gap-3 flex-wrap">
             <div>
-            <h1 className="text-[24px] font-bold tracking-tight text-gray-900 dark:text-white">
+            <h1 className="text-[20px] font-semibold tracking-tight text-gray-900 dark:text-white">
               {catLabel
                 ? `${catLabel} 이용권`
                 : homeFeedTitle({ located: !!userLoc, dongLabel: dong?.dong, region })}
@@ -191,7 +191,7 @@ export default function PcHomePage() {
           {category === 'stay_voucher' && (
             <Link
               to="/stays"
-              className="flex items-center justify-between mb-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-line hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
+              className="flex items-center justify-between mb-5 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-line hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
             >
               <span className="text-[13px] font-medium text-gray-900 dark:text-white"><BedDouble className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />날짜·인원으로 숙소 검색하기</span>
               <span className="text-[13px] text-gray-500 dark:text-gray-400">체크인/체크아웃 지정 →</span>

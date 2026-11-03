@@ -107,7 +107,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
           {discountRate > 0 && (
             <span className="text-[15px] font-bold text-sale dark:text-[#4D8DF5] tracking-tight">{discountRate}%</span>
           )}
-          <span className="text-[17px] font-bold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
+          <span className="text-[16px] font-bold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
           <span className="text-[12px] font-medium text-[#171B24] dark:text-white">딜</span>
           {hasStrike && (
             <span className="text-[12px] ml-1 leading-none line-through text-gray-300 dark:text-gray-600">{formatNumber(p.original_price!)}딜</span>

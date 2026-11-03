@@ -10,7 +10,7 @@
  * Phase 1+ 사용자 결정 C 옵션: URL 통합 (셀러 권한 시 자동 redirect).
  */
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { SellerPublicPage } from './seller-public/lazy-seller-public'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
@@ -27,6 +27,10 @@ import { useRevealRows } from './curator-page/use-reveal-rows'
 import { SortMenu } from '@/components/ui/sort-menu'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { Search, X } from 'lucide-react'
+// 🧾 2026-11-03 유어샵 B — 주인만 보는 요약 판(방문자 번들에 안 실리게 lazy).
+const OwnerSummaryCard = lazy(() => import('./curator-page/OwnerSummaryCard'))
+const UShopSnsPosts = lazy(() => import('./curator-page/UShopSnsPosts')) // 🖼️ 2026-11-03 SNS 최근 게시물(진열 아래)
+import NearViewport from './curator-page/NearViewport'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
@@ -269,8 +273,8 @@ export default function CuratorPage() {
   if (error || !data) {
     return (
       <div className="min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-[24px] font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '유어샵을 찾을 수 없어요' })}</h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-6">@{handle}</p>
+        <h1 className="text-[20px] font-semibold mb-2">{t('curator.notFoundTitle', { defaultValue: '유어샵을 찾을 수 없어요' })}</h1>
+        <p className="text-gray-500 dark:text-gray-400 mb-8">@{handle}</p>
         <Link to="/" className="px-6 py-3 bg-brand rounded-xl text-white font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
       </div>
     )
@@ -336,7 +340,7 @@ export default function CuratorPage() {
           실선 테두리를 없애려던 것이었고 그 목적은 지금도 유효하지만, 유어샵은 한 화면에 **바탕 · 카드 ·
           알약 칩** 세 톤이 겹쳐 그게 "지저분하다" 로 읽혔다(대표 진단). 한 톤이면 나누는 일을
           **실선 하나**가 맡는다(탭 줄 아래 + 줄 사이 `divide-rule`) — 판도 그림자도 필요 없다. */}
-      <div className="min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white pb-28">
+      <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white pb-28">
         {/* 🗑️ 2026-09-02 (대표 — "편집하기 UI 가 번잡하다"): 주인 상단 안내 띠("내 유어샵 · 방문자에게 보이는 화면")
             삭제. 편집 진입은 헤더의 [유어샵 편집] 블루 버튼 하나(안3). 방문자는 그 버튼이 없을 뿐, 팔로우 등 대체
             버튼을 두지 않는다(대표: "그냥 방문자는 안보이면 되잖아"). */}
@@ -374,6 +378,8 @@ export default function CuratorPage() {
           soldTotal={curatorSoldTotal(curator)}
           onCopyLink={shareShop}
         />
+        {/* 🧾 2026-11-03 대표 *"유어샵은 B"* — 주인만 보는 요약 판(방문·구매·소개 수익 + 담기·공유). 방문자에겐 0 바이트(lazy). */}
+        {isOwner && <Suspense fallback={<div className={`mx-3 mt-3 ${curator.instagram_url || curator.tiktok_url || curator.youtube_url ? 'h-[172px]' : 'h-[228px]'}`} aria-hidden="true" />}><OwnerSummaryCard onShare={shareShop} hasSns={!!(curator.instagram_url || curator.tiktok_url || curator.youtube_url)} /></Suspense>}
         <UShopQrCard />
         </div>
         <div className="ur-ushop-main">
@@ -444,6 +450,8 @@ export default function CuratorPage() {
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.tryOtherKeyword', { defaultValue: '다른 키워드로 찾아보세요.' })}</p>
                   </div>
                 ) : (
+                  // 🧾 2026-11-03 유어샵 B — 진열 줄을 흰 판에 담는다(PC 는 2열 칸이라 판을 걷는다). 서버 `rowsCard` 와 같다.
+                  <div className="mx-3 mt-3 rounded-2xl bg-surface lg:mx-0 lg:mt-0 lg:rounded-none lg:bg-transparent">
                   <div ref={rowsRef} className="max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows">
                     {visiblePins.map((pin) => (
                       <PinRow
@@ -456,9 +464,13 @@ export default function CuratorPage() {
                       />
                     ))}
                   </div>
+                  </div>
                 )}
               </>
             )}
+            {/* 🖼️ 2026-11-03 유어샵 B + SNS — 최근 게시물. 진열 **아래**라 늦게 와도 읽던 줄을 안 민다(자리 예약 없음). */}
+            {/* 📦 화면 근처에 왔을 때만 받는다 — 첫 화면이 받는 파일 수를 늘리지 않는다(surface-chunk-runtime 래칫). */}
+            {pins.length > 0 && <NearViewport>{() => <Suspense fallback={null}><UShopSnsPosts handle={curator.handle} /></Suspense>}</NearViewport>}
             {/* 🧾 2026-09-28 (대표 확정 **B안** — *"B가 낫겠는데?"*): 맨 아래 유입 링크 세 줄.
                 ⚠️ 위 2026-06-19 결정과 **모순이 아니다.** 그때 문제였던 둘을 피한다 —
                   ① 따라다니는 고정 CTA 가 아니라 **목록이 끝난 뒤**의 조용한 링크(상품을 안 민다)

@@ -183,7 +183,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
 
               {/* 🛡️ 2026-05-20: 신규 가입 보너스 3000딜 — 자동 적립 완료 카드 (bonusAmount > 0 일 때만). */}
               {bonusAmount > 0 && (
-                <div className="bg-warm border border-amber-200 rounded-2xl p-5 mt-6 text-left">
+                <div className="bg-warm border border-amber-200 rounded-2xl p-5 mt-8 text-left">
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center shrink-0 shadow-md">
                       <Sparkles className="w-6 h-6 text-white" />
@@ -201,7 +201,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                 </div>
               )}
 
-              <div className="bg-warm border border-rule rounded-2xl p-5 mt-6 text-left">
+              <div className="bg-warm border border-rule rounded-2xl p-5 mt-8 text-left">
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shrink-0 shadow-md">
                     <GiftBoxIcon className="w-6 h-6 text-white" />
@@ -235,7 +235,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                 <div className="mx-auto w-16 h-16 rounded-full bg-brand-tint flex items-center justify-center mb-3">
                   <HeartIcon className="w-8 h-8 text-brand-text" />
                 </div>
-                <h2 className="text-[24px] font-bold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step2Title', { defaultValue: '관심 분야를 알려주세요' })}</h2>
+                <h2 className="text-[20px] font-semibold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step2Title', { defaultValue: '관심 분야를 알려주세요' })}</h2>
                 <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step2Desc', { defaultValue: '맞춤 추천에 사용돼요 (1개 이상 선택, 변경 가능)' })}</p>
               </div>
 
@@ -272,7 +272,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                 <div className="mx-auto w-16 h-16 rounded-full bg-brand/[0.08] flex items-center justify-center mb-3">
                   <BellIcon className="w-8 h-8 text-brand-text" />
                 </div>
-                <h2 className="text-[24px] font-bold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step3Title', { defaultValue: '알림 받기' })}</h2>
+                <h2 className="text-[20px] font-semibold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step3Title', { defaultValue: '알림 받기' })}</h2>
                 <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step3Desc', { defaultValue: '놓치면 아쉬운 핫딜·마감 임박 소식을 알려드려요' })}</p>
               </div>
 
@@ -289,7 +289,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
                     alimtalkOptIn ? 'bg-brand' : 'bg-gray-100 dark:bg-[#1D1F29]'
                   }`}>
-                    <span className="text-[17px]">💬</span>
+                    <span className="text-[16px]">💬</span>
                   </div>
                   <div className="flex-1">
                     <p className="text-[15px] font-bold text-gray-900 dark:text-white flex items-center gap-2">

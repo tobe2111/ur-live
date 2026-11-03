@@ -134,9 +134,9 @@ export default function AccountDeleteWarningPage() {
       <SEO title={t('accountDeleteWarning.seoTitle')} description={t('accountDeleteWarning.seoDesc')} url="/account/delete-warning" noindex />
       <SubPageHeader title={t('accountDeleteWarning.title')} backLabel={t('accountDeleteWarning.back')} />
 
-      <main className="ur-content-narrow px-4 pt-2 pb-safe-nav flex flex-col gap-3">
+      <main className="ur-content-narrow px-5 pt-2 pb-safe-nav flex flex-col gap-3">
         <div className="px-1 pt-2 pb-3">
-          <h2 className="text-[24px] font-bold text-gray-900 dark:text-white tracking-[-0.01em]">
+          <h2 className="text-[20px] font-semibold text-gray-900 dark:text-white tracking-[-0.01em]">
             {t('accountDeleteWarning.headline', { defaultValue: '탈퇴하기 전에 확인해 주세요' })}
           </h2>
           <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -160,7 +160,7 @@ export default function AccountDeleteWarningPage() {
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
             {t('accountDeleteWarning.goneSub', { defaultValue: '계정을 되살려도 돌아오지 않아요' })}
           </p>
-          <div className="mt-4 flex items-start gap-3">
+          <div className="mt-5 flex items-start gap-3">
             <WalletIcon className="w-5 h-5 mt-1 shrink-0 text-gray-900 dark:text-white" />
             <div className="flex-1 min-w-0">
               <p className="text-[15px] font-medium text-gray-900 dark:text-white">
@@ -179,7 +179,7 @@ export default function AccountDeleteWarningPage() {
               </p>
             </div>
           </div>
-          <p className="mt-4 pt-4 border-t border-rule text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
+          <p className="mt-5 pt-4 border-t border-rule text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
             {t('accountDeleteWarning.goneOthers', { defaultValue: '쿠폰 · 찜한 상품 · 단골 가게 · 알림도 함께 지워져요.' })}
           </p>
         </section>
@@ -210,7 +210,7 @@ export default function AccountDeleteWarningPage() {
               </p>
             </div>
           </div>
-          <ul className="mt-4 pt-4 border-t border-rule flex flex-col gap-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
+          <ul className="mt-5 pt-4 border-t border-rule flex flex-col gap-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
             <li>{t('accountDeleteWarning.noteRefund', { defaultValue: '진행 중인 환불이 있다면 끝난 뒤에 탈퇴해 주세요.' })}</li>
           </ul>
         </section>

@@ -90,7 +90,7 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
         </p>
       )}
 
-      <div className="px-4 pb-4 space-y-4">
+      <div className="px-4 pb-4 space-y-3">
         {groups.map(([group, items], gi) => (
           <section key={group} className="ur-tools-in" style={{ ['--i' as string]: gi }}>
             {group && <h3 className="px-1 mb-2 text-[12px] font-medium text-gray-400">{group}</h3>}

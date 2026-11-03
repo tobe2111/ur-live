@@ -26,7 +26,8 @@ const LOGOS = readCode('src/components/icons/sns-logos.tsx')
 // 🔧 2026-09-28 끝 마커 수리: 'SNS 편집' 은 e3 재작성(편집이 /u/me/manage 로 나감)으로 **사라졌다**.
 //   `sliceFrom` 은 끝 마커가 없으면 maxLen 폴백이라, 슬라이스가 버튼 줄까지 삼켜 "SNS 자리"라는
 //   범위 자체가 헐거워져 있었다. `snsLinks` 상수는 `<header` 바로 앞에서 끝난다.
-const SNS = sliceFrom(SRC, "aria-label=\"YouTube\"", '<header', 3000)
+// 📈 2026-11-03: aria 가 팔로워 수까지 말하게 되어 `snsPillText('youtube'…, true)` 로 시작한다.
+const SNS = sliceFrom(SRC, "aria-label={snsPillText('youtube'", '<header', 3000)
 
 describe('① 브랜드 색 면이 없다', () => {
   it('세 타일의 배경색이 사라졌다', () => {

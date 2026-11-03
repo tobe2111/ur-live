@@ -114,7 +114,7 @@ export default function NotificationsPage() {
       <div ref={pullInd} aria-hidden="true" className="absolute left-1/2 top-1 -ml-4 w-8 h-8 rounded-full bg-surface shadow-lift flex items-center justify-center opacity-0 pointer-events-none z-10">
         <svg viewBox="0 0 24 24" className="w-4 h-4 text-brand-text" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" /></svg>
       </div>
-      <div ref={pullRef} className="ur-content-narrow px-4 lg:px-8 py-2">
+      <div ref={pullRef} className="ur-content-narrow px-5 lg:px-8 py-2">
         {loading ? (
           <BrandLoader />
         ) : error ? (
@@ -128,9 +128,9 @@ export default function NotificationsPage() {
           //   종 아이콘은 "알림이 없다" 만 말하고 끝났다 — 무엇을 하면 소식이 오는지와 그 입구를 준다.
           <div className="text-center py-16 px-6">
             <Udal mood="notFound" size={128} className="mx-auto" />
-            <p className="mt-5 text-[17px] text-gray-900 dark:text-white font-bold">{t('notifications.empty')}</p>
+            <p className="mt-5 text-[16px] text-gray-900 dark:text-white font-semibold">{t('notifications.empty')}</p>
             <p className="text-[15px] leading-relaxed text-gray-600 dark:text-gray-400 mt-2">{t('notifications.emptyDesc')}</p>
-            <button type="button" onClick={() => navigate('/')} className="ur-btn ur-btn-md ur-btn-primary mt-6">
+            <button type="button" onClick={() => navigate('/')} className="ur-btn ur-btn-md ur-btn-primary mt-8">
               {t('notifications.emptyCta', { defaultValue: '내 주변 이용권 보기' })}
             </button>
           </div>

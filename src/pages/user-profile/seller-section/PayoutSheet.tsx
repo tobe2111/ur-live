@@ -128,7 +128,7 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
       {data && (
         <div className="px-4 py-4">
           <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">다음 정산에 들어갈 돈</p>
-          <p className="mt-1 text-[28px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white">
+          <p className="mt-1 text-[28px] font-bold tabular-nums leading-none text-gray-900 dark:text-white">
             {formatNumber(nextRunShown)}
             <span className="ml-1 text-[15px] font-bold text-gray-500 dark:text-gray-400">원</span>
           </p>
@@ -145,7 +145,7 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
             </p>
           )}
 
-          <dl className="mt-4 pt-4 border-t border-rule space-y-3">
+          <dl className="mt-5 pt-4 border-t border-rule space-y-3">
             {held > 0 && (
               <div className="flex items-baseline justify-between gap-3">
                 <dt className="text-[13px] text-gray-500 dark:text-gray-400">
@@ -166,7 +166,7 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
           </dl>
 
           {hasBank === false && (
-            <p className="mt-4 pt-4 border-t border-rule text-[13px] leading-[1.6] text-gray-900 dark:text-white">
+            <p className="mt-5 pt-4 border-t border-rule text-[13px] leading-[1.6] text-gray-900 dark:text-white">
               정산 계좌가 아직 없어요. 계좌를 넣어 두면 다음 정산부터 그리로 보내요.
             </p>
           )}

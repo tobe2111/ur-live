@@ -59,13 +59,13 @@ export default function InfluencerOfferAcceptPage() {
       <div className="w-full max-w-md">
         {error && !offer ? (
           <div className="text-center space-y-2">
-            <p className="text-[17px] font-bold text-gray-900 dark:text-white">제안을 열 수 없어요</p>
+            <p className="text-[16px] font-semibold text-gray-900 dark:text-white">제안을 열 수 없어요</p>
             <p className="text-[15px] text-gray-500 dark:text-gray-400">{error}</p>
           </div>
         ) : trackingUrl ? (
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-3">
             <div className="text-[34px]">🎉</div>
-            <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">제안을 수락했어요!</h1>
+            <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">제안을 수락했어요!</h1>
             <p className="text-[15px] text-gray-600 dark:text-gray-300">
               아래 <strong>내 전용 링크</strong>로 팔로워가 구매하면, 이용권이 <strong>사용될 때</strong> 커미션이 적립돼요.
             </p>
@@ -79,10 +79,10 @@ export default function InfluencerOfferAcceptPage() {
             <p className="text-[12px] text-gray-500 dark:text-gray-400">내 유어샵(마이 → 유어샵)에 핀해서 함께 홍보할 수도 있어요.</p>
           </div>
         ) : offer ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="text-center">
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">유어딜 협업 제안</p>
-              <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{offer.seller_name}</h1>
+              <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">{offer.seller_name}</h1>
             </div>
             {offer.product_name && (
               <div className="bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
@@ -95,11 +95,11 @@ export default function InfluencerOfferAcceptPage() {
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-3">
                 <p className="text-[12px] text-gray-500 dark:text-gray-400">판매 커미션</p>
-                <p className="text-[17px] font-bold text-gray-900 dark:text-white">{offer.commission_pct}%</p>
+                <p className="text-[16px] font-bold text-gray-900 dark:text-white">{offer.commission_pct}%</p>
               </div>
               <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-3">
                 <p className="text-[12px] text-gray-500 dark:text-gray-400">상품 제공</p>
-                <p className="text-[17px] font-bold text-gray-900 dark:text-white">{offer.product_support === 'free' ? '무상' : '유상'}</p>
+                <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{offer.product_support === 'free' ? '무상' : '유상'}</p>
               </div>
             </div>
             {channels && <p className="text-[12px] text-center text-gray-500 dark:text-gray-400">진행 매체: {channels}</p>}

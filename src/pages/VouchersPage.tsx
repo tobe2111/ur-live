@@ -421,7 +421,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         {/* 🖥️ 2026-07-19 (대표 — "상단은 공통"): 자체 PC 헤더 삭제 — 전역 DesktopTopNav(로고+검색+카테고리 바)가 담당. */}
         <div className="ur-content-wide px-8 py-6 grid grid-cols-[248px_minmax(0,1fr)] gap-8 items-start">
           {/* ── 좌측 필터 레일 (sticky — 전역 네비 2행(~101px) 아래) ── */}
-          <aside className="sticky top-[120px] self-start space-y-6">
+          <aside className="sticky top-[120px] self-start space-y-5">
             {/* 🪙 딜 잔액 — 모바일과 **같은 부품**(compact). 2026-09-14 전에는 두 벌이라
                   한쪽만 고쳐지는 사고가 실제로 났다(며칠 전 딜 선택 UI 에서 PC 를 통째로 잊었다). */}
             <DealBalanceCard balance={dealBalance} variant="compact" loggedIn={!!userId} />
@@ -478,8 +478,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 </div>
               </div>
             )}
-            <div className="flex items-center justify-between gap-2 mb-4">
-              <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-5">
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
                 <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
                 {/* 🐛 2026-08-17 (UX 전수검사 P1): 로드분 개수를 총계 자리에 그대로 쓰면 "커피/음료 775개"
                     카테고리가 "20"으로 읽힌다 — 더 있으면 `20+` 로 표기(정확한 총계 API 없음). */}
@@ -504,7 +504,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               <>
                 {/* 📐 2026-08-17 (UX 전수검사 P2 — 그루폰 대비 최약 밀도): PC 4열→5열(xl). 카드 ~240→190px,
                     첫 화면 노출 8→10개. 카드 내부(이미지 속성 잠금)는 무변경 — 열 수만. */}
-                <div className="grid grid-cols-3 xl:grid-cols-5 gap-x-3 gap-y-4">
+                <div className="grid grid-cols-3 xl:grid-cols-5 gap-x-3 gap-y-3">
                   {displayProducts.slice(0, embedVisible).map((p, idx) => (
                     <Fragment key={p.id}>
                       <VoucherCard p={p} aboveFold={idx < 8} />
@@ -512,7 +512,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                   ))}
                 </div>
                 {(embedVisible < displayProducts.length || hasMore) && (
-                  <div className="mt-6 max-w-xs mx-auto">
+                  <div className="mt-8 max-w-xs mx-auto">
                     <button
                       type="button"
                       onClick={() => {
@@ -532,7 +532,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                     </button>
                   </div>
                 )}
-                {loadingMore && <div className="mt-4 text-center text-[12px] text-gray-400 dark:text-gray-500">로드 중...</div>}
+                {loadingMore && <div className="mt-5 text-center text-[12px] text-gray-400 dark:text-gray-500">로드 중...</div>}
               </>
             )}
           </main>
@@ -658,7 +658,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           {/* 🧹 2026-08-31: ① 선물 아이콘 제거 — 바로 아래 하단 탭의 '교환권' 아이콘과 **같은 그림**이라
               같은 화면에서 두 번 같은 말을 했고, 앰버 한 점이 이 화면의 유일한 색이라 시선만 끌었다.
               ② 0 은 세지 않는다 — 곧바로 아래 빈 상태가 같은 사실을 더 잘 말한다. */}
-          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-baseline gap-2 min-w-0">
+          <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-baseline gap-2 min-w-0">
             <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
             {!loading && products.length > 0 && (
               <span className="text-[15px] text-gray-500 dark:text-gray-400 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
@@ -748,7 +748,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             )}
             {/* 🧭 2026-06-23: '교환권 더보기' 버튼 — 홈/vouchers 공통. /vouchers 는 이 버튼 아래로 쇼핑 섹션이 이어짐. */}
             {(embedVisible < displayProducts.length || hasMore) && (
-              <div className="mt-4">
+              <div className="mt-5">
                 <button
                   type="button"
                   onClick={() => {
@@ -772,7 +772,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             )}
             {/* 더보기 로딩 표시 (sentinel — 교환권 무한관찰은 비활성, 더보기 버튼이 로드 담당).
                 '마지막' 표시는 홈(embedded)만 — /vouchers 는 이 아래로 쇼핑 섹션이 이어져 '마지막'이 아님. */}
-            <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-4">
+            <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-5">
               {loadingMore && <div className="text-[12px] text-gray-400 dark:text-gray-500">로드 중...</div>}
               {embedded && !hasMore && products.length > 0 && (
                 <div className="text-[12px] text-gray-400 dark:text-gray-500">— 마지막 —</div>

@@ -45,7 +45,7 @@ export default function GuestPassPage() {
 
       <section className="mt-8">
         <div className="flex items-center justify-between px-4">
-          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">
+          <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">
             {t('guest.pass.examples', { defaultValue: '이런 이용권이 있어요' })}
           </h2>
           <span className="rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">

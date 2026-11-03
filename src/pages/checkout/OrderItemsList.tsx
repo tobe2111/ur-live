@@ -25,13 +25,13 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
 
       <div className="mt-5 flex flex-col gap-5">
         {Object.values(sellerGroups).map((group) => (
-          <div key={group.seller_id} className="border border-line rounded-2xl p-4">
+          <div key={group.seller_id} className="border border-line rounded-2xl p-5">
             <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 mb-3">
               {group.seller_name}
             </p>
 
             {group.items.map((item) => (
-              <div key={item.id} className="flex gap-4 py-3 border-t border-line first:border-t-0">
+              <div key={item.id} className="flex gap-3 py-3 border-t border-line first:border-t-0">
                 <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-gray-50 dark:bg-[#1D1F29]">
                   {item.image_url ? (
                     <img

@@ -115,7 +115,7 @@ export function ConfirmHost() {
       >
         <div className="px-6 pt-7 pb-5">
           {current.title && (
-            <p className="text-[17px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{current.title}</p>
+            <p className="text-[16px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white">{current.title}</p>
           )}
           <p className={`${current.title ? 'mt-2 text-gray-600 dark:text-gray-300' : 'text-gray-900 dark:text-white'} text-[15px] leading-relaxed whitespace-pre-line`}>{current.message}</p>
 
@@ -128,7 +128,7 @@ export function ConfirmHost() {
                 placeholder={current.prompt.placeholder}
                 autoFocus
                 rows={3}
-                className="mt-4 w-full px-3 py-2 rounded-xl bg-surface text-left text-[15px] text-gray-900 dark:text-white outline-none resize-none focus:ring-2 focus:ring-brand/40"
+                className="mt-5 w-full px-3 py-2 rounded-xl bg-surface text-left text-[15px] text-gray-900 dark:text-white outline-none resize-none focus:ring-2 focus:ring-brand/40"
               />
             ) : (
               <input
@@ -138,7 +138,7 @@ export function ConfirmHost() {
                 placeholder={current.prompt.placeholder}
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') close(true) }}
-                className="mt-4 w-full h-11 px-3 rounded-xl bg-surface text-left text-[15px] text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand/40"
+                className="mt-5 w-full h-11 px-3 rounded-xl bg-surface text-left text-[15px] text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand/40"
               />
             )
           )}

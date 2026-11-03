@@ -15,7 +15,7 @@ export default function AgencyMergedTitle({ storeCount }: { storeCount: number }
     <div data-testid="agency-merged-title">
       {/* 🔤 2026-11-03 대표 *"이 글자는 왜 회색이야 잘 안보이게 하면 안 돼"* — 에이전시 이름은 구역 제목(흐린 회색)이
           아니라 **이 화면의 주인 이름**이다. 진한 잉크로 쓰고, 아래 한 줄도 읽히는 회색(600)으로 올린다. */}
-      <h2 className="mt-6 mb-1 px-4 text-[17px] font-bold tracking-[-0.01em] text-gray-900 dark:text-white truncate">{agencyName || '에이전시'}</h2>
+      <h2 className="mt-5 mb-1 px-4 text-[16px] font-semibold tracking-[-0.01em] text-gray-900 dark:text-white truncate">{agencyName || '에이전시'}</h2>
       <p className="px-4 mb-2 text-[13px] text-gray-600 dark:text-gray-300">
         에이전시 · {isAdmin ? '관리자' : '직원'} · 매장 {storeCount}곳
       </p>

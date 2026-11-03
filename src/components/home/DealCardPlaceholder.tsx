@@ -39,7 +39,7 @@ export default function DealCardPlaceholder({ row = false }: { row?: boolean } =
           <p className="flex leading-none"><span className={`${BAR} text-[12px] w-1/3`}>가</span></p>
         </div>
         {/* 판매가 */}
-        <p className="flex mt-1 leading-none"><span className={`${BAR} text-[17px] font-bold w-1/2`}>가</span></p>
+        <p className="flex mt-1 leading-none"><span className={`${BAR} text-[16px] font-bold w-1/2`}>가</span></p>
       </div>
     </div>
   )

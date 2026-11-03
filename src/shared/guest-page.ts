@@ -9,10 +9,10 @@
 export const GUEST_CLS = {
   /** 🧷 2026-11-03 — 아래 고정 카카오 버튼(`dock`) 높이만큼 끝을 비워 마지막 줄이 버튼에 가리지 않게 한다. */
   root: 'min-h-[100dvh] bg-warm pb-32',
-  title: 'px-4 pt-4 pb-2 text-[17px] font-bold tracking-tight text-gray-900 dark:text-white',
+  title: 'px-4 pt-4 pb-2 text-[16px] font-bold tracking-tight text-gray-900 dark:text-white',
   /** 머리 — 큰 문장 두 줄 + 한 줄 설명. 세 탭이 같은 모양이다(2026-11-03 대표 "제안대로"). */
   hero: 'px-4 pt-2',
-  headline: 'text-[24px] font-bold leading-tight tracking-tight text-gray-900 dark:text-white',
+  headline: 'text-[20px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-white',
   sub: 'mt-2 text-[15px] text-gray-500 dark:text-gray-400',
   /**
    * 🎫 이용권 탭 미리보기 — "산 이용권이 지갑에 이렇게 들어온다". 티켓은 **그림**이라 옅은 바탕 하나를 쓴다
@@ -44,9 +44,9 @@ export const GUEST_CLS = {
   /** 🎬 2026-11-03 카카오 버튼을 지나가는 빛 칸 — 앱과 서버 첫 화면이 같은 모양이어야 해서 여기 둔다(CSS 는 GuestKakaoButton). */
   kakaoShine: 'ur-gk-shine absolute inset-0 pointer-events-none',
   /** 마이 탭 머리 — 마스코트 + 인사. */
-  myHead: 'flex items-center gap-4',
+  myHead: 'flex items-center gap-3',
   myHeadText: 'min-w-0',
-  myHello: 'text-[17px] font-bold text-gray-900 dark:text-white',
+  myHello: 'text-[16px] font-semibold text-gray-900 dark:text-white',
   myHelloSub: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400',
 } as const
 

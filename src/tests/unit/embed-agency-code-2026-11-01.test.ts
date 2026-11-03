@@ -79,12 +79,12 @@ describe('③ "홈페이지에 넣기" — 번호를 몰라도 되게', () => {
     expect(embedCodePath('ushop', '가 나/다')).toBe('/embed?type=ushop&key=' + encodeURIComponent('가 나/다'))
   })
 
-  it('에이전시 콘솔이 로그인 응답의 번호를 그대로 쓴다 — 사람이 타이핑하지 않는다', () => {
+  // 🗑️ 2026-11-03 대표 *"마이페이지에 에이전시 측에서 볼 때 위젯 코드 만드는 홈페이지에 넣기는 빼줘"* — 에이전시 화면의 입구를 걷었다.
+  //   위젯(`/embed?type=agency`)과 주소 함수는 그대로다(위 시험). 되살아나지 않게 고정한다.
+  it('에이전시 화면(마이·에이전시 전용 마이)에는 "홈페이지에 넣기" 입구가 없다', () => {
     const s = code('src/pages/agency-console/AgencyStoresPanel.tsx')
-    expect(s).toMatch(/const agencyId = readAgencyProfile\(\)\?\.agency\.id \?\? null/)
-    // 🔁 2026-11-02 재조준 — 큰 카드가 에이전시 줄('홈페이지에 넣기 · 코드 받기')이 됐다.
-    expect(s).toMatch(/agencyId != null && <FlatRow icon=\{[^\n]*?\} label="홈페이지에 넣기"/)          // 번호를 모르면 줄을 안 그린다
-    expect(s).toMatch(/openEmbedCode\('agency', agencyId\)/)
+    expect(s).not.toContain('홈페이지에 넣기"')
+    expect(s).not.toMatch(/openEmbedCode\('agency'/)
   })
 
   it('유어샵 관리가 자기 handle 로 연다', () => {

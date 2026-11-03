@@ -13,11 +13,11 @@ export const EmptyCart = React.memo(function EmptyCart() {
         <BagIcon size={36} className="text-gray-300 dark:text-gray-600" />
       </div>
 
-      <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">
+      <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">
         {t('cart.empty', { defaultValue: '장바구니가 비어있습니다' })}
       </h2>
 
-      <p className="text-[13px] text-gray-500 dark:text-gray-400 text-center mb-6">
+      <p className="text-[13px] text-gray-500 dark:text-gray-400 text-center mb-8">
         {t('cart.emptySubtitle', { defaultValue: '마음에 드는 상품을 담아보세요' })}
       </p>
 

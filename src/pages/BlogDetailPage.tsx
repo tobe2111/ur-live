@@ -100,7 +100,7 @@ export default function BlogDetailPage() {
   if (!post) {
     return (
       <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center">
-        <p className="text-gray-500 dark:text-gray-400 mb-4">{t('blogDetail.notFound', { defaultValue: '글을 찾을 수 없습니다' })}</p>
+        <p className="text-gray-500 dark:text-gray-400 mb-5">{t('blogDetail.notFound', { defaultValue: '글을 찾을 수 없습니다' })}</p>
         <Link to="/blog" className="text-blue-600 text-[15px] font-medium">{t('blogDetail.backToBlog', { defaultValue: '블로그로 돌아가기' })}</Link>
       </div>
     )
@@ -137,7 +137,7 @@ export default function BlogDetailPage() {
   )
 
   const RelatedList = () => (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {related.map((r) => (
         <Link key={r.slug} to={`/blog/${r.slug}`} className="flex gap-3 group items-start">
           <CoverImg post={r} className="w-14 h-14 rounded-lg shrink-0" />
@@ -236,15 +236,15 @@ export default function BlogDetailPage() {
           {/* 모바일 추천글 */}
           {related.length > 0 && (
             <section className="mt-12 lg:hidden">
-              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">추천 글</h2>
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-5">추천 글</h2>
               <RelatedList />
             </section>
           )}
 
           {/* CTA */}
           <div className="mt-12 bg-gray-50 dark:bg-[#141414] rounded-2xl p-6 text-center">
-            <p className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">유어딜에서 시작하세요</p>
-            <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-4">이용권·교환권·동네딜을 한곳에, 나만의 유어샵까지</p>
+            <p className="text-[16px] font-bold text-gray-900 dark:text-white mb-2">유어딜에서 시작하세요</p>
+            <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-5">이용권·교환권·동네딜을 한곳에, 나만의 유어샵까지</p>
             <div className="flex gap-3 justify-center">
               <Link to="/" className="px-5 py-2 bg-brand text-white rounded-xl text-[15px] font-bold hover:opacity-90">둘러보기</Link>
               <Link to="/u/me" className="px-5 py-2 bg-brand text-white rounded-xl text-[15px] font-bold hover:bg-brand-dark">내 유어샵 보기</Link>
@@ -258,7 +258,7 @@ export default function BlogDetailPage() {
         {/* ── 우측: 추천글 (xl+) ── */}
         <aside className="hidden xl:block">
           <div className="sticky top-20">
-            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">추천 글</p>
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-5">추천 글</p>
             <RelatedList />
           </div>
         </aside>

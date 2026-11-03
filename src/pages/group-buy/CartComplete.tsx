@@ -23,27 +23,27 @@ export default function CartComplete({ qty, kinds, amount }: { qty: number; kind
 
   return (
     <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white">
-      <div className="ur-content-narrow px-4 lg:px-8 pt-3 pb-10">
+      <div className="ur-content-narrow px-5 lg:px-8 pt-3 pb-10">
         <div className="flex justify-end">
           <button type="button" onClick={() => navigate('/')} aria-label={t('passBuy.close', { defaultValue: '닫기' })} className="w-10 h-10 -mr-2 flex items-center justify-center text-gray-500 dark:text-gray-400">
             <X className="w-6 h-6" strokeWidth={1.6} />
           </button>
         </div>
-        <h1 className="text-center text-[24px] font-bold tracking-[-0.02em] mt-3 mb-6">{t('passBuy.completeTitle', { defaultValue: '결제가 완료되었어요' })}</h1>
+        <h1 className="text-center text-[20px] font-semibold tracking-[-0.02em] mt-3 mb-8">{t('passBuy.completeTitle', { defaultValue: '결제가 완료되었어요' })}</h1>
 
         {/* 밴드 오른쪽에 D-N 을 못 쓴다 — 이용권마다 기한이 달라서 하나를 고르면 나머지가 거짓이 된다. */}
         <TicketCard bandLeft={t('passBuy.issuedBand', { defaultValue: '이용권 발급 완료' })} bandRight={t('passBuy.kindsCount', { defaultValue: '{{n}}종', n: kinds })}>
           <TicketRow left={t('passBuy.voucher', { defaultValue: '이용권' })} right={t('passBuy.sheets', { defaultValue: '{{n}}매', n: qty })} />
           <div className="px-4 pt-4 pb-4">
             <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('passBuy.expiryVaries', { defaultValue: '사용 기한은 이용권마다 달라요' })}</p>
-            <div className="flex items-baseline gap-2 mt-3 mb-4 tabular-nums">
-              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(amount) })}</span>
+            <div className="flex items-baseline gap-2 mt-3 mb-5 tabular-nums">
+              <span className="text-[28px] font-bold tracking-[-0.03em] leading-none">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(amount) })}</span>
             </div>
             <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>{t('passBuy.viewVouchers', { defaultValue: '이용권 확인' })}</TicketOutlineButton>
           </div>
         </TicketCard>
 
-        <div className="mt-5 mb-6">
+        <div className="mt-5 mb-8">
           <TicketNotes items={[
             t('passBuy.noteUseQr', { defaultValue: '매장에서 QR 또는 코드로 사용해요.' }),
             t('passBuy.noteAutoRefund', { defaultValue: '사용하지 않으면 기한이 지난 뒤 100% 자동 환불돼요.' }),

@@ -81,7 +81,7 @@ export default function PassHeadCard({
         <div className="mt-3">
           {refPrice != null && refPrice > unitPrice && <div className="text-[13px]" style={{ color: 'var(--gbd-sub)' }}><s className="ur-strike">{t('pass.price.won', { defaultValue: '{{price}}원', price: formatNumber(refPrice) })}</s></div>}
           <div className="flex items-baseline gap-2">
-            {!!discountPct && discountPct > 0 && <span className="ur-pct-pop text-[17px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
+            {!!discountPct && discountPct > 0 && <span className="ur-pct-pop text-[16px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
             <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{t('pass.price.won', { defaultValue: '{{price}}원', price: formatNumber(unitPrice) })}</span>
           </div>
         </div>

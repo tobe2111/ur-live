@@ -58,13 +58,13 @@ export const VOUCHER_FS_CLASS = {
   root: 'min-h-[100dvh] bg-white dark:bg-[#11141C]',
   barOuter: 'sticky top-0 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur',
   barInner: 'ur-content-narrow lg:max-w-[1000px] h-14 px-2 flex items-center',
-  shell: 'ur-content-narrow lg:max-w-[1000px] px-4 lg:grid lg:grid-cols-2 lg:gap-10 lg:items-start lg:pt-6',
+  shell: 'ur-content-narrow lg:max-w-[1000px] px-5 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start lg:pt-6',
   photo:
     'relative aspect-square w-full rounded-[28px] overflow-hidden bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] ' +
     'dark:from-[#15171C] dark:to-[#0F1115] lg:sticky lg:top-20',
   info: 'pt-[18px] lg:pt-0',
   label: 'text-[12px] font-medium text-[#171B24] bg-[#d1d5db] rounded-md px-[9px] py-1 whitespace-nowrap',
-  h1: 'mt-[7px] text-[24px] font-bold text-[#171B24] dark:text-white leading-tight tracking-tight',
+  h1: 'mt-[7px] text-[20px] font-semibold text-[#171B24] dark:text-white leading-tight tracking-tight',
 } as const
 
 /** 페이지가 쓰는 값과 동일 — `cfImage(…, { width: 800, format: 'auto' })` · `cfSrcSet(…, 800)`. */

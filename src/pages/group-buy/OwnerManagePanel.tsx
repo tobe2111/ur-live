@@ -17,7 +17,7 @@ export const OWNER_PANEL_COPY = {
 export default function OwnerManagePanel({ onManage, compact = false, kind = 'pass' }: { onManage: () => void; compact?: boolean; kind?: keyof typeof OWNER_PANEL_COPY }) {
   const copy = OWNER_PANEL_COPY[kind]
   return (
-    <div className={compact ? 'flex items-center gap-3' : 'mt-4'}>
+    <div className={compact ? 'flex items-center gap-3' : 'mt-5'}>
       <div className={compact ? 'flex-1 min-w-0' : 'mb-3'}>
         <p className="text-[15px] font-bold" style={{ color: 'var(--gbd-ink, var(--ink))' }}>{copy.title}</p>
         <p className="text-[13px] mt-1" style={{ color: 'var(--gbd-sub, var(--ink-soft))' }}>{compact ? copy.sub : `${copy.sub}. 판매 현황은 관리에서 봐요.`}</p>

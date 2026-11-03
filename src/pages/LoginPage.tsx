@@ -290,7 +290,7 @@ export default function LoginPage() {
       <div className="w-full max-w-[360px] md:max-w-[400px] flex-1 flex flex-col">
 
         <div className="flex-1 flex flex-col items-center justify-center pb-10">
-          <Udal mood="hello" size={64} priority motion className="block mb-4" />
+          <Udal mood="hello" size={64} priority motion className="block mb-5" />
           <UrDealLogo size={34} />
           {/* "같이 사면 더 싸다" 는 없는 기제였다 — 이용권은 즉시판매 단일가(2026-05-30)라 인원이 가격을 안 움직인다. */}
           <h1 className="ur-lg-h mt-3 text-[15px] font-normal text-gray-500 dark:text-gray-400 text-center leading-snug">
@@ -368,7 +368,7 @@ export default function LoginPage() {
 
         {/* Email Login Form */}
         {showEmailLogin && !showForgotPassword && (
-          <form onSubmit={handleEmailLogin} className="space-y-4">
+          <form onSubmit={handleEmailLogin} className="space-y-3">
             <div>
               <label htmlFor="login-email" className="block text-[12px] font-medium text-[#555] mb-2">
                 {t('auth.email')}
@@ -448,8 +448,8 @@ export default function LoginPage() {
 
         {/* Forgot Password Form */}
         {showForgotPassword && (
-          <div className="space-y-4">
-            <div className="text-center mb-6">
+          <div className="space-y-3">
+            <div className="text-center mb-8">
               <p className="text-[15px] text-gray-500 dark:text-gray-400 font-light leading-relaxed">
                 {t('auth.resetPasswordDesc')}
               </p>

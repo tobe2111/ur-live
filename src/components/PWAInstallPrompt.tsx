@@ -195,7 +195,7 @@ export default function PWAInstallPrompt() {
     const isIOSDevice = isIOS()
     return (
       <div className="fixed bottom-20 left-3 right-3 z-[60] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-sm pointer-events-auto">
-        <div className="bg-surface rounded-2xl shadow-2xl border-2 border-rule p-4">
+        <div className="bg-surface rounded-2xl shadow-2xl border-2 border-rule p-5">
           <div className="flex items-start gap-3 mb-2">
             {/* 🛡️ 2026-05-27 사용자 요청: 좌측 분홍 네모 (smartphone icon 컨테이너) 제거. */}
             <div className="flex-1 min-w-0">
@@ -225,7 +225,7 @@ export default function PWAInstallPrompt() {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-medium text-[12px]">1</span>
                   <span dangerouslySetInnerHTML={{ __html: t('pwa.install.androidStep1', { defaultValue: '우상단 <strong class="text-brand-text">⋮ 메뉴</strong> 누르기' }) }} />
-                  <span className="ml-auto font-bold text-[17px] leading-none">⋮</span>
+                  <span className="ml-auto font-semibold text-[16px] leading-none">⋮</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-medium text-[12px]">2</span>

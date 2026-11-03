@@ -116,7 +116,7 @@ export default function SellOwnProductsCTA() {
   // 반려/정지
   if (hasSeller && (st === 'rejected' || st === 'suspended')) {
     return (
-      <section className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+      <section className="mb-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
         <p className="text-[15px] font-bold text-red-800 dark:text-red-200"><ReceiptIcon className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />사업자 등록 신청 {st === 'rejected' ? '반려됨' : '정지됨'}</p>
         <p className="text-[12px] text-red-700 dark:text-red-300 mt-1">{st === 'rejected' ? '사유를 확인하고 마이 ‘내 가게’ › 전체 도구 › 사업자 정보에서 서류를 다시 제출하면 심사가 다시 진행돼요.' : '자세한 내용은 고객센터로 문의해주세요.'}</p>
       </section>
@@ -135,7 +135,7 @@ export default function SellOwnProductsCTA() {
           <span className="block text-[15px] font-bold">내 가게 등록하고 이용권 팔기</span>
           <span className="block text-[12px] text-gray-300 mt-1">이용권 판매 · 현금 정산 · 파란 인증 씰</span>
         </span>
-        <span className="text-gray-400 text-[17px] leading-none">›</span>
+        <span className="text-gray-400 text-[16px] leading-none">›</span>
       </button>
       {showBenefits && (
         <BenefitsSheet
@@ -160,14 +160,14 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
       <div className="absolute inset-0 ur-veil" onClick={onClose} />
       <div className="relative w-full sm:max-w-md ur-glass ur-pop-card px-5 pt-2 pb-7 ur-dialog-in">
         <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-[#2C2F35] mx-auto mt-2 mb-4" />
-        <h2 className="text-[24px] font-bold text-gray-900 dark:text-white tracking-tight">내 유어샵에서 직접 팔아보세요</h2>
+        <h2 className="text-[20px] font-semibold text-gray-900 dark:text-white tracking-tight">내 유어샵에서 직접 팔아보세요</h2>
         <div className="flex items-center gap-2 mt-2 text-[13px] text-gray-500 dark:text-gray-400 flex-wrap">
           <span className="px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-[12px] font-medium">유저</span>
           <span className="font-bold text-gray-400">→</span>
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#eaf5ff] dark:bg-[#0d2a40] text-[#1d9bf0] text-[12px] font-medium"><VerifiedSeal size={13} /> 인증 유저</span>
           로 전환하면
         </div>
-        <div className="mt-5 space-y-4">
+        <div className="mt-5 space-y-3">
           {benefits.map((b, i) => (
             <div key={i} className="flex items-start gap-3">
               <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${b.seal ? 'bg-[#eaf5ff] dark:bg-[#0d2a40]' : 'bg-gray-100 dark:bg-[#1D1F29]'}`}>{b.seal ? <VerifiedSeal size={22} /> : b.Icon ? <b.Icon className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" /> : null}</span>
@@ -178,7 +178,7 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
             </div>
           ))}
         </div>
-        <button onClick={onStart} className="mt-6 w-full h-[52px] rounded-2xl bg-brand text-white text-[15px] font-bold active:opacity-80">
+        <button onClick={onStart} className="mt-8 w-full h-[52px] rounded-2xl bg-brand text-white text-[15px] font-bold active:opacity-80">
           ✓ 사업자 인증 시작하기
         </button>
         <p className="text-center text-[12px] text-gray-400 dark:text-gray-500 mt-2">사업자등록 → 관리자 승인 후 활성화 · 무료</p>

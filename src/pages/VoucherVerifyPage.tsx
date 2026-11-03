@@ -195,18 +195,18 @@ export default function VoucherVerifyPage() {
           />
         )}
         <div className="min-w-0">
-          <p className="text-[17px] font-bold leading-snug text-gray-900 dark:text-white break-keep">{voucher.product_name}</p>
+          <p className="text-[16px] font-semibold leading-snug text-gray-900 dark:text-white break-keep">{voucher.product_name}</p>
           {store && <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{store}</p>}
         </div>
       </div>
-      <div className="mt-4 pt-3 border-t border-rule flex items-center justify-between text-[13px]">
+      <div className="mt-5 pt-3 border-t border-rule flex items-center justify-between text-[13px]">
         <span className="text-gray-500 dark:text-gray-400">{t('voucher.verify.codeShort', { defaultValue: '코드' })}</span>
         <code className="font-bold tabular-nums tracking-[0.06em] text-gray-900 dark:text-white">{voucher.code}</code>
       </div>
     </div>
   )
 
-  const primaryBtn = 'w-full h-14 rounded-2xl bg-brand text-white text-[17px] font-bold disabled:opacity-40 active:scale-[0.98] transition-transform'
+  const primaryBtn = 'w-full h-14 rounded-2xl bg-brand text-white text-[16px] font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform'
   const secondaryBtn = 'w-full h-12 rounded-xl text-[15px] font-medium text-gray-600 dark:text-gray-300'
 
   return (
@@ -218,14 +218,14 @@ export default function VoucherVerifyPage() {
           {headerRight && <span className="max-w-[60%] truncate text-[13px] font-medium text-gray-500 dark:text-gray-400">{headerRight}</span>}
         </header>
 
-        <h1 className="mt-6 text-[24px] font-bold leading-tight tracking-[-0.01em] text-gray-900 dark:text-white break-keep">{title}</h1>
+        <h1 className="mt-8 text-[20px] font-semibold leading-tight tracking-[-0.01em] text-gray-900 dark:text-white break-keep">{title}</h1>
 
         {error && (
           <p role="alert" className="mt-3 text-[15px] font-medium text-red-600 dark:text-red-400">{error}</p>
         )}
 
         {view === 'lookup' && (
-          <div className="mt-6">
+          <div className="mt-8">
             <label htmlFor="voucher-code" className="block text-[13px] font-medium text-gray-500 dark:text-gray-400 mb-2">{t('voucher.verify.codeLabel', { defaultValue: '이용권 코드' })}</label>
             <input
               id="voucher-code"
@@ -233,18 +233,18 @@ export default function VoucherVerifyPage() {
               onChange={e => setCode(e.target.value.toUpperCase())}
               onPaste={e => { e.preventDefault(); setCode(parseVoucherCode(e.clipboardData.getData('text'))) }}
               placeholder={t('voucher.verify.codePlaceholder', { defaultValue: '123456' })}
-              className="w-full h-14 px-4 rounded-2xl bg-surface shadow-lift text-center text-[17px] font-bold tabular-nums tracking-widest text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
+              className="w-full h-14 px-4 rounded-2xl bg-surface shadow-lift text-center text-[16px] font-bold tabular-nums tracking-widest text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
               maxLength={60}
             />
             <p className="mt-2 text-center text-[12px] text-gray-500 dark:text-gray-400">{t('voucher.verify.qrHint', { defaultValue: 'QR 주소를 붙여 넣으면 코드만 뽑아요' })}</p>
-            <button onClick={lookupVoucher} disabled={!code.trim() || loading} className={`${primaryBtn} mt-6`}>
+            <button onClick={lookupVoucher} disabled={!code.trim() || loading} className={`${primaryBtn} mt-8`}>
               {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.lookup', { defaultValue: '조회하기' })}
             </button>
           </div>
         )}
 
         {view === 'done' && (
-          <div className="mt-6">
+          <div className="mt-8">
             <div className="rounded-2xl bg-surface shadow-lift p-6 text-center overflow-hidden">
               <div aria-hidden="true" className="ur-vf-fill h-1 -mx-6 -mt-6 mb-5 bg-brand" />
               <OkIcon filled className="ur-vf-pop mx-auto w-10 h-10 text-brand-text" />
@@ -253,15 +253,15 @@ export default function VoucherVerifyPage() {
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('voucher.verify.doneNote', { defaultValue: '손님 폰에도 ‘사용 완료’로 바뀌었어요' })}</p>
             </div>
             {isSeller ? (
-              <Link to="/store/scan" className={`${primaryBtn} mt-6 flex items-center justify-center`}>{t('voucher.verify.nextGuest', { defaultValue: '다음 손님 QR 찍기' })}</Link>
+              <Link to="/store/scan" className={`${primaryBtn} mt-8 flex items-center justify-center`}>{t('voucher.verify.nextGuest', { defaultValue: '다음 손님 QR 찍기' })}</Link>
             ) : (
-              <button onClick={reset} className={`${primaryBtn} mt-6`}>{t('voucher.verify.lookupAnother', { defaultValue: '다른 이용권 조회' })}</button>
+              <button onClick={reset} className={`${primaryBtn} mt-8`}>{t('voucher.verify.lookupAnother', { defaultValue: '다른 이용권 조회' })}</button>
             )}
           </div>
         )}
 
         {(view === 'redeem' || view === 'closed' || view === 'pin' || view === 'other-store') && voucher && (
-          <div className="mt-6">
+          <div className="mt-8">
             <TicketCard
               muted={view === 'closed' || view === 'other-store'}
               bandLeft={
@@ -280,9 +280,9 @@ export default function VoucherVerifyPage() {
 
             {view === 'redeem' && (
               <>
-                <p className="mt-4 px-1 text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">{t('voucher.verify.paidNote', { defaultValue: '이미 결제된 이용권이에요. 포스에서 따로 받지 마세요.' })}</p>
+                <p className="mt-5 px-1 text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">{t('voucher.verify.paidNote', { defaultValue: '이미 결제된 이용권이에요. 포스에서 따로 받지 마세요.' })}</p>
                 {expiresLabel && <p className="mt-1 px-1 text-[13px] text-gray-500 dark:text-gray-400">{t('voucher.verify.expiresNote', { defaultValue: '{{date}}까지 사용 가능', date: expiresLabel })}</p>}
-                <button onClick={redeemAsSeller} disabled={verifying} className={`${primaryBtn} mt-6`}>
+                <button onClick={redeemAsSeller} disabled={verifying} className={`${primaryBtn} mt-8`}>
                   {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.redeem', { defaultValue: '사용 처리' })}
                 </button>
               </>
@@ -290,21 +290,21 @@ export default function VoucherVerifyPage() {
 
             {view === 'closed' && (
               <>
-                <p className="mt-4 px-1 text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">{t('voucher.verify.closedNote', { defaultValue: '같은 이용권은 한 번만 쓸 수 있어요. 손님이 다른 이용권을 갖고 있는지 확인해 주세요.' })}</p>
-                <button onClick={reset} className={`${secondaryBtn} mt-4`}>{t('voucher.verify.lookupAnother', { defaultValue: '다른 이용권 조회' })}</button>
+                <p className="mt-5 px-1 text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">{t('voucher.verify.closedNote', { defaultValue: '같은 이용권은 한 번만 쓸 수 있어요. 손님이 다른 이용권을 갖고 있는지 확인해 주세요.' })}</p>
+                <button onClick={reset} className={`${secondaryBtn} mt-5`}>{t('voucher.verify.lookupAnother', { defaultValue: '다른 이용권 조회' })}</button>
               </>
             )}
 
             {view === 'other-store' && (
               <>
-                <p className="mt-4 px-1 text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">{t('voucher.verify.otherStoreNote', { defaultValue: '이 이용권은 {{store}}에서만 사용 처리할 수 있어요.', store: store || t('voucher.verify.thatStore', { defaultValue: '다른 매장' }) })}</p>
-                <button onClick={reset} className={`${secondaryBtn} mt-4`}>{t('voucher.verify.lookupAnother', { defaultValue: '다른 이용권 조회' })}</button>
+                <p className="mt-5 px-1 text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">{t('voucher.verify.otherStoreNote', { defaultValue: '이 이용권은 {{store}}에서만 사용 처리할 수 있어요.', store: store || t('voucher.verify.thatStore', { defaultValue: '다른 매장' }) })}</p>
+                <button onClick={reset} className={`${secondaryBtn} mt-5`}>{t('voucher.verify.lookupAnother', { defaultValue: '다른 이용권 조회' })}</button>
               </>
             )}
 
             {view === 'pin' && (
               <>
-                <label htmlFor="store-code" className="mt-6 block text-[13px] font-medium text-gray-500 dark:text-gray-400 mb-2">{t('voucher.verify.storeCodeLabel', { defaultValue: '매장 확인코드' })}</label>
+                <label htmlFor="store-code" className="mt-8 block text-[13px] font-medium text-gray-500 dark:text-gray-400 mb-2">{t('voucher.verify.storeCodeLabel', { defaultValue: '매장 확인코드' })}</label>
                 <input
                   id="store-code"
                   value={pin}
@@ -313,14 +313,14 @@ export default function VoucherVerifyPage() {
                   inputMode="numeric"
                   autoComplete="off"
                   placeholder="• • • •"
-                  className="w-full h-14 px-4 rounded-2xl bg-surface shadow-lift text-center text-[17px] tracking-[0.5em] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
+                  className="w-full h-14 px-4 rounded-2xl bg-surface shadow-lift text-center text-[16px] tracking-[0.5em] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
                   maxLength={10}
                 />
-                <button onClick={redeemWithStoreCode} disabled={!pin.trim() || verifying} className={`${primaryBtn} mt-4`}>
+                <button onClick={redeemWithStoreCode} disabled={!pin.trim() || verifying} className={`${primaryBtn} mt-5`}>
                   {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.redeem', { defaultValue: '사용 처리' })}
                 </button>
                 {/* 🔑 로그인 권유 한 줄 — 벽이 아니다(손님도 이 화면을 연다). 로그인했는데 좌석이 없으면 '내 가게' 로. */}
-                <Link to={loggedIn ? '/user/profile' : loginPathFromHere()} className="mt-4 block text-center text-[15px] font-medium text-brand-text">
+                <Link to={loggedIn ? '/user/profile' : loginPathFromHere()} className="mt-5 block text-center text-[15px] font-medium text-brand-text">
                   {loggedIn
                     ? t('voucher.verify.ownerPickStore', { defaultValue: '사장님이면 내 가게를 고르고 바로 처리' })
                     : t('voucher.verify.ownerLogin', { defaultValue: '사장님이면 로그인하고 바로 처리' })}

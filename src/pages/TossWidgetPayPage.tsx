@@ -344,9 +344,9 @@ export default function TossWidgetPayPage() {
           ) : null}
           <div className="mt-3 pt-3 border-t border-rule flex items-baseline justify-between">
             <span className="text-[12px] text-gray-400 dark:text-gray-500">{goodsAmount > chargeAmount ? '카드 결제' : '결제 금액'}</span>
-            <span className="text-[28px] font-extrabold tracking-tight tabular-nums text-gray-900 dark:text-white">
+            <span className="text-[28px] font-bold tracking-tight tabular-nums text-gray-900 dark:text-white">
               {Number.isFinite(chargeAmount) ? chargeAmount.toLocaleString('ko-KR') : '0'}
-              <span className="text-[17px] font-bold ml-1">원</span>
+              <span className="text-[16px] font-bold ml-1">원</span>
             </span>
           </div>
           <p className="mt-2 pt-2 border-t border-rule text-[12px] text-gray-500 dark:text-gray-400">

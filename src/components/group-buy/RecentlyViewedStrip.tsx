@@ -71,7 +71,7 @@ export default function RecentlyViewedStrip() {
   if (items.length === 0) return null
 
   return (
-    <section className="mb-6">
+    <section className="mb-8">
       <div className="flex items-baseline justify-between mb-2 px-1">
         <h3 className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight"><History className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />최근 본 공구</h3>
         <span className="text-[12px] text-gray-400">{items.length}개</span>

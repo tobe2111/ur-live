@@ -17,7 +17,7 @@ export function WalletSkeleton() {
       <div className="rounded-[20px] bg-gray-200 dark:bg-[#1D1F29] h-[120px] mb-4" />
       {/* 패스 카드 2장 */}
       {[0, 1].map(i => (
-        <div key={i} className="rounded-[18px] p-4 mb-4">
+        <div key={i} className="rounded-[18px] p-4 mb-5">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-[10px] bg-gray-200 dark:bg-[#2C2F35]" />
             <div className="h-3 w-28 rounded bg-gray-200 dark:bg-[#2C2F35]" />
@@ -75,13 +75,13 @@ export function EmptyVouchers({ mode, onExplore, t }: {
   return (
     <div className="py-12 flex flex-col items-center text-center">
       {/* 🦦 히어로 — 유달이(아직 아무것도 없음 = 졸린 얼굴). 교환권·이용권 공통. */}
-      <Udal mood="empty" size={120} motion priority className="mb-6" />
+      <Udal mood="empty" size={120} motion priority className="mb-8" />
 
-      <h2 className="text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</h2>
+      <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</h2>
       <p className="mt-2 max-w-[264px] text-[13px] leading-relaxed text-gray-500 dark:text-gray-400 whitespace-pre-line">{desc}</p>
 
       {/* 사용 흐름 — 로즈 틴트 아이콘 칩 + 연결 트랙(헤어라인) + 작은 스텝 번호 */}
-      <div className="mt-9 w-full max-w-[312px] flex items-start">
+      <div className="mt-8 w-full max-w-[312px] flex items-start">
         {steps.map(({ icon: Icon, label }, i) => (
           <Fragment key={i}>
             {i > 0 && (
@@ -100,7 +100,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
 
       <button
         onClick={onExplore}
-        className="mt-9 w-full max-w-[300px] py-4 rounded-2xl text-[15px] font-bold bg-brand hover:bg-brand-dark text-white active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_8px_22px_rgba(28,105,239,0.32)] dark:shadow-[0_8px_22px_rgba(28,105,239,0.2)]"
+        className="mt-8 w-full max-w-[300px] py-4 rounded-2xl text-[15px] font-bold bg-brand hover:bg-brand-dark text-white active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_8px_22px_rgba(28,105,239,0.32)] dark:shadow-[0_8px_22px_rgba(28,105,239,0.2)]"
       >
         {cta}
         <ArrowRight className="w-[17px] h-[17px]" strokeWidth={2.4} />

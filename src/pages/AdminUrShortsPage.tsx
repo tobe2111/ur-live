@@ -42,8 +42,18 @@ interface Row {
   category: string | null
 }
 
+/**
+ * 🔎 영상 제목에서 **가게 이름일 법한 앞부분**을 뽑아 이용권 검색칸에 미리 넣는다(쇼츠 개선 ②, 2026-11-03).
+ *   해시태그·이모지·괄호·'|' 뒤를 떼고 앞 두 낱말. 맞지 않으면 사람이 지우고 고친다(자동으로 붙이지 않는다 — 엉뚱한 이용권이 조용히 붙는다).
+ */
+export function suggestTerm(title: string | null | undefined): string {
+  const t = String(title ?? '').replace(/\[[^\]]*\]|【[^】]*】|\([^)]*\)/g, ' ').split(/[|｜#]/)[0].replace(/[^\p{L}\p{N}\s]/gu, ' ').trim()
+  return t.split(/\s+/).filter(Boolean).slice(0, 2).join(' ')
+}
+
 export default function AdminUrShortsPage() {
   const [rows, setRows] = useState<Row[]>([])
+  const [onlyOrphan, setOnlyOrphan] = useState(false)
   const [channel, setChannel] = useState('')
   const [url, setUrl] = useState('')
   const [consent, setConsent] = useState(false)
@@ -278,10 +288,12 @@ export default function AdminUrShortsPage() {
               </span>
             </div>
             <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              {/* 🔗 2026-11-03 대표 확정(쇼츠 개선 ②) — 누르면 **이용권 안 붙인 영상만** 남긴다(한 번 더 누르면 전체). */}
               {orphan > 0 && (
-                <span className="flex items-center gap-1 text-[12.5px] font-semibold text-tone-bad">
-                  <AlertCircle size={14} /> 이용권을 안 고른 영상 {orphan}편
-                </span>
+                <button type="button" onClick={() => setOnlyOrphan((v) => !v)} aria-pressed={onlyOrphan}
+                  className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[12.5px] font-semibold text-tone-bad ${onlyOrphan ? 'bg-tone-bad-bg' : ''}`}>
+                  <AlertCircle size={14} /> 이용권을 안 고른 영상 {orphan}편{onlyOrphan ? ' · 전체 보기' : ' · 이것만 보기'}
+                </button>
               )}
               {noConsent > 0 && (
                 <span className="flex items-center gap-1 text-[12.5px] font-semibold text-tone-warn">
@@ -306,7 +318,7 @@ export default function AdminUrShortsPage() {
             <p className="px-5 py-10 text-center text-[13px] text-gray-500">아직 등록한 영상이 없습니다.</p>
           ) : (
             <ul className="divide-y divide-gray-100">
-              {rows.map((r) => (
+              {(onlyOrphan ? rows.filter((r) => !r.product_id) : rows).map((r) => (
                 <li key={r.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
                   <img
                     src={cfImage(r.thumb_url, { width: 120 })} alt=""
@@ -343,6 +355,7 @@ export default function AdminUrShortsPage() {
                          에러도 안 나고 엉뚱한 이용권에 조용히 붙는다. 이제 이름·매장명으로 찾아 누른다. */}
                   <ProductPicker
                     value={r.product_id ?? null}
+                    suggest={suggestTerm(r.title)}
                     label={r.store_name || r.product_name}
                     onPick={(next) => { if (next !== (r.product_id ?? null)) void patch(r.id, { product_id: next }) }}
                   />

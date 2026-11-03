@@ -93,7 +93,7 @@ function CheckoutForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {/* Stripe Payment Element */}
       <div className="rounded-lg p-4">
         <PaymentElement />
@@ -104,7 +104,7 @@ function CheckoutForm({
         type="submit"
         disabled={!stripe || isProcessing}
         className={`
-          w-full py-4 rounded-lg font-bold text-white text-[17px]
+          w-full py-4 rounded-lg font-bold text-white text-[16px]
           ${!stripe || isProcessing
             ? 'bg-gray-300 cursor-not-allowed'
             : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'

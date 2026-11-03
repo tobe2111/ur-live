@@ -23,7 +23,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
   const navigate = useNavigate()
   const { t } = useTranslation()
   return (
-    <div className="bg-brand-tint border-2 border-rule rounded-2xl p-4 mb-3 relative">
+    <div className="bg-brand-tint border-2 border-rule rounded-2xl p-5 mb-3 relative">
       <button onClick={onClose} aria-label={t('map.detail.deselect', { defaultValue: '선택 해제' })} className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-white dark:bg-[#11141C]/80">
         <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
       </button>
@@ -53,7 +53,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
             })()}
           </p>
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-[17px] font-bold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
+            <span className="text-[16px] font-bold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
             {selected.original_price > selected.price && (
               <>
                 <span className="text-[12px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>

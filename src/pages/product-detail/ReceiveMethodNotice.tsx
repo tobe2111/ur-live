@@ -89,7 +89,7 @@ export function PickupNotice({ pickup }: { pickup: PickupInfo }) {
           <div className="flex items-baseline gap-3">
             <span className="w-12 shrink-0 text-[12px] font-medium tracking-[-0.02em] text-[#8A8288] dark:text-[#8B93A3]">받는 날</span>
             {/* 🔴 날짜로 읽혀야 한다 — 옵션·수량보다 크게. */}
-            <span className="text-[17px] font-bold tracking-[-0.035em] text-gray-900 dark:text-white">{pickupDayLabel(pickup.date)}</span>
+            <span className="text-[16px] font-semibold tracking-[-0.035em] text-gray-900 dark:text-white">{pickupDayLabel(pickup.date)}</span>
           </div>
         )}
         {pickup.place && (

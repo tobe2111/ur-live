@@ -50,13 +50,13 @@ export default function MyCouponsPage() {
       <SEO title={t('myCoupons.seoTitle')} description={t('myCoupons.seoDesc')} url="/my-coupons" noindex />
       <SubPageHeader title={t('myCoupons.title')} backLabel={t('myCoupons.back')} />
 
-      <main className="ur-content-narrow px-4 py-4 pb-20">
+      <main className="ur-content-narrow px-5 py-4 pb-20">
         {loading ? (
           <BrandLoader />  /* 🎯 2026-07-18 로딩 단일화 (헤더 유지 → 인라인) */
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20">
             <AlertIcon className="w-10 h-10 text-red-500 mb-3" />
-            <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
+            <p className="text-[15px] text-gray-900 dark:text-white mb-5">{error}</p>
             <button
               onClick={() => refetch()}
               className="px-5 py-2 bg-brand text-white text-[13px] font-medium rounded-full"
@@ -68,8 +68,8 @@ export default function MyCouponsPage() {
           /* 🧹 2026-10-19: 빈 화면이 같은 말을 두 번 했다(제목 "사용 가능한 쿠폰이 없습니다" + 설명 "받은 쿠폰이 없어요").
              설명은 **다음에 할 일**만 말한다 — 다른 빈 화면들과 같이 유달이 + 들림 카드. */
           <div className="rounded-2xl px-6 py-10 text-center">
-            <Udal mood="empty" size={96} className="block mx-auto mb-4" />
-            <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('myCoupons.empty')}</h2>
+            <Udal mood="empty" size={96} className="block mx-auto mb-5" />
+            <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">{t('myCoupons.empty')}</h2>
             <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('myCoupons.emptySub')}</p>
           </div>
         ) : (

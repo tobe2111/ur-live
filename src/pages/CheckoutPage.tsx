@@ -436,7 +436,7 @@ function CartCheckout() {
     <div className="w-full p-4 sm:p-6">
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg p-4">
         <div className="flex items-center gap-2"><AlertIcon className="w-5 h-5 text-red-600" /><p className="text-red-800 dark:text-red-400">{error}</p></div>
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-5">
           <button onClick={() => window.location.reload()} className="px-4 py-2 bg-brand text-white text-[15px] rounded-lg">{t('common.retry', { defaultValue: '다시 시도' })}</button>
           <Button onClick={() => navigate('/cart', { replace: true })} variant="outline">{t('checkout.backToCart', { defaultValue: '장바구니로 돌아가기' })}</Button>
         </div>
@@ -466,7 +466,7 @@ function CartCheckout() {
           <div className="flex flex-col">
             <div className="flex flex-1 flex-col lg:rounded-3xl">
               {/* 🏪 2026-08-12: 몰 손님이면 결제 화면에도 **가게 간판**을 남긴다(흔적 없으면 미렌더). */}
-              <MallOriginBanner className="mx-5 mt-4" />
+              <MallOriginBanner className="mx-5 mt-5" />
               {/* 🛡️ 2026-05-21: 교환권만 담긴 주문 — 배송지/쿠폰 섹션 숨김.
                     KT Alpha 자동 발송이 users.phone 으로 직접 처리 → 사용자 주소 입력 불요.
                     쿠폰도 deal_only 상품엔 적용 안 됨 (백엔드 차단). */}

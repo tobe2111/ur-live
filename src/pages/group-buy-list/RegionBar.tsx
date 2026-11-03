@@ -17,7 +17,7 @@ export default function RegionBar({ category, regionKey, gpsRegion, regionButton
 }) {
   const { t } = useTranslation()
   return (
-      <div className={`ur-content-wide px-4 lg:px-8 mt-3 ${category === 'general' ? 'hidden' : 'flex items-center gap-2'}`}>
+      <div className={`ur-content-wide px-5 lg:px-8 mt-3 ${category === 'general' ? 'hidden' : 'flex items-center gap-2'}`}>
         <button
           onClick={() => setRegionPickerOpen(true)}
           className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full text-[13px] font-medium border transition-colors ${

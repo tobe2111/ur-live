@@ -170,12 +170,12 @@ export default function InfluencerSettlementPage() {
         <h1 className="text-[15px] font-medium text-gray-900 dark:text-white">매장 소개 정산</h1>
       </header>
 
-      <main className="ur-content-narrow mx-auto px-4 pt-4">
+      <main className="ur-content-narrow mx-auto px-5 pt-4">
         {/* 받을 돈 — 이 화면의 주인공은 숫자 하나다(규칙 ③). 나머지 둘은 그 아래 한 줄. */}
         <section className="rounded-2xl p-5">
           <p className="text-[13px] text-gray-500 dark:text-gray-400">송금 대기</p>
           <p className="mt-1 text-[28px] font-bold tracking-[-0.02em] tabular-nums text-gray-900 dark:text-white">{won(balance?.available_amount)}</p>
-          <div className="mt-4 pt-4 border-t border-rule grid grid-cols-2 gap-3">
+          <div className="mt-5 pt-4 border-t border-rule grid grid-cols-2 gap-3">
             <div>
               <p className="text-[12px] text-gray-500 dark:text-gray-400">{useGate ? '사용 확인 대기' : '환불기간 대기'}</p>
               <p className="mt-1 text-[15px] font-medium tabular-nums text-gray-900 dark:text-white">{won(balance?.pending_amount)}</p>
@@ -185,11 +185,11 @@ export default function InfluencerSettlementPage() {
               <p className="mt-1 text-[15px] font-medium tabular-nums text-gray-900 dark:text-white">{won(balance?.total_paid_out)}</p>
             </div>
           </div>
-          <p className="mt-4 text-[12px] text-gray-500 dark:text-gray-400" data-testid="settle-next-payout">
+          <p className="mt-5 text-[12px] text-gray-500 dark:text-gray-400" data-testid="settle-next-payout">
             {commissionPayoutDayLabel(payoutDay)} 지급 · 다음 지급일 {nextCommissionPayoutDate(Date.now(), payoutDay).replace(/-/g, '.')}
           </p>
           {ownerFunded && (
-            <p className="mt-4 text-[12px] text-gray-500 dark:text-gray-400">소개 수익은 각 매장이 자기 몫에서 지급해요. 유어딜 수수료와는 별개예요.</p>
+            <p className="mt-5 text-[12px] text-gray-500 dark:text-gray-400">소개 수익은 각 매장이 자기 몫에서 지급해요. 유어딜 수수료와는 별개예요.</p>
           )}
         </section>
 
