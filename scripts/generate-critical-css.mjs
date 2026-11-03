@@ -17,8 +17,9 @@
  *   🔒 시험(`critical-css-2026-10-14.test.ts`)이 워커가 import 하는 첫 화면 모듈이 전부 ROOTS 에 있는지 대조한다.
  *
  * ## 산출물
- *   `src/worker/generated/critical-css.ts` — 결정적(같은 소스 = 같은 바이트)이라 **커밋한다**.
- *   첫 화면 모듈을 고친 커밋은 이 파일도 같이 바뀐다(pre-commit 워커 빌드가 다시 만든다).
+ *   `src/worker/generated/critical-css.build.ts` — **추적 안 함**(2026-11-03). 추적되는 `critical-css.ts` 는 빈 자리표시자이고
+ *   워커 빌드가 번들할 때 바꿔 끼운다(`scripts/critical-css-plugin.cjs`). 종전엔 커밋해서 머지마다 충돌했다.
+ *   첫 화면 모듈을 고쳐도 **커밋할 것이 없다** — 빌드(`build:worker`)가 매번 다시 만든다.
  *   생성 실패는 빌드 실패다 — 조용히 빈 값을 내면 첫 화면이 스타일 없이 그려진다(그 반대는 없다:
  *   빈 값이면 워커가 이 기능을 끄고 종전처럼 앱 CSS 로 막는다 — `css-first-boot.ts`).
  */
@@ -28,7 +29,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 // postcss·tailwind·esbuild 는 생성할 때만 불러온다 — 시험(jsdom)이 ROOTS·폐쇄 계산만 import 할 수 있게.
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const OUT = join(ROOT, 'src/worker/generated/critical-css.ts')
+// 🎨 2026-11-03 — **추적 안 하는 파일로 쓴다**(추적 파일은 자리표시자 — scripts/critical-css-plugin.cjs 가 번들할 때 바꿔 끼운다).
+//   종전엔 59KB 한 줄을 커밋해 동시에 고친 PR 끼리 무조건 충돌했다(3일 머지 109건 중 16건).
+export const CRITICAL_CSS_BUILD = join(ROOT, 'src/worker/generated/critical-css.build.ts')
+const OUT = CRITICAL_CSS_BUILD
 
 /** 워커가 `#root` 에 첫 화면을 그리는 모듈 — 시험이 worker/index.ts 의 import 와 대조한다. */
 export const ROOTS = [
@@ -140,7 +144,7 @@ if (isMain) {
   const { css, files } = await generateCriticalCss()
   mkdirSync(dirname(OUT), { recursive: true })
   const body =
-    '// ⚠️ AUTO-GENERATED — scripts/generate-critical-css.mjs. 수동 편집 금지(결정적 산출물이라 커밋한다).\n' +
+    '// ⚠️ AUTO-GENERATED — scripts/generate-critical-css.mjs 가 빌드 때 만든다. 추적 안 함 · 수동 편집 금지.\n' +
     `// 첫 화면 전용 CSS — 폐쇄 ${files.length}개 파일 · ${css.length}B. 워커가 첫 화면 표면에서 <style> 로 넣는다.\n` +
     `export const CRITICAL_CSS: string = ${JSON.stringify(css)}\n`
   const prev = existsSync(OUT) ? readFileSync(OUT, 'utf8') : ''

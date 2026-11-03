@@ -38,7 +38,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import {
   MAX_SHARDS, SECONDS_PER_INJECTION, TARGET_SHARD_MINUTES,
-  assignShards, parseShard, planShards,
+  assignShards, parseShard, planShards, planChangedShards, CHANGED_MAX_SHARDS,
 } from '../../../scripts/guard-mutations-shard.mjs'
 
 const ROOT = path.join(__dirname, '..', '..', '..')
@@ -227,12 +227,35 @@ describe('🧩 전수 주입 조각 분할', () => {
     // 선택 자리에 조각 필터가 실제로 걸려 있는가(이름만 있고 안 걸면 전수로 돈다).
     expect(src, '루프에 조각 필터가 없다').toMatch(/if \(!inShard\(m\)\) continue/)
     // 🔑 테스트 파일 단위 그룹 배분을 **실제로** 쓰는가(색인 나머지로 되돌아가면 baseline 이 조각마다 중복된다).
-    expect(src, '조각 선택이 그룹 배분을 쓰지 않는다').toMatch(/assignShards\(ALL, SHARD\.total\)/)
+    // ⏱️ 2026-11-03: 좁혀 돌 때는 **변경분 목록**에서 배분한다(조각의 합 = 변경분). 전수면 ALL.
+    expect(src, '조각 선택이 그룹 배분을 쓰지 않는다').toMatch(/assignShards\(SHARD_BASE, SHARD\.total\)/)
+    expect(src, '좁힌 조각이 변경분이 아니라 전체에서 배분된다').toMatch(/const SHARD_BASE = SHARD && CHANGED && !SCOPE\.full \? ALL\.filter\(inChanged\) : ALL/)
     expect(src, '색인 나머지 분배로 되돌아갔다').not.toMatch(/shardOf\(/)
     // 0건 조각은 실패여야 한다 — 그게 "조각 전부 초록인데 아무것도 안 돎" 을 막는다.
     expect(src, '0건 조각을 실패로 잡지 않는다').toMatch(/planned === 0[\s\S]{0,400}process\.exit\(1\)/)
-    // --changed·--only 와 겹치면 초록이 무엇을 보증하는지 모호해진다.
-    expect(src, '--shard 와 --changed/--only 겹침을 막지 않는다')
-      .toMatch(/SHARD && \(CHANGED \|\| ONLY\)[\s\S]{0,300}process\.exit\(1\)/)
+    // --only 와 겹치면 초록이 무엇을 보증하는지 모호해진다(--changed 와는 2026-11-03 부터 같이 쓴다 — 변경분을 나눠 돈다).
+    expect(src, '--shard 와 --only 겹침을 막지 않는다')
+      .toMatch(/if \(SHARD && ONLY\) \{[\s\S]{0,300}process\.exit\(1\)/)
+  })
+})
+
+describe('⑧ PR 변경분도 나눠 돈다 (2026-11-03 — 한 대 14~27분이 취소 42% 의 바탕이었다)', () => {
+  it('변경분이 크면 여러 대 · 상한을 넘지 않는다', () => {
+    expect(planChangedShards(540, 120).total).toBeGreaterThanOrEqual(4)
+    expect(planChangedShards(100_000, 10_000).total).toBe(CHANGED_MAX_SHARDS)
+  })
+  it('시험 파일 수보다 많이 나누지 않는다 — 빈 조각은 실패이므로', () => {
+    expect(planChangedShards(540, 2).total).toBe(2)
+  })
+  it('0건·소량은 한 대(종전 그대로 0건을 보고)', () => {
+    expect(planChangedShards(0, 0).total).toBe(1)
+    expect(planChangedShards(30, 2).total).toBe(1)
+  })
+  it('조각들의 합이 정확히 변경분이다 — 변경분 목록 위에서 나누면 겹침·누락이 없다', () => {
+    const items = Array.from({ length: 182 }, (_, i) => ({ name: `m${i}`, test: `t${i % 92}` }))
+    const n = planChangedShards(items.length, 92).total
+    const a = assignShards(items, n)
+    for (let k = 0; k < n; k++) expect(a.filter((x) => x === k).length, `조각 ${k} 가 비었다`).toBeGreaterThan(0)
+    expect(a.length).toBe(items.length)
   })
 })

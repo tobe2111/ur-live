@@ -35,6 +35,11 @@ on:
   # 🔴 `push:` 를 여기 다시 두지 말 것 — 취소된 push-run 이 필수 검사 `Verify` 의 실패본으로 남아 머지를 막는다
   #   (상단 2026-09-15 주석). 가드: src/tests/unit/ci-verify-coverage.test.ts
   workflow_dispatch:
+  # 🚦 2026-11-03 — 머지 대기열(merge queue)용. 대기열이 "main + 줄 선 PR" 을 합친 상태로 Verify 를 돌리고 통과하면
+  #   순서대로 머지한다 — 세션이 main 을 손으로 합칠 일이 없어지고, 합친 결과로 main 이 빨개지는 일이 사라진다.
+  #   ⚠️ 대기열은 **조직(organization) 저장소에서만** 켜진다(지금은 개인 계정 저장소라 이 트리거는 아직 안 돈다 — 해가 없다).
+  #   켜는 절차: docs/decisions/2026-11-03-merge-queue-org-move.md
+  merge_group:
 
 concurrency:
   group: verify-${{ github.head_ref || github.ref_name }}
@@ -54,6 +59,8 @@ jobs:
       full: ${{ steps.p.outputs.full }}
       matrix: ${{ steps.p.outputs.matrix }}
       total: ${{ steps.p.outputs.total }}
+      changed_matrix: ${{ steps.p.outputs.changed_matrix }}
+      changed_total: ${{ steps.p.outputs.changed_total }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -69,9 +76,13 @@ jobs:
           echo "full=$FULL" >> "$GITHUB_OUTPUT"
           if [ "$FULL" = "true" ]; then
             node scripts/guard-mutations-shard.mjs --plan "$(node scripts/check-guard-mutations.mjs --count)" >> "$GITHUB_OUTPUT"
+            echo 'changed_matrix=[0]' >> "$GITHUB_OUTPUT"; echo 'changed_total=1' >> "$GITHUB_OUTPUT"
           else
             # 분할 잡은 건너뛰지만 matrix 식이 빈 값을 받지 않게 자리값을 둔다.
             echo 'matrix=[0]' >> "$GITHUB_OUTPUT"; echo 'total=1' >> "$GITHUB_OUTPUT"
+            # ⏱️ 2026-11-03: 변경분도 여러 대로 나눈다(대수 = 변경분 벽시계 / 4분, 시험 파일 수 이하).
+            CG=$(echo "$SCOPE" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);process.stdout.write(`${j.changed} ${j.groups}`)})')
+            node scripts/guard-mutations-shard.mjs --plan-changed $CG >> "$GITHUB_OUTPUT"
           fi
 
   mutation-shards:
@@ -99,11 +110,127 @@ jobs:
       - name: 가드 주입 전수 검증 — 조각 (strict)
         run: node scripts/check-guard-mutations.mjs -s --shard ${{ matrix.shard }}/${{ needs.mutation-plan.outputs.total }}
 
+  # ⏱️ 2026-11-03 (대표 *"낭비 없이 빨리 각 세션의 배포들을"* → *"가장 이상적으로 해줘"*):
+  #   종전엔 아래 두 덩어리가 `Verify` 한 잡 안에서 **차례로** 돌았다 — 변경분 주입 17.5분 + 단위 시험 10.7분
+  #   + 나머지 ~10분 = 중앙 38분(실측 12회). 그 사이 새 푸시·main 이동으로 PR 검사 300회 중 **125회(42%)가
+  #   취소**됐고(평균 42분 진행 후), 3일간 약 87시간을 버렸다. ⇒ 셋을 **동시에** 돌린다. 다시 올려도 버리는
+  #   시간이 그만큼 작아지고, 도는 동안 main 이 움직일 창도 같이 줄어든다.
+  #   🔴 `Verify` 가 이 둘의 결과를 **명시적으로** 대조한다(건너뛴 필수 검사 = 통과 구멍 — 아래 verify 머리말).
+  mutation-changed:
+    needs: mutation-plan
+    if: needs.mutation-plan.outputs.full != 'true'
+    runs-on: ubuntu-24.04
+    name: 주입 변경분 ${{ matrix.shard }}/${{ needs.mutation-plan.outputs.changed_total }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.mutation-plan.outputs.changed_matrix) }}
+    timeout-minutes: 40
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      # 한 대면 종전 그대로(변경분 0건도 그대로 보고) · 여러 대면 변경분을 시험 파일 단위로 나눈다(합 = 변경분).
+      - name: 가드 주입 검증 (변경분, strict)
+        run: |
+          if [ "${{ needs.mutation-plan.outputs.changed_total }}" = "1" ]; then
+            node scripts/check-guard-mutations.mjs --changed -s
+          else
+            node scripts/check-guard-mutations.mjs --changed -s --shard ${{ matrix.shard }}/${{ needs.mutation-plan.outputs.changed_total }}
+          fi
+        continue-on-error: false
+
+  unit-tests:
+    runs-on: ubuntu-24.04
+    name: 단위 시험 ${{ matrix.shard }}/3
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    timeout-minutes: 30
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      # 일부 시험이 git 이력(merge-base)을 읽는다 — Verify 와 같은 조건으로 받는다.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      # 🛡️ 2026-07-25: 유닛테스트를 PR 단계에서 실행 — 그간 main.yml(배포)에서만 돌아 PR CI 는 green 인데
+      #   병합 후 배포가 테스트 실패로 죽는 사고 실발생(전수조사 #729 → #730 복구). PR 에서 먼저 발각되게.
+      - name: Run unit tests
+        run: npx vitest run --shard=${{ matrix.shard }}/3
+
+  # ⏱️ 2026-11-03 (대표 *"다 하자"*): Verify 의 '나머지' 9.3분 중 가장 무거운 둘을 따로 돌린다 —
+  #   첫 화면 실행 비용(크롬 설치 + 화면 렌더 2.9분)과 이름 충돌 검사(경고만인데 2.8분).
+  #   🔴 실행 비용은 머지를 막는 검사다 — `Verify` 대조 단계가 결과를 확인한다(건너뜀 = 통과 구멍).
+  exec-cost:
+    runs-on: ubuntu-24.04
+    name: 첫 화면 실행 비용
+    timeout-minutes: 30
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build client
+        env:
+          # PR 검증용 더미 — production 배포 아님 (Verify 의 Build client 와 같은 값)
+          VITE_FIREBASE_API_KEY: 'pr-verify-dummy'
+          VITE_FIREBASE_AUTH_DOMAIN: 'pr.example.com'
+          VITE_FIREBASE_PROJECT_ID: 'pr-verify'
+          VITE_FIREBASE_STORAGE_BUCKET: 'pr.example.com'
+          VITE_FIREBASE_MESSAGING_SENDER_ID: '0'
+          VITE_FIREBASE_APP_ID: '0'
+          VITE_KAKAO_APP_KEY: 'pr-verify'
+          VITE_TOSS_CLIENT_KEY: 'pr-verify'
+        run: npm run build:client
+      - name: Build worker
+        run: npm run build:worker
+      # ⚙️ 2026-10-14 (대표 "대시보드랑 실행비용도 최적화 해줘"): 위 예산은 **받는 바이트**만 본다.
+      #   같은 바이트라도 첫 화면에서 **실제로 도는 코드**가 늘면 폰이 바빠진다 — 그걸 미리 막는 장치가 없었다
+      #   (실사용 SLO 는 배포 다음 날에야 안다). 손님 7 + 마이·어드민·에이전시 3 화면을 실제로 렌더해
+      #   V8 커버리지로 '실행된 JS' 를 래칫으로 잠근다(결정적 — 같은 빌드 반복 0.3KB 안). 시간은 기록만.
+      - name: Install chromium (execution cost)
+        run: npx playwright install --with-deps chromium
+      - name: First-screen execution cost budget (strict)
+        run: node scripts/ci-run.mjs node scripts/check-exec-cost.mjs
+
+  naming-conflicts:
+    runs-on: ubuntu-24.04
+    name: 이름 충돌 (경고만)
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Naming conflicts
+        run: bash scripts/check-naming-conflicts.sh
+        continue-on-error: true
+
   verify:
     # 🔴 **`if: always()` 를 지우지 말 것 — 우회 구멍이 된다.** 필수 검사는 `Verify` 하나이고, GitHub 은
     #   **건너뛴(skipped) 필수 검사를 통과로 친다.** 조각이 실패했다고 이 잡이 건너뛰어지면 실패한 PR 이
     #   머지된다. 그래서 언제나 돌고, 아래 첫 단계가 조각 결과를 **명시적으로** 대조해 실패시킨다.
-    needs: [mutation-plan, mutation-shards]
+    needs: [mutation-plan, mutation-shards, mutation-changed, unit-tests, exec-cost]
     if: always()
     runs-on: ubuntu-24.04
     name: Verify
@@ -123,6 +250,15 @@ jobs:
           if [ "${{ needs.mutation-plan.outputs.full }}" != "true" ] && [ "${{ needs.mutation-plan.outputs.full }}" != "false" ]; then
             echo "❌ 판정 출력이 비었다(full='${{ needs.mutation-plan.outputs.full }}') — 판정이 헛돌았다."; exit 1
           fi
+          if [ "${{ needs.mutation-plan.outputs.full }}" = "false" ] && [ "${{ needs.mutation-changed.result }}" != "success" ]; then
+            echo "❌ 주입 변경분 검사가 성공하지 않았다(${{ needs.mutation-changed.result }}) — 위 '주입 변경분 N/M' 잡을 볼 것."; exit 1
+          fi
+          if [ "${{ needs.unit-tests.result }}" != "success" ]; then
+            echo "❌ 단위 시험이 성공하지 않았다(${{ needs.unit-tests.result }}) — 위 '단위 시험 N/3' 잡을 볼 것."; exit 1
+          fi
+          if [ "${{ needs.exec-cost.result }}" != "success" ]; then
+            echo "❌ 첫 화면 실행 비용 검사가 성공하지 않았다(${{ needs.exec-cost.result }}) — 위 '첫 화면 실행 비용' 잡을 볼 것."; exit 1
+          fi
 
       # fetch-depth: 0 — file-size ratchet 의 --changed-only 가 origin/main 과의 merge-base 를
       # 계산해야 함 (기본 shallow(depth 1) clone 엔 main 이력이 없어 merge-base 불가 → 전수 폴백돼
@@ -139,10 +275,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 🛡️ 2026-07-25: 유닛테스트를 PR 단계에서 실행 — 그간 main.yml(배포)에서만 돌아 PR CI 는 green 인데
-      #   병합 후 배포가 테스트 실패로 죽는 사고 실발생(전수조사 #729 → #730 복구). PR 에서 먼저 발각되게.
-      - name: Run unit tests
-        run: npm test -- --run
+      # ⏱️ 단위 시험은 2026-11-03 부터 `unit-tests` 잡(3대)이 돈다 — 위 대조 단계가 결과를 확인한다.
 
       # ── 1. 영구 안티패턴 검사 (사고 재발 방지) ──
       - name: Hono v4 라우터 안티패턴 (wildcard cors)
@@ -298,11 +431,7 @@ jobs:
       #   실측으로 이 스텝이 Verify 의 77%(37분 24초)였고, 그 길이가 머지 충돌을 만들고 있었다.
       #   🔴 전수는 `guard-mutations-full.yml`(main push + 야간)이 돈다 — **그걸 지우면 검사가 꺼진다.**
       #   애매하면 전수로 폴백한다(base 못 구함 · scripts/** · package.json · verify.yml 변경 시).
-      - name: 가드 주입 검증 (변경분, strict)
-        # 전수면 위 분할 잡(mutation-shards)이 했다 — 여기서 또 돌면 3시간이 되살아난다.
-        if: needs.mutation-plan.outputs.full != 'true'
-        run: node scripts/check-guard-mutations.mjs --changed -s
-        continue-on-error: false
+      # ⏱️ 2026-11-03: 변경분 주입은 `mutation-changed` 잡(여러 대)이 돈다 — 첫 대조 단계가 결과를 확인한다.
 
       # 🧭 2026-09-26: 위 스텝이 잡는 두 가지 중 **낡은 지도**(`find` 가 소스에 없다)는
       #   테스트를 돌릴 필요가 없다 — 문자열이 파일에 있는지만 보면 된다. 그런데 그 긴 스텝에
@@ -515,9 +644,7 @@ jobs:
         run: node scripts/generate-ops-handbook.mjs --check
         continue-on-error: false
 
-      - name: Naming conflicts
-        run: bash scripts/check-naming-conflicts.sh
-        continue-on-error: true
+      # 🏷️ 이름 충돌(경고만)은 2026-11-03 부터 `naming-conflicts` 잡이 따로 돈다 — 경고만인데 Verify 를 2.8분 붙잡고 있었다.
 
       # 🛡️ 2026-05-31: 다크/라이트 테마 일관성 — 유저 대면 화이트-토글 페이지의
       #   라이트 색상(bg-white/text-gray-900 등)에 dark: variant 누락 검출.
@@ -1045,14 +1172,7 @@ jobs:
       - name: Per-surface first-screen weight budget (strict)
         run: node scripts/ci-run.mjs node scripts/check-surface-budgets.mjs
 
-      # ⚙️ 2026-10-14 (대표 "대시보드랑 실행비용도 최적화 해줘"): 위 예산은 **받는 바이트**만 본다.
-      #   같은 바이트라도 첫 화면에서 **실제로 도는 코드**가 늘면 폰이 바빠진다 — 그걸 미리 막는 장치가 없었다
-      #   (실사용 SLO 는 배포 다음 날에야 안다). 손님 7 + 마이·어드민·에이전시 3 화면을 실제로 렌더해
-      #   V8 커버리지로 '실행된 JS' 를 래칫으로 잠근다(결정적 — 같은 빌드 반복 0.3KB 안). 시간은 기록만.
-      - name: Install chromium (execution cost)
-        run: npx playwright install --with-deps chromium
-      - name: First-screen execution cost budget (strict)
-        run: node scripts/ci-run.mjs node scripts/check-exec-cost.mjs
+      # ⚙️ 첫 화면 실행 비용은 2026-11-03 부터 `exec-cost` 잡이 따로 돈다(Verify 안에서 2.9분) — 대조 단계가 결과를 본다.
 
       # 🔁 2026-10-13: 청크끼리 서로 import 하면(순환) 평가 순서에 따라 화면이 통째로 오류가 된다 —
       #   묶음기가 prop-types 를 페이지 봉투로 옮겨 stripe ↔ lz-… 순환이 생기자 /checkout 전체가 오류 화면이었다

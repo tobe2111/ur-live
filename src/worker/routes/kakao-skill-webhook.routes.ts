@@ -21,12 +21,16 @@
  *   여전히 참이다(FAQ 는 종전 그대로). 연결·좌석·확인 모델: `utils/kakao-bot-store.ts` · 명령: `utils/kakao-bot-commands.ts`.
  *   게이트 둘: `KAKAO_SKILL_SECRET`(이 스킬 자체) + `KAKAO_BOT_STORE_OPS_ENABLED`/`kakao_bot_store_ops_enabled`
  *   (매장 관리, 기본 OFF — 꺼지면 연결·명령은 "준비 중").
+ *
+ * 🤖 2026-11-03: 키워드가 빗나간 말은 AI 가 **FAQ id 만** 고른다(`utils/cs-ai-classify.ts`, 답 원문은 그대로).
+ *   게이트 `KAKAO_BOT_AI_ENABLED='true'` + `ANTHROPIC_API_KEY`(기본 OFF).
  */
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { CS_FAQ_ENTRIES, CS_FAQ_FALLBACK, matchCsFaq } from '../../features/cs/api/cs-faq'
 import { isStoreOpsEnabled, hasBotLinkNoDdl, resolveLinkedSeat } from '../utils/kakao-bot-store'
 import { recordUnanswered } from '../utils/cs-unanswered'
+import { classifyCsUtterance, isCsAiEnabled, type CsAiEnv } from '../utils/cs-ai-classify'
 import { parseStoreCommand, runLinkCommand, runStoreCommand, helpText, STORE_QUICK, type BotReply, type BotCtx } from '../utils/kakao-bot-commands'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -114,6 +118,14 @@ app.post('/api/cs/kakao-skill', async (c) => {
         if (seat.kind === 'ok') return c.json(skillResponse(helpText(seat.seat.storeName), STORE_QUICK))
         if (seat.kind === 'revoked') return c.json(skillResponse(STORE_SEAT_REVOKED))
       }
+    }
+    // 🤖 2026-11-03 — 키워드가 빗나간 말만 AI 에게 "어느 FAQ 인가" 를 묻는다(답은 언제나 사람이 쓴 FAQ 원문).
+    //   게이트 `KAKAO_BOT_AI_ENABLED` + `ANTHROPIC_API_KEY`(기본 OFF). 실패·시간초과·모름 = 종전 폴백.
+    const aiEnv = c.env as Env & CsAiEnv
+    if (isCsAiEnabled(aiEnv)) {
+      const id = await classifyCsUtterance(aiEnv.ANTHROPIC_API_KEY as string, utterance, CS_FAQ_ENTRIES)
+      const hit = id ? CS_FAQ_ENTRIES.find(e => e.id === id) : undefined
+      if (hit) return c.json(await done(skillResponse(hit.answer)))
     }
     // 💬 2026-10-18 — 답하지 못한 질문을 모은다(개인정보 가림 · 응답 뒤 · 실패 무시). 주간 보고가 FAQ 후보로 읽는다.
     if (DB) defer(recordUnanswered(DB, utterance).catch(() => false))

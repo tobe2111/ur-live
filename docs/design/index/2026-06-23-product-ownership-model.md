@@ -1,0 +1,1 @@
+| **🏷️ 상품 소유 모델 — 원청(주인)/홍보(핀) + 어드민·셀러 업로드 통합** | 2026-06-23 | 🟡 정책 ✅ 확정 + fee-resolver SSOT·26테스트·settings ✅ / **결제 배선만 gated**(3P 10→5%·에이전시 2→1% 인하 동반 → 대표 승인+staging 필요) | [product-ownership-model.md](./product-ownership-model.md) |
