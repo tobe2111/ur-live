@@ -42,8 +42,9 @@ export default [
   {
     name: '[콘솔알림] 콘솔에서 판매 알림 줄이 사라진다',
     file: PANEL,
-    find: '            label="판매 알림"\n',
-    replace: '            label="알림 꺼짐"\n',
+    // 🔁 2026-11-03 재조준 — 할 일 줄이 한 벌(`todoRows`)로 모였다.
+    find: '        label="판매 알림"\n',
+    replace: '        label="알림 꺼짐"\n',
     test: TEST,
     why: '대시보드 껍데기를 지우면 에이전시 직원의 유일한 판매 알림함이다.',
   },

@@ -7,15 +7,15 @@ import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import { currentSeatId } from '@/lib/seller-seat'
 import { readToolParam } from '@/lib/seller-deep-link'
 import { notifTarget } from '@/lib/notif-target'
-import { agencyRequest, enterAgencyStore, isMyAgencySeat, readAgencyProfile } from './agency-api'
+import { agencyRequest, enterAgencyStore, isMyAgencySeat } from './agency-api'
 import AgencyNotificationsSheet, { type AgencyNotification } from './AgencyNotificationsSheet'
 import { useAgencyStores, type StoreRow } from './agency-stores-model'
 import AgencyStorePlate from './AgencyStorePlate'
 import AgencySalesSheet from './AgencySalesSheet'
-import { openEmbedCode } from '@/shared/embed-code-link'
 import { AgencyRegisterStoreCard } from './AgencyRegisterStoreCard'
 import { ROW_LABEL_CLS } from '@/pages/user-profile/list-grammar'
-import { MailIcon, StoreIcon, GridIcon, ShopPlusIcon } from '@/components/icons/urdeal-icons'
+import { MailIcon, StoreIcon, ShopPlusIcon } from '@/components/icons/urdeal-icons'
+import { AgencyRowStyle, AgencyTodayCard, TossCard, TossTile, TOSS_CARD_CLS, useAgencyRowStyle } from './agency-toss'
 
 /**
  * 🏢 에이전시 콘솔 본문 — 대표 확정 **안 A** (2026-10-12 · *"A안으로 해줘. 이건 PC버전도 중요해"*)
@@ -43,8 +43,10 @@ export function storeRowHint(r: StoreRow): { text: string; urgent: boolean } {
 
 type AgencySheet = 'picker' | 'requests' | 'register' | 'notifs' | 'sales' | null
 
-export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows, stacked = false, toolParam, ownSellerIds }: {
+export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows, stacked = false, toolParam, ownSellerIds, toss = false }: {
   onExpired: () => void
+  /** 🧾 2026-11-03 토스 참고 안 — 판(카드)으로 묶고 두 줄 행 · 오늘 매출 합계 카드(`agency-toss.tsx`). */
+  toss?: boolean
   /**
    * 🧩 2026-11-02 대표 *"에이전시 계정 안에 저 업체들이 종속되는 형태잖아? 근데 왜 따로 노는 형태인거지?"* —
    *   마이(손님)에서는 이 사람이 운영자로 맡은 매장이 이미 위 '내 가게' 판에 있다. 에이전시가 맡은 매장이
@@ -71,8 +73,8 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
   const coveredByMine = !!ownSellerIds && ownSellerIds.length > 0 && !error
     && (rows === null || active.every((r) => ownSellerIds.includes(r.sellerId)))
   const [sheet, setSheet] = useState<AgencySheet>(null)
-  // 🧩 위젯 코드 버튼이 쓰는 번호. 로그인 응답이 이미 준다 — 사용자는 번호를 몰라도 된다.
-  const agencyId = readAgencyProfile()?.agency.id ?? null
+  // 🗑️ 2026-11-03 대표 *"마이페이지에 에이전시 측에서 볼 때 위젯 코드 만드는 홈페이지에 넣기는 빼줘"* —
+  //   '홈페이지에 넣기' 줄과 그 줄이 쓰던 번호(`readAgencyProfile().agency.id`)를 걷었다. 위젯 자체(`/embed`)는 그대로다.
   const [busyId, setBusyId] = useState<number | null>(null)
   /**
    * 🚪 깊은 링크(`/agency?tool=/seller/orders`) — 대시보드 껍데기가 에이전시 직원을 이리로 보낸다
@@ -167,6 +169,26 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
     load()
   }
 
+  /** 할 일 두 줄(판매 알림 · 맡김 요청) — 평면이든 토스 판이든 **한 벌**이다(두 벌이면 한쪽만 고쳐진다). */
+  const todoRows = (
+    <>
+      <FlatRow
+        icon={<MailIcon className="h-[18px] w-[18px]" aria-hidden="true" />}
+        label="판매 알림"
+        hint={notifUnread > 0 ? `새 알림 ${notifUnread}` : notifs && notifs.length > 0 ? '모두 읽음' : '없음'}
+        urgent={notifUnread > 0}
+        onClick={() => setSheet('notifs')}
+      />
+      <FlatRow
+        icon={<StoreIcon className="h-[18px] w-[18px]" aria-hidden="true" />}
+        label="맡김 요청"
+        hint={pending.length > 0 ? `새 요청 ${pending.length}` : '없음'}
+        urgent={pending.length > 0}
+        onClick={() => setSheet('requests')}
+      />
+    </>
+  )
+
   return (
     <div className={stacked ? 'flex flex-col gap-8' : 'mt-8 flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-6'}>
       {/* ── 왼쪽(PC) / 아래(폰) ─────────────────────────────── */}
@@ -202,34 +224,36 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
 
         {/* 🏠 마이 안에서는 구역 제목('에이전시 · 이름')이 이미 있어 같은 말을 또 하지 않는다. */}
 
+        {toss ? (
+          /* 🧾 토스 참고 안 — [오늘 매출] · [할 일] · [관리] 판, 로그아웃은 맨 아래 조용한 글자. */
+          <AgencyRowStyle.Provider value="toss">
+            <div className="flex flex-col gap-3">
+              <AgencyTodayCard rows={rows === null ? null : active} />
+              <TossCard title="할 일" testId="agency-todo-card">
+                {todoRows}
+              </TossCard>
+              <TossCard testId="agency-manage-card">
+                {agencyRows}
+                {canManage && <FlatRow icon={<ShopPlusIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="매장 대신 등록" hint="유어딜에 없는 매장" onClick={() => setSheet('register')} />}
+              </TossCard>
+              {trailingRows}
+            </div>
+          </AgencyRowStyle.Provider>
+        ) : (<>
         {!stacked && <h2 className="text-[16px] font-semibold text-gray-500 dark:text-gray-400">에이전시</h2>}
         <div className={stacked ? '' : 'mt-1'}>
-          <FlatRow
-            icon={<MailIcon className="h-[18px] w-[18px]" aria-hidden="true" />}
-            label="판매 알림"
-            hint={notifUnread > 0 ? `새 알림 ${notifUnread}` : notifs && notifs.length > 0 ? '모두 읽음' : '없음'}
-            urgent={notifUnread > 0}
-            onClick={() => setSheet('notifs')}
-          />
-          <FlatRow
-            icon={<StoreIcon className="h-[18px] w-[18px]" aria-hidden="true" />}
-            label="맡김 요청"
-            hint={pending.length > 0 ? `새 요청 ${pending.length}` : '없음'}
-            urgent={pending.length > 0}
-            onClick={() => setSheet('requests')}
-          />
-          {/* 🧩 회사 홈페이지 위젯 — 종전 큰 카드(2026-11-01)를 줄로(2026-11-02 마이 정리). 번호는 로그인 응답의 것. */}
-          {agencyId != null && <FlatRow icon={<GridIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="홈페이지에 넣기" hint="코드 받기" onClick={() => openEmbedCode('agency', agencyId)} />}
+          {todoRows}
           {agencyRows}
           {canManage && <FlatRow icon={<ShopPlusIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="매장 대신 등록" hint="유어딜에 없는 매장" onClick={() => setSheet('register')} last={!trailingRows} />}
           {trailingRows}
         </div>
+        </>)}
       </div>
 
       {/* ── 오른쪽(PC) / 위(폰) — 고른 매장의 판 ──────────────────── */}
-      <section aria-label={picked ? `${picked.name} 판매` : '맡은 매장'} className={coveredByMine ? 'hidden' : stacked ? 'order-1 min-w-0' : 'order-1 lg:order-2 min-w-0 flex-1'}>
+      <section aria-label={picked ? `${picked.name} 판매` : '맡은 매장'} className={`${coveredByMine ? 'hidden' : stacked ? 'order-1 min-w-0' : 'order-1 lg:order-2 min-w-0 flex-1'}${toss ? ` ${TOSS_CARD_CLS} py-4` : ''}`}>
         {/* 🔗 2026-11-02 대표 확정 버튼 ① — 매장 영입 입구는 **마이 머리** 하나다(`AgencyInviteButton`).
-            종전엔 이 자리에 큰 카드 + 빈 칸 안 버튼으로 두 번 있었다. '홈페이지에 넣기' 는 아래 줄로 내려갔다. */}
+            종전엔 이 자리에 큰 카드 + 빈 칸 안 버튼으로 두 번 있었다. ('홈페이지에 넣기' 줄은 2026-11-03 대표 지시로 걷었다.) */}
         <div className="flex items-center gap-2">
           {/* 🖥️ PC 는 매장 이름이 제목이다(왼쪽 목록이 고르기를 맡는다). 폰은 '맡은 매장' + 고르기 칩. */}
           {!stacked && <h2 className="hidden lg:block min-w-0 truncate text-[16px] font-semibold text-gray-500 dark:text-gray-400">{picked?.name ?? '맡은 매장'}</h2>}
@@ -385,6 +409,20 @@ export function FlatRow({ icon, label, hint, urgent = false, onClick, last = fal
   onClick: () => void
   last?: boolean
 }) {
+  const style = useAgencyRowStyle()
+  if (style === 'toss') {
+    // 🧾 토스 참고 안 — 타일 + 두 줄(제목 16·600 / 아래 13 회색), 판 안에서는 구분선 없이 여백으로 가른다.
+    return (
+      <button type="button" onClick={onClick} className="flex min-h-[64px] w-full items-center gap-3 py-2 text-left active:opacity-70">
+        <TossTile>{icon}</TossTile>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[16px] font-semibold text-gray-900 dark:text-white">{label}</span>
+          {hint && <span className={`block mt-1 truncate text-[13px] ${urgent ? 'font-medium text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>{hint}</span>}
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+      </button>
+    )
+  }
   return (
     <button
       type="button"

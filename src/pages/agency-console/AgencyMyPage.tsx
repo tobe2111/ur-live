@@ -54,7 +54,7 @@ export default function AgencyMyPage() {
         </header>
 
         <div className="mt-6">
-          <AgencySection headless onSessionEnd={onSessionEnd} />
+          <AgencySection headless toss onSessionEnd={onSessionEnd} />
         </div>
 
         <SectionTitle>설정</SectionTitle>
