@@ -46,3 +46,5 @@
 - **켜기 전**: `docs/STAGING_CHECKLIST.md` **S-STAYREF** 5건. 이 세션은 실결제를 못 해 스위치는 OFF 로 남긴다.
 - ③ 후속: 대표 *"그냥 너가 해줘 내가 스위치 키는거 말고 … 허가해줄게"* → 스위치(`stay_referral_unify_enabled`) 제거. 숙소 소개 적립은 언제나 이용권 장부 · 숙소 상세 '팔아보기' 항상. **배포 뒤 첫 숙소 소개 결제가 생기면 S-STAYREF 5건을 원장·`influencer_attributions` 로 확인할 것**(staging 선확인은 대표 결정으로 생략).
 - 🐢 대표 *"숙소 이용권만 클릭하면 로딩이 상대적으로 길어"*: 라이브 실측(홈 → 카드 클릭, 폰 크기)에서 숙소만 `TimeoutError: Transition was aborted … DOM update timed out`. 카드→상세 사진 전환의 기다림이 rAF 라 전환 중엔 안 돌아 ~4초 화면이 멈췄다(이용권은 청크가 미리 받아져 첫 확인에 사진이 있어서 안 드러남). `deal-view-transition.ts` 를 타이머+300ms 상한으로. 기록 `docs/locks/loading/2026-11-03-deal-transition-timer.md`. 남은 것: 숙소 상세가 클릭 뒤 `lz-gbDetailL` 청크를 따로 받는다(미리받기에 안 실림) — 체감 0.2~0.4초.
+- 🩸 **틀렸던 판단**: 대표께 *"결제 뒤(지갑 QR·정산·환불)는 10월에 통일돼 같다"* 고 보고했는데, 그 게이트(`stay_voucher_unify_enabled`)는 **한 번도 켜진 적이 없었다**(설정 행 0). 숙소 결제는 지갑 QR 이 안 생겼다. 대표 *"합쳐줘"* 로 게이트 제거 — 언제나 발급. 배포 뒤 첫 숙소 결제를 S-STAYV 로 확인.
+- 다음: 상세 화면 하나로 합치기(StayDetailPage → 이용권 상세 + 날짜·객실 모듈). 대표 *"합쳐줘"*.

@@ -2,7 +2,7 @@
  * 🏡 숙소 = 이용권 통일 — 실제 SQLite 위에서 진짜 함수를 돌려 판정한다.
  * 대표 2026-10-25 *"숙소를 이용권 방식으로 합치는 안으로 진행하자. 끝까지."*
  *
- * 지키는 것: ① 게이트 OFF 면 발급 0 ② 예약당 1장(멱등) ③ 체크인 날짜 판정(한국 날짜)
+ * 지키는 것: ① 스위치 없음 — 설정 행이 꺼져 있어도 발급(2026-11-03 대표 "합쳐줘") ② 예약당 1장(멱등) ③ 체크인 날짜 판정(한국 날짜)
  *   ④ 사용 → 예약 체크인 ⑤ 취소가 이용권을 먼저 잡고, 이미 쓴 이용권은 취소를 막는다
  *   ⑥ 앞선 취소가 잡은 이용권을 되살리지 않는다 ⑦ 모든 사용·환불 입구가 이 모듈을 지난다(배선).
  * ⚠️ 못 보는 것: Toss 환불 · 원장 금액(그건 `recordVoucherUsedLedger` 가 원래 쓰던 경로 그대로다) ·
@@ -59,10 +59,10 @@ function setup(gate: 'true' | 'false' = 'true') {
 }
 
 describe('발급', () => {
-  it('게이트 OFF 면 한 장도 안 만든다', async () => {
+  it('스위치 없음 — 옛 설정 행이 꺼져 있어도 결제 확정된 예약에 이용권이 생긴다(2026-11-03)', async () => {
     const { raw, DB } = setup('false')
-    expect(await issueStayVouchers(DB, { orderId: 100, userId: 7, bookingIds: [1] })).toBe(0)
-    expect((raw.prepare('SELECT COUNT(*) n FROM vouchers').get() as { n: number }).n).toBe(0)
+    expect(await issueStayVouchers(DB, { orderId: 100, userId: 7, bookingIds: [1] })).toBe(1)
+    expect((raw.prepare('SELECT COUNT(*) n FROM vouchers').get() as { n: number }).n).toBe(1)
   })
   it('확정된 예약마다 1장 — 금액·만료·예약 id 가 실린다, 미확정은 건너뛴다', async () => {
     const { raw, DB } = setup()
