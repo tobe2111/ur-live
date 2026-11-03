@@ -73,7 +73,8 @@ const seedJson = (products: unknown[], title = '지금 인기 이용권', subtit
 function workerCard(p: unknown): HTMLAnchorElement {
   const host = document.createElement('div')
   host.innerHTML = buildHomeFirstScreen(seedJson([p]), LOADER)
-  const a = host.querySelector('#ur-first-screen a')
+  // 🏠 2026-11-03 첫 화면 맨 위에 로고 링크(`a[href="/"]`)가 생겨 '첫 a' 가 카드가 아니게 됐다 — 카드 영역 안에서 찾는다.
+  const a = host.querySelector('#ur-first-screen section a')
   if (!a) throw new Error('워커가 카드를 안 그렸다')
   return a as HTMLAnchorElement
 }
@@ -166,7 +167,7 @@ describe('② 경계 — 서버가 그리는 범위', () => {
     const many = Array.from({ length: 9 }, (_, i) => ({ ...BARE, id: 100 + i }))
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seedJson(many), LOADER)
-    expect(host.querySelectorAll('#ur-first-screen a').length).toBe(HOME_CARD_ABOVE_FOLD)
+    expect(host.querySelectorAll('#ur-first-screen section a').length).toBe(HOME_CARD_ABOVE_FOLD) // 🏠 2026-11-03 맨 위 로고 링크는 카드가 아니다
   })
 
   it('🔴 둘째 섹션·피드·유어쇼츠는 안 그린다 (첫 화면 밖)', () => {
@@ -183,15 +184,19 @@ describe('② 경계 — 서버가 그리는 범위', () => {
     expect(host.querySelector('#ur-first-screen')?.textContent).not.toContain('주말에 떠나는 숙소')
   })
 
-  it('🔴 위치 이름을 **지어내지 않는다** (저장된 지역·측위는 서버가 모른다)', () => {
+  // 🏠 2026-11-03 대표 *"윗부분 동탄5동 … 로고 … 되게 느려 처음에"* — 종전 원칙("서버는 지역을 모르니 이름을 비워 둔다")을 바꿨다.
+  //   이제 이름은 **화면이 마지막에 그린 글자**(쿠키 `ur_home_loc`)라 서버가 지어내는 게 아니다. 쿠키가 없으면 처음 온 손님이고
+  //   화면 규칙(`homeLocationLabel`)도 '전국' 이다. 여전히 지어내지 않는 것: 쿠키 없이 '내 주변'·동 이름.
+  it('🔴 위치 이름은 쿠키(화면이 남긴 글자)에서만 — 없으면 화면 규칙과 같은 \'전국\'', () => {
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seedJson([BARE]), LOADER)
     const label = host.querySelector(`#ur-first-screen .${CSS.escape('text-[24px]')}`)
     expect(label).toBeTruthy()
-    expect(label?.textContent?.trim()).toBe('') // &nbsp; → 줄 높이만
+    expect(label?.textContent?.trim()).toBe('전국')
     const txt = host.querySelector('#ur-first-screen')?.textContent || ''
-    expect(txt).not.toContain('전국')
     expect(txt).not.toContain('내 주변')
+    host.innerHTML = buildHomeFirstScreen(seedJson([BARE]), LOADER, '', 'ur_home_loc=%EB%8F%99%ED%83%845%EB%8F%99')
+    expect(host.querySelector(`#ur-first-screen .${CSS.escape('text-[24px]')}`)?.textContent).toBe('동탄5동')
   })
 
   it('🔴 거리(km)와 찜 하트는 안 그린다 (클라 상태 · absolute)', () => {
@@ -200,7 +205,7 @@ describe('② 경계 — 서버가 그리는 범위', () => {
     host.innerHTML = buildHomeFirstScreen(seedJson([withLoc]), LOADER)
     const txt = host.querySelector('#ur-first-screen')?.textContent || ''
     expect(txt).not.toMatch(/\d+km/)
-    expect(host.querySelectorAll('#ur-first-screen button').length).toBe(0)
+    expect(host.querySelectorAll('#ur-first-screen section button').length).toBe(0) // 찜 하트(카드 안). 🏠 2026-11-03 맨 위 줄의 검색·알림·장바구니·위치 버튼은 카드가 아니다
   })
 
   it('🔴 그린 내용 **아래**에 짧아진 로더가 붙는다', () => {

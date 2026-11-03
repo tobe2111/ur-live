@@ -61,6 +61,8 @@ import { stripStorePrefix } from '../../utils/deal-title'
 import { formatNumber } from '../../utils/format'
 import { STRIP_CLS, stripBannersOf, stripBannerImageUrl, type SeededStripBanner } from '../../shared/home-strip-banners'
 import { resolveBannerLink } from '../../components/home/banner-link'
+import { HOME_TOP_LOGO, HOME_TOP_SEARCH, HOME_TOP_BELL, HOME_TOP_BAG, HOME_TOP_CHEVRON, HOME_TOP_LOCATE } from './home-top-markup'
+import { homeLocLabelFromCookieHeader, HOME_LOC_LABEL_DEFAULT } from '../../shared/home-loc-label-cookie'
 import { regionHeroFromCookieHeader, REGION_HERO_FADE_LIGHT, REGION_HERO_FADE_DARK, type RegionHero } from '../../shared/home-region-hero'
 
 export function escAttr(s: string): string {
@@ -89,6 +91,7 @@ export const HOME_FS_CLASS = {
   locRow: 'px-4 pt-1 pb-3',
   locTrigger: 'inline-flex items-center gap-1 -ml-0.5 max-w-full',
   locLabel: 'text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white max-w-[220px] truncate',
+  locate: 'inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-60',
   catRow: 'flex items-end gap-3 px-4',
   catNav: 'flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide',
   catBase: 'shrink-0 pb-2 text-[15px] transition-colors border-b-2',
@@ -238,7 +241,7 @@ function heroBgHtml(hero: RegionHero): string {
   )
 }
 
-function chromeHtml(hero: RegionHero | null): string {
+function chromeHtml(hero: RegionHero | null, locLabel: string = HOME_LOC_LABEL_DEFAULT): string {
   // 🏠 2026-11-02 탭 줄은 전체 표(생활 포함 — 폰에선 `/life` 링크). 화면과 같은 글자를 그려야 마운트 때 안 바뀐다.
   const cats = DEAL_CAT_LABELS.map(({ key, label }) =>
     `<span class="${HOME_FS_CLASS.catBase} ${key === 'all' ? HOME_FS_CLASS.catOn : HOME_FS_CLASS.catOff}">${escText(label)}</span>`,
@@ -247,11 +250,19 @@ function chromeHtml(hero: RegionHero | null): string {
     (hero
       ? `<div data-region-hero="${escAttr(hero.slug)}" class="${HOME_FS_CLASS.heroChrome}">${heroBgHtml(hero)}`
       : `<div class="${HOME_FS_CLASS.chrome}">`) +
-    `<div class="${HOME_FS_CLASS.topRow}"></div>` +
+    // 🏠 2026-11-03 로고 줄·위치 줄도 화면과 같은 마크업으로(종전: 빈 상자 + 공백 이름 — 앱 부팅 뒤에야 채워졌다). 조각은 `home-top-markup.ts`.
+    `<div class="${HOME_FS_CLASS.topRow}">` +
+    `<a href="/" aria-label="홈" class="shrink-0 flex items-center">${HOME_TOP_LOGO}</a>` +
+    `<div class="flex items-center gap-1 text-gray-900 dark:text-white">` +
+    `<button aria-label="검색" class="p-2 shrink-0">${HOME_TOP_SEARCH}</button>` +
+    `<button aria-label="알림" class="p-2 shrink-0">${HOME_TOP_BELL}</button>` +
+    `<button aria-label="장바구니" class="p-2 shrink-0">${HOME_TOP_BAG}</button>` +
+    `</div></div>` +
     `<div class="${HOME_FS_CLASS.locRow}">` +
     // 위치 이름은 안 그린다(위 머리말) — 줄 높이를 만드는 **같은 마크업**만 세운다.
     `<div class="min-w-0"><div class="relative inline-block"><div class="flex items-center gap-2">` +
-    `<span class="${HOME_FS_CLASS.locTrigger}"><span class="${HOME_FS_CLASS.locLabel}">&nbsp;</span></span>` +
+    `<button class="${HOME_FS_CLASS.locTrigger}" aria-expanded="false"><span class="${HOME_FS_CLASS.locLabel}">${escText(locLabel)}</span>${HOME_TOP_CHEVRON}</button>` +
+    `<button aria-label="현 위치로 설정" class="${HOME_FS_CLASS.locate}">${HOME_TOP_LOCATE}</button>` +
     `</div></div></div>` +
     `</div>` +
     `<div class="${HOME_FS_CLASS.catRow}"><nav class="${HOME_FS_CLASS.catNav}">${cats}</nav></div>` +
@@ -319,7 +330,7 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
     // 🩸 2026-10-13 — 크롤러가 받는 홈 문서에 제목 요소가 h3 하나뿐이었다. `sr-only` 라 박스가
     //    0이고(= 첫 화면 잠금 무영향) React 쪽(`MobileHomePage`)도 **같은 자리에 같은 값**을 그린다.
     `<h1 class="sr-only">${escText(HOME_H1)}</h1>` +
-    chromeHtml(regionHeroFromCookieHeader(cookieHeader)) +
+    chromeHtml(regionHeroFromCookieHeader(cookieHeader), homeLocLabelFromCookieHeader(cookieHeader)) +
     // 🏠 2026-11-02 대표 확정(모바일 안 1) — 첫 섹션은 **제목 줄 없이** 카드만, 배너는 그 **아래**.
     //    화면(`MobileHomePage` → `HomeSections bareFirst`)과 같은 순서여야 마운트 때 안 튄다.
     `<div class="mt-3"><section class="${HOME_FS_CLASS.panel} ur-panel-flush">` +

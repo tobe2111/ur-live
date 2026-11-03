@@ -22,6 +22,8 @@ import { DEAL_CATS, HOME_TAB_LINKS, type DealCategory } from '@/pages/pc-home/Pc
 import { ShortsIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
+import { homeLocationLabel } from '@/pages/pc-home/home-location-label'
+import { homeLocLabelCookie } from '@/shared/home-loc-label-cookie'
 import { regionHeroFor, REGION_HERO_FADE_LIGHT, REGION_HERO_FADE_DARK, HOME_HERO_COOKIE, homeHeroCookieValue } from '@/shared/home-region-hero'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-02 13차 ① — 사진 머리를 지나 나타나는 고정 막대가 툭 생기지 않고 위에서 스르르 내려온다(고정 위치라 아래 내용은 안 밀린다).
@@ -117,6 +119,11 @@ export default function MobileHomePage() {
   useEffect(() => {
     try { document.cookie = `${HOME_HERO_COOKIE}=${homeHeroCookieValue(hero)}; Path=/; Max-Age=31536000; SameSite=Lax` } catch { /* 쿠키 막힘 — 서버는 전국 사진 */ }
   }, [hero?.slug]) // eslint-disable-line react-hooks/exhaustive-deps
+  // 🏠 2026-11-03 — 맨 위 위치 이름도 남긴다(서버 첫 화면이 '동탄5동' 을 처음부터 그리게 · `home-loc-label-cookie.ts`). 표시용 · 1년.
+  const topLocLabel = homeLocationLabel({ located: !!userLoc, dongLabel: dong?.dong, region })
+  useEffect(() => {
+    try { document.cookie = homeLocLabelCookie(topLocLabel) } catch { /* 쿠키 막힘 — 서버는 '전국' */ }
+  }, [topLocLabel])
   const heroEndRef = useRef<HTMLDivElement | null>(null)
   const [heroPassed, setHeroPassed] = useState(false)
   useEffect(() => {
