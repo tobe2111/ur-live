@@ -24,6 +24,7 @@ import { useTheme, type ThemeMode } from '@/shared/stores/useTheme'
 import DealMiniCard from '@/components/deal/DealMiniCard'
 import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT } from '@/shared/guest-page'
 import GuestDock from './GuestDock'
+import { useGuestMotion } from './guest-motion'
 import { startGuestKakaoLogin } from './guest-login'
 
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
@@ -44,6 +45,8 @@ export default function GuestMyPage() {
   const recent = useMemo(() => readRecentlyViewed().slice(0, 6), [])
   const mode = useTheme((s) => s.mode)
   const setMode = useTheme((s) => s.setMode)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useGuestMotion(rootRef) // 🎬 2차 ⑧ — 줄 아이콘이 선을 따라 그려진다(data-motion="draw")
   const lastTap = useRef({ clientX: 0, clientY: 0 }) // 🎬 ③ 원이 퍼질 자리 — 줄 부품이 클릭 위치를 안 넘겨서 여기서 잡는다
   const modeLabel = {
     system: t('guest.my.themeSystem', { defaultValue: '시스템' }),
@@ -59,7 +62,7 @@ export default function GuestMyPage() {
   ]
 
   return (
-    <div className={GUEST_CLS.root}>
+    <div ref={rootRef} className={GUEST_CLS.root}>
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
       <h1 className={GUEST_CLS.title}>
         {t('guest.my.title', { defaultValue: GUEST_COPY.my.title })}
@@ -75,7 +78,7 @@ export default function GuestMyPage() {
         </div>
       </section>
 
-      <div className="mt-5">
+      <div className="mt-5" data-motion="draw">
         {locked.map((r) => (
           <ListRow key={r.label} icon={r.icon} label={r.label} hint={lockedHint} onClick={() => startGuestKakaoLogin('/user/profile')} />
         ))}
@@ -100,7 +103,7 @@ export default function GuestMyPage() {
         </section>
       )}
 
-      <div className="ur-gm-rest" onPointerDownCapture={(e) => { lastTap.current = { clientX: e.clientX, clientY: e.clientY } }}>
+      <div className="ur-gm-rest" data-motion="draw" onPointerDownCapture={(e) => { lastTap.current = { clientX: e.clientX, clientY: e.clientY } }}>
       <SectionTitle>{t('guest.owner.title', { defaultValue: '사장님이세요?' })}</SectionTitle>
       <div>
         <ListRow icon={<StoreIcon size={ROW_ICON} />} label={t('guest.my.sell', { defaultValue: '내 가게 이용권 팔기' })} to="/partners" />

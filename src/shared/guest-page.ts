@@ -68,8 +68,10 @@ export const GUEST_COPY = {
   },
   shop: {
     title: '유어샵',
-    headline1: '좋아하는 가게 이용권,',
+    headline1: '팔아보고 싶은 가게 이용권,', // 2026-11-03 대표 "좋아하는 가게 이용권, 말고 팔아보고 싶은 가게 이용권 으로"
     headline2: '내 SNS 링크 하나에 모아요',
+    /** 🎬 형광펜이 그어질 구절 — 앱(`GuestUrShopPage.MarkedLine`)과 서버 첫 화면(`markHtml`)이 같은 칸(`data-motion="mark"`)으로 감싼다. */
+    headline2Mark: 'SNS 링크 하나',
     sub: '프로필에 걸어 두면 팔로워가 거기서 바로 사요',
     steps: [['마음에 드는', '이용권 담고'], ['내 링크를', '프로필에 걸면'], ['팔로워가', '거기서 바로 사요']],
     dockNote: '가입하면 내 유어샵이 바로 준비돼요',
