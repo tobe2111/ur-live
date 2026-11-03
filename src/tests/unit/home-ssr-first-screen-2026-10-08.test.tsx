@@ -229,7 +229,7 @@ describe('④ 이스케이프 — 시드는 DB 문자열이다', () => {
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seedJson([evil]), LOADER)
     const fs0 = host.querySelector('#ur-first-screen') as HTMLElement
-    expect(fs0.querySelectorAll('img').length).toBe(1) // 카드 사진 하나뿐 — 주입된 img 0
+    expect(fs0.querySelectorAll('img:not([data-home-hero])').length).toBe(1) // 카드 사진 하나뿐(맨 위 지역 사진은 2026-11-02 부터 서버가 그린다) — 주입된 img 0
     expect(fs0.textContent).toContain('<img src=x')
   })
 })

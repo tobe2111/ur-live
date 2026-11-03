@@ -61,6 +61,7 @@ import { stripStorePrefix } from '../../utils/deal-title'
 import { formatNumber } from '../../utils/format'
 import { STRIP_CLS, stripBannersOf, stripBannerImageUrl, type SeededStripBanner } from '../../shared/home-strip-banners'
 import { resolveBannerLink } from '../../components/home/banner-link'
+import { regionHeroFromCookieHeader, REGION_HERO_FADE_LIGHT, REGION_HERO_FADE_DARK, type RegionHero } from '../../shared/home-region-hero'
 
 export function escAttr(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -80,6 +81,10 @@ export function escText(s: string): string {
 export const HOME_FS_CLASS = {
   root: 'bg-white dark:bg-[#11141C]',
   chrome: 'sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]',
+  // 🌆 2026-11-02 사진 머리(지역 사진이 있을 때) — 화면(`MobileHomePage`)과 글자 하나까지 같다(시험이 소스에서 대조).
+  heroChrome: 'relative z-30 overflow-hidden ur-region-hero',
+  heroBg: 'absolute inset-0 -z-10 pointer-events-none',
+  heroImg: 'absolute inset-0 h-full w-full object-cover transition-opacity duration-200 opacity-100',
   topRow: 'px-4 h-11 flex items-center justify-between gap-2',
   locRow: 'px-4 pt-1 pb-3',
   locTrigger: 'inline-flex items-center gap-1 -ml-0.5 max-w-full',
@@ -217,13 +222,31 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, 
   )
 }
 
-function chromeHtml(): string {
+/**
+ * 🌆 2026-11-02 대표 *"처음 유어딜 켤 때 꽤 로딩 걸려"* — 지역 사진을 **서버가 처음부터** 그린다.
+ *   실사용(11-02 폰 홈 p75): 화면 도착 → 이 사진 요청 출발까지 1.56초(LCP 1.98초). 사진이 앱 부팅 뒤에야 생겨서다.
+ *   화면의 `RegionHeroBg` 와 같은 마크업 — 화면은 이 img(`data-home-hero`)가 있으면 페이드 없이 바로 보인 상태로 이어받는다.
+ *   어떤 사진인지는 쿠키(`regionHeroFromCookieHeader` — 없으면 전국=서울)가 정한다. 틀려도 사진 한 장이 바뀔 뿐 자리는 같다.
+ */
+function heroBgHtml(hero: RegionHero): string {
+  return (
+    `<div aria-hidden="true" class="${HOME_FS_CLASS.heroBg}">` +
+    `<img src="${escAttr(hero.src)}" alt="" decoding="async" data-home-hero="${escAttr(hero.src)}" class="${HOME_FS_CLASS.heroImg}">` +
+    `<div class="absolute inset-0 dark:hidden" style="background:${REGION_HERO_FADE_LIGHT}"></div>` +
+    `<div class="absolute inset-0 hidden dark:block" style="background:${REGION_HERO_FADE_DARK}"></div>` +
+    `</div>`
+  )
+}
+
+function chromeHtml(hero: RegionHero | null): string {
   // 🏠 2026-11-02 탭 줄은 전체 표(생활 포함 — 폰에선 `/life` 링크). 화면과 같은 글자를 그려야 마운트 때 안 바뀐다.
   const cats = DEAL_CAT_LABELS.map(({ key, label }) =>
     `<span class="${HOME_FS_CLASS.catBase} ${key === 'all' ? HOME_FS_CLASS.catOn : HOME_FS_CLASS.catOff}">${escText(label)}</span>`,
   ).join('')
   return (
-    `<div class="${HOME_FS_CLASS.chrome}">` +
+    (hero
+      ? `<div data-region-hero="${escAttr(hero.slug)}" class="${HOME_FS_CLASS.heroChrome}">${heroBgHtml(hero)}`
+      : `<div class="${HOME_FS_CLASS.chrome}">`) +
     `<div class="${HOME_FS_CLASS.topRow}"></div>` +
     `<div class="${HOME_FS_CLASS.locRow}">` +
     // 위치 이름은 안 그린다(위 머리말) — 줄 높이를 만드는 **같은 마크업**만 세운다.
@@ -232,6 +255,7 @@ function chromeHtml(): string {
     `</div></div></div>` +
     `</div>` +
     `<div class="${HOME_FS_CLASS.catRow}"><nav class="${HOME_FS_CLASS.catNav}">${cats}</nav></div>` +
+    (hero ? `<div aria-hidden="true" class="absolute bottom-0 h-px w-full"></div>` : '') +
     `</div>`
   )
 }
@@ -273,7 +297,7 @@ function stripBannerHtml(banners: SeededStripBanner[]): string {
  * @param _nearLabel 📍 2026-10-13 위치 라벨(쿠키 `ur_loc_n`). 2026-11-02 첫 섹션 제목 줄을 걷으면서 안 쓴다
  *   (호출부 `worker/index.ts` 는 잠금 파일이라 시그니처를 그대로 둔다).
  */
-export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: string, _nearLabel = ''): string {
+export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: string, _nearLabel = '', cookieHeader: string | null = null): string {
   let sec: { title?: string | null; subtitle?: string | null; near?: boolean; products?: SeedProduct[] } | undefined
   let strip: SeededStripBanner[] = []
   try {
@@ -295,7 +319,7 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
     // 🩸 2026-10-13 — 크롤러가 받는 홈 문서에 제목 요소가 h3 하나뿐이었다. `sr-only` 라 박스가
     //    0이고(= 첫 화면 잠금 무영향) React 쪽(`MobileHomePage`)도 **같은 자리에 같은 값**을 그린다.
     `<h1 class="sr-only">${escText(HOME_H1)}</h1>` +
-    chromeHtml() +
+    chromeHtml(regionHeroFromCookieHeader(cookieHeader)) +
     // 🏠 2026-11-02 대표 확정(모바일 안 1) — 첫 섹션은 **제목 줄 없이** 카드만, 배너는 그 **아래**.
     //    화면(`MobileHomePage` → `HomeSections bareFirst`)과 같은 순서여야 마운트 때 안 튄다.
     `<div class="mt-3"><section class="${HOME_FS_CLASS.panel} ur-panel-flush">` +

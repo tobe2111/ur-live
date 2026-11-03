@@ -1031,7 +1031,7 @@ app.use('*', async (c, next) => {
       //   사진 URL까지 와 있고 워커가 그 넷을 preload 로 이미 당기는데 `#root` 는 로더가 덮고 있었다 → 크롬(높이만) +
       //   첫 섹션 카드 4장을 그리고 그 아래에만 로더를 둔다. PC 는 다른 레이아웃이라 UA 로 가른다.
       //   사유·경계·버린 길(워커 React 렌더 = 번들 gzip 게이트로 불가): `utils/home-first-screen.ts`.
-      const homeFirst = buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml, nearLabelFromCookieHeader(c.req.header('cookie'))); if (homeFirst) appendLcpLink(c.res.headers, homeLcpImage(ssrExtraPayload)); // 🏁 2026-10-19 홈 LCP(배너)를 응답 헤더로
+      const homeFirst = buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml, nearLabelFromCookieHeader(c.req.header('cookie')), c.req.header('cookie') ?? null); if (homeFirst) appendLcpLink(c.res.headers, homeLcpImage(ssrExtraPayload)); // 🏁 2026-10-19 홈 LCP(배너)를 응답 헤더로 · 🌆 2026-11-02 [UNLOCK_LOADING] 대표 "허가 — 진행해줘" — 쿠키로 지역 사진을 서버 첫 화면에(utils/home-first-screen.ts)
       rb = rb.on('#root', { element(el) { el.setInnerContent((homeFirst || urdealLoaderHtml) + homeFooterNoscript(), { html: true }); } }); // 🦶 2026-10-24 폰 홈엔 푸터가 없어 크롤러가 소개·링크를 못 봤다 → PC 화면의 푸터 글자를 <noscript> 로(사람 화면 불변). 사유: utils/home-footer-noscript.ts
     } else if (ssrSlot === 'CURATOR' && ssrPayload && /^\/u\/[A-Za-z0-9_-]{1,40}\/?$/.test(url.pathname) && shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {
       // 🛍️ 2026-10-09 [UNLOCK_LOADING] (대표 "모두 다 하자"): 시드에 이름·소개·핀 4개(사진 URL까지)가
