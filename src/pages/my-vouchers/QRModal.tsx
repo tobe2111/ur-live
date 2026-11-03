@@ -7,7 +7,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import ScannableQr from '@/components/voucher/ScannableQr'
 import VoucherRedeemModal from '@/components/voucher/VoucherRedeemModal'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
@@ -22,6 +22,8 @@ import TalkCalendarButton from './TalkCalendarButton'
 import GiftVoucherSheet from './GiftVoucherSheet'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-stamp', `@keyframes ur-slam { 0% { opacity: 0; transform: rotate(-24deg) scale(1.9); } 60% { opacity: 1; transform: rotate(-12deg) scale(.94); } 100% { opacity: 1; transform: rotate(-12deg) scale(1); } }.ur-slam { animation: ur-slam .38s cubic-bezier(.3,1.4,.5,1) both; }@keyframes ur-thud { 0%,100% { transform: none; } 30% { transform: translateY(4px) scale(.995); } 60% { transform: translateY(-1px); } }.ur-thud { animation: ur-thud .35s ease-out .22s both; }@media (prefers-reduced-motion: reduce){.ur-slam,.ur-thud{animation:none!important}}`)
+// 🎬 2026-11-03 19차 ② — 쓰기 전 QR 화면엔 파란 점이 천천히 숨 쉬듯 퍼진다 — 화면이 멈춘 게 아니라 '연결되어 기다리는 중'(실제로 5초마다 사용 여부를 확인한다).
+injectMotionCss('ur-m-qrlive', `@keyframes ur-qr-breathe { from { transform: scale(1); opacity: .55; } to { transform: scale(3); opacity: 0; } }.ur-qr-live { position: relative; }.ur-qr-live::after { content: ''; position: absolute; inset: 0; border-radius: 9999px; background: inherit; animation: ur-qr-breathe 2s ease-out infinite; }@media (prefers-reduced-motion: reduce){.ur-qr-live::after{animation:none!important;opacity:0}}`)
 
 // 🛡️ 2026-05-16: 외부 QR API (api.qrserver.com) 의존 제거 → qrcode.react 로컬 SVG.
 // 🛡️ 2026-06-01 (loading): qrcode.react 는 QR 모달 열 때만 필요 → lazy (페이지 chunk -10KB).
@@ -100,7 +102,12 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   const canRequestRefund = !gifted && voucher.status === 'unused' && !canSelfCancel && !!voucher.order_id
   async function handleRefundRequest() {
     if (cancelling || refundRequested || !voucher.order_id) return
-    const reason = window.prompt(t('voucher.refundReasonPrompt', { defaultValue: '환불 요청 사유를 입력해주세요 (예: 방문 계획 취소)' }))
+    const reason = (await promptDialog({
+      title: t('voucher.refundRequestTitle', { defaultValue: '환불 요청' }),
+      message: t('voucher.refundReasonPrompt', { defaultValue: '환불 요청 사유를 입력해주세요 (예: 방문 계획 취소)' }),
+      confirmText: t('voucher.refundRequestSubmit', { defaultValue: '요청하기' }),
+      prompt: { placeholder: t('voucher.refundReasonPlaceholder', { defaultValue: '예: 방문 계획 취소' }), required: true },
+    }))
     if (!reason || !reason.trim()) return
     setCancelling(true)
     try {
@@ -395,6 +402,14 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                       <p className="text-[12px] text-gray-500 dark:text-gray-400 whitespace-pre-wrap leading-snug">{voucher.usage_guide}</p>
                     )}
                   </div>
+                )}
+
+                {/* 🎬 19차 ② — 사장님이 찍는 순간을 기다리는 중(5초마다 확인)이라는 표시 */}
+                {voucher.status === 'unused' && voucher.source !== 'kt_alpha' && (
+                  <p className="flex items-center gap-2 text-[12px] text-gray-500 dark:text-gray-400">
+                    <span aria-hidden="true" className="ur-qr-live w-2 h-2 rounded-full bg-brand shrink-0" />
+                    {t('wallet.qr.liveHint', { defaultValue: '사장님이 찍으면 바로 바뀌어요' })}
+                  </p>
                 )}
 
                 {/* 유효기간 */}

@@ -72,12 +72,33 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
     if (!el || typeof window === 'undefined') return
     try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || window.matchMedia?.('(min-width: 1024px)').matches) return } catch { return }
     let raf = 0
+    // 🎬 19차 ④ — 맨 위에서 더 당기면 사진이 늘어난다(아래 끝을 붙잡고 커진다). iOS 는 튕김이 scrollY 를 음수로 만들고,
+    //   그 밖에선 손가락 끌림으로 잰다. 놓으면 제자리로 돌아간다. 자리는 transform 만 써서 아래 글이 안 밀린다.
+    let pull = 0, startY: number | null = null
+    const paint = () => {
+      const h = el.offsetHeight || 0
+      const sy = window.scrollY
+      const stretch = sy < 0 ? -sy : pull
+      if (stretch > 0) { el.style.transformOrigin = '50% 100%'; el.style.transform = `scale(${(1 + Math.min(stretch, 160) / Math.max(h, 1)).toFixed(3)})`; return }
+      const y = Math.min(Math.max(sy, 0), h); el.style.transform = y > 0 ? `translateY(${Math.round(y * 0.4)}px)` : ''
+    }
     const onScroll = () => {
       if (raf) return
-      raf = requestAnimationFrame(() => { raf = 0; const h = el.offsetHeight || 0; const y = Math.min(Math.max(window.scrollY, 0), h); el.style.transform = y > 0 ? `translateY(${Math.round(y * 0.4)}px)` : '' })
+      raf = requestAnimationFrame(() => { raf = 0; paint() })
     }
+    const onStart = (e: TouchEvent) => { startY = window.scrollY <= 0 ? e.touches[0]?.clientY ?? null : null; el.style.transition = '' }
+    const onMove = (e: TouchEvent) => { if (startY == null) return; const dy = (e.touches[0]?.clientY ?? startY) - startY; pull = dy > 0 && window.scrollY <= 0 ? dy * 0.5 : 0; onScroll() }
+    const onEnd = () => { if (pull > 0) { el.style.transition = 'transform .3s cubic-bezier(.2,1,.3,1)'; pull = 0; paint() } startY = null }
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf); el.style.transform = '' }
+    window.addEventListener('touchstart', onStart, { passive: true })
+    window.addEventListener('touchmove', onMove, { passive: true })
+    window.addEventListener('touchend', onEnd, { passive: true })
+    window.addEventListener('touchcancel', onEnd, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll); window.removeEventListener('touchstart', onStart); window.removeEventListener('touchmove', onMove)
+      window.removeEventListener('touchend', onEnd); window.removeEventListener('touchcancel', onEnd)
+      if (raf) cancelAnimationFrame(raf); el.style.transform = ''; el.style.transition = ''
+    }
   }, [])
   /** 🎬 17차 ⑦ — 둘째 장부터는 도착할 때 흐렸다가 선명해진다(첫 장은 빨리 보여야 하므로 그대로). 동작 줄이기면 안 한다. */
   const blurUp = useMemo(() => { try { return !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { return false } }, [])

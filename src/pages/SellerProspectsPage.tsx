@@ -16,7 +16,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import SellerLayout from '@/components/SellerLayout'
 import { toast } from '@/hooks/useToast'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
 import { prepareImageForUpload, UploadTooLargeError } from '@/lib/prepare-upload'
 
@@ -120,7 +120,7 @@ export default function SellerProspectsPage() {
         await navigator.clipboard.writeText(url)
         toast.success('가입 링크 복사됨 — 사장님께 카톡 등으로 전달하세요')
       } catch {
-        window.prompt('아래 링크를 복사해 사장님께 전달하세요', url)
+        (await promptDialog({ message: '아래 링크를 복사해 사장님께 전달하세요', prompt: { defaultValue: url } }))
       }
     } catch {
       toast.error('링크 발급 실패')

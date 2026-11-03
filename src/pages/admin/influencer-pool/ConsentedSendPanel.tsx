@@ -3,6 +3,7 @@ import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 📨 동의 리드 일괄 발송 — **사전 수신동의자(인바운드 신청, consented_at)에게만** 자동 발송.
@@ -29,7 +30,7 @@ export default function ConsentedSendPanel() {
 
   async function send() {
     if (!targets?.length) return
-    if (!window.confirm(`동의한 신청자 ${targets.length}명에게 발송할까요?\n(수신거부 안내는 자동 첨부됩니다)`)) return
+    if (!(await confirmDialog(`동의한 신청자 ${targets.length}명에게 발송할까요?\n(수신거부 안내는 자동 첨부됩니다)`))) return
     setBusy(true)
     let sent = 0, failed = 0, skipped = 0, recent = 0
     try {

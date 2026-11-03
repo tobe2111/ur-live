@@ -43,7 +43,7 @@ export const PARTNER_FAQ: readonly LandingFaq[] = [
   },
   {
     question: '돈은 언제 들어오나요?',
-    answer: `사용된 이용권을 주 단위로 모아 등록하신 계좌로 보냅니다. 최소 지급액은 ${F.minPayout}입니다. 보내기 전에 유어딜 담당자가 내역을 확인합니다. 정산 내역은 매장 화면에서 언제든 보실 수 있습니다.`,
+    answer: `${F.storePayoutDay}, 지난주(${F.storePayoutRange}) 손님이 사용한 이용권을 모아 등록하신 계좌로 보냅니다. 최소 지급액은 ${F.minPayout}입니다. 보내기 전에 유어딜 담당자가 내역을 확인합니다. 정산 내역은 매장 화면에서 언제든 보실 수 있습니다.`,
   },
   {
     question: '할인을 얼마나 해야 하나요?',
@@ -93,7 +93,7 @@ export const REFERRAL_FAQ: readonly LandingFaq[] = [
   },
   {
     question: '정산은 언제, 어떻게 받나요?',
-    answer: '매월 1일에 정산합니다. 현금은 10만원부터 송금하고 원천징수(3.3% 또는 8.8%)가 자동으로 적용됩니다. 딜로 받으면 최소 금액이 없습니다.',
+    answer: `${F.commissionPayoutDay}에 정산합니다. 현금은 10만원부터 송금하고 원천징수(3.3% 또는 8.8%)가 자동으로 적용됩니다. 딜로 받으면 최소 금액이 없습니다.`,
   },
   {
     question: '내 가게도 있는데 같이 쓸 수 있나요?',

@@ -24,7 +24,15 @@ import { formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
 import { currentSeatId } from '@/lib/seller-seat'
 import Sheet from './Sheet'
+import { nextWeeklySettlementDateKst } from '@/shared/store-payout-day'
 import { useCountUp } from '../useCountUp' // 🎬 2026-11-02 시안 3차: 정산 예정 금액이 0원부터 올라간다
+
+/** 'YYYY-MM-DD' → '11월 6일(목)' */
+const formatPayDate = (ymd: string) => {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dow = '일월화수목금토'[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]
+  return `${m}월 ${d}일(${dow})`
+}
 
 interface PayoutRow {
   id: number
@@ -125,7 +133,11 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
             <span className="ml-1 text-[15px] font-bold text-gray-500 dark:text-gray-400">원</span>
           </p>
           <p className="mt-2 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
-            매주 자동으로 모아 등록하신 계좌로 보내요. 따로 신청하지 않아도 돼요.
+            {/* 📅 2026-11-03 대표 확정 — 매주 목요일, 지난주(월~일) 사용분. 요일은 settlement-schedule 상수 SSOT. */}
+            매주 목요일, 지난주(월~일) 손님이 사용한 이용권을 모아 등록하신 계좌로 보내요. 따로 신청하지 않아도 돼요.
+            <span className="block mt-1 font-medium text-gray-900 dark:text-white" data-testid="payout-next-date">
+              다음 정산일 {formatPayDate(nextWeeklySettlementDateKst(Date.now()))}
+            </span>
           </p>
           {data.scope === 'operator' && (
             <p className="mt-2 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">

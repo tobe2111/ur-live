@@ -217,6 +217,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   review_reward_image: nonNegNum,
   review_reward_video: nonNegNum,
   influencer_payout_min: nonNegNum,    // cron/influencer-payout.ts:74
+  commission_payout_day: intRange(1, 28), // shared/commission-payout-day.ts — 인플루언서·에이전시 월 정산일(2026-11-03 대표 확정 10일)
   curator_min_withdrawal: nonNegNum,
   seller_upgrade_threshold: nonNegNum,
   pin_max_per_user: nonNegNum,

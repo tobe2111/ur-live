@@ -15,6 +15,7 @@ import {
   Calendar, User, Search, Filter, Download, ChevronLeft,
   ChevronRight, RefreshCw, Clock, DollarSign, Ticket
 } from 'lucide-react'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 
 // 🗂️ 주문 종류. ⚠️ B2B 는 wholesale_orders. 🧾 2026-09-21: 이 함수가 **이용권을 "교환권"이라 불렀다**. 판정 SSOT: `order-kind.ts`.
 const KIND_TONE = { deal: ['text-tone-warn', 'bg-tone-warn-bg'], voucher: ['text-tone-info', 'bg-tone-info-bg'], shipping: ['text-gray-600', 'bg-gray-100'] } as const
@@ -225,7 +226,7 @@ export default function AdminOrdersPage() {
   async function bulkUpdateStatus(status: string) {
     if (selectedNumbers.size === 0) return
     const order_numbers = Array.from(selectedNumbers)
-    if (!confirm(`선택한 ${order_numbers.length}건을 '${STATUS_STYLES[status]?.label || status}'(으)로 일괄 변경할까요?`)) return
+    if (!(await confirmDialog(`선택한 ${order_numbers.length}건을 '${STATUS_STYLES[status]?.label || status}'(으)로 일괄 변경할까요?`))) return
     setBulkBusy(true)
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
@@ -629,8 +630,8 @@ export default function AdminOrdersPage() {
                   )}
                   {!['CANCELLED', 'REFUNDED', 'DELIVERED'].includes(selectedOrder.status) && (
                     <button
-                      onClick={() => {
-                        const reason = prompt(t('admin.orders.k066', { defaultValue: '취소 사유를 입력해주세요:' }))
+                      onClick={async () => {
+                        const reason = (await promptDialog({ message: t('admin.orders.k066', { defaultValue: '취소 사유를 입력해주세요:' }), prompt: {} }))
                         if (reason) updateOrderStatus(selectedOrder.order_number, 'CANCELLED', reason)
                       }}
                       className="px-4 py-2 text-xs font-medium text-tone-bad border border-rule bg-white rounded-lg hover:bg-gray-100"

@@ -34,6 +34,34 @@ const injectMotionCss = (id: string, css: string) => { if (typeof document !== '
 // 🎬 2026-11-02 10차 ④ — 아래에서 **스크롤로 들어오는** 추천 줄만 카드가 왼쪽부터 차례로 떠오른다(한 번).
 //   첫 화면에 이미 보이는 줄은 안 움직인다 — 서버가 그려 둔 사진을 지웠다 다시 띄우면 첫 화면이 늦어 보인다.
 injectMotionCss('ur-m-stayrow', `@keyframes ur-sc-rise { from { opacity: 0; transform: translateY(14px); } }.ur-sc-on [data-sc] { animation: ur-sc-rise .45s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 70ms); }@media (prefers-reduced-motion: reduce){.ur-sc-on [data-sc]{animation:none!important}}`)
+// 🎬 2026-11-03 19차 ③⑦ — 폰: 옆으로 넘기기 시작하면 맨 앞(스냅) 카드만 또렷하고 나머지는 살짝 작고 흐려진다(가운데 강조).
+//   PC: 카드에 마우스를 올리면 커서 쪽으로 살짝 기운다. 서버가 그린 첫 줄은 손대기 전까지 그대로(첫 화면이 안 바뀐다).
+injectMotionCss('ur-m-stayfocus', `[data-rail-on] > * { transition: transform .25s ease, opacity .25s ease; transform: scale(.94); opacity: .7; }[data-rail-on] > [data-focus] { transform: none; opacity: 1; }.ur-tilt { transition: transform .15s ease-out; transform-style: preserve-3d; }@media (prefers-reduced-motion: reduce){[data-rail-on] > *{transform:none!important;opacity:1!important;transition:none!important}}`)
+/** 🎬 19차 ③ — 줄을 넘기면 왼쪽 끝(스냅 자리)에 가장 가까운 칸에 data-focus. 폰(lg 미만)만. */
+function onRailScroll(e: React.UIEvent<HTMLDivElement>) {
+  const row = e.currentTarget
+  try { if (window.matchMedia?.('(min-width: 1024px)').matches || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { return }
+  if (row.dataset.raf) return
+  row.dataset.raf = '1'
+  requestAnimationFrame(() => {
+    delete row.dataset.raf
+    row.setAttribute('data-rail-on', '')
+    const left = row.getBoundingClientRect().left + parseFloat(getComputedStyle(row).paddingLeft || '0')
+    let best: Element | null = null, bd = Infinity
+    for (const c of Array.from(row.children)) { const d = Math.abs(c.getBoundingClientRect().left - left); if (d < bd) { bd = d; best = c } }
+    for (const c of Array.from(row.children)) { if (c === best) c.setAttribute('data-focus', ''); else c.removeAttribute('data-focus') }
+  })
+}
+/** 🎬 19차 ⑦ — PC 마우스만: 커서 쪽으로 최대 6° 기울기. */
+function onTiltMove(e: React.PointerEvent<HTMLDivElement>) {
+  if (e.pointerType !== 'mouse') return
+  try { if (!window.matchMedia?.('(min-width: 1024px)').matches || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { return }
+  const el = e.currentTarget, r = el.getBoundingClientRect()
+  const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5
+  el.classList.add('ur-tilt')
+  el.style.transform = `perspective(700px) rotateX(${(-y * 8).toFixed(2)}deg) rotateY(${(x * 10).toFixed(2)}deg)`
+}
+function onTiltLeave(e: React.PointerEvent<HTMLDivElement>) { e.currentTarget.style.transform = '' }
 
 /** 처음엔 화면 밖이었다가 들어올 때만 `ur-sc-on` 을 붙인다. 처음부터 보이면 아무것도 안 한다. */
 function useRevealOnEnter<T extends HTMLElement>() {
@@ -56,9 +84,9 @@ export function StayCardRow({
   items, checkIn, checkOut, guests, firstAboveFold = false,
 }: { items: StaySearchItem[]; checkIn: string; checkOut: string; guests: number; firstAboveFold?: boolean }) {
   return (
-    <div className={STAYS_LIST.row}>
+    <div className={STAYS_LIST.row} onScroll={onRailScroll}>
       {items.map((s, i) => (
-        <div key={s.id} className={STAYS_LIST.cell} data-sc style={{ '--i': Math.min(i, 5) } as React.CSSProperties}>
+        <div key={s.id} className={STAYS_LIST.cell} data-sc style={{ '--i': Math.min(i, 5) } as React.CSSProperties} onPointerMove={onTiltMove} onPointerLeave={onTiltLeave}>
           <GroupBuyFeedCard
             p={{
               id: s.id,

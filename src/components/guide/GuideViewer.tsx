@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { ChevronDown, ChevronRight, Loader2, Pencil, Save, X, Trash2, Plus, Search } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import DOMPurify from 'dompurify'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { formatKST } from '@/utils/date'
 
 /**
@@ -216,7 +216,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
   }
 
   async function addSection() {
-    const key = prompt('새 섹션 키 (영문 소문자, 예: my-section)')
+    const key = (await promptDialog({ message: '새 섹션 키 (영문 소문자, 예: my-section)', prompt: {} }))
     if (!key) return
     setEditingKey(key)
     setEditForm({

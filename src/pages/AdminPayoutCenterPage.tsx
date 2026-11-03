@@ -8,7 +8,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { formatWon, formatNumber } from '@/utils/format'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
 import { DashboardLoadError } from '@/components/dashboard'
@@ -37,7 +37,7 @@ export default function AdminPayoutCenterPage() {
 
   async function act(label: string, key: string, fn: () => Promise<{ data?: { success?: boolean; error?: string } }>) {
     if (busy) return
-    if (!(await confirmDialog(`${label} — 은행 이체를 완료하셨나요? 기록 후 되돌릴 수 없습니다.`))) return
+    if (!(await confirmDialog({ message: `${label} — 은행 이체를 완료하셨나요? 기록 후 되돌릴 수 없습니다.`, danger: true }))) return
     setBusy(key)
     try {
       const r = await fn()
@@ -129,7 +129,7 @@ export default function AdminPayoutCenterPage() {
                       className="ur-btn ur-btn-sm ur-btn-primary text-[12px] disabled:opacity-50 mr-1.5">입금 완료</button>
                     <button disabled={busy === `cr${r.id}`}
                       onClick={async () => {
-                        const reason = window.prompt('반려 사유 (신청자에게 표시 + 딜 자동 복원)')
+                        const reason = (await promptDialog({ message: '반려 사유 (신청자에게 표시 + 딜 자동 복원)', prompt: {} }))
                         if (reason == null) return
                         setBusy(`cr${r.id}`)
                         try {
@@ -160,7 +160,7 @@ export default function AdminPayoutCenterPage() {
                       className="ur-btn ur-btn-sm ur-btn-primary text-[12px] disabled:opacity-50 mr-1.5">입금 완료</button>
                     <button disabled={busy === `rr${r.id}`}
                       onClick={async () => {
-                        const reason = window.prompt('반려 사유 (신청자에게 표시 + 딜 자동 복원)')
+                        const reason = (await promptDialog({ message: '반려 사유 (신청자에게 표시 + 딜 자동 복원)', prompt: {} }))
                         if (reason == null) return
                         setBusy(`rr${r.id}`)
                         try {

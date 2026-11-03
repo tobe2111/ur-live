@@ -49,7 +49,7 @@ export default function InfluencerTermsPage() {
         <h2 className="text-[16px] font-semibold mt-6 mb-2">제4조 (정산 방식)</h2>
         <p className="text-[15px]">인플루언서는 다음 두 가지 정산 방식 중 선택할 수 있습니다.</p>
         <ul className="text-[15px] list-disc pl-5 space-y-1">
-          <li><strong>현금 송금</strong>: 매월 1일 확정 잔액을 원천징수 후 등록 계좌로 입금합니다. 사업자번호 보유 시 사업소득 3.3%, 미보유 시 기타소득 8.8%.</li>
+          <li><strong>현금 송금</strong>: 매월 10일에 그때까지 확정된 잔액을 원천징수 후 등록 계좌로 입금합니다. 사업자번호 보유 시 사업소득 3.3%, 미보유 시 기타소득 8.8%.</li>
           <li><strong>딜 포인트</strong>: 확정 즉시 유어딜 딜로 적립(보너스 비율은 어드민 설정, 현재 0%). <strong>현금 환불 불가</strong>, 양도 불가, 유어딜 결제 전용. 딜 수령에는 최소 금액이 없습니다.</li>
           <li>현금 송금은 확정 잔액 10만원부터이며(어드민 조정 가능), 미달 시 다음 달로 누적됩니다.</li>
         </ul>

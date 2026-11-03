@@ -5,7 +5,7 @@
  * - 예약 목록 (필터: 상태/기간) + 체크인/체크아웃/노쇼 처리
  */
 import { useEffect, useState } from 'react'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
@@ -95,10 +95,9 @@ export default function SellerStaysBookingsPage() {
 
   // 🛡️ 2026-05-18: voucher 사용 처리 — 매장에서 게스트가 voucher 코드 제시 시 호출.
   async function useVoucher(b: Booking) {
-    const checkIn = prompt(`실제 체크인 날짜 (YYYY-MM-DD)\n게스트: ${b.guest_name}\nvoucher: ${b.check_in_code}`)
+    const checkIn = (await promptDialog({ message: `실제 체크인 날짜 (YYYY-MM-DD)\n게스트: ${b.guest_name}\nvoucher: ${b.check_in_code}`, prompt: {} }))
     if (!checkIn || !/^\d{4}-\d{2}-\d{2}$/.test(checkIn)) { toast.error('YYYY-MM-DD 형식 필요'); return }
-    const checkOut = prompt(`실제 체크아웃 날짜 (YYYY-MM-DD, ${b.nights}박 기준 ${addDays(checkIn, b.nights)})`,
-      addDays(checkIn, b.nights))
+    const checkOut = (await promptDialog({ message: `실제 체크아웃 날짜 (YYYY-MM-DD, ${b.nights}박 기준 ${addDays(checkIn, b.nights)})`, prompt: { defaultValue: addDays(checkIn, b.nights) } }))
     if (!checkOut || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) { toast.error('YYYY-MM-DD 형식 필요'); return }
     if (!(await confirmDialog(`voucher 사용 처리\n· ${checkIn} → ${checkOut}\n게스트와 협의 완료 후 진행`))) return
     try {

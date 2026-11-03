@@ -17,6 +17,7 @@ import { getSellerToken } from '@/lib/seller-auth'
 import { MY_PATH } from '@/lib/seller-return'
 import SeedingOfferFields from '@/components/seeding/SeedingOfferFields'
 import { FOLLOWER_WORD, PLATFORM_LABEL, STATUS_LABEL, normalizeOffer, type ApplicationStatus, type SeedingOffer, type SeedingPlatform } from '@/shared/seeding'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Req {
   id: number; product_name: string | null; platform: SeedingPlatform; sns_username: string | null; follower_count: number | null
@@ -69,7 +70,7 @@ function ReqRow({ r, onDone }: { r: Req; onDone: () => void }) {
   const [busy, setBusy] = useState(false)
   const slots: string[] = (() => { try { return JSON.parse(r.visit_slots || '[]') } catch { return [] } })()
   const act = async (action: string, body: unknown = {}, confirmText?: string) => {
-    if (confirmText && !window.confirm(confirmText)) return
+    if (confirmText && !(await confirmDialog(confirmText))) return
     setBusy(true)
     try { const res = await api.post(`/api/seller/seeding/requests/${r.id}/${action}`, body, hdr()); res.data?.success ? toast.success('처리했어요') : toast.error(res.data?.error || '처리하지 못했어요'); onDone() }
     catch (e) { toast.error(err(e, '처리하지 못했어요')) } finally { setBusy(false) }

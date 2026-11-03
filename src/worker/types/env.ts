@@ -42,6 +42,11 @@ export interface Env {
   TOSS_SECRET_KEY: string;
   TOSS_WEBHOOK_SECRET: string;
   TOSS_CLIENT_KEY: string;
+  /** 💸 토스 지급대행(매장 정산 송금) — 결제 키와 **별개**(API 개별 연동 키). 미설정 = 지급대행 꺼짐.
+   *  2026-11-03 대표 결정(`docs/decisions/2026-11-03-settlement-structure.md`). `utils/toss-payouts.ts` */
+  TOSS_PAYOUT_SECRET_KEY?: string;
+  /** 지급대행 ENCRYPTION 보안 키(64자 hex) — 요청 본문 JWE(dir + A256GCM) 암호화용. */
+  TOSS_PAYOUT_SECURITY_KEY?: string;
 
   // ---- Stripe (Global region) ----
   STRIPE_SECRET_KEY?: string;

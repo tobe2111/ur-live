@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatKST } from '@/utils/date'
+import { promptDialog } from '@/components/ui/confirm-dialog'
 
 const REASON_LABEL: Record<string, string> = {
   not_my_listing: '내 가게인데 내가 안 올림',
@@ -49,7 +50,7 @@ export default function StoreReportQueue({ onPickStore }: { onPickStore?: (selle
   useEffect(() => { void load() }, [load])
 
   async function decide(id: number, status: 'resolved' | 'dismissed') {
-    const note = window.prompt(status === 'resolved' ? '어떻게 조치했나요? (기록용)' : '기각 사유 (기록용)') ?? ''
+    const note = (await promptDialog({ message: status === 'resolved' ? '어떻게 조치했나요? (기록용)' : '기각 사유 (기록용)', prompt: {} })) ?? ''
     setBusy(id)
     try {
       const res = await api.post(`/api/admin/store-reports/${id}/decide`, { status, note })

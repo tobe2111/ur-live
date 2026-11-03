@@ -14,6 +14,10 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { getOrderKind, type OrderKind } from '@/shared/order-type'
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
+// 🎬 2026-11-03 19차 ⑤ — 종류 탭을 바꾸면 목록이 고른 탭 쪽에서 밀려 들어온다(오른쪽 탭 → 오른쪽에서, 왼쪽 탭 → 왼쪽에서).
+injectMotionCss('ur-m-ordertabs', `@keyframes ur-ot-r { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }@keyframes ur-ot-l { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }.ur-ot-r { animation: ur-ot-r .26s cubic-bezier(.2,1,.3,1) both; }.ur-ot-l { animation: ur-ot-l .26s cubic-bezier(.2,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-ot-r,.ur-ot-l{animation:none!important}}`)
+
 interface OrdersTabProps {
   orders: Order[]
   onCancelOrder: (orderId: number | string, orderNumber: string) => void
@@ -131,6 +135,7 @@ function ItemThumb({ item }: { item: OrderItem }) {
 export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder, onRequestReturn, returnsByOrder, statusOptions, statusValue = 'all', onStatusChange }: OrdersTabProps) {
   const { t } = useTranslation()
   const [kindFilter, setKindFilter] = useState<KindFilter>('all')
+  const [slideDir, setSlideDir] = useState<0 | 1 | -1>(0) // 🎬 19차 ⑤ — 탭 순서로 정한 방향(처음엔 0 = 안 움직임)
   const [search, setSearch] = useState('')
 
   function handleSellerContact(order: Order) {
@@ -217,7 +222,13 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
           return (
             <button
               key={tab.key}
-              onClick={() => setKindFilter(tab.key)}
+              onClick={() => {
+                if (tab.key === kindFilter) return
+                const from = KIND_TABS.findIndex((k) => k.key === kindFilter)
+                const to = KIND_TABS.findIndex((k) => k.key === tab.key)
+                setSlideDir(to > from ? 1 : -1)
+                setKindFilter(tab.key)
+              }}
               className={`relative whitespace-nowrap pb-2 text-[15px] transition-colors ${
                 active
                   ? 'font-bold text-gray-900 dark:text-white'
@@ -252,15 +263,17 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
       )}
       </div>
 
-      {/* 목록 */}
+      {/* 목록 — 탭이 바뀔 때마다 새로 그려 방향대로 밀려 들어온다(19차 ⑤) */}
+      <div key={kindFilter} className={slideDir > 0 ? 'ur-ot-r' : slideDir < 0 ? 'ur-ot-l' : undefined}>
       {filtered.length === 0 ? (
         <EmptyState kindFilter={kindFilter} searching={!!q} t={t} />
       ) : (
         <div className="space-y-6">
           {groups.map(group => (
             <section key={group.label}>
-              {/* 날짜 그룹 헤더 */}
-              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2 px-1">
+              {/* 날짜 그룹 헤더 — 🎬 20차 ② 내리면 위(화면 머리 52px · PC 네비 56px 아래)에 붙어 따라오고,
+                  다음 날짜 묶음이 올라오면 그 머리를 밀어 올린다(묶음마다 section 이라 sticky 가 묶음 안에서만 붙는다). */}
+              <h2 className="sticky top-[52px] md:top-[108px] z-30 bg-warm text-[15px] font-bold text-gray-900 dark:text-white py-2 px-1">
                 {group.label}
               </h2>
               <div className="space-y-3">
@@ -285,6 +298,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

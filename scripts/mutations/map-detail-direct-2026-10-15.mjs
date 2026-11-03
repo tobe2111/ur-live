@@ -17,7 +17,7 @@ export default [
     find: '  useEffect(() => { prefetchDetail(selected) }, [selected.id, prefetchDetail])', replace: '  useEffect(() => {}, [selected.id, prefetchDetail])', test: TEST,
     why: '누른 뒤에야 청크·데이터를 받아 풀스크린 로더가 ~0.7초 뜬다.' },
   { name: '🧭 목록 줄이 손가락 닿은 순간을 안 쓴다', file: 'src/pages/restaurant-map/RestaurantRow.tsx',
-    find: '      onPointerDown={onIntent ? () => onIntent(r) : undefined}\n', replace: '', test: TEST,
+    find: '        onIntent?.(r)\n', replace: '', test: TEST,
     why: 'pointerdown→click 사이를 버리면 목록 모드에서 로더가 그대로 뜬다.' },
   { name: '🧭 데우기가 홈 카드와 다른 키를 쓴다', file: 'src/pages/restaurant-map/prefetch-detail.ts',
     find: 'prefetchGroupBuyProduct(qc, k)', replace: 'Promise.resolve(k)', test: TEST,

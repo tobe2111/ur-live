@@ -5,6 +5,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
+import { promptDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 🆕 2026-06-28 유어애즈 가입자 운영 어드민 (/admin/ads-accounts).
@@ -71,7 +72,7 @@ export default function AdminAdsAccountsPage() {
   }
 
   async function resetPassword(row: AdsAccountRow) {
-    const pw = window.prompt(`${row.email} 계정의 새 비밀번호를 입력하세요.\n(8자 이상 · 영문/숫자/특수문자 중 2종 이상)`)
+    const pw = (await promptDialog({ message: `${row.email} 계정의 새 비밀번호를 입력하세요.\n(8자 이상 · 영문/숫자/특수문자 중 2종 이상)`, prompt: {} }))
     if (pw === null) return
     if (!pw.trim()) { toast.error('비밀번호를 입력해주세요'); return }
     setBusy(row.id)

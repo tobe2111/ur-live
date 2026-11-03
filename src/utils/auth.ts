@@ -407,7 +407,8 @@ export function requireLogin(navigate: NavigateFunction, message: string = '로�
   const alertShown = sessionStorage.getItem(alertShownKey)
 
   if (message && (force || !alertShown)) {
-    alert(message)
+    // 🪟 동적 import — app-utils(이 파일) ↔ app-shell(확인창) 청크 순환 방지(vite chunk-cycle 가드).
+    void import('@/components/ui/confirm-dialog').then((m) => m.alertDialog(message)).catch(() => {})
     sessionStorage.setItem(alertShownKey, 'true')
   }
 

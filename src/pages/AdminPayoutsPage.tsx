@@ -19,6 +19,7 @@ import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, CheckCircle, Send, XCircle } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
+import TossSendButton, { useTossPayoutStatus } from './admin-payouts/TossSendButton'
 
 interface Payout {
   id: number
@@ -76,6 +77,8 @@ export default function AdminPayoutsPage() {
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 탭별 수동 페칭 → useApiQuery (pending/payouts 리스트 + rates 폼 시드).
   const pendingQ = useApiQuery<PendingRow[]>(['admin', 'payouts-pending'], '/api/admin/payouts/pending', { enabled: tab === 'pending_ledger', select: (r: any) => (r?.success ? r.data || [] : []) })
+  // 💸 2026-11-03 토스 지급대행(게이트 OFF 면 버튼 자체가 안 뜬다 — 종전 은행 이체 그대로).
+  const tossQ = useTossPayoutStatus()
   const payoutsQ = useApiQuery<Payout[]>(['admin', 'payouts-list', filter], '/api/admin/payouts', { params: { status: filter }, enabled: tab === 'payouts', select: (r: any) => (r?.success ? r.data || [] : []) })
   const ratesQ = useApiQuery<typeof rates | null>(['admin', 'payouts-rates'], '/api/admin/payouts/commission-rates', { enabled: tab === 'rates', select: (r: any) => (r?.success ? r.data : null) })
   const pending = pendingQ.data ?? []
@@ -115,7 +118,7 @@ export default function AdminPayoutsPage() {
   }
 
   async function markSent(p: Payout) {
-    const txId = window.prompt(`송금 transaction_id 입력 (은행 거래번호 또는 토스 ID):\n계좌: ${p.bank_name || ''} ${p.account_number || ''} (${p.account_holder || ''})\n금액: ${formatWon(p.amount)}`)
+    const txId = (await promptDialog({ message: `송금 transaction_id 입력 (은행 거래번호 또는 토스 ID):\n계좌: ${p.bank_name || ''} ${p.account_number || ''} (${p.account_holder || ''})\n금액: ${formatWon(p.amount)}`, prompt: {} }))
     if (!txId) return
     try {
       const res = await api.patch(`/api/admin/payouts/${p.id}/sent`, { transaction_id: txId.trim() })
@@ -128,7 +131,7 @@ export default function AdminPayoutsPage() {
   }
 
   async function cancel(p: Payout) {
-    const reason = window.prompt('취소 사유:')
+    const reason = (await promptDialog({ message: '취소 사유:', prompt: {} }))
     if (!reason) return
     try {
       const res = await api.patch(`/api/admin/payouts/${p.id}/cancel`, { reason })
@@ -387,6 +390,9 @@ export default function AdminPayoutsPage() {
                                 <XCircle className="w-3 h-3" /> 취소
                               </button>
                             </div>
+                          )}
+                          {p.status === 'approved' && tossQ.data?.enabled && (p.payee_type === 'seller' || p.payee_type === 'store_owner') && (
+                            <div className="mb-1"><TossSendButton payoutId={p.id} amount={p.amount} onDone={load} /></div>
                           )}
                           {p.status === 'approved' && (
                             <button onClick={() => markSent(p)} className="ur-btn ur-btn-sm ur-btn-primary rounded text-[10px] flex items-center gap-1 mx-auto">

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 📮 콜드 제휴 제안 발송 — **수집 풀(미동의)** 대상. 2026-07-28 대표 결정으로 신설.
@@ -43,13 +44,11 @@ export default function ColdSendPanel() {
   async function send() {
     if (!targets?.length) return
     const n = Math.min(targets.length, BATCH)
-    if (!window.confirm(
-      `콜드 리드 ${n}명에게 제휴 제안을 발송합니다.\n\n`
+    if (!(await confirmDialog(`콜드 리드 ${n}명에게 제휴 제안을 발송합니다.\n\n`
       + '· 제목에 "(광고)" 가 자동으로 붙습니다\n'
       + '· 수신거부 안내와 전송자 정보가 자동 첨부됩니다\n'
       + '· 같은 사람에게 30일 내 재발송되지 않습니다\n\n'
-      + '진행할까요?',
-    )) return
+      + '진행할까요?'))) return
     setBusy(true)
     try {
       const ids = targets.slice(0, BATCH).map(t => t.id)

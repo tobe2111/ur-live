@@ -75,6 +75,7 @@ function LiveHeart({ productId, className = '', variant }: HeartProps) {
     setOverride(next)
     // 🎬 2026-11-02 시안 A1: 채울 때만 톡 + 점 여섯 개 + "찜했어요". 비울 땐 조용히(되돌리는 동작이라 축하할 일이 아니다).
     if (next) { setPopping(true); window.setTimeout(() => setPopping(false), 560); toast.success('찜했어요') }
+    if (next) { try { if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) navigator.vibrate?.(12) } catch { /* 진동 없음 */ } } // 📳 20차 ⑧ — 찜은 가장 짧게(0.012초). 아이폰 사파리는 진동이 없어 화면만 움직인다.
     try {
       await api.post('/api/wishlists/toggle', { product_id: productId })
       qc.invalidateQueries({ queryKey: queryKeys.wishlist() })

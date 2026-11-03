@@ -6118,7 +6118,8 @@
   "search": {
     "inputPlaceholder": "商品名・ブランド・セラーを検索",
     "related": {},
-    "endOfList": "ここまでですべてです"
+    "endOfList": "ここまでですべてです",
+    "closeTyping": "検索を閉じる"
   },
   "register": {
     "title": "[TODO:ja] 회원가입",
@@ -7113,7 +7114,8 @@
       "giftPendingDesc2": "[TODO:ja] 선물 보내기를 취소하면 다시 쓸 수 있어요.",
       "giftLinkOrCancel": "[TODO:ja] 선물 링크 보기, 보내기 취소",
       "gift": "[TODO:ja] 선물하기",
-      "receivedGiftNote": "[TODO:ja] 선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요"
+      "receivedGiftNote": "[TODO:ja] 선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요",
+      "liveHint": "お店が読み取るとすぐに切り替わります"
     }
   },
   "pass": {

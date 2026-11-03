@@ -6171,7 +6171,8 @@
   "search": {
     "inputPlaceholder": "Search products, brands, sellers",
     "related": {},
-    "endOfList": "You've reached the end"
+    "endOfList": "You've reached the end",
+    "closeTyping": "Close search"
   },
   "register": {
     "title": "[TODO:en] 회원가입",
@@ -7113,7 +7114,8 @@
       "giftPendingDesc2": "Cancel the gift to use it again.",
       "giftLinkOrCancel": "View gift link or cancel gift",
       "gift": "Gift",
-      "receivedGiftNote": "This voucher was a gift · Contact support for cancellation or refund"
+      "receivedGiftNote": "This voucher was a gift · Contact support for cancellation or refund",
+      "liveHint": "Updates as soon as the store scans it"
     }
   },
   "pass": {

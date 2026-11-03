@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 🆕 2026-07-02 유어애즈 마케팅 서비스몰 운영 (/admin/ads-services).
@@ -73,7 +74,7 @@ export default function AdminAdsServicesPage() {
 
   // 💳 토스 결제 주문 환불 — 서버가 cancelTossPayment(SSOT) 실행 후 refunded 마킹(원자적). 실패 시 paid 유지.
   async function tossRefund(orderId: number) {
-    if (!window.confirm('토스 결제를 전액 취소하고 환불 처리할까요? (실제 카드 취소가 실행됩니다)')) return
+    if (!(await confirmDialog({ message: '토스 결제를 전액 취소하고 환불 처리할까요? (실제 카드 취소가 실행됩니다)', danger: true }))) return
     setBusy(orderId)
     try {
       const r = await api.post('/api/admin/ads-pay/refund', { order_id: orderId })
@@ -158,7 +159,7 @@ export default function AdminAdsServicesPage() {
                             <button disabled={busy === o.id} onClick={() => tossRefund(o.id)}
                               className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-tone-bad hover:bg-gray-100 disabled:opacity-40" title="토스 결제 주문 — 실제 결제 취소(전액)까지 함께 실행됩니다">환불</button>
                           ) : (
-                            <button disabled={busy === o.id} onClick={() => { if (window.confirm('이 주문을 환불 처리로 표시할까요? (매출·마진 집계에서 제외됩니다)')) patchOrder(o.id, { payment_status: 'refunded' }, '환불 처리') }}
+                            <button disabled={busy === o.id} onClick={async () => { if ((await confirmDialog({ message: '이 주문을 환불 처리로 표시할까요? (매출·마진 집계에서 제외됩니다)', danger: true }))) patchOrder(o.id, { payment_status: 'refunded' }, '환불 처리') }}
                               className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-tone-bad hover:bg-gray-100 disabled:opacity-40">환불</button>
                           )
                         )}

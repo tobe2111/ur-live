@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { formatKSTShort } from '@/utils/date'
+import { alertDialog } from '@/components/ui/confirm-dialog'
 
 interface OutreachRow {
   id: number; seller_id: number; seller_name: string | null; product_id: number | null; product_name: string | null
@@ -52,8 +53,8 @@ export default function AdminInfluencerOutreachPage() {
     if (sending) return
     setSending(id)
     api.post(`/api/admin/influencer-outreach/${id}/send`)
-      .then((r) => { alert(r.data?.message || '발송 큐에 올라갔어요.'); load() })
-      .catch((e) => alert(e?.response?.data?.error || '발송 큐 적재에 실패했어요'))
+      .then((r) => { void alertDialog(r.data?.message || '발송 큐에 올라갔어요.'); load() })
+      .catch((e) => void alertDialog(e?.response?.data?.error || '발송 큐 적재에 실패했어요'))
       .finally(() => setSending(null))
   }
 

@@ -19,7 +19,7 @@ export default function NotificationsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query. 읽음 처리 시 벨 배지(unreadCount) 자동 갱신.
-  const { data: firstPage = [], isLoading: loading, isError } = useNotifications()
+  const { data: firstPage = [], isLoading: loading, isError, refetch } = useNotifications()
   // 🏁 2026-06-12 (감사 🟢 — 50개 고정): '더 보기' 페이지네이션. 첫 페이지는 기존 RQ 훅
   //   (캐시/벨 동기 보존), 추가분만 로컬 append — 훅/캐시 동작 불변(additive).
   const [extra, setExtra] = useState<typeof firstPage>([])
@@ -59,6 +59,43 @@ export default function NotificationsPage() {
     })
   }
 
+  /**
+   * 🎬 2026-11-03 18차 ⑤ — **당겨서 새로고침**: 맨 위에서 아래로 당기면 목록이 고무줄처럼 늘어나며 동그라미가 돌고,
+   *   충분히 당겼다 놓으면 새로 불러온다. 이 화면에 있는 동안만 브라우저 자체 당겨서 새로고침(안드로이드)을 끈다(둘이 겹치지 않게).
+   *   동작 줄이기면 안 한다.
+   */
+  const pullRef = useRef<HTMLDivElement | null>(null)
+  const pullInd = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = pullRef.current, ind = pullInd.current
+    if (!el || !ind) return
+    try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { return }
+    const root = document.documentElement, prevOb = root.style.overscrollBehaviorY
+    root.style.overscrollBehaviorY = 'contain'
+    let y0: number | null = null, d = 0, busy = false
+    const set = (r: number) => { el.style.transform = r ? `translateY(${r}px)` : ''; ind.style.opacity = String(Math.min(1, r / 56)); ind.style.transform = `translateY(${r * 0.5}px) rotate(${r * 4}deg)` }
+    const start = (e: TouchEvent) => { if (busy || window.scrollY > 0) return; y0 = e.touches[0].clientY; d = 0; el.style.transition = '' }
+    const move = (e: TouchEvent) => { if (y0 == null) return; d = Math.max(0, e.touches[0].clientY - y0); set(Math.min(90, d * 0.45)) }
+    const end = () => {
+      if (y0 == null) return
+      y0 = null
+      el.style.transition = 'transform .3s cubic-bezier(.2,1,.3,1)'
+      if (Math.min(90, d * 0.45) >= 56) {
+        busy = true; el.style.transform = 'translateY(48px)'; ind.classList.add('animate-spin')
+        Promise.resolve(refetch()).finally(() => { busy = false; ind.classList.remove('animate-spin'); set(0) })
+      } else set(0)
+    }
+    el.addEventListener('touchstart', start, { passive: true })
+    el.addEventListener('touchmove', move, { passive: true })
+    el.addEventListener('touchend', end)
+    el.addEventListener('touchcancel', end)
+    return () => {
+      root.style.overscrollBehaviorY = prevOb
+      el.removeEventListener('touchstart', start); el.removeEventListener('touchmove', move)
+      el.removeEventListener('touchend', end); el.removeEventListener('touchcancel', end)
+    }
+  }, [refetch, loading])
+
   // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
     <div className={`${SUB_PAGE_CLS} pb-safe-nav md:pb-20`}>
@@ -73,7 +110,11 @@ export default function NotificationsPage() {
         ) : null}
       />
 
-      <div className="ur-content-narrow px-4 lg:px-8 py-2">
+      <div className="relative">
+      <div ref={pullInd} aria-hidden="true" className="absolute left-1/2 top-1 -ml-4 w-8 h-8 rounded-full bg-surface shadow-lift flex items-center justify-center opacity-0 pointer-events-none z-10">
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-brand-text" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" /></svg>
+      </div>
+      <div ref={pullRef} className="ur-content-narrow px-4 lg:px-8 py-2">
         {loading ? (
           <BrandLoader />
         ) : error ? (
@@ -125,6 +166,7 @@ export default function NotificationsPage() {
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   )

@@ -14,7 +14,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { LayoutDashboard } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import DeferUntilVisible from './admin-page/DeferUntilVisible'
 import ChartSkeleton from './admin-page/ChartSkeleton'
 import AdminRevenueChart from './admin-page/AdminRevenueChart'
@@ -321,7 +321,7 @@ export default function AdminPage() {
   }
 
   async function updateCommissionRate(sellerId: number, currentRate: number) {
-    const newRate = prompt(t('admin.dashboard.commissionPrompt', { currentRate, defaultValue: `새 수수료율 (0-100%, 현재: ${currentRate}%)` }), currentRate.toString())
+    const newRate = (await promptDialog({ message: t('admin.dashboard.commissionPrompt', { currentRate, defaultValue: `새 수수료율 (0-100%, 현재: ${currentRate}%)` }), prompt: { defaultValue: currentRate.toString() } }))
     if (!newRate) return
     const rate = parseFloat(newRate)
     if (isNaN(rate) || rate < 0 || rate > 100) {
