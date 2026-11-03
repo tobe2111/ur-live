@@ -88,7 +88,7 @@ export const GUEST_COPY = {
  *
  * 로그인 전 탭(이용권·유어샵)은 실제 판매 중인 상품을 끌어다 쓰지 않는다 — 예시는 예시로 보여야 하고
  * (실제 가게 이름·사진이 "남의 진열대"처럼 보이면 안 된다), 데이터 요청이 없으니 화면이 늦게 밀리지도 않는다.
- * 사진 자리는 카테고리 그림(`category-icons` — 서비스 타일과 같은 그림)이다. 지어낸 사진을 쓰지 않는다. 누를 수 없다(`to` 없음).
+ * 사진은 AI 로 만든 예시 사진(`src/assets/guest/example-*.webp`, `kind` 로 고른다 — 부품 `GuestExampleRows`). 실제 가게 사진이 아니다. 누를 수 없다(`to` 없음).
  * ⚠️ 색 칸(`bg-lime-100` 등)으로 하지 말 것 — 이 디자인 시스템은 tailwind 색 이름을 회색(MONO)으로 접는다(첫 판이 회색 칸이 됐다).
  */
 export const GUEST_EXAMPLE_PASSES = [
