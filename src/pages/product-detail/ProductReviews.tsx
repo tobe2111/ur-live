@@ -9,6 +9,8 @@ import ReviewCard, { type ReviewItem } from './ReviewCard'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-shake', `@keyframes ur-shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(3px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }.ur-shake { animation: ur-shake .4s cubic-bezier(.36,.07,.19,.97); }@media (prefers-reduced-motion: reduce){.ur-shake{animation:none!important}}`)
 injectMotionCss('ur-m-bar', `@keyframes ur-bar-grow { from { transform: scaleX(0); } to { transform: none; } }.ur-bar-grow { transform-origin: left; animation: ur-bar-grow .6s cubic-bezier(.16,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-bar-grow{animation:none!important}}`)
+// 🎬 2026-11-03 17차 ⑧ — 리뷰 10자를 채우면 체크가 그려진다.
+injectMotionCss('ur-m-rvck', `@keyframes ur-rv-ck { to { stroke-dashoffset: 0; } }.ur-rv-ck { stroke-dasharray: 12; stroke-dashoffset: 12; animation: ur-rv-ck .25s ease-out forwards; }@media (prefers-reduced-motion: reduce){.ur-rv-ck{animation:none!important;stroke-dashoffset:0}}`)
 /** 리뷰 최소 글자 수 — 버튼 비활성 조건과 안내 문구가 **같은 값**을 봐야 한다(따로 두면 갈린다). */
 const MIN_REVIEW_LEN = 10
 
@@ -120,9 +122,17 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
 
       {/* 남은 글자 안내(항상) + 클릭·서버 판정 사유(hint). 둘은 같은 자리에 쓴다 — 사용자가
           "왜 안 되는지" 를 찾아 헤매지 않게. */}
-      {content.length < MIN_REVIEW_LEN && !hint && (
-        <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">
-          {t('reviews.minLength', {
+      {/* 🎬 2026-11-03 17차 ⑧ — 쓸수록 작은 원이 차오르고, 10자를 넘기면 체크로 바뀐다(숫자를 안 읽어도 얼마나 남았는지 보인다).
+          10자 뒤에도 그 줄을 체크로 남겨 둬서 아래가 위로 튀지 않는다. */}
+      {!hint && (
+        <p className="mt-2 flex items-center gap-2 text-[12px] text-gray-500 dark:text-gray-400">
+          <svg aria-hidden="true" viewBox="0 0 16 16" className="w-4 h-4 shrink-0">
+            <circle cx="8" cy="8" r="6" fill="none" strokeWidth="2" className="stroke-gray-200 dark:stroke-[#3A3D44]" />
+            {content.length < MIN_REVIEW_LEN
+              ? <circle cx="8" cy="8" r="6" fill="none" strokeWidth="2" strokeLinecap="round" className="stroke-brand" style={{ strokeDasharray: 37.7, strokeDashoffset: 37.7 * (1 - content.length / MIN_REVIEW_LEN), transform: 'rotate(-90deg)', transformOrigin: 'center', transition: 'stroke-dashoffset .2s ease' }} />
+              : <path d="M4.8 8.3l2.2 2.2 4.3-4.6" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="stroke-brand ur-rv-ck" />}
+          </svg>
+          {content.length < MIN_REVIEW_LEN && t('reviews.minLength', {
             defaultValue: '{{n}}자 더 쓰면 등록할 수 있어요',
             n: MIN_REVIEW_LEN - content.length,
           })}

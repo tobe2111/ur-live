@@ -9969,8 +9969,8 @@ canvas {
   {
     name: '📝 리뷰 최소 글자 안내가 사라져 버튼이 왜 안 눌리는지 아무도 모른다',
     file: 'src/pages/product-detail/ProductReviews.tsx',
-    find: '      {content.length < MIN_REVIEW_LEN && !hint && (',
-    replace: '      {false && (',
+    find: "          {content.length < MIN_REVIEW_LEN && t('reviews.minLength', {",
+    replace: "          {false && t('reviews.minLength', {",
     test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
     why:
       '2026-09-03 대표 신고 — 두 글자 쓰고 "버튼이 아예 안 눌러진다". 규칙은 타당하지만 이유를 ' +

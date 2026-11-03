@@ -4,6 +4,8 @@ interface ToastItem {
   id: string
   message: string
   type: 'success' | 'error' | 'info'
+  /** 🎬 2026-11-03 17차 ⑤ — 사라지기까지 남은 시간(ms). 알림 아래 막대가 이 시간 동안 줄어든다. */
+  ttl?: number
 }
 
 // 🛡️ 2026-05-20: 일부 호출처가 `{ duration: ms }` 2nd arg 를 넘기던 사고 (TS2554).
@@ -51,7 +53,7 @@ function pushToast(
   lastShownMap.set(key, now)
 
   const id = crypto.randomUUID()
-  set((s) => ({ toasts: [...s.toasts, { id, message, type }] }))
+  set((s) => ({ toasts: [...s.toasts, { id, message, type, ttl }] }))
   setTimeout(() => {
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
   }, ttl)
