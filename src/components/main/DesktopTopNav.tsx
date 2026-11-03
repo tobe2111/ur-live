@@ -4,6 +4,7 @@
  * - xl+: 로고/탭 숨김 (사이드바가 대신), 검색바 + 우측 액션만 표시
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { CONSUMER_SESSION_RESTORED_EVENT } from '@/lib/consumer-session-event'
 import { useTranslation } from '@/lib/i18n-lite'
 import { User, Radio, Search, Zap, Sparkles, Smartphone, BookOpen, ChevronRight, ChevronDown } from 'lucide-react'
 import { UrShopIcon, DongneDealIcon, HomeIcon, BagIcon, GiftBoxIcon, BellIcon, StoreIcon, PinIcon, HeartIcon } from '@/components/icons/urdeal-icons'
@@ -48,6 +49,13 @@ export default function DesktopTopNav() {
    *      *"seller_token / admin_token 단독은 소비자 세션이 아니므로 포함하지 않는다."*
    *   이 값이 가르는 것 셋(계정 메뉴·찜·알림)은 전부 소비자 기능이라 기준이 같아야 맞다.
    */
+  // 🩹 2026-11-03 — 부팅 때 서버 세션으로 소비자 표시를 되살리면(`auth-callback-bootstrap`) 다시 그린다.
+  const [, bumpSession] = useState(0)
+  useEffect(() => {
+    const on = () => bumpSession((n) => n + 1)
+    window.addEventListener(CONSUMER_SESSION_RESTORED_EVENT, on)
+    return () => window.removeEventListener(CONSUMER_SESSION_RESTORED_EVENT, on)
+  }, [])
   const loggedIn = hasConsumerSession()
   // 🔗 2026-06-17 (대표 신고): 유어샵 탭이 항상 /host/new 로 가던 버그 — 본인 유어샵 경로로 정합(BottomNav 와 동일).
   const linkshopPath = useLinkshopPath()

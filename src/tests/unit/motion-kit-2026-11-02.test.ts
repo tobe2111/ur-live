@@ -442,7 +442,7 @@ describe('1️⃣2️⃣ 12차 (2026-11-02 대표 "1,9,10번")', () => {
 
 describe('1️⃣3️⃣ 13차 (2026-11-02 대표 "모두 다 해줘")', () => {
   it('① 홈 고정 막대 — 위에서 내려온다(고정 위치)', () => {
-    expect(R('src/pages/mobile-home/MobileHomePage.tsx')).toContain('className="fixed inset-x-0 top-0 z-30 bg-surface shadow-lift ur-cbar-in"')
+    expect(R('src/pages/mobile-home/MobileHomePage.tsx')).toContain('className="fixed inset-x-0 top-0 z-30 bg-warm shadow-lift ur-cbar-in"')
   })
   it('② 알림 모두 읽음 — 그 순간만 차례로(하나씩 읽을 땐 바로)', () => {
     const s = R('src/pages/NotificationsPage.tsx')
