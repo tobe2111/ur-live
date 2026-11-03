@@ -9,7 +9,7 @@
  * 문법으로 보이면 두 화면이 된다.
  * 대표 확정: 사장님 줄 오른쪽 "팔린 만큼만 수수료" 문구는 빼기로 했다(2026-10-12).
  */
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import Udal from '@/components/mascot/Udal'
@@ -29,7 +29,7 @@ const injectMotionCss = (id: string, css: string) => { if (typeof document !== '
  *   ② 아래 목록(사장님·도움말) — 구역마다 아래에서 차례로 떠오른다
  *   ③ 화면 테마 줄 — 누른 자리에서 새 색이 원으로 퍼진다(설정 화면과 같은 처방)
  */
-injectMotionCss('ur-m-guestmy', `@keyframes ur-gm-card { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }@keyframes ur-gm-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }.ur-gm-recent > * { animation: ur-gm-card .5s cubic-bezier(.2,1,.3,1) .12s backwards; }.ur-gm-recent > :nth-child(2) { animation-delay: .19s; }.ur-gm-recent > :nth-child(3) { animation-delay: .26s; }.ur-gm-recent > :nth-child(n+4) { animation-delay: .33s; }.ur-gm-rest > * { animation: ur-gm-up .45s cubic-bezier(.2,1,.3,1) .18s backwards; }.ur-gm-rest > :nth-child(2) { animation-delay: .24s; }.ur-gm-rest > :nth-child(3) { animation-delay: .3s; }.ur-gm-rest > :nth-child(n+4) { animation-delay: .36s; }@media (prefers-reduced-motion: reduce){.ur-gm-recent > *,.ur-gm-rest > *{animation:none!important}}`)
+injectMotionCss('ur-m-guestmy', `@keyframes ur-gm-card { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }@keyframes ur-gm-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }.ur-gm-recent > * { animation: ur-gm-card .5s cubic-bezier(.2,1,.3,1) .12s backwards; }.ur-gm-recent > :nth-child(2) { animation-delay: .19s; }.ur-gm-recent > :nth-child(3) { animation-delay: .26s; }.ur-gm-recent > :nth-child(n+4) { animation-delay: .33s; }.ur-gm-rest > * { animation: ur-gm-up .45s cubic-bezier(.2,1,.3,1) .18s backwards; }.ur-gm-rest > :nth-child(2) { animation-delay: .24s; }.ur-gm-rest > :nth-child(3) { animation-delay: .3s; }.ur-gm-rest > :nth-child(n+4) { animation-delay: .36s; }@keyframes ur-gm-draw { to { stroke-dashoffset: 0; } }.ur-gm-rest :is(a, button) > span:first-child svg > * { stroke-dasharray: 64; stroke-dashoffset: 64; animation: ur-gm-draw .7s ease-out .45s forwards; }.ur-gm-rest > :nth-child(n+3) :is(a, button) > span:first-child svg > * { animation-delay: .6s; }@keyframes ur-gm-shake { 25%, 75% { transform: translateX(-3px); } 50% { transform: translateX(3px); } }@keyframes ur-gm-tip { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }.ur-gm-tip { position: absolute; left: 50%; bottom: 100%; white-space: nowrap; background: var(--ink); color: var(--surface); animation: ur-gm-tip .2s ease-out both; }@media (prefers-reduced-motion: reduce){.ur-gm-recent > *,.ur-gm-rest > *,.ur-gm-tip{animation:none!important}.ur-gm-rest :is(a, button) > span:first-child svg > *{animation:none!important;stroke-dashoffset:0}}`)
 
 const ROW_ICON = 18
 const NEXT_MODE: Record<ThemeMode, ThemeMode> = { system: 'light', light: 'dark', dark: 'system' }
@@ -39,6 +39,13 @@ export default function GuestMyPage() {
   const recent = useMemo(() => readRecentlyViewed().slice(0, 6), [])
   const mode = useTheme((s) => s.mode)
   const setMode = useTheme((s) => s.setMode)
+  // 🎬 로그아웃 2차 ⑦ — 빈 숫자 칸을 누르면 '-' 가 흔들리고 '로그인하면 보여요' 가 잠깐 뜬다.
+  const [tip, setTip] = useState<number | null>(null)
+  const tipTimer = useRef(0)
+  const pokeStat = (i: number, el: HTMLElement) => {
+    setTip(i); window.clearTimeout(tipTimer.current); tipTimer.current = window.setTimeout(() => setTip(null), 1600)
+    try { if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) el.querySelector('p')?.animate([{ transform: 'none' }, { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' }, { transform: 'none' }], { duration: 320 }) } catch { /* 장식 */ }
+  }
   const lastTap = useRef({ clientX: 0, clientY: 0 }) // 🎬 ③ 원이 퍼질 자리 — 줄 부품이 클릭 위치를 안 넘겨서 여기서 잡는다
   const modeLabel = {
     system: t('guest.my.themeSystem', { defaultValue: '시스템' }),
@@ -68,8 +75,9 @@ export default function GuestMyPage() {
           </div>
         </div>
         <div className={GUEST_CLS.myStats}>
-          {stats.map((label) => (
-            <div key={label}>
+          {stats.map((label, i) => (
+            <div key={label} style={{ position: 'relative', cursor: 'pointer' }} onClick={(e) => pokeStat(i, e.currentTarget)}>
+              {tip === i && <span role="status" className="ur-gm-tip rounded-lg px-2 py-1 text-[12px]">{t('guest.my.statTip', { defaultValue: '로그인하면 보여요' })}</span>}
               <p className={GUEST_CLS.myStatValue} aria-hidden="true">-</p>
               <p className={GUEST_CLS.myStatLabel}>{label}</p>
             </div>

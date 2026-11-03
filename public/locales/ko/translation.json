@@ -7255,5 +7255,10 @@
     "issuedBand": "이용권 발급 완료",
     "kindsCount": "{{n}}종",
     "expiryVaries": "사용 기한은 이용권마다 달라요"
+  },
+  "guest": {
+    "my": {
+      "statTip": "로그인하면 보여요"
+    }
   }
 }
