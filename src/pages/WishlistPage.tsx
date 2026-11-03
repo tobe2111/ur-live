@@ -1,6 +1,6 @@
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import Udal from '@/components/mascot/Udal'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
@@ -22,6 +22,9 @@ import WishlistRecommend from './wishlist/WishlistRecommend'
 import { WishlistSummaryCard, WishlistRows } from './wishlist/WishlistMobile'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 14차 ① — 찜을 풀어 개수가 바뀌면 위 'N개 · 가격 내린 것 N개' 줄이 톡 튀며 새 숫자를 보여 준다(줄이 사라지는 움직임은 WishlistMobile `ur-wish-out`).
+injectMotionCss('ur-m-wishcount', `@keyframes ur-wl-pop { 0% { opacity: .3; transform: translateY(-4px); } 100% { opacity: 1; transform: none; } }.ur-wl-pop { animation: ur-wl-pop .3s cubic-bezier(.2,.9,.3,1); }@media (prefers-reduced-motion: reduce){.ur-wl-pop{animation:none!important}}`)
 
 // 💗 2026-08-19: 자체 그라데이션 카드(WishlistCard)를 제거했다 — 찜 목록도 홈과 **같은 카드**를 쓴다
 //   (대표 "기존 이용권 UI로 해줘야지"). 카드가 한 벌이어야 화면마다 같은 상품이 다르게 안 보인다.
@@ -38,6 +41,8 @@ const WishlistPage: React.FC = () => {
   const [sort, setSort] = useState<WishlistSort>('recent')
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (목록 캐싱). userId 는 WishlistButton 에 전달용 유지.
   const { data: wishlists = [], isLoading: loading, isError, refetch } = useWishlist()
+  const firstCount = useRef<number | null>(null) // 🎬 14차 ① — 처음 받은 개수(그대로면 안 움직인다)
+  if (!loading && firstCount.current === null) firstCount.current = wishlists.length
   const error = isError ? t('wishlist.loadError') : null
 
   useEffect(() => {
@@ -108,7 +113,7 @@ const WishlistPage: React.FC = () => {
       <div className="ur-content-wide px-4 lg:px-8 pb-2">
         {/* 개수·인하는 찜이 있을 때만 말한다 — 빈 화면에서 "0개" 는 제목을 되풀이할 뿐이다. */}
         {wishlists.length > 0 && (
-          <p className="px-1 pt-1 pb-3 text-[13px] text-gray-500 dark:text-gray-400">
+          <p key={`${wishlists.length}|${summary.drops}`} className={`px-1 pt-1 pb-3 text-[13px] text-gray-500 dark:text-gray-400${firstCount.current !== null && firstCount.current !== wishlists.length ? ' ur-wl-pop' : ''}`}>
             {[
               t('wishlist.subtitleCount', { count: wishlists.length }),
               summary.drops > 0 ? t('wishlist.dropCount', { count: summary.drops, defaultValue: '가격 내린 것 {{count}}개' }) : '',

@@ -14,6 +14,9 @@ import SearchSuggestPanel from '@/components/search/SearchSuggestPanel'
 import RestaurantRow from '@/pages/restaurant-map/RestaurantRow'
 import SortFilterBar from '@/components/search/SortFilterBar'
 import { priceDisplay } from '@/shared/price-display'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 14차 ⑥ — 검색어·정렬이 바뀌어 결과가 새로 그려지면 첫 여덟 줄이 차례로 떠오른다(더보기로 붙는 줄은 그대로).
+injectMotionCss('ur-m-search', `@keyframes ur-sr-in { from { opacity: 0; transform: translateY(10px); } }.ur-sr-list > *:nth-child(-n+8) { animation: ur-sr-in .35s cubic-bezier(.2,.9,.3,1) backwards; }.ur-sr-list > *:nth-child(2) { animation-delay: 40ms; }.ur-sr-list > *:nth-child(3) { animation-delay: 80ms; }.ur-sr-list > *:nth-child(4) { animation-delay: 120ms; }.ur-sr-list > *:nth-child(5) { animation-delay: 160ms; }.ur-sr-list > *:nth-child(6) { animation-delay: 200ms; }.ur-sr-list > *:nth-child(7) { animation-delay: 240ms; }.ur-sr-list > *:nth-child(8) { animation-delay: 280ms; }@media (prefers-reduced-motion: reduce){.ur-sr-list > *{animation:none!important}}`)
 
 interface Product {
   id: number
@@ -245,7 +248,7 @@ export default function SearchPage() {
                 결과는 **이용권만**인데(위 필터) 그리는 옷이 쇼핑용 2열 카드였다 — 장바구니 ➕ 와
                 무료배송 칩이 붙는, 배송 상품의 UI. 홈(지도 목록)이 쓰는 **같은 행 컴포넌트**로 통일한다.
                 검색엔 위치가 없으므로 `userLoc=null`(거리 미표시), 선택 개념도 없어 `isSelected=false`. */}
-            <div className="flex flex-col divide-y divide-rule">
+            <div key={`${query}|${sortBy}`} className="flex flex-col divide-y divide-rule ur-sr-list">
               {products.map((product) => (
                 <RestaurantRow
                   key={product.id}
