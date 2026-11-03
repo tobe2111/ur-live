@@ -7,7 +7,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 export default function AdminRevenueChart() {
   const [days, setDays] = useState(14)
   // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). 인증=인터셉터 자동(admin_token). days 변경 시 재조회.
-  const { data = [] } = useApiQuery<{ date: string; revenue: number }[]>(
+  const { data = [], isError, refetch } = useApiQuery<{ date: string; revenue: number }[]>(
     ['admin', 'revenue-chart', days],
     `/api/admin/tools/chart/revenue?days=${days}`,
     { select: (raw) => (raw as { success?: boolean; data?: { date: string; revenue: number }[] })?.data ?? [] },
@@ -24,6 +24,12 @@ export default function AdminRevenueChart() {
           ))}
         </div>
       </div>
+      {isError ? (
+        <div className="flex flex-col items-center justify-center gap-2 text-[13px] text-gray-500" style={{ minHeight: 160 }}>
+          매출 추이를 불러오지 못했습니다
+          <button onClick={() => refetch()} className="px-3 py-1.5 rounded-lg text-[13px] font-medium bg-brand text-white">다시 시도</button>
+        </div>
+      ) : (
       <div className="flex items-end gap-1 overflow-x-auto scrollbar-hide" style={{ minHeight: 160 }}>
         {data.slice(-14).map(d => (
           <div key={d.date} className="flex flex-col items-center flex-1 min-w-[28px]">
@@ -35,6 +41,7 @@ export default function AdminRevenueChart() {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }

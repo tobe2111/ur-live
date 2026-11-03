@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Loader2, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
@@ -41,7 +41,7 @@ export default function AdminPartnershipPage() {
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
   const queryClient = useQueryClient()
-  const { data: rows = [], isLoading: loading } = useApiQuery<InquiryRow[]>(
+  const { data: rows = [], isLoading: loading, isError, error, refetch } = useApiQuery<InquiryRow[]>(
     ['admin', 'partnership', statusFilter],
     '/api/admin/partnership-inquiries',
     {
@@ -84,7 +84,9 @@ export default function AdminPartnershipPage() {
         ))}
       </div>
 
-      {loading ? (
+      {isError ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="제휴 문의" />
+        ) : loading ? (
         <div className="py-16 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" /></div>
       ) : rows.length === 0 ? (
         <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 py-16 text-center text-sm text-gray-400">접수된 문의가 없어요</div>

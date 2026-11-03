@@ -64,16 +64,8 @@ if (files.length === 0) {
   process.exit(1)
 }
 
-// 🧊 2026-11-02 동결: 정규식을 고치자(타입 인자) 이미 있던 어드민 화면 17곳이 드러났다. 이 목록은 **줄이기만** 한다 —
-//   고친 파일은 빼고, 새 파일은 여기 넣지 말고 isError 분기를 단다. (수리는 별도 작업)
-const BASELINE = new Set([
-  'src/pages/AdminAccountsPage.tsx', 'src/pages/AdminBannersPage.tsx', 'src/pages/AdminBlogPage.tsx',
-  'src/pages/AdminBusinessVerificationPage.tsx', 'src/pages/AdminCouponsPage.tsx', 'src/pages/AdminDisputesPage.tsx',
-  'src/pages/AdminInfluencerDisputesPage.tsx', 'src/pages/AdminNotificationSettingsPage.tsx', 'src/pages/AdminPartnershipPage.tsx',
-  'src/pages/AdminPendingSellersPage.tsx', 'src/pages/AdminProspectsPage.tsx', 'src/pages/AdminRestaurantDemandPage.tsx',
-  'src/pages/AdminReturnsPage.tsx', 'src/pages/AdminWithholdingPage.tsx', 'src/pages/admin/AdminBusinessMetricsPage.tsx',
-  'src/pages/admin/KVMonitoringPage.tsx', 'src/pages/admin-page/AdminRevenueChart.tsx',
-])
+// 🧊 2026-11-02 동결 → 2026-11-03 해소: 정규식을 고치자 드러난 어드민 화면 17곳에 에러 분기를 달았다.
+const BASELINE = new Set([])  // 2026-11-03: 17곳 전부 고쳤다 — 비어 있어야 정상(새 파일은 isError 분기를 단다)
 
 const violations = []
 const staleBaseline = []

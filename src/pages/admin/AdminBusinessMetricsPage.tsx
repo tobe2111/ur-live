@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import {
   BarChart3, TrendingUp, Repeat, Users, Store, ShoppingCart,
   AlertCircle, Loader2, Info,
@@ -63,7 +63,7 @@ export default function AdminBusinessMetricsPage() {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
   }, [navigate])
 
-  const { data, isLoading: loading } = useApiQuery<OverviewResponse>(
+  const { data, isLoading: loading, isError, error, refetch } = useApiQuery<OverviewResponse>(
     ['admin', 'business-metrics', period],
     `/api/admin/business-metrics/overview?period=${period}`,
     { headers: h.headers, select: (r: any) => r as OverviewResponse },
@@ -114,7 +114,9 @@ export default function AdminBusinessMetricsPage() {
           </p>
         </div>
 
-        {loading && !data ? (
+        {isError && !data ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="비즈니스 지표" />
+        ) : loading && !data ? (
           <div className="flex justify-center py-24"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
         ) : (
           <>

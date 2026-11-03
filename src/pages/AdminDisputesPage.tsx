@@ -17,7 +17,7 @@ import api from '@/lib/api'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { AlertCircle, CheckCircle2, XCircle, Loader2, Clock, Bot, ChevronDown, ChevronRight } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 
@@ -61,7 +61,7 @@ export default function AdminDisputesPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState<number | null>(null)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (tab별 캐시).
-  const { data: items = [], isLoading: loading, refetch } = useApiQuery<Dispute[]>(
+  const { data: items = [], isLoading: loading, isError, error, refetch } = useApiQuery<Dispute[]>(
     ['admin', 'disputes', tab], '/api/disputes/admin/list',
     { params: { status: tab }, select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -140,7 +140,9 @@ export default function AdminDisputesPage() {
           ))}
         </div>
 
-        {loading ? (
+        {isError ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="분쟁" />
+        ) : loading ? (
           <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-text" /></div>
         ) : items.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
