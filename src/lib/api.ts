@@ -13,7 +13,6 @@ import { createHttp, http, isHttpError, type AxiosError, type InternalRequestCon
 import { readAffiliateRef, pruneExpiredAffiliateRef } from '@/utils/affiliate-ref-store';
 import { ensureCsrfToken } from './csrf-token'
 import { readCookie } from './read-cookie'
-import { promptDialog } from '@/components/ui/confirm-dialog'
 import { type DashboardRole, isDashboardRefreshUrl, dashboardTokenKeys } from './dashboard-token';
 // 🔑 2026-09-23: 토큰 갱신은 `dashboard-refresh.ts` 한 곳 — 401 인터셉터·요청 인터셉터·
 //   `useTokenAutoRefresh` 가 **같은 inflight 락**을 공유해야 회전 토큰 경합이 안 난다.
@@ -394,7 +393,8 @@ api.interceptors.response.use(
       originalRequest._retry2fa = true;
       try {
         const code = typeof window !== 'undefined'
-          ? (await promptDialog({ message: '2단계 인증 코드(6자리)를 입력하세요 — Authenticator 앱 확인', prompt: {} }))
+          // 🪟 동적 import — 정적으로 부르면 app-utils(이 파일) ↔ app-shell(확인창) 청크 순환이 생긴다(vite chunk-cycle 가드).
+          ? (await (await import('@/components/ui/confirm-dialog')).promptDialog({ message: '2단계 인증 코드(6자리)를 입력하세요 — Authenticator 앱 확인', prompt: {} }))
           : null;
         if (code && /^\d{6}$/.test(code.trim())) {
           originalRequest.headers = originalRequest.headers || {};
