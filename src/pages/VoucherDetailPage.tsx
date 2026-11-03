@@ -25,6 +25,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { pickSeedDetail } from './group-buy/seed-detail'
 import { getProductFlow, FLOW_CONFIG } from '@/shared/product-flow'
 import { priceDisplay } from '@/shared/price-display'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 /**
  * 🛡️ 2026-05-23: 교환권 전용 detail 페이지.
@@ -139,6 +140,7 @@ function VoucherNotice({ text }: { text: string }) {
 export default function VoucherDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/vouchers')
   const invalidateVouchers = useInvalidateMyVouchers()
   const qc = useQueryClient()
   // 🎨 2026-06-17 (교환권 상세 리디자인): 보유 딜 + 교환 후 잔액 표시.
@@ -297,7 +299,7 @@ export default function VoucherDetailPage() {
   if (error || !product) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] p-4">
-        <button onClick={() => navigate(-1)} aria-label="뒤로" className="mb-4"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
+        <button onClick={goBack} aria-label="뒤로" className="mb-4"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
         <div className="text-center mt-12">
           <p className="text-[15px] text-gray-700 dark:text-gray-200 mb-4">{error || '교환권을 찾을 수 없습니다'}</p>
           <button onClick={() => navigate('/vouchers')} className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold">교환권 목록으로</button>
@@ -362,7 +364,7 @@ export default function VoucherDetailPage() {
       <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur">
         <div className="ur-content-narrow lg:max-w-[1000px] h-14 px-2 flex items-center">
           <button
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             aria-label="뒤로"
             className="w-10 h-10 rounded-full flex items-center justify-center text-gray-900 dark:text-white active:scale-95"
           >

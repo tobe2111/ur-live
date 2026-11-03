@@ -14,6 +14,7 @@ import { formatNumber } from '@/utils/format'
 import { useBalance } from '@/hooks/queries'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { loginPathFromHere } from '@/utils/login-return'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 const clientKey = getTossClientKey()
 
@@ -37,6 +38,7 @@ interface ChargeOption {
 
 export default function PointsChargePage() {
   const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   const { t } = useTranslation()
   // 공통 hook — 5분 stale + localStorage initialData + dedup.
   // 🛡️ 2026-05-24: 충전 페이지는 잔액 정확성 critical — fresh fetch (0s stale + focus refetch).
@@ -192,7 +194,7 @@ export default function PointsChargePage() {
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
           <button
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             className="w-9 h-9 flex items-center justify-center"
             aria-label={t('pointsCharge.back', { defaultValue: '뒤로가기' })}
           >

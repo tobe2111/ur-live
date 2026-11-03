@@ -11,6 +11,7 @@ import { ChevronLeft } from 'lucide-react'
 import VoucherScanner from '@/components/voucher/VoucherScanner'
 import { currentSeatLabel } from '@/lib/seller-seat'
 import { MY_PATH, clearMyReturn, noteMyReturn, shouldOfferMyReturn } from '@/lib/seller-return'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 // 📟 2026-07-20 (대표 — 직원 폰/공기계): 스캔 전용 기기 링크(?dk=)로 진입하면 로그인 없이 스캔.
 //   키는 localStorage 보관(1회 수신 후 주소창에서 제거 — 링크 공유/히스토리 노출 방지).
@@ -29,6 +30,7 @@ function captureDeviceKey(): void {
 
 export default function StoreScanPage() {
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   if (typeof window !== 'undefined') captureDeviceKey()
   /**
    * ↩️ 2026-09-28 — **마이에서 왔으면 마이로 돌려보낸다.**
@@ -61,7 +63,7 @@ export default function StoreScanPage() {
           onClick={() => {
             // 마이에서 왔으면 마이로 — 하드 이동이다(마이는 소비자 세션으로 도는 다른 표면이다).
             if (backToMy) { clearMyReturn(); window.location.assign(MY_PATH); return }
-            navigate(-1)
+            goBack()
           }}
           aria-label={backToMy ? '마이로 돌아가기' : '뒤로'}
           className="flex items-center gap-1 pl-2 pr-2 py-2 rounded-full active:bg-gray-100 dark:active:bg-[#1D1F29]"

@@ -15,6 +15,7 @@ import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardCard, DashboardLoading } from '@/components/dashboard'
 import SEO from '@/components/SEO'
 import { safeDate } from '@/utils/safe-date'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 type Tier = 'diamond' | 'gold' | 'silver' | 'bronze' | 'new'
 
@@ -47,6 +48,7 @@ const TIER_THRESHOLDS: Record<Tier, number> = {
 export default function SellerTierPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
   const { data: info = null, isLoading: loading } = useApiQuery<TierInfo | null>(
     ['seller', 'tier'], '/api/seller/tier',
@@ -116,7 +118,7 @@ export default function SellerTierPage() {
     <SellerLayout title={t('sellerTier.title', { defaultValue: '내 등급' })}>
       <SEO title={t('sellerTier.seoTitle', { defaultValue: '셀러 등급 - 유어딜' })} description={t('sellerTier.seoDesc', { defaultValue: '내 셀러 등급과 혜택을 확인하세요' })} url="/seller/tier" noindex />
       <div className="mx-auto max-w-5xl">
-        <button onClick={() => navigate(-1)} aria-label="뒤로 가기"
+        <button onClick={goBack} aria-label="뒤로 가기"
           className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 mb-3"
         >
           <ChevronLeft className="w-4 h-4" /> {t('common.back', { defaultValue: '뒤로' })}

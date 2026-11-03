@@ -3,6 +3,7 @@ import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Search, X } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n-lite'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 interface SearchHeaderProps {
   query: string
@@ -25,6 +26,7 @@ export default function SearchHeader({
   onPanelChange,
 }: SearchHeaderProps) {
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const { t } = useTranslation()
   const [inputValue, setInputValue] = useState(query)
   const [isFocused, setIsFocused] = useState(false)
@@ -83,7 +85,7 @@ export default function SearchHeader({
   return (
     <div className="sticky top-0 md:static z-50 bg-white dark:bg-[#11141C]">
       <div className="flex items-center gap-2 px-3 py-2">
-        <button onClick={() => navigate(-1)} className="shrink-0 p-1">
+        <button onClick={goBack} className="shrink-0 p-1">
           <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
         </button>
         <div className="flex-1 relative">

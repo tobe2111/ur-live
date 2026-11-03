@@ -35,6 +35,7 @@ import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID, STAY_BAND } from '@/shared/stay-h
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'
 import BrandLoader from '@/components/brand/BrandLoader'; import { useOwnerManage, OwnerManageBar, OwnerManageCard } from '@/components/deal/useOwnerManage'
 import { peekWarmStay, stayDetailRequest } from './stays/stay-detail-warm'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 // 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): 딜 상세와 동일한 잠금 lazy 패턴 —
 //   IntersectionObserver 게이트(RestaurantMiniMap 내부)라 스크롤 도달 전 Kakao SDK 0 fetch.
@@ -123,6 +124,7 @@ function readStaySeed(productId: number): StayDetail | null {
 export default function StayDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const [params, setParams] = useSearchParams()
   const productId = Number(id)
   // 🏪 2026-10-19: 주인이 보면 예약 자리에 [관리하기](이용권·쇼핑과 같은 훅 — 판정은 구매 차단과 같은 서버 함수).
@@ -357,7 +359,7 @@ export default function StayDetailPage() {
         productId={stay.id} title={stay.restaurant_name || stay.name}
         shareDescription={stayRegionLabel(stay.region_sido, stay.region_sigungu, stay.address) || '숙소 이용권'}
         shareImageUrl={stay.image_url || ''} shareLink={`https://urdeal.kr/stays/${stay.id}`}
-        myUserId={localStorage.getItem('user_id') || ''} heroRef={heroRef} onBack={() => navigate(-1)}
+        myUserId={localStorage.getItem('user_id') || ''} heroRef={heroRef} onBack={goBack}
         overPhoto
       />
       {/* 📱 2026-10-27 (대표 "통일할 건 통일"): 폰에선 사진이 맨 위 — 이용권 상세와 같다(빵부스러기는 PC 만). */}

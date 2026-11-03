@@ -13,7 +13,6 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { WalletIcon, MedalIcon, ChartIcon, BagIcon, MessageIcon, ReceiptIcon } from '@/components/icons/urdeal-icons'
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -27,6 +26,7 @@ import ConditionalDealsSection from './influencer-settlement/ConditionalDealsSec
 import DealsAndCodesSection from './influencer-settlement/DealsAndCodesSection'
 import PublicProfileSection from './influencer-settlement/PublicProfileSection'
 import { formatKSTDate } from '@/utils/date'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 interface Balance {
   pending_amount: number
@@ -83,7 +83,6 @@ const won = (n: number | null | undefined) => `${(n ?? 0).toLocaleString()}원`
 const rowIco = (I: typeof WalletIcon) => <I className="w-[18px] h-[18px]" aria-hidden="true" />
 
 export default function InfluencerSettlementPage() {
-  const navigate = useNavigate()
   const rank = useMyRank()
   const [sheet, setSheet] = useState<null | 'info' | 'dispute'>(null)
   const [balance, setBalance] = useState<Balance | null>(null)
@@ -153,7 +152,7 @@ export default function InfluencerSettlementPage() {
 
   if (loading) return <BrandLoader fullScreen />  // 🎯 2026-07-18 로딩 단일화
 
-  const back = () => { if (window.history.length > 1) navigate(-1); else navigate('/u/me/manage') }
+  const back = useSafeBack('/u/me/manage')
   const acct = balance?.bank_account ? `${balance.bank_name || ''} ··${balance.bank_account.replace(/\D/g, '').slice(-4)}`.trim() : ''
   const payoutHint = balance?.payout_method === 'deal' ? '딜 +20%' : '현금'
 

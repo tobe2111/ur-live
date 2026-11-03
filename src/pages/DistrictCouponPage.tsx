@@ -16,6 +16,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { formatWon } from '@/utils/format'
 import { ArrowLeft, Camera, TicketPercent } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
+import { useSafeBack } from '@/hooks/useSafeBack'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 14차 ⑧ — 영수증을 등록하면 버튼 안에 체크가 그려지고 '접수됐어요', 비워진 칸들이 아래에서 다시 올라온다.
 injectMotionCss('ur-m-receipt', `@keyframes ur-rc-ck { to { stroke-dashoffset: 0; } }@keyframes ur-rc-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.12); } 100% { transform: none; } }@keyframes ur-rc-up { from { opacity: 0; transform: translateY(10px); } }.ur-rc-ok svg { animation: ur-rc-pop .35s cubic-bezier(.3,1.3,.5,1); }.ur-rc-ok path { stroke-dasharray: 20; stroke-dashoffset: 20; animation: ur-rc-ck .3s .12s ease-out forwards; }.ur-rc-fresh > div { animation: ur-rc-up .35s cubic-bezier(.2,.9,.3,1) backwards; }.ur-rc-fresh > div:nth-child(3) { animation-delay: 60ms; }.ur-rc-fresh > div:nth-child(4) { animation-delay: 120ms; }.ur-rc-fresh > div:nth-child(5) { animation-delay: 180ms; }@media (prefers-reduced-motion: reduce){.ur-rc-ok svg,.ur-rc-fresh > div{animation:none!important}.ur-rc-ok path{animation:none!important;stroke-dashoffset:0}}`)
@@ -186,6 +187,7 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
 export default function DistrictCouponPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const isMy = !slug || slug === 'my'
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [stores, setStores] = useState<StoreRow[]>([])
@@ -229,7 +231,7 @@ export default function DistrictCouponPage() {
     <div className="min-h-[100dvh] bg-gray-50 dark:bg-[#1D1F29] pb-24">
       <SEO title={`${campaign ? campaign.name : '상권 쿠폰'} - 유어딜`} description="영수증 등록하고 상권 쿠폰 받기 — 참여 점포 어디서든 사용" url={isMy ? '/district/my' : `/district/${slug}`} />
       <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-4 py-3">
-        <button type="button" onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" /></button>
+        <button type="button" onClick={goBack} aria-label="뒤로"><ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" /></button>
         <h1 className="flex-1 text-[15px] font-bold text-gray-900 dark:text-white">{isMy ? '내 상권 쿠폰' : campaign?.name || '상권 쿠폰'}</h1>
         {!isMy && <button type="button" onClick={() => navigate('/district/my')} className="flex items-center gap-1 text-[12px] font-medium text-gray-500 dark:text-gray-400"><WalletIcon className="h-4 w-4" />내 쿠폰</button>}
       </header>
