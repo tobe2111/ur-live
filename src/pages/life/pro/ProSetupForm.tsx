@@ -9,6 +9,7 @@ import { sellerHeaders } from '../life-shared'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
 import { PRO_INTRO_MAX, PRO_LINKS_MAX, PRO_LINK_SITES, normalizeProLink, proLinkStatus } from '@/shared/home-service-review'
+import { formatPhone } from '@/utils/format-phone' // 📞 휴대폰 000-0000-0000 자동 하이픈(2026-11-03 대표)
 
 /** 넣을 수 있는 곳 — 이름만 겹치지 않게(카카오맵 주소가 둘이다). */
 const SITE_NAMES = [...new Set(PRO_LINK_SITES.map((s) => s.label.replace(/ (플레이스|지도|블로그)$/, '')))].join('·')
@@ -141,7 +142,7 @@ export default function ProSetupForm({ me, onSaved, prefill, signup }: { me: Pro
 
       <div>
         <p className="mb-2 text-[15px] font-bold">알림톡 받을 번호</p>
-        <input className={`${INPUT} w-full`} inputMode="tel" placeholder="010-0000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <input className={`${INPUT} w-full`} inputMode="tel" maxLength={13} placeholder="010-0000-0000" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} />
       </div>
 
       {!signup && (

@@ -4,6 +4,7 @@
  */
 
 import type { SeedSection } from './guide-seed-types'
+import { ADMIN_SETTLEMENT_SECTION } from './guide-seed-settlement'
 import { OPS_HANDBOOK_SECTION } from './guide-seed-admin/ops-handbook-section'
 import { DAILY_CHECKLIST_SECTION } from './guide-seed-admin/daily-checklist'
 
@@ -121,50 +122,7 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 
 > ⚠️ Toss 결제 취소는 **7일 이내**만 자동 처리 가능. 그 이후는 수동 송금 환불.`,
   },
-  {
-    key: 'settlement', icon: '💰', title: '정산 처리', order: 60,
-    content: `### 🏦 지급 센터 (\`/admin/payout-center\`) — 2026-06-12 신설, 권장 진입점
-셀러 정산 · 소개 환급의 **모든 지급 요청이 한 화면**에 모입니다.
-1. 매주 금요일 지급 센터 열기 (정산 센터 탭 맨 앞)
-2. 줄 서 있는 신청의 계좌로 폰뱅킹 이체
-3. **입금 완료** 클릭 → 상태 기록 + 신청자에게 자동 알림
-- 소개 환급 반려 시 차감됐던 딜이 자동 복원됩니다
-- **딜 환급 탭**(2026-10-12): 유저가 충전하고 쓰지 않은 딜의 현금 환급 신청(약관 제12조). 딜은 신청 순간 이미 빠져 있으니 그 금액을 이체하고 **입금 완료**(2FA), 못 하면 **반려**(딜 원복). 세금·수수료 없음. 셀러는 신청하지 않는다 — 판매 대금은 매주 자동 정산뿐
-
-### 정산 프로세스 (\`/admin/settlement\`)
-1. 셀러가 정산 신청 → 상태 **REQUESTED**
-2. 관리자 검토 → 승인 시 **APPROVED** 상태로 전환
-3. 실제 송금 완료 시 **PAID** 로 변경 — 이체 증빙 업로드
-4. 문제 있으면 **REJECTED** + 사유 기입 → 셀러에게 알림
-
-### 일괄 처리 (\`/admin/settlements-bulk\`)
-- 매주 수요일 일괄 정산 권장 — CSV 다운로드 → 은행 일괄이체 → 완료 후 업로드
-- 금액 = 총매출 − 플랫폼 수수료(직접 10% / 중개 5%) − 환불액 − 배송비 정산
-
-### 정산 검증 포인트
-- DONE 상태 주문만 집계됨 (구매확정 14일 경과)
-- 환불된 주문은 자동 차감
-- 셀러 크레딧 잔액(알림톡 선구매 등)은 별도 회계
-
-> 🚨 **주의**: 정산 완료(PAID) 후 수정 불가. 오류 발견 시 다음 정산분에서 조정.
-
-### 🧾 세금계산서 역발행 (사업자 유저 셀러 정산 매입)
-- 지급 센터에서 **사업자 유저**(사업자등록 검증) 셀러 정산을 **PAID** 로 처리하면, 그 지급액에 대한
-  **매입세금계산서 역발행 초안**이 \`settlement_tax_invoices\` 에 **자동 생성**됩니다(멱등, fail-soft).
-  카카오 애드핏 = 유니포스트 역발행과 동일 모델(유어딜=공급받는자, 셀러=공급자).
-- 셀러는 \`/seller/settlements\` 에서 **승인** → 발행 확정. 비사업자/미검증 셀러는 대상 아님(원천징수 경로).
-- 현황/재발행: \`GET /api/admin/tax/settlement-invoices\`, \`POST /api/admin/tax/settlement-invoices/:id/reissue\`.
-- **실 발행 활성화**: 환경변수 \`REVERSE_INVOICE_PROVIDER\`(\`unipost\`/\`stub\`) + \`UNIPOST_API_URL\`/\`UNIPOST_API_KEY\`/\`UNIPOST_CORP_NUM\` 설정.
-  미설정 시 초안(draft)으로만 남습니다(실 발행 없음). 설계: \`docs/design/settlement-reverse-issuance.md\`.
-
-### 🛡️ 정산 지급 가드 (2026-07 머니 감사 — 통합정산 payouts)
-- **승인/송금 CAS**: 승인·송금완료는 status 조건부 UPDATE(CAS)라 동시 클릭 이중 실행이 구조적으로 차단됩니다(409 "이미 처리됨" = 정상 방어이니 당황 금지).
-- **계좌 누락 차단**: 수령자 계좌번호가 없으면 송금완료 마킹 불가 → \`PAYOUT_NO_ACCOUNT\` 409. 수령자 계좌 등록 확인 후 재시도.
-- **동일 수령자·기간 중복 송금 차단**: 같은 수령자·기간에 이미 'sent' 건이 있으면 \`PAYOUT_ALREADY_SENT_PERIOD\` 409 — 이중지급 방어(정말 별건인지 먼저 확인).
-- **과다지급 가드**: 승인 시 현재 원장 net receivable 을 재검증 — 초과분은 \`PAYOUT_EXCEEDS_RECEIVABLE\` 로 차단(오래된 gross 건은 취소 후 재생성).
-- **미회수 clawback 조회**: 지급 후 환불이 들어오면 자동 회수가 안 되고 의무만 기록됨 — \`GET /api/admin/payouts/clawbacks\` 로 pending 회수 대상·금액 합계를 확인하고 회수/상계 처리.
-- **두 레일 대사**: 같은 매장이 restaurant_settlements 와 payouts 양쪽에 미지급 노출되면 이중지급 위험 — \`GET /api/admin/payouts/rail-reconciliation\` 으로 확인 후 **한 레일에서만** 지급.`,
-  },
+  ADMIN_SETTLEMENT_SECTION, // 💰 2026-11-03 → guide-seed-settlement.ts
   {
     key: 'live', icon: '🔴', title: '라이브 방송 운영', order: 70,
     content: `### 실시간 모니터링 (\`/admin/live-monitor\`)

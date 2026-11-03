@@ -21,6 +21,9 @@ import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { Loader2, X, ShieldCheck } from 'lucide-react'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 19차 ① — 숫자를 칠 때마다 아래 여섯 칸이 하나씩 톡 채워지고, 틀리면 칸들이 함께 흔들린다(몇 자리 쳤는지 한눈에).
+injectMotionCss('ur-m-pincells', `@keyframes ur-pin-pop { 0% { transform: scale(.4); } 70% { transform: scale(1.2); } 100% { transform: none; } }@keyframes ur-pin-shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }.ur-pin-dot { animation: ur-pin-pop .2s cubic-bezier(.3,1.5,.5,1); }.ur-pin-bad { animation: ur-pin-shake .4s; }@media (prefers-reduced-motion: reduce){.ur-pin-dot,.ur-pin-bad{animation:none!important}}`)
 
 interface Props {
   onVerified: () => void
@@ -32,6 +35,7 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
   const { t } = useTranslation()
   const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
+  const [badN, setBadN] = useState(0) // 🎬 19차 ① — 틀릴 때마다 +1(칸을 다시 흔든다)
   const basePath = '/api/seller'
   useEscapeKey(onCancel)
 
@@ -48,6 +52,7 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
         onVerified()
       } else {
         toast.error(res.data?.error || t('auth.pin.verifyFailed'))
+        setBadN((n) => n + 1)
       }
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string; code?: string } } }
@@ -57,6 +62,7 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
         return
       }
       toast.error(err.response?.data?.error || t('auth.pin.verifyFailed'))
+      setBadN((n) => n + 1)
     } finally { setLoading(false) }
   }
 
@@ -94,6 +100,11 @@ export function SellerPinPrompt({ onVerified, onCancel, role = 'seller' }: Props
           onKeyDown={e => { if (e.key === 'Enter') submit() }}
           className="w-full px-4 py-3 border border-gray-300 rounded-xl text-lg text-center font-mono tracking-widest text-gray-900"
         />
+        <div key={badN} aria-hidden="true" className={`flex justify-center gap-2 ${badN ? 'ur-pin-bad' : ''}`}>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <span key={i} className={`w-3 h-3 rounded-full border ${i < pin.length ? 'bg-gray-900 border-gray-900 ur-pin-dot' : 'border-gray-300'}`} />
+          ))}
+        </div>
         <div className="flex gap-2">
           <button onClick={onCancel}
             className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold">

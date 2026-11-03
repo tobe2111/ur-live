@@ -16,6 +16,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import type { KakaoPlace } from '../RestaurantMapPage'
+import { formatPhone } from '@/utils/format-phone' // 📞 휴대폰 000-0000-0000 자동 하이픈(2026-11-03 대표)
 
 interface Props {
   place: KakaoPlace
@@ -86,7 +87,8 @@ export default function SuggestionModal({ place, onClose }: Props) {
                 <input
                   type="tel"
                   value={phone}
-                  onChange={e => setPhone(e.target.value)}
+                  onChange={e => setPhone(formatPhone(e.target.value))}
+                  maxLength={13}
                   placeholder="010-0000-0000"
                   className="flex-1 px-3 py-2 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:border-brand focus:outline-none"
                 />

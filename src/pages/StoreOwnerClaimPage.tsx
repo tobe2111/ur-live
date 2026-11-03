@@ -28,6 +28,7 @@ import { ChevronLeft, Search } from 'lucide-react'
 import BrokerTermsConsent, { type BrokerTerms } from './store-claim/BrokerTermsConsent'
 import { formatBizNo } from '@/utils/format-kr' // 🔢 사업자등록번호 000-00-00000 자동 하이픈(2026-11-03 대표 — 모든 입력란)
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { formatPhone } from '@/utils/format-phone' // 📞 휴대폰 000-0000-0000 자동 하이픈(2026-11-03 대표)
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 15차 ⑥ — 1·2·3 동그라미가 차례로 톡 켜지고, 사이 선이 아래로 이어진다(PC 안내 열 · 들어올 때 한 번).
 injectMotionCss('ur-m-ownerclaim', `@keyframes ur-so-pop { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.15); } 100% { transform: none; } }@keyframes ur-so-up { from { opacity: 0; transform: translateY(8px); } }@keyframes ur-so-line { from { transform: scaleY(0); } }.ur-so-n { animation: ur-so-pop .35s cubic-bezier(.3,1.3,.5,1) backwards; animation-delay: calc(var(--i) * 260ms + 100ms); }.ur-so-t { animation: ur-so-up .35s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 260ms + 150ms); }.ur-so-line { transform-origin: top; animation: ur-so-line .25s ease backwards; animation-delay: calc(var(--i) * 260ms + 300ms); }@media (prefers-reduced-motion: reduce){.ur-so-n,.ur-so-t,.ur-so-line{animation:none!important}}`)
@@ -324,7 +325,7 @@ export default function StoreOwnerClaimPage() {
 
             <div>
               <label className="block text-[13px] font-medium mb-2 text-gray-900">연락처 (선택)</label>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel"
+              <input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" maxLength={13}
                 placeholder="010-0000-0000"
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[15px] text-gray-900" />
             </div>

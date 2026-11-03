@@ -105,6 +105,7 @@ import { bannerRoutes } from '../features/banners/api/banners.routes';
 import { cartRoutes } from '../features/cart/api/cart.routes';
 import { notificationsRoutes } from '../features/notifications/api/notifications.routes';
 import { resendWebhookRoutes } from '../features/notifications/api/resend-webhook.routes';
+import { tossPayoutWebhookRoutes } from '../features/payouts/api/toss-payout-webhook.routes'; // 💸 2026-11-03 토스 지급대행 웹훅(게이트 OFF=무시)
 import { ordersRoutes as featureOrdersRoutes } from '../features/orders/api/orders.routes';
 import { productsRoutes as featureProductsRoutes } from '../features/products/api/products.routes';
 import { pushRoutes } from '../features/push/api/push.routes';
@@ -1736,6 +1737,8 @@ app.route('/api/notifications', notificationsRoutes);
 
 // Resend email webhook (bounce / complaint → suppression list)
 app.route('/api/webhooks/resend', resendWebhookRoutes);
+// 💸 2026-11-03 토스 지급대행 결과(payout.changed) — 본문은 신호로만, 상태는 토스에 다시 묻는다.
+app.route('/api/webhooks/toss-payouts', tossPayoutWebhookRoutes);
 
 // 유캔싸인 전자계약 webhook (문서 상태변경 → contract_signatures 갱신)
 

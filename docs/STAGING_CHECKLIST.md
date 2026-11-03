@@ -410,6 +410,26 @@ SSOT `src/worker/utils/agency-share-payout.ts` · 적립은 `creditBrokerShare` 
 
 상태: ⬜ 미검증 (2026-11-01 배선). 통과 전 프로덕션 ON 금지.
 
+## 💸 S-TOSSPAYOUT — 토스 지급대행으로 매장 정산 송금 (2026-11-03)
+
+**S-TOSSPAYOUT** — 결재 `docs/decisions/2026-11-03-settlement-structure.md`(대표 *"1번 일단 해주고"* — 12-17 개정 전금법 대응).
+게이트 `platform_settings.toss_payouts_enabled`(기본 없음=꺼짐) + 시크릿 `TOSS_PAYOUT_SECRET_KEY`·`TOSS_PAYOUT_SECURITY_KEY`(결제 키와 별개) ·
+SSOT `src/worker/utils/toss-payouts.ts` · 어드민 `POST /api/admin/payouts/:id/toss` · 웹훅 `POST /api/webhooks/toss-payouts`(토스 개발자센터에 등록).
+**선행**: 대표가 토스 지급대행 계약(상점관리자 > 서비스 추가 신청). **켜는 것은 대표 판단.**
+
+| ID | 시나리오 | 통과 기준 |
+|---|---|---|
+| S-TOSSPAYOUT-1 | 테스트 키로 법인 매장 1곳 셀러 등록(테스트 환경은 법인만 가능) | `seller_meta.toss_payout_seller_id` 저장 · 토스 응답 복호화 성공(JWE) |
+| S-TOSSPAYOUT-2 | 승인된 매장 정산 1건 → [토스로 보내기] | `toss_payout_requests` 1행(REQUESTED) · `payouts.status` 는 **아직 approved** |
+| S-TOSSPAYOUT-3 | 같은 건을 두 번 누름(동시 2탭) | 두 번째는 "이미 토스에 요청한 건" · 토스 요청 1건 |
+| S-TOSSPAYOUT-4 | 토스 `payout.changed`(COMPLETED) 웹훅 수신 | 토스에 다시 물어 확인 → `payouts.status='sent'` · `transaction_id='toss:{id}'` |
+| S-TOSSPAYOUT-5 | 가짜 웹훅(우리가 요청 안 한 id) | 무시 · 장부 변화 0 |
+| S-TOSSPAYOUT-6 | 잔액 부족으로 실패 | 요청 행 FAILED · `payouts` approved 그대로 · 다시 보내기 = attempt 2 |
+| S-TOSSPAYOUT-7 | 인플루언서·에이전시 정산 건으로 시도 | 거부(매장 정산만 — 커미션은 은행 이체) |
+| S-TOSSPAYOUT-8 | 게이트 OFF 복귀 | 세 경로 모두 "꺼져 있다" · 은행 이체 파일 흐름 종전과 동일 |
+
+상태: ⬜ 미검증 (2026-11-03 배선). 통과 전 프로덕션 ON 금지. ⚠️ 라이브에서 지급 요청을 테스트하면 수수료가 붙는다(토스 문서).
+
 ## 🏷️ S-BRANDX — 가맹점 간 이용권 사용 + 쓴 지점 정산 (2026-10-18)
 
 **S-BRANDX** — 결재 `docs/decisions/2026-10-18-franchise-cross-owner-redeem.md`(대표 "결재해줄게" + ①②③ 권장안).

@@ -16,6 +16,8 @@ interface SearchHeaderProps {
    * 떠 있는 카드가 결과를 덮던 것이 대표 신고의 절반이었다 — 그래서 이 파일에서 드롭다운을 없앴다.
    */
   onPanelChange: (open: boolean, value: string) => void
+  /** 🎬 2026-11-03 18차 ① — 빈 검색창 안에 한 글자씩 써졌다 지워질 추천어(인기 검색어). 없으면 종전 안내 문구. */
+  hints?: string[]
 }
 
 export default function SearchHeader({
@@ -24,12 +26,33 @@ export default function SearchHeader({
   onSearch,
   onLoadSuggestions,
   onPanelChange,
+  hints = [],
 }: SearchHeaderProps) {
   const navigate = useNavigate()
   const goBack = useSafeBack('/')
   const { t } = useTranslation()
   const [inputValue, setInputValue] = useState(query)
   const [isFocused, setIsFocused] = useState(false)
+  /**
+   * 🎬 18차 ① — 비어 있고 손대지 않은 검색창에 추천어가 **한 글자씩 써졌다 지워지며** 바뀐다(뭘 찾을지 힌트).
+   *   글자를 치거나 칸을 누르면 멈추고, 동작 줄이기면 안 한다. 실제 값이 아니라 안내 글자(placeholder)일 뿐이다.
+   */
+  const [typed, setTyped] = useState<string | null>(null) // null = 쉬는 중(종전 안내 문구)
+  const hintKey = hints.slice(0, 5).join('|')
+  useEffect(() => {
+    if (!hintKey || inputValue || isFocused) { setTyped(null); return }
+    try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { return }
+    const words = hintKey.split('|')
+    let w = 0, i = 0, del = false, id = 0
+    const tick = () => {
+      const s = words[w]
+      if (!del) { i++; setTyped(s.slice(0, i)); if (i >= s.length) { del = true; id = window.setTimeout(tick, 1400); return } }
+      else { i--; setTyped(s.slice(0, i)); if (i <= 0) { del = false; w = (w + 1) % words.length } }
+      id = window.setTimeout(tick, del ? 60 : 140)
+    }
+    id = window.setTimeout(tick, 600)
+    return () => window.clearTimeout(id)
+  }, [hintKey, inputValue, isFocused])
 
   useEffect(() => {
     if (query) {
@@ -100,7 +123,7 @@ export default function SearchHeader({
                     나서, 닫힌 뒤에 click 이 와 아무 일도 안 일어난다(자동완성 최다 버그).
                     닫는 건 선택·제출·지움 셋뿐이고, 패널이 결과를 덮지 않아 닫을 이유도 없다. */
               onBlur={() => { /* 의도적 무동작 — 위 주석 */ }}
-              placeholder={t('search.inputPlaceholder', { defaultValue: '상품명, 브랜드, 셀러 검색' })}
+              placeholder={typed ?? t('search.inputPlaceholder', { defaultValue: '상품명, 브랜드, 셀러 검색' })}
               className={`w-full pl-10 pr-9 py-2 bg-gray-50 dark:bg-[#1D1F29] rounded-full text-[15px] text-gray-900 dark:text-white font-medium transition-all focus:outline-none ${
                 isFocused ? 'border-2 border-gray-900 bg-white dark:bg-[#11141C]' : 'border-2 border-transparent'
               }`}

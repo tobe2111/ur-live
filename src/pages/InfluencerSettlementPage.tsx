@@ -27,6 +27,7 @@ import DealsAndCodesSection from './influencer-settlement/DealsAndCodesSection'
 import PublicProfileSection from './influencer-settlement/PublicProfileSection'
 import { formatKSTDate } from '@/utils/date'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { nextCommissionPayoutDate, resolveCommissionPayoutDay, commissionPayoutDayLabel } from '@/shared/commission-payout-day'
 
 interface Balance {
   pending_amount: number
@@ -86,6 +87,8 @@ export default function InfluencerSettlementPage() {
   const rank = useMyRank()
   const [sheet, setSheet] = useState<null | 'info' | 'dispute'>(null)
   const [balance, setBalance] = useState<Balance | null>(null)
+  // 📅 2026-11-03 대표 *"인플루언서 정산은 월 1회 정해진 날로 묶자"* — 기본 10일(서버 값 우선).
+  const [payoutDay, setPayoutDay] = useState(resolveCommissionPayoutDay(undefined))
   const [recent, setRecent] = useState<Attribution[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -118,6 +121,7 @@ export default function InfluencerSettlementPage() {
           setRecent(r.data.data.recent || [])
           setOwnerFunded(r.data.data.funding_source === 'owner')
           setUseGate(!!r.data.data.requires_voucher_use)
+          setPayoutDay(resolveCommissionPayoutDay(r.data.data.payout_day))
           setForm({
             business_number: b.business_number || '',
             tax_type: (b.tax_type as 'business_income' | 'other_income' | 'unreported') || 'other_income',
@@ -181,6 +185,9 @@ export default function InfluencerSettlementPage() {
               <p className="mt-1 text-[15px] font-medium tabular-nums text-gray-900 dark:text-white">{won(balance?.total_paid_out)}</p>
             </div>
           </div>
+          <p className="mt-4 text-[12px] text-gray-500 dark:text-gray-400" data-testid="settle-next-payout">
+            {commissionPayoutDayLabel(payoutDay)} 지급 · 다음 지급일 {nextCommissionPayoutDate(Date.now(), payoutDay).replace(/-/g, '.')}
+          </p>
           {ownerFunded && (
             <p className="mt-4 text-[12px] text-gray-500 dark:text-gray-400">소개 수익은 각 매장이 자기 몫에서 지급해요. 유어딜 수수료와는 별개예요.</p>
           )}
