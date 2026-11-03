@@ -411,7 +411,6 @@ interface OpsGate {
 }
 
 const OPS_GATES: OpsGate[] = [
-  { key: 'stay_referral_unify_enabled', kind: 'setting', label: '숙소 소개 적립 = 이용권 장부(딜 N%)', default_value: 'false', staging_ref: 'S-STAYREF', turn_on_when: 'staging 실결제 4건(소개 링크 숙소 결제 → 적립 · 손님 취소 → 회수 · 체크인 날 부분 환불 → 비례 회수 · 어드민 환불 → 회수)이 원장·influencer_attributions 에 맞게 남은 뒤' },
   { key: 'commission_budget_enabled', kind: 'setting', label: '커미션 예산 아비터 [INV-CB]', default_value: 'false', staging_ref: 'S1', turn_on_when: '영입+트리가 겹친 주문 1건을 `GET /api/admin/promo-ledger/order/:orderNumber` 로 보고 verdict.within_budget=true 면(S1 절차)' },
   { key: 'promo_funding_source', kind: 'setting', label: '프로모 owner-펀딩', default_value: 'platform', staging_ref: 'S2', turn_on_when: '이용권 구매→사용→환불에서 매장 원장 promo debit 1회가 확인되면(S2)' },
   { key: 'SHOPPING_LEDGER_ENABLED', kind: 'env', label: '쇼핑 주문 원장 크레딧', default_value: 'false', staging_ref: 'S3', turn_on_when: '쇼핑탭 재오픈이 결정되고 S3 실결제로 net 크레딧 1회가 확인되면' },

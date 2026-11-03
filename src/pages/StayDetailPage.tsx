@@ -152,7 +152,6 @@ export default function StayDetailPage() {
   // 🛡️ 2026-05-18: 인플 referral — URL ?ref=USER_ID 유지.
   const referrerId = params.get('ref') || params.get('aff') || readAffiliateRef()?.ref || '' // 🏨 ③ 유어샵 담기(?aff)·24시간 저장값도 — 이용권과 같은 꼬리표
   useEffect(() => { storeAffiliateRef(params.get('aff') || params.get('ref')) }, [params])
-  const [referralUnified, setReferralUnified] = useState(false) // 🏨 ③ 스위치가 켜져 있어야 '팔아보기'(꺼져 있으면 적립이 안 된다)
 
   // 판매 모드 탭 (both 일 때만 사용자 선택).
   const [activeMode, setActiveMode] = useState<'date' | 'voucher'>(
@@ -196,7 +195,7 @@ export default function StayDetailPage() {
     if (!Number.isFinite(productId)) { navigate('/stays'); return }
     stayDetailRequest(productId)
       .then((body) => {
-        if (body?.success) { setStay(body.data?.product as StayDetail); setReferralUnified(body.data?.referral_unified === true) }
+        if (body?.success) setStay(body.data?.product as StayDetail)
         // 🏨 2026-07-20 (숙소 상세 SSOT 안전판): stay_info 미보유 stay_voucher(구형 딜 등)는
         //   죽은 화면 대신 일반 딜 상세로 폴백 — canonicalDetailPath 가 숙소를 /stays 로 보내는
         //   단방향 정규화의 역방향 안전판(딜 상세는 숙소로 재리다이렉트 안 하므로 루프 0).
@@ -429,7 +428,7 @@ export default function StayDetailPage() {
           </div>
         )}
 
-        {referralUnified && !own && <div className="-mx-4 empty:hidden"><SellThisCard productId={stay.id} sellerId={stay.seller_id} hideForOwner={own} /></div>}{/* 🏨 ③ 팔아보기 — 스위치 ON 일 때만(적립 장부가 이용권과 같아진 뒤) */}
+        {!own && <div className="-mx-4 empty:hidden"><SellThisCard productId={stay.id} sellerId={stay.seller_id} hideForOwner={own} /></div>}{/* 🏨 ③ 팔아보기 — 이용권 상세와 같은 한 줄(적립도 같은 장부) */}
         {/* 📑 2026-11-03 숙소·예약 통일 ②: 이용권 상세와 같은 폰 구역 탭(C안) — 같은 부품, 숙소 구역 id. */}
         <div className="-mx-4"><DetailSectionTabs tabs={stayTabs({ intro: !!stay.description_full, map: !!(stay.address || (stay.latitude != null && stay.longitude != null)) })} /></div>
         {/* 모드 탭 + 날짜/인원 선택 — 모바일 인라인 (PC 는 우측 아사이드가 동일 JSX 렌더) */}
