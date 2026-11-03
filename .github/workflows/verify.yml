@@ -174,11 +174,63 @@ jobs:
       - name: Run unit tests
         run: npx vitest run --shard=${{ matrix.shard }}/3
 
+  # ⏱️ 2026-11-03 (대표 *"다 하자"*): Verify 의 '나머지' 9.3분 중 가장 무거운 둘을 따로 돌린다 —
+  #   첫 화면 실행 비용(크롬 설치 + 화면 렌더 2.9분)과 이름 충돌 검사(경고만인데 2.8분).
+  #   🔴 실행 비용은 머지를 막는 검사다 — `Verify` 대조 단계가 결과를 확인한다(건너뜀 = 통과 구멍).
+  exec-cost:
+    runs-on: ubuntu-24.04
+    name: 첫 화면 실행 비용
+    timeout-minutes: 30
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build client
+        env:
+          # PR 검증용 더미 — production 배포 아님 (Verify 의 Build client 와 같은 값)
+          VITE_FIREBASE_API_KEY: 'pr-verify-dummy'
+          VITE_FIREBASE_AUTH_DOMAIN: 'pr.example.com'
+          VITE_FIREBASE_PROJECT_ID: 'pr-verify'
+          VITE_FIREBASE_STORAGE_BUCKET: 'pr.example.com'
+          VITE_FIREBASE_MESSAGING_SENDER_ID: '0'
+          VITE_FIREBASE_APP_ID: '0'
+          VITE_KAKAO_APP_KEY: 'pr-verify'
+          VITE_TOSS_CLIENT_KEY: 'pr-verify'
+        run: npm run build:client
+      - name: Build worker
+        run: npm run build:worker
+      # ⚙️ 2026-10-14 (대표 "대시보드랑 실행비용도 최적화 해줘"): 위 예산은 **받는 바이트**만 본다.
+      #   같은 바이트라도 첫 화면에서 **실제로 도는 코드**가 늘면 폰이 바빠진다 — 그걸 미리 막는 장치가 없었다
+      #   (실사용 SLO 는 배포 다음 날에야 안다). 손님 7 + 마이·어드민·에이전시 3 화면을 실제로 렌더해
+      #   V8 커버리지로 '실행된 JS' 를 래칫으로 잠근다(결정적 — 같은 빌드 반복 0.3KB 안). 시간은 기록만.
+      - name: Install chromium (execution cost)
+        run: npx playwright install --with-deps chromium
+      - name: First-screen execution cost budget (strict)
+        run: node scripts/ci-run.mjs node scripts/check-exec-cost.mjs
+
+  naming-conflicts:
+    runs-on: ubuntu-24.04
+    name: 이름 충돌 (경고만)
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Naming conflicts
+        run: bash scripts/check-naming-conflicts.sh
+        continue-on-error: true
+
   verify:
     # 🔴 **`if: always()` 를 지우지 말 것 — 우회 구멍이 된다.** 필수 검사는 `Verify` 하나이고, GitHub 은
     #   **건너뛴(skipped) 필수 검사를 통과로 친다.** 조각이 실패했다고 이 잡이 건너뛰어지면 실패한 PR 이
     #   머지된다. 그래서 언제나 돌고, 아래 첫 단계가 조각 결과를 **명시적으로** 대조해 실패시킨다.
-    needs: [mutation-plan, mutation-shards, mutation-changed, unit-tests]
+    needs: [mutation-plan, mutation-shards, mutation-changed, unit-tests, exec-cost]
     if: always()
     runs-on: ubuntu-24.04
     name: Verify
@@ -203,6 +255,9 @@ jobs:
           fi
           if [ "${{ needs.unit-tests.result }}" != "success" ]; then
             echo "❌ 단위 시험이 성공하지 않았다(${{ needs.unit-tests.result }}) — 위 '단위 시험 N/3' 잡을 볼 것."; exit 1
+          fi
+          if [ "${{ needs.exec-cost.result }}" != "success" ]; then
+            echo "❌ 첫 화면 실행 비용 검사가 성공하지 않았다(${{ needs.exec-cost.result }}) — 위 '첫 화면 실행 비용' 잡을 볼 것."; exit 1
           fi
 
       # fetch-depth: 0 — file-size ratchet 의 --changed-only 가 origin/main 과의 merge-base 를
@@ -589,9 +644,7 @@ jobs:
         run: node scripts/generate-ops-handbook.mjs --check
         continue-on-error: false
 
-      - name: Naming conflicts
-        run: bash scripts/check-naming-conflicts.sh
-        continue-on-error: true
+      # 🏷️ 이름 충돌(경고만)은 2026-11-03 부터 `naming-conflicts` 잡이 따로 돈다 — 경고만인데 Verify 를 2.8분 붙잡고 있었다.
 
       # 🛡️ 2026-05-31: 다크/라이트 테마 일관성 — 유저 대면 화이트-토글 페이지의
       #   라이트 색상(bg-white/text-gray-900 등)에 dark: variant 누락 검출.
@@ -1119,14 +1172,7 @@ jobs:
       - name: Per-surface first-screen weight budget (strict)
         run: node scripts/ci-run.mjs node scripts/check-surface-budgets.mjs
 
-      # ⚙️ 2026-10-14 (대표 "대시보드랑 실행비용도 최적화 해줘"): 위 예산은 **받는 바이트**만 본다.
-      #   같은 바이트라도 첫 화면에서 **실제로 도는 코드**가 늘면 폰이 바빠진다 — 그걸 미리 막는 장치가 없었다
-      #   (실사용 SLO 는 배포 다음 날에야 안다). 손님 7 + 마이·어드민·에이전시 3 화면을 실제로 렌더해
-      #   V8 커버리지로 '실행된 JS' 를 래칫으로 잠근다(결정적 — 같은 빌드 반복 0.3KB 안). 시간은 기록만.
-      - name: Install chromium (execution cost)
-        run: npx playwright install --with-deps chromium
-      - name: First-screen execution cost budget (strict)
-        run: node scripts/ci-run.mjs node scripts/check-exec-cost.mjs
+      # ⚙️ 첫 화면 실행 비용은 2026-11-03 부터 `exec-cost` 잡이 따로 돈다(Verify 안에서 2.9분) — 대조 단계가 결과를 본다.
 
       # 🔁 2026-10-13: 청크끼리 서로 import 하면(순환) 평가 순서에 따라 화면이 통째로 오류가 된다 —
       #   묶음기가 prop-types 를 페이지 봉투로 옮겨 stripe ↔ lz-… 순환이 생기자 /checkout 전체가 오류 화면이었다

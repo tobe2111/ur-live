@@ -10,8 +10,8 @@ export default [
   {
     name: 'PR분할 — Verify 의 if: always() 를 지운다(건너뛴 필수 검사 = 통과)',
     file: W,
-    find: '    needs: [mutation-plan, mutation-shards, mutation-changed, unit-tests]\n    if: always()\n',
-    replace: '    needs: [mutation-plan, mutation-shards, mutation-changed, unit-tests]\n',
+    find: '    needs: [mutation-plan, mutation-shards, mutation-changed, unit-tests, exec-cost]\n    if: always()\n',
+    replace: '    needs: [mutation-plan, mutation-shards, mutation-changed, unit-tests, exec-cost]\n',
     test: T,
     why: '조각이 실패하면 Verify 가 건너뛰어지고, GitHub 은 건너뛴 필수 검사를 통과로 친다 — 실패한 PR 이 머지된다.',
   },
@@ -70,5 +70,13 @@ export default [
     replace: '        shard: [1, 2]\n',
     test: T,
     why: '조각 인자가 /3 인데 두 대만 돌면 시험 3분의 1이 아무 에러 없이 빠진다.',
+  },
+  {
+    name: 'PR분할 — 실행 비용 실패를 대조 단계가 그냥 넘긴다 (2026-11-03)',
+    file: W,
+    find: "            echo \"❌ 첫 화면 실행 비용 검사가 성공하지 않았다(${{ needs.exec-cost.result }}) — 위 '첫 화면 실행 비용' 잡을 볼 것.\"; exit 1",
+    replace: "            echo \"❌ 첫 화면 실행 비용 검사가 성공하지 않았다(${{ needs.exec-cost.result }}) — 위 '첫 화면 실행 비용' 잡을 볼 것.\"",
+    test: T,
+    why: '실행 비용이 늘어도 Verify 가 초록이다 — 첫 화면이 느려지는 PR 이 그대로 머지된다.',
   },
 ]

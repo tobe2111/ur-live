@@ -36,7 +36,7 @@ const header = (body: string) => body.slice(0, body.indexOf('\n    steps:'))
 describe('① Verify 는 언제나 돈다 — 건너뛴 필수 검사 = 통과 라는 구멍', () => {
   it('needs 로 판정·분할 잡을 기다리고 if: always() 다', () => {
     const h = header(job('verify'))
-    expect(h).toMatch(/\n    needs: \[mutation-plan, mutation-shards, mutation-changed, unit-tests\]/)
+    expect(h).toMatch(/\n    needs: \[mutation-plan, mutation-shards, mutation-changed, unit-tests, exec-cost\]/)
     expect(h).toMatch(/\n    if: always\(\)\n/)
     expect(h).toMatch(/\n    name: Verify\n/)
   })
@@ -127,3 +127,20 @@ describe('⑤ --scope-json 이 실제로 판정을 낸다', () => {
     expect(j.total).toBeGreaterThan(1000)
   })
 })
+
+describe('⑦ 무거운 둘은 따로 동시에 (2026-11-03 — Verify 나머지 9.3분 중 5.7분)', () => {
+  it('실행 비용은 자기 잡에서 빌드 → 크롬 → 측정 순서로, 경고 아님', () => {
+    const e = job('exec-cost')
+    const b = e.indexOf('run: npm run build:worker'), i = e.indexOf('Install chromium'), r = e.indexOf('scripts/check-exec-cost.mjs')
+    expect(b).toBeGreaterThan(0); expect(i).toBeGreaterThan(b); expect(r).toBeGreaterThan(i)
+    expect(e.slice(r, r + 200)).not.toMatch(/continue-on-error:\s*true/)
+    expect(header(e), '조건을 붙이면 건너뛰어질 수 있다').not.toMatch(/\n    if: /)
+  })
+  it('Verify 가 실행 비용 결과를 확인하고, 안에서 다시 돌지 않는다', () => {
+    const v = job('verify')
+    expect(v).toMatch(/needs\.exec-cost\.result \}\}" != "success" \]; then\n\s+echo "❌[^\n]*"; exit 1/)
+    expect(v).not.toContain('scripts/check-exec-cost.mjs')
+    expect(v).not.toContain('scripts/check-naming-conflicts.sh')
+  })
+})
+
