@@ -17,6 +17,7 @@ import { toast } from '@/hooks/useToast'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
 import SellerWithdrawSection from '@/components/seller/SellerWithdrawSection'
 import ReviewBonusCard from '@/components/seller/ReviewBonusCard'
+import { alertDialog, confirmDialog } from '@/components/ui/confirm-dialog'
 // 🏬 2026-10-17 프랜차이즈 — 지점 여러 곳 한 번에 등록 · 브랜드로 묶기(눌렀을 때 받는다)
 const BranchBulkRegisterSheet = lazy(() => import('./seller-stores/BranchBulkRegisterSheet'))
 const BrandManageSheet = lazy(() => import('./seller-stores/BrandManageSheet'))
@@ -55,14 +56,14 @@ export default function SellerStoresPage() {
   async function closeStore(s: OperableStore) {
     const label = s.business_name || s.name || `매장 #${s.seller_id}`
     const isOwner = s.role === 'owner'
-    if (!confirm(isOwner
+    if (!(await confirmDialog({ message: isOwner
       ? `${label} 매장을 삭제(영업 종료)할까요?\n\n판매 노출이 중단됩니다. 주문·정산 이력은 보존됩니다.`
-      : `${label} 매장을 내 목록에서 뺄까요? (매장 자체는 유지됩니다)`)) return
+      : `${label} 매장을 내 목록에서 뺄까요? (매장 자체는 유지됩니다)`, danger: true }))) return
     try {
       const r = await api.post(`/api/seller/stores/${s.seller_id}/close`)
       if (!r.data?.success) throw new Error(r.data?.error)
       await load()
-    } catch (e: any) { alert(e?.response?.data?.error || '처리에 실패했습니다') }
+    } catch (e: any) { void alertDialog(e?.response?.data?.error || '처리에 실패했습니다') }
   }
 
   return (

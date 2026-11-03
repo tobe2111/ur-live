@@ -13,6 +13,7 @@ import type { DealRow } from './types'
 import { CAT_LABEL } from './types'
 import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
 import { cleanSido, buildRegionParam } from './region-util'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 // 🎛️ 2026-07-04 (대표 "지원자 수·기간 각각 설정"): 행별 추첨 설정 인라인 편집 상태.
 interface FcfsDraft { id: number; spots: string; applied: string; deadline: string; loading: boolean }
@@ -124,7 +125,7 @@ export default function DealList({ nonce, onEdit, onChanged, onSettings, onRefun
   }
 
   const remove = async (d: DealRow) => {
-    if (!confirm(`"${d.name}" 이용권을 삭제할까요? (되돌릴 수 없음)`)) return
+    if (!(await confirmDialog({ message: `"${d.name}" 이용권을 삭제할까요? (되돌릴 수 없음)`, danger: true }))) return
     setBusyId(d.id)
     try {
       await api.delete(`/api/admin/products/${d.id}`, h)
@@ -146,7 +147,7 @@ export default function DealList({ nonce, onEdit, onChanged, onSettings, onRefun
   const removeSelected = async () => {
     const ids = rows.filter((d) => selected.has(d.id)).map((d) => d.id)
     if (ids.length === 0) return
-    if (!confirm(`선택한 ${ids.length}개 이용권을 삭제할까요? (되돌릴 수 없음 · 주문 이력이 있으면 자동으로 숨김 처리)`)) return
+    if (!(await confirmDialog({ message: `선택한 ${ids.length}개 이용권을 삭제할까요? (되돌릴 수 없음 · 주문 이력이 있으면 자동으로 숨김 처리)`, danger: true }))) return
     setBulkBusy(true)
     // 단건 DELETE 순회 — 각 요청이 부속 데이터 정리 + 주문이력 시 soft-retire 를 이미 처리(엔드포인트 정책 재사용).
     const results = await Promise.allSettled(ids.map((id) => api.delete(`/api/admin/products/${id}`, h)))

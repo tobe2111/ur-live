@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
+import { alertDialog, confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Gift, RefreshCw, DollarSign, TrendingUp, AlertTriangle, Settings, Package } from 'lucide-react'
@@ -406,12 +406,11 @@ export default function AdminKtAlphaPage() {
   //   평점 4.3-4.8 랜덤 분산, is_generated=1 플래그로 영구 추적 + 일괄 삭제 가능.
   //   ⚠️ 법적: 전자상거래법 / 공정거래법상 허위 후기 책임은 사업주.
   async function generateBulkReviews() {
-    const scopeInput = prompt(
-      '리뷰를 생성할 범위를 선택하세요:\n\n' +
+    const scopeInput = (await promptDialog({ message: '리뷰를 생성할 범위를 선택하세요:\n\n' +
       '1 = 교환권 (기프티쇼 KT Alpha)\n' +
       '2 = 어드민 등록 상품\n' +
       '3 = 전체 활성 상품 (기본)\n\n' +
-      '숫자 입력:', '3')
+      '숫자 입력:', prompt: { defaultValue: '3' } }))
     if (!scopeInput) return
     const scope: 'vouchers' | 'admin' | 'all' =
       scopeInput.trim() === '1' ? 'vouchers' :
@@ -420,7 +419,7 @@ export default function AdminKtAlphaPage() {
 
     if (!(await confirmDialog(`${scopeLabel} 에 허위 리뷰를 대량 생성합니다.\n각 상품마다 5-25개 랜덤 · 평점 4.3-4.8 분산 · is_generated=1 표시.\n\n운영자 자체 책임. 계속하시겠습니까?`))) return
 
-    const reviewsPerInput = prompt('상품당 평균 리뷰 개수 (5-50, 기본 15)', '15')
+    const reviewsPerInput = (await promptDialog({ message: '상품당 평균 리뷰 개수 (5-50, 기본 15)', prompt: { defaultValue: '15' } }))
     if (!reviewsPerInput) return
     const reviewsPerProduct = Number(reviewsPerInput)
     if (!Number.isFinite(reviewsPerProduct) || reviewsPerProduct < 5 || reviewsPerProduct > 50) {
@@ -456,19 +455,19 @@ export default function AdminKtAlphaPage() {
   // 🛡️ 2026-05-21: 개별 상품 리뷰 생성 (사용자 요청).
   //   특정 상품 ID 만 입력받아 N개 리뷰 즉시 생성.
   async function generateReviewsForProduct() {
-    const productIdInput = prompt('리뷰를 생성할 상품 ID 입력')
+    const productIdInput = (await promptDialog({ message: '리뷰를 생성할 상품 ID 입력', prompt: {} }))
     if (!productIdInput) return
     const productId = Number(productIdInput)
     if (!Number.isFinite(productId) || productId <= 0) {
       toast.error('유효한 상품 ID 필요'); return
     }
-    const countInput = prompt('리뷰 개수 (1-100, 기본 15)', '15')
+    const countInput = (await promptDialog({ message: '리뷰 개수 (1-100, 기본 15)', prompt: { defaultValue: '15' } }))
     if (!countInput) return
     const count = Number(countInput)
     if (!Number.isFinite(count) || count < 1 || count > 100) {
       toast.error('1-100 사이 숫자 입력'); return
     }
-    const ratingInput = prompt('평점 범위 (예: "4-5", "3-5", "5"). 기본 "4-5"', '4-5')
+    const ratingInput = (await promptDialog({ message: '평점 범위 (예: "4-5", "3-5", "5"). 기본 "4-5"', prompt: { defaultValue: '4-5' } }))
     if (!ratingInput) return
     const [minRaw, maxRaw] = ratingInput.split('-').map(s => Number(s.trim()))
     const ratingMin = Number.isFinite(minRaw) ? minRaw : 4
@@ -501,12 +500,11 @@ export default function AdminKtAlphaPage() {
 
   // 🛡️ 2026-05-19 / 2026-05-21: 생성 리뷰 일괄 삭제 (롤백용) — scope 선택 가능.
   async function deleteBulkReviews() {
-    const scopeInput = prompt(
-      '삭제할 리뷰 범위:\n\n' +
+    const scopeInput = (await promptDialog({ message: '삭제할 리뷰 범위:\n\n' +
       '1 = 교환권 리뷰만\n' +
       '2 = 어드민 상품 리뷰만\n' +
       '3 = 전체 (기본)\n\n' +
-      '숫자 입력:', '3')
+      '숫자 입력:', prompt: { defaultValue: '3' } }))
     if (!scopeInput) return
     const scope: 'vouchers' | 'admin' | 'all' =
       scopeInput.trim() === '1' ? 'vouchers' :
@@ -548,7 +546,7 @@ export default function AdminKtAlphaPage() {
   }
 
   async function renameCategory(from: string) {
-    const to = prompt(`'${from}' → 새 카테고리명?`, from)
+    const to = (await promptDialog({ message: `'${from}' → 새 카테고리명?`, prompt: { defaultValue: from } }))
     if (!to || to === from) return
     try {
       const r = await api.post('/api/admin/kt-alpha/categories/rename', { from, to }, { headers: h() })

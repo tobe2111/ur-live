@@ -15,7 +15,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Loader2, Unlink } from 'lucide-react'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 
 interface Props {
   /** 🌇 2026-09-04 에이전시 일몰 — 'agency' 제거. 셀러 전용이다. */
@@ -103,7 +103,7 @@ export function KakaoLinkButton({ role }: Props) {
 
   async function unlink() {
     if (!(await confirmDialog(t('kakaoLink.unlinkConfirm')))) return
-    const pw = prompt(t('kakaoLink.unlinkPasswordPrompt', { defaultValue: '본인 확인을 위해 비밀번호를 입력해주세요.\n(카카오로만 가입하셨다면 먼저 "비밀번호 찾기" 로 설정하세요)' }))
+    const pw = (await promptDialog({ message: t('kakaoLink.unlinkPasswordPrompt', { defaultValue: '본인 확인을 위해 비밀번호를 입력해주세요.\n(카카오로만 가입하셨다면 먼저 "비밀번호 찾기" 로 설정하세요)' }), prompt: {} }))
     if (!pw) return
     setWorking(true)
     try {

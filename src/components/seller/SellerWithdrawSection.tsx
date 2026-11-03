@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { logoutSeller } from '@/lib/seller-auth'
 import { AlertTriangle, Loader2, X } from 'lucide-react'
+import { alertDialog } from '@/components/ui/confirm-dialog'
 
 interface Blockers {
   pending_orders: number
@@ -48,11 +49,11 @@ export default function SellerWithdrawSection() {
     try {
       const r = await api.post('/api/seller/account/withdraw', { confirm: true, reason: reason.trim() || undefined })
       if (!r.data?.success) throw new Error(r.data?.error)
-      alert(r.data.data?.message || '셀러 탈퇴가 완료되었습니다.')
+      await alertDialog(r.data.data?.message || '셀러 탈퇴가 완료되었습니다.') // 확인을 누른 뒤 로그아웃
       // 세션은 서버가 이미 무효화했다 — 로컬 토큰까지 지우고 로그인 화면으로.
       logoutSeller(navigate)
     } catch (e: any) {
-      alert(e?.response?.data?.error || e?.message || '탈퇴 처리에 실패했습니다')
+      void alertDialog(e?.response?.data?.error || e?.message || '탈퇴 처리에 실패했습니다')
       setSubmitting(false)
     }
   }

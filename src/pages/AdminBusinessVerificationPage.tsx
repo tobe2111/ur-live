@@ -16,7 +16,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardLoadError } from '@/components/dashboard'
 import { Shield, CheckCircle, XCircle, ExternalLink, Phone, Mail } from 'lucide-react'
-import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
+import { alertDialog, confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { formatKST } from '@/utils/date'
 import OcrComparePanel from './admin/business-verification/OcrComparePanel'
 
@@ -63,7 +63,7 @@ export default function AdminBusinessVerificationPage() {
   }
 
   async function reject(sellerId: number) {
-    const reason = prompt('반려 사유를 입력하세요 (셀러에게 표시):')
+    const reason = (await promptDialog({ message: '반려 사유를 입력하세요 (셀러에게 표시):', prompt: {} }))
     if (!reason?.trim()) return
     try {
       const r = await api.patch(`/api/admin/sellers/${sellerId}/business-registration/verify`,

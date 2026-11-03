@@ -11,6 +11,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken } from '@/lib/seller-auth'
 import { formatKSTShort } from '@/utils/date'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Link { key: string; key_masked: string; user_name: string | null; linked_at: string | null; last_used_at: string | null }
 
@@ -52,7 +53,7 @@ export default function KakaoBotLinkCard() {
   }
 
   async function revoke(key: string) {
-    if (!window.confirm(t('seller.kakaoBot.revokeConfirm', { defaultValue: '이 채팅 연결을 끊을까요? 그 채팅에서는 더 이상 매장을 관리할 수 없어요.' }))) return
+    if (!(await confirmDialog({ message: t('seller.kakaoBot.revokeConfirm', { defaultValue: '이 채팅 연결을 끊을까요? 그 채팅에서는 더 이상 매장을 관리할 수 없어요.' }), danger: true }))) return
     try {
       const r = await api.post(`/api/seller/kakao-bot/links/${encodeURIComponent(key)}/revoke`, {}, { headers })
       if (r.data?.success) { toast.success(t('seller.kakaoBot.revoked', { defaultValue: '연결을 끊었어요' })); load() }

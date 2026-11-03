@@ -11,6 +11,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 import { Loader2, Send, Users, ChevronDown, X } from 'lucide-react'
+import { alertDialog } from '@/components/ui/confirm-dialog'
 
 interface Lead {
   id: number; platform: string; handle: string; name: string | null; category: string | null
@@ -218,10 +219,10 @@ function ProposalModal({ count, leadIds, contactFee, onClose, onDone }: {
         message,
       })
       if (!r.data?.success) throw new Error(r.data?.error)
-      alert(r.data.data?.message || '제안이 접수되었습니다')
+      void alertDialog(r.data.data?.message || '제안이 접수되었습니다')
       onDone()
     } catch (e: any) {
-      alert(e?.response?.data?.error || e?.message || '접수에 실패했습니다')
+      void alertDialog(e?.response?.data?.error || e?.message || '접수에 실패했습니다')
       setBusy(false)
     }
   }

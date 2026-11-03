@@ -16,6 +16,7 @@ import { formatKSTShort } from '@/utils/date'
 import BrandLoader from '@/components/brand/BrandLoader'
 import SnsLinkList, { type SnsLinkView } from '@/components/seeding/SnsLinkList'
 import { MAX_VISIT_SLOTS, PLATFORM_LABEL, STATUS_LABEL, type ApplicationStatus, type PassPackage, type SeedingPlatform } from '@/shared/seeding'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface App {
   id: number; product_id: number; platform: SeedingPlatform; status: ApplicationStatus; visit_slots: string | null
@@ -198,7 +199,7 @@ function AppRow({ a, onDone }: { a: App; onDone: () => void }) {
       {a.post_url && <a href={a.post_url} target="_blank" rel="noreferrer" className="mt-2 block truncate text-[13px] text-brand-text">{a.post_url}</a>}
 
       {cancellable && (
-        <button type="button" disabled={busy} onClick={() => { if (window.confirm(a.status === 'scheduled' ? '방문이 확정된 뒤 취소하면 보증금은 돌려드리지 않아요. 취소할까요?' : '신청을 취소할까요?')) run('cancel', {}, '취소했어요') }}
+        <button type="button" disabled={busy} onClick={async () => { if ((await confirmDialog({ message: a.status === 'scheduled' ? '방문이 확정된 뒤 취소하면 보증금은 돌려드리지 않아요. 취소할까요?' : '신청을 취소할까요?', danger: true }))) run('cancel', {}, '취소했어요') }}
           className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">신청 취소</button>
       )}
     </li>
@@ -215,7 +216,7 @@ function Purchases({ onChanged }: { onChanged: () => void }) {
   useEffect(() => { load() }, [load])
   if (!rows.length) return null
   async function cancel(p: Purchase) {
-    if (!window.confirm(`신청권 ${p.passes}장 구매를 취소하고 ${formatNumber(p.price_paid)}원을 환불받을까요?`)) return
+    if (!(await confirmDialog({ message: `신청권 ${p.passes}장 구매를 취소하고 ${formatNumber(p.price_paid)}원을 환불받을까요?`, danger: true }))) return
     setBusy(p.payment_key)
     try {
       const r = await api.post(`/api/seeding/passes/purchases/${encodeURIComponent(p.payment_key)}/cancel`)

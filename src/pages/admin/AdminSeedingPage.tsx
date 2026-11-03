@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { formatNumber } from '@/utils/format'
 import { formatKSTShort } from '@/utils/date'
 import { APPLICATION_STATUSES, FOLLOWER_WORD, PLATFORM_LABEL, STATUS_LABEL, type ApplicationStatus, type SeedingPlatform } from '@/shared/seeding'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Row {
   id: number; product_id: number; user_id: number; platform: SeedingPlatform; sns_username: string | null; follower_count: number | null
@@ -69,7 +70,7 @@ export default function AdminSeedingPage() {
           <label className="flex items-center justify-between gap-3 text-[13px] text-gray-900">
             <span>신청권 구매 열기 <span className="text-gray-500">(결제 — staging 실결제 확인 뒤에만)</span></span>
             <input type="checkbox" checked={s.charge_enabled}
-              onChange={(e) => { if (!e.target.checked || window.confirm('실제 카드 결제가 열립니다. staging 실결제 확인을 마쳤나요?')) saveSetting({ charge_enabled: e.target.checked }) }} />
+              onChange={async (e) => { if (!e.target.checked || (await confirmDialog('실제 카드 결제가 열립니다. staging 실결제 확인을 마쳤나요?'))) saveSetting({ charge_enabled: e.target.checked }) }} />
           </label>
         </div>
       )}

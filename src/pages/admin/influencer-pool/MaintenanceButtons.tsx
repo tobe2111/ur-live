@@ -2,6 +2,7 @@ import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 🧰 인플루언서 풀 유지보수 버튼群 — 중복통합·구글시트·카테고리 재분류·연락처 재추출.
@@ -20,7 +21,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   const [routingBiz, setRoutingBiz] = useState(false)
 
   async function mergeDuplicates() {
-    if (!window.confirm('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들 ③ 공유 링크(linktr.ee/블로그/유튜브 교차링크) ④ 이름+카테고리(동명이인 방지: 이메일·인스타 둘 다 없는 잔여, 2개+ 플랫폼일 때만)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.')) return
+    if (!(await confirmDialog('중복 리드를 통합할까요?\n① 같은 이메일 ② 같은 인스타 핸들 ③ 공유 링크(linktr.ee/블로그/유튜브 교차링크) ④ 이름+카테고리(동명이인 방지: 이메일·인스타 둘 다 없는 잔여, 2개+ 플랫폼일 때만)\n상태·정보가 가장 앞선 1건만 남기고 나머지 삭제.'))) return
     setMerging(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/merge-duplicates', {})
@@ -46,7 +47,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
     } finally { setSheetsSyncing(false) }
   }
   async function reclassify() {
-    if (!window.confirm('풀 전체를 채널 이름·소개글 기반으로 재분류할까요?\n(콘텐츠 신호가 있고 현재와 다를 때만 변경 — 멱등)')) return
+    if (!(await confirmDialog('풀 전체를 채널 이름·소개글 기반으로 재분류할까요?\n(콘텐츠 신호가 있고 현재와 다를 때만 변경 — 멱등)'))) return
     setReclassifying(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/reclassify', {})
@@ -55,7 +56,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
     } catch { toast.error('재분류 실패') } finally { setReclassifying(false) }
   }
   async function reextract() {
-    if (!window.confirm('기존 리드의 저장된 소개글에서 연락처를 다시 추출할까요?\n(비어있는 이메일·인스타·틱톡만 채우고 유튜브·블로그 링크 추가 — 기존값 보존, 멱등)')) return
+    if (!(await confirmDialog('기존 리드의 저장된 소개글에서 연락처를 다시 추출할까요?\n(비어있는 이메일·인스타·틱톡만 채우고 유튜브·블로그 링크 추가 — 기존값 보존, 멱등)'))) return
     setReextracting(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/reextract', {})
@@ -65,7 +66,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   }
 
   async function refetchLive() {
-    if (!window.confirm('유튜브 채널을 라이브로 전체 재스캔해 카테고리·이메일·평균조회수를 실제 데이터로 재검증할까요?\n(현재 About + YouTube 자체분류로 카테고리 교정 · 개인메일/평균조회수 보강. 키워드 상속으로 잘못 분류된 채널은 재분류로 안 고쳐지고 이 버튼으로만 교정됩니다. YouTube API 사용 · 한 번에 100개 — 많으면 여러 번 눌러주세요)')) return
+    if (!(await confirmDialog('유튜브 채널을 라이브로 전체 재스캔해 카테고리·이메일·평균조회수를 실제 데이터로 재검증할까요?\n(현재 About + YouTube 자체분류로 카테고리 교정 · 개인메일/평균조회수 보강. 키워드 상속으로 잘못 분류된 채널은 재분류로 안 고쳐지고 이 버튼으로만 교정됩니다. YouTube API 사용 · 한 번에 100개 — 많으면 여러 번 눌러주세요)'))) return
     setRefetching(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/refetch-live', { passes: 5 })
@@ -81,7 +82,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   }
 
   async function recategorize() {
-    if (!window.confirm('유튜브 전체 풀의 카테고리를 라이브로 한 번에 재보정할까요?\n(channels.list 배치로 전 채널의 현재 About + YouTube 자체분류를 받아 카테고리 교정 — 수천 개도 버튼 한 번, 반복 클릭 불필요. 백그라운드 약 1분 후 새로고침하면 반영. + "평균 0회" 채널은 cron 자동 재측정 큐에 올려 시간당 자동으로 실제 조회수로 채워집니다. YouTube 쿼터 소량.)')) return
+    if (!(await confirmDialog('유튜브 전체 풀의 카테고리를 라이브로 한 번에 재보정할까요?\n(channels.list 배치로 전 채널의 현재 About + YouTube 자체분류를 받아 카테고리 교정 — 수천 개도 버튼 한 번, 반복 클릭 불필요. 백그라운드 약 1분 후 새로고침하면 반영. + "평균 0회" 채널은 cron 자동 재측정 큐에 올려 시간당 자동으로 실제 조회수로 채워집니다. YouTube 쿼터 소량.)'))) return
     setRecategorizing(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/recategorize', {})
@@ -113,7 +114,7 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
   // 🧰 전체 정비 — 개별 버튼을 순서 맞춰 누르는 대신 야간 cron 과 **같은 파이프라인**을 그대로 실행.
   //   순서(병합 → 재추출 → 재분류 → 점수 → 라이브 재보정)가 정해져 있고 틀리면 낭비라 사람 손에 맡기지 않는다.
   async function maintainAll() {
-    if (!window.confirm('전체 정비를 실행할까요?\n야간 자동 정비와 같은 순서로 한 번에 돕니다 — 중복 통합 → 연락처 재추출 → 카테고리 재분류 → 리드 점수 → 라이브 재보정.\n백그라운드로 진행되며 페이지를 떠나도 계속됩니다.')) return
+    if (!(await confirmDialog('전체 정비를 실행할까요?\n야간 자동 정비와 같은 순서로 한 번에 돕니다 — 중복 통합 → 연락처 재추출 → 카테고리 재분류 → 리드 점수 → 라이브 재보정.\n백그라운드로 진행되며 페이지를 떠나도 계속됩니다.'))) return
     setMaintaining(true)
     try {
       const r = await api.post('/api/admin/ads/influencer-pool/maintain-all', {})
@@ -140,13 +141,11 @@ export default function MaintenanceButtons({ onChanged, canMerge }: { onChanged:
       const st = dry.data?.stats as { scanned?: number; matched?: number; withPhone?: number; samples?: string[]; done?: boolean } | undefined
       if (!dry.data?.success || !st) { toast.error(dry.data?.error || '검사 실패'); return }
       if (!st.matched) { toast.success(`업체형 블로그 없음 (${formatNumber(st.scanned || 0)}건 검사${st.done ? ' · 전체 완료' : ''})`); return }
-      const ok = window.confirm(
-        `업체형 블로그/카페 ${formatNumber(st.matched)}건을 찾았습니다 (${formatNumber(st.scanned || 0)}건 검사 · 이름/소개글에서 전화 확보 ${formatNumber(st.withPhone || 0)}건).\n\n`
+      const ok = (await confirmDialog(`업체형 블로그/카페 ${formatNumber(st.matched)}건을 찾았습니다 (${formatNumber(st.scanned || 0)}건 검사 · 이름/소개글에서 전화 확보 ${formatNumber(st.withPhone || 0)}건).\n\n`
         + `표본:\n${(st.samples || []).slice(0, 10).map(x => `· ${x}`).join('\n')}\n\n`
         + '이들을 B2B 파트너풀로 넘길까요?\n'
         + '· 저장은 파트너풀에만 — 전화/이메일은 파트너풀 보강 레인이 이어서 채웁니다\n'
-        + '· 인플루언서 풀에서는 숨김 처리만(삭제 아님)',
-      )
+        + '· 인플루언서 풀에서는 숨김 처리만(삭제 아님)'))
       if (!ok) return
       const r = await api.post('/api/admin/ads/influencer-pool/route-biz?apply=1', {})
       const a2 = r.data?.stats as { routed?: number; tagged?: number; done?: boolean } | undefined

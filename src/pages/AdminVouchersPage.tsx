@@ -16,7 +16,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
+import { alertDialog, confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import { Ticket, Plus, AlertTriangle, X } from 'lucide-react'
 import DealList from './admin-dongnedeal/DealList'
@@ -61,7 +61,7 @@ export default function AdminVouchersPage() {
 
   // 옛 '이용권 공구' 화면의 강제 환불 — 문구·확인 절차·엔드포인트 그대로(위치만 옮겼다).
   const forceRefund = async (d: DealRow) => {
-    const reason = window.prompt(`[강제 환불] "${d.name}"\n\n환불 사유를 입력하세요 (5자 이상, audit_logs 기록):`, '')
+    const reason = (await promptDialog({ message: `[강제 환불] "${d.name}"\n\n환불 사유를 입력하세요 (5자 이상, audit_logs 기록):`, prompt: { defaultValue: '' } }))
     if (!reason || reason.trim().length < 5) return
     if (!(await confirmDialog({ message: `정말 환불하시겠습니까?\n\n• 미사용 voucher 모두 refunded 처리\n• 딜 결제건은 자동 환불\n• 상태 cancelled 변경\n• 참여자 + 셀러에게 알림 발송`, danger: true }))) return
     setRefundingId(d.id)

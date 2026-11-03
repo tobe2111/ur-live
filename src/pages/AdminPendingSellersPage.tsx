@@ -16,7 +16,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { formatKST } from '@/utils/date'
 import { DashboardLoadError } from '@/components/dashboard'
 
@@ -73,7 +73,7 @@ export default function AdminPendingSellersPage() {
   }
 
   async function reject(id: number) {
-    const reason = prompt('거부 사유?')
+    const reason = (await promptDialog({ message: '거부 사유?', prompt: {} }))
     if (!reason) return
     try {
       const r = await api.patch(`/api/admin/sellers/${id}/reject`, { reason })

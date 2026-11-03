@@ -22,6 +22,7 @@ import { useCallback, useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatKST } from '@/utils/date'
+import { promptDialog } from '@/components/ui/confirm-dialog'
 
 const RESULT_LABEL: Record<string, string> = {
   confirmed: '본인 확인됨',
@@ -58,7 +59,7 @@ export default function StoreVerifyQueue({ onPickStore }: { onPickStore?: (selle
   useEffect(() => { void load() }, [load])
 
   async function record(sellerId: number, result: string) {
-    const note = window.prompt(`${RESULT_LABEL[result]} — 통화 내용 (기록용, 생략 가능)`) ?? ''
+    const note = (await promptDialog({ message: `${RESULT_LABEL[result]} — 통화 내용 (기록용, 생략 가능)`, prompt: {} })) ?? ''
     setBusy(sellerId)
     try {
       const res = await api.post(`/api/admin/stores/${sellerId}/verify-call`, { result, note })
