@@ -3,6 +3,7 @@ import { toast } from '@/hooks/useToast'
 import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
 import { agencyRequest } from './agency-api'
 import { formatBizNo } from '@/utils/format-kr' // 🔢 사업자등록번호 000-00-00000 자동 하이픈(2026-11-03 대표 — 모든 입력란)
+import { formatPhone } from '@/utils/format-phone' // 📞 휴대폰 000-0000-0000 자동 하이픈(2026-11-03 대표)
 
 interface Registered { sellerId: number; claimCode: string | null; claimUrl: string | null }
 
@@ -92,7 +93,7 @@ export function AgencyRegisterStoreCard({ onRegistered }: { onRegistered: () => 
             <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={200} placeholder="도로명 주소" className={FIELD_CLS} />
           </label>
           <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-200">사장님 휴대폰
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="010-0000-0000" className={FIELD_CLS} />
+            <input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" maxLength={13} placeholder="010-0000-0000" className={FIELD_CLS} />
           </label>
           <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-200">사업자번호 <span className="font-normal text-gray-400 dark:text-gray-500">(선택 — 사장님 매장 것)</span>
             <input value={bno} onChange={(e) => setBno(formatBizNo(e.target.value))} inputMode="numeric" maxLength={12} placeholder="000-00-00000" className={FIELD_CLS} />

@@ -15,6 +15,8 @@ const injectMotionCss = (id: string, css: string) => { if (typeof document !== '
 //   약관 칸은 켜질 때 톡 튀고, '전체 동의' 를 누르면 아래 칸이 위에서부터 하나씩 켜진다.
 injectMotionCss('ur-m-register', `@keyframes ur-rg-ck { to { stroke-dashoffset: 0; } }@keyframes ur-rg-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.18); } 100% { transform: none; } }.ur-rg-ck path { stroke-dasharray: 20; stroke-dashoffset: 20; animation: ur-rg-ck .3s ease-out forwards; }.ur-rg-agree:checked { animation: ur-rg-pop .3s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-rg-agree:checked{animation:none!important}.ur-rg-ck path{animation:none!important;stroke-dashoffset:0}}`)
 // 🎬 2026-11-03 18차 ⑦ — 가입 처리 중엔 버튼 테두리를 따라 빛이 돈다(리뷰 등록과 같은 문자열).
+// 🎬 2026-11-03 19차 ⑧ — 떠오르는 이름표: 칸 안의 이름이 누르면(또는 글자가 있으면) 위로 작게 올라간다. 안내 글자(예시)는 누른 뒤에만 보인다.
+injectMotionCss('ur-m-floatlabel', `.ur-fl { position: relative; }.ur-fl .ur-fl-label { position: absolute; left: 16px; top: 16px; font-size: 15px; line-height: 24px; color: var(--ink-faint); pointer-events: none; transform-origin: left top; transition: transform .2s cubic-bezier(.2,.9,.3,1), color .2s; }.ur-fl input:focus ~ .ur-fl-label, .ur-fl input:not(:placeholder-shown) ~ .ur-fl-label { transform: translateY(-10px) scale(.8); }.ur-fl input:focus ~ .ur-fl-label { color: var(--brand-text); }.ur-fl input:not(:focus)::placeholder { color: transparent; }@media (prefers-reduced-motion: reduce){.ur-fl .ur-fl-label{transition:none!important}}`)
 injectMotionCss('ur-m-busyring', `@keyframes ur-busy-spin { to { transform: rotate(360deg); } }.ur-busy-ring { position: relative; isolation: isolate; overflow: hidden; }.ur-busy-ring::before { content: ''; position: absolute; inset: -60%; z-index: -2; background: conic-gradient(from 0deg, transparent 0 65%, rgba(255,255,255,.95) 82%, transparent 100%); animation: ur-busy-spin 1.1s linear infinite; }.ur-busy-ring::after { content: ''; position: absolute; inset: 2px; z-index: -1; border-radius: inherit; background: var(--brand); }@media (prefers-reduced-motion: reduce){.ur-busy-ring::before{animation:none!important;opacity:0}}`)
 
 export default function RegisterPage() {
@@ -166,43 +168,39 @@ export default function RegisterPage() {
         {/* Register Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
-          <div>
-            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
-              {t('register.nameLabel', { defaultValue: '이름' })}
-            </label>
+          <div className="ur-fl">
             <input
+              id="reg-name"
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder={t('register.namePlaceholder', { defaultValue: '홍길동' })}
               required
-              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+              className="w-full h-14 px-4 pt-5 pb-1 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
             />
+            <label htmlFor="reg-name" className="ur-fl-label">{t('register.nameLabel', { defaultValue: '이름' })}</label>
           </div>
 
           {/* Email */}
-          <div>
-            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
-              {t('register.emailLabel', { defaultValue: '이메일' })}
-            </label>
+          <div className="ur-fl">
             <input
+              id="reg-email"
               type="email"
               autoComplete="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="example@email.com"
               required
-              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+              className="w-full h-14 px-4 pt-5 pb-1 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
             />
+            <label htmlFor="reg-email" className="ur-fl-label">{t('register.emailLabel', { defaultValue: '이메일' })}</label>
           </div>
 
           {/* Password */}
           <div>
-            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
-              {t('register.passwordLabel', { defaultValue: '비밀번호' })}
-            </label>
-            <div className="relative">
+            <div className="relative ur-fl">
               <input
+                id="reg-pw"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 value={formData.password}
@@ -210,8 +208,9 @@ export default function RegisterPage() {
                 placeholder={t('register.passwordPlaceholder', { defaultValue: `${PASSWORD_MIN_LENGTH}자 이상, 대·소문자와 숫자·특수문자` })}
                 required
                 minLength={PASSWORD_MIN_LENGTH}
-                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+                className="w-full h-14 px-4 pt-5 pb-1 pr-12 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
               />
+              <label htmlFor="reg-pw" className="ur-fl-label">{t('register.passwordLabel', { defaultValue: '비밀번호' })}</label>
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
@@ -240,11 +239,9 @@ export default function RegisterPage() {
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
-              {t('register.confirmPasswordLabel', { defaultValue: '비밀번호 확인' })}
-            </label>
-            <div className="relative">
+            <div className="relative ur-fl">
               <input
+                id="reg-pw2"
                 type={showConfirmPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 value={formData.confirmPassword}
@@ -257,8 +254,9 @@ export default function RegisterPage() {
                 placeholder={t('register.confirmPasswordPlaceholder', { defaultValue: '비밀번호를 다시 입력해주세요' })}
                 required
                 minLength={PASSWORD_MIN_LENGTH}
-                className={`w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500`}
+                className={`w-full h-14 px-4 pt-5 pb-1 pr-12 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500`}
               />
+              <label htmlFor="reg-pw2" className="ur-fl-label">{t('register.confirmPasswordLabel', { defaultValue: '비밀번호 확인' })}</label>
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}

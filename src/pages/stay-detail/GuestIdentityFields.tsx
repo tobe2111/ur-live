@@ -27,6 +27,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useUserProfile } from '@/hooks/queries/useUserProfile'
+import { formatPhone } from '@/utils/format-phone' // 📞 휴대폰 000-0000-0000 자동 하이픈(2026-11-03 대표)
 
 export interface GuestIdentity {
   guest_name: string
@@ -71,7 +72,7 @@ export default function GuestIdentityFields({
 
   const known = value.guest_name.trim().length >= 2 && value.guest_phone.replace(/\D/g, '').length >= 10
   const set = (k: keyof GuestIdentity) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    onChange({ ...value, [k]: e.target.value })
+    onChange({ ...value, [k]: k === 'guest_phone' ? formatPhone(e.target.value) : e.target.value }) // 📞 전화번호는 000-0000-0000 자동 하이픈
 
   if (known && !expanded) {
     return (
