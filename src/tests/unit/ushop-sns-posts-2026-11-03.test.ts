@@ -92,5 +92,7 @@ describe('최근 게시물', () => {
     const postsAt = page.indexOf('<UShopSnsPosts handle=')
     expect(rowsAt).toBeGreaterThan(0)
     expect(postsAt).toBeGreaterThan(rowsAt)
+    // 📦 화면 근처에 왔을 때만 받는다 — 첫 화면 파일 수 래칫(유어샵 26)을 지킨다.
+    expect(page).toMatch(/<NearViewport>\{\(\) => <Suspense fallback=\{null\}><UShopSnsPosts handle=/)
   })
 })

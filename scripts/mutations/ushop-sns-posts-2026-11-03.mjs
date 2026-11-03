@@ -34,4 +34,12 @@ export default [
     test: TEST,
     why: '토큰이 만료된 사람의 유어샵은 방문마다 외부 호출이 실패하며 쌓인다.',
   },
+  {
+    name: '🖼️ SNS 게시물 — 첫 화면에서 바로 받는다(유어샵 첫 화면 파일 수 +1)',
+    file: 'src/pages/CuratorPage.tsx',
+    find: '<NearViewport>{() => <Suspense fallback={null}><UShopSnsPosts handle={curator.handle} /></Suspense>}</NearViewport>',
+    replace: '<Suspense fallback={null}><UShopSnsPosts handle={curator.handle} /></Suspense>',
+    test: TEST,
+    why: '진열 아래 부품의 코드를 첫 화면에서 받으면 유어샵이 느려진다(surface-chunk-runtime 이 CI 에서 잡은 그대로).',
+  },
 ]
