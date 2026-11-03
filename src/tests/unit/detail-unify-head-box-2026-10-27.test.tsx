@@ -25,7 +25,9 @@ describe('③ 머리·섹션 띠', () => {
     expect(PASS_HEAD.h1).toContain('text-[16px]')
   })
   it('섹션 띠는 흰 면이고, 손으로 적은 사본이 없다', () => {
-    expect(STAY_BAND).toContain('bg-surface')
+    // 🌙 2026-11-03 재조준: 이용권 상세 띠(`PASS_CARD`)가 페이지 바탕(--bg)이라 숙소 띠도 페이지 바탕 — 다크에서 둘이 같은 색.
+    expect(STAY_BAND).toContain('bg-warm')
+    expect(STAY_HEAD.pageBg).toContain('bg-warm')
     expect(STAY_BAND).toContain('border-rule') // 🎨 2026-10-31 회색 띠 → 가는 선(배경색 하나로)
     expect(STAY_BAND).not.toContain('border-t-8')
     for (const f of ['src/pages/StayDetailPage.tsx', 'src/pages/stay-detail/SimilarStays.tsx', 'src/pages/stay-detail/StayInfoSections.tsx'])

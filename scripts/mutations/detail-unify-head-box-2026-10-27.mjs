@@ -2,12 +2,13 @@
 const T = 'src/tests/unit/detail-unify-head-box-2026-10-27.test.tsx'
 export default [
   {
-    name: 'detail-unify-head-box — 숙소 섹션 띠가 다시 바탕색이 된다',
+    // 🌙 2026-11-03 재조준: 이용권 상세가 페이지 바탕(--bg)으로 옮겨 숙소 띠도 bg-warm. 회귀 = 카드색(bg-surface)으로 되돌아감.
+    name: 'detail-unify-head-box — 숙소 섹션 띠가 다시 카드색이 된다(다크에서 이용권 상세와 갈린다)',
     file: 'src/shared/stay-head.ts',
-    find: "border-t border-rule bg-surface lg:bg-transparent",
-    replace: "border-t border-rule lg:bg-transparent",
+    find: "border-t border-rule bg-warm lg:bg-transparent",
+    replace: "border-t border-rule bg-surface lg:bg-transparent",
     test: T,
-    why: '이용권은 흰 면, 숙소는 바탕색 — 같은 앱의 두 상세가 다른 종이처럼 보인다.',
+    why: '이용권 상세는 페이지 바탕, 숙소는 카드색 — 다크에서 같은 앱의 두 상세가 다른 종이처럼 보인다.',
   },
   {
     name: 'detail-unify-head-box — PC 숙소 패널에서 추첨 상품도 예약 버튼이 뜬다',

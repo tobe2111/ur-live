@@ -357,6 +357,8 @@ curatorRoutes.get('/:handle/p/:productId/redirect', async (c) => {
       //   기존 `group_buy_status === 'active'` 는 migration 0146 에서 모든 상품 DEFAULT 'active' 라
       //   일반 쇼핑 상품까지 voucher 흐름으로 오분류 → /group-buy 교환권 chrome 으로 떨어짐.
       //   order-type.ts SSOT 와 동일하게 deal_only=1(교환권) 또는 voucher 카테고리(오프라인 공구)만 voucher 흐름.
+      // 🏨 2026-11-03 숙소 통일 A: 숙소 핀이 이용권 상세(/pass)로 가 객실·날짜 없이 열렸다 — 숙소 상세로. (?aff 귀속은 결재 B 에서 숙소가 읽는다)
+      if (prod && Number(prod.deal_only) !== 1 && prod.category === 'stay_voucher') return c.redirect(`/stays/${productId}?aff=${pin.user_id}`, 302)
       const isVoucherFlow = !!prod && (Number(prod.deal_only) === 1 || isVoucherCategory(prod.category))
       if (isVoucherFlow) return c.redirect(`${Number(prod!.deal_only) === 1 ? '/vouchers' : '/pass'}/${productId}?aff=${pin.user_id}`, 302) // 🧭 2026-10-15 교환권은 /vouchers(숙소는 /pass — /stays 는 ?aff 를 안 읽는다)
     } catch { /* 판별 실패 — 기존 경로 */ }
