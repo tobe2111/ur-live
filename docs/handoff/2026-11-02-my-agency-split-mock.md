@@ -69,3 +69,8 @@
 - 가드 `my-sales-sheets-2026-11-03`(주입 5) · 환불 사유 가드 `teardown-losses-restored` 를 훅 파일로 재조준.
 - 렌더 확인: `visual-preview --route=/user/profile --stores=1 --click=…` 세 장(빈 데이터 상태).
 - ⚠️ 범위 밖: 에이전시 콘솔 매장 판(`AgencyStorePlate`)의 '우리 이용권' 은 아직 셀러 화면 그대로. 주문 상세창(`OrderDetailModal`)도 셀러 화면 모양 그대로.
+
+## v10 (2026-11-03) — 남은 두 묶음을 #2139 에 합침
+- 대표 *"모두 다 자동 머지로 처리 완료해줘"* → 검사 1시간을 세 번 기다리지 않게 공백 체계(ec3ef38·7f7089f) + 유어쇼츠 1·2·7·10·안 C(d68d1dc·9cb9fa2)를 같은 PR 에 합쳤다.
+- 충돌 해소: 공백 충돌 16파일은 현재본에 `spacing-scale.mjs` 를 다시 적용(멱등) · VideosPage 는 main 의 `useSafeBack` 과 홈 버튼 `landedDirect` 둘 다 유지 · 쇼츠 아래 카드는 안 C 판 채택(카드마다 불투명 흰 바탕) — `urshorts-ui` 시험·주입을 안 C 카드로 재조준.
+- 전체 시험 16,100건 중 위 1건만 실패 → 재조준 후 통과.

@@ -20,8 +20,8 @@ export default [
   {
     name: '🎬 유어쇼츠 — 인기 이용권 카드가 다시 반투명',
     file: 'src/pages/videos/NearbyPassesCard.tsx',
-    find: 'ur-np-in flex items-center gap-3 rounded-2xl bg-white p-3 shadow-2xl',
-    replace: 'ur-np-in flex items-center gap-3 rounded-2xl bg-white/95 p-3 shadow-2xl',
+    find: 'snap-start shrink-0 w-[156px] flex items-center gap-2 rounded-2xl bg-white p-2',
+    replace: 'snap-start shrink-0 w-[156px] flex items-center gap-2 rounded-2xl bg-white/95 p-2',
     test: TEST,
     why: '아래 Shorts 글자·검은 띠가 비쳐 카드가 찢어진 것처럼 보인다.',
   },
