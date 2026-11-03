@@ -229,8 +229,17 @@ export function processAuthCallbackParams(): void {
   //   되살린다. 판정·근거는 `features/auth/consumer-session-restore.ts`. 그 모양(역할 토큰만 있음)일 때만 **동적으로** 불러온다 —
   //   모든 방문자의 첫 화면 무게(app-utils)에 싣지 않으려고(surface-budgets 실측).
   try {
-    const hasConsumer = !!(localStorage.getItem('user_id') || localStorage.getItem('session_login'))
-    const hasRole = !!(localStorage.getItem('agency_token') || localStorage.getItem('seller_token') || localStorage.getItem('admin_token'))
-    if (!hasConsumer && hasRole) void import('@/features/auth/consumer-session-restore').then((m) => m.restoreConsumerSession()).catch(() => {})
+    if (consumerRestoreGate(window.location.pathname, localStorage)) void import('@/features/auth/consumer-session-restore').then((m) => m.restoreConsumerSession()).catch(() => {})
   } catch { /* 저장소 막힘 — 무시 */ }
+}
+
+/**
+ * 🩹 되살리기를 시도할 모양인가 — 소비자 흔적은 없고 역할 토큰은 있으며, 대시보드(어드민·셀러·에이전시)가 아니다.
+ *   대시보드엔 소비자 헤더가 없어 요청·청크만 낭비한다(어드민 첫 화면 실행 비용 실측).
+ */
+export function consumerRestoreGate(pathname: string, store: Pick<Storage, 'getItem'>): boolean {
+  const hasConsumer = !!(store.getItem('user_id') || store.getItem('session_login'))
+  const hasRole = !!(store.getItem('agency_token') || store.getItem('seller_token') || store.getItem('admin_token'))
+  const onDashboard = /^\/(admin|seller|agency)(\/|$)/.test(pathname)
+  return !hasConsumer && hasRole && !onDashboard
 }

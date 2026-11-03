@@ -6,7 +6,7 @@
  */
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
+import { processAuthCallbackParams, consumerRestoreGate } from '@/utils/auth-callback-bootstrap'
 import { CONSUMER_SESSION_RESTORED_EVENT } from '@/lib/consumer-session-event'
 import { readFileSync } from 'node:fs'
 
@@ -39,6 +39,15 @@ describe('소비자 표시 되살리기', () => {
     const f = health(true); vi.stubGlobal('fetch', f)
     processAuthCallbackParams(); await flush()
     expect(f).not.toHaveBeenCalled()
+  })
+  it('대시보드(어드민·셀러·에이전시)에선 묻지 않는다 — 판정 함수', () => {
+    // 이 시험 환경은 history 가 고정이라 경로를 바꿀 수 없다 → 판정을 순수 함수로 뽑아 직접 잰다.
+    const store = (o: Record<string, string>) => ({ getItem: (k: string) => o[k] ?? null })
+    expect(consumerRestoreGate('/', store({ admin_token: 'x' }))).toBe(true)
+    for (const p of ['/admin', '/admin/orders', '/seller/home', '/agency']) expect(consumerRestoreGate(p, store({ admin_token: 'x' }))).toBe(false)
+    expect(consumerRestoreGate('/administrator', store({ admin_token: 'x' }))).toBe(true) // 접두어만 같은 경로는 대시보드 아님
+    expect(consumerRestoreGate('/', store({ admin_token: 'x', user_id: '3' }))).toBe(false)
+    expect(consumerRestoreGate('/', store({}))).toBe(false)
   })
   it('탭당 한 번만 묻는다', async () => {
     localStorage.setItem('agency_token', 'x')

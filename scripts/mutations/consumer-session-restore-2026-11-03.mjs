@@ -23,9 +23,17 @@ export default [
   {
     name: '🩹소비자복구 익명 방문마다 서버에 묻는다',
     file: 'src/utils/auth-callback-bootstrap.ts',
-    find: '    if (!hasConsumer && hasRole) void import(',
-    replace: '    if (!hasConsumer) void import(',
+    find: '  return !hasConsumer && hasRole && !onDashboard\n',
+    replace: '  return !hasConsumer && !onDashboard\n',
     test: TEST,
     why: '모든 익명 페이지뷰가 요청 하나씩 더 쓴다.',
+  },
+  {
+    name: '🩹소비자복구 대시보드에서도 묻고 불러온다 (어드민 첫 화면 실행 비용 +)',
+    file: 'src/utils/auth-callback-bootstrap.ts',
+    find: '  return !hasConsumer && hasRole && !onDashboard\n',
+    replace: '  return !hasConsumer && hasRole\n',
+    test: 'src/tests/unit/consumer-session-restore-2026-11-03.test.ts',
+    why: '어드민·셀러·에이전시 화면엔 소비자 헤더가 없다 — 요청과 청크만 낭비한다.',
   },
 ]
