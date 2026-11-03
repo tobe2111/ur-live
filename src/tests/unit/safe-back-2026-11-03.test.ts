@@ -26,7 +26,6 @@ const ALLOW = new Set([
   'src/hooks/useSafeBack.ts', // SSOT 자신
   'src/pages/user-profile/seller-section/ToolPageSheet.tsx', // 시트 안 이력(sheet-history) — 앱 이력 칸이 늘 있다
   'src/components/main/BottomNav.tsx', // 탭 → 홈은 아래가 홈일 때만 -1 (tab-nav.ts decideTabNav 가 판정)
-  'src/pages/TossWidgetPayPage.tsx', // 🔒 Toss V2 잠금 파일 — 대표 승인 뒤 이행
 ])
 
 const files = execSync("git ls-files 'src/*.ts' 'src/*.tsx' 'src/**/*.ts' 'src/**/*.tsx'", { encoding: 'utf8' })
@@ -90,5 +89,32 @@ describe('④ 하단 탭 이력 (decideTabNav)', () => {
   })
   it('링크로 바로 들어온 탭 화면에서 홈을 누르면 replace(뒤에 앱 밖이 남지 않게)', () => {
     expect(decideTabNav({ target: '/', cur: '/vouchers', curIsTab: true, curFromHome: false, canBack: false })).toEqual({ kind: 'replace', fromHome: false })
+  })
+})
+
+/** 결제 뒤 뒤로 — 대표 승인 ②(2026-11-03): 완료 화면에서 폰 뒤로를 눌러도 이미 쓴 결제창을 다시 띄우지 않는다. */
+describe('⑤ 결제를 마친 주문의 결제창은 비킨다', () => {
+  afterEach(() => sessionStorage.clear())
+  it('표시 → 확인', async () => {
+    const { markOrderPaid, isOrderPaid } = await import('@/lib/paid-orders')
+    expect(isOrderPaid('A1')).toBe(false)
+    markOrderPaid('A1')
+    expect(isOrderPaid('A1')).toBe(true)
+    expect(isOrderPaid('')).toBe(false)
+  })
+  it('최근 20건만 남긴다', async () => {
+    const { markOrderPaid, isOrderPaid } = await import('@/lib/paid-orders')
+    for (let i = 0; i < 25; i++) markOrderPaid(`O${i}`)
+    expect(isOrderPaid('O0')).toBe(false)
+    expect(isOrderPaid('O24')).toBe(true)
+  })
+  it('완료 화면 둘이 승인 성공 때 표시하고, 결제창은 초기화 전에 확인한다', () => {
+    const confirm = stripComments(readFileSync('src/pages/GroupBuyConfirmPaymentPage.tsx', 'utf8'))
+    expect(confirm).toMatch(/setState\('success'\)\s*\n\s*markOrderPaid\(orderId\)/)
+    const stay = stripComments(readFileSync('src/pages/StayCheckoutReturnPage.tsx', 'utf8'))
+    expect(stay).toMatch(/setState\('success'\)\s*\n\s*markOrderPaid\(tossOrderId\)/)
+    const pay = stripComments(readFileSync('src/pages/TossWidgetPayPage.tsx', 'utf8'))
+    expect(pay).toMatch(/if \(initializedRef\.current\) return\s*\n\s*if \(isOrderPaid\(orderId\)\) \{ goBack\(\); return \}/)
+    expect(pay, 'bfcache 로 되살아난 결제창도 비켜야 한다').toMatch(/e\.persisted && isOrderPaid\(orderId\)/)
   })
 })
