@@ -103,7 +103,8 @@ describe('④ 카카오 버튼은 그 탭으로 돌아온다', () => {
     ['GuestUrShopPage', '/u/me'],
     ['GuestMyPage', '/user/profile'],
   ])('%s → returnPath=%s', (f, path) => {
-    expect(readCode(`src/pages/guest/${f}.tsx`)).toContain(`<GuestKakaoButton returnPath="${path}"`)
+    // 🧷 2026-11-03 — 버튼은 아래 고정(`GuestDock`)이고, 그 안의 `GuestKakaoButton` 이 같은 returnPath 를 받는다.
+    expect(readCode(`src/pages/guest/${f}.tsx`)).toContain(`<GuestDock returnPath="${path}"`)
   })
 
   it('버튼은 /login 을 거치지 않고 카카오로 — 복귀 주소는 safeInternalPath 경유', () => {
@@ -116,8 +117,9 @@ describe('④ 카카오 버튼은 그 탭으로 돌아온다', () => {
 })
 
 describe('⑤ 꺼진 혜택을 약속하지 않는다', () => {
-  const all = ['GuestPassPage', 'GuestUrShopPage', 'GuestMyPage', 'GuestBenefits']
-    .map((f) => readCode(`src/pages/guest/${f}.tsx`)).join('\n')
+  // 2026-11-03 — 혜택 목록(GuestBenefits)이 1·2·3 단계·티켓으로 바뀌었다. 문구 SSOT(guest-page.ts)까지 본다.
+  const all = ['GuestPassPage', 'GuestUrShopPage', 'GuestMyPage', 'GuestSteps', 'GuestTicket', 'GuestDock']
+    .map((f) => readCode(`src/pages/guest/${f}.tsx`)).join('\n') + readCode('src/shared/guest-page.ts')
   it.each([
     ['소개비'], ['초대'], ['1,000딜'], ['팔린 만큼만 수수료'], ['안팔리면'], ['인플루언서'],
   ])('"%s" 없음', (w) => {

@@ -29,9 +29,11 @@ describe('예시 진열대 자리 잡기', () => {
     const { container } = draw()
     const s = section(container)
     expect(s, '응답 전 자리가 없다 — 도착하면 아래가 밀린다').not.toBeNull()
-    expect(s!.className).toContain('invisible')
-    expect(s!.getAttribute('aria-hidden')).toBe('true')
-    expect(s!.querySelectorAll('a').length).toBe(3)
+    // 2026-11-03 — 진열이 사진 3칸 그리드가 됐다. 안 보이게 세우는 것은 그 그리드다(이름·링크 칸은 고정 문구라 보인다).
+    const grid = s!.querySelector('.grid')!
+    expect(grid.className).toContain('invisible')
+    expect(grid.getAttribute('aria-hidden')).toBe('true')
+    expect(grid.querySelectorAll('a').length).toBe(3)
   })
 
   it('응답 뒤: 같은 자리에 진짜 줄이 보인다', () => {
@@ -39,7 +41,7 @@ describe('예시 진열대 자리 잡기', () => {
     state.data = [1, 2, 3, 4].map((i) => ({ id: i, name: `이용권${i}`, restaurant_name: '가게', price: 1000, image_url: 'https://x/a.jpg' }))
     const { container } = draw()
     const s = section(container)
-    expect(s!.className).not.toContain('invisible')
+    expect(s!.querySelector('.grid')!.className).not.toContain('invisible')
     expect(s!.querySelectorAll('a').length).toBe(3)
     expect(s!.textContent).toContain('이용권1')
   })
