@@ -4,8 +4,8 @@ export default [
   {
     name: 'stay-unify-b — /pass 로 들어온 숙소가 이용권 화면으로 열린다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: "if (detail.category === 'stay_voucher') return <Navigate",
-    replace: "if (detail.category === 'stay_voucher_x') return <Navigate",
+    find: "if (detail.category === 'stay_voucher' && !searchParams.get('nostay')) return <Navigate",
+    replace: "if (detail.category === 'stay_voucher_x' && !searchParams.get('nostay')) return <Navigate",
     test: T,
     why: '객실·날짜 없이 이용권 구매 버튼이 보인다.',
   },

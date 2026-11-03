@@ -103,6 +103,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   // ── 운영자 문의 연락처 — read-site: features/seller/api/seller-gb.routes.ts ──
   operator_support_contact: optionalText(200),
   // ── boolean 스위치 (read-site === 'true') ──
+  stay_referral_unify_enabled: boolStr,        // stay-referral.ts (2026-11-03 숙소 소개 적립 통일)
   commission_budget_enabled: boolStr,          // order-commissions.ts:252
   // 💸 2026-09-19 중개사 몫 직접 송금(결재 2026-09-16 안 1) — read-site: broker-share.ts creditBrokerShare.
   //   기본 OFF = 중개사는 장부 밖(2026-09-04 규칙). 켜기 전 STAGING S-BROKER 실결제.

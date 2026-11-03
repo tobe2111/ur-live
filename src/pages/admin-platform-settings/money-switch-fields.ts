@@ -52,6 +52,12 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     options: [{ value: 'platform', label: '플랫폼 부담 (현행)' }, { value: 'owner', label: '주인(셀러) 부담 — promo 슬라이스' }],
     hint: "'owner' 시 추천인 딜 적립은 유지, 같은 금액을 매장/셀러 정산에서 차감",
   },
+  // 🏨 2026-11-03 숙소 소개 적립 = 이용권 장부(결재 2026-11-03-stay-referral-unify 1안).
+  {
+    key: 'stay_referral_unify_enabled', label: '숙소 소개 적립 — 이용권과 같은 딜 N% 장부', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 옛 숙소 방식)' }, { value: 'true', label: 'ON — 이용권 장부 + 숙소 상세 팔아보기' }],
+    hint: '⚠️ staging S-STAYREF 5건(적립·취소 회수·부분 환불·어드민 환불·옛 예약 이중 적립 0) 확인 후에만 ON',
+  },
   // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 딜 등록 화면의 소개비(promo)% 저장 게이트.
   {
     key: 'seller_promo_field_enabled', label: '[순서 3] 셀러 소개비(promo)% 필드 저장', default: 'false',
