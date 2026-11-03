@@ -59,7 +59,7 @@ describe('시안 8 — 지역 배경', () => {
     expect(src).toMatch(/hero\s*\?\s*'relative z-30 overflow-hidden ur-region-hero'/)
     expect(src).not.toMatch(/hero\s*\?\s*'(dark )?sticky/)
     expect(src).toMatch(/hero && heroPassed && \(/)
-    expect(src).toMatch(/data-home-compact-bar className="fixed inset-x-0 top-0 z-30 bg-surface shadow-lift( ur-cbar-in)?"/)
+    expect(src).toMatch(/data-home-compact-bar className="fixed inset-x-0 top-0 z-30 bg-warm shadow-lift( ur-cbar-in)?"/) // 2026-11-03 다크 색 통일 — 페이지 바탕색
     expect(src.match(/\{logoRow\}/g)?.length).toBe(2)
     expect(src.match(/\{catRow\}/g)?.length).toBe(2)
     expect(src).not.toContain('bg-gray-900">')
