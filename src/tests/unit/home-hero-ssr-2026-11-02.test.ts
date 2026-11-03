@@ -2,7 +2,7 @@
  * 🌆 2026-11-02 대표 *"홈 화면 밀림 해결해줘. 처음 유어딜 켤 때 꽤 로딩 걸려"* — 홈 맨 위 지역 사진을 **서버 첫 화면**이 그린다.
  *
  * 실사용(11-02 폰 홈 p75): LCP 1,980ms 중 1,564ms 가 "화면 도착 → 그 사진 요청 출발" 이었다(사진이 앱 부팅 뒤에야 생겨서).
- * 지키는 것: ① 쿠키 없음(처음 온 손님) = 전국 = 서울 사진 ② `none` = 사진 없는 머리(종전 sticky) ③ 아는 slug = 그 사진
+ * 지키는 것: ① 쿠키 없음(처음 온 손님) = 전국 = 전국 그림(11-03 서울 → 동네 가게 거리) ② `none` = 사진 없는 머리(종전 sticky) ③ 아는 slug = 그 사진
  *   ④ 모르는 값·깨진 값 = 서울 ⑤ 서버 사진 머리의 클래스가 화면 소스와 같다 ⑥ 화면은 서버 사진을 페이드 없이 이어받고
  *   ⑦ 다음 첫 화면을 위해 쿠키를 남긴다 ⑧ 워커가 쿠키를 넘긴다.
  * ⚠️ 못 보는 것: 실제 LCP(라이브에서 잰다) · 다크 모드 그라데이션의 픽셀.
@@ -16,14 +16,14 @@ const P = { id: 2915, name: '홍대 돈가스 세트', image_url: 'https://media
 const SEED = JSON.stringify({ success: true, data: [{ id: 1, title: '이런 이용권은 어떠세요?', subtitle: null, products: [P] }] })
 const LOADER = '<div style="min-height:100dvh">loader</div>'
 const build = (cookie: string | null) => { const host = document.createElement('div'); host.innerHTML = buildHomeFirstScreen(SEED, LOADER, '', cookie); return host }
-const seoul = regionHeroFor({})!
+const seoul = regionHeroFor({})! // 2026-11-03 전국 전용 그림(national) — 변수 이름은 옛 서울 시절 그대로
 
 describe('홈 맨 위 지역 사진 — 서버 첫 화면', () => {
   it('① 쿠키 없음 = 서울 사진이 첫 화면에 있다', () => {
     const h = build(null)
     const img = h.querySelector('img[data-home-hero]') as HTMLImageElement
     expect(img?.getAttribute('src')).toBe(seoul.src)
-    expect(h.querySelector('[data-region-hero="seoul"]')?.className).toBe(HOME_FS_CLASS.heroChrome)
+    expect(h.querySelector(`[data-region-hero="${seoul.slug}"]`)?.className).toBe(HOME_FS_CLASS.heroChrome)
   })
   it('② none = 사진 없는 머리(종전 sticky)', () => {
     const h = build('a=1; ur_home_hero=none; b=2')
@@ -32,8 +32,8 @@ describe('홈 맨 위 지역 사진 — 서버 첫 화면', () => {
   })
   it('③ 아는 slug = 그 사진 · ④ 모르는 값 = 서울', () => {
     expect(build('ur_home_hero=busan').querySelector('img[data-home-hero]')?.getAttribute('src')).toMatch(/busan/)
-    expect(regionHeroFromCookieHeader('ur_home_hero=<script>')?.slug).toBe('seoul')
-    expect(regionHeroFromCookieHeader('ur_home_hero=nowhere')?.slug).toBe('seoul')
+    expect(regionHeroFromCookieHeader('ur_home_hero=<script>')?.slug).toBe('national')
+    expect(regionHeroFromCookieHeader('ur_home_hero=nowhere')?.slug).toBe('national')
     expect(homeHeroCookieValue(null)).toBe('none')
   })
   it('⑤ 서버 사진 머리 클래스가 화면 소스에 그대로 있다', () => {
