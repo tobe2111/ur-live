@@ -5013,7 +5013,8 @@
       "expired": "만료됨",
       "refunded": "환불됨",
       "processing": "발송 중",
-      "sendFailed": "발송 실패"
+      "sendFailed": "발송 실패",
+      "gifted": "선물 완료"
     },
     "verify": {
       "codeLabel": "이용권 코드",
@@ -5099,7 +5100,34 @@
     "mapShort": "지도",
     "recoTitle": "이런 이용권은 어때요?",
     "recoMore": "더보기",
-    "gifticonUsableTotal": "쓸 수 있는 교환권"
+    "gifticonUsableTotal": "쓸 수 있는 교환권",
+    "cancelConfirm": "이 교환권 구매를 취소하고 환불받으시겠어요?\n(미사용 + 구매 7일 이내만 가능)",
+    "cancelDone": "구매가 취소되었습니다",
+    "cancelFail": "취소할 수 없습니다",
+    "cancelError": "취소 중 오류가 발생했습니다",
+    "cancelling": "취소 처리 중…",
+    "contactSupportShort": "고객센터",
+    "expiryNoticeToday": "오늘까지 써야 하는 이용권이 있어요",
+    "expiryNoticeDays": "{{d}}일 남은 이용권이 있어요",
+    "expiryNoticeMore": " 외 {{n}}장",
+    "firstTitle": "첫 이용권이에요!",
+    "firstDesc": "매장에서 이용권의 QR만 보여주면 끝이에요. 유달이가 도장 하나 찍어 둘게요.",
+    "firstStampBuy": "첫 구매",
+    "firstStampUse": "첫 사용",
+    "firstStampReview": "첫 리뷰",
+    "firstStampTodo": "아직 안 함",
+    "groupPast": "지난 이용권",
+    "ktCheckMmsShort": "휴대폰 메시지함에서 확인",
+    "ktSendFailedShort": "결제 완료 · 재발송은 고객센터로 문의",
+    "ktSentSuffix": "문자 발송",
+    "noDone": "사용한 이용권이 아직 없어요",
+    "noExpiryShort": "기한 없음",
+    "offlineUsable": "오프라인에서도 이 화면으로 사용할 수 있어요",
+    "refundReasonPrompt": "환불 요청 사유를 입력해주세요 (예: 방문 계획 취소)",
+    "refundRequested": "환불 요청이 접수되었어요. 확인 후 처리해 드릴게요.",
+    "refundFailed": "환불 요청에 실패했어요",
+    "usageInfo": "이용 안내",
+    "useNow": "현장에서 사용하기"
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",
@@ -5667,7 +5695,10 @@
     "errorEmailInUse": "이미 사용 중인 이메일입니다.",
     "errorInvalidEmail": "유효하지 않은 이메일 형식입니다.",
     "seoTitle": "회원가입 - 유어딜",
-    "seoDesc": "유어딜에 가입하고 동네 가게 이용권을 할인가로 만나보세요"
+    "seoDesc": "유어딜에 가입하고 동네 가게 이용권을 할인가로 만나보세요",
+    "agreeAll": "전체 동의 (선택 항목 포함)",
+    "pwMatch": "비밀번호가 같아요",
+    "pwMismatch": "비밀번호가 달라요"
   },
   "faq": {
     "title": "자주 묻는 질문",
@@ -6216,7 +6247,12 @@
       "dragHint": "핀을 끌어 정확한 위치로 옮겨 주세요 — 지도를 눌러도 옮겨집니다",
       "loadFailed": "지도를 불러오지 못했어요",
       "searchStillWorks": "위 검색창에서 가게 이름이나 주소로 찾을 수 있어요"
-    }
+    },
+    "addressNotFound": "주소를 지도에서 찾을 수 없습니다",
+    "loadFailed": "지도 로드 실패",
+    "showFailed": "지도 표시 실패",
+    "openNaver": "네이버 지도",
+    "loading": "지도 로딩 중..."
   },
   "sellerSwitch": {
     "pending": "심사 중",
@@ -7026,5 +7062,189 @@
     "gone": "만료·환불",
     "empty": "아직 산 이용권이 없어요",
     "browse": "이용권 둘러보기"
+  },
+  "wallet": {
+    "ticket": {
+      "hintScanOnly": "직원에게 QR 보여주기",
+      "hintStoreCode": "매장에서 코드 입력",
+      "hintSelfFree": "바로 사용",
+      "giftedToName": "{{name}}님에게 선물했어요",
+      "giftedToFriend": "친구에게 선물했어요",
+      "giftPendingLocked": "선물 중이에요. 친구가 받기 전까지 쓸 수 없어요",
+      "usedOn": "{{date}} 사용",
+      "expiresUntil": "{{date}}까지",
+      "viewGiftStatus": "선물 상태 보기",
+      "couponBarcode": "쿠폰 바코드",
+      "giftishowChip": "기프티쇼"
+    },
+    "qr": {
+      "stepScanOnly1": "매장 방문 후 이 QR 화면을 직원에게 보여주세요",
+      "stepScanOnly2": "직원이 QR을 스캔해 사용 처리해요",
+      "stepCheckDone": "‘사용 완료’ 화면을 확인하세요",
+      "stepTapUseNow": "매장 방문 후 아래 ‘현장에서 사용하기’를 누르세요",
+      "stepStoreCode2": "카운터에 비치된 매장 확인코드를 입력하세요",
+      "stepSelfFree2": "바로 사용 처리돼요 (실수 시 60초 내 취소)",
+      "stepDefault1": "매장 방문 후 이 화면을 직원에게 보여주세요",
+      "stepDefault2": "직원 확인 후 사용 처리됩니다",
+      "modeScanOnly": "직원 확인",
+      "modeStoreCode": "매장 확인코드",
+      "modeSelfFree": "바로 사용",
+      "modeOnSite": "현장 사용",
+      "expiresUntil": "{{date}}까지",
+      "stampUsed": "사용 완료",
+      "stampGifting": "선물 중",
+      "stampExpired": "만료됨",
+      "stampRefunded": "환불됨",
+      "howToUse": "사용 방법",
+      "validity": "유효기간",
+      "storeInfo": "매장 정보",
+      "cautions": "주의사항",
+      "caution1": "사용 후 환불·취소가 불가해요",
+      "caution2": "1회용 이용권으로 중복 사용은 안 돼요",
+      "caution3": "현금 교환·잔액 환급은 불가해요",
+      "caution4": "유효기간이 지나면 결제 수단으로 자동 환불돼요",
+      "giftPendingTitle": "친구에게 선물 중이에요",
+      "giftPendingDesc1": "친구가 받기 전까지는 이 이용권을 쓸 수 없어요.",
+      "giftPendingDesc2": "선물 보내기를 취소하면 다시 쓸 수 있어요.",
+      "giftLinkOrCancel": "선물 링크 보기, 보내기 취소",
+      "gift": "선물하기",
+      "receivedGiftNote": "선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요"
+    }
+  },
+  "pass": {
+    "usageGuide": {
+      "title": "이용 안내",
+      "expiryUntil": "까지 사용",
+      "terms": "유의사항",
+      "defaultTermNoStacking": "현장에서 추가 할인이나 다른 쿠폰과 중복 적용되지 않아요.",
+      "defaultTermNoRefund": "잔액은 환불되지 않으니 한 번에 사용하시길 권장해요."
+    },
+    "seller": {
+      "verified": "검증 셀러",
+      "profile": "프로필"
+    },
+    "storeIntro": {
+      "composition": "상품 구성",
+      "title": "가게 소개",
+      "owner": "사장님",
+      "ownerOf": "{{name}} 사장님"
+    },
+    "head": {
+      "onnuri": "온누리 사용 가능",
+      "prelaunch": "오픈 예정 · 사전 응모 받는 중",
+      "buyers": "{{count}}명 구매"
+    },
+    "price": {
+      "won": "{{price}}원"
+    },
+    "title": {
+      "registeredStore": " · 정식 등록 매장"
+    },
+    "tabs": {
+      "ariaLabel": "상세 구역",
+      "pcAriaLabel": "상세 섹션",
+      "info": "이용권 정보",
+      "reviews": "리뷰",
+      "reviewsCount": "리뷰 {{count}}",
+      "mobileProduct": "상품 정보",
+      "mobileStore": "매장"
+    },
+    "menu": {
+      "title": "대표 메뉴",
+      "orderWithVoucher": "교환권으로 주문 가능",
+      "hot": "인기"
+    },
+    "location": {
+      "title": "매장 위치",
+      "viewStore": "가게 보기",
+      "callAria": "매장에 전화 ({{phone}})",
+      "call": "전화",
+      "directions": "길찾기"
+    },
+    "otherDeals": {
+      "title": "이 가게의 다른 이용권",
+      "viewAll": "전체보기"
+    },
+    "gallery": {
+      "enlarge": "사진 크게 보기",
+      "allPhotosEnlarge": "전체 사진 {{count}}장 크게 보기",
+      "viewPhotoN": "사진 {{n}} 보기",
+      "allPhotosView": "전체 사진 {{count}}장 보기",
+      "viewPhotoOrdinal": "사진 {{n}}번째 보기",
+      "allPhotosCount": "전체 사진 {{count}}장",
+      "lightboxAria": "{{alt}} 사진 {{count}}장",
+      "close": "닫기",
+      "prev": "이전 사진",
+      "next": "다음 사진",
+      "photoOrdinal": "{{n}}번째 사진"
+    },
+    "toast": {
+      "payFailedWithMsg": "결제가 완료되지 않았어요 — {{msg}}{{code}}",
+      "payFailed": "결제가 완료되지 않았어요. 다시 시도해주세요.",
+      "invalidId": "잘못된 ID",
+      "networkError": "네트워크 오류",
+      "voucherIssued": "🎁 교환권 발급 완료",
+      "exchangeFailed": "교환 실패",
+      "payInitFailed": "공구 결제 시작 실패",
+      "paymentNotConfigured": "결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.",
+      "retryLater": "잠시 후 다시 시도해주세요.",
+      "joinFailed": "참여 실패"
+    },
+    "notFound": "상품을 찾을 수 없습니다",
+    "backToList": "공구 목록으로",
+    "skipToContent": "본문으로 건너뛰기",
+    "badge": {
+      "closed": "마감",
+      "cancelled": "취소"
+    },
+    "proposeToStore": "이 매장에 공구 제안하기"
+  },
+  "passBuy": {
+    "invalidPaymentInfo": "결제 정보가 올바르지 않습니다.",
+    "paymentFailed": "결제 처리 실패",
+    "approvalError": "결제 승인 중 오류",
+    "seoComplete": "결제 완료 - 유어딜",
+    "seoProcessing": "공구 결제 처리",
+    "approving": "결제 승인 중",
+    "pleaseWait": "잠시만 기다려주세요",
+    "errorTitle": "결제를 완료하지 못했어요",
+    "contactSupport": "고객센터에 문의해주세요.",
+    "paymentRef": "결제 정보: {{ref}}",
+    "backToCart": "장바구니로 돌아가기",
+    "backToProduct": "상품 페이지로 돌아가기",
+    "buyWithAmount": "{{amount}}원 구매하기",
+    "won": "{{amount}}원",
+    "savePerPrefix": "1장당",
+    "savePerSuffix": "아껴요",
+    "quantity": "수량",
+    "maxPerPerson": "1인당 최대 {{n}}개",
+    "qtySheets": "{{n}}장",
+    "qtyDecrease": "수량 감소",
+    "qtyIncrease": "수량 증가",
+    "prelaunchApply": "사전 응모하기",
+    "unavailable": "구매 불가",
+    "processing": "처리 중…",
+    "openingSoon": "오픈 예정",
+    "raffleNote": "결제 없이 응모해요 · 당첨되면 알려드려요",
+    "safePayNote": "토스로 3초 안전결제, 미사용 시 100% 자동환불",
+    "prelaunchNote": "오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요",
+    "payWithBalanceAria": "보유한 딜 {{balance}}딜로 결제하기",
+    "payWithBalance": "딜로 결제 (보유 {{balance}}딜)",
+    "voucher": "이용권",
+    "close": "닫기",
+    "completeTitle": "결제가 완료되었어요",
+    "noExpiry": "사용 기한 없음",
+    "sheets": "{{n}}매",
+    "dealUsed": "딜 {{amount}}",
+    "cardPaid": "카드 {{amount}}원",
+    "viewVouchers": "이용권 확인",
+    "noteUseQr": "매장에서 QR 또는 코드로 사용해요.",
+    "noteAutoRefund": "사용하지 않으면 기한이 지난 뒤 100% 자동 환불돼요.",
+    "noteStoreRefund": "매장 사정으로 사용이 어려우면 즉시 환불해 드려요.",
+    "moreFromStore": "{{store}} 다른 이용권 보기",
+    "moreVouchers": "다른 이용권 보기",
+    "issuedBand": "이용권 발급 완료",
+    "kindsCount": "{{n}}종",
+    "expiryVaries": "사용 기한은 이용권마다 달라요"
   }
 }

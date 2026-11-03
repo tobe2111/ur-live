@@ -5,6 +5,7 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { priceDisplay } from '@/shared/price-display'
 import { shortsRegionLabel } from '@/shared/urshorts-regions'
+import { warmShortsViewer } from '@/pages/videos/warm-viewer'
 import { URSHORTS_VIEWER_PATH, type UrShortItem } from '@/shared/urshorts'
 import { shortDisplayTitle } from '@/shared/urshorts-display'
 
@@ -31,6 +32,7 @@ function Card({ item, eager }: { item: UrShortItem; eager: boolean }) {
   return (
     <Link
       to={`${URSHORTS_VIEWER_PATH}?v=${item.video_id}`}
+      onPointerDown={warmShortsViewer} // 🐢 2026-11-02 누르는 사이에 뷰어 코드·유튜브 재생기를 미리 받는다
       className="group block text-left"
       aria-label={`${item.store_name || ''} ${title || '유어쇼츠 영상'}`}
     >

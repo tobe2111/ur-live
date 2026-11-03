@@ -100,14 +100,14 @@ export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean
       {error ? (
         <>
           <p className="mt-3 text-[13px] text-tone-bad">{error}</p>
-          <button type="button" onClick={() => { void load() }} className="mt-3 h-10 rounded-xl bg-brand px-4 text-[13px] font-semibold text-white">다시 시도</button>
+          <button type="button" onClick={() => { void load() }} className="mt-3 h-10 rounded-xl bg-brand px-4 text-[13px] font-medium text-white">다시 시도</button>
         </>
       ) : invite === undefined ? (
         <p className="mt-3 text-[13px] text-gray-500 dark:text-gray-400">링크 준비 중…</p>
       ) : invite ? (
         <>
           <button type="button" onClick={() => { void sendKakao() }} data-testid="agency-invite-kakao"
-            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] text-[15px] font-semibold text-[#3C1E1E] active:opacity-90">
+            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] text-[15px] font-medium text-[#3C1E1E] active:opacity-90">
             <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#3C1E1E" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z" />
             </svg>
@@ -117,14 +117,14 @@ export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean
             <input ref={inputRef} readOnly value={invite.url} onFocus={(e) => e.currentTarget.select()} aria-label="영입 링크"
               className="min-w-0 flex-1 rounded-xl bg-gray-50 dark:bg-white/5 px-3 py-2 text-[13px] text-gray-700 dark:text-gray-200 outline-none" />
             <button type="button" onClick={() => { void copy(invite.url) }}
-              className="h-10 shrink-0 rounded-xl bg-gray-100 dark:bg-white/10 px-4 text-[13px] font-semibold text-gray-700 dark:text-gray-200">복사</button>
+              className="h-10 shrink-0 rounded-xl bg-gray-100 dark:bg-white/10 px-4 text-[13px] font-medium text-gray-700 dark:text-gray-200">복사</button>
           </div>
           <div className="mt-3 flex items-center gap-3 text-[12px] text-gray-500 dark:text-gray-400">
             <span>이 링크로 맡긴 매장 {invite.useCount}곳</span>
             {canManage && (
               <>
-                <button type="button" disabled={busy} onClick={() => { void renew() }} className="ml-auto font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">새로 만들기</button>
-                <button type="button" disabled={busy} onClick={() => { void revoke() }} className="font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">끊기</button>
+                <button type="button" disabled={busy} onClick={() => { void renew() }} className="ml-auto font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">새로 만들기</button>
+                <button type="button" disabled={busy} onClick={() => { void revoke() }} className="font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">끊기</button>
               </>
             )}
           </div>
@@ -134,7 +134,7 @@ export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean
       ) : (
         <button type="button" disabled={busy}
           onClick={async () => { setBusy(true); const n = await create(); setBusy(false); if (n) toast.success('영입 링크를 만들었어요.') }}
-          className="mt-4 h-10 rounded-xl bg-brand px-4 text-[13px] font-semibold text-white disabled:opacity-50">영입 링크 만들기</button>
+          className="mt-4 h-10 rounded-xl bg-brand px-4 text-[13px] font-medium text-white disabled:opacity-50">영입 링크 만들기</button>
       )}
     </div>
   )

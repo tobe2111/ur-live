@@ -218,7 +218,9 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
 
     // 🛡️ 2026-05-25 linked seller + pins 병렬 1 RTT · 🛍️ 2026-10-10 내 가게 = 연결 계정 **또는 주인 좌석**(`OWNED_STORE_WHERE_SQL`)
     const userId = user.id
-    const [linkedSeller, pinsResult] = await Promise.all([
+    // 🐢 2026-11-02 대표 *"부분적으로 느린 경우들이 많아서 유저들이 헷갈려해"* — 주인 보기는 캐시 없이 미국 원본이라 왕복이 곧 체감이다.
+    //   userId 만 있으면 되는 읽기 여섯(가게·핀·딜%·누적구매·소개 스위치·머리 문구)을 **한 물결**로. 종전 직렬 4물결 → 1.
+    const [linkedSeller, pinsResult, dealBySeller, ushopSold, affiliateOn, head] = await Promise.all([
       DB.prepare(`SELECT s.id, s.username, s.name, s.status FROM sellers s WHERE ${OWNED_STORE_WHERE_SQL} LIMIT 1`).bind(userId, userId, userId)
         .first<{ id: number; username: string; name: string; status: string }>()
         .catch(() => DB.prepare("SELECT id, username, name, status FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1").bind(userId).first<{ id: number; username: string; name: string; status: string }>().catch(() => null)),
@@ -235,6 +237,11 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
          ORDER BY pp.position ASC, pp.created_at DESC
          LIMIT ?`,
       ).bind(userId, CURATOR_DEFAULTS.PIN_MAX_PER_USER).all().catch(() => ({ results: [] as Record<string, unknown>[] })),
+      findActiveDealPctsBySeller(DB, String(userId)), countUShopSales(DB, userId), isAffiliateProgramEnabled(DB),
+      // 🎨 2026-06-17 마퀴 헤드라인 — best-effort(컬럼 없는 env 면 headline 만, 그것도 없으면 null).
+      DB.prepare('SELECT linkshop_headline, linkshop_accent, COALESCE(linkshop_show_recommend, 0) AS show_recommend FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent?: string | null; show_recommend?: number }>()
+        .catch(() => DB.prepare('SELECT linkshop_headline FROM users WHERE id = ? LIMIT 1').bind(userId).first<{ linkshop_headline: string | null; linkshop_accent?: string | null; show_recommend?: number }>().catch(() => null)),
     ])
     // 🤝 2026-08-27 (대표 "직접 매장과 매칭이 되어진 이용권이 위에 노출"):
     //   핀마다 **이 유어샵 주인이 그 매장과 맺은 활성 딜의 %** 를 실어 보낸다.
@@ -242,32 +249,15 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //
     //   ⚠️ 딜은 **유어샵 주인** 기준(보는 사람 무관 — 익명 엣지 캐시에 실려도 정확). 💸 왕복 1회.
     //   🛍️ 2026-10-15 대표 *"바꾸자"*: 누적 구매 = **이 유어샵을 거쳐** 팔린 수(`ushop-sales.ts`) — 같은 왕복에 실린다.
-    const [dealBySeller, ushopSold] = await Promise.all([findActiveDealPctsBySeller(DB, String(userId)), countUShopSales(DB, userId)])
     const pins = gateAffiliateRows((pinsResult.results as Record<string, unknown>[]).map((r) => ({
       ...r,
       // null = 이 매장과 딜이 없음 → 팔려도 소개비 0. 화면이 두 덩어리로 가르는 근거.
       deal_pct: dealBySeller.get(Number(r.seller_id)) ?? null,
-    })), await isAffiliateProgramEnabled(DB))
+    })), affiliateOn)
 
-    // 🎨 2026-06-17 (유어샵 랜딩 리디자인): 마퀴 헤드라인 — 별도 best-effort 조회(컬럼 없는 env 에서
-    //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.
-    let headline: string | null = null
-    let accent: string | null = null
-    let showRecommend = 0
-    try {
-      const h = await DB.prepare('SELECT linkshop_headline, linkshop_accent, COALESCE(linkshop_show_recommend, 0) AS show_recommend FROM users WHERE id = ? LIMIT 1')
-        .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent: string | null; show_recommend: number }>()
-      headline = h?.linkshop_headline ?? null
-      accent = h?.linkshop_accent ?? null
-      showRecommend = Number(h?.show_recommend) === 1 ? 1 : 0
-    } catch {
-      // linkshop_accent 컬럼 없는 env — headline 만이라도.
-      try {
-        const h = await DB.prepare('SELECT linkshop_headline FROM users WHERE id = ? LIMIT 1')
-          .bind(userId).first<{ linkshop_headline: string | null }>()
-        headline = h?.linkshop_headline ?? null
-      } catch { /* 둘 다 없음 — null */ }
-    }
+    const headline = head?.linkshop_headline ?? null
+    const accent = head?.linkshop_accent ?? null
+    const showRecommend = Number(head?.show_recommend) === 1 ? 1 : 0
 
     // 🛡️ 2026-05-31 (유어샵 로딩): group-buy-public 과 동일 edge 캐시 — 이전엔 캐시 헤더가 없어
     //   (1) 매 요청 D1 3쿼리 cold, (2) worker SSR inject 가 caches.default 에서 못 찾아 매번 self-fetch cold
@@ -292,13 +282,11 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //   buildSellerPublicPayload = seller.routes `GET /:id/public` 와 같은 SSOT(쿼리/KV캐시/enrich 공유,
     //   드리프트 0) + KV 300s 캐시라 콜드 비용도 낮음. 실패 시 조용히 생략(클라가 기존 fetch 폴백).
     //   SSR CURATOR 슬롯/edge 캐시에 그대로 실리므로 하드로드는 셀러 데이터까지 0-RTT.
-    let linkedSellerPublic: Record<string, unknown> | null = null
-    if (linkedSeller?.username) {
-      try {
-        const { buildSellerPublicPayload } = await import('../utils/seller-public-payload')
-        linkedSellerPublic = await buildSellerPublicPayload(c.env, linkedSeller.username)
-      } catch { /* additive — 생략 시 클라 폴백 fetch */ }
-    }
+    // 🐢 2026-11-02 — 셀러 공개 페이로드와 셀러 상품 100개는 서로 기다릴 이유가 없다(나란히 · 종전 직렬 2물결).
+    const [linkedSellerPublic, linkedSellerProducts] = linkedSeller?.username ? await Promise.all([
+      import('../utils/seller-public-payload').then(({ buildSellerPublicPayload }) => buildSellerPublicPayload(c.env, linkedSeller.username) as Promise<Record<string, unknown> | null>).catch(() => null), // additive — 생략 시 클라 폴백 fetch
+      linkedSeller.id ? loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : Promise.resolve(null),
+    ]) : [null, linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null]
 
     return c.json({
       success: true,
@@ -331,7 +319,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         name: linkedSeller.name,
       } : null,
       // 🚀 2026-07-11: 셀러 공개 페이로드 동봉(1-RTT) — 없으면(비사업자/조회실패) null, 클라 폴백 fetch.
-      linked_seller_public: linkedSellerPublic, linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null, // 🚀 2026-09-02 셀러 상품 100개 동봉(없으면 null → 클라 폴백) · 한 줄: 래칫 1397
+      linked_seller_public: linkedSellerPublic, linked_seller_products: linkedSellerProducts, // 🚀 2026-09-02 셀러 상품 100개 동봉(없으면 null → 클라 폴백) · 한 줄: 래칫 1397
     })
   } catch (err) {
     return safeError(c, err, '큐레이터 정보 조회 중 오류가 발생했습니다', '[curator:get]')

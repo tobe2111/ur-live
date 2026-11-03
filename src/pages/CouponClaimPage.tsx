@@ -8,6 +8,10 @@ import SEO from '@/components/SEO'
 import { Loader2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
+// 🎬 2026-11-02 시안 8차 "쿠폰 받기"(대표 "8차에서는 QR 화면 밝아짐 빼고 다 넣어줘") — 받은 쿠폰이 살짝 기운 채 아래에서 올라와 바로 선다.
+//   상자 아이콘의 끝없이 통통 튀던 움직임은 한 번 톡으로 바꿨다 — 움직임은 한 번만 재생한다는 규칙.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-coupon', `@keyframes ur-cp-in { from { opacity: 0; transform: translateY(30px) rotate(-4deg) scale(.92); } to { opacity: 1; transform: none; } }@keyframes ur-cp-pop { 0% { transform: scale(.5); } 60% { transform: scale(1.12); } 100% { transform: none; } }.ur-cp-in { animation: ur-cp-in .55s cubic-bezier(.2,1,.3,1) .25s backwards; }.ur-cp-pop { animation: ur-cp-pop .45s cubic-bezier(.3,1.3,.5,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-cp-in,.ur-cp-pop{animation:none!important}}`)
 
 function ConfettiCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -156,14 +160,14 @@ export default function CouponClaimPage() {
 
         {status === 'success' && coupon && (
           <div className={`transition-all duration-700 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <div className="w-24 h-24 mx-auto bg-gray-700 rounded-full flex items-center justify-center mb-5 shadow-lg animate-bounce">
+            <div className="w-24 h-24 mx-auto bg-gray-700 rounded-full flex items-center justify-center mb-5 shadow-lg ur-cp-pop">
               <GiftBoxIcon className="w-12 h-12 text-white" />
             </div>
 
             <h1 className="text-[24px] font-bold text-gray-900 dark:text-white mb-1">{t('couponClaim.celebrate')}</h1>
             <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{t('couponClaim.issuedHint')}</p>
 
-            <div className="relative bg-surface rounded-3xl p-6 border-2 border-dashed border-rule shadow-xl overflow-hidden">
+            <div className="ur-cp-in relative bg-surface rounded-3xl p-6 border-2 border-dashed border-rule shadow-xl overflow-hidden">
               <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#11141C] rounded-full" />
               <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#11141C] rounded-full" />
 

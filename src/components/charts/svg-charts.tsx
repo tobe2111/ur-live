@@ -11,6 +11,11 @@
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
+// 🎬 2026-11-02 시안 6차 "매출 막대"(대표 "다 넣어줘") — 차트를 처음 그릴 때 막대는 왼쪽부터 차례로 아래에서 자라고,
+//   선은 왼쪽에서 오른쪽으로 그려진다. 처음 한 번만이다(값이 바뀌어 다시 그릴 때는 움직이지 않는다 — 같은 요소라 애니메이션이 다시 안 돈다).
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-chart', `@keyframes ur-chart-bar { from { transform: scaleY(0); } to { transform: none; } }@keyframes ur-chart-line { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }.ur-chart-bar { transform-box: fill-box; transform-origin: bottom; animation: ur-chart-bar .5s cubic-bezier(.2,1,.3,1) backwards; }.ur-chart-line { stroke-dasharray: 1; animation: ur-chart-line .8s cubic-bezier(.65,0,.35,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-chart-bar,.ur-chart-line{animation:none!important}}`)
+
 const AXIS = 'var(--ink-soft)'
 const GRID = 'var(--line)'
 /** 점·조각 테두리 — 바탕과 같은 색. 토큰을 쓰므로 마이 시트(다크)에서도 맞는다(라이트 대시보드는 스코프가 토큰을 다시 고정한다). */
@@ -117,7 +122,8 @@ export function SvgBarChart<T extends object>({ data, xKey, series, height, yFor
             labels={data.map((d, i) => ({ x: xAt(i), text: str(d, xKey) }))} />
           {values.map((v, i) => (
             <rect key={i} x={xAt(i) - barW / 2} y={yOf(v)} width={barW} height={Math.max(PAD.top + f.innerH - yOf(v), 0)}
-              rx={4} fill={series.color} opacity={hover === null || hover === i ? 1 : 0.55} />
+              rx={4} fill={series.color} opacity={hover === null || hover === i ? 1 : 0.55}
+              className="ur-chart-bar" style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }} />
           ))}
           {data.map((_, i) => (
             <rect key={`h${i}`} x={PAD.left + slot * i} y={PAD.top} width={slot} height={f.innerH} fill="transparent"
@@ -163,7 +169,7 @@ export function SvgLineChart<T extends object>({ data, xKey, series, height, yFo
             labels={data.map((d, i) => ({ x: xAt(i), text: xFormat ? xFormat(str(d, xKey)) : str(d, xKey) }))} />
           {series.map((s) => (
             <g key={s.key}>
-              <polyline fill="none" stroke={s.color} strokeWidth={s.width ?? 2} strokeLinejoin="round" strokeLinecap="round"
+              <polyline className="ur-chart-line" pathLength={1} fill="none" stroke={s.color} strokeWidth={s.width ?? 2} strokeLinejoin="round" strokeLinecap="round"
                 points={data.map((d, i) => `${xAt(i)},${yOf(num(d, s.key))}`).join(' ')} />
               {dots && data.map((d, i) => <circle key={i} cx={xAt(i)} cy={yOf(num(d, s.key))} r={3} stroke={s.color} strokeWidth={2} style={{ fill: SURFACE }} />)}
             </g>

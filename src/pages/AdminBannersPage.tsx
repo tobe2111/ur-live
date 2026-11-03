@@ -4,7 +4,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Link as LinkIcon, Image as ImageIcon, X } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import BannerMediaUpload from './admin/banners/BannerMediaUpload'
@@ -39,7 +39,7 @@ export default function AdminBannersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
-  const { data: banners = [], isLoading: loading, refetch } = useApiQuery<Banner[]>(
+  const { data: banners = [], isLoading: loading, isError, error, refetch } = useApiQuery<Banner[]>(
     ['admin', 'banners'], '/api/admin/banners',
     { select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -285,7 +285,9 @@ export default function AdminBannersPage() {
 
       {/* 배너 목록 */}
       <div className="space-y-3">
-        {banners.length === 0 ? (
+        {isError ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="배너" />
+        ) : banners.length === 0 ? (
           <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white py-20 text-center">
             <ImageIcon className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="text-sm text-gray-400 mb-4">{t('admin.banners.k039', { defaultValue: '등록된 배너가 없습니다.' })}</p>

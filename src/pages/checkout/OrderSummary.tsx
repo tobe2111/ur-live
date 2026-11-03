@@ -5,6 +5,11 @@
  */
 import { useTranslation } from '@/lib/i18n-lite'
 import { formatNumber } from '@/utils/format'
+import RollingNumber from '@/components/ui/RollingNumber'
+
+// 🎬 2026-11-02 시안 6차 "쿠폰 적용" — 할인 줄이 펼쳐지듯 들어오고 총액이 굴러 내려간다(대표 "다 넣어줘").
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-sum', `@keyframes ur-row-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }.ur-row-in { animation: ur-row-in .28s cubic-bezier(.2,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-row-in{animation:none!important}}`)
 
 interface Props {
   subtotal: number
@@ -58,7 +63,7 @@ export default function OrderSummary({
           )}
 
           {couponDiscount > 0 && (
-            <div className="flex items-center justify-between">
+            <div className="ur-row-in flex items-center justify-between">
               <span className="text-[15px] text-gray-400 dark:text-gray-500">{t('checkout.summary.couponDiscount', { defaultValue: '쿠폰 할인' })}</span>
               <span className="text-[15px] font-medium text-red-500">
                 -{formatNumber(couponDiscount)}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}
@@ -66,7 +71,7 @@ export default function OrderSummary({
             </div>
           )}
           {totalGroupBuyDiscount > 0 && (
-            <div className="flex items-center justify-between">
+            <div className="ur-row-in flex items-center justify-between">
               <span className="text-[15px] text-gray-400 dark:text-gray-500">{t('checkout.summary.groupBuyDiscount', { defaultValue: '🎁 공동구매 할인' })}</span>
               <span className="text-[15px] font-medium text-gray-900 dark:text-white">
                 -{formatNumber(totalGroupBuyDiscount)}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}
@@ -74,7 +79,7 @@ export default function OrderSummary({
             </div>
           )}
           {dealToUse > 0 && (
-            <div className="flex items-center justify-between">
+            <div className="ur-row-in flex items-center justify-between">
               <span className="text-[15px] text-gray-400 dark:text-gray-500">{t('checkout.summary.dealPoints', { defaultValue: '딜 포인트' })}</span>
               <span className="text-[15px] font-medium text-brand-text">-{formatNumber(dealToUse)}{t('checkout.summary.dealSuffix', { defaultValue: '딜' })}</span>
             </div>
@@ -84,7 +89,7 @@ export default function OrderSummary({
         <div className="flex items-end justify-between pt-3 mt-3 border-t border-gray-100 dark:border-[#2C2F35]">
           <span className="text-[15px] font-bold text-gray-900 dark:text-white">{t('checkout.summary.totalAmount', { defaultValue: '총 결제 금액' })}</span>
           <span className="text-[24px] font-bold text-red-500" style={{ letterSpacing: '-0.03em' }}>
-            {formatNumber(finalAmount)}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}
+            <RollingNumber value={finalAmount} format={formatNumber} />{t('checkout.summary.wonSuffix', { defaultValue: '원' })}
           </span>
         </div>
         {finalAmount > 0 && (

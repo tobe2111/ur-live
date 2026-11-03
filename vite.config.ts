@@ -572,6 +572,9 @@ export default defineConfig({
           if (id.endsWith('vite/preload-helper.js')) return 'app-shared' // 라이브러리 아님(Vite 내부 도우미) — includes 로 쓰면 surface-chunks 시험이 라이브러리 봉투로 오인한다
           // 🚪 2026-10-15: 하단 탭 미리받기는 App 이 마운트 뒤 **동적으로** 부른다 — 부팅 봉투(app-utils)에 넣지 않는다.
           if (id.includes('/src/lib/tab-warm')) return 'app-tab-warm'
+          // 🎬 2026-11-02 [UNLOCK_LOADING] 목록 → 상세 화면 전환(대표 "셋 다 해줘" — 공용 묶음 줄이기): 카드가 보이거나 닿을 때 **동적으로** 받는다.
+          //   `/src/lib/` catch-all 로 가면 app-utils/lz-common 에 실려 카드 없는 화면까지 받는다(빌드 실측 — 동적 import 만으로는 안 갈라졌다).
+          if (id.includes('/src/lib/deal-view-transition')) return 'app-deal-vt'
           // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
           if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)

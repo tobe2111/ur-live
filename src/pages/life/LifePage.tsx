@@ -18,6 +18,9 @@ import { LIFE_TILES, LifeTileIcon } from './life-tiles'
 import { LIFE_HUB_SEO } from '@/shared/seo/life-hub-seo'
 import { LIFE_FAQ } from '@/shared/life-faq'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 13차 ④⑤ — 이용 순서 1·2·3 이 차례로 떠오르며 번호가 톡 튀고, 서비스 타일은 차례로 나타나며 누르면 눌렸다 돌아온다.
+injectMotionCss('ur-m-life', `@keyframes ur-life-in { from { opacity: 0; transform: translateY(10px); } }@keyframes ur-life-n { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.25); opacity: 1; } 100% { transform: none; } }.ur-life-step { animation: ur-life-in .38s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 160ms); }.ur-life-step .ur-life-n { display: inline-block; animation: ur-life-n .4s cubic-bezier(.3,1.4,.5,1) backwards; animation-delay: calc(var(--i, 0) * 160ms + 120ms); }.ur-life-tile { animation: ur-life-in .34s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 40ms); }.ur-life-tile .ur-life-ic { transition: transform .18s cubic-bezier(.3,1.4,.5,1); }.ur-life-tile a:active .ur-life-ic { transform: scale(.86); }@media (prefers-reduced-motion: reduce){.ur-life-step,.ur-life-step .ur-life-n,.ur-life-tile{animation:none!important}.ur-life-tile .ur-life-ic{transition:none}}`)
 
 /**
  * 🏠 2026-10-25 대표 *"생활 페이지는 이런 형태여야 하지 않을까? 오늘의집인데"* — 탭 셋을 걷고
@@ -52,10 +55,10 @@ function IconRow({ keys }: { keys: readonly HomeServiceCategory[] }) {
   const tile = 'flex flex-col items-center gap-2 active:opacity-70'
   return (
     <ul className="mt-4 grid grid-cols-5 gap-x-1 gap-y-5">
-      {shown.map((k) => (
-        <li key={k}>
+      {shown.map((k, ti) => (
+        <li key={k} className="ur-life-tile" style={{ '--i': Math.min(ti, 10) } as React.CSSProperties}>
           <Link to={`/life/request/${k}`} className={tile}>
-            <span className="flex h-12 w-12 items-center justify-center"><LifeTileIcon category={k} size={40} /></span>
+            <span className="ur-life-ic flex h-12 w-12 items-center justify-center"><LifeTileIcon category={k} size={40} /></span>
             <span className="whitespace-pre-line text-center text-[13px] leading-tight">{LIFE_TILES[k][0]}</span>
           </Link>
         </li>
@@ -110,8 +113,8 @@ export default function LifePage() {
           <h1 className="mt-2 text-[24px] font-bold leading-snug tracking-tight lg:text-[34px]">사장님, 가게 일은<br className="lg:hidden" /> 여기서 맡기세요</h1>
           <ol className="mt-4 grid grid-cols-3 gap-2 text-center">
             {['요청서 1분 작성', `견적 최대 ${MAX_QUOTES_PER_REQUEST}곳 도착`, '비교하고 한 곳 고르기'].map((step, i) => (
-              <li key={step} className="rounded-xl bg-surface px-2 py-3">
-                <span className="block text-[12px] font-medium text-brand-text">{i + 1}</span>
+              <li key={step} className="ur-life-step rounded-xl bg-surface px-2 py-3" style={{ '--i': i } as React.CSSProperties}>
+                <span className="block text-[12px] font-medium text-brand-text"><span className="ur-life-n">{i + 1}</span></span>
                 <span className="mt-1 block text-[13px] leading-snug">{step}</span>
               </li>
             ))}

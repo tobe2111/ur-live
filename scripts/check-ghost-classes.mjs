@@ -75,6 +75,26 @@ const files = execSync("git ls-files 'src/**/*.tsx' 'src/**/*.ts'", { encoding: 
   .trim().split('\n').filter(Boolean)
   .filter((f) => !f.startsWith('src/tests/'))   // 테스트는 위반 문자열 자체를 설명으로 들고 있다
 
+/**
+ * 💉 2026-11-02 — **화면이 스스로 심는 CSS** 도 "생성된 클래스" 다.
+ *   모션은 번들 CSS 가 아니라 컴포넌트가 처음 그려질 때 `<style>` 로 심는다
+ *   (`injectMotionCss('ur-m-…', \`…\`)` — 그 화면을 안 여는 손님은 그 CSS 를 안 받는다).
+ *   그 문자열을 안 읽으면 `ur-` 루트가 번들에 있으니 그 클래스들이 전부 유령으로 잡힌다(실측 65종 오탐).
+ *   ⇒ 소스의 템플릿 리터럴 중 CSS 규칙(`.클래스 {`)을 담은 것을 같은 파서로 읽어 집합에 더한다.
+ *   ⚠️ 못 보는 것: 심는 코드가 실제로 실행되는지(그건 화면을 열어 봐야 안다).
+ */
+let injectedCss = ''
+for (const f of files) {
+  const src = readFileSync(f, 'utf8')
+  if (!src.includes('{')) continue
+  for (const m of src.matchAll(/`([^`]*)`/g)) {
+    if (m[1].includes('{') && (/@keyframes|animation|transition|transform/.test(m[1]) || /\.ur-[\w-]+(?:[^{]*)\{/.test(m[1]))) injectedCss += m[1] + '\n' // 2026-11-02 — 로더 SSOT(`brand-loader-markup.ts`)처럼 움직임 낱말 없는 배치 규칙(`.ur-ldr{width:…}`)도 읽는다
+  }
+}
+// 셀렉터 자리의 `.이름` 만 — 규칙 본문(`{…}`)을 걷어낸 뒤 읽는다(값 안의 `.24s` 같은 숫자는 [a-z] 로 시작하지 않는다).
+for (const m of injectedCss.matchAll(/@keyframes\s+([a-z][\w-]*)/g)) generated.add(m[1]) // 키프레임 이름(`animation: ur-draw …`)을 토큰으로 읽는 자리
+for (const m of injectedCss.replace(/\{[^{}]*\}/g, ' ').matchAll(/\.([a-z][\w-]*)/g)) generated.add(m[1])
+
 const tokens = []
 for (const f of files) {
   const src = readFileSync(f, 'utf8')

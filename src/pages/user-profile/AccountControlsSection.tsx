@@ -82,9 +82,10 @@ export function NotificationToggleSection() {
         onClick={onChange}
         aria-pressed={value}
         aria-label={value ? `${label} 끄기` : `${label} 켜기`}
-        className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-brand' : 'bg-gray-200 dark:bg-white/[0.15]'}`}
+        className={`group relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-brand' : 'bg-gray-200 dark:bg-white/[0.15]'}`}
       >
-        <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white dark:bg-[#11141C] rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
+        {/* 🎬 2026-11-02 11차 ⑨ — 누르고 있으면 손잡이가 늘어나고(group-active), 놓으면 반대편에 톡 붙는다(튀는 곡선). */}
+        <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white dark:bg-[#11141C] rounded-full shadow-sm transition-[transform,width] duration-300 ease-[cubic-bezier(.3,1.3,.5,1)] motion-reduce:transition-none group-active:w-[26px] ${value ? 'translate-x-[20px] group-active:translate-x-[14px]' : 'translate-x-0'}`} />
       </button>
     </div>
   )

@@ -1379,8 +1379,8 @@ const MUTATIONS = [
   {
     name: '🎞️ 받는 중인데 직전 사진이 선명하게 남아 "안 넘어갔다"로 보인다 (블러 신호 소실)',
     file: 'src/components/deal/DealCardMedia.tsx',
-    find: "                filter: i === painted && waiting ? 'blur(10px)' : 'blur(0px)',\n",
-    replace: '',
+    find: "                filter: i === painted ? (waiting ? 'blur(10px)' : 'blur(0px)') : 'blur(8px)',\n",
+    replace: "                filter: i === painted ? 'blur(0px)' : 'blur(8px)',\n",
     test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
     why:
       '2026-09-06 대표 신고: 모바일 4G 첫 넘김이 **2,180ms** 인데 그동안 직전 사진이 0.65 로 어둡게만 ' +
@@ -1517,7 +1517,8 @@ const MUTATIONS = [
   {
     name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
     file: 'src/worker/routes/curator.routes.ts',
-    find: ', linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null,',
+    // 🐢 2026-11-02 셀러 페이로드와 나란히 받도록 바뀌어 앵커를 옮겼다(동봉 자체는 그대로).
+    find: ', linked_seller_products: linkedSellerProducts,',
     replace: ',',
     test: 'src/tests/unit/linkshop-products-seed.test.ts',
     why:
@@ -2318,8 +2319,9 @@ const MUTATIONS = [
     // 🔄 2026-09-15: 제목이 옮겨졌다. '딜 안내'(하드코딩 3줄) 블록이 사라지고 그 자리에
     //   실제 스펙표 `UsageGuide`(제목 '이용 안내')가 올라왔다 — 앵커를 그 파일로 옮긴다.
     file: 'src/pages/group-buy/UsageGuide.tsx',
-    find: ">이용 안내</h2>",
-    replace: ">무엇을 기대하세요?</h2>",
+    // 🌐 2026-11-02: 제목이 번역 함수로 들어갔다(외국인 손님 영어화) — 앵커를 한국어 기본값으로 옮긴다.
+    find: "defaultValue: '이용 안내' })}</h2>",
+    replace: "defaultValue: '무엇을 기대하세요?' })}</h2>",
     test: 'src/tests/unit/detail-page-plainness.test.ts',
     why:
       'What to expect 를 그대로 옮긴 제목이었다. 한국 커머스에선 아무도 그렇게 안 쓰고, ' +

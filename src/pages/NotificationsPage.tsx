@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { BellIcon } from '@/components/icons/urdeal-icons'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { safeDate } from '@/utils/safe-date'
 import api from '@/lib/api'
 import { useTranslation } from '@/lib/i18n-lite'
@@ -11,6 +11,9 @@ import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
 import { toast } from '@/hooks/useToast'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/queries/useNotifications'
+// 🎬 2026-11-02 시안 7차 "새 알림 들어옴"(대표 "7차도 다 해주고") — 화면을 열어 둔 사이 새로 온 알림만 위에서 미끄러져 들어온다(처음 목록은 안 움직인다).
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-noti', `@keyframes ur-noti-in { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }.ur-noti-new { animation: ur-noti-in .4s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-noti-new{animation:none!important}}`)
 
 export default function NotificationsPage() {
   const { t } = useTranslation()
@@ -23,6 +26,15 @@ export default function NotificationsPage() {
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const notifications = [...firstPage, ...extra.filter(e => !firstPage.some(f => f.id === e.id))]
+  const seenIds = useRef<Set<string | number> | null>(null)
+  useEffect(() => {
+    if (!notifications.length) return
+    const set = seenIds.current ?? new Set<string | number>()
+    for (const n of notifications) set.add(n.id)
+    seenIds.current = set
+  })
+  // 더 불러오기로 아래에 붙는 옛 알림은 '새 알림' 이 아니다 — 첫 페이지(최신)에서 처음 보는 것만.
+  const isNewNoti = (id: string | number) => seenIds.current != null && !seenIds.current.has(id) && firstPage.some(f => f.id === id)
   async function loadMore() {
     if (loadingMore) return
     setLoadingMore(true)
@@ -37,7 +49,11 @@ export default function NotificationsPage() {
   const markReadMut = useMarkNotificationRead()
   const error = isError ? t('notifications.loadError') : ''
 
+  // 🎬 2026-11-02 13차 ② — '모두 읽음' 을 누른 순간만 파란 점이 위에서부터 차례로 꺼진다(하나씩 읽을 땐 바로).
+  const [cascade, setCascade] = useState(false)
   function markAllRead() {
+    setCascade(true)
+    window.setTimeout(() => setCascade(false), 1400)
     markAllMut.mutate(undefined, {
       onError: () => toast.error(t('notifications.markAllReadFailed', { defaultValue: '읽음 처리에 실패했습니다' })),
     })
@@ -79,19 +95,21 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <div>
-            {notifications.map(n => (
+            {notifications.map((n, ni) => (
               <button
                 key={n.id}
                 onClick={() => {
                   if (!n.is_read) markReadMut.mutate(n.id)
                   if (n.link) navigate(safeInternalPath(n.link, '/'))
                 }}
-                className={`w-full flex items-start gap-3 p-4 text-left border-b border-rule ${n.is_read ? 'opacity-50' : ''}`}
+                className={`w-full flex items-start gap-3 p-4 text-left border-b border-rule ${n.is_read ? 'opacity-50' : ''}${isNewNoti(n.id) ? ' ur-noti-new' : ''}`}
+                style={{ transition: 'opacity .3s', transitionDelay: cascade ? `${Math.min(ni, 12) * 60}ms` : undefined }}
               >
-                <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
+                {/* 🎬 2026-11-02 시안 5차 "알림 읽음": 읽으면 파란 점이 작아지며 사라지고 줄이 서서히 흐려진다(모두 읽음에서 보인다). */}
+                <div className="w-2 h-2 rounded-full mt-2 shrink-0 bg-brand" style={{ transition: 'transform .3s, opacity .3s', transitionDelay: cascade ? `${Math.min(ni, 12) * 60}ms` : undefined, transform: n.is_read ? 'scale(0)' : undefined, opacity: n.is_read ? 0 : 1 }} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[15px] font-medium text-gray-900 dark:text-white">{n.title}</p>
-                  {n.message && <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{n.message}</p>}
+                  {n.message && <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{n.message}</p>}
                   <p className="text-[12px] text-gray-500 dark:text-gray-500 mt-1">
                     {/* 🛡️ 2026-06-26 (소비자 감사): safeDate — 사파리가 D1 datetime 을 Invalid Date 로 파싱하던 것 보정. */}
                     {safeDate(n.created_at)?.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) ?? ''}

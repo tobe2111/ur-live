@@ -11,8 +11,8 @@ export default [
   {
     name: '🖥️PC2열 좌석과 무관하게 늘 쪼갠다 (손님 화면이 깨진다)',
     file: PAGE,
-    find: "      <div className={sellerSeats.stores.length > 0 ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}>",
-    replace: '      <div className="ur-account-cols ur-account-cols--split">',
+    find: "      <div className={`${hasSeats ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}${introToday ? ' ur-my-intro' : ''}`}>", // 🐢 2026-11-02 hasSeats + 하루 첫 방문 차례 등장
+    replace: "      <div className={`ur-account-cols ur-account-cols--split${introToday ? ' ur-my-intro' : ''}`}>",
     test: TEST,
     why: '가게가 없으면 왼쪽 열이 통째로 비고 손님 블록이 전부 좁은 오른쪽으로 몰린다(첫 판에서 실제로 그랬다).',
   },

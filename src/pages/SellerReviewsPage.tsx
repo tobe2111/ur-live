@@ -8,6 +8,9 @@ import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/co
 import { Star, MessageCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatKSTDate } from '@/utils/date'
+// 🎬 2026-11-02 시안 7차 "리뷰 답글 저장"(대표 "7차도 다 해주고") — 방금 단 답글이 리뷰 아래로 살짝 내려앉으며 나타난다(이미 있던 답글은 안 움직인다).
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-reply', `@keyframes ur-reply-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }.ur-reply-in { animation: ur-reply-in .35s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-reply-in{animation:none!important}}`)
 
 const REVIEWS_KEY = ['seller', 'reviews'] as const
 
@@ -21,6 +24,7 @@ export default function SellerReviewsPage() {
   )
   const [replyId, setReplyId] = useState<number | null>(null)
   const [replyText, setReplyText] = useState('')
+  const [justReplied, setJustReplied] = useState<number | null>(null)
 
   const submitReply = async (reviewId: number) => {
     if (!replyText.trim()) return
@@ -29,7 +33,7 @@ export default function SellerReviewsPage() {
       await api.post(`/api/seller/analytics/reviews/${reviewId}/reply`, { reply })
       toast.success(t('seller.reviews.replySubmitted'))
       qc.setQueryData<any[]>(REVIEWS_KEY, prev => (prev || []).map(r => r.id === reviewId ? { ...r, seller_reply: reply, seller_reply_at: new Date().toISOString() } : r))
-      setReplyId(null); setReplyText('')
+      setReplyId(null); setReplyText(''); setJustReplied(reviewId)
     } catch { toast.error(t('seller.reviews.replyFailed')) }
   }
 
@@ -62,7 +66,7 @@ export default function SellerReviewsPage() {
                 </div>
                 <p className="text-sm text-gray-700">{r.content}</p>
                 {r.seller_reply ? (
-                  <div className="mt-3 border border-rule bg-white rounded-lg p-3">
+                  <div className={`mt-3 border border-rule bg-white rounded-lg p-3${justReplied === r.id ? ' ur-reply-in' : ''}`}>
                     <p className="text-xs text-gray-700 font-medium mb-1">{t('seller.reviews.sellerReply')}</p>
                     <p className="text-sm text-gray-700">{r.seller_reply}</p>
                   </div>

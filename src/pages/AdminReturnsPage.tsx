@@ -11,7 +11,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import TrackingModal from '@/components/shipping/TrackingModal'
 import { toast } from '@/hooks/useToast'
 import { formatKST } from '@/utils/date'
@@ -62,7 +62,7 @@ export default function AdminReturnsPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [trackingTarget, setTrackingTarget] = useState<{ carrier: string; number: string } | null>(null)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (status별 캐시, returns+counts).
-  const { data: rdata, isLoading: loading, refetch } = useApiQuery<{ returns: ReturnRecord[]; counts: Record<string, number> }>(
+  const { data: rdata, isLoading: loading, isError, error, refetch } = useApiQuery<{ returns: ReturnRecord[]; counts: Record<string, number> }>(
     ['admin', 'returns', statusFilter], '/api/returns/admin',
     { params: statusFilter ? { status: statusFilter } : {}, select: (r: any) => (r?.success ? { returns: r.data || [], counts: r.counts || {} } : { returns: [], counts: {} }) },
   )
@@ -167,7 +167,9 @@ export default function AdminReturnsPage() {
 
         {/* 목록 */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {loading ? (
+          {isError ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="반품" />
+        ) : loading ? (
             <div className="py-20 flex items-center justify-center">
               <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
             </div>

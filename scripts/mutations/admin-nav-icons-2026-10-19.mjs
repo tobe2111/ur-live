@@ -12,8 +12,8 @@ export default [
   {
     name: '[admin-nav-icons] import 에 MapPin 이 되살아난다',
     file: 'src/components/admin/admin-nav-config.ts',
-    find: '  RotateCcw, Upload, Scale,',
-    replace: '  RotateCcw, Upload, MapPin, Scale,',
+    find: '  RotateCcw, Upload, FileText,',
+    replace: '  RotateCcw, Upload, MapPin, FileText,',
     test: T,
     why: 'import 만 남아도 묶음기는 그 봉투를 첫 화면에 넣는다.',
   },

@@ -1,8 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { DEAL_HERO_VT } from '@/lib/deal-vt-name'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { getWarmImage } from '@/utils/image-warm'
+import { useTranslation } from '@/lib/i18n-lite'
 // 📦 2026-11-02: 크게 보기(폰)는 누를 때만 받는다 — 상세 첫 화면 무게 예산(surface-budgets)을 넘겼다(+1.6KB).
 const DetailLightboxMobile = lazy(() => import('./DetailLightboxMobile'))
 import {
@@ -12,6 +14,8 @@ import {
   DETAIL_MOBILE_THUMBS, DETAIL_MOBILE_THUMB_CLS, DETAIL_MOBILE_THUMB_RATIO, DETAIL_MOBILE_THUMB_ROW_CLS,
   detailMobileThumbUrl, showMobileThumbs,
 } from '@/shared/detail-hero-image'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-lightbox', `@keyframes ur-lb-bg { from { opacity: 0; } to { opacity: 1; } }@keyframes ur-lb-img { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }.ur-lb-in { animation: ur-lb-bg .22s ease-out both; }.ur-lb-in .ur-lb-pic { animation: ur-lb-img .3s cubic-bezier(.2,1,.3,1) backwards; }.ur-lb-out { animation: ur-lb-bg .18s ease-in reverse both; }.ur-lb-out .ur-lb-pic { animation: ur-lb-img .18s ease-in reverse both; }@media (prefers-reduced-motion: reduce){.ur-lb-in,.ur-lb-out,.ur-lb-in .ur-lb-pic,.ur-lb-out .ur-lb-pic{animation:none!important}}`)
 
 /**
  * 🖼️ 2026-08-19 (대표 시안 — 그루폰 상세): 이용권 상세 갤러리.
@@ -39,8 +43,19 @@ interface Props {
 const PC_THUMBS = 2
 
 export default function DetailGallery({ images: rawImages, alt, badges, fallback, overlay }: Props) {
+  const { t } = useTranslation()
   const [active, setActive] = useState(0)
   const [lightbox, setLightbox] = useState(false)
+  // 🎬 2026-11-02 시안 5차 "사진 크게 보기": 열 때 커지며 나타나고, 닫을 때 작아지며 사라진다.
+  //   폰은 대표 확정 ③B 팝업(DetailLightboxMobile)이 손가락 따라가기를 따로 맡는다 — 여기선 열고 닫힘만.
+  const [closing, setClosing] = useState(false)
+  const closeLightbox = useCallback(() => {
+    let reduce = false
+    try { reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { /* 미지원 */ }
+    if (reduce) { setLightbox(false); return }
+    setClosing(true)
+    window.setTimeout(() => { setLightbox(false); setClosing(false) }, 180)
+  }, [])
   const touchX = useRef<number | null>(null)
   const galRef = useRef<HTMLDivElement | null>(null)
 
@@ -83,13 +98,13 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
   useEffect(() => {
     if (!lightbox) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setLightbox(false)
+      if (e.key === 'Escape') closeLightbox()
       else if (e.key === 'ArrowRight') step(1)
       else if (e.key === 'ArrowLeft') step(-1)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [lightbox, step])
+  }, [lightbox, step, closeLightbox])
 
   /**
    * 🎯 2026-08-31 (대표 승인 — "너가 얘기해준 가장 이상적인 방법들로"): 모바일 히어로 프레임.
@@ -191,11 +206,14 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             const hi = src && near ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''
             return (
               <div key={i} className="flex items-center justify-center text-[60px]"
-                role={src ? 'button' : undefined} aria-label={src ? '사진 크게 보기' : undefined}
+                /* 🎬 2026-11-02 시안 D3: 목록 카드 사진이 이 첫 장으로 이어져 커진다(lib/deal-view-transition). */
+                data-vt-hero={i === 0 ? '' : undefined}
+                role={src ? 'button' : undefined} aria-label={src ? t('pass.gallery.enlarge', { defaultValue: '사진 크게 보기' }) : undefined}
                 onClick={() => { if (src) { setActive(i); setLightbox(true) } }}
                 /* ⚠️ position 은 **인라인**이다 — 절대배치 <img> 의 포함 블록은 구조 요건이라
                    유틸 클래스(`relative`)가 번들에 있느냐에 맡기지 않는다. 서버 첫 화면도 같은 자리. */
                 style={{ position: 'relative', flex: '0 0 100%', scrollSnapAlign: 'center',
+                  viewTransitionName: i === 0 ? DEAL_HERO_VT : undefined,
                   backgroundColor: '#1D1F29',
                   /* 🔥 두 겹 배경은 **밑깔개로 남긴다** — 카드에서 이미 받은 저해상이 클릭 즉시 그려지고,
                      그 위에 아래 <img> 가 도착하면 덮는다(종전과 같은 체감, 추가 요청 0). */
@@ -246,7 +264,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             const isLast = i === DETAIL_MOBILE_THUMBS - 1 && left > 0
             return (
               <button key={`${i}-${src}`} type="button" onClick={() => { setActive(idx); if (isLast) setLightbox(true) }}
-                aria-label={isLast ? `전체 사진 ${images.length}장 크게 보기` : `사진 ${idx + 1} 보기`}
+                aria-label={isLast ? t('pass.gallery.allPhotosEnlarge', { defaultValue: '전체 사진 {{count}}장 크게 보기', count: images.length }) : t('pass.gallery.viewPhotoN', { defaultValue: '사진 {{n}} 보기', n: idx + 1 })}
                 className={DETAIL_MOBILE_THUMB_CLS}
                 style={{ aspectRatio: String(DETAIL_MOBILE_THUMB_RATIO), ...bg(src, detailMobileThumbUrl(src)) }}>
                 {isLast && (
@@ -263,7 +281,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
           <button
             type="button"
             onClick={() => has && setLightbox(true)}
-            aria-label={has ? '사진 크게 보기' : alt}
+            aria-label={has ? t('pass.gallery.enlarge', { defaultValue: '사진 크게 보기' }) : alt}
             className="relative block w-full text-[60px] flex items-center justify-center cursor-zoom-in"
             /* 📐 2026-08-19 (대표 확정 — 상세 1안): 제목·별점이 사진 **위**로 올라갔으므로 사진이
                화면을 통째로 먹으면 안 된다. 1장짜리도 정사각(=800px 높이) 대신 16:9 로 눕힌다.
@@ -284,14 +302,14 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
                     key={src}
                     type="button"
                     onClick={() => (isLast ? setLightbox(true) : setActive(i + 1))}
-                    aria-label={isLast ? `전체 사진 ${images.length}장 보기` : `사진 ${i + 2}번째 보기`}
+                    aria-label={isLast ? t('pass.gallery.allPhotosView', { defaultValue: '전체 사진 {{count}}장 보기', count: images.length }) : t('pass.gallery.viewPhotoOrdinal', { defaultValue: '사진 {{n}}번째 보기', n: i + 2 })}
                     className="relative w-full h-full cursor-pointer"
                     style={bg(src, pcThumbUrl(src))}
                   >
                     {isLast && (
                       <span className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 text-white text-[13px] font-medium">
                         <span className="text-[17px] font-bold">+{rest}</span>
-                        전체 사진 {images.length}장
+                        {t('pass.gallery.allPhotosCount', { defaultValue: '전체 사진 {{count}}장', count: images.length })}
                       </span>
                     )}
                   </button>
@@ -306,25 +324,25 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
       {/* 🔍 전체 사진 모달 — 그루폰의 "See all images". */}
       {lightbox && (
         <div
-          className="fixed inset-0 bg-black/75 lg:bg-black/90 flex items-center justify-center"
+          className={`fixed inset-0 bg-black/75 lg:bg-black/90 flex items-center justify-center ${closing ? 'ur-lb-out' : 'ur-lb-in'}`}
           style={{ zIndex: Z.MODAL_BODY }}
-          onClick={() => setLightbox(false)}
+          onClick={closeLightbox}
           role="dialog"
           aria-modal="true"
-          aria-label={`${alt} 사진 ${images.length}장`}
+          aria-label={t('pass.gallery.lightboxAria', { defaultValue: '{{alt}} 사진 {{count}}장', alt, count: images.length })}
         >
-          <button type="button" onClick={() => setLightbox(false)} aria-label="닫기"
+          <button type="button" onClick={closeLightbox} aria-label={t('pass.gallery.close', { defaultValue: '닫기' })}
             className="hidden lg:flex absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 text-white items-center justify-center hover:bg-white/25">
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
           {/* 📱 폰 — 대표 확정 ③B 가운데 팝업(손가락을 따라 밀리고 옆 사진을 미리 받는다). */}
           <Suspense fallback={null}>
             <DetailLightboxMobile images={images} active={Math.min(active, images.length - 1)} alt={alt}
-              onActive={setActive} onClose={() => setLightbox(false)}
+              onActive={setActive} onClose={closeLightbox}
               fullUrl={detailPlainUrl} placeholderUrl={(src) => heroUrl(src, DETAIL_HERO_MOBILE_WIDTH)}
               onDead={(src) => setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src)))} />
           </Suspense>
-          <div className="hidden lg:block relative w-full max-w-[1100px] px-4" onClick={(e) => e.stopPropagation()}
+          <div className="ur-lb-pic hidden lg:block relative w-full max-w-[1100px] px-4" onClick={(e) => e.stopPropagation()}
             onTouchStart={(e) => { touchX.current = e.touches[0]?.clientX ?? null }}
             onTouchEnd={(e) => {
               const x0 = touchX.current; touchX.current = null
@@ -346,17 +364,17 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             />
             {multi && (
               <>
-                <button type="button" onClick={() => step(-1)} aria-label="이전 사진"
+                <button type="button" onClick={() => step(-1)} aria-label={t('pass.gallery.prev', { defaultValue: '이전 사진' })}
                   className="hidden lg:flex absolute left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 text-white items-center justify-center hover:bg-white/30">
                   <ChevronLeft className="w-6 h-6" aria-hidden="true" />
                 </button>
-                <button type="button" onClick={() => step(1)} aria-label="다음 사진"
+                <button type="button" onClick={() => step(1)} aria-label={t('pass.gallery.next', { defaultValue: '다음 사진' })}
                   className="hidden lg:flex absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 text-white items-center justify-center hover:bg-white/30">
                   <ChevronRight className="w-6 h-6" aria-hidden="true" />
                 </button>
                 <div className="mt-3 hidden lg:flex items-center justify-center gap-2 flex-wrap">
                   {images.map((src, i) => (
-                    <button key={src} type="button" onClick={() => setActive(i)} aria-label={`${i + 1}번째 사진`}
+                    <button key={src} type="button" onClick={() => setActive(i)} aria-label={t('pass.gallery.photoOrdinal', { defaultValue: '{{n}}번째 사진', n: i + 1 })}
                       className={`w-14 h-14 rounded-md ${i === active ? 'ring-2 ring-white' : 'opacity-60 hover:opacity-100'}`}
                       style={bg(src, detailCropUrl(src, 160, 1))} />
                   ))}

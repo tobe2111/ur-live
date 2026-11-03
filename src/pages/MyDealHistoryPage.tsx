@@ -18,6 +18,9 @@ import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
 import Udal from '@/components/mascot/Udal'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { parseUTCDate } from '@/utils/date'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 11차 ④ — 내역 줄이 위에서부터 차례로 떠오른다(새로 그려지는 줄만 — 필터·페이지를 바꾸면 그 줄들이).
+injectMotionCss('ur-m-txrow', `@keyframes ur-tx-in { from { opacity: 0; transform: translateY(8px); } }.ur-tx-in { animation: ur-tx-in .34s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }@media (prefers-reduced-motion: reduce){.ur-tx-in{animation:none!important}}`)
 type FilterType = '' | 'charge' | 'donate' | 'refund' | 'ad_reward'
 
 const FILTER_OPTIONS: { value: FilterType; label: string; Icon: LucideIcon }[] = [
@@ -157,7 +160,8 @@ export default function MyDealHistoryPage() {
                 <button
                   key={tx.id}
                   onClick={() => onItemClick(tx)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-100 dark:active:bg-white/[0.06] transition-colors ${i ? 'border-t border-rule' : ''}`}
+                  style={{ '--i': Math.min(i, 10) } as React.CSSProperties}
+                  className={`ur-tx-in w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-100 dark:active:bg-white/[0.06] transition-colors ${i ? 'border-t border-rule' : ''}`}
                 >
                   <TxIcon className="w-[18px] h-[18px] flex-shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.8} aria-hidden />
                   <div className="flex-1 min-w-0">

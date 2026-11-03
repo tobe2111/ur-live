@@ -22,6 +22,7 @@ import { trackFunnel } from '@/lib/funnel'
 import api from '@/lib/api'
 import { fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
+import { useTranslation } from '@/lib/i18n-lite'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
 import PaymentCompleteTicket from './group-buy/PaymentCompleteTicket'
 import CartComplete from './group-buy/CartComplete'
@@ -35,6 +36,7 @@ export default function GroupBuyConfirmPaymentPage() {
   const processedRef = useRef(false)
   /** 장바구니 결제의 결과 — 품목이 여럿일 수 있어 서버가 알려 준 것만 쓴다. */
   const [cartDone, setCartDone] = useState<{ qty: number; productIds: number[] } | null>(null)
+  const { t } = useTranslation()
 
   const paymentKey = params.get('paymentKey') || ''
   const orderId = params.get('orderId') || ''
@@ -66,7 +68,7 @@ export default function GroupBuyConfirmPaymentPage() {
       return
     }
     if (!paymentKey || !orderId || !amount || (!isCart && !productId)) {
-      setErrorMsg('결제 정보가 올바르지 않습니다.')
+      setErrorMsg(t('passBuy.invalidPaymentInfo', { defaultValue: '결제 정보가 올바르지 않습니다.' }))
       setState('error')
       return
     }
@@ -95,12 +97,12 @@ export default function GroupBuyConfirmPaymentPage() {
           fireAffiliateTrack(r.data?.data?.order_id, Number(productId), undefined) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
         } else {
-          setErrorMsg(r.data?.error || '결제 처리 실패')
+          setErrorMsg(r.data?.error || t('passBuy.paymentFailed', { defaultValue: '결제 처리 실패' }))
           setState('error')
         }
       })
       .catch((err) => {
-        const msg = err?.response?.data?.error || err?.message || '결제 승인 중 오류'
+        const msg = err?.response?.data?.error || err?.message || t('passBuy.approvalError', { defaultValue: '결제 승인 중 오류' })
         setErrorMsg(msg)
         setState('error')
       })
@@ -112,7 +114,7 @@ export default function GroupBuyConfirmPaymentPage() {
     const ticketId = isCart ? singleId : productId
     return (
       <>
-        <SEO title="결제 완료 - 유어딜" url="/group-buy/confirm-payment" noindex />
+        <SEO title={t('passBuy.seoComplete', { defaultValue: '결제 완료 - 유어딜' })} url="/group-buy/confirm-payment" noindex />
         {ticketId
           ? <PaymentCompleteTicket productId={ticketId} qty={isCart ? (cartDone?.qty ?? qty) : qty} amount={paid?.amount ?? amount} dealUsed={paid?.dealUsed ?? 0} />
           : <CartComplete qty={cartDone?.qty ?? 0} kinds={cartDone?.productIds.length ?? 0} amount={paid?.amount ?? amount} />}
@@ -122,25 +124,25 @@ export default function GroupBuyConfirmPaymentPage() {
 
   return (
     <div className="min-h-[100dvh] bg-warm flex items-center justify-center px-4">
-      <SEO title="공구 결제 처리" url="/group-buy/confirm-payment" noindex />
+      <SEO title={t('passBuy.seoProcessing', { defaultValue: '공구 결제 처리' })} url="/group-buy/confirm-payment" noindex />
       <div className="text-center max-w-sm">
         {state === 'processing' && (
           <>
-            <BrandLoader label="결제 승인 중" />
-            <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-2">잠시만 기다려주세요</p>
+            <BrandLoader label={t('passBuy.approving', { defaultValue: '결제 승인 중' })} />
+            <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-2">{t('passBuy.pleaseWait', { defaultValue: '잠시만 기다려주세요' })}</p>
           </>
         )}
         {state === 'error' && (
           <>
             {/* 🎫 아이콘 없이 제목 한 줄 — 시안의 "없는 것을 지킨다"(빨간 X 원 폐기). */}
-            <p className="text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">결제를 완료하지 못했어요</p>
+            <p className="text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{t('passBuy.errorTitle', { defaultValue: '결제를 완료하지 못했어요' })}</p>
             <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">{errorMsg}</p>
-            <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-3">고객센터에 문의해주세요.<br/>결제 정보: {orderId.slice(0, 20)}</p>
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-3">{t('passBuy.contactSupport', { defaultValue: '고객센터에 문의해주세요.' })}<br/>{t('passBuy.paymentRef', { defaultValue: '결제 정보: {{ref}}', ref: orderId.slice(0, 20) })}</p>
             <button
               onClick={() => navigate(isCart ? '/cart' : `/pass/${productId}`)}
               className="mt-6 px-6 py-3 bg-brand text-white rounded-full text-[15px] font-bold active:opacity-80"
             >
-              {isCart ? '장바구니로 돌아가기' : '상품 페이지로 돌아가기'}
+              {isCart ? t('passBuy.backToCart', { defaultValue: '장바구니로 돌아가기' }) : t('passBuy.backToProduct', { defaultValue: '상품 페이지로 돌아가기' })}
             </button>
           </>
         )}

@@ -1414,7 +1414,13 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 .ur-sheet-veil { animation: ur-overlay-in .18s ease-out both; }
 .ur-sheet-in { animation: ur-slide-up .24s cubic-bezier(.22,1,.36,1) both; }
 @media (min-width: 1024px) { .ur-sheet-in { animation: ur-overlay-in .18s ease-out both; } }
-@media (prefers-reduced-motion: reduce) { .ur-sheet-in, .ur-sheet-veil { animation: none; } }
+/* 🎬 2026-11-02 시안 3차: 닫힐 때도 같은 길로 — 더 빠르게 내려간다(lg+ 는 투명도만). Sheet.tsx 가 닫기를 220ms 늦춘다. */
+@keyframes ur-sheet-down { from { transform: none; } to { transform: translateY(100%); } }
+@keyframes ur-fade-out { from { opacity: 1; } to { opacity: 0; } }
+.ur-sheet-out { animation: ur-sheet-down .2s cubic-bezier(.4,0,1,1) both; }
+.ur-sheet-veil-out { animation: ur-fade-out .2s ease-in both; }
+@media (min-width: 1024px) { .ur-sheet-out { animation: ur-fade-out .16s ease-in both; } }
+@media (prefers-reduced-motion: reduce) { .ur-sheet-in, .ur-sheet-veil, .ur-sheet-out, .ur-sheet-veil-out { animation: none; } }
 
 /* 📐 2026-06-16: PC 컨슈머 프레임 (app-framed) — 모바일 완성도를 PC 로 그대로 (가운데 액자 + 배경).
    lg+ 에서만 적용. 모바일(<lg)은 풀너비(영향 없음). 대시보드/도매몰/비디오 제외.
@@ -1663,22 +1669,8 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   .ur-page-enter { animation: none; }
 }
 
-/* 🎨 2026-06-29 (대표 — 공통 페이지 로딩 애니메이션): UrDeal 브랜드 로더.
-   로고 = 은은한 '호흡'(scale+opacity), 하단 = 인디터미넌트 진행 바 스윕.
-   라우트 청크 로딩(Suspense fallback) 순간에만 노출 — SSR/스켈레톤 첫페인트는 불변. */
-@keyframes ur-loader-breathe {
-  0%, 100% { opacity: 0.5;  transform: scale(0.97); }
-  50%      { opacity: 1;    transform: scale(1); }
-}
-.ur-loader-breathe { animation: ur-loader-breathe 1.5s ease-in-out infinite; }
-@keyframes ur-loader-sweep {
-  0%   { transform: translateX(-120%); }
-  100% { transform: translateX(320%); }
-}
-.ur-loader-sweep { animation: ur-loader-sweep 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
-@media (prefers-reduced-motion: reduce) {
-  .ur-loader-breathe, .ur-loader-sweep { animation: none; }
-}
+/* ⏳ 2026-11-02 로딩 화면은 `shared/brand-loader-markup.ts` 가 자기 규칙을 같이 싣는다(첫 화면 CSS 전에 보여야 해서).
+   예전 로고 숨쉬기(ur-loader-breathe)·왕복 막대(ur-loader-sweep)는 걷었다. */
 
 /* 🔔 2026-10-08 계산대 스캔 결과 깜빡임(VoucherScanner) — 아이폰엔 진동이 없어 이것이 늘 되는 신호다.
    ⚠️ 바탕 opacity 는 0 이다(요소에 opacity-0) — 애니메이션이 꺼진 환경에서도 화면을 덮은 채 남지 않는다. */
@@ -1694,15 +1686,31 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   50%      { transform: translateY(-6px) rotate(-2deg); }
 }
 .ur-udal-bob { animation: ur-udal-bob 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
-/* 🦦 2026-10-07 v2 로딩 화면 유달이 — 이용권 들고 통통 튄다(확정 시안 ①). 바닥에 닿을 때 살짝 눌린다.
-   주기는 `shared/udal-loader.ts` 의 UDAL_HOP_PERIOD_S 와 같아야 정적↔앱 로더 교체 순간 안 튄다. */
-@keyframes ur-udal-hop {
-  0%, 100% { transform: translateY(0) scale(1.03, 0.97); }
-  50%      { transform: translateY(-9px) scale(1, 1); }
-}
-.ur-udal-hop { animation: ur-udal-hop 0.7s ease-in-out infinite; transform-origin: 50% 100%; }
 @media (prefers-reduced-motion: reduce) {
-  .ur-udal-bob, .ur-udal-hop { animation: none; }
+  .ur-udal-bob { animation: none; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   🎬 2026-11-02 작은 움직임 키트 (대표 *"이전에 만든 모션그래픽 다 적용해줘"* — 시안
+   `docs/design/motion-mockups-2026-11.md`). 규칙: transform·opacity·clip-path·stroke 만 ·
+   한 번(또는 두세 번) 돌고 멈춘다 · '동작 줄이기' 면 전부 끈다.
+   ────────────────────────────────────────────────────────────── */
+/* 찜 하트 — 점 여섯 개가 퍼진다(하트의 ur-pop 과 함께). */
+.ur-burst { position: absolute; inset: 0; pointer-events: none; }
+.ur-burst i { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: currentColor; opacity: 0; animation: ur-spark .5s ease-out .06s both; }
+@keyframes ur-spark { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-18px); } }
+
+/* 하단 탭 누름(BottomNav — 모든 화면) */
+@keyframes ur-press { 0% { transform: scale(1); } 40% { transform: scale(.82); } 100% { transform: scale(1); } }
+.ur-press { animation: ur-press .32s cubic-bezier(.3,1.4,.5,1); }
+/* 유어샵 탭 밑줄(PinCategoryChips)이 누른 탭으로 미끄러진다 */
+.ur-tab-bar { transition: transform .3s cubic-bezier(.2,1,.3,1), width .3s cubic-bezier(.2,1,.3,1); }
+/* 🎬 나머지 키트(도장·체크·숫자·핀·반짝·굴림·선물·줄 긋기·깜빡·흔들림·업로드)는 `src/styles/motion-lazy.css` —
+   쓰는 화면만 받는다(2026-11-02 화면별 첫 화면 무게 예산이 잡았다: index.css 에 두면 모든 화면이 +1.2KB). */
+
+@media (prefers-reduced-motion: reduce) {
+  .ur-burst i, .ur-press { animation: none !important; }
+  .ur-tab-bar { transition: none; }
 }
 
 /* ──────────────────────────────────────────────────────────────

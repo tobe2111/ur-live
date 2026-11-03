@@ -8,7 +8,7 @@ const P = 'src/pages/agency-console/AgencyPayoutSheet.tsx'
 const A = 'src/pages/admin/agency-accounts/AgencyPayoutsCard.tsx'
 export default [
   { name: '에이전시정산화면 — 꺼져 있어도 정산 줄이 뜬다', file: S,
-    find: '{payouts?.enabled && <FlatRow label="정산"', replace: '{payouts && <FlatRow label="정산"', test: T,
+    find: '{payouts?.enabled && <FlatRow icon=', replace: '{payouts && <FlatRow icon=', test: T,
     why: '쓰지 않는 지급 길을 보여 주고, 눌러도 "아직 안 써요" 만 나온다.' },
   { name: '에이전시정산화면 — 최소 금액 검사를 뺀다', file: P,
     find: '&& b.available >= min && !hasOpen', replace: '&& !hasOpen', test: T,

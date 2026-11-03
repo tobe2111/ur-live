@@ -9,8 +9,8 @@ export default [
   {
     name: '⚫ 비활성 탭 아이콘을 회색으로 되돌린다',
     file: FILE,
-    find: 'className="text-gray-900 dark:text-white"\n            strokeWidth={1.6}',
-    replace: "className={active ? 'text-gray-900 dark:text-white' : 'text-gray-400'}\n            strokeWidth={1.6}",
+    find: 'className="text-gray-900 dark:text-white"\n              strokeWidth={1.6}',
+    replace: "className={active ? 'text-gray-900 dark:text-white' : 'text-gray-400'}\n              strokeWidth={1.6}",
     test: TEST,
     why: '대표가 "버튼들 검정색" 으로 확정했다 — 회색이면 비활성이 흐려 보이고 눌러도 되는지 헷갈린다.',
   },

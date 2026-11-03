@@ -9,6 +9,9 @@ import { toast } from '@/hooks/useToast'
 import { formatKSTTime } from '@/utils/date'
 import { CHAT_BODY_MAX } from '@/shared/home-service-chat'
 import { sellerHeaders } from './life-shared'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 10차 ⑤ — 처음 연 뒤에 **새로 생긴** 말풍선만: 내 것은 보내기 쪽(오른쪽 아래)에서 날아들고, 상대 것은 아래에서 떠오른다.
+injectMotionCss('ur-m-chat', `@keyframes ur-msg-fly { from { opacity: 0; transform: translate(20px, 16px) scale(.75); } }@keyframes ur-msg-in { from { opacity: 0; transform: translateY(12px); } }.ur-msg-fly { transform-origin: right bottom; animation: ur-msg-fly .36s cubic-bezier(.2,1,.3,1) backwards; }.ur-msg-in { animation: ur-msg-in .34s cubic-bezier(.2,.9,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-msg-fly,.ur-msg-in{animation:none!important}}`)
 
 interface Msg { id: number; sender: 'customer' | 'pro'; body: string; created_at: string }
 
@@ -23,6 +26,9 @@ export default function QuoteChat({ base, me, canSend, otherName }: {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const end = useRef<HTMLLIElement>(null)
+  // 처음 받아 온 줄들은 그대로 — 그 뒤에 생긴 줄만 움직인다.
+  const firstIds = useRef<Set<number> | null>(null)
+  if (msgs && !firstIds.current) firstIds.current = new Set(msgs.map((m) => m.id))
 
   // 사장님 쪽은 매장 좌석 토큰으로 — 렌더마다 새 객체를 만들면 effect 가 계속 다시 돌므로 호출 때 읽는다.
   const auth = () => (me === 'pro' ? sellerHeaders() : undefined)
@@ -59,9 +65,10 @@ export default function QuoteChat({ base, me, canSend, otherName }: {
         <ul className="max-h-72 space-y-2 overflow-y-auto">
           {msgs.map((m) => {
             const mine = m.sender === me
+            const fresh = !firstIds.current?.has(m.id)
             return (
               <li key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-2xl px-3 py-2 ${mine ? 'bg-brand text-white' : 'bg-surface text-ink'}`}>
+                <div className={`max-w-[80%] rounded-2xl px-3 py-2 ${mine ? 'bg-brand text-white' : 'bg-surface text-ink'}${fresh ? (mine ? ' ur-msg-fly' : ' ur-msg-in') : ''}`}>
                   {!mine && <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{otherName}</p>}
                   <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{m.body}</p>
                   <p className={`mt-1 text-right text-[12px] ${mine ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'}`}>{formatKSTTime(m.created_at)}</p>

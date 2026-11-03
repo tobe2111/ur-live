@@ -24,6 +24,7 @@ import { formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
 import { currentSeatId } from '@/lib/seller-seat'
 import Sheet from './Sheet'
+import { useCountUp } from '../useCountUp' // 🎬 2026-11-02 시안 3차: 정산 예정 금액이 0원부터 올라간다
 
 interface PayoutRow {
   id: number
@@ -86,6 +87,7 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
   const payable = data?.payable ?? 0
   const held = Math.min(payable, Math.max(0, data?.held ?? 0))
   const nextRun = Math.max(0, payable - held)
+  const nextRunShown = useCountUp(data ? nextRun : undefined, { durationMs: 800 }) ?? nextRun
   const scheduled = data?.scheduled_total ?? 0
   const sent = data?.sent_total ?? 0
   const holdDays = data?.hold_days ?? 0
@@ -117,9 +119,9 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
 
       {data && (
         <div className="px-4 py-4">
-          <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">다음 정산에 들어갈 돈</p>
+          <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">다음 정산에 들어갈 돈</p>
           <p className="mt-1 text-[28px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white">
-            {formatNumber(nextRun)}
+            {formatNumber(nextRunShown)}
             <span className="ml-1 text-[15px] font-bold text-gray-500 dark:text-gray-400">원</span>
           </p>
           <p className="mt-2 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
@@ -157,7 +159,7 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
             </p>
           )}
 
-          <p className="mt-5 pt-4 border-t border-rule text-[13px] font-bold text-gray-900 dark:text-white">정산 내역</p>
+          <p className="mt-5 pt-4 border-t border-rule text-[13px] font-medium text-gray-900 dark:text-white">정산 내역</p>
           {data.payouts.length === 0 ? (
             <p className="mt-2 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
               아직 없어요. 이용권이 사용되면 그 금액이 매주 모여 여기에 쌓여요.
@@ -167,13 +169,13 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
               {data.payouts.map((p) => (
                 <li key={p.id} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <p className="text-[15px] font-semibold tabular-nums text-gray-900 dark:text-white">{formatNumber(p.amount)}원</p>
+                    <p className="text-[15px] font-medium tabular-nums text-gray-900 dark:text-white">{formatNumber(p.amount)}원</p>
                     <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">
                       {p.period_start && p.period_end ? `${formatKSTDate(p.period_start)}~${formatKSTDate(p.period_end)}` : ''}
                       {p.sent_at ? ` · ${formatKSTDate(p.sent_at)} 입금` : ''}
                     </p>
                   </div>
-                  <span className={`shrink-0 text-[12px] font-semibold ${p.status === 'sent' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                  <span className={`shrink-0 text-[12px] font-medium ${p.status === 'sent' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                     {STATUS[p.status] ?? p.status}
                   </span>
                 </li>

@@ -1,6 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChevronRight, ChevronLeft } from 'lucide-react'
 import { FieldCard, FieldSplit, FieldRow, FieldNote } from '@/components/ticket/FieldCard'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 10차 ③ — 체크아웃을 고르면 사이 날짜가 왼쪽부터 칠해지고(--rd 순서), 끝 날짜와 'N박' 이 톡 튄다.
+injectMotionCss('ur-m-range', `@keyframes ur-range-in { from { background-color: transparent; } }@keyframes ur-range-end { 0% { transform: scale(.7); } 70% { transform: scale(1.08); } 100% { transform: none; } }.ur-range-in { animation: ur-range-in .2s ease backwards; animation-delay: calc(var(--rd, 0) * 35ms); }.ur-range-end { animation: ur-range-end .3s cubic-bezier(.3,1.3,.5,1) backwards; }.ur-nights-pop { display: inline-block; animation: ur-range-end .32s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-range-in,.ur-range-end,.ur-nights-pop{animation:none!important}}`)
 
 /**
  * 🏨 숙소 날짜·인원 선택 (2026-08-19 대표 시안 — 야놀자/NOL).
@@ -233,17 +236,19 @@ export default function StayDateGuestPicker({
                     const inRange = day > draftIn && day < draftOut
                     const sold = soldOut.has(day)
                     const price = priceOf.get(day)
+                    const rd = inRange ? Math.round((parseIso(day).getTime() - parseIso(draftIn).getTime()) / 86400000) : 0
                     return (
                       <button
                         key={day}
+                        style={inRange ? ({ '--rd': rd } as React.CSSProperties) : undefined}
                         type="button"
                         onClick={() => pickDay(day)}
                         disabled={past}
                         aria-label={`${day}${isIn ? ' 체크인' : isOut ? ' 체크아웃' : ''}`}
                         className={`h-11 flex flex-col items-center justify-center text-[13px] transition-colors ${
                           past ? 'text-gray-300 dark:text-gray-600 cursor-default'
-                            : isIn || isOut ? 'bg-brand text-white font-medium rounded-xl'
-                            : inRange ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white'
+                            : isIn || isOut ? 'bg-brand text-white font-medium rounded-xl ur-range-end'
+                            : inRange ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white ur-range-in'
                             : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/[0.05] rounded-xl'
                         }`}
                       >
@@ -262,7 +267,7 @@ export default function StayDateGuestPicker({
 
           <div className="shrink-0 flex items-center justify-between gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35]">
             <span className="text-[12px] text-gray-500 dark:text-gray-400">
-              {fmtTrigger(draftIn)} ~ {fmtTrigger(draftOut)} · <b className="text-gray-900 dark:text-white">{nights}박</b>
+              {fmtTrigger(draftIn)} ~ {fmtTrigger(draftOut)} · <b key={nights} className="ur-nights-pop text-gray-900 dark:text-white">{nights}박</b>
             </span>
             <button type="button" onClick={() => { onApply({ checkIn: draftIn, checkOut: draftOut, guests: totalGuests }); setOpen('none') }}
               className="px-6 py-2 rounded-xl bg-brand hover:bg-brand-dark text-white text-[15px] font-bold transition-colors">

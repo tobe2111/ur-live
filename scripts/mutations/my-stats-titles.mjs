@@ -51,8 +51,9 @@ export default [
     name: '레벨 카드 — 마이(폰)에 다시 렌더된다',
     file: 'src/pages/UserProfilePage.tsx',
     // 🔁 2026-10-19 재조준: 현황 바를 걷어 `statusBar` prop 이 사라졌다. 같은 자리(그 구역 바로 앞).
-    find: '      <ShoppingGroup counts={counts} />',
-    replace: '      <ReviewLevelCard />\n      <ShoppingGroup counts={counts} />',
+    // 🔁 2026-11-02 재조준(안 1 탭) — 폰 마이가 `나 | 에이전시` 탭으로 갈려 게이트(`showMe`/`showAgency`)가 끼었다. 불변식 그대로.
+    find: '      {showMe && <ShoppingGroup counts={counts} />}',
+    replace: '      <ReviewLevelCard />\n      {showMe && <ShoppingGroup counts={counts} />}',
     test: 'src/tests/unit/my-stats-titles-2026-09-30.test.ts',
     why: '대표가 빼라고 한 카드다. 레벨 전용 혜택이 0개인 지금 이 카드는 없는 혜택을 향해 진행바를 채운다.',
   },

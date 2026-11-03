@@ -299,7 +299,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { routeSurface } from '../shared/route-surface'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { buildVouchersFirstScreen } from './utils/vouchers-first-screen'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload, voucherFacetNoscript } from './utils/crawler-noscript'; import { buildSellerNoscript } from './utils/seller-noscript'; import { buildLifeShareMeta, buildLifeShareNoscript } from './utils/life-share-ssr'; import { buildLifeBizMeta, buildLifeBizNoscript } from './utils/life-biz-ssr'; import { buildStoreInviteMeta } from './utils/store-invite-ssr'; import { homeFooterNoscript } from './utils/home-footer-noscript'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders, loaderImgPriorityAttr } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { routeSurface } from '../shared/route-surface'; import { brandLoaderMarkup } from '../shared/brand-loader-markup'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen } from './utils/curator-ssr-body'; import { buildVouchersFirstScreen } from './utils/vouchers-first-screen'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload, voucherFacetNoscript } from './utils/crawler-noscript'; import { buildSellerNoscript } from './utils/seller-noscript'; import { buildLifeShareMeta, buildLifeShareNoscript } from './utils/life-share-ssr'; import { buildLifeBizMeta, buildLifeBizNoscript } from './utils/life-biz-ssr'; import { buildStoreInviteMeta } from './utils/store-invite-ssr'; import { homeFooterNoscript } from './utils/home-footer-noscript'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders } from './utils/css-first-boot'; // 한 줄: 파일크기 래칫 안
 import { VOUCHERS_DEFAULT_SEED_PATH, voucherFacetSeedPath } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage, ushopDescFallback } from '../shared/ushop-share-card'; import { ogImageAlt, OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; import { nearKeyFromCookieHeader, nearLabelFromCookieHeader } from '../shared/home-near'; import { normalizeDocPath } from '../shared/seo/path-normalize'; import { ROBOTS_INDEX, ROBOTS_NOINDEX } from '../shared/seo/robots-directives'; import { appendLcpLink, homeLcpImage, stayLcpImage, hrefOfPreloadTag } from './utils/lcp-image-link'; import { buildStaysFirstScreen } from './utils/stays-first-screen'; import { defaultStaysQs, kstYmd } from '../shared/stays-early'; import { guestTabOf, buildGuestFirstScreen } from './utils/guest-first-screen'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
@@ -475,6 +475,8 @@ app.use('*', async (c, next) => {
     FIREBASE_RTDB_URL,
     "https://apis.google.com", "https://*.googleapis.com",
     "https://kauth.kakao.com", "https://*.kakao.com", "https://t1.kakaocdn.net", "https://*.daumcdn.net",
+    // 🗺️ 2026-11-02: 외국어 손님용 네이버 지도(NaverMiniMap) — 키(VITE_NAVER_MAP_KEY_ID) 없으면 안 불린다.
+    "https://oapi.map.naver.com",
     "https://www.youtube.com", "https://youtube.com", "https://s.ytimg.com", "https://*.youtube.com",
     "https://cdn.jsdelivr.net", "https://unpkg.com", "https://*.sentry.io",
     `https://*.firebaseapp.com`, FIREBASE_APP_URL,
@@ -913,17 +915,10 @@ app.use('*', async (c, next) => {
     //   (Poppins 800 · 자간 −3.5% · 점 6.12px/좌 2.72px = 34px 기준). 구조·위상동기·ur-loader-* 클래스 불변.
     // 🦦 2026-10-07 [UNLOCK_LOADING] (대표 허가 "로딩 화면"): 로고 위에 유달이 — BrandLoader 와 같은 파일·크기·마스크
     //   (값 SSOT `shared/udal-loader.ts`). 위상은 둘 다 첫 페인트 기준이라 교체 순간 안 튄다.
-    const urdealLoaderHtml =
-      '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
-        `<img src="${UDAL_LOADER_SRC}"${loaderImgPriorityAttr(cssFirst)} alt="" aria-hidden="true" draggable="false" width="${udalLoaderWidth(34)}" height="${udalLoaderHeight(34)}" decoding="async" class="ur-udal-hop select-none pointer-events-none" style="width:${udalLoaderWidth(34)}px;height:auto">` +
-        '<div class="ur-loader-breathe text-[#16181C] dark:text-[#F8F7FC]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
-          'urdeal' +
-          '<span class="bg-brand" style="display:inline-block;width:6.12px;height:6.12px;border-radius:50%;margin-left:2.72px"></span>' +
-        '</div>' +
-        '<div class="bg-gray-200/70 dark:bg-white/10" style="position:relative;overflow:hidden;border-radius:9999px;width:96px;height:3px">' +
-          '<div class="ur-loader-sweep bg-brand dark:bg-brand" style="position:absolute;top:0;bottom:0;left:0;border-radius:9999px;width:38%"></div>' +
-        '</div>' +
-      '</div>';
+    // ⏳ 2026-11-02 [UNLOCK_LOADING] (대표 *"유달이 뜨는게 별로 … 위쪽 얇은 막대 + 화면 모양 미리 보여주기로"*):
+    //   유달이·로고·왕복 막대를 걷고 `shared/brand-loader-markup.ts` 한 벌로. 앱 `BrandLoader` 가 **같은 문자열**을 그려
+    //   교체 순간이 안 보인다. 기록: docs/locks/loading/2026-11-02-loader-topbar-skeleton.md
+    const urdealLoaderHtml = '<div style="min-height:100dvh">' + brandLoaderMarkup(4, true) + '</div>'; // 🫥 shy — 0.5초 안에 뜨면 안 보인다(대표 "섞기")
     // 🔎 2026-07-07 [UNLOCK_LOADING] (대표 "각 이용권 페이지마다 SEO 다 잘 되지?"): 공구/이용권/교환권 상세
     //   (DETAIL slot — /group-buy/:id · /vouchers/:id) 서버측 메타/JSON-LD 주입. 그간 DETAIL 은 데이터만
     //   주입하고 메타는 index.html 기본값(제네릭 홈)을 서빙 → 비-JS 크롤러(네이버/카카오/소셜)가 이용권 링크

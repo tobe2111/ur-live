@@ -10,6 +10,9 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { prepareImageForUpload, UploadTooLargeError, uploadTooLargeMessage } from '@/lib/prepare-upload'
 import { isRequestPhotoUrl } from '@/shared/home-service'
 import { REVIEW_BODY_MAX, REVIEW_BODY_MIN, REVIEW_PHOTOS_MAX, ratingText } from '@/shared/home-service-review'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 10차 ⑧ — 별을 고르면 그 별까지 하나씩 통통 튀며 채워진다(별 안쪽만 다시 그려 버튼 포커스는 그대로).
+injectMotionCss('ur-m-starpick', `@keyframes ur-star-pick { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: none; } }.ur-star-pick { display: inline-block; animation: ur-star-pick .32s cubic-bezier(.3,1.4,.5,1) backwards; animation-delay: calc(var(--sn, 0) * 60ms); }@media (prefers-reduced-motion: reduce){.ur-star-pick{animation:none!important}}`)
 
 export interface ReviewSummary { avg: number | null; count: number; recent: { rating: number; body: string; reviewer: string; created_at: string; photos?: string[] }[] }
 export interface ProLink { url: string; label: string }
@@ -135,7 +138,7 @@ export function ReviewForm({ requestId, mine, onDone }: {
       <div className="mt-3 flex gap-1" role="radiogroup" aria-label="별점">
         {[1, 2, 3, 4, 5].map((n) => (
           <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={`${n}점`} onClick={() => setRating(n)}
-            className={`text-[28px] leading-none ${n <= rating ? 'text-brand-text' : 'text-gray-300 dark:text-gray-600'}`}>★</button>
+            className={`text-[28px] leading-none ${n <= rating ? 'text-brand-text' : 'text-gray-300 dark:text-gray-600'}`}><span key={n <= rating ? `on${rating}` : 'off'} className={n <= rating ? 'ur-star-pick' : 'inline-block'} style={{ '--sn': n - 1 } as React.CSSProperties}>★</span></button>
         ))}
       </div>
       <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={REVIEW_BODY_MAX} rows={3}

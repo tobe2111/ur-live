@@ -112,7 +112,7 @@ const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazyPage(() => import('./pages/BrowsePage')); registerBootPage('browse', BrowsePage.load)
 // 🎬 2026-09-07 유어쇼츠 뷰어(세로 한 편씩) + 2026-09-21 전체 보기(도시·종류 그리드) — **둘 다 lazy**(홈이 재생 코드를 받으면 안 된다)
-const VideosPage = lazy(() => import('./pages/VideosPage'))
+const VideosPage = lazyPage(() => import('./pages/VideosPage')); registerRoutePreload('videos', VideosPage.load) // 🐢 2026-11-02 유어쇼츠 카드가 누르는 사이 미리 받는다(warm-viewer)
 const UrShortsBrowsePage = lazyPage(() => import('./pages/UrShortsBrowsePage')); registerBootPage('urshorts', UrShortsBrowsePage.load)
 // 🛡️ 2026-05-19: 교환권 전용 페이지 — /browse 와 분리 (카카오 선물하기 스타일).
 const VouchersPage = lazyPage(() => import('./pages/VouchersPage')); registerBootPage('vouchers', VouchersPage.load); registerRoutePreload('vouchers', VouchersPage.load)

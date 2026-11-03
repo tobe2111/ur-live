@@ -22,7 +22,11 @@
  *
  * 🛡️ 가드: `segmented-tabs-2026-10-06.test.ts` — 세 화면이 이 부품을 쓰는가 + ①②③ 이 살아 있는가.
  */
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+// 🎬 2026-11-02 시안 9차 "주문 탭 전환"(대표 "다 해주고") — 파란 칸 하나가 고른 탭으로 미끄러지고, 탭 숫자가 바뀌면 새 숫자가 올라온다.
+//   측정 전(첫 그림)엔 종전처럼 고른 탭이 스스로 파랗다 → 깜빡임 0.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-seg', `@keyframes ur-seg-n { from { opacity: 0; transform: translateY(60%); } to { opacity: 1; transform: none; } }.ur-seg-pill { transition: transform .3s cubic-bezier(.2,1,.3,1), width .3s cubic-bezier(.2,1,.3,1); }.ur-seg-n { display: inline-block; animation: ur-seg-n .28s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-seg-pill{transition:none!important}.ur-seg-n{animation:none!important}}`)
 
 export interface SegmentedTabItem<K extends string | number> {
   id: K
@@ -41,14 +45,25 @@ export default function SegmentedTabs<K extends string | number>({
   className?: string
   ariaLabel?: string
 }) {
+  const rowRef = useRef<HTMLDivElement | null>(null)
+  const [pill, setPill] = useState<{ x: number; w: number } | null>(null)
+  useLayoutEffect(() => { // 매 그림 뒤 재되 값이 같으면 안 바꾼다(라벨·숫자 폭이 바뀌면 따라간다)
+    const el = rowRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    const next = el ? { x: el.offsetLeft, w: el.offsetWidth } : null
+    setPill((p) => (p?.x === next?.x && p?.w === next?.w ? p : next))
+  })
+  const firstCounts = useRef(new Map(items.map((it) => [it.id, it.count])))
   return (
     <div
+      ref={rowRef}
       role="group"
       aria-label={ariaLabel}
-      className={`flex gap-1 overflow-x-auto scrollbar-hide rounded-xl border border-rule bg-white p-1 ${className}`}
+      className={`relative flex gap-1 overflow-x-auto scrollbar-hide rounded-xl border border-rule bg-white p-1 ${className}`}
     >
+      {pill && <span aria-hidden="true" className="ur-seg-pill absolute top-1 bottom-1 left-0 rounded-lg bg-brand pointer-events-none" style={{ width: pill.w, transform: `translateX(${pill.x}px)` }} />}
       {items.map((it) => {
         const on = it.id === value
+        const moved = it.count != null && firstCounts.current.get(it.id) !== it.count
         return (
           <button
             key={String(it.id)}
@@ -56,10 +71,10 @@ export default function SegmentedTabs<K extends string | number>({
             onClick={() => onChange(it.id)}
             aria-pressed={on}
             style={{ flex: '1 0 auto' }}
-            className={`inline-flex min-h-[40px] items-center justify-center gap-1 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${on ? 'bg-brand text-white' : 'text-gray-400 hover:text-gray-700'}`}
+            className={`relative inline-flex min-h-[40px] items-center justify-center gap-1 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${on ? (!pill ? 'bg-brand text-white' : 'text-white') : 'text-gray-400 hover:text-gray-700'}`}
           >
             <span>{it.label}</span>
-            {it.count != null && <span className="tabular-nums">{it.count.toLocaleString('ko-KR')}</span>}
+            {it.count != null && <span key={it.count} className={`tabular-nums${moved ? ' ur-seg-n' : ''}`}>{it.count.toLocaleString('ko-KR')}</span>}
           </button>
         )
       })}

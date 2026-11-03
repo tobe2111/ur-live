@@ -18,6 +18,7 @@ import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKST } from '@/utils/date'
+import { DashboardLoadError } from '@/components/dashboard'
 
 interface PendingSeller {
   id: number
@@ -52,7 +53,7 @@ interface UnlinkedSeller {
 
 export default function AdminPendingSellersPage() {
   // 🛡️ 2026-06-01 Tier2(대시보드): 수동 페칭 → useApiQuery. 승인/거부 후 refetch.
-  const { data: sellers = [], isLoading: loading, refetch } = useApiQuery<PendingSeller[]>(
+  const { data: sellers = [], isLoading: loading, isError, error, refetch } = useApiQuery<PendingSeller[]>(
     ['admin', 'pending-sellers'], '/api/admin/pending-sellers',
     { select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -228,7 +229,9 @@ export default function AdminPendingSellersPage() {
               </div>
             </div>
           )}
-          {loading ? (
+          {isError ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="매장 검수 대기" />
+        ) : loading ? (
             <div className="text-center py-12 text-gray-400 text-sm">로딩 중...</div>
           ) : sellers.length === 0 ? (
             <div className="text-center py-16">

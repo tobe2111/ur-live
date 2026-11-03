@@ -168,7 +168,8 @@ export const ROW_SHELL_CLS = `${ROW_GEOM_CLS} border-b border-rule last:border-b
 /** 행의 라벨 — 누르는 줄과 설정 줄이 같은 글자여야 한 목록으로 읽힌다. */
 export const ROW_LABEL_CLS = 'flex-1 min-w-0 text-[15px] font-medium text-gray-900 dark:text-white truncate'
 
-const ROW_CLS = `${ROW_SHELL_CLS} active:opacity-70 disabled:opacity-50`
+// 🎬 2026-11-02 시안 마이 "줄 누름 반응"(대표 "다 해주고") — 누르는 순간 줄이 옅게 어두워지고 화살표가 살짝 앞으로 간다(종전: 줄 전체가 흐려짐).
+const ROW_CLS = `${ROW_SHELL_CLS} group transition-colors active:bg-black/[0.04] dark:active:bg-white/[0.05] disabled:opacity-50`
 
 export function ListRow({ icon, label, hint, count, busy, onClick, to, testId }: {
   icon: React.ReactNode
@@ -213,7 +214,7 @@ export function ListRow({ icon, label, hint, count, busy, onClick, to, testId }:
       ) : hint ? (
         <span className="min-w-0 text-[13px] text-gray-500 dark:text-gray-400 truncate">{hint}</span>
       ) : null}
-      <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+      <ChevronRight className="w-4 h-4 shrink-0 text-gray-400 transition-transform duration-150 group-active:translate-x-0.5 motion-reduce:transition-none" aria-hidden="true" />
     </>
   )
   if (to) return <Link to={to} className={ROW_CLS} data-testid={testId}>{inner}</Link>

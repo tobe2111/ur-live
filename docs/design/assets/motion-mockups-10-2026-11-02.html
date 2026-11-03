@@ -1,0 +1,377 @@
+<title>모션 10차 시안</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --star: #F5A524;
+  --photo1: linear-gradient(135deg,#F2D9C9,#C9D8F2); --photo2: linear-gradient(135deg,#D3E8D6,#E9DCC6); --photo3: linear-gradient(135deg,#E6D3EB,#D0DEF0);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --photo1: linear-gradient(135deg,#4A3729,#2B3A57); --photo2: linear-gradient(135deg,#2C4430,#4A3E2B); --photo3: linear-gradient(135deg,#40304A,#293A52);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-inline: 16px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.list { display: grid; gap: 40px; }
+.item { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+.item h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.item h3 .n { color: var(--brand); margin-right: 6px; }
+.item p { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0 0 8px; }
+.item p b { color: var(--page-fg); font-weight: 500; }
+.replay { margin-top: 4px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; cursor: pointer; }
+.scr { position: relative; height: 300px; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); font-size: 15px; }
+.pad { padding: 16px; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 1 검색 추천어 */
+.sbox { height: 44px; border-radius: 12px; background: var(--sub); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--ink); }
+.sbox svg { width: 18px; height: 18px; color: var(--ink-soft); }
+.caret { width: 1.5px; height: 18px; background: var(--brand); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.sug { margin-top: 8px; }
+.sug div { height: 44px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--rule); color: var(--ink-soft); opacity: 0; transform: translateY(-6px); }
+.sug div b { color: var(--ink); font-weight: 700; }
+.sug div svg { width: 16px; height: 16px; color: var(--ink-faint); }
+.run .sug div { animation: sugIn .32s cubic-bezier(.2,.9,.3,1) forwards; animation-delay: calc(var(--i) * 55ms + 0.6s); }
+@keyframes sugIn { to { opacity: 1; transform: none; } }
+
+/* 2 최근 검색어 */
+.lbl { font-size: 13px; color: var(--ink-soft); margin: 4px 0 10px; display: flex; justify-content: space-between; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { height: 34px; padding: 0 8px 0 14px; border-radius: 999px; border: 1px solid var(--rule-strong); display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--ink); background: transparent; overflow: hidden; white-space: nowrap; transition: max-width .3s ease, padding .3s ease, opacity .2s ease, transform .3s ease, margin .3s ease; max-width: 160px; }
+.chip button { border: 0; background: none; color: var(--ink-faint); width: 22px; height: 22px; border-radius: 50%; cursor: pointer; display: grid; place-items: center; }
+.chip button svg { width: 14px; height: 14px; }
+.chip.out { max-width: 0; padding: 0; opacity: 0; transform: scale(.6); border-width: 0; margin-right: -8px; }
+.hint { font-size: 12px; color: var(--ink-faint); margin-top: 14px; }
+
+/* 3 숙소 달력 */
+.cal-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.cal-h b { font-size: 17px; }
+.nights { font-size: 13px; color: var(--brand-text); font-weight: 500; display: inline-block; }
+.nights.pop { animation: pop .35s cubic-bezier(.3,1.3,.5,1); }
+@keyframes pop { 0% { transform: scale(.7); opacity: .3; } 70% { transform: scale(1.12); } 100% { transform: none; } }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 4px; text-align: center; font-size: 13px; }
+.cal .w { color: var(--ink-faint); font-size: 12px; height: 24px; }
+.cal .d { position: relative; height: 36px; display: grid; place-items: center; cursor: pointer; border: 0; background: none; color: var(--ink); font: 500 13px var(--font); }
+.cal .d::before { content: ""; position: absolute; inset: 3px 0; background: var(--brand-tint); transform: scaleX(0); transform-origin: left; transition: transform .18s ease; transition-delay: var(--dl, 0s); z-index: 0; }
+.cal .d.in::before { transform: scaleX(1); }
+.cal .d span { position: relative; z-index: 1; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; }
+.cal .d.end span { background: var(--brand); color: #fff; font-weight: 700; }
+.cal .d.end.pop span { animation: pop .3s cubic-bezier(.3,1.3,.5,1); }
+.cal .d.past { color: var(--ink-faint); }
+
+/* 4 숙소 추천 줄 */
+.row-t { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
+.rail { display: flex; gap: 10px; overflow: hidden; }
+.sc { flex: 0 0 132px; opacity: 0; transform: translateY(14px); }
+.run .sc { animation: rise .45s cubic-bezier(.2,.9,.3,1) forwards; animation-delay: calc(var(--i) * 80ms + .2s); }
+@keyframes rise { to { opacity: 1; transform: none; } }
+.sc .ph { height: 132px; border-radius: 12px; }
+.sc .t { font-size: 13px; font-weight: 500; margin-top: 8px; }
+.sc .p { font-size: 15px; font-weight: 700; margin-top: 2px; }
+
+/* 5 견적 채팅 */
+.chat { position: absolute; inset: 0 0 64px 0; padding: 16px; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; overflow: hidden; }
+.msg { max-width: 75%; padding: 10px 14px; border-radius: 18px; font-size: 15px; line-height: 1.45; }
+.msg.pro { align-self: flex-start; background: var(--sub); border-bottom-left-radius: 6px; animation: msgIn .35s cubic-bezier(.2,.9,.3,1) backwards; }
+.msg.me { align-self: flex-end; background: var(--brand); color: #fff; border-bottom-right-radius: 6px; transform-origin: right bottom; animation: msgFly .38s cubic-bezier(.2,1,.3,1) backwards; }
+@keyframes msgIn { from { opacity: 0; transform: translateY(12px); } }
+@keyframes msgFly { from { opacity: 0; transform: translate(24px, 20px) scale(.7); } }
+.compose { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px solid var(--rule); display: flex; gap: 8px; align-items: center; padding: 0 12px; }
+.compose input { flex: 1; height: 40px; border-radius: 20px; border: 0; background: var(--sub); padding: 0 14px; color: var(--ink); font: 15px var(--font); }
+.compose button { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--brand); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.compose button svg { width: 18px; height: 18px; }
+
+/* 6 요청 쓰기 단계 */
+.bar { height: 4px; background: var(--sub); border-radius: 2px; overflow: hidden; margin-bottom: 18px; }
+.bar i { display: block; height: 100%; background: var(--brand); border-radius: 2px; transition: width .45s cubic-bezier(.2,.9,.3,1); }
+.stepn { font-size: 12px; color: var(--ink-faint); }
+.stage { position: relative; height: 210px; }
+#s6 { height: 340px; }
+.step { position: absolute; inset: 0; }
+.step.fwd { animation: stepFwd .36s cubic-bezier(.2,.9,.3,1) backwards; }
+@keyframes stepFwd { from { opacity: 0; transform: translateX(36px); } }
+.step h4 { font-size: 17px; margin: 6px 0 14px; }
+.opt { height: 44px; border-radius: 12px; border: 1px solid var(--rule-strong); display: flex; align-items: center; padding: 0 14px; margin-bottom: 8px; font-size: 15px; }
+.next { position: absolute; left: 16px; right: 16px; bottom: 16px; height: 48px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font: 700 15px var(--font); cursor: pointer; }
+
+/* 7 크레딧 */
+.cr { text-align: center; padding-top: 30px; }
+.cr .l { font-size: 13px; color: var(--ink-soft); }
+.cr .v { font-size: 48px; font-weight: 800; letter-spacing: -.03em; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+.cr .v small { font-size: 17px; font-weight: 500; margin-left: 4px; color: var(--ink-soft); }
+.cr .plus { display: inline-block; font-size: 15px; font-weight: 700; color: var(--brand-text); opacity: 0; }
+.cr .plus.go { animation: gain 1.2s ease forwards; }
+@keyframes gain { 0% { opacity: 0; transform: translateY(8px); } 20% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
+.cr button { margin-top: 26px; height: 48px; padding: 0 24px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font: 700 15px var(--font); cursor: pointer; }
+
+/* 8 별점 */
+.rv { text-align: center; padding-top: 34px; }
+.rv .q { font-size: 17px; font-weight: 700; }
+.rv .s { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+.stars { display: flex; justify-content: center; gap: 6px; margin-top: 22px; }
+.stars button { border: 0; background: none; padding: 2px; cursor: pointer; color: var(--rule-strong); }
+.stars svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+.stars button.on { color: var(--star); }
+.stars button.on svg { fill: var(--star); }
+.stars button.bump svg { animation: pop .34s cubic-bezier(.3,1.4,.5,1); }
+.rv .word { height: 20px; margin-top: 14px; font-size: 15px; font-weight: 500; color: var(--ink); }
+
+/* 9 로그인 */
+.lg { padding: 36px 20px 0; text-align: center; }
+.lg .logo { font-size: 24px; font-weight: 800; letter-spacing: -.03em; color: var(--brand-text); }
+.lg p { font-size: 13px; color: var(--ink-soft); margin: 6px 0 40px; }
+.kakao { width: 100%; height: 52px; border-radius: 12px; border: 0; background: #FEE500; color: #191919; font: 700 15px var(--font); display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: opacity .2s; }
+.kakao[disabled] { opacity: .85; cursor: default; }
+.kakao svg { width: 20px; height: 20px; }
+.spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(25,25,25,.25); border-top-color: #191919; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.lbl-in { animation: lblIn .25s ease backwards; }
+@keyframes lblIn { from { opacity: 0; transform: translateY(4px); } }
+
+/* 10 주문 상태 */
+.od { display: flex; gap: 12px; }
+.od .ph { width: 64px; height: 64px; border-radius: 12px; background: var(--photo1); flex: none; }
+.od .t { font-size: 15px; font-weight: 500; }
+.od .m { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+.track { position: relative; margin: 34px 8px 0; }
+.track .base, .track .fill { position: absolute; top: 9px; left: 10px; right: 10px; height: 2px; border-radius: 1px; background: var(--rule-strong); }
+.track .fill { background: var(--brand); transform-origin: left; transform: scaleX(0); right: auto; width: calc(100% - 20px); }
+.run .track .fill { animation: fillTo 1s cubic-bezier(.4,0,.2,1) .3s forwards; }
+@keyframes fillTo { to { transform: scaleX(.5); } }
+.dots { position: relative; display: flex; justify-content: space-between; }
+.dot { width: 20px; text-align: center; }
+.dot i { display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--bg); border: 2px solid var(--rule-strong); }
+.dot span { display: block; font-size: 12px; color: var(--ink-faint); margin-top: 8px; white-space: nowrap; transform: translateX(-30%); }
+.run .dot.done i { animation: dotOn .25s ease forwards; animation-delay: var(--dl); }
+.run .dot.done span { animation: txtOn .25s ease forwards; animation-delay: var(--dl); }
+@keyframes dotOn { to { background: var(--brand); border-color: var(--brand); } }
+@keyframes txtOn { to { color: var(--ink); font-weight: 500; } }
+.run .dot.cur i { animation: dotOn .25s ease forwards, ring 1.6s ease 1.4s 2; animation-delay: var(--dl), 1.4s; }
+@keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(28,105,239,.35); } 100% { box-shadow: 0 0 0 10px rgba(28,105,239,0); } }
+
+@media (prefers-reduced-motion: reduce) { .scr *, .scr *::before { animation-duration: 0.01ms !important; animation-delay: 0s !important; transition-duration: 0.01ms !important; } }
+</style>
+
+<div class="wrap">
+  <h1>모션 10차 시안</h1>
+  <p class="lede">지금까지 모션이 없던 화면 열 곳이에요. 각 화면은 직접 눌러 보거나 "다시 보기"로 다시 재생할 수 있어요. 휴대폰에서 "동작 줄이기"를 켠 사람에게는 움직임 없이 바로 보여요.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all">전부 다시 보기</button>
+    <button class="ctl" id="mode">다크 모드로 보기</button>
+  </div>
+
+  <div class="list">
+
+    <div class="item">
+      <div class="scr" id="s1"><div class="pad">
+        <div class="sbox"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><span id="typed"></span><span class="caret"></span></div>
+        <div class="sug">
+          <div style="--i:0"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><span><b>돈가</b>스 정식</span></div>
+          <div style="--i:1"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><span><b>돈가</b>스 2인 세트</span></div>
+          <div style="--i:2"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><span>치즈 <b>돈가</b>스</span></div>
+          <div style="--i:3"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><span>홍대 <b>돈가</b>스</span></div>
+        </div>
+      </div></div>
+      <div><h3><span class="n">1</span>검색 추천어</h3>
+        <p>글자를 치면 추천어가 위에서부터 <b>한 줄씩 차례로</b> 내려와요. 친 글자와 겹치는 부분은 진하게 보여서 어느 줄이 맞는지 바로 보여요.</p>
+        <button class="replay" data-r="1">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s2"><div class="pad">
+        <div class="lbl"><span>최근 검색</span><span>전체 지우기</span></div>
+        <div class="chips" id="chips"></div>
+        <div class="hint">× 를 눌러 보세요</div>
+      </div></div>
+      <div><h3><span class="n">2</span>최근 검색어 지우기</h3>
+        <p>지운 검색어가 <b>작아지며 사라지고</b>, 옆 검색어가 부드럽게 당겨와 빈자리를 채워요. 지금은 툭 사라지면서 줄이 한 번에 튀어요.</p>
+        <button class="replay" data-r="2">다시 채우기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s3"><div class="pad">
+        <div class="cal-h"><b>11월</b><span class="nights" id="nights">체크인 날짜를 골라 주세요</span></div>
+        <div class="cal" id="cal"></div>
+      </div></div>
+      <div><h3><span class="n">3</span>숙소 날짜 고르기 달력</h3>
+        <p>체크인 날짜와 체크아웃 날짜를 차례로 누르면, 그 사이가 <b>왼쪽에서 오른쪽으로 칠해지며</b> 이어져요. "2박"이 톡 튀어나와 몇 박인지 바로 보여요. 직접 날짜를 두 번 눌러 보세요.</p>
+        <button class="replay" data-r="3">자동으로 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s4"><div class="pad">
+        <div class="row-t">이번 주말 바다 보이는 숙소</div>
+        <div class="rail">
+          <div class="sc" style="--i:0"><div class="ph" style="background:var(--photo1)"></div><div class="t">그랑블루 오션뷰</div><div class="p">149,000원</div></div>
+          <div class="sc" style="--i:1"><div class="ph" style="background:var(--photo2)"></div><div class="t">솔숲 펜션</div><div class="p">98,000원</div></div>
+          <div class="sc" style="--i:2"><div class="ph" style="background:var(--photo3)"></div><div class="t">바람의 언덕</div><div class="p">120,000원</div></div>
+        </div>
+      </div></div>
+      <div><h3><span class="n">4</span>숙소 목록 추천 줄</h3>
+        <p>줄이 화면에 들어올 때 카드가 <b>왼쪽부터 차례로</b> 살짝 떠올라요. 한 번만 움직이고, 다시 스크롤해서 와도 반복하지 않아요.</p>
+        <button class="replay" data-r="4">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s5">
+        <div class="chat" id="chat"><div class="msg pro">안녕하세요, 에어컨 청소 견적 드려요. 벽걸이 1대 6만원이에요.</div></div>
+        <div class="compose"><input id="cin" value="토요일 오전 가능할까요?" aria-label="메시지"><button id="csend" aria-label="보내기"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button></div>
+      </div>
+      <div><h3><span class="n">5</span>생활 견적 채팅</h3>
+        <p>내가 보낸 말풍선은 <b>보내기 버튼 쪽에서 날아오듯</b> 들어가요. 상대 답장은 아래에서 떠올라요. 보내기 버튼을 눌러 보세요.</p>
+        <button class="replay" data-r="5">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s6"><div class="pad">
+        <div class="bar"><i id="pbar" style="width:33%"></i></div>
+        <div class="stage" id="stage"></div>
+      </div><button class="next" id="snext">다음</button></div>
+      <div><h3><span class="n">6</span>생활 요청 쓰기 단계</h3>
+        <p>"다음"을 누르면 위쪽 막대가 <b>차오르고</b> 화면이 옆으로 넘어가요. 지금 몇 단계 중 어디인지 늘 보여요. 판매용 이용권 등록 화면에 이미 넣은 방식과 같아요.</p>
+        <button class="replay" data-r="6">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s7"><div class="cr">
+        <div class="l">내 크레딧</div>
+        <div class="v"><span id="crv">3</span><small>개</small></div>
+        <span class="plus" id="crp">+10개 충전됐어요</span>
+        <div><button id="crb">10개 충전하기</button></div>
+      </div></div>
+      <div><h3><span class="n">7</span>생활 고수 크레딧 충전</h3>
+        <p>충전이 끝나면 숫자가 <b>굴러가며 올라가고</b> "+10개"가 잠깐 떴다 사라져요. 마이의 딜 잔액에 넣은 것과 같은 방식이에요.</p>
+        <button class="replay" data-r="7">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s8"><div class="rv">
+        <div class="q">이용은 어떠셨어요?</div>
+        <div class="s">별을 눌러 주세요</div>
+        <div class="stars" id="stars"></div>
+        <div class="word" id="sword"></div>
+      </div></div>
+      <div><h3><span class="n">8</span>리뷰 쓰기 별점</h3>
+        <p>별을 누르면 <b>그 별까지 하나씩 통통 튀며</b> 채워지고, 아래에 "좋았어요" 같은 말이 붙어요. 숙소 예약 내역과 생활 화면의 리뷰 쓰기가 대상이에요.</p>
+        <button class="replay" data-r="8">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s9"><div class="lg">
+        <div class="logo">urdeal</div>
+        <p>3초 만에 시작해요</p>
+        <button class="kakao" id="kk"><svg viewBox="0 0 24 24"><path fill="#191919" d="M12 4C7 4 3 7.1 3 11c0 2.5 1.7 4.7 4.2 6l-.9 3.3c-.1.3.2.5.5.4L10.6 18c.5.1.9.1 1.4.1 5 0 9-3.1 9-7s-4-7.1-9-7.1z"/></svg><span>카카오로 시작하기</span></button>
+      </div></div>
+      <div><h3><span class="n">9</span>로그인 카카오 버튼</h3>
+        <p>누르면 버튼 안에 <b>도는 표시</b>가 생기고 글자가 "카카오로 이동 중…"으로 바뀌어요. 카카오 화면이 늦게 떠도 눌렸다는 걸 알 수 있고, 두 번 눌리지 않아요.</p>
+        <button class="replay" data-r="9">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s10"><div class="pad">
+        <div class="od"><div class="ph"></div><div><div class="t">버크셔 프리미엄 돈가스 1인</div><div class="m">홍대돈까스 · 15,900원</div></div></div>
+        <div class="track"><div class="base"></div><div class="fill"></div>
+          <div class="dots">
+            <div class="dot done" style="--dl:.3s"><i></i><span>결제 완료</span></div>
+            <div class="dot done cur" style="--dl:.8s"><i></i><span>이용권 받음</span></div>
+            <div class="dot"><i></i><span>사용 완료</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div><h3><span class="n">10</span>내 주문 내역 상태</h3>
+        <p>단계 선이 <b>지금 단계까지 차오르며</b> 그려지고, 지금 단계 점에서 한 번 물결이 퍼져요. "지금 어디까지 왔지?"를 글을 안 읽고도 알 수 있어요.</p>
+        <button class="replay" data-r="10">다시 보기</button></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const restart = (el) => { el.classList.remove('run'); void el.offsetWidth; el.classList.add('run') }
+const X = '<svg class="ico" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>'
+
+// 1
+function r1() { const s = $('#s1'); const t = $('#typed'); t.textContent = ''; s.classList.remove('run'); let i = 0; const w = '돈가'
+  clearInterval(r1.t); r1.t = setInterval(() => { t.textContent = w.slice(0, ++i); if (i >= w.length) { clearInterval(r1.t); restart(s) } }, 220) }
+// 2
+function r2() { const c = $('#chips'); c.innerHTML = ''; ['돈가스', '오션뷰 숙소', '네일', '에어컨 청소', '강남 브런치', '마사지'].forEach((w) => {
+  const el = document.createElement('span'); el.className = 'chip'; el.innerHTML = `${w}<button aria-label="${w} 지우기">${X}</button>`
+  el.querySelector('button').onclick = () => { el.classList.add('out'); setTimeout(() => el.remove(), 320) }; c.appendChild(el) }) }
+// 3
+let calA = null
+function buildCal() { const c = $('#cal'); c.innerHTML = '일월화수목금토'.split('').map((d) => `<div class="w">${d}</div>`).join('')
+  for (let i = 0; i < 6; i++) c.insertAdjacentHTML('beforeend', '<div></div>')
+  for (let d = 1; d <= 28; d++) { const b = document.createElement('button'); b.className = 'd' + (d < 3 ? ' past' : ''); b.dataset.d = d; b.innerHTML = `<span>${d}</span>`; b.onclick = () => pick(d); c.appendChild(b) }
+  calA = null; const n = $('#nights'); n.textContent = '체크인 날짜를 골라 주세요'; n.classList.remove('pop') }
+function pick(d) { if (d < 3) return; const days = [...document.querySelectorAll('#cal .d')]
+  if (calA == null || d <= calA) { days.forEach((x) => { x.classList.remove('in', 'end', 'pop'); x.style.removeProperty('--dl') }); calA = d
+    const a = days.find((x) => +x.dataset.d === d); a.classList.add('end', 'pop'); $('#nights').textContent = '체크아웃 날짜를 골라 주세요'; return }
+  const b = days.find((x) => +x.dataset.d === d); let k = 0
+  days.forEach((x) => { const v = +x.dataset.d; if (v >= calA && v <= d) { x.style.setProperty('--dl', (k++ * 45) + 'ms'); x.classList.add('in') } })
+  setTimeout(() => { b.classList.add('end', 'pop'); const n = $('#nights'); n.textContent = `11월 ${calA}일 ~ ${d}일 · ${d - calA}박`; n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); calA = null }, k * 45 + 80) }
+function r3() { buildCal(); setTimeout(() => pick(12), 400); setTimeout(() => pick(14), 1100) }
+// 4
+function r4() { restart($('#s4')) }
+// 5
+const replies = ['네 토요일 오전 10시 가능해요!', '도착 30분 전에 연락드릴게요.']
+function r5() { $('#chat').innerHTML = '<div class="msg pro">안녕하세요, 에어컨 청소 견적 드려요. 벽걸이 1대 6만원이에요.</div>'; $('#cin').value = '토요일 오전 가능할까요?'; r5.k = 0 }
+$('#csend').onclick = () => { const v = $('#cin').value.trim(); if (!v) return; const chat = $('#chat')
+  chat.insertAdjacentHTML('beforeend', `<div class="msg me"></div>`); chat.lastChild.textContent = v; $('#cin').value = ''
+  const r = replies[r5.k++ % replies.length]; setTimeout(() => { chat.insertAdjacentHTML('beforeend', `<div class="msg pro"></div>`); chat.lastChild.textContent = r }, 900)
+  while (chat.children.length > 4) chat.firstChild.remove() }
+// 6
+const steps = [['어떤 서비스가 필요하세요?', ['에어컨 청소', '이사 청소', '방충망 교체']], ['언제가 좋으세요?', ['이번 주', '다음 주', '날짜 상관없어요']], ['어디로 가면 될까요?', ['서울 강남구', '서울 마포구', '직접 입력']]]
+let si = 0
+function showStep(anim) { const st = $('#stage'); const [h, opts] = steps[si]
+  st.innerHTML = `<div class="step${anim ? ' fwd' : ''}"><div class="stepn">${si + 1} / ${steps.length}</div><h4>${h}</h4>${opts.map((o) => `<div class="opt">${o}</div>`).join('')}</div>`
+  $('#pbar').style.width = ((si + 1) / steps.length * 100) + '%'; $('#snext').textContent = si === steps.length - 1 ? '요청 보내기' : '다음' }
+$('#snext').onclick = () => { if (si < steps.length - 1) { si++; showStep(true) } }
+function r6() { si = 0; showStep(false) }
+// 7
+function roll(el, from, to, ms) { const t0 = performance.now(); const f = (t) => { const p = Math.min(1, (t - t0) / ms); const e = 1 - Math.pow(1 - p, 3); el.textContent = Math.round(from + (to - from) * e); if (p < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }
+let cr = 3
+$('#crb').onclick = () => { const p = $('#crp'); roll($('#crv'), cr, cr + 10, 700); cr += 10; p.classList.remove('go'); void p.offsetWidth; p.classList.add('go') }
+function r7() { cr = 3; $('#crv').textContent = 3; $('#crp').classList.remove('go') }
+// 8
+const words = ['', '별로였어요', '아쉬웠어요', '괜찮았어요', '좋았어요', '최고예요!']
+const STAR = '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8 6.8 19.5l1-5.8-4.2-4.1 5.8-.8z"/></svg>'
+function r8() { const s = $('#stars'); s.innerHTML = ''; $('#sword').textContent = ''
+  for (let i = 1; i <= 5; i++) { const b = document.createElement('button'); b.setAttribute('aria-label', `${i}점`); b.innerHTML = STAR; b.onclick = () => rate(i); s.appendChild(b) } }
+function rate(n) { [...$('#stars').children].forEach((b, i) => { b.classList.remove('bump'); if (i < n) { setTimeout(() => { b.classList.add('on'); void b.offsetWidth; b.classList.add('bump') }, i * 70) } else b.classList.remove('on') })
+  setTimeout(() => { const w = $('#sword'); w.textContent = words[n]; w.classList.remove('lbl-in'); void w.offsetWidth; w.classList.add('lbl-in') }, n * 70) }
+// 9
+$('#kk').onclick = () => { const b = $('#kk'); if (b.disabled) return; b.disabled = true; b.innerHTML = '<span class="spin"></span><span class="lbl-in">카카오로 이동 중…</span>' }
+function r9() { const b = $('#kk'); b.disabled = false; b.innerHTML = '<svg viewBox="0 0 24 24"><path fill="#191919" d="M12 4C7 4 3 7.1 3 11c0 2.5 1.7 4.7 4.2 6l-.9 3.3c-.1.3.2.5.5.4L10.6 18c.5.1.9.1 1.4.1 5 0 9-3.1 9-7s-4-7.1-9-7.1z"/></svg><span>카카오로 시작하기</span>' }
+// 10
+function r10() { restart($('#s10')) }
+
+const R = { 1: r1, 2: r2, 3: r3, 4: r4, 5: r5, 6: r6, 7: r7, 8: r8, 9: r9, 10: r10 }
+document.querySelectorAll('.replay').forEach((b) => b.onclick = () => R[b.dataset.r]())
+$('#all').onclick = () => Object.values(R).forEach((f) => f())
+let dark = matchMedia('(prefers-color-scheme: dark)').matches
+const applyMode = () => { document.querySelectorAll('.scr').forEach((s) => s.dataset.mode = dark ? 'dark' : 'light'); $('#mode').textContent = dark ? '라이트 모드로 보기' : '다크 모드로 보기' }
+$('#mode').onclick = () => { dark = !dark; applyMode() }
+applyMode(); r2(); buildCal(); r5(); r6(); r8()
+// 화면에 들어올 때 한 번씩 재생
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; io.unobserve(e.target); const id = +e.target.id.slice(1); if ([1, 3, 4, 10].includes(id)) R[id]() }), { threshold: .4 })
+document.querySelectorAll('.scr').forEach((s) => io.observe(s))
+</script>

@@ -23,6 +23,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
 import { resolveUserId } from '@/worker/utils/resolve-user-id'
 import { safeError } from '@/worker/utils/safe-error'
+import { scheduleAdminEvent } from '@/worker/utils/admin-event-notify'
 import { swallow } from '@/worker/utils/swallow'
 import { isKakaoOnlyStaffEmail, kakaoStaffEmail } from '@/shared/agency-kakao'
 import { ensureAgencyConsoleTables, AGENCY_NAME_MAX, type AgencyKind } from './agency-schema'
@@ -111,6 +112,11 @@ agencyKakaoRoutes.post('/kakao/create', requireAuth(), csrfProtection(),
         const p = winner ? await loginPayload(c.env, winner) : null
         return p ? c.json({ success: true, already: true, ...p }) : c.json({ success: false, error: '잠시 뒤 다시 시도해 주세요.' }, 409)
       }
+      // 🔔 2026-11-02 — 에이전시 가입 어드민 알림(응답 뒤).
+      await scheduleAdminEvent(c, DB, {
+        type: 'agency_signup', title: '새 에이전시 가입',
+        message: `${String(name || '이름 없음').slice(0, 30)} · ${kind === 'business' ? '사업자' : '개인'} · 카카오`, link: '/admin/agencies',
+      })
       const p = await loginPayload(c.env, Number(ins.meta?.last_row_id))
       if (!p) return c.json({ success: false, error: '계정을 찾지 못했어요.' }, 404)
       return c.json({ success: true, ...p })

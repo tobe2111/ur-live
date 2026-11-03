@@ -5,6 +5,9 @@ import { Navigation, ArrowUpDown, SlidersHorizontal, ChevronDown } from 'lucide-
 import type { SortBy } from './types'
 import { type MapVoucherType, MAP_VOUCHER_DEFS } from './voucher-types'
 import SortSheet from './SortSheet'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 시안 5차: 칩을 고르거나 지도를 옮겨 개수가 바뀌면 숫자가 살짝 올라오며 바뀐다.
+injectMotionCss('ur-m-count', `@keyframes ur-count-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }.ur-count-in { display: inline-block; animation: ur-count-in .28s cubic-bezier(.16,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-count-in{animation:none!important}}`)
 
 const SORT_LABEL: Record<SortBy, { labelKey: string; def: string }> = {
   distance: { labelKey: 'restaurantMap.sort.distance', def: '가까운 순' },
@@ -129,11 +132,11 @@ export default function SheetFilterBar({
           <span className="text-[12px] text-gray-500 dark:text-gray-400">
             {showViewport ? (
               <>
-                <span className="font-bold text-gray-900 dark:text-white">{regionLabel || t('map.sheet.thisArea', { defaultValue: '이 지역' })} {viewportCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}
+                <span className="font-bold text-gray-900 dark:text-white">{regionLabel || t('map.sheet.thisArea', { defaultValue: '이 지역' })} <span key={viewportCount} className="ur-count-in">{viewportCount}</span></span>{t('map.sheet.count', { defaultValue: '곳' })}
                 <span className="ml-1 text-gray-400 dark:text-gray-500">· {t('map.sheet.total', { defaultValue: '전체' })} {filteredCount}{t('map.sheet.count', { defaultValue: '곳' })}</span>
               </>
             ) : (
-              <><span className="font-bold text-gray-900 dark:text-white">{filteredCount ?? '…'}</span>{t('map.sheet.count', { defaultValue: '곳' })}</>
+              <><span key={filteredCount ?? -1} className="ur-count-in font-bold text-gray-900 dark:text-white">{filteredCount ?? '…'}</span>{t('map.sheet.count', { defaultValue: '곳' })}</>
             )}
           </span>
           {favorites.length > 0 && (

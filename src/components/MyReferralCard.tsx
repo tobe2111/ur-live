@@ -9,12 +9,14 @@
  */
 
 import { useEffect, useState } from 'react'
-import { GiftBoxIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
+import { GiftBoxIcon, PeopleIcon, OkIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from '@/lib/i18n-lite'
 import { Copy } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 interface InviteReward {
   id: number
@@ -51,12 +53,15 @@ export default function MyReferralCard() {
       .finally(() => setLoading(false))
   }, [])
 
+  // 🎬 2026-11-02 시안 5차 "링크 복사됨": 알림 대신 버튼이 2초 동안 체크 + "복사됨" 으로 바뀐다.
+  const [copied, setCopied] = useState(false)
   async function copyLink() {
     if (!inviteUrl) return
     try {
       await navigator.clipboard.writeText(inviteUrl)
-      toast.success(t('inviteCard.copied', { defaultValue: '초대 링크 복사됨' }))
-    } catch { /* ignore */ }
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch { toast.error(t('common.copyFailed', { defaultValue: '복사하지 못했어요' })) }
   }
 
   if (loading || !myUserId) return null
@@ -101,7 +106,9 @@ export default function MyReferralCard() {
           onClick={copyLink}
           className="px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-bold flex items-center gap-2 active:scale-95"
         >
-          <Copy className="w-4 h-4" /> {t('inviteCard.copy', { defaultValue: '복사' })}
+          {copied
+            ? <span key="ok" className="ur-popin inline-flex items-center gap-2" aria-live="polite"><OkIcon className="w-4 h-4" /> {t('inviteCard.copied', { defaultValue: '복사됨' })}</span>
+            : <><Copy className="w-4 h-4" /> {t('inviteCard.copy', { defaultValue: '복사' })}</>}
         </button>
       </div>
 

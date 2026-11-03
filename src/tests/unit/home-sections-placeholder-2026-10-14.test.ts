@@ -31,8 +31,9 @@ describe('① 자리 분기의 순서', () => {
     const s = skeletonBranch()
     const sec = s.indexOf('</section>')
     expect(sec).toBeGreaterThan(0)
-    // 🏠 2026-11-02 모바일 안 1 — 유어쇼츠가 둘째 섹션 뒤로 가면 자리에서도 배너가 먼저다.
-    expect(s.slice(sec)).toContain('shortsAfter > 0 ? <>{midBanner}{shortsRail}</> : <>{shortsRail}{midBanner}</>')
+    // 🏠 2026-11-02 모바일 안 1 — 유어쇼츠가 둘째 섹션 뒤로 가면 자리에서는 레일을 **안 그린다**
+    //   (자리는 섹션 하나, 진짜 레일은 섹션 둘 뒤 — 미리 그리면 응답 순간 +841px. `check-layout-shift` 홈 실측).
+    expect(s.slice(sec)).toContain('{shortsAfter > 0 ? midBanner : <>{shortsRail}{midBanner}</>}')
     // 진짜 분기: 기본은 첫 섹션 뒤 레일 → 배너, shortsAfter>0 이면 배너 뒤 그 섹션 다음에 레일
     expect(sections).toMatch(/\{shortsAfter === 0 && sIdx === 0 && shortsRail\}\s*\{sIdx === 0 && midBanner\}/)
     expect(sections).toContain('{shortsAfter > 0 && sIdx === Math.min(shortsAfter, visible.length - 1) && shortsRail}')

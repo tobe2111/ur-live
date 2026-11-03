@@ -36,18 +36,23 @@
  *    🔴 소유권은 종전 그대로 **prop 으로만** 받는다(`check-linkshop-ownership` ③ — seller_token 미참조).
  */
 
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import { Share2 } from 'lucide-react'
 import VerifiedSeal from '@/components/VerifiedSeal'
 import UrDealLogo from '@/components/brand/UrDealLogo'
-import { EditIcon } from '@/components/icons/urdeal-icons'
+import { EditIcon, OkIcon } from '@/components/icons/urdeal-icons'
 import { InstagramLogo, TikTokLogo, YouTubeLogo } from '@/components/icons/sns-logos'
 import { snsUrl } from '@/utils/sns-url'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { SHARE_MASCOT_SRC } from '@/shared/ushop-share-card'
 import { ushopNameSizePx } from '@/shared/ushop-name-size'
+// 🎬 2026-11-02 시안 6차 "유어샵 공유"(대표 "다 넣어줘") — 링크 복사로 끝나면 공유 아이콘이 1.6초 동안 체크로 바뀌며 톡 박힌다.
+//   카카오 카드·폰 공유 시트는 우리가 그리는 화면이 아니라 움직임을 넣을 수 없다(그때는 아무것도 안 바뀐다).
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+injectMotionCss('ur-m-share', `@keyframes ur-share-ok { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.12); } 100% { opacity: 1; transform: none; } }.ur-share-ok { animation: ur-share-ok .35s cubic-bezier(.3,1.3,.5,1) both; }@media (prefers-reduced-motion: reduce){.ur-share-ok{animation:none!important}}`)
 
 interface CuratorHeaderProps {
   curator: {
@@ -71,7 +76,7 @@ interface CuratorHeaderProps {
   soldTotal?: number
   accountType?: 'user' | 'business'
   /** 공유 — `navigator.share` 있으면 시트, 없으면 링크 복사(호출부가 정한다). */
-  onCopyLink: () => void
+  onCopyLink: () => void | Promise<boolean | void>
 }
 
 /**
@@ -105,7 +110,9 @@ const avatarCls = 'w-10 h-10 rounded-full overflow-hidden bg-wash shrink-0'
 const snsHitCls = 'h-9 inline-flex items-center active:opacity-70'
 const snsPillCls = 'h-8 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[13px] font-medium text-gray-600 dark:text-gray-300'
 
-export default function CuratorHeader({ curator, canEdit, counts, soldTotal, accountType, onCopyLink }: CuratorHeaderProps) {
+export default function CuratorHeader({ curator, canEdit, counts, soldTotal, accountType, onCopyLink: share }: CuratorHeaderProps) {
+  const [copied, setCopied] = useState(false)
+  const onCopyLink = async () => { if ((await share()) === true) { setCopied(true); window.setTimeout(() => setCopied(false), 1600) } }
   const { t } = useTranslation()
   // 🔒 그 플랫폼 주소가 아니면 이름표를 안 그린다(2026-10-26 — 서버 첫 화면도 같은 판정).
   const ytHref = snsUrl('youtube', curator.youtube_url), igHref = snsUrl('instagram', curator.instagram_url), tkHref = snsUrl('tiktok', curator.tiktok_url)
@@ -168,7 +175,9 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
         className={iconBtnCls}
         aria-label={t('curator.share', { defaultValue: '공유' })}
       >
-        <Share2 className="w-[18px] h-[18px]" strokeWidth={1.6} aria-hidden="true" />
+        {copied
+          ? <OkIcon size={18} className="ur-share-ok text-brand-text" aria-hidden="true" />
+          : <Share2 className="w-[18px] h-[18px]" strokeWidth={1.6} aria-hidden="true" />}
       </button>
       {canEdit && (
         <Link to="/u/me/manage" className={manageBtnCls}>

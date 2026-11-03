@@ -18,6 +18,9 @@ import { safeDate } from '@/utils/safe-date'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useMyStays, type MyBooking } from '@/hooks/queries/useMyStays'
 import BrandLoader from '@/components/brand/BrandLoader'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-02 10차 ⑧ — 별을 고르면 그 별까지 하나씩 통통 튀며 채워진다(별 안쪽만 다시 그려 버튼 포커스는 그대로).
+injectMotionCss('ur-m-starpick', `@keyframes ur-star-pick { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: none; } }.ur-star-pick { display: inline-block; animation: ur-star-pick .32s cubic-bezier(.3,1.4,.5,1) backwards; animation-delay: calc(var(--sn, 0) * 60ms); }@media (prefers-reduced-motion: reduce){.ur-star-pick{animation:none!important}}`)
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending: { label: '결제 대기', color: 'bg-gray-100 text-gray-600 dark:bg-[#1D1F29] dark:text-gray-300' },
@@ -210,7 +213,9 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((n) => (
             <button key={n} onClick={() => onChange(n)} type="button">
-              <StarIcon filled={n <= val} className={`w-4 h-4 ${n <= val ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}`} />
+              <span key={n <= val ? `on${val}` : 'off'} className={n <= val ? 'ur-star-pick' : 'inline-block'} style={{ '--sn': n - 1 } as React.CSSProperties}>
+                <StarIcon filled={n <= val} className={`w-4 h-4 ${n <= val ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}`} />
+              </span>
             </button>
           ))}
         </div>

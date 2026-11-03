@@ -181,3 +181,13 @@ describe('🔒 가드가 실제로 실행 경로에 있다', () => {
     expect(body).toMatch(/from '\.\/comment-strip\.mjs'/)
   })
 })
+
+describe('💉 화면이 스스로 심는 CSS(2026-11-02)', () => {
+  it('check-ghost-classes 가 injectMotionCss 류 템플릿 리터럴의 셀렉터·키프레임을 생성 집합에 더한다', () => {
+    const { readFileSync } = require('node:fs') as typeof import('node:fs')
+    const g = readFileSync('scripts/check-ghost-classes.mjs', 'utf8')
+    expect(g).toContain('let injectedCss = ')
+    expect(g).toContain('injectedCss.matchAll(/@keyframes')
+    expect(g).toContain('generated.add(m[1])')
+  })
+})

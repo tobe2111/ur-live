@@ -27,6 +27,7 @@
  *   호출부의 줄이 갖고, 여기는 `flex-1 min-w-0` 로 그 줄을 나눠 쓴다.
  *   ⚠️ **빈 진열대 판정은 여전히 이 부품이 혼자 한다** — 호출부에 개수 게이트를 두면 언젠가 갈린다.
  */
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
 import { MAP_VOUCHER_DEFS, type MapVoucherType } from '@/pages/restaurant-map/voucher-types'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
@@ -44,6 +45,16 @@ export function pinCategory(p: CuratorPin): Exclude<PinCategory, 'all'> {
 
 export default function PinCategoryChips({ pins, value, onChange }: { pins: CuratorPin[]; value: PinCategory; onChange: (v: PinCategory) => void }) {
   const { t } = useTranslation()
+  // 🎬 2026-11-02 시안 3차 "탭 밑줄": 밑줄 하나가 누른 탭으로 미끄러진다. 서버 첫 화면·측정 전에는 종전처럼
+  //   탭 자기 밑줄(border-brand)로 그리고, 잰 뒤에만 그 밑줄을 투명하게 하고 움직이는 막대로 바꾼다 —
+  //   같은 자리·같은 두께라 바뀌는 순간이 안 보인다(첫 화면 줄 자리 불변).
+  const rowRef = useRef<HTMLDivElement>(null)
+  const [bar, setBar] = useState<{ x: number; y: number; w: number } | null>(null)
+  useLayoutEffect(() => {
+    const el = rowRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!el) { setBar(null); return }
+    setBar({ x: el.offsetLeft, y: el.offsetTop + el.offsetHeight - 2, w: el.offsetWidth })
+  }, [value, pins.length])
   // 개수 게이트 없음(위 머리말 참조) — 비었을 때만 안 그린다.
   if (pins.length === 0) return null
   const counts = new Map<string, number>()
@@ -56,7 +67,7 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
   // 🔴 판정은 SSOT 하나로(`showUShopChips`) — 워커 첫 화면이 **같은 답**을 내야 칩 줄 자리가 맞는다.
   if (!showUShopChips(pins)) return null
   return (
-    <div className="flex-1 min-w-0 flex overflow-x-auto scrollbar-hide" role="tablist" aria-label={t('curator.chipsLabel', { defaultValue: '카테고리' })}>
+    <div ref={rowRef} className="relative flex-1 min-w-0 flex overflow-x-auto scrollbar-hide" role="tablist" aria-label={t('curator.chipsLabel', { defaultValue: '카테고리' })}>
       {defs.map((d) => {
         const on = value === d.key
         const n = d.key === 'all' ? pins.length : counts.get(d.key) || 0
@@ -67,7 +78,8 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
             role="tab"
             aria-selected={on}
             onClick={() => onChange(d.key as PinCategory)}
-            className={`${USHOP_TAB_CLS} ${on ? 'border-brand font-bold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400'}`}
+            className={`${USHOP_TAB_CLS} ${on ? 'border-brand font-bold text-gray-900 dark:text-white' : 'border-transparent text-gray-500 dark:text-gray-400'} `}
+            style={on && bar ? { borderBottomColor: 'transparent' } : undefined}
           >
             {t(d.labelKey, { defaultValue: d.defaultLabel })}
             {/* 🩸 2026-09-30 — `text-gray-300 dark:text-gray-600` 으로 썼다가 **CI 의 `contrast` 가 잡았다**
@@ -80,6 +92,10 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
           </button>
         )
       })}
+      {bar && (
+        <span aria-hidden="true" className="ur-tab-bar absolute left-0 h-0.5 bg-brand pointer-events-none"
+          style={{ top: bar.y, width: bar.w, transform: `translateX(${bar.x}px)` }} />
+      )}
     </div>
   )
 }

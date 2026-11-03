@@ -11,6 +11,7 @@
  */
 
 import { newShareToken } from '../../../shared/home-service-share'
+import { buildSchemaProbe as buildProbe, schemaComplete, type SchemaProbe } from '../../../worker/utils/schema-probe'
 import { maskReviewer, readReviewPhotos } from '../../../shared/home-service-review'
 import { CREDIT_COST_KEY, HOME_PARTNERS_KEY, PRO_OPEN_STATUS_SQL, parseCreditCosts, parsePartners, type HomeServiceCategory } from '../../../shared/home-service'
 
@@ -239,9 +240,14 @@ export function withPrivateDetails(details: unknown, privateJson: unknown): Reco
   } catch { return base }
 }
 
+/** 🩺 2026-11-02 — 확인 질문은 공용(`worker/utils/schema-probe.ts`). 근거·한계는 그 머리말. */
+export function buildSchemaProbe(sqls: readonly string[] = HS_TABLES_SQL): SchemaProbe[] { return buildProbe(sqls) }
+const HS_PROBE = buildSchemaProbe()
+
 export async function ensureHomeServiceTables(DB: D1Database): Promise<void> {
   if (_done.has(DB)) return
   _done.add(DB)
+  if (await schemaComplete(DB, HS_PROBE)) return // 왕복 1회로 끝 — 평상시 경로
   for (const sql of HS_TABLES_SQL) {
     try { await DB.prepare(sql).run() } catch { /* 이미 있음 */ }
   }

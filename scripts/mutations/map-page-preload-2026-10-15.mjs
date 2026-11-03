@@ -5,8 +5,9 @@ export default [
   {
     name: '🗺️ 홈이 SDK 만 받고 지도 화면 코드는 안 받는다',
     file: 'src/pages/mobile-home/map-warmup.ts',
-    find: "      .then(() => preloadRoute('map'))",
-    replace: '      .then(() => {})',
+    // 🐢 2026-11-02 첫 목록 미리받기를 붙이면서 `loadRoute`(모듈을 돌려준다)로 바뀌었다 — 하는 일은 같다.
+    find: "      .then(() => loadRoute('map'))",
+    replace: '      .then(() => undefined)',
     test: TEST,
     why: '알약을 누른 뒤 ~1초가 지도 화면 청크였다.',
   },

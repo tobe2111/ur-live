@@ -14,7 +14,7 @@ import api from '@/lib/api'
 import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoading, DashboardLoadError } from '@/components/dashboard'
 import { Shield, CheckCircle, XCircle, ExternalLink, Phone, Mail } from 'lucide-react'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import { formatKST } from '@/utils/date'
@@ -37,7 +37,7 @@ interface PendingSeller {
 export default function AdminBusinessVerificationPage() {
   const navigate = useNavigate()
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
-  const { data: sellers = [], isLoading: loading, refetch } = useApiQuery<PendingSeller[]>(
+  const { data: sellers = [], isLoading: loading, isError, error, refetch } = useApiQuery<PendingSeller[]>(
     ['admin', 'biz-verification-pending'], '/api/admin/sellers/business-registration/pending',
     { select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -84,7 +84,9 @@ export default function AdminBusinessVerificationPage() {
           icon={<Shield className="h-5 w-5" />}
         />
 
-        {loading ? (
+        {isError ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="사업자 검증 대기" />
+        ) : loading ? (
           <DashboardLoading />
         ) : sellers.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">

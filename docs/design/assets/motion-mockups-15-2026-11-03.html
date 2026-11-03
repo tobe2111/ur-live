@@ -1,0 +1,300 @@
+<title>모션 15차 시안</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --star: #F5A524;
+  --photo1: linear-gradient(135deg,#F2D9C9,#C9D8F2); --photo2: linear-gradient(135deg,#D3E8D6,#E9DCC6); --photo3: linear-gradient(135deg,#E6D3EB,#D0DEF0);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --photo1: linear-gradient(135deg,#4A3729,#2B3A57); --photo2: linear-gradient(135deg,#2C4430,#4A3E2B); --photo3: linear-gradient(135deg,#40304A,#293A52);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-inline: 16px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.list { display: grid; gap: 40px; }
+.item { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+.item h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.item h3 .n { color: var(--brand); margin-right: 6px; }
+.item p { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0 0 8px; }
+.item p b { color: var(--page-fg); font-weight: 500; }
+.replay { margin-top: 4px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; cursor: pointer; }
+.scr { position: relative; height: 300px; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); font-size: 15px; }
+.pad { padding: 16px; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.run .st { animation: rise .4s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 70ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+.hd { padding: 14px 16px 6px; font-size: 17px; font-weight: 700; }
+.tabs { position: relative; display: flex; gap: 18px; padding: 0 16px; border-bottom: 1px solid var(--rule); }
+.tabs button { border: 0; background: none; padding: 10px 0; color: var(--ink-soft); font: 500 15px var(--font); cursor: pointer; }
+.tabs button.on { color: var(--ink); }
+.tabs .ul { position: absolute; bottom: -1px; left: 16px; height: 2px; background: var(--brand); transition: transform .3s cubic-bezier(.2,.9,.3,1), width .3s cubic-bezier(.2,.9,.3,1); }
+.row { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--rule); font-size: 13px; transition: opacity .3s; }
+.row .ph { width: 52px; height: 52px; border-radius: 10px; background: var(--photo1); flex: none; }
+.row:nth-child(2n) .ph { background: var(--photo2); } .row:nth-child(3n) .ph { background: var(--photo3); }
+.row b { display: block; font-size: 15px; font-weight: 500; }
+.row small { color: var(--ink-soft); font-size: 13px; }
+.swap > * { animation: rise .32s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 55ms); }
+.ck path, .xk path { stroke-dasharray: 30; stroke-dashoffset: 30; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes pop { 0% { transform: scale(.5); } 60% { transform: scale(1.15); } 100% { transform: none; } }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+.btn { height: 48px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font: 700 15px var(--font); cursor: pointer; width: 100%; }
+
+/* 1 로그인 */
+.lg { padding: 28px 20px 0; }
+.lg h4 { font-size: 24px; font-weight: 800; margin: 0 0 14px; letter-spacing: -0.02em; }
+.lg .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 26px; }
+.lg .chips span { padding: 7px 12px; border-radius: 999px; background: var(--brand-tint); color: var(--brand-text); font-size: 13px; font-weight: 500; }
+.lg .kk { height: 50px; border-radius: 12px; background: #FEE500; color: #191919; display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+.run1 .lg > * { animation: rise .45s cubic-bezier(.2,.9,.3,1) backwards; }
+.run1 .lg h4 { animation-delay: .05s; } .run1 .lg .chips { animation-delay: .18s; } .run1 .lg .kk { animation-delay: .32s; }
+.run1 .lg .chips span { animation: pop .35s cubic-bezier(.3,1.3,.5,1) backwards; animation-delay: calc(.22s + var(--i) * 70ms); }
+
+/* 2 비밀번호 확인 */
+.fm { padding: 16px; display: grid; gap: 12px; }
+.fd label { display: block; font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; }
+.fd .in { position: relative; }
+.fd input { width: 100%; height: 46px; border-radius: 10px; border: 1px solid var(--rule-strong); background: var(--bg); color: var(--ink); padding: 0 40px 0 12px; font: 15px var(--font); }
+.fd svg { position: absolute; right: 12px; top: 13px; width: 20px; height: 20px; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.fd .ck { stroke: var(--brand-text); } .fd .xk { stroke: #E5484D; }
+.fd.ok .ck path { animation: draw .3s ease-out forwards; }
+.fd.bad input { border-color: #E5484D; animation: shake .35s; }
+.fd.bad .xk path { animation: draw .25s ease-out forwards; }
+.fd small { display: block; height: 16px; font-size: 12px; margin-top: 4px; color: #E5484D; }
+
+/* 3 이용권 확인 */
+.vf { margin: 16px; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+.vf .band { position: relative; height: 54px; background: var(--sub); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; overflow: hidden; }
+.vf .band i { position: absolute; inset: 0; background: var(--brand); transform: scaleX(0); transform-origin: left; transition: transform .45s cubic-bezier(.65,0,.35,1); }
+.vf .band span { position: relative; transition: color .2s .25s; }
+.vf.done .band i { transform: none; } .vf.done .band span { color: #fff; }
+.vf .body { padding: 14px 16px; font-size: 13px; color: var(--ink-soft); }
+.vf .body b { display: block; font-size: 17px; color: var(--ink); font-weight: 700; margin-bottom: 4px; }
+
+/* 4 내 예약 */
+.ap .st { margin-left: auto; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: var(--brand-tint); color: var(--brand-text); display: inline-block; }
+.ap.cx { opacity: .5; } .ap.cx .st { background: var(--sub); color: var(--ink-soft); animation: flip .4s cubic-bezier(.3,1.3,.5,1); }
+@keyframes flip { 0% { transform: rotateX(90deg); } 100% { transform: none; } }
+.ap .x { border: 0; background: none; color: var(--ink-faint); font: 13px var(--font); cursor: pointer; margin-left: 8px; }
+
+/* 6 가게 등록 단계 */
+.sv { display: flex; align-items: flex-start; padding: 26px 12px 0; }
+.sv .s { flex: 1; text-align: center; font-size: 13px; position: relative; }
+.sv .n { width: 36px; height: 36px; margin: 0 auto 8px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--sub); color: var(--ink-soft); transition: background .25s, color .25s; position: relative; z-index: 1; }
+.sv .s.on .n { background: var(--brand); color: #fff; animation: pop .35s cubic-bezier(.3,1.3,.5,1); }
+.sv .s:not(:last-child)::after { content: ""; position: absolute; top: 17px; left: calc(50% + 22px); right: calc(-50% + 22px); height: 2px; background: var(--rule-strong); }
+.sv .s .ln { position: absolute; top: 17px; left: calc(50% + 22px); right: calc(-50% + 22px); height: 2px; background: var(--brand); transform: scaleX(0); transform-origin: left; transition: transform .35s ease; z-index: 1; }
+.sv .s.lined .ln { transform: none; }
+.sv small { display: block; color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
+
+/* 7 탈퇴 전 확인 */
+.dl { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--rule); font-size: 15px; }
+.dl i { width: 22px; height: 22px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1.5px var(--rule-strong); display: grid; place-items: center; transition: background .2s, box-shadow .2s; }
+.dl i svg { width: 13px; height: 13px; fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.dl.ok i { background: var(--brand); box-shadow: none; } .dl.ok i path { animation: draw .3s .05s ease-out forwards; }
+.dl small { margin-left: auto; color: var(--ink-soft); font-size: 13px; }
+.dl.ok small { color: var(--brand-text); }
+
+/* 8 회사 소개 */
+.ab { padding: 22px 16px; }
+.ab h4 { font-size: 24px; font-weight: 800; margin: 0 0 18px; letter-spacing: -0.02em; }
+.ab .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ab .nums div { padding: 14px 8px; border-radius: 12px; background: var(--sub); text-align: center; }
+.ab .nums b { display: block; font-size: 28px; font-weight: 800; color: var(--brand-text); font-variant-numeric: tabular-nums; }
+.ab .nums small { font-size: 12px; color: var(--ink-soft); }
+.run8 .ab .nums div { animation: rise .45s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 90ms); }
+
+/* 9 숙소 필터 칩 */
+.fl { padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 8px; min-height: 60px; }
+.fl span { padding: 7px 10px 7px 12px; border-radius: 999px; background: var(--brand-tint); color: var(--brand-text); font-size: 13px; font-weight: 500; display: inline-flex; gap: 6px; align-items: center; animation: pop .32s cubic-bezier(.3,1.3,.5,1); }
+.fl span button { border: 0; background: none; color: inherit; cursor: pointer; font-size: 13px; padding: 0; }
+.fl span.out { animation: out .2s ease forwards; } @keyframes out { to { opacity: 0; transform: scale(.6); } }
+.opts { padding: 0 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+.opts button { height: 34px; padding: 0 12px; border-radius: 999px; border: 0; box-shadow: inset 0 0 0 1px var(--rule-strong); background: none; color: var(--ink); font: 500 13px var(--font); cursor: pointer; }
+.fbtn { position: absolute; left: 16px; right: 16px; bottom: 16px; width: auto; }
+.fbtn b { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: #fff; color: var(--brand); font-size: 12px; }
+.fbtn b.pop { animation: pop .3s cubic-bezier(.3,1.3,.5,1); }
+
+/* 10 약관 동의 */
+.tm { padding: 16px; display: grid; gap: 2px; }
+.tm label { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-size: 15px; cursor: pointer; }
+.tm label.all { font-weight: 700; border-bottom: 1px solid var(--rule); padding-bottom: 14px; margin-bottom: 4px; }
+.tm i { width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--rule-strong); display: grid; place-items: center; flex: none; transition: background .2s, box-shadow .2s; }
+.tm i svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.tm label.on i { background: var(--brand); box-shadow: none; } .tm label.on i path { animation: draw .25s ease-out forwards; }
+.tm label small { margin-left: auto; color: var(--ink-faint); font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; } }
+</style>
+<div class="wrap">
+  <h1>모션 15차 시안</h1>
+  <p class="lede">로그인·회원가입·이용권 확인·내 예약·블로그·가게 등록·탈퇴·소개 페이지·숙소 필터에서 아직 움직임이 없는 열 군데예요. 직접 눌러 보거나 "다시 보기"로 재생해 보세요.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all">전부 다시 보기</button>
+    <button class="ctl" id="mode">다크 모드로 보기</button>
+  </div>
+  <div class="list">
+
+    <div class="item">
+      <div class="scr" id="s1"><div class="lg"><h4>우리 동네 가게,<br>미리 사면 더 싸게</h4>
+        <div class="chips"><span style="--i:0">동네 이용권</span><span style="--i:1">교환권·기프티콘</span><span style="--i:2">숙소</span></div>
+        <div class="kk">카카오로 시작하기</div></div></div>
+      <div><h3><span class="n">1</span>로그인 첫 화면</h3>
+        <p>제목 → 서비스 칩 → 카카오 버튼이 <b>위에서부터 차례로 떠올라요.</b> 칩은 하나씩 톡톡. 버튼 자체를 누를 때는 움직이지 않아요(아이폰 멈춤 방지).</p>
+        <button class="replay" data-r="1">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s2"><div class="fm">
+        <div class="fd"><label>비밀번호</label><div class="in"><input id="pw1" type="password" value="urdeal2026"></div></div>
+        <div class="fd" id="fd2"><label>비밀번호 확인</label><div class="in"><input id="pw2" type="password" placeholder="한 번 더 입력"><svg class="ck" viewBox="0 0 24 24" style="display:none"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><svg class="xk" viewBox="0 0 24 24" style="display:none"><path d="M7 7l10 10M17 7L7 17"/></svg></div><small id="msg2"></small></div>
+        <div style="display:flex;gap:8px"><button class="ctl" id="b2ok" style="flex:1">맞게 입력</button><button class="ctl" id="b2bad" style="flex:1">틀리게 입력</button></div></div></div>
+      <div><h3><span class="n">2</span>회원가입 · 비밀번호 확인</h3>
+        <p>두 칸이 같으면 오른쪽에 <b>체크가 그려지고</b>, 다르면 칸이 <b>좌우로 살짝 흔들리며</b> 빨간 X 가 그려져요. 지금은 '가입' 을 눌러야 알 수 있어요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s3"><div class="vf" id="vf"><div class="band"><i></i><span id="vft">사용 가능</span></div>
+        <div class="body"><b>돼지명가 삼겹살 2인</b>유효기간 12월 31일까지 · 1장</div></div>
+        <div style="padding:0 16px"><button class="btn" id="b3">사용 처리</button></div></div>
+      <div><h3><span class="n">3</span>이용권 확인(가게 화면)</h3>
+        <p>사장님이 '사용 처리'를 누르면 위 띠가 <b>왼쪽부터 파랗게 차오르며</b> '사용 완료'로 바뀌어요. 처리됐는지 손님과 사장님이 동시에 봐요.</p>
+        <button class="replay" data-r="3">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s4"><div class="hd">내 예약</div><div id="l4"></div></div>
+      <div><h3><span class="n">4</span>내 예약 · 취소</h3>
+        <p>예약을 취소하면 상태 배지가 <b>위아래로 뒤집히며 '취소'로 바뀌고</b> 그 줄이 흐려져요. 어느 예약이 취소됐는지 놓치지 않아요.</p>
+        <button class="replay" data-r="4">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s5"><div class="hd">유어딜 블로그</div>
+        <div class="tabs" id="t5"><button class="on" data-k="a">전체</button><button data-k="b">이용권</button><button data-k="c">유어샵</button><button data-k="d">가이드</button><i class="ul"></i></div>
+        <div id="l5"></div></div>
+      <div><h3><span class="n">5</span>블로그 목록 · 태그</h3>
+        <p>태그를 누르면 <b>밑줄이 미끄러지고</b> 글이 차례로 떠오르며 바뀌어요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s6"><div class="hd">가게 등록 신청</div>
+        <div class="sv" id="sv"><div class="s"><div class="n">1</div>가게 찾기<small>코드·사업자번호</small><i class="ln"></i></div><div class="s"><div class="n">2</div>서류 확인<small>사업자등록증</small><i class="ln"></i></div><div class="s"><div class="n">3</div>승인<small>결과는 알림으로</small></div></div></div>
+      <div><h3><span class="n">6</span>가게 등록 신청 · 단계</h3>
+        <p>지금 단계까지 <b>1·2·3이 차례로 켜지고 사이 선이 이어져요.</b> 어디까지 왔는지 한눈에 보여요.</p>
+        <button class="replay" data-r="6">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s7"><div class="hd">탈퇴하기 전에 확인해 주세요</div><div id="l7"></div></div>
+      <div><h3><span class="n">7</span>탈퇴 전 확인</h3>
+        <p>먼저 정리할 것들이 차례로 나오고, <b>정리가 끝난 줄은 동그라미에 체크가 그려져요.</b> 무엇이 남았는지 분명하게 보여요.</p>
+        <button class="replay" data-r="7">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s8"><div class="ab"><h4>정가보다 싸게,<br>매장에서 바로</h4>
+        <div class="nums"><div style="--i:0"><b id="n81">0</b><small>원 가입비</small></div><div style="--i:1"><b id="n82">0</b><small>분이면 등록</small></div><div style="--i:2"><b id="n83">0</b><small>원 월 고정비</small></div></div></div></div>
+      <div><h3><span class="n">8</span>서비스 소개 페이지</h3>
+        <p>스크롤해서 숫자 칸이 보이면 칸이 차례로 떠오르고 <b>숫자가 세어 올라가요.</b> 처음 보는 사장님에게 핵심이 먼저 꽂혀요.</p>
+        <button class="replay" data-r="8">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s9"><div class="hd">숙소 필터</div><div class="fl" id="fl"></div>
+        <div class="opts"><button data-v="호텔">호텔</button><button data-v="펜션">펜션</button><button data-v="오션뷰">오션뷰</button><button data-v="조식 포함">조식 포함</button></div>
+        <button class="btn fbtn" id="fb">적용하기<b id="fc">0</b></button></div>
+      <div><h3><span class="n">9</span>숙소 검색 · 필터</h3>
+        <p>조건을 고르면 위에 <b>칩이 톡 생기고</b>, × 를 누르면 작아지며 사라져요. 아래 '적용하기' 옆 개수도 같이 톡 튀어요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s10"><div class="tm" id="tm">
+        <label class="all" data-a><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i>전체 동의</label>
+        <label data-k><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i>만 14세 이상이에요<small>필수</small></label>
+        <label data-k><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i>이용약관<small>필수</small></label>
+        <label data-k><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i>개인정보처리방침<small>필수</small></label></div></div>
+      <div><h3><span class="n">10</span>회원가입 · 약관 동의</h3>
+        <p>체크하면 상자 안에 <b>체크가 그려져요.</b> '전체 동의'를 누르면 아래 칸들이 <b>위에서부터 하나씩</b> 켜져요(11차 때 가입 화면엔 '전체 동의'가 없어 못 넣었는데, 이번에 함께 만들어요).</p>
+        <button class="replay" data-r="10">처음으로</button></div>
+    </div>
+
+  </div>
+</div>
+<script>
+const $ = (s) => document.querySelector(s)
+const restart = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls) }
+const roll = (el, to, ms, d = 0) => setTimeout(() => { const t0 = performance.now(); const f = (t) => { const p = Math.min(1, (t - t0) / ms); el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }, d)
+// 1
+const r1 = () => restart($('#s1'), 'run1')
+// 2
+;(() => { const fd = $('#fd2'), ck = fd.querySelector('.ck'), xk = fd.querySelector('.xk'), msg = $('#msg2')
+  const show = (good) => { fd.classList.remove('ok', 'bad'); ck.style.display = good ? '' : 'none'; xk.style.display = good ? 'none' : ''; void fd.offsetWidth; fd.classList.add(good ? 'ok' : 'bad'); msg.textContent = good ? '' : '비밀번호가 일치하지 않아요' }
+  $('#b2ok').onclick = () => { $('#pw2').value = 'urdeal2026'; show(true) }
+  $('#b2bad').onclick = () => { $('#pw2').value = 'urdeal2025'; show(false) } })()
+// 3
+const r3 = () => { $('#vf').classList.remove('done'); $('#vft').textContent = '사용 가능'; $('#b3').textContent = '사용 처리' }
+$('#b3').onclick = () => { $('#vf').classList.add('done'); setTimeout(() => $('#vft').textContent = '사용 완료', 250); $('#b3').textContent = '처리됐어요' }
+// 4
+const AP = [['헤어살롱 모아 · 커트', '11월 8일 (토) 14:00'], ['네일 스튜디오 · 젤', '11월 12일 (수) 19:30'], ['오션뷰 스테이 · 1박', '11월 15일 (토) 체크인']]
+const r4 = () => { $('#l4').innerHTML = AP.map(([a, b]) => `<div class="row ap"><div class="ph"></div><div><b>${a}</b><small>${b}</small></div><span class="st">예약 확정</span><button class="x">취소</button></div>`).join('')
+  $('#l4').querySelectorAll('.ap').forEach((r) => r.querySelector('.x').onclick = () => { r.classList.add('cx'); r.querySelector('.st').textContent = '취소됨'; r.querySelector('.x').remove() }) }
+// 5
+;(() => { const D = { a: [['동네 이용권, 이렇게 쓰세요', '가이드 · 3분'], ['유어샵 하나로 내 가게 열기', '유어샵 · 4분'], ['교환권을 선물로 보내는 법', '이용권 · 2분']], b: [['교환권을 선물로 보내는 법', '이용권 · 2분'], ['이용권 환불은 언제 되나요', '이용권 · 2분']], c: [['유어샵 하나로 내 가게 열기', '유어샵 · 4분']], d: [['동네 이용권, 이렇게 쓰세요', '가이드 · 3분'], ['처음 오신 사장님께', '가이드 · 5분']] }
+  const t = $('#t5'), ul = t.querySelector('.ul'), l = $('#l5')
+  const move = (b) => { ul.style.width = b.offsetWidth + 'px'; ul.style.transform = `translateX(${b.offsetLeft - 16}px)` }
+  const draw = (k, sw) => { l.classList.remove('swap'); l.innerHTML = D[k].map(([a, b], i) => `<div class="row" style="--i:${i}"><div class="ph"></div><div><b>${a}</b><small>${b}</small></div></div>`).join(''); if (sw) { void l.offsetWidth; l.classList.add('swap') } }
+  t.querySelectorAll('button').forEach((b) => b.onclick = () => { t.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); move(b); draw(b.dataset.k, true) })
+  draw('a', false); requestAnimationFrame(() => move(t.querySelector('button.on'))) })()
+// 6
+const r6 = () => { const ss = [...document.querySelectorAll('#sv .s')]; ss.forEach((s) => s.classList.remove('on', 'lined'))
+  ;[0, 1].forEach((i) => setTimeout(() => { ss[i].classList.add('on'); if (i < 1) setTimeout(() => ss[i].classList.add('lined'), 150) }, 200 + i * 420)) }
+// 7
+const DL = [['남은 딜 1,200딜', '정리됨', 1], ['사용 전 이용권 0장', '정리됨', 1], ['진행 중인 예약 1건', '먼저 정리', 0]]
+const r7 = () => { const l = $('#l7'); l.classList.remove('swap'); l.innerHTML = DL.map(([a, b], i) => `<div class="dl" style="--i:${i}" data-ok="${i}"><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i>${a}<small>${b}</small></div>`).join(''); void l.offsetWidth; l.classList.add('swap')
+  l.querySelectorAll('.dl').forEach((d, i) => { if (DL[i][2]) setTimeout(() => d.classList.add('ok'), 380 + i * 160) }) }
+// 8
+const r8 = () => { restart($('#s8'), 'run8'); $('#n81').textContent = '0'; roll($('#n82'), 5, 700, 200); $('#n83').textContent = '0' }
+// 9
+;(() => { const fl = $('#fl'), fc = $('#fc'); const sel = new Set()
+  const bump = () => { fc.textContent = sel.size; restart(fc, 'pop') }
+  document.querySelectorAll('.opts button').forEach((b) => b.onclick = () => { const v = b.dataset.v; if (sel.has(v)) return; sel.add(v)
+    const s = document.createElement('span'); s.innerHTML = `${v}<button aria-label="빼기">×</button>`; fl.appendChild(s); bump()
+    s.querySelector('button').onclick = () => { s.classList.add('out'); sel.delete(v); bump(); setTimeout(() => s.remove(), 200) } }) })()
+// 10
+const r10 = () => document.querySelectorAll('#tm label').forEach((l) => l.classList.remove('on'))
+;(() => { const ks = [...document.querySelectorAll('#tm label[data-k]')], all = $('#tm label[data-a]')
+  const sync = () => all.classList.toggle('on', ks.every((k) => k.classList.contains('on')))
+  ks.forEach((k) => k.onclick = () => { k.classList.toggle('on'); sync() })
+  all.onclick = () => { const on = !all.classList.contains('on'); all.classList.toggle('on', on); ks.forEach((k, i) => setTimeout(() => k.classList.toggle('on', on), on ? 90 + i * 90 : 0)) } })()
+
+const R = { 1: r1, 3: r3, 4: r4, 6: r6, 7: r7, 8: r8, 10: r10 }
+document.querySelectorAll('.replay').forEach((b) => b.onclick = () => R[b.dataset.r]())
+$('#all').onclick = () => Object.values(R).forEach((f) => f())
+let dark = matchMedia('(prefers-color-scheme: dark)').matches
+const applyMode = () => { document.querySelectorAll('.scr').forEach((s) => s.dataset.mode = dark ? 'dark' : 'light'); $('#mode').textContent = dark ? '라이트 모드로 보기' : '다크 모드로 보기' }
+$('#mode').onclick = () => { dark = !dark; applyMode() }
+applyMode(); r4(); r7()
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; io.unobserve(e.target); const id = +e.target.id.slice(1); if ([1, 6, 7, 8].includes(id)) R[id]() }), { threshold: .4 })
+document.querySelectorAll('.scr').forEach((s) => io.observe(s))
+</script>

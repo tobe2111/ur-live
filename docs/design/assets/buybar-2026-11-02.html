@@ -1,0 +1,154 @@
+<title>이용권 하단 구매 바 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* 레이아웃: 지금 하단 바 + 개선안 셋을 폰 화면 아래쪽만 잘라 세로로 쌓는다. 각 바는 직접 눌러 본다. */
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --surface: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --sale: #DC2626;
+  --photo: linear-gradient(135deg,#F2D9C9,#C9D8F2);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --surface: #1D1F29; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D; --sale: #FF5C69;
+  --photo: linear-gradient(135deg,#4A3729,#2B3A57);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.list { display: grid; gap: 36px; }
+.item { display: grid; grid-template-columns: minmax(0, 390px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+.item h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.item .rec { font-size: 12px; font-weight: 700; color: #fff; background: var(--brand); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+.item p { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0 0 8px; }
+.item p b { color: var(--page-fg); }
+.item ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--page-soft); line-height: 1.7; }
+.scr { position: relative; height: 230px; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); }
+.scr .ctx { padding: 14px 16px; }
+.scr .ctx .l { height: 12px; border-radius: 6px; background: var(--sub); margin-bottom: 10px; }
+.bar { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--rule); padding: 12px 16px 22px; display: flex; align-items: center; gap: 12px; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.cta { flex: 1; height: 52px; border: 0; border-radius: 12px; background: var(--brand); color: #fff; font: 700 17px var(--font); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: transform .12s; }
+.cta:active { transform: scale(.98); }
+
+/* 지금 */
+.now .pb small { display: block; font-size: 12px; color: var(--ink-faint); text-decoration: line-through; }
+.now .pb b { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+.now .pb b span { color: var(--sale); font-size: 17px; margin-right: 4px; }
+
+/* 찜 버튼 */
+.heart { width: 48px; height: 52px; border-radius: 12px; border: 1px solid var(--rule-strong); background: transparent; color: var(--ink); display: grid; place-items: center; cursor: pointer; flex: none; gap: 0; padding: 0; }
+.heart svg { width: 22px; height: 22px; }
+.heart small { font-size: 12px; color: var(--ink-soft); line-height: 1; margin-top: -4px; }
+.heart.on svg { fill: var(--sale); stroke: var(--sale); animation: hpop .4s cubic-bezier(.3,1.3,.5,1); }
+@keyframes hpop { 0% { transform: scale(.6); } 60% { transform: scale(1.2); } 100% { transform: none; } }
+
+/* 안 1 */
+.v1 .pb { min-width: 0; }
+.v1 .pb .top { display: flex; gap: 6px; align-items: baseline; font-size: 13px; }
+.v1 .pb .top s { color: var(--ink-faint); } .v1 .pb .top em { font-style: normal; color: var(--sale); font-weight: 700; }
+.v1 .pb b { display: block; font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+
+/* 안 2: 가격이 버튼 안으로 */
+.v2 .cta { flex-direction: column; gap: 0; line-height: 1.2; }
+.v2 .cta small { font-size: 12px; font-weight: 500; opacity: .85; }
+.v2 .cta small s { opacity: .8; }
+
+/* 안 3: 딜 혜택 줄 */
+.v3 .perk { position: absolute; left: 0; right: 0; bottom: 86px; padding: 8px 16px; background: var(--brand-tint); color: var(--brand-text); font-size: 13px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; transform: translateY(100%); opacity: 0; transition: transform .35s cubic-bezier(.2,1,.3,1), opacity .25s; }
+.v3.show .perk { transform: none; opacity: 1; }
+.v3 .perk b { font-weight: 700; }
+
+/* 바 등장 */
+.bar.rise { animation: barRise .4s cubic-bezier(.2,1,.3,1) backwards; }
+@keyframes barRise { from { transform: translateY(100%); } }
+
+.tag { display: inline-block; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 999px; background: var(--page-rule); color: var(--page-fg); margin-right: 4px; }
+
+@media (prefers-reduced-motion: reduce) { .scr *, .scr { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <h1>이용권 하단 구매 바 시안</h1>
+  <p class="lede">이용권 상세를 보는 내내 화면 맨 아래에 붙어 있는 바입니다(폰). 지금 바는 큰 가격 하나와 파란 버튼 하나뿐이라, 할인율·정가·가격이 한 덩어리로 뭉쳐 읽히고 찜할 곳이 없습니다. 개선안 셋을 위아래로 비교합니다. 하트와 버튼은 직접 눌러 볼 수 있습니다. 숫자는 예시입니다.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all" type="button">바 다시 올라오게</button>
+    <button class="ctl" id="mode" type="button">다크 모드로</button>
+  </div>
+
+  <div class="list">
+    <div class="item">
+      <div class="scr" data-v="now"><div class="ctx"><div class="l"></div><div class="l" style="width:70%"></div><div class="l" style="width:85%"></div></div>
+        <div class="bar now"><div class="pb"><small>45,000원</small><b><span>13%</span>39,000원</b></div><button class="cta" type="button">구매하기</button></div></div>
+      <div><h3>지금</h3>
+        <p>정가(취소선) 위 한 줄, 아래에 <b>할인율 17px 빨강 + 가격 24px</b> 이 한 줄로 붙어 있습니다.</p>
+        <ul><li>할인율과 가격이 크기만 다른 한 덩어리라 무엇이 가격인지 한 번 더 봐야 합니다</li><li>이용권 상세에는 찜(하트) 버튼이 아예 없습니다(코드 확인). 목록 카드에서만 찜할 수 있습니다</li><li>바가 움직임 없이 처음부터 붙어 있습니다</li></ul></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" data-v="v1"><div class="ctx"><div class="l"></div><div class="l" style="width:70%"></div><div class="l" style="width:85%"></div></div>
+        <div class="bar v1"><button class="heart" type="button" aria-label="찜"><svg class="ico" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></button>
+          <div class="pb"><div class="top"><em>13%</em><s>45,000원</s></div><b>39,000원</b></div><button class="cta" type="button">구매하기</button></div></div>
+      <div><h3>안 1 · 찜 + 정돈된 가격<span class="rec">추천</span></h3>
+        <p>왼쪽에 <b>찜 하트</b>, 가운데 가격은 <b>위 줄: 할인율·정가 / 아래 줄: 가격</b>으로 나눕니다. 가격만 크고, 할인 정보는 작게 위로.</p>
+        <ul><li>쿠팡·무신사·여기어때 같은 큰 앱들이 쓰는 배치라 손님이 이미 익숙합니다</li><li>상세에서 처음으로 찜할 수 있게 되고, 엄지 닿는 곳이라 "일단 담아 두기"가 쉬워집니다</li><li>움직임: 바가 아래에서 올라오며 자리 잡음 · 하트 누르면 톡 차오름</li></ul></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" data-v="v2"><div class="ctx"><div class="l"></div><div class="l" style="width:70%"></div><div class="l" style="width:85%"></div></div>
+        <div class="bar v2"><button class="heart" type="button" aria-label="찜"><svg class="ico" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></button>
+          <button class="cta" type="button"><span>39,000원 구매하기</span><small><s>45,000원</s> 13% 할인</small></button></div></div>
+      <div><h3>안 2 · 가격을 버튼 안으로</h3>
+        <p>가격 칸을 없애고 <b>버튼이 가격을 말합니다</b>("39,000원 구매하기"). 버튼이 넓어져 누르기 쉽고 바가 단순해집니다.</p>
+        <ul><li>바가 가장 깔끔하지만 정가·할인율이 버튼 안 작은 글자로 내려가 덜 보입니다</li><li>결제창(안 A)의 결제 버튼과 같은 말투라 이어집니다</li></ul></div>
+    </div>
+
+    <div class="item">
+      <div class="scr v3" data-v="v3"><div class="ctx"><div class="l"></div><div class="l" style="width:70%"></div></div>
+        <div class="perk"><span>보유 딜 1,200 쓰면</span><b>37,800원</b></div>
+        <div class="bar v1"><button class="heart" type="button" aria-label="찜"><svg class="ico" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></button>
+          <div class="pb"><div class="top"><em>13%</em><s>45,000원</s></div><b>39,000원</b></div><button class="cta" type="button">구매하기</button></div></div>
+      <div><h3>안 3 · 안 1 + 내 혜택 한 줄</h3>
+        <p>안 1 위에, <b>딜이나 쿠폰이 있는 사람에게만</b> 옅은 파란 줄이 올라옵니다("보유 딜 1,200 쓰면 37,800원"). 없는 사람에겐 안 1 과 같습니다.</p>
+        <ul><li>"나는 더 싸게 살 수 있다"를 사기 전에 알려 줘 구매를 밀어 줍니다</li><li>움직임: 바가 자리 잡은 뒤 혜택 줄이 한 박자 늦게 올라옴</li><li>⚠️ 보유 딜을 이 화면에서 읽어야 합니다(이미 결제창이 읽는 값이라 새 조회는 없음)</li></ul></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var screens = Array.prototype.slice.call(document.querySelectorAll('.scr'));
+  function play() {
+    screens.forEach(function (s) {
+      var b = s.querySelector('.bar'); if (s.dataset.v === 'now') return;
+      b.classList.remove('rise'); void b.offsetWidth; b.classList.add('rise');
+      if (s.classList.contains('v3')) { s.classList.remove('show'); setTimeout(function () { s.classList.add('show'); }, reduce ? 0 : 550); }
+    });
+  }
+  screens.forEach(function (s) {
+    s.querySelectorAll('.heart').forEach(function (h) { h.addEventListener('click', function () { h.classList.toggle('on'); }); });
+  });
+  document.getElementById('all').addEventListener('click', play);
+  var mb = document.getElementById('mode');
+  function setMode(m) { screens.forEach(function (s) { s.dataset.mode = m; }); mb.textContent = m === 'dark' ? '라이트 모드로' : '다크 모드로'; }
+  mb.addEventListener('click', function () { setMode(screens[0].dataset.mode === 'dark' ? 'light' : 'dark'); });
+  var r = document.documentElement;
+  setMode(r.dataset.theme === 'dark' || (!r.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+  play();
+})();
+</script>

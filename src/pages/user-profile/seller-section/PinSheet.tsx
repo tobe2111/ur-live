@@ -126,7 +126,7 @@ export default function PinSheet({ sellerId, onClose, onDone }: {
             돈이 나가는 일에는 PIN 을 한 번 더 확인해요. 숫자 4~6자리예요.
           </p>
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">PIN</span>
+            <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">PIN</span>
             <input
               type="password"
               inputMode="numeric"
@@ -139,7 +139,7 @@ export default function PinSheet({ sellerId, onClose, onDone }: {
           </label>
           {!pinSet && (
             <label className="block">
-              <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">한 번 더</span>
+              <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">한 번 더</span>
               <input
                 type="password"
                 inputMode="numeric"
@@ -156,7 +156,7 @@ export default function PinSheet({ sellerId, onClose, onDone }: {
           )}
           {needPassword && (
             <label className="block pt-1">
-              <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">매장 비밀번호</span>
+              <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">매장 비밀번호</span>
               <input
                 type="password"
                 autoComplete="current-password"

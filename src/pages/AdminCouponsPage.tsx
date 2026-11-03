@@ -6,7 +6,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Plus, Trash2, Ticket, Copy, Send, X, Pencil } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate, parseUTCDate } from '@/utils/date'
@@ -24,7 +24,7 @@ export default function AdminCouponsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
-  const { data: coupons = [], isLoading: loading, refetch } = useApiQuery<Coupon[]>(
+  const { data: coupons = [], isLoading: loading, isError, error, refetch } = useApiQuery<Coupon[]>(
     ['admin', 'coupons'], '/api/admin/coupons',
     { select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -308,7 +308,9 @@ export default function AdminCouponsPage() {
         )}
 
         {/* 쿠폰 목록 */}
-        {loading ? (
+        {isError ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="쿠폰" />
+        ) : loading ? (
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
           </div>

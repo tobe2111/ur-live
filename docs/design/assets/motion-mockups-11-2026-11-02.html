@@ -1,0 +1,280 @@
+<title>모션 11차 시안</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --star: #F5A524;
+  --photo1: linear-gradient(135deg,#F2D9C9,#C9D8F2); --photo2: linear-gradient(135deg,#D3E8D6,#E9DCC6); --photo3: linear-gradient(135deg,#E6D3EB,#D0DEF0);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --photo1: linear-gradient(135deg,#4A3729,#2B3A57); --photo2: linear-gradient(135deg,#2C4430,#4A3E2B); --photo3: linear-gradient(135deg,#40304A,#293A52);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-inline: 16px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.list { display: grid; gap: 40px; }
+.item { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+.item h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.item h3 .n { color: var(--brand); margin-right: 6px; }
+.item p { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0 0 8px; }
+.item p b { color: var(--page-fg); font-weight: 500; }
+.replay { margin-top: 4px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; cursor: pointer; }
+.scr { position: relative; height: 300px; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); font-size: 15px; }
+.pad { padding: 16px; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 1 홈 카테고리 밑줄 + 10 목록 교체 */
+.cats { position: relative; display: flex; gap: 20px; padding: 14px 16px 0; border-bottom: 1px solid var(--rule); }
+.cats button { border: 0; background: none; padding: 0 0 8px; font: 15px var(--font); color: var(--ink-soft); cursor: pointer; }
+.cats button.on { color: var(--ink); font-weight: 700; }
+.cats .ul { position: absolute; bottom: -1px; height: 2px; background: var(--brand); border-radius: 1px; transition: transform .3s cubic-bezier(.2,.9,.3,1), width .3s cubic-bezier(.2,.9,.3,1); left: 0; }
+.feed { padding: 12px 16px; display: grid; gap: 10px; }
+.feed .r { display: flex; gap: 12px; align-items: center; }
+.feed .r .ph { width: 56px; height: 56px; border-radius: 10px; flex: none; }
+.feed .r b { font-size: 15px; font-weight: 500; display: block; }
+.feed .r small { font-size: 13px; color: var(--ink-soft); }
+.feed.swap .r { animation: fswap .34s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 40ms); }
+@keyframes fswap { from { opacity: 0; transform: translateY(8px); } }
+
+/* 2 FAQ */
+.faq .q { width: 100%; border: 0; background: none; text-align: left; display: flex; gap: 10px; padding: 14px 16px; font: 500 15px var(--font); color: var(--ink); cursor: pointer; align-items: flex-start; }
+.faq .q i { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--brand); color: #fff; font-style: normal; font-size: 12px; display: grid; place-items: center; }
+.faq .q span { flex: 1; }
+.faq .q svg { width: 16px; height: 16px; color: var(--ink-faint); transition: transform .3s cubic-bezier(.2,.9,.3,1); margin-top: 3px; }
+.faq .it.open .q svg { transform: rotate(180deg); }
+.faq .a { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.2,.9,.3,1); }
+.faq .it.open .a { grid-template-rows: 1fr; }
+.faq .a > div { overflow: hidden; }
+.faq .a p { margin: 0; padding: 0 16px 14px 48px; font-size: 13px; color: var(--ink-soft); line-height: 1.6; opacity: 0; transform: translateY(-4px); transition: opacity .25s, transform .25s; }
+.faq .it.open .a p { opacity: 1; transform: none; transition-delay: .08s; }
+.faq .it { border-bottom: 1px solid var(--rule); }
+
+/* 3 블로그 읽기 막대 */
+#s3 .prog { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: transparent; z-index: 2; }
+#s3 .prog i { display: block; height: 100%; background: var(--brand); transform-origin: left; transform: scaleX(0); }
+#s3 .art { position: absolute; inset: 0; overflow-y: auto; padding: 18px 16px; }
+#s3 .art h4 { font-size: 17px; margin: 0 0 10px; }
+#s3 .art p { font-size: 13px; color: var(--ink-soft); line-height: 1.7; margin: 0 0 12px; }
+
+/* 4 딜 내역 */
+.tx { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--rule); opacity: 0; transform: translateY(8px); }
+.run .tx { animation: rise .36s cubic-bezier(.2,.9,.3,1) forwards; animation-delay: calc(var(--i) * 55ms + .1s); }
+@keyframes rise { to { opacity: 1; transform: none; } }
+.tx b { font-size: 15px; font-weight: 500; display: block; } .tx small { font-size: 12px; color: var(--ink-faint); }
+.tx em { font-style: normal; font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+.tx em.plus { color: var(--brand-text); }
+
+/* 5 단골 해제 */
+.fl { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--rule); max-height: 72px; overflow: hidden; transition: max-height .3s ease .15s, padding .3s ease .15s, opacity .2s ease, transform .2s ease; }
+.fl .av { width: 44px; height: 44px; border-radius: 50%; flex: none; }
+.fl b { flex: 1; font-size: 15px; font-weight: 500; }
+.fl button { border: 1px solid var(--rule-strong); background: none; color: var(--ink); border-radius: 999px; height: 32px; padding: 0 12px; font: 13px var(--font); cursor: pointer; }
+.fl.out { opacity: 0; transform: translateX(-24px); max-height: 0; padding-block: 0; border-width: 0; }
+
+/* 6 수익 막대 */
+.ear { padding: 18px 16px; }
+.ear .l { font-size: 13px; color: var(--ink-soft); }
+.ear .v { font-size: 34px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin: 4px 0 18px; }
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; }
+.bars i { flex: 1; background: var(--brand); border-radius: 3px 3px 0 0; opacity: .85; transform-origin: bottom; transform: scaleY(0); }
+.run .bars i { animation: grow .5s cubic-bezier(.2,.9,.3,1) forwards; animation-delay: calc(var(--i) * 25ms); }
+@keyframes grow { to { transform: none; } }
+
+/* 7 전체 동의 */
+.agr { padding: 16px; }
+.agr label { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-size: 15px; cursor: pointer; }
+.agr .all { font-weight: 700; border-bottom: 1px solid var(--rule); padding-bottom: 14px; margin-bottom: 4px; }
+.box { width: 22px; height: 22px; border-radius: 6px; border: 1.6px solid var(--rule-strong); display: grid; place-items: center; flex: none; transition: background-color .2s, border-color .2s; }
+.box svg { width: 14px; height: 14px; stroke: #fff; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset .25s ease .05s; }
+.on .box { background: var(--brand); border-color: var(--brand); }
+.on .box svg { stroke-dashoffset: 0; }
+.agr small { color: var(--ink-faint); font-size: 12px; margin-left: auto; }
+
+/* 8 유어쇼츠 카드 */
+.vgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 12px; }
+.vc { aspect-ratio: 3/4; border-radius: 10px; position: relative; overflow: hidden; opacity: 0; transform: scale(.94); }
+.run .vc { animation: vin .4s cubic-bezier(.2,.9,.3,1) forwards; animation-delay: calc(var(--i) * 60ms); }
+@keyframes vin { to { opacity: 1; transform: none; } }
+.vc span { position: absolute; left: 6px; bottom: 6px; font-size: 12px; color: #fff; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+.vc svg { position: absolute; right: 6px; top: 6px; width: 16px; height: 16px; fill: #fff; opacity: .9; }
+
+/* 9 스위치 */
+.sw-row { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--rule); font-size: 15px; }
+.sw { position: relative; width: 44px; height: 24px; border-radius: 12px; border: 0; background: var(--rule-strong); cursor: pointer; transition: background-color .2s; padding: 0; }
+.sw i { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .28s cubic-bezier(.3,1.3,.5,1), width .14s ease; }
+.sw.on { background: var(--brand); }
+.sw.on i { transform: translateX(20px); }
+.sw:active i { width: 26px; }
+.sw.on:active i { transform: translateX(14px); }
+.sw.plain i { transition: transform .2s ease; }
+.sw.plain:active i { width: 20px; }
+.sw.plain.on:active i { transform: translateX(20px); }
+.cmp { font-size: 12px; color: var(--ink-faint); padding: 8px 16px; }
+
+@media (prefers-reduced-motion: reduce) { .scr *, .scr *::before { animation-duration: 0.01ms !important; animation-delay: 0s !important; transition-duration: 0.01ms !important; } }
+</style>
+
+<div class="wrap">
+  <h1>모션 11차 시안</h1>
+  <p class="lede">아직 모션이 없는 화면 아홉 곳(열 가지)이에요. 화면을 직접 눌러 보거나 "다시 보기"로 재생해 보세요. 휴대폰에서 "동작 줄이기"를 켠 사람에게는 움직임 없이 바로 보여요.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all">전부 다시 보기</button>
+    <button class="ctl" id="mode">다크 모드로 보기</button>
+  </div>
+  <div class="list">
+
+    <div class="item">
+      <div class="scr" id="s1">
+        <div class="cats" id="cats"><button class="on">전체</button><button>식사</button><button>뷰티</button><button>숙소</button><button>생활</button><span class="ul" id="ul"></span></div>
+        <div class="feed" id="feed"></div>
+      </div>
+      <div><h3><span class="n">1·10</span>홈 카테고리 밑줄 · 목록 바뀜</h3>
+        <p>카테고리를 누르면 파란 밑줄이 <b>옆으로 미끄러져</b> 가요. 지금은 이전 밑줄이 사라지고 새 자리에 툭 나타나요.</p>
+        <p>그와 함께 아래 목록이 <b>살짝 아래에서 떠오르며</b> 바뀌어서, 내용이 바뀌었다는 걸 알 수 있어요. 카테고리를 눌러 보세요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s2"><div class="faq" id="faq"></div></div>
+      <div><h3><span class="n">2</span>자주 묻는 질문 펼치기</h3>
+        <p>질문을 누르면 답이 <b>부드럽게 열리고 닫혀요.</b> 화살표도 함께 돌아요. 지금은 답이 툭 생기면서 아래 질문들이 한 번에 밀려요.</p>
+        <button class="replay" data-r="2">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s3"><div class="prog"><i id="pg"></i></div><div class="art" id="art">
+        <h4>동네 이용권, 이렇게 쓰면 더 아껴요</h4>
+        <p>유어딜 이용권은 온라인에서 할인가로 먼저 사고, 매장에서 QR 하나로 바로 써요. 줄 설 필요도, 쿠폰을 따로 챙길 필요도 없어요.</p>
+        <p>처음이라면 집 근처 가게부터 둘러보세요. 지도에서 보면 걸어서 갈 수 있는 곳이 한눈에 보여요.</p>
+        <p>산 이용권은 마이 → 내 이용권에 모여요. 유효기간이 가까워지면 알림으로 알려 드려요.</p>
+        <p>친구에게 선물하기도 쉬워요. 이용권을 고르고 카카오톡으로 보내면 끝이에요.</p>
+        <p>단골 가게를 만들어 두면 새 이용권이 올라올 때 가장 먼저 알 수 있어요.</p>
+        <p>오늘 소개한 방법으로 이번 주말 한 끼를 아껴 보세요.</p>
+      </div></div>
+      <div><h3><span class="n">3</span>블로그 글 읽기 막대</h3>
+        <p>글을 내려 읽는 만큼 맨 위 <b>얇은 파란 선이 차올라요.</b> 남은 분량이 보여서 끝까지 읽게 돼요. 화면 안을 스크롤해 보세요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s4">
+        <div class="tx" style="--i:0"><div><b>돈가스 1인 이용권 구매</b><small>11월 2일</small></div><em>−8,900딜</em></div>
+        <div class="tx" style="--i:1"><div><b>후기 보너스</b><small>11월 1일</small></div><em class="plus">+500딜</em></div>
+        <div class="tx" style="--i:2"><div><b>친구 초대 보상</b><small>10월 30일</small></div><em class="plus">+2,000딜</em></div>
+        <div class="tx" style="--i:3"><div><b>네일 이용권 구매</b><small>10월 28일</small></div><em>−19,000딜</em></div>
+        <div class="tx" style="--i:4"><div><b>무상 딜 선물</b><small>10월 25일</small></div><em class="plus">+10,000딜</em></div>
+      </div>
+      <div><h3><span class="n">4</span>딜 내역</h3>
+        <p>화면에 들어오면 내역 줄이 <b>위에서부터 차례로</b> 떠올라요. 받은 딜은 파란 글자라 들어온 돈과 나간 돈이 한눈에 갈려요.</p>
+        <button class="replay" data-r="4">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s5"><div id="fls"></div></div>
+      <div><h3><span class="n">5</span>단골 해제</h3>
+        <p>"해제"를 누르면 그 줄이 <b>옆으로 밀려 사라지고</b>, 아래 줄이 부드럽게 올라와요. 찜 목록에서 뺄 때와 같은 방식이에요. 실제 화면에서는 확인창에서 "해제"를 누른 뒤에 움직여요.</p>
+        <button class="replay" data-r="5">다시 채우기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s6"><div class="ear">
+        <div class="l">최근 30일 소개 수익</div>
+        <div class="v"><span id="ev">0</span>원</div>
+        <div class="bars" id="bars"></div>
+      </div></div>
+      <div><h3><span class="n">6</span>유어샵 수익 화면</h3>
+        <p>열면 30일 막대가 <b>왼쪽부터 차례로 자라고</b>, 합계 금액이 0에서 <b>굴러 올라가요.</b> 숫자만 있을 때보다 "얼마나 벌었나"가 바로 와닿아요.</p>
+        <button class="replay" data-r="6">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s7"><div class="agr" id="agr"></div></div>
+      <div><h3><span class="n">7</span>회원가입 전체 동의</h3>
+        <p>"전체 동의"를 누르면 아래 항목 체크가 <b>위에서부터 하나씩 그려지며</b> 켜져요. 무엇에 동의했는지 눈으로 한 번 훑게 돼요.</p>
+        <button class="replay" data-r="7">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s8"><div class="vgrid" id="vg"></div></div>
+      <div><h3><span class="n">8</span>유어쇼츠 목록</h3>
+        <p>영상 카드가 <b>왼쪽 위부터 차례로</b> 살짝 커지며 나타나요. 지금은 카드가 한꺼번에 뜨면서 사진이 제각각 늦게 채워져요.</p>
+        <button class="replay" data-r="8">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s9">
+        <div class="sw-row">알림 받기 <button class="sw" aria-label="알림 받기"><i></i></button></div>
+        <div class="sw-row">마케팅 소식 받기 <button class="sw on" aria-label="마케팅 소식 받기"><i></i></button></div>
+        <div class="cmp">아래는 지금 방식 (비교용)</div>
+        <div class="sw-row">지금 스위치 <button class="sw plain" aria-label="지금 스위치"><i></i></button></div>
+      </div>
+      <div><h3><span class="n">9</span>설정 스위치</h3>
+        <p>스위치를 <b>누르고 있으면 손잡이가 살짝 늘어나고</b>, 놓으면 반대편으로 톡 튀어 붙어요. 휴대폰 기본 설정 화면과 같은 "찰칵" 느낌이에요. 맨 아래 지금 방식과 비교해 보세요.</p></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const restart = (el) => { el.classList.remove('run'); void el.offsetWidth; el.classList.add('run') }
+const P = ['var(--photo1)', 'var(--photo2)', 'var(--photo3)']
+// 1·10
+const FEED = { 전체: [['홍대돈까스', '돈가스 1인 세트 · 8,900원'], ['네일앤', '젤네일 · 19,000원'], ['솔숲 펜션', '1박 · 98,000원']], 식사: [['홍대돈까스', '돈가스 1인 세트 · 8,900원'], ['카페 온', '브런치 2인 · 24,000원'], ['동탄 왕돈가스', '치즈돈가스 · 9,500원']], 뷰티: [['네일앤', '젤네일 · 19,000원'], ['헤어살롱 봄', '컷트 · 15,000원'], ['피부관리 결', '수분관리 · 39,000원']], 숙소: [['솔숲 펜션', '1박 · 98,000원'], ['그랑블루 오션뷰', '1박 · 149,000원'], ['바람의 언덕', '1박 · 120,000원']], 생활: [['클린홈', '에어컨 청소 · 60,000원'], ['반짝이사', '이사 청소 · 문의'], ['방충망 박사', '교체 · 35,000원']] }
+function drawFeed(k, swap) { const f = $('#feed'); f.classList.remove('swap'); f.innerHTML = FEED[k].map(([a, b], i) => `<div class="r" style="--i:${i}"><div class="ph" style="background:${P[i % 3]}"></div><div><b>${a}</b><small>${b}</small></div></div>`).join(''); if (swap) { void f.offsetWidth; f.classList.add('swap') } }
+function moveUl(btn) { const ul = $('#ul'); ul.style.width = btn.offsetWidth + 'px'; ul.style.transform = `translateX(${btn.offsetLeft}px)` }
+document.querySelectorAll('#cats button').forEach((b) => b.onclick = () => { document.querySelectorAll('#cats button').forEach((x) => x.classList.toggle('on', x === b)); moveUl(b); drawFeed(b.textContent, true) })
+// 2
+const QA = [['이용권은 어디서 쓰나요?', '산 매장에서 마이 → 내 이용권의 QR 을 보여 주면 돼요. 매장이 찍으면 바로 사용 처리돼요.'], ['유효기간이 지나면 어떻게 되나요?', '기간 안에 쓰지 못한 이용권은 정책에 따라 환불받을 수 있어요. 남은 기간은 내 이용권에서 볼 수 있어요.'], ['선물할 수 있나요?', '네. 이용권을 고르고 선물하기를 누르면 카카오톡으로 보낼 수 있어요.'], ['딜은 무엇인가요?', '유어딜에서 쓰는 포인트예요. 1딜은 1원이고, 결제할 때 먼저 쓰여요.']]
+function r2() { $('#faq').innerHTML = QA.map(([q, a]) => `<div class="it"><button class="q"><i>Q</i><span>${q}</span><svg class="ico" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button><div class="a"><div><p>${a}</p></div></div></div>`).join('')
+  document.querySelectorAll('#faq .it').forEach((it) => it.querySelector('.q').onclick = () => { const was = it.classList.contains('open'); document.querySelectorAll('#faq .it').forEach((x) => x.classList.remove('open')); if (!was) it.classList.add('open') }) }
+// 3
+$('#art').addEventListener('scroll', (e) => { const a = e.target; const p = a.scrollTop / Math.max(1, a.scrollHeight - a.clientHeight); $('#pg').style.transform = `scaleX(${p})` })
+// 4
+function r4() { restart($('#s4')) }
+// 5
+function r5() { $('#fls').innerHTML = [['홍대돈까스', 0], ['네일앤', 1], ['솔숲 펜션', 2], ['카페 온', 0]].map(([n, c]) => `<div class="fl"><div class="av" style="background:${P[c]}"></div><b>${n}</b><button>해제</button></div>`).join('')
+  document.querySelectorAll('#fls .fl').forEach((row) => row.querySelector('button').onclick = () => { row.classList.add('out'); setTimeout(() => row.remove(), 480) }) }
+// 6
+const DAYS = Array.from({ length: 30 }, (_, i) => Math.round(20 + 60 * Math.abs(Math.sin(i * 0.7)) + (i % 7 === 5 ? 30 : 0)))
+function roll(el, to, ms) { const t0 = performance.now(); const f = (t) => { const p = Math.min(1, (t - t0) / ms); el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))).toLocaleString('ko-KR'); if (p < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }
+function r6() { $('#bars').innerHTML = DAYS.map((h, i) => `<i style="--i:${i};height:${h}%"></i>`).join(''); restart($('#s6')); roll($('#ev'), 128400, 900) }
+// 7
+const ITEMS = [['서비스 이용약관', '필수'], ['개인정보 수집·이용', '필수'], ['만 14세 이상', '필수'], ['마케팅 소식 받기', '선택']]
+const CHK = '<span class="box"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>'
+function r7() { const a = $('#agr'); a.innerHTML = `<label class="all">${CHK}전체 동의</label>` + ITEMS.map(([t, s]) => `<label class="one">${CHK}${t}<small>${s}</small></label>`).join('')
+  const all = a.querySelector('.all'); const ones = [...a.querySelectorAll('.one')]
+  all.onclick = (e) => { e.preventDefault(); const on = !all.classList.contains('on'); all.classList.toggle('on', on); ones.forEach((o, i) => setTimeout(() => o.classList.toggle('on', on), on ? 80 + i * 90 : 0)) }
+  ones.forEach((o) => o.onclick = (e) => { e.preventDefault(); o.classList.toggle('on'); all.classList.toggle('on', ones.every((x) => x.classList.contains('on'))) }) }
+// 8
+const VT = ['돈가스 먹방', '네일 아트', '오션뷰 펜션', '브런치 카페', '헤어 컷', '에어컨 청소']
+function r8() { $('#vg').innerHTML = VT.map((t, i) => `<div class="vc" style="--i:${i};background:${P[i % 3]}"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>${t}</span></div>`).join(''); restart($('#s8')) }
+// 9
+document.querySelectorAll('.sw').forEach((s) => s.onclick = () => s.classList.toggle('on'))
+
+const R = { 2: r2, 4: r4, 5: r5, 6: r6, 7: r7, 8: r8 }
+document.querySelectorAll('.replay').forEach((b) => b.onclick = () => R[b.dataset.r]())
+$('#all').onclick = () => { Object.values(R).forEach((f) => f()); const first = $('#cats button'); first.click() }
+let dark = matchMedia('(prefers-color-scheme: dark)').matches
+const applyMode = () => { document.querySelectorAll('.scr').forEach((s) => s.dataset.mode = dark ? 'dark' : 'light'); $('#mode').textContent = dark ? '라이트 모드로 보기' : '다크 모드로 보기' }
+$('#mode').onclick = () => { dark = !dark; applyMode() }
+applyMode(); drawFeed('전체', false); r2(); r5(); r7()
+requestAnimationFrame(() => moveUl($('#cats button.on')))
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; io.unobserve(e.target); const id = +e.target.id.slice(1); if ([4, 6, 8].includes(id)) R[id]() }), { threshold: .4 })
+document.querySelectorAll('.scr').forEach((s) => io.observe(s))
+</script>

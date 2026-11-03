@@ -71,10 +71,11 @@ export default [
   {
     name: '[상세B지갑E] 📍매장 위치 카드에 테두리가 되살아난다',
     file: 'src/pages/group-buy/StoreLocation.tsx',
+    // 🌐 2026-11-02: 그 칸 안이 \`{map}\` 하나 → 외국어 네이버 지도 분기로 바뀌었다 — 칸 머리 줄로 앵커를 좁힌다.
     find: `      <div style={{ borderRadius: 14, overflow: 'hidden' }}>
-        {map}`,
+        {useNaver`,
     replace: `      <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gbd-line2)' }}>
-        {map}`,
+        {useNaver`,
     test: TEST,
     why: '표면 규칙 ① "카드 테두리 0, 화이트만 들림 한 값". 테두리는 어디서든 조용히 되돌아온다.',
   },
@@ -102,8 +103,8 @@ export default [
   {
     name: '[상세B지갑E] 🎫접힌 줄이 아무것도 안 한다',
     file: 'src/pages/my-vouchers/WalletRow.tsx',
-    find: `      onClick={onOpen}`,
-    replace: `      onClick={() => {}}`,
+    find: `      onClick={(e) => { noteQrOrigin(e.currentTarget); onOpen() }}`,
+    replace: `      onClick={(e) => { noteQrOrigin(e.currentTarget) }}`,
     test: TEST,
     why:
       '접기는 **삭제가 아니다**. 줄을 눌러도 QR 이 안 열리면 그 이용권은 쓸 방법이 사라지는데, ' +
@@ -112,8 +113,8 @@ export default [
   {
     name: '[상세B지갑E] 🔴임박 강조가 툴킷 기본 빨강으로 돌아간다',
     file: 'src/pages/my-vouchers/WalletRow.tsx',
-    find: `urgent ? 'font-medium text-tone-bad'`,
-    replace: `urgent ? 'font-medium text-[#DC2626]'`,
+    find: `urgent ? 'ur-blink-once font-medium text-tone-bad'`,
+    replace: `urgent ? 'ur-blink-once font-medium text-[#DC2626]'`,
     test: TEST,
     why:
       '값이 우연히 비슷해 눈으로는 구분이 안 되지만, 다크에서 갈린다(`--tone-bad` 는 다크에서 밝힌다). ' +

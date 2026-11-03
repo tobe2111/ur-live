@@ -12,6 +12,7 @@
  *   - 모바일(<lg)은 이 패널을 안 쓴다 — 페이지의 객실 카드 + 하단바가 종전대로 담당.
  */
 import { formatNumber } from '@/utils/format'
+import RollingNumber from '@/components/ui/RollingNumber' // 🎬 2026-11-03 14차 ④ — 객실 수·합계가 바뀌면 숫자가 위아래로 넘어간다
 import { PURCHASE_BOX_CLS, PURCHASE_CTA_CLS } from '@/components/deal/BuyBar'
 
 export interface PanelRoom {
@@ -89,7 +90,7 @@ export default function StayBookingPanel({
               <div className="flex items-center gap-1 h-9 px-2 rounded-[10px] border border-rule-strong shrink-0">
                 <button type="button" aria-label={`${r.name} 객실 수 줄이기`} onClick={() => bump(r, -1)} disabled={qty === 0}
                   className="w-7 h-7 rounded-full text-gray-600 dark:text-gray-300 disabled:opacity-25 font-bold">−</button>
-                <span className={`w-5 text-center text-[13px] font-medium tabular-nums ${qty ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>{qty}</span>
+                <span className={`w-5 text-center text-[13px] font-medium tabular-nums ${qty ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}><RollingNumber value={qty} /></span>
                 <button type="button" aria-label={`${r.name} 객실 수 늘리기`} onClick={() => bump(r, 1)} disabled={disabled || qty >= Math.min(r.available_count, 10)}
                   className="w-7 h-7 rounded-full text-gray-600 dark:text-gray-300 disabled:opacity-25 font-bold">+</button>
               </div>
@@ -100,7 +101,7 @@ export default function StayBookingPanel({
 
       <div className="flex justify-between items-baseline pt-3 border-t border-rule">
         <span className="text-[13px] text-gray-500 dark:text-gray-400">{totalQty > 0 ? `${totalQty}객실 · ${nights}박` : '객실을 담아 주세요'}</span>
-        <span className="text-[24px] font-bold text-gray-900 dark:text-white tabular-nums">{formatNumber(subtotal)}원</span>
+        <span className="text-[24px] font-bold text-gray-900 dark:text-white tabular-nums"><RollingNumber value={subtotal} format={(n) => `${formatNumber(n)}원`} /></span>
       </div>
       {raffle ? (
         <button type="button" onClick={raffle.onApply} disabled={raffle.disabled}

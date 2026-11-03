@@ -104,7 +104,7 @@ describe('④ 생김새 — 마이 판과 같은 클래스', () => {
   const mine = code('src/pages/user-profile/SellerSection.tsx')
   it('콘솔 판은 자기 모양(오늘 숫자 · 진한 블루 등록 줄)을 지킨다', () => {
     expect(agency).toContain('mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap')
-    expect(agency).toContain('flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 등록 · 관리')
+    expect(agency).toContain('flex-1 min-w-0 text-[15px] font-bold truncate">이용권 등록 · 관리')  // 🔁 2026-11-03 굵기 체계(⑨): 15px 의 extrabold → bold
   })
   it('두 판의 진한 블루 면은 같은 클래스 묶음이다', () => {
     expect(agency).toContain('bg-brand text-white text-left active:opacity-90')

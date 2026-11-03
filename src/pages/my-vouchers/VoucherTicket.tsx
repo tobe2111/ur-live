@@ -10,15 +10,17 @@ import { Smartphone } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
+import { useTranslation } from '@/lib/i18n-lite'
 
 // 🎟️ 2026-07-06 (대표 "ㄴ 이것도 개선해줘"): 이용권 카드에 매장 사용방식 칩 표시 — 유저가 매장 가기 전에
 //   이 카드만 보고도 사용법을 파악. redemption-info(사장님 설정)를 코드별 1회 조회(모듈 캐시로 재조회 방지).
 type RedeemMode = 'scan_only' | 'store_code' | 'self_free'
 /** 카드 한 줄 안내용 — 칩보다 긴 문장(무엇을 하면 되는지). 2026-10-07 A안 */
-const MODE_HINT: Record<RedeemMode, string> = {
-  scan_only: '직원에게 QR 보여주기',
-  store_code: '매장에서 코드 입력',
-  self_free: '바로 사용',
+//   🌐 2026-11-02: 문구는 렌더 때 t() 로 — 여기엔 키와 한국어 원문(defaultValue)만 둔다.
+const MODE_HINT: Record<RedeemMode, { key: string; ko: string }> = {
+  scan_only: { key: 'wallet.ticket.hintScanOnly', ko: '직원에게 QR 보여주기' },
+  store_code: { key: 'wallet.ticket.hintStoreCode', ko: '매장에서 코드 입력' },
+  self_free: { key: 'wallet.ticket.hintSelfFree', ko: '바로 사용' },
 }
 const _modeCache = new Map<string, RedeemMode | null>()
 
@@ -78,18 +80,18 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
   const menu = store && v.product_name.startsWith(store) ? (v.product_name.slice(store.length).trim() || v.product_name) : v.product_name
   // 🎁 2026-10-12 대표 "선물을 한 사람은 선물을 했다고 표시" — 받기 전(잠김)·받은 뒤(기록)를 카드에서 바로 말한다.
   const giftedTo = v.status === 'gifted'
-    ? `${v.gift_to_name ? `${v.gift_to_name}님에게` : '친구에게'} 선물했어요${usedAt ? ` (${usedAt.toLocaleDateString(locale)})` : ''}`
+    ? `${v.gift_to_name ? t('wallet.ticket.giftedToName', { defaultValue: '{{name}}님에게 선물했어요', name: v.gift_to_name }) : t('wallet.ticket.giftedToFriend', { defaultValue: '친구에게 선물했어요' })}${usedAt ? ` (${usedAt.toLocaleDateString(locale)})` : ''}`
     : ''
   const expiryText = giftedTo ? giftedTo : v.status === 'unused' && v.gift_pending
-    ? '선물 중이에요. 친구가 받기 전까지 쓸 수 없어요'
+    ? t('wallet.ticket.giftPendingLocked', { defaultValue: '선물 중이에요. 친구가 받기 전까지 쓸 수 없어요' })
     : v.status === 'used' && usedAt
-    ? `${usedAt.toLocaleDateString(locale)} ${t('voucher.usedSuffix', { defaultValue: '사용' })}`
+    ? t('wallet.ticket.usedOn', { defaultValue: '{{date}} 사용', date: usedAt.toLocaleDateString(locale) })
     : v.status !== 'unused'
       ? t(`voucher.status.${v.status}`)
       : expiresAt
-        ? `${expiresAt.getMonth() + 1}.${expiresAt.getDate()}${t('voucher.untilSuffix', { defaultValue: '까지' })} · ${daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`}`
+        ? `${t('wallet.ticket.expiresUntil', { defaultValue: '{{date}}까지', date: `${expiresAt.getMonth() + 1}.${expiresAt.getDate()}` })} · ${daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`}`
         : t('voucher.noExpiryShort', { defaultValue: '기한 없음' })
-  const howText = tappable && mode ? MODE_HINT[mode] : ''
+  const howText = tappable && mode ? t(MODE_HINT[mode].key, { defaultValue: MODE_HINT[mode].ko }) : ''
 
   return (
     <div
@@ -123,7 +125,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
             onClick={(e) => { e.stopPropagation(); onShowQr() }}
             className="w-full h-12 rounded-xl bg-brand text-white text-[15px] font-bold active:opacity-80"
           >
-            {v.gift_pending ? '선물 상태 보기' : t('voucher.useFull', { defaultValue: '사용하기' })}
+            {v.gift_pending ? t('wallet.ticket.viewGiftStatus', { defaultValue: '선물 상태 보기' }) : t('voucher.useFull', { defaultValue: '사용하기' })}
           </button>
         </div>
       )}
@@ -150,6 +152,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
 // 🛡️ 2026-05-25 (A 옵션): KT Alpha 쿠폰 카드 — MMS 발송된 기프티쇼 표시.
 // 🔢 2026-06-17 (#4): 쿠폰 PIN → CODE128 바코드. jsbarcode 동적 import (페이지 chunk 영향 0).
 function Barcode({ value }: { value: string }) {
+  const { t } = useTranslation()
   const ref = useRef<SVGSVGElement>(null)
   useEffect(() => {
     let cancelled = false
@@ -159,7 +162,7 @@ function Barcode({ value }: { value: string }) {
     }).catch(() => { /* lib load fail */ })
     return () => { cancelled = true }
   }, [value])
-  return <svg ref={ref} aria-label="쿠폰 바코드" className="max-w-full" />
+  return <svg ref={ref} aria-label={t('wallet.ticket.couponBarcode', { defaultValue: '쿠폰 바코드' })} className="max-w-full" />
 }
 
 function KtAlphaVoucherCard({ v, muted, t }: {
@@ -217,7 +220,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
             ) : (
               <span className={`text-[12px] font-medium ${v.status === 'expired' ? 'text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>{t(`voucher.status.${v.status}`)}</span>
             )}
-            <span className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">📱 기프티쇼</span>
+            <span className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">📱 {t('wallet.ticket.giftishowChip', { defaultValue: '기프티쇼' })}</span>
           </div>
 
           {/* 제목 */}
