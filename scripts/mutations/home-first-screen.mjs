@@ -66,9 +66,10 @@ export default [
   },
   {
     name: '🏠 홈 첫 화면이 위치 이름을 지어낸다 (돌아온 사람에게 틀린 동네)',
-    file: UTIL,
-    find: '<span class="${HOME_FS_CLASS.locLabel}">&nbsp;</span>',
-    replace: '<span class="${HOME_FS_CLASS.locLabel}">전국</span>',
+    // 🏠 2026-11-03 재조준 — 이름은 이제 화면이 남긴 쿠키(ur_home_loc)에서 온다. 여전히 지어내면 안 되는 것: 쿠키 없이 '내 주변'·동 이름.
+    file: 'src/shared/home-loc-label-cookie.ts',
+    find: '  if (!m) return HOME_LOC_LABEL_DEFAULT',
+    replace: "  if (!m) return '내 주변'",
     test: T,
     why:
       '저장된 지역·마지막 측위는 `localStorage` 에 있어 서버가 모른다. 아는 척하면 ' +

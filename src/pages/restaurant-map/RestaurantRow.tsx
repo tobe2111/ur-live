@@ -45,7 +45,8 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
     <button
       onClick={() => onSelect(r)}
       onPointerDown={onIntent ? () => onIntent(r) : undefined}
-      className={`w-full flex gap-3 py-4 text-left transition-colors ${
+      /* 🎬 2026-11-03 17차 ① — 누르는 동안 살짝 들어간다(배경 옅게는 종전 active:bg). 손을 떼면 돌아온다. */
+      className={`w-full flex gap-3 py-4 text-left transition-[background-color,transform] duration-150 active:scale-[0.985] motion-reduce:active:scale-100 ${
         isSelected
           ? 'bg-brand/[0.06] dark:bg-brand/[0.14]'
           : 'hover:bg-gray-50/60 dark:hover:bg-[#0E0E0E] active:bg-gray-100 dark:active:bg-[#161616]'

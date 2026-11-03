@@ -272,6 +272,7 @@ describe('⑤ 배선', () => {
   it('워커가 쿠키로 섹션 시드를 받는다 — 쿠키가 없으면 경로가 정확히 /api/sections', () => {
     const w = code('src/worker/index.ts')
     expect(w).toContain("path: '/api/sections' + ((k) => (k ? `?near=${k}` : ''))(nearKeyFromCookieHeader(c.req.header('cookie')))")
-    expect(w).toContain("buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml, nearLabelFromCookieHeader(c.req.header('cookie')))")
+    // 🌆 2026-11-02 — 쿠키 머리글을 한 개 더 넘긴다(지역 사진). 근처 라벨 인자는 그대로다.
+    expect(w).toContain("buildHomeFirstScreen(ssrExtraPayload, urdealLoaderHtml, nearLabelFromCookieHeader(c.req.header('cookie')), c.req.header('cookie') ?? null)")
   })
 })

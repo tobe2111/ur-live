@@ -3,6 +3,7 @@ import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/a
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { computeCouponDiscount } from '../coupon-discount'
 import type { Env } from '@/worker/types/env'
+import { userReadDb, recentWriteCookie } from '@/worker/utils/d1-read-replica'
 const couponRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
@@ -150,8 +151,8 @@ export async function restoreCouponsForOrders(DB: D1Database, orderIds: (number 
 couponRoutes.get('/my', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
-  const { DB } = c.env
-  await ensureTables(DB)
+  await ensureTables(c.env.DB)
+  const DB = userReadDb(c.env.DB, c.req.header('cookie')) // 👤 2026-11-03 로그인 읽기도 사본 — 쿠폰 받기(GET /claim)는 아래에서 직접 표시
   // user_coupons (claim 기록) 있고 + 아직 사용 안 한 (coupon_uses 에 없음) + 활성 쿠폰
   const { results } = await DB.prepare(`
     SELECT c.*, uc.claimed_at FROM coupons c
@@ -209,6 +210,7 @@ couponRoutes.get('/claim/:code', requireAuth(), async (c) => {
 
   // 쿠폰 발급 (사용은 결제 시 별도). UNIQUE(user_id, coupon_id) 가 동시 요청 차단.
   await DB.prepare("INSERT OR IGNORE INTO user_coupons (user_id, coupon_id) VALUES (?, ?)").bind(String(user.id), coupon.id).run()
+  c.header('Set-Cookie', recentWriteCookie(), { append: true }) // 👤 GET 인데 쓴다 — 미들웨어가 못 보니 직접 표시(쿠폰함이 곧바로 원본에서 읽게)
 
   return c.json({ success: true, data: { coupon_id: coupon.id, name: coupon.name, type: coupon.type, value: coupon.value } })
 })

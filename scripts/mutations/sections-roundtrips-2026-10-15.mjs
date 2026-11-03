@@ -95,10 +95,10 @@ export default [
     why: '사본 사용을 원본으로 보고해 효과 판정이 뒤집힌다.',
   },
   {
-    name: '🌏 2단계 — 유어샵 주인도 사본에서 읽는다',
+    name: '🌏 2단계 — 유어샵 주인이 쓰기 표시를 무시하고 사본에서 읽는다',
     file: 'src/worker/routes/curator.routes.ts',
-    find: 'getAuthUserId(c) == null ? publicReadDb(c.env.DB) : c.env.DB',
-    replace: 'publicReadDb(c.env.DB)',
+    find: ": userReadDb(c.env.DB, c.req.header('cookie'))", // 👤 2026-11-03 재조준 — 로그인은 이제 userReadDb(방금 쓴 브라우저=원본)
+    replace: ': publicReadDb(c.env.DB) /* MUT-owner-replica */',
     test: T,
     why: '주인이 핀·사진을 고친 직후 새로고침하면 사본 지연으로 옛 값이 보인다.',
   },

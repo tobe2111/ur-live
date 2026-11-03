@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import SEO, { breadcrumbJsonLd } from '@/components/SEO'
@@ -6,6 +7,23 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { REGION_PAGES_ENABLED } from '@/shared/feature-flags'
 import { regionPath, type SidoStat } from '@/shared/constants/region-slugs'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 16차 ⑤ — 시·도 묶음이 차례로 떠오르고(첫 아홉), 위 '전국 N개' 가 세어 올라간다.
+injectMotionCss('ur-m-regionidx', `@keyframes ur-ri-up { from { opacity: 0; transform: translateY(10px); } }.ur-ri-grid > *:nth-child(-n+9) { animation: ur-ri-up .35s cubic-bezier(.2,.9,.3,1) backwards; }.ur-ri-grid > *:nth-child(2) { animation-delay: 45ms; }.ur-ri-grid > *:nth-child(3) { animation-delay: 90ms; }.ur-ri-grid > *:nth-child(4) { animation-delay: 135ms; }.ur-ri-grid > *:nth-child(5) { animation-delay: 180ms; }.ur-ri-grid > *:nth-child(6) { animation-delay: 225ms; }.ur-ri-grid > *:nth-child(7) { animation-delay: 270ms; }.ur-ri-grid > *:nth-child(8) { animation-delay: 315ms; }.ur-ri-grid > *:nth-child(9) { animation-delay: 360ms; }@media (prefers-reduced-motion: reduce){.ur-ri-grid > *{animation:none!important}}`)
+/** 🎬 16차 ⑤ — 값이 처음 도착하면 0 에서 세어 올라간다(동작 줄이기면 바로). */
+function useCountUp(target: number): number {
+  const [v, setV] = useState(target)
+  useEffect(() => {
+    let reduce = false
+    try { reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { /* 미지원 */ }
+    if (!target || reduce || typeof requestAnimationFrame === 'undefined') { setV(target); return }
+    const t0 = performance.now(); let raf = 0
+    const tick = (t: number) => { const p = Math.min(1, (t - t0) / 800); setV(Math.round(target * (1 - Math.pow(1 - p, 3)))); if (p < 1) raf = requestAnimationFrame(tick) }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target])
+  return v
+}
 
 /**
  * 🗺️ 2026-08-03 (대표 — 도시별 색인): `/region` 지역 인덱스.
@@ -31,6 +49,7 @@ export default function RegionIndexPage() {
   )
 
   const total = regions.reduce((sum, r) => sum + r.count, 0)
+  const shownTotal = useCountUp(total)
 
   return (
     <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
@@ -55,7 +74,7 @@ export default function RegionIndexPage() {
           </h1>
           <p className="mt-2 text-[13px] lg:text-[15px] text-gray-500 dark:text-gray-400">
             {total > 0
-              ? <>전국 <b className="text-gray-900 dark:text-white">{total}개</b> 딜 진행 중 · 우리 동네를 골라보세요</>
+              ? <>전국 <b className="text-gray-900 dark:text-white tabular-nums">{shownTotal}개</b> 딜 진행 중 · 우리 동네를 골라보세요</>
               : <>지역을 골라 우리 동네 딜을 확인해보세요</>}
           </p>
           <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 max-w-[42em] leading-relaxed">
@@ -70,7 +89,7 @@ export default function RegionIndexPage() {
             아직 등록된 지역 딜이 없어요.
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-7 pb-12">
+          <div className="ur-ri-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-7 pb-12">
             {regions.map(r => (
               <section key={r.sido} aria-labelledby={`sido-${r.sido}`}>
                 <h2 id={`sido-${r.sido}`} className="mb-2 pb-2 border-b border-gray-100 dark:border-[#2C2F35]">

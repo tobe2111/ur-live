@@ -14,7 +14,7 @@ export default [
   {
     name: '🐢 내 이용권 — 색인 DDL 메모가 빠져 매 요청 다시 보냄',
     file: 'src/features/group-buy/api/group-buy-public.routes.ts',
-    find: 'if (!_voucherIdxDone.has(DB)) { _voucherIdxDone.add(DB); try {',
+    find: 'if (!_voucherIdxDone.has(dbKey(DB))) { _voucherIdxDone.add(dbKey(DB)); try {', // 👤 2026-11-03 재조준 — 사본 세션이라 메모 키가 dbKey(원본)
     replace: 'if (true) { try {',
     test: T,
     why: '종전엔 매 요청 DDL 로 원본 DB 를 한 번 더 다녀왔다.',
@@ -55,7 +55,7 @@ export default [
   {
     name: '🐢 지도 — 홈이 지도 첫 목록을 미리 안 받음(SPA 진입 시 지도 생성이 목록 한 왕복을 기다림)',
     file: 'src/pages/mobile-home/map-warmup.ts',
-    find: "      .then((m) => (m as { prefetchMapSeedFirstPage?: () => Promise<void> } | undefined)?.prefetchMapSeedFirstPage?.())\n",
+    find: "  void loadRoute('map').then((m) => (m as { prefetchMapSeedFirstPage?: () => Promise<void> } | undefined)?.prefetchMapSeedFirstPage?.()).catch(() => { /* 지도 화면이 평소처럼 받는다 */ })",
     replace: '',
     test: T,
     why: '2026-11-02 대표 "지도도 늦게 뜨네".',

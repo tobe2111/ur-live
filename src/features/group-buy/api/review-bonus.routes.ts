@@ -26,6 +26,7 @@ import { requireAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { resolveReviewBonus, debitStoreForReviewBonus } from './review-bonus-funding'
 import { swallow } from '@/worker/utils/swallow'
+import { userReadDb } from '@/worker/utils/d1-read-replica'
 import { creditReviewScoreOnApproval, getUserReviewLevelSummary } from '@/worker/utils/review-level'
 import { KAKAO_REVIEW_BONUS_ENABLED } from '@/shared/feature-flags'
 
@@ -177,7 +178,7 @@ userApp.get('/my', async (c) => {
 // 🗺️ 2026-07-02: 내 동네 리뷰어 레벨/점수 (제출 모달·마이 표시용)
 userApp.get('/my-level', async (c) => {
   const userId = String((c.get('user') as AuthUser).id)
-  const summary = await getUserReviewLevelSummary(c.env.DB, userId).catch(() => null)
+  const summary = await getUserReviewLevelSummary(userReadDb(c.env.DB, c.req.header('cookie')), userId).catch(() => null) // 👤 2026-11-03 로그인 읽기도 사본
   if (!summary) return c.json({ success: true, data: { level: 1, label: '새싹', score: 0, approved_count: 0, next_level: 2, next_threshold: 3, remaining: 3 } })
   return c.json({ success: true, data: summary })
 })

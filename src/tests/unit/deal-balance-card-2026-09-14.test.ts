@@ -88,7 +88,8 @@ describe('🪙 확정 구조 (안 A3)', () => {
   })
 
   it('🔴 숫자를 모를 땐 0 을 적지 않는다 (빈 자리로 높이만 잡는다)', () => {
-    expect(card).toMatch(/awaiting \? <span[^>]*aria-hidden="true" \/> : formatNumber\(balance\)/)
+    // 🎬 2026-11-03 16차 ① — 도착할 때 굴러 올라가는 값(`shown`)을 쓰되, 모를 땐 여전히 빈 자리다.
+    expect(card).toMatch(/awaiting \? <span[^>]*aria-hidden="true" \/> : formatNumber\(shown \?\? balance\)/)
   })
 })
 

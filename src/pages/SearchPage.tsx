@@ -16,7 +16,14 @@ import SortFilterBar from '@/components/search/SortFilterBar'
 import { priceDisplay } from '@/shared/price-display'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 14차 ⑥ — 검색어·정렬이 바뀌어 결과가 새로 그려지면 첫 여덟 줄이 차례로 떠오른다(더보기로 붙는 줄은 그대로).
-injectMotionCss('ur-m-search', `@keyframes ur-sr-in { from { opacity: 0; transform: translateY(10px); } }.ur-sr-list > *:nth-child(-n+8) { animation: ur-sr-in .35s cubic-bezier(.2,.9,.3,1) backwards; }.ur-sr-list > *:nth-child(2) { animation-delay: 40ms; }.ur-sr-list > *:nth-child(3) { animation-delay: 80ms; }.ur-sr-list > *:nth-child(4) { animation-delay: 120ms; }.ur-sr-list > *:nth-child(5) { animation-delay: 160ms; }.ur-sr-list > *:nth-child(6) { animation-delay: 200ms; }.ur-sr-list > *:nth-child(7) { animation-delay: 240ms; }.ur-sr-list > *:nth-child(8) { animation-delay: 280ms; }@media (prefers-reduced-motion: reduce){.ur-sr-list > *{animation:none!important}}`)
+injectMotionCss('ur-m-search', `@keyframes ur-sr-in { from { opacity: 0; transform: translateY(10px); } }.ur-sr-list > *:nth-child(-n+8) { animation: ur-sr-in .35s cubic-bezier(.2,.9,.3,1) backwards; }.ur-sr-list > *:nth-child(2) { animation-delay: 40ms; }.ur-sr-list > *:nth-child(3) { animation-delay: 80ms; }.ur-sr-list > *:nth-child(4) { animation-delay: 120ms; }.ur-sr-list > *:nth-child(5) { animation-delay: 160ms; }.ur-sr-list > *:nth-child(6) { animation-delay: 200ms; }.ur-sr-list > *:nth-child(7) { animation-delay: 240ms; }.ur-sr-list > *:nth-child(8) { animation-delay: 280ms; }@keyframes ur-sr-end { from { opacity: 0; transform: translateY(8px); } }@keyframes ur-sr-ck { to { stroke-dashoffset: 0; } }.ur-sr-end { opacity: 0; }.ur-sr-end.on { opacity: 1; animation: ur-sr-end .35s cubic-bezier(.2,.9,.3,1); }.ur-sr-end.on path { stroke-dasharray: 20; stroke-dashoffset: 20; animation: ur-sr-ck .3s .15s ease-out forwards; }@media (prefers-reduced-motion: reduce){.ur-sr-list > *,.ur-sr-end.on,.ur-sr-end.on path{animation:none!important;stroke-dashoffset:0}}`)
+/** 🎬 2026-11-03 17차 ⑨ — 목록 끝 표시가 화면에 들어올 때 한 번 켠다. */
+const revealOnView = (el: HTMLElement | null) => {
+  if (!el || el.dataset.io || typeof IntersectionObserver === 'undefined') { if (el) el.classList.add('on'); return }
+  el.dataset.io = '1'
+  const io = new IntersectionObserver(([e]) => { if (e?.isIntersecting) { el.classList.add('on'); io.disconnect() } }, { threshold: 0.6 })
+  io.observe(el)
+}
 
 interface Product {
   id: number
@@ -285,6 +292,16 @@ export default function SearchPage() {
                 >
                   {isFetchingNextPage ? '로딩 중...' : '더보기'}
                 </button>
+              </div>
+            )}
+
+            {/* 🎬 17차 ⑨ — 더 불러올 게 없고 결과가 열 줄 이상이면 끝에 '여기까지 다 봤어요'(더 오는 중인지 끝인지 헷갈리지 않게). */}
+            {!hasNextPage && products.length >= 10 && (
+              <div ref={revealOnView} className="ur-sr-end flex flex-col items-center gap-2 py-8 text-[13px] text-gray-500 dark:text-gray-400">
+                <span className="w-7 h-7 rounded-full bg-brand-tint flex items-center justify-center" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 text-brand-text" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                </span>
+                {t('search.endOfList', { defaultValue: '여기까지 다 봤어요' })}
               </div>
             )}
 

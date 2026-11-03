@@ -38,6 +38,7 @@
  * `user-profile/TeamPointsCard` 가 같은 부품을 쓴다(2026-09-28 통합 — 베끼면 다음 변경에서 또
  * 한쪽만 따라간다). **여기를 고치면 마이도 같이 바뀐다.** 그게 의도다.
  */
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
@@ -78,6 +79,24 @@ export default function DealBalanceCard({
 }: DealBalanceCardProps) {
   const navigate = useNavigate()
   const compact = variant === 'compact'
+  /**
+   * 🎬 2026-11-03 16차 ① — 잔액이 **처음 도착할 때**(빈 자리 → 숫자) 0 에서 굴러 올라간다.
+   *   이미 숫자가 있던 화면(다시 그리기)·동작 줄이기면 그냥 그 값. '+N딜' 은 마이(MyStats)가 이미 하므로 여기선 안 한다.
+   */
+  const [shown, setShown] = useState<number | null>(balance)
+  const hadValue = useRef(balance != null)
+  useEffect(() => {
+    if (balance == null) { setShown(null); return }
+    let reduce = false
+    try { reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { /* 미지원 */ }
+    if (hadValue.current || reduce || typeof requestAnimationFrame === 'undefined') { hadValue.current = true; setShown(balance); return }
+    hadValue.current = true
+    const to = balance, t0 = performance.now()
+    let raf = 0
+    const tick = (t: number) => { const p = Math.min(1, (t - t0) / 700); setShown(Math.round(to * (1 - Math.pow(1 - p, 3)))); if (p < 1) raf = requestAnimationFrame(tick) }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [balance])
 
   // 🛡️ 조회 실패가 먼저다 — 여기서 갈라 내야 아래 0/기다림 분기를 한 글자도 안 건드린다.
   if (error) {
@@ -145,7 +164,7 @@ export default function DealBalanceCard({
           <div className="flex items-baseline gap-1">
             <span className={`font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums ${compact ? 'text-[17px]' : 'text-[28px]'}`}>
               {/* ⏳ 숫자를 모를 땐 빈 자리를 둔다 — 0 을 적으면 거짓말이고, 비워 두면 높이만 잡힌다. */}
-              {awaiting ? <span className="inline-block w-[2.2em] h-[0.72em] rounded bg-wash align-baseline" aria-hidden="true" /> : formatNumber(balance)}
+              {awaiting ? <span className="inline-block w-[2.2em] h-[0.72em] rounded bg-wash align-baseline" aria-hidden="true" /> : formatNumber(shown ?? balance)}
             </span>
             <span className="font-medium text-gray-400 dark:text-gray-500 text-[13px]">딜</span>
           </div>

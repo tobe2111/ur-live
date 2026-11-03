@@ -1,0 +1,278 @@
+<title>모션 16차 시안</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --star: #F5A524;
+  --photo1: linear-gradient(135deg,#F2D9C9,#C9D8F2); --photo2: linear-gradient(135deg,#D3E8D6,#E9DCC6); --photo3: linear-gradient(135deg,#E6D3EB,#D0DEF0);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --photo1: linear-gradient(135deg,#4A3729,#2B3A57); --photo2: linear-gradient(135deg,#2C4430,#4A3E2B); --photo3: linear-gradient(135deg,#40304A,#293A52);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-inline: 16px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.list { display: grid; gap: 40px; }
+.item { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+.item h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.item h3 .n { color: var(--brand); margin-right: 6px; }
+.item p { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0 0 8px; }
+.item p b { color: var(--page-fg); font-weight: 500; }
+.replay { margin-top: 4px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; cursor: pointer; }
+.scr { position: relative; height: 300px; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); font-size: 15px; }
+.pad { padding: 16px; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.run .st { animation: rise .4s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 70ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+.hd { padding: 14px 16px 6px; font-size: 17px; font-weight: 700; }
+.row { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+.row .ph { width: 48px; height: 48px; border-radius: 10px; background: var(--photo1); flex: none; }
+.row:nth-child(2n) .ph { background: var(--photo2); } .row:nth-child(3n) .ph { background: var(--photo3); }
+.row b { display: block; font-size: 15px; font-weight: 500; }
+.row small { color: var(--ink-soft); font-size: 13px; }
+.row .r { margin-left: auto; font-size: 13px; color: var(--ink-soft); }
+.swap > * { animation: rise .32s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 55ms); }
+@keyframes pop { 0% { transform: scale(.5); } 60% { transform: scale(1.18); } 100% { transform: none; } }
+.pop { animation: pop .35s cubic-bezier(.3,1.3,.5,1); }
+.btn { height: 44px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font: 700 15px var(--font); cursor: pointer; padding: 0 16px; }
+
+/* 1 딜 잔액 */
+.bal { margin: 16px; padding: 18px; border-radius: 16px; background: var(--brand-tint); }
+.bal small { font-size: 13px; color: var(--ink-soft); }
+.bal b { display: block; font-size: 34px; font-weight: 800; color: var(--brand-text); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.bal .gain { display: inline-block; margin-left: 8px; font-size: 13px; font-weight: 700; color: var(--brand-text); opacity: 0; }
+.bal .gain.on { animation: gain 1.2s ease forwards; }
+@keyframes gain { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-6px); } }
+
+/* 2 보관함 */
+.box { display: flex; align-items: center; gap: 10px; margin: 16px; padding: 14px 16px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.12); font-size: 15px; font-weight: 500; }
+.box .badge { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--brand); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+.box .gift { width: 34px; height: 34px; border-radius: 10px; background: var(--brand-tint); display: grid; place-items: center; }
+.box .gift svg { width: 20px; height: 20px; fill: none; stroke: var(--brand-text); stroke-width: 1.6; }
+.box .gift.wig { animation: wig .5s ease; }
+@keyframes wig { 20% { transform: rotate(-10deg); } 40% { transform: rotate(8deg); } 60% { transform: rotate(-5deg); } 80% { transform: rotate(3deg); } }
+
+/* 3 손님 혜택 */
+.gb { padding: 18px 16px; }
+.gb h4 { font-size: 17px; margin: 0 0 12px; }
+.gb .li { display: flex; gap: 12px; align-items: center; padding: 10px 0; font-size: 15px; }
+.gb .li i { width: 32px; height: 32px; border-radius: 50%; background: var(--brand-tint); color: var(--brand-text); display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 13px; }
+.run3 .gb .li { animation: rise .4s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 90ms); }
+.run3 .gb .li i { animation: pop .35s cubic-bezier(.3,1.3,.5,1) backwards; animation-delay: calc(var(--i) * 90ms + 120ms); }
+
+/* 4 지역 페이지 */
+.chips { position: relative; display: flex; gap: 8px; padding: 6px 16px 10px; }
+.chips button { position: relative; z-index: 1; height: 34px; padding: 0 14px; border-radius: 999px; border: 0; background: none; color: var(--ink-soft); font: 500 13px var(--font); cursor: pointer; transition: color .2s; }
+.chips button.on { color: #fff; }
+.chips .pill { position: absolute; left: 0; top: 6px; height: 34px; border-radius: 999px; background: var(--brand); transition: transform .3s cubic-bezier(.2,.9,.3,1), width .3s cubic-bezier(.2,.9,.3,1); }
+.cnt { padding: 0 16px 6px; font-size: 13px; color: var(--ink-soft); } .cnt b { color: var(--ink); }
+
+/* 5 지역 첫 화면 */
+.rg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 6px 16px; }
+.rg div { padding: 12px 8px; border-radius: 12px; background: var(--sub); text-align: center; font-size: 13px; }
+.rg b { display: block; font-size: 15px; }
+.rg small { color: var(--brand-text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.run5 .rg div { animation: rise .35s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 45ms); }
+.tot { padding: 4px 16px 10px; font-size: 13px; color: var(--ink-soft); } .tot b { font-size: 24px; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 2px; }
+
+/* 7 영상 근처 이용권 */
+.vd { position: absolute; inset: 0; background: linear-gradient(180deg, #2B3A57, #4A3729); }
+.nb { position: absolute; left: 12px; right: 12px; bottom: 14px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.94); color: #16181C; display: flex; gap: 10px; align-items: center; font-size: 13px; transform: translateY(140%); }
+.nb .ph { width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg,#F2D9C9,#C9D8F2); }
+.nb b { display: block; font-size: 15px; font-weight: 500; }
+.nb .go { margin-left: auto; padding: 8px 12px; border-radius: 999px; background: #1C69EF; color: #fff; font-weight: 700; font-size: 13px; }
+.run7 .nb { animation: nbup .5s cubic-bezier(.2,1.1,.3,1) .6s forwards; }
+@keyframes nbup { to { transform: none; } }
+
+/* 8 이용권 팔기 */
+.sl { margin: 16px; padding: 16px; border-radius: 16px; background: var(--brand-tint); }
+.sl b { font-size: 17px; display: block; }
+.sl .pc { font-size: 34px; font-weight: 800; color: var(--brand-text); font-variant-numeric: tabular-nums; }
+.sl small { font-size: 13px; color: var(--ink-soft); display: block; margin: 2px 0 12px; }
+.sl .btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background .2s; }
+.sl .btn svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.sl .btn svg path { stroke-dasharray: 30; stroke-dashoffset: 30; animation: draw .3s .05s ease-out forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+/* 9 리뷰 카드 */
+.rv { margin: 16px; padding: 18px; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.12); text-align: center; }
+.rv b { font-size: 17px; display: block; }
+.rv small { font-size: 13px; color: var(--ink-soft); }
+.stars { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+.stars button { border: 0; background: none; cursor: pointer; padding: 0; }
+.stars svg { width: 32px; height: 32px; fill: var(--sub); stroke: none; transition: fill .15s; }
+.stars button.on svg { fill: var(--star); }
+.stars button.on { animation: pop .35s cubic-bezier(.3,1.3,.5,1) backwards; animation-delay: calc(var(--i) * 60ms); }
+.run9 .rv { animation: rvup .5s cubic-bezier(.2,1.1,.3,1) backwards; }
+@keyframes rvup { from { opacity: 0; transform: translateY(30px); } }
+.rv .thx { display: none; } .rv.done .ask { display: none; } .rv.done .thx { display: block; animation: pop .4s cubic-bezier(.3,1.3,.5,1); }
+
+/* 10 알림 시트 */
+.sh { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 20px 20px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,.18); padding-bottom: 8px; transform: translateY(100%); transition: transform .35s cubic-bezier(.2,1,.3,1); }
+.sh.open { transform: none; }
+.sh .gr { width: 36px; height: 4px; border-radius: 4px; background: var(--rule-strong); margin: 8px auto 4px; }
+.sh .nt { display: flex; gap: 10px; padding: 10px 16px; font-size: 13px; align-items: center; }
+.sh .nt i { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); flex: none; }
+.sh .nt b { font-weight: 500; font-size: 15px; display: block; }
+.sh.open .nt { animation: rise .35s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(.15s + var(--i) * 60ms); }
+.bell { position: absolute; top: 14px; right: 16px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--sub); cursor: pointer; display: grid; place-items: center; }
+.bell svg { width: 20px; height: 20px; fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; } }
+</style>
+<div class="wrap">
+  <h1>모션 16차 시안</h1>
+  <p class="lede">교환권 화면·로그인 전 화면·지역/브랜드 페이지·영상·이용권 팔기·리뷰·알림에서 아직 움직임이 없는 열 군데예요. 직접 눌러 보거나 "다시 보기"로 재생해 보세요.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all">전부 다시 보기</button>
+    <button class="ctl" id="mode">다크 모드로 보기</button>
+  </div>
+  <div class="list">
+
+    <div class="item">
+      <div class="scr" id="s1"><div class="hd">교환권</div><div class="bal"><small>내 딜 잔액</small><b><span id="b1">0</span><span style="font-size:17px"> 딜</span><span class="gain" id="g1">+500</span></b></div>
+        <div style="padding:0 16px"><button class="btn" id="c1">딜 모으기 (+500)</button></div></div>
+      <div><h3><span class="n">1</span>교환권 · 내 딜 잔액</h3>
+        <p>화면에 들어오면 잔액이 <b>0에서 굴러 올라가고</b>, 딜이 늘면 옆에 '+500'이 떠올랐다 사라져요.</p>
+        <button class="replay" data-r="1">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s2"><div class="hd">교환권</div><div class="box"><span class="gift" id="gf"><svg viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M3 9h18M12 9v11M12 9c-2-4-6-4-6-1s6 1 6 1zm0 0c2-4 6-4 6-1s-6 1-6 1z"/></svg></span>보관함<span style="flex:1"></span><span class="badge" id="bx">2</span></div>
+        <div style="padding:0 16px"><button class="btn" id="c2">교환권 하나 더 사기</button></div></div>
+      <div><h3><span class="n">2</span>교환권 · 보관함</h3>
+        <p>교환권이 늘면 보관함의 <b>선물 상자가 살짝 흔들리고</b> 개수가 톡 바뀌어요. 산 게 어디로 갔는지 눈이 따라가요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s3"><div class="gb"><h4>로그인하면 이런 게 좋아요</h4>
+        <div class="li" style="--i:0"><i>1</i>산 이용권이 내 지갑에 모여요</div>
+        <div class="li" style="--i:1"><i>2</i>딜을 모아 더 싸게 사요</div>
+        <div class="li" style="--i:2"><i>3</i>단골 가게 소식을 받아요</div></div></div>
+      <div><h3><span class="n">3</span>로그인 전 손님 화면 · 혜택</h3>
+        <p>혜택 줄이 <b>위에서부터 차례로</b> 나오고 번호 동그라미가 톡 켜져요. 마이·지갑을 로그인 없이 눌렀을 때 보이는 화면이에요.</p>
+        <button class="replay" data-r="3">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s4"><div class="hd">서울 서초구</div>
+        <div class="chips" id="ch4"><i class="pill"></i><button class="on" data-k="a">전체</button><button data-k="b">식사</button><button data-k="c">뷰티</button><button data-k="d">숙소</button></div>
+        <div class="cnt">진행 중인 딜 <b id="n4">0</b>개</div><div id="l4"></div></div>
+      <div><h3><span class="n">4</span>지역 페이지 · 종류 바꾸기</h3>
+        <p>식사·뷰티 같은 칩을 누르면 <b>파란 알약이 미끄러지고</b> 딜 개수가 세어지며 목록이 차례로 떠올라요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s5"><div class="hd">지역</div><div class="tot"><b id="n5">0</b>개 딜 진행 중</div>
+        <div class="rg"><div style="--i:0"><b>서울</b><small>128</small></div><div style="--i:1"><b>부산</b><small>64</small></div><div style="--i:2"><b>경기</b><small>57</small></div><div style="--i:3"><b>인천</b><small>21</small></div><div style="--i:4"><b>대구</b><small>18</small></div><div style="--i:5"><b>제주</b><small>12</small></div></div></div>
+      <div><h3><span class="n">5</span>지역 첫 화면</h3>
+        <p>전국 딜 수가 <b>세어 올라가고</b> 시·도 칸이 차례로 나와요.</p>
+        <button class="replay" data-r="5">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s6"><div class="hd">교촌치킨 · 가까운 순</div><div id="l6"></div></div>
+      <div><h3><span class="n">6</span>브랜드 페이지 · 지점 목록</h3>
+        <p>가까운 지점이 <b>위에서부터 차례로</b> 나오고, 거리가 오른쪽에 붙어요.</p>
+        <button class="replay" data-r="6">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s7"><div class="vd"></div><div class="nb"><span class="ph"></span><div><b>근처 이용권 3개</b>여기서 400m</div><span class="go">이용권 보기</span></div></div>
+      <div><h3><span class="n">7</span>영상 보기 · 근처 이용권</h3>
+        <p>영상이 조금 재생된 뒤 아래에서 <b>근처 이용권 카드가 스르르 올라와요</b>(살짝 튕기며). 갑자기 툭 나타나지 않아요.</p>
+        <button class="replay" data-r="7">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s8"><div class="sl"><b>이 이용권 팔기</b><span class="pc"><span id="n8">0</span>%</span><small>내 링크로 팔리면 적립돼요</small><button class="btn" id="b8">내 링크로 팔기</button></div></div>
+      <div><h3><span class="n">8</span>이용권 상세 · 이 이용권 팔기</h3>
+        <p>적립 % 숫자가 <b>세어 올라가고</b>, 링크를 복사하면 버튼에 <b>체크가 그려지며 '복사했어요'</b>로 바뀌어요.</p>
+        <button class="replay" data-r="8">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s9"><div class="rv" id="rv"><div class="ask"><b>어떠셨어요?</b><small>리뷰를 남기면 딜 리워드를 드려요</small>
+        <div class="stars" id="st"></div></div><div class="thx"><b>리뷰 고마워요!</b><small>딜이 곧 들어와요</small></div></div></div>
+      <div><h3><span class="n">9</span>사용 후 · 리뷰 카드</h3>
+        <p>이용권을 쓰고 나면 카드가 아래에서 올라오고, 별을 누르면 <b>그 별까지 하나씩 톡톡</b> 켜진 뒤 '고마워요'로 바뀌어요.</p>
+        <button class="replay" data-r="9">처음으로</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s10"><div class="hd">홈</div><button class="bell" id="bl" aria-label="알림"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg></button>
+        <div class="sh" id="sh"><div class="gr"></div>
+          <div class="nt" style="--i:0"><i></i><div><b>이용권을 사용했어요</b>돼지명가 · 방금</div></div>
+          <div class="nt" style="--i:1"><i></i><div><b>딜 500이 들어왔어요</b>리뷰 리워드 · 1시간 전</div></div>
+          <div class="nt" style="--i:2"><i></i><div><b>단골 가게 새 이용권</b>헤어살롱 모아 · 어제</div></div></div></div>
+      <div><h3><span class="n">10</span>알림 시트(종 모양)</h3>
+        <p>종을 누르면 시트가 올라오면서 <b>알림 줄이 차례로</b> 나와요. 지금은 한 번에 다 떠 있어요.</p></div>
+    </div>
+
+  </div>
+</div>
+<script>
+const $ = (s) => document.querySelector(s)
+const restart = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls) }
+const roll = (el, from, to, ms, d = 0) => setTimeout(() => { const t0 = performance.now(); const f = (t) => { const p = Math.min(1, (t - t0) / ms); el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))).toLocaleString('ko-KR'); if (p < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }, d)
+// 1
+let bal = 12400
+const r1 = () => { bal = 12400; roll($('#b1'), 0, bal, 900) }
+$('#c1').onclick = () => { roll($('#b1'), bal, bal + 500, 600); bal += 500; restart($('#g1'), 'on') }
+// 2
+let bx = 2; $('#c2').onclick = () => { bx++; $('#bx').textContent = bx; restart($('#bx'), 'pop'); restart($('#gf'), 'wig') }
+// 3
+const r3 = () => restart($('#s3'), 'run3')
+// 4
+;(() => { const D = { a: [['돼지명가 삼겹살 2인', '식사', '19,900원'], ['네일 스튜디오 젤', '뷰티', '29,000원'], ['서초 게스트하우스', '숙소', '54,000원'], ['헤어살롱 모아 커트', '뷰티', '15,000원']], b: [['돼지명가 삼겹살 2인', '식사', '19,900원']], c: [['네일 스튜디오 젤', '뷰티', '29,000원'], ['헤어살롱 모아 커트', '뷰티', '15,000원']], d: [['서초 게스트하우스', '숙소', '54,000원']] }
+  const ch = $('#ch4'), pill = ch.querySelector('.pill'), l = $('#l4'); let cur = 0
+  const move = (b) => { pill.style.width = b.offsetWidth + 'px'; pill.style.transform = `translateX(${b.offsetLeft}px)` }
+  const draw = (k, sw) => { const rows = D[k]; l.classList.remove('swap'); l.innerHTML = rows.map(([a, b, p], i) => `<div class="row" style="--i:${i}"><div class="ph"></div><div><b>${a}</b><small>${b}</small></div><span class="r">${p}</span></div>`).join(''); if (sw) { void l.offsetWidth; l.classList.add('swap') } roll($('#n4'), cur, rows.length * 6, 400); cur = rows.length * 6 }
+  ch.querySelectorAll('button').forEach((b) => b.onclick = () => { ch.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); move(b); draw(b.dataset.k, true) })
+  draw('a', false); requestAnimationFrame(() => move(ch.querySelector('button.on'))) })()
+// 5
+const r5 = () => { restart($('#s5'), 'run5'); roll($('#n5'), 0, 300, 800) }
+// 6
+const BR = [['교촌치킨 서초점', '서울 서초구', '350m'], ['교촌치킨 방배점', '서울 서초구', '1.2km'], ['교촌치킨 사당점', '서울 동작구', '2.4km'], ['교촌치킨 반포점', '서울 서초구', '2.9km']]
+const r6 = () => { const l = $('#l6'); l.classList.remove('swap'); l.innerHTML = BR.map(([a, b, d], i) => `<div class="row" style="--i:${i}"><div class="ph"></div><div><b>${a}</b><small>${b}</small></div><span class="r">${d}</span></div>`).join(''); void l.offsetWidth; l.classList.add('swap') }
+// 7
+const r7 = () => restart($('#s7'), 'run7')
+// 8
+const r8 = () => { $('#n8').textContent = '0'; roll($('#n8'), 0, 7, 700, 150); const b = $('#b8'); b.textContent = '내 링크로 팔기'; b.disabled = false }
+$('#b8').onclick = () => { const b = $('#b8'); if (b.disabled) return; b.disabled = true; b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>복사했어요'; setTimeout(r8, 2000) }
+// 9
+const star = '<svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>'
+const r9 = () => { const rv = $('#rv'); rv.classList.remove('done'); restart($('#s9'), 'run9'); const st = $('#st'); st.innerHTML = [0, 1, 2, 3, 4].map((i) => `<button style="--i:${i}" aria-label="${i + 1}점">${star}</button>`).join('')
+  st.querySelectorAll('button').forEach((b, i) => b.onclick = () => { st.querySelectorAll('button').forEach((x, j) => { x.classList.remove('on'); void x.offsetWidth; x.classList.toggle('on', j <= i) }); setTimeout(() => rv.classList.add('done'), 700) }) }
+// 10
+$('#bl').onclick = () => { const sh = $('#sh'); if (sh.classList.contains('open')) { sh.classList.remove('open') } else { sh.classList.add('open') } }
+
+const R = { 1: r1, 3: r3, 5: r5, 6: r6, 7: r7, 8: r8, 9: r9 }
+document.querySelectorAll('.replay').forEach((b) => b.onclick = () => R[b.dataset.r]())
+$('#all').onclick = () => Object.values(R).forEach((f) => f())
+let dark = matchMedia('(prefers-color-scheme: dark)').matches
+const applyMode = () => { document.querySelectorAll('.scr').forEach((s) => s.dataset.mode = dark ? 'dark' : 'light'); $('#mode').textContent = dark ? '라이트 모드로 보기' : '다크 모드로 보기' }
+$('#mode').onclick = () => { dark = !dark; applyMode() }
+applyMode(); r6(); r9(); r8()
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; io.unobserve(e.target); const id = +e.target.id.slice(1); if ([1, 3, 5, 6, 7, 8, 9].includes(id)) R[id]() }), { threshold: .4 })
+document.querySelectorAll('.scr').forEach((s) => io.observe(s))
+</script>

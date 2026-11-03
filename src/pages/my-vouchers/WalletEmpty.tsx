@@ -5,6 +5,9 @@ import { Fragment } from 'react'
 import { BagIcon, WalletIcon, GiftBoxIcon, StoreIcon } from '@/components/icons/urdeal-icons'
 import { ArrowRight, QrCode, Smartphone, type LucideIcon } from 'lucide-react'
 import Udal from '@/components/mascot/Udal'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 17차 ④ — 빈 지갑의 사용 순서 그림 셋이 **선을 따라 그려지며** 차례로 나타난다(빈 화면이 고장 난 화면처럼 보이지 않게).
+injectMotionCss('ur-m-walletempty', `@keyframes ur-we-draw { to { stroke-dashoffset: 0; } }.ur-we-draw path, .ur-we-draw circle, .ur-we-draw rect, .ur-we-draw line, .ur-we-draw polyline { stroke-dasharray: 120; stroke-dashoffset: 120; animation: ur-we-draw .9s ease-out forwards; animation-delay: calc(var(--i, 0) * 250ms + 200ms); }@media (prefers-reduced-motion: reduce){.ur-we-draw path,.ur-we-draw circle,.ur-we-draw rect,.ur-we-draw line,.ur-we-draw polyline{animation:none!important;stroke-dashoffset:0}}`)
 
 // 🎨 2026-06-21 (개선 #2): 콜드 로드 스켈레톤 — 스피너 대신 패스 형태 placeholder (첫 페인트 표준).
 export function WalletSkeleton() {
@@ -85,7 +88,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
               <div className="flex-1 mt-[22px] h-px mx-1 rounded-full bg-gray-200 dark:bg-[#2C2F35]" aria-hidden />
             )}
             <div className="flex flex-col items-center gap-2 w-[66px] shrink-0">
-              <div className="relative w-11 h-11 rounded-2xl flex items-center justify-center bg-brand-tint text-brand-text">
+              <div className="ur-we-draw relative w-11 h-11 rounded-2xl flex items-center justify-center bg-brand-tint text-brand-text" style={{ '--i': i } as React.CSSProperties}>
                 <Icon className="w-[19px] h-[19px]" strokeWidth={2} />
                 <span className="absolute -top-1 -right-1 w-[15px] h-[15px] rounded-full bg-surface border border-rule-strong text-[12px] font-medium text-gray-500 dark:text-gray-400 flex items-center justify-center tabular-nums">{i + 1}</span>
               </div>
