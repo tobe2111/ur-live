@@ -53,7 +53,7 @@
 import { HOME_H1 } from '../../shared/seo/consumer-surfaces'
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { DEAL_CAT_LABELS, isHomeVisibleProduct } from '../../shared/deal-cats'
-import { DEAL_ROW } from '../../shared/deal-card-grid'
+import { DEAL_ROW, DEAL_ROW_TEXT, shortRegion } from '../../shared/deal-card-grid'
 import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_IMG_WIDTH_ROW, HOME_CARD_MAX_DPR } from '../../shared/home-card-image'
 import { canonicalDetailPath } from '../../shared/product-flow'
 import { priceDisplay } from '../../shared/price-display'
@@ -122,6 +122,8 @@ export const HOME_FS_CLASS = {
   priceRow: 'flex items-baseline gap-1 mt-1 leading-none',
   price: 'text-[17px] font-bold tracking-tight text-gray-900 dark:text-white',
   perNight: 'text-[12px] font-medium text-gray-500 dark:text-gray-400',
+  ink: 'text-gray-900 dark:text-white',
+  sub: 'text-gray-500 dark:text-gray-400',
 } as const
 
 /** `DealCardMedia` 의 커버 `sizes` — 그 파일의 템플릿과 같은 식이어야 한다. */
@@ -175,7 +177,7 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, 
   const merchant = p.restaurant_name || brandName
   const onnuri = !!p.onnuri_merchant
   const title = stripStorePrefix(p.name || '', p.restaurant_name || undefined)
-  const addrShort = (p.restaurant_address || '').trim().split(/\s+/).slice(0, 3).join(' ')
+  const addrShort = shortRegion(p.restaurant_address)
   const { price, originalPrice, discount } = priceDisplay({
     price: p.current_price ?? p.price ?? 0,
     original_price: p.original_price ?? undefined,
@@ -201,13 +203,24 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, 
       ? `<div class="${DEAL_ROW.mediaBox}"><div class="${HOME_FS_CLASS.media}">${img}</div></div>`
       : `<div class="${HOME_FS_CLASS.media}">${img}</div>`) +
     `<div class="${HOME_FS_CLASS.body}">` +
-    (merchant || onnuri
-      ? `<p class="${HOME_FS_CLASS.merchant}"><span class="truncate">${escText(merchant || '')}</span>` +
-        (onnuri ? `<span class="${HOME_FS_CLASS.onnuri}">온누리</span>` : '') +
-        `</p>`
-      : '') +
-    `<p class="${HOME_FS_CLASS.title}">${escText(title)}</p>` +
-    (addrShort ? `<p class="${HOME_FS_CLASS.addr}"><span class="truncate">${escText(addrShort)}</span></p>` : '') +
+    (row
+      // 📋 2026-11-03 안 2 — 카드 row 와 같은 순서·같은 상수. 거리는 안 그린다(서버가 내 위치를 모른다).
+      ? `<div class="${DEAL_ROW_TEXT.titleLine}"><p class="${DEAL_ROW_TEXT.title} ${HOME_FS_CLASS.ink}">${escText(title)}</p></div>` +
+        (merchant || addrShort || onnuri
+          ? `<p class="${DEAL_ROW_TEXT.meta} ${HOME_FS_CLASS.sub}">` +
+            (merchant ? `<span class="truncate font-medium ${HOME_FS_CLASS.ink}">${escText(merchant)}</span>` : '') +
+            (merchant && addrShort ? `<span class="shrink-0" aria-hidden="true">·</span>` : '') +
+            (addrShort ? `<span class="shrink-0 whitespace-nowrap">${escText(addrShort)}</span>` : '') +
+            (onnuri ? `<span class="${HOME_FS_CLASS.onnuri}">온누리</span>` : '') +
+            `</p>`
+          : '')
+      : (merchant || onnuri
+        ? `<p class="${HOME_FS_CLASS.merchant}"><span class="truncate">${escText(merchant || '')}</span>` +
+          (onnuri ? `<span class="${HOME_FS_CLASS.onnuri}">온누리</span>` : '') +
+          `</p>`
+        : '') +
+      `<p class="${HOME_FS_CLASS.title}">${escText(title)}</p>` +
+      (addrShort ? `<p class="${HOME_FS_CLASS.addr}"><span class="truncate">${escText(addrShort)}</span></p>` : '')) +
     (rating > 0
       ? `<p class="${HOME_FS_CLASS.rateRow}">${starHtml(rating)}<span class="${HOME_FS_CLASS.rateNum}">${rating.toFixed(1)}</span>` +
         (reviewCount > 0 ? `<span>(${formatNumber(reviewCount)})</span>` : '') +
