@@ -20,6 +20,8 @@ const INCLUDE_DOCS = process.env.DOCS_BUNDLE === '1';
 // 🧩 2026-11-01 — 라우트 청크 맵은 번들할 때 진짜 값으로 바꿔 끼운다(자리표시자 ↔ 빌드 파일).
 //   이유·위험·대조는 그 모듈 머리말. 🔴 이 플러그인이 헛돌면 배포 HTML 의 첫 화면 미리받기가 사라진다.
 const { routeChunkMapPlugin, assertRouteChunkMapBundled } = require('./route-chunk-map-plugin.cjs');
+// 🎨 2026-11-03 — 첫 화면 CSS 도 같은 방식(추적 파일 = 자리표시자). 근거: critical-css-plugin.cjs 머리말.
+const { criticalCssPlugin, assertCriticalCssBundled } = require('./critical-css-plugin.cjs');
 
 async function buildWorker() {
   try {
@@ -70,9 +72,10 @@ async function buildWorker() {
       },
       logLevel: 'info',
       metafile: true,
-      plugins: [routeChunkMapPlugin()],
+      plugins: [routeChunkMapPlugin(), criticalCssPlugin()],
     });
     assertRouteChunkMapBundled('dist/_worker.js');
+    assertCriticalCssBundled('dist/_worker.js');
 
     console.log('✅ Worker bundle created successfully at dist/_worker.js');
   } catch (error) {

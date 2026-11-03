@@ -99,9 +99,14 @@ docs/business/proposals/node_modules
 # 🔀 세션 인계 목차 — 생성물(모든 브랜치가 고치므로 추적하면 머지마다 충돌한다).
 #   만들기: node scripts/generate-handoff-index.mjs
 docs/handoff/INDEX.local.md
+# 🗂️ 2026-11-03 — 디자인 시안 목차도 생성물(줄은 docs/design/index/ 에 파일 하나씩). 만들기: node scripts/generate-design-index.mjs
+docs/design/INDEX.local.md
 
 # 🧩 2026-11-01 — 라우트 청크 맵의 진짜 값(빌드 산출물). 추적되는 route-chunk-map.ts 는 자리표시자다.
 src/worker/generated/route-chunk-map.build.ts
+
+# 🎨 2026-11-03 — 첫 화면 CSS 의 진짜 값(빌드 산출물). 추적되는 critical-css.ts 는 자리표시자다.
+src/worker/generated/critical-css.build.ts
 
 # 📄 2026-11-02: 소개서 라이브 숫자(빌드 때 서버에서 받는다 — 추적하면 다시 손으로 고친 숫자가 된다) · 생성물
 docs/business/proposals/facts.live.json

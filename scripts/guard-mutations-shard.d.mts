@@ -34,3 +34,9 @@ export declare function assignShards(
 
 /** `--shard k/n` 파싱. 없으면 null(=전수). 잘못된 값은 **던진다**(조용히 전수로 떨어지지 않게). */
 export declare function parseShard(argv: string[]): { index: number; total: number } | null
+
+/** PR 변경분을 나눌 대수의 목표 벽시계(분)와 상한. */
+export declare const CHANGED_TARGET_MINUTES: number
+export declare const CHANGED_MAX_SHARDS: number
+/** 변경분 수·시험 파일 수 → 대수. 시험 파일 수를 넘지 않는다(빈 조각 = 실패). 0 이면 1. */
+export declare function planChangedShards(changed: number, groups: number): { total: number; estMinutes: number }

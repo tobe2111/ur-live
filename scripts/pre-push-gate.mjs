@@ -20,6 +20,15 @@ if (process.env.SKIP_PREPUSH_GATE === '1') {
   process.exit(0)
 }
 
+// ⏳ 2026-11-03 — 이 브랜치의 PR 검사가 이미 5분 넘게 돌고 있으면 멈춰 알린다(지금 올리면 그 검사가 버려진다).
+//   최근 3일 PR 검사의 42% 가 그렇게 취소됐다. 우회: PUSH_ANYWAY=1. 근거: check-verify-in-flight.mjs 머리말.
+try {
+  execFileSync('node', ['scripts/check-verify-in-flight.mjs'], { stdio: 'inherit', timeout: 15_000 })
+} catch (err) {
+  // 판정이 "멈춰라"(exit 1)일 때만 멈춘다 — 시간 초과·조회 실패로 푸시를 막지 않는다(안내이지 가드가 아니다).
+  if (err?.status === 1) process.exit(1)
+}
+
 // 🔀 2026-10-06 — **CI 가 아예 안 도는 경우**를 먼저 막는다(가드보다 앞).
 //   `.gitattributes` 의 `merge=union` 덕에 로컬 머지는 깨끗한데 **GitHub 서버측은 그 규칙을
 //   안 쓴다** → PR 이 conflicted 로 남고, 그러면 GitHub 이 머지 커밋을 못 만들어

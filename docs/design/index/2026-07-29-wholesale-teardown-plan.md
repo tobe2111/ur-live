@@ -1,0 +1,1 @@
+| **🧨 도매몰 전면 종료 — 철거 계획**(유통스타트+메디스타트 접음. 지울 것/잔류할 것 경계 · 머니 게이트 · 순서) | 2026-07-29 | 🟡 계획(코드 0) — **착수 전 머니 게이트 필수**(예치금·미확인충전·미지급정산·plus 4항목 0 확인). 🔴 최대 함정: `features/supply` 통째 삭제 시 **소비자 결제 파손**(order-commissions·order-refund·scheduled 가 부름). 삭제 대상은 라우트·화면이지 디렉터리가 아님. 덤: §8-C mall_id 겸용 문제 자동 해소 | [wholesale-teardown-plan.md](./wholesale-teardown-plan.md) |

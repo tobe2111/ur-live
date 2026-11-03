@@ -1,0 +1,1 @@
+| **🚀 비즈니스 pivot — 링크샵·공구·어필리에이트** | 2026-05-25 | ✅ Phase 1–4 구현(링크샵·핀·어필리에이트 정산·공구 호스팅·셀러 승급). Phase 5(셀러 흡수)+폴리시만 잔여. ⚠️ 문서 내 '라이브' 언급은 **영구 중단**(LIVE_COMMERCE_SUSPENDED) — 무시 | [linkshop-pivot.md](./linkshop-pivot.md) |

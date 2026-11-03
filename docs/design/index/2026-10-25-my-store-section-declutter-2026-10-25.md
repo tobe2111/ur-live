@@ -1,0 +1,1 @@
+| **🏪 마이 · 내 가게 구역 정리**(대표 *"이 부분이 너무 UI가 복잡해보여 분산되고.. 시안 더 필요해"*) | 2026-10-25 | ✅ 확정·구현 — **위쪽 안 3**(곧 쓸 이용권 제외) + **내 가게 안 G**(이름 `이용권 등록·관리`). 캔버스 https://claude.ai/artifact/6hZfM3979aMuurPaoFnU2o | [my-store-section-declutter-2026-10-25.md](./my-store-section-declutter-2026-10-25.md) |
