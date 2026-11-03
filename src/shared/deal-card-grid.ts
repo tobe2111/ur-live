@@ -35,12 +35,20 @@ export const DEAL_ROW = {
   mediaBox: 'w-[120px] shrink-0 [&>*]:aspect-square md:w-full md:[&>*]:aspect-[4/3]',
 } as const
 
+/** 도(道) — 정식 이름(…도/…특별자치도)과 흔한 줄임말. 광역시·특별시·세종은 여기 없다(그대로 둔다). */
+const PROVINCE_RE = /(도|특별자치도)$|^(경기|강원|충북|충남|전북|전남|경북|경남|제주)$/
+
 /**
  * 📍 주소를 **시·구까지만** (2026-11-03 대표 *"부산 연제구 정도까지만 나오고"*).
  *   첫 낱말(시·도) + 이어지는 `…시/군/구` 낱말만 남긴다(최대 3낱말).
- *     '부산 연제구 중앙천로39번길 12' → '부산 연제구'
- *     '경기 성남시 분당구 판교역로 1' → '경기 성남시 분당구'
- *     '세종특별자치시 한누리대로 2130' → '세종특별자치시'
+ *   🔄 같은 날 대표 *"응 바꾸자"* — **도(道)는 그 아래 시·구가 둘이면 뺀다**
+ *     (`전북특별자치도 전주시 덕진구` 가 카드에서 너무 길었다). 시·군이 하나뿐이면 도를 남긴다
+ *     (`경남 김해시` — `김해시` 만으로는 어딘지 덜 읽힌다).
+ *     '부산 연제구 중앙천로39번길 12'          → '부산 연제구'
+ *     '경기 성남시 분당구 판교역로 1'          → '성남시 분당구'
+ *     '전북특별자치도 전주시 덕진구 기린대로 1' → '전주시 덕진구'
+ *     '경남 김해시 김해대로 1'                 → '경남 김해시'
+ *     '세종특별자치시 한누리대로 2130'          → '세종특별자치시'
  */
 export function shortRegion(address: string | null | undefined): string {
   const words = (address || '').trim().split(/\s+/).filter(Boolean)
@@ -50,5 +58,6 @@ export function shortRegion(address: string | null | undefined): string {
     if (!/(시|군|구)$/.test(words[i])) break
     out.push(words[i])
   }
+  if (out.length === 3 && PROVINCE_RE.test(out[0])) out.shift()
   return out.join(' ')
 }
