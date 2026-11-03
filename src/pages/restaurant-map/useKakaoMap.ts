@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react'
 import { distanceKm } from './utils'
 import { attachKakaoTouchShim } from '@/lib/kakao-touch-shim'
-import { buildAggContent, buildClusterContent, buildPinContent, buildPlaceContent, buildMeContent, applyPinTierStyle } from './map-overlays'
+import { buildAggContent, buildClusterContent, buildPinContent, buildPlaceContent, buildMeContent, applyPinTierStyle, spreadFromCluster } from './map-overlays'
 import { mapMarkerTier, shouldShowMarkerLabel, setMapHighlightPct, mapHighlightPct } from '@/shared/map-marker'
 import { priceDisplay } from '@/shared/price-display'
 import { readRecentlyViewedIds } from '@/components/group-buy/RecentlyViewedStrip'
@@ -90,6 +90,7 @@ export function useKakaoMap({
   //   기존 '매 initMap 마다 전량 setMap(null)+재생성'(팬/줌/검색/즐겨찾기마다 innerHTML 파싱 + <img>
   //   재생성 → 핀 깜빡임/팬 종료 직후 버벅) 제거. 같은 key 는 무접촉, 빠진 key 만 제거, 새 key 만 생성.
   const overlayRegistryRef = useRef(new Map<string, any>())
+  const prevClusterOfRef = useRef(new Map<number, { lat: number; lng: number }>()) // 🎬 21차 ④ 지난 그림의 '가게 → 묶음 가운데'
   // ⚡ 2026-07-08 (대표 "매장 많아지니 렉" — 레이어 1/4): 선택 변경은 전량 재빌드 대신 해당 핀만 직접 restyle.
   //   initMap 은 selectedIdRef 로 현재값만 읽고(의존성 X), 별도 effect 가 registry 의 DOM 을 갱신.
   const selectedIdRef = useRef<number | null>(null)
@@ -360,11 +361,13 @@ export function useKakaoMap({
     }
 
     const clusteredKeys = new Set<string>()
+    const prevClusterOf = prevClusterOfRef.current, nextClusterOf = new Map<number, { lat: number; lng: number }>()
     if (!aggMode && gridSize > 0) {
       clusters.forEach((items, key) => {
-        if (items.length >= 2) clusteredKeys.add(key)
+        if (items.length < 2) return; clusteredKeys.add(key); const n = items.length
+        const c = { lat: items.reduce((a, x) => a + x.restaurant_lat, 0) / n, lng: items.reduce((a, x) => a + x.restaurant_lng, 0) / n }; items.forEach((x) => nextClusterOf.set(x.id, c))
       })
-    }
+    }; prevClusterOfRef.current = nextClusterOf
 
     // 🗺️ 2026-09-09 (안 D4): 이름 라벨 솎아내기용 — **개별로 그려질 핀**이 차지한 격자 칸.
     //   클러스터로 접히는 칸은 넣지 않는다(그 칸엔 개별 핀이 없다).
@@ -418,6 +421,7 @@ export function useKakaoMap({
         // ⚡ 선택 restyle 용 registry — 핀 루트 div 기억(선택 변경 시 전량 재빌드 없이 이 노드만 갱신).
         const rootEl = content.firstElementChild as HTMLElement | null
         if (rootEl) pinElsRef.current.set(r.id, rootEl)
+        const from = prevClusterOf.get(r.id); if (from && !nextClusterOf.has(r.id)) spreadFromCluster(content, mapInstance.current, from, pos) // 🎬 21차 ④ 묶음 자리에서 흩어져 나온다
         pinDataRef.current.set(r.id, r)
         return overlay
       })

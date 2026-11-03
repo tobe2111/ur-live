@@ -584,7 +584,8 @@
     "alreadyTitle": "이미 받은 쿠폰입니다",
     "alreadyHint": "결제 시 자동으로 적용됩니다",
     "goHome": "홈으로 가기",
-    "errorTitle": "쿠폰 발급 실패"
+    "errorTitle": "쿠폰 발급 실패",
+    "scratch": "긁어서 확인"
   },
   "liveList": {
     "docTitle": "라이브 - 유어딜",

@@ -4643,7 +4643,8 @@
     "alreadyTitle": "Ya tienes este cupón",
     "alreadyHint": "Se aplicará automáticamente al pagar",
     "goHome": "Ir al inicio",
-    "errorTitle": "Reclamo de cupón fallido"
+    "errorTitle": "Reclamo de cupón fallido",
+    "scratch": "Rasca para ver"
   },
   "liveList": {
     "docTitle": "En vivo - YourDeal",

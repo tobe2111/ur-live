@@ -13,6 +13,54 @@ import { hasConsumerSession } from '@/utils/auth'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-coupon', `@keyframes ur-cp-in { from { opacity: 0; transform: translateY(30px) rotate(-4deg) scale(.92); } to { opacity: 1; transform: none; } }@keyframes ur-cp-pop { 0% { transform: scale(.5); } 60% { transform: scale(1.12); } 100% { transform: none; } }.ur-cp-in { animation: ur-cp-in .55s cubic-bezier(.2,1,.3,1) .25s backwards; }.ur-cp-pop { animation: ur-cp-pop .45s cubic-bezier(.3,1.3,.5,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-cp-in,.ur-cp-pop{animation:none!important}}`)
 
+/**
+ * 🎬 2026-11-03 21차 ⑦ (대표 승인) — 받은 쿠폰 금액이 **은박으로 덮여 있고, 긁으면 드러난다.** 절반쯤 긁으면 나머지는 저절로 벗겨진다.
+ *   쿠폰은 이미 발급됐다(서버) — 이건 보여 주는 순서일 뿐이다. 금액 글자는 처음부터 DOM 에 있어 읽기 프로그램은 바로 읽는다.
+ *   키보드(Enter·Space)로도 벗길 수 있고, 동작 줄이기면 덮개 자체를 안 그린다.
+ */
+function ScratchCover({ label }: { label: string }) {
+  const ref = useRef<HTMLCanvasElement | null>(null)
+  const [gone, setGone] = useState(() => { try { return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { return true } })
+  const [fading, setFading] = useState(false)
+  const down = useRef(false)
+  useEffect(() => {
+    const c = ref.current; if (!c || gone) return
+    const r = { width: c.offsetWidth, height: c.offsetHeight } // 카드가 기울어 들어오는 중이라 getBoundingClientRect 는 작게 잰다
+    const dpr = Math.min(2, window.devicePixelRatio || 1)
+    c.width = Math.max(1, Math.round(r.width * dpr)); c.height = Math.max(1, Math.round(r.height * dpr))
+    const g = c.getContext('2d'); if (!g) return
+    g.scale(dpr, dpr)
+    const gr = g.createLinearGradient(0, 0, r.width, r.height)
+    gr.addColorStop(0, 'rgb(200,204,210)'); gr.addColorStop(0.5, 'rgb(238,240,243)'); gr.addColorStop(1, 'rgb(185,190,198)')
+    g.fillStyle = gr; g.fillRect(0, 0, r.width, r.height)
+    g.fillStyle = 'rgb(122,128,137)'; g.font = '700 15px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'
+    g.fillText(label, r.width / 2, r.height / 2)
+  }, [gone, label])
+  const reveal = () => { setFading(true); window.setTimeout(() => setGone(true), 400) }
+  const scratch = (x: number, y: number) => {
+    const c = ref.current; const g = c?.getContext('2d'); if (!c || !g || fading) return
+    const r = c.getBoundingClientRect()
+    g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(x - r.left, y - r.top, 20, 0, Math.PI * 2); g.fill()
+    const d = g.getImageData(0, 0, c.width, c.height).data; let clear = 0, n = 0
+    for (let i = 3; i < d.length; i += 64) { n++; if (d[i] === 0) clear++ }
+    if (n && clear / n > 0.45) reveal()
+  }
+  if (gone) return null
+  return (
+    <canvas
+      ref={ref}
+      role="button"
+      tabIndex={0}
+      aria-label={label}
+      className={`absolute inset-0 w-full h-full rounded-2xl cursor-pointer touch-none transition-opacity duration-300 ${fading ? 'opacity-0' : ''}`}
+      onPointerDown={(e) => { down.current = true; e.currentTarget.setPointerCapture(e.pointerId); scratch(e.clientX, e.clientY) }}
+      onPointerMove={(e) => { if (down.current) scratch(e.clientX, e.clientY) }}
+      onPointerUp={() => { down.current = false }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); reveal() } }}
+    />
+  )
+}
+
 function ConfettiCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -174,10 +222,13 @@ export default function CouponClaimPage() {
 
               <p className="text-[12px] text-brand-text font-medium mb-1">{t('couponClaim.couponLabel')}</p>
               <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{coupon.name}</p>
-              <p className="text-[34px] font-extrabold text-brand-text">
-                {coupon.type === 'percent' ? `${coupon.value}%` : `${formatNumber(coupon.value)}원`}
-              </p>
-              <p className="text-[17px] font-bold text-gray-700 dark:text-gray-300 -mt-1">{t('couponClaim.discount')}</p>
+              <div className="relative -mx-2 px-2 rounded-2xl">
+                <p className="text-[34px] font-extrabold text-brand-text">
+                  {coupon.type === 'percent' ? `${coupon.value}%` : `${formatNumber(coupon.value)}원`}
+                </p>
+                <p className="text-[17px] font-bold text-gray-700 dark:text-gray-300 -mt-1">{t('couponClaim.discount')}</p>
+                <ScratchCover label={t('couponClaim.scratch', { defaultValue: '긁어서 확인' })} />
+              </div>
               <div className="mt-4 pt-4 border-t border-dashed border-rule ">
                 <p className="text-[12px] text-gray-400 dark:text-gray-500">{t('couponClaim.footerNote')}</p>
               </div>

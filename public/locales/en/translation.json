@@ -584,7 +584,8 @@
     "alreadyTitle": "You already have this coupon",
     "alreadyHint": "It will be auto-applied at checkout",
     "goHome": "Go home",
-    "errorTitle": "Coupon claim failed"
+    "errorTitle": "Coupon claim failed",
+    "scratch": "Scratch to reveal"
   },
   "liveList": {
     "docTitle": "Live - YourDeal",
