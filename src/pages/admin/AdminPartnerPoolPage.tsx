@@ -27,6 +27,7 @@ import { STAT_PICK, fmtRun, runStamp, parseStamp, fetchRunStatus } from './partn
 import { FilterChip, ActionMenu } from './partner-pool/Controls'
 import CompanyKeywordManager, { type CompanyKeyword } from './partner-pool/CompanyKeywordManager'
 import PoolExportButtons from './PoolExportButtons'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
@@ -187,7 +188,7 @@ export default function AdminPartnerPoolPage() {
   }, [loadLeads, loadStats])
 
   const removeLead = useCallback(async (id: number) => {
-    if (!window.confirm('이 업체 리드를 삭제할까요?')) return
+    if (!(await confirmDialog({ message: '이 업체 리드를 삭제할까요?', danger: true }))) return
     try {
       const r = await api.delete(`/api/admin/partner-pool/${id}`)
       if (r.data?.success) { setLeads(prev => prev.filter(l => l.id !== id)); setTotal(t => Math.max(0, t - 1)); await loadStats() }
@@ -196,7 +197,7 @@ export default function AdminPartnerPoolPage() {
   }, [loadStats])
 
   const bounceLead = useCallback(async (id: number, email: string) => {
-    if (!confirm(`${email}\n반송된 주소로 기록할까요? 억제 목록에 올라가 재수집으로도 되살아나지 않습니다.`)) return
+    if (!(await confirmDialog(`${email}\n반송된 주소로 기록할까요? 억제 목록에 올라가 재수집으로도 되살아나지 않습니다.`))) return
     try {
       const r = await api.post(`/api/admin/partner-pool/${id}/bounce`, {})
       if (r.data?.success) { toast.success('반송 기록됨 — 이 주소는 다시 수집되지 않습니다'); setLeads(prev => prev.map(l => l.id === id ? { ...l, email: null } : l)) }
@@ -285,7 +286,7 @@ export default function AdminPartnerPoolPage() {
   async function deleteSelected() {
     const ids = [...selected]
     if (!ids.length) return
-    if (!confirm(`선택한 ${ids.length}개 업체를 삭제할까요? 되돌릴 수 없습니다.`)) return
+    if (!(await confirmDialog({ message: `선택한 ${ids.length}개 업체를 삭제할까요? 되돌릴 수 없습니다.`, danger: true }))) return
     try {
       const r = await api.post('/api/admin/partner-pool/delete-bulk', { ids })
       if (r.data?.success) { toast.success(`${r.data.deleted}개 삭제됨`); setSelected(new Set()); await Promise.all([loadLeads(), loadStats()]) }
@@ -581,7 +582,7 @@ const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onR
         <input type="date" value={l.follow_up_at ? l.follow_up_at.slice(0, 10) : ''} onChange={e => onPatch(l.id, { follow_up_at: e.target.value || null })} className="rounded border border-gray-200 bg-white text-gray-700 text-xs px-1 py-1" />
       </td>
       <td className="px-3 py-2 whitespace-nowrap text-right">
-        <button onClick={() => { const m = window.prompt('메모', l.memo || ''); if (m !== null) onPatch(l.id, { memo: m }) }} className="text-gray-400 hover:text-gray-700 text-xs mr-2">메모</button>
+        <button onClick={async () => { const m = (await promptDialog({ message: '메모', prompt: { defaultValue: l.memo || '' } })); if (m !== null) onPatch(l.id, { memo: m }) }} className="text-gray-400 hover:text-gray-700 text-xs mr-2">메모</button>
         <button onClick={() => onRemove(l.id)} className="text-gray-400 hover:text-tone-bad text-xs">삭제</button>
       </td>
     </tr>

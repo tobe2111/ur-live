@@ -15,6 +15,7 @@ import { NavigateFunction } from 'react-router-dom'
 import { isSafeInternalPath } from './safe-internal-path'
 import { useAuthStore } from '@/client/stores/auth.store'
 import { clearAllUserCache } from '@/hooks/queries/localCache'
+import { alertDialog } from '@/components/ui/confirm-dialog'
 
 // 🔥 2026-08-04 (대표 승인): Firebase 제거. GLOBAL 미런칭·폐기(#804) · 서버 수용 차단(#806).
 //   KR 은 카카오 세션 쿠키 인증이라 이 경로를 원래 안 탄다.
@@ -407,7 +408,7 @@ export function requireLogin(navigate: NavigateFunction, message: string = '로�
   const alertShown = sessionStorage.getItem(alertShownKey)
 
   if (message && (force || !alertShown)) {
-    alert(message)
+    void alertDialog(message)
     sessionStorage.setItem(alertShownKey, 'true')
   }
 

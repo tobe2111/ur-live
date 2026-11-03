@@ -115,7 +115,7 @@ export default function AdminPayoutsPage() {
   }
 
   async function markSent(p: Payout) {
-    const txId = window.prompt(`송금 transaction_id 입력 (은행 거래번호 또는 토스 ID):\n계좌: ${p.bank_name || ''} ${p.account_number || ''} (${p.account_holder || ''})\n금액: ${formatWon(p.amount)}`)
+    const txId = (await promptDialog({ message: `송금 transaction_id 입력 (은행 거래번호 또는 토스 ID):\n계좌: ${p.bank_name || ''} ${p.account_number || ''} (${p.account_holder || ''})\n금액: ${formatWon(p.amount)}`, prompt: {} }))
     if (!txId) return
     try {
       const res = await api.patch(`/api/admin/payouts/${p.id}/sent`, { transaction_id: txId.trim() })
@@ -128,7 +128,7 @@ export default function AdminPayoutsPage() {
   }
 
   async function cancel(p: Payout) {
-    const reason = window.prompt('취소 사유:')
+    const reason = (await promptDialog({ message: '취소 사유:', prompt: {} }))
     if (!reason) return
     try {
       const res = await api.patch(`/api/admin/payouts/${p.id}/cancel`, { reason })

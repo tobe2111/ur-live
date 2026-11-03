@@ -29,6 +29,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 // 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-product-edit/types 로 추출.
 import type { LiveStream, Product } from './seller-product-edit/types'
 import PromoRateField, { promoPctFromProduct, promoRateForSubmit } from './seller-product-edit/PromoRateField'
+import { promptDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 레거시 이용권 카테고리(2026 이전 등록분). 새로 고를 수는 없고, **이미 그 값을 가진 상품을
@@ -215,8 +216,8 @@ export default function SellerProductEditPage() {
     }
   }
 
-  function addDetailImage() {
-    const url = prompt(t('seller.detailImageUrlPrompt'))
+  async function addDetailImage() {
+    const url = (await promptDialog({ message: t('seller.detailImageUrlPrompt'), prompt: {} }))
     if (url && url.trim()) {
       setFormData({
         ...formData,

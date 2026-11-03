@@ -8,6 +8,7 @@ import { useState } from 'react'
 import api from '@/lib/api'
 import { DashboardCard } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /** 💓 cron 실행 기록 — 서버 GET /api/admin/cron-heartbeats 응답 형태. */
 export interface CronHeartbeat {
@@ -50,7 +51,7 @@ export default function HeartbeatCards({ heartbeats, neverFired, orphanLanes, au
 
   // 🪦 고아 하트비트 삭제 — 이름에 `?`/`:` 가 있어(maintenance?phase=…) path 가 아니라 body 로 보낸다.
   const deleteOrphanBeat = async (name: string) => {
-    if (!window.confirm(`'${name}' 하트비트 기록을 지울까요?\n(레인이 실제로 살아 있으면 다음 실행이 행을 다시 만듭니다)`)) return
+    if (!(await confirmDialog(`'${name}' 하트비트 기록을 지울까요?\n(레인이 실제로 살아 있으면 다음 실행이 행을 다시 만듭니다)`))) return
     setDeletingBeat(name)
     try {
       await api.post('/api/admin/cron-heartbeats/delete', { name }, auth)

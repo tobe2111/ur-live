@@ -14,6 +14,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Building2, TrendingUp, Users, Star, AlertTriangle, RefreshCw, MessageSquare, DollarSign } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { promptDialog } from '@/components/ui/confirm-dialog'
 
 interface Kpi {
   total_properties: number
@@ -97,9 +98,9 @@ export default function AdminStaysPage() {
   }
 
   async function refund(id: number) {
-    const reason = prompt('환불 사유 (필수):')
+    const reason = (await promptDialog({ message: '환불 사유 (필수):', prompt: {} }))
     if (!reason?.trim()) return
-    const amountStr = prompt('환불 금액 (비워두면 전액):')
+    const amountStr = (await promptDialog({ message: '환불 금액 (비워두면 전액):', prompt: {} }))
     const payload: { reason: string; refund_amount?: number } = { reason: reason.trim() }
     if (amountStr) {
       const n = Number(amountStr)
@@ -115,7 +116,7 @@ export default function AdminStaysPage() {
   }
 
   async function markDispute(id: number) {
-    const reason = prompt('분쟁 사유:')
+    const reason = (await promptDialog({ message: '분쟁 사유:', prompt: {} }))
     if (!reason?.trim()) return
     try {
       const r = await api.patch(`/api/admin/stays/bookings/${id}/dispute`, { reason: reason.trim() }, { headers: header() })

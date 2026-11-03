@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatKST } from '@/utils/date'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 🔓 **내보낸 묶음 되돌리기** — 세 풀 공용 패널(2026-10-25).
@@ -26,7 +27,7 @@ export default function PoolExportBatches({ pool }: { pool: 'influencer' | 'comp
   useEffect(() => { if (open && batches === null) void load() }, [open])
 
   async function cancel(stamp: string, rows: number) {
-    if (!confirm(`${rows}건의 "내보냄" 표시를 지웁니다.\n이 묶음은 다시 다운로드 대상이 됩니다.`)) return
+    if (!(await confirmDialog(`${rows}건의 "내보냄" 표시를 지웁니다.\n이 묶음은 다시 다운로드 대상이 됩니다.`))) return
     setBusy(stamp)
     try {
       const r = await api.post('/api/admin/pool-export-batches/cancel', { pool, stamp })

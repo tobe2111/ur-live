@@ -7,7 +7,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import ScannableQr from '@/components/voucher/ScannableQr'
 import VoucherRedeemModal from '@/components/voucher/VoucherRedeemModal'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
@@ -100,7 +100,12 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   const canRequestRefund = !gifted && voucher.status === 'unused' && !canSelfCancel && !!voucher.order_id
   async function handleRefundRequest() {
     if (cancelling || refundRequested || !voucher.order_id) return
-    const reason = window.prompt(t('voucher.refundReasonPrompt', { defaultValue: '환불 요청 사유를 입력해주세요 (예: 방문 계획 취소)' }))
+    const reason = (await promptDialog({
+      title: t('voucher.refundRequestTitle', { defaultValue: '환불 요청' }),
+      message: t('voucher.refundReasonPrompt', { defaultValue: '환불 요청 사유를 입력해주세요 (예: 방문 계획 취소)' }),
+      confirmText: t('voucher.refundRequestSubmit', { defaultValue: '요청하기' }),
+      prompt: { placeholder: t('voucher.refundReasonPlaceholder', { defaultValue: '예: 방문 계획 취소' }), required: true },
+    }))
     if (!reason || !reason.trim()) return
     setCancelling(true)
     try {

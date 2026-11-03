@@ -30,6 +30,7 @@ import RecruitButton from './influencer-pool/RecruitButton'
 import { LeadNameCell } from './influencer-pool/LeadNameCell'
 import PoolFilters from './influencer-pool/PoolFilters'
 import PoolStatCards from './influencer-pool/PoolStatCards'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import AutoRunLog from './influencer-pool/AutoRunLog' // 🕒 '자동으로 도는가'를 한 표로 — 그 파일 헤더 참조
 
 /**
@@ -219,14 +220,14 @@ export default function AdminInfluencerPoolPage() {
     } catch { toast.error('변경 실패') }
   }
   async function editMemo(l: Lead) {
-    const memo = window.prompt('메모(내부 관리용)', l.memo || '')
+    const memo = (await promptDialog({ message: '메모(내부 관리용)', prompt: { defaultValue: l.memo || '' } }))
     if (memo === null) return
     try { await api.patch(`/api/admin/ads/influencer-pool/${l.id}`, { memo }); setLeads(prev => prev.map(x => x.id === l.id ? { ...x, memo } : x)); toast.success('메모 저장 완료') }
     catch { toast.error('메모 저장 실패') }
   }
   async function setFollowUp(l: Lead) {
     const cur = l.follow_up_at || ''
-    const v = window.prompt('다음 팔로업 예정일 (YYYY-MM-DD, 비우면 해제)', cur)
+    const v = (await promptDialog({ message: '다음 팔로업 예정일 (YYYY-MM-DD, 비우면 해제)', prompt: { defaultValue: cur } }))
     if (v === null) return
     const val = v.trim()
     if (val && !/^\d{4}-\d{2}-\d{2}$/.test(val)) { toast.error('YYYY-MM-DD 형식으로 입력'); return }
@@ -301,7 +302,7 @@ export default function AdminInfluencerPoolPage() {
     } finally { setDrafting(false); setDraftProgress('') }
   }
   async function del(id: number) {
-    if (!window.confirm('이 인플루언서를 풀에서 삭제할까요?')) return
+    if (!(await confirmDialog({ message: '이 인플루언서를 풀에서 삭제할까요?', danger: true }))) return
     try { await api.delete(`/api/admin/ads/influencer-pool/${id}`); setLeads(prev => prev.filter(l => l.id !== id)); toast.success('풀에서 삭제 완료') }
     catch { toast.error('삭제 실패') }
   }

@@ -10,7 +10,7 @@ import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { Megaphone, Ban, RotateCcw, Handshake } from 'lucide-react'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 
 interface Blocked { influencer_id: string; reason: string; blocked_at: string }
 interface Recent { influencer_id: string; count: number; total_commission: number }
@@ -168,7 +168,7 @@ export default function SellerMarketingPage() {
   }
 
   async function blockInfluencer(influencerId: string) {
-    const reason = prompt(`${influencerId} 차단 사유 (필수, 5자 이상):\n예) 콘텐츠 부적절 / 재고 부족 / 마케팅 종료`)
+    const reason = (await promptDialog({ message: `${influencerId} 차단 사유 (필수, 5자 이상):\n예) 콘텐츠 부적절 / 재고 부족 / 마케팅 종료`, prompt: {} }))
     if (!reason || reason.trim().length < 5) {
       toast.error('차단 사유 5자 이상 입력')
       return

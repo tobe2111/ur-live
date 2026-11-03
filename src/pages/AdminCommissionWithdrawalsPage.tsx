@@ -15,6 +15,7 @@ import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 import { formatKST, formatKSTDate, formatKSTTime } from '@/utils/date'
+import { promptDialog } from '@/components/ui/confirm-dialog'
 
 interface Withdrawal {
   id: number
@@ -56,10 +57,7 @@ export default function AdminCommissionWithdrawalsPage() {
   }, [])
 
   async function approve(w: Withdrawal) {
-    const memo = window.prompt(
-      `[${w.bank_name} ${w.account_number} (${w.account_holder})] ${formatWon(w.total_amount)} 송금 완료를 확인합니다.\n메모 (선택):`,
-      '',
-    )
+    const memo = (await promptDialog({ message: `[${w.bank_name} ${w.account_number} (${w.account_holder})] ${formatWon(w.total_amount)} 송금 완료를 확인합니다.\n메모 (선택):`, prompt: { defaultValue: '' } }))
     if (memo === null) return
     try {
       setActionId(w.id)
@@ -79,7 +77,7 @@ export default function AdminCommissionWithdrawalsPage() {
   }
 
   async function reject(w: Withdrawal) {
-    const reason = window.prompt('거절 사유를 입력하세요:')
+    const reason = (await promptDialog({ message: '거절 사유를 입력하세요:', prompt: {} }))
     if (!reason || !reason.trim()) return
     try {
       setActionId(w.id)

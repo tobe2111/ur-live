@@ -10,6 +10,7 @@ import { formatKSTDate } from '@/utils/date'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 // 💰 2026-08-10 원가·마진 SSOT (판매가는 패키지, 원가는 platform_settings — 분리 보관)
 import { DEFAULT_ALIMTALK_UNIT_COST_KRW, packageMarginPct } from '@/shared/alimtalk-pricing'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface AlimtalkPackage {
   id: number
@@ -119,7 +120,7 @@ export default function AdminAlimtalkPricingPage() {
     if (!Number.isFinite(mallId) || mallId <= 0) { toast.error('몰 ID를 입력해주세요'); return }
     if (!Number.isFinite(credits) || credits <= 0) { toast.error('매장당 지급 건수를 입력해주세요'); return }
     if (!grant.ref.trim()) { toast.error('지급 참조(계산서 번호 등)를 입력해주세요'); return }
-    if (!window.confirm(`몰 #${mallId} 소속 매장 전체에 각 ${credits.toLocaleString()}건을 지급합니다. 진행할까요?`)) return
+    if (!(await confirmDialog(`몰 #${mallId} 소속 매장 전체에 각 ${credits.toLocaleString()}건을 지급합니다. 진행할까요?`))) return
     setGranting(true)
     try {
       const r = await api.post('/api/admin/alimtalk/grant', {

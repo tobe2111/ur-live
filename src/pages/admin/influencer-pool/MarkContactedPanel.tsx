@@ -3,6 +3,7 @@ import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * ✅ 수기 발송 후 '보냄' 일괄 처리 — 2026-07-29.
@@ -24,7 +25,7 @@ export default function MarkContactedPanel() {
 
   async function submit() {
     if (!ids.length) return
-    if (!window.confirm(`${formatNumber(ids.length)}명을 '발송 완료'로 표시합니다.\n\n다음 목록에서 제외되어 중복 발송을 막습니다. 진행할까요?`)) return
+    if (!(await confirmDialog(`${formatNumber(ids.length)}명을 '발송 완료'로 표시합니다.\n\n다음 목록에서 제외되어 중복 발송을 막습니다. 진행할까요?`))) return
     setBusy(true)
     try {
       // 서버 상한 500 — 초과분은 나눠 보낸다.
