@@ -70,6 +70,7 @@ export const ADMIN_NOTIF_GROUP: Readonly<Record<string, AdminNotifGroup>> = {
   visit_reward_ended: 'business',
 
   // 시스템 — 개발이 본다. 대표의 종을 울리지 않는다.
+  payouts_heartbeat: 'system',        // 주간 정산 0건 — 돌았다는 기록일 뿐(2026-11-02)
   cron_failure: 'system',
   server_error: 'system',
   ledger_mismatch: 'system',

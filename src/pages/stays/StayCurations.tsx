@@ -106,7 +106,8 @@ export default function StayCurations({
   )
 }
 
-function RevealSection({ children }: { children: React.ReactNode }) {
+/** 🎬 2026-11-03 14차 ⑩ — 숙소 상세 '비슷한 스테이' 도 같은 등장을 쓴다(그래서 내보낸다). */
+export function RevealSection({ children, className }: { children: React.ReactNode; className?: string }) {
   const ref = useRevealOnEnter<HTMLElement>()
-  return <section ref={ref}>{children}</section>
+  return <section ref={ref} className={className}>{children}</section>
 }

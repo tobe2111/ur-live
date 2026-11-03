@@ -6154,7 +6154,10 @@
     "errorEmailInUse": "[TODO:fr] 이미 사용 중인 이메일입니다.",
     "errorInvalidEmail": "[TODO:fr] 유효하지 않은 이메일 형식입니다.",
     "seoTitle": "[TODO:fr] 회원가입 - 유어딜",
-    "seoDesc": "Rejoignez UrDeal et obtenez des bons locaux à prix réduit"
+    "seoDesc": "Rejoignez UrDeal et obtenez des bons locaux à prix réduit",
+    "agreeAll": "Tout accepter (options incluses)",
+    "pwMatch": "Les mots de passe correspondent",
+    "pwMismatch": "Les mots de passe ne correspondent pas"
   },
   "following": {
     "title": "[TODO:fr] 팔로잉",

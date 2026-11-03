@@ -42,7 +42,7 @@ describe('① 워커의 첫 화면 모듈이 전부 ROOTS 에 있다', () => {
     expect(files.length).toBeGreaterThanOrEqual(20)
   })
   it('로더 블록을 떼어 낸다', () => {
-    expect(loaderBlock()).toMatch(/ur-loader-breathe/)
+    expect(loaderBlock()).toMatch(/brandLoaderMarkup\(/) // ⏳ 2026-11-02 로더 = SSOT 문자열(막대·화면 모양)
   })
 })
 
@@ -66,8 +66,11 @@ describe('③ 첫 화면 클래스가 실제로 들어 있다', () => {
   const pick = (v: unknown): string[] => (typeof v === 'string' ? v.split(/\s+/) : v && typeof v === 'object' ? Object.values(v).flatMap(pick) : [])
   // 셀렉터 이스케이프가 까다로운 임의 변형(`[&>span]:…`)은 뺀다 — 모양만 다르고 결론은 같다.
   const simple = (c: string) => c && !c.includes('&') && !c.startsWith('[')
-  it('로더(워커 정적 로더 · 위상 동기 클래스)', () => {
-    for (const c of ['ur-loader-breathe', 'ur-loader-sweep', 'ur-udal-hop', 'bg-brand', 'select-none']) expect(css, c).toContain(sel(c))
+  it('로더 — 스타일을 문자열 안에 실어 첫 화면 CSS 에 기대지 않는다(2026-11-02 막대·화면 모양)', () => {
+    // 종전엔 ur-loader-breathe/sweep·ur-udal-hop 이 이 CSS 에 있어야 했다. 지금 로더는 `<style>` 를 같이 싣는다 —
+    // 그래서 여기서 볼 것은 '로더가 쓰는 토큰' 이 첫 화면 CSS 에 있느냐다(--brand · --rule).
+    expect(css).toMatch(/--brand:/)
+    expect(css).toMatch(/--rule:/)
   })
   it('이용권 상세 머리(PASS_HEAD) 클래스 전부', () => {
     const cls = pick(PASS_HEAD).filter(simple)

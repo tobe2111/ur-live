@@ -16,6 +16,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import { formatKST, formatKSTDate } from '@/utils/date'
+import { DashboardLoadError } from '@/components/dashboard'
 
 type ProspectStatus = 'visiting' | 'converted' | 'expired'
 
@@ -48,7 +49,7 @@ const STATUS_META: Record<ProspectStatus, { label: string; color: string }> = {
 export default function AdminProspectsPage() {
   const [status, setStatus] = useState<ProspectStatus>('visiting')
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (status별 캐시).
-  const { data: prospects = [], isLoading: loading, refetch } = useApiQuery<Prospect[]>(
+  const { data: prospects = [], isLoading: loading, isError, error, refetch } = useApiQuery<Prospect[]>(
     ['admin', 'prospects', status], '/api/admin/prospects',
     { params: { status }, select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -106,7 +107,9 @@ export default function AdminProspectsPage() {
         )}
 
         <div className="max-w-5xl mx-auto px-4 space-y-2">
-          {loading ? (
+          {isError ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="영업 추적" />
+        ) : loading ? (
             <div className="text-center py-12 text-gray-400 text-sm">로딩 중...</div>
           ) : prospects.length === 0 ? (
             <div className="text-center py-16">

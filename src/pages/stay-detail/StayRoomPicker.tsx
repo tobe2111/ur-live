@@ -10,6 +10,9 @@
  */
 import { formatNumber } from '@/utils/format'
 import { SectionTitle, StaySoldOutCard } from './StayInfoSections'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 14차 ③ — 객실을 고르면 카드가 톡 눌렸다 놓이고 '선택됨' 앞에 체크가 그려진다.
+injectMotionCss('ur-m-room', `@keyframes ur-room-on { 0% { transform: scale(.98); } 60% { transform: scale(1.01); } 100% { transform: none; } }@keyframes ur-room-ck { to { stroke-dashoffset: 0; } }.ur-room-on { animation: ur-room-on .3s cubic-bezier(.3,1.3,.5,1); }.ur-room-ck path { stroke-dasharray: 20; stroke-dashoffset: 20; animation: ur-room-ck .3s .08s ease-out forwards; }@media (prefers-reduced-motion: reduce){.ur-room-on{animation:none!important}.ur-room-ck path{animation:none!important;stroke-dashoffset:0}}`)
 
 export interface PickerRoom {
   room_id: number
@@ -53,7 +56,7 @@ export default function StayRoomPicker({ rooms, loading, guests, nights, selecte
             return (
               <button key={r.room_id} type="button" role="radio" aria-checked={on} disabled={disabled}
                 onClick={() => onSelect(r)}
-                className={`w-full text-left rounded-2xl p-4 flex items-start justify-between gap-3 bg-surface ${readOnly ? 'disabled:cursor-default' : 'disabled:opacity-50 disabled:cursor-default'} ${on ? 'border-2 border-brand' : 'border border-rule-strong'}`}>
+                className={`w-full text-left rounded-2xl p-4 flex items-start justify-between gap-3 bg-surface ${readOnly ? 'disabled:cursor-default' : 'disabled:opacity-50 disabled:cursor-default'} ${on ? 'border-2 border-brand ur-room-on' : 'border border-rule-strong'}`}>
                 <span className="min-w-0">
                   <span className="block text-[15px] font-medium text-gray-900 dark:text-white">{r.name}</span>
                   <span className="block mt-1 text-[12px] text-gray-500 dark:text-gray-400">
@@ -66,7 +69,9 @@ export default function StayRoomPicker({ rooms, loading, guests, nights, selecte
                 <span className="shrink-0 text-right">
                   <span className="block text-[17px] font-bold text-gray-900 dark:text-white">{formatNumber(r.total_price)}원</span>
                   <span className={`block mt-1 text-[12px] ${on ? 'text-brand-text font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
-                    {tooMany ? `최대 ${r.max_guests}명` : on ? '선택됨' : `${r.nights || nights}박`}
+                    {tooMany ? `최대 ${r.max_guests}명` : on ? (
+                      <span className="inline-flex items-center gap-1"><svg key={r.room_id} aria-hidden="true" viewBox="0 0 24 24" className="ur-room-ck w-3 h-3" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>선택됨</span>
+                    ) : `${r.nights || nights}박`}
                   </span>
                 </span>
               </button>

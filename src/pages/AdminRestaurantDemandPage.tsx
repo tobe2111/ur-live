@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { useTranslation } from '@/lib/i18n-lite'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { TrendingUp, MapPin, Phone, Bell, Handshake, RefreshCw, Navigation } from 'lucide-react'
 
 interface SuggestionStat {
@@ -31,7 +31,7 @@ export default function AdminRestaurantDemandPage() {
   const [filter, setFilter] = useState<'all' | 'invite' | 'notify'>('all')
 
   // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). 인증=인터셉터 자동. load=refetch(새로고침 버튼 유지).
-  const { data: items = [], isLoading: loading, refetch } = useApiQuery<SuggestionStat[]>(
+  const { data: items = [], isLoading: loading, isError, error, refetch } = useApiQuery<SuggestionStat[]>(
     ['admin', 'restaurant-suggestions'],
     '/api/restaurant-suggestions/stats',
     { select: (raw) => ((raw as { success?: boolean; data?: SuggestionStat[] })?.success ? ((raw as { data: SuggestionStat[] }).data || []) : []) },
@@ -97,7 +97,9 @@ export default function AdminRestaurantDemandPage() {
         </div>
 
         {/* 리스트 */}
-        {loading ? (
+        {isError ? (
+          <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="맛집 수요" />
+        ) : loading ? (
           <div className="flex justify-center py-16">
             <div className="w-8 h-8 border-4 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
           </div>

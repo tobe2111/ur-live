@@ -17,6 +17,9 @@ import { promptDialog } from '@/components/ui/confirm-dialog'
 import SEO from '@/components/SEO'
 import { useMyAppointments } from '@/hooks/queries/useMyData'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 15차 ④ — 방금 취소한 예약은 상태 표시가 위아래로 뒤집히며 '취소'로 바뀌고, 카드가 한 번 흐려졌다 돌아온다(어느 줄이 바뀌었는지 보이게).
+injectMotionCss('ur-m-appt', `@keyframes ur-ap-flip { 0% { opacity: 0; transform: translateY(-60%) scaleY(.4); } 100% { opacity: 1; transform: none; } }@keyframes ur-ap-dim { 40% { opacity: .45; } 100% { opacity: 1; } }.ur-ap-flip { animation: ur-ap-flip .4s cubic-bezier(.3,1.3,.5,1); }.ur-ap-dim { animation: ur-ap-dim .6s ease; }@media (prefers-reduced-motion: reduce){.ur-ap-flip,.ur-ap-dim{animation:none!important}}`)
 
 interface Appointment {
   id: number
@@ -101,6 +104,8 @@ export default function MyAppointmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /** 🎬 15차 ④ — 이 화면에서 방금 취소한 예약(그 카드만 움직인다). */
+  const [justCancelled, setJustCancelled] = useState<Set<Appointment['id']>>(() => new Set())
   async function cancel(a: Appointment) {
     // 🛡️ 2026-07-02: native window.prompt → 통일 디자인 promptDialog (confirm-dialog 인프라).
     const reason = await promptDialog({
@@ -113,7 +118,7 @@ export default function MyAppointmentsPage() {
     if (!reason) return
     try {
       const res = await api.patch(`/api/appointments/${a.id}/cancel`, { cancel_reason: reason })
-      if (res.data?.success) { toast.success('취소 완료'); refetch() }
+      if (res.data?.success) { toast.success('취소 완료'); setJustCancelled((s) => new Set(s).add(a.id)); refetch() }
       else toast.error(res.data?.error || '취소 실패')
     } catch (e: unknown) {
       const ax = e as { response?: { data?: { error?: string } } }
@@ -185,7 +190,7 @@ export default function MyAppointmentsPage() {
             {items.map(a => {
               const meta = STATUS_LABEL[a.status] ?? STATUS_LABEL_FALLBACK
               return (
-                <div key={a.id} className="rounded-2xl border border-line p-4">
+                <div key={a.id} className={`rounded-2xl border border-line p-4${justCancelled.has(a.id) && a.status === 'cancelled' ? ' ur-ap-dim' : ''}`}>
                   <div className="flex items-start gap-3">
                     <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1D1F29] overflow-hidden flex-shrink-0">
                       {a.image_url ? (
@@ -195,7 +200,7 @@ export default function MyAppointmentsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-[15px] font-bold text-gray-900 dark:text-white line-clamp-1">{a.product_name}</p>
-                        <span className={`shrink-0 inline-block px-2 py-1 rounded-full text-[12px] font-medium ${meta.cls}`}>{meta.label}</span>
+                        <span key={a.status} className={`shrink-0 inline-block px-2 py-1 rounded-full text-[12px] font-medium ${meta.cls}${justCancelled.has(a.id) && a.status === 'cancelled' ? ' ur-ap-flip' : ''}`}>{meta.label}</span>
                       </div>
                       <p className="text-[12px] text-gray-700 dark:text-gray-300 mt-1 tabular-nums">
                         📅 {a.booking_date} {a.start_time} ~ {a.end_time}

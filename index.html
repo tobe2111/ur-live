@@ -355,8 +355,8 @@ p['catch'](function(){});window.__urStaysEarly={qs:q,p:p}})()</script>
             떼는 건 대표 판단 사항). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- 🫥 2026-11-03 [UNLOCK_LOADING] 대표 *"3,4 해결해줘"* — 유달이 로더 preload(10KB)를 뗐다. 2026-11-02 대표 *"아예 안 보이게"* 로
-         첫 진입 로더의 그림이 visibility:hidden 이 되어, 이 preload 는 **보이지 않는 그림**을 최우선으로 받고 있었다. -->
+    <!-- ⏳ 2026-11-02 [UNLOCK_LOADING] 로딩 화면에서 유달이를 뺐다(대표 "유달이 뜨는게 별로") — 그 그림(10KB) 미리 받기도 뺐다.
+         기록: docs/locks/loading/2026-11-02-loader-topbar-skeleton.md -->
     <link rel="dns-prefetch" href="https://js.tosspayments.com" />
     <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
@@ -494,16 +494,10 @@ if(document.readyState==='complete')idle();else addEventListener('load',idle,{on
       /* 다크 모드 진입 직전 깜빡임 방지 */
       html.dark body{background:#11141C;color:#fff}
 
-      /* 🎨 2026-06-29 (대표 — 로딩 브랜드 통일): 부팅 스플래시를 UR·DEAL 워드마크 로더로
-         (React 라우트 전환 BrandLoader 와 동일 룩). '유어딜' 한글 로더 → UR·DEAL 로 통일. */
-      #ur-pre-react .urw { position: relative; display: inline-flex; align-items: center; font-weight: 900; font-style: italic; font-size: 30px; line-height: 1; letter-spacing: -0.055em; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; animation: ur-boot-breathe 1.5s ease-in-out infinite; }
-      #ur-pre-react .urw .p { position: absolute; left: 5.4px; top: 8.4px; width: 0; height: 0; border-left: 4.2px solid currentColor; border-top: 2.7px solid transparent; border-bottom: 2.7px solid transparent; opacity: 0.85; }
-      #ur-pre-react .urw .d { display: inline-block; width: 4.2px; height: 4.2px; background: currentColor; border-radius: 50%; margin: 0 2.4px; transform: translateY(-1.8px); }
-      #ur-pre-react .urt { position: relative; overflow: hidden; width: 96px; height: 3px; border-radius: 999px; margin: 16px auto 0; background: rgba(140,140,140,0.2); }
-      #ur-pre-react .urb { position: absolute; top: 0; bottom: 0; left: 0; width: 38%; border-radius: 999px; background: currentColor; animation: ur-boot-sweep 1.15s cubic-bezier(0.4,0,0.2,1) infinite; animation-delay: 0.2s; }
-      @keyframes ur-boot-breathe { 0%,100% { opacity: 0.5; transform: scale(0.97); } 50% { opacity: 1; transform: scale(1); } }
-      @keyframes ur-boot-sweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
-      @media (prefers-reduced-motion: reduce) { #ur-pre-react .urw, #ur-pre-react .urb { animation: none; } }
+      /* ⏳ 2026-11-02 (대표 — 위쪽 얇은 막대 + 화면 모양 미리 보여 주기): 앱 CSS 전이라 로더가 쓰는 토큰 두 개만 여기서 준다.
+         모양은 아래 #ur-pre-react 안의 <style> 이 정한다(shared/brand-loader-markup.ts 와 같은 글자 — 가드가 대조). */
+      #ur-pre-react { --brand: #1C69EF; --rule: rgb(22 24 28 / 0.08); }
+      html.dark #ur-pre-react { --rule: rgb(255 255 255 / 0.08); }
     </style>
 
     <!-- CSP nonce placeholder — Worker HTMLRewriter가 content 값을 요청별 nonce로 교체 -->
@@ -676,11 +670,10 @@ if(document.readyState==='complete')idle();else addEventListener('load',idle,{on
     -->
 
     <div id="root" role="application" aria-label="유어딜 라이브 커머스">
-      <div id="ur-pre-react" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"><script>(function(){var e=document.currentScript&&document.currentScript.parentElement;if(e){e.style.background=window.__urInitialBg||'#ffffff';e.style.color=window.__urInitialFg||'#1d1d1f';}})();</script>
-        <div style="text-align:center;padding:24px;">
-          <div class="urw"><span style="position:relative;display:inline-flex;align-items:baseline;">UR<span class="p"></span></span><span class="d"></span>DEAL</div>
-          <div class="urt"><div class="urb"></div></div>
-          <div id="ur-slow-hint" style="display:none;font-size:11px;color:#666;margin-top:24px;max-width:280px;line-height:1.5;">
+      <div id="ur-pre-react" style="min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"><script>(function(){var e=document.currentScript&&document.currentScript.parentElement;if(e){e.style.background=window.__urInitialBg||'#ffffff';e.style.color=window.__urInitialFg||'#1d1d1f';}})();</script>
+        <div>
+          <style>.ur-ldr{width:100%;max-width:720px;margin:0 auto;padding:16px;box-sizing:border-box}.ur-ldr-top{position:fixed;left:0;right:0;top:0;height:3px;z-index:10001;pointer-events:none}.ur-ldr-top>i{display:block;height:100%;background:var(--brand);transform-origin:left;transform:scaleX(0);animation:ur-ldr-top 10s cubic-bezier(.08,.8,.2,1) forwards;animation-delay:var(--ur-ldr-top-d,0s)}@keyframes ur-ldr-top{0%{transform:scaleX(0)}15%{transform:scaleX(.45)}100%{transform:scaleX(.92)}}.ur-ldr-sk i{display:block;position:relative;overflow:hidden;background:var(--rule);border-radius:8px}.ur-ldr-sk i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);transform:translateX(-100%);animation:ur-ldr-shine 1.2s ease-in-out infinite;animation-delay:var(--ur-ldr-shine-d,0s)}.dark .ur-ldr-sk i::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent)}@keyframes ur-ldr-shine{to{transform:translateX(100%)}}.ur-ldr-t{height:20px;width:46%;margin-bottom:20px}.ur-ldr-row{display:flex;gap:12px;margin-bottom:16px}.ur-ldr-row>.ur-ldr-ph{width:76px;height:76px;flex:none;border-radius:12px}.ur-ldr-tx{flex:1;padding-top:4px}.ur-ldr-tx i{height:12px;margin-bottom:8px}.ur-ldr-tx i:nth-child(1){width:78%}.ur-ldr-tx i:nth-child(2){width:52%}.ur-ldr-tx i:nth-child(3){width:30%;height:16px}.ur-ldr-shy{opacity:0;animation:ur-ldr-in .2s ease-out forwards;animation-delay:var(--ur-ldr-in-d,0.5s)}@keyframes ur-ldr-in{to{opacity:1}}@media (prefers-reduced-motion: reduce){.ur-ldr-top>i,.ur-ldr-sk i::after{animation:none}.ur-ldr-top>i{transform:scaleX(.6)}.ur-ldr-shy{animation-duration:.01s}}</style><div class="ur-ldr-shy"><div class="ur-ldr-top" aria-hidden="true"><i></i></div><div class="ur-ldr ur-ldr-sk" aria-hidden="true"><i class="ur-ldr-t"></i><div class="ur-ldr-row"><i class="ur-ldr-ph"></i><div class="ur-ldr-tx"><i></i><i></i><i></i></div></div><div class="ur-ldr-row"><i class="ur-ldr-ph"></i><div class="ur-ldr-tx"><i></i><i></i><i></i></div></div><div class="ur-ldr-row"><i class="ur-ldr-ph"></i><div class="ur-ldr-tx"><i></i><i></i><i></i></div></div><div class="ur-ldr-row"><i class="ur-ldr-ph"></i><div class="ur-ldr-tx"><i></i><i></i><i></i></div></div></div></div>
+          <div id="ur-slow-hint" style="display:none;font-size:11px;color:#666;margin:24px auto 0;max-width:280px;line-height:1.5;text-align:center;">
             10초 이상 멈춰있다면 브라우저 캐시를 비우거나<br/>다른 브라우저(Chrome/Safari)로 열어주세요.
             <br/><br/>
             <button type="button" id="ur-slow-reload" style="background:none;border:0;padding:0;font:inherit;color:#4a9eff;text-decoration:none;cursor:pointer;">↻ 새로고침</button>

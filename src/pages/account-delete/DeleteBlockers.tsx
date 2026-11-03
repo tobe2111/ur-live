@@ -14,6 +14,9 @@ import { TicketStubIcon, WalletIcon, StoreIcon, ClockIcon, AlertIcon } from '@/c
 import { formatNumber } from '@/utils/format'
 import { sellerEntryPath } from '@/lib/seller-deep-link'
 
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 15차 ⑦ — '먼저 정리' 할 것들이 위에서부터 차례로 나오고, 각 줄의 빨간 그림이 톡 켜진다(무엇이 남았는지 하나씩 읽히게).
+injectMotionCss('ur-m-delblock', `@keyframes ur-db-up { from { opacity: 0; transform: translateY(10px); } }@keyframes ur-db-pop { 0% { transform: scale(.5); } 60% { transform: scale(1.15); } 100% { transform: none; } }.ur-db-rows > * { animation: ur-db-up .35s cubic-bezier(.2,.9,.3,1) backwards; }.ur-db-rows > *:nth-child(2) { animation-delay: 90ms; }.ur-db-rows > *:nth-child(3) { animation-delay: 180ms; }.ur-db-rows > *:nth-child(4) { animation-delay: 270ms; }.ur-db-rows > * > span:first-child { animation: ur-db-pop .35s cubic-bezier(.3,1.3,.5,1) .15s backwards; }@media (prefers-reduced-motion: reduce){.ur-db-rows > *,.ur-db-rows > * > span:first-child{animation:none!important}}`)
 const RefundSheet = lazy(() => import('@/pages/user-profile/RefundSheet'))
 
 export interface AccountDeleteBlockers {
@@ -135,7 +138,7 @@ export default function DeleteBlockers({
       <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
         {t('accountDeleteWarning.blockersSub', { defaultValue: '아래를 정리해야 탈퇴할 수 있어요' })}
       </p>
-      <div className="mt-1">{rows}</div>
+      <div className="mt-1 ur-db-rows">{rows}</div>
       {refundOpen && (
         <Suspense fallback={null}>
           <RefundSheet onClose={() => setRefundOpen(false)} onDone={onRefunded} />

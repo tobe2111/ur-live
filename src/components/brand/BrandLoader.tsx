@@ -2,114 +2,66 @@
  * 🎨 2026-06-29 (대표 — 공통 페이지 로딩 애니메이션): UrDeal 브랜드 로더 (SSOT).
  *
  * 소비자(유어딜) 페이지 청크 로딩(Suspense fallback) 순간에 표시하는 공통 로더.
- *   - 로고: UrDealLogo 워드마크가 은은하게 '호흡'(scale+opacity, ur-loader-breathe)
- *   - 하단: 인디터미넌트 진행 바 스윕(ur-loader-sweep) — 200ms 지연으로 짧은 로딩 깜빡임 방지
- *   - 테마 자동: 로고는 dark: 로 흑↔백 토글, 바/트랙도 dark: 대응 → 다크/라이트 표면 모두 자연스러움
+ *   - 2026-11-02 부터: 위쪽 얇은 막대(끝까지 한 번 차오름) + 화면 모양(카드 줄) 미리 보여 주기 — 아래 ⏳ 머리말.
  *
  * ⚠️ 잠긴 로딩 최적화 불변: SSR 주입/스켈레톤 첫페인트는 이 로더를 쓰지 않음(스피너-온리 첫화면 금지 규칙).
  *   이 로더는 *라우트 전환/청크 다운로드* 순간 전용. (도매몰은 별도 WholesaleLoader — 서비스 분리)
  */
-import UrDealLogo from './UrDealLogo'
 import { takeBootFirstScreen } from '@/lib/boot-first-screen'
-import { UDAL_LOADER_SRC, UDAL_HOP_PERIOD_S, udalLoaderWidth, udalLoaderHeight } from '@/shared/udal-loader'
+import { brandLoaderMarkup, loaderPhaseVars } from '@/shared/brand-loader-markup'
+
+/*
+ * ⏳ 2026-11-02 대표 확정 — **유달이·로고·왕복 막대를 걷고, 위쪽 얇은 막대 + 화면 모양 미리 보여 주기.**
+ *   대표 *"유달이 뜨는게 별로인 것 같아 로딩 중에. 그래서 A처럼 위쪽 얇은 막대를 넣으면서 화면 모양 미리 보여주기로"*.
+ *   그림은 `shared/brand-loader-markup.ts` 한 벌 — 워커 정적 로더와 **같은 문자열**을 그려 교체 순간이 안 보인다.
+ *   위상은 종전처럼 첫 페인트 기준 음수 delay(`loaderPhaseVars`) — 재마운트해도 막대가 처음부터 다시 차지 않는다.
+ */
 
 interface BrandLoaderProps {
-  /** 전체화면 중앙(라우트 Suspense fallback). false 면 섹션 인라인 로더. */
+  /** 전체화면(라우트 Suspense fallback). false 면 섹션 인라인 로더. */
   fullScreen?: boolean
-  /** 로고 크기(px). 기본 34. */
+  /** (종전 로고 크기 — 지금은 쓰지 않는다. 부르는 쪽 호환을 위해 남긴다.) */
   size?: number
-  /** 진행 바 아래 상황 문구(예: "결제 승인 중"). 없으면 로고+바만. */
+  /** 화면 모양 아래 상황 문구(예: "결제 승인 중"). */
   label?: string
-  /** 🚑 2026-07-10 (로딩 전수조사): 라이트 고정 표면(대시보드 #F4F5F7 placeholder 등)용 — 전역 다크
-   *  토글과 무관하게 항상 라이트 색(잉크 로고/바). 대시보드는 라이트 고정 규칙이라 다크 로고가 끼면
-   *  [라이트 placeholder → 다크 로더 → 라이트 대시보드] 색 점프가 났음. */
+  /** 라이트 고정 표면(대시보드 #F4F5F7 등) — 전역 다크 토글과 무관하게 라이트 바탕. */
   forceLight?: boolean
-  /** 다크 고정 표면(bg-[#11141C] 페이지 등)용 — 항상 흰 로고/바 (라이트 토글 사용자도 보이게). */
+  /** 다크 고정 표면 — 항상 다크 바탕. */
   forceDark?: boolean
-  /** 🫥 2026-11-02 — 그림·로고·바를 숨긴다(자리·배경·화면읽기 표시는 그대로). 첫 진입 로더(아래 BootFirstScreenLoader)가 쓴다. */
+  /** 🫥 서버 첫 화면 아래 인라인 로더(BootFirstScreenLoader)도 0.5초 숨긴다. */
   quiet?: boolean
 }
 
-export default function BrandLoader({ fullScreen = false, size = 34, label, forceLight = false, forceDark = false, quiet = false }: BrandLoaderProps) {
-  /**
-   * 🫥 2026-11-02 대표 *"처음에 우리 유어딜 서비스 들어갈 때는 로딩 페이지 안보이게 해줘. 최대한"* → 선택 *"아예 안 보이게"*.
-   *   전체 화면 로더는 **배경만** 남기고 유달이·로고·진행 바를 숨긴다(`invisible` = visibility:hidden — 자리는 그대로라
-   *   아무것도 안 밀린다). 배경 막(07-18 — 뒤 화면이 비치지 않게)과 화면읽기용 "로딩 중" 은 남는다.
-   *   워커가 HTML 에 박는 정적 로더(`urdealLoaderHtml`)도 같은 이유로 숨긴다 — 둘이 갈리면 교체 순간 유달이가 튄다.
-   *   그대로 두는 것 셋 — ① 인라인 로더(fullScreen=false — 섹션 안 '불러오는 중'): 그 칸의 상태다
-   *   ② 문구가 있는 로더(`label` — "결제 승인 중" 등): 지금 무슨 일이 일어나는지 말해 주는 화면이라 숨기면 멈춘 줄 안다
-   *   ③ 대시보드(`forceLight`): 손님 화면이 아니다.
-   */
-  const hide = quiet || (fullScreen && !forceLight && !label) ? ' invisible' : ''
-  // 🎯 2026-07-01 (대표 "로딩이 2번 나뉘어" — 근본): 로더가 연달아 재마운트(Suspense 청크 로더 →
-  //   페이지 데이터 로더)되면 CSS 애니메이션이 keyframe 0 부터 재시작 — breathe 는 opacity 0.5(로고 확
-  //   어두워짐), sweep 바는 화면 밖(-120%)에서 시작(바 사라짐) → "떴다 안떴다 다시 뜨는" 블링크.
-  //   → 페이지 로드 시계(performance.now()) 기반 **음수 animation-delay** 로 위상을 전역 동기화:
-  //   어떤 시점에 마운트돼도 애니메이션이 같은 위상에서 이어져 여러 로더가 하나처럼 연속으로 보임.
-  //   (주기 상수는 index.css 의 ur-loader-breathe 1.5s / ur-loader-sweep 1.15s 와 동기 유지.)
-  // 🎯 후속(대표 "아직 조금 끊김"): 위상 기준을 t=0(timeOrigin)이 아니라 **첫 페인트(FCP)** 로 —
-  //   worker 가 주입한 정적 로더의 CSS 애니메이션은 첫 페인트에 시작되므로, t=0 기준이면 첫
-  //   페인트 지연(수백 ms)만큼 교체 순간 위상이 점프했음. FCP 기준이면 정적↔React 위상 일치.
-  //   (paint 엔트리 미지원/부재 시 0 폴백 = 기존 동작. SPA 재마운트 간 연속성은 기준이 뭐든 동일.)
-  let phaseBase = 0
+function sinceFirstPaintS(): number {
   try {
-    const paints = typeof performance !== 'undefined' ? performance.getEntriesByType('paint') : []
+    if (typeof performance === 'undefined') return 0
+    const paints = performance.getEntriesByType('paint')
     const fp = paints.find((e) => e.name === 'first-contentful-paint') || paints.find((e) => e.name === 'first-paint')
-    if (fp) phaseBase = fp.startTime
-  } catch { /* 미지원 브라우저 — 0 폴백 */ }
-  const nowSec = typeof performance !== 'undefined' ? Math.max(0, performance.now() - phaseBase) / 1000 : 0
-  const breatheDelay = `-${(nowSec % 1.5).toFixed(3)}s`
-  const sweepDelay = `-${(nowSec % 1.15).toFixed(3)}s`
-  const hopDelay = `-${(nowSec % UDAL_HOP_PERIOD_S).toFixed(3)}s`
-  // 🦦 2026-10-07 (대표 허가 "로딩 화면"): 로고 위에 유달이. 대시보드(forceLight)는 마스코트를 안 쓰는
-  //   자리라 빠진다. 워커 정적 로더(`urdealLoaderHtml`)와 **같은 파일·같은 크기·같은 위상**이다.
-  const showUdal = !forceLight
-  const udalW = udalLoaderWidth(size)
-  // 🎯 2026-07-18 (대표 신고 — "로딩 순간 유어딜 로더 말고도 보임"): fullScreen 로더가 배경 없는 in-flow
-  //   박스(min-h-[100dvh])라, 뒤/주변의 이전 페이지(예: /map 분할)·body 배경이 비쳐 보였음(로더가
-  //   화면을 '덮지' 못함). → 불투명 fixed inset-0 오버레이(z-[10000], 네비 9999 위·모달 10500 아래)로
-  //   승격해 로딩 순간엔 오직 유어딜 로더만 보이게. 인라인(fullScreen=false) 로더는 기존 in-flow 유지.
+    return Math.max(0, performance.now() - (fp ? fp.startTime : 0)) / 1000
+  } catch { return 0 }
+}
+
+export default function BrandLoader({ fullScreen = false, label, forceLight = false, forceDark = false, quiet = false }: BrandLoaderProps) {
+  /**
+   * 🫥 2026-11-02 대표 *"섞기"* — 첫 진입·전체 화면 로더는 0.5초 안에 끝나면 **아예 안 보이고**, 늦을 때만 막대+화면 모양이
+   *   스르르 나타난다(#2122 "아예 안 보이게" + 이 세션 "위쪽 얇은 막대 + 화면 모양"). 바로 보여야 하는 셋은 그대로:
+   *   ① 문구 있는 로더("결제 승인 중") ② 대시보드(forceLight) ③ 섹션 안 인라인 로더.
+   */
+  const shy = quiet || (fullScreen && !forceLight && !label)
+  const phase = loaderPhaseVars(sinceFirstPaintS())
   const fsBg = forceLight ? 'bg-[#F4F5F7]' : forceDark ? 'bg-[#11141C]' : 'bg-white dark:bg-[#11141C]'
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-5 ${fullScreen ? `fixed inset-0 z-[10000] ${fsBg}` : 'py-16'}`}
+      className={fullScreen ? `fixed inset-0 z-[10000] overflow-hidden ${fsBg}` : undefined}
+      style={phase as React.CSSProperties}
       role="status"
       aria-live="polite"
       aria-busy="true"
     >
-      {showUdal && !hide && ( /* 🫥 2026-11-03 숨긴 로더는 그림을 아예 안 받는다(보이지 않는 10KB 를 받을 이유가 없다) */
-        <img
-          src={UDAL_LOADER_SRC}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          width={udalW}
-          height={udalLoaderHeight(size)}
-          decoding="async"
-          className={`ur-udal-hop select-none pointer-events-none${hide}`}
-          style={{ width: udalW, height: 'auto', animationDelay: hopDelay }}
-        />
-      )}
-      {/* 로고 — 은은한 호흡 (전역 위상 동기 — 재마운트에도 연속) */}
-      <div className={`ur-loader-breathe${hide}`} style={{ animationDelay: breatheDelay }}>
-        <UrDealLogo size={size} forceLight={forceLight} forceDark={forceDark} />
-      </div>
-
-      {/* 인디터미넌트 진행 바 — 전역 위상 동기 스윕 (이전 200ms 지연은 재마운트 시 바가 사라지는
-          블링크의 원인이라 제거 — 연속성이 우선). */}
-      <div
-        className={`relative overflow-hidden rounded-full ${forceLight ? 'bg-gray-200/70' : forceDark ? 'bg-white/10' : 'bg-gray-200/70 dark:bg-white/10'}${hide}`}
-        style={{ width: 96, height: 3 }}
-        aria-hidden
-      >
-        <div
-          className={`ur-loader-sweep absolute inset-y-0 left-0 rounded-full ${forceLight ? 'bg-gray-900' : forceDark ? 'bg-brand' : 'bg-brand dark:bg-brand'}`}
-          style={{ width: '38%', animationDelay: sweepDelay }}
-        />
-      </div>
-
+      {/* 줄 수는 늘 4 — 서버가 첫 화면 아래 붙이는 로더(`min-height:34dvh` + 같은 문자열)와 글자까지 같아야 교체 순간이 안 보인다. */}
+      <div dangerouslySetInnerHTML={{ __html: brandLoaderMarkup(4, shy) }} />
       {label ? (
-        <p className={`text-[13px] font-medium ${forceLight ? 'text-gray-500' : forceDark ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400'}${hide}`}>{label}</p>
+        <p className={`text-center text-[13px] font-medium ${forceLight ? 'text-gray-500' : forceDark ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>{label}</p>
       ) : null}
       <span className="sr-only">{label || '페이지 로딩 중…'}</span>
     </div>
@@ -144,7 +96,7 @@ export function BootFirstScreenLoader({ forceDark = false }: { forceDark?: boole
   return (
     <>
       <div ref={(el) => { if (el && node.parentNode !== el) el.appendChild(node) }} />
-      <div style={{ minHeight: '34dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '34dvh' }}>
         <BrandLoader quiet />
       </div>
     </>

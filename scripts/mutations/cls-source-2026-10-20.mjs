@@ -61,21 +61,5 @@ export default [
     test: 'src/tests/unit/strip-banner-2x-2026-10-20.test.ts',
     why: '폰 홈의 LCP 사진이 362px 칸에 1,100px(27KB)를 받는다 — 2배면 16KB.',
   },
-  {
-    name: 'LCP사진 — 첫 화면 아래 유달이 로더가 보통 우선순위',
-    file: 'src/worker/utils/css-first-boot.ts',
-    find: "return cssFirst ? ' fetchpriority=\"low\"' : ''",
-    replace: "return ''",
-    test: 'src/tests/unit/mascot-preload-first-screen-2026-10-15.test.ts',
-    why: '로더 그림이 첫 이미지 요청이 되어 LCP 사진과 회선을 나눠 쓴다.',
-  },
-  {
-    // 🫥 2026-11-03 재조준 — 로더 그림 자체를 뗐다(안 보이는 로더). 지키는 것은 "워커 로더가 LCP 사진과 회선을 나눠 쓰지 않는다".
-    name: 'LCP사진 — 워커 로더 마크업에 그림이 되살아난다',
-    file: 'src/worker/index.ts',
-    find: `        '<div class="ur-loader-breathe text-[#16181C] dark:text-[#F8F7FC]"`,
-    replace: `        '<img src="/assets/mascot/udal-loader-v2.webp" alt="">' + '<div class="ur-loader-breathe text-[#16181C] dark:text-[#F8F7FC]"`,
-    test: 'src/tests/unit/mascot-preload-first-screen-2026-10-15.test.ts',
-    why: '함수는 맞는데 배선이 빠지면 라이브에서 아무 일도 안 한다(2026-10-20 실제로 그랬다).',
-  },
+  // ⏳ 2026-11-02: 로딩 화면에서 유달이 그림이 빠져(대표 결정) '로더 그림 우선순위' 주입 둘은 지킬 대상이 없어 걷었다.
 ]

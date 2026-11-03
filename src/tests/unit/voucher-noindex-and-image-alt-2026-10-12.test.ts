@@ -52,13 +52,9 @@ describe('🖼️ ① 상품 사진의 alt 은 제목에서 파생된다', () =>
     //   로더**(`worker/index.ts`)에 있고 ⓑ 앵커를 `udal-loader`(하이픈·소문자)로 썼는데 소스는
     //   `UDAL_LOADER_SRC` 라, 그 정규식이 실제로 집은 것은 **설명 주석 한 줄**이었다 → 부정 단언이
     //   매치할 수 없어 무조건 통과. 주입이 잡았다. ⇒ 주석을 걷어낸 코드에서 **그 img 태그**를 앵커한다.
-    // 🫥 2026-11-03 — 워커 정적 로더의 마스코트 img 는 뗐다(로더가 안 보이게 된 뒤 보이지 않는 그림을 받았다).
-    //   마스코트는 이제 BrandLoader(보이는 로더 — 문구 로더 등)에만 있다 → 거기서 같은 단언을 한다.
-    const c = code('src/components/brand/BrandLoader.tsx')
-    expect(c, '마스코트 img 자체가 사라졌다(= 이 단언이 지킬 대상이 없다)')
-      .toMatch(/src=\{UDAL_LOADER_SRC\}\s+alt=""\s+aria-hidden="true"/)
-    expect(c, '마스코트에 설명을 붙이면 스크린리더가 장식을 읽는다')
-      .not.toMatch(/UDAL_LOADER_SRC\}"[^>]{0,80}alt="[^"]+"/)
+    // ⏳ 2026-11-02: 로딩 화면에서 마스코트 그림이 빠졌다(대표 결정) — 로더에 그림이 아예 없으니 alt 걱정도 없다.
+    //   다시 그림이 들어오면(장식) alt 는 비어 있어야 한다 — 그때 이 단언을 되살린다.
+    expect(code('src/shared/brand-loader-markup.ts'), '로더에 그림이 다시 들어왔다 — alt 규칙부터 확인').not.toMatch(/<img/)
   })
 })
 

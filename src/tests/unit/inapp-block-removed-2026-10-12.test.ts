@@ -96,9 +96,8 @@ describe('🗑️ 인앱 풀스크린 안내 제거 (AI 봇 문서의 첫 본문
   it('⑦ 잠금표가 지키는 index.html 항목이 그대로 있다', () => {
     expect(html).toContain('speculationrules')          // prerender 대상
     expect(html).toMatch(/rel="preconnect"/)            // DNS+TLS 선행
-    // 🫥 2026-11-03 대표 "3,4 해결해줘" — 유달이 로더 preload 는 뗐다(로더 그림이 안 보이게 된 뒤 보이지 않는 그림을 최우선으로 받았다).
-    expect(html).not.toMatch(/<link rel="preload" as="image" href="\/assets\/mascot\/udal-loader-v\d+\.webp"/)
-    // preload 에 crossOrigin 을 붙이면 same-origin mismatch 로 200~500ms 손해(잠금표 사유) — 있는 preload 는 전부 그 규칙을 지킨다
+    // ⏳ 2026-11-02: 유일한 preload 였던 로딩 유달이 그림을 로딩 화면 개편으로 뺐다(대표 결정) — 개수는 0 일 수 있다.
+    // preload 에 crossOrigin 을 붙이면 same-origin mismatch 로 200~500ms 손해(잠금표 사유) — 생기면 이 규칙을 따른다.
     const preload = html.match(/<link rel="preload"[^>]*>/g) ?? []
     for (const tag of preload) expect(tag).not.toMatch(/crossorigin/i)
   })

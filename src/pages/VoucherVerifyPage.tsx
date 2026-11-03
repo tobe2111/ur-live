@@ -33,6 +33,9 @@ import { loginPathFromHere } from '@/utils/login-return'
 import { getUserIdSync } from '@/utils/auth'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { parseUTCDate, formatKSTTime } from '@/utils/date'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 15차 ③ — 사용 처리하면 완료 카드 위 띠가 왼쪽부터 파랗게 차오르고, 체크가 톡 튀며 나타난다.
+injectMotionCss('ur-m-verify', `@keyframes ur-vf-fill { from { transform: scaleX(0); } }@keyframes ur-vf-pop { 0% { opacity: 0; transform: scale(.5); } 60% { opacity: 1; transform: scale(1.15); } 100% { transform: none; } }.ur-vf-fill { transform-origin: left; animation: ur-vf-fill .5s cubic-bezier(.65,0,.35,1) both; }.ur-vf-pop { animation: ur-vf-pop .4s cubic-bezier(.3,1.3,.5,1) .35s backwards; }@media (prefers-reduced-motion: reduce){.ur-vf-fill,.ur-vf-pop{animation:none!important}}`)
 
 /** QR 내용(https://urdeal.kr/v/{code}) 또는 코드 그대로에서 코드를 뽑는다. */
 export function parseVoucherCode(input: string): string {
@@ -242,8 +245,9 @@ export default function VoucherVerifyPage() {
 
         {view === 'done' && (
           <div className="mt-6">
-            <div className="rounded-2xl bg-surface shadow-lift p-6 text-center">
-              <OkIcon filled className="mx-auto w-10 h-10 text-brand-text" />
+            <div className="rounded-2xl bg-surface shadow-lift p-6 text-center overflow-hidden">
+              <div aria-hidden="true" className="ur-vf-fill h-1 -mx-6 -mt-6 mb-5 bg-brand" />
+              <OkIcon filled className="ur-vf-pop mx-auto w-10 h-10 text-brand-text" />
               <p className="mt-3 text-[28px] font-bold tabular-nums text-gray-900 dark:text-white">{formatKSTTime(doneAt)}</p>
               {voucher?.product_name && <p className="mt-2 text-[15px] font-medium text-gray-900 dark:text-white break-keep">{voucher.product_name}</p>}
               <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('voucher.verify.doneNote', { defaultValue: '손님 폰에도 ‘사용 완료’로 바뀌었어요' })}</p>

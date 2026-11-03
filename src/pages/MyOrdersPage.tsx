@@ -174,6 +174,18 @@ export default function MyOrdersPage() {
     }
   }
 
+  /** 🎬 2026-11-03 14차 ⑦ — 지운 줄이 왼쪽으로 밀려 사라지고 아래 줄이 올라온다(새 목록을 받기 전에). 동작 줄이기면 안 한다. */
+  async function collapseOrderRow(orderId: number | string) {
+    const row = document.querySelector<HTMLElement>(`[data-order-row="${orderId}"]`)
+    try { if (!row?.animate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { return }
+    const h = row.offsetHeight
+    await row.animate([
+      { opacity: 1, transform: 'none', height: `${h}px` },
+      { opacity: 0, transform: 'translateX(-24px)', height: `${h}px`, offset: 0.5 },
+      { opacity: 0, transform: 'translateX(-24px)', height: '0px', marginTop: '-12px' },
+    ], { duration: 340, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }).finished.catch(() => {})
+  }
+
   // 🛡️ 2026-06-18: 구매 내역 삭제(숨김) — 실제 삭제 X, 내 목록에서만 숨김.
   async function handleHideOrder(orderId: number | string, orderNumber: string) {
     if (!(await confirmDialog({
@@ -185,6 +197,7 @@ export default function MyOrdersPage() {
       const response = await api.post(`/api/orders/${orderId}/hide`)
       if (response.data?.success) {
         toast.success(t('myOrders.hideSuccess', { defaultValue: '구매 내역에서 삭제되었습니다' }))
+        await collapseOrderRow(orderId)
         loadData()
       } else {
         toast.error(response.data?.error || t('myOrders.hideFail', { defaultValue: '삭제하지 못했습니다' }))

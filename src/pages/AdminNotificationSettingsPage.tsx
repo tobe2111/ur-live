@@ -3,7 +3,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoading, DashboardLoadError } from '@/components/dashboard'
 import { Bell, Mail, MessageSquare, Smartphone, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
@@ -46,7 +46,7 @@ export default function AdminNotificationSettingsPage() {
   const { t } = useTranslation()
   const [saving, setSaving] = useState<string | null>(null)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery.
-  const { data: settings = [], isLoading: loading, refetch } = useApiQuery<Setting[]>(
+  const { data: settings = [], isLoading: loading, isError, error, refetch } = useApiQuery<Setting[]>(
     ['admin', 'notification-settings'], '/api/admin/notification-settings',
     { select: (r: any) => r?.data || [] },
   )
@@ -84,7 +84,7 @@ export default function AdminNotificationSettingsPage() {
           </ul>
         </div>
 
-        {loading ? <DashboardLoading /> : (
+        {isError ? <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="알림 설정" /> : loading ? <DashboardLoading /> : (
           <div className="space-y-4">
             {CATEGORY_LABELS.map(category => {
               const categorySettings = category.types

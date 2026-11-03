@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoading, DashboardLoadError } from '@/components/dashboard'
 import { Download, FileSpreadsheet, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { formatWon, formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
@@ -47,7 +47,7 @@ export default function AdminWithholdingPage() {
   const [year, setYear] = useState(new Date().getFullYear())
   const [marking, setMarking] = useState(false)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (year별 캐시, sellers+totals).
-  const { data: wdata, isLoading: loading, refetch } = useApiQuery<{ sellers: SellerSummary[]; totals: Totals | null }>(
+  const { data: wdata, isLoading: loading, isError, error, refetch } = useApiQuery<{ sellers: SellerSummary[]; totals: Totals | null }>(
     ['admin', 'withholding', year], '/api/admin/withholding/summary',
     { params: { year }, select: (r: any) => (r?.success ? { sellers: r.data.sellers || [], totals: r.data.totals || null } : { sellers: [], totals: null }) },
   )
@@ -157,7 +157,7 @@ export default function AdminWithholdingPage() {
         </div>
 
         {/* 셀러별 누계 표 */}
-        {loading ? <DashboardLoading /> : sellers.length === 0 ? (
+        {isError ? <DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="원천징수 현황" /> : loading ? <DashboardLoading /> : sellers.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <FileSpreadsheet className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="text-sm text-gray-500">{year}년 원천징수 이력 없음</p>

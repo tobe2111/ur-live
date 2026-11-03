@@ -90,7 +90,7 @@ describe('🦦 유달이 — 상황표가 온전하다', () => {
   it('④ 움직임 줄이기 사용자에게는 멈춘다', () => {
     const css = readFileSync('src/index.css', 'utf8')
     expect(css).toMatch(/@keyframes ur-udal-bob/)
-    expect(css).toMatch(/prefers-reduced-motion: reduce\)\s*\{\s*\.ur-udal-bob,\s*\.ur-udal-hop\s*\{\s*animation:\s*none/)
+    expect(css).toMatch(/prefers-reduced-motion: reduce\)\s*\{\s*\.ur-udal-bob\s*\{\s*animation:\s*none/)
   })
 })
 
@@ -139,32 +139,13 @@ describe('🦦 유달이 — 배선한 화면이 되돌아가지 않는다', () 
   })
 })
 
-describe('🦦 로딩 화면의 유달이 — 정적 로더와 앱 로더가 같은 그림', () => {
-  const shared = readCode('src/shared/udal-loader.ts')
-  const src = /UDAL_LOADER_SRC = '([^']+)'/.exec(shared)?.[1] ?? ''
-
-  it('경로가 실재하는 파일을 가리킨다(public 고정 경로 — 워커는 해시를 모른다)', () => {
-    expect(src).toMatch(/^\/assets\/mascot\/udal-loader-v\d+\.webp$/)
-    expect(existsSync(`public${src}`), `public${src} 없음 — 로더에 깨진 그림`).toBe(true)
-  })
-
-  // 🫥 2026-11-03 대표 "3,4 해결해줘" — 첫 진입 로더가 안 보이게 된 뒤(11-02 "아예 안 보이게") 유달이 preload·워커 로더 그림을 뗐다.
-  //   유달이는 **보이는 로더**(문구 로더 등 — BrandLoader)에만 남는다.
-  it('index.html 은 그 파일을 미리 받지 않는다(안 보이는 그림)', () => {
-    const html = readFileSync('index.html', 'utf8')
-    expect(html).not.toContain(`<link rel="preload" as="image" href="${src}"`)
-  })
-
-  it('보이는 로더(BrandLoader)는 SSOT 그림을 쓰고, 워커 정적 로더엔 그림이 없다', () => {
-    expect(readFileSync('src/worker/index.ts', 'utf8')).not.toMatch(/src="\$\{UDAL_LOADER_SRC\}"/)
-    expect(readCode('src/components/brand/BrandLoader.tsx')).toMatch(/src=\{UDAL_LOADER_SRC\}/)
-  })
-
-  it('로더 그림 원본 비율과 SSOT 높이 계산이 같다(그림이 오기 전 자리 예약이 맞다)', () => {
-    expect(shared).toMatch(/udalLoaderWidth\(logoSize\) \* \(220 \/ 204\)/)
-  })
-
-  it('대시보드 로더(forceLight)에는 유달이가 없다', () => {
-    expect(readCode('src/components/brand/BrandLoader.tsx')).toMatch(/const showUdal = !forceLight/)
+describe('🦦 로딩 화면에는 유달이가 없다 (2026-11-02 대표 "유달이 뜨는게 별로인 것 같아 로딩 중에")', () => {
+  // 종전(2026-10-07)엔 정적 로더·앱 로더·index.html preload 가 같은 유달이 그림을 썼다. 대표가 로딩 화면을
+  // '위쪽 얇은 막대 + 화면 모양' 으로 바꿨다 — 그림이 다시 끼면 그 결정이 되돌아간다.
+  it('로더 SSOT · 앱 로더 · 워커 정적 로더 · index.html 어디에도 로더 그림이 없다', () => {
+    expect(readCode('src/shared/brand-loader-markup.ts')).not.toMatch(/<img|udal/i)
+    expect(readCode('src/components/brand/BrandLoader.tsx')).not.toMatch(/UDAL_LOADER_SRC|ur-udal-hop/)
+    expect(readFileSync('src/worker/index.ts', 'utf8')).not.toMatch(/UDAL_LOADER_SRC|ur-udal-hop/)
+    expect(readFileSync('index.html', 'utf8')).not.toMatch(/udal-loader-v\d+\.webp/)
   })
 })
