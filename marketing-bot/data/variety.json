@@ -114,5 +114,10 @@
     "hook": "udal",
     "media_set": "creator-partners",
     "date_kst": "2026-11-02"
+  },
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "date_kst": "2026-11-03"
   }
 ]
