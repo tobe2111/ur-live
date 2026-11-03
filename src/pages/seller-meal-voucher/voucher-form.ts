@@ -22,6 +22,7 @@ import type { VoucherCategory as PlatformVoucherCategory } from '@/shared/consta
  * ⇒ 목록을 따로 갖지 않는다. SSOT 가 늘거나 줄면 여기가 자동으로 따라간다.
  */
 import { normalizeLifeSubcat } from '@/shared/life-deal-subcat'
+import { defaultSlots, emptyRoom, type BookingMode, type SlotDraft, type StayRoomDraft } from './booking-mode'
 
 export type VoucherCategory = PlatformVoucherCategory
 
@@ -57,6 +58,15 @@ export interface VoucherForm {
   external_booking_url: string
   region_si: string
   region_gu: string
+  /** 🗓️ 2026-11-03 예약 방식(`booking-mode.ts`). 숙박 종류는 이 값과 무관하게 날짜·객실 예약이다. */
+  booking_mode: BookingMode
+  stay_property_type: string
+  stay_check_in: string
+  stay_check_out: string
+  stay_rooms: StayRoomDraft[]
+  stay_amenities: string[]
+  stay_room_amenities: string[]
+  time_slots: SlotDraft[]
 }
 
 /**
@@ -88,6 +98,8 @@ export function emptyVoucherForm(): VoucherForm {
     group_buy_deadline: defaultDeadline(),
     store_verify_pin: '', stock: 100, max_per_person: 0, promo_pct: 0,
     kakao_place_url: '', external_booking_url: '', region_si: '', region_gu: '',
+    booking_mode: 'none', stay_property_type: 'pension', stay_check_in: '15:00', stay_check_out: '11:00',
+    stay_rooms: [emptyRoom()], stay_amenities: [], stay_room_amenities: [], time_slots: defaultSlots(),
   }
 }
 

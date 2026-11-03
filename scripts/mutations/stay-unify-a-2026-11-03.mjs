@@ -10,10 +10,10 @@ export default [
     why: '숙소가 객실·날짜 없이 이용권 화면으로 열린다.',
   },
   {
-    name: 'stay-unify-a — 등록 폼 숙박이 다시 객실 없는 숙소를 만든다',
+    name: 'stay-unify-a — 등록 폼 숙박에서 객실 칸이 사라진다(객실 없는 숙소)',
     file: 'src/pages/seller-meal-voucher/VoucherInfoStep.tsx',
-    find: 'onClick={() => pick(c.key)}',
-    replace: 'onClick={() => setCategory(c.key)}',
+    find: "{isStay ? <StayRoomsFields form={form} update={update} /> : <DiscountPriceFields",
+    replace: "{false ? <StayRoomsFields form={form} update={update} /> : <DiscountPriceFields",
     test: T,
     why: '상세에서 고를 방이 0개인 숙소가 생긴다.',
   },
