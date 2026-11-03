@@ -361,8 +361,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
                   <span className="shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-medium">온누리</span>
                 )}
               </p>
-            )}
-          </>
+            )}</>
         ) : (<>
           {(p.restaurant_name || brandName || p.onnuri_merchant) && (
             <p className={`flex items-center gap-1 text-[12px] leading-none mb-1 ${cSub}`}>
