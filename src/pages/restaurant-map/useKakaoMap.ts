@@ -9,6 +9,7 @@ import type { Restaurant, KakaoPlace } from './types'
 import { ensureKakaoMapsCore } from '@/lib/kakao-sdk'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-pin', `@keyframes ur-pin-pop { 0% { transform: scale(1); } 45% { transform: scale(1.22) translateY(-4px); } 100% { transform: scale(1); } }.ur-pin-pop { animation: ur-pin-pop .4s cubic-bezier(.3,1.4,.5,1); transform-origin: 50% 100%; }@media (prefers-reduced-motion: reduce){.ur-pin-pop{animation:none!important}}`)
+injectMotionCss('ur-m-me', `@keyframes ur-me-pulse { from { transform: scale(1); opacity: .8; } to { transform: scale(4.5); opacity: 0; } }.ur-me::before, .ur-me::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; background: rgba(37,99,235,.35); animation: ur-me-pulse 2.4s ease-out infinite; pointer-events: none; z-index: -1; }.ur-me::after { animation-delay: 1.2s; }@media (prefers-reduced-motion: reduce){.ur-me::before,.ur-me::after{animation:none!important;opacity:0}}`) // 🎬 20차 ④ 내 위치 파동
 
 // 🗺️ 2026-06-22 (대표 — "중앙 기준이 하단 시트 크기에 따라 달라진다"): 선택 핀을 *보이는 지도 영역*
 //   (상단 검색바 아래 ~ 하단 시트 위)의 중앙으로 끌어올릴 px 오프셋을 시트 snap 별로 동적 계산.
