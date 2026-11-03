@@ -403,6 +403,8 @@ export interface Env {
   OPS_DIGEST_ALIMTALK_ENABLED?: string;
   /** 카카오 오픈빌더 스킬(CS FAQ 봇) 공유 시크릿 — 미설정 = 봇 endpoint 404(비활성). */
   KAKAO_SKILL_SECRET?: string;
+  /** 'true' + ANTHROPIC_API_KEY 면 키워드가 빗나간 말을 AI 가 FAQ id 로 분류(답은 FAQ 원문). 기본 OFF. */
+  KAKAO_BOT_AI_ENABLED?: string;
 
   // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
   // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).
