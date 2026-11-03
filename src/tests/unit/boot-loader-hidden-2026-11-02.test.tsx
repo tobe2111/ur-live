@@ -1,46 +1,49 @@
 /**
- * 🫥 2026-11-02 대표 *"처음에 우리 유어딜 서비스 들어갈 때는 로딩 페이지 안보이게 해줘. 최대한 로딩 페이지 안보이게."*
- *   → 선택 *"아예 안 보이게"*. 실측(폰): 세부 화면(지도·생활·유어쇼츠·숙소·검색·이용권 상세) 0.2~0.6초 · PC: 거의 전 화면.
+ * 🫥 2026-11-02 첫 진입 로딩 화면 — 처음엔 대표 *"아예 안 보이게"*(#2122 · visibility:hidden),
+ *   같은 날 대표가 *"위쪽 얇은 막대 + 화면 모양 미리 보여주기"* 를 골라 두 결정이 갈렸고, 대표가 **"섞기"** 로 정했다:
+ *   **0.5초(`LOADER_REVEAL_S`) 안에 뜨면 아무것도 안 보이고, 늦을 때만 막대 + 화면 모양이 스르르 나타난다.**
  *
- * 전체 화면 로더는 **배경만** 남기고 유달이·로고·진행 바를 숨긴다(visibility:hidden — 자리·위상·연속성 장치는 그대로).
- * 지키는 것: ① 워커 정적 로더가 숨겨져 있다 ② React 전체 화면 로더도 숨긴다(둘이 갈리면 교체 순간 유달이가 튄다)
- *   ③ 서버 첫 화면 아래의 인라인 로더도 숨긴다 ④ **숨기면 안 되는 셋은 그대로** — 문구 있는 로더("결제 승인 중")·
- *   대시보드(forceLight)·섹션 인라인 로더 ⑤ 화면읽기용 "로딩 중" 은 남는다.
- * ⚠️ 못 보는 것: 실제 화면에서 빈 바탕이 얼마나 오래 보이는지(느린 회선) — 라이브에서 잰다.
+ * 지키는 것: ① 워커 정적 로더 · index.html 사본이 shy ② React 전체 화면 로더도 shy(둘이 갈리면 교체 순간 튄다)
+ *   ③ 서버 첫 화면 아래 인라인(quiet)도 shy ④ **바로 보여야 하는 셋은 shy 가 아니다** — 문구 있는 로더("결제 승인 중")·
+ *   대시보드(forceLight)·섹션 인라인 ⑤ 화면읽기용 "로딩 중" 은 늘 있다 ⑥ 앱 로더는 서버 로더의 남은 숨김 시간만 기다린다.
+ * ⚠️ 못 보는 것: 느린 회선에서 0.5초 뒤 나타나는 모습 — 그려서 본다(`node scripts/probe-loading.mjs`).
  */
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { brandLoaderMarkup, loaderPhaseVars, LOADER_REVEAL_S } from '@/shared/brand-loader-markup'
 
-// 로더 뿌리의 **직계 자식**(그림·로고·바·문구) 중 화면읽기 문구를 뺀 것 — visibility 는 자손에게 물려진다.
-const vis = (c: HTMLElement) => [...(c.firstElementChild as HTMLElement).children]
-  .filter((e) => !e.classList.contains('sr-only')).map((e) => (e.getAttribute('class') || '').includes('invisible'))
+const shy = (c: HTMLElement) => !!c.querySelector('.ur-ldr-shy')
 
-describe('첫 진입 로딩 화면 — 아예 안 보이게', () => {
-  it('① 워커 정적 로더 바깥 상자가 visibility:hidden', () => {
-    const src = readFileSync('src/worker/index.ts', 'utf8')
-    const at = src.indexOf('const urdealLoaderHtml =')
-    expect(at).toBeGreaterThan(0)
-    expect(src.slice(at, at + 400)).toMatch(/justify-content:center;gap:20px;visibility:hidden">/)
+describe('첫 진입 로딩 화면 — 빠르면 안 보이고, 늦으면 나타난다', () => {
+  it('① 워커 정적 로더 · index.html 이 shy', () => {
+    expect(readFileSync('src/worker/index.ts', 'utf8')).toContain("brandLoaderMarkup(4, true) + '</div>';")
+    expect(readFileSync('index.html', 'utf8')).toContain(brandLoaderMarkup(4, true))
   })
-  it('② 전체 화면 로더 — 그림·로고·바 전부 숨김, 배경 막·화면읽기 문구는 남음', () => {
+  it('② shy 는 처음 0.5초 투명하고 그 뒤 나타난다(동작 줄이기에서도 나타난다)', () => {
+    const m = brandLoaderMarkup(4, true)
+    expect(LOADER_REVEAL_S).toBe(0.5)
+    expect(m).toContain(`.ur-ldr-shy{opacity:0;animation:ur-ldr-in .2s ease-out forwards;animation-delay:var(--ur-ldr-in-d,${LOADER_REVEAL_S}s)}`)
+    expect(m).toContain('@keyframes ur-ldr-in{to{opacity:1}}')
+    expect(m).toMatch(/prefers-reduced-motion[^}]*\}[^@]*\.ur-ldr-shy\{animation-duration:\.01s\}/)
+    expect(brandLoaderMarkup(4)).not.toContain('<div class="ur-ldr-shy">')
+  })
+  it('③ React 전체 화면 · quiet 로더가 shy, 배경 막·화면읽기 문구는 남음', () => {
     const { container } = render(<BrandLoader fullScreen />)
-    const v = vis(container)
-    expect(v.length).toBeGreaterThanOrEqual(3)
-    expect(v.every(Boolean)).toBe(true)
-    const root = container.firstElementChild as HTMLElement
-    expect(root.className).toMatch(/fixed inset-0/)
-    expect(root.className).not.toMatch(/invisible/)
-    expect(container.querySelector('.sr-only')?.className).not.toMatch(/invisible/)
-  })
-  it('③ quiet(서버 첫 화면 아래 인라인)도 숨김', () => {
-    expect(vis(render(<BrandLoader quiet />).container).every(Boolean)).toBe(true)
+    expect(shy(container)).toBe(true)
+    expect((container.firstElementChild as HTMLElement).className).toMatch(/fixed inset-0/)
+    expect(container.querySelector('.sr-only')).not.toBeNull()
+    expect(shy(render(<BrandLoader quiet />).container)).toBe(true)
     expect(readFileSync('src/components/brand/BrandLoader.tsx', 'utf8')).toMatch(/<BrandLoader quiet \/>/)
   })
-  it('④ 숨기면 안 되는 셋은 그대로 보인다', () => {
-    expect(vis(render(<BrandLoader fullScreen label="결제 승인 중" />).container).some(Boolean)).toBe(false)
-    expect(vis(render(<BrandLoader fullScreen forceLight />).container).some(Boolean)).toBe(false)
-    expect(vis(render(<BrandLoader />).container).some(Boolean)).toBe(false)
+  it('④ 바로 보여야 하는 셋은 shy 가 아니다', () => {
+    expect(shy(render(<BrandLoader fullScreen label="결제 승인 중" />).container)).toBe(false)
+    expect(shy(render(<BrandLoader fullScreen forceLight />).container)).toBe(false)
+    expect(shy(render(<BrandLoader />).container)).toBe(false)
+  })
+  it('⑤ 앱 로더는 남은 숨김 시간만 기다린다(서버가 이미 보였으면 바로)', () => {
+    expect(loaderPhaseVars(0.2)['--ur-ldr-in-d']).toBe('0.300s')
+    expect(loaderPhaseVars(2)['--ur-ldr-in-d']).toBe('-1.500s')
   })
 })
