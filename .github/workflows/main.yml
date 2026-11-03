@@ -10,12 +10,61 @@ on:
 
 # 🛡️ 2026-05-28: 동시 배포 1개만 — 새 push 시 진행 중 배포 취소 (latest-wins).
 #   이전: concurrency 없음 → 빠른 연속 push 마다 deploy 누적 (한 번 hang 시 10+ 개 동시 In progress).
+# ⏱️ 2026-11-03 (대표 *"앞으로 라이브까지 빨리 적용되게끔 설정"*): **돌고 있는 배포는 끝까지 둔다.**
+#   실측(최근 main 배포 100회): **35회 취소 · 연속 취소 최대 5번** — 머지가 배포 시간(14분)보다 촘촘히 들어오면
+#   새 머지가 거의 끝난 배포를 계속 죽여서 **라이브가 아무것도 안 바뀌는 구간**이 생겼다(머지→라이브 p90 56분 · 최대 94분).
+#   `cancel-in-progress: false` 면 GitHub 이 돌던 배포는 끝내고 **대기는 가장 최신 하나만** 남긴다(중간 것은 버린다)
+#   ⇒ 배포가 쌓이지도 않고(2026-05-28 사고 방지는 그대로) 굶지도 않는다: 어떤 머지든 **배포 두 번 안에** 라이브에 오른다.
+#   가드: src/tests/unit/main-deploy-parallel-2026-11-03.test.ts
 concurrency:
   group: deploy-pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  # ⏱️ 2026-11-03 (대표 *"더 개선할 건 없어?"* → *"다 하자"*): 배포 한 번 14분 중 **9.4분이 단위 시험**이었다
+  #   (실측 — 한 대가 차례로). PR 검사처럼 네 대로 나눠 동시에 돌린다 → 배포가 머지 후 약 9~10분.
+  #   🔴 배포는 시험이 **전부 통과해야** 시작한다(`needs`) — 합친 결과가 깨졌으면 라이브에 안 올린다(2026-07-25 사고 원칙 그대로).
+  unit-tests:
+    runs-on: ubuntu-24.04
+    name: 단위 시험 ${{ matrix.shard }}/4
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run unit tests
+        run: npx vitest run --shard=${{ matrix.shard }}/4
+
+  # 🚨 시험이 깨져 배포가 **시작조차 안 했을 때**도 대표가 보는 곳에 남긴다 — 아래 deploy 잡의 기록 단계는
+  #   그 잡이 건너뛰어지면 안 돈다(조용한 실패). 근거: scripts/report-deploy-failure.sh
+  report-tests-failed:
+    needs: unit-tests
+    if: failure() && needs.unit-tests.result == 'failure'
+    runs-on: ubuntu-24.04
+    name: 배포 막힘 기록 (단위 시험 실패)
+    steps:
+      - uses: actions/checkout@v4
+      - name: 배포 실패를 어드민에 기록 (조용한 실패 차단)
+        continue-on-error: true
+        run: bash scripts/report-deploy-failure.sh "ur-live (소비자 Pages) — 단위 시험 실패로 배포 안 함" "${{ github.sha }}" "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
   deploy:
+    needs: unit-tests
     runs-on: ubuntu-24.04
     name: Deploy to Cloudflare Pages
     # 🛡️ 2026-05-28: 무한 hang 방어 — step 행 시 30분 후 실패 처리 (prerender hang 사고 재발 방지).
@@ -42,8 +91,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests
-        run: npm test -- --run
+      # ⏱️ 단위 시험은 2026-11-03 부터 위 `unit-tests` 잡(4대)이 돈다 — 이 잡은 그게 전부 통과해야 시작한다.
 
       # 🛡️ 2026-07-12 배포 타입체크 게이트 (대표 승인) — vite build 는 타입검사를 안 해서
       #   타입 에러(예: BrandLoader import 누락 → 블로그 상세 전면 크래시)가 그대로 라이브 배포됐음.

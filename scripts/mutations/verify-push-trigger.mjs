@@ -12,8 +12,8 @@ export default [
   {
     name: '🔴 verify.yml 에 push 트리거가 되살아난다 (PR 마다 취소된 Verify 가 머지를 막는다)',
     file: FILE,
-    find: '  workflow_dispatch:\n\nconcurrency:',
-    replace: '  push:\n    branches-ignore: [main]\n  workflow_dispatch:\n\nconcurrency:',
+    find: '  merge_group:\n\nconcurrency:',
+    replace: '  merge_group:\n  push:\n    branches-ignore: [main]\n\nconcurrency:',
     test: TEST,
     why:
       '같은 커밋에 pull_request-run 과 push-run 이 둘 생기면 concurrency 가 하나를 취소하고, 그 취소본이 ' +

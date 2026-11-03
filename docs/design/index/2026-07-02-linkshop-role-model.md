@@ -1,0 +1,1 @@
+| **🧭 링크샵 역할 모델 — 5부류 성과 구조 + 역할 적응형 링크샵(드릴다운)** | 2026-07-02 | 🟡 설계 / 대표 결정(§7 4건) 대기 · 1단계(매장 링크샵 하단 추천 opt-in 부활)부터 착수 권장 · 마스터=urdeal-platform-model.md | [linkshop-role-model.md](./linkshop-role-model.md) |
