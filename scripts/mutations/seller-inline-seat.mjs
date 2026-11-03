@@ -122,10 +122,11 @@ export default [
     why: '화면엔 A 가 떠 있는데 토큰이 B 면 **B 의 이용권이 소각된다.** 되돌릴 수 없다.',
   },
   {
+    // 🔁 2026-11-03 재조준 — 계산대 머리 안내를 걷어 그 말은 확인창이 한다.
     name: '🎟️ 계산대가 되돌릴 수 없다는 말을 안 한다',
-    file: 'src/pages/StoreScanPage.tsx',
-    find: '를 누르면 완료되고, 되돌릴 수 없습니다.',
-    replace: '를 누르면 완료돼요.',
+    file: 'src/components/voucher/VoucherScanner.tsx',
+    find: "'사용 처리하면 되돌릴 수 없어요.'",
+    replace: "'사용 처리할까요?'",
     test: 'src/tests/unit/seller-inline-seat-2026-09-25.test.ts',
     why: '찍기 전에 경고하지 않으면 잘못 찍은 손님의 이용권을 되돌릴 방법이 없다.',
   },

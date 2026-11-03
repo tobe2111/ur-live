@@ -249,18 +249,19 @@ describe('단계 3 — 소각은 되돌릴 수 없다', () => {
       .toContain("onClick={() => enterSeat('/store/scan')}")
   })
 
-  it('계산대가 되돌릴 수 없음을 **먼저** 말한다', () => {
-    const code = stripComments(SCAN)
-    // 2026-10-06: '바로 사용 완료' → 확인창(대표 "찍고나서 확인될 때 팝업창으로 사용처리 하시겠습니까?").
-    //   지키는 것은 그대로다 — 찍기 전에 되돌릴 수 없음을 말한다.
-    expect(code).toContain('확인창이 떠요')
-    expect(code).toContain('되돌릴 수 없습니다')
+  it('되돌릴 수 없음을 **사용 처리 전에** 말한다 — 확인창이 그 자리다', () => {
+    // 🔁 2026-11-03 재조준 — 대표 *"너무 필요이상으로 글자가 많아"* 로 계산대 머리 안내 두 문단을 걷었다.
+    //   지키는 것은 그대로다: 되돌릴 수 없는 사용이 나가기 **전에** 그 사실을 말한다. 2026-10-06 부터 비추면 바로
+    //   쓰이지 않고 확인창을 거치므로, 그 말은 확인창의 몫이다.
+    const scanner = stripComments(readCode('src/components/voucher/VoucherScanner.tsx'))
+    expect(scanner).toContain("'사용 처리하면 되돌릴 수 없어요.'")
   })
 
   it('계산대가 어느 가게로 처리되는지 말한다 — 값은 표시 전용', () => {
     const code = stripComments(SCAN)
     expect(code).toContain('currentSeatLabel()')
-    expect(code).toContain('이용권만 처리됩니다')
+    expect(code).toContain('이용권만 처리')
+    expect(code).toMatch(/\{seatLabel\}\s*<\/span>/)
   })
 
   it('검은 계산대 카드는 좌석 섹션이 못 뜰 때만 남는다(진입점 둘 금지)', () => {
