@@ -77,8 +77,8 @@ describe('🧹 마이 정돈 (2026-11-02)', () => {
 
   it('⑤ 구역 제목 위 여백 24px · 숫자 줄 48px', () => {
     const g = R('src/pages/user-profile/list-grammar.tsx')
-    expect(g.match(/mt-6 mb-1 px-4/g)?.length).toBe(2)
-    expect(g).not.toMatch(/mt-8 mb-1 px-4/)
+    expect(g.match(/mt-8 mb-1 px-4/g)?.length).toBe(2) // 📏 2026-11-03 대표 *"맞춰 다 통일"* — 공백 체계 구역 사이 32 로 (11-02 의 24 를 대체)
+    expect(g).not.toMatch(/mt-6 mb-1 px-4/)
     expect(R('src/pages/user-profile/MyStats.tsx')).toMatch(/px-4 min-h-\[48px\] py-2 text-left border-b/)
   })
 

@@ -113,9 +113,9 @@ describe('🖥️ PC — 한 줄에 세 장 + 좌우 화살표 (대표 확정 "�
   it('PC 에서는 세 장이 한 화면이다 — 카드 폭과 복제 수가 같은 값을 본다', () => {
     expect(SRC).toMatch(/const PC_PER_VIEW = 3/)
     expect(SRC, 'tailwind lg 와 다른 경계면 카드 폭과 순환 계산이 서로 다른 화면을 본다').toContain("const PC_QUERY = '(min-width: 1024px)'")
-    expect(SRC, '카드 폭 = (칸 − STRIP_GAP_PX 둘) ÷ 3').toContain("const PC_CARD_W = 'lg:w-[calc((100%-56px)/3)]'")
+    expect(SRC, '카드 폭 = (칸 − STRIP_GAP_PX 둘) ÷ 3').toContain("const PC_CARD_W = 'lg:w-[calc((100%-64px)/3)]'")
     expect(CARD).toContain('${many ? PC_CARD_W : \'\'}')
-    expect(SRC).toMatch(/const STRIP_GAP_PX = 28\b/)
+    expect(SRC).toMatch(/const STRIP_GAP_PX = 32\b/)
   })
   it('마우스로 넘길 수 있다 — 이전·다음 화살표가 있고 PC 에서만 보인다', () => {
     expect(RAIL).toMatch(/onClick=\{goPrev\} aria-label="이전 배너"\s+className="hidden lg:grid/)

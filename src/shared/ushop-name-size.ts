@@ -34,11 +34,11 @@ export type UShopNameSize = (typeof USHOP_NAME_SIZES)[number]
 export const USHOP_NAME_MIN_PX: UShopNameSize = USHOP_NAME_SIZES[USHOP_NAME_SIZES.length - 1]
 
 /**
- * 폰(390px)에서 이름 칸의 폭 — `390 − 40(px-5 양쪽) − 40(얼굴) − 16(gap-4)`.
+ * 폰(390px)에서 이름 칸의 폭 — `390 − 40(px-5 양쪽) − 40(얼굴) − 12(gap-3)` (2026-11-03 공백 체계로 16 → 12).
  * 2026-11-01 확정 2안 기준이고, 머리 마크업을 바꾸면 **이 값도 같이 바꾼다**
  * (테스트가 `CuratorHeader` 소스의 얼굴 크기·여백과 대조한다).
  */
-export const USHOP_NAME_BOX_PX = 294
+export const USHOP_NAME_BOX_PX = 298
 
 /** 칸을 조금 좁게 본다 — 추정이 틀릴 때 **두 줄이 되는 쪽이 아니라 작아지는 쪽**으로 틀리게. */
 const SAFETY = 0.94

@@ -36,7 +36,7 @@ describe('유어샵 D안', () => {
     const page = read('src/pages/CuratorPage.tsx')
     // 🔄 2026-11-01 (2안): 옆 여백 20px(px-5) 은 그대로이고 **위 여백만** 조였다(pt-4→3 · mt-4→3 · pt-6→3).
     //   이 검사의 불변식은 '옆 여백 20px' 이므로 `px-5` 를 계속 묻고 위 여백 값은 따라간다.
-    expect(header).toContain('flex items-center gap-4 px-5 pt-3')
+    expect(header).toContain('flex items-center gap-3 px-5 pt-3')
     expect(header).toContain('mt-3 px-5 flex items-center justify-between gap-2')
     expect(page).toContain('max-w-3xl mx-auto px-5 pt-3 border-b border-rule')
     expect(page).toContain('max-w-3xl mx-auto px-5 pb-4 divide-y')
@@ -71,14 +71,14 @@ describe('PC 이름 한 줄 (2026-10-25 대표 "왜 정지원 이름이 1줄로 
     expect(H).toMatch(/const nameSize = ushopNameSizePx\(curator\.name\)/)
   })
   it('버튼 줄이 이름 줄 밖에 있다 — 폰·PC 모두(서버 첫 화면도 같은 클래스)', () => {
-    expect(H, '이름 줄은 얼굴 + 이름뿐').toMatch(/gap-4 px-5 pt-3/)
+    expect(H, '이름 줄은 얼굴 + 이름뿐').toMatch(/gap-3 px-5 pt-3/)
     expect(H, '버튼 묶음은 오른쪽 끝').toMatch(/const cluster = \([\s\S]{0,120}ml-auto flex items-center gap-2 shrink-0/)
     // 🩸 판정은 **주석 제거본**으로 — 바로 위 주석이 그 두 클래스를 인용하므로 원문을 보면
     //   제 설명에 걸려 거짓 빨간불이 난다(이 레포가 반복해 밟은 자리).
     expect(readCode('src/pages/curator-page/CuratorHeader.tsx'), 'PC 만 내리던 장치는 되살리지 않는다')
       .not.toMatch(/lg:basis-full|lg:flex-wrap/)
     const S = readFileSync('src/worker/utils/curator-ssr-body.ts', 'utf-8')
-    expect(S).toContain("nameRow: 'flex items-center gap-4 px-5 pt-3'")
+    expect(S).toContain("nameRow: 'flex items-center gap-3 px-5 pt-3'")
     expect(S).toContain("cluster: 'ml-auto flex items-center gap-2 shrink-0'")
   })
 })

@@ -102,13 +102,13 @@ export function SectionTitle({ children, as: Tag = 'h2', action }: {
 }) {
   if (!action) {
     return (
-      <Tag className={`mt-6 mb-1 px-4 ${SECTION_TITLE_CLS}`}>
+      <Tag className={`mt-8 mb-1 px-4 ${SECTION_TITLE_CLS}`}>
         {children}
       </Tag>
     )
   }
   return (
-    <div className="mt-6 mb-1 px-4 flex items-center justify-between gap-3">
+    <div className="mt-8 mb-1 px-4 flex items-center justify-between gap-3">
       <Tag className={SECTION_TITLE_CLS}>{children}</Tag>
       <button type="button" onClick={action.onClick} className="shrink-0 inline-flex items-center gap-1 h-9 -my-2 text-[13px] font-medium text-gray-500 dark:text-gray-400 active:opacity-70">
         {action.label}
@@ -125,7 +125,7 @@ export function SectionTitle({ children, as: Tag = 'h2', action }: {
  *   그 순간 한 화면에 제목 층이 셋이 된다(24 구역 · 12 그룹 · 15 행).
  */
 export function GroupLabel({ children }: { children: React.ReactNode }) {
-  return <div className="mt-6 mb-2 px-1 text-[12px] font-medium text-gray-400">{children}</div>
+  return <div className="mt-8 mb-2 px-1 text-[12px] font-medium text-gray-400">{children}</div>
 }
 
 /**

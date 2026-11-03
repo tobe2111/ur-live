@@ -46,7 +46,7 @@ export default [
   {
     name: '🎫2:1 장수 계산 상수가 실제 gap 과 어긋난다 (숫자가 손가락과 따로 논다)',
     file: 'src/components/home/HomeBannerStrip.tsx',
-    find: 'const STRIP_GAP_PX = 28',
+    find: 'const STRIP_GAP_PX = 32',
     replace: 'const STRIP_GAP_PX = 12',
     test: BANNER,
     why: '2026-10-12 에 gap 을 두 번 바꾸며 이 상수를 안 고쳐 실제로 어긋났다 — 가드가 그걸 잡았다.',
