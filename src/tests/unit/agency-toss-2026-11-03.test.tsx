@@ -32,7 +32,7 @@ describe('② 판 안의 줄 = 두 줄 문법', () => {
     const { container } = render(
       <AgencyRowStyle.Provider value="toss"><FlatRow icon={<i />} label="직원" hint="2명" onClick={vi.fn()} /></AgencyRowStyle.Provider>,
     )
-    expect(container.querySelector('.rounded-\\[12px\\].bg-brand-tint')).toBeTruthy()
+    expect(container.querySelector('.rounded-xl.bg-brand-tint')).toBeTruthy()
     expect(container.querySelector('.text-\\[16px\\].font-semibold')?.textContent).toBe('직원')
     expect(container.querySelector('.text-\\[13px\\]')?.textContent).toBe('2명')
   })

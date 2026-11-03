@@ -400,7 +400,7 @@ export default function UserProfilePage() {
         {!tabbed && <AgencyTitleDoor storeCount={sellerSeats.stores.length} />}
         {/* ⏳ 좌석 조회 중에도 판을 세워 둔다(SellerSection 이 자리를 예약한다) — 늦게 생기면 아래가 밀린다. */}
         {tabbed ? ((sellerSeats.loading || sellerSeats.stores.length > 0) && (
-          <div className="mx-3 mt-3 rounded-[24px] bg-surface overflow-hidden py-2" data-testid="agency-store-card"><SellerSection state={sellerSeats} /></div>
+          <div className="mx-3 mt-3 rounded-2xl bg-surface overflow-hidden py-2" data-testid="agency-store-card"><SellerSection state={sellerSeats} /></div>
         )) : <SellerSection state={sellerSeats} />}
         <MyAgencyZone ownSellerIds={ownSellerIds} inHead={tabbed} />
       </>}
