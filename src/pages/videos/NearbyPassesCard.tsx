@@ -17,6 +17,7 @@ export { usePopularPassFeed as useNearbyFeed } from '@/hooks/usePopularPassFeed'
  *   흰 판 하나가 화면 아래를 덮지 않아 영상이 더 보이고, 카드 하나하나를 바로 누를 수 있다.
  * 🖐️ 가로로 미는 손짓은 이 줄 안에서만 — 줄이 제스처 층(z-10)보다 위(z-20)라 위아래 넘김과 안 싸운다.
  * 고를 이용권이 없으면 `null` — 빈 줄은 결함으로 보인다.
+ * deal-card-ok: 영상 위에 뜨는 156px 작은 바로가기 줄이지 딜 목록 카드가 아니다(사진·이름·가격 한 줄). 목적지는 `pickNearbyPasses` 가 피드 SSOT 의 `to` 를 그대로 넘긴다.
  */
 export default function NearbyPassesCard({ feed, regionSi, style }: { feed: FeedPass[]; regionSi?: string | null; style?: CSSProperties }) {
   const picks = pickNearbyPasses(feed, regionSi)
