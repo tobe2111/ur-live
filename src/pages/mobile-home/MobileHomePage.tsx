@@ -277,7 +277,8 @@ export default function MobileHomePage() {
           지나가면 로고 줄 + 카테고리 줄 두 줄만 단색 바탕으로 위에 고정한다(사진이 화면을 계속 차지하지 않게).
           사진 없는 지역은 종전처럼 머리 전체가 sticky 라 이 막대가 안 뜬다. */}
       {hero && heroPassed && (
-        <div data-home-compact-bar className="fixed inset-x-0 top-0 z-30 bg-surface shadow-lift ur-cbar-in">
+        /* 🎨 2026-11-03 대표 *"색 통일이 안됐어 다크모드에서"* — 고정 막대는 페이지 바탕(`bg-warm` = 다크 #11141C)과 같은 색. `bg-surface`(다크 #1D1F29)는 카드 색이라 막대만 밝게 떴다. */
+        <div data-home-compact-bar className="fixed inset-x-0 top-0 z-30 bg-warm shadow-lift ur-cbar-in">
           {logoRow}
           <div className="pt-1">{catRow}</div>
         </div>
