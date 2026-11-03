@@ -88,7 +88,7 @@ for (const f of files) {
   const src = readFileSync(f, 'utf8')
   if (!src.includes('{')) continue
   for (const m of src.matchAll(/`([^`]*)`/g)) {
-    if (m[1].includes('{') && /@keyframes|animation|transition|transform/.test(m[1])) injectedCss += m[1] + '\n'
+    if (m[1].includes('{') && (/@keyframes|animation|transition|transform/.test(m[1]) || /\.ur-[\w-]+(?:[^{]*)\{/.test(m[1]))) injectedCss += m[1] + '\n' // 2026-11-02 — 로더 SSOT(`brand-loader-markup.ts`)처럼 움직임 낱말 없는 배치 규칙(`.ur-ldr{width:…}`)도 읽는다
   }
 }
 // 셀렉터 자리의 `.이름` 만 — 규칙 본문(`{…}`)을 걷어낸 뒤 읽는다(값 안의 `.24s` 같은 숫자는 [a-z] 로 시작하지 않는다).
