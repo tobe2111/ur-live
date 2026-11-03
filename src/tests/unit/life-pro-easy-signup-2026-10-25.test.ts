@@ -27,7 +27,8 @@ describe('① 심사 중에도 견적 — 상태 판정 한 함수', () => {
   })
   it('매칭·업체 수·보관 요청·견적 보내기가 모두 그 판정을 쓴다', () => {
     const db = R('src/features/home-service/api/home-service-db.ts')
-    expect(db.match(/s\.status IN \$\{PRO_OPEN_STATUS_SQL\}/g)?.length).toBe(2)
+    // 2026-11-03 — 생활 첫 화면 실시간 한 줄의 업체 수(`lifeLiveActivity`)도 같은 판정을 쓴다 → 3.
+    expect(db.match(/s\.status IN \$\{PRO_OPEN_STATUS_SQL\}/g)?.length).toBe(3)
     expect(R('src/features/home-service/api/home-service-notify.ts')).toMatch(/!proStatusOpen\(pro\.status\)/)
     const pro = R('src/features/home-service/api/home-service-pro.routes.ts')
     expect(pro).toMatch(/if \(!proStatusOpen\(seller\?\.status\)\)/)

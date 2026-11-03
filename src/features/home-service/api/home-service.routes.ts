@@ -26,7 +26,7 @@ import {
   PRO_OPEN_STATUS_SQL, categoryDef, msgQuoteChosen, photosOwnedBy, proVerified, requestSummary, validateRequest, type HomeServiceCategory,
 } from '@/shared/home-service'
 import { sendSystemAlimtalk } from '../../../lib/system-alimtalk'
-import { chooseQuoteAtomic, ensureHomeServiceTables, ensureShareToken, proCountsByCategory, refundAllQuotes, reviewSummaries, withPrivateDetails } from './home-service-db'
+import { chooseQuoteAtomic, ensureHomeServiceTables, ensureShareToken, lifeLiveActivity, proCountsByCategory, refundAllQuotes, reviewSummaries, withPrivateDetails } from './home-service-db'
 import { REVIEW_PREVIEW_COUNT, parseReview, readProLinks, readReviewPhotos } from '@/shared/home-service-review'
 import { isShareToken, publicShareView } from '@/shared/home-service-share'
 import { dispatchRequest } from './home-service-notify'
@@ -81,11 +81,14 @@ export async function notifyChosen(
 //   ⇒ 엣지 30초(브라우저 30·엣지 90) + 두 읽기를 나란히. 어드민 '운영 중지' 는 길어야 90초 뒤 반영된다.
 homeServiceRoutes.get('/config', publicCache(30), async (c) => {
   // 카테고리별 업체 수 — 못 읽으면 null(화면은 "모집 중" 을 안 띄운다. 모르는 것과 0 은 다르다).
-  const [stopped, proCounts] = await Promise.all([
+  const ready = ensureHomeServiceTables(c.env.DB)
+  const [stopped, proCounts, live] = await Promise.all([
     homeServiceStopped(c.env.DB),
-    ensureHomeServiceTables(c.env.DB).then(() => proCountsByCategory(c.env.DB)).catch(() => null),
+    ready.then(() => proCountsByCategory(c.env.DB)).catch(() => null),
+    // 📣 2026-11-03 생활 첫 화면 실시간 한 줄 — 못 읽으면 null(줄을 숨긴다).
+    ready.then(() => lifeLiveActivity(c.env.DB)).catch(() => null),
   ])
-  return c.json({ success: true, data: { open: !stopped, maxQuotes: MAX_QUOTES_PER_REQUEST, categories: HOME_SERVICE_CATEGORIES, proCounts } })
+  return c.json({ success: true, data: { open: !stopped, maxQuotes: MAX_QUOTES_PER_REQUEST, categories: HOME_SERVICE_CATEGORIES, proCounts, live } })
 })
 
 /**
