@@ -10161,10 +10161,10 @@ canvas {
       '어드민 정책 표가 2.5배 틀린 숫자를 보여 줬다. 상수를 되돌리면 그 상태로 돌아간다.',
   },
   {
-    name: '🏪 매장 등록 페이지가 다시 다크에 노출된다 (사장님이 자기 입력을 못 본다)',
+    name: '🏪 매장 등록 페이지가 다시 늘 흰 화면으로 (다크 미지원) (사장님이 자기 입력을 못 본다)',
     file: 'src/pages/StoreClaimPage.tsx',
-    find: '<div className="force-light-theme h-dvh lg:h-auto lg:min-h-dvh bg-white flex flex-col">',
-    replace: '<div className="h-dvh lg:h-auto lg:min-h-dvh bg-white dark:bg-[#11141C] flex flex-col">',
+    find: `<div className="h-dvh lg:h-auto lg:min-h-dvh bg-warm text-gray-900 dark:text-white flex flex-col">`,
+    replace: `<div className="force-light-theme h-dvh lg:h-auto lg:min-h-dvh bg-white text-gray-900 flex flex-col">`,
     test: 'src/tests/unit/store-register-wizard.test.ts',
     why:
       '전역 `.dark input`(특이도 0,5,1)이 모달의 text-gray-900(0,1,0)을 이겨 **흰 배경 위 흰 글자**가 ' +
@@ -10206,8 +10206,8 @@ canvas {
   {
     name: '🏪 등록 안 했는데 "매장이 등록됐어요" 라고 말한다',
     file: 'src/pages/StoreClaimPage.tsx',
-    find: '          if (!opts?.existing) {',
-    replace: '          if (true) {',
+    find: `onEntered={() => navigate(MY_PATH, { replace: true })}`,
+    replace: `onEntered={() => { toast.success('매장이 등록됐어요'); go('done') }}`,
     test: 'src/tests/unit/store-register-wizard.test.ts',
     why:
       '이미 갖고 있던 매장으로 들어간 경우엔 아무것도 등록되지 않았다. 그런데 같은 문구를 띄우면 ' +
@@ -10253,8 +10253,8 @@ canvas {
     name: '🚪 매장 등록 페이지가 다시 배경 클릭으로 꺼진다 (폼 통째로 날아감)',
     file: 'src/pages/StoreClaimPage.tsx',
     // ⚠️ 2026-09-23 재조준 — 안 B 에서 이 prop 이 2단 레이아웃 안쪽으로 들어가 들여쓰기가 바뀌었다.
-    find: '              dismissOnBackdrop={false}',
-    replace: '',
+    find: `              {handoff ? (`,
+    replace: `              <div className="fixed inset-0 bg-black/40" onClick={goBack} />{handoff ? (`,
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '/store/new 는 모달이 곧 페이지라 배경 뒤에 아무것도 없다. 사업자등록증까지 올린 폼이 ' +

@@ -130,7 +130,8 @@ describe('③ 등록하고 돌아오기', () => {
   })
   it('매장 등록 완료가 그 기억을 읽는다 · 제휴 화면이 기억을 남긴다', () => {
     const claim = readFileSync('src/pages/StoreClaimPage.tsx', 'utf8')
-    expect(claim).toMatch(/navigate\(takePartnerReturn\(\) \?\? MY_PATH, \{ replace: true \}\)/)
+    // 🔁 2026-11-03: 4화면 흐름 — 제휴 위젯으로 왔으면 완료 화면 대신 그 화면으로 바로 돌아간다.
+    expect(claim).toMatch(/const back = takePartnerReturn\(\)\s*\n\s*if \(back\) \{[^}]*navigate\(back, \{ replace: true \}\)/)
     const page = readFileSync('src/pages/StoreAgencyInvitePage.tsx', 'utf8')
     expect(page).toMatch(/if \(partnerId\) rememberPartner\(partnerId\)/)
     expect(page).toMatch(/partner-request/)

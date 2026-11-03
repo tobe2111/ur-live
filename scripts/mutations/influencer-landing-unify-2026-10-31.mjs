@@ -48,8 +48,9 @@ export default [
   {
     name: '📣 /influencer 가 접두사 전체 화면이 되어 도구 화면 네비를 지운다',
     file: 'src/lib/consumer-chrome.ts',
-    find: `export const fullScreenExactPaths = ['/influencer', '/store/new']`,
-    replace: `export const fullScreenExactPaths: string[] = ['/store/new']\nfullScreenPrefixes.push('/influencer')`,
+    find: `export const fullScreenExactPaths = ['/influencer', '/store/new', '/store/first-voucher']`,
+    replace: `export const fullScreenExactPaths: string[] = ['/store/new', '/store/first-voucher']
+fullScreenPrefixes.push('/influencer')`,
     test: 'src/tests/unit/landing-pc-2026-09-16.test.ts',
     why: '/influencer/dashboard·/settlement 는 폰 폭 도구라 하단 탭이 필요하다 — 접두사면 그 화면에서 네비가 사라진다.',
   },

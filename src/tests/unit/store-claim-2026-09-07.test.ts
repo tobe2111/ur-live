@@ -75,8 +75,11 @@ describe('/store/new 매장 등록 — 2026-09-07 대표 신고 회귀 가드', 
     //   *"`dismissOnBackdrop={false}` 를 남겨 둔다"* 라고 **설명을 적자**, prop 을 통째로 지워도
     //   그 주석 때문에 초록이 떴다 — 주입 러너가 잡았다. 설명을 잘 적을수록 가드가 헐거워지는
     //   구조였던 것이다. ⇒ 주석을 걷고 본다(이 레포가 반복해 온 "주석에만 남아도 통과" 클래스).
+    // 🔁 2026-11-03 재조준: 4화면 흐름은 모달을 안 쓴다(`store-new/*` 단계 부품). 지키려던 것은 그대로다 —
+    //   **바깥을 눌러 폼이 날아가는 오버레이가 이 페이지에 없을 것.**
     const s = stripComments(read(PAGE))
-    expect(s, '페이지가 dismissOnBackdrop={false} 를 안 넘긴다').toContain('dismissOnBackdrop={false}')
+    expect(s, '페이지가 다시 오버레이 모달을 띄운다').not.toMatch(/<StoreRegisterModal\b/)
+    expect(s).not.toMatch(/fixed inset-0[^"']*bg-black/)
   })
 
   it('④ ✕ 로 나갈 때 이력이 없으면 홈으로 (navigate(-1) 단독 금지)', () => {

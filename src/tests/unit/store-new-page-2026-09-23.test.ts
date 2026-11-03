@@ -59,7 +59,8 @@ describe('① 페이지가 무엇을 등록하는 곳인지 말한다', () => {
     const s = visible(PAGE)
     expect(s).toContain('0원')
     // 🔁 2026-11-03: 단계 수는 손으로 적지 않는다 — 위저드가 내보내는 값을 쓴다(운영 방식 단계가 스위치로 빠졌다).
-    expect(s).toMatch(/\$\{STORE_REGISTER_STEP_COUNT\}단계/)
+    expect(s).toMatch(/\$\{STEP_TOTAL\}단계/)
+    expect(s).toMatch(/const STEP_TOTAL = 2\b/) // 🔁 2026-11-03 대표 확정 4화면 — 질문 화면은 둘(찾기 · 이 가게로 등록)
     expect(s, '등록증이 필수처럼 읽힌다 — 2026-09-21 부터 선택이다').not.toContain('사진 1장')
     expect(s).toMatch(/사업자등록증[\s\S]{0,40}(선택|나중에)/)
   })
@@ -85,15 +86,10 @@ describe('② PC 에서 2단으로 편다 (안 B 의 요지)', () => {
 })
 
 describe('③ 이 자리에 검은 오버레이가 없다', () => {
-  it('페이지가 variant="page" 로 렌더한다', () => {
-    expect(visible(PAGE)).toMatch(/variant="page"/)
-  })
-
-  it('page 변형의 바깥 틀에 fixed inset-0 · bg-black 이 없다', () => {
+  it('page 변형의 바깥 틀에 fixed inset-0 · bg-black 이 없다 (대시보드가 쓰는 모달의 page 가지)', () => {
     const s = visible(MODAL)
     const at = s.indexOf('const shellCls')
     expect(at).toBeGreaterThan(-1)
-    // asPage 쪽 값(삼항의 참 가지)만 본다 — 거짓 가지는 오버레이 그대로여야 맞다.
     const truthy = s.slice(at, at + 260).split('?')[1]?.split(':')[0] ?? ''
     expect(truthy).not.toContain('fixed inset-0')
     expect(truthy).not.toContain('bg-black')
@@ -104,28 +100,49 @@ describe('③ 이 자리에 검은 오버레이가 없다', () => {
   })
 })
 
-describe('④ 부품을 포크하지 않는다', () => {
-  it('페이지가 공용 StoreRegisterModal 을 쓴다', () => {
-    expect(visible(PAGE)).toMatch(/<StoreRegisterModal\b/)
+/**
+ * 🔁 2026-11-03 재조준 — 대표 *"플로우가 이상적이지 않고 UI 도 별로야"* → 4화면 시안 확정(*"시안대로 해줘"*).
+ * 종전 ④⑤ 는 "페이지가 공용 모달을 쓴다 · force-light-theme · dismissOnBackdrop" 를 고정했다. 그 셋은 모두
+ * **모달이 곧 페이지였던 구조**의 방어였고, 새 흐름은 모달을 안 쓰고 다크를 따른다(대표 *"다크모드에서도 다크로"*).
+ * 지키려던 뜻은 이렇게 옮겨 간다:
+ *   - 서버 계약 한 벌 — 등록 API·409 분기·약관 버전은 모달과 **같은 것**을 부른다(아래 ④).
+ *   - 다크에서 흰 바탕 위 흰 글자 0 — 바탕이 테마를 따르므로 입력칸에 흰 바탕을 깔지 않는다(`store-register-wizard`).
+ *   - 바깥을 눌러 폼이 날아가지 않는다 — 오버레이 자체가 없다(`store-claim` ③).
+ */
+describe('④ 4화면 흐름이 종전 서버 계약을 그대로 쓴다', () => {
+  const CONFIRM = 'src/pages/store-new/StoreConfirmStep.tsx'
+  it('등록 API · 약관 버전 · 소개자 귀속 · 409 분기', () => {
+    const s = visible(CONFIRM)
+    expect(s).toContain("api.post('/api/seller/stores'")
+    expect(s).toContain('terms_agreed_version: TERMS_CURRENT_VERSION')
+    expect(s).toContain('referrer_user_id: readStoreReferrer() || undefined')
+    expect(s).toMatch(/status === 409[\s\S]{0,80}STORE_EXISTS/)
+    expect(s, '개인 중개 등록은 닫혀 있다 — 이 문은 direct 만').toContain("channel: 'direct'")
   })
 
-  it('4단계 질문이 모달 한 곳에만 있다', () => {
-    // 페이지가 단계 문구를 스스로 갖기 시작하면 그날부터 두 벌이 갈린다.
-    expect(visible(PAGE)).not.toContain('내 매장을 찾아주세요')
-    expect(visible(MODAL)).toContain('내 매장을 찾아주세요')
+  it('약관 동의는 버튼 아래 안내문으로 받는다 (대표 확정 "시안대로")', () => {
+    const s = visible(CONFIRM)
+    expect(s).toContain('누르면 판매자 이용약관에 동의')
+    expect(s).toContain('/terms/seller')
+  })
+
+  it('허위 등록 경고가 약관에 실제로 있는 조치만 말한다', () => {
+    const s = visible(CONFIRM)
+    expect(s).toContain('승인이 거절되거나 취소돼요')
+    expect(s, '약관에 없는 제재를 약속한다').not.toMatch(/정지|영구|법적 조치|고발/)
+    // 근거가 약관에 살아 있어야 경고가 거짓말이 안 된다.
+    expect(readFileSync('src/pages/terms/seller-terms-content.ts', 'utf8')).toContain('허위 정보가 확인되면 승인을 거절·취소')
+  })
+
+  it('첫 이용권은 판매 기간 제한이 없다 (대표 확정)', () => {
+    const s = visible('src/pages/store-new/FirstVoucherPage.tsx')
+    expect(s).toContain('group_buy_deadline: null')
+    expect(s).toContain("api.post('/api/seller/products'")
+    expect(s).toContain('voucherMinPriceError(kind, priceN)')
   })
 })
 
-describe('⑤ 2026-09-07 수리 둘이 살아 있다', () => {
-  it('루트에 force-light-theme 이 있다 (다크에서 입력 글자 1.09:1 사고)', () => {
-    expect(visible(PAGE)).toContain('force-light-theme')
-  })
-
-  it('dismissOnBackdrop={false} 가 남아 있다 (바깥 클릭이 폼을 날리던 사고)', () => {
-    // page 에는 배경이 없어 구조적으로 못 닫히지만, variant 를 되돌리는 날 이 한 줄이 다시 막는다.
-    expect(visible(PAGE)).toContain('dismissOnBackdrop={false}')
-  })
-
+describe('⑤ 수리들이 살아 있다', () => {
   it('모달 패널이 light-island 를 유지한다 (모든 호출부를 덮는 방어)', () => {
     const s = visible(MODAL)
     expect(s.match(/light-island/g)?.length ?? 0).toBeGreaterThanOrEqual(3)

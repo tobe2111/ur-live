@@ -56,6 +56,12 @@ const LIGHT_ISLAND_COVERAGE: Record<string, { by: string; why: string }> = {
    *   필요하다(익명 방문으로는 `/my-vouchers` 가 빈 화면이다). 여기 등재는 "무엇을 그리는가" 의
    *   기록이지 "측정됐다" 는 뜻이 아니다. 실제 판정은 기기에서 다크로 QR 을 열어 보는 것이다.
    */
+  /**
+   * 🏪 2026-11-03 — 매장 등록 4화면(대표 *"다크모드에서도 다크로"*): 화면은 테마를 따르고 **지도 칸만** 섬이다
+   * (카카오 타일은 다크에서도 밝다).
+   * ⚠️ 이 가드가 실제로 열지는 못한다 — 둘 다 로그인(첫 이용권은 매장 좌석까지)이 필요하다. 판정은 기기에서 다크로 열어 보는 것.
+   */
+  'src/pages/store-new/StoreConfirmStep.tsx': { by: '/store/new', why: '② 확인 화면의 카카오맵 칸(타일이 늘 밝다)' },
   'src/components/voucher/ScannableQr.tsx': { by: '/my-vouchers', why: 'QR 은 테마가 아니라 규격 — 둘레가 검정이 되면 스캐너가 경계를 못 찾는다' },
 
   /**

@@ -93,8 +93,8 @@ export default [
   {
     name: '🙋 2단의 전제가 사라진다 (store/find 가 액자 안으로 되돌아감)',
     file: FULLBLEED,
-    find: `'/partnership', '/store/new', '/store/find',`,
-    replace: `'/partnership', '/store/new',`,
+    find: `'/partnership', '/store/new', '/store/first-voucher', '/store/find',`,
+    replace: `'/partnership', '/store/new', '/store/first-voucher',`,
     test: T,
     why:
       '액자(430px) 안이면 2열이 펴질 자리가 없다 — 이 PR 의 레이아웃이 통째로 죽는데, 해제 목록을 ' +

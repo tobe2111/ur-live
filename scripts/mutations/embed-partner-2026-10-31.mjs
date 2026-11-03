@@ -34,8 +34,8 @@ export default [
   {
     name: '제휴입점 — 매장 등록 뒤 제휴 화면으로 안 돌아온다',
     file: C,
-    find: 'navigate(takePartnerReturn() ?? MY_PATH, { replace: true })',
-    replace: 'navigate(MY_PATH, { replace: true })',
+    find: `if (back) { toast.success('매장이 등록됐어요'); navigate(back, { replace: true }); return }`,
+    replace: ``,
     test: T,
     why: '매장이 없던 사장님은 등록을 거친다. 돌아오지 않으면 어느 제휴사에서 왔는지 잃고 요청이 안 간다(에러 0).',
   },

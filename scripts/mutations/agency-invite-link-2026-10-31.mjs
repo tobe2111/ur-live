@@ -71,8 +71,9 @@ export default [
   {
     name: '영입 링크 — 등록 뒤 맡기기를 안 부른다',
     file: 'src/pages/StoreClaimPage.tsx',
-    find: '                await entrustToInviter(sellerId)',
-    replace: '',
+    find: `    await entrustToInviter(sellerId)
+`,
+    replace: ``,
     test: T,
     why: '링크로 들어와 가입해도 매장만 생기고 에이전시에 안 붙는다.',
   },

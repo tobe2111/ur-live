@@ -43,7 +43,8 @@ describe('① 가입 문 하나 (/store/new)', () => {
     // 로그인 왕복에서 쿼리를 잃으면 프리필이 사라진다.
     expect(CLAIM_PAGE).toContain('`/store/new${window.location.search || \'\'}`')
     expect(CLAIM_PAGE).toContain('/api/prospects/prefill/')
-    expect(CLAIM_PAGE).toContain('initialManagerPhone={prospect?.contact_phone || undefined}')
+    // 🔁 2026-11-03: 4화면 흐름 — 준비해 둔 번호가 ② 화면의 휴대폰 칸을 먼저 채운다(계정 번호보다 앞).
+    expect(CLAIM_PAGE).toContain('if (prospect?.contact_phone) { setPhone(prospect.contact_phone); return }')
   })
 
   it('새 문이 영입 귀속을 넘겨받았다 — 옛 문과 같은 규칙, 초대 링크 귀속은 안 덮는다', () => {
@@ -92,7 +93,7 @@ describe('⑤ 중개 승계', () => {
   it('등록 완료 페이지가 승계 코드를 고정으로 보여 준다 (토스트 한 번 X)', () => {
     expect(MODAL).toContain('onDone(Number(r.data.data?.seller_id) || undefined, { ownerClaimCode: code })')
     expect(MODAL, '페이지에서도 토스트로만 흘려보낸다').toContain('if (code && !asPage) toast.success')
-    expect(CLAIM_PAGE).toContain('if (opts?.ownerClaimCode) { setHandoff(opts.ownerClaimCode); return }')
+    expect(CLAIM_PAGE).toContain('if (ownerClaimCode) { setHandoff(ownerClaimCode); return }')
     expect(CLAIM_PAGE).toContain('<BrokerHandoffPanel code={handoff}')
   })
 

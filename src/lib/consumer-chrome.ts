@@ -27,7 +27,8 @@ export const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/p
  *   (`pc-fullbleed.ts` 가 같은 이유로 정확 일치로 둔다).
  */
 //   🏪 2026-11-03 `/store/new` = 매장 등록 위저드 — 하단 탭이 [다음] 버튼을 가리고 화면 높이를 뺏었다(대표 신고).
-export const fullScreenExactPaths = ['/influencer', '/store/new']
+//   🎟️ 2026-11-03 `/store/first-voucher` = 등록 직후 첫 이용권 한 화면(같은 이유 — 바닥 버튼).
+export const fullScreenExactPaths = ['/influencer', '/store/new', '/store/first-voucher']
 
 /** 소비자 네비 없이 화면 전체를 쓰는 주소인가. */
 export function isFullScreenPath(pathname: string): boolean {

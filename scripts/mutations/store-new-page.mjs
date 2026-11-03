@@ -30,9 +30,9 @@ export default [
       '폰만 확인하고 넘어가면 못 잡는다 — 이 PR 이 고친 문제의 절반이 그대로 돌아온다.',
   },
   {
-    name: '🏪 등록 카드가 다시 검은 오버레이 위로 (variant 되돌림)',
-    file: PAGE,
-    find: `              variant="page"\n`,
+    name: '🏪 약관 보기 링크가 버튼 아래에서 사라진다 (안내문 동의의 전제)',
+    file: `src/pages/store-new/StoreConfirmStep.tsx`,
+    find: `{' '}<a href="/terms/seller" target="_blank" rel="noopener noreferrer" className="underline">약관 보기</a>`,
     replace: ``,
     test: T,
     why:
@@ -53,8 +53,8 @@ export default [
     // 🔁 2026-11-03 재조준: 이제 페이지가 화면 높이를 잡는 게 **정답**이다(하단 탭을 숨겼으므로). 결함은 탭이 돌아오는 것.
     name: '🏪 하단 탭이 위저드 위로 돌아온다 (버튼이 탭 뒤로 · 화면 높이가 탭만큼 잘린다)',
     file: 'src/lib/consumer-chrome.ts',
-    find: `export const fullScreenExactPaths = ['/influencer', '/store/new']`,
-    replace: `export const fullScreenExactPaths = ['/influencer']`,
+    find: `export const fullScreenExactPaths = ['/influencer', '/store/new', '/store/first-voucher']`,
+    replace: `export const fullScreenExactPaths = ['/influencer', '/store/first-voucher']`,
     test: T,
     why:
       '페이지는 `h-dvh` 로 화면 높이를 잡는데 그 위에 탭(57px)이 다시 덮이면 [다음] 버튼이 탭 뒤로 숨는다 — ' +
@@ -101,11 +101,11 @@ export default [
       '갈렸다(2026-09-07 `taken` 화면이 같은 날 수리 둘을 못 받았다).',
   },
   {
-    name: '🏪 다크 입력 글자 방어가 사라진다 (force-light-theme 소실)',
-    file: PAGE,
-    find: `force-light-theme h-dvh lg:h-auto lg:min-h-dvh bg-white`,
-    replace: `h-dvh lg:h-auto lg:min-h-dvh bg-white`,
-    test: T,
+    name: '🏪 입력칸에 흰 바탕이 돌아온다 (다크에서 흰 바탕 위 흰 글자) (force-light-theme 소실)',
+    file: `src/pages/store-new/StoreFindStep.tsx`,
+    find: `className="flex-1 min-w-0 bg-transparent border-0 outline-none focus-visible:outline-none text-[17px] text-gray-900 dark:text-white placeholder:text-ink-faint" />`,
+    replace: `className="flex-1 min-w-0 bg-white border-0 outline-none focus-visible:outline-none text-[17px] text-gray-900 dark:text-white placeholder:text-ink-faint" />`,
+    test: `src/tests/unit/store-register-wizard.test.ts`,
     why:
       '전역 `.dark input`(특이도 0,5,1)이 `text-gray-900`(0,1,0)을 이겨 흰 배경 위 흰 글자가 된다 ' +
       '(2026-09-07 실측 1.09:1). 하필 매장 유치 퍼널의 첫 입력칸이다.',
