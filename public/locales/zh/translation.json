@@ -584,7 +584,8 @@
     "alreadyTitle": "已领取过此优惠券",
     "alreadyHint": "结账时自动应用",
     "goHome": "返回首页",
-    "errorTitle": "优惠券领取失败"
+    "errorTitle": "优惠券领取失败",
+    "scratch": "刮开查看"
   },
   "liveList": {
     "docTitle": "直播 - UR-DEAL",

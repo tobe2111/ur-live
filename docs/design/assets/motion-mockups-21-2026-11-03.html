@@ -1,0 +1,208 @@
+<title>모션 21차 시안</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --star: #F5A524;
+  --photo1: linear-gradient(135deg,#F2D9C9,#C9D8F2); --photo2: linear-gradient(135deg,#D3E8D6,#E9DCC6); --photo3: linear-gradient(135deg,#E6D3EB,#D0DEF0);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --photo1: linear-gradient(135deg,#4A3729,#2B3A57); --photo2: linear-gradient(135deg,#2C4430,#4A3E2B); --photo3: linear-gradient(135deg,#40304A,#293A52);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-inline: 16px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.list { display: grid; gap: 40px; }
+.item { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+.item h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.item h3 .n { color: var(--brand); margin-right: 6px; }
+.item p { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0 0 8px; }
+.item p b { color: var(--page-fg); font-weight: 500; }
+.replay { margin-top: 4px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; cursor: pointer; }
+.scr { position: relative; height: 300px; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); font-size: 15px; }
+.pad { padding: 16px; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.run .st { animation: rise .4s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 70ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+.hd { padding: 14px 16px 6px; font-size: 17px; font-weight: 700; }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; color: var(--brand); background: rgba(28,105,239,.12); padding: 2px 8px; border-radius: 999px; margin: 0 6px 6px 0; }
+.tag.warn { color: #B4540A; background: rgba(245,165,36,.16); }
+.ctlrow { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 8px; } .ctlrow button { flex: 1; }
+
+
+
+/* 1 찢어지는 티켓 */
+.tk { position: absolute; left: 50%; top: 24px; width: 220px; margin-left: -110px; }
+.tk .top, .tk .bot { background: var(--sub); border-radius: 16px; position: relative; }
+.tk .top { height: 170px; display: grid; place-items: center; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.tk .qr { width: 110px; height: 110px; background: repeating-conic-gradient(var(--ink) 0 25%, transparent 0 50%) 0 0/18px 18px; border-radius: 6px; }
+.tk .bot { height: 54px; border-top: 2px dashed var(--rule-strong); border-top-left-radius: 0; border-top-right-radius: 0; display: grid; place-items: center; font-size: 13px; color: var(--ink-soft); }
+.tk.tear .bot { animation: tear .7s cubic-bezier(.5,0,.7,.4) .25s forwards; transform-origin: 10% 0; }
+@keyframes tear { 30% { transform: rotate(-4deg) translateY(4px); } 100% { transform: rotate(-14deg) translate(-20px, 140px); opacity: 0; } }
+.tk .stamp { position: absolute; inset: 0; display: grid; place-items: center; font-size: 22px; font-weight: 800; color: var(--brand-text); opacity: 0; transform: scale(1.6) rotate(-10deg); }
+.tk.tear .stamp { animation: stamp .35s cubic-bezier(.3,1.4,.5,1) .85s forwards; }
+@keyframes stamp { to { opacity: 1; transform: rotate(-10deg); } }
+.tk.tear .qr { transition: opacity .4s .7s; opacity: .15; }
+
+/* 2 스티커 */
+.rv { margin: 16px; } .rv .bx { height: 90px; border-radius: 12px; background: var(--sub); padding: 12px; font-size: 13px; color: var(--ink-soft); }
+.stk { position: absolute; right: 30px; top: 110px; width: 120px; height: 120px; border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; text-align: center; font-weight: 800; font-size: 15px; line-height: 1.3; box-shadow: 0 6px 16px rgba(0,0,0,.18); opacity: 0; transform: scale(2) rotate(-25deg); }
+.stk.on { animation: stick .45s cubic-bezier(.2,1.3,.4,1) forwards; }
+@keyframes stick { to { opacity: 1; transform: rotate(-8deg); } }
+
+/* 3 큰 제목 접힘 */
+.sc3 { position: absolute; inset: 0; overflow-y: auto; }
+.bar3 { position: sticky; top: 0; height: 48px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 700; z-index: 2; }
+.bar3 span { opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; }
+.bar3.on { box-shadow: 0 1px 0 var(--rule); } .bar3.on span { opacity: 1; transform: none; }
+.big3 { padding: 4px 16px 12px; font-size: 28px; font-weight: 800; transform-origin: left center; }
+.sc3 .r { margin: 0 16px 8px; height: 52px; border-radius: 12px; background: var(--sub); }
+
+/* 4 핀 흩어짐 */
+.map4 { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 38px, rgba(0,0,0,.05) 38px 40px), repeating-linear-gradient(90deg, #EEF1EC 0 58px, #E3E8E1 58px 60px); }
+.clu { position: absolute; left: 50%; top: 45%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 800; display: grid; place-items: center; transition: transform .25s, opacity .25s; }
+.pin { position: absolute; left: 50%; top: 45%; margin: -16px 0 0 -30px; height: 28px; padding: 0 8px; border-radius: 999px; background: #fff; color: #16181C; font-size: 12px; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 1.5px #16181C; opacity: 0; transform: scale(.3); }
+.map.spread .clu { transform: scale(.4); opacity: 0; }
+.map.spread .pin { animation: spread .5s cubic-bezier(.2,1.2,.4,1) forwards; animation-delay: calc(var(--i) * 50ms); }
+@keyframes spread { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: translate(var(--x), var(--y)); } }
+
+/* 5 밀어 넘기는 탭 */
+.tabs5 { display: flex; gap: 20px; padding: 0 16px; border-bottom: 1px solid var(--rule); position: relative; }
+.tabs5 b { padding: 10px 0; font-size: 15px; color: var(--ink-faint); font-weight: 500; } .tabs5 b.on { color: var(--ink); font-weight: 700; }
+.ul5 { position: absolute; bottom: -1px; height: 2px; background: var(--ink); transition: transform .25s, width .25s; left: 0; }
+.vp5 { overflow: hidden; touch-action: pan-y; cursor: grab; } .tr5 { display: flex; width: 300%; }
+.pg5 { width: 33.333%; padding: 12px 16px; } .pg5 div { height: 50px; border-radius: 12px; background: var(--sub); margin-bottom: 8px; display: flex; align-items: center; padding: 0 12px; font-size: 13px; color: var(--ink-soft); }
+
+/* 6 이름 흐르기 */
+.pc6 { display: flex; gap: 12px; padding: 24px 16px; }
+.c6 { width: 150px; flex: none; }
+.c6 .ph { height: 110px; border-radius: 12px; background: var(--photo2); }
+.c6 .nm { margin-top: 8px; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; }
+.c6 .nm span { display: inline-block; transition: transform 0s; }
+.c6:hover .nm span { transform: translateX(var(--shift, 0)); transition: transform 2.2s linear .3s; }
+.c6 .pr { font-size: 13px; color: var(--ink-soft); }
+
+/* 7 긁어서 열기 */
+.cp7 { position: absolute; left: 50%; top: 40px; width: 260px; height: 150px; margin-left: -130px; border-radius: 16px; background: var(--brand-tint); display: grid; place-items: center; text-align: center; }
+.cp7 b { display: block; font-size: 28px; color: var(--brand-text); } .cp7 span { font-size: 13px; color: var(--ink-soft); }
+.cp7 canvas { position: absolute; inset: 0; border-radius: 16px; cursor: crosshair; touch-action: none; transition: opacity .4s; }
+.hint7 { position: absolute; left: 0; right: 0; bottom: 30px; text-align: center; font-size: 13px; color: var(--ink-soft); }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; } }
+</style>
+<div class="wrap">
+  <h1>모션 21차 시안</h1>
+  <p class="lede">이번에도 <b>지금까지 안 쓴 종류</b>만이에요. 노란 꼬리표는 움직임과 함께 <b>쓰는 방식이 조금 바뀌는</b> 것이에요. 직접 눌러 보고, 밀어 보고, 긁어 보세요.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all">전부 다시 보기</button>
+    <button class="ctl" id="mode">다크 모드로 보기</button>
+  </div>
+  <div class="list">
+
+    <div class="item">
+      <div class="scr" id="s1"><div class="tk" id="tk"><div class="top"><div class="qr"></div><div class="stamp">사용 완료</div></div><div class="bot">숙성 삼겹살 2인 이용권</div></div></div>
+      <div><span class="tag">새 종류 · 찢어지는 티켓</span><h3><span class="n">1</span>이용권 QR 화면 · 매장에서 찍혔을 때</h3>
+        <p>사장님이 QR을 찍으면(화면이 5초마다 확인하고 있어요) <b>아래 띠가 절취선을 따라 찢겨 떨어지고</b>, 그 자리에 '사용 완료' 도장이 찍혀요. 손님은 화면만 보고 "됐다"를 알아요.</p>
+        <button class="replay" id="r1">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s2"><div class="hd">리뷰 쓰기</div><div class="rv"><div class="bx">고기가 정말 부드러웠어요. 사장님도 친절하시고 다음에 또 올게요!</div></div><button class="ctl primary" id="b2" style="position:absolute;left:16px;right:16px;bottom:20px">등록하기</button><div class="stk" id="stk">리뷰<br>고마워요!</div></div>
+      <div><span class="tag">새 종류 · 붙는 스티커</span><h3><span class="n">2</span>리뷰 등록 완료</h3>
+        <p>등록을 누르면 <b>'리뷰 고마워요!' 스티커가 위에서 착 붙어요</b>(살짝 기울어져서). 알림 글자 한 줄보다 "남겼다"는 느낌이 커요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s3"><div class="sc3" id="sc3"><div class="bar3" id="bar3"><span>구매 내역</span></div><div class="big3" id="big3">구매 내역</div><div class="r"></div><div class="r"></div><div class="r"></div><div class="r"></div><div class="r"></div><div class="r"></div><div class="r"></div></div></div>
+      <div><span class="tag">새 종류 · 큰 제목 접힘</span><span class="tag warn">화면 위쪽 모양 바뀜</span><h3><span class="n">3</span>마이 안의 화면들(구매 내역·쿠폰·찜 등)</h3>
+        <p>들어가면 <b>제목이 크게</b> 보이고, 내리면 <b>큰 제목이 작아지며 맨 위 머리줄로 올라가요</b>. 아이폰 기본 앱처럼 지금 어디 있는지가 또렷해요(안을 내려 보세요).</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s4"><div class="map map4" id="m4"><div class="clu">5</div>
+        <div class="pin" style="--i:0;--x:-90px;--y:-70px">25,000</div><div class="pin" style="--i:1;--x:70px;--y:-80px">18,000</div><div class="pin" style="--i:2;--x:-110px;--y:30px">32,000</div><div class="pin" style="--i:3;--x:90px;--y:40px">9,900</div><div class="pin" style="--i:4;--x:0px;--y:90px">14,000</div></div>
+        <div class="ctlrow"><button class="ctl" id="b4">확대하기</button></div></div>
+      <div><span class="tag">새 종류 · 흩어지는 핀</span><h3><span class="n">4</span>지도 · 핀 묶음</h3>
+        <p>멀리서 보면 '5'처럼 묶여 있던 동그라미가, 확대하면 <b>그 자리에서 가게 핀들이 사방으로 톡톡 흩어져 나와요</b>. 갑자기 뜨지 않고 어디서 나왔는지 보여요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s5"><div class="hd">구매 내역</div><div class="tabs5" id="tb5"><b class="on">전체</b><b>이용권</b><b>교환권</b><i class="ul5" id="ul5"></i></div>
+        <div class="vp5" id="vp5"><div class="tr5" id="tr5">
+          <div class="pg5"><div>삼겹살 2인 이용권</div><div>아메리카노 교환권</div><div>젤 네일 기본</div></div>
+          <div class="pg5"><div>삼겹살 2인 이용권</div><div>젤 네일 기본</div></div>
+          <div class="pg5"><div>아메리카노 교환권</div><div>CU 5천원권</div></div></div></div></div>
+      <div><span class="tag">새 종류 · 손가락으로 넘기기</span><span class="tag warn">쓰는 방식 추가</span><h3><span class="n">5</span>구매 내역 · 종류 탭</h3>
+        <p>탭을 누르지 않아도 <b>목록을 옆으로 밀면 손가락을 따라 다음 탭으로 넘어가요</b>. 밑줄도 같이 따라와요(마우스로 끌어 보세요). 19차의 방향 전환과 짝이에요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s6"><div class="pc6"><div class="c6"><div class="ph"></div><div class="nm"><span>연남동 숙성 삼겹살 전문점 본점</span></div><div class="pr">25,000원</div></div><div class="c6"><div class="ph" style="background:var(--photo3)"></div><div class="nm"><span>합정 파스타</span></div><div class="pr">36,000원</div></div></div></div>
+      <div><span class="tag">새 종류 · 흐르는 이름(PC)</span><h3><span class="n">6</span>PC · 이용권 카드의 긴 가게 이름</h3>
+        <p>이름이 길어 '…'로 잘린 카드에 마우스를 올리면 <b>이름이 옆으로 천천히 흘러서 끝까지 보여요</b>. 짧은 이름은 그대로예요. 폰에는 없어요(첫 카드에 마우스를 올려 보세요).</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s7"><div class="cp7"><div><b>3,000원</b><span>연남 숙성 삼겹살 할인 쿠폰</span></div><canvas id="cv7" width="260" height="150"></canvas></div><div class="hint7" id="h7">은색 부분을 손가락으로 긁어 보세요</div></div>
+      <div><span class="tag">새 종류 · 긁어서 열기</span><span class="tag warn">쓰는 방식 바뀜</span><h3><span class="n">7</span>쿠폰 받기 화면</h3>
+        <p>받은 쿠폰이 <b>은박으로 덮여 있고, 긁으면 금액이 드러나요</b>. 절반쯤 긁으면 나머지는 저절로 벗겨져요. 받는 순간이 작은 이벤트가 돼요(긁어 보세요).</p>
+        <button class="replay" id="r7">다시 덮기</button></div>
+    </div>
+
+  </div>
+</div>
+<script>
+const $ = (s) => document.querySelector(s)
+const re = (el, c) => { el.classList.remove(c); void el.offsetWidth; el.classList.add(c) }
+// 1
+const run1 = () => re($('#tk'), 'tear'); $('#r1').onclick = run1
+// 2
+$('#b2').onclick = () => re($('#stk'), 'on')
+// 3
+;(() => { const sc = $('#sc3'), big = $('#big3'), bar = $('#bar3'); sc.onscroll = () => { const y = sc.scrollTop; const k = Math.min(1, y / 44); big.style.transform = `scale(${1 - k * 0.35}) translateY(${-k * 10}px)`; big.style.opacity = 1 - k; bar.classList.toggle('on', k >= 1) } })()
+// 4
+$('#b4').onclick = () => { const m = $('#m4'); if (m.classList.contains('spread')) { m.classList.remove('spread'); $('#b4').textContent = '확대하기' } else { re(m, 'spread'); $('#b4').textContent = '다시 묶기' } }
+// 5
+;(() => { const vp = $('#vp5'), tr = $('#tr5'), tabs = [...document.querySelectorAll('#tb5 b')], ul = $('#ul5'); let cur = 0, x0 = null, w = 0
+  const ulTo = (f) => { const i = Math.floor(f), t = f - i; const a = tabs[i], b = tabs[Math.min(i + 1, 2)]; const l = a.offsetLeft + (b.offsetLeft - a.offsetLeft) * t, wd = a.offsetWidth + (b.offsetWidth - a.offsetWidth) * t; ul.style.width = wd + 'px'; ul.style.transform = `translateX(${l}px)` }
+  const go = (i, anim = true) => { cur = i; tr.style.transition = anim ? 'transform .3s cubic-bezier(.2,1,.3,1)' : 'none'; tr.style.transform = `translateX(${-i * 33.333}%)`; ul.style.transition = anim ? '' : 'none'; ulTo(i); tabs.forEach((t, j) => t.classList.toggle('on', j === i)) }
+  tabs.forEach((t, j) => t.onclick = () => go(j))
+  vp.onpointerdown = (e) => { x0 = e.clientX; w = vp.clientWidth; vp.setPointerCapture(e.pointerId); tr.style.transition = 'none'; ul.style.transition = 'none' }
+  vp.onpointermove = (e) => { if (x0 == null) return; const dx = e.clientX - x0; const f = Math.max(0, Math.min(2, cur - dx / w)); tr.style.transform = `translateX(${-f * 33.333}%)`; ulTo(f) }
+  vp.onpointerup = (e) => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; go(Math.max(0, Math.min(2, cur + (dx < -50 ? 1 : dx > 50 ? -1 : 0)))) }
+  requestAnimationFrame(() => go(0, false)) })()
+// 6
+document.querySelectorAll('.c6 .nm').forEach((n) => { const s = n.firstElementChild; const d = s.scrollWidth - n.clientWidth; if (d > 0) s.style.setProperty('--shift', `-${d + 4}px`) })
+// 7
+const cover7 = () => { const c = $('#cv7'), g = c.getContext('2d'); c.style.opacity = 1; c.style.pointerEvents = ''; g.globalCompositeOperation = 'source-over'; const gr = g.createLinearGradient(0, 0, 260, 150); gr.addColorStop(0, '#C8CCD2'); gr.addColorStop(.5, '#EEF0F3'); gr.addColorStop(1, '#B9BEC6'); g.fillStyle = gr; g.fillRect(0, 0, 260, 150); g.fillStyle = '#8A9099'; g.font = '700 15px sans-serif'; g.textAlign = 'center'; g.fillText('긁어서 확인', 130, 80); $('#h7').textContent = '은색 부분을 손가락으로 긁어 보세요' }
+;(() => { const c = $('#cv7'), g = c.getContext('2d'); let down = false
+  const scratch = (e) => { const r = c.getBoundingClientRect(); g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(e.clientX - r.left, e.clientY - r.top, 18, 0, Math.PI * 2); g.fill()
+    const d = g.getImageData(0, 0, 260, 150).data; let clear = 0; for (let i = 3; i < d.length; i += 16) if (d[i] === 0) clear++; if (clear / (d.length / 16) > 0.5) { c.style.opacity = 0; c.style.pointerEvents = 'none'; $('#h7').textContent = '3,000원 쿠폰을 받았어요' } }
+  c.onpointerdown = (e) => { down = true; c.setPointerCapture(e.pointerId); scratch(e) }; c.onpointermove = (e) => { if (down) scratch(e) }; c.onpointerup = () => { down = false } })()
+$('#r7').onclick = cover7; cover7()
+
+$('#all').onclick = () => { run1(); re($('#stk'), 'on'); $('#sc3').scrollTop = 0; $('#m4').classList.remove('spread'); setTimeout(() => $('#b4').click(), 300); cover7() }
+let dark = matchMedia('(prefers-color-scheme: dark)').matches
+const applyMode = () => { document.querySelectorAll('.scr').forEach((s) => s.dataset.mode = dark ? 'dark' : 'light'); $('#mode').textContent = dark ? '라이트 모드로 보기' : '다크 모드로 보기' }
+$('#mode').onclick = () => { dark = !dark; applyMode() }
+applyMode(); run1(); setTimeout(() => re($('#stk'), 'on'), 600); setTimeout(() => $('#b4').click(), 900)
+</script>

@@ -218,3 +218,23 @@ export function buildMeContent(): HTMLElement {
   `
   return el
 }
+
+/**
+ * 🎬 2026-11-03 21차 ④ — 확대해서 묶음이 풀릴 때, 그 묶음에 있던 핀이 **묶음 자리에서 튀어나와** 제자리로 간다.
+ *   지도 좌표 → 화면 좌표는 SDK 의 projection 으로 잰다. 너무 멀면(화면 밖 이동) 하지 않는다. 동작 줄이기면 안 한다.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function spreadFromCluster(content: HTMLElement, map: any, from: { lat: number; lng: number }, pos: unknown): void {
+  requestAnimationFrame(() => {
+    try {
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+      const proj = map?.getProjection?.()
+      if (!proj) return
+      const a = proj.containerPointFromCoords(new window.kakao.maps.LatLng(from.lat, from.lng))
+      const b = proj.containerPointFromCoords(pos)
+      const dx = a.x - b.x, dy = a.y - b.y
+      if (Math.hypot(dx, dy) > 400) return
+      content.animate?.([{ transform: `translate(${dx}px, ${dy}px) scale(.3)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 480, easing: 'cubic-bezier(.2,1.2,.4,1)', delay: Math.random() * 120 })
+    } catch { /* 장식 — 실패해도 핀은 제자리에 있다 */ }
+  })
+}
