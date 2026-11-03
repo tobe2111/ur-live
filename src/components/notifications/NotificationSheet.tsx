@@ -21,6 +21,9 @@
 import { useEffect } from 'react'
 import { Z } from '@/constants/z-index'
 import { NotificationPanelBody, NotificationPanelFooter, NotificationPanelHeader } from './NotificationPanel'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 16차 ⑩ — 종을 눌러 시트가 올라오면 알림 줄이 위에서부터 차례로 들어온다(첫 여덟 줄 · 이 시트에서만 — PC 드롭다운은 그대로).
+injectMotionCss('ur-m-notifsheet', `@keyframes ur-ns-up { from { opacity: 0; transform: translateY(10px); } }.ur-ns-body > button:nth-child(-n+8) { animation: ur-ns-up .32s cubic-bezier(.2,.9,.3,1) .12s backwards; }.ur-ns-body > button:nth-child(2) { animation-delay: .17s; }.ur-ns-body > button:nth-child(3) { animation-delay: .22s; }.ur-ns-body > button:nth-child(4) { animation-delay: .27s; }.ur-ns-body > button:nth-child(5) { animation-delay: .32s; }.ur-ns-body > button:nth-child(6) { animation-delay: .37s; }.ur-ns-body > button:nth-child(7) { animation-delay: .42s; }.ur-ns-body > button:nth-child(8) { animation-delay: .47s; }@media (prefers-reduced-motion: reduce){.ur-ns-body > button{animation:none!important}}`)
 
 export default function NotificationSheet({ onClose }: { onClose: () => void }) {
   useEffect(() => {
@@ -40,7 +43,7 @@ export default function NotificationSheet({ onClose }: { onClose: () => void }) 
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <NotificationPanelHeader onClose={onClose} />
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="ur-ns-body flex-1 min-h-0 overflow-y-auto">
           <NotificationPanelBody onClose={onClose} />
         </div>
         <div className="pb-[max(0px,env(safe-area-inset-bottom))] shrink-0">
