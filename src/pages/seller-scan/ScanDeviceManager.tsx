@@ -11,6 +11,7 @@ import api from '@/lib/api'
 import ScannableQr from '@/components/voucher/ScannableQr'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken } from '@/lib/seller-auth'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 
 interface Device { id: number; name: string; created_at: string; last_used_at: string | null; revoked_at: string | null }
@@ -49,7 +50,7 @@ export default function ScanDeviceManager() {
   }
 
   async function revoke(id: number) {
-    if (!window.confirm(t('seller.scanDevices.revokeConfirm', { defaultValue: '이 기기의 스캔 링크를 회수할까요? 그 기기에선 더 이상 스캔할 수 없어요.' }))) return
+    if (!(await confirmDialog({ message: t('seller.scanDevices.revokeConfirm', { defaultValue: '이 기기의 스캔 링크를 회수할까요? 그 기기에선 더 이상 스캔할 수 없어요.' }), danger: true }))) return
     try {
       const r = await api.post(`/api/seller/scan-devices/${id}/revoke`, {}, { headers })
       if (r.data?.success) { toast.success(t('seller.scanDevices.revoked', { defaultValue: '회수 완료' })); load() }

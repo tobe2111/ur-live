@@ -393,7 +393,8 @@ api.interceptors.response.use(
       originalRequest._retry2fa = true;
       try {
         const code = typeof window !== 'undefined'
-          ? window.prompt('2단계 인증 코드(6자리)를 입력하세요 — Authenticator 앱 확인')
+          // 🪟 동적 import — 정적으로 부르면 app-utils(이 파일) ↔ app-shell(확인창) 청크 순환이 생긴다(vite chunk-cycle 가드).
+          ? (await (await import('@/components/ui/confirm-dialog')).promptDialog({ message: '2단계 인증 코드(6자리)를 입력하세요 — Authenticator 앱 확인', prompt: {} }))
           : null;
         if (code && /^\d{6}$/.test(code.trim())) {
           originalRequest.headers = originalRequest.headers || {};

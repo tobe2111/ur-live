@@ -14,7 +14,7 @@
 import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { Download, CheckCircle, Send, Loader2 } from 'lucide-react'
 import { formatNumber, formatWon } from '@/utils/format'
 
@@ -74,15 +74,11 @@ export default function BulkPayoutBar({
 
   async function bulkSent() {
     if (sendables.length === 0) return toast.error('송금 완료로 표시할 건을 선택해주세요')
-    const txId = window.prompt(
-      `은행 이체를 마치셨나요?\n\n${formatNumber(sendables.length)}건 · 합계 ${formatWon(total)}\n\n` +
-      '이체 파일명 또는 은행 거래번호를 입력하세요 (나중에 대조할 근거가 됩니다)',
-    )
+    const txId = (await promptDialog({ message: `은행 이체를 마치셨나요?\n\n${formatNumber(sendables.length)}건 · 합계 ${formatWon(total)}\n\n` +
+      '이체 파일명 또는 은행 거래번호를 입력하세요 (나중에 대조할 근거가 됩니다)', prompt: {} }))
     if (!txId || !txId.trim()) return
-    if (!(await confirmDialog(
-      `${formatNumber(sendables.length)}건 · ${formatWon(total)}을 송금 완료로 기록합니다.\n` +
-      '실제로 이체하지 않았다면 취소하세요 — 되돌리기 어렵습니다.',
-    ))) return
+    if (!(await confirmDialog({ message: `${formatNumber(sendables.length)}건 · ${formatWon(total)}을 송금 완료로 기록합니다.\n` +
+      '실제로 이체하지 않았다면 취소하세요 — 되돌리기 어렵습니다.', danger: true }))) return
 
     setBusy('sent')
     try {

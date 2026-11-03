@@ -10,7 +10,7 @@ import { useState } from 'react'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardLoadError } from '@/components/dashboard'
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
@@ -46,7 +46,7 @@ export default function AdminInfluencerDisputesPage() {
   const load = () => refetch()
 
   async function resolve(d: Dispute, action: 'resolved' | 'rejected') {
-    const resolution = prompt(`${action === 'resolved' ? '조정 결과' : '거절 사유'} (필수, 최소 5자)`)
+    const resolution = (await promptDialog({ message: `${action === 'resolved' ? '조정 결과' : '거절 사유'} (필수, 최소 5자)`, prompt: {} }))
     if (!resolution || resolution.trim().length < 5) {
       toast.error('5자 이상 입력 필요')
       return

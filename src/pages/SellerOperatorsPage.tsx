@@ -13,6 +13,7 @@ import api from '@/lib/api'
 import { UserPlus, Trash2, ShieldCheck, Loader2, AlertCircle } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 import AgencyLinkCard from './seller-operators/AgencyLinkCard'
+import { alertDialog, confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface OperatorRow {
   user_id: number
@@ -59,20 +60,20 @@ export default function SellerOperatorsPage() {
       setHandle('')
       await load()
     } catch (e: any) {
-      alert(e?.response?.data?.error || '운영자 추가에 실패했습니다')
+      void alertDialog(e?.response?.data?.error || '운영자 추가에 실패했습니다')
     } finally {
       setBusy(false)
     }
   }
 
   async function revoke(userId: number, label: string) {
-    if (!confirm(`${label} 님의 운영 권한을 회수할까요?\n\n그동안 등록한 상품·주문 이력은 매장에 그대로 남습니다.`)) return
+    if (!(await confirmDialog({ message: `${label} 님의 운영 권한을 회수할까요?\n\n그동안 등록한 상품·주문 이력은 매장에 그대로 남습니다.`, danger: true }))) return
     try {
       const r = await api.post(`/api/seller/operators/${userId}/revoke`)
       if (!r.data?.success) throw new Error(r.data?.error || '회수 실패')
       await load()
     } catch (e: any) {
-      alert(e?.response?.data?.error || '회수에 실패했습니다')
+      void alertDialog(e?.response?.data?.error || '회수에 실패했습니다')
     }
   }
 
