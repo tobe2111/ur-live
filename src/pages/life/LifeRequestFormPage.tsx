@@ -126,8 +126,12 @@ export default function LifeRequestFormPage() {
     const cs = def!.crossSell
     if (!cs) return
     const carried: Draft = {}
+    const target = categoryDef(cs.to)
     for (const [to, from] of Object.entries(cs.carry)) {
       if (values[from]) carried[to] = values[from]
+      // 📅 여러 날짜(착공 희망일)를 날짜 하나만 받는 요청서로 넘길 때는 가장 이른 날만(서버가 쉼표를 거절한다).
+      const tf = target?.fields.find((x) => x.key === to)
+      if (tf?.type === 'date' && !tf.multiple && carried[to]) carried[to] = carried[to].split(',')[0].trim()
       if (values[from + PRIVATE_ADDRESS_SUFFIX]) carried[to + PRIVATE_ADDRESS_SUFFIX] = values[from + PRIVATE_ADDRESS_SUFFIX]
     }
     saveDraft(cs.to, { ...loadDraft(cs.to), ...carried })
