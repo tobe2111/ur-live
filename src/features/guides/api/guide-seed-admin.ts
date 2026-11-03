@@ -1067,7 +1067,9 @@ WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS  // 30
 - 알림톡 템플릿(\`drop_d1_reminder\`/\`experience_post_reminder\`)은 SENS 콘솔 등록·승인(+어드민 승인 목록) 후 실발송 — 미등록이면 인앱 알림만 나가고 알림톡은 실패 적재(무해).
 
 ### ③ CS 자동응답 FAQ 봇 (카카오채널)
-- 카카오 i 오픈빌더 스킬 서버: \`POST /api/cs/kakao-skill\` — QR 사용법·환불·정산일·유효기간·딜 포인트 5문항 키워드 자동응답 + 미매칭 시 상담원 안내 폴백. **read-only(DB 접근 0)**.
+- 카카오 i 오픈빌더 스킬 서버: \`POST /api/cs/kakao-skill\` — QR 사용법·환불·정산일·유효기간·딜 포인트·교환권·선물하기·결제/영수증·로그인/탈퇴·가게 입점 10문항 키워드 자동응답 + 미매칭 시 상담원 안내 폴백. **read-only(DB 접근 0)**.
+- 🤖 **AI 의도 분류(기본 OFF)**: 키워드가 빗나간 말만 AI 가 \`10문항 중 어느 것인가\` 를 고른다 — **답은 언제나 위 FAQ 원문**(AI 가 답을 쓰지 않는다). 켜기: env \`KAKAO_BOT_AI_ENABLED=true\` + \`ANTHROPIC_API_KEY\`. 2.5초 안에 못 고르면 종전 폴백.
+- 답 못 한 질문은 \`GET /api/admin/system-monitoring/cs-unanswered\` 에 많이 물은 순으로 쌓인다 → FAQ 를 늘릴 근거.
 - **게이트: env \`KAKAO_SKILL_SECRET\` 미설정 = 404(비활성)**. 활성: 오픈빌더 챗봇 생성 → 폴백 블록에 스킬 URL + 헤더 \`x-skill-secret\` 등록 → env 에 같은 값 → 배포.
 - FAQ 문안 SSOT: \`src/features/cs/api/cs-faq.ts\` — **서비스 사실 바뀌면 같은 커밋에서 갱신**(블로그 시드 룰과 동일).
 
