@@ -492,7 +492,7 @@
       }
     },
     "region": {
-      "totalKB": 203.87,
+      "totalKB": 205.45,
       "chunks": {
         "index.js": 15.62,
         "react-core.js": 38.65,
