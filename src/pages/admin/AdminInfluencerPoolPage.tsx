@@ -32,7 +32,6 @@ import PoolFilters from './influencer-pool/PoolFilters'
 import PoolStatCards from './influencer-pool/PoolStatCards'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import AutoRunLog from './influencer-pool/AutoRunLog' // 🕒 '자동으로 도는가'를 한 표로 — 그 파일 헤더 참조
-
 /**
  * 🎯 2026-07-20 유어애즈 인플루언서 공용 풀 (/admin/influencer-pool).
  *   ur-ads cron 이 무료 공식 API(YouTube·네이버)로 자동 수집한 공용 풀(account_id=0) 열람/큐레이션

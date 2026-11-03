@@ -25,7 +25,6 @@ import {
 import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
-
 // 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-product-edit/types 로 추출.
 import type { LiveStream, Product } from './seller-product-edit/types'
 import PromoRateField, { promoPctFromProduct, promoRateForSubmit } from './seller-product-edit/PromoRateField'

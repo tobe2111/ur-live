@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
+import { stripComments } from '../helpers/source-text'
 
 /** 일부러 남긴 곳과 그 이유. 여기에 더하는 것은 "그 화면만 브라우저 기본 창" 을 허락하는 결정이다. */
 const ALLOWED: Record<string, string> = {
@@ -19,14 +20,6 @@ const ALLOWED: Record<string, string> = {
 }
 
 const CALL = /(?<![\w.$])(?:window\.)?(?:confirm|alert|prompt)\(/g
-
-function strip(src: string): string {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-    .split('\n')
-    .map((l) => l.replace(/(^|[^:'"`])\/\/.*$/, '$1'))
-    .join('\n')
-}
 
 const FILES = execFileSync('git', ['ls-files', 'src/*.ts', 'src/*.tsx', 'src/**/*.ts', 'src/**/*.tsx'], { encoding: 'utf-8' })
   .split('\n').filter(Boolean)
@@ -43,7 +36,7 @@ describe('브라우저 기본 창을 쓰지 않는다', () => {
     const bad: string[] = []
     for (const f of FILES) {
       if (f in ALLOWED) continue
-      const src = strip(readFileSync(f, 'utf-8'))
+      const src = stripComments(readFileSync(f, 'utf-8'))
       // 같은 이름의 지역 함수(예: `async function confirm()`)를 정의한 파일은 그 함수 호출을 허용한다.
       if (/function\s+(?:confirm|alert|prompt)\s*\(/.test(src)) continue
       src.split('\n').forEach((line, i) => {
