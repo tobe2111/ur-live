@@ -108,7 +108,11 @@ describe('①② 마이 에이전시 구역 — 영입 버튼은 늘 판 위에'
   // 🔁 2026-11-02 재조준 — 대표 확정 버튼 ①: 영입 입구는 **마이 머리** 하나다(구역 안 큰 카드·빈 칸 버튼은 걷었다).
   //   매장 수와 무관하게 늘 서야 한다는 불변식은 그대로 — 머리는 매장 분기 밖이다.
   it('버튼이 마이 머리(폰·PC·에이전시 전용 마이)에 서고, 구역 안에는 두 번째 입구가 없다', () => {
-    expect(code('src/pages/UserProfilePage.tsx')).toMatch(/\{showAgency && <AgencyInviteDoor \/>\}\s*<button onClick=\{bell\.open\}/)
+    // 🔁 2026-11-03 재조준(안 1 다듬기) — 폰 '에이전시' 탭이면 버튼은 에이전시 머리(`AgencyHead`) 오른쪽에 선다.
+    //   탭이 없을 때(에이전시 로그인 전)는 종전 자리(알림 종 앞)를 지킨다 — 로그인이 늦게 이어져도 문이 있다.
+    expect(code('src/pages/UserProfilePage.tsx')).toMatch(/\{!tabbed && <AgencyInviteDoor \/>\}\s*\{!tabbed && <button onClick=\{bell\.open\}/)
+    expect(code('src/pages/user-profile/AgencyHead.tsx')).toContain('<AgencyInviteButton />')
+    expect(code('src/pages/UserProfilePage.tsx')).toContain('{tabbed && !showMe && <AgencyHeadDoor storeCount={sellerSeats.stores.length} />}')
     expect(code('src/pages/user-profile/AccountPcBand.tsx')).toContain('<AgencyInviteDoor />')
     expect(code('src/pages/agency-console/AgencyMyPage.tsx')).toContain('<AgencyInviteButton className="ml-auto" />')
     expect(panel, '구역 안에 영입 입구가 다시 생겼다').not.toMatch(/setSheet\('invite'\)|agency-invite-entry/)

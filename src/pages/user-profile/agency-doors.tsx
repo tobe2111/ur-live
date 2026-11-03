@@ -8,6 +8,7 @@ import { useAgencyPresence } from './useAgencyPresence'
  */
 const AgencyInviteButton = lazy(() => import('./AgencyInviteButton'))
 const AgencyMergedTitle = lazy(() => import('./AgencyMergedTitle'))
+const AgencyHead = lazy(() => import('./AgencyHead'))
 
 export function AgencyInviteDoor({ className }: { className?: string }) {
   const { on } = useAgencyPresence()
@@ -19,4 +20,11 @@ export function AgencyTitleDoor({ storeCount }: { storeCount: number }) {
   const { on } = useAgencyPresence()
   if (!on || storeCount <= 0) return null
   return <Suspense fallback={null}><AgencyMergedTitle storeCount={storeCount} /></Suspense>
+}
+
+/** 🏢 폰 '에이전시' 탭의 머리(2026-11-03) — 정지원·프로필 편집 자리에 에이전시 이름 · 역할 · 매장 수 + 매장 영입. */
+export function AgencyHeadDoor({ storeCount }: { storeCount: number }) {
+  const { on } = useAgencyPresence()
+  if (!on) return null
+  return <Suspense fallback={<div className="h-[80px]" aria-hidden="true" />}><AgencyHead storeCount={storeCount} /></Suspense>
 }

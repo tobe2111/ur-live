@@ -16,7 +16,7 @@ export default [
     file: SECTION,
     find: `        <ToolRow
           icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="정산"`,
+          label={agencyOn ? '매장 정산' : '정산'}`,
     replace: `        <ToolRow
           icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="가게"
@@ -26,7 +26,7 @@ export default [
         />
         <ToolRow
           icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="정산"`,
+          label={agencyOn ? '매장 정산' : '정산'}`,
     test: TEST,
     why:
       '한 줄이 늘어도 화면은 안 깨진다 — 그래서 아홉까지 자랐다. 48px 씩 조용히 먹다가 ' +

@@ -18,7 +18,7 @@ const ITEMS: { id: MyTab; label: string }[] = [
 
 export default function MyRoleTabs({ value, onChange }: { value: MyTab; onChange: (v: MyTab) => void }) {
   return (
-    <div className="px-4 pb-2" data-testid="my-role-tabs">
+    <div className="flex-1 min-w-0" data-testid="my-role-tabs">
       <SegmentedTabs items={ITEMS} value={value} onChange={onChange} ariaLabel="마이 화면 고르기" className="dark:bg-surface dark:border-rule" />
     </div>
   )

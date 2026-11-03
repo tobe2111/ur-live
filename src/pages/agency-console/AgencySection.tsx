@@ -97,7 +97,7 @@ export default function AgencySection({ stacked = false, headless = false, ownSe
             toolParam={AGENCY_TOOL_PARAM}
             agencyRows={(
               <>
-                {payouts?.enabled && <FlatRow label="정산" hint={payoutRowHint(payouts)} urgent={(payouts.balance?.available ?? 0) > 0} onClick={() => setSheet('payout')} />}
+                {payouts?.enabled && <FlatRow label="에이전시 정산" hint={payoutRowHint(payouts)} urgent={(payouts.balance?.available ?? 0) > 0} onClick={() => setSheet('payout')} />}
                 <FlatRow label="직원" hint={staff ? `${staff.length}명` : undefined} onClick={() => setSheet('staff')} />
                 {canManage && <FlatRow label="에이전시 정보" onClick={() => setSheet('info')} />}
                 {canMove && <FlatRow label="이메일 계정으로 옮기기" hint="직원과 함께 쓰기" onClick={() => setSheet('move')} />}
