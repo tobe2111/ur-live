@@ -233,7 +233,7 @@ describe('❌ 좌상단 닫기 X 는 없다 (2026-09-16 대표 지시 "X표시 �
   })
 
   it('Esc 로 나가는 길은 남아 있다', () => {
-    expect(V2, 'X 를 지웠으니 Esc 마저 없으면 키보드 사용자는 갇힌다').toMatch(/Escape'\s*\)\s*navigate\(-1\)/)
+    expect(V2, 'X 를 지웠으니 Esc 마저 없으면 키보드 사용자는 갇힌다').toMatch(/Escape'\s*\)\s*(?:navigate\(-1\)|goBack\(\))/) // 2026-11-03: 뒤로는 useSafeBack(goBack) 한 벌
   })
 
   it('유튜브가 남기는 것을 덮어 해결하지 않는다 (embed 약관)', () => {
