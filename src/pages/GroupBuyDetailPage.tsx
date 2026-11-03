@@ -515,7 +515,7 @@ export default function GroupBuyDetailPage() {
   }
 
   // 🏨 2026-11-03 숙소·예약 통일 ② [UNLOCK_LOADING 대표 허가]: 숙소가 이 화면(/pass)으로 들어오면 객실·날짜 없이 열렸다 — 숙소 상세로(꼬리표 ?aff 그대로).
-  if (detail.category === 'stay_voucher') return <Navigate replace to={`/stays/${detail.id}${window.location.search}`} />
+  if (detail.category === 'stay_voucher' && !searchParams.get('nostay')) return <Navigate replace to={`/stays/${detail.id}${window.location.search}`} />
   // 📑 구역 탭 목록 — PC 탭과 폰 탭(2026-11-02 C안)이 **같은 목록**을 쓴다(두 벌이면 갈린다).
   const sectionTabs = [
             // 🩸 2026-09-25: 이 탭이 **무조건** 떠서, 설명·소개가 빈 상품에선 눌러도 안 가는 탭이 됐다

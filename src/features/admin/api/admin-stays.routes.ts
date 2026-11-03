@@ -169,6 +169,7 @@ adminStaysRoutes.patch('/stays/bookings/:id/refund', cors(), async (c) => {
       await c.env.DB.prepare(
         "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending', 'holding')"
       ).bind(fullBooking.order_id).run().catch(() => null)
+      await (await import('../../group-buy/api/stay-referral')).clawbackStayReferral(c.env.DB, { orderId: Number(fullBooking.order_id), bookingId: Number(id), refundAmount: Number(refundAmount), reason: 'stay_admin_refund' }).catch(() => 0) // 🏨 ③ 이용권 장부도
     }
 
     // 🛡️ 2026-05-31: confirmed 였던 예약만 객실 야간 재고 복원 (취소 시 영구 unavailable 방지).
