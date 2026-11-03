@@ -172,7 +172,7 @@ function Thumb({ v, size = 56 }: { v: HomeVoucher; size?: number }) {
 function PriceLine({ v }: { v: HomeVoucher }) {
   const orig = safeNum(v.original_price), price = safeNum(v.price)
   const pct = orig > price && orig > 0 ? Math.round((1 - price / orig) * 100) : 0
-  return <>{pct > 0 && <b className="font-bold text-sale">{pct}% </b>}<b className="font-semibold text-gray-900 dark:text-white">{formatWon(price)}</b></>
+  return <>{pct > 0 && <b className="font-bold text-sale">{pct}% </b>}<b className="font-medium text-gray-900 dark:text-white">{formatWon(price)}</b></>
 }
 
 /** M2 — 한 줄 눌렀을 때. 고칠 것은 한 판에, 위험한 것(삭제)은 아래 판에. */
