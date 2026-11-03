@@ -20,4 +20,12 @@ export default [
     test: T,
     why: '시험이 깨지면 deploy 잡이 건너뛰어져 그 안의 기록 단계도 안 돈다 — 라이브가 머지만큼 뒤처지는데 아무도 모른다(2026-08-03 사고).',
   },
+  {
+    name: '⏱️ 새 머지가 돌고 있는 배포를 다시 죽인다 (라이브가 굶는다)',
+    file: W,
+    find: '  group: deploy-pages\n  cancel-in-progress: false\n',
+    replace: '  group: deploy-pages\n  cancel-in-progress: true\n',
+    test: T,
+    why: '실측 100회 중 35회 취소 · 연속 5번 — 머지→라이브 최대 94분.',
+  },
 ]

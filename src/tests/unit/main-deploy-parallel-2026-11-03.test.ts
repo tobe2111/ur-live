@@ -36,4 +36,8 @@ describe('main 배포', () => {
     expect(r).toContain("if: failure() && needs.unit-tests.result == 'failure'")
     expect(r).toContain('bash scripts/report-deploy-failure.sh')
   })
+  it('⑤ 돌고 있는 배포를 새 머지가 죽이지 않는다 — 머지가 촘촘하면 라이브가 굶는다(실측 연속 취소 5번)', () => {
+    expect(WF).toMatch(/concurrency:\n  group: deploy-pages\n  cancel-in-progress: false\n/)
+  })
 })
+
