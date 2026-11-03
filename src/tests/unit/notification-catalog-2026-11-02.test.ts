@@ -159,3 +159,19 @@ describe('⑤ 숨김은 목록과 미읽음 숫자 둘 다에서', () => {
     expect(read('src/features/notifications/api/dashboard-notifications.routes.ts')).toMatch(/typeNotInSql\(HIDDEN_FOR_SELLER\)/)
   })
 })
+
+describe('⑥ 업무 칸 소음 — 할 일이 없거나 같은 내용 반복 (2026-11-02 라이브 실측: 0건 정산 12장 · 같은 리마인드 8장)', () => {
+  it('주간 정산 0건은 시스템 칸(payouts_heartbeat), 1건 이상만 업무 칸', () => {
+    const s = read('src/worker/cron/payouts-generate.ts')
+    expect(s).toMatch(/if \(created > 0\) \{\s*await createDashboardNotification\(DB, 'admin', null, 'payouts_generated'/)
+    expect(s).toMatch(/'payouts_heartbeat'/)
+    expect(adminNotifGroup('payouts_heartbeat')).toBe('system')
+    expect(adminNotifGroup('payouts_generated')).toBe('business')
+  })
+  it('승인 대기 리마인드는 새 장을 쓰기 전에 옛 장을 읽음 처리한다(최근 한 장만)', () => {
+    const s = read('src/worker/cron/seller-approval-reminder.ts')
+    const clear = s.indexOf('await clearOld()\n  await createDashboardNotification(')
+    expect(clear, '새 리마인드 앞에서 옛 장을 치워야 한다').toBeGreaterThan(0)
+    expect(s).toMatch(/if \(!pending\) \{ await clearOld\(\)/)
+  })
+})
