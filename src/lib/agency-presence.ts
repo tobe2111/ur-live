@@ -46,6 +46,31 @@ export function hasAgencyLogin(): boolean {
   return !!read(AGENCY_TOKEN_KEY_MIRROR)
 }
 
+/**
+ * 🚪 2026-11-03 대표 신고 *"에이전시 로그아웃을 했는데도 그대로 이렇게 뜨네?"* — 직접 로그아웃한 사람은
+ *   **자동으로 다시 잇지 않는다.**
+ *   원인: 마이(`MyAgencyZone`)는 에이전시 로그인이 없으면 이 카카오 계정과 이어진 에이전시를 찾아 **자동 로그인**한다.
+ *   로그아웃으로 토큰을 지운 그 순간 그 확인이 돌아(마운트 때 로그인이 있어 이번 탭엔 아직 안 물어봤다)
+ *   바로 다시 로그인했고, 새 탭에서도 매번 다시 이었다 ⇒ 로그아웃 버튼이 아무 일도 안 하는 것처럼 보였다.
+ *   그래서 로그아웃할 때 그 손님 id 를 적어 두고, 그 사람에겐 자동 연결을 하지 않는다.
+ *   사람이 직접 에이전시에 로그인하면(`saveAgencySession`) 표시를 지운다. 세션 만료는 표시하지 않는다(다시 이어도 된다).
+ */
+export const AGENCY_OPTOUT_KEY = 'agency_console_kakao_optout'
+
+export function markAgencyLoggedOut(): void {
+  const uid = consumerUserId()
+  if (!uid) return
+  try { localStorage.setItem(AGENCY_OPTOUT_KEY, uid) } catch { /* 막힘 */ }
+}
+export function clearAgencyOptOut(): void {
+  try { localStorage.removeItem(AGENCY_OPTOUT_KEY) } catch { /* 막힘 */ }
+}
+/** 이 손님이 직접 에이전시에서 로그아웃했는가 — 그러면 자동 연결을 건너뛴다. */
+export function agencyAutoConnectBlocked(uid: string): boolean {
+  if (!uid) return false
+  try { return localStorage.getItem(AGENCY_OPTOUT_KEY) === uid } catch { return false }
+}
+
 /** 카카오로 이은 직후 — 지금 손님 id 를 적어 묶는다. */
 export function bindAgencyToKakao(): void {
   const uid = consumerUserId()

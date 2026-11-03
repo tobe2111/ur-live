@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { toast } from '@/hooks/useToast'
 import { runAfterLoad } from '@/lib/after-load'
 import { announceAgencyPresence, hasAgencyLogin } from '@/lib/agency-presence'
+import { agencyAutoConnectBlocked } from '@/lib/agency-presence'
 import { useAgencyPresence } from './useAgencyPresence'
 import { SectionTitle } from './list-grammar'
 
@@ -56,6 +57,8 @@ export default function MyAgencyZone({ ownSellerIds, inHead = false }: { ownSell
     let uid = ''
     try { uid = localStorage.getItem('user_id') || '' } catch { /* 막힘 */ }
     if (!uid || probedThisTab(uid)) return
+    // 🚪 직접 로그아웃한 사람은 자동으로 다시 잇지 않는다(2026-11-03 — `agency-presence.ts` AGENCY_OPTOUT_KEY).
+    if (agencyAutoConnectBlocked(uid)) return
     return runAfterLoad(() => {
       try { sessionStorage.setItem(KAKAO_PROBE_KEY_MIRROR, uid) } catch { /* 막힘 */ }
       void import('@/pages/agency-console/agency-kakao-client')
