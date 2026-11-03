@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--brand:#1C69EF;--tint:#EAF1FE;--bg:#F8F7FC;--ink:#16181C;--g5:#666C72;--g4:#81868C;--rule:rgba(22,24,28,.08);--sale:#E5293B}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Pretendard,system-ui,sans-serif;background:#fff;color:var(--ink);-webkit-font-smoothing:antialiased}
+.screen{width:390px;height:844px;position:relative;overflow:hidden;background:#fff}
+.scroll{height:100%;overflow:hidden;padding-bottom:160px}
+.top{height:52px;display:flex;align-items:center;padding:0 16px;font-size:17px;font-weight:700}
+.hero{padding:12px 16px 0}
+.hero h2{font-size:24px;font-weight:700;line-height:1.3;letter-spacing:-.02em}
+.hero p{margin-top:8px;font-size:15px;color:var(--g5);line-height:1.45}
+/* 티켓 미리보기 */
+.ticket{margin:20px 16px 0;border-radius:16px;overflow:hidden;background:var(--bg)}
+.band{background:var(--brand);color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
+.band b{font-size:15px;font-weight:700}.band span{font-size:12px;opacity:.85}
+.tbody{display:flex;gap:14px;padding:16px;align-items:center}
+.tbody img{width:64px;height:64px;border-radius:10px;object-fit:cover}
+.tname{font-size:15px;font-weight:500;line-height:1.35}
+.tsub{font-size:13px;color:var(--g4);margin-top:4px}
+.qr{margin-left:auto;flex:none;fill:var(--ink)}
+.perf{border-top:1.5px dashed var(--rule);margin:0 16px}
+.tfoot{display:flex;justify-content:space-between;padding:12px 16px 14px;font-size:13px;color:var(--g5)}
+.tfoot strong{color:var(--ink);font-weight:700;font-size:15px}
+/* 3단계 */
+.steps{display:flex;margin:20px 16px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.step{flex:1;padding:14px 4px;text-align:center}
+.step+.step{border-left:1px solid var(--rule)}
+.step i{display:block;font-style:normal;font-size:12px;color:var(--brand);font-weight:700}
+.step b{display:block;margin-top:4px;font-size:13px;font-weight:500;line-height:1.35}
+.sec{display:flex;justify-content:space-between;align-items:baseline;padding:28px 16px 4px}
+.sec h3{font-size:17px;font-weight:700}.sec a{font-size:13px;color:var(--g5)}
+.row{display:flex;gap:14px;padding:12px 16px}
+.row img{width:96px;height:96px;border-radius:12px;object-fit:cover;flex:none}
+.rs{font-size:13px;color:var(--g4)}.rn{font-size:15px;font-weight:500;margin-top:2px;line-height:1.35}
+.rp{margin-top:6px;font-size:17px;font-weight:700}.rp em{font-style:normal;color:var(--sale);margin-right:4px}
+.rp s{font-size:13px;color:var(--g4);font-weight:400;margin-left:4px}
+/* 하단 고정 */
+.dock{position:absolute;left:0;right:0;bottom:56px;padding:12px 16px 12px;background:linear-gradient(rgba(255,255,255,0),#fff 28%)}
+.kakao{height:52px;border-radius:12px;background:#FEE500;color:#191600;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:700}
+.kakao svg{width:18px;height:18px}
+.dock small{display:block;text-align:center;margin-top:8px;font-size:12px;color:var(--g4)}
+.nav{position:absolute;left:0;right:0;bottom:0;height:56px;border-top:1px solid var(--rule);background:#fff;display:flex}
+.nav div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;color:var(--g4)}
+.nav div.on{color:var(--ink);font-weight:500}
+.nav div::before{content:'';width:20px;height:20px;border:1.6px solid currentColor;border-radius:5px}
+.nav div.on::before{background:currentColor}
+/* 유어샵 */
+.shop{margin:12px 0 0}
+.shophead{display:flex;align-items:center;gap:12px;padding:16px}
+.shophead img{width:40px;height:40px;border-radius:50%;background:var(--tint);object-fit:contain}
+.shophead b{font-size:17px;font-weight:700}.shophead span{display:block;font-size:13px;color:var(--g4)}
+.url{margin:0 16px 12px;height:40px;border-radius:10px;background:var(--bg);display:flex;align-items:center;padding:0 12px;font-size:13px;color:var(--g5)}
+.url b{color:var(--brand);font-weight:500}
+.url u{margin-left:auto;text-decoration:none;font-size:12px;color:var(--ink);font-weight:500}
+.mini{display:flex;gap:8px;padding:0 16px 16px}
+.mini div{flex:1}.mini img{width:100%;aspect-ratio:1;border-radius:10px;object-fit:cover}
+.mini p{font-size:12px;margin-top:6px;line-height:1.3;color:var(--ink)}
+.mini p em{font-style:normal;color:var(--sale);font-weight:700}
+/* 마이 */
+.me{display:flex;align-items:center;gap:14px;padding:8px 16px 0}
+.me img{width:56px;height:56px;object-fit:contain}
+.me b{font-size:17px;font-weight:700}.me span{display:block;font-size:13px;color:var(--g5);margin-top:2px}
+.locked{margin:20px 0 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.lrow{display:flex;align-items:center;height:52px;padding:0 16px;font-size:15px}
+.lrow+.lrow{border-top:1px solid var(--rule)}
+.lrow span{margin-left:auto;font-size:13px;color:var(--g4);display:flex;align-items:center;gap:4px}
+.st{padding:28px 16px 4px;font-size:17px;font-weight:600;color:var(--g5)}
+.li{display:flex;justify-content:flex-start;align-items:center;height:48px;padding:0 16px;font-size:15px;border-bottom:1px solid var(--rule)}
+.li::after{content:'›';margin-left:auto;color:var(--g4);font-size:18px}
+.li em{font-style:normal;margin-left:auto;margin-right:12px;font-size:13px;color:var(--g4)}
+.lab{position:absolute;top:8px;right:8px;background:var(--ink);color:#fff;font-size:11px;padding:3px 8px;border-radius:99px;z-index:9}
+.li:has(em)::after{margin-left:0}</style></head><body>
+
+<!-- ① 이용권 -->
+<div class="screen" id="pass"><div class="scroll">
+  <div class="top">내 이용권</div>
+  <div class="hero"><h2>동네 가게,<br>미리 사면 더 싸요</h2>
+    <p>산 이용권은 여기 지갑에 이렇게 들어와요</p></div>
+  <div class="ticket">
+    <div class="band"><b>달빛한스푼</b><span>이용권 · 사용 전</span></div>
+    <div class="tbody"><img src="https://media.ur-team.com/uploads/seller/26/2026-10/0F9CTfqE1eiqsu6n.jpg">
+      <div><div class="tname">닭도리탕</div><div class="tsub">매장에서 QR만 보여주세요</div></div>
+      <div class="qr"><svg class="qrsvg" viewBox="0 0 21 21" width="56" height="56" shape-rendering="crispEdges"><rect x="0" y="0" width="1" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="1" y="0" width="1" height="1"/><rect x="1" y="6" width="1" height="1"/><rect x="2" y="0" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="2" y="3" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="2" y="6" width="1" height="1"/><rect x="3" y="0" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="3" y="3" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="4" y="0" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/><rect x="4" y="6" width="1" height="1"/><rect x="5" y="0" width="1" height="1"/><rect x="5" y="6" width="1" height="1"/><rect x="6" y="0" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="6" y="5" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/><rect x="14" y="0" width="1" height="1"/><rect x="14" y="1" width="1" height="1"/><rect x="14" y="2" width="1" height="1"/><rect x="14" y="3" width="1" height="1"/><rect x="14" y="4" width="1" height="1"/><rect x="14" y="5" width="1" height="1"/><rect x="14" y="6" width="1" height="1"/><rect x="15" y="0" width="1" height="1"/><rect x="15" y="6" width="1" height="1"/><rect x="16" y="0" width="1" height="1"/><rect x="16" y="2" width="1" height="1"/><rect x="16" y="3" width="1" height="1"/><rect x="16" y="4" width="1" height="1"/><rect x="16" y="6" width="1" height="1"/><rect x="17" y="0" width="1" height="1"/><rect x="17" y="2" width="1" height="1"/><rect x="17" y="3" width="1" height="1"/><rect x="17" y="4" width="1" height="1"/><rect x="17" y="6" width="1" height="1"/><rect x="18" y="0" width="1" height="1"/><rect x="18" y="2" width="1" height="1"/><rect x="18" y="3" width="1" height="1"/><rect x="18" y="4" width="1" height="1"/><rect x="18" y="6" width="1" height="1"/><rect x="19" y="0" width="1" height="1"/><rect x="19" y="6" width="1" height="1"/><rect x="20" y="0" width="1" height="1"/><rect x="20" y="1" width="1" height="1"/><rect x="20" y="2" width="1" height="1"/><rect x="20" y="3" width="1" height="1"/><rect x="20" y="4" width="1" height="1"/><rect x="20" y="5" width="1" height="1"/><rect x="20" y="6" width="1" height="1"/><rect x="0" y="14" width="1" height="1"/><rect x="0" y="15" width="1" height="1"/><rect x="0" y="16" width="1" height="1"/><rect x="0" y="17" width="1" height="1"/><rect x="0" y="18" width="1" height="1"/><rect x="0" y="19" width="1" height="1"/><rect x="0" y="20" width="1" height="1"/><rect x="1" y="14" width="1" height="1"/><rect x="1" y="20" width="1" height="1"/><rect x="2" y="14" width="1" height="1"/><rect x="2" y="16" width="1" height="1"/><rect x="2" y="17" width="1" height="1"/><rect x="2" y="18" width="1" height="1"/><rect x="2" y="20" width="1" height="1"/><rect x="3" y="14" width="1" height="1"/><rect x="3" y="16" width="1" height="1"/><rect x="3" y="17" width="1" height="1"/><rect x="3" y="18" width="1" height="1"/><rect x="3" y="20" width="1" height="1"/><rect x="4" y="14" width="1" height="1"/><rect x="4" y="16" width="1" height="1"/><rect x="4" y="17" width="1" height="1"/><rect x="4" y="18" width="1" height="1"/><rect x="4" y="20" width="1" height="1"/><rect x="5" y="14" width="1" height="1"/><rect x="5" y="20" width="1" height="1"/><rect x="6" y="14" width="1" height="1"/><rect x="6" y="15" width="1" height="1"/><rect x="6" y="16" width="1" height="1"/><rect x="6" y="17" width="1" height="1"/><rect x="6" y="18" width="1" height="1"/><rect x="6" y="19" width="1" height="1"/><rect x="6" y="20" width="1" height="1"/><rect x="0" y="8" width="1" height="1"/><rect x="0" y="9" width="1" height="1"/><rect x="0" y="11" width="1" height="1"/><rect x="1" y="8" width="1" height="1"/><rect x="1" y="9" width="1" height="1"/><rect x="1" y="11" width="1" height="1"/><rect x="1" y="12" width="1" height="1"/><rect x="2" y="8" width="1" height="1"/><rect x="2" y="9" width="1" height="1"/><rect x="2" y="10" width="1" height="1"/><rect x="2" y="12" width="1" height="1"/><rect x="3" y="8" width="1" height="1"/><rect x="3" y="12" width="1" height="1"/><rect x="4" y="9" width="1" height="1"/><rect x="4" y="11" width="1" height="1"/><rect x="4" y="12" width="1" height="1"/><rect x="5" y="8" width="1" height="1"/><rect x="5" y="9" width="1" height="1"/><rect x="5" y="11" width="1" height="1"/><rect x="6" y="9" width="1" height="1"/><rect x="6" y="11" width="1" height="1"/><rect x="6" y="12" width="1" height="1"/><rect x="7" y="8" width="1" height="1"/><rect x="7" y="10" width="1" height="1"/><rect x="7" y="11" width="1" height="1"/><rect x="8" y="0" width="1" height="1"/><rect x="8" y="1" width="1" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="8" y="9" width="1" height="1"/><rect x="8" y="11" width="1" height="1"/><rect x="8" y="12" width="1" height="1"/><rect x="8" y="14" width="1" height="1"/><rect x="8" y="16" width="1" height="1"/><rect x="9" y="0" width="1" height="1"/><rect x="9" y="4" width="1" height="1"/><rect x="9" y="7" width="1" height="1"/><rect x="9" y="9" width="1" height="1"/><rect x="9" y="14" width="1" height="1"/><rect x="9" y="15" width="1" height="1"/><rect x="9" y="17" width="1" height="1"/><rect x="9" y="18" width="1" height="1"/><rect x="9" y="19" width="1" height="1"/><rect x="9" y="20" width="1" height="1"/><rect x="10" y="0" width="1" height="1"/><rect x="10" y="2" width="1" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="10" y="4" width="1" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="10" y="12" width="1" height="1"/><rect x="10" y="13" width="1" height="1"/><rect x="10" y="14" width="1" height="1"/><rect x="10" y="17" width="1" height="1"/><rect x="10" y="18" width="1" height="1"/><rect x="10" y="19" width="1" height="1"/><rect x="10" y="20" width="1" height="1"/><rect x="11" y="2" width="1" height="1"/><rect x="11" y="3" width="1" height="1"/><rect x="11" y="4" width="1" height="1"/><rect x="11" y="5" width="1" height="1"/><rect x="11" y="12" width="1" height="1"/><rect x="11" y="17" width="1" height="1"/><rect x="11" y="18" width="1" height="1"/><rect x="11" y="19" width="1" height="1"/><rect x="12" y="0" width="1" height="1"/><rect x="12" y="1" width="1" height="1"/><rect x="12" y="2" width="1" height="1"/><rect x="12" y="3" width="1" height="1"/><rect x="12" y="4" width="1" height="1"/><rect x="12" y="5" width="1" height="1"/><rect x="12" y="6" width="1" height="1"/><rect x="12" y="7" width="1" height="1"/><rect x="12" y="8" width="1" height="1"/><rect x="12" y="9" width="1" height="1"/><rect x="12" y="10" width="1" height="1"/><rect x="12" y="13" width="1" height="1"/><rect x="12" y="14" width="1" height="1"/><rect x="12" y="15" width="1" height="1"/><rect x="12" y="16" width="1" height="1"/><rect x="12" y="17" width="1" height="1"/><rect x="12" y="20" width="1" height="1"/><rect x="13" y="9" width="1" height="1"/><rect x="13" y="10" width="1" height="1"/><rect x="13" y="11" width="1" height="1"/><rect x="13" y="12" width="1" height="1"/><rect x="13" y="14" width="1" height="1"/><rect x="13" y="15" width="1" height="1"/><rect x="13" y="18" width="1" height="1"/><rect x="13" y="20" width="1" height="1"/><rect x="14" y="12" width="1" height="1"/><rect x="14" y="13" width="1" height="1"/><rect x="14" y="14" width="1" height="1"/><rect x="14" y="18" width="1" height="1"/><rect x="14" y="19" width="1" height="1"/><rect x="15" y="13" width="1" height="1"/><rect x="15" y="15" width="1" height="1"/><rect x="15" y="16" width="1" height="1"/><rect x="15" y="17" width="1" height="1"/><rect x="15" y="18" width="1" height="1"/><rect x="15" y="19" width="1" height="1"/><rect x="16" y="9" width="1" height="1"/><rect x="16" y="13" width="1" height="1"/><rect x="16" y="14" width="1" height="1"/><rect x="16" y="15" width="1" height="1"/><rect x="16" y="16" width="1" height="1"/><rect x="16" y="17" width="1" height="1"/><rect x="17" y="8" width="1" height="1"/><rect x="17" y="11" width="1" height="1"/><rect x="17" y="16" width="1" height="1"/><rect x="17" y="17" width="1" height="1"/><rect x="17" y="19" width="1" height="1"/><rect x="18" y="9" width="1" height="1"/><rect x="18" y="10" width="1" height="1"/><rect x="18" y="13" width="1" height="1"/><rect x="18" y="14" width="1" height="1"/><rect x="18" y="15" width="1" height="1"/><rect x="18" y="18" width="1" height="1"/><rect x="19" y="9" width="1" height="1"/><rect x="19" y="11" width="1" height="1"/><rect x="19" y="12" width="1" height="1"/><rect x="19" y="17" width="1" height="1"/><rect x="19" y="20" width="1" height="1"/><rect x="20" y="8" width="1" height="1"/><rect x="20" y="9" width="1" height="1"/><rect x="20" y="10" width="1" height="1"/><rect x="20" y="12" width="1" height="1"/><rect x="20" y="13" width="1" height="1"/><rect x="20" y="14" width="1" height="1"/><rect x="20" y="16" width="1" height="1"/><rect x="20" y="17" width="1" height="1"/><rect x="20" y="20" width="1" height="1"/></svg></div></div>
+    <div class="perf"></div>
+    <div class="tfoot"><span>정가 35,000원</span><span>낸 돈 <strong>31,000원</strong></span></div>
+  </div>
+  <div class="steps">
+    <div class="step"><i>1</i><b>할인가로<br>미리 사고</b></div>
+    <div class="step"><i>2</i><b>가게에서<br>QR 보여주면 끝</b></div>
+    <div class="step"><i>3</i><b>안 쓰면<br>100% 자동환불</b></div>
+  </div>
+  <div class="sec"><h3>지금 많이 사는 이용권</h3><a>더보기</a></div>
+  <div class="row"><img src="https://urdeal.kr/api/media/uploads/demo/h/557dbd6197790b448d4c04ebd59e2921.jpg"><div><div class="rs">스시사카바 합정</div><div class="rn">초밥 오마카세 런치 코스</div><div class="rp"><em>26%</em>59,100원<s>80,000원</s></div></div></div>
+</div>
+<div class="dock"><div class="kakao"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7l-1 3.6c-.1.3.3.6.6.4l4.3-2.8c.5.1 1 .1 1.4.1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>카카오로 시작하기</div>
+  <small>3초면 끝나요 · 산 이용권이 바로 여기 들어와요</small></div>
+<div class="nav"><div>홈</div><div>교환권</div><div class="on">이용권</div><div>유어샵</div><div>마이</div></div>
+</div>
+
+<!-- ② 유어샵 -->
+<div class="screen" id="shop"><div class="scroll">
+  <div class="top">유어샵</div>
+  <div class="hero"><h2>좋아하는 가게 이용권,<br>내 SNS 링크 하나에 모아요</h2>
+    <p>프로필에 걸어 두면 팔로워가 거기서 바로 사요</p></div>
+  <div class="shop">
+    <div class="shophead"><img src="../../../src/assets/mascot/udal-wink.webp"><div><b>유달의 유어샵</b><span>이용권 3 · 예시 화면이에요</span></div></div>
+    <div class="url">urdeal.kr/u/<b>내이름</b><u>복사</u></div>
+    <div class="mini">
+      <div><img src="https://media.ur-team.com/uploads/seller/26/2026-10/0F9CTfqE1eiqsu6n.jpg"><p><em>11%</em> 닭도리탕</p></div>
+      <div><img src="https://urdeal.kr/api/media/uploads/demo/h/557dbd6197790b448d4c04ebd59e2921.jpg"><p><em>26%</em> 오마카세 런치</p></div>
+      <div><img src="https://urdeal.kr/api/media/uploads/demo/h/5d38f14ff3936972a9fb81d9e0a98699.jpg"><p><em>20%</em> 주말 클래스</p></div>
+    </div>
+  </div>
+  <div class="steps">
+    <div class="step"><i>1</i><b>마음에 드는<br>이용권 담고</b></div>
+    <div class="step"><i>2</i><b>내 링크를<br>프로필에 걸면</b></div>
+    <div class="step"><i>3</i><b>팔로워가<br>거기서 바로 사요</b></div>
+  </div>
+  <div class="li" style="margin-top:12px;border-top:1px solid var(--rule)">사장님이세요? 내 가게 이용권 팔기</div>
+</div>
+<div class="dock"><div class="kakao"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7l-1 3.6c-.1.3.3.6.6.4l4.3-2.8c.5.1 1 .1 1.4.1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>카카오로 시작하기</div>
+  <small>가입하면 내 유어샵이 바로 준비돼요</small></div>
+<div class="nav"><div>홈</div><div>교환권</div><div>이용권</div><div class="on">유어샵</div><div>마이</div></div>
+</div>
+
+<!-- ③ 마이 -->
+<div class="screen" id="my"><div class="scroll">
+  <div class="top">마이</div>
+  <div class="me"><img src="../../../src/assets/mascot/udal-curious.webp"><div><b>반가워요!</b><span>로그인하면 내 것이 여기 모여요</span></div></div>
+  <div class="locked">
+    <div class="lrow">내 딜<span>로그인 후 보여요</span></div>
+    <div class="lrow">내 이용권<span>로그인 후 보여요</span></div>
+    <div class="lrow">찜한 가게<span>로그인 후 보여요</span></div>
+  </div>
+  <div class="st">사장님이세요?</div>
+  <div class="li">내 가게 이용권 팔기</div>
+  <div class="st">도움말</div>
+  <div class="li">자주 묻는 질문</div>
+  <div class="li">유어딜 소개</div>
+  <div class="li">화면 테마<em>시스템</em></div>
+  <div class="li">약관·정책</div>
+</div>
+<div class="dock"><div class="kakao"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7l-1 3.6c-.1.3.3.6.6.4l4.3-2.8c.5.1 1 .1 1.4.1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>카카오로 시작하기</div></div>
+<div class="nav"><div>홈</div><div>교환권</div><div>이용권</div><div>유어샵</div><div class="on">마이</div></div>
+</div>
+</body></html>
