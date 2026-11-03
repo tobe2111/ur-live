@@ -17,4 +17,12 @@ export default [
     test: T,
     why: '상세에서 고를 방이 0개인 숙소가 생긴다.',
   },
+  {
+    name: 'stay-unify-a — 이용권 수정 화면에서 숙소 관리(객실·달력)가 사라진다',
+    file: 'src/pages/SellerProductEditPage.tsx',
+    find: "{formData.category === 'stay_voucher' && <div className=\"mt-6\"><Suspense",
+    replace: "{false && <div className=\"mt-6\"><Suspense",
+    test: T,
+    why: '옛 숙소 화면을 지웠으니 객실·날짜별 요금을 고칠 곳이 없어진다.',
+  },
 ]

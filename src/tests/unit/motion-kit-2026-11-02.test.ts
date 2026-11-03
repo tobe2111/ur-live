@@ -452,7 +452,7 @@ describe('1️⃣3️⃣ 13차 (2026-11-02 대표 "모두 다 해줘")', () => {
   it('③ 쿠폰함 · ④⑤ 생활 홈 · ⑥ 고수 요청함 — 차례 등장', () => {
     expect(R('src/pages/MyCouponsPage.tsx')).toContain('className="ur-cp-row relative rounded-2xl overflow-hidden"')
     const l = R('src/pages/life/LifePage.tsx')
-    expect(l).toContain('className="ur-life-step rounded-xl bg-surface px-2 py-3"')
+    // 2026-11-03 대표 안 5 — 1·2·3 상자(ur-life-step)는 머리에서 걷혔다. 타일 차례 등장만 남는다.
     expect(l).toContain('className="ur-life-tile"')
     const p = R('src/pages/life/pro/ProInbox.tsx')
     expect(p).toContain("`${bar ? 'border-transparent' : 'border-ink'} text-ink`")

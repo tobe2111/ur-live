@@ -12,10 +12,10 @@
  * 숙소 쪽에 그대로 두고, **결제가 확정되면 이용권 행을 하나 더 만든다**(`vouchers.stay_booking_id`).
  * 그러면 지갑·QR·스캔·원장은 이용권 경로가 그대로 맡는다. 이 파일은 그 이음매다.
  *
- * ## 게이트
- * `platform_settings.stay_voucher_unify_enabled === 'true'` 일 때만 **새로 발급**한다(기본 OFF).
- * 이미 발급된 숙소 이용권에 대한 판정(사용 조건·취소 동기화)은 게이트와 **무관하게** 돈다 —
- * 게이트를 끈 뒤에도 지갑에 남은 이용권이 숙소 규칙을 우회하면 안 되기 때문이다.
+ * ## 스위치 없음 (2026-11-03 대표 *"합쳐줘"* · 같은 날 *"스위치 키는거 말고, 기존 이용권이랑 형태 통일하면 되잖아 허가해줄게"*)
+ * 처음엔 `stay_voucher_unify_enabled`(기본 OFF) 뒤에 있었고 한 번도 켜지지 않았다(2026-11-03 실측 — 설정 행 없음).
+ * 그래서 숙소를 결제해도 지갑에 QR 이 안 생겼다. 스위치를 걷어 **언제나** 결제 확정 때 이용권을 만든다.
+ * 그때 라이브 숙소 예약 0건이라 옮길 데이터가 없었다.
  *
  * ## 불변식
  * - 숙소 이용권은 **숙소 취소 경로로만** 환불된다(날짜별 환불율 + 달력 풀기). 이용권 셀프 취소는 거절.
@@ -25,8 +25,6 @@
  */
 
 import { generateUniqueVoucherCodes } from './helpers'
-
-export const STAY_VOUCHER_UNIFY_KEY = 'stay_voucher_unify_enabled'
 
 export const STAY_VOUCHER_SELF_USE_BLOCKED = '숙소 이용권은 체크인할 때 숙소 직원이 QR 을 스캔해 처리해요'
 export const STAY_VOUCHER_CANCEL_ELSEWHERE = '숙소 이용권은 내 숙소에서 예약 취소로 환불돼요'
@@ -43,14 +41,6 @@ export async function ensureStayVoucherColumn(DB: D1Database): Promise<void> {
     ).run()
   } catch { /* best-effort */ }
   colReady.add(DB as unknown as object)
-}
-
-export async function stayVoucherUnifyEnabled(DB: D1Database): Promise<boolean> {
-  try {
-    const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
-      .bind(STAY_VOUCHER_UNIFY_KEY).first<{ value: string | null }>()
-    return String(row?.value ?? '').trim() === 'true'
-  } catch { return false }
 }
 
 /** 한국 날짜 YYYY-MM-DD. 워커는 UTC 라 `toISOString()` 을 그대로 쓰면 0~9시에 어제가 된다. */
@@ -82,7 +72,7 @@ export interface StayBookingForVoucher {
 
 /**
  * 결제 확정된 예약마다 이용권 1장(멱등 — 예약당 UNIQUE + INSERT OR IGNORE).
- * 게이트가 꺼져 있으면 아무것도 안 한다. 실패는 삼킨다 — 결제 확정을 되돌리지 않는다
+ * 실패는 삼킨다 — 결제 확정을 되돌리지 않는다
  * (그때는 종전처럼 숙소 코드로 수동 체크인된다).
  */
 export async function issueStayVouchers(
@@ -90,7 +80,6 @@ export async function issueStayVouchers(
   opts: { orderId: number; userId: number | string; bookingIds: number[] },
 ): Promise<number> {
   if (!opts.bookingIds.length) return 0
-  if (!(await stayVoucherUnifyEnabled(DB))) return 0
   try {
     await ensureStayVoucherColumn(DB)
     const marks = opts.bookingIds.map(() => '?').join(',')

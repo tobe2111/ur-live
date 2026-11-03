@@ -48,14 +48,20 @@ export function canRunDealTransition(e: { button: number; metaKey: boolean; ctrl
   return !reducedMotion()
 }
 
+/**
+ * 🩸 2026-11-03 (대표 *"숙소 이용권만 클릭하면 로딩이 상대적으로 길어"*): 여기는 `requestAnimationFrame` 으로 돌았다.
+ *   그런데 전환 도중(브라우저가 화면을 얼려 둔 동안)에는 **그리기가 멈춰 rAF 가 안 돈다** → 상세 사진이 아직 없으면
+ *   이 약속이 끝나지 않고, 브라우저가 약 4초 뒤 `TimeoutError: Transition was aborted … DOM update timed out` 으로
+ *   끊었다. 그 4초 동안 화면은 **이전 화면에 멈춰** 있었다. 이용권 상세는 청크를 미리 받아 첫 확인에서 사진이 이미 있어서
+ *   안 드러났고, 숙소는 청크를 누른 뒤에 받아 매번 걸렸다(실측: 숙소만 오류 보고가 나갔다).
+ *   ⇒ 타이머로 센다. 타이머는 전환 중에도 돈다. 그리고 300ms 상한은 따로 걸어 **무슨 일이 있어도** 끝난다.
+ */
 function waitForHero(): Promise<void> {
   return new Promise((resolve) => {
-    const t0 = performance.now()
-    const tick = () => {
-      if (document.querySelector('[data-vt-hero]') || performance.now() - t0 > HERO_WAIT_MS) resolve()
-      else requestAnimationFrame(tick)
-    }
-    tick()
+    if (document.querySelector('[data-vt-hero]')) { resolve(); return }
+    const cap = setTimeout(done, HERO_WAIT_MS)
+    const poll = setInterval(() => { if (document.querySelector('[data-vt-hero]')) done() }, 16)
+    function done() { clearTimeout(cap); clearInterval(poll); resolve() }
   })
 }
 
