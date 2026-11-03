@@ -23,6 +23,7 @@ import GuestDock from './GuestDock'
 import GuestSteps from './GuestSteps'
 import GuestExampleRows from './GuestExampleRows'
 import { GUEST_CLS, GUEST_COPY } from '@/shared/guest-page'
+import { useGuestMotion } from './guest-motion'
 
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
 /**
@@ -49,6 +50,13 @@ function useRevealOnce<T extends HTMLElement>() {
   return ref
 }
 
+/** 헤드라인의 한 구절을 형광펜 칸으로 감싼다(🎬 2차 ①) — 서버 첫 화면(`guest-first-screen.markHtml`)과 같은 모양. */
+function MarkedLine({ line, mark }: { line: string; mark: string }) {
+  const i = line.indexOf(mark)
+  if (i < 0) return <>{line}</>
+  return <>{line.slice(0, i)}<span data-motion="mark">{mark}</span>{line.slice(i + mark.length)}</>
+}
+
 /** 주소 끝 글자를 한 글자씩 친다. 동작 줄이기면 처음부터 다 보인다. */
 function useTyped(word: string, start: boolean) {
   const [n, setN] = useState(() => { try { return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? word.length : 0 } catch { return word.length } })
@@ -67,13 +75,15 @@ export default function GuestUrShopPage() {
   const typed = useTyped(myName, true)
   const stepsRef = useRevealOnce<HTMLDivElement>()
   const ownerRef = useRevealOnce<HTMLDivElement>()
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useGuestMotion(rootRef, [typed.done]) // 🎬 2차 — 형광펜·SNS 조각·사장님 줄 화살표(표시는 data-motion, 움직임은 guest-motion.ts)
   const steps = c.steps.map(([a, b], i) => [
     t(`guest.shop.s${i + 1}a`, { defaultValue: a }),
     t(`guest.shop.s${i + 1}b`, { defaultValue: b }),
   ] as const)
 
   return (
-    <div className={GUEST_CLS.root}>
+    <div ref={rootRef} className={GUEST_CLS.root}>
       <SEO title={t('guest.shop.seo', { defaultValue: '유어샵 - 유어딜' })} url="/u/me" noindex />
       <h1 className={GUEST_CLS.title}>
         {t('guest.shop.title', { defaultValue: c.title })}
@@ -82,7 +92,7 @@ export default function GuestUrShopPage() {
       <div className={GUEST_CLS.hero} data-guest="urshop">
         <h2 className={GUEST_CLS.headline}>
           {t('guest.shop.headline1', { defaultValue: c.headline1 })}<br />
-          {t('guest.shop.headline2', { defaultValue: c.headline2 })}
+          <MarkedLine line={t('guest.shop.headline2', { defaultValue: c.headline2 })} mark={c.headline2Mark} />
         </h2>
         <p className={GUEST_CLS.sub}>
           {t('guest.shop.sub', { defaultValue: c.sub })}
@@ -103,6 +113,14 @@ export default function GuestUrShopPage() {
           <p className="mt-3 flex h-10 items-center rounded-xl bg-gray-100 dark:bg-white/5 px-3 text-[13px] text-gray-500 dark:text-gray-400">
             <span>urdeal.kr/u/</span>
             <span className="font-medium text-brand-text" aria-label={myName}>{typed.text}{!typed.done && <span className="ur-gs-caret" aria-hidden="true" />}</span>
+            {/* 🎬 2차 ③ — 주소가 다 쳐지면 SNS 색 조각 셋이 톡톡(어디든 걸 수 있다는 뜻) */}
+            {typed.done && (
+              <span data-motion="chips" className="ml-auto inline-flex gap-1" aria-hidden="true">
+                <i className="block w-3.5 h-3.5 rounded" style={{ background: 'linear-gradient(45deg, rgb(249,206,52), rgb(238,42,123), rgb(98,40,215))' }} />
+                <i className="block w-3.5 h-3.5 rounded" style={{ background: 'rgb(255,0,0)' }} />
+                <i className="block w-3.5 h-3.5 rounded" style={{ background: 'rgb(3,199,90)' }} />
+              </span>
+            )}
           </p>
           <div className="mt-1">
             <GuestExampleRows numbered motion />
@@ -112,7 +130,7 @@ export default function GuestUrShopPage() {
         <div ref={stepsRef} className="ur-gs-reveal"><GuestSteps steps={steps} /></div>
       </div>
 
-      <div ref={ownerRef} className="mt-2 ur-gs-reveal-one">
+      <div ref={ownerRef} className="mt-2 ur-gs-reveal-one" data-motion="nudge">
         <ListRow
           icon={<StoreIcon size={18} />}
           label={t('guest.owner.sell', { defaultValue: '사장님이세요? 내 가게 이용권 팔기' })}

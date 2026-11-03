@@ -56,10 +56,17 @@ function passBody(): string {
     `<p class="${GUEST_CLS.sub}">${esc(c.sub)}</p>${ticket()}${steps(c.steps)}</section>` + dock()
 }
 
+/** 헤드라인의 한 구절을 형광펜 칸(`data-motion="mark"`)으로 감싼다 — 앱 `MarkedLine` 과 같은 모양. 구절이 없으면 그대로. */
+function markHtml(line: string, mark: string): string {
+  const i = line.indexOf(mark)
+  if (i < 0) return esc(line)
+  return `${esc(line.slice(0, i))}<span data-motion="mark">${esc(mark)}</span>${esc(line.slice(i + mark.length))}`
+}
+
 function shopBody(): string {
   const c = GUEST_COPY.shop
   return `<h1 class="${GUEST_CLS.title}">${esc(c.title)}</h1>` +
-    `<div class="${GUEST_CLS.hero}" data-guest="urshop"><h2 class="${GUEST_CLS.headline}">${esc(c.headline1)}<br>${esc(c.headline2)}</h2><p class="${GUEST_CLS.sub}">${esc(c.sub)}</p></div>` + dock(c.dockNote)
+    `<div class="${GUEST_CLS.hero}" data-guest="urshop"><h2 class="${GUEST_CLS.headline}">${esc(c.headline1)}<br>${markHtml(c.headline2, c.headline2Mark)}</h2><p class="${GUEST_CLS.sub}">${esc(c.sub)}</p></div>` + dock(c.dockNote)
 }
 
 function myBody(): string {
