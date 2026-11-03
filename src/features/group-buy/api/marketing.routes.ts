@@ -222,14 +222,12 @@ influencerApp.get('/me', async (c) => {
   const st = await DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('promo_funding_source','payout_requires_voucher_use','commission_payout_day')`).all<{ key: string; value: string }>().catch(() => ({ results: [] as { key: string; value: string }[] }))
   const setting = (k: string) => (st.results || []).find((r) => r.key === k)?.value
   return c.json({
-    success: true,
-    data: {
+    success: true, data: {
       balance: balance || { pending_amount: 0, available_amount: 0, total_paid_out: 0 },
       recent: recent.results || [],
       funding_source: setting('promo_funding_source') || 'platform',
       requires_voucher_use: setting('payout_requires_voucher_use') === 'true',
-      // 📅 2026-11-03 대표 확정 — 매월 정산일(기본 10일). 화면의 '다음 지급일'이 실제 지급일과 같은 값을 쓴다.
-      payout_day: resolveCommissionPayoutDay(setting('commission_payout_day')),
+      payout_day: resolveCommissionPayoutDay(setting('commission_payout_day')), // 📅 2026-11-03 월 정산일(기본 10) — 화면 '다음 지급일'과 같은 값
     },
   })
 })
