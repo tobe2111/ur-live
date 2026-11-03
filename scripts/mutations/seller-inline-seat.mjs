@@ -124,7 +124,7 @@ export default [
   {
     // 🔁 2026-11-03 재조준 — 계산대 머리 안내를 걷어 그 말은 확인창이 한다.
     name: '🎟️ 계산대가 되돌릴 수 없다는 말을 안 한다',
-    file: 'src/components/voucher/VoucherScanner.tsx',
+    file: 'src/components/voucher/UseConfirmSheet.tsx',
     find: "'사용 처리하면 되돌릴 수 없어요.'",
     replace: "'사용 처리할까요?'",
     test: 'src/tests/unit/seller-inline-seat-2026-09-25.test.ts',

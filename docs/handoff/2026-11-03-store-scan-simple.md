@@ -22,3 +22,4 @@
   지운 주체는 못 좁혔다. 처방: 부팅 때 역할 토큰만 있고 소비자 흔적이 없으면 탭당 1회 `/api/auth/session/health` 로 되살림
   (`auth-callback-bootstrap.ts` + `lib/consumer-session-event.ts` + DesktopTopNav 재그리기). 가드 `consumer-session-restore-2026-11-03` + 주입 3.
 - ⚠️ 이번에 틀렸던 판단: 처음엔 "에이전시 로그인만 한 상태일 것" 이라고 추정했다 — 대표는 카카오였다. 찜 배지(=서버 인증)를 먼저 봤으면 바로 알았다.
+- ✅ 대표 *"안 B로 해줘"* → 안 B 구현(FullScanView · UseConfirmSheet 분리). 가드 store-scan-plan-b-2026-11-03 + 주입 2, 재조준 4.

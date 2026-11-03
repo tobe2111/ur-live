@@ -253,8 +253,9 @@ describe('단계 3 — 소각은 되돌릴 수 없다', () => {
     // 🔁 2026-11-03 재조준 — 대표 *"너무 필요이상으로 글자가 많아"* 로 계산대 머리 안내 두 문단을 걷었다.
     //   지키는 것은 그대로다: 되돌릴 수 없는 사용이 나가기 **전에** 그 사실을 말한다. 2026-10-06 부터 비추면 바로
     //   쓰이지 않고 확인창을 거치므로, 그 말은 확인창의 몫이다.
-    const scanner = stripComments(readCode('src/components/voucher/VoucherScanner.tsx'))
-    expect(scanner).toContain("'사용 처리하면 되돌릴 수 없어요.'")
+    // 2026-11-03 안 B 로 확인창이 `UseConfirmSheet.tsx` 로 나갔다(두 레이아웃이 같이 쓴다).
+    const sheet = stripComments(readCode('src/components/voucher/UseConfirmSheet.tsx'))
+    expect(sheet).toContain("'사용 처리하면 되돌릴 수 없어요.'")
   })
 
   it('계산대가 어느 가게로 처리되는지 말한다 — 값은 표시 전용', () => {

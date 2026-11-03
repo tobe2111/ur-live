@@ -54,8 +54,8 @@ export default function StoreScanPage() {
   if (!allowed) return null
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
-      <header className="sticky top-0 z-10 flex items-center gap-2 px-3 py-3 border-b border-gray-100 dark:border-[#2C2F35] bg-white/90 dark:bg-[#11141C]/90 backdrop-blur">
+    <div className="flex h-[100dvh] flex-col bg-white dark:bg-[#11141C]">
+      <header className="shrink-0 z-10 flex items-center gap-2 px-3 py-3 border-b border-gray-100 dark:border-[#2C2F35] bg-white/90 dark:bg-[#11141C]/90 backdrop-blur">
         <button
           onClick={() => {
             // 마이에서 왔으면 마이로 — 하드 이동이다(마이는 소비자 세션으로 도는 다른 표면이다).
@@ -81,8 +81,9 @@ export default function StoreScanPage() {
           </span>
         )}
       </header>
-      <div className="mx-auto max-w-xl p-4">
-        <VoucherScanner />
+      {/* 📷 2026-11-03 대표 확정 안 B — 카메라가 머리 아래를 꽉 채운다(QR 앱처럼). 칩·결과는 카메라 위에 뜬다. */}
+      <div className="relative min-h-0 flex-1">
+        <VoucherScanner full />
       </div>
     </div>
   )

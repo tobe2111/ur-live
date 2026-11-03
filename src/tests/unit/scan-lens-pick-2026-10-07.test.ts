@@ -196,9 +196,10 @@ describe('🔌 배선', () => {
   it('전환 버튼은 도움말 패널 안에만 있다 (카메라 위에 늘 떠 있지 않다)', () => {
     const calls = [...SRC.matchAll(/void switchCamera\(\)/g)]
     expect(calls.length).toBe(1)
-    const help = SRC.indexOf('{helpOpen && !cameraError && (')
+    // 2026-11-03 매장 계산대 안 B — 도움말은 두 레이아웃이 같이 쓰도록 `helpBox` 한 곳에서 만든다.
+    const help = SRC.indexOf('const helpBox = helpOpen && !cameraError ? (')
     expect(help).toBeGreaterThan(0)
-    const end = SRC.indexOf('\n      )}', help)
+    const end = SRC.indexOf(') : null', help)
     expect(calls[0].index!).toBeGreaterThan(help)
     expect(calls[0].index!).toBeLessThan(end)
   })
