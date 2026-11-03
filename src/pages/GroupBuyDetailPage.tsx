@@ -63,6 +63,7 @@ import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 import { passShareCardUrl } from '@/shared/pass-share-card'
 import { priceDisplay } from '@/shared/price-display'
 import { passDetailDescription } from '@/shared/seo/detail-description'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -142,7 +143,7 @@ function CategoryFallbackIcon({ cat }: { cat: string }) {
 
 export default function GroupBuyDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+  const navigate = useNavigate(); const goBack = useSafeBack('/') // ← 링크로 바로 들어오면 홈으로(2026-11-03)
   const invalidateVouchers = useInvalidateMyVouchers()
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
@@ -615,7 +616,7 @@ export default function GroupBuyDetailPage() {
         price={Number((detail as { deal_only?: number }).deal_only) === 1 ? undefined : detail.price}
         discountPct={displayDiscountPct}
         heroRef={heroRef}
-        onBack={() => navigate(-1)}
+        onBack={goBack}
         overPhoto
       />
 

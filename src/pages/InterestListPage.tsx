@@ -11,10 +11,12 @@ import { ChevronLeft, Trash2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { useMyInterests, useRemoveInterest, type InterestItem } from '@/hooks/queries/useMyInterests'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 export default function InterestListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (목록 캐싱 + optimistic 삭제/롤백).
   const { data: items = [], isLoading: loading, isError, refetch } = useMyInterests()
   const removeMut = useRemoveInterest()
@@ -34,7 +36,7 @@ export default function InterestListPage() {
       {/* 헤더 */}
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
+          <button onClick={goBack} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">{t('interestList.title')}</h1>

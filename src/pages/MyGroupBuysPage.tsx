@@ -11,6 +11,7 @@ import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags';
 import BrandLoader from '@/components/brand/BrandLoader'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { loginPathFromHere } from '@/utils/login-return'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 // ─────────────────────────────────────────────────────────────────────
 // Types
@@ -66,6 +67,7 @@ function formatTimeLeft(expiresAt: string, t: (key: string, opts?: any) => strin
 export default function MyGroupBuysPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const goBack = useSafeBack('/user/profile')
   const [tab, setTab] = useState<TabKey>('all');
 
   // 🛡️ 2026-06-01 Tier2: 3개 엔드포인트 + 상품 hydration 로드를 useMyGroupBuys 단일 쿼리로 캡슐화.
@@ -200,7 +202,7 @@ export default function MyGroupBuysPage() {
       {/* 헤더 */}
       <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#11141C] border-b border-line">
         <div className="ur-content-narrow flex items-center justify-between h-14 px-4 lg:px-8">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="flex items-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">
+          <button onClick={goBack} aria-label="뒤로 가기" className="flex items-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <h1 className="text-[15px] font-medium text-gray-900 dark:text-white">{t('myGroupBuys.title')}</h1>

@@ -4,6 +4,8 @@ import { cfImage } from '@/utils/cf-image'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import { isWholesaleSurface } from '@/utils/domain'
+import { decideTabNav, readTabState } from '@/lib/tab-nav'
+import { canGoBackInApp } from '@/hooks/useSafeBack'
 // 🎫 2026-09-02 (대표 시안 — 코레일톡 하단 탭): 다섯 탭 전부 유어딜 아이콘. 비활성 = 선, 활성 = 면(`filled`).
 import { UrShopIcon, HomeIcon, GiftBoxIcon, TicketStubIcon, PersonIcon } from '@/components/icons/urdeal-icons'
 
@@ -172,6 +174,16 @@ export default function BottomNav() {
   //   누를 때만 — 페이지를 새로 열 때 활성 탭이 저절로 튀지 않게 마운트 상태와 무관한 카운터로 고른다.
   const [press, setPress] = useState<{ path: string; n: number } | null>(null)
 
+  // 🔙 2026-11-03 [UNLOCK_LOADING] (대표 승인 ③): 탭은 이력을 쌓지 않는다 — 어느 탭에서든 뒤로 한 번이면 홈. 규칙 SSOT: lib/tab-nav.ts
+  const goTab = (path: string) => {
+    const cur = location.pathname
+    const mark = readTabState(location.state)
+    const curIsTab = cur === '/' || mark.urTab || navItems.some((it) => it.path === cur)
+    const a = decideTabNav({ target: path, cur, curIsTab, curFromHome: mark.fromHome, canBack: canGoBackInApp() })
+    if (a.kind === 'back') navigate(-1)
+    else navigate(path, { replace: a.kind === 'replace', state: { urTab: true, tabFromHome: a.fromHome } })
+  }
+
   const renderItem = ({ icon: Icon, label, path, prefetch }: typeof navItems[0] & { prefetch?: () => Promise<unknown> }) => {
     const active = isActivePath(path)
     const TabIcon = Icon
@@ -182,7 +194,7 @@ export default function BottomNav() {
     return (
       <button
         key={label}
-        onClick={() => { setPress((p) => ({ path, n: (p?.n ?? 0) + 1 })); navigate(path) }}
+        onClick={() => { setPress((p) => ({ path, n: (p?.n ?? 0) + 1 })); goTab(path) }}
         onPointerDown={warm}
         onMouseEnter={warm}
         className="flex-1 flex flex-col items-center justify-center h-full"

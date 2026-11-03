@@ -4,11 +4,13 @@ import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowLeft, Share2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 export default function ReferralIndexPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
+  const goBack = useSafeBack('/user/profile')
   // 🧭 2026-06-17 (사용자 결정 — 그룹 referral 완전 숨김): '친구 모으면 싸게' 그룹 랜딩은
   //   할인 종료로 껍데기 + 거짓 안내였음. 살아있는 '친구 초대 보너스'(MyReferralCard)가 있는
   //   /user/profile 로 리다이렉트. 플래그 false 면 즉시 원복.
@@ -21,7 +23,7 @@ export default function ReferralIndexPage() {
       <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
           <button
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             className="w-9 h-9 flex items-center justify-center"
             aria-label={t('referral.backAria', { defaultValue: '뒤로가기' })}
           >

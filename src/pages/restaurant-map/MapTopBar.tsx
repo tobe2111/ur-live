@@ -6,6 +6,7 @@ import { storage } from '@/shared/utils/storage'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 import { type MapVoucherType, MAP_VOUCHER_DEFS } from './voucher-types'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 interface Props {
   search: string
@@ -74,6 +75,7 @@ export default function MapTopBar({
 }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   // 🔔 벨 → 올라오는 시트(페이지 이동 X). 배선은 `NotificationSheet` 머리말.
   const bell = useNotificationSheet()
 
@@ -110,7 +112,7 @@ export default function MapTopBar({
             </Link>
           ) : (
             <button
-              onClick={() => navigate(-1)}
+              onClick={goBack}
               aria-label={t('map.search.back', { defaultValue: '뒤로가기' })}
               className={`w-11 h-11 flex items-center justify-center rounded-2xl shrink-0 ${OVERLAY_SURF}`}
             >
