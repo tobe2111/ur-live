@@ -29,7 +29,6 @@ import { useSafeBack } from '@/hooks/useSafeBack'
 const OptionSelectModal = lazy(() => import('@/components/OptionSelectModal'))
 
 // 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출(그 아이콘도 그 파일로).
-
 /** 📦 2026-09-01: 배송비 판정은 SSOT 하나로 — 여기와 결제 화면이 갈려 총액이 달랐다(product-flow.ts). */
 function isNoShippingItem(item: CartItem): boolean {
   return isNoShippingProduct({ deal_only: item.deal_only, category: item.category })
@@ -42,8 +41,7 @@ function isUserLoggedIn(): boolean {
 
 export default function CartPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const goBack = useSafeBack('/')
+  const navigate = useNavigate(); const goBack = useSafeBack('/')
   const loggedIn = isUserLoggedIn()
 
   // 비로그인 상태: v4 clean white design

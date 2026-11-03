@@ -51,14 +51,12 @@ const ProductImageCarousel = lazy(() => import('@/components/product/product-ima
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 const GiftSendModal = lazy(() => import('@/components/gift/GiftSendModal'))
 
-
 export default function ProductDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   // 👁️ 홈 인기순의 클릭 신호 — 세션당 1회(훅이 가드).
   useProductViewBeacon(id)
-  const navigate = useNavigate()
-  const goBack = useSafeBack('/')
+  const navigate = useNavigate(); const goBack = useSafeBack('/')
   const invalidateVouchers = useInvalidateMyVouchers()
   const [searchParams] = useSearchParams()
 

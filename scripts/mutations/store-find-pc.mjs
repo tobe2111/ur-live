@@ -63,8 +63,8 @@ export default [
   {
     name: '🙋 PC 에서 뒤로 갈 수단이 사라진다',
     file: PAGE,
-    find: `        <button onClick={() => navigate(-1)} aria-label="뒤로"\n          className="hidden lg:flex`,
-    replace: `        <button onClick={() => navigate(-1)} aria-label="__gone"\n          className="hidden lg:flex`,
+    find: `        <button onClick={goBack} aria-label="뒤로"\n          className="hidden lg:flex`,
+    replace: `        <button onClick={goBack} aria-label="__gone"\n          className="hidden lg:flex`,
     test: T,
     why:
       '헤더를 lg:hidden 으로 만든 대가로 PC 뒤로가기를 왼쪽 칸이 맡는다. 그 짝이 깨지면 PC 방문자는 ' +

@@ -18,6 +18,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { canGoBackInApp } from '@/hooks/useSafeBack'
+import { stripComments } from '../helpers/source-text'
 
 /** 허용 — 사유가 있는 곳만. 늘리지 말 것. */
 const ALLOW = new Set([
@@ -26,9 +27,6 @@ const ALLOW = new Set([
   'src/pages/GroupBuyDetailPage.tsx', // 🔒 로딩 잠금 파일 — 대표 승인 뒤 이행(2026-11-03 결재 대기)
   'src/pages/TossWidgetPayPage.tsx', // 🔒 Toss V2 잠금 파일 — 대표 승인 뒤 이행
 ])
-
-const stripComments = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1')
 
 const files = execSync("git ls-files 'src/*.ts' 'src/*.tsx' 'src/**/*.ts' 'src/**/*.tsx'", { encoding: 'utf8' })
   .split('\n').filter(Boolean).filter((f) => !f.startsWith('src/tests/'))
