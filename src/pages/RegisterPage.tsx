@@ -281,7 +281,7 @@ export default function RegisterPage() {
                 type="checkbox"
                 checked={allAgreed}
                 onChange={(e) => toggleAll(e.target.checked)}
-                className="ur-rg-agree w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+                className="ur-rg-agree w-4 h-4 rounded border-line focus:ring-brand cursor-pointer accent-brand"
               />
               <span className="text-[13px] font-medium text-gray-900 dark:text-white">{t('register.agreeAll', { defaultValue: '전체 동의 (선택 항목 포함)' })}</span>
             </label>
