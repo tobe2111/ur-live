@@ -25,6 +25,7 @@ import { stripComments } from '../helpers/source-text'
 const ALLOW = new Set([
   'src/hooks/useSafeBack.ts', // SSOT 자신
   'src/pages/user-profile/seller-section/ToolPageSheet.tsx', // 시트 안 이력(sheet-history) — 앱 이력 칸이 늘 있다
+  'src/pages/LoginPage.tsx', // 로그인 끝난 뒤 뒤로로 다시 온 로그인 화면은 한 칸 더 뒤로(canGoBackInApp 판정 뒤에만)
   'src/components/main/BottomNav.tsx', // 탭 → 홈은 아래가 홈일 때만 -1 (tab-nav.ts decideTabNav 가 판정)
 ])
 
@@ -116,5 +117,20 @@ describe('⑤ 결제를 마친 주문의 결제창은 비킨다', () => {
     const pay = stripComments(readFileSync('src/pages/TossWidgetPayPage.tsx', 'utf8'))
     expect(pay).toMatch(/if \(initializedRef\.current\) return\s*\n\s*if \(isOrderPaid\(orderId\)\) \{ goBack\(\); return \}/)
     expect(pay, 'bfcache 로 되살아난 결제창도 비켜야 한다').toMatch(/e\.persisted && isOrderPaid\(orderId\)/)
+  })
+})
+
+/** 카카오 로그인 뒤 뒤로 — 2026-11-03 대표 "이어서 해줘". 로그인 화면이 이력에 남아 돌아온 뒤 폰 뒤로가 그 화면을 다시 거쳤다. */
+describe('⑥ 카카오 로그인 뒤 뒤로', () => {
+  const page = stripComments(readFileSync('src/pages/LoginPage.tsx', 'utf8'))
+  it('카카오로 갈 때 로그인 화면을 이력에서 지운다(replace)', () => {
+    expect(page).toMatch(/window\.location\.replace\(`\/auth\/kakao\/start\?/)
+    expect(page).not.toMatch(/window\.location\.href = `\/auth\/kakao\/start/)
+  })
+  it('로그인이 끝난 뒤 뒤로로 다시 온 로그인 화면은 앞으로가 아니라 한 칸 더 뒤로', () => {
+    expect(page).toMatch(/if \(navType === 'POP' && canGoBackInApp\(\)\) navigate\(-1\)\s*\n\s*else navigate\(returnUrlRef\.current!, \{ replace: true \}\)/)
+  })
+  it('얼어 있던 채 되살아난 로그인 화면(bfcache)은 가림막을 걷는다', () => {
+    expect(page).toMatch(/e\.persisted[\s\S]{0,80}removeKakaoLoadingOverlay\(\)[\s\S]{0,40}kakaoNavRef\.current = false/)
   })
 })
