@@ -9,7 +9,7 @@
  */
 import { useState, type RefObject } from 'react'
 import { Loader2, Image as ImageIcon, X } from 'lucide-react'
-import { OkIcon, BadIcon } from '@/components/icons/urdeal-icons'
+import { OkIcon, BadIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from '@/lib/i18n-lite'
 import ScanFrame from './ScanFrame'
 
@@ -29,6 +29,9 @@ export interface FullScanViewProps {
   canSubmit: boolean
   onSubmitManual: (e: React.FormEvent) => void
 }
+
+/** 알림과 같은 유리 알약(`ToastContainer` 한 벌) — 카메라 위에 뜨는 결과·오류. */
+const POP = 'ur-glass ur-pop-toast flex items-center gap-2 min-h-12 px-5 py-2 text-gray-900 dark:text-white'
 
 const CHIP = 'flex flex-1 items-center justify-center gap-2 rounded-full bg-white/15 py-3 text-[15px] font-medium text-white backdrop-blur-md active:bg-white/25'
 
@@ -53,12 +56,19 @@ export default function FullScanView(p: FullScanViewProps) {
 
       {/* 위 — 결과·오류·도움말이 카메라 위에 뜬다 */}
       <div className="absolute inset-x-4 top-4 space-y-2">
-        {p.cameraError && <p className="rounded-2xl bg-tone-warn-bg px-4 py-3 text-[15px] text-tone-warn">{p.cameraError}</p>}
+        {/* 🪟 2026-11-03 대표 *"팝업 디자인 통일화하기로 한대로"* — 카메라 위에 뜨는 것은 전부 알림(토스트)과 같은 유리 알약
+            (`ur-glass ur-pop-toast` · 15px · 아이콘 18 — `ToastContainer` 와 한 벌). 색 상자(경고 노랑·성공 초록 면)는 걷었다. */}
+        {p.cameraError && (
+          <div role="alert" className={`${POP} animate-slide-down`}>
+            <AlertIcon className="h-[18px] w-[18px] shrink-0 text-red-500" />
+            <p className="flex-1 text-[15px] font-medium leading-snug">{p.cameraError}</p>
+          </div>
+        )}
         {p.latest && (
-          <div key={p.flashKey} className={`ur-rise flex items-center gap-2 rounded-2xl px-4 py-3 ${p.latest.ok ? 'bg-tone-ok-bg' : 'bg-tone-bad-bg'}`}>
-            {p.latest.ok ? <OkIcon className="ur-popin h-7 w-7 shrink-0 text-tone-ok" /> : <BadIcon className="h-7 w-7 shrink-0 text-tone-bad" />}
-            <div className="min-w-0">
-              <p className={`text-[15px] font-bold ${p.latest.ok ? 'text-tone-ok' : 'text-tone-bad'}`}>{p.latest.message}</p>
+          <div key={p.flashKey} role="status" className={`${POP} ur-rise`}>
+            {p.latest.ok ? <OkIcon className="ur-popin h-[18px] w-[18px] shrink-0 text-tone-ok" /> : <BadIcon className="h-[18px] w-[18px] shrink-0 text-tone-bad" />}
+            <div className="min-w-0 flex-1">
+              <p className={`text-[15px] font-bold leading-snug ${p.latest.ok ? 'text-tone-ok' : 'text-tone-bad'}`}>{p.latest.message}</p>
               <p className="mt-1 truncate text-[12px] text-gray-600 dark:text-gray-400">{p.latest.productName || p.latest.code} · {p.latest.at}</p>
             </div>
           </div>

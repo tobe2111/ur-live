@@ -17,4 +17,12 @@ export default [
     test: TEST,
     why: '비추면 확인 없이 되돌릴 수 없는 사용이 나간다(되돌릴 수 없다는 경고도 그 창이 한다).',
   },
+  {
+    name: '📷계산대B 카메라 오류가 다시 노란 색 상자로 뜬다',
+    file: 'src/components/voucher/FullScanView.tsx',
+    find: "<div role=\"alert\" className={`${POP} animate-slide-down`}>",
+    replace: "<div role=\"alert\" className=\"rounded-2xl bg-tone-warn-bg px-4 py-3 text-tone-warn\">",
+    test: TEST,
+    why: '대표 2026-11-03 *"팝업 디자인 통일화하기로 한대로"* — 카메라 위 알림은 유리 알약 한 벌.',
+  },
 ]

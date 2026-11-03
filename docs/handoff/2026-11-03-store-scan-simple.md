@@ -23,3 +23,4 @@
   (`auth-callback-bootstrap.ts` + `lib/consumer-session-event.ts` + DesktopTopNav 재그리기). 가드 `consumer-session-restore-2026-11-03` + 주입 3.
 - ⚠️ 이번에 틀렸던 판단: 처음엔 "에이전시 로그인만 한 상태일 것" 이라고 추정했다 — 대표는 카카오였다. 찜 배지(=서버 인증)를 먼저 봤으면 바로 알았다.
 - ✅ 대표 *"안 B로 해줘"* → 안 B 구현(FullScanView · UseConfirmSheet 분리). 가드 store-scan-plan-b-2026-11-03 + 주입 2, 재조준 4.
+- 🪟 대표 *"카메라를 열 수 없어요 저 팝업 디자인, 팝업 디자인 통일화하기로 한대로"* → 카메라 위 오류·결과를 토스트와 같은 유리 알약(`ur-glass ur-pop-toast`)으로, 도움말은 유리 판. 렌더 `docs/design/assets/store-scan-glass-2026-11-03.png`.

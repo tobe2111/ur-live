@@ -32,4 +32,9 @@ describe('매장 계산대 안 B', () => {
   it('셀러 대시보드 계산대는 종전 모양(full 없음)', () => {
     expect(stripComments(readCode('src/pages/SellerVoucherScanPage.tsx'))).toContain('<VoucherScanner />')
   })
+  it('카메라 위 오류·결과는 알림과 같은 유리 알약이다(팝업 통일 2026-11-02) — 색 상자 금지', () => {
+    expect(VIEW).toContain("const POP = 'ur-glass ur-pop-toast")
+    expect(VIEW).toMatch(/p\.cameraError && \(\s*<div role="alert" className=\{`\$\{POP\}/)
+    expect(VIEW).not.toMatch(/bg-tone-(warn|ok|bad)-bg/)
+  })
 })
