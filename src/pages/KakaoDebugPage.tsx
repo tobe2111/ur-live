@@ -109,7 +109,7 @@ export default function KakaoDebugPage() {
   return (
     <div className="min-h-screen bg-warm py-8 px-4">
       <SEO title="Debug" noindex />
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-5">
         {/* Header */}
         <Card>
           <CardHeader>
@@ -165,10 +165,10 @@ export default function KakaoDebugPage() {
             {loading ? (
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-4 text-gray-600">진단 실행 중...</p>
+                <p className="mt-5 text-gray-600">진단 실행 중...</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {checks.map((check, index) => (
                   <div key={index} className="border rounded-lg p-4">
                     <div className="flex items-start gap-3">

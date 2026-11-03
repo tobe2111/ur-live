@@ -34,8 +34,8 @@ describe('깔끔하게 — 우리가 그리던 것 정리', () => {
   })
 
   it('유튜브 아래쪽 컨트롤을 끄도록 요청한다 (API 경로·폴백 둘 다)', () => {
-    expect(V, 'API 경로').toMatch(/youTubePlayerVars\(\{ autoplay: true, controls: false \}\)/)
-    expect(V, '폴백 iframe').toMatch(/youTubeEmbedUrl\(cur\.video_id, \{ autoplay: true, controls: false \}\)/)
+    expect(V, 'API 경로').toMatch(/youTubePlayerVars\(\{ autoplay: true, controls: false(, muted: true)? \}\)/)
+    expect(V, '폴백 iframe').toMatch(/youTubeEmbedUrl\(cur\.video_id, \{ autoplay: true, controls: false(, muted: true)? \}\)/)
   })
 
   it('빌더가 controls=0 을 싣는다 — 그리고 기본값은 건드리지 않는다', () => {
@@ -120,7 +120,7 @@ describe('🔇 자막을 확실히 끈다', () => {
     const vars = youTubePlayerVars({ autoplay: true, controls: false })
     const url = youTubeEmbedUrl('abc', { autoplay: true, controls: false })
     for (const [k, v] of Object.entries(vars)) expect(url, `${k} 가 URL 에 없다`).toContain(`${k}=${v}`)
-    expect(V, 'API 경로가 SSOT 를 안 쓰고 손으로 적었다').toMatch(/youTubePlayerVars\(\{ autoplay: true, controls: false \}\)/)
+    expect(V, 'API 경로가 SSOT 를 안 쓰고 손으로 적었다').toMatch(/youTubePlayerVars\(\{ autoplay: true, controls: false(, muted: true)? \}\)/)
   })
 })
 

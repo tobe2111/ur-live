@@ -36,7 +36,7 @@ export default function NewAddressFormModal({
       type="custom"
       maxWidth="lg"
     >
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div>
           <label htmlFor="checkout-recipient-name" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
             {t('checkout.newAddress.recipientName', { defaultValue: '수령인 이름' })} <span className="text-red-500" aria-hidden="true">*</span>

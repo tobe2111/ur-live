@@ -39,7 +39,7 @@ function ForgotForm() {
       {done ? (
         <p className="text-[15px] leading-relaxed text-gray-700">{done}</p>
       ) : (
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form onSubmit={submit} className="flex flex-col gap-3">
           <Field label="업무용 이메일">
             <input type="email" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy}
               placeholder="name@company.com" className={inputCls} />
@@ -78,7 +78,7 @@ function ResetForm({ token }: { token: string }) {
       footer={<Link to="/agency/reset" className="font-medium text-gray-700">재설정 메일 다시 받기</Link>}
     >
       <SEO title="에이전시 비밀번호 재설정 - 유어딜" description="유어딜 에이전시 비밀번호 재설정" url="/agency/reset" noindex />
-      <form onSubmit={submit} className="flex flex-col gap-4">
+      <form onSubmit={submit} className="flex flex-col gap-3">
         <Field label="새 비밀번호">
           <input type="password" required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy}
             className={inputCls} />

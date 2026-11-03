@@ -39,7 +39,7 @@ export default function MyCommissionsPage() {
       <SEO title="추천 수익 - 유어딜" description="추천 수익 내역" url="/my-commissions" />
 
       <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
+        <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 h-[52px]">
           <button onClick={goBack} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로가기">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
           </button>
@@ -48,12 +48,12 @@ export default function MyCommissionsPage() {
         </div>
       </header>
 
-      <main className="ur-content-narrow px-4 lg:px-8 pb-20 pt-4">
+      <main className="ur-content-narrow px-5 lg:px-8 pb-20 pt-4">
         {/* 🛡️ 2026-07-02: 로드 전멸 시 잔액 0원 카드 대신 에러 + 재시도 (돈 표면 오표시 방지). */}
         {isError ? (
           <div className="text-center py-20">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">수익 정보를 불러오지 못했어요</p>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
             <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
               다시 시도
             </button>
@@ -71,7 +71,7 @@ export default function MyCommissionsPage() {
           </p>
           <button
             onClick={() => navigate('/')}
-            className="mt-4 w-full py-3 bg-white dark:bg-white text-gray-900 dark:text-gray-900 rounded-2xl font-bold text-[15px] flex items-center justify-center gap-2"
+            className="mt-5 w-full py-3 bg-white dark:bg-white text-gray-900 dark:text-gray-900 rounded-2xl font-bold text-[15px] flex items-center justify-center gap-2"
           >
             딜로 이용권 보러 가기
             <ArrowRight className="w-4 h-4" />
@@ -80,7 +80,7 @@ export default function MyCommissionsPage() {
 
         {/* 출금 이력 */}
         {withdrawals.length > 0 && (
-          <section className="mb-6">
+          <section className="mb-8">
             <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2">출금 이력</h3>
             <div className="space-y-2">
               {withdrawals.map(w => {

@@ -31,7 +31,7 @@ import { STRIP_BANNER_MAX, STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerI
  *    (실측: 카드 14..376 · 다음 장 388 시작 · 화면 390). 간격이 거터 두 벌이면 다음 장이 정확히 화면 밖
  *    (404)에서 시작해 **한 장씩 꽉**(대표 확정 ③)이 글자 그대로 성립한다.
  */
-const STRIP_GAP_PX = 28
+const STRIP_GAP_PX = 32 // 📏 2026-11-03 공백 체계(28 → 32)
 
 export function bannerLink(b: HomeBanner): BannerLink {
   return resolveBannerLink(b.link_url, typeof window !== 'undefined' ? window.location.hostname : undefined)

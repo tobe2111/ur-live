@@ -102,13 +102,13 @@ export default function PaymentFailPage() {
         <div className="ur-pr-rise bg-surface rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
           {/* hero 아이콘 + 제목 — code 별로 색/문구 분기 */}
           <div className="text-center mb-8">
-            <Udal mood={heroMood} size={isUserCancel ? 72 : 112} priority className="block mx-auto mb-4" />
+            <Udal mood={heroMood} size={isUserCancel ? 72 : 112} priority className="block mx-auto mb-5" />
             <h1 className={`${isUserCancel ? '' : 'ur-pr-shake '}text-[28px] font-bold text-[#1d1d1f] dark:text-white mb-2`}>{heroTitle}</h1>
             <p className="text-[#6e6e73] dark:text-gray-400">{heroSub}</p>
           </div>
 
           {/* 오류 정보 — 사용자 취소 시에는 큰 빨간 에러 박스 숨김 (UX noise 차단) */}
-          <div className="space-y-4 mb-8">
+          <div className="space-y-3 mb-8">
             {!isUserCancel && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4">
                 <h3 className="text-[15px] font-medium text-red-900 dark:text-red-300 mb-2">{t('paymentFail.errorLabel')}</h3>
@@ -138,7 +138,7 @@ export default function PaymentFailPage() {
           </div>
 
           {/* 액션 버튼 */}
-          <div className="flex gap-3 mb-6">
+          <div className="flex gap-3 mb-8">
             <Button
               onClick={() => navigate('/')}
               className="flex-1 bg-[#f5f5f7] dark:bg-[#2C2F35] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-12 flex items-center justify-center gap-2"

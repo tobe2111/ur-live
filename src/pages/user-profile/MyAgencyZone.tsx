@@ -73,7 +73,7 @@ export default function MyAgencyZone({ ownSellerIds, inHead = false }: { ownSell
     <Suspense fallback={null}>
       {/* 🗂️ 2026-11-03 — 폰 '에이전시' 탭(`inHead`)이면 에이전시 이름은 맨 위 머리가 갖는다 → 여기는 '에이전시 운영' 제목만. */}
       {/* 🧾 2026-11-03 폰 '에이전시' 탭(`inHead`)은 토스 참고 안 — 판(카드)이 스스로 묶으니 구역 제목을 세우지 않는다. */}
-      {!inHead && merged && <p className="px-4 mt-6 mb-1 text-[12px] font-medium text-gray-500 dark:text-gray-400">에이전시</p>}
+      {!inHead && merged && <p className="px-4 mt-8 mb-1 text-[12px] font-medium text-gray-500 dark:text-gray-400">에이전시</p>}
       <AgencySection stacked headless={merged || inHead} toss={inHead} ownSellerIds={merged ? ownSellerIds : undefined} onSessionEnd={onSessionEnd} />
     </Suspense>
   )

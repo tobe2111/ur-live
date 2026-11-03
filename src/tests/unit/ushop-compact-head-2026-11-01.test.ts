@@ -71,12 +71,12 @@ describe('① 이름 크기 — 글자만 보고 정한다(측정 금지)', () =
     expect(ushopNameWidthPx('', 17)).toBe(0)
   })
 
-  it('칸 상수가 머리 마크업과 맞는다 — 얼굴 40 + 옆 여백 20 + gap 16', () => {
+  it('칸 상수가 머리 마크업과 맞는다 — 얼굴 40 + 옆 여백 20 + gap 12', () => {
     const h = readCode(HEADER)
     expect(h, '얼굴 40px').toMatch(/const avatarCls = 'w-10 h-10 /)
-    expect(h, '이름 줄 여백·gap').toMatch(/flex items-center gap-4 px-5 pt-3/)
-    // 390(폰) − 40(px-5 양쪽) − 40(얼굴) − 16(gap-4) = 294
-    expect(USHOP_NAME_BOX_PX).toBe(390 - 40 - 40 - 16)
+    expect(h, '이름 줄 여백·gap').toMatch(/flex items-center gap-3 px-5 pt-3/)
+    // 390(폰) − 40(px-5 양쪽) − 40(얼굴) − 12(gap-3) = 298
+    expect(USHOP_NAME_BOX_PX).toBe(390 - 40 - 40 - 12)
   })
 })
 

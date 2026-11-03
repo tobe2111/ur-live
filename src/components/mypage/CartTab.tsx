@@ -26,7 +26,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
 
   if (cartItems.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">
           <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
             <BagIcon className="h-10 w-10 text-gray-400 dark:text-gray-500" />
@@ -34,7 +34,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
           <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">
             {t('cart.emptyTitle', { defaultValue: '장바구니가 비어있습니다' })}
           </h2>
-          <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">
+          <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-8">
             {t('cart.emptyMsg', { defaultValue: '마음에 드는 상품을 담아보세요' })}
           </p>
           <Link
@@ -49,7 +49,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
   }
 
   return (
-    <div className="space-y-4 pb-28">
+    <div className="space-y-3 pb-28">
       <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden divide-y divide-gray-100">
         {cartItems.map(item => (
           <div key={item.id} className="p-4">

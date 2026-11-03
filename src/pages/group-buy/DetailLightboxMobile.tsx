@@ -63,7 +63,7 @@ export default function DetailLightboxMobile({
   const multi = images.length > 1
 
   return (
-    <div className="lg:hidden w-full flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
+    <div className="lg:hidden w-full flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
       <div className="relative w-full px-5">
         <div ref={rowRef} onScroll={onScroll} className="scrollbar-hide flex overflow-x-auto rounded-[20px]"
           style={{ scrollSnapType: 'x mandatory', overscrollBehaviorX: 'contain' }}>

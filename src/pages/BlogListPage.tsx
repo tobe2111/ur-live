@@ -196,7 +196,7 @@ export default function BlogListPage() {
           {loading ? (
             <div className="divide-y divide-gray-100 dark:divide-[#2C2F35]">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-start justify-between gap-6 py-6">
+                <div key={i} className="flex items-start justify-between gap-5 py-6">
                   <div className="flex-1 space-y-3">
                     <div className="h-3 w-24 bg-gray-100 dark:bg-[#1D1F29] rounded animate-pulse" />
                     <div className="h-5 w-3/4 bg-gray-100 dark:bg-[#1D1F29] rounded animate-pulse" />

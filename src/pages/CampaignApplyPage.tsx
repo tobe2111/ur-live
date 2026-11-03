@@ -75,7 +75,7 @@ export default function CampaignApplyPage() {
     <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-10 px-4">
       <SEO title={`${campaign.title} - 유어딜`} description={campaign.subtitle} url={`/campaign/${campaign.code}`} />
       <div className="mx-auto max-w-lg">
-        <div className="mb-6 text-center">
+        <div className="mb-8 text-center">
           <h1 className="text-[20px] font-semibold text-gray-900">{campaign.title}</h1>
           <p className="mt-2 text-[15px] text-gray-600">{campaign.subtitle}<br />신청과 동시에 유어딜 인플루언서 파트너로 등록됩니다.</p>
         </div>
@@ -109,7 +109,7 @@ export default function CampaignApplyPage() {
             </a>
           </div>
         ) : (
-          <div className="rounded-xl p-6 space-y-4">
+          <div className="rounded-xl p-6 space-y-3">
             <div>
               <label className="block text-[15px] font-medium text-gray-700 mb-1">활동 계정 주소(URL) <span className="text-rose-500">*</span></label>
               <input value={f.account_url} onChange={set('account_url')} placeholder="https://instagram.com/..." className={input} />

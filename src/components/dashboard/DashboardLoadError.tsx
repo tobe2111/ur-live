@@ -25,7 +25,7 @@ export default function DashboardLoadError({ error, onRetry, loginPath, label = 
     <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
       <p className="text-[15px] font-bold text-red-700">{label}을(를) 불러오지 못했습니다</p>
       <p className="mt-1 text-[12px] text-red-600">{msg}{st ? ` (HTTP ${st})` : ''}</p>
-      <div className="mt-4 flex items-center justify-center gap-2">
+      <div className="mt-5 flex items-center justify-center gap-2">
         {onRetry && <button onClick={onRetry} className="px-4 py-2 rounded-lg text-[15px] font-medium bg-brand text-white hover:bg-brand-dark">다시 시도</button>}
         {loginPath && <button onClick={() => { window.location.href = loginPath }} className="px-4 py-2 rounded-lg text-[15px] font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">다시 로그인</button>}
       </div>

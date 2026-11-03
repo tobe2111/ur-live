@@ -15,7 +15,7 @@ export function ListLoadError({ onRetry, className = '' }: { onRetry: () => void
     <div className={`text-center ${className}`}>
       {/* 🦦 2026-10-07 유달이 — '못 불러왔다'는 미안한 얼굴로. 빈 상태(졸린 얼굴)와 얼굴부터 다르다. */}
       <Udal mood="oops" size={88} className="mx-auto mb-3" />
-      <p className="mb-4 text-[15px] text-gray-900 dark:text-white">{t('common.loadFailed')}</p>
+      <p className="mb-5 text-[15px] text-gray-900 dark:text-white">{t('common.loadFailed')}</p>
       <button
         onClick={onRetry}
         className="px-6 py-2 rounded-full bg-brand text-white text-[13px] font-medium active:opacity-90"

@@ -156,9 +156,9 @@ export default function ReferralPage() {
           </div>
         </div>
 
-        <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32">
+        <div className="ur-content-narrow px-5 lg:px-8 py-4 space-y-3 pb-32">
           {/* 식당 + 가격 */}
-          <section className="rounded-2xl p-4">
+          <section className="rounded-2xl p-5">
             <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{community.restaurant_name}</p>
             {community.restaurant_address && (
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{community.restaurant_address}</p>
@@ -178,7 +178,7 @@ export default function ReferralPage() {
 
           {/* 🏭 2026-06-07 (사용자 요청): 공구를 유치한 사람이 작성한 소개글 노출 */}
           {community.description && (
-            <section className="rounded-2xl p-4">
+            <section className="rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center text-[12px] font-medium">
                   {community.creator_name?.slice(0, 1) || '제'}
@@ -194,7 +194,7 @@ export default function ReferralPage() {
           )}
 
           {/* 보증금 안내 */}
-          <section className="rounded-2xl p-4">
+          <section className="rounded-2xl p-5">
             <div className="flex items-center justify-between">
               <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('groupbuy.depositLabel', { defaultValue: '1인당 보증금' })}</span>
               <span className="text-[15px] font-bold text-gray-900 dark:text-white">{formatNumber(community.deposit_per_person)}딜</span>
@@ -230,9 +230,9 @@ export default function ReferralPage() {
   if (!group) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-4">
-        <GiftBoxIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
+        <GiftBoxIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-5" />
         <p className="text-gray-900 dark:text-white font-semibold text-[16px]">유효하지 않은 초대입니다</p>
-        <Link to="/" className="mt-4 text-gray-900 dark:text-white text-[15px] font-medium underline">홈으로 돌아가기</Link>
+        <Link to="/" className="mt-5 text-gray-900 dark:text-white text-[15px] font-medium underline">홈으로 돌아가기</Link>
       </div>
     )
   }
@@ -275,11 +275,11 @@ export default function ReferralPage() {
         </div>
       </div>
 
-      <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32" style={{ background: '#F9FAFB', minHeight: 'calc(100dvh - 48px)' }}>
+      <div className="ur-content-narrow px-5 lg:px-8 py-4 space-y-3 pb-32" style={{ background: '#F9FAFB', minHeight: 'calc(100dvh - 48px)' }}>
         {/* 1. Hero Header — 상품 + 크리에이터 + 카운트다운 */}
-        <section className="rounded-2xl p-4">
+        <section className="rounded-2xl p-5">
           {product && (
-            <div className="flex gap-3 mb-4">
+            <div className="flex gap-3 mb-5">
               {product.image_url && (
                 <img src={cfImage(product.image_url, { width: 200, quality: 82, format: 'auto' }) || product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-[#2C2F35]" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, product.image_url)} />
               )}

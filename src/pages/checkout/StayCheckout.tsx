@@ -122,7 +122,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
     <div className="min-h-[100dvh] bg-gray-50">
       <SEO title="숙소 결제 - 유어딜" description="숙소 예약 결제" url="/checkout" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
-        <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
+        <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 h-[52px]">
           <button onClick={goBack} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로">
             <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
@@ -131,13 +131,13 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
         </div>
       </header>
 
-      <main className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4 pb-36">
+      <main className="ur-content-narrow px-5 lg:px-8 py-5 space-y-3 pb-36">
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : error || !order ? (
-          <div className="p-4 bg-tone-bad-bg rounded-2xl">
+          <div className="p-5 bg-tone-bad-bg rounded-2xl">
             <div className="flex items-center gap-2">
               <AlertIcon className="w-5 h-5 text-red-600 shrink-0" />
               <p className="text-[13px] font-medium text-red-800">{error || '주문을 불러오지 못했습니다'}</p>
@@ -149,7 +149,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
         ) : (
           <>
             {/* 예약 요약 — 서버 데이터 그대로 표시 */}
-            <section className="rounded-2xl p-4 space-y-3">
+            <section className="rounded-2xl p-5 space-y-3">
               <p className="text-[12px] text-gray-500">예약 내역 ({bookings.length}건)</p>
               {bookings.map((b) => (
                 <div key={b.id} className="flex items-start gap-3 pt-1">
@@ -184,7 +184,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
             </section>
 
             {alreadyPaid && (
-              <div className="p-4 bg-tone-ok-bg rounded-2xl">
+              <div className="p-5 bg-tone-ok-bg rounded-2xl">
                 <p className="text-[13px] font-medium text-tone-ok">이미 결제가 완료된 주문입니다.</p>
                 <button onClick={() => navigate('/my-stays')} className="mt-2 text-[12px] text-brand-text underline font-medium">
                   내 숙소 예약 보기 →
@@ -192,14 +192,14 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
               </div>
             )}
             {notPayable && (
-              <div className="p-4 bg-tone-warn-bg rounded-2xl">
+              <div className="p-5 bg-tone-warn-bg rounded-2xl">
                 <p className="text-[13px] font-medium text-tone-warn">
                   결제할 수 없는 주문 상태입니다 ({order.status}). 예약을 다시 생성해주세요.
                 </p>
               </div>
             )}
             {!alreadyPaid && !notPayable && !clientKey && (
-              <div className="p-4 bg-tone-bad-bg rounded-2xl">
+              <div className="p-5 bg-tone-bad-bg rounded-2xl">
                 <p className="text-[13px] font-medium text-tone-bad">결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.</p>
               </div>
             )}
@@ -213,7 +213,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
           className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white border-t border-gray-100 z-30"
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
         >
-          <div className="ur-content-narrow px-4 pt-3">
+          <div className="ur-content-narrow px-5 pt-3">
             <button
               onClick={handlePay}
               disabled={!clientKey}

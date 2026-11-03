@@ -477,7 +477,7 @@ export default function VoucherScanner({ full = false }: { full?: boolean } = {}
   }
 
   return (
-    <div className="space-y-4" {...wake}>
+    <div className="space-y-3" {...wake}>
       {/* 🔔 결과 깜빡임 — 아이폰엔 진동이 없고 무음 모드면 소리도 없다. 이것이 늘 되는 신호다. */}
       {flashLayer}
       {/* 카메라 뷰 */}
@@ -539,7 +539,7 @@ export default function VoucherScanner({ full = false }: { full?: boolean } = {}
           이 한 쌍이 이 화면에서 가장 중요한 신호다. */}
       {latest && (
         // 🎬 2026-11-02 시안 B1: 결과가 나올 때마다(flash.n) 카드가 올라오고 성공 체크가 톡 박힌다 — 손님 앞에서 "됐다"를 1초 안에.
-        <div key={flash?.n ?? 0} className={`ur-rise rounded-2xl p-4 ${latest.ok ? 'bg-tone-ok-bg' : 'bg-tone-bad-bg'}`}>
+        <div key={flash?.n ?? 0} className={`ur-rise rounded-2xl p-5 ${latest.ok ? 'bg-tone-ok-bg' : 'bg-tone-bad-bg'}`}>
           <div className="flex items-center gap-2">
             {latest.ok
               ? <OkIcon className="ur-popin w-7 h-7 text-tone-ok shrink-0" style={{ animationDelay: '120ms' }} />

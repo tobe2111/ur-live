@@ -51,7 +51,7 @@ export default function HostInvitePage() {
       <div className="min-h-screen bg-[#11141C] text-white flex flex-col items-center justify-center px-4 text-center">
         <p className="text-[48px] mb-3">😢</p>
         <p className="text-[15px] mb-2">{error}</p>
-        <Link to="/" className="mt-4 px-6 py-3 bg-brand rounded-xl font-bold">홈으로</Link>
+        <Link to="/" className="mt-5 px-6 py-3 bg-brand rounded-xl font-bold">홈으로</Link>
       </div>
     )
   }
@@ -82,7 +82,7 @@ export default function HostInvitePage() {
         </header>
 
         {/* 상품 카드 */}
-        <div className="max-w-md mx-auto px-4">
+        <div className="max-w-md mx-auto px-5">
           <div className="bg-[#11141C] rounded-2xl border border-[#2C2F35] overflow-hidden">
             {(data.thumbnail || data.image_url) && (
               <div className="aspect-video bg-[#1D1F29]">
@@ -91,7 +91,7 @@ export default function HostInvitePage() {
             )}
             <div className="p-5">
               <p className="text-[15px] font-bold mb-2">{data.product_name}</p>
-              <div className="flex items-baseline gap-2 mb-4">
+              <div className="flex items-baseline gap-2 mb-5">
                 <span className="text-[24px] font-bold text-brand-text">{formatWon(data.price)}</span>
                 {data.original_price && data.original_price > data.price && (
                   <span className="text-[15px] text-gray-500 line-through">{formatWon(data.original_price)}</span>

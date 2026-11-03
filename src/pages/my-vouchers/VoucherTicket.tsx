@@ -101,7 +101,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
       onKeyDown={tappable ? (e) => { if (e.key === 'Enter') onShowQr() } : undefined}
       className={`rounded-2xl overflow-hidden ${inactive ? 'opacity-60' : ''} ${tappable ? 'cursor-pointer' : ''}`}
     >
-      <div className="flex gap-4 p-4">
+      <div className="flex gap-3 p-4">
         <div className="w-[72px] h-[72px] shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-white/10 flex items-center justify-center">
           {v.product_image ? (
             <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />

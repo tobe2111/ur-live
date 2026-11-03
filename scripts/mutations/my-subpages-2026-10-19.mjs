@@ -81,8 +81,8 @@ export default [
   {
     name: '마이하위 — 알림 빈 화면 버튼이 보조 버튼으로 돌아간다',
     file: 'src/pages/NotificationsPage.tsx',
-    find: 'className="ur-btn ur-btn-md ur-btn-primary mt-6"',
-    replace: 'className="ur-btn ur-btn-md ur-btn-secondary mt-6"',
+    find: 'className="ur-btn ur-btn-md ur-btn-primary mt-8"',
+    replace: 'className="ur-btn ur-btn-md ur-btn-secondary mt-8"',
     test: T,
     why: '그 화면의 유일한 할 일인데 회색 테두리 버튼이면 주 행동으로 안 읽힌다.',
   },

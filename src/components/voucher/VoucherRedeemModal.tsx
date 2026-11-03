@@ -182,7 +182,7 @@ export default function VoucherRedeemModal({
             <div className="mx-auto w-fit animate-bounce-in">
               <Udal mood="done" size={112} motion priority />
             </div>
-            <p className="text-[20px] font-semibold text-gray-900 dark:text-white mt-4">사용 완료</p>
+            <p className="text-[20px] font-semibold text-gray-900 dark:text-white mt-5">사용 완료</p>
             <p className="text-[15px] font-bold text-gray-700 dark:text-gray-200 mt-1">{store}</p>
             <p className="text-[28px] font-bold text-gray-900 dark:text-white tabular-nums mt-2 tracking-tight">{clock}</p>
             <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">직원에게 이 화면을 보여주세요</p>

@@ -92,7 +92,7 @@ export default function RedeemHowTo() {
           </li>
         ))}
       </ol>
-      <p className="mt-4 mb-0 text-[12px] leading-[1.5]" style={{ color: 'var(--gbd-sub)' }}>
+      <p className="mt-5 mb-0 text-[12px] leading-[1.5]" style={{ color: 'var(--gbd-sub)' }}>
         <b className="font-medium">스캔이 안 되면?</b> {REDEEM_FALLBACK}
       </p>
     </div>

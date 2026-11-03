@@ -192,7 +192,7 @@ export default function PointsChargePage() {
       {/* 헤더 — 🛡️ 2026-05-22: top-14 (md+) 제거. PC layout 위 빈 공간 깨짐 fix.
             /points/charge 는 fullScreenPrefixes 라 DesktopTopNav 없음 → top-0 통일. */}
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
+        <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 h-[52px]">
           <button
             onClick={goBack}
             className="w-9 h-9 flex items-center justify-center"
@@ -205,7 +205,7 @@ export default function PointsChargePage() {
         </div>
       </header>
 
-      <main className="ur-content-narrow px-4 lg:px-8 pt-5 pb-28 space-y-4">
+      <main className="ur-content-narrow px-5 lg:px-8 pt-5 pb-28 space-y-3">
         {/* 현재 잔액 카드 */}
         <section className="relative overflow-hidden rounded-2xl p-5 bg-gray-800 text-white shadow-md">
           <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white dark:bg-[#11141C]/10" aria-hidden="true" />
@@ -303,7 +303,7 @@ export default function PointsChargePage() {
         className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] z-30"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
-        <div className="ur-content-narrow px-4 pt-3">
+        <div className="ur-content-narrow px-5 pt-3">
           <button
             onClick={handleCharge}
             disabled={!selected || processing}

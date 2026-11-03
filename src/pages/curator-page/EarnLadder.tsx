@@ -35,7 +35,7 @@ interface Props {
 
 export default function EarnLadder({ dealCount, pinCount }: Props) {
   return (
-    <div className="max-w-3xl mx-auto px-4 pt-3">
+    <div className="max-w-3xl mx-auto px-5 pt-3">
       <div className="rounded-2xl overflow-hidden">
         <div className="px-4 pt-4 pb-2">
           <p className="text-[15px] font-bold text-gray-900 dark:text-white">내 유어샵으로 버는 법</p>

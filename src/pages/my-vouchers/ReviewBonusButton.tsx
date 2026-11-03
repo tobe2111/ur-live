@@ -68,7 +68,7 @@ function ReviewBonusButtonInner({ voucherCode, restaurantName, restaurantAddress
   return (
     <>
       <button onClick={() => setOpen(true)}
-        className="mt-4 w-full py-2 rounded-xl bg-brand text-white text-[12px] font-medium flex items-center justify-center gap-1">
+        className="mt-5 w-full py-2 rounded-xl bg-brand text-white text-[12px] font-medium flex items-center justify-center gap-1">
         ⭐ 카카오맵 후기 작성하고 보너스 받기
       </button>
       {/* 🪟 2026-10-12 대표 신고 스크린샷(시트 뒤로 카드가 비쳐 겹쳐 보임) — 이 버튼은 '지난 이용권' 카드 안에 있고
@@ -78,7 +78,7 @@ function ReviewBonusButtonInner({ voucherCode, restaurantName, restaurantAddress
         <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={() => setOpen(false)}>
           <div className="ur-glass ur-pop-card p-5 w-full max-w-md max-h-[90vh] overflow-y-auto ur-dialog-in" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2"><StarIcon className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />카카오맵 후기 작성 보너스</h3>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">
               매장 카카오맵 후기 작성하고 인증해주시면 보너스 딜 지급 (기본 1,000딜).
               <br/>1) 카카오맵 앱에서 매장 검색 → 후기 작성
               <br/>2) 후기 페이지 URL 복사 또는 스크린샷 캡쳐

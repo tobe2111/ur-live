@@ -421,7 +421,7 @@ export default function GroupBuyFeed({
       </div>
       )}
 
-      {category === 'home_voucher' && <Suspense fallback={<div className="mx-4 mb-5 mt-2 h-[72px]" />}><LifeQuoteBanner sub={life.sub} /></Suspense>}{/* 피드 — 2열 그리드 (당근식) · 🏠 생활 칩이면 견적 받기 한 줄(2026-10-24) */}
+      {category === 'home_voucher' && <Suspense fallback={<div className="mx-5 mb-5 mt-2 h-[72px]" />}><LifeQuoteBanner sub={life.sub} /></Suspense>}{/* 피드 — 2열 그리드 (당근식) · 🏠 생활 칩이면 견적 받기 한 줄(2026-10-24) */}
       {loading ? (
         <div className={gridCls}>
           {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}
@@ -439,7 +439,7 @@ export default function GroupBuyFeed({
         <div className="px-4 py-16 text-center">
           <p className="text-[34px] mb-3">📡</p>
           <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">공구를 불러오지 못했어요</p>
-          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인해주세요.</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">네트워크 상태를 확인해주세요.</p>
           <button onClick={() => refetch()} className="inline-block px-5 py-3 bg-brand text-white rounded-full text-[15px] font-bold">다시 시도</button>
         </div>
       ) : sorted.length === 0 ? (
@@ -451,7 +451,7 @@ export default function GroupBuyFeed({
         <>
         {/* 🗺️ 2026-07-19: 지역 매칭 0 → 전체 폴백 사실을 명시(조용한 오표시 방지 — "부산인데 서울 딜?" 오해 차단). */}
         {regionFallback && (
-          <div className={pc ? 'mb-4' : 'mx-4 mb-3'}>
+          <div className={pc ? 'mb-5' : 'mx-5 mb-3'}>
             <p className="px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 text-[13px] font-medium">
               선택한 지역에 아직 등록된 딜이 없어요 — 전체 지역 딜을 보여드릴게요.
             </p>

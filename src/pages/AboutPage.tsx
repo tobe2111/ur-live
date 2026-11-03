@@ -39,20 +39,20 @@ export default function AboutPage() {
       <div className="bg-white dark:bg-[#11141C] text-gray-900 dark:text-white min-h-screen">
         {/* ========== Hero ========== */}
         <section className="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-[#1A0A14] dark:via-[#11141C] dark:to-[#0F0A1A] border-b border-gray-100 dark:border-[#2C2F35]">
-          <div className="ur-content-wide px-4 lg:px-8 py-16 lg:py-24">
+          <div className="ur-content-wide px-5 lg:px-8 py-16 lg:py-24">
             <div className="text-center max-w-4xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-tint text-brand-text text-[12px] font-medium mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-tint text-brand-text text-[12px] font-medium mb-8">
                 <Sparkles className="w-3.5 h-3.5" />
                 우리 동네 이용권
               </div>
-              <h1 className="text-[34px] sm:text-[48px] lg:text-[60px] xl:text-[76px] font-bold tracking-tight leading-tight mb-6">
+              <h1 className="text-[34px] sm:text-[48px] lg:text-[60px] xl:text-[76px] font-bold tracking-tight leading-tight mb-8">
                 유어딜
                 <span className="block text-brand-text mt-2">정가보다 싸게, 매장에서 바로</span>
               </h1>
-              <p className="text-[15px] sm:text-[16px] lg:text-[16px] text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+              <p className="text-[15px] sm:text-[16px] lg:text-[16px] text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
                 우리 동네 맛집·뷰티·숙소 이용권을 할인가로.
               </p>
-              <p className="text-[15px] sm:text-[16px] lg:text-[16px] text-gray-600 dark:text-gray-300 leading-relaxed mb-10">
+              <p className="text-[15px] sm:text-[16px] lg:text-[16px] text-gray-600 dark:text-gray-300 leading-relaxed mb-12">
                 인원과 상관없이 처음부터 같은 가격, 결제하면 이용권이 바로 들어와요.
               </p>
 
@@ -84,7 +84,7 @@ export default function AboutPage() {
 
         {/* ========== TL;DR ========== */}
         <Section id="tldr" title="30초 요약" subtitle="대상별 핵심 가치">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <ValueCard
               icon={<BagIcon className="w-6 h-6" />}
               tag="소비자"
@@ -118,7 +118,7 @@ export default function AboutPage() {
 
         {/* ========== 차별점 ========== */}
         <Section id="diff" title="유어딜은 무엇이 다른가" subtitle="동네 할인을 가장 정직하게">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <FeatureCard
               icon={<BagIcon className="w-5 h-5" />}
               title="정직한 단일가"
@@ -144,7 +144,7 @@ export default function AboutPage() {
 
         {/* ========== 셀러 기대효과 ========== */}
         <Section id="seller" title="셀러 기대효과" subtitle="왜 유어딜에서 시작해야 하는가" tone="brand">
-          <div className="space-y-10">
+          <div className="space-y-8">
             <SubBlock title="2-1. 진입장벽 ZERO" icon={<Zap className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-[15px] lg:text-[15px]">
                 <li>· 카카오맵에서 가게 찾기 → 5분 내 이용권 등록</li>
@@ -220,7 +220,7 @@ export default function AboutPage() {
 
         {/* ========== 에이전시 기대효과 ========== */}
         <Section id="agency" title="에이전시 (MCN) 기대효과" subtitle="왜 유어딜에서 셀러를 키우는가" tone="purple">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <FeatureCard
               icon={<PeopleIcon className="w-5 h-5" />}
               title="멤버 셀러 통합 대시보드"
@@ -343,7 +343,7 @@ export default function AboutPage() {
 
         {/* ========== 로드맵 ========== */}
         <Section id="roadmap" title="로드맵" subtitle="우리가 어디로 가는가">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <RoadmapCard
               tag="단기 (Q2 2026)"
               icon={<Zap className="w-5 h-5" />}
@@ -375,7 +375,7 @@ export default function AboutPage() {
 
         {/* ========== 누구에게 적합 ========== */}
         <Section id="fit" title="누구에게 가장 적합한가" subtitle="이런 분들께 추천드립니다">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <FitCard
               title="셀러 / 매장"
               icon={<PinIcon className="w-5 h-5" />}
@@ -411,15 +411,15 @@ export default function AboutPage() {
 
         {/* ========== Final CTA ========== */}
         <section className="bg-gradient-to-br from-gray-800 to-gray-900 dark:bg-none dark:bg-gray-900 text-white py-16 lg:py-24">
-          <div className="ur-content-wide px-4 lg:px-8 text-center">
-            <h2 className="text-[24px] sm:text-[34px] lg:text-[48px] font-bold mb-4">시작하기</h2>
-            <p className="text-[15px] lg:text-[16px] text-white/90 mb-10 max-w-2xl mx-auto">
+          <div className="ur-content-wide px-5 lg:px-8 text-center">
+            <h2 className="text-[24px] sm:text-[34px] lg:text-[48px] font-bold mb-5">시작하기</h2>
+            <p className="text-[15px] lg:text-[16px] text-white/90 mb-12 max-w-2xl mx-auto">
               유어딜은 우리 동네 가게와 손님을 할인 이용권으로 잇습니다.
               <br />
               5분 만에 시작하고, 팔린 만큼만 냅니다.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto mb-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto mb-12">
               <CTACard to="/store/new" title="매장" subtitle="카카오맵으로 가게 찾기 → 이용권 등록" />
               {/* login-return-ok: 소개 랜딩의 시작 CTA — 돌아올 "보던 화면" 이 없다 */}
               <CTACard to="/login" title="소비자" subtitle="카카오 로그인 → 동네 이용권" />
@@ -478,7 +478,7 @@ function Section({
   }
   return (
     <section id={id} className={`${toneBg[tone]} border-b border-gray-100 dark:border-[#2C2F35]`}>
-      <div className="ur-content-wide px-4 lg:px-8 py-12 lg:py-20">
+      <div className="ur-content-wide px-5 lg:px-8 py-12 lg:py-20">
         <div className="mb-8 lg:mb-12 text-center">
           <h2 className="text-[20px] sm:text-[24px] lg:text-[34px] xl:text-[48px] font-semibold text-gray-900 dark:text-white mb-3">{title}</h2>
           {subtitle && <p className="text-[15px] lg:text-[15px] text-gray-600 dark:text-gray-400">{subtitle}</p>}
@@ -510,7 +510,7 @@ function ValueCard({
   }
   return (
     <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${map[color]}`}>{icon}</div>
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${map[color]}`}>{icon}</div>
       <div className="text-[12px] font-medium text-gray-500 dark:text-gray-400 mb-2">{tag}</div>
       <h3 className="text-[16px] lg:text-[16px] font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
       <p className="text-[15px] text-gray-600 dark:text-gray-400 leading-relaxed">{desc}</p>
@@ -531,7 +531,7 @@ function ComparisonTable({
 }) {
   return (
     <div>
-      <h3 className="text-[16px] lg:text-[16px] font-semibold text-gray-900 dark:text-white mb-4">{title}</h3>
+      <h3 className="text-[16px] lg:text-[16px] font-semibold text-gray-900 dark:text-white mb-5">{title}</h3>
       <div className="overflow-x-auto rounded-2xl border border-line">
         <table className="w-full text-[15px]">
           <thead>
@@ -624,7 +624,7 @@ function SubBlock({
 }) {
   return (
     <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-5">
         <div className="w-9 h-9 rounded-lg bg-brand-tint text-brand-text flex items-center justify-center">
           {icon}
         </div>
@@ -670,14 +670,14 @@ function WowMoment({
 }) {
   return (
     <div className="p-5 lg:p-8 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-5">
         <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-300 flex items-center justify-center">
           {icon}
         </div>
         <h3 className="text-[16px] lg:text-[16px] font-semibold text-gray-900 dark:text-white">{title}</h3>
       </div>
       {quote && (
-        <blockquote className="border-l-4 border-amber-300 dark:border-amber-700 pl-4 py-2 mb-4 text-gray-700 dark:text-gray-300 text-[15px] lg:text-[15px] italic">
+        <blockquote className="border-l-4 border-amber-300 dark:border-amber-700 pl-4 py-2 mb-5 text-gray-700 dark:text-gray-300 text-[15px] lg:text-[15px] italic">
           {quote}
         </blockquote>
       )}
@@ -707,7 +707,7 @@ function RoadmapCard({
 }) {
   return (
     <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-5">
         <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
           {icon}
         </div>
@@ -736,7 +736,7 @@ function FitCard({
 }) {
   return (
     <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-5">
         <div className="w-10 h-10 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center">
           {icon}
         </div>

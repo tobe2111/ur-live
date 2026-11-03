@@ -64,7 +64,7 @@ export default function FAQPage() {
 
       <SubPageHeader title={t('faq.title', { defaultValue: '자주 묻는 질문' })} fallback="/" backLabel={t('common.back', { defaultValue: '뒤로가기' })} />
 
-      <div className="ur-content-medium px-4 lg:px-8 pt-4 pb-20">
+      <div className="ur-content-medium px-5 lg:px-8 pt-4 pb-20">
         {/* Hero */}
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-2">
@@ -75,7 +75,7 @@ export default function FAQPage() {
         </div>
 
         {/* Search */}
-        <div className="relative mb-4">
+        <div className="relative mb-5">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
             type="text"
@@ -148,7 +148,7 @@ export default function FAQPage() {
         {/* 고객센터 */}
         <div className="mt-8 bg-gray-50 dark:bg-[#1D1F29] rounded-2xl p-5">
           <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('faq.supportTitle', { defaultValue: '도움이 더 필요하신가요?' })}</h2>
-          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{t('faq.supportDesc', { defaultValue: '궁금한 사항이 해결되지 않았다면 연락주세요.' })}</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">{t('faq.supportDesc', { defaultValue: '궁금한 사항이 해결되지 않았다면 연락주세요.' })}</p>
           <div className="space-y-2">
             {/* 🧹 2026-06-21 (대표 — 고객센터 전화번호 전체 비노출): 전화 행 제거, 이메일/운영시간만 안내. */}
             <div className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-200">

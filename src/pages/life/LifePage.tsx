@@ -56,7 +56,7 @@ function IconRow({ keys }: { keys: readonly HomeServiceCategory[] }) {
   const shown = folded ? keys.slice(0, ICON_ROW_MAX - 1) : keys
   const tile = 'flex flex-col items-center gap-2 active:opacity-70'
   return (
-    <ul className="mt-4 grid grid-cols-5 gap-x-1 gap-y-5">
+    <ul className="mt-5 grid grid-cols-5 gap-x-1 gap-y-5">
       {shown.map((k, ti) => (
         <li key={k} className="ur-life-tile" style={{ '--i': Math.min(ti, 10) } as React.CSSProperties}>
           <Link to={`/life/request/${k}`} className={tile}>
@@ -101,7 +101,7 @@ export default function LifePage() {
       <SEO title={withSiteName(LIFE_HUB_SEO.title)} description={LIFE_HUB_SEO.description} url="/life" />
 
       {/* 🖥️ 2026-10-26 PC: 액자를 벗고(pc-fullbleed) 두 칸 — 왼쪽 업종, 오른쪽 바로 사기·질문·업체 안내. */}
-      <div className="mx-auto w-full max-w-[720px] space-y-3 px-4 pb-10 pt-5 lg:max-w-[1120px] lg:px-8 lg:pt-8">
+      <div className="mx-auto w-full max-w-[720px] space-y-3 px-5 pb-10 pt-5 lg:max-w-[1120px] lg:px-8 lg:pt-8">
         {/* 🏠 2026-11-03 대표 확정 안 5 — 평면 머리 + 주 버튼(업종 고르기 창) + 실시간 한 줄(C). 상세 `LifeHero.tsx`. */}
         <LifeHero groups={GROUPS} open={open} live={live} />
 
@@ -116,7 +116,7 @@ export default function LifePage() {
                   const def = categoryDef(k)
                   return (
                     <li key={k}>
-                      <Link to={`/life/request/${k}`} className="flex items-center gap-4 py-3 active:opacity-70">
+                      <Link to={`/life/request/${k}`} className="flex items-center gap-3 py-3 active:opacity-70">
                         <LifeTileIcon category={k} size={44} />
                         <span className="min-w-0 flex-1">
                           <span className="block text-[15px] font-bold">{def?.label} 업체 찾기</span>

@@ -46,7 +46,7 @@ export default function CreatorApplyPage() {
       {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
       <SEO title={CONSUMER_SURFACE_SEO['/creators/apply'].title} description={CONSUMER_SURFACE_SEO['/creators/apply'].description} url="/creators/apply" />
       <div className="mx-auto max-w-lg">
-        <div className="mb-6 text-center">
+        <div className="mb-8 text-center">
           <h1 className="text-[24px] font-bold text-gray-900">유어딜 소개 파트너 신청</h1>
           <p className="mt-2 text-[15px] text-gray-600">동네 맛집·카페·뷰티·네일·숙소 이용권을 소개해 주실 분을 찾습니다.<br />신청해주시면 제휴 담당자가 검토 후 연락드립니다.</p>
         </div>
@@ -64,7 +64,7 @@ export default function CreatorApplyPage() {
             <p className="mt-2 text-[12px] text-gray-500">가입하면 내 유어샵이 자동으로 생기고, 마음에 든 이용권을 담아 진열하고 소개하면 됩니다.</p>
           </div>
         ) : (
-          <div className="rounded-xl p-6 space-y-4">
+          <div className="rounded-xl p-6 space-y-3">
             <div>
               <label className="block text-[15px] font-medium text-gray-700 mb-1">이름 · 채널명 <span className="text-rose-500">*</span></label>
               <input value={f.name} onChange={set('name')} placeholder="예: 방배동 미식가" className={input} />

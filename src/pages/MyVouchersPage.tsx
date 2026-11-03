@@ -236,7 +236,7 @@ export default function MyVouchersPage() {
           (2026-11-03 토스 참고로 대체 — 장수는 목록 판 머리, 합계는 목록 아래 판.) */}
       {/* 🧾 2026-11-03 대표 *"이용권 페이지는 마음에 들어"*(토스 참고 시안 I1) — 제목이 다시 보인다(24·700) · 지도는 제목 줄 오른쪽.
           판(카드)으로 묶는다: [곧 끝나는 이용권] · [쓸 수 있는 이용권 N] · [합계]. 2026-11-02 평면(A안)의 이 화면 한정 예외다. */}
-      <div className="ur-content-narrow px-4 lg:px-8 pt-4 pb-3 flex items-center justify-between">
+      <div className="ur-content-narrow px-5 lg:px-8 pt-4 pb-3 flex items-center justify-between">
         <h1 className="text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">{t('voucher.myVouchers')}</h1>
         {mapVouchers.length > 0 && viewMode === 'list' && (
           <button type="button" onClick={() => setViewMode('map')}
@@ -247,14 +247,14 @@ export default function MyVouchersPage() {
       </div>
 
 
-      <div className="ur-content-narrow px-4 lg:px-8 pb-2">
+      <div className="ur-content-narrow px-5 lg:px-8 pb-2">
         {loading ? (
           <BrandLoader />
         ) : isError ? (
           /* 🛡️ 2026-07-02: 네트워크 실패를 "빈 지갑"으로 위장하지 않음 — 에러 + 재시도. */
           <div className="text-center py-16">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('voucher.loadFailed', { defaultValue: '이용권을 불러오지 못했어요' })}</p>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
             <button
               onClick={() => refetch()}
               className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold"
@@ -279,7 +279,7 @@ export default function MyVouchersPage() {
                 '전체 N' 은 탭이 이미 말하고, 만료가 가까운 순서는 목록 정렬이 이미 맡는다. */}
             {/* 🎬 2026-11-02 [UNLOCK_LOADING] 시안 3차 "탭 밑줄"(대표 "허락해줄게 잠금 파일 부분도") — 밑줄 하나가 고른 탭으로 미끄러진다.
                 측정 전(첫 그림)엔 종전처럼 탭 안에 밑줄을 그려 깜빡임이 없다. 유어샵 칩과 같은 `.ur-tab-bar`. */}
-            <div ref={tabRowRef} className="relative flex items-end gap-5 mb-4 border-b border-rule">
+            <div ref={tabRowRef} className="relative flex items-end gap-5 mb-5 border-b border-rule">
               {([['unused', t('voucher.groupUnused', { defaultValue: '사용 가능' })], ['done', t('voucher.groupPast', { defaultValue: '지난 이용권' })]] as const).map(([key, label]) => (
                 <button key={key} type="button" onClick={() => setTab(key)} data-tab={key}
                   className={`relative pb-2 text-[16px] tracking-[-0.02em] ${tab === key ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 font-semibold'}`}>

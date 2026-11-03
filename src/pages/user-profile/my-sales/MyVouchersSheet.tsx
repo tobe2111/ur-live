@@ -119,7 +119,7 @@ export default function MyVouchersSheet({ onClose, onOpenPage, onNew }: {
               <Card className="px-5 py-8 text-center">
                 <p className="text-[16px] font-semibold text-gray-900 dark:text-white">아직 이용권이 없어요</p>
                 <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">첫 이용권을 올리면 여기서 판매를 관리해요</p>
-                <button type="button" onClick={onNew} className="mt-4 ur-btn ur-btn-md ur-btn-primary">이용권 등록하기</button>
+                <button type="button" onClick={onNew} className="mt-5 ur-btn ur-btn-md ur-btn-primary">이용권 등록하기</button>
               </Card>
             ) : buckets[seg].length === 0 ? (
               <Card className="px-5 py-8 text-center"><p className="text-[13px] text-gray-500 dark:text-gray-400">이 상태의 이용권이 없어요</p></Card>

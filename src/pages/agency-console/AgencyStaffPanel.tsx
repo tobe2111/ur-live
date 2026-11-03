@@ -123,7 +123,7 @@ export function AgencyStaffPanel({ staff, canManage, onChanged, bare = false, so
           <p className="text-[15px] font-medium text-gray-900 dark:text-white">혼자 쓰는 계정이에요</p>
           <p className="mt-1 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">{KAKAO_SOLO_NOTICE}</p>
           {onMove && (
-            <button type="button" onClick={onMove} className="mt-4 h-11 rounded-xl bg-brand px-5 text-[15px] font-medium text-white">
+            <button type="button" onClick={onMove} className="mt-5 h-11 rounded-xl bg-brand px-5 text-[15px] font-medium text-white">
               이메일 계정으로 옮기기
             </button>
           )}
@@ -132,7 +132,7 @@ export function AgencyStaffPanel({ staff, canManage, onChanged, bare = false, so
         <form onSubmit={invite} className="mt-4 rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift">
           <p className="text-[15px] font-medium text-gray-900 dark:text-white">직원 초대</p>
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">초대 메일의 버튼을 누르면 이름과 비밀번호를 정하고 바로 합류해요. 링크는 7일 동안 쓸 수 있어요.</p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy}
               placeholder="직원 업무용 이메일" aria-label="직원 이메일" className={`${panelInputCls} sm:flex-1`} />
             <select value={role} onChange={(e) => setRole(e.target.value === 'admin' ? 'admin' : 'staff')} disabled={busy}

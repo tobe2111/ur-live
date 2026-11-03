@@ -34,7 +34,7 @@ export default function CancelOrderModal({
         className="ur-glass ur-pop-card max-w-md w-full p-6 overflow-hidden ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-5">
           <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">
             {t('cancelOrder.title', { defaultValue: '주문 취소' })}
           </h3>
@@ -53,7 +53,7 @@ export default function CancelOrderModal({
         </div>
 
         {/* 🛡️ 배치 170: 환불 가이드 (셀프서비스 안내) */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+        <div className="mb-5 p-3 bg-blue-50 border border-blue-100 rounded-xl">
           <p className="text-[12px] font-medium text-blue-800 mb-1">{t('cancelOrder.refundGuideTitle', { defaultValue: '환불 안내' })}</p>
           <ul className="text-[12px] text-blue-700 space-y-1">
             <li>• {t('cancelOrder.refundGuide1', { defaultValue: '결제 취소 시 결제 수단으로 자동 환불됩니다' })}</li>
@@ -62,7 +62,7 @@ export default function CancelOrderModal({
           </ul>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-5">
           <label className="block text-[15px] font-medium text-gray-600 dark:text-gray-300 mb-2">
             {t('cancelOrder.reasonLabel', { defaultValue: '취소 사유' })} <span className="text-red-500">*</span>
           </label>
@@ -80,7 +80,7 @@ export default function CancelOrderModal({
           </select>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-8">
           <label className="block text-[15px] font-medium text-gray-600 dark:text-gray-300 mb-2">{t('cancelOrder.refundMethod', { defaultValue: '환불 방식' })}</label>
           <div className="flex gap-2 mb-3">
             <button
@@ -129,7 +129,7 @@ export default function CancelOrderModal({
           )}
         </div>
 
-        <div className="mb-6 p-4 bg-blue-50 rounded-xl">
+        <div className="mb-8 p-4 bg-blue-50 rounded-xl">
           <div className="flex items-start gap-2">
             <AlertIcon className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
             <div className="text-[15px] text-blue-700">

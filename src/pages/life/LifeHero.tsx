@@ -27,19 +27,19 @@ export default function LifeHero({ groups, open, live }: { groups: readonly Life
           내 견적 요청<ChevronRight className="h-4 w-4" />
         </Link>
       </div>
-      <h1 className="mt-2 text-[24px] font-bold leading-snug tracking-tight lg:text-[40px]">사장님, 가게 일은<br className="lg:hidden" /> 여기서 맡기세요</h1>
+      <h1 className="mt-2 text-[20px] font-semibold leading-snug tracking-tight lg:text-[34px]">사장님, 가게 일은<br className="lg:hidden" /> 여기서 맡기세요</h1>
       <p className="mt-2 text-[15px] leading-relaxed text-gray-600 dark:text-gray-300">간판·방역·설비 수리까지, 근처 업체 견적을 무료로 비교해요.</p>
       <button
         type="button"
         disabled={!open}
         onClick={() => setPicking(true)}
-        className="ur-btn ur-btn-lg ur-btn-primary mt-4 flex w-full justify-center disabled:opacity-50 lg:w-auto lg:px-10"
+        className="ur-btn ur-btn-lg ur-btn-primary mt-5 flex w-full justify-center disabled:opacity-50 lg:w-auto lg:px-10"
       >
         무료로 견적 받기
       </button>
       {!open && <p className="mt-2 text-[13px] font-medium text-tone-bad">지금은 잠시 요청을 받지 않아요.</p>}
       {line && (
-        <p data-testid="life-live" className="mt-4 flex items-center gap-2 border-y border-rule py-3 text-[13px] text-gray-500 dark:text-gray-400">
+        <p data-testid="life-live" className="mt-5 flex items-center gap-2 border-y border-rule py-3 text-[13px] text-gray-500 dark:text-gray-400">
           <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${line.fresh ? 'bg-tone-ok' : 'bg-brand'}`} />
           <span className="min-w-0 truncate">{line.text}</span>
         </p>

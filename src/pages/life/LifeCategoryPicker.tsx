@@ -16,7 +16,7 @@ export default function LifeCategoryPicker({ groups, onClose }: { groups: readon
         {groups.map((g) => (
           <div key={g.title}>
             <p className="pb-2 text-[13px] font-medium text-gray-500 dark:text-gray-400">{g.title}</p>
-            <ul className="grid grid-cols-4 gap-x-1 gap-y-4">
+            <ul className="grid grid-cols-4 gap-x-1 gap-y-3">
               {g.keys.map((k) => (
                 <li key={k}>
                   <button type="button" onClick={() => navigate(`/life/request/${k}`)} className="flex w-full flex-col items-center gap-2 active:opacity-70">

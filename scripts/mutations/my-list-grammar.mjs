@@ -44,8 +44,8 @@ export default [
     name: '🧾 손님 목록이 다시 판 위에 올라간다 (판이 파는 쪽 표시자인데 둘이 된다)',
     file: 'src/pages/user-profile/ShoppingGroup.tsx',
     // 🔁 2026-10-14: PC 마이 B 로 `ur-pc-card`(lg 전용 CSS) 가 붙었다 — 결함(폰에도 판)은 그대로.
-    find: '    <div className="ur-content-medium lg:px-4 ur-pc-card">',
-    replace: '    <div className="ur-content-medium lg:px-4 ur-pc-card rounded-2xl bg-surface shadow-lift">',
+    find: '    <div className="ur-content-medium lg:px-5 ur-pc-card">',
+    replace: '    <div className="ur-content-medium lg:px-5 ur-pc-card rounded-2xl bg-surface shadow-lift">',
     test: TEST,
     why: '판이 파는 쪽 표시자가 됐다(안 C). 손님 쪽에도 판이 서면 화면이 무엇이 파는 쪽인지 말을 못 한다.',
   },
