@@ -120,7 +120,7 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
     {peek && r.image_url && typeof document !== 'undefined' && createPortal(
       <div aria-hidden="true" className="ur-peek ur-veil fixed inset-0 z-[10500] flex items-center justify-center pointer-events-none">
         <div className="ur-peek-card w-[78%] max-w-[360px] rounded-2xl overflow-hidden bg-surface shadow-lift">
-          <img src={cfImage(r.image_url, { width: 720, quality: 85, format: 'auto' }) || r.image_url} alt="" className="w-full aspect-[4/3] object-cover" />
+          <img src={cfImage(r.image_url, { width: 720, quality: 85, format: 'auto' }) || r.image_url} alt="" className="w-full aspect-[4/3] object-cover" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />
           <div className="p-4">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{stripStorePrefix(r.name, r.restaurant_name)}</p>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{discount > 0 ? <span className="text-sale font-bold mr-1">{discount}%</span> : null}{formatNumber(r.price)}원 · {r.restaurant_name}</p>
