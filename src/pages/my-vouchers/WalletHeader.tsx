@@ -38,7 +38,7 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
 }) {
   if (eyebrow) {
     return (
-      <div className="ur-content-narrow px-4 lg:px-8 pt-4">
+      <div className="ur-content-narrow px-5 lg:px-8 pt-4">
         {hideTitle && <h1 className="sr-only">{title}</h1>}
         <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">{eyebrow}</p>
         {amount !== null && (
@@ -47,13 +47,13 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
             <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400">{unit}</span>
           </p>
         )}
-        <div className="mt-4" />
+        <div className="mt-5" />
       </div>
     )
   }
 
   return (
-    <div className="ur-content-narrow px-4 lg:px-8 pt-2">
+    <div className="ur-content-narrow px-5 lg:px-8 pt-2">
       {hideTitle && <h1 className="sr-only">{title}</h1>}
       <div className="flex items-end justify-between gap-3">
         {(!hideTitle || onBack) && (
@@ -79,7 +79,7 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
       </div>
 
       {stats.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-rule flex items-center gap-4 text-[12px]">
+        <div className="mt-2 pt-2 border-t border-rule flex items-center gap-3 text-[12px]">
           {stats.map((s) => (
             <span key={s.label} className="text-gray-500 dark:text-gray-400">
               {s.label}{' '}
@@ -92,7 +92,7 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
           ))}
         </div>
       )}
-      <div className="mt-4" />
+      <div className="mt-5" />
     </div>
   )
 }

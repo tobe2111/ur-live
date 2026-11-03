@@ -28,7 +28,7 @@ export default function PrivacyPolicyPage() {
 
       {/* Content */}
       <div className="ur-content-medium px-5 pt-6">
-        <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-6">
+        <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-8">
           {isKR ? '시행일: 2024년 1월 15일 | 유어딜 (리스터코퍼레이션)' : 'Effective: January 15, 2024 | YourDeal (Lister Corporation)'}
         </p>
 
@@ -173,7 +173,7 @@ export default function PrivacyPolicyPage() {
                   </p>
                   <ul className="list-disc list-inside ml-5 text-[12px] space-y-1">
                     <li>「전자상거래 등에서의 소비자 보호에 관한 법률」에 따른 표시·광고, 계약내용 및 이행 등 거래에 관한 기록
-                      <ul className="list-disc list-inside ml-4 mt-1">
+                      <ul className="list-disc list-inside ml-5 mt-1">
                         <li>표시·광고에 관한 기록: 6개월</li>
                         <li>계약 또는 청약철회, 대금결제, 재화 등의 공급기록: 5년</li>
                         <li>소비자 불만 또는 분쟁처리에 관한 기록: 3년</li>

@@ -94,7 +94,7 @@ export function NotificationToggleSection() {
     /* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다(구역 제목과 왼쪽 끝이 맞는다).
        라벨('알림 설정')도 없앴다: 구역 제목이 이미 `설정 · 고객지원` 이라, 12px 라벨을 두면
        한 화면에 제목 층이 셋이 된다(17 구역, 12 그룹, 15 행 — `list-grammar` 가 경고한 그것). */
-    <div className="ur-content-medium lg:px-4">
+    <div className="ur-content-medium lg:px-5">
       <div>
         <Toggle
           icon={<BellIcon className="w-[18px] h-[18px]" aria-hidden="true" />}

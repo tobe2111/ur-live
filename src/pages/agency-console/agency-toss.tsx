@@ -48,7 +48,7 @@ export function AgencyTodayCard({ rows }: { rows: StoreRow[] | null }) {
       <p className="mt-1 text-[28px] font-bold tabular-nums leading-tight text-gray-900 dark:text-white min-h-[36px]">
         {known ? `${formatNumber(sum('todayRevenue'))}원` : rows === null ? '' : '—'}
       </p>
-      <div className="mt-4 -mx-5 px-5 pt-3 grid grid-cols-3 border-t border-rule">
+      <div className="mt-5 -mx-5 px-5 pt-3 grid grid-cols-3 border-t border-rule">
         {([['주문', 'todayOrders', '건'], ['확인 대기', 'pending', '건'], ['판매 중', 'activeProducts', '개']] as const).map(([label, k, unit], i) => (
           <div key={k} className={`text-center ${i > 0 ? 'border-l border-rule' : ''}`}>
             <p className="text-[12px] text-gray-500 dark:text-gray-400">{label}</p>

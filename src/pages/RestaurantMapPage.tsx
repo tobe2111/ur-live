@@ -631,7 +631,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         <SEO title={t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜' })} description={t('seo.home.description', { defaultValue: '내 주변 동네딜을 한눈에. 식사·뷰티·헬스·숙소·반려·액티비티 이용권.' })} url="/" />
         {/* 상단: 로고 + 지역선택 + 알림/장바구니 */}
         <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
-          <div className="ur-content-wide px-4 lg:px-8 h-12 flex items-center justify-between gap-2">
+          <div className="ur-content-wide px-5 lg:px-8 h-12 flex items-center justify-between gap-2">
             {/* 🗺️ 2026-06-22 (대표 — 위치 교체): 로고를 좌측으로, 지역선택(전국)을 우측 그룹으로. */}
             <Link to="/" aria-label="홈" className="shrink-0 flex items-center">
               <UrDealLogo size={18} />

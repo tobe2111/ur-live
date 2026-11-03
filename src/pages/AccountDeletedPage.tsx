@@ -21,15 +21,15 @@ export default function AccountDeletedPage() {
     <div className="min-h-screen bg-warm flex items-center justify-center px-4">
       <SEO title={t('accountDeleted.seoTitle', { defaultValue: '계정 삭제 완료' })} description={t('accountDeleted.seoDesc', { defaultValue: '계정이 삭제되었습니다' })} url="/account/deleted" noindex />
       {/* 🛡️ 2026-05-20: PC 폭 일관 — max-w-md → max-w-lg + lg padding 확보 */}
-      <div className="max-w-md lg:max-w-lg w-full px-4 lg:px-0">
+      <div className="max-w-md lg:max-w-lg w-full px-5 lg:px-0">
         <div className="bg-surface rounded-2xl shadow-lg p-8 text-center">
           {/* 완료 아이콘 */}
-          <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
+          <div className="w-20 h-20 mx-auto mb-8 bg-green-100 rounded-full flex items-center justify-center">
             <OkIcon className="w-12 h-12 text-green-600" />
           </div>
 
           {/* 제목 */}
-          <h1 className="text-[20px] font-semibold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-[20px] font-semibold text-gray-900 dark:text-white mb-5">
             {t('accountDeleted.title')}
           </h1>
 
@@ -50,7 +50,7 @@ export default function AccountDeletedPage() {
           </div>
 
           {/* 재가입 안내 */}
-          <div className="bg-purple-50 border border-purple-200 rounded-xl p-5 mb-6">
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-5 mb-8">
             <p className="text-[15px] text-purple-800 font-medium mb-2">
               {t('accountDeleted.comebackTitle')}
             </p>
@@ -68,7 +68,7 @@ export default function AccountDeletedPage() {
             {t('accountDeleted.goHome')}
           </button>
 
-          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-4">
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-5">
             {t('accountDeleted.autoRedirect')}
           </p>
         </div>

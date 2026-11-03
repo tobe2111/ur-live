@@ -201,7 +201,7 @@ export default function MyGroupBuysPage() {
       />
       {/* 헤더 */}
       <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#11141C] border-b border-line">
-        <div className="ur-content-narrow flex items-center justify-between h-14 px-4 lg:px-8">
+        <div className="ur-content-narrow flex items-center justify-between h-14 px-5 lg:px-8">
           <button onClick={goBack} aria-label="뒤로 가기" className="flex items-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -230,7 +230,7 @@ export default function MyGroupBuysPage() {
         ))}
       </div>
 
-      <main className="ur-content-narrow px-4 lg:px-8 py-4 pb-24">
+      <main className="ur-content-narrow px-5 lg:px-8 py-4 pb-24">
         {loading ? (
           /* 🚑 2026-07-10 로더 통일: ad-hoc 스피너 → BrandLoader */
           <BrandLoader />
@@ -238,7 +238,7 @@ export default function MyGroupBuysPage() {
           /* 🛡️ 2026-07-02: 로드 전멸을 "참여 내역 없음"으로 위장하지 않음 — 에러 + 재시도. */
           <div className="text-center py-20">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('myGroupBuys.loadFailed', { defaultValue: '참여 내역을 불러오지 못했어요' })}</p>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
             <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
               {t('common.retry', { defaultValue: '다시 시도' })}
             </button>
@@ -404,7 +404,7 @@ function EmptyState({ onBrowse }: { onBrowse: () => void }) {
         <GiftBoxIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
       </div>
       <p className="text-[15px] font-medium text-gray-900 dark:text-white mb-1">{t('myGroupBuys.emptyTitle')}</p>
-      <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-6">{t('myGroupBuys.emptyHint')}</p>
+      <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-8">{t('myGroupBuys.emptyHint')}</p>
       <button
         onClick={onBrowse}
         className="px-5 py-2 bg-brand text-white text-[15px] font-medium rounded-lg hover:bg-brand-dark transition-colors"

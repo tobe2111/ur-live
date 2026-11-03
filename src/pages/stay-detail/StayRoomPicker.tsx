@@ -56,7 +56,7 @@ export default function StayRoomPicker({ rooms, loading, guests, nights, selecte
             return (
               <button key={r.room_id} type="button" role="radio" aria-checked={on} disabled={disabled}
                 onClick={() => onSelect(r)}
-                className={`w-full text-left rounded-2xl p-4 flex items-start justify-between gap-3 bg-surface ${readOnly ? 'disabled:cursor-default' : 'disabled:opacity-50 disabled:cursor-default'} ${on ? 'border-2 border-brand ur-room-on' : 'border border-rule-strong'}`}>
+                className={`w-full text-left rounded-2xl p-5 flex items-start justify-between gap-3 bg-surface ${readOnly ? 'disabled:cursor-default' : 'disabled:opacity-50 disabled:cursor-default'} ${on ? 'border-2 border-brand ur-room-on' : 'border border-rule-strong'}`}>
                 <span className="min-w-0">
                   <span className="block text-[15px] font-medium text-gray-900 dark:text-white">{r.name}</span>
                   <span className="block mt-1 text-[12px] text-gray-500 dark:text-gray-400">

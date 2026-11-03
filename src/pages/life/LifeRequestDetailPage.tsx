@@ -71,7 +71,7 @@ export default function LifeRequestDetailPage() {
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
       <SEO title="받은 견적 - 유어딜" description="받은 견적을 비교하고 고르세요" url={`/life/requests/${d.id}`} />
       <LifeHeader title={`${categoryLabel(d.category)} 견적`} back="/life/requests" />
-      <div className="ur-content-narrow space-y-4 px-4 pb-10">
+      <div className="ur-content-narrow space-y-3 px-5 pb-10">
         <section className="rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <span className="text-[13px] font-medium text-brand-text">{STATUS_LABEL[d.status] || d.status}</span>
@@ -127,7 +127,7 @@ export default function LifeRequestDetailPage() {
                   </div>
                 )}
                 {d.status === 'open' && (
-                  <button type="button" disabled={busy} onClick={() => choose(q)} className="ur-btn ur-btn-lg ur-btn-primary mt-4 flex w-full justify-center disabled:opacity-60">
+                  <button type="button" disabled={busy} onClick={() => choose(q)} className="ur-btn ur-btn-lg ur-btn-primary mt-5 flex w-full justify-center disabled:opacity-60">
                     이 사장님 고르기
                   </button>
                 )}

@@ -57,7 +57,7 @@ export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, on
         </button>
       }
     >
-      <div className="space-y-6 pb-2">
+      <div className="space-y-5 pb-2">
         <div>
           <p className={labelCls}>받는 방법</p>
           <div className="grid grid-cols-2 gap-2">

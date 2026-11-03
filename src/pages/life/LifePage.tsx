@@ -54,7 +54,7 @@ function IconRow({ keys }: { keys: readonly HomeServiceCategory[] }) {
   const shown = folded ? keys.slice(0, ICON_ROW_MAX - 1) : keys
   const tile = 'flex flex-col items-center gap-2 active:opacity-70'
   return (
-    <ul className="mt-4 grid grid-cols-5 gap-x-1 gap-y-5">
+    <ul className="mt-5 grid grid-cols-5 gap-x-1 gap-y-5">
       {shown.map((k, ti) => (
         <li key={k} className="ur-life-tile" style={{ '--i': Math.min(ti, 10) } as React.CSSProperties}>
           <Link to={`/life/request/${k}`} className={tile}>
@@ -98,7 +98,7 @@ export default function LifePage() {
       <SEO title={withSiteName(LIFE_HUB_SEO.title)} description={LIFE_HUB_SEO.description} url="/life" />
 
       {/* 🖥️ 2026-10-26 PC: 액자를 벗고(pc-fullbleed) 두 칸 — 왼쪽 업종, 오른쪽 바로 사기·질문·업체 안내. */}
-      <div className="mx-auto w-full max-w-[720px] space-y-3 px-4 pb-10 pt-5 lg:max-w-[1120px] lg:px-8 lg:pt-8">
+      <div className="mx-auto w-full max-w-[720px] space-y-3 px-5 pb-10 pt-5 lg:max-w-[1120px] lg:px-8 lg:pt-8">
         {/* 신뢰 띠 — 오늘의집 "시공책임보장" 자리. 우리 약속은 무료 비교 + 연락처 보호. */}
         {/* 2026-10-31 대표 *"직관적으로 해야할 것 같고 가게 사장님들을 위한 생활 견적 서비스 이런 식으로"* +
             *"견적을 낸 걸 마이페이지나 어디서 봐야하지 않을까"* — 첫 카드가 ① 서비스 이름 ② 쓰는 법 세 단계
@@ -111,7 +111,7 @@ export default function LifePage() {
             </Link>
           </div>
           <h1 className="mt-2 text-[20px] font-semibold leading-snug tracking-tight lg:text-[34px]">사장님, 가게 일은<br className="lg:hidden" /> 여기서 맡기세요</h1>
-          <ol className="mt-4 grid grid-cols-3 gap-2 text-center">
+          <ol className="mt-5 grid grid-cols-3 gap-2 text-center">
             {['요청서 1분 작성', `견적 최대 ${MAX_QUOTES_PER_REQUEST}곳 도착`, '비교하고 한 곳 고르기'].map((step, i) => (
               <li key={step} className="ur-life-step rounded-xl bg-surface px-2 py-3" style={{ '--i': i } as React.CSSProperties}>
                 <span className="block text-[12px] font-medium text-brand-text"><span className="ur-life-n">{i + 1}</span></span>
@@ -134,7 +134,7 @@ export default function LifePage() {
                   const def = categoryDef(k)
                   return (
                     <li key={k}>
-                      <Link to={`/life/request/${k}`} className="flex items-center gap-4 py-3 active:opacity-70">
+                      <Link to={`/life/request/${k}`} className="flex items-center gap-3 py-3 active:opacity-70">
                         <LifeTileIcon category={k} size={44} />
                         <span className="min-w-0 flex-1">
                           <span className="block text-[15px] font-bold">{def?.label} 업체 찾기</span>

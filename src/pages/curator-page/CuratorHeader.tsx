@@ -226,7 +226,7 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
         {/* 🧾 2026-11-03 유어샵 B (대표 *"유어샵은 B"*) — 이름·숫자 줄을 흰 판 하나에 담는다(바탕은 옅은 회색).
             2026-09-30 '한 톤' 을 대체한다. 서버 첫 화면(`CURATOR_FS_CLASS.headCard`)과 한 글자까지 같다. */}
         <div className="mx-3 mt-2 rounded-2xl bg-surface pt-1 pb-1">
-        <div className="flex items-center gap-4 px-5 pt-3">
+        <div className="flex items-center gap-3 px-5 pt-3">
           {/* 👤 얼굴 — 사진이 없으면 유달이(공유 카드와 같은 그림). 장식이라 alt 는 비운다(옆에 이름이 있다). */}
           <div className={avatarCls}>
             {photo ? (

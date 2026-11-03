@@ -177,7 +177,7 @@ export default function StaysSearchPage() {
           <div className="text-center py-20">
             <Search className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-[15px] text-gray-600 dark:text-gray-300 mb-1">검색을 불러오지 못했어요</p>
-            <p className="text-[12px] text-gray-500 dark:text-gray-500 mb-4">네트워크 상태를 확인해주세요.</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-500 mb-5">네트워크 상태를 확인해주세요.</p>
             {/* 🎬 2026-11-03 17차 ⑥ — 누르면 화살표가 한 바퀴 돌며 다시 불러오는 중임을 보여 준다(여러 번 누르지 않게). */}
             <button onClick={(e) => { spinRetry(e); refetch() }} className="px-5 h-10 rounded-lg text-[15px] font-bold bg-brand text-white inline-flex items-center gap-2"><svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" /></svg>다시 시도</button>
           </div>
@@ -255,7 +255,7 @@ export default function StaysSearchPage() {
               <h3 className="text-[15px] font-bold">검색 필터</h3>
               <button onClick={() => setShowFilters(false)} aria-label="닫기" className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/[0.06]"><X className="w-4 h-4" /></button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-3">
               <div>
                 <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-2">지역</label>
                 <input

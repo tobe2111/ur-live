@@ -230,7 +230,7 @@ export default function SearchPage() {
         />
       ) : (
       /* Content */
-      <div className="ur-content-wide px-4 lg:px-8 py-4">
+      <div className="ur-content-wide px-5 lg:px-8 py-4">
         {/* States: Loading, Error, No Query, No Results */}
         <SearchStates
           loading={stillLoadingResults}
@@ -285,7 +285,7 @@ export default function SearchPage() {
 
             {/* 🛡️ 2026-05-19: 무한 스크롤 sentinel + 로딩/더보기 UI */}
             {hasNextPage && (
-              <div ref={loadMoreRef} className="flex justify-center mt-6 pb-6">
+              <div ref={loadMoreRef} className="flex justify-center mt-8 pb-6">
                 <button
                   onClick={() => fetchNextPage()}
                   disabled={isFetchingNextPage}

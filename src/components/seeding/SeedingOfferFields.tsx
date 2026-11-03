@@ -30,7 +30,7 @@ export default function SeedingOfferFields({ value, onChange }: { value: Seeding
       </label>
 
       {value.enabled && (
-        <div className="mt-4 space-y-4">
+        <div className="mt-5 space-y-3">
           <div>
             <p className="mb-2 text-[13px] font-medium text-ink">신청 가능한 플랫폼</p>
             <div className="flex flex-wrap gap-2">

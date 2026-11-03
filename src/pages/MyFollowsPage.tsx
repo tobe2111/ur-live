@@ -79,14 +79,14 @@ export default function MyFollowsPage() {
 
       <SubPageHeader title="내 단골 가게" />
 
-      <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-5">
+      <div className="ur-content-narrow mx-auto px-5 lg:px-8 py-5">
         {loading ? (
           /* 🚑 2026-07-10 로더 통일: Loader2 → BrandLoader */
           <BrandLoader />
         ) : isError ? (
           <div className="text-center py-20">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">목록을 불러오지 못했어요</p>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
             <button
               onClick={() => refetch()}
               className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold"
@@ -99,7 +99,7 @@ export default function MyFollowsPage() {
             {/* 🦦 2026-10-10 (대표 "다 해줘"): 빈 단골 → 갸웃 유달이(아직 찾는 중) */}
             <Udal mood="notFound" size={96} className="block mx-auto mb-3" />
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">단골 등록한 가게가 없어요</p>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">관심 있는 가게 페이지에서 단골 등록하세요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">관심 있는 가게 페이지에서 단골 등록하세요</p>
             <button
               onClick={() => navigate('/')}
               className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold"

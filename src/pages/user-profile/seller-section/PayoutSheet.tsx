@@ -145,7 +145,7 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
             </p>
           )}
 
-          <dl className="mt-4 pt-4 border-t border-rule space-y-3">
+          <dl className="mt-5 pt-4 border-t border-rule space-y-3">
             {held > 0 && (
               <div className="flex items-baseline justify-between gap-3">
                 <dt className="text-[13px] text-gray-500 dark:text-gray-400">
@@ -166,7 +166,7 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
           </dl>
 
           {hasBank === false && (
-            <p className="mt-4 pt-4 border-t border-rule text-[13px] leading-[1.6] text-gray-900 dark:text-white">
+            <p className="mt-5 pt-4 border-t border-rule text-[13px] leading-[1.6] text-gray-900 dark:text-white">
               정산 계좌가 아직 없어요. 계좌를 넣어 두면 다음 정산부터 그리로 보내요.
             </p>
           )}

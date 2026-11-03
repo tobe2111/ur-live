@@ -25,12 +25,12 @@ export default function BrokerHandoffPanel({ code, onDone }: { code: string; onD
         사장님이 링크를 열면 <b className="text-gray-900">정산 조건을 확인하고 동의</b>한 뒤, 사업자등록증으로 이 매장의 주인이 됩니다.
         그 전까지는 대행사님이 관리해요.
       </p>
-      <div className="mt-4 rounded-xl bg-brand-tint px-4 py-3">
+      <div className="mt-5 rounded-xl bg-brand-tint px-4 py-3">
         <p className="text-[12px] font-medium text-gray-500">승계 코드</p>
         <p className="mt-1 text-[24px] font-bold tracking-wider tabular-nums text-gray-900 select-all">{code}</p>
         <p className="mt-2 text-[12px] text-gray-500 break-all select-all">{link}</p>
       </div>
-      <button type="button" onClick={() => void copy()} className="ur-btn ur-btn-lg ur-btn-primary w-full mt-4">
+      <button type="button" onClick={() => void copy()} className="ur-btn ur-btn-lg ur-btn-primary w-full mt-5">
         {copied ? '복사했어요' : '사장님께 보낼 링크 복사'}
       </button>
       <button type="button" onClick={onDone} className="w-full mt-2 py-3 text-[13px] font-medium text-gray-600">

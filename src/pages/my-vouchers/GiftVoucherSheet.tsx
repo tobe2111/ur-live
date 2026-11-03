@@ -117,7 +117,7 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
         </div>
         <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{voucher.product_name}{voucher.restaurant_name ? ` · ${voucher.restaurant_name}` : ''}</p>
 
-        <ul className="mt-4 space-y-1">
+        <ul className="mt-5 space-y-1">
           {[
             '친구가 받으면 이 이용권은 친구 지갑으로 옮겨가요',
             '선물 링크를 만들면 친구가 받기 전까지 이 이용권은 쓸 수 없어요(선물 보내기를 취소하면 다시 쓸 수 있어요)',

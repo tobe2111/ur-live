@@ -107,7 +107,7 @@ export function RewardAdCard() {
   const isMaxed = remaining <= 0
 
   return (
-    <div className="ur-content-medium px-4 lg:px-8 py-1">
+    <div className="ur-content-medium px-5 lg:px-8 py-1">
       <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-2xl px-5 py-4 border border-line">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

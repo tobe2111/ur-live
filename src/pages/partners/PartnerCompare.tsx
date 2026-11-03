@@ -55,14 +55,14 @@ export default function PartnerCompare() {
         </h2></Reveal>
 
         {/* 비대칭: 체험단이 크고 나머지 둘이 아래 두 칸 */}
-        <div className="mt-10 lg:mt-16">
+        <div className="mt-12 lg:mt-12">
           <Reveal className="max-w-[46rem]">
             <p className="text-[12px] lg:text-[15px] font-medium text-brand-text">{lead.vs}</p>
-            <p className="mt-3 lg:mt-4 text-[20px] lg:text-[34px] font-semibold text-ink leading-[1.3] tracking-[-0.025em]">{lead.t}</p>
-            <p className="mt-4 text-[15px] lg:text-[16px] leading-[1.8] text-gray-500 dark:text-gray-400">{lead.d}</p>
+            <p className="mt-3 lg:mt-5 text-[20px] lg:text-[34px] font-semibold text-ink leading-[1.3] tracking-[-0.025em]">{lead.t}</p>
+            <p className="mt-5 text-[15px] lg:text-[16px] leading-[1.8] text-gray-500 dark:text-gray-400">{lead.d}</p>
           </Reveal>
 
-          <div className="mt-10 lg:mt-14 grid gap-8 sm:grid-cols-2 lg:gap-14">
+          <div className="mt-12 lg:mt-12 grid gap-8 sm:grid-cols-2 lg:gap-12">
             {rest.map(({ vs, t, d }, i) => (
               <Reveal key={vs} delay={i * 110}>
                 <p className="text-[12px] lg:text-[13px] font-medium text-brand-text">{vs}</p>
@@ -94,9 +94,9 @@ export default function PartnerCompare() {
           </div>
         </div>
 
-        <div className="lg:hidden mt-10 space-y-2">
+        <div className="lg:hidden mt-12 space-y-2">
           {ROWS.map(({ k, cells, ours }, ri) => (
-            <Reveal key={k} delay={ri * 80} className={`rounded-2xl p-4 ${ours ? 'bg-brand-tint' : 'bg-black/[0.03] dark:bg-white/[0.04]'}`}>
+            <Reveal key={k} delay={ri * 80} className={`rounded-2xl p-5 ${ours ? 'bg-brand-tint' : 'bg-black/[0.03] dark:bg-white/[0.04]'}`}>
               <p className={`text-[15px] font-bold ${ours ? 'text-brand-text' : 'text-ink'}`}>{k}</p>
               <dl className="mt-2 space-y-2">
                 {cells.map((c, i) => (

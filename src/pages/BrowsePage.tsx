@@ -391,7 +391,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       />
       {/* 상단 헤더: 검색바 + 아이콘 — 모바일 전용. md+ 는 DesktopTopNav 가 동일 기능 제공. */}
       <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-wide px-4 py-2 lg:px-8">
+        <div className="ur-content-wide px-5 py-2 lg:px-8">
           <div className="flex items-center gap-3">
           <button
             type="button"
@@ -419,7 +419,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         style={{ transform: revealTop ? 'translateY(0)' : 'translateY(-110%)', transition: 'transform 0.25s ease', willChange: 'transform' }}
       >
       <div className="border-b border-gray-100 dark:border-[#2C2F35] overflow-x-auto scrollbar-hide">
-        <div className="ur-content-wide flex px-4 lg:px-8 gap-3 py-3">
+        <div className="ur-content-wide flex px-5 lg:px-8 gap-3 py-3">
           {[
             { key: 'all',          label: t('browse.categoryAll', { defaultValue: '전체' }),       Icon: BagIcon },
             // 🏭 2026-06-04 (사용자 지적): 이용권/교환권은 쇼핑(/browse=실물상품)이 아닌 동네딜·교환권 영역 → 칩 제거.
@@ -456,7 +456,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       </div>
       </div>
 
-      <div className="ur-content-wide px-4 py-5 lg:px-8">
+      <div className="ur-content-wide px-5 py-5 lg:px-8">
         {/* 섹션 헤더 — 🏭 2026-06-04: 기본('전체')에선 '오늘의 핫딜' 타이틀 숨김(핫딜 섹션 제거). 카테고리 선택 시엔 라벨 표시. */}
         {category !== 'all' && (
           <div className="flex items-center justify-between mb-3">
@@ -535,7 +535,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
 
         {/* 지도 뷰 (이용권 카테고리일 때) */}
         {isMealVoucher && mapView && (
-          <div className="mb-4 rounded-xl overflow-hidden border border-line">
+          <div className="mb-5 rounded-xl overflow-hidden border border-line">
             <div ref={mapContainerRef} className="w-full h-[400px] bg-gray-100 dark:bg-[#1D1F29]" />
           </div>
         )}
@@ -548,7 +548,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         ) : error ? (
           /* ✅ UX M17 FIX: 에러 상태 + 재시도 버튼 */
           <div className="text-center py-16">
-            <p className="text-gray-900 dark:text-white mb-4">{error}</p>
+            <p className="text-gray-900 dark:text-white mb-5">{error}</p>
             <button
               onClick={() => loadProducts(1, true)}
               className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl font-medium transition-colors"
@@ -567,7 +567,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   원인: original_price/discount 가 조건부 렌더 → 카드마다 높이 다름.
                   해결: items-stretch flex-col + 슬롯 명시 placeholder (모든 카드 동일 구조).
                   디자인: 첨부 이미지 (참외 카드) 스타일 — 원가 strike → 제목 → 할인%+가격 → ⭐+무료 */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-2 gap-y-2 lg:gap-4 items-stretch">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-2 gap-y-2 lg:gap-3 items-stretch">
               {displayed.map((product, idx) => (
                 <BrowseProductCard
                   key={product.id}
@@ -582,7 +582,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
 
             {/* 더보기 — sentinel div: observer가 보이면 자동 로드 + 버튼 fallback */}
             {canShowMore && (
-              <div ref={loadMoreRef} className="flex justify-center mt-6 pb-20">
+              <div ref={loadMoreRef} className="flex justify-center mt-8 pb-20">
                 <button onClick={() => {
                   if (showCount < sorted.length) setShowCount(c => c + ITEMS_PER_PAGE)
                   else if (hasMore && !loadingMore) { const n = page + 1; setPage(n); loadProducts(n, false) }

@@ -44,7 +44,7 @@ export function InsetGroup({ theme = 'dark', title, footer, children, className 
 }) {
   const t = tokens(theme)
   return (
-    <div className={`px-4 mb-7 ${className}`}>
+    <div className={`px-4 mb-8 ${className}`}>
       {title && (
     <p className="px-1 mb-2"
           style={{ fontSize: 12, color: t.secondary, fontWeight: 500, letterSpacing: '-0.01em' }}>

@@ -138,13 +138,13 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
       className={`min-h-[100dvh] bg-warm text-gray-900 dark:text-white ${motion.playing ? 'ur-pc-play' : ''}`}
       onPointerDown={motion.playing ? motion.skip : undefined}
     >
-      <div className="ur-content-narrow px-4 lg:px-8 pt-3 pb-10">
+      <div className="ur-content-narrow px-5 lg:px-8 pt-3 pb-10">
         <div className="flex justify-end">
           <button type="button" onClick={() => navigate('/')} aria-label={t('passBuy.close', { defaultValue: '닫기' })} className="w-10 h-10 -mr-2 flex items-center justify-center text-gray-700 dark:text-gray-200 active:opacity-60">
             <X className="w-6 h-6" strokeWidth={1.6} />
           </button>
         </div>
-        <h1 className="ur-pc-title text-center text-[20px] font-semibold tracking-[-0.02em] mt-3 mb-6">{t('passBuy.completeTitle', { defaultValue: '결제가 완료되었어요' })}</h1>
+        <h1 className="ur-pc-title text-center text-[20px] font-semibold tracking-[-0.02em] mt-3 mb-8">{t('passBuy.completeTitle', { defaultValue: '결제가 완료되었어요' })}</h1>
 
         <TicketCard className="ur-pc-ticket" bandLeft={expiresAt ? bandLeft(issued?.expires_at) : t('passBuy.noExpiry', { defaultValue: '사용 기한 없음' })} bandRight={daysLeft !== null ? (daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`) : undefined}>
           <div className="ur-pc-body">
@@ -152,13 +152,13 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
           <div className="px-4 pt-4 pb-4">
             {storeName && <p className="ur-pc-step ur-pc-step-1 text-[13px] text-gray-500 dark:text-gray-400">{storeName}</p>}
             <p className="ur-pc-step ur-pc-step-2 text-[16px] font-semibold tracking-[-0.01em] mt-1">{itemName}</p>
-            <div className="ur-pc-step ur-pc-step-3 flex items-baseline gap-2 mt-3 mb-4 tabular-nums">
+            <div className="ur-pc-step ur-pc-step-3 flex items-baseline gap-2 mt-3 mb-5 tabular-nums">
               {pct !== null && pct > 0 && <span className="text-[16px] font-bold text-brand-text">{pct}%</span>}
               <span className="text-[28px] font-bold tracking-[-0.03em] leading-none">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(motion.shownAmount) })}</span>
               {original !== null && original * qty > amount && <span className="text-[13px] text-gray-400 dark:text-gray-500 line-through">{t('passBuy.won', { defaultValue: '{{amount}}원', amount: formatNumber(original * qty) })}</span>}
             </div>
             {dealUsed > 0 && (
-              <p className="-mt-2.5 mb-4 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums">
+              <p className="-mt-2.5 mb-5 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums">
                 {t('passBuy.dealUsed', { defaultValue: '딜 {{amount}}', amount: formatNumber(Math.min(dealUsed, amount)) })}
                 {amount > dealUsed && <> · {t('passBuy.cardPaid', { defaultValue: '카드 {{amount}}원', amount: formatNumber(amount - dealUsed) })}</>}
               </p>
@@ -170,7 +170,7 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
           </div>
         </TicketCard>
 
-        <div className="ur-pc-notes mt-5 mb-6">
+        <div className="ur-pc-notes mt-5 mb-8">
           <TicketNotes items={[
             t('passBuy.noteUseQr', { defaultValue: '매장에서 QR 또는 코드로 사용해요.' }),
             t('passBuy.noteAutoRefund', { defaultValue: '사용하지 않으면 기한이 지난 뒤 100% 자동 환불돼요.' }),

@@ -26,7 +26,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
       <div className="w-full max-w-sm ur-glass ur-pop-card p-6 overflow-hidden ur-dialog-in" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-5">
           <div>
             <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">{title}</h3>
             <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{message}</p>
@@ -37,7 +37,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
         </div>
 
         {reward && (
-          <div className="bg-brand-tint border border-rule rounded-xl p-3 mb-4 text-center">
+          <div className="bg-brand-tint border border-rule rounded-xl p-3 mb-5 text-center">
             <p className="text-[15px] font-bold text-brand-text ">{reward}</p>
           </div>
         )}

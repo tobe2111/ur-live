@@ -98,7 +98,7 @@ export const HOME_FS_CLASS = {
   catOn: 'font-bold text-gray-900 dark:text-white border-brand',
   catOff: 'text-gray-500 dark:text-gray-400 border-transparent',
   panel: 'ur-home-panel',
-  secHead: 'flex items-end justify-between gap-4 mb-3',
+  secHead: 'flex items-end justify-between gap-3 mb-3',
   secTitle: 'text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white',
   secSub: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400',
   grid: DEAL_ROW.grid, // 📋 2026-10-31 시안 10 — 폰 줄 목록(md+ 종전 4열)

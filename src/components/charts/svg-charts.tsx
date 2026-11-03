@@ -178,7 +178,7 @@ export function SvgLineChart<T extends object>({ data, xKey, series, height, yFo
         </svg>
       )}
       {legend && (
-        <div className="flex justify-center gap-4 text-[12px] text-gray-600">
+        <div className="flex justify-center gap-3 text-[12px] text-gray-600">
           {series.map((s) => (
             <span key={s.key} className="inline-flex items-center gap-1"><span className="inline-block h-0.5 w-4" style={{ background: s.color }} />{s.label}</span>
           ))}

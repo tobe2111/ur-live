@@ -8,7 +8,7 @@ export default function SearchBar({ searchQuery, setSearchQuery }: {
 }) {
   const { t } = useTranslation()
   return (
-      <div className="ur-content-wide px-4 lg:px-8 mt-3">
+      <div className="ur-content-wide px-5 lg:px-8 mt-3">
         <div className="relative">
           <input
             type="search"

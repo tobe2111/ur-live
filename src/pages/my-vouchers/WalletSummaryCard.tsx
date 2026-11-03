@@ -16,7 +16,7 @@ export default function WalletSummaryCard({ total, t }: {
 }) {
   // 🧾 2026-11-03 토스 참고(시안 I1) — 맨 위 요약에서 **목록 아래 합계 판**으로. 장수는 목록 판 머리가 말한다(한 곳).
   return (
-    <div className="mt-3 rounded-2xl bg-surface px-5 py-4 flex items-center justify-between gap-4" data-testid="wallet-summary-card">
+    <div className="mt-3 rounded-2xl bg-surface px-5 py-4 flex items-center justify-between gap-3" data-testid="wallet-summary-card">
       <div className="min-w-0">
         <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('voucher.walletTotalTitle', { defaultValue: '쓸 수 있는 이용권 합계' })}</p>
         <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('voucher.walletTotalSub', { defaultValue: '산 가격 기준' })}</p>

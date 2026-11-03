@@ -31,7 +31,7 @@ export default function SortFilterBar({ totalResults, sortBy, onSortChange }: So
   const firstCount = useRef(totalResults) // 처음 받은 개수 — 그것과 다를 때만 움직인다
 
   return (
-    <div className="mb-4">
+    <div className="mb-5">
       {/* Result count + Sort */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">

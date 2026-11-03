@@ -83,7 +83,7 @@ export function WishlistSummaryRail({ s }: { s: WishlistSummary }) {
       )}
       {rows.length > 0 && (
         <>
-          <hr className="my-4 border-0 border-t border-rule" />
+          <hr className="my-5 border-0 border-t border-rule" />
           <dl className="space-y-2">
             {rows.map((r) => (
               <div key={r.label} className="flex items-center justify-between gap-3 text-[13px]">

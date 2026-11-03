@@ -301,7 +301,7 @@ export default function MobileHomePage() {
         </div>
       )}
 
-      <section ref={feedRef} className="mt-4">
+      <section ref={feedRef} className="mt-5">
         {/* 🗺️ 지도로 가는 길은 화면 아래 **지도 알약**(`MapPill`)이 갖는다.
             2026-08-30 배너 → 08-31 위치 옆 [목록|지도] 전환 → 10-14 (대표 확정 다안·A) 떠 있는 알약.
             ⚠️ 하단 탭에 지도가 없으므로 그 알약이 **유일한 통로**다 — 지우지 말 것.
@@ -328,7 +328,7 @@ export default function MobileHomePage() {
       <SellOnUrdealRow />
       {/* 🏢 2026-11-02 대표 *"홈 페이지 맨 밑에 회사 정보들을 넣어줘"* — 폰 홈엔 사업자 표시가 하나도 없었다(PC 의 SiteFooter 에만).
           피드 맨 끝·판매 진입점 다음이 자리다(NOL 과 같은 자리). 값 SSOT `shared/company-info.ts`. */}
-      <CompanyInfoFooter className="mt-6" />
+      <CompanyInfoFooter className="mt-8" />
       <MapPill />
       <BackToTop />
       {bell.sheet}

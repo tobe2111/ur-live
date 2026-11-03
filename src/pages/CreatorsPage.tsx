@@ -90,11 +90,11 @@ export default function CreatorsPage() {
               <Line i={0}><span className="text-brand-text">링크 하나</span>로</Line>
               <Line i={1}>동네 맛집을 소개하세요</Line>
             </h1>
-            <p style={loadDelay(320)} className="ur-load mt-6 lg:mt-8 text-[15px] lg:text-[16px] leading-[1.7] text-white/80 max-w-[26em]">
+            <p style={loadDelay(320)} className="ur-load mt-8 lg:mt-8 text-[15px] lg:text-[16px] leading-[1.7] text-white/80 max-w-[26em]">
               내 링크로 팔리면 소개비가 쌓입니다. 팔로워 수는 상관없어요.
             </p>
 
-            <div style={loadDelay(460)} className="ur-load mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
+            <div style={loadDelay(460)} className="ur-load mt-12 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
               <ApplyLink href={applyHref}
                 className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold active:scale-[0.98] transition-transform">
                 소개 파트너 지원 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
@@ -112,7 +112,7 @@ export default function CreatorsPage() {
           <section data-tone="ink">
             <div className="ur-content-wide mx-auto px-5 lg:px-10 py-24 lg:py-40 overflow-hidden">
               <GiantNumber value="0" unit="원" label="시작에 드는 돈 0원" />
-              <div className="mt-10 lg:mt-14 grid gap-8 lg:grid-cols-2 lg:items-end lg:gap-20">
+              <div className="mt-12 lg:mt-12 grid gap-8 lg:grid-cols-2 lg:items-end lg:gap-20">
                 <Reveal><h2 className="ur-tone-fg text-[24px] lg:text-[48px] font-bold leading-[1.22]">
                   시작에 드는 돈은<br />없습니다
                 </h2></Reveal>
@@ -124,7 +124,7 @@ export default function CreatorsPage() {
           </section>
 
           <section data-tone="paper">
-            <div className="ur-content-wide mx-auto px-5 lg:px-10 py-20 lg:py-36 grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:items-center">
+            <div className="ur-content-wide mx-auto px-5 lg:px-10 py-20 lg:py-36 grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-12 lg:items-center">
               <Reveal><h2 className="ur-tone-fg text-[24px] lg:text-[48px] xl:text-[60px] font-bold leading-[1.18]">
                 담으면 내 가게,<br />팔리면 내 소개비
               </h2></Reveal>
@@ -144,7 +144,7 @@ export default function CreatorsPage() {
               수익 구조는 단순합니다
             </h2></Reveal>
             <div>
-              <Reveal as="p" className="flex items-start gap-2 lg:gap-4 text-[16px] lg:text-[34px] font-semibold text-ink leading-[1.35] tracking-[-0.025em]">
+              <Reveal as="p" className="flex items-start gap-2 lg:gap-3 text-[16px] lg:text-[34px] font-semibold text-ink leading-[1.35] tracking-[-0.025em]">
                 <Link2 className="w-5 h-5 lg:w-8 lg:h-8 mt-1 lg:mt-2 text-brand shrink-0" strokeWidth={1.9} aria-hidden />
                 <span>내 링크로 팔리면 <span className="text-brand-text">판매액의 소개비</span> 적립</span>
               </Reveal>
@@ -165,10 +165,10 @@ export default function CreatorsPage() {
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
             <Reveal><h2 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] leading-[1.2]">시작은 3단계</h2></Reveal>
 
-            <ol className="mt-8 lg:mt-16 space-y-2 lg:space-y-0">
+            <ol className="mt-8 lg:mt-12 space-y-2 lg:space-y-0">
               {STEPS.map(({ icon: Icon, t, d }, i) => (
                 <Reveal as="li" key={t} kind="left" delay={i * 160}
-                  className={`flex items-start gap-4 rounded-2xl bg-white/[0.06] p-4 lg:bg-transparent lg:p-0 lg:rounded-none lg:items-baseline lg:gap-10 lg:py-8 lg:border-t lg:border-white/15 ${STAIR[i]}`}>
+                  className={`flex items-start gap-3 rounded-2xl bg-white/[0.06] p-5 lg:bg-transparent lg:p-0 lg:rounded-none lg:items-baseline lg:gap-8 lg:py-8 lg:border-t lg:border-white/15 ${STAIR[i]}`}>
                   <span aria-hidden className="w-9 h-9 rounded-xl bg-white/[0.10] flex items-center justify-center shrink-0 lg:hidden">
                     <Icon className="w-[18px] h-[18px] text-brand-text" />
                   </span>
@@ -190,12 +190,12 @@ export default function CreatorsPage() {
               매장에 돈을 달라고 할 일이 없습니다. 제안 수락도 적립 확인도 같은 앱 안에서 끝납니다.
             </Reveal>
             {/* 🎬 폰 세 대가 엇박으로 올라오고 PC 에서는 서로 다른 높이에서 떠 있다 */}
-            <div className="mt-10 lg:mt-16 flex flex-wrap justify-center gap-8 lg:gap-16">
+            <div className="mt-12 lg:mt-12 flex flex-wrap justify-center gap-8 lg:gap-12">
               <Reveal kind="scale" className="w-[42%] max-w-[13rem] lg:w-[17rem] lg:max-w-none">
                 <PhoneShot src={SHOT('influencer-offer')} alt="매장이 보낸 소개 제안 화면"
                   caption="매장이 보낸 제안 (예시 데이터로 렌더한 실제 화면)" className="ur-float" />
               </Reveal>
-              <Reveal kind="scale" delay={140} className="w-[42%] max-w-[13rem] lg:w-[17rem] lg:max-w-none lg:mt-16">
+              <Reveal kind="scale" delay={140} className="w-[42%] max-w-[13rem] lg:w-[17rem] lg:max-w-none lg:mt-12">
                 <PhoneShot src={SHOT('influencer-settlement')} alt="내 소개 적립과 정산 화면"
                   caption="내 정산 화면 (예시 데이터)" className="ur-float-late" />
               </Reveal>
@@ -209,7 +209,7 @@ export default function CreatorsPage() {
 
         {/* ❓ 자주 묻는 것 — 화면 · 크롤러 본문 · FAQPage 가 같은 배열(landing-faq). 답은 접혀도 DOM 에 있다. */}
         <section className="bg-warm">
-          <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-10 lg:grid-cols-[0.62fr_1.38fr] lg:gap-16">
+          <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-8 lg:grid-cols-[0.62fr_1.38fr] lg:gap-12">
             <Reveal><h2 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">자주 묻는 것</h2></Reveal>
             <div>
               {REFERRAL_FAQ.map(f => <FaqItem key={f.question} q={f.question} a={f.answer} />)}
@@ -224,17 +224,17 @@ export default function CreatorsPage() {
               <Reveal kind="scale"><h2 className="text-[24px] lg:text-[48px] xl:text-[60px] font-bold tracking-[-0.03em] leading-[1.22]">
                 1기 소개 파트너 모집
               </h2></Reveal>
-              <p className="mt-6 lg:mt-8 text-[15px] lg:text-[16px] leading-relaxed text-white/70">
+              <p className="mt-8 lg:mt-8 text-[15px] lg:text-[16px] leading-relaxed text-white/70">
                 지금 지원하시면 온보딩 안내를 보내드립니다.
               </p>
             </div>
 
             {GOOGLE_FORM_URL ? (
-              <div className="mt-10 lg:mt-14 max-w-[46rem] mx-auto rounded-2xl overflow-hidden bg-surface">
+              <div className="mt-12 lg:mt-12 max-w-[46rem] mx-auto rounded-2xl overflow-hidden bg-surface">
                 <iframe src={GOOGLE_FORM_URL} title="1기 소개 파트너 지원 폼" className="w-full h-[640px] border-0" loading="lazy" />
               </div>
             ) : (
-              <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 justify-center max-w-[32rem] mx-auto">
+              <div className="mt-12 lg:mt-12 flex flex-col sm:flex-row gap-3 justify-center max-w-[32rem] mx-auto">
                 <ApplyLink href={applyHref}
                   className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold active:scale-[0.98] transition-transform">
                   소개 파트너 지원 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
@@ -246,7 +246,7 @@ export default function CreatorsPage() {
               </div>
             )}
 
-            <p className="mt-12 lg:mt-16 text-center text-[12px] lg:text-[13px] leading-relaxed text-white/45">
+            <p className="mt-12 lg:mt-12 text-center text-[12px] lg:text-[13px] leading-relaxed text-white/45">
               {F.biz}
               <br />
               문의 {F.contactEmail}

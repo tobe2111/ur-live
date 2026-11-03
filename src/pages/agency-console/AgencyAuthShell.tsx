@@ -31,22 +31,22 @@ export function AgencyAuthShell({ title, lead, children, footer, aside }: {
     <div>
       <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.01em] text-gray-900">{title}</h1>
       {lead && <p className="mt-2 text-[13px] leading-relaxed text-gray-500">{lead}</p>}
-      <div className="mt-6 rounded-2xl bg-white p-6 shadow-lift">{children}</div>
-      {footer && <div className="mt-6 text-center text-[13px] text-gray-500">{footer}</div>}
+      <div className="mt-8 rounded-2xl bg-white p-6 shadow-lift">{children}</div>
+      {footer && <div className="mt-8 text-center text-[13px] text-gray-500">{footer}</div>}
     </div>
   )
   return (
     <div className="force-light-theme agency-light-theme min-h-[100dvh] bg-[#F8F7FC] text-gray-900">
       {aside ? (
-        <div className="mx-auto w-full max-w-[1040px] px-4 lg:px-8 pt-12 pb-16">
+        <div className="mx-auto w-full max-w-[1040px] px-5 lg:px-8 pt-12 pb-16">
           {brand}
-          <div className="mt-8 flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-16 lg:pt-6">
+          <div className="mt-8 flex flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-12 lg:pt-6">
             <div className="order-2 lg:order-1">{aside}</div>
             <div className="order-1 w-full max-w-[420px] mx-auto lg:order-2 lg:max-w-none">{form}</div>
           </div>
         </div>
       ) : (
-        <div className="mx-auto w-full max-w-[420px] px-4 pt-12 pb-16">
+        <div className="mx-auto w-full max-w-[420px] px-5 pt-12 pb-16">
           {brand}
           <div className="mt-8">{form}</div>
         </div>

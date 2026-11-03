@@ -69,7 +69,7 @@ export default function PinManageList({ pins, onReorder, onDeleted }: { pins: Cu
   const fmtK = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
 
   return (
-    <div className="max-w-3xl mx-auto px-4 pt-3 pb-6">
+    <div className="max-w-3xl mx-auto px-5 pt-3 pb-6">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[15px] font-bold text-gray-900 dark:text-white">{t('curator.myPinsCount', { defaultValue: '내 핀 {{count}}개', count: items.length })}</span>
         <span className="text-[12px] text-gray-400 dark:text-gray-500">⇅ {t('curator.dragToReorder', { defaultValue: '끌어서 정렬' })}</span>

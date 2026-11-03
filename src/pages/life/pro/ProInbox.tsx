@@ -35,7 +35,7 @@ export default function ProInbox({ refreshKey }: { refreshKey: number }) {
   })
   return (
     <section className="rounded-2xl bg-surface p-5 shadow-lift">
-      <div ref={tabsRef} className="relative flex gap-4 border-b border-rule">
+      <div ref={tabsRef} className="relative flex gap-3 border-b border-rule">
         {(['open', 'mine'] as const).map((k) => (
           <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={tab === k}
             className={`-mb-px border-b-2 pb-2 text-[15px] font-bold transition-colors ${tab === k ? `${bar ? 'border-transparent' : 'border-ink'} text-ink` : 'border-transparent text-gray-500 dark:text-gray-400'}`}>

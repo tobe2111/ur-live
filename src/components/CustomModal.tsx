@@ -111,7 +111,7 @@ export function CustomModal({
           <>
             {/* Icon */}
             {getIcon() && (
-              <div className="flex justify-center mb-4">
+              <div className="flex justify-center mb-5">
                 {getIcon()}
               </div>
             )}
@@ -125,11 +125,11 @@ export function CustomModal({
 
             {/* Message or Children */}
             {children ? (
-              <div className="mb-6">
+              <div className="mb-8">
                 {children}
               </div>
             ) : message ? (
-              <p className="text-[15px] text-gray-600 dark:text-gray-300 text-center mb-6 leading-relaxed whitespace-pre-line">
+              <p className="text-[15px] text-gray-600 dark:text-gray-300 text-center mb-8 leading-relaxed whitespace-pre-line">
                 {message}
               </p>
             ) : null}

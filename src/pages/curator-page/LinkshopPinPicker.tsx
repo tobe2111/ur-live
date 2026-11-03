@@ -251,7 +251,7 @@ export default function LinkshopPinPicker() {
         </div>
 
         {/* 검색 */}
-        <div className="max-w-3xl mx-auto px-4 pt-3">
+        <div className="max-w-3xl mx-auto px-5 pt-3">
           <div className="flex items-center gap-2 h-11 px-4 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29]">
             <Search className="w-4 h-4 text-gray-400 shrink-0" />
             <input
@@ -270,13 +270,13 @@ export default function LinkshopPinPicker() {
 
         {/* 그리드 */}
         {loading && items.length === 0 ? (
-          <div className="max-w-3xl mx-auto px-4 grid grid-cols-2 gap-3 pt-4">
+          <div className="max-w-3xl mx-auto px-5 grid grid-cols-2 gap-3 pt-4">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="aspect-[3/4] rounded-2xl bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+          <div className="max-w-3xl mx-auto px-5 py-20 text-center">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white">
               {query ? '검색 결과가 없어요' : tab === 'shop' ? '담을 수 있는 상품이 없어요' : '담을 수 있는 이용권이 없어요'}
             </p>
@@ -287,7 +287,7 @@ export default function LinkshopPinPicker() {
             )}
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto px-4 grid grid-cols-2 gap-3 pt-4">
+          <div className="max-w-3xl mx-auto px-5 grid grid-cols-2 gap-3 pt-4">
             {filtered.map((item) => (
               <PickCard
                 key={item.id}
@@ -302,7 +302,7 @@ export default function LinkshopPinPicker() {
 
         {/* 더 보기 (상품 탭만 page 누적) */}
         {tab === 'shop' && !query && shopHasMore && filtered.length > 0 && (
-          <div className="max-w-3xl mx-auto px-4 pt-4">
+          <div className="max-w-3xl mx-auto px-5 pt-4">
             <button
               onClick={() => { const next = shopPage + 1; setShopPage(next); loadShop(next, false) }}
               disabled={loadingMore}
@@ -362,7 +362,7 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
           placeholder="예: 재구매만 3번째예요. 향이 진짜 좋아요!"
           className="w-full rounded-xl border border-line bg-warm px-4 py-2 text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A] resize-none"
         />
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-5">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-line text-[13px] font-medium text-gray-600 dark:text-gray-300 active:opacity-70">건너뛰기</button>
           <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl bg-brand text-white text-[13px] font-medium active:opacity-80 disabled:opacity-50">
             {saving ? '저장 중…' : '저장'}

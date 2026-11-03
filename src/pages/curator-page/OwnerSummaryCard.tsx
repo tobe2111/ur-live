@@ -39,7 +39,7 @@ export default function OwnerSummaryCard({ onShare, hasSns }: { onShare: () => v
           </div>
         ))}
       </div>
-      <div className="mt-4 flex gap-2">
+      <div className="mt-5 flex gap-2">
         <Link to="/u/me/add?tab=voucher" className="flex-1 h-11 rounded-xl bg-brand text-white text-[15px] font-medium flex items-center justify-center active:opacity-90">이용권 담기</Link>
         <button type="button" onClick={onShare} className="flex-1 h-11 rounded-xl bg-wash text-gray-900 dark:text-white text-[15px] font-medium active:opacity-80">공유하기</button>
       </div>

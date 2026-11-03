@@ -81,9 +81,9 @@ export default function LifeProPage() {
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
       <SEO title={withSiteName(LIFE_PRO_SEO.title)} description={LIFE_PRO_SEO.description} url="/life/pro" />
       <LifeHeader title={hasToken ? '생활 요청 받기' : '업체 등록'} back="/life" />
-      <div className="ur-content-narrow space-y-4 px-4 pb-10">
+      <div className="ur-content-narrow space-y-3 px-5 pb-10">
         {shareToken && (
-          <p className="rounded-2xl bg-brand-tint p-4 text-[13px] text-brand-text">
+          <p className="rounded-2xl bg-brand-tint p-5 text-[13px] text-brand-text">
             {hasToken ? '이 요청의 업종과 지역을 채워 두었어요. 저장하면 바로 견적을 낼 수 있어요.' : '공유받은 요청에 견적을 내려면 먼저 업체로 등록해 주세요.'}
           </p>
         )}
@@ -98,7 +98,7 @@ export default function LifeProPage() {
         ) : !me ? <BrandLoader label="불러오는 중" /> : (
           <>
             {!me.seller.approved && (
-              <p className="rounded-2xl bg-surface p-4 text-[13px] shadow-lift">
+              <p className="rounded-2xl bg-surface p-5 text-[13px] shadow-lift">
                 지금 바로 견적을 보낼 수 있어요. 사업자등록증을 올려 심사를 마치면 견적 카드에 <b>사업자 인증</b> 표시가 붙어 손님이 더 믿고 골라요.{' '}
                 <Link to={sellerEntryPath('/seller/business-info')} className="font-medium text-brand-text underline">사업자 정보 올리기</Link>
               </p>

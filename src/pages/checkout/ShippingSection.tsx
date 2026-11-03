@@ -28,7 +28,7 @@ export default function ShippingSection({ selectedAddress, onOpenAddressModal }:
       </div>
 
       {!selectedAddress ? (
-        <div className="mt-4 bg-red-50 border border-red-200 rounded-2xl p-4">
+        <div className="mt-5 bg-red-50 border border-red-200 rounded-2xl p-5">
           <div className="flex items-start gap-3">
             <AlertIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
             <div>
@@ -38,7 +38,7 @@ export default function ShippingSection({ selectedAddress, onOpenAddressModal }:
           </div>
         </div>
       ) : (
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="mt-5 flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-[15px] font-medium text-gray-900 dark:text-white">{selectedAddress.recipient_name}</span>
             {selectedAddress.is_default === 1 && (

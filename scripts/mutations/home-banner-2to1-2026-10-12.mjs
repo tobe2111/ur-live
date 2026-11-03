@@ -30,8 +30,8 @@ export default [
   {
     name: '🎫2:1 배너가 다시 전폭이 된다 (거터 제거 — "따로 논다"의 원인)',
     file: 'src/shared/home-strip-banners.ts', // 2026-10-14 클래스가 공용 상수(STRIP_CLS)로 옮겨갔다 — 서버 첫 화면과 같은 값
-    find: "rail: 'flex gap-7 px-[14px]',",
-    replace: "rail: 'flex gap-7',",
+    find: "rail: 'flex gap-8 px-[14px]',",
+    replace: "rail: 'flex gap-8',",
     test: BANNER,
     why: '거터 14px 는 `.ur-home-panel`(모바일)과 같은 값이다. 빼면 배너만 전폭이 되어 아래 패널과 다시 따로 논다.',
   },
@@ -46,7 +46,7 @@ export default [
   {
     name: '🎫2:1 장수 계산 상수가 실제 gap 과 어긋난다 (숫자가 손가락과 따로 논다)',
     file: 'src/components/home/HomeBannerStrip.tsx',
-    find: 'const STRIP_GAP_PX = 28',
+    find: 'const STRIP_GAP_PX = 32',
     replace: 'const STRIP_GAP_PX = 12',
     test: BANNER,
     why: '2026-10-12 에 gap 을 두 번 바꾸며 이 상수를 안 고쳐 실제로 어긋났다 — 가드가 그걸 잡았다.',

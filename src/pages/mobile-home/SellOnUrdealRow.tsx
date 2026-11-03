@@ -36,7 +36,7 @@ export default function SellOnUrdealRow() {
   return (
     <Link
       to={SELL_PATH}
-      className="mt-6 flex items-center gap-2 border-t border-rule px-4 py-4 active:opacity-60 transition-opacity"
+      className="mt-8 flex items-center gap-2 border-t border-rule px-4 py-4 active:opacity-60 transition-opacity"
     >
       {/* 라이트에서 이 문장은 **잉크**다(대표 2026-09-14: "화이트 버전에서의 글자는 검정이어야 해").
           회색으로 흐리면 피드 끝에서 읽히지 않는다 — 여긴 이미 스크롤 끝이라 더 물러설 곳이 없다. */}

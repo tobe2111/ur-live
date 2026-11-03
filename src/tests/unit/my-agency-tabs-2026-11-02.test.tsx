@@ -56,7 +56,7 @@ describe('③ 탭마다 그 역할 것만', () => {
     expect(PAGE).toContain('{showMe && <RoleCtaGrid />}')
     expect(PAGE).toContain('{showMe && <RewardAdCard />}')
     expect(PAGE).toContain('{pcSplit || !showMe ? null : settingsBlock}')
-    expect(PAGE).toMatch(/\{showMe && <div className="ur-content-medium px-4 lg:px-8 pt-2 pb-8/)
+    expect(PAGE).toMatch(/\{showMe && <div className="ur-content-medium px-5 lg:px-8 pt-2 pb-8/)
   })
   it('에이전시 것은 showAgency 로', () => {
     expect(PAGE).toMatch(/\{showAgency && <>[\s\S]{0,900}?<SellerSection state=\{sellerSeats\} \/>\}\s*<MyAgencyZone [^>]*\/>\s*<\/>\}/)

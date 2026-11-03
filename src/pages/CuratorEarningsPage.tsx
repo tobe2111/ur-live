@@ -111,7 +111,7 @@ export default function CuratorEarningsPage() {
           </div>
         </header>
 
-        <div className="max-w-3xl mx-auto px-4 pt-4 pb-6">
+        <div className="max-w-3xl mx-auto px-5 pt-4 pb-6">
           {loading ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : error ? (
@@ -131,7 +131,7 @@ export default function CuratorEarningsPage() {
 
               {/* 셀러 승급 안내 — 누적이 임계치를 넘은 사람에게만, 한 번만. */}
               {wdInfo?.seller_upgrade.eligible && !wdInfo.seller_upgrade.offered && (
-                <div className="rounded-2xl p-4 mb-3">
+                <div className="rounded-2xl p-5 mb-3">
                   <p className="text-[15px] font-bold mb-1">셀러 승급 안내</p>
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">
                     누적 적립이 {formatWon(wdInfo.seller_upgrade.threshold)} 를 넘었어요. 셀러가 되면 직접 상품을 팔 수 있어요.

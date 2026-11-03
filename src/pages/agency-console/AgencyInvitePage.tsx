@@ -61,7 +61,7 @@ export default function AgencyInvitePage() {
       footer={<p>초대 링크는 7일 뒤 만료돼요. 관리자가 언제든 내보낼 수 있어요.</p>}
     >
       <SEO title="에이전시 합류 - 유어딜" description="유어딜 에이전시 직원 합류" url="/agency/invite" noindex />
-      <form onSubmit={submit} className="flex flex-col gap-4">
+      <form onSubmit={submit} className="flex flex-col gap-3">
         <Field label="로그인 아이디">
           <input type="email" value={lookup.email} readOnly disabled autoComplete="username" className={inputCls} />
         </Field>

@@ -22,7 +22,7 @@ export default [
   {
     name: '🏪 PC 2단이 무너져 다시 한 칸이 된다 (안 B 의 요지 소실)',
     file: PAGE,
-    find: `lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16`,
+    find: `lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-12`,
     replace: `lg:block`,
     test: T,
     why:

@@ -24,13 +24,13 @@ export default function InstagramConnectSection({ number }: { number?: string })
   }, [])
 
   return (
-    <section id="instagram" className="border-t border-rule pt-6 mt-6 scroll-mt-20">
+    <section id="instagram" className="border-t border-rule pt-6 mt-8 scroll-mt-20">
       <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
         {number ? `${number}. ` : ''}인스타그램 연결 (댓글 자동 DM) / Instagram connection
       </h2>
 
       {code && (
-        <div className="mb-4 rounded-lg bg-tone-ok-bg p-4 text-[13px] text-tone-ok">
+        <div className="mb-5 rounded-lg bg-tone-ok-bg p-4 text-[13px] text-tone-ok">
           <p className="font-medium">삭제가 완료되었습니다 (Deletion completed)</p>
           <p className="mt-1">확인 코드 (Confirmation code): <span className="font-medium tabular-nums">{code}</span></p>
         </div>

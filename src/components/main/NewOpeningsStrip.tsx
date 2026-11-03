@@ -42,7 +42,7 @@ export default function NewOpeningsStrip() {
   if (!rows.length) return null
 
   return (
-    <section className="ur-content-wide px-4 lg:px-8 mt-5">
+    <section className="ur-content-wide px-5 lg:px-8 mt-5">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-[15px] font-bold text-gray-900 dark:text-white"><Sparkle className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />{t('home.newOpenings', { defaultValue: '우리 동네 새 가게' })}</h2>
         <button onClick={() => navigate('/new-openings')} className="text-[12px] text-gray-500 dark:text-gray-400">

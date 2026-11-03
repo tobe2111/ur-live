@@ -94,7 +94,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
         aria-modal="true"
         aria-labelledby="iafm-title"
       >
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-5">
           <div className="flex-1 min-w-0">
             <span className="inline-block px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[12px] font-medium mb-2 border border-amber-200">
               ⚠️ {inAppLabel} 인앱 브라우저
@@ -114,7 +114,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
         </p>
 
         {openTried && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-[12px] text-blue-800">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-5 text-[12px] text-blue-800">
             ℹ️ 외부 브라우저가 안 열린다면 우측 상단 메뉴 → "<strong>다른 브라우저로 열기</strong>" 또는 "<strong>Safari 로 열기</strong>" 를 선택하거나 아래 URL 을 복사해 직접 붙여넣어 주세요.
           </div>
         )}

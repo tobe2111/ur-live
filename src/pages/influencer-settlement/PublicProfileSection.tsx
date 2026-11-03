@@ -72,7 +72,7 @@ export default function PublicProfileSection() {
   }
 
   return (
-    <section className="rounded-xl p-4 mb-4">
+    <section className="rounded-xl p-4 mb-5">
       <div className="flex items-start gap-2 mb-3">
         <Megaphone className="w-5 h-5 text-brand-text shrink-0 mt-1" />
         <div className="flex-1 min-w-0">
@@ -155,7 +155,7 @@ export default function PublicProfileSection() {
       </div>
 
       <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">활동 지역</label>
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-5">
         {opts.regions.map((r) => (
           <button key={r} type="button" onClick={() => patch({ regions: toggle(p.regions, r) })}
             className={`px-2 py-1 rounded-full text-[12px] font-medium border ${

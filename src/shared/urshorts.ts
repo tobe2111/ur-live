@@ -152,6 +152,8 @@ export interface YouTubePlayOpts {
   autoplay?: boolean
   /** `false` 면 유튜브 컨트롤(진행 바·시간·전체화면·상단 아이콘)을 안 그리도록 요청한다. */
   controls?: boolean
+  /** `true` 면 소리 없이 시작한다. 휴대폰 브라우저는 **소리 있는 자동 재생을 막는다** — 그러면 멈춘 채 뜬다(2026-11-03 대표 화면). */
+  muted?: boolean
 }
 
 /**
@@ -174,6 +176,7 @@ export function youTubePlayerVars(opts?: YouTubePlayOpts): Record<string, string
     iv_load_policy: '3',
   }
   if (opts?.autoplay) p.autoplay = '1'
+  if (opts?.muted) p.mute = '1'
   // 🧹 2026-09-08 대표 *"3/3 이런거 안나오면 좋겠어 지금 번잡해 … 깔끔하게"*.
   //    실측(라이브 스크린샷): 아래 컨트롤 바·시간·전체화면과 **상단 스피커·CC·⚙️ 까지** 사라졌다.
   //    남는 것(제목 띠·🔗·Shorts 로고)은 유튜브가 정하고, 덮는 것은 embed 약관 위반이다.
