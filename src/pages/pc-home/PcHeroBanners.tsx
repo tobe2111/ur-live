@@ -86,7 +86,7 @@ export default function PcHeroBanners() {
     <section
       aria-roledescription="carousel"
       aria-label="기획전 배너"
-      className={`grid gap-4 h-[clamp(240px,24vw,340px)] ${side.length ? 'grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : 'grid-cols-1'}`}
+      className={`grid gap-3 h-[clamp(240px,24vw,340px)] ${side.length ? 'grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : 'grid-cols-1'}`}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onFocusCapture={() => setHover(true)}
@@ -125,7 +125,7 @@ export default function PcHeroBanners() {
         )}
       </div>
       {side.length > 0 && (
-        <div className={`grid gap-4 min-w-0 ${side.length === 2 ? 'grid-rows-2' : 'grid-rows-1'}`}>
+        <div className={`grid gap-3 min-w-0 ${side.length === 2 ? 'grid-rows-2' : 'grid-rows-1'}`}>
           {side.map((k) => {
             const b = at(k)
             return <div key={`${k}-${b.id}`} className="relative min-h-0"><Slide b={b} big={false} eager={false} /></div>

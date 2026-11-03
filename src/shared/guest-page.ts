@@ -16,7 +16,7 @@ export const GUEST_CLS = {
    */
   card: 'mt-2 rounded-2xl px-4 py-5',
   headline: 'text-[20px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-white',
-  benefits: 'flex flex-col gap-4',
+  benefits: 'flex flex-col gap-3',
   benefit: 'flex items-start gap-3',
   benefitIcon: 'shrink-0 w-9 h-9 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center',
   benefitText: 'min-w-0',
@@ -31,11 +31,11 @@ export const GUEST_CLS = {
   shopHeadline: 'mt-2 text-[20px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-white',
   shopSub: 'mt-2 text-[15px] text-gray-500 dark:text-gray-400',
   /** 마이 탭 카드 머리 — 마스코트 + 인사. */
-  myHead: 'flex items-center gap-4',
+  myHead: 'flex items-center gap-3',
   myHeadText: 'min-w-0',
   myHello: 'text-[16px] font-semibold text-gray-900 dark:text-white',
   myHelloSub: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400',
-  myStats: 'mt-4 grid grid-cols-3 border-t border-rule pt-4 text-center',
+  myStats: 'mt-5 grid grid-cols-3 border-t border-rule pt-4 text-center',
   myStatValue: 'text-[16px] font-semibold text-gray-400 dark:text-gray-500',
   myStatLabel: 'mt-1 text-[12px] text-gray-500 dark:text-gray-400',
 } as const

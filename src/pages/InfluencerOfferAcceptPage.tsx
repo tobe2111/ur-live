@@ -63,7 +63,7 @@ export default function InfluencerOfferAcceptPage() {
             <p className="text-[15px] text-gray-500 dark:text-gray-400">{error}</p>
           </div>
         ) : trackingUrl ? (
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-3">
             <div className="text-[34px]">🎉</div>
             <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">제안을 수락했어요!</h1>
             <p className="text-[15px] text-gray-600 dark:text-gray-300">
@@ -79,7 +79,7 @@ export default function InfluencerOfferAcceptPage() {
             <p className="text-[12px] text-gray-500 dark:text-gray-400">내 유어샵(마이 → 유어샵)에 핀해서 함께 홍보할 수도 있어요.</p>
           </div>
         ) : offer ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="text-center">
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">유어딜 협업 제안</p>
               <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">{offer.seller_name}</h1>

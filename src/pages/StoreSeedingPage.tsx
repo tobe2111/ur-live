@@ -48,7 +48,7 @@ export default function StoreSeedingPage() {
         <button type="button" onClick={() => navigate(MY_PATH)} aria-label="뒤로" className="p-1 text-ink"><ChevronLeft className="h-6 w-6" /></button>
         <h1 className="text-[16px] font-semibold text-ink">무상 체험 요청함</h1>
       </header>
-      <div className="mx-auto max-w-xl space-y-4 px-4 pt-4">
+      <div className="mx-auto max-w-xl space-y-3 px-5 pt-4">
         <section className={card}>
           <p className="text-[16px] font-semibold text-ink">받은 신청</p>
           {reqs === null ? <p className="mt-2 text-[13px] text-ink-soft">불러오는 중…</p>
@@ -107,7 +107,7 @@ function ReqRow({ r, onDone }: { r: Req; onDone: () => void }) {
       )}
       {['approved', 'scheduling', 'scheduled'].includes(r.status) && (
         <button type="button" disabled={busy} onClick={() => act('cancel', {}, '매장 사정으로 취소할까요? 인플루언서의 보증금은 돌려드려요.')}
-          className="mt-2 ml-4 text-[13px] text-ink-soft">매장 사정으로 취소</button>
+          className="mt-2 ml-5 text-[13px] text-ink-soft">매장 사정으로 취소</button>
       )}
     </li>
   )

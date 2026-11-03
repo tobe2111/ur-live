@@ -14,7 +14,7 @@ export default function FaqItem({ q, a }: { q: string; a: string }) {
   return (
     <div className="border-b border-rule">
       <button onClick={() => setOpen(v => !v)} aria-expanded={open}
-        className="w-full flex items-center justify-between gap-4 py-4 lg:py-6 text-left">
+        className="w-full flex items-center justify-between gap-3 py-4 lg:py-6 text-left">
         <span className="text-[15px] lg:text-[16px] font-bold text-ink">{q}</span>
         <ChevronDown className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} strokeWidth={2} />
       </button>

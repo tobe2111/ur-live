@@ -303,9 +303,9 @@ export default function VoucherDetailPage() {
   if (error || !product) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] p-4">
-        <button onClick={goBack} aria-label="뒤로" className="mb-4"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
+        <button onClick={goBack} aria-label="뒤로" className="mb-5"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
         <div className="text-center mt-12">
-          <p className="text-[15px] text-gray-700 dark:text-gray-200 mb-4">{error || '교환권을 찾을 수 없습니다'}</p>
+          <p className="text-[15px] text-gray-700 dark:text-gray-200 mb-5">{error || '교환권을 찾을 수 없습니다'}</p>
           <button onClick={() => navigate('/vouchers')} className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold">교환권 목록으로</button>
         </div>
       </div>
@@ -379,7 +379,7 @@ export default function VoucherDetailPage() {
 
       {/* 🖥️ 2026-07-16 (대표 — 상세 PC 2단): lg+ 에서 좌 이미지(sticky) + 우 정보 2단(교환권 상세).
           모바일(<lg)은 기존 720 단일 컬럼 그대로(lg: no-op). */}
-      <div className="ur-content-narrow lg:max-w-[1000px] px-4 lg:grid lg:grid-cols-2 lg:gap-10 lg:items-start lg:pt-6">
+      <div className="ur-content-narrow lg:max-w-[1000px] px-5 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start lg:pt-6">
         {/* 🎨 상품 카드 — 사용자 요청: 사진이 카드를 가득 채움(object-cover, 정사각 풀블리드).
             그라데이션은 로딩 중/투명 이미지 대비 base 로만 유지(채워지면 안 보임). */}
         <div className="relative aspect-square w-full rounded-[28px] overflow-hidden bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115] lg:sticky lg:top-20">
@@ -416,7 +416,7 @@ export default function VoucherDetailPage() {
             <div className="mt-1 text-[13px] text-gray-400 dark:text-gray-500">{product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</div>
           )}
           {/* 🎨 2026-06-17: 시안 의도 복원 — original_price(정가) 있으면 취소선 + 실제 할인율 표시 */}
-          <div className="mt-4 flex items-end justify-between gap-3">
+          <div className="mt-5 flex items-end justify-between gap-3">
             <div className="flex items-baseline gap-1">
               <span className="text-[34px] font-bold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
               <span className="text-[16px] font-bold text-[#171B24] dark:text-white">딜</span>
@@ -468,7 +468,7 @@ export default function VoucherDetailPage() {
         className="fixed bottom-14 left-0 right-0 bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] z-[10002] lg:bottom-0"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
-        <div className="ur-content-narrow lg:max-w-[1000px] px-4 pt-3">
+        <div className="ur-content-narrow lg:max-w-[1000px] px-5 pt-3">
           {/* 🎨 보유 딜 + 교환 후 잔액 (로그인 시) */}
           {loggedIn && (
             <div className="flex items-center justify-between bg-[#F6F7F9] dark:bg-[#1D1F29] rounded-xl px-4 py-2 mb-3">
@@ -513,7 +513,7 @@ export default function VoucherDetailPage() {
         <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center p-4 ur-veil" onClick={() => setShowPhoneModal(false)}>
           <div className="ur-glass ur-pop-card w-full max-w-sm p-5 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2">휴대폰 번호 등록</h3>
-            <p className="text-[12px] text-gray-600 dark:text-gray-300 mb-4">
+            <p className="text-[12px] text-gray-600 dark:text-gray-300 mb-5">
               기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다.<br/>
               발송 받을 번호를 입력해주세요.
             </p>

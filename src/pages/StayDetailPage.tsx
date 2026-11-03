@@ -289,7 +289,7 @@ export default function StayDetailPage() {
      ⚠️ 이용권 모드는 자체 표면이 없어 카드 유지. 경위: docs/design/stay-detail-booking-card-2026-09.md */
   const selectorBox = (
     <div className={isVoucherMode
-      ? 'rounded-2xl p-4'
+      ? 'rounded-2xl p-5'
       : ''}>
       {isVoucherMode ? (
         <>
@@ -451,14 +451,14 @@ export default function StayDetailPage() {
         </div>
 
         {/* 🏨 2026-10-31 서비스 및 부대시설 — 대표 시설 그리드, 없는 칸은 '없음'(대표 여기어때 화면). 시설 정보가 없어도 섹션은 둔다. */}
-        <div id="stay-sec-amenity" className={`${STAY_BAND} lg:mb-6`} style={{ scrollMarginTop: 96 }}>
+        <div id="stay-sec-amenity" className={`${STAY_BAND} lg:mb-8`} style={{ scrollMarginTop: 96 }}>
           <SectionTitle>서비스 및 부대시설</SectionTitle>
           <AmenityGrid items={amenitiesArr} />
         </div>
 
         {/* Description */}
         {stay.description_full && (
-          <div id="stay-sec-intro" className={`${STAY_BAND} lg:mb-6`} style={{ scrollMarginTop: 96 }}>
+          <div id="stay-sec-intro" className={`${STAY_BAND} lg:mb-8`} style={{ scrollMarginTop: 96 }}>
             <SectionTitle>숙소 소개</SectionTitle>
             <p className="mt-3 text-[15px] leading-[1.72] text-gray-600 dark:text-gray-300 whitespace-pre-line">{stay.description_full}</p>
           </div>
@@ -636,7 +636,7 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
           <h3 className="text-[15px] font-bold">예약 정보</h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{(stay.restaurant_name || stay.name)} · {room.name}</p>
         </div>
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-3">
           <div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 text-[12px]">
             {saleMode === 'date' ? (
               <p className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">기간</span><span className="font-medium">{checkIn} → {checkOut} ({nights}박)</span></p>
@@ -763,7 +763,7 @@ function MultiBookingModal({
           <h3 className="text-[15px] font-bold">묶음 예약 ({totalQty}객실)</h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{stay.restaurant_name || stay.name}</p>
         </div>
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-3">
           <div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 text-[12px] space-y-2">
             {cartEntries.map(({ room, qty }) => (
               <div key={room.room_id} className="flex justify-between">

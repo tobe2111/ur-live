@@ -202,7 +202,7 @@ export default function HomeSections(
           {/* 📐 2026-08-17 (대표 — 컴팩트): 섹션 하단 여백·제목·그리드 gap 축소(피드 그리드와 동일 톤). */}
           {/* ➖ 2026-11-02 대표 *"배너 위에 구분선이 신경쓰여 없애줘"* — 제목 없는 첫 섹션은 아래 띠(8px)를 안 긋는다. */}
           <section className={`ur-home-panel${bareFirst && sIdx === 0 ? ' ur-panel-flush' : ''}`}>
-            {!(bareFirst && sIdx === 0) && <div className="flex items-end justify-between gap-4 mb-3">
+            {!(bareFirst && sIdx === 0) && <div className="flex items-end justify-between gap-3 mb-3">
               <div className="min-w-0">
                 {/* ⚠️ 모바일 클래스 문자열은 워커 첫 화면(`home-first-screen`)이 글자 그대로 미러한다 — 통째로 둔다. */}
                 <h3 className={rail ? 'text-[20px] font-semibold tracking-[-.02em] text-gray-900 dark:text-white' : 'text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white'}>

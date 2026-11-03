@@ -162,11 +162,11 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
 
               {/* Timeline */}
               {data.events && data.events.length > 0 ? (
-                <ol className="relative border-l-2 border-line ml-2 space-y-4">
+                <ol className="relative border-l-2 border-line ml-2 space-y-3">
                   {[...data.events].reverse().map((ev, i) => {
                     const isLatest = i === 0
                     return (
-                      <li key={i} className="ml-4">
+                      <li key={i} className="ml-5">
                         <div className={`absolute -left-[7px] w-3 h-3 rounded-full ${isLatest ? 'bg-brand ring-2 ring-brand/30' : 'bg-gray-300 dark:bg-[#2C2F35]'}`} />
                         <p className={`text-[15px] ${isLatest ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                           {getEventStatus(ev)}

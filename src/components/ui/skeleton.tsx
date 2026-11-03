@@ -74,7 +74,7 @@ export function ProductDetailSkeleton() {
       </div>
 
       {/* Product Info Skeleton */}
-      <div className="px-5 py-6 space-y-4">
+      <div className="px-5 py-6 space-y-3">
         {/* Brand/Name */}
         <div className="space-y-2">
           <Skeleton className="w-32 h-4" />
@@ -88,7 +88,7 @@ export function ProductDetailSkeleton() {
         </div>
 
         {/* Separator */}
-        <div className="border-t border-border my-6" />
+        <div className="border-t border-border my-8" />
 
         {/* Description */}
         <div className="space-y-2">
@@ -99,7 +99,7 @@ export function ProductDetailSkeleton() {
         </div>
 
         {/* Info Section */}
-        <div className="space-y-3 mt-6">
+        <div className="space-y-3 mt-8">
           <Skeleton className="w-24 h-4" />
           {[...Array(3)].map((_, i) => (
             <div key={i} className="flex justify-between">
@@ -145,9 +145,9 @@ export function CardSkeleton() {
  */
 export function ListSkeleton({ count = 5 }: { count?: number }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {[...Array(count)].map((_, i) => (
-        <div key={i} className="flex gap-4 p-4 border border-border rounded-lg">
+        <div key={i} className="flex gap-3 p-4 border border-border rounded-lg">
           <Skeleton className="w-20 h-20 flex-shrink-0" variant="rounded" />
           <div className="flex-1 space-y-2">
             <Skeleton className="w-3/4 h-5" />

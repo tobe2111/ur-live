@@ -266,11 +266,11 @@ export default function LoginPage() {
           남은 것: 유달이 · 로고 · 한 줄 제목 · 칩 둘 · 카카오 버튼 · 약관 링크 · 이메일 로그인 · 에이전시 입구. */}
       <div className="w-full max-w-[360px] md:max-w-[400px]">
 
-        <div className="flex flex-col items-center mb-10">
-          <Udal mood="hello" size={64} priority motion className="block mb-4" />
+        <div className="flex flex-col items-center mb-12">
+          <Udal mood="hello" size={64} priority motion className="block mb-5" />
           <UrDealLogo size={34} />
           {/* "같이 사면 더 싸다" 는 없는 기제였다 — 이용권은 즉시판매 단일가(2026-05-30)라 인원이 가격을 안 움직인다. */}
-          <h1 className="ur-lg-h mt-6 text-[20px] font-semibold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
+          <h1 className="ur-lg-h mt-8 text-[20px] font-semibold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
             {t('login.heroTitle2', { defaultValue: '우리 동네 가게, 미리 사면 더 싸게' })}
           </h1>
           <div className="ur-lg-chips flex flex-wrap items-center justify-center gap-2 mt-5">
@@ -353,7 +353,7 @@ export default function LoginPage() {
 
         {/* Email Login Form */}
         {showEmailLogin && !showForgotPassword && (
-          <form onSubmit={handleEmailLogin} className="space-y-4">
+          <form onSubmit={handleEmailLogin} className="space-y-3">
             <div>
               <label htmlFor="login-email" className="block text-[12px] font-medium text-[#555] mb-2">
                 {t('auth.email')}
@@ -433,8 +433,8 @@ export default function LoginPage() {
 
         {/* Forgot Password Form */}
         {showForgotPassword && (
-          <div className="space-y-4">
-            <div className="text-center mb-6">
+          <div className="space-y-3">
+            <div className="text-center mb-8">
               <p className="text-[15px] text-gray-500 dark:text-gray-400 font-light leading-relaxed">
                 {t('auth.resetPasswordDesc')}
               </p>

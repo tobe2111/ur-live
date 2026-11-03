@@ -261,7 +261,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           높이 상한도 스크롤도 없어서, 내용이 화면보다 길면 **위쪽(상품명·매장명·QR 윗부분)이 화면 밖으로 넘쳐
           손댈 수도 없었다.** 인앱 브라우저(카톡)는 상단 바만큼 보이는 높이가 더 줄어 더 잘 난다.
           ⇒ 패널에 높이 상한 + 본문 스크롤. 100vh 는 모바일에서 주소창을 포함해 실제보다 크므로 dvh(레포 룰). */}
-      <div ref={panelRef} className="ur-glass-solid ur-pop-card px-6 pt-3 pb-6 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative flex flex-col max-h-[92dvh] sm:max-h-[88dvh] overflow-hidden ur-dialog-in" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))', animation: fromRow ? 'none' : undefined /* 줄에서 커질 땐 올라오기를 끈다(growFrom 이 대신) */ }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
+      <div ref={panelRef} className="ur-glass-solid ur-pop-card px-5 pt-3 pb-6 sm:pt-6 w-full sm:max-w-xs sm:mx-5 relative flex flex-col max-h-[92dvh] sm:max-h-[88dvh] overflow-hidden ur-dialog-in" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))', animation: fromRow ? 'none' : undefined /* 줄에서 커질 땐 올라오기를 끈다(growFrom 이 대신) */ }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
         {/* 그래버 (모바일 바텀시트) */}
         <div className="sm:hidden mx-auto mb-4 h-1 w-9 shrink-0 rounded-full bg-gray-200 dark:bg-[#2C2F35]" aria-hidden />
         <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29] dark:bg-[#1D1F29]">
@@ -272,7 +272,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
           <p className="text-center text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
           {voucher.restaurant_name && (
-            <p className="flex items-center justify-center gap-1 text-center text-[12px] text-gray-500 dark:text-gray-400 mb-4">
+            <p className="flex items-center justify-center gap-1 text-center text-[12px] text-gray-500 dark:text-gray-400 mb-5">
               <PinIcon className="w-3 h-3 shrink-0" />{voucher.restaurant_name}
               {mapUrl && (
                 <a href={mapUrl} target="_blank" rel="noopener noreferrer"
@@ -282,7 +282,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               )}
             </p>
           )}
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-5">
             <div className={`relative p-4 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35] ${justUsed ? 'ur-thud' : ''}`} style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
               {/* 스캔 프레임 코너 브래킷 (사용 가능 시) */}
               {!blocked && (
@@ -376,7 +376,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
           {/* 🎟️ 2026-07-06 이용 안내 — 사용 절차(사용방식별 단계) + 유효기간 + 매장 정보 + 주의사항 통합. */}
           {voucher.status === 'unused' && (
-            <div className="mt-4 rounded-xl border border-rule-strong overflow-hidden text-left">
+            <div className="mt-5 rounded-xl border border-rule-strong overflow-hidden text-left">
               <div className="px-4 py-2 border-b border-rule bg-gray-50 dark:bg-white/[0.04]">
                 <p className="text-[12px] font-medium text-gray-900 dark:text-white">{t('voucher.usageInfo', { defaultValue: '이용 안내' })}</p>
               </div>
@@ -470,7 +470,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
           {/* 🛡️ 선결제 안내 — "이미 결제 완료" 🟢 체크 (선물 X, 추가결제 X) */}
           {voucher.status === 'unused' && !giftLocked && (
-            <div className="mt-4 flex items-start gap-2 bg-gray-50 dark:bg-white/[0.04] rounded-xl px-4 py-3">
+            <div className="mt-5 flex items-start gap-2 bg-gray-50 dark:bg-white/[0.04] rounded-xl px-4 py-3">
               <OkIcon className="w-4 h-4 mt-1 shrink-0 text-tone-ok" />
               <div className="text-left">
                 <p className="text-[13px] font-medium text-gray-900 dark:text-white">{t('voucher.alreadyPaidTitle', { defaultValue: '이미 결제 완료된 이용권이에요' })}</p>
@@ -482,7 +482,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           {/* 🏁 액션: 공유 / 구매 취소·환불 (흑백 리디자인 화면3 — 2버튼 그리드).
               '선물하기'는 제거됨(2026-06-12): QR 링크 공유일 뿐 소유권 이전 아님 + 셀프취소 시 무효화 오해. */}
           {giftLocked && (
-            <div className="mt-4 rounded-2xl bg-brand-tint px-4 py-4 text-center">
+            <div className="mt-5 rounded-2xl bg-brand-tint px-4 py-4 text-center">
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('wallet.qr.giftPendingTitle', { defaultValue: '친구에게 선물 중이에요' })}</p>
               <p className="mt-1 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">{t('wallet.qr.giftPendingDesc1', { defaultValue: '친구가 받기 전까지는 이 이용권을 쓸 수 없어요.' })}<br />{t('wallet.qr.giftPendingDesc2', { defaultValue: '선물 보내기를 취소하면 다시 쓸 수 있어요.' })}</p>
               <button onClick={() => setShowGift(true)}
@@ -496,7 +496,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               {/* 🎟️ 2026-06-20 현장 사용 — 가장 강조(잉크 풀폭). 매장에서 이걸 눌러 사용처리. */}
               <button
                 onClick={() => setShowRedeem(true)}
-                className="mt-4 w-full py-4 rounded-2xl bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform"
+                className="mt-5 w-full py-4 rounded-2xl bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform"
               >
                 {t('voucher.useNow', { defaultValue: '현장에서 사용하기' })}
               </button>

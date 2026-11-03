@@ -72,7 +72,7 @@ export default function HomeProductsRail() {
   }
 
   return (
-    <section ref={ref} className="ur-content-wide px-4 lg:px-8 mt-8 mb-2">
+    <section ref={ref} className="ur-content-wide px-5 lg:px-8 mt-8 mb-2">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <BagIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" /> {t('home.shopRailTitle', { defaultValue: '지금 인기 상품' })}

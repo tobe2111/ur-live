@@ -127,7 +127,7 @@ export default function DealBottomBar({
       <div className="fixed inset-0 lg:hidden" style={{ zIndex: Z.SHEET_BACKDROP }} role="dialog" aria-modal="true" aria-label="구매 옵션">
         <button type="button" aria-label="닫기" onClick={requestClose} className={`ur-sheet-veil${closing ? ' ur-sheet-veil-out' : ''} absolute inset-0 w-full h-full border-0 cursor-default`} style={{ background: 'rgba(22,24,28,.45)' }} />
         <div className={`ur-sheet-in${closing ? ' ur-sheet-out' : ''} absolute inset-x-0 bottom-0 rounded-t-3xl`} style={{ zIndex: Z.SHEET_BODY, background: 'var(--gbd-bg)', padding: '12px 16px calc(16px + env(safe-area-inset-bottom))' }}>
-          <div aria-hidden className="mx-auto mb-4 w-9 h-1 rounded-full" style={{ background: 'var(--gbd-line2)' }} />
+          <div aria-hidden className="mx-auto mb-5 w-9 h-1 rounded-full" style={{ background: 'var(--gbd-line2)' }} />
           {/* 🧾 2026-11-02 결제창 안 A(대표 "다 해주고") — 맨 위에 **무엇을 사는가**. 종전엔 결제 직전에 다시 확인할 단서가 없었다. */}
           {summary?.name && (
             <div className="ur-buy-row flex items-center gap-3 pb-3 mb-3" style={{ borderBottom: '1px solid var(--rule)', ['--i' as string]: 0 }}>
@@ -159,7 +159,7 @@ export default function DealBottomBar({
           <div className="ur-buy-row mt-3" style={{ ['--i' as string]: 2 }}><DealUseChooser plan={dealPlan} value={dealUse ?? defaultDealUse(dealPlan)} onChange={setDealUse} /></div>
           {/* 🧾 안 A — 금액이 영수증처럼 내려온다: 상품 금액 → 할인 → 총 결제. 아낀 금액은 빨간 칩(수량을 바꾸면 톡). 계산은 종전 값(total·refPrice)을 그대로 읽는다. */}
           {refPrice > unitPrice && !allDeal && (
-            <div className="ur-buy-row mt-4 px-1 space-y-2 text-[13px] tabular-nums" style={{ color: 'var(--gbd-sub)', ['--i' as string]: 3 }}>
+            <div className="ur-buy-row mt-5 px-1 space-y-2 text-[13px] tabular-nums" style={{ color: 'var(--gbd-sub)', ['--i' as string]: 3 }}>
               <div className="flex justify-between"><span>상품 금액</span><span>{formatNumber(refPrice * quantity)}원</span></div>
               <div className="flex justify-between"><span>할인</span><span className="font-medium" style={{ color: 'var(--sale)' }}>−{formatNumber((refPrice - unitPrice) * quantity)}원</span></div>
             </div>

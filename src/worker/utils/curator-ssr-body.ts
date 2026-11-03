@@ -89,7 +89,7 @@ export const CURATOR_FS_CLASS = {
   headerInner: 'max-w-3xl mx-auto',
   brandBar: 'flex items-center px-5 pt-3',
   brandLogo: 'lg:hidden active:opacity-70',
-  nameRow: 'flex items-center gap-4 px-5 pt-3',
+  nameRow: 'flex items-center gap-4 px-5 pt-3', // 📏 공백 체계 예외 — gap 16 은 이름 칸 폭(ushop-name-size 294px) SSOT 와 짝
   avatar: 'w-10 h-10 rounded-full overflow-hidden bg-wash shrink-0',
   avatarPhoto: 'w-full h-full object-cover',
   avatarUdal: 'w-full h-full object-contain',
@@ -116,7 +116,7 @@ export const CURATOR_FS_CLASS = {
   /** 🧾 2026-11-03 유어샵 B — 진열 줄을 담는 흰 판. PC(lg+)는 2열 칸이라 판을 걷는다. */
   rowsCard: 'mx-3 mt-3 rounded-2xl bg-surface lg:mx-0 lg:mt-0 lg:rounded-none lg:bg-transparent',
   rows: 'max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows',
-  row: `w-full flex items-center gap-4 text-left ${PLAIN_CLS.skin} active:opacity-60 transition-opacity`,
+  row: `w-full flex items-center gap-4 text-left ${PLAIN_CLS.skin} active:opacity-60 transition-opacity`, // 📏 공백 체계 예외 — DealRow plain 줄의 gap 16(2026-10-25 D안)과 짝
   rowThumb: `relative ${PLAIN_THUMB_CLS} shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#222225]`,
   rowThumbImg: 'w-full h-full object-cover',
   rowBody: 'flex-1 min-w-0',

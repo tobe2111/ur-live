@@ -255,7 +255,7 @@ export default function BottomNav() {
         <div className="pointer-events-auto bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
-          <nav className="max-w-[430px] sm:max-w-[540px] md:max-w-[640px] mx-auto px-2 sm:px-4">
+          <nav className="max-w-[430px] sm:max-w-[540px] md:max-w-[640px] mx-auto px-2 sm:px-5">
             <div className="flex items-center h-14">
               {/* 🛡️ 2026-05-20: 균등 5탭 (당근식). 중앙 floating 노란 버튼 제거.
                   셀러 quick access 는 마이페이지 큰 CTA (PrimaryActions) 로 이전.

@@ -142,7 +142,7 @@ export default function GroupBuyConfirmPaymentPage() {
             <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-3">{t('passBuy.contactSupport', { defaultValue: '고객센터에 문의해주세요.' })}<br/>{t('passBuy.paymentRef', { defaultValue: '결제 정보: {{ref}}', ref: orderId.slice(0, 20) })}</p>
             <button
               onClick={() => navigate(isCart ? '/cart' : `/pass/${productId}`)}
-              className="mt-6 px-6 py-3 bg-brand text-white rounded-full text-[15px] font-bold active:opacity-80"
+              className="mt-8 px-6 py-3 bg-brand text-white rounded-full text-[15px] font-bold active:opacity-80"
             >
               {isCart ? t('passBuy.backToCart', { defaultValue: '장바구니로 돌아가기' }) : t('passBuy.backToProduct', { defaultValue: '상품 페이지로 돌아가기' })}
             </button>

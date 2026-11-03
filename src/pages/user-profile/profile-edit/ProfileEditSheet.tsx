@@ -264,7 +264,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
 
         <div className="flex-1 min-h-0 overflow-y-auto pb-[max(8px,env(safe-area-inset-bottom))]">
           {/* 📸 사진 — 고르는 즉시 저장(위 머리말) */}
-          <div className="flex items-center gap-4 px-4 py-4">
+          <div className="flex items-center gap-3 px-4 py-4">
             <img
               key={image || 'none'}
               src={profileAvatarSrc(image, 160)}

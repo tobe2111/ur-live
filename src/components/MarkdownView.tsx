@@ -49,17 +49,17 @@ export default function MarkdownView({ source, className = '' }: { source: strin
     if (t === '') { i++; continue }
 
     // 구분선
-    if (/^(---|===|\*\*\*)$/.test(t)) { blocks.push(<hr key={key++} className="my-6 border-line" />); i++; continue }
+    if (/^(---|===|\*\*\*)$/.test(t)) { blocks.push(<hr key={key++} className="my-8 border-line" />); i++; continue }
 
     // 제목
     const h = t.match(/^(#{1,4})\s+(.*)$/)
     if (h) {
       const lvl = h[1].length
       const txt = h[2]
-      const cls = lvl === 1 ? 'text-[20px] font-medium mt-2 mb-4'
+      const cls = lvl === 1 ? 'text-[20px] font-medium mt-2 mb-5'
         : lvl === 2 ? 'text-[16px] font-medium mt-8 mb-3 pb-1 border-b border-gray-100 dark:border-[#2C2F35]'
         : lvl === 3 ? 'text-[15px] font-medium mt-5 mb-2'
-        : 'text-[13px] font-medium mt-4 mb-2 text-gray-600 dark:text-gray-300'
+        : 'text-[13px] font-medium mt-5 mb-2 text-gray-600 dark:text-gray-300'
       blocks.push(<div key={key++} className={`text-gray-900 dark:text-white ${cls}`}>{renderInline(txt)}</div>)
       i++; continue
     }
@@ -104,7 +104,7 @@ export default function MarkdownView({ source, className = '' }: { source: strin
       const items: string[] = []
       while (i < lines.length && /^[-*]\s+/.test(lines[i].trim())) { items.push(lines[i].trim().replace(/^[-*]\s+/, '')); i++ }
       blocks.push(
-        <ul key={key++} className="my-2 ml-4 list-disc space-y-1 text-[13px] text-gray-600 dark:text-gray-300 marker:text-gray-400">
+        <ul key={key++} className="my-2 ml-5 list-disc space-y-1 text-[13px] text-gray-600 dark:text-gray-300 marker:text-gray-400">
           {items.map((it, ii) => <li key={ii}>{renderInline(it)}</li>)}
         </ul>,
       )

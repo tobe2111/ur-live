@@ -30,8 +30,8 @@ export default [
   {
     name: '🎫2:1 배너가 다시 전폭이 된다 (거터 제거 — "따로 논다"의 원인)',
     file: 'src/shared/home-strip-banners.ts', // 2026-10-14 클래스가 공용 상수(STRIP_CLS)로 옮겨갔다 — 서버 첫 화면과 같은 값
-    find: "rail: 'flex gap-7 px-[14px]',",
-    replace: "rail: 'flex gap-7',",
+    find: "rail: 'flex gap-8 px-[14px]',",
+    replace: "rail: 'flex gap-8',",
     test: BANNER,
     why: '거터 14px 는 `.ur-home-panel`(모바일)과 같은 값이다. 빼면 배너만 전폭이 되어 아래 패널과 다시 따로 논다.',
   },

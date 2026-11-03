@@ -25,7 +25,7 @@ export default function CompanyInfoFooter({ className = '' }: { className?: stri
       data-company-info
       className={`bg-black/[0.03] dark:bg-white/[0.03] text-gray-500 dark:text-gray-400 ${className}`}
     >
-      <div className="ur-content-wide px-4 lg:px-8 pt-10 pb-28 lg:pb-12">
+      <div className="ur-content-wide px-5 lg:px-8 pt-10 pb-28 lg:pb-12">
         {/* 회색 워드마크 — 브랜드색이 아니라 회색(NOL). 로고 부품이 색을 강제하므로 투명도로 낮춘다. */}
         <div className="opacity-50 grayscale">
           <UrDealLogo size={20} />
@@ -38,7 +38,7 @@ export default function CompanyInfoFooter({ className = '' }: { className?: stri
           ))}
         </div>
 
-        <nav aria-label="회사 정보 링크" className="mt-5 flex flex-wrap gap-x-4 gap-y-2">
+        <nav aria-label="회사 정보 링크" className="mt-5 flex flex-wrap gap-x-3 gap-y-2">
           {COMPANY_LINKS.map((l) => (
             <a
               key={l.href}
@@ -51,9 +51,9 @@ export default function CompanyInfoFooter({ className = '' }: { className?: stri
           ))}
         </nav>
 
-        <p className="mt-6 text-[12px] leading-relaxed">{COMPANY_INTERMEDIARY_NOTICE}</p>
+        <p className="mt-8 text-[12px] leading-relaxed">{COMPANY_INTERMEDIARY_NOTICE}</p>
 
-        <div className="mt-6 pt-5 border-t border-rule">
+        <div className="mt-8 pt-5 border-t border-rule">
           <p className="text-[13px]">{COMPANY_COPYRIGHT}</p>
         </div>
       </div>

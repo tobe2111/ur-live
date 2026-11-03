@@ -56,7 +56,7 @@ export default function BrandPage() {
   return (
     <div className="min-h-[100dvh] bg-surface pb-24">
       <SEO title={`${brand.name} - 유어딜`} description={`${brand.name} 지점 ${branches.length}곳의 이용권을 한 곳에서. 가까운 지점부터 보여 드려요.`} url={`/brand/${brand.slug}`} />
-      <div className="ur-content-wide px-4 lg:px-8">
+      <div className="ur-content-wide px-5 lg:px-8">
         <header className="pt-6 pb-4">
           <h1 className="text-[20px] font-semibold text-gray-900 dark:text-white">{brand.name}</h1>
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">

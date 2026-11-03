@@ -45,7 +45,7 @@ export default function AgencyLoginPage() {
       }
     >
       <SEO title="에이전시 로그인 - 유어딜" description="유어딜 에이전시 계정으로 로그인" url="/agency/login" noindex />
-      <form onSubmit={submit} className="flex flex-col gap-4">
+      <form onSubmit={submit} className="flex flex-col gap-3">
         {params.get('reset') === '1' && (
           <p className="text-[13px] font-medium text-brand-text">비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.</p>
         )}

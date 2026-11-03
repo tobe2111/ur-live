@@ -26,7 +26,7 @@ export function BigNumberCard({ caption, value, sub, cells, testId }: {
       <p className="mt-1 text-[28px] font-bold tabular-nums leading-tight tracking-[-0.02em] text-gray-900 dark:text-white">{value}</p>
       {sub}
       {cells && cells.length > 0 && (
-        <div className="mt-4 -mx-5 px-5 pt-4 grid border-t border-rule" style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }}>
+        <div className="mt-5 -mx-5 px-5 pt-4 grid border-t border-rule" style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }}>
           {cells.map((c, i) => (
             <div key={c.label} className={`text-center ${i > 0 ? 'border-l border-rule' : ''}`}>
               <p className="text-[12px] text-gray-500 dark:text-gray-400">{c.label}</p>

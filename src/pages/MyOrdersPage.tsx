@@ -30,7 +30,7 @@ import CancelOrderModal from './my-orders/CancelOrderModal'
 // 🛡️ 2026-06-18: 첫 페인트 스켈레톤 — 검색바 + 탭 + 카드 3개 형태 (스피너-온리 금지).
 function OrdersSkeleton() {
   return (
-    <div className="space-y-4 animate-pulse" aria-hidden="true">
+    <div className="space-y-3 animate-pulse" aria-hidden="true">
       <div className="h-11 rounded-xl bg-gray-100 dark:bg-[#161616]" />
       <div className="flex gap-5 border-b border-gray-100 dark:border-[#2C2F35] pb-2">
         {[40, 32, 44, 32].map((w, i) => (
@@ -279,7 +279,7 @@ export default function MyOrdersPage() {
           개수를 맞히려는 시도는 둘 다 틀린다. ⇒ **맞히지 말고 푸터를 화면 밖으로 보낸다.**
           본문이 최소 60dvh 면 어느 상태든 푸터가 첫 화면 밖이라, 안에서 자라고 줄어도
           사람이 읽는 영역은 안 움직인다. 주문이 많으면 그 아래로 자연히 길어진다. */}
-      <main className="ur-content-medium px-4 sm:px-6 lg:px-8 pt-3 pb-6 sm:pt-5 sm:pb-10 min-h-[60dvh]">
+      <main className="ur-content-medium px-5 sm:px-5 lg:px-8 pt-3 pb-6 sm:pt-5 sm:pb-10 min-h-[60dvh]">
         {loading ? (
           /* 🛡️ 2026-06-18: 스피너 → 스켈레톤 카드 (CLAUDE.md 첫 페인트 표준) */
           <OrdersSkeleton />
@@ -287,8 +287,8 @@ export default function MyOrdersPage() {
           /* ✅ UX C5 FIX: 에러 상태 + 재시도 버튼 (리다이렉트 루프 방지) */
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <AlertIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
+              <AlertIcon className="w-12 h-12 text-red-500 mx-auto mb-5" />
+              <p className="text-[15px] text-gray-900 dark:text-white mb-5">{error}</p>
               <button
                 onClick={() => loadData()}
                 className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl transition-colors font-medium"

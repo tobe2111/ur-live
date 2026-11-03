@@ -53,7 +53,7 @@ export default function PartnerFlow() {
           <Reveal><h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-bold tracking-[-0.03em] ur-tone-fg leading-[1.2]">
             손님이 오는 길
           </h2></Reveal>
-          <Reveal as="p" delay={80} className="mt-4 text-[15px] lg:text-[16px] ur-tone-mu max-w-[34em]">
+          <Reveal as="p" delay={80} className="mt-5 text-[15px] lg:text-[16px] ur-tone-mu max-w-[34em]">
             택배도 반품도 재고도 없습니다.
           </Reveal>
 
@@ -74,7 +74,7 @@ export default function PartnerFlow() {
             안 오면요? 안 쓰면요?
           </h2></Reveal>
 
-          <div className="mt-10 lg:mt-16 grid gap-10 lg:grid-cols-2 lg:gap-16">
+          <div className="mt-12 lg:mt-12 grid gap-8 lg:grid-cols-2 lg:gap-12">
             {SAFETY.map(({ t, d }, i) => (
               <Reveal key={t} delay={i * 120} className="pt-8 border-t border-white/15">
                 <p className="text-[16px] lg:text-[24px] font-semibold tracking-[-0.02em] leading-snug">{t}</p>

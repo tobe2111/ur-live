@@ -99,7 +99,7 @@ export default function UShopManagePage() {
             수익 화면은 위 카드('콘솔 ›')와 아래 '대시보드' 줄로 **두 번** 링크됐고, 그 '대시보드'는
             '내 가게' 제목 밑에 있어 가게 관리처럼 읽혔다. 프로필 줄은 마이로 **화면을 통째로 이동**했다.
             ⇒ 세 묶음(내 유어샵 · 수익과 정산 · 내 가게), 줄마다 할 일 하나, 마이와 같은 목록 문법. */}
-        <div className="mt-6"><SectionTitle>{t('ushop.manageMyShop', { defaultValue: '내 유어샵' })}</SectionTitle></div>
+        <div className="mt-8"><SectionTitle>{t('ushop.manageMyShop', { defaultValue: '내 유어샵' })}</SectionTitle></div>
         {reorder ? (
           <div className="mt-3">
             <div className="flex items-center justify-between mb-2">

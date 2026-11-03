@@ -102,7 +102,7 @@ export default function AgencySignupPage() {
       footer={<p>이미 계정이 있어요 · <Link to="/agency/login" className="font-medium text-brand-text hover:underline underline-offset-4">로그인</Link></p>}
     >
       <SEO title="에이전시 만들기 - 유어딜" description="유어딜 에이전시 계정 만들기" url="/agency/signup" noindex />
-      <form onSubmit={submit} className="flex flex-col gap-4">
+      <form onSubmit={submit} className="flex flex-col gap-3">
         <div role="radiogroup" aria-label="로그인 방법" className="grid grid-cols-2 gap-2">
           {([['email', '회사 이메일로', '여럿이 함께 써요'], ['kakao', '카카오로', '혼자 써요']] as const).map(([v, label, sub]) => (
             <button key={v} type="button" role="radio" aria-checked={via === v} onClick={() => { setVia(v); setError('') }}

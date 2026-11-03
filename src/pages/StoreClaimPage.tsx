@@ -163,19 +163,19 @@ export default function StoreClaimPage() {
           <X className="w-5 h-5" />
         </button>
 
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-12">
           {/* 왼쪽(PC) · 위(폰) — 무엇을 등록하는 곳인가 */}
           <div className="lg:pt-4">
             <h1 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] leading-[1.22] text-gray-900">
               매장 이용권<br className="hidden lg:block" /> 판매 등록
             </h1>
-            <p className="mt-2 lg:mt-4 text-[15px] lg:text-[16px] leading-relaxed text-gray-600 lg:max-w-[460px]">
+            <p className="mt-2 lg:mt-5 text-[15px] lg:text-[16px] leading-relaxed text-gray-600 lg:max-w-[460px]">
               손님이 유어딜에서 할인가로 이용권을 미리 삽니다. 매장에 와서 QR 을 보여주면 그걸로 끝입니다.
             </p>
 
-            <ul className="mt-4 lg:mt-8 flex flex-col gap-3 lg:gap-4 lg:max-w-[460px]">
+            <ul className="mt-5 lg:mt-8 flex flex-col gap-3 lg:gap-3 lg:max-w-[460px]">
               {BENEFITS.map(({ Icon, title, desc }) => (
-                <li key={title} className="flex gap-3 lg:gap-4 items-start">
+                <li key={title} className="flex gap-3 lg:gap-3 items-start">
                   <Icon size={20} className="mt-1 shrink-0 text-brand" aria-hidden="true" />
                   <div className="min-w-0">
                     <p className="text-[13px] lg:text-[15px] font-medium text-gray-900">{title}</p>
@@ -186,7 +186,7 @@ export default function StoreClaimPage() {
               ))}
             </ul>
 
-            <div className="hidden lg:flex mt-9 pt-5 border-t border-rule gap-9 lg:max-w-[460px]">
+            <div className="hidden lg:flex mt-8 pt-5 border-t border-rule gap-8 lg:max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
                   <div className="text-[20px] font-semibold text-gray-900">{value}</div>
@@ -197,7 +197,7 @@ export default function StoreClaimPage() {
           </div>
 
           {/* 오른쪽(PC) · 아래(폰) — 등록 카드 그대로 */}
-          <div className="mt-4 lg:mt-0 lg:self-start">
+          <div className="mt-5 lg:mt-0 lg:self-start">
             {inviteAgency && !handoff && (
               <p className="mb-3 rounded-[var(--dash-radius,16px)] bg-brand-tint px-4 py-3 text-[13px] leading-relaxed text-gray-700" data-testid="store-claim-agency-invite">
                 <b className="text-gray-900">{inviteAgency} 에이전시</b>가 보낸 링크예요. 등록을 마치면 바로 이 에이전시에 매장 운영이 맡겨져요.

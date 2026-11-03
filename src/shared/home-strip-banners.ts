@@ -40,7 +40,7 @@ export function stripBannersOf(raw: unknown): SeededStripBanner[] {
  */
 export const STRIP_CLS = {
   root: 'pb-4',
-  rail: 'flex gap-7 px-[14px]',
+  rail: 'flex gap-7 px-[14px]', // 📏 공백 체계 예외 — 28 은 가운데 맞춤(px-[14px] = 간격의 절반)·장수 계산(STRIP_GAP_PX)과 짝
   railMany: 'overflow-x-auto snap-x snap-mandatory scroll-px-[14px] scroll-smooth overscroll-x-contain scrollbar-hide',
   /** shape-lock-ok — 14px 는 `.ur-home-panel`(모바일) 의 radius 와 **같은 값**이다. */
   card: 'overflow-hidden rounded-[14px] isolate aspect-[2/1] flex flex-col justify-end px-5 pt-4 pb-4 transition-transform active:scale-[.995]', // shape-lock-ok

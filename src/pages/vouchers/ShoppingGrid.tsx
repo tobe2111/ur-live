@@ -128,7 +128,7 @@ export default function ShoppingGrid() {
       {/* 🛒 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 카테고리 = sticky 바(top-[45px], 탭 바로 아래) —
           쇼핑 섹션에 있는 동안 상단에 따라붙어 어디서든 카테고리 전환 가능. 교환권 reveal 그룹은 이때 숨김(슬롯 공유). */}
       <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-wide px-4 lg:px-8 py-2">
+        <div className="ur-content-wide px-5 lg:px-8 py-2">
           <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             {visibleShopCats.map(c => {
               const active = shopCategory === c.key
@@ -151,7 +151,7 @@ export default function ShoppingGrid() {
           </div>
         </div>
       </div>
-      <div className="ur-content-wide px-4 lg:px-8 pt-3">
+      <div className="ur-content-wide px-5 lg:px-8 pt-3">
       {loading ? (
         <BrandLoader />
       ) : items.length === 0 ? (
@@ -163,7 +163,7 @@ export default function ShoppingGrid() {
               <BrowseProductCard key={p.id} product={p} aboveFold={idx < 4} />
             ))}
           </div>
-          <div ref={sentinelRef} className="h-10 flex items-center justify-center mt-4">
+          <div ref={sentinelRef} className="h-10 flex items-center justify-center mt-5">
             {loadingMore && <div className="text-[12px] text-gray-400 dark:text-gray-500">로드 중...</div>}
             {!hasMore && items.length > 0 && <div className="text-[12px] text-gray-400 dark:text-gray-500">— 마지막 —</div>}
           </div>

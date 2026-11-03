@@ -213,7 +213,7 @@ export default function VideosPage() {
       <div className="grid min-h-[100dvh] place-items-center bg-[#0A0C12] px-6 text-center text-white">
         <div>
           <p className="text-[15px] text-gray-300">아직 올라온 영상이 없어요.</p>
-          <Link to="/" className="mt-4 inline-block rounded-xl bg-brand px-5 py-3 text-[15px] font-bold text-white">
+          <Link to="/" className="mt-5 inline-block rounded-xl bg-brand px-5 py-3 text-[15px] font-bold text-white">
             홈으로
           </Link>
         </div>

@@ -281,7 +281,7 @@ export default function MallProductPage() {
         )}
 
         {product.detail_images.length > 0 && (
-          <div className="mt-6 space-y-2">
+          <div className="mt-8 space-y-2">
             {product.detail_images.map((src, i) => (
               <img key={i} src={cfImage(src, { width: 900 })} alt="" loading="lazy" className="w-full rounded-xl" onError={(e) => cfImageOnError(e.currentTarget, src)} />
             ))}

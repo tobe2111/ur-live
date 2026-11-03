@@ -37,7 +37,7 @@ export default function PcRegionTiles() {
   return (
     <section aria-labelledby="pc-region-tiles" className="ur-home-panel !mb-0">
       <h2 id="pc-region-tiles" className="mb-3 text-[20px] font-semibold tracking-[-.02em] text-gray-900 dark:text-white">어디로 갈까요?</h2>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-4 gap-3">
         {tiles.map((t) => {
           // 🗺️ 머리와 같은 지역 사진은 우리 정적 파일(1080×360, 장당 30~70KB)이라 리사이저를 거치지 않는다 —
           //   400px 로 줄이면 높이가 133px 이 되어 4:3 칸을 채우려 다시 늘리며 흐려진다.

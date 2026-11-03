@@ -59,7 +59,7 @@ export default function InfluencerRankingsPage() {
         <p className="text-[12px] opacity-90 mt-1">지역별 매출 Top — 매월 1일 리셋</p>
       </header>
 
-      <main className="ur-content-narrow mx-auto px-4 py-4 space-y-4">
+      <main className="ur-content-narrow mx-auto px-5 py-4 space-y-3">
         {/* 지역 탭 */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
           {REGIONS.map((r) => (

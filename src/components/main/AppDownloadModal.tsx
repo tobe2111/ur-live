@@ -68,7 +68,7 @@ export default function AppDownloadModal({ onClose }: Props) {
             </Suspense>
           </div>
 
-          <p className="text-[13px] text-gray-500 dark:text-gray-400 text-center mt-4 leading-relaxed">
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 text-center mt-5 leading-relaxed">
             QR 코드를 스캔하면<br />폰에서 바로 이어서 볼 수 있어요
           </p>
         </div>
@@ -78,7 +78,7 @@ export default function AppDownloadModal({ onClose }: Props) {
           href={APP_URL}
           target="_blank"
           rel="noreferrer"
-          className="mt-4 flex items-center justify-center gap-2 w-full py-4 bg-brand hover:bg-brand-dark text-white text-[15px] font-bold transition-colors"
+          className="mt-5 flex items-center justify-center gap-2 w-full py-4 bg-brand hover:bg-brand-dark text-white text-[15px] font-bold transition-colors"
         >
           <UrDealLogo size={16} forceDark /> 지금 유어딜 열기
         </a>

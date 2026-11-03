@@ -55,7 +55,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-5">
           {/* Order Info */}
           <div>
             <h4 className="text-[15px] font-medium text-gray-900 dark:text-white mb-3">{t('orderDetail.sectionOrderInfo', { defaultValue: '주문 정보' })}</h4>

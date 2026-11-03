@@ -45,13 +45,13 @@ export default function PartnerMath() {
           <h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-bold tracking-[-0.03em] text-ink leading-[1.2]">
             그래서 얼마 남나
           </h2>
-          <p className="mt-4 text-[15px] lg:text-[16px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[30em]">
+          <p className="mt-5 text-[15px] lg:text-[16px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[30em]">
             지금 팔리고 있는 실제 상품입니다. 숫자를 바꿔 내 가게로 맞춰 보세요.
           </p>
 
           <Reveal kind="scale" className="mt-8 lg:mt-12 rounded-2xl p-5 lg:p-8">
             <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400">{F.sample.name}</p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-5 grid grid-cols-2 gap-3">
               <Field label="정가 (원)" value={list} onChange={setList} />
               <Field label="이용권 판매가 (원)" value={sale} onChange={setSale} />
             </div>
@@ -71,7 +71,7 @@ export default function PartnerMath() {
               </div>
             </dl>
           </Reveal>
-          <p className="mt-4 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">
+          <p className="mt-5 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">
             가입비와 월 이용료, 선불 광고비, 정산 수수료가 모두 0원입니다. 중개(대행사)를 통해 들어오시면 수수료는 {F.feeBrokered}입니다.
           </p>
         </div>

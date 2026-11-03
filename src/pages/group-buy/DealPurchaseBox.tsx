@@ -123,7 +123,7 @@ export default function DealPurchaseBox({
       {raffle ? (
         <button
           type="button"
-          className="mt-4"
+          className="mt-5"
           onClick={fcfs.apply}
           disabled={fcfs.applied || fcfs.closed || fcfs.busy}
           style={{ width: '100%', height: 50, border: 'none', borderRadius: 12, background: fcfs.applied || fcfs.closed ? 'var(--gbd-sub2)' : 'var(--gbd-cta-bg)', color: 'var(--gbd-cta-fg)', fontSize: 15, fontWeight: 700, cursor: fcfs.applied || fcfs.closed ? 'default' : 'pointer' }}

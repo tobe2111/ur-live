@@ -57,18 +57,18 @@ export default function FirstVoucherSheet({ items, t }: {
         aria-modal="true"
         aria-labelledby="first-voucher-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[430px] ur-pop-card ur-glass px-6 pt-3 flex flex-col items-center text-center overflow-hidden ur-dialog-in"
+        className="w-full max-w-[430px] ur-pop-card ur-glass px-5 pt-3 flex flex-col items-center text-center overflow-hidden ur-dialog-in"
         style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}
       >
         <div aria-hidden="true" className="w-10 h-1 rounded-full bg-rule-strong" />
         <div className="mt-5"><Udal mood="done" size={120} motion priority /></div>
-        <h2 id="first-voucher-title" className="mt-4 text-[20px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white">
+        <h2 id="first-voucher-title" className="mt-5 text-[20px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white">
           {t('voucher.firstTitle', { defaultValue: '첫 이용권이에요!' })}
         </h2>
         <p className="mt-2 text-[15px] leading-relaxed text-gray-500 dark:text-gray-400">
           {t('voucher.firstDesc', { defaultValue: '매장에서 이용권의 QR만 보여주면 끝이에요. 유달이가 도장 하나 찍어 둘게요.' })}
         </p>
-        <ul className="mt-6 w-full grid grid-cols-3 gap-2">
+        <ul className="mt-8 w-full grid grid-cols-3 gap-2">
           {stamps.map((s) => (
             <li key={s.label} className="flex flex-col items-center gap-2">
               {s.done ? (
@@ -84,7 +84,7 @@ export default function FirstVoucherSheet({ items, t }: {
             </li>
           ))}
         </ul>
-        <button type="button" onClick={() => setOpen(false)} className="ur-btn ur-btn-lg ur-btn-block ur-btn-primary mt-7">
+        <button type="button" onClick={() => setOpen(false)} className="ur-btn ur-btn-lg ur-btn-block ur-btn-primary mt-8">
           {t('common.confirm', { defaultValue: '확인' })}
         </button>
       </div>

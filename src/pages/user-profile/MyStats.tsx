@@ -161,7 +161,7 @@ export default function MyStats({ voucher, coupon, inline = false }: {
 
   /* 🖥️ 띠 모드: 칸은 링크라 그 안에 버튼을 못 넣는다(중첩 상호작용) — 칸 **옆**에 둔다. */
   if (inline) return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-3">
       {cells}
     </div>
   )
@@ -200,7 +200,7 @@ export default function MyStats({ voucher, coupon, inline = false }: {
     </Link>
   )
   return (
-    <div className="ur-content-medium px-4 lg:px-4">
+    <div className="ur-content-medium px-5 lg:px-5">
       <div className="rounded-2xl bg-surface shadow-lift overflow-hidden">
         {row('내 딜', DEAL_PATH, balance, '딜')}
         {row('이용권', '/my-vouchers', voucher, '장')}

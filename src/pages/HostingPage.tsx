@@ -80,9 +80,9 @@ export default function HostingPage() {
           </div>
         </header>
 
-        <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="max-w-3xl mx-auto px-5 py-6">
           {summary && (
-            <div className="grid grid-cols-4 gap-2 mb-6">
+            <div className="grid grid-cols-4 gap-2 mb-8">
               {[
                 { label: '전체', value: formatNumber(summary.total) },
                 { label: '진행', value: formatNumber(summary.active), accent: 'text-blue-500' },
@@ -102,7 +102,7 @@ export default function HostingPage() {
           ) : hosts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-[48px] mb-3">🎁</p>
-              <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-5">
                 {t('hosting.empty', { defaultValue: '아직 호스팅이 없어요. 친구와 함께 살 상품을 찾아보세요!' })}
               </p>
               <button

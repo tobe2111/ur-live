@@ -79,10 +79,10 @@ export default function SeedingApplySheet({ productId, offer, onClose }: { produ
           <p className="mt-5 text-[13px] text-gray-500 dark:text-gray-400">확인하는 중…</p>
         ) : (
           <>
-            <div className="mt-4">
+            <div className="mt-5">
               <SnsLinkList links={me.links} available={me.available} only={offer.platforms} returnTo={`/pass/${productId}`} onChanged={load} />
             </div>
-            <p className={`mt-4 text-[13px] ${el?.ok ? 'text-brand-text' : 'text-gray-600 dark:text-gray-300'}`}>
+            <p className={`mt-5 text-[13px] ${el?.ok ? 'text-brand-text' : 'text-gray-600 dark:text-gray-300'}`}>
               {el?.ok ? `${PLATFORM_LABEL[el.platform!]} ${FOLLOWER_WORD[el.platform!]} ${formatNumber(el.follower_count)}명 — 신청할 수 있어요` : el?.message}
             </p>
             <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">

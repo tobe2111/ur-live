@@ -128,7 +128,7 @@ export function ConfirmHost() {
                 placeholder={current.prompt.placeholder}
                 autoFocus
                 rows={3}
-                className="mt-4 w-full px-3 py-2 rounded-xl bg-surface text-left text-[15px] text-gray-900 dark:text-white outline-none resize-none focus:ring-2 focus:ring-brand/40"
+                className="mt-5 w-full px-3 py-2 rounded-xl bg-surface text-left text-[15px] text-gray-900 dark:text-white outline-none resize-none focus:ring-2 focus:ring-brand/40"
               />
             ) : (
               <input
@@ -138,7 +138,7 @@ export function ConfirmHost() {
                 placeholder={current.prompt.placeholder}
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') close(true) }}
-                className="mt-4 w-full h-11 px-3 rounded-xl bg-surface text-left text-[15px] text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand/40"
+                className="mt-5 w-full h-11 px-3 rounded-xl bg-surface text-left text-[15px] text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand/40"
               />
             )
           )}

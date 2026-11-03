@@ -43,7 +43,7 @@ export default function OrderSummary({
       <section className="bg-white dark:bg-[#11141C] px-5 py-5">
         <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('checkout.summary.title', { defaultValue: '결제 예정금액' })}</h2>
 
-        <div className="mt-5 flex flex-col gap-4">
+        <div className="mt-5 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-[15px] text-gray-400 dark:text-gray-500">{t('checkout.summary.subtotal', { defaultValue: '상품금액' })}</span>
             <span className="text-[15px] text-gray-900 dark:text-white">{t('checkout.summary.amountWon', { defaultValue: '{{amount}}원', amount: formatNumber(subtotal) })}</span>

@@ -37,7 +37,7 @@ function passBody(): string {
     `<li class="${GUEST_CLS.benefit}"><span class="${GUEST_CLS.benefitIcon}">${slot(20)}</span><span class="${GUEST_CLS.benefitText}"><span class="${GUEST_CLS.benefitTitle}">${esc(t)}</span><span class="${GUEST_CLS.benefitDesc}">${esc(d)}</span></span></li>`).join('')
   return `<h1 class="${GUEST_CLS.title}">${esc(c.title)}</h1>` +
     `<section class="${GUEST_CLS.card}" data-guest="pass"><h2 class="${GUEST_CLS.headline}">${esc(c.headline1)}<br>${esc(c.headline2)}</h2>` +
-    `<div class="mt-5"><ul class="${GUEST_CLS.benefits}">${items}</ul></div><div class="mt-6">${kakao()}</div></section>`
+    `<div class="mt-5"><ul class="${GUEST_CLS.benefits}">${items}</ul></div><div class="mt-8">${kakao()}</div></section>`
 }
 
 function shopBody(): string {

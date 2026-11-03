@@ -219,9 +219,9 @@ export default function AddressManagementPage() {
             - 카드: 기본 배송지 좌측 그라데이션 액센트 bar + 큰 뱃지
             - label emoji (집/회사/기타)
             - Empty state — 큰 일러스트 + 명확한 CTA */}
-      <main className="ur-content-narrow px-4 lg:px-8 py-5">
+      <main className="ur-content-narrow px-5 lg:px-8 py-5">
         {/* Hero 카운트 + 추가 CTA */}
-        <div className="flex items-end justify-between mb-4">
+        <div className="flex items-end justify-between mb-5">
           <div>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">등록된 배송지</p>
             <p className="text-[20px] font-semibold text-gray-900 dark:text-white">
@@ -365,7 +365,7 @@ export default function AddressManagementPage() {
         type="custom"
         maxWidth="lg"
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div>
             <label htmlFor="addr-recipient-name" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
               {t('address.recipientName')} <span className="text-red-500">*</span>

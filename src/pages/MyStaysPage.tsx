@@ -74,14 +74,14 @@ export default function MyStaysPage() {
       <SEO title="내 숙소 예약 - 유어딜" description="숙소 예약 내역" url="/my-stays" noindex />
       <SubPageHeader title="내 숙소 예약" backLabel="뒤로 가기" />
 
-      <div className="ur-content-wide px-4 lg:px-8 py-4">
+      <div className="ur-content-wide px-5 lg:px-8 py-4">
         {loading ? (
           /* 🚑 2026-07-10 로더 통일: 맨 텍스트 → BrandLoader */
           <BrandLoader />
         ) : isError ? (
           <div className="text-center py-20">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">예약 내역을 불러오지 못했어요</p>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
             <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
               다시 시도
             </button>
@@ -90,7 +90,7 @@ export default function MyStaysPage() {
           /* 🧹 2026-10-19: 다른 빈 화면과 같은 모양 — 유달이 + 들림 카드 + 브랜드 알약. 버튼 글자 안의 "→" 는 뺐다
              (화살표를 글자로 쓰면 아이콘 체계 밖이다). */
           <div className="rounded-2xl px-6 py-10 text-center">
-            <Udal mood="empty" size={96} className="block mx-auto mb-4" />
+            <Udal mood="empty" size={96} className="block mx-auto mb-5" />
             <p className="text-[16px] font-semibold text-gray-900 dark:text-white">예약 내역이 없어요</p>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">숙소 이용권을 사면 여기서 예약을 확인할 수 있어요</p>
             <Link to="/stays" className="mt-5 inline-flex items-center h-11 px-6 rounded-full bg-brand text-white text-[15px] font-bold">
