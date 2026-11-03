@@ -6171,7 +6171,8 @@
   "search": {
     "inputPlaceholder": "Search products, brands, sellers",
     "related": {},
-    "endOfList": "You've reached the end"
+    "endOfList": "You've reached the end",
+    "closeTyping": "Close search"
   },
   "register": {
     "title": "[TODO:en] 회원가입",

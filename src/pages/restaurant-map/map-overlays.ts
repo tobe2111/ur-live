@@ -207,9 +207,10 @@ export function buildPlaceContent(p: KakaoPlace): HTMLElement {
 /** 내 위치 파란 점(GPS). */
 export function buildMeContent(): HTMLElement {
   const el = document.createElement('div')
+  // 🎬 2026-11-03 20차 ④ — 점에서 옅은 원이 두 겹으로 퍼진다(`.ur-me`, CSS 는 useKakaoMap 의 ur-m-me).
   el.innerHTML = `
-    <div style="
-      width: 18px; height: 18px; border-radius: 50%;
+    <div class="ur-me" style="
+      position: relative; width: 18px; height: 18px; border-radius: 50%;
       background: #2563eb; border: 3px solid #fff;
       box-shadow: 0 0 0 4px rgba(37,99,235,0.25), 0 1px 4px rgba(0,0,0,0.3);
       transform: translate(-50%, -50%);
