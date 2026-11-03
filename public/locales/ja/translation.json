@@ -6121,7 +6121,8 @@
   "search": {
     "inputPlaceholder": "商品名・ブランド・セラーを検索",
     "related": {},
-    "endOfList": "ここまでですべてです"
+    "endOfList": "ここまでですべてです",
+    "closeTyping": "検索を閉じる"
   },
   "register": {
     "title": "[TODO:ja] 회원가입",

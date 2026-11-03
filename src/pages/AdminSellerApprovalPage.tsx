@@ -11,7 +11,7 @@ import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/co
 import { UserCheck, UserX, Loader2, Search, Pause, Play, ChevronDown, ChevronUp, FileCheck, FileX, ExternalLink, Trash2 } from 'lucide-react'
 import { makePurgeSeller } from './admin-seller-approval/purge-seller-action'
 import { toast } from '@/hooks/useToast'
-import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
+import { alertDialog, confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
 import { errorCode } from '@/utils/api-error-code'
 
@@ -146,7 +146,7 @@ export default function AdminSellerApprovalPage() {
   }
 
   const reject = async (id: number) => {
-    const reason = prompt('거절 사유 (선택)')
+    const reason = (await promptDialog({ message: '거절 사유 (선택)', prompt: {} }))
     setActingId(id)
     try {
       await api.put(`/api/admin/tools/sellers/${id}/reject`, { reason }, h)
@@ -158,17 +158,17 @@ export default function AdminSellerApprovalPage() {
   //   가게는 라이브 송출 X. 상품만 등록 + 정산. 인플루언서 셀러가 위탁 판매.
   //   prompt 기반 가벼운 UX (별도 모달 페이지 안 만듦). 어드민용이라 충분.
   const handleStoreOwnerQuickAdd = async () => {
-    const business_name = prompt('가게명 (예: 홍대 매운돈까스)')?.trim()
+    const business_name = (await promptDialog({ message: '가게명 (예: 홍대 매운돈까스)', prompt: {} }))?.trim()
     if (!business_name) return
-    const contact_name = prompt('담당자명 (예: 김사장)')?.trim()
+    const contact_name = (await promptDialog({ message: '담당자명 (예: 김사장)', prompt: {} }))?.trim()
     if (!contact_name) return
-    const phoneRaw = prompt('휴대폰 번호 (010-1234-5678 또는 01012345678)')?.trim()
+    const phoneRaw = (await promptDialog({ message: '휴대폰 번호 (010-1234-5678 또는 01012345678)', prompt: {} }))?.trim()
     if (!phoneRaw) return
     const phone = phoneRaw.replace(/-/g, '')
     if (!/^01\d{8,9}$/.test(phone)) { toast.error('휴대폰 번호 형식 오류'); return }
-    const email = prompt('이메일 (선택 — 비워두면 가짜 도메인 자동 생성)')?.trim() || undefined
-    const business_number = prompt('사업자번호 (선택, 예: 123-45-67890)')?.trim() || undefined
-    const commissionInput = prompt('수수료율 (%, 기본 5)', '5')?.trim()
+    const email = (await promptDialog({ message: '이메일 (선택 — 비워두면 가짜 도메인 자동 생성)', prompt: {} }))?.trim() || undefined
+    const business_number = (await promptDialog({ message: '사업자번호 (선택, 예: 123-45-67890)', prompt: {} }))?.trim() || undefined
+    const commissionInput = (await promptDialog({ message: '수수료율 (%, 기본 5)', prompt: { defaultValue: '5' } }))?.trim()
     const commission_rate = commissionInput ? Number(commissionInput) : 5
     if (!Number.isFinite(commission_rate) || commission_rate < 0 || commission_rate > 100) {
       toast.error('수수료율 0~100 범위'); return
@@ -235,7 +235,7 @@ export default function AdminSellerApprovalPage() {
     } finally { setBizActingId(null) }
   }
   const rejectBizReg = async (id: number) => {
-    const reason = prompt('반려 사유 (셀러에게 전달됨)')?.trim()
+    const reason = (await promptDialog({ message: '반려 사유 (셀러에게 전달됨)', prompt: {} }))?.trim()
     if (!reason) return
     setBizActingId(id)
     try {

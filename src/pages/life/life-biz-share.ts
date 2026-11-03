@@ -1,5 +1,6 @@
 /** 🔗 업체 소개 페이지 링크 보내기 — 공유 창, 없으면 복사 (2026-10-26). */
 import { toast } from '@/hooks/useToast'
+import { promptDialog } from '@/components/ui/confirm-dialog'
 
 export async function shareBizPage(id: number, name: string): Promise<void> {
   const url = `${window.location.origin}/life/biz/${id}`
@@ -10,5 +11,5 @@ export async function shareBizPage(id: number, name: string): Promise<void> {
     if ((e as { name?: string })?.name === 'AbortError') return
   }
   try { await navigator.clipboard.writeText(url); toast.success('링크를 복사했어요') }
-  catch { window.prompt('링크를 복사해 주세요', url) }
+  catch { (await promptDialog({ message: '링크를 복사해 주세요', prompt: { defaultValue: url } })) }
 }

@@ -10,6 +10,7 @@ import ManualDealForm from './admin-dongnedeal/ManualDealForm'
 import { Link } from 'react-router-dom'
 import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
 import { cleanSido, buildRegionParam } from './admin-dongnedeal/region-util'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 // 🧭 2026-06-17 (대표 요청 — 동네딜 채우기): 어드민 동네딜(오프라인 공동구매) 상품 CSV 일괄 등록 + 데모 시드.
 //   백엔드 /api/admin/dongnedeal/{stats,seed-demo,bulk-import} — 즉시 노출(is_active=1, group_buy_status='active').
@@ -47,7 +48,7 @@ export default function AdminDongnedealImportPage() {
   const [diag, setDiag] = useState<{ okCount: number; total: number; samples: DiagSample[] } | null>(null)
   const fixImages = async () => {
     if (fixing.running) return
-    if (!confirm('데모 사진을 정리할까요?\n① 외부(네이버/카카오) 커버 → 우리 서버(R2) 영구 이관: 원본이 삭제·차단돼도 안 깨짐\n② 그래도 안 뜨는 커버는 매장 대표사진으로 새로 받아옴\n· 정상 사진은 건드리지 않습니다 (수 분 소요).')) return
+    if (!(await confirmDialog('데모 사진을 정리할까요?\n① 외부(네이버/카카오) 커버 → 우리 서버(R2) 영구 이관: 원본이 삭제·차단돼도 안 깨짐\n② 그래도 안 뜨는 커버는 매장 대표사진으로 새로 받아옴\n· 정상 사진은 건드리지 않습니다 (수 분 소요).'))) return
     setDiag(null)
     setFixing({ running: true, phase: '진단', rehosted: 0, healed: 0, remaining: null })
     let rehosted = 0, healed = 0
@@ -172,7 +173,7 @@ export default function AdminDongnedealImportPage() {
   useEffect(() => { loadStats(); loadImgHealth(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
 
   const clearDemo = async () => {
-    if (!confirm('데모 동네딜 상품(demo-deal-*)을 모두 삭제할까요? 실제 등록 상품은 영향받지 않습니다.')) return
+    if (!(await confirmDialog({ message: '데모 동네딜 상품(demo-deal-*)을 모두 삭제할까요? 실제 등록 상품은 영향받지 않습니다.', danger: true }))) return
     setCleaning(true)
     try {
       const r = await api.delete('/api/admin/dongnedeal/seed-demo', { ...h, timeout: 120000 })
@@ -239,7 +240,7 @@ export default function AdminDongnedealImportPage() {
 
   // 🏨 2026-07-20: 숙소 데모 생성은 seedDemo() 카테고리 분기(stay_voucher)로 통합 — 여긴 정리만.
   const clearStays = async () => {
-    if (!confirm('데모 숙소(demo-stay-*)를 비활성 처리할까요?')) return
+    if (!(await confirmDialog('데모 숙소(demo-stay-*)를 비활성 처리할까요?'))) return
     setCleaning(true)
     try {
       const r = await api.delete('/api/admin/stays/seed-demo', { ...h, timeout: 60000 })

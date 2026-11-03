@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
+import { alertDialog, confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
@@ -74,7 +74,7 @@ export default function AdminDisputesPage() {
 
   async function approveRefund(d: Dispute) {
     if (!(await confirmDialog({ message: `voucher ${d.voucher_code} 환불 승인하시겠습니까?\n\n• voucher → refunded\n• 딜 결제건 자동 환불\n• 유저에게 푸시`, danger: true }))) return
-    const notes = window.prompt('어드민 메모 (선택, 500자 내):', '') || ''
+    const notes = (await promptDialog({ message: '어드민 메모 (선택, 500자 내):', prompt: { defaultValue: '' } })) || ''
     setSubmitting(d.id)
     try {
       const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}` }
@@ -94,7 +94,7 @@ export default function AdminDisputesPage() {
   }
 
   async function rejectDispute(d: Dispute) {
-    const notes = window.prompt('거절 사유 (5자+ 필수, 유저에게 푸시 통보됨):', '')
+    const notes = (await promptDialog({ message: '거절 사유 (5자+ 필수, 유저에게 푸시 통보됨):', prompt: { defaultValue: '' } }))
     if (!notes || notes.trim().length < 5) return
     setSubmitting(d.id)
     try {

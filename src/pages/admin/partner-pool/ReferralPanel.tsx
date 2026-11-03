@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { kstShort } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Referral {
   id: number; partner_lead_id: number | null; partner_name: string
@@ -62,7 +63,7 @@ export default function ReferralPanel() {
   }
 
   async function markPaid(id: number, partner: string, amount: number | null) {
-    if (!confirm(`${partner} 소개 보상 ${amount ? `${amount.toLocaleString()}원 ` : ''}지급완료로 기록할까요?\n(실제 이체는 은행에서 별도 — 여기는 회계 기록입니다)`)) return
+    if (!(await confirmDialog(`${partner} 소개 보상 ${amount ? `${amount.toLocaleString()}원 ` : ''}지급완료로 기록할까요?\n(실제 이체는 은행에서 별도 — 여기는 회계 기록입니다)`))) return
     try {
       const r = await api.patch(`/api/admin/partner-pool/referrals/${id}`, { mark_paid: true })
       if (r.data?.success) { toast.success('지급완료 기록됨'); await load() }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { promptDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 🔗 리드별 협찬 추적링크 (2026-07-27 — "성과 기반 매칭"을 말이 아닌 데이터로).
@@ -15,7 +16,7 @@ export default function TrackLinkButton({ leadId }: { leadId: number }) {
 
   async function run() {
     const remembered = (() => { try { return localStorage.getItem(LAST_TARGET_KEY) || '' } catch { return '' } })()
-    const target = window.prompt('추적링크가 보낼 목적지 URL을 입력하세요.\n(매장 유어샵·딜 상세 등 — 인플루언서가 소개할 페이지)', remembered)
+    const target = (await promptDialog({ message: '추적링크가 보낼 목적지 URL을 입력하세요.\n(매장 유어샵·딜 상세 등 — 인플루언서가 소개할 페이지)', prompt: { defaultValue: remembered } }))
     if (target === null) return
     const url = target.trim()
     if (!url) { toast.error('목적지 URL을 입력해주세요'); return }

@@ -73,6 +73,8 @@ export function useTicketMotion(amount: number) {
   const raf = useRef(0)
   useEffect(() => {
     if (!playing) return
+    // 📳 20차 ⑧ — 결제 완료는 조금 길게(0.04초). 브라우저가 '아직 화면을 누른 적 없는 새 페이지' 라며 막으면 조용히 넘어간다.
+    try { navigator.vibrate?.(40) } catch { /* 진동 없음 */ }
     const start = window.setTimeout(() => {
       const t0 = performance.now()
       const step = (now: number) => {

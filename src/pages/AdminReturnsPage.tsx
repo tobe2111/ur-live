@@ -17,7 +17,7 @@ import { toast } from '@/hooks/useToast'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 import { ChevronDown, ChevronUp, Loader2, RefreshCw, RotateCw } from 'lucide-react'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import RefundAmountEditor from '@/components/admin/RefundAmountEditor'
 
 interface ReturnRecord {
@@ -83,7 +83,7 @@ export default function AdminReturnsPage() {
   }
 
   async function handleReject(id: number) {
-    const reason = prompt('반려 사유를 입력하세요:')
+    const reason = (await promptDialog({ message: '반려 사유를 입력하세요:', prompt: {} }))
     if (!reason) return
     try {
       await api.put(`/api/returns/${id}/reject`, { reason }, h)
@@ -95,7 +95,7 @@ export default function AdminReturnsPage() {
   }
 
   async function handleInspect(id: number, result: 'approved' | 'rejected') {
-    const notes = prompt(`검수 ${result === 'approved' ? '승인' : '반려'} — 메모 (선택):`)
+    const notes = (await promptDialog({ message: `검수 ${result === 'approved' ? '승인' : '반려'} — 메모 (선택):`, prompt: {} }))
     if (notes === null) return
     try {
       await api.put(`/api/returns/${id}/inspect`, { inspection_result: result, inspection_notes: notes }, h)

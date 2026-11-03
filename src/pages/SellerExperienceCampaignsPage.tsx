@@ -14,6 +14,7 @@ import { toast } from '@/hooks/useToast'
 import { getSellerToken } from '@/lib/seller-auth'
 import { formatNumber } from '@/utils/format'
 import { Gift, RefreshCw, Dice5, ShieldCheck, Lock } from 'lucide-react'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 
 interface Campaign {
   id: number; title: string; status: string; slots: number
@@ -74,9 +75,9 @@ export default function SellerExperienceCampaignsPage() {
   }
 
   const draw = async (id: number, slots: number) => {
-    const cnt = window.prompt(t('seller.expCampaigns.drawPrompt', { defaultValue: '추첨할 인원 수 (모집 {{slots}}명)', slots }), String(slots))
+    const cnt = (await promptDialog({ message: t('seller.expCampaigns.drawPrompt', { defaultValue: '추첨할 인원 수 (모집 {{slots}}명)', slots }), prompt: { defaultValue: String(slots) } }))
     if (cnt == null) return
-    if (!window.confirm(t('seller.expCampaigns.drawConfirm', { defaultValue: '추첨을 실행합니다. 선정자에게 0원 체험권이 자동 발급됩니다.\n(공정 추첨 — 시드·풀·결과가 영구 기록되어 되돌릴 수 없습니다.)' }))) return
+    if (!(await confirmDialog(t('seller.expCampaigns.drawConfirm', { defaultValue: '추첨을 실행합니다. 선정자에게 0원 체험권이 자동 발급됩니다.\n(공정 추첨 — 시드·풀·결과가 영구 기록되어 되돌릴 수 없습니다.)' })))) return
     try {
       const r = await api.post(`/api/seller-experience-campaigns/${id}/draw`, { count: Number(cnt) || slots }, { headers })
       toast.success(t('seller.expCampaigns.drawDone', { defaultValue: '추첨 완료 — 응모 {{pool}}명 중 {{winners}}명 선정, 체험권 {{issued}}건 발급', pool: r.data?.pool_size, winners: r.data?.winners, issued: r.data?.vouchers_issued }))
