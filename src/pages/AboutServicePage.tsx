@@ -24,6 +24,7 @@
  *   2026-09-01 승인분을 그대로 옮겼다. 이번 변경은 **배치와 크기**이고 새 주장은 넣지 않는다.
  *   연락·사업자 정보는 `shared/partners-facts`(덱과 대조되는 SSOT) 한 곳에서만 읽는다.
  */
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { StoreIcon, PeopleIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { Megaphone, QrCode, BadgePercent, ArrowRight, FileText } from 'lucide-react'
@@ -36,8 +37,12 @@ import { Line, Reveal, ScrollProgress, loadDelay } from './landing/motion'
 import StickyStory, { type StoryStep } from './landing/StickyStory'
 import { DeviceStage, GiantNumber, PhotoHero, ToneScroll, useLandingFont } from './landing/premium'
 
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
+// 🎬 2026-11-03 20차 ⑥ — 문장이 화면에 다 들어오면 중요한 말에 형광펜이 왼쪽부터 그어진다(어두운 면은 조금 밝은 파랑).
+injectMotionCss('ur-m-marker', `.ur-mk { color: inherit; background: linear-gradient(transparent 60%, rgba(28,105,239,.22) 60%) no-repeat 0 0 / 0% 100%; transition: background-size .7s cubic-bezier(.3,.8,.3,1); }.ur-mk.ur-mk-ink { background-image: linear-gradient(transparent 60%, rgba(77,141,245,.45) 60%); }.ur-mk.ur-mk-on { background-size: 100% 100%; }@media (prefers-reduced-motion: reduce){.ur-mk{transition:none!important}}`)
+
 const BENEFITS = [
-  { icon: BadgePercent, t: '동네 할인', d: '내 주변 맛집과 뷰티, 숙소를 정가보다 싸게' },
+  { icon: BadgePercent, t: '동네 할인', d: <>내 주변 맛집과 뷰티, 숙소를 <mark className="ur-mk">정가보다 싸게</mark></> },
   { icon: QrCode, t: 'QR 간편 사용', d: '결제는 미리, 매장에선 QR 한 번이면 끝' },
   { icon: PinIcon, t: '지도로 발견', d: '지금 내 위치 주변의 딜을 지도에서 바로' },
 ]
@@ -60,6 +65,12 @@ const STEPS: StoryStep[] = [
 export default function AboutServicePage() {
   // 💎 2026-11-01 고급화 ⑥ — 제목 전용 글꼴(명조)을 이 페이지에서만 받는다
   useLandingFont()
+  useEffect(() => { // 🎬 20차 ⑥ — 형광펜은 그 문장이 다 보일 때 한 번 그어진다
+    const marks = Array.from(document.querySelectorAll<HTMLElement>('.ur-mk'))
+    if (typeof IntersectionObserver === 'undefined') { marks.forEach((m) => m.classList.add('ur-mk-on')); return }
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('ur-mk-on'); io.unobserve(e.target) } }), { threshold: 1, rootMargin: '0px 0px -10% 0px' })
+    marks.forEach((m) => io.observe(m)); return () => io.disconnect()
+  }, [])
   return (
     <div className="min-h-[100dvh] bg-warm ur-landing-type overflow-x-clip">
       <SEO title={CONSUMER_SURFACE_SEO['/about'].title} description={CONSUMER_SURFACE_SEO['/about'].description} url="/about" />
@@ -152,7 +163,7 @@ export default function AboutServicePage() {
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
             <Reveal><h2 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] leading-[1.2]">셋이 함께 커지는 구조</h2></Reveal>
-            <p className="mt-3 lg:mt-5 text-[13px] lg:text-[16px] text-white/60">누구도 먼저 돈을 내지 않습니다.</p>
+            <p className="mt-3 lg:mt-5 text-[13px] lg:text-[16px] text-white/60">누구도 <mark className="ur-mk ur-mk-ink">먼저 돈을 내지 않습니다</mark>.</p>
 
             <ol className="mt-8 lg:mt-16 relative pl-5 lg:pl-0 lg:grid lg:grid-cols-3 lg:gap-12 xl:gap-20">
               <span aria-hidden className="absolute left-[5px] top-2 bottom-2 w-px bg-white/25 lg:hidden" />
