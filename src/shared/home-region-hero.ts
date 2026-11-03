@@ -69,6 +69,28 @@ export function regionHeroFor(input: { regionKey?: string | null; loc?: { lat: n
 const NATIONAL_HERO = (): RegionHero | null => { const h = HEROES.find(x => x.slug === 'seoul'); return h ? toHero(h) : null }
 
 /**
+ * 🍪 2026-11-02 대표 *"처음 유어딜 켤 때 꽤 로딩 걸려"* — 서버 첫 화면이 **같은 사진**을 처음부터 그리게, 화면이 고른 사진을 쿠키로 남긴다.
+ *   실사용 기록(11-02 폰 홈 p75): 화면이 도착한 뒤 이 사진 요청이 출발하기까지 1.56초(LCP 1.98초 중) — 사진이 앱 부팅 뒤에야 생겨서다.
+ *   서버는 지역(localStorage)·위치를 모른다. 그래서 ① 쿠키가 없으면(= 처음 온 손님) **전국 = 서울**(위 규칙과 같다)
+ *   ② 쿠키가 `none` 이면 사진 없음(사진이 없는 지역) ③ 아는 slug 면 그 사진. 모르는 값은 ①로 — 화면이 곧 고쳐 쓴다.
+ *   ⚠️ 쿠키는 표시용이다 — 권한·금액과 무관하고, 틀려도 사진 한 장이 마운트 때 바뀔 뿐이다.
+ */
+export const HOME_HERO_COOKIE = 'ur_home_hero'
+export const HOME_HERO_NONE = 'none'
+
+export function homeHeroCookieValue(hero: RegionHero | null): string {
+  return hero?.slug ?? HOME_HERO_NONE
+}
+
+export function regionHeroFromCookieHeader(header: string | null | undefined): RegionHero | null {
+  const m = (header || '').match(new RegExp(`(?:^|;\\s*)${HOME_HERO_COOKIE}=([a-z0-9-]{1,32})`))
+  if (!m) return NATIONAL_HERO()
+  if (m[1] === HOME_HERO_NONE) return null
+  const h = HEROES.find(x => x.slug === m[1])
+  return h ? toHero(h) : NATIONAL_HERO()
+}
+
+/**
  * 🌤️ 2026-11-01 대표 *"밝은 사진들로 해서 그라데이션도 넣고 … 지금은 어둡기만 하네"* — 남색 막을 걷고 **밝게**.
  * 라이트: 사진은 그대로 밝게 두고 아래로 갈수록 흰색으로 녹아 목록과 이어진다(글자는 잉크색 그대로).
  *   왼쪽에 옅은 흰 막을 한 겹 더 깔아 로고·지역 이름이 사진 위에서도 읽힌다.

@@ -22,7 +22,9 @@ import { DEAL_CATS, HOME_TAB_LINKS, type DealCategory } from '@/pages/pc-home/Pc
 import { ShortsIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
-import { regionHeroFor, REGION_HERO_FADE_LIGHT, REGION_HERO_FADE_DARK } from '@/shared/home-region-hero'
+import { homeLocationLabel } from '@/pages/pc-home/home-location-label'
+import { homeLocLabelCookie } from '@/shared/home-loc-label-cookie'
+import { regionHeroFor, REGION_HERO_FADE_LIGHT, REGION_HERO_FADE_DARK, HOME_HERO_COOKIE, homeHeroCookieValue } from '@/shared/home-region-hero'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-02 13차 ① — 사진 머리를 지나 나타나는 고정 막대가 툭 생기지 않고 위에서 스르르 내려온다(고정 위치라 아래 내용은 안 밀린다).
 injectMotionCss('ur-m-cbar', `@keyframes ur-cbar-in { from { transform: translateY(-100%); } }.ur-cbar-in { animation: ur-cbar-in .26s cubic-bezier(.2,.9,.3,1); }@media (prefers-reduced-motion: reduce){.ur-cbar-in{animation:none!important}}`)
@@ -113,6 +115,15 @@ export default function MobileHomePage() {
    *   사진은 아래로 바탕색에 녹는다(라이트=흰색, 다크=다크 바탕색).
    */
   const hero = regionHeroFor({ regionKey: region.regionKey, loc: userLoc })
+  // 🍪 2026-11-02 — 서버가 다음 첫 화면에 **같은 사진**을 그리게 남긴다(`regionHeroFromCookieHeader`). 표시용 · 1년.
+  useEffect(() => {
+    try { document.cookie = `${HOME_HERO_COOKIE}=${homeHeroCookieValue(hero)}; Path=/; Max-Age=31536000; SameSite=Lax` } catch { /* 쿠키 막힘 — 서버는 전국 사진 */ }
+  }, [hero?.slug]) // eslint-disable-line react-hooks/exhaustive-deps
+  // 🏠 2026-11-03 — 맨 위 위치 이름도 남긴다(서버 첫 화면이 '동탄5동' 을 처음부터 그리게 · `home-loc-label-cookie.ts`). 표시용 · 1년.
+  const topLocLabel = homeLocationLabel({ located: !!userLoc, dongLabel: dong?.dong, region })
+  useEffect(() => {
+    try { document.cookie = homeLocLabelCookie(topLocLabel) } catch { /* 쿠키 막힘 — 서버는 '전국' */ }
+  }, [topLocLabel])
   const heroEndRef = useRef<HTMLDivElement | null>(null)
   const [heroPassed, setHeroPassed] = useState(false)
   useEffect(() => {
@@ -332,7 +343,11 @@ export default function MobileHomePage() {
  *   이미 받아 둔 사진(재방문)은 페이드 없이 바로.
  */
 function RegionHeroBg({ src }: { src: string }) {
-  const [shown, setShown] = useState(false)
+  // 🌆 2026-11-02 서버 첫 화면이 같은 사진을 이미 그렸으면(`data-home-hero` — `worker/utils/home-first-screen.ts`) 보인 상태로
+  //   이어받는다. 첫 렌더는 서버 노드가 아직 #root 에 있을 때 돈다 — 페이드부터 다시 하면 사진이 한 번 꺼졌다 켜진다.
+  const [shown, setShown] = useState(() => {
+    try { return !!document.querySelector(`img[data-home-hero="${CSS.escape(src)}"]`) } catch { return false }
+  })
   return (
     <div aria-hidden className="absolute inset-0 -z-10 pointer-events-none">
       <img src={src} alt="" decoding="async" fetchPriority="auto" onLoad={() => setShown(true)}
