@@ -75,14 +75,14 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
   // 🏠 2026-10-25 — 사장님 생활 서비스 허브. 업종 링크는 `lifeChildLinks` 가 덧붙인다(크롤러 본문 8자였다).
   '/life': {
     lines: [
+      // 2026-11-03 머리 안 5 — 문구가 LifeHero 로 옮겨갔다(1·2·3 단계 상자는 걷었다).
       '사장님 생활 견적 서비스',
-      '요청서 1분 작성',
-      '비교하고 한 곳 고르기',
-      '간판·방역·설비 수리까지 견적은 무료, 연락처는 고른 한 곳에만 가요.',
+      '간판·방역·설비 수리까지, 근처 업체 견적을 무료로 비교해요.',
+      '무료로 견적 받기',
       '견적은 무료이고, 비교해서 고른 한 곳에만 연락처가 전달돼요.',
       '아직 업체를 모으는 일도 요청은 받아요. 업체가 들어오는 대로 보내 드려요.',
     ],
-    source: ['src/pages/life/LifePage.tsx'],
+    source: ['src/pages/life/LifeHero.tsx', 'src/pages/life/LifePage.tsx'],
   },
   // 🏠 2026-10-25 — 업체 모집 랜딩(로그인 전 `/life/pro`). 종전엔 robots 차단 + 로그인 안내 한 장이었다.
   '/life/pro': {
