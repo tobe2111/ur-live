@@ -6154,7 +6154,10 @@
     "errorEmailInUse": "[TODO:zh] 이미 사용 중인 이메일입니다.",
     "errorInvalidEmail": "[TODO:zh] 유효하지 않은 이메일 형식입니다.",
     "seoTitle": "[TODO:zh] 회원가입 - 유어딜",
-    "seoDesc": "注册 UrDeal，以折扣价获得本地门店优惠券"
+    "seoDesc": "注册 UrDeal，以折扣价获得本地门店优惠券",
+    "agreeAll": "全部同意(含可选项)",
+    "pwMatch": "密码一致",
+    "pwMismatch": "密码不一致"
   },
   "following": {
     "title": "[TODO:zh] 팔로잉",

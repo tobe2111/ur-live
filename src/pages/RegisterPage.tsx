@@ -10,6 +10,10 @@ import { validatePasswordComplexity, passwordRuleChecklist, PASSWORD_MIN_LENGTH 
 import { Eye, EyeOff } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 15차 ②⑩ — 비밀번호 확인이 같으면 체크가 그려지고, 다르면 칸을 떠날 때 좌우로 살짝 흔들린다.
+//   약관 칸은 켜질 때 톡 튀고, '전체 동의' 를 누르면 아래 칸이 위에서부터 하나씩 켜진다.
+injectMotionCss('ur-m-register', `@keyframes ur-rg-ck { to { stroke-dashoffset: 0; } }@keyframes ur-rg-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.18); } 100% { transform: none; } }.ur-rg-ck path { stroke-dasharray: 20; stroke-dashoffset: 20; animation: ur-rg-ck .3s ease-out forwards; }.ur-rg-agree:checked { animation: ur-rg-pop .3s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-rg-agree:checked{animation:none!important}.ur-rg-ck path{animation:none!important;stroke-dashoffset:0}}`)
 
 export default function RegisterPage() {
   const { t } = useTranslation()
@@ -42,6 +46,19 @@ export default function RegisterPage() {
   const [marketingAgreed, setMarketingAgreed] = useState(false)
   // 만 14세 이상 자기신고 (미성년 차단 기본선)
   const [ageConfirmed, setAgeConfirmed] = useState(false)
+  // 🎬 15차 ② — 비밀번호 확인 칸을 다르게 두고 떠난 적이 있는가(그 뒤로만 빨간 글자 — 치는 중엔 안 혼낸다)
+  const [confirmBlurN, setConfirmBlurN] = useState(0)
+  const allAgreed = termsAgreed && privacyAgreed && ageConfirmed && marketingAgreed
+  /** 🎬 15차 ⑩ — 전체 동의: 켤 때는 위에서부터 하나씩(90ms 간격), 끌 때는 한 번에. */
+  const toggleAll = (on: boolean) => {
+    const setters = [setTermsAgreed, setPrivacyAgreed, setAgeConfirmed, setMarketingAgreed]
+    let reduce = false
+    try { reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { /* 미지원 */ }
+    setters.forEach((set, i) => { if (!on || reduce) set(on); else setTimeout(() => set(true), i * 90) })
+  }
+  const pwMatchState: 'none' | 'ok' | 'bad' = !formData.confirmPassword ? 'none'
+    : formData.confirmPassword === formData.password ? 'ok'
+    : confirmBlurN > 0 ? 'bad' : 'none'
 
   useEffect(() => {
     if (isAuthReady && isLoggedIn) {
@@ -230,10 +247,15 @@ export default function RegisterPage() {
                 autoComplete="new-password"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                onBlur={(e) => {
+                  if (!formData.confirmPassword || formData.confirmPassword === formData.password) return
+                  setConfirmBlurN((n) => n + 1)
+                  try { if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) e.currentTarget.animate?.([{ transform: 'none' }, { transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(-3px)' }, { transform: 'none' }], { duration: 350 }) } catch { /* 미지원 */ }
+                }}
                 placeholder={t('register.confirmPasswordPlaceholder', { defaultValue: '비밀번호를 다시 입력해주세요' })}
                 required
                 minLength={PASSWORD_MIN_LENGTH}
-                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+                className={`w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500`}
               />
               <button
                 type="button"
@@ -244,16 +266,31 @@ export default function RegisterPage() {
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {/* 🎬 15차 ② — 같으면 체크가 그려지고, 다르면(칸을 떠난 뒤) 빨간 글자. 자리는 늘 잡아 둔다(아래가 안 밀린다). */}
+            <p aria-live="polite" className={`mt-1 h-4 flex items-center gap-1 text-[12px] ${pwMatchState === 'bad' ? 'text-red-500' : 'text-brand-text'}`}>
+              {pwMatchState === 'ok' && (<><svg aria-hidden="true" viewBox="0 0 24 24" className="ur-rg-ck w-3 h-3" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>{t('register.pwMatch', { defaultValue: '비밀번호가 같아요' })}</>)}
+              {pwMatchState === 'bad' && t('register.pwMismatch', { defaultValue: '비밀번호가 달라요' })}
+            </p>
           </div>
 
           {/* Legal Agreements (PIPA: 필수 동의 분리 + 만 14세 이상) */}
           <div className="pt-1 space-y-2">
+            {/* 🎬 15차 ⑩ — 전체 동의(선택 항목 포함을 라벨에 밝힌다). 켜면 아래 칸이 위에서부터 하나씩 켜진다. */}
+            <label className="flex items-center gap-3 cursor-pointer pb-2 border-b border-rule">
+              <input
+                type="checkbox"
+                checked={allAgreed}
+                onChange={(e) => toggleAll(e.target.checked)}
+                className="ur-rg-agree w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+              />
+              <span className="text-[13px] font-medium text-gray-900 dark:text-white">{t('register.agreeAll', { defaultValue: '전체 동의 (선택 항목 포함)' })}</span>
+            </label>
             <label className="flex items-start gap-3 cursor-pointer group">
               <input
                 type="checkbox"
                 checked={termsAgreed}
                 onChange={(e) => setTermsAgreed(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+                className="ur-rg-agree mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
               <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
                 <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
@@ -273,7 +310,7 @@ export default function RegisterPage() {
                 type="checkbox"
                 checked={privacyAgreed}
                 onChange={(e) => setPrivacyAgreed(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+                className="ur-rg-agree mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
               <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
                 <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
@@ -293,7 +330,7 @@ export default function RegisterPage() {
                 type="checkbox"
                 checked={ageConfirmed}
                 onChange={(e) => setAgeConfirmed(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+                className="ur-rg-agree mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
               <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
                 <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
@@ -306,7 +343,7 @@ export default function RegisterPage() {
                 type="checkbox"
                 checked={marketingAgreed}
                 onChange={(e) => setMarketingAgreed(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+                className="ur-rg-agree mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
               <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
                 <span className="text-gray-400 dark:text-gray-500">{t('register.optionalLabel', { defaultValue: '[선택]' })}</span>{' '}

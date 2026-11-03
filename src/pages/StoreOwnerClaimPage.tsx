@@ -26,6 +26,9 @@ import { formatKSTDate } from '@/utils/date'
 import { ChevronLeft, Search } from 'lucide-react'
 
 import BrokerTermsConsent, { type BrokerTerms } from './store-claim/BrokerTermsConsent'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 15차 ⑥ — 1·2·3 동그라미가 차례로 톡 켜지고, 사이 선이 아래로 이어진다(PC 안내 열 · 들어올 때 한 번).
+injectMotionCss('ur-m-ownerclaim', `@keyframes ur-so-pop { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.15); } 100% { transform: none; } }@keyframes ur-so-up { from { opacity: 0; transform: translateY(8px); } }@keyframes ur-so-line { from { transform: scaleY(0); } }.ur-so-n { animation: ur-so-pop .35s cubic-bezier(.3,1.3,.5,1) backwards; animation-delay: calc(var(--i) * 260ms + 100ms); }.ur-so-t { animation: ur-so-up .35s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 260ms + 150ms); }.ur-so-line { transform-origin: top; animation: ur-so-line .25s ease backwards; animation-delay: calc(var(--i) * 260ms + 300ms); }@media (prefers-reduced-motion: reduce){.ur-so-n,.ur-so-t,.ur-so-line{animation:none!important}}`)
 
 interface FoundStore {
   seller_id: number; business_name: string | null; name: string | null
@@ -208,10 +211,11 @@ export default function StoreOwnerClaimPage() {
             </p>
 
             <ol className="hidden lg:flex mt-8 flex-col gap-4 lg:max-w-[460px]">
-              {STEPS.map(({ n, title, desc }) => (
-                <li key={n} className="flex gap-4 items-start">
-                  <span className="mt-1 shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-medium flex items-center justify-center">{n}</span>
-                  <div className="min-w-0">
+              {STEPS.map(({ n, title, desc }, i) => (
+                <li key={n} className="relative flex gap-4 items-start" style={{ '--i': i } as React.CSSProperties}>
+                  {i < STEPS.length - 1 && <span aria-hidden="true" className="ur-so-line absolute left-[11px] top-[32px] -bottom-3 w-[2px] bg-brand/30" />}
+                  <span className="ur-so-n relative mt-1 shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-medium flex items-center justify-center">{n}</span>
+                  <div className="ur-so-t min-w-0">
                     <p className="text-[15px] font-bold text-gray-900">{title}</p>
                     <p className="mt-1 text-[13px] leading-relaxed text-gray-500">{desc}</p>
                   </div>
