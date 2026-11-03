@@ -3,6 +3,7 @@
  *   기존 SellerMealVoucherNewPage 의 해당 블록을 그대로 추출 — 로직 불변, 배치만 위저드.
  */
 import { useTranslation } from '@/lib/i18n-lite'
+import { useNavigate } from 'react-router-dom'
 import { BedDouble, House, PartyPopper, Scissors, Utensils } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
@@ -27,6 +28,10 @@ interface Props {
 }
 
 export default function VoucherInfoStep({ form, update, setCategory, suggestedImages, loadingImages, onSearchImages }: Props) {
+  const navigate = useNavigate()
+  // 🏨 2026-11-03 숙소 통일 A: 숙박은 객실·요금·달력이 있어야 팔린다. 이 폼으로 만들면 **객실 없는 숙소**가 생긴다
+  //   (상세에서 고를 방이 0개). 그래서 숙박을 누르면 숙소 등록 화면으로 보낸다 — 목록·관리는 이용권 탭 하나 그대로.
+  const pick = (c: VoucherCategory) => { if (c === 'stay_voucher') { navigate('/seller/stays/new'); return } setCategory(c) }
   const { t } = useTranslation()
 
   return (
@@ -54,7 +59,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
             <button
               type="button"
               key={c.key}
-              onClick={() => setCategory(c.key)}
+              onClick={() => pick(c.key)}
               className={`p-3 rounded-lg border-2 text-center transition-all ${
                 form.category === c.key
                   ? 'border-brand bg-brand-tint'
