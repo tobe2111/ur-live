@@ -131,6 +131,7 @@ export default function CouponClaimPage() {
       if (res.data.success) {
         setCoupon(res.data.data)
         setStatus('success')
+        try { if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) navigator.vibrate?.(25) } catch { /* 진동 없음 */ } // 📳 20차 ⑧ — 쿠폰을 받으면 짧게 톡(0.025초)
       } else if (res.data.already_claimed) {
         setStatus('already')
       } else {

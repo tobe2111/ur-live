@@ -22,6 +22,15 @@ import { toast } from '@/hooks/useToast'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import Udal from '@/components/mascot/Udal'
 
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
+// 🎬 2026-11-03 20차 ⑤ — 가입 환영 제목이 한 글자씩 차례로 올라온다(처음 한 번만 보는 화면).
+injectMotionCss('ur-m-welcomechars', `@keyframes ur-wc-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }.ur-wc { display: inline-block; white-space: pre; animation: ur-wc-up .45s cubic-bezier(.2,1,.3,1) backwards; animation-delay: calc(var(--i) * 45ms + 120ms); }@media (prefers-reduced-motion: reduce){.ur-wc{animation:none!important}}`)
+
+/** 글자를 하나씩 감싼다. 읽기 프로그램은 h2 의 aria-label 로 한 번에 읽는다. */
+function SplitChars({ text }: { text: string }) {
+  return <>{Array.from(text).map((c, i) => <span key={i} aria-hidden="true" className="ur-wc" style={{ '--i': Math.min(i, 30) } as React.CSSProperties}>{c}</span>)}</>
+}
+
 interface Props {
   onClose: () => void
   userName?: string
@@ -163,9 +172,10 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
             <div className="text-center">
               {/* 🦦 2026-10-07 (확정 시안 ⑧ "가입 직후 한 번만 뜨는 시트에서 수달이 인사"): 그라디언트 원 + 반짝이 아이콘 대체. */}
               <Udal mood="hello" size={84} motion priority className="mx-auto mb-3" />
-              <h2 id="welcome-title" className="text-[24px] font-bold text-gray-900 dark:text-white mb-2">
-                {userName ? t('welcomeOnboarding.welcomeTitle', { name: userName, defaultValue: `${userName}님, 환영해요!` }) : t('welcomeOnboarding.welcomeTitleDefault', { defaultValue: '유어딜에 오신 걸 환영해요!' })}
-              </h2>
+              {(() => { const title = userName ? t('welcomeOnboarding.welcomeTitle', { name: userName, defaultValue: `${userName}님, 환영해요!` }) : t('welcomeOnboarding.welcomeTitleDefault', { defaultValue: '유어딜에 오신 걸 환영해요!' }); return (
+              <h2 id="welcome-title" aria-label={title} className="text-[24px] font-bold text-gray-900 dark:text-white mb-2">
+                <SplitChars text={title} />
+              </h2>) })()}
               <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed">
                 {t('welcomeOnboarding.welcomeDesc1', { defaultValue: '동네 맛집·뷰티·숙소 이용권을' })}<br />
                 <strong className="text-gray-900 dark:text-white">{t('welcomeOnboarding.welcomeDesc2', { defaultValue: '할인가로 사고 바로 쓰는 곳' })}</strong>

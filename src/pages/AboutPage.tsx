@@ -4,6 +4,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Sparkles, Trophy, Zap, Bot, Download, Printer, ArrowRight, Rocket, Globe } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 · 🎬 20차 ⑥ 형광펜
+injectMotionCss('ur-m-marker', `.ur-mk { color: inherit; background: linear-gradient(transparent 60%, rgba(28,105,239,.22) 60%) no-repeat 0 0 / 0% 100%; transition: background-size .7s cubic-bezier(.3,.8,.3,1); }.ur-mk.ur-mk-on { background-size: 100% 100%; }@media (prefers-reduced-motion: reduce){.ur-mk{transition:none!important}}`)
 
 /**
  * 공개 서비스 소개 페이지
@@ -24,6 +26,12 @@ export default function AboutPage() {
       }, 800)
       return () => clearTimeout(timer)
     }
+  }, [isPrintMode])
+
+  useEffect(() => { // 🎬 20차 ⑥ — 형광펜은 그 문장이 다 보일 때 한 번 그어진다. 인쇄면 처음부터 다 그어 둔다.
+    const marks = Array.from(document.querySelectorAll<HTMLElement>('.ur-mk')); if (isPrintMode || typeof IntersectionObserver === 'undefined') { marks.forEach((m) => m.classList.add('ur-mk-on')); return }
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('ur-mk-on'); io.unobserve(e.target) } }), { threshold: 1, rootMargin: '0px 0px -10% 0px' })
+    marks.forEach((m) => io.observe(m)); return () => io.disconnect()
   }, [isPrintMode])
 
   const handleDownloadPdf = () => {
@@ -50,10 +58,10 @@ export default function AboutPage() {
                 <span className="block text-brand-text mt-2">정가보다 싸게, 매장에서 바로</span>
               </h1>
               <p className="text-[15px] sm:text-[17px] lg:text-[17px] text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-                우리 동네 맛집·뷰티·숙소 이용권을 할인가로.
+                우리 동네 맛집·뷰티·숙소 이용권을 <mark className="ur-mk">할인가로</mark>.
               </p>
               <p className="text-[15px] sm:text-[17px] lg:text-[17px] text-gray-600 dark:text-gray-300 leading-relaxed mb-10">
-                인원과 상관없이 처음부터 같은 가격, 결제하면 이용권이 바로 들어와요.
+                인원과 상관없이 <mark className="ur-mk">처음부터 같은 가격</mark>, 결제하면 이용권이 바로 들어와요.
               </p>
 
               <div className="flex flex-wrap gap-3 justify-center">
@@ -153,7 +161,7 @@ export default function AboutPage() {
                 <li>· 자체 쇼핑몰 구축 비용 0원 (Shopify 월 $29 + 도메인 + PG 부담 X)</li>
               </ul>
               <p className="mt-3 p-3 rounded-lg bg-brand-tint text-brand-text text-[12px] lg:text-[15px]">
-                비교: 자체 쇼핑몰 구축 시 평균 2~3개월 + 200만원. 유어딜은 <strong>0원 / 5분</strong>.
+                비교: 자체 쇼핑몰 구축 시 평균 2~3개월 + 200만원. 유어딜은 <strong><mark className="ur-mk">0원 / 5분</mark></strong>.
               </p>
             </SubBlock>
 

@@ -6118,7 +6118,8 @@
   "search": {
     "inputPlaceholder": "Buscar productos, marcas, vendedores",
     "related": {},
-    "endOfList": "Has llegado al final"
+    "endOfList": "Has llegado al final",
+    "closeTyping": "Cerrar búsqueda"
   },
   "register": {
     "title": "[TODO:es] 회원가입",
