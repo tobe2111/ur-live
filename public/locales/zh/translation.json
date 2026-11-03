@@ -3417,6 +3417,7 @@
   },
   "admin": {
     "login": {
+      "kakaoStart": "使用 Kakao 开始",
       "title": "管理员登录",
       "subtitle": "使用管理员帐户登录",
       "heroTitle": "平台运营管理控制台",

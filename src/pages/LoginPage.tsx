@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { PinIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 // Firebase Auth will be lazy loaded when needed
@@ -21,7 +20,7 @@ import { canUseTalkLogin, prepareTalkLogin, scheduleTalkLoginPrepare, startTalkL
 import { hasConsumerSession } from '@/utils/auth'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 15차 ① — 제목 → 서비스 칩(하나씩 톡) → 카카오 버튼이 차례로 떠오른다. 들어올 때 한 번뿐이고, 버튼을 **누를 때**는 아무 움직임도 없다(iOS 멈춤 — 10차 ⑨).
-injectMotionCss('ur-m-login', `@keyframes ur-lg-up { from { opacity: 0; transform: translateY(12px); } }@keyframes ur-lg-pop { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.08); } 100% { transform: none; } }.ur-lg-h { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .05s backwards; }.ur-lg-chips > * { animation: ur-lg-pop .35s cubic-bezier(.3,1.3,.5,1) .22s backwards; }.ur-lg-chips > *:nth-child(2) { animation-delay: .29s; }.ur-lg-chips > *:nth-child(3) { animation-delay: .36s; }.ur-lg-btn { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .34s backwards; }@media (prefers-reduced-motion: reduce){.ur-lg-h,.ur-lg-chips > *,.ur-lg-btn{animation:none!important}}`)
+injectMotionCss('ur-m-login', `@keyframes ur-lg-up { from { opacity: 0; transform: translateY(12px); } }.ur-lg-h { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .05s backwards; }.ur-lg-btn { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .34s backwards; }@media (prefers-reduced-motion: reduce){.ur-lg-h,.ur-lg-btn{animation:none!important}}`)
 
 // Kakao SDK 타입 선언
 interface KakaoAuth {
@@ -259,30 +258,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-5 py-12">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center px-6 pt-12 pb-10">
       <SEO title={t('login.seoTitle', { defaultValue: '로그인 - 유어딜' })} description={t('login.seoDesc', { defaultValue: '유어딜에 로그인하세요.' })} url="/login" noindex />
 
       {/* 🧹 2026-10-26 대표 *"내용이 필요없이 많달까?"* — 장식 그라디언트·부제·안내 문장·회원가입·서비스 소개 줄을 걷었다.
           남은 것: 유달이 · 로고 · 한 줄 제목 · 칩 둘 · 카카오 버튼 · 약관 링크 · 이메일 로그인 · 에이전시 입구. */}
-      <div className="w-full max-w-[360px] md:max-w-[400px]">
+      {/* 🔐 2026-11-03 대표 확정 **A안**(*"깔끔하고 군더더기 없이"* · 시안 `docs/design/login-clean-2026-11-03.md`):
+          유달이 · 로고 · 한 줄은 **가운데**, 카카오 버튼 · 약관 · 링크 한 줄은 **아래**(엄지 자리). 칩 둘을 걷고, 흩어진
+          링크 셋(이메일 로그인 / 구분선 / 에이전시)을 맨 아래 한 줄로 모았다. 약관 링크 문구는 그대로(법적 고지 — 바꾸지 않는다). */}
+      <div className="w-full max-w-[360px] md:max-w-[400px] flex-1 flex flex-col">
 
-        <div className="flex flex-col items-center mb-10">
+        <div className="flex-1 flex flex-col items-center justify-center pb-10">
           <Udal mood="hello" size={64} priority motion className="block mb-4" />
           <UrDealLogo size={34} />
           {/* "같이 사면 더 싸다" 는 없는 기제였다 — 이용권은 즉시판매 단일가(2026-05-30)라 인원이 가격을 안 움직인다. */}
-          <h1 className="ur-lg-h mt-6 text-[24px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
+          <h1 className="ur-lg-h mt-3 text-[15px] font-normal text-gray-500 dark:text-gray-400 text-center leading-snug">
             {t('login.heroTitle2', { defaultValue: '우리 동네 가게, 미리 사면 더 싸게' })}
           </h1>
-          <div className="ur-lg-chips flex flex-wrap items-center justify-center gap-2 mt-5">
-            <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-[13px] text-gray-700 dark:text-gray-300">
-              <PinIcon className="w-3.5 h-3.5 text-brand-text" />
-              {t('login.chipPass', { defaultValue: '동네 이용권' })}
-            </span>
-            <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-[13px] text-gray-700 dark:text-gray-300">
-              <GiftBoxIcon className="w-3.5 h-3.5 text-brand-text" />
-              {t('login.chipVoucher', { defaultValue: '교환권·기프티콘' })}
-            </span>
-          </div>
         </div>
 
         {/* Error/Success Messages */}
@@ -329,7 +321,7 @@ export default function LoginPage() {
                   <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
                     <path fill="#3C1E1E" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>
                   </svg>
-                  <span>{t('auth.kakaoQuickStart')}</span>
+                  <span>{t('login.kakaoStart', { defaultValue: '카카오로 시작하기' })}</span>
                 </>
               )}
             </button>
@@ -340,13 +332,15 @@ export default function LoginPage() {
               <Link to="/privacy" className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-300">{t('login.privacyLink', { defaultValue: '개인정보처리방침' })}</Link>
             </p>
 
-            <div className="text-center mt-8">
-              <button
-                onClick={() => setShowEmailLogin(true)}
-                className="text-[13px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline underline-offset-4 decoration-1 transition-colors"
-              >
+            {/* 이메일 로그인 · 에이전시 로그인 — 한 줄(A안). */}
+            <div className="mt-8 flex items-center justify-center gap-3 text-[13px] text-gray-500 dark:text-gray-400">
+              <button type="button" onClick={() => setShowEmailLogin(true)} className="hover:text-gray-900 dark:hover:text-white transition-colors">
                 {t('auth.loginWithEmail')}
               </button>
+              <span aria-hidden="true" className="text-gray-300 dark:text-gray-600">|</span>
+              <Link to="/agency/login" className="hover:text-gray-900 dark:hover:text-white transition-colors">
+                {t('login.agencyLogin', { defaultValue: '에이전시 로그인' })}
+              </Link>
             </div>
           </div>
         )}
@@ -480,12 +474,13 @@ export default function LoginPage() {
 
         {/* 🏢 2026-10-11 대표 확정 안 A — 손님 로그인은 그대로 두고 맨 아래에 에이전시 입구 한 줄.
             에이전시 계정은 이메일로만 가입·로그인하는 다른 계정이다(docs/decisions/2026-10-11-agency-model-email-only.md). */}
-        <div className="mt-10 pt-5 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-center gap-2 text-[13px]">
+        {/* 이메일 폼·비밀번호 화면에서만 — 기본 화면은 위 한 줄이 이 입구를 갖는다(2026-11-03 A안). */}
+        {(showEmailLogin || showForgotPassword) && <div className="mt-10 pt-5 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-center gap-2 text-[13px]">
           <span className="text-gray-500 dark:text-gray-400">{t('login.agencyQuestion', { defaultValue: '에이전시이신가요?' })}</span>
           <Link to="/agency/login" className="font-medium text-brand-text hover:underline underline-offset-4">
             {t('login.agencyLogin', { defaultValue: '에이전시 로그인' })}
           </Link>
-        </div>
+        </div>}
       </div>
     </div>
   )

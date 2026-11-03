@@ -2698,6 +2698,7 @@
   },
   "admin": {
     "login": {
+      "kakaoStart": "Continuer avec Kakao",
       "title": "Connexion administrateur",
       "subtitle": "Connectez-vous avec votre compte administrateur",
       "heroTitle": "Console de gestion opérationnelle",

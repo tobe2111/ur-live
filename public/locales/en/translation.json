@@ -3417,6 +3417,7 @@
   },
   "admin": {
     "login": {
+      "kakaoStart": "Continue with Kakao",
       "title": "Admin Login",
       "subtitle": "Sign in with your admin account",
       "heroTitle": "Platform Operations Console",

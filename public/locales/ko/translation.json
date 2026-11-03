@@ -3417,6 +3417,7 @@
   },
   "admin": {
     "login": {
+      "kakaoStart": "카카오로 시작하기",
       "title": "관리자 로그인",
       "subtitle": "관리자 계정으로 로그인하세요",
       "heroTitle": "플랫폼 운영 관리 콘솔",

@@ -52,9 +52,11 @@ export default [
   {
     name: '🏢 손님 로그인 화면에서 에이전시 입구가 사라진다',
     file: 'src/pages/LoginPage.tsx',
-    find: '<Link to="/agency/login"',
-    replace: '<Link to="/login"',
-    test: TEST,
+    // 2026-11-03 로그인 A안 — 기본 화면의 입구는 이메일 로그인과 한 줄이다(그 줄의 링크를 겨눈다).
+    find: '<Link to="/agency/login" className="hover:text-gray-900',
+    replace: '<Link to="/login" className="hover:text-gray-900',
+    // 기본 화면 입구는 이제 '이메일 로그인 | 에이전시 로그인' 한 줄 — 그 줄을 지키는 시험이 잡는다(종전 시험은 폼 화면 링크로도 통과한다).
+    test: 'src/tests/unit/login-clean-2026-11-03.test.ts',
     why: '안 A 의 유일한 변화가 그 한 줄이다 — 빠지면 에이전시는 로그인 화면을 찾을 길이 없다.',
   },
   {

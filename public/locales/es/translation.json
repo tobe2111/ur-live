@@ -2698,6 +2698,7 @@
   },
   "admin": {
     "login": {
+      "kakaoStart": "Continuar con Kakao",
       "title": "Inicio de sesión del administrador",
       "subtitle": "Inicia sesión con tu cuenta de administrador",
       "heroTitle": "Consola de operaciones de la plataforma",
