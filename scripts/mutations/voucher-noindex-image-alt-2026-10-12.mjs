@@ -43,9 +43,10 @@ export default [
     name: '🖼️ 반대 방향 — 마스코트에 설명을 붙인다',
     // 🔴 마스코트는 `curator-ssr-body` 가 아니라 **워커의 정적 로더**(index.ts)에 있다.
     //    여기를 틀리면 주입이 "대상 못 찾음" 으로 조용히 넘어가 반대 방향이 안 지켜진다.
-    file: 'src/worker/index.ts',
-    find: 'alt="" aria-hidden="true"',
-    replace: 'alt="유달이 마스코트" aria-hidden="true"',
+    // 🫥 2026-11-03 재조준 — 워커 로더 그림은 뗐고 마스코트는 보이는 로더(BrandLoader)에만 있다.
+    file: 'src/components/brand/BrandLoader.tsx',
+    find: '          src={UDAL_LOADER_SRC}\n          alt=""',
+    replace: '          src={UDAL_LOADER_SRC}\n          alt="유달이 마스코트"',
     test: TEST,
     why: '장식 이미지의 빈 alt 은 **맞는 값**이다 — 설명을 붙이면 스크린리더가 장식을 읽는다. "모든 img 에 alt" 로 넘어가는 것을 막는다.',
   },

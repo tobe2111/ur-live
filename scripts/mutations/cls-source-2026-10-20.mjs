@@ -70,10 +70,11 @@ export default [
     why: '로더 그림이 첫 이미지 요청이 되어 LCP 사진과 회선을 나눠 쓴다.',
   },
   {
-    name: 'LCP사진 — 워커 로더 마크업이 우선순위 속성을 안 붙인다',
+    // 🫥 2026-11-03 재조준 — 로더 그림 자체를 뗐다(안 보이는 로더). 지키는 것은 "워커 로더가 LCP 사진과 회선을 나눠 쓰지 않는다".
+    name: 'LCP사진 — 워커 로더 마크업에 그림이 되살아난다',
     file: 'src/worker/index.ts',
-    find: '${UDAL_LOADER_SRC}"${loaderImgPriorityAttr(cssFirst)}',
-    replace: '${UDAL_LOADER_SRC}"',
+    find: `        '<div class="ur-loader-breathe text-[#16181C] dark:text-[#F8F7FC]"`,
+    replace: `        '<img src="/assets/mascot/udal-loader-v2.webp" alt="">' + '<div class="ur-loader-breathe text-[#16181C] dark:text-[#F8F7FC]"`,
     test: 'src/tests/unit/mascot-preload-first-screen-2026-10-15.test.ts',
     why: '함수는 맞는데 배선이 빠지면 라이브에서 아무 일도 안 한다(2026-10-20 실제로 그랬다).',
   },

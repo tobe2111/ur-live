@@ -148,13 +148,15 @@ describe('🦦 로딩 화면의 유달이 — 정적 로더와 앱 로더가 같
     expect(existsSync(`public${src}`), `public${src} 없음 — 로더에 깨진 그림`).toBe(true)
   })
 
-  it('index.html 이 바로 그 파일을 미리 받는다(경로가 갈리면 preload 가 헛돈다)', () => {
+  // 🫥 2026-11-03 대표 "3,4 해결해줘" — 첫 진입 로더가 안 보이게 된 뒤(11-02 "아예 안 보이게") 유달이 preload·워커 로더 그림을 뗐다.
+  //   유달이는 **보이는 로더**(문구 로더 등 — BrandLoader)에만 남는다.
+  it('index.html 은 그 파일을 미리 받지 않는다(안 보이는 그림)', () => {
     const html = readFileSync('index.html', 'utf8')
-    expect(html).toContain(`<link rel="preload" as="image" href="${src}"`)
+    expect(html).not.toContain(`<link rel="preload" as="image" href="${src}"`)
   })
 
-  it('워커 정적 로더와 BrandLoader 가 같은 SSOT 를 읽는다', () => {
-    expect(readFileSync('src/worker/index.ts', 'utf8')).toMatch(/src="\$\{UDAL_LOADER_SRC\}"/)
+  it('보이는 로더(BrandLoader)는 SSOT 그림을 쓰고, 워커 정적 로더엔 그림이 없다', () => {
+    expect(readFileSync('src/worker/index.ts', 'utf8')).not.toMatch(/src="\$\{UDAL_LOADER_SRC\}"/)
     expect(readCode('src/components/brand/BrandLoader.tsx')).toMatch(/src=\{UDAL_LOADER_SRC\}/)
   })
 

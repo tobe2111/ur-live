@@ -55,10 +55,9 @@ describe('① 적용 표면에서만 유달이 preload 를 지운다', () => {
 })
 
 describe('② 지우는 주소가 index.html 의 실제 preload 와 같다', () => {
-  it('index.html 에 그 preload 가 실재한다', () => {
+  it('🫥 2026-11-03 — index.html 에서 그 preload 자체를 뗐다(로더 그림이 안 보이게 된 뒤 보이지 않는 그림을 최우선으로 받았다)', () => {
     const html = readFileSync('index.html', 'utf-8')
-    expect(html, '주소가 어긋났다 — 재작성기가 아무것도 못 지우고 초록이 된다')
-      .toContain(`<link rel="preload" as="image" href="${UDAL_LOADER_SRC}"`)
+    expect(html).not.toContain(`<link rel="preload" as="image" href="${UDAL_LOADER_SRC}"`)
   })
 })
 
@@ -75,10 +74,11 @@ describe('④ 첫 화면 아래 로더 그림은 낮은 우선순위(2026-10-20)
     expect(loaderImgPriorityAttr(true)).toBe(' fetchpriority="low"')
     expect(loaderImgPriorityAttr(false)).toBe('')
   })
-  it('워커 로더 마크업이 그 속성을 cssFirst 로 붙인다(배선)', () => {
-    expect(readFileSync('src/worker/index.ts', 'utf8'), '로더가 LCP 사진보다 먼저 받아진다').toMatch(
-      /<img src="\$\{UDAL_LOADER_SRC\}"\$\{loaderImgPriorityAttr\(cssFirst\)\}/,
-    )
+  it('🫥 2026-11-03 — 워커 로더 마크업엔 그림이 아예 없다(안 보이는 로더가 LCP 사진과 회선을 나눠 쓰지 않는다)', () => {
+    const src = readFileSync('src/worker/index.ts', 'utf8')
+    const at = src.indexOf('const urdealLoaderHtml =')
+    expect(at).toBeGreaterThan(0)
+    expect(src.slice(at, src.indexOf(';', src.indexOf("'</div>'", at)))).not.toMatch(/<img/)
   })
   it('재작성기 img 규칙은 되살리지 않는다(삽입된 마크업엔 안 걸려 지키는 척만 한다)', () => {
     const src = readFileSync('src/worker/utils/css-first-boot.ts', 'utf8')

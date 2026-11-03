@@ -27,7 +27,8 @@ describe('첫 진입 로딩 화면 — 아예 안 보이게', () => {
   it('② 전체 화면 로더 — 그림·로고·바 전부 숨김, 배경 막·화면읽기 문구는 남음', () => {
     const { container } = render(<BrandLoader fullScreen />)
     const v = vis(container)
-    expect(v.length).toBeGreaterThanOrEqual(3)
+    expect(v.length).toBeGreaterThanOrEqual(2) // 로고·바(그림은 2026-11-03 부터 숨긴 로더에선 아예 안 그린다)
+    expect(container.querySelector('img'), '안 보이는 로더가 그림을 받는다').toBeNull()
     expect(v.every(Boolean)).toBe(true)
     const root = container.firstElementChild as HTMLElement
     expect(root.className).toMatch(/fixed inset-0/)

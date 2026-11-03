@@ -77,7 +77,7 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
       aria-live="polite"
       aria-busy="true"
     >
-      {showUdal && (
+      {showUdal && !hide && ( /* 🫥 2026-11-03 숨긴 로더는 그림을 아예 안 받는다(보이지 않는 10KB 를 받을 이유가 없다) */
         <img
           src={UDAL_LOADER_SRC}
           alt=""

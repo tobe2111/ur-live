@@ -103,6 +103,11 @@ pointsRoutes.get('/balance', requireAuth(), async (c) => {
   // H8: user_points.user_id는 TEXT — 항상 String(user.id)로 통일하여 TEXT/INTEGER 혼용 방지
   // 💸 2026-07-05 버킷: free_balance(무상)·withdrawable(유상=출금가능) 노출. 컬럼 부재 레거시는 폴백 쿼리.
   const userId = String(user.id);
+  // 🐢 2026-11-03 대표 *"3,4 해결해줘"*(마이 '내 딜' 칸) — 처리 중 환급 신청 조회를 잔액 조회와 **나란히** 출발시킨다.
+  //   종전엔 잔액을 받은 뒤 그 값을 보고 두 번째 질의를 보냈다(원본 DB 직렬 2왕복 · 한국에서 ~0.17초씩). 읽기 전용이고
+  //   결과 판정은 종전과 같다 — 유상 잔액이 있으면 아래 한도 SSOT(`getDealRefundState`)가 처리 중 신청까지 보고 이 값은 버린다.
+  const pendingP = DB.prepare("SELECT amount FROM deal_refund_requests WHERE user_id = ? AND status = 'requested'")
+    .bind(userId).first<{ amount: number }>().catch(() => null);
   const row = await DB.prepare('SELECT balance, COALESCE(free_balance, 0) AS free_balance, total_charged, total_donated FROM user_points WHERE user_id = ?')
     .bind(userId).first<{ balance: number; free_balance: number; total_charged: number; total_donated: number }>()
     .catch(async () =>
@@ -129,8 +134,7 @@ pointsRoutes.get('/balance', requireAuth(), async (c) => {
       if (st.state.pending) refundPending = Number(st.state.pending.amount);
     }
   } else {
-    const p = await DB.prepare("SELECT amount FROM deal_refund_requests WHERE user_id = ? AND status = 'requested'")
-      .bind(userId).first<{ amount: number }>().catch(() => null);
+    const p = await pendingP;
     if (p) refundPending = Number(p.amount);
   }
   return c.json({

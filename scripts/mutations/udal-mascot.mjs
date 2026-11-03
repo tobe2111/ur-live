@@ -38,10 +38,11 @@ export default [
     why: '상황표는 404 를 "길 잃음" 으로 정했다 — 화면이 다른 얼굴을 고르면 표가 무의미해진다.',
   },
   {
-    name: '🦦 로더 preload 경로가 실제 로더 그림과 갈린다',
+    // 🫥 2026-11-03 재조준 — 대표 "3,4 해결해줘" 로 유달이 preload 를 뗐다(안 보이는 그림을 최우선으로 받았다). 되살아나면 빨간불.
+    name: '🦦 안 보이는 로더 그림 preload 가 되살아난다',
     file: 'index.html',
-    find: '<link rel="preload" as="image" href="/assets/mascot/udal-loader-v2.webp" />',
-    replace: '<link rel="preload" as="image" href="/assets/mascot/udal-loader-v1.webp" />',
+    find: '    <link rel="dns-prefetch" href="https://js.tosspayments.com" />',
+    replace: '    <link rel="preload" as="image" href="/assets/mascot/udal-loader-v2.webp" />\n    <link rel="dns-prefetch" href="https://js.tosspayments.com" />',
     test: TEST,
     why: '경로가 한 글자만 달라도 미리 받은 그림을 안 쓴다 — 유달이가 로고보다 늦게 튀어나온다.',
   },
