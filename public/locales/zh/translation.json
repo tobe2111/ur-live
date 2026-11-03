@@ -7113,7 +7113,8 @@
       "giftPendingDesc2": "[TODO:zh] 선물 보내기를 취소하면 다시 쓸 수 있어요.",
       "giftLinkOrCancel": "[TODO:zh] 선물 링크 보기, 보내기 취소",
       "gift": "[TODO:zh] 선물하기",
-      "receivedGiftNote": "[TODO:zh] 선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요"
+      "receivedGiftNote": "[TODO:zh] 선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요",
+      "liveHint": "商家扫码后会立即更新"
     }
   },
   "pass": {
