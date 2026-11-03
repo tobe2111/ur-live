@@ -3418,6 +3418,7 @@
   },
   "admin": {
     "login": {
+      "kakaoStart": "カカオで始める",
       "title": "管理者ログイン",
       "subtitle": "管理者アカウントでログインしてください",
       "heroTitle": "プラットフォーム運営管理コンソール",
@@ -7031,7 +7032,7 @@
   "groupBuy.categoryEtc": "🎯 その他",
   "groupBuy.stayBadge": "宿泊",
   "roleCta": {
-    "myShortcuts": "店舗を開く",
+    "myShortcuts": "店舗オーナーですか？",
     "startNewRole": "新しい役割を始める",
     "linkshop": "マイUrShop",
     "linkshopDesc": "利用券を UrShop に並べて紹介しよう",
@@ -7039,7 +7040,7 @@
     "agencyDashDesc": "紹介した店舗の収益",
     "proposeGb": "ご近所共同購入の提案",
     "proposeGbDesc": "希望のお店を提案するとまとめて開催します",
-    "openShop": "店舗を登録",
+    "openShop": "自分の店の利用券を販売",
     "openShopDesc": "カカオマップで自分の店を探して利用券を販売",
     "agencyBiz": "エージェンシー事業",
     "agencyBizDesc": "店舗開拓 → 2%の永続収益"

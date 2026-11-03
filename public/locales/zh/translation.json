@@ -3418,6 +3418,7 @@
   },
   "admin": {
     "login": {
+      "kakaoStart": "使用 Kakao 开始",
       "title": "管理员登录",
       "subtitle": "使用管理员帐户登录",
       "heroTitle": "平台运营管理控制台",
@@ -7031,7 +7032,7 @@
   "groupBuy.categoryEtc": "🎯 其他",
   "groupBuy.stayBadge": "住宿",
   "roleCta": {
-    "myShortcuts": "开店",
+    "myShortcuts": "您是店主吗？",
     "startNewRole": "开启新角色",
     "linkshop": "我的UrShop",
     "linkshopDesc": "把使用券放进我的 UrShop 并分享",
@@ -7039,7 +7040,7 @@
     "agencyDashDesc": "合作店铺收益",
     "proposeGb": "社区团购提案",
     "proposeGbDesc": "提议想要的店铺，我们来开团",
-    "openShop": "注册我的门店",
+    "openShop": "销售我门店的使用券",
     "openShopDesc": "在 Kakao 地图找到自己的门店并销售使用券",
     "agencyBiz": "代理业务",
     "agencyBizDesc": "开拓店铺 → 2%永久收益"

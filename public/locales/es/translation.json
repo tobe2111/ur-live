@@ -2698,6 +2698,7 @@
   },
   "admin": {
     "login": {
+      "kakaoStart": "Continuar con Kakao",
       "title": "Inicio de sesión del administrador",
       "subtitle": "Inicia sesión con tu cuenta de administrador",
       "heroTitle": "Consola de operaciones de la plataforma",
@@ -7031,7 +7032,7 @@
   "groupBuy.categoryEtc": "🎯 Otros",
   "groupBuy.stayBadge": "Hotel",
   "roleCta": {
-    "myShortcuts": "Abrir una tienda",
+    "myShortcuts": "¿Tienes una tienda?",
     "startNewRole": "Comenzar un nuevo rol",
     "linkshop": "Mi UrShop",
     "linkshopDesc": "Añade pases a tu UrShop y compártelos",
@@ -7039,7 +7040,7 @@
     "agencyDashDesc": "Ingresos de tiendas asociadas",
     "proposeGb": "Proponer compra local",
     "proposeGbDesc": "Sugiere una tienda y abrimos la oferta",
-    "openShop": "Registrar mi tienda",
+    "openShop": "Vender pases de mi tienda",
     "openShopDesc": "Encuentra tu tienda en Kakao Map y vende pases",
     "agencyBiz": "Negocio de agencia",
     "agencyBizDesc": "Capta tiendas → 2% de ingresos permanentes"

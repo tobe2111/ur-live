@@ -30,8 +30,9 @@ export default [
   {
     name: '게스트탭 — 마이 카카오 버튼이 다른 탭으로 돌아간다',
     file: 'src/pages/guest/GuestMyPage.tsx',
-    find: '<GuestKakaoButton returnPath="/user/profile"',
-    replace: '<GuestKakaoButton returnPath="/"',
+    // 2026-11-03 — 버튼이 아래 고정(GuestDock)으로 옮겨갔다. 지키는 것은 같다(그 탭으로 돌아온다).
+    find: '<GuestDock returnPath="/user/profile"',
+    replace: '<GuestDock returnPath="/"',
     test: T,
     why: '로그인했는데 홈으로 떨어져 마이를 다시 눌러야 한다.',
   },
@@ -45,9 +46,10 @@ export default [
   },
   {
     name: '게스트탭 — 꺼진 혜택(소개비)을 약속한다',
-    file: 'src/pages/guest/GuestUrShopPage.tsx',
-    find: "defaultValue: '매장과 협업하면 판매 수익'",
-    replace: "defaultValue: '팔리면 소개비'",
+    // 2026-11-03 — 혜택 목록이 1·2·3 단계로 바뀌었고 문구는 SSOT(guest-page.ts)에 산다.
+    file: 'src/shared/guest-page.ts',
+    find: "['팔로워가', '거기서 바로 사요']",
+    replace: "['팔리면', '소개비']",
     test: T,
     why: '담기(소개) 커미션은 꺼져 있다 — 화면이 거짓말을 한다.',
   },

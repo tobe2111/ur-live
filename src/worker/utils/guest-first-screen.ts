@@ -4,7 +4,8 @@
  * 라이브 실측(아이폰13 · 느린 4G · CPU 4배): 세 탭 모두 첫 그림이 2.0~2.5초였다 — 화면 대부분이 고정 문구(제목·혜택·
  * 카카오 버튼)인데 앱 코드가 다 와야 그려졌다. 새로 온 사람이 하단 탭을 누르면 가장 먼저 보는 화면이다.
  *
- * 이 첫 화면은 **React 와 같은 모양**(같은 클래스·문구 상수 — `shared/guest-page.ts`)으로 위쪽(제목 + 첫 카드)만 그리고,
+ * 이 첫 화면은 **React 와 같은 모양**(같은 클래스·문구 상수 — `shared/guest-page.ts`)으로 위쪽(제목 + 머리)과
+ * 아래 고정 카카오 버튼(2026-11-03)만 그리고,
  * 그 아래는 종전 로더를 둔다(인기 이용권·최근 본 이용권처럼 데이터·기기 저장값이 필요한 것은 그리지 않는다).
  *
  * ## 로그인한 사람
@@ -14,7 +15,7 @@
  * ## 그리지 않는 것
  * 아이콘·마스코트 그림 — 같은 크기의 빈 칸만(두 벌 금지). 카카오 말풍선은 같은 path 상수라 그대로 그린다.
  */
-import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT, KAKAO_BUBBLE_PATH } from '../../shared/guest-page'
+import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT, GUEST_QR_PATH, KAKAO_BUBBLE_PATH } from '../../shared/guest-page'
 
 export type GuestTab = 'pass' | 'shop' | 'my'
 
@@ -31,28 +32,41 @@ export function guestTabOf(pathname: string): GuestTab | null {
 const kakao = () =>
   `<button type="button" class="${GUEST_CLS.kakao}"><svg class="${GUEST_CLS.kakaoIcon}" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="${KAKAO_BUBBLE_PATH}"></path></svg><span>${esc(GUEST_COPY.kakaoStart)}</span><span class="${GUEST_CLS.kakaoShine}" aria-hidden="true"></span></button>`
 
+/** 아래 고정 카카오 버튼 — `GuestDock` 과 같은 모양. */
+const dock = (note?: string) =>
+  `<div class="${GUEST_CLS.dock}" data-guest-dock="">${kakao()}${note ? `<p class="${GUEST_CLS.dockNote}">${esc(note)}</p>` : ''}</div>`
+
+/** 1 · 2 · 3 단계 — `GuestSteps` 와 같은 모양. */
+const steps = (list: ReadonlyArray<readonly [string, string]>) =>
+  `<ol class="${GUEST_CLS.steps}">${list.map(([a, b], i) =>
+    `<li class="${GUEST_CLS.step}"><span class="${GUEST_CLS.stepNum}">${i + 1}</span><span class="${GUEST_CLS.stepText}">${esc(a)}<br>${esc(b)}</span></li>`).join('')}</ol>`
+
+/** 티켓 미리보기 — `GuestTicket` 과 같은 모양(고정 그림이라 데이터가 없어도 그린다). */
+function ticket(): string {
+  const t = GUEST_COPY.pass.ticket
+  return `<div class="${GUEST_CLS.ticket}" aria-hidden="true"><div class="${GUEST_CLS.ticketBand}"><span class="${GUEST_CLS.ticketBandTitle}">${esc(t.band)}</span><span class="${GUEST_CLS.ticketBandState}">${esc(t.state)}</span></div>` +
+    `<div class="${GUEST_CLS.ticketBody}"><span class="${GUEST_CLS.ticketQr}"><svg viewBox="0 0 21 21" width="100%" height="100%" shape-rendering="crispEdges"><path fill="currentColor" d="${GUEST_QR_PATH}"></path></svg></span>` +
+    `<span class="${GUEST_CLS.ticketText}"><span class="${GUEST_CLS.ticketLine1}">${esc(t.line1)}</span><span class="${GUEST_CLS.ticketLine2}">${esc(t.line2)}</span></span></div></div>`
+}
+
 function passBody(): string {
   const c = GUEST_COPY.pass
-  const items = c.benefits.map(([t, d]) =>
-    `<li class="${GUEST_CLS.benefit}"><span class="${GUEST_CLS.benefitIcon}">${slot(20)}</span><span class="${GUEST_CLS.benefitText}"><span class="${GUEST_CLS.benefitTitle}">${esc(t)}</span><span class="${GUEST_CLS.benefitDesc}">${esc(d)}</span></span></li>`).join('')
   return `<h1 class="${GUEST_CLS.title}">${esc(c.title)}</h1>` +
-    `<section class="${GUEST_CLS.card}" data-guest="pass"><h2 class="${GUEST_CLS.headline}">${esc(c.headline1)}<br>${esc(c.headline2)}</h2>` +
-    `<div class="mt-5"><ul class="${GUEST_CLS.benefits}">${items}</ul></div><div class="mt-8">${kakao()}</div></section>`
+    `<section class="${GUEST_CLS.hero}" data-guest="pass"><h2 class="${GUEST_CLS.headline}">${esc(c.headline1)}<br>${esc(c.headline2)}</h2>` +
+    `<p class="${GUEST_CLS.sub}">${esc(c.sub)}</p>${ticket()}${steps(c.steps)}</section>` + dock()
 }
 
 function shopBody(): string {
   const c = GUEST_COPY.shop
   return `<h1 class="${GUEST_CLS.title}">${esc(c.title)}</h1>` +
-    `<div class="${GUEST_CLS.shopBody}" data-guest="urshop"><h2 class="${GUEST_CLS.shopHeadline}">${esc(c.headline1)}<br>${esc(c.headline2)}</h2><p class="${GUEST_CLS.shopSub}">${esc(c.sub)}</p></div>`
+    `<div class="${GUEST_CLS.hero}" data-guest="urshop"><h2 class="${GUEST_CLS.headline}">${esc(c.headline1)}<br>${esc(c.headline2)}</h2><p class="${GUEST_CLS.sub}">${esc(c.sub)}</p></div>` + dock(c.dockNote)
 }
 
 function myBody(): string {
   const c = GUEST_COPY.my
-  const stats = c.stats.map((l) => `<div><p class="${GUEST_CLS.myStatValue}" aria-hidden="true">-</p><p class="${GUEST_CLS.myStatLabel}">${esc(l)}</p></div>`).join('')
   return `<h1 class="${GUEST_CLS.title}">${esc(c.title)}</h1>` +
-    `<section class="${GUEST_CLS.card}" data-guest="my"><div class="${GUEST_CLS.myHead}">${slot(GUEST_MY_MASCOT.width, GUEST_MY_MASCOT.height)}` +
-    `<div class="${GUEST_CLS.myHeadText}"><p class="${GUEST_CLS.myHello}">${esc(c.hello)}</p><p class="${GUEST_CLS.myHelloSub}">${esc(c.helloSub)}</p></div></div>` +
-    `<div class="${GUEST_CLS.myStats}">${stats}</div><div class="mt-5">${kakao()}</div></section>`
+    `<section class="${GUEST_CLS.hero}" data-guest="my"><div class="${GUEST_CLS.myHead}">${slot(GUEST_MY_MASCOT.width, GUEST_MY_MASCOT.height)}` +
+    `<div class="${GUEST_CLS.myHeadText}"><p class="${GUEST_CLS.myHello}">${esc(c.hello)}</p><p class="${GUEST_CLS.myHelloSub}">${esc(c.helloSub)}</p></div></div></section>` + dock()
 }
 
 /** `RouteGuards.isUserLoggedIn` 과 같은 두 키 — 로그인 흔적이면 게스트 화면을 걷어낸다. */
