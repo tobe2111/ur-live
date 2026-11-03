@@ -17,7 +17,7 @@ export default function UseConfirmSheet({ pending, onCancel, onConfirm }: { pend
       ? t('seller.scan.notUsable', { defaultValue: '사용할 수 없는 이용권이에요 (만료·환불)' })
       : null
   return (
-    <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/50 p-4" role="presentation" onClick={onCancel}>
+    <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center ur-veil p-4" role="presentation" onClick={onCancel}>
       <div role="dialog" aria-modal="true" aria-labelledby="use-confirm-title" onClick={(e) => e.stopPropagation()}
         className="w-full max-w-sm rounded-3xl bg-surface p-6 shadow-lift">
         {pending.loading ? (
