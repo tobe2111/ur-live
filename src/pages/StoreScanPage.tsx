@@ -75,7 +75,7 @@ export default function StoreScanPage() {
         {seatLabel && (
           <span
             aria-label={`${seatLabel} 이용권만 처리`}
-            className="ml-auto max-w-[45%] truncate rounded-full bg-gray-100 dark:bg-[#1D1F29] px-3 py-1 text-[13px] font-medium text-gray-700 dark:text-gray-200"
+            className="ml-auto max-w-[45%] truncate rounded-full bg-gray-100 dark:bg-white/[0.08] px-3 py-1 text-[13px] font-medium text-gray-700 dark:text-gray-200"
           >
             {seatLabel}
           </span>
