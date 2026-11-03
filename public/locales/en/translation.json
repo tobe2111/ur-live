@@ -6207,7 +6207,10 @@
     "errorEmailInUse": "[TODO:en] 이미 사용 중인 이메일입니다.",
     "errorInvalidEmail": "[TODO:en] 유효하지 않은 이메일 형식입니다.",
     "seoTitle": "[TODO:en] 회원가입 - 유어딜",
-    "seoDesc": "Join UrDeal and get local store passes at a discount"
+    "seoDesc": "Join UrDeal and get local store passes at a discount",
+    "agreeAll": "Agree to all (including optional)",
+    "pwMatch": "Passwords match",
+    "pwMismatch": "Passwords do not match"
   },
   "following": {
     "title": "[TODO:en] 팔로잉",

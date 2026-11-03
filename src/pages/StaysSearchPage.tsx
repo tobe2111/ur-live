@@ -21,8 +21,14 @@ import { useStaysSearch } from '@/hooks/queries/useStaysSearch'
 import { kstYmd } from '@/shared/stays-early'
 import { STAYS_LIST, stayCardHref, stayDateChipLabel } from '@/shared/stays-list'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 15차 ⑨ — 지역·숙소 종류 칩은 생길 때 톡 튀고, × 로 뺄 때 작아지며 사라진다.
 // 🎬 2026-11-03 14차 ⑤ — 조건을 바꿔 결과가 새로 오면 카드가 위에서부터 차례로 떠오른다(첫 화면은 그대로 — 사진이 늦게 보이면 안 된다).
-injectMotionCss('ur-m-staysearch', `@keyframes ur-ss-in { from { opacity: 0; transform: translateY(12px); } }.ur-ss-grid > *:nth-child(-n+8) { animation: ur-ss-in .4s cubic-bezier(.2,.9,.3,1) backwards; }.ur-ss-grid > *:nth-child(2) { animation-delay: 50ms; }.ur-ss-grid > *:nth-child(3) { animation-delay: 100ms; }.ur-ss-grid > *:nth-child(4) { animation-delay: 150ms; }.ur-ss-grid > *:nth-child(5) { animation-delay: 200ms; }.ur-ss-grid > *:nth-child(6) { animation-delay: 250ms; }.ur-ss-grid > *:nth-child(7) { animation-delay: 300ms; }.ur-ss-grid > *:nth-child(8) { animation-delay: 350ms; }@media (prefers-reduced-motion: reduce){.ur-ss-grid > *{animation:none!important}}`)
+injectMotionCss('ur-m-staysearch', `@keyframes ur-ss-in { from { opacity: 0; transform: translateY(12px); } }.ur-ss-grid > *:nth-child(-n+8) { animation: ur-ss-in .4s cubic-bezier(.2,.9,.3,1) backwards; }.ur-ss-grid > *:nth-child(2) { animation-delay: 50ms; }.ur-ss-grid > *:nth-child(3) { animation-delay: 100ms; }.ur-ss-grid > *:nth-child(4) { animation-delay: 150ms; }.ur-ss-grid > *:nth-child(5) { animation-delay: 200ms; }.ur-ss-grid > *:nth-child(6) { animation-delay: 250ms; }.ur-ss-grid > *:nth-child(7) { animation-delay: 300ms; }.ur-ss-grid > *:nth-child(8) { animation-delay: 350ms; }@keyframes ur-ss-chip { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.08); } 100% { transform: none; } }.ur-ss-chip { animation: ur-ss-chip .32s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-ss-grid > *,.ur-ss-chip{animation:none!important}}`)
+/** 🎬 15차 ⑨ — 조건 칩을 뺄 때 작아지며 사라진 뒤 실제로 뺀다(동작 줄이기면 바로). */
+function popOutThen(el: HTMLElement, done: () => void) {
+  try { if (!el.animate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { done(); return } } catch { done(); return }
+  el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.6)' }], { duration: 180, easing: 'ease-in', fill: 'forwards' }).finished.then(done, done)
+}
 
 /**
  * 📅 2026-10-19 — 달력은 이 파일 안에서 그린다(유어딜 세트와 같은 24 그리드 · 획 1.6 · 둥근 끝).
@@ -148,12 +154,12 @@ export default function StaysSearchPage() {
             <PeopleIcon className="w-3 h-3" /> 성인 {filters.guests}명
           </button>
           {filters.region && (
-            <button onClick={() => setFilters({ ...filters, region: '' })} className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-full text-[12px] whitespace-nowrap">
+            <button onClick={(e) => popOutThen(e.currentTarget, () => setFilters((f) => ({ ...f, region: '' })))} className="ur-ss-chip flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-full text-[12px] whitespace-nowrap">
               <PinIcon className="w-3 h-3" /> {filters.region} ×
             </button>
           )}
           {filters.property_type && (
-            <button onClick={() => setFilters({ ...filters, property_type: '' })} className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-full text-[12px] whitespace-nowrap">
+            <button onClick={(e) => popOutThen(e.currentTarget, () => setFilters((f) => ({ ...f, property_type: '' })))} className="ur-ss-chip flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-full text-[12px] whitespace-nowrap">
               {PROPERTY_TYPE_LABELS[filters.property_type]} ×
             </button>
           )}

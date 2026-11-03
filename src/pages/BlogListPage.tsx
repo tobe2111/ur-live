@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { HomeIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
@@ -7,6 +7,9 @@ import SEO from '@/components/SEO'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { CoverImg } from '@/features/blog/BlogCover'
 // 🧱 2026-10-19 클래스·규칙은 서버 첫 화면(`worker/utils/blog-list-first-screen.ts`)과 같은 SSOT.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 15차 ⑤ — 태그를 고르면 칩이 톡 눌리고, 태그·검색·쪽이 바뀌면 글 줄이 차례로 떠오른다(서버가 그린 첫 목록은 그대로).
+injectMotionCss('ur-m-bloglist', `@keyframes ur-bl-up { from { opacity: 0; transform: translateY(10px); } }@keyframes ur-bl-pop { 0% { transform: scale(.92); } 60% { transform: scale(1.05); } 100% { transform: none; } }.ur-bl-rows > *:nth-child(-n+6) { animation: ur-bl-up .35s cubic-bezier(.2,.9,.3,1) backwards; }.ur-bl-rows > *:nth-child(2) { animation-delay: 50ms; }.ur-bl-rows > *:nth-child(3) { animation-delay: 100ms; }.ur-bl-rows > *:nth-child(4) { animation-delay: 150ms; }.ur-bl-rows > *:nth-child(5) { animation-delay: 200ms; }.ur-bl-rows > *:nth-child(6) { animation-delay: 250ms; }.ur-bl-chip-on { animation: ur-bl-pop .3s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-bl-rows > *,.ur-bl-chip-on{animation:none!important}}`)
 import { BLOG_LIST, BLOG_PER_PAGE, BLOG_FEATURED, BLOG_SEARCH_PLACEHOLDER, blogPageNums, blogAllTags } from '@/shared/blog-page'
 
 interface BlogPost {
@@ -90,6 +93,10 @@ export default function BlogListPage() {
   const moveHero = (d: number) => setHeroIdx(i => (i + d + featured.length) % featured.length)
 
   const pickTag = (tag: string) => { setSelectedTag(tag); setPage(1) }
+  // 🎬 15차 ⑤ — 처음 그린 목록의 열쇠. 이것과 달라졌을 때만(사용자가 바꿨을 때) 움직인다.
+  const listKey = `${selectedTag}|${q}|${page}`
+  const firstListKey = useRef(listKey)
+  const listMoved = listKey !== firstListKey.current
   const onSearch = (v: string) => { setQuery(v); setPage(1) }
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
@@ -168,12 +175,12 @@ export default function BlogListPage() {
         {/* ── 태그 필터 ── */}
         <div className={BLOG_LIST.chips}>
           <button onClick={() => pickTag('')}
-            className={`${BLOG_LIST.chip} ${!selectedTag ? BLOG_LIST.chipOn : BLOG_LIST.chipOff}`}>
+            className={`${BLOG_LIST.chip} ${!selectedTag ? `${BLOG_LIST.chipOn}${listMoved ? ' ur-bl-chip-on' : ''}` : BLOG_LIST.chipOff}`}>
             전체
           </button>
           {allTags.map((tag: string) => (
             <button key={tag} onClick={() => pickTag(tag)}
-              className={`${BLOG_LIST.chip} ${selectedTag === tag ? BLOG_LIST.chipOn : BLOG_LIST.chipOff}`}>
+              className={`${BLOG_LIST.chip} ${selectedTag === tag ? `${BLOG_LIST.chipOn}${listMoved ? ' ur-bl-chip-on' : ''}` : BLOG_LIST.chipOff}`}>
               {tag}
             </button>
           ))}
@@ -204,7 +211,7 @@ export default function BlogListPage() {
               {searching ? `‘${query.trim()}’에 대한 검색 결과가 없어요` : selectedTag ? '이 태그의 글이 아직 없어요' : '아직 작성된 글이 없습니다'}
             </div>
           ) : (
-            <div className={BLOG_LIST.rows}>
+            <div key={listKey} className={`${BLOG_LIST.rows}${listMoved ? ' ur-bl-rows' : ''}`}>
               {pagePosts.map(post => {
                 const tags = parseTags(post.tags)
                 return (

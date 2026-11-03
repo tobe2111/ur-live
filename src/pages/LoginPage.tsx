@@ -19,6 +19,9 @@ import { resolveLoginReturnUrl, clearLoginReturnUrl } from '@/utils/login-return
 import { showKakaoLoadingOverlay, removeKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
 import { canUseTalkLogin, prepareTalkLogin, scheduleTalkLoginPrepare, startTalkLogin } from '@/lib/kakao-talk-login'
 import { hasConsumerSession } from '@/utils/auth'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 15차 ① — 제목 → 서비스 칩(하나씩 톡) → 카카오 버튼이 차례로 떠오른다. 들어올 때 한 번뿐이고, 버튼을 **누를 때**는 아무 움직임도 없다(iOS 멈춤 — 10차 ⑨).
+injectMotionCss('ur-m-login', `@keyframes ur-lg-up { from { opacity: 0; transform: translateY(12px); } }@keyframes ur-lg-pop { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.08); } 100% { transform: none; } }.ur-lg-h { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .05s backwards; }.ur-lg-chips > * { animation: ur-lg-pop .35s cubic-bezier(.3,1.3,.5,1) .22s backwards; }.ur-lg-chips > *:nth-child(2) { animation-delay: .29s; }.ur-lg-chips > *:nth-child(3) { animation-delay: .36s; }.ur-lg-btn { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .34s backwards; }@media (prefers-reduced-motion: reduce){.ur-lg-h,.ur-lg-chips > *,.ur-lg-btn{animation:none!important}}`)
 
 // Kakao SDK 타입 선언
 interface KakaoAuth {
@@ -267,10 +270,10 @@ export default function LoginPage() {
           <Udal mood="hello" size={64} priority motion className="block mb-4" />
           <UrDealLogo size={34} />
           {/* "같이 사면 더 싸다" 는 없는 기제였다 — 이용권은 즉시판매 단일가(2026-05-30)라 인원이 가격을 안 움직인다. */}
-          <h1 className="mt-6 text-[24px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
+          <h1 className="ur-lg-h mt-6 text-[24px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
             {t('login.heroTitle2', { defaultValue: '우리 동네 가게, 미리 사면 더 싸게' })}
           </h1>
-          <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
+          <div className="ur-lg-chips flex flex-wrap items-center justify-center gap-2 mt-5">
             <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-[13px] text-gray-700 dark:text-gray-300">
               <PinIcon className="w-3.5 h-3.5 text-brand-text" />
               {t('login.chipPass', { defaultValue: '동네 이용권' })}
@@ -311,7 +314,7 @@ export default function LoginPage() {
                 handleKakaoLogin()
               }}
               disabled={loading}
-              className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-medium tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+              className="ur-lg-btn w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-medium tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
             >
               {loading ? (
                 <div className="flex items-center gap-2">
