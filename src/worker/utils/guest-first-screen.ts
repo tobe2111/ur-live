@@ -53,7 +53,7 @@ function passBody(): string {
   const c = GUEST_COPY.pass
   return `<h1 class="${GUEST_CLS.title}">${esc(c.title)}</h1>` +
     `<section class="${GUEST_CLS.hero}" data-guest="pass"><h2 class="${GUEST_CLS.headline}">${esc(c.headline1)}<br>${esc(c.headline2)}</h2>` +
-    `<p class="${GUEST_CLS.sub}">${esc(c.sub)}</p>${ticket()}${steps(c.steps)}</section>` + dock(c.dockNote)
+    `<p class="${GUEST_CLS.sub}">${esc(c.sub)}</p>${ticket()}${steps(c.steps)}</section>` + dock()
 }
 
 function shopBody(): string {

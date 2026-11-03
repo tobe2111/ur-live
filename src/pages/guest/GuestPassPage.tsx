@@ -60,7 +60,8 @@ export default function GuestPassPage() {
         </Link>
       </section>
 
-      <GuestDock returnPath="/my-vouchers" note={t('guest.pass.dockNote', { defaultValue: c.dockNote })} />
+      {/* 2026-11-03 대표 *"맨 밑에 3초만에 끝나요 문장 빼줘"* — 이용권 탭은 버튼 아래 한 줄 없이. */}
+      <GuestDock returnPath="/my-vouchers" />
     </div>
   )
 }
