@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-03",
+  "reason": "모션 19차 — 숙소 목록 가로 줄 가운데 강조·PC 기울기(StayCurations) + 공용 입력 서식(휴대폰 하이픈)",
+  "surfaces": [
+    "stays"
+  ],
+  "changes": [
+    "stays: 178.8 → 180.6 KB (+1.8, 허용 1.5) · 늘어난 것: StaysSearchPage.js +0.6, app-shell.js +0.5, StayCurations.js +0.5"
+  ]
+}

@@ -7113,7 +7113,8 @@
       "giftPendingDesc2": "[TODO:fr] 선물 보내기를 취소하면 다시 쓸 수 있어요.",
       "giftLinkOrCancel": "[TODO:fr] 선물 링크 보기, 보내기 취소",
       "gift": "[TODO:fr] 선물하기",
-      "receivedGiftNote": "[TODO:fr] 선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요"
+      "receivedGiftNote": "[TODO:fr] 선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요",
+      "liveHint": "Se met à jour dès que le commerçant le scanne"
     }
   },
   "pass": {

@@ -14,6 +14,28 @@ import { ROW_GEOM_CLS, ROW_LABEL_CLS } from '@/pages/user-profile/list-grammar'
 import { SettingsIcon } from '@/components/icons/urdeal-icons'
 
 /**
+ * 🎬 2026-11-03 18차 ② — 테마를 바꾸면 **누른 자리에서 새 색이 원으로 퍼지며** 화면 전체가 바뀐다.
+ *   View Transitions 로 바꾸기 전/후 화면을 찍고, 새 화면에 원형 clip-path 를 Web Animations 로 건다(키프레임 0 —
+ *   지도 알약(`ur-map-reveal`)과 같은 처방). 지원 안 되는 브라우저·동작 줄이기면 종전처럼 바로 바뀐다.
+ */
+function revealTheme(e: React.MouseEvent<HTMLButtonElement>, apply: () => void) {
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void> } }
+  let reduce = false
+  try { reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch { /* 미지원 */ }
+  if (!doc.startViewTransition || reduce) { apply(); return }
+  const x = e.clientX || window.innerWidth / 2, y = e.clientY || window.innerHeight / 2
+  const r = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+  const root = document.documentElement
+  root.classList.add('ur-vt-theme')
+  if (!document.getElementById('ur-vt-theme-css')) document.head.appendChild(Object.assign(document.createElement('style'), { id: 'ur-vt-theme-css', textContent: 'html.ur-vt-theme::view-transition-old(root),html.ur-vt-theme::view-transition-new(root){animation:none;mix-blend-mode:normal}' }))
+  const vt = doc.startViewTransition(apply)
+  vt.ready.then(() => {
+    root.animate({ clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] }, { duration: 520, easing: 'cubic-bezier(.4,0,.2,1)', pseudoElement: '::view-transition-new(root)' })
+      .finished.finally(() => root.classList.remove('ur-vt-theme'))
+  }).catch(() => root.classList.remove('ur-vt-theme'))
+}
+
+/**
  * 🌗 2026-10-19 — 세 선택지 표시(화면 · 해 · 달)는 이 파일 안에서 그린다(24 그리드 · 획 1.6 · 둥근 끝).
  *   lucide `Monitor`·`Sun`·`Moon` 이 마이·로그아웃 마이 첫 화면에 아이콘 묶음(br 10KB)을 끌고 왔다.
  */
@@ -87,7 +109,7 @@ export default function ThemeToggleSection({ variant, className }: Props) {
                 type="button"
                 role="radio"
                 aria-checked={active}
-                onClick={() => setMode(o.key)}
+                onClick={(e) => { if (!active) revealTheme(e, () => setMode(o.key)) }}
                 className={`flex items-center justify-center gap-2 py-2 rounded-xl text-[13px] font-medium transition-colors ${active ? activeClass : baseInactive}`}
               >
                 {o.icon}

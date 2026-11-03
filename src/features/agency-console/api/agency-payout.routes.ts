@@ -24,6 +24,7 @@ import {
   ensureAgencyShareTables, isAgencySharePayoutEnabled, markAgencyPayoutPaid, readAgencyShareBalance,
   rejectAgencyPayout, requestAgencyPayout, AGENCY_PAYOUT_MIN,
 } from '@/worker/utils/agency-share-payout'
+import { COMMISSION_PAYOUT_DAY_KEY, resolveCommissionPayoutDay } from '@/shared/commission-payout-day'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyHono = Hono<any>
@@ -41,7 +42,12 @@ export function registerAgencyPayoutRoutes(app: AnyHono): void {
         `SELECT id, gross_amount, withholding_amount, net_amount, tax_mode, status, created_at, paid_at
            FROM agency_share_payouts WHERE agency_id = ? AND status != 'rejected' ORDER BY id DESC LIMIT 50`,
       ).bind(me.agencyId).all()
-      return c.json({ success: true, enabled: true, minAmount: AGENCY_PAYOUT_MIN, balance, payouts: results || [] })
+      const dayRow = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+        .bind(COMMISSION_PAYOUT_DAY_KEY).first<{ value: string }>().catch(() => null)
+      return c.json({
+        success: true, enabled: true, minAmount: AGENCY_PAYOUT_MIN,
+        payoutDay: resolveCommissionPayoutDay(dayRow?.value), balance, payouts: results || [],
+      })
     } catch (err) {
       return safeError(c, err, '정산 내역을 불러오지 못했어요', '[agency-console:payouts]')
     }

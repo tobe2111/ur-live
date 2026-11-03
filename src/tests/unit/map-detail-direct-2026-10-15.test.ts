@@ -50,7 +50,8 @@ describe('③ 누르기 전에 상세를 데운다', () => {
     expect(code('src/pages/restaurant-map/SelectedDealCard.tsx')).toMatch(/useEffect\(\(\) => \{ prefetchDetail\(selected\) \}/)
   })
   it('목록 줄은 손가락이 닿은 순간', () => {
-    expect(code('src/pages/restaurant-map/RestaurantRow.tsx')).toMatch(/onPointerDown=\{onIntent \? \(\) => onIntent\(r\) : undefined\}/)
+    // 🎬 2026-11-03 18차 ⑥ — 같은 onPointerDown 이 꾹 눌러 미리보기 타이머도 건다. 데우기(onIntent)는 그 맨 첫 줄이다.
+    expect(code('src/pages/restaurant-map/RestaurantRow.tsx')).toMatch(/onPointerDown=\{\(e\) => \{\s*onIntent\?\.\(r\)/)
     expect(code('src/pages/restaurant-map/RestaurantList.tsx')).toMatch(/onIntent=\{onIntent\} \/>\s*$/m)
     expect(code('src/pages/RestaurantMapPage.tsx')).toMatch(/onIntent=\{prefetchDetail\}/)
     expect(code('src/pages/SearchPage.tsx')).toMatch(/onIntent=\{prefetchDetail\}/)
