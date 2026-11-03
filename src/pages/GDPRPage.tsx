@@ -12,14 +12,14 @@ export default function GDPRPage() {
       <SEO title={CONSUMER_SURFACE_SEO['/gdpr'].title} description={CONSUMER_SURFACE_SEO['/gdpr'].description} url="/gdpr" />
       {/* 🛡️ 2026-05-20: 정책 페이지 ur-content-medium (1024px) 으로 PC 가독성 향상. */}
       <div className="ur-content-medium px-5 lg:px-8 py-8 lg:py-12">
-        <button onClick={goBack} aria-label="뒤로 가기" className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-[15px] mb-6">
+        <button onClick={goBack} aria-label="뒤로 가기" className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-[15px] mb-8">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
 
-        <h1 className="text-[20px] font-semibold text-gray-900 dark:text-white mb-6">Privacy Policy & GDPR Compliance</h1>
+        <h1 className="text-[20px] font-semibold text-gray-900 dark:text-white mb-8">Privacy Policy & GDPR Compliance</h1>
         <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-8">Last updated: April 2026</p>
 
-        <div className="space-y-6 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
+        <div className="space-y-5 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
           <section>
             <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">1. Data Controller</h2>
             <p>Lister Corporation ("YourDeal") is the data controller for personal data processed through urdeal.kr.</p>

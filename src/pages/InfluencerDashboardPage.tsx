@@ -145,13 +145,13 @@ export default function InfluencerDashboardPage() {
       <SEO title="인플 대시보드 - 유어딜" description="referral 실적" url="/influencer/dashboard" />
 
       <div className="sticky top-0 z-30 bg-[#11141C]/95 backdrop-blur-md border-b border-[#2C2F35]">
-        <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
+        <div className="ur-content-wide px-5 lg:px-8 py-3 flex items-center gap-3">
           <button onClick={goBack} aria-label="뒤로 가기" className="p-1"><ChevronLeft className="w-5 h-5" /></button>
           <h1 className="text-[15px] font-bold flex-1">{t('influencer.dashTitle', { defaultValue: '💸 인플 대시보드' })}</h1>
         </div>
       </div>
 
-      <div className="ur-content-wide px-4 lg:px-8 py-4 space-y-4">
+      <div className="ur-content-wide px-5 lg:px-8 py-4 space-y-3">
         {loading ? (
           <div className="text-center py-20 text-gray-400 text-[15px]">로딩 중...</div>
         ) : (
@@ -162,7 +162,7 @@ export default function InfluencerDashboardPage() {
               <p className="text-[28px] font-bold text-brand-text mt-1">
                 ₩{formatNumber(stats?.total_earned || 0)}
               </p>
-              <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-brand/20">
+              <div className="grid grid-cols-2 gap-3 mt-5 pt-4 border-t border-brand/20">
                 <div>
                   <p className="text-[12px] text-brand-text opacity-70">{t('influencer.refCount', { defaultValue: '추천 결제' })}</p>
                   <p className="text-[15px] font-bold text-white">{formatNumber(stats?.total_referrals || 0)}건</p>
@@ -249,7 +249,7 @@ export default function InfluencerDashboardPage() {
             </div>
 
             {/* 안내 카드 */}
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4">
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5">
               <p className="text-[12px] font-medium text-blue-300 mb-1">{t('influencer.shareGuide', { defaultValue: '📌 referral 공유 가이드' })}</p>
               <ul className="text-[12px] text-blue-200/80 space-y-1">
                 <li>• 본인 SNS / 카톡 / 블로그에 링크 공유</li>

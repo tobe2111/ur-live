@@ -221,6 +221,35 @@ export async function proCountsByCategory(DB: D1Database): Promise<Record<string
   return out
 }
 
+/**
+ * 📣 생활 첫 화면 '실시간 한 줄'(2026-11-03 대표 안 5 · C — *"실제 기록이 있을 때만, 없으면 지금 사실인 것"*).
+ *   ① 최근 7일 안에 도착한 견적이 있으면 그 요청의 **시군구·업종·견적 수·시각**만(이름·연락처·상세 주소는 안 꺼낸다).
+ *   ② 없으면 지금 견적을 받는 업체 수(중복 없는 사장님 수). 둘 다 없으면 null — 화면은 줄을 숨긴다(지어내지 않는다).
+ */
+export interface LifeLiveActivity {
+  latest: { category: string; sigungu: string; quotes: number; at: string } | null
+  proTotal: number
+}
+export async function lifeLiveActivity(DB: D1Database): Promise<LifeLiveActivity> {
+  const [latest, pros] = await Promise.all([
+    DB.prepare(
+      `SELECT r.category AS category, r.sigungu AS sigungu, r.quote_count AS quotes, q.created_at AS at
+         FROM home_service_quotes q JOIN home_service_requests r ON r.id = q.request_id
+        WHERE q.created_at > datetime('now', '-7 day')
+        ORDER BY q.id DESC LIMIT 1`,
+    ).first<{ category: string; sigungu: string; quotes: number; at: string }>().catch(() => null),
+    DB.prepare(
+      `SELECT COUNT(DISTINCT p.seller_id) AS n
+         FROM home_service_pros p JOIN sellers s ON s.id = p.seller_id AND s.status IN ${PRO_OPEN_STATUS_SQL}
+        WHERE p.active = 1`,
+    ).first<{ n: number }>().catch(() => null),
+  ])
+  return {
+    latest: latest && latest.sigungu ? { category: latest.category, sigungu: latest.sigungu, quotes: Math.max(1, Number(latest.quotes) || 1), at: latest.at } : null,
+    proTotal: Number(pros?.n) || 0,
+  }
+}
+
 /** 제휴 업체 표(카테고리 → 매장 번호). 못 읽으면 빈 표 — 제휴가 없는 것과 같다. */
 export async function loadPartners(DB: D1Database): Promise<Partial<Record<HomeServiceCategory, number>>> {
   const r = await DB.prepare(`SELECT value FROM platform_settings WHERE key = ?`).bind(HOME_PARTNERS_KEY)

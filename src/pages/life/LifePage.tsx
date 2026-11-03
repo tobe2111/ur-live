@@ -12,12 +12,14 @@ import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { ChevronRight } from 'lucide-react'
-import { HOME_SERVICE_CATEGORIES, MAX_QUOTES_PER_REQUEST, categoryDef, type HomeServiceCategory } from '@/shared/home-service'
+import { HOME_SERVICE_CATEGORIES, categoryDef, type HomeServiceCategory } from '@/shared/home-service'
 import { formatNumber } from '@/utils/format'
 import { LIFE_TILES, LifeTileIcon } from './life-tiles'
 import { LIFE_HUB_SEO } from '@/shared/seo/life-hub-seo'
 import { LIFE_FAQ } from '@/shared/life-faq'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
+import LifeHero from './LifeHero'
+import type { LifeLive } from './life-live'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-02 13차 ④⑤ — 이용 순서 1·2·3 이 차례로 떠오르며 번호가 톡 튀고, 서비스 타일은 차례로 나타나며 누르면 눌렸다 돌아온다.
 injectMotionCss('ur-m-life', `@keyframes ur-life-in { from { opacity: 0; transform: translateY(10px); } }@keyframes ur-life-n { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.25); opacity: 1; } 100% { transform: none; } }.ur-life-step { animation: ur-life-in .38s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 160ms); }.ur-life-step .ur-life-n { display: inline-block; animation: ur-life-n .4s cubic-bezier(.3,1.4,.5,1) backwards; animation-delay: calc(var(--i, 0) * 160ms + 120ms); }.ur-life-tile { animation: ur-life-in .34s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i, 0) * 40ms); }.ur-life-tile .ur-life-ic { transition: transform .18s cubic-bezier(.3,1.4,.5,1); }.ur-life-tile a:active .ur-life-ic { transform: scale(.86); }@media (prefers-reduced-motion: reduce){.ur-life-step,.ur-life-step .ur-life-n,.ur-life-tile{animation:none!important}.ur-life-tile .ur-life-ic{transition:none}}`)
@@ -54,7 +56,7 @@ function IconRow({ keys }: { keys: readonly HomeServiceCategory[] }) {
   const shown = folded ? keys.slice(0, ICON_ROW_MAX - 1) : keys
   const tile = 'flex flex-col items-center gap-2 active:opacity-70'
   return (
-    <ul className="mt-4 grid grid-cols-5 gap-x-1 gap-y-5">
+    <ul className="mt-5 grid grid-cols-5 gap-x-1 gap-y-5">
       {shown.map((k, ti) => (
         <li key={k} className="ur-life-tile" style={{ '--i': Math.min(ti, 10) } as React.CSSProperties}>
           <Link to={`/life/request/${k}`} className={tile}>
@@ -80,13 +82,14 @@ export default function LifePage() {
   const [open, setOpen] = useState(true)
   // 카테고리별 받는 업체 수 — 하나라도 0 이면 한 줄로만 알린다(타일마다 붙이면 다시 글자가 많아진다).
   const [proCounts, setProCounts] = useState<Record<string, number> | null>(null)
+  const [live, setLive] = useState<LifeLive | null>(null)
 
   useEffect(() => {
     api.get('/api/group-buy/products?status=active&category=home_voucher')
       .then((r) => setVouchers(r.data?.success ? (r.data.data || []) : []))
       .catch(() => setVouchers([]))
     api.get('/api/home-service/config')
-      .then((r) => { setOpen(r.data?.data?.open !== false); setProCounts(r.data?.data?.proCounts || null) })
+      .then((r) => { setOpen(r.data?.data?.open !== false); setProCounts(r.data?.data?.proCounts || null); setLive(r.data?.data?.live || null) })
       .catch(() => {})
   }, [])
 
@@ -98,30 +101,9 @@ export default function LifePage() {
       <SEO title={withSiteName(LIFE_HUB_SEO.title)} description={LIFE_HUB_SEO.description} url="/life" />
 
       {/* 🖥️ 2026-10-26 PC: 액자를 벗고(pc-fullbleed) 두 칸 — 왼쪽 업종, 오른쪽 바로 사기·질문·업체 안내. */}
-      <div className="mx-auto w-full max-w-[720px] space-y-3 px-4 pb-10 pt-5 lg:max-w-[1120px] lg:px-8 lg:pt-8">
-        {/* 신뢰 띠 — 오늘의집 "시공책임보장" 자리. 우리 약속은 무료 비교 + 연락처 보호. */}
-        {/* 2026-10-31 대표 *"직관적으로 해야할 것 같고 가게 사장님들을 위한 생활 견적 서비스 이런 식으로"* +
-            *"견적을 낸 걸 마이페이지나 어디서 봐야하지 않을까"* — 첫 카드가 ① 서비스 이름 ② 쓰는 법 세 단계
-            ③ 내 요청으로 가는 문을 함께 말한다. 종전엔 서비스 이름이 없고 '내 요청' 은 카드 중간에 묻혀 있었다. */}
-        <section className="rounded-2xl bg-brand-tint px-5 py-5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[13px] font-medium text-brand-text">사장님 생활 견적 서비스</span>
-            <Link to="/life/requests" className="flex shrink-0 items-center text-[13px] font-medium text-ink active:opacity-70">
-              내 견적 요청<ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <h1 className="mt-2 text-[20px] font-semibold leading-snug tracking-tight lg:text-[34px]">사장님, 가게 일은<br className="lg:hidden" /> 여기서 맡기세요</h1>
-          <ol className="mt-4 grid grid-cols-3 gap-2 text-center">
-            {['요청서 1분 작성', `견적 최대 ${MAX_QUOTES_PER_REQUEST}곳 도착`, '비교하고 한 곳 고르기'].map((step, i) => (
-              <li key={step} className="ur-life-step rounded-xl bg-surface px-2 py-3" style={{ '--i': i } as React.CSSProperties}>
-                <span className="block text-[12px] font-medium text-brand-text"><span className="ur-life-n">{i + 1}</span></span>
-                <span className="mt-1 block text-[13px] leading-snug">{step}</span>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-3 text-[13px] text-gray-600 dark:text-gray-300">간판·방역·설비 수리까지 견적은 무료, 연락처는 고른 한 곳에만 가요.</p>
-          {!open && <p className="mt-2 text-[13px] font-medium text-tone-bad">지금은 잠시 요청을 받지 않아요.</p>}
-        </section>
+      <div className="mx-auto w-full max-w-[720px] space-y-3 px-5 pb-10 pt-5 lg:max-w-[1120px] lg:px-8 lg:pt-8">
+        {/* 🏠 2026-11-03 대표 확정 안 5 — 평면 머리 + 주 버튼(업종 고르기 창) + 실시간 한 줄(C). 상세 `LifeHero.tsx`. */}
+        <LifeHero groups={GROUPS} open={open} live={live} />
 
         <div className="space-y-3 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-5 lg:space-y-0">
         <div className="space-y-3">
@@ -134,7 +116,7 @@ export default function LifePage() {
                   const def = categoryDef(k)
                   return (
                     <li key={k}>
-                      <Link to={`/life/request/${k}`} className="flex items-center gap-4 py-3 active:opacity-70">
+                      <Link to={`/life/request/${k}`} className="flex items-center gap-3 py-3 active:opacity-70">
                         <LifeTileIcon category={k} size={44} />
                         <span className="min-w-0 flex-1">
                           <span className="block text-[15px] font-bold">{def?.label} 업체 찾기</span>

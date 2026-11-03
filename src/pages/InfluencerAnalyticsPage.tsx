@@ -47,7 +47,7 @@ export default function InfluencerAnalyticsPage() {
         <h1 className="text-[15px] font-bold text-gray-900 dark:text-white flex-1">성과표</h1>
       </header>
 
-      <main className="ur-content-narrow mx-auto px-4 py-4 space-y-5">
+      <main className="ur-content-narrow mx-auto px-5 py-4 space-y-5">
         {/* 총 commission 5계정 split */}
         <div className="rounded-xl p-5">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">

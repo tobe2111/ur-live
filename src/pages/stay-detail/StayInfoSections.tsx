@@ -59,7 +59,7 @@ export function AmenityFlow({ items }: { items: Array<{ key: string; label: stri
  */
 export function InfoBlock({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="border-t border-line pt-4 mt-4 first:mt-0">
+    <div className="border-t border-line pt-4 mt-5 first:mt-0">
       <div className="text-[13px] text-gray-500 dark:text-gray-400">{label}</div>
       <div className="mt-2 text-[15px] leading-relaxed text-gray-900 dark:text-white">{children}</div>
     </div>
@@ -90,7 +90,7 @@ export { propertyTypeLabel } from '@/shared/stay-property-type'
  */
 export function StayReviews({ productId }: { productId: number }) {
   return (
-    <div className={`${STAY_BAND} lg:mb-6`}>
+    <div className={`${STAY_BAND} lg:mb-8`}>
       <DeferUntilVisible minHeight={80}>
         <Suspense fallback={<div className="h-20 rounded-xl bg-gray-100 dark:bg-[#1D1F29]" />}>
           <ProductReviews productId={productId} limit={5} />
@@ -111,7 +111,7 @@ export function StaySoldOutCard({ onPickDates }: { onPickDates: () => void }) {
     <div className="rounded-2xl p-5 text-center">
       <p className="text-[15px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white">고른 날짜는 모두 예약됐어요</p>
       <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">날짜를 바꾸면 남은 객실을 볼 수 있어요.</p>
-      <button type="button" onClick={onPickDates} className="mt-4 w-full py-3 bg-brand text-white text-[15px] font-bold rounded-xl hover:bg-brand-dark">
+      <button type="button" onClick={onPickDates} className="mt-5 w-full py-3 bg-brand text-white text-[15px] font-bold rounded-xl hover:bg-brand-dark">
         다른 날짜 고르기
       </button>
     </div>
@@ -129,9 +129,9 @@ export function StayPolicyInfo({
   policy, customText, houseRules, checkInInstructions,
 }: { policy?: string | null; customText?: string | null; houseRules?: string | null; checkInInstructions?: string | null }) {
   return (
-    <div className={`${STAY_BAND} lg:mb-6`}>
+    <div className={`${STAY_BAND} lg:mb-8`}>
       <SectionTitle>이용 안내</SectionTitle>
-      <div className="mt-4">
+      <div className="mt-5">
         <InfoBlock label="취소 정책">
           {cancellationLabel(policy)}
           {customText && (

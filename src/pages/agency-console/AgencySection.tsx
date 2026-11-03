@@ -111,7 +111,7 @@ export default function AgencySection({ stacked = false, headless = false, ownSe
             )}
             trailingRows={toss ? (
               // 🧾 토스 참고 안 — 로그아웃은 일하는 줄과 같은 무게가 아니다. 맨 아래 조용한 글자.
-              <button type="button" onClick={() => { void logout() }} className="mx-auto mt-2 mb-4 block min-h-[44px] px-4 text-[13px] text-gray-500 dark:text-gray-400 active:opacity-70">에이전시 로그아웃</button>
+              <button type="button" onClick={() => { void logout() }} className="mx-auto mt-2 mb-5 block min-h-[44px] px-5 text-[13px] text-gray-500 dark:text-gray-400 active:opacity-70">에이전시 로그아웃</button>
             ) : <FlatRow icon={<LogOutIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="에이전시 로그아웃" onClick={() => { void logout() }} last />}
           />
         )}

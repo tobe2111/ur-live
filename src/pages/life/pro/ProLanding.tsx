@@ -43,7 +43,7 @@ export default function ProLanding() {
       </div>
       <section>
         <h3 className="text-[16px] font-semibold">이런 일을 받아요</h3>
-        <ul className="mt-4 grid grid-cols-4 gap-x-1 gap-y-5">
+        <ul className="mt-5 grid grid-cols-4 gap-x-1 gap-y-5">
           {store.map((d) => (
             <li key={d.key} className="flex flex-col items-center gap-2">
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-surface shadow-lift"><LifeTileIcon category={d.key} /></span>
@@ -51,7 +51,7 @@ export default function ProLanding() {
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-center text-[13px] text-gray-500 dark:text-gray-400">숙소·집 일 {others}가지도 함께 받을 수 있어요</p>
+        <p className="mt-5 text-center text-[13px] text-gray-500 dark:text-gray-400">숙소·집 일 {others}가지도 함께 받을 수 있어요</p>
       </section>
       <div className="space-y-1 pt-2">
         <Link to={`/login?returnUrl=${returnUrl}`} onClick={keepJoin} className="ur-btn ur-btn-lg ur-btn-primary flex w-full justify-center">카카오로 시작하기</Link>

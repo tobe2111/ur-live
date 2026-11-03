@@ -12,13 +12,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import SellerLayout from '@/components/SellerLayout'
-import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
+import { DashboardLoading } from '@/components/dashboard'
 import { Building2, Bed, Calendar, ArrowLeft, Plus, Trash2, Save, ChevronLeft, ChevronRight, Ban, Edit, Link2 } from 'lucide-react'
 import { MultiImageUpload } from '@/components/upload/ImageUpload'
 import { formatNumber } from '@/utils/format'
+import CalendarTab from './StayCalendarTab'
 
-interface StayRoom {
+export interface StayRoom {
   id: number
   product_id: number
   name: string
@@ -38,7 +38,7 @@ interface StayRoom {
   is_active: number
 }
 
-interface CalendarRow {
+export interface CalendarRow {
   id: number
   room_id: number
   product_id: number
@@ -64,79 +64,51 @@ interface StayInfo {
   is_active: number
 }
 
-export default function SellerStayDetailPage() {
-  const navigate = useNavigate()
-  const { id } = useParams<{ id: string }>()
-  const productId = Number(id)
-
-  const [tab, setTab] = useState<'info' | 'rooms' | 'calendar'>('info')
-
-  useEffect(() => {
-    if (!localStorage.getItem('seller_token')) { navigate('/seller/login'); return }
-    if (!Number.isFinite(productId)) navigate('/seller/stays')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId])
-
+/**
+ * 🏨 숙소 관리 — 객실 · 달력 · 숙소 정보 (2026-11-03 대표 *"응 합쳐줘"* — 숙소 수정을 이용권 수정 화면 하나로)
+ *
+ * 종전엔 숙소 [수정] 이 5월에 만든 별도 화면(`/seller/stays/:id`, `SellerStayDetailPage`)으로 갔다 — 대표 사진·소개 같은
+ * 이용권 공통 정보는 못 고치고, 모양도 옛 대시보드였다. 이제 이용권 수정 화면(`SellerProductEditPage`)이 숙소일 때 이 부품을
+ * 아래에 붙인다. 이름·사진·소개·판매 상태는 위 공통 칸에서, 객실·날짜별 요금·체크인 정책은 여기서.
+ * 옛 주소 `/seller/stays/:id` 는 이용권 수정으로 보낸다(라우트).
+ */
+export default function StayManagePanel({ productId }: { productId: number }) {
+  const [tab, setTab] = useState<'rooms' | 'calendar' | 'info'>('rooms')
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (product+rooms+calendar 단일 응답).
   const stayQ = useApiQuery<{ product: StayInfo | null; rooms: StayRoom[]; calendar: CalendarRow[] }>(
     ['seller', 'stay-detail', productId], `/api/seller/stays/${productId}`,
-    { enabled: Number.isFinite(productId), select: (r: any) => ({ product: r?.success ? r.data.product : null, rooms: r?.success ? (r.data.rooms || []) : [], calendar: r?.success ? (r.data.calendar || []) : [] }) },
+    { enabled: Number.isFinite(productId) && productId > 0, select: (r: any) => ({ product: r?.success ? r.data.product : null, rooms: r?.success ? (r.data.rooms || []) : [], calendar: r?.success ? (r.data.calendar || []) : [] }) },
   )
   const info = stayQ.data?.product ?? null
   const rooms = stayQ.data?.rooms ?? []
   const calendar = stayQ.data?.calendar ?? []
-  const loading = stayQ.isLoading
   const loadAll = () => stayQ.refetch()
 
-  if (loading) return <SellerLayout title="숙소"><DashboardLoading /></SellerLayout>
-  if (!info) return <SellerLayout title="숙소"><div className="p-8 text-center text-gray-500">숙소 정보를 불러올 수 없습니다</div></SellerLayout>
+  if (stayQ.isLoading) return <DashboardLoading />
+  if (!info) return <div className="bg-white rounded-xl border border-gray-200 p-6 text-sm text-gray-500">숙소 정보가 아직 없어요. 등록 때 객실 저장이 실패했다면 아래 [객실] 에서 다시 넣어 주세요.</div>
 
   return (
-    <SellerLayout title={info.name}>
-      <div className="mx-auto max-w-5xl space-y-6">
-        <DashboardPageHeader
-          title={info.name}
-          subtitle={`${info.region_sido} ${info.region_sigungu} · 체크인 ${info.check_in_time} / 체크아웃 ${info.check_out_time}`}
-          icon={<Building2 className="h-5 w-5" />}
-          actions={
-            <div className="flex items-center gap-2">
-              <ShareLinkButton productId={productId} />
-              <button
-                type="button"
-                onClick={() => navigate('/seller/stays')}
-                className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />목록
-              </button>
-            </div>
-          }
-        />
-
-        {/* Tabs */}
-        <div className="flex gap-1 border-b border-gray-200">
-          {[
-            { key: 'info' as const, label: '기본 정보', icon: <Building2 className="w-4 h-4" /> },
-            { key: 'rooms' as const, label: `객실 (${rooms.length})`, icon: <Bed className="w-4 h-4" /> },
-            { key: 'calendar' as const, label: '캘린더', icon: <Calendar className="w-4 h-4" /> },
-          ].map((tb) => (
-            <button
-              key={tb.key}
-              type="button"
-              onClick={() => setTab(tb.key)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
-                tab === tb.key ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {tb.icon} {tb.label}
-            </button>
-          ))}
-        </div>
-
-        {tab === 'info' && <InfoTab info={info} productId={productId} onSaved={loadAll} />}
-        {tab === 'rooms' && <RoomsTab productId={productId} rooms={rooms} onChanged={loadAll} />}
-        {tab === 'calendar' && <CalendarTab productId={productId} rooms={rooms} calendar={calendar} onChanged={loadAll} />}
+    <section className="space-y-4" data-stay-manage>
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-bold text-gray-900">숙소 관리</h2>
+        <ShareLinkButton productId={productId} />
       </div>
-    </SellerLayout>
+      <div className="flex gap-1 border-b border-gray-200">
+        {[
+          { key: 'rooms' as const, label: `객실 (${rooms.length})`, icon: <Bed className="w-4 h-4" /> },
+          { key: 'calendar' as const, label: '달력', icon: <Calendar className="w-4 h-4" /> },
+          { key: 'info' as const, label: '체크인·정책', icon: <Building2 className="w-4 h-4" /> },
+        ].map((tb) => (
+          <button key={tb.key} type="button" onClick={() => setTab(tb.key)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${tab === tb.key ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            {tb.icon} {tb.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'info' && <InfoTab info={info} productId={productId} onSaved={loadAll} />}
+      {tab === 'rooms' && <RoomsTab productId={productId} rooms={rooms} onChanged={loadAll} />}
+      {tab === 'calendar' && <CalendarTab productId={productId} rooms={rooms} calendar={calendar} onChanged={loadAll} />}
+    </section>
   )
 }
 
@@ -404,218 +376,6 @@ function Inp({ label, value, onChange, type = 'text', placeholder }: {
         placeholder={placeholder}
         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
       />
-    </div>
-  )
-}
-
-// ─── Calendar Tab ─────────────────────────────────────────────────────────
-function CalendarTab({ productId, rooms, calendar, onChanged }: {
-  productId: number; rooms: StayRoom[]; calendar: CalendarRow[]; onChanged: () => void
-}) {
-  const [activeRoomId, setActiveRoomId] = useState<number | null>(rooms[0]?.id || null)
-  const [monthOffset, setMonthOffset] = useState(0)
-  const [edits, setEdits] = useState<Record<string, { available_count?: number; price_override?: number | null; is_blocked?: boolean }>>({})
-  const [saving, setSaving] = useState(false)
-
-  if (rooms.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
-        <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-        <p className="text-sm text-gray-500">먼저 '객실' 탭에서 객실을 추가하세요</p>
-      </div>
-    )
-  }
-
-  const room = rooms.find((r) => r.id === activeRoomId) || rooms[0]
-  const today = new Date()
-  const baseMonth = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)
-  const monthYear = baseMonth.toISOString().slice(0, 7) // 'YYYY-MM'
-
-  // 해당 월 calendar row 인덱싱.
-  const calMap = new Map<string, CalendarRow>()
-  calendar.filter((c) => c.room_id === room.id).forEach((c) => calMap.set(c.stay_date, c))
-
-  function priceFor(date: Date): number {
-    const dow = date.getDay()
-    const isWeekend = dow === 5 || dow === 6
-    return isWeekend ? room.base_price_weekend : room.base_price_weekday
-  }
-
-  function effectiveFor(date: Date) {
-    const ds = date.toISOString().slice(0, 10)
-    const cal = calMap.get(ds)
-    const edit = edits[ds]
-    return {
-      ds,
-      available_count: edit?.available_count ?? cal?.available_count ?? room.total_inventory,
-      price_override: edit?.price_override !== undefined ? edit.price_override : (cal?.price_override ?? null),
-      is_blocked: edit?.is_blocked ?? (cal?.is_blocked === 1),
-      hasEdit: !!edit,
-    }
-  }
-
-  function updateDay(ds: string, patch: Partial<{ available_count: number; price_override: number | null; is_blocked: boolean }>) {
-    setEdits((e) => ({ ...e, [ds]: { ...e[ds], ...patch } }))
-  }
-
-  async function saveBulk() {
-    if (Object.keys(edits).length === 0) { toast.error('변경 사항 없음'); return }
-    setSaving(true)
-    try {
-      const token = localStorage.getItem('seller_token')
-      const dates = Object.entries(edits).map(([date, p]) => ({
-        date,
-        available_count: p.available_count ?? room.total_inventory,
-        price_override: p.price_override ?? null,
-        is_blocked: !!p.is_blocked,
-      }))
-      const res = await api.put(`/api/seller/stays/${productId}/calendar`,
-        { room_id: room.id, dates },
-        { headers: { Authorization: `Bearer ${token}` } })
-      if (res.data?.success) {
-        toast.success(`${dates.length}일 저장됨`)
-        setEdits({})
-        onChanged()
-      }
-    } catch (err: unknown) {
-      const ax = err as { response?: { data?: { error?: string } } }
-      toast.error(ax.response?.data?.error || '저장 실패')
-    } finally { setSaving(false) }
-  }
-
-  async function applyBulkInventory() {
-    const v = (await promptDialog({ message: `이번 달 모든 날짜에 적용할 잔여 객실 수 (현재 재고 ${room.total_inventory}):`, prompt: { defaultValue: String(room.total_inventory) } }))
-    if (v === null) return
-    const n = Number(v)
-    if (!Number.isFinite(n) || n < 0) { toast.error('숫자 입력 필요'); return }
-    const daysInMonth = new Date(baseMonth.getFullYear(), baseMonth.getMonth() + 1, 0).getDate()
-    const next: typeof edits = { ...edits }
-    for (let d = 1; d <= daysInMonth; d++) {
-      const date = new Date(baseMonth.getFullYear(), baseMonth.getMonth(), d)
-      if (date < new Date(today.toDateString())) continue
-      const ds = date.toISOString().slice(0, 10)
-      next[ds] = { ...next[ds], available_count: n }
-    }
-    setEdits(next)
-  }
-
-  // 캘린더 그리드 (월별).
-  const daysInMonth = new Date(baseMonth.getFullYear(), baseMonth.getMonth() + 1, 0).getDate()
-  const firstDow = baseMonth.getDay()
-  const cells: (Date | null)[] = []
-  for (let i = 0; i < firstDow; i++) cells.push(null)
-  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(baseMonth.getFullYear(), baseMonth.getMonth(), d))
-
-  return (
-    <div className="space-y-4">
-      {/* Room selector */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {rooms.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => { setActiveRoomId(r.id); setEdits({}) }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap ${
-              activeRoomId === r.id ? 'bg-brand-tint text-brand-text' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            {r.name} (재고 {r.total_inventory})
-          </button>
-        ))}
-      </div>
-
-      {/* Month navigation + actions */}
-      <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 p-3">
-        <button type="button" onClick={() => setMonthOffset((o) => o - 1)} disabled={monthOffset <= 0} className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30">
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-        <p className="text-sm font-bold text-gray-900">
-          {baseMonth.getFullYear()}년 {baseMonth.getMonth() + 1}월
-          {Object.keys(edits).length > 0 && <span className="text-xs text-gray-700 ml-2">· 미저장 {Object.keys(edits).length}일</span>}
-        </p>
-        <button type="button" onClick={() => setMonthOffset((o) => o + 1)} className="p-1.5 rounded hover:bg-gray-100">
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-
-      <div className="flex gap-2">
-        <button type="button" onClick={applyBulkInventory} className="ur-btn ur-btn-sm ur-btn-secondary">
-          이번 달 일괄 재고 적용
-        </button>
-        <button type="button" onClick={saveBulk} disabled={saving || Object.keys(edits).length === 0} className="ur-btn ur-btn-sm ur-btn-primary ml-auto disabled:opacity-50 inline-flex items-center gap-1">
-          <Save className="w-3 h-3" /> {saving ? '저장 중...' : `${Object.keys(edits).length}일 저장`}
-        </button>
-      </div>
-
-      {/* Calendar grid */}
-      <div className="bg-white rounded-xl border border-gray-200 p-3">
-        <div className="grid grid-cols-7 gap-1 mb-2">
-          {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
-            <div key={d} className="text-center text-[11px] font-bold text-gray-500">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {cells.map((cell, i) => {
-            if (!cell) return <div key={i} className="aspect-[3/4]" />
-            const past = cell < new Date(today.toDateString())
-            const eff = effectiveFor(cell)
-            const price = eff.price_override ?? priceFor(cell)
-            const isWeekend = cell.getDay() === 5 || cell.getDay() === 6
-            return (
-              <button
-                key={i}
-                type="button"
-                disabled={past}
-                onClick={async () => {
-                  if (past) return
-                  const ds = eff.ds
-                  const cur = effectiveFor(cell)
-                  // 클릭 사이클: 가용 → 차단 → 가용 복귀.
-                  if (cur.is_blocked) {
-                    updateDay(ds, { is_blocked: false, available_count: room.total_inventory })
-                  } else {
-                    const newPrice = (await promptDialog({ message: `${ds} 가격 (비워두면 ${isWeekend ? '주말' : '평일'} ${formatNumber(priceFor(cell))}원), 잔여 수 / 차단:`, prompt: { defaultValue: String(price) } }))
-                    if (newPrice === null) return
-                    if (newPrice === '') updateDay(ds, { price_override: null })
-                    else {
-                      const n = Number(newPrice)
-                      if (Number.isFinite(n) && n >= 0) updateDay(ds, { price_override: n })
-                    }
-                  }
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  if (past) return
-                  updateDay(eff.ds, { is_blocked: !eff.is_blocked })
-                }}
-                className={`aspect-[3/4] rounded-lg text-left p-1 border transition-all ${
-                  past ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed' :
-                  eff.is_blocked ? 'bg-white border-rule hover:bg-gray-100' :
-                  eff.hasEdit ? 'bg-white border-rule hover:bg-gray-100' :
-                  'bg-white border-gray-200 hover:border-rule'
-                }`}
-              >
-                <p className={`text-[10px] font-bold ${isWeekend && !past && !eff.is_blocked ? 'text-tone-warn' : ''}`}>{cell.getDate()}</p>
-                {!past && (
-                  <>
-                    {eff.is_blocked ? (
-                      <div className="text-[8px] font-bold text-tone-bad mt-1">차단</div>
-                    ) : (
-                      <>
-                        <p className="text-[8px] text-gray-600 mt-0.5">잔 {eff.available_count}</p>
-                        <p className="text-[9px] font-bold text-gray-900">₩{(price / 1000).toFixed(0)}K</p>
-                      </>
-                    )}
-                  </>
-                )}
-              </button>
-            )
-          })}
-        </div>
-        <p className="text-[10px] text-gray-400 mt-2 px-1">
-          ※ 좌클릭 = 가격/잔여 수정 · 우클릭 = 차단/해제 토글
-        </p>
-      </div>
     </div>
   )
 }

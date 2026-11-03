@@ -29,7 +29,7 @@ export default function NewVersionBanner() {
       role="status"
       aria-live="polite"
     >
-      <div className="pointer-events-auto w-full max-w-md flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-900 text-white shadow-2xl border border-white/10">
+      <div className="pointer-events-auto w-full max-w-md flex items-center gap-3 px-5 py-3 rounded-2xl bg-gray-900 text-white shadow-2xl border border-white/10">
         <RefreshCw className="w-4 h-4 shrink-0 text-emerald-400" />
         <p className="flex-1 text-[13px] leading-snug">
           {t('newVersion.message', { defaultValue: '새 버전이 나왔어요. 새로고침하면 적용됩니다.' })}

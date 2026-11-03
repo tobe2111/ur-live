@@ -51,12 +51,12 @@ export default function MyReturnsPage() {
           </div>
         </header>
 
-        <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="max-w-3xl mx-auto px-5 py-6">
           {loading ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : error ? (
             <div className="text-center py-12">
-              <p className="text-[15px] text-red-500 mb-4">{error}</p>
+              <p className="text-[15px] text-red-500 mb-5">{error}</p>
               <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
                 {t('common.retry', { defaultValue: '다시 시도' })}
               </button>

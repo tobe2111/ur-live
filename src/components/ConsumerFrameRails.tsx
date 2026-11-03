@@ -52,11 +52,11 @@ export default function ConsumerFrameRails() {
     <>
       {/* LEFT — 브랜드 + 모바일 QR */}
       <aside
-        className="hidden xl:flex fixed top-0 bottom-0 z-30 flex-col justify-center gap-4 pointer-events-none"
+        className="hidden xl:flex fixed top-0 bottom-0 z-30 flex-col justify-center gap-3 pointer-events-none"
         style={leftStyle}
         aria-hidden="true"
       >
-        <div className="pointer-events-auto flex flex-col gap-4">
+        <div className="pointer-events-auto flex flex-col gap-3">
           <div className="px-1">
             <UrDealLogo size={22} />
             <p className="mt-2 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">
@@ -110,10 +110,10 @@ export default function ConsumerFrameRails() {
 
       {/* RIGHT — 바로가기 */}
       <aside
-        className="hidden xl:flex fixed top-0 bottom-0 z-30 flex-col justify-center gap-4 pointer-events-none"
+        className="hidden xl:flex fixed top-0 bottom-0 z-30 flex-col justify-center gap-3 pointer-events-none"
         style={rightStyle}
       >
-        <div className="pointer-events-auto flex flex-col gap-4">
+        <div className="pointer-events-auto flex flex-col gap-3">
           {/* 🧭 2026-07-03 (대표 — 바로가기 업데이트): 하단 네비 정본 5탭과 통일
               (홈·쇼핑·이용권·유어샵·마이). 낡은 라벨(교환권/내 지갑)·중복 동네딜(→은퇴한 /group-buy) 제거. */}
           <div className={`${cardCls} p-2`}>

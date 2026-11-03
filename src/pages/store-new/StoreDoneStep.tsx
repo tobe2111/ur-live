@@ -30,7 +30,7 @@ export default function StoreDoneStep({ storeName, agencyName, onFirstVoucher, o
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-1 px-1">
         <div className="flex flex-col items-center text-center pt-2">
           <Udal mood="yay" size={120} motion priority />
-          <p className="mt-4 text-[13px] font-medium text-brand-text">{storeName}</p>
+          <p className="mt-5 text-[13px] font-medium text-brand-text">{storeName}</p>
           <h1 className="mt-2 text-[20px] font-semibold tracking-[-0.02em] leading-snug text-gray-900 dark:text-white">가게 등록이 끝났어요</h1>
           <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
             {agencyName
@@ -52,7 +52,7 @@ export default function StoreDoneStep({ storeName, agencyName, onFirstVoucher, o
                 {t.first ? <span className="text-[13px] font-medium text-brand-text">지금</span> : <ChevronRight size={18} strokeWidth={1.6} className="text-ink-soft" aria-hidden="true" />}
               </>
             )
-            const cls = `w-full flex items-center gap-4 py-4 ${i < todos.length - 1 ? 'border-b border-rule' : ''}`
+            const cls = `w-full flex items-center gap-3 py-4 ${i < todos.length - 1 ? 'border-b border-rule' : ''}`
             return (
               <li key={t.n} className="ur-rise" style={{ animationDelay: `${200 + i * 90}ms` }}>
                 {t.first ? <button type="button" onClick={onFirstVoucher} className={cls}>{inner}</button> : <Link to={t.to!} className={cls}>{inner}</Link>}

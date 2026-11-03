@@ -37,7 +37,7 @@ export default function StoreTakenPanel({ storeName, sellerId, onEntered, onRetr
       <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
         <b className="font-medium text-gray-900 dark:text-white">{storeName}</b> 은(는) 이미 등록돼 있어요. 직접 등록해 두셨거나, 다른 분이 대신 등록했을 수 있어요.
       </p>
-      <div className="mt-6 flex flex-col gap-2">
+      <div className="mt-8 flex flex-col gap-2">
         {sellerId && (
           <button type="button" onClick={() => void tryEnter()} disabled={busy}
             className={`ur-btn ur-btn-lg ur-btn-primary w-full${busy ? ' ur-busy-ring' : ''}`}>
@@ -50,7 +50,7 @@ export default function StoreTakenPanel({ storeName, sellerId, onEntered, onRetr
         )}
         <button type="button" onClick={onRetry} className="h-11 text-[15px] text-ink-soft">다른 가게로 다시 찾기</button>
       </div>
-      <p className="mt-4 text-[13px] leading-relaxed text-ink-soft">
+      <p className="mt-5 text-[13px] leading-relaxed text-ink-soft">
         사장님이신데 들어갈 수 없다면 사업자등록증으로 소유권을 신청해 주세요. 확인 후 그 매장의 주인으로 등록해 드리고, 지금까지 쌓인 상품·주문·정산 이력은 그대로 남아요.
       </p>
     </div>

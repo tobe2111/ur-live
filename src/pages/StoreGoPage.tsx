@@ -47,7 +47,7 @@ export default function StoreGoPage() {
         <button
           type="button"
           onClick={() => navigate('/user/profile', { replace: true })}
-          className="ur-btn ur-btn-primary w-full mt-6"
+          className="ur-btn ur-btn-primary w-full mt-8"
         >
           마이에서 내 가게 고르기
         </button>

@@ -9640,8 +9640,8 @@ canvas {
   {
     name: '딜 카드 격자 — 세로 간격이 다시 가로와 같아진다(카드 경계가 안 읽힌다)',
     file: 'src/shared/deal-card-grid.ts',
-    find: "'gap-x-3 gap-y-8 lg:gap-x-4 lg:gap-y-8'",
-    replace: "'gap-x-3 gap-y-3 lg:gap-x-4 lg:gap-y-4'",
+    find: "'gap-x-3 gap-y-8 lg:gap-x-3 lg:gap-y-8'", // 🔄 2026-11-03 공백 체계(PC 가로 16→12)
+    replace: "'gap-x-3 gap-y-3 lg:gap-x-3 lg:gap-y-3'",
     test: 'src/tests/unit/deal-card-grid-gap.test.ts',
     why:
       '2026-09-03 대표 "이용권 간의 세로폭이 있어야할 것 같은데" → 안 1 확정. 카드 안 여백이 2~8px 인데 ' +

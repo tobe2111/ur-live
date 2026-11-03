@@ -61,14 +61,14 @@ export default function RegionIndexPage() {
         jsonLd={[breadcrumbJsonLd([{ name: '홈', url: '/' }, { name: '지역', url: '/region' }])]}
       />
 
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-10 pt-4 lg:pt-6">
+      <div className="max-w-[1600px] mx-auto px-5 lg:px-10 pt-4 lg:pt-6">
         <nav aria-label="위치" className="flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400 mb-3">
           <Link to="/" className="hover:underline">홈</Link>
           <ChevronRight className="w-3 h-3" aria-hidden />
           <span className="font-bold text-gray-900 dark:text-white">지역</span>
         </nav>
 
-        <header className="mb-6">
+        <header className="mb-8">
           <h1 className="text-[24px] lg:text-[28px] font-bold tracking-tight text-gray-900 dark:text-white">
             지역별 이용권·동네딜
           </h1>
@@ -89,7 +89,7 @@ export default function RegionIndexPage() {
             아직 등록된 지역 딜이 없어요.
           </p>
         ) : (
-          <div className="ur-ri-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-7 pb-12">
+          <div className="ur-ri-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-8 pb-12">
             {regions.map(r => (
               <section key={r.sido} aria-labelledby={`sido-${r.sido}`}>
                 <h2 id={`sido-${r.sido}`} className="mb-2 pb-2 border-b border-gray-100 dark:border-[#2C2F35]">

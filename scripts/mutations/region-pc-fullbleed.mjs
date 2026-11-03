@@ -54,8 +54,8 @@ export default [
   {
     name: '🗺️ 지역 본문이 다시 좁은 컨테이너로 조여진다',
     file: 'src/pages/region/RegionPage.tsx',
-    find: `max-w-[1600px] mx-auto px-4 lg:px-10`,
-    replace: `max-w-xl mx-auto px-4`,
+    find: `max-w-[1600px] mx-auto px-5 lg:px-10`,
+    replace: `max-w-xl mx-auto px-5`,
     test: T,
     why: '풀너비로 풀어 놓고 본문만 폰 폭으로 남기면 "넓어진 모바일" 이 된다(액자와 결과가 같다).',
   },

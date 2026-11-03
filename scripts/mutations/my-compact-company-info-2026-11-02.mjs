@@ -12,7 +12,7 @@ export default [
   {
     name: '🏢 폰 홈에서 회사 정보가 빠진다',
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
-    find: '      <CompanyInfoFooter className="mt-6" />\n',
+    find: '      <CompanyInfoFooter className="mt-8" />\n',
     replace: '',
     test: TEST,
     why: '폰 홈엔 사업자 표시가 이것 하나뿐이다. 빠지면 초기 화면 표시 의무를 어긴 채 빌드는 초록이다.',
@@ -52,7 +52,7 @@ export default [
   {
     name: '🧹 마이 구역 제목 위 여백이 32px 로 돌아간다',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: '      <Tag className={`mt-6 mb-1 px-4 ${SECTION_TITLE_CLS}`}>',
+    find: '      <Tag className={`mt-5 mb-1 px-4 ${SECTION_TITLE_CLS}`}>',
     replace: '      <Tag className={`mt-8 mb-1 px-4 ${SECTION_TITLE_CLS}`}>',
     test: TEST,
     why: '대표 "필요없이 공백이 많다". 한 자리만 되돌려도 구역마다 간격이 갈린다.',

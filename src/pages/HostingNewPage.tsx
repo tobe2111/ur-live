@@ -80,7 +80,7 @@ export default function HostingNewPage() {
             <button onClick={() => navigate('/host')} className="text-[15px] text-gray-500 dark:text-gray-400">{t('common.back')}</button>
           </div>
           {/* 카테고리 탭 */}
-          <div className="max-w-3xl mx-auto flex gap-2 overflow-x-auto pt-3 -mx-4 px-4">
+          <div className="max-w-3xl mx-auto flex gap-2 overflow-x-auto pt-3 -mx-4 px-5">
             {CATEGORIES.map(cat => (
               <button
                 key={cat.key}
@@ -97,7 +97,7 @@ export default function HostingNewPage() {
           </div>
         </header>
 
-        <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="max-w-3xl mx-auto px-5 py-6">
           {loading ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : items.length === 0 ? (

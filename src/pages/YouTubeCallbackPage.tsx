@@ -156,7 +156,7 @@ export default function YouTubeCallbackPage() {
 
         {/* ── 성공 ── */}
         {status === 'success' && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="relative mx-auto w-20 h-20">
               <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center">
                 <OkIcon className="h-10 w-10 text-green-500" />
@@ -175,7 +175,7 @@ export default function YouTubeCallbackPage() {
 
         {/* ── 실패 ── */}
         {status === 'error' && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto">
               <AlertIcon className="h-10 w-10 text-red-500" />
             </div>

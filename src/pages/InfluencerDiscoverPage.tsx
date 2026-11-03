@@ -133,7 +133,7 @@ export default function InfluencerDiscoverPage() {
         <button onClick={() => navigate('/influencer/settlement')} className="text-[12px] text-brand-text font-medium">내 정산 →</button>
       </header>
 
-      <main className="ur-content-wide mx-auto px-4 py-4 space-y-4">
+      <main className="ur-content-wide mx-auto px-5 py-4 space-y-3">
         {/* 카테고리 필터 */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           {Object.entries(CAT_LABELS).map(([k, v]) => (

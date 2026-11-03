@@ -196,16 +196,16 @@ export default function StoreClaimPage() {
       <SEO title="매장 이용권 판매 등록 - 유어딜" description="내 가게를 유어딜에 등록하고 이용권을 판매하세요. 등록 비용 0원." noindex />
 
       <div className="mx-auto w-full max-w-[1180px] flex-1 min-h-0 flex flex-col lg:block lg:px-10 lg:pt-10 lg:pb-16">
-        <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
+        <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-12">
           {/* PC 왼쪽 — 무엇을 등록하는 곳인가 */}
           <div className="hidden lg:block lg:pt-16">
             <h1 className="text-[40px] font-bold tracking-[-0.03em] leading-[1.22]">
               매장 이용권<br /> 판매 등록
             </h1>
-            <p className="mt-4 text-[16px] leading-relaxed text-ink-soft max-w-[460px]">손님이 유어딜에서 할인가로 이용권을 미리 삽니다. 매장에 와서 QR 을 보여주면 그걸로 끝입니다.</p>
-            <ul className="mt-8 flex flex-col gap-4 max-w-[460px]">
+            <p className="mt-5 text-[16px] leading-relaxed text-ink-soft max-w-[460px]">손님이 유어딜에서 할인가로 이용권을 미리 삽니다. 매장에 와서 QR 을 보여주면 그걸로 끝입니다.</p>
+            <ul className="mt-8 flex flex-col gap-3 max-w-[460px]">
               {BENEFITS.map(({ Icon, title, desc }) => (
-                <li key={title} className="flex gap-4 items-start">
+                <li key={title} className="flex gap-3 items-start">
                   <Icon size={20} className="mt-1 shrink-0 text-brand-text" aria-hidden="true" />
                   <div className="min-w-0">
                     <p className="text-[15px] font-medium">{title}</p>
@@ -214,7 +214,7 @@ export default function StoreClaimPage() {
                 </li>
               ))}
             </ul>
-            <div className="flex mt-9 pt-5 border-t border-rule gap-9 max-w-[460px]">
+            <div className="flex mt-8 pt-5 border-t border-rule gap-8 max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
                   <div className="text-[20px] font-semibold">{value}</div>
@@ -254,7 +254,7 @@ export default function StoreClaimPage() {
                 <>
                   {inviteAgency && <AgencyInviteBanner name={inviteAgency} />}
                   {prospect?.store_name && (
-                    <p className="mb-4 rounded-xl bg-brand-tint px-4 py-3 text-[13px] leading-relaxed">
+                    <p className="mb-5 rounded-xl bg-brand-tint px-4 py-3 text-[13px] leading-relaxed">
                       <b className="font-medium">{prospect.store_name}</b> — 영입 담당자가 미리 준비한 매장이에요. 이 가게를 찾아 진행해 주세요.
                     </p>
                   )}

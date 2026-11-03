@@ -122,13 +122,13 @@ export default function PcHomeAppBand() {
     <div className="mt-8 bg-[#241b17] relative overflow-hidden">
       {/* warm coral glow */}
       <div className="pointer-events-none absolute -right-20 -top-24 w-[420px] h-[420px] rounded-full blur-3xl opacity-25" style={{ background: 'radial-gradient(circle,#ff6a3d,transparent 70%)' }} />
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-10 py-14 flex items-center justify-between gap-10 relative">
+      <div className="max-w-[1600px] mx-auto px-5 lg:px-10 py-14 flex items-center justify-between gap-8 relative">
         <div className="min-w-0">
           <h2 className="text-[28px] lg:text-[34px] font-bold leading-[1.25] tracking-tight text-white">
             유어딜에서 <span className="text-[#ff8a5c]">우리 동네 딜</span>과<br />함께해요
           </h2>
           <p className="mt-3 text-[16px] font-semibold text-white/70">설치 없이 폰에서 바로 열려요</p>
-          <div className="mt-7 flex items-center gap-4">
+          <div className="mt-8 flex items-center gap-3">
             <div className="rounded-2xl bg-white p-2 shrink-0">{/* QR 은 스캔을 위해 항상 흰 배경 — light-fixed */}
               <Suspense fallback={<div className="w-[92px] h-[92px]" />}>
                 <QRCodeSVG value="https://urdeal.kr" size={92} fgColor="#11141C" bgColor="#ffffff" level="M" />

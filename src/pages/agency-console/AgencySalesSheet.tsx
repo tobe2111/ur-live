@@ -76,7 +76,7 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
               </div>
             ))}
           </dl>
-          <div className="mx-4 mt-4 rounded-xl bg-gray-50 dark:bg-white/5 px-3 py-3">
+          <div className="mx-5 mt-5 rounded-xl bg-gray-50 dark:bg-white/5 px-3 py-3">
             <p className="text-[13px] font-medium text-gray-900 dark:text-white">
               {data.share?.pct == null
                 ? '우리 몫: 사장님이 아직 정하지 않았어요'

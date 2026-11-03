@@ -28,7 +28,7 @@ export function AgencyIntro() {
         매장을 대신해 유어딜 이용권을 등록하고 운영하는 대행사 전용 계정이에요.
       </p>
 
-      <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+      <ul className="mt-8 grid gap-3 sm:grid-cols-2">
         {POINTS.map(({ Icon, title, body }) => (
           <li key={title} className="flex gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-tint text-brand-text">

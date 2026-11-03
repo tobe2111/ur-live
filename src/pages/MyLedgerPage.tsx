@@ -86,7 +86,7 @@ export default function MyLedgerPage() {
   }
 
   const content = (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-5">
       <DashboardPageHeader
         icon={<WalletIcon className="h-5 w-5" />}
         title="내 ledger (정산 원장)"

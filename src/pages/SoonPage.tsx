@@ -40,7 +40,7 @@ export default function SoonPage() {
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
       <SEO title="오픈 예정 - 유어딜" description="아직 문을 열지 않은 매장의 딜. 사전 응모를 받는 곳은 지금 응모할 수 있어요." url="/soon" />
 
-      <header className="ur-content-wide px-4 lg:px-8 pt-7 pb-5">
+      <header className="ur-content-wide px-5 lg:px-8 pt-7 pb-5">
         <h1 className="text-[20px] sm:text-[24px] font-semibold tracking-tight">오픈 예정</h1>
         <p className="mt-2 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
           아직 문을 열지 않은 매장이에요. 사전 응모를 받는 곳은 카드를 눌러 지금 응모할 수 있어요.
@@ -50,7 +50,7 @@ export default function SoonPage() {
         </p>
       </header>
 
-      <div className="ur-content-wide px-4 lg:px-8 pb-10">
+      <div className="ur-content-wide px-5 lg:px-8 pb-10">
         {items.length === 0 ? (
           // 빈 화면을 꾸미지 않는다 — 지금 살 수 있는 곳으로 보낸다.
           <div className="text-center py-20">

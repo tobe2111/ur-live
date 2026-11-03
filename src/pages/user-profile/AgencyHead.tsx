@@ -16,7 +16,7 @@ export default function AgencyHead({ storeCount }: { storeCount: number }) {
   const name = agencyName || '에이전시'
   const meta = ['에이전시', isAdmin ? '관리자' : '직원', storeCount > 0 ? `매장 ${storeCount}곳` : null].filter(Boolean).join(' · ')
   return (
-    <div className="ur-content-medium px-4 pt-3 pb-2 flex items-center gap-3" data-testid="agency-head">
+    <div className="ur-content-medium px-5 pt-3 pb-2 flex items-center gap-3" data-testid="agency-head">
       <span aria-hidden="true" className="w-12 h-12 rounded-[14px] shrink-0 flex items-center justify-center bg-brand-tint text-brand-text text-[16px] font-semibold">
         {name.slice(0, 1)}
       </span>

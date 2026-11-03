@@ -79,7 +79,7 @@ export default [
   {
     name: '🖥️ 공구 마켓 본문이 폭 제약을 잃는다 (넓어진 모바일)',
     file: 'src/pages/GbMarketplacePage.tsx',
-    find: `<div className="ur-content-wide px-4 pt-4">`,
+    find: `<div className="ur-content-wide px-5 pt-4">`,
     replace: `<div className="px-4 pt-4">`,
     test: T,
     why: '액자를 벗겨 놓고 본문만 제약이 없으면 1440px 로 퍼진다 — 고친 것이 오히려 이상해 보인다.',

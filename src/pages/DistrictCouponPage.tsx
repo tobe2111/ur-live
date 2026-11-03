@@ -73,7 +73,7 @@ function ReceiptForm({ campaign, stores, onDone }: { campaign: Campaign; stores:
   }
 
   return (
-    <div key={freshN} className={`rounded-2xl p-4 space-y-3${freshN ? ' ur-rc-fresh' : ''}`}>
+    <div key={freshN} className={`rounded-2xl p-5 space-y-3${freshN ? ' ur-rc-fresh' : ''}`}>
       <h2 className="flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white"><ReceiptIcon className="w-4 h-4" />영수증 등록</h2>
       <div>
         <label className="mb-1 block text-[12px] font-medium text-gray-700 dark:text-gray-200">구매 매장</label>
@@ -141,12 +141,12 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
   if (doneBridge) {
     return (
       <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
-        <div className="w-full sm:max-w-xs sm:mx-4 ur-pop-card ur-glass p-6 text-center overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="w-full sm:max-w-xs sm:mx-5 ur-pop-card ur-glass p-6 text-center overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
           <p className="text-[24px]" aria-hidden>✅</p>
           <p className="mt-2 text-[16px] font-semibold text-gray-900 dark:text-white">사용 완료!</p>
           <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">결제 금액에서 쿠폰 금액을 빼고 결제하세요</p>
           <button type="button" onClick={() => navigate(`/pass/${doneBridge.product_id}`)}
-            className="mt-4 w-full rounded-2xl border border-line px-3 py-3 text-left active:scale-[0.98] transition-transform">
+            className="mt-5 w-full rounded-2xl border border-line px-3 py-3 text-left active:scale-[0.98] transition-transform">
             <span className="block text-[12px] font-medium text-emerald-600 dark:text-emerald-400">🎟 이 상권의 동네딜</span>
             <span className="mt-1 block truncate text-[13px] font-medium text-gray-900 dark:text-white">{doneBridge.name} 보러가기 →</span>
           </button>
@@ -157,10 +157,10 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
   }
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={onClose} role="presentation">
-      <div className="w-full sm:max-w-xs sm:mx-4 ur-pop-card ur-glass p-6 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="w-full sm:max-w-xs sm:mx-5 ur-pop-card ur-glass p-6 overflow-hidden ur-dialog-in" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <p className="text-center text-[16px] font-bold text-gray-900 dark:text-white">{formatWon(coupon.face_value)} 상권 쿠폰</p>
         <p className="mt-1 text-center tabular-nums text-[15px] font-bold tracking-widest text-gray-500 dark:text-gray-400">{coupon.code}</p>
-        <div className="mt-4 space-y-3">
+        <div className="mt-5 space-y-3">
           <select value={storeId} onChange={(e) => setStoreId(e.target.value)}
             className="w-full rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2 text-[15px] text-gray-900 dark:text-white">
             <option value="">사용 매장 선택</option>
@@ -236,11 +236,11 @@ export default function DistrictCouponPage() {
         {!isMy && <button type="button" onClick={() => navigate('/district/my')} className="flex items-center gap-1 text-[12px] font-medium text-gray-500 dark:text-gray-400"><WalletIcon className="h-4 w-4" />내 쿠폰</button>}
       </header>
 
-      <div className="mx-auto ur-content-narrow space-y-4 px-4 py-4 lg:px-8">
+      <div className="mx-auto ur-content-narrow space-y-3 px-5 py-4 lg:px-8">
         {/* 캠페인 랜딩 */}
         {!isMy && campaign && (
           <>
-            <div className="rounded-2xl p-4">
+            <div className="rounded-2xl p-5">
               <p className="flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white"><TicketPercent className="h-4 w-4" />영수증 페이백</p>
               {campaign.description && <p className="mt-1 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400 whitespace-pre-wrap">{campaign.description}</p>}
               <ul className="mt-2 space-y-1">
@@ -255,7 +255,7 @@ export default function DistrictCouponPage() {
             {campaign.status === 'open'
               ? <ReceiptForm campaign={campaign} stores={stores} onDone={loadMy} />
               : <div className="rounded-2xl p-5 text-center text-[15px] font-bold text-gray-500 dark:text-gray-400">접수가 종료된 캠페인입니다</div>}
-            <div className="rounded-2xl p-4">
+            <div className="rounded-2xl p-5">
               <p className="mb-2 flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white"><StoreIcon className="h-4 w-4" />참여 점포 ({stores.length})</p>
               <ul className="max-h-56 space-y-2 overflow-y-auto">
                 {stores.map((s) => (
@@ -288,7 +288,7 @@ export default function DistrictCouponPage() {
             )}
             {unusedCoupons.map((cp) => (
               <button key={cp.id} type="button" onClick={() => void openRedeem(cp)}
-                className="flex w-full items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-left active:scale-[0.99] transition-transform">
+                className="flex w-full items-center gap-3 rounded-2xl border border-line bg-surface p-5 text-left active:scale-[0.99] transition-transform">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-900/20">
                   <TicketPercent className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 </div>

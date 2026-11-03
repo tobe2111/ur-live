@@ -83,14 +83,14 @@ export default function MyGifticonsPage() {
         />
       )}
 
-      <div className="ur-content-narrow px-4 lg:px-8 pb-2">
+      <div className="ur-content-narrow px-5 lg:px-8 pb-2">
         {loading ? (
           <BrandLoader />
         ) : isError ? (
           /* 🛡️ 네트워크 실패를 "빈 보관함"으로 위장하지 않음 — 에러 + 재시도(이용권 지갑과 동일 규약). */
           <div className="text-center py-16">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('voucher.loadFailedGift', { defaultValue: '교환권을 불러오지 못했어요' })}</p>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
             <button
               onClick={() => refetch()}
               className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold"

@@ -85,12 +85,12 @@ export default function StoreConfirmStep({ place, phone, phoneFromAccount, onPho
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-1 px-1 pb-4">
         {place.lat && place.lng ? (
           // 🏝️ 카카오 지도 타일은 다크에서도 밝다 — 지도 칸은 테마를 따르지 않는다(CLAUDE.md 지도 위 UI 규칙).
-          <div className="light-island mt-4 rounded-2xl overflow-hidden">
+          <div className="light-island mt-5 rounded-2xl overflow-hidden">
             <RestaurantMiniMap bare name={place.name} address={place.address} lat={place.lat} lng={place.lng} placeUrl={place.place_url} height={agencyName ? 112 : 148} />
           </div>
         ) : null}
 
-        <div className="mt-4 flex items-start gap-3">
+        <div className="mt-5 flex items-start gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{place.name}</p>
             {sub && <p className="mt-1 text-[13px] text-ink-soft">{sub}</p>}
@@ -99,7 +99,7 @@ export default function StoreConfirmStep({ place, phone, phoneFromAccount, onPho
           <button type="button" onClick={onChangePlace} className="shrink-0 pt-1 text-[13px] font-medium text-brand-text">다른 가게</button>
         </div>
 
-        <label className="mt-7 block">
+        <label className="mt-8 block">
           <span className="block text-[13px] text-ink-soft mb-2">연락받을 휴대폰 · 승인·주문·정산 소식</span>
           <span className={`ur-sn-field flex items-center gap-2 h-14 px-4 rounded-xl border-[1.5px] ${phoneBad ? 'border-tone-bad' : 'border-line focus-within:border-brand'}`} aria-invalid={phoneBad}>
             <input value={formatPhone(phone)} onChange={(e) => onPhone(e.target.value)} onBlur={() => setTouched(true)}

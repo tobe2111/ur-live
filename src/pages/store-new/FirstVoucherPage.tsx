@@ -166,7 +166,7 @@ export default function FirstVoucherPage() {
               </div>
 
               {'full' in kindInfo ? (
-                <div className="ur-rise mt-6 rounded-xl bg-wash p-4">
+                <div className="ur-rise mt-8 rounded-xl bg-wash p-4">
                   <p className="text-[15px]">{kindInfo.full}. 자세한 화면에서 올려 주세요.</p>
                   <Link to={`/seller/meal-voucher/new?category=${kind}&from=my`} className="ur-btn ur-btn-md ur-btn-primary mt-3 inline-flex">{kindInfo.label} 이용권 만들기</Link>
                 </div>
@@ -178,7 +178,7 @@ export default function FirstVoucherPage() {
                       <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="예: 김밥 2줄 + 라면 세트" className={inputCls} />
                     </span>
                   </label>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="mt-5 grid grid-cols-2 gap-3">
                     <label className="block">
                       <span className="block text-[13px] text-ink-soft mb-2">원래 가격</span>
                       <span className={fieldCls(!!origErr)} aria-invalid={!!origErr}>

@@ -387,7 +387,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
               fullUrl={detailPlainUrl} placeholderUrl={(src) => heroUrl(src, DETAIL_HERO_MOBILE_WIDTH)}
               onDead={(src) => setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src)))} />
           </Suspense>
-          <div className="ur-lb-pic hidden lg:block relative w-full max-w-[1100px] px-4" onClick={(e) => e.stopPropagation()}
+          <div className="ur-lb-pic hidden lg:block relative w-full max-w-[1100px] px-5" onClick={(e) => e.stopPropagation()}
             onTouchStart={(e) => { touchX.current = e.touches[0]?.clientX ?? null }}
             onTouchEnd={(e) => {
               const x0 = touchX.current; touchX.current = null

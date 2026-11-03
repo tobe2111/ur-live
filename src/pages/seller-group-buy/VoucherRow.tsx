@@ -66,7 +66,7 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
   //   연락처가 등록된 매장은 수정 화면에 닿을 방법이 없었다(라이브의 유일한 실제 매장이 그 경우였다).
   // 🏨 2026-11-03 숙소 통일 A: 숙소는 객실·요금·달력이 따로 있어 일반 수정 화면으로는 못 고친다 — 숙소 편집으로.
   const isStay = v.category === 'stay_voucher'
-  const goEdit = () => navigate(isStay ? `/seller/stays/${v.id}` : `/seller/products/${v.id}/edit`)
+  const goEdit = () => navigate(`/seller/products/${v.id}/edit`) // 🏨 2026-11-03 숙소도 같은 수정 화면(아래 '숙소 관리'에 객실·달력)
 
   // 🗑️ 2026-09-14 (#1430 대표 "이용권 관리 맡아서 해줘" — M4 행으로 이식): 삭제. 서버는 2026-05-15 부터
   //   준비돼 있었는데 버튼이 없어 셀러가 자기 이용권을 내릴 방법이 화면에 없었다. 서버가 소유권(`AND seller_id = ?`)과

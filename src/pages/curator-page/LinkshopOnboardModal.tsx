@@ -139,13 +139,13 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
 
         {step === 1 ? (
           <>
-            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-4 leading-snug">
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5 leading-snug">
               고른 쪽에 맞춰 첫 화면을 준비해 드려요.
             </p>
             <div className="space-y-2">
               <button
                 onClick={() => { setIntent('seller'); setUrShopIntent(curatorId, 'seller'); setStep(2) }}
-                className="w-full flex items-start gap-3 p-4 rounded-2xl border border-line hover:bg-gray-50 dark:hover:bg-white/[0.04] text-left transition"
+                className="w-full flex items-start gap-3 p-5 rounded-2xl border border-line hover:bg-gray-50 dark:hover:bg-white/[0.04] text-left transition"
               >
                 <span className="w-9 h-9 shrink-0 rounded-xl bg-brand text-white flex items-center justify-center"><StoreIcon className="w-[18px] h-[18px]" /></span>
                 <span className="min-w-0">
@@ -155,7 +155,7 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
               </button>
               <button
                 onClick={() => { setIntent('curator'); setUrShopIntent(curatorId, 'curator'); setStep(2) }}
-                className="w-full flex items-start gap-3 p-4 rounded-2xl border border-line hover:bg-gray-50 dark:hover:bg-white/[0.04] text-left transition"
+                className="w-full flex items-start gap-3 p-5 rounded-2xl border border-line hover:bg-gray-50 dark:hover:bg-white/[0.04] text-left transition"
               >
                 <span className="w-9 h-9 shrink-0 rounded-xl bg-gray-100 dark:bg-[#2C2F35] text-gray-700 dark:text-white flex items-center justify-center"><PinIcon className="w-[18px] h-[18px]" /></span>
                 <span className="min-w-0">
@@ -174,7 +174,7 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
           </>
         ) : (
         <>
-        <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-4 leading-snug">
+        <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5 leading-snug">
           지금 주소가 <span className="font-medium text-gray-700 dark:text-gray-300">@{currentHandle}</span> 예요.
           나만의 이름과 주소로 바꿔보세요.
         </p>

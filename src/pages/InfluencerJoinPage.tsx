@@ -70,7 +70,7 @@ export default function InfluencerJoinPage() {
             <p className="text-[15px] text-gray-500 dark:text-gray-400">{error}</p>
           </div>
         ) : done ? (
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-3">
             <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">
               {done.status === 'active' ? '협업이 시작됐어요' : '신청이 접수됐어요'}
             </h1>
@@ -88,7 +88,7 @@ export default function InfluencerJoinPage() {
             <Link to="/influencer/settlement" className="block text-[15px] font-medium text-brand-text">마이페이지에서 성과 보기</Link>
           </div>
         ) : preview ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="text-center">
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">유어딜 협업 코드 {preview.code}</p>
               <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">{preview.seller_name || '매장'}</h1>

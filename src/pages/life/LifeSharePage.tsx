@@ -98,7 +98,7 @@ export default function LifeSharePage() {
       <div className="min-h-[100dvh] bg-surface px-4 py-20 text-center text-ink">
         <SEO title="요청을 찾을 수 없어요 - 유어딜" description="생활 서비스 견적 요청" url={`/life/q/${token}`} noindex />
         <p className="text-[15px]">요청을 찾을 수 없어요.</p>
-        <Link to="/life" className="mt-4 inline-block text-[15px] font-medium text-brand-text">생활 서비스 보기</Link>
+        <Link to="/life" className="mt-5 inline-block text-[15px] font-medium text-brand-text">생활 서비스 보기</Link>
       </div>
     )
   }
@@ -125,10 +125,10 @@ export default function LifeSharePage() {
           </span>
           <span className="rounded-full bg-warm px-3 py-1 text-gray-500 dark:text-gray-400">{ageLabel(v.createdAt)}</span>
         </div>
-        <h1 className="mt-4 text-[24px] font-bold leading-snug tracking-tight">{v.title}</h1>
+        <h1 className="mt-5 text-[24px] font-bold leading-snug tracking-tight">{v.title}</h1>
         <p className="mt-2 text-[15px] text-gray-500 dark:text-gray-400">{v.region}{date ? ` · 희망 ${date}` : ''}</p>
 
-        <section className="mt-6 rounded-2xl bg-warm p-5">
+        <section className="mt-8 rounded-2xl bg-warm p-5">
           <div className="flex items-baseline justify-between">
             <p className="text-[16px]">남은 견적 자리</p>
             <p className="text-[16px] font-bold tabular-nums text-brand-text">{v.seatsLeft} / {v.maxQuotes}</p>
@@ -158,7 +158,7 @@ export default function LifeSharePage() {
             </div>
           ))}
         </dl>
-        <p className="mt-4 rounded-2xl bg-warm px-4 py-3 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
+        <p className="mt-5 rounded-2xl bg-warm px-4 py-3 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
           {v.photoCount > 0 ? `현장 사진 ${v.photoCount}장${v.hasMemo ? '과 메모' : ''}는 가입한 업체에게 보여요. ` : v.hasMemo ? '메모는 가입한 업체에게 보여요. ' : ''}
           연락처는 손님이 고른 업체에만 공개돼요.
         </p>

@@ -59,7 +59,7 @@ export default function StoreOwnerDashboardPage() {
 
   return (
     <SellerLayout title="🏪 매장 종합">
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
           icon={<StoreIcon className="h-5 w-5" />}
           title="🏪 매장 종합 매출"

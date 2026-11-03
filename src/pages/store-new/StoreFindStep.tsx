@@ -55,18 +55,18 @@ export default function StoreFindStep({ onPick, hasAgency }: { onPick: (p: Regis
       <div className="ur-step-fwd">
         <h1 className="text-[20px] font-semibold tracking-[-0.02em] leading-snug text-gray-900 dark:text-white">가게 이름을 직접 적어 주세요</h1>
         <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">지도에 없는 가게는 핀이 바로 뜨지 않아요. 카카오맵에 등록되면 다시 고를 수 있어요.</p>
-        <label className="mt-6 block">
+        <label className="mt-8 block">
           <span className="block text-[13px] text-ink-soft mb-2">가게 이름</span>
           <input value={manualName} onChange={(e) => setManualName(e.target.value)} autoFocus maxLength={60}
             className="w-full h-[52px] px-4 rounded-xl border-[1.5px] border-line bg-transparent text-[16px] text-gray-900 dark:text-white placeholder:text-ink-faint focus:border-brand focus:outline-none" />
         </label>
-        <label className="mt-4 block">
+        <label className="mt-5 block">
           <span className="block text-[13px] text-ink-soft mb-2">주소 (선택)</span>
           <input value={manualAddr} onChange={(e) => setManualAddr(e.target.value)} maxLength={120}
             className="w-full h-[52px] px-4 rounded-xl border-[1.5px] border-line bg-transparent text-[16px] text-gray-900 dark:text-white placeholder:text-ink-faint focus:border-brand focus:outline-none" />
         </label>
         <button type="button" disabled={!ok} onClick={() => onPick({ name: manualName.trim(), address: manualAddr.trim() })}
-          className="ur-btn ur-btn-lg ur-btn-primary w-full mt-6 disabled:opacity-40">이 가게로 진행</button>
+          className="ur-btn ur-btn-lg ur-btn-primary w-full mt-8 disabled:opacity-40">이 가게로 진행</button>
         <button type="button" onClick={() => setManual(false)} className="w-full h-11 mt-1 text-[15px] text-ink-soft">검색으로 찾기</button>
       </div>
     )
@@ -89,7 +89,7 @@ export default function StoreFindStep({ onPick, hasAgency }: { onPick: (p: Regis
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain mt-2 -mx-1 px-1" data-testid="store-find-results">
         {results === null ? (
           <div className="ur-rise">
-            <p className="mt-6 text-[15px] font-medium text-gray-900 dark:text-white">등록하면 이렇게 팔아요</p>
+            <p className="mt-8 text-[15px] font-medium text-gray-900 dark:text-white">등록하면 이렇게 팔아요</p>
             <ul className="mt-2">
               {SELL_STEPS.map((s, i) => (
                 <li key={s.title} className={`py-3 text-[15px] text-gray-900 dark:text-white ${i < SELL_STEPS.length - 1 ? 'border-b border-rule' : ''}`}>
@@ -99,9 +99,9 @@ export default function StoreFindStep({ onPick, hasAgency }: { onPick: (p: Regis
             </ul>
           </div>
         ) : loading && results.length === 0 ? (
-          <p className="mt-4 text-[13px] text-ink-soft">찾는 중…</p>
+          <p className="mt-5 text-[13px] text-ink-soft">찾는 중…</p>
         ) : results.length === 0 ? (
-          <p className="mt-4 text-[15px] text-ink-soft">'{query.trim()}' 로 찾은 가게가 없어요. 이름을 줄이거나 동네를 함께 적어 보세요.</p>
+          <p className="mt-5 text-[15px] text-ink-soft">'{query.trim()}' 로 찾은 가게가 없어요. 이름을 줄이거나 동네를 함께 적어 보세요.</p>
         ) : (
           <>
             <p className="mt-3 text-[13px] text-ink-soft">{results.length}곳 찾았어요 · 내 가게를 눌러 주세요</p>

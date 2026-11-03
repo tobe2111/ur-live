@@ -23,5 +23,6 @@ describe('① 재생 버튼 하나', () => {
 
 describe('② 불투명 흰 판', () => {
   it('구매 바', () => { expect(V).toContain('rounded-2xl bg-white p-2 shadow-2xl') })
-  it('인기 이용권 카드', () => { expect(N).toMatch(/ur-np-in flex items-center gap-3 rounded-2xl bg-white p-3 shadow-2xl/) })
+  // 2026-11-03 안 C — 한 장 카드가 가로로 흐르는 작은 카드들이 됐다. 카드마다 불투명 흰 바탕은 그대로.
+  it('근처 이용권 카드', () => { expect(N).toMatch(/snap-start shrink-0 w-\[156px\] flex items-center gap-2 rounded-2xl bg-white p-2/) })
 })

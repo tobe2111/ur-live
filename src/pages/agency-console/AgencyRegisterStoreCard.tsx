@@ -66,7 +66,7 @@ export function AgencyRegisterStoreCard({ onRegistered }: { onRegistered: () => 
       </div>
 
       {done && (
-        <div className="mt-4 rounded-xl bg-brand-tint p-4">
+        <div className="mt-5 rounded-xl bg-brand-tint p-4">
           <p className="text-[15px] font-medium text-gray-900 dark:text-white">매장(#{done.sellerId})이 접수됐어요</p>
           <p className="mt-1 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">유어딜이 확인한 뒤 승인돼요. 지금부터 [운영하기]로 상품을 준비할 수 있어요.</p>
           {done.claimCode && (
@@ -85,7 +85,7 @@ export function AgencyRegisterStoreCard({ onRegistered }: { onRegistered: () => 
       )}
 
       {open && !done && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-5 space-y-3">
           <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-200">매장명
             <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} placeholder="예: 유어딜 김밥 성수점" className={FIELD_CLS} />
           </label>

@@ -54,7 +54,7 @@ export default function PartnerBenefits() {
               className={`relative pl-6 lg:pl-10 ${i ? 'mt-12 lg:mt-24' : ''}`}>
               <span aria-hidden className="absolute left-0 top-2 bottom-1 w-[3px] rounded-full bg-brand" />
               <p className="text-[20px] lg:text-[34px] font-semibold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>
-              <p className="mt-4 lg:mt-5 text-[15px] lg:text-[16px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[34em]">{d}</p>
+              <p className="mt-5 lg:mt-5 text-[15px] lg:text-[16px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[34em]">{d}</p>
             </Reveal>
           ))}
         </div>

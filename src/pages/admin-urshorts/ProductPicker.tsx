@@ -34,9 +34,11 @@ interface Hit {
 }
 
 export default function ProductPicker({
-  value, label, onPick,
+  value, label, onPick, suggest,
 }: {
   value: number | null
+  /** 🔎 2026-11-03 대표 확정(쇼츠 개선 ②) — 열었을 때 검색칸에 미리 넣어 둘 말(영상 제목의 앞부분). 비어 있으면 빈칸. */
+  suggest?: string | null
   /** 이미 연결돼 있으면 그 이름(매장명 우선) — 버튼에 그대로 보여 준다. */
   label?: string | null
   onPick: (productId: number | null) => void
@@ -80,7 +82,7 @@ export default function ProductPicker({
     <div ref={boxRef} className="relative w-[210px] shrink-0">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { setOpen((v) => !v); if (!open && !q && !value && suggest) setQ(suggest) }}
         className={`flex w-full items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-left text-[12px] ${
           value
             ? 'border-gray-200 bg-white text-gray-900'

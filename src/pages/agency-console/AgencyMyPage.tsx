@@ -53,7 +53,7 @@ export default function AgencyMyPage() {
           <AgencyInviteButton className="ml-auto" />
         </header>
 
-        <div className="mt-6">
+        <div className="mt-8">
           <AgencySection headless toss onSessionEnd={onSessionEnd} />
         </div>
 

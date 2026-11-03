@@ -11,7 +11,7 @@ export default function MainTabs({ mainTab, setMainTab, setCategory, setSortBy }
 }) {
   const { t } = useTranslation()
   return (
-      <div className="ur-content-wide px-4 lg:px-8 mt-4">
+      <div className="ur-content-wide px-5 lg:px-8 mt-5">
         <div className="flex border-b border-line">
           <button
             onClick={() => { setMainTab('seller'); setCategory('all'); setSortBy('popular') }}

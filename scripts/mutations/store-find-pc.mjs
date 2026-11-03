@@ -13,7 +13,7 @@ export default [
   {
     name: '🙋 PC 2단이 다시 한 칸으로 무너진다',
     file: PAGE,
-    find: `        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">`,
+    find: `        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-12">`,
     replace: `        <div className="lg:block">`,
     test: T,
     why:
@@ -23,8 +23,8 @@ export default [
   {
     name: '🙋 두 형제 문의 폭 토큰이 갈린다 (store/new ↔ store/find)',
     file: SIBLING,
-    find: `lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16`,
-    replace: `lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-16`,
+    find: `lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-12`,
+    replace: `lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-12`,
     test: T,
     why:
       '매장 등록 문과 소유권 신청 문이 나란히 놓이면 같은 제품으로 읽혀야 한다. 한쪽만 바꾸면 ' +
@@ -33,7 +33,7 @@ export default [
   {
     name: '🙋 설명 블록이 폰까지 펴진다 (입력 칸이 첫 화면에서 사라진다)',
     file: PAGE,
-    find: `            <ol className="hidden lg:flex mt-8 flex-col gap-4 lg:max-w-[460px]">`,
+    find: `            <ol className="hidden lg:flex mt-8 flex-col gap-3 lg:max-w-[460px]">`,
     replace: `            <ol className="flex mt-8 flex-col gap-3.5 lg:max-w-[460px]">`,
     test: T,
     why:

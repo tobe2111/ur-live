@@ -193,7 +193,7 @@ export default function RefundSheet({ onClose, onDone }: {
             충전하고 쓰지 않은 딜이에요. 1딜은 1원이고, 수수료나 세금 없이 그대로 돌려드려요.
           </p>
 
-          <div className="mt-4 pt-4 border-t border-rule space-y-3">
+          <div className="mt-5 pt-4 border-t border-rule space-y-3">
             <label className="block">
               <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">금액</span>
               <input

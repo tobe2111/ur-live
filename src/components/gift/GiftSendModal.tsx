@@ -108,7 +108,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-3">
           {/* 상품 미리보기 */}
           <div className="flex gap-3 p-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl">
             {productThumbnail ? (

@@ -81,12 +81,12 @@ export default function VoucherGiftReceivePage() {
         <div className="flex justify-center">
           <Udal mood={dead ? 'lost' : 'yay'} size={112} />
         </div>
-        <h1 className="mt-4 text-center text-[20px] font-semibold text-gray-900 dark:text-white">
+        <h1 className="mt-5 text-center text-[20px] font-semibold text-gray-900 dark:text-white">
           {dead ? dead : `${gift?.sender_name || '친구'}님이 이용권을 선물했어요`}
         </h1>
 
         {gift && (
-          <div className="ur-gift-up mt-6 rounded-2xl p-4 flex gap-3">
+          <div className="ur-gift-up mt-8 rounded-2xl p-5 flex gap-3">
             <div className="w-[72px] h-[72px] shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
               {gift.product_image && (
                 <img src={cfImage(gift.product_image, { width: 200, quality: 82, format: 'auto' }) || gift.product_image} alt=""
@@ -102,7 +102,7 @@ export default function VoucherGiftReceivePage() {
         )}
 
         {gift?.message && !dead && (
-          <p className="ur-gift-msg mt-4 rounded-2xl bg-surface px-4 py-3 text-[15px] text-gray-900 dark:text-white whitespace-pre-wrap">“{gift.message}”</p>
+          <p className="ur-gift-msg mt-5 rounded-2xl bg-surface px-4 py-3 text-[15px] text-gray-900 dark:text-white whitespace-pre-wrap">“{gift.message}”</p>
         )}
 
         {dead ? (

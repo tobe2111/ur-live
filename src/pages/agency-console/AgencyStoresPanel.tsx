@@ -190,7 +190,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
   )
 
   return (
-    <div className={stacked ? 'flex flex-col gap-8' : 'mt-8 flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-6'}>
+    <div className={stacked ? 'flex flex-col gap-8' : 'mt-8 flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-5'}>
       {/* ── 왼쪽(PC) / 아래(폰) ─────────────────────────────── */}
       <div className={stacked ? 'order-2' : 'order-2 lg:order-1 lg:w-[300px] lg:shrink-0'}>
         <nav aria-label="맡은 매장" className={stacked ? 'hidden' : 'hidden lg:block mb-8'}>
@@ -276,7 +276,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
           {error ? (
             <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift">
               <p className="text-[15px] text-gray-700 dark:text-gray-200">{error}</p>
-              <button type="button" onClick={load} className="mt-4 h-10 rounded-xl bg-brand px-4 text-[15px] font-medium text-white">다시 시도</button>
+              <button type="button" onClick={load} className="mt-5 h-10 rounded-xl bg-brand px-4 text-[15px] font-medium text-white">다시 시도</button>
             </div>
           ) : rows === null ? (
             <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift"><p className="text-[13px] text-gray-500 dark:text-gray-400">불러오는 중…</p></div>
@@ -298,7 +298,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
                   : '관리자가 매장을 맡거나 배정하면 여기에 떠요.'}
               </p>
               {pending.length > 0 && (
-                <button type="button" onClick={() => setSheet('requests')} className="mt-4 h-10 rounded-xl bg-brand px-4 text-[15px] font-medium text-white">
+                <button type="button" onClick={() => setSheet('requests')} className="mt-5 h-10 rounded-xl bg-brand px-4 text-[15px] font-medium text-white">
                   맡김 요청 {pending.length}건 보기
                 </button>
               )}

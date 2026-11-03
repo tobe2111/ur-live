@@ -55,12 +55,12 @@ export default function PartnershipInquiryPage() {
         <SEO title={CONSUMER_SURFACE_SEO['/partnership'].title} description={CONSUMER_SURFACE_SEO['/partnership'].description} url="/partnership" />
         <div className="text-center max-w-sm">
           <OkIcon className="w-14 h-14 mx-auto text-emerald-500" />
-          <h1 className="mt-4 text-[16px] font-semibold text-gray-900 dark:text-white">접수됐어요!</h1>
+          <h1 className="mt-5 text-[16px] font-semibold text-gray-900 dark:text-white">접수됐어요!</h1>
           <p className="mt-2 text-[15px] text-gray-600 dark:text-gray-300 leading-relaxed">
             담당자가 확인 후 남겨주신 연락처/이메일로<br />영업일 기준 2일 내 회신드릴게요.
           </p>
           <button onClick={() => navigate('/')}
-            className="mt-6 px-6 h-12 rounded-xl bg-brand text-white text-[15px] font-bold">
+            className="mt-8 px-6 h-12 rounded-xl bg-brand text-white text-[15px] font-bold">
             홈으로
           </button>
         </div>
@@ -72,7 +72,7 @@ export default function PartnershipInquiryPage() {
     <div className="min-h-screen bg-white dark:bg-[#11141C] pb-24">
       <SEO title={CONSUMER_SURFACE_SEO['/partnership'].title} description={CONSUMER_SURFACE_SEO['/partnership'].description} url="/partnership" />
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-narrow flex items-center px-4 py-3">
+        <div className="ur-content-narrow flex items-center px-5 py-3">
           <button onClick={goBack} aria-label="뒤로"
             className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06]">
             <ChevronLeft className="w-5 h-5 text-gray-900 dark:text-white" />
@@ -81,7 +81,7 @@ export default function PartnershipInquiryPage() {
         </div>
       </div>
 
-      <div className="ur-content-narrow px-4 pt-6">
+      <div className="ur-content-narrow px-5 pt-6">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
             <Handshake className="w-6 h-6 text-gray-900 dark:text-white" />

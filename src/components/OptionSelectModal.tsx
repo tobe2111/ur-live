@@ -145,7 +145,7 @@ export default function OptionSelectModal({
               <p className="text-[15px] text-gray-600 dark:text-gray-300">{error}</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-5">
               {Object.entries(optionsByType).map(([type, optionsForType]) => (
                 <div key={type}>
                   <h4 className="text-[12px] font-medium text-gray-900 dark:text-white mb-3">

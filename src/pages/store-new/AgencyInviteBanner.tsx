@@ -5,7 +5,7 @@
  */
 export default function AgencyInviteBanner({ name }: { name: string }) {
   return (
-    <div className="mb-4 flex items-center gap-3 rounded-xl bg-brand-tint px-4 py-3" data-testid="store-claim-agency-invite">
+    <div className="mb-5 flex items-center gap-3 rounded-xl bg-brand-tint px-4 py-3" data-testid="store-claim-agency-invite">
       <span className="w-9 h-9 shrink-0 rounded-full bg-brand text-white flex items-center justify-center text-[15px] font-bold" aria-hidden="true">
         {name.slice(0, 1)}
       </span>

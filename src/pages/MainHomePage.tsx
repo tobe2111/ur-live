@@ -59,7 +59,7 @@ export default function MainHomePage() {
       <NewOpeningsStrip />
 
       {/* ═══ 📱 교환권(기프티콘) — 홈에서 강등: 딜 소진 옵션 entry → /vouchers ═══ */}
-      <div className="ur-content-wide px-4 lg:px-8 mt-5">
+      <div className="ur-content-wide px-5 lg:px-8 mt-5">
         <button
           onClick={() => navigate('/vouchers')}
           className="w-full flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-4 active:scale-[0.99] transition-transform"

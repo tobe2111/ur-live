@@ -56,7 +56,7 @@ export default function ProductOptionForm({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-start justify-between">
         <div>
           <h3 className="text-[15px] font-bold text-gray-900">

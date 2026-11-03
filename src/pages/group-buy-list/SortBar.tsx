@@ -15,7 +15,7 @@ export default function SortBar({ mainTab, currentCount, sortBy, setSortBy, show
 }) {
   const { t } = useTranslation()
   return (
-      <div className={`ur-content-wide px-4 lg:px-8 ${mainTab === 'seller' ? 'mt-3' : 'mt-4'} flex items-center justify-between`}>
+      <div className={`ur-content-wide px-5 lg:px-8 ${mainTab === 'seller' ? 'mt-3' : 'mt-4'} flex items-center justify-between`}>
         <span className="text-[12px] text-gray-500 dark:text-gray-400">
           {t('groupBuy.totalCount', { defaultValue: '총 {{count}}개', count: currentCount })}
         </span>

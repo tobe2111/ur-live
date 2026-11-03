@@ -163,7 +163,7 @@ export default function ReferralSection({
           <div className="h-14 rounded-lg bg-gray-50 dark:bg-[#1D1F29] animate-pulse" />
         </div>
       ) : groups.length > 0 && (
-        <div className="mt-4">
+        <div className="mt-5">
           <p className="text-[12px] font-medium text-gray-900 dark:text-white mb-2">진행 중인 공동구매</p>
           <div className="space-y-2">
             {groups.map((g) => {

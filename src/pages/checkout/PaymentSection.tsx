@@ -76,7 +76,7 @@ export default function PaymentSection({
           토스 결제위젯 자체가 카드/이체/카카오페이/네이버페이/토스페이 inline 선택 UI 제공.
           custom tab + Toss widget = 중복 → 위젯만 표시. */}
       {dealOnly && (
-        <div className="rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/10 p-3 mb-4">
+        <div className="rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/10 p-3 mb-5">
           <p className="text-[13px] font-medium text-blue-700 dark:text-blue-300">💎 딜 결제 전용</p>
           <p className="text-[12px] text-blue-600 dark:text-blue-400 mt-1">교환권은 딜 포인트로만 구매할 수 있습니다. 휴대폰 MMS 로 즉시 발송됩니다.</p>
         </div>

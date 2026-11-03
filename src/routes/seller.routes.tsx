@@ -5,7 +5,7 @@
 // ⚡ 2026-10-18 공개 가게 경로(`/s`·`/profile`)와 그 부팅 로더는 `seller-public.routes.tsx` 로 옮겼다 —
 //   이 표는 이제 셀러 경로에 들어갈 때만 받는다(App.tsx 의 lazy). 손님 첫 방문에서 raw 28KB 가 빠진다.
 import { lazy, Children, cloneElement, isValidElement, type ReactElement } from 'react'
-import { Route, Routes, Navigate, useLocation } from 'react-router-dom'
+import { Route, Routes, Navigate, useLocation, useParams } from 'react-router-dom'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { ProtectedRoute } from '@/components/auth/RouteGuards'
 import { isAgencyWorker, sellerEntryRedirect } from '@/lib/seller-deep-link'
@@ -104,7 +104,6 @@ const SellerRealtimeDashboardPage = lazy(() => import('@/pages/SellerRealtimeDas
 const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNewPage'))
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 셀러 페이지 — PR 2/6.
 const SellerStaysPage = lazy(() => import('@/pages/SellerStaysPage'))
-const SellerStayDetailPage = lazy(() => import('@/pages/SellerStayDetailPage'))
 const SellerStaysBookingsPage = lazy(() => import('@/pages/SellerStaysBookingsPage'))
 // 🛡️ 2026-05-19: 발송된 교환권 (KT Alpha) 이력.
 const SellerVoucherOrdersPage = lazy(() => import('@/pages/SellerVoucherOrdersPage'))
@@ -117,6 +116,9 @@ const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
 const SellerPromoSpendPage = lazy(() => import('@/pages/SellerPromoSpendPage'))
 const SellerInfluencerDealsPage = lazy(() => import('@/pages/SellerInfluencerDealsPage'))
 const SellerExperienceCampaignsPage = lazy(() => import('@/pages/SellerExperienceCampaignsPage'))
+
+/** 🏨 옛 숙소 관리 주소 → 이용권 수정(같은 상품 id). */
+function StayEditRedirect() { const { id } = useParams<{ id: string }>(); return <Navigate to={`/seller/products/${id}/edit`} replace /> }
 
 export function SellerRoutes() {
   return (
@@ -328,11 +330,8 @@ export function SellerRoutes() {
       } />
       {/* 🏨 2026-11-03 숙소·예약 통일 ①: 숙소 등록은 이용권 등록 위저드 하나로(매장 자동·임시저장·객실까지). 옛 주소는 그리로. */}
       <Route path="/seller/stays/new" element={<Navigate to="/seller/meal-voucher/new?category=stay_voucher" replace />} />
-      <Route path="/seller/stays/:id" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerStayDetailPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
+      {/* 🏨 2026-11-03 숙소 수정은 이용권 수정 화면 하나로(객실·달력은 그 아래 '숙소 관리') — 옛 주소는 그리로. */}
+      <Route path="/seller/stays/:id" element={<StayEditRedirect />} />
       <Route path="/seller/bundles" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerBundlesPage /></ErrorBoundary>

@@ -21,9 +21,12 @@ export interface FeedPass {
   deal_only?: number | null
   restaurant_address?: string | null
   restaurant_name?: string | null
+  price?: number | null
+  original_price?: number | null
 }
 
-export interface NearbyPick { id: number; image: string; name: string; to: string }
+/** 🎬 2026-11-03 안 C — 가로로 넘기는 작은 카드라 가격까지 싣는다(모르면 null — 지어내지 않는다). */
+export interface NearbyPick { id: number; image: string; name: string; to: string; price: number | null; originalPrice: number | null }
 
 export interface NearbyPicks {
   label: string
@@ -32,7 +35,8 @@ export interface NearbyPicks {
   items: NearbyPick[]
 }
 
-export const NEARBY_PICK_COUNT = 3
+/** 🎬 2026-11-03 대표 확정 안 C(가로로 넘기기) — 3 → 6. 한 화면에 두 장 반이 보이고 나머지는 옆으로 민다. */
+export const NEARBY_PICK_COUNT = 6
 
 /** 쇼츠의 도시 키(`'충남세종'` 같은 묶음 키 포함) → 행정 시/도. 모르면 null. */
 export function sidoFromShortsRegion(si: string | null | undefined): string | null {
@@ -49,12 +53,14 @@ export function pickNearbyPasses(feed: FeedPass[], regionSi: string | null | und
     image: String(p.image_url),
     name: p.restaurant_name || p.name || '',
     to: canonicalDetailPath(p) ?? `/pass/${p.id}`,
+    price: Number.isFinite(Number(p.price)) && Number(p.price) > 0 ? Number(p.price) : null,
+    originalPrice: Number.isFinite(Number(p.original_price)) && Number(p.original_price) > 0 ? Number(p.original_price) : null,
   })
   if (sido) {
     const local = usable.filter((p) => addressInRegion(p.restaurant_address, { sido }))
     if (local.length > 0) {
       return {
-        label: `${sido} 인기 이용권`,
+        label: `${sido} 근처 이용권`,
         more: regionPath({ sido }),
         items: local.slice(0, NEARBY_PICK_COUNT).map(toPick),
       }
