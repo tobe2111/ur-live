@@ -35,6 +35,19 @@ function sanitizeInternalPath(raw: string | undefined | null): string | null {
 }
 
 /**
+ * 🩸 2026-11-03 — 첫 내부 테스트 앱이 켜자마자 1초 만에 꺼졌다.
+ * Firebase 설정 파일 없이 빌드한 앱에서 `PushNotifications.register()` 를 부르면 **네이티브가 죽는다**
+ * (FirebaseApp 미초기화 — 자바 쪽이라 JS try/catch 로 못 잡는다). 앱은 라이브 웹을 띄우므로 웹 코드는
+ * 그 앱 빌드에 Firebase 가 있는지 모른다 → `capacitor.config.ts` 가 **빌드할 때** 설정 파일이 있으면
+ * User-Agent 에 이 표식을 붙이고, 여기서는 표식이 있을 때만 푸시를 켠다.
+ * ⚠️ 표식 이름은 capacitor.config.ts 의 NATIVE_PUSH_UA_MARK 와 같아야 한다(테스트가 대조).
+ */
+export const NATIVE_PUSH_UA_MARK = 'UrDealPush'
+export function isNativePushReady(ua: string = typeof navigator === 'undefined' ? '' : navigator.userAgent): boolean {
+  return ua.includes(NATIVE_PUSH_UA_MARK)
+}
+
+/**
  * 앱 시작 시 한 번 호출
  */
 export async function initNativeFeatures() {
@@ -57,8 +70,8 @@ export async function initNativeFeatures() {
     }
   } catch {}
 
-  // 3. 푸시 알림
-  try {
+  // 3. 푸시 알림 — 이 앱 빌드에 Firebase 설정이 들어 있을 때만(아래 isNativePushReady)
+  if (isNativePushReady()) try {
     const { PushNotifications } = await import('@capacitor/push-notifications')
 
     const permission = await PushNotifications.requestPermissions()
