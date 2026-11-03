@@ -10,24 +10,14 @@
  *   → `influencer_attributions` + `influencer_balances` + 원장(`applyGroupBuyReferral`). 환불 땐 비례 회수.
  * 이 파일은 숙소가 **그 함수를 그대로** 부르게 하는 이음매다(규칙을 다시 쓰지 않는다).
  *
- * ## 스위치 — 기본 꺼짐
- * `platform_settings.stay_referral_unify_enabled === 'true'` 일 때만 새 길. 꺼져 있으면 종전 그대로(돈 흐름 0 변화).
- * **켜는 것은 staging 실결제 4건 뒤 대표가 한다**(소개 링크 결제 → 적립 · 손님 취소 → 회수 · 체크인 날 부분 환불 → 비례 회수 ·
- *
- * 어드민 환불 → 회수). 결제 확정 시점의 스위치 값이 그 주문의 장부를 정한다. 회수는 두 장부를 **다** 되돌린다
- * (스위치를 껐다 켜도 어느 장부에 쌓였든 환불이 새지 않게).
+ * ## 스위치 없음 (2026-11-03 대표 *"그냥 너가 해줘 내가 스위치 키는거 말고, 기존 이용권이랑 형태 통일하면 되잖아 허가해줄게"*)
+ * 처음엔 `stay_referral_unify_enabled`(기본 OFF) 뒤에 두고 staging 실결제 뒤 켜기로 했었다(#2153). 대표가 스위치 없이 바로
+ * 이용권과 같은 길로 가라고 해서 스위치를 걷었다 — 숙소 예약은 언제나 이 길이다. 그때 라이브 숙소 예약 0건 · 옛 소개 할인 켠 곳 0곳
+ * (2026-11-03 실측)이라 옮길 데이터가 없었다. 옛 금액이 남은 예약(그 전 생성분)은 옛 장부(affiliate_earnings)로만 적립된다(이중 적립 0).
  */
 import { applyGroupBuyReferral } from './helpers'
 import { getCommissionRates } from './commission-rates'
 import { reverseAttributionLedgerShares, type AttributionShareToReverse } from '../../../worker/utils/attribution-ledger-reversal'
-
-export const STAY_REFERRAL_UNIFY_KEY = 'stay_referral_unify_enabled'
-
-export async function isStayReferralUnified(DB: D1Database): Promise<boolean> {
-  const r = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(STAY_REFERRAL_UNIFY_KEY)
-    .first<{ value: string | null }>().catch(() => null)
-  return String(r?.value ?? '').trim() === 'true'
-}
 
 /**
  * 결제 확정된 숙소 주문에 소개 적립 — 이용권과 같은 `applyGroupBuyReferral`.
@@ -92,11 +82,11 @@ export async function clawbackStayReferral(DB: D1Database, p: {
 }
 
 /**
- * 예약 생성 때 소개자 판정 — 스위치 ON 이면 `{ on: true, id }`(자기 자신·없는 유저는 id=null), OFF 면 `{ on: false }`.
- * ON 일 때는 옛 객실별 '소개 할인·수수료' 를 쓰지 않는다(이용권처럼 손님 할인 없이 소개자만 기록, 적립은 결제 확정 때).
+ * 예약 생성 때 소개자 판정 — 언제나 `{ on: true, id }`(자기 자신·없는 유저는 id=null).
+ * 옛 객실별 '소개 할인·수수료' 는 쓰지 않는다(이용권처럼 손님 할인 없이 소개자만 기록, 적립은 결제 확정 때).
+ * `on` 은 호출부가 옛 객실 할인 분기를 건너뛰는 표시로 남겨 둔다.
  */
 export async function unifiedStayReferrer(DB: D1Database, raw: unknown, userId: unknown): Promise<{ on: boolean; id: string | null }> {
-  if (!(await isStayReferralUnified(DB))) return { on: false, id: null }
   const id = raw == null ? '' : String(raw).trim()
   if (!id || id === String(userId)) return { on: true, id: null }
   const u = await DB.prepare('SELECT id FROM users WHERE id = ?').bind(id).first<{ id: string }>().catch(() => null)

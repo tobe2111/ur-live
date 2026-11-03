@@ -1,6 +1,8 @@
 /**
  * 📋 홈 이용권 줄 카드 — 안 2 + 거리 오른쪽 위 〔2026-11-03 대표 확정〕
  *
+ * 🔄 같은 날 오후 대표 *"안1"*(시안 https://claude.ai/artifact/CEJKc4RPYp3Yo3QZhn7joP)이 아래 안 2 를 대체했다 —
+ *   순서는 [업체명] → [제목] → [시·구 · 거리]. 이 파일 ①·격자 시험은 그대로, ②는 안 1 로 재조준.
  * 대표: *"부산 연제구 정도까지만 나오고, 업체명이랑 한줄로"* → 시안 6개
  * (https://claude.ai/artifact/B4fR2JaNUV9tfRkZJcpRrh) → *"안2 에 거리는 안 5처럼 오른쪽 상단에"*.
  *
@@ -53,25 +55,26 @@ describe('shortRegion — 시·구까지만', () => {
   })
 })
 
-describe('줄 목록(row) — 안 2', () => {
-  it('맨 위가 제목이고 그 다음 줄이 업체명 · 시·구 한 줄이다', () => {
-    const body = card(true).children[1] as HTMLElement
-    const [titleLine, meta] = Array.from(body.children) as HTMLElement[]
-    expect(titleLine.querySelector('p')?.textContent).toBe('소금빵 5개 세트')
-    expect(meta.textContent).toBe('꾸꾸데쎄르·부산 연제구')
-    expect(body.textContent).not.toContain('중앙천로')
+describe('줄 목록(row) — 대표 안 1 (같은 날 안 2 를 대체)', () => {
+  it('업체명 → 제목 → 시·구 순서이고 도로명은 없다', () => {
+    const t = card(true).textContent || ''
+    expect(t.indexOf('꾸꾸데쎄르')).toBeLessThan(t.indexOf('소금빵 5개 세트'))
+    expect(t.indexOf('소금빵 5개 세트')).toBeLessThan(t.indexOf('부산 연제구'))
+    expect(t).not.toContain('중앙천로')
   })
 
-  it('거리는 제목 줄 오른쪽에 붙는다(주소 줄이 아니라)', () => {
-    const body = card(true, { lat: 35.18, lng: 129.09 }).children[1] as HTMLElement
-    const [titleLine, meta] = Array.from(body.children) as HTMLElement[]
-    expect(titleLine.lastElementChild?.textContent).toMatch(/km$/)
-    expect(meta.textContent).not.toMatch(/km/)
+  it('거리는 지역 뒤에 · 로 붙는다(같은 줄)', () => {
+    const a = card(true, { lat: 35.18, lng: 129.09 })
+    const line = [...a.querySelectorAll('p')].find((p) => (p.textContent || '').includes('부산 연제구'))
+    expect(line?.textContent).toMatch(/^부산 연제구 · \d+(\.\d)?km$/)
   })
 
   it('워커 첫 화면도 같은 순서다(거리 없이)', () => {
+    // 사진 alt 에도 상품명이 있으므로 본문(사진 칸 뒤)만 본다.
     const html = cardHtml(P, true, undefined, true)
-    expect(html.indexOf('소금빵 5개 세트')).toBeLessThan(html.indexOf('꾸꾸데쎄르'))
+    const body = html.slice(html.indexOf('<img'))
+    const text = body.slice(body.indexOf('>') + 1)
+    expect(text.indexOf('꾸꾸데쎄르')).toBeLessThan(text.indexOf('소금빵 5개 세트'))
     expect(html).toContain('부산 연제구')
     expect(html).not.toContain('중앙천로')
   })

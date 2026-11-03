@@ -3,6 +3,7 @@ import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, X } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n-lite'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
 // 🎬 2026-11-03 20차 ③ — 검색창을 누르면 돋보기가 선을 따라 지워지고 그 자리에 '닫기' 화살표가 그려진다(같은 그림이 이어서 바뀐다).
@@ -32,6 +33,7 @@ export default function SearchHeader({
   hints = [],
 }: SearchHeaderProps) {
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const { t } = useTranslation()
   const [inputValue, setInputValue] = useState(query)
   const [isFocused, setIsFocused] = useState(false)
@@ -110,7 +112,7 @@ export default function SearchHeader({
   return (
     <div className="sticky top-0 md:static z-50 bg-white dark:bg-[#11141C]">
       <div className="flex items-center gap-2 px-3 py-2">
-        <button onClick={() => navigate(-1)} className="shrink-0 p-1">
+        <button onClick={goBack} className="shrink-0 p-1">
           <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
         </button>
         <div className="flex-1 relative">

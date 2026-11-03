@@ -14,7 +14,7 @@ import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { publicCache } from '../../../worker/middleware/edge-cache'
 import { releaseStayInventory } from '../../../worker/utils/stay-inventory'
 import { parseSessionCookie } from '../../../worker/utils/session'
-import { stayOrderNumber, kstToday } from './stay-order-number'; import { unifiedStayReferrer, clawbackStayReferral, isStayReferralUnified } from './stay-referral' // 🏨 ③
+import { stayOrderNumber, kstToday } from './stay-order-number'; import { unifiedStayReferrer, clawbackStayReferral } from './stay-referral' // 🏨 ③
 
 type Bindings = { DB: D1Database }
 export const staysPublicRoutes = new Hono<{ Bindings: Bindings }>()
@@ -201,7 +201,7 @@ staysPublicRoutes.get('/stays/:productId', cors(), publicCache(120), async (c) =
 
     return c.json({
       success: true,
-      data: { product, rooms: rooms.results || [], referral_unified: await isStayReferralUnified(c.env.DB) }, // 🏨 ③ 켜져 있어야 상세에 '팔아보기'
+      data: { product, rooms: rooms.results || [] },
     })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[stays-public]')
@@ -451,7 +451,7 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
     // 🛡️ 2026-05-18: 인플루언서 referral 할인 + 커미션 계산.
     let discountAmount = 0
     let commissionAmount = 0
-    let validatedReferrerId: string | null = null; const uni = await unifiedStayReferrer(c.env.DB, body?.referrer_id, userId); if (uni.on) validatedReferrerId = uni.id // 🏨 ③ 스위치 ON: 할인·객실 수수료 없이 소개자만(적립은 결제 확정 때 이용권 장부로)
+    let validatedReferrerId: string | null = null; const uni = await unifiedStayReferrer(c.env.DB, body?.referrer_id, userId); if (uni.on) validatedReferrerId = uni.id // 🏨 ③ 이용권과 같은 길: 할인·객실 수수료 없이 소개자만(적립은 결제 확정 때 이용권 장부로)
     if (!uni.on && body?.referrer_id && room.referral_enabled && (room.influencer_discount_pct || 0) > 0) {
       const refId = String(body.referrer_id).trim()
       // self-referral 차단.

@@ -15,10 +15,12 @@ import { ChevronLeft, UserCheck } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { isLoggedInSync, requireLogin } from '@/utils/auth'
 import { useFollowing } from '@/hooks/queries/useFollowing'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 export default function FollowingPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (목록 캐싱).
   const { data: sellers = [], isLoading: loading, isError } = useFollowing()
   const error = isError ? t('following.loadFailed', { defaultValue: '팔로우 목록을 불러올 수 없습니다.' }) : null
@@ -43,7 +45,7 @@ export default function FollowingPage() {
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-line">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             aria-label={t('common.back', { defaultValue: '뒤로' })}
             className="text-gray-900 dark:text-white"
           >

@@ -64,6 +64,6 @@ describe('매장 계산대 — 마이에서 왔으면 마이로', () => {
   })
 
   it('표시가 없으면 종전대로 브라우저 뒤로다 (직접 들어온 사람의 동작 불변)', () => {
-    expect(PAGE).toContain('navigate(-1)')
+    expect(PAGE).toMatch(/goBack\(\)|navigate\(-1\)/) // 2026-11-03: 브라우저 뒤로는 useSafeBack(goBack) — 이력 없으면 홈
   })
 })

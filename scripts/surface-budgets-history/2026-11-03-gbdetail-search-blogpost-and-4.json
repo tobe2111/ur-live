@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-03",
+  "reason": "2026-11-03 대표 승인(같은 건 재적용 3): main 병합 후 남은 초과분 + 뒤로가기 SSOT 전 화면 +0.3~0.4KB(lazy 불가)",
+  "surfaces": [
+    "gbDetail",
+    "search",
+    "blogPost",
+    "guestMy",
+    "guestPass",
+    "guestUShop",
+    "lifePro"
+  ],
+  "changes": [
+    "gbDetail: 209.2 → 211.0 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +1.0",
+    "search: 182.7 → 184.3 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.0",
+    "blogPost: 191.3 → 192.9 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.1, app-shell.js +0.6",
+    "guestMy: 187.1 → 188.7 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.1, app-shell.js +0.6",
+    "guestPass: 184.0 → 185.7 KB (+1.7, 허용 1.5) · 늘어난 것: app-utils.js +1.1, app-shell.js +0.6",
+    "guestUShop: 185.9 → 187.5 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.1, app-shell.js +0.6",
+    "lifePro: 201.3 → 202.9 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.1, app-shell.js +0.6"
+  ]
+}

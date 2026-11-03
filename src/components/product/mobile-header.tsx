@@ -2,6 +2,7 @@ import { ChevronLeft, Share2 } from 'lucide-react'
 import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 interface MobileHeaderProps {
   onShare: () => void;
@@ -17,15 +18,8 @@ export function MobileHeader({ onShare }: MobileHeaderProps) {
   const navigate = useNavigate()
   const { t } = useTranslation()
 
-  const handleBack = () => {
-    const referrer = document.referrer
-    const currentHost = window.location.host
-    if (referrer && referrer.includes(currentHost) && !referrer.includes('/login')) {
-      navigate(-1)
-    } else {
-      navigate('/')
-    }
-  }
+  // ← 판정은 useSafeBack 한 곳(referrer 는 바깥을 거쳐 오면 틀리고, '/' 로 push 하면 폰 뒤로가 이 화면으로 되돌아왔다 — 2026-11-03).
+  const handleBack = useSafeBack('/')
 
   const btnClass = "flex items-center justify-center w-9 h-9 rounded-full bg-white dark:bg-[#11141C]/90 backdrop-blur-md shadow-sm"
 

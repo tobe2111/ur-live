@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from 'react'
 import { PinIcon } from '@/components/icons/urdeal-icons'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import { ArrowLeft, Calendar, CalendarPlus, Phone, X } from 'lucide-react'
 import api from '@/lib/api'
@@ -17,6 +17,7 @@ import { promptDialog } from '@/components/ui/confirm-dialog'
 import SEO from '@/components/SEO'
 import { useMyAppointments } from '@/hooks/queries/useMyData'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { useSafeBack } from '@/hooks/useSafeBack'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 15차 ④ — 방금 취소한 예약은 상태 표시가 위아래로 뒤집히며 '취소'로 바뀌고, 카드가 한 번 흐려졌다 돌아온다(어느 줄이 바뀌었는지 보이게).
 injectMotionCss('ur-m-appt', `@keyframes ur-ap-flip { 0% { opacity: 0; transform: translateY(-60%) scaleY(.4); } 100% { opacity: 1; transform: none; } }@keyframes ur-ap-dim { 40% { opacity: .45; } 100% { opacity: 1; } }.ur-ap-flip { animation: ur-ap-flip .4s cubic-bezier(.3,1.3,.5,1); }.ur-ap-dim { animation: ur-ap-dim .6s ease; }@media (prefers-reduced-motion: reduce){.ur-ap-flip,.ur-ap-dim{animation:none!important}}`)
@@ -68,7 +69,7 @@ interface AvailableSlot {
 }
 
 export default function MyAppointmentsPage() {
-  const navigate = useNavigate()
+  const goBack = useSafeBack('/user/profile')
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → 기존 useMyAppointments 재사용(/api/appointments/my 동일).
@@ -131,7 +132,7 @@ export default function MyAppointmentsPage() {
       <SEO title="내 예약 - 유어딜" description="뷰티/액티비티 예약 관리" url="/my-appointments" noindex />
       <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로가기">
+          <button onClick={goBack} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로가기">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
           </button>
           <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">내 예약</h1>

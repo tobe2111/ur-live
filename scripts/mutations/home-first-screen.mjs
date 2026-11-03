@@ -46,10 +46,9 @@ export default [
   {
     name: '🏠 홈 카드 제목 클래스가 카드와 갈린다 (마운트 때 제목이 튄다)',
     file: UTIL,
-    // 🎯 2026-11-03 재조준 — 홈 줄 목록(row, 안 2)은 제목을 `DEAL_ROW_TEXT.title` 로 그린다.
-    //   옛 앵커(`HOME_FS_CLASS.title`)는 이제 격자 경로만 쓰는데 대조 시험은 row 를 렌더하므로 헛돌았다.
-    find: '<p class="${DEAL_ROW_TEXT.title} ${HOME_FS_CLASS.ink}">',
-    replace: '<p class="${DEAL_ROW_TEXT.title} text-[14px] font-bold ${HOME_FS_CLASS.ink}">',
+    // 🎯 2026-11-03 — 안 2 를 대표 안 1 이 대체해 줄 목록도 다시 `HOME_FS_CLASS.title` 로 그린다(원래 앵커로 복귀).
+    find: "title: 'text-[15px] font-medium line-clamp-2 leading-snug",
+    replace: "title: 'text-[14px] font-bold line-clamp-2 leading-snug",
     test: T,
     why:
       '13 → 14px 은 두 줄 제목에서 높이를 바꾼다. 그 아래 주소·평점·가격이 통째로 밀리고 ' +

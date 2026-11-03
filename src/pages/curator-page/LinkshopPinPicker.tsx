@@ -24,6 +24,7 @@ import SEO from '@/components/SEO'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { invalidateCurator } from '@/features/curator/curator-page-cache'
 import { affiliateRatePct } from '@/shared/affiliate-rate'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 type PickerTab = 'shop' | 'voucher'
 
@@ -58,6 +59,7 @@ const freshVoucher = () => (_voucherCache && Date.now() - _voucherCache.at < PIC
 
 export default function LinkshopPinPicker() {
   const navigate = useNavigate()
+  const goBack = useSafeBack('/u/me')
   const [searchParams] = useSearchParams()
   const initialTab: PickerTab = searchParams.get('tab') === 'voucher' ? 'voucher' : 'shop'
   const [tab, setTab] = useState<PickerTab>(initialTab)
@@ -212,7 +214,7 @@ export default function LinkshopPinPicker() {
             <button
               // 🔙 히스토리가 있으면 온 곳으로. `/u/me` 로 밀면 (a) 뒤로가기가 한 칸 *늘어나고*
               //    (b) `/u/me` 는 `/u/{handle}` 로 튕기는 리다이렉트라 브라우저 뒤로가 다시 이 화면으로 온다.
-              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/u/me'))}
+              onClick={goBack}
               aria-label="뒤로"
               className="shrink-0 w-9 h-9 -ml-1 rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 active:bg-gray-100 dark:active:bg-[#1D1F29]"
             >

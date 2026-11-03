@@ -21,6 +21,7 @@ import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { appendPaySummary } from '@/shared/pay-summary'
 import { useForceLightTheme } from '@/hooks/useForceLightTheme'
+import { useSafeBack } from '@/hooks/useSafeBack'
 
 interface StayOrderBooking {
   id: number
@@ -51,6 +52,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
   // 결제 화면은 라이트 테마 고정 (CheckoutPage 와 동일 — 금액 명료성 최우선).
   useForceLightTheme()
   const navigate = useNavigate()
+  const goBack = useSafeBack('/')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [order, setOrder] = useState<StayOrder | null>(null)
@@ -121,7 +123,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
       <SEO title="숙소 결제 - 유어딜" description="숙소 예약 결제" url="/checkout" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로">
+          <button onClick={goBack} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로">
             <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
           <h1 className="text-[15px] font-bold text-gray-900">숙소 결제</h1>

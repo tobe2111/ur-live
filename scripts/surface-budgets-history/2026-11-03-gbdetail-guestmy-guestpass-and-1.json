@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-03",
+  "reason": "로그아웃 유어샵·마이 모션(대표 '중요해') — 진열대 차례 등장·주소 타이핑·혜택 떠오름·카카오 버튼 빛(+0.3~0.8KB) + main 의 공용 묶음 누적(app-utils·app-shell)",
+  "surfaces": [
+    "gbDetail",
+    "guestMy",
+    "guestPass",
+    "guestUShop"
+  ],
+  "changes": [
+    "gbDetail: 209.2 → 210.8 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.7",
+    "guestMy: 187.1 → 189.3 KB (+2.2, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-shell.js +0.6, GuestMyPage.js +0.5, GuestKakaoButton.js +0.3",
+    "guestPass: 184.0 → 185.7 KB (+1.7, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-shell.js +0.6, GuestKakaoButton.js +0.3",
+    "guestUShop: 185.9 → 188.4 KB (+2.5, 허용 1.5) · 늘어난 것: GuestUrShopPage.js +0.8, app-utils.js +0.8, app-shell.js +0.6, GuestKakaoButton.js +0.3"
+  ]
+}
