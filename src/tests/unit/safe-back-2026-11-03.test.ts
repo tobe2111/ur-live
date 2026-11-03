@@ -18,13 +18,14 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { canGoBackInApp } from '@/hooks/useSafeBack'
+import { decideTabNav } from '@/lib/tab-nav'
 import { stripComments } from '../helpers/source-text'
 
 /** 허용 — 사유가 있는 곳만. 늘리지 말 것. */
 const ALLOW = new Set([
   'src/hooks/useSafeBack.ts', // SSOT 자신
   'src/pages/user-profile/seller-section/ToolPageSheet.tsx', // 시트 안 이력(sheet-history) — 앱 이력 칸이 늘 있다
-  'src/pages/GroupBuyDetailPage.tsx', // 🔒 로딩 잠금 파일 — 대표 승인 뒤 이행(2026-11-03 결재 대기)
+  'src/components/main/BottomNav.tsx', // 탭 → 홈은 아래가 홈일 때만 -1 (tab-nav.ts decideTabNav 가 판정)
   'src/pages/TossWidgetPayPage.tsx', // 🔒 Toss V2 잠금 파일 — 대표 승인 뒤 이행
 ])
 
@@ -55,5 +56,39 @@ describe('뒤로가기 SSOT (useSafeBack)', () => {
     it('라우터 표식이 없으면 false(바깥에서 쌓은 칸)', () => {
       expect(at(null)).toBe(false); expect(at({ modalOpen: true })).toBe(false); expect(at({ idx: '3' })).toBe(false)
     })
+  })
+})
+
+/** 하단 탭 이력 — 대표 승인 ③(2026-11-03): 어느 탭에서든 뒤로 한 번이면 홈, 한 번 더면 앱 밖. */
+describe('④ 하단 탭 이력 (decideTabNav)', () => {
+  const TABS = ['/', '/vouchers', '/my-vouchers', '/u/me', '/user/profile']
+  /** 탭을 차례로 누른 뒤 이력 칸을 돌려준다 — 브라우저 이력을 흉내낸다. */
+  function simulate(start: string, taps: string[]) {
+    const stack: { path: string; urTab: boolean; fromHome: boolean }[] = [{ path: start, urTab: false, fromHome: false }]
+    let i = 0
+    for (const target of taps) {
+      const cur = stack[i]
+      const a = decideTabNav({ target, cur: cur.path, curIsTab: cur.path === '/' || cur.urTab || TABS.includes(cur.path), curFromHome: cur.fromHome, canBack: i > 0 })
+      if (a.kind === 'back') { i -= 1; continue }
+      const entry = { path: target, urTab: true, fromHome: a.fromHome }
+      if (a.kind === 'replace') stack[i] = entry
+      else { stack.splice(i + 1); stack.push(entry); i += 1 }
+    }
+    return stack.slice(0, i + 1).map((e) => e.path)
+  }
+  it('라이브에서 잰 7번 탭 → 뒤로 한 번이면 홈', () => {
+    expect(simulate('/', ['/vouchers', '/my-vouchers', '/vouchers', '/u/me', '/', '/user/profile', '/vouchers'])).toEqual(['/', '/vouchers'])
+  })
+  it('탭 → 홈 은 새 칸을 쌓지 않고 아래 홈으로 돌아간다', () => {
+    expect(simulate('/', ['/vouchers', '/u/me', '/'])).toEqual(['/'])
+  })
+  it('같은 탭을 다시 눌러도 칸이 안 쌓인다', () => {
+    expect(simulate('/', ['/vouchers', '/vouchers', '/vouchers'])).toEqual(['/', '/vouchers'])
+  })
+  it('상세 화면에서 탭으로 가면 그 상세로 돌아올 길이 남는다', () => {
+    expect(simulate('/pass/1', ['/vouchers'])).toEqual(['/pass/1', '/vouchers'])
+  })
+  it('링크로 바로 들어온 탭 화면에서 홈을 누르면 replace(뒤에 앱 밖이 남지 않게)', () => {
+    expect(decideTabNav({ target: '/', cur: '/vouchers', curIsTab: true, curFromHome: false, canBack: false })).toEqual({ kind: 'replace', fromHome: false })
   })
 })
