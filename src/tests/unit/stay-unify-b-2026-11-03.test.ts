@@ -28,6 +28,6 @@ describe('숙소 상세 구역 탭', () => {
 describe('/pass 로 들어온 숙소', () => {
   it('숙소 상세로 보낸다', () => {
     const gb = readFileSync('src/pages/GroupBuyDetailPage.tsx', 'utf-8')
-    expect(gb).toContain("if (detail.category === 'stay_voucher') return <Navigate replace to={`/stays/${detail.id}${window.location.search}`} />")
+    expect(gb).toContain("if (detail.category === 'stay_voucher' && !searchParams.get('nostay')) return <Navigate replace to={`/stays/${detail.id}${window.location.search}`} />") // 🩸 ③ 에서 루프 차단 표시 추가
   })
 })
