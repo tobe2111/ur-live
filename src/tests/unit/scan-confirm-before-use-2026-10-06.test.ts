@@ -42,8 +42,11 @@ describe('✅ 스캔 → 확인 → 사용 처리', () => {
   })
 
   it('③ 확인창이 묻고, 못 쓰는 이용권엔 버튼을 안 낸다', () => {
-    expect(SRC).toMatch(/사용 처리하시겠습니까\?/)
-    expect(SRC).toMatch(/usable && !blocked && \(/)
+    // 2026-11-03 매장 계산대 안 B — 확인창이 `UseConfirmSheet.tsx` 로 나갔다(두 레이아웃이 같이 쓴다).
+    const SHEET = readFileSync('src/components/voucher/UseConfirmSheet.tsx', 'utf8')
+    expect(SHEET).toMatch(/사용 처리하시겠습니까\?/)
+    expect(SHEET).toMatch(/usable && !blocked && \(/)
+    expect(SRC).toContain("import UseConfirmSheet")
   })
 
   /**

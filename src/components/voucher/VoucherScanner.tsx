@@ -32,12 +32,13 @@ import { extractCode } from './scan-code'  // 코드 정규화(대문자·공백
 import { createScanSession, scanPlatform, sendScanReport, type ScanSession } from './scan-telemetry'
 import { primeScanSound, scanSignal } from './scan-feedback'
 import ScanFrame from './ScanFrame'
+import UseConfirmSheet, { type PendingUse } from './UseConfirmSheet'
+import FullScanView from './FullScanView'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-rise', `@keyframes ur-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }.ur-rise { animation: ur-rise .35s cubic-bezier(.16,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-rise{animation:none!important}}`)
 injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
 /** 확인을 기다리는 스캔. `status` 는 `/verify` 가 준 값(unused·used·expired·refunded…), 조회 실패면 없다. */
-type PendingUse = { code: string; loading: boolean; productName?: string; restaurantName?: string; status?: string }
 
 type ScanResult = {
   ok: boolean
@@ -50,7 +51,8 @@ type ScanResult = {
 
 export { extractCode }
 
-export default function VoucherScanner() {
+/** @param full 📷 2026-11-03 안 B — 카메라가 부모 칸을 꽉 채운다(매장 계산대 `/store/scan`). 기본은 종전 모양. */
+export default function VoucherScanner({ full = false }: { full?: boolean } = {}) {
   const { t } = useTranslation()
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -433,11 +435,51 @@ export default function VoucherScanner() {
   }
 
   const latest = results[0]
+  // 🔔 결과 깜빡임 — 아이폰엔 진동이 없고 무음 모드면 소리도 없다. 이것이 늘 되는 신호다(두 레이아웃 공용).
+  const flashLayer = flash && <div key={flash.n} aria-hidden onAnimationEnd={() => setFlash(null)} className={`fixed inset-0 z-[20000] pointer-events-none opacity-0 animate-[ur-scan-flash_700ms_ease-out_forwards] ${flash.ok ? 'bg-tone-ok' : 'bg-tone-bad'}`} />
+  // 화면 어디를 눌러도 소리를 깨운다(두 레이아웃 공용 — 아이폰은 사용자 제스처 뒤에만 소리를 낸다).
+  const wake = { onPointerDown: primeScanSound }
+  const helpBox = helpOpen && !cameraError ? (
+
+        <div className={`${full ? 'ur-glass ur-pop-card px-5 py-4' : 'rounded-xl bg-surface px-3 py-3 shadow-lift'} text-[13px] text-gray-600 dark:text-gray-300`}>{/* 🪟 계산대 안 B 에선 팝업 유리 한 벌 */}
+          <p className="font-bold text-gray-900 dark:text-white text-[15px] mb-1">
+            {t('seller.scan.helpTitle', { defaultValue: 'QR 이 안 읽히나요?' })}
+          </p>
+          <p>{t('seller.scan.helpBody', { defaultValue: '① 손님 화면 밝기를 올려 주세요 ② 10~20cm 까지 가까이 ③ 비스듬히 들어 반사를 피하세요 ④ 그래도 안 되면 위의 사진으로 읽기' })}</p>
+          {/* 🔄 렌즈 전환은 **여기에만** 둔다(2026-10-07 대표 "그런게 필요해?"). 평소엔 자동으로 메인
+              렌즈를 고르므로 늘 떠 있는 버튼은 소음이다 — 7초 동안 한 건도 못 읽은, 즉 자동 선택이
+              틀렸을 수 있는 순간에만 보인다. 렌즈가 하나뿐인 폰엔 안 뜬다. */}
+          {cameraOn && backCams.length > 1 && (
+            <button
+              type="button"
+              onClick={() => { void switchCamera() }}
+              className="mt-2 w-full py-2 rounded-xl bg-brand text-white text-[15px] font-bold"
+            >
+              {t('seller.scan.switchCamera', { defaultValue: '다른 렌즈로 바꿔 보기' })}
+            </button>
+          )}
+        </div>
+      ) : null
+
+  if (full) {
+    return (
+      <div className="absolute inset-0" {...wake}>
+        {flashLayer}
+        <FullScanView
+          videoRef={videoRef} cameraOn={cameraOn} cameraError={cameraError} busy={busy} locked={pending != null}
+          latest={latest} flashKey={flash?.n ?? 0} help={helpBox}
+          photoBusy={photoBusy} onPickPhoto={onPickPhoto}
+          manualCode={manualCode} setManualCode={setManualCode} canSubmit={!!extractCode(manualCode)} onSubmitManual={submitManual}
+        />
+        {pending && <UseConfirmSheet pending={pending} onCancel={closePending} onConfirm={confirmPending} />}
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-4" onPointerDown={primeScanSound}>
+    <div className="space-y-4" {...wake}>
       {/* 🔔 결과 깜빡임 — 아이폰엔 진동이 없고 무음 모드면 소리도 없다. 이것이 늘 되는 신호다. */}
-      {flash && <div key={flash.n} aria-hidden onAnimationEnd={() => setFlash(null)} className={`fixed inset-0 z-[20000] pointer-events-none opacity-0 animate-[ur-scan-flash_700ms_ease-out_forwards] ${flash.ok ? 'bg-tone-ok' : 'bg-tone-bad'}`} />}
+      {flashLayer}
       {/* 카메라 뷰 */}
       <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3]">
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
@@ -458,7 +500,8 @@ export default function VoucherScanner() {
 
       {/* 🖼️ 사진으로 읽기 — 늘 보이는 통로. 카메라가 안 될 때 코드를 받아 치는 것보다 빠르다.
           `capture` 를 붙이지 않는다 — 노트북 스크린샷이나 이미 찍어 둔 사진도 받아야 한다. */}
-      <label className="flex items-center justify-center gap-2 py-2 rounded-xl border border-line text-[15px] font-bold text-gray-900 dark:text-white cursor-pointer active:scale-[0.99] transition-transform">
+      {/* ✂️ 2026-11-03 대표 "심플하고 간결하게" — 테두리 버튼 → 조용한 글자 버튼(주인공은 카메라와 사용 처리). */}
+      <label className="flex items-center justify-center gap-2 py-1 text-[13px] font-medium text-gray-500 dark:text-gray-400 cursor-pointer active:opacity-60">
         {photoBusy
           ? <><Loader2 className="w-4 h-4 animate-spin" />{t('seller.scan.photoReading', { defaultValue: '사진에서 QR 찾는 중…' })}</>
           : <><ImageIcon className="w-4 h-4" />{t('seller.scan.photoPick', { defaultValue: '사진으로 읽기' })}</>}
@@ -466,26 +509,7 @@ export default function VoucherScanner() {
       </label>
 
       {/* 💬 한 건도 못 읽을 때만. 사장님이 **할 수 있는 것**만 적는다(원인 설명은 도움이 안 된다). */}
-      {helpOpen && !cameraError && (
-        <div className="rounded-xl bg-surface px-3 py-3 text-[13px] text-gray-600 dark:text-gray-300 shadow-lift">
-          <p className="font-bold text-gray-900 dark:text-white text-[15px] mb-1">
-            {t('seller.scan.helpTitle', { defaultValue: 'QR 이 안 읽히나요?' })}
-          </p>
-          <p>{t('seller.scan.helpBody', { defaultValue: '① 손님 화면 밝기를 올려 주세요 ② 10~20cm 까지 가까이 ③ 비스듬히 들어 반사를 피하세요 ④ 그래도 안 되면 위의 사진으로 읽기' })}</p>
-          {/* 🔄 렌즈 전환은 **여기에만** 둔다(2026-10-07 대표 "그런게 필요해?"). 평소엔 자동으로 메인
-              렌즈를 고르므로 늘 떠 있는 버튼은 소음이다 — 7초 동안 한 건도 못 읽은, 즉 자동 선택이
-              틀렸을 수 있는 순간에만 보인다. 렌즈가 하나뿐인 폰엔 안 뜬다. */}
-          {cameraOn && backCams.length > 1 && (
-            <button
-              type="button"
-              onClick={() => { void switchCamera() }}
-              className="mt-2 w-full py-2 rounded-xl bg-brand text-white text-[15px] font-bold"
-            >
-              {t('seller.scan.switchCamera', { defaultValue: '다른 렌즈로 바꿔 보기' })}
-            </button>
-          )}
-        </div>
-      )}
+      {helpBox}
 
       {/* 수동 입력 (카메라 불가/QR 손상 대비) */}
       <form onSubmit={submitManual} className="flex gap-2">
@@ -542,56 +566,6 @@ export default function VoucherScanner() {
       )}
 
       {pending && <UseConfirmSheet pending={pending} onCancel={closePending} onConfirm={confirmPending} />}
-    </div>
-  )
-}
-
-/**
- * ✅ 사용 처리 확인창. 사용 가능한 이용권만 [사용 처리] 를 낸다 — 이미 쓴/만료/환불은 이유만 말하고 닫게 한다
- *   (누를 수 없는 버튼을 띄우면 사장님은 눌러 보고서야 안다).
- */
-function UseConfirmSheet({ pending, onCancel, onConfirm }: { pending: PendingUse; onCancel: () => void; onConfirm: () => void }) {
-  const { t } = useTranslation()
-  const st = pending.status
-  const usable = !pending.loading && (st == null || st === 'unused')
-  const blocked = st === 'used'
-    ? t('seller.scan.alreadyUsed', { defaultValue: '이미 사용된 이용권이에요' })
-    : st && st !== 'unused'
-      ? t('seller.scan.notUsable', { defaultValue: '사용할 수 없는 이용권이에요 (만료·환불)' })
-      : null
-  return (
-    <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/50 p-4" role="presentation" onClick={onCancel}>
-      <div role="dialog" aria-modal="true" aria-labelledby="use-confirm-title" onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-3xl bg-surface p-6 shadow-lift">
-        {pending.loading ? (
-          <p className="flex items-center justify-center gap-2 py-6 text-[15px] text-gray-500 dark:text-gray-400">
-            <Loader2 className="h-4 w-4 animate-spin" /> {t('seller.scan.checking', { defaultValue: '이용권 확인 중…' })}
-          </p>
-        ) : (
-          <>
-            <p className="text-[13px] text-gray-500 dark:text-gray-400">{pending.restaurantName || pending.code}</p>
-            <p className="mt-1 text-[16px] font-semibold text-gray-900 dark:text-white">{pending.productName || pending.code}</p>
-            <h2 id="use-confirm-title" className={`mt-4 text-[15px] font-bold ${blocked ? 'text-tone-bad' : 'text-gray-900 dark:text-white'}`}>
-              {blocked ?? t('seller.scan.confirmQ', { defaultValue: '사용 처리하시겠습니까?' })}
-            </h2>
-            {!blocked && (
-              <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('seller.scan.confirmNote', { defaultValue: '사용 처리하면 되돌릴 수 없어요.' })}</p>
-            )}
-            <div className="mt-5 flex gap-2">
-              <button type="button" onClick={onCancel}
-                className="flex-1 rounded-full bg-gray-100 dark:bg-white/10 py-3 text-[15px] font-bold text-gray-700 dark:text-gray-200">
-                {blocked ? t('common.close', { defaultValue: '닫기' }) : t('common.cancel', { defaultValue: '취소' })}
-              </button>
-              {usable && !blocked && (
-                <button type="button" onClick={onConfirm} autoFocus
-                  className="flex-1 rounded-full bg-brand py-3 text-[15px] font-bold text-white">
-                  {t('seller.scan.useBtn', { defaultValue: '사용 처리' })}
-                </button>
-              )}
-            </div>
-          </>
-        )}
-      </div>
     </div>
   )
 }
