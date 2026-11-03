@@ -459,7 +459,7 @@ export default function VoucherScanner() {
       {/* 🖼️ 사진으로 읽기 — 늘 보이는 통로. 카메라가 안 될 때 코드를 받아 치는 것보다 빠르다.
           `capture` 를 붙이지 않는다 — 노트북 스크린샷이나 이미 찍어 둔 사진도 받아야 한다. */}
       {/* ✂️ 2026-11-03 대표 "심플하고 간결하게" — 테두리 버튼 → 조용한 글자 버튼(주인공은 카메라와 사용 처리). */}
-      <label className="flex items-center justify-center gap-1.5 py-1 text-[13px] font-medium text-gray-500 dark:text-gray-400 cursor-pointer active:opacity-60">
+      <label className="flex items-center justify-center gap-2 py-1 text-[13px] font-medium text-gray-500 dark:text-gray-400 cursor-pointer active:opacity-60">
         {photoBusy
           ? <><Loader2 className="w-4 h-4 animate-spin" />{t('seller.scan.photoReading', { defaultValue: '사진에서 QR 찾는 중…' })}</>
           : <><ImageIcon className="w-4 h-4" />{t('seller.scan.photoPick', { defaultValue: '사진으로 읽기' })}</>}
