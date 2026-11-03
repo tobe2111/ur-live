@@ -116,8 +116,10 @@ describe('① 카드 — 워커 HTML 과 진짜 컴포넌트가 같은 클래스
     })
 
     it(`🔴 ${label}: 본문 **줄 순서와 줄마다의 클래스**가 같다 (한 줄이 늘면 그만큼 밀린다)`, () => {
+      // 🎯 2026-11-03 — 안 2 부터 제목이 [제목 · 거리] 줄 **안**에 산다. 바로 아래 자식만 보면 제목 클래스가
+      //   갈려도 통과했다(주입이 잡았다) ⇒ 본문 안 **모든 요소**를 문서 순서대로 대조한다.
       const rows = (a: HTMLAnchorElement) =>
-        [...(a.children[1] as HTMLElement).children].map((c) => tokens(c.className).join(' '))
+        [...(a.children[1] as HTMLElement).querySelectorAll('*')].map((c) => `${c.tagName}:${tokens(c.getAttribute('class') || '').join(' ')}`)
       expect(rows(workerCard(p))).toEqual(rows(reactCard(p as Record<string, unknown>)))
     })
   }
