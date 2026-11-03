@@ -6,8 +6,8 @@ export default [
   {
     name: '🌆 서버 첫 화면이 다시 사진 없는 머리를 그린다',
     file: 'src/worker/utils/home-first-screen.ts',
-    find: '    chromeHtml(regionHeroFromCookieHeader(cookieHeader)) +',
-    replace: '    chromeHtml(null) +',
+    find: '    chromeHtml(regionHeroFromCookieHeader(cookieHeader), homeLocLabelFromCookieHeader(cookieHeader)) +',
+    replace: '    chromeHtml(null, homeLocLabelFromCookieHeader(cookieHeader)) +',
     test: T,
     why: '실사용 p75: 화면 도착 → 사진 요청 출발 1.56초.',
   },
