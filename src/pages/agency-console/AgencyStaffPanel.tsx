@@ -71,7 +71,7 @@ export function AgencyStaffPanel({ staff, canManage, onChanged, bare = false, so
 
   return (
     <section className={bare ? '' : 'mt-8'}>
-      {!bare && <h2 className="text-[17px] font-semibold text-gray-500 dark:text-gray-400">직원</h2>}
+      {!bare && <h2 className="text-[17px] font-bold text-gray-500 dark:text-gray-400">직원</h2>}
       <div className={`${bare ? '' : 'mt-3 '}rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift`}>
         {staff === null ? (
           <p className="p-6 text-[13px] text-gray-500 dark:text-gray-400">불러오는 중…</p>
@@ -81,9 +81,9 @@ export function AgencyStaffPanel({ staff, canManage, onChanged, bare = false, so
               <li key={s.id}>
               <div className="flex min-h-[56px] items-center gap-3 px-6 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-semibold text-gray-900 dark:text-white">
+                  <p className="truncate text-[15px] font-medium text-gray-900 dark:text-white">
                     {s.name || agencyStaffLoginLabel(s.email)}
-                    {s.isMe && <span className="ml-2 text-[12px] font-semibold text-gray-500 dark:text-gray-400">나</span>}
+                    {s.isMe && <span className="ml-2 text-[12px] font-medium text-gray-500 dark:text-gray-400">나</span>}
                   </p>
                   <p className="truncate text-[13px] text-gray-500 dark:text-gray-400">
                     {s.name ? `${agencyStaffLoginLabel(s.email)} · ` : ''}{s.role === 'admin' ? (s.isOwner ? '대표 관리자' : '관리자') : '직원'}
@@ -93,17 +93,17 @@ export function AgencyStaffPanel({ staff, canManage, onChanged, bare = false, so
                 </div>
                 {canManage && s.role === 'staff' && (
                   <button type="button" onClick={() => setEditing(editing === s.id ? null : s.id)} aria-expanded={editing === s.id}
-                    className="h-9 shrink-0 rounded-full px-3 text-[13px] font-semibold text-brand-text hover:bg-[#F8F7FC] dark:hover:bg-[#11141C]">
+                    className="h-9 shrink-0 rounded-full px-3 text-[13px] font-medium text-brand-text hover:bg-[#F8F7FC] dark:hover:bg-[#11141C]">
                     매장 배정
                   </button>
                 )}
                 {canManage && s.status === 'invited' && (
-                  <button type="button" onClick={() => resend(s)} className="h-9 shrink-0 rounded-full px-3 text-[13px] font-semibold text-brand-text hover:bg-[#F8F7FC] dark:hover:bg-[#11141C]">
+                  <button type="button" onClick={() => resend(s)} className="h-9 shrink-0 rounded-full px-3 text-[13px] font-medium text-brand-text hover:bg-[#F8F7FC] dark:hover:bg-[#11141C]">
                     다시 보내기
                   </button>
                 )}
                 {canManage && !s.isMe && !s.isOwner && (
-                  <button type="button" onClick={() => remove(s)} className="h-9 shrink-0 rounded-full px-3 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-[#F8F7FC] dark:hover:bg-[#11141C]">
+                  <button type="button" onClick={() => remove(s)} className="h-9 shrink-0 rounded-full px-3 text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-[#F8F7FC] dark:hover:bg-[#11141C]">
                     내보내기
                   </button>
                 )}
@@ -130,7 +130,7 @@ export function AgencyStaffPanel({ staff, canManage, onChanged, bare = false, so
         </div>
       ) : canManage ? (
         <form onSubmit={invite} className="mt-4 rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift">
-          <p className="text-[15px] font-semibold text-gray-900 dark:text-white">직원 초대</p>
+          <p className="text-[15px] font-medium text-gray-900 dark:text-white">직원 초대</p>
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">초대 메일의 버튼을 누르면 이름과 비밀번호를 정하고 바로 합류해요. 링크는 7일 동안 쓸 수 있어요.</p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy}
@@ -140,7 +140,7 @@ export function AgencyStaffPanel({ staff, canManage, onChanged, bare = false, so
               <option value="staff">직원</option>
               <option value="admin">관리자</option>
             </select>
-            <button type="submit" disabled={busy} className="h-12 shrink-0 rounded-xl bg-brand px-5 text-[15px] font-semibold text-white disabled:opacity-50">
+            <button type="submit" disabled={busy} className="h-12 shrink-0 rounded-xl bg-brand px-5 text-[15px] font-medium text-white disabled:opacity-50">
               {busy ? '보내는 중…' : '초대하기'}
             </button>
           </div>

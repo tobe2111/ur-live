@@ -4,6 +4,9 @@ import { execSync } from 'node:child_process'
 // @ts-expect-error — 순수 .mjs 모듈(타입 선언 없음)
 import { fixWeights, fixSource, sourceViolations, fixWeightNum } from '../../../scripts/codemods/weight-scale.mjs'
 
+/** 마이·에이전시 콘솔 — 파일 이름에 seller/agency 가 있어도 손님 화면 체계다(2026-11-03). */
+const MY_SURFACE = /^src\/pages\/(user-profile|agency-console)\//
+
 /**
  * 🏋️ **글자 굵기 체계 — 400 · 500 · 700 (+ 디스플레이 800)** (2026-10-25 대표 *"굵기, 크기 등의
  *   전반적인 것들이 투박함이 남아있는 것 같아"* → 다른 서비스 화면 넷 비교 → *"체계적으로 하자"*).
@@ -41,7 +44,9 @@ const consumer = execSync(
   "git ls-files 'src/pages/*.tsx' 'src/pages/**/*.tsx' 'src/components/*.tsx' 'src/components/**/*.tsx'",
   { encoding: 'utf8' },
 ).trim().split('\n').filter(Boolean)
-  .filter((f) => !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
+  // 🩸 2026-11-03 — 이름에 seller/agency 가 들어간 **마이 안 부품**(내 가게 판 · 에이전시 구역)이 대시보드로 오인돼 빠져 있었다
+  //   (41개 파일 — 대표 *"마이에서 통일감이 없어"*). 마이와 에이전시 콘솔은 손님 화면 체계다 → 이름과 무관하게 넣는다.
+  .filter((f) => MY_SURFACE.test(f) || !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
 
 describe('① 변환 규칙', () => {
   it('semibold — 17px 이상은 bold, 그 아래는 medium', () => {

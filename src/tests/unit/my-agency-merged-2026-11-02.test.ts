@@ -30,7 +30,7 @@ describe('마이 — 내 가게 + 에이전시 한 구역', () => {
     expect(PANEL, '하나만 겹쳐도 숨긴다').not.toMatch(/active\.some\(\(r\) => ownSellerIds/)
   })
   it('③ 에이전시 이름이 매장 판 위 구역 제목이다 (내 가게가 있을 때만)', () => {
-    expect(PAGE).toMatch(/<AgencyTitleDoor storeCount=\{sellerSeats\.stores\.length\} \/>\s*<SellerSection/)
+    expect(PAGE).toMatch(/<AgencyTitleDoor storeCount=\{sellerSeats\.stores\.length\} \/>\}?\s*<SellerSection/)
     expect(TITLE).toMatch(/if \(!on \|\| storeCount <= 0\) return null/)
     // 🚪 에이전시가 아닌 손님은 그 코드를 안 받는다(문이 lazy) — 첫 화면 무게 예산(dash:my).
     expect(DOORS).toMatch(/if \(!on \|\| storeCount <= 0\) return null/)

@@ -38,7 +38,8 @@ export default [
   {
     name: '🔠 본문 크기 검사가 헛돈다 (경로가 낡아 대상 0)',
     file: TEST,
-    find: "  .filter((f) => !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))",
+    // 🔁 2026-11-03 재조준 — 필터에 마이 부품 포함(`MY_SURFACE`)이 붙었다.
+    find: "  .filter((f) => MY_SURFACE.test(f) || !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))",
     replace: "  .filter(() => false)",
     test: TEST,
     why: '경로 목록이 낡아 파일이 0개가 되면 위 검사들이 영원히 통과한다 — 이 레포가 반복해 당한 "헛도는 가드".',

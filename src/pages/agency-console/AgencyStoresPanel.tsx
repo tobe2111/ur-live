@@ -14,6 +14,8 @@ import AgencyStorePlate from './AgencyStorePlate'
 import AgencySalesSheet from './AgencySalesSheet'
 import { openEmbedCode } from '@/shared/embed-code-link'
 import { AgencyRegisterStoreCard } from './AgencyRegisterStoreCard'
+import { ROW_LABEL_CLS } from '@/pages/user-profile/list-grammar'
+import { MailIcon, StoreIcon, GridIcon, ShopPlusIcon } from '@/components/icons/urdeal-icons'
 
 /**
  * 🏢 에이전시 콘솔 본문 — 대표 확정 **안 A** (2026-10-12 · *"A안으로 해줘. 이건 PC버전도 중요해"*)
@@ -170,7 +172,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
       {/* ── 왼쪽(PC) / 아래(폰) ─────────────────────────────── */}
       <div className={stacked ? 'order-2' : 'order-2 lg:order-1 lg:w-[300px] lg:shrink-0'}>
         <nav aria-label="맡은 매장" className={stacked ? 'hidden' : 'hidden lg:block mb-8'}>
-          <h2 className="text-[17px] font-semibold text-gray-500 dark:text-gray-400">
+          <h2 className="text-[17px] font-bold text-gray-500 dark:text-gray-400">
             맡은 매장{active.length > 0 && ` · ${active.length}곳`}
           </h2>
           <div className="mt-3 flex flex-col gap-1">
@@ -187,9 +189,9 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
                     on ? 'bg-white dark:bg-[#1D1F29] shadow-lift' : 'hover:bg-white/60 dark:hover:bg-white/5'
                   }`}
                 >
-                  <span className={`w-full truncate text-[15px] ${on ? 'font-bold text-gray-900 dark:text-white' : 'font-semibold text-gray-700 dark:text-gray-200'}`}>{r.name}</span>
+                  <span className={`w-full truncate text-[15px] ${on ? 'font-bold text-gray-900 dark:text-white' : 'font-medium text-gray-700 dark:text-gray-200'}`}>{r.name}</span>
                   {hint.text && (
-                    <span className={`text-[12px] ${hint.urgent ? 'font-semibold text-brand-text' : 'text-gray-400'}`}>{hint.text}</span>
+                    <span className={`text-[12px] ${hint.urgent ? 'font-medium text-brand-text' : 'text-gray-400'}`}>{hint.text}</span>
                   )}
                 </button>
               )
@@ -200,24 +202,26 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
 
         {/* 🏠 마이 안에서는 구역 제목('에이전시 · 이름')이 이미 있어 같은 말을 또 하지 않는다. */}
 
-        {!stacked && <h2 className="text-[17px] font-semibold text-gray-500 dark:text-gray-400">에이전시</h2>}
+        {!stacked && <h2 className="text-[17px] font-bold text-gray-500 dark:text-gray-400">에이전시</h2>}
         <div className={stacked ? '' : 'mt-1'}>
           <FlatRow
+            icon={<MailIcon className="h-[18px] w-[18px]" aria-hidden="true" />}
             label="판매 알림"
             hint={notifUnread > 0 ? `새 알림 ${notifUnread}` : notifs && notifs.length > 0 ? '모두 읽음' : '없음'}
             urgent={notifUnread > 0}
             onClick={() => setSheet('notifs')}
           />
           <FlatRow
+            icon={<StoreIcon className="h-[18px] w-[18px]" aria-hidden="true" />}
             label="맡김 요청"
             hint={pending.length > 0 ? `새 요청 ${pending.length}` : '없음'}
             urgent={pending.length > 0}
             onClick={() => setSheet('requests')}
           />
           {/* 🧩 회사 홈페이지 위젯 — 종전 큰 카드(2026-11-01)를 줄로(2026-11-02 마이 정리). 번호는 로그인 응답의 것. */}
-          {agencyId != null && <FlatRow label="홈페이지에 넣기" hint="코드 받기" onClick={() => openEmbedCode('agency', agencyId)} />}
+          {agencyId != null && <FlatRow icon={<GridIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="홈페이지에 넣기" hint="코드 받기" onClick={() => openEmbedCode('agency', agencyId)} />}
           {agencyRows}
-          {canManage && <FlatRow label="매장 대신 등록" hint="유어딜에 없는 매장" onClick={() => setSheet('register')} last={!trailingRows} />}
+          {canManage && <FlatRow icon={<ShopPlusIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="매장 대신 등록" hint="유어딜에 없는 매장" onClick={() => setSheet('register')} last={!trailingRows} />}
           {trailingRows}
         </div>
       </div>
@@ -228,14 +232,14 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
             종전엔 이 자리에 큰 카드 + 빈 칸 안 버튼으로 두 번 있었다. '홈페이지에 넣기' 는 아래 줄로 내려갔다. */}
         <div className="flex items-center gap-2">
           {/* 🖥️ PC 는 매장 이름이 제목이다(왼쪽 목록이 고르기를 맡는다). 폰은 '맡은 매장' + 고르기 칩. */}
-          {!stacked && <h2 className="hidden lg:block min-w-0 truncate text-[17px] font-semibold text-gray-500 dark:text-gray-400">{picked?.name ?? '맡은 매장'}</h2>}
-          <h2 className={stacked ? 'text-[13px] font-medium text-gray-500 dark:text-gray-400' : 'lg:hidden text-[17px] font-semibold text-gray-500 dark:text-gray-400'}>맡은 매장</h2>
+          {!stacked && <h2 className="hidden lg:block min-w-0 truncate text-[17px] font-bold text-gray-500 dark:text-gray-400">{picked?.name ?? '맡은 매장'}</h2>}
+          <h2 className={stacked ? 'text-[13px] font-medium text-gray-500 dark:text-gray-400' : 'lg:hidden text-[17px] font-bold text-gray-500 dark:text-gray-400'}>맡은 매장</h2>
           <div className="flex-1" />
           {active.length > 0 && picked && (
             <button
               type="button"
               onClick={() => setSheet('picker')}
-              className={`${stacked ? '' : 'lg:hidden '}inline-flex max-w-[60%] items-center gap-1 py-2 text-[12px] font-semibold text-gray-500 dark:text-gray-400 active:opacity-70`}
+              className={`${stacked ? '' : 'lg:hidden '}inline-flex max-w-[60%] items-center gap-1 py-2 text-[12px] font-medium text-gray-500 dark:text-gray-400 active:opacity-70`}
             >
               <span className="truncate">{picked.name}</span>
               {active.length >= 2 && <span className="shrink-0">· {active.length}곳</span>}
@@ -248,7 +252,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
           {error ? (
             <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift">
               <p className="text-[15px] text-gray-700 dark:text-gray-200">{error}</p>
-              <button type="button" onClick={load} className="mt-4 h-10 rounded-xl bg-brand px-4 text-[15px] font-semibold text-white">다시 시도</button>
+              <button type="button" onClick={load} className="mt-4 h-10 rounded-xl bg-brand px-4 text-[15px] font-medium text-white">다시 시도</button>
             </div>
           ) : rows === null ? (
             <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift"><p className="text-[13px] text-gray-500 dark:text-gray-400">불러오는 중…</p></div>
@@ -263,14 +267,14 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
             />
           ) : (
             <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift">
-              <p className="text-[15px] font-semibold text-gray-900 dark:text-white">아직 운영 중인 매장이 없어요</p>
+              <p className="text-[15px] font-medium text-gray-900 dark:text-white">아직 운영 중인 매장이 없어요</p>
               <p className="mt-2 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
                 {canManage
-                  ? <>맨 위 <b className="font-semibold text-gray-700 dark:text-gray-200">매장 영입</b> 버튼으로 링크를 사장님께 카톡으로 보내세요. 아직 유어딜에 없는 사장님은 그 링크에서 매장을 등록하면 바로 연결돼요. 사장님이 셀러 화면의 <b className="font-semibold text-gray-700 dark:text-gray-200">운영자 관리 → 에이전시에 맡기기</b>에 관리자 이메일을 넣어도 여기에 떠요.</>
+                  ? <>맨 위 <b className="font-medium text-gray-700 dark:text-gray-200">매장 영입</b> 버튼으로 링크를 사장님께 카톡으로 보내세요. 아직 유어딜에 없는 사장님은 그 링크에서 매장을 등록하면 바로 연결돼요. 사장님이 셀러 화면의 <b className="font-medium text-gray-700 dark:text-gray-200">운영자 관리 → 에이전시에 맡기기</b>에 관리자 이메일을 넣어도 여기에 떠요.</>
                   : '관리자가 매장을 맡거나 배정하면 여기에 떠요.'}
               </p>
               {pending.length > 0 && (
-                <button type="button" onClick={() => setSheet('requests')} className="mt-4 h-10 rounded-xl bg-brand px-4 text-[15px] font-semibold text-white">
+                <button type="button" onClick={() => setSheet('requests')} className="mt-4 h-10 rounded-xl bg-brand px-4 text-[15px] font-medium text-white">
                   맡김 요청 {pending.length}건 보기
                 </button>
               )}
@@ -283,7 +287,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
             type="button"
             disabled={busyId === picked.linkId}
             onClick={() => act(picked, 'release')}
-            className="mt-3 px-1 text-[13px] font-semibold text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
+            className="mt-3 px-1 text-[13px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
           >
             이 매장 운영 내려놓기
           </button>
@@ -303,9 +307,9 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
                     onClick={() => { setOpenPath(null); pick(r.sellerId); setSheet(null) }}
                     className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left active:bg-gray-50 dark:active:bg-white/5"
                   >
-                    <span className={`min-w-0 flex-1 truncate text-[15px] ${on ? 'font-bold text-gray-900 dark:text-white' : 'font-semibold text-gray-700 dark:text-gray-200'}`}>{r.name}</span>
-                    {hint.text && <span className={`shrink-0 text-[13px] ${hint.urgent ? 'font-semibold text-brand-text' : 'text-gray-400'}`}>{hint.text}</span>}
-                    {on && <span className="shrink-0 text-[13px] font-semibold text-brand-text">보는 중</span>}
+                    <span className={`min-w-0 flex-1 truncate text-[15px] ${on ? 'font-bold text-gray-900 dark:text-white' : 'font-medium text-gray-700 dark:text-gray-200'}`}>{r.name}</span>
+                    {hint.text && <span className={`shrink-0 text-[13px] ${hint.urgent ? 'font-medium text-brand-text' : 'text-gray-400'}`}>{hint.text}</span>}
+                    {on && <span className="shrink-0 text-[13px] font-medium text-brand-text">보는 중</span>}
                   </button>
                 </li>
               )
@@ -337,15 +341,15 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
               {pending.map((r) => (
                 <li key={r.linkId} className="flex min-h-[64px] flex-wrap items-center gap-3 px-4 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-semibold text-gray-900 dark:text-white">{r.name}</p>
+                    <p className="truncate text-[15px] font-medium text-gray-900 dark:text-white">{r.name}</p>
                     <p className="text-[13px] text-brand-text">수락하면 운영을 시작해요</p>
                   </div>
                   {canManage ? (
                     <div className="flex gap-2">
                       <button type="button" disabled={busyId === r.linkId} onClick={() => act(r, 'decline')}
-                        className="h-9 rounded-full px-3 text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-50">거절</button>
+                        className="h-9 rounded-full px-3 text-[13px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-50">거절</button>
                       <button type="button" disabled={busyId === r.linkId} onClick={() => act(r, 'accept')}
-                        className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white disabled:opacity-50">수락</button>
+                        className="h-9 rounded-full bg-brand px-4 text-[13px] font-medium text-white disabled:opacity-50">수락</button>
                     </div>
                   ) : (
                     <span className="text-[12px] text-gray-500 dark:text-gray-400">관리자가 수락하면 열려요</span>
@@ -368,8 +372,13 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
   )
 }
 
-/** 에이전시 구역의 한 줄 — 판 밖의 평면 줄(안 A 시안). 오른쪽 값이 할 일이면 블루. */
-export function FlatRow({ label, hint, urgent = false, onClick, last = false }: {
+/**
+ * 에이전시 구역의 한 줄 — 판 밖의 평면 줄(안 A 시안). 오른쪽 값이 할 일이면 블루.
+ * 🧱 2026-11-03 대표 *"어떤 건 아이콘을 쓰고 통일감이 없어"* — 위 매장 판의 줄(`ListRow`)과 **같은 문법**이다:
+ *   아이콘 18px(회색) · 제목 `ROW_LABEL_CLS` · 오른쪽 값 13px 회색 · 화살표. 가로 여백만 바깥 래퍼가 갖는다.
+ */
+export function FlatRow({ icon, label, hint, urgent = false, onClick, last = false }: {
+  icon: ReactNode
   label: string
   hint?: string
   urgent?: boolean
@@ -382,8 +391,9 @@ export function FlatRow({ label, hint, urgent = false, onClick, last = false }: 
       onClick={onClick}
       className={`flex min-h-[48px] w-full items-center gap-3 text-left active:opacity-70 ${last ? '' : 'border-b border-rule'}`}
     >
-      <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-gray-900 dark:text-white">{label}</span>
-      {hint && <span className={`shrink-0 text-[13px] ${urgent ? 'font-semibold text-brand-text' : 'text-gray-400'}`}>{hint}</span>}
+      <span className="shrink-0 text-gray-500 dark:text-gray-400">{icon}</span>
+      <span className={ROW_LABEL_CLS}>{label}</span>
+      {hint && <span className={`min-w-0 truncate text-[13px] ${urgent ? 'font-medium text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>{hint}</span>}
       <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
     </button>
   )

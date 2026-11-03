@@ -100,7 +100,7 @@ export default function StoreNotifButton({ currentSellerId, onOpenPage, variant 
           {/* 🔵 새 알림이 있을 때만 블루 — 0 이면 회색 '새 알림 없음'(0 을 잉크로 굵게 쓰지 않는다). 아직 모르면 안 그린다. */}
           {items !== null && (
             unread > 0
-              ? <span key={`n${unread}`} className="ur-popin shrink-0 text-[13px] font-bold text-brand-text tabular-nums">새 알림 {unread > 99 ? '99+' : unread}</span>
+              ? <span key={`n${unread}`} className="ur-popin shrink-0 text-[13px] font-medium text-brand-text tabular-nums">새 알림 {unread > 99 ? '99+' : unread}</span>
               : <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400">새 알림 없음</span>
           )}
           <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
@@ -110,14 +110,14 @@ export default function StoreNotifButton({ currentSellerId, onOpenPage, variant 
         type="button"
         onClick={() => setOpen(true)}
         aria-label={unread > 0 ? `판매 알림 ${unread}건` : '판매 알림'}
-        className="shrink-0 inline-flex items-center gap-1 h-7 px-3 -my-1 rounded-full bg-gray-100 dark:bg-white/10 text-[12px] font-semibold text-gray-600 dark:text-gray-300 active:opacity-70"
+        className="shrink-0 inline-flex items-center gap-1 h-7 px-3 -my-1 rounded-full bg-gray-100 dark:bg-white/10 text-[12px] font-medium text-gray-600 dark:text-gray-300 active:opacity-70"
       >
         {/* 🔤 2026-10-20 (대표 "2,3,4 모두 다 고쳐줘"): 종 아이콘 → **글자**. 맨 위 머리줄의 종(내 알림)과
             이 종(가게 알림)이 한 화면에 둘이라 처음 보는 사람은 어느 쪽이 무엇인지 몰랐다. 글자는 시트 제목과 같다.
             알약 모양인 이유: 바로 옆 가게 이름과 붙어 "판매 알림 합정 살롱…" 한 덩어리로 읽혔다(하네스 렌더). */}
         <span>판매 알림</span>
         {unread > 0 && (
-          <span key={`n${unread}`} className="ur-popin min-w-[16px] h-4 px-1 rounded-full bg-brand text-white text-[12px] leading-4 font-bold tabular-nums text-center">
+          <span key={`n${unread}`} className="ur-popin min-w-[16px] h-4 px-1 rounded-full bg-brand text-white text-[12px] leading-4 font-medium tabular-nums text-center">
             {unread > 99 ? '99+' : unread}
           </span>
         )}
@@ -134,7 +134,7 @@ export default function StoreNotifButton({ currentSellerId, onOpenPage, variant 
               <>
                 {unread > 0 && (
                   <div className="flex justify-end px-4 pt-3">
-                    <button type="button" onClick={() => markRead('all')} className="text-[13px] font-semibold text-brand-text">모두 읽음</button>
+                    <button type="button" onClick={() => markRead('all')} className="text-[13px] font-medium text-brand-text">모두 읽음</button>
                   </div>
                 )}
                 <ul className="divide-y divide-rule">
@@ -143,7 +143,7 @@ export default function StoreNotifButton({ currentSellerId, onOpenPage, variant 
                       <button type="button" onClick={() => pick(n)} className="w-full flex gap-3 px-4 py-3 text-left active:bg-gray-50 dark:active:bg-[#1D1F29]">
                         <span aria-hidden="true" className={`mt-2 w-2 h-2 shrink-0 rounded-full ${n.isRead ? 'bg-transparent' : 'bg-brand'}`} />
                         <span className="min-w-0 flex-1">
-                          <span className={`block text-[15px] truncate ${n.isRead ? 'font-semibold text-gray-700 dark:text-gray-300' : 'font-bold text-gray-900 dark:text-white'}`}>{n.title}</span>
+                          <span className={`block text-[15px] truncate ${n.isRead ? 'font-medium text-gray-700 dark:text-gray-300' : 'font-bold text-gray-900 dark:text-white'}`}>{n.title}</span>
                           {n.message && <span className="mt-1 block text-[13px] text-gray-500 dark:text-gray-400 line-clamp-2">{n.message}</span>}
                           <span className="mt-1 block text-[12px] text-gray-400 dark:text-gray-500">
                             {n.storeName ? `${n.storeName} · ` : ''}{formatKSTShort(n.createdAt)}

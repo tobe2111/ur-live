@@ -81,10 +81,10 @@ export default function AgencySignupPage() {
 
   if (sentTo) {
     return (
-      <AgencyAuthShell title="메일을 확인해 주세요" footer={<Link to="/agency/login" className="font-semibold text-gray-700">로그인으로 돌아가기</Link>}>
+      <AgencyAuthShell title="메일을 확인해 주세요" footer={<Link to="/agency/login" className="font-medium text-gray-700">로그인으로 돌아가기</Link>}>
         <SEO title="에이전시 만들기 - 유어딜" description="유어딜 에이전시 계정 만들기" url="/agency/signup" noindex />
         <p className="text-[15px] leading-relaxed text-gray-700">
-          <strong className="font-semibold text-gray-900">{sentTo}</strong> 로 인증 메일을 보냈어요.
+          <strong className="font-medium text-gray-900">{sentTo}</strong> 로 인증 메일을 보냈어요.
         </p>
         <p className="mt-3 text-[13px] leading-relaxed text-gray-500">
           메일의 링크를 누르면 에이전시가 만들어지고, 바로 직원을 초대할 수 있어요. 링크는 24시간 동안 쓸 수 있어요.
@@ -98,7 +98,7 @@ export default function AgencySignupPage() {
     <AgencyAuthShell
       title="에이전시 만들기"
       lead="여러 매장을 맡아 운영하는 회사·팀을 위한 계정이에요."
-      footer={<p>이미 계정이 있어요 · <Link to="/agency/login" className="font-semibold text-brand-text hover:underline underline-offset-4">로그인</Link></p>}
+      footer={<p>이미 계정이 있어요 · <Link to="/agency/login" className="font-medium text-brand-text hover:underline underline-offset-4">로그인</Link></p>}
     >
       <SEO title="에이전시 만들기 - 유어딜" description="유어딜 에이전시 계정 만들기" url="/agency/signup" noindex />
       <form onSubmit={submit} className="flex flex-col gap-4">
@@ -120,7 +120,7 @@ export default function AgencySignupPage() {
           <div role="radiogroup" aria-label="에이전시 종류" className="grid grid-cols-2 gap-2 rounded-xl bg-[#F8F7FC] p-1">
             {([['business', '사업자(회사)'], ['individual', '개인']] as const).map(([k, label]) => (
               <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)}
-                className={`h-10 rounded-lg text-[15px] font-semibold transition-colors ${kind === k ? 'bg-brand text-white' : 'text-gray-600'}`}>
+                className={`h-10 rounded-lg text-[15px] font-medium transition-colors ${kind === k ? 'bg-brand text-white' : 'text-gray-600'}`}>
                 {label}
               </button>
             ))}
@@ -149,10 +149,10 @@ export default function AgencySignupPage() {
         </Field>
         </>)}
         <label className="flex items-start gap-2 text-[13px] text-gray-600">
-          <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#1C69EF]" />
+          <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-1 h-4 w-4 accent-[#1C69EF]" />
           <span>
-            <Link to="/terms" target="_blank" className="font-semibold text-gray-800 underline underline-offset-4">이용약관</Link>과{' '}
-            <Link to="/privacy" target="_blank" className="font-semibold text-gray-800 underline underline-offset-4">개인정보 처리방침</Link>에 동의해요.
+            <Link to="/terms" target="_blank" className="font-medium text-gray-800 underline underline-offset-4">이용약관</Link>과{' '}
+            <Link to="/privacy" target="_blank" className="font-medium text-gray-800 underline underline-offset-4">개인정보 처리방침</Link>에 동의해요.
           </span>
         </label>
         <FormError message={error} />

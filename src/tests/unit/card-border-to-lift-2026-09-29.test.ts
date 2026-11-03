@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 
+/** 마이·에이전시 콘솔 — 파일 이름에 seller/agency 가 있어도 손님 화면 체계다(2026-11-03). */
+const MY_SURFACE = /^src\/pages\/(user-profile|agency-console)\//
+
 /**
  * 🎫 **카드는 테두리 0 + 들림 한 값** — 확정 디자인 시스템 규칙 ① (2026-09-29, UI 네 트랙 중 ④)
  *
@@ -40,7 +43,9 @@ const files = execSync(
   "git ls-files 'src/pages/*.tsx' 'src/pages/**/*.tsx' 'src/components/*.tsx' 'src/components/**/*.tsx'",
   { encoding: 'utf8' },
 ).trim().split('\n').filter(Boolean)
-  .filter((f) => !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
+  // 🩸 2026-11-03 — 이름에 seller/agency 가 들어간 **마이 안 부품**(내 가게 판 · 에이전시 구역)이 대시보드로 오인돼 빠져 있었다
+  //   (41개 파일 — 대표 *"마이에서 통일감이 없어"*). 마이와 에이전시 콘솔은 손님 화면 체계다 → 이름과 무관하게 넣는다.
+  .filter((f) => MY_SURFACE.test(f) || !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
 
 /** 방향 없는 `border` + 둥근 모서리 = 카드류. `border-rule`(체계가 허락한 것)과 방향선은 뺀다. */
 const CARDISH = /\bborder\b(?!-(?:b|t|l|r|x|y|0|transparent|rule|none|collapse|separate|spacing|dashed|dotted))/

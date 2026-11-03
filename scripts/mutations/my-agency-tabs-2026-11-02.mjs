@@ -34,4 +34,20 @@ export default [
     test: TEST,
     why: '나 탭에 매장 판·에이전시 구역이 그대로 남아 분리가 무의미해진다.',
   },
+  {
+    name: '🗂️ 탭 — 에이전시 탭에도 정지원·프로필 편집 머리가 선다',
+    file: PAGE,
+    find: "      {showMe && <div className={tabbed ? 'ur-content-medium",
+    replace: "      {true && <div className={tabbed ? 'ur-content-medium",
+    test: TEST,
+    why: '대표 *"에이전시를 누르면 정지원 프로필 편집이 안 나오고 에이전시 이름이 나오는 거지"* 가 깨진다.',
+  },
+  {
+    name: '🗂️ 탭 — 에이전시 탭 머리(에이전시 이름)가 빠진다',
+    file: PAGE,
+    find: '      {tabbed && !showMe && <AgencyHeadDoor storeCount={sellerSeats.stores.length} />}',
+    replace: '      {null}',
+    test: TEST,
+    why: '에이전시 탭에 누구의 화면인지 말하는 머리가 없다.',
+  },
 ]

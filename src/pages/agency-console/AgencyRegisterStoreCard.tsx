@@ -55,17 +55,17 @@ export function AgencyRegisterStoreCard({ onRegistered }: { onRegistered: () => 
     <div className="mt-3 rounded-2xl bg-white dark:bg-[#1D1F29] p-6 shadow-lift">
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-semibold text-gray-900 dark:text-white">매장 대신 등록</p>
+          <p className="text-[15px] font-medium text-gray-900 dark:text-white">매장 대신 등록</p>
           <p className="mt-1 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">아직 유어딜에 없는 매장을 먼저 올리고, 사장님께 코드를 드려요.</p>
         </div>
         {!open && !done && (
-          <button type="button" onClick={() => setOpen(true)} className="h-9 shrink-0 rounded-full bg-brand px-4 text-[13px] font-semibold text-white">등록하기</button>
+          <button type="button" onClick={() => setOpen(true)} className="h-9 shrink-0 rounded-full bg-brand px-4 text-[13px] font-medium text-white">등록하기</button>
         )}
       </div>
 
       {done && (
         <div className="mt-4 rounded-xl bg-brand-tint p-4">
-          <p className="text-[15px] font-semibold text-gray-900 dark:text-white">매장(#{done.sellerId})이 접수됐어요</p>
+          <p className="text-[15px] font-medium text-gray-900 dark:text-white">매장(#{done.sellerId})이 접수됐어요</p>
           <p className="mt-1 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">유어딜이 확인한 뒤 승인돼요. 지금부터 [운영하기]로 상품을 준비할 수 있어요.</p>
           {done.claimCode && (
             <>
@@ -73,27 +73,27 @@ export function AgencyRegisterStoreCard({ onRegistered }: { onRegistered: () => 
               <div className="mt-2 flex gap-2">
                 <input ref={codeRef} readOnly value={done.claimUrl || done.claimCode} onFocus={(e) => e.currentTarget.select()}
                   className="min-w-0 flex-1 rounded-xl bg-white dark:bg-[#1D1F29] px-3 py-2 text-[13px] text-gray-700 dark:text-gray-200 outline-none" />
-                <button type="button" onClick={() => copy(done.claimUrl || done.claimCode || '')} className="h-10 shrink-0 rounded-xl bg-brand px-4 text-[13px] font-semibold text-white">복사</button>
+                <button type="button" onClick={() => copy(done.claimUrl || done.claimCode || '')} className="h-10 shrink-0 rounded-xl bg-brand px-4 text-[13px] font-medium text-white">복사</button>
               </div>
               <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">사장님 코드 {done.claimCode}</p>
             </>
           )}
-          <button type="button" onClick={() => { setDone(null); setOpen(true) }} className="mt-3 text-[13px] font-semibold text-brand-text">다른 매장 등록하기</button>
+          <button type="button" onClick={() => { setDone(null); setOpen(true) }} className="mt-3 text-[13px] font-medium text-brand-text">다른 매장 등록하기</button>
         </div>
       )}
 
       {open && !done && (
         <div className="mt-4 space-y-3">
-          <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-200">매장명
+          <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-200">매장명
             <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} placeholder="예: 유어딜 김밥 성수점" className={FIELD_CLS} />
           </label>
-          <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-200">주소 <span className="font-normal text-gray-400 dark:text-gray-500">(선택)</span>
+          <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-200">주소 <span className="font-normal text-gray-400 dark:text-gray-500">(선택)</span>
             <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={200} placeholder="도로명 주소" className={FIELD_CLS} />
           </label>
-          <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-200">사장님 휴대폰
+          <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-200">사장님 휴대폰
             <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="010-0000-0000" className={FIELD_CLS} />
           </label>
-          <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-200">사업자번호 <span className="font-normal text-gray-400 dark:text-gray-500">(선택 — 사장님 매장 것)</span>
+          <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-200">사업자번호 <span className="font-normal text-gray-400 dark:text-gray-500">(선택 — 사장님 매장 것)</span>
             <input value={bno} onChange={(e) => setBno(e.target.value)} inputMode="numeric" placeholder="000-00-00000" className={FIELD_CLS} />
           </label>
           <label className="flex items-start gap-2 text-[13px] text-gray-700 dark:text-gray-200">
@@ -102,9 +102,9 @@ export function AgencyRegisterStoreCard({ onRegistered }: { onRegistered: () => 
           </label>
           {problem && <p className="text-[12px] text-gray-500 dark:text-gray-400">{problem}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={() => setOpen(false)} className="h-10 rounded-xl px-4 text-[13px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10">닫기</button>
+            <button type="button" onClick={() => setOpen(false)} className="h-10 rounded-xl px-4 text-[13px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10">닫기</button>
             <button type="button" disabled={!!problem || busy} onClick={submit}
-              className="h-10 flex-1 rounded-xl bg-brand px-4 text-[15px] font-semibold text-white disabled:opacity-50">{busy ? '등록 중…' : '등록하기'}</button>
+              className="h-10 flex-1 rounded-xl bg-brand px-4 text-[15px] font-medium text-white disabled:opacity-50">{busy ? '등록 중…' : '등록하기'}</button>
           </div>
         </div>
       )}

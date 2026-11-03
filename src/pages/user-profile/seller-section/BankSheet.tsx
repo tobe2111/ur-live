@@ -133,17 +133,17 @@ export default function BankSheet({ sellerId, onClose, onDone, onFixPin }: {
       {loaded && (
         <div className="px-4 py-4 space-y-3">
           <p className="text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
-            출금한 돈이 들어갈 계좌예요. <span className="text-gray-900 dark:text-white font-semibold">사업자 본인 명의</span> 계좌만 쓸 수 있어요.
+            출금한 돈이 들어갈 계좌예요. <span className="text-gray-900 dark:text-white font-medium">사업자 본인 명의</span> 계좌만 쓸 수 있어요.
           </p>
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">은행</span>
+            <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">은행</span>
             <select value={bank} onChange={(e) => setBank(e.target.value)} className={field}>
               <option value="">은행을 골라 주세요</option>
               {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">계좌번호</span>
+            <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">계좌번호</span>
             <input
               inputMode="numeric"
               value={account}
@@ -153,7 +153,7 @@ export default function BankSheet({ sellerId, onClose, onDone, onFixPin }: {
             />
           </label>
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">예금주</span>
+            <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">예금주</span>
             <input
               value={holder}
               onChange={(e) => setHolder(e.target.value)}

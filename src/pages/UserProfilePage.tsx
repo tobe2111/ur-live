@@ -12,9 +12,9 @@ import { ChevronRight } from 'lucide-react'
 import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 // 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(프로필 편집 화살표) 하나뿐 — 조작이라 그대로 둔다.
 //    2026-09-30 수익·추천 구역이 빠지며 `ReceiptIcon`·`UrShopIcon` 소비처는 사라졌다.
-import { AgencyInviteDoor, AgencyTitleDoor } from '@/pages/user-profile/agency-doors'
+import { AgencyInviteDoor, AgencyTitleDoor, AgencyHeadDoor } from '@/pages/user-profile/agency-doors'
 import { BellIcon, LogOutIcon, ScanIcon, MessageIcon, InfoIcon, ReceiptIcon } from '@/components/icons/urdeal-icons'
-import { ListRow, rowIcon } from './user-profile/list-grammar'
+import { ListRow, rowIcon, SectionTitle } from './user-profile/list-grammar'
 import MyStats from './user-profile/MyStats'
 import AccountPcBand from './user-profile/AccountPcBand'
 import RoleCtaGrid from './user-profile/RoleCtaGrid'
@@ -230,7 +230,18 @@ export default function UserProfilePage() {
       {/* 🎫 2026-09-02: 06-05 의 보라 그라디언트 띠 삭제(표면 규칙 ⑥ 그라디언트 0 — 다크에서 남보라 색이
           체계 밖 색이었다). PC(lg+)에서는 이 헤더 자체를 숨기고 우측 칸의 프로필 카드가 대신한다. */}
       <div className={isPc ? 'hidden' : ''}>
-      <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
+      {/* 🗂️ 2026-11-03 대표 확정 *"안 1 다듬기"* — 탭은 **맨 위**(알림 종과 한 줄), 그 아래 머리는 탭을 따라 바뀐다:
+          '나' = 정지원 · 프로필 편집 / '에이전시' = 에이전시 이름 · 역할 · 매장 수 + 매장 영입.
+          ⏳ 탭 부품은 lazy 라 같은 높이(44px)로 자리를 잡아 둔다 — 늦게 와도 아래가 밀리지 않는다. */}
+      {tabbed && (
+        <div className="ur-content-medium flex items-center gap-2 pl-4 pr-2 pt-3">
+          <Suspense fallback={<div className="flex-1 h-[50px]" aria-hidden="true" />}><MyRoleTabs value={myTab} onChange={setMyTab} /></Suspense>
+          <button onClick={bell.open} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-11 h-11 shrink-0 text-gray-900 dark:text-white active:opacity-70">
+            <BellIcon className="w-6 h-6" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+      {showMe && <div className={tabbed ? 'ur-content-medium px-4 lg:px-8 pt-3 pb-5' : 'ur-content-medium px-4 lg:px-8 pt-5 pb-5'}>
         <div className="flex items-center gap-3">
           <img
             src={profileAvatarSrc(profileImage, 128)}
@@ -268,15 +279,15 @@ export default function UserProfilePage() {
                  모바일만 페이지로 떠나고 있었다(보던 목록의 스크롤·필터가 날아간다). */}
           <div className="flex items-center gap-1 flex-shrink-0">
             {/* 🔗 2026-11-02 대표 확정 버튼 ① — 에이전시 로그인이 있을 때만 선다. */}
-            {showAgency && <AgencyInviteDoor />}
-            <button onClick={bell.open} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-11 h-11 -mr-2 text-gray-900 dark:text-white active:opacity-70">
+            {!tabbed && <AgencyInviteDoor />}
+            {!tabbed && <button onClick={bell.open} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-11 h-11 -mr-2 text-gray-900 dark:text-white active:opacity-70">
               <BellIcon className="w-6 h-6" aria-hidden="true" />
-            </button>
+            </button>}
           </div>
         </div>
-      </div>
-      {/* ⏳ 자리를 미리 잡는다(56px = 탭 48 + 아래 8) — 부품이 늦게 와도 아래가 밀리지 않는다. */}
-      {tabbed && <Suspense fallback={<div className="h-14" aria-hidden="true" />}><MyRoleTabs value={myTab} onChange={setMyTab} /></Suspense>}
+      </div>}
+      {/* 🏢 '에이전시' 탭의 머리 — 정지원·프로필 편집 자리에 에이전시 이름이 선다(매장 영입 버튼 포함). */}
+      {tabbed && !showMe && <AgencyHeadDoor storeCount={sellerSeats.stores.length} />}
       </div>{/* /모바일 헤더 */}
 
       {/* 🧭 2026-09-28 (대표 *"PC 버전이나 모바일이나 너무 별로 · 허술해"*): **좌측 내비를 걷어냈다.**
@@ -385,9 +396,10 @@ export default function UserProfilePage() {
       {/* 🏪 2026-09-25 (대표 확정 §14 — "하는 것도 마이에서"): 판매가 **맨 위**.
           사장님은 하루에 이 화면을 가장 많이 열고, 그때 보려는 건 오늘 숫자다. 셀러가 아니면 렌더 0. */}
       {showAgency && <>
-        <AgencyTitleDoor storeCount={sellerSeats.stores.length} />
+        {/* 🗂️ 탭일 때는 에이전시 이름이 이미 머리에 있으니 판 위 제목은 '맡은 매장', 아래 묶음은 '에이전시 운영'. */}
+        {tabbed ? (sellerSeats.stores.length > 0 && <SectionTitle>맡은 매장</SectionTitle>) : <AgencyTitleDoor storeCount={sellerSeats.stores.length} />}
         <SellerSection state={sellerSeats} />
-        <MyAgencyZone ownSellerIds={ownSellerIds} />
+        <MyAgencyZone ownSellerIds={ownSellerIds} inHead={tabbed} />
       </>}
 
       {/* v4 광고 리워드 카드 — 딜 버는 수단이라 딜 잔액 바로 아래(웹은 null 렌더·네이티브 전용) */}

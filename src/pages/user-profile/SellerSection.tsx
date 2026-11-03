@@ -48,6 +48,7 @@ import { useToolDeepLink } from './seller-section/useToolDeepLink' // 🚪 대�
 import PendingOrders from './seller-section/PendingOrders'
 import StoreThumb from './seller-section/StoreThumb'
 import StoreNotifButton from './seller-section/StoreNotifications'
+import { useAgencyPresence } from './useAgencyPresence' // 🗂️ 에이전시면 '정산' → '매장 정산'(2026-11-03)
 import { useCountUp } from './useCountUp' // 🎬 2026-11-02 시안 B3: 오늘 매출이 0원부터 올라간다
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
@@ -117,6 +118,8 @@ const COVERED_BY_SHEET: Record<string, Tool> = {
 /** ⚠️ 좌석은 **페이지가 한 번만** 묻고 내려 준다 — 여기서 또 부르면 같은 화면에 두 개의 진실이 생긴다. */
 export default function SellerSection({ state }: { state: MyStoresState }) {
   const { stores, currentSellerId, loading, failed } = state
+  // 🗂️ 2026-11-03 대표 확정 — 에이전시 화면엔 '에이전시 정산'(에이전시 몫)도 있어서, 이 판의 정산은 '매장 정산'(가게 매출)이라고 부른다.
+  const agencyOn = useAgencyPresence().on
   const [sheetOpen, setSheetOpen] = useState(false)
   const [entering, setEntering] = useState(false)
   /** 열려 있는 판매 시트. 좌석이 바뀌면 시트는 스스로 닫는다(§15-3). */
@@ -439,7 +442,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         />
         <ToolRow
           icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="정산"
+          label={agencyOn ? '매장 정산' : '정산'}
           hint="매주 자동 입금"
           busy={entering}
           onClick={() => openTool('payout')}
@@ -502,7 +505,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           onClick={() => enterSeat()}
           className="w-full flex items-center gap-2 mt-3 px-4 h-12 rounded-2xl bg-surface shadow-lift text-left active:opacity-70 disabled:opacity-50"
         >
-          <span className="flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate">
+          <span className="flex-1 min-w-0 text-[15px] font-medium text-gray-900 dark:text-white truncate">
             {awaiting ? <span className="invisible">주문 확인</span> : `주문 확인${store.pending > 0 ? ` ${formatNumber(store.pending)}건` : ''}`}
           </span>
           {entering

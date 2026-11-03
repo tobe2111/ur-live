@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { stripComments } from '../helpers/source-text'
 
+/** 마이·에이전시 콘솔 — 파일 이름에 seller/agency 가 있어도 손님 화면 체계다(2026-11-03). */
+const MY_SURFACE = /^src\/pages\/(user-profile|agency-console)\//
+
 /**
  * 🎨 **뜻은 우리가 그리고, 조작은 lucide 그대로** — 소비자 전 화면 (2026-09-29, 대표 UI 네 트랙 중 ④)
  *
@@ -47,7 +50,9 @@ const files = execSync(
   "git ls-files 'src/pages/*.tsx' 'src/pages/**/*.tsx' 'src/components/*.tsx' 'src/components/**/*.tsx'",
   { encoding: 'utf8' },
 ).trim().split('\n').filter(Boolean)
-  .filter((f) => !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
+  // 🩸 2026-11-03 — 이름에 seller/agency 가 들어간 **마이 안 부품**(내 가게 판 · 에이전시 구역)이 대시보드로 오인돼 빠져 있었다
+  //   (41개 파일 — 대표 *"마이에서 통일감이 없어"*). 마이와 에이전시 콘솔은 손님 화면 체계다 → 이름과 무관하게 넣는다.
+  .filter((f) => MY_SURFACE.test(f) || !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
 
 /** **조작** — 어느 앱에서나 같은 모양이라 직접 그릴 값이 없다. 뜻을 가진 이름을 여기 더하지 말 것. */
 const OPERATION = new Set([

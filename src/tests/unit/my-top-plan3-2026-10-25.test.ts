@@ -60,8 +60,14 @@ describe('마이 위쪽 안 3', () => {
   it('⑥ 머리줄 — 아바타 48 · 이름 아래 프로필 편집 · 회색 원 없는 벨', () => {
     expect(PAGE).toMatch(/w-12 h-12 rounded-full flex-shrink-0 \$\{profileAvatarFitCls/)
     expect(PAGE).toMatch(/mt-1 text-\[13px\][^"]*">\{t\('userProfile\.editProfile'/)
-    const bell = PAGE.slice(PAGE.indexOf('onClick={bell.open}') - 10, PAGE.indexOf('onClick={bell.open}') + 300)
-    expect(bell, '벨이 회색 원으로 돌아갔다').not.toMatch(/bg-gray-100/)
-    expect(bell).toContain('<BellIcon')
+    // 🔁 2026-11-03 — 벨이 두 자리다(탭 없을 때 이름 줄 · 에이전시 탭일 때 탭 줄). **둘 다** 본다
+    //   (첫 판은 첫 벨만 봐서, 다른 벨에 회색 원을 심어도 통과했다 — 주입이 잡았다).
+    const at = [...PAGE.matchAll(/onClick=\{bell\.open\}/g)].map((m) => m.index!)
+    expect(at.length, '벨을 못 찾았다 — 헛도는 검사').toBeGreaterThanOrEqual(2)
+    for (const i of at) {
+      const bell = PAGE.slice(i - 10, i + 300)
+      expect(bell, '벨이 회색 원으로 돌아갔다').not.toMatch(/bg-gray-100/)
+      expect(bell).toContain('<BellIcon')
+    }
   })
 })
