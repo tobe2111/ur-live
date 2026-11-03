@@ -19,7 +19,7 @@ export default function UseConfirmSheet({ pending, onCancel, onConfirm }: { pend
   return (
     <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center ur-veil p-4" role="presentation" onClick={onCancel}>
       <div role="dialog" aria-modal="true" aria-labelledby="use-confirm-title" onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-3xl bg-surface p-6 shadow-lift">
+        className="ur-glass ur-pop-card ur-dialog-in w-full max-w-sm p-6">
         {pending.loading ? (
           <p className="flex items-center justify-center gap-2 py-6 text-[15px] text-gray-500 dark:text-gray-400">
             <Loader2 className="h-4 w-4 animate-spin" /> {t('seller.scan.checking', { defaultValue: '이용권 확인 중…' })}

@@ -441,7 +441,7 @@ export default function VoucherScanner({ full = false }: { full?: boolean } = {}
   const wake = { onPointerDown: primeScanSound }
   const helpBox = helpOpen && !cameraError ? (
 
-        <div className={`${full ? 'ur-glass rounded-3xl px-5 py-4' : 'rounded-xl bg-surface px-3 py-3 shadow-lift'} text-[13px] text-gray-600 dark:text-gray-300`}>{/* 🪟 계산대 안 B 에선 팝업 유리 한 벌 */}
+        <div className={`${full ? 'ur-glass ur-pop-card px-5 py-4' : 'rounded-xl bg-surface px-3 py-3 shadow-lift'} text-[13px] text-gray-600 dark:text-gray-300`}>{/* 🪟 계산대 안 B 에선 팝업 유리 한 벌 */}
           <p className="font-bold text-gray-900 dark:text-white text-[15px] mb-1">
             {t('seller.scan.helpTitle', { defaultValue: 'QR 이 안 읽히나요?' })}
           </p>
