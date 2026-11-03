@@ -338,7 +338,7 @@ export default function CuratorPage() {
           실선 테두리를 없애려던 것이었고 그 목적은 지금도 유효하지만, 유어샵은 한 화면에 **바탕 · 카드 ·
           알약 칩** 세 톤이 겹쳐 그게 "지저분하다" 로 읽혔다(대표 진단). 한 톤이면 나누는 일을
           **실선 하나**가 맡는다(탭 줄 아래 + 줄 사이 `divide-rule`) — 판도 그림자도 필요 없다. */}
-      <div className="min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white pb-28">
+      <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white pb-28">
         {/* 🗑️ 2026-09-02 (대표 — "편집하기 UI 가 번잡하다"): 주인 상단 안내 띠("내 유어샵 · 방문자에게 보이는 화면")
             삭제. 편집 진입은 헤더의 [유어샵 편집] 블루 버튼 하나(안3). 방문자는 그 버튼이 없을 뿐, 팔로우 등 대체
             버튼을 두지 않는다(대표: "그냥 방문자는 안보이면 되잖아"). */}
@@ -377,7 +377,7 @@ export default function CuratorPage() {
           onCopyLink={shareShop}
         />
         {/* 🧾 2026-11-03 대표 *"유어샵은 B"* — 주인만 보는 요약 판(방문·구매·소개 수익 + 담기·공유). 방문자에겐 0 바이트(lazy). */}
-        {isOwner && <Suspense fallback={<div className={`mx-4 mt-3 ${curator.instagram_url || curator.tiktok_url || curator.youtube_url ? 'h-[172px]' : 'h-[228px]'}`} aria-hidden="true" />}><OwnerSummaryCard onShare={shareShop} hasSns={!!(curator.instagram_url || curator.tiktok_url || curator.youtube_url)} /></Suspense>}
+        {isOwner && <Suspense fallback={<div className={`mx-3 mt-3 ${curator.instagram_url || curator.tiktok_url || curator.youtube_url ? 'h-[172px]' : 'h-[228px]'}`} aria-hidden="true" />}><OwnerSummaryCard onShare={shareShop} hasSns={!!(curator.instagram_url || curator.tiktok_url || curator.youtube_url)} /></Suspense>}
         <UShopQrCard />
         </div>
         <div className="ur-ushop-main">
@@ -448,6 +448,8 @@ export default function CuratorPage() {
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.tryOtherKeyword', { defaultValue: '다른 키워드로 찾아보세요.' })}</p>
                   </div>
                 ) : (
+                  // 🧾 2026-11-03 유어샵 B — 진열 줄을 흰 판에 담는다(PC 는 2열 칸이라 판을 걷는다). 서버 `rowsCard` 와 같다.
+                  <div className="mx-3 mt-3 rounded-2xl bg-surface lg:mx-0 lg:mt-0 lg:rounded-none lg:bg-transparent">
                   <div ref={rowsRef} className="max-w-3xl mx-auto px-5 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows">
                     {visiblePins.map((pin) => (
                       <PinRow
@@ -459,6 +461,7 @@ export default function CuratorPage() {
                         prefetch={() => prefetchPin(pin.product_id)}
                       />
                     ))}
+                  </div>
                   </div>
                 )}
               </>

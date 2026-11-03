@@ -54,14 +54,14 @@ export default [
       '흰 알약이 흰 바탕 위에 그림자로만 떠 있는 모양이 되고, 그게 대표가 "지저분하다" 고 한 자리다.',
   },
   {
-    name: '한톤 — 페이지 바탕이 다시 웜으로 갈린다 (톤이 둘)',
+    name: '유어샵 B — 진열 줄의 흰 판을 걷는다 (회색 바탕 위에 줄이 맨몸으로 선다)',
     file: PAGE,
-    find: '      <div className="min-h-[100dvh] bg-surface dark:bg-warm text-gray-900 dark:text-white pb-28">',
-    replace: '      <div className="min-h-[100dvh] bg-warm dark:bg-[#11141C] text-gray-900 dark:text-white pb-28">',
+    find: '<div className="mx-3 mt-3 rounded-2xl bg-surface lg:mx-0 lg:mt-0 lg:rounded-none lg:bg-transparent">',
+    replace: '<div className="lg:mx-0">',
     test: T_LIST,
     why:
-      '2026-09-30 이전 값이다. 되돌리면 바탕·카드·칩 세 톤이 다시 겹치는데 **화면은 정상으로 뜬다** — ' +
-      '대표가 "지저분하다 · 전문성 없어 보인다" 로 읽은 상태가 조용히 복귀한다.',
+      '2026-11-03 대표 확정 B(토스식 판 묶음)는 바탕과 판이 **다른 톤**이라 판이 묶음을 만든다. 판을 걷으면 ' +
+      '줄이 회색 바탕 위에 맨몸으로 서고 화면은 정상으로 뜬다 — 조용한 회귀다.',
   },
   {
     name: '한톤 — 줄 사이를 실선 대신 판 여백으로 되돌린다',

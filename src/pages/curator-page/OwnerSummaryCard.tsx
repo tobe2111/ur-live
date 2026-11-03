@@ -26,7 +26,7 @@ export default function OwnerSummaryCard({ onShare, hasSns }: { onShare: () => v
   const s = q.data ?? null
   const cell = (v: number | null | undefined, unit = '') => (s && v != null ? `${formatNumber(v)}${unit}` : '—')
   return (
-    <div className="mx-4 mt-3 rounded-2xl bg-surface px-5 py-4" data-testid="ushop-owner-summary">
+    <div className="mx-3 mt-3 rounded-2xl bg-surface px-5 py-4" data-testid="ushop-owner-summary">
       <div className="flex items-center justify-between">
         <p className="text-[13px] text-gray-500 dark:text-gray-400">최근 30일 내 유어샵</p>
         <Link to="/u/me/earnings" className="text-[13px] text-gray-500 dark:text-gray-400 active:opacity-70">자세히 ›</Link>
