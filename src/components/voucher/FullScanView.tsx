@@ -75,7 +75,7 @@ export default function FullScanView(p: FullScanViewProps) {
       {/* 아래 — 두 칩. 코드 입력은 누르면 그 자리가 입력줄로 바뀐다. */}
       <div className="absolute inset-x-4 bottom-[max(24px,env(safe-area-inset-bottom))]">
         {typing ? (
-          <form onSubmit={(e) => { p.onSubmitManual(e); setTyping(false) }} className="flex gap-2">
+          <form onSubmit={(e) => { p.onSubmitManual(e); setTyping(false) }} className="light-island flex gap-2"> {/* light-fixed: 카메라(검정) 위 흰 입력줄 — 테마와 무관하게 늘 밝다 */}
             <input
               autoFocus
               value={p.manualCode}
@@ -86,7 +86,7 @@ export default function FullScanView(p: FullScanViewProps) {
               autoComplete="off"
               spellCheck={false}
               placeholder={t('seller.scan.manualPlaceholder', { defaultValue: '코드 직접 입력 (123456)' })}
-              className="min-w-0 flex-1 rounded-full bg-white px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none"
+              className="min-w-0 flex-1 rounded-full bg-white px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none" // light-fixed: 카메라 위
             />
             <button type="submit" disabled={p.busy || !p.canSubmit} className="rounded-full bg-brand px-5 py-3 text-[15px] font-bold text-white disabled:opacity-40">
               {t('seller.scan.useBtn', { defaultValue: '사용 처리' })}
