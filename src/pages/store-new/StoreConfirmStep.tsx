@@ -77,8 +77,8 @@ export default function StoreConfirmStep({ place, phone, phoneFromAccount, onPho
     }
   }
 
-  const sub = [place.address, place.phone].filter(Boolean).join(' · ')
-  const kind = place.category?.split(' > ').slice(-2).join(' · ')
+  const sub = [place.address, place.phone].filter(Boolean).join(', ')
+  const kind = place.category?.split(' > ').slice(-2).join(', ')
 
   return (
     <div className="flex flex-col flex-1 min-h-0">

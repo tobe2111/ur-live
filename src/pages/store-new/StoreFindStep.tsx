@@ -114,7 +114,7 @@ export default function StoreFindStep({ onPick, hasAgency }: { onPick: (p: Regis
                       <span className="block text-[15px] font-medium text-gray-900 dark:text-white truncate">{p.place_name}</span>
                       <span className="block mt-1 text-[13px] text-ink-soft truncate">{p.road_address_name || p.address_name}</span>
                       {(p.category_name || p.phone) && (
-                        <span className="block mt-1 text-[12px] text-ink-soft truncate">{[p.category_name?.split(' > ').slice(-2).join(' · '), p.phone].filter(Boolean).join(' · ')}</span>
+                        <span className="block mt-1 text-[12px] text-ink-soft truncate">{[p.category_name?.split(' > ').slice(-2).join(', '), p.phone].filter(Boolean).join(', ')}</span>
                       )}
                     </span>
                     <ChevronRight size={18} strokeWidth={1.6} className="shrink-0 text-ink-soft" aria-hidden="true" />
