@@ -37,11 +37,12 @@ const SURFACES = [
   ...readdirSync('src/pages/user-profile').filter(f => f.endsWith('.tsx')).map(f => `src/pages/user-profile/${f}`),
   ...readdirSync('src/pages/user-profile/seller-section').filter(f => f.endsWith('.tsx')).map(f => `src/pages/user-profile/seller-section/${f}`),
 ]
-const SCALE = new Set(['12px', '13px', '15px', '17px', '24px', '28px'])
+// 🔁 2026-11-03 안 C(대표) — 17→16 · 24→20(구역 제목) · 24 는 페이지 제목·큰 숫자로 남는다.
+const SCALE = new Set(['12px', '13px', '15px', '16px', '20px', '24px', '28px'])
 const read = (f: string) => codeOnly(readFileSync(f, 'utf-8'))
 
 describe('마이 — 타입 스케일 여섯 단계', () => {
-  it('🔠 `text-[Npx]` 는 28/24/17/15/13/12 뿐이다', () => {
+  it('🔠 `text-[Npx]` 는 28/24/20/16/15/13/12 뿐이다', () => {
     const bad: string[] = []
     let seen = 0
     for (const f of SURFACES) {

@@ -54,12 +54,12 @@ export default function InfluencerRankingsPage() {
       <header className="sticky top-0 z-30 bg-gradient-to-r from-gray-700 to-gray-800 text-white px-4 py-4">
         <div className="flex items-center gap-2">
           <Trophy className="w-6 h-6" />
-          <h1 className="text-[17px] font-bold">이 달의 소개 랭킹</h1>
+          <h1 className="text-[16px] font-semibold">이 달의 소개 랭킹</h1>
         </div>
         <p className="text-[12px] opacity-90 mt-1">지역별 매출 Top — 매월 1일 리셋</p>
       </header>
 
-      <main className="ur-content-narrow mx-auto px-4 py-4 space-y-4">
+      <main className="ur-content-narrow mx-auto px-5 py-4 space-y-3">
         {/* 지역 탭 */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
           {REGIONS.map((r) => (

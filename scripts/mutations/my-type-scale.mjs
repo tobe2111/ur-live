@@ -24,8 +24,8 @@ export default [
   {
     name: '🔠 tailwind 기본 단계를 섞는다 (text-sm)',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: "  return <div className=\"mt-6 mb-2 px-1 text-[12px] font-medium text-gray-400\">{children}</div>",
-    replace: "  return <div className=\"mt-6 mb-2 px-1 text-sm font-bold text-gray-400\">{children}</div>",
+    find: "  return <div className=\"mt-8 mb-2 px-1 text-[12px] font-medium text-gray-400\">{children}</div>",
+    replace: "  return <div className=\"mt-8 mb-2 px-1 text-sm font-bold text-gray-400\">{children}</div>",
     test: TEST,
     why: '체계가 둘이 되면 스케일이 무의미해진다 — `text-sm`(14)은 15 도 13 도 아니라 사이에 낀다.',
   },

@@ -192,7 +192,7 @@ export default function PointsChargePage() {
       {/* 헤더 — 🛡️ 2026-05-22: top-14 (md+) 제거. PC layout 위 빈 공간 깨짐 fix.
             /points/charge 는 fullScreenPrefixes 라 DesktopTopNav 없음 → top-0 통일. */}
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
+        <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 h-[52px]">
           <button
             onClick={goBack}
             className="w-9 h-9 flex items-center justify-center"
@@ -205,7 +205,7 @@ export default function PointsChargePage() {
         </div>
       </header>
 
-      <main className="ur-content-narrow px-4 lg:px-8 pt-5 pb-28 space-y-4">
+      <main className="ur-content-narrow px-5 lg:px-8 pt-5 pb-28 space-y-3">
         {/* 현재 잔액 카드 */}
         <section className="relative overflow-hidden rounded-2xl p-5 bg-gray-800 text-white shadow-md">
           <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white dark:bg-[#11141C]/10" aria-hidden="true" />
@@ -215,9 +215,9 @@ export default function PointsChargePage() {
               <Zap className="w-4 h-4 fill-white" strokeWidth={0} />
               <span className="text-[12px] font-medium opacity-90">{t('pointsCharge.balance', { defaultValue: '내 딜 잔액' })}</span>
             </div>
-            <p className="text-[34px] font-extrabold leading-none tracking-tight">
+            <p className="text-[34px] font-bold leading-none tracking-tight">
               {formatNumber(balance)}
-              <span className="text-[17px] font-bold ml-1">딜</span>
+              <span className="text-[16px] font-bold ml-1">딜</span>
             </p>
             <p className="text-[12px] font-medium opacity-80 mt-2">{t('pointsCharge.rate', { defaultValue: '1원 = 1딜 · 수수료 없음' })}</p>
           </div>
@@ -251,7 +251,7 @@ export default function PointsChargePage() {
                           <Check className="w-3 h-3 text-white" strokeWidth={3} />
                         </span>
                       )}
-                      <p className={`text-[17px] font-bold ${isSelected ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>
+                      <p className={`text-[16px] font-bold ${isSelected ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>
                         {formatNumber(opt.amount)}
                         <span className="text-[12px] font-medium ml-1">원</span>
                       </p>
@@ -277,7 +277,7 @@ export default function PointsChargePage() {
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-between">
                   <span className="text-[13px] font-medium text-gray-900 dark:text-white">{t('pointsCharge.afterBalance', { defaultValue: '충전 후 잔액' })}</span>
-                  <span className="text-[17px] font-bold text-gray-900 dark:text-white">
+                  <span className="text-[16px] font-bold text-gray-900 dark:text-white">
                     {formatNumber(balance + pointsPreview)}
                     <span className="text-[13px] font-medium ml-1">딜</span>
                   </span>
@@ -303,7 +303,7 @@ export default function PointsChargePage() {
         className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] z-30"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
-        <div className="ur-content-narrow px-4 pt-3">
+        <div className="ur-content-narrow px-5 pt-3">
           <button
             onClick={handleCharge}
             disabled={!selected || processing}

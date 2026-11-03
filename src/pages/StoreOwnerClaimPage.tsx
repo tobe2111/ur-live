@@ -184,7 +184,7 @@ export default function StoreOwnerClaimPage() {
 
       {/* 📱 폰 전용 헤더 — PC 는 아래 왼쪽 칸의 h1 이 제목을 맡으므로 같은 말이 두 층에 겹치지 않는다. */}
       <header className="lg:hidden sticky top-0 z-10 bg-white border-b border-gray-100">
-        <div className="max-w-lg mx-auto px-4 h-14 flex items-center gap-2">
+        <div className="max-w-lg mx-auto px-5 h-14 flex items-center gap-2">
           <button onClick={goBack} className="p-1 -ml-1 text-gray-600" aria-label="뒤로">
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -195,28 +195,28 @@ export default function StoreOwnerClaimPage() {
       {/* 📏 높이는 페이지가 정하지 않는다(`min-h` 만) — `main` 이 이미 하단 네비 자리를
           `padding-bottom:56px` 로 예약한다. 09-23 에 `/store/new` 를 `h-[100dvh]` 로 잡았다가
           카드 아래가 네비 밑으로 잘렸다(CLAUDE.md 모바일 뷰포트 룰). */}
-      <main className="mx-auto w-full max-w-[1180px] px-4 pt-5 pb-6 lg:px-10 lg:pt-8 lg:pb-16">
+      <main className="mx-auto w-full max-w-[1180px] px-5 pt-5 pb-6 lg:px-10 lg:pt-8 lg:pb-16">
         {/* PC 전용 뒤로 — 폰은 위 sticky 헤더가 같은 일을 한다. */}
         <button onClick={goBack} aria-label="뒤로"
           className="hidden lg:flex -ml-1 mb-2 w-9 h-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100">
           <ChevronLeft className="w-5 h-5" />
         </button>
 
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-12">
           {/* 왼쪽(PC) · 위(폰) — 무엇을 하는 곳인가 */}
           <div className="lg:pt-4">
-            <h1 className="hidden lg:block text-[40px] font-extrabold tracking-[-0.03em] leading-[1.22] text-gray-900">
+            <h1 className="hidden lg:block text-[40px] font-bold tracking-[-0.03em] leading-[1.22] text-gray-900">
               내 가게<br /> 찾기
             </h1>
-            <p className="text-[13px] lg:text-[17px] lg:mt-4 text-gray-600 leading-relaxed lg:max-w-[460px]">
+            <p className="text-[13px] lg:text-[16px] lg:mt-5 text-gray-600 leading-relaxed lg:max-w-[460px]">
               이미 유어딜에 등록된 가게의 <b className="text-gray-900">진짜 사장님</b>이시면, 사업자등록증을 올려
               소유권을 신청해주세요. 확인되면 그 매장의 주인으로 등록해 드립니다 —
               <b className="text-gray-900"> 지금까지 쌓인 상품·주문·리뷰·정산 이력은 그대로 남습니다.</b>
             </p>
 
-            <ol className="hidden lg:flex mt-8 flex-col gap-4 lg:max-w-[460px]">
+            <ol className="hidden lg:flex mt-8 flex-col gap-3 lg:max-w-[460px]">
               {STEPS.map(({ n, title, desc }, i) => (
-                <li key={n} className="relative flex gap-4 items-start" style={{ '--i': i } as React.CSSProperties}>
+                <li key={n} className="relative flex gap-3 items-start" style={{ '--i': i } as React.CSSProperties}>
                   {i < STEPS.length - 1 && <span aria-hidden="true" className="ur-so-line absolute left-[11px] top-[32px] -bottom-3 w-[2px] bg-brand/30" />}
                   <span className="ur-so-n relative mt-1 shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-medium flex items-center justify-center">{n}</span>
                   <div className="ur-so-t min-w-0">
@@ -227,10 +227,10 @@ export default function StoreOwnerClaimPage() {
               ))}
             </ol>
 
-            <div className="hidden lg:flex mt-9 pt-5 border-t border-rule gap-9 lg:max-w-[460px]">
+            <div className="hidden lg:flex mt-8 pt-5 border-t border-rule gap-8 lg:max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
-                  <div className="text-[17px] font-bold text-gray-900">{value}</div>
+                  <div className="text-[16px] font-semibold text-gray-900">{value}</div>
                   <div className="mt-1 text-[12px] text-gray-500">{label}</div>
                 </div>
               ))}
@@ -242,10 +242,10 @@ export default function StoreOwnerClaimPage() {
 
         {/* ── ① 찾기 ─────────────────────────────────────── */}
         {!picked && (
-          <section className="bg-white rounded-2xl p-4">
+          <section className="bg-white rounded-2xl p-5">
             {/* 🔑 코드 입구 — 대행사가 매장을 대신 등록했다면 사장님은 코드를 받았다. 번호 조회는 그 아래 그대로. */}
             <label className="block text-[13px] font-medium mb-2 text-gray-900">받은 코드가 있나요?</label>
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-5">
               <input
                 value={claimCode} onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
                 onKeyDown={(e) => { if (e.key === 'Enter') void lookupByCode() }}
@@ -257,7 +257,7 @@ export default function StoreOwnerClaimPage() {
                 코드로 찾기
               </button>
             </div>
-            <p className="text-[12px] text-gray-500 mb-4 -mt-2">대행사가 매장을 대신 등록했다면 이 코드를 받으셨을 거예요. 없으면 아래에서 사업자번호로 찾아주세요.</p>
+            <p className="text-[12px] text-gray-500 mb-5 -mt-2">대행사가 매장을 대신 등록했다면 이 코드를 받으셨을 거예요. 없으면 아래에서 사업자번호로 찾아주세요.</p>
             <label className="block text-[13px] font-medium mb-2 text-gray-900">사업자등록번호</label>
             <div className="flex gap-2">
               <input
@@ -309,7 +309,7 @@ export default function StoreOwnerClaimPage() {
 
         {/* ── ② 신청 ─────────────────────────────────────── */}
         {picked && (
-          <section className="bg-white rounded-2xl p-4 space-y-4">
+          <section className="bg-white rounded-2xl p-5 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-[15px] font-medium text-gray-900">
                 {pickedStore?.business_name || pickedStore?.name || `매장 #${picked}`}
@@ -349,7 +349,7 @@ export default function StoreOwnerClaimPage() {
 
         {/* ── ③ 내 신청 내역 ─────────────────────────────── */}
         {mine.length > 0 && (
-          <section className="bg-white rounded-2xl p-4">
+          <section className="bg-white rounded-2xl p-5">
             <p className="text-[15px] font-medium text-gray-900 mb-2">내 신청 내역</p>
             <ul className="divide-y divide-gray-100">
               {mine.map((m) => (

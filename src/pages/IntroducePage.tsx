@@ -62,7 +62,7 @@ export default function IntroducePage() {
 
       {/* ─── NAV ─── */}
       <header className="sticky top-0 z-50 bg-[#11141C]/90 backdrop-blur-md border-b border-[#2C2F35]">
-        <div className="max-w-[1280px] mx-auto flex items-center justify-between px-6 h-16">
+        <div className="max-w-[1280px] mx-auto flex items-center justify-between px-5 h-16">
           <button onClick={() => navigate('/')} className="flex items-center">
             <UrDealLogo size={20} forceDark />
           </button>
@@ -90,10 +90,10 @@ export default function IntroducePage() {
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full bg-red-600/10 blur-[120px] pointer-events-none" />
         <div className="absolute top-20 right-1/4 w-[300px] h-[300px] rounded-full bg-brand/10 blur-[100px] pointer-events-none" />
 
-        <div className="relative max-w-[1280px] mx-auto px-6 pt-20 pb-24 flex flex-col md:flex-row gap-16 items-center">
+        <div className="relative max-w-[1280px] mx-auto px-5 pt-20 pb-24 flex flex-col md:flex-row gap-12 items-center">
           {/* left: copy */}
           <div className="flex-1 min-w-0">
-            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-red-500/10 border border-red-500/20 mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-red-500/10 border border-red-500/20 mb-8">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
               <span className="text-[12px] font-medium text-red-400">우리 동네 이용권</span>
             </div>
@@ -105,12 +105,12 @@ export default function IntroducePage() {
               맛집·뷰티·숙소,<br />
               <span className="text-transparent bg-clip-text bg-gray-800 italic">할인가로 바로.</span>
             </h1>
-            <p className="text-[17px] text-gray-400 mt-6 max-w-[480px] leading-relaxed">
+            <p className="text-[16px] text-gray-400 mt-8 max-w-[480px] leading-relaxed">
               온라인에서 할인가로 미리 사고, 매장에서 QR로 바로 써요.<br />
               쓰지 못하면 유효기간이 지난 뒤 자동으로 환불돼요.
             </p>
 
-            <div className="flex flex-wrap items-center gap-4 mt-8">
+            <div className="flex flex-wrap items-center gap-3 mt-8">
               <button
                 onClick={() => navigate('/')}
                 className="flex items-center gap-2 px-6 py-4 rounded-2xl text-gray-900 text-[15px] font-bold bg-white hover:bg-gray-100 transition-colors"
@@ -160,7 +160,7 @@ export default function IntroducePage() {
                   {/* fake bg */}
                   <div className="absolute inset-0 bg-gradient-to-b from-[#2A0A0A] via-[#1A0808] to-black" />
                   {/* bottom product card */}
-                  <div className="absolute bottom-4 left-3 right-3 rounded-2xl p-4 bg-black/80 backdrop-blur-md border border-white/10 z-10">
+                  <div className="absolute bottom-4 left-3 right-3 rounded-2xl p-5 bg-black/80 backdrop-blur-md border border-white/10 z-10">
                     <p className="text-[12px] font-medium text-white truncate">수제 돈카츠 3팩 세트</p>
                     <div className="flex items-baseline gap-2 mt-1">
                       <span className="text-[12px] font-medium text-red-400">30%</span>
@@ -181,7 +181,7 @@ export default function IntroducePage() {
 
       {/* ─── STATS ─── */}
       <section className="border-y border-[#2C2F35] bg-[#11141C]">
-        <div className="max-w-[1280px] mx-auto px-6 py-10 grid grid-cols-3 gap-8">
+        <div className="max-w-[1280px] mx-auto px-5 py-10 grid grid-cols-3 gap-8">
           {/* 🔒 **여기 들어갈 수 있는 숫자는 두 가지뿐이다** — ⓐ 서버가 실제로 세어 준 값
               ⓑ 코드가 보증하는 약속. 아래 셋은 ⓑ다: 만료 미사용분 자동환불은
               `daily-lane.ts` 의 `handleExpiredVoucherRefunds` 가 매일 돌리고, 가입·이용료는
@@ -194,7 +194,7 @@ export default function IntroducePage() {
             { n: '3초', l: '토스 간편결제' },
           ].map(s => (
             <div key={s.l} className="text-center">
-              <p className="text-[34px] md:text-[40px] font-extrabold text-white leading-none">{s.n}</p>
+              <p className="text-[34px] md:text-[40px] font-bold text-white leading-none">{s.n}</p>
               <p className="text-[12px] font-medium text-gray-500 mt-2">{s.l}</p>
             </div>
           ))}
@@ -202,25 +202,25 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── FEATURES ─── */}
-      <section id="features" className="max-w-[1280px] mx-auto px-6 py-20">
+      <section id="features" className="max-w-[1280px] mx-auto px-5 py-20">
         <div className="mb-12 text-center">
           <p className="text-[12px] font-medium text-red-400 tracking-[0.15em] mb-3">WHY URDEAL</p>
           <h2 className="text-[clamp(28px,4vw,48px)] font-bold text-white" style={{ letterSpacing: '-0.03em' }}>
             유어딜은 이렇게 다릅니다
           </h2>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {features.map(f => {
             const Icon = f.icon
             return (
               <div key={f.title} className="p-6 rounded-2xl bg-[#0D0D0D] border border-[#2C2F35] hover:border-[#2C2F35] transition-colors">
                 <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
                   style={{ backgroundColor: f.color + '20' }}
                 >
                   <Icon className="w-5 h-5" style={{ color: f.color }} />
                 </div>
-                <h3 className="text-[17px] font-bold text-white mb-2">{f.title}</h3>
+                <h3 className="text-[16px] font-semibold text-white mb-2">{f.title}</h3>
                 <p className="text-[13px] text-gray-500 leading-relaxed">{f.desc}</p>
               </div>
             )
@@ -229,7 +229,7 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── 인기 이용권 ─── */}
-      <section id="deals" className="max-w-[1280px] mx-auto px-6 py-16">
+      <section id="deals" className="max-w-[1280px] mx-auto px-5 py-16">
         <div className="mb-8">
           <p className="text-[12px] font-medium text-red-400 tracking-[0.15em] mb-3">● 동네 이용권</p>
           <h2 className="text-[clamp(24px,3.5vw,44px)] font-bold text-white" style={{ letterSpacing: '-0.03em' }}>
@@ -276,7 +276,7 @@ export default function IntroducePage() {
             </button>
           ))}
         </div>
-        <div className="mt-6 text-center">
+        <div className="mt-8 text-center">
           <button
             onClick={() => navigate('/')}
             className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-[#2C2F35] text-[13px] font-medium text-gray-300 hover:border-[#444] hover:text-white transition-colors"
@@ -288,23 +288,23 @@ export default function IntroducePage() {
 
       {/* ─── HOW IT WORKS ─── */}
       <section className="bg-[#11141C] border-y border-[#2C2F35]">
-        <div className="max-w-[1280px] mx-auto px-6 py-20">
+        <div className="max-w-[1280px] mx-auto px-5 py-20">
           <div className="mb-12 text-center">
             <p className="text-[12px] font-medium text-red-400 tracking-[0.15em] mb-3">HOW IT WORKS</p>
             <h2 className="text-[clamp(24px,3.5vw,44px)] font-bold text-white" style={{ letterSpacing: '-0.03em' }}>
               고르고, 사고, 매장에서 쓰기.
             </h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-5">
             {[
               { n: '01', Icon: Search, title: '이용권 고르기', desc: '홈이나 지도에서 지역·카테고리(맛집·뷰티·숙소 등)별로 이용권을 골라 보세요.' },
               { n: '02', Icon: BagIcon, title: '할인가로 구매', desc: '인원과 상관없이 처음부터 같은 할인가. 결제하면 내 이용권에 바로 들어와요.' },
               { n: '03', Icon: Utensils, title: '매장 방문·사용', desc: '매장에서 QR 또는 PIN을 보여 주면 사용 처리돼요. 숙소는 예약한 날짜에 맞춰 이용하시면 돼요.' },
             ].map(s => (
               <div key={s.n} className="relative p-8 rounded-3xl bg-[#111] border border-[#2C2F35] overflow-hidden">
-                <div className="absolute -top-4 -right-2 text-[100px] font-extrabold opacity-[0.04] text-white select-none">{s.n}</div>
+                <div className="absolute -top-4 -right-2 text-[100px] font-bold opacity-[0.04] text-white select-none">{s.n}</div>
                 <s.Icon className="w-9 h-9 mx-auto mb-5 text-gray-400" aria-hidden="true" />
-                <h3 className="text-[24px] font-bold text-white mb-3">{s.title}</h3>
+                <h3 className="text-[20px] font-semibold text-white mb-3">{s.title}</h3>
                 <p className="text-[15px] text-gray-500 leading-relaxed">{s.desc}</p>
               </div>
             ))}
@@ -313,7 +313,7 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── APP DOWNLOAD CTA ─── */}
-      <section className="max-w-[1280px] mx-auto px-6 py-20">
+      <section className="max-w-[1280px] mx-auto px-5 py-20">
         <div className="rounded-[32px] p-10 md:p-16 relative overflow-hidden bg-gradient-to-br from-[#EF4444] to-[#6b7280]">
           <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-1/4 w-[200px] h-[200px] rounded-full bg-white/5 translate-y-1/2" />
@@ -339,24 +339,24 @@ export default function IntroducePage() {
 
       {/* ─── FOR SELLERS ─── */}
       <section id="for-sellers" className="bg-[#11141C] border-t border-[#2C2F35]">
-        <div className="max-w-[1280px] mx-auto px-6 py-20">
+        <div className="max-w-[1280px] mx-auto px-5 py-20">
           <div className="max-w-[680px]">
             <p className="text-[12px] font-medium text-red-400 tracking-[0.15em] mb-3">FOR SELLERS</p>
             <h2 className="text-[clamp(28px,4vw,48px)] font-bold text-white mb-8" style={{ letterSpacing: '-0.03em' }}>
               우리 가게, 오늘부터<br />동네 단골 맛집.
             </h2>
-            <div className="space-y-5 mb-10">
+            <div className="space-y-5 mb-12">
               {[
                 { title: '가입비·월 고정비 0원', desc: '이용권이 팔렸을 때만 판매 수수료가 붙어요. 먼저 내는 돈은 없습니다.' },
                 { title: '에이전시에 맡겨도 돼요', desc: '직접 운영이 어렵다면 에이전시가 이용권 등록과 관리를 대신할 수 있어요.' },
                 { title: '주문·정산을 한 곳에서', desc: '사용 처리와 주문 확인, 정산까지 마이 페이지의 내 가게에서 해요.' },
               ].map(b => (
-                <div key={b.title} className="flex items-start gap-4">
+                <div key={b.title} className="flex items-start gap-3">
                   <div className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 mt-1">
                     <Check className="w-4 h-4 text-red-400" strokeWidth={3} />
                   </div>
                   <div>
-                    <p className="text-[17px] font-bold text-white">{b.title}</p>
+                    <p className="text-[16px] font-semibold text-white">{b.title}</p>
                     <p className="text-[13px] text-gray-500 mt-1">{b.desc}</p>
                   </div>
                 </div>
@@ -381,8 +381,8 @@ export default function IntroducePage() {
       </section>
 
       {/* ─── FAQ ─── */}
-      <section id="faq" className="max-w-[820px] mx-auto px-6 py-20">
-        <div className="mb-10 text-center">
+      <section id="faq" className="max-w-[820px] mx-auto px-5 py-20">
+        <div className="mb-12 text-center">
           <p className="text-[12px] font-medium text-red-400 tracking-[0.15em] mb-3">FAQ</p>
           <h2 className="text-[clamp(24px,3.5vw,44px)] font-bold text-white" style={{ letterSpacing: '-0.03em' }}>
             궁금한 거 다 풀어드려요.
@@ -398,7 +398,7 @@ export default function IntroducePage() {
               >
                 <span className="text-[15px] font-bold text-white">{f.q}</span>
                 <span
-                  className="text-[24px] text-gray-500 shrink-0 ml-4 transition-transform duration-200"
+                  className="text-[20px] text-gray-500 shrink-0 ml-5 transition-transform duration-200"
                   style={{ transform: faqOpen === i ? 'rotate(45deg)' : 'none' }}
                 >
                   ＋
@@ -416,10 +416,10 @@ export default function IntroducePage() {
 
       {/* ─── FOOTER ─── */}
       <footer className="border-t border-[#2C2F35] bg-[#11141C]">
-        <div className="max-w-[1280px] mx-auto px-6 py-16">
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-10 mb-10">
+        <div className="max-w-[1280px] mx-auto px-5 py-16">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-12">
             <div>
-              <div className="mb-4">
+              <div className="mb-5">
                 <UrDealLogo size={22} forceDark />
               </div>
               <p className="text-[13px] text-gray-500 leading-relaxed max-w-[320px]">
@@ -431,12 +431,12 @@ export default function IntroducePage() {
           <div className="pt-8 border-t border-[#2C2F35] text-[12px] text-gray-600 leading-relaxed">
             <p className="mb-2"><b className="text-gray-400">리스터코퍼레이션</b> · 대표: 정지원 · 사업자등록번호: 479-09-02930</p>
             <p className="mb-5">서울특별시 강남구 남부순환로359길 14, 3층(도곡동) · 고객센터 평일 09:00~18:00</p>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-3">
               <button onClick={() => navigate('/terms')} className="text-gray-600 hover:text-gray-300 transition-colors">이용약관</button>
               <button onClick={() => navigate('/privacy')} className="text-gray-600 hover:text-gray-300 font-bold transition-colors">개인정보처리방침</button>
               <button onClick={() => navigate('/refund')} className="text-gray-600 hover:text-gray-300 transition-colors">배송/환불</button>
             </div>
-            <p className="mt-4 text-gray-700">© 2026 리스터코퍼레이션. All rights reserved.</p>
+            <p className="mt-5 text-gray-700">© 2026 리스터코퍼레이션. All rights reserved.</p>
           </div>
         </div>
       </footer>

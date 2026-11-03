@@ -92,7 +92,7 @@ export default function GeoHelpSheet({
         <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center mb-3">
           <PinIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
         </div>
-        <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{title}</h3>
+        <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">{title}</h3>
 
         <ul className="mt-3 space-y-2">
           {steps.map((s, i) => (

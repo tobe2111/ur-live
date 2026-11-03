@@ -50,11 +50,11 @@ export default function CartPage() {
       <div className="flex flex-col min-h-screen bg-white dark:bg-[#11141C]">
         <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
         <div className="sticky top-0 z-10 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
-          <div className="ur-content-narrow flex items-center justify-between px-4 py-3">
+          <div className="ur-content-narrow flex items-center justify-between px-5 py-3">
             <button type="button" onClick={goBack} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
               <X className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
             </button>
-            <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('cart.title')}</h1>
+            <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('cart.title')}</h1>
             <div className="w-9" />
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function CartPage() {
             <BagIcon className="h-10 w-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-[17px] font-bold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
+            <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
             <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">{t('cart.loginRequired')}</p>
           </div>
           <button
@@ -434,7 +434,7 @@ function CartPageContent() {
       ) : (
         <>
           {/* 🖥️ 2026-07-20 장바구니 PC 2단 — 좌 아이템 + 우 sticky 요약/CTA. 모바일(<lg) 1열+하단바 불변. */}
-          <main className="ur-content-narrow w-full flex-1 pb-32 lg:max-w-[1020px] lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6 lg:items-start lg:pb-12">
+          <main className="ur-content-narrow w-full flex-1 pb-32 lg:max-w-[1020px] lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-5 lg:items-start lg:pb-12">
             <div className="lg:min-w-0">
             {/* v4 Seller Group Cards */}
             {Object.values(sellerGroups).map((group) => {
@@ -500,7 +500,7 @@ function CartPageContent() {
                   </div>
 
                   {freeShipThreshold > 0 && remaining > 0 && (
-                    <div className="mx-4 mt-3">
+                    <div className="mx-5 mt-3">
                       <p className="text-[12px] text-gray-600 dark:text-gray-300 font-medium mb-2">
                         <span className="text-brand-text font-bold tabular-nums">{formatNumber(remaining)}원</span> 더 담으면 무료배송
                       </p>
@@ -513,13 +513,13 @@ function CartPageContent() {
                     </div>
                   )}
                   {freeShipThreshold > 0 && remaining <= 0 && (
-                    <div className="mx-4 mt-3">
+                    <div className="mx-5 mt-3">
                       <p className="text-[12px] text-brand-text font-medium">{t('cart.freeShipping')}</p>
                     </div>
                   )}
 
                   {/* Product items */}
-                  <div className="px-4 py-3 space-y-4">
+                  <div className="px-4 py-3 space-y-3">
                     {group.items.map((item) => (
                       <CartItemComponent
                         key={item.id}
@@ -564,14 +564,14 @@ function CartPageContent() {
                 mixedHint={cta.hint}
                 noShipping={cartItems.length > 0 && cartItems.every(isNoShippingItem)}
               />
-              <CartCtaButton onClick={handleCheckout} disabled={cta.disabled} className="hidden lg:block mt-4" label={cta.label} />
+              <CartCtaButton onClick={handleCheckout} disabled={cta.disabled} className="hidden lg:block mt-5" label={cta.label} />
             </aside>
           </main>
 
           {/* v4 Bottom fixed CTA: "N원 주문하기" (bg-gray-900 text-white rounded-xl) */}
           {/* 🛡️ 2026-05-04: PC xl+ 사이드바 (224px) 우측부터 시작하도록 xl:left-56 추가. */}
           <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-20 bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] safe-bottom lg:hidden">
-            <div className="ur-content-narrow px-4 py-3">
+            <div className="ur-content-narrow px-5 py-3">
               <CartCtaButton onClick={handleCheckout} disabled={cta.disabled} label={cta.label} />
             </div>
           </div>

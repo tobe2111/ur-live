@@ -53,13 +53,13 @@ export default function SubPageHeader({ title, onBack, right, backLabel = 'ë’¤ë¡
         >
           <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" strokeWidth={1.6} />
         </button>
-        <h1 className={`text-center text-[17px] font-bold text-gray-900 dark:text-white truncate transition-[opacity,transform] duration-200 ${collapsed ? 'opacity-100' : 'opacity-0 translate-y-2'}`}>{title}</h1>
+        <h1 className={`text-center text-[16px] font-semibold text-gray-900 dark:text-white truncate transition-[opacity,transform] duration-200 ${collapsed ? 'opacity-100' : 'opacity-0 translate-y-2'}`}>{title}</h1>
         <div className={`h-11 flex items-center ${wideSides ? 'justify-end pr-3' : 'w-11 justify-center'}`}>{right}</div>
       </div>
     </header>
     <div aria-hidden="true" className="ur-content-narrow px-4 pt-1 pb-3 overflow-hidden">
       <p
-        className="origin-left text-[28px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white truncate"
+        className="origin-left text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white truncate"
         style={{ transform: `scale(${1 - k * 0.35}) translateY(${-k * 10}px)`, opacity: 1 - k }}
       >{title}</p>
     </div>

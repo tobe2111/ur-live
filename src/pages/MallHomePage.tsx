@@ -186,11 +186,11 @@ export default function MallHomePage() {
               onError={(e) => cfImageOnError(e.currentTarget, mall.logoUrl)}
             />
           ) : (
-            <div className="w-[50px] h-[50px] rounded-[15px] flex items-center justify-center text-white dark:text-[#1A1719] text-[24px] font-bold tracking-[-0.02em] flex-none"
+            <div className="w-[50px] h-[50px] rounded-[15px] flex items-center justify-center text-white dark:text-[#1A1719] text-[20px] font-semibold tracking-[-0.02em] flex-none"
               style={{ backgroundColor: 'var(--mall)' }} aria-hidden>{mall.initial}</div>
           )}
           <div className="min-w-0">
-            <h1 className="text-[17px] font-bold tracking-[-0.035em] leading-tight text-[#1A1719] dark:text-[#F3EFF1] truncate">{mall.name}</h1>
+            <h1 className="text-[16px] font-semibold tracking-[-0.035em] leading-tight text-[#1A1719] dark:text-[#F3EFF1] truncate">{mall.name}</h1>
             <p className="mt-1 text-[13px] tracking-[-0.015em] text-[#776F74] dark:text-[#9C9398] truncate">{mall.intro}</p>
           </div>
         </div>
@@ -244,7 +244,7 @@ export default function MallHomePage() {
             <p className="text-[15px] font-bold tracking-[-0.03em] text-[#3F383C] dark:text-[#DAD4D7]">진행 중인 공동구매가 없어요</p>
           </div>
         ) : (
-          <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-[22px]">
+          <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-[22px]">
             {items.map((it) => {
               const remain = remainLabel(it.deadline)
               const lowStock = typeof it.stock === 'number' && it.stock > 0 && it.stock <= 10
@@ -355,7 +355,7 @@ export default function MallHomePage() {
                 자세히 보기
               </a>
             )}
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-5 flex items-center gap-2">
               <button onClick={() => { try { localStorage.setItem(popupSeenKey(popup.id), '1') } catch { /* noop */ } setPopupOpen(false) }}
                 className="flex-1 rounded-xl border border-[#EDE9EB] dark:border-[#292327] py-2 text-[13px] font-medium text-[#6B6469] dark:text-[#A29A9F]">
                 다시 안 보기

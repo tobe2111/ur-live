@@ -89,7 +89,7 @@ const WishlistPage: React.FC = () => {
       <WalletPageWrapper theme={theme}>
         <SubPageHeader title={t('wishlist.title')} backLabel={t('common.back')} />
         <div className="text-center py-20">
-          <p className="mb-4" style={{ color: tk.danger }}>{error}</p>
+          <p className="mb-5" style={{ color: tk.danger }}>{error}</p>
           {/* 🎫 표면 규칙 ⑥ — 그라디언트 0. 주 행동은 브랜드 블루 면 하나. */}
           <button
             onClick={() => refetch()}
@@ -110,7 +110,7 @@ const WishlistPage: React.FC = () => {
           종전엔 회색 원 `←` + 그 아래 34px 큰 제목 + "찜한 상품 0개" 가 같은 말을 두 번 했다. */}
       <SubPageHeader title={t('wishlist.title')} backLabel={t('common.back')} />
 
-      <div className="ur-content-wide px-4 lg:px-8 pb-2">
+      <div className="ur-content-wide px-5 lg:px-8 pb-2">
         {/* 개수·인하는 찜이 있을 때만 말한다 — 빈 화면에서 "0개" 는 제목을 되풀이할 뿐이다. */}
         {wishlists.length > 0 && (
           <p key={`${wishlists.length}|${summary.drops}`} className={`px-1 pt-1 pb-3 text-[13px] text-gray-500 dark:text-gray-400${firstCount.current !== null && firstCount.current !== wishlists.length ? ' ur-wl-pop' : ''}`}>
@@ -125,10 +125,10 @@ const WishlistPage: React.FC = () => {
           /* 🎫 2026-09-03: 표면 규칙 ①(카드 테두리 0 · 화이트는 들림 한 값) + ⑥(그라디언트 0).
              종전엔 테두리 카드 + 그라디언트 버튼이었고, p-12·아이콘 64px 이라 빈 화면이 세로로
              과하게 컸다. 주 행동은 브랜드 블루 면 하나. */
-          <div className="rounded-2xl px-6 py-10 text-center lg:max-w-xl lg:mx-auto lg:mt-4">
+          <div className="rounded-2xl px-5 py-10 text-center lg:max-w-xl lg:mx-auto lg:mt-5">
             {/* 🦦 2026-10-07 유달이 — 아직 찜한 게 없으면 졸린 얼굴(하트 아이콘 대체). */}
             <Udal mood="empty" size={104} className="mx-auto mb-3" />
-            <h2 className="text-[17px] font-bold text-[#16181C] dark:text-[#F8F7FC]">{t('wishlist.emptyTitle')}</h2>
+            <h2 className="text-[16px] font-semibold text-[#16181C] dark:text-[#F8F7FC]">{t('wishlist.emptyTitle')}</h2>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('wishlist.emptyHint')}</p>
             <button
               onClick={() => navigate('/')}
@@ -145,11 +145,11 @@ const WishlistPage: React.FC = () => {
           <>
             {/* 📱 2026-10-14 (대표 확정 — 모바일 나안): 레일 자리가 없는 폰은 맨 위 요약 카드. */}
             <WishlistSummaryCard s={summary} />
-            <div className="mb-4">
+            <div className="mb-5">
               <WishlistSortChips value={sort} onChange={setSort} />
             </div>
             {/* 🖥️ PC 만 좌측 요약 레일 — 모바일은 세로가 귀해서 같은 정보를 제목 밑 한 줄이 맡는다. */}
-            <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-6 lg:items-start">
+            <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-5 lg:items-start">
               <WishlistSummaryRail s={summary} />
               {/* 📱 폰은 사진 작은 한 줄 목록(`DealRow`), PC 는 홈과 같은 격자 카드. 둘을 동시에 그리지 않는다
                   — 숨긴 쪽 사진까지 받게 된다. */}

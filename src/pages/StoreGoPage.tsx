@@ -39,7 +39,7 @@ export default function StoreGoPage() {
     <div className="min-h-[100dvh] bg-warm flex items-center justify-center px-6">
       <SEO title="매장 열기 - 유어딜" description="사장님 매장 바로가기" url="/store/go" />
       <div className="w-full max-w-sm text-center">
-        <p className="text-[17px] font-bold text-gray-900 dark:text-white">이 매장을 열 수 없어요</p>
+        <p className="text-[16px] font-semibold text-gray-900 dark:text-white">이 매장을 열 수 없어요</p>
         <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
           지금 로그인한 카카오 계정에 이 매장 관리 권한이 없거나, 권한이 바뀌었을 수 있어요.
           마이의 ‘내 가게’에서 다시 골라 주세요.
@@ -47,7 +47,7 @@ export default function StoreGoPage() {
         <button
           type="button"
           onClick={() => navigate('/user/profile', { replace: true })}
-          className="ur-btn ur-btn-primary w-full mt-6"
+          className="ur-btn ur-btn-primary w-full mt-8"
         >
           마이에서 내 가게 고르기
         </button>

@@ -235,7 +235,7 @@ export default function MallProductPage() {
           )}
         </div>
 
-        <h1 className="mt-5 text-[17px] font-bold leading-[1.35] tracking-[-0.035em] text-[#1A1719] dark:text-[#F3EFF1]">{product.name}</h1>
+        <h1 className="mt-5 text-[16px] font-semibold leading-[1.35] tracking-[-0.035em] text-[#1A1719] dark:text-[#F3EFF1]">{product.name}</h1>
 
         {/* 🔴 가격 — 목록·카톡 카드와 **같은 값**이어야 한다. 서버가 준 값을 그대로 쓴다. */}
         <p className="mt-2 flex items-baseline gap-2 flex-wrap">
@@ -281,7 +281,7 @@ export default function MallProductPage() {
         )}
 
         {product.detail_images.length > 0 && (
-          <div className="mt-6 space-y-2">
+          <div className="mt-8 space-y-2">
             {product.detail_images.map((src, i) => (
               <img key={i} src={cfImage(src, { width: 900 })} alt="" loading="lazy" className="w-full rounded-xl" onError={(e) => cfImageOnError(e.currentTarget, src)} />
             ))}
@@ -299,10 +299,10 @@ export default function MallProductPage() {
           {!closed && !soldOut && (
             <div className="flex-none flex items-center rounded-xl border border-[#EDE9EB] dark:border-[#292327]">
               <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="수량 줄이기"
-                className="w-9 h-10 text-[17px] font-bold text-[#6B6469] dark:text-[#A29A9F]">−</button>
+                className="w-9 h-10 text-[16px] font-semibold text-[#6B6469] dark:text-[#A29A9F]">−</button>
               <span className="w-7 text-center text-[15px] font-bold text-[#1A1719] dark:text-[#F3EFF1]">{qty}</span>
               <button onClick={() => setQty((q) => Math.min(maxQty, q + 1))} aria-label="수량 늘리기"
-                className="w-9 h-10 text-[17px] font-bold text-[#6B6469] dark:text-[#A29A9F]">+</button>
+                className="w-9 h-10 text-[16px] font-semibold text-[#6B6469] dark:text-[#A29A9F]">+</button>
             </div>
           )}
           <button onClick={buy} disabled={closed || soldOut}

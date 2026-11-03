@@ -64,8 +64,8 @@ export default [
     // 🔁 2026-10-24 (그루폰식): 가격이 '옵션 선택' 카드로 옮겨갔다 — 상자가 돌아올 자리도 그쪽이다.
     // 🔁 2026-10-25 (E안): 옵션 카드를 걷어 가격은 머리(`PassHeadCard`) 한 곳 — 상자가 돌아올 자리도 거기다.
     file: 'src/pages/group-buy/PassHeadCard.tsx',
-    find: "{!!discountPct && discountPct > 0 && <span className=\"ur-pct-pop text-[17px] font-bold\"",
-    replace: "<span>1장당 아껴요</span>{!!discountPct && discountPct > 0 && <span className=\"ur-pct-pop text-[17px] font-bold\"",
+    find: "{!!discountPct && discountPct > 0 && <span className=\"ur-pct-pop text-[16px] font-bold\"",
+    replace: "<span>1장당 아껴요</span>{!!discountPct && discountPct > 0 && <span className=\"ur-pct-pop text-[16px] font-bold\"",
     test: 'src/tests/unit/pass-detail-d-2026-10-11.test.ts',
     why: '48% 와 정가 취소선이 이미 같은 말을 한다. 2026-10-12 실측에서 한 화면에 가격이 여섯 번 나왔다.',
   },

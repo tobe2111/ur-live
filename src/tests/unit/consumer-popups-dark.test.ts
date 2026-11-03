@@ -70,7 +70,7 @@ describe('② 리뷰 작성란 (ProductReviews)', () => {
   })
 
   it('작성 카드는 테두리 0 + 판 없음(2026-11-02 대표 확정 A안 — 평면)', () => {
-    expect(src).toMatch(/mt-3 rounded-2xl p-4/)
+    expect(src).toMatch(/mt-3 rounded-2xl p-5/) // 📏 2026-11-03 공백 체계 — 판 안쪽 20
     expect(src).not.toMatch(/mt-3 rounded-2xl[^"]*shadow-lift/)
   })
 })

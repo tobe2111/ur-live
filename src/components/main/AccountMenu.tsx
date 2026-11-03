@@ -89,7 +89,7 @@ export default function AccountMenu({
     >
       {/* 인사 + 닫기 */}
       <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-1">
-        <p className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">
+        <p className="text-[16px] font-bold tracking-tight text-gray-900 dark:text-white">
           {loggedIn && name
             ? t('nav.greeting', { defaultValue: '안녕하세요, {{name}}님!', name })
             : t('nav.greetingGuest', { defaultValue: '유어딜에 오신 걸 환영해요' })}

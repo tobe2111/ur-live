@@ -66,7 +66,7 @@ export const VOUCHERS_FS_CLASS = {
   brandTile: 'w-12 h-12 rounded-2xl block',
   brandLabel: 'text-[12px] max-w-[56px]',
   sortBar: 'ur-content-wide px-5 lg:px-8 pt-5 pb-3 flex items-center justify-between gap-2',
-  sortTitle: 'text-[17px] font-bold text-gray-900 dark:text-white flex items-baseline gap-2 min-w-0',
+  sortTitle: 'text-[16px] font-semibold text-gray-900 dark:text-white flex items-baseline gap-2 min-w-0',
   sortCount: 'text-[15px] text-gray-500 dark:text-gray-400 shrink-0',
   sortBtn: 'inline-flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-2 text-[12px] font-medium text-gray-900 dark:text-white active:scale-[0.98] transition-transform',
   listWrap: 'ur-content-wide px-5 lg:px-8 pt-1 pb-6',

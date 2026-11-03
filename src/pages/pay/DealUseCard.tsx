@@ -61,7 +61,7 @@ export default function DealUseCard({ goodsAmount, dealMax, value, onChange, dis
   const atMax = used === cap
 
   return (
-    <section className="rounded-2xl p-4">
+    <section className="rounded-2xl p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-[15px] font-bold text-ink">딜 사용</h2>
         <span className="text-[12px] text-ink-faint">
@@ -79,7 +79,7 @@ export default function DealUseCard({ goodsAmount, dealMax, value, onChange, dis
           placeholder="0"
           disabled={disabled}
           onChange={(e) => onChange(clampDealUse(e.target.value, cap))}
-          className="flex-1 min-w-0 h-12 px-4 rounded-xl bg-warm border border-line text-right text-[17px] font-bold tabular-nums text-ink disabled:opacity-50"
+          className="flex-1 min-w-0 h-12 px-4 rounded-xl bg-warm border border-line text-right text-[16px] font-bold tabular-nums text-ink disabled:opacity-50"
         />
         <span className="text-[13px] text-ink-soft">딜</span>
         <button

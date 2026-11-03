@@ -151,20 +151,20 @@ export default function ReferralPage() {
             <button onClick={goBack} aria-label={t('groupbuy.backAria', { defaultValue: '뒤로' })} className="w-9 h-9 flex items-center justify-center">
               <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
             </button>
-            <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('groupbuy.communityTitle', { defaultValue: '맛집 공구' })}</h1>
+            <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('groupbuy.communityTitle', { defaultValue: '맛집 공구' })}</h1>
             <div className="w-9" />
           </div>
         </div>
 
-        <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32">
+        <div className="ur-content-narrow px-5 lg:px-8 py-4 space-y-3 pb-32">
           {/* 식당 + 가격 */}
-          <section className="rounded-2xl p-4">
-            <p className="text-[17px] font-bold text-gray-900 dark:text-white">{community.restaurant_name}</p>
+          <section className="rounded-2xl p-5">
+            <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{community.restaurant_name}</p>
             {community.restaurant_address && (
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{community.restaurant_address}</p>
             )}
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-[17px] font-bold text-brand-text">{formatNumber(cgPrice)}원</span>
+              <span className="text-[16px] font-bold text-brand-text">{formatNumber(cgPrice)}원</span>
               <span className="text-[12px] text-gray-400 dark:text-gray-500">{t('groupbuy.summaryPriceLabel', { defaultValue: '희망 가격' })}</span>
             </div>
             <div className="mt-2 flex items-center gap-2 text-[13px] text-gray-600 dark:text-gray-300">
@@ -178,7 +178,7 @@ export default function ReferralPage() {
 
           {/* 🏭 2026-06-07 (사용자 요청): 공구를 유치한 사람이 작성한 소개글 노출 */}
           {community.description && (
-            <section className="rounded-2xl p-4">
+            <section className="rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center text-[12px] font-medium">
                   {community.creator_name?.slice(0, 1) || '제'}
@@ -194,7 +194,7 @@ export default function ReferralPage() {
           )}
 
           {/* 보증금 안내 */}
-          <section className="rounded-2xl p-4">
+          <section className="rounded-2xl p-5">
             <div className="flex items-center justify-between">
               <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('groupbuy.depositLabel', { defaultValue: '1인당 보증금' })}</span>
               <span className="text-[15px] font-bold text-gray-900 dark:text-white">{formatNumber(community.deposit_per_person)}딜</span>
@@ -230,9 +230,9 @@ export default function ReferralPage() {
   if (!group) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-4">
-        <GiftBoxIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
-        <p className="text-gray-900 dark:text-white font-bold text-[17px]">유효하지 않은 초대입니다</p>
-        <Link to="/" className="mt-4 text-gray-900 dark:text-white text-[15px] font-medium underline">홈으로 돌아가기</Link>
+        <GiftBoxIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-5" />
+        <p className="text-gray-900 dark:text-white font-semibold text-[16px]">유효하지 않은 초대입니다</p>
+        <Link to="/" className="mt-5 text-gray-900 dark:text-white text-[15px] font-medium underline">홈으로 돌아가기</Link>
       </div>
     )
   }
@@ -270,16 +270,16 @@ export default function ReferralPage() {
           <button onClick={goBack} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">공동구매</h1>
+          <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">공동구매</h1>
           <div className="w-9" />
         </div>
       </div>
 
-      <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32" style={{ background: '#F9FAFB', minHeight: 'calc(100dvh - 48px)' }}>
+      <div className="ur-content-narrow px-5 lg:px-8 py-4 space-y-3 pb-32" style={{ background: '#F9FAFB', minHeight: 'calc(100dvh - 48px)' }}>
         {/* 1. Hero Header — 상품 + 크리에이터 + 카운트다운 */}
-        <section className="rounded-2xl p-4">
+        <section className="rounded-2xl p-5">
           {product && (
-            <div className="flex gap-3 mb-4">
+            <div className="flex gap-3 mb-5">
               {product.image_url && (
                 <img src={cfImage(product.image_url, { width: 200, quality: 82, format: 'auto' }) || product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-[#2C2F35]" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, product.image_url)} />
               )}
@@ -288,11 +288,11 @@ export default function ReferralPage() {
                 <div className="mt-2 flex items-baseline gap-2">
                   {currentDiscount > 0 ? (
                     <>
-                      <span className="text-[17px] font-bold text-brand-text">{formatNumber(discountedPrice)}원</span>
+                      <span className="text-[16px] font-bold text-brand-text">{formatNumber(discountedPrice)}원</span>
                       <span className="text-[12px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(product.price)}원</span>
                     </>
                   ) : (
-                    <span className="text-[17px] font-bold text-gray-900 dark:text-white">{formatNumber(product.price)}원</span>
+                    <span className="text-[16px] font-bold text-gray-900 dark:text-white">{formatNumber(product.price)}원</span>
                   )}
                 </div>
               </div>
@@ -585,7 +585,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
         ].filter((t, i) => i > 0 || t.v > 0).map((t, i, arr) => (
           <span key={t.l} className="contents">
             <div className="rounded-lg px-2 py-2 bg-brand-tint">
-              <span className="text-[17px] font-bold text-brand-text" style={{ fontFamily: 'ui-monospace, monospace' }}>
+              <span className="text-[16px] font-semibold text-brand-text" style={{ fontFamily: 'ui-monospace, monospace' }}>
                 {String(t.v).padStart(2, '0')}
               </span>
               <span className="text-[12px] block leading-none mt-1 text-brand-text">{t.l}</span>

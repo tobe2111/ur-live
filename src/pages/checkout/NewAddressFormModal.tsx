@@ -36,7 +36,7 @@ export default function NewAddressFormModal({
       type="custom"
       maxWidth="lg"
     >
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div>
           <label htmlFor="checkout-recipient-name" className="block text-[15px] font-medium text-gray-900 dark:text-white mb-2">
             {t('checkout.newAddress.recipientName', { defaultValue: '수령인 이름' })} <span className="text-red-500" aria-hidden="true">*</span>
@@ -138,7 +138,7 @@ export default function NewAddressFormModal({
               e.stopPropagation()
               onSave()
             }}
-            className="flex-1 py-4 bg-brand text-white rounded-2xl text-[17px] font-bold hover:bg-gray-900 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+            className="flex-1 py-4 bg-brand text-white rounded-2xl text-[16px] font-semibold hover:bg-gray-900 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
           >
             {t('common.save', { defaultValue: '저장' })}
           </button>
@@ -148,7 +148,7 @@ export default function NewAddressFormModal({
               e.stopPropagation()
               onClose()
             }}
-            className="flex-1 py-4 bg-gray-50 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 rounded-2xl text-[17px] font-bold hover:bg-gray-100 dark:hover:bg-[#1D1F29] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+            className="flex-1 py-4 bg-gray-50 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 rounded-2xl text-[16px] font-semibold hover:bg-gray-100 dark:hover:bg-[#1D1F29] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
           >
             {t('common.cancel', { defaultValue: '취소' })}
           </button>

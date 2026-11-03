@@ -124,7 +124,7 @@ export default function GuestUrShopPage() {
               <span className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-brand-tint flex items-center justify-center">
                 <Udal mood="tip" size={48} />
               </span>
-              <span className="flex-1 min-w-0 text-[17px] font-bold text-gray-900 dark:text-white truncate">
+              <span className="flex-1 min-w-0 text-[16px] font-semibold text-gray-900 dark:text-white truncate">
                 {t('guest.shop.exampleName', { defaultValue: '유달의 유어샵' })}
               </span>
               <span className="shrink-0 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">
@@ -144,7 +144,7 @@ export default function GuestUrShopPage() {
         )}
 
 
-        <div ref={benefitsRef} className="mt-6 ur-gs-reveal">
+        <div ref={benefitsRef} className="mt-8 ur-gs-reveal">
           <GuestBenefits
             items={[
               { icon: <UrShopIcon size={ICON} />, title: t('guest.shop.b1', { defaultValue: '여러 가게를 링크 하나로' }), desc: t('guest.shop.b1d', { defaultValue: '담은 이용권이 내 페이지 한곳에 진열돼요' }) },
@@ -154,7 +154,7 @@ export default function GuestUrShopPage() {
           />
         </div>
 
-        <div className="mt-6">
+        <div className="mt-8">
           {/* 유어샵은 **가입 순간 자동으로 생긴다**(KakaoAuthService.upsertUser) — "만들기" 라고 하면 거짓말이다
               (urshop-naming N6). 그래서 버튼은 시작하기, 아래 한 줄이 무엇을 받는지 말한다. */}
           <GuestKakaoButton returnPath="/u/me" />
@@ -163,7 +163,7 @@ export default function GuestUrShopPage() {
           </p>
         </div>
 
-        <Link ref={ownerRef} to="/partners" className="ur-gs-reveal-one mt-6 flex items-center gap-3 rounded-2xl px-4 py-4 active:opacity-80">
+        <Link ref={ownerRef} to="/partners" className="ur-gs-reveal-one mt-8 flex items-center gap-3 rounded-2xl px-4 py-4 active:opacity-80">
           <span className="shrink-0 w-9 h-9 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 flex items-center justify-center">
             <StoreIcon size={ICON} />
           </span>

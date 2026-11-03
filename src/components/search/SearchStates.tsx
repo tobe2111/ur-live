@@ -98,9 +98,9 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
     return (
       <div className="flex flex-col items-center justify-center py-20">
         {/* 🦦 2026-10-07 유달이 — 오류는 '미안' 얼굴(빨간 경고 원 대체). */}
-        <Udal mood="oops" size={112} className="mb-4" />
-        <p className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">오류가 발생했습니다</p>
-        <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{error}</p>
+        <Udal mood="oops" size={112} className="mb-5" />
+        <p className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">오류가 발생했습니다</p>
+        <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-8">{error}</p>
         <div className="flex gap-3">
           <button
             onClick={() => window.location.reload()}
@@ -165,7 +165,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 mb-4">
+          <div className="flex flex-col items-center justify-center py-12 mb-5">
             <Udal mood="hello" size={96} className="mb-3" />
             <p className="text-[15px] font-medium text-gray-900 dark:text-white mb-1">검색어를 입력해주세요</p>
             <p className="text-[13px] text-gray-500 dark:text-gray-400">상품명 또는 판매자명으로 검색할 수 있습니다</p>
@@ -202,7 +202,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
   if (query && !hasResults) {
     return (
       <div className="py-10">
-        <div className="flex flex-col items-center justify-center mb-6">
+        <div className="flex flex-col items-center justify-center mb-8">
           {/* 🦦 2026-10-07 유달이 — 찾는 게 없을 땐 갸웃. */}
           <Udal mood="notFound" size={112} className="mb-3" />
           <p className="text-[15px] font-medium text-gray-900 dark:text-white mb-1">'{query}' 검색 결과가 없어요</p>
@@ -211,12 +211,12 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
 
         {/* 오타 보정 제안 — distance ≤ 2 인 popular 키워드 */}
         {suggestedQuery && (
-          <div className="mx-auto max-w-md mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-center">
+          <div className="mx-auto max-w-md mb-8 p-5 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-center">
             <p className="text-[13px] text-gray-700 dark:text-gray-300 mb-2">혹시 이걸 찾으셨나요?</p>
             <button
               type="button"
               onClick={() => navigate(`/search?q=${encodeURIComponent(suggestedQuery)}`)}
-              className="text-[17px] font-bold text-rose-600 dark:text-rose-300 hover:underline"
+              className="text-[16px] font-semibold text-rose-600 dark:text-rose-300 hover:underline"
             >
               {suggestedQuery} →
             </button>

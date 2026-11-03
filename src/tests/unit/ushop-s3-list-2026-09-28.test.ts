@@ -167,14 +167,14 @@ describe('⑤-3 줄에 찜 하트를 달지 않는다', () => {
  *   ⚠️ 이 시험은 **클래스 배선**만 본다 — 실제로 한 톤으로 보이는지는 브라우저 프레임 캡처가 판정한다.
  */
 describe('⑤-4 한 톤 — 판 대신 실선이 나눈다', () => {
-  it('페이지 바탕이 카드와 같은 톤이다', () => {
-    // 🌙 2026-10-24 대표 *"다크모드에선 원래 더 어두운 네이비 색 아니야?"* — 다크에서는 페이지·헤더가
-    //   둘 다 `dark:bg-warm`(#11141C) 이다. 한 톤은 그대로이고(헤더와 본문이 같은 값) 라이트만 `bg-surface`.
-    //   그래서 막는 것은 **접두 없는** `bg-warm`(라이트 웜 바탕 복귀)이다.
-    expect(page, '`bg-warm`(웜 바탕) 복귀 — 톤이 둘이 된다').not.toMatch(/(?<!dark:)\bbg-warm\b/)
-    expect(page, '페이지 루트가 bg-surface (다크는 페이지 네이비)').toMatch(/min-h-\[100dvh\] bg-surface dark:bg-warm/)
+  it('🧾 2026-11-03 유어샵 B — 바탕은 회색, 이름·진열은 흰 판 (한 톤을 대체)', () => {
+    // 대표 *"유어샵은 B"*(시안 I4·I5) — 토스식 판 묶음. 2026-09-30 '한 톤' 을 대표가 바꿨다.
+    //   지키는 것: 바탕(`bg-warm`)과 판(`bg-surface`)이 **다르고**, 진열 줄은 판 안에서 실선으로 나뉜다.
+    expect(page, '페이지 루트가 바탕(bg-warm)').toMatch(/min-h-\[100dvh\] bg-warm text-gray-900/)
+    expect(page, '진열 줄을 담는 흰 판').toContain('<div className="mx-3 mt-3 rounded-2xl bg-surface lg:mx-0 lg:mt-0 lg:rounded-none lg:bg-transparent">')
     const header = stripComments(readCode('src/pages/curator-page/CuratorHeader.tsx'))
-    expect(header, '헤더도 같은 값이어야 한 톤이다').toContain('<header className="bg-surface dark:bg-warm">')
+    expect(header).toContain('<header className="bg-warm">')
+    expect(header, '이름·숫자 줄을 담는 흰 판').toContain('<div className="mx-3 mt-2 rounded-2xl bg-surface pt-1 pb-1">')
   })
 
   it('줄 사이는 실선으로 나눈다 (판·여백이 아니라)', () => {

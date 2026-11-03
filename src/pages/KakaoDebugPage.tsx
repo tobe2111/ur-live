@@ -109,11 +109,11 @@ export default function KakaoDebugPage() {
   return (
     <div className="min-h-screen bg-warm py-8 px-4">
       <SEO title="Debug" noindex />
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-5">
         {/* Header */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-[24px]">🔍 카카오 로그인 디버그</CardTitle>
+            <CardTitle className="text-[20px]">🔍 카카오 로그인 디버그</CardTitle>
             <p className="text-[15px] text-gray-600 mt-2">
               KOE101 오류가 발생했나요? 아래 설정을 확인하세요.
             </p>
@@ -123,7 +123,7 @@ export default function KakaoDebugPage() {
         {/* Quick Links */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-[17px]">📚 빠른 링크</CardTitle>
+            <CardTitle className="text-[16px]">📚 빠른 링크</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <a
@@ -156,7 +156,7 @@ export default function KakaoDebugPage() {
         {/* Diagnostics Results */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-[17px]">🔧 진단 결과</CardTitle>
+            <CardTitle className="text-[16px]">🔧 진단 결과</CardTitle>
             <Button onClick={runDiagnostics} disabled={loading} size="sm">
               {loading ? '진단 중...' : '다시 진단'}
             </Button>
@@ -165,10 +165,10 @@ export default function KakaoDebugPage() {
             {loading ? (
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-4 text-gray-600">진단 실행 중...</p>
+                <p className="mt-5 text-gray-600">진단 실행 중...</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {checks.map((check, index) => (
                   <div key={index} className="border rounded-lg p-4">
                     <div className="flex items-start gap-3">
@@ -200,7 +200,7 @@ export default function KakaoDebugPage() {
         {/* Action Items */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-[17px]">✅ 체크리스트</CardTitle>
+            <CardTitle className="text-[16px]">✅ 체크리스트</CardTitle>
           </CardHeader>
           <CardContent>
             <ol className="list-decimal list-inside space-y-2 text-[15px]">

@@ -46,14 +46,14 @@ export default function NewOpeningsPage() {
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A]">
       <SEO title={CONSUMER_SURFACE_SEO['/new-openings'].title} description={CONSUMER_SURFACE_SEO['/new-openings'].description} url="/new-openings" />
-      <div className="ur-content-wide px-4 lg:px-8 py-6">
-        <h1 className="text-[17px] lg:text-[24px] font-bold text-gray-900 dark:text-white">🎉 우리 동네 새 가게</h1>
+      <div className="ur-content-wide px-5 lg:px-8 py-6">
+        <h1 className="text-[16px] lg:text-[20px] font-semibold text-gray-900 dark:text-white">🎉 우리 동네 새 가게</h1>
         <p className="mt-1 text-[15px] text-gray-500 dark:text-gray-400">최근 30일 신규 개업입니다. 공공 인허가 데이터 기반이라 매일 자동 갱신됩니다.</p>
         <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 max-w-[42em] leading-relaxed">우리 동네에 새로 문을 연 식당·카페·뷰티숍을 지역별로 모았습니다. 지역 칩을 눌러 내 동네만 골라 볼 수 있어요.</p>
 
         {/* 지역 칩 */}
         {regions.length > 0 && (
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+          <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
             <button onClick={() => setRegion('')} className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-medium border ${!region ? 'bg-brand text-white border-brand dark:border-white' : 'bg-white text-gray-600 border-gray-200 dark:bg-[#121212] dark:text-gray-300 dark:border-[#2A2A2A]'}`}>전체</button>
             {regions.map(r => (
               <button key={r.k} onClick={() => setRegion(prev => prev === r.k ? '' : r.k)}
@@ -69,7 +69,7 @@ export default function NewOpeningsPage() {
         ) : !data || data.openings.length === 0 ? (
           <div className="py-16 text-center text-gray-400 dark:text-gray-500 text-[15px]">이 지역의 최근 개업 소식이 아직 없어요.</div>
         ) : (
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {data.openings.map((o, i) => (
               <div key={i} className="rounded-xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212] p-4">
                 <div className="flex items-start justify-between gap-2">

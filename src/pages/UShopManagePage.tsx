@@ -89,7 +89,7 @@ export default function UShopManagePage() {
     <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white pb-16">
       {/* 상단 — 뒤로는 내 유어샵. 주소는 바뀔 수 있으니 항상 현재 handle 로 간다. */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-rule">
-        <Link to={`/u/${curator.handle}`} aria-label={t('common.back', { defaultValue: '뒤로' })} className="text-[17px] leading-none text-gray-500 dark:text-gray-400 active:opacity-60">‹</Link>
+        <Link to={`/u/${curator.handle}`} aria-label={t('common.back', { defaultValue: '뒤로' })} className="text-[16px] leading-none text-gray-500 dark:text-gray-400 active:opacity-60">‹</Link>
         <h1 className="text-[15px] font-medium tracking-[-0.028em]">{t('ushop.manageTitle', { defaultValue: '유어샵 관리' })}</h1>
       </div>
 
@@ -99,7 +99,7 @@ export default function UShopManagePage() {
             수익 화면은 위 카드('콘솔 ›')와 아래 '대시보드' 줄로 **두 번** 링크됐고, 그 '대시보드'는
             '내 가게' 제목 밑에 있어 가게 관리처럼 읽혔다. 프로필 줄은 마이로 **화면을 통째로 이동**했다.
             ⇒ 세 묶음(내 유어샵 · 수익과 정산 · 내 가게), 줄마다 할 일 하나, 마이와 같은 목록 문법. */}
-        <div className="mt-6"><SectionTitle>{t('ushop.manageMyShop', { defaultValue: '내 유어샵' })}</SectionTitle></div>
+        <div className="mt-8"><SectionTitle>{t('ushop.manageMyShop', { defaultValue: '내 유어샵' })}</SectionTitle></div>
         {reorder ? (
           <div className="mt-3">
             <div className="flex items-center justify-between mb-2">

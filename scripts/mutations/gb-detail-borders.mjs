@@ -34,8 +34,8 @@ export default [
     name: '[테두리] 내 공구 CTA 가 다시 테두리 상자가 된다',
     // 🔀 2026-10-18: 그 띠가 `OwnerManagePanel`(구매 자리)로 옮겨갔다 — 불변식 그대로, 앵커만.
     file: 'src/pages/group-buy/OwnerManagePanel.tsx',
-    find: "<div className={compact ? 'flex items-center gap-3' : 'mt-4'}>",
-    replace: "<div className={compact ? 'flex items-center gap-3 border border-gray-200' : 'mt-4'}>",
+    find: "<div className={compact ? 'flex items-center gap-3' : 'mt-5'}>",
+    replace: "<div className={compact ? 'flex items-center gap-3 border border-gray-200' : 'mt-5'}>",
     test: TEST,
     why: '규칙 ① 위반 — 걷어낸 자리는 면으로 채우거나 비운다.',
   },

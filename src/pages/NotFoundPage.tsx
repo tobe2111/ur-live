@@ -60,13 +60,13 @@ export default function NotFoundPage() {
         />
 
         {/* 🛡️ 2026-05-20: PC 에서도 너무 좁지 않도록 lg:padding 추가 */}
-        <div className="relative z-10 max-w-xl w-full text-center px-4 lg:px-8 animate-fade-in">
+        <div className="relative z-10 max-w-xl w-full text-center px-5 lg:px-8 animate-fade-in">
           {/* 🦦 2026-10-07 유달이 — 거대한 '404' 글자 대신 길 잃은(놀란) 얼굴.
               숫자는 작게 남긴다(무슨 일인지 아는 사람에겐 그게 가장 빠른 신호다). */}
           <Udal mood="lost" size={128} motion priority className="mx-auto" />
-          <p className="mt-4 text-[13px] font-medium tracking-[0.2em] text-gray-400 dark:text-gray-500 ur-nf-drop" aria-hidden="true">404</p>
+          <p className="mt-5 text-[13px] font-medium tracking-[0.2em] text-gray-400 dark:text-gray-500 ur-nf-drop" aria-hidden="true">404</p>
 
-          <h1 className="mt-1 text-[24px] font-bold text-gray-900 dark:text-white">
+          <h1 className="mt-1 text-[20px] font-semibold text-gray-900 dark:text-white">
             {t('notFound.title')}
           </h1>
 
@@ -76,7 +76,7 @@ export default function NotFoundPage() {
           </p>
 
           {/* Action Buttons */}
-          <div className="mt-10 grid grid-cols-2 gap-3 ur-nf-go">
+          <div className="mt-12 grid grid-cols-2 gap-3 ur-nf-go">
             <Link
               to="/"
               className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-brand text-white font-bold text-[15px] shadow-sm hover:bg-brand-dark hover:shadow-md transition-all duration-200 active:scale-[0.98]"
@@ -95,7 +95,7 @@ export default function NotFoundPage() {
 
           {/* Popular Links */}
           <div className="mt-12 pt-8 border-t border-gray-200/70 dark:border-[#2C2F35]">
-            <p className="mb-4 text-[15px] font-medium text-gray-500 dark:text-gray-400">
+            <p className="mb-5 text-[15px] font-medium text-gray-500 dark:text-gray-400">
               {t('notFound.popularPages')}
             </p>
             <div className="flex flex-wrap justify-center gap-2 ur-nf-go">

@@ -64,7 +64,7 @@ export default function CampaignApplyPage() {
       <div className="force-light-theme min-h-[100dvh] bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
           <div className="text-[34px] mb-3">🔍</div>
-          <div className="text-[17px] font-bold text-gray-900">진행 중인 캠페인이 아닙니다</div>
+          <div className="text-[16px] font-semibold text-gray-900">진행 중인 캠페인이 아닙니다</div>
           <p className="mt-2 text-[15px] text-gray-600">링크를 다시 확인해주세요.</p>
         </div>
       </div>
@@ -75,15 +75,15 @@ export default function CampaignApplyPage() {
     <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-10 px-4">
       <SEO title={`${campaign.title} - 유어딜`} description={campaign.subtitle} url={`/campaign/${campaign.code}`} />
       <div className="mx-auto max-w-lg">
-        <div className="mb-6 text-center">
-          <h1 className="text-[24px] font-bold text-gray-900">{campaign.title}</h1>
+        <div className="mb-8 text-center">
+          <h1 className="text-[20px] font-semibold text-gray-900">{campaign.title}</h1>
           <p className="mt-2 text-[15px] text-gray-600">{campaign.subtitle}<br />신청과 동시에 유어딜 인플루언서 파트너로 등록됩니다.</p>
         </div>
 
         {done ? (
           <div className="rounded-xl p-8 text-center">
             <div className="text-[34px] mb-3">🎉</div>
-            <div className="text-[17px] font-bold text-gray-900">신청이 완료되었습니다</div>
+            <div className="text-[16px] font-semibold text-gray-900">신청이 완료되었습니다</div>
             <p className="mt-2 text-[15px] text-gray-600">
               선정 여부와 관계없이 <strong className="text-gray-900">유어딜 파트너로 등록</strong>되었으며,
               다음 캠페인 소식을 가장 먼저 안내드립니다.
@@ -109,7 +109,7 @@ export default function CampaignApplyPage() {
             </a>
           </div>
         ) : (
-          <div className="rounded-xl p-6 space-y-4">
+          <div className="rounded-xl p-6 space-y-3">
             <div>
               <label className="block text-[15px] font-medium text-gray-700 mb-1">활동 계정 주소(URL) <span className="text-rose-500">*</span></label>
               <input value={f.account_url} onChange={set('account_url')} placeholder="https://instagram.com/..." className={input} />

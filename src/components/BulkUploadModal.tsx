@@ -295,7 +295,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
           {/* Upload Result */}
           {result && (
             <div className={`p-4 rounded-lg border ${result.fail_count > 0 && result.success_count === 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
-              <div className="flex items-center gap-4 mb-2">
+              <div className="flex items-center gap-3 mb-2">
                 {result.success_count > 0 && (
                   <div className="flex items-center gap-2 text-green-700">
                     <OkIcon className="w-4 h-4" />

@@ -308,7 +308,7 @@ export function TossPaymentWidget({
         onClick={handlePayment}
         disabled={loadingState !== 'ready' || isProcessing}
         className={`
-          w-full py-4 rounded-lg font-bold text-white text-[17px] transition-all
+          w-full py-4 rounded-lg font-semibold text-white text-[16px] transition-all
           ${(loadingState !== 'ready' || isProcessing)
             ? 'bg-gray-300 cursor-not-allowed'
             : 'bg-brand hover:bg-brand-dark active:bg-brand-dark'

@@ -14,10 +14,10 @@ export default function EmptyShowcase({ catEmpty, showcaseCards, createPath, sta
 }) {
   const { t } = useTranslation()
   return (
-              <div className="space-y-4 py-8">
+              <div className="space-y-3 py-8">
                 {/* 🛡️ 2026-05-15: 빈 화면 → "곧 오픈 예정" Coming Soon 카드 (3 AI 합의) */}
-                <div className="text-center mb-4">
-                  <p className="text-[28px] mb-2">🚀</p>
+                <div className="text-center mb-5">
+                  <p className="text-[24px] mb-2">🚀</p>
                   <p className="text-gray-900 dark:text-white font-bold text-[15px]">
                     {t('groupBuy.emptySellerNew', { defaultValue: '곧 오픈 예정' })}
                   </p>
@@ -29,7 +29,7 @@ export default function EmptyShowcase({ catEmpty, showcaseCards, createPath, sta
                 </div>
                 <div className={`max-w-md mx-auto ${showcaseCards.length === 1 ? 'flex justify-center' : 'grid grid-cols-2 gap-3'}`}>
                   {showcaseCards.map((c, i) => (
-                    <div key={i} className={`bg-surface border-2 border-dashed border-line rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity ${showcaseCards.length === 1 ?'w-44' : ''}`}>
+                    <div key={i} className={`bg-surface border-2 border-dashed border-line rounded-2xl p-5 text-center opacity-70 hover:opacity-100 transition-opacity ${showcaseCards.length === 1 ?'w-44' : ''}`}>
                       <c.Icon className="w-7 h-7 mx-auto mb-2 text-gray-400" aria-hidden="true" />
                       <p className="text-[12px] font-medium text-gray-700 dark:text-gray-300">{c.label}</p>
                       <p className="text-[12px] text-gray-400 mt-1">{c.desc}</p>

@@ -70,8 +70,8 @@ export default function InfluencerSeedingPage() {
   return (
     <div className="min-h-[100dvh] bg-warm pb-24">
       <SEO title={withSiteName(SURFACE_SEO.title)} description={SURFACE_SEO.description} url="/influencer/seeding" noindex />
-      <div className="mx-auto max-w-xl px-4 pt-5">
-        <h1 className="text-[24px] font-bold text-gray-900 dark:text-white">무료 체험 이용권</h1>
+      <div className="mx-auto max-w-xl px-5 pt-5">
+        <h1 className="text-[20px] font-semibold text-gray-900 dark:text-white">무료 체험 이용권</h1>
         <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">
           매장이 무상으로 제공하는 이용권이에요. 신청하면 사장님 확인 뒤 방문 날짜를 정해요.
         </p>
@@ -95,12 +95,12 @@ export default function InfluencerSeedingPage() {
               무상 제공은 매장이 직접 켜고 매달 모집 인원이 정해져 있어요. 이용권을 내 유어샵에 담아
               고유 링크로 파는 것은 지금도 할 수 있어요.
             </p>
-            <Link to="/vouchers" className="ur-btn ur-btn-md ur-btn-primary ur-btn-block mt-4">이용권 둘러보기</Link>
+            <Link to="/vouchers" className="ur-btn ur-btn-md ur-btn-primary ur-btn-block mt-5">이용권 둘러보기</Link>
           </div>
         )}
 
         {offers !== null && offers.length > 0 && (
-          <ul className="mt-4 space-y-2">
+          <ul className="mt-5 space-y-2">
             {offers.map((o) => {
               const to = detailHref({ id: o.product_id, deal_only: o.deal_only, category: o.category })
               return (

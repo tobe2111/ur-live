@@ -137,10 +137,10 @@ export default function CommunityGroupBuyMessagesPage() {
   if (notFound || !group) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-4">
-        <p className="text-gray-900 dark:text-white font-bold text-[17px]">
+        <p className="text-gray-900 dark:text-white font-semibold text-[16px]">
           {t('groupbuyMessages.notFound', { defaultValue: '공동구매를 찾을 수 없습니다' })}
         </p>
-        <Link to="/group-buy" className="mt-4 text-gray-900 dark:text-white text-[15px] font-medium underline">
+        <Link to="/group-buy" className="mt-5 text-gray-900 dark:text-white text-[15px] font-medium underline">
           {t('groupbuyMessages.backToList', { defaultValue: '동네딜로 돌아가기' })}
         </Link>
       </div>
@@ -172,7 +172,7 @@ export default function CommunityGroupBuyMessagesPage() {
       </div>
 
       {/* 메시지 목록 */}
-      <div className="flex-1 ur-content-narrow w-full px-4 lg:px-8 py-4 pb-28 space-y-2">
+      <div className="flex-1 ur-content-narrow w-full px-5 lg:px-8 py-4 pb-28 space-y-2">
         {forbidden ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Lock className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" />
@@ -184,7 +184,7 @@ export default function CommunityGroupBuyMessagesPage() {
             </p>
             <Link
               to={`/community-group-buy/${code}`}
-              className="mt-4 px-5 py-2 bg-brand text-white text-[13px] font-medium rounded-xl"
+              className="mt-5 px-5 py-2 bg-brand text-white text-[13px] font-medium rounded-xl"
             >
               {t('groupbuyMessages.goJoin', { defaultValue: '공구 보러 가기' })}
             </Link>

@@ -254,7 +254,7 @@ export default function SelectedDealCard({
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-[12px] text-gray-500">쿠폰가</span>
-              <span className="text-[17px] font-bold text-gray-900 dark:text-white">{formatNumber(selected.price)}원~</span>
+              <span className="text-[16px] font-bold text-gray-900 dark:text-white">{formatNumber(selected.price)}원~</span>
             </div>
           </div>
         </button>

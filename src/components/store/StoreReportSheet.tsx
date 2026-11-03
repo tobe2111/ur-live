@@ -69,11 +69,11 @@ export default function StoreReportSheet({ sellerId, productId, storeName, onClo
     <div className="fixed inset-0 flex items-end sm:items-center justify-center p-2 sm:p-4" style={{ zIndex: Z.SHEET_BODY }}>
       <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 ur-veil" />
       <div className="relative w-full sm:max-w-md max-h-[86dvh] overflow-y-auto ur-pop-card ur-glass ur-dialog-in p-5">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-brand-text" />
             <div>
-              <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">이 매장 제보하기</h2>
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">이 매장 제보하기</h2>
               {storeName && <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{storeName}</p>}
             </div>
           </div>
@@ -82,7 +82,7 @@ export default function StoreReportSheet({ sellerId, productId, storeName, onClo
           </button>
         </div>
 
-        <div className="space-y-2 mb-4">
+        <div className="space-y-2 mb-5">
           {REASONS.map(r => (
             <button
               key={r.value}
@@ -109,7 +109,7 @@ export default function StoreReportSheet({ sellerId, productId, storeName, onClo
           placeholder="010-0000-0000 또는 이메일"
           className="w-full px-3 py-2 rounded-lg border border-rule bg-warm text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand focus:outline-none mb-1"
         />
-        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">확인을 위해 담당자가 연락드릴 수 있어요. 로그인은 필요 없어요.</p>
+        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">확인을 위해 담당자가 연락드릴 수 있어요. 로그인은 필요 없어요.</p>
 
         <label className="block text-[12px] font-medium text-gray-900 dark:text-white mb-1">자세한 내용 (선택)</label>
         <textarea
@@ -118,7 +118,7 @@ export default function StoreReportSheet({ sellerId, productId, storeName, onClo
           rows={3}
           maxLength={1000}
           placeholder="어떤 점이 문제인지 알려주세요"
-          className="w-full px-3 py-2 rounded-lg border border-rule bg-warm text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand focus:outline-none mb-4"
+          className="w-full px-3 py-2 rounded-lg border border-rule bg-warm text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-brand focus:outline-none mb-5"
         />
 
         <button

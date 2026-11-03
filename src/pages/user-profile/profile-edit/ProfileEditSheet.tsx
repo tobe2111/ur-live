@@ -256,7 +256,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <div className="flex items-center justify-between px-4 h-14 border-b border-rule shrink-0">
-          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</h3>
+          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}</h3>
           <button type="button" onClick={onClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </button>
@@ -264,7 +264,7 @@ export default function ProfileEditSheet({ onClose, initialName, onNameChange }:
 
         <div className="flex-1 min-h-0 overflow-y-auto pb-[max(8px,env(safe-area-inset-bottom))]">
           {/* 📸 사진 — 고르는 즉시 저장(위 머리말) */}
-          <div className="flex items-center gap-4 px-4 py-4">
+          <div className="flex items-center gap-3 px-4 py-4">
             <img
               key={image || 'none'}
               src={profileAvatarSrc(image, 160)}

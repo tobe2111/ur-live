@@ -110,7 +110,7 @@ export default function RegionPage() {
         jsonLd={[breadcrumbJsonLd(crumbs)]}
       />
 
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-10 pt-4 lg:pt-6">
+      <div className="max-w-[1600px] mx-auto px-5 lg:px-10 pt-4 lg:pt-6">
         {/* 브레드크럼 — 사용자 탐색 + 검색결과 계층 표시(JSON-LD 와 쌍) */}
         <nav aria-label="위치" className="flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400 mb-3 flex-wrap">
           {crumbs.map((c, i) => (
@@ -123,7 +123,7 @@ export default function RegionPage() {
           ))}
         </nav>
 
-        <header className="mb-4">
+        <header className="mb-5">
           <h1 className="text-[24px] lg:text-[28px] font-bold tracking-tight text-gray-900 dark:text-white">
             {label} 이용권·동네딜
           </h1>
@@ -135,7 +135,7 @@ export default function RegionPage() {
         </header>
 
         {/* 카테고리 — 화면 안 필터(URL 미반영). 교차 URL 은 thin content 라 열지 않는다. */}
-        <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+        <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
           {CATEGORY_CHIPS.map(ch => {
             const on = category === ch.key
             return (

@@ -27,7 +27,7 @@ export default function EarningsGroup({ children }: { children: ReactNode }) {
        흰 판이 그 자체로 "파는 쪽" 표시자가 됐으므로(문법 머리말) 손님 구역의 판은 전부 걷는다.
        ⚠️ 접힘 자체는 그대로다 — 자식(토글·카드)은 페이지로 보낼 수 없어 *여기서* 열려야 한다.
        🧱 가로 패딩 없음: 줄이 자기 `px-4` 를 갖는다. */
-    <div className="ur-content-medium lg:px-4">
+    <div className="ur-content-medium lg:px-5">
       <SectionTitle>수익 · 추천</SectionTitle>
       <FoldRow
         icon={rowIcon(WonCoinIcon)}

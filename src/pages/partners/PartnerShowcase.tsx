@@ -22,8 +22,8 @@ export default function PartnerShowcase() {
         <div className="ur-content-wide mx-auto px-5 lg:px-10 py-24 lg:py-40 overflow-hidden">
           <GiantNumber value={String(Math.round(SHARE * 100))} unit="%" fill={SHARE}
             label={`팔린 금액의 ${F.storeShareDirect}가 사장님 몫`} />
-          <div className="mt-10 lg:mt-14 grid gap-8 lg:grid-cols-2 lg:items-end lg:gap-20">
-            <Reveal><h2 className="ur-tone-fg text-[28px] lg:text-[48px] font-extrabold leading-[1.22]">
+          <div className="mt-12 lg:mt-12 grid gap-8 lg:grid-cols-2 lg:items-end lg:gap-20">
+            <Reveal><h2 className="ur-tone-fg text-[24px] lg:text-[48px] font-bold leading-[1.22]">
               팔린 금액의 {F.storeShareDirect}가<br />사장님 통장으로
             </h2></Reveal>
             <Reveal delay={120}>
@@ -33,7 +33,7 @@ export default function PartnerShowcase() {
               <div className="mt-3 flex justify-between text-[13px] ur-tone-mu tabular-nums">
                 <span>사장님 {F.storeShareDirect}</span><span>수수료 {F.feeDirect}</span>
               </div>
-              <p className="mt-4 text-[13px] lg:text-[15px] ur-tone-mu">
+              <p className="mt-5 text-[13px] lg:text-[15px] ur-tone-mu">
                 직접 입점 기준. 대행사를 통하면 수수료 {F.feeBrokered}. 미리 내는 돈 0원.
               </p>
             </Reveal>
@@ -42,12 +42,12 @@ export default function PartnerShowcase() {
       </section>
 
       <section data-tone="paper">
-        <div className="ur-content-wide mx-auto px-5 lg:px-10 py-20 lg:py-36 grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:items-center">
+        <div className="ur-content-wide mx-auto px-5 lg:px-10 py-20 lg:py-36 grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-12 lg:items-center">
           <div>
-            <Reveal><h2 className="ur-tone-fg text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold leading-[1.18]">
+            <Reveal><h2 className="ur-tone-fg text-[24px] lg:text-[48px] xl:text-[60px] font-bold leading-[1.18]">
               손님은 사진 보고 사고,<br />사장님은 QR 한 번
             </h2></Reveal>
-            <Reveal as="p" delay={80} className="mt-5 lg:mt-7 text-[15px] lg:text-[17px] leading-[1.7] ur-tone-mu max-w-[24em]">
+            <Reveal as="p" delay={80} className="mt-5 lg:mt-8 text-[15px] lg:text-[16px] leading-[1.7] ur-tone-mu max-w-[24em]">
               손님 화면은 실제 앱을 녹화한 영상입니다.
             </Reveal>
           </div>

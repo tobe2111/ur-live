@@ -573,7 +573,7 @@ export default function GroupBuyListPage() {
 
       {/* 🗺️ 2026-06-20 (대표 — 홈=리스트 / 지도는 강조 버튼으로): 지도(RestaurantMapPage)로 가는 강조 CTA.
           잉크 풀폭 버튼 — 리스트 위에서 시각적으로 가장 두드러지게. */}
-      <div className="ur-content-wide px-4 lg:px-8 pt-4">
+      <div className="ur-content-wide px-5 lg:px-8 pt-4">
         <button
           onClick={() => navigate('/map')}
           className="w-full flex items-center gap-3 rounded-2xl bg-gray-900 dark:bg-white px-4 py-4 active:scale-[0.99] transition-transform shadow-sm"
@@ -600,7 +600,7 @@ export default function GroupBuyListPage() {
 
       {/* 배너 — 동네 공구 제안 CTA. 🚫 2026-06-18 COMMUNITY_PROPOSAL_HIDDEN 으로 숨김(셸브). */}
       {!COMMUNITY_PROPOSAL_HIDDEN && (
-      <div className="ur-content-wide px-4 lg:px-8 pt-4">
+      <div className="ur-content-wide px-5 lg:px-8 pt-4">
         <div className="bg-gray-900 rounded-2xl px-5 py-4 flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-white text-[15px] font-bold">
@@ -670,12 +670,12 @@ export default function GroupBuyListPage() {
           현재는 hero banner 우측 '시작' 버튼 + empty state CTA 로 자연스럽게 통합. */}
 
       {/* 🛡️ 2026-05-15: 실시간 ticker — "지금 이 사람이 참여" SNS 흐름 */}
-      <div className="ur-content-wide px-4 lg:px-8 mt-3">
+      <div className="ur-content-wide px-5 lg:px-8 mt-3">
         <LiveTicker />
       </div>
 
       {/* 콘텐츠 영역 */}
-      <div className="ur-content-wide px-4 lg:px-8 py-4 pb-20">
+      <div className="ur-content-wide px-5 lg:px-8 py-4 pb-20">
         {mainTab === 'seller' ? (
           /* ── 셀러 공구 상품 그리드 (2열) ── */
           <>
@@ -729,7 +729,7 @@ export default function GroupBuyListPage() {
                   <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
                     {t('groupBuy.emptyFilteredSub', { defaultValue: '다른 카테고리나 지역도 둘러보세요' })}
                   </p>
-                  <div className="mt-4 flex gap-2 justify-center flex-wrap">
+                  <div className="mt-5 flex gap-2 justify-center flex-wrap">
                     <button
                       onClick={() => { setCategory('all'); setSearchQuery(''); applyRegion(null, null); const n = new URLSearchParams(searchParams); n.delete('category'); setSearchParams(n, { replace: true }) }}
                       className="px-5 py-2 bg-brand text-white text-[13px] font-medium rounded-full"

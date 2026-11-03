@@ -64,14 +64,14 @@ function QRScannerModal({ onResult, onClose }: { onResult: (code: string) => voi
 
   return (
     <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/90" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="relative w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+      <div className="relative w-full max-w-md mx-5" onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="absolute -top-12 right-0 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white" aria-label="닫기">
           <X className="w-6 h-6" />
         </button>
         <div className="bg-black rounded-2xl overflow-hidden aspect-square">
           <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
         </div>
-        <p className="text-center text-white text-[15px] mt-4">손님 화면의 QR 코드를 스캔해주세요</p>
+        <p className="text-center text-white text-[15px] mt-5">손님 화면의 QR 코드를 스캔해주세요</p>
         {error && (
           <div className="mt-3 bg-red-500/20 border border-red-400 rounded-lg px-3 py-2 text-center">
             <p className="text-[12px] text-white">{error}</p>
@@ -196,21 +196,21 @@ export default function StoreStatsPage() {
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center px-5">
         <SEO title={t('storeStats.seoTitle')} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
         <div className="w-full max-w-sm text-center">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-orange-100 flex items-center justify-center">
+          <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-orange-100 flex items-center justify-center">
             <Lock className="w-7 h-7 text-orange-600" />
           </div>
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-1">식당 통계</h1>
+          <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-1">식당 통계</h1>
           <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-2">사장님께 알림톡으로 발송된 링크로 접속하시면 비밀번호 없이 바로 확인할 수 있어요.</p>
-          <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-6">또는 인플루언서에게 받은 비밀번호를 입력하세요</p>
+          <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-8">또는 인플루언서에게 받은 비밀번호를 입력하세요</p>
 
-          {error && <p className="text-[15px] text-red-500 bg-red-50 rounded-lg p-3 mb-4">{error}</p>}
+          {error && <p className="text-[15px] text-red-500 bg-red-50 rounded-lg p-3 mb-5">{error}</p>}
 
           <input
             value={pin}
             onChange={e => setPin(e.target.value)}
             type="password"
             placeholder={t('storeStats.passwordPlaceholder')}
-            className="w-full px-4 py-4 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-[17px] text-gray-900 dark:text-white tracking-widest focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 mb-4"
+            className="w-full px-4 py-4 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-[16px] text-gray-900 dark:text-white tracking-widest focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 mb-4"
             onKeyDown={e => e.key === 'Enter' && authenticate()}
           />
           <button
@@ -234,8 +234,8 @@ export default function StoreStatsPage() {
       <SEO title={t('storeStats.titleSuffix', { name: stats.restaurant_name || t('storeStats.fallbackRestaurant') })} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
       <div className="ur-content-narrow">
         {/* 헤더 */}
-        <div className="text-center mb-6">
-          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{stats.restaurant_name || t('storeStats.fallbackRestaurant')}</h1>
+        <div className="text-center mb-8">
+          <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">{stats.restaurant_name || t('storeStats.fallbackRestaurant')}</h1>
           <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{stats.product_name}</p>
         </div>
 
@@ -254,7 +254,7 @@ export default function StoreStatsPage() {
                   <s.icon className={`w-4 h-4 ${s.color}`} />
                 </div>
               </div>
-              <p className={`text-[24px] font-bold ${s.color}`}>{s.value}</p>
+              <p className={`text-[20px] font-semibold ${s.color}`}>{s.value}</p>
             </div>
           ))}
         </div>
@@ -344,7 +344,7 @@ export default function StoreStatsPage() {
           </div>
         </div>
 
-        <p className="text-center text-[12px] text-gray-400 dark:text-gray-500 mt-6">유어딜 · 식당 공동구매 서비스</p>
+        <p className="text-center text-[12px] text-gray-400 dark:text-gray-500 mt-8">유어딜 · 식당 공동구매 서비스</p>
       </div>
 
       {/* QR 스캐너 모달 */}

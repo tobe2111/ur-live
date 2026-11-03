@@ -13,7 +13,7 @@ export default [
     name: '💸↩️ 남의 구독 약관을 되살린다 — 300일 일할 계산',
     why: '종전 상태가 정확히 이것이었다. 유어딜엔 300일 구독이 없는데 그 조항이 **우리가 구속되는 약속**으로 sitemap 에 제출되고 푸터에서 링크됐다.',
     file: PAGE,
-    find: '          <h2 className="text-[15px] font-bold text-ink mb-4">이용권 환불</h2>',
+    find: '          <h2 className="text-[15px] font-bold text-ink mb-5">이용권 환불</h2>',
     replace: '          <h2 className="text-[15px] font-bold text-ink mb-4">제22조 (환불)</h2>\n          <p>가. 경기 결제 회원 — 결기간은 300일로 남은 일수를 일할 계산합니다.</p>',
     test: T,
   },

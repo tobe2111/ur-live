@@ -48,11 +48,11 @@ export default function VoucherDisputeBanner() {
 
   if (items.length === 0) return null
   return (
-    <div className="ur-content-narrow px-4 lg:px-8 mb-4 space-y-2">
+    <div className="ur-content-narrow px-5 lg:px-8 mb-5 space-y-2">
       {items.map(d => {
         const store = d.restaurant_name || d.product_name || '매장'
         return (
-          <div key={d.id} className="rounded-2xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/15 p-4">
+          <div key={d.id} className="rounded-2xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/15 p-5">
             <div className="flex items-start gap-2">
               <AlertIcon className="w-4 h-4 text-red-500 mt-1 shrink-0" />
               <div className="min-w-0 flex-1">

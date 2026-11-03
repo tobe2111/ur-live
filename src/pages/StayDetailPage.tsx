@@ -224,7 +224,7 @@ export default function StayDetailPage() {
      ⚠️ 이용권 모드는 자체 표면이 없어 카드 유지. 경위: docs/design/stay-detail-booking-card-2026-09.md */
   const selectorBox = (
     <div className={isVoucherMode
-      ? 'rounded-2xl p-4'
+      ? 'rounded-2xl p-5'
       : ''}>
       {isVoucherMode ? (
         <>
@@ -386,14 +386,14 @@ export default function StayDetailPage() {
         </div>
 
         {/* 🏨 2026-10-31 서비스 및 부대시설 — 대표 시설 그리드, 없는 칸은 '없음'(대표 여기어때 화면). 시설 정보가 없어도 섹션은 둔다. */}
-        <div id="stay-sec-amenity" className={`${STAY_BAND} lg:mb-6`} style={{ scrollMarginTop: 96 }}>
+        <div id="stay-sec-amenity" className={`${STAY_BAND} lg:mb-8`} style={{ scrollMarginTop: 96 }}>
           <SectionTitle>서비스 및 부대시설</SectionTitle>
           <AmenityGrid items={amenitiesArr} />
         </div>
 
         {/* Description */}
         {stay.description_full && (
-          <div id="stay-sec-intro" className={`${STAY_BAND} lg:mb-6`} style={{ scrollMarginTop: 96 }}>
+          <div id="stay-sec-intro" className={`${STAY_BAND} lg:mb-8`} style={{ scrollMarginTop: 96 }}>
             <SectionTitle>숙소 소개</SectionTitle>
             <p className="mt-3 text-[15px] leading-[1.72] text-gray-600 dark:text-gray-300 whitespace-pre-line">{stay.description_full}</p>
           </div>

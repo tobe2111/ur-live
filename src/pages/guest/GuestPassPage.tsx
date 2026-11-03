@@ -49,14 +49,14 @@ export default function GuestPassPage() {
             ]}
           />
         </div>
-        <div className="mt-6">
+        <div className="mt-8">
           <GuestKakaoButton returnPath="/my-vouchers" />
         </div>
       </section>
 
       {picks.length > 0 && (
         <section className="mt-8 px-4">
-          <h2 className="mb-3 text-[17px] font-bold text-gray-900 dark:text-white">
+          <h2 className="mb-3 text-[16px] font-semibold text-gray-900 dark:text-white">
             {t('guest.pass.popular', { defaultValue: '지금 많이 사는 이용권' })}
           </h2>
           <div className={`grid grid-cols-2 ${DEAL_GRID_GAP}`}>
@@ -66,7 +66,7 @@ export default function GuestPassPage() {
           </div>
           <Link
             to="/"
-            className="mt-6 flex h-12 items-center justify-center rounded-xl bg-surface shadow-lift text-[15px] font-medium text-gray-900 dark:text-white active:opacity-80"
+            className="mt-8 flex h-12 items-center justify-center rounded-xl bg-surface shadow-lift text-[15px] font-medium text-gray-900 dark:text-white active:opacity-80"
           >
             {t('guest.pass.more', { defaultValue: '이용권 더 보기' })}
           </Link>

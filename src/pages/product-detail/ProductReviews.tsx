@@ -101,12 +101,12 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
   // 🎫 2026-09-02 (대표 "리뷰 작성란 다크에서 글자 안 보임 · 디자인도 손봐야"): 카드 테두리 0 + surface 두 톤,
   //   핑크 정보상자·선물 이모지 → 회색 한 줄, 별은 브랜드 글자색 하나. textarea 는 아래 주석 참조.
   return (
-    <div className="mt-3 rounded-2xl p-4">
+    <div className="mt-3 rounded-2xl p-5">
       <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('reviews.title', { defaultValue: '리뷰 작성' })}</h3>
       <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">{t('reviews.rewardBanner', { defaultValue: '텍스트 {{text}}딜, 사진 {{image}}딜, 영상 {{video}}딜 리워드', text: rewards.text, image: rewards.image, video: rewards.video })}</p>
       <div className="flex gap-1 mb-3" role="radiogroup" aria-label={t('reviews.rating', { defaultValue: '별점' })}>
         {[1, 2, 3, 4, 5].map(s => (
-          <button key={`${s}-${s <= rating ? bump : 0}`} type="button" role="radio" aria-checked={s === rating} aria-label={`${s}`} onClick={() => { setRating(s); setBump((b) => b + 1) }} style={bump && s <= rating ? { animationDelay: `${(s - 1) * 60}ms` } : undefined} className={`text-[17px] ${s <= rating ? `text-brand-text ${bump ? 'ur-pop' : ''}` : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</button>
+          <button key={`${s}-${s <= rating ? bump : 0}`} type="button" role="radio" aria-checked={s === rating} aria-label={`${s}`} onClick={() => { setRating(s); setBump((b) => b + 1) }} style={bump && s <= rating ? { animationDelay: `${(s - 1) * 60}ms` } : undefined} className={`text-[16px] ${s <= rating ? `text-brand-text ${bump ? 'ur-pop' : ''}` : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</button>
         ))}
       </div>
       <textarea
@@ -164,7 +164,7 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
                 <span className="text-[12px]">업로드 중</span>
               ) : (
                 <>
-                  <span className="text-[17px]">+</span>
+                  <span className="text-[16px]">+</span>
                   <span className="text-[12px]">{images.length}/5</span>
                 </>
               )}
@@ -365,14 +365,14 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
     <div>
       {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 뷰포트 600px 안에 들어오면 리뷰 summary/목록 로드. */}
       <div ref={gateRef} aria-hidden style={{ height: 1 }} />
-      <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">
+      <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-5">
         {t('reviews.heading', { defaultValue: '리뷰' })} {totalCount > 0 && <span className="text-gray-500 dark:text-gray-400 font-normal">({totalCount})</span>}
       </h2>
 
       {totalCount > 0 ? (
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-center gap-3 mb-5">
           <div className="text-center">
-            <p className="text-[28px] font-bold text-gray-900 dark:text-white">{avgRating}</p>
+            <p className="text-[24px] font-bold text-gray-900 dark:text-white">{avgRating}</p>
             <div className="flex gap-1 mt-1">
               {[1, 2, 3, 4, 5].map(s => (
                 // 🎬 2026-11-02 시안 8차 "평균 별점 채워짐"(대표 "8차에서는 QR 화면 밝아짐 빼고 다 넣어줘") — 채워진 별이 왼쪽부터 차례로 톡.
@@ -425,7 +425,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
           type="button"
           onClick={loadMore}
           disabled={loadingMore}
-          className="mt-4 w-full h-12 rounded-xl bg-warm text-[15px] font-medium text-ink disabled:opacity-60"
+          className="mt-5 w-full h-12 rounded-xl bg-warm text-[15px] font-medium text-ink disabled:opacity-60"
         >
           {loadingMore
             ? t('reviews.loadingMore', { defaultValue: '불러오는 중…' })

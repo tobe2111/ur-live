@@ -76,7 +76,7 @@ export function BookingModal({ stay, room, checkIn, checkOut, guests, nights, sa
           <h3 className="text-[15px] font-bold">예약 정보</h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{(stay.restaurant_name || stay.name)} · {room.name}</p>
         </div>
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-3">
           <div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 text-[12px]">
             {saleMode === 'date' ? (
               <p className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">기간</span><span className="font-medium">{checkIn} → {checkOut} ({nights}박)</span></p>
@@ -203,7 +203,7 @@ export function MultiBookingModal({
           <h3 className="text-[15px] font-bold">묶음 예약 ({totalQty}객실)</h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{stay.restaurant_name || stay.name}</p>
         </div>
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-3">
           <div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 text-[12px] space-y-2">
             {cartEntries.map(({ room, qty }) => (
               <div key={room.room_id} className="flex justify-between">

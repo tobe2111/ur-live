@@ -1,7 +1,7 @@
 export function ReturnPolicySection() {
   return (
     <div>
-      <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">교환 및 반품 안내</h2>
+      <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-5">교환 및 반품 안내</h2>
       
       {/* 신청 방법 */}
       <div className="mb-5">
@@ -50,7 +50,7 @@ export function ReturnPolicySection() {
       </div>
 
       {/* 제22조 (환불) */}
-      <div className="mt-6 pt-6 border-t border-line">
+      <div className="mt-8 pt-6 border-t border-line">
         <h3 className="text-[12px] font-medium text-gray-900 dark:text-white mb-2">제22조 (환불)</h3>
         <div className="space-y-2">
           <p className="text-[12px] text-gray-600 dark:text-gray-300 leading-relaxed">

@@ -47,8 +47,8 @@ export default [
   {
     name: '👤 마이 점검: PC "가게 열기" 가 다시 카드 밖으로',
     file: 'src/pages/user-profile/RoleCtaGrid.tsx',
-    find: '    <section className="w-full min-w-0 ur-content-medium lg:px-4 ur-pc-card">',
-    replace: '    <section className="w-full min-w-0 ur-content-medium lg:px-4">',
+    find: '    <section className="w-full min-w-0 ur-content-medium lg:px-5 ur-pc-card">',
+    replace: '    <section className="w-full min-w-0 ur-content-medium lg:px-5">',
     test: TEST,
     why: 'PC 마이 B 는 모든 블록이 카드다 — 이 구역만 바탕에 떠 있었다.',
   },

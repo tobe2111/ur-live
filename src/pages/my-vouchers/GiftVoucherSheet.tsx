@@ -108,7 +108,7 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
         className="w-full sm:max-w-[420px] ur-glass ur-pop-card px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))] overflow-hidden ur-dialog-in"
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <GiftBoxIcon size={20} /> 이용권 선물하기
           </h2>
           <button type="button" onClick={onClose} aria-label="닫기" className="w-11 h-11 -mr-3 flex items-center justify-center text-gray-500 dark:text-gray-400">
@@ -117,7 +117,7 @@ export default function GiftVoucherSheet({ voucher, onClose, onPendingChange }: 
         </div>
         <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{voucher.product_name}{voucher.restaurant_name ? ` · ${voucher.restaurant_name}` : ''}</p>
 
-        <ul className="mt-4 space-y-1">
+        <ul className="mt-5 space-y-1">
           {[
             '친구가 받으면 이 이용권은 친구 지갑으로 옮겨가요',
             '선물 링크를 만들면 친구가 받기 전까지 이 이용권은 쓸 수 없어요(선물 보내기를 취소하면 다시 쓸 수 있어요)',

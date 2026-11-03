@@ -91,7 +91,7 @@ export function CustomModal({
           <>
             {/* Custom Modal Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-line">
-              <h3 id="modal-title" className="text-[17px] font-bold text-gray-900 dark:text-white">
+              <h3 id="modal-title" className="text-[16px] font-semibold text-gray-900 dark:text-white">
                 {title}
               </h3>
               <button
@@ -111,25 +111,25 @@ export function CustomModal({
           <>
             {/* Icon */}
             {getIcon() && (
-              <div className="flex justify-center mb-4">
+              <div className="flex justify-center mb-5">
                 {getIcon()}
               </div>
             )}
 
             {/* Title */}
             {title && (
-              <h3 className="text-[17px] font-bold text-gray-900 dark:text-white text-center mb-2">
+              <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white text-center mb-2">
                 {title}
               </h3>
             )}
 
             {/* Message or Children */}
             {children ? (
-              <div className="mb-6">
+              <div className="mb-8">
                 {children}
               </div>
             ) : message ? (
-              <p className="text-[15px] text-gray-600 dark:text-gray-300 text-center mb-6 leading-relaxed whitespace-pre-line">
+              <p className="text-[15px] text-gray-600 dark:text-gray-300 text-center mb-8 leading-relaxed whitespace-pre-line">
                 {message}
               </p>
             ) : null}

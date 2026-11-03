@@ -31,7 +31,7 @@ import { STRIP_BANNER_MAX, STRIP_CLS, HERO_CARD_CLS, HERO_RAIL_CLS, stripBannerI
  *    (실측: 카드 14..376 · 다음 장 388 시작 · 화면 390). 간격이 거터 두 벌이면 다음 장이 정확히 화면 밖
  *    (404)에서 시작해 **한 장씩 꽉**(대표 확정 ③)이 글자 그대로 성립한다.
  */
-const STRIP_GAP_PX = 28
+const STRIP_GAP_PX = 32 // 📏 2026-11-03 공백 체계(28 → 32)
 
 export function bannerLink(b: HomeBanner): BannerLink {
   return resolveBannerLink(b.link_url, typeof window !== 'undefined' ? window.location.hostname : undefined)
@@ -78,7 +78,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
           {bg && <img src={bg} alt="" aria-hidden="true" className="absolute inset-0 -z-10 w-full h-full object-cover" />}
           <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/60 to-black/25" aria-hidden="true" />
           <div className="min-w-0">
-            <strong className="block text-[17px] font-bold tracking-tight text-white">{b.title}</strong>
+            <strong className="block text-[16px] font-semibold tracking-tight text-white">{b.title}</strong>
             {b.description && <span className="block mt-1 text-[13px] text-white/80">{b.description}</span>}
           </div>
           {link && (

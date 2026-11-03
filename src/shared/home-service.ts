@@ -13,7 +13,7 @@
  */
 
 export * from './home-service-categories'
-import { MAX_REQUEST_PHOTOS, PRIVATE_ADDRESS_MAX, PRIVATE_ADDRESS_SUFFIX, categoryDef, type HomeServiceCategory } from './home-service-categories'
+import { MAX_MULTI_DATES, MAX_REQUEST_PHOTOS, PRIVATE_ADDRESS_MAX, PRIVATE_ADDRESS_SUFFIX, categoryDef, type HomeServiceCategory } from './home-service-categories'
 
 /** 요청 하나에 견적을 보낼 수 있는 사장님 수(선착순). */
 export const MAX_QUOTES_PER_REQUEST = 5
@@ -127,8 +127,15 @@ export function validateRequest(
       if (!Number.isFinite(n) || n <= 0 || n > 1000) return { ok: false, error: `${f.label}을(를) 숫자로 입력해 주세요` }
     }
     if (f.type === 'date') {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return { ok: false, error: `${f.label}을(를) 골라 주세요` }
-      if (v < todayYmd) return { ok: false, error: `${f.label}은(는) 오늘 이후여야 합니다` }
+      // 📅 2026-11-03 — `multiple` 칸은 여러 날짜(쉼표). 하나짜리 칸에 쉼표가 오면 거절한다(종전 그대로).
+      const days = f.multiple ? [...new Set(v.split(',').map((x) => x.trim()).filter(Boolean))].sort() : [v]
+      if (!days.length || days.length > (f.multiple ? MAX_MULTI_DATES : 1)) return { ok: false, error: `${f.label}을(를) 다시 골라 주세요` }
+      for (const d of days) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { ok: false, error: `${f.label}을(를) 골라 주세요` }
+        if (d < todayYmd) return { ok: false, error: `${f.label}은(는) 오늘 이후여야 합니다` }
+      }
+      details[f.key] = days.join(', ')
+      continue
     }
     if (f.type === 'region') {
       const r = parseRegion(v)
@@ -146,7 +153,8 @@ export function validateRequest(
     }
     details[f.key] = v
   }
-  const desiredDate = details[def.dateField]
+  // 여러 날짜면 **가장 늦은 날**이 요청의 날짜다(만료·업체 목록 기준 — 후보가 남아 있는 동안 살아 있다).
+  const desiredDate = (details[def.dateField] || '').split(',').map((x) => x.trim()).filter(Boolean).sort().pop() || ''
   if (!desiredDate) return { ok: false, error: '날짜를 골라 주세요' }
   return { ok: true, value: { category: def.key, details, privateDetails, regions, desiredDate } }
 }

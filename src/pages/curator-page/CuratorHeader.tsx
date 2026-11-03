@@ -44,6 +44,7 @@ import VerifiedSeal from '@/components/VerifiedSeal'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { EditIcon, OkIcon } from '@/components/icons/urdeal-icons'
 import { InstagramLogo, TikTokLogo, YouTubeLogo } from '@/components/icons/sns-logos'
+import { snsFollowerLabel, type UShopSnsFollowers } from '@/shared/ushop-sns-followers'
 import { snsUrl } from '@/utils/sns-url'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
@@ -67,6 +68,8 @@ interface CuratorHeaderProps {
     youtube_url?: string | null
     instagram_url?: string | null
     tiktok_url?: string | null
+    /** 📈 2026-11-03 연동 팔로워 수(이름표 주소와 같은 계정일 때만). */
+    sns_followers?: UShopSnsFollowers
   }
   /** 주인 여부. true 면 `[관리]` 버튼 한 자리가 늘어난다(그게 유일한 차이). */
   canEdit?: boolean
@@ -109,6 +112,13 @@ const avatarCls = 'w-10 h-10 rounded-full overflow-hidden bg-wash shrink-0'
 /** 이름표 하나의 탭 영역(36px — 2026-09-16 의 하한 34px 를 지킨다). 보이는 알약은 안쪽 `snsPillCls`. */
 const snsHitCls = 'h-9 inline-flex items-center active:opacity-70'
 const snsPillCls = 'h-8 px-3 rounded-full bg-wash inline-flex items-center gap-1 text-[13px] font-medium text-gray-600 dark:text-gray-300'
+/** 📈 2026-11-03 유어샵 B + SNS — 연동 팔로워 수가 있으면 [로고 + 1.2만], 없으면 [로고 + 이름]. 서버 첫 화면과 같은 함수.
+ *  aria 는 둘 다 말한다(로고만 보이는 칸이 무엇인지). */
+function snsPillText(p: 'youtube' | 'instagram' | 'tiktok', name: string, f: UShopSnsFollowers | undefined, aria = false): string {
+  const n = f?.[p]
+  if (n == null) return name
+  return aria ? `${name} 팔로워 ${snsFollowerLabel(n)}` : snsFollowerLabel(n)
+}
 
 export default function CuratorHeader({ curator, canEdit, counts, soldTotal, accountType, onCopyLink: share }: CuratorHeaderProps) {
   const [copied, setCopied] = useState(false)
@@ -132,26 +142,26 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
   const snsLinks = hasSns ? (
     <>
       {ytHref && (
-        <a href={ytHref} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className={snsHitCls}>
+        <a href={ytHref} target="_blank" rel="noopener noreferrer" aria-label={snsPillText('youtube', 'YouTube', curator.sns_followers, true)} className={snsHitCls}>
           <span className={snsPillCls}>
             <YouTubeLogo />
-            YouTube
+            {snsPillText('youtube', 'YouTube', curator.sns_followers)}
           </span>
         </a>
       )}
       {igHref && (
-        <a href={igHref} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className={snsHitCls}>
+        <a href={igHref} target="_blank" rel="noopener noreferrer" aria-label={snsPillText('instagram', 'Instagram', curator.sns_followers, true)} className={snsHitCls}>
           <span className={snsPillCls}>
             <InstagramLogo />
-            Instagram
+            {snsPillText('instagram', 'Instagram', curator.sns_followers)}
           </span>
         </a>
       )}
       {tkHref && (
-        <a href={tkHref} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className={snsHitCls}>
+        <a href={tkHref} target="_blank" rel="noopener noreferrer" aria-label={snsPillText('tiktok', 'TikTok', curator.sns_followers, true)} className={snsHitCls}>
           <span className={snsPillCls}>
             <TikTokLogo />
-            TikTok
+            {snsPillText('tiktok', 'TikTok', curator.sns_followers)}
           </span>
         </a>
       )}
@@ -189,7 +199,7 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
   )
 
   return (
-    <header className="bg-surface dark:bg-warm">
+    <header className="bg-warm">
       <div className="max-w-3xl mx-auto">
         {/* ① 맨 윗줄 — [로고(모바일만)] … [공유 · 관리].
             🖥️ **로고는 PC 에서 안 그린다**(2026-09-28 대표 *"둘 다 고치고"*): lg+ 에는 화면 맨 위에
@@ -213,7 +223,10 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
             **132 → 294px**(얼굴도 56 → 40). 그래서 두 줄의 원인 자체가 사라졌다.
             ⚠️ 2026-10-25 의 `lg:flex-wrap`+`lg:basis-full`(PC 에서만 버튼 줄을 아래로)은 **더 필요 없다** —
             버튼이 아예 다른 줄이라 PC 300px 열에서도 이름 칸이 244px 다. 그 장치를 되살리지 말 것. */}
-        <div className="flex items-center gap-4 px-5 pt-3">
+        {/* 🧾 2026-11-03 유어샵 B (대표 *"유어샵은 B"*) — 이름·숫자 줄을 흰 판 하나에 담는다(바탕은 옅은 회색).
+            2026-09-30 '한 톤' 을 대체한다. 서버 첫 화면(`CURATOR_FS_CLASS.headCard`)과 한 글자까지 같다. */}
+        <div className="mx-3 mt-2 rounded-2xl bg-surface pt-1 pb-1">
+        <div className="flex items-center gap-3 px-5 pt-3">
           {/* 👤 얼굴 — 사진이 없으면 유달이(공유 카드와 같은 그림). 장식이라 alt 는 비운다(옆에 이름이 있다). */}
           <div className={avatarCls}>
             {photo ? (
@@ -250,6 +263,7 @@ export default function CuratorHeader({ curator, canEdit, counts, soldTotal, acc
           </div>
         )}
         <div className="h-3" />
+        </div>
       </div>
     </header>
   )

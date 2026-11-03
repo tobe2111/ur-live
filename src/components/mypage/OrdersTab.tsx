@@ -203,7 +203,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
   }, [filtered])
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* 검색 — 무신사 스타일 상단 검색바 */}
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" aria-hidden="true" />
@@ -295,7 +295,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
       {filtered.length === 0 ? (
         <EmptyState kindFilter={kindFilter} searching={!!q} t={t} />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {groups.map(group => (
             <section key={group.label}>
               {/* 날짜 그룹 헤더 — 🎬 20차 ② 내리면 위(화면 머리 52px · PC 네비 56px 아래)에 붙어 따라오고,
@@ -460,7 +460,7 @@ function OrderCard({
       <div className="px-4 pb-4 pt-3 flex items-center justify-between border-t border-gray-100 dark:border-[#2C2F35]">
         <div>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">{t('ordersTab.paymentAmount', { defaultValue: '결제금액' })}</p>
-          <p className="text-[17px] font-bold text-gray-900 dark:text-white">
+          <p className="text-[16px] font-bold text-gray-900 dark:text-white">
             {formatNumber(order.total_amount ?? order.amount ?? 0)}
             <span className="text-[13px] font-medium text-gray-600 dark:text-gray-300 ml-1">{t('ordersTab.won', { defaultValue: '원' })}</span>
           </p>
@@ -544,8 +544,8 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
     <div className="rounded-2xl p-12 text-center">
       {/* 🦦 2026-10-10 (대표 "다 해줘"): 상자 아이콘 → 유달이. 검색해서 0건은 갸웃(notFound), 아직 산 게 없으면 빈 지갑(empty) */}
       <Udal mood={searching ? 'notFound' : 'empty'} size={96} className="block mx-auto mb-5" />
-      <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
-      <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{desc}</p>
+      <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">{title}</h2>
+      <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-8">{desc}</p>
       {!searching && (
         <Link
           to="/"

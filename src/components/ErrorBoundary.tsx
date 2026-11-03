@@ -80,12 +80,12 @@ class ErrorBoundary extends Component<Props, State> {
           <div className="min-h-[100dvh] flex items-center justify-center bg-warm px-4">
             <div className="max-w-sm w-full text-center">
               {!exhausted && (
-                <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-line border-t-gray-900 dark:border-t-white animate-spin" />
+                <div className="w-12 h-12 mx-auto mb-5 rounded-full border-2 border-line border-t-gray-900 dark:border-t-white animate-spin" />
               )}
-              <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">
                 {exhausted ? '새 버전이 배포됐어요' : '화면을 업데이트하고 있어요'}
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 text-[15px] mb-6 leading-relaxed">
+              <p className="text-gray-500 dark:text-gray-400 text-[15px] mb-8 leading-relaxed">
                 {exhausted
                   ? '아래 버튼을 눌러 최신 화면으로 새로고침해 주세요.'
                   : <>새 버전이 배포되어 최신 화면으로 새로고침하고 있어요.<br />잠시만 기다려 주세요.</>}
@@ -111,18 +111,18 @@ class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#1D1F29] px-4">
           <div className="max-w-md w-full bg-surface rounded-2xl shadow-lg p-8 text-center">
             {/* 🦦 2026-10-07 유달이 — 빨간 경고 삼각형 대신 미안한 얼굴. 무서운 화면이 아니라 사과하는 화면이다. */}
-            <Udal mood="oops" size={120} className="mx-auto mb-4" />
+            <Udal mood="oops" size={120} className="mx-auto mb-5" />
 
-            <h2 className="text-[24px] font-bold text-gray-900 dark:text-white mb-2">
+            <h2 className="text-[20px] font-semibold text-gray-900 dark:text-white mb-2">
               문제가 발생했습니다
             </h2>
 
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
+            <p className="text-gray-600 dark:text-gray-300 mb-8">
               일시적인 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
             </p>
 
             {import.meta.env.DEV && this.state.error && (
-              <details className="text-left mb-6">
+              <details className="text-left mb-8">
                 <summary className="cursor-pointer text-[15px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                   오류 상세 보기 (개발 환경)
                 </summary>

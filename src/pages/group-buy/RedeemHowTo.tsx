@@ -88,11 +88,11 @@ export default function RedeemHowTo() {
               <span className="ur-howto-t block text-[13px] font-medium">{t}</span>
               <span className="ur-howto-t block mt-1 text-[12px]" style={{ color: 'var(--gbd-sub)' }}>{d}</span>
             </div>
-            {i < STEPS.length - 1 && <span aria-hidden className="ur-howto-ar shrink-0 mt-3 text-[17px]" style={{ color: 'var(--gbd-sub2)', '--i': i } as React.CSSProperties}>›</span>}
+            {i < STEPS.length - 1 && <span aria-hidden className="ur-howto-ar shrink-0 mt-3 text-[16px]" style={{ color: 'var(--gbd-sub2)', '--i': i } as React.CSSProperties}>›</span>}
           </li>
         ))}
       </ol>
-      <p className="mt-4 mb-0 text-[12px] leading-[1.5]" style={{ color: 'var(--gbd-sub)' }}>
+      <p className="mt-5 mb-0 text-[12px] leading-[1.5]" style={{ color: 'var(--gbd-sub)' }}>
         <b className="font-medium">스캔이 안 되면?</b> {REDEEM_FALLBACK}
       </p>
     </div>

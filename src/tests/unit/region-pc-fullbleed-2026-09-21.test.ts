@@ -60,7 +60,7 @@ describe('③ 지역 페이지가 PC 전제 마크업을 갖는다', () => {
   it('RegionPage 본문이 1600px 컨테이너 + PC 여백을 쓴다', () => {
     const s = visible(REGION_PAGE)
     expect(s).toContain('max-w-[1600px]')
-    expect(s).toMatch(/px-4\s+lg:px-10/)
+    expect(s).toMatch(/px-5\s+lg:px-10/) // 📏 2026-11-03 공백 체계 — 가장자리 20
   })
 
   it('RegionPage 가 딜 그리드를 PC 모드로 넘긴다', () => {

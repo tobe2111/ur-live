@@ -26,7 +26,7 @@ export function LargeTitle({ theme = 'dark', title, subtitle }: {
   const t = tokens(theme)
   return (
     <div className="px-4 pt-3 pb-3">
-      <h1 style={{ fontSize: 32, fontWeight: 800, color: t.label, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+      <h1 style={{ fontSize: 32, fontWeight: 700, color: t.label, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
         {title}
       </h1>
       {subtitle && (
@@ -44,7 +44,7 @@ export function InsetGroup({ theme = 'dark', title, footer, children, className 
 }) {
   const t = tokens(theme)
   return (
-    <div className={`px-4 mb-7 ${className}`}>
+    <div className={`px-4 mb-8 ${className}`}>
       {title && (
     <p className="px-1 mb-2"
           style={{ fontSize: 12, color: t.secondary, fontWeight: 500, letterSpacing: '-0.01em' }}>

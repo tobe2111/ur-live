@@ -49,13 +49,14 @@ const consumer = execSync(
   .filter((f) => MY_SURFACE.test(f) || !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
 
 describe('① 변환 규칙', () => {
-  it('semibold — 17px 이상은 bold, 그 아래는 medium', () => {
-    expect(fixWeights('text-[17px] font-semibold')).toBe('text-[17px] font-bold')
+  // 🔁 2026-11-03 안 C(대표 *"레포 규칙 허용도 할게"*): 600 은 16px 이상 제목에 허용 · 800·900 은 어디서도 안 쓴다.
+  it('semibold — 16px 이상은 그대로(제목), 그 아래는 medium', () => {
+    expect(fixWeights('text-[16px] font-semibold')).toBe('text-[16px] font-semibold')
     expect(fixWeights('text-[15px] font-semibold')).toBe('text-[15px] font-medium')
     expect(fixWeights('font-semibold')).toBe('font-medium')
   })
-  it('extrabold·black — 디스플레이(28+)만 800, 작은 글자는 medium, 그 사이는 bold', () => {
-    expect(fixWeights('text-[34px] font-black')).toBe('text-[34px] font-extrabold')
+  it('extrabold·black — 어디서도 안 쓴다: 작은 글자는 medium, 나머지는 bold(디스플레이 포함)', () => {
+    expect(fixWeights('text-[34px] font-black')).toBe('text-[34px] font-bold')
     expect(fixWeights('text-[15px] font-extrabold')).toBe('text-[15px] font-bold')
     expect(fixWeights('text-[12px] font-extrabold')).toBe('text-[12px] font-medium')
   })
@@ -64,7 +65,8 @@ describe('① 변환 규칙', () => {
     expect(fixWeights('text-[15px] font-bold')).toBe('text-[15px] font-bold')
   })
   it('변형 접두사는 그 변형의 크기를 본다', () => {
-    expect(fixWeights('text-[13px] lg:text-[17px] lg:font-semibold')).toBe('text-[13px] lg:text-[17px] lg:font-bold')
+    expect(fixWeights('text-[12px] lg:text-[15px] lg:font-semibold')).toBe('text-[12px] lg:text-[15px] lg:font-medium')
+    expect(fixWeights('text-[13px] lg:text-[16px] lg:font-semibold')).toBe('text-[13px] lg:text-[16px] lg:font-semibold')
   })
   it('여러 줄 백틱 템플릿도 잡는다 (첫 판이 놓친 자리)', () => {
     const src = 'className={`h-9 text-[13px] font-bold ${\n  a ? \'x\' : \'y\'\n}`}'
@@ -73,7 +75,9 @@ describe('① 변환 규칙', () => {
   it('인라인 style 의 fontWeight 도 같은 규칙', () => {
     expect(fixSource('style={{ fontSize: 14, fontWeight: 800 }}')).toBe('style={{ fontSize: 14, fontWeight: 700 }}')
     expect(fixSource('style={{ fontWeight: 700, fontSize: 12 }}')).toBe('style={{ fontWeight: 500, fontSize: 12 }}')
-    expect(fixWeightNum(600, 17)).toBe(700)
+    expect(fixWeightNum(600, 17)).toBe(600)
+    expect(fixWeightNum(600, 14)).toBe(500)
+    expect(fixWeightNum(800, 34)).toBe(700)
   })
 })
 

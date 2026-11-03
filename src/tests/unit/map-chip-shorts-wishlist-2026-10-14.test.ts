@@ -39,7 +39,7 @@ describe('② 이용권 없는 쇼츠 — 이 지역 인기 이용권 세 장', 
   ]
   it('그 지역 것만, 사진 없는 것·교환권은 뺀다', () => {
     const r = pickNearbyPasses(feed, '부산')
-    expect(r.label).toBe('부산 인기 이용권')
+    expect(r.label).toBe('부산 근처 이용권') // 🎬 2026-11-03 안 C — '근처'
     expect(r.items.map((x) => x.id)).toEqual([1, 3])
     expect(r.more).toBe('/region/%EB%B6%80%EC%82%B0')
     expect(r.items.find((x) => x.id === 3)?.to).toBe('/stays/3')
@@ -48,7 +48,8 @@ describe('② 이용권 없는 쇼츠 — 이 지역 인기 이용권 세 장', 
     const r = pickNearbyPasses(feed, '제주')
     expect(r.label).toBe('지금 인기 이용권')
     expect(r.more).toBe('/map')
-    expect(r.items.length).toBe(NEARBY_PICK_COUNT)
+    // 🎬 2026-11-03 안 C — 최대 NEARBY_PICK_COUNT(6) 장. 쓸 수 있는 게 셋이면 셋.
+    expect(r.items.length).toBe(Math.min(3, NEARBY_PICK_COUNT))
   })
   it('묶음 키(충남세종)도 시/도로 읽는다', () => {
     expect(sidoFromShortsRegion('충남세종')).toBe('충남')
@@ -59,7 +60,11 @@ describe('② 이용권 없는 쇼츠 — 이 지역 인기 이용권 세 장', 
     expect(v).toMatch(/cur && cur\.product_id \? \(/)
     expect(v).toMatch(/: cur && nearbyFeed \? \(/)
     // 🎬 2026-11-03 16차 ⑦ — 바깥(자리·넘김 transform) / 안쪽(흰 카드·올라오는 움직임)으로 나뉘었다. 자리와 흰 바탕은 그대로.
-    expect(read('src/pages/videos/NearbyPassesCard.tsx')).toMatch(/absolute inset-x-\[10px\] bottom-\[10px\] z-20">\s*<div className="ur-np-in[^"]*bg-white\/95/)
+    // 🎬 2026-11-03 대표 확정 안 C — 흰 판 하나 대신 **가로로 흐르는 작은 흰 카드들**. 넘김 transform 은 바깥, 움직임은 안쪽.
+    const card = read('src/pages/videos/NearbyPassesCard.tsx')
+    expect(card).toMatch(/<div style=\{style\} className="absolute inset-x-0 bottom-3 z-20" data-testid="shorts-nearby-rail">\s*<div className="ur-np-in">/)
+    expect(card).toMatch(/overflow-x-auto scrollbar-hide px-3 snap-x snap-mandatory/)
+    expect(card).toMatch(/snap-start shrink-0 w-\[156px\] flex items-center gap-2 rounded-2xl bg-white p-2/)
   })
   it('홈 피드와 같은 예열 주소를 쓴다(새 캐시 키 0)', () => {
     expect(read('src/worker/cron/cache-prewarm.ts')).toContain(`'${POPULAR_PASS_FEED_URL}'`)

@@ -55,7 +55,7 @@ export default function LifeBizPage() {
     return (
       <div className="min-h-[100dvh] bg-warm px-4 py-20 text-center text-ink">
         <p className="text-[15px] font-bold">업체를 찾을 수 없어요</p>
-        <Link to="/life" className="mt-4 inline-block text-[13px] font-medium text-brand-text">생활 서비스 보기</Link>
+        <Link to="/life" className="mt-5 inline-block text-[13px] font-medium text-brand-text">생활 서비스 보기</Link>
       </div>
     )
   }
@@ -67,11 +67,11 @@ export default function LifeBizPage() {
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
       <SEO title={withSiteName(lifeBizTitle(b))} description={lifeBizDescription(b)} url={`/life/biz/${b.id}`} noindex={!lifeBizIndexable(b)} />
       <LifeHeader title="업체 소개" back="/life" />
-      <div className="mx-auto w-full max-w-[720px] px-4 pb-10 lg:grid lg:max-w-[1120px] lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5 lg:px-8">
-        <div className="space-y-4">
+      <div className="mx-auto w-full max-w-[720px] px-5 pb-10 lg:grid lg:max-w-[1120px] lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5 lg:px-8">
+        <div className="space-y-3">
           <section className="rounded-2xl p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[24px] font-bold">{b.name}</h2>
+              <h2 className="text-[20px] font-semibold">{b.name}</h2>
               {b.verified && <span className="rounded-full bg-warm px-2 py-1 text-[12px] font-medium text-gray-600 dark:text-gray-300">사업자 인증</span>}
             </div>
             <div className="mt-1 flex flex-wrap gap-x-3 text-[13px] text-gray-500 dark:text-gray-400">
@@ -79,7 +79,7 @@ export default function LifeBizPage() {
               {b.chosen_count > 0 && <span>유어딜에서 {formatNumber(b.chosen_count)}번 선택됨</span>}
             </div>
             {b.intro && <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-gray-700 dark:text-gray-200">{b.intro}</p>}
-            <dl className="mt-4 space-y-2 border-t border-rule pt-3 text-[13px]">
+            <dl className="mt-5 space-y-2 border-t border-rule pt-3 text-[13px]">
               {b.categories.length > 0 && (
                 <div className="flex gap-3"><dt className="w-14 shrink-0 text-gray-500 dark:text-gray-400">하는 일</dt><dd>{b.categories.map(categoryLabel).join(', ')}</dd></div>
               )}
@@ -98,7 +98,7 @@ export default function LifeBizPage() {
           </section>
 
           <section className="rounded-2xl p-5">
-            <p className="text-[17px] font-bold">유어딜 후기 {b.reviews?.count ? formatNumber(b.reviews.count) : ''}</p>
+            <p className="text-[16px] font-bold">유어딜 후기 {b.reviews?.count ? formatNumber(b.reviews.count) : ''}</p>
             {recent.length === 0 ? (
               <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">아직 유어딜 후기가 없어요.{b.links.length ? ' 위의 다른 곳 후기를 확인해 보세요.' : ''}</p>
             ) : (
@@ -115,7 +115,7 @@ export default function LifeBizPage() {
           </section>
         </div>
 
-        <aside className="mt-4 space-y-4 lg:sticky lg:top-24 lg:mt-0">
+        <aside className="mt-5 space-y-3 lg:sticky lg:top-24 lg:mt-0">
           {first && (
             <section className="rounded-2xl p-5">
               <p className="text-[15px] font-bold">이 업체에 견적 받기</p>

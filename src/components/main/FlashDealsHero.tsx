@@ -92,11 +92,11 @@ export default function FlashDealsHero() {
   return (
     <div className="px-4 pt-6 pb-2 lg:px-0 lg:pt-8">
       {/* PC: 2-column (hero left + grid right), mobile: stacked */}
-      <div className="lg:flex lg:gap-6 xl:gap-8">
+      <div className="lg:flex lg:gap-5 xl:gap-8">
 
         {/* ── 히어로 박스 (countdown + stats) ── */}
-        <div className="lg:w-[280px] xl:w-[300px] lg:shrink-0 mb-4 lg:mb-0">
-          <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 via-gray-900 to-black p-4 lg:p-5 shadow-lg shadow-black/20 h-full flex flex-col justify-between">
+        <div className="lg:w-[280px] xl:w-[300px] lg:shrink-0 mb-5 lg:mb-0">
+          <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 via-gray-900 to-black p-5 lg:p-5 shadow-lg shadow-black/20 h-full flex flex-col justify-between">
             {/* 헤더 */}
             <div>
               <div className="flex items-center gap-2 mb-2">

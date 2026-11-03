@@ -21,14 +21,14 @@ export function AgencyIntro() {
   return (
     <section aria-label="유어딜 에이전시 소개">
       <p className="text-[13px] font-medium text-brand-text">유어딜 에이전시</p>
-      <h2 className="mt-2 text-[28px] lg:text-[34px] font-bold leading-tight tracking-[-0.02em] text-gray-900">
+      <h2 className="mt-2 text-[24px] lg:text-[34px] font-bold leading-tight tracking-[-0.02em] text-gray-900">
         동네 매장의 이용권,<br />여러 곳을 한 번에 운영하세요
       </h2>
       <p className="mt-3 text-[15px] leading-relaxed text-gray-600">
         매장을 대신해 유어딜 이용권을 등록하고 운영하는 대행사 전용 계정이에요.
       </p>
 
-      <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+      <ul className="mt-8 grid gap-3 sm:grid-cols-2">
         {POINTS.map(({ Icon, title, body }) => (
           <li key={title} className="flex gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-tint text-brand-text">

@@ -69,7 +69,7 @@ export default function LifeRequestFormPage() {
     return (
       <div className="min-h-[100dvh] bg-warm px-4 py-20 text-center text-ink">
         <p className="text-[15px] font-bold">없는 카테고리예요</p>
-        <Link to="/life" className="mt-4 inline-block text-[13px] text-brand-text">생활 서비스로 돌아가기</Link>
+        <Link to="/life" className="mt-5 inline-block text-[13px] text-brand-text">생활 서비스로 돌아가기</Link>
       </div>
     )
   }
@@ -126,8 +126,12 @@ export default function LifeRequestFormPage() {
     const cs = def!.crossSell
     if (!cs) return
     const carried: Draft = {}
+    const target = categoryDef(cs.to)
     for (const [to, from] of Object.entries(cs.carry)) {
       if (values[from]) carried[to] = values[from]
+      // 📅 여러 날짜(착공 희망일)를 날짜 하나만 받는 요청서로 넘길 때는 가장 이른 날만(서버가 쉼표를 거절한다).
+      const tf = target?.fields.find((x) => x.key === to)
+      if (tf?.type === 'date' && !tf.multiple && carried[to]) carried[to] = carried[to].split(',')[0].trim()
       if (values[from + PRIVATE_ADDRESS_SUFFIX]) carried[to + PRIVATE_ADDRESS_SUFFIX] = values[from + PRIVATE_ADDRESS_SUFFIX]
     }
     saveDraft(cs.to, { ...loadDraft(cs.to), ...carried })
@@ -138,8 +142,8 @@ export default function LifeRequestFormPage() {
     return (
       <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
         <SEO title={`${def.label} 견적 요청 완료 - 유어딜`} description={def.blurb} url={`/life/request/${def.key}`} />
-        <div className="ur-content-narrow px-4 pt-20 pb-10 text-center">
-          <h1 className="text-[24px] font-bold tracking-tight">{def.label} 견적 요청을 보냈어요</h1>
+        <div className="ur-content-narrow px-5 pt-20 pb-10 text-center">
+          <h1 className="text-[20px] font-semibold tracking-tight">{def.label} 견적 요청을 보냈어요</h1>
           <p className="mt-3 text-[15px] leading-relaxed text-gray-600 dark:text-gray-300">
             근처 업체가 견적을 보내면 알려 드릴게요.<br />비교하고 마음에 드는 한 곳만 고르세요.
           </p>
@@ -150,7 +154,7 @@ export default function LifeRequestFormPage() {
               className="ur-btn ur-btn-lg mt-3 flex w-full justify-center bg-surface text-ink shadow-lift">아는 업체에 링크 보내기</button>
             <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">링크엔 이름·연락처·상세 주소가 가려져요.</p>
           </>)}
-          <Link to="/life" className="mt-4 inline-block text-[13px] text-gray-500 dark:text-gray-400">생활 서비스로 돌아가기</Link>
+          <Link to="/life" className="mt-5 inline-block text-[13px] text-gray-500 dark:text-gray-400">생활 서비스로 돌아가기</Link>
         </div>
         {crossOpen && def.crossSell && (
           <Sheet
@@ -163,7 +167,7 @@ export default function LifeRequestFormPage() {
               </div>
             }
           >
-            <p className="pb-2 text-center text-[17px] font-bold leading-snug">{def.crossSell.title}</p>
+            <p className="pb-2 text-center text-[16px] font-semibold leading-snug">{def.crossSell.title}</p>
             <p className="pb-4 text-center text-[13px] text-gray-500 dark:text-gray-400">방금 적은 주소와 날짜를 그대로 이어서 써요.</p>
           </Sheet>
         )}
@@ -172,7 +176,7 @@ export default function LifeRequestFormPage() {
   }
 
   const recruiting = proCount === 0 && (
-    <p className="rounded-2xl bg-warm p-4 text-[13px] leading-relaxed">
+    <p className="rounded-2xl bg-warm p-5 text-[13px] leading-relaxed">
       지금 {def.label} 업체를 모집하고 있어요. 요청은 보관해 두었다가 업체가 들어오는 대로 보내 드려요.
     </p>
   )
@@ -215,12 +219,12 @@ export default function LifeRequestFormPage() {
   return (
     <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
       {seo}
-      <header className="ur-content-narrow flex h-14 items-center gap-3 px-4">
+      <header className="ur-content-narrow flex h-14 items-center gap-3 px-5">
         <button type="button" aria-label="이전" onClick={() => setStep(REVIEW - 1)} className="-ml-2 p-2 text-ink"><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="text-[17px] font-bold">{def.label} 견적 요청</h1>
+        <h1 className="text-[16px] font-semibold">{def.label} 견적 요청</h1>
       </header>
-      <div className="ur-content-narrow space-y-5 px-4 pb-10">
-        <h2 className="text-[24px] font-bold leading-snug tracking-tight">이대로 견적을 받을까요?</h2>
+      <div className="ur-content-narrow space-y-5 px-5 pb-10">
+        <h2 className="text-[20px] font-semibold leading-snug tracking-tight">이대로 견적을 받을까요?</h2>
         {recruiting}
         <div className="divide-y divide-rule rounded-2xl px-5">
           {def.fields.map((f, i) => {
@@ -237,7 +241,7 @@ export default function LifeRequestFormPage() {
           })}
         </div>
 
-        <label className="flex items-start gap-3 rounded-2xl p-4">
+        <label className="flex items-start gap-3 rounded-2xl p-5">
           <input type="checkbox" className="mt-1 h-4 w-4" checked={consent}
             onChange={(e) => setValues((s) => { const n = { ...s }; if (e.target.checked) n[CONSENT_KEY] = '1'; else delete n[CONSENT_KEY]; return n })} />
           <span className="text-[13px] leading-relaxed">

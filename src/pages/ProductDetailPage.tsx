@@ -355,14 +355,14 @@ export default function ProductDetailPage() {
           {mallOrigin ? (
             <button
               onClick={() => navigate(`/${mallOrigin}`)}
-              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-[15px] font-medium"
+              className="mt-5 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-[15px] font-medium"
             >
               가게로 돌아가기
             </button>
           ) : (
             <button
               onClick={() => navigate('/')}
-              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-[15px] font-medium"
+              className="mt-5 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-[15px] font-medium"
             >
               {t('common.backToHome', { defaultValue: '홈으로 돌아가기' })}
             </button>
@@ -435,10 +435,10 @@ export default function ProductDetailPage() {
         {/* 이름 + 가격 */}
         <div className="px-5 text-center">
           {brandName && <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-1">{brandName}</p>}
-          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight">{product.name}</h2>
+          <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white leading-tight">{product.name}</h2>
           <div className="mt-3 inline-flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-full">
             <span className="w-5 h-5 rounded-full bg-amber-400 text-white text-[12px] font-medium flex items-center justify-center">딜</span>
-            <span className="text-[17px] font-bold text-amber-700">{formatNumber(displayPrice)} 딜</span>
+            <span className="text-[16px] font-bold text-amber-700">{formatNumber(displayPrice)} 딜</span>
           </div>
         </div>
 
@@ -446,7 +446,7 @@ export default function ProductDetailPage() {
         {brandName && (() => {
           const brandIcon = (product as unknown as { brand_icon_url?: string | null }).brand_icon_url
           return (
-            <div className="mx-5 mt-6 p-3 bg-amber-50 rounded-xl flex items-center gap-3"
+            <div className="mx-5 mt-8 p-3 bg-amber-50 rounded-xl flex items-center gap-3"
               onClick={() => navigate(`/browse?brand=${encodeURIComponent(brandName)}`)}
               role="button" tabIndex={0}>
               {brandIcon ? (
@@ -486,7 +486,7 @@ export default function ProductDetailPage() {
         {/* 하단 노란 CTA */}
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-amber-400 app-frame-bar">
           <button onClick={handleBuyNow}
-            className="w-full py-4 text-center text-[17px] font-bold text-gray-900 dark:text-white active:bg-amber-500"
+            className="w-full py-4 text-center text-[16px] font-bold text-gray-900 dark:text-white active:bg-amber-500"
             style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
           >
             딜로 교환하기
@@ -622,7 +622,7 @@ export default function ProductDetailPage() {
         {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
           <div className="px-5 py-5">
             {/* 🚑 2026-07-02: ChevronRight 인데 onClick 없던 dead 어포던스 → 공구 상세 배선 · 🔵 주 버튼이 아니라 클릭 가능한 다크 패널이다(블루면 진짜 CTA 와 같은 색 큰 면이 둘) */}
-            <div className="rounded-2xl p-4 bg-gray-900 text-white cursor-pointer active:scale-[0.99] transition-transform" role="button" tabIndex={0} /* primary-button-ok */
+            <div className="rounded-2xl p-5 bg-gray-900 text-white cursor-pointer active:scale-[0.99] transition-transform" role="button" tabIndex={0} /* primary-button-ok */
               onClick={() => navigate(`/pass/${id}`)}
               onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/pass/${id}`) }}>
               <div className="flex items-start justify-between mb-3">
@@ -785,7 +785,7 @@ export default function ProductDetailPage() {
         {/* 🛡️ 2026-05-24: 전체보기 토글 — 클릭 시 limit 100 으로 재요청 (사실상 전체). */}
         <div className="h-2 bg-gray-50 dark:bg-[#161616]" />
         <section className="px-5 py-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-5">
             <p className="text-[13px] font-medium text-gray-900 dark:text-white">
               {t('productDetail.reviewsLabel', { defaultValue: '리뷰' })} <span className="text-gray-400 dark:text-gray-500 font-normal">({formatNumber(reviewSummary?.total_count || 0)})</span>
             </p>
@@ -873,7 +873,7 @@ export default function ProductDetailPage() {
       {/* 🏭 2026-06-05 (사용자 요청): 딜 교환 확인 — 네이티브 confirm 대체 서비스 내 모달. */}
       {dealConfirm && (
         <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center ur-veil p-2 sm:p-4" onClick={() => !dealBuying && setDealConfirm(null)}>
-          <div className="w-full sm:max-w-sm ur-glass ur-pop-card p-5 m-0 sm:mx-4 overflow-hidden ur-dialog-in" onClick={e => e.stopPropagation()}>
+          <div className="w-full sm:max-w-sm ur-glass ur-pop-card p-5 m-0 sm:mx-5 overflow-hidden ur-dialog-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3">
               {product.image_url && (
                 <img src={cfImage(product.image_url, { width: 112, quality: 80, format: 'auto' }) || product.image_url} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-xl object-cover shrink-0" onError={(e) => cfImageOnError(e.currentTarget, product.image_url)} />
@@ -885,7 +885,7 @@ export default function ProductDetailPage() {
                 </p>
               </div>
             </div>
-            <div className="mt-4 flex items-baseline justify-between">
+            <div className="mt-5 flex items-baseline justify-between">
               <span className="text-[13px] text-gray-500 dark:text-gray-400">결제 금액</span>
               <span className="text-[24px] font-bold text-gray-900 dark:text-white">{formatNumber(dealConfirm.total)}딜</span>
             </div>

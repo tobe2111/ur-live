@@ -8,7 +8,7 @@ export default function AmenityGrid({ items }: { items: string[] }) {
   const { known, cells, extras } = stayAmenityGrid(items)
   return (
     <>
-      <ul className="mt-4 grid grid-cols-4 lg:grid-cols-6 gap-x-2 gap-y-5" data-amenity-grid>
+      <ul className="mt-5 grid grid-cols-4 lg:grid-cols-6 gap-x-2 gap-y-5" data-amenity-grid>
         {cells.map(c => {
           const off = known && !c.has
           return (
@@ -24,7 +24,7 @@ export default function AmenityGrid({ items }: { items: string[] }) {
           )
         })}
       </ul>
-      {!known && <p className="mt-4 text-[13px] text-gray-500 dark:text-gray-400">숙소가 아직 시설 정보를 등록하지 않았어요.</p>}
+      {!known && <p className="mt-5 text-[13px] text-gray-500 dark:text-gray-400">숙소가 아직 시설 정보를 등록하지 않았어요.</p>}
       {extras.length > 0 && (
         <p className="mt-5 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
           <span className="text-gray-700 dark:text-gray-200 font-medium">그 밖의 시설</span>{'  '}{extras.join(', ')}

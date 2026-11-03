@@ -55,8 +55,8 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
         className="ur-glass ur-pop-card max-w-md w-full p-6 overflow-hidden ur-dialog-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">
             {t('returnRequest.title', { defaultValue: '반품/교환 신청' })}
           </h3>
           <button
@@ -73,7 +73,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
           <p className="font-medium text-gray-900 dark:text-white">{orderNumber}</p>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-5">
           <label className="block text-[15px] font-medium text-gray-600 dark:text-gray-300 mb-2">
             {t('returnRequest.reasonLabel', { defaultValue: '반품 사유' })} <span className="text-red-500">*</span>
           </label>
@@ -91,7 +91,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
           </select>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-5">
           <label className="block text-[15px] font-medium text-gray-600 dark:text-gray-300 mb-2">
             {t('returnRequest.detailLabel', { defaultValue: '상세 사유 (선택)' })}
           </label>
@@ -105,7 +105,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
           />
         </div>
 
-        <div className="mb-6 p-4 bg-blue-50 rounded-xl">
+        <div className="mb-8 p-4 bg-blue-50 rounded-xl">
           <div className="flex items-start gap-2">
             <AlertIcon className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
             <div className="text-[15px] text-blue-700">

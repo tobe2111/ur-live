@@ -42,14 +42,13 @@ export default [
     why: '에이전시 하나를 고치려다 나머지 셋이 따라 바뀐다 — 남의 사이트에 이미 걸린 위젯들이 조용히 달라진다.',
   },
   {
-    name: '홈페이지에넣기 — 번호를 몰라도 버튼을 그린다',
+    name: '홈페이지에넣기 — 에이전시 화면에 입구가 되살아난다',
     file: A,
-    // 🔁 2026-11-02 재조준 — 큰 카드가 에이전시 줄이 됐다.
-    // 🔁 2026-11-03 재조준 — 줄에 아이콘이 붙었다(마이 줄 문법 통일).
-    find: '{agencyId != null && <FlatRow icon=',
-    replace: '{true && <FlatRow icon=',
+    // 🔁 2026-11-03 재조준 — 대표 *"홈페이지에 넣기는 빼줘"* 로 입구를 걷었다. 되살아나지 않게 지킨다.
+    find: '{canManage && <FlatRow icon={<ShopPlusIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="매장 대신 등록" hint="유어딜에 없는 매장" onClick={() => setSheet(\'register\')} last={!trailingRows} />}',
+    replace: '<FlatRow icon={null} label="홈페이지에 넣기" hint="코드 받기" onClick={() => openEmbedCode(\'agency\', 1)} />',
     test: T,
-    why: '프로필이 아직 없을 때 `key=null` 로 코드 만들기 화면이 열린다 — 에이전시가 빈 위젯 코드를 복사해 홈페이지에 붙인다.',
+    why: '대표가 빼라고 한 입구다.',
   },
   {
     name: '홈페이지에넣기 — SPA 이동으로 연다',

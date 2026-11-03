@@ -14,6 +14,7 @@
  *   500 `font-medium`    상품명 · 목록 제목 · 탭 · 칩 · 작은 강조
  *   700 `font-bold`      섹션 제목 · 가격 숫자 · 주 버튼 — **15px 이상에서만**
  *   800 `font-extrabold` 디스플레이(28px 이상)에서만
+ *   🔤 2026-11-03 안 C 가 갱신: **600 은 16px 이상 제목에 허용** · **800·900 은 어디서도 안 쓴다**(디스플레이도 700).
  *   ❌ `font-semibold`(600) · `font-black`(900) · 12·13px 의 700+ (배지·칩도 예외 없다 — 첫 판에
  *   "칠한 면 위 배지" 예외를 뒀더니 흰 알약 카테고리 칩 20개가 전부 예외로 빠져 굵은 채 남았다.
  *   예외가 판정을 못 하면 규칙이 아니다)
@@ -51,9 +52,10 @@ export function fixWeights(s) {
   return s.replace(TOKEN, (all, pre, v, tok) => {
     const n = sizes.has(v) ? sizes.get(v) : sizes.get('')
     let to = tok
-    if (tok === 'font-semibold') to = n != null && n >= 17 ? 'font-bold' : 'font-medium'
+    // 🔤 2026-11-03 안 C — 600 은 16px 이상 제목에 허용, 800·900 은 어디서도 쓰지 않는다(디스플레이도 700).
+    if (tok === 'font-semibold') to = n != null && n >= 16 ? 'font-semibold' : 'font-medium'
     else if (tok === 'font-extrabold' || tok === 'font-black') {
-      to = n == null ? 'font-bold' : n >= 28 ? 'font-extrabold' : n <= 13 ? 'font-medium' : 'font-bold'
+      to = n != null && n <= 13 ? 'font-medium' : 'font-bold'
     } else if (tok === 'font-bold') to = n != null && n <= 13 ? 'font-medium' : 'font-bold'
     return to === tok ? all : `${pre}${v}${to}`
   })
@@ -66,8 +68,8 @@ export function weightViolations(s) {
   for (const m of s.matchAll(TOKEN)) {
     const [, , v, tok] = m
     const n = sizes.has(v) ? sizes.get(v) : sizes.get('')
-    if (tok === 'font-semibold' || tok === 'font-black') out.push(`${v}${tok}`)
-    else if (tok === 'font-extrabold' && !(n != null && n >= 28)) out.push(`${v}${tok}@${n ?? '?'}`)
+    if (tok === 'font-black' || tok === 'font-extrabold') out.push(`${v}${tok}`)
+    else if (tok === 'font-semibold' && !(n != null && n >= 16)) out.push(`${v}${tok}@${n ?? '?'}`)
     else if (tok === 'font-bold' && n != null && n <= 13) out.push(`${v}${tok}@${n}`)
   }
   return out
@@ -75,8 +77,8 @@ export function weightViolations(s) {
 
 /** 숫자 굵기 → 정본 (같은 규칙의 숫자판). 크기를 모르면 null. */
 export function fixWeightNum(w, n) {
-  if (w === 600) return n != null && n >= 17 ? 700 : 500
-  if (w >= 800) return n == null ? 700 : n >= 28 ? 800 : n <= 13 ? 500 : 700
+  if (w === 600) return n != null && n >= 16 ? 600 : 500
+  if (w >= 800) return n != null && n <= 13 ? 500 : 700
   if (w === 700 && n != null && n <= 13) return 500
   return w
 }
