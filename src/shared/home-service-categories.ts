@@ -36,7 +36,16 @@ export interface RequestField {
   unit?: string
   /** 선택지 아래 한 줄 설명(오늘의집처럼 카드로 고르게 한다) */
   optionHints?: Readonly<Record<string, string>>
+  /**
+   * 📅 date 칸에서 **여러 날짜**를 고르게 한다(2026-11-03 대표 *"착공 희망일은 여러개 선택할 수 있게"*).
+   *   값은 `YYYY-MM-DD, YYYY-MM-DD` (정렬·중복 제거) · 최대 `MAX_MULTI_DATES` 개.
+   *   요청의 `desired_date`(만료·업체 목록 기준)는 **가장 늦은 날**이다 — 후보가 하나라도 남아 있으면 요청이 살아 있다.
+   */
+  multiple?: boolean
 }
+
+/** 여러 날짜 칸에서 고를 수 있는 최대 개수. */
+export const MAX_MULTI_DATES = 5
 
 /**
  * 🔒 지역 칸의 **상세 주소**(도로명·동·호수)는 `<키>_full` 로 따로 받는다.
@@ -149,7 +158,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'scope', label: '공사할 곳', type: 'multi', required: false, options: ['바닥', '벽·천장', '조명·전기', '주방 설비', '화장실', '카운터·가구', '외관·출입문'] },
       { key: 'design', label: '디자인', type: 'select', required: true, options: ['디자인부터 필요해요', '도면·시안이 있어요', '업체와 상의할게요'] },
       { key: 'budget', label: '생각하는 예산', type: 'select', required: true, options: ['1천만 원 이하', '1천~3천만 원', '3천~5천만 원', '5천만 원~1억', '1억 이상', '상담 후 정할게요'] },
-      { key: 'date', label: '착공 희망일', type: 'date', required: true },
+      { key: 'date', label: '착공 희망일', type: 'date', required: true, multiple: true },
       { key: 'photos', label: '현장 사진', type: 'photos', required: false },
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '오픈 목표일, 원하는 분위기' },
     ],
@@ -405,7 +414,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
         optionHints: { '전체 리모델링': '집 전체를 새로', '도배·바닥': '벽지·장판·마루' } },
       { key: 'living', label: '공사 중 거주', type: 'select', required: true, options: ['빈 집이에요', '살면서 공사해요'] },
       { key: 'budget', label: '생각하는 예산', type: 'select', required: true, options: ['1천만 원 이하', '1천~3천만 원', '3천~5천만 원', '5천만 원~1억', '1억 이상', '상담 후 정할게요'] },
-      { key: 'date', label: '착공 희망일', type: 'date', required: true },
+      { key: 'date', label: '착공 희망일', type: 'date', required: true, multiple: true },
       { key: 'photos', label: '현장 사진', type: 'photos', required: false },
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '입주·이사 날짜, 원하는 분위기' },
     ],
