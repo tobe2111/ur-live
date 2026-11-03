@@ -882,9 +882,9 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 | S-DEMO-3 | 실매장 숙소·이용권 카드 결제 1건 | 종전과 동일하게 승인까지(반대 방향 — 이게 깨지면 실매출이 막힌다) |
 
 ## 🏨 **S-STAYREF** — 숙소 소개 적립 = 이용권 장부 (2026-11-03 결재 `2026-11-03-stay-referral-unify` 1안)
-게이트: `platform_settings.stay_referral_unify_enabled`(기본 OFF). 켜기 전 staging 실결제 4건:
+⚠️ 2026-11-03 대표 *"그냥 너가 해줘 내가 스위치 키는거 말고 … 허가해줄게"* — **스위치 없이 바로 적용**됐다(staging 선확인 생략, 대표 결정). 아래는 **배포 뒤 첫 숙소 소개 결제가 생기면 확인할** 항목이다(그때 라이브 숙소 예약 0건):
 - [ ] 소개자 A 와 매장의 딜 N% 약정(`seller_influencer_deals` active) → A 의 `?aff=` 링크로 숙소 결제 → `influencer_attributions` 1행(order_id) · `influencer_balances.pending` +N% · 원장 `influencer_commission` 1건, `affiliate_earnings` 0건
 - [ ] 같은 예약 손님 취소(전액 환불) → attribution `clawed_back` · pending 원복 · 원장 역분개 1건
 - [ ] 체크인 날 취소(부분 환불) → 커미션이 환불 비율만큼만 줄고 나머지 유지
 - [ ] 어드민 숙소 환불 → 위와 같은 회수
-- [ ] 스위치 OFF 로 만든 예약을 ON 뒤 결제 확정 → 옛 장부(affiliate_earnings)만 1번(이중 적립 0)
+- [ ] 이 배포 전에 만든(옛 금액이 있는) 예약을 결제 확정 → 옛 장부(affiliate_earnings)만 1번(이중 적립 0)

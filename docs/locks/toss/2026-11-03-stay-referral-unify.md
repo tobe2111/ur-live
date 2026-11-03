@@ -7,3 +7,6 @@
 - 이중 적립 방지: 새 분기는 옛 금액이 0 일 때만, 그리고 같은 주문·소개자 attribution 이 있으면 건너뛴다(멱등).
 - 역전: `stays-public.routes.ts` 오버부킹 환불·손님 취소, `admin-stays.routes.ts` 어드민 환불에 `clawbackStayReferral` — 같은 커밋.
 - 켜기 전: `docs/STAGING_CHECKLIST.md` S-STAYREF 5건.
+
+## 후속 (같은 날) — 스위치 제거
+대표 *"그냥 너가 해줘 내가 스위치 키는거 말고, 기존 이용권이랑 형태 통일하면 되잖아 허가해줄게"* → `isStayReferralUnified` 분기 제거. 새 예약(옛 금액 0)은 언제나 `creditStayReferral`. staging 선확인은 대표 결정으로 생략, 배포 뒤 첫 실결제를 S-STAYREF 로 본다.

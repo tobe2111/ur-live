@@ -7,6 +7,6 @@ export default [
     find: 'if (booking.referrer_id && !(booking.influencer_commission_amount > 0)) {', replace: 'if (booking.referrer_id) {', test: T, why: '옛 affiliate_earnings 와 새 attribution 이 둘 다 쌓인다.' },
   { name: 'stay-referral — /pass ↔ /stays 루프', file: 'src/pages/GroupBuyDetailPage.tsx',
     find: "&& !searchParams.get('nostay')) return <Navigate", replace: ") return <Navigate", test: T, why: '숙소 정보 없는 숙소 상품에서 두 화면이 서로를 끝없이 보낸다.' },
-  { name: 'stay-referral — 스위치 OFF 인데 팔아보기가 뜬다', file: 'src/pages/StayDetailPage.tsx',
-    find: '{referralUnified && !own && <div', replace: '{!own && <div', test: T, why: '적립이 안 되는데 딜 N% 라고 보여 준다.' },
+  { name: 'stay-referral — 숙소 상세에서 팔아보기가 사라진다', file: 'src/pages/StayDetailPage.tsx',
+    find: '{!own && <div className="-mx-4 empty:hidden"><SellThisCard', replace: '{false && <div className="-mx-4 empty:hidden"><SellThisCard', test: T, why: '숙소만 다시 이용권과 달라진다.' },
 ]
