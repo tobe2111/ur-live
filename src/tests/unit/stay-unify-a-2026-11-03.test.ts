@@ -35,7 +35,10 @@ describe('숙소 통일 A', () => {
   it('③ 이용권 탭의 숙소 행 — 숙소 편집 · 예약 현황, 재발행 없음', () => {
     const row = read('src/pages/seller-group-buy/VoucherRow.tsx')
     expect(row).toContain("const isStay = v.category === 'stay_voucher'")
-    expect(row).toContain('navigate(isStay ? `/seller/stays/${v.id}` : `/seller/products/${v.id}/edit`)')
+    // 🏨 2026-11-03 후속: 숙소도 같은 수정 화면 하나(아래 '숙소 관리' — StayManagePanel). 옛 /seller/stays/:id 는 그리로 리다이렉트.
+    expect(row).toContain('const goEdit = () => navigate(`/seller/products/${v.id}/edit`)')
+    expect(read('src/pages/SellerProductEditPage.tsx')).toContain("{formData.category === 'stay_voucher' && <div className=\"mt-6\"><Suspense fallback={null}><StayManagePanel productId={Number(id)} />")
+    expect(read('src/routes/seller.routes.tsx')).toContain('<Route path="/seller/stays/:id" element={<StayEditRedirect />} />')
     expect(row).toMatch(/\{isStay \? \(\s*<button[^\n]*navigate\('\/seller\/stays\/bookings'\)/)
   })
 

@@ -30,7 +30,7 @@ export const OWNER_SHEET_COPY: Record<OwnedKind, Copy> = {
     usage: '사용 현황', usagePath: '/seller/group-buy', usedLabel: '사용',
   },
   stay: {
-    edit: '객실·가격 수정', editPath: (id) => `/seller/stays/${id}`,
+    edit: '객실·가격 수정', editPath: (id) => `/seller/products/${id}/edit`, // 🏨 2026-11-03 숙소도 이용권 수정 화면 하나
     sales: '예약 현황', salesPath: () => '/seller/stays/bookings', usedLabel: '이용',
   },
   product: {

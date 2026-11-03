@@ -48,3 +48,4 @@
 - 🐢 대표 *"숙소 이용권만 클릭하면 로딩이 상대적으로 길어"*: 라이브 실측(홈 → 카드 클릭, 폰 크기)에서 숙소만 `TimeoutError: Transition was aborted … DOM update timed out`. 카드→상세 사진 전환의 기다림이 rAF 라 전환 중엔 안 돌아 ~4초 화면이 멈췄다(이용권은 청크가 미리 받아져 첫 확인에 사진이 있어서 안 드러남). `deal-view-transition.ts` 를 타이머+300ms 상한으로. 기록 `docs/locks/loading/2026-11-03-deal-transition-timer.md`. 남은 것: 숙소 상세가 클릭 뒤 `lz-gbDetailL` 청크를 따로 받는다(미리받기에 안 실림) — 체감 0.2~0.4초.
 - 🩸 **틀렸던 판단**: 대표께 *"결제 뒤(지갑 QR·정산·환불)는 10월에 통일돼 같다"* 고 보고했는데, 그 게이트(`stay_voucher_unify_enabled`)는 **한 번도 켜진 적이 없었다**(설정 행 0). 숙소 결제는 지갑 QR 이 안 생겼다. 대표 *"합쳐줘"* 로 게이트 제거 — 언제나 발급. 배포 뒤 첫 숙소 결제를 S-STAYV 로 확인.
 - 다음: 상세 화면 하나로 합치기(StayDetailPage → 이용권 상세 + 날짜·객실 모듈). 대표 *"합쳐줘"*.
+- 🛠️ 숙소 **수정**도 하나로(대표 *"응 합쳐줘"*): 옛 `SellerStayDetailPage` → `seller-product-edit/StayManagePanel.tsx`(+`StayCalendarTab.tsx`). 이용권 수정 화면이 숙소면 아래에 '숙소 관리'(객실·달력·체크인/정책). `/seller/stays/:id` → `/seller/products/:id/edit` 리다이렉트.
