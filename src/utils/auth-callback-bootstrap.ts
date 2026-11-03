@@ -16,7 +16,6 @@
  */
 
 import { useAuthStore } from '@/client/stores/auth.store'
-import { CONSUMER_SESSION_RESTORED_EVENT } from '@/lib/consumer-session-event'
 import { isStaleLoginLanding } from './stale-login-landing'
 
 const PROCESSED_FLAG = '__urAuthCallbackProcessed'
@@ -226,33 +225,12 @@ export function processAuthCallbackParams(): void {
     }
   } catch { /* ignore */ }
 
-  // 🩹 2026-11-03 대표 신고 *"로그인을 했는데도 왜 이렇게 뜨지?"* (PC 계정 메뉴가 손님용 — 카카오 로그인 상태).
-  //   실측: 그날 13:00 KST 카카오 로그인 성공(desktop_chrome establish_ok) · 헤더 찜 배지는 1(= 서버는 소비자로 인증) —
-  //   그런데 헤더의 소비자 판정(`hasConsumerSession`)이 보는 localStorage `user_id`/`session_login` 이 비어 있었다.
-  //   즉 **서버 세션(ur_session)은 살아 있는데 브라우저 표시만 손님**이다. 무엇이 그 두 키를 지웠는지는 아직 못 좁혔다
-  //   (역할 토큰은 남아 있었다 — 찜 훅의 `isLoggedInSync()` 가 켜진 이유). 그래서 원인과 무관하게 **되살린다**:
-  //   소비자 흔적은 없는데 다른 역할 토큰이 있으면(바로 그 모양) 탭당 한 번 서버에 묻고, 살아 있으면 두 키를 다시 쓴다.
-  //   ❌ 손님 전부에게 묻지 않는다 — 역할 토큰이 있는 사람만이라 익명 방문엔 요청 0.
+  // 🩹 2026-11-03 대표 신고 *"로그인을 했는데도 왜 이렇게 뜨지?"* — 서버 세션은 살아 있는데 소비자 표시(localStorage)만 빈 경우
+  //   되살린다. 판정·근거는 `features/auth/consumer-session-restore.ts`. 그 모양(역할 토큰만 있음)일 때만 **동적으로** 불러온다 —
+  //   모든 방문자의 첫 화면 무게(app-utils)에 싣지 않으려고(surface-budgets 실측).
   try {
     const hasConsumer = !!(localStorage.getItem('user_id') || localStorage.getItem('session_login'))
     const hasRole = !!(localStorage.getItem('agency_token') || localStorage.getItem('seller_token') || localStorage.getItem('admin_token'))
-    if (!hasConsumer && hasRole && !sessionStorage.getItem('ur_consumer_restore_tried')) {
-      sessionStorage.setItem('ur_consumer_restore_tried', '1')
-      void fetch('/api/auth/session/health', { credentials: 'include' })
-        .then((r) => (r.ok ? r.json() as Promise<RestoreHealth> : null))
-        .then((body: RestoreHealth | null) => {
-          const u = body?.data?.session ? body.data.user : null
-          if (!u?.userId || (u.type && u.type !== 'user')) return
-          if (localStorage.getItem('user_id') || localStorage.getItem('session_login')) return // 그 사이 로그인 흐름이 썼다
-          localStorage.setItem('user_id', String(u.userId))
-          localStorage.setItem('session_login', 'true')
-          if (u.name && !localStorage.getItem('user_name')) localStorage.setItem('user_name', u.name)
-          if (u.email && !localStorage.getItem('user_email')) localStorage.setItem('user_email', u.email)
-          window.dispatchEvent(new Event(CONSUMER_SESSION_RESTORED_EVENT))
-        })
-        .catch(() => { /* 네트워크 — 다음 탭에서 다시 */ })
-    }
+    if (!hasConsumer && hasRole) void import('@/features/auth/consumer-session-restore').then((m) => m.restoreConsumerSession()).catch(() => {})
   } catch { /* 저장소 막힘 — 무시 */ }
 }
-
-type RestoreHealth = { data?: { session?: boolean; user?: { userId?: string; name?: string; email?: string; type?: string } | null } }

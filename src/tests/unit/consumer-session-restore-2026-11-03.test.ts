@@ -10,7 +10,7 @@ import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
 import { CONSUMER_SESSION_RESTORED_EVENT } from '@/lib/consumer-session-event'
 import { readFileSync } from 'node:fs'
 
-const flush = () => new Promise((r) => setTimeout(r, 0))
+const flush = () => new Promise((r) => setTimeout(r, 20)) // 동적 import + fetch 두 박자
 const health = (session: boolean) => vi.fn(async () => new Response(JSON.stringify({ success: true, data: { session, user: session ? { userId: '3', name: '정지원', email: 'a@b.c', type: 'user' } : null } }), { status: 200 }))
 
 // 부팅 함수는 창당 한 번만 돈다(멱등 깃발) — 시험마다 깃발을 내려야 각 경우를 진짜로 밟는다.
