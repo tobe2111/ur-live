@@ -55,7 +55,7 @@ export default [
   {
     name: '🐢 지도 — 홈이 지도 첫 목록을 미리 안 받음(SPA 진입 시 지도 생성이 목록 한 왕복을 기다림)',
     file: 'src/pages/mobile-home/map-warmup.ts',
-    find: "      .then((m) => (m as { prefetchMapSeedFirstPage?: () => Promise<void> } | undefined)?.prefetchMapSeedFirstPage?.())\n",
+    find: "  void loadRoute('map').then((m) => (m as { prefetchMapSeedFirstPage?: () => Promise<void> } | undefined)?.prefetchMapSeedFirstPage?.()).catch(() => { /* 지도 화면이 평소처럼 받는다 */ })",
     replace: '',
     test: T,
     why: '2026-11-02 대표 "지도도 늦게 뜨네".',

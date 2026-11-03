@@ -38,11 +38,7 @@ export function warmKakaoMapsAfterLoad(): () => void {
     if (saveData()) return
     import('@/lib/kakao-sdk').then((m) => m.ensureKakaoMaps())
       .catch(() => { /* 지도 화면이 다시 시도한다 */ })
-      // 🐢 2026-11-02 대표 *"지도도 늦게 뜨네"* — 지도는 첫 목록이 와야 만들어진다(타일 한 벌). 화면 코드를 받은 김에
-      //   위치를 모르는 손님의 첫 목록(엣지에 데워진 응답)도 받아 둔다. 함수는 **지도 화면 모듈이 내보낸다** —
-      //   홈이 그 모듈을 직접 import 하면 묶음기가 봉투를 다시 짠다(`RestaurantMapPage` 의 그 자리 주석).
       .then(() => loadRoute('map'))
-      .then((m) => (m as { prefetchMapSeedFirstPage?: () => Promise<void> } | undefined)?.prefetchMapSeedFirstPage?.())
       .catch(() => { /* 지도 화면이 평소처럼 받는다 */ })
   }, 4000)
 }
@@ -51,6 +47,11 @@ let preconnected = false
 /** 지도로 가기 직전(누르는 순간) 지도 화면 코드를 받기 시작하고, 타일 호스트에 연결을 미리 연다. 한 번만. */
 export function preconnectMapTiles(): void {
   preloadRoute('map')
+  // 🐢 2026-11-02 대표 *"지도도 늦게 뜨네"* — 지도는 첫 목록이 와야 만들어진다(타일 한 벌). 누르는 사이에 위치를 모르는 손님의
+  //   첫 목록(엣지에 데워진 응답)도 받아 둔다. 함수는 **지도 화면 모듈이 내보낸다**(홈이 직접 import 하면 묶음 봉투가 다시 짜인다).
+  //   🩸 첫 판은 홈 load 뒤(한가할 때)에 받았다 — CI `dup` 이 홈 첫 화면의 같은 경로 두 번(`/api/group-buy/products`)으로 잡았고,
+  //   지도를 안 여는 손님에게는 버리는 요청이었다. ⇒ 누르는 순간(의도가 있을 때)에만.
+  void loadRoute('map').then((m) => (m as { prefetchMapSeedFirstPage?: () => Promise<void> } | undefined)?.prefetchMapSeedFirstPage?.()).catch(() => { /* 지도 화면이 평소처럼 받는다 */ })
   if (preconnected || typeof document === 'undefined') return
   preconnected = true
   try {

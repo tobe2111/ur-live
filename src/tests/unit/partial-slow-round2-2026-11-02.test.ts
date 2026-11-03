@@ -55,7 +55,11 @@ describe('유어쇼츠 — 앱 안 이동 + 미리 받기', () => {
 describe('지도 — 홈에서 들어갈 때', () => {
   it('홈이 지도를 데울 때 첫 목록(시드와 같은 요청)도 미리 받는다', () => {
     const w = read('src/pages/mobile-home/map-warmup.ts')
-    expect(w).toMatch(/\.then\(\(\) => loadRoute\('map'\)\)\s*\.then\(\(m\) => \(m as \{ prefetchMapSeedFirstPage\?: \(\) => Promise<void> \} \| undefined\)\?\.prefetchMapSeedFirstPage\?\.\(\)\)/)
+    // 🩸 2026-11-03 — 누르는 순간(`preconnectMapTiles`)에만. 홈 load 뒤에 받으면 CI dup 이 같은 경로 두 번으로 잡는다.
+    const press = w.slice(w.indexOf('export function preconnectMapTiles'))
+    expect(press).toMatch(/void loadRoute\('map'\)\.then\(\(m\) => \(m as \{ prefetchMapSeedFirstPage\?: \(\) => Promise<void> \} \| undefined\)\?\.prefetchMapSeedFirstPage\?\.\(\)\)/)
+    const idle = w.slice(w.indexOf('export function warmKakaoMapsAfterLoad'), w.indexOf('export function preconnectMapTiles'))
+    expect(stripComments(idle)).not.toMatch(/prefetchMapSeedFirstPage/)
     // 홈이 지도 모듈을 직접 가리키면 묶음기가 봉투를 다시 짠다(전 화면 첫 화면 무게 ↑) — 코드에 그 import 가 없어야 한다
     const code = stripComments(w)
     expect(code).not.toMatch(/useMapProducts|map-feed-seed/)
