@@ -14,3 +14,11 @@
 - 같은 날 대표 신고 *"로그인을 했는데도 왜 이렇게 뜨지?"*(PC 계정 메뉴가 손님용) — 원인 미확정. 헤더는 `hasConsumerSession()`
   (localStorage `user_id`/`session_login`)만 본다. 카카오·이메일 소비자 로그인은 둘 다 그 값을 쓰므로, 에이전시·사장님 로그인만 한
   상태일 가능성이 높다. 어떤 로그인이었는지 대표 확인 대기.
+
+## 추가 (같은 날)
+- 대표 *"매장 계산대 시안도 보여주고 만들어야지"* → PR #2140 자동 머지 **해제**, 시안 안 A(구현분)·안 B(카메라 전체) 제시. 선택 대기.
+- 로그인 표시 문제 — 대표 *"카카오로 로그인 했어"*. 실측: user 3 `last_login_at` 13:00 KST · kakao-login-diag desktop_chrome `establish_ok` ·
+  헤더 찜 배지 1(서버는 소비자로 인증) ⇒ **서버 세션은 살아 있는데 localStorage `user_id`/`session_login` 만 비어 있다.**
+  지운 주체는 못 좁혔다. 처방: 부팅 때 역할 토큰만 있고 소비자 흔적이 없으면 탭당 1회 `/api/auth/session/health` 로 되살림
+  (`auth-callback-bootstrap.ts` + `lib/consumer-session-event.ts` + DesktopTopNav 재그리기). 가드 `consumer-session-restore-2026-11-03` + 주입 3.
+- ⚠️ 이번에 틀렸던 판단: 처음엔 "에이전시 로그인만 한 상태일 것" 이라고 추정했다 — 대표는 카카오였다. 찜 배지(=서버 인증)를 먼저 봤으면 바로 알았다.
