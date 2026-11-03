@@ -52,7 +52,7 @@ export default [
   {
     name: '🧹 마이 구역 제목 위 여백이 32px 로 돌아간다',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: '      <Tag className={`mt-8 mb-1 px-4 ${SECTION_TITLE_CLS}`}>',
+    find: '      <Tag className={`mt-5 mb-1 px-4 ${SECTION_TITLE_CLS}`}>',
     replace: '      <Tag className={`mt-8 mb-1 px-4 ${SECTION_TITLE_CLS}`}>',
     test: TEST,
     why: '대표 "필요없이 공백이 많다". 한 자리만 되돌려도 구역마다 간격이 갈린다.',
