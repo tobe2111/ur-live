@@ -61,20 +61,5 @@ export default [
     test: 'src/tests/unit/strip-banner-2x-2026-10-20.test.ts',
     why: '폰 홈의 LCP 사진이 362px 칸에 1,100px(27KB)를 받는다 — 2배면 16KB.',
   },
-  {
-    name: 'LCP사진 — 첫 화면 아래 유달이 로더가 보통 우선순위',
-    file: 'src/worker/utils/css-first-boot.ts',
-    find: "return cssFirst ? ' fetchpriority=\"low\"' : ''",
-    replace: "return ''",
-    test: 'src/tests/unit/mascot-preload-first-screen-2026-10-15.test.ts',
-    why: '로더 그림이 첫 이미지 요청이 되어 LCP 사진과 회선을 나눠 쓴다.',
-  },
-  {
-    name: 'LCP사진 — 워커 로더 마크업이 우선순위 속성을 안 붙인다',
-    file: 'src/worker/index.ts',
-    find: '${UDAL_LOADER_SRC}"${loaderImgPriorityAttr(cssFirst)}',
-    replace: '${UDAL_LOADER_SRC}"',
-    test: 'src/tests/unit/mascot-preload-first-screen-2026-10-15.test.ts',
-    why: '함수는 맞는데 배선이 빠지면 라이브에서 아무 일도 안 한다(2026-10-20 실제로 그랬다).',
-  },
+  // ⏳ 2026-11-02: 로딩 화면에서 유달이 그림이 빠져(대표 결정) '로더 그림 우선순위' 주입 둘은 지킬 대상이 없어 걷었다.
 ]
