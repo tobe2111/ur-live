@@ -268,7 +268,16 @@ export default function UserProfilePage() {
                 이메일은 이 줄을 누르면 열리는 편집 화면이 보여 주고, 이름 줄 오른쪽 끝의 12px 글자 + 화살표가
                 이름과 같은 줄에서 다퉈 붐볐다(대표 *"분산되고 복잡해 보여"*). 아바타도 64 → 48px. */}
             <span className="flex-1 min-w-0">
-              <span className="block text-[17px] font-bold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</span>
+              {/* 👤 2026-11-03 대표 *"사장님이라고도 표시가 되어있어야 할 것 같은데"* — 가게가 있으면 이름 옆에 `사장님 · 매장 N곳`.
+                  같은 줄 안이라 늦게 떠도 아래가 밀리지 않는다. 모르는 동안(loading)엔 안 그린다. */}
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="min-w-0 truncate text-[17px] font-bold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.01em' }}>{userName}</span>
+                {!sellerSeats.loading && sellerSeats.stores.length > 0 && (
+                  <span data-testid="my-owner-chip" className="shrink-0 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">
+                    {t('userProfile.ownerChip', { defaultValue: '사장님 · 매장 {{n}}곳', n: sellerSeats.stores.length })}
+                  </span>
+                )}
+              </span>
               <span className="flex items-center gap-1 mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('userProfile.editProfile', { defaultValue: '프로필 편집' })}<ChevronRight className="w-4 h-4 shrink-0" aria-hidden="true" /></span>
             </span>
           </button>
@@ -395,6 +404,9 @@ export default function UserProfilePage() {
       <>
       {/* 🏪 2026-09-25 (대표 확정 §14 — "하는 것도 마이에서"): 판매가 **맨 위**.
           사장님은 하루에 이 화면을 가장 많이 열고, 그때 보려는 건 오늘 숫자다. 셀러가 아니면 렌더 0. */}
+      {/* 👤 2026-11-03 대표 *"사장님이라고도 표시"* — 에이전시가 없으면 판 위 제목은 '사장님 · 내 가게'. `hasSeats` 는 조회 중에도
+          지난번 자리 예약을 보고 참이 된다(제목이 늦게 끼어들어 아래를 밀지 않는다). 에이전시가 있으면 그 이름이 제목이다(아래 문). */}
+      {!tabbed && !agencyPresence.on && hasSeats && <SectionTitle>{t('userProfile.ownerTitle', { defaultValue: '사장님 · 내 가게' })}</SectionTitle>}
       {showAgency && <>
         {/* 🗂️ 탭일 때는 에이전시 이름이 이미 머리에 있으니 판 위 제목은 '맡은 매장', 아래 묶음은 '에이전시 운영'. */}
         {tabbed ? (sellerSeats.stores.length > 0 && <SectionTitle>맡은 매장</SectionTitle>) : <AgencyTitleDoor storeCount={sellerSeats.stores.length} />}
@@ -505,6 +517,14 @@ export default function UserProfilePage() {
           맨 아래는 **버전과 회원 탈퇴 한 줄**만 남긴다. 고객지원 링크는 설정 구역의 줄로 올라갔고(위 settingsBlock),
           회사·사업자 정보는 홈 맨 아래(`CompanyInfoFooter`)가 갖는다.
           🛡️ 회원 탈퇴는 파괴적 동작이라 조용한 링크 그대로(2026-08-30 판단) — 찾을 수는 있고 동선엔 안 걸린다. */}
+      {/* 🏢 2026-11-03 대표 *"에이전시 로그아웃이 된 상태에서 … 맨 밑에 에이전시 로그인 버튼 넣어줄래?"* — 로그인 화면 맨 아래와
+          같은 한 줄(2026-10-11 안 A). 에이전시 로그인이 이미 있으면 안 그린다(그땐 '나 | 에이전시' 탭이 있다). */}
+      {showMe && !agencyPresence.on && (
+        <p data-testid="my-agency-login" className="ur-content-medium px-4 lg:px-8 pt-6 flex items-center justify-center gap-2 text-[13px]">
+          <span className="text-gray-500 dark:text-gray-400">{t('login.agencyQuestion', { defaultValue: '에이전시이신가요?' })}</span>
+          <Link to="/agency/login" className="font-medium text-brand-text active:opacity-70">{t('login.agencyLogin', { defaultValue: '에이전시 로그인' })}</Link>
+        </p>
+      )}
       {showMe && <div className="ur-content-medium px-4 lg:px-8 pt-2 pb-8 flex items-start justify-between gap-4">
         {/* 새 버전이 있을 때만 서는 파란 버튼이 이 칸 폭을 다 쓰도록 flex-1 */}
         <div className="flex-1 min-w-0"><AppVersionSection /></div>

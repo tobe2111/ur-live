@@ -7030,7 +7030,7 @@
   "groupBuy.categoryEtc": "🎯 Others",
   "groupBuy.stayBadge": "Stay",
   "roleCta": {
-    "myShortcuts": "Open a store",
+    "myShortcuts": "Own a store?",
     "startNewRole": "Start a new role",
     "linkshop": "My UrShop",
     "linkshopDesc": "Add passes to your UrShop and share them",
@@ -7038,7 +7038,7 @@
     "agencyDashDesc": "Earnings from partner stores",
     "proposeGb": "Propose a local deal",
     "proposeGbDesc": "Suggest a store and we will open a deal",
-    "openShop": "Register my store",
+    "openShop": "Sell my store's passes",
     "openShopDesc": "Find your store on Kakao Map and start selling passes",
     "agencyBiz": "Agency business",
     "agencyBizDesc": "Recruit stores → 2% lifetime revenue"
