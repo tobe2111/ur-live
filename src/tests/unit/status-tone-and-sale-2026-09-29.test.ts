@@ -132,7 +132,7 @@ describe('상태·할인 색이 중화에 먹히지 않는다', () => {
   })
 
   it('🔴 이 시험이 헛돌지 않는다 — 소비자 파일을 실제로 훑었다', () => {
-    expect(files.length, '소비자 파일이 너무 적다 — 경로가 낡았다(실측 403, 최상위 glob 이 빠지면 252로 떨어진다)').toBeGreaterThan(350)
+    expect(files.length, '소비자 파일이 너무 적다 — 경로가 낡았다(2026-11-03 실측 513, 최상위 glob 이 빠지면 358 — 하한 350 이 그 사이를 못 갈라 재조준)').toBeGreaterThan(440)
     // 실제로 `text-sale` 을 쓰는 곳이 있어야 한다(전부 지워졌으면 위 검사가 공허하다).
     const used = files.filter((f) => /\btext-sale\b/.test(readFileSync(f, 'utf8'))).length
     expect(used, 'text-sale 을 쓰는 화면이 없다 — SSOT 가 죽었다').toBeGreaterThan(5)
