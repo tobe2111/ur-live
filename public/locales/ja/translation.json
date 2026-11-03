@@ -584,7 +584,8 @@
     "alreadyTitle": "既に受け取り済みのクーポンです",
     "alreadyHint": "決済時に自動適用されます",
     "goHome": "ホームへ",
-    "errorTitle": "クーポン発行失敗"
+    "errorTitle": "クーポン発行失敗",
+    "scratch": "こすって確認"
   },
   "liveList": {
     "docTitle": "ライブ - ユアディール",

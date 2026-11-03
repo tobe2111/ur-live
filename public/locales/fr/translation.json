@@ -4642,7 +4642,8 @@
     "alreadyTitle": "Vous avez déjà ce coupon",
     "alreadyHint": "Il sera appliqué automatiquement au paiement",
     "goHome": "Aller à l'accueil",
-    "errorTitle": "Échec de la réclamation"
+    "errorTitle": "Échec de la réclamation",
+    "scratch": "Grattez pour voir"
   },
   "liveList": {
     "docTitle": "Live - YourDeal",
