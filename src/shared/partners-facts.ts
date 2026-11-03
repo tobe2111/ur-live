@@ -31,6 +31,11 @@ export const PARTNER_FACTS = {
   pgNote: '카드 수수료(현재 약 2.75%, 카드사 정책에 따라 바뀔 수 있음)는 유어딜이 자기 몫 안에서 냅니다.',
   /** 정산 최소 지급액 — `payouts-generate.ts` */
   minPayout: '1만원',
+  /** 📅 매장 정산일 — `worker/utils/settlement-schedule.ts`(월~일 사용분 → 차주 목요일). 2026-11-03 대표 *"매장들은 주 정산"* */
+  storePayoutDay: '매주 목요일',
+  storePayoutRange: '월~일 사용분',
+  /** 📅 소개·에이전시 커미션 정산일 — `shared/commission-payout-day.ts` 기본값. 2026-11-03 대표 *"10일로 할까? 에이전시도 같은 날로"* */
+  commissionPayoutDay: '매월 10일',
   /** 등록 소요 — 기획 §7-3 확정값(1분·3분·5분 혼용을 이것 하나로 통일) */
   signupMinutes: '10분',
 

@@ -16,6 +16,7 @@ import { registerDiscoveryRoutes } from './marketing/discovery'
 import { checkStoreInfluencerPct } from '@/worker/utils/broker-share' // 🎯 2026-10-10: 딜 % 검증 SSOT(90 · 매장 상한 · 중개사 몫 합)
 import { registerAdminPayoutRoutes } from './marketing/payouts'
 import { registerCollabCodeRoutes } from './marketing/collab-codes'
+import { resolveCommissionPayoutDay } from '@/shared/commission-payout-day'
 
 // 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
 //   각 미들웨어 (requireAuth/requireSeller) 가 ctx 에 박는 형태를 Variables 로 명시.
@@ -218,15 +219,15 @@ influencerApp.get('/me', async (c) => {
   //   클라 프레이밍을 게이트('platform' 기본 = 현행 문구 불변, 'owner' = 매장 promo 재원 문구).
   //   fail-soft — 이 read 가 실패해도 정산 응답을 절대 막지 않음 (agency-delegation.routes.ts 패턴).
   //   🔒 2026-09-16 사용 확인 게이트도 **같은 이유로** 함께 — 안 내려주면 보류 라벨이 "환불기간 (대기)" 로 굳어 게이트가 켜진 뒤엔 거짓말이 된다(`payout-use-gate.ts`). 같은 테이블이라 한 번에 읽는다(2왕복 → 1왕복).
-  const st = await DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('promo_funding_source','payout_requires_voucher_use')`).all<{ key: string; value: string }>().catch(() => ({ results: [] as { key: string; value: string }[] }))
+  const st = await DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('promo_funding_source','payout_requires_voucher_use','commission_payout_day')`).all<{ key: string; value: string }>().catch(() => ({ results: [] as { key: string; value: string }[] }))
   const setting = (k: string) => (st.results || []).find((r) => r.key === k)?.value
   return c.json({
-    success: true,
-    data: {
+    success: true, data: {
       balance: balance || { pending_amount: 0, available_amount: 0, total_paid_out: 0 },
       recent: recent.results || [],
       funding_source: setting('promo_funding_source') || 'platform',
       requires_voucher_use: setting('payout_requires_voucher_use') === 'true',
+      payout_day: resolveCommissionPayoutDay(setting('commission_payout_day')), // 📅 2026-11-03 월 정산일(기본 10) — 화면 '다음 지급일'과 같은 값
     },
   })
 })

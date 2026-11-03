@@ -1,0 +1,211 @@
+<title>모션 19차 시안</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --star: #F5A524;
+  --photo1: linear-gradient(135deg,#F2D9C9,#C9D8F2); --photo2: linear-gradient(135deg,#D3E8D6,#E9DCC6); --photo3: linear-gradient(135deg,#E6D3EB,#D0DEF0);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --photo1: linear-gradient(135deg,#4A3729,#2B3A57); --photo2: linear-gradient(135deg,#2C4430,#4A3E2B); --photo3: linear-gradient(135deg,#40304A,#293A52);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-inline: 16px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.list { display: grid; gap: 40px; }
+.item { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+.item h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.item h3 .n { color: var(--brand); margin-right: 6px; }
+.item p { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0 0 8px; }
+.item p b { color: var(--page-fg); font-weight: 500; }
+.replay { margin-top: 4px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; cursor: pointer; }
+.scr { position: relative; height: 300px; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); font-size: 15px; }
+.pad { padding: 16px; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.run .st { animation: rise .4s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 70ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+.hd { padding: 14px 16px 6px; font-size: 17px; font-weight: 700; }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; color: var(--brand); background: rgba(28,105,239,.12); padding: 2px 8px; border-radius: 999px; margin: 0 6px 6px 0; }
+.tag.warn { color: #B4540A; background: rgba(245,165,36,.16); }
+.ctlrow { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 8px; } .ctlrow button { flex: 1; }
+
+/* 1 PIN */
+.pins { display: flex; gap: 8px; justify-content: center; margin-top: 28px; }
+.pins i { width: 40px; height: 48px; border-radius: 10px; box-shadow: inset 0 0 0 1.5px var(--rule-strong); display: grid; place-items: center; font-style: normal; }
+.pins i b { width: 10px; height: 10px; border-radius: 50%; background: var(--ink); transform: scale(0); transition: transform .18s cubic-bezier(.3,1.5,.5,1); }
+.pins i.on { box-shadow: inset 0 0 0 2px var(--brand); } .pins i.on b { transform: none; }
+.pins.bad { animation: shake .4s; } .pins.bad i { box-shadow: inset 0 0 0 2px #E5484D; }
+@keyframes shake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
+.pinlbl { text-align: center; margin-top: 20px; font-size: 15px; font-weight: 700; }
+
+/* 2 숨 쉬는 점 */
+.qr { margin: 22px auto 0; width: 150px; height: 150px; border-radius: 14px; background: repeating-conic-gradient(var(--ink) 0 25%, var(--bg) 0 50%) 0 0/24px 24px; opacity: .85; }
+.live { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--ink-soft); }
+.live i { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); }
+.live i::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--brand); animation: breathe 2s ease-out infinite; }
+@keyframes breathe { from { transform: scale(1); opacity: .6; } to { transform: scale(3); opacity: 0; } }
+
+/* 3 가운데 강조 */
+.rail3 { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 18px 30%; scrollbar-width: none; }
+.rail3::-webkit-scrollbar { display: none; }
+.rail3 div { flex: none; width: 150px; height: 180px; border-radius: 16px; background: var(--photo1); scroll-snap-align: center; transition: transform .25s ease, opacity .25s ease; transform: scale(.88); opacity: .6; }
+.rail3 div:nth-child(2n) { background: var(--photo2); } .rail3 div:nth-child(3n) { background: var(--photo3); }
+.rail3 div.mid { transform: none; opacity: 1; box-shadow: 0 6px 18px rgba(0,0,0,.14); }
+
+/* 4 당기면 커지는 사진 */
+#s4 .sc { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
+#s4 .hero { height: 160px; background: linear-gradient(160deg, #BFD5F5, #EAD9C8); transform-origin: top; will-change: transform; }
+[data-mode="dark"] #s4 .hero { background: linear-gradient(160deg, #23324A, #3A3026); }
+#s4 .body { padding: 16px; background: var(--bg); position: relative; } #s4 .body p { height: 34px; border-radius: 8px; background: var(--sub); margin: 0 0 10px; }
+#s4 .hint { position: absolute; left: 0; right: 0; top: 8px; text-align: center; font-size: 12px; color: #16181C; opacity: .7; pointer-events: none; z-index: 2; }
+
+/* 5 방향 탭 */
+.tabs5 { position: relative; display: flex; gap: 20px; padding: 0 16px; border-bottom: 1px solid var(--rule); }
+.tabs5 button { border: 0; background: none; padding: 10px 0; color: var(--ink-soft); font: 500 15px var(--font); cursor: pointer; } .tabs5 button.on { color: var(--ink); font-weight: 700; }
+.tabs5 .ul { position: absolute; bottom: -1px; left: 16px; height: 2px; background: var(--ink); transition: transform .3s cubic-bezier(.2,.9,.3,1), width .3s; }
+.pane { position: relative; height: 200px; overflow: hidden; }
+.pane > div { position: absolute; inset: 0; padding: 8px 16px; transition: transform .32s cubic-bezier(.2,.9,.3,1), opacity .32s; }
+.pane .row5 { height: 54px; border-radius: 12px; background: var(--sub); margin-bottom: 8px; display: flex; align-items: center; padding: 0 14px; font-size: 13px; color: var(--ink-soft); }
+
+/* 6 꾹 눌러 확인 */
+.hc { position: relative; margin: 80px 16px 0; height: 52px; border-radius: 14px; border: 0; background: var(--sub); color: #E5484D; font: 700 15px var(--font); overflow: hidden; width: calc(100% - 32px); cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: none; }
+.hc i { position: absolute; inset: 0; background: rgba(229,72,77,.18); transform: scaleX(0); transform-origin: left; }
+.hc.hold i { transform: none; transition: transform .9s linear; }
+.hc span { position: relative; }
+.hcmsg { text-align: center; margin-top: 12px; font-size: 13px; color: var(--ink-soft); }
+
+/* 7 PC 카드 기울기 */
+.tiltwrap { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 22px 16px; perspective: 700px; }
+.tilt { height: 170px; border-radius: 16px; background: var(--photo1); position: relative; transition: transform .15s ease-out, box-shadow .2s; transform-style: preserve-3d; overflow: hidden; }
+.tilt:nth-child(2) { background: var(--photo2); }
+.tilt::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255,255,255,.45), transparent 55%); opacity: 0; transition: opacity .2s; }
+.tilt:hover { box-shadow: 0 14px 28px rgba(0,0,0,.18); } .tilt:hover::after { opacity: 1; }
+
+/* 8 떠오르는 라벨 */
+.fl8 { padding: 26px 16px; display: grid; gap: 16px; }
+.fld { position: relative; }
+.fld input { width: 100%; height: 54px; border-radius: 12px; border: 1px solid var(--rule-strong); background: var(--bg); color: var(--ink); padding: 18px 14px 4px; font: 15px var(--font); outline: none; transition: border-color .2s; }
+.fld input:focus { border-color: var(--brand); }
+.fld label { position: absolute; left: 14px; top: 17px; font-size: 15px; color: var(--ink-faint); pointer-events: none; transform-origin: left top; transition: transform .2s cubic-bezier(.2,.9,.3,1), color .2s; }
+.fld input:focus + label, .fld input:not(:placeholder-shown) + label { transform: translateY(-11px) scale(.78); color: var(--brand-text); }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; } }
+</style>
+<div class="wrap">
+  <h1>모션 19차 시안</h1>
+  <p class="lede">이번에도 <b>지금까지 안 쓴 종류</b>만이에요. 노란 꼬리표는 움직임과 함께 <b>쓰는 방식이 조금 바뀌는</b> 것이에요. 직접 눌러 보고, 끌어 보고, 써 보세요.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all">전부 다시 보기</button>
+    <button class="ctl" id="mode">다크 모드로 보기</button>
+  </div>
+  <div class="list">
+
+    <div class="item">
+      <div class="scr" id="s1"><div class="pinlbl">가게 비밀번호 6자리</div><div class="pins" id="pins"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
+        <div class="ctlrow"><button class="ctl" id="p1">한 자리 치기</button><button class="ctl" id="p1x">틀리게 끝내기</button></div></div>
+      <div><span class="tag">새 종류 · 칸 채움</span><h3><span class="n">1</span>사장님 · 가게 비밀번호(PIN)</h3>
+        <p>숫자를 칠 때마다 <b>칸이 하나씩 톡 채워지고</b>, 틀리면 여섯 칸이 함께 빨갛게 흔들려요. 몇 자리 쳤는지 한눈에 보여요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s2"><div class="qr"></div><div class="live"><i></i>사장님이 찍으면 바로 바뀌어요</div></div>
+      <div><span class="tag">새 종류 · 숨 쉬는 점</span><h3><span class="n">2</span>이용권 QR 화면</h3>
+        <p>QR 아래 파란 점이 <b>천천히 숨 쉬듯 퍼져요.</b> 화면이 멈춘 게 아니라 '지금 연결되어 기다리는 중'이라는 표시예요(실제로 5초마다 확인하고 있어요).</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s3"><div class="hd">이번 주 추천 숙소</div><div class="rail3" id="r3"><div></div><div></div><div></div><div></div><div></div><div></div></div></div>
+      <div><span class="tag">새 종류 · 가운데 강조</span><h3><span class="n">3</span>숙소 추천 줄</h3>
+        <p>옆으로 넘기면 <b>가운데 온 카드만 커지고</b> 양옆은 살짝 작고 흐려져요. 지금 보는 하나에 눈이 가요(옆으로 넘겨 보세요).</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s4"><div class="sc" id="sc4"><div class="hint">↓ 맨 위에서 더 당겨 보세요</div><div class="hero" id="h4"></div><div class="body"><p></p><p></p><p></p><p></p><p></p><p></p><p></p></div></div></div>
+      <div><span class="tag">새 종류 · 늘어나는 사진</span><h3><span class="n">4</span>상세 페이지 · 맨 위 사진</h3>
+        <p>맨 위에서 더 아래로 당기면 <b>사진이 고무줄처럼 늘어나며 커지고</b>, 놓으면 돌아와요(마우스로 끌어 보세요). 17차 시차와 짝이에요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s5"><div class="hd">구매 내역</div><div class="tabs5" id="t5"><button class="on" data-i="0">전체</button><button data-i="1">이용권</button><button data-i="2">교환권</button><i class="ul"></i></div><div class="pane" id="pn5"></div></div>
+      <div><span class="tag">새 종류 · 방향 있는 탭</span><h3><span class="n">5</span>구매 내역 · 종류 탭</h3>
+        <p>오른쪽 탭을 누르면 내용이 <b>왼쪽으로 밀려 나가고 새 내용이 오른쪽에서</b> 들어와요. 왼쪽 탭이면 반대로요. 어느 쪽으로 갔는지 느껴져요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s6"><button class="hc" id="b6"><i></i><span>꾹 눌러 구매 내역 삭제</span></button><div class="hcmsg" id="m6">끝까지 누르고 있어야 지워져요</div></div>
+      <div><span class="tag">새 종류 · 꾹 눌러 확인</span><span class="tag warn">쓰는 방식 바뀜</span><h3><span class="n">6</span>되돌릴 수 없는 버튼</h3>
+        <p>지우기·탈퇴처럼 되돌릴 수 없는 버튼은 <b>누르고 있으면 왼쪽부터 채워지고, 다 차야 실행돼요.</b> 실수로 스친 손가락에 지워지지 않아요. 확인 창 한 번을 대신해요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s7"><div class="tiltwrap"><div class="tilt"></div><div class="tilt"></div></div></div>
+      <div><span class="tag">새 종류 · 카드 기울기(PC)</span><h3><span class="n">7</span>PC · 이용권·숙소 카드</h3>
+        <p>PC에서 카드에 마우스를 올리면 <b>커서 쪽으로 살짝 기울고 빛이 비쳐요.</b> 폰에는 없어요(마우스를 올려 보세요).</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s8"><div class="fl8"><div class="fld"><input id="i81" placeholder=" "><label for="i81">이메일</label></div><div class="fld"><input id="i82" placeholder=" "><label for="i82">휴대폰 번호</label></div></div></div>
+      <div><span class="tag">새 종류 · 떠오르는 라벨</span><span class="tag warn">입력 칸 모양 바뀜</span><h3><span class="n">8</span>회원가입·가게 등록 입력 칸</h3>
+        <p>칸을 누르면 안에 있던 안내 글자가 <b>위로 작게 올라가 이름표가 돼요.</b> 글자를 쓰는 동안에도 무슨 칸인지 보여요(눌러서 써 보세요).</p></div>
+    </div>
+
+  </div>
+</div>
+<script>
+const $ = (s) => document.querySelector(s)
+// 1
+let n1 = 0; const pins = () => document.querySelectorAll('#pins i')
+$('#p1').onclick = () => { if (n1 >= 6) { n1 = 0; pins().forEach((x) => x.classList.remove('on')); return } pins()[n1++].classList.add('on') }
+$('#p1x').onclick = () => { pins().forEach((x) => x.classList.add('on')); const p = $('#pins'); p.classList.remove('bad'); void p.offsetWidth; p.classList.add('bad'); setTimeout(() => { p.classList.remove('bad'); pins().forEach((x) => x.classList.remove('on')); n1 = 0 }, 700) }
+// 3
+;(() => { const r = $('#r3'); const upd = () => { const c = r.getBoundingClientRect(); const mid = c.left + c.width / 2; let best = null, bd = 1e9; r.querySelectorAll('div').forEach((d) => { const b = d.getBoundingClientRect(); const dd = Math.abs(b.left + b.width / 2 - mid); if (dd < bd) { bd = dd; best = d } }); r.querySelectorAll('div').forEach((d) => d.classList.toggle('mid', d === best)) }
+  r.onscroll = () => requestAnimationFrame(upd); setTimeout(() => { r.scrollLeft = (r.scrollWidth - r.clientWidth) / 2 - 80; upd() }, 50) })()
+// 4
+;(() => { const sc = $('#sc4'), h = $('#h4'); let y0 = null
+  sc.onpointerdown = (e) => { if (sc.scrollTop > 0) return; y0 = e.clientY; sc.setPointerCapture(e.pointerId); h.style.transition = 'none' }
+  sc.onpointermove = (e) => { if (y0 == null) return; const d = Math.max(0, e.clientY - y0); h.style.transform = `scale(${1 + Math.min(d, 160) / 320})` }
+  sc.onpointerup = () => { y0 = null; h.style.transition = 'transform .4s cubic-bezier(.2,1.2,.3,1)'; h.style.transform = '' } })()
+// 5
+;(() => { const L = [['이용권 · 삼겹살 2인', '교환권 · 아메리카노', '이용권 · 네일 젤'], ['이용권 · 삼겹살 2인', '이용권 · 네일 젤'], ['교환권 · 아메리카노', '교환권 · CU 5천원권']]
+  const pn = $('#pn5'), ul = $('#t5 .ul'); let cur = 0
+  const html = (i) => `<div>${L[i].map((t) => `<div class="row5">${t}</div>`).join('')}</div>`
+  pn.innerHTML = html(0)
+  const move = (b) => { ul.style.width = b.offsetWidth + 'px'; ul.style.transform = `translateX(${b.offsetLeft - 16}px)` }
+  document.querySelectorAll('#t5 button').forEach((b) => b.onclick = () => { const i = +b.dataset.i; if (i === cur) return; const dir = i > cur ? 1 : -1
+    document.querySelectorAll('#t5 button').forEach((x) => x.classList.toggle('on', x === b)); move(b)
+    const old = pn.firstElementChild; pn.insertAdjacentHTML('beforeend', html(i)); const nw = pn.lastElementChild
+    nw.style.transform = `translateX(${dir * 100}%)`; void nw.offsetWidth; nw.style.transform = 'none'; old.style.transform = `translateX(${-dir * 30}%)`; old.style.opacity = 0
+    setTimeout(() => old.remove(), 340); cur = i })
+  requestAnimationFrame(() => move($('#t5 button.on'))) })()
+// 6
+;(() => { const b = $('#b6'); let t
+  b.onpointerdown = () => { b.classList.add('hold'); $('#m6').textContent = '계속 누르고 있어요…'; t = setTimeout(() => { b.querySelector('span').textContent = '삭제했어요'; $('#m6').textContent = '다 채워져서 실행됐어요'; setTimeout(() => { b.classList.remove('hold'); b.querySelector('span').textContent = '꾹 눌러 구매 내역 삭제'; $('#m6').textContent = '끝까지 누르고 있어야 지워져요' }, 1400) }, 900) }
+  b.onpointerup = b.onpointerleave = () => { if (b.querySelector('span').textContent === '삭제했어요') return; clearTimeout(t); b.classList.remove('hold'); $('#m6').textContent = '중간에 떼면 아무 일도 안 일어나요' } })()
+// 7
+document.querySelectorAll('.tilt').forEach((c) => { c.onpointermove = (e) => { const r = c.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height; c.style.transform = `rotateX(${(0.5 - y) * 10}deg) rotateY(${(x - 0.5) * 12}deg)`; c.style.setProperty('--gx', x * 100 + '%'); c.style.setProperty('--gy', y * 100 + '%') }; c.onpointerleave = () => { c.style.transform = '' } })
+
+$('#all').onclick = () => { $('#p1x').click() }
+let dark = matchMedia('(prefers-color-scheme: dark)').matches
+const applyMode = () => { document.querySelectorAll('.scr').forEach((s) => s.dataset.mode = dark ? 'dark' : 'light'); $('#mode').textContent = dark ? '라이트 모드로 보기' : '다크 모드로 보기' }
+$('#mode').onclick = () => { dark = !dark; applyMode() }
+applyMode()
+</script>

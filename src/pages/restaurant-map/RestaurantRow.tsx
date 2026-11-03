@@ -10,7 +10,8 @@
  * 이 이동의 조건이었다. 검색은 `userLoc=null`(거리 없음) · `fcfs` 미전달 · `isSelected=false` 로
  * 넘기면 그만이라 **새 prop 이 하나도 필요 없다**.
  */
-import { memo } from 'react'
+import { memo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { PinIcon } from '@/components/icons/urdeal-icons'
 import { priceDisplay } from '@/shared/price-display'
 import CatIcon from './CatIcon'
@@ -19,6 +20,9 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { distanceKm, regionShort, stripStorePrefix } from './utils'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import type { Restaurant } from './types'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 18차 ⑥ — 꾹 눌러 미리보기: 배경이 어두워지고 카드가 살짝 튕기며 커진다.
+injectMotionCss('ur-m-peek', `@keyframes ur-peek-in { from { opacity: 0; } }@keyframes ur-peek-card { from { opacity: 0; transform: scale(.85); } 60% { transform: scale(1.02); } to { transform: none; } }.ur-peek { animation: ur-peek-in .18s ease; }.ur-peek-card { animation: ur-peek-card .32s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-peek,.ur-peek-card{animation:none!important}}`)
 
 export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLoc, onSelect, fcfs, onIntent }: {
   r: Restaurant
@@ -41,10 +45,30 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
     ? distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng)
     : null
   const isFar = dist != null && dist >= 10
+  /**
+   * 🎬 2026-11-03 18차 ⑥ — **꾹 눌러 미리보기**: 0.45초 누르고 있으면 사진이 큰 카드로 떠오르고, 손을 떼면 닫힌다.
+   *   미리보기를 띄운 손가락은 '눌러서 들어가기' 로 치지 않는다(떼는 순간 상세로 가 버리지 않게). 움직이면 취소.
+   */
+  const [peek, setPeek] = useState(false)
+  const hold = useRef<{ t: number; x: number; y: number; fired: boolean } | null>(null)
+  const endHold = () => { if (hold.current) window.clearTimeout(hold.current.t); setPeek(false) }
   return (
+    <>
     <button
-      onClick={() => onSelect(r)}
-      onPointerDown={onIntent ? () => onIntent(r) : undefined}
+      onClick={() => { if (hold.current?.fired) { hold.current = null; return } onSelect(r) }}
+      onPointerDown={(e) => {
+        onIntent?.(r)
+        if (!r.image_url) return
+        const h = { t: 0, x: e.clientX, y: e.clientY, fired: false }
+        h.t = window.setTimeout(() => { h.fired = true; setPeek(true) }, 450)
+        hold.current = h
+      }}
+      onPointerMove={(e) => { const h = hold.current; if (h && !h.fired && Math.hypot(e.clientX - h.x, e.clientY - h.y) > 10) window.clearTimeout(h.t) }}
+      onPointerUp={endHold}
+      onPointerCancel={endHold}
+      onPointerLeave={endHold}
+      onContextMenu={(e) => { if (hold.current?.fired) e.preventDefault() }}
+      style={{ WebkitTouchCallout: 'none' }}
       /* 🎬 2026-11-03 17차 ① — 누르는 동안 살짝 들어간다(배경 옅게는 종전 active:bg). 손을 떼면 돌아온다. */
       className={`w-full flex gap-3 py-4 text-left transition-[background-color,transform] duration-150 active:scale-[0.985] motion-reduce:active:scale-100 ${
         isSelected
@@ -93,6 +117,19 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
         {fcfs && <div className="mt-2"><FcfsBadge info={fcfs} /></div>}
       </div>
     </button>
+    {peek && r.image_url && typeof document !== 'undefined' && createPortal(
+      <div aria-hidden="true" className="ur-peek ur-veil fixed inset-0 z-[10500] flex items-center justify-center pointer-events-none">
+        <div className="ur-peek-card w-[78%] max-w-[360px] rounded-2xl overflow-hidden bg-surface shadow-lift">
+          <img src={cfImage(r.image_url, { width: 720, quality: 85, format: 'auto' }) || r.image_url} alt="" className="w-full aspect-[4/3] object-cover" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />
+          <div className="p-4">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{stripStorePrefix(r.name, r.restaurant_name)}</p>
+            <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{discount > 0 ? <span className="text-sale font-bold mr-1">{discount}%</span> : null}{formatNumber(r.price)}원 · {r.restaurant_name}</p>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
+    </>
   )
 })
 

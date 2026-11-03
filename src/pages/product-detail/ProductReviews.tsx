@@ -9,6 +9,8 @@ import ReviewCard, { type ReviewItem } from './ReviewCard'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-shake', `@keyframes ur-shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(3px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }.ur-shake { animation: ur-shake .4s cubic-bezier(.36,.07,.19,.97); }@media (prefers-reduced-motion: reduce){.ur-shake{animation:none!important}}`)
 injectMotionCss('ur-m-bar', `@keyframes ur-bar-grow { from { transform: scaleX(0); } to { transform: none; } }.ur-bar-grow { transform-origin: left; animation: ur-bar-grow .6s cubic-bezier(.16,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-bar-grow{animation:none!important}}`)
+// 🎬 2026-11-03 18차 ⑦ — 등록 중인 버튼은 테두리를 따라 빛이 돈다(글자를 가리지 않고 '처리 중' 을 보여 준다). 같은 문자열을 회원가입도 쓴다.
+injectMotionCss('ur-m-busyring', `@keyframes ur-busy-spin { to { transform: rotate(360deg); } }.ur-busy-ring { position: relative; isolation: isolate; overflow: hidden; }.ur-busy-ring::before { content: ''; position: absolute; inset: -60%; z-index: -2; background: conic-gradient(from 0deg, transparent 0 65%, rgba(255,255,255,.95) 82%, transparent 100%); animation: ur-busy-spin 1.1s linear infinite; }.ur-busy-ring::after { content: ''; position: absolute; inset: 2px; z-index: -1; border-radius: inherit; background: var(--brand); }@media (prefers-reduced-motion: reduce){.ur-busy-ring::before{animation:none!important;opacity:0}}`)
 // 🎬 2026-11-03 17차 ⑧ — 리뷰 10자를 채우면 체크가 그려진다.
 injectMotionCss('ur-m-rvck', `@keyframes ur-rv-ck { to { stroke-dashoffset: 0; } }.ur-rv-ck { stroke-dasharray: 12; stroke-dashoffset: 12; animation: ur-rv-ck .25s ease-out forwards; }@media (prefers-reduced-motion: reduce){.ur-rv-ck{animation:none!important;stroke-dashoffset:0}}`)
 /** 리뷰 최소 글자 수 — 버튼 비활성 조건과 안내 문구가 **같은 값**을 봐야 한다(따로 두면 갈린다). */
@@ -259,7 +261,7 @@ export function ReviewForm({ productId, onSubmitted, initialOpen = false, initia
               }
             } finally { setSubmitting(false) }
           }}
-          className="flex-[2] py-2 bg-brand hover:bg-brand-dark text-white text-[15px] rounded-xl font-bold disabled:opacity-40"
+          className={`flex-[2] py-2 bg-brand hover:bg-brand-dark text-white text-[15px] rounded-xl font-bold disabled:opacity-40${submitting ? ' ur-busy-ring !opacity-100' : ''}`}
         >
           {submitting ? t('reviews.submitting', { defaultValue: '등록 중...' }) : t('reviews.submit', { defaultValue: '리뷰 등록' })}
         </button>

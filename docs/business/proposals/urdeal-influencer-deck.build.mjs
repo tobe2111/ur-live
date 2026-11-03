@@ -424,7 +424,7 @@ const KAKAO_URL = 'https://' + FACTS.kakaoChannel;
       { text: '귀속부터 송금까지 유어딜이 하고, ' + FACTS.influencerPayoutMin + '에 못 미치면 다음 달로 이월됩니다.', options: { color: C.inkSoft } },
     ], { y: 5.75, w: 8.6, h: 0.6, size: 11.5 });
     phone(s, 'influencer-settlement', 10.0, 1.05, 5.35, { caption: '마이페이지 정산 화면 (예시 데이터)' });
-    s.addNotes('influencer-payout.ts: 매월 1일 18시 KST 집계, 현금 최소 influencer_payout_min(기본 100,000), 딜 수령은 하한 없음, 실제 지급은 어드민 /admin/influencer-payouts (사람). ⚠️ 확정 시점: 코드는 결제+7일(available_at) — 대표 지시(09-19)로 "이용권 사용 후" 라고 적었다. 원천징수 문단은 뺐다(대표).');
+    s.addNotes('influencer-payout.ts: 매월 10일 04시 KST 지급 대기(2026-11-03 대표 확정 — 성숙은 매일), 현금 최소 influencer_payout_min(기본 100,000), 딜 수령은 하한 없음, 실제 지급은 어드민 /admin/influencer-payouts (사람). ⚠️ 확정 시점: 코드는 결제+7일(available_at) — 대표 지시(09-19)로 "이용권 사용 후" 라고 적었다. 원천징수 문단은 뺐다(대표).');
   }
 
   // ───────── 11 이젠 체험단이 아닌 유어딜인 이유 + FAQ ─────────
@@ -462,7 +462,7 @@ const KAKAO_URL = 'https://' + FACTS.kakaoChannel;
       { title: '경로 B · 매장을 섭외한다', steps: ['아는 사장님 가게를 고른다', '중개사 계정으로 등록 (유어딜 ' + FACTS.feeBrokered + ') → 매장 코드 자동 생성', '중개사 몫 %와 인플루언서 상한 %를 그때 정한다', '사장님이 가입하며 코드 입력 → 매장 주인', '이용권을 올리고 내 링크로 판다', '마이페이지·대시보드에서 확인'], note: '중개사 몫도 유어딜이 직접 보냅니다' },
       { title: '정산 · 유어딜이 한다', steps: ['매장 링크로 들어온 주문에 자동 귀속', '이용권 사용 후 확정 (환불 건은 그 건만 정리)', FACTS.influencerPayoutDay + ' 지급 가능 금액 집계', '현금은 ' + FACTS.influencerPayoutMin + '부터 등록 계좌로', '딜로 받으면 하한 없이 잔액으로', '못 미치면 다음 달로 이월'], note: '매장에 돈을 달라고 할 일이 없습니다' },
     ], { y: 2.55, h: 4.2 });
-    s.addNotes('09-15 참고 덱 "광고 집행 절차" 장치. 09-19 v4: 두 경로를 대표 확정 플로우(코드 링크 · 매장 코드 · 두 요율)로 — PR #1499 구현. 사실: influencer-payout.ts(매월 1일 · 10만원 · 딜 하한 없음 · 이월).')
+    s.addNotes('09-15 참고 덱 "광고 집행 절차" 장치. 09-19 v4: 두 경로를 대표 확정 플로우(코드 링크 · 매장 코드 · 두 요율)로 — PR #1499 구현. 사실: influencer-payout.ts(매월 10일 · 10만원 · 딜 하한 없음 · 이월).')
   }
 
   // ───────── 12 시작하기 + 연락처 ─────────
