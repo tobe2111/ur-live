@@ -195,10 +195,13 @@ describe('🔔 결과 신호 — 아이폰에서도 알 수 있다', () => {
     expect((SCANNER.match(/signal\((?:false|!!d\.success)\)/g) || []).length).toBeGreaterThanOrEqual(3)
   })
   it('화면을 누를 때마다 소리를 깨워 둔다 — [사용 처리] 탭이 결과보다 먼저 온다', () => {
-    expect(SCANNER).toMatch(/onPointerDown=\{primeScanSound\}/)
+    expect(SCANNER).toMatch(/onPointerDown: primeScanSound/) // 2026-11-03 두 레이아웃 공용 `wake`
+    expect((SCANNER.match(/\{\.\.\.wake\}/g) || []).length).toBe(2)
   })
   it('깜빡임은 화면 전체 · 클릭을 막지 않고 · 바탕이 투명이다(애니메이션이 꺼져도 화면을 덮은 채 남지 않는다)', () => {
-    const el = SCANNER.slice(SCANNER.indexOf('{flash &&'), SCANNER.indexOf('{flash &&') + 400)
+    // 2026-11-03 계산대 안 B — 두 레이아웃이 공용 `flashLayer` 하나를 쓴다.
+    const el = SCANNER.slice(SCANNER.indexOf('const flashLayer = flash &&'), SCANNER.indexOf('const flashLayer = flash &&') + 400)
+    expect((SCANNER.match(/\{flashLayer\}/g) || []).length).toBe(2)
     expect(el).toMatch(/fixed inset-0/)
     expect(el).toMatch(/pointer-events-none/)
     expect(el).toMatch(/opacity-0 animate-\[ur-scan-flash/)

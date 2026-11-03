@@ -86,8 +86,9 @@ export default [
   {
     name: '🔔 화면을 눌러도 소리를 깨우지 않는다',
     file: 'src/components/voucher/VoucherScanner.tsx',
-    find: ' onPointerDown={primeScanSound}',
-    replace: '',
+    // 🔁 2026-11-03 재조준 — 계산대 안 B 로 레이아웃이 둘이 되어 공용 `wake` 하나로 모았다.
+    find: '  const wake = { onPointerDown: primeScanSound }',
+    replace: '  const wake = {}',
     test: T,
     why: '아이폰은 탭 안에서 오디오를 깨워 둬야 소리가 난다 — 빠지면 아이폰에서 소리가 영영 안 난다.',
   },

@@ -5,7 +5,6 @@
  *   스캔 로직은 셀러 대시보드 스캔과 동일한 `VoucherScanner` 공유(BarcodeDetector + iOS qr-scanner).
  */
 import { useEffect } from 'react'
-import { StoreIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import VoucherScanner from '@/components/voucher/VoucherScanner'
@@ -57,8 +56,8 @@ export default function StoreScanPage() {
   if (!allowed) return null
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
-      <header className="sticky top-0 z-10 flex items-center gap-2 px-3 py-3 border-b border-gray-100 dark:border-[#2C2F35] bg-white/90 dark:bg-[#11141C]/90 backdrop-blur">
+    <div className="flex h-[100dvh] flex-col bg-white dark:bg-[#11141C]">
+      <header className="shrink-0 z-10 flex items-center gap-2 px-3 py-3 border-b border-gray-100 dark:border-[#2C2F35] bg-white/90 dark:bg-[#11141C]/90 backdrop-blur">
         <button
           onClick={() => {
             // 마이에서 왔으면 마이로 — 하드 이동이다(마이는 소비자 세션으로 도는 다른 표면이다).
@@ -71,23 +70,22 @@ export default function StoreScanPage() {
           <ChevronLeft className="w-5 h-5 shrink-0 text-gray-700 dark:text-gray-200" />
           {backToMy && <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200">마이</span>}
         </button>
-        <div className="flex items-center gap-2">
-          <StoreIcon className="w-4 h-4 text-gray-900 dark:text-white" aria-hidden="true" />
-          <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">매장 계산대</h1>
-        </div>
+        <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">매장 계산대</h1>
+        {/* ✂️ 2026-11-03 대표 *"너무 필요이상으로 글자가 많아. 심플하고 간결하며 세련되게"* — 안내 두 문단을 걷었다.
+            · 되돌릴 수 없다는 말은 **사용 처리 확인창**이 한다(2026-10-06 — 비추면 바로 쓰이지 않고 그 창을 거친다).
+            · 어느 가게로 처리되는지는 여기 **가게 이름 한 칸**이 말한다(값은 표시 전용 — 대상은 서버가 좌석 토큰으로 정한다). */}
+        {seatLabel && (
+          <span
+            aria-label={`${seatLabel} 이용권만 처리`}
+            className="ml-auto max-w-[45%] truncate rounded-full bg-gray-100 dark:bg-white/[0.08] px-3 py-1 text-[13px] font-medium text-gray-700 dark:text-gray-200"
+          >
+            {seatLabel}
+          </span>
+        )}
       </header>
-      <div className="mx-auto max-w-xl p-4">
-        {/* 🔴 2026-09-25 (설계 §18 단계 3): **소각은 되돌릴 수 없다.** 그런데 이 화면은 그 말을 한 번도
-            안 했고, 가게가 여럿인 사람에게 "어느 가게로 처리되는지" 도 안 알려 줬다 — 좌석 토큰이
-            정하는데 화면엔 그 사실이 없었다. 값은 표시 전용이고, 대상은 서버가 토큰으로 정한다. */}
-        <p className="text-[12px] leading-relaxed text-gray-500 dark:text-gray-400 mb-1">
-          손님 이용권 QR을 비추면 확인창이 떠요. <span className="font-bold text-gray-900 dark:text-white">사용 처리</span>를 누르면 완료되고, 되돌릴 수 없습니다.
-        </p>
-        <p className="text-[12px] leading-relaxed text-gray-500 dark:text-gray-400 mb-3">
-          {seatLabel ? <>지금은 <span className="font-bold text-brand-text">{seatLabel}</span> 이용권만 처리됩니다. </> : null}
-          인식이 안 되면 아래에 코드를 직접 입력하세요. (연속 스캔)
-        </p>
-        <VoucherScanner />
+      {/* 📷 2026-11-03 대표 확정 안 B — 카메라가 머리 아래를 꽉 채운다(QR 앱처럼). 칩·결과는 카메라 위에 뜬다. */}
+      <div className="relative min-h-0 flex-1">
+        <VoucherScanner full />
       </div>
     </div>
   )

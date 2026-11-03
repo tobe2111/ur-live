@@ -28,7 +28,7 @@ export default [
   },
   {
     name: '✅ 이미 쓴 이용권에도 사용 처리 버튼을 낸다',
-    file: 'src/components/voucher/VoucherScanner.tsx',
+    file: 'src/components/voucher/UseConfirmSheet.tsx', // 2026-11-03 확인창 분리
     find: '              {usable && !blocked && (',
     replace: '              {true && (',
     test: 'src/tests/unit/scan-confirm-before-use-2026-10-06.test.ts',

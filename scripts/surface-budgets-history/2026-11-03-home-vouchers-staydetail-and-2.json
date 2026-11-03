@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-03",
+  "reason": "main 누적분 — 모션 19·20차(버튼 물결 연결·휴대폰 서식·숙소 줄 강조) + #2144 확인창이 공용 묶음(app-utils·app-shell)에 쌓였다. 이 커밋 자체는 /about 형광펜 이동뿐",
+  "surfaces": [
+    "home",
+    "vouchers",
+    "stayDetail",
+    "blog",
+    "dash:admin"
+  ],
+  "changes": [
+    "home: 201.4 → 203.1 KB (+1.7, 허용 1.5) · 늘어난 것: app-utils.js +0.7, app-shell.js +0.6",
+    "vouchers: 187.0 → 188.7 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.7, app-shell.js +0.6",
+    "stayDetail: 215.6 → 217.3 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +0.6, StayCurations.js +0.5",
+    "blog: 179.2 → 181.0 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +0.7, app-shell.js +0.6, BlogListPage.js +0.4",
+    "dash:admin: 253.5 → 255.1 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.7, app-shell.js +0.6, app-components.js +0.4"
+  ]
+}
