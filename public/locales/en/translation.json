@@ -3295,7 +3295,9 @@
       "brandWideNote": "Redeemed with that branch's store code or scan. Settlement stays with this branch.",
       "brandWideTitleAll": "Also usable at {{count}} brand branches",
       "brandWideNoteCross": "Used at a same-owner branch, it settles here; used at another owner's branch, it settles there. Vouchers with a referral fee can only be used at same-owner branches.",
-      "agencyMine": "Vouchers we manage"
+      "agencyMine": "Vouchers we manage",
+      "stayBookings": "Bookings",
+      "bookingSlots": "Booking times"
     },
     "ordersM3": {
       "today": "Today",

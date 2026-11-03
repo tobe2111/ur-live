@@ -51,7 +51,7 @@ export default function SellerStaysPage() {
       title={t('seller.stays.title', { defaultValue: '숙소 공구' })}
       headerRight={
         <Link
-          to="/seller/stays/new"
+          to="/seller/meal-voucher/new?category=stay_voucher"
           className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1.5"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -75,7 +75,7 @@ export default function SellerStaysPage() {
               {t('seller.stays.empty', { defaultValue: '등록된 숙소가 없습니다' })}
             </p>
             <Link
-              to="/seller/stays/new"
+              to="/seller/meal-voucher/new?category=stay_voucher"
               className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4" />

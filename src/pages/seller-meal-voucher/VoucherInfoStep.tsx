@@ -3,7 +3,6 @@
  *   기존 SellerMealVoucherNewPage 의 해당 블록을 그대로 추출 — 로직 불변, 배치만 위저드.
  */
 import { useTranslation } from '@/lib/i18n-lite'
-import { useNavigate } from 'react-router-dom'
 import { BedDouble, House, PartyPopper, Scissors, Utensils } from 'lucide-react'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
@@ -16,11 +15,12 @@ import VoucherPhotoSection from './VoucherPhotoSection'
 import CardPreview from './CardPreview'
 import LifeSubcatPicker from '@/components/life/LifeSubcatPicker'
 import DiscountPriceFields from './DiscountPriceFields'
+import StayRoomsFields from './StayRoomsFields'
 import type { VoucherCategory, VoucherForm } from './voucher-form'
 
 interface Props {
   form: VoucherForm
-  update: (key: string, value: string | number | string[]) => void
+  update: (key: string, value: unknown) => void
   setCategory: (c: VoucherCategory) => void
   suggestedImages: string[]
   loadingImages: boolean
@@ -28,10 +28,9 @@ interface Props {
 }
 
 export default function VoucherInfoStep({ form, update, setCategory, suggestedImages, loadingImages, onSearchImages }: Props) {
-  const navigate = useNavigate()
-  // 🏨 2026-11-03 숙소 통일 A: 숙박은 객실·요금·달력이 있어야 팔린다. 이 폼으로 만들면 **객실 없는 숙소**가 생긴다
-  //   (상세에서 고를 방이 0개). 그래서 숙박을 누르면 숙소 등록 화면으로 보낸다 — 목록·관리는 이용권 탭 하나 그대로.
-  const pick = (c: VoucherCategory) => { if (c === 'stay_voucher') { navigate('/seller/stays/new'); return } setCategory(c) }
+  // 🏨 2026-11-03 숙소 통일 ①: 숙박도 이 위저드 안에서 끝난다 — 가격 칸 대신 숙소 유형·체크인/아웃·객실(`StayRoomsFields`).
+  //   (같은 날 A 단계에선 숙소 등록 화면으로 보냈었다 — 그 화면은 매장 연결·임시저장이 없는 5월판이라 이제 쓰지 않는다.)
+  const isStay = form.category === 'stay_voucher'
   const { t } = useTranslation()
 
   return (
@@ -59,7 +58,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
             <button
               type="button"
               key={c.key}
-              onClick={() => pick(c.key)}
+              onClick={() => setCategory(c.key)}
               className={`p-3 rounded-lg border-2 text-center transition-all ${
                 form.category === c.key
                   ? 'border-brand bg-brand-tint'
@@ -108,7 +107,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
           </div>
 
           {/* 💸 2026-10-07: 정가 → 할인 [원 / %] → 판매가. 할인은 판매가를 쓰는 손잡이(저장 안 함). */}
-          <DiscountPriceFields price={form.price} originalPrice={form.original_price} update={update} />
+          {isStay ? <StayRoomsFields form={form} update={update} /> : <DiscountPriceFields price={form.price} originalPrice={form.original_price} update={update} />}
 
           {/* 💰 마진 계산기 — 정가 → 할인 → 유어딜 수수료 → 인플루언서 수수료 → 최종 마진(2026-10-24). 항상 표시. */}
           <NetProceedsCard price={form.price} originalPrice={form.original_price} promoPct={form.promo_pct} />

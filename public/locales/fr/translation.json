@@ -2576,7 +2576,9 @@
       "brandWideNote": "Validé avec le code ou le scan de cet établissement. Le règlement reste à cet établissement.",
       "brandWideTitleAll": "Aussi utilisable dans {{count}} établissements de la marque",
       "brandWideNoteCross": "Utilisé chez le même propriétaire, il est réglé ici ; utilisé chez un autre propriétaire, il est réglé là-bas. Les bons avec commission de parrainage ne s'utilisent que chez le même propriétaire.",
-      "agencyMine": "Bons que nous gérons"
+      "agencyMine": "Bons que nous gérons",
+      "stayBookings": "Réservations",
+      "bookingSlots": "Créneaux de réservation"
     },
     "ordersM3": {
       "today": "Aujourd'hui",

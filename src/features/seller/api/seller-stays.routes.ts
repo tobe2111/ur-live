@@ -25,6 +25,7 @@ import type { SellerJWTPayload } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
 import { safeError } from '@/worker/utils/safe-error';
 import { intParam } from '@/shared/pagination'
+import { insertStayInfo } from './stay-info-insert'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 type Vars = { sellerId?: number }
@@ -85,20 +86,7 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
   if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
   try {
     const body = await c.req.json<Record<string, any>>()
-    const {
-      name, description, image_url,
-      property_type, star_rating, total_rooms,
-      check_in_time, check_out_time,
-      address, address_detail, postal_code, region_sido, region_sigungu, latitude, longitude,
-      amenities, room_amenities,
-      cancellation_policy, custom_cancellation_text,
-      house_rules, check_in_instructions,
-      description_full, nearby_attractions,
-      min_nights, max_nights, advance_booking_days,
-      // 🛡️ 2026-05-18: 판매 모드 + 인플 referral.
-      sale_mode, voucher_validity_days, voucher_weekday_only, voucher_weekend_only,
-      referral_enabled, influencer_discount_pct, influencer_commission_pct,
-    } = body
+    const { name, description, image_url, referral_enabled } = body
 
     if (!name || typeof name !== 'string' || name.length < 2) {
       return c.json({ success: false, error: '상품명은 2자 이상 필요합니다' }, 400)
@@ -142,55 +130,8 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
       return c.json({ success: false, error: '상품 생성 실패' }, 500)
     }
 
-    // 2. product_stay_info INSERT (1:1)
-    await c.env.DB.prepare(
-      `INSERT INTO product_stay_info (
-         product_id, property_type, star_rating, total_rooms,
-         check_in_time, check_out_time,
-         address, address_detail, postal_code, region_sido, region_sigungu,
-         latitude, longitude,
-         amenities, room_amenities,
-         cancellation_policy, custom_cancellation_text,
-         house_rules, check_in_instructions,
-         description_full, nearby_attractions,
-         min_nights, max_nights, advance_booking_days,
-         sale_mode, voucher_validity_days, voucher_weekday_only, voucher_weekend_only,
-         referral_enabled, influencer_discount_pct, influencer_commission_pct
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      productId,
-      property_type || 'pension',
-      star_rating || null,
-      total_rooms || 1,
-      check_in_time || '15:00',
-      check_out_time || '11:00',
-      address || null,
-      address_detail || null,
-      postal_code || null,
-      region_sido || null,
-      region_sigungu || null,
-      latitude != null ? Number(latitude) : null,
-      longitude != null ? Number(longitude) : null,
-      typeof amenities === 'string' ? amenities : JSON.stringify(amenities || []),
-      typeof room_amenities === 'string' ? room_amenities : JSON.stringify(room_amenities || []),
-      cancellation_policy || 'standard',
-      custom_cancellation_text || null,
-      house_rules || null,
-      check_in_instructions || null,
-      description_full || null,
-      typeof nearby_attractions === 'string' ? nearby_attractions : JSON.stringify(nearby_attractions || []),
-      Math.max(1, Number(min_nights) || 1),
-      max_nights != null ? Number(max_nights) : null,
-      Math.max(1, Math.min(365, Number(advance_booking_days) || 90)),
-      // 🛡️ 2026-05-18: sale_mode + voucher + referral.
-      (sale_mode === 'voucher' || sale_mode === 'both') ? sale_mode : 'date',
-      Math.max(30, Math.min(365, Number(voucher_validity_days) || 180)),
-      voucher_weekday_only ? 1 : 0,
-      voucher_weekend_only ? 1 : 0,
-      referral_enabled ? 1 : 0,
-      Math.max(0, Math.min(50, Number(influencer_discount_pct) || 0)),
-      Math.max(0, Math.min(20, Number(influencer_commission_pct) || 0)),
-    ).run().catch((e: Error) => { throw new Error(`stay_info INSERT 실패: ${e.message}`) })
+    // 2. product_stay_info INSERT (1:1) — 🏨 2026-11-03 helper 로(이용권 등록 위저드도 같은 INSERT 를 쓴다)
+    await insertStayInfo(c.env.DB, productId, body)
 
     return c.json({ success: true, data: { product_id: productId } })
   } catch (err) {
@@ -200,6 +141,29 @@ sellerStaysRoutes.post('/stays', cors(), async (c) => {
 })
 
 // ─── 3. 숙소 상세 (stay_info + rooms + 최근 30일 캘린더) ────────────────
+// 🏨 2026-11-03 숙소 통일 ①: 이용권 등록 위저드가 `POST /api/seller/products`(category=stay_voucher)로 만든
+//   상품에 숙소 정보를 붙인다 — 매장·사진·사장님 링크·매장 프로필은 일반 이용권과 같은 길로 이미 저장됐다.
+//   멱등: 이미 붙어 있으면 409 없이 그대로 성공(위저드 재시도).
+sellerStaysRoutes.post('/stays/:productId/info', cors(), async (c) => {
+  const sellerId = await getSellerId(c)
+  if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
+  try {
+    const productId = Number(c.req.param('productId'))
+    if (!Number.isFinite(productId) || productId <= 0) return c.json({ success: false, error: 'Invalid productId' }, 400)
+    if (!(await ensureOwnsProduct(c, productId, sellerId))) return c.json({ success: false, error: '권한 없음' }, 403)
+    const cat = await c.env.DB.prepare('SELECT category FROM products WHERE id = ?').bind(productId).first<{ category: string | null }>()
+    if (cat?.category !== 'stay_voucher') return c.json({ success: false, error: '숙소 이용권이 아니에요' }, 400)
+    const exists = await c.env.DB.prepare('SELECT 1 AS x FROM product_stay_info WHERE product_id = ?').bind(productId).first()
+    if (exists) return c.json({ success: true, data: { product_id: productId, already: true } })
+    const body = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
+    // 소개 할인·수수료(옛 숙소 방식)는 받지 않는다 — 소개 적립은 이용권과 같은 길(딜 N% 약정)로 간다.
+    await insertStayInfo(c.env.DB, productId, { ...body, referral_enabled: 0, influencer_discount_pct: 0, influencer_commission_pct: 0, sale_mode: 'date' })
+    return c.json({ success: true, data: { product_id: productId } })
+  } catch (err) {
+    return safeError(c, err, '숙소 정보를 저장하지 못했어요', '[seller-stays]')
+  }
+})
+
 sellerStaysRoutes.get('/stays/:productId', cors(), async (c) => {
   const sellerId = await getSellerId(c)
   if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)

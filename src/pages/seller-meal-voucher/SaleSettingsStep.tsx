@@ -108,21 +108,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
             />
           </div>
 
-          {/* 외부 예약 링크 — 숙소/뷰티 사전 예약 필수 카테고리 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              외부 예약 링크 <span className="text-[11px] text-gray-400">(숙소/뷰티 등 예약 필수 카테고리)</span>
-            </label>
-            <input
-              type="url"
-              value={form.external_booking_url}
-              onChange={e => update('external_booking_url', e.target.value)}
-              placeholder="https://booking.naver.com/... 또는 https://www.yanolja.com/..."
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
-            />
-            <p className="text-[10px] text-gray-400 mt-1">바우처 발급 후 사용자에게 노출. 비워두면 매장 전화번호로 안내.</p>
-          </div>
-
+          {/* 🗓️ 2026-11-03: 외부 예약 링크는 '예약 방식'(`BookingModeSection`)으로 옮겼다 — 바로 사용 · 시간 예약 · 외부 예약 중 하나. */}
           {/* 즉시판매 단일가 모델 안내 */}
           <div className="border-t border-gray-200 pt-4">
             <div className="bg-brand-tint border border-rule rounded-lg p-3">

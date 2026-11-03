@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
+import { markAgencyLoggedOut } from '@/lib/agency-presence'
 import { SectionTitle } from '@/pages/user-profile/list-grammar'
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import { AgencyStaffPanel, type StaffRow } from './AgencyStaffPanel'
@@ -69,6 +70,7 @@ export default function AgencySection({ stacked = false, headless = false, ownSe
   async function logout() {
     if (!(await confirmDialog('에이전시에서 로그아웃할까요?'))) return
     clearAgencySession()
+    markAgencyLoggedOut() // 🚪 카카오 자동 연결이 바로 다시 로그인하지 않게(2026-11-03)
     toast.success('에이전시에서 로그아웃했어요.')
     onSessionEnd('logout')
   }
