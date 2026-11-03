@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-03",
+  "reason": "PR #2147 로그인 전 이용권 탭(대표 2026-11-03): 고정 카카오 버튼·단계·QR 티켓·예시 이용권(GuestDock·GuestExampleRows·DealRow). main 재병합 뒤 이용권 탭만 갱신.",
+  "surfaces": [
+    "guestPass"
+  ],
+  "changes": [
+    "guestPass: 185.5 → 188.3 KB (+2.8, 허용 1.5) · 늘어난 것: GuestDock.js +2.3, lz-linkshop1-vouchers.js +1.1, GuestExampleRows.js +0.6, app-utils.js +0.5"
+  ]
+}
