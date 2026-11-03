@@ -112,4 +112,4 @@
 | **🎯 전환추적(진짜 ROAS) — QR 실방문 증명 통합** | 2026-07-21 | 🟡 설계 SSOT / **착수 10월**(8월 실판매 데이터로 귀속 규칙 캘리브레이션 후) · 픽셀·조인 파이프라인 선설계 | [conversion-tracking-roas.md](./conversion-tracking-roas.md) |
 | **🏠 생활 견적 요청 흐름 — 오늘의집 이사 견적 참고** | 2026-10-25 | 🟡 시안 접수 · 구현 대기(대표 확인) | [life-quote-flow-ohouse-ref.md](./life-quote-flow-ohouse-ref.md) |
 | 매장 계산대 글자 줄이기 (안 A / 안 B) | `store-scan-simple-2026-11-03.md` | ✅ 안 B 구현 |
-| 내 이용권 QR 화면 글자 줄이기 (안 A / 안 B) | `voucher-qr-simple-2026-11-03.md` | 선택 대기 |
+| 내 이용권 QR 화면 글자 줄이기 (안 A / 안 B) | `voucher-qr-simple-2026-11-03.md` | ⏸️ 보류 |
