@@ -111,17 +111,21 @@ const CHECKS = [
     must: [/src=\{UDAL_LOADER_SRC\}/, /%\s*UDAL_HOP_PERIOD_S/, /animationDelay:\s*hopDelay/],
     hint: '앱 로더의 유달이는 UDAL_LOADER_SRC 와 FCP 기준 음수 delay(% UDAL_HOP_PERIOD_S) 를 쓰세요.',
   },
+  // 🫥 2026-11-02 대표 "아예 안 보이게" → 2026-11-03 "3,4 해결해줘": 첫 진입 로더는 **배경만**(BrandLoader 의 hide/quiet 와 짝).
+  //   그래서 정적 로더엔 그림이 없고 index.html 은 그 그림을 미리 받지 않는다(안 보이는 그림이 LCP 사진과 회선을 나눠 썼다).
   {
     file: 'src/worker/index.ts',
-    name: '정적 로더 유달이 = 같은 파일',
-    must: [/const\s+urdealLoaderHtml\s*=[\s\S]{0,400}?src="\$\{UDAL_LOADER_SRC\}"[\s\S]{0,300}?class="ur-udal-hop/],
-    hint: '워커 정적 로더(urdealLoaderHtml)에 BrandLoader 와 같은 유달이(UDAL_LOADER_SRC, ur-udal-hop)를 유지하세요.',
+    name: '정적 로더 = 숨김·그림 없음 (BrandLoader quiet 와 짝)',
+    must: [/const\s+urdealLoaderHtml\s*=\s*'<div style="[^"]*visibility:hidden">'/],
+    mustNot: [/src="\$\{UDAL_LOADER_SRC\}"/],
+    hint: '첫 진입 로더는 보이지 않게(visibility:hidden) 두고 그림을 넣지 마세요 — 대표 "아예 안 보이게"(2026-11-02).',
   },
   {
     file: 'index.html',
-    name: '로더 유달이 preload (늦게 튀어나오기 방지)',
-    must: [/<link rel="preload" as="image" href="\/assets\/mascot\/udal-loader-v\d+\.webp"/],
-    hint: '첫 페인트 로더가 바로 그리는 그림이라 head 에서 미리 받아야 합니다(경로는 UDAL_LOADER_SRC 와 동일).',
+    name: '안 보이는 로더 그림 preload 금지',
+    must: [/<link rel="dns-prefetch" href="https:\/\/js\.tosspayments\.com"/], // 파일을 제대로 읽었다는 닻(이 줄은 잠금표 항목 옆에 늘 있다)
+    mustNot: [/<link rel="preload" as="image" href="\/assets\/mascot\/udal-loader-v\d+\.webp"/],
+    hint: '첫 진입 로더가 안 보이므로 유달이를 미리 받지 않습니다(2026-11-03 대표 "3,4 해결해줘").',
   },
   {
     file: 'src/hooks/useOnlineStatus.ts',
