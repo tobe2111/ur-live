@@ -271,11 +271,11 @@ describe('D1 읽기 복제 — 공개 편성 읽기만 사본으로', () => {
     expect(d1ServedLabel({ meta: { served_by_primary: false, served_by_region: 'A\r\nX: y' } })).toBe('replica:AXy')
   })
 
-  it('2단계 유어샵 — 사본은 익명 방문에만(주인은 편집 직후 옛 값을 보면 안 된다)', () => {
+  it('2단계 유어샵 — 익명은 사본, 로그인은 쓰기 표시를 보는 사본(주인은 편집 직후 옛 값을 보면 안 된다)', () => {
     const src = readFileSync('src/worker/routes/curator.routes.ts', 'utf-8')
     const lines = src.split('\n').filter((l) => l.includes('publicReadDb(c.env.DB)'))
     expect(lines.length, '유어샵 공개 조회가 사본을 안 쓴다').toBe(1)
-    expect(lines[0]).toMatch(/getAuthUserId\(c\) == null \? publicReadDb\(c\.env\.DB\) : c\.env\.DB/)
+    expect(lines[0]).toMatch(/getAuthUserId\(c\) == null \? publicReadDb\(c\.env\.DB\) : userReadDb\(c\.env\.DB, c\.req\.header\('cookie'\)\)/) // 👤 2026-11-03 로그인은 '방금 쓴 브라우저=원본' 사본(d1-user-read-2026-11-03)
   })
 
   it('2단계 블로그 — 발행 글 읽기만 사본, 조회수 쓰기·관리 경로는 원본', () => {

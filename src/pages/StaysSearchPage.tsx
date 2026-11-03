@@ -24,6 +24,8 @@ const injectMotionCss = (id: string, css: string) => { if (typeof document !== '
 // 🎬 2026-11-03 15차 ⑨ — 지역·숙소 종류 칩은 생길 때 톡 튀고, × 로 뺄 때 작아지며 사라진다.
 // 🎬 2026-11-03 14차 ⑤ — 조건을 바꿔 결과가 새로 오면 카드가 위에서부터 차례로 떠오른다(첫 화면은 그대로 — 사진이 늦게 보이면 안 된다).
 injectMotionCss('ur-m-staysearch', `@keyframes ur-ss-in { from { opacity: 0; transform: translateY(12px); } }.ur-ss-grid > *:nth-child(-n+8) { animation: ur-ss-in .4s cubic-bezier(.2,.9,.3,1) backwards; }.ur-ss-grid > *:nth-child(2) { animation-delay: 50ms; }.ur-ss-grid > *:nth-child(3) { animation-delay: 100ms; }.ur-ss-grid > *:nth-child(4) { animation-delay: 150ms; }.ur-ss-grid > *:nth-child(5) { animation-delay: 200ms; }.ur-ss-grid > *:nth-child(6) { animation-delay: 250ms; }.ur-ss-grid > *:nth-child(7) { animation-delay: 300ms; }.ur-ss-grid > *:nth-child(8) { animation-delay: 350ms; }@keyframes ur-ss-chip { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.08); } 100% { transform: none; } }.ur-ss-chip { animation: ur-ss-chip .32s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-ss-grid > *,.ur-ss-chip{animation:none!important}}`)
+/** 🎬 17차 ⑥ — 다시 시도 화살표 회전. */
+const spinRetry = (e: React.MouseEvent<HTMLButtonElement>) => { try { if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return } catch { return } e.currentTarget.querySelector('svg')?.animate?.([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], { duration: 700, iterations: 2, easing: 'cubic-bezier(.4,0,.2,1)' }) }
 /** 🎬 15차 ⑨ — 조건 칩을 뺄 때 작아지며 사라진 뒤 실제로 뺀다(동작 줄이기면 바로). */
 function popOutThen(el: HTMLElement, done: () => void) {
   try { if (!el.animate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { done(); return } } catch { done(); return }
@@ -176,7 +178,8 @@ export default function StaysSearchPage() {
             <Search className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-[15px] text-gray-600 dark:text-gray-300 mb-1">검색을 불러오지 못했어요</p>
             <p className="text-[12px] text-gray-500 dark:text-gray-500 mb-4">네트워크 상태를 확인해주세요.</p>
-            <button onClick={() => refetch()} className="px-5 h-10 rounded-lg text-[15px] font-bold bg-brand text-white">다시 시도</button>
+            {/* 🎬 2026-11-03 17차 ⑥ — 누르면 화살표가 한 바퀴 돌며 다시 불러오는 중임을 보여 준다(여러 번 누르지 않게). */}
+            <button onClick={(e) => { spinRetry(e); refetch() }} className="px-5 h-10 rounded-lg text-[15px] font-bold bg-brand text-white inline-flex items-center gap-2"><svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" /></svg>다시 시도</button>
           </div>
         ) : items.length === 0 ? (
           // 🧭 2026-07-20 (대표 — 빈 화면이 막다른 골목): 차가운 '검색 결과 없음' → 안내 + 다른 딜 CTA.

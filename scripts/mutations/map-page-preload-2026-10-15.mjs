@@ -38,8 +38,9 @@ export default [
   {
     name: '🗺️ 홈이 지도 페이지를 직접 import(묶음기 봉투가 다시 짜인다)',
     file: 'src/pages/mobile-home/map-warmup.ts',
-    find: "  preloadRoute('map')\n  if (preconnected",
-    replace: "  void import('@/pages/RestaurantMapPage')\n  if (preconnected",
+    // 🐢 2026-11-03 재조준 — 그 뒤에 '누르는 순간 첫 목록 미리받기' 줄이 들어와 앵커를 함수 첫 줄로 옮겼다.
+    find: "export function preconnectMapTiles(): void {\n  preloadRoute('map')\n",
+    replace: "export function preconnectMapTiles(): void {\n  void import('@/pages/RestaurantMapPage')\n",
     test: TEST,
     why: '홈 lazy 라벨이 지도 모듈에 붙어 화면별 묶음이 바뀐다.',
   },

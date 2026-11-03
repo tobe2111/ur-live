@@ -7,7 +7,9 @@ import { useTranslation } from '@/lib/i18n-lite'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-toast', `@keyframes ur-toast-out { to { opacity: 0; transform: translateY(-120%); } }.ur-pop-toast[data-out] { pointer-events: none; animation: ur-toast-out .24s cubic-bezier(.4,0,1,1) both; }@media (prefers-reduced-motion: reduce){.ur-pop-toast[data-out]{animation:none!important;display:none}}`)
 
-type ToastItem = { id: string; message: string; type: 'success' | 'error' | 'info' }
+type ToastItem = { id: string; message: string; type: 'success' | 'error' | 'info'; ttl?: number }
+// 🎬 2026-11-03 17차 ⑤ — 알림 아래 얇은 막대가 남은 시간만큼 줄어들어 언제 사라질지 보여 준다(동작 줄이기면 안 그린다).
+injectMotionCss('ur-m-toast-ttl', `@keyframes ur-toast-ttl { to { transform: scaleX(0); } }.ur-toast-ttl { position: absolute; left: 20px; right: 20px; bottom: 0; height: 2px; border-radius: 2px; transform-origin: left; animation: ur-toast-ttl linear forwards; }@media (prefers-reduced-motion: reduce){.ur-toast-ttl{display:none}}`)
 
 // 🎨 2026-06-22 (대표 — "팝업 디자인 촌스러워"): 파스텔 색박스(green-50/red-50/blue-50) → 단일 잉크 토스트.
 // 🎫 2026-09-02 (대표 — "이 팝업들도 디자인 시스템에 맞게"): 잉크 상자 → 코레일톡 표면 체계.
@@ -56,7 +58,7 @@ export default function ToastContainer() {
           role={t.type === 'error' ? 'alert' : 'status'}
           aria-hidden={out || undefined}
           data-out={out || undefined}
-          className="ur-glass flex items-center gap-2 min-h-12 pl-5 pr-2 py-2 ur-pop-toast text-gray-900 dark:text-white pointer-events-auto animate-slide-down max-w-full touch-pan-x"
+          className="ur-glass relative overflow-hidden flex items-center gap-2 min-h-12 pl-5 pr-2 py-2 ur-pop-toast text-gray-900 dark:text-white pointer-events-auto animate-slide-down max-w-full touch-pan-x"
           onPointerDown={(e) => { if (!out) drag.current = { id: t.id, y0: e.clientY } }}
           onPointerMove={(e) => { const d = drag.current; if (!d || d.id !== t.id) return; const dy = Math.min(0, e.clientY - d.y0); e.currentTarget.style.transform = dy ? `translateY(${dy}px)` : '' }}
           onPointerUp={(e) => { const d = drag.current; drag.current = null; if (!d || d.id !== t.id) return; const dy = e.clientY - d.y0; e.currentTarget.style.transform = ''; if (dy < -24) remove(t.id) }}
@@ -71,6 +73,7 @@ export default function ToastContainer() {
           >
             <X className="w-3.5 h-3.5" />
           </button>
+          {t.ttl && !out ? <i aria-hidden="true" className="ur-toast-ttl bg-brand" style={{ animationDuration: `${t.ttl}ms` }} /> : null}
         </div>
       ))}
     </div>

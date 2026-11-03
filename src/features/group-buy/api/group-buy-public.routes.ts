@@ -31,7 +31,7 @@ import { sliceCardGallery } from './card-gallery'
 import { getActiveFeedTotal } from './feed-total'
 // 🍽️ 2026-06-17 (#5 대표 메뉴): products god-table 증식 차단용 K-V 사이드테이블에서 메뉴 읽기.
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
-import { intParam } from '@/shared/pagination'; import { publicReadDb } from '../../../worker/utils/d1-read-replica' // 한 줄: 래칫
+import { intParam } from '@/shared/pagination'; import { publicReadDb, userReadDb, dbKey } from '../../../worker/utils/d1-read-replica' // 한 줄: 래칫
 // 🏪 2026-09-16 (대표 — "승인이 되어야 메인에 노출"): 승인 전 매장의 이용권을 피드·지도에서 가린다.
 import { approvedSellerProductSql } from '@/shared/db/consumer-visible-product'
 import { voucherCanRedeem } from './voucher-can-redeem'; import { withGiftState, voucherHasPendingGift, noPendingGiftSql, GIFT_PENDING_USE_BLOCKED } from '../../../worker/utils/voucher-gift'; const _voucherIdxDone = new WeakSet<object>() // 🎁 선물 중·보낸 선물 표시 · 🐢 /my 색인 DDL isolate 당 1회
@@ -753,7 +753,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const user = getCurrentUser(c)
     if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
 
-    const { DB } = c.env
+    const DB = userReadDb(c.env.DB, c.req.header('cookie')) // 👤 2026-11-03 [UNLOCK_LOADING] 대표 "1,3,4 다 해줘" — 로그인 읽기도 사본(방금 쓴 브라우저는 원본)
 
     // 🔑 user_id 정규화(데이터 감사 1단계): 쓰기 경로가 DB users.id(숫자)로 통일되므로 읽기도 정규화.
     //   전환기 안전: 정규화 id(신규 행)와 raw id(과거 firebase_uid 키 행)를 **둘 다** 매칭(IN)해
@@ -771,7 +771,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //     3) LIMIT 200 — 사용자가 voucher 1000개여도 응답 폭증 차단.
     //     4) idx_vouchers_user_created 복합 인덱스 lazy 생성 (멱등).
     // 🐢 2026-11-02 [UNLOCK_LOADING] 대표 "허가 — 고쳐줘": 종전엔 **매 요청** 이 DDL 로 원본 DB 를 한 번 더 다녀왔다 → isolate 당 1회(repair-schema 도 보장).
-    if (!_voucherIdxDone.has(DB)) { _voucherIdxDone.add(DB); try { await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_vouchers_user_created ON vouchers(user_id, created_at DESC)`).run() } catch { /* exists or permission */ } }
+    if (!_voucherIdxDone.has(dbKey(DB))) { _voucherIdxDone.add(dbKey(DB)); try { await c.env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_vouchers_user_created ON vouchers(user_id, created_at DESC)`).run() } catch { /* exists or permission */ } }
 
     // 🛡️ 2026-05-24 P0 (사용자 신고 "내 교환권 안 보임"):
     //   - 원인: refund_status/gift_from_user_id/delivered_gift_name/applied_price 컬럼이 일부 환경에 없음.

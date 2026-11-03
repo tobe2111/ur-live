@@ -14,6 +14,7 @@
  */
 
 import { swallow } from './swallow'
+import { dbKey } from './d1-read-replica'
 
 export const REVIEW_LEVEL_MAX = 5
 /** 사용자-가시 레벨 라벨 (명칭 SSOT 준수 — 사람 지칭 금지어 없음). */
@@ -30,8 +31,8 @@ const DEFAULT_SCORE_PER_APPROVAL = 10
 
 const _ensured = new WeakSet<object>()
 export async function ensureReviewScoreTable(DB: D1Database): Promise<void> {
-  if (_ensured.has(DB)) return
-  _ensured.add(DB)
+  if (_ensured.has(dbKey(DB))) return // 사본 세션도 원본 기준으로 1회(요청마다 DDL 금지)
+  _ensured.add(dbKey(DB))
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS user_review_scores (
       user_id TEXT PRIMARY KEY,

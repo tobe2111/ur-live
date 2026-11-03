@@ -6120,7 +6120,8 @@
   },
   "search": {
     "inputPlaceholder": "搜索商品、品牌、卖家",
-    "related": {}
+    "related": {},
+    "endOfList": "已经到底了"
   },
   "register": {
     "title": "[TODO:zh] 회원가입",

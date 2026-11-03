@@ -56,3 +56,42 @@ export function d1ServedLabel(res: unknown): string | null {
   const region = typeof m.served_by_region === 'string' ? m.served_by_region.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 16) : ''
   return `${m.served_by_primary ? 'primary' : 'replica'}${region ? `:${region}` : ''}`
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 👤 2026-11-03 로그인 손님 읽기도 사본으로 — 대표 *"1,3,4 다 해줘"*(1 = 로그인 화면도 한국 근처 사본).
+ *
+ * 사본의 유일한 위험은 "방금 내가 바꾼 것이 안 보인다" 다. 그래서 **이 브라우저가 무언가를 바꾼 직후**
+ * (`/api/*` 의 GET·HEAD 아닌 요청이 성공한 뒤) 짧은 쿠키를 붙이고, 그 쿠키가 살아 있는 동안은 원본에서 읽는다.
+ * 다른 사람이 바꾼 것(사장님이 사용처리 등)은 사본이 보통 1초 안에 따라온다.
+ * 🔒 돈 화면(딜 잔액·주문·결제·정산·사장님 매출)은 이 함수도 쓰지 않는다 — 계속 원본(가드가 허용 파일을 고정).
+ * ──────────────────────────────────────────────────────────────────────────── */
+export const D1_FRESH_COOKIE = 'ur_d1_fresh'
+/** 쓰기 뒤 원본에서 읽는 시간(초). 사본 지연(보통 1초 미만)보다 넉넉히. */
+export const D1_FRESH_SECONDS = 30
+
+/** 이 브라우저가 방금 무언가를 바꿨나(쿠키). */
+export function hasRecentWrite(cookieHeader: string | null | undefined): boolean {
+  return !!cookieHeader && /(?:^|;\s*)ur_d1_fresh=1(?:\s*;|$)/.test(cookieHeader)
+}
+
+/** 쓰기 성공 응답에 붙이는 쿠키 한 줄. */
+export function recentWriteCookie(): string {
+  return `${D1_FRESH_COOKIE}=1; Path=/; Max-Age=${D1_FRESH_SECONDS}; SameSite=Lax; Secure; HttpOnly`
+}
+
+/** 로그인 손님의 읽기용 DB — 방금 쓴 브라우저면 원본, 아니면 사본(세션 API 없으면 원본). */
+export function userReadDb(db: D1Database, cookieHeader: string | null | undefined): D1Database {
+  return hasRecentWrite(cookieHeader) ? db : publicReadDb(db)
+}
+
+type MiniCtx = { req: { method: string }; res: Response }
+/** `/api/*` 미들웨어 — GET·HEAD 아닌 요청이 성공(<400)하면 쿠키를 붙인다. 응답 헤더가 잠겨 있으면 조용히 건너뛴다. */
+export function recentWriteMarker() {
+  return async (c: MiniCtx, next: () => Promise<void>) => {
+    await next()
+    const m = c.req.method
+    if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return
+    if (!c.res || c.res.status >= 400) return
+    try { c.res.headers.append('Set-Cookie', recentWriteCookie()) } catch { /* 잠긴 헤더 — 건너뜀 */ }
+  }
+}

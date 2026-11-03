@@ -6371,7 +6371,8 @@
     "sendPlaceholder": "메시지 보내기"
   },
   "search": {
-    "inputPlaceholder": "상품명, 브랜드, 셀러 검색"
+    "inputPlaceholder": "상품명, 브랜드, 셀러 검색",
+    "endOfList": "여기까지 다 봤어요"
   },
   "stays": {
     "searchTitle": "🏨 숙소 공구",

@@ -12,6 +12,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { clearSessionCookie } from '@/worker/utils/session';
 import { safeError } from '@/worker/utils/safe-error';
+import { userReadDb } from '@/worker/utils/d1-read-replica';
 import { countAccountDeleteBlockers, isAccountDeleteBlocked } from '@/worker/utils/account-delete-blockers';
 import {
   deleteUserAccount,
@@ -58,7 +59,7 @@ accountRoutes.get('/notification-prefs', requireAuth(), async (c) => {
     const user = getCurrentUser(c);
     if (!user) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
     await ensureNotificationPrefColumns(c.env.DB);
-    const row = await c.env.DB.prepare(
+    const row = await userReadDb(c.env.DB, c.req.header('cookie')).prepare( // 👤 2026-11-03 로그인 읽기도 사본(방금 바꾼 브라우저는 원본)
       'SELECT COALESCE(push_enabled, 1) AS push_enabled, COALESCE(email_enabled, 1) AS email_enabled FROM users WHERE id = ?'
     ).bind(user.id).first<{ push_enabled: number; email_enabled: number }>();
     return c.json({

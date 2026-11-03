@@ -6173,7 +6173,8 @@
   },
   "search": {
     "inputPlaceholder": "Search products, brands, sellers",
-    "related": {}
+    "related": {},
+    "endOfList": "You've reached the end"
   },
   "register": {
     "title": "[TODO:en] 회원가입",
