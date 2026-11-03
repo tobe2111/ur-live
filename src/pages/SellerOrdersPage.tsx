@@ -10,8 +10,6 @@ import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader, DashboardCard } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
-import { askRefundReason, REFUND_REASON_FALLBACK } from '@/pages/seller-orders/refund-prompt'
 import {
   Package,
   Truck,
@@ -39,6 +37,7 @@ import { OrdererCell } from './seller-orders/OrderKindBadge'
 import { OrderNumber } from './seller-orders/OrderNumber'
 import BulkActionBar from './seller-orders/BulkActionBar'
 import MobileOrderList from './seller-orders/MobileOrderList'
+import { useOrderActions } from './seller-orders/useOrderActions'
 import type { Order } from './seller-orders/types'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / parseShippingAddress / status 헬퍼 / 주문 상세 모달
@@ -76,10 +75,15 @@ export default function SellerOrdersPage() {
   const invalidateOrders = () => queryClient.invalidateQueries({ queryKey: ['seller', 'orders'] })
 
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
-  const [error, setError] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [showDetail, setShowDetail] = useState(false)
-  const [updating, setUpdating] = useState(false)
+  // 🧾 2026-11-03: 주문 한 건에 하는 일은 `useOrderActions` 한 곳 — 마이 주문 시트가 같은 것을 쓴다(한 글자도 안 바꾸고 옮겼다).
+  const { updating, error, setError, trackingForm, setTrackingForm, handleStatusChange, handleRefund, handleTrackingSubmit } = useOrderActions((orderNumber) => {
+    if (selectedOrder && selectedOrder.order_number === orderNumber) {
+      setShowDetail(false)
+      setSelectedOrder(null)
+    }
+  })
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
@@ -92,11 +96,6 @@ export default function SellerOrdersPage() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
-
-  const [trackingForm, setTrackingForm] = useState({
-    courier: '',
-    tracking_number: ''
-  })
 
   // 일괄 처리
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -186,96 +185,6 @@ export default function SellerOrdersPage() {
     link.href = URL.createObjectURL(blob)
     link.download = `orders_${new Date().toISOString().slice(0, 10)}.csv`
     link.click()
-  }
-
-  async function handleStatusChange(orderNumber: string, newStatus: string) {
-    if (!(await confirmDialog(t('seller.confirmStatusChange', { status: getStatusText(newStatus) })))) {
-      return
-    }
-
-    setUpdating(true)
-    setError('')
-
-    try {
-      // order_number 대신 id를 사용 (API가 둘 다 지원)
-      const response = await api.patch(
-        `/api/seller/orders/${orderNumber}/status`,
-        { status: newStatus }
-      )
-
-      if (response.data.success) {
-        toast.success(t('seller.statusChanged'))
-        invalidateOrders()
-        if (selectedOrder && selectedOrder.order_number === orderNumber) {
-          setShowDetail(false)
-          setSelectedOrder(null)
-        }
-      }
-    } catch (error: unknown) {
-      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      if (import.meta.env.DEV) console.error('Failed to update status:', error)
-      setError(error_.response?.data?.error || t('seller.statusChangeFailed'))
-    } finally {
-      setUpdating(false)
-    }
-  }
-
-  // 🛡️ 2026-06-01 머니플로우 감사: 결제완료 주문 정식 취소·환불 (Toss/딜 환불 + 커미션 역전).
-  async function handleRefund(orderNumber: string) {
-    // 🧾 2026-10-06 (철거로 잃은 것 ① 복원): 사유를 받는다. 계약·문구는 모듈 하나에 있다
-    //   (`seller-orders/refund-prompt.ts` — 선택 · 빈 칸이면 기본값 · 취소는 null).
-    const reason = await askRefundReason(t)
-    if (reason === null) return
-    setUpdating(true)
-    setError('')
-    try {
-      const response = await api.post(`/api/seller/orders/${orderNumber}/refund`, {
-        reason: reason.trim() || REFUND_REASON_FALLBACK,
-      })
-      if (response.data.success) {
-        toast.success(t('seller.refundDone', { defaultValue: '취소·환불 처리되었습니다' }))
-        invalidateOrders()
-        if (selectedOrder && selectedOrder.order_number === orderNumber) {
-          setShowDetail(false)
-          setSelectedOrder(null)
-        }
-      }
-    } catch (error: unknown) {
-      const error_ = error as { response?: { data?: { error?: string } } }
-      if (import.meta.env.DEV) console.error('Failed to refund:', error)
-      setError(error_.response?.data?.error || t('seller.refundFailed', { defaultValue: '환불 처리에 실패했습니다' }))
-    } finally {
-      setUpdating(false)
-    }
-  }
-
-  async function handleTrackingSubmit(e: React.FormEvent, orderNumber: string) {
-    e.preventDefault()
-    setUpdating(true)
-    setError('')
-
-    try {
-      const response = await api.put(
-        `/api/seller/orders/${orderNumber}/tracking`,
-        trackingForm
-      )
-
-      if (response.data.success) {
-        toast.success(t('seller.trackingRegistered'))
-        setTrackingForm({ courier: '', tracking_number: '' })
-        invalidateOrders()
-        if (selectedOrder && selectedOrder.order_number === orderNumber) {
-          setShowDetail(false)
-          setSelectedOrder(null)
-        }
-      }
-    } catch (error: unknown) {
-      const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
-      if (import.meta.env.DEV) console.error('Failed to update tracking:', error)
-      setError(error_.response?.data?.error || t('seller.trackingRegisterFailed'))
-    } finally {
-      setUpdating(false)
-    }
   }
 
   // 체크박스 토글

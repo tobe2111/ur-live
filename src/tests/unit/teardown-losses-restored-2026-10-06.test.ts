@@ -22,7 +22,9 @@ import { stripComments } from '../helpers/source-text'
 
 const code = (p: string) => stripComments(readFileSync(p, 'utf8'))
 
-const ORDERS = 'src/pages/SellerOrdersPage.tsx'
+// 🔀 2026-11-03 재조준: 주문 한 건의 동작(상태·환불·운송장)이 `useOrderActions` 로 옮겨졌다 — 셀러 주문 화면과
+//   마이 주문 시트가 같이 쓴다. 지키는 것은 그대로(사유 입력 · 취소 시 미전송 · 본문의 사유).
+const ORDERS = 'src/pages/seller-orders/useOrderActions.ts'
 const EDIT = 'src/pages/SellerProductEditPage.tsx'
 const ROUTE = 'src/features/seller/api/seller-orders.routes.ts'
 // 🔀 2026-10-06 재조준: 두 화면이 600줄 래칫에 닿아 **계약을 모듈로 추출**했다(지키려던 것은 그대로).

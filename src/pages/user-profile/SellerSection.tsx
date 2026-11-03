@@ -73,6 +73,7 @@ const PinSheet = lazy(() => import('./seller-section/PinSheet'))
 const BankSheet = lazy(() => import('./seller-section/BankSheet'))
 const ToolPageSheet = lazy(() => import('./seller-section/ToolPageSheet'))
 const VoucherNewSheet = lazy(() => import('./seller-section/VoucherNewSheet'))
+const MySalesSheets = lazy(() => import('./my-sales/MySalesSheets')) // 🧾 2026-11-03 마이용 판매 시트(시안 M1~M5)
 
 
 
@@ -84,33 +85,19 @@ const VoucherNewSheet = lazy(() => import('./seller-section/VoucherNewSheet'))
  *   (`ToolPageSheet` = 대시보드 화면을 시트 안에서 그대로 렌더)로 열린다. 근거는 아래 §철거.
  *   남은 `withdraw`·`pin`·`bank`·`settlements` 는 **돈이 나가는 흐름**이라 별도 판단 대기다.
  */
-type Tool = 'payout' | 'tools' | 'pin' | 'bank' | 'page' | 'voucherNew'
+type Tool = 'payout' | 'tools' | 'pin' | 'bank' | 'page' | 'voucherNew' | 'myVouchers' | 'myOrders' | 'myAnalytics'
 
 /**
- * 🔀 **같은 일에 화면이 둘이 되지 않게** (2026-09-26 → **2026-10-01 철거로 거의 비었다**)
- *
- * ## 무엇이 잘못됐었나 (기록)
- * 마이에 문이 둘 생겼다. 묶음 줄은 **손수 만든 폰 시트**를 열고, 전체 도구는 같은 일의
- * **대시보드 화면**을 열었다 — 일곱 개 전부. 사장님이 어느 문으로 들어왔느냐에 따라 "주문" 이
- * 다른 화면으로 뜬다. 그리고 버그가 오면 한쪽만 고친다.
- * 그때의 처방은 *"문은 둘이어도 도착지는 하나"* — 전체 도구에서 그 주소를 고르면 손수 시트로 보냈다.
- * 그리고 그 주석은 **종착지가 아니라 다리**라고 적어 뒀다: *"대시보드 화면이 폰에서 좋아지면
- * 이 표와 시트 일곱은 내려와야 한다."*
- *
- * ## 🧹 그 조건이 충족돼서 내렸다 (2026-10-01, 대표 *"철거도 해주고"*)
- * 일곱 화면을 430px 로 전수 측정했다 — **가로스크롤 0 · 하드 클립 0 · 표 오버플로 0**
- * (결재 `docs/decisions/archive/2026-09-28-my-stage2-sheet-teardown.md` §측정 3차). 폰에서 깨지지 않는다.
- * ⇒ 두 벌을 유지할 이유가 사라졌으므로 손수 시트 쪽을 지웠다. 도착지는 **대시보드 화면 하나**이고,
- *   마이를 벗어나지 않는다(`ToolPageSheet` 가 그 화면을 시트 안에서 그대로 렌더한다).
- *
- * ## 왜 표가 아직 남아 있나 — **돈 하나**
- * `/seller/settlements` 만 손수 시트(`PayoutSheet`)로 연다. 2026-10-12 까지는 `WithdrawSheet`(출금 신청)
- * 였는데, 그 시트가 읽는 잔액은 한 번도 적립되지 않아 늘 0원이었다 — 셀러 돈은 **매주 자동 정산**이다.
- * 대시보드 화면(`SellerSettlementsPage`)은 사업자등록·세금계산서까지 싣고 있어 폰 시트로는 무겁다.
- * 여기서는 *"얼마가 언제 들어오나"* 와 *"계좌가 있나"* 만 답한다.
+ * 🔀 **같은 일에 화면이 둘이 되지 않게** — 이 표에 있는 일은 손수 만든 시트로, 나머지는 `ToolPageSheet`(셀러 화면 그대로)로 연다.
+ *   · 2026-10-01 철거: 손수 시트 일곱을 내렸다(430px 전수 측정에서 깨지지 않았다 — 결재 `archive/2026-09-28-my-stage2-sheet-teardown.md`).
+ *   · 정산(`/seller/settlements`)만 남았다 — 셀러 돈은 매주 자동 정산이라 *"얼마가 언제 들어오나 · 계좌가 있나"* 만 답한다(`PayoutSheet`).
+ *   · 🧾 2026-11-03 대표 *"이런 페이지들 너무 붕 떠보이잖아"* → *"마이 용으로 만들어야"* → *"좋다 다 해줘"*(시안 M1~M5):
+ *     이용권·주문·매출 분석은 다시 **마이용 시트**(`my-sales/*`). "깨지지 않는다" 는 맞았지만 대표가 본 것은 머리·몸통 두 조각 ·
+ *     흰 위 테두리 카드 · 빈 아래였다. 데이터·서버 호출은 셀러 화면과 **한 벌**이다(같은 훅·같은 캐시 키·`useOrderActions`).
  */
 const COVERED_BY_SHEET: Record<string, Tool> = {
   '/seller/settlements': 'payout',
+  '/seller/group-buy': 'myVouchers', '/seller/orders': 'myOrders', '/seller/analytics': 'myAnalytics', // 🧾 2026-11-03
 }
 
 /** 묶음 한 줄 — 전부 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
@@ -135,7 +122,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
    *   전체 도구에서 골랐으면 그 목록으로 돌아와야 하고(도구를 하나 보고 다음을 보는 흐름),
    *   바로가기 줄에서 열었으면 **마이로** 닫힌다. 한쪽으로 고정하면 반드시 한쪽이 어색해진다.
    */
-  const [pageFrom, setPageFrom] = useState<'tools' | null>(null)
+  const [pageFrom, setPageFrom] = useState<Tool | null>(null)
   /**
    * 🪑 지금 토큰이 앉아 있는 좌석. **서버 응답이 아니라 토큰에서 읽는다** — 전환 직후에도 즉시 맞는다
    *   (`useMyStores` 의 `current_seller_id` 는 재조회 뒤에야 따라온다).
@@ -252,8 +239,14 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
    *   ⚠️ 이름(`title`)을 여기서 짓지 않고 호출부가 넘긴다 — 나브 색인이 정본이고,
    *      두 벌이 되면 메뉴 이름과 시트 머리 이름이 갈린다.
    */
-  async function openPage(path: string, title: string, from: 'tools' | null = null) {
+  async function openPage(path: string, title: string, from: Tool | null = null) {
     if (!(await ensureSeat())) return
+    const covered = COVERED_BY_SHEET[path.split(/[?#]/)[0]]
+    if (covered) { setPageFrom(from); setTool(covered); return }
+    openRawPage(path, title, from)
+  }
+  /** 셀러 화면을 그대로 시트로(`ToolPageSheet`) — 마이용 시트의 깊은 화면도 이리로(닫으면 `from`). */
+  function openRawPage(path: string, title: string, from: Tool | null = null) {
     setPage({ path, title })
     setPageFrom(from)
     setTool('page')
@@ -562,7 +555,12 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           }}
         />
       )}
-      {tool === 'voucherNew' && <VoucherNewSheet onClose={() => { const back = pageFrom; setPageFrom(null); setTool(back) }} onCreated={() => { state.refetch(); setPage({ path: '/seller/group-buy', title: '이용권' }); setPageFrom(null); setTool('page') }} />}
+      {tool === 'voucherNew' && <VoucherNewSheet onClose={() => { const back = pageFrom; setPageFrom(null); setTool(back) }} onCreated={() => { state.refetch(); setPage(null); setPageFrom(null); setTool('myVouchers') }} />}
+      {/* 🧾 2026-11-03 마이용 판매 시트 — 닫으면 연 곳으로 · 깊은 화면(고치기·더 보기)·등록은 닫으면 이 시트로 돌아온다. */}
+      {(tool === 'myVouchers' || tool === 'myOrders' || tool === 'myAnalytics') && (
+        <MySalesSheets which={tool} onClose={() => { const back = pageFrom; setPageFrom(null); setTool(back) }}
+          onDeep={(p, t, from) => openRawPage(p, t, from)} onNew={(from) => { setPageFrom(from); setTool('voucherNew') }} />
+      )}
       {/* ↩️ 닫으면 **전체 도구로** 돌아온다 — 도구를 하나 보고 다음 도구를 보는 흐름이 끊기지 않게. */}
       {tool === 'page' && page && (
         <ToolPageSheet

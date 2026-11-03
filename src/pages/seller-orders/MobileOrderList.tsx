@@ -35,14 +35,14 @@ injectMotionCss('ur-m-flash', `@keyframes ur-flash { 0% { background-color: tran
 
 type Tab = 'waiting' | 'preparing' | 'unused' | 'done' | 'refunded' | 'all'
 
-function kstParts(iso: string) {
+export function kstParts(iso: string) {
   const d = parseUTCDate(iso)
   if (Number.isNaN(d.getTime())) return null
   const k = new Date(d.getTime() + 9 * 3600_000)
   return { key: k.toISOString().slice(0, 10), hh: String(k.getUTCHours()).padStart(2, '0'), mm: String(k.getUTCMinutes()).padStart(2, '0'), month: k.getUTCMonth() + 1, day: k.getUTCDate(), dow: k.getUTCDay(), ms: d.getTime() }
 }
-const todayKey = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
-const yesterdayKey = () => new Date(Date.now() - 86400_000 + 9 * 3600_000).toISOString().slice(0, 10)
+export const todayKey = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
+export const yesterdayKey = () => new Date(Date.now() - 86400_000 + 9 * 3600_000).toISOString().slice(0, 10)
 
 export default function MobileOrderList({ orders, onSelect, onConfirm, confirming }: {
   orders: Order[]

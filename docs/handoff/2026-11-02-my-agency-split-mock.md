@@ -61,3 +61,11 @@
 - SNS 최근 게시물: `GET /api/curator/:handle/sns-posts`(`worker/routes/curator/sns-posts.routes.ts`) — 인스타(연동 토큰 `/me/media`)·유튜브(공개 키 업로드 목록).
   틱톡은 `video.list` 권한을 연동 때 안 받아 **아직 없음**. 사람마다 6시간 D1 캐시(`user_sns_recent_posts`, 실패도 빈 캐시). 화면은 진열 아래 lazy.
   가드 `ushop-sns-posts-2026-11-03`(주입 4).
+
+## v9 (2026-11-03) — 마이 판매 시트 마이용 (M1~M5, 대표 "좋다 다 해줘")
+- 이용권·주문·매출 분석을 `ToolPageSheet`(셀러 화면 그대로) 대신 `user-profile/my-sales/*` 마이용 시트로. `COVERED_BY_SHEET` 에 세 주소.
+- 데이터 한 벌: 이용권=`useSellerHome` 훅 + `voucher-actions`(같은 PUT/DELETE) · 주문=같은 캐시 키 + **`seller-orders/useOrderActions`**(셀러 주문 화면의 상태·환불·운송장 코드를 한 글자도 안 바꾸고 옮김 — 두 화면이 같이 씀) · 매출=같은 엔드포인트.
+- 깊은 화면(고치기·재발행·더 보기)은 `openRawPage` 로 셀러 화면을 시트로(닫으면 마이 시트로 복귀). `openPage` 로 열면 자기 자신으로 되돌아와 루프 — 가드가 막음.
+- 가드 `my-sales-sheets-2026-11-03`(주입 5) · 환불 사유 가드 `teardown-losses-restored` 를 훅 파일로 재조준.
+- 렌더 확인: `visual-preview --route=/user/profile --stores=1 --click=…` 세 장(빈 데이터 상태).
+- ⚠️ 범위 밖: 에이전시 콘솔 매장 판(`AgencyStorePlate`)의 '우리 이용권' 은 아직 셀러 화면 그대로. 주문 상세창(`OrderDetailModal`)도 셀러 화면 모양 그대로.
