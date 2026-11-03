@@ -24,3 +24,7 @@
 - `SellerPublicPage`: '이번 주 픽' 히어로 제거 · 이용권 줄 카드 · `StoreInfoSection`(위치·전화·길찾기) · 가게 얼굴 폴백.
 - 상세 `docs/design/store-ushop-plan1-2026-11-03.md`. E4 확인: 배포 뒤 홍대돈까스 유어샵에서 큰 카드가 없고 줄 카드 + 가게 정보가 뜨는지.
 - ⚠️ 영업시간 칸이 없다 — 넣으려면 `seller_meta` 에 새 키(결재 불필요, 구조 결정은 대표).
+
+## 추가 — 홈 줄 카드 안 1 로 재변경 (PR #2143 머지 뒤, 새 PR)
+- 대표가 원래 순서(업체명 → 제목) + 주소 줄 `부산 연제구 · 1.2km` 를 골랐다(시안 CEJKc4RPYp3Yo3QZhn7joP 안 1). 안 2 의 row 전용 분기·`DEAL_ROW_TEXT` 제거.
+- 주입 `home-first-screen.mjs` 제목 앵커를 원래 `HOME_FS_CLASS.title` 로 복귀(주입 시 빨간불 확인).
