@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { ChevronUp, ChevronDown, Play } from 'lucide-react'
+import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom'
+import { HomeIcon } from '@/components/icons/urdeal-icons'
+import { ChevronUp, ChevronDown, Play, Volume2, VolumeX } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -56,6 +57,12 @@ export default function VideosPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const goBack = useSafeBack('/')
+  /**
+   * 🏠 2026-11-03 대표 확정(쇼츠 개선 ⑦) — **링크로 곧장 들어온 사람**(카톡 공유 등)은 뒤로 갈 곳이 없다.
+   *   앱 안에서 넘어온 사람은 뒤로가기가 있으니 안 그린다(2026-09-16 *"닫기 X 제거"* 는 그 사람들 기준이었다).
+   *   판정: react-router 의 첫 항목은 `key === 'default'` 다 — 앱 안에서 한 번이라도 이동했으면 다른 값이 된다.
+   */
+  const landedDirect = useLocation().key === 'default'
   const startVideo = params.get('v')
   const touchY = useRef<number | null>(null)
   const touchAt = useRef(0)
@@ -74,6 +81,20 @@ export default function VideosPage() {
   /** 재생기가 **명령을 받을 수 있는가**. 만들자마자는 아니다 — `onReady` 전에는 호출이 던진다. */
   const [playerReady, setPlayerReady] = useState(false)
   const [paused, setPaused] = useState(false)
+  /**
+   * 🔇 2026-11-03 대표 확정(개선 ①) — **소리 없이 자동 재생**하고 [소리 켜기]를 둔다(릴스·틱톡과 같은 방식).
+   *   휴대폰 브라우저는 소리 있는 자동 재생을 막아서, 종전엔 들어오면 멈춘 채(재생 버튼)로 떴다.
+   *   한 번 켜면 다음 영상도 소리가 난다(재생기는 하나이고 `loadVideoById` 는 음소거 상태를 유지한다).
+   */
+  const [muted, setMuted] = useState(true)
+  const toggleSound = useMemo(() => () => {
+    const p = playerRef.current
+    if (!p) return
+    try {
+      if (muted) { p.unMute(); p.playVideo(); setMuted(false) }
+      else { p.mute(); setMuted(true) }
+    } catch { /* 재생기가 아직 안 익었다 */ }
+  }, [muted])
 
   useEffect(() => {
     let alive = true
@@ -139,7 +160,7 @@ export default function VideosPage() {
     playerRef.current = new YT.Player(mount, {
       videoId: id,
       host: 'https://www.youtube-nocookie.com',
-      playerVars: { ...youTubePlayerVars({ autoplay: true, controls: false }), origin: window.location.origin },
+      playerVars: { ...youTubePlayerVars({ autoplay: true, controls: false, muted: true }), origin: window.location.origin },
       events: {
         onReady: (e) => {
           setPlayerReady(true)
@@ -228,6 +249,7 @@ export default function VideosPage() {
   const thumbOf = (it?: UrShortItem) => it?.thumb_url || it?.product_image || ''
   const prevThumb = thumbOf(items[idx - 1])
   const nextThumb = thumbOf(items[idx + 1])
+  const afterNextThumb = thumbOf(items[idx + 2])
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden overscroll-none bg-[#0A0C12]">
@@ -253,6 +275,8 @@ export default function VideosPage() {
           className="absolute inset-x-0 h-full w-full object-cover" style={{ top: '-100%' }}
           onError={(e) => cfImageOnError(e.currentTarget, prevThumb)} />
       )}
+      {/* ⏭️ 2026-11-03 (쇼츠 개선 ⑩) — 두 칸 뒤 썸네일도 미리 받는다. 빠르게 두 번 넘기면 덮개가 비어 검게 번쩍였다. */}
+      {afterNextThumb && <link rel="prefetch" as="image" href={cfImage(afterNextThumb, { width: 480 })} />}
       {nextThumb && (
         <img src={cfImage(nextThumb, { width: 480 })} alt="" aria-hidden="true"
           className="absolute inset-x-0 h-full w-full object-cover" style={{ top: '100%' }}
@@ -271,7 +295,7 @@ export default function VideosPage() {
       {apiState === 'off' && cur && (
         <iframe
           key={cur.video_id}
-          src={youTubeEmbedUrl(cur.video_id, { autoplay: true, controls: false })}
+          src={youTubeEmbedUrl(cur.video_id, { autoplay: true, controls: false, muted: true })}
           title={cur.title || '유어쇼츠'}
           allow="autoplay; encrypted-media; picture-in-picture"
           allowFullScreen
@@ -279,9 +303,12 @@ export default function VideosPage() {
           className="absolute inset-x-0 w-full border-0"
         />
       )}
-      {cur && coverId === cur.video_id && thumb && (
-        <img src={cfImage(thumb, { width: 480 })} alt="" aria-hidden="true"
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+      {/* 🌫️ 2026-11-03 (쇼츠 개선 ⑩ · 대표 *"전체적으로 부드러운 느낌이 없긴 했는데"*) — 덮개를 **뚝 떼지 않고 흐리게 걷는다.**
+          종전엔 재생이 시작되는 순간 썸네일이 사라져 한 프레임 번쩍였다. 이제 늘 그려 두고 투명도만 바꾼다. */}
+      {cur && thumb && (
+        <img key={cur.video_id} src={cfImage(thumb, { width: 480 })} alt="" aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ease-out"
+          style={{ opacity: coverId === cur.video_id ? 1 : 0 }} data-testid="shorts-cover"
           onError={(e) => cfImageOnError(e.currentTarget, thumb)} />
       )}
       </div>
@@ -366,6 +393,22 @@ export default function VideosPage() {
             <Play size={30} className="ml-1 fill-white text-white" />
           </div>
         </div>
+      )}
+
+      {landedDirect && (
+        <Link to="/" aria-label="유어딜 홈" data-testid="shorts-home"
+          className="absolute left-3 top-[max(12px,env(safe-area-inset-top))] z-20 grid h-10 w-10 place-items-center rounded-full bg-black/45 text-white active:opacity-70">
+          <HomeIcon size={20} aria-hidden="true" />
+        </Link>
+      )}
+
+      {/* 🔇 소리 — 재생기가 있을 때만(폴백 iframe 은 우리가 소리를 못 쥔다). 제스처 층(z-10)보다 위. */}
+      {apiState === 'ready' && (
+        <button type="button" onClick={toggleSound} aria-label={muted ? '소리 켜기' : '소리 끄기'} data-testid="shorts-sound"
+          className="absolute right-3 top-[max(12px,env(safe-area-inset-top))] z-20 flex h-10 items-center gap-1 rounded-full bg-black/45 px-3 text-[13px] font-medium text-white active:opacity-70">
+          {muted ? <VolumeX size={18} aria-hidden="true" /> : <Volume2 size={18} aria-hidden="true" />}
+          {muted && <span>소리 켜기</span>}
+        </button>
       )}
 
       {/* 👆 처음 온 사람에게 **한 번만** "위로 넘기면 다음 영상" — 숫자(1/10)는 대표가 걷어 낸

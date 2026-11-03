@@ -27,6 +27,8 @@ export interface YtPlayer {
   playVideo(): void
   pauseVideo(): void
   getPlayerState(): number
+  mute(): void
+  unMute(): void
   unloadModule(name: string): void
   getIframe(): HTMLIFrameElement
   destroy(): void
