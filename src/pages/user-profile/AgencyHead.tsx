@@ -22,7 +22,7 @@ export default function AgencyHead({ storeCount }: { storeCount: number }) {
       </span>
       <span className="flex-1 min-w-0">
         <span className="block text-[17px] font-bold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{name}</span>
-        <span className="block mt-1 text-[13px] text-gray-500 dark:text-gray-400 truncate">{meta}</span>
+        <span className="block mt-1 text-[13px] text-gray-600 dark:text-gray-300 truncate">{meta}</span>
       </span>
       <AgencyInviteButton />
     </div>

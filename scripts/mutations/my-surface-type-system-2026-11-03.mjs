@@ -17,4 +17,12 @@ export default [
     test: TEST,
     why: '한 목록에 아이콘 있는 줄과 없는 줄이 섞인다.',
   },
+  {
+    name: '🧱 마이 체계 — 에이전시 이름이 다시 흐린 구역 제목이 된다',
+    file: 'src/pages/user-profile/AgencyMergedTitle.tsx',
+    find: 'text-[17px] font-bold tracking-[-0.01em] text-gray-900 dark:text-white truncate">{agencyName',
+    replace: 'text-[17px] font-bold tracking-[-0.01em] text-gray-500 dark:text-white/45 truncate">{agencyName',
+    test: TEST,
+    why: '대표가 "잘 안 보이게 하면 안 돼" 라고 짚은 그 회색.',
+  },
 ]

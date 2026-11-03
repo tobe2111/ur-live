@@ -45,3 +45,14 @@ describe('② 에이전시 줄 = 마이 줄 문법', () => {
     expect(n, '줄을 못 셌다 — 헛도는 검사').toBeGreaterThanOrEqual(8)
   })
 })
+
+describe('③ 에이전시 이름은 흐리게 쓰지 않는다 (2026-11-03 대표 "왜 회색이야")', () => {
+  it('합친 구역 제목(PC)·에이전시 탭 머리 — 이름은 진한 잉크, 아래 줄은 600', () => {
+    const t = readFileSync('src/pages/user-profile/AgencyMergedTitle.tsx', 'utf8')
+    expect(t).toMatch(/text-\[17px\] font-bold[^"]*text-gray-900 dark:text-white[^"]*">\{agencyName/)
+    expect(t).not.toContain('<SectionTitle>')
+    expect(t).toContain('text-[13px] text-gray-600 dark:text-gray-300')
+    const h = readFileSync('src/pages/user-profile/AgencyHead.tsx', 'utf8')
+    expect(h).toContain('text-[13px] text-gray-600 dark:text-gray-300 truncate">{meta}')
+  })
+})
