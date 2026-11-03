@@ -45,7 +45,7 @@ export function AgencyIntro() {
       <ol className="mt-8 flex flex-col gap-3 sm:flex-row sm:gap-2">
         {STEPS.map((s, i) => (
           <li key={s} className="flex flex-1 items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-lift">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-900 text-[12px] font-bold text-white tabular-nums">{i + 1}</span>
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-900 text-[12px] font-medium text-white tabular-nums">{i + 1}</span>
             <span className="text-[13px] font-medium text-gray-800">{s}</span>
           </li>
         ))}

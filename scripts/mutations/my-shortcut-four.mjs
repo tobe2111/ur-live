@@ -16,7 +16,7 @@ export default [
     file: SECTION,
     find: `        <ToolRow
           icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="정산"`,
+          label={agencyOn ? '매장 정산' : '정산'}`,
     replace: `        <ToolRow
           icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="가게"
@@ -26,7 +26,7 @@ export default [
         />
         <ToolRow
           icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="정산"`,
+          label={agencyOn ? '매장 정산' : '정산'}`,
     test: TEST,
     why:
       '한 줄이 늘어도 화면은 안 깨진다 — 그래서 아홉까지 자랐다. 48px 씩 조용히 먹다가 ' +
@@ -66,7 +66,8 @@ export default [
   {
     name: '🧹 줄 세기가 헛돈다 (label 형태가 바뀌어 0개)',
     file: TEST,
-    find: "    const rows = [...mainPlate.matchAll(/^\\s*label=\"([^\"]+)\"$/gm)].map((m) => m[1])",
+    // 🔁 2026-11-03 재조준 — 줄 세는 정규식이 표현식 라벨도 센다(정산 → '매장 정산'). 불변식 그대로.
+    find: "    const rows = [...mainPlate.matchAll(/^\\s*label=(?:\"([^\"]+)\"|\\{agencyOn \\? '[^']+' : '([^']+)'\\})$/gm)].map((m) => m[1] ?? m[2])",
     replace: "    const rows: string[] = []",
     test: TEST,
     why: '이 레포가 반복해 당한 헛도는 가드 — 0개를 세고도 "다섯 이하" 라 통과한다. 하한이 그것을 잡는다.',

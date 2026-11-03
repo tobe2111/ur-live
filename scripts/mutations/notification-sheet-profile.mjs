@@ -10,8 +10,9 @@ export default [
   {
     name: '🔔 마이의 벨이 다시 알림 페이지로 떠난다',
     file: 'src/pages/UserProfilePage.tsx',
-    find: '<button onClick={bell.open} aria-label={t(\'userProfile.ariaNotifications\')}',
-    replace: '<button onClick={() => navigate(\'/notifications\')} aria-label={t(\'userProfile.ariaNotifications\')}',
+    // 🔁 2026-11-03 재조준(안 1 다듬기 — 에이전시 탭 머리·'매장/에이전시 정산' 이름). 불변식 그대로.
+    find: '{!tabbed && <button onClick={bell.open} aria-label={t(\'userProfile.ariaNotifications\')}',
+    replace: '{!tabbed && <button onClick={() => navigate(\'/notifications\')} aria-label={t(\'userProfile.ariaNotifications\')}',
     test: T,
     why: '보던 화면을 떠나므로 스크롤·필터가 날아간다 — 대표가 신고한 바로 그 동작.',
   },

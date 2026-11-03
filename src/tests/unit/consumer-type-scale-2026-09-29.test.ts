@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { stripComments } from '../helpers/source-text'
 
+/** 마이·에이전시 콘솔 — 파일 이름에 seller/agency 가 있어도 손님 화면 체계다(2026-11-03). */
+const MY_SURFACE = /^src\/pages\/(user-profile|agency-console)\//
+
 /**
  * 🔠📐 **소비자 전 화면 — 본문 스케일 다섯 단계 + 4px 격자** (2026-09-29 — 대표가 UI 개선 네 트랙을
  *   전부 승인, 그 ③번).
@@ -69,7 +72,9 @@ const files = execSync(
   { encoding: 'utf8' },
 )
   .trim().split('\n').filter(Boolean)
-  .filter((f) => !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
+  // 🩸 2026-11-03 — 이름에 seller/agency 가 들어간 **마이 안 부품**(내 가게 판 · 에이전시 구역)이 대시보드로 오인돼 빠져 있었다
+  //   (41개 파일 — 대표 *"마이에서 통일감이 없어"*). 마이와 에이전시 콘솔은 손님 화면 체계다 → 이름과 무관하게 넣는다.
+  .filter((f) => MY_SURFACE.test(f) || !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
 
 /** 본문 스케일 — 이 범위(≤25px)에서는 이것뿐이다. */
 const BODY = new Set(['12px', '13px', '15px', '17px', '24px'])

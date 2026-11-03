@@ -68,7 +68,7 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
     <Sheet title="전체 도구" onClose={onClose}>
       <div className="px-4 pt-3 pb-2">
         <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-2">
-          <span className="font-semibold text-gray-900 dark:text-white">{storeName}</span> 의 판매 도구예요.
+          <span className="font-medium text-gray-900 dark:text-white">{storeName}</span> 의 판매 도구예요.
           모두 여기서 바로 열려요. <ExternalLink size={11} className="inline -mt-0.5" aria-hidden="true" /> 표시(계산대)만
           전체 화면으로 열리고, 그 위에 돌아오는 버튼이 있어요.
         </p>
@@ -93,7 +93,7 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
       <div className="px-4 pb-4 space-y-4">
         {groups.map(([group, items], gi) => (
           <section key={group} className="ur-tools-in" style={{ ['--i' as string]: gi }}>
-            {group && <h3 className="px-1 mb-2 text-[12px] font-bold text-gray-400">{group}</h3>}
+            {group && <h3 className="px-1 mb-2 text-[12px] font-medium text-gray-400">{group}</h3>}
             <div className="overflow-hidden rounded-xl bg-surface shadow-lift">
               {items.map(({ path, label, icon: Icon }) => {
                 // 🚪 대시보드 대신 갈 **전용 길**(`OWN_PATH`). 등록은 시트라 나가지 않고, 계산대만 전체화면이다.
@@ -107,7 +107,7 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
                     className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-rule last:border-b-0 active:opacity-70"
                   >
                     <Icon size={18} strokeWidth={1.8} className="shrink-0 text-gray-400" aria-hidden="true" />
-                    <span className="flex-1 truncate text-[15px] font-semibold text-gray-900 dark:text-white">{label}</span>
+                    <span className="flex-1 truncate text-[15px] font-medium text-gray-900 dark:text-white">{label}</span>
                     {/* 나가는 도구만 표시한다 — 대부분은 여기서 열리므로 표시가 없는 게 기본이다. */}
                     {leaves
                       ? <ExternalLink size={14} className="shrink-0 text-gray-300 dark:text-gray-600" aria-label="전체 화면으로 열림" />

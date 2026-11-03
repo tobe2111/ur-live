@@ -97,7 +97,9 @@ describe('🧹 마이 판매 바로가기 — 넷 + 전체 도구 (2026-09-30)',
     //   (판매 판의 바로가기가 아니다). 그 판이 조건부·별도 판인지는 `life-credits-my-2026-10-26` 이 지킨다.
     const mainPlate = code.replace(/\{store\?\.life_credits != null && \([\s\S]*?\n\s{6}\)\}/, '')
     expect(mainPlate.length, '생활 판을 떼어 내지 못했다').toBeLessThan(code.length)
-    const rows = [...mainPlate.matchAll(/^\s*label="([^"]+)"$/gm)].map((m) => m[1])
+    // 🔁 2026-11-03 — 정산 줄 이름이 표현식(`label={agencyOn ? '매장 정산' : '정산'}`)이 됐다. 그 줄도 센다
+    //   (안 세면 줄이 하나 늘어도 4+1=5 로 통과했다 — 주입이 잡았다).
+    const rows = [...mainPlate.matchAll(/^\s*label=(?:"([^"]+)"|\{agencyOn \? '[^']+' : '([^']+)'\})$/gm)].map((m) => m[1] ?? m[2])
     expect(rows.length, '도구 줄을 못 셌다 — 이 검사가 헛돌고 있다').toBeGreaterThan(0)
     const extra = ['오늘 매출'].filter((t) => code.includes(`>${t}</span>`))
     if (code.includes('<StoreNotifButton variant="row"')) extra.push('판매 알림')

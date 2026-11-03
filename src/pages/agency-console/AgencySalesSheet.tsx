@@ -47,7 +47,7 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
         <div className="flex gap-1" role="tablist">
           {PERIODS.map((p) => (
             <button key={p.key} type="button" role="tab" aria-selected={period === p.key} onClick={() => setPeriod(p.key)}
-              className={`h-8 rounded-full px-3 text-[12px] font-semibold ${period === p.key ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300'}`}>
+              className={`h-8 rounded-full px-3 text-[12px] font-medium ${period === p.key ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300'}`}>
               {p.label}
             </button>
           ))}
@@ -57,7 +57,7 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
       {error ? (
         <div className="px-4 py-6 text-center">
           <p className="text-[13px] text-tone-bad">{error}</p>
-          <button type="button" onClick={() => setNonce((n) => n + 1)} className="mt-2 text-[13px] font-semibold text-brand-text underline">다시 시도</button>
+          <button type="button" onClick={() => setNonce((n) => n + 1)} className="mt-2 text-[13px] font-medium text-brand-text underline">다시 시도</button>
         </div>
       ) : !data ? (
         <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">불러오는 중…</p>
@@ -77,12 +77,12 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
             ))}
           </dl>
           <div className="mx-4 mt-4 rounded-xl bg-gray-50 dark:bg-white/5 px-3 py-3">
-            <p className="text-[13px] font-semibold text-gray-900 dark:text-white">
+            <p className="text-[13px] font-medium text-gray-900 dark:text-white">
               {data.share?.pct == null
                 ? '우리 몫: 사장님이 아직 정하지 않았어요'
                 : `우리 몫 ${formatNumber(data.share.amount)}원 (${data.share.pct}%)`}
             </p>
-            <p className="mt-0.5 text-[12px] leading-[1.55] text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-[12px] leading-[1.55] text-gray-500 dark:text-gray-400">
               환불 안 된 판매에만 붙어요. 돈은 매장이 직접 보내고, 세금계산서는 우리가 매장에 발행해요.
             </p>
           </div>
@@ -93,7 +93,7 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
               {data.items.map((it) => (
                 <li key={it.id} className="flex items-center gap-3 px-4 py-3">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-semibold text-gray-900 dark:text-white">{it.productName}</span>
+                    <span className="block truncate text-[15px] font-medium text-gray-900 dark:text-white">{it.productName}</span>
                     <span className="block text-[12px] text-gray-400 dark:text-gray-500">{formatKSTShort(it.soldAt)}</span>
                   </span>
                   <span className="shrink-0 text-right">

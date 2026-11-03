@@ -83,7 +83,7 @@ describe('③ "홈페이지에 넣기" — 번호를 몰라도 되게', () => {
     const s = code('src/pages/agency-console/AgencyStoresPanel.tsx')
     expect(s).toMatch(/const agencyId = readAgencyProfile\(\)\?\.agency\.id \?\? null/)
     // 🔁 2026-11-02 재조준 — 큰 카드가 에이전시 줄('홈페이지에 넣기 · 코드 받기')이 됐다.
-    expect(s).toMatch(/agencyId != null && <FlatRow label="홈페이지에 넣기"/)          // 번호를 모르면 줄을 안 그린다
+    expect(s).toMatch(/agencyId != null && <FlatRow icon=\{[^\n]*?\} label="홈페이지에 넣기"/)          // 번호를 모르면 줄을 안 그린다
     expect(s).toMatch(/openEmbedCode\('agency', agencyId\)/)
   })
 

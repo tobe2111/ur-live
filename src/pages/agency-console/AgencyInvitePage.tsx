@@ -45,7 +45,7 @@ export default function AgencyInvitePage() {
 
   if (lookupError) {
     return (
-      <AgencyAuthShell title="초대 링크를 쓸 수 없어요" footer={<Link to="/agency/login" className="font-semibold text-gray-700">로그인으로</Link>}>
+      <AgencyAuthShell title="초대 링크를 쓸 수 없어요" footer={<Link to="/agency/login" className="font-medium text-gray-700">로그인으로</Link>}>
         <SEO title="에이전시 합류 - 유어딜" description="유어딜 에이전시 직원 합류" url="/agency/invite" noindex />
         <p className="text-[15px] text-gray-700">{lookupError}</p>
         <p className="mt-3 text-[13px] text-gray-500">초대한 관리자에게 메일을 다시 보내 달라고 해 주세요.</p>
