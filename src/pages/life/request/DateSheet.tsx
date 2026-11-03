@@ -86,7 +86,7 @@ export function DateSheet({ f, value, lucky, onDone, onClose }: {
       {multi && (
         <p className="pt-3 text-[13px] text-gray-500 dark:text-gray-400">
           {picked.length
-            ? <><span className="block font-medium text-ink">{picked.map(md).join(' · ')}</span>가능한 날을 여러 개 고를 수 있어요(최대 {MAX_MULTI_DATES}일)</>
+            ? <><span className="block font-medium text-ink">{picked.map(md).join(', ')}</span>가능한 날을 여러 개 고를 수 있어요(최대 {MAX_MULTI_DATES}일)</>
             : `가능한 날을 여러 개 고를 수 있어요(최대 ${MAX_MULTI_DATES}일)`}
         </p>
       )}
