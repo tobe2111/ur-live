@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-03",
+  "reason": "PR #2140(1ddc14d, 카카오 로그인 PC 메뉴 수리)이 app-utils(auth-callback-bootstrap·consumer-session-event) +0.9KB · app-shell(DesktopTopNav) +0.6KB 를 전 화면에 더했고 main 의 5d2309e 는 home 만 갱신했다. 이 PR 의 변경(숙소 상세·셀러 화면)을 빼고 빌드해도 같은 값(실측) — 숙소 통일 A 와 무관",
+  "surfaces": [
+    "__boot__",
+    "homePc",
+    "voucherDetail",
+    "linkshop",
+    "browse",
+    "urshorts",
+    "cart",
+    "faq",
+    "life",
+    "dash:agency"
+  ],
+  "changes": [
+    "__boot__: 153.5 → 155.0 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "homePc: 204.7 → 206.3 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "voucherDetail: 178.7 → 180.3 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "linkshop: 195.1 → 196.7 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "browse: 180.9 → 182.5 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "urshorts: 177.0 → 178.7 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "cart: 184.4 → 186.1 KB (+1.7, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "faq: 178.9 → 180.5 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "life: 184.6 → 186.2 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "dash:agency: 154.9 → 156.4 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6"
+  ]
+}
