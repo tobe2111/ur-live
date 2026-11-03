@@ -115,8 +115,9 @@ export default [
   {
     name: '유어샵 — 마퀴를 되살린다 (순수 검정 띠가 첫인상을 먹는다)',
     file: HEADER,
-    find: '  return (\n    <header className="bg-surface dark:bg-warm">',
-    replace: '  return (\n    <header className="bg-surface dark:bg-warm">\n      <div className="animate-marquee">{curator.headline}</div>',
+    // 🔄 2026-11-03 재조준 — 유어샵 B 로 머리 바탕이 `bg-warm` 이 됐다(막는 것은 그대로: 마퀴 복귀).
+    find: '  return (\n    <header className="bg-warm">',
+    replace: '  return (\n    <header className="bg-warm">\n      <div className="animate-marquee">{curator.headline}</div>',
     test: T_TOP,
     why:
       '대표 *"배고프다 뭐먹지?는 아예 빼기"*. 라이브 실측에서 그 띠가 **순수 검정 `#000000`** 이었다 — ' +
