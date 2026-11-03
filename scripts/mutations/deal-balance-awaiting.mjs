@@ -26,7 +26,7 @@ export default [
   {
     name: '🧮 숫자를 모를 때 0 을 적는다 (잠깐 거짓 잔액을 보여 준다)',
     file: CARD,
-    find: 'awaiting ? <span className="inline-block w-[2.2em] h-[0.72em] rounded bg-wash align-baseline" aria-hidden="true" /> : formatNumber(balance)',
+    find: 'awaiting ? <span className="inline-block w-[2.2em] h-[0.72em] rounded bg-wash align-baseline" aria-hidden="true" /> : formatNumber(shown ?? balance)',
     replace: 'formatNumber(balance ?? 0)',
     test: TEST,
     why: '모르는 것과 0 은 다르다. 0 을 보여 주면 딜을 가진 사람에게 잠깐 "잔액 없음" 이라고 말하는 셈이다.',

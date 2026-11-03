@@ -23,6 +23,9 @@ import { ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserIdSync } from '@/utils/auth'
 import type { SeedingOffer } from '@/shared/seeding'
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
+// 🎬 2026-11-03 16차 ⑧ — 적립 % 가 도착하면(자리만 잡혀 있던 '딜 00%' → 실제 값) 톡 튀며 나타난다. 약정이 없으면('수수료 없음') 움직이지 않는다.
+injectMotionCss('ur-m-sellthis', `@keyframes ur-st-pop { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.15); } 100% { transform: none; } }.ur-st-pop { display: inline-block; animation: ur-st-pop .38s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-st-pop{animation:none!important}}`)
 // 창은 누를 때만 받는다 — 상세 첫 화면 무게에 넣지 않는다(surface-budgets).
 const SellThisSheet = lazy(() => import('./SellThisSheet'))
 
@@ -72,7 +75,7 @@ export default function SellThisCard({ productId, price, sellerId, hideForOwner:
         className="flex h-[52px] w-full items-center gap-3 bg-transparent px-4 text-left">
         <span className="min-w-0 flex-1 text-[15px] font-medium text-gray-900 dark:text-white">이 이용권 팔기</span>
         {deal !== null && (
-          <span data-sell-value className={`shrink-0 text-[13px] ${deal === 'loading' ? 'invisible' : ''} ${typeof deal === 'number' && deal > 0 ? 'font-medium text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>
+          <span data-sell-value className={`shrink-0 text-[13px] ${deal === 'loading' ? 'invisible' : ''} ${typeof deal === 'number' && deal > 0 ? 'font-medium text-brand-text ur-st-pop' : 'text-gray-500 dark:text-gray-400'}`}>
             {typeof deal === 'number' && deal > 0 ? `딜 ${deal}%` : deal === 'loading' ? '딜 00%' : '수수료 없음'}
           </span>
         )}

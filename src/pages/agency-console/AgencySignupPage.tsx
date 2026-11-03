@@ -9,6 +9,7 @@ import { KAKAO_SOLO_NOTICE } from '@/shared/agency-kakao'
 import { AgencyAuthShell, Field, FormError, PasswordRules, inputCls, primaryBtnCls } from './AgencyAuthShell'
 import { agencyMyPath, agencyRequest } from './agency-api'
 import { createKakaoAgency } from './agency-kakao-client'
+import { formatBizNo } from '@/utils/format-kr' // 🔢 사업자등록번호 000-00-00000 자동 하이픈(2026-11-03 대표 — 모든 입력란)
 
 type Kind = 'business' | 'individual'
 type Via = 'email' | 'kakao'
@@ -133,7 +134,7 @@ export default function AgencySignupPage() {
         </Field>
         {kind === 'business' && (
           <Field label="사업자등록번호" hint="숫자 10자리. 하이픈은 있어도 없어도 돼요.">
-            <input required inputMode="numeric" value={bizNo} onChange={(e) => setBizNo(e.target.value)} disabled={busy}
+            <input required inputMode="numeric" value={bizNo} onChange={(e) => setBizNo(formatBizNo(e.target.value))} maxLength={12} disabled={busy}
               placeholder="123-45-67890" className={inputCls} />
           </Field>
         )}

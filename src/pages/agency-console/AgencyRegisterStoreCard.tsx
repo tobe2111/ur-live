@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { toast } from '@/hooks/useToast'
 import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
 import { agencyRequest } from './agency-api'
+import { formatBizNo } from '@/utils/format-kr' // 🔢 사업자등록번호 000-00-00000 자동 하이픈(2026-11-03 대표 — 모든 입력란)
 
 interface Registered { sellerId: number; claimCode: string | null; claimUrl: string | null }
 
@@ -94,7 +95,7 @@ export function AgencyRegisterStoreCard({ onRegistered }: { onRegistered: () => 
             <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="010-0000-0000" className={FIELD_CLS} />
           </label>
           <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-200">사업자번호 <span className="font-normal text-gray-400 dark:text-gray-500">(선택 — 사장님 매장 것)</span>
-            <input value={bno} onChange={(e) => setBno(e.target.value)} inputMode="numeric" placeholder="000-00-00000" className={FIELD_CLS} />
+            <input value={bno} onChange={(e) => setBno(formatBizNo(e.target.value))} inputMode="numeric" maxLength={12} placeholder="000-00-00000" className={FIELD_CLS} />
           </label>
           <label className="flex items-start gap-2 text-[13px] text-gray-700 dark:text-gray-200">
             <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-brand" />

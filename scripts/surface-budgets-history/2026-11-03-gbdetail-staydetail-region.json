@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-03",
+  "reason": "2026-11-03 모션 16·17차(대표 '모두 적용') — 상세 사진 시차·흐림→선명(+1.0) · 알림 메시지 남은 시간 막대(셸 +0.5) · 지역 페이지 칩/세기(+0.8). 지도 묶음이 숙소 목록에 끌려오던 아이콘(+38KB)은 걷어냈다.",
+  "surfaces": [
+    "gbDetail",
+    "stayDetail",
+    "region"
+  ],
+  "changes": [
+    "gbDetail: 207.6 → 209.2 KB (+1.6, 허용 1.5) · 늘어난 것: lz-gbDetail.js +1.0, app-shell.js +0.5",
+    "stayDetail: 213.8 → 215.6 KB (+1.7, 허용 1.5) · 늘어난 것: lz-gbDetail.js +1.0, app-shell.js +0.5, StayDetailPage.js +0.3",
+    "region: 202.3 → 203.9 KB (+1.5, 허용 1.5) · 늘어난 것: app-shell.js +0.5, RegionIndexPage.js +0.5, RegionPage.js +0.3"
+  ]
+}

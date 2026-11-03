@@ -1,0 +1,223 @@
+<title>모션 17차 시안</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+:root {
+  --page: #F3F4F7; --page-fg: #16181C; --page-soft: #666C72; --page-rule: rgba(22,24,28,.1); --brand: #1C69EF;
+  --font: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark } }
+:root[data-theme="dark"] { --page: #0B0D12; --page-fg: #F8F7FC; --page-soft: #9FA3A8; --page-rule: rgba(255,255,255,.1); color-scheme: dark }
+.scr {
+  --bg: #FFFFFF; --sub: #F3F4F7; --ink: #16181C; --ink-soft: #666C72; --ink-faint: #81868C;
+  --rule: rgba(22,24,28,.08); --rule-strong: rgba(22,24,28,.28); --brand-text: #1C69EF; --brand-tint: #EAF1FE; --star: #F5A524;
+  --photo1: linear-gradient(135deg,#F2D9C9,#C9D8F2); --photo2: linear-gradient(135deg,#D3E8D6,#E9DCC6); --photo3: linear-gradient(135deg,#E6D3EB,#D0DEF0);
+}
+.scr[data-mode="dark"] {
+  --bg: #11141C; --sub: #262A36; --ink: #F8F7FC; --ink-soft: #9FA3A8; --ink-faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --rule-strong: rgba(255,255,255,.32); --brand-text: #4D8DF5; --brand-tint: #16243D;
+  --photo1: linear-gradient(135deg,#4A3729,#2B3A57); --photo2: linear-gradient(135deg,#2C4430,#4A3E2B); --photo3: linear-gradient(135deg,#40304A,#293A52);
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-fg); font-family: var(--font); margin: 0; }
+button { font-family: var(--font); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-inline: 16px; }
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+.lede { font-size: 15px; color: var(--page-soft); margin: 0 0 20px; line-height: 1.6; max-width: 66ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.ctl { font-weight: 500; font-size: 15px; height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); cursor: pointer; }
+.ctl.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ctl:focus-visible, .scr button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.list { display: grid; gap: 40px; }
+.item { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .item { grid-template-columns: 1fr; } }
+.item h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.item h3 .n { color: var(--brand); margin-right: 6px; }
+.item p { font-size: 13px; color: var(--page-soft); line-height: 1.65; margin: 0 0 8px; }
+.item p b { color: var(--page-fg); font-weight: 500; }
+.replay { margin-top: 4px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--page-rule); background: transparent; color: var(--page-fg); font-size: 13px; cursor: pointer; }
+.scr { position: relative; height: 300px; border-radius: 22px; background: var(--bg); color: var(--ink); overflow: hidden; box-shadow: 0 0 0 1px var(--page-rule); font-size: 15px; }
+.pad { padding: 16px; }
+.ico { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.run .st { animation: rise .4s cubic-bezier(.2,.9,.3,1) backwards; animation-delay: calc(var(--i) * 70ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+.hd { padding: 14px 16px 6px; font-size: 17px; font-weight: 700; }
+.row { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--rule); font-size: 13px; cursor: pointer; transition: transform .12s ease, background-color .12s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
+.row .ph { width: 52px; height: 52px; border-radius: 10px; background: var(--photo1); flex: none; }
+.row:nth-child(2n) .ph { background: var(--photo2); } .row:nth-child(3n) .ph { background: var(--photo3); }
+.row b { display: block; font-size: 15px; font-weight: 500; }
+.row small { color: var(--ink-soft); font-size: 13px; }
+.row .p { margin-left: auto; font-weight: 700; font-size: 15px; }
+.press .row:active, .press .row.down { transform: scale(.975); background-color: var(--sub); }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; color: var(--brand); background: rgba(28,105,239,.12); padding: 2px 8px; border-radius: 999px; margin-bottom: 6px; }
+
+/* 2 시차 */
+#s2 .sc { position: absolute; inset: 0; overflow-y: auto; }
+#s2 .hero { height: 190px; overflow: hidden; position: relative; }
+#s2 .hero i { position: absolute; inset: -30px 0 0; background: linear-gradient(160deg, #BFD5F5, #EAD9C8); will-change: transform; }
+[data-mode="dark"] #s2 .hero i { background: linear-gradient(160deg, #23324A, #3A3026); }
+#s2 .body { position: relative; background: var(--bg); padding: 16px; border-radius: 16px 16px 0 0; margin-top: -16px; }
+#s2 .body b { font-size: 17px; } #s2 .body p { height: 40px; border-radius: 8px; background: var(--sub); margin: 12px 0 0; }
+
+/* 3 큰 제목 */
+#s3 .sc { position: absolute; inset: 0; overflow-y: auto; }
+#s3 .bar { position: sticky; top: 0; z-index: 2; height: 46px; display: flex; align-items: center; justify-content: center; background: var(--bg); font-size: 15px; font-weight: 700; }
+#s3 .bar span { opacity: 0; transition: opacity .2s; } #s3 .bar.on { box-shadow: 0 1px 0 var(--rule); } #s3 .bar.on span { opacity: 1; }
+#s3 .big { padding: 4px 16px 12px; font-size: 24px; font-weight: 800; transform-origin: left; }
+#s3 .card { height: 64px; margin: 0 16px 10px; border-radius: 12px; background: var(--sub); }
+
+/* 4 빈 화면 */
+.em { text-align: center; padding-top: 56px; }
+.em svg { width: 64px; height: 64px; fill: none; stroke: var(--ink-soft); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.em path { stroke-dasharray: 120; stroke-dashoffset: 120; }
+.run4 .em path { animation: draw .9s ease-out forwards; } .run4 .em path:nth-child(2) { animation-delay: .35s; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.em b { display: block; font-size: 15px; margin-top: 10px; } .em small { color: var(--ink-soft); font-size: 13px; }
+.run4 .em b, .run4 .em small { animation: rise .4s cubic-bezier(.2,.9,.3,1) .5s backwards; }
+
+/* 5 알림 메시지 남은 시간 */
+.toast { position: absolute; left: 16px; right: 16px; top: 20px; border-radius: 999px; background: rgba(255,255,255,.92); box-shadow: 0 6px 20px rgba(0,0,0,.15); padding: 12px 18px; font-size: 15px; color: #16181C; overflow: hidden; opacity: 0; transform: translateY(-120%); transition: transform .3s cubic-bezier(.2,1,.3,1), opacity .2s; }
+[data-mode="dark"] .toast { background: rgba(40,44,56,.92); color: #F8F7FC; }
+.toast.on { opacity: 1; transform: none; }
+.toast i { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--brand); transform-origin: left; }
+.toast.on i { animation: ttl 3s linear forwards; } @keyframes ttl { to { transform: scaleX(0); } }
+
+/* 6 다시 시도 */
+.er { text-align: center; padding-top: 50px; font-size: 15px; }
+.er small { display: block; color: var(--ink-soft); font-size: 13px; margin: 4px 0 18px; }
+.er button { height: 44px; padding: 0 18px; border-radius: 12px; border: 0; background: var(--brand); color: #fff; font: 700 15px var(--font); display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.er svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.er button.spin svg { animation: spin .7s cubic-bezier(.4,0,.2,1) 2; } @keyframes spin { to { transform: rotate(360deg); } }
+
+/* 7 블러업 */
+.gal { margin: 16px; height: 200px; border-radius: 14px; overflow: hidden; position: relative; background: var(--sub); }
+.gal i { position: absolute; inset: 0; background: linear-gradient(135deg, #E9B98F 0 30%, #7FA6D9 30% 60%, #9BC49F 60%); transition: filter .5s ease, transform .5s ease; }
+.gal.lo i { filter: blur(14px); transform: scale(1.08); }
+.dots { display: flex; justify-content: center; gap: 6px; } .dots span { width: 6px; height: 6px; border-radius: 3px; background: var(--rule-strong); } .dots span.on { width: 16px; background: var(--brand); }
+
+/* 8 글자 수 원 */
+.rvw { padding: 16px; }
+.rvw textarea { width: 100%; height: 110px; border-radius: 12px; border: 1px solid var(--rule-strong); background: var(--bg); color: var(--ink); padding: 12px; font: 15px var(--font); resize: none; }
+.cntr { display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin-top: 8px; font-size: 13px; color: var(--ink-soft); }
+.ring { width: 22px; height: 22px; }
+.ring circle { fill: none; stroke-width: 3; } .ring .bg { stroke: var(--rule-strong); } .ring .fg { stroke: var(--brand); stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset .2s ease; }
+.ring path { fill: none; stroke: var(--brand); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; }
+.ring.done path { animation: draw .25s ease-out forwards; } .ring.done .fg { opacity: 0; }
+
+/* 9 끝 표시 */
+#s9 .sc { position: absolute; inset: 0; overflow-y: auto; }
+.end { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 22px 0 30px; color: var(--ink-soft); font-size: 13px; opacity: 0; transform: translateY(8px); transition: opacity .35s, transform .35s cubic-bezier(.2,.9,.3,1); }
+.end.on { opacity: 1; transform: none; }
+.end span { width: 28px; height: 28px; border-radius: 50%; background: var(--brand-tint); display: grid; place-items: center; }
+.end svg { width: 16px; height: 16px; fill: none; stroke: var(--brand-text); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; }
+.end.on svg { animation: draw .3s .15s ease-out forwards; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; } }
+</style>
+<div class="wrap">
+  <h1>모션 17차 시안</h1>
+  <p class="lede">이번엔 화면을 바꿔 같은 움직임을 다시 내지 않고, <b>지금까지 한 번도 안 쓴 종류</b>만 골랐어요. 각 항목 위 파란 꼬리표가 그 종류예요. 직접 눌러 보거나 스크롤해 보세요.</p>
+  <div class="controls">
+    <button class="ctl primary" id="all">전부 다시 보기</button>
+    <button class="ctl" id="mode">다크 모드로 보기</button>
+  </div>
+  <div class="list">
+
+    <div class="item">
+      <div class="scr press" id="s1"><div class="hd">근처 이용권</div><div id="l1"></div></div>
+      <div><span class="tag">새 종류 · 누름 반응</span><h3><span class="n">1</span>목록 줄 · 누르는 순간</h3>
+        <p>홈·지도·검색 목록 줄을 <b>누르는 동안 살짝 들어가고 배경이 옅게</b> 칠해져요. 손을 떼면 돌아와요. 지금은 누른 순간 아무 반응이 없어서 '눌렸나?' 싶어요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s2"><div class="sc" id="sc2"><div class="hero"><i id="hi"></i></div><div class="body"><b>오션뷰 스테이</b><p></p><p></p><p></p><p></p><p></p><p></p></div></div></div>
+      <div><span class="tag">새 종류 · 스크롤 시차</span><h3><span class="n">2</span>숙소·이용권 상세 · 큰 사진</h3>
+        <p>안쪽을 스크롤해 보세요. 큰 사진이 <b>글보다 천천히 올라가</b> 깊이감이 생겨요. 글 판은 사진 위로 덮으며 올라와요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s3"><div class="sc" id="sc3"><div class="bar" id="bar3"><span>내 이용권</span></div><div class="big" id="big3">내 이용권</div><div class="card"></div><div class="card"></div><div class="card"></div><div class="card"></div><div class="card"></div><div class="card"></div></div></div>
+      <div><span class="tag">새 종류 · 큰 제목 접힘</span><h3><span class="n">3</span>지갑(내 이용권) · 제목</h3>
+        <p>스크롤하면 큰 제목이 <b>작아지며 사라지고, 위 막대에 같은 제목이</b> 나타나요. 아이폰 기본 앱들처럼요. 지금은 큰 제목이 그대로 밀려 올라가 사라져요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s4"><div class="em"><svg viewBox="0 0 64 64"><path d="M32 54s-20-11.5-20-27a11 11 0 0 1 20-6.5A11 11 0 0 1 52 27c0 15.5-20 27-20 27z"/><path d="M24 30l6 6 10-11"/></svg><b>아직 찜한 게 없어요</b><small>마음에 드는 이용권에 하트를 눌러 보세요</small></div></div>
+      <div><span class="tag">새 종류 · 선 그리기</span><h3><span class="n">4</span>빈 화면 · 그림</h3>
+        <p>찜·쿠폰·주문이 비어 있을 때 가운데 그림이 <b>선을 따라 그려지며</b> 나타나요. 빈 화면이 '고장 난 화면'처럼 보이지 않아요.</p>
+        <button class="replay" data-r="4">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s5"><div class="toast" id="t5">찜 목록에 담았어요<i></i></div><div style="position:absolute;left:16px;right:16px;bottom:20px"><button class="ctl primary" style="width:100%" id="b5">알림 띄우기</button></div></div>
+      <div><span class="tag">새 종류 · 남은 시간</span><h3><span class="n">5</span>알림 메시지(토스트)</h3>
+        <p>위에 뜨는 알림 아래 <b>얇은 막대가 줄어들며</b> 언제 사라질지 보여 줘요. 다 읽기 전에 사라질까 조마조마하지 않아요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s6"><div class="er"><b>불러오지 못했어요</b><small>네트워크 상태를 확인해 주세요</small><button id="b6"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>다시 시도</button></div></div>
+      <div><span class="tag">새 종류 · 다시 시도 반응</span><h3><span class="n">6</span>불러오기 실패 · 다시 시도</h3>
+        <p>'다시 시도'를 누르면 화살표가 <b>한 바퀴 돌며</b> 다시 불러오는 중임을 보여 줘요. 지금은 눌러도 반응이 없어 여러 번 누르게 돼요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s7"><div class="gal lo" id="g7"><i></i></div><div class="dots"><span></span><span class="on"></span><span></span></div></div>
+      <div><span class="tag">새 종류 · 흐림→선명</span><h3><span class="n">7</span>상세 사진 · 넘길 때</h3>
+        <p>다음 사진으로 넘길 때 아직 덜 받은 사진이 <b>흐리게 먼저 보이고 선명해져요.</b> 회색 빈칸이 깜빡이지 않아요(첫 사진은 그대로 — 빨리 보여야 하니까).</p>
+        <button class="replay" data-r="7">다시 보기</button></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s8"><div class="rvw"><textarea id="ta8" placeholder="어떠셨나요? 10자 이상 써 주세요"></textarea>
+        <div class="cntr"><span id="c8">0 / 10</span><svg class="ring" id="r8" viewBox="0 0 22 22"><circle class="bg" cx="11" cy="11" r="8"/><circle class="fg" id="f8" cx="11" cy="11" r="8" stroke-dasharray="50.3" stroke-dashoffset="50.3"/><path d="M6.5 11.5l3 3 6-6.5"/></svg></div></div></div>
+      <div><span class="tag">새 종류 · 채워지는 원</span><h3><span class="n">8</span>리뷰 쓰기 · 글자 수</h3>
+        <p>칸에 직접 써 보세요. 쓸수록 <b>작은 원이 차오르고</b>, 10자를 넘기면 체크로 바뀌어요. 얼마나 더 써야 하는지 숫자를 안 읽어도 보여요.</p></div>
+    </div>
+
+    <div class="item">
+      <div class="scr" id="s9"><div class="sc" id="sc9"><div id="l9"></div><div class="end" id="end9"><span><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>여기까지 다 봤어요</div></div></div>
+      <div><span class="tag">새 종류 · 끝 알림</span><h3><span class="n">9</span>목록 끝</h3>
+        <p>안쪽을 끝까지 스크롤해 보세요. 마지막에 닿으면 <b>체크와 '여기까지 다 봤어요'</b>가 스르르 나와요. 더 불러오는 중인지, 끝인지 헷갈리지 않아요.</p></div>
+    </div>
+
+  </div>
+  <p class="lede" style="margin-top:40px">💡 16차 때 말씀드린 <b>"같은 움직임을 다른 화면에도 넓히기"</b>는 따로 묶어서 보여 드릴게요. 원하시면 "넓히기 목록 보여줘"라고 해 주세요.</p>
+</div>
+<script>
+const $ = (s) => document.querySelector(s)
+const restart = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls) }
+const ROWS = [['돼지명가 삼겹살 2인', '서면 · 350m', '19,900원'], ['네일 스튜디오 젤', '전포 · 600m', '29,000원'], ['헤어살롱 모아 커트', '부전 · 900m', '15,000원'], ['오션뷰 스테이 1박', '해운대 · 7km', '98,000원']]
+const rows = (n) => ROWS.concat(ROWS).slice(0, n).map(([a, b, p]) => `<div class="row"><div class="ph"></div><div><b>${a}</b><small>${b}</small></div><span class="p">${p}</span></div>`).join('')
+// 1
+$('#l1').innerHTML = rows(4)
+document.querySelectorAll('#l1 .row').forEach((r) => { r.onpointerdown = () => r.classList.add('down'); r.onpointerup = r.onpointerleave = () => r.classList.remove('down') })
+// 2
+$('#sc2').onscroll = (e) => { $('#hi').style.transform = `translateY(${e.target.scrollTop * 0.45}px)` }
+// 3
+$('#sc3').onscroll = (e) => { const y = e.target.scrollTop, k = Math.min(1, y / 44); $('#big3').style.transform = `scale(${1 - k * 0.3})`; $('#big3').style.opacity = 1 - k; $('#bar3').classList.toggle('on', y > 36) }
+// 4
+const r4 = () => restart($('#s4'), 'run4')
+// 5
+$('#b5').onclick = () => { const t = $('#t5'); t.classList.remove('on'); void t.offsetWidth; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 3000) }
+// 6
+$('#b6').onclick = () => restart($('#b6'), 'spin')
+// 7
+const r7 = () => { const g = $('#g7'); g.classList.add('lo'); setTimeout(() => g.classList.remove('lo'), 700) }
+// 8
+$('#ta8').oninput = (e) => { const n = e.target.value.trim().length; $('#c8').textContent = `${Math.min(n, 999)} / 10`; $('#f8').setAttribute('stroke-dashoffset', 50.3 * (1 - Math.min(1, n / 10))); $('#r8').classList.toggle('done', n >= 10) }
+// 9
+$('#l9').innerHTML = rows(6)
+$('#sc9').onscroll = (e) => { const s = e.target; $('#end9').classList.toggle('on', s.scrollTop + s.clientHeight >= s.scrollHeight - 30) }
+
+const R = { 4: r4, 7: r7 }
+document.querySelectorAll('.replay').forEach((b) => b.onclick = () => R[b.dataset.r]())
+$('#all').onclick = () => { Object.values(R).forEach((f) => f()); $('#b5').click(); $('#b6').click() }
+let dark = matchMedia('(prefers-color-scheme: dark)').matches
+const applyMode = () => { document.querySelectorAll('.scr').forEach((s) => s.dataset.mode = dark ? 'dark' : 'light'); $('#mode').textContent = dark ? '라이트 모드로 보기' : '다크 모드로 보기' }
+$('#mode').onclick = () => { dark = !dark; applyMode() }
+applyMode()
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; io.unobserve(e.target); const id = +e.target.id.slice(1); if (R[id]) R[id]() }), { threshold: .4 })
+document.querySelectorAll('.scr').forEach((s) => io.observe(s))
+</script>
