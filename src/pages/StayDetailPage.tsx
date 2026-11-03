@@ -32,7 +32,7 @@ import AmenityGrid from './stay-detail/AmenityGrid'; import { parseAmenities } f
 import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 // 🏨 첫 화면의 치수 클래스는 워커(`stay-detail-ssr-body`)와 **같은 상수**를 쓴다 — 두 벌이면 갈린다.
 import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID, STAY_BAND } from '@/shared/stay-head'
-import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'
+import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'; import StayPcActions from './stay-detail/StayPcActions' // 🏨 PC 찜·담기·공유(폰 머리는 lg:hidden)
 import BrandLoader from '@/components/brand/BrandLoader'; import { useOwnerManage, OwnerManageBar, OwnerManageCard } from '@/components/deal/useOwnerManage'
 import { peekWarmStay, stayDetailRequest } from './stays/stay-detail-warm'
 
@@ -242,7 +242,7 @@ export default function StayDetailPage() {
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일) + 2026-07-20 테마 정합: 테마-가변 BrandLoader.
   if (loading) return <BrandLoader fullScreen />
-  if (!stay) return <div className="min-h-[100dvh] bg-surface text-gray-900 dark:text-white flex items-center justify-center">숙소를 찾을 수 없습니다</div>
+  if (!stay) return <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white flex items-center justify-center">숙소를 찾을 수 없습니다</div>
 
   // 🎨 2026-07-20 (대표 — "테마 설정이 제대로 안된 것 같아" + "PC 버전으로는 보여지지가 않네"):
   //   하드코딩 다크(#11141C) 전면 → 라이트-first + dark: variants(소비자 토글 표면 정합).
@@ -495,6 +495,8 @@ export default function StayDetailPage() {
         {/* 🖥️ PC 우측 sticky 예약 패널 — B안(2026-09-02). `lg:z-20`: sticky 는 스택 컨텍스트를 만드는데
             z 가 없으면 지도 레이어 아래로 깔린다(달력이 지도에 가려지던 사고). */}
         <aside className="hidden lg:block lg:sticky lg:top-[116px] lg:z-20">
+          {!own && <StayPcActions productId={stay.id} title={stay.restaurant_name || stay.name} description={stayRegionLabel(stay.region_sido, stay.region_sigungu, stay.address) || '숙소 이용권'}
+            imageUrl={stay.image_url || ''} link={`https://urdeal.kr/stays/${stay.id}`} myUserId={localStorage.getItem('user_id') || ''} />}
           {own ? <OwnerManageCard kind="stay" onManage={openManage} /> : <StayBookingPanel
             modeTabs={modeTabs}
             selector={selectorBox}
