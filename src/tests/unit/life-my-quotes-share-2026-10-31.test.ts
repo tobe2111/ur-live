@@ -18,8 +18,10 @@ describe('생활 견적 — 내 요청 · 공유', () => {
   it('① 마이에 내 견적 요청 줄', () => {
     expect(R('src/pages/user-profile/ShoppingGroup.tsx')).toMatch(/path: '\/life\/requests'/)
   })
+  // 🎯 2026-11-03 재조준 — 대표 안 5 로 머리가 `LifeHero.tsx` 로 옮겨갔다(LifePage 는 그것을 그린다).
   it('② /life 첫 카드: 서비스 이름 + 내 견적 요청 문', () => {
-    const s = R('src/pages/life/LifePage.tsx')
+    expect(R('src/pages/life/LifePage.tsx')).toMatch(/<LifeHero /)
+    const s = R('src/pages/life/LifeHero.tsx')
     expect(s).toContain('사장님 생활 견적 서비스')
     expect(s).toMatch(/<Link to="\/life\/requests"[^>]*>\s*내 견적 요청/)
   })
