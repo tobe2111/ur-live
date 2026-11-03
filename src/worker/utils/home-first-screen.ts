@@ -120,7 +120,7 @@ export const HOME_FS_CLASS = {
   discount: 'text-[15px] font-bold text-sale',
   orig: 'text-[12px] line-through text-gray-500 dark:text-gray-400',
   priceRow: 'flex items-baseline gap-1 mt-1 leading-none',
-  price: 'text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white',
+  price: 'text-[16px] font-bold tracking-tight text-gray-900 dark:text-white',
   perNight: 'text-[12px] font-medium text-gray-500 dark:text-gray-400',
   ink: 'text-gray-900 dark:text-white',
   sub: 'text-gray-500 dark:text-gray-400',
