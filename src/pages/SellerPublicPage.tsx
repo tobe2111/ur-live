@@ -23,9 +23,9 @@ import type { CuratorProfile } from '@/features/curator/api/curator-api'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import InfoTab from './seller-public/InfoTab'
-import FeaturedCard from './seller-public/FeaturedCard'
-import { pickFeatured } from './seller-public/featured-pick'
-import { detailHref } from '@/shared/product-flow'
+import { SectionTitle } from './user-profile/list-grammar'
+import { pickFeatured, photoOf } from './seller-public/featured-pick'
+import StoreInfoSection from './seller-public/StoreInfoSection'
 import { getThemeTokens } from './seller-public/theme'
 import BrandLoader from '@/components/brand/BrandLoader'
 import type { Seller, Product } from './seller-public/types'
@@ -65,6 +65,14 @@ interface SellerPublicPageProps {
 //   소비용 헬퍼로 추출 + **정체성(id/username) 일치 검증 추가** — 기존 effect 소비는 검증 없이 setSeller 라
 //   SPA 로 다른 셀러 페이지 이동 시 이전 하드로드 시드를 오소비할 수 있었음(잘못된 셀러 잔상 + 메인 fetch skip).
 //   일치할 때만 시드 → 로더 프레임 0, 불일치/부재면 기존 fetch fallback.
+/** 가게 얼굴 폴백 — 사진 있는 이용권(없으면 상품)의 대표 사진. 규칙은 `pickFeatured` 그대로. */
+function storeFaceFrom(products: Product[]): string | null {
+  const vouchers = products.filter((p) => isVoucherCategory(p.category))
+  const others = products.filter((p) => !isVoucherCategory(p.category) && Number(p.deal_only) !== 1)
+  const f = pickFeatured(vouchers, others).featured
+  return f ? photoOf(f) : null
+}
+
 function readSellerSeed(sellerId: string | undefined): Seller | null {
   if (!sellerId || typeof document === 'undefined') return null
   try {
@@ -238,7 +246,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     handle: curator?.handle ?? seller?.username ?? String(seller?.id ?? ''),
     name: (curator?.name) || seller?.name || '',
     bio: curator?.bio ?? seller?.bio ?? null,
-    profile_image: curator?.profile_image ?? seller?.profile_image ?? null,
+    // 🏪 2026-11-03 안 1 — 가게 사진이 비면 마스코트 대신 **이 가게 이용권의 대표 사진**을 얼굴로(가게가 가게처럼 보이게).
+    profile_image: curator?.profile_image || seller?.profile_image || storeFaceFrom(products) || null,
     banner_url: (curator?.banner_url) || seller?.banner_url || null,
     headline: curator?.headline ?? null,
     accent: curator?.accent ?? null,
@@ -282,7 +291,11 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   // 📊 2026-08-26 (대표 승인): 헤더 실적 한 줄 — 이 매장 상품들의 **실측** 평점/후기/판매.
   //   당근이 사진으로 만드는 신뢰를 우리는 실적으로 만든다. 값 없으면 헤더가 알아서 안 그린다(0 미표시).
   // 🖼️ 2026-10-18: 사진 있는 것만 히어로 · 칩은 두 목록이 다 그려질 때만 — 근거는 `featured-pick.ts` 머리말.
-  const { featured, gridVouchers, gridProducts, showChips } = pickFeatured(vouchers, shopProducts)
+  // 📋 2026-11-03 안 1 — 히어로 없음. 목록이 전부를 갖는다(`pickFeatured` 는 가게 얼굴 폴백 `storeFaceFrom` 에만 쓴다).
+  const gridVouchers = vouchers
+  const gridProducts = shopProducts
+  const showChips = gridVouchers.length > 0 && gridProducts.length > 0
+
 
   return (
     <div className={`min-h-[100dvh] ${T.bg} pb-28`}>
@@ -349,22 +362,14 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             ))}
           </div>
         )}
-        {/* 🎨 2026-07-07 리디자인: '이번 주 픽' 대표 상품 히어로 (상품 우선·없으면 이용권). 아이템 적어도 채워짐. */}
-        {featured && (
-          <div className="mb-2">
-            <FeaturedCard
-              product={featured}
-              to={detailHref(featured)}
-              eyebrow={t('seller.publicPage.featuredPick', { defaultValue: '이번 주 픽' })}
-            />
-          </div>
-        )}
+        {/* 📋 2026-11-03 대표 확정 안 1 — '이번 주 픽' 큰 히어로를 걷었다(할인율 두 번 · 사진 위 배지 ·
+            홈과 다른 카드). 이용권은 전부 아래 줄 카드로 간다. */}
         {/* ① 이용권 — 유어샵의 주인공. featured 로 뽑힌 첫 이용권은 그리드에서 제외(gridVouchers).
             🔄 2026-08-26 (대표 확정): 종전엔 '내 상품' 다음 세 번째 블록이었다. 이용권만 파는 매장이
             대다수인데 주력이 아래로 밀렸다 — 순서를 앞으로 올린다. */}
         {gridVouchers.length > 0 && (
-          <section id="ls-vou" className="scroll-mt-4 pt-7">
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {gridVouchers.length}</h3>
+          <section id="ls-vou" className="scroll-mt-4">
+            <SectionTitle>{t('seller.publicPage.vouchers', { defaultValue: '이용권' })}</SectionTitle>
             <VouchersTab vouchers={gridVouchers} />
           </section>
         )}
@@ -443,6 +448,9 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
 
         {/* ⑥ 판매자 정보 — 🧾 2026-07-02 (대표 시안): "정보" 제목 카드 → 유어샵 **맨 밑** 쇼핑몰식 작은 푸터.
             콘텐츠와 넉넉히 떨어뜨려(mt-12) 진짜 페이지 하단 푸터로 읽히게. 얇은 구분선 + "MORE INFO +" 접이식. */}
+        {/* 🏪 2026-11-03 안 1 — 가게 정보(위치·전화·길찾기). 값 없으면 안 그린다. */}
+        <StoreInfoSection seller={seller} vouchers={vouchers} />
+
         <footer className="mt-10 pt-5 border-t border-gray-100 dark:border-[#2C2F35]">
           <InfoTab seller={seller} isOwner={isOwner} T={T} />
         </footer>
