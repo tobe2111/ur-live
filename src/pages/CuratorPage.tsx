@@ -10,7 +10,7 @@
  * Phase 1+ 사용자 결정 C 옵션: URL 통합 (셀러 권한 시 자동 redirect).
  */
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { SellerPublicPage } from './seller-public/lazy-seller-public'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
@@ -27,6 +27,8 @@ import { useRevealRows } from './curator-page/use-reveal-rows'
 import { SortMenu } from '@/components/ui/sort-menu'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { Search, X } from 'lucide-react'
+// 🧾 2026-11-03 유어샵 B — 주인만 보는 요약 판(방문자 번들에 안 실리게 lazy).
+const OwnerSummaryCard = lazy(() => import('./curator-page/OwnerSummaryCard'))
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
@@ -374,6 +376,8 @@ export default function CuratorPage() {
           soldTotal={curatorSoldTotal(curator)}
           onCopyLink={shareShop}
         />
+        {/* 🧾 2026-11-03 대표 *"유어샵은 B"* — 주인만 보는 요약 판(방문·구매·소개 수익 + 담기·공유). 방문자에겐 0 바이트(lazy). */}
+        {isOwner && <Suspense fallback={<div className={`mx-4 mt-3 ${curator.instagram_url || curator.tiktok_url || curator.youtube_url ? 'h-[172px]' : 'h-[228px]'}`} aria-hidden="true" />}><OwnerSummaryCard onShare={shareShop} hasSns={!!(curator.instagram_url || curator.tiktok_url || curator.youtube_url)} /></Suspense>}
         <UShopQrCard />
         </div>
         <div className="ur-ushop-main">
