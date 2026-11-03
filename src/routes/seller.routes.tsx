@@ -104,7 +104,6 @@ const SellerRealtimeDashboardPage = lazy(() => import('@/pages/SellerRealtimeDas
 const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNewPage'))
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 셀러 페이지 — PR 2/6.
 const SellerStaysPage = lazy(() => import('@/pages/SellerStaysPage'))
-const SellerStayNewPage = lazy(() => import('@/pages/SellerStayNewPage'))
 const SellerStayDetailPage = lazy(() => import('@/pages/SellerStayDetailPage'))
 const SellerStaysBookingsPage = lazy(() => import('@/pages/SellerStaysBookingsPage'))
 // 🛡️ 2026-05-19: 발송된 교환권 (KT Alpha) 이력.
@@ -327,11 +326,8 @@ export function SellerRoutes() {
           <ErrorBoundary><SellerVoucherOrdersPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      <Route path="/seller/stays/new" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerStayNewPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
+      {/* 🏨 2026-11-03 숙소·예약 통일 ①: 숙소 등록은 이용권 등록 위저드 하나로(매장 자동·임시저장·객실까지). 옛 주소는 그리로. */}
+      <Route path="/seller/stays/new" element={<Navigate to="/seller/meal-voucher/new?category=stay_voucher" replace />} />
       <Route path="/seller/stays/:id" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerStayDetailPage /></ErrorBoundary>

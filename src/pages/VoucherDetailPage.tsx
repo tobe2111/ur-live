@@ -206,9 +206,13 @@ export default function VoucherDetailPage() {
   async function handleExchange() {
     if (!product) return
     const total = product.price * quantity
+    // 🧾 2026-11-03 대표 *"굳이 저 곱하기 수식이 필요한가 싶어"* — 수식(1장 × 1,300딜 = 1,300딜)을 걷고 낼 금액만.
+    //   2장 이상일 때만 장 수를 붙인다. 확인 버튼은 행동 이름('교환하기')·브랜드 블루 — 빨강은 파괴적 행동 전용이고
+    //   아래 주 버튼(파랑)과 같은 행동이 두 색이면 안 된다. 환불 불가 고지는 문장으로 남긴다(⚠️ 이모지는 규칙 ⑥ 위반).
     const ok = await confirmDialog({
-      message: `${product.name}\n${quantity}장 × ${formatNumber(product.price)}딜 = ${formatNumber(total)}딜\n\n⚠️ 교환 후 환불 불가\n진행할까요?`,
-      danger: true,
+      title: product.name,
+      message: `${quantity > 1 ? `${quantity}장 · ` : ''}${formatNumber(total)}딜\n\n교환하면 환불할 수 없어요.`,
+      confirmText: '교환하기',
     })
     if (!ok) return
     setExchanging(true)
@@ -492,8 +496,9 @@ export default function VoucherDetailPage() {
             <button
               onClick={handleExchange}
               disabled={exchanging}
-              className="flex-1 h-[54px] rounded-2xl text-white text-[17px] font-bold disabled:opacity-50"
-              style={{ background: 'linear-gradient(180deg,#26282D,#16181C)' }}
+              // 🔵 2026-11-03 대표 *"1300딜로 교환하기 버튼 색 변경하고 싶고"* — 주 행동은 브랜드 블루 하나(CLAUDE.md 🔵).
+              //   인라인 검정 그라디언트였다 — `style` 이라 주 버튼 색 가드(className 만 본다)가 못 봤다.
+              className="flex-1 h-[54px] rounded-2xl bg-brand text-white text-[17px] font-bold disabled:opacity-50"
             >
               {exchanging ? '교환 중…' : `${formatNumber(total)}딜로 교환하기`}
             </button>

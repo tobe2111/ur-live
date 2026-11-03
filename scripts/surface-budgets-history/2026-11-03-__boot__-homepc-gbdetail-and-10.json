@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-03",
+  "reason": "대표 지시(2026-11-03 '지금 바로 넣어줘') — PR #2143 재머지. main 이 이 사이 기준을 다시 갱신해 충돌, main 값을 받은 뒤 이 PR 몫(에이전시 로그아웃 표시·줄 카드 안 2·교환 확인창)을 다시 얹음",
+  "surfaces": [
+    "__boot__",
+    "homePc",
+    "gbDetail",
+    "voucherDetail",
+    "linkshop",
+    "browse",
+    "urshorts",
+    "cart",
+    "search",
+    "faq",
+    "life",
+    "lifePro",
+    "dash:agency"
+  ],
+  "changes": [
+    "__boot__: 153.5 → 155.0 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "homePc: 204.7 → 206.6 KB (+1.9, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "gbDetail: 209.2 → 210.8 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.8",
+    "voucherDetail: 178.7 → 180.5 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "linkshop: 195.1 → 196.9 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "browse: 180.9 → 182.7 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "urshorts: 177.0 → 178.8 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "cart: 184.4 → 186.3 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "search: 182.7 → 184.2 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-search.js +0.3",
+    "faq: 178.9 → 180.7 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "life: 184.6 → 186.4 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "lifePro: 201.3 → 202.8 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "dash:agency: 154.9 → 156.4 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6"
+  ]
+}

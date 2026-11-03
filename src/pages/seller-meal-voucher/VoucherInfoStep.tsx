@@ -15,11 +15,12 @@ import VoucherPhotoSection from './VoucherPhotoSection'
 import CardPreview from './CardPreview'
 import LifeSubcatPicker from '@/components/life/LifeSubcatPicker'
 import DiscountPriceFields from './DiscountPriceFields'
+import StayRoomsFields from './StayRoomsFields'
 import type { VoucherCategory, VoucherForm } from './voucher-form'
 
 interface Props {
   form: VoucherForm
-  update: (key: string, value: string | number | string[]) => void
+  update: (key: string, value: unknown) => void
   setCategory: (c: VoucherCategory) => void
   suggestedImages: string[]
   loadingImages: boolean
@@ -27,6 +28,9 @@ interface Props {
 }
 
 export default function VoucherInfoStep({ form, update, setCategory, suggestedImages, loadingImages, onSearchImages }: Props) {
+  // 🏨 2026-11-03 숙소 통일 ①: 숙박도 이 위저드 안에서 끝난다 — 가격 칸 대신 숙소 유형·체크인/아웃·객실(`StayRoomsFields`).
+  //   (같은 날 A 단계에선 숙소 등록 화면으로 보냈었다 — 그 화면은 매장 연결·임시저장이 없는 5월판이라 이제 쓰지 않는다.)
+  const isStay = form.category === 'stay_voucher'
   const { t } = useTranslation()
 
   return (
@@ -103,7 +107,7 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
           </div>
 
           {/* 💸 2026-10-07: 정가 → 할인 [원 / %] → 판매가. 할인은 판매가를 쓰는 손잡이(저장 안 함). */}
-          <DiscountPriceFields price={form.price} originalPrice={form.original_price} update={update} />
+          {isStay ? <StayRoomsFields form={form} update={update} /> : <DiscountPriceFields price={form.price} originalPrice={form.original_price} update={update} />}
 
           {/* 💰 마진 계산기 — 정가 → 할인 → 유어딜 수수료 → 인플루언서 수수료 → 최종 마진(2026-10-24). 항상 표시. */}
           <NetProceedsCard price={form.price} originalPrice={form.original_price} promoPct={form.promo_pct} />

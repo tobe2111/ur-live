@@ -8,7 +8,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
-import { AlertCircle, ChevronDown, Copy, CopyPlus, Pencil, RefreshCw, RotateCcw, Send, Trash2 } from 'lucide-react'
+import { AlertCircle, CalendarDays, ChevronDown, Copy, CopyPlus, Pencil, RefreshCw, RotateCcw, Send, Trash2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -64,7 +64,9 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
 
   // ✏️ 수정 진입점은 **하나**이고 조건이 없다. 종전(#1430 이전)엔 '연락처 미등록' 배너 안에만 있어
   //   연락처가 등록된 매장은 수정 화면에 닿을 방법이 없었다(라이브의 유일한 실제 매장이 그 경우였다).
-  const goEdit = () => navigate(`/seller/products/${v.id}/edit`)
+  // 🏨 2026-11-03 숙소 통일 A: 숙소는 객실·요금·달력이 따로 있어 일반 수정 화면으로는 못 고친다 — 숙소 편집으로.
+  const isStay = v.category === 'stay_voucher'
+  const goEdit = () => navigate(isStay ? `/seller/stays/${v.id}` : `/seller/products/${v.id}/edit`)
 
   // 🗑️ 2026-09-14 (#1430 대표 "이용권 관리 맡아서 해줘" — M4 행으로 이식): 삭제. 서버는 2026-05-15 부터
   //   준비돼 있었는데 버튼이 없어 셀러가 자기 이용권을 내릴 방법이 화면에 없었다. 서버가 소유권(`AND seller_id = ?`)과
@@ -191,8 +193,15 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
           </div>
           <div className="flex flex-wrap gap-2">
             {/* 🧭 2026-06-10 (재방문 루프 갭): 1탭 복사 재발행 */}
+            {/* 🏨 숙소는 재발행·지점 복사가 객실·달력을 못 옮긴다(빈 숙소가 생긴다) — 대신 예약 현황. */}
+            {isStay ? (
+              <button type="button" onClick={() => navigate('/seller/stays/bookings')} className={GHOST}><CalendarDays size={13} /> {t('seller.vouchers.stayBookings', { defaultValue: '예약 현황' })}</button>
+            ) : (<>
             <button type="button" onClick={() => navigate(`/seller/meal-voucher/new?copyFrom=${v.id}`)} className={GHOST}><RefreshCw size={13} /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}</button>
             <button type="button" onClick={() => setCopying(true)} className={GHOST}><CopyPlus size={13} /> {t('seller.vouchers.copyToBranches', { defaultValue: '다른 지점에 복사' })}</button>
+            {/* 🗓️ 2026-11-03 시간 예약 — 설정 화면은 5월부터 있었는데 들어가는 길이 0이었다. */}
+            <button type="button" onClick={() => navigate(`/seller/products/${v.id}/booking-slots`)} className={GHOST}><CalendarDays size={13} /> {t('seller.vouchers.bookingSlots', { defaultValue: '예약 시간' })}</button>
+            </>)}
             <button type="button" onClick={() => deleteVoucher()} className={`${GHOST} text-tone-bad`}><Trash2 size={13} /> {t('common.delete', { defaultValue: '삭제' })}</button>
             <button type="button" onClick={copyStoreLink} className={GHOST}><Copy size={13} /> {t('seller.vouchers.copyStoreLink', { defaultValue: '사장님 링크 복사' })}</button>
             {v.restaurant_phone ? (

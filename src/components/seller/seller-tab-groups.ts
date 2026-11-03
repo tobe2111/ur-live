@@ -71,6 +71,10 @@ export const SELLER_TAB_GROUPS: SellerTabGroup[] = [
     labelKey: 'seller.orders', fallback: '주문', icon: ShoppingBag,
     tabs: [
       { path: '/seller/orders', labelKey: 'seller.orderTabs.orders', fallback: '주문' },
+      // 🗓️ 2026-11-03 숙소·예약 통일 ①: 받은 예약을 주문 옆 탭으로 — 시간 예약(미용 등)과 숙소 예약.
+      //   종전엔 숙소 예약이 접힌 숙소 묶음 안에만 있었고 시간 예약은 전체 메뉴 깊숙이 있어 둘 다 닿기 어려웠다.
+      { path: '/seller/appointments', labelKey: 'seller.nav.appointments', fallback: '예약' },
+      { path: '/seller/stays/bookings', labelKey: 'seller.nav.staysBookings', fallback: '숙소 예약', mode: 'store' },
       { path: '/seller/returns', labelKey: 'seller.nav.returns', fallback: '환불' },
       { path: '/seller/reviews', labelKey: 'seller.nav.reviews', fallback: '리뷰' },
     ],

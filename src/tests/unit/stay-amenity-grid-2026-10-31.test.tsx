@@ -45,6 +45,8 @@ describe('화면', () => {
     const page = readCode('src/pages/StayDetailPage.tsx')
     expect(page).toContain('<AmenityGrid items={amenitiesArr} />')
     expect(page).toMatch(/parseAmenities\(stay\?\.amenities\)[\s\S]{0,120}room_amenities/)
-    expect(readCode('src/pages/SellerStayNewPage.tsx')).toContain('서비스 및 부대시설')
+    // 🏨 2026-11-03 재조준: 숙소 등록이 이용권 등록 위저드로 합쳐졌다 — 시설 고르기도 그리로 옮겨 갔다.
+    expect(readCode('src/pages/seller-meal-voucher/StayAmenityPicker.tsx')).toContain('서비스 및 부대시설')
+    expect(readCode('src/pages/seller-meal-voucher/booking-submit.ts')).toContain('amenities: form.stay_amenities, room_amenities: form.stay_room_amenities')
   })
 })
