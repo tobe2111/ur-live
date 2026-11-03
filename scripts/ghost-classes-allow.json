@@ -9,5 +9,8 @@
   "ur-pin-tail": "위와 같음(map-overlays.ts).",
   "h-...": "src/components/ui/scroll-area.tsx 주석 안의 설명 문자열 — 클래스가 아니다.",
   "my-requests": "SellerSupplyPage 의 탭 key 문자열 — 클래스가 아니다.",
-  "ur-account-cols": "UserProfilePage 의 **일부러 비어 있는** 훅 클래스 — 좌석이 0 곳이면 평범한 블록이어야 하고, 두 열 분할은 `--split` 이 맡는다(index.css:1929 는 `--split` 만 정의한다). 2026-10-13 넓힌 스캔이 처음 봤다(삼항이라 좁은 스캔은 못 봤다)."
+  "ur-account-cols": "UserProfilePage 의 **일부러 비어 있는** 훅 클래스 — 좌석이 0 곳이면 평범한 블록이어야 하고, 두 열 분할은 `--split` 이 맡는다(index.css:1929 는 `--split` 만 정의한다). 2026-10-13 넓힌 스캔이 처음 봤다(삼항이라 좁은 스캔은 못 봤다).",
+  "lucide-chevron-down": "lucide 가 아이콘에 자동으로 붙이는 이름표 클래스(스타일 없음). home-top-markup.ts 는 리액트 부품을 그대로 렌더한 문자열이라 글자 단위로 같아야 한다(시험 대조) — 지우면 앱 교체 순간 맨 위가 깜빡인다. 2026-11-03.",
+  "lucide-locate-fixed": "lucide 가 아이콘에 자동으로 붙이는 이름표 클래스(스타일 없음). home-top-markup.ts 는 리액트 부품을 그대로 렌더한 문자열이라 글자 단위로 같아야 한다(시험 대조) — 지우면 앱 교체 순간 맨 위가 깜빡인다. 2026-11-03.",
+  "lucide-search": "lucide 가 아이콘에 자동으로 붙이는 이름표 클래스(스타일 없음). home-top-markup.ts 는 리액트 부품을 그대로 렌더한 문자열이라 글자 단위로 같아야 한다(시험 대조) — 지우면 앱 교체 순간 맨 위가 깜빡인다. 2026-11-03."
 }
