@@ -34,3 +34,35 @@ export const DEAL_ROW = {
   /** 사진 칸 — 120px 정사각(md+ 는 종전 4:3 꽉 채움). 2026-11-01 대표 확정 안 B(108 → 120). */
   mediaBox: 'w-[120px] shrink-0 [&>*]:aspect-square md:w-full md:[&>*]:aspect-[4/3]',
 } as const
+
+/**
+ * 📋 2026-11-03 대표 확정 *"안2 에 거리는 안 5처럼 오른쪽 상단에"* — 줄 목록(폰) 글자 칸.
+ *   [제목 2줄 ······ 거리] / [업체명(진하게) · 시·구] / [별점] / [정가] / [할인·가격]
+ *   카드(`GroupBuyFeedCard` row)와 워커 첫 화면(`home-first-screen.ts`)이 **같은 상수**를 쓴다 —
+ *   둘이 갈리면 마운트 때 카드가 튄다. ⚠️ 글자 그대로 적는다(tailwind 가 조립된 클래스를 못 본다).
+ *   시안: https://claude.ai/artifact/B4fR2JaNUV9tfRkZJcpRrh
+ */
+export const DEAL_ROW_TEXT = {
+  titleLine: 'flex items-start justify-between gap-2',
+  title: 'flex-1 min-w-0 text-[15px] font-medium line-clamp-2 leading-snug',
+  km: 'shrink-0 whitespace-nowrap mt-[2px] text-[12px] leading-snug',
+  meta: 'flex items-center gap-1 mt-1 text-[12px] leading-snug min-w-0',
+} as const
+
+/**
+ * 📍 주소를 **시·구까지만** (2026-11-03 대표 *"부산 연제구 정도까지만 나오고"*).
+ *   첫 낱말(시·도) + 이어지는 `…시/군/구` 낱말만 남긴다(최대 3낱말).
+ *     '부산 연제구 중앙천로39번길 12' → '부산 연제구'
+ *     '경기 성남시 분당구 판교역로 1' → '경기 성남시 분당구'
+ *     '세종특별자치시 한누리대로 2130' → '세종특별자치시'
+ */
+export function shortRegion(address: string | null | undefined): string {
+  const words = (address || '').trim().split(/\s+/).filter(Boolean)
+  if (!words.length) return ''
+  const out = [words[0]]
+  for (let i = 1; i < words.length && out.length < 3; i++) {
+    if (!/(시|군|구)$/.test(words[i])) break
+    out.push(words[i])
+  }
+  return out.join(' ')
+}

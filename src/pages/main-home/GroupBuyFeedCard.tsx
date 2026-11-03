@@ -6,7 +6,7 @@
  */
 
 import { loadRoute } from '@/lib/route-preload'
-import { DEAL_ROW } from '@/shared/deal-card-grid'
+import { DEAL_ROW, DEAL_ROW_TEXT, shortRegion } from '@/shared/deal-card-grid'
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { StarIcon } from '@/components/icons/urdeal-icons'
 import { Link, useNavigate } from 'react-router-dom'
@@ -221,7 +221,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
    */
   const unitLabel = Number(p.deal_only) === 1 ? ' 딜' : '원'
   // 📍 2026-07-16 (대표 — PC 카드도 주소·거리, 모바일처럼): 주소 축약(시/구/동) + 현위치 거리(km, userLoc 있을 때).
-  const addrShort = (p.restaurant_address || '').trim().split(/\s+/).slice(0, 3).join(' ')
+  const addrShort = shortRegion(p.restaurant_address)
   const distKm = (() => {
     if (!userLoc || p.restaurant_lat == null || p.restaurant_lng == null) return null
     const la = Number(p.restaurant_lat), ln = Number(p.restaurant_lng)
@@ -343,27 +343,49 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
       <div className="pt-3">
         {flags}
         {/* [시안 B] 08-19 그루폰 5줄 위계 유지 — 배지만 사진 위로 */}
-        {(p.restaurant_name || brandName || p.onnuri_merchant) && (
-          <p className={`flex items-center gap-1 text-[12px] leading-none mb-1 ${cSub}`}>
-            <span className="truncate">{p.restaurant_name || brandName}</span>
-            {/* 🏪 온누리 가맹 — B2G 상권 사업의 약속("온누리 사용 가능 표시").
-                2026-07-05 에 이 필드가 생겼는데 **상권관(`/local/:code`)의 자체 카드에만** 그려졌다.
-                같은 딜이 홈·검색·유어샵에 뜰 땐 표시가 사라졌다 — 카드가 한 벌이 아니어서 생긴 누락.
-                이제 카드 SSOT 가 그리므로 그 딜이 어디에 뜨든 따라간다. */}
-            {p.onnuri_merchant && (
-              <span className="shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-medium">온누리</span>
+        {row ? (
+          /* 📋 2026-11-03 대표 확정 *"안2 에 거리는 안 5처럼 오른쪽 상단에"* — 줄 목록은
+             [제목 2줄 ······ 거리] → [업체명(진하게) · 시·구] 순서. 무엇을 파는지가 먼저 보인다.
+             워커 첫 화면(`home-first-screen.ts` cardHtml row)이 같은 마크업을 그린다(거리만 빼고). */
+          <>
+            <div className={DEAL_ROW_TEXT.titleLine}>
+              <p className={`${DEAL_ROW_TEXT.title} ${cText}`}>{titleNode ?? stripStorePrefix(p.name, p.restaurant_name)}</p>
+              {distKm != null && <span className={`${DEAL_ROW_TEXT.km} ${cSub}`}>{distKm}km</span>}
+            </div>
+            {!!(p.restaurant_name || brandName || addrShort || p.onnuri_merchant) && (
+              <p className={`${DEAL_ROW_TEXT.meta} ${cSub}`}>
+                {(p.restaurant_name || brandName) && <span className={`truncate font-medium ${cText}`}>{p.restaurant_name || brandName}</span>}
+                {(p.restaurant_name || brandName) && addrShort && <span className="shrink-0" aria-hidden="true">·</span>}
+                {addrShort && <span className="shrink-0 whitespace-nowrap">{addrShort}</span>}
+                {!!p.onnuri_merchant && (
+                  <span className="shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-medium">온누리</span>
+                )}
+              </p>
             )}
+          </>
+        ) : (<>
+          {(p.restaurant_name || brandName || p.onnuri_merchant) && (
+            <p className={`flex items-center gap-1 text-[12px] leading-none mb-1 ${cSub}`}>
+              <span className="truncate">{p.restaurant_name || brandName}</span>
+              {/* 🏪 온누리 가맹 — B2G 상권 사업의 약속("온누리 사용 가능 표시").
+                  2026-07-05 에 이 필드가 생겼는데 **상권관(`/local/:code`)의 자체 카드에만** 그려졌다.
+                  같은 딜이 홈·검색·유어샵에 뜰 땐 표시가 사라졌다 — 카드가 한 벌이 아니어서 생긴 누락.
+                  이제 카드 SSOT 가 그리므로 그 딜이 어디에 뜨든 따라간다. */}
+              {p.onnuri_merchant && (
+                <span className="shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-medium">온누리</span>
+              )}
+            </p>
+          )}
+          <p className={`text-[15px] font-medium line-clamp-2 leading-snug ${cText}`}>
+            {titleNode ?? stripStorePrefix(p.name, p.restaurant_name)}
           </p>
-        )}
-        <p className={`text-[15px] font-medium line-clamp-2 leading-snug ${cText}`}>
-          {titleNode ?? stripStorePrefix(p.name, p.restaurant_name)}
-        </p>
-        {(addrShort || distKm != null) && (
-          <p className={`flex items-center justify-between gap-2 mt-1 text-[12px] min-w-0 ${cSub}`}>
-            <span className="truncate">{addrShort}</span>
-            {distKm != null && <span className="shrink-0 whitespace-nowrap">{distKm}km</span>}
-          </p>
-        )}
+          {(addrShort || distKm != null) && (
+            <p className={`flex items-center justify-between gap-2 mt-1 text-[12px] min-w-0 ${cSub}`}>
+              <span className="truncate">{addrShort}</span>
+              {distKm != null && <span className="shrink-0 whitespace-nowrap">{distKm}km</span>}
+            </p>
+          )}
+        </>)}
         {rating > 0 && (
           <p className={`flex items-center gap-2 mt-1 text-[12px] ${cSub}`}>
             <StarRating value={rating} />
