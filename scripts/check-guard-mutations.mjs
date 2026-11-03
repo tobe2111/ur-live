@@ -10163,8 +10163,8 @@ canvas {
   {
     name: '🏪 매장 등록 페이지가 다시 다크에 노출된다 (사장님이 자기 입력을 못 본다)',
     file: 'src/pages/StoreClaimPage.tsx',
-    find: '<div className="force-light-theme min-h-[100dvh] bg-gray-50">',
-    replace: '<div className="min-h-[100dvh] bg-gray-50 dark:bg-[#11141C]">',
+    find: '<div className="force-light-theme h-dvh lg:h-auto lg:min-h-dvh bg-white flex flex-col">',
+    replace: '<div className="h-dvh lg:h-auto lg:min-h-dvh bg-white dark:bg-[#11141C] flex flex-col">',
     test: 'src/tests/unit/store-register-wizard.test.ts',
     why:
       '전역 `.dark input`(특이도 0,5,1)이 모달의 text-gray-900(0,1,0)을 이겨 **흰 배경 위 흰 글자**가 ' +
@@ -10185,7 +10185,7 @@ canvas {
   {
     name: '🏪 위저드가 다시 한 화면 네 질문으로 (회색 버튼 이유가 사라진다)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: '          {blocked && <p className="text-[11.5px] text-gray-500 text-center mt-2">{blocked}</p>}',
+    find: '          {blocked && <p className="text-[12px] text-gray-500 text-center mt-2">{blocked}</p>}',
     replace: '',
     test: 'src/tests/unit/store-register-wizard.test.ts',
     why:
@@ -10216,7 +10216,7 @@ canvas {
   {
     name: '🏪 등록 직전 요약에서 되돌아갈 길이 사라진다',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: '                    <button onClick={() => setStep(r.to)} className="text-[11px] text-gray-400 underline shrink-0 pt-0.5">수정</button>',
+    find: '                    <button onClick={() => setStep(r.to)} className="text-[13px] font-medium text-brand shrink-0 pt-0.5">수정</button>',
     replace: '',
     test: 'src/tests/unit/store-register-wizard.test.ts',
     why:
@@ -10265,8 +10265,8 @@ canvas {
     name: '🏝️ 409 안내 패널만 light-island 를 잃는다 (한 파일 안 두 표면 중 하나)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
     // ⚠️ 2026-09-23 재조준 — 같은 이유(변수화). 409 패널도 overlay ↔ page 두 벌이 됐다.
-    find: "          ? 'light-island w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift'",
-    replace: "          ? 'w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift'",
+    find: "          ? 'light-island w-full bg-white'",
+    replace: "          ? 'w-full bg-white'",
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +
