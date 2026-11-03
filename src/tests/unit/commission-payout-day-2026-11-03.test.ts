@@ -164,3 +164,22 @@ describe('⑥ 서비스 페이지·소개서의 정산일 = 코드', () => {
     ]) expect(read(f), f).not.toMatch(/매월 1일에 (보냅니다|정산합니다)|매월 1일 확정 잔액/)
   })
 })
+
+// ── ⑦ 사장님 정산 시트 "다음 정산일" (대표 "여기 아직 업데이트 안되어있네") ─────────────
+import { nextWeeklySettlementDateKst } from '@/shared/store-payout-day'
+
+describe('⑦ 사장님 정산 시트 — 매주 목요일 · 다음 정산일', () => {
+  const k = (iso: string) => Date.parse(`${iso}+09:00`)
+  it('화요일이면 이번 주 목요일, 목요일 03시 전이면 오늘, 지나면 다음 주 목요일', () => {
+    expect(nextWeeklySettlementDateKst(k('2026-11-03T15:00:00'))).toBe('2026-11-05') // 화 → 목
+    expect(nextWeeklySettlementDateKst(k('2026-11-05T02:00:00'))).toBe('2026-11-05')
+    expect(nextWeeklySettlementDateKst(k('2026-11-05T04:00:00'))).toBe('2026-11-12')
+    expect(nextWeeklySettlementDateKst(k('2026-12-31T12:00:00'))).toBe('2027-01-07')
+  })
+  it('시트가 같은 SSOT 로 그리고 "매주 목요일" 이라고 말한다', () => {
+    const src = read('src/pages/user-profile/seller-section/PayoutSheet.tsx')
+    expect(src).toMatch(/nextWeeklySettlementDateKst\(Date\.now\(\)\)/)
+    expect(src).toMatch(/매주 목요일, 지난주\(월~일\)/)
+    expect(src).not.toMatch(/매주 자동으로 모아/)
+  })
+})
