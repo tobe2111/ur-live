@@ -32,8 +32,12 @@ describe('마이 역할 표시', () => {
     expect(PAGE).toMatch(/\{!sellerSeats\.loading && sellerSeats\.stores\.length > 0 && \(\s*<span data-testid="my-owner-chip"/)
     expect(PAGE).toContain("defaultValue: '사장님 · 매장 {{n}}곳', n: sellerSeats.stores.length")
   })
-  it('③ 판 위 제목은 에이전시가 없을 때 — 자리 예약(hasSeats)을 따른다', () => {
-    expect(PAGE).toContain("{!tabbed && !agencyPresence.on && hasSeats && <SectionTitle>{t('userProfile.ownerTitle', { defaultValue: '사장님 · 내 가게' })}</SectionTitle>}")
+  it('③ 판 위 제목은 에이전시가 없을 때 — 판(SellerSectionLazy)이 서는 조건과 같다(늦게 끼어들어 판을 밀지 않는다)', () => {
+    expect(PAGE).toContain("{!tabbed && !agencyPresence.on && ownerSectionShown && <SectionTitle>{t('userProfile.ownerTitle', { defaultValue: '사장님 · 내 가게' })}</SectionTitle>}")
+    expect(PAGE).toMatch(/const ownerSectionShown = sellerSeats\.loading\s*\? \(\(\) => \{ try \{ return !!localStorage\.getItem\('seller_token'\) \}[^\n]*\n\s*: !sellerSeats\.failed && sellerSeats\.stores\.length > 0/)
+    const LAZY = readCode('src/pages/user-profile/SellerSectionLazy.tsx')
+    expect(LAZY).toContain("isSeller = !!localStorage.getItem('seller_token')")
+    expect(LAZY).toContain('if (state.failed || state.stores.length === 0) return null')
   })
   it('④ 일반 유저의 사장님 입구', () => {
     expect(GRID).toContain("defaultValue: '사장님이세요?'")

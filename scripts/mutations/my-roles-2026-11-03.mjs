@@ -6,4 +6,5 @@ export default [
   { name: '마이역할 — 에이전시 로그인 줄이 늘 뜬다', file: P, find: '{showMe && !agencyPresence.on && (', replace: '{showMe && (', test: T, why: '이미 에이전시로 로그인했는데 로그인하라는 줄이 보인다.' },
   { name: '마이역할 — 조회 중에도 사장님 칩', file: P, find: '{!sellerSeats.loading && sellerSeats.stores.length > 0 && (', replace: '{sellerSeats.stores.length >= 0 && (', test: T, why: '가게가 없는 사람에게도 사장님 · 매장 0곳이 뜬다.' },
   { name: '마이역할 — 사장님 입구 옛 이름', file: 'src/pages/user-profile/RoleCtaGrid.tsx', find: "defaultValue: '내 가게 이용권 팔기'", replace: "defaultValue: '내 가게 등록'", test: T, why: '사장님 입구가 무엇을 하는지 안 드러난다.' },
+  { name: '마이역할 — 사장님 제목이 응답 뒤에 끼어든다', file: P, find: "{!tabbed && !agencyPresence.on && ownerSectionShown && <SectionTitle>", replace: "{!tabbed && !agencyPresence.on && !sellerSeats.loading && sellerSeats.stores.length > 0 && <SectionTitle>", test: T, why: '셀러 첫 방문에 판 전체가 49px 밀린다(CI layout-shift).' },
 ]

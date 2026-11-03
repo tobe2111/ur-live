@@ -167,6 +167,10 @@ export default function UserProfilePage() {
    *   (실사용 기록: `div.ur-account-pane` 폭 519→909 · 602→1050, 2.7~3.3초). 판매 구역이 지난 렌더에서 잰 높이
    *   (`seller-reserve.ts`)가 있으면 지난번에 가게가 있었다는 뜻이다. 조회가 끝나면 늘 실제 값으로 돌아간다.
    */
+  /** '사장님 · 내 가게' 제목 — `SellerSectionLazy` 가 판을 세우는 조건과 같다(조회 중엔 셀러 토큰, 끝나면 매장 수). */
+  const ownerSectionShown = sellerSeats.loading
+    ? (() => { try { return !!localStorage.getItem('seller_token') } catch { return false } })()
+    : !sellerSeats.failed && sellerSeats.stores.length > 0
   const hasSeats = sellerSeats.loading ? sellerSeats.stores.length > 0 || readReservedHeight() > 0 : sellerSeats.stores.length > 0
 
   /**
@@ -404,9 +408,10 @@ export default function UserProfilePage() {
       <>
       {/* 🏪 2026-09-25 (대표 확정 §14 — "하는 것도 마이에서"): 판매가 **맨 위**.
           사장님은 하루에 이 화면을 가장 많이 열고, 그때 보려는 건 오늘 숫자다. 셀러가 아니면 렌더 0. */}
-      {/* 👤 2026-11-03 대표 *"사장님이라고도 표시"* — 에이전시가 없으면 판 위 제목은 '사장님 · 내 가게'. `hasSeats` 는 조회 중에도
-          지난번 자리 예약을 보고 참이 된다(제목이 늦게 끼어들어 아래를 밀지 않는다). 에이전시가 있으면 그 이름이 제목이다(아래 문). */}
-      {!tabbed && !agencyPresence.on && hasSeats && <SectionTitle>{t('userProfile.ownerTitle', { defaultValue: '사장님 · 내 가게' })}</SectionTitle>}
+      {/* 👤 2026-11-03 대표 *"사장님이라고도 표시"* — 에이전시가 없으면 판 위 제목은 '사장님 · 내 가게'. 에이전시가 있으면 그 이름이 제목이다(아래 문).
+          ⚠️ 조건은 **판(`SellerSectionLazy`)이 서는 조건과 같아야** 한다 — 조회 중엔 셀러 토큰이 있으면 판이 먼저 서는데, 제목이 응답 뒤에
+             끼어들면 판 전체가 49px 밀린다(CI `layout-shift` 마이(셀러) 첫 방문에서 실측). */}
+      {!tabbed && !agencyPresence.on && ownerSectionShown && <SectionTitle>{t('userProfile.ownerTitle', { defaultValue: '사장님 · 내 가게' })}</SectionTitle>}
       {showAgency && <>
         {/* 🗂️ 탭일 때는 에이전시 이름이 이미 머리에 있으니 판 위 제목은 '맡은 매장', 아래 묶음은 '에이전시 운영'. */}
         {tabbed ? (sellerSeats.stores.length > 0 && <SectionTitle>맡은 매장</SectionTitle>) : <AgencyTitleDoor storeCount={sellerSeats.stores.length} />}
