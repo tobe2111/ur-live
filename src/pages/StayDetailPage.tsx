@@ -32,6 +32,7 @@ import AmenityGrid from './stay-detail/AmenityGrid'; import { parseAmenities } f
 import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 // 🏨 첫 화면의 치수 클래스는 워커(`stay-detail-ssr-body`)와 **같은 상수**를 쓴다 — 두 벌이면 갈린다.
 import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID, STAY_BAND } from '@/shared/stay-head'
+import DetailSectionTabs from './group-buy/DetailSectionTabs'; import { stayTabs } from './stay-detail/stay-tabs' // 📑 이용권 상세와 같은 구역 탭
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'; import StayPcActions from './stay-detail/StayPcActions' // 🏨 PC 찜·담기·공유(폰 머리는 lg:hidden)
 import BrandLoader from '@/components/brand/BrandLoader'; import { useOwnerManage, OwnerManageBar, OwnerManageCard } from '@/components/deal/useOwnerManage'
 import { peekWarmStay, stayDetailRequest } from './stays/stay-detail-warm'
@@ -426,6 +427,8 @@ export default function StayDetailPage() {
           </div>
         )}
 
+        {/* 📑 2026-11-03 숙소·예약 통일 ②: 이용권 상세와 같은 폰 구역 탭(C안) — 같은 부품, 숙소 구역 id. */}
+        <div className="-mx-4"><DetailSectionTabs tabs={stayTabs({ intro: !!stay.description_full, map: !!(stay.address || (stay.latitude != null && stay.longitude != null)) })} /></div>
         {/* 모드 탭 + 날짜/인원 선택 — 모바일 인라인 (PC 는 우측 아사이드가 동일 JSX 렌더) */}
         <div id="stay-sec-dates" className="lg:hidden space-y-3 mb-5" style={{ scrollMarginTop: 96 }}>
           {modeTabs}
@@ -444,14 +447,14 @@ export default function StayDetailPage() {
         </div>
 
         {/* 🏨 2026-10-31 서비스 및 부대시설 — 대표 시설 그리드, 없는 칸은 '없음'(대표 여기어때 화면). 시설 정보가 없어도 섹션은 둔다. */}
-        <div className={`${STAY_BAND} lg:mb-6`}>
+        <div id="stay-sec-amenity" className={`${STAY_BAND} lg:mb-6`} style={{ scrollMarginTop: 96 }}>
           <SectionTitle>서비스 및 부대시설</SectionTitle>
           <AmenityGrid items={amenitiesArr} />
         </div>
 
         {/* Description */}
         {stay.description_full && (
-          <div className={`${STAY_BAND} lg:mb-6`}>
+          <div id="stay-sec-intro" className={`${STAY_BAND} lg:mb-6`} style={{ scrollMarginTop: 96 }}>
             <SectionTitle>숙소 소개</SectionTitle>
             <p className="mt-3 text-[15px] leading-[1.72] text-gray-600 dark:text-gray-300 whitespace-pre-line">{stay.description_full}</p>
           </div>
@@ -462,13 +465,13 @@ export default function StayDetailPage() {
             상세끼리 문법이 갈리는 것 자체가 티가 난다. */}
         {/* 🏨 2026-09-24: '이용 안내' 표를 `StayPolicyInfo` 로 추출(마크업 불변) — 같은 커밋에서
             아래 `SimilarStays` 를 붙이는데 이 파일이 래칫 858/858 이라 여유가 0이었다. */}
-        <StayPolicyInfo policy={stay.cancellation_policy} customText={stay.custom_cancellation_text}
-          houseRules={stay.house_rules} checkInInstructions={stay.check_in_instructions} />
+        <div id="stay-sec-policy" style={{ scrollMarginTop: 96 }}><StayPolicyInfo policy={stay.cancellation_policy} customText={stay.custom_cancellation_text}
+          houseRules={stay.house_rules} checkInInstructions={stay.check_in_instructions} /></div>
 
         {/* 🗺️ 위치 — 카카오맵 미니맵 + 매장(숙소) 페이지 연결 (딜 상세 RestaurantMiniMap 재사용).
             좌표(psi.latitude/longitude) 있으면 즉시 마커, 없어도 주소 지오코딩 폴백 → 항상 연결. */}
         {(stay.address || (stay.latitude != null && stay.longitude != null)) && (
-          <div className={`${STAY_BAND} lg:mb-5`}>
+          <div id="stay-sec-map" className={`${STAY_BAND} lg:mb-5`} style={{ scrollMarginTop: 96 }}>
             <SectionTitle className="mb-3">위치</SectionTitle>
             {/* 🩸 `isolate`: 카카오맵 내부 레이어(z≥1)가 루트 스택에 참여해 우측 달력 팝오버 위로 올라왔다.
                 지도를 자기 스택 컨텍스트에 가두고, 아사이드엔 z 를 준다(둘이 한 쌍). */}
@@ -490,7 +493,7 @@ export default function StayDetailPage() {
             ⚠️ 소개가 없는 숙소에도 떠야 하므로 위 조건 블록 **밖**에 둔다(안에 넣으면 같이 사라진다). */}
         <SimilarStays stayId={stay.id} regionSido={stay.region_sido} checkIn={checkIn} checkOut={checkOut} guests={guests} />
 
-        <StayReviews productId={productId} />
+        <div id="stay-sec-reviews" style={{ scrollMarginTop: 96 }}><StayReviews productId={productId} /></div>
 
         </div>{/* /좌측 콘텐츠 */}
 

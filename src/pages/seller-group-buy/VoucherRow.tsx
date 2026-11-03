@@ -199,6 +199,8 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
             ) : (<>
             <button type="button" onClick={() => navigate(`/seller/meal-voucher/new?copyFrom=${v.id}`)} className={GHOST}><RefreshCw size={13} /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}</button>
             <button type="button" onClick={() => setCopying(true)} className={GHOST}><CopyPlus size={13} /> {t('seller.vouchers.copyToBranches', { defaultValue: '다른 지점에 복사' })}</button>
+            {/* 🗓️ 2026-11-03 시간 예약 — 설정 화면은 5월부터 있었는데 들어가는 길이 0이었다. */}
+            <button type="button" onClick={() => navigate(`/seller/products/${v.id}/booking-slots`)} className={GHOST}><CalendarDays size={13} /> {t('seller.vouchers.bookingSlots', { defaultValue: '예약 시간' })}</button>
             </>)}
             <button type="button" onClick={() => deleteVoucher()} className={`${GHOST} text-tone-bad`}><Trash2 size={13} /> {t('common.delete', { defaultValue: '삭제' })}</button>
             <button type="button" onClick={copyStoreLink} className={GHOST}><Copy size={13} /> {t('seller.vouchers.copyStoreLink', { defaultValue: '사장님 링크 복사' })}</button>

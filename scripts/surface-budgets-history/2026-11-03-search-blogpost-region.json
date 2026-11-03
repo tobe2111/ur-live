@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-03",
+  "reason": "2026-11-03 대표 승인(같은 건 재적용 4): main 병합 후 남은 3곳 + 뒤로가기 SSOT 전 화면 +0.3~0.4KB(lazy 불가). CI 가 로컬보다 0.1KB 크게 재므로 +0.15 여유",
+  "surfaces": [
+    "search",
+    "blogPost",
+    "region"
+  ],
+  "changes": [
+    "search: 182.7 → 184.4 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +1.0",
+    "blogPost: 191.3 → 193.0 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +1.1, app-shell.js +0.6",
+    "region: 203.9 → 205.6 KB (+1.7, 허용 1.5) · 늘어난 것: app-utils.js +1.0"
+  ]
+}

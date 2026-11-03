@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-03",
+  "reason": "대표 지시('지금 바로 넣어줘') — PR #2143 세 번째 재머지. main 새 기준 위에 남은 5개 화면만",
+  "surfaces": [
+    "gbDetail",
+    "guestMy",
+    "guestPass",
+    "guestUShop",
+    "lifePro"
+  ],
+  "changes": [
+    "gbDetail: 209.2 → 210.9 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.9",
+    "guestMy: 187.1 → 188.6 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "guestPass: 184.0 → 185.5 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "guestUShop: 185.9 → 187.4 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6",
+    "lifePro: 201.3 → 202.9 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.9, app-shell.js +0.6"
+  ]
+}
