@@ -25,3 +25,4 @@
 - ✅ 대표 *"안 B로 해줘"* → 안 B 구현(FullScanView · UseConfirmSheet 분리). 가드 store-scan-plan-b-2026-11-03 + 주입 2, 재조준 4.
 - 🪟 대표 *"카메라를 열 수 없어요 저 팝업 디자인, 팝업 디자인 통일화하기로 한대로"* → 카메라 위 오류·결과를 토스트와 같은 유리 알약(`ur-glass ur-pop-toast`)으로, 도움말은 유리 판. 렌더 `docs/design/assets/store-scan-glass-2026-11-03.png`.
 - 🎨 대표 *"여기 배경 색이 왜 밝은 색이지? 색 통일이 안됐어 다크모드에서"* + *"여기 위에도 그렇고"* → 지도 목록 시트·홈 고정 막대를 `bg-surface`(다크 #1D1F29) → `bg-warm`(페이지 바탕 #11141C). 가드 dark-page-tone-2026-11-03 + 주입 2. 렌더 `docs/design/assets/map-sheet-dark-2026-11-03.png`.
+- 🩹 대표 *"이용안내 글자 두번 겹치는건 고쳐줘"* → QR 창 판 ur-glass(흐림) → ur-glass-solid(불투명). 흐림 판 안 스크롤 잔상(안드로이드 크롬). 가드 qr-modal-no-ghost-2026-11-03 + 주입 2. ⚠️ 헤드리스로 재현 불가 — 대표 폰 확인 필요.

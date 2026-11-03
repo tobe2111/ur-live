@@ -1401,6 +1401,11 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   .ur-glass { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 .ur-glass-rule { border-color: var(--glass-rule); }
+/* 🩹 2026-11-03 대표 *"이용안내 글자 두번 겹치는건 고쳐줘"* — 내 이용권 QR 창에서 '이용 안내' 가 겹쳐 **두 번** 그려졌다.
+ *   그 창은 판이 `.ur-glass`(backdrop-filter) 이고 **안에서 스크롤**한다. 안드로이드 크롬은 흐림 판 안의 스크롤 영역을
+ *   다시 그릴 때 옛 조각을 남겨(잔상) 같은 글이 겹쳐 보인다. 그래서 **안에서 스크롤하는 큰 창**은 같은 모양의 불투명 판을 쓴다.
+ *   (QR 은 매장 직원이 읽는 화면이라 뒤가 비치지 않는 편이 대비에도 낫다.) 모서리·그림자는 유리와 같다. */
+.ur-glass-solid { background: var(--surface); box-shadow: var(--pop-shadow); }
 /* 팝업 모서리 — 파일마다 `rounded-[28px]` 를 적지 않고 여기 한 곳이 정한다(`check-shape-lock` 체계 밖 값을 이 셋으로 묶는다).
  *   카드(확인창·가운데 창) 28 · 아래 시트 32(PC 가운데 창이 되면 28) · 알림 24. */
 .ur-pop-card { border-radius: 28px; }
