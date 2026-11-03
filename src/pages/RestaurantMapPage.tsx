@@ -792,8 +792,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       {(!selected || isLgViewport) && (
         /* ═══ Bottom Sheet (드래그 가능, 3-snap) — 칩은 상단 MapTopBar 로 이동, 시트는 리스트만 ═══
            🗺️ 2026-07-16 (대표 — PC 지도뷰 분할): lg+ 에서는 하단 시트가 아니라 좌측 400px 고정 리스트 패널로
-           도킹(top:0 + bottom-0 = 풀높이, 드래그/transform 무효). 모바일(<lg)은 기존 3-snap 드래그 시트 그대로.
-           🎨 2026-11-03 대표 "색 통일이 안됐어 다크모드에서" — 바탕은 페이지색 `bg-warm`(surface 는 다크에서 카드색이라 밝게 떴다). */
+           도킹(top:0 + bottom-0 = 풀높이, 드래그/transform 무효). 모바일(<lg)은 기존 3-snap 시트. 🎨 11-03 바탕=페이지색 bg-warm(다크 통일). */
         <div
           ref={sheetRef}
           className="absolute left-0 right-0 bottom-0 z-30 bg-warm rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col lg:top-0 lg:w-[400px] lg:right-auto lg:rounded-none lg:shadow-none lg:border-r lg:border-gray-100 dark:lg:border-[#2C2F35]"
