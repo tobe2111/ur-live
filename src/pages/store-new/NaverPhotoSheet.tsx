@@ -34,7 +34,7 @@ export default function NaverPhotoSheet({ baseQuery, room, onClose, onAdd }: Pro
 
   return (
     <div className="fixed inset-0 z-[10500] flex items-end justify-center bg-black/50" onClick={onClose} role="dialog" aria-modal="true" aria-label="네이버에서 찾은 사진">
-      <div className="w-full max-w-[480px] h-[85dvh] rounded-t-[20px] bg-white dark:bg-surface text-gray-900 dark:text-white shadow-lift flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-[480px] h-[85dvh] rounded-t-2xl bg-white dark:bg-surface text-gray-900 dark:text-white shadow-lift flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-center pt-2"><span className="w-9 h-1 rounded-full bg-line" /></div>
         <div className="px-5 pt-4 flex items-start justify-between">
           <div className="min-w-0">
@@ -69,7 +69,7 @@ export default function NaverPhotoSheet({ baseQuery, room, onClose, onAdd }: Pro
                 const n = picked.indexOf(u) + 1
                 return (
                   <button key={u} type="button" onClick={() => toggle(u)} aria-pressed={n > 0}
-                    className={`relative aspect-square rounded-[10px] overflow-hidden bg-wash ${n > 0 ? 'ring-[3px] ring-brand' : ''}`}>
+                    className={`relative aspect-square rounded-xl overflow-hidden bg-wash ${n > 0 ? 'ring-[3px] ring-brand' : ''}`}>
                     <img src={cfImage(u, { width: 240 })} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, u)} />
                     <span className={`absolute right-1 top-1 w-6 h-6 rounded-full border-2 border-white text-[13px] font-medium text-white leading-5 text-center ${n > 0 ? 'bg-brand' : 'bg-black/30'}`}>{n > 0 ? n : ''}</span>
                   </button>

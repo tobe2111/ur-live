@@ -113,7 +113,7 @@ export default function VoucherPhotos({ photos, onChange, storeName, storeAddres
           <div className="mt-2 flex gap-2">
             {shown.map((u) => (
               <button key={u} type="button" onClick={() => addNaver([u])} aria-label="이 사진 추가"
-                className="relative w-[72px] h-[72px] shrink-0 rounded-[10px] overflow-hidden bg-wash">
+                className="relative w-[72px] h-[72px] shrink-0 rounded-xl overflow-hidden bg-wash">
                 <img src={cfImage(u, { width: 144 })} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, u)} />
                 <span className="absolute right-1 bottom-1 w-5 h-5 rounded-full bg-black/60 text-white text-[12px] leading-5 text-center" aria-hidden="true">+</span>
               </button>
