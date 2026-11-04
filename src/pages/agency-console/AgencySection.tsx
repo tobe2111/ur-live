@@ -29,7 +29,18 @@ import {
  * 🔑 신원은 여전히 **에이전시 직원 토큰**(`agency_console_token`)이다. 손님 세션과 섞지 않는다 —
  *   성과·몫이 사람이 아니라 에이전시 단위로 잡혀야 하기 때문이다(2026-10-11 결정).
  */
-export default function AgencySection({ stacked = false, headless = false, ownSellerIds, onSessionEnd, toss = false }: {
+/** 🚪 에이전시 로그아웃 — 확인을 받고 세션을 지운다. 지웠으면 true(2026-11-04 마이 맨 아래로 옮기며 공용으로). */
+export async function confirmAgencyLogout(): Promise<boolean> {
+  if (!(await confirmDialog('에이전시에서 로그아웃할까요?'))) return false
+  clearAgencySession()
+  markAgencyLoggedOut() // 🚪 카카오 자동 연결이 바로 다시 로그인하지 않게(2026-11-03)
+  toast.success('에이전시에서 로그아웃했어요.')
+  return true
+}
+
+export default function AgencySection({ stacked = false, headless = false, ownSellerIds, onSessionEnd, toss = false, hideLogout = false }: {
+  /** 페이지가 로그아웃을 맨 아래에 따로 둘 때(에이전시 전용 마이 — 2026-11-04 대표 안 A). */
+  hideLogout?: boolean
   stacked?: boolean
   /** 🧾 2026-11-03 대표 *"에이전시 화면은 토스 참고 안으로"* — 판(카드) · 두 줄 행 · 오늘 매출 합계(`agency-toss.tsx`). */
   toss?: boolean
@@ -68,11 +79,7 @@ export default function AgencySection({ stacked = false, headless = false, ownSe
   const onExpired = useCallback(() => onSessionEnd('expired'), [onSessionEnd])
 
   async function logout() {
-    if (!(await confirmDialog('에이전시에서 로그아웃할까요?'))) return
-    clearAgencySession()
-    markAgencyLoggedOut() // 🚪 카카오 자동 연결이 바로 다시 로그인하지 않게(2026-11-03)
-    toast.success('에이전시에서 로그아웃했어요.')
-    onSessionEnd('logout')
+    if (await confirmAgencyLogout()) onSessionEnd('logout')
   }
 
   const role = me ? (me.staff.role === 'admin' ? '관리자' : '직원') : ''
@@ -109,7 +116,9 @@ export default function AgencySection({ stacked = false, headless = false, ownSe
                 {canMove && <FlatRow icon={<PersonIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="이메일 계정으로 옮기기" hint="직원과 함께 쓰기" onClick={() => setSheet('move')} />}
               </>
             )}
-            trailingRows={toss ? (
+            staffCount={staff ? staff.length : null}
+            onInviteStaff={() => setSheet('staff')}
+            trailingRows={hideLogout ? undefined : toss ? (
               // 🧾 토스 참고 안 — 로그아웃은 일하는 줄과 같은 무게가 아니다. 맨 아래 조용한 글자.
               <button type="button" onClick={() => { void logout() }} className="mx-auto mt-2 mb-5 block min-h-[44px] px-5 text-[13px] text-gray-500 dark:text-gray-400 active:opacity-70">에이전시 로그아웃</button>
             ) : <FlatRow icon={<LogOutIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="에이전시 로그아웃" onClick={() => { void logout() }} last />}

@@ -24,7 +24,7 @@ const DOORS = readCode('src/pages/user-profile/agency-doors.tsx')
 describe('마이 — 내 가게 + 에이전시 한 구역', () => {
   it('① 맡은 매장이 전부 내 가게 안이면 에이전시 매장 판을 숨긴다', () => {
     expect(PANEL).toMatch(/const coveredByMine = !!ownSellerIds && ownSellerIds\.length > 0 && !error\s*&& \(rows === null \|\| active\.every\(\(r\) => ownSellerIds\.includes\(r\.sellerId\)\)\)/)
-    expect(PANEL).toContain("className={`${coveredByMine ? 'hidden' :")
+    expect(PANEL).toContain("className={`${coveredByMine || firstRun ? 'hidden' :") // 2026-11-04: 매장 0곳 첫 화면도 같은 판을 숨긴다
   })
   it('② 하나라도 밖이면 그린다 — every 를 some 으로 바꾸면 그 매장의 길이 사라진다', () => {
     expect(PANEL, '하나만 겹쳐도 숨긴다').not.toMatch(/active\.some\(\(r\) => ownSellerIds/)
