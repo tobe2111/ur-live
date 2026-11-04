@@ -1,11 +1,14 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import { PersonIcon, SettingsIcon } from '@/components/icons/urdeal-icons'
+import { PersonIcon, SettingsIcon, MessageIcon, EditIcon, LogOutIcon } from '@/components/icons/urdeal-icons'
+import Sheet from '@/pages/user-profile/seller-section/Sheet'
+import { COMPANY } from '@/shared/company-info'
 import { SectionTitle, ListRow } from '@/pages/user-profile/list-grammar'
 import { useTheme, type ThemeMode } from '@/shared/stores/useTheme'
 import { toast } from '@/hooks/useToast'
-import AgencySection from './AgencySection'
+import AgencySection, { confirmAgencyLogout } from './AgencySection'
+import { AgencyPasswordPanel } from './AgencyPasswordPanel'
 import AgencyInviteButton from '@/pages/user-profile/AgencyInviteButton'
 import { readAgencyProfile } from './agency-api'
 import { agencyStaffLoginLabel } from '@/shared/agency-kakao'
@@ -34,6 +37,13 @@ export default function AgencyMyPage() {
     navigate(why === 'expired' ? '/agency/login?returnUrl=%2Fagency' : '/agency/login', { replace: true })
   }, [navigate])
 
+  // 🔑 2026-11-04 대표 *"남은 1,2,3도 다 해줘"* — 비밀번호 바꾸기 · 문의 · 로그아웃(맨 아래).
+  const [pwOpen, setPwOpen] = useState(false)
+  const emailAccount = profile?.staff.loginKind !== 'kakao'
+  const logout = useCallback(async () => {
+    if (await confirmAgencyLogout()) onSessionEnd('logout')
+  }, [onSessionEnd])
+
   const name = profile?.agency.name ?? '에이전시'
   const who = profile ? `${profile.staff.name || agencyStaffLoginLabel(profile.staff.email)} · ${profile.staff.role === 'admin' ? '관리자' : '직원'}` : ''
 
@@ -54,14 +64,26 @@ export default function AgencyMyPage() {
         </header>
 
         <div className="mt-8">
-          <AgencySection headless toss onSessionEnd={onSessionEnd} />
+          <AgencySection headless toss hideLogout onSessionEnd={onSessionEnd} />
         </div>
 
         <SectionTitle>설정</SectionTitle>
         <div>
+          {emailAccount && <ListRow icon={<EditIcon size={18} />} label="비밀번호 바꾸기" onClick={() => setPwOpen(true)} testId="agency-change-password" />}
+          <ListRow icon={<MessageIcon size={18} />} label="문의하기" hint={COMPANY.supportChannel}
+            onClick={() => window.open(COMPANY.kakaoChatUrl, '_blank', 'noopener,noreferrer')} />
           <ListRow icon={<PersonIcon size={18} />} label="손님으로도 쓰기" hint="카카오 로그인" to="/login?returnUrl=%2Fuser%2Fprofile" />
           <ListRow icon={<SettingsIcon size={18} />} label="화면 테마" hint={MODE_LABEL[mode]} onClick={() => setMode(NEXT_MODE[mode])} />
+          <ListRow icon={<LogOutIcon size={18} />} label="에이전시 로그아웃" onClick={() => { void logout() }} />
         </div>
+
+        {pwOpen && (
+          <Sheet title="비밀번호 바꾸기" onClose={() => setPwOpen(false)}>
+            <div className="min-h-full bg-[#F8F7FC] dark:bg-[#11141C] p-4">
+              <AgencyPasswordPanel onDone={() => setPwOpen(false)} />
+            </div>
+          </Sheet>
+        )}
       </div>
     </div>
   )

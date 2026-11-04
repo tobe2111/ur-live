@@ -16,6 +16,7 @@ import { AgencyRegisterStoreCard } from './AgencyRegisterStoreCard'
 import { ROW_LABEL_CLS } from '@/pages/user-profile/list-grammar'
 import { MailIcon, StoreIcon, ShopPlusIcon } from '@/components/icons/urdeal-icons'
 import { AgencyRowStyle, AgencyTodayCard, TossCard, TossTile, TOSS_CARD_CLS, useAgencyRowStyle } from './agency-toss'
+import { AgencyGettingStarted } from './AgencyGettingStarted'
 
 /**
  * 🏢 에이전시 콘솔 본문 — 대표 확정 **안 A** (2026-10-12 · *"A안으로 해줘. 이건 PC버전도 중요해"*)
@@ -43,7 +44,10 @@ export function storeRowHint(r: StoreRow): { text: string; urgent: boolean } {
 
 type AgencySheet = 'picker' | 'requests' | 'register' | 'notifs' | 'sales' | null
 
-export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows, stacked = false, toolParam, ownSellerIds, toss = false }: {
+export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows, stacked = false, toolParam, ownSellerIds, toss = false, staffCount = null, onInviteStaff }: {
+  /** 🚀 2026-11-04 안 A — 매장 0곳 첫 화면의 ③ 직원 단계(직원 수 · 직원 시트 열기). */
+  staffCount?: number | null
+  onInviteStaff?: () => void
   onExpired: () => void
   /** 🧾 2026-11-03 토스 참고 안 — 판(카드)으로 묶고 두 줄 행 · 오늘 매출 합계 카드(`agency-toss.tsx`). */
   toss?: boolean
@@ -72,6 +76,11 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
   /** 응답 전(rows null)에도 숨긴다 — 내 가게가 있으면 대개 같은 매장이라, 그렸다 지우면 아래가 통째로 튄다. */
   const coveredByMine = !!ownSellerIds && ownSellerIds.length > 0 && !error
     && (rows === null || active.every((r) => ownSellerIds.includes(r.sellerId)))
+  /**
+   * 🚀 2026-11-04 대표 확정 안 A — 운영 중 매장이 0곳인 관리자에게는 오늘 매출 `—`·'없음' 줄 대신 **시작 3단계**를 세운다.
+   *   토스 판(에이전시 전용 마이)에서만 — 손님 마이 안 구역(`stacked`)은 그대로다. 첫 매장이 연결되면 원래 판으로.
+   */
+  const firstRun = toss && !error && rows !== null && active.length === 0 && canManage
   const [sheet, setSheet] = useState<AgencySheet>(null)
   // 🗑️ 2026-11-03 대표 *"마이페이지에 에이전시 측에서 볼 때 위젯 코드 만드는 홈페이지에 넣기는 빼줘"* —
   //   '홈페이지에 넣기' 줄과 그 줄이 쓰던 번호(`readAgencyProfile().agency.id`)를 걷었다. 위젯 자체(`/embed`)는 그대로다.
@@ -192,8 +201,8 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
   return (
     <div className={stacked ? 'flex flex-col gap-8' : 'mt-8 flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-5'}>
       {/* ── 왼쪽(PC) / 아래(폰) ─────────────────────────────── */}
-      <div className={stacked ? 'order-2' : 'order-2 lg:order-1 lg:w-[300px] lg:shrink-0'}>
-        <nav aria-label="맡은 매장" className={stacked ? 'hidden' : 'hidden lg:block mb-8'}>
+      <div className={stacked ? 'order-2' : firstRun ? 'order-2 w-full lg:max-w-[560px]' : 'order-2 lg:order-1 lg:w-[300px] lg:shrink-0'}>
+        <nav aria-label="맡은 매장" className={stacked || firstRun ? 'hidden' : 'hidden lg:block mb-8'}>
           <h2 className="text-[16px] font-semibold text-gray-500 dark:text-gray-400">
             맡은 매장{active.length > 0 && ` · ${active.length}곳`}
           </h2>
@@ -228,13 +237,23 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
           /* 🧾 토스 참고 안 — [오늘 매출] · [할 일] · [관리] 판, 로그아웃은 맨 아래 조용한 글자. */
           <AgencyRowStyle.Provider value="toss">
             <div className="flex flex-col gap-3">
-              <AgencyTodayCard rows={rows === null ? null : active} />
-              <TossCard title="할 일" testId="agency-todo-card">
-                {todoRows}
-              </TossCard>
+              {firstRun ? (
+                <AgencyGettingStarted
+                  staffCount={staffCount}
+                  pendingCount={pending.length}
+                  onRegister={() => setSheet('register')}
+                  onInviteStaff={() => onInviteStaff?.()}
+                  onRequests={() => setSheet('requests')}
+                />
+              ) : (<>
+                <AgencyTodayCard rows={rows === null ? null : active} />
+                <TossCard title="할 일" testId="agency-todo-card">
+                  {todoRows}
+                </TossCard>
+              </>)}
               <TossCard testId="agency-manage-card">
                 {agencyRows}
-                {canManage && <FlatRow icon={<ShopPlusIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="매장 대신 등록" hint="유어딜에 없는 매장" onClick={() => setSheet('register')} />}
+                {canManage && !firstRun && <FlatRow icon={<ShopPlusIcon className="h-[18px] w-[18px]" aria-hidden="true" />} label="매장 대신 등록" hint="유어딜에 없는 매장" onClick={() => setSheet('register')} />}
               </TossCard>
               {trailingRows}
             </div>
@@ -251,7 +270,7 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
       </div>
 
       {/* ── 오른쪽(PC) / 위(폰) — 고른 매장의 판 ──────────────────── */}
-      <section aria-label={picked ? `${picked.name} 판매` : '맡은 매장'} className={`${coveredByMine ? 'hidden' : stacked ? 'order-1 min-w-0' : 'order-1 lg:order-2 min-w-0 flex-1'}${toss ? ` ${TOSS_CARD_CLS} py-4` : ''}`}>
+      <section aria-label={picked ? `${picked.name} 판매` : '맡은 매장'} className={`${coveredByMine || firstRun ? 'hidden' : stacked ? 'order-1 min-w-0' : 'order-1 lg:order-2 min-w-0 flex-1'}${toss ? ` ${TOSS_CARD_CLS} py-4` : ''}`}>
         {/* 🔗 2026-11-02 대표 확정 버튼 ① — 매장 영입 입구는 **마이 머리** 하나다(`AgencyInviteButton`).
             종전엔 이 자리에 큰 카드 + 빈 칸 안 버튼으로 두 번 있었다. ('홈페이지에 넣기' 줄은 2026-11-03 대표 지시로 걷었다.) */}
         <div className="flex items-center gap-2">

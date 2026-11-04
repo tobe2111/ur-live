@@ -20,6 +20,7 @@ import { ensureAgencyConsoleTables, AGENCY_NAME_MAX, STAFF_NAME_MAX, type StaffR
 import { requireAgencyStaff, issueAgencyStaffToken, type AgencyStaffContext } from './agency-session'
 import { isKakaoOnlyStaffEmail, KAKAO_SOLO_NOTICE } from '@/shared/agency-kakao'
 import { agencyKakaoRoutes } from './agency-kakao.routes'
+import { agencyPasswordRoutes } from './agency-password.routes'
 import { AGENCY_MAIL_DOWN, agencyMailReady, consumeLinkToken, frontendBase, issueLinkToken, normalizeBusinessNumber, normalizeEmail } from './agency-auth.routes'
 
 type Bindings = {
@@ -31,6 +32,8 @@ type Vars = { agencyStaff: AgencyStaffContext }
 export const agencyStaffRoutes = new Hono<{ Bindings: Bindings; Variables: Vars }>()
 // 🟡 카카오로 만든 에이전시(2026-10-26) — 같은 접두사에 끼운다(`worker/index.ts` 마운트를 늘리지 않는다).
 agencyStaffRoutes.route('/', agencyKakaoRoutes)
+// 🔑 로그인한 채로 비밀번호 바꾸기(2026-11-04).
+agencyStaffRoutes.route('/', agencyPasswordRoutes)
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
