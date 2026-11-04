@@ -89,6 +89,9 @@ const LIGHT_ISLAND_COVERAGE: Record<string, { by: string; why: string }> = {
  */
 const OUT_OF_SCOPE: Record<string, string> = {
   'src/components/seller/StoreRegisterModal.tsx': '셀러 대시보드(/seller/*) 전용 — 라이트 고정이라 다크 대비 개념 없음',
+  // 🪟 2026-11-04 `Select` 는 **열렸을 때만**, 그것도 대시보드·light-island 안에서 열렸을 때만 목록에 `light-island` 를 붙인다
+  //    (포털이라 래퍼 밖에 그려져 라이트 고정이 안 따라오기 때문). 소비자 다크 화면에서는 붙지 않는다 — 그리는 경로가 없다.
+  'src/components/ui/select.tsx': '라이트 고정 래퍼 안에서 연 목록에만 붙인다(포털) — 소비자 다크 화면 경로 없음',
   // 🗺️ `KakaoMapPicker` 는 2026-09-26 에 **여기서 LIGHT_ISLAND_COVERAGE 로 옮겼다** —
   //    등록 위저드가 마이 시트 안에서 열리면서 소비자 경로에 들어왔기 때문이다.
   //    (이 줄은 그 이동을 기록으로 남긴다. 되돌리는 일이 생기면 여기로 다시 내릴 것.)

@@ -169,7 +169,7 @@ export function Select({
           className="fixed inset-x-2 bottom-2 flex flex-col max-h-[70dvh] ur-pop-sheet ur-glass overflow-hidden ur-sheet-in pb-[env(safe-area-inset-bottom)]"
         >
           <div className="shrink-0 pt-2" aria-hidden="true"><div className="mx-auto w-10 h-[5px] rounded-full bg-gray-400/40" /></div>
-          <p className="shrink-0 px-5 pt-3 pb-1 text-[17px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white truncate">{heading}</p>
+          <p className="shrink-0 px-5 pt-3 pb-1 text-[16px] font-semibold tracking-[-0.02em] text-gray-900 dark:text-white truncate">{heading}</p>
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-2">{list}</div>
         </div>
       </div>

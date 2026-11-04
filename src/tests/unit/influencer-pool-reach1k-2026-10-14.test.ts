@@ -35,7 +35,7 @@ function serverTiers(): Map<string, string> {
 function uiTiers(): string[] {
   const src = readFileSync(UI, 'utf8')
   const start = src.indexOf('value={p.tier}')
-  const end = src.indexOf('</select>', start)
+  const end = src.indexOf('</Select>', start) // 🪟 2026-11-04 기본 <select> → 유어딜 <Select>
   expect(start).toBeGreaterThan(0)
   const block = src.slice(start, end)
   return [...block.matchAll(/<option value="([a-z0-9]+)"/g)].map(m => m[1]!)
