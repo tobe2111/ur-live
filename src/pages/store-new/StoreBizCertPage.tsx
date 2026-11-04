@@ -14,7 +14,7 @@ import { getSellerToken } from '@/lib/seller-auth'
 import { toast } from '@/hooks/useToast'
 import { compressForDocument } from '@/lib/image-compress'
 import { BUSINESS_CERT_MAX_FILE_BYTES } from '@/shared/upload-limits'
-import { formatBusinessNumber } from '@/pages/seller-register/RegisterFields'
+import { formatBusinessNumber } from '@/shared/business-number-input'
 import StoreStepShell from './StoreStepShell'
 import { STORE_BANK_PATH } from './first-voucher-path'
 

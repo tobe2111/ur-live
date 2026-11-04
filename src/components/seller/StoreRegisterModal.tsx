@@ -9,7 +9,7 @@
  *  - `initialPlace` 프리필이면 ①을 건너뛴다. `POST /api/seller/stores` 바디·귀속·409 는 서버 무수정.
  *  - ⚠️ 선택지에 수수료율을 표시하지 않는다(2026-08-26 대표) — 채널은 사실이지 요금제가 아니다.
  */
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
@@ -59,8 +59,6 @@ interface Props {
   onDone: (sellerId?: number, opts?: { existing?: boolean; ownerClaimCode?: string | null }) => void
   /** 📋 영입자 초대(`?prospect=`)가 준비해 둔 담당자 번호 — 빈 칸일 때만 채운다(2026-10-10). */
   initialManagerPhone?: string
-  /** 🖥️ 2026-11-03: page 변형 ① 단계에서만 질문 위에 얹는 안내(무엇을 등록하는 곳인가). 다음 단계부턴 안 보인다. */
-  lead?: ReactNode
   /**
    * 배경(어두운 여백)을 눌렀을 때 닫을지. 기본 `true` — 대시보드에서 목록 위에 겹쳐 뜰 때는
    * 바깥 클릭으로 닫히는 게 맞다(뒤에 돌아갈 화면이 보인다).
@@ -117,7 +115,7 @@ function stepCopy(step: number, channel: string | null): { title: string; hint: 
   return STEPS[step]
 }
 
-export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true, variant = 'overlay', initialManagerPhone, lead }: Props) {
+export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true, variant = 'overlay', initialManagerPhone }: Props) {
   const navigate = useNavigate()
   const [picked, setPicked] = useState<RegisterPlace | null>(initialPlace ?? null)
   const [showMap, setShowMap] = useState(!initialPlace)
@@ -378,7 +376,6 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
             <div className="h-full bg-brand transition-[width] duration-300"
               style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
           </div>
-          {asPage && step === 0 && lead}
           <h2 className={`${asPage ? 'mt-5 text-[24px] tracking-[-0.02em]' : 'mt-3 text-[17px]'} font-bold text-gray-900 leading-snug`}>{stepCopy(step, channel).title}</h2>
           <p className="mt-1 text-[13px] text-gray-500 leading-relaxed">{stepCopy(step, channel).hint}</p>
         </div>

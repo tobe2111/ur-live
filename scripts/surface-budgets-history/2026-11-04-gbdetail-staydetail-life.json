@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-04",
+  "reason": "매장 등록 새 흐름의 소비자 화면 3개(/store/first-voucher·/store/biz-cert·/store/bank) lazy 라우트와 전체화면 경로 등록이 엔트리에 약 0.3KB 를 더함 — 라우트 선언 자체라 lazy 로 더 내릴 수 없음. main 이 이미 허용 1.5KB 중 1.3~1.4KB 를 쓴 상태라 선을 넘었다(대시보드 매장 등록 모달의 죽은 lead prop 은 제거해 0.1KB 회수)",
+  "surfaces": [
+    "gbDetail",
+    "stayDetail",
+    "life"
+  ],
+  "changes": [
+    "gbDetail: 210.9 → 212.5 KB (+1.6, 허용 1.5) · 늘어난 것: lz-gbDetail-map.js +0.7, app-utils.js +0.5",
+    "stayDetail: 217.3 → 219.1 KB (+1.7, 허용 1.5) · 늘어난 것: app-utils.js +0.7, StayDetailPage.js +0.5",
+    "life: 186.2 → 187.9 KB (+1.6, 허용 1.5) · 늘어난 것: LifePage.js +0.6, app-utils.js +0.6"
+  ]
+}

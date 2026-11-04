@@ -177,7 +177,6 @@ describe('⑥ 렌더 실측이 잡은 결함의 처방 (2026-11-03 재조준 —
     expect(visible(MODAL)).toMatch(/aria-label=\{step === 0 \? '닫기' : '이전 단계'\}/)
   })
 
-  it('ⓒ 페이지 설명은 ① 단계 머리에만 — 2~3단계에서 같은 설명이 화면 절반을 차지하지 않게', () => {
-    expect(visible(MODAL)).toContain('{asPage && step === 0 && lead}')
-  })
+  // ⓒ(페이지 설명은 ① 단계 머리에만)은 2026-11-04 걷었다 — /store/new 가 이 모달을 쓰지 않고 자기 단계 화면
+  //   (`store-new/StoreFindStep` 등)을 갖게 되어 `lead` 자리가 죽은 코드가 됐다(첫 화면 예산 회수).
 })
