@@ -778,9 +778,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   - 이전: 첫 SELECT 실패 → catch fallback (applied_price 누락) → 금액 미표시 + 컬럼 일치 X.
     //   - 영구 fix: repair-schema 에 컬럼 등록 (daily cron 자동 ADD) + 본 SELECT 도 fallback 에 applied_price 포함.
     //     컬럼이 곧 모두 존재할 거지만, fallback 도 같이 강화해 라이브 환경 즉시 복구.
-    // ⚡ 2026-11-04 [UNLOCK_LOADING] 대표 *"허가 — 고쳐줘"* — 이용권 · 교환권(KT) · 선물 상태 셋은 서로 무관하다(셋 다 uid 만 필요).
-    //   종전엔 차례로 물었다(이용권 → KT → 선물). 한국 손님은 왕복 하나가 ≈0.2초라 **같은 물결에** 출발시킨다. 결과·폴백은 종전 그대로.
-    const giftP = loadGiftState(DB, uidBinds)
+    const giftP = loadGiftState(DB, uidBinds) // ⚡ 2026-11-04 [UNLOCK_LOADING] 이용권·KT·선물 셋을 한 물결에(서로 무관 · 결과 동일) — docs/locks/loading/2026-11-04-vouchers-my-one-wave.md
     const vouchersP = DB.prepare(`
       SELECT v.id, v.code, v.user_id, v.product_id, v.order_id, v.status,
              v.expires_at, v.used_at, v.created_at, v.refund_status,
@@ -882,7 +880,6 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         kt_status: vo.status,
       }))
     } catch { return [] /* graceful — vouchers 만 반환 */ } })()
-
     const [{ results }, ktAlphaItems, giftState] = await Promise.all([vouchersP, ktP, giftP])
 
     // 우리 voucher 에 source='internal' 마킹 + 통합 (클라는 이 배열을 두 보관함으로 나눈다 — shared/voucher-wallet)
