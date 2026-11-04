@@ -10,6 +10,7 @@ import WeeklyPicksPanel from './store-prospects/WeeklyPicksPanel'
 import TradePanel, { type TradeRow } from './partner-pool/TradePanel'
 import CollectConfigPanel from './store-prospects/CollectConfigPanel'
 import PoolExportButtons from './PoolExportButtons'
+import PoolSheetSync from './PoolSheetSync'
 
 /** 매장 업태 → 공용 패널 행. 업태 1행이 **전 지역**을 뜻하므로 kw/active_kw 는 1/0 이다
  *  (파트너는 업종 1행이 235지역을 묶은 것이라 개수가 실수치다 — 그 차이를 여기서만 흡수한다). */
@@ -252,6 +253,7 @@ export default function AdminStoreProspectsPage() {
           <button onClick={() => runCollectSub('hira')} disabled={busySub !== '' || !collect?.adsBinding} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium disabled:opacity-50" title="심평원 병원정보 — 전국 병·의원 전화+홈페이지 직접 제공(이메일 크롤 관문)">{busySub === 'hira' ? '수집 중…' : '병원 수집'}</button>
           <button onClick={() => runCollectSub('store-kakao')} disabled={busySub !== '' || !collect?.adsBinding} className="ur-btn ur-btn-md ur-btn-danger disabled:opacity-50" title="카카오 로컬로 음식점·카페·미용실·숙박 + 무인매장을 캅니다(전화가 함께 옵니다). 자동으로는 약 5회차에 한 번만 도는 레인 — 아래 조건을 바꾼 뒤 지금 확인하려면 이 버튼">{busySub === 'store-kakao' ? '수집 중…' : '카카오 매장 수집'}</button>
           <PoolExportButtons pool="store" path="/api/admin/store-prospects/export" basename="store-prospects" query={buildQuery} batchHint="이 풀의 도달 채널은 전화입니다 — '전화 보유'로 좁혀 내보내세요." />
+          <PoolSheetSync pool="store" />
           <div className="grow" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="매장명·지역·전화·이메일·주소 검색" title="여러 단어를 넣으면 모두 포함된 매장만 나옵니다" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-56" />
         </div>

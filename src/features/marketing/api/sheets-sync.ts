@@ -70,7 +70,7 @@ async function importPrivateKey(pemRaw: string): Promise<CryptoKey> {
 // 액세스 토큰 캐시(isolate 수명 동안) — 시트 6~8콜에 토큰 1회.
 let _tok: { token: string; exp: number } | null = null
 
-async function getToken(env: Env): Promise<string | null> {
+export async function getToken(env: Env): Promise<string | null> {
   if (!env.GSHEETS_SA_EMAIL || !env.GSHEETS_SA_KEY) return null
   const now = Math.floor(Date.now() / 1000)
   if (_tok && _tok.exp - 120 > now) return _tok.token
@@ -120,7 +120,7 @@ export function leadToRow(l: SheetLead): (string | number)[] {
     l.follow_up_at || '', l.source || '', l.consented_at || '', l.memo || '', l.collected_at]
 }
 
-async function sheetsFetch(token: string, sheetId: string, path: string, init?: RequestInit): Promise<Response> {
+export async function sheetsFetch(token: string, sheetId: string, path: string, init?: RequestInit): Promise<Response> {
   return fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}${path}`, {
     ...init, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(init?.headers || {}) },
   })
