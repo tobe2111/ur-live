@@ -35,7 +35,8 @@ import {
 } from './influencer-discovery'
 import { enrichNaverActivity, enrichYouTubePerformance, ensurePerfExtraColumns, type NaverEnrichDiag, type EnrichSlice } from './influencer-performance'
 import { enrichTistoryActivity, tistoryRoom, type TistoryEnrichDiag } from './influencer-tistory-performance'
-import { POOL_ACCOUNT_ID, readSetting, writeSetting, ytQuotaDayKey } from './influencer-auto-collect'
+import { POOL_ACCOUNT_ID, readSetting, readSettings, writeSetting, ytQuotaDayKey } from './influencer-auto-collect'
+import { CONTENT_YT_USED_KEY, contentYtReservedUnits, readDayCount } from '../../../shared/creator-content'
 import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitError, envSubreqCap, envEnrichDeadlineMs, envLaneBudget, ENRICH_DEADLINE_MS_ALARM } from './collect-budget'
 // 스냅샷 키는 leaf 모듈(enrich-telemetry)에 둔다 — 어드민 통계가 수집 엔진을 import 하지 않고 읽게.
 import { INFLUENCER_ENRICH_SNAPSHOT_KEY } from './enrich-telemetry'
@@ -340,11 +341,10 @@ export function resolveYtPerfCap(searchUsedUnits: number, envRaw?: unknown): num
  *   성과 상한을 검색 실사용에 맞춰 정하기 위해 읽는다(같은 10,000 풀을 나눠 쓰므로).
  *   ⚠️ 값이 없거나 날짜가 다르면 0 — 그러면 성과가 최대치를 받는다(검색이 아직 안 돈 날의 정상 동작).
  */
-async function readYtSearchCalls(DB: D1Database, day: string): Promise<number> {
-  const raw = await readSetting(DB, 'ads_yt_search_used')
-  if (!raw) return 0
-  const i = raw.indexOf(':')
-  return i > 0 && raw.slice(0, i) === day ? Math.max(0, parseInt(raw.slice(i + 1), 10) || 0) : 0
+async function readYtSearchCalls(DB: D1Database, day: string): Promise<{ ads: number; content: number }> {
+  // 🎬 2026-11-04 — 유어딜 콘텐츠 몫도 **같은 한 번의 읽기**로 가져온다(이 레인은 서브리퀘스트가 빠듯하다).
+  const s = await readSettings(DB, ['ads_yt_search_used', CONTENT_YT_USED_KEY])
+  return { ads: readDayCount(s.ads_yt_search_used, day), content: readDayCount(s[CONTENT_YT_USED_KEY], day) }
 }
 
 /** 오늘 남은 perf units — 날짜가 바뀌면 자동으로 0부터(문자열 앞의 날짜가 키). */
@@ -437,8 +437,11 @@ export async function runInfluencerEnrich(
   const ytDay = ytQuotaDayKey(started)
   // 📈 상한은 **고정이 아니라 검색 실사용의 나머지**다(위 `resolveYtPerfCap` 의 실측 근거).
   //   검색 카운터는 회차 수라 units 로 환산해서 넘긴다(search.list 1회 = 100 units).
-  const ytSearchCalls = await readYtSearchCalls(DB, ytDay)
-  const ytUnitCap = resolveYtPerfCap(ytSearchCalls * YT_SEARCH_UNIT_COST, env.ADS_YT_PERF_UNITS)
+  const ytCalls = await readYtSearchCalls(DB, ytDay)
+  // 🎬 2026-11-04 대표 *"유튜브는 유어애즈랑 분담해서 자동으로"* — 유어딜 이용권 콘텐츠 수집이 **쓴 것** + 오늘 몫 중
+  //   **아직 안 쓴 것**을 검색 쪽에 얹어 비워 둔다. 태평양시 18시가 지나면 안 쓴 몫은 0(여기로 돌아온다). SSOT `shared/creator-content.ts`.
+  const contentUnits = ytCalls.content * YT_SEARCH_UNIT_COST + contentYtReservedUnits(ytCalls.content, started)
+  const ytUnitCap = resolveYtPerfCap(ytCalls.ads * YT_SEARCH_UNIT_COST + contentUnits, env.ADS_YT_PERF_UNITS)
   const ytUnitsUsed = await readPerfUnitsUsed(DB, ytDay)
   const ytRoom = Math.max(0, ytUnitCap - ytUnitsUsed)
 

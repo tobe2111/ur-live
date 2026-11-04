@@ -288,6 +288,7 @@ import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
 import { sectionsRoutes } from '../features/sections/api/sections.routes';
 // 🎬 2026-09-07 유어쇼츠 — 홈 레일 + /videos 뷰어. 공개는 이용권이 붙은 영상만 나간다.
 import { urshortsRoutes, adminUrshortsRoutes, sellerUrshortsRoutes } from '../features/urshorts/api/urshorts.routes';
+import { creatorContentPublicRoutes, creatorContentSellerRoutes, creatorContentAdminRoutes } from '../features/creator-content/api/content.routes'; // 🎬 2026-11-04 이용권 상세 '다녀온 사람들'
 import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
 import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
 import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
@@ -509,6 +510,8 @@ app.use('*', async (c, next) => {
       "https://apis.google.com " +
       "https://kauth.kakao.com https://*.kakao.com " +
       "https://www.youtube.com https://youtube.com https://*.youtube.com https://www.youtube-nocookie.com " +
+      // 🎬 2026-11-04 이용권 상세 '다녀온 사람들' — 각 SNS 공식 재생기 · 네이버 블로그 창(허락된 글만).
+      "https://www.instagram.com https://www.tiktok.com https://m.blog.naver.com https://blog.naver.com " +
       "https://player.vimeo.com; " +
     "child-src 'self' blob:; " +
     "media-src 'self' https: blob:; " +
@@ -1464,7 +1467,7 @@ app.route('/api/seller', sellerAuthRoutes);
 app.route('/api/seller', sellerOperatorsRoutes); // 🏪 my-stores · 매장 전환 · 운영자 관리
 app.use('/api/brands/*', edgeCache(300)); app.route('/api/brands', brandsPublicRoutes); // 🏷️ 2026-10-17 브랜드 페이지 — 읽기 전용, 콜로당 5분 캐시(지점 추가가 최대 5분 늦게 보인다)
 app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); app.route('/api/agency-console', agencyStoresRoutes); app.use('/api/store-agency-invite/accept', csrfProtection()); app.use('/api/store-agency-invite/partner-request', csrfProtection()); app.route('/api/store-agency-invite', storeAgencyInviteRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
-app.route('/api/seller/seeding', seedingSellerRoutes); app.route('/api/seller/instagram-dm', instagramAutoDmSellerRoutes); app.route('/api/seller/urshorts', sellerUrshortsRoutes); // 💬 매장 인스타 자동 DM(좌석 토큰) · 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
+app.route('/api/seller/seeding', seedingSellerRoutes); app.route('/api/seller/instagram-dm', instagramAutoDmSellerRoutes); app.route('/api/seller/urshorts', sellerUrshortsRoutes); app.route('/api/seller/creator-content', creatorContentSellerRoutes); // 💬 매장 인스타 자동 DM(좌석 토큰) · 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
 app.route('/api/influencer-profile', influencerProfileRoutes); app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller', sellerWithdrawRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
 
 // 🔒 2026-07-28: Google/Firebase 로그인 마운트 해제 — 사유·복원법은 auth.ts 주석 / AUDIT_INVARIANTS.md
@@ -1814,6 +1817,7 @@ adminApp.route('/', adminAbuseRoutes);
 adminApp.route('/', adminReviewGeneratorRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/urshorts', adminUrshortsRoutes);
+adminApp.route('/creator-content', creatorContentAdminRoutes);
 // Feature flags / kill-switch (graceful degradation for traffic spikes)
 adminApp.route('/flags', adminFlagsRoutes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
@@ -2037,6 +2041,7 @@ app.route('/api/inventory', inventoryRoutes);
 // ── 홈페이지 섹션 관리 ──
 app.route('/api/sections', sectionsRoutes);
 app.route('/api/urshorts', urshortsRoutes);
+app.route('/api/creator-content', creatorContentPublicRoutes); // 🎬 이용권 상세 '다녀온 사람들'(가게 단위 · 보이는 것만)
 
 // ── YouTube 구독자 늘리기 ──
 app.route('/api/youtube-growth', youtubeGrowthRoutes);

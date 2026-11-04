@@ -8,7 +8,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
-import { AlertCircle, CalendarDays, ChevronDown, Copy, CopyPlus, Pencil, RefreshCw, RotateCcw, Send, Trash2 } from 'lucide-react'
+import { AlertCircle, CalendarDays, ChevronDown, Copy, CopyPlus, Pencil, Play, RefreshCw, RotateCcw, Send, Trash2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -199,6 +199,7 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
             ) : (<>
             <button type="button" onClick={() => navigate(`/seller/meal-voucher/new?copyFrom=${v.id}`)} className={GHOST}><RefreshCw size={13} /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}</button>
             <button type="button" onClick={() => setCopying(true)} className={GHOST}><CopyPlus size={13} /> {t('seller.vouchers.copyToBranches', { defaultValue: '다른 지점에 복사' })}</button>
+            <button type="button" onClick={() => navigate(`/seller/group-buy/${v.id}/content`)} className={GHOST}><Play size={13} /> {t('seller.creatorContent.entry', { defaultValue: '다녀온 사람들(영상·블로그)' })}</button>
             {/* 🗓️ 2026-11-03 시간 예약 — 설정 화면은 5월부터 있었는데 들어가는 길이 0이었다. */}
             <button type="button" onClick={() => navigate(`/seller/products/${v.id}/booking-slots`)} className={GHOST}><CalendarDays size={13} /> {t('seller.vouchers.bookingSlots', { defaultValue: '예약 시간' })}</button>
             </>)}

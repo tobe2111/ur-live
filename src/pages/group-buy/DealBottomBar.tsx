@@ -111,6 +111,7 @@ export default function DealBottomBar({
         <div className="flex items-center gap-3">
           {!isPrelaunch && <BuyBarPrice strike={refPrice > unitPrice ? refPrice * quantity : null} discountPct={discountPct} amount={total} />}
           <BuyBarCta
+            data-deal-buy=""
             on={ctaOn}
             onClick={raffle ? fcfs.apply : isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => { if (!fcfs.pending) setOpen(true) }}
             disabled={raffle ? !ctaOn || fcfs.busy : (!isJoinable && !isPrelaunch) || joining}

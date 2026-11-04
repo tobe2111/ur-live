@@ -72,6 +72,7 @@ import { useSafeBack } from '@/hooks/useSafeBack'
 const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
 // 🎨 2026-06-17 (공구상세 후속 — 디자이너 제안 "후기·평점이 가장 큰 신뢰 레버"): 기존 ProductReviews 재사용(lazy, below-fold).
 const ProductReviews = lazy(() => import('./product-detail/ProductReviews'))
+const CreatorContentRow = lazy(() => import('./group-buy/creator-content/CreatorContentRow')) // 🎬 2026-11-04 '다녀온 사람들'(손님 2)
 // 🎟️ 2026-07-06 (§2-B B1): 인플루언서 공구 제안 모달 (게이트 OFF, lazy)
 const GbProposeModal = lazy(() => import('./group-buy/GbProposeModal'))
 
@@ -211,6 +212,8 @@ export default function GroupBuyDetailPage() {
     ? `/pass/${productId}?ref=${myUserId}`
     : `/pass/${productId}`
   // 🏪 가게(유어샵)로 — PC 셀러 카드 '프로필' 과 모바일 매장 카드 '가게 보기' 가 같은 길을 쓴다.
+  // 🎬 콘텐츠 창의 '구매' — 폰은 하단 바의 구매 버튼을 그대로 누르고(같은 창·같은 수량), PC 는 우측 구매 상자로 스크롤.
+  const buyFromContent = () => { const b = document.querySelector<HTMLButtonElement>('[data-deal-buy]'); if (b && b.offsetParent) b.click(); else document.querySelector('aside')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
   const goStore = () => { if (detail?.seller_handle) { navigate(`/u/${detail.seller_handle}`); return } const t = detail?.seller_username || detail?.seller_id; if (t) navigate(`/profile/${t}`) }
 
   useEffect(() => {
@@ -713,6 +716,11 @@ export default function GroupBuyDetailPage() {
         {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
         <div id="fcfs-apply-block"><FcfsApplyBlock productId={Number(id)} /></div>
         <div className={`${PASS_CARD} empty:hidden`}><SellThisCard productId={detail.id} price={detail.price} sellerId={detail.seller_id as number | null} hideForOwner={isOwnProduct} /></div>
+        {/* 🎬 2026-11-04 대표 확정 손님 2 — 다녀온 사람들(영상·블로그·유어딜 추천). 0개면 칸이 없다. 근처에 와야 받는다(첫 화면 무게 0). */}
+        <div className={PASS_CARD}><DeferUntilVisible minHeight={1}><Suspense fallback={null}>
+          <CreatorContentRow productId={detail.id} onBuy={buyFromContent}
+            buy={{ store: detail.restaurant_name ?? null, price: unitPrice, discountPct: displayDiscountPct || null, image: galleryImages[0] ?? null }} />
+        </Suspense></DeferUntilVisible></div>
 
         {/* 📑 2026-11-02 대표 확정 상세 **C안**: 폰도 구역 탭(PC 탭과 같은 구역 id). 머리줄 밑에 붙어 따라온다. */}
         <DetailSectionTabs tabs={mobileTabs} />

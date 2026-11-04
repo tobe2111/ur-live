@@ -252,6 +252,7 @@
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴)
 - **🎁 무상 체험 제공(2026-10-31)**: 이용권 상세 '이 이용권 팔아보기'(유어샵에 담기 / 무료 체험 신청) · `/my-seeding`(SNS 연동·신청권·내 신청) · 사장님 `/store/seeding`(요청함) · 어드민 `/admin/seeding`
 - **🧩 홈페이지 삽입 위젯(2026-10-31)**: `/embed/u/:handle`(유어샵 — 인플루언서 블로그) · `/embed/agency/:id`(에이전시 운영 매장) · `/embed/store/:username`(매장 홈페이지) · `/embed/region/:sido/:sigungu?`(지역 사이트) · `/embed/pass/:id`(이용권 하나) · **`/embed/partner/:id`(제휴사 입점 — 제휴사가 자기 사이트에서 사장님께 유어딜을 판다 → `/store/partner/:id` → 그 에이전시에 운영 요청(대기, 에이전시 수락 후 시작))** · `/embed`(코드 만들기). 서버가 그리는 스크립트 없는 HTML, iframe 허용은 보안 헤더의 `/embed/` 분기, 색인 안 함. 유어샵 핀은 `/api/curator/:handle/p/:id/redirect` 로 보내 소개 값이 공유 링크와 같이 잡힌다(돈 경로 무접촉).
+- **🎬 다녀온 사람들(2026-11-04)**: 이용권 상세 가격 아래 한 칸 — 유어딜 사람(체험단 게시물·유어쇼츠·이 이용권을 유어샵에 담아 파는 사람) → 외부 영상(유튜브·인스타·틱톡·네이버 클립) → 네이버 블로그. **가게 단위**(`seller_id`+가게 이름)로 모으고 같은 가게 이용권이 함께 쓴다. 자동 수집(매시 :45 — 네이버 블로그 · 유튜브는 유어애즈와 같은 하루 풀에서 15회 몫)은 **후보로만** 들어가 사장님이 켜야 보인다. 사장님 `/seller/group-buy/:productId/content`(보이기·숨기기·고정·순서·주소로 추가·삭제, 유어딜 사람은 숨기기만). API `/api/creator-content/:productId` · `/api/seller/creator-content/*` · `/api/admin/creator-content/*`, 표 `store_creator_content`·`store_content_crawl`, SSOT `src/shared/creator-content.ts`.
 - **🏷️ 브랜드(2026-10-17)**: `/brand/:slug` — 프랜차이즈 지점 묶음, 가까운 지점부터 + 지점들의 이용권(`/api/brands/:slug`, 읽기 전용)
 - **상권(B2G)**: `/district/:slug`(영수증 페이백 랜딩) · `/district/my`(상권 쿠폰 지갑) — `/local/:code` 상권관과 연계
 - 🏬 **운영자 몰 (2026-08-01)**: **`/:mallSlug`** — 몰 홈. ⚠️ **catch-all 바로 앞**이 이 라우트의 자리다
