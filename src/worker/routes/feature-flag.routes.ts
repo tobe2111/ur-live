@@ -22,6 +22,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
+import { publicCache } from '../middleware/edge-cache'
 import { requireAdmin } from '../middleware/auth'
 
 const flagRoutes = new Hono<{ Bindings: Env }>()
@@ -37,7 +38,7 @@ interface FlagConfig {
 
 const VALID_KEY = /^[a-z0-9_]{2,80}$/
 
-flagRoutes.get('/', async (c) => {
+flagRoutes.get('/', publicCache(30), async (c) => {
   const kv = (c.env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV
   if (!kv) return c.json({ success: true, data: {} })
   try {
@@ -55,7 +56,7 @@ flagRoutes.get('/', async (c) => {
   }
 })
 
-flagRoutes.get('/:key', async (c) => {
+flagRoutes.get('/:key', publicCache(30), async (c) => {
   const key = c.req.param('key') || ''
   if (!VALID_KEY.test(key)) return c.json({ success: false, error: '잘못된 key' }, 400)
   const kv = (c.env as Env & { SESSION_KV?: KVNamespace }).SESSION_KV

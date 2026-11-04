@@ -12,6 +12,7 @@ export const AGENCY_TOKEN_KEY = 'agency_console_token'
 export const PROFILE_KEY = 'agency_console_profile'
 /** 카카오로 이은 로그인을 그 손님에게 묶는 자리 — 정본은 `lib/agency-presence.ts`. */
 import { AGENCY_KAKAO_UID_KEY, clearAgencyOptOut } from '@/lib/agency-presence'
+import { takeAgencyWarm } from './agency-warm'
 
 export interface AgencyStaffInfo {
   id: number; email: string; name: string | null; role: 'admin' | 'staff'; isOwner: boolean
@@ -99,18 +100,29 @@ export async function agencyRequest<T = Record<string, unknown>>(
     if (token) headers.Authorization = `Bearer ${token}`
   }
   try {
-    const res = await fetch(`/api/agency-console${path}`, {
-      method: init.method || 'GET',
-      headers,
-      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-      credentials: 'omit',
-    })
+    // 🏃 마이가 첫 렌더 때 미리 출발시킨 같은 GET 이 있으면 그 응답을 쓴다(`warmAgencyRequests` — 한 번만).
+    const warmed = (init.method || 'GET') === 'GET' && init.body === undefined && headers.Authorization
+      ? await (takeAgencyWarm(path, headers.Authorization.slice(7)) ?? Promise.resolve(null))
+      : null
+    let status: number
     let data: AgencyResult<T>['data']
-    try { data = await res.json() } catch { data = { success: false, error: '잠시 후 다시 시도해 주세요.' } as AgencyResult<T>['data'] }
-    if (res.status === 401 && (data.code === 'AGENCY_AUTH_REQUIRED' || data.code === 'AGENCY_STAFF_INACTIVE')) {
+    if (warmed) {
+      status = warmed.status
+      try { data = JSON.parse(warmed.body) } catch { data = { success: false, error: '잠시 후 다시 시도해 주세요.' } as AgencyResult<T>['data'] }
+    } else {
+      const res = await fetch(`/api/agency-console${path}`, {
+        method: init.method || 'GET',
+        headers,
+        body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+        credentials: 'omit',
+      })
+      status = res.status
+      try { data = await res.json() } catch { data = { success: false, error: '잠시 후 다시 시도해 주세요.' } as AgencyResult<T>['data'] }
+    }
+    if (status === 401 && (data.code === 'AGENCY_AUTH_REQUIRED' || data.code === 'AGENCY_STAFF_INACTIVE')) {
       clearAgencySession()
     }
-    return { ok: res.ok && data.success !== false, status: res.status, data }
+    return { ok: status >= 200 && status < 300 && data.success !== false, status, data }
   } catch {
     return { ok: false, status: 0, data: { success: false, error: '인터넷 연결을 확인해 주세요.' } as AgencyResult<T>['data'] }
   }

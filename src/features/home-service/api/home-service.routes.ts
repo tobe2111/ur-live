@@ -159,7 +159,7 @@ homeServiceRoutes.get('/share/:token', async (c) => {
 })
 
 /** 🏠 홈 '생활' 탭 업종 칩 — `{ 상품 id: 업종 }` (2026-10-25). 공개·로그인 불필요, 짧게 캐시. */
-homeServiceRoutes.get('/deal-subcats', async (c) => {
+homeServiceRoutes.get('/deal-subcats', publicCache(100), async (c) => {
   try {
     const { lifeSubcatMap } = await import('./life-deal-subcat-store')
     const data = await lifeSubcatMap(c.env.DB)

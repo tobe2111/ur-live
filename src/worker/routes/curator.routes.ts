@@ -782,7 +782,7 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     //   handle NULL 인 사용자도 자동 생성 → /host/new fall through 영구 차단.
     //   user.name 기반 slug → 충돌 시 user2/3..99 → random hex.
     // 🏁 2026-06-11: meRow/linkedSeller/통계 6종 — 전부 userId 만 의존 → 한 번에 병렬 (3 RTT → 1 RTT).
-    const [meRow0, linkedSeller0, earnings30, pending30, clicks30, purchases30, topPinsR, dailyR, recentR] = await Promise.all([
+    const [meRow0, linkedSeller0, earnings30, pending30, clicks30, purchases30, topPinsR, dailyR, recentR, emailSeller0] = await Promise.all([
       DB.prepare('SELECT handle, name FROM users WHERE id = ? LIMIT 1')
         .bind(userId).first<{ handle: string | null; name: string | null }>().catch(() => null),
       DB.prepare(`SELECT s.id, s.username FROM sellers s WHERE ${OWNED_STORE_WHERE_SQL} LIMIT 1`).bind(userId, userId, userId).first<{ id: number; username: string }>() // 🛍️ 위와 같은 규칙
@@ -826,6 +826,13 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
          FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'
          ORDER BY created_at DESC LIMIT 30`,
       ).bind(userId).all().catch(() => ({ results: [] as any[] })),
+      // ⚡ 2026-11-04 — 이메일 매칭 대비(아래 fallback)를 **같은 물결에** 미리 묻는다. 종전엔 가게가 없는 손님(대다수)이
+      //   이 화면마다 `users.email` → `sellers WHERE email` 을 **차례로** 두 번 더 물었다(한국에서 왕복 ≈ 0.2초 × 2).
+      //   조건은 아래 fallback 과 글자 그대로 같다(users.email = sellers.email · approved · 미연결이거나 나).
+      DB.prepare(
+        `SELECT s.id, s.username FROM sellers s JOIN users u ON u.email = s.email
+          WHERE u.id = ? AND s.status = 'approved' AND (s.linked_user_id IS NULL OR s.linked_user_id = ?) LIMIT 1`,
+      ).bind(userId, userId).first<{ id: number; username: string }>().catch(() => null),
     ])
     let meRow = meRow0
     if (meRow && !meRow.handle) {
@@ -845,17 +852,12 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     let linkedSeller = linkedSeller0
 
     if (!linkedSeller) {
-      // Email 매칭 fallback — auto-link 가 아직 안 된 사용자
-      const u = await DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first<{ email: string }>().catch(() => null)
-      if (u?.email) {
-        linkedSeller = await DB.prepare(
-          `SELECT id, username FROM sellers WHERE email = ? AND status = 'approved' AND (linked_user_id IS NULL OR linked_user_id = ?) LIMIT 1`
-        ).bind(u.email, userId).first<{ id: number; username: string }>().catch(() => null)
-        // 발견 시 즉시 backfill — 다음 호출은 1차 query 에서 hit
-        if (linkedSeller) {
-          await DB.prepare(`UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?`)
-            .bind(userId, linkedSeller.id).run().catch(() => null)
-        }
+      // Email 매칭 fallback — auto-link 가 아직 안 된 사용자(값은 위 Promise.all 이 미리 받아 둔 `emailSeller0`)
+      linkedSeller = emailSeller0
+      // 발견 시 즉시 backfill — 다음 호출은 1차 query 에서 hit
+      if (linkedSeller) {
+        await DB.prepare(`UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?`)
+          .bind(userId, linkedSeller.id).run().catch(() => null)
       }
     }
 

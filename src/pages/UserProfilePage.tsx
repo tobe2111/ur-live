@@ -12,7 +12,7 @@ import { ChevronRight } from 'lucide-react'
 import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 // 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(프로필 편집 화살표) 하나뿐 — 조작이라 그대로 둔다.
 //    2026-09-30 수익·추천 구역이 빠지며 `ReceiptIcon`·`UrShopIcon` 소비처는 사라졌다.
-import { AgencyInviteDoor, AgencyTitleDoor, AgencyHeadDoor } from '@/pages/user-profile/agency-doors'
+import { AgencyInviteDoor, AgencyTitleDoor, AgencyHeadDoor, warmAgencyZone } from '@/pages/user-profile/agency-doors'
 import { BellIcon, LogOutIcon, ScanIcon, MessageIcon, InfoIcon, ReceiptIcon } from '@/components/icons/urdeal-icons'
 import { ListRow, rowIcon, SectionTitle } from './user-profile/list-grammar'
 import MyStats from './user-profile/MyStats'
@@ -71,6 +71,8 @@ export default function UserProfilePage() {
   //   가른다(`MyRoleTabs` 머리말). 없으면 `tabbed=false` 라 둘 다 참 → 종전 화면 그대로.
   //   ⚠️ PC 는 이미 왼쪽(판매)·오른쪽(손님) 두 열로 갈라 있어 탭을 세우지 않는다.
   const agencyPresence = useAgencyPresence()
+  // 🏃 에이전시 구역의 코드·조회를 첫 렌더에 출발(2026-11-04 — `warmAgencyZone` 머리말). 마운트마다 한 번.
+  useState(warmAgencyZone)
   const [myTab, setMyTab] = useState<MyTab>(MY_TAB_DEFAULT)
   const tabbed = !isPc && agencyPresence.on
   const showMe = !tabbed || myTab === 'me'

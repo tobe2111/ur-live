@@ -28,3 +28,67 @@
 - 프로파일의 `(program)` 1.6초(파싱·스타일·레이아웃)는 그대로다. 마이 화면 자체 크기가 원인이라 다음 후보.
 - 하네스의 커밋 계측은 첫 판에서 손대지 않은 형제 fiber 까지 셌다(과대) — 판정은 CPU 시간으로 했다.
 - 실제 폰·한국 회선 체감은 로그인 필요라 못 쟀다 → 대표 확인 대기.
+
+## ✅ 1차 머지 — PR #2191 `d852e2b6` (E3 배포까지. 폰 체감 E4 는 대표 확인 대기)
+
+## 2차 (대표 *"마이페이지도 리스터코퍼레이션 에이전시 명 그 부분이나 몇몇 부분만 유독 늦게 떠. 다른 페이지들도 다 봐줘. 손님 페이지들. 데이터가 느리고, 유저가 갑자기 많이 들어와도"* → *"가장 이상적인 최적화를 해줘"*)
+
+서비스: 유어딜(소비자) · 에이전시 구역(마이 안) · 머니 경로 없음 · 롤백 revert.
+
+### A. 마이 에이전시 구역 — 4단 줄서기 → 첫 렌더에 한꺼번에 출발
+종전: 마이 그림 → 에이전시 화면 코드(lazy) → `/me·/staff·/payouts` → 매장 판 코드 → `/stores·/notifications`.
+→ `warmAgencyZone()`(agency-doors) 가 마이 첫 렌더에서 코드 4조각 + 조회 5건을 출발. `agencyRequest` 는 같은 GET 을
+처음 부를 때 한 번만 그 응답을 쓴다(같은 토큰 · 10초 · POST 제외). 에이전시 로그인이 없으면 아무것도 안 받는다.
+가드 `agency-warm-2026-11-04.test.ts`. 앵커 재조준 2건(`agency-in-my`·`my-agency-merged` — lazy 선언 모양만 바뀜).
+⚠️ 에이전시 이름(제목)은 여전히 '내 가게' 좌석 응답을 기다린다(`storeCount>0` 조건) — 첫 방문만. 재방문은 1차의 좌석 기억으로 즉시.
+
+### B. 손님 페이지 전수 — **`CDN-Cache-Control` 은 아무것도 캐시하지 않는다**
+라이브 실측: 모든 API 응답이 `cf-cache-status: DYNAMIC`(Pages Functions). 원본을 막는 것은 코드 안 `publicCache`/`edgeCache` 뿐이고,
+헤더만 붙인 공개 API **12곳**이 같은 URL 세 번에 세 번 다 원본이었다(사람이 몰리면 그대로 D1·KV 직행):
+`promo-bar`(모든 페이지) · `feature-flags` 둘(매 요청 KV 목록 전체) · `seeding/offer/:id`(이용권 상세마다) · `seeding/open` ·
+`consumer-settings`(지도) · 유어샵 `sns-posts`(index.ts app.use) · `region/label` · `regions` · `public/new-openings` ·
+`public/area-report` · `home-service/deal-subcats` → 전부 `publicCache`. 핸들러가 로그인 정보를 안 읽는 것을 하나씩 확인.
+가드 `public-edge-cache-real-2026-11-04.test.ts`(고친 12곳 + "헤더만 캐시" 공개 GET 신규 0 래칫, 기준선 13).
+잠금 파일(`public-utility.routes.ts`) 추가 기록: `docs/locks/loading/2026-11-04-public-cache-real.md`.
+
+### 측정했지만 고칠 게 아니었던 것
+- 손님 화면 HTML: 서버 안 처리 **18~62ms**(`Server-Timing`) — 0.2~1.6초 들쭉날쭉은 측정 회선(IAD 경유) 몫.
+- 홈·교환권·이용권 상세·유어샵·숙소·지도·유어쇼츠의 주요 API 는 이미 `*-HIT`.
+- `region/resolve`(GPS 동네 찾기 1.3초)는 사용자가 버튼을 누를 때만 · 좌표마다 달라 캐시 효과 작음 → 그대로.
+
+### 이번에 틀렸던 판단
+- 첫 측정기가 "첫 요청 직후 바로 두 번째" 를 보내 캐시 저장(waitUntil)이 끝나기 전에 물었다 → `search/popular` 등을 캐시 없음으로 오판.
+  간격을 두고 세 번째로 판정하니 HIT. **캐시 판정은 세 번 · 간격을 두고.**
+- `map-clusters` NONE 은 bbox 없는 400 응답이었다(2xx 만 캐시) — 잘못된 URL 로 잰 것.
+
+### 남은 것
+- `/store/scan`(사장님 계산대) 실사용 LCP 5.2초(표본 1) — 손님 화면 밖이라 이번 범위 밖. 다음 후보.
+
+## 3차 (대표 *"사람들이 대부분 처음 진입하는걸텐데 캐시 데이터베이스가 의미가 있어? … 데이터가 느릴 때 많이 느리던데"* → 선택 *"1+2+3 순서대로"*)
+
+### 0. 실측 — 첫 진입이 느린 구조적 이유
+- RUM `TTFB colo:*` 1주(10-29~11-04): 한국 손님은 **HKG·NRT·LAX** 로만 붙었다 — **ICN 0건**. 무료 요금제의 한국 통신사 경로 문제. 코드로 못 바꾼다 → 유료 옵션 조사·결재 대상(미작성 — 다음 할 일).
+- D1 원본 `ENAM`, `read_replication.mode=auto`(켜져 있음). 사본은 세션 API(`publicReadDb`/`userReadDb`)를 쓰는 9파일에서만.
+- 1차의 "지난 값 기억"은 재방문 전용, 2차 엣지 캐시는 colo 별 공용이라 저트래픽에선 대부분 빈다 — 첫 방문 해결책이 아님을 대표에게 정직하게 보고.
+- **판정 장치**: 홈 섹션 응답에 `Server-Timing: d1;desc="replica:APAC"` → 브라우저가 세션당 1건 `D1` 표본(`d1:<primary|replica>[:지역]@<colo>`)으로 보낸다. 어드민 `/api/analytics/summary?day=` 의 `vitals:…:D1:` 로 **한국 손님 질의를 어느 지역이 답하는지** 판정(배포 다음 날부터).
+
+### 1. 첫 방문 코드 −184KB(로그인 손님 마이 실측 868 → 684KB, 긴 작업 9 → 4)
+- 공용 부품 봉투 `app-components`(109KB)를 끌어오던 문 둘:
+  ① 번호 필수 창(오늘 #2177) — 마운트 조건이 "이 기기에 user_phone 없음"이라 새 기기·번호 없는 손님마다. → `lib/phone-gate-door` 가 서버 `phone_required` 일 때만 창 코드를 받고, 아니면 user_id 별 표시(`user_phone_ok`)를 남겨 다음엔 묻지도 않는다.
+  ② 푸시 설정 부품 — granted 가 아니면 아무것도 안 하는데 로그인만 보면 마운트. → `Notification.permission === 'granted'` 일 때만.
+- 가드 `phone-gate-door-2026-11-04.test.tsx`.
+
+### 2. 차례 묻기 줄이기(조사 에이전트 표 — 마이 계열 13 엔드포인트)
+- **내 이용권 버그**: `ensureVoucherGiftTable` 의 WeakSet 이 사본 세션(요청마다 새 객체)을 키로 써 DDL 2문장이 **매 요청 미국 원본**으로 갔다 → `dbKey` + 선물 두 조회 나란히(−3 왕복). 되돌려-검증 빨간불 확인.
+- 찜(2→1) · 유어샵 대시보드 가게 없는 손님(3→1, 이메일 매칭을 첫 Promise.all 로).
+- 가드 `first-visit-roundtrips-2026-11-04.test.ts`.
+- ⚠️ **안 한 것(다음 후보, 표 근거)**: 내 이용권 나머지 직렬(잠금표 파일 `group-buy-public.routes.ts` — 6→1 가능) · `seller/orders` 8→2~3 · 에이전시 `/me`(가드 행 재조회)·`/staff`·`/stores`·`/notifications` 각 −1 · `my-stores/summary` 서브쿼리 2→1.
+
+### CI surface-budgets
+main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면당 +0.1~0.3KB(에이전시 +0.9) — 사유와 함께 rebaseline
+(`scripts/surface-budgets-history/2026-11-04-home-linkshop-vouchers-and-3.json`). 에이전시 미리받기 코드는 `lib/agency-presence`(app-utils)
+에서 `pages/agency-console/agency-warm.ts` 로 옮겨 손님 공용 묶음 증가를 없앴다.
+
+### 틀렸던 판단
+- 2차에서 에이전시 미리받기 코드를 "의존성 없는 작은 모듈"에 넣은 것 — 그 모듈이 모든 화면 공용 묶음(app-utils)에 있어 손님 전원이 받았다.
+- 실행 중 git 기록을 `reset --soft HEAD~1` 로 꼬았다(머지 커밋을 날림) → reflog 로 복구, 패치로 다시 적용.

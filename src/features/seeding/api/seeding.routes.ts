@@ -40,6 +40,7 @@ import {
 import { APP_SELECT, influencerCancel, loadApp, sendToStore } from './seeding-actions'
 import { toStore } from './seeding-notify'
 import { notifySeller } from '../../../lib/notifications'
+import { publicCache } from '../../../worker/middleware/edge-cache'
 import { findActiveDealPct } from '../../../worker/utils/influencer-deal'
 
 type E = { Bindings: Env }
@@ -68,7 +69,7 @@ async function eligibilityFor(DB: D1Database, userId: number, productId: number)
 
 export const seedingRoutes = new Hono<E>()
 
-seedingRoutes.get('/open', async (c) => {
+seedingRoutes.get('/open', publicCache(60), async (c) => {
   try {
     const DB = c.env.DB
     await ensureSeedingTables(DB)
@@ -81,7 +82,7 @@ seedingRoutes.get('/open', async (c) => {
   }
 })
 
-seedingRoutes.get('/offer/:productId', async (c) => {
+seedingRoutes.get('/offer/:productId', publicCache(30), async (c) => {
   try {
     const DB = c.env.DB
     await ensureSeedingTables(DB)

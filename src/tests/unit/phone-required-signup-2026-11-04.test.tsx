@@ -84,7 +84,8 @@ describe('③ 창', () => {
 describe('④ 마운트', () => {
   it('App 이 로그인한 소비자에게만 붙인다', () => {
     const app = readFileSync('src/App.tsx', 'utf8')
-    expect(app).toMatch(/\{shellNeed\.phone && <Suspense fallback=\{null\}><PhoneRequiredGate \/><\/Suspense>\}/)
+    // 🚪 2026-11-04: 창 코드는 문지기(`lib/phone-gate-door`)가 서버 `phone_required` 일 때만 받는다(app-components 109KB).
+    expect(app).toMatch(/\{shellNeed\.phone && <PhoneGateDoor \/>\}/)
     expect(app).toMatch(/phone: \(\(\) => \{ try \{ return !!\(localStorage\.getItem\('user_id'\) \|\| localStorage\.getItem\('session_login'\)\)/)
   })
   it('가입 직후 환영 창(쿠폰·관심 분야·알림톡)은 없다 — 2026-11-04 대표: 환영 쿠폰 없음 · 관심 분야 불필요 · 알림톡 토글은 저장 안 됨', () => {

@@ -112,6 +112,10 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
       LIMIT ? OFFSET ?
     `;
     if (_wishlistBaseCol !== false) await ensureWishlistBaselineTables(DB).catch(() => {});
+    // ⚡ 2026-11-04 — 개수는 목록과 무관하다 → 목록과 **나란히** 출발(한국에서 왕복 하나 ≈ 0.2초 · 마이 첫 화면이 부른다).
+    const countP = DB.prepare('SELECT COUNT(*) as count FROM wishlists WHERE user_id = ?')
+      .bind(userId).first<{ count: number }>();
+    countP.catch(() => { /* 목록이 먼저 실패하면 이 거절이 처리 안 된 채 남지 않게 — 아래 await 가 진짜 처리한다 */ });
     let results: Record<string, unknown>[] = [];
     for (;;) {
       try {
@@ -127,8 +131,7 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
         throw e;
       }
     }
-    const countResult = await DB.prepare('SELECT COUNT(*) as count FROM wishlists WHERE user_id = ?')
-      .bind(userId).first<{ count: number }>();
+    const countResult = await countP;
     return c.json({ success: true, data: { items: results, total: countResult?.count || 0 } });
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[wishlists]');

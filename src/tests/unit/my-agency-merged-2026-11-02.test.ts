@@ -36,7 +36,10 @@ describe('마이 — 내 가게 + 에이전시 한 구역', () => {
     expect(TITLE).toMatch(/if \(!on \|\| storeCount <= 0\) return null/)
     // 🚪 에이전시가 아닌 손님은 그 코드를 안 받는다(문이 lazy) — 첫 화면 무게 예산(dash:my).
     expect(DOORS).toMatch(/if \(!on \|\| storeCount <= 0\) return null/)
-    expect(DOORS).toContain("lazy(() => import('./AgencyMergedTitle'))")
-    expect(DOORS).toContain("lazy(() => import('./AgencyInviteButton'))")
+    // 🏃 2026-11-04: 로더를 이름 붙여 꺼냈다(`warmAgencyZone` 이 에이전시 로그인이 있을 때만 미리 부른다).
+    expect(DOORS).toContain("const loadTitle = () => import('./AgencyMergedTitle')")
+    expect(DOORS).toContain('const AgencyMergedTitle = lazy(loadTitle)')
+    expect(DOORS).toContain("const loadInvite = () => import('./AgencyInviteButton')")
+    expect(DOORS).toContain('const AgencyInviteButton = lazy(loadInvite)')
   })
 })

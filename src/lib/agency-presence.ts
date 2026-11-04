@@ -97,3 +97,4 @@ export function readAgencyProfileLite(): { agencyName: string; isAdmin: boolean 
     return { agencyName: p.agency?.name || '', isAdmin: p.staff?.role === 'admin' }
   } catch { return null }
 }
+

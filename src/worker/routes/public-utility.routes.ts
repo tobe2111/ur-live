@@ -529,7 +529,7 @@ publicUtilityRoutes.get('/api/home/categories', async (c) => {
  * ⚡ 60초 브라우저 / 10분 엣지. 즉시성이 필요한 값이 아니다.
  * 🔒 값 검증은 여기서 한다 — 어드민이 실수로 빈 값·문자·음수를 넣어도 화면이 안 깨져야 한다.
  */
-publicUtilityRoutes.get('/api/consumer-settings', async (c) => {
+publicUtilityRoutes.get('/api/consumer-settings', publicCache(200), async (c) => {
   // 기본값은 코드 SSOT 와 같은 숫자여야 한다 — 다르면 설정 미저장 상태에서 화면이 값을 바꾼다.
   const fallback = { success: true, data: {} as Record<string, unknown> }
   try {
@@ -551,7 +551,7 @@ publicUtilityRoutes.get('/api/consumer-settings', async (c) => {
   }
 })
 
-publicUtilityRoutes.get('/api/promo-bar', async (c) => {
+publicUtilityRoutes.get('/api/promo-bar', publicCache(30), async (c) => {
   const empty = { success: true, data: { enabled: false } as Record<string, unknown> }
   try {
     const { results } = await c.env.DB.prepare(
