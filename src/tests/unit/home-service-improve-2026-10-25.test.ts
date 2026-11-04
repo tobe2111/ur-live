@@ -80,9 +80,10 @@ function signageInput(extra: Record<string, string> = {}): Record<string, string
 }
 
 describe('📷 요청서 사진', () => {
-  it('간판·인테리어·수리·냉장 설비에만 사진 칸이 있고, 전부 선택 칸이다', () => {
-    const withPhotos = HOME_SERVICE_CATEGORIES.filter((d) => d.fields.some((f) => f.type === 'photos')).map((d) => d.key).sort()
-    expect(withPhotos).toEqual(['home_interior', 'signage', 'store_fridge', 'store_interior', 'store_repair'])
+  // 📷 2026-11-04 대표 *"견적을 작성할 때 각각 업종마다 사진을 선택적으로 올릴 수 있게"* — 종전 다섯 업종 → 전 업종.
+  it('모든 업종에 사진 칸이 있고, 전부 선택 칸이다', () => {
+    const without = HOME_SERVICE_CATEGORIES.filter((d) => !d.fields.some((f) => f.type === 'photos')).map((d) => d.key)
+    expect(without, '사진 칸이 없는 업종').toEqual([])
     for (const d of HOME_SERVICE_CATEGORIES) for (const f of d.fields) if (f.type === 'photos') expect(f.required).toBe(false)
   })
   it('우리 업로드 주소만 — 같은 출처 · R2 공개 도메인', () => {

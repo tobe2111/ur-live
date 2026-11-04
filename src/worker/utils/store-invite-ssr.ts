@@ -13,9 +13,10 @@
  */
 import { agencyInviteCardCopy } from '../../shared/agency-store-invite'
 import type { SurfaceRewriteMeta } from './surface-ssr-meta'
+import { seedObject } from './life-share-ssr'
 
 export function buildStoreInviteMeta(payload: unknown, origin: string, pathname: string): SurfaceRewriteMeta | null {
-  const p = payload as { success?: boolean; agencyName?: unknown } | null
+  const p = seedObject(payload) as { success?: boolean; agencyName?: unknown } | null
   if (!p || p.success !== true) return null
   const name = typeof p.agencyName === 'string' ? p.agencyName : ''
   const c = agencyInviteCardCopy(name)
