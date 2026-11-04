@@ -21,7 +21,14 @@ import {
   type ChangeEvent, type CSSProperties, type ReactElement, type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, Check } from 'lucide-react'
+// 🪶 아이콘은 직접 그린다 — lucide 를 부르면 그 청크(약 34KB 실행)가 lucide 를 안 쓰던 화면(마이 판매 구역·
+//    에이전시 콘솔)까지 따라온다(2026-11-04 `check-exec-cost` 실측 +48KB). 둘 다 획 1.6 · 둥근 끝(유어딜 아이콘 결).
+function ChevronDown({ className = '' }: { className?: string; strokeWidth?: number }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+}
+function Check({ className = '' }: { className?: string; strokeWidth?: number }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+}
 
 interface Opt { value: string; label: ReactNode; text: string; disabled: boolean }
 

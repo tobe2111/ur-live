@@ -715,6 +715,10 @@ export default defineConfig({
             //   부품은 ~1KB 이고 이미지는 /assets/*.webp 별도 파일이라 렌더 전엔 내려받지 않는다.
             id.includes('/src/components/mascot/')
           ) return 'app-shell'
+          // 🪟 2026-11-04 [LOADING_ADDITIVE] 유어딜 선택창(`components/ui/select`) — 기본 <select> 대체(73파일).
+          //   catch-all(app-components)에 떨어지면 그 봉투가 끌고 오는 lucide(실행 +34KB)까지 마이 판매 구역·
+          //   에이전시 콘솔이 받는다(check-exec-cost 실측 +48KB). 부품 자체는 의존이 react·react-dom 뿐이라 작은 봉투로 뺀다.
+          if (id.includes('/src/components/ui/select')) return 'app-select'
           // 🎟️ 2026-11-04 [UNLOCK_LOADING] 대표 *"잠금파일도 모두 허가해줄게"* — 이용권 탭(내 이용권)이 공용 봉투 app-components(109KB)를
           //   받고 9KB 만 쓰고 있었다. 원인은 이 다섯 부품(홈 화면 추가 안내 · QR · 사용 완료 창 · 후기 카드 · 사장님 전환 안내)이
           //   catch-all 에 떨어진 것 → 지갑 봉투로 옮긴다(QR 창은 지갑의 핵심 동작이라 lazy 로 내리지 않는다 — 누를 때 다시 받으면 더 느리다).

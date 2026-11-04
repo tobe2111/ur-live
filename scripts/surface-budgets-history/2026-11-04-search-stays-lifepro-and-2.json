@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-04",
+  "reason": "2026-11-04 기본 <select> → 유어딜 <Select>(app-select 1.8KB) — 대표 신고 '정산 계좌 은행 고르기가 휴대폰 기본 목록 창' 전수 대체. 첫 탭 지연을 피하려 lazy 로 미루지 않음",
+  "surfaces": [
+    "search",
+    "stays",
+    "lifePro",
+    "dash:my",
+    "dash:admin"
+  ],
+  "changes": [
+    "search: 184.6 → 187.3 KB (+2.7, 허용 1.5) · 늘어난 것: app-select.js +1.8, app-utils.js +0.7",
+    "stays: 182.4 → 184.9 KB (+2.5, 허용 1.5) · 늘어난 것: app-select.js +1.8, app-utils.js +0.4",
+    "lifePro: 204.5 → 206.5 KB (+2.0, 허용 1.5) · 늘어난 것: app-select.js +1.8",
+    "dash:my: 215.9 → 217.7 KB (+1.8, 허용 1.5) · 늘어난 것: app-select.js +1.8",
+    "dash:admin: 251.6 → 253.7 KB (+2.1, 허용 1.5) · 늘어난 것: app-select.js +1.8"
+  ]
+}
