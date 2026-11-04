@@ -44,7 +44,7 @@ describe('숙소 상세 갤러리 — 다른 상세와 같은 풀블리드', () 
     //    ⇒ 배지 라벨(`propertyTypeLabel`)로 그 블록을 직접 앵커하고, 음수는 명시적으로 배제한다.
     //    ⚠️ 이 검사는 클래스만 본다 — 실제 픽셀은 브라우저로 재야 한다.
     // 🔀 클래스는 SSOT 에 있다. 페이지가 그걸 쓰는지도 같이 본다(우회하면 SSOT 가 맞아도 소용없다).
-    expect(read(STAY), '제목 블록이 SSOT 를 안 쓴다').toContain('className={STAY_HEAD.titleBlock}')
+    expect(read('src/pages/stay-detail/StayHeadCard.tsx'), '제목 블록이 SSOT 를 안 쓴다(2026-11-04 폰 머리 부품으로 옮김)').toContain('className={STAY_HEAD.titleBlock}')
     expect(STAY_HEAD.titleBlock, '모바일 전용 표식이 사라졌다').toContain('lg:hidden')
     expect(STAY_HEAD.titleBlock, '사진 바로 아래 제목 블록에 위 여백이 없다 — 사진과 배지가 붙는다')
       .toMatch(/(^|\s)mt-5\b/)

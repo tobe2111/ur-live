@@ -7,7 +7,7 @@
  */
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { stayDetailTitle } from '@/shared/seo/detail-title'
-import { PinIcon, StarIcon, StayLineIcon, CouponIcon } from '@/components/icons/urdeal-icons'
+import { StayLineIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -26,7 +26,7 @@ import StayDateGuestPicker, { type DayPrice } from './stay-detail/StayDateGuestP
 import AmenityGrid from './stay-detail/AmenityGrid'; import { parseAmenities } from './stay-detail/amenity-grid'
 import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 // 🏨 첫 화면의 치수 클래스는 워커(`stay-detail-ssr-body`)와 **같은 상수**를 쓴다 — 두 벌이면 갈린다.
-import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID, STAY_BAND } from '@/shared/stay-head'
+import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID, STAY_BAND } from '@/shared/stay-head'; import StayHeadCard from './stay-detail/StayHeadCard' // 🏨 폰 머리 = 이용권 머리
 import DetailSectionTabs from './group-buy/DetailSectionTabs'; import { stayTabs } from './stay-detail/stay-tabs' // 📑 이용권 상세와 같은 구역 탭
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'; import StayPcActions from './stay-detail/StayPcActions' // 🏨 PC 찜·담기·공유(폰 머리는 lg:hidden)
 import BrandLoader from '@/components/brand/BrandLoader'; import { useOwnerManage, OwnerManageBar, OwnerManageCard } from '@/components/deal/useOwnerManage'
@@ -330,44 +330,12 @@ export default function StayDetailPage() {
           rating={stay.avg_rating ?? undefined}
           reviewCount={stay.review_count ?? undefined}
         />
-        {/* Title + meta — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번).
-            📏 `mt-5` = 사진↔배지 간격(경위는 stay-detail-gallery-bleed.test.ts — 없으면 2px 로 붙는다). */}
-        <div className={STAY_HEAD.titleBlock}>
-          <div className={STAY_HEAD.metaRow}>
-            {/* 🧭 2026-08-30: 유형 배지('호텔')를 뺐다 — 바로 위 빵부스러기의 마지막 칸이 같은 말이다. */}
-            {/* ⭐ 등급을 별 아이콘 N개로 그렸었다. 브랜드 팔레트에서 amber 는 무채색으로
-                리매핑돼 회색 별이 됐고(등급인지 비활성인지 안 읽힌다), 바로 아래 리뷰 평점의
-                별과 두 벌이 돼 눈이 헷갈렸다. 등급은 글자가 정확하다. */}
-            {stay.star_rating ? <span>{stay.star_rating}성급</span> : null}
-          </div>
-          <h1 className={STAY_HEAD.h1}>{stay.restaurant_name || stay.name}</h1>
-          <div className="flex items-center gap-2 mt-1 text-[12px] text-gray-500 dark:text-gray-400">
-            <PinIcon className="w-3 h-3" />
-            {/* 📍 2026-09-14: "경북 경주시 · 경북 경주시 손곡3길 37-14" 로 찍히던 자리.
-                라이브 50건 중 12건은 지역 항목과 주소가 아예 달라, 이어 붙이면 **틀린 주소**가 됐다.
-                판정은 `shared/stay-address.ts` 하나로. */}
-            <span>{stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}</span>
-          </div>
-          {stay.avg_rating ? (
-            <div className="flex items-center gap-2 mt-2">
-              <StarIcon filled className="w-4 h-4 text-amber-400 fill-amber-400" />
-              <span className="text-[15px] font-bold">{stay.avg_rating.toFixed(1)}</span>
-              <span className="text-[12px] text-gray-500 dark:text-gray-400">({stay.review_count}개 리뷰)</span>
-            </div>
-          ) : null}
-        </div>
+        {/* 🏨 2026-11-04 (대표 "왜 서로 다른거야" → "합쳐줘"): 폰 머리 = 이용권 상세와 같은 네 줄
+            [유형 · 성급 · 지역] → 제목 → 별점 → 가격. 📱 모바일 전용 — PC 는 위 `DetailTitleHeader`. */}
+        <StayHeadCard stay={stay} name={stay.restaurant_name || stay.name} minPrice={minRoomPrice} priceLabel={roomsPriceLabel} />
 
-        {/* 🛡️ 2026-05-18: 인플 referral 배너 — ref 진입 시 표시. */}
-        {referrerId && stay.referral_enabled === 1 && (stay.influencer_discount_pct || 0) > 0 && (
-          <div className="bg-brand-tint dark:bg-gray-800/[0.15] border border-rule rounded-xl p-3 mb-3 flex items-center gap-2">
-            <CouponIcon className="w-5 h-5 shrink-0 text-brand-text" aria-hidden />
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-medium text-brand-text ">추천 할인 {stay.influencer_discount_pct}% 적용</p>
-              <p className="text-[12px] text-brand-text opacity-80 mt-1">결제 시 자동 적용됩니다</p>
-            </div>
-          </div>
-        )}
-
+        {/* 🗑️ 2026-11-04: 옛 '추천 할인 N% 적용' 배너 제거 — 11-03 소개 적립 통일 뒤 예약 생성은 옛 객실 할인을
+            언제나 건너뛴다(`unifiedStayReferrer` on 고정). 남겨 두면 주지 않는 할인을 약속한다(이용권 상세도 10-15 에 같은 배너를 걷었다). */}
         {!own && <div className="-mx-4 empty:hidden"><SellThisCard productId={stay.id} sellerId={stay.seller_id} hideForOwner={own} /></div>}{/* 🏨 ③ 팔아보기 — 이용권 상세와 같은 한 줄(적립도 같은 장부) */}
         {/* 📑 2026-11-03 숙소·예약 통일 ②: 이용권 상세와 같은 폰 구역 탭(C안) — 같은 부품, 숙소 구역 id. */}
         <div className="-mx-4"><DetailSectionTabs tabs={stayTabs({ intro: !!stay.description_full, map: !!(stay.address || (stay.latitude != null && stay.longitude != null)) })} /></div>
