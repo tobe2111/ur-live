@@ -33,7 +33,7 @@ export function AgencyPasswordPanel({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <form onSubmit={(e) => { void submit(e) }} className="flex flex-col gap-4">
+    <form onSubmit={(e) => { void submit(e) }} className="flex flex-col gap-5">
       <Field label="지금 비밀번호">
         <input type="password" required autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} disabled={busy} className={panelInputCls} />
       </Field>

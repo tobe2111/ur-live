@@ -38,7 +38,7 @@ export function AgencyGettingStarted({ staffCount, pendingCount, onRegister, onI
       </div>
       <p className="mt-3 text-[13px] text-gray-500 dark:text-gray-400">매장을 하나 맡으면 매출·주문·정산이 여기에 바로 떠요.</p>
 
-      <ol className="mt-4">
+      <ol className="mt-3">
         <Step n={1} title={pendingCount > 0 ? `맡김 요청 ${pendingCount}건 수락하기` : '사장님께 영입 링크 보내기'}
           desc={pendingCount > 0 ? '사장님이 이미 맡겨 두셨어요' : '카톡으로 보내면 사장님이 수락만 하면 돼요'} active>
           <button type="button" onClick={() => (pendingCount > 0 ? onRequests() : setInviteOpen(true))}
