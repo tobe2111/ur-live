@@ -23,7 +23,8 @@ const EDIT = 'src/pages/user-profile/profile-edit/ProfileEditSheet.tsx'
 const GONE_CARDS = 'src/pages/ushop-manage/ShopInfoCards.tsx'
 
 /** 관리 화면이 맡기로 한 다섯 덩어리 — 유어샵에서 사라지고 여기서 나타나야 한다. */
-const MOVED = ['OwnerEarningsStrip', 'PinManageList', 'EarnLadder', 'SellOwnProductsCTA'] as const
+// 📍 2026-11-04: 30일 띠 → 요약 판(OwnerSummaryCard) · 버는 법 사다리는 걷고 에이전시 입구로(대표).
+const MOVED = ['OwnerSummaryCard', 'PinManageList', 'SellOwnProductsCTA'] as const
 
 describe('e3 — 관리 화면 분리', () => {
   it('/u/me/manage 가 로그인 뒤에만 열린다', () => {
@@ -85,7 +86,7 @@ describe('e3 — 관리 화면 분리', () => {
   })
 
   it('검사 대상이 실제로 존재한다(0건이면 통과가 아니라 고장)', () => {
-    expect(MOVED.length).toBeGreaterThanOrEqual(4)
+    expect(MOVED.length).toBeGreaterThanOrEqual(3) // 2026-11-04 사다리를 걷어 셋
     for (const f of [APP, PAGE, HEADER, MANAGE, EDIT]) {
       expect(read(f).length, f).toBeGreaterThan(400)
     }

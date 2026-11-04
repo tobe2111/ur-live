@@ -25,22 +25,10 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
+import { voucherMargin } from '@/shared/voucher-margin'
 
-/** 정가 → 할인 → 유어딜 수수료 → 인플루언서 수수료 → 최종 마진. 화면과 시험이 같은 함수를 쓴다. */
-export function voucherMargin(input: { price: number; originalPrice?: number; platformFeePct: number; influencerPct: number }) {
-  const price = Number.isFinite(input.price) && input.price > 0 ? Math.floor(input.price) : 0
-  const list = Number(input.originalPrice) > price ? Math.floor(Number(input.originalPrice)) : price
-  const discount = list - price
-  const platformCut = Math.round((price * Math.max(0, Number(input.platformFeePct) || 0)) / 100)
-  const influencerPct = Math.max(0, Math.min(50, Number(input.influencerPct) || 0))
-  const influencerCut = Math.round((price * influencerPct) / 100)
-  const net = price - platformCut - influencerCut
-  return {
-    list, discount, price, platformCut, influencerPct, influencerCut, net,
-    discountPct: list > 0 ? Math.round((discount / list) * 100) : 0,
-    marginPct: list > 0 ? Math.round((net / list) * 100) : 0,
-  }
-}
+// 계산은 공용 순수 함수(`@/shared/voucher-margin`) — 이 카드와 첫 이용권 화면이 같은 함수를 쓴다.
+export { voucherMargin } from '@/shared/voucher-margin'
 
 export default function NetProceedsCard({ price, originalPrice, promoPct }: { price: number; originalPrice?: number; promoPct?: number }) {
   const [fee, setFee] = useState<{ channel: string | null; platform_fee_pct: number; channel_rates_active?: boolean } | null>(null)

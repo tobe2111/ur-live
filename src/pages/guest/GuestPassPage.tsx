@@ -9,6 +9,7 @@
  *
  * 혜택·단계 문구는 라이브에서 실제로 되는 것만이다(꺼진 혜택 금지 — `guest-tabs-2026-10-12.test.tsx` ⑤).
  */
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
@@ -18,9 +19,34 @@ import GuestTicket from './GuestTicket'
 import GuestExampleRows from './GuestExampleRows'
 import { GUEST_CLS, GUEST_COPY } from '@/shared/guest-page'
 
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
+/**
+ * 🎬 2026-11-04 로그아웃 이용권 탭 모션(대표 *"로그아웃 상태에서의 이용권 페이지도 모션그래픽들을 넣어줄래?"*).
+ *   서버 첫 화면이 그리는 위쪽(티켓·1·2·3)은 **안 보이게 시작하지 않는다** — 이미 보이는 걸 흐렸다 띄우면 깜빡인다.
+ *   그래서 위쪽은 *보이는 채로* 움직이고, 앱만 그리는 아래(예시)만 들어오며 나타난다:
+ *   ① 티켓이 지갑에 '톡' 하고 들어온다(살짝 튐) ② 파란 밴드 위로 빛이 지나간다 ③ QR 위로 스캔 줄이 오르내린다
+ *   ④ 1·2·3 숫자가 차례로 톡 ⑤ 예시 이용권이 화면에 들어오면 오른쪽에서 차례로 · 할인율이 톡 ⑥ '보러 가기' 가 떠오른다
+ */
+injectMotionCss('ur-m-guestpass', `@keyframes ur-gp-land { 0% { transform: translateY(0); } 35% { transform: translateY(-6px); } 70% { transform: translateY(1px); } 100% { transform: none; } }@keyframes ur-gp-sweep { 0% { transform: translateX(0); } 40%, 100% { transform: translateX(520%); } }@keyframes ur-gp-scan { 0%, 100% { top: 6%; } 50% { top: 88%; } }@keyframes ur-gp-tick { 0%, 100% { transform: none; } 45% { transform: scale(1.45); } }@keyframes ur-gp-row { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }@keyframes ur-gp-pop { 0% { transform: scale(.4); } 70% { transform: scale(1.15); } 100% { transform: none; } }@keyframes ur-gp-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }[data-guest="pass"] .ur-gp-ticket { animation: ur-gp-land .7s cubic-bezier(.3,1.3,.5,1) .15s both; }[data-guest="pass"] .ur-gp-band { position: relative; overflow: hidden; }[data-guest="pass"] .ur-gp-band::after { content: ''; position: absolute; top: 0; bottom: 0; left: -30%; width: 22%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent); pointer-events: none; animation: ur-gp-sweep 4.2s ease-in-out .9s infinite; }[data-guest="pass"] .ur-gp-qr { position: relative; overflow: hidden; }[data-guest="pass"] .ur-gp-qr::after { content: ''; position: absolute; left: 4px; right: 4px; height: 2px; top: 6%; border-radius: 2px; background: var(--brand); box-shadow: 0 0 8px 2px color-mix(in srgb, var(--brand) 45%, transparent); pointer-events: none; animation: ur-gp-scan 2.4s ease-in-out .8s infinite; }[data-guest="pass"] .ur-gp-num { display: inline-block; animation: ur-gp-tick .45s ease-out .75s; }[data-guest="pass"] li:nth-child(2) .ur-gp-num { animation-delay: .9s; }[data-guest="pass"] li:nth-child(3) .ur-gp-num { animation-delay: 1.05s; }.ur-gp-shelf .ur-gs-rows > *, .ur-gp-shelf .ur-gp-browse { opacity: 0; }.ur-gp-shelf.ur-gp-on .ur-gs-rows > * { animation: ur-gp-row .5s cubic-bezier(.2,1,.3,1) both; }.ur-gp-shelf.ur-gp-on .ur-gs-rows > :nth-child(2) { animation-delay: .09s; }.ur-gp-shelf.ur-gp-on .ur-gs-rows > :nth-child(3) { animation-delay: .18s; }.ur-gp-shelf.ur-gp-on .ur-gs-rows .text-sale { display: inline-block; animation: ur-gp-pop .4s cubic-bezier(.3,1.4,.5,1) .35s backwards; }.ur-gp-shelf.ur-gp-on .ur-gp-browse { animation: ur-gp-up .5s cubic-bezier(.2,1,.3,1) .32s both; }@media (prefers-reduced-motion: reduce){[data-guest="pass"] .ur-gp-ticket,[data-guest="pass"] .ur-gp-num,.ur-gp-shelf.ur-gp-on .ur-gs-rows > *,.ur-gp-shelf.ur-gp-on .ur-gs-rows .text-sale,.ur-gp-shelf.ur-gp-on .ur-gp-browse{animation:none!important}[data-guest="pass"] .ur-gp-band::after,[data-guest="pass"] .ur-gp-qr::after{display:none}.ur-gp-shelf .ur-gs-rows > *,.ur-gp-shelf .ur-gp-browse{opacity:1}}`)
+
+/** 화면에 들어오면 `ur-gp-on` 을 한 번 붙인다. 관찰기가 없으면 바로 붙인다(보이기는 해야 한다). */
+function useRevealOnce<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (typeof IntersectionObserver === 'undefined') { el.classList.add('ur-gp-on'); return }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { el.classList.add('ur-gp-on'); io.disconnect() } }, { threshold: 0.15 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  return ref
+}
+
 export default function GuestPassPage() {
   const { t } = useTranslation()
   const c = GUEST_COPY.pass
+  const shelfRef = useRevealOnce<HTMLElement>()
   const steps = c.steps.map(([a, b], i) => [
     t(`guest.pass.s${i + 1}a`, { defaultValue: a }),
     t(`guest.pass.s${i + 1}b`, { defaultValue: b }),
@@ -43,7 +69,7 @@ export default function GuestPassPage() {
         <GuestSteps steps={steps} />
       </section>
 
-      <section className="mt-8">
+      <section ref={shelfRef} className="mt-8 ur-gp-shelf">
         <div className="flex items-center justify-between px-4">
           <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">
             {t('guest.pass.examples', { defaultValue: '이런 이용권이 있어요' })}
@@ -53,9 +79,9 @@ export default function GuestPassPage() {
           </span>
         </div>
         <div className="mt-1 px-4">
-          <GuestExampleRows />
+          <GuestExampleRows motion />
         </div>
-        <div className="mt-5 px-4">
+        <div className="mt-5 px-4 ur-gp-browse">
           <Link to="/" className="flex h-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-white/5 text-[15px] font-medium text-gray-900 dark:text-white active:opacity-80">
             {t('guest.pass.browse', { defaultValue: '지금 파는 이용권 보러 가기' })}
           </Link>

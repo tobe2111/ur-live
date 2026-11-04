@@ -20,7 +20,7 @@ export default [
   {
     name: '🖥️ 사장님·파트너 유입이 다시 소비자 앱 액자로 (B 묶음 소실)',
     file: 'src/shared/pc-fullbleed.ts',
-    find: `  '/partnership', '/store/new', '/store/find', '/host', '/host/new', '/my-store',`,
+    find: `  '/partnership', '/store/new', '/store/first-voucher', '/store/biz-cert', '/store/bank', '/store/find', '/host', '/host/new', '/my-store',`,
     replace: ``,
     test: T,
     why:

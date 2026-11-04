@@ -23,7 +23,6 @@ const SSOT = 'src/worker/utils/influencer-deal.ts'
 const CURATOR_ROUTE = 'src/worker/routes/curator.routes.ts'
 const DISCOVERY = 'src/features/group-buy/api/marketing/discovery.ts'
 const PAGE = 'src/pages/CuratorPage.tsx'
-const LADDER = 'src/pages/curator-page/EarnLadder.tsx'
 const read = (f: string) => readFileSync(f, 'utf-8')
 /** 부정 단언은 주석을 걷어내고 — 주석 속 옛 코드 인용에 걸리는 사고가 이 레포에서 반복됐다. */
 
@@ -102,38 +101,15 @@ describe('③ 딜 있는 핀이 맨 위 · 주인 순서는 안 덮는다', () =
   })
 })
 
-describe('④ 사다리는 빈 유어샵에서도 보인다', () => {
-  // 🔧 2026-09-28 재조준(e3): 사다리가 유어샵 → `/u/me/manage` 로 이사했다.
-  //   지키는 것은 그대로다 — **빈 유어샵일수록 뭘 해야 하는지가 필요**하므로 pins 로 막지 않는다.
-  it('pins.length 로 막지 않는다', () => {
-    const page = read('src/pages/UShopManagePage.tsx')
-    const i = page.indexOf('<EarnLadder')
-    expect(i, '사다리가 배치되지 않았다').toBeGreaterThan(-1)
-    // 사다리 **앞 200자**를 본다 — 거기에 pins 게이트가 있으면 빈 샵에서 숨는다.
-    //   (종전엔 `{ownerView` 를 앵커로 잘랐는데 e3 로 그 상태가 사라졌다. 앵커가 없으면
-    //    `lastIndexOf` 가 -1 → slice(-1, i) 가 **엉뚱한 구간**을 집어 늘 통과했을 것이다.)
-    const guard = page.slice(Math.max(0, i - 200), i)
-    expect(guard, '빈 유어샵에서 사다리가 숨으면, 그때 보이는 건 "적립 ₩0" 뿐이다')
-      .not.toMatch(/pins\.length\s*[><=]/)
-  })
-  /**
-   * 🛑 2026-09-16 — 이 검사는 **재조준**됐다(삭제가 아니다).
-   *
-   *   원래는 1단(영입 2%)·2단(딜)·3단(담기) 셋을 요구했는데, 대표 확정으로 영입 2% 가 폐지되면서
-   *   1단이 사라졌다(*"매장 데려온 사람 2%는 이제 아예 없는거야"*). 그런데 그 2% 는 애초에
-   *   **적립 호출부가 0** 이라 아무도 받은 적이 없었다 — 즉 이 가드는 **거짓 약속을 지키고 있었다.**
-   *
-   *   그래서 요구를 뒤집는다: 셋이 있는지가 아니라 **없어진 것이 안 돌아오는지**를 본다.
-   *   폐지 자체의 전수 검사는 `store-intro-abolished-2026-09-16.test.ts` 가 한다.
-   */
-  it('사다리가 딜 → 담기 두 단이고, 폐지된 영입 단이 돌아오지 않는다', () => {
-    const l = read(LADDER)
-    expect(l).toContain('소개비를 정하세요')
-    expect(l).toContain('담아서 파세요')
-    const code = codeOnly(l)
-    expect(code, '폐지된 영입 단이 돌아왔다').not.toContain('가게를 데려오세요')
-    expect(code, '영입 초대 링크가 돌아왔다 — 보상이 없는 링크다').not.toContain('/store/new?ref=')
-    expect(code, '폐지된 요율 상수가 화면에 돌아왔다').not.toContain('INFLUENCER_STORE_INTRO_PCT')
+describe('④ 버는 법 사다리 → 에이전시 입구 (2026-11-04 대표)', () => {
+  // 🔀 2026-11-04 대표 *"내 유어샵으로 버는 법 보단 에이전시 등록 이런거 하는게 좋지 않을까?"* — 사다리(EarnLadder)를 걷었다.
+  //   사다리가 지키던 '폐지된 영입 2% 가 돌아오지 않는다' 는 전수 검사 `store-intro-abolished-2026-09-16` 이 계속 맡는다.
+  it('관리 화면에 사다리가 없고, 에이전시 등록 입구가 빈 유어샵에서도 보인다', () => {
+    const page = codeOnly(read('src/pages/UShopManagePage.tsx'))
+    expect(page).not.toContain('EarnLadder')
+    const i = page.indexOf('to="/agency/signup"')
+    expect(i, '에이전시 등록 입구가 없다').toBeGreaterThan(-1)
+    expect(page.slice(Math.max(0, i - 400), i)).not.toMatch(/pins\.length\s*[><=]/)
   })
 })
 

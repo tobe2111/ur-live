@@ -48,8 +48,8 @@ export default [
   {
     name: '🔑 승계 코드가 다시 토스트 한 번으로 흘러간다',
     file: 'src/pages/StoreClaimPage.tsx',
-    find: '                if (opts?.ownerClaimCode) { setHandoff(opts.ownerClaimCode); return }',
-    replace: '',
+    find: `if (ownerClaimCode) { setHandoff(ownerClaimCode); return }`,
+    replace: ``,
     test: TEST,
     why: '대행사가 그 순간을 놓치면 사장님께 드릴 코드를 못 찾는다.',
   },

@@ -59,6 +59,9 @@ Disallow: /following
 Disallow: /interest-list
 Disallow: /store/scan
 Disallow: /store/new
+Disallow: /store/first-voucher
+Disallow: /store/biz-cert
+Disallow: /store/bank
 Disallow: /store/agency/
 Disallow: /store/go
 Disallow: /store/seeding

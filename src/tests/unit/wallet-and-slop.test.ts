@@ -40,7 +40,8 @@ describe('이용권 지갑', () => {
     // 🔁 2026-11-03 토스 참고(대표 "이용권 페이지는 마음에 들어") — 장수의 한 곳이 요약 카드 → **목록 판 머리**로 옮겨갔다.
     expect(pageCode, '목록 판 머리가 장수를 안 말한다 — 이제 장수를 말하는 곳이 한 곳도 없다')
       .toMatch(/formatNumber\(shown\.length\)/)
-    expect(pageCode, '요약 카드가 다시 장수를 받는다 — 같은 숫자를 두 번 말한다').not.toMatch(/<WalletSummaryCard count=/)
+    // 🧾 2026-11-04 대표 *"쓸 수 있는 이용권 합계 없애줘"* — 합계 판 자체가 없다.
+    expect(pageCode, '쓸 수 있는 이용권 합계 판이 되살아났다').not.toMatch(/WalletSummaryCard|walletTotalTitle/)
     expect(pageCode, '탭에 개수 배지가 돌아왔다 — 요약 카드와 같은 숫자를 두 번 말한다')
       .not.toMatch(/key === 'unused' && unusedItems\.length/)
     expect(pageCode, '머리글에 장수가 돌아왔다').not.toMatch(/countText=/)
