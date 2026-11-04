@@ -215,6 +215,22 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
     },
   },
   /**
+   * 📊 **파트너 풀 · 매장후보 풀 → 구글시트** (2026-11-04 대표 "모두 다 연동하고픈데").
+   * 두 풀을 한 레인에서 차례로 돈다(레인 하나 = 정각 부모 서브리퀘스트 +1 뿐). 한 풀의 실패가 다른 풀을
+   * 막지 않게 각자 결과를 받는다(`syncPoolToSheets` 는 throw 하지 않는다). 시트 주소를 아직 안 정한 풀은 no-op.
+   * 게이트는 인플루언서 미러와 같은 `ADS_SHEETS_SYNC_ENABLED`. 알람 전용이다(cron 대응 없음 — 새 레인이라 겹칠 cron 이 없다).
+   */
+  'sheets-sync-pools': {
+    runsPerHour: 1,
+    run: async (env) => {
+      if (env.ADS_SHEETS_SYNC_ENABLED !== 'true') return { skipped: 'gate_off' }
+      const { syncPoolToSheets, SHEET_POOLS } = await import('@/features/marketing/api/pool-sheets-sync')
+      const out: Record<string, unknown> = {}
+      for (const p of SHEET_POOLS) out[p] = await syncPoolToSheets(env, p, 'cron')
+      return out
+    },
+  },
+  /**
    * ⏰ **2차 이관 5레인** (2026-08-05 — sheets-sync 24h 판정 통과 후 확장).
    *
    * ## 근거 — 대조 실험이 라이브에서 완결됐다
