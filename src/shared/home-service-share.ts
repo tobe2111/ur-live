@@ -138,12 +138,13 @@ export function shareDescription(v: ShareView): string {
  * 링크를 붙여 넣으면 카카오가 서버 메타(og)를 긁어 버튼 없는 카드를 그린다. **공유 버튼**으로 보내면 이 카드가 간다 —
  * 제목·설명은 서버 메타와 같은 값(`shareDescription`), 그림은 첫 사진(없으면 기본 카드), 아래 버튼 하나.
  */
-export function lifeShareKakaoCard(v: ShareView, origin: string): { title: string; description: string; imageUrl: string | null; button: string } {
+export function lifeShareKakaoCard(v: ShareView, _origin?: string): { title: string; description: string; imageUrl: string | null; button: string } {
   const first = v.photos?.[0]
   return {
     title: v.open ? `${v.title} · 남은 자리 ${v.seatsLeft}/${v.maxQuotes}` : `${v.title} (마감)`,
     description: shareDescription(v),
-    imageUrl: first ? (first.startsWith('http') ? first : `${origin}${first}`) : null,
+    imageUrl: first || null, // 전체 주소·카드 비율 자르기는 `feedPayload`(kakaoImageUrl)가 한 곳에서 한다
+
     button: v.open ? '견적 보내기' : '요청 보기',
   }
 }

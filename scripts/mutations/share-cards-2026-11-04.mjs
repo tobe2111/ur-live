@@ -17,4 +17,12 @@ export default [
     test: TEST,
     why: '대표 "share card 형태로".',
   },
+  {
+    name: '🖼️ 카드 그림이 다시 상대 주소 그대로 카카오에 간다(사진 빠짐)',
+    file: 'src/lib/kakao-share.ts',
+    find: "  if (v.startsWith('/') && !v.startsWith('/cdn-cgi/')) return ogCardUrl(v, 'https://urdeal.kr', { fit: 'cover' }) || `https://urdeal.kr${v}`\n  if (v.startsWith('/')) return `https://urdeal.kr${v}`\n",
+    replace: '',
+    test: TEST,
+    why: '상품·숙소 사진이 /api/media/… 상대 주소라 카카오가 못 받는다.',
+  },
 ]

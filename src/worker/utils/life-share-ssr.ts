@@ -14,6 +14,7 @@ import { LIFE_HUB_PATH, LIFE_HUB_SEO } from '../../shared/seo/life-hub-seo'
 import { withSiteName } from '../../shared/seo/consumer-surfaces'
 import type { SurfaceRewriteMeta } from './surface-ssr-meta'
 import { esc } from './crawler-noscript-rows'
+import { ogCardUrl } from '../../shared/og-share-image'
 
 /**
  * 🩸 2026-11-04 — 워커는 시드를 **JSON 문자열**로 넘긴다(`ssrPayload: string`). 이 함수들은 객체를 기대해서
@@ -55,7 +56,7 @@ export function buildLifeShareMeta(payload: unknown, origin: string, pathname: s
     jsonLd: JSON.stringify(ld).replace(/<\//g, '<\\/'),
     noindex: !v.open,
     // 📷 2026-11-04 — 사진이 있으면 첫 장이 카톡 카드 그림(없으면 사이트 기본 카드).
-    ...(v.photos?.[0] ? { ogImage: v.photos[0].startsWith('http') ? v.photos[0] : `${origin}${v.photos[0]}` } : {}),
+    ...(v.photos?.[0] ? { ogImage: ogCardUrl(v.photos[0], origin, { fit: 'cover' }) || (v.photos[0].startsWith('http') ? v.photos[0] : `${origin}${v.photos[0]}`) } : {}),
   }
 }
 

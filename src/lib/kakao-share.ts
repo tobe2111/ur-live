@@ -21,6 +21,7 @@
  *    받을 이유가 없다: 상대 경로면 위험 자체가 없고 Vite·esbuild 양쪽에서 똑같이 돈다.
  */
 import type { UShopShareCard } from '@/shared/ushop-share-card'
+import { ogCardUrl } from '@/shared/og-share-image'
 
 /** 카카오가 요구하는 링크 쌍. 모바일·웹 같은 주소를 쓴다. */
 export interface KakaoShareLink { mobileWebUrl: string; webUrl: string }
@@ -39,6 +40,25 @@ export function kakaoLink(url: string): KakaoShareLink {
  *   ⇒ 값은 `public/` 에 실재하는 파일이어야 하고, 가드가 그걸 검사한다.
  */
 export const KAKAO_SHARE_FALLBACK_IMAGE = 'https://urdeal.kr/og-image.png'
+
+/**
+ * 🖼️ 카드 그림 주소를 카카오가 받는 모양으로 (2026-11-04 대표 *"공유 카드마다 사진들은 적합하게 적용되는거지?"*).
+ *
+ * 🩸 실측: 상품·숙소 사진이 **상대 주소**(`/api/media/uploads/…`)로 저장돼 있다(라이브 `/api/products` 표본 3/3).
+ *   카카오는 `https://` 전체 주소만 받는다 — 그대로 넘기면 그림이 빠지거나 보내기가 실패한다(에러 없이).
+ *   그래서 모든 카드가 이 한 곳을 지난다: 비었거나 `data:`·SVG(카카오가 못 그린다)면 기본 그림, 상대 주소면 `https://urdeal.kr` 를 붙인다.
+ */
+export function kakaoImageUrl(u?: string | null): string {
+  const v = (u || '').trim()
+  if (!v || v.startsWith('data:') || v.startsWith('blob:')) return KAKAO_SHARE_FALLBACK_IMAGE
+  if (/\.svg(?:$|[?#])/i.test(v) || /\/blog\/og\//.test(v)) return KAKAO_SHARE_FALLBACK_IMAGE
+  if (v.startsWith('//')) return `https:${v}`
+  // 우리 사진(상대 주소)은 카드 비율(1200×630)로 잘라 보낸다 — 이용권 카드(`passShareCardUrl`)와 같은 규칙. 세로 사진도 가운데가 산다.
+  if (v.startsWith('/') && !v.startsWith('/cdn-cgi/')) return ogCardUrl(v, 'https://urdeal.kr', { fit: 'cover' }) || `https://urdeal.kr${v}`
+  if (v.startsWith('/')) return `https://urdeal.kr${v}`
+  if (v.startsWith('http://')) return `https://${v.slice(7)}`
+  return /^https:\/\//.test(v) ? v : KAKAO_SHARE_FALLBACK_IMAGE
+}
 
 type KakaoGlobal = {
   isInitialized?: () => boolean
@@ -111,7 +131,7 @@ export function commercePayload(o: {
   const link = kakaoLink(o.url)
   return {
     objectType: 'commerce',
-    content: { title: o.title, imageUrl: o.imageUrl || KAKAO_SHARE_FALLBACK_IMAGE, link },
+    content: { title: o.title, imageUrl: kakaoImageUrl(o.imageUrl), link },
     commerce: o.commerce,
     buttons: o.buttons.map((b) => ({ title: b.title, link: b.url ? kakaoLink(b.url) : link })),
   }
@@ -125,7 +145,7 @@ export function feedPayload(o: {
   const link = kakaoLink(o.url)
   return {
     objectType: 'feed',
-    content: { title: o.title, description: o.description || '', imageUrl: o.imageUrl || KAKAO_SHARE_FALLBACK_IMAGE, link },
+    content: { title: o.title, description: o.description || '', imageUrl: kakaoImageUrl(o.imageUrl), link },
     buttons: o.buttons.map((b) => ({ title: b.title, link: b.url ? kakaoLink(b.url) : link })),
   }
 }

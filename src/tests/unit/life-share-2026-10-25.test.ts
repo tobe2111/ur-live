@@ -39,7 +39,7 @@ describe('공개 값 — 마스킹', () => {
     const pv = publicShareView({ ...ROW, details: { ...ROW.details, photos: urls.join(',') } })!
     expect(pv.photos).toEqual(urls.slice(0, 4))
     const m = buildLifeShareMeta({ success: true, data: pv }, 'https://urdeal.kr', '/life/q/AbCdEf123456')!
-    expect(m.ogImage).toBe('https://urdeal.kr/api/media/uploads/user/3/2026-11/p0.webp')
+    expect(m.ogImage, '카드 비율(1200×630)로 잘라 전체 주소').toMatch(/^https:\/\/urdeal\.kr\/cdn-cgi\/image\/width=1200,height=630,[^/]*fit=cover[^/]*\/https:\/\/[^/]+\/uploads\/user\/3\/2026-11\/p0\.webp$/)
   })
   it('이름은 첫 글자 + ** · 연락처·주소는 가린 모양', () => {
     expect(v.masked).toEqual({ name: '김**', phone: '010-****-****', address: '망원동 *** ***' })
@@ -139,7 +139,7 @@ describe('💬 2026-11-04 카톡 공유 카드(버튼) — 대표 "이런식으�
     expect(c.button).toBe('견적 보내기')
     expect(c.imageUrl).toBeNull()
     const pv = publicShareView({ ...ROW, details: { ...ROW.details, photos: '/api/media/uploads/user/3/2026-11/p0.webp' } })!
-    expect(lifeShareKakaoCard(pv, 'https://urdeal.kr').imageUrl).toBe('https://urdeal.kr/api/media/uploads/user/3/2026-11/p0.webp')
+    expect(lifeShareKakaoCard(pv, 'https://urdeal.kr').imageUrl, '자르기·전체 주소는 feedPayload 한 곳에서').toBe('/api/media/uploads/user/3/2026-11/p0.webp')
     expect(lifeShareKakaoCard(publicShareView({ ...ROW, status: 'chosen' })!, 'https://urdeal.kr').button).toBe('요청 보기')
   })
   it('공유 버튼이 카카오 피드 카드를 먼저 보낸다(못 하면 공유 시트·복사)', () => {
