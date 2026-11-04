@@ -17,6 +17,7 @@ import { adminAdsInfluencerRoutes } from './admin-ads-influencers.routes'
 import { adminAdsPoolOpsRoutes } from './admin-ads-pool-ops.routes' // 수집 버스트·전체 정비·시트 동기화(실행 계열)
 import { adminAdsCollectGatesRoutes } from './admin-ads-collect-gates.routes' // 🎛️ 수집 트랙 원클릭 게이트(카페)
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
+import { adminPoolSheetsRoutes } from './admin-pool-sheets.routes' // 📊 파트너·매장후보 풀 구글시트 연동
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -222,5 +223,6 @@ app.patch('/short-links/:id', async (c) => {
 app.route('/', adminAdsCollectGatesRoutes)
 app.route('/', adminAdsInfluencerRoutes)
 app.route('/', adminAdsPoolOpsRoutes)
+app.route('/', adminPoolSheetsRoutes)
 
 export { app as adminAdsRoutes }

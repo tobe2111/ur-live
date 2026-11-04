@@ -30,7 +30,7 @@ export default [
   {
     name: '카톡로그인 — 서버 sdk 모드가 사라진다',
     file: 'src/features/auth/api/kakao.routes.ts',
-    find: "  if (c.req.query('mode') === 'sdk') return c.json({ success: true, data: { state, redirectUri, scope: loginScope || '' } });",
+    find: "  if (c.req.query('mode') === 'sdk') return c.json({ success: true, data: { state, redirectUri, scope: loginScope || '', serviceTerms: serviceTerms || '' } });",
     replace: '',
     test: T,
     why: '준비가 늘 실패해 카톡 간편로그인이 한 번도 안 열린다(에러 없이 웹 로그인으로 떨어진다).',

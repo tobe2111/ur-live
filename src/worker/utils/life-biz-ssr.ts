@@ -17,6 +17,7 @@ import {
   type LifeBizSeoInput,
 } from '../../shared/life-biz-seo'
 import { lifeCategoryPath } from '../../shared/life-seo'
+import { seedObject } from './life-share-ssr'
 import { LIFE_HUB_PATH, LIFE_HUB_SEO } from '../../shared/seo/life-hub-seo'
 import { withSiteName } from '../../shared/seo/consumer-surfaces'
 import type { SurfaceRewriteMeta } from './surface-ssr-meta'
@@ -33,7 +34,7 @@ export interface LifeBizView extends LifeBizSeoInput {
 
 /** 시드 봉투(`{ success, data }`)에서 뷰를 꺼낸다 — 모양이 다르면 null(추측해서 그리지 않는다). */
 export function lifeBizViewOf(payload: unknown): LifeBizView | null {
-  const d = (payload as { data?: LifeBizView } | null)?.data
+  const d = (seedObject(payload) as { data?: LifeBizView } | null)?.data
   if (!d || typeof d !== 'object' || typeof d.name !== 'string' || !d.name.trim() || !Number(d.id)) return null
   return d
 }

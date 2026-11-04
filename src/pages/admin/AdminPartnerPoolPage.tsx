@@ -27,6 +27,7 @@ import { STAT_PICK, fmtRun, runStamp, parseStamp, fetchRunStatus } from './partn
 import { FilterChip, ActionMenu } from './partner-pool/Controls'
 import CompanyKeywordManager, { type CompanyKeyword } from './partner-pool/CompanyKeywordManager'
 import PoolExportButtons from './PoolExportButtons'
+import PoolSheetSync from './PoolSheetSync'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 
 interface Lead {
@@ -379,6 +380,7 @@ export default function AdminPartnerPoolPage() {
           ]} />
           <button onClick={() => setShowImport(v => !v)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="공정위 프랜차이즈 정보공개서·상인회 명부 CSV/TSV 붙여넣기(레인 B·C)">{showImport ? '닫기' : '명부 붙여넣기'}</button>
           <PoolExportButtons pool="company" path="/api/admin/partner-pool/export" basename="partner-leads" query={buildQuery} />
+          <PoolSheetSync pool="company" />
           {selected.size > 0 && (
             <button onClick={deleteSelected} className="ur-btn ur-btn-md ur-btn-danger">선택 삭제 ({selected.size})</button>
           )}

@@ -180,6 +180,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
         optionHints: { '한 번만': '지금 한 번 해결', '매월 정기': '한 달에 한 번 관리', '분기 정기': '석 달에 한 번 관리' } },
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
       { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '본 벌레(바퀴·쥐·날파리), 보건증 서류 필요 여부' },
     ],
   },
@@ -200,6 +201,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
         optionHints: { '후드만': '눈에 보이는 후드와 필터', '후드 + 덕트': '천장 속 배기 통로까지', '잘 모르겠어요': '업체가 보고 정해요' } },
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
       { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '마지막 청소 시기, 기름 떨어짐 여부' },
     ],
   },
@@ -261,6 +263,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'count', label: '대수', type: 'number', required: true, unit: '대' },
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
       { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '모델명, 에러 코드, 실외기 위치' },
     ],
   },
@@ -281,6 +284,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'scope', label: '청소할 곳', type: 'multi', required: false, options: ['홀', '주방', '화장실', '유리창', '바닥 왁스'] },
       { key: 'date', label: '시작 날짜', type: 'date', required: true },
       { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '열쇠 보관 방법, 특히 신경 쓸 곳' },
     ],
   },
@@ -300,6 +304,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
         optionHints: { '그리스트랩 청소': '주방 기름 걸러 내는 통', '정화조 청소': '건물 정화조 정기 청소' } },
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
       { key: 'time', label: '작업 시간', type: 'select', required: true, options: WORK_TIMES, optionHints: WORK_TIME_HINTS },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '물이 빠지는 정도, 마지막 청소 시기' },
     ],
   },
@@ -318,6 +323,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'service', label: '맡길 일', type: 'select', required: true, options: ['객실 청소', '침구·린넨 세탁', '둘 다'] },
       { key: 'cycle', label: '주기', type: 'select', required: true, options: ['한 번만', '매일', '매주', '매월'] },
       { key: 'date', label: '시작 날짜', type: 'date', required: true },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '체크아웃·체크인 시간, 세탁물 수거 여부' },
     ],
   },
@@ -335,6 +341,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'kind', label: '맡길 일', type: 'select', required: true, options: ['수영장 청소·수질 관리', '온수·보일러 점검', '스파·자쿠지 관리'] },
       { key: 'cycle', label: '주기', type: 'select', required: true, options: ['한 번만', '매주', '매월', '성수기 동안'] },
       { key: 'date', label: '시작 날짜', type: 'date', required: true },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '수영장 개수·크기, 실내·실외' },
     ],
   },
@@ -360,6 +367,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'elevator', label: '엘리베이터', type: 'select', required: true, options: ['둘 다 있음', '출발지만 있음', '도착지만 있음', '둘 다 없음'] },
       { key: 'items', label: '옮길 큰 짐', type: 'multi', required: false, placeholder: '예) 냉장고, 세탁기',
         options: ['냉장고', '김치냉장고', '세탁기', '건조기', 'TV', '에어컨', '침대', '소파', '장롱', '책상', '피아노', '안마의자'] },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '큰 짐(피아노·냉장고 등), 주차 여부' },
     ],
   },
@@ -378,6 +386,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
       { key: 'kind', label: '집 상태', type: 'select', required: true, options: ['신축 입주', '이사 나가는 집', '거주 중'],
         optionHints: { '신축 입주': '새 아파트·공사 먼지', '이사 나가는 집': '짐 뺀 뒤 빈 집', '거주 중': '짐이 있는 채로' } },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '베란다 수, 특히 신경 쓸 곳' },
     ],
   },
@@ -394,6 +403,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'count', label: '대수', type: 'number', required: true, unit: '대' },
       { key: 'type', label: '종류', type: 'select', required: true, options: ['벽걸이', '스탠드', '2in1', '시스템(천장형)'] },
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '모델명, 고장 증상' },
     ],
   },
@@ -433,6 +443,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
         optionHints: { '줄눈': '타일 사이 틈을 메워 곰팡이 방지', '탄성 코트': '베란다 벽·바닥 결로·곰팡이 방지' } },
       { key: 'scope', label: '범위', type: 'select', required: true, options: ['욕실만', '욕실 + 현관', '욕실·현관·베란다 전체'] },
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '욕실 개수, 신축 여부' },
     ],
   },
@@ -449,6 +460,7 @@ export const HOME_SERVICE_CATEGORIES: readonly CategoryDef[] = [
       { key: 'pest', label: '본 벌레', type: 'select', required: true, options: ['바퀴벌레', '개미', '쥐', '날파리·초파리', '기타'] },
       { key: 'housing', label: '집 종류', type: 'select', required: true, options: ['아파트', '빌라·주택', '원룸·오피스텔'] },
       { key: 'date', label: '희망 날짜', type: 'date', required: true },
+      { key: 'photos', label: '사진', type: 'photos', required: false }, // 📷 2026-11-04 대표 — 업종마다 사진을 선택으로
       { key: 'memo', label: '추가로 알릴 것', type: 'textarea', required: false, placeholder: '평수, 반려동물·아이 여부' },
     ],
   },

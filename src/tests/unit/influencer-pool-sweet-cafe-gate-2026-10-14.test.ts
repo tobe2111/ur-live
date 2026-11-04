@@ -21,6 +21,7 @@ import { stripComments } from '../helpers/source-text'
 import { adminAdsInfluencerRoutes } from '@/features/marketing/api/admin-ads-influencers.routes'
 import { adminAdsPoolOpsRoutes } from '@/features/marketing/api/admin-ads-pool-ops.routes'
 import { adminAdsCollectGatesRoutes } from '@/features/marketing/api/admin-ads-collect-gates.routes'
+import { adminPoolSheetsRoutes } from '@/features/marketing/api/admin-pool-sheets.routes'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 
@@ -65,7 +66,7 @@ describe('카페 스위치 저장 — PATCH /influencer-pool/collect-gates', () 
 
   it('같은 순서로 조립하면 설정이 저장된다(400 "잘못된 ID" 가 아니다)', async () => {
     const routers: Record<string, Hono<any>> = {
-      adminAdsInfluencerRoutes, adminAdsPoolOpsRoutes, adminAdsCollectGatesRoutes,
+      adminAdsInfluencerRoutes, adminAdsPoolOpsRoutes, adminAdsCollectGatesRoutes, adminPoolSheetsRoutes,
     } as unknown as Record<string, Hono<any>>
     const order = mountOrder()
     expect(order).toEqual(expect.arrayContaining(Object.keys(routers)))

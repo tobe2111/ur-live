@@ -7,12 +7,17 @@
  *
  * 🔒 이 함수 밖으로 나가는 것은 **고르는 칸(select·multi·숫자·날짜)과 동 단위 지역**뿐이다.
  *   - 메모(textarea·text)는 손님이 가게 이름을 적으라는 칸이라 안 내보낸다 — 장수만 센다.
- *   - 사진은 장수만 — 가입한 업체는 요청함에서 본다.
+ *   - ~~사진은 장수만~~ → 📷 2026-11-04 대표 *"견적 링크를 카톡으로 보내면 예쁘게 … 견적 정보같은 것들이 보이고 사진도"* —
+ *     **사진은 보인다**(최대 4장, 올린 사진 주소 모양 `isRequestPhotoUrl` 만 통과). 메모·연락처·상세 주소는 여전히 안 나간다.
  *   - 연락처·상세 주소는 **값을 아예 받지 않는다**(가린 모양만 만든다). 이름은 SQL 이 첫 글자만 잘라 넘긴다.
  *     원본이 이 함수에 들어오지 않으면 샐 수 없다.
  * 서버(공개 API)와 워커(검색 메타)가 이 함수 하나를 쓴다 — 두 벌이면 한쪽만 새 칸을 가린다.
  */
 import { categoryDef, type HomeServiceCategory } from './home-service-categories'
+import { isRequestPhotoUrl } from './home-service'
+
+/** 공유 화면·카톡 카드에 싣는 사진 수 상한 */
+export const SHARE_PHOTOS_MAX = 4
 
 export const SHARE_TOKEN_LENGTH = 12
 const TOKEN_RE = /^[A-Za-z0-9]{12}$/
@@ -59,6 +64,8 @@ export interface ShareView {
   quoteCount: number
   rows: { label: string; value: string }[]
   photoCount: number
+  /** 📷 2026-11-04 — 보여 줄 사진(최대 4장). 첫 장이 카톡 카드 그림이다. */
+  photos: string[]
   hasMemo: boolean
   masked: { name: string; phone: string; address: string }
   createdAt: string
@@ -83,11 +90,12 @@ export function publicShareView(r: ShareRow): ShareView | null {
   const dong = dongOf(region)
   const rows: ShareView['rows'] = []
   let photoCount = 0
+  let photos: string[] = []
   let hasMemo = false
   for (const f of def.fields) {
     const v = d[f.key]
     if (!v) continue
-    if (f.type === 'photos') { photoCount = v.split(',').filter(Boolean).length; continue }
+    if (f.type === 'photos') { const all = v.split(',').map((u) => u.trim()).filter(Boolean); photoCount = all.length; photos = all.filter(isRequestPhotoUrl).slice(0, SHARE_PHOTOS_MAX); continue }
     if (f.type === 'textarea' || f.type === 'text') { hasMemo = true; continue }
     if (f.type === 'region') {
       if (f.key !== regionKey) rows.push({ label: f.label, value: v.split(/\s+/).slice(0, 3).join(' ') })
@@ -111,6 +119,7 @@ export function publicShareView(r: ShareRow): ShareView | null {
     quoteCount: r.quote_count,
     rows,
     photoCount,
+    photos,
     hasMemo,
     masked: { name: `${(r.name_initial || '').trim().slice(0, 1) || '손님'}**`, phone: '010-****-****', address: `${dong || '-'} *** ***` },
     createdAt: r.created_at,

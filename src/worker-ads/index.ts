@@ -31,6 +31,7 @@ import { mountLaneMiddleware } from './lane-gate'; import { lanesPaused, pauseEx
 import { withMeteredEnv, newMeter } from '@/worker/utils/d1-read-meter'
 import { scheduleMaintenanceCron } from './maintenance-cron'
 import { healthRoutes } from './health.routes'
+import { poolSheetsRoutes } from './pool-sheets.routes'
 import { batchLaneRoutes } from './batch-lanes.routes'
 // 🥗 2026-07-15 소셜 미디어 자동화(유어딜 자체 홍보) — 메인 워커 CF Free 1MB 한도 회복을 위해
 //   여기(ur-ads 3MB)로 이전. 라우트는 자체 requireAdmin(같은 JWT_SECRET). 메인은 프록시 위임.
@@ -143,6 +144,7 @@ app.post('/__ads/reclassify-company', async (c) => {
 app.route('/', publicDataRoutes)
 app.route('/', chainRoutes)           // 🔁 self-chain 진입점(전화 스윕·인허가) — 인보케이션 천장 때문에 이어 돈다
 app.route('/', healthRoutes)        // 🩺 /__ads/health (게이트·튜닝값 — 이 워커 env 가 진실)
+app.route('/', poolSheetsRoutes)     // 📊 파트너·매장후보 풀 → 구글시트(수동 실행·상태)
 app.route('/', enrichRoutes)          // 📝 인플루언서 보강 레인 + 라운드 드라이버
 app.route('/', batchLaneRoutes)        // 🚦 부모 인라인이던 무거운 레인(daily-batch·social-maintenance)
 

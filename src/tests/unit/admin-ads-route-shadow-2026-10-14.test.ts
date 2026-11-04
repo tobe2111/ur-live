@@ -28,6 +28,7 @@ const MODULES: Record<string, string> = {
   adminAdsPoolOpsRoutes: 'admin-ads-pool-ops.routes.ts',
   adminAdsCollectGatesRoutes: 'admin-ads-collect-gates.routes.ts',
   poolReadRoutes: 'pool-timeline.routes.ts',
+  adminPoolSheetsRoutes: 'admin-pool-sheets.routes.ts',
 }
 
 type Route = { method: string; path: string; file: string }

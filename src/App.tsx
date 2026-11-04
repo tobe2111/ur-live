@@ -32,7 +32,6 @@ import { captureInflowRef } from '@/utils/affiliate-track'
 // lazy-loaded — only rendered conditionally, not on initial paint
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
-const OnboardingTrigger = lazy(() => import('./components/onboarding/OnboardingTrigger'))
 const PhoneRequiredGate = lazy(() => import('./components/onboarding/PhoneRequiredGate')) // 📞 2026-11-04 새 가입자 번호 필수
 const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccountModal'))
 const SideBanner = lazy(() => import('@/components/SideBanner'))
@@ -397,7 +396,6 @@ function AppContent() {
   //   판정은 각 컴포넌트가 스스로 하던 것과 **같은 조건**이다(안에서도 그대로 다시 본다 — 여기는 문지기일 뿐).
   const qs = location.search
   const shellNeed = {
-    onboarding: qs.includes('new=1'),                       // OnboardingTrigger: ?new=1 일 때만 모달
     restore: qs.includes('restorable=1'),                   // RestoreAccountModal: ?restorable=1 일 때만
     // 📞 2026-11-04 PhoneRequiredGate: 소비자로 로그인했고 이 기기에 번호가 아직 없을 때만(실제 판정은 서버 `phone_required`)
     phone: (() => { try { return !!(localStorage.getItem('user_id') || localStorage.getItem('session_login')) && !localStorage.getItem('user_phone') } catch { return false } })(),
@@ -583,7 +581,8 @@ function AppContent() {
               배너/팝업/강제이동 없이 렌더, 기능별 제한(카메라 등)만 InAppFeatureBlockedModal 이 사용 시점 안내.
               복원: `import InAppBrowserBanner from './components/InAppBrowserBanner'` 후 여기 렌더. */}
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
-          {shellNeed.onboarding && <Suspense fallback={null}><OnboardingTrigger /></Suspense>}
+          {/* 🗑️ 2026-11-04 대표: 가입 직후 환영 창(쿠폰·관심 분야·알림톡 3단계) 제거 — 환영 쿠폰은 없고, 관심 분야는 안 쓰고,
+              알림톡 토글은 저장되지 않았다. 가입하면 번호 창(PhoneRequiredGate) 하나만 뜬다. */}
           {shellNeed.restore && <Suspense fallback={null}><RestoreAccountModal /></Suspense>}
           {shellNeed.phone && <Suspense fallback={null}><PhoneRequiredGate /></Suspense>}
           {/* 📜 2026-07-05 (대표 "들어오자마자 나오면 안 되지 — 자연스럽게"): 약관 동의 차단 모달(TermsConsentGate)
