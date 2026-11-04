@@ -25,6 +25,11 @@ export interface AgencyStaffContext {
   role: StaffRole
   isOwner: boolean
   email: string
+  /**
+   * ⚡ 2026-11-04 — 가드가 이미 읽는 두 표(직원 · 에이전시)의 표시용 칸을 **같은 질의에서** 같이 실어 둔다.
+   *   `/me` 가 같은 JOIN 을 한 번 더 하던 왕복을 없앤다(한국에서 ≈0.2초). 권한 판정에는 쓰지 않는다.
+   */
+  profile?: { name: string | null; agencyName: string; kind: string; businessNumber: string | null }
 }
 
 interface AgencyClaims {
@@ -78,12 +83,14 @@ export function requireAgencyStaff(opts: { adminOnly?: boolean } = {}) {
     }
     await ensureAgencyConsoleTables(c.env.DB)
     const row = await c.env.DB.prepare(
-      `SELECT s.id, s.agency_id, s.role, s.is_owner, s.status, s.email, s.tokens_valid_after, a.status AS agency_status
+      `SELECT s.id, s.agency_id, s.role, s.is_owner, s.status, s.email, s.tokens_valid_after, a.status AS agency_status,
+              s.name, a.name AS agency_name, a.kind, a.business_number
          FROM agency_staff s JOIN agency_accounts a ON a.id = s.agency_id
         WHERE s.id = ? AND s.agency_id = ? LIMIT 1`,
     ).bind(claims.sid, claims.aid).first<{
       id: number; agency_id: number; role: string; is_owner: number; status: string; email: string
       tokens_valid_after: number; agency_status: string
+      name: string | null; agency_name: string; kind: string; business_number: string | null
     }>()
     if (!row || row.status !== 'active' || row.agency_status !== 'active' || claims.iat < Number(row.tokens_valid_after || 0)) {
       return c.json({ success: false, error: '이 계정으로는 더 이상 들어올 수 없어요. 관리자에게 문의해 주세요.', code: 'AGENCY_STAFF_INACTIVE' }, 401)
@@ -92,7 +99,10 @@ export function requireAgencyStaff(opts: { adminOnly?: boolean } = {}) {
     if (opts.adminOnly && role !== 'admin') {
       return c.json({ success: false, error: '관리자만 할 수 있어요.', code: 'AGENCY_ADMIN_ONLY' }, 403)
     }
-    c.set('agencyStaff', { staffId: row.id, agencyId: row.agency_id, role, isOwner: row.is_owner === 1, email: row.email })
+    c.set('agencyStaff', {
+      staffId: row.id, agencyId: row.agency_id, role, isOwner: row.is_owner === 1, email: row.email,
+      profile: { name: row.name ?? null, agencyName: row.agency_name, kind: row.kind, businessNumber: row.business_number ?? null },
+    })
     await next()
   }
 }

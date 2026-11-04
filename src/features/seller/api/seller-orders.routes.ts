@@ -145,13 +145,7 @@ sellerOrdersRoutes.get('/orders', async (c) => {
     query += ` ORDER BY o.created_at ${sort} LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
-    const orders = await db.prepare(query).bind(...params).all();
-
-    // 🧺 상품 라인 + 📦 픽업일 enrich — `worker/utils/order-list-enrich` 로 추출(2026-08-02).
-    //   화면 C 가 "오늘 누가 오나"를 묶으려면 픽업일이 필요하다. 읽기 전용·머니 무접촉.
-    const orderRows = (orders.results || []) as Array<Record<string, unknown>>;
-    await enrichSellerOrderRows(db, orderRows);
-
+    // ⚡ 2026-11-04 — 개수(countP)는 목록과 무관하다 → 목록과 **같은 물결에** 출발. 종전엔 목록·부가정보를 다 받은 뒤에 셌다.
     let countQuery = `SELECT COUNT(*) as total FROM orders o WHERE o.seller_id = ?`;
     const countParams: unknown[] = [sellerId];
     if (status) {
@@ -162,7 +156,14 @@ sellerOrdersRoutes.get('/orders', async (c) => {
         countParams.push(STATUS_MAP[status] ?? status);
       }
     }
-    const countResult = await db.prepare(countQuery).bind(...countParams).first<{ total: number }>();
+    const countP = db.prepare(countQuery).bind(...countParams).first<{ total: number }>();
+    countP.catch(() => { /* 목록이 먼저 실패해도 처리 안 된 거절로 남지 않게 — 아래 await 가 진짜 처리한다 */ });
+    const orders = await db.prepare(query).bind(...params).all();
+
+    // 🧺 상품 라인 + 📦 픽업일 enrich — `worker/utils/order-list-enrich` 로 추출(2026-08-02).
+    //   화면 C 가 "오늘 누가 오나"를 묶으려면 픽업일이 필요하다. 읽기 전용·머니 무접촉.
+    const orderRows = (orders.results || []) as Array<Record<string, unknown>>;
+    const [, countResult] = await Promise.all([enrichSellerOrderRows(db, orderRows), countP]);
 
     return c.json({
       success: true,

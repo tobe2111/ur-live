@@ -34,7 +34,7 @@ import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { intParam } from '@/shared/pagination'; import { publicReadDb, userReadDb, dbKey } from '../../../worker/utils/d1-read-replica' // 한 줄: 래칫
 // 🏪 2026-09-16 (대표 — "승인이 되어야 메인에 노출"): 승인 전 매장의 이용권을 피드·지도에서 가린다.
 import { approvedSellerProductSql } from '@/shared/db/consumer-visible-product'
-import { voucherCanRedeem } from './voucher-can-redeem'; import { withGiftState, voucherHasPendingGift, noPendingGiftSql, GIFT_PENDING_USE_BLOCKED } from '../../../worker/utils/voucher-gift'; const _voucherIdxDone = new WeakSet<object>() // 🎁 선물 중·보낸 선물 표시 · 🐢 /my 색인 DDL isolate 당 1회
+import { voucherCanRedeem } from './voucher-can-redeem'; import { loadGiftState, applyGiftState, voucherHasPendingGift, noPendingGiftSql, GIFT_PENDING_USE_BLOCKED } from '../../../worker/utils/voucher-gift'; const _voucherIdxDone = new WeakSet<object>() // 🎁 선물 중·보낸 선물 표시 · 🐢 /my 색인 DDL isolate 당 1회
 
 // 🛡️ 2026-05-22 module-scope: gift_catalog JOIN 가능 여부 캐시.
 //   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
@@ -778,7 +778,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   - 이전: 첫 SELECT 실패 → catch fallback (applied_price 누락) → 금액 미표시 + 컬럼 일치 X.
     //   - 영구 fix: repair-schema 에 컬럼 등록 (daily cron 자동 ADD) + 본 SELECT 도 fallback 에 applied_price 포함.
     //     컬럼이 곧 모두 존재할 거지만, fallback 도 같이 강화해 라이브 환경 즉시 복구.
-    const { results } = await DB.prepare(`
+    const giftP = loadGiftState(DB, uidBinds) // ⚡ 2026-11-04 [UNLOCK_LOADING] 이용권·KT·선물 셋을 한 물결에(서로 무관 · 결과 동일) — docs/locks/loading/2026-11-04-vouchers-my-one-wave.md
+    const vouchersP = DB.prepare(`
       SELECT v.id, v.code, v.user_id, v.product_id, v.order_id, v.status,
              v.expires_at, v.used_at, v.created_at, v.refund_status,
              v.gift_from_user_id, v.delivered_gift_name,
@@ -829,8 +830,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     // 🛡️ 2026-05-25 사용자 결정 (A 옵션): KT Alpha 발송된 쿠폰도 통합 표시.
     //   voucher_orders 의 status='sent' row 를 source='kt_alpha' 로 변환해서 vouchers 배열에 merge.
     //   사용자가 한 화면에서 모든 쿠폰 확인.
-    let ktAlphaItems: any[] = []
-    try {
+    const ktP = (async (): Promise<any[]> => { try {
       // 🖼️ 2026-06-21 (대표 신고 — 교환권 카드 썸네일 미표시): voucher_orders.goods_image_url 는 발송 INSERT
       //   (kt-alpha-auto-send)가 저장하지 않아 항상 NULL → 카드가 플레이스홀더만 렌더. gift_catalog(동기화된
       //   기프티쇼 카탈로그, key gift_code = vo.goods_code)에서 이미지를 COALESCE 로 치유 → 기존/신규 전부 해결.
@@ -853,7 +853,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         LIMIT 100`
       let ktRes: { results?: any[] } | null = await DB.prepare(ktSelect(true)).bind(Number(uidNorm)).all<any>().catch(() => null)
       if (!ktRes) ktRes = await DB.prepare(ktSelect(false)).bind(Number(uidNorm)).all<any>().catch(() => ({ results: [] as any[] }))
-      ktAlphaItems = (ktRes?.results || []).map((vo: any) => ({
+      return (ktRes?.results || []).map((vo: any) => ({
         source: 'kt_alpha',
         id: `kt-${vo.id}`,
         kt_alpha_voucher_order_id: vo.id,
@@ -879,7 +879,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         kt_recipient_phone: vo.recipient_phone,
         kt_status: vo.status,
       }))
-    } catch { /* graceful — vouchers 만 반환 */ }
+    } catch { return [] /* graceful — vouchers 만 반환 */ } })()
+    const [{ results }, ktAlphaItems, giftState] = await Promise.all([vouchersP, ktP, giftP])
 
     // 우리 voucher 에 source='internal' 마킹 + 통합 (클라는 이 배열을 두 보관함으로 나눈다 — shared/voucher-wallet)
     const internalItems = (results ?? []).map((v: any) => ({ ...v, source: 'internal' }))
@@ -889,7 +890,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       return bt - at
     })
 
-    return c.json({ success: true, data: await withGiftState(DB, merged, uidBinds) }) // 🎁 2026-10-12 선물 중 잠금·보낸 선물 기록
+    return c.json({ success: true, data: applyGiftState(merged, giftState) }) // 🎁 2026-10-12 선물 중 잠금·보낸 선물 기록(조회는 위 물결에서)
   })
 
   // 🛡️ self-redeem rate limit 키 SSOT — 미들웨어 keyFn + 성공 시 리셋(DELETE)이 같은 키를 써야 함.

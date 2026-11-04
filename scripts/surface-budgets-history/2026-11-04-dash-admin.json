@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-04",
+  "reason": "2026-11-04 지갑 부품 5개를 app-components catch-all → app-wallet 로(내 이용권 첫 방문 870→741KB). 어드민도 -5KB",
+  "surfaces": [
+    "dash:admin"
+  ],
+  "changes": [
+    "dash:admin: 256.7 → 251.6 KB 로 줄었다 — 개선을 잠그라(--rebaseline). 안 잠그면 그 여유가 다음 기능에 조용히 먹힌다"
+  ]
+}

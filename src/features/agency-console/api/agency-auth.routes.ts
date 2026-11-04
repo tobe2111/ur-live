@@ -366,13 +366,18 @@ agencyConsoleRoutes.post('/reset-password', cors(), rateLimit({ action: 'agency_
 // ── 내 정보 ────────────────────────────────────────────────────────────────
 agencyConsoleRoutes.get('/me', requireAgencyStaff(), async (c) => {
   const me = c.get('agencyStaff')
-  const row = await c.env.DB.prepare(
-    `SELECT s.id, s.email, s.name, s.role, s.is_owner, a.id AS agency_id, a.name AS agency_name, a.kind, a.business_number
-       FROM agency_staff s JOIN agency_accounts a ON a.id = s.agency_id WHERE s.id = ? LIMIT 1`,
-  ).bind(me.staffId).first<{
-    id: number; email: string; name: string | null; role: string; is_owner: number
-    agency_id: number; agency_name: string; kind: string; business_number: string | null
-  }>()
+  // ⚡ 2026-11-04 — 가드(`requireAgencyStaff`)가 같은 JOIN 으로 이미 읽어 둔 값을 쓴다(종전엔 같은 두 표를 한 번 더 읽었다).
+  //   `profile` 이 없으면(다른 경로로 세운 컨텍스트) 종전처럼 직접 읽는다.
+  const row = me.profile
+    ? { id: me.staffId, email: me.email, name: me.profile.name, is_owner: me.isOwner ? 1 : 0, agency_id: me.agencyId,
+        agency_name: me.profile.agencyName, kind: me.profile.kind, business_number: me.profile.businessNumber }
+    : await c.env.DB.prepare(
+      `SELECT s.id, s.email, s.name, s.role, s.is_owner, a.id AS agency_id, a.name AS agency_name, a.kind, a.business_number
+         FROM agency_staff s JOIN agency_accounts a ON a.id = s.agency_id WHERE s.id = ? LIMIT 1`,
+    ).bind(me.staffId).first<{
+      id: number; email: string; name: string | null; role: string; is_owner: number
+      agency_id: number; agency_name: string; kind: string; business_number: string | null
+    }>()
   if (!row) return c.json({ success: false, error: '계정을 찾지 못했어요.' }, 404)
   return c.json({
     success: true,

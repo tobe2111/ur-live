@@ -129,9 +129,10 @@ export async function voucherHasPendingGift(DB: D1Database, by: { id?: number; c
  *    (`status: 'gifted'`, **code 없음** — 친구 이용권의 코드를 보낸 사람에게 다시 내보내지 않는다).
  * 실패하면 원래 목록 그대로(지갑이 안 뜨는 것보다 표시가 하나 빠지는 게 낫다).
  */
-export async function withGiftState<T extends { id?: unknown; source?: string; status?: string }>(
-  DB: D1Database, items: T[], uids: string[],
-): Promise<Array<T | Record<string, unknown>>> {
+/** 선물 상태 — 조회만(목록과 **나란히** 부를 수 있게 분리, 2026-11-04). 실패하면 null(=표시 없이 원래 목록). */
+export interface GiftState { pendingIds: Set<number>; history: Array<Record<string, unknown>> }
+
+export async function loadGiftState(DB: D1Database, uids: string[]): Promise<GiftState | null> {
   try {
     await ensureVoucherGiftTable(DB)
     const [a, b] = [uids[0], uids[1] ?? uids[0]]
@@ -153,9 +154,6 @@ export async function withGiftState<T extends { id?: unknown; source?: string; s
     `).bind(a, b).all<Record<string, unknown>>()
     const [{ results: pend }, { results: sent }] = await Promise.all([pendP, sentP])
     const pendingIds = new Set((pend ?? []).map((r) => Number(r.voucher_id)))
-    const marked = items.map((v) =>
-      v.source !== 'kt_alpha' && v.status === 'unused' && pendingIds.has(Number(v.id)) ? { ...v, gift_pending: true } : v,
-    )
     const history = (sent ?? []).map((g) => ({
       id: `gift-${g.id}`,
       code: '',
@@ -172,8 +170,25 @@ export async function withGiftState<T extends { id?: unknown; source?: string; s
       applied_price: g.applied_price ?? null,
       deal_only: 0,
     }))
-    return [...marked, ...history]
+    return { pendingIds, history }
   } catch {
-    return items
+    return null
   }
+}
+
+/** 조회한 선물 상태를 목록에 붙인다(순수 함수). 상태가 없으면 원래 목록 그대로. */
+export function applyGiftState<T extends { id?: unknown; source?: string; status?: string }>(
+  items: T[], state: GiftState | null,
+): Array<T | Record<string, unknown>> {
+  if (!state) return items
+  const marked = items.map((v) =>
+    v.source !== 'kt_alpha' && v.status === 'unused' && state.pendingIds.has(Number(v.id)) ? { ...v, gift_pending: true } : v,
+  )
+  return [...marked, ...state.history]
+}
+
+export async function withGiftState<T extends { id?: unknown; source?: string; status?: string }>(
+  DB: D1Database, items: T[], uids: string[],
+): Promise<Array<T | Record<string, unknown>>> {
+  return applyGiftState(items, await loadGiftState(DB, uids))
 }

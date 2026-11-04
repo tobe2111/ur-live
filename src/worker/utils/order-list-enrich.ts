@@ -68,7 +68,10 @@ export async function enrichSellerOrderRows(
   const oIds = orderRows.map((o) => Number(o.id)).filter(Number.isFinite)
   if (oIds.length === 0) return
 
-  await attachVouchers(DB, orderRows, oIds)
+  // ⚡ 2026-11-04 (대표 *"대기업급으로"*) — 4단 줄서기 → 2물결. 이용권과 주문 라인은 서로 무관하고(둘 다 주문 id 만 필요),
+  //   상품 종류와 픽업일도 서로 무관하다(둘 다 상품 id 만 필요). 한국 손님은 DB 왕복 하나가 ≈0.2초라 줄 하나가 곧 체감이다.
+  //   각 블록의 실패 처리(삼키고 생략)는 종전 그대로다.
+  const vouchersP = attachVouchers(DB, orderRows, oIds)
 
   let itemRows: Row[] = []
   try {
@@ -95,17 +98,18 @@ export async function enrichSellerOrderRows(
     for (const it of itemRows) it.image_url = it.product_image ?? null
     for (const o of orderRows) o.items = byOrder.get(Number(o.id)) || []
   } catch {
+    await vouchersP
     return // 라인을 못 읽으면 픽업일도 못 구한다(제품 id 가 거기서 나온다)
   }
 
   const pIds = [...new Set(itemRows.map((it) => Number(it.product_id)).filter(Number.isFinite))]
-  if (pIds.length === 0) return
+  if (pIds.length === 0) { await vouchersP; return }
   const pph = pIds.map(() => '?').join(',')
 
   // 🧾 주문 종류(이용권 / 교환권 / 배송) — 판정은 `orderKindOfItems`(SSOT) 가 한다.
   //   이게 없으면 주문관리가 **모든 주문을 택배로 가정**한다(대표 신고 2026-09-21).
   //   실패해도 필드를 안 붙인다 → 화면이 `'shipping'` 으로 떨어져 종전과 동일(무회귀).
-  try {
+  const kindP = (async () => { try {
     const { results: prodRows = [] } = await DB.prepare(
       `SELECT id, category, deal_only, image_url FROM products WHERE id IN (${pph})`,
     ).bind(...pIds).all<{ id: number; category: string | null; deal_only: number | null; image_url: string | null }>()
@@ -125,10 +129,10 @@ export async function enrichSellerOrderRows(
         o.order_kind = orderKindOfItems(flows)
       }
     }
-  } catch { /* 종류 조회 실패 시 생략 — 화면이 배송으로 떨어진다(종전 동작) */ }
+  } catch { /* 종류 조회 실패 시 생략 — 화면이 배송으로 떨어진다(종전 동작) */ } })()
 
   // 📦 주문에 여러 상품이 섞이면 **가장 이른 날** — 손님이 가게에 오는 첫 날이 그 날이다.
-  try {
+  const pickupP = (async () => { try {
     const { results: metaRows = [] } = await DB.prepare(
       `SELECT product_id, value FROM product_supply_meta
         WHERE key = 'pickup_date' AND value != '' AND product_id IN (${pph})`,
@@ -143,5 +147,7 @@ export async function enrichSellerOrderRows(
       // 없으면 **null** — 빈 문자열로 채우면 화면이 "픽업일 있음"으로 오해한다.
       o.pickup_date = dates[0] ?? null
     }
-  } catch { /* 픽업 메타 조회 실패 시 pickup_date 생략 — 주문 목록은 그대로 반환 */ }
+  } catch { /* 픽업 메타 조회 실패 시 pickup_date 생략 — 주문 목록은 그대로 반환 */ } })()
+
+  await Promise.all([vouchersP, kindP, pickupP])
 }
