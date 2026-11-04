@@ -1,8 +1,7 @@
-/** 🧬 주입 — 로그인 전 유어샵 탭 예시 진열대 자리 잡기 (2026-10-19 라이브 CLS 0.39) */
+/** 🧬 주입 — 로그인 전 예시 이용권 (2026-11-03 재조준 — 종전: 유어샵 예시 진열대 자리 잡기 2026-10-19) */
 const T = 'src/tests/unit/guest-urshop-reserve-2026-10-19.test.tsx'
-const F = 'src/pages/guest/GuestUrShopPage.tsx'
 export default [
-  { name: '게스트예약 — 응답 전 자리를 안 잡는다', file: F, find: 'const pins: PassItem[] = waiting ? PLACEHOLDER_PINS : real', replace: 'const pins: PassItem[] = real', test: T, why: '도착 순간 혜택·가입 버튼이 425px 밀린다.' },
-  { name: '게스트예약 — 자리표시가 보인다', file: F, find: "const hide = waiting ? ' invisible' : ''", replace: "const hide = ''", test: T, why: '빈 줄 세 개가 화면에 그대로 보인다.' },
-  { name: '게스트예약 — 0건이어도 자리표시를 남긴다', file: F, find: 'const waiting = isLoading && real.length === 0', replace: 'const waiting = real.length === 0', test: T, why: '응답이 비면 빈 진열대가 영원히 자리를 차지한다.' },
+  { name: '게스트예시 — 이용권 탭이 실제 인기 이용권을 다시 부른다', file: 'src/pages/guest/GuestPassPage.tsx', find: "import GuestExampleRows from './GuestExampleRows'\n", replace: "import GuestExampleRows from './GuestExampleRows'\nimport { usePopularPasses } from './usePopularPasses'\n", test: T, why: '로그아웃 화면에 남의 가게 실제 상품이 예시처럼 뜬다(대표가 지적한 그 증상).' },
+  { name: '게스트예시 — 예시 줄을 누르면 진짜 상세로 간다', file: 'src/pages/guest/GuestExampleRows.tsx', find: '          surface="plain"\n', replace: '          surface="plain"\n          to="/pass/1"\n', test: T, why: '예시를 눌러 실제 상품으로 가면 예시가 아니다.' },
+  { name: '게스트예시 — 예시가 두 줄로 줄었다', file: 'src/shared/guest-page.ts', find: "  { store: '합정 파스타', name: '파스타 세트 2인', pct: 20, price: 36000, kind: 'meal' },\n", replace: '', test: T, why: '시안(예시 3줄)과 화면이 갈린다.' },
 ]

@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-03",
+  "reason": "로그인 전 이용권 탭(대표 2026-11-03 '제안대로 다 해줘' · '실제 이용권으로 하면 어떡해'): 고정 카카오 버튼·단계·QR 티켓·예시 이용권 줄을 공용 조각 GuestDock 에 담았다(~2KB). 이용권 탭만 갱신.",
+  "surfaces": [
+    "guestPass"
+  ],
+  "changes": [
+    "guestPass: 185.5 → 187.3 KB (+1.8, 허용 1.5) · 늘어난 것: GuestDock.js +2.0, lz-linkshop1-vouchers.js +1.1, GuestExampleRows.js +0.5"
+  ]
+}

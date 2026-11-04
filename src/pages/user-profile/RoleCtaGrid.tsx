@@ -60,7 +60,7 @@ export default function RoleCtaGrid() {
       { Icon: ProposeIcon, title: t('roleCta.proposeGb', { defaultValue: '동네 공구 제안' }), desc: t('roleCta.proposeGbDesc', { defaultValue: '원하는 가게 제안하면 모아서 열어드려요' }), to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
       // 🏷️ 2026-08-26: '내 쇼핑몰 열기' → '내 가게 등록'. 유어샵은 가입하면 **이미 있다** — 여기서
       //   새로 만드는 건 매장이다. 목적지도 매장 등록(/store/new)으로(대표 확정 '매장 등록이 선행').
-      { Icon: ShopPlusIcon, title: t('roleCta.openShop', { defaultValue: '내 가게 등록' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
+      { Icon: ShopPlusIcon, title: t('roleCta.openShop', { defaultValue: '내 가게 이용권 팔기' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
       // 🌇 2026-09-04 에이전시 완전 일몰(대표 확정) — 09-02 에 신규 가입 CTA 만 뺐고 "이미 에이전시인
       //   사람의 대시보드 바로가기는 유지" 했는데, 그 대시보드 자체가 사라졌다. 바로가기도 함께 제거.
     ]
@@ -97,7 +97,7 @@ export default function RoleCtaGrid() {
       {/* 🏷️ 2026-09-30: '내 바로가기' → '가게 열기'. 이 구역에 남은 줄은 **가게를 내는 것** 하나라
           (내 유어샵은 하단 탭과 겹쳐 빠졌다), 옛 이름은 무엇이 있는지 말해 주지 않았다.
           ⚠️ 코드 `defaultValue` 만 고치면 화면은 안 바뀐다 — `public/locales/ko` 값이 이긴다. */}
-      <SectionTitle>{t('roleCta.myShortcuts', { defaultValue: '가게 열기' })}</SectionTitle>
+      <SectionTitle>{t('roleCta.myShortcuts', { defaultValue: '사장님이세요?' })}</SectionTitle>
       <div>
         {dashboardItems.map(Row)}
         {signupItems.map(Row)}

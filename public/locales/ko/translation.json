@@ -3418,6 +3418,7 @@
   },
   "admin": {
     "login": {
+      "kakaoStart": "카카오로 시작하기",
       "title": "관리자 로그인",
       "subtitle": "관리자 계정으로 로그인하세요",
       "heroTitle": "플랫폼 운영 관리 콘솔",
@@ -7027,7 +7028,7 @@
   "groupBuy.categoryEtc": "🎯 기타",
   "groupBuy.stayBadge": "숙박",
   "roleCta": {
-    "myShortcuts": "가게 열기",
+    "myShortcuts": "사장님이세요?",
     "startNewRole": "추가 역할로 시작하기",
     "linkshop": "내 유어샵",
     "linkshopDesc": "이용권을 담아 진열하고 소개해요",
@@ -7035,7 +7036,7 @@
     "agencyDashDesc": "소속 사업자·소개 가게 수익",
     "proposeGb": "동네 공구 제안",
     "proposeGbDesc": "원하는 가게 제안하면 모아서 열어드려요",
-    "openShop": "내 가게 등록",
+    "openShop": "내 가게 이용권 팔기",
     "openShopDesc": "카카오맵에서 내 가게를 찾아 이용권을 팔아요",
     "agencyBiz": "에이전시 사업",
     "agencyBizDesc": "가게 영업 → 2% 영구 수익"

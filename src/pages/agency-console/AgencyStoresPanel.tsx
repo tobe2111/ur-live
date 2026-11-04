@@ -401,6 +401,11 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
  * 🧱 2026-11-03 대표 *"어떤 건 아이콘을 쓰고 통일감이 없어"* — 위 매장 판의 줄(`ListRow`)과 **같은 문법**이다:
  *   아이콘 18px(회색) · 제목 `ROW_LABEL_CLS` · 오른쪽 값 13px 회색 · 화살표. 가로 여백만 바깥 래퍼가 갖는다.
  */
+/**
+ * 🧾 2026-11-03 대표 *"에이전시 운영 밑에는 왜 줄로 구분선이 쳐져있지?"* — `last:border-b-0` 를 붙여 마이(폰)의 평면 규칙
+ *   (`index.css` `.ur-my-flat .border-b.border-rule.last\:border-b-0`)에 걸리게 했다. 마이 안에서는 선이 사라져 위 '맡은 매장'
+ *   줄과 같은 모양이 되고, 에이전시 콘솔(`/agency`)·PC 는 그 규칙 밖이라 선이 그대로다.
+ */
 export function FlatRow({ icon, label, hint, urgent = false, onClick, last = false }: {
   icon: ReactNode
   label: string
@@ -427,7 +432,7 @@ export function FlatRow({ icon, label, hint, urgent = false, onClick, last = fal
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-h-[48px] w-full items-center gap-3 text-left active:opacity-70 ${last ? '' : 'border-b border-rule'}`}
+      className={`flex min-h-[48px] w-full items-center gap-3 text-left active:opacity-70 ${last ? '' : 'border-b border-rule last:border-b-0'}`}
     >
       <span className="shrink-0 text-gray-500 dark:text-gray-400">{icon}</span>
       <span className={ROW_LABEL_CLS}>{label}</span>

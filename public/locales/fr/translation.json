@@ -2698,6 +2698,7 @@
   },
   "admin": {
     "login": {
+      "kakaoStart": "Continuer avec Kakao",
       "title": "Connexion administrateur",
       "subtitle": "Connectez-vous avec votre compte administrateur",
       "heroTitle": "Console de gestion opérationnelle",
@@ -7031,7 +7032,7 @@
   "groupBuy.categoryEtc": "🎯 Autres",
   "groupBuy.stayBadge": "Séjour",
   "roleCta": {
-    "myShortcuts": "Ouvrir une boutique",
+    "myShortcuts": "Vous avez une boutique ?",
     "startNewRole": "Commencer un nouveau rôle",
     "linkshop": "Mon UrShop",
     "linkshopDesc": "Ajoutez des pass à votre UrShop et partagez-les",
@@ -7039,7 +7040,7 @@
     "agencyDashDesc": "Revenus des boutiques partenaires",
     "proposeGb": "Proposer un achat groupé local",
     "proposeGbDesc": "Suggérez une boutique, nous ouvrons l’offre",
-    "openShop": "Enregistrer ma boutique",
+    "openShop": "Vendre les pass de ma boutique",
     "openShopDesc": "Trouvez votre boutique sur Kakao Map et vendez des pass",
     "agencyBiz": "Activité d’agence",
     "agencyBizDesc": "Recrutez des boutiques → 2% de revenus à vie"

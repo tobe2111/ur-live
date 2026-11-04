@@ -8,18 +8,24 @@
  * 목록은 마이와 **같은 부품**(`list-grammar` — 안 C)으로 그린다. 로그인 전후로 같은 화면이 다른
  * 문법으로 보이면 두 화면이 된다.
  * 대표 확정: 사장님 줄 오른쪽 "팔린 만큼만 수수료" 문구는 빼기로 했다(2026-10-12).
+ *
+ * 2026-11-03 대표 *"제안대로 다 해줘"*(시안 `docs/design/guest-tabs-v2-2026-11-03.md`): `-` 세 칸이 고장 난 화면처럼
+ * 보여서 **줄 목록 "내 딜 · 내 이용권 · 찜한 가게 — 로그인 후 보여요"** 로 바꿨다(누르면 카카오 로그인).
+ * 카카오 버튼은 아래 고정(`GuestDock`).
  */
 import { useMemo, useRef } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import Udal from '@/components/mascot/Udal'
-import { StoreIcon, InfoIcon, HomeIcon, SettingsIcon, ReceiptIcon } from '@/components/icons/urdeal-icons'
+import { StoreIcon, InfoIcon, HomeIcon, SettingsIcon, ReceiptIcon, WalletIcon, CouponIcon, HeartIcon } from '@/components/icons/urdeal-icons'
 import { SectionTitle, ListRow } from '@/pages/user-profile/list-grammar'
 import { readRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
 import { useTheme, type ThemeMode } from '@/shared/stores/useTheme'
 import DealMiniCard from '@/components/deal/DealMiniCard'
 import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT } from '@/shared/guest-page'
-import GuestKakaoButton from './GuestKakaoButton'
+import GuestDock from './GuestDock'
+import { useGuestMotion } from './guest-motion'
+import { startGuestKakaoLogin } from './guest-login'
 
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
 /**
@@ -39,6 +45,8 @@ export default function GuestMyPage() {
   const recent = useMemo(() => readRecentlyViewed().slice(0, 6), [])
   const mode = useTheme((s) => s.mode)
   const setMode = useTheme((s) => s.setMode)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useGuestMotion(rootRef) // 🎬 2차 ⑧ — 줄 아이콘이 선을 따라 그려진다(data-motion="draw")
   const lastTap = useRef({ clientX: 0, clientY: 0 }) // 🎬 ③ 원이 퍼질 자리 — 줄 부품이 클릭 위치를 안 넘겨서 여기서 잡는다
   const modeLabel = {
     system: t('guest.my.themeSystem', { defaultValue: '시스템' }),
@@ -46,20 +54,21 @@ export default function GuestMyPage() {
     dark: t('guest.my.themeDark', { defaultValue: '다크' }),
   }[mode]
 
-  const stats = [
-    t('guest.my.statDeal', { defaultValue: GUEST_COPY.my.stats[0] }),
-    t('guest.my.statPass', { defaultValue: GUEST_COPY.my.stats[1] }),
-    t('guest.my.statWish', { defaultValue: GUEST_COPY.my.stats[2] }),
+  const lockedHint = t('guest.my.lockedHint', { defaultValue: GUEST_COPY.my.lockedHint })
+  const locked = [
+    { icon: <WalletIcon size={ROW_ICON} />, label: t('guest.my.statDeal', { defaultValue: GUEST_COPY.my.locked[0] }) },
+    { icon: <CouponIcon size={ROW_ICON} />, label: t('guest.my.statPass', { defaultValue: GUEST_COPY.my.locked[1] }) },
+    { icon: <HeartIcon size={ROW_ICON} />, label: t('guest.my.statWish', { defaultValue: GUEST_COPY.my.locked[2] }) },
   ]
 
   return (
-    <div className={GUEST_CLS.root}>
+    <div ref={rootRef} className={GUEST_CLS.root}>
       <SEO title={t('userProfile.docTitle')} description={t('userProfile.seoDesc')} url="/user/profile" noindex />
       <h1 className={GUEST_CLS.title}>
         {t('guest.my.title', { defaultValue: GUEST_COPY.my.title })}
       </h1>
 
-      <section className={GUEST_CLS.card} data-guest="my">
+      <section className={GUEST_CLS.hero} data-guest="my">
         <div className={GUEST_CLS.myHead}>
           <Udal mood="hello" size={GUEST_MY_MASCOT.width} />
           <div className={GUEST_CLS.myHeadText}>
@@ -67,18 +76,13 @@ export default function GuestMyPage() {
             <p className={GUEST_CLS.myHelloSub}>{t('guest.my.helloSub', { defaultValue: GUEST_COPY.my.helloSub })}</p>
           </div>
         </div>
-        <div className={GUEST_CLS.myStats}>
-          {stats.map((label) => (
-            <div key={label}>
-              <p className={GUEST_CLS.myStatValue} aria-hidden="true">-</p>
-              <p className={GUEST_CLS.myStatLabel}>{label}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-5">
-          <GuestKakaoButton returnPath="/user/profile" />
-        </div>
       </section>
+
+      <div className="mt-5" data-motion="draw">
+        {locked.map((r) => (
+          <ListRow key={r.label} icon={r.icon} label={r.label} hint={lockedHint} onClick={() => startGuestKakaoLogin('/user/profile')} />
+        ))}
+      </div>
 
       {recent.length > 0 && (
         <section>
@@ -99,7 +103,7 @@ export default function GuestMyPage() {
         </section>
       )}
 
-      <div className="ur-gm-rest" onPointerDownCapture={(e) => { lastTap.current = { clientX: e.clientX, clientY: e.clientY } }}>
+      <div className="ur-gm-rest" data-motion="draw" onPointerDownCapture={(e) => { lastTap.current = { clientX: e.clientX, clientY: e.clientY } }}>
       <SectionTitle>{t('guest.owner.title', { defaultValue: '사장님이세요?' })}</SectionTitle>
       <div>
         <ListRow icon={<StoreIcon size={ROW_ICON} />} label={t('guest.my.sell', { defaultValue: '내 가게 이용권 팔기' })} to="/partners" />
@@ -122,6 +126,8 @@ export default function GuestMyPage() {
         <ListRow icon={<ReceiptIcon size={ROW_ICON} />} label={t('guest.my.terms', { defaultValue: '약관·정책' })} to="/terms" />
       </div>
       </div>
+
+      <GuestDock returnPath="/user/profile" />
     </div>
   )
 }

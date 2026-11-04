@@ -2,7 +2,8 @@
  * 🚪 로그인 전 탭 셋(이용권 · 유어샵 · 마이) 서버 첫 화면 (2026-10-19 — 라이브 첫 그림 2.0~2.5초).
  *
  * 지키는 것:
- *   ① 서버 HTML 과 React 가 그리는 위쪽(제목 + 첫 카드)의 **요소 구조·클래스가 같다** — 진짜 페이지를 렌더해 대조한다
+ *   ① 서버 HTML 과 React 가 그리는 위쪽(제목 + 머리)과 **아래 고정 카카오 버튼**(2026-11-03)의 요소 구조·클래스가
+ *      같다 — 진짜 페이지를 렌더해 대조한다
  *      (아이콘·마스코트는 서버가 같은 크기의 빈 칸만 그리므로 둘 다 ICON 으로 본다)
  *   ② 로그인 흔적이면 노드를 걷어낸다 — `RouteGuards.isUserLoggedIn` 과 **같은 두 키**
  *   ③ 워커는 세션 쿠키가 없고(폰·크롤러) 세 경로일 때만 그린다
@@ -49,10 +50,16 @@ describe('① 서버 첫 화면 = React 위쪽 (구조·클래스·문구)', () 
     const reactRoot = container.firstElementChild!
     const server = serverTop(tab)
     expect(server.getAttribute('class')).toBe(reactRoot.getAttribute('class'))
-    // 서버가 그리는 자식(제목 + 첫 블록)이 React 의 앞 자식들과 같다.
-    const sKids = Array.from(server.children)
-    const rKids = Array.from(reactRoot.children).slice(0, sKids.length)
-    expect(sKids.length).toBeGreaterThanOrEqual(2)
+    // 서버가 그리는 자식 = 제목 + 머리(앞) + 고정 버튼(맨 끝). React 의 앞 자식들 + 마지막 자식과 같다.
+    const sAll = Array.from(server.children)
+    const rAll = Array.from(reactRoot.children)
+    expect(sAll.length).toBeGreaterThanOrEqual(3)
+    expect(sAll[sAll.length - 1].hasAttribute('data-guest-dock'), '서버가 고정 버튼을 안 그린다').toBe(true)
+    expect(rAll[rAll.length - 1].hasAttribute('data-guest-dock'), '고정 버튼이 페이지 맨 끝이 아니다').toBe(true)
+    expect(shape(sAll[sAll.length - 1])).toEqual(shape(rAll[rAll.length - 1]))
+    expect(sAll[sAll.length - 1].textContent).toBe(rAll[rAll.length - 1].textContent)
+    const sKids = sAll.slice(0, -1)
+    const rKids = rAll.slice(0, sKids.length)
     for (let i = 0; i < sKids.length; i++) {
       if (tab === 'shop' && i === 1) {
         // 유어샵은 문단 앞부분(제목·부제)만 그린다 — 그 두 줄이 React 와 같아야 한다.
@@ -66,6 +73,17 @@ describe('① 서버 첫 화면 = React 위쪽 (구조·클래스·문구)', () 
       expect(shape(sKids[i])).toEqual(shape(rKids[i]))
       expect(sKids[i].textContent).toBe(rKids[i].textContent)
     }
+  })
+})
+
+describe('①-2 티켓 QR 무늬는 한 벌 (2026-11-03)', () => {
+  beforeEach(() => cleanup())
+  it('서버와 앱이 같은 path 를 그린다(아이콘으로 뭉뚱그려 보는 ① 이 못 보는 자리)', () => {
+    const { container } = render(<MemoryRouter><GuestPassPage /></MemoryRouter>)
+    const app = container.querySelector('svg[viewBox="0 0 21 21"] path')!.getAttribute('d')
+    const srv = serverTop('pass').querySelector('svg[viewBox="0 0 21 21"] path')!.getAttribute('d')
+    expect(app && app.length).toBeGreaterThan(200)
+    expect(app).toBe(srv)
   })
 })
 

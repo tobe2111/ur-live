@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-03",
+  "reason": "로그인 전 손님 화면 2차(대표 '제안대로 다 해줘', PR #2147): 이용권·유어샵·마이 세 탭이 공용 조각 GuestDock(고정 카카오 버튼·단계·티켓·문구 SSOT, brotli ~1.9KB)과 이용권 탭의 DealRow 줄 목록을 받는다. 세 화면만 갱신 — 나머지 화면의 증가(app-utils/app-shell)는 main 쪽 것이라 손대지 않았다.",
+  "surfaces": [
+    "guestMy",
+    "guestPass",
+    "guestUShop"
+  ],
+  "changes": [
+    "guestMy: 187.1 → 188.8 KB (+1.7, 허용 1.5) · 늘어난 것: GuestDock.js +1.9, app-utils.js +0.7, app-shell.js +0.6",
+    "guestPass: 184.0 → 187.0 KB (+3.0, 허용 1.5) · 늘어난 것: GuestDock.js +1.9, lz-linkshop1-vouchers.js +1.1, app-utils.js +0.7, app-shell.js +0.6",
+    "guestUShop: 185.9 → 188.8 KB (+2.9, 허용 1.5) · 늘어난 것: GuestDock.js +1.9, app-cross.js +1.4, app-owner-kit.js +1.3, app-utils.js +0.7, app-shell.js +0.6"
+  ]
+}

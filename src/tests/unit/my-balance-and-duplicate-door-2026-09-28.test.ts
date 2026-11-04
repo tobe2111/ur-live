@@ -111,7 +111,8 @@ describe('ⓐ 등록 문은 한 화면에 하나', () => {
   })
 
   it('🔴 남은 문은 타일이다 — 목적지가 살아 있다', () => {
-    expect(GRID).toContain('내 가게 등록')
+    // 2026-11-03 대표 — 이름이 '내 가게 이용권 팔기' 로 바뀌었다(목적지는 그대로).
+    expect(GRID).toContain('내 가게 이용권 팔기')
     expect(GRID).toContain("'/store/new'")
   })
 

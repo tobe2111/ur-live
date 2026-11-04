@@ -7947,7 +7947,7 @@ canvas {
   {
     name: '🏷️ 유어샵을 "새로 여는 것"처럼 다시 말한다',
     file: 'src/pages/user-profile/RoleCtaGrid.tsx',
-    find: "t('roleCta.openShop', { defaultValue: '내 가게 등록' })",
+    find: "t('roleCta.openShop', { defaultValue: '내 가게 이용권 팔기' })",
     replace: "t('roleCta.openShop', { defaultValue: '내 쇼핑몰 열기' })",
     test: 'src/tests/unit/urshop-naming.test.ts',
     why:
