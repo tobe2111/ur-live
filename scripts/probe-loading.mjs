@@ -21,7 +21,7 @@ try { ({ chromium, devices } = require('playwright')) }
 catch { ({ chromium, devices } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')) }
 
 const BASE = process.env.BASE || 'https://live.ur-team.com'
-const DEFAULT_URLS = ['/', '/vouchers', '/browse', '/group-buy/2609', '/vouchers/118', '/u/jiwon1228', '/blog', '/wholesale']
+const DEFAULT_URLS = ['/', '/vouchers', '/group-buy/2609', '/vouchers/118', '/u/jiwon1228', '/blog', '/wholesale']
 const urls = process.argv.slice(2).length ? process.argv.slice(2) : DEFAULT_URLS
 
 // 🩸 원격 세션: 번들 playwright 버전과 설치된 chromium 리비전이 어긋나 headless-shell 이 없다.

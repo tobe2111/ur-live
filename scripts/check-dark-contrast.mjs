@@ -112,7 +112,7 @@ const ROUTES = [
   // 목록·카탈로그
   { route: '/vouchers', name: '교환권', fill: true },
   { route: '/vouchers', name: '교환권(PC)', pc: true, fill: true },
-  { route: '/browse', name: '쇼핑', fill: true },
+  // 🛍️ 2026-11-04 '쇼핑'(/browse)은 /vouchers 로 301 — 화면이 없어 잴 것이 없다.
   { route: '/search', name: '검색', fill: true },
   { route: '/group-buy', name: '동네딜', fill: true },
   { route: '/stays', name: '숙소', fill: true },

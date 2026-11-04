@@ -100,7 +100,7 @@ export const PAGES = [
   { name: '홈(PC)', args: ['--route=/', '--deals', '--pc'] },
   { name: '교환권', args: ['--route=/vouchers', '--deals'] },
   { name: '이용권 상세', args: ['--route=/group-buy/9000', '--deals'] },
-  { name: '쇼핑', args: ['--route=/browse', '--deals'] },
+  // 🛍️ 2026-11-04 '쇼핑'(/browse)은 /vouchers 로 301 — 화면이 없어 잴 것이 없다.
   { name: '지도', args: ['--route=/map', '--deals'] },
   { name: '유어샵', args: ['--route=/u/jiwon1228'] },
   { name: '마이(판매 구역)', args: ['--route=/user/profile', '--auth=user', '--stores=1', '--seller-lists'], dashboard: 'my' },
