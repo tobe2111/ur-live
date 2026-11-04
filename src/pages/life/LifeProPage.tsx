@@ -119,7 +119,7 @@ export default function LifeProPage() {
                 <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">소개·후기·이용권이 한 장에 모여요. 카톡이나 블로그에 이 링크를 걸어 두세요. 연락처는 보이지 않아요.</p>
                 <div className="mt-3 flex gap-2">
                   <Link to={`/life/biz/${me.seller.id}`} className="ur-btn ur-btn-lg flex flex-1 justify-center bg-warm text-ink">보기</Link>
-                  <button type="button" onClick={() => shareBizPage(me.seller.id!, me.seller.name)} className="ur-btn ur-btn-lg ur-btn-primary flex flex-1 justify-center">링크 보내기</button>
+                  <button type="button" onClick={() => shareBizPage(me.seller.id!, me.seller.name, { description: me.pro?.intro?.slice(0, 80) })} className="ur-btn ur-btn-lg ur-btn-primary flex flex-1 justify-center">링크 보내기</button>
                 </div>
               </section>
             ) : null}

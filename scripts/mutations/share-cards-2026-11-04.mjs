@@ -1,0 +1,28 @@
+/** 🧬 주입 — 공유 카드(2026-11-04). 가드: src/tests/unit/share-cards-2026-11-04.test.ts */
+const TEST = 'src/tests/unit/share-cards-2026-11-04.test.ts'
+export default [
+  {
+    name: '💬 공용 공유 버튼이 카카오 실패(false)를 다시 버린다(누르면 아무 일 없음)',
+    file: 'src/components/KakaoShareButton.tsx',
+    find: '      if (!sent) markCopied(await shareNative(',
+    replace: '      if (false && !sent) markCopied(await shareNative(',
+    test: TEST,
+    why: '카카오 SDK 를 못 받은 폰에서 이용권 공유 버튼이 먹통이 된다.',
+  },
+  {
+    name: '💬 업체 소개 공유가 다시 주소만 보낸다(카드 없음)',
+    file: 'src/pages/life/life-biz-share.ts',
+    find: '    if (sendKakaoShare(payload) || await shareViaKakao(payload)) return\n',
+    replace: '',
+    test: TEST,
+    why: '대표 "share card 형태로".',
+  },
+  {
+    name: '🖼️ 카드 그림이 다시 상대 주소 그대로 카카오에 간다(사진 빠짐)',
+    file: 'src/lib/kakao-share.ts',
+    find: "  if (v.startsWith('/')) return `https://urdeal.kr${v}`\n",
+    replace: "  if (v.startsWith('/')) return v\n",
+    test: TEST,
+    why: '상품·숙소 사진이 /api/media/… 상대 주소라 카카오가 못 받는다.',
+  },
+]

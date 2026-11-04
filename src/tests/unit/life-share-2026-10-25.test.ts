@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { isShareToken, newShareToken, publicShareView, shareDescription } from '@/shared/home-service-share'
+import { isShareToken, newShareToken, publicShareView, shareDescription, lifeShareKakaoCard } from '@/shared/home-service-share'
 import { buildLifeShareMeta, buildLifeShareNoscript } from '@/worker/utils/life-share-ssr'
 import { shouldNoindexMissingEntity } from '@/worker/utils/surface-ssr-meta'
 
@@ -39,7 +39,7 @@ describe('공개 값 — 마스킹', () => {
     const pv = publicShareView({ ...ROW, details: { ...ROW.details, photos: urls.join(',') } })!
     expect(pv.photos).toEqual(urls.slice(0, 4))
     const m = buildLifeShareMeta({ success: true, data: pv }, 'https://urdeal.kr', '/life/q/AbCdEf123456')!
-    expect(m.ogImage).toBe('https://urdeal.kr/api/media/uploads/user/3/2026-11/p0.webp')
+    expect(m.ogImage, '카드 비율(1200×630)로 잘라 전체 주소').toMatch(/^https:\/\/urdeal\.kr\/cdn-cgi\/image\/width=1200,height=630,[^/]*fit=cover[^/]*\/https:\/\/[^/]+\/uploads\/user\/3\/2026-11\/p0\.webp$/)
   })
   it('이름은 첫 글자 + ** · 연락처·주소는 가린 모양', () => {
     expect(v.masked).toEqual({ name: '김**', phone: '010-****-****', address: '망원동 *** ***' })
@@ -127,5 +127,26 @@ describe('검색 — 메타·본문·사이트맵', () => {
     expect(w).toContain("slot: 'LIFESHARE'")
     expect(w).toContain('buildLifeShareMeta(ssrPayload, origin2, url.pathname)')
     expect(w).toContain("ssrSlot === 'LIFESHARE' ? buildLifeShareNoscript(ssrPayload)")
+  })
+})
+
+describe('💬 2026-11-04 카톡 공유 카드(버튼) — 대표 "이런식으로 나올 수는 없나? 밑에?"', () => {
+  it('제목·설명은 서버 메타와 같은 값 · 아래 버튼 · 사진 있으면 첫 장', () => {
+    const v = publicShareView(ROW)!
+    const c = lifeShareKakaoCard(v, 'https://urdeal.kr')
+    expect(c.title).toBe('망원동 카페 간판 제작·교체 견적 요청 · 남은 자리 3/5')
+    expect(c.description).toBe(shareDescription(v))
+    expect(c.button).toBe('견적 보내기')
+    expect(c.imageUrl).toBeNull()
+    const pv = publicShareView({ ...ROW, details: { ...ROW.details, photos: '/api/media/uploads/user/3/2026-11/p0.webp' } })!
+    expect(lifeShareKakaoCard(pv, 'https://urdeal.kr').imageUrl, '자르기·전체 주소는 feedPayload 한 곳에서').toBe('/api/media/uploads/user/3/2026-11/p0.webp')
+    expect(lifeShareKakaoCard(publicShareView({ ...ROW, status: 'chosen' })!, 'https://urdeal.kr').button).toBe('요청 보기')
+  })
+  it('공유 버튼이 카카오 피드 카드를 먼저 보낸다(못 하면 공유 시트·복사)', () => {
+    const f = read('src/pages/life/life-shared.tsx')
+    const i = f.indexOf('feedPayload('), j = f.indexOf('navigator.share')
+    expect(i).toBeGreaterThan(0)
+    expect(i, '카카오 카드가 공유 시트보다 먼저').toBeLessThan(j)
+    expect(f).toContain('buttons: [{ title: c.button }]')
   })
 })

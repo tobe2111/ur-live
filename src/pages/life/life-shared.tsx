@@ -8,6 +8,7 @@ import { getSellerToken } from '@/lib/seller-auth'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
 import { promptDialog } from '@/components/ui/confirm-dialog'
+import { lifeShareKakaoCard, type ShareView } from '@/shared/home-service-share'
 
 /**
  * 🔗 요청 공유 — 휴대폰은 공유 시트(카카오톡 등), 아니면 주소 복사. 손님(아는 업체에게)·업체(동료에게)가 같이 쓴다.
@@ -16,6 +17,20 @@ import { promptDialog } from '@/components/ui/confirm-dialog'
 export async function shareLifeRequest(token: string, title: string): Promise<void> {
   const url = `${window.location.origin}/life/q/${token}`
   const text = `${title} — 유어딜에서 견적을 보내 주세요`
+  // 💬 2026-11-04 대표 — 카톡으로 보낼 땐 **버튼 달린 카드**(제목·지역·고른 내용·사진 + [견적 보내기]).
+  //   공개 뷰를 한 번 받아 카드를 만든다(서버 메타와 같은 값). 못 받거나 카카오가 안 되면 아래 공유 시트·복사로.
+  try {
+    // 공개 주소라 인증이 필요 없다 — `api` 를 끌면 업체 화면 첫 화면에 공용 묶음이 하나 더 실린다(surface-budgets).
+    const r = await fetch(`/api/home-service/share/${token}`, { signal: AbortSignal.timeout?.(4000) })
+    const v = ((await r.json()) as { data?: ShareView })?.data
+    if (v && typeof v.title === 'string') {
+      // 📦 카카오 공유 묶음은 누를 때만 받는다 — 정적으로 끌면 업체 화면 첫 화면에 상품 상세 묶음이 실린다(surface-budgets).
+      const { feedPayload, sendKakaoShare, shareViaKakao } = await import('@/lib/kakao-share')
+      const c = lifeShareKakaoCard(v, window.location.origin)
+      const payload = feedPayload({ title: c.title, description: c.description, imageUrl: c.imageUrl, url, buttons: [{ title: c.button }] })
+      if (sendKakaoShare(payload) || await shareViaKakao(payload)) return
+    }
+  } catch { /* 폴백 */ }
   try {
     if (navigator.share) { await navigator.share({ title, text, url }); return }
   } catch (e) {

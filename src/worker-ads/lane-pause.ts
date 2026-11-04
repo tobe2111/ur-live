@@ -39,6 +39,7 @@ export const PAUSE_BEAT = 'lanes-paused'
 export const PAUSE_EXEMPT_PATHS: ReadonlySet<string> = new Set([
   '/__ads/consented-reminder', '/__ads/inbound-onboarding',           // 1. 사람에게 한 약속
   '/__ads/health', '/__ads/alert-test', '/__ads/probe-public-data', '/__ads/silence-digest', // 2. 관측
+  '/__ads/pool-sheets-status', // 2. 관측 — 시트 연동 상태(설정 3줄 읽기). 막히면 어드민 패널이 "상태 조회 실패" 로만 보인다(2026-11-04 실측)
 ])
 
 export function lanesPaused(env: unknown): boolean {

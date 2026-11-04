@@ -15,6 +15,7 @@ import { Copy } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import KakaoShareButton from '@/components/KakaoShareButton'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-popin', `@keyframes ur-popin { 0% { opacity: 0; transform: scale(.5); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }.ur-popin { animation: ur-popin .4s cubic-bezier(.3,1.3,.5,1) both; }@media (prefers-reduced-motion: reduce){.ur-popin{animation:none!important}}`)
 
@@ -110,6 +111,15 @@ export default function MyReferralCard() {
             ? <span key="ok" className="ur-popin inline-flex items-center gap-2" aria-live="polite"><OkIcon className="w-4 h-4" /> {t('inviteCard.copied', { defaultValue: '복사됨' })}</span>
             : <><Copy className="w-4 h-4" /> {t('inviteCard.copy', { defaultValue: '복사' })}</>}
         </button>
+      </div>
+      {/* 💬 2026-11-04 대표 *"share card 로 공유가 안 되고 있는 것들 … share card 형태로"* — 복사만 있던 친구 초대에 버튼 달린 카톡 카드. */}
+      <div className="mt-2">
+        <KakaoShareButton
+          title={t('inviteCard.shareTitle', { defaultValue: '유어딜 초대장이 도착했어요' })}
+          description={t('inviteCard.shareDesc', { defaultValue: '가입하고 첫 구매하면 딜을 드려요. 할인 이용권·교환권을 동네에서 바로 써 보세요.' })}
+          link={(() => { try { const u = new URL(inviteUrl); return u.pathname + u.search } catch { return '/' } })()}
+          buttonText={t('inviteCard.shareBtn', { defaultValue: '초대 받기' })}
+        />
       </div>
 
       {rewards.length > 0 && (
