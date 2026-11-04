@@ -86,15 +86,15 @@ export default function PhoneRequiredGate() {
           <p className="mt-2 text-[12px] text-tone-bad">{t('phoneGate.invalid', { defaultValue: '010으로 시작하는 휴대폰 번호를 넣어 주세요' })}</p>
         )}
 
-        <label className="mt-4 flex items-start gap-3 cursor-pointer">
-          <input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--brand)]" />
+        <label className="mt-5 flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-[var(--brand)]" />
           <span className="text-[13px] text-gray-700 dark:text-gray-200">
             {t('phoneGate.marketing', { defaultValue: '[선택] 할인·이벤트 소식도 받을게요' })}
             <span className="block mt-1 text-[12px] text-gray-500 dark:text-gray-400">{t('phoneGate.marketingNote', { defaultValue: '광고성 정보 수신 동의 · 언제든 끌 수 있어요' })}</span>
           </span>
         </label>
 
-        <p className="mt-4 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">
+        <p className="mt-5 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">
           {t('phoneGate.privacy', { defaultValue: '번호는 예약·이용 안내에만 쓰고, 탈퇴하면 지워요.' })}{' '}
           <Link to="/privacy" className="underline">{t('phoneGate.privacyLink', { defaultValue: '개인정보처리방침' })}</Link>
         </p>
@@ -103,7 +103,7 @@ export default function PhoneRequiredGate() {
           type="button"
           onClick={() => void save()}
           disabled={!valid || saving}
-          className="mt-5 w-full h-[52px] rounded-full bg-brand text-white text-[15px] font-semibold disabled:opacity-40 active:opacity-80"
+          className="mt-5 w-full h-[52px] rounded-full bg-brand text-white text-[15px] font-bold disabled:opacity-40 active:opacity-80"
         >
           {saving ? t('phoneGate.saving', { defaultValue: '저장하는 중…' }) : t('phoneGate.submit', { defaultValue: '확인' })}
         </button>
