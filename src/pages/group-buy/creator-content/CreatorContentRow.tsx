@@ -73,7 +73,7 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
       )}
 
       {videos.length > 0 && (
-        <ul className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-hide">
           {videos.map((v, i) => {
             const badge = urdealBadge(v)
             return (

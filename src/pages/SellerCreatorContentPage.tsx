@@ -89,7 +89,7 @@ export default function SellerCreatorContentPage() {
         </div>
 
         {adding && (
-          <div className="mt-3 rounded-2xl bg-white p-4 shadow-lift">
+          <div className="mt-3 rounded-xl bg-white p-4 shadow-lift">
             <p className="text-[13px] text-gray-600">{t('seller.creatorContent.addHint', { defaultValue: '유튜브 · 인스타그램 · 틱톡 · 네이버 클립 · 네이버 블로그 주소를 붙여 넣으세요. 바로 손님에게 보여요.' })}</p>
             <input id="cc-url" value={url} onChange={(e) => setUrl(e.target.value)} inputMode="url" placeholder="https://"
               className="mt-2 w-full rounded-xl border border-gray-300 px-3 py-3 text-[15px] text-gray-900 outline-none focus:border-brand" />
@@ -104,7 +104,7 @@ export default function SellerCreatorContentPage() {
           <section className="mt-5">
             <h2 className="text-[16px] font-semibold">{t('seller.creatorContent.candidates', { defaultValue: '새로 찾은 후보' })} <span className="text-gray-500 tabular-nums">{candidates.length}</span></h2>
             <p className="mt-1 text-[13px] text-gray-500">{t('seller.creatorContent.candidatesHint', { defaultValue: '자동으로 찾은 글·영상이에요. 보이기를 눌러야 손님에게 보여요.' })}</p>
-            <div className="mt-3 flex gap-3 rounded-2xl bg-white p-3 shadow-lift">
+            <div className="mt-3 flex gap-3 rounded-xl bg-white p-3 shadow-lift">
               <Thumb item={cand} tall={cand.kind === 'video'} />
               <div className="min-w-0 flex-1">
                 <p className="line-clamp-3 text-[15px] font-medium">{cand.title || CONTENT_PLATFORM_LABEL[cand.platform]}</p>
@@ -125,7 +125,7 @@ export default function SellerCreatorContentPage() {
           {visible.length === 0 && data.urdeal.filter((u) => !u.hidden).length === 0
             ? <p className="mt-2 text-[13px] text-gray-500">{t('seller.creatorContent.empty', { defaultValue: '아직 보이는 콘텐츠가 없어요. 후보를 고르거나 주소로 추가해 보세요. 0개면 손님 화면에서 이 칸은 숨겨져요.' })}</p>
             : (
-              <ul className="mt-3 divide-y divide-rule rounded-2xl bg-white px-3 shadow-lift">
+              <ul className="mt-3 divide-y divide-rule rounded-xl bg-white px-3 shadow-lift">
                 {visible.map((v, i) => (
                   <li key={v.id} className="flex items-center gap-3 py-3">
                     <Thumb item={v} />
@@ -150,7 +150,7 @@ export default function SellerCreatorContentPage() {
           <section className="mt-8">
             <h2 className="text-[16px] font-semibold">{t('seller.creatorContent.urdeal', { defaultValue: '유어딜 사람' })}</h2>
             <p className="mt-1 text-[13px] text-gray-500">{t('seller.creatorContent.urdealHint', { defaultValue: '체험단 · 유어쇼츠 · 이 이용권을 유어샵에서 파는 사람이에요. 숨길 수는 있지만 지울 수는 없어요.' })}</p>
-            <ul className="mt-3 divide-y divide-rule rounded-2xl bg-white px-3 shadow-lift">
+            <ul className="mt-3 divide-y divide-rule rounded-xl bg-white px-3 shadow-lift">
               {data.urdeal.map((u) => (
                 <li key={u.id} className={`flex items-center gap-3 py-3${u.hidden ? ' opacity-50' : ''}`}>
                   <Thumb item={u} />
@@ -182,7 +182,7 @@ export default function SellerCreatorContentPage() {
         {hidden.length > 0 && (
           <section className="mt-8">
             <h2 className="text-[16px] font-semibold">{t('seller.creatorContent.hiddenTitle', { defaultValue: '숨긴 것' })} <span className="text-gray-500 tabular-nums">{hidden.length}</span></h2>
-            <ul className="mt-3 divide-y divide-rule rounded-2xl bg-white px-3 shadow-lift">
+            <ul className="mt-3 divide-y divide-rule rounded-xl bg-white px-3 shadow-lift">
               {hidden.map((h) => (
                 <li key={h.id} className="flex items-center gap-3 py-3">
                   <Thumb item={h} />

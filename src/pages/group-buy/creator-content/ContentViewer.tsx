@@ -151,7 +151,7 @@ export default function ContentViewer({ items, start, buy, onClose, onBuy, onSee
         <button type="button" onClick={onClose} aria-label="닫기" className="rounded-full bg-black/40 p-2"><X className="h-5 w-5" /></button>
         <span className="rounded-full bg-black/40 px-3 py-1 text-[13px] tabular-nums">{index + 1} / {items.length}</span>
       </div>
-      <div ref={listRef} className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div ref={listRef} className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto scrollbar-hide">
         {items.map((it, i) => (
           <div key={it.id} data-i={i} className="h-full w-full"><VideoSlide item={it} active={i === index} /></div>
         ))}
