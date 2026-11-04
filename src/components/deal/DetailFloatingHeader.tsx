@@ -55,17 +55,32 @@ export default function DetailFloatingHeader({
   const [headerSolid, setHeaderSolid] = useState(false)
   useEffect(() => {
     const HEADER_H = 56 // overlay 헤더 대략 높이 (px)
-    const onScroll = () => {
+    /**
+     * ⚡ 2026-11-04 (대표 *"최적화 계속"*) — 사진 높이는 **크기가 바뀔 때만** 잰다(ResizeObserver).
+     *   종전엔 스크롤 이벤트마다 `offsetHeight` 를 읽었다 → 브라우저가 그 자리에서 배치를 다시 계산(강제 레이아웃)해
+     *   첫 진입에 긴 작업 하나(CPU×4 실측 68ms)와 **스크롤 중 버벅임**을 만들었다. 스크롤은 이제 저장된 값과 비교만 하고,
+     *   한 프레임에 한 번만(rAF) 상태를 바꾼다. 판정식(사진 높이 − 56px, 사진 없으면 60px)은 종전 그대로다.
+     */
+    let threshold = 60
+    const measure = () => {
       const h = heroRef?.current?.offsetHeight ?? 0
-      const threshold = h > 0 ? Math.max(0, h - HEADER_H) : 60
-      setHeaderSolid(window.scrollY > threshold)
+      threshold = h > 0 ? Math.max(0, h - HEADER_H) : 60
     }
-    onScroll()
+    let raf = 0
+    const apply = () => { raf = 0; setHeaderSolid(window.scrollY > threshold) }
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply) }
+    const onResize = () => { measure(); onScroll() }
+    const hero = heroRef?.current ?? null
+    const ro = hero && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onResize) : null
+    if (ro && hero) ro.observe(hero) // 관찰을 시작하면 첫 측정도 브라우저가 배치를 마친 뒤에 알려 준다
+    else onResize()
     window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll, { passive: true })
+    window.addEventListener('resize', onResize, { passive: true })
     return () => {
+      if (raf) cancelAnimationFrame(raf)
+      ro?.disconnect()
       window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
+      window.removeEventListener('resize', onResize)
     }
   }, [heroRef])
 
