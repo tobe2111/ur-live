@@ -90,6 +90,15 @@ async function writeKvCache(
   }
 }
 
+/** 🛟 예비 사본 보관 시간 — 원본이 실패했을 때만 꺼낸다. */
+export const STALE_BACKUP_SECONDS = 24 * 60 * 60;
+/** 예비 사본의 키 — 같은 주소에 표식 쿼리 하나(같은 존이라 Cache API 가 받는다). */
+export function staleKeyOf(u: URL): Request {
+  const k = new URL(u.toString());
+  k.searchParams.set('__ur_stale', '1');
+  return new Request(k.toString(), { method: 'GET' });
+}
+
 function makeCacheMiddleware(ttlSeconds: number, opts: CacheOptions = {}) {
   const bypassIfAuthed = opts.bypassIfAuthed ?? true;
   const tag = opts.tag ?? 'edge';
@@ -144,10 +153,36 @@ function makeCacheMiddleware(ttlSeconds: number, opts: CacheOptions = {}) {
     }
 
     // L1, L2 모두 miss → 다음 미들웨어로 (D1 hit)
-    await next();
+    // 🛟 2026-11-04 [UNLOCK_LOADING] 대표 *"대기업급 안정성을 보여주는 최적화"* — **원본이 실패하면 마지막 성공 응답을 대신 낸다**
+    //   (stale-if-error). 종전엔 캐시가 만료된 뒤 D1 이 실패하면 손님 화면이 그대로 오류였다 — 2026-09-01 D1 일일 읽기 한도에
+    //   닿았을 때 소비자 API 가 통째로 500 이 된 바로 그 모양이다. 성공할 때마다 예비 사본(24시간)을 따로 두고,
+    //   원본이 5xx 거나 던지면 그 사본을 `X-Cache-Status: *-STALE` 로 돌려준다. 예비 사본이 없으면 종전과 같다(오류 그대로).
+    const staleKey = staleKeyOf(cacheUrl);
+    let threw: unknown = null;
+    try { await next(); } catch (e) { threw = e; }
+    if (threw || c.res.status >= 500) {
+      const stale = await cache.match(staleKey).catch(() => undefined);
+      if (stale) {
+        // ⚠️ `return new Response()` 는 안 된다 — Hono 는 응답이 이미 정해진 뒤 미들웨어의 반환값을 버린다(시험이 잡았다).
+        //   `c.res` 를 **교체**하고, 교체 때 옛 응답 헤더가 덮어쓰므로 우리 헤더는 그 **뒤에** 다시 적는다.
+        c.res = new Response(stale.body, { status: stale.status, headers: stale.headers });
+        c.res.headers.set('X-Cache-Status', `${tag}-STALE`);
+        c.res.headers.set('Cache-Control', 'public, max-age=15'); // 브라우저는 짧게 — 원본이 살아나면 곧 새 값으로
+        c.res.headers.delete('CDN-Cache-Control');
+        c.res.headers.set('Content-Type', stale.headers.get('Content-Type') || 'application/json');
+        return;
+      }
+      if (threw) throw threw;
+      return;
+    }
 
     // 성공 응답만 캐싱 (4xx/5xx 캐싱 안 함)
     if (c.res.status >= 200 && c.res.status < 300) {
+      // 🛟 예비 사본 — 만료 캐시와 별개로 24시간 보관(원본 실패 때만 꺼낸다).
+      const backup = c.res.clone();
+      backup.headers.set('Cache-Control', `public, max-age=${STALE_BACKUP_SECONDS}`);
+      backup.headers.set('CDN-Cache-Control', `public, max-age=${STALE_BACKUP_SECONDS}`);
+      c.executionCtx.waitUntil(cache.put(staleKey, backup).catch(() => {}));
       const response = c.res.clone();
       // 🛡️ 2026-04-28: stale-while-revalidate 추가 (browser cache 활용)
       //  - max-age 동안 즉시 사용 (서버 호출 0)

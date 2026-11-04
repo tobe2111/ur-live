@@ -120,3 +120,7 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
   내 가게는 '오늘 매출'이 있어 **같은 KST 날짜 · 2시간 이내**만. 잔액 실패는 종전대로 `—`.
 - 🔬 첫 `D1` 표본(11-04): `d1:primary:ENAM@HKG` 411ms — 홍콩 손님의 홈 섹션 질의를 **미국 원본**이 답했다(표본 1, 엣지 캐시 라벨일 수 있음).
   APAC 사본 존재 여부는 표본이 더 쌓여야 판정 — `/api/analytics/summary?day=YYYY-MM-DD` 의 `vitals:…:D1:`.
+
+## 6차 (대표 *"대기업급 안정성을 보여주는 최적화가 필요해"*)
+- 🛟 공개 캐시 stale-if-error(`edge-cache.ts`): 원본 5xx·예외 → 24시간 예비 사본을 `*-STALE` 로. 기록 `docs/locks/loading/2026-11-04-stale-if-error.md`.
+  🩸 첫 구현은 미들웨어에서 `return new Response()` 했는데 Hono 가 확정된 응답 뒤 반환값을 버려 시험 ②③이 빨갰다 → `c.res` 교체 + 헤더 재기입.
