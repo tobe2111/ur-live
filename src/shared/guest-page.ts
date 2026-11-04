@@ -20,7 +20,7 @@ export const GUEST_CLS = {
    *   (사진 · 가게 · 메뉴 · 남은 기간 · [사용] 알약)의 예시 두 장으로 그린다. 바탕은 옅은 면 하나(그림이라 — 판이 아니다).
    *   🎬 `ur-gp-*` 는 모션 표식 — 모양은 없고 움직임 CSS 는 GuestPassPage 가 앱에서만 꽂는다(서버 첫 화면은 정지 그림).
    */
-  ticket: 'ur-gp-ticket mt-5 rounded-2xl bg-gray-100 dark:bg-white/5 divide-y divide-rule',
+  ticket: 'mt-5 rounded-2xl bg-gray-100 dark:bg-white/5 divide-y divide-rule',
   walletRow: 'ur-gp-wrow flex items-center gap-3 px-4 py-3',
   walletThumb: 'w-14 h-14 shrink-0 rounded-xl overflow-hidden bg-brand-tint',
   walletImg: 'w-full h-full object-cover',

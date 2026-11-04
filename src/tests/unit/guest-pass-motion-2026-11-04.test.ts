@@ -24,7 +24,6 @@ const kf = (name: string) => (css.match(new RegExp(`@keyframes ${name} \\{(.*?\\
 describe('로그아웃 이용권 탭 모션', () => {
   it('① 모션 CSS 를 꽂고, 표식은 앱·서버가 같이 쓰는 클래스에 있다', () => {
     expect(css.length).toBeGreaterThan(500)
-    expect(GUEST_CLS.ticket).toContain('ur-gp-ticket')
     expect(GUEST_CLS.walletRow).toContain('ur-gp-wrow')
     expect(GUEST_CLS.walletUse).toContain('ur-gp-use')
     expect(GUEST_CLS.stepNum).toContain('ur-gp-num')
