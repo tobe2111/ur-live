@@ -119,14 +119,16 @@ describe('②-c 가게 자기 글 — 다녀온 사람들이 아니다', () => {
     expect(routes).toMatch(/if \(isStoreOwnPost\(r\.author_name, s\.store_name \?\? ''\)\) return false/)
     expect(routes).toMatch(/return n <= MAX_POSTS_PER_AUTHOR/)
   })
-  it('블로그는 바로 그 글로 · 사진 없으면 빈 칸 없음 · 상세에서 리뷰 아래', () => {
+  it('블로그는 바로 그 글로 · 사진 없으면 빈 칸 없음 · 상세에서 유의사항과 리뷰 사이', () => {
     const row = read('src/pages/group-buy/creator-content/CreatorContentRow.tsx')
     expect(row).toMatch(/const w = window\.open\(url, '_blank'\)\n\s*if \(w\) w\.opener = null/)
     expect(row).not.toMatch(/window\.open\([^)]*'noopener'/)
     expect(read('src/pages/group-buy/creator-content/ContentViewer.tsx')).toMatch(/<a href=\{full\} target="_blank"/)
     expect(row).toMatch(/\{b\.thumb_url && \(\n\s*<span className="block h-16 w-16/)
     const page = read('src/pages/GroupBuyDetailPage.tsx')
-    expect(page.indexOf('<CreatorContentLazy')).toBeGreaterThan(page.indexOf('id="gb-sec-reviews"'))
+    // 대표 "유의사항과 리뷰 사이에" — 이용권 정보(유의사항) 카드 다음, 리뷰 카드 앞.
+    expect(page.indexOf('<CreatorContentLazy')).toBeGreaterThan(page.indexOf('id="gb-sec-info"'))
+    expect(page.indexOf('<CreatorContentLazy')).toBeLessThan(page.indexOf('id="gb-sec-reviews"'))
   })
 })
 
