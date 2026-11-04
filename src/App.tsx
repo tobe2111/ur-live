@@ -86,6 +86,9 @@ const LinkshopPinPicker = lazy(() => import('./pages/curator-page/LinkshopPinPic
 const HostingPage = lazy(() => import('./pages/HostingPage'))
 const HostingNewPage = lazy(() => import('./pages/HostingNewPage'))
 const StoreClaimPage = lazy(() => import('./pages/StoreClaimPage')) // 🏪 매장 등록 단일 목적지(/store/new)
+const FirstVoucherPage = lazy(() => import('./pages/store-new/FirstVoucherPage')) // 🎟️ 매장 등록 직후 첫 이용권(/store/first-voucher, 2026-11-03)
+const StoreBizCertPage = lazy(() => import('./pages/store-new/StoreBizCertPage')) // 🪪 사업자등록증(/store/biz-cert, 2026-11-03)
+const StoreBankPage = lazy(() => import('./pages/store-new/StoreBankPage')) // 🏦 정산 계좌(/store/bank, 2026-11-03)
 const StoreOwnerClaimPage = lazy(() => import('./pages/StoreOwnerClaimPage')); const StoreAgencyInvitePage = lazy(() => import('./pages/StoreAgencyInvitePage')) // 🙋 내 가게 찾기 — 소유권 신청(/store/find) · 🔗 에이전시 매장 초대 링크(/store/agency/:token)
 const StoreGoPage = lazy(() => import('./pages/StoreGoPage')) // 🔗 2026-10-10 사장님 문자 링크 → 카카오 로그인 → 그 매장 좌석 → 목적 화면(shared/store-deep-link)
 const HostInvitePage = lazy(() => import('./pages/HostInvitePage'))
@@ -798,6 +801,9 @@ function AppContent() {
                 한 줄 표기는 file-size 래칫 때문 — 동작은 블록 표기와 동일하다. */}
             <Route path="/store/scan" element={<StoreScanPage />} /><Route path="/store/seeding" element={<StoreSeedingPage />} />
             <Route path="/store/new" element={<ProtectedRoute requireUser><ErrorBoundary><StoreClaimPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/store/first-voucher" element={<ProtectedRoute requireUser><ErrorBoundary><FirstVoucherPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/store/biz-cert" element={<ProtectedRoute requireUser><ErrorBoundary><StoreBizCertPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/store/bank" element={<ProtectedRoute requireUser><ErrorBoundary><StoreBankPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/store/find" element={<ProtectedRoute requireUser><ErrorBoundary><StoreOwnerClaimPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/agency/:token" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} /><Route path="/store/partner/:agencyId" element={<ProtectedRoute requireUser><ErrorBoundary><StoreAgencyInvitePage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/my-seeding" element={<ProtectedRoute requireUser><ErrorBoundary><MySeedingPage /></ErrorBoundary></ProtectedRoute>} />
             {/* 🎁 2026-11-01: 모집 깔때기의 착지 — 로그인 없이 보인다(모집 메일·DM 이 여기로 온다). 자격 판정은 상세 한 곳에만. */}

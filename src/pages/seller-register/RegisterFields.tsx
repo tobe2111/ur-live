@@ -92,10 +92,5 @@ export function ChipGroup({ value, onChange, options, name }: {
   )
 }
 
-/** 사업자번호 000-00-00000 자동 하이픈 */
-export const formatBusinessNumber = (input: string) => {
-  const d = input.replace(/\D/g, '').slice(0, 10)
-  if (d.length <= 3) return d
-  if (d.length <= 5) return `${d.slice(0, 3)}-${d.slice(3)}`
-  return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`
-}
+/** 사업자번호 000-00-00000 자동 하이픈 — 공용 순수 함수(`@/shared/business-number-input`)를 다시 내보낸다(종전 import 경로 불변). */
+export { formatBusinessNumber } from '@/shared/business-number-input'

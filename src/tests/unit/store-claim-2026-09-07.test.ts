@@ -40,7 +40,9 @@ describe('/store/new 매장 등록 — 2026-09-07 대표 신고 회귀 가드', 
     //   아니라 자리를 옮긴 것**이었다 — 리터럴 속성은 이 불변식의 *한 가지 구현*이지 불변식 자체가 아니다.
     //   ⇒ 판정을 "리터럴 속성인가" → **"그 문자열이 실제로 className 에 닿는가"** 로 바꾼다.
     //   (패널이 넷으로 늘었다: 등록 폼 × {overlay, page} · 409 안내 × {overlay, page}.)
-    const panels = s.split('\n').filter(l => l.includes('bg-white') && (l.includes('sm:max-w-lg') || l.includes('shadow-lift')))
+    // 🔁 2026-11-03 재조준: page 패널이 그림자를 걷었다(소비자 흐름 속 판은 평면 — CLAUDE.md 🧾 A안). 앵커였던
+    //   `shadow-lift` 가 사라졌으므로 **page 패널 고유 표시**(`'light-island w-full bg-white`)로 잡는다.
+    const panels = s.split('\n').filter(l => l.includes('bg-white') && (l.includes('sm:max-w-lg') || l.includes("'light-island w-full bg-white")))
     expect(panels.length, `${MODAL} 의 흰 패널을 못 찾았다 — 앵커가 낡았다`).toBeGreaterThanOrEqual(4)
     for (const panel of panels) {
       expect(panel, '흰 패널에 light-island 가 없다 — 다크에서 흰 글자가 된다').toContain('light-island')
@@ -73,8 +75,11 @@ describe('/store/new 매장 등록 — 2026-09-07 대표 신고 회귀 가드', 
     //   *"`dismissOnBackdrop={false}` 를 남겨 둔다"* 라고 **설명을 적자**, prop 을 통째로 지워도
     //   그 주석 때문에 초록이 떴다 — 주입 러너가 잡았다. 설명을 잘 적을수록 가드가 헐거워지는
     //   구조였던 것이다. ⇒ 주석을 걷고 본다(이 레포가 반복해 온 "주석에만 남아도 통과" 클래스).
+    // 🔁 2026-11-03 재조준: 4화면 흐름은 모달을 안 쓴다(`store-new/*` 단계 부품). 지키려던 것은 그대로다 —
+    //   **바깥을 눌러 폼이 날아가는 오버레이가 이 페이지에 없을 것.**
     const s = stripComments(read(PAGE))
-    expect(s, '페이지가 dismissOnBackdrop={false} 를 안 넘긴다').toContain('dismissOnBackdrop={false}')
+    expect(s, '페이지가 다시 오버레이 모달을 띄운다').not.toMatch(/<StoreRegisterModal\b/)
+    expect(s).not.toMatch(/fixed inset-0[^"']*bg-black/)
   })
 
   it('④ ✕ 로 나갈 때 이력이 없으면 홈으로 (navigate(-1) 단독 금지)', () => {

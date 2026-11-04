@@ -24,11 +24,20 @@ const M = strip(modal)
 const C = strip(claim)
 
 describe('🕳️ 다크모드에서 입력 글자가 안 보이는 구멍', () => {
-  it('/store/new 루트에 force-light-theme 이 있다', () => {
-    // 없으면 전역 `.dark input`(특이도 0,5,1)이 모달의 text-gray-900(0,1,0)을 이겨
-    // 흰 배경 위 흰 글자가 된다 — 브라우저 실측 1.00:1. 사장님이 자기가 친 사업자번호를 못 본다.
-    expect(C, `${CLAIM}: 대시보드 밖 라이트 페이지는 force-light-theme 이 필요하다(index.css 가 명시한 규칙)`)
-      .toMatch(/className="[^"]*\bforce-light-theme\b/)
+  it('/store/new 는 다크를 따르고, 흰 바탕 위 입력칸이 남지 않는다', () => {
+    // 🔁 2026-11-03 재조준(대표 *"다크모드에서도 다크로 안 되고"*): 종전엔 `force-light-theme` 으로 늘 흰 화면이었다.
+    //   그 클래스가 막던 사고는 *흰 바탕 위 흰 입력 글자*(전역 `.dark input` 이 글자를 밝게 덮는다, 실측 1.00:1)였다.
+    //   이제 바탕 자체가 테마를 따른다(`bg-warm` = 라이트 흰색 / 다크 #11141C) — 그러면 전역 규칙이 오히려 맞는 색을 준다.
+    //   ⚠️ 그러니 **입력칸에 `bg-white` 를 다시 깔지 말 것** — 그 순간 같은 사고가 돌아온다.
+    expect(C).toMatch(/className="[^"]*\bbg-warm\b/)
+    expect(C).not.toMatch(/className="[^"]*\bforce-light-theme\b/)
+    for (const f of ['src/pages/store-new/StoreFindStep.tsx', 'src/pages/store-new/StoreConfirmStep.tsx', 'src/pages/store-new/FirstVoucherPage.tsx']) {
+      const src = readFileSync(f, 'utf8')
+      // ⚠️ `[^>]*` 로 태그 끝을 찾으면 `onChange={(e) => …}` 의 `>` 에서 끊겨 뒤의 className 을 못 본다(주입이 잡았다).
+      const inputs = src.match(/<input\b[\s\S]*?\/>/g) ?? []
+      expect(inputs.length, `${f}: 입력칸을 못 찾았다 — 탐색이 헛돈다`).toBeGreaterThan(0)
+      for (const tag of inputs) expect(tag, `${f}: 입력칸에 bg-white`).not.toMatch(/\bbg-white\b/)
+    }
   })
 
   it('그 자리에 dark: 배경을 도로 붙이지 않는다', () => {
@@ -99,7 +108,7 @@ describe('🪞 마지막 문턱에서 무엇이 등록되는지 보여 준다 (�
   it('요약이 마지막 단계 안에 있다', () => {
     // 앞 세 단계는 답하고 나면 화면에서 사라진다. 여기서 다시 안 보여 주면 사장님은
     // 자기가 무엇을 골랐는지 기억에만 의존해 [매장 등록]을 누른다.
-    const lastStep = M.slice(M.indexOf('{step === 3 && ('))
+    const lastStep = M.slice(M.indexOf("{cur === 'business' && ("))
     expect(lastStep, `${MODAL}: 마지막 단계에 요약이 없다`).toMatch(/k: '매장'[\s\S]{0,200}k: '담당자'[\s\S]{0,200}k: '운영'/)
   })
 
@@ -110,7 +119,7 @@ describe('🪞 마지막 문턱에서 무엇이 등록되는지 보여 준다 (�
 
   it('요약이 새 요청을 만들지 않는다', () => {
     // 이미 손에 든 값만 다시 보여 준다 — 마지막 문턱에서 네트워크를 타면 느려지고 실패할 수 있다.
-    const lastStep = M.slice(M.indexOf('{step === 3 && ('), M.indexOf('</div>\n          )}\n        </div>'))
+    const lastStep = M.slice(M.indexOf("{cur === 'business' && ("), M.indexOf('</div>\n          )}\n        </div>'))
     expect(lastStep, `${MODAL}: 요약이 api 호출을 한다`).not.toMatch(/api\.(get|post)\(/)
   })
 })
@@ -127,8 +136,11 @@ describe('🚧 막다른 길을 없애면서 새 막다른 길을 놓지 않는�
     // 아무것도 등록되지 않았는데 등록됐다고 하면 그 자체가 거짓말이고,
     // 좌석은 이미 tryEnterExisting 이 잡아 놨으므로 다시 잡을 필요도 없다.
     expect(M).toMatch(/onDone\(taken\.sellerId,\s*\{\s*existing:\s*true\s*\}\)/)
-    expect(C, `${CLAIM}: existing 분기가 사라지면 "매장이 등록됐어요" 가 그대로 뜬다`)
-      .toMatch(/if \(!opts\?\.existing\)/)
+    // 🔁 2026-11-03: 페이지 흐름은 `StoreTakenPanel` 이 맡는다 — 들어가면 '이미 등록해 두신 매장' 이라고 말하고 마이로 간다.
+    const taken = readFileSync('src/pages/store-new/StoreTakenPanel.tsx', 'utf8')
+    expect(taken).toContain('이미 등록해 두신 매장이에요')
+    expect(C, `${CLAIM}: 원래 내 매장으로 들어간 사람에게 완료 화면('등록이 끝났어요')을 보여 준다`)
+      .toMatch(/onEntered=\{\(\) => navigate\(MY_PATH, \{ replace: true \}\)\}/)
   })
 })
 

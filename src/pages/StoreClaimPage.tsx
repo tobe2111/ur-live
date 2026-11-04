@@ -40,9 +40,9 @@ import BrokerHandoffPanel from './store-claim/BrokerHandoffPanel'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MY_PATH } from '@/lib/seller-return'
 import { takePartnerReturn } from '@/utils/partner-return'
-import { X } from 'lucide-react'
+import { X, ArrowLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
-import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
+import type { RegisterPlace } from '@/components/seller/StoreRegisterModal'
 import { TicketStubIcon, ReceiptIcon, WonCoinIcon } from '@/components/icons/urdeal-icons'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { isLoggedInSync } from '@/utils/auth'
@@ -50,6 +50,21 @@ import { toast } from '@/hooks/useToast'
 import { captureStoreReferrer } from '@/utils/store-referrer'
 import { AGENCY_INVITE_QUERY, isAgencyInviteToken } from '@/shared/agency-store-invite'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { useUserProfile } from '@/hooks/queries/useUserProfile'
+import StoreFindStep from './store-new/StoreFindStep'
+import StoreConfirmStep from './store-new/StoreConfirmStep'
+import StoreTakenPanel from './store-new/StoreTakenPanel'
+import StoreDoneStep from './store-new/StoreDoneStep'
+import AgencyInviteBanner from './store-new/AgencyInviteBanner'
+import { readStoreNewDraft, writeStoreNewDraft, clearStoreNewDraft } from './store-new/store-new-draft'
+import { FIRST_VOUCHER_PATH } from './store-new/first-voucher-path'
+
+/** 🎬 이 흐름의 움직임 — 부품이 불러올 때 한 번 꽂는다(공유 모듈로 빼면 화면마다 청크가 하나 더 생긴다 — 2026-11-02 실측). */
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) }
+injectMotionCss('ur-m-rise', `@keyframes ur-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }.ur-rise { animation: ur-rise .35s cubic-bezier(.16,1,.3,1) both; }@media (prefers-reduced-motion: reduce){.ur-rise{animation:none!important}}`)
+injectMotionCss('ur-m-step', `@keyframes ur-step-fwd { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }@keyframes ur-step-back { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }.ur-step-fwd { animation: ur-step-fwd .3s cubic-bezier(.2,1,.3,1) backwards; }.ur-step-back { animation: ur-step-back .3s cubic-bezier(.2,1,.3,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-step-fwd,.ur-step-back{animation:none!important}}`)
+injectMotionCss('ur-m-busyring', `@keyframes ur-busy-spin { to { transform: rotate(360deg); } }.ur-busy-ring { position: relative; isolation: isolate; overflow: hidden; }.ur-busy-ring::before { content: ''; position: absolute; inset: -60%; z-index: -2; background: conic-gradient(from 0deg, transparent 0 65%, rgba(255,255,255,.95) 82%, transparent 100%); animation: ur-busy-spin 1.1s linear infinite; }.ur-busy-ring::after { content: ''; position: absolute; inset: 2px; z-index: -1; border-radius: inherit; background: var(--brand); }@media (prefers-reduced-motion: reduce){.ur-busy-ring::before{animation:none!important;opacity:0}}`)
+injectMotionCss('ur-m-storenew', `@keyframes ur-sn-shake { 0%,100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }@keyframes ur-sn-note { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }.ur-sn-field[aria-invalid="true"] { animation: ur-sn-shake .4s ease-out; }.ur-sn-note { animation: ur-sn-note .2s ease-out both; }.ur-sn-bar { transition: width .4s cubic-bezier(.2,1,.3,1); }@media (prefers-reduced-motion: reduce){.ur-sn-field[aria-invalid="true"],.ur-sn-note{animation:none!important}.ur-sn-bar{transition:none}}`)
 
 /**
  * 등록하면 할 수 있는 것 셋. **전부 코드에서 확인한 사실만 적는다** —
@@ -62,6 +77,9 @@ const BENEFITS = [
   { Icon: WonCoinIcon, title: '소개 코드를 받습니다', desc: '그 코드로 들어온 손님은 사장님 매출이 됩니다' },
 ] as const
 
+/** 질문 화면 수 — ① 가게 찾기 ② 이 가게로 등록(2026-11-03 대표 확정 4화면 시안). */
+const STEP_TOTAL = 2
+
 /**
  * 🔴 수수료율을 **숫자로 쓰지 않는다.** 채널별 요율(직접 10% / 중개 5%)이 문서에는 있으나
  *   라이브 `platform_settings` 실측을 하지 않았다. 숫자를 틀리게 적으면 사장님에게 한 약속이 되고,
@@ -69,8 +87,8 @@ const BENEFITS = [
  */
 const FACTS = [
   { value: '0원', label: '등록 비용' },
-  { value: '선택', label: '사업자등록증' },
-  { value: '4단계', label: '지금 시작하면 끝' },
+  { label: '사업자등록증', value: '선택' },
+  { value: `${STEP_TOTAL}단계`, label: '지금 시작하면 끝' },
 ] as const
 
 export default function StoreClaimPage() {
@@ -129,118 +147,136 @@ export default function StoreClaimPage() {
 
   /**
    * ✕ 로 나갈 곳. `navigate(-1)` 하나로는 부족하다 — 이 페이지는 푸터·소개 페이지·카톡으로 받은
-   * 링크처럼 **직접 주소로** 열리는 자리라(그게 이 페이지의 존재 이유다) 돌아갈 이력이 없을 수 있고,
-   * 그때 `-1` 은 아무 일도 안 하거나 앱 밖으로 나간다. 이력이 없으면 홈으로 보낸다.
+   * 링크처럼 **직접 주소로** 열리는 자리라 돌아갈 이력이 없을 수 있다. 이력이 없으면 홈으로 보낸다.
    */
   const goBack = useSafeBack('/')
 
-  return (
-    /* 🕳️ 2026-09-07 (실측 1.09:1): `force-light-theme` 이 없으면 **다크모드에서 입력 글자가 안 보인다.**
-       전역 `.dark input:not(...)`(특이도 0,5,1)이 모달의 `text-gray-900`(0,1,0)을 이겨 글자를
-       gray-100 으로 덮는데, 모달 배경은 `bg-white` 다 → 흰 배경 위 흰 글자(브라우저 실측
-       rgb(243,244,246) on rgb(255,255,255)). 대표가 2026-09-03 지도 검색창에서 신고한 것과
-       **같은 버그**가, 하필 매장 유치 퍼널에 있었다.
-       ⚠️ 이건 임기응변이 아니라 `index.css` 가 명시한 규칙이다 —
-       *"신규 standalone 라이트 페이지(로그인/가입/대시보드 외부)는 루트 div 에 `force-light-theme` 추가할 것"*.
-       대시보드 안(`MyStoresPanel`)에서 열릴 땐 `.seller-light-theme` 래퍼가 이미 같은 일을 한다.
-       ⚠️ 그리고 이 클래스는 `--lift`·`--rule` 같은 🎫 토큰도 라이트 값으로 되박는다(index.css:511) —
-       그래서 아래 `shadow-lift`·`border-rule` 이 **다크 상태에서도** 제대로 보인다.
+  // ── 4화면 흐름(2026-11-03 대표 확정): find → confirm → done (→ 첫 이용권은 별도 주소) ──
+  type Step = 'find' | 'confirm' | 'taken' | 'done'
+  const draft = useState(() => readStoreNewDraft())[0]
+  const [step, setStep] = useState<Step>(draft?.place ? 'confirm' : 'find')
+  const [dir, setDir] = useState<1 | -1>(1)
+  const [place, setPlace] = useState<RegisterPlace | null>(draft?.place ?? null)
+  const [phone, setPhone] = useState(draft?.phone ?? '')
+  const [phoneFromAccount, setPhoneFromAccount] = useState(false)
+  const [takenId, setTakenId] = useState<number | null>(null)
+  const { data: profile } = useUserProfile()
+  // 📞 번호 미리 채우기 — 영입자가 준비한 번호 > 이어하기 저장분 > 계정 번호. 사장님이 이미 적었으면 건드리지 않는다.
+  useEffect(() => {
+    if (phone) return
+    if (prospect?.contact_phone) { setPhone(prospect.contact_phone); return }
+    if (profile?.phone) { setPhone(profile.phone); setPhoneFromAccount(true) }
+  }, [prospect?.contact_phone, profile?.phone]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (step !== 'done') writeStoreNewDraft({ place, phone }) }, [place, phone, step])
 
-       📏 높이는 **페이지가 정하지 않는다**(`min-h` 만). 🩸 첫 판에서 폰을 `h-[100dvh]` 로 잡았다가
-       렌더해 보니 카드 아래 24px 이 **하단 네비(고정 57px) 밑으로 잘렸다** — `main` 이 이미
-       `padding-bottom:56px` 로 그 자리를 예약하는데 거기에 뷰포트 높이를 또 얹은 것이다.
-       카드는 자기 `max-h` 로 바운드하므로(page variant) 페이지는 평범하게 흐르면 된다. */
-    <div className="force-light-theme min-h-[100dvh] bg-gray-50">
+  const go = (next: Step, d: 1 | -1 = 1) => { setDir(d); setStep(next) }
+  const pick = (p: RegisterPlace) => { setPlace(p); go('confirm') }
+
+  async function onRegistered(sellerId: number | undefined, ownerClaimCode: string | null) {
+    clearStoreNewDraft()
+    await enterStoreSeat(sellerId)
+    if (ownerClaimCode) { setHandoff(ownerClaimCode); return } // 중개 — 코드를 먼저 손에 쥐여 준다
+    // 🔗 에이전시 영입 링크로 온 사장님 — 등록과 동시에 맡긴다.
+    await entrustToInviter(sellerId)
+    // 🤝 2026-10-31 제휴사 위젯으로 들어왔으면 그 제휴사 요청 화면으로 돌아간다(`utils/partner-return.ts`).
+    const back = takePartnerReturn()
+    if (back) { toast.success('매장이 등록됐어요'); navigate(back, { replace: true }); return }
+    go('done')
+  }
+
+  const inForm = step === 'find' || step === 'confirm'
+  const stepNo = step === 'find' ? 1 : 2
+
+  return (
+    /* 📱 2026-11-03 (대표 *"플로우가 이상적이지 않고 UI 도 별로야"* → 4화면 시안 확정 · *"다크모드에서도 다크로"*):
+       폰은 하단 탭 없는 전체 화면(`consumer-chrome.ts` `/store/new`)이라 페이지가 화면 높이를 잡아 버튼이 늘 바닥이다.
+       🌙 다크 지원 — 종전의 `force-light-theme`(늘 흰 화면)을 걷었다. 그 클래스가 막던 사고는 *흰 바탕 위 흰 입력 글자*였는데,
+       이제 바탕이 테마를 따르므로 전역 `.dark input` 규칙이 오히려 맞는 색을 준다. 지도 칸만 늘 밝은 섬으로 둔다(`StoreConfirmStep`). */
+    <div className="h-dvh lg:h-auto lg:min-h-dvh bg-warm text-gray-900 dark:text-white flex flex-col">
       <SEO title="매장 이용권 판매 등록 - 유어딜" description="내 가게를 유어딜에 등록하고 이용권을 판매하세요. 등록 비용 0원." noindex />
 
-      <div className="mx-auto w-full max-w-[1180px] px-5 pt-3 pb-6 lg:px-10 lg:pt-8 lg:pb-16">
-        <button
-          type="button"
-          onClick={goBack}
-          aria-label="닫기"
-          className="-ml-1 mb-2 w-9 h-9 shrink-0 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-12">
-          {/* 왼쪽(PC) · 위(폰) — 무엇을 등록하는 곳인가 */}
-          <div className="lg:pt-4">
-            <h1 className="text-[24px] lg:text-[40px] font-bold tracking-[-0.03em] leading-[1.22] text-gray-900">
-              매장 이용권<br className="hidden lg:block" /> 판매 등록
+      <div className="mx-auto w-full max-w-[1180px] flex-1 min-h-0 flex flex-col lg:block lg:px-10 lg:pt-10 lg:pb-16">
+        <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-12">
+          {/* PC 왼쪽 — 무엇을 등록하는 곳인가 */}
+          <div className="hidden lg:block lg:pt-16">
+            <h1 className="text-[40px] font-bold tracking-[-0.03em] leading-[1.22]">
+              매장 이용권<br /> 판매 등록
             </h1>
-            <p className="mt-2 lg:mt-5 text-[15px] lg:text-[16px] leading-relaxed text-gray-600 lg:max-w-[460px]">
-              손님이 유어딜에서 할인가로 이용권을 미리 삽니다. 매장에 와서 QR 을 보여주면 그걸로 끝입니다.
-            </p>
-
-            <ul className="mt-5 lg:mt-8 flex flex-col gap-3 lg:gap-3 lg:max-w-[460px]">
+            <p className="mt-5 text-[16px] leading-relaxed text-ink-soft max-w-[460px]">손님이 유어딜에서 할인가로 이용권을 미리 삽니다. 매장에 와서 QR 을 보여주면 그걸로 끝입니다.</p>
+            <ul className="mt-8 flex flex-col gap-3 max-w-[460px]">
               {BENEFITS.map(({ Icon, title, desc }) => (
-                <li key={title} className="flex gap-3 lg:gap-3 items-start">
-                  <Icon size={20} className="mt-1 shrink-0 text-brand" aria-hidden="true" />
+                <li key={title} className="flex gap-3 items-start">
+                  <Icon size={20} className="mt-1 shrink-0 text-brand-text" aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="text-[13px] lg:text-[15px] font-medium text-gray-900">{title}</p>
-                    {/* 폰은 한 줄로 끊는다 — 설명까지 다 펴면 카드가 밀려 첫 화면에서 사라진다. */}
-                    <p className="hidden lg:block mt-1 text-[13px] leading-relaxed text-gray-500">{desc}</p>
+                    <p className="text-[15px] font-medium">{title}</p>
+                    <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">{desc}</p>
                   </div>
                 </li>
               ))}
             </ul>
-
-            <div className="hidden lg:flex mt-8 pt-5 border-t border-rule gap-8 lg:max-w-[460px]">
+            <div className="flex mt-8 pt-5 border-t border-rule gap-8 max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
-                  <div className="text-[20px] font-semibold text-gray-900">{value}</div>
-                  <div className="mt-1 text-[12px] text-gray-500">{label}</div>
+                  <div className="text-[20px] font-semibold">{value}</div>
+                  <div className="mt-1 text-[12px] text-ink-soft">{label}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* 오른쪽(PC) · 아래(폰) — 등록 카드 그대로 */}
-          <div className="mt-5 lg:mt-0 lg:self-start">
-            {inviteAgency && !handoff && (
-              <p className="mb-3 rounded-[var(--dash-radius,16px)] bg-brand-tint px-4 py-3 text-[13px] leading-relaxed text-gray-700" data-testid="store-claim-agency-invite">
-                <b className="text-gray-900">{inviteAgency} 에이전시</b>가 보낸 링크예요. 등록을 마치면 바로 이 에이전시에 매장 운영이 맡겨져요.
-              </p>
+          {/* 등록 흐름 — 폰은 화면 전체, PC 는 오른쪽 열 */}
+          <div className="flex-1 min-h-0 flex flex-col lg:h-[min(780px,88dvh)]">
+            <div className="h-14 shrink-0 flex items-center justify-between px-2 lg:px-0">
+              <button type="button" aria-label={step === 'confirm' ? '이전' : '닫기'}
+                onClick={() => (step === 'confirm' ? go('find', -1) : step === 'taken' ? go('find', -1) : step === 'done' ? navigate(MY_PATH, { replace: true }) : goBack())}
+                className="w-11 h-11 -ml-1 lg:-ml-3 flex items-center justify-center rounded-full text-gray-900 dark:text-white hover:bg-wash">
+                {step === 'confirm' ? <ArrowLeft size={22} strokeWidth={1.6} /> : <X size={22} strokeWidth={1.6} />}
+              </button>
+              {inForm && <span className="pr-3 lg:pr-0 text-[12px] text-ink-soft tabular-nums">{stepNo} / {STEP_TOTAL}</span>}
+            </div>
+            {inForm && (
+              <div className="mx-5 lg:mx-0 h-1 rounded-full bg-wash overflow-hidden" aria-hidden="true">
+                <div className="ur-sn-bar h-full rounded-full bg-brand" style={{ width: `${(stepNo / STEP_TOTAL) * 100}%` }} />
+              </div>
             )}
-            {prospect?.store_name && !handoff && (
-              <p className="mb-3 rounded-[var(--dash-radius,16px)] bg-brand-tint px-4 py-3 text-[13px] leading-relaxed text-gray-700">
-                <b className="text-gray-900">{prospect.store_name}</b> — 영입 담당자가 미리 준비한 매장이에요. 지도에서 이 가게를 찾아 진행해 주세요.
-              </p>
-            )}
-            {handoff ? <BrokerHandoffPanel code={handoff} onDone={() => navigate(MY_PATH, { replace: true })} /> : (
-            <StoreRegisterModal
-              /**
-               * 🖥️ `variant="page"` — 검은 오버레이 없이 이 칸의 본문으로 렌더한다(2026-09-23 안 B).
-               * 🩸 2026-09-07 (대표 *"흰 섹션 바깥쪽을 클릭하니까 페이지가 꺼져"*): 여기선 모달이 곧
-               *   페이지라 배경 뒤에 아무것도 없다 — 바깥 클릭은 닫을 것이 아니라 **폼을 날리는 사고**다.
-               *   `dismissOnBackdrop={false}` 를 **남겨 둔다**: page 에는 배경이 없어 구조적으로 못 닫히지만,
-               *   누군가 variant 를 되돌리는 날 이 한 줄이 그 사고를 다시 막는다(방어를 겹쳐 둔다).
-               */
-              variant="page"
-              dismissOnBackdrop={false}
-              onClose={goBack}
-              initialManagerPhone={prospect?.contact_phone || undefined}
-              onDone={async (sellerId, opts) => {
-                // `existing` = 새로 만든 게 아니라 **원래 갖고 있던 매장**으로 들어간 경우(중복 409 분기).
-                //   그때 "등록됐어요" 라고 말하면 사장님에게 거짓말이고, 좌석도 이미 잡혀 있다.
-                if (!opts?.existing) {
-                  await enterStoreSeat(sellerId)
-                  toast.success('매장이 등록됐어요 — 이제 이용권을 올릴 수 있어요')
-                }
-                if (opts?.ownerClaimCode) { setHandoff(opts.ownerClaimCode); return } // 중개 — 코드를 먼저 손에 쥐여 준다
-                // 🔗 에이전시 영입 링크로 온 사장님 — 등록과 동시에 맡긴다(중개 등록은 주인이 아니라 위에서 빠진다).
-                await entrustToInviter(sellerId)
-                // 🏠 2026-09-26: 방금 얻은 가게를 **마이의 내 가게**에서 본다(대시보드 학습 없이).
-                //   🤝 2026-10-31 제휴사 위젯으로 들어왔으면 그 제휴사 요청 화면으로 돌아간다(`utils/partner-return.ts`).
-                navigate(takePartnerReturn() ?? MY_PATH, { replace: true })
-              }}
-            />
-            )}
-            {/* 폰에서는 위 FACTS 줄 대신 이 한 줄이 같은 말을 한다(세 숫자를 다 펴면 카드가 밀린다). */}
-            <p className="lg:hidden mt-2 text-center text-[12px] text-gray-400">
-              등록 0원, 사업자등록증은 나중에 올려도 됩니다.
-            </p>
+
+            <div key={step} className={`flex-1 min-h-0 flex flex-col px-5 lg:px-0 pt-6 pb-[calc(16px+env(safe-area-inset-bottom,0px))] ${dir < 0 ? 'ur-step-back' : 'ur-step-fwd'}`}>
+              {handoff ? (
+                <BrokerHandoffPanel code={handoff} onDone={() => navigate(MY_PATH, { replace: true })} />
+              ) : step === 'done' ? (
+                <StoreDoneStep storeName={place?.name || '내 가게'} agencyName={inviteAgency}
+                  onFirstVoucher={() => navigate(FIRST_VOUCHER_PATH, { replace: true, state: { place } })}
+                  onLater={() => navigate(MY_PATH, { replace: true })} />
+              ) : step === 'taken' ? (
+                <StoreTakenPanel storeName={place?.name || '이 가게'} sellerId={takenId}
+                  onEntered={() => navigate(MY_PATH, { replace: true })} onRetry={() => go('find', -1)} />
+              ) : (
+                <>
+                  {inviteAgency && <AgencyInviteBanner name={inviteAgency} />}
+                  {prospect?.store_name && (
+                    <p className="mb-5 rounded-xl bg-brand-tint px-4 py-3 text-[13px] leading-relaxed">
+                      <b className="font-medium">{prospect.store_name}</b> — 영입 담당자가 미리 준비한 매장이에요. 이 가게를 찾아 진행해 주세요.
+                    </p>
+                  )}
+                  {step === 'find' && (
+                    <>
+                      <p className="text-[13px] font-medium text-brand-text lg:hidden">매장 이용권 판매 등록 · 무료</p>
+                      <h1 className="mt-2 lg:mt-0 text-[20px] font-semibold tracking-[-0.02em] leading-snug">가게 이름을 검색해 주세요</h1>
+                      <StoreFindStep onPick={pick} hasAgency={!!inviteAgency} />
+                    </>
+                  )}
+                  {step === 'confirm' && place && (
+                    <>
+                      <h1 className="text-[20px] font-semibold tracking-[-0.02em] leading-snug">이 가게로 등록할게요</h1>
+                      <StoreConfirmStep place={place} phone={phone} phoneFromAccount={phoneFromAccount}
+                        onPhone={(v) => { setPhone(v); setPhoneFromAccount(false) }} agencyName={inviteAgency}
+                        onChangePlace={() => go('find', -1)} onRegistered={(id, code) => void onRegistered(id, code)}
+                        onTaken={(id) => { setTakenId(id); go('taken') }} />
+                    </>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

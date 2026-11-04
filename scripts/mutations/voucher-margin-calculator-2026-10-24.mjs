@@ -9,7 +9,7 @@ const CARD = 'src/pages/seller-meal-voucher/NetProceedsCard.tsx'
 export default [
   {
     name: '[마진계산기] 인플루언서 수수료를 정가 기준으로 뗀다',
-    file: CARD,
+    file: 'src/shared/voucher-margin.ts',
     find: '  const influencerCut = Math.round((price * influencerPct) / 100)',
     replace: '  const influencerCut = Math.round((list * influencerPct) / 100)',
     test: TEST,
@@ -17,7 +17,7 @@ export default [
   },
   {
     name: '[마진계산기] 최종 마진에서 인플루언서 수수료를 안 뺀다',
-    file: CARD,
+    file: 'src/shared/voucher-margin.ts', // 🔁 2026-11-03 계산 함수가 카드 파일에서 공용 파일로 옮겼다(화면 무게 예산)
     find: '  const net = price - platformCut - influencerCut',
     replace: '  const net = price - platformCut',
     test: TEST,
@@ -33,7 +33,7 @@ export default [
   },
   {
     name: '[마진계산기] 인플루언서 % 상한을 안 자른다',
-    file: CARD,
+    file: 'src/shared/voucher-margin.ts',
     find: '  const influencerPct = Math.max(0, Math.min(50, Number(input.influencerPct) || 0))',
     replace: '  const influencerPct = Math.max(0, Number(input.influencerPct) || 0)',
     test: TEST,

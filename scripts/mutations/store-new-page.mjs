@@ -30,9 +30,9 @@ export default [
       '폰만 확인하고 넘어가면 못 잡는다 — 이 PR 이 고친 문제의 절반이 그대로 돌아온다.',
   },
   {
-    name: '🏪 등록 카드가 다시 검은 오버레이 위로 (variant 되돌림)',
-    file: PAGE,
-    find: `              variant="page"\n`,
+    name: '🏪 약관 보기 링크가 버튼 아래에서 사라진다 (안내문 동의의 전제)',
+    file: `src/pages/store-new/StoreConfirmStep.tsx`,
+    find: `{' '}<a href="/terms/seller" target="_blank" rel="noopener noreferrer" className="underline">약관 보기</a>`,
     replace: ``,
     test: T,
     why:
@@ -50,20 +50,21 @@ export default [
       '목록 사이에 끼어 들어간다 — 이 PR 과 무관한 화면이 조용히 깨진다.',
   },
   {
-    name: '🏪 페이지가 뷰포트 높이를 다시 잡는다 (하단 네비에 잘린다)',
-    file: PAGE,
-    find: `    <div className="force-light-theme min-h-[100dvh] bg-gray-50">`,
-    replace: `    <div className="force-light-theme h-[100dvh] overflow-hidden bg-gray-50">`,
+    // 🔁 2026-11-03 재조준: 이제 페이지가 화면 높이를 잡는 게 **정답**이다(하단 탭을 숨겼으므로). 결함은 탭이 돌아오는 것.
+    name: '🏪 하단 탭이 위저드 위로 돌아온다 (버튼이 탭 뒤로 · 화면 높이가 탭만큼 잘린다)',
+    file: 'src/lib/consumer-chrome.ts',
+    find: `export const fullScreenExactPaths = ['/influencer', '/store/new', '/store/first-voucher', '/store/biz-cert', '/store/bank']`,
+    replace: `export const fullScreenExactPaths = ['/influencer', '/store/first-voucher', '/store/biz-cert', '/store/bank']`,
     test: T,
     why:
-      '`main` 이 이미 `padding-bottom:56px` 로 하단 네비 자리를 예약하는데 거기에 뷰포트 높이를 ' +
-      '또 얹는다 ⇒ 카드 아래 24px 과 안내 한 줄이 네비 밑으로 잘린다(렌더 실측으로 잡은 그 결함).',
+      '페이지는 `h-dvh` 로 화면 높이를 잡는데 그 위에 탭(57px)이 다시 덮이면 [다음] 버튼이 탭 뒤로 숨는다 — ' +
+      '대표가 2026-11-03 신고한 바로 그 화면이다.',
   },
   {
     name: '🏪 등록 카드가 높이 바운드를 잃는다 (지도가 0px 로 접힌다)',
     file: MODAL,
-    find: `max-h-[78dvh] lg:max-h-[82dvh]`,
-    replace: ``,
+    find: `flex flex-col flex-1 min-h-0 lg:flex-none lg:h-[min(760px,88dvh)]`,
+    replace: `flex flex-col`,
     test: T,
     why:
       '`KakaoMapPicker fill` 은 `flex-1 min-h-0` 사슬로 높이를 받는데, 조상 어디에도 바운드가 없으면 ' +
@@ -71,9 +72,9 @@ export default [
   },
   {
     name: '🏪 ✕ 가 다시 둘이 된다 (페이지 하나, 카드 하나)',
-    file: MODAL,
-    find: `            {asPage && step === 0 ? <span aria-hidden="true" /> : (`,
-    replace: `            {false ? <span aria-hidden="true" /> : (`,
+    file: PAGE,
+    find: `      <SEO title="매장 이용권 판매 등록 - 유어딜"`,
+    replace: `      <button type="button" onClick={goBack} aria-label="닫기">x</button>\n      <SEO title="매장 이용권 판매 등록 - 유어딜"`,
     test: T,
     why:
       '같은 일을 하는 닫기 버튼이 한 화면에 둘이 뜬다. 레이아웃이 안 깨져서 소스만 보면 못 잡고, ' +
@@ -100,11 +101,11 @@ export default [
       '갈렸다(2026-09-07 `taken` 화면이 같은 날 수리 둘을 못 받았다).',
   },
   {
-    name: '🏪 다크 입력 글자 방어가 사라진다 (force-light-theme 소실)',
-    file: PAGE,
-    find: `force-light-theme min-h-[100dvh] bg-gray-50`,
-    replace: `min-h-[100dvh] bg-gray-50`,
-    test: T,
+    name: '🏪 입력칸에 흰 바탕이 돌아온다 (다크에서 흰 바탕 위 흰 글자) (force-light-theme 소실)',
+    file: `src/pages/store-new/StoreFindStep.tsx`,
+    find: `className="flex-1 min-w-0 bg-transparent border-0 outline-none focus-visible:outline-none text-[16px] text-gray-900 dark:text-white placeholder:text-ink-faint" />`,
+    replace: `className="flex-1 min-w-0 bg-white border-0 outline-none focus-visible:outline-none text-[16px] text-gray-900 dark:text-white placeholder:text-ink-faint" />`,
+    test: `src/tests/unit/store-register-wizard.test.ts`,
     why:
       '전역 `.dark input`(특이도 0,5,1)이 `text-gray-900`(0,1,0)을 이겨 흰 배경 위 흰 글자가 된다 ' +
       '(2026-09-07 실측 1.09:1). 하필 매장 유치 퍼널의 첫 입력칸이다.',

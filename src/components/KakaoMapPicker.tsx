@@ -270,6 +270,22 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, on
     return () => clearTimeout(id)
   }, [shrunk, fill])
 
+  /**
+   * 🗺️ 2026-11-03 (대표 스크린샷 — 지도 위쪽 띠만 그려지고 아래가 빈 베이지 칸): 카카오 지도는 **초기화 순간의
+   * 컨테이너 크기**로만 타일을 깐다. 그 뒤 레이아웃이 자리 잡으며(폰트·안내 문구·SDK 비동기 로드) 칸이 커지면
+   * 늘어난 부분은 영영 비어 있다. 위 `shrunk` relayout 은 결과 목록이 생길 때 한 번뿐이라 이 경우를 못 잡는다
+   * ⇒ 칸 크기를 직접 지켜보다가 바뀌면 다시 깐다.
+   */
+  useEffect(() => {
+    const el = mapContainerRef.current
+    if (!mapReady || !el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      try { const c = mapRef.current?.getCenter(); mapRef.current?.relayout(); if (c) mapRef.current.setCenter(c) } catch { /* SDK 미로드 */ }
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [mapReady])
+
   function handleSelect(place: KakaoPlace) {
     onSelect(place)
     // 지도 중심 이동
