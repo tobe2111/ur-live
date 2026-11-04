@@ -97,7 +97,7 @@ export default function LifeRequestDetailPage() {
         ) : (
           <ul className="space-y-3">
             {d.quotes.map((q) => (
-              <li key={q.id} className={`rounded-2xl p-5 ${q.status === 'chosen' ? 'ring-2 ring-brand' : ''}`}>
+              <li key={q.id} className={`rounded-2xl p-5 ${q.status === 'chosen' ? 'ring-2 ring-inset ring-brand' : ''}`}>
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-[15px] font-bold">{q.is_house ? q.pro_name : <Link to={`/life/biz/${q.seller_id}`} className="underline decoration-rule underline-offset-4">{q.pro_name}</Link>}{q.is_house ? <span className="ml-2 rounded-full bg-brand-tint px-2 py-1 text-[12px] font-medium text-brand-text">{q.partner ? '유어딜 제휴' : '유어딜 직영'}</span> : q.verified ? <span className="ml-2 rounded-full bg-warm px-2 py-1 text-[12px] font-medium text-gray-600 dark:text-gray-300">사업자 인증</span> : null}</span>
                   <span className="text-[16px] font-bold">{quotePriceText(q.price)}</span>

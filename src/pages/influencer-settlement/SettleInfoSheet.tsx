@@ -41,7 +41,7 @@ export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, on
   onClose: () => void
 }) {
   const choice = (on: boolean) =>
-    `p-3 rounded-xl text-left transition-colors ${on ? 'bg-brand-tint ring-2 ring-brand' : 'bg-gray-100 dark:bg-white/[0.06]'}`
+    `p-3 rounded-xl text-left transition-colors ${on ? 'bg-brand-tint ring-2 ring-inset ring-brand' : 'bg-gray-100 dark:bg-white/[0.06]'}`
   return (
     <Sheet
       title="정산 정보"
