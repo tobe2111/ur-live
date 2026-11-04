@@ -29,7 +29,8 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
     let alive = true
     fetch(`/api/creator-content/${productId}`)
       .then((r) => r.json() as Promise<{ success?: boolean; data?: CreatorContentPayload }>)
-      .then((r) => { if (alive && r?.success && r.data) setData(r.data) })
+      // 모양이 다르면(빈 객체·다른 응답) 그리지 않는다 — 상세 전체가 오류 화면으로 넘어가면 안 된다.
+      .then((r) => { if (alive && r?.success && Array.isArray(r.data?.items) && Array.isArray(r.data?.pinners)) setData(r.data) })
       .catch(() => null)
     return () => { alive = false }
   }, [productId])
