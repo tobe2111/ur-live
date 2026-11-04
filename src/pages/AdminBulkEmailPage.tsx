@@ -14,6 +14,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 type Role = 'seller' | 'distributor' | 'supplier'
 type StatusFilter = 'all' | 'approved' | 'pending'
@@ -210,27 +211,27 @@ export default function AdminBulkEmailPage() {
                 <label className="mb-1 block text-xs font-semibold text-gray-600">
                   {t('admin.bulkEmail.role', { defaultValue: '역할' })}
                 </label>
-                <select className={inputCls} value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                <Select className={inputCls} value={role} onChange={(e) => setRole(e.target.value as Role)}>
                   <option value="seller">{t('admin.bulkEmail.roleSeller', { defaultValue: '셀러' })}</option>
                   <option value="distributor">{t('admin.bulkEmail.roleDistributor', { defaultValue: '판매사' })}</option>
                   <option value="supplier">{t('admin.bulkEmail.roleSupplier', { defaultValue: '제조사' })}</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-gray-600">
                   {t('admin.bulkEmail.status', { defaultValue: '상태' })}
                 </label>
-                <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)}>
+                <Select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)}>
                   <option value="all">{t('admin.bulkEmail.statusAll', { defaultValue: '전체' })}</option>
                   <option value="approved">{t('admin.bulkEmail.statusApproved', { defaultValue: '승인됨' })}</option>
                   <option value="pending">{t('admin.bulkEmail.statusPending', { defaultValue: '대기중' })}</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-gray-600">
                   {t('admin.bulkEmail.grade', { defaultValue: '등급 (판매사)' })}
                 </label>
-                <select
+                <Select
                   className={inputCls}
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
@@ -241,7 +242,7 @@ export default function AdminBulkEmailPage() {
                       {g === 'all' ? t('admin.bulkEmail.gradeAll', { defaultValue: '전체 등급' }) : g}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
 

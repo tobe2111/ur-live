@@ -5,6 +5,7 @@
 import { X } from 'lucide-react'
 import { AlertIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from '@/lib/i18n-lite'
+import { Select } from '@/components/ui/select'
 
 interface Props {
   orderNumber: string
@@ -66,7 +67,7 @@ export default function CancelOrderModal({
           <label className="block text-[15px] font-medium text-gray-600 dark:text-gray-300 mb-2">
             {t('cancelOrder.reasonLabel', { defaultValue: '취소 사유' })} <span className="text-red-500">*</span>
           </label>
-          <select
+          <Select
             value={reason}
             onChange={(e) => onReasonChange(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -77,7 +78,7 @@ export default function CancelOrderModal({
             <option value="배송 지연">{t('cancelOrder.reason3', { defaultValue: '배송 지연' })}</option>
             <option value="상품 정보 불일치">{t('cancelOrder.reason4', { defaultValue: '상품 정보 불일치' })}</option>
             <option value="기타">{t('cancelOrder.reason5', { defaultValue: '기타' })}</option>
-          </select>
+          </Select>
         </div>
 
         <div className="mb-8">

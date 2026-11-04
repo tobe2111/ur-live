@@ -10,6 +10,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { Trophy, Award } from 'lucide-react'
+import { Select } from '@/components/ui/select'
 
 interface Ranked {
   rank: number
@@ -77,16 +78,16 @@ export default function InfluencerRankingsPage() {
 
         {/* 기간 / 기준 */}
         <div className="flex gap-2">
-          <select value={period} onChange={(e) => setPeriod(e.target.value as 'month' | 'all')}
+          <Select value={period} onChange={(e) => setPeriod(e.target.value as 'month' | 'all')}
             className="flex-1 px-3 py-2 border border-line rounded-lg text-[12px] bg-surface">
             <option value="month">이번 달</option>
             <option value="all">누적</option>
-          </select>
-          <select value={metric} onChange={(e) => setMetric(e.target.value as 'commission' | 'count')}
+          </Select>
+          <Select value={metric} onChange={(e) => setMetric(e.target.value as 'commission' | 'count')}
             className="flex-1 px-3 py-2 border border-line rounded-lg text-[12px] bg-surface">
             <option value="commission">매출 commission</option>
             <option value="count">referral 건수</option>
-          </select>
+          </Select>
         </div>
 
         {/* 랭킹 리스트 */}

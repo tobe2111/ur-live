@@ -13,7 +13,7 @@ import {
   Users, Search, ChevronDown, ChevronUp,
   Loader2, ChevronLeft, ChevronRight, X
 } from 'lucide-react'
-
+import { Select } from '@/components/ui/select'
 // NOTE: users 테이블에는 deal_balance, status 컬럼이 존재하지 않습니다.
 // 포인트는 user_points 테이블 / 상태는 별도 관리 필요.
 interface User {
@@ -185,7 +185,7 @@ export default function AdminUsersPage() {
           </button>
         </form>
         {/* 🛡️ 2026-05-24: 정렬 드롭다운 — 헤더 클릭과 동일 동작 (둘 다 가능). */}
-        <select
+        <Select
           value={`${sort}:${order}`}
           onChange={(e) => {
             const [k, o] = e.target.value.split(':')
@@ -199,7 +199,7 @@ export default function AdminUsersPage() {
           <option value="total_spent:desc">총 결제액 많은순</option>
           <option value="review_count:desc">리뷰 수 많은순</option>
           <option value="name:asc">이름순 (가나다)</option>
-        </select>
+        </Select>
       </div>
 
       {/* Table */}

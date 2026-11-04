@@ -16,6 +16,7 @@ import { formatKSTDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 import AdminHomeServiceReviews from './home-service/AdminHomeServiceReviews'
 import { promptDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 interface Field { key: string; label: string; type: string; required: boolean; options?: string[]; unit?: string; placeholder?: string }
 interface Cat { key: string; label: string; fields: Field[] }
@@ -100,9 +101,9 @@ export default function AdminHomeServicePage() {
             ))}
           </ul>
           <div className="flex flex-wrap gap-2">
-            <select className={`${input} max-w-[220px]`} value={pCat} onChange={(e) => setPCat(e.target.value)}>
+            <Select className={`${input} max-w-[220px]`} value={pCat} onChange={(e) => setPCat(e.target.value)}>
               {(list.data?.categories ?? []).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-            </select>
+            </Select>
             <input className={`${input} max-w-[200px]`} placeholder="매장 번호(sellers.id)" inputMode="numeric" value={pId} onChange={(e) => setPId(e.target.value)} />
             <Button disabled={busy || !pId} onClick={() => run(() => api.put('/api/admin/home-service/partners', { category: pCat, seller_id: Number(pId) }), '저장했습니다', '저장하지 못했습니다')}>지정</Button>
           </div>
@@ -118,9 +119,9 @@ export default function AdminHomeServicePage() {
             ))}
           </ul>
           <div className="flex flex-wrap gap-2">
-            <select className={`${input} max-w-[220px]`} value={cCat} onChange={(e) => setCCat(e.target.value)}>
+            <Select className={`${input} max-w-[220px]`} value={cCat} onChange={(e) => setCCat(e.target.value)}>
               {(list.data?.categories ?? []).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-            </select>
+            </Select>
             <input className={`${input} max-w-[160px]`} placeholder="장수(1~20)" inputMode="numeric" value={cN} onChange={(e) => setCN(e.target.value)} />
             <Button disabled={busy || !cN} onClick={() => run(() => api.put('/api/admin/home-service/credit-costs', { category: cCat, count: Number(cN) }), '저장했습니다', '저장하지 못했습니다')}>저장</Button>
           </div>
@@ -130,9 +131,9 @@ export default function AdminHomeServicePage() {
           <h2 className="text-[15px] font-semibold text-gray-900">대리 접수</h2>
           <p className="text-[13px] text-gray-500">손님에게 "업체 견적을 받아 드리고, 고른 업체에 연락처를 전달한다"는 동의를 받은 뒤에 올려 주세요.</p>
           <div className="grid gap-2 lg:grid-cols-2">
-            <select className={input} value={cat} onChange={(e) => { setCat(e.target.value); setFields({}) }}>
+            <Select className={input} value={cat} onChange={(e) => { setCat(e.target.value); setFields({}) }}>
               {(list.data?.categories ?? []).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-            </select>
+            </Select>
             <input className={input} placeholder="손님 이름" value={name} onChange={(e) => setName(e.target.value)} />
             <input className={input} placeholder="손님 휴대폰" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <input className={input} placeholder="동의 기록(예: 10/24 통화로 동의)" value={consent} onChange={(e) => setConsent(e.target.value)} />
@@ -140,10 +141,10 @@ export default function AdminHomeServicePage() {
               <label key={f.key} className="block text-[13px] text-gray-700">
                 {f.label}{f.required ? ' *' : ''}
                 {f.type === 'select' ? (
-                  <select className={`${input} mt-1`} value={fields[f.key] ?? ''} onChange={(e) => setFields({ ...fields, [f.key]: e.target.value })}>
+                  <Select className={`${input} mt-1`} value={fields[f.key] ?? ''} onChange={(e) => setFields({ ...fields, [f.key]: e.target.value })}>
                     <option value="">선택</option>
                     {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
+                  </Select>
                 ) : (
                   <input className={`${input} mt-1`} type={f.type === 'date' ? 'date' : f.type === 'number' ? 'number' : 'text'}
                     placeholder={f.placeholder ?? (f.unit ? f.unit : '')} value={fields[f.key] ?? ''}

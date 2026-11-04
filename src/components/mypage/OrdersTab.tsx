@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { BoxIcon, TruckIcon, MessageIcon, TicketStubIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import Udal from '@/components/mascot/Udal'
-import { ChevronDown, ChevronRight, Search } from 'lucide-react'
+import { ChevronRight, Search } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n-lite'
 import type { TFunction } from '@/lib/i18n-lite'
 import { safeDate } from '@/utils/safe-date'
@@ -13,6 +13,7 @@ import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { getOrderKind, type OrderKind } from '@/shared/order-type'
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
+import { Select } from '@/components/ui/select'
 
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
 // 🎬 2026-11-03 19차 ⑤ — 종류 탭을 바꾸면 목록이 고른 탭 쪽에서 밀려 들어온다(오른쪽 탭 → 오른쪽에서, 왼쪽 탭 → 왼쪽에서).
@@ -252,7 +253,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
       {statusOptions && statusOptions.length > 1 && onStatusChange && (orders.length > 0 || statusValue !== 'all') && (
         <label className="relative shrink-0 mb-2">
           <span className="sr-only">{t('ordersTab.statusFilter', { defaultValue: '주문 상태' })}</span>
-          <select
+          <Select
             value={statusValue}
             onChange={(e) => onStatusChange(e.target.value)}
             className={`h-8 pl-3 pr-7 rounded-full appearance-none text-[13px] font-medium focus:outline-none ${
@@ -260,8 +261,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
             }`}
           >
             {statusOptions.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-          </select>
-          <ChevronDown aria-hidden="true" className={`pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${statusValue !== 'all' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`} />
+          </Select>
         </label>
       )}
       </div>

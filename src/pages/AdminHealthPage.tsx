@@ -12,6 +12,7 @@ import { Activity, RefreshCw, Database, Loader2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKST } from '@/utils/date'
+import { Select } from '@/components/ui/select'
 
 interface Metrics {
   active_streams: number | null
@@ -513,13 +514,13 @@ function WebhookFailuresSection() {
     <div className="mt-8 bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-gray-900">Webhook 실패 (TD-009)</h3>
-        <select value={hours} onChange={e => setHours(Number(e.target.value))}
+        <Select value={hours} onChange={e => setHours(Number(e.target.value))}
           className="text-xs border border-gray-200 rounded px-2 py-1 text-gray-900">
           <option value={1}>1시간</option>
           <option value={24}>24시간</option>
           <option value={72}>3일</option>
           <option value={168}>7일</option>
-        </select>
+        </Select>
       </div>
 
       {loading ? (

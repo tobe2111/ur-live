@@ -7,6 +7,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { kstShort } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 interface Referral {
   id: number; partner_lead_id: number | null; partner_name: string
@@ -120,9 +121,9 @@ export default function ReferralPanel() {
                       <button onClick={() => markPaid(r.id, r.partner_name, r.reward_amount)} className="ur-btn ur-btn-sm ur-btn-primary rounded">지급완료</button>
                     </span>
                   ) : null}
-                  <select value={r.status} onChange={e => setStatus(r.id, e.target.value)} className={`rounded px-2 py-1 text-[11px] font-medium border-0 ${ST[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
+                  <Select value={r.status} onChange={e => setStatus(r.id, e.target.value)} className={`rounded px-2 py-1 text-[11px] font-medium border-0 ${ST[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
                     {Object.entries(ST).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
+                  </Select>
                 </div>
               ))}
             </div>

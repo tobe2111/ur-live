@@ -9,6 +9,7 @@ import { X } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n-lite'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { Select } from '@/components/ui/select'
 
 interface Props {
   orderId: number | string
@@ -77,7 +78,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
           <label className="block text-[15px] font-medium text-gray-600 dark:text-gray-300 mb-2">
             {t('returnRequest.reasonLabel', { defaultValue: '반품 사유' })} <span className="text-red-500">*</span>
           </label>
-          <select
+          <Select
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -88,7 +89,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
             <option value="상품 정보 불일치">{t('returnRequest.reason3', { defaultValue: '상품 정보 불일치' })}</option>
             <option value="오배송">{t('returnRequest.reason4', { defaultValue: '오배송' })}</option>
             <option value="기타">{t('returnRequest.reason5', { defaultValue: '기타' })}</option>
-          </select>
+          </Select>
         </div>
 
         <div className="mb-5">

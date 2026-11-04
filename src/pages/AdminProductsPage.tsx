@@ -23,6 +23,7 @@ import type { Product } from './admin-products/types'
 import ProductFormModal from './admin-products/ProductFormModal'
 import type { ProductOption } from '@/components/ProductOptionForm'
 import { DEFAULT_AFFILIATE_RATE } from '@/shared/affiliate-rate'
+import { Select } from '@/components/ui/select'
 
 const EMPTY_TABS = { all_count: 0, active_count: 0, inactive_count: 0, out_of_stock: 0, kt_alpha_count: 0 }
 
@@ -377,7 +378,7 @@ export default function AdminProductsPage() {
                 />
                 <button onClick={() => { setPage(1); setSearch(searchInput) }} className="ur-btn ur-btn-md ur-btn-primary">검색</button>
               </div>
-              <select value={`${sortField}-${sortOrder}`} onChange={(e) => {
+              <Select value={`${sortField}-${sortOrder}`} onChange={(e) => {
                 const [f, o] = e.target.value.split('-')
                 setSortField(f as 'created' | 'price' | 'sold' | 'name')
                 setSortOrder(o as 'asc' | 'desc')
@@ -389,14 +390,14 @@ export default function AdminProductsPage() {
                 <option value="price-desc">가격 ↓</option>
                 <option value="sold-desc">판매 많은순</option>
                 <option value="name-asc">이름 ↑↓</option>
-              </select>
-              <select value={pageLimit} onChange={(e) => { setPageLimit(Number(e.target.value)); setPage(1) }}
+              </Select>
+              <Select value={pageLimit} onChange={(e) => { setPageLimit(Number(e.target.value)); setPage(1) }}
                 className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
                 <option value={50}>50개/페이지</option>
                 <option value={100}>100개/페이지</option>
                 <option value={200}>200개/페이지</option>
                 <option value={500}>500개/페이지</option>
-              </select>
+              </Select>
             </div>
 
             {/* 상태 탭 */}

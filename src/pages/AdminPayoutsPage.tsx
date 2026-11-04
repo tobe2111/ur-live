@@ -20,6 +20,7 @@ import { Wallet, CheckCircle, Send, XCircle } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import TossSendButton, { useTossPayoutStatus } from './admin-payouts/TossSendButton'
+import { Select } from '@/components/ui/select'
 
 interface Payout {
   id: number
@@ -486,7 +487,7 @@ export default function AdminPayoutsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">수령자 유형</label>
-              <select
+              <Select
                 value={annualType}
                 onChange={e => setAnnualType(e.target.value as 'all' | 'store_owner' | 'seller' | 'agency')}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
@@ -495,7 +496,7 @@ export default function AdminPayoutsPage() {
                 <option value="store_owner">사장님 (store_owner)</option>
                 <option value="seller">셀러 (seller)</option>
                 <option value="agency">에이전시 (agency)</option>
-              </select>
+              </Select>
             </div>
           </div>
           <button

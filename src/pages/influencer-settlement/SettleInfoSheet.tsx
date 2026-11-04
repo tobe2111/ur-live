@@ -8,6 +8,7 @@
  * 저장 계약은 종전 그대로다 — `PUT /api/influencer-settlement/me`, 같은 필드.
  */
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
+import { Select } from '@/components/ui/select'
 import { formatBizNo } from '@/utils/format-kr' // 🔢 사업자등록번호 000-00-00000 자동 하이픈(2026-11-03 대표 — 모든 입력란)
 
 export type PayoutMethod = 'cash' | 'deal'
@@ -76,11 +77,11 @@ export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, on
 
         <div>
           <label className={labelCls} htmlFor="settle-tax">세금</label>
-          <select id="settle-tax" value={form.tax_type} onChange={(e) => setForm(f => ({ ...f, tax_type: e.target.value as TaxType }))} className={inputCls}>
+          <Select id="settle-tax" value={form.tax_type} onChange={(e) => setForm(f => ({ ...f, tax_type: e.target.value as TaxType }))} className={inputCls}>
             <option value="other_income">기타소득 8.8% (사업자 없어도 됨)</option>
             <option value="business_income">사업소득 3.3% (사업자번호 필요)</option>
             <option value="unreported">원천징수 안 함 (본인 신고)</option>
-          </select>
+          </Select>
           {form.tax_type === 'business_income' && (
             <input
               value={form.business_number}
@@ -94,10 +95,10 @@ export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, on
 
         <div className="space-y-2">
           <p className={labelCls}>받을 계좌</p>
-          <select value={form.bank_name} onChange={(e) => setForm(f => ({ ...f, bank_name: e.target.value }))} className={inputCls} aria-label="은행">
+          <Select value={form.bank_name} onChange={(e) => setForm(f => ({ ...f, bank_name: e.target.value }))} className={inputCls} aria-label="은행">
             <option value="">은행 선택</option>
             {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-          </select>
+          </Select>
           <input
             value={form.bank_account}
             onChange={(e) => setForm(f => ({ ...f, bank_account: e.target.value.replace(/[^\d-]/g, '') }))}

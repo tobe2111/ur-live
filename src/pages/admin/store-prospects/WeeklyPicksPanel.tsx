@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import ProposalModal from './ProposalModal'
+import { Select } from '@/components/ui/select'
 
 interface Row {
   id: number; rank: number; biz_name: string; category: string | null; uptae: string | null; region: string | null; addr_road: string | null
@@ -94,9 +95,9 @@ export default function WeeklyPicksPanel({ onStatusChange }: { onStatusChange: (
                       <td className="py-1.5 pr-2">{r.category || '—'}<div className="text-[11px] text-gray-400">{r.region || ''}</div></td>
                       <td className="py-1.5 pr-2">{r.phone ? <a href={`tel:${r.phone}`} className="text-gray-700">{r.phone}</a> : <span className="text-gray-300">전화 없음</span>}{r.email ? <div className="text-[11px] text-gray-700 truncate max-w-[180px]">{r.email}</div> : null}</td>
                       <td className="py-1.5 pr-2">
-                        <select value={r.status} onChange={e => setStatus(r.id, e.target.value)} className={`text-xs rounded px-2 py-1 border-0 ${STATUS_META[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
+                        <Select value={r.status} onChange={e => setStatus(r.id, e.target.value)} className={`text-xs rounded px-2 py-1 border-0 ${STATUS_META[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
                           {STATUSES.map(s => <option key={s} value={s}>{STATUS_META[s]?.label || s}</option>)}
-                        </select>
+                        </Select>
                       </td>
                       <td className="py-1.5"><button onClick={() => setProposal(r)} className="ur-btn ur-btn-sm ur-btn-primary text-[11px]">제안 문구</button></td>
                     </tr>

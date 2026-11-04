@@ -5,6 +5,7 @@ import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { downloadCsv } from '@/utils/csv-download'
 import PanelError from './PanelError'
+import { Select } from '@/components/ui/select'
 
 /**
  * 🆕 2026-06-27 유어애즈 — 네이버 검색광고 계정 연동 + 내 광고 구조 조회.
@@ -468,10 +469,10 @@ export default function SearchAdPanel() {
                                         </td>
                                         <td className="py-1">
                                           <div className="flex items-center justify-end gap-1">
-                                            <select value={abRank[k.id] ?? '1'} onChange={e => setAbRank(prev => ({ ...prev, [k.id]: e.target.value }))}
+                                            <Select value={abRank[k.id] ?? '1'} onChange={e => setAbRank(prev => ({ ...prev, [k.id]: e.target.value }))}
                                               className="h-7 rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-1 text-[10.5px] text-gray-900 dark:text-white">
                                               {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}위</option>)}
-                                            </select>
+                                            </Select>
                                             <input type="number" min={70} max={100000} placeholder="최대₩"
                                               value={abMax[k.id] ?? ''} onChange={e => setAbMax(prev => ({ ...prev, [k.id]: e.target.value }))}
                                               className="w-20 h-7 rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />

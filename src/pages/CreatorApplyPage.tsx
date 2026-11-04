@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import { readAcquisitionSource, readAcquisitionUtm } from '@/lib/acquisition'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import { Select } from '@/components/ui/select'
 
 /**
  * 📥 유어딜 소개 파트너 모집 (공개 신청 페이지, /creators).
@@ -72,11 +73,11 @@ export default function CreatorApplyPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[15px] font-medium text-gray-700 mb-1">플랫폼</label>
-                <select value={f.platform} onChange={set('platform')} className={input}>{PLATFORMS.map(p => <option key={p.v} value={p.v}>{p.label}</option>)}</select>
+                <Select value={f.platform} onChange={set('platform')} className={input}>{PLATFORMS.map(p => <option key={p.v} value={p.v}>{p.label}</option>)}</Select>
               </div>
               <div>
                 <label className="block text-[15px] font-medium text-gray-700 mb-1">주요 분야</label>
-                <select value={f.category} onChange={set('category')} className={input}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select>
+                <Select value={f.category} onChange={set('category')} className={input}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</Select>
               </div>
             </div>
             <div>

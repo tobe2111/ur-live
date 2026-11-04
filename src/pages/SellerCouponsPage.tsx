@@ -9,6 +9,7 @@ import { Ticket, Plus, Trash2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 export default function SellerCouponsPage() {
   const { t } = useTranslation()
@@ -72,11 +73,11 @@ export default function SellerCouponsPage() {
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+              <Select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900">
                 <option value="fixed">{t('seller.coupons.fixedDiscount')}</option>
                 <option value="percent">{t('seller.coupons.percentDiscount')}</option>
-              </select>
+              </Select>
               <input placeholder={form.type === 'fixed' ? t('seller.coupons.discountAmountPlaceholder') : t('seller.coupons.discountRatePlaceholder')} type="number" value={form.value}
                 onChange={e => setForm(f => ({ ...f, value: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               <input placeholder={t('seller.coupons.minOrderAmount')} type="number" value={form.min_order}

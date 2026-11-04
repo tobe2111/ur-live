@@ -29,7 +29,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import type { LiveStream, Product } from './seller-product-edit/types'
 import PromoRateField, { promoPctFromProduct, promoRateForSubmit } from './seller-product-edit/PromoRateField'
 import { promptDialog } from '@/components/ui/confirm-dialog'
-
+import { Select } from '@/components/ui/select'
 /**
  * 레거시 이용권 카테고리(2026 이전 등록분). 새로 고를 수는 없고, **이미 그 값을 가진 상품을
  * 열었을 때만** 옵션으로 보여 준다 — 안 그러면 select 가 빈칸이 되고, 저장 한 번에 카테고리가
@@ -391,7 +391,7 @@ export default function SellerProductEditPage() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('common.category')} <span className="text-tone-bad">*</span>
             </label>
-            <select
+            <Select
               name="category"
               value={formData.category}
               onChange={handleChange}
@@ -415,7 +415,7 @@ export default function SellerProductEditPage() {
               {LEGACY_VOUCHER_OPTIONS.filter((o) => o.value === formData.category).map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* 이용권 전용 필드 — 🐛 2026-08-22 대표 "1인당 이용권 구매 갯수를 셀러가 설정할 수
@@ -535,7 +535,7 @@ export default function SellerProductEditPage() {
               </label>
               <div className="relative">
                 <Play className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <select
+                <Select
                   name="live_stream_id"
                   value={formData.live_stream_id}
                   onChange={handleChange}
@@ -547,7 +547,7 @@ export default function SellerProductEditPage() {
                       {stream.title} ({stream.status === 'live' ? 'LIVE' : stream.status === 'scheduled' ? t('common.scheduled') : t('common.ended')})
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <p className="text-xs text-gray-500 mt-1">{t('seller.selectLiveStreamDesc')}</p>
             </div>

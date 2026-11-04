@@ -16,6 +16,7 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Save, DollarSign } from 'lucide-react'
+import { Select } from '@/components/ui/select'
 
 interface Settings {
   platform_margin_pct: string
@@ -220,7 +221,7 @@ export default function AdminCommissionSettingsPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">인플 송금 주기</label>
-            <select
+            <Select
               value={form.influencer_payout_frequency}
               onChange={(e) => setForm((f) => ({ ...f, influencer_payout_frequency: e.target.value }))}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
@@ -228,7 +229,7 @@ export default function AdminCommissionSettingsPage() {
               <option value="weekly">매주 (월요일)</option>
               <option value="biweekly">격주 (월요일)</option>
               <option value="monthly">매월</option>
-            </select>
+            </Select>
           </div>
 
           {form.influencer_payout_frequency === 'monthly' && (

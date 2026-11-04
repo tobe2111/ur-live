@@ -30,6 +30,7 @@ const CATS = [
 const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '', max_per_person: '', kakao_place_url: '', min_review_level: '' }
 import { cfImage } from '@/utils/cf-image'
 import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
+import { Select } from '@/components/ui/select'
 
 
 export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { onSaved: () => void; editDeal?: DealRow | null; onCancelEdit?: () => void }) {
@@ -245,9 +246,9 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
         </div>
         <div>
           <label className={lbl}>카테고리</label>
-          <select value={f.category} onChange={(e) => set('category', e.target.value)} className={input}>
+          <Select value={f.category} onChange={(e) => set('category', e.target.value)} className={input}>
             {CATS.map((c) => <option key={c.v} value={c.v}>{c.label}</option>)}
-          </select>
+          </Select>
         </div>
         <div />
         <div>
@@ -266,13 +267,13 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
         {/* 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 동네 리뷰어 레벨 전용 이용권 (구매 자격 게이트). */}
         <div>
           <label className={lbl}>동네 리뷰어 레벨 전용 (선택)</label>
-          <select value={f.min_review_level} onChange={(e) => set('min_review_level', e.target.value)} className={input}>
+          <Select value={f.min_review_level} onChange={(e) => set('min_review_level', e.target.value)} className={input}>
             <option value="">전체 공개 (레벨 제한 없음)</option>
             <option value="2">Lv.2 단골 이상</option>
             <option value="3">Lv.3 열혈 리뷰어 이상</option>
             <option value="4">Lv.4 동네 전문가 이상</option>
             <option value="5">Lv.5 동네 앰버서더 전용</option>
-          </select>
+          </Select>
         </div>
         <div>
           <label className={lbl}>매장명</label>

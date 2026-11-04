@@ -9,6 +9,7 @@ import { sellerHeaders } from '../life-shared'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
 import { PRO_INTRO_MAX, PRO_LINKS_MAX, PRO_LINK_SITES, normalizeProLink, proLinkStatus } from '@/shared/home-service-review'
+import { Select } from '@/components/ui/select'
 import { formatPhone } from '@/utils/format-phone' // 📞 휴대폰 000-0000-0000 자동 하이픈(2026-11-03 대표)
 
 /** 넣을 수 있는 곳 — 이름만 겹치지 않게(카카오맵 주소가 둘이다). */
@@ -124,9 +125,9 @@ export default function ProSetupForm({ me, onSaved, prefill, signup }: { me: Pro
       <div>
         <p className="mb-2 text-[15px] font-bold">일하는 지역</p>
         <div className="flex gap-2">
-          <select className={INPUT} value={sido} onChange={(e) => setSido(e.target.value)}>
+          <Select className={INPUT} value={sido} onChange={(e) => setSido(e.target.value)}>
             {me.sidoList.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          </Select>
           <input className={`${INPUT} min-w-0 flex-1`} placeholder="시·구 (비우면 전체)" value={sigungu} onChange={(e) => setSigungu(e.target.value)} />
           <button type="button" onClick={addArea} className="shrink-0 rounded-xl bg-warm px-4 text-[13px] font-medium text-ink">추가</button>
         </div>

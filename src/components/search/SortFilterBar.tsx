@@ -13,8 +13,8 @@
  * **상위 상태로 올려서** 붙일 것 — 다시 로컬 토글로 만들지 말 것.
  */
 import { useTranslation } from '@/lib/i18n-lite'
-import { ChevronDown } from 'lucide-react'
 import { useRef } from 'react'
+import { Select } from '@/components/ui/select'
 // 🎬 2026-11-02 시안 8차 "검색 결과 개수" — 개수가 바뀌면 새 숫자가 아래에서 올라온다(처음엔 안 움직인다).
 //   ⚖️ 공용 `RollingNumber` 를 쓰지 않는다 — 그걸 import 하면 검색 화면이 상세 묶음을 끌고 와 +2.8KB 였다(화면별 무게 실측).
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
@@ -42,7 +42,7 @@ export default function SortFilterBar({ totalResults, sortBy, onSortChange }: So
           <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('browse.totalResultsSuffix', { defaultValue: '개' })}</span>
         </div>
         <div className="relative">
-          <select
+          <Select
             value={sortBy}
             onChange={(e) => onSortChange(e.target.value as typeof sortBy)}
             className="appearance-none pr-6 pl-3 py-2 text-[12px] font-medium text-gray-900 dark:text-white bg-transparent focus:outline-none cursor-pointer"
@@ -51,8 +51,7 @@ export default function SortFilterBar({ totalResults, sortBy, onSortChange }: So
             <option value="price_low">{t('browse.sortPriceLow', { defaultValue: '낮은가격' })}</option>
             <option value="price_high">{t('browse.sortPriceHigh', { defaultValue: '높은가격' })}</option>
             <option value="newest">{t('browse.sortNewest', { defaultValue: '최신순' })}</option>
-          </select>
-          <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500 pointer-events-none" />
+          </Select>
         </div>
       </div>
     </div>

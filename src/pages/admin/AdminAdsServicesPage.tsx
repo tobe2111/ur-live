@@ -5,6 +5,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 /**
  * 🆕 2026-07-02 유어애즈 마케팅 서비스몰 운영 (/admin/ads-services).
@@ -164,13 +165,13 @@ export default function AdminAdsServicesPage() {
                           )
                         )}
                       </div>
-                      <select value={o.status} disabled={busy === o.id} onChange={e => patchOrder(o.id, { status: e.target.value }, '상태 변경')} className="rounded-lg border border-gray-300 px-2 py-1 text-[12px] font-semibold text-gray-900">
+                      <Select value={o.status} disabled={busy === o.id} onChange={e => patchOrder(o.id, { status: e.target.value }, '상태 변경')} className="rounded-lg border border-gray-300 px-2 py-1 text-[12px] font-semibold text-gray-900">
                         {STATUSES.map(s => <option key={s} value={s}>{STATUS_KO[s]}</option>)}
-                      </select>
-                      <select value={o.fulfillment_method || ''} disabled={busy === o.id} onChange={e => patchOrder(o.id, { fulfillment_method: e.target.value }, '이행방식')} className="rounded-lg border border-gray-200 px-2 py-1 text-[11.5px] text-gray-700">
+                      </Select>
+                      <Select value={o.fulfillment_method || ''} disabled={busy === o.id} onChange={e => patchOrder(o.id, { fulfillment_method: e.target.value }, '이행방식')} className="rounded-lg border border-gray-200 px-2 py-1 text-[11.5px] text-gray-700">
                         <option value="">이행방식…</option>
                         {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
+                      </Select>
                     </div>
                   </div>
                   <div className="mt-2 flex gap-2">

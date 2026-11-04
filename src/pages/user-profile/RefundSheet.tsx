@@ -34,6 +34,7 @@ import { formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
 import { BANKS } from '@/shared/banks'
 import Sheet from './seller-section/Sheet'
+import { Select } from '@/components/ui/select'
 
 interface RefundRow {
   id: number
@@ -238,10 +239,10 @@ export default function RefundSheet({ onClose, onDone }: {
             {!viaStore && (<>
             <label className="block">
               <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">은행</span>
-              <select value={bank} onChange={(e) => setBank(e.target.value)} className={field}>
+              <Select value={bank} onChange={(e) => setBank(e.target.value)} className={field}>
                 <option value="">은행을 골라 주세요</option>
                 {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
-              </select>
+              </Select>
             </label>
             <label className="block">
               <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">계좌번호</span>

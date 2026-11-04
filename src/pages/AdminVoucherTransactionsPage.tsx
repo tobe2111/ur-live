@@ -24,6 +24,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber, formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardLoadError } from '@/components/dashboard'
+import { Select } from '@/components/ui/select'
 
 interface VoucherTxRow {
   id: number
@@ -364,18 +365,18 @@ export default function AdminVoucherTransactionsPage() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
             <div>
               <label className="block text-xs text-gray-600 mb-1">상태</label>
-              <select value={status} onChange={(e) => { setPage(0); setStatus(e.target.value as typeof status) }}
+              <Select value={status} onChange={(e) => { setPage(0); setStatus(e.target.value as typeof status) }}
                 className="w-full text-sm border rounded px-2 py-1.5 text-gray-900">
                 <option value="">전체</option>
                 <option value="unused">미사용</option>
                 <option value="used">사용됨</option>
                 <option value="expired">만료</option>
                 <option value="refunded">환불</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">카테고리</label>
-              <select value={category} onChange={(e) => { setPage(0); setCategory(e.target.value) }}
+              <Select value={category} onChange={(e) => { setPage(0); setCategory(e.target.value) }}
                 className="w-full text-sm border rounded px-2 py-1.5 text-gray-900">
                 <option value="">전체</option>
                 <option value="meal_voucher">이용권</option>
@@ -386,7 +387,7 @@ export default function AdminVoucherTransactionsPage() {
                 <option value="health_voucher">건강</option>
                 <option value="pet_voucher">펫</option>
                 <option value="activity_voucher">액티비티</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">시작일</label>

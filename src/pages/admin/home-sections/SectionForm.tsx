@@ -5,6 +5,7 @@ import {
   SECTION_DEFAULT_LIMIT, SECTION_MAX_LIMIT, type SectionSource,
 } from '@/shared/constants/home-showcase'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
+import { Select } from '@/components/ui/select'
 
 /**
  * 🏠 홈 섹션 생성·수정 폼 (2026-08-04 대표 "없는 것도 다 해줘").
@@ -80,10 +81,10 @@ export default function SectionForm({
 
         <div>
           <label className={label}>상품을 고르는 방식</label>
-          <select value={form.source} onChange={e => setForm({ ...form, source: e.target.value as SectionSource })}
+          <Select value={form.source} onChange={e => setForm({ ...form, source: e.target.value as SectionSource })}
             className={input}>
             {SECTION_SOURCES.map(s => <option key={s} value={s}>{SECTION_SOURCE_LABELS[s]}</option>)}
-          </select>
+          </Select>
           <p className="mt-1.5 text-xs text-gray-400">
             {form.source === 'manual'
               ? "직접 고르면 목록에서 '상품 담기' 로 골라 담습니다. 손이 가는 대신 완전한 통제."
@@ -103,11 +104,11 @@ export default function SectionForm({
         {form.source === 'category' && (
           <div>
             <label className={label}>카테고리</label>
-            <select value={form.source_value} onChange={e => setForm({ ...form, source_value: e.target.value })}
+            <Select value={form.source_value} onChange={e => setForm({ ...form, source_value: e.target.value })}
               className={input}>
               <option value="">전체 이용권</option>
               {VOUCHER_CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c] ?? c}</option>)}
-            </select>
+            </Select>
           </div>
         )}
 

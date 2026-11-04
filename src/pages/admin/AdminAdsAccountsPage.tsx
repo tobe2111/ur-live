@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { promptDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 /**
  * 🆕 2026-06-28 유어애즈 가입자 운영 어드민 (/admin/ads-accounts).
@@ -161,10 +162,10 @@ export default function AdminAdsAccountsPage() {
                 <td className="py-2.5 px-3 text-center">{r.connected ? <span className="text-tone-ok">●</span> : <span className="text-gray-300">○</span>}</td>
                 <td className="py-2.5 px-3 text-center">{r.alert_on ? <span className="text-tone-ok">●</span> : <span className="text-gray-300">○</span>}</td>
                 <td className="py-2.5 px-3 text-center">
-                  <select value={r.plan || 'free'} disabled={busy === r.id} onChange={(e) => patch(r.id, { plan: e.target.value }, `플랜 ${e.target.value}`)}
+                  <Select value={r.plan || 'free'} disabled={busy === r.id} onChange={(e) => patch(r.id, { plan: e.target.value }, `플랜 ${e.target.value}`)}
                     className="rounded border border-gray-200 bg-white px-1 py-0.5 text-[11px] font-semibold text-gray-700">
                     {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
+                  </Select>
                 </td>
                 <td className="py-2.5 px-3 text-center">
                   <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${r.access_unlocked ? 'bg-tone-ok-bg text-tone-ok' : 'bg-tone-warn-bg text-tone-warn'}`}>{r.access_unlocked ? '해제됨' : '잠김'}</span>

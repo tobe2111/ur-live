@@ -9,6 +9,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { Inbox, Loader2, Send } from 'lucide-react'
+import { Select } from '@/components/ui/select'
 
 interface Proposal {
   id: number; product_id: number; product_name?: string; proposed_by: 'influencer' | 'seller'
@@ -119,9 +120,9 @@ function ProposeForm({ products, headers, onDone }: { products: ProductOpt[]; he
 
   return (
     <div className="rounded-lg bg-gray-50 p-3 mb-3 space-y-2">
-      <select value={productId} onChange={e => setProductId(Number(e.target.value))} className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-[12px] text-gray-900">
+      <Select value={productId} onChange={e => setProductId(Number(e.target.value))} className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-[12px] text-gray-900">
         {products.map(p => <option key={p.id} value={p.id}>{p.name} ({formatNumber(p.price)}원)</option>)}
-      </select>
+      </Select>
       <input value={handle} onChange={e => setHandle(e.target.value)} placeholder="인플루언서 핸들 (예: jiwon1228)" className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-[12px] text-gray-900" />
       <div className="grid grid-cols-2 gap-2">
         <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} className="px-2 py-1.5 border border-gray-300 rounded-lg text-[12px] text-gray-900" />

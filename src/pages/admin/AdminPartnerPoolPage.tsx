@@ -29,6 +29,7 @@ import CompanyKeywordManager, { type CompanyKeyword } from './partner-pool/Compa
 import PoolExportButtons from './PoolExportButtons'
 import PoolSheetSync from './PoolSheetSync'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
@@ -416,19 +417,19 @@ export default function AdminPartnerPoolPage() {
         {showAdd && (
           <div className="rounded-xl border border-gray-200 bg-white p-4 mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
             <input value={add.company_name} onChange={e => setAdd({ ...add, company_name: e.target.value })} placeholder="업체명 *" className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm" />
-            <select value={add.category} onChange={e => setAdd({ ...add, category: e.target.value, subcategory: '' })} className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm">
+            <Select value={add.category} onChange={e => setAdd({ ...add, category: e.target.value, subcategory: '' })} className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm">
               <option value="">분류 선택</option>
               {meta && Object.keys(meta.categories).map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={add.subcategory} onChange={e => setAdd({ ...add, subcategory: e.target.value })} disabled={!subcats.length} className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm disabled:bg-gray-50">
+            </Select>
+            <Select value={add.subcategory} onChange={e => setAdd({ ...add, subcategory: e.target.value })} disabled={!subcats.length} className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm disabled:bg-gray-50">
               <option value="">세부 업종</option>
               {subcats.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+            </Select>
             <input value={add.region} onChange={e => setAdd({ ...add, region: e.target.value })} placeholder="지역 (예: 방배)" className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm" />
-            <select value={add.tier} onChange={e => setAdd({ ...add, tier: e.target.value })} className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm">
+            <Select value={add.tier} onChange={e => setAdd({ ...add, tier: e.target.value })} className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm">
               <option value="">우선순위 없음</option>
               {[1, 2, 3, 4, 5].map(t => <option key={t} value={t}>{t}순위</option>)}
-            </select>
+            </Select>
             <input value={add.phone} onChange={e => setAdd({ ...add, phone: e.target.value })} placeholder="전화" className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm" />
             <input value={add.email} onChange={e => setAdd({ ...add, email: e.target.value })} placeholder="이메일" className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm" />
             <input value={add.website} onChange={e => setAdd({ ...add, website: e.target.value })} placeholder="홈페이지" className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm" />
@@ -441,22 +442,22 @@ export default function AdminPartnerPoolPage() {
 
         {/* 필터 바 — 연락처 축은 위 통계 카드가 담당(셀렉트 중복 제거) */}
         <div className="flex flex-wrap gap-2 mb-3 text-sm">
-          <select value={fType} onChange={e => setFType(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900" title="접촉 가치 축 — 업종과 별개">
+          <Select value={fType} onChange={e => setFType(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900" title="접촉 가치 축 — 업종과 별개">
             <option value="">전체 유형</option>
             {(meta?.leadTypes || []).map(t => <option key={t.k} value={t.k}>{t.label}</option>)}
-          </select>
-          <select value={fCategory} onChange={e => setFCategory(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
+          </Select>
+          <Select value={fCategory} onChange={e => setFCategory(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
             <option value="">전체 업종</option>
             {meta && Object.keys(meta.categories).map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select value={fTier} onChange={e => setFTier(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
+          </Select>
+          <Select value={fTier} onChange={e => setFTier(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
             <option value="">전체 순위</option>
             {[1, 2, 3, 4, 5].map(t => <option key={t} value={t}>{t}순위</option>)}
-          </select>
-          <select value={fStatus} onChange={e => setFStatus(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
+          </Select>
+          <Select value={fStatus} onChange={e => setFStatus(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
             <option value="">전체 상태</option>
             {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
+          </Select>
           {(quick || fType || fCategory || fTier || fStatus || q) && (
             <button onClick={() => { setQuick(''); setFType(''); setFCategory(''); setFTier(''); setFStatus(''); setQ('') }} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-500">필터 초기화</button>
           )}
@@ -544,10 +545,10 @@ const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onR
         <input type="checkbox" aria-label={`${l.company_name} 선택`} checked={checked} onChange={e => onToggle(l.id, e.target.checked)} />
       </td>
       <td className="px-3 py-2">
-        <select value={l.tier ?? ''} onChange={e => onPatch(l.id, { tier: e.target.value ? Number(e.target.value) : null })} className="rounded border border-gray-200 bg-white text-gray-900 text-xs px-1 py-1">
+        <Select value={l.tier ?? ''} onChange={e => onPatch(l.id, { tier: e.target.value ? Number(e.target.value) : null })} className="rounded border border-gray-200 bg-white text-gray-900 text-xs px-1 py-1">
           <option value="">—</option>
           {[1, 2, 3, 4, 5].map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
+        </Select>
       </td>
       <td className="px-3 py-2">
         <div className="font-medium text-gray-900">
@@ -570,15 +571,15 @@ const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onR
         {(l.phone || l.email) && l.contact_source && <div className="text-[10px] text-gray-400 mt-0.5" title="연락처 출처">출처: {SRC_LABEL[l.contact_source] || l.contact_source}</div>}
       </td>
       <td className="px-3 py-2">
-        <select value={l.status} onChange={e => onPatch(l.id, { status: e.target.value })} className={`rounded px-2 py-1 text-xs font-medium border-0 ${STATUS_META[l.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
+        <Select value={l.status} onChange={e => onPatch(l.id, { status: e.target.value })} className={`rounded px-2 py-1 text-xs font-medium border-0 ${STATUS_META[l.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
           {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>
+        </Select>
       </td>
       <td className="px-3 py-2">
-        <select value={l.contact_channel ?? ''} onChange={e => onPatch(l.id, { contact_channel: e.target.value || null })} className="rounded border border-gray-200 bg-white text-gray-700 text-xs px-1 py-1">
+        <Select value={l.contact_channel ?? ''} onChange={e => onPatch(l.id, { contact_channel: e.target.value || null })} className="rounded border border-gray-200 bg-white text-gray-700 text-xs px-1 py-1">
           <option value="">—</option>
           {Object.entries(CHANNEL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        </Select>
       </td>
       <td className="px-3 py-2">
         <input type="date" value={l.follow_up_at ? l.follow_up_at.slice(0, 10) : ''} onChange={e => onPatch(l.id, { follow_up_at: e.target.value || null })} className="rounded border border-gray-200 bg-white text-gray-700 text-xs px-1 py-1" />

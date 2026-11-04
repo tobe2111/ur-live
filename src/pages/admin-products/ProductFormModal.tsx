@@ -5,6 +5,7 @@ import ImageUpload from '@/components/ImageUpload'
 import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'
 import { EMPTY_FORM } from './types'
 import type { Product } from './types'
+import { Select } from '@/components/ui/select'
 
 type FormData = typeof EMPTY_FORM
 
@@ -141,7 +142,7 @@ export default function ProductFormModal({
               <label className="block text-xs font-medium text-gray-700 mb-1.5">
                 {t('admin.products.k060', { defaultValue: '카테고리' })} <span className="text-red-500">*</span>
               </label>
-              <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <Select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 {[
                   ['fashion', t('admin.products.k061', { defaultValue: '패션' })],
                   ['beauty', t('admin.products.k062', { defaultValue: '뷰티' })],
@@ -149,16 +150,16 @@ export default function ProductFormModal({
                   ['electronics', t('admin.products.k064', { defaultValue: '전자기기' })],
                   ['lifestyle', t('admin.products.k065', { defaultValue: '라이프스타일' })],
                 ].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">
                 {t('admin.products.k066', { defaultValue: '상품 타입' })} <span className="text-red-500">*</span>
               </label>
-              <select value={formData.product_type} onChange={e => setFormData({ ...formData, product_type: e.target.value as 'live' | 'featured' })} required className="w-full px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <Select value={formData.product_type} onChange={e => setFormData({ ...formData, product_type: e.target.value as 'live' | 'featured' })} required className="w-full px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 <option value="featured">{t('admin.products.k067', { defaultValue: 'Ur 특가 (메인 페이지 노출)' })}</option>
                 <option value="live">{t('admin.products.k068', { defaultValue: '라이브 방송 전용' })}</option>
-              </select>
+              </Select>
             </div>
           </div>
 

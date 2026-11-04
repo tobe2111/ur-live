@@ -14,6 +14,7 @@ import { CAT_LABEL } from './types'
 import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
 import { cleanSido, buildRegionParam } from './region-util'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 // 🎛️ 2026-07-04 (대표 "지원자 수·기간 각각 설정"): 행별 추첨 설정 인라인 편집 상태.
 interface FcfsDraft { id: number; spots: string; applied: string; deadline: string; loading: boolean }
@@ -217,15 +218,15 @@ export default function DealList({ nonce, onEdit, onChanged, onSettings, onRefun
             </button>
           )}
         </div>
-        <select value={fSido} onChange={(e) => { setFSido(e.target.value); setFDistrict('') }} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="시/도 필터">
+        <Select value={fSido} onChange={(e) => { setFSido(e.target.value); setFDistrict('') }} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="시/도 필터">
           <option value="">전체 지역</option>
           {KOREA_REGIONS.map((r) => <option key={r.key} value={r.key}>{r.label.replace(/\n/g, ' ')}</option>)}
-        </select>
-        <select value={fDistrict} onChange={(e) => setFDistrict(e.target.value)} disabled={!fSidoRegion || fSidoRegion.districtGroups.length === 0} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white disabled:opacity-50 max-w-[180px]" aria-label="동네 필터">
+        </Select>
+        <Select value={fDistrict} onChange={(e) => setFDistrict(e.target.value)} disabled={!fSidoRegion || fSidoRegion.districtGroups.length === 0} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white disabled:opacity-50 max-w-[180px]" aria-label="동네 필터">
           <option value="">{fSidoRegion ? `${cleanSido(fSidoRegion.label)} 전체` : '동네'}</option>
           {fSidoRegion?.districtGroups.map((g) => <option key={g.key} value={g.key}>{g.label}</option>)}
-        </select>
-        <select value={fCategory} onChange={(e) => setFCategory(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="카테고리 필터">
+        </Select>
+        <Select value={fCategory} onChange={(e) => setFCategory(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="카테고리 필터">
           <option value="">전체 카테고리</option>
           <option value="meal_voucher">식사</option>
           <option value="beauty_voucher">미용</option>
@@ -233,29 +234,29 @@ export default function DealList({ nonce, onEdit, onChanged, onSettings, onRefun
           <option value="etc_voucher">기타</option>
           <option value="general">일반</option>
           <option value="stay_voucher">숙소</option>
-        </select>
-        <select value={fMode} onChange={(e) => setFMode(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="상품형태 필터">
+        </Select>
+        <Select value={fMode} onChange={(e) => setFMode(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="상품형태 필터">
           <option value="">전체 형태</option>
           <option value="live">실상품형</option>
           <option value="prelaunch">오픈예정형</option>
-        </select>
-        <select value={fSource} onChange={(e) => setFSource(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="데모여부 필터">
+        </Select>
+        <Select value={fSource} onChange={(e) => setFSource(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="데모여부 필터">
           <option value="">전체(실+데모)</option>
           <option value="real">실등록만</option>
           <option value="demo">데모만</option>
-        </select>
-        <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="노출상태 필터">
+        </Select>
+        <Select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="노출상태 필터">
           <option value="">전체 상태</option>
           <option value="active">노출중</option>
           <option value="hidden">숨김</option>
-        </select>
-        <select value={fSort} onChange={(e) => setFSort(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="정렬">
+        </Select>
+        <Select value={fSort} onChange={(e) => setFSort(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="정렬">
           <option value="newest">최신 등록순</option>
           <option value="oldest">오래된순</option>
           <option value="name">이름순</option>
           <option value="price_high">가격 높은순</option>
           <option value="price_low">가격 낮은순</option>
-        </select>
+        </Select>
         {anyFilter && (
           <button onClick={resetFilters} className="text-[12px] text-gray-500 hover:text-gray-800 underline underline-offset-2">필터 초기화</button>
         )}

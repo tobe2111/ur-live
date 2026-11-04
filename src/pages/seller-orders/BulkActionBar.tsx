@@ -7,6 +7,7 @@
  */
 import { useTranslation } from '@/lib/i18n-lite'
 import { Loader2 } from 'lucide-react'
+import { Select } from '@/components/ui/select'
 
 export default function BulkActionBar({
   count, status, onStatusChange, onApply, applying, onClear,
@@ -22,7 +23,7 @@ export default function BulkActionBar({
   return (
     <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-rule">
       <span className="text-sm font-medium text-gray-700">{t('seller.selectedCount', { count })}</span>
-      <select
+      <Select
         value={status}
         onChange={e => onStatusChange(e.target.value)}
         className="text-sm border border-rule rounded-lg px-2 py-1.5 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -32,7 +33,7 @@ export default function BulkActionBar({
         <option value="SHIPPING">{t('seller.statusShipping')}</option>
         <option value="DELIVERED">{t('seller.statusDelivered')}</option>
         <option value="CANCELLED">{t('seller.statusCancelled')}</option>
-      </select>
+      </Select>
       <button
         onClick={onApply}
         disabled={!status || applying}

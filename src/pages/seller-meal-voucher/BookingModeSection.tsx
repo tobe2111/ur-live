@@ -8,6 +8,7 @@
 import { Plus, Trash2 } from 'lucide-react'
 import type { VoucherForm } from './voucher-form'
 import { DAY_LABELS, type BookingMode, type SlotDraft } from './booking-mode'
+import { Select } from '@/components/ui/select'
 
 const INPUT = 'w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none'
 
@@ -45,9 +46,9 @@ export default function BookingModeSection({ form, update }: {
         <div className="space-y-2">
           {slots.map((s, i) => (
             <div key={i} className="flex items-center gap-2">
-              <select value={s.day_of_week} onChange={(e) => patch(i, { day_of_week: Number(e.target.value) })} className="px-2 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900">
+              <Select value={s.day_of_week} onChange={(e) => patch(i, { day_of_week: Number(e.target.value) })} className="px-2 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900">
                 {DAY_LABELS.map((d, k) => <option key={d} value={k}>{d}</option>)}
-              </select>
+              </Select>
               <input type="time" value={s.start_time} onChange={(e) => patch(i, { start_time: e.target.value })} className={INPUT} aria-label="시작" />
               <input type="time" value={s.end_time} onChange={(e) => patch(i, { end_time: e.target.value })} className={INPUT} aria-label="끝" />
               <input inputMode="numeric" value={s.capacity || ''} onChange={(e) => patch(i, { capacity: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} className="w-16 px-2 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" aria-label="받는 인원" />
