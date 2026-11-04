@@ -91,6 +91,10 @@ export default function PoolSheetSync({ pool }: { pool: 'company' | 'store' }) {
                 </p>
               )}
               {pct !== null && <p>이번 바퀴 진행 {st.cursor.off.toLocaleString()} / {st.cursor.total.toLocaleString()}줄 ({pct}%) · 매시간 이어서 씁니다</p>}
+              <p>
+                보낸 곳 표시: 시트 맨 오른쪽 <b>'이메일 보냄'</b> 칸에 아무 글자나(o) 적거나, <b>'발송기록'</b> 탭 A열에 보낸 이메일 주소를 붙여넣으세요.
+                매시간 반영되어 날짜로 바뀌고 이 화면의 상태도 '연락함'이 됩니다. 시트에서 지워도 기록은 남습니다(되돌리기는 이 화면에서).
+              </p>
               <div className="flex flex-wrap gap-2 pt-2">
                 <button onClick={runNow} disabled={!!busy} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">
                   {busy === 'sync' ? '동기화 중…' : '지금 동기화'}

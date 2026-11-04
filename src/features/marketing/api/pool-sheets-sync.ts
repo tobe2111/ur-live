@@ -20,6 +20,7 @@ import { adsLeadsDb } from '../../../shared/ads/leads-db'
 import { getToken, sheetsFetch, parseSheetCursor, startCursor, cycleRoom, type SyncTrigger } from './sheets-sync'
 import { ensureCompanySchema } from './company-discovery'
 import { ensureProspectSchema } from './store-prospects'
+import { ensureMarkSchema, harvestMarks, ensureListTab, applyEmailList, sentDayKST } from './pool-sheets-marks'
 
 export type SheetPool = 'company' | 'store'
 export const SHEET_POOLS: readonly SheetPool[] = ['company', 'store']
@@ -48,19 +49,19 @@ export const POOL_DEFS: Record<SheetPool, PoolDef> = {
     label: '파트너 풀',
     table: 'ad_company_leads',
     where: 'active = 1 AND merged_into IS NULL',
-    cols: 'id, tier, category, subcategory, company_name, region, phone, email, website, address, status, contact_channel, contacted_at, follow_up_at, memo, source, source_keyword, collected_at',
-    header: ['ID', '티어', '업종', '세부업종', '업체명', '지역', '전화', '이메일', '웹사이트', '주소', '상태', '컨택채널', '컨택일', '팔로업', '메모', '출처', '수집키워드', '수집일'],
+    cols: 'id, tier, category, subcategory, company_name, region, phone, email, website, address, status, contact_channel, contacted_at, follow_up_at, memo, source, source_keyword, collected_at, email_sent_at',
+    header: ['ID', '티어', '업종', '세부업종', '업체명', '지역', '전화', '이메일', '웹사이트', '주소', '상태', '컨택채널', '컨택일', '팔로업', '메모', '출처', '수집키워드', '수집일', '이메일 보냄'],
     toRow: r => [Number(r.id), s(r.tier), s(r.category), s(r.subcategory), s(r.company_name), s(r.region), s(r.phone), s(r.email), s(r.website), s(r.address),
-      s(r.status), s(r.contact_channel), s(r.contacted_at), s(r.follow_up_at), s(r.memo), s(r.source), s(r.source_keyword), day(r.collected_at)],
+      s(r.status), s(r.contact_channel), s(r.contacted_at), s(r.follow_up_at), s(r.memo), s(r.source), s(r.source_keyword), day(r.collected_at), sentDayKST(r.email_sent_at)],
   },
   store: {
     label: '매장후보 풀',
     table: 'store_prospects',
     where: 'active = 1',
-    cols: 'id, category, biz_name, region, phone, email, website, addr_road, status, is_new_open, apv_perm_ymd, contact_channel, follow_up_at, memo, collected_at',
-    header: ['ID', '업종', '상호', '지역', '전화', '이메일', '웹사이트', '도로명주소', '상태', '신규개업', '인허가일', '컨택채널', '팔로업', '메모', '수집일'],
+    cols: 'id, category, biz_name, region, phone, email, website, addr_road, status, is_new_open, apv_perm_ymd, contact_channel, follow_up_at, memo, collected_at, email_sent_at',
+    header: ['ID', '업종', '상호', '지역', '전화', '이메일', '웹사이트', '도로명주소', '상태', '신규개업', '인허가일', '컨택채널', '팔로업', '메모', '수집일', '이메일 보냄'],
     toRow: r => [Number(r.id), s(r.category), s(r.biz_name), s(r.region), s(r.phone), s(r.email), s(r.website), s(r.addr_road), s(r.status),
-      Number(r.is_new_open) ? '개업' : '', s(r.apv_perm_ymd), s(r.contact_channel), s(r.follow_up_at), s(r.memo), day(r.collected_at)],
+      Number(r.is_new_open) ? '개업' : '', s(r.apv_perm_ymd), s(r.contact_channel), s(r.follow_up_at), s(r.memo), day(r.collected_at), sentDayKST(r.email_sent_at)],
   },
 }
 
@@ -88,12 +89,27 @@ export function colLetter(n: number): string {
 }
 
 /** id 커서 — `off`(시트에 쓴 행 수) · `lastId`(마지막으로 쓴 id) · `total`(사이클 시작 시 스냅샷). */
-export function parsePoolCursor(raw: string | null | undefined): { off: number; total: number; lastId: number } {
+export function parsePoolCursor(raw: string | null | undefined): { off: number; total: number; lastId: number; cols: number } {
   const base = parseSheetCursor(raw)
   let lastId = 0
-  try { lastId = Math.max(0, Math.floor(Number((JSON.parse(String(raw || '{}')) as { lastId?: unknown }).lastId) || 0)) } catch { lastId = 0 }
+  let cols = 0
+  try {
+    const v = JSON.parse(String(raw || '{}')) as { lastId?: unknown; cols?: unknown }
+    lastId = Math.max(0, Math.floor(Number(v.lastId) || 0))
+    cols = Math.max(0, Math.floor(Number(v.cols) || 0))
+  } catch { lastId = 0; cols = 0 }
   // off 가 0 이면 lastId 도 0 이어야 한다(새 사이클). 둘이 어긋나면 처음부터 — 누락보다 중복 쓰기가 낫다.
-  return base.off === 0 ? { ...base, lastId: 0 } : { ...base, lastId }
+  return base.off === 0 ? { ...base, lastId: 0, cols } : { ...base, lastId, cols }
+}
+
+/**
+ * 열 수가 바뀌었으면(예: '이메일 보냄' 열 추가) 사이클을 처음부터 — 그리드 폭·헤더는 사이클 시작에만 맞추므로,
+ * 도중에 열이 늘면 그리드 밖에 쓰다 400 이 난다. 열 수를 모르는 옛 커서도 처음부터(한 회차 손해뿐).
+ */
+export function cursorForCols(saved: { off: number; total: number; lastId: number; cols: number }, nCols: number): { off: number; total: number; lastId: number } {
+  if (saved.off > 0 && saved.cols !== nCols) return { off: 0, total: 0, lastId: 0 }
+  const st = startCursor(saved)
+  return { off: st.off, total: st.total, lastId: st.off === 0 ? 0 : saved.lastId }
 }
 
 async function readSetting(env: Env, key: string): Promise<string | null> {
@@ -122,7 +138,7 @@ export async function setPoolSheetId(env: Env, pool: SheetPool, input: string): 
   return { ok: true, sheetId: id }
 }
 
-export type PoolSyncResult = { ok: boolean; skipped?: string; rows?: number; error?: string; partial?: boolean; next?: number; total?: number }
+export type PoolSyncResult = { ok: boolean; skipped?: string; rows?: number; error?: string; partial?: boolean; next?: number; total?: number; marked?: number }
 
 /** 한 풀 한 회차. 절대 throw 하지 않는다 — 결과를 스탬프에 남긴다. */
 export async function syncPoolToSheets(env: Env, pool: SheetPool, trigger: SyncTrigger = 'unknown'): Promise<PoolSyncResult> {
@@ -137,7 +153,7 @@ export async function syncPoolToSheets(env: Env, pool: SheetPool, trigger: SyncT
   if (r.skipped !== 'not_configured') {
     await writeSetting(env, stampKey(pool), JSON.stringify({
       at: new Date().toISOString(), ok: r.ok, rows: r.rows ?? null, partial: !!r.partial, total: r.total ?? null,
-      error: (r.error || '').slice(0, 300) || null, subreq: cost.subreq, trigger,
+      error: (r.error || '').slice(0, 300) || null, subreq: cost.subreq, trigger, marked: r.marked ?? 0,
     }))
   }
   return r
@@ -155,13 +171,13 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
 
   const DB = adsLeadsDb(env)
   cost.subreq += pool === 'company' ? await ensureCompanySchema(DB) : await ensureProspectSchema(DB)
+  cost.subreq += await ensureMarkSchema(DB)
 
-  cost.subreq += 1
-  const saved = parsePoolCursor(await readSetting(env, cursorKey(pool)))
-  let { off, total } = startCursor(saved)
-  let lastId = off === 0 ? 0 : saved.lastId
   const nCols = def.header.length
-  const lastCol = colLetter(nCols)
+  const lastCol = colLetter(nCols) // 마지막 열 = '이메일 보냄'
+  cost.subreq += 1
+  let { off, total, lastId } = cursorForCols(parsePoolCursor(await readSetting(env, cursorKey(pool))), nCols)
+  let marked = 0
 
   if (off === 0) {
     lastId = 0
@@ -170,14 +186,18 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
     if (!cnt) return { ok: false, error: 'READ: 총건수 조회 실패' }
     total = Math.max(0, Number(cnt.n) || 0)
     cost.subreq += 2
-    const tabErr = await ensureTab(token, sheetId, total + 2, nCols)
-    if (tabErr) return { ok: false, error: tabErr }
+    const tabs = await ensureTab(token, sheetId, total + 2, nCols)
+    if (tabs.error) return { ok: false, error: tabs.error }
+    await ensureListTab(token, sheetId, tabs.titles, cost)
     cost.subreq += 1
     const h = await sheetsFetch(token, sheetId, `/values/${encodeURIComponent(`${TAB}!A1`)}?valueInputOption=RAW`, {
       method: 'PUT', body: JSON.stringify({ range: `${TAB}!A1`, majorDimension: 'ROWS', values: [[...def.header]] }),
     }).catch(() => null)
     if (!h?.ok) return { ok: false, error: `HEADER: 시트 접근 실패(${h?.status || 'net'}) — 시트를 ${env.GSHEETS_SA_EMAIL} 에 편집자로 공유했는지 확인` }
   }
+
+  // ✉️ '발송기록' 탭에 붙여넣은 이메일 목록 → 표시(회차당 한 번). 아래 페이지 SELECT 보다 먼저라 이번 회차 그림에 바로 반영된다.
+  marked += (await applyEmailList(DB, token, sheetId, def.table, cost)).marked
 
   const budget = rowsPerRun(pool)
   let wrote = 0
@@ -186,12 +206,14 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
     const room = cycleRoom(off, total)
     if (room <= 0) { done = true; break }
     const take = Math.min(PAGE, budget - wrote, room)
+    // ✉️ 덮어쓰기 **전에** 이 구간의 '이메일 보냄' 표시를 읽어 DB 에 저장한다(줄의 ID 로 찾는다 — 밀려도 안전).
+    marked += await harvestMarks(DB, token, sheetId, def.table, TAB, lastCol, off + 2, take, cost)
     cost.subreq += 1
     const res = await DB.prepare(`SELECT ${def.cols} FROM ${def.table} WHERE ${def.where} AND id > ? ORDER BY id ASC LIMIT ?`)
       .bind(lastId, take).all<Row>().catch(() => null)
     if (!res) {
-      await saveCursor(env, pool, off, total, lastId)
-      return { ok: false, error: `READ: D1 읽기 실패(id>${lastId}) — 다음 회차가 같은 자리부터 다시 합니다`, rows: wrote }
+      await saveCursor(env, pool, off, total, lastId, nCols)
+      return { ok: false, error: `READ: D1 읽기 실패(id>${lastId}) — 다음 회차가 같은 자리부터 다시 합니다`, rows: wrote, marked }
     }
     const page = res.results || []
     if (!page.length) { done = true; break }
@@ -202,8 +224,8 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
       method: 'PUT', body: JSON.stringify({ range, majorDimension: 'ROWS', values: page.map(def.toRow) }),
     }).catch(() => null)
     if (!w?.ok) {
-      await saveCursor(env, pool, off, total, lastId)
-      return { ok: false, error: `WRITE: ${rowNo}행부터 기록 실패(${w?.status || 'net'})`, rows: wrote }
+      await saveCursor(env, pool, off, total, lastId, nCols)
+      return { ok: false, error: `WRITE: ${rowNo}행부터 기록 실패(${w?.status || 'net'})`, rows: wrote, marked }
     }
     off += page.length
     wrote += page.length
@@ -213,24 +235,27 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
 
   if (done) {
     // 사이클 끝 — 지난 바퀴보다 줄어든 꼬리만 지운다(전체 clear 를 안 하므로 시트가 비는 순간이 없다).
+    // 지우기 전에 그 꼬리의 표시도 거둔다(빠진 업체라도 보냈다는 기록은 남긴다).
+    marked += await harvestMarks(DB, token, sheetId, def.table, TAB, lastCol, off + 2, 0, cost)
     cost.subreq += 1
     await sheetsFetch(token, sheetId, `/values/${encodeURIComponent(`${TAB}!A${off + 2}:${lastCol}`)}:clear`, { method: 'POST', body: '{}' }).catch(() => null)
-    await saveCursor(env, pool, 0, off, 0)
-    return { ok: true, rows: off, partial: false, total: off }
+    await saveCursor(env, pool, 0, off, 0, nCols)
+    return { ok: true, rows: off, partial: false, total: off, marked }
   }
-  await saveCursor(env, pool, off, total, lastId)
-  return { ok: true, rows: wrote, partial: true, next: off, total }
+  await saveCursor(env, pool, off, total, lastId, nCols)
+  return { ok: true, rows: wrote, partial: true, next: off, total, marked }
 }
 
-async function saveCursor(env: Env, pool: SheetPool, off: number, total: number, lastId: number): Promise<void> {
-  await writeSetting(env, cursorKey(pool), JSON.stringify({ off, total, lastId, at: new Date().toISOString() }))
+async function saveCursor(env: Env, pool: SheetPool, off: number, total: number, lastId: number, cols: number): Promise<void> {
+  await writeSetting(env, cursorKey(pool), JSON.stringify({ off, total, lastId, cols, at: new Date().toISOString() }))
 }
 
 /** `pool` 탭 보장 + 그리드를 필요한 크기로(작을 때만) 넓힌다. 실패는 문자열로 — 그리드가 작은 채 쓰면 400 만 반복된다. */
-async function ensureTab(token: string, sheetId: string, needRows: number, needCols: number): Promise<string | null> {
+async function ensureTab(token: string, sheetId: string, needRows: number, needCols: number): Promise<{ error: string | null; titles: string[] }> {
   const meta = await sheetsFetch(token, sheetId, '?fields=sheets.properties(sheetId,title,gridProperties)').catch(() => null)
-  if (!meta?.ok) return `META: 시트를 열 수 없습니다(${meta?.status || 'net'}) — 주소와 공유 설정을 확인`
+  if (!meta?.ok) return { error: `META: 시트를 열 수 없습니다(${meta?.status || 'net'}) — 주소와 공유 설정을 확인`, titles: [] }
   const j = await meta.json().catch(() => null) as { sheets?: { properties?: { sheetId?: number; title?: string; gridProperties?: { rowCount?: number; columnCount?: number } } }[] } | null
+  const titles = (j?.sheets || []).map(x => String(x.properties?.title || ''))
   const tab = j?.sheets?.find(x => x.properties?.title === TAB)?.properties
   const req = tab
     ? ((tab.gridProperties?.rowCount || 0) >= needRows && (tab.gridProperties?.columnCount || 0) >= needCols
@@ -240,11 +265,11 @@ async function ensureTab(token: string, sheetId: string, needRows: number, needC
         fields: 'gridProperties.rowCount,gridProperties.columnCount',
       } })
     : { addSheet: { properties: { title: TAB, gridProperties: { rowCount: needRows, columnCount: needCols } } } }
-  if (!req) return null
+  if (!req) return { error: null, titles }
   const r = await sheetsFetch(token, sheetId, ':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: [req] }) }).catch(() => null)
-  if (r?.ok) return null
+  if (r?.ok) return { error: null, titles }
   const body = r ? (await r.text().catch(() => '')).slice(0, 160) : ''
-  return `GRID: 시트 크기 확장 실패(${r?.status || 'net'}) ${body}`
+  return { error: `GRID: 시트 크기 확장 실패(${r?.status || 'net'}) ${body}`, titles }
 }
 
 /** 화면용 상태 — 시트 ID·마지막 회차·진행률. */
