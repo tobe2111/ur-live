@@ -49,6 +49,10 @@ const ALIAS_EXACT: Readonly<Record<string, string>> = {
      `/influencer` 로 옮기고 옛 주소는 301 로 살린다(sitemap·푸터·안내 메일에 뿌려진 링크). 신청서
      `/creators/apply`·`/creators/start` 는 다른 페이지라 그대로다(정확 일치 표라 걸리지 않는다). */
   '/creators': '/influencer',
+  /* 🛍️ 2026-11-04 (대표 *"https://urdeal.kr/browse 지금 쇼핑 페이지가 살아있네? 없애줄 수 있나? 구글에서도 쇼핑 안 떴으면"*) —
+     쇼핑 탭은 2026-06-10 부터 숨김(`SHOPPING_TAB_HIDDEN`)인데 주소는 200 으로 살아 있었고 sitemap 이 제출해 구글 검색결과에
+     '쇼핑' 줄로 떴다. 301 로 이용권 목록에 합친다(밖에 뿌려진 링크는 살리고, 구글은 이 줄을 지우고 정본으로 옮긴다). */
+  '/browse': '/vouchers',
 }
 
 /** `/product/:id` → `/products/:id` (단수/복수 두 URL 이 같은 상품을 가리키던 것). */

@@ -131,6 +131,8 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     //   31자로 색인 가능했다). 전부 `/browse` 로 통합한다.
     //   제목 분화는 종전대로 둔다(같은 이유 — canonical 이 통합하므로 색인 피해가 없다).
     titleParams: ['category'],
+    // 🛍️ 2026-11-04 대표 *"구글에서도 쇼핑 안 떴으면"* — 주소는 `/vouchers` 로 301(consumer-redirects). 표 행은 남기되 색인 대상이 아니다.
+    noindex: true,
   },
   '/map': {
     crumb: '동네딜 지도',

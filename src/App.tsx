@@ -622,7 +622,8 @@ function AppContent() {
             <Route path="/gift/claim/:token" element={<GiftClaimPage />} />
             <Route path="/gift/v/:token" element={<VoucherGiftReceivePage />} />
             <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
-            <Route path="/browse" element={<BrowsePage />} />
+            {/* 🛍️ 2026-11-04 대표 *"쇼핑 페이지가 살아있네? 없애줄 수 있나? 구글에서도 쇼핑 안 떴으면"* — /browse 는 이용권으로. 서버 301 은 consumer-redirects.ts */}
+            <Route path="/browse" element={<Navigate to="/vouchers" replace />} />
             <Route path="/vouchers" element={<VouchersPage />} />
             <Route path="/videos" element={<VideosPage />} />
             <Route path="/urshorts" element={<UrShortsBrowsePage />} />

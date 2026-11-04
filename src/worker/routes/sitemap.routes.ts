@@ -98,7 +98,6 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     //   ⚠️ 문구로 메우는 길은 막혀 있다 — `BrowsePage.tsx` 에 옮길 산문이 **한 줄도 없다**(렌더되는
     //      한글은 `가격대`·`상세보기`·`상품명, 브랜드명`·`상품이 없습니다` 네 라벨뿐).
     //   롤백: 숫자 하나 환원(쇼핑 재개 시).
-    { loc: '/browse', priority: 0.5, changefreq: 'daily' },
     // 🚫 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED) — /live·/shorts 는 sitemap 미노출(폐기 기능 URL 크롤 방지).
     // 🔎 2026-07-28 (네이버 수집 점검): '/search' 제거 — robots.txt 가 `Disallow: /search` 로 막는데
     //   사이트맵이 제출하고 있었음(상호 모순 → 서치어드바이저/서치콘솔 '수집제한' 오류 유발, 사이트맵
