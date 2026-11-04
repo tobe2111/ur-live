@@ -131,7 +131,7 @@ export default function StoreOwnerDashboardPage() {
                   <div className="text-[20px]">📦</div>
                   <div className="text-[12px] font-medium text-gray-700 mt-1">상품 관리</div>
                 </a>
-                <a href="/seller/appointments" className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:bg-gray-50">
+                <a href="/seller/bookings" className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:bg-gray-50">
                   <div className="text-[20px]">📅</div>
                   <div className="text-[12px] font-medium text-gray-700 mt-1">예약 관리</div>
                 </a>

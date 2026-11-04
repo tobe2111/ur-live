@@ -1104,7 +1104,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
             await createDashboardNotification(
               c.env.DB, 'seller', String(sellerRow.seller_id), 'stay_booking_paid',
               '🏡 숙소 예약 확정', `${periodText}${claimed.length > 1 ? ` · ${claimed.length}객실` : ''} · ₩${Number(order.total_amount).toLocaleString('ko-KR')}`,
-              '/seller/stays/bookings',
+              '/seller/bookings?tab=stay',
             ).catch(() => {})
           }
           // 🔔 2026-06-26 (소비자 감사 B): 셀러만 통보되고 소비자는 무통보이던 누락 보강 — 예약자 인앱 알림.

@@ -195,7 +195,7 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
             {/* 🧭 2026-06-10 (재방문 루프 갭): 1탭 복사 재발행 */}
             {/* 🏨 숙소는 재발행·지점 복사가 객실·달력을 못 옮긴다(빈 숙소가 생긴다) — 대신 예약 현황. */}
             {isStay ? (
-              <button type="button" onClick={() => navigate('/seller/stays/bookings')} className={GHOST}><CalendarDays size={13} /> {t('seller.vouchers.stayBookings', { defaultValue: '예약 현황' })}</button>
+              <button type="button" onClick={() => navigate('/seller/bookings?tab=stay')} className={GHOST}><CalendarDays size={13} /> {t('seller.vouchers.stayBookings', { defaultValue: '예약 현황' })}</button>
             ) : (<>
             <button type="button" onClick={() => navigate(`/seller/meal-voucher/new?copyFrom=${v.id}`)} className={GHOST}><RefreshCw size={13} /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}</button>
             <button type="button" onClick={() => setCopying(true)} className={GHOST}><CopyPlus size={13} /> {t('seller.vouchers.copyToBranches', { defaultValue: '다른 지점에 복사' })}</button>

@@ -12,6 +12,13 @@ import { PeopleIcon, CouponIcon } from '@/components/icons/urdeal-icons'
 import GuestIdentityFields, { type GuestIdentity } from './GuestIdentityFields'
 import type { StayDetail, AvailRoom } from './stay-detail-types'
 
+// 🎬 2026-11-04 (대표 "모션그래픽들 … 숙소 이용권에도 다 적용" → "응 다 해줘"): 이용권 구매 창(`DealBottomBar`)과 **같은 움직임** —
+//   창이 열리면 줄이 차례로 올라오고(`ur-buy-row`, `--i` 순서) 결제 금액이 한 번 톡 튄다(`ur-buy-save`). 같은 id·같은 CSS 라
+//   어느 쪽이 먼저 불려도 한 벌만 꽂힌다. 움직임 줄이기 설정이면 꺼진다.
+const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) }
+injectMotionCss('ur-m-buysheet', `@keyframes ur-buy-row { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }@keyframes ur-buy-pop { 0% { transform: scale(.7); } 60% { transform: scale(1.12); } 100% { transform: none; } }.ur-buy-row { animation: ur-buy-row .3s cubic-bezier(.2,1,.3,1) backwards; animation-delay: calc(80ms + var(--i, 0) * 45ms); }.ur-buy-save { animation: ur-buy-pop .4s cubic-bezier(.3,1.3,.5,1) backwards; }@media (prefers-reduced-motion: reduce){.ur-buy-row,.ur-buy-save{animation:none!important}}`)
+const row = (i: number) => ({ className: 'ur-buy-row', style: { '--i': i } as React.CSSProperties })
+
 export function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode, voucherType, voucherNights, referrerId, onClose }: {
   stay: StayDetail; room: AvailRoom; checkIn: string; checkOut: string; guests: number; nights: number;
   saleMode: 'date' | 'voucher'; voucherType: 'weekday' | 'weekend'; voucherNights: number; referrerId: string;
@@ -77,7 +84,7 @@ export function BookingModal({ stay, room, checkIn, checkOut, guests, nights, sa
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{(stay.restaurant_name || stay.name)} · {room.name}</p>
         </div>
         <div className="p-5 space-y-3">
-          <div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 text-[12px]">
+          <div {...row(0)}><div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 text-[12px]">
             {saleMode === 'date' ? (
               <p className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">기간</span><span className="font-medium">{checkIn} → {checkOut} ({nights}박)</span></p>
             ) : (
@@ -87,24 +94,20 @@ export function BookingModal({ stay, room, checkIn, checkOut, guests, nights, sa
               </>
             )}
             <p className="flex justify-between mt-1"><span className="text-gray-500 dark:text-gray-400">인원</span><span className="font-medium">{guests}명</span></p>
-            {referrerId && (room.discount_pct || 0) > 0 && (
-              <>
-                <p className="flex justify-between mt-1"><span className="text-gray-500 dark:text-gray-400">정가</span><span className="line-through text-gray-400 dark:text-gray-500">₩{formatNumber(room.total_price)}</span></p>
-                <p className="flex justify-between mt-1"><span className="text-brand-text ">추천 할인 -{room.discount_pct}%</span><span className="font-medium text-brand-text ">-₩{formatNumber(room.total_price - (room.discounted_price || room.total_price))}</span></p>
-              </>
-            )}
-            <p className="flex justify-between mt-2 pt-2 border-t border-gray-200 dark:border-white/10"><span className="text-gray-500 dark:text-gray-400">총 결제 금액</span><span className="font-bold text-brand ">₩{formatNumber(room.discounted_price || room.total_price)}</span></p>
-          </div>
+            {/* 🗑️ 2026-11-04 옛 '추천 할인 -N%' 줄 제거 — 소개 적립 통일(11-03) 뒤 예약 생성은 옛 객실 할인을 언제나 건너뛰고
+                **객실 총액**을 받는다. 할인가를 보여 주면 결제 금액과 다르다(이용권 상세·숙소 배너도 같은 이유로 걷었다). */}
+            <p className="flex justify-between mt-2 pt-2 border-t border-gray-200 dark:border-white/10"><span className="text-gray-500 dark:text-gray-400">총 결제 금액</span><span className="ur-buy-save font-bold text-brand ">₩{formatNumber(room.total_price)}</span></p>
+          </div></div>
           {/* 🧍 아는 것은 묻지 않는다 — 사유·규칙은 `./stay-detail/GuestIdentityFields` 머리주석. */}
-          <GuestIdentityFields
+          <div {...row(1)}><GuestIdentityFields
             value={{ guest_name: form.guest_name, guest_phone: form.guest_phone, guest_email: form.guest_email }}
             onChange={(g: GuestIdentity) => setForm({ ...form, ...g })}
-          />
-          <div>
+          /></div>
+          <div {...row(2)}>
             <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">특이 요청</label>
             <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 늦은 체크인 / 유아 침구 요청" className="w-full px-3 py-2 bg-surface border border-rule-strong rounded-lg text-[15px] text-gray-900 dark:text-white resize-none" />
           </div>
-          <div className="flex gap-2">
+          <div className="ur-buy-row flex gap-2" style={{ '--i': 3 } as React.CSSProperties}>
             <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-white text-[15px] font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.1] disabled:opacity-50">취소</button>
             <button onClick={submit} disabled={submitting} className="flex-1 py-3 bg-brand text-white text-[15px] font-bold rounded-lg hover:bg-brand-dark disabled:opacity-50">
               {submitting ? '예약 중...' : '결제로 →'}
@@ -204,7 +207,7 @@ export function MultiBookingModal({
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{stay.restaurant_name || stay.name}</p>
         </div>
         <div className="p-5 space-y-3">
-          <div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 text-[12px] space-y-2">
+          <div {...row(0)}><div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 text-[12px] space-y-2">
             {cartEntries.map(({ room, qty }) => (
               <div key={room.room_id} className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-300">{room.name} × {qty}</span>
@@ -212,21 +215,21 @@ export function MultiBookingModal({
               </div>
             ))}
             <div className="border-t border-gray-200 dark:border-white/10 mt-2 pt-2 flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">총 금액 (할인 전)</span>
-              <span className="font-bold text-brand ">₩{formatNumber(cartSubtotal)}</span>
+              <span className="text-gray-500 dark:text-gray-400">총 결제 금액</span>{/* 🗑️ '할인 전' 표기 제거 — 옛 소개 할인은 통일 뒤 언제나 0 */}
+              <span className="ur-buy-save font-bold text-brand ">₩{formatNumber(cartSubtotal)}</span>
             </div>
             {saleMode === 'date' ? (
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">기간: {checkIn} → {checkOut} ({nights}박)</p>
             ) : (
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">숙소 이용권 {voucherType === 'weekday' ? '평일권' : '주말권'} × {voucherNights}박</p>
             )}
-          </div>
+          </div></div>
           {/* 🧍 아는 것은 묻지 않는다 — 사유·규칙은 `./stay-detail/GuestIdentityFields` 머리주석. */}
-          <GuestIdentityFields nameLabel="대표 예약자 이름"
+          <div {...row(1)}><GuestIdentityFields nameLabel="대표 예약자 이름"
             value={{ guest_name: form.guest_name, guest_phone: form.guest_phone, guest_email: form.guest_email }}
             onChange={(g: GuestIdentity) => setForm({ ...form, ...g })}
-          />
-          <div>
+          /></div>
+          <div {...row(2)}>
             <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">특이 요청 (전체 객실 공통)</label>
             <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 인접 객실 배정 요청" className="w-full px-3 py-2 bg-surface border border-rule-strong rounded-lg text-[15px] text-gray-900 dark:text-white resize-none" />
           </div>
@@ -235,7 +238,7 @@ export function MultiBookingModal({
               애초에 같은 상품·같은 기간으로만 담기므로(위 요약 카드가 기간을 이미 보여 준다) 그 문장은
               **사실을 새로 알려 주지도 않았다.** 인원 자동 분배도 마찬가지 — 객실별 최대 인원은 고를 때
               이미 정해졌다. ⚠️ 되살릴 거면 사용자 말로 쓸 것(예: "선택한 기간으로 함께 예약됩니다"). */}
-          <div className="flex gap-2">
+          <div className="ur-buy-row flex gap-2" style={{ '--i': 3 } as React.CSSProperties}>
             <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-white text-[15px] font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.1] disabled:opacity-50">취소</button>
             <button onClick={submit} disabled={submitting} className="flex-1 py-3 bg-brand text-white text-[15px] font-bold rounded-lg hover:bg-brand-dark disabled:opacity-50">
               {submitting ? '예약 중...' : `결제로 → ₩${formatNumber(cartSubtotal)}`}

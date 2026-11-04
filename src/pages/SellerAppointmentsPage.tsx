@@ -9,6 +9,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
+import { EmbeddedFrame } from './seller-bookings/EmbeddedFrame'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { CalendarCheck, CheckCircle, XCircle, Phone } from 'lucide-react'
@@ -36,7 +37,9 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   completed: { label: '이용 완료', cls: 'bg-tone-info-bg text-tone-info' },
 }
 
-export default function SellerAppointmentsPage() {
+export default function SellerAppointmentsPage({ embedded = false }: { embedded?: boolean } = {}) {
+  // 🗓️ 2026-11-04 (대표 "합쳐"): 사장님 예약 화면 하나(`SellerBookingsPage`)에 들어갈 때는 바깥 틀을 그 화면이 한 번만 그린다.
+  const Frame = embedded ? EmbeddedFrame : SellerLayout
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'all' | 'confirmed' | 'completed' | 'no_show' | 'cancelled'>('confirmed')
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (filter별 캐시).
@@ -70,7 +73,7 @@ export default function SellerAppointmentsPage() {
   }
 
   return (
-    <SellerLayout title="예약 관리">
+    <Frame title="예약 관리">
       <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           icon={<CalendarCheck className="h-5 w-5" />}
@@ -189,6 +192,6 @@ export default function SellerAppointmentsPage() {
           )}
         </div>
       </div>
-    </SellerLayout>
+    </Frame>
   )
 }

@@ -11,6 +11,7 @@ import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
+import { EmbeddedFrame } from './seller-bookings/EmbeddedFrame'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Building2, TrendingUp, Calendar, Users, AlertTriangle, CheckCircle, XCircle, LogIn, LogOut as LogOutIcon, Phone } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
@@ -71,7 +72,9 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   dispute: { label: '분쟁 중', color: 'bg-tone-warn-bg text-tone-warn' },
 }
 
-export default function SellerStaysBookingsPage() {
+export default function SellerStaysBookingsPage({ embedded = false }: { embedded?: boolean } = {}) {
+  // 🗓️ 2026-11-04 (대표 "합쳐"): 사장님 예약 화면 하나(`SellerBookingsPage`)에 들어갈 때는 바깥 틀을 그 화면이 한 번만 그린다.
+  const Frame = embedded ? EmbeddedFrame : SellerLayout
   const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState('')
   const [days, setDays] = useState(30)
@@ -128,7 +131,7 @@ export default function SellerStaysBookingsPage() {
   }
 
   return (
-    <SellerLayout title="숙소 예약 관리">
+    <Frame title="숙소 예약 관리">
       <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           title="숙소 예약 관리"
@@ -318,7 +321,7 @@ export default function SellerStaysBookingsPage() {
           </div>
         )}
       </div>
-    </SellerLayout>
+    </Frame>
   )
 }
 
