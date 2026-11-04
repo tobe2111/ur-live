@@ -29,7 +29,7 @@ import { describe, it, expect } from 'vitest'
 import { readCode, readRaw } from '../helpers/source-text'
 import { buildStayDetailFirstScreen } from '@/worker/utils/stay-detail-ssr-body'
 import { stayNoscriptFromPayload } from '@/worker/utils/crawler-noscript'
-import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID } from '@/shared/stay-head'
+import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID, staySubLine } from '@/shared/stay-head'
 import { STAY_PROPERTY_TYPE_LABELS, propertyTypeLabel } from '@/shared/stay-property-type'
 import { DETAIL_HERO_MOBILE_WIDTH, detailHeroMobileUrl } from '@/shared/detail-hero-image'
 import { DETAIL_CRUMB_ITEM_CLASS, DETAIL_CRUMB_LINK_CLASS, DETAIL_CRUMB_CURRENT_CLASS } from '@/worker/utils/detail-ssr-body'
@@ -81,30 +81,33 @@ describe('🖼️ ① 히어로 — 화면이 실제로 그리는 것과 같은 
   })
 })
 
-describe('🏷️ ② 성급 줄 + 제목 — 경계는 h1 까지', () => {
-  it('🔴 성급이 없어도 **그 div 는 그린다** (`mb-1` 4px — 라이브 49건 중 37건이 이 경우다)', () => {
-    const html = buildStayDetailFirstScreen(seed(), LOADER)
+describe('🏷️ ② [유형 · 성급 · 지역] 줄 + 제목 — 경계는 h1 까지 (2026-11-04 이용권 머리와 통일)', () => {
+  it('🔴 값이 하나도 없어도 **그 div 는 그린다** (`mb-1` 4px — 화면 `StayHeadCard` 도 그린다)', () => {
+    const html = buildStayDetailFirstScreen(seed({ property_type: null, address: null, region_sido: null, region_sigungu: null }), LOADER)
     expect(html).toContain(`<div class="${STAY_HEAD.metaRow}"></div>`)
     expect(STAY_HEAD.metaRow, '4px 를 만드는 것이 이 클래스다').toContain('mb-1')
   })
 
-  it('성급이 있으면 `N성급`', () => {
+  it('[유형 · 성급 · 지역] — 화면과 **같은 함수**(`staySubLine`), 지역은 주소가 이긴다', () => {
+    expect(staySubLine({ property_type: 'hotel', star_rating: 4, address: '강원특별자치도 양양군 강현면', region_sido: '강원', region_sigungu: '속초시' }))
+      .toBe('호텔 · 4성급 · 양양군')
     expect(buildStayDetailFirstScreen(seed({ star_rating: 4 }), LOADER))
-      .toContain(`<div class="${STAY_HEAD.metaRow}"><span>4성급</span></div>`)
+      .toContain(`<div class="${STAY_HEAD.metaRow}">글램핑 · 4성급 · 양양군</div>`)
+    expect(readCode('src/pages/stay-detail/StayHeadCard.tsx')).toContain('<div className={STAY_HEAD.metaRow}>{staySubLine(stay)}</div>')
   })
 
   it('제목은 `restaurant_name` 우선 — 화면과 같은 규칙', () => {
-    expect(readCode('src/pages/StayDetailPage.tsx')).toContain('{stay.restaurant_name || stay.name}')
+    expect(readCode('src/pages/StayDetailPage.tsx')).toContain('name={stay.restaurant_name || stay.name}')
     const html = buildStayDetailFirstScreen(seed(), LOADER)
     expect(html).toContain(`<h1 class="${STAY_HEAD.h1}">그랑블루글램핑&amp;펜션</h1>`)
   })
 
-  it('🔴 h1 **아래**는 안 그린다 — 주소·평점은 SVG 아이콘을 품는다(두 벌이 갈리는 클래스)', () => {
+  it('🔴 h1 **아래**는 안 그린다 — 별점·가격은 나중에 와서 아래에 붙는다', () => {
     const html = buildStayDetailFirstScreen(seed(), LOADER)
     const body = html.slice(0, html.indexOf('<noscript'))
-    expect(body, '주소를 그리면 PinIcon path 를 손으로 옮기게 된다').not.toContain('양양군')
+    expect(body, '주소 원문 줄을 그리기 시작했다').not.toContain('강원특별자치도')
     expect(body).not.toContain('<svg')
-    expect(body).not.toMatch(/개 리뷰/)
+    expect(body).not.toMatch(/개 리뷰|원~/)
   })
 })
 
@@ -115,8 +118,9 @@ describe('📐 ③ 치수는 SSOT 에서만 — 손으로 적은 클래스 0', (
       expect(page, `${k} 를 손으로 다시 적으면 갈린다`).toContain(`className={${k}}`)
       expect(v.length).toBeGreaterThan(10)
     }
+    const head = readCode('src/pages/stay-detail/StayHeadCard.tsx') // 🏨 2026-11-04 폰 머리는 이 부품으로 옮겼다
     for (const k of ['shell', 'heroWrap', 'titleBlock', 'metaRow', 'h1'] as const) {
-      expect(page, `STAY_HEAD.${k} 배선이 사라졌다`).toContain(`STAY_HEAD.${k}`)
+      expect(page + head, `STAY_HEAD.${k} 배선이 사라졌다`).toContain(`STAY_HEAD.${k}`)
     }
     // 치수 클래스가 빌더 출력에 실제로 실린다(상수만 있고 안 쓰면 아무 일도 안 한다).
     const html = buildStayDetailFirstScreen(seed(), LOADER)

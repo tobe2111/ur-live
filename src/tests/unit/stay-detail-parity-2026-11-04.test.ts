@@ -17,3 +17,17 @@ describe('숙소 상세 기록', () => {
     expect(ret).toContain("invalidateVouchers(); reportFunnel('success')")
   })
 })
+describe('숙소 폰 머리 = 이용권 폰 머리 (대표 "왜 서로 다른거야" → "합쳐줘")', () => {
+  const head = readFileSync('src/pages/stay-detail/StayHeadCard.tsx', 'utf-8')
+  it('[유형 · 성급 · 지역] → 제목 → 별점 → 가격, 이용권과 같은 순서', () => {
+    const order = ['staySubLine(stay)', 'STAY_HEAD.h1', '<StarRating', 'formatNumber(minPrice)']
+    const at = order.map((k) => head.indexOf(k))
+    expect(at.every((n) => n > 0), `빠진 줄: ${order.filter((_, i) => at[i] < 0).join(', ')}`).toBe(true)
+    expect([...at].sort((a, b) => a - b)).toEqual(at)
+    expect(page).toContain('<StayHeadCard stay={stay}')
+  })
+  it('폰 머리에 주소 원문 줄이 다시 서지 않는다 — 아래 위치 구역이 같은 말을 한다(이용권과 같다)', () => {
+    expect(head).not.toContain('PinIcon')
+    expect(page).not.toContain('<PinIcon')
+  })
+})

@@ -28,8 +28,9 @@ export default [
   {
     name: '📍 상세가 SSOT 를 안 거치고 직접 이어 붙인다',
     file: STAY,
-    find: '<span>{stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}</span>',
-    replace: '<span>{stay.region_sido} {stay.region_sigungu} · {stay.address}</span>',
+    // 🏨 2026-11-04: 폰 머리의 주소 줄은 걷혔다(이용권 머리와 통일) — 남은 사용처는 PC 제목 헤더.
+    find: 'address={stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}',
+    replace: 'address={`${stay.region_sido} ${stay.region_sigungu} · ${stay.address}`}',
     test: TEST,
     why: '판정을 화면마다 손으로 다시 쓰면 한 곳만 고쳐지고 카드와 상세가 다른 지역을 말한다.',
   },
