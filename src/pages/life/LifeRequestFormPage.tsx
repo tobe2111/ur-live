@@ -226,7 +226,7 @@ export default function LifeRequestFormPage() {
       <div className="ur-content-narrow space-y-5 px-5 pb-10">
         <h2 className="text-[20px] font-semibold leading-snug tracking-tight">이대로 견적을 받을까요?</h2>
         {recruiting}
-        <div className="divide-y divide-rule rounded-2xl px-5">
+        <div className="divide-y divide-rule rounded-2xl">
           {def.fields.map((f, i) => {
             const v = shown(f, values)
             return (

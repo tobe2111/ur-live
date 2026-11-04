@@ -48,7 +48,7 @@ const ICON_ROW_MAX = 5
 
 interface VoucherItem { id: number; name: string; price?: number; restaurant_name?: string }
 
-const CARD = 'rounded-2xl px-5 py-5'
+const CARD = 'rounded-2xl py-5' // 📏 2026-11-04 대표 *"양쪽 공백 왜 이렇게"* — 판이 평면이라 안쪽 px-5 가 바깥 px-5 와 겹쳐 40px 이었다. 가장자리는 바깥 하나(20)만.
 
 function IconRow({ keys }: { keys: readonly HomeServiceCategory[] }) {
   const [more, setMore] = useState(false)
@@ -133,7 +133,7 @@ export default function LifePage() {
         ))}
 
         {recruiting && (
-          <p className="rounded-2xl px-4 py-3 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
+          <p className="rounded-2xl py-3 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
             아직 업체를 모으는 일도 요청은 받아요. 업체가 들어오는 대로 보내 드려요.
           </p>
         )}

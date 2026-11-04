@@ -20,7 +20,7 @@ export default function LifeHero({ groups, open, live }: { groups: readonly Life
   const [picking, setPicking] = useState(false)
   const line = lifeLiveLine(live, Date.now())
   return (
-    <section aria-label="사장님 생활 견적" data-testid="life-hero" className="px-5 pt-1 pb-2">
+    <section aria-label="사장님 생활 견적" data-testid="life-hero" className="pt-1 pb-2">
       <div className="flex items-center justify-between gap-3">
         <span className="text-[13px] font-medium text-brand-text">사장님 생활 견적 서비스</span>
         <Link to="/life/requests" className="flex shrink-0 items-center text-[13px] font-medium text-ink active:opacity-70">

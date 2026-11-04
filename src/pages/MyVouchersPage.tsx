@@ -11,7 +11,6 @@ import SEO from '@/components/SEO'
 import { ArrowLeft, QrCode } from 'lucide-react'
 import { useMyVouchers } from '@/hooks/queries'
 import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
-import WalletSummaryCard from './my-vouchers/WalletSummaryCard'
 import { formatNumber } from '@/utils/format'
 import WalletRecommend from './my-vouchers/WalletRecommend'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
@@ -138,7 +137,6 @@ export default function MyVouchersPage() {
   //   지갑 = 자산. 상단 '보유 이용권 금액' 히어로 — 보유 금액(사용 가능분 합) + 아낀 돈.
   // 🐛 2026-06-21 fix: /vouchers/my 는 product_price 를 안 줘서 (원가-액면)=항상 0 → '아낀 돈' 영구 미표시였음.
   //   applied_price 는 '결제한(할인된) 단가', applied_discount_pct 는 할인율 → 원가 대비 절약 = 액면 * pct/(100-pct).
-  const heroTotal = unusedItems.reduce((s, v) => s + (v.applied_price ?? v.product_price ?? 0), 0)
   // 🪙 2026-08-31: 이 지갑은 이용권 전용이라 단위는 항상 '원'(교환권의 '딜' 단위는 /my-gifticons 가 담당).
   const ownedProductIds = useMemo(() => new Set(shownVouchers.map(v => v.product_id).filter((x): x is number => x != null)), [shownVouchers])
 
@@ -317,7 +315,7 @@ export default function MyVouchersPage() {
               )
             )}
             {/* 🧾 합계 판 — 종전 맨 위 요약 카드가 목록 아래로 내려왔다(장수는 목록 판 머리가 말한다). */}
-            {tab === 'unused' && unusedItems.length > 0 && <WalletSummaryCard total={heroTotal} t={t} />}
+            {/* 🧾 2026-11-04 대표 *"쓸 수 있는 이용권 합계 없애줘"* — 목록 아래 합계 판을 뺐다. 장수는 목록 판 머리가 말한다. */}
             {/* 🎫 안 B 아래쪽 — 남는 자리를 다음에 살 것으로(홈 피드와 같은 요청 · 가진 상품은 뺀다). */}
             {tab === 'unused' && <WalletRecommend ownedProductIds={ownedProductIds} t={t} />}
           </>
