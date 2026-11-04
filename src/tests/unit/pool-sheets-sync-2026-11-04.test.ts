@@ -13,7 +13,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { parseSheetId, colLetter, parsePoolCursor, POOL_DEFS, SHEET_POOLS, rowsPerRun } from '@/features/marketing/api/pool-sheets-sync'
+import { parseSheetId, colLetter, parsePoolCursor, cursorForCols, POOL_DEFS, SHEET_POOLS, rowsPerRun } from '@/features/marketing/api/pool-sheets-sync'
+import { idsWithMark, normalizeEmailList, markSql, sentDayKST, MARK_DDL } from '@/features/marketing/api/pool-sheets-marks'
 
 const SRC = readFileSync('src/features/marketing/api/pool-sheets-sync.ts', 'utf8')
 
@@ -56,9 +57,9 @@ describe('파트너·매장후보 풀 구글시트 미러', () => {
   })
 
   it('커서 — off 0 이면 lastId 도 0(새 사이클), 깨진 값은 처음부터', () => {
-    expect(parsePoolCursor('{"off":0,"total":5,"lastId":99}')).toEqual({ off: 0, total: 5, lastId: 0 })
-    expect(parsePoolCursor('{"off":10,"total":50,"lastId":99}')).toEqual({ off: 10, total: 50, lastId: 99 })
-    expect(parsePoolCursor('garbage')).toEqual({ off: 0, total: 0, lastId: 0 })
+    expect(parsePoolCursor('{"off":0,"total":5,"lastId":99}')).toEqual({ off: 0, total: 5, lastId: 0, cols: 0 })
+    expect(parsePoolCursor('{"off":10,"total":50,"lastId":99,"cols":19}')).toEqual({ off: 10, total: 50, lastId: 99, cols: 19 })
+    expect(parsePoolCursor('garbage')).toEqual({ off: 0, total: 0, lastId: 0, cols: 0 })
   })
 
   it('회차당 무게 = 인플루언서 미러(12,000행 × 30열)와 같은 셀 수', () => {
@@ -79,5 +80,61 @@ describe('파트너·매장후보 풀 구글시트 미러', () => {
     const { pauseExempt } = await import('@/worker-ads/lane-pause')
     expect(pauseExempt('/__ads/pool-sheets-status')).toBe(true)
     expect(pauseExempt('/__ads/pool-sheets-sync'), '실행은 예산을 따라야 한다').toBe(false)
+  })
+
+  describe('✉️ 이메일 보냄 표시 (방법 2)', () => {
+    it('마지막 열이 이메일 보냄이고 DB email_sent_at 에서 그린다', () => {
+      for (const p of SHEET_POOLS) {
+        const d = POOL_DEFS[p]
+        expect(d.header[d.header.length - 1]).toBe('이메일 보냄')
+        expect(d.cols.trim().endsWith('email_sent_at')).toBe(true)
+        expect(d.toRow({ id: 1, email_sent_at: '2026-11-04 16:00:00' }).at(-1)).toBe('2026-11-05') // UTC 16시 = KST 다음날 01시
+      }
+    })
+    it('표시는 줄의 ID 로 찾는다 — 빈 표시·숫자 아닌 ID 는 버린다', () => {
+      expect(idsWithMark([[11], [12], ['ID'], [14]], [['o'], [''], ['o'], [' 보냄 ']])).toEqual([11, 14])
+      expect(idsWithMark([[1], [2]], undefined)).toEqual([])
+      expect(idsWithMark([[5]], [[]])).toEqual([])
+    })
+    it('붙여넣은 이메일 목록 정규화 — mailto·꺾쇠·여러 개 한 칸·중복', () => {
+      const l = normalizeEmailList([['Mailto:A@B.com'], ['<c@d.kr>, e@f.io'], ['not-email'], ['a@b.com']])
+      expect(l).toEqual(expect.arrayContaining(['A@B.com', 'a@b.com', 'c@d.kr', 'e@f.io']))
+      expect(l).not.toContain('not-email')
+      expect(new Set(l).size).toBe(l.length)
+    })
+    it('저장은 한 방향 · 처음 표시만 · 새 리드는 연락함으로', () => {
+      for (const t of ['ad_company_leads', 'store_prospects']) {
+        for (const m of ['id', 'email'] as const) {
+          const sql = markSql(t, m)
+          expect(sql).toMatch(/AND email_sent_at IS NULL/)
+          expect(sql).toMatch(/CASE WHEN status = 'new' THEN 'contacted' ELSE status END/)
+          expect(sql).toMatch(/json_each\(\?\)/)
+          expect(sql).not.toMatch(/email_sent_at = NULL/)
+        }
+      }
+      expect(markSql('ad_company_leads', 'id')).toMatch(/contacted_at = COALESCE/)
+      expect(markSql('store_prospects', 'id')).not.toMatch(/contacted_at/) // 매장후보엔 그 컬럼이 없다
+    })
+    it('이메일 매칭은 부분 인덱스로(전수 스캔 금지)', () => {
+      expect(MARK_DDL.join('\n')).toMatch(/ON ad_company_leads\(email\) WHERE email IS NOT NULL/)
+      expect(MARK_DDL.join('\n')).toMatch(/ON store_prospects\(email\) WHERE email IS NOT NULL/)
+    })
+    it('열 수가 바뀌면 사이클을 처음부터(그리드 밖 쓰기 방지)', () => {
+      expect(cursorForCols({ off: 20000, total: 84000, lastId: 900, cols: 18 }, 19)).toEqual({ off: 0, total: 0, lastId: 0 })
+      expect(cursorForCols({ off: 20000, total: 84000, lastId: 900, cols: 0 }, 19)).toEqual({ off: 0, total: 0, lastId: 0 })
+      expect(cursorForCols({ off: 20000, total: 84000, lastId: 900, cols: 19 }, 19)).toEqual({ off: 20000, total: 84000, lastId: 900 })
+    })
+    it('덮어쓰기 전에 표시를 거둔다 — harvest 가 쓰기 PUT 보다 앞', () => {
+      const src = SRC.slice(SRC.indexOf('while (wrote < budget)'))
+      expect(src.indexOf('harvestMarks(')).toBeGreaterThan(0)
+      expect(src.indexOf('harvestMarks(')).toBeLessThan(src.indexOf("method: 'PUT'"))
+      // 꼬리 지우기 전에도 거둔다
+      const tail = SRC.slice(SRC.indexOf('if (done) {'))
+      expect(tail.indexOf('harvestMarks(')).toBeLessThan(tail.indexOf(':clear'))
+    })
+    it('KST 날짜 변환', () => {
+      expect(sentDayKST('')).toBe('')
+      expect(sentDayKST('2026-11-04 03:00:00')).toBe('2026-11-04')
+    })
   })
 })
