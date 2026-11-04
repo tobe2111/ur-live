@@ -7,7 +7,7 @@
  *    네이버·유튜브 키가 없어** 첫 회차가 아무것도 못 가져왔다(키는 Pages 와 ur-ads 에만 있다).
  *
  * 한 회차가 하는 일
- *   ① (하루 한 번) 판매 중 **이용권**(교환권 제외 — 가게가 없다)에서 가게 목록을 `store_content_crawl` 로 옮긴다.
+ *   ① (6시간마다) 판매 중 **이용권**(교환권 제외 — 가게가 없다)에서 가게 목록을 `store_content_crawl` 로 옮긴다.
  *   ② 가장 오래 안 찾은 가게 6곳 → 네이버 블로그 검색 **두 번**(관련도순 · 최신순, 각 30건 — 하루 무료 25,000회의 1~2%)
  *      → 제목·요약에 **가게 이름이 그대로 들어간 글만**. 그중 **이름 + 동네가 둘 다 있는 글은 바로 보이고**
  *      (`confidentMatch`), 이름만 맞는 글은 후보로 남는다. 새 글 2개까지 글 페이지를 읽어 대표 사진·창 허락 여부를 적는다.
@@ -50,7 +50,9 @@ async function writeSetting(DB: D1Database, key: string, value: string): Promise
 
 /** ① 가게 목록 동기화 — 하루 한 번. */
 async function syncStores(DB: D1Database, now: number): Promise<number> {
-  const today = kstDay(now)
+  // 6시간 칸마다 한 번 — 새로 만든 데모·이용권이 다음 날까지 기다리지 않게(2026-11-04 대표 *"앞으로 데모 이용권을 만들어도"*).
+  //   안 찾아 본 가게(naver_at NULL)는 커서 정렬상 **맨 앞**이라 들어온 다음 회차에 바로 검색된다.
+  const today = `${kstDay(now)}#${Math.floor(Number(new Date(now).toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false })) / 6)}`
   if ((await readSetting(DB, SYNC_KEY)) === today) return 0
   // 이용권만(deal_only=0) — 교환권(기프티콘·KT)은 가게가 없다. 가게 = 이름 + 동네(`storeKeyFor`), 사장님 계정은 없어도 된다.
   const { results } = await DB.prepare(`
