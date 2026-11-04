@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom'
 import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
 import { cleanSido, buildRegionParam } from './admin-dongnedeal/region-util'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 // 🧭 2026-06-17 (대표 요청 — 동네딜 채우기): 어드민 동네딜(오프라인 공동구매) 상품 CSV 일괄 등록 + 데모 시드.
 //   백엔드 /api/admin/dongnedeal/{stats,seed-demo,bulk-import} — 즉시 노출(is_active=1, group_buy_status='active').
@@ -349,7 +350,7 @@ export default function AdminDongnedealImportPage() {
                 )}
                 {/* 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차"): 소비자 홈과 동일 SSOT(KOREA_REGIONS).
                     1차 시/도 → 2차 동네그룹. 선택값을 카카오 지오코딩 → 그 동네 실매장 매칭. */}
-                <select
+                <Select
                   value={seedSido}
                   onChange={(e) => { setSeedSido(e.target.value); setSeedDistrict('') }}
                   className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
@@ -359,8 +360,8 @@ export default function AdminDongnedealImportPage() {
                   {KOREA_REGIONS.map((r) => (
                     <option key={r.key} value={r.key}>{r.label.replace(/\n/g, ' ')}</option>
                   ))}
-                </select>
-                <select
+                </Select>
+                <Select
                   value={seedDistrict}
                   onChange={(e) => setSeedDistrict(e.target.value)}
                   disabled={!sidoRegion || sidoRegion.districtGroups.length === 0}
@@ -371,8 +372,8 @@ export default function AdminDongnedealImportPage() {
                   {sidoRegion?.districtGroups.map((g) => (
                     <option key={g.key} value={g.key}>{g.label}</option>
                   ))}
-                </select>
-                <select
+                </Select>
+                <Select
                   value={seedCategory}
                   onChange={(e) => setSeedCategory(e.target.value)}
                   className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
@@ -386,9 +387,9 @@ export default function AdminDongnedealImportPage() {
                       객실·좌표 포함 생성형)로 분기 — seedDemo() 가 카테고리 보고 라우팅. */}
                   <option value="stay_voucher">숙소</option>
                   <option value="general">일반 상품</option>
-                </select>
+                </Select>
                 {/* 🏷️ 데모 유형 — 실상품형(리뷰 포함) vs 오픈 예정형(사전 응모, 리뷰 없음) */}
-                <select
+                <Select
                   value={seedMode}
                   onChange={(e) => setSeedMode(e.target.value as 'live' | 'prelaunch')}
                   className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
@@ -396,8 +397,8 @@ export default function AdminDongnedealImportPage() {
                 >
                   <option value="live">실상품형</option>
                   <option value="prelaunch">오픈 예정형</option>
-                </select>
-                <select
+                </Select>
+                <Select
                   value={seedCount}
                   onChange={(e) => setSeedCount(Number(e.target.value))}
                   className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
@@ -406,9 +407,9 @@ export default function AdminDongnedealImportPage() {
                   <option value={8}>8개</option>
                   <option value={16}>16개</option>
                   <option value={24}>24개</option>
-                </select>
+                </Select>
                 {/* 🎛️ 추첨 마감 + 표시 지원자 수 범위 (데모 시드 옵션) */}
-                <select
+                <Select
                   value={seedFcfsDays}
                   onChange={(e) => setSeedFcfsDays(Number(e.target.value))}
                   className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
@@ -418,7 +419,7 @@ export default function AdminDongnedealImportPage() {
                   <option value={7}>마감 7일</option>
                   <option value={14}>마감 14일</option>
                   <option value={30}>마감 30일</option>
-                </select>
+                </Select>
                 <input value={seedApplicantsMin} onChange={(e) => setSeedApplicantsMin(e.target.value.replace(/\D/g, ''))} placeholder="지원자↓" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최소(비우면 기본)" />
                 <input value={seedApplicantsMax} onChange={(e) => setSeedApplicantsMax(e.target.value.replace(/\D/g, ''))} placeholder="지원자↑" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최대" />
                 <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">{cleaning ? '생성 중…' : '데모 채우기'}</button>

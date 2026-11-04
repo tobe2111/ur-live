@@ -31,6 +31,7 @@ import { LeadNameCell } from './influencer-pool/LeadNameCell'
 import PoolFilters from './influencer-pool/PoolFilters'
 import PoolStatCards from './influencer-pool/PoolStatCards'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 import AutoRunLog from './influencer-pool/AutoRunLog' // 🕒 '자동으로 도는가'를 한 표로 — 그 파일 헤더 참조
 /**
  * 🎯 2026-07-20 유어애즈 인플루언서 공용 풀 (/admin/influencer-pool).
@@ -547,13 +548,13 @@ export default function AdminInfluencerPoolPage() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <select value={l.status} onChange={e => setStatus(l.id, e.target.value)} className={`px-2 py-1 rounded border-0 text-xs font-medium ${STATUS_META[l.status]?.cls || 'bg-gray-100 text-gray-600'}`}>
+                      <Select value={l.status} onChange={e => setStatus(l.id, e.target.value)} className={`px-2 py-1 rounded border-0 text-xs font-medium ${STATUS_META[l.status]?.cls || 'bg-gray-100 text-gray-600'}`}>
                         {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
-                      </select>
-                      <select value={l.contact_channel || ''} onChange={e => setChannel(l, e.target.value)} className="mt-1 block px-1.5 py-0.5 rounded border border-gray-200 text-[11px] text-gray-600 bg-white" title="컨택 채널 — 선택하면 자동으로 '컨택함' 처리">
+                      </Select>
+                      <Select value={l.contact_channel || ''} onChange={e => setChannel(l, e.target.value)} className="mt-1 block px-1.5 py-0.5 rounded border border-gray-200 text-[11px] text-gray-600 bg-white" title="컨택 채널 — 선택하면 자동으로 '컨택함' 처리">
                         <option value="">채널…</option>
                         {Object.entries(CHANNELS).map(([v, lbl]) => <option key={v} value={v}>{lbl}</option>)}
-                      </select>
+                      </Select>
                       {l.contacted_at && (() => { const d = daysAgo(l.contacted_at); return d != null ? <div className="text-[11px] text-gray-400 mt-0.5">컨택 {d === 0 ? '오늘' : `${d}일 전`}</div> : null })()}
                       {l.follow_up_at && <div className={`text-[11px] mt-0.5 ${l.follow_up_at <= new Date().toISOString().slice(0, 10) ? 'text-tone-warn font-medium' : 'text-gray-400'}`}>⏰ {l.follow_up_at}</div>}
                       {l.memo && <div className="text-[11px] text-gray-400 mt-0.5 max-w-[140px] truncate" title={l.memo}>{l.memo}</div>}

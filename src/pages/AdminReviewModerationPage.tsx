@@ -10,6 +10,7 @@ import { Star, Eye, EyeOff, Trash2, MessageSquare, Filter, ChevronLeft, ChevronR
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
+import { Select } from '@/components/ui/select'
 
 interface Review {
   id: number
@@ -140,24 +141,24 @@ export default function AdminReviewModerationPage() {
       {/* 필터 */}
       <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 flex flex-wrap items-center gap-3">
         <Filter className="w-4 h-4 text-gray-400" />
-        <select value={filters.status} onChange={e => { setFilters(p => ({ ...p, status: e.target.value })); setPage(1) }}
+        <Select value={filters.status} onChange={e => { setFilters(p => ({ ...p, status: e.target.value })); setPage(1) }}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900">
           <option value="all">{t('admin.reviewModeration.filterAll', { defaultValue: '전체' })}</option>
           <option value="visible">{t('admin.reviewModeration.filterVisible', { defaultValue: '표시' })}</option>
           <option value="hidden">{t('admin.reviewModeration.filterHidden', { defaultValue: '숨김' })}</option>
-        </select>
-        <select value={filters.rating} onChange={e => { setFilters(p => ({ ...p, rating: e.target.value })); setPage(1) }}
+        </Select>
+        <Select value={filters.rating} onChange={e => { setFilters(p => ({ ...p, rating: e.target.value })); setPage(1) }}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900">
           <option value="">{t('admin.reviewModeration.allRatings', { defaultValue: '모든 평점' })}</option>
           {[5, 4, 3, 2, 1].map(r => <option key={r} value={r}>{r}점</option>)}
-        </select>
-        <select value={filters.sort} onChange={e => { setFilters(p => ({ ...p, sort: e.target.value })); setPage(1) }}
+        </Select>
+        <Select value={filters.sort} onChange={e => { setFilters(p => ({ ...p, sort: e.target.value })); setPage(1) }}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900">
           <option value="newest">{t('admin.reviewModeration.newestSort', { defaultValue: '최신순' })}</option>
           <option value="oldest">{t('admin.reviewModeration.oldestSort', { defaultValue: '오래된순' })}</option>
           <option value="rating_high">{t('admin.reviewModeration.ratingHighSort', { defaultValue: '평점 높은순' })}</option>
           <option value="rating_low">{t('admin.reviewModeration.ratingLowSort', { defaultValue: '평점 낮은순' })}</option>
-        </select>
+        </Select>
       </div>
 
       {/* 리뷰 목록 */}

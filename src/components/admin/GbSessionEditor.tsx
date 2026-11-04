@@ -10,6 +10,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { Link2 } from 'lucide-react'
+import { Select } from '@/components/ui/select'
 
 export type GbMode = 'off' | 'scheduled' | 'live' | 'ended'
 export interface GbSession {
@@ -66,12 +67,12 @@ export function GbSessionEditor({ row, onSaved }: { row: GbRow; onSaved: () => v
     <div className="mt-2 rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <label className="text-[12px] text-gray-600">공구 상태
-          <select value={mode} onChange={(e) => setMode(e.target.value as GbMode)} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-900 bg-white">
+          <Select value={mode} onChange={(e) => setMode(e.target.value as GbMode)} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-900 bg-white">
             <option value="off">없음(off)</option>
             <option value="scheduled">예약(scheduled)</option>
             <option value="live">진행중(live)</option>
             <option value="ended">종료(ended)</option>
-          </select>
+          </Select>
         </label>
         {active && <>
           <label className="text-[12px] text-gray-600">공구 특가(원) · 상시가 {formatWon(row.price)}

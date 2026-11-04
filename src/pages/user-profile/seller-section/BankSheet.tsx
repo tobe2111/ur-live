@@ -33,6 +33,7 @@ import Sheet from './Sheet'
 
 /** 대시보드 폼과 같은 목록 — 한쪽에만 은행이 늘면 사장님이 자기 은행을 못 찾는다. SSOT `shared/banks`. */
 import { BANKS } from '@/shared/banks'
+import { Select } from '@/components/ui/select'
 
 export default function BankSheet({ sellerId, onClose, onDone, onFixPin }: {
   sellerId: number
@@ -137,10 +138,10 @@ export default function BankSheet({ sellerId, onClose, onDone, onFixPin }: {
           </p>
           <label className="block">
             <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">은행</span>
-            <select value={bank} onChange={(e) => setBank(e.target.value)} className={field}>
+            <Select value={bank} onChange={(e) => setBank(e.target.value)} className={field}>
               <option value="">은행을 골라 주세요</option>
               {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="block">
             <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">계좌번호</span>

@@ -1,5 +1,6 @@
 import { useTranslation } from '@/lib/i18n-lite'
 import type { ProductFormData } from './types'
+import { Select } from '@/components/ui/select'
 
 interface Props {
   formData: ProductFormData
@@ -65,7 +66,7 @@ export default function DigitalProductSection({ formData, onChange, onKindChange
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('seller.products.contentFormatLabel', { defaultValue: '파일 형식' })}</label>
-              <select
+              <Select
                 name="content_format"
                 value={formData.content_format}
                 onChange={onChange}
@@ -77,7 +78,7 @@ export default function DigitalProductSection({ formData, onChange, onKindChange
                 <option value="zip">{t('seller.products.contentFormatZip', { defaultValue: 'ZIP (다중 파일)' })}</option>
                 <option value="audio">{t('seller.products.contentFormatAudio', { defaultValue: '음성/팟캐스트' })}</option>
                 <option value="image">{t('seller.products.contentFormatImage', { defaultValue: '이미지/그래픽' })}</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('seller.products.accessDaysLabel', { defaultValue: '접근 기간 (일)' })}</label>

@@ -17,6 +17,7 @@ import { alertDialog, confirmDialog, promptDialog } from '@/components/ui/confir
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Gift, RefreshCw, DollarSign, TrendingUp, AlertTriangle, Settings, Package } from 'lucide-react'
+import { Select } from '@/components/ui/select'
 
 interface Settings {
   kt_alpha_api_enabled?: string
@@ -756,11 +757,11 @@ export default function AdminKtAlphaPage() {
                 {/* dev_mode */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">개발/상용 모드</label>
-                  <select value={edit.dev_mode} onChange={(e) => setEdit({ ...edit, dev_mode: e.target.value })}
+                  <Select value={edit.dev_mode} onChange={(e) => setEdit({ ...edit, dev_mode: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
                     <option value="1">개발 (Y) — 테스트 상품 2종만</option>
                     <option value="0">상용 (N) — 실 거래 (승인 필요)</option>
-                  </select>
+                  </Select>
                 </div>
 
                 {/* user_id */}
@@ -802,11 +803,11 @@ export default function AdminKtAlphaPage() {
                 {/* api_enabled */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">API 활성화</label>
-                  <select value={edit.api_enabled} onChange={(e) => setEdit({ ...edit, api_enabled: e.target.value })}
+                  <Select value={edit.api_enabled} onChange={(e) => setEdit({ ...edit, api_enabled: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
                     <option value="0">비활성 (셀러 voucher 옵션 숨김)</option>
                     <option value="1">활성 (셀러가 voucher 선택 가능)</option>
-                  </select>
+                  </Select>
                 </div>
 
                 {/* template_id (카드 ID) */}

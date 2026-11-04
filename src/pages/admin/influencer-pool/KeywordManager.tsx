@@ -21,6 +21,7 @@ export interface Keyword { id: number; keyword: string; category: string | null;
 //   (서버 모듈 주석도 "두 벌로 두면 조용히 갈라진다"고 이미 경고하고 있었다.)
 export { PRIORITY_CATEGORIES as PRIORITY_CATS } from '@/features/marketing/api/influencer-keyword-rotation'
 import { PRIORITY_CATEGORIES as PRIORITY_CATS, YIELD_EVIDENCE_MIN, YIELD_OK_RATE } from '@/features/marketing/api/influencer-keyword-rotation'
+import { Select } from '@/components/ui/select'
 
 /**
  * 🌾 수확률 표시 판정 — **서버 점수 함수와 같은 상수**를 쓴다(두 벌로 두면 조용히 갈라진다 — 위 ⭐ 사고 참조).
@@ -102,10 +103,10 @@ export default function KeywordManager({ keywords, onChanged, onFirstOpen }: { k
       {open && (
         <div className="px-4 pb-4">
           <div className="flex flex-wrap gap-2 mb-3">
-            <select value={newKwCat} onChange={e => setNewKwCat(e.target.value)} className="px-2 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" title="우선 카테고리로 태깅하면 우선 커서(배치 3/4)를 탑니다">
+            <Select value={newKwCat} onChange={e => setNewKwCat(e.target.value)} className="px-2 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" title="우선 카테고리로 태깅하면 우선 커서(배치 3/4)를 탑니다">
               {PRIORITY_CATS.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               <option value="일반">일반</option>
-            </select>
+            </Select>
             <input value={newKw} onChange={e => setNewKw(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKeyword()} placeholder="키워드 추가 (예: 방배 맛집)" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
             <button onClick={addKeyword} className="ur-btn ur-btn-md ur-btn-primary">추가</button>
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="칩 검색 (키워드·카테고리)" className="w-[180px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />

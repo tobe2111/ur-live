@@ -11,6 +11,7 @@ import TradePanel, { type TradeRow } from './partner-pool/TradePanel'
 import CollectConfigPanel from './store-prospects/CollectConfigPanel'
 import PoolExportButtons from './PoolExportButtons'
 import PoolSheetSync from './PoolSheetSync'
+import { Select } from '@/components/ui/select'
 
 /** 매장 업태 → 공용 패널 행. 업태 1행이 **전 지역**을 뜻하므로 kw/active_kw 는 1/0 이다
  *  (파트너는 업종 1행이 235지역을 묶은 것이라 개수가 실수치다 — 그 차이를 여기서만 흡수한다). */
@@ -327,7 +328,7 @@ export default function AdminStoreProspectsPage() {
         )}
 
         <div className="flex flex-wrap items-center gap-2 mb-3 text-sm">
-          <select value={fCategory} onChange={e => setFCategory(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
+          <Select value={fCategory} onChange={e => setFCategory(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
             <option value="">업종 전체</option>
             <option value="일반음식점">일반음식점</option>
             <option value="휴게음식점">휴게음식점</option>
@@ -346,15 +347,15 @@ export default function AdminStoreProspectsPage() {
             <option value="골프연습장">골프연습장</option>
             <option value="노래연습장">노래연습장</option>
             <option value="학원">학원</option>
-          </select>
+          </Select>
           <input value={fRegion} onChange={e => setFRegion(e.target.value)} placeholder="지역(예: 서초)" className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900 w-32" />
-          <select value={fView} onChange={e => setFView(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
+          <Select value={fView} onChange={e => setFView(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900">
             <option value="">영업중</option>
             <option value="newOpen">신규 개업만</option>
             <option value="phone">전화 보유만</option>
             <option value="email">이메일 보유만</option>
             <option value="closed">폐업 포함</option>
-          </select>
+          </Select>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -396,9 +397,9 @@ export default function AdminStoreProspectsPage() {
                     </td>
                     <td className="px-3 py-2 text-gray-500 text-xs">{r.apv_perm_ymd ? `${r.apv_perm_ymd.slice(0, 4)}.${r.apv_perm_ymd.slice(4, 6)}.${r.apv_perm_ymd.slice(6, 8)}` : '—'}</td>
                     <td className="px-3 py-2">
-                      <select value={r.status} onChange={e => patchStatus(r.id, e.target.value)} className={`text-xs rounded px-2 py-1 border-0 ${STATUS_META[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
+                      <Select value={r.status} onChange={e => patchStatus(r.id, e.target.value)} className={`text-xs rounded px-2 py-1 border-0 ${STATUS_META[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
                         {STATUSES.map(s => <option key={s} value={s}>{STATUS_META[s]?.label || s}</option>)}
-                      </select>
+                      </Select>
                     </td>
                   </tr>
                 ))}

@@ -9,6 +9,7 @@ import { DashboardPageHeader, DashboardLoading, DashboardLoadError } from '@/com
 import { UserCog, Plus, Trash2, Key, Edit2, X, ShieldOff, Monitor } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 // 📱 2026-08-12: 세션(기기) 관리 — 동시 로그인을 허용하는 대신 두는 도용 탐지 장치.
 const SessionManagerModal = lazy(() => import('./admin-accounts/SessionManagerModal'))
 
@@ -281,10 +282,10 @@ export default function AdminAccountsPage() {
               {/* 🛡️ 2026-06-14: 제한 권한 분리 선택 */}
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">접근 권한 (역할)</label>
-                <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
+                <Select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]">
                   {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                </Select>
                 <p className="text-[11px] text-gray-400 mt-1">{ROLE_LABELS[form.role]?.desc}</p>
               </div>
             </div>
@@ -311,10 +312,10 @@ export default function AdminAccountsPage() {
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">접근 권한 (역할)</label>
-                <select value={editForm.role} onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}
+                <Select value={editForm.role} onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]">
                   {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                </Select>
                 <p className="text-[11px] text-gray-400 mt-1">{ROLE_LABELS[editForm.role]?.desc}</p>
               </div>
             </div>

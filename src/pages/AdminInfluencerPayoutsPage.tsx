@@ -17,6 +17,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, CheckCircle, RefreshCw } from 'lucide-react'
 import { parseUTCDate } from '@/utils/date'
+import { Select } from '@/components/ui/select'
 
 interface PayoutRow {
   influencer_id: string
@@ -159,26 +160,26 @@ export default function AdminInfluencerPayoutsPage() {
         {/* 정렬/필터 */}
         <div className="flex flex-wrap items-center gap-2 bg-white border border-gray-200 rounded-xl p-3">
           <label className="text-[11px] text-gray-700">정렬</label>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="text-xs border border-gray-200 rounded px-2 py-1 bg-white">
+          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="text-xs border border-gray-200 rounded px-2 py-1 bg-white">
             <option value="available_desc">잔액 ↓</option>
             <option value="available_asc">잔액 ↑</option>
             <option value="paid_desc">누적 송금 ↓</option>
             <option value="updated_desc">최근 업데이트</option>
-          </select>
+          </Select>
           <span className="text-gray-300 mx-1">·</span>
           <label className="text-[11px] text-gray-700">방식</label>
-          <select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value as typeof methodFilter)} className="text-xs border border-gray-200 rounded px-2 py-1 bg-white">
+          <Select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value as typeof methodFilter)} className="text-xs border border-gray-200 rounded px-2 py-1 bg-white">
             <option value="all">전체</option>
             <option value="cash">현금</option>
             <option value="deal">딜</option>
-          </select>
+          </Select>
           <span className="text-gray-300 mx-1">·</span>
           <label className="text-[11px] text-gray-700">계좌</label>
-          <select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value as typeof accountFilter)} className="text-xs border border-gray-200 rounded px-2 py-1 bg-white">
+          <Select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value as typeof accountFilter)} className="text-xs border border-gray-200 rounded px-2 py-1 bg-white">
             <option value="all">전체</option>
             <option value="ok">등록됨</option>
             <option value="missing">미등록</option>
-          </select>
+          </Select>
           <span className="text-[10px] text-gray-500 ml-auto">표시 {filteredSorted.length} / 전체 {list.length}건</span>
         </div>
 

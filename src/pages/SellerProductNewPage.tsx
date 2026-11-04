@@ -30,6 +30,7 @@ import LivePriceSection from './seller-product-new/LivePriceSection'
 import FormSection from './seller-product-new/FormSection'
 import BulkUploadTools from './seller-product-new/BulkUploadTools'
 import ProductPreviewRail from './seller-product-new/ProductPreviewRail'
+import { Select } from '@/components/ui/select'
 
 const FORM_ID = 'seller-product-new-form'
 
@@ -354,7 +355,7 @@ export default function SellerProductNewPage() {
                   <label className="mb-2 block text-sm font-medium text-gray-700">
                     {t('common.category')} <span className="text-tone-bad">*</span>
                   </label>
-                  <select
+                  <Select
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
@@ -364,7 +365,7 @@ export default function SellerProductNewPage() {
                     {categoryOptions.map(c => (
                       <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
-                  </select>
+                  </Select>
                   <p className="mt-1 text-xs text-gray-500">{t('seller.selectCategoryDesc')}</p>
                 </div>
 
@@ -395,7 +396,7 @@ export default function SellerProductNewPage() {
                     </label>
                     <div className="relative">
                       <Play className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-                      <select
+                      <Select
                         name="live_stream_id"
                         value={formData.live_stream_id}
                         onChange={handleChange}
@@ -407,7 +408,7 @@ export default function SellerProductNewPage() {
                             {stream.title} ({stream.status === 'live' ? 'LIVE' : stream.status === 'scheduled' ? t('common.scheduled') : t('common.ended')})
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </div>
                     <p className="mt-1 text-xs text-gray-500">{t('seller.selectLiveStreamDesc')}</p>
                   </div>

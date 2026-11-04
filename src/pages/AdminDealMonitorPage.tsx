@@ -7,6 +7,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { Gift, TrendingUp, Users, Zap, Search, ChevronLeft, ChevronRight, Scale } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 import { formatNumber, formatWon } from '@/utils/format'
+import { Select } from '@/components/ui/select'
 
 interface DealStats {
   totals: {
@@ -259,7 +260,7 @@ export default function AdminDealMonitorPage() {
             </form>
           )}
           {tab === 'users' && (
-            <select
+            <Select
               value={sort}
               onChange={e => { setSort(e.target.value); setPage(1) }}
               className="text-sm text-gray-900 border rounded-lg px-3 py-2"
@@ -268,7 +269,7 @@ export default function AdminDealMonitorPage() {
               <option value="total_donated">{t('admin.dealMonitor.k008', { defaultValue: '후원액순' })}</option>
               <option value="balance">{t('admin.dealMonitor.k009', { defaultValue: '잔액순' })}</option>
               <option value="last_charged">{t('admin.dealMonitor.k010', { defaultValue: '최근충전순' })}</option>
-            </select>
+            </Select>
           )}
         </div>
 

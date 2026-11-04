@@ -39,6 +39,7 @@ import BulkActionBar from './seller-orders/BulkActionBar'
 import MobileOrderList from './seller-orders/MobileOrderList'
 import { useOrderActions } from './seller-orders/useOrderActions'
 import type { Order } from './seller-orders/types'
+import { Select } from '@/components/ui/select'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / parseShippingAddress / status 헬퍼 / 주문 상세 모달
 //   을 ./seller-orders/ 디렉토리로 추출.
@@ -265,7 +266,7 @@ export default function SellerOrdersPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t('common.status')}
               </label>
-              <select
+              <Select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
@@ -276,7 +277,7 @@ export default function SellerOrdersPage() {
                 <option value="SHIPPING">{t('seller.statusShipping')}</option>
                 <option value="DELIVERED">{t('seller.statusDelivered')}</option>
                 <option value="CANCELLED">{t('seller.statusCancelled')}</option>
-              </select>
+              </Select>
             </div>
 
             {/* Search */}

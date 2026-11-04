@@ -11,6 +11,7 @@ import { DashboardPageHeader, DashboardEmptyState, DashboardLoading } from '@/co
 import { Package, Plus, Trash2, Loader2, Pencil, ToggleLeft, ToggleRight, X, CheckCircle2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 interface BundleItem { product_id: number; quantity: number }
 interface Bundle {
@@ -148,11 +149,11 @@ export default function SellerBundlesPage() {
             <div className="flex gap-3">
               <div className="flex-1">
                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('seller.discountType', '할인 방식')}</label>
-                <select value={form.discount_type} onChange={e => setForm(f => ({ ...f, discount_type: e.target.value as 'percent' | 'fixed' }))}
+                <Select value={form.discount_type} onChange={e => setForm(f => ({ ...f, discount_type: e.target.value as 'percent' | 'fixed' }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900">
                   <option value="percent">{t('seller.bundles.discountPercent', { defaultValue: '% 할인' })}</option>
                   <option value="fixed">{t('seller.bundles.discountFixed', { defaultValue: '원 할인' })}</option>
-                </select>
+                </Select>
               </div>
               <div className="flex-1">
                 <label className="block text-xs font-medium text-gray-700 mb-1">

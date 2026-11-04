@@ -4,6 +4,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber, kstShort } from '@/utils/format'
+import { Select } from '@/components/ui/select'
 
 interface Notice {
   id: number; source: string; notice_no: string; title: string; org: string | null
@@ -90,11 +91,11 @@ export default function AdminGovNoticesPage() {
 
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <button onClick={runCollect} disabled={collecting || !collect?.adsBinding} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">{collecting ? '스캔 중…' : '지금 스캔'}</button>
-          <select value={fSource} onChange={e => setFSource(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm">
+          <Select value={fSource} onChange={e => setFSource(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm">
             <option value="">전체</option>
             <option value="bid">입찰(나라장터)</option>
             <option value="grant">지원사업(기업마당)</option>
-          </select>
+          </Select>
           <div className="grow" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="공고명·기관 검색" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-56" />
         </div>
@@ -133,9 +134,9 @@ export default function AdminGovNoticesPage() {
                     </td>
                     <td className="px-3 py-2 text-gray-500 text-xs">{r.end_date || '—'}</td>
                     <td className="px-3 py-2">
-                      <select value={r.status} onChange={e => patchStatus(r.id, e.target.value)} className={`text-xs rounded px-2 py-1 border-0 ${STATUS_META[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
+                      <Select value={r.status} onChange={e => patchStatus(r.id, e.target.value)} className={`text-xs rounded px-2 py-1 border-0 ${STATUS_META[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
                         {STATUSES.map(s => <option key={s} value={s}>{STATUS_META[s]?.label || s}</option>)}
-                      </select>
+                      </Select>
                     </td>
                   </tr>
                 ))}

@@ -17,6 +17,7 @@ import { formatWon } from '@/utils/format'
 import { ArrowLeft, Camera, TicketPercent } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { Select } from '@/components/ui/select'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 14차 ⑧ — 영수증을 등록하면 버튼 안에 체크가 그려지고 '접수됐어요', 비워진 칸들이 아래에서 다시 올라온다.
 injectMotionCss('ur-m-receipt', `@keyframes ur-rc-ck { to { stroke-dashoffset: 0; } }@keyframes ur-rc-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.12); } 100% { transform: none; } }@keyframes ur-rc-up { from { opacity: 0; transform: translateY(10px); } }.ur-rc-ok svg { animation: ur-rc-pop .35s cubic-bezier(.3,1.3,.5,1); }.ur-rc-ok path { stroke-dasharray: 20; stroke-dashoffset: 20; animation: ur-rc-ck .3s .12s ease-out forwards; }.ur-rc-fresh > div { animation: ur-rc-up .35s cubic-bezier(.2,.9,.3,1) backwards; }.ur-rc-fresh > div:nth-child(3) { animation-delay: 60ms; }.ur-rc-fresh > div:nth-child(4) { animation-delay: 120ms; }.ur-rc-fresh > div:nth-child(5) { animation-delay: 180ms; }@media (prefers-reduced-motion: reduce){.ur-rc-ok svg,.ur-rc-fresh > div{animation:none!important}.ur-rc-ok path{animation:none!important;stroke-dashoffset:0}}`)
@@ -77,11 +78,11 @@ function ReceiptForm({ campaign, stores, onDone }: { campaign: Campaign; stores:
       <h2 className="flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white"><ReceiptIcon className="w-4 h-4" />영수증 등록</h2>
       <div>
         <label className="mb-1 block text-[12px] font-medium text-gray-700 dark:text-gray-200">구매 매장</label>
-        <select value={storeId} onChange={(e) => setStoreId(e.target.value)}
+        <Select value={storeId} onChange={(e) => setStoreId(e.target.value)}
           className="w-full rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2 text-[15px] text-gray-900 dark:text-white">
           <option value="">매장 선택</option>
           {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        </Select>
       </div>
       <div>
         <label className="mb-1 block text-[12px] font-medium text-gray-700 dark:text-gray-200">결제 금액 (원)</label>
@@ -161,11 +162,11 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
         <p className="text-center text-[16px] font-bold text-gray-900 dark:text-white">{formatWon(coupon.face_value)} 상권 쿠폰</p>
         <p className="mt-1 text-center tabular-nums text-[15px] font-bold tracking-widest text-gray-500 dark:text-gray-400">{coupon.code}</p>
         <div className="mt-5 space-y-3">
-          <select value={storeId} onChange={(e) => setStoreId(e.target.value)}
+          <Select value={storeId} onChange={(e) => setStoreId(e.target.value)}
             className="w-full rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2 text-[15px] text-gray-900 dark:text-white">
             <option value="">사용 매장 선택</option>
             {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          </Select>
           <input inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 8))}
             placeholder="매장 확인코드 (직원에게 문의)"
             className="w-full rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2 text-center tabular-nums text-[16px] tracking-[0.3em] text-gray-900 dark:text-white" />

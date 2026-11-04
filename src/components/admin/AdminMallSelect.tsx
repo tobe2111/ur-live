@@ -7,6 +7,7 @@
  *   몰이 1개(기본 몰만)면 드롭다운을 렌더하지 않음 → 단일 몰 환경 UI 불변(additive).
  */
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { Select } from '@/components/ui/select'
 
 export interface AdminMallOption {
   id: number
@@ -48,7 +49,7 @@ export default function AdminMallSelect({ value, onChange, allLabel = '전체 �
   // 기본 몰 1개만 있으면 드롭다운 숨김 — 단일 몰 환경에선 표시할 이유 없음(additive 불변).
   if (list.length <= 1) return null
   return (
-    <select
+    <Select
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={'h-9 px-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 outline-none focus:border-gray-400 ' + className}
@@ -60,6 +61,6 @@ export default function AdminMallSelect({ value, onChange, allLabel = '전체 �
           {m.name}{m.active ? '' : ' (비활성)'}
         </option>
       ))}
-    </select>
+    </Select>
   )
 }

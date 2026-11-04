@@ -6,6 +6,7 @@ import { downloadCsv } from '@/utils/csv-download'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import PanelError from './PanelError'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { Select } from '@/components/ui/select'
 
 /**
  * 🆕 2026-07-13 유어애즈 — 인플루언서 발굴/연락처 수집 패널.
@@ -182,10 +183,10 @@ export default function InfluencerDiscoveryPanel() {
               <label className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300 cursor-pointer">
                 <input type="checkbox" checked={onlyContact} onChange={e => setOnlyContact(e.target.checked)} /> 연락처만
               </label>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value as 'subs' | 'recent')} className="rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-1.5 py-1 text-[11px] text-gray-700 dark:text-gray-200">
+              <Select value={sortBy} onChange={e => setSortBy(e.target.value as 'subs' | 'recent')} className="rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-1.5 py-1 text-[11px] text-gray-700 dark:text-gray-200">
                 <option value="subs">구독자순</option>
                 <option value="recent">최근 수집순</option>
-              </select>
+              </Select>
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -221,9 +222,9 @@ export default function InfluencerDiscoveryPanel() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0 text-[11.5px]">
-                <select value={l.status} onChange={e => setStatus(l, e.target.value)} className="rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-1.5 py-1 text-[11px] font-semibold text-gray-700 dark:text-gray-200">
+                <Select value={l.status} onChange={e => setStatus(l, e.target.value)} className="rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-1.5 py-1 text-[11px] font-semibold text-gray-700 dark:text-gray-200">
                   {Object.entries(STATUS_KO).map(([v, k]) => <option key={v} value={v}>{k}</option>)}
-                </select>
+                </Select>
                 <button onClick={() => remove(l)} className="font-semibold text-red-500 hover:underline">삭제</button>
               </div>
             </div>

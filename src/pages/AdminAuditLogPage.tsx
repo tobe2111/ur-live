@@ -6,6 +6,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Shield, ChevronDown, ChevronUp, Filter, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { formatDate } from '@/shared/utils'
+import { Select } from '@/components/ui/select'
 
 interface AuditLog {
   id: number
@@ -115,7 +116,7 @@ export default function AdminAuditLogPage() {
           <form onSubmit={handleSearch} className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">관리자</label>
-              <select
+              <Select
                 value={adminId}
                 onChange={e => setAdminId(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white"
@@ -124,7 +125,7 @@ export default function AdminAuditLogPage() {
                 {adminOptions.map(a => (
                   <option key={a.id} value={a.id}>{a.email}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">액션 유형</label>

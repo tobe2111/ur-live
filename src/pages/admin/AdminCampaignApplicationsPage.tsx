@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { Select } from '@/components/ui/select'
 
 /**
  * 📣 캠페인 신청자 관리 (/admin/campaign-applications) — 캠페인 코드 필터 + CSV 내보내기.
@@ -65,11 +66,11 @@ export default function AdminCampaignApplicationsPage() {
           <p className="text-sm text-gray-500 mt-0.5">캠페인 신청 페이지(/campaign/코드)로 접수된 인플루언서 — 총 {total.toLocaleString()}명</p>
         </div>
         <div className="flex items-center gap-2">
-          <select value={filter} onChange={e => { setFilter(e.target.value); setPage(1) }}
+          <Select value={filter} onChange={e => { setFilter(e.target.value); setPage(1) }}
             className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 bg-white">
             <option value="">전체 캠페인</option>
             {campaigns.map(cmp => <option key={cmp.campaign_code} value={cmp.campaign_code}>{cmp.campaign_code} ({cmp.cnt})</option>)}
-          </select>
+          </Select>
           <button onClick={downloadCsv} className="ur-btn ur-btn-md ur-btn-primary">CSV 내보내기</button>
         </div>
       </div>

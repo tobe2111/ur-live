@@ -20,6 +20,7 @@ import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { useStaysSearch } from '@/hooks/queries/useStaysSearch'
 import { kstYmd } from '@/shared/stays-early'
 import { STAYS_LIST, stayCardHref, stayDateChipLabel } from '@/shared/stays-list'
+import { Select } from '@/components/ui/select'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 15차 ⑨ — 지역·숙소 종류 칩은 생길 때 톡 튀고, × 로 뺄 때 작아지며 사라진다.
 // 🎬 2026-11-03 14차 ⑤ — 조건을 바꿔 결과가 새로 오면 카드가 위에서부터 차례로 떠오른다(첫 화면은 그대로 — 사진이 늦게 보이면 안 된다).
@@ -312,12 +313,12 @@ export default function StaysSearchPage() {
               </div>
               <div>
                 <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-2">정렬</label>
-                <select value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white">
+                <Select value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white">
                   <option value="recent">최신 등록</option>
                   <option value="price_asc">가격 낮은순</option>
                   <option value="price_desc">가격 높은순</option>
                   <option value="rating">평점 높은순</option>
-                </select>
+                </Select>
               </div>
               <button onClick={apply} className="w-full py-3 bg-brand text-white text-[15px] font-bold rounded-lg hover:bg-brand">검색</button>
             </div>

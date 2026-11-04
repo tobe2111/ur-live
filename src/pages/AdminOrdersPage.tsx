@@ -16,6 +16,7 @@ import {
   ChevronRight, RefreshCw, Clock, DollarSign, Ticket
 } from 'lucide-react'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 // 🗂️ 주문 종류. ⚠️ B2B 는 wholesale_orders. 🧾 2026-09-21: 이 함수가 **이용권을 "교환권"이라 불렀다**. 판정 SSOT: `order-kind.ts`.
 const KIND_TONE = { deal: ['text-tone-warn', 'bg-tone-warn-bg'], voucher: ['text-tone-info', 'bg-tone-info-bg'], shipping: ['text-gray-600', 'bg-gray-100'] } as const
@@ -373,17 +374,17 @@ export default function AdminOrdersPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5"><Filter className="w-3.5 h-3.5 inline mr-1" />{t('admin.orders.k039', { defaultValue: '주문 상태' })}</label>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="ALL">{t('admin.orders.k037', { defaultValue: '전체' })}</option>
               {Object.entries(STATUS_STYLES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5"><User className="w-3.5 h-3.5 inline mr-1" />{t('admin.orders.k040', { defaultValue: '판매자' })}</label>
-            <select value={sellerFilter} onChange={e => setSellerFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <Select value={sellerFilter} onChange={e => setSellerFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="ALL">{t('admin.orders.k041', { defaultValue: '전체 판매자' })}</option>
               {sellers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5"><Calendar className="w-3.5 h-3.5 inline mr-1" />{t('admin.orders.k042', { defaultValue: '시작일' })}</label>
@@ -653,10 +654,10 @@ export default function AdminOrdersPage() {
                     const number = (form.elements.namedItem('tracking') as HTMLInputElement).value
                     if (company && number) updateTracking(selectedOrder.order_number, number, company)
                   }} className="flex gap-2">
-                    <select name="courier" defaultValue={selectedOrder.courier || ''} className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 flex-shrink-0">
+                    <Select name="courier" defaultValue={selectedOrder.courier || ''} className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 flex-shrink-0">
                       <option value="">{t('admin.orders.k068', { defaultValue: '택배사 선택' })}</option>
                       {COURIER_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                    </select>
+                    </Select>
                     <input name="tracking" type="text" defaultValue={selectedOrder.tracking_number || ''} placeholder="운송장 번호" className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 flex-1" />
                     <button type="submit" className="ur-btn ur-btn-md ur-btn-primary flex-shrink-0">
                       <Truck className="w-3.5 h-3.5 inline mr-1" />등록

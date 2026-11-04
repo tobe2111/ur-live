@@ -17,6 +17,7 @@ import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { Calendar, Plus, Trash2 } from 'lucide-react'
+import { Select } from '@/components/ui/select'
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -132,13 +133,13 @@ export default function SellerBookingSlotsPage() {
           <div className="space-y-2">
             {newSlots.map((s, i) => (
               <div key={i} className="flex items-center gap-2 flex-wrap">
-                <select
+                <Select
                   value={s.day_of_week}
                   onChange={e => setNewSlots(arr => arr.map((x, j) => j === i ? { ...x, day_of_week: Number(e.target.value) } : x))}
                   className="px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-900 bg-white"
                 >
                   {DAYS.map((d, idx) => <option key={idx} value={idx}>{d}요일</option>)}
-                </select>
+                </Select>
                 <input
                   type="time"
                   value={s.start_time}

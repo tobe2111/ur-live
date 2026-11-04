@@ -24,6 +24,7 @@ import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { Link2, Copy, Share2, Search } from 'lucide-react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { Select } from '@/components/ui/select'
 
 interface Product {
   id: number
@@ -158,14 +159,14 @@ export default function InfluencerDiscoverPage() {
               className="w-full pl-9 pr-3 py-2 border border-line rounded-full text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
             />
           </div>
-          <select
+          <Select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'latest' | 'popular')}
             className="px-3 py-2 border border-line rounded-full text-[12px] text-gray-900 dark:text-white font-medium bg-white dark:bg-[#11141C]"
           >
             <option value="latest">최신순</option>
             <option value="popular">인기순</option>
-          </select>
+          </Select>
         </div>
 
         {loading ? (

@@ -22,6 +22,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
+import { Select } from '@/components/ui/select'
 
 interface PromoCode {
   id: number
@@ -202,7 +203,7 @@ export default function SellerPromoCodesPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">대상</label>
-                <select
+                <Select
                   value={form.audience}
                   onChange={e => setForm(f => ({ ...f, audience: e.target.value as typeof f.audience }))}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
@@ -210,7 +211,7 @@ export default function SellerPromoCodesPage() {
                   <option value="followers_only">단골만 (권장)</option>
                   <option value="new_users_only">신규 고객만</option>
                   <option value="all">모두</option>
-                </select>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

@@ -14,6 +14,7 @@ import { OrderNumber } from './OrderNumber'
 import { VoucherCodes } from './VoucherCodes'
 import { ORDER_KIND_META, orderKindOf, isNoShippingOrder } from '@/shared/order-kind'
 import type { Order, TrackingForm } from './types'
+import { Select } from '@/components/ui/select'
 
 
 interface Props {
@@ -246,7 +247,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       {t('seller.courierLabel')} <span className="text-tone-bad">*</span>
                     </label>
-                    <select
+                    <Select
                       value={trackingForm.courier}
                       onChange={(e) => onTrackingFormChange({ ...trackingForm, courier: e.target.value })}
                       required
@@ -254,7 +255,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                     >
                       <option value="">{t('seller.selectCourier')}</option>
                       {COURIERS.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    </Select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">

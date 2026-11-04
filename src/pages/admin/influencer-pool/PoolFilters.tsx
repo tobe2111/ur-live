@@ -9,6 +9,7 @@
  */
 import { REGION_TOKENS } from '@/shared/ads/region-tokens'
 import { POOL_CATEGORIES } from '../AdminInfluencerPoolPage'
+import { Select } from '@/components/ui/select'
 
 export interface PoolFiltersProps {
   platform: string; setPlatform: (v: string) => void
@@ -40,38 +41,38 @@ const CHK = 'flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-3
 export default function PoolFilters(p: PoolFiltersProps) {
   return (
     <div className="flex flex-wrap gap-2 mb-3">
-      <select value={p.platform} onChange={e => p.setPlatform(e.target.value)} className={SEL}>
+      <Select value={p.platform} onChange={e => p.setPlatform(e.target.value)} className={SEL}>
         {/* 🏘️ 카페는 인플루언서가 아니라 커뮤니티라 기본 목록에서 빠진다(서버가 제외) — 여기서 골라야 보인다. */}
         <option value="">전체(카페 제외)</option>
         <option value="youtube">유튜브</option>
         <option value="naver_blog">네이버 블로그</option>
         <option value="naver_cafe">지역·커뮤니티 매체(카페)</option>
         <option value="tistory">티스토리</option>
-      </select>
-      <select value={p.category} onChange={e => p.setCategory(e.target.value)} className={SEL}>
+      </Select>
+      <Select value={p.category} onChange={e => p.setCategory(e.target.value)} className={SEL}>
         <option value="">전체 카테고리</option>
         {POOL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-      </select>
+      </Select>
       {/* 📍 지역 필터 — 저장된 값과 **같은 목록**(shared/ads/region-tokens)에서 고른다.
           손으로 타이핑하면 저장 안 된 표기('강남구')를 골라 조용히 0건이 된다. */}
-      <select value={p.region} onChange={e => p.setRegion(e.target.value)} className={SEL} title="수집 키워드에서 캡처된 활동 지역 — 거주지가 아니라 '그 지역을 다루는 콘텐츠'라는 신호">
+      <Select value={p.region} onChange={e => p.setRegion(e.target.value)} className={SEL} title="수집 키워드에서 캡처된 활동 지역 — 거주지가 아니라 '그 지역을 다루는 콘텐츠'라는 신호">
         <option value="">전체 지역</option>
         {REGION_TOKENS.map(r => <option key={r} value={r}>{r}</option>)}
-      </select>
+      </Select>
       {/* 🏷️ 분류 신뢰도 — 카테고리 값 자체는 이미 보이는데 **그게 믿을 만한 값인지**를 화면에서 못 갈랐다.
           실측 84%가 키워드 상속("강남 맛집"으로 발굴됐다고 맛집 블로거인 건 아니다) → 품질 작업의 대상 집합. */}
-      <select value={p.catSource} onChange={e => p.setCatSource(e.target.value)} className={SEL} title="본문·소개글로 확인된 분류인지, 발굴 키워드에서 물려받은 값인지">
+      <Select value={p.catSource} onChange={e => p.setCatSource(e.target.value)} className={SEL} title="본문·소개글로 확인된 분류인지, 발굴 키워드에서 물려받은 값인지">
         <option value="">분류 신뢰도 전체</option>
         <option value="content">본문 확인됨</option>
         <option value="keyword">키워드 상속(미확인)</option>
-      </select>
+      </Select>
       {/* 📏 측정 여부 — 미측정 리드는 연락처·활동성·본문분류가 통째로 비어 있다(전체의 91%). */}
-      <select value={p.measured} onChange={e => p.setMeasured(e.target.value)} className={SEL} title="한 번이라도 활동성 측정(RSS·홈)을 한 적이 있는지 — 미측정이면 연락처·본문분류가 비어 있다">
+      <Select value={p.measured} onChange={e => p.setMeasured(e.target.value)} className={SEL} title="한 번이라도 활동성 측정(RSS·홈)을 한 적이 있는지 — 미측정이면 연락처·본문분류가 비어 있다">
         <option value="">측정 여부 전체</option>
         <option value="1">측정됨</option>
         <option value="0">미측정(대기열)</option>
-      </select>
-      <select value={p.tier} onChange={e => p.setTier(e.target.value)} className={SEL} title="유어딜 딜엔 마이크로/중형(1만~50만)이 효율적">
+      </Select>
+      <Select value={p.tier} onChange={e => p.setTier(e.target.value)} className={SEL} title="유어딜 딜엔 마이크로/중형(1만~50만)이 효율적">
         <option value="">전체 규모</option>
         <option value="reach1k">이웃·구독 1천+</option>
         <option value="sweet">스위트스팟 (블로그 1천+ · 유튜브 1만~50만)</option>
@@ -79,14 +80,14 @@ export default function PoolFilters(p: PoolFiltersProps) {
         <option value="micro">마이크로 (1만~10만)</option>
         <option value="mid">중형 (10만~50만)</option>
         <option value="macro">대형 (50만+)</option>
-      </select>
-      <select value={p.sort} onChange={e => p.setSort(e.target.value)} className={SEL}>
+      </Select>
+      <Select value={p.sort} onChange={e => p.setSort(e.target.value)} className={SEL}>
         <option value="fit">유어딜 핏순</option>
         <option value="score">리드 점수순</option>
         <option value="perf">조회수순(롱폼 중앙값)</option>
         <option value="subscribers">구독자순</option>
         <option value="recent">최근 수집순</option>
-      </select>
+      </Select>
       <label className={CHK}>
         <input type="checkbox" checked={p.hasEmail} onChange={e => p.setHasEmail(e.target.checked)} /> 이메일 있음
       </label>

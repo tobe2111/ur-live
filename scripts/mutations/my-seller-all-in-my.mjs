@@ -299,8 +299,9 @@ export default [
   {
     name: '📱 쿠폰 폼 한 줄만 3열로 돌아간다 (나머지가 조용히 잘린다)',
     file: COUP,
-    find: '<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">\n              <select value={form.type}',
-    replace: '<div className="grid grid-cols-3 gap-3">\n              <select value={form.type}',
+    // 🪟 2026-11-04 재조준: 기본 <select> → 유어딜 <Select> (지키는 것 — 쿠폰 폼 3열 회귀 — 은 그대로).
+    find: '<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">\n              <Select value={form.type}',
+    replace: '<div className="grid grid-cols-3 gap-3">\n              <Select value={form.type}',
     test: TEST,
     why:
       '두 줄 중 한 줄만 되돌리는 모양 — 실측 114px 필드에서 placeholder("최소 주문 금액")가 잘린다. ' +

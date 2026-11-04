@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { getSignupCampaign, CAMPAIGN_PLATFORMS, CAMPAIGN_CATEGORIES } from '@/shared/campaign-signup'
+import { Select } from '@/components/ui/select'
 
 /**
  * 📣 캠페인 인플루언서 모집 신청 (/campaign/:code — 예: /campaign/bangbae).
@@ -117,11 +118,11 @@ export default function CampaignApplyPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[15px] font-medium text-gray-700 mb-1">플랫폼</label>
-                <select value={f.platform} onChange={set('platform')} className={input}>{CAMPAIGN_PLATFORMS.map(p => <option key={p.v} value={p.v}>{p.label}</option>)}</select>
+                <Select value={f.platform} onChange={set('platform')} className={input}>{CAMPAIGN_PLATFORMS.map(p => <option key={p.v} value={p.v}>{p.label}</option>)}</Select>
               </div>
               <div>
                 <label className="block text-[15px] font-medium text-gray-700 mb-1">주요 분야</label>
-                <select value={f.category} onChange={set('category')} className={input}>{CAMPAIGN_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select>
+                <Select value={f.category} onChange={set('category')} className={input}>{CAMPAIGN_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}</Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

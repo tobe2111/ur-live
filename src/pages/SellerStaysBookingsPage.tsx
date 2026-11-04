@@ -15,6 +15,7 @@ import { EmbeddedFrame } from './seller-bookings/EmbeddedFrame'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Building2, TrendingUp, Calendar, Users, AlertTriangle, CheckCircle, XCircle, LogIn, LogOut as LogOutIcon, Phone } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { Select } from '@/components/ui/select'
 
 interface KPI {
   period_days: number
@@ -138,11 +139,11 @@ export default function SellerStaysBookingsPage({ embedded = false }: { embedded
           subtitle="KPI 분석 + 예약 처리 (체크인 / 체크아웃 / 노쇼)"
           icon={<Building2 className="h-5 w-5" />}
           actions={
-            <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg">
+            <Select value={days} onChange={(e) => setDays(Number(e.target.value))} className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg">
               <option value={7}>최근 7일</option>
               <option value={30}>최근 30일</option>
               <option value={90}>최근 90일</option>
-            </select>
+            </Select>
           }
         />
 

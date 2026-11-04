@@ -19,6 +19,7 @@ import { Download, FileSpreadsheet, AlertTriangle, CheckCircle2 } from 'lucide-r
 import { formatWon, formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 interface SellerSummary {
   seller_id: number
@@ -109,13 +110,13 @@ export default function AdminWithholdingPage() {
         {/* 연도 선택 */}
         <div className="flex items-center gap-3">
           <label className="text-sm font-bold text-gray-700">연도</label>
-          <select value={year} onChange={(e) => setYear(Number(e.target.value))}
+          <Select value={year} onChange={(e) => setYear(Number(e.target.value))}
             className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
             {[0, 1, 2, 3].map((delta) => {
               const y = new Date().getFullYear() - delta
               return <option key={y} value={y}>{y}년</option>
             })}
-          </select>
+          </Select>
         </div>
 
         {/* KPI */}

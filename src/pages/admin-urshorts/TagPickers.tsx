@@ -1,5 +1,6 @@
 import { URSHORTS_REGION_KEYS, shortsRegionLabel } from '@/shared/urshorts-regions'
 import { VOUCHER_CATEGORIES, VOUCHER_CATEGORY_LABEL } from '@/shared/constants/voucher-categories'
+import { Select } from '@/components/ui/select'
 
 /**
  * 🏷️ 어드민 — 영상 한 편의 **도시·종류** 고르기 (2026-09-21).
@@ -23,7 +24,7 @@ export default function TagPickers({
   const sel = 'shrink-0 rounded-lg border border-rule bg-white px-1.5 py-2 text-[11.5px] font-semibold text-gray-700'
   return (
     <>
-      <select
+      <Select
         aria-label="도시"
         value={regionSi ?? ''}
         onChange={(e) => onChange({ region_si: e.target.value || null })}
@@ -33,8 +34,8 @@ export default function TagPickers({
         {URSHORTS_REGION_KEYS.map((k) => (
           <option key={k} value={k}>{shortsRegionLabel(k)}</option>
         ))}
-      </select>
-      <select
+      </Select>
+      <Select
         aria-label="종류"
         value={category ?? ''}
         onChange={(e) => onChange({ category: e.target.value || null })}
@@ -44,7 +45,7 @@ export default function TagPickers({
         {VOUCHER_CATEGORIES.map((c) => (
           <option key={c} value={c}>{VOUCHER_CATEGORY_LABEL[c]?.short ?? c}</option>
         ))}
-      </select>
+      </Select>
     </>
   )
 }

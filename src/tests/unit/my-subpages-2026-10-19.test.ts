@@ -51,7 +51,7 @@ describe('② 주문 내역 — 필터는 한 줄', () => {
   it('상태 고르기가 종류 탭과 같은 줄 안에 있다', () => {
     const row = TAB.slice(TAB.indexOf('{KIND_TABS.map('), TAB.indexOf('filtered.length === 0 ?'))
     expect(row.length).toBeGreaterThan(200)
-    expect(row, '상태 고르기가 탭 줄 밖으로 나갔다').toMatch(/<select\b/)
+    expect(row, '상태 고르기가 탭 줄 밖으로 나갔다').toMatch(/<Select\b/) // 🪟 2026-11-04 기본 <select> → 유어딜 <Select>
     expect(row).toMatch(/statusValue !== 'all' \? 'bg-brand text-white'/)
   })
 

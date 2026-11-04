@@ -10,8 +10,9 @@ import SentOutreachList from './seller-influencers/SentOutreachList'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
-import { Loader2, Send, Users, ChevronDown, X } from 'lucide-react'
+import { Loader2, Send, Users, X } from 'lucide-react'
 import { alertDialog } from '@/components/ui/confirm-dialog'
+import { Select } from '@/components/ui/select'
 
 interface Lead {
   id: number; platform: string; handle: string; name: string | null; category: string | null
@@ -89,20 +90,20 @@ export default function SellerInfluencersPage() {
 
         {/* 필터 */}
         <div className="flex flex-wrap items-center gap-2">
-          <select value={cat} onChange={e => setCat(e.target.value)}
+          <Select value={cat} onChange={e => setCat(e.target.value)}
             className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-700 bg-white">
             <option value="">전체 카테고리</option>
             {cats.map(c => <option key={c.category} value={c.category}>{c.category} ({formatNumber(c.n)})</option>)}
-          </select>
-          <select value={band} onChange={e => setBand(Number(e.target.value))}
+          </Select>
+          <Select value={band} onChange={e => setBand(Number(e.target.value))}
             className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-700 bg-white">
             {FOLLOWER_BANDS.map((b, i) => <option key={b.label} value={i}>팔로워 {b.label}</option>)}
-          </select>
-          <select value={sort} onChange={e => setSort(e.target.value)}
+          </Select>
+          <Select value={sort} onChange={e => setSort(e.target.value)}
             className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-700 bg-white">
             <option value="followers">팔로워순</option><option value="avg_views">평균 조회순</option>
             <option value="posts">게시물순</option><option value="comments">댓글순</option><option value="score">추천순</option>
-          </select>
+          </Select>
           <span className="text-[11px] text-gray-400 ml-auto">{formatNumber(total)}명</span>
         </div>
 
@@ -238,12 +239,11 @@ function ProposalModal({ count, leadIds, contactFee, onClose, onDone }: {
           <label className="block">
             <span className="text-xs font-bold text-gray-700">제안할 이용권</span>
             <div className="relative mt-1">
-              <select value={productId} onChange={e => setProductId(e.target.value ? Number(e.target.value) : '')}
+              <Select value={productId} onChange={e => setProductId(e.target.value ? Number(e.target.value) : '')}
                 className="w-full appearance-none px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 bg-white">
                 <option value="">선택 안 함 (매장 전체 소개)</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </Select>
             </div>
           </label>
           <div className="grid grid-cols-2 gap-2">

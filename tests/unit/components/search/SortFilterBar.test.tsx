@@ -29,44 +29,38 @@ describe('SortFilterBar', () => {
     const select = screen.getByRole('combobox')
     expect(select).toBeDefined()
 
-    expect(screen.getByText('관련도순')).toBeDefined()
+    fireEvent.click(select)
+    expect(screen.getAllByText('관련도순').length).toBeGreaterThan(0)
     expect(screen.getByText('낮은가격')).toBeDefined()
     expect(screen.getByText('높은가격')).toBeDefined()
     expect(screen.getByText('최신순')).toBeDefined()
   })
 
+  // 🪟 2026-11-04: 기본 <select> → 유어딜 <Select>(버튼 + 유리 목록). 값은 버튼 글로 보이고, 고르기는 목록을 눌러서.
   it('displays correct selected sort option', () => {
     render(<SortFilterBar {...defaultProps} sortBy="price_low" />)
 
-    const select = screen.getByRole('combobox') as HTMLSelectElement
-    expect(select.value).toBe('price_low')
+    expect(screen.getByRole('combobox').textContent).toContain('낮은가격')
   })
 
   it('calls onSortChange when sort option is changed', () => {
     render(<SortFilterBar {...defaultProps} />)
 
-    const select = screen.getByRole('combobox')
-    fireEvent.change(select, { target: { value: 'price_high' } })
+    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('option', { name: '높은가격' }).querySelector('button')!)
 
     expect(mockOnSortChange).toHaveBeenCalledWith('price_high')
   })
 
   it('displays different sort options correctly', () => {
     const { rerender } = render(<SortFilterBar {...defaultProps} sortBy="relevance" />)
-    let select = screen.getByRole('combobox') as HTMLSelectElement
-    expect(select.value).toBe('relevance')
-
-    rerender(<SortFilterBar {...defaultProps} sortBy="price_low" />)
-    select = screen.getByRole('combobox') as HTMLSelectElement
-    expect(select.value).toBe('price_low')
+    expect(screen.getByRole('combobox').textContent).toContain('관련도순')
 
     rerender(<SortFilterBar {...defaultProps} sortBy="price_high" />)
-    select = screen.getByRole('combobox') as HTMLSelectElement
-    expect(select.value).toBe('price_high')
+    expect(screen.getByRole('combobox').textContent).toContain('높은가격')
 
     rerender(<SortFilterBar {...defaultProps} sortBy="newest" />)
-    select = screen.getByRole('combobox') as HTMLSelectElement
-    expect(select.value).toBe('newest')
+    expect(screen.getByRole('combobox').textContent).toContain('최신순')
   })
 
   it('handles zero results', () => {

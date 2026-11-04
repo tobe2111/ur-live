@@ -5,6 +5,7 @@ import { panelInputCls } from './AgencyAuthShell'
 import { agencyRequest } from './agency-api'
 import { agencyStaffLoginLabel, KAKAO_SOLO_NOTICE } from '@/shared/agency-kakao'
 import { AgencyStaffStoresEditor } from './AgencyStaffStoresEditor'
+import { Select } from '@/components/ui/select'
 
 export interface StaffRow {
   id: number
@@ -135,11 +136,11 @@ export function AgencyStaffPanel({ staff, canManage, onChanged, bare = false, so
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy}
               placeholder="직원 업무용 이메일" aria-label="직원 이메일" className={`${panelInputCls} sm:flex-1`} />
-            <select value={role} onChange={(e) => setRole(e.target.value === 'admin' ? 'admin' : 'staff')} disabled={busy}
+            <Select value={role} onChange={(e) => setRole(e.target.value === 'admin' ? 'admin' : 'staff')} disabled={busy}
               aria-label="역할" className={`${panelInputCls} sm:w-32`}>
               <option value="staff">직원</option>
               <option value="admin">관리자</option>
-            </select>
+            </Select>
             <button type="submit" disabled={busy} className="h-12 shrink-0 rounded-xl bg-brand px-5 text-[15px] font-medium text-white disabled:opacity-50">
               {busy ? '보내는 중…' : '초대하기'}
             </button>

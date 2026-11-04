@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Megaphone, Plus, X } from 'lucide-react'
+import { Select } from '@/components/ui/select'
 
 type ChannelKind = 'instagram' | 'youtube' | 'blog' | 'tiktok' | 'other'
 interface Channel { kind: ChannelKind; url: string; followers?: number | null }
@@ -108,13 +109,13 @@ export default function PublicProfileSection() {
       <div className="space-y-2 mb-3">
         {p.channels.map((c, i) => (
           <div key={i} className="flex gap-2 items-center">
-            <select
+            <Select
               value={c.kind}
               onChange={(e) => patch({ channels: p.channels.map((x, j) => (j === i ? { ...x, kind: e.target.value as ChannelKind } : x)) })}
               className="px-2 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-[12px] text-gray-900 dark:text-white shrink-0"
             >
               {(Object.keys(KIND_LABEL) as ChannelKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
-            </select>
+            </Select>
             <input
               value={c.url}
               onChange={(e) => patch({ channels: p.channels.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)) })}

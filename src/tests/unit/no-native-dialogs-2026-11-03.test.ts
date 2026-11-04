@@ -51,3 +51,33 @@ describe('브라우저 기본 창을 쓰지 않는다', () => {
     ].join('\n')).toEqual([])
   })
 })
+
+/**
+ * 🪟 2026-11-04 대표 *"정산 계좌 등록 부분도 팝업 적용 필요해. 안되어있는거 전체 확인 필요"* —
+ * 은행 고르기가 기본 `<select>` 라 폰에서 휴대폰 기본 목록 창이 떴다. 81파일의 기본 선택창을
+ * `<Select>`(`components/ui/select.tsx` — 폰 유리 시트 · PC 유리 목록)로 바꿨고, 새로 생기는 것을 막는다.
+ */
+describe('브라우저 기본 선택창(<select>)을 쓰지 않는다', () => {
+  const SELECT_ALLOWED: Record<string, string> = {
+    'src/pages/MallAdminPage.tsx': '공구 서비스(운영자 몰) — 다른 서비스',
+    'src/pages/MallHomePage.tsx': '공구 서비스(운영자 몰) — 다른 서비스',
+    'src/pages/MallProductPage.tsx': '공구 서비스(운영자 몰) — 다른 서비스',
+  }
+  const TSX = FILES.filter((f) => f.endsWith('.tsx'))
+
+  it('측정이 헛돌지 않는다 — <Select> 사용처가 충분하다', () => {
+    const users = TSX.filter((f) => /<Select[\s>]/.test(readFileSync(f, 'utf-8')))
+    expect(users.length, '<Select> 사용처가 거의 없다 — 이행이 되돌아갔다').toBeGreaterThan(60)
+  })
+
+  it('<select> 태그를 직접 쓰지 않는다 (→ <Select> from @/components/ui/select)', () => {
+    const bad: string[] = []
+    for (const f of TSX) {
+      if (f in SELECT_ALLOWED) continue
+      stripComments(readFileSync(f, 'utf-8')).split('\n').forEach((line, i) => {
+        if (/<select(?=[\s>]|$)/.test(line)) bad.push(`${f}:${i + 1}  ${line.trim().slice(0, 90)}`)
+      })
+    }
+    expect(bad, ['기본 <select> 는 폰에서 휴대폰 기본 목록 창이 뜬다.', ...bad].join('\n')).toEqual([])
+  })
+})

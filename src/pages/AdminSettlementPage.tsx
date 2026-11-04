@@ -11,6 +11,7 @@ import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { DollarSign, TrendingUp, Users, Download, CheckCircle, Clock } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { parseUTCDate } from '@/utils/date'
+import { Select } from '@/components/ui/select'
 
 interface SettlementStats {
   total_orders: number
@@ -407,10 +408,10 @@ function TaxWithholdingCard() {
           <h3 className="text-sm font-bold text-gray-900">비사업자 셀러 원천징수 (지급조서)</h3>
           <p className="text-xs text-gray-500 mt-0.5">소득세법 §145 — 다음 해 2월 말 국세청 제출용</p>
         </div>
-        <select value={year} onChange={(e) => setYear(Number(e.target.value))}
+        <Select value={year} onChange={(e) => setYear(Number(e.target.value))}
           className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg">
           {[currentYear, currentYear - 1, currentYear - 2].map(y => <option key={y} value={y}>{y}년</option>)}
-        </select>
+        </Select>
       </div>
 
       {summary && summary.payouts_count > 0 ? (

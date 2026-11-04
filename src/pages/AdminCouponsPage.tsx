@@ -10,6 +10,7 @@ import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate, parseUTCDate } from '@/utils/date'
+import { Select } from '@/components/ui/select'
 
 interface Coupon {
   id: number; code: string; name: string; type: string; value: number
@@ -215,14 +216,14 @@ export default function AdminCouponsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.coupons.k016', { defaultValue: '할인 유형' })}</label>
-                <select
+                <Select
                   value={form.type}
                   onChange={e => setForm(f => ({ ...f, type: e.target.value as 'fixed' | 'percent' }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
                 >
                   <option value="fixed">{t('admin.coupons.k017', { defaultValue: '정액 (원)' })}</option>
                   <option value="percent">{t('admin.coupons.k018', { defaultValue: '정률 (%)' })}</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -421,7 +422,7 @@ export default function AdminCouponsPage() {
               쿠폰 #{segmentCouponId}을(를) 선택한 세그먼트 유저에게 발송합니다.
             </p>
             <div className="space-y-3">
-              <select
+              <Select
                 value={segment}
                 onChange={e => setSegment(e.target.value as Segment)}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:border-blue-400 focus:outline-none"
@@ -431,7 +432,7 @@ export default function AdminCouponsPage() {
                 <option value="new">{t('admin.coupons.k043', { defaultValue: '신규 가입 (7일 이내)' })}</option>
                 <option value="dormant">{t('admin.coupons.k044', { defaultValue: '휴면 유저 (30일 미접속)' })}</option>
                 <option value="active">{t('admin.coupons.k045', { defaultValue: '활성 유저 (최근 7일 주문)' })}</option>
-              </select>
+              </Select>
               <button
                 onClick={sendCouponToSegment}
                 disabled={sendingSegment}

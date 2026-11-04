@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
+import { Select } from '@/components/ui/select'
 
 interface SupplyProduct {
   id: number
@@ -197,7 +198,7 @@ export default function SellerSupplyPage() {
 
             {/* 🛡️ 2026-05-21: 카테고리/지역/정렬 필터 — 매장 수만 개 대응. INDEX 활용. */}
             <div className="flex flex-wrap gap-2 mb-4">
-              <select
+              <Select
                 value={filterCategory}
                 onChange={e => setFilterCategory(e.target.value)}
                 className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
@@ -210,8 +211,8 @@ export default function SellerSupplyPage() {
                 <option value="pet_voucher">반려</option>
                 <option value="activity_voucher">액티비티</option>
                 <option value="etc_voucher">기타</option>
-              </select>
-              <select
+              </Select>
+              <Select
                 value={filterRegion}
                 onChange={e => setFilterRegion(e.target.value)}
                 className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
@@ -234,8 +235,8 @@ export default function SellerSupplyPage() {
                 <option value="경북">경북</option>
                 <option value="경남">경남</option>
                 <option value="제주">제주</option>
-              </select>
-              <select
+              </Select>
+              <Select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as typeof sortBy)}
                 className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none ml-auto"
@@ -244,7 +245,7 @@ export default function SellerSupplyPage() {
                 <option value="newest">신상품</option>
                 <option value="price_low">낮은 가격순</option>
                 <option value="price_high">높은 가격순</option>
-              </select>
+              </Select>
             </div>
 
             {catalogLoading ? (

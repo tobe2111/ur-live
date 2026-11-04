@@ -4,6 +4,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import PanelError from './PanelError'
+import { Select } from '@/components/ui/select'
 
 /**
  * 🆕 2026-06-27 유어애즈 — 자동입찰 규칙 관리(목표순위→입찰가 자동조정).
@@ -191,11 +192,11 @@ export default function AutobidPanel() {
                   <td className="py-1.5 pr-2">{r.target_rank}위 <span className="text-gray-400 dark:text-gray-500">{r.device === 'MOBILE' ? '모바일' : 'PC'}</span></td>
                   <td className="py-1.5 pr-2 text-right tabular-nums">₩{formatNumber(r.max_bid)}</td>
                   <td className="py-1.5 pr-2">
-                    <select value={si.key === 'custom' ? '' : si.key} onChange={e => saveRule(r, { schedule: e.target.value })} disabled={busy === r.keyword_id}
+                    <Select value={si.key === 'custom' ? '' : si.key} onChange={e => saveRule(r, { schedule: e.target.value })} disabled={busy === r.keyword_id}
                       className="rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-1 py-0.5 text-[10.5px] text-gray-700 dark:text-gray-200 max-w-[120px]">
                       {si.key === 'custom' && <option value="">맞춤</option>}
                       {SCHEDULE_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-                    </select>
+                    </Select>
                   </td>
                   <td className="py-1.5 pr-2 text-right tabular-nums text-gray-500 dark:text-gray-400">{r.last_applied_bid ? `₩${formatNumber(r.last_applied_bid)}` : '-'}</td>
                   <td className="py-1.5 pr-2">

@@ -14,6 +14,7 @@ import CloudflareCredsSection from './admin-platform-settings/CloudflareCredsSec
 import { CREDENTIAL_KEYS, buildSettingsPayload } from './admin-platform-settings/settings-payload'
 import { COMMISSION_BUDGET_FIELDS } from './admin-platform-settings/money-switch-fields'
 import SettingRow, { settingControlCls } from './admin-platform-settings/SettingRow'
+import { Select } from '@/components/ui/select'
 
 /**
  * 🔁 재수출 — 이 페이지가 이 두 심볼의 **공개 표면**이다(시험·다른 화면이 여기서 가져간다).
@@ -398,13 +399,13 @@ export default function AdminPlatformSettingsPage() {
               {COMMISSION_BUDGET_FIELDS.map(f => (
                 <SettingRow key={f.key} label={f.label} hint={f.hint}>
                   {f.options ? (
-                    <select
+                    <Select
                       value={settings[f.key] ?? f.default}
                       onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
                       className={settingControlCls(undefined, 'sm:w-auto bg-white')}
                     >
                       {f.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    </Select>
                   ) : (
                     <input
                       value={settings[f.key] ?? f.default}
