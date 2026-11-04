@@ -34,7 +34,9 @@ describe('① 매장 0곳 첫 화면 배선', () => {
     expect(s).toMatch(/const firstRun = toss && !error && rows !== null && active\.length === 0 && canManage/)
   })
   it('firstRun 이면 시작하기, 아니면 오늘 매출 + 할 일 판', () => {
-    expect(s).toMatch(/\{firstRun \? \(\s*<AgencyGettingStarted/)
+    expect(s).toMatch(/\{firstRun \? \(\s*<Suspense[^>]*>(?:<\/div>)?[^<]*<AgencyGettingStarted|\{firstRun \? \(\s*<Suspense[\s\S]{0,160}<AgencyGettingStarted/)
+    // 첫 화면 실행 비용 예산 — 매장 0곳일 때만 받는다(lazy)
+    expect(s).toMatch(/const AgencyGettingStarted = lazy\(/)
     expect(s).toMatch(/<AgencyTodayCard rows=/)
   })
   it('빈 맡은 매장 판·PC 목록은 숨고, 매장 대신 등록 줄은 체크리스트로 옮겨 간다', () => {
@@ -163,7 +165,13 @@ describe('④ 에이전시 전용 마이 설정', () => {
   const s = code('src/pages/agency-console/AgencyMyPage.tsx')
   it('이메일 계정만 비밀번호 바꾸기 · 문의하기는 회사 정보 SSOT 의 카카오 상담', () => {
     expect(s).toMatch(/emailAccount && <ListRow[^\n]*label="비밀번호 바꾸기"/)
-    expect(s).toMatch(/label="문의하기"[\s\S]{0,200}COMPANY\.kakaoChatUrl/)
+    expect(s).toMatch(/label="문의하기"[\s\S]{0,200}AGENCY_SUPPORT\.kakaoChatUrl/)
+  })
+  it('문의 창구 값이 회사 정보 SSOT 와 같다(첫 화면 비용 때문에 값만 복사)', async () => {
+    const { AGENCY_SUPPORT } = await import('@/pages/agency-console/AgencyMyPage')
+    const { COMPANY } = await import('@/shared/company-info')
+    expect(AGENCY_SUPPORT.kakaoChatUrl).toBe(COMPANY.kakaoChatUrl)
+    expect(AGENCY_SUPPORT.channel).toBe(COMPANY.supportChannel)
   })
   it('로그아웃은 설정 맨 아래 한 줄이고, 구역 안 로그아웃은 끈다', () => {
     expect(s).toMatch(/<AgencySection headless toss hideLogout/)

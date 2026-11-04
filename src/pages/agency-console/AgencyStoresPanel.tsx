@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
@@ -16,7 +16,9 @@ import { AgencyRegisterStoreCard } from './AgencyRegisterStoreCard'
 import { ROW_LABEL_CLS } from '@/pages/user-profile/list-grammar'
 import { MailIcon, StoreIcon, ShopPlusIcon } from '@/components/icons/urdeal-icons'
 import { AgencyRowStyle, AgencyTodayCard, TossCard, TossTile, TOSS_CARD_CLS, useAgencyRowStyle } from './agency-toss'
-import { AgencyGettingStarted } from './AgencyGettingStarted'
+
+/** 🚀 매장 0곳 첫 화면(2026-11-04 안 A) — 그 상태일 때만 받는다(첫 화면 실행 비용 예산). */
+const AgencyGettingStarted = lazy(() => import('./AgencyGettingStarted').then((m) => ({ default: m.AgencyGettingStarted })))
 
 /**
  * 🏢 에이전시 콘솔 본문 — 대표 확정 **안 A** (2026-10-12 · *"A안으로 해줘. 이건 PC버전도 중요해"*)
@@ -238,13 +240,13 @@ export function AgencyStoresPanel({ onExpired, staffId, agencyRows, trailingRows
           <AgencyRowStyle.Provider value="toss">
             <div className="flex flex-col gap-3">
               {firstRun ? (
-                <AgencyGettingStarted
+                <Suspense fallback={<div className={`${TOSS_CARD_CLS} h-[340px]`} aria-hidden="true" />}><AgencyGettingStarted
                   staffCount={staffCount}
                   pendingCount={pending.length}
                   onRegister={() => setSheet('register')}
                   onInviteStaff={() => onInviteStaff?.()}
                   onRequests={() => setSheet('requests')}
-                />
+                /></Suspense>
               ) : (<>
                 <AgencyTodayCard rows={rows === null ? null : active} />
                 <TossCard title="할 일" testId="agency-todo-card">
