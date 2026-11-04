@@ -106,3 +106,13 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 - (4차 추가) 대표 *"잠금파일도 모두 허가해줄게"* → `vite.config.ts` 지갑 부품 다섯을 `app-wallet` 으로: 내 이용권 첫 방문 870→741KB.
   기록 `docs/locks/loading/2026-11-04-wallet-chunk.md`. 홈 지도 미리받기(`map-warmup`)는 `load`(사진까지) 뒤라 그대로 — 하네스가 사진을 막아 일찍 뜬 것처럼 보였을 뿐.
   ⚠️ 결제(Toss) 잠금 파일은 속도와 무관해 손대지 않았다.
+
+## ✅ 4차 머지 — PR #2197 (E4: 라이브 MyVouchersPage 청크가 app-components 정적 import 0 · app-wallet 사용 확인)
+
+## 5차 (대표 *"최적화 계속"*)
+- 상세 머리줄(`DetailFloatingHeader`): 스크롤마다 `offsetHeight` → ResizeObserver + rAF. 가드 `detail-header-scroll-2026-11-04.test.ts`.
+- **실측했지만 기각한 가설**(다시 시도하지 말 것):
+  - `content-visibility:auto` 를 홈 피드 카드에 — 라이브 3회 A/B 에서 배치 시간 변화 없음(364~409 vs 370~471ms @CPU×4) + 문서 높이 추정이 어긋남(14,585→15,425px, 스크롤 튐 위험).
+  - 마이 "숫자 올라가기"가 배치 54회의 주범 — 횟수는 맞지만(동작 줄이기 시 11회) 시간은 403→344ms 로 작다. 배치 비용은 초기 몇 번이 크다.
+  - 홈 피드 42장 일괄 렌더 — 이미 `useProgressiveCap`(6장부터)로 점진 렌더 중.
+- 라이브 측정 도구(재사용): `/tmp` 아닌 저장소엔 없음 — 실서비스에 playwright + `--proxy-server=$HTTPS_PROXY --ssl-version-max=tls1.2` + CDP `Performance.getMetrics`(LayoutDuration·LayoutCount·RecalcStyle*) 로 잰다.
