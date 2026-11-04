@@ -127,9 +127,14 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
 
   // 🔁 2026-11-02 (②A — 작은 사진이 따라온다): 작은 사진이나 크게 보기에서 고른 사진으로 **큰 사진도** 옮긴다.
   //   스크롤이 active 를 정하고(onGalScroll), 여기는 어긋났을 때만 민다 — 서로 부르지 않는다.
+  // ⚡ 2026-11-04 (대표 *"계속 최적화"*) — **첫 진입(첫 사진)에서는 재지 않는다.** `scrollLeft`·`clientWidth` 를 읽는 순간
+  //   브라우저가 페이지 전체 배치를 그 자리에서 계산해 첫 화면에 긴 작업 하나가 생겼다(CPU×4 프로파일 66ms — 이 줄).
+  //   처음엔 늘 첫 사진·맨 왼쪽이라 맞출 것이 없다. 사람이 사진을 고른 뒤(active 변경)·크게 보기에서 돌아올 때만 잰다.
+  const syncedOnce = useRef(false)
   useEffect(() => {
     const el = galRef.current
     if (!el || lightbox) return
+    if (!syncedOnce.current) { syncedOnce.current = true; if (active === 0) return }
     const cur = Math.round(el.scrollLeft / Math.max(1, el.clientWidth))
     if (cur !== active) el.scrollLeft = active * el.clientWidth
   }, [active, lightbox])
