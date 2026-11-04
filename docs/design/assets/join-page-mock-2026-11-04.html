@@ -1,0 +1,164 @@
+<title>유어딜 시작하기 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* 레이아웃: 시안 A·B 를 폰 크기 판 두 개로 나란히(좁으면 위아래). 색은 서비스 SSOT(브랜드 블루 #1C69EF, 바탕 #F8F7FC/#11141C) */
+:root {
+  --page: #E9EAF0; --bg: #F8F7FC; --surface: #FFFFFF; --ink: #16181C; --soft: #666C72; --faint: #81868C;
+  --rule: rgba(22,24,28,.08); --brand: #1C69EF; --brand-text: #1C69EF; --tint: #E8F0FE; --sale: #E5383B;
+  --sans: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #0B0D12; --bg: #11141C; --surface: #1D1F29; --ink: #F8F7FC; --soft: #9FA3A8; --faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --brand: #1C69EF; --brand-text: #4D8DF5; --tint: #1B2740; --sale: #FF6B6E; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #0B0D12; --bg: #11141C; --surface: #1D1F29; --ink: #F8F7FC; --soft: #9FA3A8; --faint: #6F747A;
+  --rule: rgba(255,255,255,.08); --brand: #1C69EF; --brand-text: #4D8DF5; --tint: #1B2740; --sale: #FF6B6E; color-scheme: dark }
+body { background: var(--page); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 900px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.head h1 { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+.head p { margin: 0 0 20px; color: var(--soft); font-size: 13px; max-width: 64ch; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+.opt { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.opt h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.opt .why { margin: 0; font-size: 13px; color: var(--soft); }
+.phone { background: var(--bg); border-radius: 28px; padding: 28px 20px 24px; max-width: 390px; width: 100%; box-shadow: 0 2px 10px rgba(22,24,28,.12); }
+.logo { font-weight: 800; font-size: 20px; letter-spacing: -.5px; }
+.logo i { font-style: normal; color: var(--brand); }
+.h { font-size: 24px; font-weight: 700; line-height: 1.35; margin: 20px 0 8px; letter-spacing: -.3px; text-wrap: balance; }
+.sub { font-size: 15px; color: var(--soft); margin: 0 0 20px; }
+/* A — 세 갈래 */
+.choice { display: flex; gap: 12px; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.choice:last-of-type { border-bottom: 0; }
+.ic { width: 44px; height: 44px; border-radius: 14px; flex: none; display: grid; place-items: center; }
+.ic svg { width: 26px; height: 26px; }
+.c-body { flex: 1; min-width: 0; }
+.c-t { font-size: 16px; font-weight: 600; margin: 0; }
+.c-d { font-size: 13px; color: var(--soft); margin: 4px 0 0; }
+.c-k { font-size: 12px; color: var(--faint); margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+.c-k span { background: var(--tint); color: var(--brand-text); border-radius: 999px; padding: 2px 8px; font-weight: 500; }
+.arrow { color: var(--faint); font-size: 20px; align-self: center; }
+.btn { display: block; text-align: center; font-weight: 600; font-size: 15px; border-radius: 14px; padding: 14px; text-decoration: none; }
+.btn.primary { background: var(--brand); color: #fff; }
+.btn.ghost { background: var(--surface); color: var(--ink); }
+.foot { text-align: center; font-size: 13px; color: var(--soft); margin-top: 20px; }
+.foot b { color: var(--ink); text-decoration: underline; }
+/* B — 손님 먼저 */
+.deals { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin: 0 0 16px; }
+.deal { border-radius: 12px; overflow: hidden; }
+.deal .ph { aspect-ratio: 1 / 1; }
+.deal p { margin: 6px 0 0; font-size: 12px; line-height: 1.35; }
+.deal b { color: var(--sale); }
+.ph.a { background: linear-gradient(140deg, #E9B48A, #B8613B); }
+.ph.b { background: linear-gradient(140deg, #F2D7DD, #C98A9B); }
+.ph.c { background: linear-gradient(140deg, #9DC3E6, #3D6FA8); }
+.sec { font-size: 13px; font-weight: 600; color: var(--soft); margin: 24px 0 4px; }
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.row:last-child { border-bottom: 0; }
+.row .ic { width: 36px; height: 36px; border-radius: 12px; }
+.row .ic svg { width: 22px; height: 22px; }
+.row .t { flex: 1; min-width: 0; }
+.row .t b { display: block; font-size: 15px; font-weight: 600; }
+.row .t small { font-size: 13px; color: var(--soft); }
+.points { margin: 0 0 16px; padding: 0; list-style: none; display: grid; gap: 8px; }
+.points li { font-size: 13px; color: var(--soft); display: flex; gap: 8px; align-items: baseline; }
+.points li::before { content: ""; width: 6px; height: 6px; border-radius: 99px; background: var(--brand); flex: none; transform: translateY(-2px); }
+.notes { margin-top: 28px; background: var(--surface); border-radius: 16px; padding: 16px 20px; font-size: 13px; color: var(--soft); }
+.notes h3 { margin: 0 0 8px; font-size: 15px; color: var(--ink); }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <h1>/join 다시 그리기 — 시안 둘</h1>
+    <p>지금 화면은 '딜 사고 소개하기'라는 낯선 말이 첫 줄에 서 있고, 손님(이용권 사러 온 사람)과 에이전시 길이 없습니다. 둘 다 세 갈래(손님 · 사장님 · 에이전시)를 담고, 사이트 테마(화이트/다크)를 따릅니다.</p>
+  </div>
+
+  <div class="pair">
+    <section class="opt" aria-label="시안 A">
+      <h2>A · 세 갈래를 나란히</h2>
+      <p class="why">누가 왔든 자기 줄을 바로 찾는다. 줄마다 할 일 한 줄 + 얻는 것 칩.</p>
+      <div class="phone">
+        <div class="logo">urdeal<i>.</i></div>
+        <div class="h">어떻게 시작할까요?</div>
+        <p class="sub">하는 일에 맞는 길을 골라 주세요.</p>
+
+        <div class="choice">
+          <div class="ic" style="background:#FFF1E6"><svg viewBox="0 0 32 32"><rect x="6" y="9" width="20" height="15" rx="3" fill="#F08A4B"/><rect x="6" y="9" width="20" height="5" fill="#D9703A"/><circle cx="12" cy="19" r="2" fill="#FFE2CC"/><rect x="16" y="17" width="7" height="2" rx="1" fill="#FFE2CC"/></svg></div>
+          <div class="c-body">
+            <p class="c-t">이용권 싸게 사기</p>
+            <p class="c-d">동네 식당·뷰티·숙소 이용권을 할인가로 사서 매장에서 바로 써요.</p>
+            <div class="c-k"><span>가입은 카카오 로그인 한 번</span><span>마음에 든 건 유어샵에 담기</span></div>
+          </div>
+          <span class="arrow">›</span>
+        </div>
+
+        <div class="choice">
+          <div class="ic" style="background:#E8F0FE"><svg viewBox="0 0 32 32"><path d="M6 12l3-5h14l3 5z" fill="#4D8DF5"/><rect x="7" y="12" width="18" height="13" rx="2" fill="#1C69EF"/><rect x="13" y="17" width="6" height="8" rx="1" fill="#CFE0FD"/></svg></div>
+          <div class="c-body">
+            <p class="c-t">내 가게 이용권 팔기</p>
+            <p class="c-d">카카오맵에서 가게를 찾아 등록하고, 이용권을 올려 손님을 모아요.</p>
+            <div class="c-k"><span>매출은 현금 정산</span><span>등록 3분</span></div>
+          </div>
+          <span class="arrow">›</span>
+        </div>
+
+        <div class="choice">
+          <div class="ic" style="background:#EAF6EF"><svg viewBox="0 0 32 32"><circle cx="11" cy="12" r="4" fill="#2E9E62"/><circle cx="21" cy="12" r="4" fill="#5BBE85"/><path d="M4 25c0-4 3-7 7-7s7 3 7 7z" fill="#2E9E62"/><path d="M14 25c0-4 3-7 7-7s7 3 7 7z" fill="#5BBE85"/></svg></div>
+          <div class="c-body">
+            <p class="c-t">에이전시로 여러 매장 운영</p>
+            <p class="c-d">매장 사장님 대신 이용권을 올리고 팔아요. 직원을 초대해 함께 써요.</p>
+            <div class="c-k"><span>이메일로 계정 만들기</span><span>매장 영입 링크</span></div>
+          </div>
+          <span class="arrow">›</span>
+        </div>
+
+        <p class="foot">이미 계정이 있나요? <b>로그인</b></p>
+      </div>
+    </section>
+
+    <section class="opt" aria-label="시안 B">
+      <h2>B · 손님 먼저, 사업자는 아래</h2>
+      <p class="why">/join 에 오는 대부분은 손님이다. 실제 이용권 세 장을 보여 주고 바로 로그인. 사업자 두 길은 아래 목록.</p>
+      <div class="phone">
+        <div class="logo">urdeal<i>.</i></div>
+        <div class="h">동네 이용권, 할인가로 사서 바로 쓰기</div>
+        <ul class="points">
+          <li>식당·뷰티·숙소 이용권을 최대 50% 할인가로</li>
+          <li>매장에서 QR 한 번이면 사용 끝</li>
+          <li>마음에 든 이용권은 내 유어샵에 담아 소개</li>
+        </ul>
+        <div class="deals" aria-hidden="true">
+          <div class="deal"><div class="ph a"></div><p><b>20%</b> 숙성 삼겹살 2인</p></div>
+          <div class="deal"><div class="ph b"></div><p><b>35%</b> 젤네일 기본</p></div>
+          <div class="deal"><div class="ph c"></div><p><b>18%</b> 오션뷰 1박</p></div>
+        </div>
+        <a class="btn primary">카카오로 3초 만에 시작</a>
+
+        <p class="sec">사업자라면</p>
+        <div class="row">
+          <div class="ic" style="background:#E8F0FE"><svg viewBox="0 0 32 32"><path d="M6 12l3-5h14l3 5z" fill="#4D8DF5"/><rect x="7" y="12" width="18" height="13" rx="2" fill="#1C69EF"/><rect x="13" y="17" width="6" height="8" rx="1" fill="#CFE0FD"/></svg></div>
+          <div class="t"><b>내 가게 이용권 팔기</b><small>가게 등록 · 매출 현금 정산</small></div><span class="arrow">›</span>
+        </div>
+        <div class="row">
+          <div class="ic" style="background:#EAF6EF"><svg viewBox="0 0 32 32"><circle cx="11" cy="12" r="4" fill="#2E9E62"/><circle cx="21" cy="12" r="4" fill="#5BBE85"/><path d="M4 25c0-4 3-7 7-7s7 3 7 7z" fill="#2E9E62"/><path d="M14 25c0-4 3-7 7-7s7 3 7 7z" fill="#5BBE85"/></svg></div>
+          <div class="t"><b>에이전시로 여러 매장 운영</b><small>이메일 계정 · 직원 초대</small></div><span class="arrow">›</span>
+        </div>
+        <p class="foot">이미 계정이 있나요? <b>로그인</b></p>
+      </div>
+    </section>
+  </div>
+
+  <div class="notes">
+    <h3>두 시안 공통</h3>
+    <ul>
+      <li>'딜 사고 소개하기'는 뺐습니다. 소개(담기)는 손님 길 안의 덤으로만 말합니다.</li>
+      <li>에이전시 길 추가 — 누르면 에이전시 가입(이메일) 화면으로.</li>
+      <li>지금은 늘 검은 화면인데, 사이트 테마(화이트/다크)를 따르게 바꿉니다.</li>
+      <li>B 의 이용권 세 장은 실제 화면에선 인기 이용권 피드에서 가져옵니다(그림은 자리표시).</li>
+      <li>'최대 50%' 같은 숫자는 실제 값으로 맞춥니다(지어내지 않음).</li>
+    </ul>
+  </div>
+</div>

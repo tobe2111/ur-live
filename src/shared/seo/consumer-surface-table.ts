@@ -226,7 +226,7 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   '/join': {
     crumb: '시작하기',
     title: '유어딜 시작하기',
-    description: '내 가게를 등록해 이용권을 팔거나, 로그인해서 동네 딜을 사고 소개해 보세요. 둘 다 해도 됩니다.',
+    description: '동네 식당·뷰티·숙소 이용권을 할인가로 사서 매장에서 바로 쓰세요. 사장님은 가게를 등록해 이용권을 팔고, 에이전시는 여러 매장을 맡아 운영합니다.',
   },
 
   // ── 📜 약관·정책 ──────────────────────────────────────────────────────
