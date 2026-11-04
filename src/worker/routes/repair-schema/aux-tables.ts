@@ -509,6 +509,41 @@ export const AUX_TABLE_REPAIRS: Array<{ name: string; sql: string }> = [
     //   user2→jiwon 1회성 백필. alias 는 라이브 핸들 미스 시에만 사용(라이브 우선)이라 안전, INSERT OR IGNORE 멱등.
     { name: 'backfill: handle alias user2->jiwon (pre-feature)', sql: `INSERT OR IGNORE INTO user_handle_aliases (alias, user_id)
       SELECT 'user2', id FROM users WHERE handle = 'jiwon' LIMIT 1` },
+    // 🎬 2026-11-04 이용권 상세 '다녀온 사람들' — 런타임 ensure 와 같은 DDL(`features/creator-content/api/content-db.ts`).
+    { name: 'store_creator_content', sql: `CREATE TABLE IF NOT EXISTS store_creator_content (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      store_key TEXT NOT NULL,
+      seller_id INTEGER NOT NULL,
+      platform TEXT NOT NULL,
+      ext_id TEXT NOT NULL,
+      url TEXT NOT NULL,
+      title TEXT,
+      thumb_url TEXT,
+      author_name TEXT,
+      author_meta TEXT,
+      summary TEXT,
+      published_at TEXT,
+      sponsored INTEGER NOT NULL DEFAULT 0,
+      embeddable INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'candidate',
+      source TEXT NOT NULL DEFAULT 'auto',
+      pinned INTEGER NOT NULL DEFAULT 0,
+      position INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(store_key, platform, ext_id)
+    )` },
+    { name: 'idx_scc_store_status', sql: `CREATE INDEX IF NOT EXISTS idx_scc_store_status ON store_creator_content(store_key, status, pinned, position)` },
+    { name: 'store_content_crawl', sql: `CREATE TABLE IF NOT EXISTS store_content_crawl (
+      store_key TEXT PRIMARY KEY,
+      seller_id INTEGER NOT NULL,
+      store_name TEXT NOT NULL,
+      address TEXT,
+      naver_at TEXT,
+      yt_at TEXT,
+      seen_at TEXT
+    )` },
+    { name: 'idx_scrawl_naver', sql: `CREATE INDEX IF NOT EXISTS idx_scrawl_naver ON store_content_crawl(naver_at)` },
     { name: 'product_pins', sql: `CREATE TABLE IF NOT EXISTS product_pins (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,

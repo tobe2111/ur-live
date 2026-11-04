@@ -1,0 +1,13 @@
+# [LOADING_ADDITIVE] 이용권 상세 — '다녀온 사람들' 칸 추가 — 2026-11-04
+
+- **잠금 파일**: `src/pages/GroupBuyDetailPage.tsx` — 가격 아래(팔아보기 줄 다음)에 **새 lazy 섹션 하나**를 더했다.
+  잠긴 항목(`__SSR_INITIAL_DETAIL__` 즉시 사용 · CountdownRing · 폴링 · below-fold lazy 지도/후기)은 **한 줄도 안 바꿨다.**
+- **대표 지시(그대로)**: *"음 좋다. 진행하자"* (손님 2 + 사장님 2 + 블로그 창).
+- **첫 화면 무게 0**: lazy 경계는 상세가 아니라 `CreatorContentLazy.tsx` 가 갖는다(상세의 lazy 지문 3건 불변 — 시험이 고정). `CreatorContentRow` 는 `lazy` + `DeferUntilVisible`(뷰포트 300px 안에 와야 청크·요청이 출발) 뒤에 있다.
+  재생기(유튜브·인스타·틱톡 iframe)와 블로그 창은 **누를 때만** 받는다(별도 lazy 청크).
+- **밀림**: 콘텐츠가 0개면 아무것도 안 그린다. 있으면 도착할 때 아래 구역을 민다 — 이 자리가 대개 첫 화면 아래라 손가락 밑 밀림은 드물다.
+  ⚠️ 첫 화면 안에 들어오는 짧은 폰(높이 700 미만)에선 밀릴 수 있다. 문제가 되면 상세 응답에 콘텐츠 개수를 실어 자리를 예약할 것.
+- 같은 커밋: `DealBottomBar` 구매 버튼에 `data-deal-buy` 표식(콘텐츠 창의 '구매' 가 같은 버튼을 누른다 — 로직 불변).
+
+## 롤백
+`GroupBuyDetailPage.tsx` 의 `CreatorContentLazy` 블록 2줄 + import 1줄 삭제.

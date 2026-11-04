@@ -85,6 +85,7 @@ const SellerReviewsPage = lazy(() => import('@/pages/SellerReviewsPage'))
 const SellerCouponsPage = lazy(() => import('@/pages/SellerCouponsPage'))
 const SellerSupplyPage = lazy(() => import('@/pages/SellerSupplyPage'))
 const SellerGroupBuyPage = lazy(() => import('@/pages/SellerGroupBuyPage'))
+const SellerCreatorContentPage = lazy(() => import('@/pages/SellerCreatorContentPage')) // 🎬 2026-11-04 다녀온 사람들 관리
 const SellerReviewVerificationsPage = lazy(() => import('@/pages/SellerReviewVerificationsPage'))
 const SellerVoucherScanPage = lazy(() => import('@/pages/SellerVoucherScanPage'))
 const SellerBundlesPage = lazy(() => import('@/pages/SellerBundlesPage'))
@@ -299,6 +300,11 @@ export function SellerRoutes() {
       <Route path="/seller/group-buy" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerGroupBuyPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/group-buy/:productId/content" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerCreatorContentPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🧭 2026-06-10: 계산대용 바우처 스캔 — 현장 1탭 사용처리 */}
