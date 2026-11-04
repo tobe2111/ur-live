@@ -41,12 +41,12 @@ describe('② 판 안의 줄 = 두 줄 문법', () => {
 describe('③④ 배선', () => {
   it('마이 에이전시 탭과 에이전시 전용 마이가 토스 안을 쓴다', () => {
     expect(readFileSync('src/pages/user-profile/MyAgencyZone.tsx', 'utf8')).toContain('toss={inHead}')
-    expect(readFileSync('src/pages/agency-console/AgencyMyPage.tsx', 'utf8')).toContain('<AgencySection headless toss onSessionEnd={onSessionEnd} />')
+    expect(readFileSync('src/pages/agency-console/AgencyMyPage.tsx', 'utf8')).toContain('<AgencySection headless toss hideLogout onSessionEnd={onSessionEnd} />') // 2026-11-04: 로그아웃은 마이 설정 맨 아래로(agency-first-run)
     expect(readFileSync('src/pages/UserProfilePage.tsx', 'utf8')).toContain('data-testid="agency-store-card"><SellerSection state={sellerSeats} /></div>')
   })
   it('토스 안의 로그아웃은 줄이 아니라 조용한 글자', () => {
     const s = readFileSync('src/pages/agency-console/AgencySection.tsx', 'utf8')
-    expect(s).toContain('trailingRows={toss ? (')
+    expect(s).toContain('trailingRows={hideLogout ? undefined : toss ? (') // 2026-11-04: 에이전시 전용 마이는 설정 맨 아래 줄을 쓴다
     expect(s).toContain('text-[13px] text-gray-500 dark:text-gray-400 active:opacity-70">에이전시 로그아웃</button>')
   })
 })

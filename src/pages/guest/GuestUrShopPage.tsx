@@ -17,7 +17,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import Udal from '@/components/mascot/Udal'
-import { StoreIcon } from '@/components/icons/urdeal-icons'
+import { StoreIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
+import { hasAgencyLogin } from '@/lib/agency-presence'
 import { ListRow } from '@/pages/user-profile/list-grammar'
 import GuestDock from './GuestDock'
 import GuestSteps from './GuestSteps'
@@ -76,6 +77,9 @@ export default function GuestUrShopPage() {
   const stepsRef = useRevealOnce<HTMLDivElement>()
   const ownerRef = useRevealOnce<HTMLDivElement>()
   const rootRef = useRef<HTMLDivElement | null>(null)
+  // 에이전시 로그인은 브라우저 저장소에만 있다 — 첫 그림(서버)과 맞추려고 마운트 뒤에 읽는다.
+  const [agencyOnly, setAgencyOnly] = useState(false)
+  useEffect(() => { try { setAgencyOnly(hasAgencyLogin()) } catch { /* 저장소 막힘 */ } }, [])
   useGuestMotion(rootRef, [typed.done]) // 🎬 2차 — 형광펜·SNS 조각·사장님 줄 화살표(표시는 data-motion, 움직임은 guest-motion.ts)
   const steps = c.steps.map(([a, b], i) => [
     t(`guest.shop.s${i + 1}a`, { defaultValue: a }),
@@ -137,6 +141,15 @@ export default function GuestUrShopPage() {
           to="/partners"
         />
       </div>
+
+      {/* 🏢 2026-11-04 대표 *"남은 1,2,3도 다 해줘"* ③ — 에이전시로만 로그인한 사람이 유어샵 탭을 누르면 이 손님 화면이 뜬다.
+          에이전시 계정엔 유어샵이 없고(유어샵은 카카오 개인 계정에 생긴다) 일하는 곳은 마이다 — 그 길을 한 줄로 알린다.
+          맨 아래에 두는 이유: 에이전시 로그인은 브라우저에서만 알 수 있어 위에 끼우면 첫 화면이 밀린다. */}
+      {agencyOnly && (
+        <div className="mt-2">
+          <ListRow icon={<PeopleIcon size={18} />} label="에이전시 매장 관리는 마이에서" hint="에이전시 로그인 중" to="/user/profile" testId="guest-urshop-agency-row" />
+        </div>
+      )}
 
       <GuestDock returnPath="/u/me" note={t('guest.shop.ctaNote', { defaultValue: c.dockNote })} />
     </div>
