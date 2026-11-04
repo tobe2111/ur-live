@@ -44,6 +44,10 @@ adminPoolSheetsRoutes.post('/pool-sheets/sync', async (c) => {
   const r = await askAds(c.env, `/__ads/pool-sheets-sync?pool=${b.pool}`, { method: 'POST' })
   const j = r.body || {}
   if (j.ok && j.skipped === 'not_configured') return c.json({ success: false, error: '시트 주소를 먼저 저장해 주세요' }, 400)
+  // 🚧 ur-ads 진입 차단기(`lane-gate.ts`)는 200 + skipped 로 답한다 — 그걸 "0줄 성공" 으로 옮기면 안 된다(2026-11-04 실측).
+  if (j.ok && (j.skipped === 'budget' || j.skipped === 'runaway')) return c.json({ success: false, error: '오늘 유어애즈 읽기 한도를 다 써서 쉬는 중입니다 — 한도가 풀리면 매시간 자동으로 이어 씁니다' }, 409)
+  if (j.ok && j.skipped === 'paused') return c.json({ success: false, error: '유어애즈 레인이 수동 정지 중입니다(ADS_LANES_PAUSED)' }, 409)
+  if (j.ok && j.skipped) return c.json({ success: false, error: `실행 안 됨: ${String(j.skipped)}` }, 409)
   if (j.ok) return c.json({ success: true, rows: j.rows ?? 0, partial: !!j.partial, next: j.next ?? null, total: j.total ?? null })
   return c.json({ success: false, error: String(j.error || '동기화 실패') }, 400)
 })

@@ -72,4 +72,12 @@ describe('파트너·매장후보 풀 구글시트 미러', () => {
     const r = await ALARM_LANES['sheets-sync-pools']!.run({} as never)
     expect((r as { skipped?: string }).skipped).toBe('gate_off')
   })
+  it('차단기 응답(skipped)을 성공으로 옮기지 않는다 · 상태 조회는 차단기 면제', async () => {
+    const routes = readFileSync('src/features/marketing/api/admin-pool-sheets.routes.ts', 'utf8')
+    expect(routes).toMatch(/j\.skipped === 'budget'/)
+    expect(routes).toMatch(/if \(j\.ok && j\.skipped\) return c\.json\(\{ success: false/)
+    const { pauseExempt } = await import('@/worker-ads/lane-pause')
+    expect(pauseExempt('/__ads/pool-sheets-status')).toBe(true)
+    expect(pauseExempt('/__ads/pool-sheets-sync'), '실행은 예산을 따라야 한다').toBe(false)
+  })
 })

@@ -43,7 +43,7 @@ describe('lane-pause — 순수', () => {
     expect(pauseExempt('/__ads/maintenance?phase=merge')).toBe(false)
     expect(pauseExempt('/__ads/collect')).toBe(false)
     expect(pauseExempt('/__ads/enrich-influencer')).toBe(false)
-    expect(PAUSE_EXEMPT_PATHS.size, '면제가 조용히 늘면 차단기가 무의미해진다').toBe(6)
+    expect(PAUSE_EXEMPT_PATHS.size, '면제가 조용히 늘면 차단기가 무의미해진다').toBe(7)
   })
 })
 
