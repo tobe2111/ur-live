@@ -22,6 +22,8 @@ on:
       - 'src/features/marketing/**'
       - 'src/features/social-media/**'
       - 'src/features/supply/**'
+      - 'src/features/creator-content/**'   # 🎬 2026-11-04 '다녀온 사람들' 수집 레인
+      - 'src/shared/creator-content.ts'
       - 'src/worker/**'
       - 'wrangler-ads.toml'
       - 'scripts/build-worker-ads.js'
