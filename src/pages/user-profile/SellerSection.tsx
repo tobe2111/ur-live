@@ -49,7 +49,7 @@ import PendingOrders from './seller-section/PendingOrders'
 import StoreThumb from './seller-section/StoreThumb'
 import StoreNotifButton from './seller-section/StoreNotifications'
 import { useAgencyPresence } from './useAgencyPresence' // 🗂️ 에이전시면 '정산' → '매장 정산'(2026-11-03)
-import { useCountUp } from './useCountUp' // 🎬 2026-11-02 시안 B3: 오늘 매출이 0원부터 올라간다
+import TodayRevenueCount from './seller-section/TodayRevenueCount' // 🎬 오늘 매출 0원부터 올라가기 — 숫자 한 칸만 다시 그린다(2026-11-04)
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
 //   같은 화면에 목록 문법이 두 벌이었다 — 대표 *"허술해"*(09-28)의 실체 중 하나.
@@ -103,17 +103,6 @@ const COVERED_BY_SHEET: Record<string, Tool> = {
 /** 묶음 한 줄 — 전부 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
 
 /** ⚠️ 좌석은 **페이지가 한 번만** 묻고 내려 준다 — 여기서 또 부르면 같은 화면에 두 개의 진실이 생긴다. */
-/**
- * 🎬 오늘 매출 숫자 올라가기 — **이 숫자 하나만** 다시 그린다 (2026-11-04 대표 *"버벅임이 심하네 특히 마이페이지"*).
- * 종전엔 `useCountUp` 을 `SellerSection` 본체에서 불러서, 0.8초 동안 **매 프레임(약 50번)** 판매 구역 전체
- * (부품 37개)가 다시 그려졌다 — 마이 첫 화면의 React 작업 대부분이 이것이었다(실측 커밋 60회 vs 홈 9회).
- * 숫자만 따로 떼면 움직임은 그대로이고 다시 그리는 것은 글자 한 칸이다. ⚠️ 본체로 되돌리지 말 것.
- */
-function TodayRevenueCount({ value, resetKey }: { value: number | undefined; resetKey: number | null }) {
-  const shown = useCountUp(value, { durationMs: 800, resetKey })
-  return <>{formatNumber(shown)}</>
-}
-
 export default function SellerSection({ state }: { state: MyStoresState }) {
   const { stores, currentSellerId, loading, failed } = state
   // 🗂️ 2026-11-03 대표 확정 — 에이전시 화면엔 '에이전시 정산'(에이전시 몫)도 있어서, 이 판의 정산은 '매장 정산'(가게 매출)이라고 부른다.

@@ -32,11 +32,11 @@ const ok = {
 
 describe('① 숫자 올라가기는 숫자 한 칸만 다시 그린다', () => {
   const code = stripComments(readCode('src/pages/user-profile/SellerSection.tsx'))
+  const leaf = stripComments(readCode('src/pages/user-profile/seller-section/TodayRevenueCount.tsx'))
   it('useCountUp 은 TodayRevenueCount 안에서만 불린다', () => {
-    const body = code.slice(code.indexOf('export default function SellerSection'))
-    expect(body, '본체에서 부르면 0.8초 동안 매 프레임 판매 구역 전체가 다시 그려진다').not.toMatch(/useCountUp\(/)
-    expect(code).toMatch(/function TodayRevenueCount\([^)]*\)\s*\{\s*const shown = useCountUp\(/)
-    expect(body).toContain('<TodayRevenueCount value={store?.today_revenue}')
+    expect(code, '본체에서 부르면 0.8초 동안 매 프레임 판매 구역 전체가 다시 그려진다').not.toMatch(/useCountUp\(/)
+    expect(leaf).toMatch(/function TodayRevenueCount\([^)]*\)\s*\{\s*const shown = useCountUp\(/)
+    expect(code).toContain('<TodayRevenueCount value={store?.today_revenue}')
   })
 })
 
