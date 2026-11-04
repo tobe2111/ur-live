@@ -32,7 +32,7 @@ describe('로그아웃 이용권 탭 모션', () => {
   })
 
   it('② 서버가 그린 위쪽 움직임은 opacity 0 에서 시작하지 않는다', () => {
-    for (const name of ['ur-gp-land', 'ur-gp-tick', 'ur-gp-ring']) {
+    for (const name of ['ur-gp-land', 'ur-gp-numon', 'ur-gp-press', 'ur-gp-ring', 'ur-gp-kb']) {
       const body = kf(name)
       expect(body, name).not.toBe('')
       expect(body, name).not.toMatch(/opacity/)
@@ -53,7 +53,16 @@ describe('로그아웃 이용권 탭 모션', () => {
   it('④ 동작 줄이기에서는 멈추고, 숨긴 것도 보인다', () => {
     const rm = (css.match(/@media \(prefers-reduced-motion: reduce\)\{(.*)\}$/) || [])[1] || ''
     expect(rm).toMatch(/animation:none!important/)
-    expect(rm).toMatch(/\.ur-gp-wrow,\[data-guest="pass"\] \.ur-gp-use,/)
+    expect(rm).toMatch(/\.ur-gp-wrow,\[data-guest="pass"\] \.ur-gp-wrow img,\[data-guest="pass"\] \.ur-gp-use,/)
+    expect(rm).toMatch(/\.ur-gp-use::after,\[data-guest="pass"\] ol::after\{display:none\}/)
     expect(rm).toMatch(/\.ur-gp-shelf \.ur-gs-rows > \*,\.ur-gp-shelf \.ur-gp-browse\{opacity:1\}/)
+  })
+
+  it('⑤ "제대로" — 사용 시연(눌림 + QR 떠오름) · 1·2·3 막대 · 헤드라인 형광펜이 있다(2026-11-04 대표 *"모션그래픽 제대로 넣어줘"*)', () => {
+    expect(css).toMatch(/\.ur-gp-wrow:first-child \.ur-gp-use \{[^}]*animation: ur-gp-press [^}]*ur-gp-ring/)
+    expect(css).toMatch(/\.ur-gp-wrow:first-child \.ur-gp-use::after \{[^}]*data:image\/svg\+xml[^}]*animation: ur-gp-qrpop/)
+    expect(css).toMatch(/\[data-guest="pass"\] ol::after \{[^}]*animation: ur-gp-bar/)
+    expect(page).toMatch(/useGuestMotion\(rootRef\)/)
+    expect(page).toMatch(/<MarkedLine line=\{t\('guest\.pass\.headline2'/)
   })
 })

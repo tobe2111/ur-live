@@ -64,6 +64,8 @@ export const GUEST_COPY = {
     title: '내 이용권',
     headline1: '동네 가게,',
     headline2: '미리 사면 더 싸요',
+    /** 🎬 형광펜 구절(2026-11-04) — 앱 `MarkedLine` 과 서버 `markHtml` 이 같은 칸으로 감싼다. */
+    headline2Mark: '더 싸요',
     sub: '산 이용권은 여기 지갑에 이렇게 들어와요',
     /** 예시 지갑 두 장 — 실제 가게·상품이 아니다. 사진은 `public/assets/guest/`(서버와 앱이 같은 주소). */
     wallet: [

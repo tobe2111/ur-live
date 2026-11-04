@@ -35,4 +35,20 @@ export default [
     test: T,
     why: '움직임을 끈 사람에게 예시 이용권이 통째로 안 보인다.',
   },
+  {
+    name: '이용권모션 — 사용 시연의 QR 이 안 떠오른다',
+    file: 'src/pages/guest/GuestPassPage.tsx',
+    find: 'animation: ur-gp-qrpop 5s',
+    replace: 'animation: none; --x: ur-gp-qrpop 5s',
+    test: T,
+    why: '"누르면 QR" 시연이 알약만 눌리고 아무것도 안 나온다.',
+  },
+  {
+    name: '이용권모션 — 헤드라인 형광펜을 안 켠다',
+    file: 'src/pages/guest/GuestPassPage.tsx',
+    find: '  useGuestMotion(rootRef) //',
+    replace: '  //',
+    test: T,
+    why: "'더 싸요' 칸은 있는데 형광펜이 영영 안 그어진다.",
+  },
 ]
