@@ -7,7 +7,7 @@ import { toast } from '@/hooks/useToast'
 import { useEffect, useState } from 'react'
 import { isKorea } from '@/shared/config/region'
 import { useTranslation } from '@/lib/i18n-lite'
-import { buildCommerce, commercePayload, feedPayload, shareViaKakao } from '@/lib/kakao-share'
+import { buildCommerce, commercePayload, feedPayload, sendKakaoShare, shareViaKakao } from '@/lib/kakao-share'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-02 12차 ⑨ — 링크가 **복사됐을 때** 동그란 공유 버튼의 그림이 체크로 바뀌었다 돌아온다(버튼에서 눌렸다는 게 보인다).
 //   ⚠️ 한국에선 이 버튼이 카카오톡 공유 창을 연다 — 체크는 카카오가 실패해 링크 복사로 넘어갔을 때(또는 해외)만 뜬다.
@@ -37,24 +37,30 @@ interface ShareButtonProps {
  * 🔁 2026-10-12 — `buildCommerce` 와 `sendDefault` 호출을 `lib/kakao-share.ts` 로 **행동 불변**으로
  *   옮겼다(유어샵 공유가 세 번째 사본이 되려던 참이었다 — 그 파일 머리말). 여기선 호출만 한다.
  */
+/**
+ * 🩸 2026-11-04 대표 *"share card 로 공유가 안 되고 있는 것들 정리해서"* — 이 함수는 `shareViaKakao` 의 **false**(SDK 못 받음·
+ *   카카오 키 없음)를 버리고 있었다. 호출부는 **예외**일 때만 일반 공유로 넘어가서, 카카오가 안 되는 순간 버튼이
+ *   **아무 일도 안 했다**(이용권·상품·공구 상세 · 블로그 · 숙소 · 추천 페이지 전부 이 버튼). ⇒ 보냈는지를 돌려준다.
+ */
 async function shareKakao(
   title: string, description: string, imageUrl: string | undefined, fullUrl: string,
   buttonText: string | undefined,
   commerce: ReturnType<typeof buildCommerce>, secondaryButtonText?: string,
-) {
+): Promise<boolean> {
   if (commerce) {
     // 🛒 커머스 카드 — 가격/할인율 강조 + 버튼 2개(중복 라벨이면 1개).
     const primary = buttonText || '구매하기'
     const secondary = secondaryButtonText || '자세히 보기'
     const buttons = [{ title: primary }]
     if (secondary && secondary !== primary) buttons.push({ title: secondary })
-    await shareViaKakao(commercePayload({ title, imageUrl, url: fullUrl, commerce, buttons }))
-    return
+    const p = commercePayload({ title, imageUrl, url: fullUrl, commerce, buttons })
+    return sendKakaoShare(p) || await shareViaKakao(p)
   }
-  await shareViaKakao(feedPayload({
+  const p = feedPayload({
     title, description, imageUrl, url: fullUrl,
     buttons: [{ title: buttonText || '유어딜에서 보기' }],
-  }))
+  })
+  return sendKakaoShare(p) || await shareViaKakao(p)
 }
 
 /** @returns 링크를 클립보드에 복사했으면 true(그때만 버튼에 체크를 띄운다). */
@@ -84,12 +90,10 @@ export default function KakaoShareButton({ title, description, imageUrl, link, b
 
   const handleShare = async () => {
     if (kr) {
-      try {
-        await shareKakao(title, description, imageUrl, fullUrl, buttonText, commerce, secondaryButtonText)
-      } catch {
-        // 카카오 실패 시 일반 공유로 폴백
-        markCopied(await shareNative(title, description, fullUrl).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }))
-      }
+      let sent = false
+      try { sent = await shareKakao(title, description, imageUrl, fullUrl, buttonText, commerce, secondaryButtonText) } catch { sent = false }
+      // 카카오로 못 보냈으면(예외든 false 든) 일반 공유로
+      if (!sent) markCopied(await shareNative(title, description, fullUrl).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }))
     } else {
       markCopied(await shareNative(title, description, fullUrl).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) }))
     }

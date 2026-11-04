@@ -40,6 +40,25 @@ export function kakaoLink(url: string): KakaoShareLink {
  */
 export const KAKAO_SHARE_FALLBACK_IMAGE = 'https://urdeal.kr/og-image.png'
 
+/**
+ * 🖼️ 카드 그림 주소를 카카오가 받는 모양으로 (2026-11-04 대표 *"공유 카드마다 사진들은 적합하게 적용되는거지?"*).
+ *
+ * 🩸 실측: 상품·숙소 사진이 **상대 주소**(`/api/media/uploads/…`)로 저장돼 있다(라이브 `/api/products` 표본 3/3).
+ *   카카오는 `https://` 전체 주소만 받는다 — 그대로 넘기면 그림이 빠지거나 보내기가 실패한다(에러 없이).
+ *   그래서 모든 카드가 이 한 곳을 지난다: 비었거나 `data:`·SVG(카카오가 못 그린다)면 기본 그림, 상대 주소면 `https://urdeal.kr` 를 붙인다.
+ */
+export function kakaoImageUrl(u?: string | null): string {
+  const v = (u || '').trim()
+  if (!v || v.startsWith('data:') || v.startsWith('blob:')) return KAKAO_SHARE_FALLBACK_IMAGE
+  if (/\.svg(?:$|[?#])/i.test(v) || /\/blog\/og\//.test(v)) return KAKAO_SHARE_FALLBACK_IMAGE
+  if (v.startsWith('//')) return `https:${v}`
+  // 상대 주소는 우리 도메인을 붙인다. 카드 비율 자르기는 카카오가 가운데 기준으로 한다(그 함수를 여기 끌면 모든 화면 공용 묶음이
+  //   +0.5KB — surface-budgets 가 잡았다). 서버 미리보기(og:image)는 `ogCardUrl` 로 잘라 보낸다.
+  if (v.startsWith('/')) return `https://urdeal.kr${v}`
+  if (v.startsWith('http://')) return `https://${v.slice(7)}`
+  return /^https:\/\//.test(v) ? v : KAKAO_SHARE_FALLBACK_IMAGE
+}
+
 type KakaoGlobal = {
   isInitialized?: () => boolean
   Share?: { sendDefault: (o: unknown) => void }
@@ -111,7 +130,7 @@ export function commercePayload(o: {
   const link = kakaoLink(o.url)
   return {
     objectType: 'commerce',
-    content: { title: o.title, imageUrl: o.imageUrl || KAKAO_SHARE_FALLBACK_IMAGE, link },
+    content: { title: o.title, imageUrl: kakaoImageUrl(o.imageUrl), link },
     commerce: o.commerce,
     buttons: o.buttons.map((b) => ({ title: b.title, link: b.url ? kakaoLink(b.url) : link })),
   }
@@ -125,7 +144,7 @@ export function feedPayload(o: {
   const link = kakaoLink(o.url)
   return {
     objectType: 'feed',
-    content: { title: o.title, description: o.description || '', imageUrl: o.imageUrl || KAKAO_SHARE_FALLBACK_IMAGE, link },
+    content: { title: o.title, description: o.description || '', imageUrl: kakaoImageUrl(o.imageUrl), link },
     buttons: o.buttons.map((b) => ({ title: b.title, link: b.url ? kakaoLink(b.url) : link })),
   }
 }

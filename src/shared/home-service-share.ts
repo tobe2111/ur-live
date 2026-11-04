@@ -14,7 +14,7 @@
  * 서버(공개 API)와 워커(검색 메타)가 이 함수 하나를 쓴다 — 두 벌이면 한쪽만 새 칸을 가린다.
  */
 import { categoryDef, type HomeServiceCategory } from './home-service-categories'
-import { isRequestPhotoUrl } from './home-service'
+import { isRequestPhotoUrl } from './home-service-photo'
 
 /** 공유 화면·카톡 카드에 싣는 사진 수 상한 */
 export const SHARE_PHOTOS_MAX = 4
@@ -131,4 +131,20 @@ export function shareDescription(v: ShareView): string {
   const head = v.rows.slice(0, 3).map((r) => r.value).join(' · ')
   const seat = v.open ? `남은 견적 자리 ${v.seatsLeft}/${v.maxQuotes}` : '마감된 요청'
   return `${v.region} · ${head ? head + ' · ' : ''}${seat}. 유어딜에 가입한 업체가 견적을 보내요.`
+}
+
+/**
+ * 💬 카톡 공유 카드(버튼 달린 피드) 문구 — 2026-11-04 대표 *"이런식으로 나올 수는 없나? 밑에?"*(에이전시 초대 카드처럼 아래 버튼).
+ * 링크를 붙여 넣으면 카카오가 서버 메타(og)를 긁어 버튼 없는 카드를 그린다. **공유 버튼**으로 보내면 이 카드가 간다 —
+ * 제목·설명은 서버 메타와 같은 값(`shareDescription`), 그림은 첫 사진(없으면 기본 카드), 아래 버튼 하나.
+ */
+export function lifeShareKakaoCard(v: ShareView, _origin?: string): { title: string; description: string; imageUrl: string | null; button: string } {
+  const first = v.photos?.[0]
+  return {
+    title: v.open ? `${v.title} · 남은 자리 ${v.seatsLeft}/${v.maxQuotes}` : `${v.title} (마감)`,
+    description: shareDescription(v),
+    imageUrl: first || null, // 전체 주소·카드 비율 자르기는 `feedPayload`(kakaoImageUrl)가 한 곳에서 한다
+
+    button: v.open ? '견적 보내기' : '요청 보기',
+  }
 }

@@ -430,7 +430,9 @@ describe('1️⃣2️⃣ 12차 (2026-11-02 대표 "1,9,10번")', () => {
     const s = R('src/components/KakaoShareButton.tsx')
     expect(s).toMatch(/await navigator\.clipboard\.writeText\(fullUrl\)\n\s*toast\.success\('링크가 복사되었습니다'\)\n\s*return true/)
     expect(s).toContain('{isCircle && copied ? (')
-    expect(s).toContain("await shareKakao(title, description, imageUrl, fullUrl, buttonText, commerce, secondaryButtonText)\n      } catch {")
+    // 🔁 2026-11-04 재조준 — 카카오로 **보냈으면** 체크 없음, 못 보냈을 때(예외든 false 든)만 일반 공유로(share-cards-2026-11-04).
+    expect(s).toContain('try { sent = await shareKakao(title, description, imageUrl, fullUrl, buttonText, commerce, secondaryButtonText) } catch { sent = false }')
+    expect(s).toContain('if (!sent) markCopied(')
   })
   it('⑩ 딜 쓰기 고르기 — 알약이 미끄러지고(못 재면 칸을 칠한다) 금액이 굴러간다', () => {
     const s = R('src/pages/group-buy/DealUseChooser.tsx')
