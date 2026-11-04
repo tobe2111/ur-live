@@ -25,7 +25,8 @@ const MAX_PENDING_AI_DRAFTS = 5
 // 관리자가 /admin/blog 에서 직접 수정한 글(manually_edited=1)은 재시드해도 보존됩니다.
 // 💸 2026-07-05 v5: 딜 가이드에 유상/무상 버킷 정책 반영.
 // v6 (2026-07-18): 딜 충전 종료(대표 확정) — 딜=활동 적립 리워드 프레임으로 딜포인트/결제 관련 글 갱신
-const BLOG_SEED_VERSION = 15 // 2026-11-04 글별 AI 썸네일(BLOG_SEED_THUMBNAILS — 시드에 없는 글은 기존 사진 보존 COALESCE)
+const BLOG_SEED_VERSION = 16 // 2026-11-04 썸네일 20장 추가(21편 전부 사진)
+// v15: 2026-11-04 글별 AI 썸네일(BLOG_SEED_THUMBNAILS — 시드에 없는 글은 기존 사진 보존 COALESCE)
 // v14: 2026-10-13 제목 14편 em-dash 제거 (anti-slop — `X — Y` 한 틀이던 것을 흩뜨렸다)
 
 // 테이블 자동 생성

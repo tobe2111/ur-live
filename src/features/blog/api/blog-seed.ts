@@ -16,6 +16,26 @@
  */
 export const BLOG_SEED_THUMBNAILS: Record<string, string> = {
   'voucher-how-to-use': '/assets/blog/voucher-how-to-use-v1.webp',
+  'what-is-urdeal': '/assets/blog/what-is-urdeal-v1.webp',
+  'voucher-guide': '/assets/blog/voucher-guide-v1.webp',
+  'exchange-voucher-guide': '/assets/blog/exchange-voucher-guide-v1.webp',
+  'dongne-deal-guide': '/assets/blog/dongne-deal-guide-v1.webp',
+  'linkshop-my-store': '/assets/blog/linkshop-my-store-v1.webp',
+  'become-business-user': '/assets/blog/become-business-user-v1.webp',
+  'deal-points-guide': '/assets/blog/deal-points-guide-v1.webp',
+  'safe-payment-system': '/assets/blog/safe-payment-system-v1.webp',
+  'review-reward-guide': '/assets/blog/review-reward-guide-v1.webp',
+  'business-user-settlement': '/assets/blog/business-user-settlement-v1.webp',
+  'meal-voucher-lifestyle': '/assets/blog/meal-voucher-lifestyle-v1.webp',
+  'beauty-voucher-guide': '/assets/blog/beauty-voucher-guide-v1.webp',
+  'stay-voucher-guide': '/assets/blog/stay-voucher-guide-v1.webp',
+  'activity-voucher-guide': '/assets/blog/activity-voucher-guide-v1.webp',
+  'first-purchase-guide': '/assets/blog/first-purchase-guide-v1.webp',
+  'voucher-faq': '/assets/blog/voucher-faq-v1.webp',
+  'deal-points-support-culture': '/assets/blog/deal-points-support-culture-v1.webp',
+  'linkshop-decorate-tips': '/assets/blog/linkshop-decorate-tips-v1.webp',
+  'smart-saving-lifestyle': '/assets/blog/smart-saving-lifestyle-v1.webp',
+  'gift-guide': '/assets/blog/gift-guide-v1.webp',
 }
 
 export function blogSeedPosts(): Array<{ slug: string; title: string; summary: string; tags: string; content: string; thumbnail?: string }> {
