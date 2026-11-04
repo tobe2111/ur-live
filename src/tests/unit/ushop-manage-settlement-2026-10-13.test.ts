@@ -21,7 +21,7 @@ const MANAGE = 'src/pages/UShopManagePage.tsx'
 const SETTLE = 'src/pages/InfluencerSettlementPage.tsx'
 const INFO = 'src/pages/influencer-settlement/SettleInfoSheet.tsx'
 const DISPUTE = 'src/pages/influencer-settlement/DisputeSheet.tsx'
-const STRIP = 'src/pages/curator-page/OwnerEarningsStrip.tsx'
+const STRIP = 'src/pages/curator-page/OwnerSummaryCard.tsx' // 📍 2026-11-04 30일 적립 띠 → 유어샵에서 옮겨 온 요약 판
 
 describe('유어샵 관리 — 줄마다 할 일 하나', () => {
   const m = code(MANAGE)
@@ -48,7 +48,7 @@ describe('유어샵 관리 — 줄마다 할 일 하나', () => {
     const money = m.indexOf("defaultValue: '수익과 정산'")
     expect(money).toBeGreaterThan(0)
     expect(m.indexOf('to="/influencer/settlement"')).toBeGreaterThan(money)
-    expect(m.indexOf('<OwnerEarningsStrip')).toBeGreaterThan(money)
+    expect(m.indexOf('<OwnerSummaryCard')).toBeGreaterThan(money)
   })
 
   it('목록은 마이와 같은 문법(list-grammar)으로 그린다', () => {

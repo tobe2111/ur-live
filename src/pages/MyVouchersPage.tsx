@@ -176,7 +176,8 @@ export default function MyVouchersPage() {
               />
             </div>
           </Suspense>
-          {/* 🎨 2026-06-21 (개선 #1): 주변 이용권 캐러셀 (거리순) — 1장 카드 → 가로 스크롤 비교. */}
+          {/* 🎨 2026-06-21 (개선 #1): 주변 이용권 캐러셀 (거리순) — 1장 카드 → 가로 스크롤 비교.
+              📏 2026-11-04 대표 *"아래 이용권 부분이 중앙정렬도 안 되어 있어"* — 한 장뿐이면 80% 폭이 왼쪽에 붙었다 → 한 장이면 양옆 같은 여백으로 꽉. */}
           {mapVouchers.length > 0 && (
             <div className="absolute left-0 right-0 bottom-3 overflow-x-auto scrollbar-hide">
               <div className="flex gap-3 px-3 snap-x snap-mandatory">
@@ -188,7 +189,7 @@ export default function MyVouchersPage() {
                       key={v.id}
                       type="button"
                       onClick={() => { setMapSelected(v); setMapFocusTick(t => t + 1) }}
-                      className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-surface shadow-lift p-3 text-left transition-colors ${selected ? 'ring-2 ring-brand' : ''}`}
+                      className={`snap-start shrink-0 ${mapCarousel.length === 1 ? 'w-full' : 'w-[80%] max-w-[300px]'} flex items-center gap-3 rounded-2xl bg-surface shadow-lift p-3 text-left transition-colors ${selected ? 'ring-2 ring-brand' : ''}`}
                       style={{ boxShadow: '0 8px 28px rgba(10,10,10,0.18)' }}
                     >
                       <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">

@@ -2,12 +2,12 @@
 const TEST = 'src/tests/unit/ushop-owner-summary-2026-11-03.test.tsx'
 export default [
   {
-    name: '🧾 유어샵 B — 요약 판이 방문자에게도 뜬다',
-    file: 'src/pages/CuratorPage.tsx',
-    find: '{isOwner && <Suspense fallback=',
-    replace: '{true && <Suspense fallback=',
+    name: '🧾 유어샵 — 요약 판이 관리 화면에서 빠진다',
+    file: 'src/pages/UShopManagePage.tsx',
+    find: '        <div className="mt-3"><OwnerSummaryCard /></div>',
+    replace: '',
     test: TEST,
-    why: '주인의 수익·방문 수가 손님에게 보인다.',
+    why: '2026-11-04 대표가 관리 안으로 옮겨 달라고 한 숫자가 어디에도 안 보인다.',
   },
   {
     name: '🧾 유어샵 B — 모르는 숫자를 0 으로 위장한다',
