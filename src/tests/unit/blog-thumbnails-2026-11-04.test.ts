@@ -14,6 +14,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { BLOG_SEED_THUMBNAILS, blogSeedPosts } from '@/features/blog/api/blog-seed'
+import { BLOG_SEED_INLINE_IMAGES } from '@/features/blog/api/blog-seed-images'
+import { blogContentToHtml } from '@/features/blog/api/blog-ssr-body'
 
 const ROOT = process.cwd()
 const ROUTES = readFileSync(join(ROOT, 'src/features/blog/api/blog.routes.ts'), 'utf8')
@@ -53,5 +55,40 @@ describe('블로그 썸네일 2026-11-04', () => {
     expect(ROUTES.slice(i, i + 500)).toMatch(/thumbnail_url/)
     expect(ROUTES.slice(i, i + 700)).toMatch(/post\.thumbnail/)
     expect(ROUTES).toMatch(/thumbnail_url=COALESCE\(\?, thumbnail_url\)/)
+  })
+})
+
+// 🖼️ 본문 사이 사진 (같은 날 2차 — 대표 *"글 중간중간에도 그림들을 넣어야 안되겠어? 진짜 블로그처럼?"*)
+
+describe('블로그 본문 사진 2026-11-04', () => {
+  const posts = blogSeedPosts()
+
+  it('⑥ 표의 모든 사진이 실제 소제목을 찾아 본문에 들어간다(문구가 바뀌면 조용히 빠지는 것을 막는다)', () => {
+    for (const [slug, imgs] of Object.entries(BLOG_SEED_INLINE_IMAGES)) {
+      const p = posts.find((x) => x.slug === slug)
+      expect(p, `시드에 없는 slug: ${slug}`).toBeTruthy()
+      for (const im of imgs) {
+        expect(p!.content, `${slug}: '${im.before}' 위에 사진이 안 들어갔다`).toContain(`![${im.alt}](${im.src})\n\n${im.before}`)
+      }
+    }
+  })
+
+  it('⑦ 사진 파일이 있다 · 200KB 이하 · alt 가 비어 있지 않다', () => {
+    for (const imgs of Object.values(BLOG_SEED_INLINE_IMAGES)) {
+      for (const im of imgs) {
+        const f = join(ROOT, 'public', im.src)
+        expect(existsSync(f), `파일 없음: ${im.src}`).toBe(true)
+        expect(statSync(f).size).toBeLessThan(200 * 1024)
+        expect(im.alt.trim().length).toBeGreaterThan(4)
+      }
+    }
+  })
+
+  it('⑧ 크롤러 본문이 사진을 <img> 로 낸다 — `!` 와 링크로 새지 않는다', () => {
+    const html = blogContentToHtml('![가게 사진](/assets/blog/x-a-v1.webp)\n\n## 제목')
+    expect(html).toContain('<img src="/assets/blog/x-a-v1.webp" alt="가게 사진" loading="lazy">')
+    expect(html).not.toMatch(/!<a /)
+    // 반대 방향: 위험한 주소는 사진으로 승격하지 않는다
+    expect(blogContentToHtml('![x](javascript:alert(1))')).not.toContain('<img')
   })
 })

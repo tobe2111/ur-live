@@ -30,6 +30,9 @@ function esc(s: string): string {
 
 /** 이스케이프 완료된 텍스트에 인라인 문법(**볼드**, [링크](url))만 태그로 승격. */
 function inline(escaped: string): string {
+  // ![설명](/경로) — 2026-11-04 본문 사진. 상대경로·https 만 허용(링크보다 먼저 — 문법이 겹친다).
+  escaped = escaped.replace(/!\[([^\]]{0,200})\]\((https:\/\/[^)\s]+|\/(?!\/)[^)\s]*)\)/g,
+    (_m, alt: string, src: string) => `<img src="${src}" alt="${alt}" loading="lazy">`)
   // [텍스트](url) — http(s) 또는 '/' 시작만 허용(javascript: 등 차단)
   let out = escaped.replace(/\[([^\]]{1,200})\]\((https?:&#x2F;&#x2F;[^)\s]+|https?:\/\/[^)\s]+|\/[^)\s]*)\)/g,
     (_m, text: string, href: string) => `<a href="${href}">${text}</a>`)
