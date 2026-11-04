@@ -34,7 +34,7 @@ import { peekWarmStay, stayDetailRequest } from './stays/stay-detail-warm'
 import { type StayDetail, type AvailRoom, todayIso, tomorrowIso } from './stay-detail/stay-detail-types'; import { BookingModal, MultiBookingModal } from './stay-detail/StayBookingModals' // 🏨 합치기 1단계 — 분리
 import { useSafeBack } from '@/hooks/useSafeBack'
 import { storeAffiliateRef } from '@/utils/affiliate-track'; import { readAffiliateRef } from '@/utils/affiliate-ref-store'
-import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'; import { reportFunnel } from '@/lib/web-vitals-report'; import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
+import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 import SellThisCard from '@/components/seeding/SellThisCard' // 🏨 ③ 이용권 상세와 같은 '팔아보기' 한 줄
 
 // 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): 딜 상세와 동일한 잠금 lazy 패턴 —
@@ -135,7 +135,7 @@ export default function StayDetailPage() {
     stayDetailRequest(productId)
       .then((body) => {
         if (body?.success) { const sp = body.data?.product as StayDetail; setStay(sp) // 🏨 2026-11-04 이용권 상세와 같은 기록 — 구매 흐름(조회) · 최근 본
-          reportFunnel('view', productId); try { recordRecentlyViewed({ id: sp.id, name: sp.restaurant_name || sp.name, image_url: sp.image_url, restaurant_name: sp.restaurant_name, price: (sp as { price?: number }).price }) } catch { /* silent */ } }
+          import('@/lib/web-vitals-report').then((m) => m.reportFunnel('view', productId)).catch(() => { /* silent */ }); import('@/components/group-buy/RecentlyViewedStrip').then((m) => m.recordRecentlyViewed({ id: sp.id, name: sp.restaurant_name || sp.name, image_url: sp.image_url, restaurant_name: sp.restaurant_name, price: (sp as { price?: number }).price })).catch(() => { /* silent */ }) } // 📦 늦게 불러온다 — 첫 화면 무게(stayDetail 예산)에 안 들어가게
         // 🏨 2026-07-20 (숙소 상세 SSOT 안전판): stay_info 미보유 stay_voucher(구형 딜 등)는
         //   죽은 화면 대신 일반 딜 상세로 폴백 — canonicalDetailPath 가 숙소를 /stays 로 보내는
         //   단방향 정규화의 역방향 안전판(딜 상세는 숙소로 재리다이렉트 안 하므로 루프 0).

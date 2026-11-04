@@ -10,8 +10,8 @@ const ret = readFileSync('src/pages/StayCheckoutReturnPage.tsx', 'utf-8')
 describe('숙소 상세 기록', () => {
   it('조회수·최근 본·구매 흐름', () => {
     expect(page).toContain('useProductViewBeacon(productId)')
-    expect(page).toContain("reportFunnel('view', productId)")
-    expect(page).toContain('recordRecentlyViewed({ id: sp.id')
+    expect(page).toContain("m.reportFunnel('view', productId)")
+    expect(page).toContain('m.recordRecentlyViewed({ id: sp.id')
   })
   it('결제 확정 뒤 내 이용권을 새로 받는다(지갑 이용권이 생기므로)', () => {
     expect(ret).toContain("invalidateVouchers(); reportFunnel('success')")
