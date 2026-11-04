@@ -24,6 +24,7 @@ import { lifeCategoryPath } from '@/shared/life-seo'
 import { parseUTCDate } from '@/utils/date'
 import { sellerHeaders, shareLifeRequest } from './life-shared'
 import { parseRegionFromAddress } from '@/shared/constants/region-slugs'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 const SEED_ID = '__SSR_INITIAL_LIFESHARE__'
 
@@ -159,12 +160,17 @@ export default function LifeSharePage() {
           ))}
         </dl>
         <p className="mt-5 rounded-2xl bg-warm px-4 py-3 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
-          {v.photoCount > 0 ? `현장 사진 ${v.photoCount}장${v.hasMemo ? '과 메모' : ''}는 가입한 업체에게 보여요. ` : v.hasMemo ? '메모는 가입한 업체에게 보여요. ' : ''}
+          {v.hasMemo ? '메모는 가입한 업체에게 보여요. ' : ''}
           연락처는 손님이 고른 업체에만 공개돼요.
         </p>
-        {v.photoCount > 0 && (
-          <div className="mt-3 flex gap-2" aria-hidden>
-            {Array.from({ length: Math.min(v.photoCount, 4) }, (_, i) => <span key={i} className="h-20 w-20 rounded-xl bg-gray-200 blur-[2px] dark:bg-gray-700" />)}
+        {/* 📷 2026-11-04 대표 *"사진도 말이야"* — 흐린 자리 대신 올린 사진을 그대로(최대 4장 · 공개 뷰가 고른 주소만). */}
+        {(v.photos?.length ?? 0) > 0 && (
+          <div className="mt-3 grid grid-cols-4 gap-2" data-testid="life-share-photos">
+            {v.photos.map((u) => (
+              <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="block aspect-square overflow-hidden rounded-xl bg-warm">
+                <img src={cfImage(u, { width: 240 }) || u} alt="요청 사진" loading="lazy" className="h-full w-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, u)} />
+              </a>
+            ))}
           </div>
         )}
         {!v.open && (

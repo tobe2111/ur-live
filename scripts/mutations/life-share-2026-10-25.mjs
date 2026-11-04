@@ -10,12 +10,13 @@ export default [
     why: '메모 칸은 "가게 이름" 을 받는다 — 공개 페이지에 나가면 손님 가게가 특정된다.',
   },
   {
-    name: '🔗 공유 페이지가 사진 주소를 내보낸다',
+    // 📷 2026-11-04 재조준 — 대표 *"사진도 말이야"* 로 사진은 이제 보인다. 지키는 것은 **올린 사진 모양의 주소만** 나간다는 것.
+    name: '🔗 공유 페이지가 아무 주소나 사진으로 내보낸다',
     file: 'src/shared/home-service-share.ts',
-    find: "    if (f.type === 'photos') { photoCount = v.split(',').filter(Boolean).length; continue }",
-    replace: "    if (f.type === 'photos') { photoCount = v.split(',').filter(Boolean).length }",
+    find: 'photos = all.filter(isRequestPhotoUrl).slice(0, SHARE_PHOTOS_MAX)',
+    replace: 'photos = all.slice(0, SHARE_PHOTOS_MAX)',
     test: TEST,
-    why: '현장 사진은 가입한 업체에게만 — 공개 페이지에는 장수만.',
+    why: '업로드 경로가 아닌 주소(외부 링크·다른 사람 파일)가 공개 카드에 실린다.',
   },
   {
     name: '🔗 이름을 통째로 보인다',

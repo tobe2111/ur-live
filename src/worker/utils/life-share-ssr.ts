@@ -15,9 +15,19 @@ import { withSiteName } from '../../shared/seo/consumer-surfaces'
 import type { SurfaceRewriteMeta } from './surface-ssr-meta'
 import { esc } from './crawler-noscript-rows'
 
+/**
+ * 🩸 2026-11-04 — 워커는 시드를 **JSON 문자열**로 넘긴다(`ssrPayload: string`). 이 함수들은 객체를 기대해서
+ *   라이브에서 늘 null → 카톡 카드가 "유어딜 홈" 으로 나갔다(실측 `x-ssr-status: LIFESHARE:stale-hit` 인데 og:title 기본값).
+ *   시험은 객체를 넣어 초록이었다. ⇒ 문자열이면 여기서 푼다.
+ */
+export function seedObject(payload: unknown): unknown {
+  if (typeof payload !== 'string') return payload
+  try { return JSON.parse(payload) } catch { return null }
+}
+
 /** 시드 봉투(`{ success, data }`)에서 뷰를 꺼낸다 — 모양이 다르면 null(추측해서 그리지 않는다). */
 export function lifeShareViewOf(payload: unknown): ShareView | null {
-  const d = (payload as { data?: ShareView } | null)?.data
+  const d = (seedObject(payload) as { data?: ShareView } | null)?.data
   if (!d || typeof d !== 'object' || typeof d.title !== 'string' || typeof d.category !== 'string') return null
   return d
 }
@@ -44,6 +54,8 @@ export function buildLifeShareMeta(payload: unknown, origin: string, pathname: s
     canonical,
     jsonLd: JSON.stringify(ld).replace(/<\//g, '<\\/'),
     noindex: !v.open,
+    // 📷 2026-11-04 — 사진이 있으면 첫 장이 카톡 카드 그림(없으면 사이트 기본 카드).
+    ...(v.photos?.[0] ? { ogImage: v.photos[0].startsWith('http') ? v.photos[0] : `${origin}${v.photos[0]}` } : {}),
   }
 }
 

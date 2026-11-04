@@ -63,11 +63,15 @@ export function Sheet({ title, onClose, children, footer }: {
           <div className="mx-5 h-1 overflow-hidden rounded-full bg-rule" role="progressbar" aria-valuenow={frame.step} aria-valuemin={1} aria-valuemax={frame.total}>
             <div className={`h-full rounded-full bg-brand transition-[width] duration-300${moved ? ' ur-ls-bar' : ''}`} style={{ width: `${pct}%`, '--ls-from': barFrom } as React.CSSProperties} />
           </div>
-          {frame.step === 1 && frame.intro && <div className="px-5 pt-5">{frame.intro}</div>}
-          {frame.step === 1 && frame.notice && <div className="px-5 pt-4">{frame.notice}</div>}
-          <div className={`flex min-h-0 flex-1 flex-col${moved ? (frame.step > prev ? ' ur-ls-fwd' : ' ur-ls-back') : ''}`}>
+          {/* ⌨️ 2026-11-04 대표 신고(키보드를 열면 입력칸이 '다음' 버튼 뒤로 숨었다) — 소개·안내·제목이 스크롤 영역 **밖**에 있어서
+              키보드가 화면을 줄이면 입력칸이 든 영역만 0 에 가깝게 줄었다. ⇒ 셋 다 **한 스크롤 영역 안**에 두고,
+              입력칸에 손가락이 가면 그 칸을 보이는 자리로 끌어온다(`onFocus` — 키보드가 다 올라온 뒤). */}
+          <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto${moved ? (frame.step > prev ? ' ur-ls-fwd' : ' ur-ls-back') : ''}`} data-testid="life-step-scroll"
+            onFocus={(e) => { const el = e.target as HTMLElement; if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300) }}>
+            {frame.step === 1 && frame.intro && <div className="px-5 pt-5">{frame.intro}</div>}
+            {frame.step === 1 && frame.notice && <div className="px-5 pt-4">{frame.notice}</div>}
             <h2 className="px-5 pt-6 pb-5 text-[20px] font-semibold leading-snug tracking-tight">{title}</h2>
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">{children}</div>
+            <div className="px-5 pb-4">{children}</div>
           </div>
           {footer && <div className="px-5 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">{footer}</div>}
         </div>

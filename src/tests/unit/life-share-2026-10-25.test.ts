@@ -1,7 +1,7 @@
 /**
  * 🔗 생활 요청 공유 페이지 `/life/q/:token` (2026-10-25 대표 — 커뮤니티에 요청을 올려 업체를 데려온다).
  *
- * 지키는 것: ① 이름·연락처·상세 주소·메모·사진이 공개 값에 **값으로** 안 나간다(마스킹만) ② 토큰은 추측 불가
+ * 지키는 것: ① 이름·연락처·상세 주소·메모가 공개 값에 **값으로** 안 나간다(마스킹만) — 📷 사진은 2026-11-04 대표 지시로 보인다(올린 사진 주소만, 최대 4장) ② 토큰은 추측 불가
  * ③ 공개 API 가 그 SSOT 를 지나고 SQL 에서부터 원본을 안 꺼낸다 ④ 마감은 noindex · 사이트맵은 모집 중만
  * ⑤ 공유로 들어온 업체는 그 카테고리를 하면 지역이 달라도 본다.
  * ⚠️ 못 보는 것: 화면 생김새 · 실제 카톡 카드(카카오가 그린다).
@@ -27,12 +27,19 @@ const ROW = {
 describe('공개 값 — 마스킹', () => {
   const v = publicShareView(ROW)!
   const all = JSON.stringify(v)
-  it('메모·사진 주소는 값으로 안 나간다(장수·유무만)', () => {
+  it('메모는 값으로 안 나간다(유무만) · 올린 사진 모양이 아닌 주소는 안 나간다', () => {
     expect(all).not.toContain('망원커피')
     expect(all).not.toContain('1234-5678')
-    expect(all).not.toContain('a.webp')
+    expect(all, '업로드 경로 모양(uploads/user/<id>/<YYYY-MM>/) 이 아닌 주소는 걸러진다').not.toContain('a.webp')
     expect(v.photoCount).toBe(2)
     expect(v.hasMemo).toBe(true)
+  })
+  it('📷 2026-11-04 — 올린 사진은 보인다(최대 4장) · 첫 장이 카톡 카드 그림', () => {
+    const urls = Array.from({ length: 6 }, (_, i) => `/api/media/uploads/user/3/2026-11/p${i}.webp`)
+    const pv = publicShareView({ ...ROW, details: { ...ROW.details, photos: urls.join(',') } })!
+    expect(pv.photos).toEqual(urls.slice(0, 4))
+    const m = buildLifeShareMeta({ success: true, data: pv }, 'https://urdeal.kr', '/life/q/AbCdEf123456')!
+    expect(m.ogImage).toBe('https://urdeal.kr/api/media/uploads/user/3/2026-11/p0.webp')
   })
   it('이름은 첫 글자 + ** · 연락처·주소는 가린 모양', () => {
     expect(v.masked).toEqual({ name: '김**', phone: '010-****-****', address: '망원동 *** ***' })
@@ -107,6 +114,13 @@ describe('검색 — 메타·본문·사이트맵', () => {
   it('사이트맵은 모집 중(자리 남음)만', () => {
     const sm = read('src/worker/routes/sitemap.routes.ts')
     expect(sm).toMatch(/WHERE status = 'open' AND quote_count < max_quotes AND share_token IS NOT NULL/)
+  })
+  it('🩸 2026-11-04 — 워커가 넘기는 **JSON 문자열** 시드에서도 카드가 만들어진다(라이브에서 늘 기본 카드였다)', () => {
+    const str = JSON.stringify(payload)
+    const m = buildLifeShareMeta(str, 'https://urdeal.kr', '/life/q/AbCdEf123456')
+    expect(m?.title).toContain('망원동 카페 간판 제작·교체 견적 요청')
+    expect(buildLifeShareNoscript(str)).toContain('<h1>')
+    expect(buildLifeShareMeta('{깨진', 'https://urdeal.kr', '/x')).toBeNull()
   })
   it('워커 배선 — 슬롯·메타·본문', () => {
     const w = read('src/worker/index.ts')
