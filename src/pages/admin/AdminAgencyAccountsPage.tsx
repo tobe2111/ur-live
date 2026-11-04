@@ -139,7 +139,7 @@ export default function AdminAgencyAccountsPage() {
                     )}
                     {r.status === 'pending' && (
                       <button type="button" disabled={busy === r.id} onClick={() => approve(r)}
-                        className="h-9 rounded-lg bg-brand px-3 text-[13px] font-semibold text-white disabled:opacity-50">승인</button>
+                        className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-50">승인</button>
                     )}
                     {r.status === 'suspended' && (
                       <button type="button" disabled={busy === r.id} onClick={() => setSuspended(r, false)}
