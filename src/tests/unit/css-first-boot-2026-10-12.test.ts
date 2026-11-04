@@ -152,7 +152,6 @@ describe('④ 워커 배선', () => {
 describe('⑥ 첫 방문자가 보지 않는 셸 부품은 조건이 맞을 때만 마운트(app-components 151KB 를 부팅에서 뺀다)', () => {
   const app = stripComments(readFileSync('src/App.tsx', 'utf-8'))
   it.each([
-    ['onboarding', 'OnboardingTrigger'],
     ['restore', 'RestoreAccountModal'],
     ['push', 'PushNotificationSetup'],
     ['sideBanner', 'SideBanner'],
@@ -162,7 +161,6 @@ describe('⑥ 첫 방문자가 보지 않는 셸 부품은 조건이 맞을 때�
     )
   })
   it('문지기 조건이 컴포넌트 자신의 조건과 같다', () => {
-    expect(app).toMatch(/onboarding: qs\.includes\('new=1'\)/)
     expect(app).toMatch(/restore: qs\.includes\('restorable=1'\)/)
     expect(app).toMatch(/sideBanner:[^\n]*min-width: 1024px/)
   })

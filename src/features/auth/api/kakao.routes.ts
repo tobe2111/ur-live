@@ -19,7 +19,7 @@ import { encryptAtRest } from '@/worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { findOwnerSeatSellerRow, ownerGrantSeat } from '@/worker/utils/seller-operators';
-import { kakaoLoginScope } from '../services/kakao-login-scope';
+import { kakaoLoginScope, kakaoNeedsUserInfo, kakaoServiceTermsParam, recordKakaoMarketingConsent } from '../services/kakao-login-scope';
 
 /**
  * 카카오 로그인 완료 시 linked seller / agency 있으면 자동 JWT 발급.
@@ -164,8 +164,7 @@ type Bindings = {
   // 🛡️ 2026-06-20 (OIDC): '1' 이면 openid scope 요청 + id_token fast path 사용.
   //   콘솔 OpenID Connect 활성화와 짝. 미설정 시 기존 getUserInfo 경로(동작 동일).
   KAKAO_OIDC_ENABLED?: string;
-  KAKAO_CHANNEL_ADD_ENABLED?: string;
-  // 🛡️ 2026-05-01: FIREBASE_* env vars 제거 — KR Kakao 흐름에서 미사용.
+  KAKAO_CHANNEL_ADD_ENABLED?: string; KAKAO_PHONE_SCOPE_ENABLED?: string; KAKAO_SERVICE_TERMS?: string; KAKAO_MARKETING_TERM_TAG?: string; // 📞📣 2026-11-04 뜻은 services/kakao-login-scope.ts · (2026-05-01 FIREBASE_* env 제거 — KR 미사용)
 };
 
 export const kakaoRoutes = new Hono<{ Bindings: Bindings }>();
@@ -400,11 +399,11 @@ kakaoRoutes.get('/start', rateLimit({ action: 'kakao_start', max: 30, windowSec:
   authUrl.searchParams.set('redirect_uri', redirectUri);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('state', state);
-  // 🛡️ 2026-06-20 (OIDC 속도 최적화 — env 플래그 게이트): KAKAO_OIDC_ENABLED 켜진 경우에만
-  //   openid scope → id_token 동봉 → getUserInfo 왕복 생략(콘솔 OIDC ON 후 플래그 ON). 규칙: services/kakao-login-scope.ts
+  // 🛡️ 2026-06-20 (OIDC 속도 최적화 — env 플래그 게이트): KAKAO_OIDC_ENABLED 켜진 경우에만 openid scope → id_token 동봉 → getUserInfo 왕복 생략(콘솔 OIDC ON 후 플래그 ON). 규칙: services/kakao-login-scope.ts
   const loginScope = kakaoLoginScope(c.env); // 📢 KAKAO_CHANNEL_ADD_ENABLED 면 plusfriends(채널 추가) 포함
   if (loginScope) authUrl.searchParams.set('scope', loginScope);
-  if (c.req.query('mode') === 'sdk') return c.json({ success: true, data: { state, redirectUri, scope: loginScope || '' } }); // 📱 2026-10-11 카톡 간편로그인 — 같은 state·쿠키, 이동만 JS SDK 가(lib/kakao-talk-login)
+  const serviceTerms = kakaoServiceTermsParam(c.env); if (serviceTerms) authUrl.searchParams.set('service_terms', serviceTerms); // 📣 2026-11-04 카카오싱크 약관(마케팅 수신 등) — 설정했을 때만
+  if (c.req.query('mode') === 'sdk') return c.json({ success: true, data: { state, redirectUri, scope: loginScope || '', serviceTerms: serviceTerms || '' } }); // 📱 2026-10-11 카톡 간편로그인 — 같은 state·쿠키, 이동만 JS SDK 가(lib/kakao-talk-login)
   // 🛡️ 2026-05-01 (REVISED v2): prompt=login 강제 OFF — 일상 사용자 UX 우선.
   //   대신 토스트 + 전환 버튼으로 잘못된 로그인 즉시 인지 가능.
   //   force_account=1 query 일 때만 prompt=login 활성 (마이페이지 '다른 계정으로 로그인' 버튼).
@@ -588,7 +587,7 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       const kakaoRefreshToken = tokenData.refresh_token || null;
       // 🛡️ 2026-06-20 (OIDC fast path): OIDC 활성 + 토큰 응답에 id_token 있으면 그걸 디코드해
       //   사용자 식별정보 획득 → getUserInfo 카카오 왕복 1회 생략. 필수 claim 없으면 null → 폴백.
-      let kakaoUser = c.env.KAKAO_OIDC_ENABLED ? kakaoService.parseIdToken(tokenData.id_token) : null;
+      let kakaoUser = c.env.KAKAO_OIDC_ENABLED && !kakaoNeedsUserInfo(c.env) ? kakaoService.parseIdToken(tokenData.id_token) : null; // 📞 2026-11-04 번호를 받기로 했으면 id_token(번호 없음) 대신 사용자정보 API
       if (kakaoUser) {
         diagTimings.userinfo = 0;                          // id_token fast path — 왕복 0 (계측 신호)
       } else {
@@ -653,6 +652,7 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
         }
       })();
       if (c.executionCtx) c.executionCtx.waitUntil(persistKakaoTokens); else await persistKakaoTokens;
+      if (c.env.KAKAO_MARKETING_TERM_TAG) { const mp = recordKakaoMarketingConsent(DB, c.env, user.id, () => kakaoService.getServiceTerms(accessToken)); if (c.executionCtx) c.executionCtx.waitUntil(mp); else await mp; }
 
       // 🛡️ 순서 중요: clear-state 먼저, session 은 append 로 추가.
       // 원래 c.header('Set-Cookie', ...) 를 두 번 호출해서 두 번째가 첫 번째를 덮어써

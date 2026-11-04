@@ -24,7 +24,7 @@
 import { ensureKakaoSdk } from './kakao-sdk'
 import { detectInAppBrowser, isAndroid, isIOS } from './in-app-browser'
 
-interface TalkLoginTicket { state: string; redirectUri: string; scope: string }
+interface TalkLoginTicket { state: string; redirectUri: string; scope: string; serviceTerms?: string }
 
 let ready: TalkLoginTicket | null = null
 let preparing: Promise<void> | null = null
@@ -90,6 +90,7 @@ export function startTalkLogin(): boolean {
       redirectUri: t.redirectUri,
       state: t.state,
       ...(t.scope ? { scope: t.scope } : {}),
+      ...(t.serviceTerms ? { serviceTerms: t.serviceTerms } : {}), // 📣 2026-11-04 카카오싱크 약관 — 웹 이동과 같은 값
       throughTalk: true,
     })
     ready = null // state 는 1회용 — 다시 누르면 새로 받는다

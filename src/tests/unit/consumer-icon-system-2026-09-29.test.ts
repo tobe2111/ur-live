@@ -105,7 +105,8 @@ const OPERATION = new Set([
 /* 🔧 2026-10-19: 132 → **130**. 실측 130건 — 그 사이 머지된 정리분이 lucide 뜻 아이콘 2건을 걷고 기준을 안 내려,
    main 전수 주입(`뜻 아이콘이 한 건 되돌아온다`)이 shard 10/16 에서 빨간불이 됐다(head 8e93b1a). 같은 규칙대로 내린다(아홉 번째). */
 /* 🔧 2026-10-19: 130 → **129**. 딜 내역 화면(MyDealHistoryPage)의 빈 상태 `Inbox` 를 걷었다(흰 카드 정리) — 같은 규칙대로 같은 PR 에서 내린다(열 번째). */
-const MEANING_BASELINE = 129
+/* 🔧 2026-11-04: 129 → **128**. 가입 환영 창(WelcomeOnboardingModal) 삭제로 lucide 뜻 아이콘 1건이 빠졌다 — 같은 PR 에서 내린다(PR CI 주입이 잡았다, 열한 번째). */
+const MEANING_BASELINE = 128
 
 const read = (f: string) => readFileSync(f, 'utf8')
 
