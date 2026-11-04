@@ -25,7 +25,8 @@ const MAX_PENDING_AI_DRAFTS = 5
 // 관리자가 /admin/blog 에서 직접 수정한 글(manually_edited=1)은 재시드해도 보존됩니다.
 // 💸 2026-07-05 v5: 딜 가이드에 유상/무상 버킷 정책 반영.
 // v6 (2026-07-18): 딜 충전 종료(대표 확정) — 딜=활동 적립 리워드 프레임으로 딜포인트/결제 관련 글 갱신
-const BLOG_SEED_VERSION = 14 // 2026-10-13 제목 14편 em-dash 제거 (anti-slop — `X — Y` 한 틀이던 것을 흩뜨렸다)
+const BLOG_SEED_VERSION = 15 // 2026-11-04 글별 AI 썸네일(BLOG_SEED_THUMBNAILS — 시드에 없는 글은 기존 사진 보존 COALESCE)
+// v14: 2026-10-13 제목 14편 em-dash 제거 (anti-slop — `X — Y` 한 틀이던 것을 흩뜨렸다)
 
 // 테이블 자동 생성
 async function ensureBlogTable(DB: D1Database) {
@@ -279,9 +280,9 @@ async function syncBlogSeed(DB: D1Database, env?: SeedAssetEnv): Promise<boolean
 
     if (!existing) {
       await DB.prepare(`
-        INSERT OR IGNORE INTO blog_posts (slug, title, summary, content, tags, author, is_published, published_at, is_seed, manually_edited, seed_version)
-        VALUES (?, ?, ?, ?, ?, '유어딜 팀', 1, datetime('now', ?), 1, 0, ?)
-      `).bind(post.slug, post.title, post.summary, post.content, post.tags, ageOffset, BLOG_SEED_VERSION).run().catch(swallow('blog:api:blog'))
+        INSERT OR IGNORE INTO blog_posts (slug, title, summary, content, tags, author, is_published, published_at, is_seed, manually_edited, seed_version, thumbnail_url)
+        VALUES (?, ?, ?, ?, ?, '유어딜 팀', 1, datetime('now', ?), 1, 0, ?, ?)
+      `).bind(post.slug, post.title, post.summary, post.content, post.tags, ageOffset, BLOG_SEED_VERSION, post.thumbnail ?? null).run().catch(swallow('blog:api:blog'))
     } else if (!existing.manually_edited) {
       // 시드 관리 글 & 수동편집 안 됨 → 최신 시드 내용으로 갱신.
       // 🗓️ 2026-10-12: **발행일은 다시 쓰지 않는다**(종전엔 `published_at=datetime('now', -3i days)`
@@ -298,9 +299,10 @@ async function syncBlogSeed(DB: D1Database, env?: SeedAssetEnv): Promise<boolean
       //     `dateModified`·sitemap `lastmod` 가 이제 그 값을 쓴다.
       await DB.prepare(`
         UPDATE blog_posts
-        SET title=?, summary=?, content=?, tags=?, is_seed=1, is_published=1, seed_version=?, updated_at=CURRENT_TIMESTAMP
+        SET title=?, summary=?, content=?, tags=?, is_seed=1, is_published=1, seed_version=?, updated_at=CURRENT_TIMESTAMP,
+            thumbnail_url=COALESCE(?, thumbnail_url)
         WHERE id=? AND manually_edited=0
-      `).bind(post.title, post.summary, post.content, post.tags, BLOG_SEED_VERSION, existing.id).run().catch(swallow('blog:api:blog'))
+      `).bind(post.title, post.summary, post.content, post.tags, BLOG_SEED_VERSION, post.thumbnail ?? null, existing.id).run().catch(swallow('blog:api:blog'))
     }
     // manually_edited=1 → 건너뜀(수동편집 보존)
   }

@@ -7,7 +7,22 @@
  *      check-blog-seed-currency.mjs 가 이 파일을 스캔해 자동 차단한다.
  */
 
-export function blogSeedPosts(): Array<{ slug: string; title: string; summary: string; tags: string; content: string }> {
+/**
+ * 🖼️ 2026-11-04 글별 썸네일(대표 *"사진들 썸네일 부분들 적재적소에 AI로 사진 만들어서 넣어주면 좋겠고"*).
+ *   AI 생성 사진(Figma generate_image) → `public/assets/blog/<slug>-v<N>.webp`(1200×675).
+ *   `/assets/*` 는 1년 immutable 캐시라 **사진을 바꾸면 파일 이름의 v 숫자를 올린다**(같은 이름이면 옛 사진이 남는다).
+ *   여기 없는 글은 주제 아이콘 커버(`BlogCover`)로 그대로 뜬다. 생성 프롬프트·원본 위치: `docs/design/blog-thumbnails-2026-11-04.md`.
+ *   ⚠️ 표를 바꾸면 BLOG_SEED_VERSION +1 (안 올리면 라이브 DB 에 안 들어간다). 가드: blog-thumbnails-2026-11-04.test.ts
+ */
+export const BLOG_SEED_THUMBNAILS: Record<string, string> = {
+  'voucher-how-to-use': '/assets/blog/voucher-how-to-use-v1.webp',
+}
+
+export function blogSeedPosts(): Array<{ slug: string; title: string; summary: string; tags: string; content: string; thumbnail?: string }> {
+  return blogSeedPostsRaw().map((p) => (BLOG_SEED_THUMBNAILS[p.slug] ? { ...p, thumbnail: BLOG_SEED_THUMBNAILS[p.slug] } : p))
+}
+
+function blogSeedPostsRaw(): Array<{ slug: string; title: string; summary: string; tags: string; content: string }> {
   return [
     {
       slug: 'what-is-urdeal',

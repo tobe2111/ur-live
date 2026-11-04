@@ -35,8 +35,8 @@ export default [
     why: '발행일 동결을 "아예 안 쓴다"로 과하게 밀면 새 글이 NULL 로 들어가 목록 정렬'
        + '(`ORDER BY published_at DESC`)이 통째로 깨진다. 동결은 **재작성**만 금지한다.',
     file: BLOG,
-    find: "is_seed, manually_edited, seed_version)\n        VALUES (?, ?, ?, ?, ?, '유어딜 팀', 1, datetime('now', ?), 1, 0, ?)",
-    replace: "is_seed, manually_edited, seed_version)\n        VALUES (?, ?, ?, ?, ?, '유어딜 팀', 1, NULL, 1, 0, ?)",
+    find: "is_seed, manually_edited, seed_version, thumbnail_url)\n        VALUES (?, ?, ?, ?, ?, '유어딜 팀', 1, datetime('now', ?), 1, 0, ?, ?)",
+    replace: "is_seed, manually_edited, seed_version, thumbnail_url)\n        VALUES (?, ?, ?, ?, ?, '유어딜 팀', 1, NULL, 1, 0, ?, ?)",
     test: TEST,
   },
   {

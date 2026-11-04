@@ -56,7 +56,7 @@ export async function loadSeedAsset<T>(
 
 /** 블로그 시드 모양 검사 — 글이 **한 편이라도** 있어야 시드로 인정한다(빈 배열은 사고 신호). */
 export function isBlogSeed(v: unknown): v is Array<{
-  slug: string; title: string; summary: string; tags: string; content: string
+  slug: string; title: string; summary: string; tags: string; content: string; thumbnail?: string
 }> {
   return Array.isArray(v) && v.length > 0 && typeof (v[0] as { slug?: unknown })?.slug === 'string'
 }
