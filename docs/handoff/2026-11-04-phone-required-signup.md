@@ -25,3 +25,9 @@
 - 실측(라이브 Pages env): `KAKAO_OIDC_ENABLED=1`, `KAKAO_CHANNEL_ADD_ENABLED` 없음 → 카카오 동의 화면은 이메일·닉네임·프로필사진뿐. **알림·광고 동의도, 채널 추가도, 휴대폰 번호도 안 받는다**(OIDC 경로는 phone 을 아예 안 읽는다 — 그래서 번호가 비어 있었다).
 - `WelcomeOnboardingModal`·`OnboardingTrigger` 삭제 + App 마운트 제거. 가입하면 번호 창 하나만.
 - 알림톡 토글은 원래 저장되지 않았다(`/api/users/onboarding` 라우트 없음 · 읽는 곳 없음).
+
+## 2026-11-04 후속 2 — 카카오에서 번호·마케팅 동의 받기(스위치, 기본 꺼짐)
+- 대표: *"최대한 받으면 좋겠는데"* → *"응 해줘. 다"* → 잠금 파일 허가 *"허가 — 꺼 둔 채로 넣어줘"*
+- 스위치: `KAKAO_PHONE_SCOPE_ENABLED` · `KAKAO_SERVICE_TERMS` · `KAKAO_MARKETING_TERM_TAG` (+ 기존 `KAKAO_CHANNEL_ADD_ENABLED`)
+- 콘솔 설정 순서: `docs/KAKAO_CONSENT_SETUP_2026-11-04.md` · 잠금 기록 `docs/locks/loading/2026-11-04-kakao-phone-terms.md`
+- ⚠️ 콘솔 설정 전에 켜면 KOE205 로 로그인 전체가 막힌다. 켜는 건 대표가 설정을 끝낸 뒤.
