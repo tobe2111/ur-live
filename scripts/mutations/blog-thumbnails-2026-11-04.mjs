@@ -22,4 +22,20 @@ export default [
     replace: 'BLOG_SEED_VERSION, null).run()',
     test: TEST,
   },
+  {
+    name: '🖼️ 본문 사진 소제목이 낡는다(한 글자 차이) — 사진이 조용히 빠진다',
+    why: '소제목을 고치면 표의 before 가 안 맞아 사진이 에러 없이 사라진다.',
+    file: 'src/features/blog/api/blog-seed-images.ts',
+    find: "'## 결제가 안전한 이유'",
+    replace: "'## 결제가 안전한 이유!'",
+    test: TEST,
+  },
+  {
+    name: '🖼️ 크롤러 본문이 사진 문법을 모른다 — `!` + 링크로 샌다',
+    why: '검색엔진·AI 크롤러가 받는 본문에 깨진 문자열이 남는다.',
+    file: 'src/features/blog/api/blog-ssr-body.ts',
+    find: '(_m, alt: string, src: string) => `<img src="${src}" alt="${alt}" loading="lazy">`)',
+    replace: '(m: string) => m)',
+    test: TEST,
+  },
 ]

@@ -1,4 +1,5 @@
 /* eslint-disable */
+import { withInlineImages } from './blog-seed-images'
 // file-size-ok — 순수 시드 "데이터"(블로그 글 본문) 파일. god 파일(로직 복잡도) 대상 아님 — 데이터라 크기 예외.
 /**
  * 📝 소비자 블로그 시드 콘텐츠 (SSOT 데이터) — blog.routes.ts 에서 분리(god 파일 축소).
@@ -39,7 +40,10 @@ export const BLOG_SEED_THUMBNAILS: Record<string, string> = {
 }
 
 export function blogSeedPosts(): Array<{ slug: string; title: string; summary: string; tags: string; content: string; thumbnail?: string }> {
-  return blogSeedPostsRaw().map((p) => (BLOG_SEED_THUMBNAILS[p.slug] ? { ...p, thumbnail: BLOG_SEED_THUMBNAILS[p.slug] } : p))
+  return blogSeedPostsRaw().map((p) => {
+    const q = { ...p, content: withInlineImages(p.slug, p.content) }
+    return BLOG_SEED_THUMBNAILS[p.slug] ? { ...q, thumbnail: BLOG_SEED_THUMBNAILS[p.slug] } : q
+  })
 }
 
 function blogSeedPostsRaw(): Array<{ slug: string; title: string; summary: string; tags: string; content: string }> {

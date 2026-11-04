@@ -31,7 +31,7 @@ export const BLOG_MD = {
   quote: 'my-5 pl-4 border-l-4 border-line text-gray-600 dark:text-gray-300 italic',
   hr: 'my-8 border-line',
   p: 'text-[16.5px] text-gray-700 dark:text-gray-200 leading-[1.85] my-3',
-  img: 'block max-w-full rounded-lg my-3',
+  img: 'block w-full h-auto rounded-xl my-6',
   a: 'text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:opacity-80',
   strong: 'font-bold text-gray-900 dark:text-white',
 } as const
