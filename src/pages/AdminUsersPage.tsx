@@ -14,7 +14,6 @@ import {
   Loader2, ChevronLeft, ChevronRight, X
 } from 'lucide-react'
 import { Select } from '@/components/ui/select'
-
 // NOTE: users 테이블에는 deal_balance, status 컬럼이 존재하지 않습니다.
 // 포인트는 user_points 테이블 / 상태는 별도 관리 필요.
 interface User {

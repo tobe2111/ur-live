@@ -62,7 +62,6 @@ function parseDraft(raw?: string | null): OutreachDraftData | null {
   try { const d = JSON.parse(raw) as OutreachDraftData; return d?.subject && d?.body ? d : null } catch { return null }
 }
 interface PoolStats { total?: number; youtube?: number; naver_blog?: number; naver_cafe?: number; nb_unmeasured?: number; with_contact?: number; with_email?: number; yt_with_email?: number; yt_email_personal?: number; recent7?: number; today?: number; need_followup?: number; st_new?: number; st_contacted?: number; st_interested?: number; st_contracted?: number; st_rejected?: number; st_hold?: number; reached?: number; replied?: number; contacted7?: number; ch_email?: number; ch_dm?: number; ch_note?: number; ch_kakao?: number; ch_call?: number; ch_other?: number; opened?: number; bounced?: number; consented?: number; brand_tagged?: number; opted_out?: number; scored?: number; score_hot?: number; categorized?: number; cat_content?: number; cat_topic?: number; cat_keyword?: number; region_filled?: number; region_none?: number; region_pending?: number; nb_with_subs?: number; yt_with_subs?: number; recruited?: number; recruit_converted?: number; joined?: number; first_sale?: number }
-
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-600' },
   contacted: { label: '컨택함', cls: 'bg-tone-info-bg text-tone-info' },
