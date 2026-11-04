@@ -1,14 +1,25 @@
-import { useCallback } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import { PersonIcon, SettingsIcon } from '@/components/icons/urdeal-icons'
+import { PersonIcon, SettingsIcon, MessageIcon, EditIcon, LogOutIcon } from '@/components/icons/urdeal-icons'
+import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import { SectionTitle, ListRow } from '@/pages/user-profile/list-grammar'
 import { useTheme, type ThemeMode } from '@/shared/stores/useTheme'
 import { toast } from '@/hooks/useToast'
-import AgencySection from './AgencySection'
+import AgencySection, { confirmAgencyLogout } from './AgencySection'
 import AgencyInviteButton from '@/pages/user-profile/AgencyInviteButton'
 import { readAgencyProfile } from './agency-api'
 import { agencyStaffLoginLabel } from '@/shared/agency-kakao'
+
+// 🔑 비밀번호 바꾸기는 누를 때만 받는다 — 첫 화면 실행 비용(`check-exec-cost`)을 늘리지 않게.
+const AgencyPasswordPanel = lazy(() => import('./AgencyPasswordPanel').then((m) => ({ default: m.AgencyPasswordPanel })))
+
+/**
+ * 💬 문의 창구 — 값은 `shared/company-info.ts` 의 `COMPANY.kakaoChatUrl` 과 같다(손님 마이 `UserProfilePage` 도 같은 주소를 직접 적는다).
+ *   그 모듈을 import 하면 같이 묶인 청크가 첫 화면에서 실행돼 실행 JS 가 ~3KB 늘었다(`check-exec-cost` 빨간불, 2026-11-04 실측) →
+ *   값 둘만 여기 둔다. 시험(`agency-first-run`)이 company-info 와 같은 값인지 대조한다.
+ */
+export const AGENCY_SUPPORT = { channel: '카카오톡 상담', kakaoChatUrl: 'http://pf.kakao.com/_AITdn/chat' } as const
 
 const NEXT_MODE: Record<ThemeMode, ThemeMode> = { system: 'light', light: 'dark', dark: 'system' }
 const MODE_LABEL: Record<ThemeMode, string> = { system: '시스템', light: '라이트', dark: '다크' }
@@ -34,6 +45,13 @@ export default function AgencyMyPage() {
     navigate(why === 'expired' ? '/agency/login?returnUrl=%2Fagency' : '/agency/login', { replace: true })
   }, [navigate])
 
+  // 🔑 2026-11-04 대표 *"남은 1,2,3도 다 해줘"* — 비밀번호 바꾸기 · 문의 · 로그아웃(맨 아래).
+  const [pwOpen, setPwOpen] = useState(false)
+  const emailAccount = profile?.staff.loginKind !== 'kakao'
+  const logout = useCallback(async () => {
+    if (await confirmAgencyLogout()) onSessionEnd('logout')
+  }, [onSessionEnd])
+
   const name = profile?.agency.name ?? '에이전시'
   const who = profile ? `${profile.staff.name || agencyStaffLoginLabel(profile.staff.email)} · ${profile.staff.role === 'admin' ? '관리자' : '직원'}` : ''
 
@@ -54,14 +72,26 @@ export default function AgencyMyPage() {
         </header>
 
         <div className="mt-8">
-          <AgencySection headless toss onSessionEnd={onSessionEnd} />
+          <AgencySection headless toss hideLogout onSessionEnd={onSessionEnd} />
         </div>
 
         <SectionTitle>설정</SectionTitle>
         <div>
+          {emailAccount && <ListRow icon={<EditIcon size={18} />} label="비밀번호 바꾸기" onClick={() => setPwOpen(true)} testId="agency-change-password" />}
+          <ListRow icon={<MessageIcon size={18} />} label="문의하기" hint={AGENCY_SUPPORT.channel}
+            onClick={() => window.open(AGENCY_SUPPORT.kakaoChatUrl, '_blank', 'noopener,noreferrer')} />
           <ListRow icon={<PersonIcon size={18} />} label="손님으로도 쓰기" hint="카카오 로그인" to="/login?returnUrl=%2Fuser%2Fprofile" />
           <ListRow icon={<SettingsIcon size={18} />} label="화면 테마" hint={MODE_LABEL[mode]} onClick={() => setMode(NEXT_MODE[mode])} />
+          <ListRow icon={<LogOutIcon size={18} />} label="에이전시 로그아웃" onClick={() => { void logout() }} />
         </div>
+
+        {pwOpen && (
+          <Sheet title="비밀번호 바꾸기" onClose={() => setPwOpen(false)}>
+            <div className="min-h-full bg-[#F8F7FC] dark:bg-[#11141C] p-4">
+              <Suspense fallback={null}><AgencyPasswordPanel onDone={() => setPwOpen(false)} /></Suspense>
+            </div>
+          </Sheet>
+        )}
       </div>
     </div>
   )

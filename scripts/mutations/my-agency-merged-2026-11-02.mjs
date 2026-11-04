@@ -13,8 +13,9 @@ export default [
     name: '🧩 합친 구역 — 에이전시 매장 판이 다시 두 번 그려진다',
     file: 'src/pages/agency-console/AgencyStoresPanel.tsx',
     // 🔁 2026-11-03 재조준(토스 참고 안 · '홈페이지에 넣기' 걷음). 불변식 그대로.
-    find: "className={`${coveredByMine ? 'hidden' :",
-    replace: "className={`${false ? 'hidden' :",
+    // 🔁 2026-11-04 재조준(매장 0곳 첫 화면 `firstRun` 이 같은 자리에 붙었다). 불변식 그대로 — coveredByMine 만 끈다.
+    find: "className={`${coveredByMine || firstRun ? 'hidden' :",
+    replace: "className={`${false || firstRun ? 'hidden' :",
     test: TEST,
     why: '같은 매장이 내 가게와 맡은 매장에 두 번 — 대표가 "왜 따로 노는 형태인거지?" 라고 짚은 그 모양.',
   },
