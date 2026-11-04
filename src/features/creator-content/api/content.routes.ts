@@ -59,9 +59,9 @@ async function loadUrdealPeople(DB: D1Database, s: ProductStore) {
   const seeding = await DB.prepare(`
     SELECT a.id, a.platform, a.sns_username, a.follower_count, a.post_url, a.updated_at
       FROM seeding_applications a JOIN products p ON p.id = a.product_id
-     WHERE p.seller_id = ? AND (a.product_id = ? OR COALESCE(p.restaurant_name, '') = COALESCE(?, ''))
+     WHERE (a.product_id = ? OR (p.restaurant_name = ? AND COALESCE(p.restaurant_address, '') = COALESCE(?, '')))
        AND a.status IN ('posted', 'completed') AND a.post_url IS NOT NULL
-     ORDER BY a.updated_at DESC LIMIT 10`).bind(s.seller_id, s.product_id, s.store_name)
+     ORDER BY a.updated_at DESC LIMIT 10`).bind(s.product_id, s.store_name, s.address)
     .all<{ id: number; platform: string; sns_username: string | null; follower_count: number | null; post_url: string; updated_at: string | null }>()
     .then((r) => r.results ?? []).catch(() => [])
   const shorts = await DB.prepare(`
@@ -153,7 +153,7 @@ async function ownedStore(c: C, admin: boolean): Promise<ProductStore | null> {
   if (admin) return s
   const me = Number(getCurrentUser(c)?.id)
   // 🔴 소유권. 이 비교가 빠지면 아무 셀러나 남의 가게에 영상을 걸거나 지운다(IDOR).
-  return Number.isFinite(me) && me === s.seller_id ? s : null
+  return Number.isFinite(me) && s.seller_id != null && me === s.seller_id ? s : null
 }
 
 function manageRoutes(admin: boolean) {
@@ -199,7 +199,7 @@ function manageRoutes(admin: boolean) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'visible', ?)
         ON CONFLICT(store_key, platform, ext_id) DO UPDATE SET status = 'visible', updated_at = CURRENT_TIMESTAMP,
           title = COALESCE(store_creator_content.title, excluded.title), thumb_url = COALESCE(store_creator_content.thumb_url, excluded.thumb_url)`)
-        .bind(s.store_key, s.seller_id, parsed.platform, parsed.extId, parsed.url, meta?.title ?? null, meta?.thumb_url ?? null,
+        .bind(s.store_key, s.seller_id ?? 0, parsed.platform, parsed.extId, parsed.url, meta?.title ?? null, meta?.thumb_url ?? null,
           meta?.author_name ?? null, meta?.summary ?? null, meta?.embeddable ? 1 : 0, source).run()
       return c.json({ success: true })
     } catch (err) {
@@ -273,7 +273,7 @@ function manageRoutes(admin: boolean) {
         INSERT INTO store_creator_content (store_key, seller_id, platform, ext_id, url, status, source)
         VALUES (?, ?, ?, ?, '', ?, ?)
         ON CONFLICT(store_key, platform, ext_id) DO UPDATE SET status = excluded.status, updated_at = CURRENT_TIMESTAMP`)
-        .bind(s.store_key, s.seller_id, platform, String(id), body.hidden ? 'hidden' : 'visible', admin ? 'admin' : 'owner').run()
+        .bind(s.store_key, s.seller_id ?? 0, platform, String(id), body.hidden ? 'hidden' : 'visible', admin ? 'admin' : 'owner').run()
       return c.json({ success: true })
     } catch (err) {
       return safeError(c, err, '바꾸지 못했습니다', '[creator-content:refs]')

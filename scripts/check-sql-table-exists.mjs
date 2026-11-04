@@ -164,7 +164,8 @@ function cteNames(sql) {
 }
 
 const REFS = [
-  { re: /\bFROM\s+([`"]?)(\w+)\1(?!\s*\()/gi, op: 'FROM' },
+  // 🩹 2026-11-04: `(?!\w|…)` — 없으면 `FROM json_each(?)` 에서 \w+ 가 되감겨 `json_eac` 를 테이블로 보고했다(함수 제외 규칙이 오히려 오탐을 만듦).
+  { re: /\bFROM\s+([`"]?)(\w+)\1(?!\w|\s*\()/gi, op: 'FROM' },
   { re: /\bJOIN\s+([`"]?)(\w+)\1/gi, op: 'JOIN' },
   { re: /\bINSERT\s+(?:OR\s+\w+\s+)?INTO\s+([`"]?)(\w+)\1/gi, op: 'INTO' },
   { re: /\bUPDATE\s+([`"]?)(\w+)\1\s+SET/gi, op: 'UPDATE' },

@@ -71,6 +71,8 @@ export type BeatVerdict = 'judge' | 'superseded' | 'retired'
  */
 export const BEAT_RENAMED_TO: Readonly<Record<string, string>> = {
   'd1-backup': 'd1-backup-chunked',
+  // 🎬 2026-11-04 '다녀온 사람들' 수집이 메인 cron 워커에서 ur-ads 레인으로 옮겨 갔다(메인 워커엔 검색 키가 없다).
+  'creator-content-collect': 'ads:creator-content',
   // 🔬 전역 진단 틱이 **트리거별**로 쪼개졌다(2026-08-25 #1210) — `__tick` → `__tick:{cron}`.
   //   같은 분에 여러 트리거가 울리면 전역 키를 마지막 하나가 덮어써서, 정작 가르려던
   //   "어느 트리거가 울렸나"를 못 갈랐다. 쪼갠 순간 옛 키는 **아무도 안 쓰는 이름**이 된다.

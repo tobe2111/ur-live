@@ -16,8 +16,9 @@ import { render, waitFor, fireEvent } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import {
   parseContentUrl, mentionsStore, coreStoreName, sortForCustomer, contentYtReservedUnits, readDayCount,
-  searchQueryFor, stripHtml, CONTENT_YT_DAILY_SEARCHES, type ContentItem,
+  searchQueryFor, stripHtml, confidentMatch, CONTENT_YT_DAILY_SEARCHES, type ContentItem,
 } from '@/shared/creator-content'
+import { storeKeyFor } from '@/features/creator-content/api/content-db'
 import { pickBlogCandidates, pickVideoCandidates } from '@/features/creator-content/api/content-collect'
 import { frameAllowed } from '@/features/creator-content/api/content-meta'
 import CreatorContentRow from '@/pages/group-buy/creator-content/CreatorContentRow'
@@ -86,6 +87,19 @@ const item = (over: Partial<ContentItem>): ContentItem => ({
   pinned: false, position: 0, ...over,
 })
 
+describe('②-b 확실한 매칭 — 이름 + 동네', () => {
+  it('둘 다 있으면 확실, 이름만이면 아니다', () => {
+    expect(confidentMatch('연산동 꾸꾸데쎄르 소금빵', '꾸꾸데쎄르', '부산 연제구 연산동 12')).toBe(true)
+    expect(confidentMatch('연산 꾸꾸데쎄르 후기', '꾸꾸데쎄르', '부산 연제구 연산동 12')).toBe(true)
+    expect(confidentMatch('꾸꾸데쎄르 소금빵 맛있다', '꾸꾸데쎄르', '부산 연제구 연산동 12')).toBe(false)
+    expect(confidentMatch('연산동 빵집 투어', '꾸꾸데쎄르', '부산 연제구 연산동 12')).toBe(false)
+  })
+  it('가게 키 — 이름 + 구(특별시 표기 차이 무시)', () => {
+    expect(storeKeyFor('꾸꾸데쎄르', '서울특별시 강남구 1')).toBe(storeKeyFor('꾸꾸 데쎄르', '서울 강남구 2'))
+    expect(storeKeyFor('꾸꾸데쎄르', '서울 강남구')).not.toBe(storeKeyFor('꾸꾸데쎄르', '부산 연제구'))
+  })
+})
+
 describe('③ 정렬', () => {
   it('고정 → 유어딜 사람 → 영상 → 블로그', () => {
     const out = sortForCustomer([
@@ -118,10 +132,20 @@ describe('④ 유튜브 몫', () => {
 describe('⑤ 서버 규칙', () => {
   const collect = read('src/features/creator-content/api/content-collect.ts')
   const routes = read('src/features/creator-content/api/content.routes.ts')
-  it('자동 수집은 후보로만, 이미 아는 글은 다시 안 올린다', () => {
-    expect(collect.match(/'candidate', 'auto'\)/g)?.length).toBe(2)
+  it('자동 수집은 확실한 글만 바로 보이고 나머지는 후보, 이미 아는 글은 다시 안 올린다', () => {
+    expect(collect.match(/p\.confident \? 'visible' : 'candidate'/g)?.length).toBe(2)
     expect(collect).toMatch(/INSERT OR IGNORE INTO store_creator_content/)
     expect(collect).not.toMatch(/'visible', 'auto'/)
+  })
+  it('이용권만(교환권 제외) · 사장님 계정이 없는 가게도 수집한다', () => {
+    expect(collect).toMatch(/COALESCE\(deal_only, 0\) = 0/)
+    expect(collect).not.toMatch(/AND seller_id IS NOT NULL/)
+  })
+  it('수집은 ur-ads 레인에서 돈다(메인 cron 워커엔 검색 키가 없다)', () => {
+    const ads = read('src/worker-ads/index.ts')
+    expect(ads).toMatch(/kick\('\/__ads\/creator-content'/)
+    expect(ads).toMatch(/app\.post\('\/__ads\/creator-content'/)
+    expect(read('src/worker/scheduled.ts')).not.toMatch(/runCreatorContentCollect/)
   })
   it('유튜브는 부르기 전에 센다', () => {
     const claim = collect.indexOf('`${day}:${used + 1}`')
@@ -129,7 +153,7 @@ describe('⑤ 서버 규칙', () => {
     expect(claim).toBeLessThan(collect.indexOf('googleapis.com/youtube/v3/search'))
   })
   it('사장님 API 는 소유권을 본다 · 수정은 store_key 로 좁힌다', () => {
-    expect(routes).toMatch(/me === s\.seller_id \? s : null/)
+    expect(routes).toMatch(/s\.seller_id != null && me === s\.seller_id \? s : null/)
     expect(routes.match(/AND store_key = \?/g)?.length).toBeGreaterThanOrEqual(3)
   })
   it('유어딜 사람은 숨기기만 — 삭제·수정 쿼리가 urdeal_ 행을 건드리지 않는다', () => {

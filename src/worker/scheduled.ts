@@ -250,11 +250,8 @@ export async function handleCronScheduled(
       const { runHomeServiceSweep } = await import('./cron/home-service-sweep')
       return runHomeServiceSweep(env)
     }));
-    // 🎬 2026-11-04 이용권 상세 '다녀온 사람들' — 가게 5곳씩 네이버 블로그 + 유튜브(유어애즈와 나눈 하루 15회). 후보로만 저장.
-    if (slotOpen({ minute: 45 })) ctx.waitUntil(slotCron('45 * * * *')('creator-content-collect', async () => {
-      const { runCreatorContentCollect } = await import('../features/creator-content/api/content-collect')
-      return runCreatorContentCollect(env)
-    }));
+    // 🎬 2026-11-04 '다녀온 사람들' 수집은 **ur-ads 워커**(`/__ads/creator-content`)로 옮겼다 — 이 워커엔 네이버·유튜브
+    //   검색 키가 없어 첫 회차가 아무것도 못 가져왔다(대표 "2번은 가 로"). 여기 되살리지 말 것.
     // 🎁 2026-10-31 교환권 사진 R2 이관 — 매시 :05(:55 는 만회 전용),
     //   회차당 4장(서브리퀘스트 ≈ 장당 4). 다 옮기면 SELECT 1회 no-op. 상세: `cron/voucher-image-rehost.ts`.
     if (slotOpen({ minute: 5 })) ctx.waitUntil(slotCron('5 * * * *')('voucher-image-rehost', async () => {

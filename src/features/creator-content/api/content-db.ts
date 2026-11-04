@@ -56,19 +56,26 @@ export async function ensureCreatorContentTables(DB: D1Database): Promise<void> 
   ]).catch(() => null)
 }
 
-/** 가게 키. 가게 이름이 없으면 셀러 하나가 한 가게다. */
-export function storeKeyFor(sellerId: number, storeName: string | null | undefined): string {
-  return `${sellerId}:${normStoreName(storeName)}`
+/**
+ * 가게 키 = **가게 이름 + 동네(구)**. 🩸 2026-11-04 첫 판은 `seller_id + 이름` 이었는데 판매 중 이용권 가게 171곳 중
+ * 사장님 계정이 붙은 곳이 **2곳뿐**이라(나머지는 플랫폼이 올린 데모 매장 — `seller_id IS NULL`) 수집이 2곳에서 멈췄다.
+ * 같은 이름의 다른 동네 가게는 구로 갈린다. 관리 권한은 키가 아니라 `ownedStore` 가 상품의 seller_id 로 따로 본다.
+ */
+export function storeKeyFor(storeName: string | null | undefined, address: string | null | undefined): string {
+  const words = String(address ?? '').split(/\s+/).filter(Boolean)
+  // 구·군이 먼저("서울특별시 강남구" 와 "서울 강남구" 가 같은 키가 되게), 없으면 시("경남 김해시").
+  const gu = words.find((w) => /(구|군)$/.test(w)) ?? words.find((w) => /시$/.test(w)) ?? ''
+  return `${normStoreName(storeName)}|${normStoreName(gu)}`
 }
 
-export interface ProductStore { product_id: number; seller_id: number; store_name: string | null; address: string | null; store_key: string }
+export interface ProductStore { product_id: number; seller_id: number | null; store_name: string | null; address: string | null; store_key: string }
 
 export async function loadProductStore(DB: D1Database, productId: number): Promise<ProductStore | null> {
   const r = await DB.prepare(`SELECT id, seller_id, restaurant_name, restaurant_address FROM products WHERE id = ? LIMIT 1`)
     .bind(productId).first<{ id: number; seller_id: number | null; restaurant_name: string | null; restaurant_address: string | null }>()
     .catch(() => null)
-  if (!r || !r.seller_id) return null
-  return { product_id: r.id, seller_id: r.seller_id, store_name: r.restaurant_name, address: r.restaurant_address, store_key: storeKeyFor(r.seller_id, r.restaurant_name) }
+  if (!r || !r.restaurant_name || !String(r.restaurant_name).trim()) return null
+  return { product_id: r.id, seller_id: r.seller_id ?? null, store_name: r.restaurant_name, address: r.restaurant_address, store_key: storeKeyFor(r.restaurant_name, r.restaurant_address) }
 }
 
 /** 유어딜 사람 숨김 기록의 `platform` 값. 실제 SNS 플랫폼과 섞이지 않게 접두어를 붙인다. */

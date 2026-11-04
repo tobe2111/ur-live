@@ -123,6 +123,21 @@ export function mentionsStore(text: string, storeName: string): boolean {
   return normStoreName(text).includes(core)
 }
 
+/**
+ * 🎯 **확실한 매칭** — 자동으로 바로 보여도 되는가 (2026-11-04 대표 *"자동으로 이용권들에 업로드가 기본적으로 되게끔"*).
+ * 가게 이름(지점 꼬리 뗀 핵심)과 **동네 한 단어(동·읍·면, 없으면 구·군)** 가 제목·요약에 **둘 다** 있어야 한다.
+ * 이름만 맞는 글은 후보로 남긴다 — 흔한 이름은 다른 지역 같은 이름 가게 글이 섞인다.
+ */
+export function confidentMatch(text: string, storeName: string, address: string | null | undefined): boolean {
+  if (!mentionsStore(text, storeName)) return false
+  const words = String(address ?? '').split(/\s+/).filter(Boolean)
+  const areas = words.filter((w) => /(동|읍|면|구|군)$/.test(w) && w.length >= 2).map((w) => normStoreName(w))
+  if (!areas.length) return false
+  const t = normStoreName(text)
+  // "연산동" 은 글에서 "연산" 으로도 쓰인다 — 끝 글자를 뗀 형태(2자 이상)도 동네로 본다.
+  return areas.some((a) => t.includes(a) || (a.length >= 3 && t.includes(a.slice(0, -1))))
+}
+
 /** 검색어 — 가게 이름 + 동네(주소의 구/동 한 단어). 동네가 없으면 이름만. */
 export function searchQueryFor(storeName: string, address: string | null | undefined): string {
   const name = String(storeName).replace(/\s*\([^)]*\)\s*$/, '').trim()
