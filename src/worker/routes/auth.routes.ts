@@ -29,6 +29,8 @@ import { checkLockout, recordFailure, clearFailures } from '../utils/account-loc
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { decryptAtRest } from '../utils/data-crypto';
 import { AGENCY_ACCOUNT_HINT, isAgencyStaffEmail } from '../../features/agency-console/api/agency-hint';
+import { isPhoneRequired } from '../../shared/phone-required';
+import { recordTermsAgreements } from '../utils/terms-agreements';
 
 const authRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -254,11 +256,13 @@ authRouter.get('/me', async (c) => {
     //   localStorage 캐시**로 부르므로 호출량이 낮고, PK 단건이라 값이 싸다. 실패하면 null 로 떨어진다
     //   (전화번호가 없다고 프로필 화면이 막히면 안 된다).
     let phone: string | null = null;
+    let createdAt: string | null = null;
     try {
-      const row = await c.env.DB.prepare('SELECT phone FROM users WHERE id = ?')
+      const row = await c.env.DB.prepare('SELECT phone, created_at FROM users WHERE id = ?')
         .bind(sessionUser.userId)
-        .first<{ phone: string | null }>();
+        .first<{ phone: string | null; created_at: string | null }>();
       phone = row?.phone ?? null;
+      createdAt = row?.created_at ?? null;
     } catch { /* 전화번호 없이 진행 — 폼이 물어보는 쪽으로 떨어진다 */ }
 
     return c.json({
@@ -268,6 +272,8 @@ authRouter.get('/me', async (c) => {
         name: sessionUser.name,
         email: sessionUser.email,
         phone,
+        // 📞 2026-11-04 가입 시 번호 필수(새 가입자만) — 판정 SSOT `shared/phone-required.ts`
+        phone_required: isPhoneRequired(phone, createdAt),
         profileImage: sessionUser.profileImage || null,
         role: sessionUser.role || 'user',
       },
@@ -293,14 +299,15 @@ authRouter.get('/me', async (c) => {
   // Production users table doesn't have role/status columns
   const user = await qb.queryOne<{
     id: string; email: string; name: string;
-    phone: string | null; avatar_url: string | null;
-  }>('SELECT id, email, name, phone, avatar_url FROM users WHERE id = ?', [authedUser.id]);
+    phone: string | null; avatar_url: string | null; created_at: string | null;
+  }>('SELECT id, email, name, phone, avatar_url, created_at FROM users WHERE id = ?', [authedUser.id]);
 
   if (!user) {
     return c.json({ success: false, error: 'User not found' }, 404);
   }
 
-  return c.json({ success: true, data: { ...user, role: 'BUYER' } });
+  const { created_at: userCreatedAt, ...userOut } = user;
+  return c.json({ success: true, data: { ...userOut, phone_required: isPhoneRequired(user.phone, userCreatedAt), role: 'BUYER' } });
 });
 
 // PATCH /api/auth/profile — 프로필(이름, 전화번호) 수정
@@ -312,7 +319,7 @@ authRouter.patch('/profile', requireAuth(), async (c) => {
   const id = user.id;
   const db = c.env.DB;
   try {
-    const body = await c.req.json<{ name?: string; phone?: string }>();
+    const body = await c.req.json<{ name?: string; phone?: string; marketing_agreed?: boolean }>();
 
     // Defensive validation: bounded string sizes, basic phone shape
     if (body.name !== undefined) {
@@ -333,7 +340,13 @@ authRouter.patch('/profile', requireAuth(), async (c) => {
     const fields: string[] = [];
     const values: (string | number | null)[] = [];
     if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name); }
-    if (body.phone !== undefined) { fields.push('phone = ?'); values.push(body.phone); }
+    // 📞 2026-11-04: 숫자만 저장한다(카카오가 넣는 값과 같은 모양 — 알림톡 cron 이 그대로 읽는다). 하이픈째 오던 값도 정리.
+    if (body.phone !== undefined) { fields.push('phone = ?'); values.push(typeof body.phone === 'string' && body.phone ? body.phone.replace(/[-\s]/g, '') : body.phone); }
+    // 📣 2026-11-04 소식(광고성) 알림 선택 동의 — 번호와 같이 올 때만 기록(필수 동의와 묶지 않는다, 정보통신망법 제50조).
+    if (typeof body.marketing_agreed === 'boolean') {
+      await recordTermsAgreements(db, 'user', id, [{ doc_type: 'marketing', agreed: body.marketing_agreed }]);
+      if (fields.length === 0) return c.json({ success: true, data: null });
+    }
     if (fields.length === 0) return c.json({ success: false, error: '수정할 항목이 없습니다' }, 400);
 
     // 🛡️ 2026-05-24: updated_at 컬럼이 옛 DB 에 누락된 경우 graceful — 1차 시도 실패 시 updated_at 빼고 재시도.

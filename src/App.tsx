@@ -33,6 +33,7 @@ import { captureInflowRef } from '@/utils/affiliate-track'
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
 const OnboardingTrigger = lazy(() => import('./components/onboarding/OnboardingTrigger'))
+const PhoneRequiredGate = lazy(() => import('./components/onboarding/PhoneRequiredGate')) // 📞 2026-11-04 새 가입자 번호 필수
 const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccountModal'))
 const SideBanner = lazy(() => import('@/components/SideBanner'))
 const DesignVariantsPage = lazy(() => import('./pages/design-variants/DesignVariantsPage')) // 🎨 내부 시안 갤러리(링크 0 · robots 차단 · noindex)
@@ -398,6 +399,8 @@ function AppContent() {
   const shellNeed = {
     onboarding: qs.includes('new=1'),                       // OnboardingTrigger: ?new=1 일 때만 모달
     restore: qs.includes('restorable=1'),                   // RestoreAccountModal: ?restorable=1 일 때만
+    // 📞 2026-11-04 PhoneRequiredGate: 소비자로 로그인했고 이 기기에 번호가 아직 없을 때만(실제 판정은 서버 `phone_required`)
+    phone: (() => { try { return !!(localStorage.getItem('user_id') || localStorage.getItem('session_login')) && !localStorage.getItem('user_phone') } catch { return false } })(),
     push: (() => { try { return !!(localStorage.getItem('user_id') || localStorage.getItem('seller_id') || localStorage.getItem('admin_id') || localStorage.getItem('agency_id')) } catch { return false } })(),
     sideBanner: typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 1024px)').matches, // `hidden lg:flex` — 폰에선 안 보인다
   }
@@ -582,6 +585,7 @@ function AppContent() {
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
           {shellNeed.onboarding && <Suspense fallback={null}><OnboardingTrigger /></Suspense>}
           {shellNeed.restore && <Suspense fallback={null}><RestoreAccountModal /></Suspense>}
+          {shellNeed.phone && <Suspense fallback={null}><PhoneRequiredGate /></Suspense>}
           {/* 📜 2026-07-05 (대표 "들어오자마자 나오면 안 되지 — 자연스럽게"): 약관 동의 차단 모달(TermsConsentGate)
               제거. 소비자 동의 = LoginPage 간주 고지(제5조) + 가입 시점 1회 서버 기록(kakao.routes isNewUser →
               terms_agreements). 개정 재동의가 필요해지면 /api/terms/status 로 비차단 배너를 붙이는 것이 후속안. */}
