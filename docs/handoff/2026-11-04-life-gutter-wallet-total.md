@@ -10,3 +10,6 @@
 5. **'내 유어샵으로 버는 법' → 에이전시** — 대표 *"에이전시 등록 이런거 하는게 좋지 않을까?"*. `EarnLadder` 삭제, 관리 화면에
    '에이전시' 구역(등록 `/agency/signup` · 로그인 `/agency/login`). 영입 2% 재유입 감시는 `store-intro-abolished` 시험이 계속 맡는다.
 - 가드 `consumer-fixes-2026-11-04` + 주입 2 · 재조준: ushop-owner-summary · ushop-manage-settlement · ushop-e3-manage · urshop-earn-ladder ④.
+6. **선택 테두리 위쪽 잘림** — 대표 *"윗칸에 파란색 테두리가 잘리는 경우가 많아 페이지들"*(이사 견적 6/8). 원인: `ring-2` 는 상자 **바깥**에 그려
+   스크롤 영역 맨 위 칸에서 잘린다. 선택 칸 7곳을 `ring-inset` 으로(견적 시트·이의 시트·정산 정보·배송지·견적 상세·지도 카드·충전).
+   사진이 칸을 채우는 곳은 안쪽 테두리가 그림에 가려 예외(ALLOW, 사유 기록). 가드 `selection-ring-inset-2026-11-04` + 주입 1.

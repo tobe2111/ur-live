@@ -43,7 +43,7 @@ export function OptionSheet({ f, value, onPick, onClose }: {
               type="button"
               aria-pressed={on}
               onClick={() => setPicked(o)}
-              className={`flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-4 text-left ${on ? 'bg-brand-tint ring-2 ring-brand' : 'bg-surface shadow-lift'}`}
+              className={`flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-4 text-left ${on ? 'bg-brand-tint ring-2 ring-inset ring-brand' : 'bg-surface shadow-lift'}`}
             >
               <span className="min-w-0">
                 <span className="block text-[15px] font-bold">{o}</span>

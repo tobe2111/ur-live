@@ -45,7 +45,7 @@ export default function AddressListModal({
                 key={addr.id}
                 className={`relative rounded-xl p-4 cursor-pointer transition-all active:scale-[0.99] ${
                   isSelected
-                    ? 'bg-brand/[0.06] dark:bg-brand/[0.16] ring-1 ring-brand'
+                    ? 'bg-brand/[0.06] dark:bg-brand/[0.16] ring-1 ring-inset ring-brand'
                     : 'bg-white dark:bg-[#11141C] border border-gray-100 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                 }`}
                 onClick={(e) => {

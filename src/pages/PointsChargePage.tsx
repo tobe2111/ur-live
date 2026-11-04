@@ -241,7 +241,7 @@ export default function PointsChargePage() {
                       onClick={() => setSelected(opt)}
                       className={`relative flex flex-col items-center justify-center py-5 rounded-2xl border-2 transition-all ${
                         isSelected
-                          ? 'border-brand bg-brand-tint bg-brand/10 ring-2 ring-brand/40 dark:ring-brand/30'
+                          ? 'border-brand bg-brand-tint bg-brand/10 ring-2 ring-inset ring-brand/40 dark:ring-brand/30'
                           : 'border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] hover:border-gray-300 dark:hover:border-[#3A3A3A]'
                       }`}
                       aria-label={`${formatNumber(opt.amount)}원 충전`}
