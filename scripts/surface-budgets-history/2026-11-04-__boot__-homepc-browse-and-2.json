@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-04",
+  "reason": "2026-11-04 마이 내 딜·내 가게 기기 저장(#2199, UserProfilePage +0.8KB — 앱 재시작 즉시 표시) + 재시도 정책. 의도된 기능 증가",
+  "surfaces": [
+    "__boot__",
+    "homePc",
+    "browse",
+    "blog",
+    "dash:my"
+  ],
+  "changes": [
+    "__boot__: 155.0 → 156.5 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +1.0",
+    "homePc: 206.3 → 207.9 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.0",
+    "browse: 182.5 → 184.2 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.0",
+    "blog: 181.0 → 182.6 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.1, index.css +0.3",
+    "dash:my: 214.2 → 215.9 KB (+1.7, 허용 1.5) · 늘어난 것: UserProfilePage.js +0.7, app-utils.js +0.4"
+  ]
+}
