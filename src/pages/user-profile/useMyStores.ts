@@ -57,20 +57,58 @@ export interface MyStoresState {
 
 const EMPTY_TOTALS = { today_revenue: 0, today_orders: 0, pending: 0 }
 
+/**
+ * 🧠 2026-11-04 대표 *"버벅임이 심하네 특히 마이페이지"* — **지난번에 받은 좌석을 기억한다.**
+ *
+ * 마이 탭을 누를 때마다 페이지가 통째로 리마운트된다(App.tsx `key={location.pathname}`).
+ * 종전엔 이 훅이 매번 빈손으로 시작해서, 사장님이 마이를 열 때마다 ① 판매 판이 숫자 없는 껍데기로
+ * 서고 ② 원본 DB 왕복을 기다렸고 ③ 회선이 느리거나 끊기면 `failed` 로 떨어져 **판매 판 전체가 사라지고
+ * 폴백 '매장 계산대' 카드 하나만** 남았다(대표 스크린샷 그대로).
+ * ⇒ 같은 탭 안의 재방문은 **지난 값을 즉시 그리고 뒤에서 새로 받는다**(stale-while-revalidate).
+ *   - 재조회가 실패해도 지난 값을 지운다 대신 **그대로 둔다** — 가게가 갑자기 사라지는 것보다 낫다.
+ *     (처음 방문의 실패는 종전대로 `failed` — 실패를 성공처럼 보이게 하지 않는다는 원칙은 그대로다.)
+ *   - 좌석 세대가 다르면 기억을 쓰지 않는다 — 옛 가게 숫자를 그리지 않기 위해서다.
+ *   - 사람(user_id)이 바뀌면 쓰지 않는다. 메모리에만 둔다(새로고침하면 비는 것이 맞다).
+ */
+type SeatMemo = { userKey: string; generation: number; at: number; stores: StoreSummaryRow[]; totals: MyStoresState['totals']; currentSellerId: number | null }
+let seatMemo: SeatMemo | null = null
+/** 30분 — 그보다 오래 묵은 '오늘 매출' 은 보여 줄 가치보다 헷갈림이 크다. */
+const SEAT_MEMO_TTL_MS = 30 * 60_000
+
+function memoUserKey(): string {
+  try { return localStorage.getItem('user_id') || localStorage.getItem('session_login') || '' } catch { return '' }
+}
+
+/** 지금 쓸 수 있는 기억 — 같은 사람 · 같은 좌석 세대 · 30분 이내일 때만. */
+function readSeatMemo(): SeatMemo | null {
+  const m = seatMemo
+  if (!m) return null
+  if (m.userKey !== memoUserKey() || m.generation !== seatGeneration() || Date.now() - m.at > SEAT_MEMO_TTL_MS) return null
+  return m
+}
+
+/** 시험용 — 기억을 비운다. */
+export function __resetSeatMemo() { seatMemo = null }
+
 export function useMyStores(): MyStoresState {
-  const [stores, setStores] = useState<StoreSummaryRow[]>([])
-  const [totals, setTotals] = useState(EMPTY_TOTALS)
-  const [currentSellerId, setCurrentSellerId] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [memo] = useState(readSeatMemo)
+  const [stores, setStores] = useState<StoreSummaryRow[]>(() => memo?.stores ?? [])
+  const [totals, setTotals] = useState(() => memo?.totals ?? EMPTY_TOTALS)
+  const [currentSellerId, setCurrentSellerId] = useState<number | null>(() => memo?.currentSellerId ?? null)
+  const [loading, setLoading] = useState(() => !memo)
   const [failed, setFailed] = useState(false)
   const [generation, setGeneration] = useState(() => seatGeneration())
   const alive = useRef(true)
+  /** 지금 화면에 이 세대의 실제 값이 있는가 — 있으면 재조회 동안 껍데기로 되돌리지 않는다. */
+  const shown = useRef<number | null>(memo ? memo.generation : null)
 
   useEffect(() => () => { alive.current = false }, [])
 
   const load = useCallback(() => {
     const gen = seatGeneration()
-    setLoading(true)
+    // 같은 세대의 값이 이미 화면에 있으면 조용히 새로 받는다(껍데기로 깜빡이지 않는다).
+    const quiet = shown.current === gen
+    if (!quiet) setLoading(true)
     /**
      * ⚡ 2026-10-06 — `api` 를 **정적으로** 쓴다 (대표 *"내 가게 이 부분이 가장 늦게 떠"*).
      *   종전 `import('@/lib/api').then(...)` 은 요청을 **다음 task 로 밀었다**. 그 사이 React 가
@@ -84,15 +122,21 @@ export function useMyStores(): MyStoresState {
       .then((r) => {
         if (!alive.current) return
         const d = r.data?.data
-        if (!r.data?.success || !d) { setFailed(true); return }
-        setStores(Array.isArray(d.stores) ? d.stores : [])
-        setTotals(d.totals || EMPTY_TOTALS)
+        if (!r.data?.success || !d) { if (!quiet) setFailed(true); return }
+        const nextStores: StoreSummaryRow[] = Array.isArray(d.stores) ? d.stores : []
+        const nextTotals = d.totals || EMPTY_TOTALS
         const cur = Number(d.current_seller_id)
-        setCurrentSellerId(Number.isFinite(cur) && cur > 0 ? cur : null)
+        const nextCur = Number.isFinite(cur) && cur > 0 ? cur : null
+        setStores(nextStores)
+        setTotals(nextTotals)
+        setCurrentSellerId(nextCur)
         setFailed(false)
         setGeneration(gen)
+        shown.current = gen
+        seatMemo = { userKey: memoUserKey(), generation: gen, at: Date.now(), stores: nextStores, totals: nextTotals, currentSellerId: nextCur }
       })
-      .catch(() => { if (alive.current) setFailed(true) })
+      // 🧠 이미 그린 값이 있으면 실패해도 지우지 않는다 — 회선이 잠깐 끊겼다고 가게가 사라지면 안 된다.
+      .catch(() => { if (alive.current && !quiet) setFailed(true) })
       .finally(() => { if (alive.current) setLoading(false) })
   }, [])
 

@@ -103,6 +103,17 @@ const COVERED_BY_SHEET: Record<string, Tool> = {
 /** 묶음 한 줄 — 전부 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
 
 /** ⚠️ 좌석은 **페이지가 한 번만** 묻고 내려 준다 — 여기서 또 부르면 같은 화면에 두 개의 진실이 생긴다. */
+/**
+ * 🎬 오늘 매출 숫자 올라가기 — **이 숫자 하나만** 다시 그린다 (2026-11-04 대표 *"버벅임이 심하네 특히 마이페이지"*).
+ * 종전엔 `useCountUp` 을 `SellerSection` 본체에서 불러서, 0.8초 동안 **매 프레임(약 50번)** 판매 구역 전체
+ * (부품 37개)가 다시 그려졌다 — 마이 첫 화면의 React 작업 대부분이 이것이었다(실측 커밋 60회 vs 홈 9회).
+ * 숫자만 따로 떼면 움직임은 그대로이고 다시 그리는 것은 글자 한 칸이다. ⚠️ 본체로 되돌리지 말 것.
+ */
+function TodayRevenueCount({ value, resetKey }: { value: number | undefined; resetKey: number | null }) {
+  const shown = useCountUp(value, { durationMs: 800, resetKey })
+  return <>{formatNumber(shown)}</>
+}
+
 export default function SellerSection({ state }: { state: MyStoresState }) {
   const { stores, currentSellerId, loading, failed } = state
   // 🗂️ 2026-11-03 대표 확정 — 에이전시 화면엔 '에이전시 정산'(에이전시 몫)도 있어서, 이 판의 정산은 '매장 정산'(가게 매출)이라고 부른다.
@@ -256,7 +267,6 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
 
   // 좌석 0곳(= 셀러가 아님) · 실패 → 아무것도 그리지 않는다.
   //   실패를 0 으로 그리면 "오늘 매출 0원" 이라는 거짓말이 된다(머니 표면 룰).
-  const todayShown = useCountUp(store?.today_revenue, { durationMs: 800, resetKey: store?.seller_id ?? null }) // 훅은 아래 조기 return 보다 앞에
   if (failed) return null
   if (!loading && !store) return null
 
@@ -409,7 +419,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           <span className={ROW_LABEL_CLS}>오늘 매출</span>
           <span className="shrink-0 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums whitespace-nowrap">
             <span className={`text-[15px] font-bold ${(store?.today_revenue ?? 0) > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
-              {blank(formatNumber(todayShown))}
+              {awaiting ? <span className="invisible">{formatNumber(undefined)}</span> : <TodayRevenueCount value={store?.today_revenue} resetKey={store?.seller_id ?? null} />}
             </span>
             <span className={awaiting ? 'invisible' : ''}>원 · 주문 {formatNumber(store?.today_orders)}건</span>
           </span>

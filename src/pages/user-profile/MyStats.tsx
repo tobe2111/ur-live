@@ -45,6 +45,14 @@ import { TOPUP_DISABLED } from '@/shared/feature-flags'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-gain', `@keyframes ur-gain { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }.ur-gain { position: absolute; right: 0; bottom: 100%; white-space: nowrap; pointer-events: none; animation: ur-gain 1s ease-out both; }@keyframes ur-vin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }.ur-vin { display: inline-block; animation: ur-vin .35s cubic-bezier(.2,1,.3,1) backwards; }@keyframes ur-my-zone { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }.ur-my-intro > .ur-account-col > * { animation: ur-my-zone .4s cubic-bezier(.2,1,.3,1) backwards; }.ur-my-intro > .ur-account-col > *:nth-child(2) { animation-delay: 70ms; }.ur-my-intro > .ur-account-col > *:nth-child(3) { animation-delay: 140ms; }.ur-my-intro > .ur-account-col > *:nth-child(4) { animation-delay: 210ms; }.ur-my-intro > .ur-account-col > *:nth-child(n+5) { animation-delay: 280ms; }@media (prefers-reduced-motion: reduce){.ur-gain{display:none}.ur-vin{animation:none!important}.ur-my-intro > .ur-account-col > *{animation:none!important}}`) // 🎬 시안 마이 "숫자 도착" — 늦게 온 숫자가 회색 자리에서 살짝 올라오며 나타난다 · "구역 차례 등장"(.ur-my-intro, 하루 첫 방문만 — UserProfilePage 가 붙인다) CSS 도 여기 둔다(마이 화면이 늘 이 부품을 싣는다)
 
+/** 🧠 지난 잔액(메모리만 — 새로고침하면 빈다). 같은 사람 · 10분 이내일 때만 쓴다. */
+let balanceMemo: { userKey: string; at: number; balance: number; free: number } | null = null
+function readBalanceMemo() {
+  const m = balanceMemo
+  if (!m || m.userKey !== (getUserIdSync() || '') || Date.now() - m.at > 10 * 60_000) return null
+  return m
+}
+
 /** 💸 충전은 2026-07-18 에 종료됐다 — 딜의 "자세히" 는 내역이다. */
 const DEAL_PATH = TOPUP_DISABLED ? '/my-deal-history' : '/points/charge'
 
@@ -101,8 +109,10 @@ export default function MyStats({ voucher, coupon, inline = false }: {
   inline?: boolean
 }) {
   /** `undefined` 아직 · `null` 실패 · 숫자 값 */
-  const [balance, setBalance] = useState<number | null | undefined>(undefined)
-  const [freeBalance, setFreeBalance] = useState(0)
+  // 🧠 2026-11-04 (대표 *"특히 마이페이지 버벅임"*) — 같은 탭 재방문은 **지난 잔액을 바로** 그리고 뒤에서 새로 받는다.
+  //   마이 탭을 누를 때마다 리마운트돼 '내 딜' 이 매번 빈 칸에서 원본 DB 왕복을 기다렸다(`useMyStores` 머리말과 같은 처방).
+  const [balance, setBalance] = useState<number | null | undefined>(() => readBalanceMemo()?.balance)
+  const [freeBalance, setFreeBalance] = useState(() => readBalanceMemo()?.free ?? 0)
   const prevBal = useRef<number | null | undefined>(undefined)
   const [gain, setGain] = useState<{ n: number; k: number } | null>(null)
   useEffect(() => {
@@ -123,11 +133,15 @@ export default function MyStats({ voucher, coupon, inline = false }: {
       api.get('/api/points/balance')
         .then((r) => {
           if (r.data.success) {
-            setBalance(Number(r.data.data.balance ?? 0))
-            setFreeBalance(Math.max(0, Number(r.data.data.free_balance ?? 0)))
+            const bal = Number(r.data.data.balance ?? 0)
+            const free = Math.max(0, Number(r.data.data.free_balance ?? 0))
+            setBalance(bal)
+            setFreeBalance(free)
+            balanceMemo = { userKey: getUserIdSync() || '', at: Date.now(), balance: bal, free }
           } else setBalance(null)
         })
         // 🛡️ 실패는 `null` — `0` 으로 떨어뜨리면 화면이 거짓말을 한다.
+        //   🧠 기억해 둔 잔액도 실패하면 내린다 — 돈 숫자는 확인 못 한 값을 계속 보여 주지 않는다(—).
         .catch(() => setBalance(null))
     }
     fetchBalance()
