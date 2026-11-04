@@ -77,6 +77,23 @@ export default function AdminAgencyAccountsPage() {
     }
   }
 
+  // ✅ 2026-11-04: 인증 메일이 안 닿은 '인증 전' 에이전시를 어드민이 직접 연다.
+  async function approve(row: AgencyRow) {
+    const message = `${row.name} 에이전시를 승인할까요? ${row.owner_email || '가입자'} 가 가입할 때 쓴 비밀번호로 바로 로그인할 수 있게 돼요.`
+    if (!(await confirmDialog({ message }))) return
+    setBusy(row.id)
+    try {
+      const r = await api.post(`/api/admin/agency-accounts/${row.id}/approve`)
+      if (!r.data?.success) throw new Error(r.data?.error)
+      toast.success(r.data.message || '승인했어요')
+      await load()
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || '승인하지 못했어요')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <AdminLayout title="에이전시">
       <div className="space-y-4">
@@ -119,6 +136,10 @@ export default function AdminAgencyAccountsPage() {
                     {r.status === 'active' && (
                       <button type="button" disabled={busy === r.id} onClick={() => setSuspended(r, true)}
                         className="h-9 rounded-lg px-3 text-[13px] font-semibold text-tone-bad hover:bg-gray-50 disabled:opacity-50">정지</button>
+                    )}
+                    {r.status === 'pending' && (
+                      <button type="button" disabled={busy === r.id} onClick={() => approve(r)}
+                        className="h-9 rounded-lg bg-brand px-3 text-[13px] font-semibold text-white disabled:opacity-50">승인</button>
                     )}
                     {r.status === 'suspended' && (
                       <button type="button" disabled={busy === r.id} onClick={() => setSuspended(r, false)}
