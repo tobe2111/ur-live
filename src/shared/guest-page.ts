@@ -15,20 +15,21 @@ export const GUEST_CLS = {
   headline: 'text-[20px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-white',
   sub: 'mt-2 text-[15px] text-gray-500 dark:text-gray-400',
   /**
-   * 🎫 이용권 탭 미리보기 — "산 이용권이 지갑에 이렇게 들어온다". 티켓은 **그림**이라 옅은 바탕 하나를 쓴다
-   *   (판이 아니다 — 2026-11-02 평면 규칙은 흐름 속 *판*의 일). 색 밴드 + 본문 = 티켓 은유(디자인 규칙 ④).
+   * 🎫 이용권 탭 미리보기 — "산 이용권이 지갑에 이렇게 들어온다". 2026-11-04 대표 *"이용권 티켓 이제 저렇게 안생겼잖아"*
+   *   *"가라로 매장 이용권 모습을 보여줘야 하는거 아니야?"* → 옛 QR 띠 티켓을 버리고 **지금 지갑 줄(`WalletRow`) 모양**
+   *   (사진 · 가게 · 메뉴 · 남은 기간 · [사용] 알약)의 예시 두 장으로 그린다. 바탕은 옅은 면 하나(그림이라 — 판이 아니다).
+   *   🎬 `ur-gp-*` 는 모션 표식 — 모양은 없고 움직임 CSS 는 GuestPassPage 가 앱에서만 꽂는다(서버 첫 화면은 정지 그림).
    */
-  ticket: 'ur-gp-ticket mt-5 overflow-hidden rounded-2xl bg-gray-100 dark:bg-white/5',
-  ticketBand: 'ur-gp-band flex items-center justify-between bg-brand px-4 py-3 text-white',
-  ticketBandTitle: 'text-[15px] font-bold',
-  ticketBandState: 'text-[12px] text-white/80',
-  ticketBody: 'flex items-center gap-4 px-4 py-4',
-  /* 🎬 `ur-gp-*` 는 모션 표식(2026-11-04) — 이 클래스 자체엔 모양이 없고, 움직임 CSS 는 GuestPassPage 가 앱에서만 꽂는다(서버 첫 화면은 그대로 정지 그림). */
-  /** QR 은 다크에서도 흰 바탕 위 검은 무늬(실제 QR 처럼 읽혀야 한다). */
-  ticketQr: 'ur-gp-qr shrink-0 w-16 h-16 rounded-lg bg-white p-1.5 text-black',
-  ticketText: 'min-w-0',
-  ticketLine1: 'block text-[15px] font-medium text-gray-900 dark:text-white',
-  ticketLine2: 'block mt-1 text-[13px] text-gray-500 dark:text-gray-400',
+  ticket: 'ur-gp-ticket mt-5 rounded-2xl bg-gray-100 dark:bg-white/5 divide-y divide-rule',
+  walletRow: 'ur-gp-wrow flex items-center gap-3 px-4 py-3',
+  walletThumb: 'w-14 h-14 shrink-0 rounded-xl overflow-hidden bg-brand-tint',
+  walletImg: 'w-full h-full object-cover',
+  walletText: 'flex-1 min-w-0',
+  walletStore: 'block text-[13px] text-gray-500 dark:text-gray-400 truncate',
+  walletName: 'block text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white truncate',
+  walletDue: 'mt-1 flex items-center gap-1 text-[12px] tabular-nums text-gray-500 dark:text-gray-400',
+  walletClock: 'w-[13px] h-[13px] shrink-0',
+  walletUse: 'ur-gp-use shrink-0 inline-flex items-center h-8 px-3 rounded-full bg-brand text-white text-[13px] font-medium',
   /** 1 · 2 · 3 단계 — 혜택 목록(아이콘 상자 4줄)을 대신한다. */
   steps: 'mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule',
   step: 'px-1 py-3 text-center',
@@ -64,7 +65,12 @@ export const GUEST_COPY = {
     headline1: '동네 가게,',
     headline2: '미리 사면 더 싸요',
     sub: '산 이용권은 여기 지갑에 이렇게 들어와요',
-    ticket: { band: '내 이용권', state: '사용 전', line1: '매장에선 이 QR만 보여주세요', line2: '할인가로 산 이용권이 바로 들어와요' },
+    /** 예시 지갑 두 장 — 실제 가게·상품이 아니다. 사진은 `public/assets/guest/`(서버와 앱이 같은 주소). */
+    wallet: [
+      { store: '성수 브런치', name: '브런치 2인 세트', due: 'D-14', img: '/assets/guest/wallet-brunch.webp' },
+      { store: '망원 네일', name: '젤 네일 기본', due: 'D-30', img: '/assets/guest/wallet-nail.webp' },
+    ],
+    use: '사용',
     steps: [['할인가로', '미리 사고'], ['가게에서', 'QR 보여주면 끝'], ['안 쓰면', '100% 자동환불']],
   },
   shop: {
@@ -101,23 +107,5 @@ export const GUEST_EXAMPLE_PASSES = [
   { store: '합정 파스타', name: '파스타 세트 2인', pct: 20, price: 36000, kind: 'meal' },
 ] as const
 
-/**
- * 티켓 미리보기의 QR 무늬 — **예시 그림**이라 아무것도 담지 않는다. 21×21 칸(QR 버전 1 크기)에 모서리 눈 셋 +
- *   고정 씨앗의 무늬. 서버와 앱이 같은 함수를 불러 **같은 path** 를 그린다(두 벌 금지).
- */
-function buildQrPath(): string {
-  let seed = 7
-  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)
-  const cells: string[] = []
-  const eye = (x: number, y: number) => x >= 0 && y >= 0 && ((x < 8 && y < 8) || (x > 12 && y < 8) || (x < 8 && y > 12))
-  for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) {
-    let on: boolean
-    if (eye(x, y)) {
-      const lx = x > 12 ? x - 14 : x, ly = y > 12 ? y - 14 : y
-      on = lx >= 0 && lx <= 6 && ly >= 0 && ly <= 6 && (lx === 0 || lx === 6 || ly === 0 || ly === 6 || (lx >= 2 && lx <= 4 && ly >= 2 && ly <= 4))
-    } else on = rnd() < 0.5
-    if (on) cells.push(`M${x} ${y}h1v1h-1z`)
-  }
-  return cells.join('')
-}
-export const GUEST_QR_PATH = buildQrPath()
+/** 지갑 줄의 시계 그림 — `ClockIcon`(urdeal-icons)과 같은 획. 서버와 앱이 같은 path 를 쓴다. */
+export const GUEST_CLOCK = { circle: { cx: 12, cy: 12, r: 8.4 }, path: 'M12 7.4v4.9l3.2 1.9' } as const

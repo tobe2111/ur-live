@@ -14,10 +14,10 @@ export default [
   {
     name: '이용권모션 — 표식이 서버와 같이 쓰는 클래스에서 빠진다',
     file: 'src/shared/guest-page.ts',
-    find: "ticketQr: 'ur-gp-qr shrink-0",
-    replace: "ticketQr: 'shrink-0",
+    find: "walletUse: 'ur-gp-use shrink-0",
+    replace: "walletUse: 'shrink-0",
     test: T,
-    why: 'QR 스캔 줄이 조용히 사라진다(에러 없음).',
+    why: '[사용] 물결이 조용히 사라진다(에러 없음).',
   },
   {
     name: '이용권모션 — 예시가 화면에 들어와도 안 켜진다',

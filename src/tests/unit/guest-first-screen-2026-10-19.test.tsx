@@ -13,7 +13,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 
 vi.mock('@/components/SEO', () => ({ default: () => null }))
@@ -25,6 +25,7 @@ import GuestPassPage from '@/pages/guest/GuestPassPage'
 import GuestUrShopPage from '@/pages/guest/GuestUrShopPage'
 import GuestMyPage from '@/pages/guest/GuestMyPage'
 import { buildGuestFirstScreen, guestTabOf, guestFirstScreenGuardScript, type GuestTab } from '@/worker/utils/guest-first-screen'
+import { GUEST_COPY } from '@/shared/guest-page'
 
 /** 요소 트리를 [태그.클래스] 줄로 — 아이콘(svg)·빈 칸(span.block.shrink-0)·마스코트는 ICON 하나로 본다. */
 function shape(el: Element, out: string[] = [], depth = 0): string[] {
@@ -76,14 +77,22 @@ describe('① 서버 첫 화면 = React 위쪽 (구조·클래스·문구)', () 
   })
 })
 
-describe('①-2 티켓 QR 무늬는 한 벌 (2026-11-03)', () => {
+describe('①-2 예시 지갑 사진·시계는 한 벌 (2026-11-04 — 옛 QR 티켓 대체)', () => {
   beforeEach(() => cleanup())
-  it('서버와 앱이 같은 path 를 그린다(아이콘으로 뭉뚱그려 보는 ① 이 못 보는 자리)', () => {
+  it('서버와 앱이 같은 사진 주소·같은 시계 path 를 그린다(모양만 보는 ① 이 못 보는 자리)', () => {
     const { container } = render(<MemoryRouter><GuestPassPage /></MemoryRouter>)
-    const app = container.querySelector('svg[viewBox="0 0 21 21"] path')!.getAttribute('d')
-    const srv = serverTop('pass').querySelector('svg[viewBox="0 0 21 21"] path')!.getAttribute('d')
-    expect(app && app.length).toBeGreaterThan(200)
-    expect(app).toBe(srv)
+    const srvTop = serverTop('pass')
+    const imgs = (root: { querySelectorAll: (s: string) => ArrayLike<Element> }) => Array.from(root.querySelectorAll('[data-guest="pass"] img')).map((e) => e.getAttribute('src'))
+    const app = imgs(container)
+    expect(app.length).toBe(2)
+    expect(app.every((s) => !!s && s.startsWith('/assets/guest/'))).toBe(true)
+    expect(imgs(srvTop)).toEqual(app)
+    const clock = (root: { querySelectorAll: (s: string) => ArrayLike<Element> }) => Array.from(root.querySelectorAll('[data-guest="pass"] svg[viewBox="0 0 24 24"] path')).map((e) => e.getAttribute('d'))
+    expect(clock(container).length).toBe(2)
+    expect(clock(srvTop)).toEqual(clock(container))
+  })
+  it('예시 사진 파일이 실제로 있다(정적 주소가 404 면 회색 칸)', () => {
+    for (const w of GUEST_COPY.pass.wallet) expect(existsSync('public' + w.img), w.img).toBe(true)
   })
 })
 

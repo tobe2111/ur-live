@@ -2,6 +2,8 @@
  * 🎬 로그아웃 이용권 탭 모션(2026-11-04 대표 *"로그아웃 상태에서의 이용권 페이지도 모션그래픽들을 넣어줄래?"*).
  *
  * 지키는 것:
+ *  (2026-11-04 같은 날 개정 — 대표 *"이용권 티켓 이제 저렇게 안생겼잖아"*: 옛 QR 띠 티켓 → 지금 지갑 줄 모양 예시 두 장.
+ *   그래서 QR 스캔 줄·띠 빛은 없어지고 '줄 차례 착지 · [사용] 물결' 이 됐다.)
  *  ① 모션 CSS 를 실제로 꽂고, 그 표식(`ur-gp-*`)이 앱·서버 첫 화면이 **같이 쓰는** 클래스 SSOT 에 있다
  *     (한쪽에만 있으면 서버가 그린 티켓은 영영 안 움직이거나, 앱이 그릴 때 모양이 갈린다).
  *  ② 서버가 이미 그린 위쪽(티켓·1·2·3)의 움직임은 **보이지 않게 시작하지 않는다** — opacity 0 에서 띄우면
@@ -23,14 +25,14 @@ describe('로그아웃 이용권 탭 모션', () => {
   it('① 모션 CSS 를 꽂고, 표식은 앱·서버가 같이 쓰는 클래스에 있다', () => {
     expect(css.length).toBeGreaterThan(500)
     expect(GUEST_CLS.ticket).toContain('ur-gp-ticket')
-    expect(GUEST_CLS.ticketBand).toContain('ur-gp-band')
-    expect(GUEST_CLS.ticketQr).toContain('ur-gp-qr')
+    expect(GUEST_CLS.walletRow).toContain('ur-gp-wrow')
+    expect(GUEST_CLS.walletUse).toContain('ur-gp-use')
     expect(GUEST_CLS.stepNum).toContain('ur-gp-num')
-    for (const k of ['.ur-gp-ticket', '.ur-gp-band::after', '.ur-gp-qr::after', '.ur-gp-num']) expect(css).toContain(k)
+    for (const k of ['.ur-gp-wrow {', '.ur-gp-use {', '.ur-gp-num {']) expect(css).toContain(k)
   })
 
   it('② 서버가 그린 위쪽 움직임은 opacity 0 에서 시작하지 않는다', () => {
-    for (const name of ['ur-gp-land', 'ur-gp-tick']) {
+    for (const name of ['ur-gp-land', 'ur-gp-tick', 'ur-gp-ring']) {
       const body = kf(name)
       expect(body, name).not.toBe('')
       expect(body, name).not.toMatch(/opacity/)
@@ -51,7 +53,7 @@ describe('로그아웃 이용권 탭 모션', () => {
   it('④ 동작 줄이기에서는 멈추고, 숨긴 것도 보인다', () => {
     const rm = (css.match(/@media \(prefers-reduced-motion: reduce\)\{(.*)\}$/) || [])[1] || ''
     expect(rm).toMatch(/animation:none!important/)
-    expect(rm).toMatch(/\.ur-gp-qr::after\{display:none\}|\.ur-gp-qr::after\{display:none/)
+    expect(rm).toMatch(/\.ur-gp-wrow,\[data-guest="pass"\] \.ur-gp-use,/)
     expect(rm).toMatch(/\.ur-gp-shelf \.ur-gs-rows > \*,\.ur-gp-shelf \.ur-gp-browse\{opacity:1\}/)
   })
 })
