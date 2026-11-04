@@ -86,4 +86,8 @@ describe('④ 마운트', () => {
     expect(app).toMatch(/\{shellNeed\.phone && <Suspense fallback=\{null\}><PhoneRequiredGate \/><\/Suspense>\}/)
     expect(app).toMatch(/phone: \(\(\) => \{ try \{ return !!\(localStorage\.getItem\('user_id'\) \|\| localStorage\.getItem\('session_login'\)\)/)
   })
+  it('가입 직후 환영 창(쿠폰·관심 분야·알림톡)은 없다 — 2026-11-04 대표: 환영 쿠폰 없음 · 관심 분야 불필요 · 알림톡 토글은 저장 안 됨', () => {
+    const app = readFileSync('src/App.tsx', 'utf8').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    expect(app).not.toMatch(/OnboardingTrigger|WelcomeOnboardingModal/)
+  })
 })

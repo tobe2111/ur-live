@@ -122,8 +122,7 @@ describe('신규 가입 보너스 — 지급 경로 제거 (2026-08-31 대표 "3
     expect(existsSync('src/worker/utils/agency-store-intro-commission.ts')).toBe(false)
   })
 
-  it('모달의 보너스 카드는 조건부라 지급이 없으면 안 뜬다', () => {
-    const modal = readFileSync('src/components/onboarding/WelcomeOnboardingModal.tsx', 'utf8')
-    expect(modal, '모달이 bonusAmount > 0 조건부가 아니다').toContain('bonusAmount > 0')
+  it('보너스 카드를 띄우던 환영 창은 없어졌다(2026-11-04 대표 — 가입 환영 창 제거)', () => {
+    expect(existsSync('src/components/onboarding/WelcomeOnboardingModal.tsx')).toBe(false)
   })
 })

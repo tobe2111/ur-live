@@ -19,3 +19,9 @@
 ## 남은 것
 - 라이브 E4: 새 카카오 가입 1건으로 창 노출 → 저장 → `users.phone` 숫자 저장 · `terms_agreements` marketing 행 확인.
 - 환영 창(WelcomeOnboardingModal) 3단계의 알림톡 토글이 **기본 켜짐**이다 — 광고성이면 같은 법 문제. 이번 범위 밖, 대표 판단 필요 시 결재함.
+
+## 2026-11-04 후속 — 가입 환영 창 제거
+- 대표: *"어차피 카카오로 로그인 시에 알림 설정은 받게 안되어있어? 그리고 신규 환영 쿠폰은 따로 없어. 관심 분야 저것도 굳이 없애도 돼."*
+- 실측(라이브 Pages env): `KAKAO_OIDC_ENABLED=1`, `KAKAO_CHANNEL_ADD_ENABLED` 없음 → 카카오 동의 화면은 이메일·닉네임·프로필사진뿐. **알림·광고 동의도, 채널 추가도, 휴대폰 번호도 안 받는다**(OIDC 경로는 phone 을 아예 안 읽는다 — 그래서 번호가 비어 있었다).
+- `WelcomeOnboardingModal`·`OnboardingTrigger` 삭제 + App 마운트 제거. 가입하면 번호 창 하나만.
+- 알림톡 토글은 원래 저장되지 않았다(`/api/users/onboarding` 라우트 없음 · 읽는 곳 없음).

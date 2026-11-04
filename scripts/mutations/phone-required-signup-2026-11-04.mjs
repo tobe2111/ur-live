@@ -6,4 +6,5 @@ export default [
   { name: '번호필수 — 개인정보처리방침 화면에서도 막는다', file: 'src/components/onboarding/PhoneRequiredGate.tsx', find: '|terms|privacy|refund|', replace: '|terms|refund|', test: T, why: '수집 고지를 읽으려고 눌러도 창이 덮어 읽을 수 없다.' },
   { name: '번호필수 — 세션 쿠키 분기가 판정을 안 내린다', file: 'src/worker/routes/auth.routes.ts', find: '        phone_required: isPhoneRequired(phone, createdAt),', replace: '', test: T, why: '카카오(세션 쿠키) 가입자에게는 창이 영영 안 뜬다.' },
   { name: '번호필수 — 소식 동의를 기록하지 않는다', file: 'src/worker/routes/auth.routes.ts', find: "await recordTermsAgreements(db, 'user', id, [{ doc_type: 'marketing', agreed: body.marketing_agreed }]);", replace: 'void 0;', test: T, why: '광고 문자를 보내도 되는 사람인지 증적이 없다.' },
+  { name: '번호필수 — 가입 환영 창이 되살아난다', file: 'src/App.tsx', find: "          {/* 🗑️ 2026-11-04 대표: 가입 직후 환영 창", replace: "          {shellNeed.push && <OnboardingTrigger />}{/* 🗑️ 2026-11-04 대표: 가입 직후 환영 창", test: T, why: '없는 환영 쿠폰을 약속하고 저장 안 되는 알림톡 토글을 다시 보여 준다.' },
 ]
