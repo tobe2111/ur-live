@@ -85,7 +85,7 @@ export default function SellerCreatorContentPage() {
             <h1 className="truncate text-[20px] font-semibold">{t('seller.creatorContent.title', { defaultValue: '다녀온 사람들 관리' })}</h1>
             <p className="mt-1 truncate text-[13px] text-gray-500">{data.store_name} · {t('seller.creatorContent.scope', { defaultValue: '이 가게 이용권 전체에 같이 보여요' })}</p>
           </div>
-          <button type="button" onClick={() => setAdding((v) => !v)} className={`${BTN} shrink-0 bg-brand text-white`}><Plus className="h-4 w-4" />{t('seller.creatorContent.add', { defaultValue: '추가' })}</button>
+          <button type="button" onClick={() => setAdding((v) => !v)} className="ur-btn ur-btn-sm ur-btn-primary shrink-0"><Plus className="h-4 w-4" />{t('seller.creatorContent.add', { defaultValue: '추가' })}</button>
         </div>
 
         {adding && (
@@ -93,7 +93,7 @@ export default function SellerCreatorContentPage() {
             <p className="text-[13px] text-gray-600">{t('seller.creatorContent.addHint', { defaultValue: '유튜브 · 인스타그램 · 틱톡 · 네이버 클립 · 네이버 블로그 주소를 붙여 넣으세요. 바로 손님에게 보여요.' })}</p>
             <input id="cc-url" value={url} onChange={(e) => setUrl(e.target.value)} inputMode="url" placeholder="https://"
               className="mt-2 w-full rounded-xl border border-gray-300 px-3 py-3 text-[15px] text-gray-900 outline-none focus:border-brand" />
-            <button type="button" disabled={busy || !url.trim()} onClick={add} className="mt-2 w-full rounded-xl bg-brand py-3 text-[15px] font-semibold text-white disabled:opacity-50">
+            <button type="button" disabled={busy || !url.trim()} onClick={add} className="ur-btn ur-btn-md ur-btn-primary mt-2 w-full disabled:opacity-50">
               {t('seller.creatorContent.addConfirm', { defaultValue: '추가하기' })}
             </button>
           </div>
@@ -113,7 +113,7 @@ export default function SellerCreatorContentPage() {
                 <a href={cand.url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-[13px] text-brand-text">{t('seller.creatorContent.openOriginal', { defaultValue: '원본 보기' })} ↗</a>
                 <div className="mt-2 flex gap-2">
                   <button type="button" disabled={busy} onClick={() => setItem(cand.id, { status: 'hidden' })} className={`${BTN} flex-1 bg-gray-100 text-gray-700`}>{t('seller.creatorContent.skip', { defaultValue: '넘기기' })}</button>
-                  <button type="button" disabled={busy} onClick={() => setItem(cand.id, { status: 'visible' })} className={`${BTN} flex-1 bg-brand text-white`}>{t('seller.creatorContent.show', { defaultValue: '보이기' })}</button>
+                  <button type="button" disabled={busy} onClick={() => setItem(cand.id, { status: 'visible' })} className="ur-btn ur-btn-sm ur-btn-primary flex-1">{t('seller.creatorContent.show', { defaultValue: '보이기' })}</button>
                 </div>
               </div>
             </div>

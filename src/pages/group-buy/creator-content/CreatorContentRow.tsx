@@ -59,7 +59,7 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
           className="mt-3 flex w-full items-center gap-3 rounded-2xl bg-brand-tint px-3 py-3 text-left active:opacity-80">
           <span className="flex shrink-0">
             {pinners.slice(0, 3).map((p, i) => (
-              <span key={p.user_id} className={`block h-7 w-7 overflow-hidden rounded-full border-2 border-white bg-gray-200 dark:border-[#1D1F29] dark:bg-[#2A2A2A]${i ? ' -ml-2' : ''}`}>
+              <span key={p.user_id} style={{ borderColor: 'var(--surface)' }} className={`block h-7 w-7 overflow-hidden rounded-full border-2 bg-warm${i ? ' -ml-2' : ''}`}>
                 {p.avatar && <img src={p.avatar} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />}
               </span>
             ))}
@@ -79,12 +79,12 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
             return (
               <li key={v.id} className="w-28 shrink-0">
                 <button type="button" onClick={() => openAt(videos, i)} aria-label={`${v.author_name ?? '영상'} 보기`}
-                  className={`relative block aspect-[9/16] w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#1A1A1A]${badge ? ' ring-2 ring-brand ring-inset' : ''}`}>
+                  className={`relative block aspect-[9/16] w-full overflow-hidden rounded-xl bg-warm${badge ? ' ring-2 ring-brand ring-inset' : ''}`}>
                   {v.thumb_url && <img src={v.thumb_url} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover"
                     onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                   <PlatformMark platform={v.platform} urdeal={!!badge} className="absolute left-2 top-2" />
                   <span className="absolute inset-0 flex items-center justify-center">
-                    {/* 사진 위 재생 표시 — 테마와 무관하게 흰 원 · 검은 삼각형 */}<span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: 'rgba(255,255,255,.85)', color: '#16181C' }}><Play className="h-4 w-4" fill="currentColor" /></span>
+                    {/* 사진 위 재생 표시 — 테마와 무관하게 흰 원 · 검은 삼각형 */}<span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: 'rgba(255,255,255,.85)', color: 'black' }}><Play className="h-4 w-4" fill="currentColor" /></span>
                   </span>
                 </button>
                 <p className="mt-2 truncate text-[12px] font-medium text-gray-900 dark:text-white">{v.author_name || v.title || '영상'}</p>
@@ -103,7 +103,7 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
             <li key={b.id}>
               <button type="button" onClick={() => openAt(blogs, i)}
                 className={`flex w-full items-center gap-3 py-3 text-left active:opacity-70${read.has(b.id) ? ' bg-brand-tint' : ''}`}>
-                <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#1A1A1A]">
+                <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-warm">
                   {b.thumb_url && <img src={b.thumb_url} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover"
                     onError={(e) => { e.currentTarget.style.display = 'none' }} />}
                 </span>
@@ -112,7 +112,7 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
                   <span className="mt-1 flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400">
                     <PlatformMark platform={b.platform} />
                     <span className="truncate">{b.author_name || '네이버 블로그'}{read.has(b.id) ? ' · 읽음' : ''}</span>
-                    {b.sponsored && <span className="shrink-0 rounded bg-gray-100 px-1 dark:bg-[#1A1A1A]">협찬</span>}
+                    {b.sponsored && <span className="shrink-0 rounded bg-warm px-1">협찬</span>}
                   </span>
                 </span>
               </button>

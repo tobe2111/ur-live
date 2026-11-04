@@ -19,9 +19,9 @@ export interface BuyInfo { store: string | null; price: number | null; discountP
 
 function BuyBar({ buy, onBuy, dark }: { buy: BuyInfo; onBuy: () => void; dark?: boolean }) {
   return (
-    <div className={`flex items-center gap-3 px-4 pt-3 ${dark ? 'bg-black/70 text-white' : 'border-t border-rule bg-white text-gray-900 dark:bg-[#11141C] dark:text-white'}`}
+    <div className={`flex items-center gap-3 px-4 pt-3 ${dark ? 'bg-black/70 text-white' : 'border-t border-rule bg-surface text-ink'}`}
       style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))' }}>
-      <span className="block h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-gray-200 dark:bg-[#2A2A2A]">
+      <span className="block h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-warm">
         {buy.image && <img src={buy.image} alt="" className="h-full w-full object-cover" />}
       </span>
       <span className="min-w-0 flex-1">
@@ -69,14 +69,14 @@ function VideoSlide({ item, active }: { item: ContentItem; active: boolean }) {
 function BlogBody({ item }: { item: ContentItem }) {
   const full = naverBlogMobileUrl(item.ext_id)
   if (item.embeddable) {
-    return <iframe src={full} title={item.title || '블로그 글'} className="h-full w-full border-0" style={{ background: "#fff" }} referrerPolicy="no-referrer" />
+    return <iframe src={full} title={item.title || '블로그 글'} className="h-full w-full border-0" style={{ background: "white" }} referrerPolicy="no-referrer" />
   }
   const date = item.published_at ? item.published_at.slice(0, 10).replace(/-/g, '.') : null
   return (
     <div className="h-full overflow-y-auto px-5 py-5">
       {item.thumb_url && <img src={item.thumb_url} alt="" referrerPolicy="no-referrer" className="aspect-[4/3] w-full rounded-xl object-cover" />}
       <h3 className="mt-3 text-[20px] font-semibold leading-snug text-gray-900 dark:text-white">{item.title || '블로그 글'}</h3>
-      <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{[item.author_name, date].filter(Boolean).join(' · ')}{item.sponsored ? ' · 협찬' : ''}</p>
+      <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{[item.author_name, date, item.sponsored ? '협찬' : null].filter(Boolean).join(', ')}</p>
       {item.summary && <p className="mt-3 text-[15px] leading-relaxed text-gray-600 dark:text-gray-300">{item.summary}</p>}
       {/* 같은 화면에서 넘어간다(target 없음) — 폰의 뒤로 가기로 상세에 돌아온다. */}
       <a href={full} className="mt-5 flex items-center justify-center gap-1 rounded-xl border border-rule py-3 text-[15px] font-medium text-gray-900 dark:text-white">
@@ -123,7 +123,7 @@ export default function ContentViewer({ items, start, buy, onClose, onBuy, onSee
 
   if (isBlog) {
     return (
-      <div role="dialog" aria-modal="true" aria-label="블로그 글" className="fixed inset-0 z-[80] flex flex-col bg-white dark:bg-[#11141C]"
+      <div role="dialog" aria-modal="true" aria-label="블로그 글" className="fixed inset-0 z-[80] flex flex-col bg-surface"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="flex items-center gap-3 border-b border-rule px-4 py-3">
           <button type="button" onClick={onClose} aria-label="닫기" className="text-gray-900 dark:text-white"><X className="h-5 w-5" /></button>

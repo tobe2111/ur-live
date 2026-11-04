@@ -6965,7 +6965,7 @@ canvas {
   {
     name: 'YT 성과 상한이 고정으로 회귀(검색 유휴분을 못 씀)',
     file: 'src/features/marketing/api/influencer-enrich-lane.ts',
-    find: 'resolveYtPerfCap(ytSearchCalls * YT_SEARCH_UNIT_COST, env.ADS_YT_PERF_UNITS)',
+    find: 'resolveYtPerfCap(ytCalls.ads * YT_SEARCH_UNIT_COST + contentUnits, env.ADS_YT_PERF_UNITS)',
     replace: 'Math.min(9000, YT_PERF_UNITS_DEFAULT)',
     test: 'src/tests/unit/ads-enrich-throughput.test.ts',
     why:

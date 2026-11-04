@@ -98,7 +98,8 @@ describe('①-b YT 성과 상한 — 고정이 아니라 검색 실사용의 나
   })
 
   it('🔌 배선 — 상한이 검색 실사용에서 나온다(고정 상수 회귀 금지)', () => {
-    expect(LANE).toMatch(/resolveYtPerfCap\(ytSearchCalls \* YT_SEARCH_UNIT_COST, env\.ADS_YT_PERF_UNITS\)/)
+    // 🎬 2026-11-04 — 유어딜 이용권 콘텐츠 몫(contentUnits)을 검색 실사용에 얹는다(같은 10,000 풀). 고정 상수가 아닌 것은 그대로.
+    expect(LANE).toMatch(/resolveYtPerfCap\(ytCalls\.ads \* YT_SEARCH_UNIT_COST \+ contentUnits, env\.ADS_YT_PERF_UNITS\)/)
     expect(LANE).toMatch(/readYtSearchCalls\(DB, ytDay\)/)
   })
 })

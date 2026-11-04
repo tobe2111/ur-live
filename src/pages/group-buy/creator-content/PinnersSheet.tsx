@@ -16,7 +16,7 @@ export default function PinnersSheet({ pinners, onClose }: { pinners: PinPerson[
   return (
     <div role="dialog" aria-modal="true" aria-label="유어딜에서 추천하는 사람" className="fixed inset-0 z-[80] flex items-end">
       <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 h-full w-full cursor-default border-0 bg-black/45" />
-      <div className="relative max-h-[70dvh] w-full overflow-y-auto rounded-t-2xl bg-white px-5 pt-5 shadow-lift dark:bg-[#1D1F29]"
+      <div className="relative max-h-[70dvh] w-full overflow-y-auto rounded-t-2xl bg-surface px-5 pt-5 shadow-lift"
         style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))' }}>
         <div className="flex items-center justify-between">
           <h3 className="text-[16px] font-semibold text-gray-900 dark:text-white">유어딜에서 추천해요</h3>
@@ -27,7 +27,7 @@ export default function PinnersSheet({ pinners, onClose }: { pinners: PinPerson[
           {pinners.map((p) => (
             <li key={p.user_id}>
               <Link to={`/u/${p.handle}`} onClick={onClose} className="flex items-center gap-3 py-3 active:opacity-70">
-                <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-[#2A2A2A]">
+                <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-full bg-warm">
                   {p.avatar && <img src={p.avatar} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />}
                 </span>
                 <span className="min-w-0 flex-1">
