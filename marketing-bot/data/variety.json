@@ -127,5 +127,10 @@
     "hook": "compare",
     "media_set": "owner-3-changes",
     "date_kst": "2026-11-03"
+  },
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "date_kst": "2026-11-04"
   }
 ]
