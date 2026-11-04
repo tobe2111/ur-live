@@ -358,7 +358,7 @@ export default function LoginPage() {
               <button type="button" onClick={() => setShowEmailLogin(true)} className="hover:text-gray-900 dark:hover:text-white transition-colors">
                 {t('auth.loginWithEmail')}
               </button>
-              <span aria-hidden="true" className="text-gray-300 dark:text-gray-600">|</span>
+              <span aria-hidden="true" className="text-gray-300 dark:text-gray-500">|</span>
               <Link to="/agency/login" className="hover:text-gray-900 dark:hover:text-white transition-colors">
                 {t('login.agencyLogin', { defaultValue: '에이전시 로그인' })}
               </Link>
