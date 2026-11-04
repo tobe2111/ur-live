@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import api from '@/lib/api'
 import { onSeatChange, seatGeneration } from '@/lib/seller-seat'
+import { readCache, writeCache } from '@/hooks/queries/localCache'
 
 export interface StoreSummaryRow {
   seller_id: number
@@ -79,12 +80,25 @@ function memoUserKey(): string {
   try { return localStorage.getItem('user_id') || localStorage.getItem('session_login') || '' } catch { return '' }
 }
 
-/** 지금 쓸 수 있는 기억 — 같은 사람 · 같은 좌석 세대 · 30분 이내일 때만. */
+/**
+ * 💾 2026-11-04 (대표 *"대기업급 무료 선에서 더"*) — 메모리 기억은 앱을 껐다 켜면 빈다. 그래서 **기기에도** 한 벌 남긴다
+ *   (localCache — 사람이 바뀌면 통째로 지운다). '오늘 매출'이 들어 있어 **같은 한국 날짜 · 2시간 이내**일 때만 쓴다
+ *   (어제 매출을 오늘로 보이면 거짓말이다). 그린 직후 서버 값으로 바뀐다.
+ */
+const SEAT_DISK_KEY = 'my-stores-summary'
+const SEAT_DISK_TTL_MS = 2 * 60 * 60_000
+const kstDay = (t: number) => new Date(t + 9 * 3600_000).toISOString().slice(0, 10)
+
+/** 지금 쓸 수 있는 기억 — 같은 사람 · 같은 좌석 세대 · 30분 이내일 때만(없으면 기기 저장분). */
 function readSeatMemo(): SeatMemo | null {
   const m = seatMemo
-  if (!m) return null
-  if (m.userKey !== memoUserKey() || m.generation !== seatGeneration() || Date.now() - m.at > SEAT_MEMO_TTL_MS) return null
-  return m
+  if (m && m.userKey === memoUserKey() && m.generation === seatGeneration() && Date.now() - m.at <= SEAT_MEMO_TTL_MS) return m
+  if (m) return null // 메모리에 있는데 안 맞으면(사람·좌석이 바뀜) 기기 것도 쓰지 않는다
+  const d = readCache<Omit<SeatMemo, 'generation'> | null>(SEAT_DISK_KEY, null)
+  if (!d || !Array.isArray(d.stores) || d.userKey !== memoUserKey()) return null
+  const now = Date.now()
+  if (now - d.at > SEAT_DISK_TTL_MS || kstDay(d.at) !== kstDay(now)) return null
+  return { ...d, generation: seatGeneration() }
 }
 
 /** 시험용 — 기억을 비운다. */
@@ -134,6 +148,7 @@ export function useMyStores(): MyStoresState {
         setGeneration(gen)
         shown.current = gen
         seatMemo = { userKey: memoUserKey(), generation: gen, at: Date.now(), stores: nextStores, totals: nextTotals, currentSellerId: nextCur }
+        writeCache(SEAT_DISK_KEY, { userKey: seatMemo.userKey, at: seatMemo.at, stores: nextStores, totals: nextTotals, currentSellerId: nextCur })
       })
       // 🧠 이미 그린 값이 있으면 실패해도 지우지 않는다 — 회선이 잠깐 끊겼다고 가게가 사라지면 안 된다.
       .catch(() => { if (alive.current && !quiet) setFailed(true) })

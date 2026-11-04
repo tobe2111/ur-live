@@ -38,6 +38,7 @@ import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
+import { readCache, writeCache } from '@/hooks/queries/localCache'
 import { getUserIdSync } from '@/utils/auth'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 // 🎬 2026-11-02 시안 7차 "내 딜 늘어남"(대표 "7차도 다 해주고") — 화면을 보는 동안 잔액이 늘면(적립·선물) 숫자 위로 "+N딜" 이 떠올랐다 사라진다.
@@ -49,8 +50,12 @@ injectMotionCss('ur-m-gain', `@keyframes ur-gain { 0% { opacity: 0; transform: t
 let balanceMemo: { userKey: string; at: number; balance: number; free: number } | null = null
 function readBalanceMemo() {
   const m = balanceMemo
-  if (!m || m.userKey !== (getUserIdSync() || '') || Date.now() - m.at > 10 * 60_000) return null
-  return m
+  if (m && m.userKey === (getUserIdSync() || '') && Date.now() - m.at <= 10 * 60_000) return m
+  // 💾 2026-11-04 (대표 *"대기업급 무료 선에서 더"*) — 앱을 껐다 켜도(메모리가 빈다) **기기에 남은 지난 잔액**을 바로 그린다.
+  //   같은 키(`balance`)를 `useBalance`(결제 버튼·교환권 상세)가 이미 쓰고 있고, 저장소는 사람이 바뀌면 통째로 지운다(localCache 주인 규칙).
+  //   그린 직후 서버 값으로 바뀌고, 서버가 실패하면 종전대로 `—` 다(아래 catch).
+  const cached = readCache<number | null>('balance', null)
+  return typeof cached === 'number' && Number.isFinite(cached) && cached >= 0 ? { userKey: getUserIdSync() || '', at: 0, balance: cached, free: 0 } : null
 }
 
 /** 💸 충전은 2026-07-18 에 종료됐다 — 딜의 "자세히" 는 내역이다. */
@@ -138,6 +143,7 @@ export default function MyStats({ voucher, coupon, inline = false }: {
             setBalance(bal)
             setFreeBalance(free)
             balanceMemo = { userKey: getUserIdSync() || '', at: Date.now(), balance: bal, free }
+            writeCache('balance', bal) // 💾 다음 실행의 첫 그림 — `useBalance` 와 같은 키
           } else setBalance(null)
         })
         // 🛡️ 실패는 `null` — `0` 으로 떨어뜨리면 화면이 거짓말을 한다.
