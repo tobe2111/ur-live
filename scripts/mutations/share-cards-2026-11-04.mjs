@@ -12,7 +12,7 @@ export default [
   {
     name: '💬 업체 소개 공유가 다시 주소만 보낸다(카드 없음)',
     file: 'src/pages/life/life-biz-share.ts',
-    find: "  try { if (sendKakaoShare(payload) || await shareViaKakao(payload)) return } catch { /* 폴백 */ }\n",
+    find: '    if (sendKakaoShare(payload) || await shareViaKakao(payload)) return\n',
     replace: '',
     test: TEST,
     why: '대표 "share card 형태로".',
