@@ -18,20 +18,21 @@ export const GUEST_CLS = {
    * 🎫 이용권 탭 미리보기 — "산 이용권이 지갑에 이렇게 들어온다". 티켓은 **그림**이라 옅은 바탕 하나를 쓴다
    *   (판이 아니다 — 2026-11-02 평면 규칙은 흐름 속 *판*의 일). 색 밴드 + 본문 = 티켓 은유(디자인 규칙 ④).
    */
-  ticket: 'mt-5 overflow-hidden rounded-2xl bg-gray-100 dark:bg-white/5',
-  ticketBand: 'flex items-center justify-between bg-brand px-4 py-3 text-white',
+  ticket: 'ur-gp-ticket mt-5 overflow-hidden rounded-2xl bg-gray-100 dark:bg-white/5',
+  ticketBand: 'ur-gp-band flex items-center justify-between bg-brand px-4 py-3 text-white',
   ticketBandTitle: 'text-[15px] font-bold',
   ticketBandState: 'text-[12px] text-white/80',
   ticketBody: 'flex items-center gap-4 px-4 py-4',
+  /* 🎬 `ur-gp-*` 는 모션 표식(2026-11-04) — 이 클래스 자체엔 모양이 없고, 움직임 CSS 는 GuestPassPage 가 앱에서만 꽂는다(서버 첫 화면은 그대로 정지 그림). */
   /** QR 은 다크에서도 흰 바탕 위 검은 무늬(실제 QR 처럼 읽혀야 한다). */
-  ticketQr: 'shrink-0 w-16 h-16 rounded-lg bg-white p-1.5 text-black',
+  ticketQr: 'ur-gp-qr shrink-0 w-16 h-16 rounded-lg bg-white p-1.5 text-black',
   ticketText: 'min-w-0',
   ticketLine1: 'block text-[15px] font-medium text-gray-900 dark:text-white',
   ticketLine2: 'block mt-1 text-[13px] text-gray-500 dark:text-gray-400',
   /** 1 · 2 · 3 단계 — 혜택 목록(아이콘 상자 4줄)을 대신한다. */
   steps: 'mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule',
   step: 'px-1 py-3 text-center',
-  stepNum: 'block text-[12px] font-medium text-brand-text',
+  stepNum: 'ur-gp-num block text-[12px] font-medium text-brand-text',
   stepText: 'block mt-1 text-[13px] font-medium leading-snug text-gray-900 dark:text-white',
   /**
    * 🧷 아래 고정 카카오 버튼 — 하단 탭(56px + 선 1px) 바로 위. 스크롤해도 늘 보인다.
