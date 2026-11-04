@@ -30,4 +30,8 @@ describe('숙소 폰 머리 = 이용권 폰 머리 (대표 "왜 서로 다른거
     expect(head).not.toContain('PinIcon')
     expect(page).not.toContain('<PinIcon')
   })
+  it('주지 않는 할인을 약속하지 않는다 — 옛 객실 소개 할인은 통일 뒤 언제나 0', () => {
+    expect(page).not.toContain('추천 할인 {stay.influencer_discount_pct}%')
+    expect(readFileSync('src/features/group-buy/api/stay-referral.ts', 'utf-8')).toContain("return { on: true, id: u ? String(u.id) : null }")
+  })
 })

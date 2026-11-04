@@ -18,4 +18,12 @@ export default [
     test: TEST,
     why: '이용권 머리는 2026-11-02 C안에서 주소 줄을 걷었다 — 위치 구역이 같은 말을 한다.',
   },
+  {
+    name: 'stay-head — 옛 추천 할인 배너가 되돌아온다(할인은 0인데 약속)',
+    file: 'src/pages/StayDetailPage.tsx',
+    find: "        {/* 🗑️ 2026-11-04: 옛 '추천 할인 N% 적용' 배너 제거",
+    replace: "        {referrerId && <p>추천 할인 {stay.influencer_discount_pct}% 적용</p>}\n        {/* 🗑️ 2026-11-04: 옛 '추천 할인 N% 적용' 배너 제거",
+    test: TEST,
+    why: '예약 생성이 옛 객실 할인을 언제나 건너뛴다 — 배너가 서면 손님에게 거짓 할인이다.',
+  },
 ]

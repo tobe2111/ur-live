@@ -60,6 +60,6 @@ describe('③ 숙소 상세 본문이 공용 lucide 봉투를 끌지 않는다',
     expect(src).not.toMatch(/\bHotel\b/)
     expect(src).not.toMatch(/\bTicketPercent\b/)
     expect(src).toMatch(/<StayLineIcon /)
-    expect(src).toMatch(/<CouponIcon /)
+    // 🗑️ 2026-11-04: 쿠폰 아이콘을 쓰던 옛 '추천 할인' 배너를 걷었다(stay-detail-parity-2026-11-04) — 남은 유어딜 아이콘은 위 StayLineIcon.
   })
 })

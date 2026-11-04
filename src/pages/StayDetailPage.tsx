@@ -7,7 +7,7 @@
  */
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { stayDetailTitle } from '@/shared/seo/detail-title'
-import { StayLineIcon, CouponIcon } from '@/components/icons/urdeal-icons'
+import { StayLineIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -334,17 +334,8 @@ export default function StayDetailPage() {
             [유형 · 성급 · 지역] → 제목 → 별점 → 가격. 📱 모바일 전용 — PC 는 위 `DetailTitleHeader`. */}
         <StayHeadCard stay={stay} name={stay.restaurant_name || stay.name} minPrice={minRoomPrice} priceLabel={roomsPriceLabel} />
 
-        {/* 🛡️ 2026-05-18: 인플 referral 배너 — ref 진입 시 표시. */}
-        {referrerId && stay.referral_enabled === 1 && (stay.influencer_discount_pct || 0) > 0 && (
-          <div className="bg-brand-tint dark:bg-gray-800/[0.15] border border-rule rounded-xl p-3 mb-3 flex items-center gap-2">
-            <CouponIcon className="w-5 h-5 shrink-0 text-brand-text" aria-hidden />
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-medium text-brand-text ">추천 할인 {stay.influencer_discount_pct}% 적용</p>
-              <p className="text-[12px] text-brand-text opacity-80 mt-1">결제 시 자동 적용됩니다</p>
-            </div>
-          </div>
-        )}
-
+        {/* 🗑️ 2026-11-04: 옛 '추천 할인 N% 적용' 배너 제거 — 11-03 소개 적립 통일 뒤 예약 생성은 옛 객실 할인을
+            언제나 건너뛴다(`unifiedStayReferrer` on 고정). 남겨 두면 주지 않는 할인을 약속한다(이용권 상세도 10-15 에 같은 배너를 걷었다). */}
         {!own && <div className="-mx-4 empty:hidden"><SellThisCard productId={stay.id} sellerId={stay.seller_id} hideForOwner={own} /></div>}{/* 🏨 ③ 팔아보기 — 이용권 상세와 같은 한 줄(적립도 같은 장부) */}
         {/* 📑 2026-11-03 숙소·예약 통일 ②: 이용권 상세와 같은 폰 구역 탭(C안) — 같은 부품, 숙소 구역 id. */}
         <div className="-mx-4"><DetailSectionTabs tabs={stayTabs({ intro: !!stay.description_full, map: !!(stay.address || (stay.latitude != null && stay.longitude != null)) })} /></div>
