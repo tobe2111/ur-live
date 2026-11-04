@@ -103,3 +103,6 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 - 가드 `serial-waves-round4-2026-11-04.test.ts`.
 - 남은 후보: 에이전시 `/staff`·`/stores`·`/notifications`(가드 + 본 조회 직렬 — 미들웨어 구조라 이득 1왕복씩) · `my-stores/summary` 서브쿼리(2→1, 사장님 매출이라 신중) ·
   한국 연결(ICN) 유료 옵션 결재 문서.
+- (4차 추가) 대표 *"잠금파일도 모두 허가해줄게"* → `vite.config.ts` 지갑 부품 다섯을 `app-wallet` 으로: 내 이용권 첫 방문 870→741KB.
+  기록 `docs/locks/loading/2026-11-04-wallet-chunk.md`. 홈 지도 미리받기(`map-warmup`)는 `load`(사진까지) 뒤라 그대로 — 하네스가 사진을 막아 일찍 뜬 것처럼 보였을 뿐.
+  ⚠️ 결제(Toss) 잠금 파일은 속도와 무관해 손대지 않았다.
