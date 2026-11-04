@@ -775,6 +775,10 @@ export default function GroupBuyDetailPage() {
         {/* 👤 주인용 '관리하기' 는 구매 자리(PC 상자·모바일 바)로 옮겼다 — 2026-10-18 */}
 
         {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
+        {/* 🎬 다녀온 사람들(영상·블로그·유어딜 추천) — 2026-11-04 대표 *"유의사항과 리뷰 사이에 컨텐츠들 넣어줘"*(가격 아래 → 리뷰 아래 → 여기).
+            0개면 칸이 없다. 근처에 와야 받는다(첫 화면 무게 0). */}
+        <div className={PASS_CARD}><CreatorContentLazy productId={detail.id} onBuy={buyFromContent}
+          buy={{ store: detail.restaurant_name ?? null, price: unitPrice, discountPct: displayDiscountPct || null, image: galleryImages[0] ?? null }} /></div>
         <div id="gb-sec-reviews" className={PASS_CARD} style={{ padding: '20px 16px', scrollMarginTop: 116 }}>
           <DeferUntilVisible minHeight={80}>
             <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
@@ -793,10 +797,6 @@ export default function GroupBuyDetailPage() {
             </button>
           )}
         </div>
-        {/* 🎬 다녀온 사람들(영상·블로그·유어딜 추천) — 2026-11-04 대표 *"리뷰 아래로 나오게 해줘"*(처음엔 가격 아래였다).
-            0개면 칸이 없다. 근처에 와야 받는다(첫 화면 무게 0). */}
-        <div className={PASS_CARD}><CreatorContentLazy productId={detail.id} onBuy={buyFromContent}
-          buy={{ store: detail.restaurant_name ?? null, price: unitPrice, discountPct: displayDiscountPct || null, image: galleryImages[0] ?? null }} /></div>
         {GB_ENGINE_ENABLED && showPropose && detail && (
           <Suspense fallback={null}>
             <GbProposeModal productId={Number(productId)} listPrice={Number(detail.price)} productName={detail.name} onClose={() => setShowPropose(false)} />
