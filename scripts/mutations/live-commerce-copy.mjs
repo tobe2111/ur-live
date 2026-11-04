@@ -10,10 +10,12 @@ const TEST = 'src/tests/unit/live-commerce-copy-2026-09-30.test.ts'
 
 export default [
   {
-    name: '🎬 라이브 문구가 locale 로 되살아난다 (ko 온보딩 첫 화면)',
+    // 2026-11-04 재조준: 가입 환영 창(온보딩)이 삭제돼 `welcomeOnboarding.*` 를 부르는 코드가 0 이 됐다 —
+    //   불변식(ko locale 로 되살아남)은 그대로, 지금 렌더되는 내 이용권 SEO 설명으로 옮겼다.
+    name: '🎬 라이브 문구가 locale 로 되살아난다 (ko 내 이용권)',
     file: 'public/locales/ko/translation.json',
-    find: '"welcomeDesc2": "할인가로 사고 바로 쓰는 곳"',
-    replace: '"welcomeDesc2": "한국 1위 라이브 커머스"',
+    find: '"seoDescription": "구매한 이용권을 확인하고 매장에서 사용하세요"',
+    replace: '"seoDescription": "한국 1위 라이브 커머스"',
     test: TEST,
     why: '**이것이 실제로 라이브에 있던 문구다.** 신규 가입자가 처음 보는 문장이 없는 서비스를 광고했다.',
   },
@@ -21,10 +23,10 @@ export default [
     // 2026-10-31 재조준: 지도 화면이 제목을 글자로 직접 적게 되면서(map-seo-parity) `restaurantMap.seoTitle`
     //   을 부르는 소비자 코드가 0이 됐다 — 부르지 않는 키는 이 가드가 일부러 안 보므로 그 앵커가 헛돌았다.
     //   불변식(다른 언어만 되살아남)은 그대로, 지금 실제로 렌더되는 zh 키(온보딩 첫 화면)로 옮겼다.
-    name: '🎬 라이브 문구가 다른 언어로만 되살아난다 (zh 온보딩)',
+    name: '🎬 라이브 문구가 다른 언어로만 되살아난다 (zh 내 이용권)',
     file: 'public/locales/zh/translation.json',
-    find: '"welcomeDesc2": "以折扣价买下，立刻使用",',
-    replace: '"welcomeDesc2": "直播电商，以折扣价买下",',
+    find: '"seoDescription": "查看已购使用券并在门店使用"',
+    replace: '"seoDescription": "直播电商，查看已购使用券"',
     test: TEST,
     why:
       '한국어만 고치고 끝내는 것이 이 클래스의 전형이다 — 다른 언어 locale 이 **검색 결과에 그대로** 뜬다. ' +
