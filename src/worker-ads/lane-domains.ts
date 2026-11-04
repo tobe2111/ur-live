@@ -75,6 +75,7 @@ export const LANE_DOMAIN: Record<string, AdsDomain> = {
   'social-maintenance': 'influencer',
   'consented-reminder': 'influencer',
   'inbound-onboarding': 'influencer',
+  'creator-content': 'influencer',     // 🎬 유어딜 이용권 '다녀온 사람들' — 유튜브 하루 몫·네이버 블로그를 인플루언서 축과 같이 쓴다
   'prefill-outreach-drafts': 'influencer',
 
   // ── 업체/파트너 B2B (ad_company_leads)

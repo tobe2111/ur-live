@@ -1,29 +1,36 @@
 /**
- * 🔎 "다녀온 사람들" 자동 수집 — 매시 :45 (2026-11-04 대표 *"네 추천대로"* · *"유튜브는 유어애즈랑 자동으로 분담"*)
+ * 🔎 "다녀온 사람들" 자동 수집 — **유어애즈 워커(ur-ads) 매시** (2026-11-04 대표 *"네 추천대로"* · *"유튜브는 유어애즈랑 자동으로 분담"*
+ *    · *"네이버 쪽은 토큰 많잖아 … 많이 활용해봐 수집하는거. 우리 서비스에 부담이 가지 않을 정도로"* · *"2번은 가 로"*)
+ *
+ * 🏠 **어디서 도나**: ur-ads 의 `/__ads/creator-content`(자기 인보케이션 — 유어애즈 레인과 서브리퀘스트 예산을 안 나눈다,
+ *    매시간 레인이라 바쁜 회차엔 디스패처가 미룬다). 🩸 처음엔 메인 cron 워커(`ur-live`)에 달았는데 **그 워커엔
+ *    네이버·유튜브 키가 없어** 첫 회차가 아무것도 못 가져왔다(키는 Pages 와 ur-ads 에만 있다).
  *
  * 한 회차가 하는 일
- *   ① (하루 한 번) 판매 중 이용권에서 가게 목록을 `store_content_crawl` 로 옮긴다 — 가게 단위로 찾는다(이용권 단위 X).
- *   ② 가장 오래 안 찾은 가게 5곳 → 네이버 블로그 검색(공식 API, 하루 무료 25,000회 중 회차당 5회)
- *      → 제목·요약에 **가게 이름이 그대로 들어간 글만** 후보로. 새 글 2개까지 글 페이지를 읽어 대표 사진·창 허락 여부를 적는다.
+ *   ① (하루 한 번) 판매 중 **이용권**(교환권 제외 — 가게가 없다)에서 가게 목록을 `store_content_crawl` 로 옮긴다.
+ *   ② 가장 오래 안 찾은 가게 6곳 → 네이버 블로그 검색 **두 번**(관련도순 · 최신순, 각 30건 — 하루 무료 25,000회의 1~2%)
+ *      → 제목·요약에 **가게 이름이 그대로 들어간 글만**. 그중 **이름 + 동네가 둘 다 있는 글은 바로 보이고**
+ *      (`confidentMatch`), 이름만 맞는 글은 후보로 남는다. 새 글 2개까지 글 페이지를 읽어 대표 사진·창 허락 여부를 적는다.
  *   ③ 유튜브는 회차당 **최대 1곳**, 하루 `CONTENT_YT_DAILY_SEARCHES`(15)회까지. 유어애즈와 같은 10,000점 풀이라
  *      유어애즈 성과 측정이 그 몫을 비워 둔다(`contentYtReservedUnits`). 60초 이하 영상만.
  *
- * 🔴 **전부 `candidate` 로만 들어간다** — 사장님(또는 어드민)이 켜기 전엔 손님에게 안 보인다.
- * 🔴 사장님이 지운 글(`deleted`)·숨긴 글은 `INSERT OR IGNORE` 라 다시 후보로 안 올라온다.
+ * 🔴 **이름만 맞는 글은 `candidate`** — 사장님(또는 어드민)이 켜기 전엔 손님에게 안 보인다. 확실한 글만 `visible`.
+ * 🔴 사장님이 지운 글(`deleted`)·숨긴 글은 `INSERT OR IGNORE` 라 다시 올라오지 않는다.
  *
- * 서브리퀘스트(무료 50/인보케이션): D1 ~8 + 가게당(검색 1 + 글 페이지 ≤2 + 저장 1 + 커서 1) × 5 + 유튜브 3 ≈ 36.
+ * 서브리퀘스트(무료 50/인보케이션): D1 ~4 + 가게당(검색 2 + 아는 글 1 + 글 페이지 ≤2 + 저장·커서 1 배치) × 6 + 유튜브 3 ≈ 43.
  * ⚠️ 못 보는 것: 검색 결과의 **질**(이름이 같은 다른 가게). 그래서 사람이 고르는 단계를 없애지 않는다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '../../../worker/types/env'
 import {
-  CONTENT_YT_DAILY_SEARCHES, CONTENT_YT_USED_KEY, looksSponsored, mentionsStore, parseContentUrl,
+  CONTENT_YT_DAILY_SEARCHES, CONTENT_YT_USED_KEY, confidentMatch, looksSponsored, mentionsStore, parseContentUrl,
   readDayCount, searchQueryFor, stripHtml,
 } from '../../../shared/creator-content'
 import { ensureCreatorContentTables, storeKeyFor } from './content-db'
 import { fetchPageMeta } from './content-meta'
 
-const STORES_PER_RUN = 5
+const STORES_PER_RUN = 6
+const NAVER_DISPLAY = 30
 const PAGE_FETCH_PER_STORE = 2
 const NAVER_REVISIT_HOURS = 20
 const YT_REVISIT_DAYS = 14
@@ -45,80 +52,94 @@ async function writeSetting(DB: D1Database, key: string, value: string): Promise
 async function syncStores(DB: D1Database, now: number): Promise<number> {
   const today = kstDay(now)
   if ((await readSetting(DB, SYNC_KEY)) === today) return 0
+  // 이용권만(deal_only=0) — 교환권(기프티콘·KT)은 가게가 없다. 가게 = 이름 + 동네(`storeKeyFor`), 사장님 계정은 없어도 된다.
   const { results } = await DB.prepare(`
-    SELECT seller_id, restaurant_name AS name, MIN(restaurant_address) AS address
+    SELECT restaurant_name AS name, restaurant_address AS address, MAX(seller_id) AS seller_id
       FROM products
-     WHERE group_buy_status = 'active' AND is_active = 1 AND seller_id IS NOT NULL
+     WHERE group_buy_status = 'active' AND is_active = 1 AND COALESCE(deal_only, 0) = 0
        AND restaurant_name IS NOT NULL AND TRIM(restaurant_name) != ''
-     GROUP BY seller_id, restaurant_name LIMIT 2000`).all<{ seller_id: number; name: string; address: string | null }>()
-  const rows = results ?? []
+     GROUP BY restaurant_name, restaurant_address LIMIT 3000`).all<{ seller_id: number | null; name: string; address: string | null }>()
+  const byKey = new Map<string, { seller_id: number | null; name: string; address: string | null }>()
+  for (const r of results ?? []) { const k = storeKeyFor(r.name, r.address); if (!byKey.has(k)) byKey.set(k, r) }
+  const rows = [...byKey.entries()]
   for (let i = 0; i < rows.length; i += 80) {
-    await DB.batch(rows.slice(i, i + 80).map((r) => DB.prepare(`
+    await DB.batch(rows.slice(i, i + 80).map(([k, r]) => DB.prepare(`
       INSERT INTO store_content_crawl (store_key, seller_id, store_name, address, seen_at) VALUES (?, ?, ?, ?, datetime('now'))
-      ON CONFLICT(store_key) DO UPDATE SET store_name = excluded.store_name, address = excluded.address, seen_at = excluded.seen_at`)
-      .bind(storeKeyFor(r.seller_id, r.name), r.seller_id, r.name, r.address)))
+      ON CONFLICT(store_key) DO UPDATE SET seller_id = excluded.seller_id, store_name = excluded.store_name, address = excluded.address, seen_at = excluded.seen_at`)
+      .bind(k, r.seller_id ?? 0, r.name, r.address)))
   }
   await writeSetting(DB, SYNC_KEY, today)
   return rows.length
 }
 
-interface CrawlRow { store_key: string; seller_id: number; store_name: string; address: string | null }
+interface CrawlRow { store_key: string; seller_id: number | null; store_name: string; address: string | null }
 
 interface NaverBlogItem { title: string; link: string; description: string; bloggername: string; postdate: string }
 
 /** 네이버 블로그 검색 결과 → 이 가게 글만. 순수 함수 — 시험이 직접 돌린다. */
-export function pickBlogCandidates(items: NaverBlogItem[], storeName: string) {
-  const out: { extId: string; url: string; title: string; summary: string; author: string; published: string | null; sponsored: boolean }[] = []
+export function pickBlogCandidates(items: NaverBlogItem[], storeName: string, address?: string | null) {
+  const out: { extId: string; url: string; title: string; summary: string; author: string; published: string | null; sponsored: boolean; confident: boolean }[] = []
+  const seen = new Set<string>()
   for (const it of items) {
     const title = stripHtml(it.title)
     const summary = stripHtml(it.description)
     if (!mentionsStore(`${title} ${summary}`, storeName)) continue
     const parsed = parseContentUrl(it.link)
-    if (!parsed || parsed.platform !== 'naver_blog') continue
+    if (!parsed || parsed.platform !== 'naver_blog' || seen.has(parsed.extId)) continue
+    seen.add(parsed.extId)
     const d = /^\d{8}$/.test(it.postdate) ? `${it.postdate.slice(0, 4)}-${it.postdate.slice(4, 6)}-${it.postdate.slice(6, 8)}` : null
-    out.push({ extId: parsed.extId, url: parsed.url, title: title.slice(0, 200), summary: summary.slice(0, 300), author: stripHtml(it.bloggername).slice(0, 80), published: d, sponsored: looksSponsored(`${title} ${summary}`) })
+    out.push({ extId: parsed.extId, url: parsed.url, title: title.slice(0, 200), summary: summary.slice(0, 300), author: stripHtml(it.bloggername).slice(0, 80), published: d, sponsored: looksSponsored(`${title} ${summary}`), confident: confidentMatch(`${title} ${summary}`, storeName, address) })
   }
   return out
 }
 
 interface YtSearchItem { id?: { videoId?: string }; snippet?: { title?: string; description?: string; channelTitle?: string; publishedAt?: string; thumbnails?: { high?: { url?: string }; medium?: { url?: string } } } }
 
-export function pickVideoCandidates(items: YtSearchItem[], storeName: string) {
-  const out: { extId: string; title: string; author: string; thumb: string | null; published: string | null }[] = []
+export function pickVideoCandidates(items: YtSearchItem[], storeName: string, address?: string | null) {
+  const out: { extId: string; title: string; author: string; thumb: string | null; published: string | null; confident: boolean }[] = []
   for (const it of items) {
     const id = it.id?.videoId
     const sn = it.snippet
     if (!id || !/^[A-Za-z0-9_-]{11}$/.test(id) || !sn) continue
     const title = stripHtml(sn.title)
-    if (!mentionsStore(`${title} ${stripHtml(sn.description)}`, storeName)) continue
+    const text = `${title} ${stripHtml(sn.description)}`
+    if (!mentionsStore(text, storeName)) continue
     const thumb = sn.thumbnails?.high?.url ?? sn.thumbnails?.medium?.url ?? null
-    out.push({ extId: id, title: title.slice(0, 200), author: stripHtml(sn.channelTitle).slice(0, 80), thumb: thumb && thumb.startsWith('https://') ? thumb : null, published: sn.publishedAt?.slice(0, 10) ?? null })
+    out.push({ extId: id, title: title.slice(0, 200), author: stripHtml(sn.channelTitle).slice(0, 80), thumb: thumb && thumb.startsWith('https://') ? thumb : null, published: sn.publishedAt?.slice(0, 10) ?? null, confident: confidentMatch(text, storeName, address) })
   }
   return out
 }
 
-async function collectBlogs(DB: D1Database, env: Env, s: CrawlRow): Promise<number> {
-  const id = env.NAVER_SEARCH_CLIENT_ID, secret = env.NAVER_SEARCH_CLIENT_SECRET
-  if (!id || !secret) return 0
-  const q = encodeURIComponent(searchQueryFor(s.store_name, s.address))
-  const r = await fetch(`https://openapi.naver.com/v1/search/blog.json?query=${q}&display=20&sort=sim`, {
+async function naverSearch(id: string, secret: string, q: string, sort: 'sim' | 'date'): Promise<NaverBlogItem[]> {
+  const r = await fetch(`https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(q)}&display=${NAVER_DISPLAY}&sort=${sort}`, {
     headers: { 'X-Naver-Client-Id': id, 'X-Naver-Client-Secret': secret }, signal: AbortSignal.timeout(5000),
   }).catch(() => null)
-  if (!r || !r.ok) return 0
-  const body = await r.json<{ items?: NaverBlogItem[] }>().catch(() => null)
-  const picks = pickBlogCandidates(body?.items ?? [], s.store_name).slice(0, 10)
-  if (!picks.length) return 0
+  if (!r || !r.ok) return []
+  return ((await r.json<{ items?: NaverBlogItem[] }>().catch(() => null))?.items) ?? []
+}
+
+/** 가게 하나 — 검색 2회(관련도·최신) → 이 가게 글만 → 새 글만 저장. 커서 갱신도 같은 배치에 싣는다(서브리퀘스트 1). */
+async function collectBlogs(DB: D1Database, env: Env, s: CrawlRow): Promise<number> {
+  const cursor = DB.prepare(`UPDATE store_content_crawl SET naver_at = datetime('now') WHERE store_key = ?`).bind(s.store_key)
+  const id = env.NAVER_SEARCH_CLIENT_ID, secret = env.NAVER_SEARCH_CLIENT_SECRET
+  if (!id || !secret) { await cursor.run().catch(() => null); return 0 }
+  const q = searchQueryFor(s.store_name, s.address)
+  const [sim, recent] = await Promise.all([naverSearch(id, secret, q, 'sim'), naverSearch(id, secret, q, 'date')])
+  const picks = pickBlogCandidates([...sim, ...recent], s.store_name, s.address).slice(0, 20)
+  if (!picks.length) { await cursor.run().catch(() => null); return 0 }
   // 이미 아는 글(후보·보이는 중·숨김·삭제 전부)은 다시 안 읽는다.
   const known = new Set(((await DB.prepare(`SELECT ext_id FROM store_creator_content WHERE store_key = ? AND platform = 'naver_blog'`)
     .bind(s.store_key).all<{ ext_id: string }>().catch(() => ({ results: [] as { ext_id: string }[] }))).results ?? []).map((x) => x.ext_id))
   const fresh = picks.filter((p) => !known.has(p.extId))
-  if (!fresh.length) return 0
-  const metas = await Promise.all(fresh.slice(0, PAGE_FETCH_PER_STORE).map((p) => fetchPageMeta(`https://m.blog.naver.com/${p.extId}`).catch(() => null)))
-  await DB.batch(fresh.map((p, i) => DB.prepare(`
+  if (!fresh.length) { await cursor.run().catch(() => null); return 0 }
+  // 글 페이지는 **확실한 글부터** 읽는다(바로 보일 글에 사진이 있어야 한다).
+  const order = [...fresh].sort((a, b) => Number(b.confident) - Number(a.confident))
+  const metas = await Promise.all(order.slice(0, PAGE_FETCH_PER_STORE).map((p) => fetchPageMeta(`https://m.blog.naver.com/${p.extId}`).catch(() => null)))
+  await DB.batch([...order.map((p, i) => DB.prepare(`
     INSERT OR IGNORE INTO store_creator_content (store_key, seller_id, platform, ext_id, url, title, thumb_url, author_name, summary, published_at, sponsored, embeddable, status, source)
-    VALUES (?, ?, 'naver_blog', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'candidate', 'auto')`)
-    .bind(s.store_key, s.seller_id, p.extId, p.url, p.title, metas[i]?.thumb_url ?? null, p.author, p.summary, p.published,
-      p.sponsored ? 1 : 0, metas[i]?.embeddable ? 1 : 0)))
+    VALUES (?, ?, 'naver_blog', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'auto')`)
+    .bind(s.store_key, s.seller_id ?? 0, p.extId, p.url, p.title, metas[i]?.thumb_url ?? null, p.author, p.summary, p.published,
+      p.sponsored ? 1 : 0, metas[i]?.embeddable ? 1 : 0, p.confident ? 'visible' : 'candidate')), cursor])
   return fresh.length
 }
 
@@ -141,12 +162,13 @@ async function collectVideos(DB: D1Database, env: Env, now: number): Promise<{ s
   if (r.status === 403) { await writeSetting(DB, CONTENT_YT_USED_KEY, `${day}:${CONTENT_YT_DAILY_SEARCHES}`); return { searched: true, added: 0 } }
   if (!r.ok) return { searched: true, added: 0 }
   const body = await r.json<{ items?: YtSearchItem[] }>().catch(() => null)
-  const picks = pickVideoCandidates(body?.items ?? [], s.store_name).slice(0, 10)
+  const picks = pickVideoCandidates(body?.items ?? [], s.store_name, s.address).slice(0, 10)
   if (!picks.length) return { searched: true, added: 0 }
   await DB.batch(picks.map((p) => DB.prepare(`
     INSERT OR IGNORE INTO store_creator_content (store_key, seller_id, platform, ext_id, url, title, thumb_url, author_name, published_at, embeddable, status, source)
-    VALUES (?, ?, 'youtube', ?, ?, ?, ?, ?, ?, 1, 'candidate', 'auto')`)
-    .bind(s.store_key, s.seller_id, p.extId, `https://www.youtube.com/watch?v=${p.extId}`, p.title, p.thumb, p.author, p.published)))
+    VALUES (?, ?, 'youtube', ?, ?, ?, ?, ?, ?, 1, ?, 'auto')`)
+    .bind(s.store_key, s.seller_id ?? 0, p.extId, `https://www.youtube.com/watch?v=${p.extId}`, p.title, p.thumb, p.author, p.published,
+      p.confident ? 'visible' : 'candidate')))
   return { searched: true, added: picks.length }
 }
 
@@ -159,8 +181,11 @@ export async function runCreatorContentCollect(env: Env, now = Date.now()) {
       ORDER BY naver_at IS NOT NULL, naver_at ASC LIMIT ${STORES_PER_RUN}`).all<CrawlRow>()
   let blogs = 0
   for (const s of results ?? []) {
-    blogs += await collectBlogs(DB, env, s).catch(() => 0)
-    await DB.prepare(`UPDATE store_content_crawl SET naver_at = datetime('now') WHERE store_key = ?`).bind(s.store_key).run().catch(() => null)
+    // 실패해도 커서는 넘긴다 — 안 넘기면 같은 가게에서 매 회차 멈춘다.
+    blogs += await collectBlogs(DB, env, s).catch(async () => {
+      await DB.prepare(`UPDATE store_content_crawl SET naver_at = datetime('now') WHERE store_key = ?`).bind(s.store_key).run().catch(() => null)
+      return 0
+    })
   }
   const yt = await collectVideos(DB, env, now).catch(() => ({ searched: false, added: 0 }))
   return { synced, stores: (results ?? []).length, blogs, yt_searched: yt.searched, videos: yt.added }

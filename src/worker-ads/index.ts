@@ -179,6 +179,16 @@ app.post('/__ads/maintenance-rescan', async (c) => {
   } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
 })
 
+// 🎬 유어딜 이용권 '다녀온 사람들' 수집(2026-11-04 대표 "2번은 가 로") — 네이버 블로그 + 유튜브(하루 15회 몫).
+//   이 워커에 검색 키가 있고, 자기 인보케이션이라 유어애즈 레인과 서브리퀘스트를 안 나눈다. 쓰는 표는 메인 DB(env.DB).
+//   킬스위치 ADS_CREATOR_CONTENT_DISABLED. 본체·근거: `features/creator-content/api/content-collect.ts`.
+app.post('/__ads/creator-content', async (c) => {
+  try {
+    const { runCreatorContentCollect } = await import('@/features/creator-content/api/content-collect')
+    return c.json({ ok: true, ...(await runCreatorContentCollect(c.env as never)) })
+  } catch { return c.json({ ok: false, error: 'FAILED' }, 500) }
+})
+
 // 🎓 신청자 온보딩 안내(신청 익일 1회) — 기본 ON(약속 이행). 킬스위치 ADS_ONBOARDING_DISABLED.
 app.post('/__ads/inbound-onboarding', async (c) => {
   try {
@@ -386,6 +396,10 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   // 🔁 동의 리드 리마인드 — 매시간 시도(러너가 게이트 OFF/야간/무대상이면 no-op). 1인 1회(reminded_at CAS).
   if (env.ADS_REMINDER_ENABLED === 'true') {
     kick('/__ads/consented-reminder', async () => { const { runConsentedReminder } = await import('@/features/marketing/api/consented-reminder'); return runConsentedReminder(env) })
+  }
+  // 🎬 유어딜 이용권 '다녀온 사람들' 수집 — 매시간 레인(바쁜 회차엔 디스패처가 미룬다 = 유어애즈에 부담 0). 킬스위치만 끔.
+  if ((env as unknown as { ADS_CREATOR_CONTENT_DISABLED?: string }).ADS_CREATOR_CONTENT_DISABLED !== 'true') {
+    kick('/__ads/creator-content', async () => { const { runCreatorContentCollect } = await import('@/features/creator-content/api/content-collect'); return runCreatorContentCollect(env as never) })
   }
   // 🎓 신청자 온보딩 안내 — 기본 ON(환영메일이 약속한 안내를 실제로 이행). 킬스위치만 끔. 무대상이면 no-op.
   if ((env as unknown as { ADS_ONBOARDING_DISABLED?: string }).ADS_ONBOARDING_DISABLED !== 'true') {
