@@ -116,3 +116,7 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
   - 마이 "숫자 올라가기"가 배치 54회의 주범 — 횟수는 맞지만(동작 줄이기 시 11회) 시간은 403→344ms 로 작다. 배치 비용은 초기 몇 번이 크다.
   - 홈 피드 42장 일괄 렌더 — 이미 `useProgressiveCap`(6장부터)로 점진 렌더 중.
 - 라이브 측정 도구(재사용): `/tmp` 아닌 저장소엔 없음 — 실서비스에 playwright + `--proxy-server=$HTTPS_PROXY --ssl-version-max=tls1.2` + CDP `Performance.getMetrics`(LayoutDuration·LayoutCount·RecalcStyle*) 로 잰다.
+- (5차 추가) 💾 마이 '내 딜'·'내 가게'를 **기기에도** 기억(localCache — 주인 바뀌면 통째로 지움): 앱 재시작에도 즉시 그림.
+  내 가게는 '오늘 매출'이 있어 **같은 KST 날짜 · 2시간 이내**만. 잔액 실패는 종전대로 `—`.
+- 🔬 첫 `D1` 표본(11-04): `d1:primary:ENAM@HKG` 411ms — 홍콩 손님의 홈 섹션 질의를 **미국 원본**이 답했다(표본 1, 엣지 캐시 라벨일 수 있음).
+  APAC 사본 존재 여부는 표본이 더 쌓여야 판정 — `/api/analytics/summary?day=YYYY-MM-DD` 의 `vitals:…:D1:`.

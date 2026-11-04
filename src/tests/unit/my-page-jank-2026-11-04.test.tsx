@@ -89,4 +89,32 @@ describe('② 좌석은 같은 탭 재방문에 지난 값을 즉시 쓴다', ()
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.failed).toBe(true)
   })
+
+  it('💾 앱을 다시 켜도(메모리 비움) 같은 날 2시간 안이면 기기 저장분으로 즉시 그린다', async () => {
+    get.mockResolvedValue(ok)
+    const first = renderHook(() => useMyStores())
+    await waitFor(() => expect(first.result.current.loading).toBe(false))
+    first.unmount()
+    __resetSeatMemo() // 앱 재시작 흉내 — 메모리 기억이 빈다
+    get.mockReturnValue(new Promise(() => {})) // 서버가 아직 안 옴
+    const { result } = renderHook(() => useMyStores())
+    expect(result.current.loading).toBe(false)
+    expect(result.current.stores.map((s) => s.seller_id)).toEqual([7])
+  })
+
+  it('💾 날짜가 바뀌었으면(어제 매출) 기기 저장분을 쓰지 않는다', async () => {
+    get.mockResolvedValue(ok)
+    const first = renderHook(() => useMyStores())
+    await waitFor(() => expect(first.result.current.loading).toBe(false))
+    first.unmount()
+    __resetSeatMemo()
+    const raw = JSON.parse(localStorage.getItem('urq:my-stores-summary') || '{}')
+    raw.at = Date.now() - 26 * 3600_000
+    localStorage.setItem('urq:my-stores-summary', JSON.stringify(raw))
+    get.mockReturnValue(new Promise(() => {}))
+    const { result } = renderHook(() => useMyStores())
+    expect(result.current.loading).toBe(true)
+    expect(result.current.stores).toHaveLength(0)
+  })
 })
+
