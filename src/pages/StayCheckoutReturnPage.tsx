@@ -18,6 +18,7 @@ import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { formatNumber } from '@/utils/format'
 import { markOrderPaid } from '@/lib/paid-orders'
+import { useInvalidateMyVouchers } from '@/hooks/queries'; import { reportFunnel } from '@/lib/web-vitals-report'
 
 type State = 'confirming' | 'success' | 'overbooked' | 'fail'
 
@@ -25,6 +26,7 @@ export default function StayCheckoutReturnPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [state, setState] = useState<State>('confirming')
+  const invalidateVouchers = useInvalidateMyVouchers()
   const [message, setMessage] = useState('')
   const [amountDone, setAmountDone] = useState(0)
   const calledRef = useRef(false)
@@ -67,6 +69,7 @@ export default function StayCheckoutReturnPage() {
           setAmountDone(Number(r.data.data?.amount) || amount)
           setState('success')
           markOrderPaid(tossOrderId) // 🔙 이 뒤에 폰 뒤로를 눌러도 이미 쓴 결제창을 다시 띄우지 않는다(lib/paid-orders.ts)
+          invalidateVouchers(); reportFunnel('success') // 🏨 2026-11-04 결제 확정 = 지갑 이용권 생성 → 내 이용권 캐시 새로(이용권 결제와 같다)
         } else {
           setState('fail')
           setMessage(r.data?.error || '결제 승인에 실패했습니다.')
