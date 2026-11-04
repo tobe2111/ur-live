@@ -13,6 +13,7 @@
  */
 
 export * from './home-service-categories'
+import { isRequestPhotoUrl } from './home-service-photo'
 import { MAX_MULTI_DATES, MAX_REQUEST_PHOTOS, PRIVATE_ADDRESS_MAX, PRIVATE_ADDRESS_SUFFIX, categoryDef, type HomeServiceCategory } from './home-service-categories'
 
 /** 요청 하나에 견적을 보낼 수 있는 사장님 수(선착순). */
@@ -159,14 +160,8 @@ export function validateRequest(
   return { ok: true, value: { category: def.key, details, privateDetails, regions, desiredDate } }
 }
 
-/**
- * 우리 업로드 주소인가 — `/api/upload/image` 가 돌려주는 두 모양(같은 출처 `/api/media/uploads/...` 또는
- * R2 공개 도메인 `https://.../uploads/...`)만. 남의 주소를 끼워 넣어 업체 화면에 띄우지 못하게 한다.
- * 누가 올렸는지는 서버 라우트가 `uploads/user/<본인>/` 으로 따로 본다.
- */
-export function isRequestPhotoUrl(u: string): boolean {
-  return /^(?:\/api\/media\/|https:\/\/[a-z0-9.-]+\/)uploads\/user\/\d+\/\d{4}-\d{2}\/[A-Za-z0-9_-]+\.(?:jpg|png|webp|gif)$/.test(u) && u.length <= 200
-}
+/** 우리 업로드 주소인가 — 정본은 `home-service-photo.ts`(공유 뷰가 가볍게 끌 수 있게 뺐다). */
+export { isRequestPhotoUrl }
 
 /** 사진이 전부 이 사람이 올린 것인가(`uploads/user/<id>/`). */
 export function photosOwnedBy(details: Record<string, string>, userId: number): boolean {

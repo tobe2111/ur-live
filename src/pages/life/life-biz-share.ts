@@ -5,14 +5,17 @@
  */
 import { toast } from '@/hooks/useToast'
 import { promptDialog } from '@/components/ui/confirm-dialog'
-import { feedPayload, sendKakaoShare, shareViaKakao } from '@/lib/kakao-share'
 
 export async function shareBizPage(id: number, name: string, extra?: { description?: string | null; imageUrl?: string | null }): Promise<void> {
   const url = `${window.location.origin}/life/biz/${id}`
   const title = `${name || '업체'} - 유어딜`
   const img = extra?.imageUrl ? (extra.imageUrl.startsWith('http') ? extra.imageUrl : `${window.location.origin}${extra.imageUrl}`) : null
-  const payload = feedPayload({ title, description: extra?.description || '소개와 후기를 보고 견적을 받아 보세요', imageUrl: img, url, buttons: [{ title: '업체 보기' }] })
-  try { if (sendKakaoShare(payload) || await shareViaKakao(payload)) return } catch { /* 폴백 */ }
+  try {
+    // 📦 누를 때만 받는다(업체 화면 첫 화면 무게 — surface-budgets).
+    const { feedPayload, sendKakaoShare, shareViaKakao } = await import('@/lib/kakao-share')
+    const payload = feedPayload({ title, description: extra?.description || '소개와 후기를 보고 견적을 받아 보세요', imageUrl: img, url, buttons: [{ title: '업체 보기' }] })
+    if (sendKakaoShare(payload) || await shareViaKakao(payload)) return
+  } catch { /* 폴백 */ }
   try {
     if (navigator.share) { await navigator.share({ title, text: `${title}에서 소개와 후기를 보세요`, url }); return }
   } catch (e) {

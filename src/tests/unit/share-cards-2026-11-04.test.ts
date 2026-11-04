@@ -36,10 +36,10 @@ describe('공유 카드', () => {
 })
 
 describe('🖼️ 카드 그림 — 카카오가 받는 모양(2026-11-04 대표 "사진들은 적합하게 적용되는거지?")', () => {
-  it('상대 주소는 카드 비율로 잘라 전체 주소 · 비었거나 data:/SVG 는 기본 그림 · 모든 카드가 이 한 곳을 지난다', async () => {
+  it('상대 주소는 전체 주소로 · 비었거나 data:/SVG 는 기본 그림 · 모든 카드가 이 한 곳을 지난다', async () => {
     const { kakaoImageUrl, KAKAO_SHARE_FALLBACK_IMAGE } = await import('@/lib/kakao-share')
     const rel = kakaoImageUrl('/api/media/uploads/demo/h/81d.png')
-    expect(rel).toMatch(/^https:\/\/urdeal\.kr\/cdn-cgi\/image\/width=1200,height=630,[^/]*fit=cover/)
+    expect(rel).toBe('https://urdeal.kr/api/media/uploads/demo/h/81d.png')
     expect(kakaoImageUrl('https://media.ur-team.com/a.jpg')).toBe('https://media.ur-team.com/a.jpg')
     for (const bad of ['', null, 'data:image/png;base64,xx', 'https://urdeal.kr/blog/og/abc', '/x.svg']) expect(kakaoImageUrl(bad)).toBe(KAKAO_SHARE_FALLBACK_IMAGE)
     const lib = read('src/lib/kakao-share.ts')

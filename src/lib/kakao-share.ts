@@ -21,7 +21,6 @@
  *    받을 이유가 없다: 상대 경로면 위험 자체가 없고 Vite·esbuild 양쪽에서 똑같이 돈다.
  */
 import type { UShopShareCard } from '@/shared/ushop-share-card'
-import { ogCardUrl } from '@/shared/og-share-image'
 
 /** 카카오가 요구하는 링크 쌍. 모바일·웹 같은 주소를 쓴다. */
 export interface KakaoShareLink { mobileWebUrl: string; webUrl: string }
@@ -53,8 +52,8 @@ export function kakaoImageUrl(u?: string | null): string {
   if (!v || v.startsWith('data:') || v.startsWith('blob:')) return KAKAO_SHARE_FALLBACK_IMAGE
   if (/\.svg(?:$|[?#])/i.test(v) || /\/blog\/og\//.test(v)) return KAKAO_SHARE_FALLBACK_IMAGE
   if (v.startsWith('//')) return `https:${v}`
-  // 우리 사진(상대 주소)은 카드 비율(1200×630)로 잘라 보낸다 — 이용권 카드(`passShareCardUrl`)와 같은 규칙. 세로 사진도 가운데가 산다.
-  if (v.startsWith('/') && !v.startsWith('/cdn-cgi/')) return ogCardUrl(v, 'https://urdeal.kr', { fit: 'cover' }) || `https://urdeal.kr${v}`
+  // 상대 주소는 우리 도메인을 붙인다. 카드 비율 자르기는 카카오가 가운데 기준으로 한다(그 함수를 여기 끌면 모든 화면 공용 묶음이
+  //   +0.5KB — surface-budgets 가 잡았다). 서버 미리보기(og:image)는 `ogCardUrl` 로 잘라 보낸다.
   if (v.startsWith('/')) return `https://urdeal.kr${v}`
   if (v.startsWith('http://')) return `https://${v.slice(7)}`
   return /^https:\/\//.test(v) ? v : KAKAO_SHARE_FALLBACK_IMAGE

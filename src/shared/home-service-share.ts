@@ -14,7 +14,7 @@
  * 서버(공개 API)와 워커(검색 메타)가 이 함수 하나를 쓴다 — 두 벌이면 한쪽만 새 칸을 가린다.
  */
 import { categoryDef, type HomeServiceCategory } from './home-service-categories'
-import { isRequestPhotoUrl } from './home-service'
+import { isRequestPhotoUrl } from './home-service-photo'
 
 /** 공유 화면·카톡 카드에 싣는 사진 수 상한 */
 export const SHARE_PHOTOS_MAX = 4
