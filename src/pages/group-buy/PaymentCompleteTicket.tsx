@@ -94,8 +94,13 @@ export function useTicketMotion(amount: number) {
   }
 }
 
-export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed = 0 }: {
+export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed = 0, stay }: {
   productId: number; qty: number; amount: number
+  /**
+   * 🏨 2026-11-04 숙소 결제 완료도 같은 티켓·같은 움직임(대표 *"모션그래픽들 … 숙소 이용권에도 다 적용"*).
+   *   상품 정가·할인율은 숙소엔 맞지 않아(가격은 객실·날짜별) 안 그리고, 안내·버튼만 숙소 말로 바꾼다.
+   */
+  stay?: { rooms: number }
   /**
    * 🧾 2026-10-06: 이 결제에서 딜로 낸 금액. `amount` 는 **상품 총액**이고 카드 청구액이 아니다 —
    *   둘을 섞으면 7,500원짜리 이용권이 완료 화면에선 "100원", 지갑에선 "7,500원"이 된다(대표 신고).
@@ -128,9 +133,9 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
   const storeName = product?.restaurant_name || issued?.restaurant_name || ''
   const itemName = product?.name || issued?.product_name || t('passBuy.voucher', { defaultValue: '이용권' })
   const unit = qty > 0 ? Math.round(amount / qty) : amount
-  const original = product?.original_price ?? product?.price ?? null
-  const pct = product?.current_discount_pct ?? (original && original > unit ? Math.round((1 - unit / original) * 100) : null)
-  const kindLabel = getVoucherShortLabel(product?.category)
+  const original = stay ? null : (product?.original_price ?? product?.price ?? null)
+  const pct = stay ? null : (product?.current_discount_pct ?? (original && original > unit ? Math.round((1 - unit / original) * 100) : null))
+  const kindLabel = stay ? '숙소 이용권' : getVoucherShortLabel(product?.category)
   const motion = useTicketMotion(amount)
 
   return (
@@ -148,7 +153,7 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
 
         <TicketCard className="ur-pc-ticket" bandLeft={expiresAt ? bandLeft(issued?.expires_at) : t('passBuy.noExpiry', { defaultValue: '사용 기한 없음' })} bandRight={daysLeft !== null ? (daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`) : undefined}>
           <div className="ur-pc-body">
-          <TicketRow left={`${kindLabel}`} right={t('passBuy.sheets', { defaultValue: '{{n}}매', n: qty })} />
+          <TicketRow left={`${kindLabel}`} right={stay ? `${stay.rooms}객실` : t('passBuy.sheets', { defaultValue: '{{n}}매', n: qty })} />
           <div className="px-4 pt-4 pb-4">
             {storeName && <p className="ur-pc-step ur-pc-step-1 text-[13px] text-gray-500 dark:text-gray-400">{storeName}</p>}
             <p className="ur-pc-step ur-pc-step-2 text-[16px] font-semibold tracking-[-0.01em] mt-1">{itemName}</p>
@@ -164,14 +169,19 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
               </p>
             )}
             <div className="ur-pc-step ur-pc-step-4">
-              <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>{t('passBuy.viewVouchers', { defaultValue: '이용권 확인' })}</TicketOutlineButton>
+              {stay
+                ? <TicketOutlineButton onClick={() => navigate('/my-stays')}>체크인 QR 보기</TicketOutlineButton>
+                : <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>{t('passBuy.viewVouchers', { defaultValue: '이용권 확인' })}</TicketOutlineButton>}
             </div>
           </div>
           </div>
         </TicketCard>
 
         <div className="ur-pc-notes mt-5 mb-8">
-          <TicketNotes items={[
+          <TicketNotes items={stay ? [
+            '체크인할 때 프런트에 QR 을 보여 주세요. 휴대폰이 없으면 예약자 이름을 말해도 돼요.',
+            '예약 취소는 내 숙소 예약에서 해요. 날짜에 따라 환불 금액이 달라요.',
+          ] : [
             t('passBuy.noteUseQr', { defaultValue: '매장에서 QR 또는 코드로 사용해요.' }),
             t('passBuy.noteAutoRefund', { defaultValue: '사용하지 않으면 기한이 지난 뒤 100% 자동 환불돼요.' }),
             t('passBuy.noteStoreRefund', { defaultValue: '매장 사정으로 사용이 어려우면 즉시 환불해 드려요.' }),
@@ -182,10 +192,17 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
             ① 종전 크로스셀 **카드**(제목 + 다른 이용권 목록 + 찾아보기 버튼)를 **한 줄 링크**로.
             ② '이런 서비스도 있어요' 다섯 타일 줄을 **뺐다** — 방금 산 사람에게 다른 서비스를 권하는 자리가 아니다
                (그 줄은 홈·이용권 탭이 맡는다). 완료 화면이 할 일은 "샀다"와 "어디서 보나" 둘이다. */}
+        {/* 🏨 숙소는 매장 페이지가 아니라 숙소 목록으로(숙소 대부분은 매장 연결이 없다) — 아래 이용권 줄은 숨긴다. */}
+        {stay && (
+          <button type="button" onClick={() => navigate('/stays')} className="w-full flex items-center justify-between gap-2 px-1 py-4 border-t border-rule text-left active:opacity-70">
+            <span className="text-[15px] font-bold">다른 숙소 보기</span>
+            <ChevronRight className="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => navigate(product?.seller_id ? `/s/${product.seller_id}` : '/')}
-          className="w-full flex items-center justify-between gap-2 px-1 py-4 border-t border-rule text-left active:opacity-70"
+          className={`w-full flex items-center justify-between gap-2 px-1 py-4 border-t border-rule text-left active:opacity-70 ${stay ? 'hidden' : ''}`}
         >
           <span className="text-[15px] font-bold">{storeName ? t('passBuy.moreFromStore', { defaultValue: '{{store}} 다른 이용권 보기', store: storeName }) : t('passBuy.moreVouchers', { defaultValue: '다른 이용권 보기' })}</span>
           <ChevronRight className="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />

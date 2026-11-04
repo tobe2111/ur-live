@@ -56,6 +56,7 @@ const STEPS: readonly { n: string; t: string; d: string }[] = [
   { n: '3', t: '사용 완료', d: '따로 누를 건 없어요' },
 ]
 
+
 /** 스캔이 안 될 때의 길 — 매장 확인코드(4~6자리, `self-redeem-gate`)와 일치. 집에서 미리 쓸 수 없다. */
 export const REDEEM_FALLBACK = '직원에게 4~6자리 확인코드를 받아 입력해요. 확인코드는 매장에서만 알려 드려요.'
 
@@ -64,7 +65,8 @@ export const REDEEM_FALLBACK = '직원에게 4~6자리 확인코드를 받아 �
  * 세로 타임라인이 화면 반 가까이(라이브 실측 약 330px)를 먹었다. 세 동작은 그대로 두고
  * [단계 › 단계 › 단계] 한 줄 + 예외 한 줄로 접는다. 순서·사실(1순위 QR · 확인코드는 스캔이 안 될 때)은 불변.
  */
-export default function RedeemHowTo() {
+/** 🏨 2026-11-04 숙소판은 단계·예외 문구를 **넘겨받는다**(`stay-detail/stay-howto.ts`) — 문구를 여기 두면 이용권 상세 묶음이 숙소 글자까지 받는다. */
+export default function RedeemHowTo({ steps = STEPS, fallbackLabel, fallback }: { steps?: readonly { n: string; t: string; d: string }[]; fallbackLabel?: string; fallback?: string } = {}) {
   // 처음엔 화면 밖이었다가 들어올 때만 켠다 — 처음부터 보이는 자리면 그대로 둔다.
   const ref = useRef<HTMLOListElement>(null)
   useEffect(() => {
@@ -81,19 +83,21 @@ export default function RedeemHowTo() {
   return (
     <div>
       <ol ref={ref} className="m-0 p-0 list-none flex items-start" style={{ color: 'var(--gbd-ink)' }}>
-        {STEPS.map(({ n, t, d }, i) => (
+        {steps.map(({ n, t, d }, i) => (
           <li key={n} className="contents" style={{ '--i': i } as React.CSSProperties}>
             <div className="flex-1 min-w-0 text-center" style={{ '--i': i } as React.CSSProperties}>
               <span className="ur-howto-c mx-auto mb-2 w-12 h-12 rounded-full bg-brand-tint text-brand-text flex items-center justify-center" aria-hidden="true">{STEP_ICONS[i]}</span>
               <span className="ur-howto-t block text-[13px] font-medium">{t}</span>
               <span className="ur-howto-t block mt-1 text-[12px]" style={{ color: 'var(--gbd-sub)' }}>{d}</span>
             </div>
-            {i < STEPS.length - 1 && <span aria-hidden className="ur-howto-ar shrink-0 mt-3 text-[16px]" style={{ color: 'var(--gbd-sub2)', '--i': i } as React.CSSProperties}>›</span>}
+            {i < steps.length - 1 && <span aria-hidden className="ur-howto-ar shrink-0 mt-3 text-[16px]" style={{ color: 'var(--gbd-sub2)', '--i': i } as React.CSSProperties}>›</span>}
           </li>
         ))}
       </ol>
       <p className="mt-5 mb-0 text-[12px] leading-[1.5]" style={{ color: 'var(--gbd-sub)' }}>
-        <b className="font-medium">스캔이 안 되면?</b> {REDEEM_FALLBACK}
+        {fallback
+          ? <><b className="font-medium">{fallbackLabel}</b> {fallback}</>
+          : <><b className="font-medium">스캔이 안 되면?</b> {REDEEM_FALLBACK}</>}
       </p>
     </div>
   )

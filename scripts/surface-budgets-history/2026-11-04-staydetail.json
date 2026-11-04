@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-04",
+  "reason": "숙소 상세 = 이용권 상세 통일(대표 2026-11-03~04 지시): 이용 방법 그림·움직임(RedeemHowTo 숙소판)·조회수 비컨·폰 머리. 그 부품들은 이미 이용권 상세가 쓰는 것이라 늦게 불러오면 오히려 커졌다(실측 219.2). 나머지 +0.7 은 모든 화면 공통 app-utils(main)",
+  "surfaces": [
+    "stayDetail"
+  ],
+  "changes": [
+    "stayDetail: 217.3 → 219.1 KB (+1.8, 허용 1.5) · 늘어난 것: StayDetailPage.js +0.8, app-utils.js +0.7"
+  ]
+}

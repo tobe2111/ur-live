@@ -424,7 +424,7 @@ describe('1️⃣2️⃣ 12차 (2026-11-02 대표 "1,9,10번")', () => {
     expect(s).toContain("if (first) { first = false; if (e.isIntersecting) io.disconnect(); return }")
     expect(s).toContain('className="ur-howto-c mx-auto mb-2 w-12 h-12 rounded-full bg-brand-tint text-brand-text')
     expect(s, 'QrScanIcon 을 부르면 마이가 상세 묶음을 통째로 받는다').not.toContain('qr-scan-icon')
-    expect((s.match(/\{ n: '\d'/g) || []).length).toBe(3)
+    expect((s.match(/\{ n: '\d'/g) || []).length).toBe(3) // 🏨 숙소판 문구는 stay-detail/stay-howto.ts 가 넘긴다(2026-11-04)
   })
   it('⑨ 공유 버튼 — 링크를 **복사했을 때만** 체크가 뜬다(카카오 공유가 열리면 안 뜬다)', () => {
     const s = R('src/components/KakaoShareButton.tsx')

@@ -116,7 +116,9 @@ describe('③ 결제는 구매 창 안에서만', () => {
 
 describe('④ 이용 안내 — 한 줄 흐름 (2026-11-02 대표 확정 상세 C안 · 종전 세로 타임라인 대체)', () => {
   it('세 단계 + 예외 한 줄(스캔이 안 되면)', () => {
-    expect((HOWTO.match(/\{ n: '\d'/g) || []).length).toBe(3)
+    // 🏨 2026-11-04 숙소판(`STAY_STEPS`)이 같은 파일에 생겼다 — 이용권 세 단계는 `const STEPS` 블록만 센다.
+    const passSteps = HOWTO.slice(HOWTO.indexOf('const STEPS'), HOWTO.indexOf('\n]', HOWTO.indexOf('const STEPS')))
+    expect((passSteps.match(/\{ n: '\d'/g) || []).length).toBe(3)
     expect(HOWTO, '예외 한 줄이 없다').toMatch(/스캔이 안 되면\?[\s\S]{0,40}\{REDEEM_FALLBACK\}/)
   })
   it('단계는 접지 않는다 — 접히는 건 유의사항뿐', () => {

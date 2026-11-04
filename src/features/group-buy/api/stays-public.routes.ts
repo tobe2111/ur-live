@@ -1125,7 +1125,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
       success: true,
       data: {
         booking_id: order.stay_booking_id,
-        order_id: orderId,
+        order_id: orderId, product_id: firstClaimed.product_id, // 🏨 2026-11-04 product_id — 결제 완료 티켓(이용권과 같은 화면)이 상품을 그린다
         amount: order.total_amount,
         check_in: firstClaimed.check_in_date,
         check_out: firstClaimed.check_out_date,

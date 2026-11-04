@@ -27,6 +27,7 @@ import AmenityGrid from './stay-detail/AmenityGrid'; import { parseAmenities } f
 import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 // 🏨 첫 화면의 치수 클래스는 워커(`stay-detail-ssr-body`)와 **같은 상수**를 쓴다 — 두 벌이면 갈린다.
 import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID, STAY_BAND } from '@/shared/stay-head'; import StayHeadCard from './stay-detail/StayHeadCard' // 🏨 폰 머리 = 이용권 머리
+import RedeemHowTo from './group-buy/RedeemHowTo'; import { STAY_STEPS, STAY_FALLBACK_LABEL, STAY_REDEEM_FALLBACK } from './stay-detail/stay-howto' // 🏨 이용 방법 = 이용권 상세와 같은 그림·움직임(그 부품은 이미 이 화면 묶음에 있어 늦게 불러오면 오히려 커진다 — 실측)
 import DetailSectionTabs from './group-buy/DetailSectionTabs'; import { stayTabs } from './stay-detail/stay-tabs' // 📑 이용권 상세와 같은 구역 탭
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'; import StayPcActions from './stay-detail/StayPcActions' // 🏨 PC 찜·담기·공유(폰 머리는 lg:hidden)
 import BrandLoader from '@/components/brand/BrandLoader'; import { useOwnerManage, OwnerManageBar, OwnerManageCard } from '@/components/deal/useOwnerManage'
@@ -375,7 +376,10 @@ export default function StayDetailPage() {
             상세끼리 문법이 갈리는 것 자체가 티가 난다. */}
         {/* 🏨 2026-09-24: '이용 안내' 표를 `StayPolicyInfo` 로 추출(마크업 불변) — 같은 커밋에서
             아래 `SimilarStays` 를 붙이는데 이 파일이 래칫 858/858 이라 여유가 0이었다. */}
-        <div id="stay-sec-policy" style={{ scrollMarginTop: 96 }}><StayPolicyInfo policy={stay.cancellation_policy} customText={stay.custom_cancellation_text}
+        {/* 🏨 2026-11-04 (대표 "이용 안내도 알려주고"): 이용권 상세와 같은 '이용 방법' 그림 셋 + 움직임(`RedeemHowTo`).
+            숙소는 직원 스캔 · 휴대폰이 없으면 예약자 이름. `gbd` = 그 부품이 쓰는 색 변수 범위(이용권 상세와 같은 값). */}
+        <div id="stay-sec-policy" className={`gbd ${STAY_BAND} lg:mb-8`} style={{ scrollMarginTop: 96 }}><SectionTitle className="mb-3">이용 방법</SectionTitle><RedeemHowTo steps={STAY_STEPS} fallbackLabel={STAY_FALLBACK_LABEL} fallback={STAY_REDEEM_FALLBACK} /></div>
+        <div><StayPolicyInfo policy={stay.cancellation_policy} customText={stay.custom_cancellation_text}
           houseRules={stay.house_rules} checkInInstructions={stay.check_in_instructions} /></div>
 
         {/* 🗺️ 위치 — 카카오맵 미니맵 + 매장(숙소) 페이지 연결 (딜 상세 RestaurantMiniMap 재사용).

@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-04",
+  "reason": "main 누적분: product·life 는 이 PR 이 안 건드린 화면(app-utils·LifePage 증가, main 머지들) · gbDetail 은 공통 app-utils +0.5 와 이용권 상세가 이미 쓰는 RedeemHowTo 의 단계 넘겨받기(문구는 숙소 쪽 파일로 빼 최소화). 셋 다 허용선 +0.1~0.2 초과",
+  "surfaces": [
+    "gbDetail",
+    "product",
+    "life"
+  ],
+  "changes": [
+    "gbDetail: 210.9 → 212.6 KB (+1.7, 허용 1.5) · 늘어난 것: lz-gbDetail-map.js +0.7, app-utils.js +0.5",
+    "product: 198.7 → 200.3 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.8",
+    "life: 186.2 → 188.0 KB (+1.7, 허용 1.5) · 늘어난 것: LifePage.js +0.6, app-utils.js +0.6"
+  ]
+}

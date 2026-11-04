@@ -82,9 +82,9 @@
       }
     },
     "gbDetail": {
-      "totalKB": 212.51,
+      "totalKB": 212.59,
       "chunks": {
-        "index.js": 15.85,
+        "index.js": 15.86,
         "react-core.js": 38.65,
         "app-shared.js": 6.54,
         "tanstack-query.js": 9.5,
@@ -98,8 +98,8 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.52,
         "app-routes.js": 1.05,
-        "index.css": 29.37,
-        "GroupBuyDetailPage.js": 6.15,
+        "index.css": 29.46,
+        "GroupBuyDetailPage.js": 6.14,
         "lz-gbDetail-linkshop1-product.js": 0.73,
         "lz-boot-gbDetail-linkshop1.js": 0.51,
         "lucide-home.js": 0.77,
@@ -109,7 +109,7 @@
         "lz-gbDetail-product.js": 2.27,
         "lz-gbDetail-voucherDetail.js": 0.58,
         "lz-common.js": 19.54,
-        "lz-gbDetail.js": 21.97
+        "lz-gbDetail.js": 21.96
       }
     },
     "voucherDetail": {
@@ -137,7 +137,7 @@
       }
     },
     "product": {
-      "totalKB": 200.18,
+      "totalKB": 200.27,
       "chunks": {
         "index.js": 15.86,
         "react-core.js": 38.65,
@@ -152,8 +152,8 @@
         "app-shell.js": 9.18,
         "app-auth.js": 1.29,
         "app-layout.js": 3.52,
-        "app-routes.js": 1.04,
-        "index.css": 29.38,
+        "app-routes.js": 1.05,
+        "index.css": 29.46,
         "ProductDetailPage.js": 7.51,
         "lz-gbDetail-linkshop1-product.js": 0.73,
         "app-owner-ui.js": 1.28,
@@ -409,33 +409,33 @@
       }
     },
     "stayDetail": {
-      "totalKB": 219.06,
+      "totalKB": 219.1,
       "chunks": {
-        "index.js": 15.85,
+        "index.js": 15.7,
         "react-core.js": 38.65,
         "app-shared.js": 6.54,
         "tanstack-query.js": 9.5,
         "zustand.js": 2.5,
         "react-router.js": 7.11,
-        "app-utils.js": 23.46,
+        "app-utils.js": 23.44,
         "helmet.js": 4.93,
         "lucide-shell.js": 0.7,
         "app-stores.js": 2.2,
-        "app-shell.js": 9.18,
+        "app-shell.js": 9.16,
         "app-auth.js": 1.29,
-        "app-layout.js": 3.52,
+        "app-layout.js": 3.53,
         "app-routes.js": 1.05,
-        "index.css": 29.37,
-        "StayDetailPage.js": 13.24,
-        "lz-gbDetail-linkshop1-product.js": 0.73,
+        "index.css": 29.38,
+        "StayDetailPage.js": 13.49,
+        "lz-gbDetail-linkshop1-product.js": 0.75,
         "lz-boot-gbDetail-linkshop1.js": 0.51,
-        "app-owner-ui.js": 1.28,
+        "app-owner-ui.js": 1.29,
         "lucide-home.js": 0.77,
-        "StayCurations.js": 2.32,
+        "StayCurations.js": 2.3,
         "lz-gbDetail-voucherDetail.js": 0.58,
-        "lz-common.js": 19.54,
-        "lz-gbDetail-product.js": 2.27,
-        "lz-gbDetail.js": 21.97
+        "lz-common.js": 19.5,
+        "lz-gbDetail-product.js": 2.28,
+        "lz-gbDetail.js": 21.95
       }
     },
     "blog": {
@@ -611,9 +611,9 @@
       }
     },
     "life": {
-      "totalKB": 187.87,
+      "totalKB": 187.97,
       "chunks": {
-        "index.js": 15.85,
+        "index.js": 15.86,
         "react-core.js": 38.65,
         "app-shared.js": 6.54,
         "tanstack-query.js": 9.5,
@@ -627,7 +627,7 @@
         "app-auth.js": 1.29,
         "app-layout.js": 3.52,
         "app-routes.js": 1.05,
-        "index.css": 29.37,
+        "index.css": 29.46,
         "LifePage.js": 4.03,
         "app-life-subcat.js": 0.59,
         "home-service.js": 0.47,

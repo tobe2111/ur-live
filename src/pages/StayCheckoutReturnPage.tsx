@@ -9,7 +9,7 @@
  * 호출 — 서버가 금액 검증 + Toss 승인 + booking CAS confirm + 달력 차감.
  * PaymentSuccessPage(일반 주문 흐름, 잠금) 와 분리된 stays 전용 페이지.
  */
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { OkIcon, AlertIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
@@ -20,6 +20,8 @@ import { formatNumber } from '@/utils/format'
 import { markOrderPaid } from '@/lib/paid-orders'
 import { useInvalidateMyVouchers } from '@/hooks/queries'; import { reportFunnel } from '@/lib/web-vitals-report'
 
+const PaymentCompleteTicket = lazy(() => import('./group-buy/PaymentCompleteTicket'))
+
 type State = 'confirming' | 'success' | 'overbooked' | 'fail'
 
 export default function StayCheckoutReturnPage() {
@@ -29,6 +31,7 @@ export default function StayCheckoutReturnPage() {
   const invalidateVouchers = useInvalidateMyVouchers()
   const [message, setMessage] = useState('')
   const [amountDone, setAmountDone] = useState(0)
+  const [done, setDone] = useState<{ productId: number; rooms: number } | null>(null) // 🏨 2026-11-04 이용권과 같은 결제 완료 티켓
   const calledRef = useRef(false)
 
   const paymentKey = searchParams.get('paymentKey') || ''
@@ -67,6 +70,7 @@ export default function StayCheckoutReturnPage() {
       .then((r) => {
         if (r.data?.success) {
           setAmountDone(Number(r.data.data?.amount) || amount)
+          const pid = Number(r.data.data?.product_id); if (pid > 0) setDone({ productId: pid, rooms: Math.max(1, Number(r.data.data?.bookings_confirmed) || 1) })
           setState('success')
           markOrderPaid(tossOrderId) // 🔙 이 뒤에 폰 뒤로를 눌러도 이미 쓴 결제창을 다시 띄우지 않는다(lib/paid-orders.ts)
           invalidateVouchers(); reportFunnel('success') // 🏨 2026-11-04 결제 확정 = 지갑 이용권 생성 → 내 이용권 캐시 새로(이용권 결제와 같다)
@@ -89,6 +93,13 @@ export default function StayCheckoutReturnPage() {
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 🎬 2026-11-04 (대표 "모션그래픽들 … 숙소 이용권에도 다 적용"): 성공이면 이용권 결제와 **같은 티켓·같은 움직임**.
+  //   상품 id 를 못 받은 옛 응답이면 아래 종전 화면 그대로(무회귀).
+  if (state === 'success' && done) {
+    return <><SEO title="숙소 결제 완료 - 유어딜" description="숙소 결제 완료" url="/stays/checkout-return" noindex />
+      <Suspense fallback={<BrandLoader />}><PaymentCompleteTicket productId={done.productId} qty={done.rooms} amount={amountDone} stay={{ rooms: done.rooms }} /></Suspense></>
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
