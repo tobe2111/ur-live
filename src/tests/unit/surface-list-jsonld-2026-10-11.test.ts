@@ -246,6 +246,9 @@ describe('③ 빵부스러기 — 체인은 경로 접두를 되짚는다', () =
     const extra: string[] = []
     for (const [path, e] of Object.entries(CONSUMER_SURFACE_SEO)) {
       if (path === '/') continue // 루트는 체인의 1단계(사이트명)가 맡는다
+      // 🛍️ 2026-11-04 `/browse` 는 /vouchers 로 301(대표 "구글에서도 쇼핑 안 떴으면")이라 noindex 지만, 그 라벨 '쇼핑' 은
+      //   상품 상세(`/products/:id`) 빵부스러기의 가운데 단계가 아직 쓴다 — 예외로 둔다(상품 상세의 정리는 별건).
+      if (path === '/browse') continue
       if (e.noindex) { if (e.crumb) extra.push(path) } else if (!e.crumb) miss.push(path)
     }
     expect(miss, '빵부스러기 라벨이 없는 색인 표면').toEqual([])

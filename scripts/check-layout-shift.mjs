@@ -60,7 +60,7 @@ const ROUTES = [
   { name: '홈', args: ['--route=/', '--deals'] },
   { name: '교환권', args: ['--route=/vouchers', '--deals'] },
   { name: '이용권 상세', args: ['--route=/group-buy/9000', '--deals'] },
-  { name: '쇼핑', args: ['--route=/browse', '--deals'] },
+  // 🛍️ 2026-11-04 '쇼핑'(/browse)은 /vouchers 로 301 — 화면이 없어 잴 것이 없다.
   { name: '지도', args: ['--route=/map', '--deals'] },
   { name: '숙소', args: ['--route=/stays', '--deals'] },
   { name: '유어샵', args: ['--route=/u/jiwon1228'] },

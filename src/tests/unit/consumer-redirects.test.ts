@@ -38,7 +38,9 @@ describe('resolveConsumerAlias — 별칭만, 정본은 건드리지 않는다',
   })
 
   it('무관한 경로는 통과', () => {
-    for (const p of ['/vouchers', '/browse', '/blog/what-is-urdeal', '/u/jiwon1228', '/api/products', '/products']) {
+    // 🛍️ 2026-11-04: `/browse` 는 이제 별칭(→ /vouchers) — 아래 따로 단언한다.
+    expect(resolveConsumerAlias('/browse')).toBe('/vouchers')
+    for (const p of ['/vouchers', '/blog/what-is-urdeal', '/u/jiwon1228', '/api/products', '/products']) {
       expect(resolveConsumerAlias(p), p).toBeNull()
     }
   })

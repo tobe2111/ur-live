@@ -7936,8 +7936,9 @@ canvas {
   {
     name: '🏪 "내 가게 등록" 버튼이 다시 사업자 가입 폼으로 보낸다',
     file: 'src/pages/JoinChoicePage.tsx',
-    find: "    to: '/store/new',",
-    replace: "    to: '/seller/register/supplier',",
+    // 🚪 2026-11-04 시안 B 로 다시 쓰면서 목록이 한 줄 객체가 됐다 — 앵커를 따라간다.
+    find: "  { to: '/store/new', Icon: StoreIcon,",
+    replace: "  { to: '/seller/register/supplier', Icon: StoreIcon,",
     test: 'src/tests/unit/urshop-naming.test.ts',
     why:
       '확정 순서는 **매장 등록이 선행**인데(StoreClaimPage 헤더), 문구는 "내 가게 등록"이면서 ' +

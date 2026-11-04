@@ -156,7 +156,7 @@ describe('② 범위 — 대시보드·마이가 두 예산 모두에', () => {
   it('실행 비용 화면 목록이 대시보드 목록을 하나씩 덮는다', () => {
     expect(dashKeys.length).toBeGreaterThanOrEqual(3)
     for (const k of dashKeys) expect(PAGES.filter((p) => p.dashboard === k).length, k).toBe(1)
-    expect(PAGES.filter((p) => !p.dashboard).length).toBeGreaterThanOrEqual(7)
+    expect(PAGES.filter((p) => !p.dashboard).length).toBeGreaterThanOrEqual(6) // 2026-11-04 '쇼핑'(/browse 301) 을 빼서 6
   })
   it('기준 파일 둘이 그 화면들을 실제로 갖고 있다', () => {
     const exec = JSON.parse(read('scripts/exec-cost-baseline.json'))

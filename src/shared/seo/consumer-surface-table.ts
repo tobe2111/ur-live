@@ -131,6 +131,8 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     //   31자로 색인 가능했다). 전부 `/browse` 로 통합한다.
     //   제목 분화는 종전대로 둔다(같은 이유 — canonical 이 통합하므로 색인 피해가 없다).
     titleParams: ['category'],
+    // 🛍️ 2026-11-04 대표 *"구글에서도 쇼핑 안 떴으면"* — 주소는 `/vouchers` 로 301(consumer-redirects). 표 행은 남기되 색인 대상이 아니다.
+    noindex: true,
   },
   '/map': {
     crumb: '동네딜 지도',
@@ -224,7 +226,7 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   '/join': {
     crumb: '시작하기',
     title: '유어딜 시작하기',
-    description: '내 가게를 등록해 이용권을 팔거나, 로그인해서 동네 딜을 사고 소개해 보세요. 둘 다 해도 됩니다.',
+    description: '동네 식당·뷰티·숙소 이용권을 할인가로 사서 매장에서 바로 쓰세요. 사장님은 가게를 등록해 이용권을 팔고, 에이전시는 여러 매장을 맡아 운영합니다.',
   },
 
   // ── 📜 약관·정책 ──────────────────────────────────────────────────────

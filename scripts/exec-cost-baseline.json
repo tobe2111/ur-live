@@ -155,44 +155,6 @@
         ]
       ]
     },
-    "쇼핑": {
-      "execKB": 260.6,
-      "loadedKB": 593.9,
-      "top": [
-        [
-          "react-core.js",
-          59.4
-        ],
-        [
-          "locale-ko.js",
-          45.2
-        ],
-        [
-          "index.js",
-          35.9
-        ],
-        [
-          "lz-common.js",
-          28.9
-        ],
-        [
-          "app-utils.js",
-          22
-        ],
-        [
-          "react-router.js",
-          12.2
-        ],
-        [
-          "app-shell.js",
-          10.6
-        ],
-        [
-          "app-shared.js",
-          6.9
-        ]
-      ]
-    },
     "지도": {
       "execKB": 320.5,
       "loadedKB": 719.1,
