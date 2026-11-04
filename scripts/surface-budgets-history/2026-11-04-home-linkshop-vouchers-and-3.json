@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-04",
+  "reason": "2026-11-04 첫 방문 최적화: main(b673c0e)이 이미 linkshop +1.8 등으로 초과 상태였고, 이 PR 몫은 화면당 +0.1~0.3KB(에이전시 +0.9 미리받기 조각). 대신 로그인 손님 첫 방문은 app-components 109KB(번호창·푸시 문지기)·합계 -184KB — 정적 폐쇄 측정은 lazy 조건부 로드를 못 본다",
+  "surfaces": [
+    "home",
+    "linkshop",
+    "vouchers",
+    "faq",
+    "lifePro",
+    "dash:agency"
+  ],
+  "changes": [
+    "home: 203.1 → 204.6 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +1.0, index.css +0.3",
+    "linkshop: 197.3 → 199.2 KB (+1.9, 허용 1.5) · 늘어난 것: app-owner-kit.js +1.3, app-utils.js +0.8",
+    "vouchers: 188.7 → 190.3 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.0, index.css +0.3",
+    "faq: 180.5 → 182.1 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.8, app-subpage.js +0.3",
+    "lifePro: 202.9 → 204.5 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.7, life-shared.js +0.5",
+    "dash:agency: 156.4 → 158.4 KB (+2.0, 허용 1.5) · 늘어난 것: app-utils.js +0.8, agency-warm.js +0.6"
+  ]
+}

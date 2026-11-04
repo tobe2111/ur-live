@@ -100,6 +100,7 @@ export function reportWebVitals(): void {
       //   페이지 자리에 `colo:XXX` 로 보내 같은 표본 저장소에서 데이터센터별 TTFB 분포를 본다.
       const colo = (nav.serverTiming || []).find((t) => t.name === 'colo')?.description
       if (colo) send('TTFB', nav.responseStart, `colo:${colo}`)
+      reportD1Served(colo || 'NA')
     }
   } catch { /* unsupported */ }
 
@@ -203,6 +204,33 @@ export function reportWebVitals(): void {
     })
     fidObs.observe({ type: 'first-input', buffered: true })
   } catch { /* unsupported */ }
+}
+
+/**
+ * 🌏 2026-11-04 대표 *"사람들이 대부분 처음 진입하는걸텐데 … 데이터가 느릴 때 많이 느리던데"* — 한국 손님의 DB 질의를
+ *   **실제로 어느 지역이 답했는지**(미국 원본 / 근처 사본)와 그 요청의 왕복 시간을 한 건 보낸다.
+ *   서버가 `Server-Timing: d1;desc="replica:APAC"` 를 붙인 응답(홈 섹션)을 Resource Timing 으로 읽는다.
+ *   세션당 1건 · 표본율은 서버(`VITALS_SAMPLE_RATE`)가 정한다 — KV 쓰기 한도를 늘리지 않으려고.
+ *   ⚠️ 엣지 캐시가 맞으면 그 라벨은 "그 데이터센터가 마지막으로 원본에 물었을 때" 의 것이다(시간은 캐시 응답 시간).
+ */
+export function d1ServedSample(entries: Array<{ name: string; requestStart: number; responseEnd: number; serverTiming?: ReadonlyArray<{ name: string; description: string }> }>, colo: string): { value: number; page: string } | null {
+  const c = /^[A-Z]{2,4}$/.test(colo) ? colo : 'NA'
+  for (const r of entries) {
+    if (!r.name.includes('/api/')) continue
+    const d = (r.serverTiming || []).find((t) => t.name === 'd1')?.description || ''
+    if (!/^(primary|replica)(:[A-Za-z0-9_-]{1,16})?$/.test(d)) continue
+    return { value: Math.max(0, Math.round(r.responseEnd - r.requestStart)), page: `d1:${d}@${c}` }
+  }
+  return null
+}
+
+function reportD1Served(colo: string): void {
+  setTimeout(() => {
+    try {
+      const s = d1ServedSample(performance.getEntriesByType('resource') as PerformanceResourceTiming[], colo)
+      if (s) send('D1', s.value, s.page)
+    } catch { /* unsupported */ }
+  }, 8000)
 }
 
 export function reportFunnel(event: 'view' | 'click' | 'join' | 'success', product_id?: number): void {

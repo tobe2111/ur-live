@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { useAgencyPresence } from './useAgencyPresence'
-import { hasAgencyLogin, warmAgencyRequests } from '@/lib/agency-presence'
+import { hasAgencyLogin } from '@/lib/agency-presence'
 import { loadAgencySection } from './MyAgencyZone'
 
 /**
@@ -22,7 +22,7 @@ const AgencyHead = lazy(loadHead)
  */
 export function warmAgencyZone(): void {
   if (!hasAgencyLogin()) return
-  warmAgencyRequests()
+  void import('@/pages/agency-console/agency-warm').then((m) => m.warmAgencyRequests()).catch(() => { /* 화면이 스스로 받는다 */ })
   for (const load of [loadInvite, loadTitle, loadHead, loadAgencySection]) void load().catch(() => { /* lazy 가 다시 시도한다 */ })
 }
 

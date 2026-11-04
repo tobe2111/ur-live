@@ -19,13 +19,17 @@
  *   (`expired-voucher-refund-sql.ts`). 바꾸면 만료 환불 규정에 닿으므로 손대지 않았다.
  */
 
+import { dbKey } from './d1-read-replica' // 세션(사본)이어도 메모는 원본 기준
+
 export const GIFT_TOKEN_RE = /^[A-Za-z0-9_-]{20,64}$/
 
 const ensured = new WeakSet<D1Database>()
 
 /** 선물 표. 요청마다 DDL 을 돌리지 않게 D1 당 1회(머니 룰 부수 규칙). */
 export async function ensureVoucherGiftTable(DB: D1Database): Promise<void> {
-  if (ensured.has(DB)) return
+  // 🩸 2026-11-04 — 기억은 **원본 DB 기준**(`dbKey`). 내 이용권(GET /my)이 읽기 사본 세션(`userReadDb`)을 넘기는데,
+  //   세션은 요청마다 새 객체라 `ensured.has(DB)` 가 매번 빗나가 DDL 두 문장이 **매 요청 미국 원본**까지 갔다(+2 왕복).
+  if (ensured.has(dbKey(DB))) return
   await DB.prepare(`CREATE TABLE IF NOT EXISTS voucher_gifts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     token TEXT NOT NULL UNIQUE,
@@ -43,7 +47,7 @@ export async function ensureVoucherGiftTable(DB: D1Database): Promise<void> {
   await DB.prepare(
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_voucher_gifts_pending ON voucher_gifts(voucher_id) WHERE status = 'pending'",
   ).run()
-  ensured.add(DB)
+  ensured.add(dbKey(DB))
 }
 
 /** 링크 토큰 — 추측 불가(24바이트 = 192bit), URL 안전. */
@@ -131,11 +135,11 @@ export async function withGiftState<T extends { id?: unknown; source?: string; s
   try {
     await ensureVoucherGiftTable(DB)
     const [a, b] = [uids[0], uids[1] ?? uids[0]]
-    const { results: pend } = await DB.prepare(
+    // ⚡ 2026-11-04 — 두 읽기는 서로 무관하다 → 나란히(한국에서 왕복 하나 ≈ 0.2초).
+    const pendP = DB.prepare(
       "SELECT voucher_id FROM voucher_gifts WHERE status = 'pending' AND sender_user_id IN (?, ?)",
     ).bind(a, b).all<{ voucher_id: number }>()
-    const pendingIds = new Set((pend ?? []).map((r) => Number(r.voucher_id)))
-    const { results: sent } = await DB.prepare(`
+    const sentP = DB.prepare(`
       SELECT g.id, g.voucher_id, g.accepted_at, g.created_at, u.name AS recipient_name,
              p.id AS product_id, p.name AS product_name, p.image_url AS product_image,
              p.restaurant_name, p.restaurant_address, v.applied_price
@@ -147,6 +151,8 @@ export async function withGiftState<T extends { id?: unknown; source?: string; s
       ORDER BY g.accepted_at DESC
       LIMIT 50
     `).bind(a, b).all<Record<string, unknown>>()
+    const [{ results: pend }, { results: sent }] = await Promise.all([pendP, sentP])
+    const pendingIds = new Set((pend ?? []).map((r) => Number(r.voucher_id)))
     const marked = items.map((v) =>
       v.source !== 'kt_alpha' && v.status === 'unused' && pendingIds.has(Number(v.id)) ? { ...v, gift_pending: true } : v,
     )

@@ -22,6 +22,8 @@ const analyticsRoutes = new Hono<{ Bindings: Env }>()
 //   실사용자 판정이 불가능했다. Workers 유료 전환(9/2)으로 KV 쓰기 한도가 월 100만이라 25% 표본(뷰당 ≤5 쓰기)은 여유.
 //   ⚠️ 무료 요금제로 되돌리면(일 1K 쓰기) 다시 0.01 로 내릴 것.
 const VITALS_SAMPLE_RATE = 0.25
+/** 🌏 2026-11-04 — DB 답 지역 표본의 page 모양(`web-vitals-report` `reportD1Served`). */
+export const D1_SAMPLE_PAGE = /^d1:(primary|replica)(:[A-Za-z0-9_-]{1,16})?@[A-Z]{2,4}$/
 // 🛡️ 2026-06-11 머니/무료티어 감사: 고볼륨 funnel(view/click) 5% 샘플 + inc 20 보정 →
 //   KV free write 1K/day 한도 보호. join/success(저볼륨·고가치)는 항상 기록.
 const FUNNEL_SAMPLE_RATE = 0.05
@@ -33,7 +35,7 @@ function analyticsWriteKv(env: unknown): KVNamespace | null {
 }
 
 interface VitalsBody {
-  name?: 'LCP' | 'FID' | 'CLS' | 'INP' | 'TTFB'
+  name?: 'LCP' | 'FID' | 'CLS' | 'INP' | 'TTFB' | 'CONN' | 'D1'
   value?: number
   page?: string
   /** LCP 일 때만 — 어디서 시간이 갔나(web-vitals-report `lcpBreakdown`). */
@@ -93,7 +95,7 @@ analyticsRoutes.post('/vitals', async (c) => {
   if (!body.name || typeof body.value !== 'number' || !Number.isFinite(body.value)) {
     return c.json({ ok: false }, 400)
   }
-  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN']
+  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1']
   if (!validNames.includes(body.name)) return c.json({ ok: false }, 400)
   if (body.value < 0 || body.value > 1_000_000) return c.json({ ok: false }, 400)
   const kv = analyticsWriteKv(c.env)
@@ -103,7 +105,9 @@ analyticsRoutes.post('/vitals', async (c) => {
   // 페이지 키워드 정규화 (group-buy/123 → group-buy)
   // 📡 `colo:XXX` 는 데이터센터별 표본(web-vitals-report) — 숫자 제거·자르기와 무관하게 대문자 4자만 받는다.
   const coloM = /^colo:([A-Z]{3,4})$/.exec(body.page || '')
-  const page = coloM ? `colo:${coloM[1]}` : ((body.page || '').replace(/\/\d+/g, '').slice(0, 60) || 'unknown')
+  // 🌏 2026-11-04: `D1` 표본은 page 가 `d1:<primary|replica>[:지역]@<콜로>` 하나뿐이다 — 그 밖은 버린다(키 오염 방지).
+  if (body.name === 'D1' && !D1_SAMPLE_PAGE.test(body.page || '')) return c.json({ ok: false }, 400)
+  const page = body.name === 'D1' ? (body.page as string) : coloM ? `colo:${coloM[1]}` : ((body.page || '').replace(/\/\d+/g, '').slice(0, 60) || 'unknown')
   const sampleKey = `vitals:${day}:${body.name}:${page}`
   await appendSample(kv, sampleKey, Math.round(body.value))
   // 🔬 2026-10-19: LCP 는 쪼갠 값도 **같은 표본**으로 남긴다(따로 보내면 표본이 따로 뽑혀 합이 안 맞는다).
@@ -153,7 +157,7 @@ analyticsRoutes.get('/summary', requireAdmin(), async (c) => {
   const vitals: Record<string, { p50: number; p75: number; p95: number; samples: number }> = {}
   const funnel: Record<string, number> = {}
 
-  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN']) {
+  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1']) {
     try {
       const list = await kv.list({ prefix: `vitals:${day}:${name}:` })
       for (const k of list.keys) {

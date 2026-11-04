@@ -63,3 +63,32 @@
 
 ### 남은 것
 - `/store/scan`(사장님 계산대) 실사용 LCP 5.2초(표본 1) — 손님 화면 밖이라 이번 범위 밖. 다음 후보.
+
+## 3차 (대표 *"사람들이 대부분 처음 진입하는걸텐데 캐시 데이터베이스가 의미가 있어? … 데이터가 느릴 때 많이 느리던데"* → 선택 *"1+2+3 순서대로"*)
+
+### 0. 실측 — 첫 진입이 느린 구조적 이유
+- RUM `TTFB colo:*` 1주(10-29~11-04): 한국 손님은 **HKG·NRT·LAX** 로만 붙었다 — **ICN 0건**. 무료 요금제의 한국 통신사 경로 문제. 코드로 못 바꾼다 → 유료 옵션 조사·결재 대상(미작성 — 다음 할 일).
+- D1 원본 `ENAM`, `read_replication.mode=auto`(켜져 있음). 사본은 세션 API(`publicReadDb`/`userReadDb`)를 쓰는 9파일에서만.
+- 1차의 "지난 값 기억"은 재방문 전용, 2차 엣지 캐시는 colo 별 공용이라 저트래픽에선 대부분 빈다 — 첫 방문 해결책이 아님을 대표에게 정직하게 보고.
+- **판정 장치**: 홈 섹션 응답에 `Server-Timing: d1;desc="replica:APAC"` → 브라우저가 세션당 1건 `D1` 표본(`d1:<primary|replica>[:지역]@<colo>`)으로 보낸다. 어드민 `/api/analytics/summary?day=` 의 `vitals:…:D1:` 로 **한국 손님 질의를 어느 지역이 답하는지** 판정(배포 다음 날부터).
+
+### 1. 첫 방문 코드 −184KB(로그인 손님 마이 실측 868 → 684KB, 긴 작업 9 → 4)
+- 공용 부품 봉투 `app-components`(109KB)를 끌어오던 문 둘:
+  ① 번호 필수 창(오늘 #2177) — 마운트 조건이 "이 기기에 user_phone 없음"이라 새 기기·번호 없는 손님마다. → `lib/phone-gate-door` 가 서버 `phone_required` 일 때만 창 코드를 받고, 아니면 user_id 별 표시(`user_phone_ok`)를 남겨 다음엔 묻지도 않는다.
+  ② 푸시 설정 부품 — granted 가 아니면 아무것도 안 하는데 로그인만 보면 마운트. → `Notification.permission === 'granted'` 일 때만.
+- 가드 `phone-gate-door-2026-11-04.test.tsx`.
+
+### 2. 차례 묻기 줄이기(조사 에이전트 표 — 마이 계열 13 엔드포인트)
+- **내 이용권 버그**: `ensureVoucherGiftTable` 의 WeakSet 이 사본 세션(요청마다 새 객체)을 키로 써 DDL 2문장이 **매 요청 미국 원본**으로 갔다 → `dbKey` + 선물 두 조회 나란히(−3 왕복). 되돌려-검증 빨간불 확인.
+- 찜(2→1) · 유어샵 대시보드 가게 없는 손님(3→1, 이메일 매칭을 첫 Promise.all 로).
+- 가드 `first-visit-roundtrips-2026-11-04.test.ts`.
+- ⚠️ **안 한 것(다음 후보, 표 근거)**: 내 이용권 나머지 직렬(잠금표 파일 `group-buy-public.routes.ts` — 6→1 가능) · `seller/orders` 8→2~3 · 에이전시 `/me`(가드 행 재조회)·`/staff`·`/stores`·`/notifications` 각 −1 · `my-stores/summary` 서브쿼리 2→1.
+
+### CI surface-budgets
+main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면당 +0.1~0.3KB(에이전시 +0.9) — 사유와 함께 rebaseline
+(`scripts/surface-budgets-history/2026-11-04-home-linkshop-vouchers-and-3.json`). 에이전시 미리받기 코드는 `lib/agency-presence`(app-utils)
+에서 `pages/agency-console/agency-warm.ts` 로 옮겨 손님 공용 묶음 증가를 없앴다.
+
+### 틀렸던 판단
+- 2차에서 에이전시 미리받기 코드를 "의존성 없는 작은 모듈"에 넣은 것 — 그 모듈이 모든 화면 공용 묶음(app-utils)에 있어 손님 전원이 받았다.
+- 실행 중 git 기록을 `reset --soft HEAD~1` 로 꼬았다(머지 커밋을 날림) → reflog 로 복구, 패치로 다시 적용.

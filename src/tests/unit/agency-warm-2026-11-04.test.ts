@@ -5,7 +5,7 @@
  *   ④ POST 는 절대 미리 받은 것을 쓰지 않는다.
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { warmAgencyRequests, takeAgencyWarm, AGENCY_WARM_PATHS } from '@/lib/agency-presence'
+import { warmAgencyRequests, takeAgencyWarm, AGENCY_WARM_PATHS } from '@/pages/agency-console/agency-warm'
 import { agencyRequest } from '@/pages/agency-console/agency-api'
 
 const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify({ success: true, url }), { status: 200 }))

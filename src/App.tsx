@@ -32,7 +32,7 @@ import { captureInflowRef } from '@/utils/affiliate-track'
 // lazy-loaded — only rendered conditionally, not on initial paint
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
-const PhoneRequiredGate = lazy(() => import('./components/onboarding/PhoneRequiredGate')) // 📞 2026-11-04 새 가입자 번호 필수
+import PhoneGateDoor, { phoneOkForCurrentUser } from './lib/phone-gate-door' // 📞 2026-11-04 새 가입자 번호 필수 — 창 코드(app-components 109KB)는 서버가 필요하다고 할 때만
 const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccountModal'))
 const SideBanner = lazy(() => import('@/components/SideBanner'))
 const DesignVariantsPage = lazy(() => import('./pages/design-variants/DesignVariantsPage')) // 🎨 내부 시안 갤러리(링크 0 · robots 차단 · noindex)
@@ -398,8 +398,10 @@ function AppContent() {
   const shellNeed = {
     restore: qs.includes('restorable=1'),                   // RestoreAccountModal: ?restorable=1 일 때만
     // 📞 2026-11-04 PhoneRequiredGate: 소비자로 로그인했고 이 기기에 번호가 아직 없을 때만(실제 판정은 서버 `phone_required`)
-    phone: (() => { try { return !!(localStorage.getItem('user_id') || localStorage.getItem('session_login')) && !localStorage.getItem('user_phone') } catch { return false } })(),
-    push: (() => { try { return !!(localStorage.getItem('user_id') || localStorage.getItem('seller_id') || localStorage.getItem('admin_id') || localStorage.getItem('agency_id')) } catch { return false } })(),
+    phone: (() => { try { return !!(localStorage.getItem('user_id') || localStorage.getItem('session_login')) && !localStorage.getItem('user_phone') && !phoneOkForCurrentUser(localStorage) } catch { return false } })(),
+    // 🔔 2026-11-04 — 알림 권한이 **이미 허용**된 사람만(그 부품은 granted 가 아니면 아무 일도 안 한다 — `PushNotificationSetup` 2026-08-11).
+    //   종전엔 로그인만 보면 세워서, 권한이 없는 대다수(특히 카카오톡 안 브라우저)가 매 화면 공용 봉투(app-components 109KB)를 받았다.
+    push: (() => { try { return typeof Notification !== 'undefined' && Notification.permission === 'granted' && 'serviceWorker' in navigator && !!(localStorage.getItem('user_id') || localStorage.getItem('seller_id') || localStorage.getItem('admin_id') || localStorage.getItem('agency_id')) } catch { return false } })(),
     sideBanner: typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 1024px)').matches, // `hidden lg:flex` — 폰에선 안 보인다
   }
   // 🧭 2026-06-10 페이지 전환 페이드 — 첫 로드(LCP)는 제외, 라우트 이동부터 적용.
@@ -584,7 +586,7 @@ function AppContent() {
           {/* 🗑️ 2026-11-04 대표: 가입 직후 환영 창(쿠폰·관심 분야·알림톡 3단계) 제거 — 환영 쿠폰은 없고, 관심 분야는 안 쓰고,
               알림톡 토글은 저장되지 않았다. 가입하면 번호 창(PhoneRequiredGate) 하나만 뜬다. */}
           {shellNeed.restore && <Suspense fallback={null}><RestoreAccountModal /></Suspense>}
-          {shellNeed.phone && <Suspense fallback={null}><PhoneRequiredGate /></Suspense>}
+          {shellNeed.phone && <PhoneGateDoor />}
           {/* 📜 2026-07-05 (대표 "들어오자마자 나오면 안 되지 — 자연스럽게"): 약관 동의 차단 모달(TermsConsentGate)
               제거. 소비자 동의 = LoginPage 간주 고지(제5조) + 가입 시점 1회 서버 기록(kakao.routes isNewUser →
               terms_agreements). 개정 재동의가 필요해지면 /api/terms/status 로 비차단 배너를 붙이는 것이 후속안. */}

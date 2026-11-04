@@ -287,7 +287,7 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
     const stripBanners = await bannersP; // ⚡ 위에서 섹션과 **함께** 시작했다
     const extra = Array.isArray(stripBanners) && stripBanners.length > 0 ? { strip_banners: stripBanners } : {};
 
-    if (d1Served) c.header('X-D1-Served', d1Served);
+    if (d1Served) { c.header('X-D1-Served', d1Served); c.header('Server-Timing', `d1;desc="${d1Served}"`, { append: true }); } // 🌏 2026-11-04 — 브라우저가 읽을 수 있게(Resource Timing). 한국 손님의 실제 답 지역을 `web-vitals-report` 가 표본으로 보낸다
     // 📍 어느 위치로 만든 응답인지 — 화면이 SSR 시드를 쓸지(같은 격자인지) 판정한다.
     return c.json(nearKey ? { success: true, data: result, near: nearKey, ...extra } : { success: true, data: result, ...extra });
   } catch (err) {
