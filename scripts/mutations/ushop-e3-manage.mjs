@@ -9,7 +9,7 @@ export default [
     name: 'e3 — 관리 블록이 손님 화면으로 되돌아온다',
     file: 'src/pages/CuratorPage.tsx',
     find: "const SEARCH_MIN_PINS = 12",
-    replace: "const SEARCH_MIN_PINS = 12\nimport OwnerEarningsStrip from './curator-page/OwnerEarningsStrip'",
+    replace: "const SEARCH_MIN_PINS = 12\nimport OwnerSummaryCard from './curator-page/OwnerSummaryCard'",
     test: 'src/tests/unit/ushop-e3-manage-2026-09-28.test.ts',
     why:
       '종전 [유어샵 편집]이 손님 화면 위에 관리 chrome 다섯 덩어리를 덧칠해 주인/손님 화면이 갈렸다. ' +
