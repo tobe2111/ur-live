@@ -123,7 +123,7 @@ export default function ContentViewer({ items, start, buy, onClose, onBuy, onSee
 
   if (isBlog) {
     return (
-      <div role="dialog" aria-modal="true" aria-label="블로그 글" className="fixed inset-0 z-[80] flex flex-col bg-surface"
+      <div role="dialog" aria-modal="true" aria-label="블로그 글" className="fixed inset-0 z-[10500] flex flex-col bg-surface"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="flex items-center gap-3 border-b border-rule px-4 py-3">
           <button type="button" onClick={onClose} aria-label="닫기" className="text-gray-900 dark:text-white"><X className="h-5 w-5" /></button>
@@ -146,7 +146,7 @@ export default function ContentViewer({ items, start, buy, onClose, onBuy, onSee
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="영상" className="fixed inset-0 z-[80] flex flex-col bg-black">
+    <div role="dialog" aria-modal="true" aria-label="영상" className="fixed inset-0 z-[10500] flex flex-col bg-black">
       <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 text-white" style={{ paddingTop: 'max(12px, env(safe-area-inset-top, 0px))' }}>
         <button type="button" onClick={onClose} aria-label="닫기" className="rounded-full bg-black/40 p-2"><X className="h-5 w-5" /></button>
         <span className="rounded-full bg-black/40 px-3 py-1 text-[13px] tabular-nums">{index + 1} / {items.length}</span>

@@ -14,7 +14,7 @@ export default function PinnersSheet({ pinners, onClose }: { pinners: PinPerson[
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
   return (
-    <div role="dialog" aria-modal="true" aria-label="유어딜에서 추천하는 사람" className="fixed inset-0 z-[80] flex items-end">
+    <div role="dialog" aria-modal="true" aria-label="유어딜에서 추천하는 사람" className="fixed inset-0 z-[10600] flex items-end">
       <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 h-full w-full cursor-default border-0 bg-black/45" />
       <div className="relative max-h-[70dvh] w-full overflow-y-auto rounded-t-2xl bg-surface px-5 pt-5 shadow-lift"
         style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))' }}>
