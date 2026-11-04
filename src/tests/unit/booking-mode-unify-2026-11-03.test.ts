@@ -58,7 +58,9 @@ describe('배선', () => {
   it('예약 받는 화면이 주문 옆 탭에 있다', () => {
     const g = read('src/components/seller/seller-tab-groups.ts')
     const orders = g.slice(g.indexOf("labelKey: 'seller.orders'"), g.indexOf("labelKey: 'seller.revenue'"))
-    expect(orders).toContain("path: '/seller/appointments'")
-    expect(orders).toContain("path: '/seller/stays/bookings'")
+    // 🗓️ 2026-11-04 (대표 "합쳐"): 두 칸 → 예약 화면 하나. 안에서 [시간 예약 | 숙소 예약] (`SellerBookingsPage`).
+    expect(orders).toContain("path: '/seller/bookings'")
+    expect(orders).not.toContain("path: '/seller/stays/bookings'")
+    expect(read('src/pages/SellerBookingsPage.tsx')).toContain("{tab === 'stay' ? <SellerStaysBookingsPage embedded /> : <SellerAppointmentsPage embedded />}")
   })
 })

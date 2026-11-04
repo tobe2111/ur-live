@@ -131,7 +131,7 @@ describe('② 시트', () => {
     const routes = readCode('src/routes/seller.routes.tsx')
     for (const c of Object.values(OWNER_SHEET_COPY)) {
       for (const p of [c.editPath(1), c.salesPath(1), c.usagePath].filter(Boolean) as string[]) {
-        const pattern = p.replace(/\/1(\/|$)/, '/:id$1')
+        const pattern = p.split('?')[0].replace(/\/1(\/|$)/, '/:id$1') // 🗓️ 2026-11-04 `?tab=stay` 같은 구분은 경로가 아니다
         expect(routes, p).toContain(`path="${pattern}"`)
       }
     }

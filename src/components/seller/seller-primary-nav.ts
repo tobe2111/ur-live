@@ -40,7 +40,7 @@ export const SELLER_PRIMARY_NAV: SellerPrimaryTab[] = [
   {
     key: 'orders', path: '/seller/orders', labelKey: 'seller.tab.orders', fallback: '주문', icon: ReceiptIcon,
     // 주문 묶음(환불·리뷰) + 예약 화면들 — "손님이 산 것"을 다루는 곳은 전부 주문이다.
-    also: [...tabGroupSiblings('/seller/orders'), '/seller/appointments', '/seller/stays/bookings'],
+    also: [...tabGroupSiblings('/seller/orders'), '/seller/bookings', '/seller/appointments', '/seller/stays/bookings'],
   },
   {
     key: 'vouchers', path: '/seller/group-buy', labelKey: 'seller.tab.vouchers', fallback: '이용권', icon: TicketStubIcon,

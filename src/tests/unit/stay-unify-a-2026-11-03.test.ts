@@ -39,7 +39,7 @@ describe('숙소 통일 A', () => {
     expect(row).toContain('const goEdit = () => navigate(`/seller/products/${v.id}/edit`)')
     expect(read('src/pages/SellerProductEditPage.tsx')).toContain("{formData.category === 'stay_voucher' && <div className=\"mt-6\"><Suspense fallback={null}><StayManagePanel productId={Number(id)} />")
     expect(read('src/routes/seller.routes.tsx')).toContain('<Route path="/seller/stays/:id" element={<StayEditRedirect />} />')
-    expect(row).toMatch(/\{isStay \? \(\s*<button[^\n]*navigate\('\/seller\/stays\/bookings'\)/)
+    expect(row).toMatch(/\{isStay \? \(\s*<button[^\n]*navigate\('\/seller\/bookings\?tab=stay'\)/) // 🗓️ 2026-11-04 예약 화면 하나
   })
 
   it('③ 등록 폼의 숙박은 같은 위저드 안에서 객실까지 받는다(①, 같은 날 A 의 숙소 화면 우회를 대체)', () => {

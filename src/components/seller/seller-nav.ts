@@ -159,7 +159,7 @@ export const SELLER_SEARCH_ONLY: { path: string; labelKey: string; fallback: str
   { path: '/seller/profile', labelKey: 'seller.nav.profile', fallback: '내 정보', icon: Users, group: '설정' },
   { path: '/seller/tier', labelKey: 'seller.nav.tier', fallback: '셀러 등급', icon: Star, group: '설정' },
   { path: '/seller/2fa', labelKey: 'seller.nav.twoFactor', fallback: '2단계 인증', icon: Bell, group: '설정' },
-  { path: '/seller/appointments', labelKey: 'seller.nav.appointments', fallback: '예약 관리', icon: BarChart3, group: '주문·고객' },
+  { path: '/seller/bookings', labelKey: 'seller.nav.appointments', fallback: '예약 관리', icon: BarChart3, group: '주문·고객' },
   { path: '/seller/ledger', labelKey: 'seller.nav.ledger', fallback: '매장 원장', icon: Receipt, group: '수익' },
   { path: '/seller/store-dashboard', labelKey: 'seller.nav.storeDashboard', fallback: '매장 현황', icon: Building2, group: '수익' },
   { path: '/seller/realtime', labelKey: 'seller.nav.realtime', fallback: '실시간 현황', icon: BarChart2, group: '수익' },

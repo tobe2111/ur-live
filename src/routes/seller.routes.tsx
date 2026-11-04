@@ -63,7 +63,7 @@ const SellerQuickGbPage = lazy(() => import('@/pages/SellerQuickGbPage'))
 const SellerReturnsPage = lazy(() => import('@/pages/SellerReturnsPage'))
 const SellerProductEditPage = lazy(() => import('@/pages/SellerProductEditPage'))
 const SellerBookingSlotsPage = lazy(() => import('@/pages/SellerBookingSlotsPage'))
-const SellerAppointmentsPage = lazy(() => import('@/pages/SellerAppointmentsPage'))
+const SellerBookingsPage = lazy(() => import('@/pages/SellerBookingsPage')) // 🗓️ 예약 화면 하나(시간 + 숙소)
 const MyLedgerPage = lazy(() => import('@/pages/MyLedgerPage'))
 const StoreOwnerDashboardPage = lazy(() => import('@/pages/StoreOwnerDashboardPage'))
 const SellerProfileEditPage = lazy(() => import('@/pages/SellerProfileEditPage'))
@@ -104,7 +104,6 @@ const SellerRealtimeDashboardPage = lazy(() => import('@/pages/SellerRealtimeDas
 const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNewPage'))
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 셀러 페이지 — PR 2/6.
 const SellerStaysPage = lazy(() => import('@/pages/SellerStaysPage'))
-const SellerStaysBookingsPage = lazy(() => import('@/pages/SellerStaysBookingsPage'))
 // 🛡️ 2026-05-19: 발송된 교환권 (KT Alpha) 이력.
 const SellerVoucherOrdersPage = lazy(() => import('@/pages/SellerVoucherOrdersPage'))
 const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
@@ -227,11 +226,13 @@ export function SellerRoutes() {
           <SellerBookingSlotsPage />
         </ProtectedRoute>
       } />
-      <Route path="/seller/appointments" element={
+      {/* 🗓️ 2026-11-04 (대표 "합쳐"): 예약 화면 하나 — 시간 예약 + 숙소 예약. 옛 두 주소는 이리로(링크·알림 무회귀). */}
+      <Route path="/seller/bookings" element={
         <ProtectedRoute requireSeller>
-          <SellerAppointmentsPage />
+          <ErrorBoundary><SellerBookingsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
+      <Route path="/seller/appointments" element={<Navigate to="/seller/bookings" replace />} />
       <Route path="/seller/ledger" element={
         <ProtectedRoute requireSeller>
           <MyLedgerPage />
@@ -318,11 +319,7 @@ export function SellerRoutes() {
           <ErrorBoundary><SellerStaysPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      <Route path="/seller/stays/bookings" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerStaysBookingsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
+      <Route path="/seller/stays/bookings" element={<Navigate to="/seller/bookings?tab=stay" replace />} />
       <Route path="/seller/voucher-orders" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerVoucherOrdersPage /></ErrorBoundary>
