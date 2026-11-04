@@ -378,7 +378,7 @@ export default function StayDetailPage() {
             아래 `SimilarStays` 를 붙이는데 이 파일이 래칫 858/858 이라 여유가 0이었다. */}
         {/* 🏨 2026-11-04 (대표 "이용 안내도 알려주고"): 이용권 상세와 같은 '이용 방법' 그림 셋 + 움직임(`RedeemHowTo`).
             숙소는 직원 스캔 · 휴대폰이 없으면 예약자 이름. `gbd` = 그 부품이 쓰는 색 변수 범위(이용권 상세와 같은 값). */}
-        <div id="stay-sec-policy" className={`gbd ${STAY_BAND} lg:mb-8`} style={{ scrollMarginTop: 96 }}><SectionTitle className="mb-4">이용 방법</SectionTitle><RedeemHowTo steps={STAY_STEPS} fallbackLabel={STAY_FALLBACK_LABEL} fallback={STAY_REDEEM_FALLBACK} /></div>
+        <div id="stay-sec-policy" className={`gbd ${STAY_BAND} lg:mb-8`} style={{ scrollMarginTop: 96 }}><SectionTitle className="mb-3">이용 방법</SectionTitle><RedeemHowTo steps={STAY_STEPS} fallbackLabel={STAY_FALLBACK_LABEL} fallback={STAY_REDEEM_FALLBACK} /></div>
         <div><StayPolicyInfo policy={stay.cancellation_policy} customText={stay.custom_cancellation_text}
           houseRules={stay.house_rules} checkInInstructions={stay.check_in_instructions} /></div>
 
