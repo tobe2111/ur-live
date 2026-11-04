@@ -50,14 +50,21 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
 
   /**
    * 블로그는 **바로 그 글로** 간다(2026-11-04 대표 *"이 페이지가 굳이 안나오고 바로 블로그 봐도 될듯"*).
-   * 다른 사이트 안에 띄울 수 있는 글만 우리 창(구매 바가 붙은 iframe)으로 열고, 나머지는 같은 화면에서 네이버로 넘어간다
-   * (뒤로 가기로 상세에 돌아온다 — 미리보기 한 장을 거치지 않는다).
+   * 다른 사이트 안에 띄울 수 있는 글만 우리 창(구매 바가 붙은 iframe)으로 열고, 나머지는 **새 창**으로 네이버 글을 연다
+   * (닫으면 상세가 그대로 — 미리보기 한 장을 거치지 않는다).
    */
   const openBlog = (b: ContentItem) => {
     setRead((s) => new Set(s).add(b.id))
     // 창 안에서 넘겨 보는 목록도 띄울 수 있는 글만(막힌 글이 섞이면 미리보기 한 장이 다시 나온다).
     if (b.embeddable) { const list = blogs.filter((x) => x.embeddable); openAt(list, Math.max(0, list.findIndex((x) => x.id === b.id))); return }
-    window.location.href = naverBlogMobileUrl(b.ext_id)
+    // 🪟 **새 창으로** 연다(2026-11-04 대표 *"블로그 보다가 나가면 이용권 상세로 나오는게 아니라 그 밖 페이지로 나가져"*).
+    //   같은 화면으로 넘기면 네이버가 열리면서 주소를 바꿔 치워(blog → m.blog → PostView) 뒤로 가기가 상세를 건너뛰고,
+    //   카카오톡 안 브라우저에선 닫기가 상세째 닫힌다. 새 창은 닫으면 상세가 그대로 남는다. 창이 막히면(null) 같은 화면으로.
+    const url = naverBlogMobileUrl(b.ext_id)
+    // ⚠️ 'noopener' 를 세 번째 인자로 주면 성공해도 null 이 돌아와 같은 화면까지 넘어간다(두 번 열림) — opener 는 직접 끊는다.
+    const w = window.open(url, '_blank')
+    if (w) w.opener = null
+    else window.location.href = url
   }
 
   return (
