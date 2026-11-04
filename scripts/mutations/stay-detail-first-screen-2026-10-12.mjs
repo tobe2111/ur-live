@@ -42,10 +42,10 @@ export default [
     why: '`/pass/:id` 의 scrim 은 `badges` prop 으로 들어오는 것이다 — 베껴 오면 마운트 때 어둠이 걷힌다.',
   },
   {
-    name: '🏨 성급이 없으면 그 div 를 아예 안 그린다 — 라이브 37건이 4px 튄다',
+    name: '🏨 [유형 · 성급 · 지역] 줄이 비면 그 div 를 아예 안 그린다 — 화면은 그려서 4px 튄다',
     file: BUILDER,
-    find: '`<div class="${STAY_HEAD.metaRow}">${star}</div>` +',
-    replace: '(star ? `<div class="${STAY_HEAD.metaRow}">${star}</div>` : \'\') +',
+    find: '`<div class="${STAY_HEAD.metaRow}">${escText(staySubLine(p))}</div>` +',
+    replace: '(staySubLine(p) ? `<div class="${STAY_HEAD.metaRow}">${escText(staySubLine(p))}</div>` : \'\') +',
     test: TEST,
     why: 'React 는 값이 없어도 그 div 를 그린다(`mb-1` = 4px). 49건 중 별점이 있는 것은 12건뿐이다.',
   },

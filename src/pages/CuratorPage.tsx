@@ -28,7 +28,6 @@ import { SortMenu } from '@/components/ui/sort-menu'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { Search, X } from 'lucide-react'
 // 🧾 2026-11-03 유어샵 B — 주인만 보는 요약 판(방문자 번들에 안 실리게 lazy).
-const OwnerSummaryCard = lazy(() => import('./curator-page/OwnerSummaryCard'))
 const UShopSnsPosts = lazy(() => import('./curator-page/UShopSnsPosts')) // 🖼️ 2026-11-03 SNS 최근 게시물(진열 아래)
 import NearViewport from './curator-page/NearViewport'
 import { toast } from '@/hooks/useToast'
@@ -379,7 +378,7 @@ export default function CuratorPage() {
           onCopyLink={shareShop}
         />
         {/* 🧾 2026-11-03 대표 *"유어샵은 B"* — 주인만 보는 요약 판(방문·구매·소개 수익 + 담기·공유). 방문자에겐 0 바이트(lazy). */}
-        {isOwner && <Suspense fallback={<div className={`mx-3 mt-3 ${curator.instagram_url || curator.tiktok_url || curator.youtube_url ? 'h-[172px]' : 'h-[228px]'}`} aria-hidden="true" />}><OwnerSummaryCard onShare={shareShop} hasSns={!!(curator.instagram_url || curator.tiktok_url || curator.youtube_url)} /></Suspense>}
+        {/* 📍 2026-11-04 대표 *"최근 30일 내 유어샵 부분을 관리 버튼 안에 넣거나 해줘"* — 요약 판은 관리 화면으로 옮겼다(OwnerSummaryCard). */}
         <UShopQrCard />
         </div>
         <div className="ur-ushop-main">

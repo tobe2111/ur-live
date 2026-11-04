@@ -51,3 +51,6 @@
 - 🛠️ 숙소 **수정**도 하나로(대표 *"응 합쳐줘"*): 옛 `SellerStayDetailPage` → `seller-product-edit/StayManagePanel.tsx`(+`StayCalendarTab.tsx`). 이용권 수정 화면이 숙소면 아래에 '숙소 관리'(객실·달력·체크인/정책). `/seller/stays/:id` → `/seller/products/:id/edit` 리다이렉트.
 - 🩸 **2026-11-04 틀렸던 판단(머니)**: 11-03 ③에서 숙소 소개 적립을 `payment.routes` 의 결제 확정 루프에 붙였는데, **실제 숙소 결제는 그 길을 안 지난다** — `StayCheckout` → `/stays/checkout-return` → `POST /api/group-buy/stays/bookings/confirm`(stays-public). 그 길엔 옛 적립조차 없었다(숙소 소개 적립은 원래부터 0). 실결제 0건이라 손해 0. 실제 경로에 `creditStayReferral` 을 붙였다. ⇒ **확정 경로가 둘인 흐름은 화면에서부터 따라가 실제 길을 찾을 것**(경로 이름이 "결제 확정" 이라고 그게 쓰이는 길은 아니다).
 - 숙소 상세에 이용권 상세와 같은 기록 추가: 조회수 비컨 · 최근 본 · 구매 흐름(조회·성공) · 결제 뒤 내 이용권 새로고침.
+- ✅ #2169 머지(2b01b0c): 실제 숙소 결제 경로 적립 + 상세 기록. 첫 화면 예산 — 기록 모듈을 동적 import 로(stayDetail 220.9→218.8) · guestMy 기준 갱신(main #2147·#2168 합산분, 이 작업 무관).
+- 🔀 **계획 변경 — 상세 파일 두 개를 하나로 합치지 않는다**: 두 상세는 이미 같은 부품(떠 있는 머리·사진·제목 헤더·구역 탭·팔아보기·찜/담기/공유·바탕)을 쓰고, 파일까지 합치면 보이는 변화 0에 SSR 첫 화면 두 벌이 통째로 흔들린다. 눈에 보이던 마지막 차이 = **폰 머리** → `stay-detail/StayHeadCard.tsx`: [유형 · 성급 · 지역](`staySubLine`, 서버 첫 화면도 같은 함수) → 제목 → 별점 → `N박 총액 N원~`. 주소 줄은 이용권처럼 걷음(위치 구역이 말한다). 기록 `docs/locks/loading/2026-11-04-stay-head-subline.md`.
+- 🗑️ 숙소 상세 옛 '추천 할인 N% 적용' 배너 제거(#2171) — 통일 뒤 옛 객실 할인은 언제나 0이라 거짓 약속이었다. 덤으로 stayDetail 첫 화면 무게 허용선 안.

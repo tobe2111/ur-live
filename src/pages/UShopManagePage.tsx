@@ -17,13 +17,12 @@ import { useTranslation } from '@/lib/i18n-lite'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/features/curator/api/curator-api'
 import { fetchCuratorPage, getCuratorCache } from '@/features/curator/curator-page-cache'
-import OwnerEarningsStrip from './curator-page/OwnerEarningsStrip'
+import OwnerSummaryCard from './curator-page/OwnerSummaryCard'
 import PinManageList from './curator-page/PinManageList'
 import { openEmbedCode } from '@/shared/embed-code-link'
 import { SectionTitle, ListPlate, ListRow } from './user-profile/list-grammar'
-import { EditIcon, TicketStubIcon, ReceiptIcon, GridIcon } from '@/components/icons/urdeal-icons'
+import { EditIcon, TicketStubIcon, ReceiptIcon, GridIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
 
-const EarnLadder = lazy(() => import('./curator-page/EarnLadder'))
 const SellOwnProductsCTA = lazy(() => import('./curator-page/SellOwnProductsCTA'))
 // 👤 프로필 편집은 **마이와 같은 시트**를 그 자리에서 띄운다(2026-10-13 대표 — 아래에서 올라오게, 이름은 "편집").
 //   시트는 한 벌이다 — 편집 화면이 두 곳이 되면 한쪽에서 바꾼 이름이 다른 쪽에 옛 이름으로 남는다(A-2 결정의 이유).
@@ -79,7 +78,6 @@ export default function UShopManagePage() {
   if (loading || !data?.curator) return <BrandLoader fullScreen />
 
   const { curator, pins } = data
-  const dealCount = pins.filter(p => Number(p.deal_pct) > 0).length
   const onPinDeleted = (id: number) =>
     setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== id) } : prev)
   const onReorder = (next: CuratorPin[]) =>
@@ -128,18 +126,19 @@ export default function UShopManagePage() {
 
         {/* 💰 돈은 한 묶음 — 두 화면이 각각 무엇인지 이름으로 말한다(장부가 둘이라 화면도 둘이다). */}
         <div className="mt-8"><SectionTitle>{t('ushop.manageMoney', { defaultValue: '수익과 정산' })}</SectionTitle></div>
-        {/* 적립 카드(최근 30일)가 담은 이용권 수익 화면의 입구다 — 같은 화면으로 가는 줄을 따로 두지 않는다. */}
-        <div className="mt-3"><OwnerEarningsStrip /></div>
+        {/* 최근 30일 판(2026-11-04 유어샵에서 옮겨 옴)이 담은 이용권 수익 화면의 입구다 — 같은 화면으로 가는 줄을 따로 두지 않는다. */}
+        <div className="mt-3"><OwnerSummaryCard /></div>
         <ListPlate className="mt-3">
           <ListRow icon={rowIco(ReceiptIcon)} label={t('ushop.manageSettleRow', { defaultValue: '매장 소개 정산' })} hint={t('ushop.manageSettleHint', { defaultValue: '계좌·세금' })} to="/influencer/settlement" />
         </ListPlate>
 
-        {/* 돈 버는 길 — 빈 샵일수록 필요하다(2026-08-27 대표 확정). pins 로 막지 않는다. */}
-        <div className="mt-8" />
-      </div>
-      <Suspense fallback={null}><EarnLadder dealCount={dealCount} pinCount={pins.length} /></Suspense>
-
-      <div className="px-4">
+        {/* 🤝 2026-11-04 대표 *"내 유어샵으로 버는 법 보단 에이전시 등록 이런거 하는게 좋지 않을까?"* — 버는 법 사다리(EarnLadder)를 걷고
+            그 자리에 **에이전시**(여러 매장을 맡아 운영하는 대행사) 입구. 계정은 이메일로 따로 만든다(카카오 아님). */}
+        <div className="mt-8"><SectionTitle>{t('ushop.manageAgency', { defaultValue: '에이전시' })}</SectionTitle></div>
+        <ListPlate className="mt-3">
+          <ListRow icon={rowIco(PeopleIcon)} label={t('ushop.manageAgencyJoin', { defaultValue: '에이전시 등록' })} hint={t('ushop.manageAgencyJoinHint', { defaultValue: '매장 대신 운영' })} to="/agency/signup" />
+          <ListRow icon={rowIco(PeopleIcon)} label={t('ushop.manageAgencyLogin', { defaultValue: '에이전시 로그인' })} to="/agency/login" />
+        </ListPlate>
         <div className="mt-8"><SectionTitle>{t('ushop.manageMyStore', { defaultValue: '내 가게' })}</SectionTitle></div>
         <div className="mt-3"><Suspense fallback={null}><SellOwnProductsCTA /></Suspense></div>
 

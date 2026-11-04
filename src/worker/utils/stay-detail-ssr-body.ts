@@ -16,7 +16,7 @@
  *     ⚠️ 숙소는 모바일에서도 빵부스러기를 그린다(`/pass/:id` 의 D안만 `hidden lg:block` 이다).
  *   - **히어로** — `DetailGallery` 모바일 슬라이드와 같은 프레임(3:2)·같은 URL(`detailHeroMobileUrl`
  *     SSOT — 워커 preload 가 이미 쓰는 그 함수)·같은 바탕(#1D1F29).
- *   - **성급 줄 + 제목(h1)** — 시드 값 그대로, 클래스는 `STAY_HEAD`(화면과 **같은 상수**).
+ *   - **[유형 · 성급 · 지역] 줄 + 제목(h1)** — 시드 값 그대로, 클래스는 `STAY_HEAD`·글자는 `staySubLine`(화면과 **같은 상수·함수**, 2026-11-04 이용권 머리와 통일).
  *
  * ## 🩸 `/pass/:id` 와 다른 세 가지 — 베끼면 틀린다
  * 1. **히어로 래퍼를 빼먹으면 안 된다.** `/pass/:id` 는 갤러리의 자기 래퍼(`relative lg:hidden`)만
@@ -49,7 +49,7 @@ import {
   detailGalleryImages,
   detailHeroMobileUrl,
 } from '../../shared/detail-hero-image'
-import { STAY_HEAD } from '../../shared/stay-head'
+import { STAY_HEAD, staySubLine } from '../../shared/stay-head'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
 import { crumbNavHtml, mobileThumbRowHtml, restSlidesHtml } from './detail-ssr-body'
 import { stayNoscriptFromPayload } from './crawler-noscript'
@@ -67,6 +67,9 @@ interface StaySeedProduct {
   restaurant_name?: string | null
   property_type?: string | null
   star_rating?: number | null
+  address?: string | null
+  region_sido?: string | null
+  region_sigungu?: string | null
   image_url?: string | null
   images?: string | null
   [k: string]: unknown
@@ -121,11 +124,11 @@ export function buildStayDetailFirstScreen(ssrPayload: string, loaderHtml: strin
         '</div>' +
       '</div>'
 
-    // ⭐ 값이 없어도 div 는 그린다 — `mb-1`(4px)이 그 자리에 남아야 한다(라이브 37건이 이 경우다).
-    const star = Number(p.star_rating) > 0 ? `<span>${escText(String(p.star_rating))}성급</span>` : ''
+    // ⭐ 값이 없어도 div 는 그린다 — `mb-1`(4px)이 그 자리에 남아야 한다.
+    // 🏨 2026-11-04: 성급만이던 줄 → 이용권 머리와 같은 [유형 · 성급 · 지역](`StayHeadCard` 와 **같은 함수**).
     const head =
       `<div class="${STAY_HEAD.titleBlock}">` +
-        `<div class="${STAY_HEAD.metaRow}">${star}</div>` +
+        `<div class="${STAY_HEAD.metaRow}">${escText(staySubLine(p))}</div>` +
         `<h1 class="${STAY_HEAD.h1}">${escText(title)}</h1>` +
       '</div>'
 

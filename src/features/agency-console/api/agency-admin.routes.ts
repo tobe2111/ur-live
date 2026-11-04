@@ -82,6 +82,30 @@ agencyAdminRoutes.post('/agency-accounts/:id/suspend', requireAdminRole('super',
   }
 })
 
+/**
+ * ✅ 2026-11-04 (대표 "에이전시 가입 중 이메일 인증이 안 돼 — 2번(어드민 승인)"): 인증 메일이 받은편지함에
+ *   닿지 않으면(네이버 스팸함 등) 가입자는 '인증 전' 에 갇힌다. 어드민이 확인하고 직접 연다.
+ *   이메일 인증(`/verify`)과 **같은 두 줄**(직원·계정 pending → active)을 같은 조건으로 돌리고,
+ *   쓰지 않은 인증 링크는 지운다(승인 뒤에 옛 링크가 따로 살아 있을 이유가 없다).
+ *   가입 때 정한 비밀번호가 그대로라 가입자는 바로 이메일 로그인할 수 있다.
+ */
+agencyAdminRoutes.post('/agency-accounts/:id/approve', requireAdminRole('super', 'ops'), async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isInteger(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청이에요.' }, 400)
+    const DB = c.env.DB
+    await ensureAgencyConsoleTables(DB)
+    if (!(await setStatus(DB, id, 'pending', 'active'))) return c.json({ success: false, error: '인증 전 에이전시가 아니에요.' }, 409)
+    await DB.batch([
+      DB.prepare("UPDATE agency_staff SET status = 'active', updated_at = datetime('now') WHERE agency_id = ? AND is_owner = 1 AND status = 'pending'").bind(id),
+      DB.prepare("DELETE FROM agency_tokens WHERE kind = 'verify' AND used_at IS NULL AND staff_id IN (SELECT id FROM agency_staff WHERE agency_id = ? AND is_owner = 1)").bind(id),
+    ])
+    return c.json({ success: true, message: '승인했어요. 가입할 때 쓴 이메일·비밀번호로 바로 로그인할 수 있어요.' })
+  } catch (err) {
+    return safeError(c, err, '승인하지 못했어요', '[admin:agency-accounts]')
+  }
+})
+
 agencyAdminRoutes.post('/agency-accounts/:id/unsuspend', requireAdminRole('super', 'ops'), async (c) => {
   try {
     const id = Number(c.req.param('id'))

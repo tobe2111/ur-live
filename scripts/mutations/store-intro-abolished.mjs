@@ -6,14 +6,6 @@ const TEST = 'src/tests/unit/store-intro-abolished-2026-09-16.test.ts'
 
 export default [
   {
-    name: '🛑 유어샵 사다리가 다시 "매출의 2%" 를 약속한다',
-    file: 'src/pages/curator-page/EarnLadder.tsx',
-    find: '이용권이 내 샵으로 팔리면 소개비가 붙어요.',
-    replace: '이용권이 내 샵으로 팔리면 소개비가 붙어요. 데려온 가게면 매출의 2%도 받습니다.',
-    test: TEST,
-    why: '적립은 0인데 화면만 약속하던 상태가 몇 주 갔다. 그 문구가 돌아오면 다시 약속 위반이다.',
-  },
-  {
     name: '🛑 인플루언서 약관에 영입 2% 조항이 되살아난다',
     file: 'src/pages/InfluencerTermsPage.tsx',
     find: '          <li>소개비는 결제 후 환불 가능 기간(7일)이 지나야 확정되며',

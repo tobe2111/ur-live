@@ -9,6 +9,9 @@
  * ⚠️ 여기 담는 것은 **치수를 정하는 클래스뿐**이다 — 호버·포커스 같은 상태 클래스는 쉬고 있을 때의
  *    박스를 안 바꾸므로 각자 둔다(여기에 넣으면 표가 커지면서 무엇이 치수인지 흐려진다).
  */
+import { propertyTypeLabel } from './stay-property-type'
+import { parseRegionFromAddress } from './constants/region-slugs'
+
 export const STAY_HEAD = {
   /** 페이지 바탕·글자색. 루트는 이 앞에 `min-h-[100dvh]`, 뒤에 `pb-32 lg:pb-16` 을 붙인다. */
   pageBg: 'bg-warm text-gray-900 dark:text-white', // 🎨 2026-10-31 배경색 하나로(대표) → 🌙 2026-11-03 페이지 바탕(--bg). 이용권 상세가 11-02 에 카드색 → 페이지 바탕으로 옮겨 다크에서 숙소만 밝았다(대표 *"배경 색상도 지금 다르고"*). 라이트는 둘 다 흰색이라 무변화
@@ -24,10 +27,27 @@ export const STAY_HEAD = {
    * 성급 줄. ⚠️ **값이 없어도 이 div 는 그린다** — `mb-1`(4px)이 그 자리에 남아야 한다.
    * 라이브 49건 중 별점이 있는 것은 **12건**(hotel 9 · resort 3)뿐이라, 빼먹으면 37건이 4px 튄다.
    */
-  metaRow: 'flex items-center gap-2 text-[12px] text-gray-500 dark:text-gray-400 mb-1',
+  metaRow: 'mb-1 text-[13px] text-gray-500 dark:text-gray-400', // 🏨 2026-11-04 이용권 상세 머리(`PASS_HEAD.merchant`)와 같은 [유형 · 성급 · 지역] 한 줄 — 값은 `staySubLine()`(서버·화면 같은 함수)
   /** 제목(h1). 📏 2026-10-27: 폰도 24px — 이용권 상세 제목(`PASS_HEAD.h1`)과 같은 크기(대표 "통일할 건 통일"). */
   h1: 'text-[16px] leading-[1.4] font-semibold tracking-[-.02em]', // 📏 2026-11-02 이용권 상세 C안과 같이 24 → 17(숙소 제목 = 이용권 제목)
 } as const
+
+/**
+ * 🏨 2026-11-04 (대표 *"왜 기존 이용권이랑 숙소 이용권이 서로 다른거야"* → *"합쳐줘"*): 제목 위 한 줄
+ * `호텔 · 4성급 · 양양군` — 이용권 상세의 `passSubLine()`(`가게 · 종류 · 지역`)과 같은 자리·같은 크기.
+ * 종전엔 성급만 12px 로 있었다(라이브 49건 중 37건은 빈 줄). 서버 첫 화면(`stay-detail-ssr-body`)과
+ * 화면이 **같은 함수**를 쓴다 — 두 벌이면 마운트 때 그 줄이 바뀐다.
+ * 지역은 **주소가 이긴다**(`stay-address.ts` 의 24% 사례) — 주소의 시군구, 없을 때만 지역 항목.
+ */
+export function staySubLine(d: { property_type?: string | null; star_rating?: number | null; address?: string | null; region_sido?: string | null; region_sigungu?: string | null }): string {
+  const region = parseRegionFromAddress(d.address)
+  const area = region ? (region.sigungu || region.sido) : ((d.region_sigungu || '').trim() || (d.region_sido || '').trim())
+  return [
+    d.property_type ? propertyTypeLabel(d.property_type) : '',
+    Number(d.star_rating) > 0 ? `${Number(d.star_rating)}성급` : '',
+    area,
+  ].filter(Boolean).join(' · ')
+}
 
 /** 페이지 루트의 전체 클래스 — 화면과 서버가 같은 바탕에서 시작하게. */
 export const STAY_PAGE_ROOT = `min-h-[100dvh] ${STAY_HEAD.pageBg} pb-32 lg:pb-16`
