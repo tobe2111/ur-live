@@ -46,7 +46,7 @@ describe('② 서버', () => {
   })
   it('번호는 숫자만 저장, 소식 동의는 marketing 으로 기록', () => {
     expect(src).toMatch(/body\.phone\.replace\(\/\[-\\s\]\/g, ''\)/)
-    expect(src).toMatch(/recordTermsAgreements\(db, 'user', id, \[\{ doc_type: 'marketing', agreed: body\.marketing_agreed \}\]\)/)
+    expect(src).toMatch(/if \(typeof body\.marketing_agreed === 'boolean'\) await recordTermsAgreements\(db, 'user', id, \[\{ doc_type: 'marketing', agreed: body\.marketing_agreed \}\]\)/)
   })
 })
 

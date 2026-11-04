@@ -59,7 +59,7 @@ export default function PhoneRequiredGate() {
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-end justify-center ur-veil" role="dialog" aria-modal="true" aria-labelledby="phone-gate-title" data-phone-gate="">
-      <div className="w-full max-w-[480px] rounded-t-3xl bg-surface px-5 pt-6 pb-[calc(20px+env(safe-area-inset-bottom,0px))]">
+      <div className="w-full max-w-[480px] rounded-t-2xl bg-surface px-5 pt-6 pb-[calc(20px+env(safe-area-inset-bottom,0px))]">
         <h2 id="phone-gate-title" className="text-[20px] font-semibold leading-snug tracking-tight text-gray-900 dark:text-white">
           {t('phoneGate.title', { defaultValue: '알림 받을 휴대폰 번호를 알려 주세요' })}
         </h2>
@@ -79,7 +79,7 @@ export default function PhoneRequiredGate() {
             value={phone}
             onChange={(e) => setPhone(formatPhone(e.target.value))}
             onKeyDown={(e) => { if (e.key === 'Enter') void save() }}
-            className="w-full h-12 rounded-xl bg-gray-100 dark:bg-white/5 px-4 text-[16px] tabular-nums text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-brand"
+            className="w-full h-12 rounded-lg bg-gray-100 dark:bg-white/5 px-4 text-[16px] tabular-nums text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-brand"
           />
         </label>
         {phone.length >= 12 && !valid && (
@@ -95,7 +95,7 @@ export default function PhoneRequiredGate() {
         </label>
 
         <p className="mt-4 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">
-          {t('phoneGate.privacy', { defaultValue: '수집 항목 휴대폰 번호 · 목적 예약·이용 안내 · 보관 회원 탈퇴 시까지.' })}{' '}
+          {t('phoneGate.privacy', { defaultValue: '번호는 예약·이용 안내에만 쓰고, 탈퇴하면 지워요.' })}{' '}
           <Link to="/privacy" className="underline">{t('phoneGate.privacyLink', { defaultValue: '개인정보처리방침' })}</Link>
         </p>
 
@@ -103,7 +103,7 @@ export default function PhoneRequiredGate() {
           type="button"
           onClick={() => void save()}
           disabled={!valid || saving}
-          className="mt-5 w-full h-[52px] rounded-xl bg-brand text-white text-[15px] font-semibold disabled:opacity-40 active:opacity-80"
+          className="mt-5 w-full h-[52px] rounded-full bg-brand text-white text-[15px] font-semibold disabled:opacity-40 active:opacity-80"
         >
           {saving ? t('phoneGate.saving', { defaultValue: '저장하는 중…' }) : t('phoneGate.submit', { defaultValue: '확인' })}
         </button>
