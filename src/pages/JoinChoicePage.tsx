@@ -9,6 +9,7 @@
  * - 아래 **사업자라면**: 내 가게 이용권 팔기(`/store/new`) · 에이전시로 여러 매장 운영(`/agency/signup`, 이메일 계정).
  * - 🗑️ '딜 사고 소개하기' 는 뺐다 — 소개(담기)는 손님 길 안의 덤으로만 말한다(행위 2개 원칙은 그대로: 담기는 누구나).
  * - 🎨 종전엔 늘 검은 화면(`bg-[#11141C]` 고정)이었다 → 사이트 테마(화이트/다크)를 따른다.
+ * deal-card-ok: 가입 화면의 맛보기 사진 세 장(사진·할인율·이름·가격 한 줄)이지 딜 목록 카드가 아니다. 목적지는 이용권 상세 정본 `/pass/:id`.
  * 🏁 2026-06-15 원칙 유지: 손님은 따로 가입하지 않는다 — 로그인이 곧 시작이다.
  */
 
@@ -21,6 +22,7 @@ import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { usePopularPassFeed, type PopularPass } from '@/hooks/usePopularPassFeed'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
+import { canonicalDetailPath } from '@/shared/product-flow'
 
 /** 보여 줄 이용권 세 장 — 사진 있고 교환권(딜 결제) 아닌 것. 피드 순서(인기순) 그대로. */
 export function pickJoinPasses(feed: PopularPass[] | null): PopularPass[] {
@@ -64,7 +66,7 @@ export default function JoinChoicePage() {
           {passes.length === 3 && (
             <div className="mt-5 grid grid-cols-3 gap-2" data-testid="join-passes">
               {passes.map((p) => (
-                <Link key={p.id} to={`/pass/${p.id}`} className="block min-w-0 active:opacity-80">
+                <Link key={p.id} to={canonicalDetailPath(p as never) ?? `/pass/${p.id}`} className="block min-w-0 active:opacity-80">
                   <div className="aspect-square overflow-hidden rounded-xl bg-wash">
                     <img src={cfImage(p.image_url!, { width: 240 }) || p.image_url!} alt="" loading="lazy" className="h-full w-full object-cover"
                       onError={(e) => cfImageOnError(e.currentTarget, p.image_url!)} />
