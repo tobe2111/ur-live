@@ -89,7 +89,12 @@ describe('② 손님 마이 안 구역', () => {
   it('에이전시 로그인이 없으면 아무것도 안 그린다(코드도 안 받는다)', () => {
     const { container } = render(<MyAgencyZone />)
     expect(container.innerHTML).toBe('')
-    expect(code('src/pages/user-profile/MyAgencyZone.tsx')).toContain("lazy(() => import('@/pages/agency-console/AgencySection'))")
+    // 🏃 2026-11-04: 로더를 이름 붙여 꺼냈다(`warmAgencyZone` 이 첫 렌더에서 미리 부른다) — lazy 인 것은 그대로다.
+    const zone = code('src/pages/user-profile/MyAgencyZone.tsx')
+    expect(zone).toContain("export const loadAgencySection = () => import('@/pages/agency-console/AgencySection')")
+    expect(zone).toContain('const AgencySection = lazy(loadAgencySection)')
+    // 미리 받기도 에이전시 로그인이 있을 때만이다 — 손님은 그 코드를 한 바이트도 안 받는다.
+    expect(code('src/pages/user-profile/agency-doors.tsx')).toMatch(/export function warmAgencyZone\(\): void \{\s*if \(!hasAgencyLogin\(\)\) return/)
   })
 })
 

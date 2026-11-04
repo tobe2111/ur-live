@@ -28,3 +28,38 @@
 - 프로파일의 `(program)` 1.6초(파싱·스타일·레이아웃)는 그대로다. 마이 화면 자체 크기가 원인이라 다음 후보.
 - 하네스의 커밋 계측은 첫 판에서 손대지 않은 형제 fiber 까지 셌다(과대) — 판정은 CPU 시간으로 했다.
 - 실제 폰·한국 회선 체감은 로그인 필요라 못 쟀다 → 대표 확인 대기.
+
+## ✅ 1차 머지 — PR #2191 `d852e2b6` (E3 배포까지. 폰 체감 E4 는 대표 확인 대기)
+
+## 2차 (대표 *"마이페이지도 리스터코퍼레이션 에이전시 명 그 부분이나 몇몇 부분만 유독 늦게 떠. 다른 페이지들도 다 봐줘. 손님 페이지들. 데이터가 느리고, 유저가 갑자기 많이 들어와도"* → *"가장 이상적인 최적화를 해줘"*)
+
+서비스: 유어딜(소비자) · 에이전시 구역(마이 안) · 머니 경로 없음 · 롤백 revert.
+
+### A. 마이 에이전시 구역 — 4단 줄서기 → 첫 렌더에 한꺼번에 출발
+종전: 마이 그림 → 에이전시 화면 코드(lazy) → `/me·/staff·/payouts` → 매장 판 코드 → `/stores·/notifications`.
+→ `warmAgencyZone()`(agency-doors) 가 마이 첫 렌더에서 코드 4조각 + 조회 5건을 출발. `agencyRequest` 는 같은 GET 을
+처음 부를 때 한 번만 그 응답을 쓴다(같은 토큰 · 10초 · POST 제외). 에이전시 로그인이 없으면 아무것도 안 받는다.
+가드 `agency-warm-2026-11-04.test.ts`. 앵커 재조준 2건(`agency-in-my`·`my-agency-merged` — lazy 선언 모양만 바뀜).
+⚠️ 에이전시 이름(제목)은 여전히 '내 가게' 좌석 응답을 기다린다(`storeCount>0` 조건) — 첫 방문만. 재방문은 1차의 좌석 기억으로 즉시.
+
+### B. 손님 페이지 전수 — **`CDN-Cache-Control` 은 아무것도 캐시하지 않는다**
+라이브 실측: 모든 API 응답이 `cf-cache-status: DYNAMIC`(Pages Functions). 원본을 막는 것은 코드 안 `publicCache`/`edgeCache` 뿐이고,
+헤더만 붙인 공개 API **12곳**이 같은 URL 세 번에 세 번 다 원본이었다(사람이 몰리면 그대로 D1·KV 직행):
+`promo-bar`(모든 페이지) · `feature-flags` 둘(매 요청 KV 목록 전체) · `seeding/offer/:id`(이용권 상세마다) · `seeding/open` ·
+`consumer-settings`(지도) · 유어샵 `sns-posts`(index.ts app.use) · `region/label` · `regions` · `public/new-openings` ·
+`public/area-report` · `home-service/deal-subcats` → 전부 `publicCache`. 핸들러가 로그인 정보를 안 읽는 것을 하나씩 확인.
+가드 `public-edge-cache-real-2026-11-04.test.ts`(고친 12곳 + "헤더만 캐시" 공개 GET 신규 0 래칫, 기준선 13).
+잠금 파일(`public-utility.routes.ts`) 추가 기록: `docs/locks/loading/2026-11-04-public-cache-real.md`.
+
+### 측정했지만 고칠 게 아니었던 것
+- 손님 화면 HTML: 서버 안 처리 **18~62ms**(`Server-Timing`) — 0.2~1.6초 들쭉날쭉은 측정 회선(IAD 경유) 몫.
+- 홈·교환권·이용권 상세·유어샵·숙소·지도·유어쇼츠의 주요 API 는 이미 `*-HIT`.
+- `region/resolve`(GPS 동네 찾기 1.3초)는 사용자가 버튼을 누를 때만 · 좌표마다 달라 캐시 효과 작음 → 그대로.
+
+### 이번에 틀렸던 판단
+- 첫 측정기가 "첫 요청 직후 바로 두 번째" 를 보내 캐시 저장(waitUntil)이 끝나기 전에 물었다 → `search/popular` 등을 캐시 없음으로 오판.
+  간격을 두고 세 번째로 판정하니 HIT. **캐시 판정은 세 번 · 간격을 두고.**
+- `map-clusters` NONE 은 bbox 없는 400 응답이었다(2xx 만 캐시) — 잘못된 URL 로 잰 것.
+
+### 남은 것
+- `/store/scan`(사장님 계산대) 실사용 LCP 5.2초(표본 1) — 손님 화면 밖이라 이번 범위 밖. 다음 후보.

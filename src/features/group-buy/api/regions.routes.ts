@@ -28,6 +28,7 @@ import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import { demoSlugSql } from '@/shared/constants/demo-products'
 import { REGION_COUNT_INCLUDE_DEMO } from '@/shared/feature-flags'
 import { mainScopeFor } from '@/worker/utils/consumer-scope'
+import { publicCache } from '../../../worker/middleware/edge-cache'
 import {
   parseRegionFromAddress,
   REGION_INDEX_MIN_DEALS,
@@ -96,7 +97,7 @@ export async function computeRegionStats(env: Env): Promise<SidoStat[]> {
 }
 
 // GET /api/regions — 지역별 활성 딜 집계(공개)
-regionsRoutes.get('/', async (c) => {
+regionsRoutes.get('/', publicCache(300), async (c) => {
   try {
     // 상품 등록/마감이 분 단위로 바뀌지 않는 집계 — 10분 캐시로 D1 왕복을 줄인다.
     // 🔑 캐시 키에 데모 포함 여부를 넣는다 — 안 넣으면 플래그를 되돌려도 최대 10분간

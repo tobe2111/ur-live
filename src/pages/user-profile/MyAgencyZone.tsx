@@ -18,7 +18,9 @@ export { hasAgencyLogin }
  *   이 카카오 계정과 이어진 에이전시가 있는지 **한 탭에 한 번** 묻는다(첫 화면을 다 그린 뒤). 있으면 그 자리에서
  *   로그인해 구역을 연다 — 카카오로 들어온 사람이 에이전시 로그인을 따로 할 일이 없다.
  */
-const AgencySection = lazy(() => import('@/pages/agency-console/AgencySection'))
+/** 🏃 마이 첫 렌더에서 미리 부르는 같은 함수(`warmAgencyZone`) — import() 는 한 번만 받는다. */
+export const loadAgencySection = () => import('@/pages/agency-console/AgencySection')
+const AgencySection = lazy(loadAgencySection)
 
 /** ⚠️ 짝: `pages/agency-console/agency-kakao-client.ts` `KAKAO_AGENCY_PROBE_KEY` — 시험이 대조한다. */
 const KAKAO_PROBE_KEY_MIRROR = 'ur_agency_kakao_probe'

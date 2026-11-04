@@ -1541,6 +1541,7 @@ app.use('/api/sellers/*/public', publicCache(60), cacheControl(60));        // �
 //   edgeCache(bypassIfAuthed:true): 인증(소유자/세션) 요청은 캐시 우회 → 핸들러의 owner-aware 헤더(owner=no-store, 익명=max-age60+CDN900)가 그대로 적용.
 //   익명 방문자 + SSR self-fetch(무인증) + cron prewarm 은 그대로 caches.default 캐싱 → SSR 0-RTT/CDN 분리/KV-false 전부 불변(익명 경로 byte-동일).
 app.use('/api/curator/:handle', edgeCache(300));    // 유어샵 — 소유자/인증 bypass→fresh, 익명/SSR/cron 만 edge 캐싱
+app.use('/api/curator/:handle/sns-posts', publicCache(600)); // 🌊 2026-11-04 — 핸들러의 CDN-Cache-Control 만으로는 캐시되지 않았다(DYNAMIC · 라이브 실측). 유어샵마다 D1+외부 API 직행이던 것
 app.use('/api/sections', publicCache(120), cacheControl(120));              // 홈 섹션 2min (변동 적음)
 app.use('/api/seller-tiers', publicCache(300), cacheControl(300));          // 셀러 등급 5min (거의 안 변함)
 app.use('/api/blog/public', publicCache(180), cacheControl(180));           // 📝 2026-07-01 블로그 목록(exact) — 목록 SSR 0-RTT edge-hit + prewarm 대상. `/*`(아래)는 상세만 매칭

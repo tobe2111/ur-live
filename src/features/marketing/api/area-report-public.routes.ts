@@ -9,6 +9,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { ensureProspectSchema } from './store-prospects'
+import { publicCache } from '../../../worker/middleware/edge-cache'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -19,7 +20,7 @@ const ymdDaysAgo = (days: number): string => {
 }
 
 // GET /api/public/area-report?region=서초구 — region 없으면 지역 목록만(선택 화면용).
-app.get('/', async (c) => {
+app.get('/', publicCache(300), async (c) => {
   await ensureProspectSchema(adsLeadsDb(c.env))
   const region = (c.req.query('region') || '').trim().slice(0, 20)
   const cut90 = ymdDaysAgo(90)

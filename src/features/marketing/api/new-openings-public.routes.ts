@@ -11,12 +11,13 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { intParam } from '@/shared/pagination'
 import { ensureProspectSchema } from './store-prospects'
+import { publicCache } from '../../../worker/middleware/edge-cache'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 const app = new Hono<{ Bindings: Env }>()
 
 // GET /api/public/new-openings?region=&days=30&limit=60
-app.get('/', async (c) => {
+app.get('/', publicCache(300), async (c) => {
   await ensureProspectSchema(adsLeadsDb(c.env))
   const days = Math.min(60, Math.max(3, intParam(c.req.query('days'), 30)))
   const limit = Math.min(120, Math.max(6, intParam(c.req.query('limit'), 60)))

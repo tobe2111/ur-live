@@ -10,6 +10,7 @@ import { Hono } from 'hono'
 import { requireAuth, requireAdmin, getCurrentUser } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import type { Env } from '../types/env'
+import { publicCache } from '../middleware/edge-cache'
 import { fetchRegion, guCodeOf } from '../utils/kakao-region'
 
 const _ensuredUserRegions = new WeakSet<D1Database>()
@@ -109,7 +110,7 @@ publicRegionRoutes.get('/resolve', rateLimit({ action: 'region_resolve', max: 20
 // 🏙️ 2026-07-04 (상권관 랜딩 — B2G 상권 패키지): 지역코드 → 표시명 해석. 카카오 호출 없이
 //   이미 태깅된 product_regions 에서 조회(시군구 5자리 prefix / 행정동 10자리 모두 지원).
 //   공개·불변성 높은 데이터라 엣지 캐시. 데이터 없으면 null(페이지가 '우리 동네' 폴백).
-publicRegionRoutes.get('/label', async (c) => {
+publicRegionRoutes.get('/label', publicCache(1200), async (c) => {
   const code = String(c.req.query('code') || '').trim()
   if (!/^\d{5,12}$/.test(code)) return c.json({ success: false, error: '지역 코드는 숫자 5~12자리' }, 400)
   const row = await c.env.DB.prepare(
