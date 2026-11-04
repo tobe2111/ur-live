@@ -25,6 +25,13 @@ describe('숙소 소개 적립 통일', () => {
     expect(mod).toContain("SELECT 1 AS x FROM influencer_attributions WHERE order_id = ? AND influencer_id = ?") // 멱등
     expect(mod).not.toContain('platform_settings') // 스위치를 다시 심지 않는다
   })
+  it('①-b 실제 숙소 결제 경로(/stays/bookings/confirm)에서 적립 — 2026-11-04 (11-03 엔 payment.routes 에만 있어 이 길에선 0)', () => {
+    const pub = read('src/features/group-buy/api/stays-public.routes.ts')
+    const confirm = pub.slice(pub.indexOf("staysPublicRoutes.post('/stays/bookings/confirm'"))
+    expect(confirm).toContain("await (await import('./stay-referral')).creditStayReferral(c.env.DB, { orderId,")
+    expect(confirm).toContain("if (rb?.referrer_id && !(Number(rb.influencer_commission_amount) > 0))")
+    expect(read('src/pages/checkout/StayCheckout.tsx')).toContain('/stays/checkout-return?order_id=') // 그 길이 실제로 쓰인다
+  })
   it('② 역전 세 곳', () => {
     const pub = read('src/features/group-buy/api/stays-public.routes.ts')
     expect(pub).toContain("clawbackStayReferral(c.env.DB, { orderId: Number(orderId), bookingId: 0, full: true, reason: 'stay_overbooked' })")

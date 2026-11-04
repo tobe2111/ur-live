@@ -49,3 +49,5 @@
 - 🩸 **틀렸던 판단**: 대표께 *"결제 뒤(지갑 QR·정산·환불)는 10월에 통일돼 같다"* 고 보고했는데, 그 게이트(`stay_voucher_unify_enabled`)는 **한 번도 켜진 적이 없었다**(설정 행 0). 숙소 결제는 지갑 QR 이 안 생겼다. 대표 *"합쳐줘"* 로 게이트 제거 — 언제나 발급. 배포 뒤 첫 숙소 결제를 S-STAYV 로 확인.
 - 다음: 상세 화면 하나로 합치기(StayDetailPage → 이용권 상세 + 날짜·객실 모듈). 대표 *"합쳐줘"*.
 - 🛠️ 숙소 **수정**도 하나로(대표 *"응 합쳐줘"*): 옛 `SellerStayDetailPage` → `seller-product-edit/StayManagePanel.tsx`(+`StayCalendarTab.tsx`). 이용권 수정 화면이 숙소면 아래에 '숙소 관리'(객실·달력·체크인/정책). `/seller/stays/:id` → `/seller/products/:id/edit` 리다이렉트.
+- 🩸 **2026-11-04 틀렸던 판단(머니)**: 11-03 ③에서 숙소 소개 적립을 `payment.routes` 의 결제 확정 루프에 붙였는데, **실제 숙소 결제는 그 길을 안 지난다** — `StayCheckout` → `/stays/checkout-return` → `POST /api/group-buy/stays/bookings/confirm`(stays-public). 그 길엔 옛 적립조차 없었다(숙소 소개 적립은 원래부터 0). 실결제 0건이라 손해 0. 실제 경로에 `creditStayReferral` 을 붙였다. ⇒ **확정 경로가 둘인 흐름은 화면에서부터 따라가 실제 길을 찾을 것**(경로 이름이 "결제 확정" 이라고 그게 쓰이는 길은 아니다).
+- 숙소 상세에 이용권 상세와 같은 기록 추가: 조회수 비컨 · 최근 본 · 구매 흐름(조회·성공) · 결제 뒤 내 이용권 새로고침.

@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-04",
+  "reason": "guestMy +1.6KB 는 main 의 #2147·#2168(손님 화면 2차·모션) 합산분 — 이 PR 변경 아님. 둘 다 머지된 뒤 main 자체가 예산을 넘어 모든 PR 이 막혀 기준을 옮긴다(stayDetail 은 이 PR 에서 동적 import 로 218.8 유지)",
+  "surfaces": [
+    "guestMy"
+  ],
+  "changes": [
+    "guestMy: 190.7 → 192.3 KB (+1.6, 허용 1.5) · 늘어난 것: GuestDock.js +2.4, guest-motion.js +0.8, lz-gbDetail-map.js +0.7"
+  ]
+}

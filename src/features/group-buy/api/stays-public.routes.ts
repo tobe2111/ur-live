@@ -1085,11 +1085,11 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
       ),
     ]).catch(() => { /* noop — 멱등 체크(payment_status)로 재시도 가능 */ })
 
-    // 🏡 2026-10-25 숙소=이용권 통일 — 확정된 예약마다 이용권 1장(지갑 QR·스캔·원장). 게이트 OFF 면 no-op.
-    await (await import('./stay-voucher-unify')).issueStayVouchers(c.env.DB, { orderId, userId, bookingIds: claimed.map((b) => b.id) })
+    await (await import('./stay-voucher-unify')).issueStayVouchers(c.env.DB, { orderId, userId, bookingIds: claimed.map((b) => b.id) }) // 🏡 확정된 예약마다 지갑 이용권 1장(2026-11-03 스위치 제거)
+    // 🏨 2026-11-04 소개 적립 = 이용권 장부 — **실제 숙소 결제가 지나가는 길은 여기다**(StayCheckout → /stays/checkout-return). 11-03 엔 payment.routes 쪽에만 붙여 이 길에선 적립이 0 이었다. 옛 금액이 있는 예약은 건너뛴다(이중 적립 0).
+    try { const rb = await c.env.DB.prepare(`SELECT b.referrer_id, b.influencer_commission_amount, b.seller_id, b.product_id, o.order_number FROM stay_bookings b JOIN orders o ON o.id = b.order_id WHERE b.order_id = ? AND b.referrer_id IS NOT NULL ORDER BY b.id LIMIT 1`).bind(orderId).first<{ referrer_id: string | number; influencer_commission_amount: number | null; seller_id: number; product_id: number; order_number: string | null }>(); if (rb?.referrer_id && !(Number(rb.influencer_commission_amount) > 0)) await (await import('./stay-referral')).creditStayReferral(c.env.DB, { orderId, orderNumber: String(rb.order_number || ''), referrerId: String(rb.referrer_id), userId: String(userId), sellerId: Number(rb.seller_id), productId: Number(rb.product_id), productName: `숙소 #${rb.product_id}`, totalAmount: Number(order.total_amount) }) } catch (e) { if (import.meta.env?.DEV) console.warn('[stay-referral] credit failed', e) }
 
-    // 🏁 2026-06-12 (전 플로우 감사 🟡): 숙소 예약 확정 시 셀러 통보가 전무했음 — 벨 알림 추가
-    //   (응답 후 실행, fail-soft). 알림톡 등 확장은 셀러 알림 정책과 함께.
+    // 🏁 2026-06-12 (전 플로우 감사 🟡): 숙소 예약 확정 시 셀러 통보가 전무했음 — 벨 알림 추가(응답 후 실행, fail-soft). 알림톡 등 확장은 셀러 알림 정책과 함께.
     const firstClaimed = claimed[0]
     const periodText = firstClaimed.check_in_date
       ? `${firstClaimed.check_in_date} ~ ${firstClaimed.check_out_date}`
