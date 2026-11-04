@@ -92,3 +92,14 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 ### 틀렸던 판단
 - 2차에서 에이전시 미리받기 코드를 "의존성 없는 작은 모듈"에 넣은 것 — 그 모듈이 모든 화면 공용 묶음(app-utils)에 있어 손님 전원이 받았다.
 - 실행 중 git 기록을 `reset --soft HEAD~1` 로 꼬았다(머지 커밋을 날림) → reflog 로 복구, 패치로 다시 적용.
+
+## ✅ 3차 머지 — PR #2193 `67d33548` (E3)
+
+## 4차 (대표 *"또 더 최적화해 대기업급으로 해야해"*)
+- 내 이용권 `/vouchers/my`: 이용권·KT·선물 세 조회 한 물결 — [UNLOCK_LOADING] 대표 *"허가 — 고쳐줘"* (`docs/locks/loading/2026-11-04-vouchers-my-one-wave.md`).
+  `voucher-gift.ts` 를 `loadGiftState`(조회) + `applyGiftState`(표시) 로 분리, `withGiftState` 계약 유지.
+- 사장님 주문 목록 `/seller/orders`: 8 → 3 왕복(개수 같은 물결 · 부가정보 4단 → 2물결).
+- 에이전시 `/me`: 가드가 같은 JOIN 으로 표시 칸까지 싣고 `/me` 는 재조회 안 함(2 → 1).
+- 가드 `serial-waves-round4-2026-11-04.test.ts`.
+- 남은 후보: 에이전시 `/staff`·`/stores`·`/notifications`(가드 + 본 조회 직렬 — 미들웨어 구조라 이득 1왕복씩) · `my-stores/summary` 서브쿼리(2→1, 사장님 매출이라 신중) ·
+  한국 연결(ICN) 유료 옵션 결재 문서.
