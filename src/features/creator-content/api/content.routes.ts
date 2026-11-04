@@ -22,7 +22,7 @@ import { requireAdmin, requireSeller, getCurrentUser } from '../../../worker/mid
 import { publicCache } from '../../../worker/middleware/edge-cache'
 import { safeError } from '../../../worker/utils/safe-error'
 import {
-  parseContentUrl, kindOf, sortForCustomer, youtubeThumb,
+  parseContentUrl, kindOf, sortForCustomer, youtubeThumb, isStoreOwnPost, MAX_POSTS_PER_AUTHOR,
   type ContentItem, type ContentPlatform, type PinPerson,
 } from '../../../shared/creator-content'
 import { ensureCreatorContentTables, loadProductStore, HIDE_REF, type ProductStore } from './content-db'
@@ -131,9 +131,20 @@ creatorContentPublicRoutes.get('/:productId', publicCache(600), async (c) => {
       loadUrdealPeople(DB, s),
       hiddenRefs(DB, s.store_key),
     ])
+    // 🏪 자동으로 들어온 글은 손님에게 가기 전에 한 번 더 거른다 — 가게 자기 글 제외 · 한 사람 2개까지.
+    //   사장님·어드민이 직접 넣은 글(source owner/admin)은 그 사람이 고른 것이라 그대로 둔다.
+    const perAuthor = new Map<string, number>()
+    const curated = rows.filter((r) => {
+      if (r.source !== 'auto') return true
+      if (isStoreOwnPost(r.author_name, s.store_name ?? '')) return false
+      const k = `${r.platform}:${(r.author_name || '').trim()}`
+      const n = (perAuthor.get(k) ?? 0) + 1
+      perAuthor.set(k, n)
+      return n <= MAX_POSTS_PER_AUTHOR
+    })
     const items = sortForCustomer([
       ...people.items.filter((i) => !hidden.has(refKeyOf(i) ?? '')),
-      ...rows.map(toItem),
+      ...curated.map(toItem),
     ])
     const pinners = people.pins.filter((p) => !hidden.has(`${HIDE_REF.pin}:${p.user_id}`))
     return c.json({ success: true, data: { items, pinners } })

@@ -4,7 +4,7 @@
  * 영상  — 위아래로 넘긴다(scroll-snap). 재생기는 **지금 보이는 한 편만** 띄운다(나머지는 썸네일) — 재생기 하나가 수백 KB.
  *         네이버 클립은 공식 재생기가 없어서 썸네일 + "네이버에서 보기".
  * 블로그 — 글을 **창 안에** 띄운다. 그 글이 다른 사이트 안에 뜨는 걸 막아 두었으면(`embeddable=false`, 수집 때 헤더로 판정)
- *         미리보기(사진·제목·요약) + "블로그에서 전체 읽기"(새 창이 아니라 **같은 화면**에서 넘어간다 → 뒤로 가기로 돌아온다).
+ *         미리보기(사진·제목·요약) + "블로그에서 전체 읽기"(**새 창** — 같은 화면으로 넘기면 네이버의 주소 바꿔치기 때문에 뒤로 가기가 상세를 건너뛴다).
  * 둘 다 아래에 **구매 바**가 붙는다 — 보다가 바로 산다.
  *
  * 🔴 iframe 은 각 플랫폼 공식 주소만(`embedUrl`) — CSP `frame-src` 에 그 호스트만 열어 두었다(worker/index.ts).
@@ -78,8 +78,8 @@ function BlogBody({ item }: { item: ContentItem }) {
       <h3 className="mt-3 text-[20px] font-semibold leading-snug text-gray-900 dark:text-white">{item.title || '블로그 글'}</h3>
       <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{[item.author_name, date, item.sponsored ? '협찬' : null].filter(Boolean).join(', ')}</p>
       {item.summary && <p className="mt-3 text-[15px] leading-relaxed text-gray-600 dark:text-gray-300">{item.summary}</p>}
-      {/* 같은 화면에서 넘어간다(target 없음) — 폰의 뒤로 가기로 상세에 돌아온다. */}
-      <a href={full} className="mt-5 flex items-center justify-center gap-1 rounded-xl border border-rule py-3 text-[15px] font-medium text-gray-900 dark:text-white">
+      {/* 새 창 — 닫으면 상세가 그대로 남는다(같은 화면이면 뒤로 가기가 상세를 건너뛴다). */}
+      <a href={full} target="_blank" rel="noopener noreferrer" className="mt-5 flex items-center justify-center gap-1 rounded-xl border border-rule py-3 text-[15px] font-medium text-gray-900 dark:text-white">
         블로그에서 전체 읽기 <ChevronRight className="h-4 w-4" />
       </a>
     </div>

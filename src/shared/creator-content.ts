@@ -159,6 +159,21 @@ export function looksSponsored(text: string): boolean {
   return /(협찬|원고료|체험단|제공받아|제공 받아|소정의|광고)/.test(text)
 }
 
+/**
+ * 🏪 **가게가 직접 쓴 글인가** (2026-11-04 대표 *"매장이 직접 입력한거네 인플루언서가 아니라"*).
+ * 블로그·채널 이름에 가게 핵심 이름이 들어 있으면 가게 계정이다(실측: APM휘트니스 수원점 블로그의 운영 안내·운동 팁 15건).
+ * "다녀온 사람들" 은 **남이 써 준 이야기**만 — 가게 글이 섞이면 칸 전체를 안 믿게 된다.
+ */
+export function isStoreOwnPost(authorName: string | null | undefined, storeName: string): boolean {
+  const core = coreStoreName(storeName)
+  const a = normStoreName(authorName)
+  if (core.length < 3 || a.length < 2) return false
+  return a.includes(core) || (a.length >= 3 && core.includes(a))
+}
+
+/** 한 사람 글은 가게당 이만큼만 손님에게 — 한 블로거가 칸을 채우지 않게. */
+export const MAX_POSTS_PER_AUTHOR = 2
+
 /* ─────────────────────────── 손님 화면 정렬 ─────────────────────────── */
 
 export interface ContentItem {

@@ -9,7 +9,7 @@
  */
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Play } from 'lucide-react'
-import type { ContentItem, CreatorContentPayload } from '@/shared/creator-content'
+import { naverBlogMobileUrl, type ContentItem, type CreatorContentPayload } from '@/shared/creator-content'
 import { PlatformMark, urdealBadge } from './content-marks'
 import type { BuyInfo } from './ContentViewer'
 
@@ -46,6 +46,25 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
   const openAt = (list: ContentItem[], index: number) => {
     setOpen({ list, index })
     if (list[index]) setRead((s) => new Set(s).add(list[index].id))
+  }
+
+  /**
+   * 블로그는 **바로 그 글로** 간다(2026-11-04 대표 *"이 페이지가 굳이 안나오고 바로 블로그 봐도 될듯"*).
+   * 다른 사이트 안에 띄울 수 있는 글만 우리 창(구매 바가 붙은 iframe)으로 열고, 나머지는 **새 창**으로 네이버 글을 연다
+   * (닫으면 상세가 그대로 — 미리보기 한 장을 거치지 않는다).
+   */
+  const openBlog = (b: ContentItem) => {
+    setRead((s) => new Set(s).add(b.id))
+    // 창 안에서 넘겨 보는 목록도 띄울 수 있는 글만(막힌 글이 섞이면 미리보기 한 장이 다시 나온다).
+    if (b.embeddable) { const list = blogs.filter((x) => x.embeddable); openAt(list, Math.max(0, list.findIndex((x) => x.id === b.id))); return }
+    // 🪟 **새 창으로** 연다(2026-11-04 대표 *"블로그 보다가 나가면 이용권 상세로 나오는게 아니라 그 밖 페이지로 나가져"*).
+    //   같은 화면으로 넘기면 네이버가 열리면서 주소를 바꿔 치워(blog → m.blog → PostView) 뒤로 가기가 상세를 건너뛰고,
+    //   카카오톡 안 브라우저에선 닫기가 상세째 닫힌다. 새 창은 닫으면 상세가 그대로 남는다. 창이 막히면(null) 같은 화면으로.
+    const url = naverBlogMobileUrl(b.ext_id)
+    // ⚠️ 'noopener' 를 세 번째 인자로 주면 성공해도 null 이 돌아와 같은 화면까지 넘어간다(두 번 열림) — opener 는 직접 끊는다.
+    const w = window.open(url, '_blank')
+    if (w) w.opener = null
+    else window.location.href = url
   }
 
   return (
@@ -102,12 +121,15 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
         <ul className={`${videos.length || pinners.length ? 'mt-3 ' : 'mt-1 '}divide-y divide-rule`} data-testid="creator-blogs">
           {shownBlogs.map((b, i) => (
             <li key={b.id}>
-              <button type="button" onClick={() => openAt(blogs, i)}
+              <button type="button" onClick={() => openBlog(b)}
                 className={`flex w-full items-center gap-3 py-3 text-left active:opacity-70${read.has(b.id) ? ' bg-brand-tint' : ''}`}>
-                <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-warm">
-                  {b.thumb_url && <img src={b.thumb_url} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover"
-                    onError={(e) => { e.currentTarget.style.display = 'none' }} />}
-                </span>
+                {/* 사진이 없으면 빈 칸을 그리지 않는다(2026-11-04 대표 — 빈 사각형이 크게 보였다). */}
+                {b.thumb_url && (
+                  <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-warm">
+                    <img src={b.thumb_url} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover"
+                      onError={(e) => { const box = e.currentTarget.parentElement; if (box) box.style.display = 'none' }} />
+                  </span>
+                )}
                 <span className="min-w-0 flex-1">
                   <span className="line-clamp-2 text-[15px] font-medium leading-snug text-gray-900 dark:text-white">{b.title || '블로그 글'}</span>
                   <span className="mt-1 flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400">
