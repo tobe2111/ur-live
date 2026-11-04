@@ -60,6 +60,6 @@ describe('④ 한국 손님의 DB 답 지역 표본', () => {
     expect(D1_SAMPLE_PAGE.test('d1:replica:APAC@hkg')).toBe(false)
   })
   it('홈 섹션이 Server-Timing 으로 내보낸다', () => {
-    expect(code('src/features/sections/api/sections.routes.ts')).toContain("c.header('Server-Timing', `d1;desc=\"${d1Served}\"`, { append: true })")
+    expect(code('src/features/sections/api/sections.routes.ts')).toContain("if (d1Served) c.header('Server-Timing', `d1;desc=\"${d1Served}\"`, { append: true });")
   })
 })
