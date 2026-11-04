@@ -20,6 +20,8 @@ export interface UserProfile {
   avatar_url?: string | null
   role?: string
   profileImage?: string | null
+  /** 📞 2026-11-04 새 가입자인데 번호가 없다 — `PhoneRequiredGate` 가 번호 입력 창을 띄운다(판정은 서버). */
+  phone_required?: boolean
 }
 
 /**

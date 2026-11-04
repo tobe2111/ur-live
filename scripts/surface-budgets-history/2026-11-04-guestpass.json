@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-04",
+  "reason": "guestPass +2.4KB: 대표 2026-11-04 '이용권 페이지 모션그래픽 제대로 넣어줘' — 사용 시연(QR 떠오름)·1·2·3 막대 CSS + 형광펜용 guest-motion 공용 모듈(유어샵·마이 탭이 이미 쓰는 한 벌 재사용)",
+  "surfaces": [
+    "guestPass"
+  ],
+  "changes": [
+    "guestPass: 188.3 → 190.7 KB (+2.4, 허용 1.5) · 늘어난 것: guest-motion.js +2.9, GuestPassPage.js +1.5"
+  ]
+}

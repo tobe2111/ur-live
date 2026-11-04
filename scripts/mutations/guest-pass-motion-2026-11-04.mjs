@@ -14,10 +14,10 @@ export default [
   {
     name: '이용권모션 — 표식이 서버와 같이 쓰는 클래스에서 빠진다',
     file: 'src/shared/guest-page.ts',
-    find: "ticketQr: 'ur-gp-qr shrink-0",
-    replace: "ticketQr: 'shrink-0",
+    find: "walletUse: 'ur-gp-use shrink-0",
+    replace: "walletUse: 'shrink-0",
     test: T,
-    why: 'QR 스캔 줄이 조용히 사라진다(에러 없음).',
+    why: '[사용] 물결이 조용히 사라진다(에러 없음).',
   },
   {
     name: '이용권모션 — 예시가 화면에 들어와도 안 켜진다',
@@ -34,5 +34,21 @@ export default [
     replace: '',
     test: T,
     why: '움직임을 끈 사람에게 예시 이용권이 통째로 안 보인다.',
+  },
+  {
+    name: '이용권모션 — 사용 시연의 QR 이 안 떠오른다',
+    file: 'src/pages/guest/GuestPassPage.tsx',
+    find: 'animation: ur-gp-qrpop 5s',
+    replace: 'animation: none; --x: ur-gp-qrpop 5s',
+    test: T,
+    why: '"누르면 QR" 시연이 알약만 눌리고 아무것도 안 나온다.',
+  },
+  {
+    name: '이용권모션 — 헤드라인 형광펜을 안 켠다',
+    file: 'src/pages/guest/GuestPassPage.tsx',
+    find: '  useGuestMotion(rootRef) //',
+    replace: '  //',
+    test: T,
+    why: "'더 싸요' 칸은 있는데 형광펜이 영영 안 그어진다.",
   },
 ]

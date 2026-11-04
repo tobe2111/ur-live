@@ -15,7 +15,7 @@
  * ## 그리지 않는 것
  * 아이콘·마스코트 그림 — 같은 크기의 빈 칸만(두 벌 금지). 카카오 말풍선은 같은 path 상수라 그대로 그린다.
  */
-import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT, GUEST_QR_PATH, KAKAO_BUBBLE_PATH } from '../../shared/guest-page'
+import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT, GUEST_CLOCK, KAKAO_BUBBLE_PATH } from '../../shared/guest-page'
 
 export type GuestTab = 'pass' | 'shop' | 'my'
 
@@ -41,18 +41,20 @@ const steps = (list: ReadonlyArray<readonly [string, string]>) =>
   `<ol class="${GUEST_CLS.steps}">${list.map(([a, b], i) =>
     `<li class="${GUEST_CLS.step}"><span class="${GUEST_CLS.stepNum}">${i + 1}</span><span class="${GUEST_CLS.stepText}">${esc(a)}<br>${esc(b)}</span></li>`).join('')}</ol>`
 
-/** 티켓 미리보기 — `GuestTicket` 과 같은 모양(고정 그림이라 데이터가 없어도 그린다). */
+/** 지갑 미리보기 — `GuestTicket` 과 같은 모양(예시 두 장 · 고정 그림이라 데이터가 없어도 그린다). */
 function ticket(): string {
-  const t = GUEST_COPY.pass.ticket
-  return `<div class="${GUEST_CLS.ticket}" aria-hidden="true"><div class="${GUEST_CLS.ticketBand}"><span class="${GUEST_CLS.ticketBandTitle}">${esc(t.band)}</span><span class="${GUEST_CLS.ticketBandState}">${esc(t.state)}</span></div>` +
-    `<div class="${GUEST_CLS.ticketBody}"><span class="${GUEST_CLS.ticketQr}"><svg viewBox="0 0 21 21" width="100%" height="100%" shape-rendering="crispEdges"><path fill="currentColor" d="${GUEST_QR_PATH}"></path></svg></span>` +
-    `<span class="${GUEST_CLS.ticketText}"><span class="${GUEST_CLS.ticketLine1}">${esc(t.line1)}</span><span class="${GUEST_CLS.ticketLine2}">${esc(t.line2)}</span></span></div></div>`
+  const c = GUEST_COPY.pass
+  const clock = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="${GUEST_CLS.walletClock}"><circle cx="${GUEST_CLOCK.circle.cx}" cy="${GUEST_CLOCK.circle.cy}" r="${GUEST_CLOCK.circle.r}"></circle><path d="${GUEST_CLOCK.path}"></path></svg>`
+  return `<div class="${GUEST_CLS.ticket}" aria-hidden="true">` + c.wallet.map((w) =>
+    `<div class="${GUEST_CLS.walletRow}"><span class="${GUEST_CLS.walletThumb}"><img src="${esc(w.img)}" alt="" width="56" height="56" decoding="async" class="${GUEST_CLS.walletImg}"></span>` +
+    `<span class="${GUEST_CLS.walletText}"><span class="${GUEST_CLS.walletStore}">${esc(w.store)}</span><span class="${GUEST_CLS.walletName}">${esc(w.name)}</span>` +
+    `<span class="${GUEST_CLS.walletDue}">${clock}${esc(w.due)}</span></span><span class="${GUEST_CLS.walletUse}">${esc(c.use)}</span></div>`).join('') + `</div>`
 }
 
 function passBody(): string {
   const c = GUEST_COPY.pass
   return `<h1 class="${GUEST_CLS.title}">${esc(c.title)}</h1>` +
-    `<section class="${GUEST_CLS.hero}" data-guest="pass"><h2 class="${GUEST_CLS.headline}">${esc(c.headline1)}<br>${esc(c.headline2)}</h2>` +
+    `<section class="${GUEST_CLS.hero}" data-guest="pass"><h2 class="${GUEST_CLS.headline}">${esc(c.headline1)}<br>${markHtml(c.headline2, c.headline2Mark)}</h2>` +
     `<p class="${GUEST_CLS.sub}">${esc(c.sub)}</p>${ticket()}${steps(c.steps)}</section>` + dock()
 }
 
