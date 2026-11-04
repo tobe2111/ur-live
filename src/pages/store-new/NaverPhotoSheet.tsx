@@ -33,8 +33,8 @@ export default function NaverPhotoSheet({ baseQuery, room, onClose, onAdd }: Pro
   const toggle = (u: string) => setPicked((p) => (p.includes(u) ? p.filter((x) => x !== u) : p.length >= room ? p : [...p, u]))
 
   return (
-    <div className="fixed inset-0 z-[10500] flex items-end justify-center bg-black/50" onClick={onClose} role="dialog" aria-modal="true" aria-label="네이버에서 찾은 사진">
-      <div className="w-full max-w-[480px] h-[85dvh] rounded-t-2xl bg-white dark:bg-surface text-gray-900 dark:text-white shadow-lift flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[10500] flex items-end justify-center ur-veil p-2" onClick={onClose} role="dialog" aria-modal="true" aria-label="네이버에서 찾은 사진">
+      <div className="ur-glass-solid ur-pop-sheet w-full max-w-[480px] h-[85dvh] text-gray-900 dark:text-white flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-center pt-2"><span className="w-9 h-1 rounded-full bg-line" /></div>
         <div className="px-5 pt-4 flex items-start justify-between">
           <div className="min-w-0">
@@ -43,7 +43,7 @@ export default function NaverPhotoSheet({ baseQuery, room, onClose, onAdd }: Pro
           </div>
           <button type="button" onClick={onClose} aria-label="닫기" className="w-10 h-10 -mr-2 -mt-2 flex items-center justify-center"><X size={20} strokeWidth={1.6} /></button>
         </div>
-        <label className="mx-5 mt-4 h-11 rounded-xl border-[1.5px] border-line focus-within:border-brand flex items-center gap-2 px-3">
+        <label className="mx-5 mt-5 h-11 rounded-xl border-[1.5px] border-line focus-within:border-brand flex items-center gap-2 px-3">
           <Search size={18} strokeWidth={1.6} className="text-ink-soft" aria-hidden="true" />
           <span className="sr-only">다른 검색어</span>
           <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="다른 검색어 (예: 대표 메뉴 이름)"
