@@ -9,7 +9,7 @@
  */
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Play } from 'lucide-react'
-import type { ContentItem, CreatorContentPayload } from '@/shared/creator-content'
+import { naverBlogMobileUrl, type ContentItem, type CreatorContentPayload } from '@/shared/creator-content'
 import { PlatformMark, urdealBadge } from './content-marks'
 import type { BuyInfo } from './ContentViewer'
 
@@ -46,6 +46,18 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
   const openAt = (list: ContentItem[], index: number) => {
     setOpen({ list, index })
     if (list[index]) setRead((s) => new Set(s).add(list[index].id))
+  }
+
+  /**
+   * 블로그는 **바로 그 글로** 간다(2026-11-04 대표 *"이 페이지가 굳이 안나오고 바로 블로그 봐도 될듯"*).
+   * 다른 사이트 안에 띄울 수 있는 글만 우리 창(구매 바가 붙은 iframe)으로 열고, 나머지는 같은 화면에서 네이버로 넘어간다
+   * (뒤로 가기로 상세에 돌아온다 — 미리보기 한 장을 거치지 않는다).
+   */
+  const openBlog = (b: ContentItem) => {
+    setRead((s) => new Set(s).add(b.id))
+    // 창 안에서 넘겨 보는 목록도 띄울 수 있는 글만(막힌 글이 섞이면 미리보기 한 장이 다시 나온다).
+    if (b.embeddable) { const list = blogs.filter((x) => x.embeddable); openAt(list, Math.max(0, list.findIndex((x) => x.id === b.id))); return }
+    window.location.href = naverBlogMobileUrl(b.ext_id)
   }
 
   return (
@@ -102,12 +114,15 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
         <ul className={`${videos.length || pinners.length ? 'mt-3 ' : 'mt-1 '}divide-y divide-rule`} data-testid="creator-blogs">
           {shownBlogs.map((b, i) => (
             <li key={b.id}>
-              <button type="button" onClick={() => openAt(blogs, i)}
+              <button type="button" onClick={() => openBlog(b)}
                 className={`flex w-full items-center gap-3 py-3 text-left active:opacity-70${read.has(b.id) ? ' bg-brand-tint' : ''}`}>
-                <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-warm">
-                  {b.thumb_url && <img src={b.thumb_url} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover"
-                    onError={(e) => { e.currentTarget.style.display = 'none' }} />}
-                </span>
+                {/* 사진이 없으면 빈 칸을 그리지 않는다(2026-11-04 대표 — 빈 사각형이 크게 보였다). */}
+                {b.thumb_url && (
+                  <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-warm">
+                    <img src={b.thumb_url} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover"
+                      onError={(e) => { const box = e.currentTarget.parentElement; if (box) box.style.display = 'none' }} />
+                  </span>
+                )}
                 <span className="min-w-0 flex-1">
                   <span className="line-clamp-2 text-[15px] font-medium leading-snug text-gray-900 dark:text-white">{b.title || '블로그 글'}</span>
                   <span className="mt-1 flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400">

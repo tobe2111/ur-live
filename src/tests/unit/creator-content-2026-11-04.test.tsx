@@ -16,7 +16,7 @@ import { render, waitFor, fireEvent } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import {
   parseContentUrl, mentionsStore, coreStoreName, sortForCustomer, contentYtReservedUnits, readDayCount,
-  searchQueryFor, stripHtml, confidentMatch, CONTENT_YT_DAILY_SEARCHES, type ContentItem,
+  searchQueryFor, stripHtml, confidentMatch, isStoreOwnPost, CONTENT_YT_DAILY_SEARCHES, type ContentItem,
 } from '@/shared/creator-content'
 import { storeKeyFor } from '@/features/creator-content/api/content-db'
 import { pickBlogCandidates, pickVideoCandidates } from '@/features/creator-content/api/content-collect'
@@ -97,6 +97,34 @@ describe('②-b 확실한 매칭 — 이름 + 동네', () => {
   it('가게 키 — 이름 + 구(특별시 표기 차이 무시)', () => {
     expect(storeKeyFor('꾸꾸데쎄르', '서울특별시 강남구 1')).toBe(storeKeyFor('꾸꾸 데쎄르', '서울 강남구 2'))
     expect(storeKeyFor('꾸꾸데쎄르', '서울 강남구')).not.toBe(storeKeyFor('꾸꾸데쎄르', '부산 연제구'))
+  })
+})
+
+describe('②-c 가게 자기 글 — 다녀온 사람들이 아니다', () => {
+  it('블로그 이름에 가게 이름이 있으면 가게 글', () => {
+    expect(isStoreOwnPost('APM휘트니스 수원점', 'APM휘트니스 수원점')).toBe(true)
+    expect(isStoreOwnPost('APM휘트니스', 'APM휘트니스 수원점')).toBe(true)
+    expect(isStoreOwnPost('빵순이 일기', '꾸꾸데쎄르')).toBe(false)
+  })
+  it('가게 글은 이름·동네가 맞아도 자동 공개되지 않는다', () => {
+    const r = pickBlogCandidates([
+      { title: '인계동 APM휘트니스 수원점 운영 안내', link: 'https://blog.naver.com/apm_fit/223456789012', description: '인계동', bloggername: 'APM휘트니스 수원점', postdate: '20261104' },
+      { title: '인계동 APM휘트니스 수원점 PT 후기', link: 'https://blog.naver.com/someone/223456789013', description: '인계동', bloggername: '운동하는 직장인', postdate: '20261104' },
+    ], 'APM휘트니스 수원점', '경기 수원시 팔달구 인계동 1')
+    expect(r.map((x) => x.confident)).toEqual([false, true])
+  })
+  it('손님 응답 — 자동 글은 가게 글 제외 · 한 사람 2개까지', () => {
+    const routes = read('src/features/creator-content/api/content.routes.ts')
+    expect(routes).toMatch(/if \(r\.source !== 'auto'\) return true/)
+    expect(routes).toMatch(/if \(isStoreOwnPost\(r\.author_name, s\.store_name \?\? ''\)\) return false/)
+    expect(routes).toMatch(/return n <= MAX_POSTS_PER_AUTHOR/)
+  })
+  it('블로그는 바로 그 글로 · 사진 없으면 빈 칸 없음 · 상세에서 리뷰 아래', () => {
+    const row = read('src/pages/group-buy/creator-content/CreatorContentRow.tsx')
+    expect(row).toMatch(/window\.location\.href = naverBlogMobileUrl\(b\.ext_id\)/)
+    expect(row).toMatch(/\{b\.thumb_url && \(\n\s*<span className="block h-16 w-16/)
+    const page = read('src/pages/GroupBuyDetailPage.tsx')
+    expect(page.indexOf('<CreatorContentLazy')).toBeGreaterThan(page.indexOf('id="gb-sec-reviews"'))
   })
 })
 

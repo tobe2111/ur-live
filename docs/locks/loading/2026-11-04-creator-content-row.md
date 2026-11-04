@@ -11,3 +11,7 @@
 
 ## 롤백
 `GroupBuyDetailPage.tsx` 의 `CreatorContentLazy` 블록 2줄 + import 1줄 삭제.
+
+## 같은 날 후속 — 리뷰 아래로 옮김
+대표 *"리뷰 아래로 나오게 해줘"* — `CreatorContentLazy` 블록을 가격 아래에서 **리뷰 카드 다음**으로 옮겼다(잠긴 항목 불변, lazy 지문 불변).
+첫 화면에서 더 멀어졌으므로 밀림 걱정은 더 줄었다.

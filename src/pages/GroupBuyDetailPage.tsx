@@ -716,9 +716,6 @@ export default function GroupBuyDetailPage() {
         {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
         <div id="fcfs-apply-block"><FcfsApplyBlock productId={Number(id)} /></div>
         <div className={`${PASS_CARD} empty:hidden`}><SellThisCard productId={detail.id} price={detail.price} sellerId={detail.seller_id as number | null} hideForOwner={isOwnProduct} /></div>
-        {/* 🎬 2026-11-04 대표 확정 손님 2 — 다녀온 사람들(영상·블로그·유어딜 추천). 0개면 칸이 없다. 근처에 와야 받는다(첫 화면 무게 0). */}
-        <div className={PASS_CARD}><CreatorContentLazy productId={detail.id} onBuy={buyFromContent}
-          buy={{ store: detail.restaurant_name ?? null, price: unitPrice, discountPct: displayDiscountPct || null, image: galleryImages[0] ?? null }} /></div>
 
         {/* 📑 2026-11-02 대표 확정 상세 **C안**: 폰도 구역 탭(PC 탭과 같은 구역 id). 머리줄 밑에 붙어 따라온다. */}
         <DetailSectionTabs tabs={mobileTabs} />
@@ -796,6 +793,10 @@ export default function GroupBuyDetailPage() {
             </button>
           )}
         </div>
+        {/* 🎬 다녀온 사람들(영상·블로그·유어딜 추천) — 2026-11-04 대표 *"리뷰 아래로 나오게 해줘"*(처음엔 가격 아래였다).
+            0개면 칸이 없다. 근처에 와야 받는다(첫 화면 무게 0). */}
+        <div className={PASS_CARD}><CreatorContentLazy productId={detail.id} onBuy={buyFromContent}
+          buy={{ store: detail.restaurant_name ?? null, price: unitPrice, discountPct: displayDiscountPct || null, image: galleryImages[0] ?? null }} /></div>
         {GB_ENGINE_ENABLED && showPropose && detail && (
           <Suspense fallback={null}>
             <GbProposeModal productId={Number(productId)} listPrice={Number(detail.price)} productName={detail.name} onClose={() => setShowPropose(false)} />
