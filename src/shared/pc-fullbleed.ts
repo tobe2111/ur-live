@@ -83,7 +83,7 @@ const FULLBLEED_PC_PATHS = new Set<string>([
    *       `/discover`·`/analytics` 는 폰 폭으로 만든 도구 화면이라 액자에 남아야 한다.
    *       대표가 고른 것은 랜딩(`/influencer`)과 랭킹(`/influencer/rankings`) 둘뿐이다.
    */
-  '/partnership', '/store/new', '/store/first-voucher', '/store/find', '/host', '/host/new', '/my-store',
+  '/partnership', '/store/new', '/store/first-voucher', '/store/biz-cert', '/store/bank', '/store/find', '/host', '/host/new', '/my-store',
   '/influencer', '/influencer/rankings',
   /**
    * C. 소비자 탐색 — 대표가 "앱 같은 화면이라 액자가 맞을 수 있다"는 설명을 듣고도 포함을 택했다.

@@ -9,6 +9,7 @@
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import Udal from '@/components/mascot/Udal'
+import { STORE_BIZ_CERT_PATH, STORE_BANK_PATH } from './first-voucher-path'
 
 interface Props {
   storeName: string
@@ -17,13 +18,13 @@ interface Props {
   onLater: () => void
 }
 
-const BIZ_INFO = '/seller/business-info?from=my'
+// 🔁 2026-11-03 대표 *"응 모두 해줘"* — 할 일 ②③ 은 대시보드 긴 폼 대신 소비자 화면 두 장(다크 지원)으로 보낸다.
 
 export default function StoreDoneStep({ storeName, agencyName, onFirstVoucher, onLater }: Props) {
   const todos = [
     { n: 1, title: '첫 이용권 올리기', desc: agencyName ? `직접 올리거나 ${agencyName}에 맡겨도 돼요` : '이름과 가격만 정하면 돼요', first: true },
-    { n: 2, title: '사업자등록증 올리기', desc: '승인되면 메인에 노출돼요', to: BIZ_INFO },
-    { n: 3, title: '정산 받을 계좌 등록', desc: '판매 금액이 들어갈 곳이에요', to: BIZ_INFO },
+    { n: 2, title: '사업자등록증 올리기', desc: '승인되면 메인에 노출돼요', to: STORE_BIZ_CERT_PATH },
+    { n: 3, title: '정산 받을 계좌 등록', desc: '판매 금액이 들어갈 곳이에요', to: STORE_BANK_PATH },
   ]
   return (
     <div className="flex flex-col flex-1 min-h-0" data-testid="store-new-done">

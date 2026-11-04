@@ -219,6 +219,25 @@ PC 로 `/store/new` 를 열었을 때 좌측에 설명, 우측에 등록 카드�
 - 🎬 움직임: 단계 좌우 전환 · 진행선 · 결과 줄 차례로 · 틀린 칸 흔들림 · 버튼 처리 중 빛 · 유달이 하이파이브/도장 · 할 일 차례로 · 종류 칩 톡.
 
 
+### 2026-11-03 후속 — 이후 페이지 (사진 · 사업자등록증 · 정산 계좌)
+
+대표 확정: *"사장님이 자신의 사진을 첨부파일로 올릴 수 있는게 최우선, 그리고 네이버에서 고를 수 있게끔"* · *"사진이 없으면 막자"* ·
+(첫 이용권은 등록증 전에도 올린다 · ⑥⑦ 을 대시보드 밖으로) *"응 모두 해줘"*. 시안 캔버스 페이지 "이후 페이지".
+구현 그림: `assets/store-new-2026-11-03-after-{light,dark}.webp`
+
+| 화면 | 파일 |
+|---|---|
+| ④ 첫 이용권 — 사진(필수, 내 사진 우선 · 네이버 줄 · 더 보기 창) | `FirstVoucherPage.tsx` · `VoucherPhotos.tsx` · `NaverPhotoSheet.tsx` · `upload-photo.ts` |
+| ⑤ 올림 완료 — 실제 딜 카드(`DealRow`) 미리보기 + 남은 일 | `FirstVoucherDone.tsx` |
+| ⑥ 사업자등록증 `/store/biz-cert` | `StoreBizCertPage.tsx` (서버: `/api/upload/business-cert` → `/api/seller/business-registration/submit`) |
+| ⑦ 정산 계좌 `/store/bank` | `StoreBankPage.tsx` (서버: `PUT /api/seller/profile`) |
+
+- 네이버 사진은 **자동으로 넣지 않는다**(남의 블로그 사진일 수 있다) — 누를 때만 추가 + 안내 문구.
+- 업로드 실패를 data URL 로 위장하지 않는다(대시보드 부품과 다른 점 — 사진이 필수라서).
+- 가려진 계좌(****1234)를 칸에 채우지 않는다(그대로 저장되면 정산이 멈춘다).
+- 가드 `store-new-photos-2026-11-03.test.ts` + 주입 4건.
+
+
 ## 부록 — `StoreRegisterModal.tsx` 머리말 원문 (2026-11-03 파일 크기 규칙으로 옮김)
 
 ```

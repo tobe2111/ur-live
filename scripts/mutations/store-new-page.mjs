@@ -53,8 +53,8 @@ export default [
     // 🔁 2026-11-03 재조준: 이제 페이지가 화면 높이를 잡는 게 **정답**이다(하단 탭을 숨겼으므로). 결함은 탭이 돌아오는 것.
     name: '🏪 하단 탭이 위저드 위로 돌아온다 (버튼이 탭 뒤로 · 화면 높이가 탭만큼 잘린다)',
     file: 'src/lib/consumer-chrome.ts',
-    find: `export const fullScreenExactPaths = ['/influencer', '/store/new', '/store/first-voucher']`,
-    replace: `export const fullScreenExactPaths = ['/influencer', '/store/first-voucher']`,
+    find: `export const fullScreenExactPaths = ['/influencer', '/store/new', '/store/first-voucher', '/store/biz-cert', '/store/bank']`,
+    replace: `export const fullScreenExactPaths = ['/influencer', '/store/first-voucher', '/store/biz-cert', '/store/bank']`,
     test: T,
     why:
       '페이지는 `h-dvh` 로 화면 높이를 잡는데 그 위에 탭(57px)이 다시 덮이면 [다음] 버튼이 탭 뒤로 숨는다 — ' +

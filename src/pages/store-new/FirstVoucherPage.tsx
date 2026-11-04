@@ -16,7 +16,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import Udal from '@/components/mascot/Udal'
+import VoucherPhotos, { type PickedPhoto } from './VoucherPhotos'
+import FirstVoucherDone from './FirstVoucherDone'
 import { voucherMargin } from '@/pages/seller-meal-voucher/NetProceedsCard'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
 import { voucherMinPriceError } from '@/shared/constants/voucher-categories'
@@ -55,6 +56,8 @@ export default function FirstVoucherPage() {
   const [orig, setOrig] = useState('')
   const [price, setPrice] = useState('')
   const [tried, setTried] = useState(false)
+  // 📷 사진은 필수(2026-11-03 대표 *"사진이 없으면 막자"*) — 첫 장이 대표.
+  const [photos, setPhotos] = useState<PickedPhoto[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [createdId, setCreatedId] = useState<number | null>(null)
   const authed = isSellerAuthenticated()
@@ -81,9 +84,12 @@ export default function FirstVoucherPage() {
   const priceErr = tried ? (!priceN ? '손님 결제가를 적어 주세요' : voucherMinPriceError(kind, priceN)) : null
   const origErr = tried && origN > 0 && origN < priceN ? '원래 가격은 결제가보다 같거나 커야 해요' : null
   const pct = origN > priceN && priceN > 0 ? Math.round((1 - priceN / origN) * 100) : 0
+  /** 버튼을 끄는 이유 — 회색 버튼만 두지 않는다(이 레포가 반복해 고친 클래스). */
+  const blockReason = photos.length === 0 ? '사진을 1장 이상 올려 주세요' : null
 
   async function submit() {
     setTried(true)
+    if (blockReason) return
     if (!name.trim() || !priceN || voucherMinPriceError(kind, priceN) || (origN > 0 && origN < priceN) || submitting) return
     if (!store?.name) { toast.error('가게 정보를 불러오지 못했어요. 잠시 뒤 다시 눌러 주세요'); return }
     setSubmitting(true)
@@ -95,8 +101,8 @@ export default function FirstVoucherPage() {
         description: `${store.name} 이용권`,
         price: priceN,
         original_price: origN || priceN,
-        image_url: null,
-        images: null,
+        image_url: photos[0].url, // 대표 = 첫 장(카드·검색·공유가 읽는 컬럼)
+        images: JSON.stringify(photos.map((p) => p.url)),
         category: kind,
         product_type: 'featured',
         stock: 100,
@@ -139,22 +145,14 @@ export default function FirstVoucherPage() {
         </div>
 
         {createdId !== null ? (
-          <div className="ur-rise flex-1 min-h-0 flex flex-col px-5 pb-[calc(16px+env(safe-area-inset-bottom,0px))]" data-testid="first-voucher-done">
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <Udal mood="done" size={120} motion priority />
-              <h1 className="mt-5 text-[20px] font-semibold tracking-[-0.02em]">첫 이용권을 올렸어요</h1>
-              <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">승인되면 손님에게 보여요.<br />사진과 사용 조건을 더하면 더 잘 팔려요.</p>
-            </div>
-            <div className="shrink-0 flex flex-col gap-1">
-              {createdId > 0 && <Link to={`/seller/products/${createdId}/edit?from=my`} className="ur-btn ur-btn-lg ur-btn-primary w-full">사진·사용 조건 더하기</Link>}
-              <button type="button" onClick={() => navigate(MY_PATH, { replace: true })} className="h-11 text-[15px] text-ink-soft">마이로</button>
-            </div>
-          </div>
+          <FirstVoucherDone createdId={createdId} storeName={store?.name || ''} region={(store?.address || '').split(/\s+/).slice(1, 3).join(' ')}
+            name={name.trim()} price={priceN} originalPrice={origN || priceN} pct={pct} photo={photos[0]?.url || ''} />
         ) : (
           <div className="flex-1 min-h-0 flex flex-col px-5 pb-[calc(16px+env(safe-area-inset-bottom,0px))]">
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-1 px-1">
               <p className="text-[13px] font-medium text-brand-text truncate">{store?.name ? `${store.name} · 첫 이용권` : '첫 이용권'}</p>
               <h1 className="mt-2 text-[20px] font-semibold tracking-[-0.02em] leading-snug">무엇을 얼마에 팔까요?</h1>
+              {!('full' in kindInfo) && <VoucherPhotos photos={photos} onChange={setPhotos} storeName={store?.name} storeAddress={store?.address} />}
 
               <div role="radiogroup" aria-label="이용권 종류" className="mt-5 flex flex-wrap gap-2">
                 {KINDS.map((k) => (
@@ -215,17 +213,18 @@ export default function FirstVoucherPage() {
                       </div>
                     )}
                   </div>
-                  <p className="mt-3 text-[13px] text-ink-soft">사진·사용 조건·예약 방식은 올린 뒤에 더할 수 있어요.</p>
+                  <p className="mt-3 text-[13px] text-ink-soft">사용 조건·예약 방식은 올린 뒤에 더할 수 있어요.</p>
                 </>
               )}
             </div>
 
             {!('full' in kindInfo) && (
               <div className="shrink-0 pt-3">
-                <button type="button" onClick={() => void submit()} disabled={submitting}
-                  className={`ur-btn ur-btn-lg ur-btn-primary w-full${submitting ? ' ur-busy-ring' : ''}`}>
+                <button type="button" onClick={() => void submit()} disabled={submitting || !!blockReason}
+                  className={`ur-btn ur-btn-lg ur-btn-primary w-full disabled:opacity-40${submitting ? ' ur-busy-ring !opacity-100' : ''}`}>
                   {submitting ? '올리는 중…' : '이용권 올리기'}
                 </button>
+                {blockReason && <p className="mt-2 text-center text-[12px] text-ink-soft" data-testid="first-voucher-block">{blockReason}</p>}
               </div>
             )}
           </div>
