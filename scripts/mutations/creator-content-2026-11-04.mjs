@@ -56,4 +56,20 @@ export default [
     test: T,
     why: '이름만 같은 다른 지역 가게 글이 사장님 확인 없이 구매 버튼 옆에 선다.',
   },
+  {
+    name: '가게 자기 글도 손님에게 보낸다',
+    file: R,
+    find: "      if (isStoreOwnPost(r.author_name, s.store_name ?? '')) return false\n",
+    replace: '',
+    test: T,
+    why: '가게 블로그의 운영 안내·운동 팁이 다녀온 사람들 칸을 채운다(2026-11-04 라이브 실측).',
+  },
+  {
+    name: '가게 자기 글을 자동 공개한다',
+    file: C,
+    find: "confident: !isStoreOwnPost(it.bloggername, storeName) && confidentMatch(",
+    replace: "confident: confidentMatch(",
+    test: T,
+    why: '가게 블로그는 이름·동네가 늘 들어 있어 확실 매칭을 그냥 통과한다.',
+  },
 ]

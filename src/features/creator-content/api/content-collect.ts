@@ -17,19 +17,21 @@
  * 🔴 **이름만 맞는 글은 `candidate`** — 사장님(또는 어드민)이 켜기 전엔 손님에게 안 보인다. 확실한 글만 `visible`.
  * 🔴 사장님이 지운 글(`deleted`)·숨긴 글은 `INSERT OR IGNORE` 라 다시 올라오지 않는다.
  *
- * 서브리퀘스트(무료 50/인보케이션): D1 ~4 + 가게당(검색 2 + 아는 글 1 + 글 페이지 ≤2 + 저장·커서 1 배치) × 6 + 유튜브 3 ≈ 43.
+ * 서브리퀘스트(무료 50/인보케이션): D1 ~4 + 가게당(검색 2 + 아는 글 1 + 글 페이지 ≤2 + 저장·커서 1 배치) × 5 + 사진 채우기 7 + 유튜브 3 ≈ 44.
  * ⚠️ 못 보는 것: 검색 결과의 **질**(이름이 같은 다른 가게). 그래서 사람이 고르는 단계를 없애지 않는다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '../../../worker/types/env'
 import {
-  CONTENT_YT_DAILY_SEARCHES, CONTENT_YT_USED_KEY, confidentMatch, looksSponsored, mentionsStore, parseContentUrl,
+  CONTENT_YT_DAILY_SEARCHES, CONTENT_YT_USED_KEY, confidentMatch, isStoreOwnPost, looksSponsored, mentionsStore, parseContentUrl,
   readDayCount, searchQueryFor, stripHtml,
 } from '../../../shared/creator-content'
 import { ensureCreatorContentTables, storeKeyFor } from './content-db'
 import { fetchPageMeta } from './content-meta'
 
-const STORES_PER_RUN = 6
+const STORES_PER_RUN = 5
+/** 대표 사진이 없는 보이는 글을 회차마다 이만큼 채운다(검색 API 는 사진을 안 준다 — 글 페이지의 og:image). */
+const THUMB_BACKFILL_PER_RUN = 5
 const NAVER_DISPLAY = 30
 const PAGE_FETCH_PER_STORE = 2
 const NAVER_REVISIT_HOURS = 20
@@ -90,7 +92,9 @@ export function pickBlogCandidates(items: NaverBlogItem[], storeName: string, ad
     if (!parsed || parsed.platform !== 'naver_blog' || seen.has(parsed.extId)) continue
     seen.add(parsed.extId)
     const d = /^\d{8}$/.test(it.postdate) ? `${it.postdate.slice(0, 4)}-${it.postdate.slice(4, 6)}-${it.postdate.slice(6, 8)}` : null
-    out.push({ extId: parsed.extId, url: parsed.url, title: title.slice(0, 200), summary: summary.slice(0, 300), author: stripHtml(it.bloggername).slice(0, 80), published: d, sponsored: looksSponsored(`${title} ${summary}`), confident: confidentMatch(`${title} ${summary}`, storeName, address) })
+    out.push({ extId: parsed.extId, url: parsed.url, title: title.slice(0, 200), summary: summary.slice(0, 300), author: stripHtml(it.bloggername).slice(0, 80), published: d, sponsored: looksSponsored(`${title} ${summary}`),
+      // 가게 자기 블로그 글은 이름·동네가 늘 들어 있어 '확실' 을 그냥 통과한다 — 자동 공개에서 뺀다(후보로는 남는다).
+      confident: !isStoreOwnPost(it.bloggername, storeName) && confidentMatch(`${title} ${summary}`, storeName, address) })
   }
   return out
 }
@@ -107,7 +111,7 @@ export function pickVideoCandidates(items: YtSearchItem[], storeName: string, ad
     const text = `${title} ${stripHtml(sn.description)}`
     if (!mentionsStore(text, storeName)) continue
     const thumb = sn.thumbnails?.high?.url ?? sn.thumbnails?.medium?.url ?? null
-    out.push({ extId: id, title: title.slice(0, 200), author: stripHtml(sn.channelTitle).slice(0, 80), thumb: thumb && thumb.startsWith('https://') ? thumb : null, published: sn.publishedAt?.slice(0, 10) ?? null, confident: confidentMatch(text, storeName, address) })
+    out.push({ extId: id, title: title.slice(0, 200), author: stripHtml(sn.channelTitle).slice(0, 80), thumb: thumb && thumb.startsWith('https://') ? thumb : null, published: sn.publishedAt?.slice(0, 10) ?? null, confident: !isStoreOwnPost(sn.channelTitle, storeName) && confidentMatch(text, storeName, address) })
   }
   return out
 }
@@ -174,6 +178,23 @@ async function collectVideos(DB: D1Database, env: Env, now: number): Promise<{ s
   return { searched: true, added: picks.length }
 }
 
+/**
+ * 🖼️ 사진 없는 블로그 글 채우기 (2026-11-04 대표 *"블로그 사진은 안나오네?"*) — 검색 API 는 사진을 안 주고,
+ *    수집 때는 가게당 2개만 글 페이지를 읽었다. 보이는 글부터 회차마다 5개씩 읽는다.
+ *    못 읽은 글은 `thumb_url = ''` 로 표시해 다시 안 시도한다(NULL = 아직 안 해 봄).
+ */
+async function backfillThumbs(DB: D1Database): Promise<number> {
+  const { results } = await DB.prepare(`SELECT id, ext_id FROM store_creator_content
+      WHERE platform = 'naver_blog' AND thumb_url IS NULL AND status IN ('visible', 'candidate')
+      ORDER BY status = 'visible' DESC, id DESC LIMIT ${THUMB_BACKFILL_PER_RUN}`).all<{ id: number; ext_id: string }>()
+  const rows = results ?? []
+  if (!rows.length) return 0
+  const metas = await Promise.all(rows.map((r) => fetchPageMeta(`https://m.blog.naver.com/${r.ext_id}`).catch(() => null)))
+  await DB.batch(rows.map((r, i) => DB.prepare(`UPDATE store_creator_content SET thumb_url = ?, embeddable = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+    .bind(metas[i]?.thumb_url ?? '', metas[i]?.embeddable ? 1 : 0, r.id)))
+  return metas.filter((m) => m?.thumb_url).length
+}
+
 export async function runCreatorContentCollect(env: Env, now = Date.now()) {
   const DB = env.DB
   await ensureCreatorContentTables(DB)
@@ -189,6 +210,7 @@ export async function runCreatorContentCollect(env: Env, now = Date.now()) {
       return 0
     })
   }
+  const thumbs = await backfillThumbs(DB).catch(() => 0)
   const yt = await collectVideos(DB, env, now).catch(() => ({ searched: false, added: 0 }))
-  return { synced, stores: (results ?? []).length, blogs, yt_searched: yt.searched, videos: yt.added }
+  return { synced, stores: (results ?? []).length, blogs, thumbs, yt_searched: yt.searched, videos: yt.added }
 }
