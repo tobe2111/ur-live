@@ -243,7 +243,7 @@ function DatePanel({ value, min, max, required, onPick }: {
               onClick={() => onPick(s)}
               aria-label={s}
               aria-pressed={on}
-              className={`mx-auto w-10 h-10 rounded-full text-[15px] tabular-nums ${on ? 'bg-brand text-white font-semibold' : isToday ? 'text-brand-text font-semibold ring-1 ring-inset ring-brand/40' : 'text-gray-900 dark:text-white'} disabled:text-gray-300 dark:disabled:text-gray-600 disabled:ring-0 ${on || dis ? '' : 'active:bg-black/5 dark:active:bg-white/5'}`}
+              className={`mx-auto w-10 h-10 rounded-full text-[15px] tabular-nums ${on ? 'bg-brand text-white font-medium' : isToday ? 'text-brand-text font-medium ring-1 ring-inset ring-brand/40' : 'text-gray-900 dark:text-white'} disabled:text-gray-300 dark:disabled:text-gray-600 disabled:ring-0 ${on || dis ? '' : 'active:bg-black/5 dark:active:bg-white/5'}`}
             >
               {d}
             </button>
@@ -255,7 +255,7 @@ function DatePanel({ value, min, max, required, onPick }: {
           ? <button type="button" onClick={() => onPick('')} className="h-10 px-3 text-[15px] font-medium text-gray-500 dark:text-gray-400">지우기</button>
           : <span />}
         {!out(today) && (
-          <button type="button" onClick={() => onPick(today)} className="h-10 px-3 text-[15px] font-semibold text-brand-text">오늘</button>
+          <button type="button" onClick={() => onPick(today)} className="h-10 px-3 text-[15px] font-medium text-brand-text">오늘</button>
         )}
       </div>
     </div>
@@ -271,7 +271,7 @@ function TimePanel({ value, onPick, onClear }: { value: string; onPick: (v: stri
     return list.sort()
   }, [m0])
   const col = 'flex-1 max-h-[264px] overflow-y-auto overscroll-contain py-1'
-  const cell = (on: boolean) => `w-full h-11 rounded-xl text-[15px] tabular-nums ${on ? 'bg-brand text-white font-semibold' : 'text-gray-900 dark:text-white active:bg-black/5 dark:active:bg-white/5'}`
+  const cell = (on: boolean) => `w-full h-11 rounded-xl text-[15px] tabular-nums ${on ? 'bg-brand text-white font-medium' : 'text-gray-900 dark:text-white active:bg-black/5 dark:active:bg-white/5'}`
   const hourRef = useRef<HTMLDivElement>(null)
   useEffect(() => { hourRef.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView?.({ block: 'center' }) }, [])
 
