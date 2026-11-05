@@ -169,8 +169,41 @@ function deleteHeader(h: Headers, name: string) {
   for (const k of Object.keys(h)) if (k.toLowerCase() === name.toLowerCase()) delete h[k]
 }
 
+// ── ⚡ 2026-11-05 HTML 이 먼저 출발시킨 요청 꺼내 쓰기 (`worker/utils/early-data.ts`) ──────────
+/** 꺼내 쓸 수 있는 최대 나이(ms) — 그보다 오래됐으면 새로 받는다. */
+export const EARLY_DATA_MAX_AGE_MS = 15000
+type EarlyEntry = { at: number; p: Promise<{ s: number; t: string; ct: string } | null> }
+
+/**
+ * 같은 주소의 GET 을 HTML 이 이미 출발시켰으면 그 결과를 **한 번만** 쓴다.
+ * 쓰지 않는 경우(→ null, 종전대로 요청): 인증 헤더가 붙은 요청 · json 이 아닌 응답형 · 15초 지남 · 실패/2xx 아님.
+ */
+export function takeEarlyData(config: InternalRequestConfig, fullUrl: string): Promise<HttpResponse | null> | null {
+  if (typeof window === 'undefined') return null
+  const store = (window as unknown as { __urWarm?: Record<string, EarlyEntry> }).__urWarm
+  const e = store?.[fullUrl]
+  if (!e) return null
+  delete store![fullUrl]
+  if (String(config.method || 'get').toLowerCase() !== 'get') return null
+  if (findHeader(config.headers, 'Authorization')) return null
+  if (config.responseType && config.responseType !== 'json') return null
+  if (Date.now() - e.at > EARLY_DATA_MAX_AGE_MS) return null
+  return e.p.then((r) => {
+    if (!r || r.s < 200 || r.s >= 300) return null
+    let data: any = r.t
+    if (typeof data === 'string' && data) { try { data = JSON.parse(data) } catch { /* 문자열 그대로(아래 XHR 경로와 같다) */ } }
+    return { data, status: r.s, statusText: 'OK', headers: { 'content-type': r.ct }, config, request: null } as HttpResponse
+  }, () => null)
+}
+
 // ── 전송 ─────────────────────────────────────────────────────────────────
 function dispatch(config: InternalRequestConfig): Promise<HttpResponse> {
+  const early = takeEarlyData(config, buildURL(combineURL(config.baseURL, config.url || ''), config.params))
+  if (early) return early.then((r) => r ?? xhrDispatch(config))
+  return xhrDispatch(config)
+}
+
+function xhrDispatch(config: InternalRequestConfig): Promise<HttpResponse> {
   return new Promise((resolve, reject) => {
     const method = String(config.method || 'get').toUpperCase()
     const headers: Headers = { ...config.headers }

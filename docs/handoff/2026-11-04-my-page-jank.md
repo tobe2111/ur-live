@@ -154,3 +154,4 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 ## 2026-11-05 첫 로딩 전수 — 대표 *"어떤 요인들이 있는지 최대한 알아주고 모두 최적화"*
 - 요인 표(실측): ① 한국 밖 콜로(HKG/NRT/LAX) 연결 p95 ~2s — CF 무료 토글(HTTP/3·0-RTT·Early Hints·TLS1.3)은 **이미 전부 켜짐**(존 설정 조회), 남은 건 유료 판단(결재 `docs/decisions/2026-11-04-korea-icn-routing.md`) ② 홈 LCP = 지역 사진인데 preload 가 배너를 가리킴 → #2212 로 고침(라이브 Link 헤더 확인) ③ **교환권 사진 2,252장 전부 giftishow 원본** — R2 이관 cron 이 5일간 8장(`migrated=0 failed=4`, giftishow 가 CF 이그레스 차단) → 러너 경유 이관 경로 신설(`voucher-image-upload.routes.ts` + `.github/workflows/voucher-image-rehost.yml`) ④ 홈 JS 343KB·TBT 0.5~0.7s(CPU×4) — 청크는 이미 표면별로 정밀 분리됨(남은 큰 레버 아님) ⑤ 이용권 상세 부팅 뒤 API 9개(첫 그림 뒤라 LCP 무관).
 - 판정: 러너 첫 실행 요약 `옮김 N` · D1 `SELECT COUNT(*) … giftishow` 감소. 러너도 막히면 워크플로가 빨간불(조용히 초록 금지).
+- 2026-11-05 로그인 화면 미리받기(`early-data.ts`): 마이·내 이용권의 데이터를 HTML 도착 즉시 출발. 판정: RUM /user/profile LCP p75 2.5s 대비.

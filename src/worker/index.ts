@@ -23,7 +23,7 @@ import { internalDiagnosticsRoutes } from './routes/internal-diagnostics.routes'
 import { opsAlertRoutes } from './routes/ops-alert.routes'; // 2026-10-20 봇 실패 → 대표 카톡
 import { internalAdminToolsRoutes } from './routes/internal-admin-tools.routes'; // 2026-04-27 TD-006 Phase C
 import { smokeTestRoutes } from './routes/smoke-test.routes'; // 2026-04-27 TD-006 Phase D
-import { repairSchemaRoutes } from './routes/repair-schema.routes'; import { voucherImageUploadRoutes } from './routes/voucher-image-upload.routes'; // 2026-04-27 TD-006 Phase E · 🎁 2026-11-05 교환권 사진 이관(러너 경유)
+import { applyEarlyData } from './utils/early-data'; import { repairSchemaRoutes } from './routes/repair-schema.routes'; import { voucherImageUploadRoutes } from './routes/voucher-image-upload.routes'; // 2026-04-27 TD-006 Phase E · 🎁 2026-11-05 교환권 사진 이관(러너 경유)
 import { errorTelemetryRoutes } from './routes/error-telemetry.routes'; // 2026-05-23 frontend 에러 수집
 import { healthcheckRoutes } from './routes/healthcheck.routes'; // 2026-05-23 결제/인증 사전 점검
 import { selftestRoutes } from './routes/selftest.routes'; // 2026-05-23 운영 인프라 자가 점검
@@ -732,7 +732,7 @@ app.use('*', async (c, next) => {
     const authed = /(?:^|;\s*)ur_session=/.test(c.req.header('cookie') || ''); // 🐢 2026-10-15: 로그인 전 탭(guest*)은 세션 쿠키가 없을 때만 — 있으면 종전대로(null/linkshop)
     const chunkSurface = routeSurface(url.pathname, isMobileUserAgent(c.req.header('user-agent')), authed); // 🧭 2026-10-15 표면 판정 SSOT(shared/route-surface — 앱 부팅도 같은 함수)
     const routeChunks = chunkSurface ? ROUTE_CHUNK_MAP[chunkSurface] : undefined;
-    const cssFirst = cssFirstApplies(url.pathname, c.req.header('user-agent') || '', authed); appendEdgeHeaders(c.res.headers, ENTRY_CSS, (c.req.raw as { cf?: { colo?: string } }).cf?.colo); let rb = applyCssFirstBoot(new HTMLRewriter(), nonce, cssFirst) // 🚦 2026-10-12 [UNLOCK_LOADING] CSS 먼저 → 스크립트(utils/css-first-boot.ts)
+    const cssFirst = cssFirstApplies(url.pathname, c.req.header('user-agent') || '', authed); appendEdgeHeaders(c.res.headers, ENTRY_CSS, (c.req.raw as { cf?: { colo?: string } }).cf?.colo); let rb = applyEarlyData(applyCssFirstBoot(new HTMLRewriter(), nonce, cssFirst), url.pathname, authed, nonce) // 🚦 2026-10-12 [UNLOCK_LOADING] CSS 먼저 → 스크립트(utils/css-first-boot.ts)
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
       })
