@@ -17,6 +17,7 @@ import { Building2, Bed, Calendar, ArrowLeft, Plus, Trash2, Save, ChevronLeft, C
 import { MultiImageUpload } from '@/components/upload/ImageUpload'
 import { formatNumber } from '@/utils/format'
 import CalendarTab from './StayCalendarTab'
+import { DateInput } from '@/components/ui/date-input'
 
 export interface StayRoom {
   id: number
@@ -149,7 +150,7 @@ function InfoTab({ info, productId, onSaved }: { info: StayInfo; productId: numb
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1.5">체크인 시간</label>
-          <input
+          <DateInput
             type="time"
             value={f.check_in_time}
             onChange={(e) => setF({ ...f, check_in_time: e.target.value })}
@@ -158,7 +159,7 @@ function InfoTab({ info, productId, onSaved }: { info: StayInfo; productId: numb
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1.5">체크아웃 시간</label>
-          <input
+          <DateInput
             type="time"
             value={f.check_out_time}
             onChange={(e) => setF({ ...f, check_out_time: e.target.value })}

@@ -12,6 +12,7 @@ import BannerMediaUpload from './admin/banners/BannerMediaUpload'
 //   🔴 '노출 안 함'(null)이 기본 상태다 — 자리를 고른 배너만 홈에 뜬다.
 import { BANNER_SLOTS, BANNER_SLOT_LABELS, BANNER_SLOT_SPECS, BANNER_MAX_UPLOAD_MB, NEW_BANNER_SLOT, type BannerSlot } from '@/shared/constants/home-showcase'
 import { clampTitleLines } from '@/shared/banner-title'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Banner {
   id: number
@@ -264,11 +265,11 @@ export default function AdminBannersPage() {
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.k033', { defaultValue: '시작일' })}</label>
-                <input type="date" value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <DateInput type="date" value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('admin.banners.k034', { defaultValue: '종료일' })}</label>
-                <input type="date" value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <DateInput type="date" value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
             </div>
             <div className="flex items-center gap-2">

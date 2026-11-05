@@ -17,6 +17,7 @@ import { formatNumber } from '@/utils/format'
 import AdminHomeServiceReviews from './home-service/AdminHomeServiceReviews'
 import { promptDialog } from '@/components/ui/confirm-dialog'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Field { key: string; label: string; type: string; required: boolean; options?: string[]; unit?: string; placeholder?: string }
 interface Cat { key: string; label: string; fields: Field[] }
@@ -145,8 +146,11 @@ export default function AdminHomeServicePage() {
                     <option value="">선택</option>
                     {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
                   </Select>
+                ) : f.type === 'date' ? (
+                  <DateInput type="date" className={`${input} mt-1 w-full`} value={fields[f.key] ?? ''}
+                    onChange={(e) => setFields({ ...fields, [f.key]: e.target.value })} />
                 ) : (
-                  <input className={`${input} mt-1`} type={f.type === 'date' ? 'date' : f.type === 'number' ? 'number' : 'text'}
+                  <input className={`${input} mt-1`} type={f.type === 'number' ? 'number' : 'text'}
                     placeholder={f.placeholder ?? (f.unit ? f.unit : '')} value={fields[f.key] ?? ''}
                     onChange={(e) => setFields({ ...fields, [f.key]: e.target.value })} />
                 )}

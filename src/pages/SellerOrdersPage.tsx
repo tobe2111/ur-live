@@ -40,6 +40,7 @@ import MobileOrderList from './seller-orders/MobileOrderList'
 import { useOrderActions } from './seller-orders/useOrderActions'
 import type { Order } from './seller-orders/types'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / parseShippingAddress / status 헬퍼 / 주문 상세 모달
 //   을 ./seller-orders/ 디렉토리로 추출.
@@ -302,7 +303,7 @@ export default function SellerOrdersPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t('seller.startDate')}
               </label>
-              <input
+              <DateInput
                 type="date"
                 value={dateFilter.start}
                 onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
@@ -314,7 +315,7 @@ export default function SellerOrdersPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t('seller.endDate')}
               </label>
-              <input
+              <DateInput
                 type="date"
                 value={dateFilter.end}
                 onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}

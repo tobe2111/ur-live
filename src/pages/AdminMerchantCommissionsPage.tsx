@@ -19,6 +19,7 @@ import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import StoreChannelCard from './admin-merchant-commissions/StoreChannelCard'
 import IntroducerAssign from './admin-merchant-commissions/IntroducerAssign'
+import { DateInput } from '@/components/ui/date-input'
 
 interface CommissionSettings {
   id: number
@@ -198,7 +199,7 @@ export default function AdminMerchantCommissionsPage() {
                 </label>
                 <label className="text-xs text-gray-600">
                   또는 만료일 (비우면 기본 12개월, 최대 24개월)
-                  <input type="date" value={bonusUntil} onChange={(e) => setBonusUntil(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900" />
+                  <DateInput type="date" value={bonusUntil} onChange={(e) => setBonusUntil(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900" />
                 </label>
                 <label className="text-xs text-gray-600">
                   수수료율 (%)

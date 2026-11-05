@@ -7,6 +7,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import { Users } from 'lucide-react'
 import CardPreview from './CardPreview'
 import type { VoucherForm } from './voucher-form'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Props {
   form: VoucherForm
@@ -75,7 +76,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
                 <span className="text-sm text-gray-700">{t('seller.mealVoucher.noExpiry', { defaultValue: '유효기간 제한 없음' })}</span>
               </label>
               {expiryEnabled && (
-                <input
+                <DateInput
                   type="date"
                   value={form.voucher_expiry}
                   onChange={e => update('voucher_expiry', e.target.value)}

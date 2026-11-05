@@ -23,6 +23,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 interface PromoCode {
   id: number
@@ -236,7 +237,7 @@ export default function SellerPromoCodesPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">만료일 (선택)</label>
-              <input
+              <DateInput
                 type="date"
                 value={form.expires_at}
                 onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}

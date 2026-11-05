@@ -25,6 +25,7 @@ import { formatNumber, formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardLoadError } from '@/components/dashboard'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 interface VoucherTxRow {
   id: number
@@ -391,12 +392,12 @@ export default function AdminVoucherTransactionsPage() {
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">시작일</label>
-              <input type="date" value={dateFrom} onChange={(e) => { setPage(0); setDateFrom(e.target.value) }}
+              <DateInput type="date" value={dateFrom} onChange={(e) => { setPage(0); setDateFrom(e.target.value) }}
                 className="w-full text-sm border rounded px-2 py-1.5 text-gray-900" />
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">종료일</label>
-              <input type="date" value={dateTo} onChange={(e) => { setPage(0); setDateTo(e.target.value) }}
+              <DateInput type="date" value={dateTo} onChange={(e) => { setPage(0); setDateTo(e.target.value) }}
                 className="w-full text-sm border rounded px-2 py-1.5 text-gray-900" />
             </div>
             <div>

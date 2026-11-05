@@ -30,6 +30,7 @@ import PoolExportButtons from './PoolExportButtons'
 import PoolSheetSync from './PoolSheetSync'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Lead {
   id: number; company_name: string; category: string | null; subcategory: string | null
@@ -582,7 +583,7 @@ const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onR
         </Select>
       </td>
       <td className="px-3 py-2">
-        <input type="date" value={l.follow_up_at ? l.follow_up_at.slice(0, 10) : ''} onChange={e => onPatch(l.id, { follow_up_at: e.target.value || null })} className="rounded border border-gray-200 bg-white text-gray-700 text-xs px-1 py-1" />
+        <DateInput type="date" value={l.follow_up_at ? l.follow_up_at.slice(0, 10) : ''} onChange={e => onPatch(l.id, { follow_up_at: e.target.value || null })} className="rounded border border-gray-200 bg-white text-gray-700 text-xs px-1 py-1" />
       </td>
       <td className="px-3 py-2 whitespace-nowrap text-right">
         <button onClick={async () => { const m = (await promptDialog({ message: '메모', prompt: { defaultValue: l.memo || '' } })); if (m !== null) onPatch(l.id, { memo: m }) }} className="text-gray-400 hover:text-gray-700 text-xs mr-2">메모</button>

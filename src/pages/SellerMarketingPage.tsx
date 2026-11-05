@@ -11,6 +11,7 @@ import SellerLayout from '@/components/SellerLayout'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { Megaphone, Ban, RotateCcw, Handshake } from 'lucide-react'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Blocked { influencer_id: string; reason: string; blocked_at: string }
 interface Recent { influencer_id: string; count: number; total_commission: number }
@@ -107,7 +108,7 @@ function DealsSection() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">만료일 (선택)</label>
-                <input type="datetime-local" value={proposeForm.ends_at}
+                <DateInput type="datetime-local" value={proposeForm.ends_at}
                   onChange={(e) => setProposeForm(f => ({ ...f, ends_at: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>

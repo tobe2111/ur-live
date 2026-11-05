@@ -33,7 +33,10 @@ const NEVER_ENTRY = new Set(['app-utils-deferred'])
 /** 📌 vite 규칙 이름을 그대로 쓰는 작은 공용 모듈(2026-10-25). 첫 화면 청크(app-layout 등)가 이름으로 묶어 둔 부품이
  *  쓰는데 엔트리 정적 폐쇄 밖이라, lazy 사용자가 하나 생기면 페이지 봉투로 끌려가 **첫 화면 청크가 하나 늘었다**
  *  (`category-palette` 328B — 생활 견적 카드가 lazy 로 쓰자 `lz-homeL-homePcL` 이 크리티컬 패스에 진입). */
-const PINNED = [/\/src\/shared\/category-palette\./]
+/** 🗓️ 2026-11-05 `components/ui/date-input`(유어딜 달력 · react 만 의존) — 손님 화면(숙소 검색·내 예약)과 대시보드 26곳이
+ *  같이 쓰는데, 묶음기가 이 3KB 를 `lz-gbDetailL`(이용권 상세 lazy 봉투)로 넣자 숙소 검색·어드민이 그 봉투와
+ *  상세 봉투 셋(+41KB)을 끌고 왔다(check-surface-budgets 실측). vite 규칙 이름(`app-date-input`) 그대로 둔다. */
+const PINNED = [/\/src\/shared\/category-palette\./, /\/src\/components\/ui\/date-input\./]
 
 /** 🔒 라이브러리 전용 봉투 — 앱 코드 몇 줄을 **일부러** 라이브러리 옆에 둔 봉투다(`vite.config.ts` 의 `/src/` 규칙).
  *  묶음기가 그 앱 코드를 페이지 봉투로 빼면, 그 봉투가 라이브러리를 **정적으로** 끌고 와 모든 페이지가 받는다

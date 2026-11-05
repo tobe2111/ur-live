@@ -81,3 +81,31 @@ describe('브라우저 기본 선택창(<select>)을 쓰지 않는다', () => {
     expect(bad, ['기본 <select> 는 폰에서 휴대폰 기본 목록 창이 뜬다.', ...bad].join('\n')).toEqual([])
   })
 })
+
+/**
+ * 🗓️ 2026-11-05 대표 *"응 유어딜꺼로 바꿔"* — `<select>` 다음으로 남은 기본 창이 날짜·시간 고르기였다
+ * (누르면 휴대폰 기본 달력·시계). 33파일의 `<input type="date|time|datetime-local">` 를
+ * `<DateInput>`(`components/ui/date-input.tsx`)으로 바꿨고, 새로 생기는 것을 막는다.
+ * ⚠️ 못 보는 것: `type={변수}` 로 조립한 타입(그 자리는 손으로 갈라 둔다 — AdminHomeServicePage 선례).
+ */
+describe('브라우저 기본 날짜·시간 창을 쓰지 않는다', () => {
+  const TSX = FILES.filter((f) => f.endsWith('.tsx'))
+  const MALL = /src\/pages\/Mall(?:Admin|Home|Product)Page\.tsx$/
+
+  it('측정이 헛돌지 않는다 — <DateInput> 사용처가 충분하다', () => {
+    const users = TSX.filter((f) => /<DateInput[\s>]/.test(readFileSync(f, 'utf-8')))
+    expect(users.length, '<DateInput> 사용처가 거의 없다 — 이행이 되돌아갔다').toBeGreaterThan(25)
+  })
+
+  it('<input type="date|time|datetime-local"> 를 직접 쓰지 않는다 (→ <DateInput>)', () => {
+    const bad: string[] = []
+    for (const f of TSX) {
+      if (MALL.test(f) || f.endsWith('components/ui/date-input.tsx')) continue
+      const src = stripComments(readFileSync(f, 'utf-8'))
+      for (const m of src.matchAll(/<input\b[^>]*?\btype=(?:"|'|\{\s*')(?:date|time|datetime-local)\b/g)) {
+        bad.push(`${f}:${src.slice(0, m.index).split('\n').length}  ${m[0].slice(0, 90)}`)
+      }
+    }
+    expect(bad, ['기본 날짜 입력은 폰에서 휴대폰 기본 달력·시계가 뜬다.', ...bad].join('\n')).toEqual([])
+  })
+})

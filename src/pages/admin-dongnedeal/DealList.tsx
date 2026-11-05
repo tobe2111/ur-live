@@ -15,6 +15,7 @@ import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions
 import { cleanSido, buildRegionParam } from './region-util'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 // 🎛️ 2026-07-04 (대표 "지원자 수·기간 각각 설정"): 행별 추첨 설정 인라인 편집 상태.
 interface FcfsDraft { id: number; spots: string; applied: string; deadline: string; loading: boolean }
@@ -340,7 +341,7 @@ export default function DealList({ nonce, onEdit, onChanged, onSettings, onRefun
                         <input value={fcfsDraft.spots} onChange={(e) => setFcfsDraft({ ...fcfsDraft, spots: e.target.value.replace(/\D/g, '') })} className="ml-1 w-14 px-2 py-1 border border-gray-200 rounded text-[12px] text-gray-900" />
                       </label>
                       <label className="text-[11px] text-gray-500">마감
-                        <input type="date" value={fcfsDraft.deadline} onChange={(e) => setFcfsDraft({ ...fcfsDraft, deadline: e.target.value })} className="ml-1 px-2 py-1 border border-gray-200 rounded text-[12px] text-gray-900" />
+                        <DateInput type="date" value={fcfsDraft.deadline} onChange={(e) => setFcfsDraft({ ...fcfsDraft, deadline: e.target.value })} className="ml-1 px-2 py-1 border border-gray-200 rounded text-[12px] text-gray-900" />
                       </label>
                       <button onClick={saveFcfs} className="px-2.5 py-1 rounded-lg text-[12px] font-bold bg-gray-900 text-white">저장</button>
                       <button onClick={() => setFcfsDraft(null)} className="px-2 py-1 rounded-lg text-[12px] text-gray-500">닫기</button>

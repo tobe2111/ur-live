@@ -7,6 +7,7 @@
  * ⚠️ 라벨은 "식당"이 아니라 "매장"이다. 뷰티·숙박 이용권에 "식당명"은 거짓말이다.
  */
 import { useTranslation } from '@/lib/i18n-lite'
+import { DateInput } from '@/components/ui/date-input'
 
 type VoucherFormData = {
   restaurant_name: string
@@ -51,7 +52,7 @@ export default function VoucherFields({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.expiryDate')}</label>
-          <input type="date" name="voucher_expiry" value={formData.voucher_expiry} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+          <DateInput type="date" name="voucher_expiry" value={formData.voucher_expiry} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyTarget')}</label>
