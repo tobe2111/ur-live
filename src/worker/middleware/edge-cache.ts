@@ -90,6 +90,16 @@ async function writeKvCache(
   }
 }
 
+/**
+ * 🩹 2026-11-04 — **실패를 정상(빈 목록)으로 숨기는 핸들러**를 위한 표시. 그런 응답은 200 이라 캐시가 실패로 못 보고,
+ *   오히려 빈 응답을 캐시에 넣고 **예비 사본까지 빈 것으로 덮었다**(홈 섹션의 catch → `{success:true,data:[]}`).
+ *   핸들러가 이걸 달면: 저장하지 않고, 예비 사본이 있으면 그것을 낸다(없으면 그 빈 응답을 그대로 — 종전 동작).
+ */
+export const DEGRADED_HEADER = 'X-Ur-Degraded';
+export function markDegraded(c: Context): void {
+  try { c.header(DEGRADED_HEADER, '1'); } catch { /* 헤더가 잠겼으면 종전 동작 */ }
+}
+
 /** 🛟 예비 사본 보관 시간 — 원본이 실패했을 때만 꺼낸다. */
 export const STALE_BACKUP_SECONDS = 24 * 60 * 60;
 /** 예비 사본의 키 — 같은 주소에 표식 쿼리 하나(같은 존이라 Cache API 가 받는다). */
@@ -160,7 +170,8 @@ function makeCacheMiddleware(ttlSeconds: number, opts: CacheOptions = {}) {
     const staleKey = staleKeyOf(cacheUrl);
     let threw: unknown = null;
     try { await next(); } catch (e) { threw = e; }
-    if (threw || c.res.status >= 500) {
+    const degraded = !threw && c.res.headers.get(DEGRADED_HEADER) === '1';
+    if (threw || c.res.status >= 500 || degraded) {
       const stale = await cache.match(staleKey).catch(() => undefined);
       if (stale) {
         // ⚠️ `return new Response()` 는 안 된다 — Hono 는 응답이 이미 정해진 뒤 미들웨어의 반환값을 버린다(시험이 잡았다).
@@ -169,11 +180,13 @@ function makeCacheMiddleware(ttlSeconds: number, opts: CacheOptions = {}) {
         c.res.headers.set('X-Cache-Status', `${tag}-STALE`);
         c.res.headers.set('Cache-Control', 'public, max-age=15'); // 브라우저는 짧게 — 원본이 살아나면 곧 새 값으로
         c.res.headers.delete('CDN-Cache-Control');
+        c.res.headers.delete(DEGRADED_HEADER); // 교체 때 옛 응답 헤더가 따라온다 — 내부 표시는 손님에게 안 보낸다
         c.res.headers.set('Content-Type', stale.headers.get('Content-Type') || 'application/json');
         return;
       }
       if (threw) throw threw;
-      return;
+      if (degraded) { try { c.res.headers.delete(DEGRADED_HEADER); } catch { /* 잠김 */ } }
+      return; // 실패·빈 응답은 저장하지 않는다(예비 사본을 덮지 않는다)
     }
 
     // 성공 응답만 캐싱 (4xx/5xx 캐싱 안 함)

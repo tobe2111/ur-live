@@ -21,7 +21,7 @@ import { toPublicProductRows } from '@/shared/constants/demo-products'
 import type { Env } from '@/worker/types/env'
 import { requireAuth, requireAdmin } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { publicCache } from '@/worker/middleware/edge-cache'
+import { publicCache, markDegraded } from '@/worker/middleware/edge-cache'
 import { chunkForBinds } from '@/shared/db/d1-binds'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { setSupplyMeta, getSupplyMeta } from '@/worker/utils/product-supply-meta'
@@ -115,19 +115,21 @@ async function realAppliedCount(DB: D1Database, productId: number): Promise<numb
 const publicApp = new Hono<{ Bindings: Env; Variables: Vars }>()
 
 publicApp.get('/active', async (c) => {
+  // 🩹 2026-11-04 — 핵심 두 조회가 실패하면 빈 목록이 '정상'으로 나가 캐시(30s)와 예비 사본을 덮었다 → 실패 표시(markDegraded).
+  let failed = false
   try {
     const DB = c.env.DB
     await ensureFcfsTable(DB)
     // fcfs_enabled='1' 인 product_id 들 → 상품 정보 join
     const { results: metaRows } = await DB.prepare(
       "SELECT product_id, key, value FROM product_supply_meta WHERE key LIKE 'fcfs_%' OR key = 'prelaunch'"
-    ).all<{ product_id: number; key: string; value: string | null }>().catch(() => ({ results: [] as { product_id: number; key: string; value: string | null }[] }))
+    ).all<{ product_id: number; key: string; value: string | null }>().catch(() => { failed = true; return { results: [] as { product_id: number; key: string; value: string | null }[] } })
     const byId = new Map<number, Record<string, string>>()
     for (const m of metaRows || []) {
       const rec = byId.get(m.product_id) || {}; rec[m.key] = m.value ?? ''; byId.set(m.product_id, rec)
     }
     const enabledIds = [...byId.entries()].filter(([, rec]) => rec.fcfs_enabled === '1').map(([id]) => id)
-    if (enabledIds.length === 0) return c.json({ success: true, data: [] })
+    if (enabledIds.length === 0) { if (failed) markDegraded(c); return c.json({ success: true, data: [] }) }
     //   🧮 2026-10-26 (라이브에서 **이미 터져 있던** 것): 종전엔 `p.id IN (${enabledIds})` 로 걸렀는데
     //     라이브 `fcfs_enabled='1'` 상품이 **395개**라 바인딩 395 > D1 한도 100 → 두 쿼리가 모두 터지고
     //     `.catch(() => ({results:[]}))` 가 삼켜 이 엔드포인트가 **`success:true, data:[]`** 를 돌려줬다
@@ -151,7 +153,7 @@ publicApp.get('/active', async (c) => {
          FROM products p ${fcfsJoin} ${regionJoin}
         WHERE p.is_active=1 ${regionWhere}
         ORDER BY is_demo, p.created_at DESC`
-    ).bind(...regionBinds).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+    ).bind(...regionBinds).all<Record<string, unknown>>().catch(() => { failed = true; return { results: [] as Record<string, unknown>[] } })
     // 🧯 2026-07-02: 상품별 COUNT 루프(N+1) → GROUP BY 단일 쿼리 — 캐시 miss 시에도 D1 왕복 상수화.
     const countRows = await DB.prepare(
       `SELECT a.product_id AS product_id, COUNT(*) as n FROM fcfs_applications a
@@ -167,6 +169,7 @@ publicApp.get('/active', async (c) => {
     }
     // 🙈 2026-10-12 (대표 "데모인 것을 티내지마"): `is_demo` alias 는 **정렬에만** 쓰고
     //   응답에서는 지운다(`toPublicProductRows` — 데모 SSOT 와 같은 파일).
+    if (failed) markDegraded(c)
     return c.json({ success: true, data: toPublicProductRows(out) })
   } catch (err) { return safeError(c, err, '선착순 목록 조회 실패', '[fcfs]') }
 })
