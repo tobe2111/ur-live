@@ -1,0 +1,60 @@
+# 🎁 2026-11-05 교환권 사진을 우리 저장소(R2)로 옮긴다 — Cloudflare 가 아닌 곳에서 받아서.
+#
+# 왜: giftishow 가 Cloudflare 를 막아 워커 cron(`voucher-image-rehost.ts`)이 5일 동안 8장만 옮겼다
+#   (하트비트 `migrated=0 failed=4 remaining=2252`). 그래서 교환권 탭 사진 전부가 아직 giftishow 원본으로 간다
+#   — 축소·우리 캐시 없이 한국 손님이 매번 외부 서버에서 받는다.
+# 어떻게: 이 러너(GitHub, Cloudflare 아님)가 사진을 받아 바이트를 `/api/_internal/voucher-image/upload` 로 넘긴다.
+#   저장 규칙·주소 교체(CAS)는 서버가 cron 과 같은 함수로 한다. 인증 = REPAIR_SCHEMA_TOKEN(배포가 이미 쓰는 값).
+# 멈추는 법: 이 파일의 schedule 을 지우거나, 남은 것이 0 이면 저절로 할 일이 없다(목록이 빈다).
+name: Voucher image rehost (runner)
+
+on:
+  schedule:
+    - cron: '17 */2 * * *'   # 두 시간마다 — 한 번에 BATCH 장. 남은 게 0 이면 바로 끝난다.
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: '이번에 옮길 장수(최대 300)'
+        required: false
+        default: '300'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: voucher-image-rehost
+  cancel-in-progress: false
+
+jobs:
+  rehost:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Move voucher images to R2
+        env:
+          TOKEN: ${{ secrets.REPAIR_SCHEMA_TOKEN }}
+          BATCH: ${{ github.event.inputs.batch || '300' }}
+        run: |
+          set -u
+          BATCH=$(printf '%s' "$BATCH" | tr -cd '0-9'); BATCH=${BATCH:-300}
+          if [ -z "$TOKEN" ]; then echo "::notice::REPAIR_SCHEMA_TOKEN 미설정 — skip"; exit 0; fi
+          API=https://urdeal.kr/api/_internal/voucher-image
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+          curl -sS --max-time 30 -H "X-Repair-Token: $TOKEN" -H "User-Agent: $UA" "$API/candidates?limit=$BATCH" -o list.json
+          python3 -c "import json;d=json.load(open('list.json'));print('남은 사진', d.get('remaining'), '· 이번 목록', len(d.get('data') or []))" || { echo "::error::목록 응답 이상"; cat list.json | head -c 300; exit 1; }
+          python3 -c "import json;[print(r['id'], r['image_url']) for r in json.load(open('list.json')).get('data') or []]" > todo.txt
+          ok=0; fail=0; fetchfail=0
+          while read -r id url; do
+            [ -z "$id" ] && continue
+            code=$(curl -sS -L --max-time 20 -A "$UA" -o img.bin -w '%{http_code}' "$url" || echo 000)
+            if [ "$code" != "200" ] || [ ! -s img.bin ]; then fetchfail=$((fetchfail+1)); echo "받기 실패 $id $code"; sleep 1; continue; fi
+            enc=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1], safe=''))" "$url")
+            res=$(curl -sS --max-time 30 -X POST -H "X-Repair-Token: $TOKEN" -H "User-Agent: $UA" -H 'Content-Type: application/octet-stream' --data-binary @img.bin "$API/upload?id=$id&src=$enc" || echo '{}')
+            if echo "$res" | grep -q '"success":true'; then ok=$((ok+1)); else fail=$((fail+1)); echo "저장 실패 $id $res" | head -c 300; echo; fi
+            sleep 0.4   # giftishow 에 몰아서 받지 않는다
+          done < todo.txt
+          echo "옮김 $ok · 저장 실패 $fail · 받기 실패 $fetchfail"
+          echo "### 교환권 사진 이관: 옮김 $ok · 저장 실패 $fail · 받기 실패 $fetchfail" >> "$GITHUB_STEP_SUMMARY"
+          # 전부 받기 실패면 러너도 막힌 것이다 — 조용히 초록으로 끝내지 않는다.
+          total=$((ok+fail+fetchfail))
+          if [ "$total" -gt 0 ] && [ "$ok" -eq 0 ]; then echo "::error::한 장도 못 옮겼다(러너도 막혔거나 서버 거부)"; exit 1; fi

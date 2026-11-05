@@ -23,7 +23,7 @@ import { internalDiagnosticsRoutes } from './routes/internal-diagnostics.routes'
 import { opsAlertRoutes } from './routes/ops-alert.routes'; // 2026-10-20 봇 실패 → 대표 카톡
 import { internalAdminToolsRoutes } from './routes/internal-admin-tools.routes'; // 2026-04-27 TD-006 Phase C
 import { smokeTestRoutes } from './routes/smoke-test.routes'; // 2026-04-27 TD-006 Phase D
-import { repairSchemaRoutes } from './routes/repair-schema.routes'; // 2026-04-27 TD-006 Phase E
+import { repairSchemaRoutes } from './routes/repair-schema.routes'; import { voucherImageUploadRoutes } from './routes/voucher-image-upload.routes'; // 2026-04-27 TD-006 Phase E · 🎁 2026-11-05 교환권 사진 이관(러너 경유)
 import { errorTelemetryRoutes } from './routes/error-telemetry.routes'; // 2026-05-23 frontend 에러 수집
 import { healthcheckRoutes } from './routes/healthcheck.routes'; // 2026-05-23 결제/인증 사전 점검
 import { selftestRoutes } from './routes/selftest.routes'; // 2026-05-23 운영 인프라 자가 점검
@@ -1183,7 +1183,7 @@ app.route('/', internalAdminToolsRoutes);
 app.route('/', smokeTestRoutes);
 app.route('/', kakaoSkillWebhookRoutes); // 💬 CS FAQ 봇 — read-only, 시크릿 게이트(기본 404)
 app.route('/', instagramWebhookRoutes); // 💬 인스타 웹훅 — 서명 검증(앱 시크릿), 발송 게이트 기본 OFF
-app.route('/', repairSchemaRoutes);
+app.route('/', repairSchemaRoutes); app.route('/', voucherImageUploadRoutes); // 🎁 X-Repair-Token 전용 — utils 주석 참조
 app.route('/', errorTelemetryRoutes);
 app.route('/', healthcheckRoutes);
 app.route('/', selftestRoutes);
