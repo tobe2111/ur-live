@@ -38,6 +38,13 @@ const _bannerColsReady = new WeakSet<D1Database>();
 export async function ensureBannerColumns(DB: D1Database): Promise<void> {
   if (_bannerColsReady.has(dbKey(DB))) return;
   _bannerColsReady.add(dbKey(DB));
+  // 🌏 2026-11-05 — **읽기로 먼저 확인**하고, 칸이 없을 때만 ALTER 한다.
+  //   종전엔 isolate 마다 ALTER 2번을 무조건 보냈다(이미 있으면 실패로 끝나지만 **쓰기라 미국 원본까지 간다**).
+  //   홈 섹션(`/api/sections`)이 이 함수를 **읽기 사본 세션**으로 부르는데, 세션 안에 쓰기가 끼면
+  //   한국에서 태평양 왕복 2번 + 그 세션의 뒤 읽기까지 원본으로 끌려갈 수 있다(라이브 표본: HKG → primary:ENAM).
+  //   LIMIT 0 읽기는 칸 이름만 확인하고 행은 안 읽는다 — 사본이 답한다.
+  const ok = await DB.prepare('SELECT banner_slot, video_url FROM banners LIMIT 0').all().then(() => true, () => false);
+  if (ok) return;
   for (const sql of [
     // ⚠️ **DEFAULT 를 주지 않는다.** SQLite 는 ADD COLUMN 의 기본값을 기존 행에도 적용하므로,
     //    기본값이 있으면 예전에 올려둔 배너가 전부 그 자리를 차지한 것으로 읽힌다(실제 사고).

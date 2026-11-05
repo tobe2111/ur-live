@@ -95,3 +95,32 @@ export function recentWriteMarker() {
     try { c.res.headers.append('Set-Cookie', recentWriteCookie()) } catch { /* 잠긴 헤더 — 건너뜀 */ }
   }
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 🧱 2026-11-05 표가 이미 있는지 **읽기로** 확인 — 사본 세션 안에 DDL 을 끼우지 않으려고.
+ *   `CREATE TABLE IF NOT EXISTS`·`ALTER … ADD COLUMN` 은 이미 있어도 **쓰기**라 사본이 못 받고 미국 원본까지 간다
+ *   (한국에서 한 문장 ≈0.2초). 손님 읽기 경로의 `ensureXxx` 가 isolate 마다 그걸 2~6번 보냈다.
+ *   이 확인은 `sqlite_master` 와 `LIMIT 0` 읽기뿐이라 가까운 사본이 답한다. 하나라도 없으면 false →
+ *   호출부가 종전대로 DDL 을 돈다(새 DB·옛 스키마는 지금과 똑같이 고쳐진다). 확인이 실패해도 false(안전한 쪽).
+ * ──────────────────────────────────────────────────────────────────────────── */
+export async function schemaPresent(
+  DB: D1Database,
+  want: { tables?: string[]; indexes?: string[]; columns?: Array<{ table: string; cols: string[] }> },
+): Promise<boolean> {
+  try {
+    const names = [...(want.tables || []), ...(want.indexes || [])]
+    const checks: Promise<boolean>[] = []
+    if (names.length) {
+      checks.push(DB.prepare(`SELECT COUNT(*) AS n FROM sqlite_master WHERE name IN (${names.map(() => '?').join(',')})`) // d1-bind-ok: 호출부가 상수로 적은 표·색인 이름 몇 개(≤6)뿐
+        .bind(...names).first<{ n: number }>().then((r) => Number(r?.n) === names.length))
+    }
+    for (const c of want.columns || []) {
+      if (!/^\w+$/.test(c.table) || !c.cols.every((x) => /^\w+$/.test(x))) return false
+      checks.push(DB.prepare(`SELECT ${c.cols.join(', ')} FROM ${c.table} LIMIT 0`).all().then(() => true, () => false))
+    }
+    if (checks.length === 0) return false
+    return (await Promise.all(checks)).every(Boolean)
+  } catch {
+    return false
+  }
+}

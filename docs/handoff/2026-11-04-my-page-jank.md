@@ -141,3 +141,9 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 - `/payouts`(읽기): 순차 5왕복 → 최대 3(켜짐+정산일 동시 · 잔액+내역 동시). 돈 움직임 없음(GET).
 - 시험: `agency-multi-store-scope` ⑤(진짜 SQLite — 하위 질의 = id 목록 같은 숫자, 남의 에이전시 0, 배정제 직원) · `agency-console-plate` ② 재조준. 주입: 하위 질의에서 배정 판정 제거 → 빨간불 확인.
 - ⚠️ 못 보는 것: D1 이 IN(하위 질의 + LIMIT) 계획을 빠르게 세우는지(라이브 Server-Timing 으로만).
+
+## 2026-11-05 11:35 판정 — 한국 D1 표본
+- 표본 **1건뿐**(11-04 `d1:primary:ENAM@HKG` 411ms · 11-05 0건). 섹션 응답은 대개 캐시 HIT 라 `Server-Timing d1` 이 안 붙어 표본이 거의 안 쌓인다 ⇒ **판정 불가**(사본 확대도, 사본 없음 결론도 아직 근거 없음).
+- CF API: `read_replication.mode = auto` · 원본 ENAM.
+- 판정 중 찾은 원인 후보: `ensureBannerColumns` 가 isolate 마다 ALTER 2번을 **사본 세션 안에서** 무조건 보냈다(쓰기 → 원본). 읽기(LIMIT 0)로 먼저 확인하고 없을 때만 ALTER 하게 고침. 시험 `replica-session-no-ddl-2026-11-05`.
+- 같은 클래스 전수(탐색 에이전트): 사본 세션 위 isolate 당 DDL 5곳 더 — `ensureCuratorTables`(유어샵 공개, 6문장) · `ensureVoucherGiftTable`(내 이용권) · `ensureSellerMetaTable`(공구 목록·상세) · `ensureSupplyMetaTable`(상세) · `ensureReviewScoreTable`(리뷰 레벨). 공용 `schemaPresent()`(sqlite_master + LIMIT 0 읽기)로 먼저 확인 → 없을 때만 DDL. 원본 쪽 DDL(블로그·쿠폰·알림설정·`idx_vouchers_user_created`)은 세션을 안 잡아 이번엔 손대지 않음(각 isolate 1왕복 — 다음 후보).

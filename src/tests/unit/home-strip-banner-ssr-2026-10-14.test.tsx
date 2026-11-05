@@ -154,7 +154,7 @@ describe('③ 배선 — 세 자리가 같은 배너를 본다', () => {
 
   it('`/api/banners` 도 그 함수를 쓴다 — SQL 이 두 벌이면 기간·자리 규칙이 갈린다', () => {
     expect(BANNERS_ROUTE).toMatch(/listActiveBanners\(DB, slotFilter/)
-    expect((BANNERS_ROUTE.match(/FROM banners\b/g) || []).length, '공개 GET 쪽 배너 SELECT 는 함수 하나여야 한다').toBe(1)
+    expect((BANNERS_ROUTE.match(/FROM banners\b(?! LIMIT 0)/g) || []).length /* 2026-11-05: 칸 확인용 LIMIT 0 읽기는 행을 안 읽으므로 셈에서 뺀다 */, '공개 GET 쪽 배너 SELECT 는 함수 하나여야 한다').toBe(1)
   })
 
   it('부품이 장수 상한·치수 클래스를 공용 상수에서 받는다 (손으로 적으면 서버와 갈린다)', () => {

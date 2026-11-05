@@ -19,7 +19,7 @@
  *   (`expired-voucher-refund-sql.ts`). 바꾸면 만료 환불 규정에 닿으므로 손대지 않았다.
  */
 
-import { dbKey } from './d1-read-replica' // 세션(사본)이어도 메모는 원본 기준
+import { dbKey, schemaPresent } from './d1-read-replica' // 세션(사본)이어도 메모는 원본 기준
 
 export const GIFT_TOKEN_RE = /^[A-Za-z0-9_-]{20,64}$/
 
@@ -30,6 +30,8 @@ export async function ensureVoucherGiftTable(DB: D1Database): Promise<void> {
   // 🩸 2026-11-04 — 기억은 **원본 DB 기준**(`dbKey`). 내 이용권(GET /my)이 읽기 사본 세션(`userReadDb`)을 넘기는데,
   //   세션은 요청마다 새 객체라 `ensured.has(DB)` 가 매번 빗나가 DDL 두 문장이 **매 요청 미국 원본**까지 갔다(+2 왕복).
   if (ensured.has(dbKey(DB))) return
+  // 🌏 2026-11-05 — 이미 있으면 DDL 을 안 보낸다(읽기로 확인 → 사본이 답한다). 쓰기는 미국 원본까지 간다.
+  if (await schemaPresent(DB, { tables: ['voucher_gifts'], indexes: ['idx_voucher_gifts_pending'] })) { ensured.add(dbKey(DB)); return }
   await DB.prepare(`CREATE TABLE IF NOT EXISTS voucher_gifts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     token TEXT NOT NULL UNIQUE,

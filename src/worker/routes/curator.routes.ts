@@ -31,7 +31,7 @@ import { getPolicy } from '../utils/dynamic-policy'
 import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'; import { snsLinkStatus, SNS_LABEL, type SnsPlatform } from '../../shared/sns-link'
 import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'; import { loadUShopSnsFollowers } from '../utils/ushop-sns-followers'
-import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'; import { countUShopSales } from '../utils/ushop-sales'; import { publicReadDb, userReadDb } from '../utils/d1-read-replica' // 한 줄: 래칫
+import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'; import { countUShopSales } from '../utils/ushop-sales'; import { publicReadDb, userReadDb, schemaPresent } from '../utils/d1-read-replica' // 한 줄: 래칫
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -95,6 +95,13 @@ async function ensureUserProfileCols(DB: D1Database): Promise<void> {
 }
 async function ensureCuratorTables(DB: D1Database): Promise<void> {
   if (_curatorTablesReady) return
+  // 🌏 2026-11-05 — 유어샵 공개 화면이 이 함수를 **읽기 사본 세션**으로 부른다. 이미 다 있으면 DDL 6문장
+  //   (쓰기 → 미국 원본)을 안 보낸다. 확인은 읽기라 가까운 사본이 답한다.
+  if (await schemaPresent(DB, {
+    tables: ['product_pins', 'user_handle_aliases'],
+    indexes: ['idx_product_pins_user_pos', 'idx_users_handle_unique'],
+    columns: [{ table: 'users', cols: ['handle', 'bio'] }],
+  })) { _curatorTablesReady = true; return }
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS product_pins (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
