@@ -30,10 +30,18 @@ export default [
   {
     name: 'LCP헤더 — 홈 첫 화면을 안 그렸는데도 헤더를 싣는다',
     file: 'src/worker/index.ts',
-    find: 'if (homeFirst) appendLcpLink(c.res.headers, homeLcpImage(ssrExtraPayload))',
-    replace: 'appendLcpLink(c.res.headers, homeLcpImage(ssrExtraPayload))',
+    find: "if (homeFirst) { appendLcpLink(c.res.headers, homeHeroLcpImage(c.req.header('cookie')));", // 🌆 2026-11-05 지역 사진이 앞에 붙었다
+    replace: "{ appendLcpLink(c.res.headers, homeHeroLcpImage(c.req.header('cookie')));",
     test: T,
     why: '첫 화면이 없으면 React 가 그 사진을 늦게, 다른 맥락에서 그린다 — 미리받기가 회선만 먹는다.',
+  },
+  {
+    name: 'LCP헤더 — 홈의 진짜 LCP(지역 사진)를 안 당긴다',
+    file: 'src/worker/index.ts',
+    find: "appendLcpLink(c.res.headers, homeHeroLcpImage(c.req.header('cookie'))); ",
+    replace: '',
+    test: T,
+    why: '2026-11-05 라이브 실측: 홈 LCP 는 지역 사진(48KB)이다 — 본문 img 라 늦게 발견돼 JS 25개와 회선을 나눴다.',
   },
   {
     name: 'LCP헤더 — 숙소 상세가 PC 에도 폰 주소를 당긴다',

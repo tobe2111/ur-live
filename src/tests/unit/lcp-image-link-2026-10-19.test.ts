@@ -100,7 +100,7 @@ describe('③ 헤더 값 검증', () => {
 describe('④ 워커 배선 — 첫 화면을 그렸을 때만', () => {
   const src = stripComments(fs.readFileSync('src/worker/index.ts', 'utf8'))
   it.each([
-    ['홈', /const homeFirst = buildHomeFirstScreen\([^\n]*?\); if \(homeFirst\) appendLcpLink\(c\.res\.headers, homeLcpImage\(ssrExtraPayload\)\)/],
+    ['홈', /const homeFirst = buildHomeFirstScreen\([^\n]*?\); if \(homeFirst\) \{ appendLcpLink\(c\.res\.headers, homeHeroLcpImage\(c\.req\.header\('cookie'\)\)\); appendLcpLink\(c\.res\.headers, homeLcpImage\(ssrExtraPayload\)\) \}/], // 🌆 2026-11-05 지역 사진이 먼저
     ['숙소', /const stayFirst = buildStayDetailFirstScreen\([^\n]*?\); if \(stayFirst && isMobileUserAgent\([^\n]*?\)\) appendLcpLink\(c\.res\.headers, stayLcpImage\(ssrPayload\)\)/],
     ['이용권', /const firstScreen = buildDetailFirstScreen\([^\n]*?\); if \(firstScreen\) appendLcpLink\(c\.res\.headers, hrefOfPreloadTag\(buildDetailHeroPreloadLink\(ssrPayload, false, isMobileUserAgent\(/],
   ])('%s', (_n, re) => {
@@ -115,5 +115,24 @@ describe('④ 워커 배선 — 첫 화면을 그렸을 때만', () => {
   })
   it('헤더는 응답을 변환하기 전에 붙는다(변환 뒤엔 이미 나갔다)', () => {
     expect(src.indexOf('appendLcpLink(c.res.headers, homeLcpImage')).toBeLessThan(src.indexOf('const rewritten = rb.transform(c.res)'))
+  })
+})
+
+describe('🌆 2026-11-05 홈 — 지역 사진(진짜 LCP)을 응답 헤더로', () => {
+  it('서버 첫 화면이 그리는 지역 사진과 **같은 주소**(쿠키 없음 = 전국 사진 · none = 없음)', async () => {
+    const { homeHeroLcpImage } = await import('@/worker/utils/lcp-image-link')
+    const { regionHeroFromCookieHeader } = await import('@/shared/home-region-hero')
+    expect(homeHeroLcpImage(null)).toBe(regionHeroFromCookieHeader(null)?.src)
+    expect(homeHeroLcpImage(null)).toMatch(/^\/assets\/region-hero\/.+\.webp$/)
+    expect(homeHeroLcpImage('ur_home_hero=none')).toBe('')
+  })
+  it('홈 응답은 지역 사진을 배너보다 **먼저** 싣는다(같은 줄)', () => {
+    const src = fs.readFileSync('src/worker/index.ts', 'utf8')
+    const line = src.split('\n').find((l) => l.includes('buildHomeFirstScreen(ssrExtraPayload')) || ''
+    expect(line.indexOf('homeHeroLcpImage(')).toBeGreaterThan(0)
+    expect(line.indexOf('homeHeroLcpImage(')).toBeLessThan(line.indexOf('homeLcpImage(ssrExtraPayload)'))
+  })
+  it('서버 첫 화면의 지역 사진 img 는 fetchpriority=high', () => {
+    expect(fs.readFileSync('src/worker/utils/home-first-screen.ts', 'utf8')).toMatch(/<img src="\$\{escAttr\(hero\.src\)\}" alt="" fetchpriority="high"/)
   })
 })

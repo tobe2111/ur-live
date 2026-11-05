@@ -26,6 +26,18 @@
  */
 import { stripBannersOf, stripBannerImageUrl, bannersOfSlot } from '../../shared/home-strip-banners'
 import { detailGalleryImages, detailHeroMobileUrl, DETAIL_HERO_MOBILE_WIDTH } from '../../shared/detail-hero-image'
+import { regionHeroFromCookieHeader } from '../../shared/home-region-hero'
+
+/**
+ * 🌆 2026-11-05 — 홈의 **진짜** LCP 는 이제 맨 위 지역 사진이다(2026-11-02 서버 첫 화면에 들어온 뒤).
+ *   라이브 실측(폰·CPU 4배, 3회): LCP 요소 = `IMG /assets/region-hero/national-v1.webp`(48KB) — 매번.
+ *   그런데 응답 헤더 preload 는 10-19 판 그대로 **배너**만 당기고 있었고, 지역 사진은 본문 `<img>` 라 늦게 발견돼
+ *   JS 25개와 회선을 나눠 받았다(첫 그림 → LCP 0.2~2.0초).
+ *   ⇒ 서버 첫 화면이 그리는 **같은 함수**(`regionHeroFromCookieHeader`)로 주소를 얻는다(byte-일치 — 이중 다운로드 금지).
+ */
+export function homeHeroLcpImage(cookieHeader: string | null | undefined): string {
+  return regionHeroFromCookieHeader(cookieHeader)?.src ?? ''
+}
 
 /** 홈 — 섹션 시드의 맨 위 배너 첫 장(`home-first-screen.ts stripBannerHtml` 과 같은 함수). 배너가 없으면 '' (카드는 이미 preload 된다). */
 export function homeLcpImage(sectionsSeedJson: string | null | undefined): string {

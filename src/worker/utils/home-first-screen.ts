@@ -235,7 +235,7 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, 
 function heroBgHtml(hero: RegionHero): string {
   return (
     `<div aria-hidden="true" class="${HOME_FS_CLASS.heroBg}">` +
-    `<img src="${escAttr(hero.src)}" alt="" decoding="async" data-home-hero="${escAttr(hero.src)}" class="${HOME_FS_CLASS.heroImg}">` +
+    `<img src="${escAttr(hero.src)}" alt="" fetchpriority="high" decoding="async" data-home-hero="${escAttr(hero.src)}" class="${HOME_FS_CLASS.heroImg}">` +
     `<div class="absolute inset-0 dark:hidden" style="background:${REGION_HERO_FADE_LIGHT}"></div>` +
     `<div class="absolute inset-0 hidden dark:block" style="background:${REGION_HERO_FADE_DARK}"></div>` +
     `</div>`
