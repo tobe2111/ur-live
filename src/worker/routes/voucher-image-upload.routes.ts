@@ -22,6 +22,7 @@ import { intParam } from '../../shared/pagination'
 import { storeImageBytesToR2 } from '../utils/rehost-image'
 import { giftishowHostSql } from '../cron/voucher-image-rehost'
 import { ensureSupplyMetaTable, setSupplyMeta } from '../utils/product-supply-meta'
+import { ensureBrandIconRehostTable } from '../utils/brand-icon-rehost'
 
 type Env = { DB: D1Database; MEDIA_BUCKET?: R2Bucket; REPAIR_SCHEMA_TOKEN?: string }
 
@@ -84,5 +85,37 @@ voucherImageUploadRoutes.post('/api/_internal/voucher-image/upload', async (c) =
   if ((up.meta?.changes ?? 0) === 0) return c.json({ success: false, error: 'changed meanwhile' }, 409)
   await ensureSupplyMetaTable(c.env.DB).catch(() => {})
   await setSupplyMeta(c.env.DB, id, { voucher_img_src: src, voucher_img_tries: '0' }).catch(() => {})
+  return c.json({ success: true, url: hosted })
+})
+
+/* ── 🏷️ 브랜드 로고(약 85종) — 원천 `gift_catalog` 은 동기화가 덮어쓰므로 대응표에 넣는다(`brand-icon-rehost.ts`) ── */
+const BRAND_SRC_WHERE = `brand_icon_url IS NOT NULL AND ${giftishowHostSql('brand_icon_url')}`
+
+voucherImageUploadRoutes.get('/api/_internal/voucher-image/brand-candidates', async (c) => {
+  if (!tokenOk(c.env.REPAIR_SCHEMA_TOKEN, c.req.header('X-Repair-Token'))) return c.json({ success: false, error: 'unauthorized' }, 403)
+  await ensureBrandIconRehostTable(c.env.DB)
+  const { results } = await c.env.DB.prepare(
+    `SELECT DISTINCT brand_icon_url AS src FROM gift_catalog WHERE ${BRAND_SRC_WHERE}
+        AND brand_icon_url NOT IN (SELECT src FROM brand_icon_rehost) LIMIT 300`,
+  ).all<{ src: string }>()
+  return c.json({ success: true, data: (results || []).map((r) => r.src) })
+})
+
+voucherImageUploadRoutes.post('/api/_internal/voucher-image/brand-upload', async (c) => {
+  if (!tokenOk(c.env.REPAIR_SCHEMA_TOKEN, c.req.header('X-Repair-Token'))) return c.json({ success: false, error: 'unauthorized' }, 403)
+  if (!c.env.MEDIA_BUCKET) return c.json({ success: false, error: 'NO_MEDIA_BUCKET' }, 503)
+  const src = c.req.query('src') || ''
+  if (!/^https:\/\//.test(src)) return c.json({ success: false, error: 'bad params' }, 400)
+  const known = await c.env.DB.prepare(`SELECT 1 AS ok FROM gift_catalog WHERE brand_icon_url = ? AND ${BRAND_SRC_WHERE} LIMIT 1`).bind(src).first<{ ok: number }>()
+  if (!known) return c.json({ success: false, error: 'not a giftishow brand icon' }, 409)
+  const buf = await c.req.arrayBuffer()
+  if (buf.byteLength > VOUCHER_UPLOAD_MAX_BYTES) return c.json({ success: false, error: 'too large' }, 413)
+  const ct = sniffImageType(new Uint8Array(buf, 0, Math.min(16, buf.byteLength)))
+  if (!ct) return c.json({ success: false, error: 'not an image' }, 415)
+  // 'voucher-brand' — `cf-image.ts` 의 교환권 사진 예외(`/api/media/uploads/voucher/` 원본 그대로)에 안 걸려 리사이저가 줄인다.
+  const hosted = await storeImageBytesToR2({ MEDIA_BUCKET: c.env.MEDIA_BUCKET }, buf, ct, 'voucher-brand-runner', 'uploads/voucher-brand')
+  if (!hosted) return c.json({ success: false, error: 'store failed' }, 422)
+  await ensureBrandIconRehostTable(c.env.DB)
+  await c.env.DB.prepare(`INSERT OR REPLACE INTO brand_icon_rehost (src, url) VALUES (?, ?)`).bind(src, hosted).run()
   return c.json({ success: true, url: hosted })
 })

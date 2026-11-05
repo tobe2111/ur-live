@@ -53,6 +53,19 @@ jobs:
             if echo "$res" | grep -q '"success":true'; then ok=$((ok+1)); else fail=$((fail+1)); echo "저장 실패 $id $res" | head -c 300; echo; fi
             sleep 0.4   # giftishow 에 몰아서 받지 않는다
           done < todo.txt
+          # 🏷️ 브랜드 로고(약 85종) — 원천 표는 동기화가 덮어쓰므로 서버가 대응표에 넣는다.
+          curl -sS --max-time 30 -H "X-Repair-Token: $TOKEN" -H "User-Agent: $UA" "$API/brand-candidates" -o brands.json || echo '{}' > brands.json
+          python3 -c "import json;[print(u) for u in (json.load(open('brands.json')).get('data') or [])]" > brands.txt || true
+          echo "브랜드 로고 남음 $(wc -l < brands.txt)"
+          while read -r url; do
+            [ -z "$url" ] && continue
+            code=$(curl -sS -L --max-time 20 -A "$UA" -o img.bin -w '%{http_code}' "$url" || echo 000)
+            if [ "$code" != "200" ] || [ ! -s img.bin ]; then fetchfail=$((fetchfail+1)); echo "로고 받기 실패 $code"; sleep 1; continue; fi
+            enc=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1], safe=''))" "$url")
+            res=$(curl -sS --max-time 30 -X POST -H "X-Repair-Token: $TOKEN" -H "User-Agent: $UA" -H 'Content-Type: application/octet-stream' --data-binary @img.bin "$API/brand-upload?src=$enc" || echo '{}')
+            if echo "$res" | grep -q '"success":true'; then ok=$((ok+1)); else fail=$((fail+1)); echo "로고 저장 실패 $res" | head -c 300; echo; fi
+            sleep 0.4
+          done < brands.txt
           echo "옮김 $ok · 저장 실패 $fail · 받기 실패 $fetchfail"
           echo "### 교환권 사진 이관: 옮김 $ok · 저장 실패 $fail · 받기 실패 $fetchfail" >> "$GITHUB_STEP_SUMMARY"
           # 전부 받기 실패면 러너도 막힌 것이다 — 조용히 초록으로 끝내지 않는다.
