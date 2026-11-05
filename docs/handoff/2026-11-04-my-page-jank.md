@@ -148,3 +148,4 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 - 판정 중 찾은 원인 후보: `ensureBannerColumns` 가 isolate 마다 ALTER 2번을 **사본 세션 안에서** 무조건 보냈다(쓰기 → 원본). 읽기(LIMIT 0)로 먼저 확인하고 없을 때만 ALTER 하게 고침. 시험 `replica-session-no-ddl-2026-11-05`.
 - 같은 클래스 전수(탐색 에이전트): 사본 세션 위 isolate 당 DDL 5곳 더 — `ensureCuratorTables`(유어샵 공개, 6문장) · `ensureVoucherGiftTable`(내 이용권) · `ensureSellerMetaTable`(공구 목록·상세) · `ensureSupplyMetaTable`(상세) · `ensureReviewScoreTable`(리뷰 레벨). 공용 `schemaPresent()`(sqlite_master + LIMIT 0 읽기)로 먼저 확인 → 없을 때만 DDL. 원본 쪽 DDL(블로그·쿠폰·알림설정·`idx_vouchers_user_created`)은 세션을 안 잡아 이번엔 손대지 않음(각 isolate 1왕복 — 다음 후보).
 - 2차(원본 쪽): 블로그·쿠폰 `/my`·알림 설정·`/vouchers/my` 색인 — `schemaPresent` 가 스스로 사본 세션을 열어 확인(호출부 데이터 읽기는 그대로). 잠금 기록 `docs/locks/loading/2026-11-05-schema-probe.md`.
+- 2026-11-05 SWR: 공개 캐시 만료 직후 예비 사본을 즉시 내고 뒤에서 갱신(`*-SWR`). 잠금 기록 `docs/locks/loading/2026-11-05-edge-swr.md`. 라이브 판정: 같은 공개 URL 을 TTL×3 지난 뒤 부르면 `X-Cache-Status: public-SWR`, 곧이어 다시 부르면 `public-HIT`.
