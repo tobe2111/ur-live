@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-05",
+  "reason": "2026-11-05 유어딜 달력(app-date-input 2.9KB) — 기본 날짜·시간 입력 대체로 숙소 검색·어드민이 받는다(의도). app-utils +1.0KB 는 이 PR 이 아니라 main(#2206 이후)에서 온 것",
+  "surfaces": [
+    "voucherDetail",
+    "urshorts",
+    "cart",
+    "stays",
+    "dash:admin"
+  ],
+  "changes": [
+    "voucherDetail: 180.3 → 181.9 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +1.0",
+    "urshorts: 178.7 → 180.2 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +1.0",
+    "cart: 186.1 → 187.7 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +1.0",
+    "stays: 184.9 → 187.9 KB (+3.0, 허용 1.5) · 늘어난 것: app-date-input.js +2.9",
+    "dash:admin: 253.7 → 256.7 KB (+3.1, 허용 1.5) · 늘어난 것: app-date-input.js +2.9"
+  ]
+}

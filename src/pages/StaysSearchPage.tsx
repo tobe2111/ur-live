@@ -21,6 +21,7 @@ import { useStaysSearch } from '@/hooks/queries/useStaysSearch'
 import { kstYmd } from '@/shared/stays-early'
 import { STAYS_LIST, stayCardHref, stayDateChipLabel } from '@/shared/stays-list'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 15차 ⑨ — 지역·숙소 종류 칩은 생길 때 톡 튀고, × 로 뺄 때 작아지며 사라진다.
 // 🎬 2026-11-03 14차 ⑤ — 조건을 바꿔 결과가 새로 오면 카드가 위에서부터 차례로 떠오른다(첫 화면은 그대로 — 사진이 늦게 보이면 안 된다).
@@ -270,11 +271,11 @@ export default function StaysSearchPage() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-2">체크인</label>
-                  <input type="date" value={filters.check_in} onChange={(e) => setFilters({ ...filters, check_in: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
+                  <DateInput type="date" value={filters.check_in} onChange={(e) => setFilters({ ...filters, check_in: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
                 </div>
                 <div>
                   <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-2">체크아웃</label>
-                  <input type="date" value={filters.check_out} onChange={(e) => setFilters({ ...filters, check_out: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
+                  <DateInput type="date" value={filters.check_out} onChange={(e) => setFilters({ ...filters, check_out: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
                 </div>
               </div>
               <div>

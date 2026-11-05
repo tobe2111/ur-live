@@ -7,6 +7,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { Shield, ChevronDown, ChevronUp, Filter, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { formatDate } from '@/shared/utils'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 interface AuditLog {
   id: number
@@ -149,7 +150,7 @@ export default function AdminAuditLogPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">시작일</label>
-              <input
+              <DateInput
                 type="date"
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
@@ -158,7 +159,7 @@ export default function AdminAuditLogPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">종료일</label>
-              <input
+              <DateInput
                 type="date"
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}

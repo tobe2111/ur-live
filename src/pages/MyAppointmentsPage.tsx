@@ -18,6 +18,7 @@ import SEO from '@/components/SEO'
 import { useMyAppointments } from '@/hooks/queries/useMyData'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { DateInput } from '@/components/ui/date-input'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 15차 ④ — 방금 취소한 예약은 상태 표시가 위아래로 뒤집히며 '취소'로 바뀌고, 카드가 한 번 흐려졌다 돌아온다(어느 줄이 바뀌었는지 보이게).
 injectMotionCss('ur-m-appt', `@keyframes ur-ap-flip { 0% { opacity: 0; transform: translateY(-60%) scaleY(.4); } 100% { opacity: 1; transform: none; } }@keyframes ur-ap-dim { 40% { opacity: .45; } 100% { opacity: 1; } }.ur-ap-flip { animation: ur-ap-flip .4s cubic-bezier(.3,1.3,.5,1); }.ur-ap-dim { animation: ur-ap-dim .6s ease; }@media (prefers-reduced-motion: reduce){.ur-ap-flip,.ur-ap-dim{animation:none!important}}`)
@@ -332,7 +333,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.dateLabel', { defaultValue: '날짜' })}
             </label>
-            <input
+            <DateInput
               type="date"
               value={date}
               min={todayIso}

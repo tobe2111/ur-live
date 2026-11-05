@@ -11,6 +11,7 @@ import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { Link2 } from 'lucide-react'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 export type GbMode = 'off' | 'scheduled' | 'live' | 'ended'
 export interface GbSession {
@@ -86,10 +87,10 @@ export function GbSessionEditor({ row, onSaved }: { row: GbRow; onSaved: () => v
             <input value={target} onChange={(e) => setTarget(e.target.value.replace(/\D/g, ''))} inputMode="numeric" className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-900" />
           </label>
           <label className="text-[12px] text-gray-600">시작(선택 — 예약)
-            <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-900" />
+            <DateInput type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-900" />
           </label>
           <label className="text-[12px] text-gray-600">마감 <span className="text-tone-bad">*</span>
-            <input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-900" />
+            <DateInput type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-900" />
           </label>
           <label className="col-span-2 flex items-center gap-2 text-[12px] text-gray-700 mt-1">
             <input type="checkbox" checked={linkOnly} onChange={(e) => setLinkOnly(e.target.checked)} className="w-4 h-4" />

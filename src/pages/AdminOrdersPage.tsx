@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 // 🗂️ 주문 종류. ⚠️ B2B 는 wholesale_orders. 🧾 2026-09-21: 이 함수가 **이용권을 "교환권"이라 불렀다**. 판정 SSOT: `order-kind.ts`.
 const KIND_TONE = { deal: ['text-tone-warn', 'bg-tone-warn-bg'], voucher: ['text-tone-info', 'bg-tone-info-bg'], shipping: ['text-gray-600', 'bg-gray-100'] } as const
@@ -388,11 +389,11 @@ export default function AdminOrdersPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5"><Calendar className="w-3.5 h-3.5 inline mr-1" />{t('admin.orders.k042', { defaultValue: '시작일' })}</label>
-            <input type="date" value={dateFilter.start} onChange={e => setDateFilter({ ...dateFilter, start: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <DateInput type="date" value={dateFilter.start} onChange={e => setDateFilter({ ...dateFilter, start: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5"><Calendar className="w-3.5 h-3.5 inline mr-1" />{t('admin.orders.k043', { defaultValue: '종료일' })}</label>
-            <input type="date" value={dateFilter.end} onChange={e => setDateFilter({ ...dateFilter, end: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <DateInput type="date" value={dateFilter.end} onChange={e => setDateFilter({ ...dateFilter, end: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         </div>
         <div className="mt-3">

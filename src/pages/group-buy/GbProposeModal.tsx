@@ -9,6 +9,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { X, Loader2 } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 export default function GbProposeModal({ productId, listPrice, productName, onClose }: {
   productId: number; listPrice: number; productName: string; onClose: () => void
@@ -46,7 +47,7 @@ export default function GbProposeModal({ productId, listPrice, productName, onCl
 
         <div>
           <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1">공구 마감</label>
-          <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)}
+          <DateInput type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 dark:border-[#2C2F35] dark:bg-[#1D1F29] rounded-lg text-[15px] text-gray-900 dark:text-white" />
         </div>
         <div className="grid grid-cols-2 gap-2">

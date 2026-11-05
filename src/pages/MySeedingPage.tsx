@@ -17,6 +17,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import SnsLinkList, { type SnsLinkView } from '@/components/seeding/SnsLinkList'
 import { MAX_VISIT_SLOTS, PLATFORM_LABEL, STATUS_LABEL, type ApplicationStatus, type PassPackage, type SeedingPlatform } from '@/shared/seeding'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { DateInput } from '@/components/ui/date-input'
 
 interface App {
   id: number; product_id: number; platform: SeedingPlatform; status: ApplicationStatus; visit_slots: string | null
@@ -175,7 +176,7 @@ function AppRow({ a, onDone }: { a: App; onDone: () => void }) {
         <div className="mt-3 space-y-2">
           <p className="text-[13px] text-gray-600 dark:text-gray-300">방문 희망 일정을 최대 {MAX_VISIT_SLOTS}개 골라 주세요(내일부터).</p>
           {slots.map((s, i) => (
-            <input key={i} type="datetime-local" className={input} value={s}
+            <DateInput key={i} type="datetime-local" className={input} value={s}
               onChange={(e) => setSlots((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))} />
           ))}
           {slots.length < MAX_VISIT_SLOTS && (

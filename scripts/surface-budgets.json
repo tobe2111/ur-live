@@ -113,27 +113,27 @@
       }
     },
     "voucherDetail": {
-      "totalKB": 180.34,
+      "totalKB": 181.88,
       "chunks": {
-        "index.js": 15.68,
+        "index.js": 15.93,
         "react-core.js": 38.65,
-        "app-shared.js": 6.55,
+        "app-shared.js": 6.53,
         "tanstack-query.js": 9.5,
         "zustand.js": 2.5,
-        "app-utils.js": 22.88,
         "react-router.js": 7.11,
+        "app-utils.js": 23.85,
         "helmet.js": 4.93,
         "lucide-shell.js": 0.7,
-        "app-stores.js": 2.2,
-        "app-shell.js": 9.17,
-        "app-auth.js": 1.29,
-        "app-layout.js": 3.4,
-        "app-routes.js": 1.07,
-        "index.css": 29.39,
-        "VoucherDetailPage.js": 4.63,
+        "app-stores.js": 2.19,
+        "app-shell.js": 9.21,
+        "app-auth.js": 1.3,
+        "app-layout.js": 3.52,
+        "app-routes.js": 1.08,
+        "index.css": 29.59,
+        "VoucherDetailPage.js": 4.61,
         "lucide-home.js": 0.77,
-        "lz-common.js": 19.42,
-        "lz-gbDetail-voucherDetail.js": 0.58
+        "lz-common.js": 19.34,
+        "lz-gbDetail-voucherDetail.js": 0.57
       }
     },
     "product": {
@@ -283,54 +283,54 @@
       }
     },
     "urshorts": {
-      "totalKB": 178.66,
+      "totalKB": 180.2,
       "chunks": {
-        "index.js": 15.68,
+        "index.js": 15.93,
         "react-core.js": 38.65,
-        "app-shared.js": 6.55,
+        "app-shared.js": 6.53,
         "tanstack-query.js": 9.5,
         "zustand.js": 2.5,
-        "app-utils.js": 22.88,
         "react-router.js": 7.11,
+        "app-utils.js": 23.85,
         "helmet.js": 4.93,
         "lucide-shell.js": 0.7,
-        "app-stores.js": 2.2,
-        "app-shell.js": 9.17,
-        "app-auth.js": 1.29,
-        "app-layout.js": 3.4,
-        "app-routes.js": 1.07,
-        "index.css": 29.39,
-        "UrShortsBrowsePage.js": 1.81,
+        "app-stores.js": 2.19,
+        "app-shell.js": 9.21,
+        "app-auth.js": 1.3,
+        "app-layout.js": 3.52,
+        "app-routes.js": 1.08,
+        "index.css": 29.59,
+        "UrShortsBrowsePage.js": 1.8,
         "lz-home-homePc-urshorts.js": 0.29,
         "lucide-home.js": 0.77,
-        "lz-urshorts.js": 1.42,
-        "lz-common.js": 19.42
+        "lz-urshorts.js": 1.41,
+        "lz-common.js": 19.34
       }
     },
     "cart": {
-      "totalKB": 186.09,
+      "totalKB": 187.65,
       "chunks": {
-        "index.js": 15.68,
+        "index.js": 15.93,
         "react-core.js": 38.65,
-        "app-shared.js": 6.55,
+        "app-shared.js": 6.53,
         "tanstack-query.js": 9.5,
         "zustand.js": 2.5,
-        "app-utils.js": 22.88,
         "react-router.js": 7.11,
+        "app-utils.js": 23.85,
         "helmet.js": 4.93,
         "lucide-shell.js": 0.7,
-        "app-stores.js": 2.2,
-        "app-shell.js": 9.17,
-        "app-auth.js": 1.29,
-        "app-layout.js": 3.4,
-        "app-routes.js": 1.07,
-        "index.css": 29.39,
-        "CartPage.js": 5.78,
+        "app-stores.js": 2.19,
+        "app-shell.js": 9.21,
+        "app-auth.js": 1.3,
+        "app-layout.js": 3.52,
+        "app-routes.js": 1.08,
+        "index.css": 29.59,
+        "CartPage.js": 5.79,
         "app-cross.js": 1.39,
-        "lz-common.js": 19.42,
+        "lz-common.js": 19.34,
         "lucide-home.js": 0.77,
         "app-misc.js": 0.13,
-        "app-cart.js": 3.65
+        "app-cart.js": 3.64
       }
     },
     "search": {
@@ -386,9 +386,9 @@
       }
     },
     "stays": {
-      "totalKB": 184.86,
+      "totalKB": 187.91,
       "chunks": {
-        "index.js": 15.9,
+        "index.js": 15.93,
         "react-core.js": 38.65,
         "app-shared.js": 6.53,
         "tanstack-query.js": 9.5,
@@ -402,8 +402,9 @@
         "app-auth.js": 1.3,
         "app-layout.js": 3.52,
         "app-routes.js": 1.08,
-        "index.css": 29.52,
-        "StaysSearchPage.js": 3.53,
+        "index.css": 29.59,
+        "StaysSearchPage.js": 3.57,
+        "app-date-input.js": 2.91,
         "app-select.js": 1.84,
         "lucide-home.js": 0.77,
         "lz-gbDetail-voucherDetail.js": 0.57,
@@ -715,9 +716,9 @@
       }
     },
     "dash:admin": {
-      "totalKB": 253.65,
+      "totalKB": 256.71,
       "chunks": {
-        "index.js": 15.9,
+        "index.js": 15.93,
         "react-core.js": 38.65,
         "app-shared.js": 6.53,
         "tanstack-query.js": 9.5,
@@ -731,8 +732,9 @@
         "app-auth.js": 1.3,
         "app-layout.js": 3.52,
         "app-routes.js": 1.08,
-        "index.css": 29.52,
-        "AdminPage.js": 8.37,
+        "index.css": 29.59,
+        "AdminPage.js": 8.38,
+        "app-date-input.js": 2.91,
         "app-select.js": 1.84,
         "app-life-subcat.js": 0.59,
         "lz-gbDetailL-productL.js": 0.96,
@@ -746,8 +748,8 @@
         "lucide.js": 8.98,
         "app-utils-deferred.js": 6.1,
         "app-dashboard.js": 3.08,
-        "app-admin-components.js": 8.33,
-        "app-routes-admin.js": 4.16
+        "app-admin-components.js": 8.35,
+        "app-routes-admin.js": 4.18
       }
     },
     "dash:agency": {

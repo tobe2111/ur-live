@@ -23,6 +23,7 @@ import { getSellerToken } from '@/lib/seller-auth'
 import { Handshake, RefreshCw, Send, Check, X, Info } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
+import { DateInput } from '@/components/ui/date-input'
 
 // ─── 응답 shape (marketing.routes.ts sellerApp GET /deals 와 1:1) ────────────
 interface Deal {
@@ -254,7 +255,7 @@ export default function SellerInfluencerDealsPage() {
                 <label className="mb-1 block text-xs font-medium text-gray-700">
                   {t('seller.influencerDeals.endsAt', { defaultValue: '만료일 (선택)' })}
                 </label>
-                <input
+                <DateInput
                   type="datetime-local"
                   value={form.ends_at}
                   onChange={(e) => setForm((f) => ({ ...f, ends_at: e.target.value }))}

@@ -11,6 +11,7 @@ import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate, parseUTCDate } from '@/utils/date'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Coupon {
   id: number; code: string; name: string; type: string; value: number
@@ -269,7 +270,7 @@ export default function AdminCouponsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.coupons.k024', { defaultValue: '만료일' })}</label>
-                <input
+                <DateInput
                   type="datetime-local"
                   value={form.expires_at}
                   onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}

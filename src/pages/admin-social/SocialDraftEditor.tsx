@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save } from 'lucide-react'
 import { parseHashtags, PLATFORMS, type SocialPost } from './types'
 import { parseUTCDate } from '@/utils/date'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Props {
   post: SocialPost
@@ -90,7 +91,7 @@ export default function SocialDraftEditor({ post, onBack, onSaved }: Props) {
         </div>
 
         <label className="mb-1 block text-sm font-medium text-gray-700">예약 발행 시각 <span className="text-gray-400">(선택 — 승인 후 이 시각에 자동 발행)</span></label>
-        <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)}
+        <DateInput type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)}
           className="mb-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900" />
         <p className="mb-4 text-xs text-gray-400">비워두면 예약 없음(수동 발행). 예약은 매시간 점검되며, 발행 게이트가 켜져 있어야 실제 발행됩니다.</p>
 

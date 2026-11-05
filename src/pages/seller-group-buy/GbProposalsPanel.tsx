@@ -10,6 +10,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { Inbox, Loader2, Send } from 'lucide-react'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Proposal {
   id: number; product_id: number; product_name?: string; proposed_by: 'influencer' | 'seller'
@@ -125,7 +126,7 @@ function ProposeForm({ products, headers, onDone }: { products: ProductOpt[]; he
       </Select>
       <input value={handle} onChange={e => setHandle(e.target.value)} placeholder="인플루언서 핸들 (예: jiwon1228)" className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-[12px] text-gray-900" />
       <div className="grid grid-cols-2 gap-2">
-        <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} className="px-2 py-1.5 border border-gray-300 rounded-lg text-[12px] text-gray-900" />
+        <DateInput type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} className="px-2 py-1.5 border border-gray-300 rounded-lg text-[12px] text-gray-900" />
         <input type="number" value={price || ''} onChange={e => setPrice(Number(e.target.value))} placeholder="공구 특가" className="px-2 py-1.5 border border-gray-300 rounded-lg text-[12px] text-gray-900" />
       </div>
       <div className="flex items-center gap-2">

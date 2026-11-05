@@ -18,6 +18,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { Calendar, Plus, Trash2 } from 'lucide-react'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -140,14 +141,14 @@ export default function SellerBookingSlotsPage() {
                 >
                   {DAYS.map((d, idx) => <option key={idx} value={idx}>{d}요일</option>)}
                 </Select>
-                <input
+                <DateInput
                   type="time"
                   value={s.start_time}
                   onChange={e => setNewSlots(arr => arr.map((x, j) => j === i ? { ...x, start_time: e.target.value } : x))}
                   className="px-2 py-1.5 border border-gray-200 rounded text-sm text-gray-900 bg-white w-28"
                 />
                 <span className="text-gray-400">~</span>
-                <input
+                <DateInput
                   type="time"
                   value={s.end_time}
                   onChange={e => setNewSlots(arr => arr.map((x, j) => j === i ? { ...x, end_time: e.target.value } : x))}

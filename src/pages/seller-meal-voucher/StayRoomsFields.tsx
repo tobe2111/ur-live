@@ -10,6 +10,7 @@ import { Plus, Trash2, BedDouble } from 'lucide-react'
 import type { VoucherForm } from './voucher-form'
 import StayAmenityPicker from './StayAmenityPicker'
 import { STAY_PROPERTY_TYPES, emptyRoom, stayFromPrice, type StayRoomDraft } from './booking-mode'
+import { DateInput } from '@/components/ui/date-input'
 
 const INPUT = 'w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none'
 
@@ -40,10 +41,10 @@ export default function StayRoomsFields({ form, update }: {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm font-medium text-gray-700">체크인
-          <input type="time" value={form.stay_check_in} onChange={(e) => update('stay_check_in', e.target.value)} className={`${INPUT} mt-1`} />
+          <DateInput type="time" value={form.stay_check_in} onChange={(e) => update('stay_check_in', e.target.value)} className={`${INPUT} mt-1`} />
         </label>
         <label className="block text-sm font-medium text-gray-700">체크아웃
-          <input type="time" value={form.stay_check_out} onChange={(e) => update('stay_check_out', e.target.value)} className={`${INPUT} mt-1`} />
+          <DateInput type="time" value={form.stay_check_out} onChange={(e) => update('stay_check_out', e.target.value)} className={`${INPUT} mt-1`} />
         </label>
       </div>
 

@@ -12,6 +12,7 @@ import { Megaphone, Loader2 } from 'lucide-react'
 import ThreeWaySplitCalculator from '../seller-product-new/ThreeWaySplitCalculator'
 import { promoGuideFor } from '../seller-product-new/PromoMarginCalculator'
 import type { GbMode } from '@/shared/gb-session'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Props {
   productId: number
@@ -91,7 +92,7 @@ export default function GroupBuyOpenPanel({ productId, listPrice, category, head
         <div className="mt-3 space-y-3">
           <div>
             <label className="block text-[12px] font-semibold text-gray-700 mb-1">공구 마감</label>
-            <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)}
+            <DateInput type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
           </div>
           <ThreeWaySplitCalculator

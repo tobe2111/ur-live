@@ -1,5 +1,6 @@
 import { useTranslation } from '@/lib/i18n-lite'
 import type { ProductFormData } from './types'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Props {
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void
@@ -34,7 +35,7 @@ export default function MealVoucherFields({ onChange }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.expiryDate')}</label>
-          <input type="date" name="voucher_expiry" onChange={onChange}
+          <DateInput type="date" name="voucher_expiry" onChange={onChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
         </div>
         <div>

@@ -10,6 +10,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { Select } from '@/components/ui/select'
+import { DateInput } from '@/components/ui/date-input'
 
 export default function SellerCouponsPage() {
   const { t } = useTranslation()
@@ -88,7 +89,7 @@ export default function SellerCouponsPage() {
                 onChange={e => setForm(f => ({ ...f, max_discount: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               <input placeholder={t('seller.coupons.totalCountPlaceholder')} type="number" value={form.total_count}
                 onChange={e => setForm(f => ({ ...f, total_count: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-              <input type="date" value={form.expires_at} onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}
+              <DateInput type="date" value={form.expires_at} onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
             </div>
             <button onClick={handleCreate} className="ur-btn ur-btn-md ur-btn-primary">{t('seller.coupons.createBtn')}</button>

@@ -15,6 +15,7 @@ import { getSellerToken } from '@/lib/seller-auth'
 import { formatNumber } from '@/utils/format'
 import { Gift, RefreshCw, Dice5, ShieldCheck, Lock } from 'lucide-react'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
+import { DateInput } from '@/components/ui/date-input'
 
 interface Campaign {
   id: number; title: string; status: string; slots: number
@@ -117,7 +118,7 @@ export default function SellerExperienceCampaignsPage() {
                 <input value={form.slots} onChange={e => setForm(f => ({ ...f, slots: e.target.value.replace(/\D/g, '') }))} inputMode="numeric" className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900" />
               </label>
               <label className="text-[12px] text-gray-600">{t('seller.expCampaigns.applyEnd', { defaultValue: '응모 마감(선택)' })}
-                <input type="datetime-local" value={form.apply_end} onChange={e => setForm(f => ({ ...f, apply_end: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900" />
+                <DateInput type="datetime-local" value={form.apply_end} onChange={e => setForm(f => ({ ...f, apply_end: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900" />
               </label>
               <label className="text-[12px] text-gray-600 col-span-2 lg:col-span-3">{t('seller.expCampaigns.titleLabel', { defaultValue: '캠페인 제목' })}
                 <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-xl text-[13px] text-gray-900" placeholder={t('seller.expCampaigns.titlePh', { defaultValue: '예: 아메리카노 체험단' })} />

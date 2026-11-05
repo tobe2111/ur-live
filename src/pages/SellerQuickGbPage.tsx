@@ -47,6 +47,7 @@ import api from '@/lib/api'
 import { STORAGE_LABEL, STORAGE_NOTICE, type StorageKind } from '@/shared/pickup'
 import MyMallAddress from '@/components/seller/MyMallAddress'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { DateInput } from '@/components/ui/date-input'
 
 /** 마감 프리셋 — 날짜 피커 대신. 한 손으로 누를 수 있는 것만 남긴다. */
 const DEADLINE_PRESETS = [
@@ -284,7 +285,7 @@ export default function SellerQuickGbPage() {
             <label className={LABEL} htmlFor="q-pickup">픽업일</label>
             {/* 공구 마감 **이후**만 의미가 있다 — min 으로 미리 좁혀 서버 거절을 줄인다. */}
             <div className="relative">
-              <input id="q-pickup" type="date" className={`${INPUT} pr-11`} value={pickupDate}
+              <DateInput id="q-pickup" type="date" className={`${INPUT} pr-11`} value={pickupDate}
                 min={dl.ymd}
                 onChange={(e) => setPickupDate(e.target.value)} />
               <Calendar className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[19px] h-[19px] text-[#8A8288] pointer-events-none" strokeWidth={1.9} />
