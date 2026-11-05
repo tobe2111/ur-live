@@ -12,7 +12,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { clearSessionCookie } from '@/worker/utils/session';
 import { safeError } from '@/worker/utils/safe-error';
-import { userReadDb } from '@/worker/utils/d1-read-replica';
+import { userReadDb, schemaPresent } from '@/worker/utils/d1-read-replica';
 import { countAccountDeleteBlockers, isAccountDeleteBlocked } from '@/worker/utils/account-delete-blockers';
 import {
   deleteUserAccount,
@@ -46,6 +46,8 @@ const _notifPrefColsEnsured = new WeakSet<D1Database>();
 async function ensureNotificationPrefColumns(db: D1Database) {
   if (_notifPrefColsEnsured.has(db)) return;
   _notifPrefColsEnsured.add(db);
+  // 🌏 2026-11-05 — 이미 있으면 DDL 을 안 보낸다. 확인은 `schemaPresent` 가 가까운 사본에서 읽는다(쓰기는 미국 원본까지 간다 · 한국에서 문장마다 ≈0.2초).
+  if (await schemaPresent(db, { columns: [{ table: 'users', cols: ['push_enabled', 'email_enabled'] }] })) return;
   try { await db.prepare('ALTER TABLE users ADD COLUMN push_enabled INTEGER DEFAULT 1').run(); } catch { /* exists */ }
   try { await db.prepare('ALTER TABLE users ADD COLUMN email_enabled INTEGER DEFAULT 1').run(); } catch { /* exists */ }
 }

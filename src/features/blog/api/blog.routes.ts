@@ -14,7 +14,7 @@ import { generateBlogDraft, PROMO_TOPICS, type PromoTopic } from './blog-ai';
 //   정적 import → 동적 import 로 이동(guide-seed 와 동일 검증된 패턴). 시드 동기화 발생 시에만 로드 → 메인 워커 번들 축소.
 import { intParam } from '@/shared/pagination'
 import { loadSeedAsset, isBlogSeed, SEED_ASSET_PATHS, type SeedAssetEnv } from '../../../worker/utils/seed-assets'
-import { publicReadDb } from '../../../worker/utils/d1-read-replica'
+import { publicReadDb, schemaPresent } from '../../../worker/utils/d1-read-replica'
 const app = new Hono<{ Bindings: Env }>()
 
 // AI 초안: 미검토(비공개) 초안이 이만큼 쌓이면 추가 생성 중단(관리자 검토 유도).
@@ -34,6 +34,11 @@ const BLOG_SEED_VERSION = 17 // 2026-11-04 본문 사이 사진 42장(blog-seed-
 async function ensureBlogTable(DB: D1Database) {
   if (_done_ensureBlogTable.has(DB)) return
   _done_ensureBlogTable.add(DB)
+  // 🌏 2026-11-05 — 이미 있으면 DDL 을 안 보낸다. 확인은 `schemaPresent` 가 가까운 사본에서 읽는다(쓰기는 미국 원본까지 간다 · 한국에서 문장마다 ≈0.2초).
+  if (await schemaPresent(DB, {
+    tables: ['blog_posts', 'blog_meta'],
+    columns: [{ table: 'blog_posts', cols: ['is_seed', 'manually_edited', 'seed_version', 'ai_generated', 'view_count'] }],
+  })) return
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS blog_posts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

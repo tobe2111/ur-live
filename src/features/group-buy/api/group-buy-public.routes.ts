@@ -31,7 +31,7 @@ import { sliceCardGallery } from './card-gallery'
 import { getActiveFeedTotal } from './feed-total'
 // 🍽️ 2026-06-17 (#5 대표 메뉴): products god-table 증식 차단용 K-V 사이드테이블에서 메뉴 읽기.
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
-import { intParam } from '@/shared/pagination'; import { publicReadDb, userReadDb, dbKey } from '../../../worker/utils/d1-read-replica' // 한 줄: 래칫
+import { intParam } from '@/shared/pagination'; import { publicReadDb, userReadDb, dbKey, schemaPresent } from '../../../worker/utils/d1-read-replica' // 한 줄: 래칫
 // 🏪 2026-09-16 (대표 — "승인이 되어야 메인에 노출"): 승인 전 매장의 이용권을 피드·지도에서 가린다.
 import { approvedSellerProductSql } from '@/shared/db/consumer-visible-product'
 import { voucherCanRedeem } from './voucher-can-redeem'; import { loadGiftState, applyGiftState, voucherHasPendingGift, noPendingGiftSql, GIFT_PENDING_USE_BLOCKED } from '../../../worker/utils/voucher-gift'; const _voucherIdxDone = new WeakSet<object>() // 🎁 선물 중·보낸 선물 표시 · 🐢 /my 색인 DDL isolate 당 1회
@@ -771,7 +771,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //     3) LIMIT 200 — 사용자가 voucher 1000개여도 응답 폭증 차단.
     //     4) idx_vouchers_user_created 복합 인덱스 lazy 생성 (멱등).
     // 🐢 2026-11-02 [UNLOCK_LOADING] 대표 "허가 — 고쳐줘": 종전엔 **매 요청** 이 DDL 로 원본 DB 를 한 번 더 다녀왔다 → isolate 당 1회(repair-schema 도 보장).
-    if (!_voucherIdxDone.has(dbKey(DB))) { _voucherIdxDone.add(dbKey(DB)); try { await c.env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_vouchers_user_created ON vouchers(user_id, created_at DESC)`).run() } catch { /* exists or permission */ } }
+    if (!_voucherIdxDone.has(dbKey(DB))) { _voucherIdxDone.add(dbKey(DB)); if (!(await schemaPresent(DB, { indexes: ['idx_vouchers_user_created'] }))) { try { await c.env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_vouchers_user_created ON vouchers(user_id, created_at DESC)`).run() } catch { /* exists or permission */ } } } // 🌏 2026-11-05 있으면 읽기 확인만(사본) — 원본 DDL 왕복 0
 
     // 🛡️ 2026-05-24 P0 (사용자 신고 "내 교환권 안 보임"):
     //   - 원인: refund_status/gift_from_user_id/delivered_gift_name/applied_price 컬럼이 일부 환경에 없음.

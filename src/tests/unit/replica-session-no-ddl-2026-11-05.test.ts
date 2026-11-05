@@ -111,3 +111,24 @@ describe('손님 읽기 경로의 표 보장 — 두 번째 isolate 부터는 �
     expect(fn.indexOf('schemaPresent(')).toBeLessThan(fn.indexOf('CREATE TABLE IF NOT EXISTS product_pins'))
   })
 })
+
+describe('2차 — 원본(env.DB)으로 부르던 손님 경로의 표 보장도 읽기 확인 먼저', () => {
+  const src = (p: string) => readFileSync(p, 'utf8')
+  it.each([
+    ['src/features/blog/api/blog.routes.ts', 'async function ensureBlogTable', 'CREATE TABLE IF NOT EXISTS blog_posts'],
+    ['src/features/coupons/api/coupons.routes.ts', 'async function ensureTables', 'CREATE TABLE IF NOT EXISTS coupons'],
+    ['src/features/account/api/account.routes.ts', 'async function ensureNotificationPrefColumns', 'ALTER TABLE users ADD COLUMN push_enabled'],
+  ])('%s — DDL 앞에 schemaPresent', (file, fnName, ddl) => {
+    const s = src(file)
+    const fn = s.slice(s.indexOf(fnName), s.indexOf(fnName) + 1500)
+    expect(fn.indexOf('schemaPresent(')).toBeGreaterThan(0)
+    expect(fn.indexOf('schemaPresent(')).toBeLessThan(fn.indexOf(ddl))
+  })
+  it('schemaPresent 는 원본을 받아도 스스로 사본 세션을 연다', async () => {
+    const seen: string[] = []
+    const session = { prepare: (q: string) => { seen.push('session'); return sqliteDb().D1.prepare(q) } }
+    const primary = { withSession: () => session, prepare: () => { seen.push('primary'); throw new Error('원본으로 오면 안 된다') } } as unknown as D1Database
+    await schemaPresent(primary, { tables: ['x'] })
+    expect(seen).toEqual(['session'])
+  })
+})
