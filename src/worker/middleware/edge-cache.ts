@@ -102,6 +102,28 @@ export function markDegraded(c: Context): void {
 
 /** 🛟 예비 사본 보관 시간 — 원본이 실패했을 때만 꺼낸다. */
 export const STALE_BACKUP_SECONDS = 24 * 60 * 60;
+/**
+ * ⚡ 2026-11-05 — **만료 직후 손님을 기다리게 하지 않는다**(stale-while-revalidate, 큰 CDN 의 기본기).
+ *   Cache API(`caches.default`)는 `stale-while-revalidate` 를 지키지 않는다 — 만료되면 그냥 없다. 그래서 만료 뒤 첫 손님이
+ *   원본(D1, 미국 동부)까지의 왕복 여러 번을 고스란히 기다렸다(한국에서 질의마다 ≈0.2초).
+ *   이제: 예비 사본이 **방금 만료된 정도**(아래 창)면 그것을 즉시 내고, 뒤에서 같은 주소를 한 번 다시 받아 채운다.
+ *   창 밖(오래된 사본)은 종전대로 손님이 원본을 기다린다 — 최대 낡음 = 엣지 수명 + 창.
+ */
+export const STORED_AT_HEADER = 'X-Ur-Stored-At';
+export const REVALIDATE_HEADER = 'x-ur-revalidate';
+/** 만료 뒤 옛 사본을 바로 내 줄 수 있는 추가 시간(ms) — TTL 과 같되 60초를 넘지 않는다(가격·재고가 오래 낡지 않게). */
+export function swrExtraMs(ttlSeconds: number): number {
+  return Math.min(Math.max(1, ttlSeconds), 60) * 1000;
+}
+/** 예비 사본이 SWR 로 내 줄 만큼 신선한가 — 엣지 수명(ttl×3) + 창 안. 저장 시각이 없으면(옛 사본) 아니다. */
+export function swrServable(storedAt: number, ttlSeconds: number, now = Date.now()): boolean {
+  if (!Number.isFinite(storedAt) || storedAt <= 0) return false;
+  const age = now - storedAt;
+  return age >= 0 && age <= ttlSeconds * 3 * 1000 + swrExtraMs(ttlSeconds);
+}
+/** isolate 안에서 같은 주소를 동시에 두 번 갱신하지 않는다. */
+const _revalidating = new Set<string>();
+
 /** 예비 사본의 키 — 같은 주소에 표식 쿼리 하나(같은 존이라 Cache API 가 받는다). */
 export function staleKeyOf(u: URL): Request {
   const k = new URL(u.toString());
@@ -162,12 +184,35 @@ function makeCacheMiddleware(ttlSeconds: number, opts: CacheOptions = {}) {
       }
     }
 
+    const staleKey = staleKeyOf(cacheUrl);
+
+    // ⚡ SWR — 방금 만료됐으면 예비 사본을 즉시 내고 뒤에서 갱신(위 `swrServable`). 갱신 요청 자신은 이 분기를 건너뛴다.
+    if (c.req.header(REVALIDATE_HEADER) !== '1') {
+      const prev = await cache.match(staleKey).catch(() => undefined);
+      const key = cacheUrl.toString();
+      if (prev && swrServable(Number(prev.headers.get(STORED_AT_HEADER)), ttlSeconds) && !_revalidating.has(key)) {
+        _revalidating.add(key);
+        const ua = c.req.header('User-Agent') || 'ur-live-swr/1.0';
+        c.executionCtx.waitUntil(
+          fetch(key, { headers: { [REVALIDATE_HEADER]: '1', 'User-Agent': ua } })
+            .then((r) => r.arrayBuffer()) // 읽어 버린다 — 복제된 본문의 cancel() 은 다른 복제가 안 읽히면 끝나지 않는다(시험이 잡았다)
+            .catch(() => {})
+            .finally(() => { _revalidating.delete(key); }),
+        );
+        const headers = new Headers(prev.headers);
+        headers.set('X-Cache-Status', `${tag}-SWR`);
+        headers.set('Cache-Control', `public, max-age=${Math.min(15, ttlSeconds)}`); // 브라우저는 짧게 — 곧 새 값이 온다
+        headers.delete('CDN-Cache-Control');
+        headers.delete(STORED_AT_HEADER);
+        return new Response(prev.body, { status: prev.status, headers });
+      }
+    }
+
     // L1, L2 모두 miss → 다음 미들웨어로 (D1 hit)
     // 🛟 2026-11-04 [UNLOCK_LOADING] 대표 *"대기업급 안정성을 보여주는 최적화"* — **원본이 실패하면 마지막 성공 응답을 대신 낸다**
     //   (stale-if-error). 종전엔 캐시가 만료된 뒤 D1 이 실패하면 손님 화면이 그대로 오류였다 — 2026-09-01 D1 일일 읽기 한도에
     //   닿았을 때 소비자 API 가 통째로 500 이 된 바로 그 모양이다. 성공할 때마다 예비 사본(24시간)을 따로 두고,
     //   원본이 5xx 거나 던지면 그 사본을 `X-Cache-Status: *-STALE` 로 돌려준다. 예비 사본이 없으면 종전과 같다(오류 그대로).
-    const staleKey = staleKeyOf(cacheUrl);
     let threw: unknown = null;
     try { await next(); } catch (e) { threw = e; }
     const degraded = !threw && c.res.headers.get(DEGRADED_HEADER) === '1';
@@ -181,6 +226,7 @@ function makeCacheMiddleware(ttlSeconds: number, opts: CacheOptions = {}) {
         c.res.headers.set('Cache-Control', 'public, max-age=15'); // 브라우저는 짧게 — 원본이 살아나면 곧 새 값으로
         c.res.headers.delete('CDN-Cache-Control');
         c.res.headers.delete(DEGRADED_HEADER); // 교체 때 옛 응답 헤더가 따라온다 — 내부 표시는 손님에게 안 보낸다
+        c.res.headers.delete(STORED_AT_HEADER);
         c.res.headers.set('Content-Type', stale.headers.get('Content-Type') || 'application/json');
         return;
       }
@@ -195,6 +241,7 @@ function makeCacheMiddleware(ttlSeconds: number, opts: CacheOptions = {}) {
       const backup = c.res.clone();
       backup.headers.set('Cache-Control', `public, max-age=${STALE_BACKUP_SECONDS}`);
       backup.headers.set('CDN-Cache-Control', `public, max-age=${STALE_BACKUP_SECONDS}`);
+      backup.headers.set(STORED_AT_HEADER, String(Date.now())); // ⚡ SWR 판정용(손님에게는 안 나간다 — 꺼낼 때 지운다)
       c.executionCtx.waitUntil(cache.put(staleKey, backup).catch(() => {}));
       const response = c.res.clone();
       // 🛡️ 2026-04-28: stale-while-revalidate 추가 (browser cache 활용)

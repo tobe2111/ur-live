@@ -36,7 +36,14 @@ function appWith(mode: { v: 'ok' | '500' | 'throw' | '404' | 'degraded' }) {
 }
 const call = async (app: Hono) => { const r = await app.request('https://urdeal.kr/api/x', {}, {}, ctx as never); await Promise.all(pending); return r }
 /** 신선 캐시만 지우고 예비 사본은 남긴다 — "캐시 만료 뒤 원본 실패" 상황. */
-const expireFresh = () => { for (const k of [...store.keys()]) if (!k.includes('__ur_stale=1')) store.delete(k) }
+const expireFresh = () => {
+  for (const k of [...store.keys()]) {
+    if (!k.includes('__ur_stale=1')) { store.delete(k); continue }
+    // ⚡ 2026-11-05 — 예비 사본을 **오래된 것**으로 만든다(SWR 창 밖). 창 안이면 SWR 이 먼저 낸다(그건 swr 시험이 잰다).
+    const r = store.get(k)!; const h = new Headers(r.headers); h.set('X-Ur-Stored-At', '1')
+    store.set(k, new Response(r.body, { status: r.status, headers: h }))
+  }
+}
 
 describe('공개 캐시 — 원본이 실패하면 마지막 성공 응답', () => {
   it('① 성공하면 예비 사본을 둔다', async () => {
