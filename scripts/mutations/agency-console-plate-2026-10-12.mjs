@@ -23,9 +23,10 @@ export default [
   },
   {
     name: '[에이전시판] 맡김 요청 단계 매장까지 센다',
-    file: ROUTES,
-    find: ".filter((r) => r.status === 'active').map((r) => r.seller_id), me.agencyId)",
-    replace: '.map((r) => r.seller_id), me.agencyId)',
+    // ⚡ 2026-11-04 — 오늘 숫자는 하위 질의(activeStoreScopeSql)로 매장을 고른다 → 거기서 active 를 빼면 요청 단계까지 센다.
+    file: 'src/features/agency-console/api/agency-schema.ts',
+    find: "WHERE l.agency_id = ? AND l.status = 'active' AND ${staffStoreAccessSql('me', 'l.seller_id')}",
+    replace: "WHERE l.agency_id = ? AND ${staffStoreAccessSql('me', 'l.seller_id')}",
     test: TEST,
     why: '수락 전 매장의 매출은 아직 우리 일이 아니다 — 목록에 그 숫자가 실리면 남의 매장을 들여다보는 셈이다.',
   },

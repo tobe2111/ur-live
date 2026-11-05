@@ -34,16 +34,22 @@ export function registerAgencyPayoutRoutes(app: AnyHono): void {
     try {
       const me = c.get('agencyStaff') as { agencyId: number }
       const DB = c.env.DB as D1Database
-      const enabled = await isAgencySharePayoutEnabled(DB)
+      // ⚡ 2026-11-04 — 읽기만 하는 길이라 서로 기다릴 이유가 없는 것을 묶는다(종전 순차 5왕복 → 최대 3).
+      //   ① 켜짐 여부 + 정산일 설정 동시 ② (켜졌을 때만) 표 보장 — 인스턴스당 한 번 ③ 잔액 + 내역 동시.
+      const [enabled, dayRow] = await Promise.all([
+        isAgencySharePayoutEnabled(DB),
+        DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+          .bind(COMMISSION_PAYOUT_DAY_KEY).first<{ value: string }>().catch(() => null),
+      ])
       if (!enabled) return c.json({ success: true, enabled: false, balance: null, payouts: [] })
       await ensureAgencyShareTables(DB)
-      const balance = await readAgencyShareBalance(DB, me.agencyId)
-      const { results } = await DB.prepare(
-        `SELECT id, gross_amount, withholding_amount, net_amount, tax_mode, status, created_at, paid_at
-           FROM agency_share_payouts WHERE agency_id = ? AND status != 'rejected' ORDER BY id DESC LIMIT 50`,
-      ).bind(me.agencyId).all()
-      const dayRow = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
-        .bind(COMMISSION_PAYOUT_DAY_KEY).first<{ value: string }>().catch(() => null)
+      const [balance, { results }] = await Promise.all([
+        readAgencyShareBalance(DB, me.agencyId),
+        DB.prepare(
+          `SELECT id, gross_amount, withholding_amount, net_amount, tax_mode, status, created_at, paid_at
+             FROM agency_share_payouts WHERE agency_id = ? AND status != 'rejected' ORDER BY id DESC LIMIT 50`,
+        ).bind(me.agencyId).all(),
+      ])
       return c.json({
         success: true, enabled: true, minAmount: AGENCY_PAYOUT_MIN,
         payoutDay: resolveCommissionPayoutDay(dayRow?.value), balance, payouts: results || [],

@@ -221,6 +221,23 @@ export function staffStoreAccessSql(s: string, sellerExpr: string): string {
     SELECT 1 FROM agency_staff_stores x WHERE x.staff_id = ${s}.id AND x.seller_id = ${sellerExpr}))`
 }
 
+/**
+ * ⚡ 2026-11-04 — 이 직원이 **운영 중으로** 볼 수 있는 매장 id 를 *질의 안에서* 고르는 하위 질의.
+ *   종전엔 "매장 목록을 먼저 받고 → 그 id 로 숫자를 센다" 가 두 번의 왕복이었다(한국에서 각 ≈0.2초).
+ *   같은 판정(`staffStoreAccessSql`)을 하위 질의로 넣으면 목록과 숫자를 **동시에** 받을 수 있다.
+ *   순서·상한(`l.id DESC` · `max`)은 목록 쪽과 같게 둔다 — 상한을 넘는 에이전시에서도 같은 매장을 센다.
+ */
+export interface StoreScopeSql { sql: string; binds: number[] }
+export function activeStoreScopeSql(staffId: number, agencyId: number, max: number): StoreScopeSql {
+  return {
+    sql: `SELECT l.seller_id FROM agency_store_links l
+           JOIN agency_staff me ON me.id = ? AND me.agency_id = l.agency_id
+          WHERE l.agency_id = ? AND l.status = 'active' AND ${staffStoreAccessSql('me', 'l.seller_id')}
+          ORDER BY l.id DESC LIMIT ${Math.max(1, Math.floor(max))}`,
+    binds: [staffId, agencyId],
+  }
+}
+
 /** move = 카카오 계정을 이메일 계정으로 옮기는 확인 메일(2026-10-26) */
 export type AgencyTokenKind = 'verify' | 'invite' | 'reset' | 'move'
 /** pending = 사장님이 맡김 요청 · active = 에이전시가 수락 · declined = 에이전시가 거절 · ended = 누군가 끊음 */

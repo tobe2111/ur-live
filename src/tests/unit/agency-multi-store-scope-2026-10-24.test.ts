@@ -23,7 +23,7 @@ import { Hono } from 'hono'
 import { sign as jwtSign } from 'hono/jwt'
 import { stripComments } from '../helpers/source-text'
 import { storeSeatGuard } from '@/worker/utils/store-seat-guard'
-import { ensureAgencyConsoleTables } from '@/features/agency-console/api/agency-schema'
+import { ensureAgencyConsoleTables, activeStoreScopeSql } from '@/features/agency-console/api/agency-schema'
 import { agencyStoreToday, agencySummary } from '@/features/agency-console/api/agency-store-today'
 import { registerAgencyLinkRoutes, AGENCY_LINKS_PER_STORE_MAX } from '@/features/seller/api/seller-agency-link.routes'
 import { buildSellerProductsQuery } from '@/features/seller/api/seller-products-query'
@@ -289,5 +289,28 @@ describe('⑤ 사장님 — 여러 에이전시를 함께 · 따로 끊는다', 
     const r = await ownerApp(DB)('POST', '/agency-link', { email: 'more@ag.kr' })
     expect(r.status).toBe(409)
     expect(((await r.json()) as { code: string }).code).toBe('TOO_MANY_AGENCIES')
+  })
+})
+
+describe('⑤ ⚡ 2026-11-04 — 매장을 하위 질의로 골라도(목록과 동시 조회) id 목록과 같은 숫자', () => {
+  it('같은 에이전시 · 같은 직원이면 결과가 한 글자도 다르지 않다 · 남의 에이전시 몫은 여전히 안 나온다', async () => {
+    const { db, DB } = await fresh()
+    db.exec(`INSERT INTO orders (id, seller_id, status, total_amount, created_at) VALUES (1, 7, 'PAID', 60000, datetime('now'))`)
+    db.exec(`INSERT INTO order_items (order_id, product_id, quantity, price, subtotal) VALUES (1, 30, 1, 10000, 10000), (1, 31, 1, 20000, 20000), (1, 32, 1, 30000, 30000)`)
+    const byIds = await agencyStoreToday(DB, [7], 1)
+    const byScope = await agencyStoreToday(DB, activeStoreScopeSql(6, 1, 60), 1)
+    expect([...byScope]).toEqual([...byIds])
+    expect(byScope.get(7)).toMatchObject({ todayRevenue: 20000, todayOrders: 1 })
+    // 직원 6 이 에이전시 2 의 숫자를 달라고 해도 하위 질의가 매장을 못 고른다(그 직원은 에이전시 1 소속).
+    expect(await agencyStoreToday(DB, activeStoreScopeSql(6, 2, 60), 2)).toEqual(new Map())
+  })
+  it('배정제 직원은 배정된 매장만 — 하위 질의도 같은 판정(staffStoreAccessSql)을 쓴다', async () => {
+    const { db, DB } = await fresh()
+    db.exec(`INSERT INTO orders (id, seller_id, status, total_amount, created_at) VALUES (1, 7, 'PAID', 20000, datetime('now'))`)
+    db.exec(`INSERT INTO order_items (order_id, product_id, quantity, price, subtotal) VALUES (1, 31, 1, 20000, 20000)`)
+    db.exec(`UPDATE agency_staff SET store_scope = 'assigned' WHERE id = 6`)
+    expect(await agencyStoreToday(DB, activeStoreScopeSql(6, 1, 60), 1)).toEqual(new Map())
+    db.exec(`INSERT INTO agency_staff_stores (agency_id, staff_id, seller_id) VALUES (1, 6, 7)`)
+    expect((await agencyStoreToday(DB, activeStoreScopeSql(6, 1, 60), 1)).get(7)).toMatchObject({ todayRevenue: 20000 })
   })
 })
