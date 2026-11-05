@@ -145,5 +145,13 @@
     "platform": "threads",
     "track": "creator",
     "date_kst": "2026-11-05"
+  },
+  {
+    "platform": "instagram",
+    "track": "creator",
+    "topic": "투명한 규칙: 손님이 환불하면 적립도 자동 회수(원장 기준), 적립금은 정산 계좌로 출금(사업소득 원천징수 후 지급), 최소 지급액 1만원",
+    "hook": "oneliner",
+    "media_set": "creator-partners",
+    "date_kst": "2026-11-05"
   }
 ]
