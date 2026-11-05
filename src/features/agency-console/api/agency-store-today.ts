@@ -16,7 +16,7 @@
  */
 import { shippingOrderSql } from '@/shared/db/shipping-order-sql'
 import { periodMatchSql } from './channel-sales'
-import { ensureAgencyConsoleTables } from './agency-schema'
+import { ensureAgencyConsoleTables, type StoreScopeSql } from './agency-schema'
 
 export interface StoreToday {
   todayRevenue: number
@@ -28,11 +28,18 @@ export interface StoreToday {
 /** 한 번에 세는 매장 수 상한 — D1 바인딩 한도(100) 안에서 넉넉히. 목록은 이미 200 으로 잘린다. */
 export const TODAY_STATS_MAX_STORES = 60
 
-export async function agencyStoreToday(DB: D1Database, sellerIds: number[], agencyId: number): Promise<Map<number, StoreToday>> {
-  const ids = [...new Set(sellerIds.filter((n) => Number.isInteger(n) && n > 0))].slice(0, TODAY_STATS_MAX_STORES)
+/**
+ * `sellerIds` 는 id 목록이거나, 목록을 기다리지 않고 **같은 질의 안에서** 고르는 하위 질의(`activeStoreScopeSql`)다.
+ * 하위 질의를 주면 매장 목록과 이 숫자를 동시에 받을 수 있다(왕복 하나 절약). 결과에 없는 매장은 0 으로 채우지 않는다
+ * — 그 경우엔 호출부가 `get()` 이 비면 0/null 로 읽는다.
+ */
+export async function agencyStoreToday(DB: D1Database, sellerIds: number[] | StoreScopeSql, agencyId: number): Promise<Map<number, StoreToday>> {
+  const scope = Array.isArray(sellerIds) ? null : sellerIds
+  const ids = scope ? [] : [...new Set((sellerIds as number[]).filter((n) => Number.isInteger(n) && n > 0))].slice(0, TODAY_STATS_MAX_STORES)
   const out = new Map<number, StoreToday>()
-  if (ids.length === 0 || !(Number.isInteger(agencyId) && agencyId > 0)) return out
-  const marks = ids.map(() => '?').join(',')
+  if ((!scope && ids.length === 0) || !(Number.isInteger(agencyId) && agencyId > 0)) return out
+  const marks = scope ? scope.sql : ids.map(() => '?').join(',')
+  const idBinds: number[] = scope ? scope.binds : ids
   const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
   type N = { seller_id: number; n: number }
   const empty = { results: [] as never[] }
@@ -49,25 +56,26 @@ export async function agencyStoreToday(DB: D1Database, sellerIds: number[], agen
          FROM orders o JOIN order_items oi ON oi.order_id = o.id ${mine}
         WHERE o.seller_id IN (${marks}) AND o.status IN ('PAID','DONE') AND DATE(o.created_at, '+9 hours') = ?
         GROUP BY o.seller_id`,
-    ).bind(agencyId, ...ids, todayKst).all<N & { rev: number }>().catch(() => empty),
+    ).bind(agencyId, ...idBinds, todayKst).all<N & { rev: number }>().catch(() => empty),
     DB.prepare(
       `SELECT o.seller_id, COUNT(DISTINCT o.id) AS n
          FROM orders o JOIN order_items oi ON oi.order_id = o.id ${mine}
         WHERE o.seller_id IN (${marks}) AND o.status IN ('PAID','DONE','PAY_COMPLETE') AND o.created_at >= datetime('now', '-30 days')
           AND ${shippingOrderSql('o')}
         GROUP BY o.seller_id`,
-    ).bind(agencyId, ...ids).all<N>().catch(() => empty),
+    ).bind(agencyId, ...idBinds).all<N>().catch(() => empty),
     DB.prepare(
       `SELECT p.seller_id, COUNT(*) AS n
          FROM products p JOIN agency_products ap ON ap.product_id = p.id AND ap.agency_id = ? AND ap.seller_id = p.seller_id
         WHERE p.seller_id IN (${marks}) AND p.is_active = 1 AND COALESCE(p.status, '') != 'DELETED'
         GROUP BY p.seller_id`,
-    ).bind(agencyId, ...ids).all<N>().catch(() => empty),
+    ).bind(agencyId, ...idBinds).all<N>().catch(() => empty),
   ])
   const t = new Map((today.results || []).map((r) => [Number(r.seller_id), r]))
   const p = new Map((pending.results || []).map((r) => [Number(r.seller_id), Number(r.n) || 0]))
   const a = new Map((active.results || []).map((r) => [Number(r.seller_id), Number(r.n) || 0]))
-  for (const id of ids) {
+  const keys = scope ? [...new Set([...t.keys(), ...p.keys(), ...a.keys()])] : ids
+  for (const id of keys) {
     const row = t.get(id)
     out.set(id, {
       todayRevenue: Number(row?.rev) || 0,

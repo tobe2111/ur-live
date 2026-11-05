@@ -18,7 +18,7 @@
 import type { Hono, Context } from 'hono'
 import { intParam } from '@/shared/pagination'
 import { safeError } from '@/worker/utils/safe-error'
-import { ensureAgencyConsoleTables, staffStoreAccessSql } from './agency-schema'
+import { ensureAgencyConsoleTables, staffStoreAccessSql, activeStoreScopeSql } from './agency-schema'
 import { requireAgencyStaff, type AgencyStaffContext } from './agency-session'
 import { agencySaleEvents } from './channel-sales'
 
@@ -42,6 +42,7 @@ export async function agencyNotifStores(c: Ctx): Promise<{ sellerId: number; nam
        LEFT JOIN sellers s ON s.id = l.seller_id
       WHERE l.agency_id = ? AND l.status = 'active'
         AND ${staffStoreAccessSql('me', 'l.seller_id')}
+      ORDER BY l.id DESC
       LIMIT ${AGENCY_NOTIF_MAX_STORES}`,
   ).bind(me.staffId, me.agencyId).all<{ seller_id: number; business_name: string | null; seller_name: string | null }>()
   return (results || []).map((r) => ({ sellerId: Number(r.seller_id), name: r.business_name || r.seller_name || `매장 ${r.seller_id}` }))
@@ -56,13 +57,16 @@ export function registerAgencyNotificationRoutes(app: App) {
   app.get('/notifications', requireAgencyStaff(), async (c) => {
     try {
       const me = c.get('agencyStaff')
-      const stores = await agencyNotifStores(c)
-      if (stores.length === 0) return c.json({ success: true, data: { items: [], unread: 0 } })
       const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 30)), 100)
-      const [events, seen] = await Promise.all([
-        agencySaleEvents(c.env.DB, me.agencyId, stores.map((s) => s.sellerId), limit),
+      // ⚡ 2026-11-04 — 매장 목록 · 판매 기록 · 읽음 위치를 **한 번에** 받는다(종전: 목록 → 판매, 왕복 둘).
+      //   판매 쪽은 목록과 같은 판정·순서·상한의 하위 질의로 매장을 고른다(`activeStoreScopeSql`).
+      await ensureAgencyConsoleTables(c.env.DB)
+      const [stores, events, seen] = await Promise.all([
+        agencyNotifStores(c),
+        agencySaleEvents(c.env.DB, me.agencyId, activeStoreScopeSql(me.staffId, me.agencyId, AGENCY_NOTIF_MAX_STORES), limit),
         seenAt(c.env.DB, me.staffId),
       ])
+      if (stores.length === 0) return c.json({ success: true, data: { items: [], unread: 0 } })
       const names = new Map(stores.map((s) => [s.sellerId, s.name]))
       const items = events.map((e) => {
         const kinds = Number(e.kinds) || 1

@@ -57,8 +57,10 @@ describe('① 오늘 숫자 — 마이와 같은 판정 문장 · 🤝 이 에�
 describe('② 운영 중인 매장만 센다', () => {
   const src = code('src/features/agency-console/api/agency-stores.routes.ts')
   it('active 만 넘기고(+ 이 에이전시 id), 응답도 active 에만 숫자를 싣는다', () => {
-    expect(src).toContain("agencyStoreToday(c.env.DB, (results || []).filter((r) => r.status === 'active').map((r) => r.seller_id), me.agencyId)")
-    expect(src).toContain("today: r.status === 'active' ? today.get(r.seller_id) ?? null : null,")
+    // ⚡ 2026-11-04 — 목록과 동시에 받으려고 매장을 하위 질의로 고른다. 그 하위 질의가 active 만 고르는지가 핵심이다.
+    expect(src).toContain('agencyStoreToday(c.env.DB, activeStoreScopeSql(me.staffId, me.agencyId, TODAY_STATS_MAX_STORES), me.agencyId)')
+    expect(code('src/features/agency-console/api/agency-schema.ts')).toContain("WHERE l.agency_id = ? AND l.status = 'active' AND ${staffStoreAccessSql('me', 'l.seller_id')}")
+    expect(src).toContain("today: r.status === 'active' ? today.get(r.seller_id) ?? (counted.has(r.seller_id) ? zero : null) : null,")
   })
 })
 

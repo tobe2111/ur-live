@@ -25,12 +25,12 @@ import { isSeatableStoreStatus } from '@/shared/seller-status'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
 import { invalidateStoreSeatCache } from '@/worker/utils/store-seat-guard'
-import { ensureAgencyConsoleTables, AGENCY_STORE_INVITE_DAYS, staffStoreAccessSql } from './agency-schema'
+import { ensureAgencyConsoleTables, AGENCY_STORE_INVITE_DAYS, staffStoreAccessSql, activeStoreScopeSql } from './agency-schema'
 import { requireAgencyStaff, newLinkToken, type AgencyStaffContext } from './agency-session'
 import { frontendBase } from './agency-auth.routes'
 import { registerAgencyStoreRegisterRoute } from './agency-store-register'
 import { registerStaffStoreRoutes } from './agency-staff-stores'
-import { agencyStoreToday } from './agency-store-today'
+import { agencyStoreToday, TODAY_STATS_MAX_STORES } from './agency-store-today'
 import { registerAgencyNotificationRoutes } from './agency-store-notifications'
 import { releaseAgencyProducts } from './channel-sales'
 import { registerAgencySalesRoute } from './agency-store-sales'
@@ -55,6 +55,9 @@ agencyStoresRoutes.get('/stores', requireAgencyStaff(), async (c) => {
   try {
     const me = c.get('agencyStaff')
     await ensureAgencyConsoleTables(c.env.DB)
+    // ⚡ 2026-11-04 — 목록과 판 머리의 오늘 숫자를 **동시에** 받는다(종전: 목록 → 그 id 로 숫자, 왕복 둘).
+    //   숫자는 같은 판정의 하위 질의(`activeStoreScopeSql`)로 매장을 고른다 — 운영 중인 매장만, 같은 순서·상한.
+    const todayP = agencyStoreToday(c.env.DB, activeStoreScopeSql(me.staffId, me.agencyId, TODAY_STATS_MAX_STORES), me.agencyId)
     const { results } = await c.env.DB.prepare(
       `SELECT l.id, l.seller_id, l.status, l.created_at, l.accepted_at,
               s.business_name, s.name AS seller_name, s.username, s.status AS store_status
@@ -70,11 +73,15 @@ agencyStoresRoutes.get('/stores', requireAgencyStaff(), async (c) => {
       business_name: string | null; seller_name: string | null; username: string | null; store_status: string | null
     }>()
     // 🔢 판 머리의 오늘 숫자 — 운영 중인 매장만 센다(맡김 요청 단계는 아직 우리 매장이 아니다).
-    const today = await agencyStoreToday(c.env.DB, (results || []).filter((r) => r.status === 'active').map((r) => r.seller_id), me.agencyId)
+    //   팔린 게 없는 매장은 결과에 행이 없다 → 센 범위(운영 중 앞 N곳 = 하위 질의와 같은 순서) 안이면 0 으로 채운다.
+    //   그 밖(N곳 초과)은 종전처럼 null — 세지 않은 것을 0 으로 위장하지 않는다.
+    const today = await todayP
+    const counted = new Set((results || []).filter((r) => r.status === 'active').slice(0, TODAY_STATS_MAX_STORES).map((r) => r.seller_id))
+    const zero = { todayRevenue: 0, todayOrders: 0, pending: 0, activeProducts: 0 }
     return c.json({
       success: true,
       stores: (results || []).map((r) => ({
-        today: r.status === 'active' ? today.get(r.seller_id) ?? null : null,
+        today: r.status === 'active' ? today.get(r.seller_id) ?? (counted.has(r.seller_id) ? zero : null) : null,
         linkId: r.id,
         sellerId: r.seller_id,
         status: r.status === 'active' ? 'active' : 'pending',

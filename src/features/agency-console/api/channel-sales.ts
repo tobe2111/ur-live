@@ -23,6 +23,7 @@
  */
 
 import { currentSharePctSql, shareSumSql } from './agency-share'
+import type { StoreScopeSql } from './agency-schema'
 
 export type SalesPeriod = 'month' | '30d' | 'all'
 
@@ -226,15 +227,17 @@ export async function agencyStoreSales(DB: D1Database, sellerId: number, agencyI
  * 매장 알림함(`dashboard_notifications`)은 누구 이용권인지 행에 없어 쓸 수 없다 — 판매 기록에서 바로 만든다.
  * 그래서 결제 확정 경로(잠금 파일)를 건드리지 않는다.
  */
-export async function agencySaleEvents(DB: D1Database, agencyId: number, sellerIds: number[], limit: number) {
-  const ids = sellerIds.filter((n) => Number.isInteger(n) && n > 0).slice(0, 60)
-  if (ids.length === 0) return []
+/** `sellerIds` = id 목록, 또는 같은 질의 안에서 매장을 고르는 하위 질의(`activeStoreScopeSql` — 매장 목록과 동시에 받기). */
+export async function agencySaleEvents(DB: D1Database, agencyId: number, sellerIds: number[] | StoreScopeSql, limit: number) {
+  const scope = Array.isArray(sellerIds) ? null : sellerIds
+  const ids = scope ? scope.binds : (sellerIds as number[]).filter((n) => Number.isInteger(n) && n > 0).slice(0, 60)
+  if (!scope && ids.length === 0) return []
   const { results } = await DB.prepare(
     `SELECT o.id AS order_id, o.seller_id, o.created_at, MIN(p.name) AS product_name, COUNT(DISTINCT p.id) AS kinds,
             COUNT(*) AS qty, SUM(COALESCE(v.applied_price, p.price, 0)) AS amount
        ${VOUCHER_BASE}
        JOIN agency_product_periods pr ON ${periodMatchSql('pr', 'v.product_id', 'p.seller_id')} AND pr.agency_id = ?
-      WHERE p.seller_id IN (${ids.map(() => '?').join(',')}) AND COALESCE(v.is_experience, 0) = 0
+      WHERE p.seller_id IN (${scope ? scope.sql : ids.map(() => '?').join(',')}) AND COALESCE(v.is_experience, 0) = 0
         AND o.created_at >= datetime('now', '-30 days')
       GROUP BY o.id
       ORDER BY o.created_at DESC LIMIT ?`,

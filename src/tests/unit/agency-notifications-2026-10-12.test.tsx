@@ -23,10 +23,10 @@ const staffCtx = { staffId: 8, agencyId: 3, role: 'staff' as 'admin' | 'staff' }
 vi.mock('@/features/agency-console/api/agency-session', () => ({
   requireAgencyStaff: () => async (c: { set: (k: string, v: unknown) => void }, next: () => Promise<void>) => { c.set('agencyStaff', { ...staffCtx }); await next() },
 }))
-vi.mock('@/features/agency-console/api/agency-schema', () => ({
+// 표 만들기만 끈다 — 범위 판정(staffStoreAccessSql · 2026-11-04 activeStoreScopeSql)은 **진짜**를 쓴다.
+vi.mock('@/features/agency-console/api/agency-schema', async (orig) => ({
+  ...(await orig<typeof import('@/features/agency-console/api/agency-schema')>()),
   ensureAgencyConsoleTables: async () => {},
-  staffStoreAccessSql: (s: string, sellerExpr: string) => `(${s}.role = 'admin' OR COALESCE(${s}.store_scope, 'all') <> 'assigned' OR EXISTS (
-    SELECT 1 FROM agency_staff_stores x WHERE x.staff_id = ${s}.id AND x.seller_id = ${sellerExpr}))`,
 }))
 
 // ── 화면 ──
