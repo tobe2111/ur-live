@@ -140,5 +140,10 @@
     "hook": "behind",
     "media_set": "onboarding-steps",
     "date_kst": "2026-11-04"
+  },
+  {
+    "platform": "threads",
+    "track": "creator",
+    "date_kst": "2026-11-05"
   }
 ]
