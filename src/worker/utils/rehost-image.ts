@@ -46,7 +46,24 @@ export async function rehostImageToR2(
     if (!res.ok) return null
     const ct = (res.headers.get('content-type') || '').toLowerCase().split(';')[0].trim()
     if (!ct.startsWith('image/')) return null
-    const buf = await res.arrayBuffer()
+    return await storeImageBytesToR2(env as { MEDIA_BUCKET: R2Bucket }, await res.arrayBuffer(), ct, source, keyPrefix)
+  } catch { return null }
+}
+
+/**
+ * 🧱 2026-11-05 — 받은 **바이트**를 저장하는 부분만 떼었다(위 함수와 byte-동일 규칙: 크기 · 내용 해시 키 · 재축소).
+ *   교환권 사진은 giftishow 가 Cloudflare 를 막아 워커가 직접 못 받는다 — 다른 곳(GitHub 러너)이 받아 넘긴
+ *   바이트를 같은 규칙으로 넣으려고(`voucher-image-upload.routes.ts`).
+ */
+export async function storeImageBytesToR2(
+  env: { MEDIA_BUCKET: R2Bucket },
+  buf: ArrayBuffer,
+  ct: string,
+  source: string,
+  keyPrefix: string,
+): Promise<string | null> {
+  try {
+    if (!ct.startsWith('image/')) return null
     if (buf.byteLength < 500 || buf.byteLength > 11 * 1024 * 1024) return null // 아이콘/깨짐 or 과대(11MB 초과만 제외)
     const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
     // 🖼️ 2026-10-12 (대표 "이용권 썸네일에서 아직도 사진이 중복으로 2개 있는 경우가 많아"):

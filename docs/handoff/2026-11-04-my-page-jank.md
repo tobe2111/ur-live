@@ -150,3 +150,7 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 - 2차(원본 쪽): 블로그·쿠폰 `/my`·알림 설정·`/vouchers/my` 색인 — `schemaPresent` 가 스스로 사본 세션을 열어 확인(호출부 데이터 읽기는 그대로). 잠금 기록 `docs/locks/loading/2026-11-05-schema-probe.md`.
 - 2026-11-05 SWR: 공개 캐시 만료 직후 예비 사본을 즉시 내고 뒤에서 갱신(`*-SWR`). 잠금 기록 `docs/locks/loading/2026-11-05-edge-swr.md`. 라이브 판정: 같은 공개 URL 을 TTL×3 지난 뒤 부르면 `X-Cache-Status: public-SWR`, 곧이어 다시 부르면 `public-HIT`.
 - 2026-11-05 홈 LCP: 지역 사진(진짜 LCP)을 응답 헤더 preload 로(배너보다 먼저) + fetchpriority=high. 잠금 기록 `docs/locks/loading/2026-11-05-home-hero-lcp.md`. 판정: 배포 후 RUM 폰 홈 LCP p75.
+
+## 2026-11-05 첫 로딩 전수 — 대표 *"어떤 요인들이 있는지 최대한 알아주고 모두 최적화"*
+- 요인 표(실측): ① 한국 밖 콜로(HKG/NRT/LAX) 연결 p95 ~2s — CF 무료 토글(HTTP/3·0-RTT·Early Hints·TLS1.3)은 **이미 전부 켜짐**(존 설정 조회), 남은 건 유료 판단(결재 `docs/decisions/2026-11-04-korea-icn-routing.md`) ② 홈 LCP = 지역 사진인데 preload 가 배너를 가리킴 → #2212 로 고침(라이브 Link 헤더 확인) ③ **교환권 사진 2,252장 전부 giftishow 원본** — R2 이관 cron 이 5일간 8장(`migrated=0 failed=4`, giftishow 가 CF 이그레스 차단) → 러너 경유 이관 경로 신설(`voucher-image-upload.routes.ts` + `.github/workflows/voucher-image-rehost.yml`) ④ 홈 JS 343KB·TBT 0.5~0.7s(CPU×4) — 청크는 이미 표면별로 정밀 분리됨(남은 큰 레버 아님) ⑤ 이용권 상세 부팅 뒤 API 9개(첫 그림 뒤라 LCP 무관).
+- 판정: 러너 첫 실행 요약 `옮김 N` · D1 `SELECT COUNT(*) … giftishow` 감소. 러너도 막히면 워크플로가 빨간불(조용히 초록 금지).
