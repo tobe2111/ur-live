@@ -18,6 +18,7 @@
  * 이미지 바이트(JPEG·PNG·WEBP 서명 확인)로 저장한 **우리 주소**로. 돈·재고·가격과 무관하다.
  */
 import { Hono } from 'hono'
+import { intParam } from '../../shared/pagination'
 import { storeImageBytesToR2 } from '../utils/rehost-image'
 import { giftishowHostSql } from '../cron/voucher-image-rehost'
 import { ensureSupplyMetaTable, setSupplyMeta } from '../utils/product-supply-meta'
@@ -50,7 +51,7 @@ const WHERE = `deal_only = 1 AND COALESCE(is_active, 1) = 1 AND ${giftishowHostS
 /** 옮길 사진 목록 — 많이 팔린 것부터(cron 과 같은 순서). 기다림(retry_after)은 무시한다 — 막힌 건 cron 쪽 사정이다. */
 voucherImageUploadRoutes.get('/api/_internal/voucher-image/candidates', async (c) => {
   if (!tokenOk(c.env.REPAIR_SCHEMA_TOKEN, c.req.header('X-Repair-Token'))) return c.json({ success: false, error: 'unauthorized' }, 403)
-  const limit = Math.min(Math.max(1, Number(c.req.query('limit')) || 50), 300)
+  const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 50)), 300)
   const { results } = await c.env.DB.prepare(
     `SELECT id, image_url FROM products WHERE ${WHERE} ORDER BY COALESCE(sold_count, 0) DESC, id LIMIT ?`,
   ).bind(limit).all<{ id: number; image_url: string }>()
