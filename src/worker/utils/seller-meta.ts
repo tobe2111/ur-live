@@ -20,13 +20,15 @@
  */
 
 import { swallow } from './swallow'
-import { dbKey } from './d1-read-replica' // 세션(사본)이어도 메모는 원본 기준
+import { dbKey, schemaPresent } from './d1-read-replica' // 세션(사본)이어도 메모는 원본 기준
 
 const _ensured = new WeakSet<object>()
 
 export async function ensureSellerMetaTable(DB: D1Database): Promise<void> {
   if (_ensured.has(dbKey(DB))) return
   _ensured.add(dbKey(DB))
+  // 🌏 2026-11-05 — 이미 있으면 DDL 을 안 보낸다(읽기 확인 → 사본이 답한다 · 쓰기는 미국 원본까지 간다).
+  if (await schemaPresent(DB, { tables: ['seller_meta'], indexes: ['idx_seller_meta_key'] })) return
   await DB.prepare(`CREATE TABLE IF NOT EXISTS seller_meta (
     seller_id INTEGER NOT NULL,
     key TEXT NOT NULL,

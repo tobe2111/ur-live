@@ -14,7 +14,7 @@
  */
 
 import { swallow } from './swallow'
-import { dbKey } from './d1-read-replica'
+import { dbKey, schemaPresent } from './d1-read-replica'
 
 export const REVIEW_LEVEL_MAX = 5
 /** 사용자-가시 레벨 라벨 (명칭 SSOT 준수 — 사람 지칭 금지어 없음). */
@@ -33,6 +33,8 @@ const _ensured = new WeakSet<object>()
 export async function ensureReviewScoreTable(DB: D1Database): Promise<void> {
   if (_ensured.has(dbKey(DB))) return // 사본 세션도 원본 기준으로 1회(요청마다 DDL 금지)
   _ensured.add(dbKey(DB))
+  // 🌏 2026-11-05 — 이미 있으면 DDL 을 안 보낸다(읽기 확인 → 사본이 답한다 · 쓰기는 미국 원본까지 간다).
+  if (await schemaPresent(DB, { tables: ['user_review_scores'] })) return
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS user_review_scores (
       user_id TEXT PRIMARY KEY,
