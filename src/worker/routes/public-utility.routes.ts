@@ -11,6 +11,7 @@
  */
 
 import { Hono } from 'hono'
+import { loadBrandIconMap } from '../utils/brand-icon-rehost'
 import { publicCache } from '../middleware/edge-cache'
 import type { Env } from '../types/env'
 import { agentSearchRoutes } from './agent-search.routes'
@@ -361,6 +362,7 @@ publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
     // 🛡️ 2026-05-21 v5: N+1 제거 — categories + brands 단일 쿼리로 통합.
     //   이전: 카테고리 N개당 별도 brand 쿼리 → 20+ round-trip.
     //   현재: 한 번에 (category, brand) 페어 + count 가져온 뒤 메모리에서 그룹화.
+    const iconMapP = loadBrandIconMap(DB) // 🏷️ 2026-11-05 아래 집계와 같은 왕복에(차례로 기다리지 않게)
     const allRows = await DB.prepare(`
       SELECT gc.goods_type_detail as category,
              gc.brand_name as brand_name,
@@ -376,6 +378,10 @@ publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
       if (import.meta.env.DEV) console.error('[vouchers/categories] unified query failed:', e)
       return { results: [] as Array<{ category: string; brand_name: string | null; brand_icon_url: string | null; cnt: number }> }
     })
+
+    // 🏷️ 2026-11-05 브랜드 로고 — 우리 R2 로 옮긴 것은 우리 주소로 바꿔 낸다(`brand-icon-rehost.ts` — 표가 없으면 원본 그대로).
+    const iconMap = await iconMapP
+    for (const r of (allRows.results || [])) if (r.brand_icon_url && iconMap.has(r.brand_icon_url)) r.brand_icon_url = iconMap.get(r.brand_icon_url)!
 
     // 카테고리별 집계 + 브랜드 그룹화.
     const catMap = new Map<string, { count: number; brands: Array<{ brand_name: string; brand_icon_url: string | null; cnt: number }> }>()
