@@ -11,3 +11,9 @@
 - **가드**: `src/tests/unit/stale-if-error-2026-11-04.test.ts`(5건 — 성공 시 사본 · 500 · 예외 · 사본 없음 · 4xx).
 - **E4 판정**: 라이브에서 장애를 일부러 낼 수는 없다 — 배포 뒤 `__ur_stale=1` 키에 사본이 쌓이는지(`curl ...?__ur_stale=1` 이 HIT) 확인.
 - **롤백**: revert.
+
+## 2차 (같은 날) — 실패를 빈 목록으로 숨기는 응답
+- `markDegraded(c)` + `X-Ur-Degraded` 헤더: 핸들러가 달면 캐시가 **저장하지 않고**, 예비 사본이 있으면 그것을 낸다(헤더는 손님에게 안 나간다).
+- 단 곳: 홈 섹션 `GET /api/sections` 의 catch(종전 `{success:true,data:[]}` 가 120초 캐시 + 예비 사본까지 빈 것으로 덮었다) ·
+  선착순 `GET /api/fcfs/active` 의 핵심 두 조회 실패.
+- 가드: 같은 시험 ⑥⑦⑧.

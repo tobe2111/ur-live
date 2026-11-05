@@ -15,7 +15,7 @@
  */
 
 import { Hono } from 'hono';
-import { edgeCache } from '../../../worker/middleware/edge-cache';
+import { edgeCache, markDegraded } from '../../../worker/middleware/edge-cache';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { cacheGet, cacheInvalidate } from '@/worker/utils/cache';
@@ -294,6 +294,7 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
     return c.json(nearKey ? { success: true, data: result, near: nearKey, ...extra } : { success: true, data: result, ...extra });
   } catch (err) {
     console.error('[sections] GET / failed:', err);
+    markDegraded(c); // 🩹 2026-11-04 — 빈 목록은 실패를 숨긴 것: 캐시가 저장하지 않고 예비 사본(마지막 성공)을 낸다
     return c.json({ success: true, data: [] });
   }
 });

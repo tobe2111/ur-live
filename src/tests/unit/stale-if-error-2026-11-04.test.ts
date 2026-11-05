@@ -8,7 +8,8 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { Hono } from 'hono'
-import { publicCache } from '@/worker/middleware/edge-cache'
+import { readFileSync } from 'node:fs'
+import { publicCache, markDegraded } from '@/worker/middleware/edge-cache'
 
 const store = new Map<string, Response>()
 const fakeCache = {
@@ -21,9 +22,10 @@ const ctx = { waitUntil: (p: Promise<unknown>) => { pending.push(p) }, passThrou
 beforeEach(() => { store.clear(); pending = []; vi.stubGlobal('caches', { default: fakeCache }) })
 afterEach(() => vi.unstubAllGlobals())
 
-function appWith(mode: { v: 'ok' | '500' | 'throw' | '404' }) {
+function appWith(mode: { v: 'ok' | '500' | 'throw' | '404' | 'degraded' }) {
   const app = new Hono()
   app.get('/api/x', publicCache(30), (c) => {
+    if (mode.v === 'degraded') { markDegraded(c); return c.json({ success: true, data: [] }) }
     if (mode.v === 'throw') throw new Error('D1 down')
     if (mode.v === '500') return c.json({ success: false }, 500)
     if (mode.v === '404') return c.json({ success: false }, 404)
@@ -72,5 +74,27 @@ describe('공개 캐시 — 원본이 실패하면 마지막 성공 응답', () 
     expireFresh(); mode.v = '404'
     const r = await call(app)
     expect(r.status).toBe(404)
+  })
+  it('⑥ 실패를 빈 목록으로 숨긴 응답(markDegraded) — 저장하지 않고 예비 사본을 낸다', async () => {
+    const mode: { v: 'ok' | '500' | 'throw' | '404' | 'degraded' } = { v: 'ok' }
+    const app = appWith(mode)
+    await call(app)
+    expireFresh(); mode.v = 'degraded'
+    const r = await call(app)
+    expect(r.headers.get('X-Cache-Status')).toBe('public-STALE')
+    expect(await r.json()).toEqual({ success: true, n: 1 })
+    expect(r.headers.get('X-Ur-Degraded')).toBeNull()
+  })
+  it('⑦ 예비 사본이 없으면 빈 응답은 그대로 나가되 **저장되지 않는다**', async () => {
+    const r = await call(appWith({ v: 'degraded' }))
+    expect(r.status).toBe(200)
+    expect(r.headers.get('X-Ur-Degraded')).toBeNull()
+    expect(store.size, '빈 응답이 신선 캐시나 예비 사본에 들어가면 다음 손님도 빈 화면을 본다').toBe(0)
+  })
+  it('⑧ 홈 섹션·선착순 목록이 실패 표시를 단다', () => {
+    const sec = readFileSync('src/features/sections/api/sections.routes.ts', 'utf8')
+    expect(sec).toMatch(/markDegraded\(c\);[^\n]*\n\s*return c\.json\(\{ success: true, data: \[\] \}\)/)
+    const f = readFileSync('src/features/group-buy/api/fcfs.routes.ts', 'utf8')
+    expect(f).toContain('if (failed) markDegraded(c)')
   })
 })
