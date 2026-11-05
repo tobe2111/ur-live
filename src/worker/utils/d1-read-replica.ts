@@ -107,16 +107,20 @@ export async function schemaPresent(
   DB: D1Database,
   want: { tables?: string[]; indexes?: string[]; columns?: Array<{ table: string; cols: string[] }> },
 ): Promise<boolean> {
+  // 확인은 **언제나 가까운 사본**에서 — 표·칸이 있는지는 사본 지연(1초 미만)에 영향받지 않는다
+  //   (새로 생기는 표는 배포 전에 이미 생긴다). 원본(env.DB)을 받아도 여기서 세션을 연다 — 호출부가
+  //   돈 경로여도 그 경로의 **데이터** 읽기는 원본 그대로이고, 이 함수는 스키마만 본다.
+  const near = publicReadDb(DB)
   try {
     const names = [...(want.tables || []), ...(want.indexes || [])]
     const checks: Promise<boolean>[] = []
     if (names.length) {
-      checks.push(DB.prepare(`SELECT COUNT(*) AS n FROM sqlite_master WHERE name IN (${names.map(() => '?').join(',')})`) // d1-bind-ok: 호출부가 상수로 적은 표·색인 이름 몇 개(≤6)뿐
+      checks.push(near.prepare(`SELECT COUNT(*) AS n FROM sqlite_master WHERE name IN (${names.map(() => '?').join(',')})`) // d1-bind-ok: 호출부가 상수로 적은 표·색인 이름 몇 개(≤6)뿐
         .bind(...names).first<{ n: number }>().then((r) => Number(r?.n) === names.length))
     }
     for (const c of want.columns || []) {
       if (!/^\w+$/.test(c.table) || !c.cols.every((x) => /^\w+$/.test(x))) return false
-      checks.push(DB.prepare(`SELECT ${c.cols.join(', ')} FROM ${c.table} LIMIT 0`).all().then(() => true, () => false))
+      checks.push(near.prepare(`SELECT ${c.cols.join(', ')} FROM ${c.table} LIMIT 0`).all().then(() => true, () => false))
     }
     if (checks.length === 0) return false
     return (await Promise.all(checks)).every(Boolean)

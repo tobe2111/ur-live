@@ -3,13 +3,15 @@ import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/a
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { computeCouponDiscount } from '../coupon-discount'
 import type { Env } from '@/worker/types/env'
-import { userReadDb, recentWriteCookie } from '@/worker/utils/d1-read-replica'
+import { userReadDb, recentWriteCookie, schemaPresent } from '@/worker/utils/d1-read-replica'
 const couponRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 async function ensureTables(DB: D1Database) {
   if (_done_ensureTables.has(DB)) return
   _done_ensureTables.add(DB)
+  // 🌏 2026-11-05 — 이미 있으면 DDL 을 안 보낸다. 확인은 `schemaPresent` 가 가까운 사본에서 읽는다(쓰기는 미국 원본까지 간다 · 한국에서 문장마다 ≈0.2초).
+  if (await schemaPresent(DB, { tables: ['coupons', 'coupon_uses'] })) return
   try { await DB.prepare(`CREATE TABLE IF NOT EXISTS coupons (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, value INTEGER NOT NULL, min_order_amount INTEGER DEFAULT 0, max_discount INTEGER, total_count INTEGER DEFAULT 0, used_count INTEGER DEFAULT 0, seller_id INTEGER, is_active INTEGER DEFAULT 1, starts_at DATETIME, expires_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run() } catch {}
   try { await DB.prepare(`CREATE TABLE IF NOT EXISTS coupon_uses (id INTEGER PRIMARY KEY AUTOINCREMENT, coupon_id INTEGER NOT NULL, user_id TEXT NOT NULL, order_id INTEGER, discount_amount INTEGER NOT NULL, used_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(coupon_id, user_id))`).run() } catch {}
 }
