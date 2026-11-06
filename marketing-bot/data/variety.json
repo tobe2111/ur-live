@@ -153,5 +153,10 @@
     "hook": "oneliner",
     "media_set": "creator-partners",
     "date_kst": "2026-11-05"
+  },
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "date_kst": "2026-11-06"
   }
 ]
