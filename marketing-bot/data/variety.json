@@ -158,5 +158,13 @@
     "platform": "threads",
     "track": "merchant",
     "date_kst": "2026-11-06"
+  },
+  {
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "정산 방식: 사용된 이용권을 주 단위로 모아 등록 계좌로, 최소 지급액 1만원(미만은 이월). 승인·송금은 사람이 확인",
+    "hook": "myth",
+    "media_set": "short-owner-recruit",
+    "date_kst": "2026-11-06"
   }
 ]
