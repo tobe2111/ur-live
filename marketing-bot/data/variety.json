@@ -166,5 +166,10 @@
     "hook": "myth",
     "media_set": "short-owner-recruit",
     "date_kst": "2026-11-06"
+  },
+  {
+    "platform": "threads",
+    "track": "consumer",
+    "date_kst": "2026-11-07"
   }
 ]
