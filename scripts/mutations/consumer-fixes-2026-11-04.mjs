@@ -3,9 +3,10 @@ const TEST = 'src/tests/unit/consumer-fixes-2026-11-04.test.ts'
 export default [
   {
     name: '📏 생활 견적 판에 안쪽 가로 여백이 돌아온다(양쪽 40px)',
-    file: 'src/pages/life/LifePage.tsx',
-    find: "const CARD = 'rounded-2xl py-5'",
-    replace: "const CARD = 'rounded-2xl px-5 py-5'",
+    // 🔁 2026-11-08 재조준: 값이 서버 첫 화면과 같은 SSOT(`shared/life-page.ts`)로 옮겨갔다.
+    file: 'src/shared/life-page.ts',
+    find: "  card: 'rounded-2xl py-5',",
+    replace: "  card: 'rounded-2xl px-5 py-5',",
     test: TEST,
     why: '대표 "양쪽 공백 왜 이렇게 두는거야" — 평면 판이라 바깥 여백과 겹친다.',
   },
