@@ -213,3 +213,34 @@ describe('🏠 2026-11-05 홈 전용 첫 화면 CSS', () => {
     expect(criticalCssFor('/', 'FULL', '')).toBe('FULL')
   })
 })
+
+describe('🧩 2026-11-08 표면별 첫 화면 CSS', () => {
+  const SURF = JSON.parse(execFileSync(process.execPath, ['--no-warnings', '-e',
+    "import('./scripts/generate-critical-css.mjs').then(async m=>{const r=await m.generateCriticalCss();const o={};for(const [k,v] of Object.entries(m.SURFACE_ROOTS))o[k]=(await m.generateSurfaceCriticalCss(r.css,v)).length;process.stdout.write(JSON.stringify({o,keys:Object.keys(m.SURFACE_ROOTS),rt:m.runtimeClasses()}))})"],
+    { encoding: 'utf8', maxBuffer: 8 << 20, timeout: 180_000 }))
+  it('모든 첫 화면 ROOT 가 어느 표면에 속한다 · 표면마다 전체판의 70% 미만', () => {
+    const covered = new Set(Object.values(SURF.keys.map((k: string) => k)))
+    expect(covered.size).toBe(10)
+    for (const [k, n] of Object.entries(SURF.o as Record<string, number>)) {
+      expect(n, k).toBeGreaterThan(10_000)
+      expect(n, k).toBeLessThan(CRITICAL_CSS.length * 0.7)
+    }
+  })
+  it('실행 중 붙는 클래스(다크·키보드)를 모은다 — 그 조건의 규칙이 첫 화면에서 빠지지 않게', () => {
+    expect(SURF.rt).toEqual(expect.arrayContaining(['dark', 'keyboard-open']))
+  })
+  it('워커의 경로 → 표면 판정이 생성기 표면 이름과 같다', async () => {
+    const { criticalSurfaceOf, criticalCssFor } = await import('@/worker/utils/css-first-boot')
+    const cases: Array<[string, string | null]> = [
+      ['/', 'home'], ['/pass/12', 'detail'], ['/group-buy/12', 'detail'], ['/vouchers/3', 'voucherDetail'], ['/stays/9', 'stayDetail'],
+      ['/vouchers', 'vouchers'], ['/stays', 'stays'], ['/blog', 'blogList'], ['/blog/what-is-urdeal', 'blogDetail'],
+      ['/user/profile', 'guest'], ['/u/me', 'guest'], ['/u/jiwon', 'curator'], ['/map', null], ['/checkout', null],
+    ]
+    for (const [p, k] of cases) expect(criticalSurfaceOf(p), p).toBe(k)
+    const named = new Set(cases.map(([, k]) => k).filter(Boolean))
+    expect([...named].sort()).toEqual([...SURF.keys].sort())
+    expect(criticalCssFor('/pass/1', 'FULL', 'HOME', { detail: 'D' })).toBe('D')
+    expect(criticalCssFor('/pass/1', 'FULL', 'HOME', {})).toBe('FULL')
+    expect(criticalCssFor('/map', 'FULL', 'HOME', { detail: 'D' })).toBe('FULL')
+  })
+})

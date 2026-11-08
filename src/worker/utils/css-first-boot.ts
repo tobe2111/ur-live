@@ -36,7 +36,7 @@
 
 import { guestTabOf } from './guest-first-screen'
 import { shouldRenderMobileFirstScreen } from '../../shared/seo/crawler-ua'
-import { CRITICAL_CSS, CRITICAL_CSS_HOME } from '../generated/critical-css'
+import { CRITICAL_CSS, CRITICAL_CSS_HOME, CRITICAL_CSS_SURFACES } from '../generated/critical-css'
 
 /**
  * 어디에 거나 — **서버가 첫 화면을 그리는 표면만**(폰 UA). 거기선 스크립트 없이도 내용이 보이므로
@@ -67,8 +67,32 @@ export function cssFirstApplies(pathname: string, ua: string, authed = false): b
  *   라이브 실측: 홈 `<head>` 101KB 중 첫 화면 CSS 가 62KB(첫 화면 열 개를 한 벌로 합친 것) → 홈 내용은 압축 24KB 지점에서야 시작했다.
  *   홈판은 홈 폐쇄에 글자로 없는 클래스의 규칙을 뺀 것(`generateHomeCriticalCss`, ≈30KB). 생성물이 비면 전체판(종전).
  */
-export function criticalCssFor(pathname: string, full: string = CRITICAL_CSS, home: string = CRITICAL_CSS_HOME): string {
-  return pathname === '/' && home ? home : full
+export function criticalCssFor(
+  pathname: string, full: string = CRITICAL_CSS, home: string = CRITICAL_CSS_HOME,
+  surfaces: Record<string, string> = CRITICAL_CSS_SURFACES,
+): string {
+  if (pathname === '/' && home) return home
+  const k = criticalSurfaceOf(pathname)
+  return (k && surfaces[k]) || full
+}
+
+/**
+ * 🧩 2026-11-08 — 경로 → 첫 화면 표면 이름(`scripts/generate-critical-css.mjs` `SURFACE_ROOTS` 의 키와 같다).
+ *   모르는 경로는 null → 전체판(종전). `cssFirstApplies` 와 같은 경로 규칙을 따른다.
+ */
+export function criticalSurfaceOf(pathname: string): string | null {
+  const p = pathname.replace(/\/+$/, '') || '/'
+  if (p === '/') return 'home'
+  if (/^\/(?:pass|group-buy)\/\d+$/.test(p)) return 'detail'
+  if (/^\/vouchers\/\d+$/.test(p)) return 'voucherDetail'
+  if (/^\/stays\/\d+$/.test(p)) return 'stayDetail'
+  if (p === '/vouchers') return 'vouchers'
+  if (p === '/stays') return 'stays'
+  if (p === '/blog') return 'blogList'
+  if (/^\/blog\/[^/]+$/.test(p)) return 'blogDetail'
+  if (guestTabOf(p) !== null) return 'guest'
+  if (/^\/u\/[^/]+$/.test(p) && p !== '/u/me') return 'curator'
+  return null
 }
 
 /** 받지 않는 상태의 modulepreload — 모르는 rel 이라 브라우저가 아무것도 받지 않는다. */
