@@ -47,6 +47,7 @@ export const ROOTS = [
   'src/worker/utils/blog-list-first-screen.ts',
   'src/worker/utils/guest-first-screen.ts',
   'src/worker/utils/life-first-screen.ts', // 🏠 2026-11-08
+  'src/worker/utils/region-first-screen.ts', // 🗺️ 2026-11-08
 ]
 
 /** 원본 바이트 상한 — 넘으면 빌드 실패(첫 화면 CSS 가 앱 CSS 를 닮아 가면 이 일의 의미가 없다). */
@@ -165,6 +166,7 @@ export const SURFACE_ROOTS = {
   blogList: ['src/worker/utils/blog-list-first-screen.ts'],
   guest: ['src/worker/utils/guest-first-screen.ts'],
   life: ['src/worker/utils/life-first-screen.ts'],
+  region: ['src/worker/utils/region-first-screen.ts'],
 }
 
 /** 셀렉터의 클래스 이름들(이스케이프 해제) — `:not(…)` 안은 제외 조건이라 보지 않는다. */

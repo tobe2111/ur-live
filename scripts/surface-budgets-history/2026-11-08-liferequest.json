@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-08",
+  "reason": "2026-11-08 업종 요청서(/life/request/:category) 하드로드 표면 신규 등록 — sitemap 착지 20곳",
+  "surfaces": [
+    "lifeRequest"
+  ],
+  "changes": [
+    "lifeRequest: 기준에 없는 화면 (198.8 KB) — 예산을 갖고 들어와야 한다"
+  ]
+}

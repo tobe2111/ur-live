@@ -58,3 +58,14 @@ describe('🔑 2026-11-08 로그인 하드로드', () => {
     expect(readCode('src/App.tsx')).toMatch(/const LoginPage = lazyPage\(\(\) => import\('\.\/pages\/LoginPage'\)\); registerBootPage\('login', LoginPage\.load\)/)
   })
 })
+
+describe('🏠 2026-11-08 업종 요청서 하드로드', () => {
+  it('표면 · 미리받기 · 부팅 준비가 같은 이름(lifeRequest)이다', () => {
+    expect(routeSurface('/life/request/signage', true, false)).toBe('lifeRequest')
+    expect(routeSurface('/life/requests', true, false)).toBeNull() // 내 요청 목록은 다른 페이지
+    const gen = readCode('scripts/generate-route-chunk-map.mjs')
+    const table = gen.slice(gen.indexOf('export const PRELOAD_ONLY_ROUTES'))
+    expect(table.slice(0, table.indexOf('\n}'))).toContain("lifeRequest: ['src/pages/life/LifeRequestFormPage.tsx'],")
+    expect(readCode('src/App.tsx')).toMatch(/const LifeRequestFormPage = lazyPage\(\(\) => import\('\.\/pages\/life\/LifeRequestFormPage'\)\); registerBootPage\('lifeRequest', LifeRequestFormPage\.load\)/)
+  })
+})

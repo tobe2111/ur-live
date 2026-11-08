@@ -11,10 +11,12 @@ const TEST = 'src/tests/unit/consumer-chip-selection-2026-09-29.test.ts'
 export default [
   {
     name: '🔵 필터 칩 하나가 다시 검정 면으로 돌아간다',
-    file: 'src/pages/region/RegionPage.tsx',
-    find: "? 'bg-brand text-white border-brand'",
-    replace: "? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900'",
-    test: TEST,
+    // 🔁 2026-11-08 재조준: 칩 클래스가 서버 첫 화면과 같은 SSOT(`shared/region-page.ts`)로 옮겨갔다.
+    //   그 파일은 .ts 라 전수 시험(.tsx 만 훑는다)이 못 본다 → 지역 첫 화면 시험이 지킨다.
+    file: 'src/shared/region-page.ts',
+    find: "  chipOn: 'bg-brand text-white border-brand',",
+    replace: "  chipOn: 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900',",
+    test: 'src/tests/unit/region-first-screen-2026-11-08.test.ts',
     why: '한 화면만 검정이면 에러가 없다 — 같은 역할의 칩이 화면마다 다른 색이 되는 것이 정확히 이 사고다.',
   },
   {

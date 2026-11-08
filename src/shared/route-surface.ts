@@ -17,7 +17,7 @@ export type RouteSurface =
   | 'home' | 'homePc' | 'gbDetail' | 'voucherDetail' | 'product'
   | 'guestUShop' | 'guestMy' | 'guestPass'
   | 'cart' | 'search' | 'faq' | 'stays' | 'stayDetail' | 'region'
-  | 'linkshop' | 'vouchers' | 'browse' | 'map' | 'urshorts' | 'blog' | 'blogPost' | 'life' | 'lifePro' | 'login'
+  | 'linkshop' | 'vouchers' | 'browse' | 'map' | 'urshorts' | 'blog' | 'blogPost' | 'life' | 'lifePro' | 'login' | 'lifeRequest'
 
 /**
  * 홈이 PC 홈을 그리는 경계 — `HomeRoute` 가 이 쿼리로 두 홈을 고른다(Tailwind \`md\`).
@@ -56,6 +56,7 @@ export function routeSurface(pathname: string, mobileUa: boolean, authed: boolea
   if (p.startsWith('/blog/')) return 'blogPost'
   if (p === '/life') return 'life' // 🏠 2026-10-26 생활 허브·업체 등록(색인 진입점 — PRELOAD_ONLY_ROUTES)
   if (p === '/life/pro') return 'lifePro'
+  if (/^\/life\/request\/[a-z_]+\/?$/.test(p)) return 'lifeRequest' // 🏠 2026-11-08 업종 요청서(색인 착지)
   if (p === '/login' && !authed) return 'login' // 🔑 2026-11-08 로그인 — 로그인한 사람은 PublicRoute 가 다른 곳으로 보낸다(그 청크를 안 쓴다)
   return null
 }

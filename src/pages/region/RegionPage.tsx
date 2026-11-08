@@ -16,6 +16,8 @@ import {
   type SidoStat,
 } from '@/shared/constants/region-slugs'
 import NotFoundPage from '@/pages/NotFoundPage'
+import { REGION_CATEGORY_CHIPS, REGION_CLS as C, REGION_COPY as T, regionDealCount, type RegionCategoryKey } from '@/shared/region-page'
+import { readRegionsSeed } from './regions-seed' // 🗺️ 페이지 폴더에 둔다 — components/region/ 은 app-home 묶음 규칙에 걸려 그 묶음(+1.8KB)을 끌고 온다(빌드 실측)
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 16차 ④ — 종류 칩을 고르면 칩이 톡 켜지고, 아래 딜 목록이 살짝 떠오르며 바뀐다(홈의 카테고리 바꾸기와 같은 움직임).
 injectMotionCss('ur-m-region', `@keyframes ur-rg-chip { 0% { transform: scale(.9); } 60% { transform: scale(1.06); } 100% { transform: none; } }.ur-rg-chip { animation: ur-rg-chip .3s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-rg-chip{animation:none!important}}`)
@@ -40,15 +42,9 @@ injectMotionCss('ur-m-region', `@keyframes ur-rg-chip { 0% { transform: scale(.9
  * 슬러그를 먼저 갈라낼 것(그러지 않아 이 기능의 색인 가치를 10배 넘게 부풀려 보고한 적이 있다).
  */
 
-const CATEGORY_CHIPS = [
-  { key: 'all', label: '전체' },
-  { key: 'meal_voucher', label: '식사' },
-  { key: 'beauty_voucher', label: '뷰티' },
-  { key: 'stay_voucher', label: '숙소' },
-  { key: 'home_voucher', label: '생활' },
-  { key: 'etc_voucher', label: '기타' },
-] as const
-type CategoryKey = typeof CATEGORY_CHIPS[number]['key']
+// 🧱 2026-11-08 칩·문구·클래스·딜 수 계산은 서버 첫 화면과 같은 SSOT(`shared/region-page.ts`) — 두 벌이면 마운트 때 튄다.
+const CATEGORY_CHIPS = REGION_CATEGORY_CHIPS
+type CategoryKey = RegionCategoryKey
 
 export default function RegionPage() {
   const { sido: sidoParam, sigungu: sigunguParam } = useParams()
@@ -72,6 +68,9 @@ export default function RegionPage() {
         return r?.success && Array.isArray(r.data) ? r.data : []
       },
       staleTime: 10 * 60_000,
+      // 🗺️ 2026-11-08 서버가 같은 응답에 실은 통계 — 첫 렌더부터 딜 수가 맞다(종전: "아직 딜이 없어요" → "N개" 깜빡임).
+      initialData: readRegionsSeed(),
+      refetchOnMount: 'always',
     },
   )
 
@@ -79,10 +78,7 @@ export default function RegionPage() {
   if (!ref) return <NotFoundPage />
 
   const label = regionLabel(ref)
-  const sidoStat = regions.find(r => r.sido === ref.sido)
-  const dealCount = ref.sigungu
-    ? (sidoStat?.sigungu.find(s => s.sigungu === ref.sigungu)?.count ?? 0)
-    : (sidoStat?.count ?? 0)
+  const dealCount = regionDealCount(regions, ref)
   // 집계가 아직 안 왔으면(첫 페인트) 색인 판정을 보류하지 않는다 — 기본은 색인 허용이고,
   // 데이터가 도착해 미달로 밝혀지면 그때 noindex 로 바뀐다(크롤러는 최종 렌더를 본다).
   const known = regions.length > 0
@@ -101,7 +97,7 @@ export default function RegionPage() {
   ]
 
   return (
-    <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
+    <div className={C.page}>
       <SEO
         title={title}
         description={description}
@@ -110,32 +106,32 @@ export default function RegionPage() {
         jsonLd={[breadcrumbJsonLd(crumbs)]}
       />
 
-      <div className="max-w-[1600px] mx-auto px-5 lg:px-10 pt-4 lg:pt-6">
+      <div className={C.wrap}>
         {/* 브레드크럼 — 사용자 탐색 + 검색결과 계층 표시(JSON-LD 와 쌍) */}
-        <nav aria-label="위치" className="flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400 mb-3 flex-wrap">
+        <nav aria-label="위치" className={C.crumbs}>
           {crumbs.map((c, i) => (
-            <span key={c.url} className="inline-flex items-center gap-1">
+            <span key={c.url} className={C.crumb}>
               {i > 0 && <ChevronRight className="w-3 h-3 shrink-0" aria-hidden />}
               {i === crumbs.length - 1
-                ? <span className="font-bold text-gray-900 dark:text-white">{c.name}</span>
-                : <Link to={c.url} className="hover:underline">{c.name}</Link>}
+                ? <span className={C.crumbLast}>{c.name}</span>
+                : <Link to={c.url} className={C.crumbLink}>{c.name}</Link>}
             </span>
           ))}
         </nav>
 
-        <header className="mb-5">
-          <h1 className="text-[24px] lg:text-[28px] font-bold tracking-tight text-gray-900 dark:text-white">
+        <header className={C.header}>
+          <h1 className={C.h1}>
             {label} 이용권·동네딜
           </h1>
-          <p className="mt-2 text-[13px] lg:text-[15px] text-gray-500 dark:text-gray-400">
+          <p className={C.sub}>
             {dealCount > 0
-              ? <>진행 중인 딜 <b className="text-gray-900 dark:text-white">{dealCount}개</b> · 온라인 결제 후 매장에서 바로 사용</>
-              : <>아직 이 지역에 진행 중인 딜이 없어요. 다른 지역을 둘러보세요.</>}
+              ? <>진행 중인 딜 <b className={C.subNum}>{dealCount}개</b>{T.subSuffix}</>
+              : <>{T.empty}</>}
           </p>
         </header>
 
         {/* 카테고리 — 화면 안 필터(URL 미반영). 교차 URL 은 thin content 라 열지 않는다. */}
-        <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+        <div className={C.chips}>
           {CATEGORY_CHIPS.map(ch => {
             const on = category === ch.key
             return (
@@ -143,11 +139,7 @@ export default function RegionPage() {
                 key={ch.key}
                 onClick={() => pickCategory(ch.key)}
                 aria-pressed={on}
-                className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-medium border transition-colors ${
-                  on
-                    ? 'bg-brand text-white border-brand'
-                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
-                }${on && picked ? ' ur-rg-chip' : ''}`}
+                className={`${C.chipBase} ${on ? C.chipOn : C.chipOff}${on && picked ? ' ur-rg-chip' : ''}`}
               >
                 {ch.label}
               </button>
@@ -155,10 +147,10 @@ export default function RegionPage() {
           })}
           <Link
             to={`/map?q=${encodeURIComponent(label)}`}
-            className="shrink-0 ml-auto inline-flex items-center gap-1 px-4 py-2 rounded-full text-[13px] font-medium border border-line text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
+            className={C.mapLink}
           >
             <PinIcon className="w-3.5 h-3.5" aria-hidden />
-            지도에서 보기
+            {T.map}
           </Link>
         </div>
 
