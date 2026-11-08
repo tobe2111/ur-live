@@ -393,7 +393,7 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
   // ─────────────────────────────────────────────── ⑥ 배선
   it('⑥ 워커가 **한 세그먼트 `/u/:handle` · 모바일 UA** 에서만 그린다', () => {
     const w = code('src/worker/index.ts')
-    expect(w).toContain("import { buildCuratorFirstScreen } from './utils/curator-ssr-body'")
+    expect(w).toMatch(/import \{ buildCuratorFirstScreen(, curatorLcpImage)? \} from '\.\/utils\/curator-ssr-body'/)
     // ⚠️ `[^{]*` 로 잡으면 정규식의 `{1,40}` 에서 끊긴다 — 줄 끝(`) {`)까지 잡는다.
     const m = w.match(/ssrSlot === 'CURATOR' && ssrPayload &&.*\) \{/)
     expect(m).toBeTruthy()
