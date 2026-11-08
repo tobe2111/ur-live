@@ -147,7 +147,7 @@ export function vouchersFirstScreenGuardScript(nonce: string): string {
  * 교환권 목록 첫 화면 HTML — 실패하면 **빈 문자열**(호출부가 종전 로더로 되돌아간다. 무회귀).
  * @param seedJson `__SSR_INITIAL_VOUCHERS__` 본문(`{ success, data: [...] }`)
  */
-export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, nonce: string): string {
+export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, nonce: string, category: string = VOUCHERS_DEFAULT_CATEGORY): string {
   let rows: VoucherSeedRow[]
   try {
     const parsed = JSON.parse(seedJson) as { success?: boolean; data?: VoucherSeedRow[] }
@@ -183,7 +183,7 @@ export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, n
     // ☕ 2026-10-14: 첫 화면은 커피/음료 — 브랜드 로고 줄이 칩 아래에 선다(카테고리 목록이 오기 전엔 React 도 같은 예약).
     `<div class="${C.brandWrap}" aria-hidden="true"><div class="${C.brandRow}"><span class="${C.brandItem}"><span class="${C.brandTile}"></span><span class="${C.brandLabel}">&nbsp;</span></span></div></div>` +
     `<div class="${C.sortBar}">` +
-    `<h2 class="${C.sortTitle}"><span class="truncate">${escText(VOUCHERS_DEFAULT_CATEGORY)} 교환권</span><span class="${C.sortCount}">${count}</span></h2>` +
+    `<h2 class="${C.sortTitle}"><span class="truncate">${escText(category)} 교환권</span><span class="${C.sortCount}">${count}</span></h2>` +
     `<div class="relative shrink-0"><span class="${C.sortBtn}"><span class="w-3.5 h-3.5 inline-block"></span>낮은 가격순<span class="w-3.5 h-3.5 inline-block"></span></span></div>` +
     `</div>` +
     `<div class="${C.listWrap}"><div class="${C.list}">${shown.map(tileHtml).join('')}</div></div>` +

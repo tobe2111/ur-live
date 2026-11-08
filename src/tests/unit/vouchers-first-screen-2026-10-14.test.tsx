@@ -211,7 +211,7 @@ describe('④ 폴백과 배선', () => {
     const line = w.split('\n').find(l => l.includes("ssrSlot === 'VOUCHERS' && ssrPayload"))
     expect(line, 'VOUCHERS 첫 화면 분기가 사라졌다').toBeTruthy()
     expect(line!).toContain("url.pathname === '/vouchers' && shouldRenderMobileFirstScreen(c.req.header('user-agent'))")
-    expect(line!).toContain('const vouchersFirst = buildVouchersFirstScreen(ssrPayload, urdealLoaderHtml, nonce)') // 🔀 2026-11-01 A안 — 머리에 배너가 없어 보조 시드 인자가 빠졌다
+    expect(line!).toContain('const vouchersFirst = buildVouchersFirstScreen(ssrPayload, urdealLoaderHtml, nonce, voucherFacetCategory(url.search))') // 🎟️ 2026-11-08 facet 카테고리 제목
     expect(line!).toContain("rb = rb.on('#root', { element(el) { el.setInnerContent(vouchersFirst")
     expect(line!, '🔴 첫 화면을 못 그리면 **크롤러 요약**이 나와야 한다(본문이 통째로 비는 것 차단)')
       .toContain('buildStaticSurfaceNoscript(url.pathname, crawlerPayload) + urdealLoaderHtml')
@@ -230,5 +230,22 @@ describe('⑤ 시작 개수 = 세 줄(9) — 초기값과 리셋이 같은 상�
     expect(calls.length).toBeGreaterThan(0)
     expect(calls.filter(c => /setEmbedVisible\(\s*embedded\s*\?/.test(c))).toEqual([])
     expect(src).toMatch(/setEmbedVisible\(EMBED_INITIAL\)/)
+  })
+})
+
+describe('⑥ 2026-11-08 facet(`?category=영화`) 도 서버가 그린다', () => {
+  it('제목이 그 카테고리다', async () => {
+    const { buildVouchersFirstScreen: b } = await import('@/worker/utils/vouchers-first-screen')
+    const seed = JSON.stringify({ success: true, data: [{ id: 1, name: 'CGV 관람권', price: 13000 }] })
+    const html = b(seed, '', 'n', '영화')
+    expect(html).toContain('영화 교환권')
+    expect(html).not.toContain('커피/음료 교환권')
+  })
+  it('voucherFacetCategory — facet 이면 그 값, 아니면 기본', async () => {
+    const { voucherFacetCategory, VOUCHERS_DEFAULT_CATEGORY } = await import('@/shared/seo/voucher-facet')
+    expect(voucherFacetCategory('?category=' + encodeURIComponent('영화'))).toBe('영화')
+    expect(voucherFacetCategory('')).toBe(VOUCHERS_DEFAULT_CATEGORY)
+    expect(voucherFacetCategory('?category=cafe')).toBe(VOUCHERS_DEFAULT_CATEGORY)
+    expect(voucherFacetCategory('?category=all')).toBe(VOUCHERS_DEFAULT_CATEGORY)
   })
 })

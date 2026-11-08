@@ -28,14 +28,13 @@ export default [
     test: TEST,
   },
   {
-    name: '🎟️ facet 시드를 사람 응답에 주입한다 — 반대 방향',
-    why: '화면의 소비 조건은 `!category` 라 그 시드를 안 먹는다. 실으면 사람이 쓰지도 않는 '
-       + 'JSON 을 내려받는다(2026-10-12 지역 요약에서 변수를 분리한 그 규율).',
+    name: '🎟️ facet 시드를 다시 주입에서 뺀다 — 서버가 그린 분류 첫 화면이 로더로 돌아간다',
+    why: '2026-11-08 부터 화면이 facet 시드를 먹는다(`voucherFacetCategory(firstDocumentSearch())`). '
+       + '주입을 끊으면 첫 화면이 로더가 되고 화면이 같은 목록을 다시 받는다(라이브 FCP 2.05s 로 회귀).',
     file: WORKER,
-    // 🔁 2026-10-13 재조준: 같은 줄에 `/urshorts` 항이 더해졌다(두 표면이 같은 규율을 쓴다).
-    //   불변식(*facet 시드는 크롤러 본문까지만*)은 그대로이고, facet 항만 떼어 그 방향을 만든다.
-    find: "    if ((url.pathname === '/vouchers' && url.search) || url.pathname === '/urshorts') ssrPayload = null;",
-    replace: "    if (url.pathname === '/urshorts') ssrPayload = null;",
+    // 🔁 2026-11-08 재조준: 10-12 규율("주입하지 않는다")의 전제가 사라져 방향이 뒤집혔다.
+    find: "    if (url.pathname === '/urshorts') ssrPayload = null;",
+    replace: "    if ((url.pathname === '/vouchers' && url.search) || url.pathname === '/urshorts') ssrPayload = null;",
     test: TEST,
   },
   {

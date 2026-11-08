@@ -165,3 +165,4 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 - 2026-11-08 표면별 첫 화면 CSS(9표면 추가) — `docs/locks/loading/2026-11-08-surface-critical-css.md`.
 - 2026-11-08 유어샵 첫 줄 사진 lazy 해제 + 헤더 preload — `docs/locks/loading/2026-11-08-curator-lcp.md`. 판정: 같은 조건 LCP(전 2.18s).
 - 2026-11-08 블로그 사진 보이는 크기로(`blogCoverSrc` — 커버 960 · 썸네일 240 · 본문 960, 워커·React 같은 주소) + 큰 커버 즉시·high. 실측 전: 목록 원본 7장 485KB · 상세 커버 139KB(lazy). 판정: 배포 후 같은 페이지 이미지 바이트·LCP.
+- 2026-11-08 교환권 분류 첫 화면 서버 렌더 — `docs/locks/loading/2026-11-08-voucher-facet-first-screen.md`.

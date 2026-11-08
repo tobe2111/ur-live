@@ -50,6 +50,15 @@ export function voucherFacetSeedPath(search: string): string | null {
 }
 
 /**
+ * 🎟️ 2026-11-08 — facet 이면 그 카테고리, 아니면 기본 카테고리(`voucherFacetSeedPath` 와 같은 판정).
+ *   서버 첫 화면 제목과 화면의 시드 소비 조건이 **같은 값**을 쓴다.
+ */
+export function voucherFacetCategory(search: string): string {
+  if (!voucherFacetSeedPath(search)) return VOUCHERS_DEFAULT_CATEGORY
+  return new URLSearchParams(search).get('category')!.trim()
+}
+
+/**
  * 🔢 facet 이 thin 이 되지 않는 최소 재고 (2026-10-18).
  *
  * **라이브 실측으로 정했다**(Googlebot UA 로 받아 `<noscript>` 를 파싱): 가장 작은 카테고리
