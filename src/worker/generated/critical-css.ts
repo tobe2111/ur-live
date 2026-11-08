@@ -10,3 +10,5 @@
 // ⚠️ 여기에 진짜 값을 다시 적지 말 것 — 번들에는 안 들어가고 충돌만 되살아난다.
 //    가드: `src/tests/unit/critical-css-placeholder-2026-11-03.test.ts`
 export const CRITICAL_CSS: string = ''
+/** 🏠 2026-11-05 홈(/) 전용 — 홈이 쓰는 규칙만(`generateHomeCriticalCss`). 비면 워커가 전체판을 쓴다. */
+export const CRITICAL_CSS_HOME: string = ''

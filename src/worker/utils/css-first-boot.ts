@@ -36,7 +36,7 @@
 
 import { guestTabOf } from './guest-first-screen'
 import { shouldRenderMobileFirstScreen } from '../../shared/seo/crawler-ua'
-import { CRITICAL_CSS } from '../generated/critical-css'
+import { CRITICAL_CSS, CRITICAL_CSS_HOME } from '../generated/critical-css'
 
 /**
  * 어디에 거나 — **서버가 첫 화면을 그리는 표면만**(폰 UA). 거기선 스크립트 없이도 내용이 보이므로
@@ -60,6 +60,15 @@ export function cssFirstApplies(pathname: string, ua: string, authed = false): b
     || /^\/blog(?:\/[^/]+)?\/?$/.test(pathname) // 📝 2026-10-19 블로그 목록·상세도 서버 첫 화면(blog-*-first-screen.ts)
     || /^\/(?:pass|group-buy|vouchers|stays)\/\d+\/?$/.test(pathname)
     || (/^\/u\/[^/]+\/?$/.test(pathname) && !/^\/u\/me\/?$/.test(pathname))
+}
+
+/**
+ * 🏠 2026-11-05 대표 *"그냥 구글이나 브라우저에서 urdeal.kr 들어가면 느린거"* — 홈(/)은 **홈 전용** 첫 화면 CSS 를 쓴다.
+ *   라이브 실측: 홈 `<head>` 101KB 중 첫 화면 CSS 가 62KB(첫 화면 열 개를 한 벌로 합친 것) → 홈 내용은 압축 24KB 지점에서야 시작했다.
+ *   홈판은 홈 폐쇄에 글자로 없는 클래스의 규칙을 뺀 것(`generateHomeCriticalCss`, ≈30KB). 생성물이 비면 전체판(종전).
+ */
+export function criticalCssFor(pathname: string, full: string = CRITICAL_CSS, home: string = CRITICAL_CSS_HOME): string {
+  return pathname === '/' && home ? home : full
 }
 
 /** 받지 않는 상태의 modulepreload — 모르는 rel 이라 브라우저가 아무것도 받지 않는다. */
