@@ -20,7 +20,8 @@ import {
   MealIcon, CafeIcon, BeautyIcon, StayIcon, GiftIcon, StoreIcon, LeisureIcon,
 } from '@/components/icons/category-icons'
 // 🧱 2026-10-19 주제 표·색·크기는 서버 첫 화면과 같은 SSOT(`shared/blog-page.ts`) — 여기엔 아이콘 그림만 남는다.
-import { BLOG_COVER, blogCoverTopic, blogCoverBg, blogCoverInk, parseBlogTags, type BlogCoverIcon } from '@/shared/blog-page'
+import { BLOG_COVER, blogCoverTopic, blogCoverBg, blogCoverInk, parseBlogTags, blogCoverSrc, type BlogCoverIcon } from '@/shared/blog-page'
+import { cfImageOnError } from '@/utils/cf-image'
 
 type CoverPost = { slug: string; tags: string; thumbnail_url: string | null }
 type Ico = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>
@@ -38,7 +39,19 @@ export function blogCover(slug: string, tags: string[]) {
 export function CoverImg({ post, className, variant = 'thumb' }: { post: CoverPost; className: string; variant?: 'hero' | 'thumb' }) {
   const tags = parseBlogTags(post.tags)
   if (post.thumbnail_url) {
-    return <img src={post.thumbnail_url} alt="" className={`${className} object-cover`} loading="lazy" />
+    // 🖼️ 2026-11-08 보이는 크기로 받는다(`blogCoverSrc` — 워커 첫 화면과 같은 주소). 큰 커버는 맨 위 사진(LCP)이라 즉시.
+    const url = post.thumbnail_url
+    return (
+      <img
+        src={blogCoverSrc(url, variant)}
+        alt=""
+        className={`${className} object-cover`}
+        loading={variant === 'hero' ? undefined : 'lazy'}
+        fetchPriority={variant === 'hero' ? 'high' : undefined}
+        decoding="async"
+        onError={(e) => cfImageOnError(e.currentTarget, url)}
+      />
+    )
   }
   const { Icon, hue, label } = blogCover(post.slug, tags)
   const big = variant === 'hero'

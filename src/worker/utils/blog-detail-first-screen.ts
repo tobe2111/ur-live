@@ -17,6 +17,7 @@
 import {
   BLOG_DETAIL, BLOG_COVER, blogMarkdownHtml, blogCoverTopic, blogCoverBg, blogCoverInk,
   blogDateLabel, blogReadMin, blogHasToc, parseBlogTags,
+  blogCoverSrc,
 } from '../../shared/blog-page'
 
 const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
@@ -36,7 +37,8 @@ export function buildBlogDetailFirstScreen(ssrPayload: string | null | undefined
 
   let cover: string
   if (post.thumbnail_url) {
-    cover = `<img src="${esc(post.thumbnail_url)}" alt="" class="${BLOG_DETAIL.cover} object-cover" loading="lazy">`
+    // 🖼️ 2026-11-08 보이는 크기로(`blogCoverSrc`) · 맨 위 커버 = LCP 라 즉시 + 높은 우선순위(종전 lazy 원본 139KB).
+    cover = `<img src="${esc(blogCoverSrc(post.thumbnail_url, 'hero'))}" alt="" class="${BLOG_DETAIL.cover} object-cover" fetchpriority="high" decoding="async">`
   } else {
     const { hue, label } = blogCoverTopic(post.slug, tags)
     cover = `<div class="${BLOG_DETAIL.cover} ${BLOG_COVER.box}" style="background-color:${blogCoverBg(hue)}">${iconSlot(BLOG_COVER.heroIcon)}`
