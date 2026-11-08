@@ -31,7 +31,7 @@ import { getUserIdSync } from '@/utils/auth'
 import { VoucherCard, VoucherTile, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
 import { VOUCHER_TILE_CLASS, VOUCHER_TILE_ABOVE_FOLD, VOUCHER_CAT_TAB } from '@/shared/voucher-tile'
 import { ChipRowReserve, BrandStripReserve, PcBrandStripReserve, PC_BRAND } from './vouchers/TopChromeReserve'
-import { VOUCHERS_DEFAULT_CATEGORY } from '@/shared/seo/voucher-facet'
+import { VOUCHERS_DEFAULT_CATEGORY, voucherFacetCategory } from '@/shared/seo/voucher-facet'
 import { resolveConsumerSurfaceSeo } from '@/shared/seo/consumer-surfaces'
 import { GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
 import VouchersTopBar from './vouchers/VouchersTopBar'
@@ -78,10 +78,21 @@ const EMBEDDED_DEFAULT_CATEGORY = VOUCHERS_DEFAULT_CATEGORY // ☕ 2026-10-14: /
 // 🎨 2026-07-01 (대표 "페이지가 빨리 뜨면 되는거"): SSR seed 를 첫 렌더에 **동기 소비** → 로더 프레임 제거,
 //   청크 로드 끝나면 콘텐츠 즉시. (기존엔 loading=true 로 시작 후 effect 에서 소비 → 로더 한 프레임.)
 //   조건은 기존 effect 의 ssrMatch 와 동일(first-paint·no-filter·price_low). page 는 첫 렌더라 1 고정.
+/** 첫 문서(서버가 시드를 실어 보낸 문서)의 쿼리. 알 수 없으면 '' (= 기본 카테고리 시드로 본다 — 종전 동작). */
+function firstDocumentSearch(): string {
+  try {
+    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+    return nav?.name ? new URL(nav.name).search : ''
+  } catch { return '' }
+}
+
 function readVouchersSsrSeed(embedded: boolean, category: string, brand: string, sort: string): VoucherProduct[] | null {
   const match = embedded
     ? (category === EMBEDDED_DEFAULT_CATEGORY && !brand && sort === 'price_low')
-    : (category === VOUCHERS_DEFAULT_CATEGORY && !brand && sort === 'price_low') // 워커 시드 = VOUCHERS_DEFAULT_SEED_PATH
+    // 워커 시드 = **첫 문서 주소**의 카테고리(`voucherFacetCategory` — facet 이면 그 값, 아니면 기본). 🎟️ 2026-11-08 facet 도 먹는다.
+    //   지금 주소가 아니라 첫 문서 주소로 판정한다 — 시드는 첫 문서에만 실리므로, 앱 안 이동으로 다른 카테고리에 와도
+    //   그 문서의 시드(다른 카테고리)를 엉뚱하게 먹지 않는다.
+    : (category === voucherFacetCategory(firstDocumentSearch()) && !brand && sort === 'price_low')
   if (!match || typeof document === 'undefined') return null
   try {
     const el = document.getElementById(embedded ? '__SSR_INITIAL_MAIN__' : '__SSR_INITIAL_VOUCHERS__')

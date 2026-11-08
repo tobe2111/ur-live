@@ -105,7 +105,8 @@ describe('③ 교환권 — 첫 응답을 버리지 않는다', () => {
     expect(SRC).toContain("(rawCategory || VOUCHERS_DEFAULT_CATEGORY)")
     expect(SRC).not.toContain("next.set('category', cached.data[0].category)")
     // 시드 소비 조건도 같은 기본값 — 갈리면 서버 시드를 버리고 다시 요청한다.
-    expect(SRC).toContain("(category === VOUCHERS_DEFAULT_CATEGORY && !brand && sort === 'price_low')")
+    // 🎟️ 2026-11-08: 기준이 '기본 카테고리' → '첫 문서 주소의 카테고리'(facet 이면 그 값, 아니면 기본)로 넓어졌다.
+    expect(SRC).toContain("(category === voucherFacetCategory(firstDocumentSearch()) && !brand && sort === 'price_low')")
   })
 })
 

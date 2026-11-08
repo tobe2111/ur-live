@@ -127,15 +127,15 @@ describe('③ 배선 — 워커가 facet 시드를 받고 **주입은 제외**�
     expect(c).not.toContain("'/api/products?page=1&limit=20&deal_only=1&sort=price_low'")
   })
 
-  it('🔴 facet 시드를 사람 응답에 주입하지 않는다 — 화면은 이 시드를 안 먹는다', () => {
+  it('🎟️ 2026-11-08 재조준 — facet 시드를 **주입한다**: 서버가 그 카테고리 첫 화면을 그리고 화면이 같은 시드를 먹는다', () => {
+    // 종전(10-12) 규율 "주입하지 않는다" 의 전제는 *화면이 facet 시드를 안 먹는다* 였다. 화면이 먹게 됐으므로 주입한다.
     const c = code(WORKER)
-    // 🔁 2026-10-13 재조준: 같은 줄에 `/urshorts` 항이 더해졌다(두 표면이 같은 규율을 쓴다).
-    //   불변식은 그대로다 — ① `crawlerPayload` 를 잡은 **직후**에 ② facet 조건으로 주입을 끊는다.
-    expect(c).toMatch(/const crawlerPayload = digestRaw \|\| ssrPayload;\s*\n\s*if \([^\n]*url\.pathname === '\/vouchers' && url\.search[^\n]*\) ssrPayload = null;/)
-    // 화면의 소비 조건이 `!category` 임을 함께 고정(그 조건이 바뀌면 위 결정의 전제가 사라진다).
-    // ☕ 2026-10-14: 소비 조건 = 기본 카테고리(커피/음료). facet 주소는 여전히 주입하지 않으므로
-    //   `?category=편의점` 화면은 이 시드를 받지 못한다(받아도 카테고리가 달라 안 먹는다).
-    expect(code('src/pages/VouchersPage.tsx')).toContain("(category === VOUCHERS_DEFAULT_CATEGORY && !brand && sort === 'price_low')")
+    expect(c).toMatch(/const crawlerPayload = digestRaw \|\| ssrPayload;\s*\n\s*if \(url\.pathname === '\/urshorts'\) ssrPayload = null;/)
+    expect(c).not.toMatch(/url\.pathname === '\/vouchers' && url\.search\) [^\n]*ssrPayload = null/)
+    // 화면은 **첫 문서 주소**의 카테고리로 판정한다 — 앱 안 이동으로 다른 카테고리에 와도 남의 시드를 안 먹는다.
+    const page = code('src/pages/VouchersPage.tsx')
+    expect(page).toContain("(category === voucherFacetCategory(firstDocumentSearch()) && !brand && sort === 'price_low')")
+    expect(page).toMatch(/getEntriesByType\('navigation'\)/)
   })
 
   it('🔥 `커피/음료` 시드 경로는 예열 목록의 항목과 **byte-동일**이다(갈리면 예열이 헛돈다)', () => {

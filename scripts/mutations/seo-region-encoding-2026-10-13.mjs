@@ -142,8 +142,8 @@ export default [
   {
     name: '🎬 /urshorts 시드를 주입까지 한다 (목록이 도로 10편으로 짧아진다)',
     file: 'src/worker/index.ts',
-    find: "    if ((url.pathname === '/vouchers' && url.search) || url.pathname === '/urshorts') ssrPayload = null;",
-    replace: "    if (url.pathname === '/vouchers' && url.search) ssrPayload = null;",
+    find: "    if (url.pathname === '/urshorts') ssrPayload = null;",
+    replace: "    if (url.pathname === '/urshorts-never') ssrPayload = null;",
     test: TEST,
     why:
       '이 시드는 **10편**이고 화면은 `?all=1` 전량을 받는다. `initialData` 로 먹이면 사용자가 보던 ' +
