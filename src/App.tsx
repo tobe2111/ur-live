@@ -60,7 +60,7 @@ const CreatorApplyPage = lazy(() => import('./pages/CreatorApplyPage')); const C
 const CampaignApplyPage = lazy(() => import('./pages/CampaignApplyPage')); const MallAdminPage = lazy(() => import('./pages/MallAdminPage')) // 📣 캠페인 모집 · 🏬 몰 운영자 콘솔(공구 서비스)
 const AboutPage = lazy(() => import('./pages/AboutPage')); const AboutServicePage = lazy(() => import('./pages/AboutServicePage')); const PartnersPage = lazy(() => import('./pages/PartnersPage')); const CreatorsPage = lazy(() => import('./pages/CreatorsPage')) // 🧭 2026-07-19 웹페이지 3종 (구 소개서 = /about/print)
 
-const LoginPage = lazy(() => import('./pages/LoginPage'))
+const LoginPage = lazyPage(() => import('./pages/LoginPage')); registerBootPage('login', LoginPage.load) // 🔑 2026-11-08 하드로드 진입점(로그인 유도 링크·외부 링크) — 부팅 준비 + 미리받기(generate-route-chunk-map PRELOAD_ONLY_ROUTES)
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const JoinChoicePage = lazy(() => import('./pages/JoinChoicePage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))

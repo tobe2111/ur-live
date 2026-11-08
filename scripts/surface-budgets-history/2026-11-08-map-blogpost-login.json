@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-08",
+  "reason": "2026-11-08 로그인 하드로드 표면(login) 신규 등록 + map·blogPost 공용 묶음 미세 증가(+0.1KB 초과, 이 브랜치 첫 화면 작업의 공용 모듈)",
+  "surfaces": [
+    "map",
+    "blogPost",
+    "login"
+  ],
+  "changes": [
+    "map: 221.8 → 223.4 KB (+1.5, 허용 1.5) · 늘어난 것: lz-gbDetail-map.js +0.7, app-utils.js +0.4",
+    "blogPost: 193.2 → 194.8 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.8",
+    "login: 기준에 없는 화면 (196.7 KB) — 예산을 갖고 들어와야 한다"
+  ]
+}
