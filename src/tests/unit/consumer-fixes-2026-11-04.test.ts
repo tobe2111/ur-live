@@ -13,8 +13,11 @@ const read = (p: string) => stripComments(readFileSync(p, 'utf8'))
 
 describe('2026-11-04 손님 화면 셋', () => {
   it('① 생활 견적 판·머리에 안쪽 가로 여백이 없다', () => {
-    expect(read('src/pages/life/LifePage.tsx')).toContain("const CARD = 'rounded-2xl py-5'")
-    expect(read('src/pages/life/LifeHero.tsx')).toContain('data-testid="life-hero" className="pt-1 pb-2"')
+    // 🧱 2026-11-08 값은 서버 첫 화면과 같은 SSOT(`shared/life-page.ts`)로 옮겨갔다 — 값 자체를 그 파일에서 본다.
+    expect(read('src/shared/life-page.ts')).toContain("card: 'rounded-2xl py-5'")
+    expect(read('src/shared/life-page.ts')).toContain("hero: 'pt-1 pb-2'")
+    expect(read('src/pages/life/LifePage.tsx')).toContain('const CARD = C.card')
+    expect(read('src/pages/life/LifeHero.tsx')).toContain('data-testid="life-hero" className={C.hero}')
   })
   it('② 지도 카드: 한 장이면 꽉', () => {
     expect(read('src/pages/MyVouchersPage.tsx')).toContain("${mapCarousel.length === 1 ? 'w-full' : 'w-[80%] max-w-[300px]'}")

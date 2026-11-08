@@ -241,6 +241,7 @@ describe('⑤-2 서버가 그리는 첫 화면 = CSS 먼저 적용 표면 (2026-
     'src/worker/utils/blog-detail-first-screen.ts': '/blog/what-is-urdeal', // 2026-10-19 — 블로그 상세도
     'src/worker/utils/blog-list-first-screen.ts': '/blog',
     'src/worker/utils/guest-first-screen.ts': '/my-vouchers', // 2026-10-19 — 로그인 전 탭 셋
+    'src/worker/utils/life-first-screen.ts': '/life', // 2026-11-08 — 생활 허브
   }
   it('ROOTS 의 모든 첫 화면 모듈에 대표 경로가 있다(새 첫 화면이 생기면 여기서 멈춘다)', async () => {
     // @ts-expect-error — .mjs 생성기(타입 없음)

@@ -14,11 +14,13 @@ import SEO from '@/components/SEO'
 import { ChevronRight } from 'lucide-react'
 import { HOME_SERVICE_CATEGORIES, categoryDef, type HomeServiceCategory } from '@/shared/home-service'
 import { formatNumber } from '@/utils/format'
-import { LIFE_TILES, LifeTileIcon } from './life-tiles'
+import { LifeTileIcon } from './life-tiles'
+import { LIFE_GROUPS, LIFE_BIG_SUB, LIFE_ICON_ROW_MAX, LIFE_TILE_LABEL, LIFE_COPY, LIFE_CLS as C } from '@/shared/life-page'
 import { LIFE_HUB_SEO } from '@/shared/seo/life-hub-seo'
 import { LIFE_FAQ } from '@/shared/life-faq'
 import { withSiteName } from '@/shared/seo/consumer-surfaces'
 import LifeHero from './LifeHero'
+import { takeBootFirstScreen } from '@/lib/boot-first-screen'
 import type { LifeLive } from './life-live'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-02 13차 ④⑤ — 이용 순서 1·2·3 이 차례로 떠오르며 번호가 톡 튀고, 서비스 타일은 차례로 나타나며 누르면 눌렸다 돌아온다.
@@ -32,44 +34,35 @@ injectMotionCss('ur-m-life', `@keyframes ur-life-in { from { opacity: 0; transfo
  *  - 가게 운영 중 · 숙소 운영 중 · 이사·집: 아이콘 줄(넘치면 4개 + 자세히)
  * 카테고리 설명 문장은 여전히 안 쓴다(대표 "글자가 많달까") — 큰 줄의 한 줄 부제만 이 파일에 짧게 둔다.
  */
-type Group = { title: string; keys: readonly HomeServiceCategory[]; big?: boolean }
-const GROUPS: readonly Group[] = [
-  { title: '가게 문 열 때', keys: ['signage', 'store_interior'], big: true },
-  { title: '가게 운영 중이라면', keys: ['store_pest', 'kitchen_hood', 'store_repair', 'store_fridge', 'store_aircon', 'store_clean', 'store_drain'] },
-  { title: '숙소 운영 중이라면', keys: ['lodging_clean', 'lodging_pool'] },
-  { title: '이사·집 일이 생기면', keys: ['move', 'move_in_clean', 'aircon_clean', 'home_interior', 'home_grout', 'home_pest'] },
-]
-/** 큰 줄의 한 줄 부제(오늘의집 "오늘의집이 시공하자, A/S 보장" 자리). */
-const BIG_SUB: Partial<Record<HomeServiceCategory, string>> = {
-  signage: '새 간판·교체·LED 수리까지 견적 비교',
-  store_interior: '오픈·리뉴얼 공사, 근처 업체 견적 비교',
-}
-const ICON_ROW_MAX = 5
+// 🧱 2026-11-08 묶음·부제·칸 수·클래스는 서버 첫 화면과 같은 SSOT(`shared/life-page.ts`) — 두 벌이면 마운트 때 튄다.
+const GROUPS = LIFE_GROUPS
+const BIG_SUB = LIFE_BIG_SUB
+const ICON_ROW_MAX = LIFE_ICON_ROW_MAX
 
 interface VoucherItem { id: number; name: string; price?: number; restaurant_name?: string }
 
-const CARD = 'rounded-2xl py-5' // 📏 2026-11-04 대표 *"양쪽 공백 왜 이렇게"* — 판이 평면이라 안쪽 px-5 가 바깥 px-5 와 겹쳐 40px 이었다. 가장자리는 바깥 하나(20)만.
+const CARD = C.card // 📏 2026-11-04 대표 *"양쪽 공백 왜 이렇게"* — 판이 평면이라 가장자리는 바깥 하나(20)만.
 
-function IconRow({ keys }: { keys: readonly HomeServiceCategory[] }) {
+function IconRow({ keys, calm }: { keys: readonly HomeServiceCategory[]; calm: boolean }) {
   const [more, setMore] = useState(false)
   const folded = keys.length > ICON_ROW_MAX && !more
   const shown = folded ? keys.slice(0, ICON_ROW_MAX - 1) : keys
-  const tile = 'flex flex-col items-center gap-2 active:opacity-70'
+  const tile = C.tile
   return (
-    <ul className="mt-5 grid grid-cols-5 gap-x-1 gap-y-5">
+    <ul className={C.iconGrid}>
       {shown.map((k, ti) => (
-        <li key={k} className="ur-life-tile" style={{ '--i': Math.min(ti, 10) } as React.CSSProperties}>
+        <li key={k} className={calm ? undefined : C.tileLi} style={{ '--i': Math.min(ti, 10) } as React.CSSProperties}>
           <Link to={`/life/request/${k}`} className={tile}>
-            <span className="ur-life-ic flex h-12 w-12 items-center justify-center"><LifeTileIcon category={k} size={40} /></span>
-            <span className="whitespace-pre-line text-center text-[13px] leading-tight">{LIFE_TILES[k][0]}</span>
+            <span className={C.tileIc}><LifeTileIcon category={k} size={40} /></span>
+            <span className={C.tileLabel}>{LIFE_TILE_LABEL[k]}</span>
           </Link>
         </li>
       ))}
       {folded && (
         <li>
           <button type="button" onClick={() => setMore(true)} className={`${tile} w-full`}>
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-warm"><ChevronRight className="h-5 w-5 text-gray-500 dark:text-gray-400" /></span>
-            <span className="text-center text-[13px] leading-tight">자세히</span>
+            <span className={C.moreIc}><ChevronRight className="h-5 w-5 text-gray-500 dark:text-gray-400" /></span>
+            <span className={C.moreLabel}>{LIFE_COPY.more}</span>
           </button>
         </li>
       )}
@@ -78,6 +71,8 @@ function IconRow({ keys }: { keys: readonly HomeServiceCategory[] }) {
 }
 
 export default function LifePage() {
+  // 🏠 2026-11-08 서버가 첫 화면을 그렸으면 타일이 이미 보인다 — 마운트 때 다시 떠오르게(투명 → 보임) 하면 깜빡인다.
+  const [calm] = useState(() => takeBootFirstScreen('/life') !== null)
   const [vouchers, setVouchers] = useState<VoucherItem[]>([])
   const [open, setOpen] = useState(true)
   // 카테고리별 받는 업체 수 — 하나라도 0 이면 한 줄로만 알린다(타일마다 붙이면 다시 글자가 많아진다).
@@ -97,30 +92,30 @@ export default function LifePage() {
   const deals = vouchers.slice(0, 4)
 
   return (
-    <div className="min-h-[100dvh] bg-warm text-ink pb-safe-nav">
+    <div className={C.page}>
       <SEO title={withSiteName(LIFE_HUB_SEO.title)} description={LIFE_HUB_SEO.description} url="/life" />
 
       {/* 🖥️ 2026-10-26 PC: 액자를 벗고(pc-fullbleed) 두 칸 — 왼쪽 업종, 오른쪽 바로 사기·질문·업체 안내. */}
-      <div className="mx-auto w-full max-w-[720px] space-y-3 px-5 pb-10 pt-5 lg:max-w-[1120px] lg:px-8 lg:pt-8">
+      <div className={C.wrap}>
         {/* 🏠 2026-11-03 대표 확정 안 5 — 평면 머리 + 주 버튼(업종 고르기 창) + 실시간 한 줄(C). 상세 `LifeHero.tsx`. */}
         <LifeHero groups={GROUPS} open={open} live={live} />
 
-        <div className="space-y-3 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-5 lg:space-y-0">
-        <div className="space-y-3">
+        <div className={C.cols}>
+        <div className={C.left}>
         {GROUPS.map((g) => (
           <section key={g.title} className={CARD}>
-            <h2 className="text-[16px] font-semibold">{g.title}</h2>
+            <h2 className={C.cardTitle}>{g.title}</h2>
             {g.big ? (
-              <ul className="mt-2 divide-y divide-rule">
+              <ul className={C.bigList}>
                 {g.keys.map((k) => {
                   const def = categoryDef(k)
                   return (
                     <li key={k}>
-                      <Link to={`/life/request/${k}`} className="flex items-center gap-3 py-3 active:opacity-70">
+                      <Link to={`/life/request/${k}`} className={C.bigLink}>
                         <LifeTileIcon category={k} size={44} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[15px] font-bold">{def?.label} 업체 찾기</span>
-                          <span className="mt-1 block truncate text-[13px] text-gray-500 dark:text-gray-400">{BIG_SUB[k]}</span>
+                        <span className={C.bigText}>
+                          <span className={C.bigLabel}>{def?.label} 업체 찾기</span>
+                          <span className={C.bigSub}>{BIG_SUB[k]}</span>
                         </span>
                         <ChevronRight className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-500" />
                       </Link>
@@ -128,7 +123,7 @@ export default function LifePage() {
                   )
                 })}
               </ul>
-            ) : <IconRow keys={g.keys} />}
+            ) : <IconRow keys={g.keys} calm={calm} />}
           </section>
         ))}
 

@@ -22,8 +22,11 @@ describe('생활 견적 — 내 요청 · 공유', () => {
   it('② /life 첫 카드: 서비스 이름 + 내 견적 요청 문', () => {
     expect(R('src/pages/life/LifePage.tsx')).toMatch(/<LifeHero /)
     const s = R('src/pages/life/LifeHero.tsx')
-    expect(s).toContain('사장님 생활 견적 서비스')
-    expect(s).toMatch(/<Link to="\/life\/requests"[^>]*>\s*내 견적 요청/)
+    // 🧱 2026-11-08 문구는 서버 첫 화면과 같은 SSOT(`shared/life-page.ts`)
+    expect(R('src/shared/life-page.ts')).toContain("eyebrow: '사장님 생활 견적 서비스'")
+    expect(R('src/shared/life-page.ts')).toContain("myRequests: '내 견적 요청'")
+    expect(s).toContain('{T.eyebrow}')
+    expect(s).toMatch(/<Link to="\/life\/requests"[^>]*>\s*\{T\.myRequests\}/)
   })
   it('③ 목록 API 는 open 요청만 토큰을 낸다', () => {
     const s = R('src/features/home-service/api/home-service.routes.ts')
