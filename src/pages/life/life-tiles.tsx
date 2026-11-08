@@ -8,6 +8,7 @@
 import type { ReactElement } from 'react'
 import { CATEGORY_PALETTE, type CategoryHue } from '@/shared/category-palette'
 import type { HomeServiceCategory } from '@/shared/home-service'
+import { LIFE_TILE_LABEL } from '@/shared/life-page' // 🧱 2026-11-08 이름은 서버 첫 화면과 같은 SSOT
 
 type Draw = (c: { main: string; dark: string }) => ReactElement
 
@@ -105,23 +106,23 @@ const tiles: Draw = (c) => (<>
 
 /** 카테고리 → [짧은 이름, 그림, 색]. 짧은 이름은 타일 두 줄 안에 들어가야 한다(`\n` 으로 끊는다). */
 export const LIFE_TILES: Record<HomeServiceCategory, readonly [string, Draw, CategoryHue]> = {
-  signage: ['간판', sign, 'purple'],
-  store_interior: ['인테리어', roller, 'orange'],
-  store_pest: ['방역·소독', spray, 'green'],
-  kitchen_hood: ['후드·덕트\n청소', hood, 'yellow'],
-  store_repair: ['시설 수리', wrench, 'blue'],
-  store_fridge: ['냉장·냉동\n설비', fridge, 'teal'],
-  store_aircon: ['에어컨\n청소·수리', aircon, 'blue'],
-  store_clean: ['매장 청소', bucket, 'pink'],
-  store_drain: ['배수구\n정화조', drain, 'teal'],
-  lodging_clean: ['객실 청소\n침구', bed, 'blue'],
-  lodging_pool: ['수영장\n온수 설비', pool, 'teal'],
-  move: ['이사', truck, 'yellow'],
-  move_in_clean: ['입주청소', bucket, 'green'],
-  aircon_clean: ['에어컨 청소', aircon, 'blue'],
-  home_interior: ['인테리어', roller, 'orange'],
-  home_grout: ['줄눈·탄성', tiles, 'purple'],
-  home_pest: ['해충 방역', spray, 'green'],
+  signage: [LIFE_TILE_LABEL.signage, sign, 'purple'],
+  store_interior: [LIFE_TILE_LABEL.store_interior, roller, 'orange'],
+  store_pest: [LIFE_TILE_LABEL.store_pest, spray, 'green'],
+  kitchen_hood: [LIFE_TILE_LABEL.kitchen_hood, hood, 'yellow'],
+  store_repair: [LIFE_TILE_LABEL.store_repair, wrench, 'blue'],
+  store_fridge: [LIFE_TILE_LABEL.store_fridge, fridge, 'teal'],
+  store_aircon: [LIFE_TILE_LABEL.store_aircon, aircon, 'blue'],
+  store_clean: [LIFE_TILE_LABEL.store_clean, bucket, 'pink'],
+  store_drain: [LIFE_TILE_LABEL.store_drain, drain, 'teal'],
+  lodging_clean: [LIFE_TILE_LABEL.lodging_clean, bed, 'blue'],
+  lodging_pool: [LIFE_TILE_LABEL.lodging_pool, pool, 'teal'],
+  move: [LIFE_TILE_LABEL.move, truck, 'yellow'],
+  move_in_clean: [LIFE_TILE_LABEL.move_in_clean, bucket, 'green'],
+  aircon_clean: [LIFE_TILE_LABEL.aircon_clean, aircon, 'blue'],
+  home_interior: [LIFE_TILE_LABEL.home_interior, roller, 'orange'],
+  home_grout: [LIFE_TILE_LABEL.home_grout, tiles, 'purple'],
+  home_pest: [LIFE_TILE_LABEL.home_pest, spray, 'green'],
 }
 
 export function LifeTileIcon({ category, size = 32 }: { category: HomeServiceCategory; size?: number }) {

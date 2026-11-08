@@ -47,3 +47,14 @@ describe('업체 등록 화면이 이용권 상세 묶음을 끌고 오지 않�
     expect(src).toMatch(/await import\('@\/lib\/toss-key-type'\)/)
   })
 })
+
+describe('🔑 2026-11-08 로그인 하드로드', () => {
+  it('표면 · 미리받기 · 부팅 준비가 같은 이름(login)이다', () => {
+    expect(routeSurface('/login', true, false)).toBe('login')
+    expect(routeSurface('/login', true, true)).toBeNull() // 로그인한 사람은 다른 곳으로 간다 — 청크를 미리 받지 않는다
+    const gen = readCode('scripts/generate-route-chunk-map.mjs')
+    const table = gen.slice(gen.indexOf('export const PRELOAD_ONLY_ROUTES'))
+    expect(table.slice(0, table.indexOf('\n}'))).toContain("login: ['src/pages/LoginPage.tsx'],")
+    expect(readCode('src/App.tsx')).toMatch(/const LoginPage = lazyPage\(\(\) => import\('\.\/pages\/LoginPage'\)\); registerBootPage\('login', LoginPage\.load\)/)
+  })
+})

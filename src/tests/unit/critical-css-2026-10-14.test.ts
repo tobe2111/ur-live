@@ -220,7 +220,7 @@ describe('🧩 2026-11-08 표면별 첫 화면 CSS', () => {
     { encoding: 'utf8', maxBuffer: 8 << 20, timeout: 180_000 }))
   it('모든 첫 화면 ROOT 가 어느 표면에 속한다 · 표면마다 전체판의 70% 미만', () => {
     const covered = new Set(Object.values(SURF.keys.map((k: string) => k)))
-    expect(covered.size).toBe(10)
+    expect(covered.size).toBe(11) // 🏠 2026-11-08 생활(life) 추가
     for (const [k, n] of Object.entries(SURF.o as Record<string, number>)) {
       expect(n, k).toBeGreaterThan(10_000)
       expect(n, k).toBeLessThan(CRITICAL_CSS.length * 0.7)
@@ -234,7 +234,7 @@ describe('🧩 2026-11-08 표면별 첫 화면 CSS', () => {
     const cases: Array<[string, string | null]> = [
       ['/', 'home'], ['/pass/12', 'detail'], ['/group-buy/12', 'detail'], ['/vouchers/3', 'voucherDetail'], ['/stays/9', 'stayDetail'],
       ['/vouchers', 'vouchers'], ['/stays', 'stays'], ['/blog', 'blogList'], ['/blog/what-is-urdeal', 'blogDetail'],
-      ['/user/profile', 'guest'], ['/u/me', 'guest'], ['/u/jiwon', 'curator'], ['/map', null], ['/checkout', null],
+      ['/user/profile', 'guest'], ['/u/me', 'guest'], ['/u/jiwon', 'curator'], ['/life', 'life'], ['/map', null], ['/checkout', null],
     ]
     for (const [p, k] of cases) expect(criticalSurfaceOf(p), p).toBe(k)
     const named = new Set(cases.map(([, k]) => k).filter(Boolean))

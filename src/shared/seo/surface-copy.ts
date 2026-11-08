@@ -82,7 +82,7 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
       '견적은 무료이고, 비교해서 고른 한 곳에만 연락처가 전달돼요.',
       '아직 업체를 모으는 일도 요청은 받아요. 업체가 들어오는 대로 보내 드려요.',
     ],
-    source: ['src/pages/life/LifeHero.tsx', 'src/pages/life/LifePage.tsx'],
+    source: ['src/pages/life/LifeHero.tsx', 'src/pages/life/LifePage.tsx', 'src/shared/life-page.ts'], // 🧱 2026-11-08 화면 문구가 서버 첫 화면과 같은 SSOT 로 옮겨갔다
   },
   // 🏠 2026-10-25 — 업체 모집 랜딩(로그인 전 `/life/pro`). 종전엔 robots 차단 + 로그인 안내 한 장이었다.
   '/life/pro': {

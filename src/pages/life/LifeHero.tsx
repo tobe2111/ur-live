@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import type { HomeServiceCategory } from '@/shared/home-service'
 import { lifeLiveLine, type LifeLive } from './life-live'
+import { LIFE_CLS as C, LIFE_COPY as T } from '@/shared/life-page'
 
 const LifeCategoryPicker = lazy(() => import('./LifeCategoryPicker'))
 
@@ -20,22 +21,22 @@ export default function LifeHero({ groups, open, live }: { groups: readonly Life
   const [picking, setPicking] = useState(false)
   const line = lifeLiveLine(live, Date.now())
   return (
-    <section aria-label="사장님 생활 견적" data-testid="life-hero" className="pt-1 pb-2">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[13px] font-medium text-brand-text">사장님 생활 견적 서비스</span>
-        <Link to="/life/requests" className="flex shrink-0 items-center text-[13px] font-medium text-ink active:opacity-70">
-          내 견적 요청<ChevronRight className="h-4 w-4" />
+    <section aria-label="사장님 생활 견적" data-testid="life-hero" className={C.hero}>
+      <div className={C.heroTop}>
+        <span className={C.eyebrow}>{T.eyebrow}</span>
+        <Link to="/life/requests" className={C.myLink}>
+          {T.myRequests}<ChevronRight className="h-4 w-4" />
         </Link>
       </div>
-      <h1 className="mt-2 text-[20px] font-semibold leading-snug tracking-tight lg:text-[34px]">사장님, 가게 일은<br className="lg:hidden" /> 여기서 맡기세요</h1>
-      <p className="mt-2 text-[15px] leading-relaxed text-gray-600 dark:text-gray-300">간판·방역·설비 수리까지, 근처 업체 견적을 무료로 비교해요.</p>
+      <h1 className={C.h1}>{T.title1}<br className="lg:hidden" />{T.title2}</h1>
+      <p className={C.sub}>{T.sub}</p>
       <button
         type="button"
         disabled={!open}
         onClick={() => setPicking(true)}
-        className="ur-btn ur-btn-lg ur-btn-primary mt-5 flex w-full justify-center disabled:opacity-50 lg:w-auto lg:px-10"
+        className={C.cta}
       >
-        무료로 견적 받기
+        {T.cta}
       </button>
       {!open && <p className="mt-2 text-[13px] font-medium text-tone-bad">지금은 잠시 요청을 받지 않아요.</p>}
       {line && (
