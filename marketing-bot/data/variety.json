@@ -179,5 +179,18 @@
     "hook": "confess",
     "media_set": "https://urdeal.kr/cdn-cgi/image/width=1200,height=630,quality=85,format=jpeg,onerror=redirect,fit=cover,gravity=auto/https://media.ur-team.com/uploads/seller/26/2026-10/0F9CTfqE1eiqsu6n.jpg",
     "date_kst": "2026-11-07"
+  },
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "date_kst": "2026-11-08"
+  },
+  {
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "수수료를 숨기지 않고 말하기: 직접 입점 10%(사장님 몫 90%), 대행사 경유 5%, 카드 수수료는 유어딜 몫 안에서 부담(현재 약 2.75%, 카드사 정책에 따라 바뀔 수 있음)",
+    "hook": "scene",
+    "media_set": "owner-3-changes",
+    "date_kst": "2026-11-08"
   }
 ]
