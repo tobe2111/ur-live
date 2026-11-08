@@ -23,7 +23,7 @@
  *   생성 실패는 빌드 실패다 — 조용히 빈 값을 내면 첫 화면이 스타일 없이 그려진다(그 반대는 없다:
  *   빈 값이면 워커가 이 기능을 끄고 종전처럼 앱 CSS 로 막는다 — `css-first-boot.ts`).
  */
-import { readFileSync, writeFileSync, existsSync, statSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, statSync, mkdirSync, readdirSync } from 'node:fs'
 import { dirname, join, resolve, relative } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 // postcss·tailwind·esbuild 는 생성할 때만 불러온다 — 시험(jsdom)이 ROOTS·폐쇄 계산만 import 할 수 있게.
@@ -148,6 +148,23 @@ export async function generateCriticalCss() {
  */
 export const HOME_ROOTS = ['src/worker/utils/home-first-screen.ts']
 
+/**
+ * 🧩 2026-11-08 대표 *"1~5 모두 진행"* — 홈과 같은 처방을 **첫 화면이 있는 모든 표면**에. 표면 → 그 표면을 그리는 ROOT.
+ *   워커는 `css-first-boot.ts` `criticalSurfaceOf(pathname)` 으로 같은 이름을 고른다(시험이 두 목록을 대조한다).
+ */
+export const SURFACE_ROOTS = {
+  home: ['src/worker/utils/home-first-screen.ts'],
+  detail: ['src/worker/utils/detail-ssr-body.ts'],
+  voucherDetail: ['src/worker/utils/voucher-detail-ssr-body.ts'],
+  curator: ['src/worker/utils/curator-ssr-body.ts'],
+  stayDetail: ['src/worker/utils/stay-detail-ssr-body.ts'],
+  vouchers: ['src/worker/utils/vouchers-first-screen.ts'],
+  stays: ['src/worker/utils/stays-first-screen.ts'],
+  blogDetail: ['src/worker/utils/blog-detail-first-screen.ts'],
+  blogList: ['src/worker/utils/blog-list-first-screen.ts'],
+  guest: ['src/worker/utils/guest-first-screen.ts'],
+}
+
 /** 셀렉터의 클래스 이름들(이스케이프 해제) — `:not(…)` 안은 제외 조건이라 보지 않는다. */
 export function selectorClasses(sel) {
   return [...positivePart(sel).matchAll(/\.((?:\\.|[A-Za-z0-9_-])+)/g)].map((m) => m[1].replace(/\\(.)/g, '$1'))
@@ -167,25 +184,55 @@ export async function purgeUnusedRules(css, content) {
   return (await transform(root.toString(), { loader: 'css', minify: true })).code.trim()
 }
 
-export async function generateHomeCriticalCss(fullCss) {
-  const content = importClosure(HOME_ROOTS).map((f) => readFileSync(join(ROOT, f), 'utf8')).join('\n') +
-    readFileSync(join(ROOT, 'index.html'), 'utf8') + loaderBlock()
+/**
+ * 앱이 **실행 중에** 붙이는 클래스(`classList.add|toggle('…')` — 다크 · 키보드 열림 · PC 전체폭 …).
+ *   첫 화면 소스에는 안 나오지만 그 클래스를 조건으로 한 규칙은 첫 화면에서도 맞을 수 있다 → 남긴다.
+ *   손으로 적지 않고 소스에서 모은다(새로 생겨도 저절로 들어온다).
+ */
+export function runtimeClasses(root = ROOT) {
+  const out = new Set()
+  const walk = (d) => {
+    for (const f of readdirSync(d)) {
+      const p = join(d, f)
+      if (statSync(p).isDirectory()) { if (!/tests|generated|node_modules/.test(f)) walk(p); continue }
+      if (!/\.(tsx?|html)$/.test(f)) continue
+      for (const m of readFileSync(p, 'utf8').matchAll(/classList\.(?:add|toggle|replace)\(\s*['"]([A-Za-z0-9_-]+)['"]/g)) out.add(m[1])
+    }
+  }
+  walk(join(root, 'src'))
+  for (const m of readFileSync(join(root, 'index.html'), 'utf8').matchAll(/classList\.(?:add|toggle|replace)\(\s*['"]([A-Za-z0-9_-]+)['"]/g)) out.add(m[1])
+  return [...out].sort()
+}
+
+export async function generateSurfaceCriticalCss(fullCss, roots) {
+  const content = importClosure(roots).map((f) => readFileSync(join(ROOT, f), 'utf8')).join('\n') +
+    readFileSync(join(ROOT, 'index.html'), 'utf8') + loaderBlock() + '\n' + runtimeClasses().join(' ')
   return purgeUnusedRules(fullCss, content)
+}
+export async function generateHomeCriticalCss(fullCss) {
+  return generateSurfaceCriticalCss(fullCss, HOME_ROOTS)
 }
 
 const isMain = process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url
 if (isMain) {
   const { css, files } = await generateCriticalCss()
-  const home = await generateHomeCriticalCss(css)
-  if (!home || home.length >= css.length) throw new Error('[critical-css] 홈 전용 CSS 가 비었거나 전체보다 크다')
+  const surfaces = {}
+  for (const [k, roots] of Object.entries(SURFACE_ROOTS)) {
+    const v = await generateSurfaceCriticalCss(css, roots)
+    if (!v || v.length >= css.length) throw new Error(`[critical-css] ${k} 전용 CSS 가 비었거나 전체보다 크다`)
+    surfaces[k] = v
+  }
+  const home = surfaces.home
   mkdirSync(dirname(OUT), { recursive: true })
   const body =
     '// ⚠️ AUTO-GENERATED — scripts/generate-critical-css.mjs 가 빌드 때 만든다. 추적 안 함 · 수동 편집 금지.\n' +
     `// 첫 화면 전용 CSS — 폐쇄 ${files.length}개 파일 · ${css.length}B. 워커가 첫 화면 표면에서 <style> 로 넣는다.\n` +
     `export const CRITICAL_CSS: string = ${JSON.stringify(css)}\n` +
     `// 🏠 홈(/) 전용 — ${home.length}B\n` +
-    `export const CRITICAL_CSS_HOME: string = ${JSON.stringify(home)}\n`
+    `export const CRITICAL_CSS_HOME: string = ${JSON.stringify(home)}\n` +
+    `// 🧩 표면별 — ${Object.entries(surfaces).map(([k, v]) => `${k} ${v.length}B`).join(' · ')}\n` +
+    `export const CRITICAL_CSS_SURFACES: Record<string, string> = ${JSON.stringify(surfaces)}\n`
   const prev = existsSync(OUT) ? readFileSync(OUT, 'utf8') : ''
   if (prev !== body) writeFileSync(OUT, body)
-  console.log(`✅ critical-css: ${css.length}B · 홈 ${home.length}B (${files.length} files)${prev === body ? ' — 변경 없음' : ''}`)
+  console.log(`✅ critical-css: ${css.length}B · ${Object.entries(surfaces).map(([k, v]) => `${k} ${v.length}`).join(' · ')} (${files.length} files)${prev === body ? ' — 변경 없음' : ''}`)
 }

@@ -98,6 +98,10 @@ export function reportWebVitals(): void {
       send('CONN', Math.max(0, nav.connectEnd), page)
       // 어느 데이터센터가 응답했나 — 워커가 `Server-Timing: colo;desc="ICN"` 를 싣는다(css-first-boot.ts).
       //   페이지 자리에 `colo:XXX` 로 보내 같은 표본 저장소에서 데이터센터별 TTFB 분포를 본다.
+      // 🧭 2026-11-08 — 첫 응답(TTFB) 중 **서버가 쓴 몫**. 워커가 `Server-Timing: total;dur=N` 을 싣는다.
+      //   TTFB − SRV = 회선·연결 몫(한국 밖 콜로 왕복). 둘을 나눠야 "서버를 고칠지 · 회선 문제인지" 가 갈린다.
+      const srv = (nav.serverTiming || []).find((t) => t.name === 'total')?.duration
+      if (typeof srv === 'number' && Number.isFinite(srv) && srv >= 0) send('SRV', srv, page)
       const colo = (nav.serverTiming || []).find((t) => t.name === 'colo')?.description
       if (colo) send('TTFB', nav.responseStart, `colo:${colo}`)
       reportD1Served(colo || 'NA')

@@ -162,3 +162,4 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 - 2026-11-08 대표 결정: 교환권 사진 한국 IP 이관 = **B. 보류**(*"우선 B. 보류"*). 사진은 지금처럼 giftishow 원본. 다시 하려면 대표 PC 원격 연결(Remote Control 폴더) 후 `voucher-image-rehost.yml` 와 같은 절차를 그 PC 에서.
 - 2026-11-08 E4: 홈 전용 CSS 라이브 — HTML 압축 40→34KB · 첫 화면 CSS 62→30KB · `#root` 압축 위치 24→18KB. 스크립트 끈 캡처로 서버 첫 화면 정상 확인. 폰 조건 5회 FCP 0.56~0.71s · LCP 0.61~0.79s(전 0.66~0.75 · 0.73~0.96).
 - 남은 큰 요인: 한국 밖 콜로(HKG/NRT/LAX) 연결·왕복 — 서버 CPU 는 p50 7ms·p90 35ms(CF 통계)라 병목이 아니다. 유료 판단(결재 `docs/decisions/2026-11-04-korea-icn-routing.md`).
+- 2026-11-08 표면별 첫 화면 CSS(9표면 추가) — `docs/locks/loading/2026-11-08-surface-critical-css.md`.

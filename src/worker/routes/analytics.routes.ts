@@ -35,7 +35,7 @@ function analyticsWriteKv(env: unknown): KVNamespace | null {
 }
 
 interface VitalsBody {
-  name?: 'LCP' | 'FID' | 'CLS' | 'INP' | 'TTFB' | 'CONN' | 'D1'
+  name?: 'LCP' | 'FID' | 'CLS' | 'INP' | 'TTFB' | 'CONN' | 'D1' | 'SRV'
   value?: number
   page?: string
   /** LCP 일 때만 — 어디서 시간이 갔나(web-vitals-report `lcpBreakdown`). */
@@ -95,7 +95,7 @@ analyticsRoutes.post('/vitals', async (c) => {
   if (!body.name || typeof body.value !== 'number' || !Number.isFinite(body.value)) {
     return c.json({ ok: false }, 400)
   }
-  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1']
+  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1', 'SRV']
   if (!validNames.includes(body.name)) return c.json({ ok: false }, 400)
   if (body.value < 0 || body.value > 1_000_000) return c.json({ ok: false }, 400)
   const kv = analyticsWriteKv(c.env)
@@ -157,7 +157,7 @@ analyticsRoutes.get('/summary', requireAdmin(), async (c) => {
   const vitals: Record<string, { p50: number; p75: number; p95: number; samples: number }> = {}
   const funnel: Record<string, number> = {}
 
-  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1']) {
+  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1', 'SRV']) {
     try {
       const list = await kv.list({ prefix: `vitals:${day}:${name}:` })
       for (const k of list.keys) {

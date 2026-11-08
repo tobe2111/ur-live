@@ -12,3 +12,5 @@
 export const CRITICAL_CSS: string = ''
 /** 🏠 2026-11-05 홈(/) 전용 — 홈이 쓰는 규칙만(`generateHomeCriticalCss`). 비면 워커가 전체판을 쓴다. */
 export const CRITICAL_CSS_HOME: string = ''
+/** 🧩 2026-11-08 표면별 첫 화면 CSS(`SURFACE_ROOTS`). 비어 있으면 워커가 전체판을 쓴다. */
+export const CRITICAL_CSS_SURFACES: Record<string, string> = {}
