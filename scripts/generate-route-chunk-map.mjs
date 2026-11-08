@@ -81,6 +81,8 @@ export const PRELOAD_ONLY_ROUTES = {
   lifePro: ['src/pages/life/LifeProPage.tsx'],
   // 🔑 2026-11-08 (대표 "모두 최적화") 로그인 — 실측 첫 그림 1.6s(페이지 코드가 엔트리 뒤에야 출발했다).
   login: ['src/pages/LoginPage.tsx'],
+  // 🏠 2026-11-08 업종 요청서(/life/request/:category) — sitemap 이 제출하는 착지 20곳. 실측 첫 그림 1.76s.
+  lifeRequest: ['src/pages/life/LifeRequestFormPage.tsx'],
 }
 // head 링크 스팸 방지 캡(핵심 큰 청크 우선 — closure 순서 = 페이지 청크 → 공유 청크).
 // 🗺️ 2026-10-19 (대표 *"지도랑 블로그도 상세히"*) 10 → 16: 이 목록은 그 페이지의 **정적 import 폐쇄**라 잘린 청크도
