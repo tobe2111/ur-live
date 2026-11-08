@@ -168,3 +168,4 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 - 2026-11-08 교환권 분류 첫 화면 서버 렌더 — `docs/locks/loading/2026-11-08-voucher-facet-first-screen.md`.
 - 2026-11-08 생활 첫 화면 서버 렌더 — `docs/locks/loading/2026-11-08-life-first-screen.md`.
 - 2026-11-08 지역 착지 첫 화면 서버 렌더 — `docs/locks/loading/2026-11-08-region-first-screen.md`.
+- 2026-11-08 sitemap 착지 안내 페이지 넷(about·partners·influencer·new-openings) 미리받기 등록 · 지역 카드 서버 렌더 E4(LCP 2.1 → 0.5~0.6s).

@@ -69,3 +69,23 @@ describe('🏠 2026-11-08 업종 요청서 하드로드', () => {
     expect(readCode('src/App.tsx')).toMatch(/const LifeRequestFormPage = lazyPage\(\(\) => import\('\.\/pages\/life\/LifeRequestFormPage'\)\); registerBootPage\('lifeRequest', LifeRequestFormPage\.load\)/)
   })
 })
+
+describe('🚀 2026-11-08 sitemap 착지 안내 페이지 넷 하드로드', () => {
+  const cases: Array<[string, string, string, string]> = [
+    ['/about', 'about', 'src/pages/AboutServicePage.tsx', 'AboutServicePage'],
+    ['/partners', 'partners', 'src/pages/PartnersPage.tsx', 'PartnersPage'],
+    ['/influencer', 'influencer', 'src/pages/CreatorsPage.tsx', 'CreatorsPage'],
+    ['/new-openings', 'newOpenings', 'src/pages/NewOpeningsPage.tsx', 'NewOpeningsPage'],
+  ]
+  it('표면 · 미리받기 · 부팅 준비가 같은 이름이다', () => {
+    const gen = readCode('scripts/generate-route-chunk-map.mjs')
+    const table = gen.slice(gen.indexOf('export const PRELOAD_ONLY_ROUTES'))
+    const block = table.slice(0, table.indexOf('\n}'))
+    const app = readCode('src/App.tsx')
+    for (const [path, key, file, comp] of cases) {
+      expect(routeSurface(path, true, false), path).toBe(key)
+      expect(block).toContain(`${key}: ['${file}'],`)
+      expect(app).toContain(`registerBootPage('${key}', ${comp}.load)`)
+    }
+  })
+})
