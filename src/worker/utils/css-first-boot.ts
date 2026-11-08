@@ -57,6 +57,7 @@ export function cssFirstApplies(pathname: string, ua: string, authed = false): b
   if (!shouldRenderMobileFirstScreen(ua)) return false
   return pathname === '/' || pathname === '/vouchers' || pathname === '/stays' // 🏨 2026-10-19 숙소 목록도 서버 첫 화면이 생겼다(stays-first-screen.ts)
     || (!authed && guestTabOf(pathname) !== null) // 🚪 2026-10-19 로그인 전 탭 셋 — 세션 쿠키 없을 때만 서버가 그린다(guest-first-screen.ts)
+    || /^\/region\/[^/]+(?:\/[^/]+)?\/?$/.test(pathname) // 🗺️ 2026-11-08 지역 착지도 서버 첫 화면(region-first-screen.ts)
     || pathname === '/life' || pathname === '/life/' // 🏠 2026-11-08 생활 허브도 서버 첫 화면(life-first-screen.ts)
     || /^\/blog(?:\/[^/]+)?\/?$/.test(pathname) // 📝 2026-10-19 블로그 목록·상세도 서버 첫 화면(blog-*-first-screen.ts)
     || /^\/(?:pass|group-buy|vouchers|stays)\/\d+\/?$/.test(pathname)
@@ -93,6 +94,7 @@ export function criticalSurfaceOf(pathname: string): string | null {
   if (/^\/blog\/[^/]+$/.test(p)) return 'blogDetail'
   if (guestTabOf(p) !== null) return 'guest'
   if (p === '/life') return 'life'
+  if (/^\/region\/[^/]+(?:\/[^/]+)?$/.test(p)) return 'region'
   if (/^\/u\/[^/]+$/.test(p) && p !== '/u/me') return 'curator'
   return null
 }

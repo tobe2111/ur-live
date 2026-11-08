@@ -58,7 +58,9 @@ describe('② 액자에 남아야 하는 이웃을 삼키지 않는다', () => {
 
 describe('③ 지역 페이지가 PC 전제 마크업을 갖는다', () => {
   it('RegionPage 본문이 1600px 컨테이너 + PC 여백을 쓴다', () => {
-    const s = visible(REGION_PAGE)
+    // 🧱 2026-11-08 클래스는 서버 첫 화면과 같은 SSOT(`shared/region-page.ts` wrap)로 옮겨갔다 — 값은 그 파일에서 본다.
+    expect(visible(REGION_PAGE)).toContain('<div className={C.wrap}>')
+    const s = readFileSync('src/shared/region-page.ts', 'utf8')
     expect(s).toContain('max-w-[1600px]')
     expect(s).toMatch(/px-5\s+lg:px-10/) // 📏 2026-11-03 공백 체계 — 가장자리 20
   })

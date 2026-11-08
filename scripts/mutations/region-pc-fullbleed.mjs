@@ -53,7 +53,8 @@ export default [
   },
   {
     name: '🗺️ 지역 본문이 다시 좁은 컨테이너로 조여진다',
-    file: 'src/pages/region/RegionPage.tsx',
+    // 🔁 2026-11-08 재조준: 클래스가 SSOT(`shared/region-page.ts` wrap)로 옮겨갔다.
+    file: 'src/shared/region-page.ts',
     find: `max-w-[1600px] mx-auto px-5 lg:px-10`,
     replace: `max-w-xl mx-auto px-5`,
     test: T,
