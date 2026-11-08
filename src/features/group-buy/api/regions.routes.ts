@@ -97,7 +97,10 @@ export async function computeRegionStats(env: Env): Promise<SidoStat[]> {
 }
 
 // GET /api/regions — 지역별 활성 딜 집계(공개)
-regionsRoutes.get('/', publicCache(300), async (c) => {
+// 🗺️ 2026-11-08 300 → 1800초: 지역 착지 문서가 이 응답을 시드로 싣는다(`region-first-screen.ts`). 한국 콜로는 트래픽이 적어
+//   5분이면 대부분 콜드(→ 콜드 D1 self-fetch 로 첫 응답이 늦다). 집계라 30분 지연은 화면에 의미가 없다(딜 수 한 줄).
+//   만료 뒤에도 SWR(edge-cache.ts)이 예비 사본을 즉시 내고 뒤에서 갱신한다.
+regionsRoutes.get('/', publicCache(1800), async (c) => {
   try {
     // 상품 등록/마감이 분 단위로 바뀌지 않는 집계 — 10분 캐시로 D1 왕복을 줄인다.
     // 🔑 캐시 키에 데모 포함 여부를 넣는다 — 안 넣으면 플래그를 되돌려도 최대 10분간

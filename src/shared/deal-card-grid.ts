@@ -61,3 +61,14 @@ export function shortRegion(address: string | null | undefined): string {
   if (out.length === 3 && PROVINCE_RE.test(out[0])) out.shift()
   return out.join(' ')
 }
+
+/**
+ * 🗺️ 2026-11-08 — `GroupBuyFeed` 의 `pc` 격자(지역 착지 `/region/*` 가 폰에서도 쓴다). 워커 첫 화면
+ * (`region-first-screen.ts`)이 같은 상수를 쓴다 — 갈리면 마운트 때 카드가 튄다. 글자 그대로 적는다(tailwind).
+ */
+export const FEED_PC_GRID = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 gap-y-8 lg:gap-x-3 lg:gap-y-8 pb-8'
+
+/** 🗺️ 2026-11-08 — 피드 '인기순' 의 판매 수(`GroupBuyFeed` sortBand 와 워커 지역 첫 화면이 같이 쓴다). */
+export function feedSoldOf(p: { sold_count?: number | null; group_buy_current?: number | null }): number {
+  return p.sold_count ?? p.group_buy_current ?? 0
+}

@@ -5,7 +5,7 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
-import { DEAL_GRID_GAP, DEAL_ROW } from '@/shared/deal-card-grid'
+import { DEAL_GRID_GAP, DEAL_ROW, FEED_PC_GRID, feedSoldOf } from '@/shared/deal-card-grid'
 import { ClockIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { Flame, Tag } from 'lucide-react'
 import Udal from '@/components/mascot/Udal'
@@ -52,7 +52,7 @@ interface FeedProduct extends Product {
 // 🖥️ 2026-07-16 (대표 신고 — PC 정렬 무반응): 정렬 필드가 sparse(group_buy_current/discount_rate 대부분
 //   null·0)라 인기순/할인율순이 서버 기본순(최신)과 동일해 보였음. 실제 값 기반으로 견고화.
 function soldOf(p: FeedProduct): number {
-  return p.sold_count ?? p.group_buy_current ?? 0
+  return feedSoldOf(p) // 🗺️ 2026-11-08 SSOT(지역 착지 서버 첫 화면과 같은 순서)
 }
 function discountOf(p: FeedProduct): number {
   // 💸 2026-10-14: 규칙 사본 제거 → SSOT. 종전 `선언>0 ? 선언 : 계산` 은 선언값이 **계산값보다
@@ -175,7 +175,7 @@ export default function GroupBuyFeed({
     //   읽히고, 위 섹션 그리드(lg:grid-cols-4)와도 열 수가 같아진다(같은 화면에서 열이 갈리지 않는다).
     // 📐 2026-08-24: md(768~1023, 태블릿)가 `sm` 규칙에 걸려 **3열**이었다. 편성 섹션은 4개를
     //   뿌리므로 마지막 하나가 줄에 혼자 남아 오른쪽이 텅 비었다 — 태블릿도 4열로 맞춘다.
-    ? `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP} pb-8`
+    ? FEED_PC_GRID // 🗺️ 2026-11-08 지역 착지 서버 첫 화면과 같은 상수(= `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP} pb-8`)
     : `${DEAL_ROW.grid} px-4 pb-8` // 📋 2026-10-31 시안 10 — 폰은 줄 목록(NOL식)
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
