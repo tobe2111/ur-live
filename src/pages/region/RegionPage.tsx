@@ -17,7 +17,7 @@ import {
 } from '@/shared/constants/region-slugs'
 import NotFoundPage from '@/pages/NotFoundPage'
 import { REGION_CATEGORY_CHIPS, REGION_CLS as C, REGION_COPY as T, regionDealCount, type RegionCategoryKey } from '@/shared/region-page'
-import { readRegionsSeed } from '@/components/region/regions-seed'
+import { readRegionsSeed } from './regions-seed' // 🗺️ 페이지 폴더에 둔다 — components/region/ 은 app-home 묶음 규칙에 걸려 그 묶음(+1.8KB)을 끌고 온다(빌드 실측)
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 16차 ④ — 종류 칩을 고르면 칩이 톡 켜지고, 아래 딜 목록이 살짝 떠오르며 바뀐다(홈의 카테고리 바꾸기와 같은 움직임).
 injectMotionCss('ur-m-region', `@keyframes ur-rg-chip { 0% { transform: scale(.9); } 60% { transform: scale(1.06); } 100% { transform: none; } }.ur-rg-chip { animation: ur-rg-chip .3s cubic-bezier(.3,1.3,.5,1); }@media (prefers-reduced-motion: reduce){.ur-rg-chip{animation:none!important}}`)
