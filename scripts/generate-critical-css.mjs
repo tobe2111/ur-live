@@ -139,15 +139,53 @@ export async function generateCriticalCss() {
   return { css, files }
 }
 
+/**
+ * 🏠 2026-11-05 대표 *"그냥 구글이나 브라우저에서 urdeal.kr 들어가면 느린거"* — **홈 전용** 첫 화면 CSS.
+ *   실측(라이브 홈 HTML): `<head>` 101KB 중 첫 화면 CSS 가 **62KB** — 첫 화면 열 개(홈·상세·교환권·유어샵·블로그…)를
+ *   한 벌로 합쳐서다. 홈 내용(`#root`)은 압축 24KB 지점에서야 시작한다(폰의 첫 왕복은 약 14KB). 홈이 쓰는 것만 남기면 절반.
+ *   규칙을 고르는 법: 셀렉터의 클래스가 **홈 폐쇄 소스(+ index.html · 로더)에 글자로 하나도 없으면** 그 규칙은 홈 첫 화면에서
+ *   맞을 수 없다 → 뺀다. 부분 문자열로 보므로 보수적이다(애매하면 남는다). 클래스 없는 규칙(:root·*·html)은 남는다.
+ */
+export const HOME_ROOTS = ['src/worker/utils/home-first-screen.ts']
+
+/** 셀렉터의 클래스 이름들(이스케이프 해제) — `:not(…)` 안은 제외 조건이라 보지 않는다. */
+export function selectorClasses(sel) {
+  return [...positivePart(sel).matchAll(/\.((?:\\.|[A-Za-z0-9_-])+)/g)].map((m) => m[1].replace(/\\(.)/g, '$1'))
+}
+
+export async function purgeUnusedRules(css, content) {
+  const { default: postcss } = await import('postcss')
+  const root = postcss.parse(css)
+  root.walkRules((r) => {
+    if (r.parent?.type === 'atrule' && /keyframes/i.test(r.parent.name)) return
+    const live = (r.selectors || []).filter((s) => selectorClasses(s).every((c) => content.includes(c)))
+    if (live.length === 0) r.remove()
+    else if (live.length < r.selectors.length) r.selectors = live
+  })
+  root.walkAtRules((a) => { if (a.nodes && a.nodes.length === 0) a.remove() })
+  const { transform } = await import('esbuild')
+  return (await transform(root.toString(), { loader: 'css', minify: true })).code.trim()
+}
+
+export async function generateHomeCriticalCss(fullCss) {
+  const content = importClosure(HOME_ROOTS).map((f) => readFileSync(join(ROOT, f), 'utf8')).join('\n') +
+    readFileSync(join(ROOT, 'index.html'), 'utf8') + loaderBlock()
+  return purgeUnusedRules(fullCss, content)
+}
+
 const isMain = process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url
 if (isMain) {
   const { css, files } = await generateCriticalCss()
+  const home = await generateHomeCriticalCss(css)
+  if (!home || home.length >= css.length) throw new Error('[critical-css] 홈 전용 CSS 가 비었거나 전체보다 크다')
   mkdirSync(dirname(OUT), { recursive: true })
   const body =
     '// ⚠️ AUTO-GENERATED — scripts/generate-critical-css.mjs 가 빌드 때 만든다. 추적 안 함 · 수동 편집 금지.\n' +
     `// 첫 화면 전용 CSS — 폐쇄 ${files.length}개 파일 · ${css.length}B. 워커가 첫 화면 표면에서 <style> 로 넣는다.\n` +
-    `export const CRITICAL_CSS: string = ${JSON.stringify(css)}\n`
+    `export const CRITICAL_CSS: string = ${JSON.stringify(css)}\n` +
+    `// 🏠 홈(/) 전용 — ${home.length}B\n` +
+    `export const CRITICAL_CSS_HOME: string = ${JSON.stringify(home)}\n`
   const prev = existsSync(OUT) ? readFileSync(OUT, 'utf8') : ''
   if (prev !== body) writeFileSync(OUT, body)
-  console.log(`✅ critical-css: ${css.length}B (${files.length} files)${prev === body ? ' — 변경 없음' : ''}`)
+  console.log(`✅ critical-css: ${css.length}B · 홈 ${home.length}B (${files.length} files)${prev === body ? ' — 변경 없음' : ''}`)
 }

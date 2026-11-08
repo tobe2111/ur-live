@@ -8,9 +8,10 @@
 # 멈추는 법: 이 파일의 schedule 을 지우거나, 남은 것이 0 이면 저절로 할 일이 없다(목록이 빈다).
 name: Voucher image rehost (runner)
 
+# ⛔ 2026-11-08 예약 실행 중단 — 실측: GitHub 러너도 giftishow 에 **닿지 않는다**(사진마다 20초 연결 시간초과 · `000`).
+#   giftishow 는 한국 밖 IP 를 막는 것으로 보인다(Cloudflare 이그레스도 같은 이유로 막혔다). 2시간마다 30분을 다 쓰고
+#   `cancelled` 로 끝나 빨간불조차 안 떴다(11-05 ~ 11-08, 10회). 수동 실행만 남긴다 — 한국 IP 경로가 생기면 그때 쓴다.
 on:
-  schedule:
-    - cron: '17 */2 * * *'   # 두 시간마다 — 한 번에 BATCH 장. 남은 게 0 이면 바로 끝난다.
   workflow_dispatch:
     inputs:
       batch:
@@ -29,6 +30,7 @@ jobs:
   rehost:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    # 한 장도 못 받으면 오래 끌지 않는다 — 처음 5장이 전부 받기 실패면 바로 빨간불(아래 run 참조).
     steps:
       - name: Move voucher images to R2
         env:
@@ -47,7 +49,7 @@ jobs:
           while read -r id url; do
             [ -z "$id" ] && continue
             code=$(curl -sS -L --max-time 20 -A "$UA" -o img.bin -w '%{http_code}' "$url" || echo 000)
-            if [ "$code" != "200" ] || [ ! -s img.bin ]; then fetchfail=$((fetchfail+1)); echo "받기 실패 $id $code"; sleep 1; continue; fi
+            if [ "$code" != "200" ] || [ ! -s img.bin ]; then fetchfail=$((fetchfail+1)); echo "받기 실패 $id $code"; if [ "$ok" -eq 0 ] && [ "$fetchfail" -ge 5 ]; then echo "::error::처음 5장 전부 받기 실패 — 러너가 giftishow 에 못 닿는다"; exit 1; fi; sleep 1; continue; fi
             enc=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1], safe=''))" "$url")
             res=$(curl -sS --max-time 30 -X POST -H "X-Repair-Token: $TOKEN" -H "User-Agent: $UA" -H 'Content-Type: application/octet-stream' --data-binary @img.bin "$API/upload?id=$id&src=$enc" || echo '{}')
             if echo "$res" | grep -q '"success":true'; then ok=$((ok+1)); else fail=$((fail+1)); echo "저장 실패 $id $res" | head -c 300; echo; fi

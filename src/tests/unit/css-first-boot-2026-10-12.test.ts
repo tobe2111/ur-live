@@ -128,7 +128,7 @@ describe('④ 워커 배선', () => {
   const mod = stripComments(readFileSync('src/worker/utils/css-first-boot.ts', 'utf-8'))
   it('HTML 재작성기가 applyCssFirstBoot 로 시작하고, 적용 여부는 cssFirstApplies 한 곳이 정한다', () => {
     expect(worker).toMatch(/const cssFirst = cssFirstApplies\(url\.pathname, c\.req\.header\('user-agent'\) \|\| '', authed\);/)
-    expect(worker).toMatch(/let rb = (?:applyEarlyData\()?applyCssFirstBoot\(new HTMLRewriter\(\), nonce, cssFirst\)/) // ⚡ 2026-11-05 로그인 화면 미리받기(early-data)가 바깥을 감싼다
+    expect(worker).toMatch(/let rb = (?:applyEarlyData\()?applyCssFirstBoot\(new HTMLRewriter\(\), nonce, cssFirst(?:, criticalCssFor\(url\.pathname\))?\)/) // 🏠 홈 전용 CSS 인자 · ⚡ 2026-11-05 로그인 화면 미리받기(early-data)가 바깥을 감싼다
   })
   it('워커가 넣는 라우트 청크도 같은 판정(cssFirst)으로 rel 을 고른다 — 갈리면 프리로드가 영영 안 풀리거나 CSS 와 다시 다툰다', () => {
     expect(worker).toMatch(/<link rel="\$\{routePreloadRel\(cssFirst\)\}" crossorigin href=/)

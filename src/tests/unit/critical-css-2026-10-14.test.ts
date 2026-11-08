@@ -185,3 +185,31 @@ describe('⑤ 부팅 스크립트 — 앱 CSS 가 오면 먼저 붙이고 그다
     expect(entries()).toBe(1)
   })
 })
+
+describe('🏠 2026-11-05 홈 전용 첫 화면 CSS', () => {
+  const HOME_CSS = execFileSync(process.execPath, ['--no-warnings', '-e',
+    "import('./scripts/generate-critical-css.mjs').then(async m=>{const r=await m.generateCriticalCss();process.stdout.write(await m.generateHomeCriticalCss(r.css))})"],
+    { encoding: 'utf8', maxBuffer: 8 << 20, timeout: 90_000 })
+  it('전체판보다 확실히 작다(합친 열 화면 → 홈만)', () => {
+    expect(HOME_CSS.length).toBeGreaterThan(10_000)
+    expect(HOME_CSS.length).toBeLessThan(CRITICAL_CSS.length * 0.7)
+    expect(criticalCssUsable(HOME_CSS)).toBe(true)
+  })
+  it('홈 배너(STRIP_CLS) 클래스 · 토큰 · 다크 변형은 남는다', () => {
+    const pick = (v: unknown): string[] => (typeof v === 'string' ? v.split(/\s+/) : v && typeof v === 'object' ? Object.values(v).flatMap(pick) : [])
+    for (const c of pick(STRIP_CLS).filter((c) => c && !c.includes('&') && !c.startsWith('['))) expect(HOME_CSS, c).toContain(sel(c))
+    expect(HOME_CSS).toMatch(/--brand:/)
+    expect(HOME_CSS).toMatch(/\.dark/)
+  })
+  it('이용권 상세 머리(PASS_HEAD) 전용 클래스는 빠진다 — 홈만 남긴 것이 맞다', () => {
+    const pick = (v: unknown): string[] => (typeof v === 'string' ? v.split(/\s+/) : v && typeof v === 'object' ? Object.values(v).flatMap(pick) : [])
+    const only = pick(PASS_HEAD).filter((c) => c && !c.includes('&') && !c.startsWith('[') && CRITICAL_CSS.includes(sel(c)) && !HOME_CSS.includes(sel(c)))
+    expect(only.length, '상세 전용 클래스가 하나도 안 빠졌다면 홈판이 헛돈 것').toBeGreaterThan(0)
+  })
+  it('워커는 / 에서만 홈판을 쓴다(비면 전체판)', async () => {
+    const { criticalCssFor } = await import('@/worker/utils/css-first-boot')
+    expect(criticalCssFor('/', 'FULL', 'HOME')).toBe('HOME')
+    expect(criticalCssFor('/pass/1', 'FULL', 'HOME')).toBe('FULL')
+    expect(criticalCssFor('/', 'FULL', '')).toBe('FULL')
+  })
+})

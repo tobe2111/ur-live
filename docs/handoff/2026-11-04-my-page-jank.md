@@ -155,3 +155,7 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 - 요인 표(실측): ① 한국 밖 콜로(HKG/NRT/LAX) 연결 p95 ~2s — CF 무료 토글(HTTP/3·0-RTT·Early Hints·TLS1.3)은 **이미 전부 켜짐**(존 설정 조회), 남은 건 유료 판단(결재 `docs/decisions/2026-11-04-korea-icn-routing.md`) ② 홈 LCP = 지역 사진인데 preload 가 배너를 가리킴 → #2212 로 고침(라이브 Link 헤더 확인) ③ **교환권 사진 2,252장 전부 giftishow 원본** — R2 이관 cron 이 5일간 8장(`migrated=0 failed=4`, giftishow 가 CF 이그레스 차단) → 러너 경유 이관 경로 신설(`voucher-image-upload.routes.ts` + `.github/workflows/voucher-image-rehost.yml`) ④ 홈 JS 343KB·TBT 0.5~0.7s(CPU×4) — 청크는 이미 표면별로 정밀 분리됨(남은 큰 레버 아님) ⑤ 이용권 상세 부팅 뒤 API 9개(첫 그림 뒤라 LCP 무관).
 - 판정: 러너 첫 실행 요약 `옮김 N` · D1 `SELECT COUNT(*) … giftishow` 감소. 러너도 막히면 워크플로가 빨간불(조용히 초록 금지).
 - 2026-11-05 로그인 화면 미리받기(`early-data.ts`): 마이·내 이용권의 데이터를 HTML 도착 즉시 출발. 판정: RUM /user/profile LCP p75 2.5s 대비.
+
+## 2026-11-08
+- ⛔ 교환권 사진 러너 이관 **실패 판정**: GitHub 러너도 giftishow 에 못 닿는다(사진마다 20초 시간초과 `000`, 11-05~08 예약 10회 전부 30분 소진 후 `cancelled` — 빨간불도 없었다). 예약 실행 제거 + 처음 5장 전부 실패면 즉시 빨간불. giftishow 는 한국 밖 IP 차단으로 보인다(워커 cron 8장 성공은 간헐). 남은 길: 한국 IP 에서 한 번 돌리기(대표 PC 등) — 결재 사항.
+- 🏠 홈 전용 첫 화면 CSS(62KB→30KB) — `docs/locks/loading/2026-11-08-home-critical-css.md`.
