@@ -37,6 +37,9 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
 import { onPinClick, pinHref } from './pin-nav'
 
+/** 즉시 받는 줄 수 — 서버 첫 화면 줄 수(`CURATOR_FS_ROWS` = 4)와 같다. */
+const CURATOR_EAGER_ROWS = 4
+
 export default memo(function PinRow({ pin, handle, curatorUserId, order, prefetch }: {
   pin: CuratorPin
   handle: string
@@ -65,7 +68,10 @@ export default memo(function PinRow({ pin, handle, curatorUserId, order, prefetc
               alt={pin.product_name || ''}
               width={240}
               height={240}
-              loading="lazy"
+              /* ⚡ 2026-11-08 — 첫 화면 네 줄은 지금 보이는 사진이다. 서버 첫 화면(`curator-ssr-body.ts rowHtml`)과 같게
+                 즉시 받는다 — 마운트가 같은 주소를 `lazy` 로 다시 그리면 그 사진의 우선순위가 낮아진다. */
+              loading={order <= CURATOR_EAGER_ROWS ? undefined : 'lazy'}
+              fetchPriority={order === 1 ? 'high' : undefined}
               decoding="async"
               className="w-full h-full object-cover"
               onError={(e) => cfImageOnError(e.currentTarget, img)}

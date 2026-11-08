@@ -183,6 +183,22 @@ function logoHtml(size: number): string {
   )
 }
 
+/**
+ * ⚡ 2026-11-08 — 유어샵 첫 화면의 **첫 줄 사진 주소**(LCP). 응답 헤더 `Link: rel=preload` 에 싣는다(`lcp-image-link.ts`).
+ *   `rowHtml` 과 **같은 순서·같은 함수**(`curatorHomePins` → `cfImage(…, CURATOR_THUMB_WIDTH)`)라 주소가 갈릴 수 없다.
+ */
+export function curatorLcpImage(ssrPayload: string | null | undefined): string {
+  if (!ssrPayload) return ''
+  try {
+    const d = JSON.parse(ssrPayload) as CuratorSeed
+    // 첫 화면을 그리지 않는 경우(사업자 유어샵 · 실패 응답)엔 싣지 않는다 — `buildCuratorFirstScreen` 과 같은 조건.
+    if (!d?.success || !d.curator?.handle || !d.curator?.name || d.linked_seller) return ''
+    const first = curatorHomePins(Array.isArray(d.pins) ? d.pins : [])[0]
+    const img = (first?.thumbnail || first?.image_url || '').trim()
+    return img ? cfImage(img, { width: CURATOR_THUMB_WIDTH, format: 'auto' }) || '' : ''
+  } catch { return '' }
+}
+
 /** 한 줄(= `PinRow` → `DealRow`). 사진이 없으면 빈 썸네일 칸만(부품과 같은 동작). */
 function rowHtml(pin: CuratorSeedPin, handle: string, order: number): string {
   const img = (pin.thumbnail || pin.image_url || '').trim()
@@ -208,7 +224,11 @@ function rowHtml(pin: CuratorSeedPin, handle: string, order: number): string {
       `<div class="${CURATOR_FS_CLASS.rowThumb}"${thumbStyle}>` +
         (src
           ? `<img src="${escAttr(src)}" alt="${escAttr(pin.product_name || '')}" width="${CURATOR_THUMB_WIDTH}" height="${CURATOR_THUMB_WIDTH}"` +
-            ` loading="lazy" decoding="async" class="${CURATOR_FS_CLASS.rowThumbImg}">`
+            // ⚡ 2026-11-08 — 첫 화면 줄은 **지금 보이는 사진**이다. `loading="lazy"` 는 배치 계산 뒤로 미루고 우선순위도
+            //   낮춰서, 라이브 `/u/jiwon1228` 첫 사진(7KB)이 스크립트 25개와 회선을 다투다 1.4초 뒤에 떴다(LCP 2.2s).
+            //   ⇒ 서버가 그리는 줄은 즉시 받고, 첫 줄은 `fetchpriority="high"`(응답 헤더 preload 와 같은 주소 — `curatorLcpImage`).
+            (order === 1 ? ' fetchpriority="high"' : '') +
+            ` decoding="async" class="${CURATOR_FS_CLASS.rowThumbImg}">`
           : '') +
       '</div>' +
       `<div class="${CURATOR_FS_CLASS.rowBody}">` +
