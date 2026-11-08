@@ -14,7 +14,7 @@
  * 아이콘(SVG)은 같은 크기의 빈 칸. PC 는 그리지 않는다(호출부가 폰 UA 에서만). 글이 없거나 시드가 깨지면 '' → 종전 본문.
  */
 import {
-  BLOG_LIST, BLOG_COVER, BLOG_PER_PAGE, BLOG_FEATURED, BLOG_SEARCH_PLACEHOLDER,
+  BLOG_LIST, BLOG_COVER, blogCoverSrc, BLOG_PER_PAGE, BLOG_FEATURED, BLOG_SEARCH_PLACEHOLDER,
   blogPageNums, blogAllTags, blogCoverTopic, blogCoverBg, blogCoverInk, parseBlogTags,
 } from '../../shared/blog-page'
 import { buildBlogListBody } from '../../features/blog/api/blog-ssr-body'
@@ -26,7 +26,8 @@ const iconSlot = (px: number, cls = 'block shrink-0') => `<span class="${cls}" s
 interface ListPost { slug?: string; title?: string; summary?: string; tags?: unknown; author?: string | null; thumbnail_url?: string | null }
 
 function coverHtml(p: ListPost, cls: string, hero: boolean): string {
-  if (p.thumbnail_url) return `<img src="${esc(p.thumbnail_url)}" alt="" class="${cls} object-cover" loading="lazy">`
+  // 🖼️ 2026-11-08 보이는 크기로(`blogCoverSrc`) · 맨 위 큰 커버는 지금 보이는 사진이라 즉시 + 높은 우선순위(LCP).
+  if (p.thumbnail_url) return `<img src="${esc(blogCoverSrc(p.thumbnail_url, hero ? 'hero' : 'thumb'))}" alt="" class="${cls} object-cover"${hero ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async">`
   const { hue, label } = blogCoverTopic(String(p.slug), parseBlogTags(p.tags))
   return `<div class="${cls} ${BLOG_COVER.box}" style="background-color:${blogCoverBg(hue)}">${iconSlot(hero ? BLOG_COVER.heroIcon : BLOG_COVER.thumbIcon)}`
     + (hero ? `<span class="${BLOG_COVER.label}" style="color:${blogCoverInk(hue)}">유어딜 · ${esc(label)}</span>` : '') + `</div>`

@@ -14,6 +14,7 @@
  * ⚠️ React·아이콘을 import 하지 않는다(워커 번들). 아이콘은 워커가 같은 크기의 빈 칸으로 세운다.
  */
 import { CATEGORY_PALETTE, type CategoryHue } from './category-palette'
+import { cfImage } from '../utils/cf-image'
 
 /** 본문 마크다운 — `BlogMarkdown` 과 워커 문자열 렌더러가 같은 클래스를 쓴다. */
 export const BLOG_MD = {
@@ -103,6 +104,18 @@ export const BLOG_COVER = {
   thumbIcon: 40,
 } as const
 
+/**
+ * 🖼️ 2026-11-08 대표 *"계속 최적화"* — 블로그 사진을 **보이는 크기로** 받는다(워커 첫 화면 · React 같은 함수).
+ *   라이브 실측: 목록이 원본(1200×675) 7장을 그대로 받아 **485KB**(96px 썸네일 한 장이 40~86KB), 상세 커버 139KB.
+ *   리사이저(`/cdn-cgi/image`)로 커버 960px ≈ 72KB · 썸네일 240px ≈ 7.5KB(같은 사진 라이브 측정).
+ *   ⚠️ 서버와 화면이 **같은 주소**를 써야 한다 — 갈리면 같은 사진을 두 번 받는다(시험이 대조).
+ */
+export const BLOG_COVER_WIDTH = { hero: 960, thumb: 240 } as const  // 리사이저 칸(`CF_WIDTH_BUCKETS`)과 같은 값 — 다른 값은 위 칸으로 올라간다
+export function blogCoverSrc(url: string | null | undefined, variant: 'hero' | 'thumb'): string {
+  if (!url) return ''
+  return cfImage(url, { width: BLOG_COVER_WIDTH[variant], format: 'auto' }) || url
+}
+
 /** 읽는 시간(분) — 화면과 같은 계산. */
 export function blogReadMin(content: string | null | undefined): number {
   return Math.max(1, Math.round((content?.length || 0) / 500))
@@ -138,7 +151,7 @@ function inlineHtml(text: string): string {
   while ((m = re.exec(text)) !== null) {
     pushText(text.slice(last, m.index))
     if (m[1] !== undefined && m[2] !== undefined) {
-      out += SAFE_HREF.test(m[2]) ? `<img src="${esc(m[2])}" alt="${esc(m[1])}" loading="lazy" class="${BLOG_MD.img}">` : esc(m[1])
+      out += SAFE_HREF.test(m[2]) ? `<img src="${esc(blogCoverSrc(m[2], 'hero'))}" alt="${esc(m[1])}" loading="lazy" decoding="async" class="${BLOG_MD.img}">` : esc(m[1])
     } else if (m[3] !== undefined && m[4] !== undefined) {
       if (SAFE_HREF.test(m[4])) {
         const ext = /^https?:/i.test(m[4])

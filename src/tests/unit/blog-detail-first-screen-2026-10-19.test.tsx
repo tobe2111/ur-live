@@ -101,7 +101,9 @@ describe('③ 첫 화면 — 본문 전부 · 탈출', () => {
   it('목차가 없으면 목차 버튼도 없다 · 사진이 있으면 사진', () => {
     const noToc = buildBlogDetailFirstScreen(seed({ content: '문단 하나' }))
     expect(noToc).not.toContain(BLOG_DETAIL.tocBox)
-    expect(buildBlogDetailFirstScreen(seed({ thumbnail_url: 'https://media.ur-team.com/a.webp' }))).toContain('src="https://media.ur-team.com/a.webp"')
+    // 🖼️ 2026-11-08 — 사진은 보이는 크기 주소(`blogCoverSrc`)로 나간다. 원본 주소를 품는지(같은 사진인지)만 본다.
+    const withPhoto = buildBlogDetailFirstScreen(seed({ thumbnail_url: 'https://media.ur-team.com/a.webp' }))
+    expect(withPhoto).toMatch(/<img src="[^"]*media\.ur-team\.com\/a\.webp"/)
   })
   it("깨진 시드는 ''", () => {
     expect(buildBlogDetailFirstScreen('{')).toBe('')

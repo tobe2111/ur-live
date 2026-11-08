@@ -16,7 +16,8 @@
  */
 import { ReactNode } from 'react'
 // 🧱 2026-10-19 클래스는 서버 첫 화면(`worker/utils/blog-detail-first-screen.ts`)과 같은 상수 — 두 벌이면 마운트 때 본문이 튄다.
-import { BLOG_MD } from '@/shared/blog-page'
+import { BLOG_MD, blogCoverSrc } from '@/shared/blog-page'
+import { cfImageOnError } from '@/utils/cf-image'
 
 const SAFE_HREF = /^(https?:\/\/|\/(?!\/)|mailto:|tel:)/i
 
@@ -33,8 +34,9 @@ function renderInline(text: string, keyBase: string): ReactNode[] {
     pushText(text.slice(last, m.index))
     if (m[1] !== undefined && m[2] !== undefined) {
       // 이미지
-      nodes.push(SAFE_HREF.test(m[2])
-        ? <img key={`${keyBase}-img${i}`} src={m[2]} alt={m[1]} loading="lazy" className={BLOG_MD.img} />
+      const imgUrl = m[2] // 오류 처리기가 나중에 읽으므로 지금 값을 잡아 둔다(`m` 은 다음 반복에서 바뀐다)
+      nodes.push(SAFE_HREF.test(imgUrl)
+        ? <img key={`${keyBase}-img${i}`} src={blogCoverSrc(imgUrl, 'hero')} alt={m[1]} loading="lazy" decoding="async" className={BLOG_MD.img} onError={(e) => cfImageOnError(e.currentTarget, imgUrl)} />
         : m[1])
     } else if (m[3] !== undefined && m[4] !== undefined) {
       // 링크
