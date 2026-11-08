@@ -9,13 +9,37 @@
  * 폰만(호출부가 UA 로 가른다).
  */
 import { REGION_CLS as C, REGION_COPY as T, REGION_CATEGORY_CHIPS, regionDealCount } from '../../shared/region-page'
-import { parseRegionPath, regionLabel, regionPath, type SidoStat } from '../../shared/constants/region-slugs'
+import { parseRegionPath, regionLabel, regionPath, addressInRegion, type SidoStat } from '../../shared/constants/region-slugs'
+import { FEED_PC_GRID, feedSoldOf } from '../../shared/deal-card-grid'
+import { cardHtml } from './home-first-screen'
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const slot = (cls: string) => `<span class="${cls} inline-block" aria-hidden="true"></span>`
 
 /** `/region/서울/중구` → 첫 화면. 경로가 지역이 아니면 ''(호출부가 종전 로더). */
-export function buildRegionFirstScreen(pathname: string, regionsJson: string | null, loaderHtml: string): string {
+/** 서버가 그리는 카드 수 — 2열 두 줄(첫 화면). 화면은 같은 순서의 처음 4장을 `aboveFold` 로 즉시 받는다. */
+export const REGION_FS_CARDS = 4
+
+type FeedRow = { id?: number | string; restaurant_address?: string | null; business_address?: string | null; sold_count?: number | null; group_buy_current?: number | null }
+
+/**
+ * 화면(`GroupBuyFeed` pc · regionRef · showLife · 기본 '인기순')과 **같은 순서**의 처음 N장:
+ * MAIN 시드 → `addressInRegion`(같은 SSOT) → 판매 수 내림차순(안정 정렬 — 같은 함수 `feedSoldOf`).
+ */
+export function regionFirstCards(mainSeedJson: string | null, ref: { sido: string; sigungu?: string }, n = REGION_FS_CARDS): FeedRow[] {
+  if (!mainSeedJson) return []
+  try {
+    const d = JSON.parse(mainSeedJson) as { data?: FeedRow[] }
+    const rows = Array.isArray(d?.data) ? d.data : []
+    const seen = new Set<number | string>()
+    return rows.filter((p) => p && p.id != null && addressInRegion(p.restaurant_address || p.business_address, ref as never))
+      .sort((a, b) => feedSoldOf(b) - feedSoldOf(a))
+      .filter((p) => (seen.has(p.id!) ? false : (seen.add(p.id!), true)))
+      .slice(0, n)
+  } catch { return [] }
+}
+
+export function buildRegionFirstScreen(pathname: string, regionsJson: string | null, loaderHtml: string, mainSeedJson: string | null = null): string {
   const seg = pathname.replace(/\/+$/, '').split('/').slice(2)
   const ref = parseRegionPath(seg[0], seg[1])
   if (!ref || !ref.sido) return ''
@@ -40,6 +64,9 @@ export function buildRegionFirstScreen(pathname: string, regionsJson: string | n
   const chips = `<div class="${C.chips}">` + REGION_CATEGORY_CHIPS.map((ch) =>
     `<button type="button" aria-pressed="${ch.key === 'all'}" class="${C.chipBase} ${ch.key === 'all' ? C.chipOn : C.chipOff}">${esc(ch.label)}</button>`).join('') +
     `<a href="/map?q=${esc(encodeURIComponent(label))}" class="${C.mapLink}">${slot('w-3.5 h-3.5')}${esc(T.map)}</a></div>`
-  const body = `<div class="${C.page}"><div class="${C.wrap}">${nav}<header class="${C.header}"><h1 class="${C.h1}">${esc(label)} 이용권·동네딜</h1><p class="${C.sub}">${sub}</p></header>${chips}</div></div>`
+  // 🗺️ 카드 — 홈과 같은 카드 함수(`cardHtml`)·같은 격자 상수. 0장이면 안 그린다(화면의 빈 상태 문구는 화면이 그린다).
+  const cards = regionFirstCards(mainSeedJson, ref)
+  const grid = cards.length ? `<div><div class="${FEED_PC_GRID} ur-cv-grid">${cards.map((p) => cardHtml(p as never, true)).join('')}</div></div>` : ''
+  const body = `<div class="${C.page}"><div class="${C.wrap}">${nav}<header class="${C.header}"><h1 class="${C.h1}">${esc(label)} 이용권·동네딜</h1><p class="${C.sub}">${sub}</p></header>${chips}${grid}</div></div>`
   return `<div id="ur-first-screen">${body}</div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }
