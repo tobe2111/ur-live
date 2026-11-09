@@ -16,7 +16,7 @@ import { render, waitFor, fireEvent } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import {
   parseContentUrl, mentionsStore, coreStoreName, sortForCustomer, contentYtReservedUnits, readDayCount,
-  searchQueryFor, stripHtml, confidentMatch, isStoreOwnPost, CONTENT_YT_DAILY_SEARCHES, type ContentItem,
+  searchQueryFor, stripHtml, confidentMatch, isStoreOwnPost, videoMatch, branchOf, CONTENT_YT_DAILY_SEARCHES, type ContentItem,
 } from '@/shared/creator-content'
 import { storeKeyFor } from '@/features/creator-content/api/content-db'
 import { pickBlogCandidates, pickVideoCandidates } from '@/features/creator-content/api/content-collect'
@@ -129,6 +129,74 @@ describe('②-c 가게 자기 글 — 다녀온 사람들이 아니다', () => {
     // 대표 "유의사항과 리뷰 사이에" — 이용권 정보(유의사항) 카드 다음, 리뷰 카드 앞.
     expect(page.indexOf('<CreatorContentLazy')).toBeGreaterThan(page.indexOf('id="gb-sec-info"'))
     expect(page.indexOf('<CreatorContentLazy')).toBeLessThan(page.indexOf('id="gb-sec-reviews"'))
+  })
+})
+
+describe('②-d 겹침·숙소·스크롤 (2026-11-09 대표)', () => {
+  it('재생기가 뜬 편엔 우리 글자를 안 얹고, 닫기·번호는 영상 밖 띠에', () => {
+    const v = read('src/pages/group-buy/creator-content/ContentViewer.tsx')
+    expect(v).toMatch(/\{!\(active && src\) && <div className="pointer-events-none absolute inset-x-0 bottom-0/)
+    expect(v).not.toMatch(/absolute inset-x-0 top-0 z-10 flex items-center justify-between/)
+  })
+  it('숙소 상세에도 다녀온 사람들 칸 — 리뷰 앞', () => {
+    const p = read('src/pages/StayDetailPage.tsx')
+    expect(p.indexOf('<CreatorContentLazy')).toBeGreaterThan(0)
+    expect(p.indexOf('<CreatorContentLazy')).toBeLessThan(p.indexOf('id="stay-sec-reviews"'))
+  })
+  it('가로 줄이 세로 스크롤을 가두지 않는다', () => {
+    expect(read('src/shared/stays-list.ts')).toMatch(/row: '[^']*overflow-x-auto overflow-y-hidden touch-pan-x touch-pan-y/)
+  })
+})
+
+describe('②-e 유튜브 — 이름만 · 체인점은 지점명까지 (2026-11-09 대표)', () => {
+  it('지점명 뽑기', () => {
+    expect(branchOf('샤브올데이 부산명륜점')).toBe('명륜')
+    expect(branchOf('보광정 이태원점')).toBe('이태원')
+    expect(branchOf('다인리조트')).toBeNull()
+  })
+  it('지점 없는 가게는 이름만 맞으면 공개', () => {
+    expect(videoMatch('잠실 블랙타고 그룹PT', '블랙타고')).toBe(true)
+    expect(videoMatch('제주 애월 리조트', '다인리조트')).toBe(false)
+  })
+  it('체인점은 지점명까지 — 다른 지점 영상은 후보로', () => {
+    expect(videoMatch('미나리 소고기 #샤브올데이명륜점 #동래맛집', '샤브올데이 부산명륜점')).toBe(true)
+    expect(videoMatch('호텔뷔페 안가도 되겠네.. 수영점 진짜 대박 #샤브올데이', '샤브올데이 부산명륜점')).toBe(false)
+    expect(videoMatch('📍보광정이태원점', '보광정 이태원점')).toBe(true)
+  })
+  it('수집기 · 후보 재판정이 이 규칙을 쓴다', () => {
+    const c = read('src/features/creator-content/api/content-collect.ts')
+    expect(c).toMatch(/confident: !isStoreOwnPost\(sn\.channelTitle, storeName\) && videoMatch\(text, storeName\)/)
+    expect(c).toMatch(/WHERE s\.platform = 'youtube' AND s\.status = 'candidate' AND s\.source = 'auto'/)
+  })
+})
+
+describe('②-f 개선 7가지 (2026-11-09 대표 "전부 해줘")', () => {
+  it('같은 무리 안에서 사진 있는 글 → 협찬 아닌 글 → 최근 1년 안 순서', () => {
+    const now = Date.parse('2026-11-09T00:00:00Z')
+    const out = sortForCustomer([
+      item({ id: 'old', kind: 'blog', platform: 'naver_blog', thumb_url: 'x', published_at: '2023-01-01' }),
+      item({ id: 'sp', kind: 'blog', platform: 'naver_blog', thumb_url: 'x', sponsored: true, published_at: '2026-10-01' }),
+      item({ id: 'nothumb', kind: 'blog', platform: 'naver_blog', thumb_url: null, published_at: '2026-10-02' }),
+      item({ id: 'best', kind: 'blog', platform: 'naver_blog', thumb_url: 'x', published_at: '2026-09-01' }),
+    ], now)
+    expect(out.map((x) => x.id)).toEqual(['best', 'old', 'sp', 'nothumb'])
+  })
+  it('사장님이 정한 순서는 그 위에 선다', () => {
+    const out = sortForCustomer([item({ id: 'a', thumb_url: 'x' }), item({ id: 'b', thumb_url: null, position: 1 })])
+    expect(out[0].id).toBe('b')
+  })
+  it('블로그도 체인점은 지점명까지', () => {
+    expect(confidentMatch('명륜동 샤브올데이 명륜점 후기', '샤브올데이 부산명륜점', '부산 동래구 명륜동 1')).toBe(true)
+    expect(confidentMatch('명륜동 근처 샤브올데이 수영점 후기', '샤브올데이 부산명륜점', '부산 동래구 명륜동 1')).toBe(false)
+  })
+  it('측정 · 어드민 · 죽은 링크 배선', () => {
+    expect(read('src/features/analytics/api/funnel.routes.ts')).toMatch(/'creator_content_shown',\n\s*'creator_content_opened',\n\s*'creator_content_buy',/)
+    expect(read('src/pages/group-buy/creator-content/CreatorContentRow.tsx')).toMatch(/trackFunnel\('creator_content_buy'/)
+    expect(read('src/worker/index.ts')).toMatch(/adminApp\.route\('\/creator-content-stores', creatorContentAdminStoresRoutes\)/)
+    expect(read('src/routes/admin.routes.tsx')).toMatch(/path="\/admin\/creator-content"/)
+    const c = read('src/features/creator-content/api/content-collect.ts')
+    expect(c).toMatch(/const dead = await hideDeadLinks\(DB\)/)
+    expect(c).toMatch(/status = CASE WHEN \? = 1 THEN 'hidden' ELSE status END/)
   })
 })
 

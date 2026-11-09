@@ -50,7 +50,10 @@ export const STAYS_LIST = {
   results: 'ur-content-wide px-5 lg:px-8 py-4',
   curations: 'space-y-8 pb-2',
   rowTitle: 'text-[16px] sm:text-[16px] font-bold tracking-tight text-gray-900 dark:text-white px-1',
-  row: 'mt-3 flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-4 px-4 lg:mx-0 lg:px-0',
+  // 🩸 2026-11-09 대표 *"이곳과 비슷한 스테이 부분에 상하 스크롤이 잘 안돼"* — `overflow-x-auto` 만 주면 CSS 가 세로도 auto 로 만든다.
+  //   카드 움직임(떠오름·기울기)으로 줄이 조금만 높아져도 그 줄이 **세로 스크롤 상자**가 되어, 위아래로 민 손가락이 줄 안에 갇혔다.
+  //   세로는 막고(`overflow-y-hidden`) 손가락의 세로 이동은 페이지로 넘긴다(`touch-pan-x touch-pan-y`).
+  row: 'mt-3 flex gap-3 overflow-x-auto overflow-y-hidden touch-pan-x touch-pan-y scrollbar-hide snap-x snap-mandatory -mx-4 px-4 lg:mx-0 lg:px-0',
   cell: 'shrink-0 snap-start w-[68%] sm:w-[42%] lg:w-[28%] xl:w-[23%]',
 } as const
 

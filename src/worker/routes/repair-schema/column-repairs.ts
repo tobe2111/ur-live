@@ -154,6 +154,8 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     { desc: 'products.group_buy_deadline', sql: "ALTER TABLE products ADD COLUMN group_buy_deadline DATETIME" },
     { desc: 'products.group_buy_tiers', sql: "ALTER TABLE products ADD COLUMN group_buy_tiers TEXT" },
     { desc: 'products.restaurant_name', sql: "ALTER TABLE products ADD COLUMN restaurant_name TEXT" },
+    // 🎬 2026-11-09 '다녀온 사람들' 죽은 링크 확인 시각(런타임 ensure 와 같은 DDL).
+    { desc: 'store_creator_content.checked_at', sql: "ALTER TABLE store_creator_content ADD COLUMN checked_at TEXT" },
     { desc: 'products.restaurant_address', sql: "ALTER TABLE products ADD COLUMN restaurant_address TEXT" },
     { desc: 'products.restaurant_phone', sql: "ALTER TABLE products ADD COLUMN restaurant_phone TEXT" },
     { desc: 'products.restaurant_lat', sql: "ALTER TABLE products ADD COLUMN restaurant_lat REAL" },

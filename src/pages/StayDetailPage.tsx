@@ -41,6 +41,7 @@ import SellThisCard from '@/components/seeding/SellThisCard' // 🏨 ③ 이용�
 // 🗺️ 2026-07-21 (대표 "숙소 카카오맵 연결 무조건 되게"): 딜 상세와 동일한 잠금 lazy 패턴 —
 //   IntersectionObserver 게이트(RestaurantMiniMap 내부)라 스크롤 도달 전 Kakao SDK 0 fetch.
 const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
+import CreatorContentLazy from './group-buy/creator-content/CreatorContentLazy' // 🎬 2026-11-04 '다녀온 사람들' — 이용권 상세와 같은 칸(lazy 경계는 그 파일)
 
 
 // 🏨 2026-07-21 (대표 "시설 아이콘이 점으로만 뜸"): 시드가 시설을 **한글**(무료 주차/와이파이/조식 등)로
@@ -402,6 +403,13 @@ export default function StayDetailPage() {
             </Suspense>
           </div>
         )}
+
+        {/* 🎬 2026-11-09 대표 *"다인리조트 이용권 페이지에 없는데?"* — 숙소는 이 페이지로 오므로 이용권 상세의 '다녀온 사람들' 칸이
+            여기엔 없었다. 이용 안내·위치 다음, 비슷한 스테이·리뷰 앞(이용권 상세와 같은 '유의사항과 리뷰 사이'). 0개면 칸이 없다.
+            '구매' 는 객실 고르는 자리로 데려간다(숙소는 날짜·객실을 골라야 결제가 된다). */}
+        <div className={STAY_BAND}><CreatorContentLazy productId={stay.id}
+          onBuy={() => document.getElementById(window.matchMedia?.('(min-width: 1024px)').matches ? 'stay-sec-reviews' : 'stay-sec-rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          buy={{ store: stay.restaurant_name || stay.name, price: minRoomPrice, discountPct: null, image: stay.image_url || null }} /></div>
 
         {/* 🏨 2026-09-26 대표 확정("2번은 진행해"): 대표 문서 ⑥ 을 글자 그대로 — **숙소 소개 바로 아래**.
             ⚠️ 소개가 없는 숙소에도 떠야 하므로 위 조건 블록 **밖**에 둔다(안에 넣으면 같이 사라진다). */}

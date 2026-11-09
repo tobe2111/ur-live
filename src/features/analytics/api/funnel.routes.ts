@@ -31,6 +31,10 @@ const FUNNEL_EVENTS = new Set([
   'checkout_started',    // 결제 시작
   'payment_succeeded',   // 결제 완료
   'empty_region_shown',  // 동네딜 빈 지역 노출 — "우리 동네 없네" 이탈
+  // 🎬 2026-11-09 이용권 상세 '다녀온 사람들' 효과 재기(대표 "전부 해줘") — 칸이 보였나 · 글·영상을 열었나 · 그 창에서 구매를 눌렀나
+  'creator_content_shown',
+  'creator_content_opened',
+  'creator_content_buy',
 ])
 
 function kstDay(): string {
