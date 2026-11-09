@@ -373,7 +373,7 @@ try {
       }))
     ).catch(swallow('main:sw-getRegistrations'))
     const _cacheClear = ('caches' in window)
-      ? caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(swallow('main:caches-clear'))
+      ? caches.keys().then(keys => Promise.all(keys.filter(k => !k.startsWith('ur-shell-')).map(k => caches.delete(k)))).catch(swallow('main:caches-clear')) // 🏠 2026-11-09 shell-sw 저장소는 남긴다 — 매 로드마다 지우면 저장본이 영영 안 쓰인다(라이브 실측)
       : Promise.resolve()
     if (_staleControlling) {
       // stale SW 가 이 페이지를 서빙 중 → 제거 완료 후 1회만 clean reload (SW 제어 해제 반영).

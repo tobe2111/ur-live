@@ -75,6 +75,7 @@ async function settingOn(): Promise<boolean> {
 /** 한가할 때 한 번. 켜져 있으면 등록, 아니면 있던 것을 해제한다. */
 export async function syncShellServiceWorker(): Promise<void> {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+  applyShellSwTestFlag() // 같은 로드에서 `?__shellsw=1` 이 바로 먹게 — 이 호출이 main 의 렌더 뒤 호출보다 먼저 올 수 있다(라이브 실측: 첫 로드에 등록이 안 됐다)
   const on = testFlagOn() || await settingOn()
   try {
     const regs = await navigator.serviceWorker.getRegistrations()

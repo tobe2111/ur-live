@@ -89,6 +89,11 @@ describe('③ 리다이렉트·fetch 모양 · 배선', () => {
     expect(main).toMatch(/scriptUrl\.includes\('push-sw\.js'\) \|\| scriptUrl\.includes\('shell-sw\.js'\)/)
     expect(main).toMatch(/!\(\(_ctrl\.scriptURL \|\| ''\)\.includes\('shell-sw\.js'\)\)/)
   })
+  it('main.tsx 의 캐시 청소가 ur-shell-* 저장소를 남긴다(2026-11-09 라이브 실측 — 안 남기면 저장본이 매 로드마다 지워져 한 번도 안 쓰인다)', () => {
+    const main = readFileSync('src/main.tsx', 'utf8')
+    expect(main).toMatch(/caches\.keys\(\)\.then\(keys => Promise\.all\(keys\.filter\(k => !k\.startsWith\('ur-shell-'\)\)\.map\(k => caches\.delete\(k\)\)\)\)/)
+    expect(readFileSync('src/lib/shell-sw.ts', 'utf8')).toMatch(/applyShellSwTestFlag\(\)[^\n]*\n\s*const on = testFlagOn\(\)/) // 시험 표식은 같은 로드에서 먹는다
+  })
   it('_routes.json 이 정적으로 낸다 · 킬스위치 기본 OFF · 워커가 variant 헤더를 단다', () => {
     const routes = JSON.parse(readFileSync('public/_routes.json', 'utf8'))
     expect(routes.exclude).toContain('/shell-sw.js')
