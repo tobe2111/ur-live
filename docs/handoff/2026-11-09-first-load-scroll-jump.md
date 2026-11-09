@@ -34,3 +34,7 @@
 ## 5차 — 위치 저장 손님 홈 피드 '불러오는 중' (대표 캡처)
 - 거리순 피드 시드를 HTML 에 함께(새 슬롯 MAINNEAR, 400ms 마감). 기록 `docs/locks/loading/2026-11-09-home-near-seed.md`.
 - 배포 뒤 확인: 쿠키 `ur_loc=37.56_126.98` 로 홈 HTML 에 `__SSR_INITIAL_MAINNEAR__` 가 실리는지, X-SSR-Status·시간.
+
+## 6차 — 홈 맨 위 동네 이름 깜빡임 · 유어쇼츠 시드(#2234 배포 E4)
+- 폰 흉내 실측: '회현동 → 내 주변 → 회현동'. useCurrentDong 이 캐시 빗나감 때 쿠키 `ur_loc_n`(마지막 확정 이름)을 임시로 쓴다.
+- #2234 배포 뒤 홈이 /api/urshorts 를 따로 받지 않음 확인.
