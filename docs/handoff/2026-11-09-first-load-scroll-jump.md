@@ -21,3 +21,8 @@
 - 대표 캡처의 검은 화면은 우리 HTML 이 오기 전 브라우저 빈 화면(색 #191011 은 우리 색이 아님).
 - 실사용: LAX 첫 응답 1.1~2.4초, 서버 0.08초. 무료 회선 설정은 이미 전부 켜짐. 유료 결재(2026-11-04)는 대표 *"무료 유지 + 다듬기"* 로 닫음.
 - 다듬기: 첫 화면 앞 head 압축 17.3→13.7KB(첫 송신량 안). 배포 뒤 라이브 head br 크기를 다시 잴 것.
+
+## 3차 — HSTS preload 제출 (2026-11-09 대표 직접)
+- hstspreload.org 에 urdeal.kr 제출 → "pending inclusion". 조건(HSTS 1년·includeSubDomains·preload)을 지키는 가드
+  `hsts-preload-2026-11-09.test.ts` + 주입 2건. 새 하위 도메인은 반드시 HTTPS(Cloudflare 프록시면 자동).
+- 반영 확인: 몇 주 뒤 hstspreload.org 상태가 "preloaded" 인지.
