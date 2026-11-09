@@ -93,7 +93,7 @@ sellerPinRoutes.post('/set-pin', rateLimit({ action: 'seller_set_pin', max: 5, w
       //   마이의 PIN 시트가 이걸 보고 비밀번호 칸을 연다(어느 계정이 필요한지 미리 알 수 없다).
       return c.json({ success: false, error: '현재 비밀번호를 입력해주세요', code: 'PASSWORD_REQUIRED' }, 400)
     }
-    const ok = await verifyPassword(current_password, seller.password_hash)
+    const { valid: ok } = await verifyPassword(current_password, seller.password_hash)
     if (!ok) return c.json({ success: false, error: '현재 비밀번호가 틀렸습니다' }, 401)
   }
 
@@ -118,7 +118,7 @@ sellerPinRoutes.post('/verify-pin', rateLimit({ action: 'seller_verify_pin', max
     return c.json({ success: false, error: 'PIN이 설정되지 않았습니다. 먼저 PIN을 설정해주세요.', code: 'PIN_NOT_SET' }, 412)
   }
 
-  const ok = await verifyPassword(pin, pinHash)
+  const { valid: ok } = await verifyPassword(pin, pinHash)
   if (!ok) return c.json({ success: false, error: 'PIN이 틀렸습니다' }, 401)
 
   // 15분 유효 토큰 발급 (JWT with short exp)
