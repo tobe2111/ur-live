@@ -136,6 +136,9 @@ export function confidentMatch(text: string, storeName: string, address: string 
   if (branch && !normStoreName(text).includes(`${branch}점`)) return false
   const words = String(address ?? '').split(/\s+/).filter(Boolean)
   const areas = words.filter((w) => /(동|읍|면|구|군)$/.test(w) && w.length >= 2).map((w) => normStoreName(w))
+  // 🏝️ 도로명 주소라 구·동이 없는 곳("제주시 연북로", "강릉시 하슬라로")은 시로 본다(2026-11-09 실측: 이런 가게 후기가
+  //    전부 후보에 머물러 손님 칸이 비었다). "제주시" 는 글에서 "제주" 로 쓰이니 아래 끝 글자 떼기가 받는다.
+  if (!areas.length) for (const w of words) if (/시$/.test(w) && w.length >= 3) areas.push(normStoreName(w))
   if (!areas.length) return false
   const t = normStoreName(text)
   // "연산동" 은 글에서 "연산" 으로도 쓰인다 — 끝 글자를 뗀 형태(2자 이상)도 동네로 본다.
@@ -174,7 +177,8 @@ export function isListPost(title: string | null | undefined): boolean {
  * 손님 후기가 아니라 그 업체 홍보라 자동 공개에서 뺀다(후보로는 남아 사장님이 고를 수 있다).
  */
 export function isVendorAuthor(authorName: string | null | undefined): boolean {
-  return /(업소용|가구|인테리어|산업|부동산|공인중개|시공|분양|간판|컨설팅|설비|보일러|홈케어|납품|도매|주식회사|㈜|\(주\)|상사|문화누리카드)/.test(String(authorName ?? ''))
+  // '가구' 는 '1인가구' 를 빼고(실측: 개인 블로그 "1인가구 직장인 서울 살이" 가 걸렸다).
+  return /(업소용|(?<!인)가구|인테리어|산업|부동산|공인중개|시공|분양|간판|컨설팅|설비|보일러|홈케어|납품|도매|주식회사|㈜|\(주\)|상사|문화누리카드|인덕션|전문기업|프랜차이즈|파출|인력|렌탈|™|®)/.test(String(authorName ?? ''))
 }
 
 /**
@@ -323,3 +327,4 @@ export function readDayCount(raw: string | null | undefined, day: string): numbe
   if (i <= 0 || raw.slice(0, i) !== day) return 0
   return Math.max(0, parseInt(raw.slice(i + 1), 10) || 0)
 }
+

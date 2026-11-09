@@ -32,7 +32,7 @@ import { fetchPageMeta } from './content-meta'
 const STORES_PER_RUN = 5
 /** 대표 사진이 없는 보이는 글을 회차마다 이만큼 채운다(검색 API 는 사진을 안 준다 — 글 페이지의 og:image). */
 const THUMB_BACKFILL_MIN = 5
-const THUMB_BACKFILL_MAX = 20
+const THUMB_BACKFILL_MAX = 28
 /** 회차당 죽은 링크 확인 개수(지워졌거나 비공개가 된 글·영상을 숨긴다). */
 const DEAD_CHECK_PER_RUN = 3
 const NAVER_DISPLAY = 30
@@ -129,17 +129,25 @@ async function naverSearch(id: string, secret: string, q: string, sort: 'sim' | 
 }
 
 /** 가게 하나 — 검색 2회(관련도·최신) → 이 가게 글만 → 새 글만 저장. 커서 갱신도 같은 배치에 싣는다(서브리퀘스트 1). */
+/** 글이 없는 가게의 두 번째 검색어 — 지점 꼬리·괄호를 뗀 이름만("벌툰 일산역점" → "벌툰"이 아니라 "벌툰 일산역" 처럼 지점 낱말은 남긴다). */
+export function blogSecondQuery(storeName: string): string {
+  return String(storeName).replace(/\s*\([^)]*\)\s*$/, '').replace(/(지점|점)$/, '').trim()
+}
+
 async function collectBlogs(DB: D1Database, env: Env, s: CrawlRow): Promise<number> {
   const cursor = DB.prepare(`UPDATE store_content_crawl SET naver_at = datetime('now') WHERE store_key = ?`).bind(s.store_key)
   const id = env.NAVER_SEARCH_CLIENT_ID, secret = env.NAVER_SEARCH_CLIENT_SECRET
   if (!id || !secret) { await cursor.run().catch(() => null); return 0 }
-  const q = searchQueryFor(s.store_name, s.address)
-  const [sim, recent] = await Promise.all([naverSearch(id, secret, q, 'sim'), naverSearch(id, secret, q, 'date')])
-  const picks = pickBlogCandidates([...sim, ...recent], s.store_name, s.address).slice(0, 20)
-  if (!picks.length) { await cursor.run().catch(() => null); return 0 }
   // 이미 아는 글(후보·보이는 중·숨김·삭제 전부)은 다시 안 읽는다.
   const known = new Set(((await DB.prepare(`SELECT ext_id FROM store_creator_content WHERE store_key = ? AND platform = 'naver_blog'`)
     .bind(s.store_key).all<{ ext_id: string }>().catch(() => ({ results: [] as { ext_id: string }[] }))).results ?? []).map((x) => x.ext_id))
+  const q = searchQueryFor(s.store_name, s.address)
+  // 🔎 아직 글이 하나도 없는 가게는 두 번째 검색을 **이름만**으로 바꾼다(2026-11-09 실측: 188곳 중 22곳이 0건 —
+  //    "이름 + 동네" 로는 안 걸리고 이름만 쓴 후기가 있다). 자동 공개 판정은 그대로라 넓게 찾아도 엉뚱한 글은 후보에 남는다.
+  const second = known.size ? q : blogSecondQuery(s.store_name)
+  const [sim, recent] = await Promise.all([naverSearch(id, secret, q, 'sim'), naverSearch(id, secret, second, known.size ? 'date' : 'sim')])
+  const picks = pickBlogCandidates([...sim, ...recent], s.store_name, s.address).slice(0, 20)
+  if (!picks.length) { await cursor.run().catch(() => null); return 0 }
   const fresh = picks.filter((p) => !known.has(p.extId))
   if (!fresh.length) { await cursor.run().catch(() => null); return 0 }
   // 글 페이지는 **확실한 글부터** 읽는다(바로 보일 글에 사진이 있어야 한다).
@@ -188,9 +196,12 @@ async function collectVideos(DB: D1Database, env: Env, now: number): Promise<{ s
  *    못 읽은 글은 `thumb_url = ''` 로 표시해 다시 안 시도한다(NULL = 아직 안 해 봄).
  */
 async function backfillThumbs(DB: D1Database, limit: number): Promise<number> {
-  const { results } = await DB.prepare(`SELECT id, ext_id FROM store_creator_content
-      WHERE platform = 'naver_blog' AND thumb_url IS NULL AND status IN ('visible', 'candidate')
-      ORDER BY status = 'visible' DESC, id DESC LIMIT ?`).bind(limit).all<{ id: number; ext_id: string }>()
+  const { results } = await DB.prepare(`SELECT s.id, s.ext_id FROM store_creator_content s
+      WHERE s.platform = 'naver_blog' AND s.thumb_url IS NULL AND s.status IN ('visible', 'candidate')
+      -- 손님이 처음 보는 블로그는 3개 — 사진 있는 글이 3개가 안 되는 가게부터 채운다(2026-11-09). 그다음 보이는 글 · 최신.
+      ORDER BY s.status = 'visible' DESC,
+        (SELECT COUNT(*) FROM store_creator_content t WHERE t.store_key = s.store_key AND t.status = 'visible' AND t.thumb_url <> '') >= 3,
+        s.id DESC LIMIT ?`).bind(limit).all<{ id: number; ext_id: string }>()
   const rows = results ?? []
   if (!rows.length) return 0
   const metas = await Promise.all(rows.map((r) => fetchPageMeta(`https://m.blog.naver.com/${r.ext_id}`).catch(() => null)))
@@ -215,29 +226,40 @@ async function promoteVideoCandidates(DB: D1Database): Promise<number> {
 }
 
 /**
- * 🧹 이미 자동 공개된 블로그를 지금 기준(`blogAutoShow`)으로 다시 본다(2026-11-09 대표 *"연관 없는 블로그도 있네"*).
+ * 🧹 자동으로 들어온 블로그를 지금 기준(`blogAutoShow`)으로 다시 본다(2026-11-09 대표 *"연관 없는 블로그도 있네"*).
  * 실측: 자동 공개 2,009개 중 약 40% 가 새 기준에서 탈락(업종 이름 가게 382 · 제목에 이름 없음 315 · 업체 글 · 모음 글).
- * 탈락은 **후보로 내린다**(지우지 않는다 — 사장님 화면에서 다시 고를 수 있다). 사장님·어드민이 넣은 것(source≠auto)은 안 건드린다.
+ *   공개 중인데 탈락 → **후보로 내린다**(지우지 않는다 — 사장님 화면에서 다시 고를 수 있다).
+ *   후보인데 통과 → **공개로 올린다**(v3: 구·동 없는 주소를 시로 보게 되면서 제주·강릉 가게 후기가 처음 통과한다).
+ * 사장님·어드민이 넣거나 고른 것(source≠auto)·숨긴 것(hidden)은 안 건드린다.
  * 기준 버전마다 한 바퀴 — 커서(id)를 앞으로 밀며 회차당 400개씩. 기준을 바꾸면 `BLOG_RULES_VERSION` 을 올린다.
  */
-export const BLOG_RULES_VERSION = 2
+export const BLOG_RULES_VERSION = 3
 const REJUDGE_KEY = 'creator_content_blog_rejudge'
 const REJUDGE_PER_RUN = 400
-async function rejudgeVisibleBlogs(DB: D1Database): Promise<number> {
+async function rejudgeAutoBlogs(DB: D1Database): Promise<{ demoted: number; promoted: number }> {
   const raw = await readSetting(DB, REJUDGE_KEY)
   const [ver, cur] = String(raw ?? '').split(':').map(Number)
-  if (ver === BLOG_RULES_VERSION && cur < 0) return 0
+  if (ver === BLOG_RULES_VERSION && cur < 0) return { demoted: 0, promoted: 0 }
   const after = ver === BLOG_RULES_VERSION && Number.isFinite(cur) ? cur : 0
-  const { results } = await DB.prepare(`SELECT s.id, s.title, s.summary, s.author_name, c.store_name, c.address FROM store_creator_content s
+  const { results } = await DB.prepare(`SELECT s.id, s.status, s.title, s.summary, s.author_name, c.store_name, c.address FROM store_creator_content s
       JOIN store_content_crawl c ON c.store_key = s.store_key
-      WHERE s.platform = 'naver_blog' AND s.status = 'visible' AND s.source = 'auto' AND s.id > ? ORDER BY s.id LIMIT ${REJUDGE_PER_RUN}`)
-    .bind(after).all<{ id: number; title: string | null; summary: string | null; author_name: string | null; store_name: string; address: string | null }>()
+      WHERE s.platform = 'naver_blog' AND s.status IN ('visible', 'candidate') AND s.source = 'auto' AND s.id > ? ORDER BY s.id LIMIT ${REJUDGE_PER_RUN}`)
+    .bind(after).all<{ id: number; status: string; title: string | null; summary: string | null; author_name: string | null; store_name: string; address: string | null }>()
   const rows = results ?? []
-  const ids = rows.filter((r) => !blogAutoShow({ title: r.title, summary: r.summary, author: r.author_name }, r.store_name, r.address)).map((r) => r.id)
-  if (ids.length) await DB.batch(ids.map((id) => DB.prepare(`UPDATE store_creator_content SET status = 'candidate', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'visible' AND source = 'auto'`).bind(id)))
+  const down: number[] = [], up: number[] = []
+  for (const r of rows) {
+    const ok = blogAutoShow({ title: r.title, summary: r.summary, author: r.author_name }, r.store_name, r.address)
+    if (r.status === 'visible' && !ok) down.push(r.id)
+    else if (r.status === 'candidate' && ok) up.push(r.id)
+  }
+  const stmts = [
+    ...down.map((id) => DB.prepare(`UPDATE store_creator_content SET status = 'candidate', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'visible' AND source = 'auto'`).bind(id)),
+    ...up.map((id) => DB.prepare(`UPDATE store_creator_content SET status = 'visible', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'candidate' AND source = 'auto'`).bind(id)),
+  ]
+  if (stmts.length) await DB.batch(stmts)
   // 다 돌았으면 -1(이 버전은 끝), 아니면 마지막 id 까지 왔다고 적는다.
   await writeSetting(DB, REJUDGE_KEY, `${BLOG_RULES_VERSION}:${rows.length < REJUDGE_PER_RUN ? -1 : rows[rows.length - 1].id}`)
-  return ids.length
+  return { demoted: down.length, promoted: up.length }
 }
 
 /**
@@ -287,12 +309,12 @@ export async function runCreatorContentCollect(env: Env, now = Date.now()) {
     })
   }
   // 🖼️ 사진 채우기는 **남는 예산만큼** — 이번 회차에 찾은 가게가 적으면 더 많이 채운다(무료 50/인보케이션).
-  //   대략: 기본 D1 ~6 + 가게당 6 + 재판정 2 + 죽은 링크 5 + 유튜브 3, 나머지가 사진(배치 쓰기 1 포함).
-  const thumbRoom = Math.max(THUMB_BACKFILL_MIN, Math.min(THUMB_BACKFILL_MAX, 46 - 6 - (results ?? []).length * 6 - 2 - 5 - 3 - 2))
+  //   대략: 기본 D1 ~6 + 가게당 6 + 유튜브 승격 2 + 죽은 링크 5 + 유튜브 3 + 블로그 재판정 3, 나머지가 사진(배치 쓰기 1 포함).
+  const thumbRoom = Math.max(THUMB_BACKFILL_MIN, Math.min(THUMB_BACKFILL_MAX, 48 - 6 - (results ?? []).length * 6 - 2 - 5 - 3 - 3 - 2))
   const thumbs = await backfillThumbs(DB, thumbRoom).catch(() => 0)
   const dead = await hideDeadLinks(DB).catch(() => 0)
   const promoted = await promoteVideoCandidates(DB).catch(() => 0)
-  const demoted = await rejudgeVisibleBlogs(DB).catch(() => 0)
+  const rejudged = await rejudgeAutoBlogs(DB).catch(() => ({ demoted: 0, promoted: 0 }))
   const yt = await collectVideos(DB, env, now).catch(() => ({ searched: false, added: 0 }))
-  return { synced, stores: (results ?? []).length, blogs, thumbs, dead, promoted, demoted, yt_searched: yt.searched, videos: yt.added }
+  return { synced, stores: (results ?? []).length, blogs, thumbs, dead, promoted, demoted: rejudged.demoted, blogs_promoted: rejudged.promoted, yt_searched: yt.searched, videos: yt.added }
 }

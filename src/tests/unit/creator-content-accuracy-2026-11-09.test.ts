@@ -15,7 +15,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { blogAutoShow, titleNamesStore, isListPost, isVendorAuthor, isGenericStoreName } from '@/shared/creator-content'
-import { pickBlogCandidates } from '@/features/creator-content/api/content-collect'
+import { pickBlogCandidates, blogSecondQuery } from '@/features/creator-content/api/content-collect'
 
 const read = (p: string) => readFileSync(p, 'utf8')
 
@@ -41,6 +41,10 @@ describe('② 남의 이야기는 자동 공개하지 않는다', () => {
     expect(isVendorAuthor('업소용가구전문,대건산업')).toBe(true)
     expect(isVendorAuthor('정직한보일러')).toBe(true)
     expect(isVendorAuthor('빵순이의 일상')).toBe(false)
+    // 2026-11-09 밤 라이브 실측 — 한우집 칸에 남아 있던 업체 글
+    for (const a of ['피스월드 스마트 언더렌지™ (인덕션 전문기업)', '대한민국 대표 프랜차이즈 기업', '현대파출 식당전문', '행사용품렌탈전문'])
+      expect(isVendorAuthor(a)).toBe(true)
+    expect(isVendorAuthor('1인가구 직장인 서울 살이')).toBe(false)
   })
   it('업종 이름 가게 — 동네 한 단어를 떼면 업종만 남는다', () => {
     for (const n of ['입주청소', '서초에어컨청소', '홍대돈까스', '송파한우정육식당', '쌀국수집', '분당셀프사진관'])
@@ -78,8 +82,8 @@ describe('③ 세 곳이 같은 판정을 쓴다', () => {
   it('쌓인 글 재판정 · 손님 응답도 blogAutoShow', () => {
     const collect = read('src/features/creator-content/api/content-collect.ts')
     expect(collect).toMatch(/confident: blogAutoShow\(/)
-    expect(collect).toMatch(/!blogAutoShow\(\{ title: r\.title, summary: r\.summary, author: r\.author_name \}, r\.store_name, r\.address\)/)
-    expect(collect).toMatch(/const demoted = await rejudgeVisibleBlogs\(DB\)/)
+    expect(collect).toMatch(/const ok = blogAutoShow\(\{ title: r\.title, summary: r\.summary, author: r\.author_name \}, r\.store_name, r\.address\)/)
+    expect(collect).toMatch(/const rejudged = await rejudgeAutoBlogs\(DB\)/)
     // 내리기만 한다(지우지 않는다) · 자동 글만
     expect(collect).toMatch(/SET status = 'candidate'[^`]*WHERE id = \? AND status = 'visible' AND source = 'auto'/)
     const routes = read('src/features/creator-content/api/content.routes.ts')
@@ -92,5 +96,30 @@ describe('④ 사람이 고른 글은 사람 것', () => {
     const routes = read('src/features/creator-content/api/content.routes.ts')
     expect(routes).toMatch(/source = CASE WHEN \? = 'visible' AND source = 'auto' THEN \? ELSE source END/)
     expect(routes).toMatch(/status, admin \? 'admin' : 'owner', id, s\.store_key/)
+  })
+})
+
+describe('⑤ 2026-11-09 저녁 — 빈 가게 줄이기 · 사진 우선순위', () => {
+  it('구·동 없는 도로명 주소는 시로 동네를 본다(제주시 → "제주")', () => {
+    const addr = '제주특별자치도 제주시 연북로 168'
+    expect(blogAutoShow({ title: '제주도 김명자굴국밥 제주본점 후기', summary: '공항 근처', author: '여행자' }, '김명자굴국밥 제주본점', addr)).toBe(true)
+    // 시가 안 맞으면 여전히 아니다
+    expect(blogAutoShow({ title: '김명자굴국밥 제주본점 후기', summary: '서울 마포', author: '여행자' }, '김명자굴국밥 제주본점', '경기 김포시 풍무로 1')).toBe(false)
+  })
+  it('재판정은 양방향 — 공개 탈락은 후보로, 후보 통과는 공개로(자동 글만)', () => {
+    const collect = read('src/features/creator-content/api/content-collect.ts')
+    expect(collect).toMatch(/if \(r\.status === 'visible' && !ok\) down\.push\(r\.id\)/)
+    expect(collect).toMatch(/else if \(r\.status === 'candidate' && ok\) up\.push\(r\.id\)/)
+    expect(collect).toMatch(/SET status = 'visible'[^`]*WHERE id = \? AND status = 'candidate' AND source = 'auto'/)
+  })
+  it('글이 없는 가게는 두 번째 검색을 이름만으로', () => {
+    expect(blogSecondQuery('벌툰 일산역점')).toBe('벌툰 일산역')
+    expect(blogSecondQuery('꾸꾸데쎄르 (연산점)')).toBe('꾸꾸데쎄르')
+    const collect = read('src/features/creator-content/api/content-collect.ts')
+    expect(collect).toMatch(/const second = known\.size \? q : blogSecondQuery\(s\.store_name\)/)
+  })
+  it('사진은 사진 있는 글이 3개 안 되는 가게부터', () => {
+    const collect = read('src/features/creator-content/api/content-collect.ts')
+    expect(collect).toMatch(/t\.status = 'visible' AND t\.thumb_url <> ''\) >= 3/)
   })
 })
