@@ -53,8 +53,19 @@ export const ROOTS = [
   'src/worker/utils/map-first-screen.ts', // 🗺️ 2026-11-09 지도 껍데기
 ]
 
-/** 원본 바이트 상한 — 넘으면 빌드 실패(첫 화면 CSS 가 앱 CSS 를 닮아 가면 이 일의 의미가 없다). */
-export const CRITICAL_CSS_MAX_BYTES = 70_000
+/**
+ * 🧱 2026-11-09 대표 승인("가장 이상적으로") — 상한을 **표면별**로 옮겼다.
+ *   종전엔 전체판(모든 첫 화면 폐쇄의 합) 하나에 70,000B 상한이었다. 그런데 손님 HTML 에 실제로 실리는 것은
+ *   **표면 하나의 CSS**(`CRITICAL_CSS_SURFACES[k]`, 20~38KB)이고 전체판은 표면 항목이 빠졌을 때의 폴백뿐이다.
+ *   첫 화면이 14개가 되자 전체판이 69,8xxB 로 상한에 닿아 **새 첫 화면(PC 상세·PC 교환권…)을 못 더하는** 상황이 됐는데,
+ *   그 상한이 지키려던 것("한 화면에 너무 많은 CSS 를 인라인하지 않는다")은 표면 상한이 더 정확히 지킨다.
+ *   - `CRITICAL_SURFACE_MAX_BYTES` 40,000: 표면 하나(=손님이 실제로 받는 인라인 CSS)의 하드 상한. 가장 큰 표면(지도 38,0xx)이 기준.
+ *   - `CRITICAL_CSS_MAX_BYTES` 160,000: 전체판의 **정신 건강 상한**(어떤 모듈이 앱 CSS 를 통째로 끌고 오는 사고만 잡는다).
+ *   가드 `critical-css-2026-10-14.test.ts` 가 두 값과 모든 표면 크기를 대조한다. 기록: docs/locks/loading/2026-11-09-critical-css-cap-per-surface.md
+ */
+export const CRITICAL_CSS_MAX_BYTES = 160_000
+/** 표면 하나(손님 HTML 에 실제로 인라인되는 CSS)의 원본 바이트 상한 — 넘으면 빌드 실패. */
+export const CRITICAL_SURFACE_MAX_BYTES = 40_000
 
 /** 대시보드 전용 껍데기 클래스 — 첫 화면엔 없다. 그 클래스만 겨냥한 규칙은 뺀다. */
 const DASHBOARD_ONLY = /\.(?:admin|seller|agency)-light-theme\b/
@@ -243,6 +254,7 @@ if (isMain) {
   for (const [k, roots] of Object.entries(SURFACE_ROOTS)) {
     const v = await generateSurfaceCriticalCss(css, roots)
     if (!v || v.length >= css.length) throw new Error(`[critical-css] ${k} 전용 CSS 가 비었거나 전체보다 크다`)
+    if (v.length > CRITICAL_SURFACE_MAX_BYTES) throw new Error(`[critical-css] ${k} 표면 CSS ${v.length}B > 표면 상한 ${CRITICAL_SURFACE_MAX_BYTES}B — 그 첫 화면 모듈이 무관한 클래스를 끌고 왔는지 확인`)
     surfaces[k] = v
   }
   const home = surfaces.home

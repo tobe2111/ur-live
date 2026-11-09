@@ -21,7 +21,7 @@ import {
 import { PASS_HEAD } from '@/shared/pass-head'
 import { STRIP_CLS } from '@/shared/home-strip-banners'
 // @ts-expect-error — .mjs 생성기(타입 없음)
-import { ROOTS, importClosure, loaderBlock, positivePart, CRITICAL_CSS_MAX_BYTES, tokensCssOf } from '../../../scripts/generate-critical-css.mjs'
+import { ROOTS, importClosure, loaderBlock, positivePart, CRITICAL_CSS_MAX_BYTES, CRITICAL_SURFACE_MAX_BYTES, tokensCssOf } from '../../../scripts/generate-critical-css.mjs'
 
 /** Tailwind 클래스 → CSS 셀렉터 글자(이스케이프). */
 function sel(cls: string) {
@@ -241,6 +241,13 @@ describe('🧩 2026-11-08 표면별 첫 화면 CSS', () => {
     const gen = readFileSync('scripts/generate-critical-css.mjs', 'utf8')
     expect(gen).toContain('export const CRITICAL_CSS_TOKENS: string = ${JSON.stringify(tokens)}')
     expect(readFileSync('src/worker/generated/critical-css.ts', 'utf8')).toMatch(/export const CRITICAL_CSS_TOKENS: string = ''/)
+  })
+  it('🧱 상한은 표면별 40,000B(손님이 실제로 받는 인라인 CSS) · 전체판은 정신 건강 상한 160,000B (2026-11-09 대표 승인)', () => {
+    expect(CRITICAL_SURFACE_MAX_BYTES).toBe(40_000)
+    expect(CRITICAL_CSS_MAX_BYTES).toBe(160_000)
+    for (const [k, n] of Object.entries(SURF.o)) expect(n as number, `${k} 표면 CSS 가 표면 상한을 넘는다`).toBeLessThanOrEqual(CRITICAL_SURFACE_MAX_BYTES)
+    // 생성기 자신이 표면 상한을 강제한다(시험만 보는 상한은 빌드를 못 막는다)
+    expect(readFileSync('scripts/generate-critical-css.mjs', 'utf8')).toMatch(/if \(v\.length > CRITICAL_SURFACE_MAX_BYTES\) throw/)
   })
   it('실행 중 붙는 클래스(다크·키보드)를 모은다 — 그 조건의 규칙이 첫 화면에서 빠지지 않게', () => {
     expect(SURF.rt).toEqual(expect.arrayContaining(['dark', 'keyboard-open']))

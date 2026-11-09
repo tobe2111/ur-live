@@ -38,18 +38,10 @@
  *    마운트 때 그 줄이 한 줄 → 두 줄로 **되감길 수 있고**, 그러면 바로 아래 가격이 밀린다.
  *    ⇒ 경계는 "서버가 확실히 아는 마지막 것" = h1 이다. 서버가 **안 그린** 것이 나중에 채워지는
  *    건 밀림이 아니다 — 위는 한 픽셀도 안 움직인다.
- * ❌ PC(lg+)는 히어로·제목을 안 그린다. **2026-09-16 에 다시 재고해서 안 하기로 했다** — 이유가 세개다:
- *    1. PC 첫 화면은 세로 스택이 아니라 **2열 그리드**(`lg:grid-cols-[minmax(0,1fr)_360px]`)다.
- *       반쪽만 그리면 마운트 때 오른쪽 360px 구매박스가 끼어들면서 **그린 쪽이 가로로 줄어든다.**
- *       세로 밀림을 없애려다 가로 밀림을 만드는 셋이다.
- *    2. 그 그리드 **밖**에 있는 유일한 블록(`DetailTitleHeader`)에는 `StarRating` 과 lucide `MapPin`
- *       **SVG** 가 들어 있다. 아이콘 path 데이터를 워커 문자열로 손으로 옮기는 것은 이 레포가
- *       반복해 당한 **두 벌이 갈리는** 클래스이고, path 동일성은 싼 기계 검사가 없다.
- *    3. 애초에 이 수리의 전제(“데이터는 왔는데 V8 파싱 1.2초”)가 **폰 CPU 현상**이다. PC 는 같은
- *       번들을 수 배 빨리 파싱한다. ⚠️ 단 PC 상세 비중은 **실측하지 못했다** — CF 토큰은 읽기
- *       4종만 가져 Analytics Read 가 없고(CLAUDE.md 가 추가 스코프 요청을 금지), 앱 자체 계측에도
- *       기기 차원이 없다. 높은 것으로 드러나면 1·2 를 푸는 별건으로 다시 올릴 것.
- *    ⇒ PC 는 빵부스러기 + 로더(=종전과 같음). 히어로 preload 는 PC/폰을 이미 가른다(`isMobileUserAgent`).
+ * ✅ PC(lg+)도 그린다 (2026-11-09 대표 승인 — 2026-09-16 의 ❌ 를 대체. 그때 이유 셋과 답은 `shared/detail-pc-first-screen.ts` 머리말):
+ *    그리드 통째(좌 열: 갤러리 PC 블록 + 제목 헤더 · 우 열: 빈 `<aside>` 360px) → 마운트 때 가로 안 줄어듦. 핀 SVG 는 빈 칸.
+ *    호출부가 UA 로 가른다(`isMobile`) — 폰 본문엔 PC 블록을, PC 본문엔 폰 슬라이드를 **넣지 않는다**(숨긴 `<img>` 도 받아지므로
+ *    둘 다 넣으면 사진을 두 벌 받는다). 라이브 실측(1440px·4G·CPU 4배): PC 상세 첫 글자 0.76s · LCP 2.47s(그림이 앱 뒤).
  * ❌ `/vouchers/:id`(교환권)는 **같은 DETAIL 슬롯이지만 다른 페이지**(`VoucherDetailPage`)다.
  *    호출부가 pathname 으로 가른다 — 여기서 그리면 없는 레이아웃을 그리는 셈이다.
  *
@@ -73,6 +65,8 @@ import { getVoucherShortLabel, normalizeCategory } from '../../shared/constants/
 import { PASS_HEAD, PASS_PAGE_BG, passSubLine } from '../../shared/pass-head'
 import { buildDetailNoscript } from './crawler-noscript'
 import { HOME_FS_CLASS, starFillPct } from './home-first-screen'
+import { DETAIL_PC_FS, DETAIL_PC_THUMBS, DETAIL_PC_SCRIM_TOP, DETAIL_PC_SCRIM_BOTTOM, DETAIL_PC_COPY } from '../../shared/detail-pc-first-screen'
+import { detailCropUrl, DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, DETAIL_THUMB_WIDTH, DETAIL_PC_THUMB_RATIO } from '../../shared/detail-hero-image'
 import { derivePricing } from '../../pages/group-buy/pricing'
 import { formatNumber } from '../../utils/format'
 
@@ -241,13 +235,22 @@ interface DetailSeed {
  * @param search 요청의 쿼리(`url.search`). `?ref=` 가 붙으면 추천 진입 배너가 제목 **위**에 끼므로
  *               제목을 접고 히어로까지만 그린다(09-15 동작 = 무회귀). 안 넘기면 제목까지.
  */
+/** 사진 칸 배경(폰 썸네일·PC 갤러리 공용) — 자리색은 `DETAIL_THUMB_PLACEHOLDER`(라이트에서 검은 상자가 되지 않게, React `bg()` 와 같은 값). */
+function thumbBgStyle(url: string): string {
+  return `background-color:${DETAIL_THUMB_PLACEHOLDER};background-image:url(&quot;${escAttr(url)}&quot;);background-size:cover;background-position:center`
+}
+
+/** 첫 화면 래퍼 열기 — 폰·PC 공용. id 는 `lib/boot-first-screen.ts` 상수와 같아야 하고(갈리면 폴백이 no-op), `.gbd` + 바탕은 페이지 루트와 같다. */
+function firstScreenOpen(): string {
+  return `<div id="ur-first-screen" class="gbd ${PASS_PAGE_BG}" style="color:var(--gbd-ink)">`
+}
+
 /** 🖼️ 모바일 썸네일 2칸 — 이용권·숙소 서버 첫 화면 공용. 3장 미만이면 ''. */
 export function mobileThumbRowHtml(images: string[]): string {
   if (!showMobileThumbs(images.length)) return ''
   return `<div class="lg:hidden ${DETAIL_MOBILE_THUMB_ROW_CLS}">` +
     images.slice(1, 1 + DETAIL_MOBILE_THUMBS).map((src) =>
-      `<div class="${DETAIL_MOBILE_THUMB_CLS}" style="aspect-ratio:${DETAIL_MOBILE_THUMB_RATIO};background-color:${DETAIL_THUMB_PLACEHOLDER};` +
-      `background-image:url(&quot;${escAttr(detailMobileThumbUrl(src))}&quot;);background-size:cover;background-position:center"></div>`,
+      `<div class="${DETAIL_MOBILE_THUMB_CLS}" style="aspect-ratio:${DETAIL_MOBILE_THUMB_RATIO};${thumbBgStyle(detailMobileThumbUrl(src))}"></div>`,
     ).join('') +
   '</div>'
 }
@@ -282,13 +285,14 @@ export function restSlidesHtml(images: string[], alt: string, slideCls = ''): st
   }).join('')
 }
 
-export function buildDetailFirstScreen(ssrPayload: string, loaderHtml: string, search = ''): string {
+export function buildDetailFirstScreen(ssrPayload: string, loaderHtml: string, search = '', isMobile = true): string {
   try {
     const d = (JSON.parse(ssrPayload) as { data?: DetailSeed })?.data
     if (!d || !d.name) return ''
     const images = detailGalleryImages(d)
     const main = images[0] || ''
     if (!main) return '' // 사진이 없으면 그릴 것도 없다(카테고리 아이콘 폴백은 React 가 그린다).
+    if (!isMobile) return pcFirstScreen(d, images, loaderHtml, search) // 🖥️ 2026-11-09 PC 는 다른 레이아웃(2열) — 아래는 폰 본문
     const heroUrl = detailHeroMobileUrl(main, DETAIL_HERO_MOBILE_WIDTH)
     if (!heroUrl || heroUrl.startsWith('data:')) return ''
 
@@ -329,11 +333,79 @@ export function buildDetailFirstScreen(ssrPayload: string, loaderHtml: string, s
     //   사람에게는 렌더되지 않고(JS 가 돌면 `<noscript>` 는 무시된다) 마운트 때 함께 사라진다
     //   → 밀림 0 · 추가 요청 0(시드에 이미 온 값만 쓴다). 규율: 지어낸 문구 금지 · 제목 반복 금지.
     return (
-      `<div id="ur-first-screen" class="gbd ${PASS_PAGE_BG}" style="color:var(--gbd-ink)">` +
+      firstScreenOpen() +
         `${crumbHtml(d.category)}${hero}${title}${buildDetailNoscript(d)}` +
       '</div>' + shortLoader
     )
   } catch {
     return '' // seed 파싱 실패 — 로더로 폴백(치명 아님)
   }
+}
+
+/** `?ref=` 가 붙으면 추천 진입 배너가 제목 위에 끼므로 제목을 접는다(폰과 같은 규칙). */
+function hasRefParam(search: string): boolean {
+  try { return !!new URLSearchParams(search.startsWith('?') ? search.slice(1) : search).get('ref') } catch { return true }
+}
+
+/** 🖥️ PC 갤러리 블록 — `DetailGallery` 의 `hidden lg:block` 부분과 같은 구조·같은 URL(`detailCropUrl`). 배경이라 `<img>` 는 없다(React 도 없다). */
+function pcGalleryHtml(images: string[]): string {
+  const multi = images.length > 1
+  const main = images[0]
+  const heroUrl = detailCropUrl(main, DETAIL_HERO_DESKTOP_WIDTH, multi ? DETAIL_PC_HERO_RATIO_MULTI : DETAIL_PC_HERO_RATIO_SINGLE)
+  const bgStyle = thumbBgStyle
+  const rest = images.length - 1 - DETAIL_PC_THUMBS
+  const thumbs = multi
+    ? `<div class="${DETAIL_PC_FS.pcThumbCol}">` + images.slice(1, 1 + DETAIL_PC_THUMBS).map((src, i) => {
+        const isLast = i === DETAIL_PC_THUMBS - 1 && rest > 0
+        return `<div class="${DETAIL_PC_FS.pcThumb}" style="${bgStyle(detailCropUrl(src, DETAIL_THUMB_WIDTH, DETAIL_PC_THUMB_RATIO))}">` +
+          (isLast ? `<span class="${DETAIL_PC_FS.pcRest}"><span class="${DETAIL_PC_FS.pcRestN}">+${rest}</span>${escText(DETAIL_PC_COPY.allPhotos(images.length))}</span>` : '') +
+          '</div>'
+      }).join('') + '</div>'
+    : ''
+  return `<div class="${DETAIL_PC_FS.heroBox}" style="background:var(--gbd-card)"><div class="${DETAIL_PC_FS.pcWrap}">` +
+    `<div class="${multi ? DETAIL_PC_FS.pcGridMulti : ''}">` +
+      `<div class="${DETAIL_PC_FS.pcMain}" style="aspect-ratio:${multi ? '4 / 3' : '16 / 9'};${bgStyle(heroUrl)}">` +
+        `<div style="${DETAIL_PC_SCRIM_TOP}"></div><div style="${DETAIL_PC_SCRIM_BOTTOM}"></div>` +
+      '</div>' + thumbs +
+    '</div></div></div>'
+}
+
+/** 🖥️ PC 제목 헤더 — `DetailTitleHeader` 미러(핀 SVG 는 15px 빈 칸 · 별점은 React 와 같은 글자 ★). */
+function pcTitleHtml(d: DetailSeed): string {
+  const rv = Number(d.avg_rating) || 0
+  const rc = Number(d.review_count) || 0
+  const hasRating = rv > 0
+  const store = d.restaurant_name
+    ? `<div class="${DETAIL_PC_FS.store}">${escText(d.restaurant_name)}${escText(DETAIL_PC_COPY.registeredStore)}` +
+      (d.onnuri_merchant ? `<span class="${DETAIL_PC_FS.onnuri}">${DETAIL_PC_COPY.onnuri}</span>` : '') + '</div>'
+    : ''
+  const rating = hasRating
+    ? `<span class="${DETAIL_PC_FS.metaGroup}">` +
+      `<span class="${HOME_FS_CLASS.starWrap}" style="font-size:15px;letter-spacing:0.5px" role="img" aria-label="5점 만점에 ${rv.toFixed(1)}점">` +
+        `<span class="${HOME_FS_CLASS.starBase}" aria-hidden="true">★★★★★</span>` +
+        `<span class="${HOME_FS_CLASS.starFill}" style="width:${starFillPct(rv)}%" aria-hidden="true">★★★★★</span></span>` +
+      `<b class="${DETAIL_PC_FS.ratingB}">${rv.toFixed(1)}</b>` +
+      (rc > 0 ? `<span class="${DETAIL_PC_FS.ratingCount}">(${rc})</span>` : '') + '</span>'
+    : ''
+  const address = d.restaurant_address
+    ? `<span class="${DETAIL_PC_FS.metaGroup}">` + (hasRating ? `<span class="${DETAIL_PC_FS.sep}">|</span>` : '') +
+      `<span class="block shrink-0 ${DETAIL_PC_FS.pin}" aria-hidden="true"></span>${escText(d.restaurant_address)}</span>`
+    : ''
+  const phone = d.restaurant_phone ? `<a href="tel:${escAttr(d.restaurant_phone)}" class="${DETAIL_PC_FS.phone}">${escText(d.restaurant_phone)}</a>` : ''
+  return `<header class="${DETAIL_PC_FS.header}">${store}<h1 class="${DETAIL_PC_FS.h1}">${escText(d.name || '')}</h1>` +
+    `<div class="${DETAIL_PC_FS.meta}">${rating}${address}${phone}</div></header>`
+}
+
+/** 🖥️ PC 첫 화면 본문 — [빵부스러기] + 2열 그리드[좌: 갤러리 + 제목 헤더 · 우: 빈 aside] + noscript, 아래 로더. */
+function pcFirstScreen(d: DetailSeed, images: string[], loaderHtml: string, search: string): string {
+  const title = hasRefParam(search) ? '' : pcTitleHtml(d)
+  const loaderBelow = loaderHtml.replace('min-height:100dvh', 'min-height:34dvh') // 폰과 같은 높이(사진 아래 로더)
+  return (
+    firstScreenOpen() +
+      crumbHtml(d.category) +
+      `<div class="${DETAIL_PC_FS.grid}"><div class="${DETAIL_PC_FS.leftCol}">${pcGalleryHtml(images)}${title}</div>` +
+      `<aside class="${DETAIL_PC_FS.aside}"></aside></div>` +
+      buildDetailNoscript(d) +
+    '</div>' + loaderBelow
+  )
 }

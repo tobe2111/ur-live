@@ -8,6 +8,22 @@ const GEN = 'scripts/generate-critical-css.mjs'
 
 export default [
   {
+    name: '🧱 표면 상한을 생성기가 강제하지 않는다(시험만 본다)',
+    file: GEN,
+    find: '    if (v.length > CRITICAL_SURFACE_MAX_BYTES) throw new Error(`[critical-css] ${k} 표면 CSS ${v.length}B > 표면 상한 ${CRITICAL_SURFACE_MAX_BYTES}B — 그 첫 화면 모듈이 무관한 클래스를 끌고 왔는지 확인`)\n',
+    replace: '',
+    test: TEST,
+    why: '빌드가 40KB 넘는 표면 CSS 를 그대로 손님 HTML 에 인라인한다(첫 왕복이 통째로 CSS).',
+  },
+  {
+    name: '🧱 표면 상한을 조용히 올린다',
+    file: GEN,
+    find: 'export const CRITICAL_SURFACE_MAX_BYTES = 40_000',
+    replace: 'export const CRITICAL_SURFACE_MAX_BYTES = 60_000',
+    test: TEST,
+    why: '상한은 사람이 근거와 함께 올리는 결정이다(2026-11-09 대표 승인으로 표면별 40KB).',
+  },
+  {
     name: '🎨 앱 CSS 링크를 media=print 로 바꾸지 않는다',
     file: MOD,
     find: "el.setAttribute('media', 'print')",
