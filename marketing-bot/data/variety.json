@@ -192,5 +192,10 @@
     "hook": "scene",
     "media_set": "owner-3-changes",
     "date_kst": "2026-11-08"
+  },
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "date_kst": "2026-11-09"
   }
 ]
