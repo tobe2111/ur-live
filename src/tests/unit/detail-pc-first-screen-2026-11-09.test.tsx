@@ -18,6 +18,7 @@ import { buildDetailFirstScreen } from '@/worker/utils/detail-ssr-body'
 import { DETAIL_PC_FS, DETAIL_PC_THUMBS, DETAIL_PC_COPY } from '@/shared/detail-pc-first-screen'
 import { detailCropUrl, DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, DETAIL_THUMB_WIDTH, DETAIL_PC_THUMB_RATIO } from '@/shared/detail-hero-image'
 import DetailTitleHeader from '@/pages/group-buy/DetailTitleHeader'
+import { PC_HOME_FS } from '@/shared/pc-home-first-screen'
 
 const src = (f: string) => stripComments(readFileSync(f, 'utf8'))
 const page = src('src/pages/GroupBuyDetailPage.tsx')
@@ -62,6 +63,11 @@ describe('② PC 본문 구조', () => {
     expect(grid.children[1].tagName).toBe('ASIDE')
     expect(grid.children[1].getAttribute('class')).toBe(DETAIL_PC_FS.aside)
     expect(root.querySelector('nav'), '빵부스러기').toBeTruthy()
+    // 🧢 상단 네비 높이 예약이 **맨 앞**(React 가 #root 맨 위에 sticky 네비를 세운다 — 없으면 본문이 113px 내려간다)
+    const first = root.firstElementChild!
+    expect(first.getAttribute('class')).toBe(PC_HOME_FS.topnav)
+    expect(Array.from(first.children).map((e) => e.getAttribute('class'))).toEqual([PC_HOME_FS.topnavRow1, PC_HOME_FS.topnavRow2])
+    expect(buildDetailFirstScreen(seed(), LOADER), '폰 본문엔 PC 네비 예약이 없다').not.toContain(PC_HOME_FS.topnavRow1)
     expect(h).toContain('min-height:34dvh')
     expect(h.indexOf('</div>' + LOADER.replace('100dvh', '34dvh'))).toBeGreaterThan(0)
   })

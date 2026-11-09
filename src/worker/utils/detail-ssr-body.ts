@@ -66,6 +66,7 @@ import { PASS_HEAD, PASS_PAGE_BG, passSubLine } from '../../shared/pass-head'
 import { buildDetailNoscript } from './crawler-noscript'
 import { HOME_FS_CLASS, starFillPct } from './home-first-screen'
 import { DETAIL_PC_FS, DETAIL_PC_THUMBS, DETAIL_PC_SCRIM_TOP, DETAIL_PC_SCRIM_BOTTOM, DETAIL_PC_COPY } from '../../shared/detail-pc-first-screen'
+import { PC_HOME_FS } from '../../shared/pc-home-first-screen' // 🖥️ PC 상단 네비 높이 예약(홈과 같은 상수)
 import { detailCropUrl, DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, DETAIL_THUMB_WIDTH, DETAIL_PC_THUMB_RATIO } from '../../shared/detail-hero-image'
 import { derivePricing } from '../../pages/group-buy/pricing'
 import { formatNumber } from '../../utils/format'
@@ -400,9 +401,12 @@ function pcTitleHtml(d: DetailSeed): string {
 function pcFirstScreen(d: DetailSeed, images: string[], loaderHtml: string, search: string): string {
   const title = hasRefParam(search) ? '' : pcTitleHtml(d)
   const loaderBelow = loaderHtml.replace('min-height:100dvh', 'min-height:34dvh') // 폰과 같은 높이(사진 아래 로더)
+  // 🧢 PC 상단 네비(`DesktopTopNav`, sticky — 흐름 안)는 React 가 `#root` 맨 위에 세운다 → 높이(68+1+44)를 미리 비워 두지 않으면
+  //    마운트 때 본문 전체가 그만큼 내려간다(CLS). 홈 PC 첫 화면과 같은 상수(`PC_HOME_FS.topnav*`). 프로모 바는 라이브 OFF(홈과 같은 교환).
+  const topnav = `<div class="${PC_HOME_FS.topnav}"><div class="${PC_HOME_FS.topnavRow1}"></div><div class="${PC_HOME_FS.topnavRow2}"></div></div>`
   return (
     firstScreenOpen() +
-      crumbHtml(d.category) +
+      topnav + crumbHtml(d.category) +
       `<div class="${DETAIL_PC_FS.grid}"><div class="${DETAIL_PC_FS.leftCol}">${pcGalleryHtml(images)}${title}</div>` +
       `<aside class="${DETAIL_PC_FS.aside}"></aside></div>` +
       buildDetailNoscript(d) +
