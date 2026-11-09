@@ -21,6 +21,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAuth } from '@/worker/middleware/auth'
+import { safeHttpHref } from '../../../utils/safe-external-url'
 
 const prospectsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -102,7 +103,7 @@ prospectsRoutes.post('/', requireAuth(), async (c) => {
     email,
     body.business_address?.trim().slice(0, 200) || null,
     body.notes?.trim().slice(0, 500) || null,
-    body.proof_image_url?.trim() || null,
+    safeHttpHref(body.proof_image_url) || null, // 🔐 2026-11-09 http(s)·내부 경로만 — javascript: 저장 차단
     expiresAt,
   ).run()
 

@@ -152,7 +152,7 @@ app.post('/notices', rateLimit({ action: 'mall-operator-notice', max: 30, window
   const title = clean(body.title, 120)
   if (!title) return c.json({ success: false, error: '제목을 입력해주세요' }, 400)
   const link = clean(body.link_url, 500)
-  if (link && !/^(https?:\/\/|\/)/i.test(link)) return c.json({ success: false, error: '링크는 http(s):// 또는 / 로 시작해야 합니다' }, 400)
+  if (link && !/^(https?:\/\/|\/(?![\/\\]))/i.test(link)) return c.json({ success: false, error: '링크는 http(s):// 또는 / 로 시작해야 합니다' }, 400)
   const r = await c.env.DB.prepare(
     `INSERT INTO mall_notices (mall_id, type, title, body, link_url, active, starts_at, ends_at)
      VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,

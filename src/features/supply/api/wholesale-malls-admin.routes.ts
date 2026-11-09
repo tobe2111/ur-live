@@ -425,7 +425,7 @@ app.post('/:id/notices', requireSuperAdmin(), rateLimit({ action: 'admin-mall-no
     const title = cleanText(body.title, 120)
     if (!title) return c.json({ success: false, error: '제목을 입력해주세요' }, 400)
     const link = cleanText(body.link_url, 500)
-    if (link && !/^(https?:\/\/|\/)/i.test(link)) return c.json({ success: false, error: '링크는 http(s):// 또는 / 로 시작해야 합니다' }, 400)
+    if (link && !/^(https?:\/\/|\/(?![\/\\]))/i.test(link)) return c.json({ success: false, error: '링크는 http(s):// 또는 / 로 시작해야 합니다' }, 400)
     await ensureMallSchema(DB)
     const r = await DB.prepare(
       `INSERT INTO mall_notices (mall_id, type, title, body, link_url, active, starts_at, ends_at)
@@ -451,7 +451,7 @@ app.patch('/:id/notices/:nid', requireSuperAdmin(), rateLimit({ action: 'admin-m
     if ('body' in body) { sets.push('body = ?'); binds.push(cleanText(body.body, 2000)) }
     if ('link_url' in body) {
       const link = cleanText(body.link_url, 500)
-      if (link && !/^(https?:\/\/|\/)/i.test(link)) return c.json({ success: false, error: '링크는 http(s):// 또는 / 로 시작해야 합니다' }, 400)
+      if (link && !/^(https?:\/\/|\/(?![\/\\]))/i.test(link)) return c.json({ success: false, error: '링크는 http(s):// 또는 / 로 시작해야 합니다' }, 400)
       sets.push('link_url = ?'); binds.push(link)
     }
     if ('active' in body) { sets.push('active = ?'); binds.push(Number(body.active) === 0 ? 0 : 1) }

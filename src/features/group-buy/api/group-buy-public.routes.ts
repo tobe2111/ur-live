@@ -656,7 +656,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
   //   서버가 **저장된 주소로** 지오코딩(geocodeProductNow, only-if-NULL)해 products.restaurant_lat/lng 영구 저장.
   //   → 다음 로드부터 피드가 좌표 반환(클라 지오코딩 0 = 429 스케일 문제 근본 해소). 신규 사업자 상품은 이미
   //   등록 시 지오코딩되므로 이건 기존/누락분 자가치유. 좌표는 클라 신뢰 X(서버가 주소로 계산) → 위조 불가.
-  router.post('/products/:id/ensure-geocode', async (c) => {
+  router.post('/products/:id/ensure-geocode', rateLimit({ action: 'ensure_geocode', max: 30, windowSec: 60 }), async (c) => { // 🔐 2026-11-09 로그인 없는 외부 API 호출 — IP 당 분 30회
     const id = Number(c.req.param('id'))
     if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'bad id' }, 400)
     try {

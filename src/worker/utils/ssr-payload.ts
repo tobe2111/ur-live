@@ -65,9 +65,13 @@ export function timeoutFor(slot: string): number {
   return 1500;
 }
 
-/** `</script` 로 페이로드가 스크립트 태그를 조기 종료하는 것을 막는다(XSS). */
-function escapeForScript(body: string): string {
-  return body.replace(/<\/script/gi, '<\\/script');
+/**
+ * 페이로드가 스크립트 태그를 조기 종료하거나(`</script`) HTML 파서를 이중 이스케이프 상태로 몰아(`<!--<script`)
+ * 뒤 문서를 삼키는 것을 막는다. 🔐 2026-11-09 [UNLOCK_LOADING]: JSON 의 `<` 는 문자열 안에만 나오므로 전부 `\u003c` 로
+ * 바꾼다 — 파싱 결과는 같고, 상품명·유어샵 소개에 `<!--<script>` 가 들어가도 첫 화면 시드가 깨지지 않는다.
+ */
+export function escapeForScript(body: string): string {
+  return body.replace(/</g, '\\u003c');
 }
 
 /**
