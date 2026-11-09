@@ -83,7 +83,7 @@ export function claudeBody(system, user, maxTokens) {
 export async function claude(system, user, maxTokens = 800) {
   if (DRY || !process.env.ANTHROPIC_API_KEY) {
     if (!DRY) throw new Error('ANTHROPIC_API_KEY missing');
-    return `[DRY 샘플 응답] ${user.slice(0, 60)}`;
+    return `[DRY 샘플 응답] ${typeof user === 'string' ? user.slice(0, 60) : '(이미지)'}`;
   }
   // 빈 본문 / 거절로 링크만 게시되는 사고 방지: 1회 재시도 후 실패(일시적 빈 응답이 회차 전체를 죽이지 않게).
   let last = '';
@@ -234,7 +234,9 @@ export function publicMedia(media) {
 }
 // Instagram 게시: media = { images: [url...] } (1장=단일, 2~10장=캐러셀) 또는 { video_url } (Reels).
 // 컨테이너가 FINISHED 될 때까지 폴링 후 publish. 반환: { id, media_type }
-export async function igPublish(media, caption) {
+// opts.collaborators: 공동 작성자로 초대할 인스타 아이디(최대 3, 매장이 수락하면 양쪽 계정에 뜬다).
+export async function igPublish(media, caption, { collaborators = [] } = {}) {
+  const collab = collaborators.length ? { collaborators: JSON.stringify(collaborators.slice(0, 3)) } : {};
   media = publicMedia(typeof media === 'string' ? { images: [media] } : media);
   const wait = async (id) => {
     if (DRY) return;
@@ -249,13 +251,13 @@ export async function igPublish(media, caption) {
   let id, media_type;
   if (media.video_url) {
     media_type = 'REELS';
-    id = (await insta('POST', `${IG_USER_ID}/media`, { media_type, video_url: media.video_url, caption, share_to_feed: 'true', ...(media.cover_url ? { cover_url: media.cover_url } : {}) })).id;
+    id = (await insta('POST', `${IG_USER_ID}/media`, { media_type, video_url: media.video_url, caption, share_to_feed: 'true', ...(media.cover_url ? { cover_url: media.cover_url } : {}), ...collab })).id;
   } else {
     const imgs = (media.images || []).filter(Boolean).slice(0, 10);
     if (!imgs.length) throw new Error('IG 이미지 없음');
     if (imgs.length === 1) {
       media_type = 'IMAGE';
-      id = (await insta('POST', `${IG_USER_ID}/media`, { image_url: imgs[0], caption })).id;
+      id = (await insta('POST', `${IG_USER_ID}/media`, { image_url: imgs[0], caption, ...collab })).id;
     } else {
       media_type = 'CAROUSEL';
       const children = [];
@@ -264,7 +266,7 @@ export async function igPublish(media, caption) {
         await wait(c.id);
         children.push(c.id);
       }
-      id = (await insta('POST', `${IG_USER_ID}/media`, { media_type, children: children.join(','), caption })).id;
+      id = (await insta('POST', `${IG_USER_ID}/media`, { media_type, children: children.join(','), caption, ...collab })).id;
     }
   }
   await wait(id);
