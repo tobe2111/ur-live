@@ -14,7 +14,7 @@
  */
 
 import type { Hono } from 'hono'
-import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
@@ -749,7 +749,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
   })
 
   // ── GET /my — 내 voucher 목록 (auth) ──
-  router.get('/my', requireAuth(), async (c) => {
+  router.get('/my', requireUser(), async (c) => {
     const user = getCurrentUser(c)
     if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
 
@@ -1016,7 +1016,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
   })
 
   // ── POST /vouchers/:code/cancel-redeem — 60초 내 실수 취소 (used → unused) ──
-  router.post('/vouchers/:code/cancel-redeem', requireAuth(), async (c) => {
+  router.post('/vouchers/:code/cancel-redeem', requireUser(), async (c) => {
     const { DB } = c.env
     const user = getCurrentUser(c)
     if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)

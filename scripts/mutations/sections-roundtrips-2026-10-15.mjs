@@ -121,8 +121,8 @@ export default [
   {
     name: '🌏 3단계 — 내 이용권(로그인)까지 사본으로',
     file: 'src/features/group-buy/api/group-buy-public.routes.ts',
-    find: "  router.get('/my', requireAuth(), async (c) => {\n",
-    replace: "  router.get('/my', requireAuth(), async (c) => {\n    void publicReadDb(c.env.DB)\n",
+    find: "  router.get('/my', requireUser(), async (c) => {\n",
+    replace: "  router.get('/my', requireUser(), async (c) => {\n    void publicReadDb(c.env.DB)\n",
     test: T,
     why: '방금 산 이용권이 지갑에 몇 초 안 보일 수 있다 — 로그인 경로는 원본.',
   },

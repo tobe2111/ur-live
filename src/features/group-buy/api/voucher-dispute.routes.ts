@@ -136,6 +136,8 @@ sellerApp.post('/:id/respond', async (c) => {
     const DB = c.env.DB
     const user = getCurrentUser(c) as Vars['user']
     if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    // 🔐 2026-11-09: 손님 응답 — v.user_id 와 비교하므로 소비자 토큰만(셀러 토큰의 id 는 users.id 가 아니다).
+    if (user.type !== 'user') return c.json({ success: false, error: '손님 계정으로 응답해 주세요' }, 403)
     const id = parseInt(c.req.param('id'), 10)
     if (!Number.isFinite(id)) return c.json({ success: false, error: 'bad id' }, 400)
     const body = await c.req.json<{ action?: 'contest' | 'concede' }>().catch(() => ({} as { action?: string }))

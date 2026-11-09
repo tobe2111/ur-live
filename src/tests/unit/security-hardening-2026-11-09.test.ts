@@ -97,3 +97,87 @@ describe('④ 이미지 변환 프록시는 래스터 이미지만 내보내고,
     expect(code).toMatch(/ct\.includes\('text\/html'\) && c\.res\.body && !new URL\(c\.req\.url\)\.pathname\.startsWith\('\/api\/'\)/)
   })
 })
+
+describe('⑤ 로그인 신원의 "종류"는 서명된 값으로만 정하고, 소비자 기능은 소비자 토큰만 받는다', () => {
+  const SECRET = 'test-secret-security-hardening'
+  const now = () => Math.floor(Date.now() / 1000)
+
+  it('용도 토큰(purpose)은 Bearer 로그인으로 받지 않는다', async () => {
+    const jwt = await import('@tsndr/cloudflare-worker-jwt')
+    const { Hono } = await import('hono')
+    const { requireAuth, optionalAuth, getCurrentUser } = await import('@/worker/middleware/auth')
+    const pin = await jwt.sign({ sub: '5', seller_id: 5, purpose: 'pin_verified', iat: now(), exp: now() + 600 }, SECRET)
+    const app = new Hono<{ Bindings: { JWT_SECRET: string } }>()
+    app.get('/must', requireAuth(), (c) => c.json({ id: getCurrentUser(c)?.id }))
+    app.get('/opt', optionalAuth(), (c) => c.json({ id: getCurrentUser(c)?.id ?? null }))
+    const env = { JWT_SECRET: SECRET }
+    const r1 = await app.request('/must', { headers: { Authorization: `Bearer ${pin}` } }, env)
+    expect(r1.status).toBe(401)
+    const r2 = await app.request('/opt', { headers: { Authorization: `Bearer ${pin}` } }, env)
+    expect(await r2.json()).toEqual({ id: null })
+  })
+
+  it('보통 소비자 토큰(type 없음)은 그대로 통과한다 — 반대 방향', async () => {
+    const jwt = await import('@tsndr/cloudflare-worker-jwt')
+    const { Hono } = await import('hono')
+    const { requireUser, getCurrentUser } = await import('@/worker/middleware/auth')
+    const tok = await jwt.sign({ sub: '7', email: 'a@b.c', role: 'BUYER', iat: now(), exp: now() + 600 }, SECRET)
+    const app = new Hono<{ Bindings: { JWT_SECRET: string } }>()
+    app.get('/me', requireUser(), (c) => c.json({ id: getCurrentUser(c)?.id }))
+    const r = await app.request('/me', { headers: { Authorization: `Bearer ${tok}` } }, { JWT_SECRET: SECRET })
+    expect(r.status).toBe(200)
+    expect(await r.json()).toEqual({ id: '7' })
+  })
+
+  it('소비자 전용 문은 셀러 토큰을 거부한다', async () => {
+    const jwt = await import('@tsndr/cloudflare-worker-jwt')
+    const { Hono } = await import('hono')
+    const { requireUser } = await import('@/worker/middleware/auth')
+    const tok = await jwt.sign({ sub: '3', type: 'seller', seller_id: 3, iat: now(), exp: now() + 600 }, SECRET)
+    const app = new Hono<{ Bindings: { JWT_SECRET: string; DB?: unknown } }>()
+    app.get('/me', requireUser(), (c) => c.json({ ok: true }))
+    const fakeDb = { prepare: () => ({ bind: () => ({ first: async () => null }) }) }
+    const r = await app.request('/me', { headers: { Authorization: `Bearer ${tok}` } }, { JWT_SECRET: SECRET, DB: fakeDb })
+    expect([401, 403]).toContain(r.status)
+  })
+
+  it('쿠키 이름을 바꿔도 종류가 바뀌지 않는다', async () => {
+    const jwt = await import('@tsndr/cloudflare-worker-jwt')
+    const { parseSessionCookie } = await import('@/worker/utils/session')
+    const userTok = await jwt.sign({ sub: '9', type: 'user', iat: now(), exp: now() + 600 }, SECRET)
+    expect(await parseSessionCookie(`ur_admin_session=${userTok}`, SECRET)).toBeNull()
+    expect(await parseSessionCookie(`ur_seller_session=${userTok}`, SECRET)).toBeNull()
+    const ok = await parseSessionCookie(`ur_session=${userTok}`, SECRET)
+    expect(ok?.type).toBe('user')
+    expect(ok?.role).toBe('user')
+    const pin = await jwt.sign({ sub: '5', purpose: 'pin_verified', iat: now(), exp: now() + 600 }, SECRET)
+    expect(await parseSessionCookie(`ur_session=${pin}`, SECRET)).toBeNull()
+  })
+
+  it('돈·개인정보·삭제를 다루는 소비자 파일은 requireAuth() 가 아니라 requireUser() 를 쓴다', () => {
+    for (const f of [
+      'src/features/points/api/points.routes.ts',
+      'src/features/group-buy/api/voucher-gift.routes.ts',
+      'src/features/account/api/account.routes.ts',
+      'src/worker/routes/users.routes.ts',
+      'src/features/shipping/api/shipping-address.routes.ts',
+      'src/features/mall/api/mall-admin.routes.ts',
+      'src/features/appointments/api/appointments.routes.ts',
+    ]) {
+      const code = readCode(f)
+      expect(code, f).not.toMatch(/requireAuth\(\)/)
+      expect(code, f).toMatch(/requireUser\(\)/)
+    }
+    expect(readCode('src/worker/routes/curator.routes.ts')).not.toMatch(/curatorRoutes\.\w+\('\/me\/[^']*',[^\n]*requireAuth\(\)/)
+    expect(readCode('src/features/group-buy/api/group-buy-public.routes.ts')).toMatch(/router\.get\('\/my', requireUser\(\)/)
+    expect(readCode('src/features/group-buy/api/group-buy-voucher.routes.ts')).toMatch(/'\/voucher\/:code\/cancel',\n\s+rateLimit\([^)]*\),\n\s+requireUser\(\)/)
+  })
+
+  it('재고 도구는 셀러/어드민만, 주문 확정은 구매자/어드민만', () => {
+    const inv = readCode('src/features/inventory/api/inventory.routes.ts')
+    expect(inv).not.toMatch(/requireAuth\(\)/)
+    expect(inv).toMatch(/requireUserType\('seller', 'admin'\)/)
+    const orders = readCode('src/features/orders/api/orders.routes.ts')
+    expect(orders.match(/\} else if \(authUser\.type !== 'admin'\) \{\n\s+return c\.json\(\{ success: false, error: 'Forbidden' \}, 403\);/g)?.length).toBe(2)
+  })
+})

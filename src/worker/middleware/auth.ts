@@ -103,7 +103,11 @@ async function verifyJWT(
     }
 
     const decoded = jwt.decode(token);
-    return decoded.payload as unknown as JwtPayload;
+    const payload = decoded.payload as unknown as JwtPayload & { purpose?: unknown };
+    // 🔐 2026-11-09: 용도 토큰(PIN 확인·카카오 재인증 등 `purpose` 가 붙은 것)은 로그인 토큰이 아니다.
+    //   type 이 없어 'user' 로 떨어지고 sub 가 셀러 id 라, 받아 주면 같은 번호의 유저로 통했다.
+    if (payload && payload.purpose != null) return null;
+    return payload;
   } catch {
     // Don't log token content — attacker reconnaissance risk
     return null;

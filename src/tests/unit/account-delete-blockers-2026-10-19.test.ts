@@ -180,7 +180,7 @@ describe('🔗 배선 — 서버가 최종 방어하고 화면은 서버 값만 
   })
 
   it('화면용 조회 경로가 있다', () => {
-    expect(route).toMatch(/accountRoutes\.get\('\/delete-blockers', requireAuth\(\)/)
+    expect(route).toMatch(/accountRoutes\.get\('\/delete-blockers', require(?:Auth|User)\(\)/)
   })
 
   it('탈퇴 오류 응답이 서버 원문을 싣지 않는다', () => {
