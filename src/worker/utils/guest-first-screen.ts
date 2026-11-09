@@ -13,15 +13,18 @@
  * 같은 두 키) 바로 뒤 인라인 스크립트가 노드를 걷어낸다 — 그 사람에게 게스트 화면을 보여 주지 않는다.
  *
  * ## 그리지 않는 것
- * 아이콘·마스코트 그림 — 같은 크기의 빈 칸만(두 벌 금지). 카카오 말풍선은 같은 path 상수라 그대로 그린다.
+ * 아이콘 그림 — 같은 크기의 빈 칸만(두 벌 금지). 카카오 말풍선은 같은 path 상수라 그대로 그린다.
+ * 🦦 마이의 유달이는 그린다(2026-11-09): 그림이 공개 주소(`UDAL_HELLO_SRC`) 한 벌이 됐고, `Udal` 부품과 같은 속성으로
+ * 그려서 마운트 때 같은 `<img>` 로 이어진다. 빈 칸이던 때는 글자 0.45초 · 그림 2.3초였다(실측).
+ * 아이콘(svg)은 여전히 빈 칸이다 — 여기서 path 를 손으로 베끼면 두 벌이 된다.
  */
 import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT, GUEST_CLOCK, KAKAO_BUBBLE_PATH } from '../../shared/guest-page'
+import { UDAL_HELLO_SRC, UDAL_HELLO_ART } from '../../shared/mascot-art'
 
 export type GuestTab = 'pass' | 'shop' | 'my'
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const escAttr = (s: string) => esc(s).replace(/"/g, '&quot;')
-const slot = (w: number, h = w) => `<span class="block shrink-0" style="width:${w}px;height:${h}px" aria-hidden="true"></span>`
 
 /** 경로 → 탭. 셋 밖이면 null. */
 export function guestTabOf(pathname: string): GuestTab | null {
@@ -71,10 +74,17 @@ function shopBody(): string {
     `<div class="${GUEST_CLS.hero}" data-guest="urshop"><h2 class="${GUEST_CLS.headline}">${esc(c.headline1)}<br>${markHtml(c.headline2, c.headline2Mark)}</h2><p class="${GUEST_CLS.sub}">${esc(c.sub)}</p></div>` + dock(c.dockNote)
 }
 
+/** 유달이(hello) — `components/mascot/Udal.tsx` 가 `priority` 로 그리는 `<img>` 와 같은 속성·같은 주소. */
+function mascot(): string {
+  const w = GUEST_MY_MASCOT.width
+  const h = Math.round((w * UDAL_HELLO_ART.h) / UDAL_HELLO_ART.w)
+  return `<img src="${UDAL_HELLO_SRC}" alt="" aria-hidden="true" draggable="false" width="${w}" height="${h}" loading="eager" decoding="async" data-udal="hello" class="select-none pointer-events-none" style="width:${w}px;height:auto">`
+}
+
 function myBody(): string {
   const c = GUEST_COPY.my
   return `<h1 class="${GUEST_CLS.title}">${esc(c.title)}</h1>` +
-    `<section class="${GUEST_CLS.hero}" data-guest="my"><div class="${GUEST_CLS.myHead}">${slot(GUEST_MY_MASCOT.width, GUEST_MY_MASCOT.height)}` +
+    `<section class="${GUEST_CLS.hero}" data-guest="my"><div class="${GUEST_CLS.myHead}">${mascot()}` +
     `<div class="${GUEST_CLS.myHeadText}"><p class="${GUEST_CLS.myHello}">${esc(c.hello)}</p><p class="${GUEST_CLS.myHelloSub}">${esc(c.helloSub)}</p></div></div></section>` + dock()
 }
 

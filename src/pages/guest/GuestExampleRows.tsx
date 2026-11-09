@@ -6,12 +6,10 @@
  * 줄 모양은 진짜 유어샵·홈과 같은 `DealRow`(평면) — 예시가 실제와 다르게 생기면 "이렇게 된다" 가 거짓말이 된다.
  */
 import DealRow from '@/components/deal/DealRow'
-import brunchImg from '@/assets/guest/example-brunch.webp'
-import nailImg from '@/assets/guest/example-nail.webp'
-import pastaImg from '@/assets/guest/example-pasta.webp'
-import { GUEST_EXAMPLE_PASSES } from '@/shared/guest-page'
+import { GUEST_EXAMPLE_PASSES, GUEST_EXAMPLE_IMG } from '@/shared/guest-page'
 
-const KIND_IMG = { cafe: brunchImg, beauty: nailImg, meal: pastaImg } as const
+// 사진은 공개 주소 한 벌(`GUEST_EXAMPLE_IMG`) — 서버 첫 화면의 지갑 사진과 같은 파일을 다시 받지 않는다(2026-11-09).
+const KIND_IMG = GUEST_EXAMPLE_IMG
 
 /** `motion` — 유어샵 탭의 차례 등장 모션(`ur-gs-*`, CSS 는 GuestUrShopPage) 표식을 붙인다. */
 export default function GuestExampleRows({ numbered = false, motion = false }: { numbered?: boolean; motion?: boolean }) {

@@ -78,8 +78,10 @@ describe('🦦 유달이 — 상황표가 온전하다', () => {
 
   it('③ 가리키는 이미지 파일이 전부 실재한다', () => {
     const imports = [...src.matchAll(/from '@\/assets\/mascot\/([\w-]+\.webp)'/g)].map((m) => m[1])
-    expect(imports.length).toBe(9)
+    // 2026-11-09: hello(udal-pose-stand)는 공개 주소(`shared/mascot-art.ts`)로 옮겼다 — 로그인 전 마이의 서버 첫 화면이 그린다. 번들 import 는 8.
+    expect(imports.length).toBe(8)
     for (const f of imports) expect(existsSync(`src/assets/mascot/${f}`), `${f} 없음`).toBe(true)
+    expect(existsSync('public/assets/mascot/udal-pose-stand.webp'), 'hello 공개 그림 없음').toBe(true)
   })
 
   it('③ 자리가 밀리지 않게 width·height 를 같이 준다', () => {

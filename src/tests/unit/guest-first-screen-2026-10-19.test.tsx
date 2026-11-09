@@ -4,7 +4,7 @@
  * 지키는 것:
  *   ① 서버 HTML 과 React 가 그리는 위쪽(제목 + 머리)과 **아래 고정 카카오 버튼**(2026-11-03)의 요소 구조·클래스가
  *      같다 — 진짜 페이지를 렌더해 대조한다
- *      (아이콘·마스코트는 서버가 같은 크기의 빈 칸만 그리므로 둘 다 ICON 으로 본다)
+ *      (아이콘은 서버가 같은 크기의 빈 칸만 그리므로 ICON 으로 본다 · 마스코트는 2026-11-09 부터 서버도 그린다 — ①-3)
  *   ② 로그인 흔적이면 노드를 걷어낸다 — `RouteGuards.isUserLoggedIn` 과 **같은 두 키**
  *   ③ 워커는 세션 쿠키가 없고(폰·크롤러) 세 경로일 때만 그린다
  *
@@ -25,12 +25,14 @@ import GuestPassPage from '@/pages/guest/GuestPassPage'
 import GuestUrShopPage from '@/pages/guest/GuestUrShopPage'
 import GuestMyPage from '@/pages/guest/GuestMyPage'
 import { buildGuestFirstScreen, guestTabOf, guestFirstScreenGuardScript, type GuestTab } from '@/worker/utils/guest-first-screen'
-import { GUEST_COPY } from '@/shared/guest-page'
+import { GUEST_COPY, GUEST_EXAMPLE_IMG } from '@/shared/guest-page'
+import { UDAL_HELLO_SRC } from '@/shared/mascot-art'
+import GuestExampleRows from '@/pages/guest/GuestExampleRows'
 
 /** 요소 트리를 [태그.클래스] 줄로 — 아이콘(svg)·빈 칸(span.block.shrink-0)·마스코트는 ICON 하나로 본다. */
 function shape(el: Element, out: string[] = [], depth = 0): string[] {
   const cls = (el.getAttribute('class') || '').trim()
-  const isIcon = el.tagName.toLowerCase() === 'svg' || cls === 'block shrink-0' || el.getAttribute('data-mock') === 'udal'
+  const isIcon = el.tagName.toLowerCase() === 'svg' || cls === 'block shrink-0' || el.getAttribute('data-mock') === 'udal' || el.hasAttribute('data-udal')
   out.push(`${'  '.repeat(depth)}${isIcon ? 'ICON' : `${el.tagName.toLowerCase()}.${cls}`}`)
   if (!isIcon) for (const c of Array.from(el.children)) shape(c, out, depth + 1)
   return out
@@ -93,6 +95,36 @@ describe('①-2 예시 지갑 사진·시계는 한 벌 (2026-11-04 — 옛 QR �
   })
   it('예시 사진 파일이 실제로 있다(정적 주소가 404 면 회색 칸)', () => {
     for (const w of GUEST_COPY.pass.wallet) expect(existsSync('public' + w.img), w.img).toBe(true)
+  })
+})
+
+describe('①-3 마이 유달이는 서버가 같은 공개 주소로 그린다 (2026-11-09 — 빈 칸이던 때 그림 2.3초)', () => {
+  beforeEach(() => cleanup())
+  it('서버 첫 화면의 마스코트 <img> 가 Udal(hello) 과 같은 주소·eager 이고 파일이 실재한다', () => {
+    const img = serverTop('my').querySelector('[data-guest="my"] img[data-udal="hello"]')!
+    expect(img, '서버가 유달이를 안 그린다(빈 칸이면 앱 코드가 올 때까지 그림이 없다)').toBeTruthy()
+    expect(img.getAttribute('src')).toBe(UDAL_HELLO_SRC)
+    expect(UDAL_HELLO_SRC.startsWith('/assets/mascot/'), '번들 자산이면 서버가 주소를 모른다').toBe(true)
+    expect(existsSync('public' + UDAL_HELLO_SRC)).toBe(true)
+    expect(img.getAttribute('loading')).toBe('eager')
+    expect(img.getAttribute('width')).toBe('56')
+  })
+  it('Udal 부품의 hello 도 같은 공개 주소를 쓴다 — 두 벌이 아니다', () => {
+    const udal = stripComments(readFileSync('src/components/mascot/Udal.tsx', 'utf8'))
+    expect(udal).toMatch(/hello:\s*\{\s*src:\s*UDAL_HELLO_SRC\b/)
+    expect(udal).not.toMatch(/udal-pose-stand/)
+  })
+  it('GuestMyPage 는 첫 화면 자리라 priority(eager) 로 그린다 — 서버 <img> 와 loading 이 같아야 마운트 때 다시 안 받는다', () => {
+    expect(stripComments(readFileSync('src/pages/guest/GuestMyPage.tsx', 'utf8'))).toMatch(/<Udal mood="hello"[^>]*\bpriority\b/)
+  })
+  it('예시 줄 사진도 공개 주소(지갑 두 장과 같은 파일) — 같은 그림을 번들 주소로 한 번 더 받지 않는다', () => {
+    const { container } = render(<MemoryRouter><GuestExampleRows /></MemoryRouter>)
+    const srcs = Array.from(container.querySelectorAll('img')).map((e) => e.getAttribute('src'))
+    expect(srcs.length).toBe(3)
+    expect(srcs.every((s) => !!s && s.startsWith('/assets/guest/'))).toBe(true)
+    expect(srcs.slice(0, 2)).toEqual(GUEST_COPY.pass.wallet.map((w) => w.img))
+    for (const s of Object.values(GUEST_EXAMPLE_IMG)) expect(existsSync('public' + s), s).toBe(true)
+    expect(existsSync('src/assets/guest'), '번들 사본이 남아 있다').toBe(false)
   })
 })
 

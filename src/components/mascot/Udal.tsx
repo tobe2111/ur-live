@@ -14,7 +14,7 @@
  */
 import curious from '@/assets/mascot/udal-curious.webp'
 import wink from '@/assets/mascot/udal-wink.webp'
-import poseStand from '@/assets/mascot/udal-pose-stand.webp'
+import { UDAL_HELLO_SRC } from '@/shared/mascot-art' // 🚪 hello 는 공개 주소 — 서버 첫 화면(로그인 전 마이)이 같은 주소를 그린다(2026-11-09)
 import poseStamp from '@/assets/mascot/udal-pose-stamp.webp'
 import poseWallet from '@/assets/mascot/udal-pose-wallet.webp'
 import poseHighfive from '@/assets/mascot/udal-pose-highfive.webp'
@@ -43,7 +43,7 @@ export type UdalMood =
  */
 interface Art { src: string; w: number; h: number; bust?: boolean }
 const ART: Record<UdalMood, Art> = {
-  hello: { src: poseStand, w: 332, h: 487 },
+  hello: { src: UDAL_HELLO_SRC, w: 332, h: 487 },
   done: { src: poseStamp, w: 214, h: 222 },
   paid: { src: poseWallet, w: 175, h: 239 },
   yay: { src: poseHighfive, w: 204, h: 229 },

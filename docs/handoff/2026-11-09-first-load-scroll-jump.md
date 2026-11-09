@@ -121,3 +121,10 @@
 - 이동: 홈→상세 **377ms** · 상세→뒤로 209 · 하단 탭 이용권 169 · 유어샵 148 · 마이 186 · 홈 330 · 교환권 ≈0.5s(API 두 개 493·542ms, 가격 단위가 '딜' 이라 처음 측정기가 놓쳤다). 하드 이동 홈→유어쇼츠 1.7s(#2260 로 줄어든다). **유어쇼츠 카드→뷰어 1.4s** — 뷰어가 목록 화면이 이미 받은 `?all=1` 을 **다시 받고**(≈0.5s) 그 뒤에야 재생기.
 - 처방: `shared/urshorts-list-cache.ts` 한 벌(loadShortsAll/peekShortsAll). 목록 화면·상세 알약·뷰어가 같은 약속을 쓰고, 뷰어는 첫 렌더에 peek 로 영상 자리를 잡는다. 가드 5 · 주입 3(되돌려 빨간불) · 재조준 2(seo-region · urshorts-seed).
 - 🔎 **교환권 이미지(검증 필요, 코드 미변경)**: 교환권 상품 사진이 `bizimg.giftishow.com` 인데 `cf-image.ts` 호스트 목록에 **없다**(image./imghub./bizapi./mall./gift. 만). 이 컨테이너에선 CF 리사이저 경유가 **524(7초)**·워커 프록시는 302·직접은 프록시 차단이라 빈 선물 아이콘으로 보였다. 한국 손님 폰에선 원본 직접 로드로 보일 가능성이 크지만 **최적화 없이 원본 크기**로 받는다. 대표 폰 캡처로 교환권 사진이 뜨는지 확인 뒤, 뜨면 `bizimg` 를 EXTERNAL_PROXY 쪽에 추가할지(리사이저 524 라 cdn-cgi 쪽은 금물) 판단.
+
+## 23. 로그인 전 마이·이용권 — 첫 화면은 0.45s 인데 그림이 2.3~2.5s (대표 *"계속 최적화"*)
+- 12개 소비자 화면 재실측(폰 4G·CPU 4배): 유어샵(진짜 핸들 `/u/jiwon1228`) FCP 0.69·LCP 0.98 ✅ · **마이(비로그인) FCP 0.45 → LCP 3.04** · **이용권(비로그인) FCP 0.46 → LCP 3.14**. LCP 요소는 둘 다 **그림**이었다: 마이의 유달이(`udal-pose-stand` 번들 해시 주소, 2.27s 도착) · 이용권의 예시 줄 첫 사진(`example-brunch-Bj2BaP2k.webp`, 2.48s).
+- 원인: 서버 첫 화면이 그 그림을 **모른다**(번들 자산이라 해시 주소) → 빈 칸만 그렸고 앱 코드가 다 와야 요청이 출발. 이용권은 더 어이없다 — `example-brunch`·`example-nail` 은 서버가 이미 그린 `public/assets/guest/wallet-*.webp` 와 **바이트가 같은 파일**인데 주소가 달라 한 번 더 받았다(`cmp` 로 확인).
+- 처방(코드 미세): ① `udal-pose-stand.webp` 를 `public/assets/mascot/` 로 **이동**(생성 아님 · 장부 표기) → `shared/mascot-art.ts` `UDAL_HELLO_SRC` 한 벌을 `Udal(hello)` 와 서버 `guest-first-screen.myBody` 가 같이 쓴다. 서버가 `Udal priority` 와 같은 속성의 `<img loading=eager>` 를 그린다(아이콘 svg 는 여전히 빈 칸 — 두 벌 금지 그대로). ② 예시 줄은 `GUEST_EXAMPLE_IMG`(공개 주소) — 브런치·네일은 지갑 파일 그대로, 파스타만 `public/` 로 이동. `src/assets/guest/` 삭제.
+- 가드: `guest-first-screen-2026-10-19.test.tsx` ①-3(4건) · `udal-mascot` ③ 9→8 import + 공개 파일 · 주입 3건 되돌려 빨간불 확인.
+- 배포 뒤 판정: `lcpel.cjs https://urdeal.kr/user/profile` 에서 `udal-pose-stand` 응답이 0.5s 안팎, LCP 가 글자(0.45s)로 고정 · `/my-vouchers` 의 두 번째 LCP 항목(2.5s img)이 사라지는지.

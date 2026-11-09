@@ -70,7 +70,7 @@ export default function GuestMyPage() {
 
       <section className={GUEST_CLS.hero} data-guest="my">
         <div className={GUEST_CLS.myHead}>
-          <Udal mood="hello" size={GUEST_MY_MASCOT.width} />
+          <Udal mood="hello" size={GUEST_MY_MASCOT.width} priority />
           <div className={GUEST_CLS.myHeadText}>
             <p className={GUEST_CLS.myHello}>{t('guest.my.hello', { defaultValue: GUEST_COPY.my.hello })}</p>
             <p className={GUEST_CLS.myHelloSub}>{t('guest.my.helloSub', { defaultValue: GUEST_COPY.my.helloSub })}</p>

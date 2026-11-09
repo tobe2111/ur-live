@@ -10,7 +10,7 @@
  *   (`public/static/og/udal-share-168.png`)로 옮기고, 카드를 그릴 때 ASSETS 에서 한 번 읽어 data URI 로
  *   만든다(isolate 당 1회 메모). 카드 모양은 byte-동일 — 판 번호를 올리지 않는다.
  *   읽기에 실패하면 null → 유달이 없는 카드(사진·로고는 그대로). 카드를 못 그리는 것보다 낫다.
- * 원본: `src/assets/mascot/udal-pose-stand.webp`. 그림을 바꾸면 정적 파일을 다시 만들고
+ * 원본: `public/assets/mascot/udal-pose-stand.webp`(2026-11-09 src/assets 에서 이동). 그림을 바꾸면 정적 파일을 다시 만들고
  *   `shared/pass-share-card.ts` 의 카드 판 번호(`PASS_OG_VERSION`)를 올릴 것.
  */
 export const UDAL_OG_PNG_W = 168
