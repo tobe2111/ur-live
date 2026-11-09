@@ -11,6 +11,13 @@ import { createDashboardNotification } from '../../features/notifications/api/da
 
 const stripeRouter = new Hono<{ Bindings: Env }>();
 
+/** 🔐 2026-11-09 Stripe 결제 금액(센트·usd)이 주문 금액과 같은가 — 화면이 결제를 만드는 식과 같은 식으로 본다. */
+export function isStripeAmountMatch(pi: { amount_received?: unknown; amount?: unknown; currency?: unknown }, orderTotal: number): boolean {
+  const paid = Number(pi.amount_received ?? pi.amount);
+  const expected = Math.round(Number(orderTotal) * 100);
+  return String(pi.currency || '').toLowerCase() === 'usd' && Number.isInteger(paid) && expected > 0 && paid === expected;
+}
+
 /**
  * POST /api/payment/stripe/create-intent
  * Creates a Stripe PaymentIntent and returns the clientSecret.
@@ -196,9 +203,18 @@ stripeRouter.post('/webhook', async (c) => {
     if (event.type === 'payment_intent.succeeded') {
       const orderNumber = metadata.orderNumber || metadata.order_number;
       if (orderNumber) {
-        await DB.prepare(
-          "UPDATE orders SET status = 'PAID', payment_status = 'approved', paid_at = datetime('now'), updated_at = datetime('now') WHERE order_number = ? AND status = 'PENDING'"
-        ).bind(orderNumber).run();
+        // 🔐 2026-11-09 대표 승인 — 결제된 금액이 그 주문 금액과 같을 때만 결제 완료로 바꾼다.
+        //   화면은 `Math.round(totalAmount * 100)` 센트로 결제를 만든다(StripeCheckout.tsx) — 같은 식으로 대조한다.
+        const order = await DB.prepare(
+          "SELECT total_amount FROM orders WHERE order_number = ? AND status = 'PENDING'"
+        ).bind(orderNumber).first<{ total_amount: number }>();
+        if (order && isStripeAmountMatch(obj, order.total_amount)) {
+          await DB.prepare(
+            "UPDATE orders SET status = 'PAID', payment_status = 'approved', paid_at = datetime('now'), updated_at = datetime('now') WHERE order_number = ? AND status = 'PENDING'"
+          ).bind(orderNumber).run();
+        } else if (order) {
+          createDashboardNotification(DB, 'admin', null, 'payment_failed', '결제 금액 불일치', `주문번호: ${orderNumber} (Stripe) — 결제 금액이 주문 금액과 달라 확정하지 않았습니다`, '/admin/orders').catch(swallow('stripe:notify-amount-mismatch'));
+        }
       }
     } else if (event.type === 'payment_intent.payment_failed') {
       const orderNumber = metadata.orderNumber || metadata.order_number;
