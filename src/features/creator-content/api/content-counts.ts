@@ -9,20 +9,19 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { storeKeyFor } from './content-db'
-
-/** D1 바인드 한도(100)보다 넉넉히 아래. 피드 한 장은 50개라 넘지 않는다. */
-const MAX_KEYS = 90
+import { chunkForBinds } from '../../../shared/db/d1-binds'
 
 type FeedRow = Record<string, unknown>
 
 export async function loadCreatorCounts(DB: D1Database, keys: string[]): Promise<Map<string, number>> {
-  const uniq = [...new Set(keys)].slice(0, MAX_KEYS)
   const out = new Map<string, number>()
-  if (!uniq.length) return out
-  const { results } = await DB.prepare(`SELECT store_key, COUNT(*) AS n FROM store_creator_content
-      WHERE status = 'visible' AND platform NOT LIKE 'urdeal_%' AND store_key IN (${uniq.map(() => '?').join(',')}) GROUP BY store_key`)
-    .bind(...uniq).all<{ store_key: string; n: number }>()
-  for (const r of results ?? []) out.set(r.store_key, Number(r.n) || 0)
+  // 피드 한 장은 50개라 보통 한 조각이다 — 바인딩 한도(100)는 `chunkForBinds` 가 지킨다.
+  for (const part of chunkForBinds([...new Set(keys)])) {
+    const { results } = await DB.prepare(`SELECT store_key, COUNT(*) AS n FROM store_creator_content
+        WHERE status = 'visible' AND platform NOT LIKE 'urdeal_%' AND store_key IN (${part.map(() => '?').join(',')}) GROUP BY store_key`)
+      .bind(...part).all<{ store_key: string; n: number }>()
+    for (const r of results ?? []) out.set(r.store_key, Number(r.n) || 0)
+  }
   return out
 }
 
