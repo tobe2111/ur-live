@@ -43,9 +43,9 @@
  *    React 는 `SellerPublicPage` 를 그린다 — 레이아웃이 통째로 다르다) · 맨 아래 유입 링크
  *    (`!isOwner` 게이트).
  *    🔄 2026-10-14 유어샵 A 로 **얼굴이 돌아왔다** — 그 자리는 서버도 그린다(아래 `avatar`).
- * ❌ **PC(lg+)는 안 그린다** — UA 로 가른다. PC 는 `.ur-ushop-pc` 2열 그리드 + 전역
- *    `DesktopTopNav` 가 `#root` 안에 따로 서므로, 서버가 그 둘을 모른 채 그리면 마운트 때
- *    가로·세로가 같이 움직인다(④홈과 같은 판단).
+ * ✅ **PC(lg+)도 그린다** (2026-11-09 대표 승인 — 종전 ❌ 대체). 같은 DOM 이 CSS(`.ur-ushop-pc`)로 2열이 되므로 본문은 그대로이고,
+ *    React 가 `#root` 맨 위에 세우는 전역 `DesktopTopNav`(sticky · 68+1+44px) 높이만 **PC UA 일 때** 맨 앞에 비운다(`PC_HOME_FS.topnav*`).
+ *    종전 이유("서버가 그 둘을 모른 채 그리면 가로·세로가 같이 움직인다")는 이 둘로 풀린다. 라이브 실측(1440px): PC 유어샵 첫 글자 2.19s.
  *
  * ## 이 파일이 **못** 하는 것
  * - 클래스가 갈렸는지는 문자열로 못 잰다 → `curator-ssr-first-screen-2026-10-09` 테스트가
@@ -57,6 +57,7 @@
  */
 import { cfImage } from '../../utils/cf-image'
 import { logoHtml } from './logo-html'
+import { PC_HOME_FS } from '../../shared/pc-home-first-screen'
 import { priceDisplay } from '../../shared/price-display'
 import { formatNumber } from '../../utils/format'
 import { curatorHomePins, curatorSoldTotal } from '../../shared/curator-pin-order'
@@ -237,7 +238,7 @@ function rowHtml(pin: CuratorSeedPin, handle: string, order: number): string {
  * @param ssrPayload `__SSR_INITIAL_CURATOR__` 원문
  * @param loaderHtml 기존 URDEAL 로더(첫 화면 **아래**에 붙는다 — 아직 오는 중이라는 정직한 신호)
  */
-export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string): string {
+export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string, isMobile = true): string {
   try {
     const d = JSON.parse(ssrPayload) as CuratorSeed
     const c = d?.curator
@@ -341,6 +342,8 @@ export function buildCuratorFirstScreen(ssrPayload: string, loaderHtml: string):
     //   Suspense 폴백에 도로 붙인다. 그 장치는 경로를 안 가리므로 id 만 같으면 그대로 적용된다.
     return (
       `<div id="ur-first-screen" class="${CURATOR_FS_CLASS.root}">` +
+        // 🖥️ 2026-11-09 PC: 전역 상단 네비 높이 예약(홈·상세와 같은 상수). 폰·크롤러엔 없다(폰은 네비를 마운트하지 않는다).
+        (isMobile ? '' : `<div class="${PC_HOME_FS.topnav}"><div class="${PC_HOME_FS.topnavRow1}"></div><div class="${PC_HOME_FS.topnavRow2}"></div></div>`) +
         `<div class="${CURATOR_FS_CLASS.pcGrid}">` +
           `<div class="${CURATOR_FS_CLASS.side}">${header}</div>` +
           `<div class="${CURATOR_FS_CLASS.main}">${search}${chips}` +

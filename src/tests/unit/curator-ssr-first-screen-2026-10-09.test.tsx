@@ -391,7 +391,7 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
   })
 
   // ─────────────────────────────────────────────── ⑥ 배선
-  it('⑥ 워커가 **한 세그먼트 `/u/:handle` · 모바일 UA** 에서만 그린다', () => {
+  it('⑥ 워커가 **한 세그먼트 `/u/:handle`** 에서만 그린다(2026-11-09 부터 PC 도 — UA 는 빌더 인자)', () => {
     const w = code('src/worker/index.ts')
     expect(w).toMatch(/import \{ buildCuratorFirstScreen(, curatorLcpImage)? \} from '\.\/utils\/curator-ssr-body'/)
     // ⚠️ `[^{]*` 로 잡으면 정규식의 `{1,40}` 에서 끊긴다 — 줄 끝(`) {`)까지 잡는다.
@@ -402,7 +402,9 @@ describe('유어샵 서버 첫 화면 — 워커 HTML ↔ 진짜 컴포넌트', 
     expect(cond).toContain('^\\/u\\/[A-Za-z0-9_-]{1,40}\\/?$')
     // 🔀 2026-10-11 재조준: 불변식(**PC 에는 안 그린다**) 그대로, 그려 주는 쪽에 색인 크롤러가
     //   더해졌다 — Yeti 는 유어샵을 6자로 보고 있었다. 동작 판정은 바로 아래 시험이 한다.
-    expect(cond).toContain('shouldRenderMobileFirstScreen')
+    // 🖥️ 2026-11-09 재조준: PC 도 그린다(대표 승인) — UA 는 조건에서 빠지고 **빌더 인자**가 됐다(PC 면 상단 네비 높이 예약만 더한다).
+    expect(cond).not.toContain('shouldRenderMobileFirstScreen')
+    expect(w).toContain("buildCuratorFirstScreen(ssrPayload, urdealLoaderHtml, shouldRenderMobileFirstScreen(c.req.header('user-agent')))")
     // 🔀 2026-10-12 재조준: 불변식(**첫 화면이 `''` 면 로더로 폴백**) 그대로. 달라진 것은 그
     //   폴백이 로더 **앞에** `<noscript>` 요약을 깐다는 것뿐이다 — 라이브 실측에서 이 빌더가
     //   `''` 를 주는 세 경우(사업자 유어샵 · 핀 0 · 파싱 실패)가 전부 본문 6자였다.

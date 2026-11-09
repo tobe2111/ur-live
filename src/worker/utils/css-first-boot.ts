@@ -58,7 +58,7 @@ import { CRITICAL_CSS, CRITICAL_CSS_HOME, CRITICAL_CSS_SURFACES, CRITICAL_CSS_TO
  * 🖼️ 서버가 **첫 화면을 그리는** 표면인가 — 첫 화면 CSS(`criticalCssFor`)를 인라인할 자격. 폰(+크롤러)만, 단 PC 홈은 예외(2026-11-09 pc-home-first-screen).
  */
 export function firstScreenApplies(pathname: string, ua: string, authed = false): boolean {
-  if (!shouldRenderMobileFirstScreen(ua)) return (pathname === '/' || pathname === '/index.html') || (!authed && guestTabOf(pathname) === 'login') || /^\/(?:pass|group-buy)\/\d+\/?$/.test(pathname) // 🖥️ 2026-11-09 PC 홈 첫 화면(홈판 CSS 에 PC 클래스가 있다) · 🔐 로그인 화면은 PC 도 같은 한 열이라 PC 에도 그린다(guest 표면 CSS) · 🎟️ PC 상세(detail-pc-first-screen, 대표 승인)
+  if (!shouldRenderMobileFirstScreen(ua)) return (pathname === '/' || pathname === '/index.html') || (!authed && guestTabOf(pathname) === 'login') || /^\/(?:pass|group-buy)\/\d+\/?$/.test(pathname) || pathname === '/vouchers' || (/^\/u\/[^/]+\/?$/.test(pathname) && !/^\/u\/me\/?$/.test(pathname)) // 🖥️ 2026-11-09 PC 홈 첫 화면(홈판 CSS 에 PC 클래스가 있다) · 🔐 로그인 화면은 PC 도 같은 한 열이라 PC 에도 그린다(guest 표면 CSS) · 🎟️ PC 상세(detail-pc-first-screen, 대표 승인)
   return pathname === '/' || pathname === '/vouchers' || pathname === '/stays' // 🏨 2026-10-19 숙소 목록도 서버 첫 화면이 생겼다(stays-first-screen.ts)
     || (!authed && guestTabOf(pathname) !== null) // 🚪 2026-10-19 로그인 전 탭 셋 — 세션 쿠키 없을 때만 서버가 그린다(guest-first-screen.ts)
     || /^\/region\/[^/]+(?:\/[^/]+)?\/?$/.test(pathname) // 🗺️ 2026-11-08 지역 착지도 서버 첫 화면(region-first-screen.ts)

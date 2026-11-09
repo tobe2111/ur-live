@@ -162,3 +162,11 @@
 - ② PC 상세 서버 첫 화면(그리드 통째 · 갤러리 PC 블록 · 제목 헤더 · 빈 aside). detail 표면 CSS 34,447 → 35,920B. 기록 `2026-11-09-pc-detail-first-screen.md`. 배포 뒤 판정: PC UA `lcpel.cjs https://urdeal.kr/pass/2919 pc` 에서 LCP 요소가 서버가 그린 큰 사진(종전 2.47s → ≈0.9s) · CLS < 0.01.
 - 다음 PC 표면 후보(남은 순서): 교환권 목록 `/vouchers`(PC 2.27s) · 유어샵 `/u/:handle`(2.19s) · 로그인 전 탭(이용권·마이, 2.0s). 각각 PC 레이아웃이 다르다 — 표면 CSS 가 40KB 상한을 넘지 않는지 먼저 본다.
 - ③ 교환권 사진 호스트(giftishow) · ④ 다국어 문구 분할은 이 뒤.
+
+## 29. [E4] #2274 로더 즉시 표시 — 설계대로 동작
+- 라이브 `/cart` 스크린샷 4회(폰 4G·CPU 4배): HTML **1,285ms** → 뼈대 **+300ms 에 이미 보임**(opacity 1 · 48,084px) · HTML 948ms → +300ms 보임 · HTML 1,499ms → +300ms 보임 · HTML **278ms(빠름)** → +300ms **아직 숨김**(shy 유지) → +700ms 보임. 즉 "느리면 바로, 빠르면 종전대로(0.5초 안이면 안 보인다)" 둘 다 맞다.
+
+## 30. PC 첫 화면 둘(교환권 목록 · 유어샵) — PR 준비(#2275 뒤)
+- 기록 `2026-11-09-pc-list-first-screens.md`. detail 처럼 `shouldRenderMobileFirstScreen` 을 **조건에서 빼고** 빌더 선택/인자로 옮겼다(가드 3건 재조준). 교환권 가드의 `min-width:1024px` 는 폰 본문에만 남는다.
+- 🩸 **상단 네비 예약을 잊기 쉽다** — PC 상세 첫 판에 빠져 auto-merge 를 내려 고쳤다(§28). PC 첫 화면 = 반드시 `PC_HOME_FS.topnav*` 부터. 가드가 각 표면에서 맨 앞 자식을 대조한다.
+- 배포 뒤 판정: PC UA `lcpel.cjs https://urdeal.kr/vouchers pc`(종전 FCP 2.27s) · `/u/jiwon1228 pc`(2.19s) · CLS < 0.01.

@@ -116,8 +116,8 @@ describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', 
   it.each(['/seller', '/admin', '/agency/login', '/embed/x', '/auth/kakao/start'])('미적용(대시보드·임베드·인증 — 자체 테마 첫 그림): %s', (p) => {
     expect(cssFirstApplies(p, PHONE)).toBe(false); expect(loaderFirstApplies(p)).toBe(false)
   })
-  it('🖥️ PC 홈은 첫 화면 CSS 자격(pc-home-first-screen) · 다른 PC 화면은 로더-먼저', () => {
-    expect(firstScreenApplies('/', PC)).toBe(true); expect(firstScreenApplies('/vouchers', PC)).toBe(false); expect(cssFirstApplies('/vouchers', PC)).toBe(true)
+  it('🖥️ PC 홈·교환권·유어샵은 첫 화면 CSS 자격(2026-11-09 PC 첫 화면 대표 승인) · 그 외 PC 화면은 로더-먼저', () => {
+    expect(firstScreenApplies('/', PC)).toBe(true); expect(firstScreenApplies('/vouchers', PC)).toBe(true); expect(firstScreenApplies('/u/jiwon', PC)).toBe(true); expect(firstScreenApplies('/u/me', PC)).toBe(false); expect(firstScreenApplies('/search', PC)).toBe(false); expect(cssFirstApplies('/search', PC)).toBe(true)
   })
   // 🚪 2026-10-19 로그인 전 탭 셋은 서버가 그린다 — 단 세션 쿠키가 있으면(로그인) 그리지 않으므로 미적용.
   it.each(['/u/me', '/user/profile', '/my-vouchers'])('로그인 전 탭: %s — 비로그인 첫 화면 CSS · 로그인은 로더-먼저만', (p) => {

@@ -210,8 +210,9 @@ describe('④ 폴백과 배선', () => {
     const w = code('src/worker/index.ts')
     const line = w.split('\n').find(l => l.includes("ssrSlot === 'VOUCHERS' && ssrPayload"))
     expect(line, 'VOUCHERS 첫 화면 분기가 사라졌다').toBeTruthy()
-    expect(line!).toContain("url.pathname === '/vouchers' && shouldRenderMobileFirstScreen(c.req.header('user-agent'))")
-    expect(line!).toContain('const vouchersFirst = buildVouchersFirstScreen(ssrPayload, urdealLoaderHtml, nonce, voucherFacetCategory(url.search))') // 🎟️ 2026-11-08 facet 카테고리 제목
+    // 🖥️ 2026-11-09: PC 도 그린다 — UA 는 조건이 아니라 **빌더 선택**(폰 본문 ↔ PC 2열 본문)이다.
+    expect(line!).toContain("url.pathname === '/vouchers') { const vouchersFirst = (shouldRenderMobileFirstScreen(c.req.header('user-agent')) ? buildVouchersFirstScreen : buildVouchersPcFirstScreen)(")
+    expect(line!).toContain('(ssrPayload, urdealLoaderHtml, nonce, voucherFacetCategory(url.search))') // 🎟️ 2026-11-08 facet 카테고리 제목(두 빌더가 같은 인자)
     expect(line!).toContain("rb = rb.on('#root', { element(el) { el.setInnerContent(vouchersFirst")
     expect(line!, '🔴 첫 화면을 못 그리면 **크롤러 요약**이 나와야 한다(본문이 통째로 비는 것 차단)')
       .toContain('buildStaticSurfaceNoscript(url.pathname, crawlerPayload) + urdealLoaderHtml')
