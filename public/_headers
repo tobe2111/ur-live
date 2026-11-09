@@ -33,8 +33,17 @@
   Cross-Origin-Opener-Policy: same-origin-allow-popups
 
 # Cache control for static assets
+# 📦 2026-11-09 /assets/* 가 워커를 안 거치고 Pages 정적으로 나간다(_routes.json exclude). 그래서 이 블록이
+#   **처음으로 실제 적용된다** — 맨 위 `/*` 의 no-store 세 헤더를 `!` 로 떼지 않으면 합쳐져서 캐시가 꺼진다
+#   (`/static/fonts/*` 가 2026-10-12 에 실측으로 당한 것과 같은 함정).
+#   엣지(공유) 캐시는 5분으로 묶는다 — 배포 순간 없는 부품 자리에 SPA HTML 이 나가도 그 지역 전체가 1년간
+#   묶이지 않게. 브라우저 쪽은 index.html 자가복구가 cache:'reload' 로 다시 받아 덮는다.
 /assets/*
+  ! Cache-Control
+  ! Pragma
+  ! Expires
   Cache-Control: public, max-age=31536000, immutable
+  Cloudflare-CDN-Cache-Control: max-age=300
 
 # 🔤 2026-10-12 (대표 승인 "둘 다 자가호스팅" — 라이브 실측): 자가호스팅 폰트에 1년 immutable.
 #   그 전까지 `/static/fonts/*` 는 맨 위 `/*` 의 `no-cache, no-store, must-revalidate` 에 걸려 있었고

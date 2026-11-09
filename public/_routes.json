@@ -1,10 +1,11 @@
 {
   "version": 1,
-  "description": "All routes go through Worker except static assets. ⚠️ 2026-06-11: 확장자 글롭(/*.jpg 등)은 Pages 에서 슬래시를 포함해 매칭되어 /api/media/**.jpg 가 워커에 도달하지 못하고 SPA HTML 폴백 → 업로드 이미지 전부 깨짐(프로필 아바타 사고). 루트 정적 파일은 명시 목록으로만 제외할 것 — 확장자 와일드카드 금지. ⚠️ 2026-07-20: /assets/* 를 exclude 에서 제거 — urdeal.kr(신규 존)에서 exclude 경로가 정적 404(→SPA HTML→청크 MIME 에러, #598 과 동일 클래스)라, 워커가 env.ASSETS 로 직접 서빙(index.ts app.get('/assets/*'), 미들웨어 앞 등록). 되돌리려면 이 줄을 exclude 에 복원.",
+  "description": "All routes go through Worker except static assets. ⚠️ 2026-06-11: 확장자 글롭(/*.jpg 등)은 Pages 에서 슬래시를 포함해 매칭되어 /api/media/**.jpg 가 워커에 도달하지 못하고 SPA HTML 폴백 → 업로드 이미지 전부 깨짐(프로필 아바타 사고). 루트 정적 파일은 명시 목록으로만 제외할 것 — 확장자 와일드카드 금지. ⚠️ 2026-07-20: /assets/* 를 exclude 에서 제거 — urdeal.kr(신규 존)에서 exclude 경로가 정적 404(→SPA HTML→청크 MIME 에러, #598 과 동일 클래스)라, 워커가 env.ASSETS 로 직접 서빙(index.ts app.get('/assets/*'), 미들웨어 앞 등록). 되돌리려면 이 줄을 exclude 에 복원. ⚠️ 2026-11-09 (대표 '부품 파일 바로 내보내게 진행' — 하루 5만 명이면 워커 요청의 약 60%가 /assets 부품): /assets/* 를 다시 exclude 에 넣는다. 2026-07-20 의 '신규 존 정적 404' 는 라이브에서 재현되지 않는다(/static·/locales·아이콘 exclude 경로 전부 200 실측). 없는 부품 파일은 SPA HTML(200)로 오므로 _headers 가 엣지 캐시를 5분으로 묶고, index.html 자가복구가 부품을 cache:'reload' 로 다시 받는다(브라우저에 잘못 저장된 것을 덮는다).",
   "include": [
     "/*"
   ],
   "exclude": [
+    "/assets/*",
     "/locales/*",
     "/static/*",
     "/favicon.svg",

@@ -42,12 +42,46 @@ export function isAppChunkUrl(url: unknown): boolean {
  *   (새 빌드의 새 청크 해시 참조). `__cb` 는 main.tsx 부트스트랩이 마운트 후 URL 에서 제거.
  */
 export function reloadWithCacheBust(): void {
+  let gone = false
+  const go = () => {
+    if (gone) return
+    gone = true
+    try {
+      const u = new URL(window.location.href)
+      u.searchParams.set('__cb', Date.now().toString(36))
+      window.location.replace(u.toString())
+    } catch {
+      try { window.location.reload() } catch { /* URL/location 차단 환경 — silent */ }
+    }
+  }
+  const pending = refreshAssetCache()
+  if (!pending) { go(); return } // 다시 받을 부품이 없으면 종전처럼 즉시(동기) 이동
+  pending.then(go, go)
+  setTimeout(go, 2500)
+}
+
+/**
+ * 📦 2026-11-09 부품(/assets/*)을 `cache:'reload'` 로 다시 받아 브라우저 캐시를 덮는다.
+ *   부품은 Pages 정적이 1년 immutable 로 낸다(`public/_routes.json` exclude). 배포 순간 없는 부품 자리에 SPA HTML 이
+ *   나가 브라우저에 저장되면 문서만 새로 받아서는 같은 부품을 또 캐시에서 꺼내 영영 못 낫는다.
+ *   index.html 인라인 부트가드의 `refreshAssets` 와 같은 일(SSOT 미러 — 함께 갱신).
+ */
+export function refreshAssetCache(): Promise<unknown> | null {
   try {
-    const u = new URL(window.location.href)
-    u.searchParams.set('__cb', Date.now().toString(36))
-    window.location.replace(u.toString())
+    const seen = new Set<string>()
+    const add = (h: string | null) => {
+      if (!h) return
+      try {
+        const x = new URL(h, window.location.href)
+        if (x.origin === window.location.origin && x.pathname.startsWith('/assets/')) seen.add(x.href)
+      } catch { /* 잘못된 주소 */ }
+    }
+    document.querySelectorAll('script[src],link[href]').forEach((el) => add(el.getAttribute('src') || el.getAttribute('href')))
+    try { performance.getEntriesByType('resource').forEach((r) => add(r.name)) } catch { /* 미지원 */ }
+    if (!seen.size || typeof fetch !== 'function') return null
+    return Promise.all([...seen].slice(0, 120).map((h) => fetch(h, { cache: 'reload', credentials: 'same-origin' }).catch(() => undefined)))
   } catch {
-    try { window.location.reload() } catch { /* URL/location 차단 환경 — silent */ }
+    return null
   }
 }
 
