@@ -88,7 +88,7 @@ curl -I https://live.ur-team.com/
 
 ```bash
 # 1. API Token 설정
-export CLOUDFLARE_API_TOKEN=_3Q3YUJWmK_0D-6r65jdqXaOKwgnSj7oqlq2-t_P
+export CLOUDFLARE_API_TOKEN=REDACTED
 export CLOUDFLARE_ACCOUNT_ID=1a2c006f0fb54894f81283a5ea787b83
 
 # 2. 배포

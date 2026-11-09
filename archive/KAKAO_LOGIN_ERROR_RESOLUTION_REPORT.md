@@ -237,7 +237,7 @@ cd /home/user/webapp
 npm run build:kr
 
 # Cloudflare Pages 배포
-export CLOUDFLARE_API_TOKEN=_3Q3YUJWmK_0D-6r65jdqXaOKwgnSj7oqlq2-t_P
+export CLOUDFLARE_API_TOKEN=REDACTED
 export CLOUDFLARE_ACCOUNT_ID=1a2c006f0fb54894f81283a5db12e5cf
 npx wrangler pages deploy dist --project-name=ur-live
 ```

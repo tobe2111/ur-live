@@ -129,8 +129,8 @@ await widgets.renderPaymentMethods({
 |------|-----|
 | MID | urteamizy1 |
 | 클라이언트 키 | `test_ck_KNbdOvk5rk5lGyQnAq0o3n07xlzm` |
-| 시크릿 키 | `test_sk_ORzdMaqN3wOGnjevbpZD35AkYXQG` |
-| 보안키 | `849aaa0d0046aa8cfaab1ee2bb3196ded0bcbb738757319cc847fbae9303a88e` |
+| 시크릿 키 | `test_sk_REDACTED` |
+| 보안키 | `REDACTED` |
 | variantKey | `Test1` (어드민 설정 필요) |
 
 ## 배포 정보
@@ -226,7 +226,7 @@ variantKey 이름: Test1
 ```bash
 # .env 파일
 VITE_TOSS_CLIENT_KEY=test_ck_KNbdOvk5rk5lGyQnAq0o3n07xlzm
-TOSS_SECRET_KEY=test_sk_ORzdMaqN3wOGnjevbpZD35AkYXQG
+TOSS_SECRET_KEY=test_sk_REDACTED
 
 # CheckoutPage.tsx, PaymentDemoPage.tsx
 variantKey: 'Test1'

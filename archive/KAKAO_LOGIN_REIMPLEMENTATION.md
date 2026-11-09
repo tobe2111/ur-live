@@ -46,13 +46,13 @@ console.error('[Kakao Callback] Token error:', details);
 
 ### Local (.dev.vars)
 ```bash
-KAKAO_REST_API_KEY=4fd3d6ea625c446c4c445d7fb28c3759
+KAKAO_REST_API_KEY=REDACTED
 KAKAO_REDIRECT_URI=http://localhost:3000/auth/kakao/callback
 ```
 
 ### Production (Cloudflare Pages Secrets)
 ```bash
-KAKAO_REST_API_KEY=4fd3d6ea625c446c4c445d7fb28c3759
+KAKAO_REST_API_KEY=REDACTED
 KAKAO_REDIRECT_URI=https://live.ur-team.com/auth/kakao/callback
 ```
 

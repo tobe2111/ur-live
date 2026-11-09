@@ -407,7 +407,7 @@ VALUES ('admin@ur-team.com', '<bcrypt_hash>', '관리자', 1);
 JWT_SECRET=<랜덤하고 안전한 256비트 키 (최소 32자)>
 
 # 예: 
-JWT_SECRET=a8f2d9e1c6b4a7f3e5d8c2b9a4e7f1d6c3a5b8e2f4d7c9a6b3e8f1d4c7a5b9e2
+JWT_SECRET=REDACTED
 ```
 
 **키 생성 방법**:

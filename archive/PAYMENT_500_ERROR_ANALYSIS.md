@@ -269,7 +269,7 @@ null,  // ← 일단 null로 주문 생성 (나중에 userId 매핑)
 ### 1. **Cloudflare Pages 로그 확인 (가장 중요)**
 ```bash
 cd /home/user/webapp
-export CLOUDFLARE_API_TOKEN="yp2LoilEU8-WtBGMSCDZpIs2D2Yd69booRAgvhb4"
+export CLOUDFLARE_API_TOKEN="REDACTED"
 npx wrangler pages deployment tail --project-name=ur-live
 ```
 
@@ -326,7 +326,7 @@ npx wrangler pages deployment tail --project-name=ur-live
 
 **우선순위 3: 재배포 & 테스트**
 ```bash
-export CLOUDFLARE_API_TOKEN="yp2LoilEU8-WtBGMSCDZpIs2D2Yd69booRAgvhb4"
+export CLOUDFLARE_API_TOKEN="REDACTED"
 npm run deploy
 ```
 

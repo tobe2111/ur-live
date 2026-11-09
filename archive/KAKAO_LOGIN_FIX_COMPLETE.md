@@ -47,7 +47,7 @@ app.get('/auth/kakao/callback', async (c) => {
 ### 환경 변수 설정
 ```bash
 # Local (.dev.vars)
-KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd
+KAKAO_REST_API_KEY=REDACTED
 KAKAO_REDIRECT_URI=http://localhost:3000/auth/kakao/callback
 
 # Production (Cloudflare Secrets)
@@ -71,7 +71,7 @@ npx wrangler pages secret put KAKAO_REDIRECT_URI --project-name toss-live-commer
    - https://developers.kakao.com
 
 2. **앱 선택**
-   - REST API 키: `5dd74bccb797640b0efd070467f3bafd`
+   - REST API 키: `REDACTED`
 
 3. **Redirect URI 등록**
    - 메뉴: "카카오 로그인" → "Redirect URI"

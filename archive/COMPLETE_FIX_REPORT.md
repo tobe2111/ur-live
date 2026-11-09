@@ -115,7 +115,7 @@ widgets.requestPayment(requestOptions)
 
 ### 키 & API 버전
 - [x] 클라이언트 키: `test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN`
-- [x] 시크릿 키: `test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY`
+- [x] 시크릿 키: `test_gsk_REDACTED`
 - [x] API 버전: `2022-11-16` (전체 통일)
 
 ### 모바일 환경 설정

@@ -66,7 +66,7 @@ curl https://live.ur-team.com/api/health
 
 ### 결제 시스템
 - `TOSS_SECRET_KEY` - 토스페이먼츠 결제위젯 시크릿 키
-  - 값: `test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY` (결제위젯 전용)
+  - 값: `test_gsk_REDACTED` (결제위젯 전용)
   - 용도: 결제 승인 API (`/api/payments/confirm`)
   - **주의:** `test_gck_*`와 반드시 페어링 필요
 
@@ -88,7 +88,7 @@ echo "test_gsk_new_key" | npx wrangler pages secret put TOSS_SECRET_KEY
 ### ✅ 올바른 방법
 ```bash
 # 1. Secret 업데이트
-echo "test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY" | \
+echo "test_gsk_REDACTED" | \
   npx wrangler pages secret put TOSS_SECRET_KEY --project-name toss-live-commerce
 
 # 2. 빌드

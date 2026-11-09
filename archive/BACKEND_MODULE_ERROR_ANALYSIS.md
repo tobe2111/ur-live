@@ -468,7 +468,7 @@ echo "✅ API Test Complete"
 1. https://developers.kakao.com/ 접속
 2. 내 애플리케이션 선택
 3. 앱 키 확인:
-   - REST API 키: 5dd74bccb797640b0efd070467f3bafd
+   - REST API 키: REDACTED
 4. 플랫폼 설정:
    - Web 플랫폼: https://live.ur-team.com
 5. Redirect URI 설정:

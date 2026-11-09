@@ -57,13 +57,13 @@ any of your existing projects. [code: 8000007]
 5. **45번 라인에 KAKAO_AUTH_URL 추가**
    **변경 전:**
    ```yaml
-   VITE_KAKAO_REST_API_KEY: 5dd74bccb797640b0efd070467f3bafd
+   VITE_KAKAO_REST_API_KEY: REDACTED
    VITE_TOSS_CLIENT_KEY: test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
    ```
    
    **변경 후:**
    ```yaml
-   VITE_KAKAO_REST_API_KEY: 5dd74bccb797640b0efd070467f3bafd
+   VITE_KAKAO_REST_API_KEY: REDACTED
    VITE_KAKAO_AUTH_URL: https://kauth.kakao.com/oauth/authorize
    VITE_TOSS_CLIENT_KEY: test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
    ```
@@ -148,7 +148,7 @@ jobs:
           VITE_FIREBASE_MEASUREMENT_ID: G-78M73BGT77
           VITE_KAKAO_APP_KEY: 975a2e7f97254b08f15dba4d177a2865
           VITE_KAKAO_JAVASCRIPT_KEY: 975a2e7f97254b08f15dba4d177a2865
-          VITE_KAKAO_REST_API_KEY: 5dd74bccb797640b0efd070467f3bafd
+          VITE_KAKAO_REST_API_KEY: REDACTED
           VITE_KAKAO_AUTH_URL: https://kauth.kakao.com/oauth/authorize
           VITE_TOSS_CLIENT_KEY: test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
           VITE_SENTRY_DSN: https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488

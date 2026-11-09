@@ -5,7 +5,7 @@
 ### 사용 중인 키
 - **Client Key (Widget)**: `test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN`
 - **Client Key (API)**: `test_ck_KNbdOvk5rk5lGyQnAq0o3n07xlzm` ✅ 현재 사용 중
-- **Secret Key**: `test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY`
+- **Secret Key**: `test_gsk_REDACTED`
 - **MID**: `urteamizy1`
 
 ### 키 타입 구분

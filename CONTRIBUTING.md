@@ -81,7 +81,7 @@ VITE_TOSS_CLIENT_KEY=test_ck_...
 **Worker 시크릿** (로컬: `.dev.vars` 파일 생성):
 ```bash
 # .dev.vars (git에 커밋하지 말 것!)
-JWT_SECRET=local-dev-secret-32chars-minimum
+JWT_SECRET=REDACTED
 TOSS_SECRET_KEY=test_sk_...
 TOSS_WEBHOOK_SECRET=test-webhook-secret
 FIREBASE_PROJECT_ID=your-project-id

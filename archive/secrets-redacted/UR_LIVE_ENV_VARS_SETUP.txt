@@ -155,7 +155,7 @@ Value: 5dd74bccb797640b0efd070467f3bafd
 
 Variable Name: TOSS_SECRET_KEY
 Type: Secret
-Value: test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+Value: test_gsk_REDACTED
 
 # ==========================================
 # 설정 완료 후
