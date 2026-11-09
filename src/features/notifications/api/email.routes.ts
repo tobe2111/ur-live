@@ -7,7 +7,11 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { maskEmail } from '@/lib/mask'
+import { requireAdmin } from '@/worker/middleware/auth'
 export const emailRoutes = new Hono<{ Bindings: Env }>()
+// 🔐 2026-11-09 받는 주소·본문을 요청이 정하는 발송기 — 누구나 부르면 우리 도메인으로 아무에게나 메일을 보낸다(열린 중계).
+//   화면에서 부르는 곳이 없으므로 관리자 전용으로 잠근다.
+emailRoutes.use('*', requireAdmin())
 
 interface EmailParams {
   to: string

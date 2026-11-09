@@ -14,6 +14,7 @@ import { Hono } from 'hono'
 import { loadBrandIconMap } from '../utils/brand-icon-rehost'
 import { publicCache } from '../middleware/edge-cache'
 import type { Env } from '../types/env'
+import { rateLimit } from '../middleware/rate-limit'
 import { agentSearchRoutes } from './agent-search.routes'
 
 export const publicUtilityRoutes = new Hono<{ Bindings: Env }>()
@@ -25,7 +26,7 @@ publicUtilityRoutes.route('/api/agent', agentSearchRoutes)
 let _cachedBuildVersion: { version: string; fetchedAt: number } | null = null
 
 // ── POST /api/csp-report ─────────────────────────
-publicUtilityRoutes.post('/api/csp-report', async (c) => {
+publicUtilityRoutes.post('/api/csp-report', rateLimit({ action: 'csp_report', max: 30, windowSec: 60 }), async (c) => { // 🔐 2026-11-09 무제한 행 쌓기 차단
   try {
     const report = await c.req.json().catch(() => null)
     if (import.meta.env.DEV && report) console.warn('[CSP violation]', report)

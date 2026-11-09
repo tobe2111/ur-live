@@ -11,6 +11,7 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '../../../worker/middleware/auth'
 import type { Env } from '../../../worker/types/env'
 import { intParam } from '@/shared/pagination'
+import { rateLimit } from '../../../worker/middleware/rate-limit'
 
 export const ledgerRoutes = new Hono<{ Bindings: Env }>()
 
@@ -27,7 +28,7 @@ async function hashShort(input: string): Promise<string> {
   }
 }
 
-ledgerRoutes.post('/referral/click', async (c) => {
+ledgerRoutes.post('/referral/click', rateLimit({ action: 'referral_click', max: 30, windowSec: 60 }), async (c) => { // 🔐 2026-11-09 UA 를 바꿔 가며 남의 클릭 지표를 부풀리던 것
   const body = await c.req.json<{ seller_id?: string; product_id?: number }>().catch(() => ({} as { seller_id?: string; product_id?: number }))
   const sellerId = String(body.seller_id || '').trim()
   if (!/^\d+$/.test(sellerId)) return c.json({ success: false, error: 'Invalid seller_id' }, 400)
