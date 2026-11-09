@@ -73,3 +73,8 @@
 - ✅ #2246 배포 뒤 재실측: 홈·교환권 재방문이 **저장본**(`X-Shell-Served: cache`, 표식 있음) — FCP **72·80·64ms**(종전 200~550). 새로고침 띠 0.67s 등장 → 2.7s 사라짐. 금지 경로 전부 투명 · 끄면 등록 0.
 - ❌ 끈 뒤 저장소 2건이 남았다. 원인: `index.html` 인라인 SW 청소가 **매 로드** shell-sw 를 unregister(push-sw 만 예외) → 켜진 상태에선 lib 가 매번 다시 등록(동작은 했지만 헛돎), 끌 때는 `mine` 을 못 찾아 저장소 삭제 분기를 건너뜀. index.html 예외 추가 + 삭제를 `if (mine)` 밖으로. 가드 1건.
 - 🩸 틀렸던 판단: SW 쪽(fragment 키·clone 순서)을 먼저 의심했다. **`unregister`·`caches.delete` 를 계측**하니 호출 주체가 index.html 이었다. 같은 교훈 두 번째(§10) — "사라짐" 은 지우는 쪽을 먼저 본다.
+
+## 14. ③ PC 홈 서버 첫 화면 — 잠금 기록 `docs/locks/loading/2026-11-09-pc-home-first-screen.md`
+- 실측 2.25초(로더뿐) → 네비 높이(68+1+44) + 색면 + 배너 3장(HOMEBANNERS 시드) + 큰 사진 preload. 화면 `PcHeroBanners` 가 공용 상수(`shared/pc-home-first-screen.ts`)를 쓰도록 바꿔 두 벌이 갈리면 가드가 잡는다.
+- ⚠️ 남은 것: 프로모 바가 켜지는 날의 밀림(시드 추가 처방) · 배포 뒤 라이브 캡처로 밀림 0 확인.
+- #2249(상세 썸네일·유어쇼츠·shell-sw 끄기) 는 머지됐다(dc653d3c5) — 배포 뒤 ① 킬스위치 ON(대표 승인 ①) ② 상세·유어쇼츠 재실측.
