@@ -9,8 +9,8 @@
  */
 import { describe, it, expect, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { homeNearSeedTarget, homeNearSeedScript, homeNearSeedPath, withSeedDeadline, homeShortsSeedScript, HOME_SHORTS_SEED_TARGET } from '@/worker/utils/home-near-seed'
-import { readHomeNearSeed, HOME_NEAR_SEED_ID, readHomeShortsSeed } from '@/shared/home-near-seed-read'
+import { homeNearSeedTarget, homeNearSeedScript, homeNearSeedPath, withSeedDeadline, homeShortsSeedScript, HOME_SHORTS_SEED_TARGET, homeBannersSeedScript, HOME_BANNERS_SEED_TARGET } from '@/worker/utils/home-near-seed'
+import { readHomeNearSeed, HOME_NEAR_SEED_ID, readHomeShortsSeed, readHomeBannersSeed } from '@/shared/home-near-seed-read'
 
 afterEach(() => { document.body.innerHTML = '' })
 
@@ -59,5 +59,15 @@ describe('홈 거리순 피드 시드', () => {
     expect(readHomeShortsSeed()).toBeNull()
     const w = readFileSync('src/worker/index.ts', 'utf8')
     expect(w).toMatch(/isMainPage \? withSeedDeadline\(fetchSsrPayload\(HOME_SHORTS_SEED_TARGET/)
+  })
+  it('⑦ 배너 전체 시드 — 화면 요청과 같은 경로 · 화면이 첫 렌더에 쓴다', () => {
+    expect(HOME_BANNERS_SEED_TARGET.path).toBe('/api/banners')
+    const hook = readFileSync('src/components/home/useHomeBanners.ts', 'utf8')
+    expect(hook).toContain("'/api/banners',")
+    expect(hook).toMatch(/const all = readHomeBannersSeed<HomeBanner>\(\)/)
+    document.body.innerHTML = homeBannersSeedScript(JSON.stringify({ success: true, data: [{ id: 3, banner_slot: 'hero' }] }))
+    expect(readHomeBannersSeed()).toEqual([{ id: 3, banner_slot: 'hero' }])
+    const w = readFileSync('src/worker/index.ts', 'utf8')
+    expect(w).toMatch(/isMainPage \? withSeedDeadline\(fetchSsrPayload\(HOME_BANNERS_SEED_TARGET/)
   })
 })

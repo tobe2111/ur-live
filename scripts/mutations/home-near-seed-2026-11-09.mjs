@@ -25,4 +25,12 @@ export default [
     test: T,
     why: '유어쇼츠 칸이 앱 부팅 + 한국→LA 왕복 뒤까지 빈 회색으로 남는다.',
   },
+  {
+    name: '거리순시드 — 배너 시드를 안 읽는다',
+    file: 'src/components/home/useHomeBanners.ts',
+    find: '    const all = readHomeBannersSeed<HomeBanner>()\n',
+    replace: '    const all: HomeBanner[] | null = null\n',
+    test: T,
+    why: 'PC 홈 맨 위 큰 배너가 앱이 켜진 뒤 한 번 더 왕복해서야 뜬다.',
+  },
 ]
