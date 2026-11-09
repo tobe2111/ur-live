@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
 import { swallow } from '../utils/swallow';
+import { rateLimit } from '../middleware/rate-limit';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 
 const stripeRouter = new Hono<{ Bindings: Env }>();
@@ -15,7 +16,7 @@ const stripeRouter = new Hono<{ Bindings: Env }>();
  * Creates a Stripe PaymentIntent and returns the clientSecret.
  * Called by StripeCheckout.tsx before rendering the PaymentElement.
  */
-stripeRouter.post('/create-intent', async (c) => {
+stripeRouter.post('/create-intent', rateLimit({ action: 'stripe_create_intent', max: 10, windowSec: 60 }), async (c) => {
   try {
     const stripeSecretKey = c.env.STRIPE_SECRET_KEY;
     if (!stripeSecretKey) {
@@ -42,7 +43,10 @@ stripeRouter.post('/create-intent', async (c) => {
     formBody.append('amount', String(Math.round(amount)));
     formBody.append('currency', currency);
     formBody.append('automatic_payment_methods[enabled]', 'true');
+    // 🔐 2026-11-09 주문번호 키는 서버 몫 — 웹훅이 이 값으로 주문을 PAID 로 바꾸므로, 손님이 넣은 주문번호를 그대로 실으면
+    //   싼 결제 하나로 다른(또는 자기) 미결제 주문을 결제 완료로 만들 수 있었다. 정상 화면은 이 키를 보내지 않는다.
     for (const [key, value] of Object.entries(metadata)) {
+      if (/^order_?number$/i.test(key)) continue;
       formBody.append(`metadata[${key}]`, String(value));
     }
 
@@ -200,7 +204,7 @@ stripeRouter.post('/webhook', async (c) => {
       const orderNumber = metadata.orderNumber || metadata.order_number;
       if (orderNumber) {
         await DB.prepare(
-          "UPDATE orders SET status = 'FAILED', payment_status = 'failed', updated_at = datetime('now') WHERE order_number = ?"
+          "UPDATE orders SET status = 'FAILED', payment_status = 'failed', updated_at = datetime('now') WHERE order_number = ? AND status = 'PENDING'" // 🔐 2026-11-09 결제된 주문을 실패로 덮지 않는다
         ).bind(orderNumber).run();
 
         // 🛡️ 2026-04-28: 어드민에 결제 실패 알림 (운영 모니터링)
