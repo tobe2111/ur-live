@@ -110,3 +110,85 @@ test('Pixabay: 키 없으면 건너뛰고, 있으면 큰 세로 사진을 고른
   assert.equal(r.url, 'https://pixabay.com/big.jpg');
   assert.match(asked, /orientation=vertical/);
 });
+
+// ---- 2026-11-09 2차: 릴스 · 스레드 이미지 · 실제 매장 사진 · 코너 가중치 ----
+import { seriesWeights } from '../src/series.mjs';
+import { reelPlan, reelArgs, makeReel, isRealStorePhoto, originalPhotoUrl, freshStorePhotos, realStorePhotos } from '../src/visual.mjs';
+import { spawnSync } from 'node:child_process';
+
+test('코너 가중치: 반응 좋은 코너를 더 자주 고르되, 오래 안 쓴 절반 안에서만', () => {
+  const merchantIds = Object.keys(SERIES).filter((id) => !SERIES[id].fieldNoteOnly && SERIES[id].tracks.includes('merchant'));
+  // 가중치 없으면 종전과 같다
+  assert.equal(pickSeries('merchant', [], 0, { weights: null }).id, pickSeries('merchant', [], 0).id);
+  // 방금 쓴 코너는 가중치가 아무리 커도 안 나온다(반쪽 밖)
+  const hist = merchantIds.slice(0, Math.floor(merchantIds.length / 2)).map((series) => ({ series }));
+  const recentId = hist[hist.length - 1].series;
+  for (let seed = 0; seed < 40; seed++) assert.notEqual(pickSeries('merchant', hist, seed, { weights: { [recentId]: 100 } }).id, recentId);
+  // 후보 둘 중 가중치 큰 쪽이 더 자주
+  const pool = merchantIds.slice(Math.floor(merchantIds.length / 2));
+  const cnt = {};
+  for (let seed = 0; seed < 300; seed++) { const id = pickSeries('merchant', hist, seed, { weights: { [pool[0]]: 2, [pool[1]]: 0.5 } }).id; cnt[id] = (cnt[id] || 0) + 1; }
+  assert.ok((cnt[pool[0]] || 0) > (cnt[pool[1]] || 0), JSON.stringify(cnt));
+});
+
+test('코너 가중치 계산: 플랫폼 평균 대비 비율, 2개 미만은 1, 범위 0.5~2', () => {
+  const rows = [
+    { id: 'a', platform: 'instagram', metrics: { score: 300 } }, { id: 'b', platform: 'instagram', metrics: { score: 300 } },
+    { id: 'c', platform: 'instagram', metrics: { score: 100 } }, { id: 'd', platform: 'instagram', metrics: { score: 100 } },
+    { id: 't', platform: 'threads', metrics: { score: 5 } },
+  ];
+  const map = new Map([['a', 'udal-qna'], ['b', 'udal-qna'], ['c', 'myth-fact'], ['d', 'myth-fact'], ['t', 'by-numbers']]);
+  const { weights, counts } = seriesWeights(rows, map);
+  assert.equal(weights['udal-qna'], 1.5);
+  assert.equal(weights['myth-fact'], 0.5);
+  assert.equal(weights['by-numbers'], 1); // 1개뿐
+  assert.equal(counts['by-numbers'], 1);
+});
+
+test('실제 매장 사진: 데모 사진은 빼고, 가로로 잘린 og:image 는 원본으로', async () => {
+  assert.equal(isRealStorePhoto('https://media.ur-team.com/uploads/seller/26/a.jpg'), true);
+  assert.equal(isRealStorePhoto('/api/media/uploads/demo/h/x.jpg'), false);
+  assert.equal(isRealStorePhoto('https://urdeal.kr/api/media/uploads/demo/h/x.jpg'), false);
+  assert.equal(originalPhotoUrl('https://urdeal.kr/cdn-cgi/image/width=1200,height=630,fit=cover/https://media.ur-team.com/u/a.jpg'), 'https://media.ur-team.com/u/a.jpg');
+  const fake = async () => ({ json: async () => ({ data: [
+    { id: 1, image_url: 'https://media.ur-team.com/u/a.jpg', restaurant_name: '달빛' },
+    { id: 2, image_url: '/api/media/uploads/demo/h/x.jpg', restaurant_name: '데모' },
+  ] }) });
+  const list = await realStorePhotos([{ id: 1, name: '달빛', image_url: 'https://media.ur-team.com/u/a.jpg' }], fake);
+  assert.deepEqual(list.map((x) => x.url), ['https://media.ur-team.com/u/a.jpg']);
+  assert.deepEqual(freshStorePhotos(list, ['https://media.ur-team.com/u/a.jpg']), []);
+});
+
+test('릴스 계획: 장마다 길이, 전환 겹침, 총 길이', () => {
+  const p = reelPlan(4);
+  assert.deepEqual(p.d, [2.8, 2.6, 2.6, 2.2]);
+  assert.deepEqual(p.offsets, [2.4, 4.6, 6.8]);
+  assert.equal(p.total, 9);
+  const args = reelArgs(['a.jpg', 'b.jpg'], 'o.mp4');
+  assert.ok(args.includes('anullsrc=r=44100:cl=stereo'), '무음 소리 트랙');
+  assert.ok(args.join(' ').includes('1080:1920'), '세로 9:16');
+  assert.equal(args[args.length - 1], 'o.mp4');
+});
+
+const hasFfmpeg = spawnSync('ffmpeg', ['-version']).status === 0;
+test('릴스 만들기: 실제 영상(세로 1080x1920, 소리 트랙 포함)', { skip: !(hasFfmpeg && process.env.FONT_HEAVY && fs.existsSync(process.env.FONT_HEAVY)) }, () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'reel-'));
+  const files = render({ out_dir: path.join(dir, 'out'), fonts: { heavy: process.env.FONT_HEAVY, semi: process.env.FONT_SEMI }, series: '3분 가이드', title: ['폰 하나로', '사용 처리'], slides: [{ title: '앱 열기', body: '쓰던 스마트폰 그대로' }], cta: '자세한 조건은 프로필 링크에서' }, dir);
+  const out = makeReel(files, dir);
+  assert.ok(out && fs.statSync(out).size > 50_000);
+  const probe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_type,width,height', '-of', 'csv=p=0', out], { encoding: 'utf8' }).stdout;
+  assert.match(probe, /video,1080,1920/);
+  assert.match(probe, /audio/);
+  assert.equal(makeReel(files.slice(0, 1), dir), null, '한 장이면 릴스 안 만든다');
+});
+
+test('일일 게시 배선: 스레드에 이미지, 릴스는 주 3회·실패 시 캐러셀, 매장 사진은 사장님·손님 글만', () => {
+  const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
+  assert.match(src, /threadsPublish\(\{ media_type: 'IMAGE', image_url, text \}\)/);
+  assert.match(src, /r \|\| await threadsPublish\(\{ media_type: 'TEXT', text \}\)/, '이미지 실패 시 글만');
+  assert.ok(src.indexOf('// ---- Instagram') < src.indexOf('// ---- Threads ----'), '인스타 표지를 먼저 만들어 스레드가 같이 쓴다');
+  assert.match(src, /\[1, 3, 5\]\.includes\(k\.getUTCDay\(\)\)/);
+  assert.match(src, /릴스 게시 실패 → 캐러셀로 다시/);
+  assert.match(src, /\['merchant', 'consumer'\]\.includes\(track\)/);
+  assert.match(src, /pickSeries\(track, trackHist, dayIdx, \{ weights: seriesState\?\.weights \}\)/);
+});
