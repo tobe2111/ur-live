@@ -11,7 +11,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { MAP_SEED_SORT } from '@/shared/map-feed-seed'
 
-const get = vi.fn((..._a: unknown[]) => new Promise(() => {}))
+// 🗺️ 2026-11-09 응답을 **돌려준다** — 영원히 대기하면 첫 목록 묶기(useMapProducts `fetchFirstPage`)가 두 번째 갱신을
+//   진행 중 요청에 합쳐 버려 '두 번 받는다' 결함이 안 보인다(주입이 통과했다). 응답이 끝난 뒤의 두 번째 갱신은 묶이지 않는다.
+const get = vi.fn((..._a: unknown[]) => Promise.resolve({ data: { success: true, total: 2, data: [{ id: 1 }, { id: 2 }] } }))
 // tests/setup.ts 가 window.location 을 고정 객체로 바꿔 둔다 — pushState 가 아니라 직접 쓴다.
 const setPath = (p: string) => { (window.location as { pathname: string }).pathname = p }
 vi.mock('@/lib/api', () => ({ default: { get: (...a: unknown[]) => get(...a) } }))
