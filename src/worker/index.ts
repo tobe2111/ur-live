@@ -1021,7 +1021,7 @@ app.use('*', async (c, next) => {
       //   당겨 놨는데 React 가 깨어날 때까지(실측 1.2초) 사진이 캐시에 앉아 기다렸다 → 서버가 [빵부스러기 + 히어로]
       //   까지 그리고 그 아래에만 로더를 둔다(마운트 때 사진은 제자리 — box·URL 실측 일치). `/vouchers/:id` 는 같은
       //   슬롯이라도 다른 페이지라 pathname 으로 가른다. 사유·경계·폴백(''→로더): `utils/detail-ssr-body.ts`.
-      const firstScreen = buildDetailFirstScreen(ssrPayload, urdealLoaderHtml, url.search); if (firstScreen) { appendLcpLink(c.res.headers, hrefOfPreloadTag(buildDetailHeroPreloadLink(ssrPayload, false, isMobileUserAgent(c.req.header('user-agent'))))); if (isMobileUserAgent(c.req.header('user-agent'))) for (const th of mobileThumbPreloadHrefs(detailGalleryImagesOf(ssrPayload))) appendLcpLink(c.res.headers, th, 'auto') } // 🏁 2026-10-19 LCP 를 응답 헤더로(utils/lcp-image-link.ts) · 2026-11-09 폰 썸네일 2칸도(검은 상자 둘)
+      const firstScreen = buildDetailFirstScreen(ssrPayload, urdealLoaderHtml, url.search, isMobileUserAgent(c.req.header('user-agent'))); if (firstScreen) { appendLcpLink(c.res.headers, hrefOfPreloadTag(buildDetailHeroPreloadLink(ssrPayload, false, isMobileUserAgent(c.req.header('user-agent'))))); if (isMobileUserAgent(c.req.header('user-agent'))) for (const th of mobileThumbPreloadHrefs(detailGalleryImagesOf(ssrPayload))) appendLcpLink(c.res.headers, th, 'auto') } // 🏁 2026-10-19 LCP 를 응답 헤더로(utils/lcp-image-link.ts) · 2026-11-09 폰 썸네일 2칸도(검은 상자 둘)
       rb = rb.on('#root', { element(el) { el.setInnerContent(firstScreen || urdealLoaderHtml, { html: true }); } });
     } else if (ssrSlot === 'DETAIL' && ssrPayload && url.pathname.startsWith('/vouchers/')) {
       // 🎁 2026-10-08 [UNLOCK_LOADING] (대표 "모두 다 하자"): 같은 DETAIL 슬롯·같은 시드인데 위 pathname 에서 빠져 로더만 보였다. 사유·경계: `utils/voucher-detail-ssr-body.ts`.

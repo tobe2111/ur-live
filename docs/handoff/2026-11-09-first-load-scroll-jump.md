@@ -156,3 +156,9 @@
 - JS 커버리지(폰 홈, 로컬 dist + 라이브 API, hidden sourcemap 매핑 — `scratchpad/localcov.cjs`): 첫 로드 청크 997KB raw 중 미사용 594KB. 큰 덩어리는 **React 자체(74KB)** 와 **일부러 미리 받는 상세·지도 청크**(가 넘어가면 즉시 — 2026-10-15 결정)라 첫 그림 비용이 아니다. 첫 그림에 걸리는 미사용은 `urdeal-icons`(11KB raw ≈3KB br)·`App.tsx` 라우트 표(20KB raw)·`lib/api.ts`(9KB raw) 정도 — 각 3KB br 아래라 **번들은 실질 바닥**. 더 줄이려면 i18n(`locale-ko` 25KB br) 표면별 분할 같은 구조 변경이 필요하다(대표 판단).
 - 로더 즉시 표시: 잠금 기록 `2026-11-09-loader-early-reveal.md`. 배포 뒤 판정: `ldrshot.cjs /cart` 에서 TTFB > 0.5s 인 회차의 뼈대가 HTML +0.2~0.3s 에 보이는지(종전 +0.7s). 이 컨테이너는 TTFB 가 0.2~1.2s 로 요동치므로 TTFB 가 0.5s 넘은 회차만 판정에 쓴다.
 - 🧭 `/group-buy` 하드 로드는 301 → `/`(0.5초) 지만 앱 안 이동은 클라이언트 `Navigate` 라 네트워크가 없다 — 고칠 것 없음. `HomeTopHeader.goRegion` 이 `/group-buy?gucode=` 로 보내는 코드는 **죽은 페이지(MainHomePage)** 전용이라 무시.
+
+## 28. 대표 승인("배포 묶기 빼고 가장 이상적으로") — ① CSS 상한 표면별 · ② PC 상세 첫 화면
+- ① 전체판 70KB → **표면별 40KB**(생성기 강제) + 전체판 160KB 정신 건강 상한. 기록 `2026-11-09-critical-css-cap-per-surface.md`.
+- ② PC 상세 서버 첫 화면(그리드 통째 · 갤러리 PC 블록 · 제목 헤더 · 빈 aside). detail 표면 CSS 34,447 → 35,920B. 기록 `2026-11-09-pc-detail-first-screen.md`. 배포 뒤 판정: PC UA `lcpel.cjs https://urdeal.kr/pass/2919 pc` 에서 LCP 요소가 서버가 그린 큰 사진(종전 2.47s → ≈0.9s) · CLS < 0.01.
+- 다음 PC 표면 후보(남은 순서): 교환권 목록 `/vouchers`(PC 2.27s) · 유어샵 `/u/:handle`(2.19s) · 로그인 전 탭(이용권·마이, 2.0s). 각각 PC 레이아웃이 다르다 — 표면 CSS 가 40KB 상한을 넘지 않는지 먼저 본다.
+- ③ 교환권 사진 호스트(giftishow) · ④ 다국어 문구 분할은 이 뒤.
