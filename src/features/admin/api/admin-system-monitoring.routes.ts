@@ -411,6 +411,8 @@ interface OpsGate {
 }
 
 const OPS_GATES: OpsGate[] = [
+  // 🏠 2026-11-09 재방문 즉시 표시 SW(결재 2026-11-09-revisit-instant-shell 승인). 2026-04-27 SW 사고 이력 — 기본 OFF, 세션이 자기 폰(?__shellsw=1)으로 카카오 로그인·결제 복귀를 확인한 뒤 켠다.
+  { key: 'shell_sw_enabled', kind: 'setting', label: '재방문 즉시 표시 SW(shell-sw)', default_value: 'false', staging_ref: 'S-SHELLSW', turn_on_when: '?__shellsw=1 로 켠 폰에서 홈 재방문 0초 · 카카오 로그인 시작→콜백 · 토스 결제 성공 복귀 · /u/me 리다이렉트 · 어드민 로그인이 전부 정상이면(실패 시 끄면 다음 로드에 SW 가 자기 해제)' },
   { key: 'commission_budget_enabled', kind: 'setting', label: '커미션 예산 아비터 [INV-CB]', default_value: 'false', staging_ref: 'S1', turn_on_when: '영입+트리가 겹친 주문 1건을 `GET /api/admin/promo-ledger/order/:orderNumber` 로 보고 verdict.within_budget=true 면(S1 절차)' },
   { key: 'promo_funding_source', kind: 'setting', label: '프로모 owner-펀딩', default_value: 'platform', staging_ref: 'S2', turn_on_when: '이용권 구매→사용→환불에서 매장 원장 promo debit 1회가 확인되면(S2)' },
   { key: 'SHOPPING_LEDGER_ENABLED', kind: 'env', label: '쇼핑 주문 원장 크레딧', default_value: 'false', staging_ref: 'S3', turn_on_when: '쇼핑탭 재오픈이 결정되고 S3 실결제로 net 크레딧 1회가 확인되면' },

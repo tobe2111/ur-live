@@ -14,6 +14,7 @@
     "/.well-known/assetlinks.json",
     "/sw.js",
     "/push-sw.js",
+    "/shell-sw.js",
     "/pwa-sw.js",
     "/manifest.webmanifest",
     "/apple-touch-icon.png",

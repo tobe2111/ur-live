@@ -540,7 +540,7 @@ publicUtilityRoutes.get('/api/consumer-settings', publicCache(200), async (c) =>
   const fallback = { success: true, data: {} as Record<string, unknown> }
   try {
     const { results } = await c.env.DB.prepare(
-      `SELECT key, value FROM platform_settings WHERE key IN ('map_highlight_discount_pct')`
+      `SELECT key, value FROM platform_settings WHERE key IN ('map_highlight_discount_pct','shell_sw_enabled')`
     ).all<{ key: string; value: string }>()
     const s: Record<string, string> = {}
     for (const r of results || []) s[r.key] = r.value
@@ -548,6 +548,8 @@ publicUtilityRoutes.get('/api/consumer-settings', publicCache(200), async (c) =>
     const pct = Number(s.map_highlight_discount_pct)
     // 1~99 밖은 무시한다 — 0 이면 전 마커가 강조되어 D4 가 무의미해지고, 100 이면 아무것도 안 뜬다.
     if (Number.isFinite(pct) && pct >= 1 && pct <= 99) out.map_highlight_discount_pct = Math.round(pct)
+    // 🏠 2026-11-09 재방문 즉시 표시 SW 킬스위치 — 문자열 'true' 일 때만 켜짐(기본 OFF). lib/shell-sw.ts 가 읽는다.
+    out.shell_sw_enabled = s.shell_sw_enabled === 'true'
     c.header('Cache-Control', 'public, max-age=60')
     c.header('CDN-Cache-Control', 'public, max-age=600')
     return c.json({ success: true, data: out })

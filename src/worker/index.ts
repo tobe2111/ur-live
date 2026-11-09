@@ -735,6 +735,7 @@ app.use('*', async (c, next) => {
     const authed = /(?:^|;\s*)ur_session=/.test(c.req.header('cookie') || ''); // 🐢 2026-10-15: 로그인 전 탭(guest*)은 세션 쿠키가 없을 때만 — 있으면 종전대로(null/linkshop)
     const chunkSurface = routeSurface(url.pathname, isMobileUserAgent(c.req.header('user-agent')), authed); // 🧭 2026-10-15 표면 판정 SSOT(shared/route-surface — 앱 부팅도 같은 함수)
     const routeChunks = chunkSurface ? ROUTE_CHUNK_MAP[chunkSurface] : undefined;
+    c.res.headers.set('X-Shell-Variant', authed ? 'user' : 'guest'); // 🏠 2026-11-09 shell-sw 가 로그인/비로그인 저장본을 가르는 표식(public/shell-sw.js)
     const cssFirst = cssFirstApplies(url.pathname, c.req.header('user-agent') || '', authed); appendEdgeHeaders(c.res.headers, ENTRY_CSS, (c.req.raw as { cf?: { colo?: string } }).cf?.colo); let rb = applyEarlyData(applyCssFirstBoot(new HTMLRewriter(), nonce, cssFirst, criticalCssFor(url.pathname)), url.pathname, authed, nonce) // 🚦 2026-10-12 [UNLOCK_LOADING] CSS 먼저 → 스크립트(utils/css-first-boot.ts)
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },

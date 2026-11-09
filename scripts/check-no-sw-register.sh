@@ -42,10 +42,12 @@ fi
 #    예외 (allowlist): 의도적으로 제한된 SW
 #      - PushNotificationSetup.tsx (/push-sw.js — Web Push 알림 전용)
 #      - main.tsx (/pwa-sw.js — 캐싱만, navigateFallback 없음 ✓ OAuth 안전)
+#      - src/lib/shell-sw.ts (/shell-sw.js — 2026-11-09 대표 승인 · 쿼리 있는 요청·/auth·/api 는 투명 · 가드 shell-sw-policy-2026-11-09.test.ts)
 PATTERN_REG=$(grep -rEn "navigator\.serviceWorker\.register\(" src/ 2>/dev/null \
   | grep -v "scripts/check-no-sw-register.sh" \
   | grep -v "PushNotificationSetup\.tsx" \
   | grep -v "main\.tsx" \
+  | grep -v "src/lib/shell-sw\.ts" \
   || true)
 if [ -n "$PATTERN_REG" ]; then
   echo "❌ navigator.serviceWorker.register() 호출 발견 (허용 리스트 외부)"
