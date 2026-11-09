@@ -18,7 +18,8 @@
  */
 import { MAIN_SEED_PATH } from '../../shared/seo/region-seed'
 import { nearKeyFromCookieHeader } from '../../shared/home-near'
-import { HOME_NEAR_SEED_ID, HOME_SHORTS_SEED_ID } from '../../shared/home-near-seed-read'
+import { HOME_NEAR_SEED_ID, HOME_SHORTS_SEED_ID, HOME_BANNERS_SEED_ID } from '../../shared/home-near-seed-read'
+import { BANNERS_SEED_PATH } from '../../shared/home-strip-banners'
 import type { SsrTarget, SsrPayloadResult } from './ssr-payload'
 
 /** 거리순 피드 시드를 기다리는 최대 시간. 넘으면 HTML 을 먼저 보낸다. */
@@ -58,4 +59,14 @@ export function withSeedDeadline(p: Promise<SsrPayloadResult>, ms: number): Prom
 export const HOME_SHORTS_SEED_TARGET: SsrTarget = { slot: 'HOMESHORTS', path: '/api/urshorts' }
 export function homeShortsSeedScript(payload: string): string {
   return `<script id="${HOME_SHORTS_SEED_ID}" type="application/json">${payload}</script>`
+}
+
+/**
+ * 🖼️ 2026-11-09 홈 배너 전체 시드 — PC 홈 맨 위 큰 배너(가장 큰 그림)가 앱이 켜진 **뒤** `/api/banners` 를 물어(PC 실측 2.9s 출발)
+ *   가장 늦게 떴다. 섹션 시드엔 상단 띠 배너만 있다. 같은 경로(cron 예열 키)를 같은 마감으로 함께 싣는다.
+ *   화면 쪽: `useHomeBanners` 가 첫 렌더에 이 시드를 자리 표시값으로 쓴다(`readHomeBannersSeed`).
+ */
+export const HOME_BANNERS_SEED_TARGET: SsrTarget = { slot: 'HOMEBANNERS', path: BANNERS_SEED_PATH }
+export function homeBannersSeedScript(payload: string): string {
+  return `<script id="${HOME_BANNERS_SEED_ID}" type="application/json">${payload}</script>`
 }

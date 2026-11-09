@@ -31,3 +31,17 @@ export function readHomeShortsSeed<T = unknown>(): T[] | null {
     return null
   }
 }
+
+/** 🖼️ 홈 배너 전체 시드(2026-11-09) — 짝: 워커 `homeBannersSeedScript`. `/api/banners` 응답 원형의 `data` 배열. */
+export const HOME_BANNERS_SEED_ID = '__SSR_INITIAL_HOMEBANNERS__'
+export function readHomeBannersSeed<T = unknown>(): T[] | null {
+  try {
+    if (typeof document === 'undefined') return null
+    const el = document.getElementById(HOME_BANNERS_SEED_ID)
+    if (!el?.textContent) return null
+    const parsed = JSON.parse(el.textContent)
+    return parsed?.success && Array.isArray(parsed.data) ? (parsed.data as T[]) : null
+  } catch {
+    return null
+  }
+}
