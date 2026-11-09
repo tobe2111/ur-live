@@ -7,12 +7,15 @@
  *   거친다. 하나라도 빠지면 첫 paint 에 회색 Suspense 블록이 화면 밖에서 깜빡인다(2026-06-23 신고).
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useHeroSettled } from '@/lib/hero-settled'
 
 // 🎯 2026-06-23 (대표 신고 — '불필요한 로딩들'): below-fold 섹션(지도/후기)의 lazy 청크가 첫 paint 에
 //   즉시 로드돼 회색 Suspense 블록이 화면 밖에서 깜빡였음. 뷰포트 근처(300px)에 올 때만 mount → 그전엔
 //   공간만 예약(중립, 로딩 표시 X). 스크롤해 도달하면 그때 로드(정상). RestaurantMiniMap 내부 SDK 게이트와 별개의 chunk 게이트.
 export default function DeferUntilVisible({ minHeight, children }: { minHeight: number; children: ReactNode }) {
   const [visible, setVisible] = useState(false)
+  // 🖼️ 2026-11-09 대표 승인 — 맨 위 큰 사진이 다 뜬 뒤에 아래쪽을 받는다(lib/hero-settled). 보이는 것 + 사진 둘 다.
+  const heroSettled = useHeroSettled()
   const ref = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (visible) return
@@ -22,5 +25,6 @@ export default function DeferUntilVisible({ minHeight, children }: { minHeight: 
     obs.observe(el)
     return () => obs.disconnect()
   }, [visible])
-  return <div ref={ref} style={{ minHeight: visible ? undefined : minHeight }}>{visible ? children : null}</div>
+  const show = visible && heroSettled
+  return <div ref={ref} style={{ minHeight: show ? undefined : minHeight }}>{show ? children : null}</div>
 }

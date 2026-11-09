@@ -116,7 +116,8 @@ describe('② React 슬라이드 — 서버와 같은 구조', () => {
     //    (주입이 잡았다). 보이는 슬라이드는 `src={hi}` 로만 구별되므로 거기서부터 앵커한다.
     const slide = code.slice(code.indexOf('src={hi}'))
     expect(slide.indexOf('src={hi}')).toBe(0)
-    expect(/^[\s\S]{0,600}?onError=\{\(\)\s*=>\s*setDead/.test(slide)).toBe(true)
+    // 🖼️ 2026-11-09 첫 사진 실패 때 아래쪽 대기를 푸는 호출(markHeroSettled)이 setDead 앞에 붙었다 — setDead 는 그대로다.
+    expect(/^[\s\S]{0,700}?onError=\{\(\)\s*=>\s*\{?\s*(?:if \(i === 0\) markHeroSettled\(\); )?setDead/.test(slide)).toBe(true)
   })
 
   it('모바일 숨은 프로브는 사라졌다 — 같은 URL 을 두 번 적을 이유가 없다', () => {

@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { beginHero, markHeroSettled } from '@/lib/hero-settled'
 import { DEAL_HERO_VT } from '@/lib/deal-vt-name'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Z } from '@/constants/z-index'
@@ -229,6 +230,20 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
     return list
   }, [main, images, isDesktop])
 
+  /**
+   * 🖼️ 2026-11-09 대표 승인(상세 잠금 *"허가 — 진행"*) — 이 갤러리가 서 있는 동안 아래쪽(지도·리뷰·다녀온 사람들)은 큰 사진을 기다린다.
+   *   `useLayoutEffect` 다 — 캐시에 있던 사진은 `useEffect` 보다 먼저 `load` 를 쏠 수 있어(그러면 대기가 1.5초 타이머까지 간다),
+   *   커밋 직후 시작하고 이미 다 받은 사진이면 바로 푼다. 떠날 때도 푼다(다음 화면이 기다리지 않게).
+   */
+  const firstImg = has ? images[0] : ''
+  useLayoutEffect(() => {
+    if (!firstImg) return
+    beginHero()
+    const first = galRef.current?.querySelector('img')
+    if (first?.complete && first.naturalWidth > 0) markHeroSettled()
+    return () => markHeroSettled()
+  }, [firstImg])
+
   return (
     <>
       {/* 화면에 보이지 않는다. 위 `bg()` 와 **같은 URL** 이라 브라우저가 요청을 재사용한다(추가 트래픽 0).
@@ -280,8 +295,8 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
                     fetchPriority={i === 0 ? 'high' : 'auto'}
                     decoding="async"
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', ...(i > 0 && blurUp ? BLUR_START : null) }}
-                    onLoad={i > 0 && blurUp ? sharpen : undefined}
-                    onError={() => setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src)))}
+                    onLoad={i > 0 ? (blurUp ? sharpen : undefined) : markHeroSettled /* 🖼️ 2026-11-09 큰 사진이 왔다 → 아래쪽을 받는다(lib/hero-settled) */}
+                    onError={() => { if (i === 0) markHeroSettled(); setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src))) }}
                   />
                 )}
                 {!src && fallback}
