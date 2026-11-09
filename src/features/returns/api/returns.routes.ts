@@ -16,7 +16,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { tossCancelPayment } from '@/worker/utils/toss-payments';
@@ -83,7 +83,7 @@ async function ensureTable(DB: D1Database) {
  * POST /request — 반품 신청
  * Body: { order_id, reason, detail_reason? }
  */
-returnsRoutes.post('/request', rateLimit({ action: 'return_request', max: 10, windowSec: 3600 }), requireAuth(), async (c) => {
+returnsRoutes.post('/request', rateLimit({ action: 'return_request', max: 10, windowSec: 3600 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -182,7 +182,7 @@ returnsRoutes.post('/request', rateLimit({ action: 'return_request', max: 10, wi
 /**
  * GET /my — 내 반품 내역
  */
-returnsRoutes.get('/my', requireAuth(), async (c) => {
+returnsRoutes.get('/my', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -204,7 +204,7 @@ returnsRoutes.get('/my', requireAuth(), async (c) => {
  * PUT /:id/shipping — 반품 배송 정보 등록
  * Body: { tracking_number, shipping_company }
  */
-returnsRoutes.put('/:id/shipping', rateLimit({ action: 'return_shipping', max: 30, windowSec: 3600 }), requireAuth(), async (c) => {
+returnsRoutes.put('/:id/shipping', rateLimit({ action: 'return_shipping', max: 30, windowSec: 3600 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 

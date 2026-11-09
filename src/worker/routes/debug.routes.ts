@@ -12,7 +12,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
-import { requireAdmin } from '../middleware/auth'
+import { requireAdmin, requireAdminRole } from '../middleware/auth'
 
 export const debugRoutes = new Hono<{ Bindings: Env }>()
 
@@ -34,7 +34,7 @@ debugRoutes.get('/build-info', requireAdmin(), (c) => {
 
 // ── GET /bindings ───────────────────────────────────
 // Worker 환경 바인딩 상태 진단 (DB/KV 등 키 확인).
-debugRoutes.get('/bindings', requireAdmin(), (c) => {
+debugRoutes.get('/bindings', requireAdminRole(), (c) => { // 🔐 2026-11-09 환경 키 목록 = 최고관리자만
   const env = c.env as Env
   const e = env as any
   // 🆕 2026-07-01 (Cloudflare 전수조사): KV/R2/Durable Objects 바인딩을 빠짐없이 노출.

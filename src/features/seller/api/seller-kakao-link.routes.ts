@@ -214,7 +214,7 @@ sellerKakaoLinkRoutes.post('/unlink-kakao', async (c) => {
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404)
 
     const { verifyPassword } = await import('../../../lib/password')
-    const ok = await verifyPassword(body.current_password, seller.password_hash)
+    const { valid: ok } = await verifyPassword(body.current_password, seller.password_hash)
     if (!ok) return c.json({ success: false, error: '비밀번호가 틀렸습니다' }, 401)
 
     await c.env.DB.prepare(

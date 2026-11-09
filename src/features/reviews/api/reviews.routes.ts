@@ -11,7 +11,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { getFeatureFlags } from '@/worker/utils/feature-flags';
 import type { Env } from '@/worker/types/env';
@@ -465,7 +465,7 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
 });
 
 // PUT /api/reviews/:id — 리뷰 수정
-reviewsRoutes.put('/:id', rateLimit({ action: 'review_mutation', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
+reviewsRoutes.put('/:id', rateLimit({ action: 'review_mutation', max: 10, windowSec: 60 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -534,7 +534,7 @@ reviewsRoutes.put('/:id', rateLimit({ action: 'review_mutation', max: 10, window
 });
 
 // DELETE /api/reviews/:id — 리뷰 삭제
-reviewsRoutes.delete('/:id', rateLimit({ action: 'review_mutation', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
+reviewsRoutes.delete('/:id', rateLimit({ action: 'review_mutation', max: 10, windowSec: 60 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -554,7 +554,7 @@ reviewsRoutes.delete('/:id', rateLimit({ action: 'review_mutation', max: 10, win
 });
 
 // GET /api/reviews/my — 내 리뷰 목록
-reviewsRoutes.get('/my', requireAuth(), async (c) => {
+reviewsRoutes.get('/my', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 

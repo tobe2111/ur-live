@@ -33,7 +33,9 @@ const {
   mockRestoreStock,
   mockConfirmPaymentAtomic,
   mockOrderIsAlreadyProcessed,
+  mockGetTossPayment,
 } = vi.hoisted(() => ({
+  mockGetTossPayment: vi.fn(),
   mockIsAlreadyProcessed: vi.fn(),
   mockRecord: vi.fn(),
   mockMarkProcessed: vi.fn(),
@@ -75,6 +77,11 @@ vi.mock('../../worker/repositories/webhook.repository', () => ({
 }));
 
 // ── Silence side-effects ──────────────────────────────────────────────────────
+// 🔐 2026-11-09: 웹훅은 확정 전에 Toss 결제 조회(getTossPayment)로 본문을 대조한다.
+vi.mock('../../worker/utils/toss-gateway', async (orig) => ({
+  ...(await orig<Record<string, unknown>>()),
+  getTossPayment: mockGetTossPayment,
+}));
 vi.mock('@/worker/utils/swallow', () => ({ swallow: () => () => {} }));
 vi.mock('@/worker/utils/alerts', () => ({ sendAlert: vi.fn(() => Promise.resolve()) }));
 vi.mock('@/worker/utils/sentry', () => ({ captureException: vi.fn(() => Promise.resolve()) }));
@@ -198,6 +205,7 @@ describe('POST /api/toss/webhook — signature verification', () => {
     // DB.prepare for digital items (returns empty)
     const app = buildApp();
     const env = makeEnv(); // no TOSS_WEBHOOK_SECRET
+    mockGetTossPayment.mockResolvedValue({ ok: true, status: 'DONE', orderId: 'ORD-TEST-001', totalAmount: 10000 }); // 실제 결제가 있는 경우
     const res = await postWebhook(app, env, makeTossPayload());
     expect(res.status).toBe(200);
     const json = await res.json() as { received: boolean; status: string };
@@ -233,6 +241,7 @@ describe('POST /api/toss/webhook — payment.confirmed → PAID', () => {
       .mockResolvedValueOnce(false) // not already DONE
       .mockResolvedValueOnce(false); // not already PAID
     mockConfirmPaymentAtomic.mockResolvedValue({ confirmed: 1 });
+    mockGetTossPayment.mockResolvedValue({ ok: true, status: 'DONE', orderId: 'ORD-TEST-001', totalAmount: 10000 });
 
     const app = buildApp();
     const res = await postWebhook(app, makeEnv(), makeTossPayload({
@@ -256,6 +265,29 @@ describe('POST /api/toss/webhook — payment.confirmed → PAID', () => {
     // Event must be marked processed
     expect(mockMarkProcessed).toHaveBeenCalledWith('evt-456');
   });
+
+  // 🔐 2026-11-09 — 서명 없는 본문만으로는 확정하지 않는다(위조 웹훅).
+  for (const [label, looked] of [
+    ['Toss 에 없는 결제', { ok: false, code: 'NOT_FOUND_PAYMENT' }],
+    ['Toss 상태가 DONE 이 아님', { ok: true, status: 'WAITING_FOR_DEPOSIT', orderId: 'ORD-TEST-001', totalAmount: 10000 }],
+    ['다른 주문의 결제', { ok: true, status: 'DONE', orderId: 'ORD-OTHER', totalAmount: 10000 }],
+    ['금액이 다름', { ok: true, status: 'DONE', orderId: 'ORD-TEST-001', totalAmount: 100 }],
+  ] as const) {
+    it(`Toss 조회가 맞지 않으면 확정하지 않는다 — ${label}`, async () => {
+      mockWebhookIsAlreadyProcessed.mockResolvedValue(false);
+      mockRecord.mockResolvedValue('evt-457');
+      mockMarkProcessed.mockResolvedValue(undefined);
+      mockOrderIsAlreadyProcessed.mockResolvedValueOnce(false).mockResolvedValueOnce(false);
+      mockConfirmPaymentAtomic.mockResolvedValue({ confirmed: 1 });
+      mockGetTossPayment.mockResolvedValue(looked);
+      const res = await postWebhook(buildApp(), makeEnv(), makeTossPayload({
+        eventType: 'payment.confirmed',
+        data: { orderId: 'ORD-TEST-001', paymentKey: 'forged', status: 'DONE', totalAmount: 10000, method: 'CARD', approvedAt: '2026-05-06T10:00:00' },
+      }));
+      expect(res.status).toBe(200);
+      expect(mockConfirmPaymentAtomic).not.toHaveBeenCalled();
+    });
+  }
 });
 
 describe('POST /api/toss/webhook — payment.cancelled → CANCELLED', () => {

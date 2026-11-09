@@ -17,7 +17,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import {
-  requireAuth,
+  requireUser,
   getCurrentUser
 } from '@/worker/middleware/auth';
 import {
@@ -106,7 +106,7 @@ async function getUserDbId(db: D1Database, idOrUid: string): Promise<number | nu
  * GET /api/shipping-addresses
  * 배송지 목록 조회
  */
-shippingAddressRoutes.get('/', requireAuth(), async (c) => {
+shippingAddressRoutes.get('/', requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) {
@@ -139,7 +139,7 @@ shippingAddressRoutes.get('/', requireAuth(), async (c) => {
  * POST /api/shipping-addresses
  * 배송지 추가
  */
-shippingAddressRoutes.post('/', requireAuth(), async (c) => {
+shippingAddressRoutes.post('/', requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) {
@@ -225,7 +225,7 @@ shippingAddressRoutes.post('/', requireAuth(), async (c) => {
  * PUT /api/shipping-addresses/:id
  * 배송지 수정
  */
-shippingAddressRoutes.put('/:id', requireAuth(), async (c) => {
+shippingAddressRoutes.put('/:id', requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) {
@@ -323,7 +323,7 @@ shippingAddressRoutes.put('/:id', requireAuth(), async (c) => {
  * DELETE /api/shipping-addresses/:id
  * 배송지 삭제
  */
-shippingAddressRoutes.delete('/:id', requireAuth(), async (c) => {
+shippingAddressRoutes.delete('/:id', requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) {

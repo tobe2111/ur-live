@@ -221,7 +221,7 @@ describe('🚪 닫은 문 셋 — 410 이고, 돈을 움직이는 코드가 남�
 
   it('새 문은 GET·POST /api/points/refund 이고, 레이트리밋이 걸려 있다', () => {
     const src = stripComments(readCode('src/features/points/api/points.routes.ts'))
-    expect(src).toContain("pointsRoutes.get('/refund', requireAuth()")
+    expect(src).toMatch(/pointsRoutes\.get\('\/refund', require(?:Auth|User)\(\)/)
     expect(src).toMatch(/pointsRoutes\.post\('\/refund',\s*rateLimit\(/)
     expect(src).toContain('requestDealRefund(')
   })

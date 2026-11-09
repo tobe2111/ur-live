@@ -41,8 +41,8 @@ export default [
   {
     name: '💸딜현금 옛 문이 다시 돈을 움직인다',
     file: 'src/features/points/api/points.routes.ts',
-    find: "pointsRoutes.post('/withdraw', requireAuth(), (c) => c.json({",
-    replace: "pointsRoutes.post('/withdraw', requireAuth(), (c) => (c.env.DB.prepare('UPDATE user_points SET balance = balance - 1'), c.json({",
+    find: "pointsRoutes.post('/withdraw', requireUser(), (c) => c.json({",
+    replace: "pointsRoutes.post('/withdraw', requireUser(), (c) => (c.env.DB.prepare('UPDATE user_points SET balance = balance - 1'), c.json({",
     test: TEST,
     why: '한도·장부 규칙을 우회하는 두 번째 문이 생긴다 — 8.8% 를 떼고 충전 한도도 안 본다.',
   },

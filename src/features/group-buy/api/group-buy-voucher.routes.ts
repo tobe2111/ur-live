@@ -10,7 +10,7 @@
  */
 
 import type { Hono } from 'hono'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { scanOrSellerAuth } from '../../seller/api/seller-scan-devices.routes'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
@@ -399,7 +399,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
   router.post(
     '/voucher/:code/cancel',
     rateLimit({ action: 'voucher_self_cancel', max: 10, windowSec: 600 }),
-    requireAuth(),
+    requireUser(),
     auditLog('group_buy.voucher.self_cancel'),
     async (c) => {
       const { DB } = c.env

@@ -90,7 +90,9 @@ export function adminRbacMiddleware() {
     // 비인증/미상 → 통과(라우트 requireAdmin 이 401). super → 전권.
     if (!role || role === 'super') return next();
 
-    const pathname = new URL(c.req.url).pathname;
+    // 🔐 2026-11-09: 라우터가 쓰는 **디코드된** 경로로 판정한다 — 원문(%73ettings)으로 보면 라우터는 settings 로
+    //   가는데 여기서는 다른 세그먼트로 읽혀 역할 검사를 비켜 갔다.
+    const pathname = c.req.path;
 
     // 본인 계정 보안 self-service(로그인 PIN / 2FA 설정)는 역할 무관 허용 —
     //   강제 보안 게이트가 제한·도메인-한정 역할(wholesale 등) 본인을 막아 데드락 나는 것 방지.

@@ -33,7 +33,7 @@ import type { Env } from './types/env';
 import { authRouter } from './routes/auth.routes';
 import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { healthRoutes } from './routes/health.routes';
-import { killerSwRoutes } from './routes/killer-sw.routes'; // 2026-04-27 PWA 사고 복구
+import { killerSwRoutes } from './routes/killer-sw.routes'; import { isRasterImageType, hardenImageHeaders } from './utils/image-proxy-safety'; // 2026-04-27 PWA 사고 복구
 import kakaoSkillWebhookRoutes from './routes/kakao-skill-webhook.routes'; // 💬 2026-07-19 CS FAQ 봇(오픈빌더 스킬, KAKAO_SKILL_SECRET 미설정=404)
 import { instagramWebhookRoutes, instagramAutoDmAdminRoutes, instagramAutoDmSellerRoutes } from '../features/instagram-autodm/api/autodm.routes'; // 💬 2026-10-01 인스타 댓글→자동 DM(어드민 '켜기' 전엔 0통)
 import { sitemapRoutes } from './routes/sitemap.routes'; // 2026-04-27 TD-006 분할
@@ -565,7 +565,7 @@ app.use('*', async (c, next) => {
   //   효과: 모바일 메인 LCP -0.3~0.5s (첫 API fetch waterfall 제거).
   //   부하: KV read 1회 + 정적 inject. 매 메인 요청 1회 (publicCache 5분 HIT 보장).
   const ct = c.res.headers.get('Content-Type') || '';
-  if (ct.includes('text/html') && c.res.body) {
+  if (ct.includes('text/html') && c.res.body && !c.req.path.startsWith('/api/')) { // 🔐 2026-11-09 [UNLOCK_LOADING] /api 응답엔 nonce 미부착(셸 HTML 전용)
     const url = new URL(c.req.url);
     const isMainPage = url.pathname === '/' || url.pathname === '/index.html';
 
@@ -1141,6 +1141,7 @@ app.use('*', async (c, next) => {
     const isShortLink = p === '/l' || p.startsWith('/l/');
     // 🥗 2026-07-15 소셜 홍보 자동화(ur-ads 로 이전) — 어드민 토큰째 위임(ur-ads 자체 requireAdmin, 같은 JWT_SECRET).
     const isAdminSocial = p === '/api/admin/social' || p.startsWith('/api/admin/social/');
+    if (isAdminSocial) { let ok = false; const denied = await adminRbacMiddleware()(c, async () => { ok = true }); if (!ok) return denied ?? c.json({ success: false }, 403) } // 🔐 2026-11-09 위임 전에 역할 검사(뷰어가 발행하던 것)
     if (isAdsApi || isShortLink || isAdminSocial) {
       try {
         return await ads.fetch(c.req.raw);
@@ -2255,12 +2256,12 @@ app.get('/api/image/resize', async (c) => {
     // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 동일 패턴)
     const edge = caches.default as Cache;
     const hit = await edge.match(cacheKey).catch(() => null);
-    if (hit) return hit;
+    if (hit && isRasterImageType(hit.headers.get('Content-Type'))) return hit; // 🔐 2026-11-09 수리 전 캐시된 비-이미지는 버린다
 
     const immutable = (body: BodyInit | ReadableStream | null, type: string) => {
       const headers = new Headers();
       headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-      headers.set('Content-Type', type);
+      headers.set('Content-Type', type); hardenImageHeaders(headers);
       return new Response(body as BodyInit, { headers });
     };
 
@@ -2273,7 +2274,7 @@ app.get('/api/image/resize', async (c) => {
     if (R2) {
       const stored = await R2.get(thumbKey).catch(() => null);
       if (stored) {
-        const out = immutable(stored.body, stored.httpMetadata?.contentType || 'image/webp');
+        const out = immutable(stored.body, isRasterImageType(stored.httpMetadata?.contentType) ? stored.httpMetadata!.contentType! : 'image/webp');
         if (c.executionCtx) c.executionCtx.waitUntil(edge.put(cacheKey, out.clone()).catch(() => {}));
         return out;
       }
@@ -2289,6 +2290,7 @@ app.get('/api/image/resize', async (c) => {
     }
 
     const type = response.headers.get('Content-Type') || 'image/webp';
+    if (!isRasterImageType(type)) return c.json({ success: false, error: 'not an image' }, 415);
     // 변환본만 R2 영구 저장 (원본 폴백분은 저장 X — 다음 요청이 변환 재시도). 5MB 캡.
     if (R2 && transformed) {
       const buf = await response.arrayBuffer();

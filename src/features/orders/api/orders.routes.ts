@@ -123,9 +123,14 @@ ordersRoutes.get('/:id/tracking', cors(), requireAuth(), async (c) => {
   const order = await repository.findById(id) as any;
   if (!order) return c.json({ success: false, error: 'Order not found' }, 404);
 
+  // 🔐 2026-11-09: 종전엔 소비자일 때만 소유를 봤다 — 다른 종류 토큰은 아무 주문이나 통과했다.
   if (authUser.type === 'user') {
     const dbUserId = await getUserDbIdFromFirebaseUid(DB, String(authUser.id));
     if (order.user_id !== dbUserId) return c.json({ success: false, error: 'Forbidden' }, 403);
+  } else if (authUser.type === 'seller') {
+    if (String(order.seller_id) !== String(authUser.id)) return c.json({ success: false, error: 'Forbidden' }, 403);
+  } else if (authUser.type !== 'admin') {
+    return c.json({ success: false, error: 'Forbidden' }, 403);
   }
 
   const { courier, tracking_number } = order;
@@ -203,9 +208,12 @@ ordersRoutes.post('/:id/confirm', cors(), rateLimit({ action: 'order_confirm', m
   const order = await repository.findById(id) as any;
   if (!order) return c.json({ success: false, error: 'Order not found' }, 404);
 
+  // 🔐 2026-11-09: 구매확정은 구매자 본인(또는 어드민)만 — 종전엔 소비자가 아닌 토큰이면 소유 확인 없이 통과했다.
   if (authUser.type === 'user') {
     const dbUserId = await getUserDbIdFromFirebaseUid(DB, String(authUser.id));
     if (order.user_id !== dbUserId) return c.json({ success: false, error: 'Forbidden' }, 403);
+  } else if (authUser.type !== 'admin') {
+    return c.json({ success: false, error: 'Forbidden' }, 403);
   }
 
   if (!['SHIPPING'].includes(order.status)) {

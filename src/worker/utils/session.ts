@@ -107,6 +107,10 @@ export async function parseSessionCookie(
       const now = Math.floor(Date.now() / 1000);
       if (typeof payload.exp === 'number' && payload.exp < now) continue;
       if (!payload.sub) continue;
+      // 🔐 2026-11-09: 쿠키 **이름**은 서명되지 않는다 — 신원 종류는 서명된 payload 로만 정한다.
+      //   종전엔 role 을 쿠키 이름에서 가져와, 내 소비자 세션 값을 관리자 쿠키 이름으로 옮기면 role 이 바뀌었다.
+      if (payload.purpose != null) continue; // 용도 토큰(PIN 확인 등)은 세션이 아니다
+      if (payload.type != null ? payload.type !== t : t !== 'user') continue;
 
       return {
         userId: payload.sub as string,

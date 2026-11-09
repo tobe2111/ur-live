@@ -10,7 +10,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { requireUser, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL} from '@/shared/constants';
@@ -95,7 +95,7 @@ async function ensureTables(DB: D1Database) {
 //   원인: ensureTables(DB) 가 매 cold-start 첫 호출 시 CREATE TABLE 시도 (~10-30ms) + D1 cold-start (100-300ms).
 //   해결: ensureTables 제거. user_points 테이블은 production 에 항상 존재 (가입 시 자동 생성).
 //         테이블 부재 환경(dev/test): catch 로 balance=0 graceful 반환 → endpoint 200 유지.
-pointsRoutes.get('/balance', requireAuth(), async (c) => {
+pointsRoutes.get('/balance', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -149,7 +149,7 @@ pointsRoutes.get('/balance', requireAuth(), async (c) => {
 });
 
 // ── POST /api/points/charge/init ─────────────────────────────────────
-pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
+pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max: 5, windowSec: 300 }), requireUser(), async (c) => {
   // 🛡️ 2026-07-18 (대표 확정 "충전 자체를 빼자"): 유상 충전 서비스 종료 — 신규 충전 시작 차단.
   //   ⚠️ /charge/confirm 은 열어둠(배포 시점 진행 중이던 결제의 승인 완결 — 돈 안전). 가역(플래그).
   if (TOPUP_DISABLED) {
@@ -252,7 +252,7 @@ pointsRoutes.post('/charge/init', rateLimit({ action: 'points_charge_init', max:
 // ── POST /api/points/charge/cancel ───────────────────────────────────
 // 🛡️ 2026-05-22: 사용자가 SDK 에러 / 결제 취소 시 즉시 pending row cleanup.
 //   클라이언트가 결제 실패 catch 에서 호출 → 다음 시도 즉시 가능 (1분 대기 X).
-pointsRoutes.post('/charge/cancel', requireAuth(), async (c) => {
+pointsRoutes.post('/charge/cancel', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const userId = String(user.id)
@@ -267,7 +267,7 @@ pointsRoutes.post('/charge/cancel', requireAuth(), async (c) => {
 })
 
 // ── POST /api/points/charge/confirm ──────────────────────────────────
-pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
+pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm', max: 10, windowSec: 300 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -397,7 +397,7 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
 
 // ── POST /api/points/donate ──────────────────────────────────────────
 // 딜 포인트로 후원 (결제 없이 즉시 차감)
-pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windowSec: 300 }), requireAuth(), async (c) => {
+pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windowSec: 300 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -545,7 +545,7 @@ async function executeDonate(
 // ── GET /api/points/history?limit=&offset=&type= ─────────────────────
 // 🛡️ 2026-05-24: 페이지네이션 + 타입 필터 추가 (이전: LIMIT 50 fixed, 필터 X).
 //   사용자 요청 — /my-deal-history 페이지에서 전체 히스토리 탐색.
-pointsRoutes.get('/history', requireAuth(), async (c) => {
+pointsRoutes.get('/history', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -594,7 +594,7 @@ const AD_DAILY_LIMIT = 10;      // 하루 최대 10회
 const AD_REWARD_DESC_PREFIX = '[광고리워드]'; // description 기반 구분
 
 // POST /api/points/ad-reward — 광고 시청 완료 후 딜 지급
-pointsRoutes.post('/ad-reward', rateLimit({ action: 'points_ad_reward', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
+pointsRoutes.post('/ad-reward', rateLimit({ action: 'points_ad_reward', max: 5, windowSec: 300 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -661,7 +661,7 @@ pointsRoutes.post('/ad-reward', rateLimit({ action: 'points_ad_reward', max: 5, 
 });
 
 // GET /api/points/ad-reward/status — 오늘 광고 시청 현황
-pointsRoutes.get('/ad-reward/status', requireAuth(), async (c) => {
+pointsRoutes.get('/ad-reward/status', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -688,7 +688,7 @@ pointsRoutes.get('/ad-reward/status', requireAuth(), async (c) => {
 });
 
 // ── POST /api/points/pay — 딜로 상품 결제 ───────────────────────────
-pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 300 }), requireAuth(), async (c) => {
+pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 300 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -1152,7 +1152,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
 // 여기는 얇은 문이다. 화면: 마이 › "환급 가능 N딜 · 환급 신청" → `RefundSheet`.
 // 처리: 어드민 지급 센터 › 딜 환급 탭(입금 완료 / 반려 — 반려하면 딜이 되돌아간다).
 // ─────────────────────────────────────────────────────────────────────────────
-pointsRoutes.get('/refund', requireAuth(), async (c) => {
+pointsRoutes.get('/refund', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { getDealRefundState } = await import('../../../worker/utils/deal-refund')
@@ -1166,7 +1166,7 @@ pointsRoutes.get('/refund', requireAuth(), async (c) => {
 
 pointsRoutes.post('/refund',
   rateLimit({ action: 'deal_refund_request', max: 5, windowSec: 3600 }),
-  requireAuth(),
+  requireUser(),
   async (c) => {
     const user = getCurrentUser(c)
     if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -1197,7 +1197,7 @@ pointsRoutes.post('/refund',
 // 🚪 2026-10-12 옛 문 — 화면에서 부르는 곳이 0 이었고(실측), 충전한 돈을 돌려주면서 8.8% 를 떼고
 //   (소득이 아닌데) 최소 10,000딜이라 라이브 유일한 환급 대상(4,700딜)이 신청조차 못 했다.
 //   **열어 두면 위 한도·장부 규칙을 우회하는 두 번째 문**이 된다 ⇒ 410 으로 닫고 새 문을 가리킨다.
-pointsRoutes.post('/withdraw', requireAuth(), (c) => c.json({
+pointsRoutes.post('/withdraw', requireUser(), (c) => c.json({
   success: false,
   code: 'GONE',
   error: '이 방법은 더 이상 쓰지 않아요. 마이 › 환급 신청을 이용해 주세요',
@@ -1205,7 +1205,7 @@ pointsRoutes.post('/withdraw', requireAuth(), (c) => c.json({
 }, 410))
 
 // GET — 내 출금 내역
-pointsRoutes.get('/withdrawals', requireAuth(), async (c) => {
+pointsRoutes.get('/withdrawals', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const userId = String(user.id)
