@@ -30,3 +30,7 @@
 ## 4차 — 부품 파일 정적 서빙 (대표 "그래도 지금 진행")
 - /assets/* → Pages 정적. 안전장치: 엣지 캐시 5분 + 자가복구가 부품 cache:'reload'. 기록 `docs/locks/loading/2026-11-09-assets-static.md`.
 - 롤백: `public/_routes.json` exclude 에서 "/assets/*" 한 줄 삭제(워커 핸들러가 그대로 있다).
+
+## 5차 — 위치 저장 손님 홈 피드 '불러오는 중' (대표 캡처)
+- 거리순 피드 시드를 HTML 에 함께(새 슬롯 MAINNEAR, 400ms 마감). 기록 `docs/locks/loading/2026-11-09-home-near-seed.md`.
+- 배포 뒤 확인: 쿠키 `ur_loc=37.56_126.98` 로 홈 HTML 에 `__SSR_INITIAL_MAINNEAR__` 가 실리는지, X-SSR-Status·시간.

@@ -20,7 +20,7 @@ describe('① 필터 0건은 끝까지 찾아본 뒤에만 "없어요"', () => {
     expect(feed).toMatch(/const serverSort = nearKey \? '' : sort/)
   })
   it('가까운 후보 요청엔 위치 없는 SSR 시드를 쓰지 않는다', () => {
-    expect(feed).toMatch(/initialData: nearKey \? undefined : ssrInitial/)
+    expect(feed).toMatch(/initialData: nearKey \? nearSeed : ssrInitial/) // 2026-11-09 거리순이면 같은 격자 키의 거리순 시드만(위치 없는 MAIN 은 여전히 안 쓴다)
   })
   it('거리 기준이면 섹션에 뜬 것을 뒤로 미루지 않는다', () => {
     expect(feed).toMatch(/deferSeeded\(sortBand\(src\), nearKey \? NO_DEFER : sectionIds\)/)

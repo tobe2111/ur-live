@@ -27,7 +27,7 @@ export default [
   {
     name: '📍 거리 필터 요청에 위치 없는 SSR 시드를 쓴다',
     file: 'src/pages/main-home/GroupBuyFeed.tsx',
-    find: 'initialData: nearKey ? undefined : ssrInitial',
+    find: 'initialData: nearKey ? nearSeed : ssrInitial',
     replace: 'initialData: ssrInitial',
     test: 'src/tests/unit/home-near-empty-label-2026-10-17.test.ts',
     why: '인기순 시드가 가까운 후보 자리에 1분간 fresh 로 남아 거리 판정이 틀린다.',
