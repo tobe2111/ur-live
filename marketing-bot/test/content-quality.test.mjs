@@ -192,3 +192,31 @@ test('일일 게시 배선: 스레드에 이미지, 릴스는 주 3회·실패 �
   assert.match(src, /\['merchant', 'consumer'\]\.includes\(track\)/);
   assert.match(src, /pickSeries\(track, trackHist, dayIdx, \{ weights: seriesState\?\.weights \}\)/);
 });
+
+// ---- 2026-11-09 3차(대표 "2,4"): 인스타 스토리 · 스레드 이어 쓰기 ----
+import { storyArgs, makeStory } from '../src/visual.mjs';
+
+test('스토리 이미지: 세로 1080x1920, 글꼴 있으면 안내 한 줄', () => {
+  const a = storyArgs('c.jpg', 's.jpg', '/f/P.otf').join(' ');
+  assert.match(a, /1080:1920/);
+  assert.match(a, /피드에서 이어 보기/);
+  assert.doesNotMatch(storyArgs('c.jpg', 's.jpg', null).join(' '), /drawtext/, '글꼴 없으면 글자 없이');
+});
+
+test('스토리 만들기: 실제 이미지', { skip: !(hasFfmpeg && process.env.FONT_HEAVY && fs.existsSync(process.env.FONT_HEAVY)) }, () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'story-'));
+  const [cover] = render({ out_dir: path.join(dir, 'out'), fonts: { heavy: process.env.FONT_HEAVY, semi: process.env.FONT_SEMI }, series: '오해와 사실', title: ['가입비', '없어요'] }, dir);
+  const out = makeStory(cover, dir);
+  const probe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', out], { encoding: 'utf8' }).stdout.trim();
+  assert.equal(probe, '1080,1920');
+});
+
+test('일일 게시 배선: 스토리는 피드 게시 뒤·실패해도 진행, 스레드 이어 쓰기는 답글로·검수 통과 시만', () => {
+  const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
+  assert.ok(src.indexOf('igStory(gen.story_url)') > src.indexOf('r = await igPublish(media'), '피드 게시 뒤에 스토리');
+  assert.match(src, /IG 스토리 실패\(게시는 정상\)/);
+  assert.match(src, /reply_to_id: r\.id/);
+  assert.match(src, /if \(fu\.problems\.length\) log\(`Threads 이어 쓰기 검수 걸림 → 생략/);
+  const lib = fs.readFileSync(new URL('../src/lib.mjs', import.meta.url), 'utf8');
+  assert.match(lib, /media_type: 'STORIES', image_url/);
+});

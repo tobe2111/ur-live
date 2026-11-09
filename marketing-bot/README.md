@@ -40,6 +40,11 @@ cd marketing-bot && npm test   # 문법 체크 + 4개 스크립트 DRY_RUN=1 실
 - 트랙 비율·주제·CTA: `data/content-mix.json` (`TRACK=merchant|creator|consumer` 로 강제 가능)
 - 봇이 쓸 수 있는 입점/크리에이터 조건: `src/lib.mjs` 의 `PARTNER_FACTS` (원본: `src/shared/partners-facts.ts`, `src/pages/partners/PartnerFaq.tsx`, `src/pages/CreatorsPage.tsx`). 원본 조건이 바뀌면 함께 고치세요.
 
+## 2026-11-09 3차 (대표 "2,4")
+
+- **인스타 스토리**: 피드 게시 뒤 같은 표지를 세로(1080x1920, 위아래 흐린 배경 + "피드에서 이어 보기")로 스토리에 올린다. 실패해도 피드 게시는 그대로.
+- **스레드 이어 쓰기**: 본글에 정보 한 줄을 답글로 단다(확인된 사실 범위, 검수 통과 시만). 실패하면 생략.
+
 ## 2026-11-09 2차 (대표 "할 수 있는 거 다 해줘")
 
 - **릴스**: 월·수·금(KST)은 그날 만든 장을 9초 안팎 세로 영상(1080x1920, 천천히 확대 + 부드러운 전환, 무음)으로 이어 릴스로 올린다. 영상 주소는 jsDelivr(커밋 sha 고정). 릴스가 실패하면 같은 장을 캐러셀로 다시 올린다. 강제: `REEL=1`.
