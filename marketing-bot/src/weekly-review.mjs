@@ -2,6 +2,7 @@
 import { DRY, log, readJson, writeJson, threads, insta, createIssue, claude, THREADS_USER_ID , opsAlert } from './lib.mjs';
 import { TRACKS, DEFAULT_WEIGHTS, DEFAULT_CAMPAIGNS, categoryPerformance, adjustWeights, campaignToTrack } from './attribution.mjs';
 import { myRecentPosts, utmFromText } from './live.mjs';
+import { SERIES, seriesWeights } from './series.mjs';
 
 const mixCfg = readJson('data/content-mix.json', {});
 const CAMPAIGNS = { ...DEFAULT_CAMPAIGNS, ...Object.fromEntries(TRACKS.map((t) => [t, mixCfg.tracks?.[t]?.campaign]).filter(([, v]) => v)) };
@@ -118,11 +119,17 @@ async function main() {
     `- 지난주: ${fmtW(state.weights)}`, `- 이번주: **${fmtW(adj.weights)}** (${adj.reason})`,
     ...TRACKS.map((t) => `- ${t}: 글 ${perf[t].posts} · 클릭 ${perf[t].clicks} · 전환 ${perf[t].signups}`)].join('\n');
   const newState = { weights: adj.weights, updated_at: new Date().toISOString(), history: [...(state.history || []), { at: new Date().toISOString(), from: state.weights, to: adj.weights, reason: adj.reason }].slice(-26) };
-  const body = `최근 4주 게시물 ${rows.length}개 기준 (점수 = 노출 + 10×반응)\n\n${lines.join('\n')}\n\n### 상위 게시물\n${top}\n\n${recruit}\n\n${mixLines}\n\n### 다음 주 제안\n${advice}\n\n클릭/구매는 UTM(utm_content) 기준으로 어드민에서 함께 확인하세요.`;
+  // 코너(시리즈)별 반응 → data/series-state.json. 게시 봇이 "오래 안 쓴 절반" 안에서 반응 좋은 코너를 더 자주 고른다.
+  // 코너 기록은 다양성 로그(data/variety.json — 게시물 id·코너)에서 꺼낸다. 게시 여부 판정과는 무관한 학습값이다.
+  const idToSeries = new Map(readJson('data/variety.json', []).filter((p) => p.id && p.series).map((p) => [String(p.id), p.series]));
+  const sw = seriesWeights(rows, idToSeries);
+  const seriesLines = ['### 코너(시리즈)별 반응 (1 = 평균, 2개 이상 쌓인 코너만 반영)',
+    ...(Object.keys(sw.counts).length ? Object.entries(sw.weights).sort((a, b) => b[1] - a[1]).map(([id, w]) => `- ${SERIES[id]?.name || id}: ${w} (글 ${sw.counts[id]}개)`) : ['- 아직 코너 기록이 있는 글이 없습니다.'])].join('\n');
+  const body = `최근 4주 게시물 ${rows.length}개 기준 (점수 = 노출 + 10×반응)\n\n${lines.join('\n')}\n\n### 상위 게시물\n${top}\n\n${recruit}\n\n${mixLines}\n\n${seriesLines}\n\n### 다음 주 제안\n${advice}\n\n클릭/구매는 UTM(utm_content) 기준으로 어드민에서 함께 확인하세요.`;
   // ⚠️ 최적 시간대·비율 조정을 저장할 곳이 아직 없다 — main 직접 push 는 룰셋이 막는다(live.mjs 머리말).
   //    이번 주 계산값은 리포트 이슈에만 남고 다음 게시에는 반영되지 않는다(후속: 상태 저장 경로).
   // marketing-data 브랜치에 저장된다(워크플로가 data/ 를 그 브랜치로 push). 게시물 자체는 실물 조회로 읽는다.
-  if (!DRY) { writeJson('data/schedule.json', schedule); writeJson('data/mix-state.json', newState); }
+  if (!DRY) { writeJson('data/schedule.json', schedule); writeJson('data/mix-state.json', newState); writeJson('data/series-state.json', { ...sw, updated_at: new Date().toISOString() }); }
   await createIssue(`[주간 SNS 리포트] ${new Date().toISOString().slice(0, 10)}`, body, ['marketing-report']);
 }
 main().catch(async (e) => { console.error(e.message); await opsAlert('마케팅 봇 주간 리뷰 실패', e.message); process.exit(1); });

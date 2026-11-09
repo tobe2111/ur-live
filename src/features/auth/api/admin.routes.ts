@@ -9,6 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
+import { signRefreshToken, verifyRefreshToken } from '@/worker/utils/refresh-token-key';
 import { verifyPassword, hashPassword } from '@/lib/password';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
@@ -158,8 +159,8 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401);
     }
 
-    // 🛡️ 성공 시 실패 카운터 초기화
-    await clearFailures(DB, 'admin', String(admin.id));
+    // 🔐 2026-11-09: 실패 카운터 초기화는 **PIN 확인 뒤로** 옮겼다 — 여기서 지우면 비밀번호를 아는 사람이
+    //   PIN 을 틀릴 때마다 카운터가 0 으로 돌아가 잠금이 영영 안 걸렸다(IP 제한만 남았다).
 
     // 🆕 2026-06-17 보안 PIN 강제 (도매 파트너 + 슈퍼) + 로그인 이력(IP).
     //   - 관리자가 처음 설정한 6자리 PIN(login_pin_hash) 있으면 매 로그인 PIN 필수(없으면 pin_required → 토큰 미발급).
@@ -178,11 +179,16 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
           return c.json({ success: false, pin_required: true, message: '6자리 보안 PIN을 입력하세요' }, 200);
         }
         const { valid: pinOk } = await verifyPassword(pin, pinRow!.login_pin_hash as string);
-        if (!pinOk) return c.json({ success: false, pin_required: true, error: '보안 PIN이 올바르지 않습니다' }, 401);
+        if (!pinOk) {
+          await recordFailure(DB, 'admin', String(admin.id)); // 🔐 2026-11-09 PIN 실패도 계정 잠금에 센다
+          return c.json({ success: false, pin_required: true, error: '보안 PIN이 올바르지 않습니다' }, 401);
+        }
       } else if (ENFORCED_PIN_ROLES.includes(String(admin.role))) {
         mustSetPin = true;
       }
     }
+    // 🛡️ 성공 시 실패 카운터 초기화 (비밀번호 + PIN 통과 뒤)
+    await clearFailures(DB, 'admin', String(admin.id));
 
     // 🔐 2026-07-11 (사전점검 보안감사 R3 ④): 로그인 TOTP 게이트 + finance/super 등록 강제 (must_set_pin 미러).
     //   - SSOT 축 = admins.totp_secret/totp_enabled 컬럼 — generic /api/2fa/* (twofa.routes.ts, Admin2FASetupPage
@@ -251,7 +257,7 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
 
     const token = await sign(payload, JWT_SECRET);
     const refreshPayload = { ...payload, exp: now + (30 * 24 * 60 * 60) };
-    const refreshToken = await sign(refreshPayload, JWT_SECRET);
+    const refreshToken = await signRefreshToken(refreshPayload, JWT_SECRET); // 🔐 2026-11-09 다른 키 — 로그인 토큰으로 못 쓴다
 
     // 🔐 단일 세션 강제 — 이 로그인(iat) 이전 발급된 admin 토큰 전부 무효화.
     await startDashboardSession(DB, 'admin', admin.id, payload.iat, { userAgent: c.req.header('User-Agent'), ip: reqIp });
@@ -338,7 +344,7 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
     
     let payload: any;
     try {
-      payload = await verify(refreshToken, JWT_SECRET, 'HS256');
+      payload = await verifyRefreshToken(refreshToken, JWT_SECRET);
     } catch (error) {
       console.warn('[Admin Refresh] Invalid refresh token:', error);
       return c.json({ success: false, error: 'Refresh Token이 유효하지 않거나 만료되었습니다.' }, 401);
@@ -432,7 +438,7 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
 
     const newAccessToken = await sign(newPayload, JWT_SECRET);
     const newRefreshPayload = { ...newPayload, exp: now + (30 * 24 * 60 * 60) };
-    const newRefreshToken = await sign(newRefreshPayload, JWT_SECRET);
+    const newRefreshToken = await signRefreshToken(newRefreshPayload, JWT_SECRET);
 
     // 새 refresh 저장
     try {

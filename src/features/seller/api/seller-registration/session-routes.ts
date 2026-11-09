@@ -15,6 +15,7 @@
  */
 import type { Hono } from 'hono'
 import { sign } from 'hono/jwt'
+import { signRefreshToken } from '@/worker/utils/refresh-token-key'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { findOwnerSeatSellerId, ownerGrantSeat } from '@/worker/utils/seller-operators'
@@ -204,7 +205,7 @@ export function mountSellerSessionRoutes(
       };
       const accessToken = await sign(payload, jwtSecret);
       const refreshPayload = { ...payload, exp: now + (30 * 24 * 60 * 60) };
-      const refreshToken = await sign(refreshPayload, jwtSecret);
+      const refreshToken = await signRefreshToken(refreshPayload, jwtSecret); // 🔐 2026-11-09 다른 키
 
       // 🔐 단일 세션 강제 — 가입 직후 자동 로그인도 세션 시작.
       const seat = ownerGrant ? ownerGrantSeat(Number(sessionUser.userId)).seat : { role: 'seller', id: seller.id as number };

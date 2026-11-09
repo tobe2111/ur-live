@@ -293,6 +293,10 @@ adminAccountsRoutes.delete('/admins/:id', cors(), async (c) => {
     await executeRun(DB, `DELETE FROM auth_refresh_tokens WHERE user_type = 'admin' AND user_id = ?`, [adminId])
       .catch(() => { /* best-effort */ });
     try {
+      // 🔐 2026-11-09: 동시 로그인 허용(multi_session=1) 계정은 아래 경계 올리기를 건너뛰므로, 삭제할 때 먼저 끈다
+      //   (자동화 계정을 지워도 이미 발급된 토큰이 최대 24시간 살아 있었다).
+      await executeRun(DB, `UPDATE dashboard_sessions SET multi_session = 0 WHERE account_type = 'admin' AND account_id = ?`, [Number(adminId)])
+        .catch(() => { /* 표/컬럼 없음 — 아래 bump 가 그대로 동작 */ });
       await startDashboardSession(DB, 'admin', Number(adminId), Math.floor(Date.now() / 1000));
     } catch { /* best-effort — 로그인/리프레시 게이트가 백스톱 */ }
 

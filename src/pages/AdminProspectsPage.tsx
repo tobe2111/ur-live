@@ -17,6 +17,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import { formatKST, formatKSTDate } from '@/utils/date'
 import { DashboardLoadError } from '@/components/dashboard'
+import { safeHttpHref } from '@/utils/safe-external-url'
 
 type ProspectStatus = 'visiting' | 'converted' | 'expired'
 
@@ -143,9 +144,9 @@ export default function AdminProspectsPage() {
                     <p className="text-[11px] text-gray-500 italic mb-2">{p.notes}</p>
                   )}
 
-                  {p.proof_image_url && (
-                    <a href={p.proof_image_url} target="_blank" rel="noopener noreferrer">
-                      <img src={p.proof_image_url} alt="증빙" className="w-32 h-20 object-cover rounded border border-gray-200" />
+                  {safeHttpHref(p.proof_image_url) && (
+                    <a href={safeHttpHref(p.proof_image_url)} target="_blank" rel="noopener noreferrer">
+                      <img src={safeHttpHref(p.proof_image_url)} alt="증빙" className="w-32 h-20 object-cover rounded border border-gray-200" />
                     </a>
                   )}
 

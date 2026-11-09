@@ -71,7 +71,7 @@ healthcheckRoutes.get('/api/_healthcheck/payments', async (c) => {
         env: clientKeyEnv,
       },
       secret_key: {
-        masked: mask(secretKey),
+        masked: secretKey ? `${secretKey.split('_').slice(0, 2).join('_')}_…(${secretKey.length}자)` : '(empty)', // 🔐 2026-11-09 공개 응답 — 비밀키는 종류(live_gsk 등)·길이만, 본문 글자는 0
         env: secretKeyEnv,
       },
       vite_key: {

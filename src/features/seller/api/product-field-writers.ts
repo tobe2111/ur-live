@@ -8,6 +8,7 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
+import { safeHttpHref } from '../../../utils/safe-external-url';
 
 type DigitalBody = {
   product_kind?: string;
@@ -38,10 +39,10 @@ export async function writeDigitalProductFields(
   const fields: Array<[string, unknown]> = [
     ['product_kind', body.product_kind],
     ['delivery_type', body.delivery_type || 'instant_url'],
-    ['content_url', body.content_url || null],
+    ['content_url', safeHttpHref(body.content_url) || null], // 🔐 2026-11-09 http(s)·내부 경로만
     ['content_format', body.content_format || null],
     ['access_duration_days', body.access_duration_days ?? null],
-    ['preview_url', body.preview_url || null],
+    ['preview_url', safeHttpHref(body.preview_url) || null],
   ];
   for (const [field, val] of fields) await writeOne(db, field, val, productId);
 }

@@ -8,6 +8,8 @@
  * 실패(키·네트워크·비이미지·과대/과소) → null → 호출측이 원본 유지/스킵 판단. 완전 fail-soft.
  */
 
+import { isRasterImageType } from './image-proxy-safety' // 🔐 2026-11-09 SVG(스크립트 가능)는 우리 출처에 다시 올리지 않는다
+
 // 프로덕션 존(이미지 리사이징 활성). **same-origin(/api/media)** 리사이즈에만 사용 — 외부 URL 은 404 라 불가.
 export const RESIZE_BASE = 'https://urdeal.kr'
 /** 저장본 재축소 — 이 옵션·기준을 바꾸면 `gallery-etag-dedupe` 의 "같은 사진의 축소본" 판정도 같이 바뀐다(같은 상수를 쓴다). */
@@ -45,7 +47,7 @@ export async function rehostImageToR2(
     } finally { clearTimeout(timer) }
     if (!res.ok) return null
     const ct = (res.headers.get('content-type') || '').toLowerCase().split(';')[0].trim()
-    if (!ct.startsWith('image/')) return null
+    if (!isRasterImageType(ct)) return null
     return await storeImageBytesToR2(env as { MEDIA_BUCKET: R2Bucket }, await res.arrayBuffer(), ct, source, keyPrefix)
   } catch { return null }
 }
@@ -63,7 +65,7 @@ export async function storeImageBytesToR2(
   keyPrefix: string,
 ): Promise<string | null> {
   try {
-    if (!ct.startsWith('image/')) return null
+    if (!isRasterImageType(ct)) return null
     if (buf.byteLength < 500 || buf.byteLength > 11 * 1024 * 1024) return null // 아이콘/깨짐 or 과대(11MB 초과만 제외)
     const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
     // 🖼️ 2026-10-12 (대표 "이용권 썸네일에서 아직도 사진이 중복으로 2개 있는 경우가 많아"):
@@ -89,7 +91,7 @@ export async function storeImageBytesToR2(
         } finally { clearTimeout(rtimer) }
         if (rres.ok) {
           const rct = (rres.headers.get('content-type') || '').toLowerCase().split(';')[0].trim()
-          if (rct.startsWith('image/')) {
+          if (isRasterImageType(rct)) {
             const rbuf = await rres.arrayBuffer()
             if (rbuf.byteLength >= 500 && rbuf.byteLength < buf.byteLength) {
               await env.MEDIA_BUCKET.put(key, rbuf, {
@@ -123,7 +125,7 @@ export async function validateImageLoads(url: string | null | undefined): Promis
     } finally { clearTimeout(timer) }
     if (!res.ok) return false
     const ct = (res.headers.get('content-type') || '').toLowerCase()
-    if (!ct.startsWith('image/')) return false
+    if (!isRasterImageType(ct)) return false
     const len = Number(res.headers.get('content-length') || 0)
     if (len && len < 500) return false                 // 아이콘/깨짐 방지(길이 헤더 있을 때만)
     return true

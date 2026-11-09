@@ -16,6 +16,7 @@
 import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
 import { requireAdminRole } from '../middleware/auth';
+import { secretEquals } from '../utils/secret-compare';
 // 🔐 2026-11-09: DDL·백필·최고관리자 승격은 최고관리자만 — 종전엔 어드민이면 역할 무관(뷰어 포함) 실행됐다(/api/admin 밖이라 RBAC 미적용).
 const superOnly = () => requireAdminRole();
 import { swallow } from '@/shared/utils/swallow';
@@ -366,7 +367,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
 repairSchemaRoutes.post('/api/_internal/repair-schema/auto', async (c) => {
   const expected = (c.env as { REPAIR_SCHEMA_TOKEN?: string }).REPAIR_SCHEMA_TOKEN
   const got = c.req.header('X-Repair-Token') || ''
-  if (!expected || got !== expected) return c.json({ success: false, error: 'unauthorized' }, 403)
+  if (!secretEquals(expected, got)) return c.json({ success: false, error: 'unauthorized' }, 403)
   const DB = (c.env as { DB?: D1Database }).DB
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500)
   const result = await runSchemaRepair(DB)
@@ -379,7 +380,7 @@ repairSchemaRoutes.post('/api/_internal/repair-schema/auto', async (c) => {
 repairSchemaRoutes.post('/api/_internal/reset-pin-token', async (c) => {
   const expected = (c.env as { REPAIR_SCHEMA_TOKEN?: string }).REPAIR_SCHEMA_TOKEN
   const got = c.req.header('X-Repair-Token') || ''
-  if (!expected || got !== expected) return c.json({ success: false, error: 'unauthorized' }, 403)
+  if (!secretEquals(expected, got)) return c.json({ success: false, error: 'unauthorized' }, 403)
   const DB = (c.env as { DB?: D1Database }).DB
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500)
   let email = ''

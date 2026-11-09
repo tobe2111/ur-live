@@ -21,6 +21,7 @@ import { isLoggedInSync } from '@/utils/auth'
 import { useDigitalLibrary, type DigitalAccess } from '@/hooks/queries/useDigitalLibrary'
 import { parseUTCDate } from '@/utils/date'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { safeHttpHref } from '@/utils/safe-external-url'
 
 const KIND_LABEL: Record<string, string> = {
   digital: '📄 디지털 파일',
@@ -62,7 +63,8 @@ export default function MyDigitalLibraryPage() {
         toast.error(res.data?.error || t('digitalLibrary.accessFailed', { defaultValue: '접근 실패' }))
         return
       }
-      const url = res.data.data.url as string
+      const url = safeHttpHref(res.data.data.url) || '' // 🔐 2026-11-09 javascript: 주소는 열지 않는다
+      if (!url) { toast.error(t('digitalLibrary.accessFailed', { defaultValue: '접근 실패' })); return }
       const kind = res.data.data.kind as string
       // 영상 강의 / 외부 URL — 새 탭
       if (kind === 'video_course' || /^https?:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)/i.test(url)) {
@@ -186,9 +188,9 @@ export default function MyDigitalLibraryPage() {
                             {it.product_kind === 'video_course' ? <Play className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
                             {opening === it.access_token ? t('digitalLibrary.openingLabel', { defaultValue: '여는 중...' }) : it.product_kind === 'video_course' ? t('digitalLibrary.watchLabel', { defaultValue: '시청하기' }) : t('digitalLibrary.downloadLabel', { defaultValue: '다운로드' })}
                           </button>
-                          {it.preview_url && (
+                          {safeHttpHref(it.preview_url) && (
                             <button
-                              onClick={() => window.open(it.preview_url!, '_blank', 'noopener,noreferrer')}
+                              onClick={() => window.open(safeHttpHref(it.preview_url)!, '_blank', 'noopener,noreferrer')}
                               className="px-3 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 text-[12px] font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-[#2C2F35]"
                             >
                               {t('digitalLibrary.previewLabel', { defaultValue: '미리보기' })}
