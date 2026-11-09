@@ -20,6 +20,7 @@ import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys, seedDetailFromListRow } from '@/hooks/queries'
+import { readHomeNearSeed } from '@/shared/home-near-seed-read'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
 import { useProgressiveCap } from '@/hooks/useProgressiveCap'
@@ -218,6 +219,7 @@ export default function GroupBuyFeed({
     : ''
   const serverSort = nearKey ? '' : sort
   const feedParams = `${serverSort ? `&sort=${serverSort}` : ''}${nearKey ? `&near=${nearKey}` : ''}`
+  const nearSeed = useMemo(() => (category === 'all' && nearKey ? readHomeNearSeed<FeedProduct>(nearKey) : undefined), [category, nearKey])
   const { data: items = [], isLoading: loading, isError, refetch } = useQuery<FeedProduct[]>({
     queryKey: queryKeys.groupBuyList('active', category, serverSort || (nearKey && `near:${nearKey}`) || ''),
     queryFn: async () => {
@@ -227,8 +229,9 @@ export default function GroupBuyFeed({
       for (const p of arr) seedDetailFromListRow(qc, p)
       return arr
     },
-    initialData: nearKey ? undefined : ssrInitial,  // 시드는 위치 없는 인기순 — 가까운 후보 요청엔 안 맞는다
-    initialDataUpdatedAt: ssrInitial && !nearKey ? Date.now() - 60_000 : 0,
+    // 📍 2026-11-09 거리순이면 워커가 같은 격자 키로 실어 준 거리순 시드(`__SSR_INITIAL_MAINNEAR__`)를 쓴다 — 키가 같을 때만.
+    initialData: nearKey ? nearSeed : ssrInitial,  // MAIN 시드는 위치 없는 인기순 — 가까운 후보 요청엔 안 맞는다
+    initialDataUpdatedAt: (nearKey ? nearSeed : ssrInitial) ? Date.now() - 60_000 : 0,
     refetchOnWindowFocus: false,
     // 🚦 2026-09-03: 정렬을 바꾸면 캐시키가 갈리므로 그대로 두면 **빈 화면 → 스켈레톤**이 된다.
     //   직전 결과를 유지한 채 새 정렬을 받아 온다(그 사이 sortBand 가 로드된 것만이라도 즉시 재정렬).

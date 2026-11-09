@@ -301,7 +301,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { routeSurface } from '../shared/route-surface'; import { brandLoaderMarkup } from '../shared/brand-loader-markup'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen, curatorLcpImage } from './utils/curator-ssr-body'; import { buildLifeFirstScreen } from './utils/life-first-screen'; import { buildRegionFirstScreen } from './utils/region-first-screen'; import { landingHeroFor } from '../shared/landing-photo'; import { buildVouchersFirstScreen } from './utils/vouchers-first-screen'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload, voucherFacetNoscript } from './utils/crawler-noscript'; import { buildSellerNoscript } from './utils/seller-noscript'; import { buildLifeShareMeta, buildLifeShareNoscript } from './utils/life-share-ssr'; import { buildLifeBizMeta, buildLifeBizNoscript } from './utils/life-biz-ssr'; import { buildStoreInviteMeta } from './utils/store-invite-ssr'; import { homeFooterNoscript } from './utils/home-footer-noscript'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders, criticalCssFor } from './utils/css-first-boot'; import { recentWriteMarker } from './utils/d1-read-replica'; // 한 줄: 파일크기 래칫 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { routeSurface } from '../shared/route-surface'; import { brandLoaderMarkup } from '../shared/brand-loader-markup'; import { buildVoucherDetailFirstScreen } from './utils/voucher-detail-ssr-body'; import { buildHomeFirstScreen } from './utils/home-first-screen'; import { buildCuratorFirstScreen, curatorLcpImage } from './utils/curator-ssr-body'; import { buildLifeFirstScreen } from './utils/life-first-screen'; import { buildRegionFirstScreen } from './utils/region-first-screen'; import { landingHeroFor } from '../shared/landing-photo'; import { buildVouchersFirstScreen } from './utils/vouchers-first-screen'; import { shouldRenderMobileFirstScreen } from '../shared/seo/crawler-ua'; import { brandJsonLdScript } from '../shared/seo/brand-jsonld'; import { buildStaticSurfaceNoscript, stayNoscriptFromPayload, curatorNoscriptFromPayload, voucherFacetNoscript } from './utils/crawler-noscript'; import { buildSellerNoscript } from './utils/seller-noscript'; import { buildLifeShareMeta, buildLifeShareNoscript } from './utils/life-share-ssr'; import { buildLifeBizMeta, buildLifeBizNoscript } from './utils/life-biz-ssr'; import { buildStoreInviteMeta } from './utils/store-invite-ssr'; import { homeFooterNoscript } from './utils/home-footer-noscript'; import { applyCssFirstBoot, cssFirstApplies, routePreloadRel, appendEdgeHeaders, criticalCssFor } from './utils/css-first-boot'; import { recentWriteMarker } from './utils/d1-read-replica'; import { homeNearSeedTarget, homeNearSeedScript, withSeedDeadline, HOME_NEAR_SEED_DEADLINE_MS } from './utils/home-near-seed'; // 한 줄: 파일크기 래칫 안
 import { VOUCHERS_DEFAULT_SEED_PATH, voucherFacetSeedPath, voucherFacetCategory } from '../shared/seo/voucher-facet'; import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'; import { MAIN_SEED_PATH, REGION_PATH_RE } from '../shared/seo/region-seed'; import { isKnownAppPath } from '../shared/seo/known-routes'; import { REGION_DIGEST_KV_KEY, regionDigestApplies, regionThinByDigest } from '../shared/seo/region-digest'; import { ushopOgImage, ushopDescFallback } from '../shared/ushop-share-card'; import { ogImageAlt, OG_CARD_W, OG_CARD_H, ogCardUrl } from '../shared/og-share-image'; import { nearKeyFromCookieHeader, nearLabelFromCookieHeader } from '../shared/home-near'; import { normalizeDocPath } from '../shared/seo/path-normalize'; import { ROBOTS_INDEX, ROBOTS_NOINDEX } from '../shared/seo/robots-directives'; import { appendLcpLink, homeLcpImage, homeHeroLcpImage, stayLcpImage, hrefOfPreloadTag } from './utils/lcp-image-link'; import { buildStaysFirstScreen } from './utils/stays-first-screen'; import { defaultStaysQs, kstYmd } from '../shared/stays-early'; import { guestTabOf, buildGuestFirstScreen } from './utils/guest-first-screen'; // 한 줄: 파일크기 래칫 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
@@ -677,17 +677,24 @@ app.use('*', async (c, next) => {
     let ssrStatus = 'skip';
     // 🛡️ 2026-05-27 (production 측정): Server-Timing 헤더 — Chrome DevTools 에서 직접 확인.
     //   edge-read / self-fetch 각각 시간 기록 → 어디서 시간 쓰는지 즉시 파악.
+    let homeNearSeedHtml = '';
     const timings: string[] = [];
     // 🌍 SSR 페이로드 획득 — 3계층(엣지 → 전역 KV → self-fetch)은 `utils/ssr-payload.ts` SSOT.
     //   ⚠️ 잠긴 로딩 최적화다. 계층 순서·슬롯별 타임아웃을 바꾸면 콜드 콜로 TTFB 가 회귀한다.
     // 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 홈은 시드가
     //   **두 개** 필요하다 — 피드(MAIN)와 섹션(SECTIONS). 한쪽만 0-RTT 면 같은 화면에서 한쪽만
     //   늦게 끼어들어 "순서가 뒤바뀐 것"처럼 보인다. 둘을 **병렬**로 받는다(직렬이면 그만큼 느려진다).
+    // 📍 2026-11-09 [LOADING_ADDITIVE] (대표 *"아직 많이 느리네"* — 위치 저장한 손님의 홈 피드가 '불러오는 중'): 위치가 있으면
+    //   피드는 거리순(`&near=`)이라 MAIN 시드(인기순)를 못 쓰고 앱 부팅 뒤에야 한국→LA 로 다시 받았다. 같은 격자 키로 거리순 피드를
+    //   **별도 슬롯**(MAIN 은 지도·히어로도 읽으므로 그대로)으로 함께 싣는다. 늦으면(300ms) 버린다 — HTML 을 붙잡지 않는다. utils/home-near-seed.ts
+    const nearSeedTarget = isMainPage ? homeNearSeedTarget(c.req.header('cookie')) : null;
     if (ssrTarget) {
-      const [r, extra] = await Promise.all([
+      const [r, extra, nearSeed] = await Promise.all([
         fetchSsrPayload(ssrTarget, origin0, c.env, ssrWaitUntil(c)),
         ssrExtra ? fetchSsrPayload(ssrExtra, origin0, c.env, ssrWaitUntil(c)) : Promise.resolve(null),
+        nearSeedTarget ? withSeedDeadline(fetchSsrPayload(nearSeedTarget.target, origin0, c.env, ssrWaitUntil(c)), HOME_NEAR_SEED_DEADLINE_MS) : Promise.resolve(null),
       ]);
+      if (nearSeedTarget && nearSeed?.payload) homeNearSeedHtml = homeNearSeedScript(nearSeedTarget.key, nearSeed.payload);
       ssrPayload = r.payload;
       // ⚠️ 'ssrStatus' 는 아래 soft-404 판정(shouldNoindexMissingEntity)이 읽는다 — 지우지 말 것.
       ssrStatus = r.status;
@@ -774,7 +781,7 @@ app.use('*', async (c, next) => {
           const scriptId = ssrSlot === 'MAIN' ? '__SSR_INITIAL_MAIN__' : `__SSR_INITIAL_${ssrSlot}__`;
           el.append(`<script id="${scriptId}" type="application/json">${ssrPayload}</script>`, { html: true });
           // 홈 보조 시드(섹션). 없으면 아무것도 안 넣는다 — 클라가 평소대로 fetch 한다(fail-soft).
-          if (ssrExtraPayload) el.append(`<script id="__SSR_INITIAL_${ssrExtra?.slot ?? 'SECTIONS'}__" type="application/json">${ssrExtraPayload}</script>`, { html: true }); // 홈=SECTIONS · 숙소목록=STAYS (교환권 BANNERS 는 2026-11-01 A안으로 걷혔다)
+          if (ssrExtraPayload) el.append(`<script id="__SSR_INITIAL_${ssrExtra?.slot ?? 'SECTIONS'}__" type="application/json">${ssrExtraPayload}</script>`, { html: true }); if (homeNearSeedHtml) el.append(homeNearSeedHtml, { html: true }); // 📍 2026-11-09 거리순 피드 시드 // 홈=SECTIONS · 숙소목록=STAYS (교환권 BANNERS 는 2026-11-01 A안으로 걷혔다)
         },
       });
     // 🧨 2026-10-12 [UNLOCK_LOADING] 도매 surface 메타 주입 **제거**(대표 *"SEO 측면에서 … 모두 해줘"*).
