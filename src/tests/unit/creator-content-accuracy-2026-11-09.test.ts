@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { blogAutoShow, titleNamesStore, isListPost, isVendorAuthor, isGenericStoreName, videoMatch, mentionsOtherRegion, isOffTopicVideo, branchOf } from '@/shared/creator-content'
+import { blogAutoShow, titleNamesStore, isListPost, isVendorAuthor, isGenericStoreName, videoMatch, mentionsOtherRegion, isOffTopicVideo, branchOf, isNoticePost, mentionsStore } from '@/shared/creator-content'
 import { pickBlogCandidates, blogSecondQuery } from '@/features/creator-content/api/content-collect'
 
 const read = (p: string) => readFileSync(p, 'utf8')
@@ -156,5 +156,26 @@ describe('⑦ 2026-11-10 대표 "유튜브도 동일한 이름이지만 이용�
     expect(mentionsOtherRegion('부천 띵크프룻', '서울 마포구')).toBe(true)
     expect(isOffTopicVideo('대학로 연극 JS 아트홀')).toBe(true)
     expect(branchOf('고집132 성수본점')).toBe('성수')
+  })
+})
+
+describe('⑧ 2026-11-10 대표 "2~5번만" — 공지 글 · 두 글자 이름 · 사진', () => {
+  it('가게 공지·이벤트 글은 자동 공개 안 함(블로그 이름이 영어라 가게 글로 못 알아봐도)', () => {
+    expect(isNoticePost('❤️ [종료] 코믹코드 오픈 이벤트 ❤️')).toBe(true)
+    expect(isNoticePost('[2026년 11월 운영일정 안내]인계동 APM휘트니스 수원점')).toBe(true)
+    expect(isNoticePost('코믹코드 만화카페 데이트 후기')).toBe(false)
+    expect(blogAutoShow({ title: '❤️ [종료] 연산동 꾸꾸데쎄르 오픈 이벤트', summary: '연산동', author: 'ccdessert님의 블로그' }, '꾸꾸데쎄르', '부산 연제구 연산동 1')).toBe(false)
+  })
+  it('두 글자 이름은 지점까지 붙어 나와야 매칭(지점 없으면 여전히 안 함)', () => {
+    expect(mentionsStore('종각 맛집 단막 종각점 후기', '단막 종각점')).toBe(true)
+    expect(mentionsStore('단막극 공연 후기', '단막 종각점')).toBe(false)
+    expect(mentionsStore('노바 후기', '노바')).toBe(false)
+    expect(titleNamesStore('종각 맛집 단막 종각점 후기', '단막 종각점')).toBe(true)
+  })
+  it('사진 — 유료 요금제면 회차당 60개 · 10개씩 나눠 읽는다', () => {
+    const c = read('src/features/creator-content/api/content-collect.ts')
+    expect(c).toMatch(/export const THUMB_BACKFILL_PAID = 60/)
+    expect(c).toMatch(/const thumbRoom = paid \? THUMB_BACKFILL_PAID/)
+    expect(c).toMatch(/for \(let i = 0; i < rows\.length; i \+= 10\)/)
   })
 })

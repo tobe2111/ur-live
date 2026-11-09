@@ -27,7 +27,7 @@ export default [
   {
     name: '2자 이름도 매칭한다',
     file: S,
-    find: '  if (core.length < 3) return false\n',
+    find: '  if (core.length < 3) return shortNameMatch(text, storeName)\n',
     replace: '',
     test: T,
     why: "'카페' 같은 이름이 아무 글에나 걸려 후보가 쓰레기로 찬다.",
@@ -215,5 +215,21 @@ export default [
     replace: '  return true\n',
     test: 'src/tests/unit/creator-content-accuracy-2026-11-09.test.ts',
     why: '이름이 흔한 낱말인 가게("대만족")에 아무 영상이나 붙는다.',
+  },
+  {
+    name: '가게 공지·이벤트 글도 자동 공개한다',
+    file: S,
+    find: '  if (isNoticePost(p.title)) return false\n',
+    replace: '',
+    test: 'src/tests/unit/creator-content-accuracy-2026-11-09.test.ts',
+    why: '"[종료] 오픈 이벤트" 같은 가게 공지가 다녀온 사람들 칸에 선다.',
+  },
+  {
+    name: '두 글자 이름을 지점 없이 매칭한다',
+    file: S,
+    find: '  return core.length === 2 && !!branch && normStoreName(text).includes(core + branch)\n',
+    replace: '  return core.length === 2 && normStoreName(text).includes(core)\n',
+    test: 'src/tests/unit/creator-content-accuracy-2026-11-09.test.ts',
+    why: '"단막" 이 단막극 공연 글에 걸린다.',
   },
 ]
