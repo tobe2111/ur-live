@@ -79,3 +79,31 @@ describe('② 관리자 PIN 실패도 계정 잠금에 센다', () => {
     expect(code.split("await clearFailures(DB, 'admin', String(admin.id));").length - 1).toBe(1)
   })
 })
+
+describe('③ 이용권 조회의 전체 잠금은 정상 손님을 막지 않는다', () => {
+  // 가짜 DB — countOf 가 읽는 행만 흉내낸다.
+  function fakeDb(mine: number, all: number) {
+    return {
+      prepare: (sql: string) => ({
+        bind: (key: string) => ({
+          first: async () => (sql.includes('SELECT count') ? { count: key === 'all' ? all : mine } : null),
+        }),
+      }),
+    } as unknown as D1Database
+  }
+  const ctx = { req: { header: () => '1.2.3.4' } } as never
+
+  it('전체 한도를 넘겨도 틀린 적 없는 IP(자기 이용권을 조회하는 손님)는 통과', async () => {
+    const { lookupLocked, LOOKUP_MISS_GLOBAL } = await import('@/worker/utils/voucher-code-guard')
+    expect(await lookupLocked(ctx, fakeDb(0, LOOKUP_MISS_GLOBAL.max + 50))).toBe(false)
+  })
+  it('전체 한도를 넘기면 틀린 적 있는 IP 는 막힌다', async () => {
+    const { lookupLocked, LOOKUP_MISS_GLOBAL } = await import('@/worker/utils/voucher-code-guard')
+    expect(await lookupLocked(ctx, fakeDb(1, LOOKUP_MISS_GLOBAL.max))).toBe(true)
+  })
+  it('IP 당 한도는 그대로', async () => {
+    const { lookupLocked, LOOKUP_MISS_PER_IP } = await import('@/worker/utils/voucher-code-guard')
+    expect(await lookupLocked(ctx, fakeDb(LOOKUP_MISS_PER_IP.max, 0))).toBe(true)
+    expect(await lookupLocked(ctx, fakeDb(LOOKUP_MISS_PER_IP.max - 1, 0))).toBe(false)
+  })
+})

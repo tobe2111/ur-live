@@ -45,4 +45,20 @@ export default [
     test: TEST,
     why: '비밀번호를 아는 사람이 6자리 PIN 을 IP 를 바꿔 가며 무한히 시도한다.',
   },
+  {
+    name: '[sec2] 이용권 전체 잠금을 다시 모두에게 건다',
+    file: 'src/worker/utils/voucher-code-guard.ts',
+    find: '(all >= LOOKUP_MISS_GLOBAL.max && mine >= 1)',
+    replace: 'all >= LOOKUP_MISS_GLOBAL.max',
+    test: TEST,
+    why: '한 사람이 없는 번호 300개를 보내면 모든 손님의 이용권 조회가 한 시간 막힌다.',
+  },
+  {
+    name: '[sec2] 이용권 전체 잠금을 없앤다',
+    file: 'src/worker/utils/voucher-code-guard.ts',
+    find: '(all >= LOOKUP_MISS_GLOBAL.max && mine >= 1)',
+    replace: 'false',
+    test: TEST,
+    why: 'IP 를 바꿔 가며 6자리 번호를 무제한 대 볼 수 있다.',
+  },
 ]
