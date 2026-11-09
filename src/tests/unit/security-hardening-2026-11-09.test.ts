@@ -53,3 +53,15 @@ describe('① verifyPassword 결과는 객체다 — `.valid` 를 꺼내 판정�
     expect(code).toMatch(/const \{ valid: ok \} = await verifyPassword\(pin, pinHash\)/)
   })
 })
+
+describe('② 공개 레포에 적힌 키로 여는 쓰기 엔드포인트가 없다', () => {
+  it('데모 시드 엔드포인트가 삭제돼 있다', () => {
+    const code = readCode('src/features/products/api/products.routes.ts')
+    expect(code).not.toMatch(/demo-seed-linkshop/)
+    expect(code).not.toMatch(/DEMO_SEED_KEY/)
+  })
+  it('소스 어디에도 그 키 문자열이 없다', () => {
+    const hits = walk('src').filter((p) => readFileSync(p, 'utf8').includes('urdeal-demo-seed-2026'))
+    expect(hits).toEqual([])
+  })
+})

@@ -21,4 +21,12 @@ export default [
     test: TEST,
     why: '아무 비밀번호로 카카오 연결을 끊을 수 있게 된다.',
   },
+  {
+    name: '[sec] 데모 시드 키 게이트 엔드포인트를 되살린다',
+    file: 'src/features/products/api/products.routes.ts',
+    find: "registerProductViewRoutes(productsRoutes as never);",
+    replace: "registerProductViewRoutes(productsRoutes as never);\nconst DEMO_SEED_KEY = 'urdeal-demo-seed-2026';\nproductsRoutes.post('/demo-seed-linkshop', async (c) => c.json({ ok: DEMO_SEED_KEY }));",
+    test: TEST,
+    why: '키가 공개 레포에 있어 누구나 아무 매장에 상품·리뷰를 넣는다.',
+  },
 ]
