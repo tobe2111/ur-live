@@ -826,8 +826,8 @@ app.use('*', async (c, next) => {
           .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', m.ogImage); } })
           .on('head', { element(el) {
             el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
-            el.append(`<script type="application/ld+json">${m.jsonLd}</script>`, { html: true });
-          } });
+          } })
+          .on('body', { element(el) { el.append(`<script type="application/ld+json">${m.jsonLd}</script>`, { html: true }); } }); // 📦 2026-11-09 본문 끝(utils/surface-ssr-meta.ts 와 같은 이유)
         rb = applyCanonical(rb, m.canonical);
       }
     } else if (url.pathname === '/blog') {
@@ -846,8 +846,8 @@ app.use('*', async (c, next) => {
         .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', bd); } })
         .on('head', { element(el) {
           el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
-          if (listJsonLd) el.append(`<script type="application/ld+json">${listJsonLd}</script>`, { html: true });
-        } });
+        } })
+        .on('body', { element(el) { if (listJsonLd) el.append(`<script type="application/ld+json">${listJsonLd}</script>`, { html: true }); } }); // 📦 2026-11-09 본문 끝
       rb = applyCanonical(rb, canon);
     }
     // 🔗 2026-07-01 [UNLOCK_LOADING] (대표 승인 — 유어샵 전수조사): /u/:handle 유어샵 서버측 OG/canonical 주입.
