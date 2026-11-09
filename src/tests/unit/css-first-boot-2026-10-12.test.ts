@@ -244,6 +244,7 @@ describe('⑤-2 서버가 그리는 첫 화면 = CSS 먼저 적용 표면 (2026-
     'src/worker/utils/life-first-screen.ts': '/life', // 2026-11-08 — 생활 허브
     'src/worker/utils/region-first-screen.ts': '/region/%EC%84%9C%EC%9A%B8', // 2026-11-08 — 지역 착지
     'src/worker/utils/pc-home-first-screen.ts': '/', // 2026-11-09 — PC 홈(같은 경로, 데스크톱 UA)
+    'src/worker/utils/urshorts-first-screen.ts': '/urshorts', // 2026-11-09 — 유어쇼츠 목록
   }
   it('ROOTS 의 모든 첫 화면 모듈에 대표 경로가 있다(새 첫 화면이 생기면 여기서 멈춘다)', async () => {
     // @ts-expect-error — .mjs 생성기(타입 없음)

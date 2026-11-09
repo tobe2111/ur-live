@@ -99,3 +99,7 @@
 - 오프라인(shell-sw v2): 끊긴 상태에서 `/life` → **우리 안내 화면**(`X-Shell-Served: offline`) · `/` → 저장본 · `/admin/login` → 브라우저 기본 오류(허용 밖 투명, 설계대로).
 - 부품 엣지 캐시: 같은 부품 두 번째 요청 `HIT age=66`(5분 TTL 땐 MISS 가 일상이었다).
 - `Bundle budget (main)` 빨강: 오늘 머지 합산 +1.6KB(허용 1.5) — #2252 접착(deferred +0.7) + 보안 PR 공용 유틸. 기준 갱신 PR 로 해소(이 커밋).
+
+## 19. 킬스위치 ON + 유어쇼츠 서버 첫 화면
+- **22:41 KST `shell_sw_enabled=true`**(대표 "권한 허용해줄게" → 어드민 PUT). 서버 조회 true. 손님 쪽 전파는 `/api/consumer-settings` 엣지 캐시(600+600s) 뒤 — 23:00 전후 확인 예정.
+- `/urshorts` 서버 첫 화면(잠금 기록 `2026-11-09-urshorts-first-screen.md`). 배포 뒤 vitals_nocb 로 FCP 재실측(종전 2.0s).
