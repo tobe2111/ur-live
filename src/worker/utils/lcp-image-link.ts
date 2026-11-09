@@ -76,7 +76,7 @@ export function hrefOfPreloadTag(tag: string | null | undefined): string {
  *   시험 픽스처가 옵션 하나짜리(`width=1100`)라 초록이었다. `<…>` 안의 쉼표는 Link 문법상 정상이다(RFC 8288 —
  *   URI-Reference 는 꺾쇠로 감싸므로 값 구분자 쉼표와 섞이지 않는다).
  */
-export function appendLcpLink(h: Headers, href: string): void {
+export function appendLcpLink(h: Headers, href: string, priority: 'high' | 'auto' = 'high'): void {
   if (!href || !href.startsWith('/') || href.startsWith('//') || /[<>;\s]/.test(href)) return
-  h.append('Link', `<${href}>; rel=preload; as=image; fetchpriority=high`)
+  h.append('Link', `<${href}>; rel=preload; as=image; fetchpriority=${priority}`) // 2026-11-09 썸네일은 auto — 히어로(high)와 회선을 다투지 않게
 }

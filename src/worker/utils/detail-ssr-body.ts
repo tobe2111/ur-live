@@ -61,7 +61,7 @@
 import {
   DETAIL_HERO_MOBILE_WIDTH,
   DETAIL_MOBILE_THUMBS,
-  DETAIL_MOBILE_THUMB_CLS,
+  DETAIL_MOBILE_THUMB_CLS, DETAIL_THUMB_PLACEHOLDER,
   DETAIL_MOBILE_THUMB_RATIO,
   DETAIL_MOBILE_THUMB_ROW_CLS,
   detailGalleryImages,
@@ -246,10 +246,24 @@ export function mobileThumbRowHtml(images: string[]): string {
   if (!showMobileThumbs(images.length)) return ''
   return `<div class="lg:hidden ${DETAIL_MOBILE_THUMB_ROW_CLS}">` +
     images.slice(1, 1 + DETAIL_MOBILE_THUMBS).map((src) =>
-      `<div class="${DETAIL_MOBILE_THUMB_CLS}" style="aspect-ratio:${DETAIL_MOBILE_THUMB_RATIO};background-color:#1D1F29;` +
+      `<div class="${DETAIL_MOBILE_THUMB_CLS}" style="aspect-ratio:${DETAIL_MOBILE_THUMB_RATIO};background-color:${DETAIL_THUMB_PLACEHOLDER};` +
       `background-image:url(&quot;${escAttr(detailMobileThumbUrl(src))}&quot;);background-size:cover;background-position:center"></div>`,
     ).join('') +
   '</div>'
+}
+
+/**
+ * 🏁 2026-11-09 썸네일 2칸은 CSS `background-image` 라 브라우저가 **늦게·낮은 우선순위로** 받는다(대표 캡처 — 큰 사진은
+ *   떴는데 그 아래 두 칸이 한참 검었다). 첫 화면 안이므로 `Link: rel=preload` 로 미리 받게 한다(히어로와 같은 길, 우선순위는 auto).
+ *   `mobileThumbRowHtml` 과 **같은 조건·같은 주소**(두 벌로 세면 preload 가 버려진다). 3장 미만이면 [].
+ */
+/** `__SSR_INITIAL_DETAIL__` 원문 → 갤러리 사진 목록(첫 화면과 같은 함수). 파싱 실패면 []. */
+export function detailGalleryImagesOf(ssrPayload: string): string[] {
+  try { const d = (JSON.parse(ssrPayload) as { data?: DetailSeed })?.data; return d ? detailGalleryImages(d) : [] } catch { return [] }
+}
+export function mobileThumbPreloadHrefs(images: string[]): string[] {
+  if (!showMobileThumbs(images.length)) return []
+  return images.slice(1, 1 + DETAIL_MOBILE_THUMBS).map((src) => detailMobileThumbUrl(src)).filter((u) => !!u && !u.startsWith('data:'))
 }
 
 /**

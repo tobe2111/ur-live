@@ -7,6 +7,7 @@ import { URSHORTS_BROWSE_PATH, type UrShortItem } from '@/shared/urshorts'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import BrowseCard from './urshorts/BrowseCard'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { readUrShortsSeed } from '@/shared/home-near-seed-read'
 import {
   cityFacets, categoryFacets, filterShorts, pruneFilter,
   MIN_FACETS_TO_SHOW, type Facet, type ShortsFilter,
@@ -41,7 +42,7 @@ injectMotionCss('ur-m-shortsgrid', `@keyframes ur-vc-in { from { opacity: 0; tra
  * ⚠️ 영상이 100편을 넘기면 이 전제가 깨진다 — 그때는 서버 필터·페이지네이션으로 옮길 것.
  */
 export default function UrShortsBrowsePage() {
-  const [items, setItems] = useState<UrShortItem[] | null>(null)
+  const [items, setItems] = useState<UrShortItem[] | null>(() => readUrShortsSeed<UrShortItem>()) // 🎬 2026-11-09 서버 시드(10편)를 첫 렌더에 — 아래 effect 가 ?all=1 전량으로 갈아끼운다(시드는 자리값)
   const [params, setParams] = useSearchParams()
   const goBack = useSafeBack('/')
   useEffect(() => {
@@ -139,7 +140,7 @@ export default function UrShortsBrowsePage() {
               {shown.map((it, i) => (
                 <li key={it.id} className="ur-vc-in" style={{ '--i': Math.min(i, 8) } as React.CSSProperties}>
                   {/* 첫 줄만 즉시 로드 — 아래는 스크롤할 때. 2열이면 두 장이 첫 화면이다. */}
-                  <BrowseCard item={it} eager={i < 2} />
+                  <BrowseCard item={it} eager={i < 4} /> {/* 🎬 2026-11-09 폰 첫 화면은 2열×2줄 — 넷까지 eager */}
                 </li>
               ))}
             </ul>

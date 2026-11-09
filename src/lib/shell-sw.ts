@@ -88,7 +88,8 @@ export async function syncShellServiceWorker(): Promise<void> {
       const w = mine.active || mine.waiting || mine.installing
       try { w?.postMessage({ type: 'ur-shell-off' }) } catch { /* 무시 */ }
       await mine.unregister().catch(swallow('shell-sw:unregister'))
-      try { if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.filter((k) => k.startsWith('ur-shell-')).map((k) => caches.delete(k))) } } catch { /* 무시 */ }
     }
+    // 저장소는 등록을 찾았든 못 찾았든 지운다 — 2026-11-09 실측: 다른 코드가 먼저 unregister 해 두면 `mine` 이 없어 저장본이 남았다.
+    try { if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.filter((k) => k.startsWith('ur-shell-')).map((k) => caches.delete(k))) } } catch { /* 무시 */ }
   } catch (e) { swallow('shell-sw:sync')(e) }
 }

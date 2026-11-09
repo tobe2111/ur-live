@@ -7,10 +7,10 @@
 import { describe, it, expect } from 'vitest'
 import { render, fireEvent, screen } from '@testing-library/react'
 import DetailGallery from '@/pages/group-buy/DetailGallery'
-import { buildDetailFirstScreen, mobileThumbRowHtml } from '@/worker/utils/detail-ssr-body'
+import { buildDetailFirstScreen, mobileThumbRowHtml, mobileThumbPreloadHrefs, detailGalleryImagesOf } from '@/worker/utils/detail-ssr-body'
 import { buildStayDetailFirstScreen } from '@/worker/utils/stay-detail-ssr-body'
-import { readCode } from '../helpers/source-text'
-import { detailMobileThumbUrl, showMobileThumbs, DETAIL_MOBILE_THUMB_ROW_CLS } from '@/shared/detail-hero-image'
+import { readCode, readRaw } from '../helpers/source-text'
+import { detailMobileThumbUrl, showMobileThumbs, DETAIL_MOBILE_THUMB_ROW_CLS, DETAIL_THUMB_PLACEHOLDER } from '@/shared/detail-hero-image'
 
 const IMGS = ['https://t1.kakaocdn.net/a.jpg', 'https://t1.kakaocdn.net/b.jpg', 'https://t1.kakaocdn.net/c.jpg', 'https://t1.kakaocdn.net/d.jpg']
 
@@ -19,6 +19,25 @@ describe('모바일 썸네일 2칸', () => {
     expect(showMobileThumbs(2)).toBe(false)
     expect(showMobileThumbs(3)).toBe(true)
     expect(mobileThumbRowHtml(IMGS.slice(0, 2))).toBe('')
+  })
+  // 🖼️ 2026-11-09 대표 캡처: 큰 사진 아래 두 칸이 한참 **검은 상자**였다 — ① 칸 색이 다크 카드색(#1D1F29) 리터럴 ② CSS 배경 사진이라 늦게 받음.
+  it('칸 색은 테마를 따르는 옅은 잉크 — 다크 카드색 리터럴을 쓰지 않는다(서버·React 같은 값)', () => {
+    const html = mobileThumbRowHtml(IMGS)
+    expect(html).toContain(`background-color:${DETAIL_THUMB_PLACEHOLDER}`)
+    expect(html).not.toContain('#1D1F29')
+    const { container } = render(<DetailGallery images={IMGS} alt="가게" />)
+    const btn = container.querySelector(`div.${DETAIL_MOBILE_THUMB_ROW_CLS.split(' ').join('.')} button`) as HTMLElement
+    expect(btn.style.backgroundColor === DETAIL_THUMB_PLACEHOLDER || btn.getAttribute('style')!.includes(DETAIL_THUMB_PLACEHOLDER)).toBe(true)
+  })
+  it('두 칸의 사진은 응답 헤더 Link preload(auto)로 미리 받는다 — 칸이 그리는 주소와 같다', () => {
+    const payload = JSON.stringify({ data: { name: '가게 이용권', images: JSON.stringify(IMGS), image_url: IMGS[0] } })
+    const hrefs = mobileThumbPreloadHrefs(detailGalleryImagesOf(payload))
+    expect(hrefs).toEqual([detailMobileThumbUrl(IMGS[1]), detailMobileThumbUrl(IMGS[2])])
+    expect(mobileThumbPreloadHrefs(IMGS.slice(0, 2))).toEqual([])
+    const worker = readRaw('src/worker/index.ts')
+    expect(worker).toMatch(/for \(const th of mobileThumbPreloadHrefs\(detailGalleryImagesOf\(ssrPayload\)\)\) appendLcpLink\(c\.res\.headers, th, 'auto'\)/) // 이용권
+    expect((worker.match(/mobileThumbPreloadHrefs\(detailGalleryImagesOf\(ssrPayload\)\)/g) || []).length).toBe(2) // 이용권 + 숙소
+    expect(readCode('src/worker/utils/lcp-image-link.ts')).toMatch(/fetchpriority=\$\{priority\}/)
   })
   it('서버 첫 화면이 같은 줄을 그린다', () => {
     const html = buildDetailFirstScreen(JSON.stringify({ data: { name: '가게 이용권', images: JSON.stringify(IMGS), image_url: IMGS[0] } }), '<div>loader</div>')

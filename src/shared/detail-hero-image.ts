@@ -123,6 +123,8 @@ export const DETAIL_MOBILE_THUMBS = 2
 export const DETAIL_MOBILE_THUMB_RATIO = 3 / 2
 export const DETAIL_MOBILE_THUMB_ROW_CLS = 'grid grid-cols-2 gap-2 px-4 pt-2 bg-surface'
 export const DETAIL_MOBILE_THUMB_CLS = 'relative block w-full overflow-hidden rounded-xl'
+/** 🖼️ 2026-11-09 사진이 오기 전 칸 색 — 테마를 따르는 옅은 잉크(구분선과 같은 8%). 종전 `#1D1F29`(다크 카드색)는 라이트 화면에 **검은 상자 둘**로 떴다(대표 캡처). 서버 첫 화면·React 가 같은 값을 쓴다. */
+export const DETAIL_THUMB_PLACEHOLDER = 'color-mix(in srgb, var(--ink) 8%, var(--surface))'
 export function showMobileThumbs(count: number): boolean {
   return count >= DETAIL_MOBILE_THUMBS + 1
 }
