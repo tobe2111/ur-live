@@ -1824,8 +1824,7 @@ adminApp.route('/', adminAbuseRoutes);
 adminApp.route('/', adminReviewGeneratorRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/urshorts', adminUrshortsRoutes);
-adminApp.route('/creator-content', creatorContentAdminRoutes);
-adminApp.route('/creator-content-stores', creatorContentAdminStoresRoutes);
+adminApp.route('/creator-content', creatorContentAdminRoutes); adminApp.route('/creator-content-stores', creatorContentAdminStoresRoutes); // 🎬 다녀온 사람들 관리 · 가게 목록(2026-11-09)
 // Feature flags / kill-switch (graceful degradation for traffic spikes)
 adminApp.route('/flags', adminFlagsRoutes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
