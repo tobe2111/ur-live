@@ -10,11 +10,11 @@
  */
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { verify } from 'hono/jwt'
 import { safeError } from '../../../worker/utils/safe-error'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import { isPinVerified } from './seller-pin.routes'
 import { registerBusinessInfoRoutes } from './seller-profile/business-info'
 // 🏪 2026-09-04 (대표 확정 "주인만, 단 마스킹해서 보여줌"): 위임받은 운영자(중개사)에게는
@@ -380,7 +380,7 @@ sellerProfileRoutes.get("/referral-info", async (c) => {
 //   Cloudflare Workers AI Vision (무료 일 10K Neurons) 호출 → 추출 + DB 비교 → 자동 verified.
 //   사용자 액션: wrangler.toml 에 AI binding 추가 (사용자 결정 시 수동).
 //   graceful: env.AI 없으면 skip (기존 admin 수동 검토).
-sellerProfileRoutes.post('/business-registration/ocr-verify', async (c) => {
+sellerProfileRoutes.post('/business-registration/ocr-verify', rateLimit({ action: 'seller_ocr_verify', max: 10, windowSec: 3600 }), async (c) => { // 🔐 2026-11-09 AI 호출 비용 — IP당 시간 10회
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) return c.json({ success: false, error: '로그인 필요' }, 401);
@@ -388,6 +388,7 @@ sellerProfileRoutes.post('/business-registration/ocr-verify', async (c) => {
     const formData = await c.req.formData().catch(() => null);
     const file = formData?.get('file') as File | null;
     if (!file) return c.json({ success: false, error: 'file 필수' }, 400);
+    if (file.size > 10 * 1024 * 1024) return c.json({ success: false, error: '사진은 10MB 이하만 가능합니다' }, 413); // 🔐 2026-11-09 크기 제한
 
     const buffer = await file.arrayBuffer();
     const bytes = new Uint8Array(buffer);
