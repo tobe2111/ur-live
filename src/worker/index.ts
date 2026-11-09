@@ -685,11 +685,11 @@ app.use('*', async (c, next) => {
     //   늦게 끼어들어 "순서가 뒤바뀐 것"처럼 보인다. 둘을 **병렬**로 받는다(직렬이면 그만큼 느려진다).
     const nearSeedTarget = isMainPage ? homeNearSeedTarget(c.req.header('cookie')) : null; // 📍 2026-11-09 [LOADING_ADDITIVE] 위치 저장 손님의 거리순 피드를 별도 슬롯(MAINNEAR)으로 함께 — 400ms 마감. 사유: utils/home-near-seed.ts
     if (ssrTarget) {
-      const [r, extra, nearSeed, shortsSeed] = await Promise.all([ // 🎬 2026-11-09 홈 유어쇼츠 줄 시드(shortsSeed) — utils/home-near-seed.ts
+      const [r, extra, nearSeed, shortsSeed] = await Promise.all([
         fetchSsrPayload(ssrTarget, origin0, c.env, ssrWaitUntil(c)),
         ssrExtra ? fetchSsrPayload(ssrExtra, origin0, c.env, ssrWaitUntil(c)) : Promise.resolve(null),
         nearSeedTarget ? withSeedDeadline(fetchSsrPayload(nearSeedTarget.target, origin0, c.env, ssrWaitUntil(c)), HOME_NEAR_SEED_DEADLINE_MS) : Promise.resolve(null), isMainPage ? withSeedDeadline(fetchSsrPayload(HOME_SHORTS_SEED_TARGET, origin0, c.env, ssrWaitUntil(c)), HOME_NEAR_SEED_DEADLINE_MS) : Promise.resolve(null),
-      ]); if (nearSeedTarget && nearSeed?.payload) homeNearSeedHtml = homeNearSeedScript(nearSeedTarget.key, nearSeed.payload); if (shortsSeed?.payload) homeNearSeedHtml += homeShortsSeedScript(shortsSeed.payload);
+      ]); if (nearSeedTarget && nearSeed?.payload) homeNearSeedHtml = homeNearSeedScript(nearSeedTarget.key, nearSeed.payload); if (shortsSeed?.payload) homeNearSeedHtml += homeShortsSeedScript(shortsSeed.payload); // 🎬 2026-11-09 홈 유어쇼츠 줄 시드 — utils/home-near-seed.ts
       ssrPayload = r.payload;
       // ⚠️ 'ssrStatus' 는 아래 soft-404 판정(shouldNoindexMissingEntity)이 읽는다 — 지우지 말 것.
       ssrStatus = r.status;
