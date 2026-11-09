@@ -132,6 +132,22 @@ describe('②-c 가게 자기 글 — 다녀온 사람들이 아니다', () => {
   })
 })
 
+describe('②-d 겹침·숙소·스크롤 (2026-11-09 대표)', () => {
+  it('재생기가 뜬 편엔 우리 글자를 안 얹고, 닫기·번호는 영상 밖 띠에', () => {
+    const v = read('src/pages/group-buy/creator-content/ContentViewer.tsx')
+    expect(v).toMatch(/\{!\(active && src\) && <div className="pointer-events-none absolute inset-x-0 bottom-0/)
+    expect(v).not.toMatch(/absolute inset-x-0 top-0 z-10 flex items-center justify-between/)
+  })
+  it('숙소 상세에도 다녀온 사람들 칸 — 리뷰 앞', () => {
+    const p = read('src/pages/StayDetailPage.tsx')
+    expect(p.indexOf('<CreatorContentLazy')).toBeGreaterThan(0)
+    expect(p.indexOf('<CreatorContentLazy')).toBeLessThan(p.indexOf('id="stay-sec-reviews"'))
+  })
+  it('가로 줄이 세로 스크롤을 가두지 않는다', () => {
+    expect(read('src/shared/stays-list.ts')).toMatch(/row: '[^']*overflow-x-auto overflow-y-hidden touch-pan-x touch-pan-y/)
+  })
+})
+
 describe('③ 정렬', () => {
   it('고정 → 유어딜 사람 → 영상 → 블로그', () => {
     const out = sortForCustomer([
