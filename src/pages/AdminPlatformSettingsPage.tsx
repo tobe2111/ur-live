@@ -166,6 +166,13 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     text: true,
   },
   {
+    // 🏠 2026-11-09 재방문 즉시 표시 SW(결재 2026-11-09-revisit-instant-shell). 2026-04-27 SW 사고 이력 — 기본 꺼짐. 끄면 손님 폰의 SW 가 다음 로드에 자기 해제.
+    key: 'shell_sw_enabled',
+    label: '재방문 즉시 표시(shell-sw)',
+    hint: "기본 꺼짐. 'true' 면 손님 폰이 마지막 홈/상세 화면을 저장해 두고 재방문 때 서버를 기다리지 않고 바로 보여준다(로그인·결제·API 주소는 손대지 않음). 켜기 전 S-SHELLSW 절차(?__shellsw=1 로 자기 폰에서 카카오 로그인·결제 복귀 확인).",
+    text: true,
+  },
+  {
     key: 'home_service_quotes_disabled',
     label: '생활 견적 운영 중지(비상)',
     hint: "기본 꺼짐(=운영). 'true' 면 손님 요청 접수와 사장님 견적 보내기가 멈춘다. 충전된 참여권은 그대로.",

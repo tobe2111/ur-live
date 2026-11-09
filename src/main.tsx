@@ -252,6 +252,7 @@ if (typeof window !== 'undefined') {
 if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
   (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => void }).requestIdleCallback?.(() => {
     import('./hooks/queries/localCache').then(m => m.cleanupExpiredCache()).catch(() => null)
+    import('./lib/shell-sw').then(m => m.syncShellServiceWorker()).catch(() => null) // 🏠 2026-11-09 재방문 즉시 표시 SW — 켜짐 여부는 모듈이 판단(기본 OFF)
   }, { timeout: 5000 })
 } else {
   setTimeout(() => {
@@ -362,12 +363,12 @@ try {
     //   세션당 1회 캐시버스트 reload → SW 제어 해제된 clean 페이지를 자동 수신(무중단 자가복구).
     //   push-sw.js 는 fetch 핸들러가 없어(요청 미가로챔) 무해 → controller 여도 트리거 제외(루프 방지).
     const _ctrl = navigator.serviceWorker.controller
-    const _staleControlling = !!_ctrl && !((_ctrl.scriptURL || '').includes('push-sw.js'))
+    const _staleControlling = !!_ctrl && !((_ctrl.scriptURL || '').includes('push-sw.js')) && !((_ctrl.scriptURL || '').includes('shell-sw.js')) // 🏠 2026-11-09 shell-sw 도 우리 것(lib/shell-sw.ts)
     const _unreg = navigator.serviceWorker.getRegistrations().then(regs =>
       Promise.all(regs.map(r => {
         const scriptUrl = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || ''
-        // push-sw.js 만 보호 (push 알림 전용, fetch handler 없음)
-        if (scriptUrl.includes('push-sw.js')) return Promise.resolve()
+        // push-sw.js 만 보호 (push 알림 전용, fetch handler 없음) · 🏠 2026-11-09 shell-sw.js(재방문 즉시 표시 — 대표 승인, lib/shell-sw.ts 가 켜고 끈다)
+        if (scriptUrl.includes('push-sw.js') || scriptUrl.includes('shell-sw.js')) return Promise.resolve()
         return r.unregister().catch(swallow('main:sw-unregister'))
       }))
     ).catch(swallow('main:sw-getRegistrations'))
@@ -504,6 +505,9 @@ async function bootApp() {
           <App />
         </ThemeProvider>
       )
+      // 🏠 2026-11-09 이 문서가 SW 저장본(옛 HTML)이면 — 안에 구워진 시드가 '신선'으로 남지 않게 모든 쿼리를 한 번 새로 받는다.
+      //   그동안 맨 위에 가는 진행 띠를 띄운다(유튜브·인스타의 '옛 화면 위 새로고침' 모양) — 새 데이터가 다 오면 사라진다.
+      try { const sw = await import('./lib/shell-sw'); sw.applyShellSwTestFlag(); if (sw.isShellCacheServed()) { const hide = sw.showShellRefreshBar(); const { queryClient } = await import('./lib/react-query'); setTimeout(() => { queryClient.invalidateQueries({ refetchType: 'active' }).catch(() => null).finally(hide) }, 0) } } catch { /* 무시 */ }
 
       // 🛡️ 2026-07-16 (대표 신고 복구): 부팅 성공 신호 — index.html 부트가드 워치독(12s)이 '앱 안 뜸'으로
       //   판단해 복구 오버레이(#ur-stuck-recover)를 띄웠다면 제거(느린 회선 false-positive 자동 해제).
