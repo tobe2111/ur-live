@@ -73,3 +73,16 @@ describe('③ 요청 본문의 키를 SQL 열 이름으로 쓰려면 허용 목�
     expect(code).toMatch(/typeof v === 'boolean' && CHANNEL_COLUMNS\.has\(k\)/)
   })
 })
+
+describe('④ 이미지 변환 프록시는 래스터 이미지만 내보내고, /api 응답엔 nonce 를 박지 않는다', () => {
+  const code = readCode('src/worker/index.ts')
+  it('비-래스터 응답을 415 로 거부한다', () => {
+    expect(code).toMatch(/if \(!RASTER\.test\(type\)\) return c\.json\(\{ success: false, error: 'not an image' \}, 415\)/)
+  })
+  it('프록시 응답에 nosniff 와 sandbox CSP 를 붙인다', () => {
+    expect(code).toMatch(/headers\.set\('X-Content-Type-Options', 'nosniff'\);\n\s+headers\.set\('Content-Security-Policy', "default-src 'none'; sandbox"\);/)
+  })
+  it('nonce 리라이터는 /api/* 를 건너뛴다', () => {
+    expect(code).toMatch(/ct\.includes\('text\/html'\) && c\.res\.body && !new URL\(c\.req\.url\)\.pathname\.startsWith\('\/api\/'\)/)
+  })
+})

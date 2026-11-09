@@ -37,4 +37,20 @@ export default [
     test: TEST,
     why: '본문 키가 그대로 SQL 에 들어가 관리자 비밀번호 해시를 읽을 수 있다.',
   },
+  {
+    name: '[sec] 이미지 프록시의 래스터 검사를 뺀다',
+    file: 'src/worker/index.ts',
+    find: "    if (!RASTER.test(type)) return c.json({ success: false, error: 'not an image' }, 415);\n",
+    replace: '',
+    test: TEST,
+    why: '허용 호스트에 올린 HTML 이 우리 출처에서 열린다.',
+  },
+  {
+    name: '[sec] nonce 리라이터의 /api 제외를 뺀다',
+    file: 'src/worker/index.ts',
+    find: "if (ct.includes('text/html') && c.res.body && !new URL(c.req.url).pathname.startsWith('/api/')) {",
+    replace: "if (ct.includes('text/html') && c.res.body) {",
+    test: TEST,
+    why: '/api 가 내보내는 남의 HTML 스크립트에도 nonce 가 붙어 CSP 가 무력화된다.',
+  },
 ]
