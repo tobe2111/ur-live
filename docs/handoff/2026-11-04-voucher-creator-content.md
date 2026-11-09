@@ -67,3 +67,7 @@ ur-ads 하트비트 `ads:creator-content` 가 있는지도 본다.
   숫자는 `content-counts.ts` `attachCreatorCounts`(가게 키 IN … 1회, fail-soft) — 라이브 피드 라우트와 cron 피드 캐시가 같은 헬퍼,
   문구는 `shared/home-creator-count.ts`(카드·서버 첫 화면 공용, app-home 청크). 잠금 기록 `docs/locks/loading/2026-11-09-feed-creator-count.md`.
   ⚠️ 별점이 0인 상품은 그 줄이 없어 숫자도 안 보인다(대부분 별점이 있다).
+- 🩸 **라이브 실측 2026-11-10 02:40 KST** — 피드 응답 40개 중 `creator_count` 0개. 원인: 바로 뒤 추첨(fcfs) 덧붙이기가
+  `withFcfs = mapped.map(...)` 으로 **원래 목록에서 다시 시작해** 숫자를 지웠다. `withFcfs.map` 으로 수리 + 가드 + 주입.
+  ⇒ 응답 enrich 를 사슬에 끼울 때는 **다음 고리가 어디서 출발하는지** 볼 것(단위 시험은 헬퍼만 봐서 못 잡았다).
+- 같은 점검: 한우 이용권 칸 9 → **2개**(남은 둘 다 손님 후기) · 유튜브 공개 28 → **87** · 블로그 재판정 진행 중(커서 412).

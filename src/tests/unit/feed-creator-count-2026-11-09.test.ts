@@ -48,6 +48,8 @@ describe('② 카드와 서버 첫 화면', () => {
 describe('③ 라이브 피드와 cron 캐시가 같은 헬퍼', () => {
   it('배선', () => {
     expect(read('src/features/group-buy/api/group-buy-public.routes.ts')).toMatch(/let withFcfs = await \(await import\('\.\.\/\.\.\/creator-content\/api\/content-counts'\)\)\.attachCreatorCounts\(DB as never, mapped\)/)
+    // 🩸 2026-11-09 라이브: 뒤의 추첨(fcfs) 덧붙이기가 `mapped.map` 으로 다시 시작해 숫자를 지웠다(응답 40개 중 0개).
+    expect(read('src/features/group-buy/api/group-buy-public.routes.ts')).not.toMatch(/withFcfs = mapped\.map\(/)
     expect(read('src/worker/cron/group-buy-feed-cache.ts')).toMatch(/const rows = await attachCreatorCounts\(DB as never, /)
   })
 })

@@ -176,4 +176,12 @@ export default [
     test: 'src/tests/unit/feed-creator-count-2026-11-09.test.ts',
     why: '가게가 없는 교환권(KT 기프티콘)에 이름이 같은 가게의 후기 수가 붙는다.',
   },
+  {
+    name: '추첨 덧붙이기가 후기 수를 지운다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: '          withFcfs = withFcfs.map((p) => {',
+    replace: '          withFcfs = mapped.map((p) => {',
+    test: 'src/tests/unit/feed-creator-count-2026-11-09.test.ts',
+    why: '추첨 이용권이 하나라도 있으면 피드 전체의 SNS 후기 수가 사라진다(2026-11-09 라이브: 40개 중 0개).',
+  },
 ]
