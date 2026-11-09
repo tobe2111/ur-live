@@ -12,6 +12,11 @@
  *      `type="module"`·`application/json`·`ld+json`·`speculationrules`·`ur-module` 등은 건드리지 않는다
  *      (JSON 은 데이터이고, 모듈·규칙은 의미가 다르다).
  * 압축이 실패하면 그 스크립트는 **원문 그대로** 둔다(빌드를 깨지 않는다 — 대신 경고를 낸다).
+ *   ③ (2026-11-09) 인라인 `<style>` 안의 `/* … *\/` 주석 제거 — 한글 설명이라 압축이 거의 안 된다(1.7KB raw).
+ *   ④ (2026-11-09) `<head>` 의 `application/ld+json` 을 `</body>` 바로 앞으로 옮긴다 — 검색엔진은 본문의 JSON-LD 도
+ *      똑같이 읽는다(구글 문서: head·body 어디든). 손님은 그 데이터를 첫 화면보다 **먼저** 받을 이유가 없다.
+ *      대표 *"이 화면이 꽤 오래 지속되는데?"*(2026-11-09 검은 화면) — 한국→LA 회선에서 첫 화면 앞 바이트가
+ *      압축 18KB 라 서버가 처음 한 번에 보내는 양(약 14KB)을 넘어 왕복이 한 번 더 들었다.
  *
  * ⚠️ CSP 가 인라인 스크립트를 **해시**로 허용하게 바뀌면 이 압축이 해시를 깨뜨린다. 지금은 nonce(워커가
  *    서빙할 때 붙인다)라 무관하다 — 시험이 그 전제를 고정한다.
@@ -19,6 +24,31 @@
 
 const COMMENT_RE = /<!--(?!\[if)[\s\S]*?-->/g
 const SCRIPT_RE = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/g
+const STYLE_RE = /<style(\s[^>]*)?>([\s\S]*?)<\/style>/g
+const CSS_COMMENT_RE = /\/\*[\s\S]*?\*\//g
+const LD_RE = /[ \t]*<script\s[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>\n?/gi
+// PC 전용 Pretendard 로더 — 폰에선 첫 줄에서 바로 return 한다. 폰이 그 1.2KB(압축)를 첫 화면보다 먼저 받을 이유가 없다.
+//   PC 는 첫 화면이 없어(로더만 그린다) body 끝으로 옮겨도 시트를 넣는 시점이 사실상 같다.
+const PC_FONT_LOADER_RE = /[ \t]*<script id="ur-pret-loader"[^>]*>[\s\S]*?<\/script>\n?/
+
+/** ③ 인라인 <style> 의 CSS 주석을 걷는다(문자열 안 `/*` 는 이 레포 head 에 없다 — 시험이 고정). */
+export function stripStyleComments(html) {
+  return html.replace(STYLE_RE, (whole, attrs = '', body) => `<style${attrs}>${body.replace(CSS_COMMENT_RE, '')}</style>`)
+}
+
+/** ④ <head> 의 JSON-LD 를 </body> 앞으로 — 순서는 그대로 유지한다. body 가 없으면 손대지 않는다. */
+export function moveHeadJsonLdToBody(html) {
+  const headEnd = html.indexOf('</head>')
+  const bodyEnd = html.lastIndexOf('</body>')
+  if (headEnd < 0 || bodyEnd < 0 || bodyEnd < headEnd) return html
+  const moved = []
+  const head = html.slice(0, headEnd)
+    .replace(PC_FONT_LOADER_RE, (m) => { moved.push(m.trim()); return '' })
+    .replace(LD_RE, (m) => { moved.push(m.trim()); return '' })
+  if (!moved.length) return html
+  const mid = html.slice(headEnd, bodyEnd)
+  return head + mid + moved.join('\n') + '\n' + html.slice(bodyEnd)
+}
 
 /** 일반 JS 인라인 스크립트인가 — 속성 문자열로 판정 */
 export function isPlainInlineScript(attrs = '') {
@@ -37,7 +67,7 @@ export function stripHtmlComments(html) {
  * @param {(code: string) => Promise<string>} minify  JS 압축기(빌드에선 esbuild, 시험에선 가짜)
  */
 export async function slimHtml(html, minify) {
-  let out = stripHtmlComments(html)
+  let out = moveHeadJsonLdToBody(stripStyleComments(stripHtmlComments(html)))
   const jobs = []
   out.replace(SCRIPT_RE, (whole, attrs = '', body) => {
     if (isPlainInlineScript(attrs) && body.trim()) jobs.push({ whole, attrs, body })

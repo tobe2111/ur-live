@@ -87,8 +87,10 @@ export function applySurfaceMeta<T extends RewriterLike<T>>(rb: T, meta: Surface
   if (isHubCanonical(meta.canonical)) {
     withCanon = withCanon.on('head', { element(el) { el.append(NOIMAGEINDEX_META, { html: true }) } })
   }
+  // 📦 2026-11-09 JSON-LD 는 본문 끝에 붙인다(head 아님) — 검색엔진은 어디서든 읽고, 손님은 첫 화면보다 먼저 받을
+  //   이유가 없다. 한국→LA 회선에서 첫 화면 앞 바이트를 서버의 첫 송신량(약 14KB) 안에 넣기 위해(scripts/html-slim.mjs ④).
   if (ld) {
-    withCanon = withCanon.on('head', {
+    withCanon = withCanon.on('body', {
       element(el) { el.append(`<script type="application/ld+json">${ld}</script>`, { html: true }) },
     })
   }
