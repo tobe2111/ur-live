@@ -37,6 +37,8 @@ import { formatNumber } from '../../utils/format'
 import { cardImageAlt } from '../../utils/deal-title'
 import { VOUCHERS_DEFAULT_CATEGORY } from '../../shared/seo/voucher-facet'
 import { VOUCHERS_TOP_ROW } from '../../shared/vouchers-top-row'
+import { VOUCHERS_PC_FS, VOUCHERS_PC_COPY, VOUCHERS_PC_IMG_W, VOUCHERS_PC_IMG_SIZES, VOUCHERS_PC_CARDS, VOUCHERS_PC_ABOVE_FOLD } from '../../shared/vouchers-pc-first-screen'
+import { PC_HOME_FS } from '../../shared/pc-home-first-screen'
 import {
   VOUCHER_TILE_CLASS, VOUCHER_CAT_TAB, VOUCHER_TILE_ABOVE_FOLD, VOUCHER_TILE_IMG_W, VOUCHER_TILE_SIZES, voucherSoldLabel,
 } from '../../shared/voucher-tile'
@@ -102,6 +104,9 @@ function safeColor(c: unknown): string | null {
 }
 
 /** 진짜 `VoucherTile`(pages/vouchers/shared.tsx)과 같은 모양 — 시험이 둘을 렌더해 대조한다. */
+/** 🐢 사진 우선순위 — 폰 타일·PC 카드 공용(머리말 실측: high 면 CSS·JS 와 회선 경쟁으로 FCP·조작 가능이 늦어진다). */
+const IMG_LOW_PRIORITY_ATTRS = 'fetchpriority="low" decoding="async"'
+
 function tileHtml(p: VoucherSeedRow, idx: number): string {
   const T = VOUCHER_TILE_CLASS
   const price = Number(p.price) || 0
@@ -116,7 +121,7 @@ function tileHtml(p: VoucherSeedRow, idx: number): string {
   const src = p.image_url ? (cfImage(p.image_url, { width: VOUCHER_TILE_IMG_W, format: 'auto' }) || p.image_url) : ''
   const srcSet = p.image_url ? cfSrcSet(p.image_url, VOUCHER_TILE_IMG_W) : ''
   const img = src
-    ? `<img src="${escAttr(src)}"${srcSet ? ` srcset="${escAttr(srcSet)}"` : ''} sizes="${VOUCHER_TILE_SIZES}" alt="${escAttr(cardImageAlt(name, brand || null))}" width="${VOUCHER_TILE_IMG_W}" height="${VOUCHER_TILE_IMG_W}" loading="${above ? 'eager' : 'lazy'}" fetchpriority="low" decoding="async" style="opacity:${above ? 1 : 0};transition:opacity 200ms ease-out" class="${T.img}">`
+    ? `<img src="${escAttr(src)}"${srcSet ? ` srcset="${escAttr(srcSet)}"` : ''} sizes="${VOUCHER_TILE_SIZES}" alt="${escAttr(cardImageAlt(name, brand || null))}" width="${VOUCHER_TILE_IMG_W}" height="${VOUCHER_TILE_IMG_W}" loading="${above ? 'eager' : 'lazy'}" ${IMG_LOW_PRIORITY_ATTRS} style="opacity:${above ? 1 : 0};transition:opacity 200ms ease-out" class="${T.img}">`
     : ''
 
   return (
@@ -190,4 +195,82 @@ export function buildVouchersFirstScreen(seedJson: string, loaderHtml: string, n
     `</div>`
 
   return `<div id="ur-first-screen">${body}</div>${vouchersFirstScreenGuardScript(nonce)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
+}
+
+/** 로그인 흔적이면 걷어낸다(PC — 레일의 잔액 카드가 로그인이면 다른 모양). 넓은 화면 조건은 **없다**(이게 PC 본문이다). */
+export function vouchersPcFirstScreenGuardScript(nonce: string): string {
+  const js = `(function(){try{var s=localStorage;if(s.getItem('user_id')||s.getItem('userId')){var n=document.getElementById('ur-first-screen');if(n)n.remove()}}catch(e){}})()`
+  return `<script nonce="${escAttr(nonce)}">${js}</script>`
+}
+
+/** 진짜 `VoucherCard`(pages/vouchers/shared.tsx)와 같은 모양 — 시험이 원본 소스의 클래스와 대조한다. 버튼은 span(눌리지 않는다 — 앱이 곧 교체). */
+function pcCardHtml(p: VoucherSeedRow, idx: number): string {
+  const K = VOUCHERS_PC_FS
+  const price = Number(p.price) || 0
+  const orig = p.original_price != null ? Number(p.original_price) || 0 : 0
+  const pd = priceDisplay({ price, original_price: orig || null, discount_rate: Number(p.discount_rate) || 0 })
+  const sold = Number(p.sold_count || 0)
+  const above = idx < VOUCHERS_PC_ABOVE_FOLD
+  const color = safeColor(p.dominant_color)
+  const name = String(p.name ?? '')
+  const brand = p.brand_name ? String(p.brand_name) : ''
+  const src = p.image_url ? (cfImage(p.image_url, { width: VOUCHERS_PC_IMG_W, format: 'auto' }) || p.image_url) : ''
+  const srcSet = p.image_url ? cfSrcSet(p.image_url, VOUCHERS_PC_IMG_W) : ''
+  // 🐢 폰 첫 화면과 같은 이유로 `fetchpriority="low"`(사진이 CSS·JS 와 회선을 다투지 않게 — vouchers-first-screen 머리말 실측). 앞 8장만 eager.
+  const img = src
+    ? `<img src="${escAttr(src)}"${srcSet ? ` srcset="${escAttr(srcSet)}"` : ''} sizes="${VOUCHERS_PC_IMG_SIZES}" alt="${escAttr(cardImageAlt(name, brand || null))}" width="${VOUCHERS_PC_IMG_W}" height="${VOUCHERS_PC_IMG_W}" loading="${above ? 'eager' : 'lazy'}" ${IMG_LOW_PRIORITY_ATTRS} style="opacity:${above ? 1 : 0};transition:opacity 200ms ease-out" class="${K.cardImg}">`
+    : ''
+  return (
+    `<div class="${K.card}">` +
+    `<div class="${K.cardImgBox}"${color ? ` style="background-color:${color}"` : ''}>${img}</div>` +
+    `<div class="${K.cardBody}">` +
+    (brand ? `<p class="${K.cardBrand}">${escText(brand)}</p>` : '') +
+    `<p class="${K.cardName}">${escText(name)}</p>` +
+    `<div class="${K.cardPriceRow}">` +
+    (pd.discount > 0 ? `<span class="${K.cardDiscount}">${pd.discount}%</span>` : '') +
+    `<span class="${K.cardPrice}">${formatNumber(price)}</span><span class="${K.cardUnit}">딜</span>` +
+    (pd.showOriginal && orig > 0 ? `<span class="${K.cardStrike}">${formatNumber(orig)}딜</span>` : '') +
+    '</div>' +
+    (sold > 0 ? `<p class="${K.cardSold}">구매 ${voucherSoldLabel(sold)}</p>` : '') +
+    '</div></div>'
+  )
+}
+
+/**
+ * 🖥️ 교환권 목록 **PC** 첫 화면 — [상단 네비 높이] + 2열[레일: 비로그인 잔액 바 · 내 교환권 줄 | 본문: 브랜드 줄 자리 · 머리 줄 · 카드 격자 10장] + 로더.
+ * 실패하면 ''(호출부가 로더로 폴백). 폰 본문(`buildVouchersFirstScreen`)과 다른 레이아웃이라 따로 그린다 — UA 로 가른다(호출부).
+ */
+export function buildVouchersPcFirstScreen(seedJson: string, loaderHtml: string, nonce: string, category: string = VOUCHERS_DEFAULT_CATEGORY): string {
+  let rows: VoucherSeedRow[]
+  try {
+    const parsed = JSON.parse(seedJson) as { success?: boolean; data?: VoucherSeedRow[] }
+    if (!parsed?.success || !Array.isArray(parsed.data)) return ''
+    rows = parsed.data
+  } catch {
+    return ''
+  }
+  const valid = rows.filter(p => p && p.id != null && p.name)
+  if (valid.length === 0) return ''
+  const shown = [...valid].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0)).slice(0, VOUCHERS_PC_CARDS)
+  const count = rows.length === PAGE_SIZE ? `${rows.length}+` : String(rows.length)
+  const K = VOUCHERS_PC_FS
+  const slot = (cls: string) => `<span class="${cls} inline-block" aria-hidden="true"></span>`
+  const topnav = `<div class="${PC_HOME_FS.topnav}"><div class="${PC_HOME_FS.topnavRow1}"></div><div class="${PC_HOME_FS.topnavRow2}"></div></div>`
+  const rail =
+    `<aside class="${K.rail}">` +
+      `<span class="${K.balanceBtn}"><span class="${K.balanceText}">${VOUCHERS_PC_COPY.balance}</span><span class="${K.balanceCta}">${VOUCHERS_PC_COPY.balanceCta}${slot('w-3 h-3')}</span></span>` +
+      `<span class="${K.giftRow}">${slot(K.giftIcon)}<span class="${K.giftLabel}">${VOUCHERS_PC_COPY.gift}</span>${slot(K.giftChev)}</span>` +
+    '</aside>'
+  const main =
+    '<main>' +
+      `<div class="${K.brandWrap} invisible" aria-hidden="true"><h3 class="${K.brandTitle}">&nbsp;</h3><div class="${K.brandRow}"><span class="${K.brandChip}"><span class="${K.brandTile}"></span><span class="${K.brandLabel}">&nbsp;</span></span></div></div>` +
+      `<div class="${K.head}"><h2 class="${K.h2}"><span class="truncate">${escText(category)} 교환권</span><span class="${K.h2Count}">${count}</span></h2>` +
+      `<div class="${K.sortWrap}"><span class="${K.sortBtn}">${slot('w-3.5 h-3.5')}${VOUCHERS_PC_COPY.sort}${slot('w-3.5 h-3.5')}</span></div></div>` +
+      `<div class="${K.cards}">${shown.map(pcCardHtml).join('')}</div>` +
+    '</main>'
+  const body =
+    `<div class="${K.page}"><h1 class="sr-only">${K.h1Text}</h1>${topnav}` +
+      `<div class="${K.grid}">${rail}${main}</div>` +
+    '</div>'
+  return `<div id="ur-first-screen">${body}</div>${vouchersPcFirstScreenGuardScript(nonce)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }

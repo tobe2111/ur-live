@@ -1,0 +1,10 @@
+/** 🧬 주입 — PC 첫 화면 둘(교환권 목록 · 유어샵) (2026-11-09) */
+const T = 'src/tests/unit/pc-list-first-screens-2026-11-09.test.tsx'
+const V = 'src/worker/utils/vouchers-first-screen.ts'
+export default [
+  { name: '🖥️ PC교환권 — 상단 네비 높이 예약을 뺀다', file: V, find: "`<div class=\"${K.page}\"><h1 class=\"sr-only\">${K.h1Text}</h1>${topnav}` +", replace: "`<div class=\"${K.page}\"><h1 class=\"sr-only\">${K.h1Text}</h1>` +", test: T, why: 'sticky 네비(113px)가 마운트 때 본문 전체를 내린다.' },
+  { name: '🖥️ PC교환권 — 가드에 넓은 화면 조건이 돌아온다(PC 본문을 스스로 걷어낸다)', file: V, find: "if(s.getItem('user_id')||s.getItem('userId')){var n=document.getElementById('ur-first-screen');if(n)n.remove()}}catch(e){}})()`\n  return `<script nonce=\"${escAttr(nonce)}\">${js}</script>`\n}\n\n/** 진짜 `VoucherCard`", replace: "if(s.getItem('user_id')||s.getItem('userId')||(window.matchMedia&&matchMedia('(min-width: 1024px)').matches)){var n=document.getElementById('ur-first-screen');if(n)n.remove()}}catch(e){}})()`\n  return `<script nonce=\"${escAttr(nonce)}\">${js}</script>`\n}\n\n/** 진짜 `VoucherCard`", test: T, why: 'PC 첫 화면이 그려지자마자 걷혀 종전(2.27s)으로 돌아간다.' },
+  { name: '🖥️ PC교환권 — 카드 클래스를 손으로 바꾼다', file: 'src/shared/vouchers-pc-first-screen.ts', find: "cardPrice: 'text-[16px] font-bold text-[#171B24] dark:text-white tracking-tight',", replace: "cardPrice: 'text-[17px] font-bold text-[#171B24] dark:text-white tracking-tight',", test: T, why: '서버 카드와 앱 카드 모양이 갈려 마운트 때 글자가 바뀐다.' },
+  { name: '🖥️ PC교환권 — 워커가 PC 도 폰 본문으로', file: 'src/worker/index.ts', find: "(shouldRenderMobileFirstScreen(c.req.header('user-agent')) ? buildVouchersFirstScreen : buildVouchersPcFirstScreen)(", replace: "(buildVouchersFirstScreen)(", test: T, why: 'PC 가 폰 본문을 받고 가드가 즉시 걷어내 첫 화면이 없다.' },
+  { name: '🖥️ PC유어샵 — 네비 예약을 안 한다', file: 'src/worker/utils/curator-ssr-body.ts', find: "(isMobile ? '' : `<div class=\"${PC_HOME_FS.topnav}\"><div class=\"${PC_HOME_FS.topnavRow1}\"></div><div class=\"${PC_HOME_FS.topnavRow2}\"></div></div>`) +", replace: "'' +", test: T, why: 'PC 유어샵 본문이 마운트 때 113px 내려간다.' },
+]

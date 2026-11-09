@@ -111,14 +111,15 @@ export default [
     why: '같은 CURATOR 슬롯이라 걸린다 — 그 경로는 다른 컴포넌트다(클릭 기록·소개비 귀속).',
   },
   {
-    name: '🛍️ PC 에도 그린다(2열 그리드 + 전역 네비를 서버가 모른다)',
+    name: '🛍️ PC 본문이 상단 네비 예약 없이 간다(UA 를 빌더에 안 넘김)',
     file: 'src/worker/index.ts',
     // 🔀 2026-10-11 재조준: 게이트 이름이 `shouldRenderMobileFirstScreen`(폰 ∪ 검색 크롤러)로 바뀌었다.
     //   불변식은 그대로 — **PC 브라우저엔 그리지 않는다**(크롤러는 모바일 HTML 을 받는 것이 정상이다).
-    find: "&& shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {\n      // 🛍️ 2026-10-09",
-    replace: ") {\n      // 🛍️ 2026-10-09",
+    // 🔀 2026-11-09 재조준: PC 도 그린다(대표 승인). 불변식은 "PC 본문엔 상단 네비 높이 예약이 있다" 로 옮겨갔다 — 빌더에 UA 를 안 넘기면 PC 가 예약 없는 폰 본문을 받는다.
+    find: "buildCuratorFirstScreen(ssrPayload, urdealLoaderHtml, shouldRenderMobileFirstScreen(c.req.header('user-agent')))",
+    replace: "buildCuratorFirstScreen(ssrPayload, urdealLoaderHtml)",
     test: TEST,
-    why: 'PC 는 `.ur-ushop-pc` 2열 + DesktopTopNav 라 서버가 반쪽만 그리면 가로·세로가 같이 움직인다.',
+    why: 'PC 에서 sticky 네비(113px)가 마운트 때 본문을 통째로 내린다.',
   },
   {
     name: '🛍️ 페이지가 순서 SSOT 를 안 쓰고 자기 가르기로 돌아간다',

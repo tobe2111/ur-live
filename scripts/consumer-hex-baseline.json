@@ -1,5 +1,5 @@
 {
-  "total": 1836,
+  "total": 1845,
   "files": {
     "src/pages/AboutPage.tsx": 24,
     "src/pages/AboutServicePage.tsx": 1,
@@ -261,6 +261,7 @@
     "src/shared/stay-head.ts": 2,
     "src/shared/stays-list.ts": 4,
     "src/shared/stores/useTheme.ts": 2,
-    "src/shared/ushop-share-card.ts": 1
+    "src/shared/ushop-share-card.ts": 1,
+    "src/shared/vouchers-pc-first-screen.ts": 9
   }
 }
