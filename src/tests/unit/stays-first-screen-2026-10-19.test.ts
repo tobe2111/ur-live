@@ -125,7 +125,7 @@ describe('⑥ 폴백과 배선', () => {
     expect(seg).toContain('staysFirst ? staysFirst + staysNs : staysNs + urdealLoaderHtml')
   })
   it('CSS 먼저 적용 표면에 /stays (첫 화면 CSS 로 그린다)', () => {
-    expect(cssFirstApplies('/stays', IPHONE)).toBe(true)
+    expect(cssFirstApplies('/stays', IPHONE)).toBe(true); expect(firstScreenApplies('/stays', IPHONE)).toBe(true)
     expect(firstScreenApplies('/stays', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(false) // ⏳ 2026-11-09: PC 는 첫 화면 CSS 없음(로더-먼저 지연만)
   })
 })

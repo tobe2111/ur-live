@@ -104,10 +104,10 @@ describe('③ 문서 파싱 중이면 엔트리는 DOMContentLoaded 까지 기�
 describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', () => {
   const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
   const PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
-  it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228', '/vouchers', '/stays/2887', '/stays'])('적용: %s', (p) => {
+  it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228', '/vouchers', '/stays/2887', '/stays', '/map', '/urshorts', '/life', '/blog'])('첫 화면 표면(첫 화면 CSS 자격 + 지연): %s', (p) => {
     expect(cssFirstApplies(p, PHONE)).toBe(true)
+    expect(firstScreenApplies(p, PHONE)).toBe(true) // ⏳ 2026-11-09 로더-먼저가 생긴 뒤엔 이 줄이 "첫 화면 CSS 를 넣는다" 를 지킨다(cssFirstApplies 만으론 못 가른다)
   })
-  it('🗺️ 2026-11-09 /map 도 적용(껍데기 첫 화면)', () => { expect(cssFirstApplies('/map', PHONE)).toBe(true) })
   // ⏳ 2026-11-09 "로더 먼저": 첫 화면이 없는 소비자 화면도 부팅 지연(앱 CSS media=print)은 건다 — 단 **첫 화면 CSS 는 안 넣는다**(firstScreenApplies 가 가른다).
   it.each(['/browse', '/u/jiwon1228/p/2887', '/search', '/cart', '/videos'])('로더-먼저 표면(첫 화면 없음): %s — 지연 O · 첫 화면 CSS X', (p) => {
     expect(cssFirstApplies(p, PHONE)).toBe(true)
