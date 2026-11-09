@@ -15,9 +15,11 @@ export default function BackToTop() {
   const [on, setOn] = useState(false)
   useEffect(() => {
     const read = () => setOn(window.scrollY > SHOW_AFTER)
-    read()
+    // ⏱️ 2026-11-09 첫 확인은 다음 프레임에 — 마운트 직후 `scrollY` 를 읽으면 막 붙은 홈 전체의 레이아웃을 **강제로** 먼저 계산시킨다
+    //   (폰 흉내 프로파일 1위 110ms · A/B 6회 중간값: 조작 불가 시간 562 → 453ms). 프레임 안에서 읽으면 한 번에 계산된다.
+    const raf = requestAnimationFrame(read)
     window.addEventListener('scroll', read, { passive: true })
-    return () => window.removeEventListener('scroll', read)
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('scroll', read) }
   }, [])
   const goTop = () => {
     let reduce = false
