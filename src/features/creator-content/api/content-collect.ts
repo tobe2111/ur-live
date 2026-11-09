@@ -10,7 +10,7 @@
  *   ① (6시간마다) 판매 중 **이용권**(교환권 제외 — 가게가 없다)에서 가게 목록을 `store_content_crawl` 로 옮긴다.
  *   ② 가장 오래 안 찾은 가게 6곳 → 네이버 블로그 검색 **두 번**(관련도순 · 최신순, 각 30건 — 하루 무료 25,000회의 1~2%)
  *      → 제목·요약에 **가게 이름이 그대로 들어간 글만**. 그중 **이름 + 동네가 둘 다 있는 글은 바로 보이고**
- *      (`confidentMatch`), 이름만 맞는 글은 후보로 남는다. 새 글 2개까지 글 페이지를 읽어 대표 사진·창 허락 여부를 적는다.
+ *      (`blogAutoShow` — 제목이 가게를 불러야 하고 업체·모음 글은 뺀다), 이름만 맞는 글은 후보로 남는다. 새 글 2개까지 글 페이지를 읽어 대표 사진·창 허락 여부를 적는다.
  *   ③ 유튜브는 회차당 **최대 1곳**, 하루 `CONTENT_YT_DAILY_SEARCHES`(15)회까지. 유어애즈와 같은 10,000점 풀이라
  *      유어애즈 성과 측정이 그 몫을 비워 둔다(`contentYtReservedUnits`). 60초 이하 영상만.
  *
@@ -23,7 +23,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '../../../worker/types/env'
 import {
-  CONTENT_YT_DAILY_SEARCHES, CONTENT_YT_USED_KEY, confidentMatch, isStoreOwnPost, looksSponsored, mentionsStore, parseContentUrl, videoMatch,
+  CONTENT_YT_DAILY_SEARCHES, CONTENT_YT_USED_KEY, blogAutoShow, isStoreOwnPost, looksSponsored, mentionsStore, parseContentUrl, videoMatch,
   readDayCount, searchQueryFor, stripHtml,
 } from '../../../shared/creator-content'
 import { ensureCreatorContentTables, storeKeyFor } from './content-db'
@@ -97,8 +97,8 @@ export function pickBlogCandidates(items: NaverBlogItem[], storeName: string, ad
     seen.add(parsed.extId)
     const d = /^\d{8}$/.test(it.postdate) ? `${it.postdate.slice(0, 4)}-${it.postdate.slice(4, 6)}-${it.postdate.slice(6, 8)}` : null
     out.push({ extId: parsed.extId, url: parsed.url, title: title.slice(0, 200), summary: summary.slice(0, 300), author: stripHtml(it.bloggername).slice(0, 80), published: d, sponsored: looksSponsored(`${title} ${summary}`),
-      // 가게 자기 블로그 글은 이름·동네가 늘 들어 있어 '확실' 을 그냥 통과한다 — 자동 공개에서 뺀다(후보로는 남는다).
-      confident: !isStoreOwnPost(it.bloggername, storeName) && confidentMatch(`${title} ${summary}`, storeName, address) })
+      // 자동 공개 판정은 `blogAutoShow` 하나(가게 자기 글 · 업체 글 · 모음 글 · 업종 이름 가게 제외 + 제목이 가게를 불러야 한다).
+      confident: blogAutoShow({ title, summary, author: it.bloggername }, storeName, address) })
   }
   return out
 }
@@ -215,6 +215,32 @@ async function promoteVideoCandidates(DB: D1Database): Promise<number> {
 }
 
 /**
+ * 🧹 이미 자동 공개된 블로그를 지금 기준(`blogAutoShow`)으로 다시 본다(2026-11-09 대표 *"연관 없는 블로그도 있네"*).
+ * 실측: 자동 공개 2,009개 중 약 40% 가 새 기준에서 탈락(업종 이름 가게 382 · 제목에 이름 없음 315 · 업체 글 · 모음 글).
+ * 탈락은 **후보로 내린다**(지우지 않는다 — 사장님 화면에서 다시 고를 수 있다). 사장님·어드민이 넣은 것(source≠auto)은 안 건드린다.
+ * 기준 버전마다 한 바퀴 — 커서(id)를 앞으로 밀며 회차당 400개씩. 기준을 바꾸면 `BLOG_RULES_VERSION` 을 올린다.
+ */
+export const BLOG_RULES_VERSION = 2
+const REJUDGE_KEY = 'creator_content_blog_rejudge'
+const REJUDGE_PER_RUN = 400
+async function rejudgeVisibleBlogs(DB: D1Database): Promise<number> {
+  const raw = await readSetting(DB, REJUDGE_KEY)
+  const [ver, cur] = String(raw ?? '').split(':').map(Number)
+  if (ver === BLOG_RULES_VERSION && cur < 0) return 0
+  const after = ver === BLOG_RULES_VERSION && Number.isFinite(cur) ? cur : 0
+  const { results } = await DB.prepare(`SELECT s.id, s.title, s.summary, s.author_name, c.store_name, c.address FROM store_creator_content s
+      JOIN store_content_crawl c ON c.store_key = s.store_key
+      WHERE s.platform = 'naver_blog' AND s.status = 'visible' AND s.source = 'auto' AND s.id > ? ORDER BY s.id LIMIT ${REJUDGE_PER_RUN}`)
+    .bind(after).all<{ id: number; title: string | null; summary: string | null; author_name: string | null; store_name: string; address: string | null }>()
+  const rows = results ?? []
+  const ids = rows.filter((r) => !blogAutoShow({ title: r.title, summary: r.summary, author: r.author_name }, r.store_name, r.address)).map((r) => r.id)
+  if (ids.length) await DB.batch(ids.map((id) => DB.prepare(`UPDATE store_creator_content SET status = 'candidate', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'visible' AND source = 'auto'`).bind(id)))
+  // 다 돌았으면 -1(이 버전은 끝), 아니면 마지막 id 까지 왔다고 적는다.
+  await writeSetting(DB, REJUDGE_KEY, `${BLOG_RULES_VERSION}:${rows.length < REJUDGE_PER_RUN ? -1 : rows[rows.length - 1].id}`)
+  return ids.length
+}
+
+/**
  * 🪦 죽은 링크 숨기기 (2026-11-09) — 보이는 글·영상 중 가장 오래 확인 안 한 것부터 회차마다 3개.
  *   유튜브: 공개 oEmbed 가 404/401(삭제·비공개) · 블로그: 글 페이지가 404 이거나 "존재하지 않는 게시물".
  *   숨김(`hidden`)으로만 바꾼다(지우지 않는다) — 일시 장애로 잘못 숨겨도 사장님 화면에서 다시 켤 수 있다.
@@ -266,6 +292,7 @@ export async function runCreatorContentCollect(env: Env, now = Date.now()) {
   const thumbs = await backfillThumbs(DB, thumbRoom).catch(() => 0)
   const dead = await hideDeadLinks(DB).catch(() => 0)
   const promoted = await promoteVideoCandidates(DB).catch(() => 0)
+  const demoted = await rejudgeVisibleBlogs(DB).catch(() => 0)
   const yt = await collectVideos(DB, env, now).catch(() => ({ searched: false, added: 0 }))
-  return { synced, stores: (results ?? []).length, blogs, thumbs, dead, promoted, yt_searched: yt.searched, videos: yt.added }
+  return { synced, stores: (results ?? []).length, blogs, thumbs, dead, promoted, demoted, yt_searched: yt.searched, videos: yt.added }
 }

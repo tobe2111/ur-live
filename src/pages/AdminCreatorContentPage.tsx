@@ -31,7 +31,7 @@ export default function AdminCreatorContentPage() {
   return (
     <AdminLayout title="다녀온 사람들">
       <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6 lg:p-8">
-        <DashboardPageHeader title="다녀온 사람들" description="가게별로 자동으로 찾은 블로그·영상 후보를 골라 이용권 상세에 보이게 해요. 사장님이 없는 데모 매장은 여기서만 고를 수 있어요." />
+        <DashboardPageHeader title="다녀온 사람들" subtitle="가게별로 자동으로 찾은 블로그·영상 후보를 골라 이용권 상세에 보이게 해요. 사장님이 없는 데모 매장은 여기서만 고를 수 있어요." />
         {error && <p className="text-[13px] text-tone-bad">{error}</p>}
         {!rows && !error && <BrandLoader />}
         {rows && (

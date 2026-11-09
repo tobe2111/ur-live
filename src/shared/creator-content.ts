@@ -142,6 +142,66 @@ export function confidentMatch(text: string, storeName: string, address: string 
   return areas.some((a) => t.includes(a) || (a.length >= 3 && t.includes(a.slice(0, -1))))
 }
 
+/**
+ * 🏷️ **제목이 이 가게를 가리키는가** (2026-11-09 대표 *"연관 없는 블로그도 있네. 정확성이 많이 떨어져?"*).
+ * 실측: 자동 공개 블로그 2,009개 중 24% 가 제목에 가게 이름이 없었고, 그 대부분이 남의 이야기였다
+ * (동네 맛집 총정리 · 아파트 순위 · 가구 납품 후기 — 요약 한 줄에 가게 이름이 스쳐 지나갔을 뿐).
+ * 그래서 자동 공개는 **제목**이 이름을 불러야 한다. 셋 중 하나면 된다:
+ *   ① 핵심 이름이 제목에 그대로 ② 이름이 띄어 쓴 낱말이면 낱말마다 제목에 있다("스시사카바 합정")
+ *   ③ 네이버가 제목을 "…." 로 잘랐고 그 끝이 이름의 앞 3자 이상이다("디저트가 예술인 '타르틴베....")
+ */
+export function titleNamesStore(title: string | null | undefined, storeName: string): boolean {
+  const core = coreStoreName(storeName)
+  if (core.length <= 2) return false // 짧은 이름은 아무 제목에나 걸린다(mentionsStore 와 같은 기준)
+  const raw = String(title ?? '')
+  const t = normStoreName(raw)
+  if (t.includes(core)) return true
+  const words = String(storeName).replace(/\s*\(?[가-힣A-Za-z0-9]{1,8}(점|지점)\)?\s*$/, '').split(/[\s()]+/).map(normStoreName).filter(Boolean)
+  if (words.length > 1 && words.every((w) => w.length >= 2) && words.every((w) => t.includes(w))) return true
+  if (/(\.{2,}|…)\s*$/.test(raw)) {
+    for (let n = core.length - 1; n >= 3; n--) if (t.endsWith(core.slice(0, n))) return true
+  }
+  return false
+}
+
+/** 여러 가게를 한데 모은 글("BEST 5" · "TOP10" · "총정리" · "6곳 비교") — 한 가게 후기가 아니다. */
+export function isListPost(title: string | null | undefined): boolean {
+  return /(best|top)\s*\d+|\d+\s*(곳|군데)|베스트\s*\d+|총정리|모음|순위|리스트/i.test(String(title ?? ''))
+}
+
+/**
+ * 🏭 **업체가 쓴 글** — 블로그 이름이 납품·시공·중개 업체다(실측: "업소용가구전문,대건산업" 의 세라믹 테이블 납품기가 한우집에 떴다).
+ * 손님 후기가 아니라 그 업체 홍보라 자동 공개에서 뺀다(후보로는 남아 사장님이 고를 수 있다).
+ */
+export function isVendorAuthor(authorName: string | null | undefined): boolean {
+  return /(업소용|가구|인테리어|산업|부동산|공인중개|시공|분양|간판|컨설팅|설비|보일러|홈케어|납품|도매|주식회사|㈜|\(주\)|상사|문화누리카드)/.test(String(authorName ?? ''))
+}
+
+/**
+ * 🫥 **이름이 업종 그 자체인 가게** — "입주청소" · "서초에어컨청소" · "홍대돈까스" · "송파한우정육식당".
+ * 데모 이용권에 이런 이름이 많다(2026-11-09 실측 188곳 중 20곳 남짓). 이름으로 찾으면 **그 업종의 아무 글**이 걸려서
+ * (다른 청소업체 홍보 · 다른 돈까스집 후기) 이름 매칭으로는 판정이 안 된다 → 자동 공개하지 않는다(후보로만).
+ * 판정: 앞의 동네 이름 한 단어를 떼면 업종 낱말만 남는다.
+ */
+const GENERIC_PLACE = /^(서울|부산|대구|인천|광주|대전|울산|세종|제주|강남|서초|송파|잠실|삼성|홍대|신촌|합정|건대|성수|이태원|종로|광화문|여의도|마포|용산|노원|강서|분당|판교|수원|동탄|용인|일산|청주|천안|창원|김해)/
+const GENERIC_BODY = /^(입주청소|이사청소|에어컨청소|청소|셀프사진관|사진관|쌀국수집|쌀국수|한우곱창|곱창|막창|돈까스|돈가스|한우정육식당|정육식당|한우|헬스장|헬스|필라테스|요가|네일|미용실|왁싱|카페|펜션|게스트하우스|모텔|호텔|국밥|해장국|치킨|피자)+$/
+export function isGenericStoreName(storeName: string | null | undefined): boolean {
+  const n = coreStoreName(storeName)
+  if (!n) return true
+  return GENERIC_BODY.test(n) || GENERIC_BODY.test(n.replace(GENERIC_PLACE, ''))
+}
+
+/**
+ * ✅ **블로그 자동 공개 판정 하나** — 수집할 때도, 쌓인 글을 다시 볼 때도 이것만 쓴다(두 곳이 갈리면 둘 다 못 믿는다).
+ * 가게 자기 글 · 업체 글 · 모음 글이 아니고, 제목이 가게를 부르고, 제목+요약에 이름·동네(체인은 지점)가 다 있어야 한다.
+ */
+export function blogAutoShow(p: { title: string | null; summary: string | null; author: string | null }, storeName: string, address: string | null | undefined): boolean {
+  if (isGenericStoreName(storeName)) return false
+  if (isStoreOwnPost(p.author, storeName) || isVendorAuthor(p.author) || isListPost(p.title)) return false
+  if (!titleNamesStore(p.title, storeName)) return false
+  return confidentMatch(`${p.title ?? ''} ${p.summary ?? ''}`, storeName, address)
+}
+
 /** 지점명 — "샤브올데이 부산명륜점" → "명륜", "보광정 이태원점" → "이태원". 지점이 없으면 null. 앞의 시·도 이름은 뗀다. */
 export function branchOf(storeName: string | null | undefined): string | null {
   const m = String(storeName ?? '').trim().match(/\s+\(?([가-힣A-Za-z0-9]{1,10}?)(?:지점|점)\)?$/)

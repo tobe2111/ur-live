@@ -22,7 +22,7 @@ import { requireAdmin, requireSeller, getCurrentUser } from '../../../worker/mid
 import { publicCache } from '../../../worker/middleware/edge-cache'
 import { safeError } from '../../../worker/utils/safe-error'
 import {
-  parseContentUrl, kindOf, sortForCustomer, youtubeThumb, isStoreOwnPost, MAX_POSTS_PER_AUTHOR,
+  parseContentUrl, kindOf, sortForCustomer, youtubeThumb, isStoreOwnPost, blogAutoShow, MAX_POSTS_PER_AUTHOR,
   type ContentItem, type ContentPlatform, type PinPerson,
 } from '../../../shared/creator-content'
 import { ensureCreatorContentTables, loadProductStore, HIDE_REF, type ProductStore } from './content-db'
@@ -137,6 +137,8 @@ creatorContentPublicRoutes.get('/:productId', publicCache(600), async (c) => {
     const curated = rows.filter((r) => {
       if (r.source !== 'auto') return true
       if (isStoreOwnPost(r.author_name, s.store_name ?? '')) return false
+      // 블로그는 지금 자동 공개 기준으로 한 번 더(2026-11-09) — 쌓인 글의 재판정이 다 돌기 전에도 손님에겐 안 보인다.
+      if (r.platform === 'naver_blog' && !blogAutoShow({ title: r.title, summary: r.summary, author: r.author_name }, s.store_name ?? '', s.address)) return false
       const k = `${r.platform}:${(r.author_name || '').trim()}`
       const n = (perAuthor.get(k) ?? 0) + 1
       perAuthor.set(k, n)
@@ -229,9 +231,11 @@ function manageRoutes(admin: boolean) {
       if (!Number.isFinite(id) || (status === null && typeof body.pinned !== 'boolean')) return c.json({ success: false, error: '잘못된 요청' }, 400)
       // 🔴 store_key 를 WHERE 에 — 남의 가게 줄 id 를 넣어도 안 바뀐다.
       const res = await DB.prepare(`UPDATE store_creator_content
-          SET status = COALESCE(?, status), pinned = COALESCE(?, pinned), updated_at = CURRENT_TIMESTAMP
+          SET status = COALESCE(?, status), pinned = COALESCE(?, pinned), updated_at = CURRENT_TIMESTAMP,
+              -- 사람이 '보이기' 로 고른 자동 글은 그 사람이 고른 것이 된다 — 자동 기준(재판정·손님 거르기)이 다시 내리지 않게.
+              source = CASE WHEN ? = 'visible' AND source = 'auto' THEN ? ELSE source END
         WHERE id = ? AND store_key = ? AND status != 'deleted' AND platform NOT LIKE 'urdeal_%'`)
-        .bind(status, typeof body.pinned === 'boolean' ? (body.pinned ? 1 : 0) : null, id, s.store_key).run()
+        .bind(status, typeof body.pinned === 'boolean' ? (body.pinned ? 1 : 0) : null, status, admin ? 'admin' : 'owner', id, s.store_key).run()
       if (!res.meta.changes) return c.json({ success: false, error: '찾을 수 없습니다' }, 404)
       return c.json({ success: true })
     } catch (err) {
