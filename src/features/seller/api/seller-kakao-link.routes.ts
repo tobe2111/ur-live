@@ -8,7 +8,6 @@
  * - GET  /api/seller/kakao-link-status — 연동 상태 + 연동된 유저 정보
  */
 import { Hono } from 'hono'
-import { verify } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { safeError } from '@/worker/utils/safe-error'

@@ -4,7 +4,7 @@
  */
 
 import { Hono } from 'hono'
-import { verify as honoVerify } from 'hono/jwt'
+import { verifyLogin as honoVerify } from '../../../worker/utils/login-token-policy' // 🔐 2026-11-09 로그인 토큰만
 import { YouTubeAPIService } from '../services/youtube-api.service'
 // 🛡️ 2026-06-04 (P1 보안): YouTube OAuth 토큰 at-rest 암호화. KEK 미설정 시 평문 passthrough(하위호환).
 import { encryptAtRest, decryptAtRest } from '../../../worker/utils/data-crypto'
