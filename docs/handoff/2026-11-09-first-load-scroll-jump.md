@@ -26,3 +26,7 @@
 - hstspreload.org 에 urdeal.kr 제출 → "pending inclusion". 조건(HSTS 1년·includeSubDomains·preload)을 지키는 가드
   `hsts-preload-2026-11-09.test.ts` + 주입 2건. 새 하위 도메인은 반드시 HTTPS(Cloudflare 프록시면 자동).
 - 반영 확인: 몇 주 뒤 hstspreload.org 상태가 "preloaded" 인지.
+
+## 4차 — 부품 파일 정적 서빙 (대표 "그래도 지금 진행")
+- /assets/* → Pages 정적. 안전장치: 엣지 캐시 5분 + 자가복구가 부품 cache:'reload'. 기록 `docs/locks/loading/2026-11-09-assets-static.md`.
+- 롤백: `public/_routes.json` exclude 에서 "/assets/*" 한 줄 삭제(워커 핸들러가 그대로 있다).

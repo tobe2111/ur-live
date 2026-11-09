@@ -123,9 +123,29 @@
           } catch (e) { /* DOM 미준비 — 무시(리소스 error 는 body 이후) */ }
         }
         // 캐시버스트 reload — bfcache/heuristic/edge 의 옛 index.html 재서빙 우회(plain reload 는 stale 재서빙 시 또 404).
+        //   📦 2026-11-09: 부품(assets 폴더 파일)은 Pages 정적이 1년 immutable 로 낸다. 배포 순간 없는 부품 자리에 SPA HTML 이
+        //   나가 브라우저에 1년 저장되면 문서만 새로 받아서는 같은 부품을 또 캐시에서 꺼내 영영 못 낫는다 ⇒ 이 문서가
+        //   쓰는 부품을 cache:'reload' 로 다시 받아 브라우저 캐시를 덮은 뒤 이동한다(최대 2.5초 — 막혀도 그냥 간다).
+        function refreshAssets() {
+          try {
+            var seen = {}, list = [], add = function (h) { try { var x = new URL(h, location.href); if (x.origin === location.origin && x.pathname.indexOf('/assets/') === 0 && !seen[x.href]) { seen[x.href] = 1; list.push(x.href); } } catch (e) {} };
+            var els = document.querySelectorAll('script[src],link[href]');
+            for (var i = 0; i < els.length; i++) add(els[i].getAttribute('src') || els[i].getAttribute('href'));
+            try { var rs = performance.getEntriesByType('resource'); for (var k = 0; k < rs.length; k++) add(rs[k].name); } catch (e) {}
+            if (!list.length || typeof fetch !== 'function') return null;
+            return Promise.all(list.slice(0, 120).map(function (h) { return fetch(h, { cache: 'reload', credentials: 'same-origin' }).catch(function () {}); }));
+          } catch (e) { return null; }
+        }
         function bustReload() {
-          try { var u = new URL(location.href); u.searchParams.set('__cb', Date.now().toString(36)); location.replace(u.toString()); }
-          catch (e) { try { location.reload(); } catch (_) {} }
+          var gone = 0, go = function () {
+            if (gone) return; gone = 1;
+            try { var u = new URL(location.href); u.searchParams.set('__cb', Date.now().toString(36)); location.replace(u.toString()); }
+            catch (e) { try { location.reload(); } catch (_) {} }
+          };
+          var pending = refreshAssets();
+          if (!pending) { go(); return; }
+          pending.then(go, go);
+          setTimeout(go, 2500);
         }
         // 완전복구: 잔존 SW unregister + 모든 캐시 삭제 후 캐시버스트 reload(수동 버튼 — 가드 카운트 무시).
         function hardRecover() {
