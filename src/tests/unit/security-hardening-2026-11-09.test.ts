@@ -76,11 +76,22 @@ describe('③ 요청 본문의 키를 SQL 열 이름으로 쓰려면 허용 목�
 
 describe('④ 이미지 변환 프록시는 래스터 이미지만 내보내고, /api 응답엔 nonce 를 박지 않는다', () => {
   const code = readCode('src/worker/index.ts')
+  it('판정 함수가 래스터만 통과시킨다 (SVG·HTML 거부)', async () => {
+    const { isRasterImageType } = await import('@/worker/utils/image-proxy-safety')
+    for (const t of ['image/jpeg', 'image/png', 'image/webp; charset=binary', 'image/gif', 'image/avif']) expect(isRasterImageType(t), t).toBe(true)
+    for (const t of ['text/html', 'image/svg+xml', 'application/xhtml+xml', '', null]) expect(isRasterImageType(t), String(t)).toBe(false)
+  })
   it('비-래스터 응답을 415 로 거부한다', () => {
-    expect(code).toMatch(/if \(!RASTER\.test\(type\)\) return c\.json\(\{ success: false, error: 'not an image' \}, 415\)/)
+    expect(code).toMatch(/if \(!isRasterImageType\(type\)\) return c\.json\(\{ success: false, error: 'not an image' \}, 415\)/)
+  })
+  it('캐시 적중도 래스터일 때만 쓴다', () => {
+    expect(code).toMatch(/if \(hit && isRasterImageType\(hit\.headers\.get\('Content-Type'\)\)\) return hit;/)
   })
   it('프록시 응답에 nosniff 와 sandbox CSP 를 붙인다', () => {
-    expect(code).toMatch(/headers\.set\('X-Content-Type-Options', 'nosniff'\);\n\s+headers\.set\('Content-Security-Policy', "default-src 'none'; sandbox"\);/)
+    expect(code).toMatch(/headers\.set\('Content-Type', type\); hardenImageHeaders\(headers\);/)
+    const util = readFileSync('src/worker/utils/image-proxy-safety.ts', 'utf8')
+    expect(util).toMatch(/'X-Content-Type-Options', 'nosniff'/)
+    expect(util).toMatch(/"default-src 'none'; sandbox"/)
   })
   it('nonce 리라이터는 /api/* 를 건너뛴다', () => {
     expect(code).toMatch(/ct\.includes\('text\/html'\) && c\.res\.body && !new URL\(c\.req\.url\)\.pathname\.startsWith\('\/api\/'\)/)

@@ -40,7 +40,7 @@ export default [
   {
     name: '[sec] 이미지 프록시의 래스터 검사를 뺀다',
     file: 'src/worker/index.ts',
-    find: "    if (!RASTER.test(type)) return c.json({ success: false, error: 'not an image' }, 415);\n",
+    find: "    if (!isRasterImageType(type)) return c.json({ success: false, error: 'not an image' }, 415);\n",
     replace: '',
     test: TEST,
     why: '허용 호스트에 올린 HTML 이 우리 출처에서 열린다.',
@@ -52,5 +52,13 @@ export default [
     replace: "if (ct.includes('text/html') && c.res.body) {",
     test: TEST,
     why: '/api 가 내보내는 남의 HTML 스크립트에도 nonce 가 붙어 CSP 가 무력화된다.',
+  },
+  {
+    name: '[sec] 래스터 판정이 SVG 를 통과시킨다',
+    file: 'src/worker/utils/image-proxy-safety.ts',
+    find: "(?:jpeg|jpg|png|webp|gif|avif|bmp|x-icon|vnd\\.microsoft\\.icon)",
+    replace: "(?:jpeg|jpg|png|webp|gif|avif|bmp|x-icon|vnd\\.microsoft\\.icon|svg\\+xml)",
+    test: TEST,
+    why: 'SVG 는 스크립트를 담는다 — 우리 출처에서 실행된다.',
   },
 ]

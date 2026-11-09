@@ -33,7 +33,7 @@ import type { Env } from './types/env';
 import { authRouter } from './routes/auth.routes';
 import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { healthRoutes } from './routes/health.routes';
-import { killerSwRoutes } from './routes/killer-sw.routes'; // 2026-04-27 PWA 사고 복구
+import { killerSwRoutes } from './routes/killer-sw.routes'; import { isRasterImageType, hardenImageHeaders } from './utils/image-proxy-safety'; // 2026-04-27 PWA 사고 복구
 import kakaoSkillWebhookRoutes from './routes/kakao-skill-webhook.routes'; // 💬 2026-07-19 CS FAQ 봇(오픈빌더 스킬, KAKAO_SKILL_SECRET 미설정=404)
 import { instagramWebhookRoutes, instagramAutoDmAdminRoutes, instagramAutoDmSellerRoutes } from '../features/instagram-autodm/api/autodm.routes'; // 💬 2026-10-01 인스타 댓글→자동 DM(어드민 '켜기' 전엔 0통)
 import { sitemapRoutes } from './routes/sitemap.routes'; // 2026-04-27 TD-006 분할
@@ -565,9 +565,7 @@ app.use('*', async (c, next) => {
   //   효과: 모바일 메인 LCP -0.3~0.5s (첫 API fetch waterfall 제거).
   //   부하: KV read 1회 + 정적 inject. 매 메인 요청 1회 (publicCache 5분 HIT 보장).
   const ct = c.res.headers.get('Content-Type') || '';
-  // 🔐 2026-11-09 [UNLOCK_LOADING]: /api/* 응답에는 nonce 를 박지 않는다 — 이 리라이터는 우리 셸 HTML 용이다.
-  //   /api 가 (프록시 등으로) 남의 HTML 을 text/html 로 내보내면 그 <script> 까지 nonce 를 받아 CSP 가 무력화된다.
-  if (ct.includes('text/html') && c.res.body && !new URL(c.req.url).pathname.startsWith('/api/')) {
+  if (ct.includes('text/html') && c.res.body && !new URL(c.req.url).pathname.startsWith('/api/')) { // 🔐 2026-11-09 [UNLOCK_LOADING] /api 응답엔 nonce 미부착(셸 HTML 전용)
     const url = new URL(c.req.url);
     const isMainPage = url.pathname === '/' || url.pathname === '/index.html';
 
@@ -2256,19 +2254,12 @@ app.get('/api/image/resize', async (c) => {
     // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 동일 패턴)
     const edge = caches.default as Cache;
     const hit = await edge.match(cacheKey).catch(() => null);
-    // 🔐 2026-11-09: 수리 전에 캐시된 비-이미지 응답(1년 immutable)은 쓰지 않고 지운다.
-    if (hit && /^image\//i.test(hit.headers.get('Content-Type') || '') && !/svg/i.test(hit.headers.get('Content-Type') || '')) return hit;
-    if (hit) c.executionCtx?.waitUntil(edge.delete(cacheKey).catch(() => false));
+    if (hit && isRasterImageType(hit.headers.get('Content-Type'))) return hit; // 🔐 2026-11-09 수리 전 캐시된 비-이미지는 버린다
 
-    // 🔐 2026-11-09: 래스터 이미지만 내보낸다. 원본 폴백은 상류 Content-Type 을 그대로 복사했는데, 허용 호스트
-    //   중에는 누구나 파일을 올리는 곳(Firebase Storage 등)이 있어 HTML/SVG 가 우리 출처에서 열릴 수 있었다.
-    const RASTER = /^image\/(?:jpeg|jpg|png|webp|gif|avif|bmp|x-icon|vnd\.microsoft\.icon)\b/i;
     const immutable = (body: BodyInit | ReadableStream | null, type: string) => {
       const headers = new Headers();
       headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-      headers.set('Content-Type', type);
-      headers.set('X-Content-Type-Options', 'nosniff');
-      headers.set('Content-Security-Policy', "default-src 'none'; sandbox");
+      headers.set('Content-Type', type); hardenImageHeaders(headers);
       return new Response(body as BodyInit, { headers });
     };
 
@@ -2281,8 +2272,7 @@ app.get('/api/image/resize', async (c) => {
     if (R2) {
       const stored = await R2.get(thumbKey).catch(() => null);
       if (stored) {
-        const storedType = stored.httpMetadata?.contentType || 'image/webp';
-        const out = immutable(stored.body, RASTER.test(storedType) ? storedType : 'application/octet-stream');
+        const out = immutable(stored.body, isRasterImageType(stored.httpMetadata?.contentType) ? stored.httpMetadata!.contentType! : 'image/webp');
         if (c.executionCtx) c.executionCtx.waitUntil(edge.put(cacheKey, out.clone()).catch(() => {}));
         return out;
       }
@@ -2298,7 +2288,7 @@ app.get('/api/image/resize', async (c) => {
     }
 
     const type = response.headers.get('Content-Type') || 'image/webp';
-    if (!RASTER.test(type)) return c.json({ success: false, error: 'not an image' }, 415);
+    if (!isRasterImageType(type)) return c.json({ success: false, error: 'not an image' }, 415);
     // 변환본만 R2 영구 저장 (원본 폴백분은 저장 X — 다음 요청이 변환 재시도). 5MB 캡.
     if (R2 && transformed) {
       const buf = await response.arrayBuffer();
