@@ -96,6 +96,12 @@ export function reportWebVitals(): void {
       //   위 TTFB 는 **요청을 보낸 뒤부터**라 DNS·연결·암호화(새 기기에서 가장 비싼 부분)가 빠져 있다.
       //   CONN = 이동 시작 → 연결 완료(리다이렉트·DNS·TCP·TLS 전부). 첫 방문이면 0 이 아니다.
       send('CONN', Math.max(0, nav.connectEnd), page)
+      // 🕳️ 2026-11-09 (대표 *"아직 로딩이 긴데"* — 검은 화면 캡처): 실사용 한 건이 첫 응답까지 9.3초인데 서버 0.11초 ·
+      //   요청→응답 1.2초였다 — **요청을 보내기 전**에 8초가 갔다. 그 구간을 쪼갠다:
+      //   PRE = 이동 시작 → 가져오기 시작(리다이렉트·앱 브라우저 준비) · DNS = 주소 조회 · TCP = 연결+암호화.
+      send('PRE', Math.max(0, nav.fetchStart), page)
+      send('DNS', Math.max(0, nav.domainLookupEnd - nav.domainLookupStart), page)
+      send('TCP', Math.max(0, nav.connectEnd - nav.connectStart), page)
       // 어느 데이터센터가 응답했나 — 워커가 `Server-Timing: colo;desc="ICN"` 를 싣는다(css-first-boot.ts).
       //   페이지 자리에 `colo:XXX` 로 보내 같은 표본 저장소에서 데이터센터별 TTFB 분포를 본다.
       // 🧭 2026-11-08 — 첫 응답(TTFB) 중 **서버가 쓴 몫**. 워커가 `Server-Timing: total;dur=N` 을 싣는다.

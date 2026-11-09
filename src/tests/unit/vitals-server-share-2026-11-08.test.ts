@@ -42,6 +42,6 @@ describe('SRV — 서버 몫', () => {
   })
   it('서버가 SRV 를 받고 요약에 싣는다', () => {
     const src = readFileSync('src/worker/routes/analytics.routes.ts', 'utf8')
-    expect(src.match(/\['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1', 'SRV'\]/g)?.length).toBe(2)
+    expect(src.match(/\['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1', 'SRV'[^\]]*\]/g)?.length).toBe(2) // 2026-11-09 PRE·DNS·TCP 가 뒤에 붙었다 — 받는 목록과 요약 목록이 같은지만 본다
   })
 })
