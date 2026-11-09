@@ -366,7 +366,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           ).bind(...enabledIds).all<{ product_id: number; n: number }>().catch(() => ({ results: [] as { product_id: number; n: number }[] }))
           const cntById = new Map((cnts || []).map((r) => [r.product_id, r.n]))
           const enabledSet = new Set(enabledIds)
-          withFcfs = mapped.map((p) => {
+          withFcfs = withFcfs.map((p) => { // 🎬 mapped 가 아니라 withFcfs — 앞 줄의 creator_count 를 덮어 지우지 않게(2026-11-09 라이브 실측)
             const pid = Number(p.id)
             if (!enabledSet.has(pid)) return p
             const rec = cfgById.get(pid) || {}
