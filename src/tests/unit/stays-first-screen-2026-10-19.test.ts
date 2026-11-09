@@ -19,7 +19,7 @@ import { cardHtml } from '@/worker/utils/home-first-screen'
 import { STAYS_LIST, STAYS_CHIPS, buildStayCurations, stayCardHref, stayDateChipLabel } from '@/shared/stays-list'
 import { defaultStaysQs, readStaysSeed, STAYS_SEED_ID } from '@/shared/stays-early'
 import { MAP_VOUCHER_DEFS } from '@/pages/restaurant-map/voucher-types'
-import { cssFirstApplies } from '@/worker/utils/css-first-boot'
+import { cssFirstApplies, firstScreenApplies } from '@/worker/utils/css-first-boot'
 import { stripComments } from '../helpers/source-text'
 
 const LOADER = '<div style="min-height:100dvh">loader</div>'
@@ -126,6 +126,6 @@ describe('⑥ 폴백과 배선', () => {
   })
   it('CSS 먼저 적용 표면에 /stays (첫 화면 CSS 로 그린다)', () => {
     expect(cssFirstApplies('/stays', IPHONE)).toBe(true)
-    expect(cssFirstApplies('/stays', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(false)
+    expect(firstScreenApplies('/stays', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(false) // ⏳ 2026-11-09: PC 는 첫 화면 CSS 없음(로더-먼저 지연만)
   })
 })
