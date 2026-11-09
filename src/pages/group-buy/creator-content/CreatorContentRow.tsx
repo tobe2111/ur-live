@@ -11,6 +11,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { Play } from 'lucide-react'
 import { naverBlogMobileUrl, type ContentItem, type CreatorContentPayload } from '@/shared/creator-content'
 import { PlatformMark, urdealBadge } from './content-marks'
+import { trackFunnel } from '@/lib/funnel'
 import type { BuyInfo } from './ContentViewer'
 
 const ContentViewer = lazy(() => import('./ContentViewer'))
@@ -30,7 +31,12 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
     fetch(`/api/creator-content/${productId}`)
       .then((r) => r.json() as Promise<{ success?: boolean; data?: CreatorContentPayload }>)
       // 모양이 다르면(빈 객체·다른 응답) 그리지 않는다 — 상세 전체가 오류 화면으로 넘어가면 안 된다.
-      .then((r) => { if (alive && r?.success && Array.isArray(r.data?.items) && Array.isArray(r.data?.pinners)) setData(r.data) })
+      .then((r) => {
+        if (!(alive && r?.success && Array.isArray(r.data?.items) && Array.isArray(r.data?.pinners))) return
+        setData(r.data)
+        // 🎬 효과 재기 — 칸이 실제로 그려질 때만(0개면 칸이 없으므로 안 센다).
+        if (r.data.items.length || r.data.pinners.length) trackFunnel('creator_content_shown', { p: productId, n: r.data.items.length })
+      })
       .catch(() => null)
     return () => { alive = false }
   }, [productId])
@@ -44,6 +50,7 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
   const total = videos.length + blogs.length
 
   const openAt = (list: ContentItem[], index: number) => {
+    if (list[index]) trackFunnel('creator_content_opened', { p: productId, k: list[index].platform })
     setOpen({ list, index })
     if (list[index]) setRead((s) => new Set(s).add(list[index].id))
   }
@@ -55,6 +62,7 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
    */
   const openBlog = (b: ContentItem) => {
     setRead((s) => new Set(s).add(b.id))
+    if (!b.embeddable) trackFunnel('creator_content_opened', { p: productId, k: b.platform })
     // 창 안에서 넘겨 보는 목록도 띄울 수 있는 글만(막힌 글이 섞이면 미리보기 한 장이 다시 나온다).
     if (b.embeddable) { const list = blogs.filter((x) => x.embeddable); openAt(list, Math.max(0, list.findIndex((x) => x.id === b.id))); return }
     // 🪟 **새 창으로** 연다(2026-11-04 대표 *"블로그 보다가 나가면 이용권 상세로 나오는게 아니라 그 밖 페이지로 나가져"*).
@@ -152,7 +160,7 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
       {open && (
         <Suspense fallback={null}>
           <ContentViewer items={open.list} start={open.index} buy={buy}
-            onClose={() => setOpen(null)} onBuy={() => { setOpen(null); onBuy() }}
+            onClose={() => setOpen(null)} onBuy={() => { trackFunnel('creator_content_buy', { p: productId }); setOpen(null); onBuy() }}
             onSeen={(id) => setRead((s) => new Set(s).add(id))} />
         </Suspense>
       )}

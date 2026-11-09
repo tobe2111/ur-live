@@ -60,7 +60,7 @@
 6. **추가 환경 변수 확인 (선택사항)**
    - 이미 설정되어 있다면 스킵
    ```
-   VITE_KAKAO_REST_API_KEY: 5dd74bccb797640b0efd070467f3bafd
+   VITE_KAKAO_REST_API_KEY: REDACTED
    VITE_TOSS_CLIENT_KEY: test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
    ```
 

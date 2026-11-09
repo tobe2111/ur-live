@@ -41,9 +41,9 @@ export const HOOKS = [
 ];
 
 export const FORMATS = [
-  '짧게: 3~4줄, 150자 안팎.',
-  '보통: 문단 2~3개, 300자 안팎.',
-  '한 줄 + 설명: 첫 줄 한 문장, 이어서 2~3줄, 200자 안팎.',
+  '아주 짧게: 두 줄, 90자 안팎.',
+  '짧게: 세 줄, 140자 안팎.',
+  '한 줄 + 설명: 첫 줄 한 문장, 이어서 한두 줄, 170자 안팎.',
 ];
 
 export function pickHook(history, seed = 0) {
@@ -54,4 +54,22 @@ export function pickFormat(seed = 0) { return FORMATS[Math.abs(seed) % FORMATS.l
 // 최근 글들의 첫 문장 — "이렇게 시작하지 마라"로 프롬프트에 넣는다.
 export function recentOpeners(texts, n = 8) {
   return texts.slice(-n).map((t) => String(t).trim().split(/[.!?\n]/)[0].slice(0, 50)).filter(Boolean);
+}
+
+// ---- 올리는 시간 (2026-11-09 대표 "모두 다" — 시간대 시험) ----
+// 첫 시험(10/16~10/30)이 19:30 을 골랐고 그 뒤로 고정돼 있었다. 독자 습관은 바뀌므로 계속 시험한다:
+// 5일 중 하루는 최적 시간이 아닌 다른 시간대에 올려 데이터를 모으고, 주간 리뷰가 4주 평균으로 최적 시간을 다시 고른다.
+// 밤 21:30 은 새로 넣은 후보다(스레드는 밤에 많이 본다는 가설 — 데이터로 판정).
+export const EXTRA_SLOTS = ['21:30'];
+export function allSlots(schedule = {}) {
+  return [...new Set([...(schedule.slots_kst || ['09:00', '12:30', '19:30']), ...EXTRA_SLOTS])].sort();
+}
+export function slotFor(platform, schedule = {}, dayIdx = 0, today = '') {
+  const slots = allSlots(schedule);
+  const best = schedule.best?.[platform];
+  if (today <= (schedule.rotation_until || '') || !best) return slots[Math.abs(dayIdx) % slots.length];
+  const others = slots.filter((s) => s !== best);
+  const d = Math.abs(dayIdx) + (platform === 'threads' ? 0 : 2); // 두 플랫폼이 같은 날 함께 빠지지 않게
+  if (others.length && d % 5 === 0) return others[Math.floor(d / 5) % others.length];
+  return best;
 }

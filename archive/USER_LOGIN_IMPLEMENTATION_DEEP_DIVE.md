@@ -144,7 +144,7 @@
 // LoginPage.tsx (line 92-140)
 handleKakaoLogin() {
   // Kakao REST API Key 검증
-  const KAKAO_REST_API_KEY = '5dd74bccb797640b0efd070467f3bafd'
+  const KAKAO_REST_API_KEY = 'REDACTED'
   const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/sync/callback'
   
   // OAuth URL 생성

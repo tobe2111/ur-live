@@ -21,6 +21,7 @@ import { VOUCHER_CATEGORIES } from '../../shared/constants/voucher-categories'
 import { sliceCardGallery } from '../../features/group-buy/api/card-gallery'
 // 🏪 2026-09-16: 라이브 라우트와 **같은 술어**를 쓴다 — 캐시가 갈리면 승인 전 매장이 캐시로만 샌다.
 import { approvedSellerProductSql } from '../../shared/db/consumer-visible-product'
+import { attachCreatorCounts } from '../../features/creator-content/api/content-counts'
 
 const STATUSES = ['active', 'achieved', 'expired', 'all'] as const
 
@@ -160,11 +161,12 @@ export async function handleGroupBuyFeedCache(env: Env): Promise<{
 
         // 🖼️ 2026-08-19: 저장 시점에 자른다 — 라이브 쿼리와 **같은 SSOT**(`card-gallery`).
         //   안 자르면 캐시 row 가 원본 전량을 안고, 그 크기를 캐시 hit 마다 파싱한다.
-        const rows = (r.results ?? []).map((row) => {
+        // 🎬 2026-11-09 카드 '다녀온 사람들 N' — 라이브 피드 라우트와 같은 헬퍼(fail-soft: 실패면 숫자 없이 그대로).
+        const rows = await attachCreatorCounts(DB as never, (r.results ?? []).map((row) => {
           const p = row as Record<string, unknown>
           const g = sliceCardGallery(p.images, p.image_url)
           return { ...p, images: g.length ? JSON.stringify(g) : null }
-        })
+        }))
         const json = JSON.stringify(rows)
 
         await DB.prepare(`

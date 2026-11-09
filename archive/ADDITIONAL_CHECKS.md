@@ -6,7 +6,7 @@
 - ✅ SDK URL: `https://js.tosspayments.com/v1/payment-widget`
 - ✅ 초기화: `PaymentWidget(clientKey, customerKey)` (함수 호출)
 - ✅ 클라이언트 키: `test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN`
-- ✅ 시크릿 키: `test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY`
+- ✅ 시크릿 키: `test_gsk_REDACTED`
 
 ### **2. 렌더링**
 - ✅ `renderPaymentMethods()` 반환값 저장
@@ -39,7 +39,7 @@
 ```bash
 # 시크릿 키로 API 호출 테스트
 curl -X POST https://api.tosspayments.com/v1/payments/confirm \
-  -H "Authorization: Basic $(echo -n 'test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY:' | base64)" \
+  -H "Authorization: Basic $(echo -n 'test_gsk_REDACTED:' | base64)" \
   -H "Content-Type: application/json" \
   -H "TossPayments-API-Version: 2022-11-16" \
   -d '{
@@ -195,7 +195,7 @@ amount: Number(amount)
 ### **Test 1: 키 유효성 직접 확인**
 ```bash
 cd /home/user/webapp
-echo -n "test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY:" | base64
+echo -n "test_gsk_REDACTED:" | base64
 # 결과를 사용해 curl 테스트
 ```
 

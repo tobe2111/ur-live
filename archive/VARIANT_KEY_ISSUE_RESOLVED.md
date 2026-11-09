@@ -54,7 +54,7 @@ const clientKey = 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm'
 VITE_TOSS_CLIENT_KEY=test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm
 
 # Backend Secret Key (테스트용)
-TOSS_SECRET_KEY=test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
+TOSS_SECRET_KEY=REDACTED
 ```
 
 ### 3. 적용된 파일
@@ -175,7 +175,7 @@ const app = express();
 
 app.use(express.json());
 
-const secretKey = 'test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R';
+const secretKey = 'test_sk_REDACTED';
 
 app.post('/confirm', async (req, res) => {
   const { paymentKey, orderId, amount } = req.body;
@@ -223,7 +223,7 @@ app.listen(PORT, () => {
 | 항목 | 이전 | 현재 |
 |------|------|------|
 | Client Key | `test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN` (MID) | `test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm` (공식) |
-| Secret Key | `test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY` (MID) | `test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6` (공식) |
+| Secret Key | `test_gsk_REDACTED` (MID) | `test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6` (공식) |
 | variantKey 지원 | ❌ 없음 | ✅ DEFAULT, AGREEMENT |
 | 404 에러 | ❌ 발생 | ✅ 해결 |
 | UI 렌더링 | ❌ 실패 | ✅ 성공 예상 |

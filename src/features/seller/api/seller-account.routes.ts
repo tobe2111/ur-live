@@ -10,7 +10,7 @@
  */
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { verify } from 'hono/jwt'
+import { verifyLogin as verify } from '../../../worker/utils/login-token-policy'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { validateFileMagicBytes } from '@/lib/upload-security'
@@ -48,7 +48,7 @@ sellerAccountRoutes.on(['PUT', 'PATCH'], '/personal-info', async (c) => {
   }
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
     const body = await c.req.json();
@@ -88,7 +88,7 @@ sellerAccountRoutes.post('/change-password', rateLimit({ action: 'seller_change_
   }
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
     const { currentPassword, newPassword } = await c.req.json<{ currentPassword: string; newPassword: string }>();

@@ -48,17 +48,19 @@ function VideoSlide({ item, active }: { item: ContentItem; active: boolean }) {
       ) : (
         item.thumb_url && <img src={item.thumb_url} alt="" referrerPolicy="no-referrer" className="absolute inset-0 h-full w-full object-cover opacity-80" />
       )}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-4 pt-12 text-white">
+      {/* 재생기가 뜬 편은 그 재생기가 채널·제목을 직접 그린다 — 우리 글자를 얹으면 겹친다(2026-11-09 대표 "글자들이나 여러 요소들이 겹치네").
+          썸네일만 있는 편(아직 안 보는 편·재생기 없는 플랫폼)에만 그린다. */}
+      {!(active && src) && <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-4 pt-12 text-white">
         <p className="flex items-center gap-2 text-[15px] font-medium">
           <PlatformMark platform={item.platform} urdeal={!!badge} />
           <span className="truncate">{item.author_name || platformLabel(item.platform)}</span>
           {badge && <span className="shrink-0 rounded bg-brand px-1 text-[12px] font-medium">{badge}</span>}
         </p>
         {item.title && <p className="mt-1 line-clamp-2 text-[13px] text-white/85">{item.title}</p>}
-      </div>
+      </div>}
       {(!src || !active) && (
         <a href={item.url} target="_blank" rel="noopener noreferrer"
-          className="absolute right-4 top-16 flex items-center gap-1 rounded-full bg-black/50 px-3 py-1 text-[12px] text-white">
+          className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-black/50 px-3 py-1 text-[12px] text-white">
           {platformLabel(item.platform)}에서 보기 <ArrowUpRight className="h-3 w-3" />
         </a>
       )}
@@ -147,9 +149,10 @@ export default function ContentViewer({ items, start, buy, onClose, onBuy, onSee
 
   return (
     <div role="dialog" aria-modal="true" aria-label="영상" className="fixed inset-0 z-[10500] flex flex-col bg-black">
-      <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 text-white" style={{ paddingTop: 'max(12px, env(safe-area-inset-top, 0px))' }}>
-        <button type="button" onClick={onClose} aria-label="닫기" className="rounded-full bg-black/40 p-2"><X className="h-5 w-5" /></button>
-        <span className="rounded-full bg-black/40 px-3 py-1 text-[13px] tabular-nums">{index + 1} / {items.length}</span>
+      {/* 닫기·번호는 영상 **위가 아니라 위쪽 띠**에 둔다 — 재생기의 'Shorts' 표식·소리·메뉴 단추와 겹쳤다(2026-11-09). */}
+      <div className="flex shrink-0 items-center justify-between px-4 pb-2 text-white" style={{ paddingTop: 'max(8px, env(safe-area-inset-top, 0px))' }}>
+        <button type="button" onClick={onClose} aria-label="닫기" className="rounded-full p-2"><X className="h-5 w-5" /></button>
+        <span className="text-[13px] tabular-nums text-white/80">{index + 1} / {items.length}</span>
       </div>
       <div ref={listRef} className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto scrollbar-hide">
         {items.map((it, i) => (

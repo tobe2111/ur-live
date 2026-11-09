@@ -288,7 +288,7 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
   if (typeof orderId !== 'string' || orderId.length > 100) {
     return c.json({ success: false, error: '유효하지 않은 orderId' }, 400);
   }
-  if (!Number.isFinite(amount) || amount < 1 || amount > 100_000_000) {
+  if (!Number.isInteger(amount) || amount < 1 || amount > 100_000_000) { // 🔐 2026-11-09 정수만
     return c.json({ success: false, error: '유효하지 않은 금액' }, 400);
   }
 
@@ -413,7 +413,7 @@ pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windo
   if (!Number.isFinite(stream_id) || stream_id < 1) {
     return c.json({ success: false, error: '유효하지 않은 방송입니다' }, 400);
   }
-  if (!Number.isFinite(amount) || amount < 500 || amount > 10_000_000) {
+  if (!Number.isInteger(amount) || amount < 500 || amount > 10_000_000) { // 🔐 2026-11-09 딜은 정수(500.5 통과하던 것)
     return c.json({ success: false, error: '후원 금액은 500딜 이상 10,000,000딜 이하입니다' }, 400);
   }
 

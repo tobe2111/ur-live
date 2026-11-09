@@ -20,11 +20,15 @@ import { rateLimit } from '../middleware/rate-limit';
 
 const app = new Hono<{ Bindings: Env }>();
 
+/** 🔐 2026-11-09 카카오 size(1~15 정수) — 쿼리 값을 카카오 주소에 그대로 이어 붙여 다른 파라미터를 끼워 넣던 것을 막는다. */
+const kakaoSize = (raw: string | undefined): number => { const n = Number.parseInt(raw || '15', 10); return Number.isFinite(n) ? Math.min(15, Math.max(1, n)) : 15 };
+
 // ── 카카오 장소 검색 (키워드) ──
 app.get('/kakao/place/search', rateLimit({ action: 'kakao_proxy', max: 30, windowSec: 60 }), async (c) => {
   const query = c.req.query('query');
   const category = c.req.query('category_group_code') || 'FD6,CE7';
-  const size = c.req.query('size') || '15';
+  const size = kakaoSize(c.req.query('size')); // 🔐 2026-11-09 값을 주소에 그대로 붙이지 않는다
+  if (!/^[A-Z0-9]{3}(,[A-Z0-9]{3})*$/.test(category)) return c.json({ success: false, error: 'invalid category' }, 400);
   if (!query) return c.json({ success: false, error: 'query required' }, 400);
   const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY;
   if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500);
@@ -57,8 +61,9 @@ app.get('/kakao/place/nearby', rateLimit({ action: 'kakao_proxy', max: 30, windo
   const y = c.req.query('lat'); // latitude
   const radius = c.req.query('radius') || '1000'; // meters (max 20000)
   const category = c.req.query('category') || 'FD6'; // FD6=음식점, CE7=카페
-  const size = c.req.query('size') || '15';
-  if (!x || !y) return c.json({ success: false, error: 'lat,lng required' }, 400);
+  const size = kakaoSize(c.req.query('size'));
+  if (!x || !y || !Number.isFinite(Number(x)) || !Number.isFinite(Number(y))) return c.json({ success: false, error: 'lat,lng required' }, 400);
+  if (!/^[A-Z0-9]{3}$/.test(category)) return c.json({ success: false, error: 'invalid category' }, 400);
   const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY;
   if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500);
   // 🧯 2026-07-02 (폭주 점검): 좌표를 ~110m 그리드(소수 3자리)로 라운딩해 10분 KV 캐시 —

@@ -36,13 +36,13 @@
 ```bash
 # .env 파일
 VITE_TOSS_CLIENT_KEY=test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm
-TOSS_SECRET_KEY=test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
+TOSS_SECRET_KEY=REDACTED
 ```
 
 ### 환경 변수 (Cloudflare Pages)
 ```bash
 # Cloudflare Pages Secrets
-TOSS_SECRET_KEY=test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6 ✅ (방금 설정)
+TOSS_SECRET_KEY=REDACTED ✅ (방금 설정)
 ```
 
 ### variantKey

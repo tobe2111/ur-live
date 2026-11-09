@@ -69,7 +69,7 @@ appId: 1:1098157020294:web:5f527d8e3e9f941cedad07
 #### Kakao (4개)
 [ ] VITE_KAKAO_APP_KEY = 975a2e7f97254b08f15dba4d177a2865
 [ ] VITE_KAKAO_JAVASCRIPT_KEY = 975a2e7f97254b08f15dba4d177a2865
-[ ] VITE_KAKAO_REST_API_KEY = 5dd74bccb797640b0efd070467f3bafd
+[ ] VITE_KAKAO_REST_API_KEY = REDACTED
 [ ] VITE_KAKAO_AUTH_URL = https://kauth.kakao.com/oauth/authorize
 
 #### Toss (1개)
@@ -97,15 +97,15 @@ appId: 1:1098157020294:web:5f527d8e3e9f941cedad07
 [ ] FIREBASE_SERVICE_ACCOUNT_KEY = (JSON 전체를 한 줄로)
 
 #### JWT (2개)
-[ ] JWT_SECRET = 3Y4MyekQ4D+GFVY6p6bJEScOMSyFFkbtSX76YyT9uk4=
-[ ] REFRESH_TOKEN_SECRET = zetvg/v05J+O6M99ndq4UFliUwvw2Gvvi8dPXXZ3+z0=
+[ ] JWT_SECRET = REDACTED=
+[ ] REFRESH_TOKEN_SECRET = REDACTED=
 
 #### 기타 (6개)
 [ ] ENVIRONMENT = production
 [ ] FRONTEND_URL = https://live.ur-team.com
 [ ] REGION = KR
-[ ] KAKAO_REST_API_KEY = 5dd74bccb797640b0efd070467f3bafd
-[ ] TOSS_SECRET_KEY = test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+[ ] KAKAO_REST_API_KEY = REDACTED
+[ ] TOSS_SECRET_KEY = test_gsk_REDACTED
 
 ---
 

@@ -59,6 +59,7 @@ import { canonicalDetailPath } from '../../shared/product-flow'
 import { priceDisplay } from '../../shared/price-display'
 import { stripStorePrefix } from '../../utils/deal-title'
 import { formatNumber } from '../../utils/format'
+import { creatorCountLabel } from '../../shared/home-creator-count'
 import { STRIP_CLS, stripBannersOf, stripBannerImageUrl, type SeededStripBanner } from '../../shared/home-strip-banners'
 import { resolveBannerLink } from '../../components/home/banner-link'
 import { HOME_TOP_LOGO, HOME_TOP_SEARCH, HOME_TOP_BELL, HOME_TOP_BAG, HOME_TOP_CHEVRON, HOME_TOP_LOCATE } from './home-top-markup'
@@ -152,6 +153,8 @@ export interface SeedProduct {
   discount_rate?: number | null
   avg_rating?: number | null
   review_count?: number | null
+  /** 🎬 2026-11-09 그 가게 '다녀온 사람들' 콘텐츠 수(`content-counts.ts`) — 카드와 같은 문구로 미러. */
+  creator_count?: number | null
 }
 interface SectionsSeed {
   data?: Array<{ id?: number | string; title?: string | null; subtitle?: string | null; near?: boolean; products?: SeedProduct[] }>
@@ -212,6 +215,7 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, 
     (rating > 0
       ? `<p class="${HOME_FS_CLASS.rateRow}">${starHtml(rating)}<span class="${HOME_FS_CLASS.rateNum}">${rating.toFixed(1)}</span>` +
         (reviewCount > 0 ? `<span>(${formatNumber(reviewCount)})</span>` : '') +
+        (Number(p.creator_count) > 0 ? `<span class="truncate">${escText(creatorCountLabel(Number(p.creator_count)))}</span>` : '') +
         `</p>`
       : '') +
     `<div class="${HOME_FS_CLASS.priceWrap}">` +

@@ -163,7 +163,7 @@ API 응답: {"success": false, "error": "인증 토큰이 없습니다"}
 ## ✅ 최종 체크리스트
 
 ### Kakao Developers Console
-- ✅ REST API Key 발급: `5dd74bccb797640b0efd070467f3bafd`
+- ✅ REST API Key 발급: `REDACTED`
 - ✅ Redirect URI 등록 (2개)
 - ✅ 카카오 로그인 활성화
 - ✅ 동의 항목 설정 (닉네임 필수)

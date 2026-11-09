@@ -26,7 +26,7 @@
  * - 매장 공용 자리(임시저장 · 매장 정보 · 정산)는 열지 않았다. 열려면 몫을 나누는 설계가 먼저다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
-import { verify } from 'hono/jwt'
+import { verifyLogin as verify } from './login-token-policy'
 
 export const AGENCY_SCOPE_DENIED = 'AGENCY_SCOPE'
 

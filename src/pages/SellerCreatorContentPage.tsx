@@ -35,11 +35,9 @@ function Thumb({ item, tall }: { item: ContentItem; tall?: boolean }) {
   )
 }
 
-export default function SellerCreatorContentPage() {
+/** 사장님·어드민 공용 본문(2026-11-09 — 어드민 고르기 화면이 같은 부품을 쓴다). `base` 가 사장님/어드민 API 를 가른다. */
+export function CreatorContentManager({ base, headers }: { base: string; headers?: Record<string, string> }) {
   const { t } = useTranslation()
-  const { productId } = useParams()
-  const base = `/api/seller/creator-content/${Number(productId)}`
-  const headers = { Authorization: `Bearer ${localStorage.getItem('seller_token')}` }
   const [data, setData] = useState<Payload | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [url, setUrl] = useState('')
@@ -63,8 +61,8 @@ export default function SellerCreatorContentPage() {
   const setRef = (ref: 'seeding' | 'urshorts' | 'pin', id: number | string, hidden: boolean) => act(() => api.patch(`${base}/refs`, { ref, id: Number(id), hidden }, { headers }))
   const add = () => act(async () => { await api.post(base, { url }, { headers }); setUrl(''); setAdding(false) })
 
-  if (error) return <SellerLayout title="콘텐츠"><p className="p-5 text-[15px] text-gray-600">{error}</p></SellerLayout>
-  if (!data) return <SellerLayout title="콘텐츠"><BrandLoader /></SellerLayout>
+  if (error) return <p className="p-5 text-[15px] text-gray-600">{error}</p>
+  if (!data) return <BrandLoader />
 
   const candidates = data.items.filter((i) => i.status === 'candidate')
   const visible = data.items.filter((i) => i.status === 'visible')
@@ -78,7 +76,7 @@ export default function SellerCreatorContentPage() {
   }
 
   return (
-    <SellerLayout title="콘텐츠">
+    <>
       <div className="mx-auto max-w-[720px] px-4 pb-12 pt-4 text-gray-900">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -194,6 +192,13 @@ export default function SellerCreatorContentPage() {
           </section>
         )}
       </div>
-    </SellerLayout>
+    </>
   )
+}
+
+export default function SellerCreatorContentPage() {
+  const { productId } = useParams()
+  const base = `/api/seller/creator-content/${Number(productId)}`
+  const headers = { Authorization: `Bearer ${localStorage.getItem('seller_token')}` }
+  return <SellerLayout title="콘텐츠"><CreatorContentManager base={base} headers={headers} /></SellerLayout>
 }

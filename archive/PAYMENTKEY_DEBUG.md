@@ -28,7 +28,7 @@ https://developers.tosspayments.com/my/api-keys
 - "결제위젯 연동 키" 섹션
 - MID (상점 아이디) 확인
 - 클라이언트 키: test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-- 시크릿 키: test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+- 시크릿 키: test_gsk_REDACTED
 - **이 키들이 속한 MID가 무엇인지?**
 
 ### 3. 코드에서 사용 중인 MID 확인
@@ -40,7 +40,7 @@ const clientKey = 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
 
 Backend (.dev.vars, Cloudflare Secret):
 ```
-TOSS_SECRET_KEY=test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+TOSS_SECRET_KEY=test_gsk_REDACTED
 // ↑ 이 키가 속한 MID는?
 ```
 

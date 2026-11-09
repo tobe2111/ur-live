@@ -108,7 +108,7 @@ https://live.ur-team.com/login
 # Cloudflare API로 확인
 curl -X GET \
   "https://api.cloudflare.com/client/v4/accounts/1a2c006f0fb54894f81283a5ea787b83/pages/projects/ur-live" \
-  -H "Authorization: Bearer 3i3ZxtKpifhT7BjnH-p2VS9jKyoQs83dl4w1_KXC" \
+  -H "Authorization: Bearer REDACTED" \
   | jq '.result.deployment_configs.production.env_vars.VITE_FIREBASE_API_KEY'
 ```
 

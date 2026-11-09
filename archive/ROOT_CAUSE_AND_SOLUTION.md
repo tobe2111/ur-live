@@ -151,7 +151,7 @@ npx wrangler pages deploy dist --project-name=ur-live
 필요한 정보:
 ```
 CLOUDFLARE_API_TOKEN=
-CLOUDFLARE_ACCOUNT_ID=
+REDACTED=
 ```
 
 발급 링크:

@@ -14,7 +14,7 @@
 ```bash
 ✨ Success! Uploaded secret JWT_SECRET
 ```
-- **JWT Secret**: 933a7dd8858abf61df9eedada8322c1fa9b2ff3dc4ee4cff0053aa4dfe602b90
+- **JWT Secret**: REDACTED
 - **설정 위치**: Cloudflare Pages Production Environment
 - **상태**: 설정 완료
 
@@ -303,7 +303,7 @@ curl -X POST https://live.ur-team.com/api/admin/login \
 
 ### JWT Secret
 ```
-933a7dd8858abf61df9eedada8322c1fa9b2ff3dc4ee4cff0053aa4dfe602b90
+REDACTED
 ```
 **⚠️ 주의**: 이 값은 프로덕션에서 사용 중이므로 절대 공개하지 마세요.
 

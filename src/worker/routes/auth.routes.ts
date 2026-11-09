@@ -23,7 +23,7 @@ import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/
 // PBKDF2 password hashing — Cloudflare Workers compatible (100k iterations, SHA-256)
 import { hashPassword, verifyPassword, validatePasswordComplexity } from '../../lib/password';
 import { parseSessionCookie, clearSessionCookie, createSessionCookie } from '../utils/session';
-import { verify as jwtVerify } from 'hono/jwt'; import { refreshSigningKey } from '../utils/refresh-token-key';
+import { verify as jwtVerify } from 'hono/jwt'; import { refreshSigningKey } from '../utils/refresh-token-key'; import { verifyLogin } from '../utils/login-token-policy';
 import { recordKakaoLoginDiag } from '../utils/kakao-login-diag';
 import { checkLockout, recordFailure, clearFailures } from '../utils/account-lockout';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
@@ -493,7 +493,7 @@ authRouter.get('/session/health', async (c) => {
     const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
     if (bearer) {
       try {
-        const p = await jwtVerify(bearer, c.env.JWT_SECRET, 'HS256') as Record<string, unknown>;
+        const p = await verifyLogin(bearer, c.env.JWT_SECRET, 'HS256') as Record<string, unknown>; // 🔐 2026-11-09 용도·재발급 토큰은 세션이 아니다
         const sub = p?.sub;
         const type = (typeof p?.type === 'string' ? p.type : 'user');
         if (sub && type === 'user') {

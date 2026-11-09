@@ -21,7 +21,7 @@ VITE_TOSS_CLIENT_KEY=test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
 
 ### 백엔드 (`.dev.vars` & Cloudflare Secret)
 ```
-TOSS_SECRET_KEY=test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+TOSS_SECRET_KEY=test_gsk_REDACTED
 ```
 
 **Cloudflare Secret 설정 완료:**

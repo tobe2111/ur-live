@@ -43,7 +43,7 @@ Cloudflare Dashboard → Workers & Pages → **[실제 배포 중인 프로젝�
 2. FIREBASE_PRIVATE_KEY = [Firebase Service Account JSON의 private_key]
 3. FIREBASE_CLIENT_EMAIL = firebase-adminsdk-xxxxx@urteam-live-commerce-5b284.iam.gserviceaccount.com
 4. FIREBASE_DATABASE_URL = https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app
-5. KAKAO_REST_API_KEY = 5dd74bccb797640b0efd070467f3bafd
+5. KAKAO_REST_API_KEY = REDACTED
 ```
 
 ### Step 4: 재배포

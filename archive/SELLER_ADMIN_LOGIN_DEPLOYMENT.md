@@ -39,7 +39,7 @@
 
 ### **JWT Secret** (Cloudflare 환경 변수 설정 필요)
 ```
-JWT_SECRET=933a7dd8858abf61df9eedada8322c1fa9b2ff3dc4ee4cff0053aa4dfe602b90
+JWT_SECRET=REDACTED
 ```
 
 ### **테스트 계정 비밀번호 해시**
@@ -66,7 +66,7 @@ itUVt4fdTdIdveuBvEh7iQ==$fiOwHhE6D+RBRi3cEQPsB5hc1z74K6dQYhq3/D+dbKM=
 4. **Production** 탭에서 다음 변수 추가:
 
 ```bash
-JWT_SECRET=933a7dd8858abf61df9eedada8322c1fa9b2ff3dc4ee4cff0053aa4dfe602b90
+JWT_SECRET=REDACTED
 ```
 
 5. **Save** 클릭

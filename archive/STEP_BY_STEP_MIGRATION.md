@@ -145,7 +145,7 @@ found 0 vulnerabilities
 ```bash
 # .dev.vars 파일 생성 (로컬 개발용)
 cat > .dev.vars << 'EOF'
-JWT_SECRET=temp-secret-change-later
+JWT_SECRET=REDACTED
 TOSS_SECRET_KEY=test_sk_
 TOSS_CLIENT_KEY=test_ck_
 KAKAO_JS_KEY=temp-kakao-key

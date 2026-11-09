@@ -21,7 +21,7 @@ echo "VITE_FIREBASE_MEASUREMENT_ID=G-B1ST2L37CM"
 # Kakao (4개)
 echo "VITE_KAKAO_APP_KEY=975a2e7f97254b08f15dba4d177a2865"
 echo "VITE_KAKAO_JAVASCRIPT_KEY=975a2e7f97254b08f15dba4d177a2865"
-echo "VITE_KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd"
+echo "VITE_KAKAO_REST_API_KEY=REDACTED"
 echo "VITE_KAKAO_AUTH_URL=https://kauth.kakao.com/oauth/authorize"
 
 # Toss (1개)
@@ -43,15 +43,15 @@ echo "FIREBASE_PROJECT_ID=urteam-live-commerce"
 echo "FIREBASE_DATABASE_URL=https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app"
 
 # JWT (2개)
-echo "JWT_SECRET=3Y4MyekQ4D+GFVY6p6bJEScOMSyFFkbtSX76YyT9uk4="
-echo "REFRESH_TOKEN_SECRET=zetvg/v05J+O6M99ndq4UFliUwvw2Gvvi8dPXXZ3+z0="
+echo "JWT_SECRET=REDACTED="
+echo "REFRESH_TOKEN_SECRET=REDACTED="
 
 # 기타 (6개)
 echo "ENVIRONMENT=production"
 echo "FRONTEND_URL=https://live.ur-team.com"
 echo "REGION=KR"
-echo "KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd"
-echo "TOSS_SECRET_KEY=test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY"
+echo "KAKAO_REST_API_KEY=REDACTED"
+echo "TOSS_SECRET_KEY=test_gsk_REDACTED"
 
 echo ""
 echo "=== Service Account Variables (Firebase Console에서 생성 필요) ==="

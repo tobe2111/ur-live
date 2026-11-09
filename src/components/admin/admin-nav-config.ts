@@ -181,6 +181,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/banners',          label: '배너 관리',     icon: Image },
       { path: '/admin/home-sections',    label: '홈 섹션',       icon: LayoutList },
       { path: '/admin/urshorts',         label: '유어쇼츠',     icon: Video },
+      { path: '/admin/creator-content',  label: '다녀온 사람들', icon: Video },
     ],
   },
   {

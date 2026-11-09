@@ -350,7 +350,7 @@ adminSellersRoutes.patch('/sellers/:id/business-registration/verify', cors(), as
       let adminId: number | null = null;
       try {
         const tk = auth.replace(/^Bearer\s+/i, '');
-        const payload = await import('hono/jwt').then(m => m.verify(tk, c.env.JWT_SECRET, 'HS256'));
+        const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(tk, c.env.JWT_SECRET, 'HS256'));
         adminId = Number((payload as { admin_id?: number; user_id?: number }).admin_id ?? (payload as { user_id?: number }).user_id ?? 0) || null;
       } catch { /* token parse 실패 — null 유지 */ }
 

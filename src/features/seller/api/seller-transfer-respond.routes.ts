@@ -13,7 +13,7 @@
  */
 
 import { Hono, type Next } from 'hono';
-import { verify } from 'hono/jwt';
+import { verifyLogin as verify } from '../../../worker/utils/login-token-policy';
 import { parseSessionCookie } from '../../../worker/utils/session';
 import { swallow } from '../../../worker/utils/swallow';
 import { rateLimit } from '../../../worker/middleware/rate-limit';

@@ -20,6 +20,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { verify as verifyJwt, sign as signJwt } from 'hono/jwt'
+import { verifyLogin } from '@/worker/utils/login-token-policy'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { hashPassword, verifyPassword } from '@/lib/password'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -34,7 +35,7 @@ export const sellerPinRoutes = new Hono<{ Bindings: Bindings }>()
 async function getSellerId(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null
   try {
-    const payload = await verifyJwt(authorization.substring(7), jwtSecret, 'HS256') as JWTPayload
+    const payload = await verifyLogin(authorization.substring(7), jwtSecret, 'HS256') as JWTPayload // 🔐 2026-11-09 로그인 토큰만(옛 재발급·용도 토큰 거부)
     if ((payload as Record<string, unknown>).type !== 'seller') return null
     const raw = (payload as Record<string, unknown>).seller_id ?? (payload as Record<string, unknown>).sub
     const id = Number(raw)

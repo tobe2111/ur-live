@@ -13,7 +13,7 @@
 import { Hono } from 'hono'
 import { resolveKtSellerMarkupPct } from '../../admin/api/admin-kt-alpha/markup'
 import { cors } from 'hono/cors'
-import { verify } from 'hono/jwt'
+import { verifyLogin as verify } from '../../../worker/utils/login-token-policy'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
@@ -51,7 +51,7 @@ sellerSettlementsRoutes.get('/settlements', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
     const limit = Math.max(1, Math.min(200, intParam(c.req.query('limit'), 20)));
@@ -97,7 +97,7 @@ sellerSettlementsRoutes.post('/settlements/request', rateLimit({ action: 'seller
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
 
@@ -203,7 +203,7 @@ sellerSettlementsRoutes.get('/settlement-options', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
 
@@ -280,7 +280,7 @@ sellerSettlementsRoutes.get('/deal-balance', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
 
@@ -331,7 +331,7 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
   try {
     const token = authorization.substring(7)
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload
     const sellerId = payload.seller_id
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403)
 
@@ -390,7 +390,7 @@ sellerSettlementsRoutes.post('/voucher-redeem', rateLimit({ action: 'seller_vouc
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
   try {
     const token = authorization.substring(7)
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload
     const sellerId = payload.seller_id
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403)
 
@@ -646,7 +646,7 @@ sellerSettlementsRoutes.get('/voucher-orders', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)
   try {
     const token = authorization.substring(7)
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload
     const sellerId = payload.seller_id
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403)
 
@@ -686,7 +686,7 @@ sellerSettlementsRoutes.get('/tax-summary', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
 
@@ -716,7 +716,7 @@ sellerSettlementsRoutes.get('/settlement-tax-invoices', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
     const items = await listSellerSettlementInvoices(c.env.DB, sellerId, 200);
@@ -731,7 +731,7 @@ sellerSettlementsRoutes.post('/settlement-tax-invoices/:id/approve', rateLimit({
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
     const id = Number(c.req.param('id'));
@@ -752,7 +752,7 @@ sellerSettlementsRoutes.post('/business-registration/submit', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
 
@@ -775,7 +775,7 @@ sellerSettlementsRoutes.get('/settlements/stats', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const payload = await import('../../../worker/utils/login-token-policy').then(m => m.verifyLogin(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
     const stats = await db.prepare(`

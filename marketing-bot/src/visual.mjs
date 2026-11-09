@@ -12,6 +12,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { ROOT, DRY, log } from './lib.mjs';
 import { vetPost } from './vet.mjs';
+import { reviewCover, STOCK_SOURCES } from './judge.mjs';
 
 export const VISUAL_SYSTEM = `너는 큰 브랜드(네이버플러스스토어, 토스플레이스, NOL) 인스타그램 이미지를 만드는 에디터다.
 캡션을 받아 이미지에 들어갈 문구만 JSON 으로 만든다.
@@ -263,13 +264,20 @@ export async function makeVisual({ claudeFn, caption, facts, series, key, notePh
       if (v && vetVisual(v, facts, fieldNote).length) v = null;
     }
     if (!v) { log('이미지 문구를 만들지 못함 → 종전 카드로'); return null; }
-    const photo = await findPhoto({ notePhotos, productPhoto, storePhotos, query: v.photo_query || series.photo, dir });
-    const files = render({
-      out_dir: path.join(dir, 'out'),
+    let photo = await findPhoto({ notePhotos, productPhoto, storePhotos, query: v.photo_query || series.photo, dir });
+    const draw = (p, sub) => render({
+      out_dir: path.join(dir, sub),
       fonts: { heavy: process.env.FONT_HEAVY, semi: process.env.FONT_SEMI },
-      photo: photo?.file, series: series.name, title: v.title, sub: v.sub, slides: v.slides, cta: v.cta,
+      photo: p?.file, series: series.name, title: v.title, sub: v.sub, slides: v.slides, cta: v.cta,
       mascot: series.mascot && fs.existsSync(MASCOT) ? MASCOT : undefined,
     }, dir);
+    let files = draw(photo, 'out');
+    // 무료 사진 표지는 눈으로 한 번 더 본다(judge.mjs) — 어울리지 않으면 사진 없이 다시 그린다
+    if (photo && STOCK_SOURCES.includes(photo.source) && !DRY) {
+      const rv = await reviewCover(files[0], `${series.name} · ${v.title.join(' ')}`, claudeFn);
+      log(`표지 눈 검사: ${rv.ok ? '통과' : '탈락'} — ${rv.reason}`);
+      if (!rv.ok) { photo = null; files = draw(null, 'out-plain'); }
+    }
     log(`이미지 ${files.length}장 생성 (사진: ${photo ? `${photo.source} · ${photo.credit}` : '없음 — 브랜드 면'}) 제목: ${v.title.join(' / ')}`);
     const video = reel ? makeReel(files, dir) : null;
     const story = makeStory(files[0], dir);
@@ -288,4 +296,50 @@ export async function makeVisual({ claudeFn, caption, facts, series, key, notePh
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+}
+
+// ---- 이번 주 새 딜 모음 (2026-11-09 대표 "모두 다") ----
+// 토요일(KST) 인스타 한 번을 "이번 주 새로 들어온 딜" 캐러셀로 바꾼다. 지어낼 게 없는 실제 목록이다.
+// 🔒 실제 매장 사진이 있는 딜만 쓴다(isRealStorePhoto — /uploads/demo/ 시범 사진 딜은 빼고). 2곳 미만이면 그 주는 건너뛴다.
+export async function newRealDeals(fetchImpl = fetch, now = Date.now(), base = process.env.URDEAL_API_BASE || 'https://urdeal.kr', days = 7) {
+  try {
+    const j = await (await fetchImpl(`${base}/api/group-buy/products?limit=50`, { headers: { 'user-agent': 'Mozilla/5.0 (urdeal-marketing-bot)' } })).json();
+    return (j?.data || [])
+      .filter((p) => isRealStorePhoto(p.image_url) && p.name && p.restaurant_name)
+      .filter((p) => { const t = Date.parse(String(p.created_at || '').replace(' ', 'T') + 'Z'); return Number.isFinite(t) && now - t <= days * 864e5; })
+      .slice(0, 8)
+      .map((p) => ({ id: p.id, name: String(p.name).slice(0, 40), store: String(p.restaurant_name).slice(0, 20), photo: originalPhotoUrl(p.image_url) }));
+  } catch (e) { log(`새 딜 목록 실패: ${e.message}`); return []; }
+}
+export function digestCaption(deals) {
+  return [`이번 주 유어딜에 새로 들어온 딜 ${deals.length}곳이에요.`, '', ...deals.map((d) => `${d.store}, ${d.name}`), '', '가격과 조건은 프로필 링크에 있어요.', '', '#유어딜 #동네맛집 #이용권'].join('\n');
+}
+export function digestSpec(deals, files, out_dir, fonts) {
+  return {
+    out_dir, fonts, photo: files[0], series: '이번 주 새 딜',
+    title: ['이번 주', '새로 들어온 딜'], sub: `${deals.length}곳 · 넘겨서 보기`,
+    slides: deals.map((d, i) => ({ title: d.store, body: d.name, photo: files[i] })),
+    cta: '가격과 조건은 프로필 링크에서',
+  };
+}
+export async function makeDigest(deals, key, { reel = false } = {}) {
+  if (!fontsReady() || deals.length < 2) return null;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'urdeal-digest-'));
+  try {
+    const files = [];
+    for (const d of deals) { try { files.push(await download(d.photo, dir)); } catch (e) { log(`새 딜 사진 실패 ${d.store}: ${e.message}`); files.push(null); } }
+    const ok = deals.filter((_, i) => files[i]);
+    if (ok.length < 2) return null;
+    const out = render(digestSpec(ok, files.filter(Boolean), path.join(dir, 'out'), { heavy: process.env.FONT_HEAVY, semi: process.env.FONT_SEMI }), dir);
+    log(`새 딜 모음 ${out.length}장 생성 (${ok.map((d) => d.store).join(', ')})`);
+    const video = reel ? makeReel(out, dir) : null;
+    const story = makeStory(out[0], dir);
+    const base = { set: `digest-${key}`, credit: '입점 매장', source: 'digest', title: '이번 주 새로 들어온 딜', deals: ok };
+    if (DRY) return { ...base, images: out, ...(story ? { story_url: story } : {}) };
+    const urls = await publishImages([...out, ...(video ? [video] : []), ...(story ? [story] : [])], key);
+    const images = urls.filter((u) => /\/slide-\d+\.jpg$/.test(u));
+    const video_url = urls.find((u) => /\.mp4$/i.test(u));
+    return { ...base, images, ...(video_url ? { video_url, cover_url: images[0] } : {}), ...(urls.find((u) => /\/story\.jpg$/.test(u)) ? { story_url: urls.find((u) => /\/story\.jpg$/.test(u)) } : {}) };
+  } catch (e) { log(`새 딜 모음 실패 → 평소 글로: ${e.message}`); return null; }
+  finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }

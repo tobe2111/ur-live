@@ -4,7 +4,7 @@
  *
  * Bearer 토큰 → seller_id 추출. JWT_SECRET 으로 verify, payload.seller_id 반환.
  */
-import { verify } from 'hono/jwt'
+import { verifyLogin as verify } from '../worker/utils/login-token-policy'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 
 export interface SellerJWTPayload extends Record<string, unknown> {

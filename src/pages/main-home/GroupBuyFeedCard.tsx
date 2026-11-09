@@ -38,6 +38,7 @@ import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
 import { priceDisplay } from '@/shared/price-display'
 import { runAfterLoad } from '@/lib/after-load'
+import { creatorCountLabel } from '@/shared/home-creator-count'
 
 /**
  * 🖼️ 사진 없는 카드의 자리표시 (2026-08-30 — 이모지 → 선 아이콘)
@@ -70,6 +71,8 @@ interface FeedCardProduct extends Product {
   original_price?: number
   avg_rating?: number
   review_count?: number
+  /** 🎬 2026-11-09 그 가게 '다녀온 사람들' 콘텐츠 수(피드 응답이 붙인다 — `content-counts.ts`). */
+  creator_count?: number
   sold_count?: number
   // 🛡️ 2026-05-21: /api/group-buy/products 의 LEFT JOIN gift_catalog 응답 alias.
   brand_name?: string | null
@@ -374,6 +377,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
             <StarRating value={rating} />
             <span className={`font-medium ${cText}`}>{rating.toFixed(1)}</span>
             {reviewCount > 0 && <span>({formatNumber(reviewCount)})</span>}
+            {Number(p.creator_count) > 0 && <span className="truncate">{creatorCountLabel(Number(p.creator_count))}</span>}
           </p>
         )}
 

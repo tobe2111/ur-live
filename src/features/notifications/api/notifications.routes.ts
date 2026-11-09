@@ -33,7 +33,7 @@ notificationsRoutes.get('/unread-count', async (c) => {
     return c.json({ success: true, count: 0 });
   }
   try {
-    const { verify } = await import('hono/jwt');
+    const { verifyLogin: verify } = await import('../../../worker/utils/login-token-policy');
     const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256') as { id?: string | number; type?: string };
     const userId = payload?.id?.toString() || '';
     const userType = payload?.type || 'user';

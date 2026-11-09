@@ -23,8 +23,8 @@ export default [
   },
   {
     name: '[sec2] token_use:refresh 거부를 뺀다',
-    file: 'src/worker/middleware/auth.ts',
-    find: "    if (payload && (payload as { token_use?: unknown }).token_use === 'refresh') return null; // 재발급 토큰은 로그인 토큰이 아니다\n",
+    file: 'src/worker/utils/login-token-policy.ts',
+    find: "  if (p.token_use === 'refresh') return true\n",
     replace: '',
     test: TEST,
     why: '같은 키로 서명된 옛 재발급 토큰(에이전시)이 로그인으로 통한다.',
@@ -92,5 +92,21 @@ export default [
     replace: "  if (c.req.header('x-skill-secret') !== secret) {",
     test: TEST,
     why: '응답 시간으로 비밀의 일치 길이가 샌다.',
+  },
+  {
+    name: '[sec2] 옛 재발급 토큰 수명 판정을 뺀다',
+    file: 'src/worker/utils/login-token-policy.ts',
+    find: '  if (max && typeof p.exp === \'number\' && typeof p.iat === \'number\' && p.exp - p.iat > max) return true\n',
+    replace: '',
+    test: TEST,
+    why: '이미 발급된 옛 재발급 토큰(관리자 30일·셀러 90일)이 만료까지 로그인 토큰으로 통한다.',
+  },
+  {
+    name: '[sec2] 셀러 주문 경로가 다시 hono verify 를 직접 쓴다',
+    file: 'src/features/seller/api/seller-orders.routes.ts',
+    find: "import { verifyLogin as verify } from '../../../worker/utils/login-token-policy'",
+    replace: "import { verify } from 'hono/jwt'",
+    test: TEST,
+    why: '그 경로에서 용도 토큰·옛 재발급 토큰이 로그인으로 통한다.',
   },
 ]

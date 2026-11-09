@@ -45,8 +45,13 @@ for f in $staged; do
   [ -n "$m" ] && violations="$violations\n[$f] Stripe live secret:\n$m"
 
   # 패턴 2: Toss live secret key (test_sk / live_sk 로 시작)
-  m=$(grep -nE "['\"](live|test)_sk_[A-Za-z0-9]{20,}['\"]" "$f" 2>/dev/null || true)
+  #   🔐 2026-11-09: 따옴표를 **선택**으로 — 문서·스크립트에 맨값으로 적힌 키(archive/ 50곳)를 못 잡았다. 결제창 키(gsk)도.
+  m=$(grep -nE "(live|test)_g?sk_[A-Za-z0-9]{20,}" "$f" 2>/dev/null | grep -vE "REDACTED|x{6,}" || true)
   [ -n "$m" ] && violations="$violations\n[$f] Toss secret key:\n$m"
+
+  # 패턴 2b: Kakao REST API 키 값(32 hex) — JavaScript/앱 키는 원래 공개라 제외. 🔐 2026-11-09
+  m=$(grep -nE "KAKAO_REST_API_KEY\s*[:=]\s*['\"]?[0-9a-f]{32}" "$f" 2>/dev/null || true)
+  [ -n "$m" ] && violations="$violations\n[$f] Kakao REST API key:\n$m"
 
   # 패턴 0: dotenv 파일 자체를 커밋 — 🚨 2026-07-28 실사고. `.env.deploy` 가 살아있는 CLOUDFLARE_API_TOKEN
   #   을 담은 채 **public 레포**에 커밋돼 있었다(#737). 아래 값 패턴들은 전부 따옴표를 요구해서

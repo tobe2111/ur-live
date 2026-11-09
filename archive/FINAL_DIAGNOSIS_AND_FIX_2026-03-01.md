@@ -36,7 +36,7 @@ FIREBASE_AUTH_DOMAIN=urteam-live-commerce-5b284.firebaseapp.com
 FIREBASE_STORAGE_BUCKET=urteam-live-commerce-5b284.firebasestorage.app
 FIREBASE_MESSAGING_SENDER_ID=352937066044
 FIREBASE_APP_ID=1:352937066044:web:e5bfd5e1d8f61688e30d39
-REFRESH_TOKEN_SECRET=9xqG4JnS0qT33VM9QvpDgAF+hUKslumNkaB0C0o31Qo=
+REFRESH_TOKEN_SECRET=REDACTED=
 ```
 
 **설정 위치**: https://dash.cloudflare.com → Workers & Pages → ur-live → Settings → Environment variables → Production

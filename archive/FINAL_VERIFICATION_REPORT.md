@@ -43,7 +43,7 @@
 
 ### 5️⃣ API 키 설정
 - [x] **클라이언트 키**: `test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN` (결제위젯) ✅
-- [x] **시크릿 키**: `test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY` (결제위젯) ✅
+- [x] **시크릿 키**: `test_gsk_REDACTED` (결제위젯) ✅
 - [x] **키 매칭**: 같은 세트 사용 ✅
 - [x] **Cloudflare 시크릿**: 등록 완료 ✅
 
@@ -135,7 +135,7 @@ await widgets.updateAmount(totalAmount)
 
 ### 설정 정보
 - **Frontend 키**: test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-- **Backend 키**: test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+- **Backend 키**: test_gsk_REDACTED
 - **API 버전**: 2022-11-16
 - **SDK 버전**: v1 (payment-widget)
 

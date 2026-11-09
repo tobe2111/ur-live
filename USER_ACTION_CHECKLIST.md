@@ -31,12 +31,12 @@ Claude 가 코드로 해결할 수 없는 Dashboard 작업들을 우선순위별
 
 **3-1. JWT_SECRET 교체**
 ```
-JWT_SECRET = YiXorQ7veam3W4/Y9woD/yNuQPoJG1/87fOd9Tpzcq8=
+JWT_SECRET = REDACTED=
 ```
 
 **3-2. REFRESH_TOKEN_SECRET 교체**
 ```
-REFRESH_TOKEN_SECRET = +VJyeeTA1imGHwh0xuqV/7Em27Rnz3BQTa+eiOwDq68=
+REFRESH_TOKEN_SECRET = REDACTED=
 ```
 
 ⚠️ 위 2개 교체 시 **로그인된 모든 세션 무효화**. 사용자 재로그인 필요.

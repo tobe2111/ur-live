@@ -63,3 +63,45 @@
 1. 종류를 안 보는 로그인 경로 57곳(22파일)을 `requireUser()` 로 — 장바구니·쿠폰·추천(출금 포함)·기부·공구 참여·
    경매·디지털·관심·등급·팔로우·알림·타임딜·유입 귀속·소비자 프로필/비밀번호. 셀러·에이전시도 쓰는 15곳은 허용 목록.
    재발 방지: `src/tests/unit/consumer-identity-guard-2026-11-09.test.ts`(허용 목록은 줄기만 · 주입 2건 빨간불).
+2. 문서·archive 의 실제 키처럼 생긴 값 131줄 가림(JWT 서명키·CF 토큰·Toss 비밀키·Kakao REST 키 — 키 이름은 남김, 예시 파일·JS 키는 그대로).
+   `check-no-secrets.sh` 의 Toss 패턴이 따옴표를 요구해 맨값을 못 잡던 것 → 따옴표 선택 + gsk + Kakao REST 키 패턴.
+   ⚠️ git 기록에는 남는다 — 실제 차단은 키 교체(대표 대기 항목).
+3. 카카오 로그인 함정 — **코드로 못 막음(검토 결과)**: 서버 1회용 nonce 는 login CSRF 를 못 막고(공격자가 자기 링크를 안 쓰고 넘김),
+   UA 결속은 이 경로의 존재 이유인 iOS 카톡앱→사파리 핸드오프를 깨뜨린다. 남은 길은 제품 쪽(로그인 직후 "○○ 계정으로 로그인" 확인).
+4·5. 로그인 토큰 판정 SSOT `src/worker/utils/login-token-policy.ts`(`isNonLoginToken`·`verifyLogin`): 용도 토큰 · `token_use:refresh` ·
+   **옛 재발급 토큰은 수명으로**(관리자 >2일 · 셀러 >31일) 거부 — 아무도 로그아웃시키지 않고 옛 재발급 토큰의 로그인 사용만 막는다.
+   Bearer 를 직접 확인하던 28파일을 `verifyLogin` 으로(가드가 새 직접 사용을 막음).
+6. 주간 보안 점검 예약 `trig_01DfT4BgNxp7LYQkeMNs8Fm1` — 매주 월 10:17(KST), 새 세션이 읽기 전용 점검 → `docs/handoff/<날짜>-weekly-security-check.md` 초안 PR · 고칠 것은 결재함. 휴대폰 알림.
+7. react-router 7 업그레이드 — **안 함(되돌림)**: 빌드·청크 검사는 통과했지만 화면별 첫 화면 무게가 전부 +5~7KB(허용 1.5KB)였다.
+   막으려던 취약점(역슬래시 이동)은 `safeInternalPath` 가 이미 막는다. `react-router-dom/server` → 7 에서는 본 패키지(StaticRouter) — 다시 할 때 참고.
+   이용권 8자리 — 대표 확정 "6자리 유지 (추천)"(2026-11-09). 매장 확인코드 + 틀린 시도 잠금으로 막는다. 다시 묻지 말 것.
+
+## 5차 묶음 — 대표 "더 개선 진행"
+- 셀러 로그인: 정지·승인대기 응답을 **비밀번호 확인 뒤로** 옮김(비밀번호 없이 계정 존재·상태를 알 수 있었다). 상태가 막힌 계정은 실패 카운터도 안 비운다.
+- 딜 후원·충전 확인 금액: `Number.isFinite` → `Number.isInteger`(소수 금액 차단).
+- `GET /api/promo/preview/:code` 에 rateLimit(IP당 5분 30회).
+- 가드 `security-hardening-5-2026-11-09.test.ts` + 주입 4건 전부 빨간불 확인.
+- 🩸 첫 시험이 `verifyPassword(` 첫 등장을 기준으로 잡았는데, 없는 계정용 **더미 해시 호출**이 앞에 있어 주입이 통과했다 → 진짜 확인 줄로 재조준.
+- ⏭️ 안 한 것: og 이미지(`/og/group-buy/:id`)가 상품 사진 주소로 302 하는 것 — http(s)만 통과시키고 이미지 미리보기 용도라 위험 낮음, 막으면 카톡 미리보기가 깨질 수 있어 보류.
+- 4차(1) #2258 라이브 판정: 관리자 토큰으로 `/api/cart`·`/api/points/balance` → **403**(소비자 전용 확인).
+
+## 6차 묶음 — 대표 "내가 할 것 제외해두고 계속 개선"
+- 🩸 **4차 가드의 구멍**: "hono verify 대신 verifyLogin" 시험이 **이름을 바꿔 들여온 verify**(`verify as honoVerify` 등)를 못 봤다.
+  그 틈으로 셋이 남아 있었다 → 전부 `verifyLogin`:
+  - 셀러 PIN 화면의 로그인 확인(`seller-pin.routes.ts getSellerId`) — 옛 재발급 토큰으로 PIN 변경 가능했다.
+  - 유튜브 연결(`youtube.routes.ts`).
+  - 로그인 상태 확인 `/api/auth/session` 의 Bearer — type 없는 용도 토큰이 같은 번호 유저 세션으로 읽혔다.
+- 새 가드는 **별칭까지 세고, 파일별 허용 개수**로 고정(`security-hardening-6-2026-11-09.test.ts`).
+- 사업자등록증 AI 판독(`/business-registration/ocr-verify`): 10MB 제한 + IP당 시간 10회.
+- 카카오 장소 프록시: `size`(1~15 정수)·`category`(3자 코드)·좌표 숫자 검증 — 쿼리 값을 카카오 주소에 그대로 붙여 파라미터를 끼울 수 있었다.
+- 쓰지 않는 hono `verify` import 2곳 정리. 주입 5건 전부 빨간불 확인.
+
+## 7차 묶음 — 대표 "계속 개선" (로그인 없이 쓰기·외부 호출하는 경로 전수)
+- 6차 #2264 라이브 판정: 카카오 검색 정상 200 · 잘못된 category 400 · 잘못된 좌표 400 · 세션 확인 정상.
+- **Stripe(라이브엔 키 없어 503 — 잠복)**: create-intent 가 손님이 넣은 `order_number` 메타를 그대로 실었고, 웹훅이 그 값으로
+  주문을 PAID 로 바꿨다(금액 대조 없음) → 싼 결제 하나로 미결제 주문이 결제 완료. 주문번호 메타 키를 버리고, 실패 이벤트는
+  PENDING 주문만 FAILED. ⚠️ **Stripe 를 켜려면 결제 금액↔주문 금액 대조부터 만들 것**(결재 C).
+- `/api/email/*`(주문확인·배송·방송예고 메일): 받는 주소·본문을 요청이 정하는 **열린 중계** — 화면 호출 0 → 관리자 전용.
+- 추천 클릭(`/api/referral/click`)·CSP 보고에 횟수 제한.
+- 조사 에이전트 오보 1건: 오류 기록 `/api/_errors/log` 는 이미 제한이 있었다(router.use 로 걸려 있어 놓쳤다).
+- 일부러 안 한 것: 유어샵 카드 클릭 비콘 — 통계 전용이고 D1 기반 제한이 쓰기를 두 배로 만든다.
