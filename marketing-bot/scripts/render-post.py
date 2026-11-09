@@ -137,6 +137,13 @@ def inner(photo, i, n, s):
     img = Image.new('RGBA', (W, H), BG + (255,))
     d = ImageDraw.Draw(img)
     band_h = 600
+    # 장마다 자기 사진이 있으면(새 딜 모음) 그걸 쓴다 — 가게마다 자기 사진
+    own = s.get('photo')
+    if own and os.path.exists(own):
+        try:
+            photo = Image.open(own)
+        except Exception:
+            pass
     if photo:
         # 장마다 다른 부분을 잘라 같은 사진이 반복돼 보이지 않게
         band = cover_crop(photo, W - 2 * M, band_h, cx=(0.2, 0.8, 0.5, 0.35)[i % 4], cy=(0.3, 0.7, 0.5, 0.6)[i % 4]).convert('RGBA')
@@ -174,6 +181,10 @@ def last(text, i, n):
     for l in tl:
         d.text((M, y), l, font=tf, fill=WHITE)
         y += int(tf.size * 1.22)
+    # 저장·공유를 부르는 한 줄(2026-11-09) — 인스타는 저장·공유가 많은 글을 더 멀리 보낸다
+    save = spec.get('save_line', '나중에 다시 보려면 저장해 두세요')
+    if save:
+        d.text((M, y + 40), save, font=F(SEMI, 38), fill=(200, 220, 255))
     d.text((M, H - M - 34), 'urdeal.kr', font=F(SEMI, 30), fill=WHITE)
     return img
 

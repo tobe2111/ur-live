@@ -3,6 +3,7 @@ import { DRY, log, readJson, writeJson, threads, insta, createIssue, claude, THR
 import { TRACKS, DEFAULT_WEIGHTS, DEFAULT_CAMPAIGNS, categoryPerformance, adjustWeights, campaignToTrack } from './attribution.mjs';
 import { myRecentPosts, utmFromText } from './live.mjs';
 import { SERIES, seriesWeights, encoreCandidates } from './series.mjs';
+import { allSlots } from './variety.mjs';
 
 const mixCfg = readJson('data/content-mix.json', {});
 const CAMPAIGNS = { ...DEFAULT_CAMPAIGNS, ...Object.fromEntries(TRACKS.map((t) => [t, mixCfg.tracks?.[t]?.campaign]).filter(([, v]) => v)) };
@@ -27,7 +28,7 @@ const cutoff = Date.now() - 28 * 86400e3;
 function nearestSlot(ms) {
   const k = new Date(ms + 9 * 3600e3);
   const m = k.getUTCHours() * 60 + k.getUTCMinutes();
-  const slots = schedule.slots_kst || ['09:00', '12:30', '19:30'];
+  const slots = allSlots(schedule);
   return slots.map((s) => [s, Math.abs(m - (Number(s.split(':')[0]) * 60 + Number(s.split(':')[1] || 0)))]).sort((a, b) => a[1] - b[1])[0][0];
 }
 function enrich(p) {

@@ -46,7 +46,7 @@ import fs from 'node:fs';
 test('게시 흐름이 검수를 거친다(두 플랫폼 모두, 게시 호출보다 먼저)', () => {
   const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
   const th = src.indexOf("writeVetted(`${info}\\nThreads"), thPost = src.indexOf("publishTagged({ media_type: 'TEXT', text })"); // 게시 호출은 lib.threadsPublish 로 옮겨갔다
-  const ig = src.indexOf("writeVetted(capPrompt"), igPost = src.indexOf('igPublish(media');
+  const ig = src.indexOf("writeVetted(capPrompt"), igPost = src.indexOf('r = await pub(media)'); // 게시는 콜라보 재시도 래퍼(pub)를 거친다
   assert.ok(th > 0 && thPost > th, 'Threads 는 검수 뒤에 게시');
   assert.ok(ig > 0 && igPost > ig, 'Instagram 은 검수 뒤에 게시');
   const main = src.slice(src.indexOf('async function main'));

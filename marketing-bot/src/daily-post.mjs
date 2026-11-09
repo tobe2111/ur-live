@@ -2,13 +2,13 @@
 // 트랙 비율: data/mix-state.json(주간 자동조정, 범위 내) → 없으면 data/content-mix.json 고정 60/25/15.
 import { pickTrackByWeights } from './attribution.mjs';
 import { vetPost } from './vet.mjs';
-import { pickLeastRecent, rotateImages, pickHook, pickFormat, recentOpeners } from './variety.mjs';
+import { pickLeastRecent, rotateImages, pickHook, pickFormat, recentOpeners, slotFor } from './variety.mjs';
 import { ROOT, DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, igStory, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
 import { myRecentPosts, postedOn } from './live.mjs';
-import { pickSeries, seriesTopic, BRAND_WRITING, threadsTopicTag, ENCORE, SERIES, pickEncore } from './series.mjs';
+import { pickSeries, seriesTopic, BRAND_WRITING, threadsTopicTag, ENCORE, SERIES, pickEncore, collabFor } from './series.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
-import { makeVisual, realStorePhotos, freshStorePhotos } from './visual.mjs';
+import { makeVisual, realStorePhotos, freshStorePhotos, newRealDeals, makeDigest, digestCaption } from './visual.mjs';
 import { nextFieldNote, closeFieldNote } from './field-notes.mjs';
 import { ownerExamples, pickExamples, styleBlock } from './threads-style.mjs';
 
@@ -24,11 +24,8 @@ const today = k.toISOString().slice(0, 10);
 const dayIdx = Math.floor(k.getTime() / 86400e3);
 
 // 오늘 게시할 슬롯 결정 (워크플로가 모든 슬롯 시각에 깨우고, 여기서 오늘 슬롯만 통과)
-function todaysSlot(platform) {
-  const slots = schedule.slots_kst || ['09:00'];
-  if (today > (schedule.rotation_until || '') && schedule.best?.[platform]) return schedule.best[platform];
-  return slots[dayIdx % slots.length];
-}
+// variety.mjs slotFor: 평소엔 최적 시간, 5일 중 하루는 다른 시간대를 시험한다.
+function todaysSlot(platform) { return slotFor(platform, schedule, dayIdx, today); }
 const nowMin = k.getUTCHours() * 60 + k.getUTCMinutes();
 const force = process.env.FORCE === '1' || process.env.GITHUB_EVENT_NAME === 'workflow_dispatch';
 // GitHub schedule 은 수 시간씩 지연되므로 정확한 시각 일치 대신 "오늘 슬롯 시각이 지났고 아직 미게시"면 게시
@@ -181,9 +178,13 @@ async function main() {
     const link = utmLink(isPromo ? product : target, 'instagram', T.campaign || track, id, now);
     // 캡션을 먼저 쓴다 — 이미지 문구는 캡션에서 뽑는다(같은 메시지)
     const capPrompt = `${info}\n인스타그램 캡션 1개. 첫 줄은 핵심 메시지 한 문장, 이어서 2~3줄, 마지막 줄은 정보형 안내('프로필 링크에서 확인' 식 — 본문 링크는 클릭이 안 된다). 끝에 해시태그 2~3개만. 해시태그 빼고 200자 이내 — 짧을수록 좋다.`;
-    const cap = await writeVetted(capPrompt, 800, 'instagram', info, '인스타그램 캡션');
+    // 토요일(KST)은 "이번 주 새 딜" 모음(visual.mjs makeDigest) — 실제 사진 있는 새 딜이 2곳 미만이면 평소 글
+    const digestDay = process.env.DIGEST === '1' || k.getUTCDay() === 6;
+    const digest = digestDay && !fieldNote && !encore ? await makeDigest(await newRealDeals(), `${cardKey}-digest`) : null;
+    if (digestDay && !digest) log('새 딜 모음: 이번 주 실제 사진 있는 새 딜이 2곳 미만 → 평소 글');
+    const cap = digest ? { body: digestCaption(digest.deals), problems: [] } : await writeVetted(capPrompt, 800, 'instagram', info, '인스타그램 캡션');
     // 게시할 때마다 새 이미지(visual.mjs) — 실패하면 아래 종전 카드 세트로 물러선다
-    gen = cap.problems.length ? null : await makeVisual({
+    gen = digest || cap.problems.length ? digest : await makeVisual({
       claudeFn: claude, caption: cap.body, facts: factsFor(info), series, key: cardKey,
       notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await storePhotosToday(), fieldNote: !!fieldNote,
       reel: reelDay || !!encore, // 다시 보기는 원글과 다른 형식(릴스)으로
@@ -218,14 +219,21 @@ async function main() {
       log('IG 캡션:\n' + body + `\n(프로필 링크에 걸 UTM: ${link})`);
       const kind = media.video_url ? `Reels ${media.video_url}` : `${media.images.length}장 ${media.images.length > 1 ? '캐러셀' : '이미지'}`;
       log(`IG 미디어: ${kind}`);
+      // 매장 콜라보(config/store-instagram.json): 게시물에 나오는 매장의 인스타를 공동 작성자로 초대. 거부되면 혼자 게시.
+      const collaborators = collabFor([isPromo ? product?.name : '', gen?.credit, ...(digest?.deals || []).map((d) => d.store)], readJson('config/store-instagram.json', {}).stores);
+      if (collaborators.length) log(`콜라보 초대: ${collaborators.join(', ')}`);
+      const pub = async (m) => {
+        try { return await igPublish(m, body.slice(0, 2100), { collaborators }); }
+        catch (e) { if (!collaborators.length) throw e; log(`콜라보 초대 실패 → 혼자 게시: ${e.message.slice(0, 200)}`); return igPublish(m, body.slice(0, 2100)); }
+      };
       let r;
-      try { try { r = await igPublish(media, body.slice(0, 2100)); }
+      try { try { r = await pub(media); }
       catch (e0) {
         // 릴스가 실패하면 같은 장을 캐러셀로 다시 올린다(하루 게시를 놓치지 않게)
         if (!media.video_url || !gen?.images?.length) throw e0;
         log(`릴스 게시 실패 → 캐러셀로 다시: ${e0.message.slice(0, 200)}`);
         media = { images: gen.images, set: gen.set };
-        r = await igPublish(media, body.slice(0, 2100));
+        r = await pub(media);
       }
       } catch (e) {
         // 실패해도 Threads 기록은 남기고(중복 게시 방지) 마지막에 run 을 실패시킴
@@ -234,7 +242,7 @@ async function main() {
         runLog.push({ platform: 'instagram', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
       }
       if (r) {
-      runLog.push({ platform: 'instagram', id: r.id, encore_of: encore?.id, media_type: r.media_type, media_set: media.set, series: series.id, field_note: fieldNote?.number, generated: gen ? { source: gen.source, credit: gen.credit, title: gen.title, photo_url: gen.photo_url, reel: !!media.video_url } : undefined, hook: hook.id, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
+      runLog.push({ platform: 'instagram', id: r.id, encore_of: encore?.id, collaborators: collaborators.length ? collaborators : undefined, digest: digest ? digest.deals.map((d) => d.id) : undefined, media_type: r.media_type, media_set: media.set, series: digest ? 'digest' : series.id, field_note: fieldNote?.number, generated: gen ? { source: gen.source, credit: gen.credit, title: gen.title, photo_url: gen.photo_url, reel: !!media.video_url } : undefined, hook: hook.id, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
       // ---- Facebook 페이지 — 2026-11-09 대표 "페이스북 페이지에는 올리지 않아도 돼. 인스타랑 스레드만" → 기본 끔.
       //      다시 켜려면 워크플로 env 에 FB_POST_ENABLED=1.
       if (process.env.FB_POST_ENABLED === '1') {
@@ -261,7 +269,7 @@ async function main() {
   // 오늘 표지(인스타용으로 만든 것)를 스레드에도 쓴다. 인스타가 오늘 이미 나갔으면 남아 있는 표지 파일을,
   // 그것도 없으면 스레드 글로 표지를 새로 만든다.
   async function threadsImage(body) {
-    if (gen?.images?.[0]) return gen.images[0];
+    if (gen?.images?.[0] && gen.source !== 'digest') return gen.images[0]; // 새 딜 모음 표지는 스레드 글과 내용이 다르다
     if (fs.existsSync(path.join(ROOT, 'data', 'cards', cardKey, 'slide-1.jpg')) && process.env.GITHUB_REPOSITORY) {
       return `https://raw.githubusercontent.com/${process.env.GITHUB_REPOSITORY}/marketing-data/marketing-bot/data/cards/${cardKey}/slide-1.jpg`;
     }

@@ -184,3 +184,15 @@ export function encoreCandidates(rows = [], idToTrack = new Map(), idToSeries = 
     .sort((a, b) => b.ratio - a.ratio)
     .slice(0, max);
 }
+
+// ---- 매장 콜라보 게시 (2026-11-09 대표 "모두 다") ----
+// config/store-instagram.json 의 { 매장 이름: 인스타 아이디 }. 게시물에 나오는 매장(글자 속 이름)이 있으면 그 아이디를 최대 3개.
+export function collabFor(texts = [], stores = {}) {
+  const hay = texts.filter(Boolean).join('\n');
+  const out = [];
+  for (const [name, handle] of Object.entries(stores || {})) {
+    const h = String(handle || '').trim().replace(/^@/, '');
+    if (name && /^[A-Za-z0-9._]{1,30}$/.test(h) && hay.includes(name) && !out.includes(h)) out.push(h);
+  }
+  return out.slice(0, 3);
+}

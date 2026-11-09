@@ -335,3 +335,63 @@ test('스레드 참고 배선: 스레드 프롬프트에 붙고, 베끼면 검�
   assert.match(wr, /threads_top: threadsTop/);
   assert.match(wr, /t\.length <= 160/, '예전 긴 글은 참고로 안 쓴다');
 });
+
+// ---- 2026-11-09 6차(대표 "모두 다"): 시간 시험 · 새 딜 모음 · 저장 한 줄 · 콜라보 ----
+import { slotFor, allSlots, EXTRA_SLOTS } from '../src/variety.mjs';
+import { newRealDeals, digestCaption, digestSpec } from '../src/visual.mjs';
+import { collabFor } from '../src/series.mjs';
+
+test('시간 시험: 평소엔 최적 시간, 5일 중 하루는 다른 시간대, 두 플랫폼은 다른 날', () => {
+  const sch = { rotation_until: '2026-10-30', slots_kst: ['09:00', '12:30', '19:30'], best: { threads: '19:30', instagram: '19:30' } };
+  assert.deepEqual(allSlots(sch), ['09:00', '12:30', '19:30', '21:30']);
+  assert.ok(EXTRA_SLOTS.includes('21:30'));
+  const th = [], ig = [];
+  for (let d = 100; d < 130; d++) { th.push(slotFor('threads', sch, d, '2026-11-10')); ig.push(slotFor('instagram', sch, d, '2026-11-10')); }
+  const explore = (a) => a.filter((s) => s !== '19:30');
+  assert.equal(explore(th).length, 6, '30일 중 6일 시험');
+  assert.equal(explore(ig).length, 6);
+  assert.deepEqual([...new Set(explore(th))].sort(), ['09:00', '12:30', '21:30'], '다른 시간대를 고루');
+  assert.ok(th.some((s, i) => s !== '19:30' && ig[i] === '19:30'), '같은 날 둘 다 빠지지 않는다');
+  assert.equal(slotFor('threads', { ...sch, best: {} }, 101, '2026-11-10'), allSlots(sch)[101 % 4], '최적이 없으면 순환');
+  const src = fs.readFileSync(new URL('../../.github/workflows/sns-daily-post.yml', import.meta.url), 'utf8');
+  assert.match(src, /cron: '30 12 \* \* \*'/, '21:30 KST 회차');
+});
+test('새 딜 모음: 실제 사진·최근 7일 딜만, 캡션은 목록 그대로', async () => {
+  const now = Date.parse('2026-11-14T03:00:00Z');
+  const data = [
+    { id: 1, name: '닭도리탕', restaurant_name: '달빛한스푼', image_url: 'https://media.ur-team.com/a.jpg', created_at: '2026-11-12 04:00:00' },
+    { id: 2, name: '라떼 2잔', restaurant_name: '시범카페', image_url: '/api/media/uploads/demo/h/x.png', created_at: '2026-11-12 04:00:00' },
+    { id: 3, name: '돈가스', restaurant_name: '홍대돈까스', image_url: 'https://d2.cloudfront.net/b.jpg', created_at: '2026-10-01 00:00:00' },
+    { id: 4, name: '파스타', restaurant_name: '노바', image_url: 'https://media.ur-team.com/cdn-cgi/image/w=600/https://media.ur-team.com/c.jpg', created_at: '2026-11-13 10:00:00' },
+  ];
+  const deals = await newRealDeals(async () => ({ json: async () => ({ data }) }), now);
+  assert.deepEqual(deals.map((d) => d.id), [1, 4], '시범 사진·오래된 딜은 뺀다');
+  assert.equal(deals[1].photo, 'https://media.ur-team.com/c.jpg', '원본 사진 주소');
+  const cap = digestCaption(deals);
+  assert.match(cap, /새로 들어온 딜 2곳/);
+  assert.match(cap, /달빛한스푼, 닭도리탕/);
+  const sp = digestSpec(deals, ['/a', '/b'], '/o', {});
+  assert.equal(sp.slides.length, 2);
+  assert.equal(sp.slides[1].photo, '/b', '장마다 자기 매장 사진');
+  const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
+  assert.match(src, /k\.getUTCDay\(\) === 6/);
+  assert.match(src, /gen\.source !== 'digest'/, '새 딜 표지를 스레드에 쓰지 않는다');
+});
+test('콜라보: 아이디가 있는 매장만, 이름이 글에 나올 때, 최대 3', () => {
+  const stores = { 달빛한스푼: 'dalbit_spoon', 홍대돈까스: '', 노바: '@nova.pasta', 나쁜아이디: 'a b', 가게하나: 'g1', 가게둘: 'g2', 가게셋: 'g3' };
+  assert.deepEqual(collabFor(['달빛한스푼 닭도리탕', '입점 매장 · 홍대돈까스'], stores), ['dalbit_spoon']);
+  assert.deepEqual(collabFor(['노바, 파스타 · 나쁜아이디'], stores), ['nova.pasta']);
+  assert.equal(collabFor(['가게하나 가게둘 가게셋 달빛한스푼'], stores).length, 3);
+  assert.deepEqual(collabFor([undefined, ''], stores), []);
+  const lib = fs.readFileSync(new URL('../src/lib.mjs', import.meta.url), 'utf8');
+  assert.match(lib, /collaborators: JSON\.stringify\(collaborators\.slice\(0, 3\)\)/);
+  const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
+  assert.match(src, /콜라보 초대 실패 → 혼자 게시/);
+  const cfg = JSON.parse(fs.readFileSync(new URL('../config/store-instagram.json', import.meta.url), 'utf8'));
+  assert.ok(cfg.stores && typeof cfg.stores === 'object');
+});
+test('저장 한 줄: 마지막 장에 그린다', () => {
+  const py = fs.readFileSync(new URL('../scripts/render-post.py', import.meta.url), 'utf8');
+  assert.match(py, /나중에 다시 보려면 저장해 두세요/);
+  assert.match(py, /own = s\.get\('photo'\)/);
+});
