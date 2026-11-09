@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { warmTabChunks, pickTabLoaders, shouldWarmTabs, LOGGED_IN_TABS, GUEST_TABS, TAB_WARM_DELAY_MS } from '@/lib/tab-warm'
+import { warmTabChunks, pickTabLoaders, shouldWarmTabs, LOGGED_IN_TABS, GUEST_TABS, TAB_WARM_DELAY_MS, TAB_WARM_YIELD_MS } from '@/lib/tab-warm'
 import { warmVouchersList, VOUCHERS_DEFAULT_VIEW_KEY, VOUCHERS_PAGE_SIZE, VOUCHERS_PAGE_INITIAL_VISIBLE } from '@/pages/vouchers/tab-warm-list'
 import { readListView, saveListView, dropListView } from '@/lib/list-view-cache'
 import { VOUCHERS_DEFAULT_SEED_PATH } from '@/shared/seo/voucher-facet'
@@ -82,6 +82,19 @@ describe('tab-warm', () => {
     stop()
     await vi.advanceTimersByTimeAsync(20_000)
     expect(c2).toEqual([])
+  })
+
+  it('👆 2026-11-09 손가락이 닿으면 그만큼 미룬다 — 방금 누른 화면이 먼저다', async () => {
+    vi.useFakeTimers()
+    const calls: number[] = []
+    warmTabChunks([() => { calls.push(0); return Promise.resolve() }])
+    // 위 시험들에서 load 는 이미 지났다 — 지연(3초)이 끝나기 직전에 손가락이 닿으면, 순서가 와도 미룸 안이라 출발하지 않는다
+    await vi.advanceTimersByTimeAsync(TAB_WARM_DELAY_MS - 100)
+    window.dispatchEvent(new Event('pointerdown'))
+    await vi.advanceTimersByTimeAsync(TAB_WARM_YIELD_MS - 300)
+    expect(calls).toEqual([])
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(calls).toEqual([0])
   })
 
   it('⑥ App 이 마운트 때 실제로 부른다', () => {
