@@ -10,6 +10,8 @@
  * Phase 1+ 사용자 결정 C 옵션: URL 통합 (셀러 권한 시 자동 redirect).
  */
 
+import { warmDetailHero } from '@/lib/detail-hero-warm'
+import { pinHref } from './curator-page/pin-nav'
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { SellerPublicPage } from './seller-public/lazy-seller-public'
 import { useParams, Link, useNavigate } from 'react-router-dom'
@@ -459,7 +461,7 @@ export default function CuratorPage() {
                         handle={curator.handle}
                         curatorUserId={curator.id}
                         order={(orderOf.get(pin.id) ?? 0) + 1}
-                        prefetch={() => prefetchPin(pin.product_id)}
+                        prefetch={() => { prefetchPin(pin.product_id); if (/^\/(?:pass|group-buy|stays)\/\d+/.test(pinHref(pin))) warmDetailHero(pin) }} /* 👆 2026-11-09 닿는 순간 상세 큰 사진(lib/detail-hero-warm) */
                       />
                     ))}
                   </div>
