@@ -45,4 +45,20 @@ export default [
     test: TEST,
     why: 'DB 에 행을 무한히 쌓는다.',
   },
+  {
+    name: '[sec7] Stripe 웹훅이 금액 대조 없이 PAID',
+    file: 'src/worker/routes/stripe.routes.ts',
+    find: 'if (order && isStripeAmountMatch(obj, order.total_amount)) {',
+    replace: 'if (order) {',
+    test: TEST,
+    why: '50센트 결제로 20달러 주문이 결제 완료가 된다.',
+  },
+  {
+    name: '[sec7] Stripe 금액 대조가 통화를 안 본다',
+    file: 'src/worker/routes/stripe.routes.ts',
+    find: "return String(pi.currency || '').toLowerCase() === 'usd' && ",
+    replace: 'return ',
+    test: TEST,
+    why: '1999원(krw) 결제가 19.99달러 주문을 확정한다.',
+  },
 ]

@@ -32,3 +32,18 @@ describe('③ 로그인 없는 기록 경로에 횟수 제한', () => {
     expect(readCode('src/worker/routes/public-utility.routes.ts')).toMatch(/post\('\/api\/csp-report', rateLimit\(/)
   })
 })
+
+describe('④ Stripe 결제 금액 ↔ 주문 금액 대조 (2026-11-09 대표 승인)', () => {
+  it('같을 때만 참', async () => {
+    const { isStripeAmountMatch } = await import('@/worker/routes/stripe.routes')
+    expect(isStripeAmountMatch({ amount_received: 1999, currency: 'usd' }, 19.99)).toBe(true)
+    expect(isStripeAmountMatch({ amount_received: 50, currency: 'usd' }, 19.99)).toBe(false)
+    expect(isStripeAmountMatch({ amount_received: 1999, currency: 'krw' }, 19.99)).toBe(false)
+    expect(isStripeAmountMatch({ currency: 'usd' }, 19.99)).toBe(false)
+    expect(isStripeAmountMatch({ amount_received: 0, currency: 'usd' }, 0)).toBe(false)
+  })
+  it('웹훅이 대조를 거친 뒤에만 PAID', () => {
+    const code = readCode('src/worker/routes/stripe.routes.ts')
+    expect(code).toMatch(/if \(order && isStripeAmountMatch\(obj, order\.total_amount\)\) \{\n\s*await DB\.prepare\(\n\s*"UPDATE orders SET status = 'PAID'/)
+  })
+})
