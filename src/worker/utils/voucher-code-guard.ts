@@ -7,7 +7,7 @@
  *
  * 그래서 **틀린 시도만** 센다(요청 수를 세면 정상 화면이 깨진다 — 손님 QR 화면이 5초마다 조회한다):
  *   ① 조회 `GET /verify/:code` — 없는 번호를 IP 당 10분 20번 넘게 물으면 잠근다(번호 찾기 막기)
- *   ② 같은 조회의 없는 번호를 **전체 합쳐** 1시간 300번 넘으면 잠근다(IP 를 바꿔 가며 찾는 것 막기)
+ *   ② 같은 조회의 없는 번호가 **전체 합쳐** 1시간 300번 넘으면, 이미 틀린 적 있는 IP 를 잠근다(IP 를 바꿔 가며 찾는 것 막기 · 2026-11-09 정상 손님은 안 막도록 좁힘)
  *   ③ 사용 `POST /:code/use` — 같은 매장 확인코드로 1시간 30번 넘게 틀리면 그 확인코드를 잠근다
  *      (IP 당 분 5회 제한은 그대로 — 이건 IP 를 바꿔도 **매장 단위로** 막는다)
  *
@@ -60,7 +60,10 @@ export async function lookupLocked(c: Context, DB: D1Database): Promise<boolean>
       countOf(DB, `ip:${ipOf(c)}`, 'voucher_lookup_miss', LOOKUP_MISS_PER_IP.windowSec),
       countOf(DB, 'all', 'voucher_lookup_miss_all', LOOKUP_MISS_GLOBAL.windowSec),
     ])
-    return mine >= LOOKUP_MISS_PER_IP.max || all >= LOOKUP_MISS_GLOBAL.max
+    // 🔐 2026-11-09: 전체 한도는 **이미 틀린 적 있는 IP** 에만 건다. 종전엔 누구든 없는 번호 300개를 보내면
+    //   모든 손님의 조회(QR 화면 5초 조회 포함)가 한 시간 막혔다. 자기 이용권만 조회하는 손님은 틀린 적이 없으므로
+    //   안 막히고, IP 를 바꿔 가며 찾는 사람은 전체 한도를 넘긴 뒤엔 IP 하나당 한 번밖에 못 물어본다.
+    return mine >= LOOKUP_MISS_PER_IP.max || (all >= LOOKUP_MISS_GLOBAL.max && mine >= 1)
   } catch { return false }
 }
 

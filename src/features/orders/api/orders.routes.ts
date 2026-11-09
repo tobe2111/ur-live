@@ -15,6 +15,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { secretEquals } from '@/worker/utils/secret-compare';
 import { OrderRepository } from '../repositories/OrderRepository';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
@@ -258,7 +259,7 @@ ordersRoutes.post('/internal/auto-confirm', cors(), async (c) => {
     console.error('[CronAuth] INTERNAL_CRON_TOKEN secret not configured');
     return c.json({ success: false, error: 'Server misconfiguration' }, 500);
   }
-  if (c.req.header('X-Internal-Token') !== expectedToken) {
+  if (!secretEquals(expectedToken, c.req.header('X-Internal-Token'))) {
     return c.json({ success: false, error: 'Unauthorized' }, 401);
   }
 
@@ -290,7 +291,7 @@ ordersRoutes.post('/internal/sync-deliveries', cors(), async (c) => {
     console.error('[CronAuth] INTERNAL_CRON_TOKEN secret not configured');
     return c.json({ success: false, error: 'Server misconfiguration' }, 500);
   }
-  if (c.req.header('X-Internal-Token') !== expectedToken) {
+  if (!secretEquals(expectedToken, c.req.header('X-Internal-Token'))) {
     return c.json({ success: false, error: 'Unauthorized' }, 401);
   }
 

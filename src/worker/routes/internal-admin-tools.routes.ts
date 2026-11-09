@@ -16,7 +16,7 @@ import type { Env } from '@/worker/types/env';
 import { requireAdmin } from '../middleware/auth';
 import { patchBusinessNumbers } from '../utils/seller-business-number'
 import { hashPassword } from '@/lib/password';
-import { rateLimit } from '../middleware/rate-limit';
+import { rateLimit } from '../middleware/rate-limit'; import { secretEquals } from '../utils/secret-compare';
 
 const internalAdminToolsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -25,13 +25,13 @@ internalAdminToolsRoutes.post('/api/_bootstrap/reset-dashboard-password', rateLi
   const provided = c.req.header('X-Bootstrap-Token');
 
   // BOOTSTRAP_TOKEN 미세팅 or 헤더 불일치 → 404 (엔드포인트 존재 감추기)
-  if (!expected || !provided || expected !== provided) {
+  if (!secretEquals(expected, provided)) {
     return c.json({ success: false, error: 'Not Found' }, 404);
   }
 
   let body: { email?: string; password?: string; role?: string } = {};
   try { body = await c.req.json(); } catch { body = {}; }
-  const { email, password, role = 'all' } = body;
+  const { email, password, role = 'all' } = body; const ROLE_TABLE: Record<string, string> = { admin: 'admins', seller: 'sellers', agency: 'agencies' }; if (role !== 'all' && !ROLE_TABLE[role]) return c.json({ success: false, error: 'role 은 all/admin/seller/agency' }, 400); // 🔐 2026-11-09 role 은 표 이름이 되므로 정해진 값만
 
   if (!email || !password) {
     return c.json({ success: false, error: 'email, password 필수' }, 400);
@@ -46,14 +46,14 @@ internalAdminToolsRoutes.post('/api/_bootstrap/reset-dashboard-password', rateLi
   const DB = c.env.DB;
   const results: Record<string, { updated: number; status?: string }> = {};
 
-  const targets = role === 'all' ? ['admins', 'sellers', 'agencies'] : [`${role}s`];
+  const targets = role === 'all' ? ['admins', 'sellers', 'agencies'] : [ROLE_TABLE[role]];
 
   for (const table of targets) {
     try {
       const activeValue = table === 'sellers' ? 'approved' : 'active';
       const sql = table === 'sellers'
-        ? `UPDATE ${table} SET password_hash = ?, status = ?, is_active = 1 WHERE email = ?`
-        : `UPDATE ${table} SET password_hash = ?, status = ? WHERE email = ?`;
+        ? `UPDATE ${table} SET password_hash = ?, status = ?, is_active = 1 WHERE email = ? AND COALESCE(status, '') NOT IN ('deleted', 'withdrawn')`
+        : `UPDATE ${table} SET password_hash = ?, status = ? WHERE email = ? AND COALESCE(status, '') NOT IN ('deleted', 'withdrawn')`; // 🔐 2026-11-09 삭제된 계정은 되살리지 않는다
       const res = await DB.prepare(sql).bind(hash, activeValue, email).run();
       results[table] = { updated: res.meta.changes ?? 0, status: activeValue };
     } catch (e: any) {
@@ -70,7 +70,7 @@ internalAdminToolsRoutes.post('/api/_internal/clear-rate-limit', rateLimit({ act
   const env = c.env as any;
   const opsToken: string | undefined = env.INTERNAL_API_TOKEN;
   const reqToken = c.req.header('X-Internal-Token');
-  if (!opsToken || opsToken !== reqToken) return c.json({ success: false, error: 'Forbidden' }, 403);
+  if (!secretEquals(opsToken, reqToken)) return c.json({ success: false, error: 'Forbidden' }, 403);
   const DB = env.DB as D1Database;
   const body = await c.req.json<{ action?: string; ip?: string }>().catch(() => ({} as { action?: string; ip?: string }));
   const action = body.action || 'admin_login';
@@ -87,7 +87,7 @@ internalAdminToolsRoutes.post('/api/_internal/reset-admin-password', rateLimit({
   const env = c.env as any;
   const opsToken: string | undefined = env.INTERNAL_API_TOKEN;
   const reqToken = c.req.header('X-Internal-Token');
-  if (!opsToken || opsToken !== reqToken) return c.json({ success: false, error: 'Forbidden' }, 403);
+  if (!secretEquals(opsToken, reqToken)) return c.json({ success: false, error: 'Forbidden' }, 403);
   const DB = env.DB as D1Database;
   const body = await c.req.json<{ email: string; newPassword: string }>().catch(() => ({ email: '', newPassword: '' }));
   if (!body.email || !body.newPassword) return c.json({ success: false, error: 'email and newPassword required' }, 400);

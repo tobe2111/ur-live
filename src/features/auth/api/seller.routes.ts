@@ -9,6 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
+import { signRefreshToken, verifyRefreshToken } from '@/worker/utils/refresh-token-key';
 import { rateLimit, resetRateLimit } from '@/worker/middleware/rate-limit';
 import { verifyTurnstile } from '@/worker/utils/turnstile';
 import { verifyPassword, hashPassword, hashToken, validatePasswordComplexity } from '@/lib/password';
@@ -304,7 +305,7 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       ...payload,
       exp: nowSec + (90 * 24 * 60 * 60) // 🛡️ 2026-04-30: 30일 → 90일 refresh 도 함께 연장
     };
-    const refreshToken = await sign(refreshPayload, JWT_SECRET);
+    const refreshToken = await signRefreshToken(refreshPayload, JWT_SECRET); // 🔐 2026-11-09 다른 키 — 로그인 토큰으로 못 쓴다
 
     // 🔐 단일 세션 강제 — 이 로그인(iat) 이전 발급된 seller 토큰 전부 무효화.
     await startDashboardSession(DB, 'seller', seller.id, payload.iat, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') });
@@ -436,7 +437,7 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
     // 1. Refresh Token 검증
     let payload: any;
     try {
-      payload = await verify(refreshToken, JWT_SECRET, 'HS256');
+      payload = await verifyRefreshToken(refreshToken, JWT_SECRET);
     } catch (error) {
       console.warn('[Seller Refresh] Invalid refresh token:', error);
       return c.json<AuthResponse>({ 
@@ -578,7 +579,7 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
       ...newPayload,
       exp: nowSec2 + (90 * 24 * 60 * 60) // 🛡️ 2026-04-30: 30일 → 90일 refresh 연장
     };
-    const newRefreshToken = await sign(newRefreshPayload, JWT_SECRET);
+    const newRefreshToken = await signRefreshToken(newRefreshPayload, JWT_SECRET);
 
     // 새 refresh 해시 저장
     try {

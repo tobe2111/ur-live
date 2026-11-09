@@ -23,7 +23,7 @@ import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/
 // PBKDF2 password hashing — Cloudflare Workers compatible (100k iterations, SHA-256)
 import { hashPassword, verifyPassword, validatePasswordComplexity } from '../../lib/password';
 import { parseSessionCookie, clearSessionCookie, createSessionCookie } from '../utils/session';
-import { verify as jwtVerify } from 'hono/jwt';
+import { verify as jwtVerify } from 'hono/jwt'; import { refreshSigningKey } from '../utils/refresh-token-key';
 import { recordKakaoLoginDiag } from '../utils/kakao-login-diag';
 import { checkLockout, recordFailure, clearFailures } from '../utils/account-lockout';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
@@ -100,9 +100,9 @@ authRouter.post('/register', rateLimit({ action: 'register', max: 5, windowSec: 
       secret,
       JWT_ACCESS_TOKEN_EXPIRY
     );
-    const refreshToken = await createJwt(
+    const refreshToken = await createJwt( // 🔐 2026-11-09 재발급 토큰은 다른 키 — 로그인 토큰으로 못 쓴다
       { sub: userId, email, role: 'BUYER' },
-      secret,
+      refreshSigningKey(secret),
       JWT_REFRESH_TOKEN_EXPIRY
     );
 
@@ -205,9 +205,9 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
       secret,
       JWT_ACCESS_TOKEN_EXPIRY
     );
-    const refreshToken = await createJwt(
+    const refreshToken = await createJwt( // 🔐 2026-11-09 재발급 토큰은 다른 키 — 로그인 토큰으로 못 쓴다
       { sub: user.id, email: user.email, role },
-      secret,
+      refreshSigningKey(secret),
       JWT_REFRESH_TOKEN_EXPIRY
     );
 

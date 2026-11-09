@@ -8,7 +8,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { sign as jwtSign, verify as jwtVerify } from 'hono/jwt';
+import { sign as jwtSign, verify as jwtVerify } from 'hono/jwt'; import { signRefreshToken } from '../../../worker/utils/refresh-token-key';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 import { sessionPersistProbeCookie } from '../../../shared/session-persist-probe';
 // 🛡️ 2026-05-01: FirebaseAuthService import 제거 — KR Kakao 흐름은 Firebase 0.
@@ -111,9 +111,9 @@ export async function issueLinkedRoleTokens(
         // 🔐 단일 세션 강제 — 멤버 시트(없으면 org 시트) 갱신.
         await startDashboardSession(DB, agencyMemberId ? 'agency_member' : 'agency', agencyMemberId ?? agency.id, now)
         // 🏁 2026-06-13: refresh token 동봉 — 카카오 로그인 에이전시도 자동 로그아웃 방지.
-        out.agency_refresh_token = await jwtSign({
+        out.agency_refresh_token = await signRefreshToken({ // 🔐 2026-11-09 다른 키 — 로그인 토큰으로 못 쓴다
           sub: String(agency.id), email: agency.email, type: 'agency',
-          token_use: 'refresh', exp: now + 90 * 24 * 60 * 60,
+          exp: now + 90 * 24 * 60 * 60,
         }, jwtSecret)
       }
     }
