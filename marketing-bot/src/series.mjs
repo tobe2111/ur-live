@@ -67,17 +67,50 @@ export const SERIES = {
 };
 
 // 오늘 트랙에서 쓸 코너. 최근에 안 쓴 것부터(같은 트랙 기록 기준), 현장 메모가 있으면 무조건 현장노트.
-export function pickSeries(track, history = [], seed = 0, { fieldNote = false } = {}) {
+// weights(주간 리뷰가 data/series-state.json 에 남김)가 있으면 "오래 안 쓴 절반" 안에서 반응 좋은 코너를 더 자주 고른다.
+// 반쪽 안에서만 고르므로 한 코너만 계속 나오지는 않는다.
+export function pickSeries(track, history = [], seed = 0, { fieldNote = false, weights = null } = {}) {
   if (fieldNote) return { id: 'field-note', ...SERIES['field-note'] };
   const ids = Object.keys(SERIES).filter((id) => !SERIES[id].fieldNoteOnly && SERIES[id].tracks.includes(track));
   if (!ids.length) return { id: 'by-numbers', ...SERIES['by-numbers'] };
   const last = new Map();
   history.forEach((p, i) => { if (!p.skipped && p.series) last.set(p.series, i); });
   const score = (id) => (last.has(id) ? last.get(id) : -1);
-  const min = Math.min(...ids.map(score));
-  const tied = ids.filter((id) => score(id) === min);
-  const id = tied[Math.abs(seed) % tied.length];
+  let id;
+  if (weights && Object.keys(weights).length && ids.length > 1) {
+    const pool = [...ids].sort((a, b) => score(a) - score(b) || ids.indexOf(a) - ids.indexOf(b)).slice(0, Math.ceil(ids.length / 2));
+    const w = pool.map((x) => Math.max(0.1, Number(weights[x]) || 1));
+    const total = w.reduce((a, b) => a + b, 0);
+    let r = ((Math.abs(seed) * 2654435761) % 1000) / 1000 * total;
+    id = pool[pool.length - 1];
+    for (let i = 0; i < pool.length; i++) { if (r < w[i]) { id = pool[i]; break; } r -= w[i]; }
+  } else {
+    const min = Math.min(...ids.map(score));
+    const tied = ids.filter((x) => score(x) === min);
+    id = tied[Math.abs(seed) % tied.length];
+  }
   return { id, ...SERIES[id] };
+}
+
+// 코너별 반응 → 가중치. rows = [{ id, platform, metrics: { score } }], idToSeries = Map(게시물 id → 코너 id).
+// 플랫폼마다 숫자 크기가 달라(인스타 도달 vs 스레드 조회) 플랫폼 평균으로 나눈 비율을 쓴다.
+// 글이 2개 미만인 코너는 1(보통)로 둔다. 범위 0.5~2.
+export function seriesWeights(rows = [], idToSeries = new Map()) {
+  const avg = {};
+  for (const p of rows) { const a = (avg[p.platform] ||= { n: 0, s: 0 }); a.n++; a.s += p.metrics?.score || 0; }
+  const g = {};
+  for (const p of rows) {
+    const sid = idToSeries.get(String(p.id));
+    const base = avg[p.platform].s / avg[p.platform].n;
+    if (!sid || !base) continue;
+    (g[sid] ||= []).push((p.metrics?.score || 0) / base);
+  }
+  const weights = {}, counts = {};
+  for (const [sid, v] of Object.entries(g)) {
+    counts[sid] = v.length;
+    weights[sid] = v.length < 2 ? 1 : Math.round(Math.min(2, Math.max(0.5, v.reduce((a, b) => a + b, 0) / v.length)) * 100) / 100;
+  }
+  return { weights, counts };
 }
 
 // 운영노트는 자기 주제 목록을 쓴다(약관 주제가 아니라 사장님 일상 고민).

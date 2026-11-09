@@ -40,6 +40,13 @@ cd marketing-bot && npm test   # 문법 체크 + 4개 스크립트 DRY_RUN=1 실
 - 트랙 비율·주제·CTA: `data/content-mix.json` (`TRACK=merchant|creator|consumer` 로 강제 가능)
 - 봇이 쓸 수 있는 입점/크리에이터 조건: `src/lib.mjs` 의 `PARTNER_FACTS` (원본: `src/shared/partners-facts.ts`, `src/pages/partners/PartnerFaq.tsx`, `src/pages/CreatorsPage.tsx`). 원본 조건이 바뀌면 함께 고치세요.
 
+## 2026-11-09 2차 (대표 "할 수 있는 거 다 해줘")
+
+- **릴스**: 월·수·금(KST)은 그날 만든 장을 9초 안팎 세로 영상(1080x1920, 천천히 확대 + 부드러운 전환, 무음)으로 이어 릴스로 올린다. 영상 주소는 jsDelivr(커밋 sha 고정). 릴스가 실패하면 같은 장을 캐러셀로 다시 올린다. 강제: `REEL=1`.
+- **스레드에도 이미지**: 인스타를 먼저 만들고 그 표지를 스레드 글에 붙인다. 인스타가 오늘 이미 나갔으면 남은 표지 파일, 없으면 스레드 글로 새로 그린다. 이미지 게시가 실패하면 글만.
+- **실제 매장 사진 우선**(사장님·손님 글): 사이트 공개 목록의 대표 사진 중 데모가 아닌 것 + `data/products.json`. 최근 인스타 4회에 쓴 사진은 빼고, 짧은 변이 700px 미만이면 건너뛴다. 없으면 Pixabay 등.
+- **코너 가중치**: 주간 리뷰가 코너별 반응(플랫폼 평균 대비, 글 2개 이상)을 `data/series-state.json` 에 남기고, 게시 봇은 "오래 안 쓴 절반" 안에서 반응 좋은 코너를 더 자주 고른다.
+
 ## 2026-11-09 콘텐츠 품질 개편 (대표 "퀄리티가 낮고 AI 티가 난다")
 - **시리즈 코너** (`src/series.mjs`): 사장님 운영노트 · 숫자로 보는 유어딜 · 오해와 사실 · 유달이 상담소 · 3분 가이드 · 이번 주 동네딜 · 현장노트. 매 회 최근에 안 쓴 코너를 고른다.
 - **게시할 때마다 새 이미지** (`src/visual.mjs` + `scripts/render-post.py`): 큰 사진 + 굵은 제목 두 줄 표지, 안쪽 장, 안내 장. 사진은 현장 메모 → 상품 사진 → Pixabay(`PIXABAY_API_KEY`) · Pexels(`PEXELS_API_KEY`, 신규 발급 중단) → Openverse CC0 → 없으면 브랜드 블루 면. 만든 이미지는 `marketing-data` 브랜치 `marketing-bot/data/cards/` 에 올려 공개 URL 로 쓴다. 실패하면 종전 카드 세트로 물러선다.

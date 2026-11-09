@@ -3,10 +3,12 @@
 import { pickTrackByWeights } from './attribution.mjs';
 import { vetPost } from './vet.mjs';
 import { pickLeastRecent, rotateImages, pickHook, pickFormat, recentOpeners } from './variety.mjs';
-import { DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
+import { ROOT, DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
 import { myRecentPosts, postedOn } from './live.mjs';
 import { pickSeries, seriesTopic, BRAND_WRITING } from './series.mjs';
-import { makeVisual } from './visual.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { makeVisual, realStorePhotos, freshStorePhotos } from './visual.mjs';
 import { nextFieldNote, closeFieldNote } from './field-notes.mjs';
 
 const schedule = readJson('data/schedule.json', {});
@@ -60,7 +62,8 @@ const topics = T.topics || [];
 let topic = process.env.TOPIC || pickLeastRecent(topics, varietyLog.filter((p) => p.track === track), 'topic', (t) => t, dayIdx) || '';
 // 시리즈 코너(series.mjs) — 현장 메모가 있으면 main() 에서 '현장노트'로 바꾼다
 const trackHist = varietyLog.filter((p) => p.track === track);
-let series = pickSeries(track, trackHist, dayIdx);
+const seriesState = readJson('data/series-state.json', null);
+let series = pickSeries(track, trackHist, dayIdx, { weights: seriesState?.weights });
 if (!process.env.TOPIC) topic = seriesTopic(series, topic, trackHist, dayIdx);
 let fieldNote = null;
 // 오늘의 글 시작 방식·형식 (인스타 기록 기준으로 최근 쓴 훅은 피함)
@@ -131,6 +134,21 @@ async function writeVetted(prompt, maxTokens, platform, info, kind) {
 }
 
 const runLog = [];
+let gen = null;
+const cardKey = `${today}-${track}`;
+// 릴스는 월·수·금(KST) — 주 3회. 나머지 날은 캐러셀. REEL=1 이면 오늘 강제.
+const reelDay = process.env.REEL === '1' || [1, 3, 5].includes(k.getUTCDay());
+// 실제 입점 매장 사진: 사장님·손님 글에만(크리에이터 글은 사람 사진이 맞다). 최근 인스타 4회에 쓴 사진은 뺀다.
+let storeCache = null;
+async function storePhotosToday() {
+  if (!['merchant', 'consumer'].includes(track) || DRY) return [];
+  if (!storeCache) {
+    const recent = varietyLog.filter((p) => p.photo).slice(-4).map((p) => p.photo);
+    storeCache = freshStorePhotos(await realStorePhotos(products), recent);
+    log(`실제 매장 사진 후보 ${storeCache.length}장`);
+  }
+  return storeCache;
+}
 async function main() {
   // 조회가 실패하면 여기서 멈춘다 — "안 올렸다"로 보고 올리면 같은 글이 두 번 나간다
   live = await myRecentPosts({ days: 14 });
@@ -144,33 +162,6 @@ async function main() {
   log(`오늘 트랙: ${track}${topic ? ` / 주제: ${topic.slice(0, 40)}` : ''}`);
   const info = isPromo ? `상품: ${product.name} (${product.url})` : `링크 대상: ${target.url}`;
 
-  // ---- Threads ----
-  if (due('threads') && !postedToday('threads')) {
-    const id = cid('threads');
-    const link = utmLink(isPromo ? product : target, 'threads', T.campaign || track, id, now);
-    const len = ['1~2문장, 100자 안팎', '2~3문장, 160자 안팎', '3~4문장, 230자 안팎'][dayIdx % 3];
-    const { body, problems } = await writeVetted(`${info}\nThreads 글 1개를 ${len}로 써줘. 첫 문장이 곧 핵심. 해시태그 없이. 링크는 내가 끝에 붙일게.`, 600, 'threads', info, 'Threads 글');
-    if (problems.length) {
-      qualityError = qualityError || new Error(`Threads 검수 실패: ${problems.join(' / ')}`);
-      console.log(`::error title=Threads 검수 실패 — 게시 안 함::${problems.join(' / ')}`);
-      log('반려된 본문:\n' + body);
-      runLog.push({ platform: 'threads', skipped: 'quality_failed', problems, track, posted_at: now.toISOString(), date_kst: today });
-    } else {
-    const text = threadsText(body, link);
-    log('Threads 본문:\n' + text);
-    let r;
-    try {
-      r = await threadsPublish({ media_type: 'TEXT', text });
-    } catch (e) {
-      // Threads 실패가 Instagram 게시까지 막지 않도록 기록만 하고 계속 진행
-      threadsError = e;
-      console.log(`::error title=Threads 게시 실패::${e.message.slice(0, 300)}`);
-      runLog.push({ platform: 'threads', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
-    }
-    if (r) runLog.push({ platform: 'threads', id: r.id, content_id: id, track, series: series.id, field_note: fieldNote?.number, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
-    }
-  } else log(`Threads: 건너뜀 — ${skipReason('threads')}`);
-
   // ---- Instagram (이미지 필수) ----
   if (due('instagram') && !postedToday('instagram')) {
     const id = cid('instagram');
@@ -179,9 +170,10 @@ async function main() {
     const capPrompt = `${info}\n인스타그램 캡션 1개. 첫 줄은 핵심 메시지 한 문장, 이어서 2~3줄, 마지막 줄은 정보형 안내('프로필 링크에서 확인' 식 — 본문 링크는 클릭이 안 된다). 끝에 해시태그 2~3개만. 전체 350자 이내.`;
     const cap = await writeVetted(capPrompt, 800, 'instagram', info, '인스타그램 캡션');
     // 게시할 때마다 새 이미지(visual.mjs) — 실패하면 아래 종전 카드 세트로 물러선다
-    const gen = cap.problems.length ? null : await makeVisual({
-      claudeFn: claude, caption: cap.body, facts: factsFor(info), series, key: `${today}-${track}`,
-      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, fieldNote: !!fieldNote,
+    gen = cap.problems.length ? null : await makeVisual({
+      claudeFn: claude, caption: cap.body, facts: factsFor(info), series, key: cardKey,
+      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await storePhotosToday(), fieldNote: !!fieldNote,
+      reel: reelDay,
     });
     // 미디어 결정: tracks.<t>.media 배열(캐러셀 images / Reels video_url, 날짜별 순환) → image_url → og:image → 상품 이미지
     // product_id 가 붙은 세트(손님 딜 카드)는 오늘 고른 상품과 같을 때만 — 다른 가게 카드가 나가지 않게
@@ -195,7 +187,7 @@ async function main() {
       media = { ...media, set: mediaKey(media), images: media.images ? rotateImages(media.images, usedTimes) : media.images };
     }
     const imgs = [].concat(T.image_url || []).filter(Boolean); // 문자열 또는 배열(날짜별 순환)
-    if (gen) media = { images: gen.images, set: gen.set };
+    if (gen) media = gen.video_url ? { video_url: gen.video_url, cover_url: gen.cover_url, set: gen.set } : { images: gen.images, set: gen.set };
     const single = media ? null : (imgs.length ? pickLeastRecent(imgs, igHist, 'media_set', (u) => u, dayIdx) : null) || (!isPromo && await productImage(target)) || (product && await productImage(product));
     if (!media && single) media = { images: [single], set: single };
     const image = media?.video_url || media?.images?.[0];
@@ -214,15 +206,22 @@ async function main() {
       const kind = media.video_url ? `Reels ${media.video_url}` : `${media.images.length}장 ${media.images.length > 1 ? '캐러셀' : '이미지'}`;
       log(`IG 미디어: ${kind}`);
       let r;
-      try { r = await igPublish(media, body.slice(0, 2100)); }
-      catch (e) {
+      try { try { r = await igPublish(media, body.slice(0, 2100)); }
+      catch (e0) {
+        // 릴스가 실패하면 같은 장을 캐러셀로 다시 올린다(하루 게시를 놓치지 않게)
+        if (!media.video_url || !gen?.images?.length) throw e0;
+        log(`릴스 게시 실패 → 캐러셀로 다시: ${e0.message.slice(0, 200)}`);
+        media = { images: gen.images, set: gen.set };
+        r = await igPublish(media, body.slice(0, 2100));
+      }
+      } catch (e) {
         // 실패해도 Threads 기록은 남기고(중복 게시 방지) 마지막에 run 을 실패시킴
         igError = e;
         console.log(`::error title=Instagram 게시 실패::${e.message}`);
         runLog.push({ platform: 'instagram', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
       }
       if (r) {
-      runLog.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, series: series.id, field_note: fieldNote?.number, generated: gen ? { source: gen.source, credit: gen.credit, title: gen.title } : undefined, hook: hook.id, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
+      runLog.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, series: series.id, field_note: fieldNote?.number, generated: gen ? { source: gen.source, credit: gen.credit, title: gen.title, photo_url: gen.photo_url, reel: !!media.video_url } : undefined, hook: hook.id, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
       // ---- Facebook 페이지 — 2026-11-09 대표 "페이스북 페이지에는 올리지 않아도 돼. 인스타랑 스레드만" → 기본 끔.
       //      다시 켜려면 워크플로 env 에 FB_POST_ENABLED=1.
       if (process.env.FB_POST_ENABLED === '1') {
@@ -241,11 +240,58 @@ async function main() {
     }
   } else log(`Instagram: 건너뜀 — ${skipReason('instagram')}`);
 
+  // 오늘 표지(인스타용으로 만든 것)를 스레드에도 쓴다. 인스타가 오늘 이미 나갔으면 남아 있는 표지 파일을,
+  // 그것도 없으면 스레드 글로 표지를 새로 만든다.
+  async function threadsImage(body) {
+    if (gen?.images?.[0]) return gen.images[0];
+    if (fs.existsSync(path.join(ROOT, 'data', 'cards', cardKey, 'slide-1.jpg')) && process.env.GITHUB_REPOSITORY) {
+      return `https://raw.githubusercontent.com/${process.env.GITHUB_REPOSITORY}/marketing-data/marketing-bot/data/cards/${cardKey}/slide-1.jpg`;
+    }
+    const g = await makeVisual({ claudeFn: claude, caption: body, facts: factsFor(info), series, key: `${cardKey}-th`,
+      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await storePhotosToday(), fieldNote: !!fieldNote });
+    return g?.images?.[0] || null;
+  }
+
+  // ---- Threads ----
+  if (due('threads') && !postedToday('threads')) {
+    const id = cid('threads');
+    const link = utmLink(isPromo ? product : target, 'threads', T.campaign || track, id, now);
+    const len = ['1~2문장, 100자 안팎', '2~3문장, 160자 안팎', '3~4문장, 230자 안팎'][dayIdx % 3];
+    const { body, problems } = await writeVetted(`${info}\nThreads 글 1개를 ${len}로 써줘. 첫 문장이 곧 핵심. 해시태그 없이. 링크는 내가 끝에 붙일게.`, 600, 'threads', info, 'Threads 글');
+    if (problems.length) {
+      qualityError = qualityError || new Error(`Threads 검수 실패: ${problems.join(' / ')}`);
+      console.log(`::error title=Threads 검수 실패 — 게시 안 함::${problems.join(' / ')}`);
+      log('반려된 본문:\n' + body);
+      runLog.push({ platform: 'threads', skipped: 'quality_failed', problems, track, posted_at: now.toISOString(), date_kst: today });
+    } else {
+    const text = threadsText(body, link);
+    log('Threads 본문:\n' + text);
+    // 표지 이미지를 함께 올린다(글만 있는 것보다 피드에서 눈에 띈다). 실패하면 글만.
+    const image_url = await threadsImage(body);
+    log(`Threads 이미지: ${image_url || '없음 — 글만'}`);
+    let r;
+    try {
+      if (image_url) {
+        try { r = await threadsPublish({ media_type: 'IMAGE', image_url, text }); }
+        catch (e) { log(`Threads 이미지 게시 실패 → 글만: ${e.message.slice(0, 200)}`); }
+      }
+      r = r || await threadsPublish({ media_type: 'TEXT', text });
+    } catch (e) {
+      // Threads 실패가 Instagram 게시까지 막지 않도록 기록만 하고 계속 진행
+      threadsError = e;
+      console.log(`::error title=Threads 게시 실패::${e.message.slice(0, 300)}`);
+      runLog.push({ platform: 'threads', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
+    }
+    if (r) runLog.push({ platform: 'threads', id: r.id, content_id: id, image: image_url && !/TEXT/.test(r.media_type || '') ? image_url : undefined, track, series: series.id, field_note: fieldNote?.number, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
+    }
+  } else log(`Threads: 건너뜀 — ${skipReason('threads')}`);
+
+
   // 기록은 marketing-data 브랜치의 data/posts.json 에 남긴다(주간 리뷰가 트랙·슬롯을 복원하는 로그).
   // ⚠️ 중복 판정에는 쓰지 않는다 — 다음 회차는 Threads·인스타에 직접 물어 판정한다(저장 실패와 무관).
   log('이번 회차 결과:', JSON.stringify(runLog.map(({ text, ...r }) => r)));
   if (!DRY && runLog.length) writeJson('data/posts.json', [...readJson('data/posts.json', []), ...runLog].slice(-300));
-  if (!DRY && runLog.length) writeJson('data/variety.json', [...varietyLog, ...runLog.map(({ platform, track, topic, hook, media_set, series, skipped, date_kst }) => ({ platform, track, topic, hook, media_set, series, skipped, date_kst }))].slice(-300));
+  if (!DRY && runLog.length) writeJson('data/variety.json', [...varietyLog, ...runLog.map(({ id, platform, track, topic, hook, media_set, series, skipped, date_kst, generated }) => ({ id, platform, track, topic, hook, media_set, series, skipped, date_kst, photo: generated?.photo_url }))].slice(-300));
   if (threadsError) throw new Error(`Threads 게시 실패: ${threadsError.message}`);
   if (igError) throw new Error(`Instagram 게시 실패: ${igError.message}`);
   if (qualityError) throw qualityError; // 기록은 저장했다. 다음 회차가 같은 날 다시 시도한다(skipped 는 미게시로 센다)
