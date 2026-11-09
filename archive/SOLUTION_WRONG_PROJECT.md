@@ -80,7 +80,7 @@ Commit changes
 ```bash
 # 로컬에서 수동 배포
 cd /home/user/webapp
-export CLOUDFLARE_API_TOKEN="3i3ZxtKpifhT7BjnH-p2VS9jKyoQs83dl4w1_KXC"
+export CLOUDFLARE_API_TOKEN="REDACTED"
 export CLOUDFLARE_ACCOUNT_ID="1a2c006f0fb54894f81283a5ea787b83"
 npx wrangler pages deploy dist/client --project-name=ur-live-working --branch=main
 ```

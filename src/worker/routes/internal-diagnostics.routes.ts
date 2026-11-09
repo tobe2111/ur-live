@@ -271,7 +271,7 @@ internalDiagnosticsRoutes.get('/api/debug/whoami', requireAdmin(), async (c) => 
   if (hasAuthHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
     try {
-      const { verify } = await import('hono/jwt');
+      const { verifyLogin: verify } = await import('../utils/login-token-policy');
       const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as Record<string, unknown>;
       tokenInfo = {
         valid: true,
@@ -321,7 +321,7 @@ internalDiagnosticsRoutes.get('/api/debug/auth-trace', requireAdmin(), async (c)
       const token = authHeader.slice(7);
       steps.push({ step: 'bearer-found', length: token.length });
       try {
-        const { verify } = await import('hono/jwt');
+        const { verifyLogin: verify } = await import('../utils/login-token-policy');
         const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as Record<string, unknown>;
         steps.push({ step: 'jwt-verified', type: payload.type, sub: String(payload.sub).slice(0, 6) + '...' });
       } catch (e) {

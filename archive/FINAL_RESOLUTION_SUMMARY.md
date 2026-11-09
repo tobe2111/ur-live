@@ -69,15 +69,15 @@ VITE_TOSS_CLIENT_KEY=test_ck_KNbdOvk5rk5lGyQnAq0o3n07xlzm
 **시크릿 키:**
 ```bash
 # Before: 공식 샌드박스 키
-TOSS_SECRET_KEY=test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
+TOSS_SECRET_KEY=REDACTED
 
 # After: MID urteamizy1 키
-TOSS_SECRET_KEY=test_sk_ORzdMaqN3wOGnjevbpZD35AkYXQG
+TOSS_SECRET_KEY=test_sk_REDACTED
 ```
 
 **보안 키:**
 ```
-849aaa0d0046aa8cfaab1ee2bb3196ded0bcbb738757319cc847fbae9303a88e
+REDACTED
 ```
 
 ## 📦 배포 정보

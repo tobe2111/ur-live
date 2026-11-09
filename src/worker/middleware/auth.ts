@@ -13,6 +13,7 @@ import { Context, Next } from 'hono';
 import * as jwt from '@tsndr/cloudflare-worker-jwt';
 import { unauthorizedResponse, forbiddenResponse } from '../utils/response';
 import { parseSessionCookie } from '../utils/session';
+import { isNonLoginToken } from '../utils/login-token-policy';
 import { isDashboardSessionCurrent, deriveDashboardSeat } from '../utils/dashboard-session';
 
 // 🔐 2026-06-17 단일 세션 강제 — 다른 기기/브라우저 로그인으로 무효화된 대시보드 세션 응답.
@@ -106,8 +107,7 @@ async function verifyJWT(
     const payload = decoded.payload as unknown as JwtPayload & { purpose?: unknown };
     // 🔐 2026-11-09: 용도 토큰(PIN 확인·카카오 재인증 등 `purpose` 가 붙은 것)은 로그인 토큰이 아니다.
     //   type 이 없어 'user' 로 떨어지고 sub 가 셀러 id 라, 받아 주면 같은 번호의 유저로 통했다.
-    if (payload && payload.purpose != null) return null;
-    if (payload && (payload as { token_use?: unknown }).token_use === 'refresh') return null; // 재발급 토큰은 로그인 토큰이 아니다
+    if (isNonLoginToken(payload)) return null; // 용도 토큰 · 재발급 토큰(옛 키 포함) — utils/login-token-policy
     return payload;
   } catch {
     // Don't log token content — attacker reconnaissance risk

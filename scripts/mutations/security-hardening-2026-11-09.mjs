@@ -63,8 +63,8 @@ export default [
   },
   {
     name: '[sec] 용도 토큰 거부를 뺀다 (PIN 토큰이 소비자 로그인으로 통한다)',
-    file: 'src/worker/middleware/auth.ts',
-    find: '    if (payload && payload.purpose != null) return null;\n',
+    file: 'src/worker/utils/login-token-policy.ts',
+    find: '  if (p.purpose != null) return true\n',
     replace: '',
     test: TEST,
     why: 'type 없는 PIN 토큰이 sub=셀러 id 로 같은 번호의 유저 행세를 한다.',

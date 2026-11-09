@@ -105,7 +105,7 @@ https://live.ur-team.com/debug/kakao
 
 # 확인 사항:
 ✅ JavaScript Key: 975a2e7f97254b08f15dba4d177a2865
-✅ REST API Key: 5dd74bccb797640b0efd070467f3bafd  # ← 이게 보여야 함
+✅ REST API Key: REDACTED  # ← 이게 보여야 함
 ✅ Redirect URI: https://live.ur-team.com/auth/kakao/sync/callback
 ✅ Kakao SDK: initialized
 ```

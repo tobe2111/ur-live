@@ -4,7 +4,7 @@
 # 공식 문서: https://docs.tosspayments.com/reference/using-api/api-keys
 
 # 결제위젯(Payment Widget) 테스트 시크릿 키
-TOSS_SECRET_KEY="test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R"
+TOSS_SECRET_KEY="test_sk_REDACTED"
 
 echo "토스페이먼츠 테스트 시크릿 키를 Cloudflare Pages에 추가합니다..."
 echo ""

@@ -47,7 +47,7 @@ npx wrangler pages secret list --project-name toss-live-commerce
 
 **확인사항:**
 - `TOSS_SECRET_KEY` 존재하는가?
-- 값이 `test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY`인가?
+- 값이 `test_gsk_REDACTED`인가?
 
 #### B. 토스 개발자센터 확인:
 https://developers.tosspayments.com/my/api-keys
@@ -55,7 +55,7 @@ https://developers.tosspayments.com/my/api-keys
 **확인사항:**
 - 결제위젯 연동 키 섹션
 - Client Key: `test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN`
-- Secret Key: `test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY`
+- Secret Key: `test_gsk_REDACTED`
 - 두 키가 **같은 화면**에 표시되는가?
 
 #### C. 결제 UI 설정 확인:
@@ -74,7 +74,7 @@ https://developers.tosspayments.com/
 **해결:** 
 ```bash
 npx wrangler pages secret put TOSS_SECRET_KEY --project-name toss-live-commerce
-# 값 입력: test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+# 값 입력: test_gsk_REDACTED
 ```
 
 ### 문제 3: 결제 세션 만료

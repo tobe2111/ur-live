@@ -70,7 +70,7 @@ Cloudflare Pages → Settings → Environment variables
 
 **필수 환경 변수**:
 ```
-TOSS_SECRET_KEY=test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY  # (이미 설정됨)
+TOSS_SECRET_KEY=test_gsk_REDACTED  # (이미 설정됨)
 KAKAO_REST_API_KEY=...  # (이미 설정됨)
 ```
 

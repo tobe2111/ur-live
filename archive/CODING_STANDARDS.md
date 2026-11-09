@@ -219,7 +219,7 @@ app.post('/api/orders', requireAuth, async (c) => {
 
 **로컬 개발 (.dev.vars):**
 ```bash
-TOSS_SECRET_KEY=test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+TOSS_SECRET_KEY=test_gsk_REDACTED
 TOSS_CLIENT_KEY=test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm
 ```
 

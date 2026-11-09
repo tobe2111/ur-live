@@ -188,7 +188,7 @@ npx wrangler pages secret list --project-name ur-live
 
 # 클라이언트 키와 일치하는지 확인
 # test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-# test_gsk_bAjYKeZ4G5V47OvXZLy9lMKwv12Eqpmo
+# test_gsk_REDACTED
 
 # 토스페이먼츠 개발자센터에서 키 확인
 # https://developers.tosspayments.com/

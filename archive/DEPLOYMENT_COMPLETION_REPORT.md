@@ -74,17 +74,17 @@ https://dash.cloudflare.com/profile/api-tokens
 ### 2.1. JWT_SECRET 설정 (필수)
 ```bash
 # Generated JWT Secret
-JWT_SECRET=933a7dd8858abf61df9eedada8322c1fa9b2ff3dc4ee4cff0053aa4dfe602b90
+JWT_SECRET=REDACTED
 
 # 설정 방법 1: Wrangler CLI (권장)
 export CLOUDFLARE_API_TOKEN=<your_api_token>
 npx wrangler pages secret put JWT_SECRET --project-name=ur-live
-# 입력: 933a7dd8858abf61df9eedada8322c1fa9b2ff3dc4ee4cff0053aa4dfe602b90
+# 입력: REDACTED
 
 # 설정 방법 2: Cloudflare Dashboard
 # https://dash.cloudflare.com → Workers & Pages → ur-live → Settings → Environment Variables
 # Variable name: JWT_SECRET
-# Value: 933a7dd8858abf61df9eedada8322c1fa9b2ff3dc4ee4cff0053aa4dfe602b90
+# Value: REDACTED
 # Environment: Production
 ```
 
@@ -363,7 +363,7 @@ curl -X POST https://live.ur-team.com/api/seller/login \
 
 ### JWT Secret
 ```
-933a7dd8858abf61df9eedada8322c1fa9b2ff3dc4ee4cff0053aa4dfe602b90
+REDACTED
 ```
 **⚠️ 주의**: 프로덕션 환경에서는 이 값을 안전하게 보관하고, 절대 공개 저장소에 커밋하지 마세요.
 
@@ -386,7 +386,7 @@ curl -X POST https://live.ur-team.com/api/seller/login \
 **해결 방법**:
 ```bash
 npx wrangler pages secret put JWT_SECRET --project-name=ur-live
-# 입력: 933a7dd8858abf61df9eedada8322c1fa9b2ff3dc4ee4cff0053aa4dfe602b90
+# 입력: REDACTED
 ```
 
 ### 문제 2: 데이터베이스 계정이 없음

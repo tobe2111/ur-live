@@ -44,8 +44,8 @@ await widgets.renderAgreement({
 ### 키 정보
 - **MID:** urteamizy1
 - **클라이언트 키:** `test_ck_KNbdOvk5rk5lGyQnAq0o3n07xlzm`
-- **시크릿 키:** `test_sk_ORzdMaqN3wOGnjevbpZD35AkYXQG`
-- **보안키:** `849aaa0d0046aa8cfaab1ee2bb3196ded0bcbb738757319cc847fbae9303a88e`
+- **시크릿 키:** `test_sk_REDACTED`
+- **보안키:** `REDACTED`
 - **variantKey:** `Test1`
 
 ### 토스페이먼츠 어드민 설정

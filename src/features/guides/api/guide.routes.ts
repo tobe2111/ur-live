@@ -57,7 +57,7 @@ async function requireRole(c: any, roles: string[]): Promise<{ id: number; type:
   const auth = c.req.header('Authorization')
   if (!auth?.startsWith('Bearer ')) return null
   try {
-    const { verify } = await import('hono/jwt')
+    const { verifyLogin: verify } = await import('../../../worker/utils/login-token-policy')
     const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256') as { id?: number; type?: string }
     if (payload?.type && roles.includes(payload.type)) return { id: payload.id || 0, type: payload.type }
     return null

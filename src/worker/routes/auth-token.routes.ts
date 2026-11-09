@@ -214,7 +214,7 @@ authTokenRoutes.get('/token-info', async (c) => {
     const token = authorization.substring(7);
 
     // Verify token
-    const { verify } = await import('hono/jwt');
+    const { verifyLogin: verify } = await import('../utils/login-token-policy');
     const decoded = await verify(token, c.env.JWT_SECRET, 'HS256').catch(() => null);
 
     if (!decoded) {

@@ -63,3 +63,15 @@
 1. 종류를 안 보는 로그인 경로 57곳(22파일)을 `requireUser()` 로 — 장바구니·쿠폰·추천(출금 포함)·기부·공구 참여·
    경매·디지털·관심·등급·팔로우·알림·타임딜·유입 귀속·소비자 프로필/비밀번호. 셀러·에이전시도 쓰는 15곳은 허용 목록.
    재발 방지: `src/tests/unit/consumer-identity-guard-2026-11-09.test.ts`(허용 목록은 줄기만 · 주입 2건 빨간불).
+2. 문서·archive 의 실제 키처럼 생긴 값 131줄 가림(JWT 서명키·CF 토큰·Toss 비밀키·Kakao REST 키 — 키 이름은 남김, 예시 파일·JS 키는 그대로).
+   `check-no-secrets.sh` 의 Toss 패턴이 따옴표를 요구해 맨값을 못 잡던 것 → 따옴표 선택 + gsk + Kakao REST 키 패턴.
+   ⚠️ git 기록에는 남는다 — 실제 차단은 키 교체(대표 대기 항목).
+3. 카카오 로그인 함정 — **코드로 못 막음(검토 결과)**: 서버 1회용 nonce 는 login CSRF 를 못 막고(공격자가 자기 링크를 안 쓰고 넘김),
+   UA 결속은 이 경로의 존재 이유인 iOS 카톡앱→사파리 핸드오프를 깨뜨린다. 남은 길은 제품 쪽(로그인 직후 "○○ 계정으로 로그인" 확인).
+4·5. 로그인 토큰 판정 SSOT `src/worker/utils/login-token-policy.ts`(`isNonLoginToken`·`verifyLogin`): 용도 토큰 · `token_use:refresh` ·
+   **옛 재발급 토큰은 수명으로**(관리자 >2일 · 셀러 >31일) 거부 — 아무도 로그아웃시키지 않고 옛 재발급 토큰의 로그인 사용만 막는다.
+   Bearer 를 직접 확인하던 28파일을 `verifyLogin` 으로(가드가 새 직접 사용을 막음).
+6. 주간 보안 점검 예약 `trig_01DfT4BgNxp7LYQkeMNs8Fm1` — 매주 월 10:17(KST), 새 세션이 읽기 전용 점검 → `docs/handoff/<날짜>-weekly-security-check.md` 초안 PR · 고칠 것은 결재함. 휴대폰 알림.
+7. react-router 7 업그레이드 — **안 함(되돌림)**: 빌드·청크 검사는 통과했지만 화면별 첫 화면 무게가 전부 +5~7KB(허용 1.5KB)였다.
+   막으려던 취약점(역슬래시 이동)은 `safeInternalPath` 가 이미 막는다. `react-router-dom/server` → 7 에서는 본 패키지(StaticRouter) — 다시 할 때 참고.
+   이용권 8자리 — 대표 확정 "6자리 유지 (추천)"(2026-11-09). 매장 확인코드 + 틀린 시도 잠금으로 막는다. 다시 묻지 말 것.

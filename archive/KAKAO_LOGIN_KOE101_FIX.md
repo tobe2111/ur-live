@@ -109,7 +109,7 @@ cd /home/user/webapp
 npm run build:kr
 
 # Cloudflare Pages 배포
-export CLOUDFLARE_API_TOKEN=_3Q3YUJWmK_0D-6r65jdqXaOKwgnSj7oqlq2-t_P
+export CLOUDFLARE_API_TOKEN=REDACTED
 export CLOUDFLARE_ACCOUNT_ID=1a2c006f0fb54894f81283a5db12e5cf
 npx wrangler pages deploy dist --project-name=ur-live
 
@@ -185,7 +185,7 @@ Kakao 초기화됨: true
 브라우저 콘솔에서 실행:
 ```javascript
 // 카카오 로그인 URL 확인
-const KAKAO_REST_API_KEY = '5dd74bccb797640b0efd070467f3bafd'  // fallback 키
+const KAKAO_REST_API_KEY = 'REDACTED'  // fallback 키
 const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/sync/callback'
 const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=/`
 

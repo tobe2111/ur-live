@@ -108,7 +108,7 @@ async function getRoleAndId(c: { env: Bindings; req: { header: (k: string) => st
   const auth = c.req.header('Authorization') || ''
   if (auth.startsWith('Bearer ')) {
     try {
-      const { verify } = await import('hono/jwt')
+      const { verifyLogin: verify } = await import('../../../worker/utils/login-token-policy')
       const p = await verify(auth.substring(7), c.env.JWT_SECRET, 'HS256') as Record<string, unknown>
       if (p.seller_id) return { role: 'seller', id: Number(p.seller_id) }
       if (p.admin_id) return { role: 'admin', id: Number(p.admin_id) }

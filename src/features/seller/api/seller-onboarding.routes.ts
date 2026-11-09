@@ -22,7 +22,7 @@
  */
 
 import { Hono, type Next } from 'hono';
-import { verify } from 'hono/jwt';
+import { verifyLogin as verify } from '../../../worker/utils/login-token-policy';
 import type { Env } from '@/worker/types/env';
 
 import { swallow } from '@/worker/utils/swallow';

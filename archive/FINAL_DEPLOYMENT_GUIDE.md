@@ -118,7 +118,7 @@ tar -czf ../../ur-live-build.tar.gz .
 
 ```bash
 # Cloudflare API 토큰 설정
-export CLOUDFLARE_API_TOKEN="3i3ZxtKpifhT7BjnH-p2VS9jKyoQs83dl4w1_KXC"
+export CLOUDFLARE_API_TOKEN="REDACTED"
 export CLOUDFLARE_ACCOUNT_ID="1a2c006f0fb54894f81283a5ea787b83"
 
 # 배포 실행
@@ -160,7 +160,7 @@ console.log(import.meta.env);
 ✅ VITE_FIREBASE_API_KEY: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s"
 ✅ VITE_FIREBASE_DATABASE_URL: "https://urteam-live-commerce-default-rtdb..."
 ✅ VITE_FIREBASE_PROJECT_ID: "urteam-live-commerce"
-✅ VITE_KAKAO_REST_API_KEY: "5dd74bccb797640b0efd070467f3bafd"
+✅ VITE_KAKAO_REST_API_KEY: "REDACTED"
 ```
 
 ### 4. 카카오 로그인 테스트
@@ -253,7 +253,7 @@ VITE_FIREBASE_MEASUREMENT_ID=G-B1ST2L37CM
 # Kakao
 VITE_KAKAO_APP_KEY=975a2e7f97254b08f15dba4d177a2865
 VITE_KAKAO_JAVASCRIPT_KEY=975a2e7f97254b08f15dba4d177a2865
-VITE_KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd
+VITE_KAKAO_REST_API_KEY=REDACTED
 
 # Toss
 VITE_TOSS_CLIENT_KEY=test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN

@@ -11,7 +11,8 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { sign, verify } from 'hono/jwt';
+import { sign } from 'hono/jwt';
+import { verifyLogin as verify } from '../../../worker/utils/login-token-policy';
 import { hashPassword, validatePasswordComplexity } from '@/lib/password';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import {DEFAULT_COMMISSION_RATE } from '@/shared/constants';

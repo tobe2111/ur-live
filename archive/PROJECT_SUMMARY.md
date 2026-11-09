@@ -35,7 +35,7 @@
 
 **테스트 키**:
 - Client: `test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN`
-- Secret: `test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY`
+- Secret: `test_gsk_REDACTED`
 
 ### 3. 라이브 커머스 기능 ✅
 - **라이브 스트림 생성/관리** (셀러)

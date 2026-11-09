@@ -16,7 +16,7 @@ TossPayments는 **두 가지 연동 방식**이 있으며, **각각 다른 키**
 ### 1. API 개별 연동 (Legacy)
 ```
 Client Key: test_ck_KNbdOvk5rk5lGyQnAq0o3n07xlzm
-Secret Key: test_sk_ORzdMaqN3wOGnjevbpZD35AkYXQG
+Secret Key: test_sk_REDACTED
 ```
 - REST API 직접 호출 방식
 - 결제창을 직접 구현해야 함
@@ -25,7 +25,7 @@ Secret Key: test_sk_ORzdMaqN3wOGnjevbpZD35AkYXQG
 ### 2. 결제위젯 연동 (Payment Widget) ✅ 우리가 사용
 ```
 Client Key: test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-Secret Key: test_gsk_bAjYKeZ4G5V47OvXZLy9lMKwv12Eqpmo
+Secret Key: test_gsk_REDACTED
 ```
 - TossPayments에서 제공하는 UI 위젯 사용
 - 간편한 연동
@@ -40,18 +40,18 @@ Secret Key: test_gsk_bAjYKeZ4G5V47OvXZLy9lMKwv12Eqpmo
 **Before (잘못된 키):**
 ```bash
 # API 개별 연동 키 사용 (잘못됨)
-TOSS_SECRET_KEY=test_sk_ORzdMaqN3wOGnjevbpZD35AkYXQG
+TOSS_SECRET_KEY=test_sk_REDACTED
 ```
 
 **After (올바른 키):**
 ```bash
 # 결제위젯 키 사용 (올바름)
-TOSS_SECRET_KEY=test_gsk_bAjYKeZ4G5V47OvXZLy9lMKwv12Eqpmo
+TOSS_SECRET_KEY=test_gsk_REDACTED
 ```
 
 **Cloudflare Secret 업데이트:**
 ```bash
-echo "test_gsk_bAjYKeZ4G5V47OvXZLy9lMKwv12Eqpmo" | \
+echo "test_gsk_REDACTED" | \
   npx wrangler pages secret put TOSS_SECRET_KEY --project-name ur-live
 ```
 

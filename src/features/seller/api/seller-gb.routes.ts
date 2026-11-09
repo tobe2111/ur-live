@@ -16,7 +16,7 @@
  *   되돌릴 손잡이는 별도 킬스위치 `platform_settings.gb_pricing_enabled`(기본 ON, `'false'` 로 끔) 다.
  */
 import { Hono } from 'hono'
-import { verify } from 'hono/jwt'
+import { verifyLogin as verify } from '../../../worker/utils/login-token-policy'
 import type { JWTPayload } from 'hono/utils/jwt/types'
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '../../../worker/types/env'

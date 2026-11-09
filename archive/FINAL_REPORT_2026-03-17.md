@@ -202,7 +202,7 @@ cp .env.example .env.local
 **2. 필수 환경 변수 추가**:
 ```bash
 # .env.local에 아래 내용 추가
-VITE_KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd
+VITE_KAKAO_REST_API_KEY=REDACTED
 VITE_FIREBASE_API_KEY=AIzaSyCxmgG3NEXsWtHKbE425dvq5EWs3WHXOh8
 VITE_FIREBASE_AUTH_DOMAIN=urteam-live-commerce-5b284.firebaseapp.com
 VITE_FIREBASE_DATABASE_URL=https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app

@@ -123,7 +123,7 @@ http://localhost:3000/auth/kakao/callback
   □ https://live.ur-team.com/auth/kakao/callback
   □ http://localhost:3000/auth/kakao/callback
 □ 카카오 로그인 > 동의항목 > 닉네임: 활성화
-□ 앱 키 > REST API 키: 5dd74bccb797640b0efd070467f3bafd
+□ 앱 키 > REST API 키: REDACTED
 ```
 
 ---

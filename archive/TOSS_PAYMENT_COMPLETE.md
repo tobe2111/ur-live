@@ -4,7 +4,7 @@
 
 ### 적용된 키
 - **클라이언트 키**: `test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN` ✅
-- **시크릿 키**: `test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY` ✅
+- **시크릿 키**: `test_gsk_REDACTED` ✅
 - **키 타입**: 결제위젯 연동 키 (test_gck/test_gsk) ✅
 
 ---
@@ -53,7 +53,7 @@ Environment: Production
 
 ```
 Variable name: TOSS_SECRET_KEY
-Value: test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+Value: test_gsk_REDACTED
 Environment: Production
 ```
 
@@ -61,7 +61,7 @@ Environment: Production
 ```
 같은 변수들을 Preview 환경에도 추가:
 - VITE_TOSS_CLIENT_KEY: test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-- TOSS_SECRET_KEY: test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+- TOSS_SECRET_KEY: test_gsk_REDACTED
 ```
 
 ### Step 5: Save 클릭
@@ -160,7 +160,7 @@ git add -A
 git commit -m "fix: Apply valid Payment Widget integration keys (test_gck/test_gsk)
 
 - Updated client key to test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-- Updated secret key to test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+- Updated secret key to test_gsk_REDACTED
 - These are Payment Widget integration keys (test_gck/test_gsk)
 - Previous API individual keys (test_ck/test_sk) caused compatibility issues
 

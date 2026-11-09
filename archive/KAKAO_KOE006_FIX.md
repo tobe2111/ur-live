@@ -132,7 +132,7 @@ Cloudflare Dashboard
 ### JavaScript 키는 사용하지 않음
 
 **제공하신 키:**
-- REST API 키: `5dd74bccb797640b0efd070467f3bafd` ✅ (사용)
+- REST API 키: `REDACTED` ✅ (사용)
 - JavaScript 키: `975a2e7f97254b08f15dba4d177a2865` ❌ (사용 안 함)
 
 **현재 백엔드 코드는 REST API 키만 사용합니다.**
@@ -255,7 +255,7 @@ F12 누르기
 ```
 ❌ 문제: KOE006 - invalid_client
 ✅ 원인: Cloudflare Pages 환경 변수 미설정
-🔧 해결: KAKAO_REST_API_KEY = 5dd74bccb797640b0efd070467f3bafd
+🔧 해결: KAKAO_REST_API_KEY = REDACTED
 ⏱️ 시간: 5~8분 (재배포 포함)
 🎯 성공률: 100%
 ```

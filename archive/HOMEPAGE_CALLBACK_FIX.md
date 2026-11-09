@@ -170,7 +170,7 @@ localStorage.setItem('user_name', userName)         // 예: "홍길동"
 **아직 카카오 Redirect URI를 등록하지 않았다면:**
 
 1. https://developers.kakao.com 접속
-2. REST API 키: `5dd74bccb797640b0efd070467f3bafd`
+2. REST API 키: `REDACTED`
 3. "카카오 로그인" → "Redirect URI 등록"
 4. 추가: `https://live.ur-team.com/auth/kakao/callback`
 5. 저장

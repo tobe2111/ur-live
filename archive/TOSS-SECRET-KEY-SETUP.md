@@ -23,7 +23,7 @@ POST /api/payments/confirm 400 (Bad Request)
 
 ```
 테스트 키 형식:
-test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R
+test_sk_REDACTED
 ```
 
 ---
@@ -46,7 +46,7 @@ npx wrangler pages secret put TOSS_SECRET_KEY --project-name ur-live
 ```
 Enter a secret value: 
 ```
-→ 시크릿 키 붙여넣기 (예: `test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R`)
+→ 시크릿 키 붙여넣기 (예: `test_sk_REDACTED`)
 
 **확인:**
 ```bash
@@ -156,7 +156,7 @@ const response = await fetch('https://api.tosspayments.com/v1/payments/confirm',
 ### ❌ 잘못된 사용:
 ```typescript
 // ❌ 절대 이렇게 하지 마세요!
-const secretKey = 'test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R'
+const secretKey = 'test_sk_REDACTED'
 ```
 
 ### ✅ 올바른 사용:

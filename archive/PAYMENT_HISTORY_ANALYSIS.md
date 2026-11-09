@@ -64,7 +64,7 @@ d7765ab: totalAmount 의존성 제거, requestPayment await 제거
 
 **배포 작업:** Cloudflare 환경변수 업데이트
 ```bash
-echo "test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY" | \
+echo "test_gsk_REDACTED" | \
   npx wrangler pages secret put TOSS_SECRET_KEY --project-name toss-live-commerce
 ```
 
@@ -140,7 +140,7 @@ const paymentWidget = PaymentWidget(clientKey, customerKey);
 
 ### Backend (Cloudflare Secret)
 ```bash
-TOSS_SECRET_KEY=test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY  # ✅ 결제위젯 키
+TOSS_SECRET_KEY=test_gsk_REDACTED  # ✅ 결제위젯 키
 ```
 
 ### 백엔드 코드 (src/index.tsx)

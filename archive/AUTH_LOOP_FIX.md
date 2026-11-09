@@ -236,7 +236,7 @@ return (
 
 ```bash
 cd /home/user/webapp
-export CLOUDFLARE_API_TOKEN="yp2LoilEU8-WtBGMSCDZpIs2D2Yd69booRAgvhb4"
+export CLOUDFLARE_API_TOKEN="REDACTED"
 npm run build
 npm run deploy
 ```

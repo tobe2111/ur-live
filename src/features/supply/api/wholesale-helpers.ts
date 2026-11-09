@@ -306,7 +306,7 @@ export const SUB_ROLES: readonly SubRole[] = ['admin', 'staff', 'viewer'] as con
 export async function subClaimsFrom(authorization: string | undefined, jwtSecret: string): Promise<{ sellerId: number | null; subAccountId: number | null; subRole: SubRole | null }> {
   if (!authorization?.startsWith('Bearer ')) return { sellerId: null, subAccountId: null, subRole: null }
   try {
-    const { verify } = await import('hono/jwt')
+    const { verifyLogin: verify } = await import('../../../worker/utils/login-token-policy')
     const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number; sub_account_id?: number; sub_role?: string }
     const subRole = SUB_ROLES.includes(payload.sub_role as SubRole) ? (payload.sub_role as SubRole) : null
     const subAccountId = Number.isFinite(payload.sub_account_id as number) && (payload.sub_account_id as number) > 0 ? (payload.sub_account_id as number) : null
