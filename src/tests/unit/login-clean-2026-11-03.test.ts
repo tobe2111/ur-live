@@ -11,6 +11,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readCode } from '../helpers/source-text'
+import { LOGIN_COPY } from '@/shared/login-page'
 
 const P = readCode('src/pages/LoginPage.tsx')
 
@@ -23,7 +24,9 @@ describe('로그인 A안', () => {
     expect(P).toContain('{(showEmailLogin || showForgotPassword) && <div className="mt-10 pt-5 border-t')
   })
   it("③ 버튼 문구", () => {
-    expect(P).toContain("t('login.kakaoStart', { defaultValue: '카카오로 시작하기' })")
+    // 2026-11-09: 문구는 `shared/login-page.ts` LOGIN_COPY 로 옮겼다(서버 첫 화면과 한 벌) — 값은 그대로다.
+    expect(P).toContain("t('login.kakaoStart', { defaultValue: LOGIN_COPY.kakaoStart })")
+    expect(LOGIN_COPY.kakaoStart).toBe('카카오로 시작하기')
   })
   it('④ 약관 고지 링크 그대로', () => {
     expect(P).toContain('<Link to="/terms"')

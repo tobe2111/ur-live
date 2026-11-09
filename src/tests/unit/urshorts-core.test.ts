@@ -210,7 +210,9 @@ describe('④ 재생기는 항상 하나만', () => {
   })
 
   it('목록은 열 때 한 번만 받는다 — 넘길 때마다 부르면 D1 읽기가 스와이프 수만큼 는다', () => {
-    expect((V.match(/fetch\('\/api\/urshorts/g) ?? []).length).toBe(1)
+    // 🎬 2026-11-09: 뷰어는 자기 fetch 가 0 이고 한 벌(`shared/urshorts-list-cache` loadShortsAll — 탭 수명 동안 요청 1회)을 한 번 부른다.
+    expect((V.match(/fetch\('\/api\/urshorts/g) ?? []).length).toBe(0)
+    expect((V.match(/loadShortsAll\(\)/g) ?? []).length).toBe(1)
   })
 
   it('구매 바가 영상 위에 항상 있다 (끝나기를 기다리면 늦다)', () => {

@@ -52,3 +52,11 @@ export function captureBootFirstScreen(): void {
 export function takeBootFirstScreen(pathname: string): HTMLElement | null {
   return bootNode && bootPath === pathname ? bootNode : null
 }
+
+/**
+ * 🔐 2026-11-09 — 이 경로를 서버가 먼저 그렸는가(노드를 돌려주지 않고 사실만). 들어올 때 모션(0 에서 떠오름)을 붙일지
+ * 정하는 데 쓴다: 이미 보이는 글자가 마운트 때 다시 0 에서 떠오르면 깜빡임이다(`pages/LoginPage.tsx`).
+ */
+export function hadBootFirstScreen(pathname: string): boolean {
+  return takeBootFirstScreen(pathname) !== null
+}

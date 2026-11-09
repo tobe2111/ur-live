@@ -53,15 +53,36 @@ import { CRITICAL_CSS, CRITICAL_CSS_HOME, CRITICAL_CSS_SURFACES } from '../gener
  *   ⚠️ 판정은 경로만 본다 — `/vouchers?category=…` 처럼 첫 화면이 안 그려지는 요청에도 걸린다(그땐 로더 + 조작 +0.3s).
  *   🔒 새 첫 화면을 서버에 붙이면 **이 목록도 같은 커밋에서** 고칠 것(시험 ⑤-2 가 ROOTS 와 대조한다).
  */
-export function cssFirstApplies(pathname: string, ua: string, authed = false): boolean {
-  if (!shouldRenderMobileFirstScreen(ua)) return false
+/**
+ * 🖼️ 서버가 **첫 화면을 그리는** 표면인가 — 첫 화면 CSS(`criticalCssFor`)를 인라인할 자격. 폰(+크롤러)만, 단 PC 홈은 예외(2026-11-09 pc-home-first-screen).
+ */
+export function firstScreenApplies(pathname: string, ua: string, authed = false): boolean {
+  if (!shouldRenderMobileFirstScreen(ua)) return (pathname === '/' || pathname === '/index.html') || (!authed && guestTabOf(pathname) === 'login') // 🖥️ 2026-11-09 PC 홈 첫 화면(홈판 CSS 에 PC 클래스가 있다) · 🔐 로그인 화면은 PC 도 같은 한 열이라 PC 에도 그린다(guest 표면 CSS)
   return pathname === '/' || pathname === '/vouchers' || pathname === '/stays' // 🏨 2026-10-19 숙소 목록도 서버 첫 화면이 생겼다(stays-first-screen.ts)
     || (!authed && guestTabOf(pathname) !== null) // 🚪 2026-10-19 로그인 전 탭 셋 — 세션 쿠키 없을 때만 서버가 그린다(guest-first-screen.ts)
     || /^\/region\/[^/]+(?:\/[^/]+)?\/?$/.test(pathname) // 🗺️ 2026-11-08 지역 착지도 서버 첫 화면(region-first-screen.ts)
     || pathname === '/life' || pathname === '/life/' // 🏠 2026-11-08 생활 허브도 서버 첫 화면(life-first-screen.ts)
+    || pathname === '/urshorts' || pathname === '/urshorts/' // 🎬 2026-11-09 유어쇼츠 목록도(urshorts-first-screen.ts)
+    || pathname === '/map' || pathname === '/map/' // 🗺️ 2026-11-09 지도 껍데기(map-first-screen.ts)
     || /^\/blog(?:\/[^/]+)?\/?$/.test(pathname) // 📝 2026-10-19 블로그 목록·상세도 서버 첫 화면(blog-*-first-screen.ts)
     || /^\/(?:pass|group-buy|vouchers|stays)\/\d+\/?$/.test(pathname)
     || (/^\/u\/[^/]+\/?$/.test(pathname) && !/^\/u\/me\/?$/.test(pathname))
+}
+
+/**
+ * ⏳ 2026-11-09 "로더 먼저" — 서버 첫 화면이 **없는** 소비자 화면(검색·장바구니·영상 뷰어·쇼핑 상세…)도 앱 CSS 를 렌더 차단에서 뺀다.
+ *   라이브 실측(폰 4G): HTML 은 0.3~0.5s 에 다 왔는데 **첫 그림이 1.1~1.5s** — 인라인으로 스타일이 다 들어 있는 로더(`brandLoaderMarkup`)조차
+ *   37KB 앱 CSS 가 올 때까지 못 그렸다. 로더는 자기 `<style>` 을 들고 있으므로 CSS 없이도 그려진다. 앱(React)은 종전처럼 CSS 가 붙은 뒤에만 켠다.
+ *   대시보드(어드민·사장님·에이전시)·임베드·인증 콜백은 제외 — 자체 테마 CSS 에 기대는 첫 그림이 있고, 이 처방의 대상(손님 체감)이 아니다.
+ */
+const LOADER_FIRST_SKIP = /^\/(?:admin|seller|agency|embed|wholesale|supplier|auth|oauth|sync|api|cdn-cgi|assets|static)(?:\/|$)/
+export function loaderFirstApplies(pathname: string): boolean {
+  return !LOADER_FIRST_SKIP.test(pathname)
+}
+
+/** 부팅 지연(엔트리·modulepreload 지연 + 앱 CSS `media=print`)을 거는가 — 첫 화면 표면이든 로더-먼저 표면이든. */
+export function cssFirstApplies(pathname: string, ua: string, authed = false): boolean {
+  return firstScreenApplies(pathname, ua, authed) || loaderFirstApplies(pathname)
 }
 
 /**
@@ -75,7 +96,8 @@ export function criticalCssFor(
 ): string {
   if (pathname === '/' && home) return home
   const k = criticalSurfaceOf(pathname)
-  return (k && surfaces[k]) || full
+  if (!k) return '' // ⏳ 2026-11-09 첫 화면이 없는 표면은 인라인할 CSS 가 없다(로더는 자기 스타일을 든다) — 전체판 69KB 를 넣지 않는다
+  return surfaces[k] || full
 }
 
 /**
@@ -94,6 +116,8 @@ export function criticalSurfaceOf(pathname: string): string | null {
   if (/^\/blog\/[^/]+$/.test(p)) return 'blogDetail'
   if (guestTabOf(p) !== null) return 'guest'
   if (p === '/life') return 'life'
+  if (p === '/urshorts') return 'urshorts'
+  if (p === '/map') return 'map'
   if (/^\/region\/[^/]+(?:\/[^/]+)?$/.test(p)) return 'region'
   if (/^\/u\/[^/]+$/.test(p) && p !== '/u/me') return 'curator'
   return null
@@ -154,12 +178,11 @@ export function criticalCssUsable(css: string = CRITICAL_CSS): boolean {
 export function applyCssFirstBoot(rw: HTMLRewriter, nonce: string, on: boolean, critical: string = CRITICAL_CSS): HTMLRewriter {
   if (!on) return rw
   const crit = criticalCssUsable(critical)
-  const head = cssFirstBootScript(nonce, crit) + (crit ? `<style id="${CRITICAL_STYLE_ID}">${critical}</style>` : '')
-  if (crit) {
-    rw = rw.on('link[rel="stylesheet"]', {
-      element(el) { if (/^\/assets\/index-[^/]*\.css$/.test(el.getAttribute('href') || '')) el.setAttribute('media', 'print') },
-    })
-  }
+  // ⏳ 2026-11-09: 첫 화면 CSS 가 없어도(로더-먼저 표면) 앱 CSS 는 `media=print` — 로더가 자기 스타일로 먼저 그려진다. 백스톱은 10초(앱 CSS 없이 React 를 켜지 않게).
+  const head = cssFirstBootScript(nonce, true) + (crit ? `<style id="${CRITICAL_STYLE_ID}">${critical}</style>` : '')
+  rw = rw.on('link[rel="stylesheet"]', {
+    element(el) { if (/^\/assets\/index-[^/]*\.css$/.test(el.getAttribute('href') || '')) el.setAttribute('media', 'print') },
+  })
   return rw
     .on('head', { element(el) { el.prepend(head, { html: true }) } })
     // ⏳ 2026-11-02: 로딩 화면에서 유달이가 빠져 index.html 의 그 preload 도 없어졌다 — 지우던 규칙도 걷었다.

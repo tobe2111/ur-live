@@ -8,6 +8,7 @@ import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import BrowseCard from './urshorts/BrowseCard'
 import { useSafeBack } from '@/hooks/useSafeBack'
 import { readUrShortsSeed } from '@/shared/home-near-seed-read'
+import { loadShortsAll, peekShortsAll } from '@/shared/urshorts-list-cache'
 import {
   cityFacets, categoryFacets, filterShorts, pruneFilter,
   MIN_FACETS_TO_SHOW, type Facet, type ShortsFilter,
@@ -42,15 +43,13 @@ injectMotionCss('ur-m-shortsgrid', `@keyframes ur-vc-in { from { opacity: 0; tra
  * ⚠️ 영상이 100편을 넘기면 이 전제가 깨진다 — 그때는 서버 필터·페이지네이션으로 옮길 것.
  */
 export default function UrShortsBrowsePage() {
-  const [items, setItems] = useState<UrShortItem[] | null>(() => readUrShortsSeed<UrShortItem>()) // 🎬 2026-11-09 서버 시드(10편)를 첫 렌더에 — 아래 effect 가 ?all=1 전량으로 갈아끼운다(시드는 자리값)
+  const [items, setItems] = useState<UrShortItem[] | null>(() => peekShortsAll() ?? readUrShortsSeed<UrShortItem>()) // 🎬 2026-11-09 전량이 손에 있으면 그것(뷰어에서 돌아올 때 0 왕복)
+  const [seeded] = useState(() => items !== null) // 🎬 서버 첫 화면이 이미 보여 준 카드를 다시 '등장'시키지 않는다(utils/urshorts-first-screen.ts) // 🎬 2026-11-09 서버 시드(10편)를 첫 렌더에 — 아래 effect 가 ?all=1 전량으로 갈아끼운다(시드는 자리값)
   const [params, setParams] = useSearchParams()
   const goBack = useSafeBack('/')
   useEffect(() => {
     let alive = true
-    fetch('/api/urshorts?all=1')
-      .then((r) => r.json() as Promise<{ success?: boolean; data?: UrShortItem[] }>)
-      .then((r) => { if (alive) setItems(r?.success && Array.isArray(r.data) ? r.data : []) })
-      .catch(() => { if (alive) setItems([]) })
+    loadShortsAll().then((list) => { if (alive) setItems(list) }) // 🎬 2026-11-09 한 벌(shared/urshorts-list-cache) — 뷰어·상세 알약과 같은 요청
     return () => { alive = false }
   }, [])
 
@@ -138,7 +137,7 @@ export default function UrShortsBrowsePage() {
           ) : (
             <ul className="grid grid-cols-2 gap-x-2 gap-y-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {shown.map((it, i) => (
-                <li key={it.id} className="ur-vc-in" style={{ '--i': Math.min(i, 8) } as React.CSSProperties}>
+                <li key={it.id} className={seeded ? undefined : 'ur-vc-in'} style={{ '--i': Math.min(i, 8) } as React.CSSProperties}>
                   {/* 첫 줄만 즉시 로드 — 아래는 스크롤할 때. 2열이면 두 장이 첫 화면이다. */}
                   <BrowseCard item={it} eager={i < 4} /> {/* 🎬 2026-11-09 폰 첫 화면은 2열×2줄 — 넷까지 eager */}
                 </li>

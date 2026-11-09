@@ -12,8 +12,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
-  cssFirstApplies, routePreloadRel, cssFirstBootScript, earlyHintsLink, appendEdgeHeaders, DEFERRED_PRELOAD_REL, DEFERRED_ENTRY_TYPE, CSS_FIRST_BACKSTOP_MS,
-} from '@/worker/utils/css-first-boot'
+  cssFirstApplies, routePreloadRel, cssFirstBootScript, earlyHintsLink, appendEdgeHeaders, DEFERRED_PRELOAD_REL, DEFERRED_ENTRY_TYPE, CSS_FIRST_BACKSTOP_MS, firstScreenApplies, loaderFirstApplies } from '@/worker/utils/css-first-boot'
 
 function stripComments(s: string) {
   return s.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).join('\n')
@@ -105,21 +104,29 @@ describe('③ 문서 파싱 중이면 엔트리는 DOMContentLoaded 까지 기�
 describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', () => {
   const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
   const PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
-  it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228', '/vouchers', '/stays/2887', '/stays'])('적용: %s', (p) => {
+  it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228', '/vouchers', '/stays/2887', '/stays', '/map', '/urshorts', '/life', '/blog'])('첫 화면 표면(첫 화면 CSS 자격 + 지연): %s', (p) => {
     expect(cssFirstApplies(p, PHONE)).toBe(true)
+    expect(firstScreenApplies(p, PHONE)).toBe(true) // ⏳ 2026-11-09 로더-먼저가 생긴 뒤엔 이 줄이 "첫 화면 CSS 를 넣는다" 를 지킨다(cssFirstApplies 만으론 못 가른다)
   })
-  it.each(['/map', '/browse', '/u/jiwon1228/p/2887', '/seller', '/admin'])(
-    '미적용(첫 화면이 스크립트에 달림 — 실측상 나빠진다): %s', (p) => {
-      expect(cssFirstApplies(p, PHONE)).toBe(false)
-    })
+  // ⏳ 2026-11-09 "로더 먼저": 첫 화면이 없는 소비자 화면도 부팅 지연(앱 CSS media=print)은 건다 — 단 **첫 화면 CSS 는 안 넣는다**(firstScreenApplies 가 가른다).
+  it.each(['/browse', '/u/jiwon1228/p/2887', '/search', '/cart', '/videos'])('로더-먼저 표면(첫 화면 없음): %s — 지연 O · 첫 화면 CSS X', (p) => {
+    expect(cssFirstApplies(p, PHONE)).toBe(true)
+    expect(firstScreenApplies(p, PHONE)).toBe(false)
+  })
+  it.each(['/seller', '/admin', '/agency/login', '/embed/x', '/auth/kakao/start'])('미적용(대시보드·임베드·인증 — 자체 테마 첫 그림): %s', (p) => {
+    expect(cssFirstApplies(p, PHONE)).toBe(false); expect(loaderFirstApplies(p)).toBe(false)
+  })
+  it('🖥️ PC 홈은 첫 화면 CSS 자격(pc-home-first-screen) · 다른 PC 화면은 로더-먼저', () => {
+    expect(firstScreenApplies('/', PC)).toBe(true); expect(firstScreenApplies('/vouchers', PC)).toBe(false); expect(cssFirstApplies('/vouchers', PC)).toBe(true)
+  })
   // 🚪 2026-10-19 로그인 전 탭 셋은 서버가 그린다 — 단 세션 쿠키가 있으면(로그인) 그리지 않으므로 미적용.
-  it.each(['/u/me', '/user/profile', '/my-vouchers'])('로그인 전 탭: %s — 비로그인 적용 · 로그인 미적용', (p) => {
-    expect(cssFirstApplies(p, PHONE)).toBe(true)
-    expect(cssFirstApplies(p, PHONE, true)).toBe(false)
+  it.each(['/u/me', '/user/profile', '/my-vouchers'])('로그인 전 탭: %s — 비로그인 첫 화면 CSS · 로그인은 로더-먼저만', (p) => {
+    expect(firstScreenApplies(p, PHONE)).toBe(true)
+    expect(firstScreenApplies(p, PHONE, true)).toBe(false); expect(cssFirstApplies(p, PHONE, true)).toBe(true)
   })
-  it('PC 브라우저엔 걸지 않는다(서버가 PC 첫 화면을 안 그린다)', () => {
-    expect(cssFirstApplies('/', PC)).toBe(false)
-    expect(cssFirstApplies('/pass/2919', PC)).toBe(false)
+  it('PC 브라우저: 홈만 첫 화면 CSS(2026-11-09 pc-home) · 상세는 첫 화면 없음(로더-먼저만)', () => {
+    expect(firstScreenApplies('/', PC)).toBe(true); expect(cssFirstApplies('/', PC)).toBe(true)
+    expect(firstScreenApplies('/pass/2919', PC)).toBe(false); expect(cssFirstApplies('/pass/2919', PC)).toBe(true)
   })
 })
 
@@ -128,7 +135,7 @@ describe('④ 워커 배선', () => {
   const mod = stripComments(readFileSync('src/worker/utils/css-first-boot.ts', 'utf-8'))
   it('HTML 재작성기가 applyCssFirstBoot 로 시작하고, 적용 여부는 cssFirstApplies 한 곳이 정한다', () => {
     expect(worker).toMatch(/const cssFirst = cssFirstApplies\(url\.pathname, c\.req\.header\('user-agent'\) \|\| '', authed\);/)
-    expect(worker).toMatch(/let rb = (?:applyEarlyData\()?applyCssFirstBoot\(new HTMLRewriter\(\), nonce, cssFirst(?:, criticalCssFor\(url\.pathname\))?\)/) // 🏠 홈 전용 CSS 인자 · ⚡ 2026-11-05 로그인 화면 미리받기(early-data)가 바깥을 감싼다
+    expect(worker).toMatch(/let rb = (?:applyEarlyData\()?applyCssFirstBoot\(new HTMLRewriter\(\), nonce, cssFirst, firstScreenApplies\(url\.pathname, c\.req\.header\('user-agent'\) \|\| '', authed\) \? criticalCssFor\(url\.pathname\) : ''\)/) // ⏳ 2026-11-09 첫 화면 CSS 는 첫 화면 표면에만 // 🏠 홈 전용 CSS 인자 · ⚡ 2026-11-05 로그인 화면 미리받기(early-data)가 바깥을 감싼다
   })
   it('워커가 넣는 라우트 청크도 같은 판정(cssFirst)으로 rel 을 고른다 — 갈리면 프리로드가 영영 안 풀리거나 CSS 와 다시 다툰다', () => {
     expect(worker).toMatch(/<link rel="\$\{routePreloadRel\(cssFirst\)\}" crossorigin href=/)
@@ -138,7 +145,7 @@ describe('④ 워커 배선', () => {
   })
   it('부팅 스크립트는 head 맨 앞(prepend) — 스타일시트 뒤면 그 CSS 를 기다리느라 파싱을 막는다', () => {
     // 🎨 2026-10-14: 첫 화면 CSS <style> 과 묶어 한 번에 prepend — 부팅 스크립트가 그 묶음의 **맨 앞**이다.
-    expect(mod).toMatch(/const head = cssFirstBootScript\(nonce, crit\) \+/)
+    expect(mod).toMatch(/const head = cssFirstBootScript\(nonce, true\) \+/) // ⏳ 2026-11-09 백스톱은 늘 첫 화면용(앱 CSS 가 print 라 React 를 그 전에 켜면 안 된다)
     expect(mod).toMatch(/el\.prepend\(head, \{ html: true \}\)/)
   })
   it('부팅 스크립트에 nonce 가 붙는다(CSP strict-dynamic)', () => {
@@ -244,6 +251,8 @@ describe('⑤-2 서버가 그리는 첫 화면 = CSS 먼저 적용 표면 (2026-
     'src/worker/utils/life-first-screen.ts': '/life', // 2026-11-08 — 생활 허브
     'src/worker/utils/region-first-screen.ts': '/region/%EC%84%9C%EC%9A%B8', // 2026-11-08 — 지역 착지
     'src/worker/utils/pc-home-first-screen.ts': '/', // 2026-11-09 — PC 홈(같은 경로, 데스크톱 UA)
+    'src/worker/utils/urshorts-first-screen.ts': '/urshorts', // 2026-11-09 — 유어쇼츠 목록
+    'src/worker/utils/map-first-screen.ts': '/map', // 2026-11-09 — 지도 껍데기
   }
   it('ROOTS 의 모든 첫 화면 모듈에 대표 경로가 있다(새 첫 화면이 생기면 여기서 멈춘다)', async () => {
     // @ts-expect-error — .mjs 생성기(타입 없음)

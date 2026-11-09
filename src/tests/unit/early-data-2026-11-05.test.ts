@@ -62,7 +62,7 @@ describe('앱 — 꺼내 쓰기', () => {
   it('요청 계층이 실제로 이 함수를 먼저 거친다', () => {
     const src = readFileSync('src/lib/http-client.ts', 'utf8')
     expect(src).toMatch(/function dispatch\(config: InternalRequestConfig\): Promise<HttpResponse> \{\s*const early = takeEarlyData\(/)
-    expect(readFileSync('src/worker/index.ts', 'utf8')).toMatch(/applyEarlyData\(applyCssFirstBoot\(new HTMLRewriter\(\), nonce, cssFirst(?:, criticalCssFor\(url\.pathname\))?\), url\.pathname, authed, nonce\)/)
+    expect(readFileSync('src/worker/index.ts', 'utf8')).toMatch(/applyEarlyData\(applyCssFirstBoot\(new HTMLRewriter\(\), nonce, cssFirst, firstScreenApplies\(.*?\) \? criticalCssFor\(url\.pathname\) : ''\), url\.pathname, authed, nonce\)/) // ⏳ 2026-11-09 첫 화면 CSS 는 첫 화면 표면에만
   })
 })
 void vi

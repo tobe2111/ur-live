@@ -55,7 +55,7 @@ export const GUEST_CLS = {
 /** 카카오 말풍선 — 버튼 아이콘(브랜드 규정 모양). 페이지와 서버가 같은 path 를 쓴다. */
 export const KAKAO_BUBBLE_PATH = 'M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z'
 
-/** 마이 탭 마스코트 — `Udal mood="hello" size={56}` (원본 332×487). 서버는 같은 크기의 빈 칸만 그린다. */
+/** 마이 탭 마스코트 — `Udal mood="hello" size={56}` (원본 332×487). 서버도 같은 공개 주소(`UDAL_HELLO_SRC`)의 그림을 그린다(2026-11-09 — 종전 빈 칸은 그림을 2.3초로 미뤘다). */
 export const GUEST_MY_MASCOT = { width: 56, height: Math.round((56 * 487) / 332) } as const
 
 export const GUEST_COPY = {
@@ -100,9 +100,20 @@ export const GUEST_COPY = {
  *
  * 로그인 전 탭(이용권·유어샵)은 실제 판매 중인 상품을 끌어다 쓰지 않는다 — 예시는 예시로 보여야 하고
  * (실제 가게 이름·사진이 "남의 진열대"처럼 보이면 안 된다), 데이터 요청이 없으니 화면이 늦게 밀리지도 않는다.
- * 사진은 AI 로 만든 예시 사진(`src/assets/guest/example-*.webp`, `kind` 로 고른다 — 부품 `GuestExampleRows`). 실제 가게 사진이 아니다. 누를 수 없다(`to` 없음).
+ * 사진은 AI 로 만든 예시 사진(`GUEST_EXAMPLE_IMG` — `public/assets/guest/`, `kind` 로 고른다 — 부품 `GuestExampleRows`). 실제 가게 사진이 아니다. 누를 수 없다(`to` 없음).
  * ⚠️ 색 칸(`bg-lime-100` 등)으로 하지 말 것 — 이 디자인 시스템은 tailwind 색 이름을 회색(MONO)으로 접는다(첫 판이 회색 칸이 됐다).
  */
+/**
+ * 예시 줄 사진 — **공개 주소**(2026-11-09). 브런치·네일은 위 지갑 두 장과 **같은 파일**이라 서버 첫 화면이 이미 받아 둔 것을
+ * 앱이 그대로 쓴다(종전엔 번들 자산 `example-*.webp` 로 같은 그림을 다른 주소로 한 번 더 받았고, 그 첫 줄 사진이 2.5초에
+ * 와서 LCP 가 됐다 — 실측). 파스타만 새 파일이다.
+ */
+export const GUEST_EXAMPLE_IMG = {
+  cafe: '/assets/guest/wallet-brunch.webp',
+  beauty: '/assets/guest/wallet-nail.webp',
+  meal: '/assets/guest/example-pasta.webp',
+} as const
+
 export const GUEST_EXAMPLE_PASSES = [
   { store: '성수 브런치', name: '브런치 2인 세트', pct: 32, price: 25000, kind: 'cafe' },
   { store: '망원 네일', name: '젤 네일 기본', pct: 25, price: 30000, kind: 'beauty' },

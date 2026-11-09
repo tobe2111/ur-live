@@ -733,8 +733,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             </>
           ) : (
             <>
-              <p className="text-[15px] text-gray-500 dark:text-gray-400 font-medium">{t('restaurantMap.mapLoading')}</p>
-              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">{t('restaurantMap.sdkLoading')}</p>
+              <p className="text-[15px] text-gray-500 dark:text-gray-400 font-medium">{t('restaurantMap.mapLoading', { defaultValue: '지도를 불러오는 중...' })}</p>
+              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">{t('restaurantMap.sdkLoading', { defaultValue: '카카오맵 SDK 로딩 중' })}</p>
             </>
           )}
         </div>

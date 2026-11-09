@@ -250,7 +250,7 @@ Kling 3 ~82 · Veo 3.1 이미지→영상 ~90 · Kling Motion Control ~164(실�
 | `udal-pose-highfive.webp` | 〃 | 〃 |
 | `udal-pose-qr.webp` | 〃 | 〃 |
 | `udal-pose-stamp.webp` | 〃 | 〃 |
-| `udal-pose-stand.webp` | 〃 | 〃 |
+| `udal-pose-stand.webp` (`public/` — 2026-11-09 `src/assets` 에서 **이동**, 바이트 동일. 로그인 전 마이 서버 첫 화면이 같은 주소를 그린다) | 〃 | 〃 |
 | `udal-pose-wallet.webp` | 〃 | 〃 |
 | `udal-loader-v2.webp` | 확정 시안 ① 로더(2026-10-07) | 철칙 이전 확정분(대표 확정) |
 | `udal-social-phone.webp` (`public/`) | v6 시트 칸 6 폰+엄지 (`poses-2026-10-11/sheet-v6-gpt-color.jpg` 1536×1024 원본, gpt-image-2.5 · 설정서 그대로 · 한 장 시트 · `udal-color-match.py` 보정) — 누끼 `v6-cut-6.png` | `udal-qa.py --grid 3x2 --front 1` 수치 통과(털·톤·크림) · 수염 3 ✅ 눈썹 ✅ 다문 w 입 ✅ 젤리 없는 발 ✅ (눈은 감은 눈) — 대조표 `poses-2026-10-11/README.md` "v6 원본 해상도 검수" |

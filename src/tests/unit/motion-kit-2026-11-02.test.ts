@@ -409,7 +409,8 @@ describe('1️⃣1️⃣ 11차 (2026-11-02 대표 "전부 다 해주고")', () =
     expect(s).toContain('{formatWon(monthShown)}')
   })
   it('⑧ 유어쇼츠 목록 — 카드가 차례로', () => {
-    expect(R('src/pages/UrShortsBrowsePage.tsx')).toContain(`<li key={it.id} className="ur-vc-in" style={{ '--i': Math.min(i, 8) } as React.CSSProperties}>`)
+    // 🎬 2026-11-09 재조준: 서버 첫 화면이 이미 보여 준 카드(시드 첫 렌더)엔 안 건다 — 그때는 '등장' 이 아니라 '다시 커짐' 이다. 칩을 바꿔 새로 그려진 카드엔 그대로.
+    expect(R('src/pages/UrShortsBrowsePage.tsx')).toContain(`<li key={it.id} className={seeded ? undefined : 'ur-vc-in'} style={{ '--i': Math.min(i, 8) } as React.CSSProperties}>`)
   })
   it('⑨ 설정 스위치 — 누르는 동안 손잡이가 늘고 튀는 곡선으로 붙는다(동작 줄이기면 끔)', () => {
     for (const f of ['src/pages/user-profile/AccountControlsSection.tsx', 'src/pages/MyFollowsPage.tsx']) {

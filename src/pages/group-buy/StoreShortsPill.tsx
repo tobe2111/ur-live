@@ -4,6 +4,7 @@ import { Play } from 'lucide-react'
 import { runAfterLoad } from '@/lib/after-load'
 import type { UrShortItem } from '@/shared/urshorts'
 import { storeShortsFor, storeShortsHref } from '@/shared/urshorts-store'
+import { loadShortsAll } from '@/shared/urshorts-list-cache'
 
 /**
  * 🎬 2026-10-26 (대표 "이용권 상세 갤러리에 매장 숏폼 영상"): 상세 사진 위 `▶ 매장 영상` 버튼.
@@ -13,16 +14,8 @@ import { storeShortsFor, storeShortsHref } from '@/shared/urshorts-store'
  * - 영상이 없으면 아무것도 안 그린다. 누르면 유어쇼츠 뷰어가 **그 영상부터** 튼다(재생기는 거기 하나뿐).
  * - 목록은 탭 수명 동안 한 번만 받는다(상세를 여러 번 열어도 같은 요청).
  */
-let listPromise: Promise<UrShortItem[]> | null = null
-function loadShorts(): Promise<UrShortItem[]> {
-  if (!listPromise) {
-    listPromise = fetch('/api/urshorts?all=1')
-      .then((r) => r.json() as Promise<{ success?: boolean; data?: UrShortItem[] }>)
-      .then((r) => (r?.success && Array.isArray(r.data) ? r.data : []))
-      .catch(() => { listPromise = null; return [] })
-  }
-  return listPromise
-}
+// 🎬 2026-11-09 목록은 한 벌(`shared/urshorts-list-cache`) — 목록 화면·뷰어와 같은 요청을 다시 받지 않는다.
+const loadShorts = loadShortsAll
 
 export default function StoreShortsPill({ productId }: { productId: number | null | undefined }) {
   const [items, setItems] = useState<UrShortItem[]>([])

@@ -12,8 +12,8 @@ export default [
   {
     name: '🎬 화면이 시드를 안 읽는다(첫 렌더가 다시 로더)',
     file: 'src/pages/UrShortsBrowsePage.tsx',
-    find: 'useState<UrShortItem[] | null>(() => readUrShortsSeed<UrShortItem>())',
-    replace: 'useState<UrShortItem[] | null>(null)',
+    find: 'useState<UrShortItem[] | null>(() => peekShortsAll() ?? readUrShortsSeed<UrShortItem>())', // 2026-11-09 재조준: 전량 캐시(peek)가 앞에 붙었다
+    replace: 'useState<UrShortItem[] | null>(() => peekShortsAll())',
     test: T,
     why: '워커가 실어 준 10편이 HTML 안에 있는데 화면이 안 쓰면 실은 의미가 없다.',
   },

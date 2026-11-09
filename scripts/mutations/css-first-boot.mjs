@@ -41,20 +41,20 @@ export default [
   {
     // 🔁 2026-10-17 재조준 — 교환권 목록은 서버 첫 화면을 얻어 적용 표면이 됐다(css-first-boot.ts 머리말).
     //   불변식(스크립트에 달린 표면은 빼다)은 그대로이고, 남은 그런 표면인 지도로 옮겼다.
-    name: '🚦 적용 범위가 지도까지 넓어진다(첫 화면이 스크립트에 달린 표면)',
+    name: '🚦 첫 화면 CSS 자격이 검색까지 넓어진다(서버 첫 화면이 없는 표면 — 2026-11-09 재조준: 지도는 껍데기 첫 화면이 생겨 정당해졌다)',
     file: MOD,
     find: "return pathname === '/' || pathname === '/vouchers'",
-    replace: "return pathname === '/' || pathname === '/vouchers' || pathname === '/map'",
+    replace: "return pathname === '/' || pathname === '/vouchers' || pathname === '/search'",
     test: TEST,
-    why: '지도는 스크립트가 와야 내용이 뜬다 — 실측상 지도 5.4 → 6.1초로 늦어졌다.',
+    why: '검색은 서버 첫 화면이 없다 — 첫 화면 CSS 자격을 주면 모르는 표면에 폰 CSS 를 인라인하거나(무게) 전체판 폴백으로 돌아간다. 지연 자체는 로더-먼저가 건다.',
   },
   {
-    name: '🚦 PC 에도 건다(서버가 PC 첫 화면을 안 그린다)',
+    name: '🚦 PC 상세에도 첫 화면 CSS 를 넣는다(서버가 PC 상세 첫 화면을 안 그린다 — 2026-11-09 재조준: PC 홈만 예외)',
     file: MOD,
-    find: 'if (!shouldRenderMobileFirstScreen(ua)) return false',
-    replace: '',
+    find: "if (!shouldRenderMobileFirstScreen(ua)) return (pathname === '/' || pathname === '/index.html') || (!authed && guestTabOf(pathname) === 'login')",
+    replace: "if (!shouldRenderMobileFirstScreen(ua)) return true",
     test: TEST,
-    why: 'PC 첫 화면은 스크립트가 그린다 — CSS 를 기다리게 하면 손해만 본다.',
+    why: 'PC 홈 말고는 서버가 PC 첫 화면을 안 그린다 — 다른 PC 화면에 폰 표면 CSS 를 인라인하면 무게만 는다(로더-먼저만 걸어야 한다).',
   },
   {
     name: '🚦 SideBanner 가 다시 폰에서도 마운트된다',
