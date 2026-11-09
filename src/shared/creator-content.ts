@@ -119,8 +119,18 @@ export function coreStoreName(name: string | null | undefined): string {
  */
 export function mentionsStore(text: string, storeName: string): boolean {
   const core = coreStoreName(storeName)
-  if (core.length < 3) return false
+  if (core.length < 3) return shortNameMatch(text, storeName)
   return normStoreName(text).includes(core)
+}
+
+/**
+ * ✌️ **두 글자 이름 + 지점** — "단막 종각점" 은 '단막' 만으로는 아무 글에나 걸리지만 "단막 종각" 이 붙어 나오면 그 가게다
+ * (2026-11-10 대표 "콘텐츠 0개 가게 정리"). 지점 없는 두 글자 이름(노바·코니)은 여전히 매칭하지 않는다.
+ */
+export function shortNameMatch(text: string, storeName: string): boolean {
+  const core = coreStoreName(storeName)
+  const branch = branchOf(storeName)
+  return core.length === 2 && !!branch && normStoreName(text).includes(core + branch)
 }
 
 /**
@@ -183,7 +193,7 @@ const VISIT_WORDS = /(맛집|식당|먹방|카페|디저트|주점|술집|회식
  */
 export function titleNamesStore(title: string | null | undefined, storeName: string): boolean {
   const core = coreStoreName(storeName)
-  if (core.length <= 2) return false // 짧은 이름은 아무 제목에나 걸린다(mentionsStore 와 같은 기준)
+  if (core.length <= 2) return shortNameMatch(String(title ?? ''), storeName) // 짧은 이름은 지점까지 붙어야(mentionsStore 와 같은 기준)
   const raw = String(title ?? '')
   const t = normStoreName(raw)
   if (t.includes(core)) return true
@@ -193,6 +203,14 @@ export function titleNamesStore(title: string | null | undefined, storeName: str
     for (let n = core.length - 1; n >= 3; n--) if (t.endsWith(core.slice(0, n))) return true
   }
   return false
+}
+
+/**
+ * 📢 **가게 공지·이벤트 글** — 운영 일정·휴무·오픈 이벤트·채용(2026-11-10 실측: 블로그 이름이 영어라 가게 자기 글로 못 알아본
+ * "comiccode" 의 "[종료] 코믹코드 오픈 이벤트"). 손님 후기가 아니다.
+ */
+export function isNoticePost(title: string | null | undefined): boolean {
+  return /(\[\s*종료\s*\]|공지|운영\s*(안내|일정|시간)|영업\s*(안내|일정|시간\s*안내)|휴무|오픈\s*이벤트|이벤트\s*(안내|진행|오픈)|모집|채용|구인)/.test(String(title ?? ''))
 }
 
 /** 여러 가게를 한데 모은 글("BEST 5" · "TOP10" · "총정리" · "6곳 비교") — 한 가게 후기가 아니다. */
@@ -230,6 +248,7 @@ export function isGenericStoreName(storeName: string | null | undefined): boolea
 export function blogAutoShow(p: { title: string | null; summary: string | null; author: string | null }, storeName: string, address: string | null | undefined): boolean {
   if (isGenericStoreName(storeName)) return false
   if (isStoreOwnPost(p.author, storeName) || isVendorAuthor(p.author) || isListPost(p.title)) return false
+  if (isNoticePost(p.title)) return false
   if (!titleNamesStore(p.title, storeName)) return false
   return confidentMatch(`${p.title ?? ''} ${p.summary ?? ''}`, storeName, address)
 }

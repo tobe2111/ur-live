@@ -33,6 +33,8 @@ const STORES_PER_RUN = 5
 /** 대표 사진이 없는 보이는 글을 회차마다 이만큼 채운다(검색 API 는 사진을 안 준다 — 글 페이지의 og:image). */
 const THUMB_BACKFILL_MIN = 5
 const THUMB_BACKFILL_MAX = 28
+/** 🖼️ 유료 요금제(ADS_PLAN=paid — 인보케이션당 서브리퀘스트 1,000)면 회차당 60개(2026-11-10 대표 "사진 빨리 채우기"). 하루 1,440 — 네이버 직접 읽기 관측 한도(~8,000/일) 안. */
+export const THUMB_BACKFILL_PAID = 60
 /** 회차당 죽은 링크 확인 개수(지워졌거나 비공개가 된 글·영상을 숨긴다). */
 const DEAD_CHECK_PER_RUN = 3
 const NAVER_DISPLAY = 30
@@ -204,7 +206,11 @@ async function backfillThumbs(DB: D1Database, limit: number): Promise<number> {
         s.id DESC LIMIT ?`).bind(limit).all<{ id: number; ext_id: string }>()
   const rows = results ?? []
   if (!rows.length) return 0
-  const metas = await Promise.all(rows.map((r) => fetchPageMeta(`https://m.blog.naver.com/${r.ext_id}`).catch(() => null)))
+  // 10개씩 차례로 — 60개를 한꺼번에 네이버에 보내지 않는다(차단되면 측정 레인까지 같이 멎는다).
+  const metas: (Awaited<ReturnType<typeof fetchPageMeta>> | null)[] = []
+  for (let i = 0; i < rows.length; i += 10) {
+    metas.push(...await Promise.all(rows.slice(i, i + 10).map((r) => fetchPageMeta(`https://m.blog.naver.com/${r.ext_id}`).catch(() => null))))
+  }
   await DB.batch(rows.map((r, i) => DB.prepare(`UPDATE store_creator_content SET thumb_url = ?, embeddable = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
     .bind(metas[i]?.thumb_url ?? '', metas[i]?.embeddable ? 1 : 0, r.id)))
   return metas.filter((m) => m?.thumb_url).length
@@ -242,7 +248,7 @@ async function promoteVideoCandidates(DB: D1Database): Promise<number> {
  * 사장님·어드민이 넣거나 고른 것(source≠auto)·숨긴 것(hidden)은 안 건드린다.
  * 기준 버전마다 한 바퀴 — 커서(id)를 앞으로 밀며 회차당 400개씩. 기준을 바꾸면 `BLOG_RULES_VERSION` 을 올린다.
  */
-export const BLOG_RULES_VERSION = 3
+export const BLOG_RULES_VERSION = 4 // v4 2026-11-10: 공지·이벤트 글 제외 · 두 글자 이름+지점
 const REJUDGE_KEY = 'creator_content_blog_rejudge'
 const REJUDGE_PER_RUN = 400
 async function rejudgeAutoBlogs(DB: D1Database): Promise<{ demoted: number; promoted: number }> {
@@ -319,7 +325,9 @@ export async function runCreatorContentCollect(env: Env, now = Date.now()) {
   }
   // 🖼️ 사진 채우기는 **남는 예산만큼** — 이번 회차에 찾은 가게가 적으면 더 많이 채운다(무료 50/인보케이션).
   //   대략: 기본 D1 ~6 + 가게당 6 + 유튜브 승격 2 + 죽은 링크 5 + 유튜브 3 + 블로그 재판정 3, 나머지가 사진(배치 쓰기 1 포함).
-  const thumbRoom = Math.max(THUMB_BACKFILL_MIN, Math.min(THUMB_BACKFILL_MAX, 48 - 6 - (results ?? []).length * 6 - 2 - 5 - 3 - 3 - 2))
+  const paid = String((env as unknown as { ADS_PLAN?: string }).ADS_PLAN ?? '').trim().toLowerCase() === 'paid'
+  const thumbRoom = paid ? THUMB_BACKFILL_PAID
+    : Math.max(THUMB_BACKFILL_MIN, Math.min(THUMB_BACKFILL_MAX, 48 - 6 - (results ?? []).length * 6 - 2 - 5 - 3 - 3 - 2))
   const thumbs = await backfillThumbs(DB, thumbRoom).catch(() => 0)
   const dead = await hideDeadLinks(DB).catch(() => 0)
   const promoted = await promoteVideoCandidates(DB).catch(() => 0)

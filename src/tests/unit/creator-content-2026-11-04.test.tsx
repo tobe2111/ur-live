@@ -108,7 +108,7 @@ describe('②-c 가게 자기 글 — 다녀온 사람들이 아니다', () => {
   })
   it('가게 글은 이름·동네가 맞아도 자동 공개되지 않는다', () => {
     const r = pickBlogCandidates([
-      { title: '인계동 APM휘트니스 수원점 운영 안내', link: 'https://blog.naver.com/apm_fit/223456789012', description: '인계동', bloggername: 'APM휘트니스 수원점', postdate: '20261104' },
+      { title: '인계동 APM휘트니스 수원점 PT 프로그램 소개', link: 'https://blog.naver.com/apm_fit/223456789012', description: '인계동', bloggername: 'APM휘트니스 수원점', postdate: '20261104' }, // 공지 낱말 없이 — 가게 글 판정 하나로만 갈리게(2026-11-10)
       { title: '인계동 APM휘트니스 수원점 PT 후기', link: 'https://blog.naver.com/someone/223456789013', description: '인계동', bloggername: '운동하는 직장인', postdate: '20261104' },
     ], 'APM휘트니스 수원점', '경기 수원시 팔달구 인계동 1')
     expect(r.map((x) => x.confident)).toEqual([false, true])
