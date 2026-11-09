@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useHomeBanners, type HomeBanner } from '@/components/home/useHomeBanners'
 import { BannerWrap, bannerLink } from '@/components/home/HomeBannerStrip'
+import { PC_HOME_FS as F, PC_HERO_IMG, PC_HERO_MAX } from '@/shared/pc-home-first-screen' // 🖥️ 2026-11-09 서버 첫 화면과 같은 상수
 
 /**
  * 🖥️ PC 홈 맨 위 — 큰 배너 1장 + 오른쪽 작은 배너 2장 (2026-10-14 대표 확정 "시안 4" — 위는 시안 3).
@@ -33,12 +34,12 @@ function reducedMotion(): boolean {
 }
 
 function Slide({ b, big, eager, hidden }: { b: HomeBanner; big: boolean; eager: boolean; hidden?: boolean }) {
-  const src = b.image_url ? cfImage(b.image_url, { width: big ? 1100 : 560, quality: 76 }) : ''
+  const src = b.image_url ? cfImage(b.image_url, big ? PC_HERO_IMG.big : PC_HERO_IMG.small) : ''
   return (
     <BannerWrap
       link={bannerLink(b)}
       clone={hidden}
-      className="absolute inset-0 flex flex-col justify-end isolate overflow-hidden rounded-2xl px-6 pb-5"
+      className={F.slide}
       style={src ? undefined : { background: 'var(--brand-grad)' }}
     >
       {src && (
@@ -47,21 +48,21 @@ function Slide({ b, big, eager, hidden }: { b: HomeBanner; big: boolean; eager: 
           loading={eager ? 'eager' : 'lazy'}
           fetchPriority={eager ? 'high' : 'auto'}
           decoding="async"
-          className="absolute inset-0 -z-10 w-full h-full object-cover"
+          className={F.img}
           onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
         />
       )}
-      {src && <div className="absolute inset-x-0 bottom-0 h-[70%] -z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent" aria-hidden="true" />}
-      <strong className={`block max-w-[70%] font-semibold leading-[1.25] tracking-[-.02em] line-clamp-2 text-white dark:text-white [text-shadow:0_1px_8px_rgba(0,0,0,.25)] ${big ? 'text-[20px]' : 'text-[16px]'}`}>{b.title}</strong>
+      {src && <div className={F.grad} aria-hidden="true" />}
+      <strong className={`${F.titleBase} ${big ? F.titleBig : F.titleSmall}`}>{b.title}</strong>
       {b.description && (
-        <span className={`block max-w-[70%] mt-1 line-clamp-1 text-white/90 dark:text-white/90 ${big ? 'text-[15px]' : 'text-[12px]'}`}>{b.description}</span>
+        <span className={`${F.descBase} ${big ? F.descBig : F.descSmall}`}>{b.description}</span>
       )}
     </BannerWrap>
   )
 }
 
 export default function PcHeroBanners() {
-  const banners = useHomeBanners('strip').slice(0, 5)
+  const banners = useHomeBanners('strip').slice(0, PC_HERO_MAX)
   const n = banners.length
   const [i, setI] = useState(0)
   const [paused, setPaused] = useState(false)
@@ -86,13 +87,13 @@ export default function PcHeroBanners() {
     <section
       aria-roledescription="carousel"
       aria-label="기획전 배너"
-      className={`grid gap-3 h-[clamp(240px,24vw,340px)] ${side.length ? 'grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : 'grid-cols-1'}`}
+      className={`${F.sectionBase} ${side.length ? F.sectionCols2 : F.sectionCols1}`}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onFocusCapture={() => setHover(true)}
       onBlurCapture={() => setHover(false)}
     >
-      <div className="relative min-w-0">
+      <div className={F.bigWrap}>
         {/* 큰 자리 — 장마다 겹쳐 두고 보이는 장만 불투명(교차 페이드). 안 보이는 장은 탭 순서에서 뺀다. */}
         {banners.map((b, k) => (
           <div key={b.id} className={`absolute inset-0 transition-opacity duration-500 ${k === i ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} aria-hidden={k !== i}>
@@ -125,10 +126,10 @@ export default function PcHeroBanners() {
         )}
       </div>
       {side.length > 0 && (
-        <div className={`grid gap-3 min-w-0 ${side.length === 2 ? 'grid-rows-2' : 'grid-rows-1'}`}>
+        <div className={`${F.sideGrid} ${side.length === 2 ? F.sideRows2 : F.sideRows1}`}>
           {side.map((k) => {
             const b = at(k)
-            return <div key={`${k}-${b.id}`} className="relative min-h-0"><Slide b={b} big={false} eager={false} /></div>
+            return <div key={`${k}-${b.id}`} className={F.sideCell}><Slide b={b} big={false} eager={false} /></div>
           })}
         </div>
       )}

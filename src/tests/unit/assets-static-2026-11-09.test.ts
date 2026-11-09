@@ -20,7 +20,7 @@ describe('부품 파일 정적 서빙', () => {
     const block = (/\n\/assets\/\*\n((?:[ \t]+[^\n]*\n)+)/.exec(h) || [])[1] || ''
     for (const k of ['! Cache-Control', '! Pragma', '! Expires']) expect(block, k).toContain(k)
     expect(block).toMatch(/Cache-Control: public, max-age=31536000, immutable/)
-    expect(block).toMatch(/Cloudflare-CDN-Cache-Control: max-age=300/)
+    expect(block).toMatch(/Cloudflare-CDN-Cache-Control: max-age=31536000/) // 2026-11-09 저녁: 5분은 회귀였다(엣지가 5분마다 비어 부품이 매번 MISS) — _headers 주석
   })
   it('③ 부트가드 bustReload 가 부품을 다시 받은 뒤 이동한다', () => {
     const html = readFileSync('index.html', 'utf8')

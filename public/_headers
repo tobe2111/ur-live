@@ -36,14 +36,16 @@
 # 📦 2026-11-09 /assets/* 가 워커를 안 거치고 Pages 정적으로 나간다(_routes.json exclude). 그래서 이 블록이
 #   **처음으로 실제 적용된다** — 맨 위 `/*` 의 no-store 세 헤더를 `!` 로 떼지 않으면 합쳐져서 캐시가 꺼진다
 #   (`/static/fonts/*` 가 2026-10-12 에 실측으로 당한 것과 같은 함정).
-#   엣지(공유) 캐시는 5분으로 묶는다 — 배포 순간 없는 부품 자리에 SPA HTML 이 나가도 그 지역 전체가 1년간
-#   묶이지 않게. 브라우저 쪽은 index.html 자가복구가 cache:'reload' 로 다시 받아 덮는다.
+#   🩸 2026-11-09 저녁 정정(대표 "전체적으로 느려진 것 같은데") — 엣지 5분은 **회귀**였다. 해시 부품은 바뀌지 않는데 5분마다
+#   엣지가 비워져, 손님이 드문 지역(한국→LAX)에선 거의 모든 부품이 MISS(IAD 실측: MISS 0.41s ↔ HIT 0.12s · 하루 16회 배포로
+#   매번 전부 새로 받았다). 1년으로 올린다. 배포 순간 "없는 부품 자리의 SPA HTML" 이 1년 묶이는 위험은 **옛 해시 주소**에만
+#   생기고, 그 주소를 찾는 건 옛 HTML 을 든 손님뿐이라 복구 reload 뒤엔 아무도 다시 안 찾는다(새 HTML 은 새 해시).
 /assets/*
   ! Cache-Control
   ! Pragma
   ! Expires
   Cache-Control: public, max-age=31536000, immutable
-  Cloudflare-CDN-Cache-Control: max-age=300
+  Cloudflare-CDN-Cache-Control: max-age=31536000
 
 # 🔤 2026-10-12 (대표 승인 "둘 다 자가호스팅" — 라이브 실측): 자가호스팅 폰트에 1년 immutable.
 #   그 전까지 `/static/fonts/*` 는 맨 위 `/*` 의 `no-cache, no-store, must-revalidate` 에 걸려 있었고

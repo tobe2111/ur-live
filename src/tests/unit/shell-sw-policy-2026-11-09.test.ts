@@ -18,7 +18,7 @@ function loadPolicy() {
   const self: Record<string, unknown> = { location: { origin: ORIGIN }, addEventListener: () => {}, clients: {}, registration: {} }
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
   new Function('self', 'caches', 'fetch', 'Response', 'Request', 'URL', 'Headers', SRC)(self, {}, () => {}, class {}, class { url: string; constructor(u: string) { this.url = u } }, URL, Headers)
-  return self.__urShellPolicy as { shouldHandle: (u: string, m: string, mode: string, o: string) => boolean; isDenied: (p: string) => boolean; isAllowed: (p: string) => boolean; version: string }
+  return self.__urShellPolicy as { shouldHandle: (u: string, m: string, mode: string, o: string) => boolean; isDenied: (p: string) => boolean; isAllowed: (p: string) => boolean; version: string; offlineHtml: string }
 }
 const P = loadPolicy()
 const nav = (path: string, origin = ORIGIN) => P.shouldHandle(origin + path, 'GET', 'navigate', ORIGIN)
@@ -61,6 +61,21 @@ describe('② 쿼리·메서드·모드·출처', () => {
     for (const p of ['/', '/vouchers', '/stays', '/life', '/pass/2919', '/group-buy/2919', '/vouchers/12', '/stays/5', '/u/jiwon1228', '/region/서울', '/blog', '/blog/some-post']) expect(nav(p), p).toBe(true)
     for (const p of ['/map', '/search', '/browse', '/products/3', '/about', '/u/me']) expect(nav(p), p).toBe(false)
   })
+})
+
+describe('⑦ 오프라인 안내(2026-11-09 ④) — 허용 경로의 끊김만, 우리 화면으로', () => {
+  it('네트워크 fetch 가 던지면 offlineResponse — 저장본 분기 뒤에만(저장본이 있으면 그것이 먼저)', () => {
+    expect(SRC).toMatch(/if \(cached\) \{[\s\S]{0,200}return markCached\(cached\)[\s\S]{0,120}try \{ res = await fetchShell\(u\.href\) \} catch \(e\) \{ return offlineResponse\(\) \}/)
+    expect(SRC).toMatch(/'X-Shell-Served': 'offline'/)
+    expect(SRC).toMatch(/'Cache-Control': 'no-store'/) // 안내 화면이 저장되면 안 된다
+  })
+  it('안내 화면은 한국어 · 다시 시도 버튼 · 외부 요청 0 (글자·색이 파일 안에서 끝난다)', () => {
+    const h = P.offlineHtml
+    expect(h).toContain('인터넷 연결이 끊겼어요'); expect(h).toContain('onclick="location.reload()"'); expect(h).toContain('lang="ko"')
+    expect(h).not.toMatch(/https?:\/\//); expect(h).not.toMatch(/<(script|link|img)\b/)
+    expect(h).toContain('#1C69EF') // 브랜드 블루(--brand) — SW 는 CSS 토큰을 못 읽어 리터럴
+  })
+  it('저장소 이름이 v2 로 올라갔다(옛 저장본은 activate 때 지운다)', () => { expect(P.version).toBe('v2') })
 })
 
 describe('③ 리다이렉트·fetch 모양 · 배선', () => {

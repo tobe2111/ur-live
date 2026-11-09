@@ -14,6 +14,8 @@
  *      "a redirected response was used for a request whose redirect mode is not follow" 가 바로 이 자리다.
  *   ⑤ 킬스위치: 페이지가 `{type:'ur-shell-off'}` 를 보내면 저장소를 지우고 **자기 자신을 해제**한다(`lib/shell-sw.ts` 가 `platform_settings.shell_sw_enabled` 를 보고 보낸다).
  *   ⑥ 저장본에는 `<meta name="ur-shell-cache" content="1">` 를 끼워 돌려준다 — 앱이 이걸 보고 모든 쿼리를 한 번 새로 받는다(옛 시드가 30분 신선으로 남지 않게).
+ *   ⑦ 오프라인(2026-11-09 대표 "1~4번 모두 진행" ④): **허용 경로**의 네트워크가 끊기면 저장본이 있으면 그것, 없으면 우리 안내 화면
+ *      (`OFFLINE_HTML`, 다시 시도 버튼)을 돌려준다 — 브라우저 기본 오류 대신. 허용 밖 경로는 ②대로 투명(브라우저가 평소대로).
  *
  * ## 로그인 상태
  *   서버는 로그인 여부(`ur_session` 쿠키)에 따라 다른 첫 화면을 그린다. SW 는 HttpOnly 쿠키를 못 읽으므로 워커가 응답 헤더
@@ -24,7 +26,7 @@
  *   ⚠️ 이 파일은 모듈이 아니다(classic SW). import 를 쓰지 말 것.
  */
 /* eslint-disable no-restricted-globals */
-var SHELL_VERSION = 'v1'
+var SHELL_VERSION = 'v2' // v2: 2026-11-09 오프라인 안내(⑦)
 var SHELL_CACHE = 'ur-shell-' + SHELL_VERSION
 var META_URL = '/__ur-shell-meta'
 var MAX_ENTRIES = 40
@@ -119,6 +121,16 @@ async function markCached(res) {
     return new Response(marked, { status: 200, headers: h })
   } catch (e) { return res }
 }
+/** ⑦ 오프라인 안내 — 저장본도 없을 때. 글자·색은 이 파일 안에서 끝난다(네트워크 0). */
+var OFFLINE_HTML = '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>유어딜 — 연결이 끊겼어요</title>' +
+  '<style>html,body{margin:0;height:100%;background:#F8F7FC;color:#16181C;font-family:Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif}@media(prefers-color-scheme:dark){html,body{background:#11141C;color:#F8F7FC}}' +
+  '.w{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 24px;box-sizing:border-box}.l{font-weight:800;font-size:24px;letter-spacing:-.02em;color:#1C69EF}.l i{font-style:normal;color:#1C69EF}' +
+  'h1{font-size:20px;font-weight:600;margin:28px 0 8px}p{margin:0;font-size:15px;opacity:.72;line-height:1.5}button{margin-top:24px;height:48px;padding:0 28px;border:0;border-radius:12px;background:#1C69EF;color:#fff;font-size:16px;font-weight:600;cursor:pointer}</style></head>' +
+  '<body><div class="w"><div class="l">urdeal<i>.</i></div><h1>인터넷 연결이 끊겼어요</h1><p>연결을 확인한 뒤 다시 시도해 주세요.<br>마지막으로 본 화면은 연결되면 바로 돌아옵니다.</p>' +
+  '<button type="button" onclick="location.reload()">다시 시도</button></div></body></html>'
+function offlineResponse() {
+  return new Response(OFFLINE_HTML, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Shell-Served': 'offline' } })
+}
 async function fetchShell(url) {
   // 🔴 새 Request 로 받는다 — navigate 요청(redirect mode 'manual')을 그대로 fetch 하지 않는다(사고 ④).
   return fetch(url, { credentials: 'include', redirect: 'follow', cache: 'no-store' })
@@ -165,7 +177,8 @@ self.addEventListener('fetch', function (event) {
       event.waitUntil(refresh(cache, pathname, u.href))
       return markCached(cached)
     }
-    var res = await fetchShell(u.href)
+    var res
+    try { res = await fetchShell(u.href) } catch (e) { return offlineResponse() } // ⑦ 끊김 — 저장본은 위에서 이미 없었다 → 안내 화면
     if (res.redirected) return Response.redirect(res.url, 302) // 사고 ④ — 리다이렉트된 응답을 navigate 에 그대로 주지 않는다
     if (isCacheableHtml(res)) {
       var v = variantOf(res)
@@ -176,4 +189,4 @@ self.addEventListener('fetch', function (event) {
 })
 
 // 시험이 이 파일을 평가해 정책을 대조한다.
-self.__urShellPolicy = { shouldHandle: shouldHandle, isDenied: isDenied, isAllowed: isAllowed, version: SHELL_VERSION }
+self.__urShellPolicy = { shouldHandle: shouldHandle, isDenied: isDenied, isAllowed: isAllowed, version: SHELL_VERSION, offlineHtml: OFFLINE_HTML }
