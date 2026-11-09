@@ -178,8 +178,8 @@ promoRoutes.delete('/:id', requireAuth(), auditLog('promo.delete'), async (c) =>
 })
 
 // ── GET /preview/:code — 코드 미리보기 (적용 가능 여부) ──
-promoRoutes.get('/preview/:code', async (c) => {
-  const code = c.req.param('code').toUpperCase()
+promoRoutes.get('/preview/:code', rateLimit({ action: 'promo_preview', max: 30, windowSec: 300 }), async (c) => { // 🔐 2026-11-09 로그인 없이 코드를 대 보는 것 — IP 당 5분 30회
+  const code = (c.req.param('code') ?? '').toUpperCase()
   if (!/^[A-Z0-9]{4,20}$/.test(code)) {
     return c.json({ success: false, error: '잘못된 코드 형식' }, 400)
   }
