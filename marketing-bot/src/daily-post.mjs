@@ -223,6 +223,9 @@ async function main() {
       }
       if (r) {
       runLog.push({ platform: 'instagram', id: r.id, media_type: r.media_type, media_set: media.set, series: series.id, field_note: fieldNote?.number, generated: gen ? { source: gen.source, credit: gen.credit, title: gen.title } : undefined, hook: hook.id, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
+      // ---- Facebook 페이지 — 2026-11-09 대표 "페이스북 페이지에는 올리지 않아도 돼. 인스타랑 스레드만" → 기본 끔.
+      //      다시 켜려면 워크플로 env 에 FB_POST_ENABLED=1.
+      if (process.env.FB_POST_ENABLED === '1') {
       // ---- Facebook 페이지 (IG 게시 시 같은 미디어/캡션 + 링크; 멀티포토·영상 실패 시 단일 이미지) ----
       const fcid = cid('facebook');
       const flink = utmLink(isPromo ? product : target, 'facebook', T.campaign || track, fcid, now);
@@ -231,6 +234,7 @@ async function main() {
         if (!f) log('Facebook: META_FB_PAGE_TOKEN 없음 → 건너뜀');
         else runLog.push({ platform: 'facebook', id: f.post_id || f.id, content_id: fcid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), link: flink, dry: DRY || undefined });
       } catch (e) { log(`Facebook 게시 실패: ${e.message}`); }
+      } else log('Facebook: 꺼짐(대표 지시 2026-11-09) → 건너뜀');
       if (fieldNote) await closeFieldNote(fieldNote, [r.id ? `인스타 게시 id ${r.id}` : ''].filter(Boolean));
       }
       }
