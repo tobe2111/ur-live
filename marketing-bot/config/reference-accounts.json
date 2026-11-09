@@ -1,9 +1,31 @@
 {
-  "_note": "벤치마크용 참고 계정 (읽기 전용 수집). username 은 Instagram 핸들(@ 제외). verified=false 는 핸들 미확인 — 첫 실행 결과의 not found 여부로 확인 후 수정.",
+  "_note": "벤치마크용 참고 계정 (읽기 전용 수집). username 은 Instagram 핸들(@ 제외). 2026-11-09 대표가 지정한 3곳(naver.plus.store · toss.place · nol.always) 추가 — 공통점: 큰 사진 + 굵은 제목 두 줄, 이름 붙은 시리즈. tossplace 는 잘못된 핸들이라 toss.place 로 교체.",
   "limit": 12,
   "accounts": [
-    { "label": "배민사장님", "username": "baemin_ceo", "verified": false },
-    { "label": "토스플레이스", "username": "tossplace", "verified": false },
-    { "label": "캐치테이블", "username": "catchtable_official", "verified": false }
+    {
+      "label": "네이버플러스 스토어",
+      "username": "naver.plus.store",
+      "verified": true
+    },
+    {
+      "label": "토스플레이스",
+      "username": "toss.place",
+      "verified": true
+    },
+    {
+      "label": "NOL(야놀자)",
+      "username": "nol.always",
+      "verified": true
+    },
+    {
+      "label": "배민사장님",
+      "username": "baemin_ceo",
+      "verified": false
+    },
+    {
+      "label": "캐치테이블",
+      "username": "catchtable_official",
+      "verified": false
+    }
   ]
 }
