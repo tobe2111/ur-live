@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { prefersReducedMotion } from './motion'
 import './premium.css'
+import { LANDING_HERO_SRC } from '@/shared/landing-photo' // 📸 워커 preload 와 같은 주소(2026-11-09)
 
 /** ⑥ 제목 글꼴 — 첫 진입에 한 번 `<link>` 를 붙인다. 앱의 다른 화면은 이 글꼴을 받지 않는다. */
 export const LANDING_FONT_HREF =
@@ -37,9 +38,9 @@ export function useLandingFont() {
  * 사진 주소는 `LANDING_PHOTOS` 한 곳에서 고른다(실제 매장 촬영본으로 바꿀 때 한 줄만 바뀐다).
  */
 export const LANDING_PHOTOS = {
-  partners: { src: '/static/partners/deal-photo.jpg', position: '50% 50%', alt: '유어딜 입점 매장의 돈가스 한 상' },
-  influencer: { src: '/static/partners/deal-photo.jpg', position: '20% 30%', alt: '동네 맛집 메뉴 사진' },
-  about: { src: '/static/partners/deal-photo.jpg', position: '75% 60%', alt: '유어딜에서 파는 동네 가게 메뉴' },
+  partners: { src: LANDING_HERO_SRC, position: '50% 50%', alt: '유어딜 입점 매장의 돈가스 한 상' },
+  influencer: { src: LANDING_HERO_SRC, position: '20% 30%', alt: '동네 맛집 메뉴 사진' },
+  about: { src: LANDING_HERO_SRC, position: '75% 60%', alt: '유어딜에서 파는 동네 가게 메뉴' },
 } as const
 
 export function PhotoHero({ photo, className = '', children }: {
