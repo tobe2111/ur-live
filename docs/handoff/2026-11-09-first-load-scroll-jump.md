@@ -170,3 +170,7 @@
 - 기록 `2026-11-09-pc-list-first-screens.md`. detail 처럼 `shouldRenderMobileFirstScreen` 을 **조건에서 빼고** 빌더 선택/인자로 옮겼다(가드 3건 재조준). 교환권 가드의 `min-width:1024px` 는 폰 본문에만 남는다.
 - 🩸 **상단 네비 예약을 잊기 쉽다** — PC 상세 첫 판에 빠져 auto-merge 를 내려 고쳤다(§28). PC 첫 화면 = 반드시 `PC_HOME_FS.topnav*` 부터. 가드가 각 표면에서 맨 앞 자식을 대조한다.
 - 배포 뒤 판정: PC UA `lcpel.cjs https://urdeal.kr/vouchers pc`(종전 FCP 2.27s) · `/u/jiwon1228 pc`(2.19s) · CLS < 0.01.
+
+## 31. [E4] #2275 PC 상세 첫 화면 배포 뒤 판정
+- PC(1440px·4G·CPU 4배) `/pass/2919`: LCP 요소가 **서버가 그린 큰 사진**(1280 폭) — HTML 1,119ms 도착 → 제목 1,472 → 사진 **1,808ms**(종전 2,470 — 앱 뒤) · 두 번째 회차 HTML 761 → 사진 **1,184ms**. vitals: FCP 664 · LCP **864** · **CLS 0.0019**(3.98s 에 공유 버튼 줄 0.0017 — 첫 화면 밖, 종전에도 있던 것). 가로 밀림 0(aside 예약 효과).
+- 🔎 **PC 가 폰 히어로(960 폭)도 받는다** — React `DetailGallery` 가 폰 슬라이드 블록(`lg:hidden`)의 `<img>` 를 PC 에도 렌더해 `display:none` 인 채 다운로드(두 번째 회차 3,630ms 에 960 요청). 서버 첫 화면과 무관한 **기존 낭비**(PC 상세마다 수백 KB). 처방 후보: `DetailGallery` 가 `isDesktop` 이면 폰 블록을 렌더하지 않기(파일은 잠금표 밖). 다음 PR.
