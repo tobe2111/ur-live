@@ -133,7 +133,12 @@ export function confidentMatch(text: string, storeName: string, address: string 
   // 체인점은 블로그도 지점명까지(2026-11-09 — 영상과 같은 규칙. 같은 동네의 다른 지점 글이 섞이지 않게).
   const branch = branchOf(storeName)
   // "명륜" 만 보면 동네 이름(명륜동)에도 걸린다 — 지점 표기 "명륜점" 으로 본다.
-  if (branch && !normStoreName(text).includes(`${branch}점`)) return false
+  if (branch && !branchMentioned(text, branch)) return false // 블로그
+  return mentionsArea(text, address)
+}
+
+/** 글·영상에 가게 동네(동·읍·면·구·군, 없으면 시)가 나오는가. */
+export function mentionsArea(text: string, address: string | null | undefined): boolean {
   const words = String(address ?? '').split(/\s+/).filter(Boolean)
   const areas = words.filter((w) => /(동|읍|면|구|군)$/.test(w) && w.length >= 2).map((w) => normStoreName(w))
   // 🏝️ 도로명 주소라 구·동이 없는 곳("제주시 연북로", "강릉시 하슬라로")은 시로 본다(2026-11-09 실측: 이런 가게 후기가
@@ -144,6 +149,29 @@ export function confidentMatch(text: string, storeName: string, address: string 
   // "연산동" 은 글에서 "연산" 으로도 쓰인다 — 끝 글자를 뗀 형태(2자 이상)도 동네로 본다.
   return areas.some((a) => t.includes(a) || (a.length >= 3 && t.includes(a.slice(0, -1))))
 }
+
+/**
+ * 🗺️ **다른 지역 이야기인가** — 가게 주소에 없는 지역 이름이 나온다(2026-11-10 실측: 경주 '꾸꾸풀빌라' 이용권에 "제주도 꾸꾸풀빌라" 영상,
+ * 서울 마포 '띵크프룻' 이용권에 부천 지점 영상). 같은 이름의 다른 지역 가게다.
+ */
+const REGION_WORDS = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '제주', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남',
+  '수원', '부천', '성남', '분당', '용인', '고양', '일산', '안양', '안산', '화성', '동탄', '평택', '김포', '파주', '의정부', '남양주', '천안', '청주', '전주',
+  '포항', '창원', '김해', '경주', '강릉', '속초', '춘천', '원주', '여수', '순천', '목포', '구미', '양양', '가평', '청평']
+export function mentionsOtherRegion(text: string, address: string | null | undefined): boolean {
+  const addr = String(address ?? '')
+  if (!addr.trim()) return false
+  // 음식 이름에 붙은 지역은 지역 이야기가 아니다("성수에서 만난 제주돼지", "춘천닭갈비").
+  const t = String(text ?? '').replace(/(제주|제주산)\s*흑?돼지|제주산|부산\s*어묵|전주\s*비빔밥|춘천\s*닭갈비|대구\s*막창|수원\s*왕?갈비|의정부\s*부대찌개|안동\s*찜닭/g, '')
+  return REGION_WORDS.some((r) => t.includes(r) && !addr.includes(r))
+}
+
+/** 🎭 가게 방문이 아닌 맥락 — 공연·드라마·관광청 캠페인·부동산(실측: 뮤지컬 '달빛, 한스푼', 대만관광청 '대만족'). */
+export function isOffTopicVideo(text: string): boolean {
+  return /(뮤지컬|연극|배우|공연|드라마|예능|관광청|캠페인|부동산|중개|아트홀)/.test(String(text ?? ''))
+}
+
+/** 가게에 다녀온 이야기임을 보여 주는 낱말(동네가 안 나오는 영상의 대신 증거). */
+const VISIT_WORDS = /(맛집|식당|먹방|카페|디저트|주점|술집|회식|점심|저녁|메뉴|후기|리뷰|방문|다녀|숙소|펜션|리조트|호텔|풀빌라|글램핑|캠핑|여행|숙박|네일|왁싱|피부|속눈썹|헤어|에스테틱|체험|클래스|방탈출|클라이밍|헬스|필라테스|요가|사진관|만화카페|브이로그|vlog|초밥|스시|오마카세|고기|삼겹살|흑돼지|한우|국밥|족발|파스타|브런치|샤브|돈까스|라멘|커피|빵|베이커리|와인|바베큐|먹어|foodie|cafe|dessert)/i
 
 /**
  * 🏷️ **제목이 이 가게를 가리키는가** (2026-11-09 대표 *"연관 없는 블로그도 있네. 정확성이 많이 떨어져?"*).
@@ -206,11 +234,19 @@ export function blogAutoShow(p: { title: string | null; summary: string | null; 
   return confidentMatch(`${p.title ?? ''} ${p.summary ?? ''}`, storeName, address)
 }
 
+/** 지점이 글에 나오는가 — "명륜점" 또는 본점이면 "성수본점"·"성수 본점"(branchOf 가 '본' 을 뗀다). */
+export function branchMentioned(text: string, branch: string): boolean {
+  const t = normStoreName(text)
+  return t.includes(`${branch}점`) || t.includes(`${branch}본점`)
+}
+
 /** 지점명 — "샤브올데이 부산명륜점" → "명륜", "보광정 이태원점" → "이태원". 지점이 없으면 null. 앞의 시·도 이름은 뗀다. */
 export function branchOf(storeName: string | null | undefined): string | null {
   const m = String(storeName ?? '').trim().match(/\s+\(?([가-힣A-Za-z0-9]{1,10}?)(?:지점|점)\)?$/)
   if (!m) return null
   const b = m[1].replace(/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)/, '')
+    // "성수본점" 의 '본' 은 본점 표시다 — 지점명은 "성수"(글에서 "성수점"·"성수 본점" 둘 다 쓴다).
+    .replace(/(.{2,})본$/, '$1')
   return b.length >= 2 ? normStoreName(b) : (m[1].length >= 2 ? normStoreName(m[1]) : null)
 }
 
@@ -220,12 +256,18 @@ export function branchOf(storeName: string | null | undefined): string | null {
  * 검색 자체를 "가게 이름 + 동네" 로 했으므로 — 이름이 맞으면 보이고, **지점이 있는 가게는 지점명까지** 맞아야 한다
  * (같은 체인 다른 지점 영상: 실측 "샤브올데이 수영점" 영상이 명륜점에 걸렸다).
  */
-export function videoMatch(text: string, storeName: string): boolean {
+export function videoMatch(text: string, storeName: string, address?: string | null): boolean {
   // 업종 이름 가게("홍대돈까스")는 영상도 이름으로 못 가른다(2026-11-10 실측: 전주 이용권에 인천 주안 돈까스집 영상).
   if (isGenericStoreName(storeName)) return false // 영상
   if (!mentionsStore(text, storeName)) return false
   const branch = branchOf(storeName)
-  return branch ? normStoreName(text).includes(`${branch}점`) : true
+  if (branch && !branchMentioned(text, branch)) return false
+  // 🎭 2026-11-10 대표 *"유튜브도 동일한 이름이지만 이용권과 관계없이 올라오네"* — 이름만으로는 뮤지컬·캠페인·다른 지역 가게가 섞였다.
+  if (isOffTopicVideo(text)) return false
+  if (mentionsOtherRegion(text, address)) return false
+  // 동네가 나오거나, 다녀온 이야기 낱말(맛집·숙소·후기 …)이 있어야 한다.
+  // 낱말은 가게 이름을 뺀 나머지에서 찾는다("나루스시" 의 '스시' 는 증거가 아니다).
+  return mentionsArea(text, address) || VISIT_WORDS.test(normStoreName(text).split(coreStoreName(storeName)).join(' '))
 }
 
 /** 검색어 — 가게 이름 + 동네(주소의 구/동 한 단어). 동네가 없으면 이름만. */
