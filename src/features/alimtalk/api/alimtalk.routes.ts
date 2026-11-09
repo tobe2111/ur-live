@@ -35,7 +35,7 @@ interface DbPackage {
 async function getSellerIdFromToken(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null;
   try {
-    const { verify } = await import('hono/jwt');
+    const { verifyLogin: verify } = await import('../../../worker/utils/login-token-policy');
     const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number };
     return payload.seller_id ?? null;
   } catch {

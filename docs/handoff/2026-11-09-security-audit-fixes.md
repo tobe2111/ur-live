@@ -66,3 +66,8 @@
 2. 문서·archive 의 실제 키처럼 생긴 값 131줄 가림(JWT 서명키·CF 토큰·Toss 비밀키·Kakao REST 키 — 키 이름은 남김, 예시 파일·JS 키는 그대로).
    `check-no-secrets.sh` 의 Toss 패턴이 따옴표를 요구해 맨값을 못 잡던 것 → 따옴표 선택 + gsk + Kakao REST 키 패턴.
    ⚠️ git 기록에는 남는다 — 실제 차단은 키 교체(대표 대기 항목).
+3. 카카오 로그인 함정 — **코드로 못 막음(검토 결과)**: 서버 1회용 nonce 는 login CSRF 를 못 막고(공격자가 자기 링크를 안 쓰고 넘김),
+   UA 결속은 이 경로의 존재 이유인 iOS 카톡앱→사파리 핸드오프를 깨뜨린다. 남은 길은 제품 쪽(로그인 직후 "○○ 계정으로 로그인" 확인).
+4·5. 로그인 토큰 판정 SSOT `src/worker/utils/login-token-policy.ts`(`isNonLoginToken`·`verifyLogin`): 용도 토큰 · `token_use:refresh` ·
+   **옛 재발급 토큰은 수명으로**(관리자 >2일 · 셀러 >31일) 거부 — 아무도 로그아웃시키지 않고 옛 재발급 토큰의 로그인 사용만 막는다.
+   Bearer 를 직접 확인하던 28파일을 `verifyLogin` 으로(가드가 새 직접 사용을 막음).

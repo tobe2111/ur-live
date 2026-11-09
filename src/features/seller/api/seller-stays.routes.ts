@@ -20,7 +20,7 @@
  */
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { verify } from 'hono/jwt'
+import { verifyLogin as verify } from '../../../worker/utils/login-token-policy'
 import type { SellerJWTPayload } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
 import { safeError } from '@/worker/utils/safe-error';

@@ -6,7 +6,7 @@
  * - 이미 발급된 옛 재발급 토큰(옛 키)은 만료까지 로그인 토큰으로도 통한다 — 이행기 한계(코드 주석 참조).
  */
 import { describe, it, expect } from 'vitest'
-import { readdirSync, statSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { readCode } from '@/tests/helpers/source-text'
 
@@ -148,5 +148,55 @@ describe('⑤ 응급·cron·웹훅 토큰은 상수 시간으로 비교하고, �
     expect(code).not.toMatch(/`\$\{role\}s`/)
     expect(code).toMatch(/if \(role !== 'all' && !ROLE_TABLE\[role\]\)/)
     expect(code.match(/NOT IN \('deleted', 'withdrawn'\)/g)?.length).toBe(2)
+  })
+})
+
+describe('⑥ 로그인 토큰 판정은 한 곳 — 옛 재발급 토큰은 수명으로 가른다 (4차)', () => {
+  const now = Math.floor(Date.now() / 1000)
+  const DAY = 86400
+  it('isNonLoginToken', async () => {
+    const { isNonLoginToken } = await import('@/worker/utils/login-token-policy')
+    expect(isNonLoginToken({ sub: '1', type: 'admin', iat: now, exp: now + DAY })).toBe(false)
+    expect(isNonLoginToken({ sub: '1', type: 'admin', iat: now, exp: now + 30 * DAY })).toBe(true) // 옛 관리자 재발급
+    expect(isNonLoginToken({ sub: '1', type: 'seller', iat: now, exp: now + 30 * DAY })).toBe(false)
+    expect(isNonLoginToken({ sub: '1', type: 'seller', iat: now, exp: now + 90 * DAY })).toBe(true) // 옛 셀러 재발급
+    expect(isNonLoginToken({ sub: '1', email: 'a', iat: now, exp: now + 30 * DAY })).toBe(false) // 소비자(종류 없음)
+    expect(isNonLoginToken({ sub: '5', purpose: 'pin_verified' })).toBe(true)
+    expect(isNonLoginToken({ sub: '5', type: 'agency', token_use: 'refresh' })).toBe(true)
+  })
+  it('requireAuth 가 옛 관리자 재발급 토큰(같은 키·30일)을 거부한다', async () => {
+    const { sign } = await import('hono/jwt')
+    const { Hono } = await import('hono')
+    const { requireAuth } = await import('@/worker/middleware/auth')
+    const legacy = await sign({ sub: '10', type: 'admin', role: 'super_admin', iat: now, exp: now + 30 * DAY }, SECRET)
+    const app = new Hono<{ Bindings: { JWT_SECRET: string } }>()
+    app.get('/x', requireAuth(), (c) => c.text('ok'))
+    expect((await app.request('/x', { headers: { Authorization: `Bearer ${legacy}` } }, { JWT_SECRET: SECRET })).status).toBe(401)
+  })
+  it('verifyLogin 은 로그인 토큰만 돌려주고 나머지는 던진다', async () => {
+    const { sign } = await import('hono/jwt')
+    const { verifyLogin } = await import('@/worker/utils/login-token-policy')
+    const ok = await sign({ sub: '3', type: 'seller', seller_id: 3, iat: now, exp: now + 30 * DAY }, SECRET)
+    const bad = await sign({ sub: '3', type: 'seller', seller_id: 3, iat: now, exp: now + 90 * DAY }, SECRET)
+    expect((await verifyLogin(ok, SECRET)).sub).toBe('3')
+    await expect(verifyLogin(bad, SECRET)).rejects.toBeTruthy()
+  })
+  it('Bearer 로그인 토큰을 직접 확인하는 곳은 hono verify 대신 verifyLogin 을 쓴다', async () => {
+    const { execSync } = await import('node:child_process')
+    const files = execSync("git grep -l \"hono/jwt\" -- src", { encoding: 'utf8' }).split('\n').filter((f) => f && !f.includes('/tests/'))
+    // hono verify 를 직접 써도 되는 곳 — 로그인 토큰이 아닌 것을 확인한다(재발급·에이전시 좌석·유어애즈·판정 함수 자신).
+    const ALLOWED = new Set([
+      'src/worker/utils/refresh-token-key.ts', 'src/features/agency-console/api/agency-session.ts',
+      'src/features/marketing/api/ads-account.ts', 'src/worker/utils/login-token-policy.ts',
+      'src/features/auth/api/kakao.routes.ts', // OAuth state·확정 티켓(로그인 토큰 아님)
+      'src/features/seller/api/seller-pin.routes.ts', // PIN 확인 토큰(purpose) 자체를 검증
+    ])
+    // hono verify 를 **실제로 Bearer 에 부르는** 곳만 센다(import 만 하고 안 쓰는 파일은 해가 없다).
+    const bad = files.filter((f) => !ALLOWED.has(f)).filter((f) => {
+      const s = readFileSync(f, 'utf8')
+      const honoVerify = /import\s*\{[^}]*\bverify\b[^}]*\}\s*from\s*'hono\/jwt'|const\s*\{\s*verify\s*\}\s*=\s*await import\('hono\/jwt'\)/.test(s)
+      return (honoVerify && /\bverify\(/.test(s)) || /import\('hono\/jwt'\)\.then\(m\s*=>\s*m\.verify\(/.test(s)
+    })
+    expect(bad, '로그인 토큰을 직접 확인하면 utils/login-token-policy 의 verifyLogin 을 쓸 것').toEqual([])
   })
 })

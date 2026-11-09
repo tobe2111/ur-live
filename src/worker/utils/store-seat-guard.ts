@@ -46,7 +46,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Context, Next } from 'hono'
-import { verify } from 'hono/jwt'
+import { verifyLogin as verify } from './login-token-policy'
 import type { OperatorRole } from './seller-operators'
 import { ensureAgencyConsoleTables, staffStoreAccessSql } from '../../features/agency-console/api/agency-schema'
 import { agencyActivityLabel, AGENCY_ACTIVITY_METHODS } from '../../shared/agency-activity-label'

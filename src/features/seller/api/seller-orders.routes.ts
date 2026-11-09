@@ -14,7 +14,7 @@ import { Hono } from 'hono';
 import { readSellerProductAfterUpdate } from './seller-product-response';
 import type { Context } from 'hono';
 import { cors } from 'hono/cors';
-import { verify } from 'hono/jwt';
+import { verifyLogin as verify } from '../../../worker/utils/login-token-policy';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { sendSellerAlimtalk } from '../../alimtalk/send';
 import { sensConfigured } from '../../../lib/ncp-sens';

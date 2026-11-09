@@ -37,7 +37,7 @@ async function resolveStayUserId(
   const auth = c.req.header('Authorization') || ''
   if (auth.startsWith('Bearer ')) {
     try {
-      const { verify } = await import('hono/jwt')
+      const { verifyLogin: verify } = await import('../../../worker/utils/login-token-policy')
       const payload = await verify(auth.substring(7), secret, 'HS256') as { user_id?: number; sub?: string }
       const id = Number(payload.user_id ?? payload.sub)
       if (Number.isFinite(id) && id > 0) return id

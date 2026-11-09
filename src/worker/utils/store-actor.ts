@@ -39,7 +39,7 @@
  * - 소유자가 자기 계정을 남에게 빌려주는 것(계정 공유). 그건 권한 모델 밖이다.
  * - 이전 주인이 매장 계정 **비밀번호**로 다시 로그인하는 것(새 토큰은 에포크 뒤다) — 계정 자격 문제.
  */
-import { verify } from 'hono/jwt'
+import { verifyLogin as verify } from './login-token-policy'
 import type { D1Database } from '@cloudflare/workers-types'
 import { verifyStoreSeat } from './store-seat-guard'
 
