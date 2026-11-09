@@ -49,12 +49,12 @@ export default [
     why: '지도는 스크립트가 와야 내용이 뜬다 — 실측상 지도 5.4 → 6.1초로 늦어졌다.',
   },
   {
-    name: '🚦 PC 에도 건다(서버가 PC 첫 화면을 안 그린다)',
+    name: '🚦 PC 상세에도 첫 화면 CSS 를 넣는다(서버가 PC 상세 첫 화면을 안 그린다 — 2026-11-09 재조준: PC 홈만 예외)',
     file: MOD,
-    find: 'if (!shouldRenderMobileFirstScreen(ua)) return false',
-    replace: '',
+    find: "if (!shouldRenderMobileFirstScreen(ua)) return (pathname === '/' || pathname === '/index.html')",
+    replace: "if (!shouldRenderMobileFirstScreen(ua)) return true",
     test: TEST,
-    why: 'PC 첫 화면은 스크립트가 그린다 — CSS 를 기다리게 하면 손해만 본다.',
+    why: 'PC 홈 말고는 서버가 PC 첫 화면을 안 그린다 — 다른 PC 화면에 폰 표면 CSS 를 인라인하면 무게만 는다(로더-먼저만 걸어야 한다).',
   },
   {
     name: '🚦 SideBanner 가 다시 폰에서도 마운트된다',

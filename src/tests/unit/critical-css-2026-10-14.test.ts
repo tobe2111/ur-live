@@ -130,10 +130,10 @@ describe('④ 재작성기', () => {
     const font = fakeEl({ href: '/static/fonts/pretendard-dynamic-subset-v1.3.9.css' }); link.element(font)
     expect(font.set.media, '폰트 CSS 는 자기 스크립트가 다룬다 — 건드리지 않는다').toBeUndefined()
   })
-  it('CSS 가 비었으면 종전과 같다(<style> 없음 · 링크 손대지 않음)', () => {
+  it('CSS 가 비었으면 <style> 은 없지만 앱 CSS 링크는 그래도 media=print(⏳ 2026-11-09 로더-먼저 — 로더는 자기 스타일을 든다)', () => {
     const { rw, on } = fakeRewriter()
     applyCssFirstBoot(rw, 'n', true, '')
-    expect(on.some(([s]) => s === 'link[rel="stylesheet"]')).toBe(false)
+    expect(on.some(([s]) => s === 'link[rel="stylesheet"]')).toBe(true)
     const h = fakeEl({}); on.find(([s]) => s === 'head')![1].element(h)
     expect(h.prepended).not.toContain('<style')
   })
@@ -241,6 +241,6 @@ describe('🧩 2026-11-08 표면별 첫 화면 CSS', () => {
     expect([...named].sort()).toEqual([...SURF.keys].sort())
     expect(criticalCssFor('/pass/1', 'FULL', 'HOME', { detail: 'D' })).toBe('D')
     expect(criticalCssFor('/pass/1', 'FULL', 'HOME', {})).toBe('FULL')
-    expect(criticalCssFor('/checkout', 'FULL', 'HOME', { detail: 'D' })).toBe('FULL')
+    expect(criticalCssFor('/checkout', 'FULL', 'HOME', { detail: 'D' })).toBe('') // ⏳ 2026-11-09 첫 화면 없는 표면은 인라인 0(로더가 자기 스타일)
   })
 })
