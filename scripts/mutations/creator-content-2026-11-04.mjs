@@ -72,4 +72,12 @@ export default [
     test: T,
     why: '가게 블로그는 이름·동네가 늘 들어 있어 확실 매칭을 그냥 통과한다.',
   },
+  {
+    name: '체인점 영상도 이름만 맞으면 공개한다',
+    file: S,
+    find: '  return branch ? normStoreName(text).includes(branch) : true\n',
+    replace: '  return true\n',
+    test: T,
+    why: '같은 체인 다른 지점 영상(샤브올데이 수영점)이 명륜점 이용권에 뜬다.',
+  },
 ]

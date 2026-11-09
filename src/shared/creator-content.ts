@@ -138,6 +138,26 @@ export function confidentMatch(text: string, storeName: string, address: string 
   return areas.some((a) => t.includes(a) || (a.length >= 3 && t.includes(a.slice(0, -1))))
 }
 
+/** 지점명 — "샤브올데이 부산명륜점" → "명륜", "보광정 이태원점" → "이태원". 지점이 없으면 null. 앞의 시·도 이름은 뗀다. */
+export function branchOf(storeName: string | null | undefined): string | null {
+  const m = String(storeName ?? '').trim().match(/\s+\(?([가-힣A-Za-z0-9]{1,10}?)(?:지점|점)\)?$/)
+  if (!m) return null
+  const b = m[1].replace(/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)/, '')
+  return b.length >= 2 ? normStoreName(b) : (m[1].length >= 2 ? normStoreName(m[1]) : null)
+}
+
+/**
+ * 🎬 **유튜브 영상은 이것으로 바로 공개** (2026-11-09 대표 *"체인점은 지점명까지. 다른건 이름만 맞으면 보이게"*).
+ * 유튜브 제목·설명은 블로그와 달리 동네를 잘 안 써서 `confidentMatch` 로는 거의 다 후보에 남았다(실측 144개 중 26개만 공개).
+ * 검색 자체를 "가게 이름 + 동네" 로 했으므로 — 이름이 맞으면 보이고, **지점이 있는 가게는 지점명까지** 맞아야 한다
+ * (같은 체인 다른 지점 영상: 실측 "샤브올데이 수영점" 영상이 명륜점에 걸렸다).
+ */
+export function videoMatch(text: string, storeName: string): boolean {
+  if (!mentionsStore(text, storeName)) return false
+  const branch = branchOf(storeName)
+  return branch ? normStoreName(text).includes(branch) : true
+}
+
 /** 검색어 — 가게 이름 + 동네(주소의 구/동 한 단어). 동네가 없으면 이름만. */
 export function searchQueryFor(storeName: string, address: string | null | undefined): string {
   const name = String(storeName).replace(/\s*\([^)]*\)\s*$/, '').trim()

@@ -16,7 +16,7 @@ import { render, waitFor, fireEvent } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import {
   parseContentUrl, mentionsStore, coreStoreName, sortForCustomer, contentYtReservedUnits, readDayCount,
-  searchQueryFor, stripHtml, confidentMatch, isStoreOwnPost, CONTENT_YT_DAILY_SEARCHES, type ContentItem,
+  searchQueryFor, stripHtml, confidentMatch, isStoreOwnPost, videoMatch, branchOf, CONTENT_YT_DAILY_SEARCHES, type ContentItem,
 } from '@/shared/creator-content'
 import { storeKeyFor } from '@/features/creator-content/api/content-db'
 import { pickBlogCandidates, pickVideoCandidates } from '@/features/creator-content/api/content-collect'
@@ -145,6 +145,28 @@ describe('②-d 겹침·숙소·스크롤 (2026-11-09 대표)', () => {
   })
   it('가로 줄이 세로 스크롤을 가두지 않는다', () => {
     expect(read('src/shared/stays-list.ts')).toMatch(/row: '[^']*overflow-x-auto overflow-y-hidden touch-pan-x touch-pan-y/)
+  })
+})
+
+describe('②-e 유튜브 — 이름만 · 체인점은 지점명까지 (2026-11-09 대표)', () => {
+  it('지점명 뽑기', () => {
+    expect(branchOf('샤브올데이 부산명륜점')).toBe('명륜')
+    expect(branchOf('보광정 이태원점')).toBe('이태원')
+    expect(branchOf('다인리조트')).toBeNull()
+  })
+  it('지점 없는 가게는 이름만 맞으면 공개', () => {
+    expect(videoMatch('잠실 블랙타고 그룹PT', '블랙타고')).toBe(true)
+    expect(videoMatch('제주 애월 리조트', '다인리조트')).toBe(false)
+  })
+  it('체인점은 지점명까지 — 다른 지점 영상은 후보로', () => {
+    expect(videoMatch('미나리 소고기 #샤브올데이명륜점 #동래맛집', '샤브올데이 부산명륜점')).toBe(true)
+    expect(videoMatch('호텔뷔페 안가도 되겠네.. 수영점 진짜 대박 #샤브올데이', '샤브올데이 부산명륜점')).toBe(false)
+    expect(videoMatch('📍보광정이태원점', '보광정 이태원점')).toBe(true)
+  })
+  it('수집기 · 후보 재판정이 이 규칙을 쓴다', () => {
+    const c = read('src/features/creator-content/api/content-collect.ts')
+    expect(c).toMatch(/confident: !isStoreOwnPost\(sn\.channelTitle, storeName\) && videoMatch\(text, storeName\)/)
+    expect(c).toMatch(/WHERE s\.platform = 'youtube' AND s\.status = 'candidate' AND s\.source = 'auto'/)
   })
 })
 

@@ -23,7 +23,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '../../../worker/types/env'
 import {
-  CONTENT_YT_DAILY_SEARCHES, CONTENT_YT_USED_KEY, confidentMatch, isStoreOwnPost, looksSponsored, mentionsStore, parseContentUrl,
+  CONTENT_YT_DAILY_SEARCHES, CONTENT_YT_USED_KEY, confidentMatch, isStoreOwnPost, looksSponsored, mentionsStore, parseContentUrl, videoMatch,
   readDayCount, searchQueryFor, stripHtml,
 } from '../../../shared/creator-content'
 import { ensureCreatorContentTables, storeKeyFor } from './content-db'
@@ -111,7 +111,7 @@ export function pickVideoCandidates(items: YtSearchItem[], storeName: string, ad
     const text = `${title} ${stripHtml(sn.description)}`
     if (!mentionsStore(text, storeName)) continue
     const thumb = sn.thumbnails?.high?.url ?? sn.thumbnails?.medium?.url ?? null
-    out.push({ extId: id, title: title.slice(0, 200), author: stripHtml(sn.channelTitle).slice(0, 80), thumb: thumb && thumb.startsWith('https://') ? thumb : null, published: sn.publishedAt?.slice(0, 10) ?? null, confident: !isStoreOwnPost(sn.channelTitle, storeName) && confidentMatch(text, storeName, address) })
+    out.push({ extId: id, title: title.slice(0, 200), author: stripHtml(sn.channelTitle).slice(0, 80), thumb: thumb && thumb.startsWith('https://') ? thumb : null, published: sn.publishedAt?.slice(0, 10) ?? null, confident: !isStoreOwnPost(sn.channelTitle, storeName) && videoMatch(text, storeName) })
   }
   return out
 }
@@ -195,6 +195,21 @@ async function backfillThumbs(DB: D1Database): Promise<number> {
   return metas.filter((m) => m?.thumb_url).length
 }
 
+/**
+ * 🎬 이미 후보로 쌓인 유튜브 영상을 새 기준(`videoMatch`)으로 다시 본다(2026-11-09). 제목만 남아 있어 제목으로 판정한다.
+ * 자동으로 들어온 후보만 — 사장님이 숨긴 것(hidden)·지운 것(deleted)은 건드리지 않는다. 한 번 읽고 한 번 쓴다(서브리퀘스트 2).
+ */
+async function promoteVideoCandidates(DB: D1Database): Promise<number> {
+  const { results } = await DB.prepare(`SELECT s.id, s.title, s.author_name, c.store_name FROM store_creator_content s
+      JOIN store_content_crawl c ON c.store_key = s.store_key
+      WHERE s.platform = 'youtube' AND s.status = 'candidate' AND s.source = 'auto' LIMIT 300`)
+    .all<{ id: number; title: string | null; author_name: string | null; store_name: string }>()
+  const ids = (results ?? []).filter((r) => !isStoreOwnPost(r.author_name, r.store_name) && videoMatch(r.title ?? '', r.store_name)).map((r) => r.id)
+  if (!ids.length) return 0
+  await DB.batch(ids.map((id) => DB.prepare(`UPDATE store_creator_content SET status = 'visible', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'candidate'`).bind(id)))
+  return ids.length
+}
+
 export async function runCreatorContentCollect(env: Env, now = Date.now()) {
   const DB = env.DB
   await ensureCreatorContentTables(DB)
@@ -211,6 +226,7 @@ export async function runCreatorContentCollect(env: Env, now = Date.now()) {
     })
   }
   const thumbs = await backfillThumbs(DB).catch(() => 0)
+  const promoted = await promoteVideoCandidates(DB).catch(() => 0)
   const yt = await collectVideos(DB, env, now).catch(() => ({ searched: false, added: 0 }))
-  return { synced, stores: (results ?? []).length, blogs, thumbs, yt_searched: yt.searched, videos: yt.added }
+  return { synced, stores: (results ?? []).length, blogs, thumbs, promoted, yt_searched: yt.searched, videos: yt.added }
 }
