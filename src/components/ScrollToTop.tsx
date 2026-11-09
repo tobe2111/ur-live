@@ -77,6 +77,9 @@ const RESTORE_SEL = '[data-scroll-restore]'
 const panesOf = () => Array.from(document.querySelectorAll<HTMLElement>(RESTORE_SEL))
 const paneKey = (entryKey: string, el: HTMLElement) => `${entryKey}#${el.dataset.scrollRestore || ''}`
 
+/** 🧷 2026-11-09 — 이 문서에서 첫 마운트인가(하드로드 직후). 첫 번째 '맨 위로' 만 건너뛴다(아래 주석). */
+let isFirstDocumentMount = true
+
 export default function ScrollToTop() {
   const { pathname, search, hash, state, key } = useLocation()
   const navType = useNavigationType()
@@ -115,6 +118,9 @@ export default function ScrollToTop() {
 
   // 페이지 전환 시 스크롤 조정
   useEffect(() => {
+    // 🧷 첫 마운트 여부는 어떤 갈래로 빠지든 여기서 한 번만 소비한다(아래 '맨 위로' 줄이 읽는다).
+    const firstMount = isFirstDocumentMount
+    isFirstDocumentMount = false
     if (preserveScroll) return
     if (navType === 'POP') {
       const saved = readPos(entryKey)
@@ -153,7 +159,11 @@ export default function ScrollToTop() {
       }
     }
     // 새 페이지(PUSH/REPLACE) 또는 저장된 자리 없음 — 상단으로
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior })
+    // 🧷 2026-11-09 대표 신고 *"첫 로딩에 홈 아래부분이 뒤늦게 로딩되는데, 로딩되면 맨 윗페이지로 올라가버려"* —
+    //   **문서를 처음 연 순간**(하드로드 첫 마운트)엔 올리지 않는다. 서버 첫 화면(`#ur-first-screen`)이 먼저 떠서 사람이
+    //   이미 내려 보고 있는데, 앱이 화면을 넘겨받는 순간(실측 폰 흉내 2.15s) 이 줄이 0 으로 끌어올렸다. 브라우저는 새 문서를
+    //   어차피 맨 위에서 연다 — 첫 마운트에 올릴 이유가 없다. 앱 안 이동(PUSH/REPLACE)은 종전처럼 맨 위로.
+    if (!(firstMount && navType === 'POP')) window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior })
 
     // 🧭 2026-10-19 `#앵커` 로 들어오면 그 구역까지 내려 준다(예: 내 리뷰 → 이용권 상세 `#gb-sec-reviews`).
     //   종전엔 해시를 아무도 안 읽어서 "리뷰 쓰기" 가 상세 **맨 위**를 열고 끝났다(에러 0).
