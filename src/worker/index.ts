@@ -31,8 +31,7 @@ import { selftestRoutes } from './routes/selftest.routes'; // 2026-05-23 운영 
 // ---- Worker-local routes (multi-seller MVP) ----
 import type { Env } from './types/env';
 import { authRouter } from './routes/auth.routes';
-import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
-import { healthRoutes } from './routes/health.routes';
+import { authTokenRoutes } from './routes/auth-token.routes'; import { healthRoutes } from './routes/health.routes'; // Phase 2.3 · 📏 2026-11-09 래칫(2672) — #2245 가 1줄 넘겨 main 배포가 멎었다
 import { killerSwRoutes } from './routes/killer-sw.routes'; import { isRasterImageType, hardenImageHeaders } from './utils/image-proxy-safety'; // 2026-04-27 PWA 사고 복구
 import kakaoSkillWebhookRoutes from './routes/kakao-skill-webhook.routes'; // 💬 2026-07-19 CS FAQ 봇(오픈빌더 스킬, KAKAO_SKILL_SECRET 미설정=404)
 import { instagramWebhookRoutes, instagramAutoDmAdminRoutes, instagramAutoDmSellerRoutes } from '../features/instagram-autodm/api/autodm.routes'; // 💬 2026-10-01 인스타 댓글→자동 DM(어드민 '켜기' 전엔 0통)
