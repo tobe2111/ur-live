@@ -40,12 +40,30 @@ export function similarity(a, b) {
 
 const EMOJI_RE = /\p{Extended_Pictographic}/gu;
 
+// 2026-11-09: 봇이 없던 장면을 지어냈다("주방 마감하고 앉아 계신 사장님이랑 수수료 얘기를 하다가").
+// 현장 메모(대표가 보낸 실제 일)가 없으면 일화·대사 표현을 막는다.
+const FABRICATION_RE = [
+  /(?:들은|들었던)\s*(?:말|얘기|이야기)/,
+  /말씀하시더라|하시더라고요|그러시더라/,
+  /(?:얘기|이야기)를?\s*(?:하다가|나누다가)/,
+  /(?:지난주|지난달|어제|오늘 아침|그저께)에?\s/,
+  /(?:만난|찾아뵌|다녀온|뵈었던)\s*사장님/,
+  /먹어\s*봤는데|가\s*봤는데|다녀왔는데/,
+];
+// 누구나 알아보는 AI 상투 마무리·표현
+const FORMULA_RE = [
+  [/[가-힣]+(?:파|이)세요\s*,\s*[가-힣\s]+(?:파|이)세요\s*\?\s*$/, '양자택일 질문 마무리("A파세요, B파세요?")'],
+  [/여러분은?\s*어떠(?:세요|신가요)\s*\?/, '"여러분은 어떠세요?" 마무리'],
+  [/—/, '줄표(—)'],
+  [/솔직히 말씀드리면|사실 저도|결론부터 말하면/, 'AI 상투구'],
+];
+
 /**
  * @param {string} body  링크를 붙이기 전 본문
  * @param {{facts?: string, recent?: string[], minLen?: number, maxLen?: number}} ctx
  * @returns {string[]} 문제 목록(비면 통과)
  */
-export function vetPost(body, { facts = '', recent = [], minLen = 80, maxLen = 2100 } = {}) {
+export function vetPost(body, { facts = '', recent = [], minLen = 80, maxLen = 2100, fieldNote = false } = {}) {
   const problems = [];
   const text = String(body || '').trim();
   const plain = text.replace(/https?:\/\/\S+/g, '').replace(/#\S+/g, '').trim();
@@ -58,6 +76,9 @@ export function vetPost(body, { facts = '', recent = [], minLen = 80, maxLen = 2
     const v = norm(m[1], m[2]);
     if (!known.has(v)) problems.push(`확인되지 않은 숫자: "${m[0].trim()}"`);
   }
+  if (!fieldNote) for (const re of FABRICATION_RE) { const m = plain.match(re); if (m) problems.push(`지어낸 일화로 보임: "${m[0].trim()}"`); }
+  const body2 = plain.replace(/\s+$/, '');
+  for (const [re, label] of FORMULA_RE) if (re.test(body2)) problems.push(`상투 표현: ${label}`);
   const emoji = text.match(EMOJI_RE) || [];
   if (emoji.length > 2) problems.push(`이모지가 많다(${emoji.length}개, 최대 2개)`);
   if (/[!！]{2,}/.test(text)) problems.push('느낌표 남발("!!")');

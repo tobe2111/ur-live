@@ -39,3 +39,10 @@ cd marketing-bot && npm test   # 문법 체크 + 4개 스크립트 DRY_RUN=1 실
 ## 콘텐츠 전략 (2026-10 변경)
 - 트랙 비율·주제·CTA: `data/content-mix.json` (`TRACK=merchant|creator|consumer` 로 강제 가능)
 - 봇이 쓸 수 있는 입점/크리에이터 조건: `src/lib.mjs` 의 `PARTNER_FACTS` (원본: `src/shared/partners-facts.ts`, `src/pages/partners/PartnerFaq.tsx`, `src/pages/CreatorsPage.tsx`). 원본 조건이 바뀌면 함께 고치세요.
+
+## 2026-11-09 콘텐츠 품질 개편 (대표 "퀄리티가 낮고 AI 티가 난다")
+- **시리즈 코너** (`src/series.mjs`): 사장님 운영노트 · 숫자로 보는 유어딜 · 오해와 사실 · 유달이 상담소 · 3분 가이드 · 이번 주 동네딜 · 현장노트. 매 회 최근에 안 쓴 코너를 고른다.
+- **게시할 때마다 새 이미지** (`src/visual.mjs` + `scripts/render-post.py`): 큰 사진 + 굵은 제목 두 줄 표지, 안쪽 장, 안내 장. 사진은 현장 메모 → 상품 사진 → Pexels(`PEXELS_API_KEY`) → Openverse CC0 → 없으면 브랜드 블루 면. 만든 이미지는 `marketing-data` 브랜치 `marketing-bot/data/cards/` 에 올려 공개 URL 로 쓴다. 실패하면 종전 카드 세트로 물러선다.
+- **현장 메모** (`src/field-notes.mjs`): 레포 주인이 라벨 `현장메모` 를 단 이슈(메모 + 사진)를 그날 글감으로 쓰고, 게시 뒤 닫는다. 남이 연 이슈는 무시.
+- **검수 추가** (`src/vet.mjs`): 지어낸 일화("들은 말", "얘기를 하다가", "지난주에"), 양자택일 질문 마무리, 줄표(—), AI 상투구. 이미지 안 글자도 같은 검수.
+- 핀터레스트·구글 이미지는 쓰지 않는다(원작자 불명 → 저작권 신고 위험). 분위기 참고만.
