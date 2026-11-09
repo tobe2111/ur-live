@@ -290,9 +290,12 @@ describe('🎬 /urshorts — 색인 대상인데 크롤러 본문이 6자였다'
     expect(buildStaticSurfaceNoscript('/urshorts', seed)).not.toContain('VideoObject')
   })
 
-  it('워커가 시드를 **주입하지 않는다** — 화면은 ?all=1 전량이라 목록이 도로 짧아진다', () => {
+  // 🔁 2026-11-09 재조준: 시드를 이제 **주입한다**(대표 "유어쇼츠도 너무 늦는데" — 목록이 앱 뒤 한 왕복 더 기다렸다). 10-13 규율("10편이 전량을
+  //   대체하면 안 된다")은 화면이 시드를 **자리값**으로만 쓰고 ?all=1 로 갈아끼우는 것으로 지킨다(urshorts-seed-2026-11-09 가 그 둘을 고정).
+  it('워커가 시드를 주입하고(버리지 않는다) 화면은 ?all=1 전량으로 갈아끼운다', () => {
     const w = readCode('src/worker/index.ts')
-    expect(w).toMatch(/url\.pathname === '\/urshorts'\) ssrPayload = null/)
+    expect(w).not.toMatch(/url\.pathname === '\/urshorts'\) ssrPayload = null/)
+    expect(readCode('src/pages/UrShortsBrowsePage.tsx')).toContain("fetch('/api/urshorts?all=1')")
     // 그리고 그 키는 예열 목록에 **실재**해야 한다(새 캐시 키를 만들지 않는 것이 이 설계의 전제).
     expect(w).toMatch(/slot: 'URSHORTS', path: '\/api\/urshorts'/)
     expect(readCode('src/worker/cron/cache-prewarm.ts')).toMatch(/'\/api\/urshorts'/)

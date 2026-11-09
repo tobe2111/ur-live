@@ -32,6 +32,20 @@ export function readHomeShortsSeed<T = unknown>(): T[] | null {
   }
 }
 
+/** 🎬 `/urshorts` 목록 시드(2026-11-09) — 워커가 `__SSR_INITIAL_URSHORTS__` 로 싣는 `/api/urshorts`(10편) 원형. 자리값이다 — 화면은 이걸 그린 뒤 `?all=1` 전량으로 갈아끼운다. */
+export const URSHORTS_SEED_ID = '__SSR_INITIAL_URSHORTS__'
+export function readUrShortsSeed<T = unknown>(): T[] | null {
+  try {
+    if (typeof document === 'undefined') return null
+    const el = document.getElementById(URSHORTS_SEED_ID)
+    if (!el?.textContent) return null
+    const parsed = JSON.parse(el.textContent)
+    return parsed?.success && Array.isArray(parsed.data) && parsed.data.length > 0 ? (parsed.data as T[]) : null
+  } catch {
+    return null
+  }
+}
+
 /** 🖼️ 홈 배너 전체 시드(2026-11-09) — 짝: 워커 `homeBannersSeedScript`. `/api/banners` 응답 원형의 `data` 배열. */
 export const HOME_BANNERS_SEED_ID = '__SSR_INITIAL_HOMEBANNERS__'
 export function readHomeBannersSeed<T = unknown>(): T[] | null {

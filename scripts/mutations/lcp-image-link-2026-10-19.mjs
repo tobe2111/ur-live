@@ -46,8 +46,8 @@ export default [
   {
     name: 'LCP헤더 — 숙소 상세가 PC 에도 폰 주소를 당긴다',
     file: 'src/worker/index.ts',
-    find: "if (stayFirst && isMobileUserAgent(c.req.header('user-agent'))) appendLcpLink",
-    replace: 'if (stayFirst) appendLcpLink',
+    find: "if (stayFirst && isMobileUserAgent(c.req.header('user-agent'))) { appendLcpLink",
+    replace: 'if (stayFirst) { appendLcpLink', // 2026-11-09 썸네일 preload 가 같은 블록에 붙어 중괄호
     test: T,
     why: 'PC 는 다른 폭의 사진을 그린다 — 폰 주소를 당기면 PC 가 사진을 두 번 받는다.',
   },

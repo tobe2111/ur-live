@@ -130,7 +130,7 @@ describe('③ 배선 — 워커가 facet 시드를 받고 **주입은 제외**�
   it('🎟️ 2026-11-08 재조준 — facet 시드를 **주입한다**: 서버가 그 카테고리 첫 화면을 그리고 화면이 같은 시드를 먹는다', () => {
     // 종전(10-12) 규율 "주입하지 않는다" 의 전제는 *화면이 facet 시드를 안 먹는다* 였다. 화면이 먹게 됐으므로 주입한다.
     const c = code(WORKER)
-    expect(c).toMatch(/const crawlerPayload = digestRaw \|\| ssrPayload;\s*\n\s*if \(url\.pathname === '\/urshorts'\) ssrPayload = null;/)
+    expect(c).toMatch(/const crawlerPayload = digestRaw \|\| ssrPayload;\s*\n\s*if \(url\.pathname === '\/urshorts' && ssrPayload && isMobileUserAgent/) // 2026-11-09 /urshorts 도 이제 주입한다(urshorts-seed) — 그 자리에 썸네일 preload 가 선다
     expect(c).not.toMatch(/url\.pathname === '\/vouchers' && url\.search\) [^\n]*ssrPayload = null/)
     // 화면은 **첫 문서 주소**의 카테고리로 판정한다 — 앱 안 이동으로 다른 카테고리에 와도 남의 시드를 안 먹는다.
     const page = code('src/pages/VouchersPage.tsx')

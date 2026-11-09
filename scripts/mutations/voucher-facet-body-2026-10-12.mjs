@@ -33,8 +33,8 @@ export default [
        + '주입을 끊으면 첫 화면이 로더가 되고 화면이 같은 목록을 다시 받는다(라이브 FCP 2.05s 로 회귀).',
     file: WORKER,
     // 🔁 2026-11-08 재조준: 10-12 규율("주입하지 않는다")의 전제가 사라져 방향이 뒤집혔다.
-    find: "    if (url.pathname === '/urshorts') ssrPayload = null;",
-    replace: "    if ((url.pathname === '/vouchers' && url.search) || url.pathname === '/urshorts') ssrPayload = null;",
+    find: "    const ssrSlot = ssrTarget?.slot ?? 'MAIN';", // 2026-11-09 재조준: /urshorts 는 이제 주입하므로 그 줄이 사라졌다
+    replace: "    if (url.pathname === '/vouchers' && url.search) ssrPayload = null; const ssrSlot = ssrTarget?.slot ?? 'MAIN';",
     test: TEST,
   },
   {

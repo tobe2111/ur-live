@@ -12,7 +12,7 @@ import {
   DETAIL_DESKTOP_QUERY, DETAIL_HERO_DESKTOP_WIDTH, DETAIL_HERO_MOBILE_WIDTH, DETAIL_THUMB_WIDTH,
   DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, DETAIL_PC_THUMB_RATIO,
   detailCropUrl, detailHeroMobileUrl, detailPlainUrl,
-  DETAIL_MOBILE_THUMBS, DETAIL_MOBILE_THUMB_CLS, DETAIL_MOBILE_THUMB_RATIO, DETAIL_MOBILE_THUMB_ROW_CLS,
+  DETAIL_MOBILE_THUMBS, DETAIL_MOBILE_THUMB_CLS, DETAIL_MOBILE_THUMB_RATIO, DETAIL_MOBILE_THUMB_ROW_CLS, DETAIL_THUMB_PLACEHOLDER,
   detailMobileThumbUrl, showMobileThumbs,
 } from '@/shared/detail-hero-image'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
@@ -197,7 +197,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
   const pcThumbUrl = (src: string) => detailCropUrl(src, DETAIL_THUMB_WIDTH, DETAIL_PC_THUMB_RATIO)
 
   const bg = (src: string, url: string) => ({
-    backgroundColor: '#1D1F29',
+    backgroundColor: DETAIL_THUMB_PLACEHOLDER, // 2026-11-09 라이트에서 검은 상자로 뜨던 것 — 서버 첫 화면과 같은 값(shared)
     backgroundImage: src ? layered(url, src) : undefined,
     backgroundSize: 'cover' as const,
     backgroundPosition: 'center' as const,

@@ -140,11 +140,11 @@ export default [
       '돌려서는 못 잡는다** — 검사를 끄면 그 가드는 초록이 된다. 그래서 시험이 소스로 고정한다.',
   },
   {
-    name: '🎬 /urshorts 시드를 주입까지 한다 (목록이 도로 10편으로 짧아진다)',
-    file: 'src/worker/index.ts',
-    find: "    if (url.pathname === '/urshorts') ssrPayload = null;",
-    replace: "    if (url.pathname === '/urshorts-never') ssrPayload = null;",
-    test: TEST,
+    name: '🎬 /urshorts 화면이 10편 시드를 전량으로 믿고 ?all=1 을 안 받는다 (목록이 도로 10편으로 짧아진다)',
+    file: 'src/pages/UrShortsBrowsePage.tsx', // 2026-11-09 재조준: 시드는 이제 주입된다(자리값). 지켜야 할 것은 "전량으로 갈아끼운다"
+    find: "    fetch('/api/urshorts?all=1')",
+    replace: "    if (items) return\n    fetch('/api/urshorts?all=1')",
+    test: 'src/tests/unit/urshorts-seed-2026-11-09.test.tsx',
     why:
       '이 시드는 **10편**이고 화면은 `?all=1` 전량을 받는다. `initialData` 로 먹이면 사용자가 보던 ' +
       '목록이 도로 짧아진다 — 2026-10-12 지역 요약에서 값을 치른 그 규율(크롤러 본문용 payload 와 ' +

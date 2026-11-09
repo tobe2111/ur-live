@@ -101,8 +101,8 @@ describe('④ 워커 배선 — 첫 화면을 그렸을 때만', () => {
   const src = stripComments(fs.readFileSync('src/worker/index.ts', 'utf8'))
   it.each([
     ['홈', /const homeFirst = buildHomeFirstScreen\([^\n]*?\); if \(homeFirst\) \{ appendLcpLink\(c\.res\.headers, homeHeroLcpImage\(c\.req\.header\('cookie'\)\)\); appendLcpLink\(c\.res\.headers, homeLcpImage\(ssrExtraPayload\)\) \}/], // 🌆 2026-11-05 지역 사진이 먼저
-    ['숙소', /const stayFirst = buildStayDetailFirstScreen\([^\n]*?\); if \(stayFirst && isMobileUserAgent\([^\n]*?\)\) appendLcpLink\(c\.res\.headers, stayLcpImage\(ssrPayload\)\)/],
-    ['이용권', /const firstScreen = buildDetailFirstScreen\([^\n]*?\); if \(firstScreen\) appendLcpLink\(c\.res\.headers, hrefOfPreloadTag\(buildDetailHeroPreloadLink\(ssrPayload, false, isMobileUserAgent\(/],
+    ['숙소', /const stayFirst = buildStayDetailFirstScreen\([^\n]*?\); if \(stayFirst && isMobileUserAgent\([^\n]*?\)\) \{ appendLcpLink\(c\.res\.headers, stayLcpImage\(ssrPayload\)\)/], // 2026-11-09 썸네일 preload 가 같은 블록에 붙어 중괄호
+    ['이용권', /const firstScreen = buildDetailFirstScreen\([^\n]*?\); if \(firstScreen\) \{ appendLcpLink\(c\.res\.headers, hrefOfPreloadTag\(buildDetailHeroPreloadLink\(ssrPayload, false, isMobileUserAgent\(/],
   ])('%s', (_n, re) => {
     expect(src).toMatch(re)
   })
