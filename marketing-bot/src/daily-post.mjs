@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { makeVisual, realStorePhotos, freshStorePhotos } from './visual.mjs';
 import { nextFieldNote, closeFieldNote } from './field-notes.mjs';
+import { ownerExamples, pickExamples, styleBlock } from './threads-style.mjs';
 
 const schedule = readJson('data/schedule.json', {});
 // 다양성(주제·훅·미디어 세트) 순환용 기록. 게시 여부 판정은 live(실물 조회)로만 하므로 posts.json 은 읽지 않는다.
@@ -129,7 +130,7 @@ const LIMITS = {
 };
 async function writeVetted(prompt, maxTokens, platform, info, kind, limitKey = platform) {
   const SYSTEM = systemPrompt();
-  const ctx = { facts: factsFor(info), recent: [...recentTexts(platform), ...(encore ? [encore.text] : [])], fieldNote: !!fieldNote, ...LIMITS[limitKey] };
+  const ctx = { facts: factsFor(info), recent: [...recentTexts(platform), ...(encore ? [encore.text] : []), ...(platform === 'threads' ? threadsExamples : [])], fieldNote: !!fieldNote, ...LIMITS[limitKey] };
   const openers = recentOpeners(recentTexts(platform));
   if (openers.length) prompt += `\n\n최근 글들은 이렇게 시작했다. 이 문장들과 비슷하게 시작하지 말고, 같은 표현("제일 많이 묻는", "제일 먼저 걱정" 등)도 반복하지 마라:\n- ${openers.join('\n- ')}`;
   // 사람 말투로 다듬은 *최종본*을 검수한다 — 다듬기가 숫자·표현을 바꿀 수 있어서다
@@ -145,6 +146,7 @@ async function writeVetted(prompt, maxTokens, platform, info, kind, limitKey = p
 }
 
 const runLog = [];
+let threadsExamples = [];
 let gen = null;
 const cardKey = `${today}-${track}`;
 // 릴스는 월·수·금(KST) — 주 3회. 나머지 날은 캐러셀. REEL=1 이면 오늘 강제.
@@ -273,7 +275,10 @@ async function main() {
     const id = cid('threads');
     const link = utmLink(isPromo ? product : target, 'threads', T.campaign || track, id, now);
     const len = ['한 문장, 60자 안팎', '1~2문장, 90자 안팎', '2~3문장, 130자 안팎'][dayIdx % 3];
-    const { body, problems } = await writeVetted(`${info}\nThreads 글 1개를 ${len}로 써줘. 첫 문장이 곧 핵심. 해시태그 없이. 링크는 내가 끝에 붙일게.`, 600, 'threads', info, 'Threads 글');
+    // 말투 참고(threads-style.mjs): 대표가 고른 스레드 인기글 + 우리 스레드 인기글
+    threadsExamples = pickExamples(await ownerExamples(), readJson('data/encore.json', null)?.threads_top || [], 3, dayIdx);
+    log(`스레드 말투 참고 예시 ${threadsExamples.length}개`);
+    const { body, problems } = await writeVetted(`${info}\nThreads 글 1개를 ${len}로 써줘. 첫 문장이 곧 핵심. 해시태그 없이. 링크는 내가 끝에 붙일게.${styleBlock(threadsExamples)}`, 600, 'threads', info, 'Threads 글');
     if (problems.length) {
       qualityError = qualityError || new Error(`Threads 검수 실패: ${problems.join(' / ')}`);
       console.log(`::error title=Threads 검수 실패 — 게시 안 함::${problems.join(' / ')}`);

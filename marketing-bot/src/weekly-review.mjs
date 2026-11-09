@@ -126,6 +126,11 @@ async function main() {
   // 다시 보기 후보(2주 넘었고 반응이 평균보다 30% 이상 좋은 글) → data/encore.json. 일요일 게시가 그중 하나를 새 형식으로 다시 쓴다.
   const idToTrack = new Map(vlog.filter((p) => p.id && p.track).map((p) => [String(p.id), p.track]));
   const encore = encoreCandidates(rows, idToTrack, idToSeries);
+  // 우리 스레드 글 중 반응 상위 3개(평균 이상) — 게시 봇이 스레드 말투 참고로 쓴다(threads-style.mjs)
+  const th = rows.filter((p) => p.platform === 'threads' && p.text);
+  const thAvg = th.reduce((a, p) => a + (p.metrics?.score || 0), 0) / (th.length || 1);
+  const threadsTop = th.filter((p) => (p.metrics?.score || 0) > thAvg).sort((a, b) => b.metrics.score - a.metrics.score).slice(0, 3)
+    .map((p) => String(p.text).replace(/https?:\/\/\S+/g, '').trim()).filter((t) => t && t.length <= 160); // 예전 긴 글은 말투 참고로 안 쓴다
   const encoreLines = ['### 다시 보기 후보 (2주 넘은 글 중 반응 상위, 일요일에 새 형식으로)',
     ...(encore.length ? encore.map((c) => `- ${c.platform} ${c.id} (${c.track}) 평균의 ${c.ratio}배: ${c.text.split('\n')[0].slice(0, 40)}`) : ['- 아직 후보가 없습니다.'])].join('\n');
   const sw = seriesWeights(rows, idToSeries);
@@ -135,7 +140,7 @@ async function main() {
   // ⚠️ 최적 시간대·비율 조정을 저장할 곳이 아직 없다 — main 직접 push 는 룰셋이 막는다(live.mjs 머리말).
   //    이번 주 계산값은 리포트 이슈에만 남고 다음 게시에는 반영되지 않는다(후속: 상태 저장 경로).
   // marketing-data 브랜치에 저장된다(워크플로가 data/ 를 그 브랜치로 push). 게시물 자체는 실물 조회로 읽는다.
-  if (!DRY) { writeJson('data/schedule.json', schedule); writeJson('data/mix-state.json', newState); writeJson('data/series-state.json', { ...sw, updated_at: new Date().toISOString() }); writeJson('data/encore.json', { candidates: encore, updated_at: new Date().toISOString() }); }
+  if (!DRY) { writeJson('data/schedule.json', schedule); writeJson('data/mix-state.json', newState); writeJson('data/series-state.json', { ...sw, updated_at: new Date().toISOString() }); writeJson('data/encore.json', { candidates: encore, threads_top: threadsTop, updated_at: new Date().toISOString() }); }
   await createIssue(`[주간 SNS 리포트] ${new Date().toISOString().slice(0, 10)}`, body, ['marketing-report']);
 }
 main().catch(async (e) => { console.error(e.message); await opsAlert('마케팅 봇 주간 리뷰 실패', e.message); process.exit(1); });

@@ -311,3 +311,27 @@ test('다시 보기 배선: 일요일, 현장 메모가 이기고, 인스타는 
   assert.match(src, /encore_of \}\)\)\]\.slice\(-300\)/, 'variety.json 에 encore_of 를 남겨 같은 글을 두 번 안 쓴다');
   assert.match(src, /\.\.\.\(encore \? \[encore\.text\] : \[\]\)/, '원글과 거의 같은 글은 검수에서 막는다');
 });
+
+// ---- 2026-11-09 5차(대표 "스레드도 인기글들 참고해서 말투까지") ----
+import { splitExamples, pickExamples, styleBlock, STYLE_LABEL } from '../src/threads-style.mjs';
+
+test('스레드 참고: 이슈 본문을 --- 로 나누고 링크·사진을 뺀다', () => {
+  const ex = splitExamples('첫 글 줄 하나\n줄 둘 https://x.y/z\n---\n![a](https://img)\n두 번째 글이에요 꽤 길게\n---\n짧');
+  assert.deepEqual(ex, ['첫 글 줄 하나\n줄 둘', '두 번째 글이에요 꽤 길게']);
+  assert.equal(STYLE_LABEL, '스레드참고');
+});
+test('스레드 참고: 대표가 고른 글 우선, 매일 다른 조합, 중복 없음', () => {
+  assert.deepEqual(pickExamples(['a', 'b'], ['c', 'a'], 3, 0), ['a', 'b', 'c']);
+  assert.deepEqual(pickExamples(['a', 'b'], [], 3, 1), ['b', 'a']);
+  assert.deepEqual(pickExamples([], [], 3, 0), []);
+  assert.equal(styleBlock([]), '');
+  assert.match(styleBlock(['x']), /말투·길이·줄바꿈.*문장·표현·내용은 가져오지 않는다/);
+});
+test('스레드 참고 배선: 스레드 프롬프트에 붙고, 베끼면 검수(유사도)에 걸린다', () => {
+  const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
+  assert.match(src, /링크는 내가 끝에 붙일게\.\$\{styleBlock\(threadsExamples\)\}/);
+  assert.match(src, /platform === 'threads' \? threadsExamples : \[\]/);
+  const wr = fs.readFileSync(new URL('../src/weekly-review.mjs', import.meta.url), 'utf8');
+  assert.match(wr, /threads_top: threadsTop/);
+  assert.match(wr, /t\.length <= 160/, '예전 긴 글은 참고로 안 쓴다');
+});
