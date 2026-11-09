@@ -48,6 +48,7 @@ export const ROOTS = [
   'src/worker/utils/guest-first-screen.ts',
   'src/worker/utils/life-first-screen.ts', // 🏠 2026-11-08
   'src/worker/utils/region-first-screen.ts', // 🗺️ 2026-11-08
+  'src/worker/utils/pc-home-first-screen.ts', // 🖥️ 2026-11-09 PC 홈(shared/pc-home-first-screen 은 import 로 따라온다)
 ]
 
 /** 원본 바이트 상한 — 넘으면 빌드 실패(첫 화면 CSS 가 앱 CSS 를 닮아 가면 이 일의 의미가 없다). */
@@ -148,14 +149,14 @@ export async function generateCriticalCss() {
  *   규칙을 고르는 법: 셀렉터의 클래스가 **홈 폐쇄 소스(+ index.html · 로더)에 글자로 하나도 없으면** 그 규칙은 홈 첫 화면에서
  *   맞을 수 없다 → 뺀다. 부분 문자열로 보므로 보수적이다(애매하면 남는다). 클래스 없는 규칙(:root·*·html)은 남는다.
  */
-export const HOME_ROOTS = ['src/worker/utils/home-first-screen.ts']
+export const HOME_ROOTS = ['src/worker/utils/home-first-screen.ts', 'src/worker/utils/pc-home-first-screen.ts'] // 🖥️ 2026-11-09 PC 홈도 같은 `/` — 홈판에 PC 첫 화면 클래스가 있어야 PC 가 첫 페인트에 배너를 그린다
 
 /**
  * 🧩 2026-11-08 대표 *"1~5 모두 진행"* — 홈과 같은 처방을 **첫 화면이 있는 모든 표면**에. 표면 → 그 표면을 그리는 ROOT.
  *   워커는 `css-first-boot.ts` `criticalSurfaceOf(pathname)` 으로 같은 이름을 고른다(시험이 두 목록을 대조한다).
  */
 export const SURFACE_ROOTS = {
-  home: ['src/worker/utils/home-first-screen.ts'],
+  home: ['src/worker/utils/home-first-screen.ts', 'src/worker/utils/pc-home-first-screen.ts'],
   detail: ['src/worker/utils/detail-ssr-body.ts'],
   voucherDetail: ['src/worker/utils/voucher-detail-ssr-body.ts'],
   curator: ['src/worker/utils/curator-ssr-body.ts'],
