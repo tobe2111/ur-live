@@ -44,17 +44,30 @@ export function shouldWarmTabs(nav: { connection?: { saveData?: boolean; effecti
   return !/(^|-)2g$/.test(c.effectiveType || '')
 }
 
+/**
+ * 👆 2026-11-09 대표 *"눌렀을 때 반응하는 속도"* — 손가락이 화면에 닿으면 미리받기를 이만큼 **뒤로 미룬다**.
+ *   실측(폰 흉내 · 유어샵 → 상세): 탭한 순간 지도 화면 코드 7개(95ms)와 교환권 목록 요청(769ms)이 이 미리받기로 출발해
+ *   방금 누른 화면의 코드·큰 사진과 회선을 나눴다. 누른 화면이 먼저다 — 탭 미리받기는 그 뒤 한가할 때.
+ */
+export const TAB_WARM_YIELD_MS = 3000
+
 /** 취소 함수를 돌려준다. `loaders` 는 순서대로, 한가할 때마다 하나씩. */
 export function warmTabChunks(loaders: Loader[], delayMs = TAB_WARM_DELAY_MS): () => void {
   if (typeof window === 'undefined') return () => {}
   if (!shouldWarmTabs(navigator as unknown as Parameters<typeof shouldWarmTabs>[0])) return () => {}
   let cancelled = false
   let timer: ReturnType<typeof setTimeout> | undefined
+  // 👆 손가락이 닿은 뒤 TAB_WARM_YIELD_MS 동안은 출발하지 않는다(그 사이 순서가 오면 그만큼 미룬다).
+  let yieldUntil = 0
+  const onTouch = () => { yieldUntil = Date.now() + TAB_WARM_YIELD_MS }
+  try { window.addEventListener('pointerdown', onTouch, { capture: true, passive: true }) } catch { /* 미지원 — 종전대로 */ }
   const ric = (window as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback
   const next = (i: number) => {
     if (cancelled || i >= loaders.length) return
     const run = () => {
       if (cancelled) return
+      const wait = yieldUntil - Date.now()
+      if (wait > 0) { timer = setTimeout(run, wait); return }
       let p: Promise<unknown>
       try { p = loaders[i]() } catch { p = Promise.resolve() }
       p.catch(() => {}).finally(() => next(i + 1))
@@ -63,7 +76,7 @@ export function warmTabChunks(loaders: Loader[], delayMs = TAB_WARM_DELAY_MS): (
     else timer = setTimeout(run, 200)
   }
   const stopLoad = runAfterLoad(() => { timer = setTimeout(() => next(0), delayMs) })
-  return () => { cancelled = true; stopLoad(); if (timer !== undefined) clearTimeout(timer) }
+  return () => { cancelled = true; stopLoad(); if (timer !== undefined) clearTimeout(timer); try { window.removeEventListener('pointerdown', onTouch, { capture: true }) } catch { /* 무해 */ } }
 }
 
 /** 교환권 목록 미리받기를 하지 않는 화면 — 스스로 `/api/products` 를 부른다. */
