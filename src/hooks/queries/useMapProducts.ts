@@ -76,6 +76,21 @@ async function fetchPage(category: string, page: number, near: Near, sort: strin
 }
 
 /**
+ * 🗺️ 2026-11-09 첫 목록(page 1) 요청을 **하나로** 묶는다. 홈의 지도 버튼이 미리 받는 요청(`prefetchMapFeedFirstPage`)이
+ *   끝나기 전에 지도 화면이 마운트하면 같은 요청을 또 냈다(폰 흉내 실측: 0.34s·0.53s 두 번 — 한국→LA 왕복 하나가 통째로 중복).
+ *   진행 중인 같은 키가 있으면 그 결과를 같이 기다린다.
+ */
+const _firstInflight = new Map<string, Promise<{ items: Restaurant[]; total: number | null } | null>>()
+function fetchFirstPage(category: string, near: Near, sort: string) {
+  const k = keyOf(category, near, sort)
+  const cur = _firstInflight.get(k)
+  if (cur) return cur
+  const p = fetchPage(category, 1, near, sort).finally(() => { _firstInflight.delete(k) })
+  _firstInflight.set(k, p)
+  return p
+}
+
+/**
  * 🐢 2026-11-02 대표 *"지도도 늦게 뜨네"* — 홈이 지도를 미리 데울 때 **첫 목록**도 함께 받아 둔다.
  *   지도는 타일을 한 벌만 받으려고 첫 목록이 올 때까지 생성을 미룬다(`useKakaoMap` dataReady). 하드로드는 워커 시드
  *   (`__SSR_INITIAL_MAP__`)가 있어 기다림이 없지만, 홈 알약으로 오는 SPA 이동은 시드가 없어 SDK 가 준비된 뒤에도
@@ -91,7 +106,7 @@ export function prefetchMapFeedFirstPage(category: string, near: Near, sort: str
   const k = keyOf(category, near, sort)
   const c = _cache.get(k)
   if (c && Date.now() - c.ts < CACHE_MS) return Promise.resolve()
-  return fetchPage(category, 1, near, sort).then((res) => {
+  return fetchFirstPage(category, near, sort).then((res) => {
     if (!res || _cache.has(k)) return
     _cache.set(k, { items: res.items, total: res.total, page: 1, done: res.items.length < PAGE, ts: Date.now() })
   }, () => {})
@@ -194,7 +209,7 @@ export function useMapProducts(category: string, near?: Near, opts?: { sort?: st
 
     let cancelled = false
     const refresh = async () => {
-      const res = await fetchPage(category, 1, near, sort)
+      const res = await fetchFirstPage(category, near, sort)
       if (cancelled || ref.current.key !== cacheKey) return
       if (res == null) { setIsLoading(false); return }   // 실패 — 시드가 있으면 그대로 보여 준다
       commit(cacheKey, { items: res.items, total: res.total, page: 1, done: res.items.length < PAGE, ts: Date.now() })
