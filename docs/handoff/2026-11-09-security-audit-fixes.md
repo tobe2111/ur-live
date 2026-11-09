@@ -71,3 +71,7 @@
 4·5. 로그인 토큰 판정 SSOT `src/worker/utils/login-token-policy.ts`(`isNonLoginToken`·`verifyLogin`): 용도 토큰 · `token_use:refresh` ·
    **옛 재발급 토큰은 수명으로**(관리자 >2일 · 셀러 >31일) 거부 — 아무도 로그아웃시키지 않고 옛 재발급 토큰의 로그인 사용만 막는다.
    Bearer 를 직접 확인하던 28파일을 `verifyLogin` 으로(가드가 새 직접 사용을 막음).
+6. 주간 보안 점검 예약 `trig_01DfT4BgNxp7LYQkeMNs8Fm1` — 매주 월 10:17(KST), 새 세션이 읽기 전용 점검 → `docs/handoff/<날짜>-weekly-security-check.md` 초안 PR · 고칠 것은 결재함. 휴대폰 알림.
+7. react-router 7 업그레이드 — **안 함(되돌림)**: 빌드·청크 검사는 통과했지만 화면별 첫 화면 무게가 전부 +5~7KB(허용 1.5KB)였다.
+   막으려던 취약점(역슬래시 이동)은 `safeInternalPath` 가 이미 막는다. `react-router-dom/server` → 7 에서는 본 패키지(StaticRouter) — 다시 할 때 참고.
+   이용권 8자리 — 2026-10-12 대표 결정(6자리)을 뒤집는 일이라 대표 확인 대기.
