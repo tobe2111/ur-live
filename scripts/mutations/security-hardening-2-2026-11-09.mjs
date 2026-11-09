@@ -37,4 +37,12 @@ export default [
     test: TEST,
     why: '재발급할 때마다 로그인 토큰으로 쓸 수 있는 30일짜리 토큰이 다시 나온다.',
   },
+  {
+    name: '[sec2] 관리자 PIN 실패를 잠금에 안 센다',
+    file: 'src/features/auth/api/admin.routes.ts',
+    find: "          await recordFailure(DB, 'admin', String(admin.id)); // 🔐 2026-11-09 PIN 실패도 계정 잠금에 센다\n",
+    replace: '',
+    test: TEST,
+    why: '비밀번호를 아는 사람이 6자리 PIN 을 IP 를 바꿔 가며 무한히 시도한다.',
+  },
 ]

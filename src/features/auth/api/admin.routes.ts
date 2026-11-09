@@ -159,8 +159,8 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
       return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401);
     }
 
-    // 🛡️ 성공 시 실패 카운터 초기화
-    await clearFailures(DB, 'admin', String(admin.id));
+    // 🔐 2026-11-09: 실패 카운터 초기화는 **PIN 확인 뒤로** 옮겼다 — 여기서 지우면 비밀번호를 아는 사람이
+    //   PIN 을 틀릴 때마다 카운터가 0 으로 돌아가 잠금이 영영 안 걸렸다(IP 제한만 남았다).
 
     // 🆕 2026-06-17 보안 PIN 강제 (도매 파트너 + 슈퍼) + 로그인 이력(IP).
     //   - 관리자가 처음 설정한 6자리 PIN(login_pin_hash) 있으면 매 로그인 PIN 필수(없으면 pin_required → 토큰 미발급).
@@ -179,11 +179,16 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
           return c.json({ success: false, pin_required: true, message: '6자리 보안 PIN을 입력하세요' }, 200);
         }
         const { valid: pinOk } = await verifyPassword(pin, pinRow!.login_pin_hash as string);
-        if (!pinOk) return c.json({ success: false, pin_required: true, error: '보안 PIN이 올바르지 않습니다' }, 401);
+        if (!pinOk) {
+          await recordFailure(DB, 'admin', String(admin.id)); // 🔐 2026-11-09 PIN 실패도 계정 잠금에 센다
+          return c.json({ success: false, pin_required: true, error: '보안 PIN이 올바르지 않습니다' }, 401);
+        }
       } else if (ENFORCED_PIN_ROLES.includes(String(admin.role))) {
         mustSetPin = true;
       }
     }
+    // 🛡️ 성공 시 실패 카운터 초기화 (비밀번호 + PIN 통과 뒤)
+    await clearFailures(DB, 'admin', String(admin.id));
 
     // 🔐 2026-07-11 (사전점검 보안감사 R3 ④): 로그인 TOTP 게이트 + finance/super 등록 강제 (must_set_pin 미러).
     //   - SSOT 축 = admins.totp_secret/totp_enabled 컬럼 — generic /api/2fa/* (twofa.routes.ts, Admin2FASetupPage

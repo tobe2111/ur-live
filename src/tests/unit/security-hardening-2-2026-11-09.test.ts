@@ -65,3 +65,17 @@ describe('① 재발급 토큰은 로그인 토큰과 다른 키로 서명되고
     expect(consumer.match(/refreshSigningKey\(secret\),\n\s+JWT_REFRESH_TOKEN_EXPIRY/g)?.length).toBe(2)
   })
 })
+
+describe('② 관리자 PIN 실패도 계정 잠금에 센다', () => {
+  const code = readCode('src/features/auth/api/admin.routes.ts')
+  it('PIN 불일치에서 recordFailure 를 부른다', () => {
+    expect(code).toMatch(/if \(!pinOk\) \{\n\s+await recordFailure\(DB, 'admin', String\(admin\.id\)\);/)
+  })
+  it('실패 카운터 초기화는 PIN 확인 뒤에만 있다', () => {
+    const clearAt = code.indexOf("await clearFailures(DB, 'admin', String(admin.id));")
+    const pinAt = code.indexOf('const { valid: pinOk } = await verifyPassword(pin')
+    expect(pinAt).toBeGreaterThan(0)
+    expect(clearAt).toBeGreaterThan(pinAt)
+    expect(code.split("await clearFailures(DB, 'admin', String(admin.id));").length - 1).toBe(1)
+  })
+})
