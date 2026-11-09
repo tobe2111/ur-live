@@ -1,5 +1,5 @@
 /**
- * 🚪 로그인 전 탭 화면(이용권 `/my-vouchers` · 유어샵 `/u/me` · 마이 `/user/profile`) 서버 첫 화면 (2026-10-19).
+ * 🚪 로그인 전 탭 화면(이용권 `/my-vouchers` · 유어샵 `/u/me` · 마이 `/user/profile`) + 로그인 `/login`(2026-11-09) 서버 첫 화면 (2026-10-19).
  *
  * 라이브 실측(아이폰13 · 느린 4G · CPU 4배): 세 탭 모두 첫 그림이 2.0~2.5초였다 — 화면 대부분이 고정 문구(제목·혜택·
  * 카카오 버튼)인데 앱 코드가 다 와야 그려졌다. 새로 온 사람이 하단 탭을 누르면 가장 먼저 보는 화면이다.
@@ -20,16 +20,19 @@
  */
 import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT, GUEST_CLOCK, KAKAO_BUBBLE_PATH } from '../../shared/guest-page'
 import { UDAL_HELLO_SRC, UDAL_HELLO_ART } from '../../shared/mascot-art'
+import { LOGIN_CLS } from '../../shared/login-page'
+import { loginFirstScreenBody } from './login-first-screen'
 
-export type GuestTab = 'pass' | 'shop' | 'my'
+/** 🔐 2026-11-09 — `login`(`/login`)이 네 번째 탭. 로그인 전 탭·보호 경로가 전부 그 화면으로 보낸다(`login-first-screen.ts`). */
+export type GuestTab = 'pass' | 'shop' | 'my' | 'login'
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const escAttr = (s: string) => esc(s).replace(/"/g, '&quot;')
 
-/** 경로 → 탭. 셋 밖이면 null. */
+/** 경로 → 탭. 넷 밖이면 null. */
 export function guestTabOf(pathname: string): GuestTab | null {
   const p = pathname.replace(/\/+$/, '') || '/'
-  return p === '/my-vouchers' ? 'pass' : p === '/u/me' ? 'shop' : p === '/user/profile' ? 'my' : null
+  return p === '/my-vouchers' ? 'pass' : p === '/u/me' ? 'shop' : p === '/user/profile' ? 'my' : p === '/login' ? 'login' : null
 }
 
 const kakao = () =>
@@ -95,7 +98,8 @@ export function guestFirstScreenGuardScript(nonce: string): string {
 }
 
 export function buildGuestFirstScreen(tab: GuestTab, loaderHtml: string, nonce: string): string {
-  const body = tab === 'pass' ? passBody() : tab === 'shop' ? shopBody() : myBody()
+  const body = tab === 'pass' ? passBody() : tab === 'shop' ? shopBody() : tab === 'my' ? myBody() : loginFirstScreenBody()
+  const root = tab === 'login' ? LOGIN_CLS.root : GUEST_CLS.root // 로그인 화면은 자기 뿌리(흰 바탕·가운데 정렬)다
   // 🧷 노드 id 는 다른 첫 화면과 같다 — `lib/boot-first-screen.ts` 가 이 노드를 Suspense 폴백에 도로 붙인다.
-  return `<div id="ur-first-screen"><div class="${GUEST_CLS.root}">${body}</div></div>${guestFirstScreenGuardScript(nonce)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
+  return `<div id="ur-first-screen"><div class="${root}">${body}</div></div>${guestFirstScreenGuardScript(nonce)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }

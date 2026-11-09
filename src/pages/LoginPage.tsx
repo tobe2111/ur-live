@@ -19,6 +19,8 @@ import { showKakaoLoadingOverlay, removeKakaoLoadingOverlay } from '@/utils/kaka
 import { canUseTalkLogin, prepareTalkLogin, scheduleTalkLoginPrepare, startTalkLogin } from '@/lib/kakao-talk-login'
 import { hasConsumerSession } from '@/utils/auth'
 import { canGoBackInApp } from '@/hooks/useSafeBack'
+import { LOGIN_CLS, LOGIN_COPY, LOGIN_UDAL_SIZE, LOGIN_LOGO_SIZE } from '@/shared/login-page' // 🔐 2026-11-09 서버 첫 화면(worker/utils/login-first-screen.ts)과 같은 클래스·문구
+import { hadBootFirstScreen } from '@/lib/boot-first-screen'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 15차 ① — 제목 → 서비스 칩(하나씩 톡) → 카카오 버튼이 차례로 떠오른다. 들어올 때 한 번뿐이고, 버튼을 **누를 때**는 아무 움직임도 없다(iOS 멈춤 — 10차 ⑨).
 injectMotionCss('ur-m-login', `@keyframes ur-lg-up { from { opacity: 0; transform: translateY(12px); } }.ur-lg-h { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .05s backwards; }.ur-lg-btn { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .34s backwards; }@media (prefers-reduced-motion: reduce){.ur-lg-h,.ur-lg-btn{animation:none!important}}`)
@@ -56,6 +58,8 @@ export default function LoginPage() {
   const navType = useNavigationType()
   const [searchParams] = useSearchParams()
   const hasRedirected = useRef(false)
+  // 🎬 서버가 이 화면을 먼저 그렸으면 들어올 때 모션을 붙이지 않는다 — 이미 보이는 글자가 0 에서 다시 떠오르면 깜빡임(2026-11-09)
+  const enterMotion = useRef(typeof window === 'undefined' ? true : !hadBootFirstScreen(window.location.pathname)).current
   // 🛡️ 2026-06-23: 카카오 로그인 진행 가드 — 반복 클릭 방지 (ref = re-render 없음 → iOS freeze 회피)
   const kakaoNavRef = useRef(false)
 
@@ -279,7 +283,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center px-6 pt-12 pb-10">
+    <div className={LOGIN_CLS.root}>
       <SEO title={t('login.seoTitle', { defaultValue: '로그인 - 유어딜' })} description={t('login.seoDesc', { defaultValue: '유어딜에 로그인하세요.' })} url="/login" noindex />
 
       {/* 🧹 2026-10-26 대표 *"내용이 필요없이 많달까?"* — 장식 그라디언트·부제·안내 문장·회원가입·서비스 소개 줄을 걷었다.
@@ -287,14 +291,14 @@ export default function LoginPage() {
       {/* 🔐 2026-11-03 대표 확정 **A안**(*"깔끔하고 군더더기 없이"* · 시안 `docs/design/login-clean-2026-11-03.md`):
           유달이 · 로고 · 한 줄은 **가운데**, 카카오 버튼 · 약관 · 링크 한 줄은 **아래**(엄지 자리). 칩 둘을 걷고, 흩어진
           링크 셋(이메일 로그인 / 구분선 / 에이전시)을 맨 아래 한 줄로 모았다. 약관 링크 문구는 그대로(법적 고지 — 바꾸지 않는다). */}
-      <div className="w-full max-w-[360px] md:max-w-[400px] flex-1 flex flex-col">
+      <div className={LOGIN_CLS.frame}>
 
-        <div className="flex-1 flex flex-col items-center justify-center pb-10">
-          <Udal mood="hello" size={64} priority motion className="block mb-5" />
-          <UrDealLogo size={34} />
+        <div className={LOGIN_CLS.center}>
+          <Udal mood="hello" size={LOGIN_UDAL_SIZE} priority motion className={LOGIN_CLS.udal} />
+          <UrDealLogo size={LOGIN_LOGO_SIZE} />
           {/* "같이 사면 더 싸다" 는 없는 기제였다 — 이용권은 즉시판매 단일가(2026-05-30)라 인원이 가격을 안 움직인다. */}
-          <h1 className="ur-lg-h mt-3 text-[15px] font-normal text-gray-500 dark:text-gray-400 text-center leading-snug">
-            {t('login.heroTitle2', { defaultValue: '우리 동네 가게, 미리 사면 더 싸게' })}
+          <h1 className={`${enterMotion ? 'ur-lg-h ' : ''}${LOGIN_CLS.h1}`}>
+            {t('login.heroTitle2', { defaultValue: LOGIN_COPY.heroTitle })}
           </h1>
         </div>
 
@@ -327,7 +331,7 @@ export default function LoginPage() {
                 handleKakaoLogin()
               }}
               disabled={loading}
-              className="ur-lg-btn w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-medium tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+              className={`${enterMotion ? 'ur-lg-btn ' : ''}${LOGIN_CLS.kakao}`}
             >
               {loading ? (
                 <div className="flex items-center gap-2">
@@ -339,28 +343,28 @@ export default function LoginPage() {
                 </div>
               ) : (
                 <>
-                  <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
+                  <svg className={LOGIN_CLS.kakaoIcon} viewBox="0 0 24 24">
                     <path fill="#3C1E1E" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>
                   </svg>
-                  <span>{t('login.kakaoStart', { defaultValue: '카카오로 시작하기' })}</span>
+                  <span>{t('login.kakaoStart', { defaultValue: LOGIN_COPY.kakaoStart })}</span>
                 </>
               )}
             </button>
             {/* 📜 이용약관 v1.0 제5조 고지 — 2026-10-26 대표 지시로 링크 두 개만 남긴다. */}
-            <p className="mt-3 text-center text-[12px] text-gray-500 dark:text-gray-400">
-              <Link to="/terms" className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-300">{t('login.termsLink', { defaultValue: '이용약관' })}</Link>
-              {' '}{t('login.termsAnd', { defaultValue: '및' })}{' '}
-              <Link to="/privacy" className="underline underline-offset-2 hover:text-gray-700 dark:hover:text-gray-300">{t('login.privacyLink', { defaultValue: '개인정보처리방침' })}</Link>
+            <p className={LOGIN_CLS.terms}>
+              <Link to="/terms" className={LOGIN_CLS.termsLink}>{t('login.termsLink', { defaultValue: LOGIN_COPY.termsLink })}</Link>
+              {' '}{t('login.termsAnd', { defaultValue: LOGIN_COPY.termsAnd })}{' '}
+              <Link to="/privacy" className={LOGIN_CLS.termsLink}>{t('login.privacyLink', { defaultValue: LOGIN_COPY.privacyLink })}</Link>
             </p>
 
             {/* 이메일 로그인 · 에이전시 로그인 — 한 줄(A안). */}
-            <div className="mt-8 flex items-center justify-center gap-3 text-[13px] text-gray-500 dark:text-gray-400">
-              <button type="button" onClick={() => setShowEmailLogin(true)} className="hover:text-gray-900 dark:hover:text-white transition-colors">
-                {t('auth.loginWithEmail')}
+            <div className={LOGIN_CLS.links}>
+              <button type="button" onClick={() => setShowEmailLogin(true)} className={LOGIN_CLS.link}>
+                {t('auth.loginWithEmail', { defaultValue: LOGIN_COPY.loginWithEmail })}
               </button>
-              <span aria-hidden="true" className="text-gray-300 dark:text-gray-500">|</span>
-              <Link to="/agency/login" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-                {t('login.agencyLogin', { defaultValue: '에이전시 로그인' })}
+              <span aria-hidden="true" className={LOGIN_CLS.linkSep}>|</span>
+              <Link to="/agency/login" className={LOGIN_CLS.link}>
+                {t('login.agencyLogin', { defaultValue: LOGIN_COPY.agencyLogin })}
               </Link>
             </div>
           </div>

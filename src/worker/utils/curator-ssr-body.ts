@@ -56,6 +56,7 @@
  *   첫 화면의 `<img>` 가 파서 시점에 바로 받기 시작하므로 **같은 문서 안에서** 당겨진다.
  */
 import { cfImage } from '../../utils/cf-image'
+import { logoHtml } from './logo-html'
 import { priceDisplay } from '../../shared/price-display'
 import { formatNumber } from '../../utils/format'
 import { curatorHomePins, curatorSoldTotal } from '../../shared/curator-pin-order'
@@ -171,17 +172,7 @@ interface CuratorSeed {
   linked_seller?: unknown
 }
 
-/** `UrDealLogo` 미러 — 글자 + 로즈 원 마침표. 값은 그 컴포넌트의 식 그대로. */
-function logoHtml(size: number): string {
-  const dot = Math.max(2, size * 0.18)
-  return (
-    '<span class="inline-flex items-baseline select-none text-[#16181C] dark:text-[#F8F7FC]"' +
-    ` style="font-family:'Poppins',system-ui,sans-serif;font-weight:800;font-size:${size}px;letter-spacing:-0.035em;line-height:1">` +
-    'urdeal' +
-    `<span class="bg-brand" style="display:inline-block;width:${dot}px;height:${dot}px;border-radius:50%;margin-left:${size * 0.08}px"></span>` +
-    '</span>'
-  )
-}
+// `logoHtml` 은 `./logo-html` 로 분리(2026-11-09 — 로그인 첫 화면과 공유).
 
 /**
  * ⚡ 2026-11-08 — 유어샵 첫 화면의 **첫 줄 사진 주소**(LCP). 응답 헤더 `Link: rel=preload` 에 싣는다(`lcp-image-link.ts`).

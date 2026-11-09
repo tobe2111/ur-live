@@ -128,3 +128,11 @@
 - 처방(코드 미세): ① `udal-pose-stand.webp` 를 `public/assets/mascot/` 로 **이동**(생성 아님 · 장부 표기) → `shared/mascot-art.ts` `UDAL_HELLO_SRC` 한 벌을 `Udal(hello)` 와 서버 `guest-first-screen.myBody` 가 같이 쓴다. 서버가 `Udal priority` 와 같은 속성의 `<img loading=eager>` 를 그린다(아이콘 svg 는 여전히 빈 칸 — 두 벌 금지 그대로). ② 예시 줄은 `GUEST_EXAMPLE_IMG`(공개 주소) — 브런치·네일은 지갑 파일 그대로, 파스타만 `public/` 로 이동. `src/assets/guest/` 삭제.
 - 가드: `guest-first-screen-2026-10-19.test.tsx` ①-3(4건) · `udal-mascot` ③ 9→8 import + 공개 파일 · 주입 3건 되돌려 빨간불 확인.
 - 배포 뒤 판정: `lcpel.cjs https://urdeal.kr/user/profile` 에서 `udal-pose-stand` 응답이 0.5s 안팎, LCP 가 글자(0.45s)로 고정 · `/my-vouchers` 의 두 번째 LCP 항목(2.5s img)이 사라지는지.
+
+## 24. 로그인 화면(`/login`) 서버 첫 화면 — 첫 글자 1.6s → HTML 직후
+- 실측(폰 4G·CPU 4배): HTML 0.29s 도착 · 첫 글자 **1.6s** · 유달이 1.73s. 화면은 전부 고정 문구(유달이·로고·한 줄·카카오·약관·링크 한 줄)인데 앱 코드 뒤에야 그려졌다. 로그인 전 탭·알림·찜 같은 보호 경로가 다 이 화면으로 보내므로 **새 손님이 가장 자주 처음 보는 화면**이다.
+- 처방: `guest-first-screen.ts` 의 **네 번째 탭 `login`**(워커 배선·세션 쿠키 조건·로그인 흔적 걷어내기를 그대로 탄다 — `index.ts` 무변경, 줄 래칫 2672 유지). 본문은 `login-first-screen.ts`, 모양 값은 `shared/login-page.ts`(`LOGIN_CLS`·`LOGIN_COPY`) 한 벌을 `LoginPage.tsx` 와 공유. 로고 미러 `logoHtml` 은 `logo-html.ts` 로 분리(유어샵 첫 화면과 공유 — 작은 파일로 둔 이유는 CSS 생성기가 import 폐쇄의 파일 본문으로 클래스를 고르기 때문).
+- 🎬 들어올 때 모션(`ur-lg-h`·`ur-lg-btn`)은 서버가 먼저 그렸으면 **안 붙인다**(`boot-first-screen.hadBootFirstScreen`) — 이미 보이는 글자가 마운트 때 0 에서 다시 떠오르면 깜빡임. 서버 쪽도 그 클래스를 안 그린다.
+- critical CSS 전체판 68,971 → **69,602B**(+631, 상한 70,000 — 398 남음). 게스트 표면 24,162B. ⇒ **다음 첫 화면은 상한 결정이 먼저다**(전체판은 이제 폴백에만 쓰이므로 "표면별 상한 + 전체 합" 으로 바꾸는 쪽을 제안한다 — 잠금 영역이라 대표 승인).
+- 가드: `login-first-screen-2026-11-09.test.ts` 5묶음 + 주입 4(되돌려 빨간불) · 재조준 4(login-clean ③ · agency-console 입구 · login-page-trim 2 — 클래스가 상수로 옮겨가 앵커가 낡았다) · hex 래칫 29 → 25+4(이동).
+- 배포 뒤 판정: `lcpel.cjs https://urdeal.kr/login` 에서 FCP 가 HTML 직후(≈0.3~0.5s), 유달이 응답이 0.5s 안팎, 마운트 때 글자가 0 에서 다시 떠오르지 않는지(동영상 프레임 또는 `ur-lg-h` 미존재 확인).
