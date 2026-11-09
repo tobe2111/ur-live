@@ -59,13 +59,13 @@ export default function PassHeadCard({
 
       {/* 📏 2026-11-02 상세 C안: 별점·구매 수와 거리를 **한 줄**로. 주소 줄은 아래 '매장' 구역이 이미 말해서 걷었다. */}
       {(hasReviews || buyers > 0 || distKm != null) && (
-        <div className="mt-2 flex items-center justify-between gap-3 text-[13px]">
-          <span className="min-w-0 flex items-center flex-wrap gap-x-2 gap-y-1">
+        <div className={PASS_HEAD.stats}>
+          <span className={PASS_HEAD.statsLeft}>
             {hasReviews && (
               <>
                 <StarRating value={rv} size={12} />
                 <b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{rv.toFixed(1)}</b>
-                <button type="button" onClick={() => goTo('gb-sec-reviews')} className="bg-transparent border-0 p-0 cursor-pointer" style={{ color: 'var(--gbd-sub)' }}>({formatNumber(rc)})</button>
+                <button type="button" onClick={() => goTo('gb-sec-reviews')} className={PASS_HEAD.statsBtn} style={{ color: 'var(--gbd-sub)' }}>({formatNumber(rc)})</button>
               </>
             )}
             {hasReviews && buyers > 0 && <span aria-hidden="true" style={{ color: 'var(--gbd-sub2)' }}>·</span>}
@@ -78,11 +78,11 @@ export default function PassHeadCard({
       )}
 
       {unitPrice != null && unitPrice > 0 && (
-        <div className="mt-3">
-          {refPrice != null && refPrice > unitPrice && <div className="text-[13px]" style={{ color: 'var(--gbd-sub)' }}><s className="ur-strike">{t('pass.price.won', { defaultValue: '{{price}}원', price: formatNumber(refPrice) })}</s></div>}
-          <div className="flex items-baseline gap-2">
-            {!!discountPct && discountPct > 0 && <span className="ur-pct-pop text-[16px] font-bold" style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
-            <span className="text-[24px] font-bold tracking-[-.02em]" style={{ color: 'var(--gbd-ink)' }}>{t('pass.price.won', { defaultValue: '{{price}}원', price: formatNumber(unitPrice) })}</span>
+        <div className={PASS_HEAD.price}>
+          {refPrice != null && refPrice > unitPrice && <div className={PASS_HEAD.priceRef} style={{ color: 'var(--gbd-sub)' }}><s className="ur-strike">{t('pass.price.won', { defaultValue: '{{price}}원', price: formatNumber(refPrice) })}</s></div>}
+          <div className={PASS_HEAD.priceRow}>
+            {!!discountPct && discountPct > 0 && <span className={`ur-pct-pop ${PASS_HEAD.pricePct}`} style={{ color: 'var(--sale)' }}>{discountPct}%</span>}
+            <span className={PASS_HEAD.priceNow} style={{ color: 'var(--gbd-ink)' }}>{t('pass.price.won', { defaultValue: '{{price}}원', price: formatNumber(unitPrice) })}</span>
           </div>
         </div>
       )}

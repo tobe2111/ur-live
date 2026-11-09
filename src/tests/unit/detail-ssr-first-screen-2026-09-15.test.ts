@@ -199,7 +199,10 @@ describe('③-3 감싸는 노드가 페이지와 같은 표면을 들고 다닌�
     expect(html).toContain('min-height:34dvh')
   })
 
-  it('🔴 주소·가격은 여전히 **보이는 화면**에 안 그린다 — 주소 줄의 `· N km` 는 per-user 라 되감길 수 있다', () => {
+  // 🔀 2026-11-09 재조준: 가격은 이제 그린다 — 2026-11-02 상세 C안으로 주소 줄이 걷히고 거리가 별점 줄 **오른쪽**으로 옮겨
+  //   "되감겨 가격이 밀린다" 는 전제가 사라졌다(가드: `detail-price-first-screen-2026-11-09.test.tsx` 가 서버·화면 DOM 을 대조).
+  //   지키려던 것 중 남는 것은 **per-user 값(거리)·주소 문장은 서버가 그리지 않는다** 이다.
+  it('🔴 주소·거리는 **보이는 화면**에 안 그린다 — per-user 값이다', () => {
     const html = buildDetailFirstScreen(seed(), LOADER)
     // 🔀 2026-10-11 재조준: 지키려던 것(**마운트 때 되감길 줄을 서버가 그리지 않는다**)은 그대로다.
     //   같은 날 붙은 `<noscript>` 본문 요약은 JS 가 돌면 렌더되지 않아 밀림을 만들 수 없으므로
@@ -207,7 +210,7 @@ describe('③-3 감싸는 노드가 페이지와 같은 표면을 들고 다닌�
     const ns = buildDetailNoscript(JSON.parse(seed()).data)
     const visible = ns ? html.replace(ns, '') : html
     expect(visible, 'noscript 가 안 떼졌다 — 빌더와 갈렸다').not.toContain('<noscript')
-    expect(visible).not.toContain('16,500')
+    expect(visible).not.toMatch(/\d km|\dkm/)
     expect(visible).not.toContain('결제 즉시 교환권 발급')
   })
 
