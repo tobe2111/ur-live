@@ -18,7 +18,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 function udalHtml(): string {
   const w = LOGIN_UDAL_SIZE
   const h = Math.round((w * UDAL_HELLO_ART.h) / UDAL_HELLO_ART.w)
-  return `<img src="${UDAL_HELLO_SRC}" alt="" aria-hidden="true" draggable="false" width="${w}" height="${h}" loading="eager" decoding="async" data-udal="hello" class="select-none pointer-events-none ur-udal-bob ${LOGIN_CLS.udal}" style="width:${w}px;height:auto">`
+  return `<img src="${UDAL_HELLO_SRC}" alt="" aria-hidden="true" draggable="false" width="${w}" height="${h}" loading="eager" fetchpriority="high" decoding="async" data-udal="hello" class="select-none pointer-events-none ur-udal-bob ${LOGIN_CLS.udal}" style="width:${w}px;height:auto">`
 }
 
 export function loginFirstScreenBody(): string {

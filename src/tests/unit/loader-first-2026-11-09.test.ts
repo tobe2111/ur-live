@@ -31,7 +31,7 @@ describe('②④⑤ 배선', () => {
   const mod = readRaw('src/worker/utils/css-first-boot.ts')
   it('지연이 켜지면 앱 CSS 링크는 항상 media=print — crit 조건 밖', () => {
     const body = mod.slice(mod.indexOf('export function applyCssFirstBoot'))
-    expect(body).toMatch(/if \(!on\) return rw[\s\S]{0,400}rw = rw\.on\('link\[rel="stylesheet"\]'/)
+    expect(body).toMatch(/if \(!on\) return rw[\s\S]{0,900}rw = rw\.on\('link\[rel="stylesheet"\]'/) // 2026-11-09 토큰판(styleCss) 줄이 사이에 끼어 창을 900 으로
     expect(body).not.toMatch(/if \(crit\) \{\s*rw = rw\.on\('link\[rel="stylesheet"\]'/)
     expect(body).toMatch(/cssFirstBootScript\(nonce, true\)/) // 백스톱은 늘 첫 화면용(10초) — 앱 CSS 없이 React 를 켜지 않는다
     expect(CRITICAL_BACKSTOP_MS).toBe(10000)

@@ -57,6 +57,14 @@ export default [
     why: 'PC 홈 말고는 서버가 PC 첫 화면을 안 그린다 — 다른 PC 화면에 폰 표면 CSS 를 인라인하면 무게만 는다(로더-먼저만 걸어야 한다).',
   },
   {
+    name: '🎨 로더-먼저 표면에서 토큰판을 안 넣는다(로더가 투명해진다 — 2026-11-09 배포 뒤 실측)',
+    file: MOD,
+    find: "const styleCss = crit ? critical : criticalCssUsable(tokens) ? tokens : ''",
+    replace: "const styleCss = crit ? critical : ''",
+    test: TEST,
+    why: '검색·장바구니·뷰어의 로더가 var(--brand)·var(--rule) 값이 없어 투명 — 첫 그림이 앱 렌더(2초)까지 0.',
+  },
+  {
     name: '🚦 SideBanner 가 다시 폰에서도 마운트된다',
     file: 'src/App.tsx',
     find: '&& shellNeed.sideBanner && <Suspense fallback={null}><SideBanner /></Suspense>}',

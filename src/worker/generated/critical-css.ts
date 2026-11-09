@@ -14,3 +14,5 @@ export const CRITICAL_CSS: string = ''
 export const CRITICAL_CSS_HOME: string = ''
 /** 🧩 2026-11-08 표면별 첫 화면 CSS(`SURFACE_ROOTS`). 비어 있으면 워커가 전체판을 쓴다. */
 export const CRITICAL_CSS_SURFACES: Record<string, string> = {}
+/** 🎨 2026-11-09 토큰판(:root · .dark 변수만, `tokensCssOf`). 로더-먼저 표면에서 로더의 var() 가 값을 갖게. 비면 넣지 않는다. */
+export const CRITICAL_CSS_TOKENS: string = ''
