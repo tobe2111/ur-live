@@ -677,24 +677,19 @@ app.use('*', async (c, next) => {
     let ssrStatus = 'skip';
     // 🛡️ 2026-05-27 (production 측정): Server-Timing 헤더 — Chrome DevTools 에서 직접 확인.
     //   edge-read / self-fetch 각각 시간 기록 → 어디서 시간 쓰는지 즉시 파악.
-    let homeNearSeedHtml = '';
-    const timings: string[] = [];
+    const timings: string[] = []; let homeNearSeedHtml = '';
     // 🌍 SSR 페이로드 획득 — 3계층(엣지 → 전역 KV → self-fetch)은 `utils/ssr-payload.ts` SSOT.
     //   ⚠️ 잠긴 로딩 최적화다. 계층 순서·슬롯별 타임아웃을 바꾸면 콜드 콜로 TTFB 가 회귀한다.
     // 🏠 2026-08-22 (대표 "인기 이용권이 먼저 안 뜨고 가까운 동네딜이 먼저 보여"): 홈은 시드가
     //   **두 개** 필요하다 — 피드(MAIN)와 섹션(SECTIONS). 한쪽만 0-RTT 면 같은 화면에서 한쪽만
     //   늦게 끼어들어 "순서가 뒤바뀐 것"처럼 보인다. 둘을 **병렬**로 받는다(직렬이면 그만큼 느려진다).
-    // 📍 2026-11-09 [LOADING_ADDITIVE] (대표 *"아직 많이 느리네"* — 위치 저장한 손님의 홈 피드가 '불러오는 중'): 위치가 있으면
-    //   피드는 거리순(`&near=`)이라 MAIN 시드(인기순)를 못 쓰고 앱 부팅 뒤에야 한국→LA 로 다시 받았다. 같은 격자 키로 거리순 피드를
-    //   **별도 슬롯**(MAIN 은 지도·히어로도 읽으므로 그대로)으로 함께 싣는다. 늦으면(300ms) 버린다 — HTML 을 붙잡지 않는다. utils/home-near-seed.ts
-    const nearSeedTarget = isMainPage ? homeNearSeedTarget(c.req.header('cookie')) : null;
+    const nearSeedTarget = isMainPage ? homeNearSeedTarget(c.req.header('cookie')) : null; // 📍 2026-11-09 [LOADING_ADDITIVE] 위치 저장 손님의 거리순 피드를 별도 슬롯(MAINNEAR)으로 함께 — 400ms 마감. 사유: utils/home-near-seed.ts
     if (ssrTarget) {
       const [r, extra, nearSeed] = await Promise.all([
         fetchSsrPayload(ssrTarget, origin0, c.env, ssrWaitUntil(c)),
         ssrExtra ? fetchSsrPayload(ssrExtra, origin0, c.env, ssrWaitUntil(c)) : Promise.resolve(null),
         nearSeedTarget ? withSeedDeadline(fetchSsrPayload(nearSeedTarget.target, origin0, c.env, ssrWaitUntil(c)), HOME_NEAR_SEED_DEADLINE_MS) : Promise.resolve(null),
-      ]);
-      if (nearSeedTarget && nearSeed?.payload) homeNearSeedHtml = homeNearSeedScript(nearSeedTarget.key, nearSeed.payload);
+      ]); if (nearSeedTarget && nearSeed?.payload) homeNearSeedHtml = homeNearSeedScript(nearSeedTarget.key, nearSeed.payload);
       ssrPayload = r.payload;
       // ⚠️ 'ssrStatus' 는 아래 soft-404 판정(shouldNoindexMissingEntity)이 읽는다 — 지우지 말 것.
       ssrStatus = r.status;
