@@ -170,6 +170,36 @@ describe('②-e 유튜브 — 이름만 · 체인점은 지점명까지 (2026-11
   })
 })
 
+describe('②-f 개선 7가지 (2026-11-09 대표 "전부 해줘")', () => {
+  it('같은 무리 안에서 사진 있는 글 → 협찬 아닌 글 → 최근 1년 안 순서', () => {
+    const now = Date.parse('2026-11-09T00:00:00Z')
+    const out = sortForCustomer([
+      item({ id: 'old', kind: 'blog', platform: 'naver_blog', thumb_url: 'x', published_at: '2023-01-01' }),
+      item({ id: 'sp', kind: 'blog', platform: 'naver_blog', thumb_url: 'x', sponsored: true, published_at: '2026-10-01' }),
+      item({ id: 'nothumb', kind: 'blog', platform: 'naver_blog', thumb_url: null, published_at: '2026-10-02' }),
+      item({ id: 'best', kind: 'blog', platform: 'naver_blog', thumb_url: 'x', published_at: '2026-09-01' }),
+    ], now)
+    expect(out.map((x) => x.id)).toEqual(['best', 'old', 'sp', 'nothumb'])
+  })
+  it('사장님이 정한 순서는 그 위에 선다', () => {
+    const out = sortForCustomer([item({ id: 'a', thumb_url: 'x' }), item({ id: 'b', thumb_url: null, position: 1 })])
+    expect(out[0].id).toBe('b')
+  })
+  it('블로그도 체인점은 지점명까지', () => {
+    expect(confidentMatch('명륜동 샤브올데이 명륜점 후기', '샤브올데이 부산명륜점', '부산 동래구 명륜동 1')).toBe(true)
+    expect(confidentMatch('명륜동 근처 샤브올데이 수영점 후기', '샤브올데이 부산명륜점', '부산 동래구 명륜동 1')).toBe(false)
+  })
+  it('측정 · 어드민 · 죽은 링크 배선', () => {
+    expect(read('src/features/analytics/api/funnel.routes.ts')).toMatch(/'creator_content_shown',\n\s*'creator_content_opened',\n\s*'creator_content_buy',/)
+    expect(read('src/pages/group-buy/creator-content/CreatorContentRow.tsx')).toMatch(/trackFunnel\('creator_content_buy'/)
+    expect(read('src/worker/index.ts')).toMatch(/adminApp\.route\('\/creator-content-stores', creatorContentAdminStoresRoutes\)/)
+    expect(read('src/routes/admin.routes.tsx')).toMatch(/path="\/admin\/creator-content"/)
+    const c = read('src/features/creator-content/api/content-collect.ts')
+    expect(c).toMatch(/const dead = await hideDeadLinks\(DB\)/)
+    expect(c).toMatch(/status = CASE WHEN \? = 1 THEN 'hidden' ELSE status END/)
+  })
+})
+
 describe('③ 정렬', () => {
   it('고정 → 유어딜 사람 → 영상 → 블로그', () => {
     const out = sortForCustomer([

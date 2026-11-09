@@ -75,9 +75,25 @@ export default [
   {
     name: '체인점 영상도 이름만 맞으면 공개한다',
     file: S,
-    find: '  return branch ? normStoreName(text).includes(branch) : true\n',
+    find: '  return branch ? normStoreName(text).includes(`${branch}점`) : true\n',
     replace: '  return true\n',
     test: T,
     why: '같은 체인 다른 지점 영상(샤브올데이 수영점)이 명륜점 이용권에 뜬다.',
+  },
+  {
+    name: '정렬이 사진 있는 글을 앞에 두지 않는다',
+    file: S,
+    find: '    || Number(!a.thumb_url) - Number(!b.thumb_url)\n',
+    replace: '',
+    test: T,
+    why: '손님이 처음 보는 3개가 사진 없는 글자 줄로 채워진다.',
+  },
+  {
+    name: '블로그 확실 매칭이 지점을 안 본다',
+    file: S,
+    find: '  if (branch && !normStoreName(text).includes(`${branch}점`)) return false\n',
+    replace: '',
+    test: T,
+    why: '같은 동네 다른 지점 블로그 글이 자동 공개된다.',
   },
 ]

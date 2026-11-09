@@ -130,6 +130,10 @@ export function mentionsStore(text: string, storeName: string): boolean {
  */
 export function confidentMatch(text: string, storeName: string, address: string | null | undefined): boolean {
   if (!mentionsStore(text, storeName)) return false
+  // 체인점은 블로그도 지점명까지(2026-11-09 — 영상과 같은 규칙. 같은 동네의 다른 지점 글이 섞이지 않게).
+  const branch = branchOf(storeName)
+  // "명륜" 만 보면 동네 이름(명륜동)에도 걸린다 — 지점 표기 "명륜점" 으로 본다.
+  if (branch && !normStoreName(text).includes(`${branch}점`)) return false
   const words = String(address ?? '').split(/\s+/).filter(Boolean)
   const areas = words.filter((w) => /(동|읍|면|구|군)$/.test(w) && w.length >= 2).map((w) => normStoreName(w))
   if (!areas.length) return false
@@ -155,7 +159,7 @@ export function branchOf(storeName: string | null | undefined): string | null {
 export function videoMatch(text: string, storeName: string): boolean {
   if (!mentionsStore(text, storeName)) return false
   const branch = branchOf(storeName)
-  return branch ? normStoreName(text).includes(branch) : true
+  return branch ? normStoreName(text).includes(`${branch}점`) : true
 }
 
 /** 검색어 — 가게 이름 + 동네(주소의 구/동 한 단어). 동네가 없으면 이름만. */
@@ -220,10 +224,23 @@ export interface PinPerson { user_id: number; handle: string; name: string | nul
 export interface CreatorContentPayload { items: ContentItem[]; pinners: PinPerson[] }
 
 /** 손님에게 보이는 순서 — 고정 → 유어딜 사람 → 영상 → 블로그, 그 안에서는 사장님 순서(position) → 최근 것. */
-export function sortForCustomer(items: ContentItem[]): ContentItem[] {
+/**
+ * 손님에게 보이는 순서 — 고정 → 유어딜 사람 → 영상 → 블로그. 같은 무리 안에서는 (2026-11-09 대표 *"전부 해줘"* — 보여 주는 순서)
+ *   사장님이 정한 순서(position > 0) → 사진 있는 글 → 협찬 아닌 글 → 최근 1년 안 → 최근 것.
+ * 손님이 처음 보는 3개의 질이 이 함수로 정해진다.
+ */
+export function sortForCustomer(items: ContentItem[], nowMs: number = Date.now()): ContentItem[] {
   const rank = (x: ContentItem) => (x.pinned ? 0 : x.urdeal ? 1 : x.kind === 'video' ? 2 : 3)
+  const yearAgo = new Date(nowMs - 365 * 86400000).toISOString().slice(0, 10)
+  const ordered = (x: ContentItem) => (x.position > 0 ? x.position : 1e9)
+  const fresh = (x: ContentItem) => (x.published_at && x.published_at.slice(0, 10) >= yearAgo ? 0 : 1)
   return [...items].sort((a, b) =>
-    rank(a) - rank(b) || a.position - b.position || String(b.published_at ?? '').localeCompare(String(a.published_at ?? '')))
+    rank(a) - rank(b)
+    || ordered(a) - ordered(b)
+    || Number(!a.thumb_url) - Number(!b.thumb_url)
+    || Number(a.sponsored) - Number(b.sponsored)
+    || fresh(a) - fresh(b)
+    || String(b.published_at ?? '').localeCompare(String(a.published_at ?? '')))
 }
 
 /** 유튜브 공유 한도 — 유어애즈와 같은 하루 10,000점 풀에서 이 몫만 쓴다(2026-11-04 대표 *"자동으로 분담"*). */

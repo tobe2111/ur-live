@@ -54,6 +54,8 @@ export async function ensureCreatorContentTables(DB: D1Database): Promise<void> 
     )`),
     DB.prepare(`CREATE INDEX IF NOT EXISTS idx_scrawl_naver ON store_content_crawl(naver_at)`),
   ]).catch(() => null)
+  // 🪦 2026-11-09 죽은 링크 확인 시각 — 이미 있으면 무해(오류를 삼킨다).
+  await DB.prepare(`ALTER TABLE store_creator_content ADD COLUMN checked_at TEXT`).run().catch(() => null)
 }
 
 /**

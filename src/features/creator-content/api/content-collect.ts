@@ -31,10 +31,14 @@ import { fetchPageMeta } from './content-meta'
 
 const STORES_PER_RUN = 5
 /** 대표 사진이 없는 보이는 글을 회차마다 이만큼 채운다(검색 API 는 사진을 안 준다 — 글 페이지의 og:image). */
-const THUMB_BACKFILL_PER_RUN = 5
+const THUMB_BACKFILL_MIN = 5
+const THUMB_BACKFILL_MAX = 20
+/** 회차당 죽은 링크 확인 개수(지워졌거나 비공개가 된 글·영상을 숨긴다). */
+const DEAD_CHECK_PER_RUN = 3
 const NAVER_DISPLAY = 30
 const PAGE_FETCH_PER_STORE = 2
-const NAVER_REVISIT_HOURS = 20
+// 블로그는 하루 사이에 크게 안 바뀐다 — 사흘에 한 번 다시 보고, 남는 예산을 사진 채우기·죽은 링크 확인에 쓴다(2026-11-09).
+const NAVER_REVISIT_HOURS = 72
 const YT_REVISIT_DAYS = 14
 const SYNC_KEY = 'creator_content_crawl_synced'
 
@@ -183,10 +187,10 @@ async function collectVideos(DB: D1Database, env: Env, now: number): Promise<{ s
  *    수집 때는 가게당 2개만 글 페이지를 읽었다. 보이는 글부터 회차마다 5개씩 읽는다.
  *    못 읽은 글은 `thumb_url = ''` 로 표시해 다시 안 시도한다(NULL = 아직 안 해 봄).
  */
-async function backfillThumbs(DB: D1Database): Promise<number> {
+async function backfillThumbs(DB: D1Database, limit: number): Promise<number> {
   const { results } = await DB.prepare(`SELECT id, ext_id FROM store_creator_content
       WHERE platform = 'naver_blog' AND thumb_url IS NULL AND status IN ('visible', 'candidate')
-      ORDER BY status = 'visible' DESC, id DESC LIMIT ${THUMB_BACKFILL_PER_RUN}`).all<{ id: number; ext_id: string }>()
+      ORDER BY status = 'visible' DESC, id DESC LIMIT ?`).bind(limit).all<{ id: number; ext_id: string }>()
   const rows = results ?? []
   if (!rows.length) return 0
   const metas = await Promise.all(rows.map((r) => fetchPageMeta(`https://m.blog.naver.com/${r.ext_id}`).catch(() => null)))
@@ -210,6 +214,37 @@ async function promoteVideoCandidates(DB: D1Database): Promise<number> {
   return ids.length
 }
 
+/**
+ * 🪦 죽은 링크 숨기기 (2026-11-09) — 보이는 글·영상 중 가장 오래 확인 안 한 것부터 회차마다 3개.
+ *   유튜브: 공개 oEmbed 가 404/401(삭제·비공개) · 블로그: 글 페이지가 404 이거나 "존재하지 않는 게시물".
+ *   숨김(`hidden`)으로만 바꾼다(지우지 않는다) — 일시 장애로 잘못 숨겨도 사장님 화면에서 다시 켤 수 있다.
+ *   네트워크 실패(응답 없음)는 죽음으로 보지 않는다.
+ */
+async function hideDeadLinks(DB: D1Database): Promise<number> {
+  const { results } = await DB.prepare(`SELECT id, platform, ext_id, url FROM store_creator_content
+      WHERE status = 'visible' AND platform IN ('youtube', 'naver_blog')
+      ORDER BY checked_at IS NOT NULL, checked_at ASC LIMIT ${DEAD_CHECK_PER_RUN}`).all<{ id: number; platform: string; ext_id: string; url: string }>()
+  const rows = results ?? []
+  if (!rows.length) return 0
+  const dead = await Promise.all(rows.map(async (r) => {
+    const url = r.platform === 'youtube'
+      ? `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${r.ext_id}`)}`
+      : `https://m.blog.naver.com/${r.ext_id}`
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) }).catch(() => null)
+    if (!res) return false
+    if (res.status === 404 || res.status === 410 || (r.platform === 'youtube' && res.status === 401)) return true
+    if (r.platform === 'naver_blog' && res.ok) {
+      const html = (await res.text().catch(() => '')).slice(0, 60_000)
+      return /존재하지 않는 게시물|삭제되었거나|비공개 글/.test(html)
+    }
+    return false
+  }))
+  await DB.batch(rows.map((r, i) => DB.prepare(`UPDATE store_creator_content
+      SET checked_at = datetime('now'), status = CASE WHEN ? = 1 THEN 'hidden' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+    .bind(dead[i] ? 1 : 0, r.id)))
+  return dead.filter(Boolean).length
+}
+
 export async function runCreatorContentCollect(env: Env, now = Date.now()) {
   const DB = env.DB
   await ensureCreatorContentTables(DB)
@@ -225,8 +260,12 @@ export async function runCreatorContentCollect(env: Env, now = Date.now()) {
       return 0
     })
   }
-  const thumbs = await backfillThumbs(DB).catch(() => 0)
+  // 🖼️ 사진 채우기는 **남는 예산만큼** — 이번 회차에 찾은 가게가 적으면 더 많이 채운다(무료 50/인보케이션).
+  //   대략: 기본 D1 ~6 + 가게당 6 + 재판정 2 + 죽은 링크 5 + 유튜브 3, 나머지가 사진(배치 쓰기 1 포함).
+  const thumbRoom = Math.max(THUMB_BACKFILL_MIN, Math.min(THUMB_BACKFILL_MAX, 46 - 6 - (results ?? []).length * 6 - 2 - 5 - 3 - 2))
+  const thumbs = await backfillThumbs(DB, thumbRoom).catch(() => 0)
+  const dead = await hideDeadLinks(DB).catch(() => 0)
   const promoted = await promoteVideoCandidates(DB).catch(() => 0)
   const yt = await collectVideos(DB, env, now).catch(() => ({ searched: false, added: 0 }))
-  return { synced, stores: (results ?? []).length, blogs, thumbs, promoted, yt_searched: yt.searched, videos: yt.added }
+  return { synced, stores: (results ?? []).length, blogs, thumbs, dead, promoted, yt_searched: yt.searched, videos: yt.added }
 }

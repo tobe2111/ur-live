@@ -29,7 +29,7 @@ const EVENT_LABEL: Record<string, string> = {
   payment_succeeded: '결제 완료',
   empty_region_shown: '빈 지역 노출',
 }
-const EVENT_ORDER = ['app_open', 'login_wall_shown', 'login_succeeded', 'checkout_started', 'payment_succeeded', 'empty_region_shown']
+const EVENT_ORDER = ['app_open', 'login_wall_shown', 'login_succeeded', 'checkout_started', 'payment_succeeded', 'empty_region_shown', 'creator_content_shown', 'creator_content_opened', 'creator_content_buy']
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (

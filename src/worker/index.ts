@@ -287,7 +287,7 @@ import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
 import { sectionsRoutes } from '../features/sections/api/sections.routes';
 // 🎬 2026-09-07 유어쇼츠 — 홈 레일 + /videos 뷰어. 공개는 이용권이 붙은 영상만 나간다.
 import { urshortsRoutes, adminUrshortsRoutes, sellerUrshortsRoutes } from '../features/urshorts/api/urshorts.routes';
-import { creatorContentPublicRoutes, creatorContentSellerRoutes, creatorContentAdminRoutes } from '../features/creator-content/api/content.routes'; // 🎬 2026-11-04 이용권 상세 '다녀온 사람들'
+import { creatorContentPublicRoutes, creatorContentSellerRoutes, creatorContentAdminRoutes, creatorContentAdminStoresRoutes } from '../features/creator-content/api/content.routes'; // 🎬 2026-11-04 이용권 상세 '다녀온 사람들'
 import { youtubeGrowthRoutes, youtubeGrowthAdminRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
 import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
 import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
@@ -1825,6 +1825,7 @@ adminApp.route('/', adminReviewGeneratorRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/urshorts', adminUrshortsRoutes);
 adminApp.route('/creator-content', creatorContentAdminRoutes);
+adminApp.route('/creator-content-stores', creatorContentAdminStoresRoutes);
 // Feature flags / kill-switch (graceful degradation for traffic spikes)
 adminApp.route('/flags', adminFlagsRoutes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)

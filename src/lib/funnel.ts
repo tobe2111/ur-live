@@ -16,6 +16,9 @@ export type FunnelEvent =
   | 'checkout_started'
   | 'payment_succeeded'
   | 'empty_region_shown'
+  | 'creator_content_shown'   // 🎬 이용권 상세 '다녀온 사람들' 칸이 보였다(2026-11-09)
+  | 'creator_content_opened'  //    글·영상을 열었다
+  | 'creator_content_buy'     //    그 창에서 구매를 눌렀다
 
 function getFid(): string {
   try {

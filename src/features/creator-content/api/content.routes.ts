@@ -296,3 +296,30 @@ function manageRoutes(admin: boolean) {
 
 export const creatorContentSellerRoutes = manageRoutes(false)
 export const creatorContentAdminRoutes = manageRoutes(true)
+
+/**
+ * 🗂️ 어드민 — 가게 목록(후보 많은 순) (2026-11-09 대표 *"전부 해줘"* — 데모 매장은 사장님이 없어 후보를 고를 사람이 없었다).
+ *   GET /api/admin/creator-content-stores → [{ store_key, store_name, address, candidates, visible, product_id }]
+ *   product_id 는 그 가게 이용권 하나 — 관리 API(`/api/admin/creator-content/:productId`)가 상품 기준이라 그 입구로 쓴다.
+ */
+export const creatorContentAdminStoresRoutes = new Hono<{ Bindings: Env }>()
+creatorContentAdminStoresRoutes.use('*', requireAdmin())
+creatorContentAdminStoresRoutes.get('/', async (c) => {
+  try {
+    const DB = c.env.DB
+    await ensureCreatorContentTables(DB)
+    const { results } = await DB.prepare(`
+      SELECT k.store_key, k.store_name, k.address,
+             COALESCE(SUM(s.status = 'candidate'), 0) AS candidates,
+             COALESCE(SUM(s.status = 'visible'), 0) AS visible,
+             (SELECT p.id FROM products p WHERE p.restaurant_name = k.store_name AND COALESCE(p.restaurant_address, '') = COALESCE(k.address, '')
+                ORDER BY p.is_active DESC, p.id DESC LIMIT 1) AS product_id
+        FROM store_content_crawl k
+        LEFT JOIN store_creator_content s ON s.store_key = k.store_key AND s.platform NOT LIKE 'urdeal_%'
+       GROUP BY k.store_key
+       ORDER BY candidates DESC, visible DESC LIMIT 400`).all()
+    return c.json({ success: true, data: results ?? [] })
+  } catch (err) {
+    return safeError(c, err, '가게 목록을 불러오지 못했습니다', '[creator-content:admin-stores]')
+  }
+})
