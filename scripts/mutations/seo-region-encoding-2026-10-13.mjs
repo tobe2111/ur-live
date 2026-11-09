@@ -142,8 +142,8 @@ export default [
   {
     name: '🎬 /urshorts 화면이 10편 시드를 전량으로 믿고 ?all=1 을 안 받는다 (목록이 도로 10편으로 짧아진다)',
     file: 'src/pages/UrShortsBrowsePage.tsx', // 2026-11-09 재조준: 시드는 이제 주입된다(자리값). 지켜야 할 것은 "전량으로 갈아끼운다"
-    find: "    fetch('/api/urshorts?all=1')",
-    replace: "    if (items) return\n    fetch('/api/urshorts?all=1')",
+    find: "    loadShortsAll().then((list) => { if (alive) setItems(list) })",
+    replace: "    if (items) return\n    loadShortsAll().then((list) => { if (alive) setItems(list) })",
     test: 'src/tests/unit/urshorts-seed-2026-11-09.test.tsx',
     why:
       '이 시드는 **10편**이고 화면은 `?all=1` 전량을 받는다. `initialData` 로 먹이면 사용자가 보던 ' +

@@ -6,6 +6,7 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { youTubeEmbedUrl, youTubePlayerVars, type UrShortItem } from '@/shared/urshorts'
+import { loadShortsAll, peekShortsAll } from '@/shared/urshorts-list-cache'
 import { loadYouTubePlayerApi, killCaptions, type YtPlayer } from './videos/youtube-player'
 import { priceDisplay } from '@/shared/price-display'
 import SEO from '@/components/SEO'
@@ -52,8 +53,8 @@ if (typeof window !== 'undefined') void loadYouTubePlayerApi()
  * 영상이 끝나기를 기다렸다 보여 주면 이미 늦다. **보는 중에 사고 싶어지는 것**이 이 화면의 전부다.
  */
 export default function VideosPage() {
-  const [items, setItems] = useState<UrShortItem[] | null>(null)
-  const [idx, setIdx] = useState(0)
+  const [items, setItems] = useState<UrShortItem[] | null>(() => peekShortsAll()) // 🎬 2026-11-09 목록에서 넘어왔으면 전량이 이미 손에 있다 — 0 왕복
+  const [idx, setIdx] = useState(() => { const v = new URLSearchParams(window.location.search).get('v'); const l = peekShortsAll(); const at = v && l ? l.findIndex((x) => x.video_id === v) : -1; return at >= 0 ? at : 0 })
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const goBack = useSafeBack('/')
@@ -98,18 +99,15 @@ export default function VideosPage() {
 
   useEffect(() => {
     let alive = true
-    fetch('/api/urshorts?all=1')
-      .then((r) => r.json() as Promise<{ success?: boolean; data?: UrShortItem[] }>)
-      .then((r) => {
+    loadShortsAll() // 🎬 2026-11-09 한 벌 — 이미 받았으면 즉시 resolve(요청 0)
+      .then((list) => {
         if (!alive) return
-        const list = r?.success && Array.isArray(r.data) ? r.data : []
         setItems(list)
         if (startVideo) {
           const at = list.findIndex((x) => x.video_id === startVideo)
           if (at >= 0) setIdx(at)
         }
       })
-      .catch(() => { if (alive) setItems([]) })
     return () => { alive = false }
   }, [startVideo])
 

@@ -295,7 +295,8 @@ describe('🎬 /urshorts — 색인 대상인데 크롤러 본문이 6자였다'
   it('워커가 시드를 주입하고(버리지 않는다) 화면은 ?all=1 전량으로 갈아끼운다', () => {
     const w = readCode('src/worker/index.ts')
     expect(w).not.toMatch(/url\.pathname === '\/urshorts'\) ssrPayload = null/)
-    expect(readCode('src/pages/UrShortsBrowsePage.tsx')).toContain("fetch('/api/urshorts?all=1')")
+    expect(readCode('src/pages/UrShortsBrowsePage.tsx')).toContain('loadShortsAll()') // 🎬 2026-11-09 한 벌(shared/urshorts-list-cache)이 ?all=1 을 받는다
+    expect(readCode('src/shared/urshorts-list-cache.ts')).toContain("fetch('/api/urshorts?all=1')")
     // 그리고 그 키는 예열 목록에 **실재**해야 한다(새 캐시 키를 만들지 않는 것이 이 설계의 전제).
     expect(w).toMatch(/slot: 'URSHORTS', path: '\/api\/urshorts'/)
     expect(readCode('src/worker/cron/cache-prewarm.ts')).toMatch(/'\/api\/urshorts'/)
