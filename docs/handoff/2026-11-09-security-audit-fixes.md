@@ -84,3 +84,14 @@
 - 🩸 첫 시험이 `verifyPassword(` 첫 등장을 기준으로 잡았는데, 없는 계정용 **더미 해시 호출**이 앞에 있어 주입이 통과했다 → 진짜 확인 줄로 재조준.
 - ⏭️ 안 한 것: og 이미지(`/og/group-buy/:id`)가 상품 사진 주소로 302 하는 것 — http(s)만 통과시키고 이미지 미리보기 용도라 위험 낮음, 막으면 카톡 미리보기가 깨질 수 있어 보류.
 - 4차(1) #2258 라이브 판정: 관리자 토큰으로 `/api/cart`·`/api/points/balance` → **403**(소비자 전용 확인).
+
+## 6차 묶음 — 대표 "내가 할 것 제외해두고 계속 개선"
+- 🩸 **4차 가드의 구멍**: "hono verify 대신 verifyLogin" 시험이 **이름을 바꿔 들여온 verify**(`verify as honoVerify` 등)를 못 봤다.
+  그 틈으로 셋이 남아 있었다 → 전부 `verifyLogin`:
+  - 셀러 PIN 화면의 로그인 확인(`seller-pin.routes.ts getSellerId`) — 옛 재발급 토큰으로 PIN 변경 가능했다.
+  - 유튜브 연결(`youtube.routes.ts`).
+  - 로그인 상태 확인 `/api/auth/session` 의 Bearer — type 없는 용도 토큰이 같은 번호 유저 세션으로 읽혔다.
+- 새 가드는 **별칭까지 세고, 파일별 허용 개수**로 고정(`security-hardening-6-2026-11-09.test.ts`).
+- 사업자등록증 AI 판독(`/business-registration/ocr-verify`): 10MB 제한 + IP당 시간 10회.
+- 카카오 장소 프록시: `size`(1~15 정수)·`category`(3자 코드)·좌표 숫자 검증 — 쿼리 값을 카카오 주소에 그대로 붙여 파라미터를 끼울 수 있었다.
+- 쓰지 않는 hono `verify` import 2곳 정리. 주입 5건 전부 빨간불 확인.
