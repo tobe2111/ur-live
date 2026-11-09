@@ -890,3 +890,8 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 - [ ] 체크인 날 취소(부분 환불) → 커미션이 환불 비율만큼만 줄고 나머지 유지
 - [ ] 어드민 숙소 환불 → 위와 같은 회수
 - [ ] 이 배포 전에 만든(옛 금액이 있는) 예약을 결제 확정 → 옛 장부(affiliate_earnings)만 1번(이중 적립 0)
+
+## 🔐 **S-WHLOOKUP** — 결제 웹훅 Toss 재조회 (2026-11-09 보안 전수조사 7번 · `docs/locks/toss/2026-11-09-webhook-toss-lookup.md`)
+- [ ] 카드 결제 1건 → `/confirm` 으로 확정된 뒤 도착한 Toss 웹훅이 `ORDER_ALREADY_CONFIRMED` 로 끝난다(이중 처리 0)
+- [ ] 웹훅만으로 확정되는 경로(가상계좌 입금 등)가 쓰이면: 입금 후 Toss 조회 DONE 으로 정상 확정된다
+- [ ] 위조 본문(가짜 paymentKey, 내 주문번호·금액) POST → 주문 상태 불변 · Sentry `WEBHOOK_TOSS_LOOKUP_MISMATCH`

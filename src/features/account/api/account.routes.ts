@@ -8,7 +8,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { requireUser, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { clearSessionCookie } from '@/worker/utils/session';
 import { safeError } from '@/worker/utils/safe-error';
@@ -56,7 +56,7 @@ async function ensureNotificationPrefColumns(db: D1Database) {
  * GET /api/account/notification-prefs — 본인 알림 설정 조회.
  * 컬럼 NULL(기존 유저) 은 enabled(1) 취급 — opt-out 모델.
  */
-accountRoutes.get('/notification-prefs', requireAuth(), async (c) => {
+accountRoutes.get('/notification-prefs', requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
@@ -81,7 +81,7 @@ accountRoutes.get('/notification-prefs', requireAuth(), async (c) => {
  * PATCH /api/account/notification-prefs — 본인 알림 설정 변경.
  * Body: { push?: boolean, email?: boolean } (최소 1개 필수, boolean 만 허용)
  */
-accountRoutes.patch('/notification-prefs', requireAuth(), async (c) => {
+accountRoutes.patch('/notification-prefs', requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
@@ -106,7 +106,7 @@ accountRoutes.patch('/notification-prefs', requireAuth(), async (c) => {
  * 2026-10-19 대표 결재 *"권장안대로 해줘"* — 화면이 먼저 보여 주고, 아래 DELETE 가 같은 함수로 최종 방어한다.
  * 조회가 깨지면 503 — 화면은 "확인하지 못했어요" 를 말하고 탈퇴를 열지 않는다(0 으로 위장 금지).
  */
-accountRoutes.get('/delete-blockers', requireAuth(), async (c) => {
+accountRoutes.get('/delete-blockers', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
   const r = await countAccountDeleteBlockers(c.env.DB, user.id, user.isDbId);
@@ -131,7 +131,7 @@ accountRoutes.get('/delete-blockers', requireAuth(), async (c) => {
  *   deletedAt: string;
  * }
  */
-accountRoutes.delete('/delete', requireAuth(), async (c) => {
+accountRoutes.delete('/delete', requireUser(), async (c) => {
   try {
     const authenticatedUser = getCurrentUser(c);
     if (!authenticatedUser) {
@@ -231,7 +231,7 @@ accountRoutes.get('/check-restriction', rateLimit({ action: 'account_check_restr
  *   (restorable=1&originalName=, kakao.routes.ts:793)가 담당해 이 엔드포인트는 프론트 미사용.
  *   → requireAuth + 본인 소유 kakao_id 만 조회 허용(세션 유저의 kakao_id 와 일치할 때만) + rate limit.
  */
-accountRoutes.get('/restorable', rateLimit({ action: 'account_restorable', max: 20, windowSec: 3600 }), requireAuth(), async (c) => {
+accountRoutes.get('/restorable', rateLimit({ action: 'account_restorable', max: 20, windowSec: 3600 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'unauth' }, 401)
 
@@ -266,7 +266,7 @@ accountRoutes.get('/restorable', rateLimit({ action: 'account_restorable', max: 
  *   사용자가 동의 화면에서 "복원하기" 클릭 시 호출.
  *   세션 cookie 가 이미 발급된 상태 (방금 카카오 로그인 끝남).
  */
-accountRoutes.post('/restore', requireAuth(), async (c) => {
+accountRoutes.post('/restore', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'unauth' }, 401)
 

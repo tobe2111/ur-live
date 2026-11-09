@@ -955,10 +955,6 @@
 **/api/products/count**
 - `GET /api/products/count`
 
-**/api/products/demo-seed-linkshop**
-- `POST /api/products/demo-seed-linkshop`
-- `POST /api/products/demo-seed-linkshop/clear`
-
 **/api/products/dominant-color**
 - `POST /api/products/dominant-color`
 

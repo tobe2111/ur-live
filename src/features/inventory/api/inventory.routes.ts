@@ -12,7 +12,10 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { requireUserType, getCurrentUser } from '@/worker/middleware/auth';
+
+// 🔐 2026-11-09: 재고·바코드는 셀러/어드민 도구 — 소비자 토큰(users.id=N)이 셀러 #N 으로 통하지 않게 종류를 묶는다.
+const sellerOrAdmin = () => requireUserType('seller', 'admin');
 import type { Env } from '@/worker/types/env';
 const inventoryRoutes = new Hono<{ Bindings: Env }>();
 
@@ -65,7 +68,7 @@ function generateEAN13(sellerId: number, productId: number): string {
 }
 
 // POST /api/inventory/barcode/generate/:productId — 바코드 생성
-inventoryRoutes.post('/barcode/generate/:productId', requireAuth(), async (c) => {
+inventoryRoutes.post('/barcode/generate/:productId', sellerOrAdmin(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -79,6 +82,9 @@ inventoryRoutes.post('/barcode/generate/:productId', requireAuth(), async (c) =>
   ).bind(productId).first<{ id: number; name: string; seller_id: number; barcode: string | null }>();
 
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+  if (user.type !== 'admin' && String(product.seller_id) !== String(user.id)) {
+    return c.json({ success: false, error: '본인 상품만 처리할 수 있습니다' }, 403);
+  }
 
   // 이미 바코드가 있으면 반환
   if (product.barcode) {
@@ -93,7 +99,7 @@ inventoryRoutes.post('/barcode/generate/:productId', requireAuth(), async (c) =>
 });
 
 // GET /api/inventory/barcode/scan/:code — 바코드 스캔 (상품 전체 정보)
-inventoryRoutes.get('/barcode/scan/:code', requireAuth(), async (c) => {
+inventoryRoutes.get('/barcode/scan/:code', sellerOrAdmin(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
   const code = c.req.param('code');
@@ -128,7 +134,7 @@ inventoryRoutes.get('/barcode/scan/:code', requireAuth(), async (c) => {
 });
 
 // POST /api/inventory/stock/in — 입고
-inventoryRoutes.post('/stock/in', requireAuth(), async (c) => {
+inventoryRoutes.post('/stock/in', sellerOrAdmin(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -175,7 +181,7 @@ inventoryRoutes.post('/stock/in', requireAuth(), async (c) => {
 });
 
 // POST /api/inventory/stock/out — 출고
-inventoryRoutes.post('/stock/out', requireAuth(), async (c) => {
+inventoryRoutes.post('/stock/out', sellerOrAdmin(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -221,7 +227,7 @@ inventoryRoutes.post('/stock/out', requireAuth(), async (c) => {
 });
 
 // POST /api/inventory/stock/adjust — 재고 실사 조정
-inventoryRoutes.post('/stock/adjust', requireAuth(), async (c) => {
+inventoryRoutes.post('/stock/adjust', sellerOrAdmin(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -258,7 +264,7 @@ inventoryRoutes.post('/stock/adjust', requireAuth(), async (c) => {
 });
 
 // GET /api/inventory/stock/history/:productId — 입출고 이력
-inventoryRoutes.get('/stock/history/:productId', requireAuth(), async (c) => {
+inventoryRoutes.get('/stock/history/:productId', sellerOrAdmin(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
   const productId = c.req.param('productId');
@@ -273,7 +279,7 @@ inventoryRoutes.get('/stock/history/:productId', requireAuth(), async (c) => {
 });
 
 // GET /api/inventory/stock/alerts — 재고 부족 상품 목록 (본인 셀러 한정)
-inventoryRoutes.get('/stock/alerts', requireAuth(), async (c) => {
+inventoryRoutes.get('/stock/alerts', sellerOrAdmin(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 

@@ -25,14 +25,14 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { recordTermsConsent } from '@/worker/utils/terms-consent'
 import { MALL_OPERATOR_TERMS_VERSION } from '@/shared/mall/operator-terms'
 
 const app = new Hono<{ Bindings: Env }>()
-app.use('*', requireAuth())
+app.use('*', requireUser())
 
 interface OperatorMall {
   id: number; slug: string; name: string; brand_name: string | null

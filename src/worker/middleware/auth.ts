@@ -103,7 +103,11 @@ async function verifyJWT(
     }
 
     const decoded = jwt.decode(token);
-    return decoded.payload as unknown as JwtPayload;
+    const payload = decoded.payload as unknown as JwtPayload & { purpose?: unknown };
+    // 🔐 2026-11-09: 용도 토큰(PIN 확인·카카오 재인증 등 `purpose` 가 붙은 것)은 로그인 토큰이 아니다.
+    //   type 이 없어 'user' 로 떨어지고 sub 가 셀러 id 라, 받아 주면 같은 번호의 유저로 통했다.
+    if (payload && payload.purpose != null) return null;
+    return payload;
   } catch {
     // Don't log token content — attacker reconnaissance risk
     return null;
@@ -361,8 +365,10 @@ export function requireAdminRole(...allowed: AdminRole[]) {
         .prepare('SELECT role FROM admins WHERE id = ?')
         .bind(String(user.id))
         .first<{ role?: string }>();
-      // 기존 'super_admin' 값과 신규 'super' 둘 다 전권으로 인정
-      const rawRole = row?.role || 'super';
+      // 🔐 2026-11-09: admins 행이 없는 토큰(삭제된 계정 등)은 거부 — 종전엔 행이 없으면 최고관리자로 봤다.
+      if (!row) return c.json(forbiddenResponse('관리자 계정을 찾을 수 없습니다', 'ADMIN_AUTH_REQUIRED'), 403);
+      // 기존 'super_admin' 값과 신규 'super' 둘 다 전권으로 인정(역할 칸이 빈 옛 행은 종전대로 전권)
+      const rawRole = row.role || 'super';
       const role = (rawRole === 'super_admin' ? 'super' : rawRole) as AdminRole;
       // super 는 모든 권한
       if (role === 'super') { await next(); return; }
@@ -377,7 +383,8 @@ export function requireAdminRole(...allowed: AdminRole[]) {
           .prepare('SELECT role FROM admins WHERE id = ?')
           .bind(String(user.id))
           .first<{ role?: string }>();
-        const rawRole = retry?.role || 'super';
+        if (!retry) return c.json(forbiddenResponse('관리자 계정을 찾을 수 없습니다', 'ADMIN_AUTH_REQUIRED'), 403);
+        const rawRole = retry.role || 'super';
         const role = (rawRole === 'super_admin' ? 'super' : rawRole) as AdminRole;
         if (role === 'super' || allowed.includes(role)) { await next(); return; }
         return c.json(forbiddenResponse(`이 작업은 ${allowed.join('/')} 권한이 필요합니다 (현재: ${role})`), 403);

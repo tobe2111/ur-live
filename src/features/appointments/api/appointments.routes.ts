@@ -11,7 +11,7 @@
  * 숙소 (stay_bookings) 는 별도 — 본 시스템은 시간 슬롯 기반.
  */
 import { Hono } from 'hono'
-import { requireAuth, requireSeller, getCurrentUser } from '../../../worker/middleware/auth'
+import { requireUser, requireSeller, getCurrentUser } from '../../../worker/middleware/auth'
 import type { Env } from '../../../worker/types/env'
 
 export const appointmentsRoutes = new Hono<{ Bindings: Env }>()
@@ -149,7 +149,7 @@ appointmentsRoutes.get('/products/:id/available-slots', async (c) => {
 
 // ─── User: 예약 ──────────────────────────────────────────────────────
 
-appointmentsRoutes.post('/appointments/book', requireAuth(), async (c) => {
+appointmentsRoutes.post('/appointments/book', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const body = await c.req.json<{ product_id: number; order_id?: number; booking_date: string; start_time: string; end_time: string; user_phone?: string; user_name?: string; notes?: string }>().catch(() => ({}) as { product_id?: number; order_id?: number; booking_date?: string; start_time?: string; end_time?: string; user_phone?: string; user_name?: string; notes?: string })
@@ -248,7 +248,7 @@ const CANCEL_DEADLINE_HOURS = REFUND_POLICY.APPOINTMENT_CANCEL_DEADLINE_HOURS
 // 🛡️ 2026-05-21 Phase B-2: 결제 직후 예약 prompt — order 의 booking_required 상품 중
 //   아직 appointment_bookings INSERT 안 된 것 반환.
 //   PaymentSuccessPage 가 이걸 호출해서 "예약 잡기" CTA 노출.
-appointmentsRoutes.get('/orders/:orderId/pending-bookings', requireAuth(), async (c) => {
+appointmentsRoutes.get('/orders/:orderId/pending-bookings', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const orderId = c.req.param('orderId') || ''
@@ -283,7 +283,7 @@ appointmentsRoutes.get('/orders/:orderId/pending-bookings', requireAuth(), async
 // 🛡️ 2026-06-12 (전수조사 4차 B-5): 본인 전체 "예약 가능" 구매 목록 — MyAppointmentsPage
 //   예약 생성 플로우의 입구. 결제 완료 주문의 booking_required=1 상품 중 아직 confirmed
 //   appointment 가 없는 것 전부 (주문 단위).
-appointmentsRoutes.get('/appointments/bookable', requireAuth(), async (c) => {
+appointmentsRoutes.get('/appointments/bookable', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const { DB } = c.env
@@ -307,7 +307,7 @@ appointmentsRoutes.get('/appointments/bookable', requireAuth(), async (c) => {
 
 // ─── User: 내 예약 목록 ──────────────────────────────────────────────
 
-appointmentsRoutes.get('/appointments/my', requireAuth(), async (c) => {
+appointmentsRoutes.get('/appointments/my', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const { DB } = c.env
@@ -324,7 +324,7 @@ appointmentsRoutes.get('/appointments/my', requireAuth(), async (c) => {
 
 // ─── User: 예약 취소 ─────────────────────────────────────────────────
 
-appointmentsRoutes.patch('/appointments/:id/cancel', requireAuth(), async (c) => {
+appointmentsRoutes.patch('/appointments/:id/cancel', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const id = parseInt(c.req.param('id') || '', 10)

@@ -10,7 +10,7 @@
  * 규칙·환불 차단: `worker/utils/voucher-gift.ts` 머리말.
  */
 import { Hono } from 'hono'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
@@ -37,7 +37,7 @@ async function myUid(c: { env: Env }, user: { id: number | string; isDbId?: bool
 }
 
 // ── POST / — 선물 링크 만들기 ──
-voucherGiftRoutes.post('/', rateLimit({ action: 'voucher_gift_create', max: 20, windowSec: 600 }), requireAuth(), async (c) => {
+voucherGiftRoutes.post('/', rateLimit({ action: 'voucher_gift_create', max: 20, windowSec: 600 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
@@ -86,7 +86,7 @@ voucherGiftRoutes.post('/', rateLimit({ action: 'voucher_gift_create', max: 20, 
 })
 
 // ── GET /by-voucher/:code — 내 이용권에 보내는 중인 선물 ──
-voucherGiftRoutes.get('/by-voucher/:code', requireAuth(), async (c) => {
+voucherGiftRoutes.get('/by-voucher/:code', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const code = c.req.param('code') || ''
@@ -106,7 +106,7 @@ voucherGiftRoutes.get('/by-voucher/:code', requireAuth(), async (c) => {
 })
 
 // ── POST /:token/cancel — 받기 전 회수 ──
-voucherGiftRoutes.post('/:token/cancel', requireAuth(), async (c) => {
+voucherGiftRoutes.post('/:token/cancel', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const token = c.req.param('token') || ''
@@ -174,7 +174,7 @@ voucherGiftRoutes.get('/:token', rateLimit({ action: 'voucher_gift_view', max: 6
 // ── POST /:token/accept — 받기 ──
 // 순서(머니 룰 #1 claim-before-effect): ① 선물 CAS(pending→accepted) ② 이용권 주인 CAS(보낸 사람·unused 일 때만)
 //   ②가 실패하면(그 사이 보낸 사람이 썼거나 환불) ①을 되돌려 'cancelled' 로 닫는다 — 반쯤 넘어간 상태가 남지 않는다.
-voucherGiftRoutes.post('/:token/accept', rateLimit({ action: 'voucher_gift_accept', max: 10, windowSec: 600 }), requireAuth(), async (c) => {
+voucherGiftRoutes.post('/:token/accept', rateLimit({ action: 'voucher_gift_accept', max: 10, windowSec: 600 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const token = c.req.param('token') || ''

@@ -17,7 +17,7 @@ import { arrayBufferToHex } from '../../shared/utils';
 import { sendAlert } from '../utils/alerts';
 import { rateLimit } from '../middleware/rate-limit';
 import { swallow } from '../utils/swallow';
-import { captureException } from '../utils/sentry';
+import { captureException } from '../utils/sentry'; import { verifyWebhookPaymentWithToss } from '../utils/webhook-toss-verify'; // 🔐 2026-11-09 [UNLOCK]
 import { maskPhone } from '../../lib/mask';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 
@@ -552,7 +552,7 @@ async function handlePaymentConfirmed(
       return;
     }
   }
-
+  const verifiedKey = await verifyWebhookPaymentWithToss({ DB, env: env as { TOSS_SECRET_KEY?: string } | undefined, orderNumber, paymentKey, totalAmount: data.totalAmount }); if (verifiedKey == null) return; paymentKey = verifiedKey; // 🔐 2026-11-09 [UNLOCK] 대표 "모두 다 순서대로 진행해줘" — 서명 없는 본문을 믿지 않고 Toss 결제 조회로 대조
   // v24 FIX: UPDATE orders + UPDATE order_items를 D1 batch로 묶어 atomic 처리.
   // 기존 updateStatus + 루프 reduceStock은 중간 실패 시 orders=DONE이지만
   // order_items는 PENDING 상태가 남는 불일치 발생 가능.
