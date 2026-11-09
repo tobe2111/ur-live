@@ -94,7 +94,8 @@ describe('④ 이미지 변환 프록시는 래스터 이미지만 내보내고,
     expect(util).toMatch(/"default-src 'none'; sandbox"/)
   })
   it('nonce 리라이터는 /api/* 를 건너뛴다', () => {
-    expect(code).toMatch(/ct\.includes\('text\/html'\) && c\.res\.body && !new URL\(c\.req\.url\)\.pathname\.startsWith\('\/api\/'\)/)
+    // 디코드된 경로(c.req.path)로 본다 — 원문으로 보면 /%61pi/... 가 /api 밖으로 읽힌다(라우터는 /api 로 보낸다).
+    expect(code).toMatch(/ct\.includes\('text\/html'\) && c\.res\.body && !c\.req\.path\.startsWith\('\/api\/'\)/)
   })
 })
 
@@ -179,5 +180,66 @@ describe('⑤ 로그인 신원의 "종류"는 서명된 값으로만 정하고, 
     expect(inv).toMatch(/requireUserType\('seller', 'admin'\)/)
     const orders = readCode('src/features/orders/api/orders.routes.ts')
     expect(orders.match(/\} else if \(authUser\.type !== 'admin'\) \{\n\s+return c\.json\(\{ success: false, error: 'Forbidden' \}, 403\);/g)?.length).toBe(2)
+  })
+})
+
+describe('⑥ 관리자 역할 검사는 라우터와 같은(디코드된) 경로로 판정하고, 비밀 설정은 최고관리자만 본다', () => {
+  const SECRET = 'test-secret-rbac'
+  const now = () => Math.floor(Date.now() / 1000)
+  async function call(role: string, method: string, path: string) {
+    const jwt = await import('@tsndr/cloudflare-worker-jwt')
+    const { Hono } = await import('hono')
+    const { adminRbacMiddleware } = await import('@/worker/middleware/admin-rbac')
+    const tok = await jwt.sign({ sub: '20', type: 'admin', role, iat: now(), exp: now() + 600 }, SECRET)
+    const app = new Hono<{ Bindings: { JWT_SECRET: string } }>()
+    app.use('/api/admin/*', adminRbacMiddleware())
+    app.on(['GET', 'PUT', 'POST'], '/api/admin/*', (c) => c.text('HIT'))
+    const r = await app.request(path, { method, headers: { Authorization: `Bearer ${tok}` } }, { JWT_SECRET: SECRET })
+    return r.status
+  }
+
+  it('ops 의 플랫폼 설정 변경은 인코딩해도 막힌다', async () => {
+    expect(await call('ops', 'PUT', '/api/admin/tools/settings')).toBe(403)
+    expect(await call('ops', 'PUT', '/api/admin/tools/%73ettings')).toBe(403)
+  })
+  it('cs 의 딜 지급은 인코딩해도 막힌다', async () => {
+    expect(await call('cs', 'POST', '/api/admin/users/3/gift-deal')).toBe(403)
+    expect(await call('cs', 'POST', '/api/admin/users/3/%67ift-deal')).toBe(403)
+  })
+  it('최고관리자 전용 영역은 인코딩해도 막힌다', async () => {
+    expect(await call('cs', 'GET', '/api/admin/admins')).toBe(403)
+    expect(await call('cs', 'GET', '/api/admin/%61dmins')).toBe(403)
+  })
+  it('반대 방향: 허용된 일은 그대로 된다', async () => {
+    expect(await call('ops', 'PUT', '/api/admin/products/1')).toBe(200)
+    expect(await call('cs', 'GET', '/api/admin/orders')).toBe(200)
+  })
+
+  it('비밀 설정 키 판정과 가리기', async () => {
+    const m = await import('@/features/admin/api/platform-settings-secrets')
+    for (const k of ['cf_api_token', 'buyer_ingest_token', 'x_secret', 'naver_api_key']) expect(m.isSecretSettingKey(k), k).toBe(true)
+    for (const k of ['commission_rate_default', 'fee_channel_rates_enabled', 'cf_account_id']) expect(m.isSecretSettingKey(k), k).toBe(false)
+    expect(m.maskSecret('abcdefgh1234')).toBe('••••1234')
+    expect(m.maskSecret('')).toBe('')
+  })
+  it('설정 GET 은 최고관리자가 아니면 비밀값을 가리고, PUT 은 비밀값 변경을 막는다', () => {
+    const code = readCode('src/features/admin/api/admin-tools.routes.ts')
+    expect(code).toMatch(/!showSecrets && isSecretSettingKey\(r\.key\) \? maskSecret\(r\.value\) : r\.value/)
+    expect(code).toMatch(/Object\.keys\(body\)\.some\(isSecretSettingKey\) && !\(await isSuperAdminRequest\(c\)\)/)
+  })
+  it('DDL·백필·최고관리자 승격·환경 키 목록은 최고관리자만', () => {
+    const rs = readCode('src/worker/routes/repair-schema.routes.ts')
+    expect(rs).not.toMatch(/requireAdmin\(\)/)
+    expect(rs, '인자 없는 requireAdminRole() = 최고관리자만').toMatch(/const superOnly = \(\) => requireAdminRole\(\);/)
+    expect(rs).toMatch(/repairSchemaRoutes\.get\('\/api\/_internal\/bootstrap-super', superOnly\(\)/)
+    expect(readCode('src/worker/routes/debug.routes.ts')).toMatch(/debugRoutes\.get\('\/bindings', requireAdminRole\(\)/)
+  })
+  it('admins 행이 없는 관리자 토큰은 역할 게이트를 못 넘는다', () => {
+    const auth = readCode('src/worker/middleware/auth.ts')
+    expect(auth).not.toMatch(/row\?\.role \|\| 'super'/)
+    expect(auth).not.toMatch(/retry\?\.role \|\| 'super'/)
+  })
+  it('소셜 홍보 위임 전에 역할 검사를 거친다', () => {
+    expect(readCode('src/worker/index.ts')).toMatch(/if \(isAdminSocial\) \{ let ok = false; const denied = await adminRbacMiddleware\(\)/)
   })
 })

@@ -15,7 +15,9 @@
  */
 import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
-import { requireAdmin } from '../middleware/auth';
+import { requireAdminRole } from '../middleware/auth';
+// 🔐 2026-11-09: DDL·백필·최고관리자 승격은 최고관리자만 — 종전엔 어드민이면 역할 무관(뷰어 포함) 실행됐다(/api/admin 밖이라 RBAC 미적용).
+const superOnly = () => requireAdminRole();
 import { swallow } from '@/shared/utils/swallow';
 import { ensureAdminsRoleUnconstrained } from '@/worker/utils/ensure-admins-role';
 import { ensureOrdersForeignKeysSane } from '@/worker/utils/ensure-orders-fk-sane';
@@ -390,7 +392,7 @@ repairSchemaRoutes.post('/api/_internal/reset-pin-token', async (c) => {
 
 // 🛡️ 2026-06-17 경량 부트스트랩 — 전체 repair-schema(수백 마이그레이션 → 524 타임아웃) 대신
 //   슈퍼 어드민 복구 2줄만 빠르게 실행. admin 토큰만 있으면 호출 가능(내부 경로).
-repairSchemaRoutes.get('/api/_internal/bootstrap-super', requireAdmin(), async (c) => {
+repairSchemaRoutes.get('/api/_internal/bootstrap-super', superOnly(), async (c) => {
   const DB = (c.env as { DB: D1Database }).DB;
   const out: { byEmail: number; oldestPromoted?: number } = { byEmail: 0 };
   try {
@@ -409,7 +411,7 @@ repairSchemaRoutes.get('/api/_internal/bootstrap-super', requireAdmin(), async (
 });
 
 // 🛡️ 2026-06-17 보안 PIN 잠금 복구 — PIN 분실 시 해당 계정 PIN 해제(재설정 유도). 슈퍼관리자만.
-repairSchemaRoutes.get('/api/_internal/reset-pin', requireAdmin(), async (c) => {
+repairSchemaRoutes.get('/api/_internal/reset-pin', superOnly(), async (c) => {
   const DB = (c.env as { DB: D1Database }).DB;
   try {
     const caller = ((c as unknown as { get: (k: string) => unknown }).get('user')) as { id?: string | number } | undefined;
@@ -427,7 +429,7 @@ repairSchemaRoutes.get('/api/_internal/reset-pin', requireAdmin(), async (c) => 
 // 🚚 2026-06-18 (대표 신고 — 전체 repair-schema 524/67오류): 진단 + 최근 additive 스키마만 빠르게.
 //   ① PRAGMA 로 핵심 컬럼 실제 존재 여부 진단(ground truth) ② users 테이블(한도 여유)에 마퀴 컬럼/alias
 //   안전 추가 ③ sellers(컬럼 한도 도달)는 ALTER 불가라 '존재 여부만' 보고. 전부 idempotent.
-repairSchemaRoutes.get('/api/_internal/repair-schema-quick', requireAdmin(), async (c) => {
+repairSchemaRoutes.get('/api/_internal/repair-schema-quick', superOnly(), async (c) => {
   const DB = (c.env as { DB?: D1Database }).DB;
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
   const ran: string[] = [];
@@ -472,7 +474,7 @@ repairSchemaRoutes.get('/api/_internal/repair-schema-quick', requireAdmin(), asy
 });
 
 // HTTP wrapper — admin auth + JSON response.
-repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
+repairSchemaRoutes.get('/api/_internal/repair-schema', superOnly(), async (c) => {
   const env = c.env as any;
   const DB = env.DB as D1Database;
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
@@ -483,7 +485,7 @@ repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c)
 // 🔧 2026-07-13 (데이터 감사 3단계): off-live user_id 이력 backfill (firebase_uid → 숫자 users.id).
 //   GET(또는 apply 미지정)=dry-run 카운트만. apply 실행은 POST + body {confirm:true}. 멱등·admin 전용.
 //   live(카카오)=대상 0(무동작). user_points 충돌(숫자 잔액행 이미 존재)은 건드리지 않고 conflict 보고.
-repairSchemaRoutes.get('/api/_internal/backfill-user-id', requireAdmin(), async (c) => {
+repairSchemaRoutes.get('/api/_internal/backfill-user-id', superOnly(), async (c) => {
   const DB = (c.env as { DB?: D1Database }).DB;
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
   const { backfillUserIdMapping } = await import('../utils/user-id-backfill');
@@ -491,7 +493,7 @@ repairSchemaRoutes.get('/api/_internal/backfill-user-id', requireAdmin(), async 
   return c.json({ success: true, dry_run: true, ...result });
 });
 
-repairSchemaRoutes.post('/api/_internal/backfill-user-id', requireAdmin(), async (c) => {
+repairSchemaRoutes.post('/api/_internal/backfill-user-id', superOnly(), async (c) => {
   const DB = (c.env as { DB?: D1Database }).DB;
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
   const body = await c.req.json<{ confirm?: boolean }>().catch(() => ({} as { confirm?: boolean }));

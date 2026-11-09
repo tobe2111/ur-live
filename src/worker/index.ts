@@ -565,7 +565,7 @@ app.use('*', async (c, next) => {
   //   효과: 모바일 메인 LCP -0.3~0.5s (첫 API fetch waterfall 제거).
   //   부하: KV read 1회 + 정적 inject. 매 메인 요청 1회 (publicCache 5분 HIT 보장).
   const ct = c.res.headers.get('Content-Type') || '';
-  if (ct.includes('text/html') && c.res.body && !new URL(c.req.url).pathname.startsWith('/api/')) { // 🔐 2026-11-09 [UNLOCK_LOADING] /api 응답엔 nonce 미부착(셸 HTML 전용)
+  if (ct.includes('text/html') && c.res.body && !c.req.path.startsWith('/api/')) { // 🔐 2026-11-09 [UNLOCK_LOADING] /api 응답엔 nonce 미부착(셸 HTML 전용)
     const url = new URL(c.req.url);
     const isMainPage = url.pathname === '/' || url.pathname === '/index.html';
 
@@ -1140,6 +1140,7 @@ app.use('*', async (c, next) => {
     const isShortLink = p === '/l' || p.startsWith('/l/');
     // 🥗 2026-07-15 소셜 홍보 자동화(ur-ads 로 이전) — 어드민 토큰째 위임(ur-ads 자체 requireAdmin, 같은 JWT_SECRET).
     const isAdminSocial = p === '/api/admin/social' || p.startsWith('/api/admin/social/');
+    if (isAdminSocial) { let ok = false; const denied = await adminRbacMiddleware()(c, async () => { ok = true }); if (!ok) return denied ?? c.json({ success: false }, 403) } // 🔐 2026-11-09 위임 전에 역할 검사(뷰어가 발행하던 것)
     if (isAdsApi || isShortLink || isAdminSocial) {
       try {
         return await ads.fetch(c.req.raw);
