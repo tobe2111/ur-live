@@ -35,7 +35,7 @@ function analyticsWriteKv(env: unknown): KVNamespace | null {
 }
 
 interface VitalsBody {
-  name?: 'LCP' | 'FID' | 'CLS' | 'INP' | 'TTFB' | 'CONN' | 'D1' | 'SRV'
+  name?: 'LCP' | 'FID' | 'CLS' | 'INP' | 'TTFB' | 'CONN' | 'D1' | 'SRV' | 'PRE' | 'DNS' | 'TCP'
   value?: number
   page?: string
   /** LCP 일 때만 — 어디서 시간이 갔나(web-vitals-report `lcpBreakdown`). */
@@ -95,7 +95,7 @@ analyticsRoutes.post('/vitals', async (c) => {
   if (!body.name || typeof body.value !== 'number' || !Number.isFinite(body.value)) {
     return c.json({ ok: false }, 400)
   }
-  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1', 'SRV']
+  const validNames = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1', 'SRV', 'PRE', 'DNS', 'TCP'] // 🕳️ 2026-11-09 첫 응답 전 구간 쪼개기(web-vitals-report)
   if (!validNames.includes(body.name)) return c.json({ ok: false }, 400)
   if (body.value < 0 || body.value > 1_000_000) return c.json({ ok: false }, 400)
   const kv = analyticsWriteKv(c.env)
@@ -157,7 +157,7 @@ analyticsRoutes.get('/summary', requireAdmin(), async (c) => {
   const vitals: Record<string, { p50: number; p75: number; p95: number; samples: number }> = {}
   const funnel: Record<string, number> = {}
 
-  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1', 'SRV']) {
+  for (const name of ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'CONN', 'D1', 'SRV', 'PRE', 'DNS', 'TCP']) {
     try {
       const list = await kv.list({ prefix: `vitals:${day}:${name}:` })
       for (const k of list.keys) {
