@@ -3,7 +3,7 @@
 import { pickTrackByWeights } from './attribution.mjs';
 import { vetPost } from './vet.mjs';
 import { pickLeastRecent, rotateImages, pickHook, pickFormat, recentOpeners } from './variety.mjs';
-import { ROOT, DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
+import { ROOT, DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, igStory, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
 import { myRecentPosts, postedOn } from './live.mjs';
 import { pickSeries, seriesTopic, BRAND_WRITING } from './series.mjs';
 import fs from 'node:fs';
@@ -234,6 +234,11 @@ async function main() {
         else runLog.push({ platform: 'facebook', id: f.post_id || f.id, content_id: fcid, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), link: flink, dry: DRY || undefined });
       } catch (e) { log(`Facebook 게시 실패: ${e.message}`); }
       } else log('Facebook: 꺼짐(대표 지시 2026-11-09) → 건너뜀');
+      // 스토리: 같은 표지를 세로로(팔로워 화면 위쪽에 한 번 더 뜬다). 실패해도 게시는 끝난 것이라 기록만.
+      if (gen?.story_url) {
+        try { const st = await igStory(gen.story_url); log(`IG 스토리 게시: ${st.id}`); runLog.push({ platform: 'instagram_story', id: st.id, track, series: series.id, posted_at: now.toISOString(), date_kst: today, dry: DRY || undefined }); }
+        catch (e) { log(`IG 스토리 실패(게시는 정상): ${e.message.slice(0, 200)}`); }
+      }
       if (fieldNote) await closeFieldNote(fieldNote, [r.id ? `인스타 게시 id ${r.id}` : ''].filter(Boolean));
       }
       }
@@ -282,7 +287,16 @@ async function main() {
       console.log(`::error title=Threads 게시 실패::${e.message.slice(0, 300)}`);
       runLog.push({ platform: 'threads', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
     }
-    if (r) runLog.push({ platform: 'threads', id: r.id, content_id: id, image: image_url && !/TEXT/.test(r.media_type || '') ? image_url : undefined, track, series: series.id, field_note: fieldNote?.number, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
+    // 이어 쓰기: 첫 글에 정보 한 줄을 답글로 단다(스레드는 이어진 글이 더 퍼진다). 검수에 걸리거나 실패하면 생략.
+    let reply_id;
+    if (r) {
+      try {
+        const fu = await writeVetted(`${info}\n방금 올린 스레드 글:\n${body}\n\n이 글에 내가 직접 이어 다는 답글 1개를 1~2문장, 90자 안팎으로 써줘. 본문에 없는 정보 하나만 [확인된 사실] 범위에서 보탠다. 본문을 되풀이하지 않는다. 링크·해시태그·질문 없이.`, 300, 'threads', info, 'Threads 이어 쓰기');
+        if (fu.problems.length) log(`Threads 이어 쓰기 검수 걸림 → 생략: ${fu.problems.join(' / ')}`);
+        else { reply_id = (await threadsPublish({ media_type: 'TEXT', text: fu.body.trim().slice(0, 480), reply_to_id: r.id }))?.id; log(`Threads 이어 쓰기 게시: ${reply_id}\n${fu.body}`); }
+      } catch (e) { log(`Threads 이어 쓰기 실패(본글은 정상): ${e.message.slice(0, 200)}`); }
+    }
+    if (r) runLog.push({ platform: 'threads', id: r.id, reply_id, content_id: id, image: image_url && !/TEXT/.test(r.media_type || '') ? image_url : undefined, track, series: series.id, field_note: fieldNote?.number, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
     }
   } else log(`Threads: 건너뜀 — ${skipReason('threads')}`);
 
