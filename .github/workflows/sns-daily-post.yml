@@ -60,6 +60,7 @@ jobs:
           META_THREADS_ACCESS_TOKEN: ${{ secrets.META_THREADS_ACCESS_TOKEN }}
           META_FB_PAGE_TOKEN: ${{ secrets.META_FB_PAGE_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: node src/daily-post.mjs
       - name: Commit data

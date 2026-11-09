@@ -100,3 +100,13 @@ test('이미지 그리기: 표지 + 안쪽 장 + 마지막 장', { skip: !(proce
   assert.equal(files.length, 3);
   for (const f of files) assert.ok(fs.statSync(f).size > 20_000);
 });
+
+test('Pixabay: 키 없으면 건너뛰고, 있으면 큰 세로 사진을 고른다', async () => {
+  const { searchPixabay } = await import('../src/visual.mjs');
+  assert.equal(await searchPixabay('food', ''), null);
+  let asked = '';
+  const fake = async (u) => { asked = u; return { json: async () => ({ hits: [{ imageWidth: 640, largeImageURL: 'small' }, { imageWidth: 1280, largeImageURL: 'https://pixabay.com/big.jpg', user: 'kim' }] }) }; };
+  const r = await searchPixabay('korean food', 'k', fake);
+  assert.equal(r.url, 'https://pixabay.com/big.jpg');
+  assert.match(asked, /orientation=vertical/);
+});

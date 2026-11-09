@@ -3,7 +3,7 @@
 //       → marketing-data 브랜치에 올려 공개 URL 만들기 → igPublish.
 // 어느 단계든 실패하면 null 을 돌려주고, daily-post 는 종전 카드 세트로 물러선다(게시가 멈추지 않게).
 //
-// 사진 우선순위: ① 대표 현장 메모 사진 ② 손님 딜이면 그 상품 사진 ③ Pexels(상업 무료, PEXELS_API_KEY)
+// 사진 우선순위: ① 대표 현장 메모 사진 ② 손님 딜이면 그 상품 사진 ③ Pixabay(PIXABAY_API_KEY) · Pexels(PEXELS_API_KEY)
 //               ④ Openverse 의 CC0·퍼블릭도메인 ⑤ 없음(브랜드 블루 면 위 큰 글자).
 // 구글 이미지 검색 결과는 대부분 저작권이 있어 쓰지 않는다.
 import fs from 'node:fs';
@@ -62,6 +62,18 @@ export async function searchPexels(query, key = process.env.PEXELS_API_KEY, fetc
   return { url: p.src?.large2x || p.src?.original, credit: `Pexels · ${p.photographer}`, source: 'pexels' };
 }
 
+// Pixabay — 상업 이용 무료·출처 표기 불요. 핫링크 금지라 내려받아 우리 쪽에 다시 올린다(publishImages).
+// 2026-11-09: Pexels 가 신규 키 발급을 멈춰서(대표 확인) 이쪽을 먼저 쓴다.
+export async function searchPixabay(query, key = process.env.PIXABAY_API_KEY, fetchImpl = fetch) {
+  if (!key || !query) return null;
+  const u = `https://pixabay.com/api/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(query)}&image_type=photo&orientation=vertical&safesearch=true&per_page=20`;
+  const j = await (await fetchImpl(u)).json();
+  const hs = (j.hits || []).filter((h) => (h.imageWidth || 0) >= 1000);
+  if (!hs.length) return null;
+  const h = hs[Math.floor(Math.random() * Math.min(hs.length, 8))];
+  return { url: h.largeImageURL, credit: `Pixabay · ${h.user}`, source: 'pixabay' };
+}
+
 export async function searchOpenverse(query, fetchImpl = fetch) {
   if (!query) return null;
   const u = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&license=cc0,pdm&page_size=15&mature=false`;
@@ -77,6 +89,7 @@ export async function findPhoto({ notePhotos = [], productPhoto = null, query = 
   const tries = [
     ...notePhotos.map((url) => async () => ({ url, credit: '유어딜 현장', source: 'field-note', auth: true })),
     ...(productPhoto ? [async () => ({ url: productPhoto, credit: '입점 매장', source: 'product' })] : []),
+    () => searchPixabay(query),
     () => searchPexels(query),
     () => searchOpenverse(query),
   ];
