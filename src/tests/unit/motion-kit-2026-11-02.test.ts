@@ -127,7 +127,7 @@ describe('④ 잠금 파일 계약', () => {
   it('카드: 미리 받기 세 줄 불변 + 전환은 맡을 수 있을 때만', () => {
     expect(card).toContain('onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}')
     // 👆 2026-11-09 큰 사진 미리받기(warmDetailHero)가 같은 줄 뒤에 붙었다 — 앞의 두 호출(즉시 미리받기)은 그대로다.
-    expect(card).toMatch(/onTouchStart=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\)(; if \(isPassDetail\) warmDetailHero\(p as never\))? \}\}/)
+    expect(card).toMatch(/onTouchStart=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\)(; if \((?:isPassDetail \|\| isStay|isPassDetail)\) warmDetailHero\(p as never\))? \}\}/)
     expect(card).toContain('onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}')
     expect(card).toMatch(/if \(!canRunDealTransition\(e\)\) return\s*\n\s*e\.preventDefault\(\)/)
   })

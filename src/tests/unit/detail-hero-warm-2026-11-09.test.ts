@@ -37,9 +37,12 @@ describe('warmDetailHero', () => {
 describe('카드 배선', () => {
   const card = read('src/pages/main-home/GroupBuyFeedCard.tsx')
   it('터치 시작에서만(이용권 상세로 가는 카드만) — 보이기만 한 카드는 안 받는다', () => {
-    expect(card).toMatch(/onTouchStart=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\); if \(isPassDetail\) warmDetailHero\(p as never\) \}\}/)
+    expect(card).toMatch(/onTouchStart=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\); if \(isPassDetail \|\| isStay\) warmDetailHero\(p as never\) \}\}/)
     expect(card).toContain("const isPassDetail = /^\\/(?:pass|group-buy)\\/\\d+/.test(canonicalDetailPath(p) ?? '')")
     expect((card.match(/warmDetailHero\(/g) || []).length).toBe(1)
+  })
+  it('유어샵 진열 줄도 닿는 순간(이용권·숙소 상세로 가는 줄만)', () => {
+    expect(read('src/pages/CuratorPage.tsx')).toContain("if (/^\\/(?:pass|group-buy|stays)\\/\\d+/.test(pinHref(pin))) warmDetailHero(pin)")
   })
   it('화면 갤러리가 같은 함수로 주소를 만든다', () => {
     expect(read('src/pages/group-buy/DetailGallery.tsx')).toContain('const heroUrl = detailHeroMobileUrl')

@@ -125,7 +125,7 @@ describe('홈 부팅 비용', () => {
 
   it('GroupBuyFeedCard: 손가락 신호(hover/touch/focus)는 여전히 즉시 받는다', () => {
     const s = read(CARD)
-    expect(s).toMatch(/onTouchStart=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\)(; if \(isPassDetail\) warmDetailHero\(p as never\))? \}\}/)
+    expect(s).toMatch(/onTouchStart=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\)(; if \((?:isPassDetail \|\| isStay|isPassDetail)\) warmDetailHero\(p as never\))? \}\}/)
     expect(s).toMatch(/onMouseEnter=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\) \}\}/)
   })
 

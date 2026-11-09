@@ -53,6 +53,7 @@ import DealPurchaseBox from './group-buy/DealPurchaseBox'
 import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
 import StoreLocation from './group-buy/StoreLocation'
 import OtherDealsRow from './group-buy/OtherDealsRow'
+import { useHeroSettled } from '@/lib/hero-settled'
 import DeferUntilVisible from './group-buy/DeferUntilVisible'
 import CreatorContentLazy from './group-buy/creator-content/CreatorContentLazy' // 🎬 2026-11-04 '다녀온 사람들'(손님 2) — lazy 경계는 그 파일이 갖는다
 import DealPayButton, { useCanPayWithDeal } from './group-buy/DealPayButton'
@@ -281,9 +282,11 @@ export default function GroupBuyDetailPage() {
     return () => io.disconnect()
   }, [otherDealsInView, detail?.seller_id])
 
+  // 🖼️ 2026-11-09 대표 승인(*"허가 — 진행"*) — 같은 가게 다른 이용권 목록(전체 피드 한 페이지)은 맨 위 큰 사진이 다 뜬 뒤에 받는다(lib/hero-settled).
+  const heroSettled = useHeroSettled()
   useEffect(() => {
     const sid = detail?.seller_id
-    if (!sid || !otherDealsInView) return
+    if (!sid || !otherDealsInView || !heroSettled) return
     let cancelled = false
     api.get('/api/group-buy/products?status=active')
       .then(r => {
@@ -298,7 +301,7 @@ export default function GroupBuyDetailPage() {
       })
       .catch(() => { /* silent */ })
     return () => { cancelled = true }
-  }, [detail?.seller_id, productId, otherDealsInView])
+  }, [detail?.seller_id, productId, otherDealsInView, heroSettled])
 
   // 🛡️ 2026-05-15: 실시간 polling — 5초±2초 jitter. 페이지 hidden 시 일시정지 (배터리 보호 + D1 thundering herd 방어).
   //   active 공구만 polling. participant 카운터 + 신규 참여자 등장 → toast.

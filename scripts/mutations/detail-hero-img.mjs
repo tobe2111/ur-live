@@ -56,7 +56,8 @@ export default [
   {
     name: '🔎 히어로 — 보이는 <img> 에 onError 가 없어 죽은 사진이 깨진 아이콘으로 남는다',
     file: 'src/pages/group-buy/DetailGallery.tsx',
-    find: '                    onError={() => setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src)))}\n                  />',
+    // 🔁 2026-11-09 재조준: 첫 사진 실패 때 아래쪽 대기를 푸는 호출이 앞에 붙었다(lib/hero-settled).
+    find: '                    onError={() => { if (i === 0) markHeroSettled(); setDead((prev) => (prev.has(src) ? prev : new Set(prev).add(src))) }}\n                  />',
     replace: '                  />',
     test: TEST,
     why: '모바일 숨은 프로브를 이 <img> 가 대체했으므로, 여기서 onError 가 빠지면 감시가 통째로 사라진다.',
