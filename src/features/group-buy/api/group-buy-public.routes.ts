@@ -343,7 +343,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   [배지·응모 버튼 없음 → 등장] 2단 페인트였음. 피드 응답에 서버에서 합쳐 SSR/엣지캐시 첫
     //   페인트부터 완성형(카운트 실시간 보정은 클라 훅이 후속). 2026-05-30 current_price enrich 와
     //   동일 additive 패턴 — 캐시키/캐시 헤더/tiers parse/기존 필드 전부 불변, fail-soft(실패 시 기존 응답).
-    let withFcfs = mapped
+    let withFcfs = await (await import('../../creator-content/api/content-counts')).attachCreatorCounts(DB as never, mapped) // 🎬 카드 '다녀온 사람들 N'(fail-soft)
     try {
       const ids = mapped.map((p) => Number(p.id)).filter((n) => Number.isFinite(n) && n > 0)
       if (ids.length > 0) {

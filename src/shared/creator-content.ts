@@ -326,3 +326,4 @@ export function readDayCount(raw: string | null | undefined, day: string): numbe
   if (i <= 0 || raw.slice(0, i) !== day) return 0
   return Math.max(0, parseInt(raw.slice(i + 1), 10) || 0)
 }
+

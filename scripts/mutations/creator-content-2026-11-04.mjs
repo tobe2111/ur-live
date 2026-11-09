@@ -160,4 +160,20 @@ export default [
     test: 'src/tests/unit/creator-content-accuracy-2026-11-09.test.ts',
     why: '"이름 + 동네" 로 안 걸리는 가게 22곳이 계속 0건이다.',
   },
+  {
+    name: '카드 후기 수 조회 실패가 피드를 깬다',
+    file: 'src/features/creator-content/api/content-counts.ts',
+    find: '  } catch {\n    return rows\n  }',
+    replace: '  } finally {}',
+    test: 'src/tests/unit/feed-creator-count-2026-11-09.test.ts',
+    why: '콘텐츠 표가 잠깐 안 읽히면 홈 피드 전체가 오류가 된다.',
+  },
+  {
+    name: '교환권에도 후기 수를 붙인다',
+    file: 'src/features/creator-content/api/content-counts.ts',
+    find: '  if (Number(p.deal_only) === 1) return null\n',
+    replace: '',
+    test: 'src/tests/unit/feed-creator-count-2026-11-09.test.ts',
+    why: '가게가 없는 교환권(KT 기프티콘)에 이름이 같은 가게의 후기 수가 붙는다.',
+  },
 ]
