@@ -1,5 +1,5 @@
 {
-  "total": 1835,
+  "total": 1836,
   "files": {
     "src/pages/AboutPage.tsx": 24,
     "src/pages/AboutServicePage.tsx": 1,
@@ -251,6 +251,7 @@
     "src/features/social-media/api/social-video-render.ts": 7,
     "src/shared/blog-page.ts": 22,
     "src/shared/category-palette.ts": 16,
+    "src/shared/detail-pc-first-screen.ts": 1,
     "src/shared/guest-page.ts": 2,
     "src/shared/login-page.ts": 4,
     "src/shared/mall/branding.ts": 4,
