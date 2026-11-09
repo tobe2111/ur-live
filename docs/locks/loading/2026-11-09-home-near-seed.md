@@ -11,3 +11,9 @@
 ## 2차 — 홈 유어쇼츠 줄 시드(HOMESHORTS)
 - 대표 캡처 첫 화면 맨 위 유어쇼츠 칸이 빈 회색. 목록 `/api/urshorts`(4KB·10개, HOT_PATHS 예열됨)를 같은 400ms 마감으로 함께 싣고,
   `UrShortsRail` 이 첫 렌더에 그 시드로 그린다(`readHomeShortsSeed` — 한 번 읽고 지운다).
+
+## 3차 — 홈 배너 전체 시드(HOMEBANNERS) — PC 홈
+- 대표 *"그 문제가 아니라 다른 것도 있는 것 같은데"* + trace 가 PC(윈도우 크롬·LAX). PC 홈 실측: 첫 그림 2.1초(폰 0.5초) · 가장 큰 그림(맨 위 배너) 2.5초.
+  PC 는 서버 첫 화면이 없고 배너는 앱이 켜진 뒤 `/api/banners`(2.9초 출발)를 물었다.
+- `/api/banners`(cron 예열 키)를 같은 200ms 마감으로 함께 싣고 `useHomeBanners` 가 첫 렌더에 자리 표시값으로 쓴다.
+- 남는 것: PC 는 여전히 앱이 켜져야 첫 그림(≈2초). 서버 PC 첫 화면은 별건(2열 그리드 — detail-ssr-body 머리말 ❌ PC 사유 참조).

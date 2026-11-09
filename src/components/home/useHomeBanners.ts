@@ -1,3 +1,4 @@
+import { readHomeBannersSeed } from '@/shared/home-near-seed-read'
 import { useMemo, useState } from 'react'
 import { readHomeSectionsSeedRaw } from '@/shared/home-section-ids'
 import { stripBannersOf } from '@/shared/home-strip-banners'
@@ -59,6 +60,9 @@ function useAllHomeBanners(): { all: HomeBanner[]; settled: boolean } {
     //   머리에 배너가 없어져 워커가 그 시드를 아예 안 싣는다(주입처 0). 그래서 읽는 코드도 함께 지웠다
     //   (남겨 두면 다음 세션이 "시드가 온다"고 읽는다). 되살리려면 워커 `ssrExtra = { slot: 'BANNERS' }` 가
     //   먼저 돌아와야 한다 — 사유: src/tests/unit/vouchers-hero-banner-ssr-2026-10-18.test.tsx
+    // 🖼️ 2026-11-09 홈 HTML 에 배너 전체 시드가 있으면 그것(PC 맨 위 큰 배너까지) — 없으면 종전처럼 상단 띠만.
+    const all = readHomeBannersSeed<HomeBanner>()
+    if (all && all.length) return all.map(b => ({ ...b, banner_slot: parseBannerSlot(b.banner_slot) }))
     const raw = readHomeSectionsSeedRaw()
     const strip = stripBannersOf(raw)
     return strip.length ? (strip as unknown as HomeBanner[]) : undefined
