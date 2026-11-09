@@ -260,7 +260,10 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
         />
       ))}
 
-      {/* 📱 모바일 — 기존 스와이프 갤러리(불변). */}
+      {/* 📱 모바일 — 기존 스와이프 갤러리(불변).
+          🖥️ 2026-11-09: PC(`isDesktop`)에선 **렌더하지 않는다** — `lg:hidden` 은 숨기기만 하고 안의 `<img>` 는 받아진다(라이브 PC 실측:
+          1280 폭 큰 사진 뒤에 960 폭 폰 히어로가 또 내려왔다 — 상세마다 수백 KB 낭비). PC 블록(아래)은 배경 이미지라 폰에선 안 받는다. */}
+      {!isDesktop && (
       <div className={`relative lg:hidden overflow-hidden`}>
         <div ref={galRef} onScroll={onGalScroll} className="scrollbar-hide" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '3/2', scrollSnapType: 'x mandatory' }}>
           {(has ? images : ['']).map((src, i) => {
@@ -314,11 +317,12 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
           </div>
         )}
       </div>
+      )}
 
       {/* 🖼️ 2026-10-27 (대표 "이용권 상세페이지도 그루폰처럼 … 사진 하나밖에 안 보여"): 모바일 큰 사진 아래
           썸네일 2칸 — 그루폰 모바일 상세. 3장 이상일 때만. 마지막 칸은 남은 장수(+N), 누르면 전체 화면.
           서버 첫 화면(`detail-ssr-body`)도 같은 상수로 같은 줄을 그린다(마운트 때 안 밀린다). */}
-      {showMobileThumbs(images.length) && (
+      {!isDesktop && showMobileThumbs(images.length) && (
         <div className={`lg:hidden ${DETAIL_MOBILE_THUMB_ROW_CLS}`}>
           {/* 🔁 2026-11-02 대표 확정 **②A**(*"옆으로 넘기는 경우, 아래 이미지들도 순차적으로 변경"*): 종전엔 늘 2·3번째
               고정이었다. 이제 **지금 큰 사진의 다음 두 장**을 보여 준다(마지막 칸은 남은 장수 +N → 크게 보기).
