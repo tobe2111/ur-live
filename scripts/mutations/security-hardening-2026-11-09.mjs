@@ -120,7 +120,7 @@ export default [
   {
     name: '[sec] 소셜 홍보 위임 전 역할 검사를 뺀다',
     file: 'src/worker/index.ts',
-    find: "    if (isAdminSocial) { let ok = false; const denied = await adminRbacMiddleware()(c, async () => { ok = true }); if (!ok) return denied ?? c.json({ success: false }, 403) } // 🔐 2026-11-09 위임 전에 역할 검사(뷰어가 발행하던 것)\n",
+    find: " if (isAdminSocial) { let ok = false; const denied = await adminRbacMiddleware()(c, async () => { ok = true }); if (!ok) return denied ?? c.json({ success: false }, 403) } // 🔐 2026-11-09 위임 전에 역할 검사(뷰어가 발행하던 것)",
     replace: '',
     test: TEST,
     why: '뷰어 관리자가 소셜 게시물을 발행한다.',
