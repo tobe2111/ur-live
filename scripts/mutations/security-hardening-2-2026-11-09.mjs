@@ -61,4 +61,12 @@ export default [
     test: TEST,
     why: 'IP 를 바꿔 가며 6자리 번호를 무제한 대 볼 수 있다.',
   },
+  {
+    name: '[sec2] 관리자 삭제 때 동시 로그인 허용을 안 끈다',
+    file: 'src/features/admin/api/admin-accounts.routes.ts',
+    find: "UPDATE dashboard_sessions SET multi_session = 0 WHERE account_type = 'admin' AND account_id = ?",
+    replace: "SELECT 1 WHERE ? IS NOT NULL",
+    test: TEST,
+    why: '삭제한 자동화 관리자 계정의 토큰이 24시간 더 살아 있다.',
+  },
 ]

@@ -107,3 +107,13 @@ describe('③ 이용권 조회의 전체 잠금은 정상 손님을 막지 않�
     expect(await lookupLocked(ctx, fakeDb(LOOKUP_MISS_PER_IP.max - 1, 0))).toBe(false)
   })
 })
+
+describe('④ 관리자 삭제는 동시 로그인 허용 계정의 토큰도 끊는다', () => {
+  it('삭제 시 multi_session 을 끈 뒤 세션 경계를 올린다', () => {
+    const code = readCode('src/features/admin/api/admin-accounts.routes.ts')
+    const off = code.indexOf("UPDATE dashboard_sessions SET multi_session = 0 WHERE account_type = 'admin' AND account_id = ?")
+    const bump = code.indexOf("await startDashboardSession(DB, 'admin', Number(adminId)")
+    expect(off).toBeGreaterThan(0)
+    expect(bump).toBeGreaterThan(off)
+  })
+})
