@@ -108,7 +108,8 @@ describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', 
   it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228', '/vouchers', '/stays/2887', '/stays'])('적용: %s', (p) => {
     expect(cssFirstApplies(p, PHONE)).toBe(true)
   })
-  it.each(['/map', '/browse', '/u/jiwon1228/p/2887', '/seller', '/admin'])(
+  it('🗺️ 2026-11-09 /map 도 적용(껍데기 첫 화면)', () => { expect(cssFirstApplies('/map', PHONE)).toBe(true) })
+  it.each(['/browse', '/u/jiwon1228/p/2887', '/seller', '/admin'])( // 🗺️ 2026-11-09 /map 은 껍데기 첫 화면이 생겨 적용 표면이 됐다(map-first-screen.ts)
     '미적용(첫 화면이 스크립트에 달림 — 실측상 나빠진다): %s', (p) => {
       expect(cssFirstApplies(p, PHONE)).toBe(false)
     })
@@ -245,6 +246,7 @@ describe('⑤-2 서버가 그리는 첫 화면 = CSS 먼저 적용 표면 (2026-
     'src/worker/utils/region-first-screen.ts': '/region/%EC%84%9C%EC%9A%B8', // 2026-11-08 — 지역 착지
     'src/worker/utils/pc-home-first-screen.ts': '/', // 2026-11-09 — PC 홈(같은 경로, 데스크톱 UA)
     'src/worker/utils/urshorts-first-screen.ts': '/urshorts', // 2026-11-09 — 유어쇼츠 목록
+    'src/worker/utils/map-first-screen.ts': '/map', // 2026-11-09 — 지도 껍데기
   }
   it('ROOTS 의 모든 첫 화면 모듈에 대표 경로가 있다(새 첫 화면이 생기면 여기서 멈춘다)', async () => {
     // @ts-expect-error — .mjs 생성기(타입 없음)

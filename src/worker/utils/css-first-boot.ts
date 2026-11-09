@@ -60,6 +60,7 @@ export function cssFirstApplies(pathname: string, ua: string, authed = false): b
     || /^\/region\/[^/]+(?:\/[^/]+)?\/?$/.test(pathname) // 🗺️ 2026-11-08 지역 착지도 서버 첫 화면(region-first-screen.ts)
     || pathname === '/life' || pathname === '/life/' // 🏠 2026-11-08 생활 허브도 서버 첫 화면(life-first-screen.ts)
     || pathname === '/urshorts' || pathname === '/urshorts/' // 🎬 2026-11-09 유어쇼츠 목록도(urshorts-first-screen.ts)
+    || pathname === '/map' || pathname === '/map/' // 🗺️ 2026-11-09 지도 껍데기(map-first-screen.ts)
     || /^\/blog(?:\/[^/]+)?\/?$/.test(pathname) // 📝 2026-10-19 블로그 목록·상세도 서버 첫 화면(blog-*-first-screen.ts)
     || /^\/(?:pass|group-buy|vouchers|stays)\/\d+\/?$/.test(pathname)
     || (/^\/u\/[^/]+\/?$/.test(pathname) && !/^\/u\/me\/?$/.test(pathname))
@@ -96,6 +97,7 @@ export function criticalSurfaceOf(pathname: string): string | null {
   if (guestTabOf(p) !== null) return 'guest'
   if (p === '/life') return 'life'
   if (p === '/urshorts') return 'urshorts'
+  if (p === '/map') return 'map'
   if (/^\/region\/[^/]+(?:\/[^/]+)?$/.test(p)) return 'region'
   if (/^\/u\/[^/]+$/.test(p) && p !== '/u/me') return 'curator'
   return null
