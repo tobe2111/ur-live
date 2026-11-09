@@ -117,3 +117,36 @@ describe('④ 관리자 삭제는 동시 로그인 허용 계정의 토큰도 �
     expect(bump).toBeGreaterThan(off)
   })
 })
+
+describe('⑤ 응급·cron·웹훅 토큰은 상수 시간으로 비교하고, 응급 재설정은 표 이름을 정해진 값만 받는다', () => {
+  it('secretEquals: 같으면 참 · 다르거나 기대값이 없으면 거짓', async () => {
+    const { secretEquals } = await import('@/worker/utils/secret-compare')
+    expect(secretEquals('abc123', 'abc123')).toBe(true)
+    expect(secretEquals('abc123', 'abc124')).toBe(false)
+    expect(secretEquals('abc123', 'abc12')).toBe(false)
+    expect(secretEquals('abc123', 'abc1234')).toBe(false)
+    expect(secretEquals('abc123', '')).toBe(false)
+    expect(secretEquals('abc123', null)).toBe(false)
+    expect(secretEquals(undefined, undefined)).toBe(false)
+    expect(secretEquals('', '')).toBe(false)
+  })
+  it('토큰 비교 자리에 !== 가 남아 있지 않다', () => {
+    const files = {
+      'src/worker/routes/internal-admin-tools.routes.ts': 3,
+      'src/worker/routes/repair-schema.routes.ts': 2,
+      'src/features/orders/api/orders.routes.ts': 2,
+      'src/worker/routes/kakao-skill-webhook.routes.ts': 1,
+    }
+    for (const [f, n] of Object.entries(files)) {
+      const code = readCode(f)
+      expect(code.match(/secretEquals\(/g)?.length, f).toBe(n)
+      expect(code, f).not.toMatch(/(?:expected|opsToken|expectedToken|secret) !== (?:provided|reqToken|got)|!== (?:expectedToken|secret)\b/)
+    }
+  })
+  it('응급 재설정은 role 을 표 이름으로 그대로 쓰지 않고, 삭제된 계정을 되살리지 않는다', () => {
+    const code = readCode('src/worker/routes/internal-admin-tools.routes.ts')
+    expect(code).not.toMatch(/`\$\{role\}s`/)
+    expect(code).toMatch(/if \(role !== 'all' && !ROLE_TABLE\[role\]\)/)
+    expect(code.match(/NOT IN \('deleted', 'withdrawn'\)/g)?.length).toBe(2)
+  })
+})

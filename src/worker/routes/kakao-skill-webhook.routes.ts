@@ -26,6 +26,7 @@
  *   게이트 `KAKAO_BOT_AI_ENABLED='true'` + `ANTHROPIC_API_KEY`(기본 OFF).
  */
 import { Hono } from 'hono'
+import { secretEquals } from '../utils/secret-compare'
 import type { Env } from '../types/env'
 import { CS_FAQ_ENTRIES, CS_FAQ_FALLBACK, matchCsFaq } from '../../features/cs/api/cs-faq'
 import { isStoreOpsEnabled, hasBotLinkNoDdl, resolveLinkedSeat } from '../utils/kakao-bot-store'
@@ -68,7 +69,7 @@ app.post('/api/cs/kakao-skill', async (c) => {
   const secret = (c.env as Env & { KAKAO_SKILL_SECRET?: string }).KAKAO_SKILL_SECRET
   // 게이트: 시크릿 미설정 = 봇 비활성 (404 — 존재 자체 비노출).
   if (!secret) return c.json({ success: false, error: 'not found' }, 404)
-  if (c.req.header('x-skill-secret') !== secret) {
+  if (!secretEquals(secret, c.req.header('x-skill-secret'))) {
     return c.json({ success: false, error: 'forbidden' }, 403)
   }
 

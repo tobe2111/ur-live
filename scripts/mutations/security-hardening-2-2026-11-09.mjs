@@ -69,4 +69,28 @@ export default [
     test: TEST,
     why: '삭제한 자동화 관리자 계정의 토큰이 24시간 더 살아 있다.',
   },
+  {
+    name: '[sec2] 비밀 비교가 길이만 같으면 통과',
+    file: 'src/worker/utils/secret-compare.ts',
+    find: '  return diff === 0\n',
+    replace: '  return (a.length ^ b.length) === 0\n',
+    test: TEST,
+    why: '같은 길이의 아무 문자열로 응급 토큰을 통과한다.',
+  },
+  {
+    name: '[sec2] 응급 재설정 role 을 표 이름으로 그대로',
+    file: 'src/worker/routes/internal-admin-tools.routes.ts',
+    find: "  const targets = role === 'all' ? ['admins', 'sellers', 'agencies'] : [ROLE_TABLE[role]];",
+    replace: "  const targets = role === 'all' ? ['admins', 'sellers', 'agencies'] : [`${role}s`];",
+    test: TEST,
+    why: '토큰을 가진 쪽이 role 로 임의 표 이름(SQL)을 넣는다.',
+  },
+  {
+    name: '[sec2] cron 토큰을 다시 !== 로 비교',
+    file: 'src/worker/routes/kakao-skill-webhook.routes.ts',
+    find: "  if (!secretEquals(secret, c.req.header('x-skill-secret'))) {",
+    replace: "  if (c.req.header('x-skill-secret') !== secret) {",
+    test: TEST,
+    why: '응답 시간으로 비밀의 일치 길이가 샌다.',
+  },
 ]
