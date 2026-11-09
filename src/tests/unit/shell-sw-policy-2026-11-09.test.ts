@@ -77,6 +77,13 @@ describe('③ 리다이렉트·fetch 모양 · 배선', () => {
     const main = readFileSync('src/main.tsx', 'utf8')
     expect(main).toMatch(/isShellCacheServed\(\)[\s\S]{0,200}invalidateQueries/)
   })
+  it('저장본 위에서는 새로고침 진행 띠를 띄우고, 쿼리가 다 오면 걷는다(대표 "새로고침이 되듯")', () => {
+    const main = readFileSync('src/main.tsx', 'utf8')
+    expect(main).toMatch(/const hide = sw\.showShellRefreshBar\(\)[\s\S]{0,200}invalidateQueries[\s\S]{0,80}\.finally\(hide\)/)
+    const lib = readFileSync('src/lib/shell-sw.ts', 'utf8')
+    expect(lib).toMatch(/if \(!isShellCacheServed\(\)[^\n]*return \(\) => \{\}/) // 저장본이 아니면 아무것도 안 그린다
+    expect(lib).toContain("var(--brand,#1C69EF)")
+  })
   it('main.tsx 의 옛 SW 청소가 shell-sw.js 를 남긴다(안 남기면 reload 루프)', () => {
     const main = readFileSync('src/main.tsx', 'utf8')
     expect(main).toMatch(/scriptUrl\.includes\('push-sw\.js'\) \|\| scriptUrl\.includes\('shell-sw\.js'\)/)

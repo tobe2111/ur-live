@@ -506,7 +506,8 @@ async function bootApp() {
         </ThemeProvider>
       )
       // 🏠 2026-11-09 이 문서가 SW 저장본(옛 HTML)이면 — 안에 구워진 시드가 '신선'으로 남지 않게 모든 쿼리를 한 번 새로 받는다.
-      try { const sw = await import('./lib/shell-sw'); sw.applyShellSwTestFlag(); if (sw.isShellCacheServed()) { const { queryClient } = await import('./lib/react-query'); setTimeout(() => { queryClient.invalidateQueries({ refetchType: 'active' }).catch(() => null) }, 0) } } catch { /* 무시 */ }
+      //   그동안 맨 위에 가는 진행 띠를 띄운다(유튜브·인스타의 '옛 화면 위 새로고침' 모양) — 새 데이터가 다 오면 사라진다.
+      try { const sw = await import('./lib/shell-sw'); sw.applyShellSwTestFlag(); if (sw.isShellCacheServed()) { const hide = sw.showShellRefreshBar(); const { queryClient } = await import('./lib/react-query'); setTimeout(() => { queryClient.invalidateQueries({ refetchType: 'active' }).catch(() => null).finally(hide) }, 0) } } catch { /* 무시 */ }
 
       // 🛡️ 2026-07-16 (대표 신고 복구): 부팅 성공 신호 — index.html 부트가드 워치독(12s)이 '앱 안 뜸'으로
       //   판단해 복구 오버레이(#ur-stuck-recover)를 띄웠다면 제거(느린 회선 false-positive 자동 해제).

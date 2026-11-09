@@ -33,6 +33,33 @@ export function applyShellSwTestFlag(): void {
   } catch { /* 주소 접근 불가 */ }
 }
 
+/**
+ * 🔄 저장본을 보여 주는 동안 맨 위에 가는 브랜드색 진행 띠를 띄운다 — 유튜브·인스타가 옛 화면 위에서 새로고침하는 모양.
+ *   (2026-11-09 대표 *"A로 하고 새로고침이 되듯 하면 안되나? 유튜브나 인스타, 페이스북도 그런 것 같던데"*)
+ *   돌려주는 함수를 부르면 띠가 끝까지 차고 사라진다. 저장본이 아닌 문서에선 아무것도 안 그린다.
+ */
+export function showShellRefreshBar(): () => void {
+  try {
+    if (!isShellCacheServed() || document.getElementById('ur-shell-refresh')) return () => {}
+    const bar = document.createElement('div')
+    bar.id = 'ur-shell-refresh'
+    bar.setAttribute('aria-hidden', 'true')
+    bar.style.cssText = 'position:fixed;top:0;left:0;height:2px;width:30%;background:var(--brand,#1C69EF);z-index:2147483000;pointer-events:none;transition:width .9s ease-out,opacity .3s ease .2s;'
+    document.body.appendChild(bar)
+    requestAnimationFrame(() => { bar.style.width = '80%' })
+    let done = false
+    const finish = () => {
+      if (done) return
+      done = true
+      bar.style.width = '100%'
+      bar.style.opacity = '0'
+      setTimeout(() => { try { bar.remove() } catch { /* 무시 */ } }, 600)
+    }
+    setTimeout(finish, 8000) // 어떤 이유로든 안 끝나면 8초 뒤 걷는다
+    return finish
+  } catch { return () => {} }
+}
+
 function testFlagOn(): boolean {
   try { return localStorage.getItem(SHELL_SW_TEST_KEY) === '1' } catch { return false }
 }
