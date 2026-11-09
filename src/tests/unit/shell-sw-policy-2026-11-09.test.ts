@@ -89,6 +89,13 @@ describe('③ 리다이렉트·fetch 모양 · 배선', () => {
     expect(main).toMatch(/scriptUrl\.includes\('push-sw\.js'\) \|\| scriptUrl\.includes\('shell-sw\.js'\)/)
     expect(main).toMatch(/!\(\(_ctrl\.scriptURL \|\| ''\)\.includes\('shell-sw\.js'\)\)/)
   })
+  it('index.html 의 인라인 SW 청소도 shell-sw.js 를 남기고, 끄기는 등록을 못 찾아도 저장소를 지운다(2026-11-09 라이브 실측)', () => {
+    expect(readFileSync('index.html', 'utf8')).toMatch(/u\.indexOf\('push-sw\.js'\) < 0 && u\.indexOf\('shell-sw\.js'\) < 0\) \{ try \{ r\.unregister\(\)/)
+    const lib = readFileSync('src/lib/shell-sw.ts', 'utf8')
+    const offIdx = lib.indexOf("if (mine) {"); const delIdx = lib.indexOf("keys.filter((k) => k.startsWith('ur-shell-'))")
+    expect(delIdx).toBeGreaterThan(offIdx)
+    expect(lib.slice(offIdx, delIdx)).toMatch(/\n    \}\n/) // 삭제가 if (mine) 블록 **밖**에 있다
+  })
   it('main.tsx 의 캐시 청소가 ur-shell-* 저장소를 남긴다(2026-11-09 라이브 실측 — 안 남기면 저장본이 매 로드마다 지워져 한 번도 안 쓰인다)', () => {
     const main = readFileSync('src/main.tsx', 'utf8')
     expect(main).toMatch(/caches\.keys\(\)\.then\(keys => Promise\.all\(keys\.filter\(k => !k\.startsWith\('ur-shell-'\)\)\.map\(k => caches\.delete\(k\)\)\)\)/)

@@ -236,7 +236,7 @@
             navigator.serviceWorker.getRegistrations().then(function (rs) {
               rs.forEach(function (r) {
                 var u = (r.active && r.active.scriptURL) || (r.waiting && r.waiting.scriptURL) || '';
-                if (u.indexOf('push-sw.js') < 0) { try { r.unregister(); } catch (e) {} }
+                if (u.indexOf('push-sw.js') < 0 && u.indexOf('shell-sw.js') < 0) { try { r.unregister(); } catch (e) {} } // 🏠 2026-11-09 shell-sw 도 우리 것 — 여기서 매 로드 지우면 lib/shell-sw 가 매번 다시 등록하고, 끌 때는 등록을 못 찾아 저장소를 못 지운다(라이브 실측)
               });
             }).catch(function () {});
           }
