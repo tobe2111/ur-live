@@ -18,6 +18,7 @@ import { sendAlert } from '../utils/alerts';
 import { rateLimit } from '../middleware/rate-limit';
 import { swallow } from '../utils/swallow';
 import { captureException } from '../utils/sentry';
+import { getTossPayment } from '../utils/toss-gateway';
 import { maskPhone } from '../../lib/mask';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 
@@ -551,6 +552,30 @@ async function handlePaymentConfirmed(
       // Fail-closed: do not confirm if we cannot verify the amount
       return;
     }
+  }
+
+  // 🔐 2026-11-09 [UNLOCK] (대표 "모두 다 순서대로 진행해줘" — 보안 전수조사 7번): **본문을 믿지 않고 Toss 에 다시 묻는다.**
+  //   V2 결제 웹훅엔 서명이 없어(위 graceful 정책) 누구나 이 본문을 보낼 수 있었다 — 내 주문번호·금액은 내가 알므로
+  //   금액 대조만으로는 위조를 못 막았다. Toss 조회 결과가 DONE · 같은 주문번호 · 같은 금액일 때만 확정한다.
+  //   조회 실패(네트워크·키 없음)도 확정하지 않는다 — 정상 결제는 /confirm 동기 경로가 이미 확정했고, Toss 는 웹훅을 재시도한다.
+  {
+    let lookupKey = paymentKey;
+    if (!lookupKey && DB) {
+      // 입금 알림(DEPOSIT_CALLBACK)은 본문에 paymentKey 가 없을 수 있다 — 결제 시작 때 저장한 키로 조회.
+      const row = await DB.prepare('SELECT toss_payment_key AS k FROM orders WHERE order_number = ? AND toss_payment_key IS NOT NULL LIMIT 1')
+        .bind(orderNumber).first<{ k: string }>().catch(() => null);
+      lookupKey = row?.k || '';
+    }
+    const looked = await getTossPayment({ env: (env ?? {}) as { TOSS_SECRET_KEY?: string }, paymentKey: lookupKey });
+    if (!looked.ok || looked.status !== 'DONE' || looked.orderId !== orderNumber || looked.totalAmount !== Number(data.totalAmount ?? looked.totalAmount)) {
+      console.error('[WEBHOOK] ❌ TOSS_LOOKUP_MISMATCH — refusing to confirm', { orderNumber, ok: looked.ok, code: looked.code, status: looked.status });
+      captureException(new Error('WEBHOOK_TOSS_LOOKUP_MISMATCH'), {
+        tags: { area: 'webhook', kind: 'toss_lookup_mismatch', severity: 'critical' },
+        extra: { orderNumber, ok: looked.ok, code: looked.code, status: looked.status },
+      }).catch(swallow('webhook:sentry-lookup'));
+      return;
+    }
+    paymentKey = lookupKey;
   }
 
   // v24 FIX: UPDATE orders + UPDATE order_items를 D1 batch로 묶어 atomic 처리.

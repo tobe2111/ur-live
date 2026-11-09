@@ -522,3 +522,49 @@ export function generateTossOrderId(prefix: TossOrderPrefix, userId: string | nu
   const safeUser = String(userId).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24)
   return `${prefix}-${safeUser}-${Date.now()}`
 }
+
+/**
+ * 🔐 2026-11-09 — 결제 조회 `GET /v1/payments/{paymentKey}` (docs: /reference "paymentKey로 결제 조회").
+ *
+ * 웹훅 본문은 서명이 없으므로(V2 결제 웹훅 docs 에 서명 헤더 0건) **본문을 믿지 않고 Toss 에 다시 묻는다.**
+ * 결제창형·주문서형 키(`*_gsk`)로도 호출된다(orderId 조회와 달리). 실패는 ok:false — 호출부는 확정하지 않는다.
+ */
+export interface TossPaymentLookup {
+  ok: boolean
+  status?: string
+  orderId?: string
+  totalAmount?: number
+  code?: string
+}
+
+export async function getTossPayment(input: {
+  env: { TOSS_SECRET_KEY?: string }
+  paymentKey: string
+  timeoutMs?: number
+}): Promise<TossPaymentLookup> {
+  const { env, paymentKey, timeoutMs = 8_000 } = input
+  if (!env.TOSS_SECRET_KEY) return { ok: false, code: 'NO_TOSS_SECRET' }
+  if (!paymentKey || paymentKey.length > 200) return { ok: false, code: 'INVALID_PARAMS' }
+  const secretKey = env.TOSS_SECRET_KEY.replace(/^\uFEFF/, '').trim()
+  try {
+    const res = await withCircuitBreaker(
+      { name: 'toss-lookup', maxFailures: 10, resetTimeoutMs: 60_000 },
+      () => fetch(`${TOSS_API_BASE}/payments/${encodeURIComponent(paymentKey)}`, {
+        method: 'GET',
+        headers: { Authorization: `Basic ${btoa(secretKey + ':')}` },
+        signal: AbortSignal.timeout(timeoutMs),
+      }),
+    )
+    let data: Record<string, unknown> = {}
+    try { data = await res.json() as Record<string, unknown> } catch { /* empty body */ }
+    if (!res.ok) return { ok: false, code: String((data as { code?: string }).code || `HTTP_${res.status}`) }
+    return {
+      ok: true,
+      status: typeof data.status === 'string' ? data.status : undefined,
+      orderId: typeof data.orderId === 'string' ? data.orderId : undefined,
+      totalAmount: Number.isFinite(Number(data.totalAmount)) ? Number(data.totalAmount) : undefined,
+    }
+  } catch {
+    return { ok: false, code: 'NETWORK' }
+  }
+}

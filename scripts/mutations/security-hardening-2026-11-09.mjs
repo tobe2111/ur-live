@@ -133,4 +133,12 @@ export default [
     test: TEST,
     why: '뷰어도 DB 구조 변경·최고관리자 승격을 실행한다.',
   },
+  {
+    name: '[sec] 웹훅이 Toss 조회 불일치에도 확정한다',
+    file: 'src/worker/routes/webhook.routes.ts',
+    find: "      }).catch(swallow('webhook:sentry-lookup'));\n      return;\n    }",
+    replace: "      }).catch(swallow('webhook:sentry-lookup'));\n    }",
+    test: 'src/tests/unit/webhook-payment.test.ts',
+    why: '서명 없는 위조 본문으로 주문이 결제 완료가 되고 교환권이 실발송된다.',
+  },
 ]
