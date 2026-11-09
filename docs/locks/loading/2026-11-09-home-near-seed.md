@@ -7,3 +7,7 @@
   `GroupBuyFeed` 는 키가 같을 때만 initialData 로 쓴다. 판정·경계: `src/worker/utils/home-near-seed.ts`.
 - 잠금표 예외 조항 "새 SSR slot 추가(기존 inject 패턴 따라)" 에 해당.
 - 가드: `home-near-seed-2026-11-09.test.ts` + 주입 2건 · 옛 가드 `home-near-empty-label-2026-10-17` 재조준(위치 없는 MAIN 은 여전히 금지).
+
+## 2차 — 홈 유어쇼츠 줄 시드(HOMESHORTS)
+- 대표 캡처 첫 화면 맨 위 유어쇼츠 칸이 빈 회색. 목록 `/api/urshorts`(4KB·10개, HOT_PATHS 예열됨)를 같은 400ms 마감으로 함께 싣고,
+  `UrShortsRail` 이 첫 렌더에 그 시드로 그린다(`readHomeShortsSeed` — 한 번 읽고 지운다).
