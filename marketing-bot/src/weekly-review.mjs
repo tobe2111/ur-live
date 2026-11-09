@@ -4,6 +4,7 @@ import { TRACKS, DEFAULT_WEIGHTS, DEFAULT_CAMPAIGNS, categoryPerformance, adjust
 import { myRecentPosts, utmFromText } from './live.mjs';
 import { SERIES, seriesWeights, encoreCandidates } from './series.mjs';
 import { allSlots } from './variety.mjs';
+import { rewards, fitArms, armsReport, LESSON_SYSTEM, parseLessons, lessonInput, learnLog } from './learn.mjs';
 
 const mixCfg = readJson('data/content-mix.json', {});
 const CAMPAIGNS = { ...DEFAULT_CAMPAIGNS, ...Object.fromEntries(TRACKS.map((t) => [t, mixCfg.tracks?.[t]?.campaign]).filter(([, v]) => v)) };
@@ -137,11 +138,20 @@ async function main() {
   const sw = seriesWeights(rows, idToSeries);
   const seriesLines = ['### 코너(시리즈)별 반응 (1 = 평균, 2개 이상 쌓인 코너만 반영)',
     ...(Object.keys(sw.counts).length ? Object.entries(sw.weights).sort((a, b) => b[1] - a[1]).map(([id, w]) => `- ${SERIES[id]?.name || id}: ${w} (글 ${sw.counts[id]}개)`) : ['- 아직 코너 기록이 있는 글이 없습니다.'])].join('\n');
-  const body = `최근 4주 게시물 ${rows.length}개 기준 (점수 = 노출 + 10×반응)\n\n${lines.join('\n')}\n\n### 상위 게시물\n${top}\n\n${recruit}\n\n${mixLines}\n\n${seriesLines}\n\n${encoreLines}\n\n### 다음 주 제안\n${advice}\n\n클릭/구매는 UTM(utm_content) 기준으로 어드민에서 함께 확인하세요.`;
+  // 자동 학습(learn.mjs): 선택지별 성과 → data/learn-state.json. 게시 봇이 톰슨 샘플링으로 고른다.
+  const rw = rewards(rows);
+  // 기록(variety.json)에 실제 게시 정보(시간대·형식)를 붙인다 — 선택지 기록 전의 글도 시간대·형식은 배울 수 있다.
+  const learnArms = fitArms(learnLog(vlog, rows), rw);
+  const prevLearn = readJson('data/learn-state.json', null);
+  let lessons = prevLearn?.lessons || [];
+  const li = lessonInput(rows, rw);
+  if (li) { try { const got = parseLessons(await claude(LESSON_SYSTEM, li, 400)); if (got.length) lessons = got; } catch (e) { log(`교훈 뽑기 실패(지난 교훈 유지): ${e.message}`); } }
+  const learnLines = ['### 자동 학습 (선택지별 성과, 1 = 평균 — 다음 주 고르기에 반영)', armsReport(learnArms), '', '**이번 주 글쓰기 교훈** (다음 주 글에 들어감)', ...(lessons.length ? lessons.map((l) => `- ${l}`) : ['- 아직 비교할 글이 부족합니다.'])].join('\n');
+  const body = `최근 4주 게시물 ${rows.length}개 기준 (점수 = 노출 + 10×반응)\n\n${lines.join('\n')}\n\n### 상위 게시물\n${top}\n\n${recruit}\n\n${mixLines}\n\n${seriesLines}\n\n${encoreLines}\n\n${learnLines}\n\n### 다음 주 제안\n${advice}\n\n클릭/구매는 UTM(utm_content) 기준으로 어드민에서 함께 확인하세요.`;
   // ⚠️ 최적 시간대·비율 조정을 저장할 곳이 아직 없다 — main 직접 push 는 룰셋이 막는다(live.mjs 머리말).
   //    이번 주 계산값은 리포트 이슈에만 남고 다음 게시에는 반영되지 않는다(후속: 상태 저장 경로).
   // marketing-data 브랜치에 저장된다(워크플로가 data/ 를 그 브랜치로 push). 게시물 자체는 실물 조회로 읽는다.
-  if (!DRY) { writeJson('data/schedule.json', schedule); writeJson('data/mix-state.json', newState); writeJson('data/series-state.json', { ...sw, updated_at: new Date().toISOString() }); writeJson('data/encore.json', { candidates: encore, threads_top: threadsTop, updated_at: new Date().toISOString() }); }
+  if (!DRY) { writeJson('data/schedule.json', schedule); writeJson('data/mix-state.json', newState); writeJson('data/series-state.json', { ...sw, updated_at: new Date().toISOString() }); writeJson('data/encore.json', { candidates: encore, threads_top: threadsTop, updated_at: new Date().toISOString() }); writeJson('data/learn-state.json', { arms: learnArms, lessons, posts: rw.size, updated_at: new Date().toISOString() }); }
   await createIssue(`[주간 SNS 리포트] ${new Date().toISOString().slice(0, 10)}`, body, ['marketing-report']);
 }
 main().catch(async (e) => { console.error(e.message); await opsAlert('마케팅 봇 주간 리뷰 실패', e.message); process.exit(1); });

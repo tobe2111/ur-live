@@ -308,7 +308,7 @@ test('다시 보기 배선: 일요일, 현장 메모가 이기고, 인스타는 
   assert.match(src, /k\.getUTCDay\(\) === 0/);
   assert.match(src, /if \(fieldNote\) \{ encore = null;/);
   assert.match(src, /reel: reelDay \|\| !!encore/);
-  assert.match(src, /encore_of \}\)\)\]\.slice\(-300\)/, 'variety.json 에 encore_of 를 남겨 같은 글을 두 번 안 쓴다');
+  assert.match(src, /photo: generated\?\.photo_url, encore_of,/, 'variety.json 에 encore_of 를 남겨 같은 글을 두 번 안 쓴다');
   assert.match(src, /\.\.\.\(encore \? \[encore\.text\] : \[\]\)/, '원글과 거의 같은 글은 검수에서 막는다');
 });
 
@@ -394,4 +394,59 @@ test('저장 한 줄: 마지막 장에 그린다', () => {
   const py = fs.readFileSync(new URL('../scripts/render-post.py', import.meta.url), 'utf8');
   assert.match(py, /나중에 다시 보려면 저장해 두세요/);
   assert.match(py, /own = s\.get\('photo'\)/);
+});
+
+// ---- 2026-11-09 7차(대표 "자동으로 머신러닝으로 개선해나가줘") ----
+import { rewards, fitArms, thompsonPick, posterior, parseLessons, lessonInput, lessonsBlock, learnLog, armsReport, rng } from '../src/learn.mjs';
+
+test('학습: 성과 배수 → 선택지별 평균', () => {
+  const rows = [
+    { id: 'a', platform: 'threads', metrics: { score: 300 } }, { id: 'b', platform: 'threads', metrics: { score: 100 } },
+    { id: 'c', platform: 'instagram', metrics: { score: 50 } }, { id: 'd', platform: 'instagram', metrics: { score: 50 } },
+  ];
+  const rw = rewards(rows);
+  assert.equal(rw.get('a'), 1.5); assert.equal(rw.get('b'), 0.5); assert.equal(rw.get('c'), 1);
+  const arms = fitArms([{ id: 'a', hook: 'number' }, { id: 'b', hook: 'udal' }, { id: 'c', hook: 'number', len: '1' }, { id: 'x', hook: 'why' }], rw);
+  assert.deepEqual(arms.hook, { number: { n: 2, mean: 1.25 }, udal: { n: 1, mean: 0.5 } });
+  assert.deepEqual(arms.len, { 1: { n: 1, mean: 1 } });
+  assert.match(armsReport(arms), /hook: number 1\.25배\(2개\)/);
+});
+test('톰슨 샘플링: 잘 된 쪽을 더 자주, 덜 써 본 쪽도 가끔, 같은 날은 같은 선택', () => {
+  const stats = { good: { n: 10, mean: 1.8 }, bad: { n: 10, mean: 0.4 } };
+  const picks = { good: 0, bad: 0, new: 0 };
+  for (let d = 0; d < 400; d++) picks[thompsonPick(['good', 'bad', 'new'], stats, d)]++;
+  assert.ok(picks.good > picks.new && picks.new > picks.bad, JSON.stringify(picks));
+  assert.ok(picks.new > 20, '안 써 본 것도 시험한다');
+  assert.equal(thompsonPick(['good', 'bad'], stats, 5), thompsonPick(['good', 'bad'], stats, 5), '재실행해도 같은 선택');
+  assert.equal(thompsonPick(['a', 'b'], {}, 1, { exclude: ['a'] }), 'b', '어제 것은 뺀다');
+  assert.equal(thompsonPick(['a'], {}, 1, { exclude: ['a'] }), 'a', '다 빠지면 무시');
+  assert.equal(posterior(undefined).mean, 1, '데이터 없으면 평균');
+  assert.ok(posterior({ n: 1, mean: 3 }).mean < 2, '글 하나로는 크게 안 믿는다');
+  const r = rng(3); const v = [r(), r(), r()]; assert.ok(v.every((x) => x >= 0 && x < 1));
+});
+test('교훈: 숫자·금지어·긴 문장은 버리고 4개까지', () => {
+  const got = parseLessons('결과: ["첫 줄을 질문 대신 사실로 시작한 글이 반응이 좋다", "수수료 10%를 앞에 둔다", "지금 바로 써야 한다", "짧게", "두 줄 안에 메시지 하나만 둔다", "줄바꿈을 자주 해 호흡을 짧게 한다", "유달이 대사는 한 줄로 끝낸다", "다섯번째도 괜찮은 교훈이다"]');
+  assert.deepEqual(got, ['첫 줄을 질문 대신 사실로 시작한 글이 반응이 좋다', '두 줄 안에 메시지 하나만 둔다', '줄바꿈을 자주 해 호흡을 짧게 한다', '유달이 대사는 한 줄로 끝낸다']);
+  assert.deepEqual(parseLessons('엉망'), []);
+  assert.equal(lessonsBlock([]), '');
+  assert.match(lessonsBlock(['x 교훈']), /위 규칙이 이긴다/);
+  const rows = Array.from({ length: 6 }, (_, i) => ({ id: String(i), platform: 'threads', text: `글${i} https://u.kr`, metrics: { score: i } }));
+  const inp = lessonInput(rows, rewards(rows));
+  assert.match(inp, /반응 좋았던 글/); assert.doesNotMatch(inp, /https/);
+  assert.equal(lessonInput(rows.slice(0, 4), rewards(rows)), null, '글이 적으면 안 뽑는다');
+});
+test('학습 기록: 실물 글의 시간대·형식을 붙이고, 기록 없는 글도 넣는다', () => {
+  const out = learnLog([{ id: '1', hook: 'number' }], [{ id: '1', platform: 'instagram', slot_kst: '19:30', media_type: 'CAROUSEL_ALBUM' }, { id: '2', platform: 'threads', slot_kst: '09:00', media_type: 'TEXT_POST' }]);
+  assert.deepEqual(out, [{ id: '1', hook: 'number', slot: '19:30', media: 'carousel' }, { id: '2', platform: 'threads', slot: '09:00', media: 'text' }]);
+});
+test('학습 배선: 고르기·기록·주간 갱신', () => {
+  const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
+  assert.match(src, /thompsonPick\(HOOKS\.map/);
+  assert.match(src, /thompsonPick\(FORMATS\.map/);
+  assert.match(src, /arms\.len/);
+  assert.match(src, /lessonsBlock\(learnState\?\.lessons/);
+  assert.match(src, /format, len, slot: slot_kst, media, topic_tag \}\)\)/, '선택지를 기록해야 배울 수 있다');
+  const wr = fs.readFileSync(new URL('../src/weekly-review.mjs', import.meta.url), 'utf8');
+  assert.match(wr, /writeJson\('data\/learn-state\.json'/);
+  assert.match(wr, /지난 교훈 유지/);
 });

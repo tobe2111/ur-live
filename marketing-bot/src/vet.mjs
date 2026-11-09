@@ -3,7 +3,7 @@
 // 규칙이 바뀌면 lib.mjs 의 HARD_RULES 와 함께 고친다.
 
 // HARD_RULES 가 금지한 말 — 모델이 어겨도 여기서 막는다
-const BANNED = [
+export const BANNED_WORDS = [
   '업계 최저', '최저 수수료', '마감 임박', '놓치지 마세요', '지금 바로', '자동 승인', '자동 송금',
   '트래픽 보장', '매출 보장', '수익 보장', '방문자 보장', '무조건', '100% 성공', '대박',
 ];
@@ -80,7 +80,7 @@ export function vetPost(body, { facts = '', recent = [], minLen = 80, maxLen = 2
   if (plain.length > maxPlain) problems.push(`길다(${plain.length}자, 최대 ${maxPlain}자) — 문장을 빼서 줄여라`);
   const paras = plain.split(/\n\s*\n/).filter((x) => x.trim()).length;
   if (paras > maxParas) problems.push(`문단이 많다(${paras}개, 최대 ${maxParas}개)`);
-  for (const w of BANNED) if (text.includes(w)) problems.push(`금지 표현: "${w}"`);
+  for (const w of BANNED_WORDS) if (text.includes(w)) problems.push(`금지 표현: "${w}"`);
   for (const re of PROMISE_RE) { const m = text.match(re); if (m) problems.push(`성과·수익 약속: "${m[0]}"`); }
   const known = factNumbers(facts);
   for (const m of text.matchAll(NUM_UNIT_RE)) {

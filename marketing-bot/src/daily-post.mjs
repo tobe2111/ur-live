@@ -2,7 +2,8 @@
 // 트랙 비율: data/mix-state.json(주간 자동조정, 범위 내) → 없으면 data/content-mix.json 고정 60/25/15.
 import { pickTrackByWeights } from './attribution.mjs';
 import { vetPost } from './vet.mjs';
-import { pickLeastRecent, rotateImages, pickHook, pickFormat, recentOpeners, slotFor } from './variety.mjs';
+import { pickLeastRecent, rotateImages, pickHook, recentOpeners, slotFor, HOOKS, FORMATS } from './variety.mjs';
+import { thompsonPick, lessonsBlock } from './learn.mjs';
 import { ROOT, DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, igStory, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
 import { myRecentPosts, postedOn } from './live.mjs';
 import { pickSeries, seriesTopic, BRAND_WRITING, threadsTopicTag, ENCORE, SERIES, pickEncore, collabFor } from './series.mjs';
@@ -70,8 +71,16 @@ let encore = encoreDay && !process.env.TOPIC ? pickEncore(readJson('data/encore.
 if (encore) series = { ...ENCORE, photo: SERIES[encore.series]?.photo || ENCORE.photo };
 let fieldNote = null;
 // 오늘의 글 시작 방식·형식 (인스타 기록 기준으로 최근 쓴 훅은 피함)
-const hook = pickHook(varietyLog.filter((p) => p.platform === 'instagram'), dayIdx);
-const format = pickFormat(dayIdx);
+// 고르기는 학습값(learn.mjs — 톰슨 샘플링)으로: 성과 좋은 선택지를 더 자주, 덜 써 본 것도 계속 시험한다.
+// 학습값이 없으면 모두 평균으로 보고 고르게 시험한다. 같은 시작 방식이 이틀 연속 나오지 않게 어제 것은 뺀다.
+const learnState = readJson('data/learn-state.json', null);
+const arms = learnState?.arms || {};
+const lastHook = varietyLog.filter((p) => p.hook && !p.skipped).slice(-1)[0]?.hook;
+const hook = HOOKS.find((h) => h.id === thompsonPick(HOOKS.map((h) => h.id), arms.hook, dayIdx * 7 + 1, { exclude: [lastHook] })) || pickHook(varietyLog.filter((p) => p.platform === 'instagram'), dayIdx);
+const formatIdx = String(thompsonPick(FORMATS.map((_, i) => String(i)), arms.format, dayIdx * 7 + 2));
+const format = FORMATS[Number(formatIdx)] || FORMATS[0];
+const THREADS_LENS = ['한 문장, 60자 안팎', '1~2문장, 90자 안팎', '2~3문장, 130자 안팎'];
+const lenIdx = String(thompsonPick(THREADS_LENS.map((_, i) => String(i)), arms.len, dayIdx * 7 + 3));
 // 링크 대상: 입점/크리에이터 페이지 (없으면 상품, 그것도 없으면 홈)
 const target = { url: T.target || product?.url || 'https://urdeal.kr/' };
 // 글 id: 하루 한 번이라 날짜로 충분하다(utm_content = <id>-<YYYYMMDD>). 종전엔 posts.json 개수로 매겼다.
@@ -98,7 +107,7 @@ ${trackGuide()}
 [오늘의 시리즈] ${series.name} — ${series.guide}
 ${fieldNote ? `\n[현장 메모 — 대표가 보낸 실제 일. 이 내용만 쓴다]\n${fieldNote.text}\n` : ''}${encore ? `\n[반응 좋았던 글 — 메시지만 가져오고 문장은 전부 새로 쓴다]\n${encore.text}\n` : ''}
 ${BRAND_WRITING}
-
+${lessonsBlock(learnState?.lessons || [])}
 ${referenceStyleBlock()}
 
 ${HUMAN_STYLE}
@@ -242,7 +251,7 @@ async function main() {
         runLog.push({ platform: 'instagram', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
       }
       if (r) {
-      runLog.push({ platform: 'instagram', id: r.id, encore_of: encore?.id, collaborators: collaborators.length ? collaborators : undefined, digest: digest ? digest.deals.map((d) => d.id) : undefined, media_type: r.media_type, media_set: media.set, series: digest ? 'digest' : series.id, field_note: fieldNote?.number, generated: gen ? { source: gen.source, credit: gen.credit, title: gen.title, photo_url: gen.photo_url, reel: !!media.video_url } : undefined, hook: hook.id, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
+      runLog.push({ platform: 'instagram', id: r.id, encore_of: encore?.id, collaborators: collaborators.length ? collaborators : undefined, digest: digest ? digest.deals.map((d) => d.id) : undefined, media_type: r.media_type, media: media.video_url ? 'reel' : media.images.length > 1 ? 'carousel' : 'image', format: formatIdx, media_set: media.set, series: digest ? 'digest' : series.id, field_note: fieldNote?.number, generated: gen ? { source: gen.source, credit: gen.credit, title: gen.title, photo_url: gen.photo_url, reel: !!media.video_url } : undefined, hook: hook.id, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
       // ---- Facebook 페이지 — 2026-11-09 대표 "페이스북 페이지에는 올리지 않아도 돼. 인스타랑 스레드만" → 기본 끔.
       //      다시 켜려면 워크플로 env 에 FB_POST_ENABLED=1.
       if (process.env.FB_POST_ENABLED === '1') {
@@ -282,7 +291,7 @@ async function main() {
   if (due('threads') && !postedToday('threads')) {
     const id = cid('threads');
     const link = utmLink(isPromo ? product : target, 'threads', T.campaign || track, id, now);
-    const len = ['한 문장, 60자 안팎', '1~2문장, 90자 안팎', '2~3문장, 130자 안팎'][dayIdx % 3];
+    const len = THREADS_LENS[Number(lenIdx)] || THREADS_LENS[1];
     // 말투 참고(threads-style.mjs): 대표가 고른 스레드 인기글 + 우리 스레드 인기글
     threadsExamples = pickExamples(await ownerExamples(), readJson('data/encore.json', null)?.threads_top || [], 3, dayIdx);
     log(`스레드 말투 참고 예시 ${threadsExamples.length}개`);
@@ -327,7 +336,7 @@ async function main() {
         else { reply_id = (await threadsPublish({ media_type: 'TEXT', text: fu.body.trim().slice(0, 480), reply_to_id: r.id }))?.id; log(`Threads 이어 쓰기 게시: ${reply_id}\n${fu.body}`); }
       } catch (e) { log(`Threads 이어 쓰기 실패(본글은 정상): ${e.message.slice(0, 200)}`); }
     }
-    if (r) runLog.push({ platform: 'threads', id: r.id, reply_id, topic_tag, encore_of: encore?.id, content_id: id, image: image_url && !/TEXT/.test(r.media_type || '') ? image_url : undefined, track, series: series.id, field_note: fieldNote?.number, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
+    if (r) runLog.push({ platform: 'threads', id: r.id, reply_id, topic_tag, hook: hook.id, len: lenIdx, media: image_url && !/TEXT/.test(r.media_type || '') ? 'image' : 'text', encore_of: encore?.id, content_id: id, image: image_url && !/TEXT/.test(r.media_type || '') ? image_url : undefined, track, series: series.id, field_note: fieldNote?.number, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
     }
   } else log(`Threads: 건너뜀 — ${skipReason('threads')}`);
 
@@ -336,7 +345,7 @@ async function main() {
   // ⚠️ 중복 판정에는 쓰지 않는다 — 다음 회차는 Threads·인스타에 직접 물어 판정한다(저장 실패와 무관).
   log('이번 회차 결과:', JSON.stringify(runLog.map(({ text, ...r }) => r)));
   if (!DRY && runLog.length) writeJson('data/posts.json', [...readJson('data/posts.json', []), ...runLog].slice(-300));
-  if (!DRY && runLog.length) writeJson('data/variety.json', [...varietyLog, ...runLog.map(({ id, platform, track, topic, hook, media_set, series, skipped, date_kst, generated, encore_of }) => ({ id, platform, track, topic, hook, media_set, series, skipped, date_kst, photo: generated?.photo_url, encore_of }))].slice(-300));
+  if (!DRY && runLog.length) writeJson('data/variety.json', [...varietyLog, ...runLog.map(({ id, platform, track, topic, hook, media_set, series, skipped, date_kst, generated, encore_of, format, len, slot_kst, media, topic_tag }) => ({ id, platform, track, topic, hook, media_set, series, skipped, date_kst, photo: generated?.photo_url, encore_of, format, len, slot: slot_kst, media, topic_tag }))].slice(-300));
   if (threadsError) throw new Error(`Threads 게시 실패: ${threadsError.message}`);
   if (igError) throw new Error(`Instagram 게시 실패: ${igError.message}`);
   if (qualityError) throw qualityError; // 기록은 저장했다. 다음 회차가 같은 날 다시 시도한다(skipped 는 미게시로 센다)
