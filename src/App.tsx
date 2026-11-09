@@ -58,7 +58,7 @@ const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
 const CreatorApplyPage = lazy(() => import('./pages/CreatorApplyPage')); const CreatorStartPage = lazy(() => import('./pages/CreatorStartPage'))
 const CampaignApplyPage = lazy(() => import('./pages/CampaignApplyPage')); const MallAdminPage = lazy(() => import('./pages/MallAdminPage')) // 📣 캠페인 모집 · 🏬 몰 운영자 콘솔(공구 서비스)
-const AboutPage = lazy(() => import('./pages/AboutPage')); const AboutServicePage = lazy(() => import('./pages/AboutServicePage')); const PartnersPage = lazy(() => import('./pages/PartnersPage')); const CreatorsPage = lazy(() => import('./pages/CreatorsPage')) // 🧭 2026-07-19 웹페이지 3종 (구 소개서 = /about/print)
+const AboutPage = lazy(() => import('./pages/AboutPage')); const AboutServicePage = lazyPage(() => import('./pages/AboutServicePage')); registerBootPage('about', AboutServicePage.load); const PartnersPage = lazyPage(() => import('./pages/PartnersPage')); registerBootPage('partners', PartnersPage.load); const CreatorsPage = lazyPage(() => import('./pages/CreatorsPage')); registerBootPage('influencer', CreatorsPage.load) // 🚀 2026-11-08 소개·제휴·인플루언서 = sitemap 착지 — 부팅 준비 + 미리받기(PRELOAD_ONLY_ROUTES) · 🧭 2026-07-19 웹페이지 3종 (구 소개서 = /about/print)
 
 const LoginPage = lazyPage(() => import('./pages/LoginPage')); registerBootPage('login', LoginPage.load) // 🔑 2026-11-08 하드로드 진입점(로그인 유도 링크·외부 링크) — 부팅 준비 + 미리받기(generate-route-chunk-map PRELOAD_ONLY_ROUTES)
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
@@ -168,7 +168,7 @@ const AccountDeletedPage = lazy(() => import('./pages/AccountDeletedPage'))
 
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const BlogListPage = lazyPage(() => import('./pages/BlogListPage')); registerBootPage('blog', BlogListPage.load)
-const NewOpeningsPage = lazy(() => import('./pages/NewOpeningsPage')) // 🎉 우리 동네 새 가게(공공 인허가 개업 피드)
+const NewOpeningsPage = lazyPage(() => import('./pages/NewOpeningsPage')); registerBootPage('newOpenings', NewOpeningsPage.load) // 🎉 우리 동네 새 가게(공공 인허가 개업 피드)
 const AreaReportPage = lazy(() => import('./pages/AreaReportPage')) // 📊 상권 리포트(아웃리치 이메일 미끼·SEO)
 // 🗺️ 2026-08-03 지역 허브 + 시/도·시군구 착지 페이지(도시별 색인). 롤백은 REGION_PAGES_ENABLED.
 const RegionIndexPage = lazyPage(() => import('./pages/region/RegionIndexPage')); registerBootPage('region', RegionIndexPage.load)

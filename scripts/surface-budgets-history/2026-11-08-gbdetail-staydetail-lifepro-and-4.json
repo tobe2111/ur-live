@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-08",
+  "reason": "2026-11-08 sitemap 착지 안내 페이지 넷(about·partners·influencer·newOpenings) 하드로드 표면 신규 등록 + 표면 판정·부팅 준비 등록분(app-utils·index 각 +0.4~0.5KB)으로 gbDetail·stayDetail·lifePro 가 허용치(1.5) 경계를 넘음",
+  "surfaces": [
+    "gbDetail",
+    "stayDetail",
+    "lifePro",
+    "about",
+    "partners",
+    "influencer",
+    "newOpenings"
+  ],
+  "changes": [
+    "gbDetail: 212.6 → 214.1 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.5",
+    "stayDetail: 219.1 → 220.6 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.5, index.js +0.4",
+    "lifePro: 206.5 → 208.1 KB (+1.5, 허용 1.5) · 늘어난 것: lz-homeL-homePcL.js +1.2",
+    "about: 기준에 없는 화면 (205.2 KB) — 예산을 갖고 들어와야 한다",
+    "partners: 기준에 없는 화면 (201.9 KB) — 예산을 갖고 들어와야 한다",
+    "influencer: 기준에 없는 화면 (206.1 KB) — 예산을 갖고 들어와야 한다",
+    "newOpenings: 기준에 없는 화면 (178.8 KB) — 예산을 갖고 들어와야 한다"
+  ]
+}
