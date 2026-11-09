@@ -18,7 +18,7 @@
  */
 import { MAIN_SEED_PATH } from '../../shared/seo/region-seed'
 import { nearKeyFromCookieHeader } from '../../shared/home-near'
-import { HOME_NEAR_SEED_ID } from '../../shared/home-near-seed-read'
+import { HOME_NEAR_SEED_ID, HOME_SHORTS_SEED_ID } from '../../shared/home-near-seed-read'
 import type { SsrTarget, SsrPayloadResult } from './ssr-payload'
 
 /** 거리순 피드 시드를 기다리는 최대 시간. 넘으면 HTML 을 먼저 보낸다. */
@@ -47,4 +47,15 @@ export function withSeedDeadline(p: Promise<SsrPayloadResult>, ms: number): Prom
   let timer: ReturnType<typeof setTimeout> | undefined
   const late = new Promise<null>((res) => { timer = setTimeout(() => res(null), ms) })
   return Promise.race([p.catch(() => null), late]).finally(() => { if (timer) clearTimeout(timer) })
+}
+
+/**
+ * 🎬 2026-11-09 홈 유어쇼츠 줄 시드 — 대표 캡처에서 첫 화면 맨 위 유어쇼츠 칸이 빈 회색으로 남아 있었다.
+ *   목록(`/api/urshorts`, 4KB · 10개)은 앱이 화면 근처에서 관측한 뒤에야 받았다(앱 부팅 + 한국→LA 왕복).
+ *   이 경로는 cron 예열(HOT_PATHS)에 이미 있어 엣지·KV 에서 바로 나온다 — 같은 마감으로 함께 싣는다.
+ *   화면 쪽: `UrShortsRail` 이 첫 렌더에 이 시드로 그린다(`readHomeShortsSeed`).
+ */
+export const HOME_SHORTS_SEED_TARGET: SsrTarget = { slot: 'HOMESHORTS', path: '/api/urshorts' }
+export function homeShortsSeedScript(payload: string): string {
+  return `<script id="${HOME_SHORTS_SEED_ID}" type="application/json">${payload}</script>`
 }

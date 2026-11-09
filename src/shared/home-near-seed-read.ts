@@ -16,3 +16,18 @@ export function readHomeNearSeed<T = unknown>(nearKey: string): T[] | undefined 
     return undefined
   }
 }
+
+/** 🎬 홈 유어쇼츠 줄 시드(2026-11-09) — 짝: 워커 `homeShortsSeedScript`. 한 번만 읽는다(두 번째부턴 모듈 캐시가 쓴다). */
+export const HOME_SHORTS_SEED_ID = '__SSR_INITIAL_HOMESHORTS__'
+export function readHomeShortsSeed<T = unknown>(): T[] | null {
+  try {
+    if (typeof document === 'undefined') return null
+    const el = document.getElementById(HOME_SHORTS_SEED_ID)
+    if (!el?.textContent) return null
+    const parsed = JSON.parse(el.textContent)
+    el.remove()
+    return parsed?.success && Array.isArray(parsed.data) ? (parsed.data as T[]) : null
+  } catch {
+    return null
+  }
+}

@@ -17,4 +17,12 @@ export default [
     test: T,
     why: '차가운 위치 키의 조회가 HTML 전체를 붙잡는다.',
   },
+  {
+    name: '거리순시드 — 유어쇼츠 줄이 시드를 안 읽는다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: "  if (!railList) { const seeded = readHomeShortsSeed<UrShortItem>(); if (seeded) railList = { at: Date.now(), p: Promise.resolve(seeded), items: seeded } }",
+    replace: '',
+    test: T,
+    why: '유어쇼츠 칸이 앱 부팅 + 한국→LA 왕복 뒤까지 빈 회색으로 남는다.',
+  },
 ]

@@ -9,6 +9,7 @@ import {
 } from '@/shared/urshorts'
 import { shortDisplayTitle } from '@/shared/urshorts-display'
 import { priceDisplay } from '@/shared/price-display'
+import { readHomeShortsSeed } from '@/shared/home-near-seed-read'
 
 /**
  * 🎬 유어쇼츠 레일 — 홈에서 인기 이용권 바로 아래 (2026-09-07 대표 확정).
@@ -51,6 +52,7 @@ type RailList = { at: number; p: Promise<UrShortItem[] | null>; items?: UrShortI
 let railList: RailList | null = null
 
 function freshRailList(): RailList | null {
+  if (!railList) { const seeded = readHomeShortsSeed<UrShortItem>(); if (seeded) railList = { at: Date.now(), p: Promise.resolve(seeded), items: seeded } } // 🎬 2026-11-09 워커가 홈 HTML 에 실은 목록(왕복 0)
   return railList && Date.now() - railList.at < RAIL_LIST_TTL_MS ? railList : null
 }
 

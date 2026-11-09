@@ -9,8 +9,8 @@
  */
 import { describe, it, expect, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { homeNearSeedTarget, homeNearSeedScript, homeNearSeedPath, withSeedDeadline } from '@/worker/utils/home-near-seed'
-import { readHomeNearSeed, HOME_NEAR_SEED_ID } from '@/shared/home-near-seed-read'
+import { homeNearSeedTarget, homeNearSeedScript, homeNearSeedPath, withSeedDeadline, homeShortsSeedScript, HOME_SHORTS_SEED_TARGET } from '@/worker/utils/home-near-seed'
+import { readHomeNearSeed, HOME_NEAR_SEED_ID, readHomeShortsSeed } from '@/shared/home-near-seed-read'
 
 afterEach(() => { document.body.innerHTML = '' })
 
@@ -48,5 +48,16 @@ describe('홈 거리순 피드 시드', () => {
     expect(feed).toMatch(/initialData: nearKey \? nearSeed : ssrInitial/)
     const w = readFileSync('src/worker/index.ts', 'utf8')
     expect(w).toMatch(/if \(homeNearSeedHtml\) el\.append\(homeNearSeedHtml/)
+  })
+  it('⑥ 유어쇼츠 줄 시드 — 화면 요청과 같은 경로 · 한 번만 읽힌다', () => {
+    const rail = readFileSync('src/components/home/UrShortsRail.tsx', 'utf8')
+    expect(rail).toContain("fetch('/api/urshorts')")
+    expect(HOME_SHORTS_SEED_TARGET.path).toBe('/api/urshorts')
+    expect(rail).toMatch(/function freshRailList\(\)[\s\S]{0,200}readHomeShortsSeed/)
+    document.body.innerHTML = homeShortsSeedScript(JSON.stringify({ success: true, data: [{ id: 7 }] }))
+    expect(readHomeShortsSeed()).toEqual([{ id: 7 }])
+    expect(readHomeShortsSeed()).toBeNull()
+    const w = readFileSync('src/worker/index.ts', 'utf8')
+    expect(w).toMatch(/isMainPage \? withSeedDeadline\(fetchSsrPayload\(HOME_SHORTS_SEED_TARGET/)
   })
 })
