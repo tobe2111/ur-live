@@ -177,7 +177,8 @@ export function isListPost(title: string | null | undefined): boolean {
  * 손님 후기가 아니라 그 업체 홍보라 자동 공개에서 뺀다(후보로는 남아 사장님이 고를 수 있다).
  */
 export function isVendorAuthor(authorName: string | null | undefined): boolean {
-  return /(업소용|가구|인테리어|산업|부동산|공인중개|시공|분양|간판|컨설팅|설비|보일러|홈케어|납품|도매|주식회사|㈜|\(주\)|상사|문화누리카드)/.test(String(authorName ?? ''))
+  // '가구' 는 '1인가구' 를 빼고(실측: 개인 블로그 "1인가구 직장인 서울 살이" 가 걸렸다).
+  return /(업소용|(?<!인)가구|인테리어|산업|부동산|공인중개|시공|분양|간판|컨설팅|설비|보일러|홈케어|납품|도매|주식회사|㈜|\(주\)|상사|문화누리카드|인덕션|전문기업|프랜차이즈|파출|인력|렌탈|™|®)/.test(String(authorName ?? ''))
 }
 
 /**

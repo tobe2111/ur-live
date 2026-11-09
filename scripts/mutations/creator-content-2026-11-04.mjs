@@ -115,8 +115,8 @@ export default [
   {
     name: '업체 블로그를 거르지 않는다',
     file: S,
-    find: '  return /(업소용|가구|인테리어|',
-    replace: '  return false && /(업소용|가구|인테리어|',
+    find: '  return /(업소용|(?<!인)가구|인테리어|',
+    replace: '  return false && /(업소용|(?<!인)가구|인테리어|',
     test: 'src/tests/unit/creator-content-accuracy-2026-11-09.test.ts',
     why: '가구 납품기가 한우집 후기로 뜬다(대표 신고 화면).',
   },

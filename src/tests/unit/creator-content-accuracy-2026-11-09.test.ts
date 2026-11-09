@@ -41,6 +41,10 @@ describe('② 남의 이야기는 자동 공개하지 않는다', () => {
     expect(isVendorAuthor('업소용가구전문,대건산업')).toBe(true)
     expect(isVendorAuthor('정직한보일러')).toBe(true)
     expect(isVendorAuthor('빵순이의 일상')).toBe(false)
+    // 2026-11-09 밤 라이브 실측 — 한우집 칸에 남아 있던 업체 글
+    for (const a of ['피스월드 스마트 언더렌지™ (인덕션 전문기업)', '대한민국 대표 프랜차이즈 기업', '현대파출 식당전문', '행사용품렌탈전문'])
+      expect(isVendorAuthor(a)).toBe(true)
+    expect(isVendorAuthor('1인가구 직장인 서울 살이')).toBe(false)
   })
   it('업종 이름 가게 — 동네 한 단어를 떼면 업종만 남는다', () => {
     for (const n of ['입주청소', '서초에어컨청소', '홍대돈까스', '송파한우정육식당', '쌀국수집', '분당셀프사진관'])
