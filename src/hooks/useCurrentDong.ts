@@ -20,6 +20,7 @@
  */
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
+import { nearLabelFromCookieHeader } from '@/shared/home-near'
 
 export interface DongInfo { dong: string; city: string }
 
@@ -36,14 +37,27 @@ function readCache(k: string): DongInfo | null {
   } catch { return null }
 }
 
+/**
+ * 🧭 2026-11-09 (대표 *"아직 많이 느리네"* — 폰 흉내 실측: 맨 위 이름이 '회현동 → 내 주변 → 회현동' 으로 깜빡였다):
+ *   좌표가 조금만 움직여도(110m 격자) 캐시가 빗나가 이름이 비고, 그동안 화면이 '내 주변' 으로 떨어졌다.
+ *   서버 첫 화면이 이미 그린 이름(위치 라벨 쿠키 `ur_loc_n` — 마지막으로 확정된 동네)을 **임시로** 쓴다. 조회가 오면 바뀐다.
+ */
+function lastKnownDong(): DongInfo | null {
+  try {
+    const dong = typeof document === 'undefined' ? '' : nearLabelFromCookieHeader(document.cookie)
+    return dong ? { dong, city: '' } : null
+  } catch { return null }
+}
+
 export function useCurrentDong(loc: { lat: number; lng: number } | null): DongInfo | null {
-  const [info, setInfo] = useState<DongInfo | null>(() => (loc ? readCache(gridKey(loc.lat, loc.lng)) : null))
+  const [info, setInfo] = useState<DongInfo | null>(() => (loc ? readCache(gridKey(loc.lat, loc.lng)) ?? lastKnownDong() : null))
 
   useEffect(() => {
     if (!loc) { setInfo(null); return }
     const k = gridKey(loc.lat, loc.lng)
     const cached = readCache(k)
     if (cached) { setInfo(cached); return }
+    setInfo((prev) => prev ?? lastKnownDong())
     let alive = true
     // 🩸 2026-09-07: 여기 `/api/proxy/kakao/...` 로 적혀 있어 **줄곧 404** 였다.
     //   라우터는 `app.route('/api', proxyRoutes)` 로 붙고 라우트는 `/kakao/coord2region` 이라
