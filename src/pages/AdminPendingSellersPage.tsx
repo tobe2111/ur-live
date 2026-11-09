@@ -19,6 +19,7 @@ import { toast } from '@/hooks/useToast'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { formatKST } from '@/utils/date'
 import { DashboardLoadError } from '@/components/dashboard'
+import { safeHttpHref } from '@/utils/safe-external-url'
 
 interface PendingSeller {
   id: number
@@ -282,11 +283,11 @@ export default function AdminPendingSellersPage() {
                     </div>
                   )}
 
-                  {s.prospect_proof_url && (
+                  {safeHttpHref(s.prospect_proof_url) && (
                     <div className="mb-2">
                       <p className="text-[11px] text-gray-500 mb-1">영업 증빙:</p>
-                      <a href={s.prospect_proof_url} target="_blank" rel="noopener noreferrer">
-                        <img src={s.prospect_proof_url} alt="증빙" className="w-32 h-20 object-cover rounded border border-gray-200" />
+                      <a href={safeHttpHref(s.prospect_proof_url)} target="_blank" rel="noopener noreferrer">
+                        <img src={safeHttpHref(s.prospect_proof_url)} alt="증빙" className="w-32 h-20 object-cover rounded border border-gray-200" />
                       </a>
                     </div>
                   )}
