@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-09",
+  "reason": "오늘(11-09) 머지 합산 드리프트 +1.6KB(허용 1.5): #2252 shell-sw 새로고침 띠·오프라인 접착(app-utils-deferred +0.7) + #2251/#2254 보안 수리의 공용 유틸(app-utils +0.3~0.8). 어느 한 PR 도 단독으론 허용 안이었고 main 조합에서만 넘쳤다",
+  "surfaces": [
+    "product",
+    "blogPost",
+    "login",
+    "lifeRequest",
+    "dash:admin"
+  ],
+  "changes": [
+    "product: 200.3 → 201.9 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.8",
+    "blogPost: 194.8 → 196.3 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils-deferred.js +0.7, app-utils.js +0.3",
+    "login: 196.7 → 198.3 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils-deferred.js +0.7, app-utils.js +0.3",
+    "lifeRequest: 198.8 → 200.4 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils-deferred.js +0.7",
+    "dash:admin: 256.7 → 258.3 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils-deferred.js +0.7, app-utils.js +0.4"
+  ]
+}
