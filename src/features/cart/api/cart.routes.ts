@@ -15,7 +15,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import {
-  requireAuth,
+  requireAuth, requireUser,
   getCurrentUser,
 } from '@/worker/middleware/auth';
 import {
@@ -98,7 +98,7 @@ async function getProduct(
  * GET /api/cart
  * 장바구니 조회
  */
-cartRoutes.get('/', requireAuth(), async (c) => {
+cartRoutes.get('/', requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);
@@ -231,7 +231,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
  * Body: { product_id, quantity, price_snapshot?, option_id?, live_stream_id?, options? }
  * LivePageV2 호환: productId, liveStreamId, priceSnapshot 도 허용
  */
-cartRoutes.post('/', cartRateLimit, requireAuth(), async (c) => {
+cartRoutes.post('/', cartRateLimit, requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);
@@ -507,7 +507,7 @@ cartRoutes.put('/:id', cartRateLimit, requireAuth(), async (c) => {
  * DELETE /api/cart/:id
  * 아이템 삭제
  */
-cartRoutes.delete('/:id', cartRateLimit, requireAuth(), async (c) => {
+cartRoutes.delete('/:id', cartRateLimit, requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);
@@ -552,7 +552,7 @@ cartRoutes.delete('/:id', cartRateLimit, requireAuth(), async (c) => {
  *   - 멀티셀러 서브주문(`{order_number}_s{sellerId}`) + 딜결제(/points/pay) 패턴 모두 매칭.
  *   - body 없거나 order_number 없으면 기존 전체 비우기 (하위호환).
  */
-cartRoutes.post('/clear', cartRateLimit, requireAuth(), async (c) => {
+cartRoutes.post('/clear', cartRateLimit, requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);

@@ -1074,7 +1074,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
   //   설정과 동일하게"): 소비자가 사용 *전에* 이 매장의 사용 방식을 알 수 있게 모드만 반환.
   //   scan_only=직원 스캔 / store_code=카운터 확인코드 입력 / self_free=바로 셀프 사용.
   //   ⚠️ store_code 값(카운터 비밀코드)은 반환하지 않음 — 현장에서만 확인(원격 오사용 차단, 게이트와 동일 철학). ──
-  router.get('/vouchers/:code/redemption-info', requireAuth(), async (c) => {
+  router.get('/vouchers/:code/redemption-info', requireUser(), async (c) => {
     const { DB } = c.env
     const user = getCurrentUser(c)
     if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)

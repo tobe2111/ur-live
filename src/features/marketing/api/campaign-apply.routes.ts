@@ -13,7 +13,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { getSignupCampaign, CAMPAIGN_CATEGORIES, buildCampaignRefLink } from '@/shared/campaign-signup'
 import { ensureInfluencerSchema } from './influencer-discovery'
@@ -56,7 +56,7 @@ export async function ensureCampaignApplicationsTable(DB: D1Database): Promise<v
 }
 
 // GET /api/campaign/:code/me — 재방문 시 내 신청 여부(완료 화면 복원용). 로그인 필수.
-app.get('/:code/me', requireAuth(), async (c) => {
+app.get('/:code/me', requireUser(), async (c) => {
   const campaign = getSignupCampaign(c.req.param('code'))
   if (!campaign) return c.json({ success: false, error: '알 수 없는 캠페인입니다' }, 404)
   const user = getCurrentUser(c)
@@ -73,7 +73,7 @@ app.get('/:code/me', requireAuth(), async (c) => {
 })
 
 // POST /api/campaign/:code/apply — 신청 접수(로그인 필수). 재제출 = 프로필 갱신(멱등).
-app.post('/:code/apply', rateLimit({ action: 'campaign-apply', max: 10, windowSec: 3600 }), requireAuth(), async (c) => {
+app.post('/:code/apply', rateLimit({ action: 'campaign-apply', max: 10, windowSec: 3600 }), requireUser(), async (c) => {
   const campaign = getSignupCampaign(c.req.param('code'))
   if (!campaign) return c.json({ success: false, error: '알 수 없는 캠페인입니다' }, 404)
   if (!campaign.active) return c.json({ success: false, error: '접수가 종료된 캠페인입니다' }, 400)

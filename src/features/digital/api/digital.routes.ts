@@ -11,14 +11,14 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 
 export const digitalRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // ── GET /api/digital/my — 내 디지털 보관함 ─────────────────────────
-digitalRoutes.get('/my', requireAuth(), async (c) => {
+digitalRoutes.get('/my', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
 
@@ -63,7 +63,7 @@ digitalRoutes.get('/my', requireAuth(), async (c) => {
 })
 
 // ── GET /api/digital/access/:token — 다운로드/시청 URL 획득 ───────
-digitalRoutes.get('/access/:token', rateLimit({ action: 'digital_access', max: 60, windowSec: 60 }), requireAuth(), async (c) => {
+digitalRoutes.get('/access/:token', rateLimit({ action: 'digital_access', max: 60, windowSec: 60 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const token = c.req.param('token')
