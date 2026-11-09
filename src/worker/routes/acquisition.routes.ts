@@ -8,7 +8,7 @@
  */
 import { Hono } from 'hono'
 import { intParam } from '@/shared/pagination'
-import { requireAuth, getCurrentUser } from '../middleware/auth'
+import { requireAuth, requireUser, getCurrentUser } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import type { Env } from '../types/env'
 import { ensureAcquisitionTables, normalizeAcqSource, loadUtmReport, reportTokenOk } from '../utils/acquisition'
@@ -29,7 +29,7 @@ acquisitionRoutes.post('/landing', rateLimit({ action: 'acq_landing', max: 10, w
   return c.json({ success: true })
 })
 
-acquisitionRoutes.post('/claim', rateLimit({ action: 'acq_claim', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
+acquisitionRoutes.post('/claim', rateLimit({ action: 'acq_claim', max: 10, windowSec: 300 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const body = await c.req.json<{ src?: string; code?: string; landed_at?: string; campaign?: string; content?: string }>().catch(() => ({} as Record<string, never>))
@@ -63,7 +63,7 @@ acquisitionRoutes.post('/inflow', rateLimit({ action: 'inflow_click', max: 20, w
   return c.json({ success: true, data: { recorded: created } })
 })
 
-acquisitionRoutes.post('/inflow/bind', rateLimit({ action: 'inflow_bind', max: 20, windowSec: 300 }), requireAuth(), async (c) => {
+acquisitionRoutes.post('/inflow/bind', rateLimit({ action: 'inflow_bind', max: 20, windowSec: 300 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const body = await c.req.json<{ anon_id?: string }>().catch(() => ({} as Record<string, never>))

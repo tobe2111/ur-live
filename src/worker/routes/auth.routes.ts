@@ -15,7 +15,7 @@ import { QueryBuilder } from '../repositories/query-builder';
 import { authMiddleware, createJwt, type AuthVariables } from '../middleware/auth.middleware';
 // 🛡️ 2026-05-24: 카카오 사용자 (httpOnly 세션 쿠키 인증) 도 /profile PATCH 가능하게 —
 //   기존 authMiddleware (Bearer JWT only) 는 403. requireAuth() 는 Bearer + 쿠키 둘 다 지원.
-import { requireAuth, getCurrentUser } from '../middleware/auth';
+import { requireAuth, requireUser, getCurrentUser } from '../middleware/auth';
 import { generateId } from '../../shared/utils';
 // 🔗 2026-07-03 이메일 가입도 유어샵 핸들 즉시 발급(카카오 경로와 대칭) — SSOT 재사용
 import { generateUniqueHandle } from '../utils/handle-generator';
@@ -307,7 +307,7 @@ authRouter.get('/me', async (c) => {
 // PATCH /api/auth/profile — 프로필(이름, 전화번호) 수정
 // 🛡️ 2026-05-24: requireAuth() 사용 — Bearer JWT + httpOnly 세션 쿠키 둘 다 허용.
 //   카카오 로그인 사용자는 쿠키 인증 → 기존 authMiddleware (Bearer only) 로는 403 발생.
-authRouter.patch('/profile', requireAuth(), async (c) => {
+authRouter.patch('/profile', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const id = user.id;
@@ -379,7 +379,7 @@ authRouter.patch('/profile', requireAuth(), async (c) => {
 // POST /api/auth/change-password — 비밀번호 변경
 // 🛡️ 2026-05-24: requireAuth() — Bearer + 세션 쿠키 둘 다 허용 (카카오 사용자 호환).
 //   password 없는 사용자는 안에서 별도 처리됨 (current_password 검증 실패).
-authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 5, windowSec: 3600 }), requireAuth(), async (c) => {
+authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 5, windowSec: 3600 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const id = user.id;

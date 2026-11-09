@@ -9,7 +9,7 @@
  */
 
 import { Hono } from 'hono'; import { getCookie } from 'hono/cookie'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'; import { transactionalMailReady } from '@/lib/ncp-sens-mail' // 📮 메일 수단 판정(Resend 또는 SENS)
 import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'; import { creditBrokerShare } from '@/worker/utils/broker-share'; import { isOwnAgencyReferral } from '@/worker/utils/agency-share-payout' // 💸 2026-09-19 중개사 몫(게이트 OFF=no-op)
@@ -58,7 +58,7 @@ const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 // 👤 주인 판정·숫자·판매 중지(`/viewer/:id`) — `owner-viewer.routes.ts`. 구매 차단과 같은 함수를 쓴다.
 registerOwnerViewerEndpoints(groupBuyRoutes)
 
-groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, windowSec: 60 }), requireAuth(), async (c) => {
+groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, windowSec: 60 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
@@ -1061,7 +1061,7 @@ registerDealPlanEndpoint(groupBuyRoutes)                   // /deal-plan/:produc
 // 🛡️ 2026-05-22: 공구 토스 결제 confirm endpoint — Toss SDK success URL 에서 호출.
 //   body: { paymentKey, orderId, amount, productId, qty, promoCode?, ref? }
 //   처리: confirmTossPayment → /join 의 deal 흐름 후처리 재사용 (voucher 발급 + attribution + ledger).
-groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
+groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss', max: 10, windowSec: 60 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   // 🔑 user_id 정규화(데이터 감사 1단계) — /join 과 동일(이중키 분열 차단, 카카오=무동작, Firebase 교정).

@@ -6,7 +6,7 @@
  * - 24시간 쿠키 추적 + 부정 방지
  */
 import { Hono } from 'hono'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { creditAffiliateForOrder, resolveCommissionRate } from '../../../worker/utils/affiliate-credit'
 import type { Env } from '@/worker/types/env'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
@@ -97,7 +97,7 @@ affiliateRoutes.post('/track', requireAuth(), async (c) => {
 })
 
 // ── GET /api/affiliate/stats — 내 추천 실적 ──
-affiliateRoutes.get('/stats', requireAuth(), async (c) => {
+affiliateRoutes.get('/stats', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
@@ -161,7 +161,7 @@ affiliateRoutes.get('/stats', requireAuth(), async (c) => {
 // ── GET /api/affiliate/funnel — 인플루언서 share 성과 funnel ──
 // 🛡️ 2026-05-15: 본인 share 링크 클릭 → 가입 → 첫 결제 funnel 시각화
 //   데이터: referral_commissions + point_transactions(type='referral_bonus')
-affiliateRoutes.get('/funnel', requireAuth(), async (c) => {
+affiliateRoutes.get('/funnel', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const userId = user.id
@@ -228,7 +228,7 @@ affiliateRoutes.get('/funnel', requireAuth(), async (c) => {
 // 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): **마감 조건을 걷어냈다.** 그대로 뒀으면 마감이 없는
 //   세상에서 이 쿼리가 **영구히 0건**을 돌려주고(=이 화면이 조용히 빈다), 그건 마감 제거의
 //   부작용으로 인플루언서 기능 하나가 죽는 것이다. 이제 진행률 높은 순 + 최신순으로 고른다.
-affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
+affiliateRoutes.get('/top-groups', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const userId = user.id

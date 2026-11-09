@@ -6,7 +6,7 @@
  */
 
 import { Hono } from 'hono'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database'
 import { grantInviteRewardForFirstPurchase, ensureInviteRewardsTable as ensureInviteRewardsShared } from '@/worker/utils/invite-reward'
@@ -43,7 +43,7 @@ async function ensureInviteRewardsTable(DB: D1Database) {
  *  1. invited user의 referred_by 컬럼 (users 테이블)
  *  2. 또는 요청 body에 inviter_user_id 직접 전달
  */
-inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
+inviteRewardRoutes.post('/reward', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
 
@@ -71,7 +71,7 @@ inviteRewardRoutes.post('/reward', requireAuth(), async (c) => {
   }
 })
 
-inviteRewardRoutes.get('/my', requireAuth(), async (c) => {
+inviteRewardRoutes.get('/my', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
 

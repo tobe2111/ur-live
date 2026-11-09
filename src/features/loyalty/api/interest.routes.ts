@@ -9,7 +9,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 const interestRoutes = new Hono<{ Bindings: Env }>();
 
@@ -169,7 +169,7 @@ interestRoutes.post('/remove', requireAuth(), async (c) => {
 
 // ── GET /api/interest/my — List user's interests ───────────────
 
-interestRoutes.get('/my', requireAuth(), async (c) => {
+interestRoutes.get('/my', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: 'Authentication required' }, 401);
 
@@ -190,7 +190,7 @@ interestRoutes.get('/my', requireAuth(), async (c) => {
 
 // ── GET /api/interest/check — Check if user has interest ───────
 
-interestRoutes.get('/check', requireAuth(), async (c) => {
+interestRoutes.get('/check', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: 'Authentication required' }, 401);
 

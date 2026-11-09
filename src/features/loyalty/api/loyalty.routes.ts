@@ -8,7 +8,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 const loyaltyRoutes = new Hono<{ Bindings: Env }>();
 
@@ -143,7 +143,7 @@ loyaltyRoutes.get('/tiers', async (c) => {
 
 // ── GET /api/loyalty/my-tier — Current user's tier info ────────
 
-loyaltyRoutes.get('/my-tier', requireAuth(), async (c) => {
+loyaltyRoutes.get('/my-tier', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: 'Authentication required' }, 401);
 
@@ -209,7 +209,7 @@ loyaltyRoutes.get('/my-tier', requireAuth(), async (c) => {
 
 // ── POST /api/loyalty/recalculate — Recalculate tier ───────────
 
-loyaltyRoutes.post('/recalculate', requireAuth(), async (c) => {
+loyaltyRoutes.post('/recalculate', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: 'Authentication required' }, 401);
 
