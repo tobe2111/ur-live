@@ -9,6 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
+import { signRefreshToken, verifyRefreshToken } from '@/worker/utils/refresh-token-key';
 import { verifyPassword, hashPassword } from '@/lib/password';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
@@ -251,7 +252,7 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
 
     const token = await sign(payload, JWT_SECRET);
     const refreshPayload = { ...payload, exp: now + (30 * 24 * 60 * 60) };
-    const refreshToken = await sign(refreshPayload, JWT_SECRET);
+    const refreshToken = await signRefreshToken(refreshPayload, JWT_SECRET); // 🔐 2026-11-09 다른 키 — 로그인 토큰으로 못 쓴다
 
     // 🔐 단일 세션 강제 — 이 로그인(iat) 이전 발급된 admin 토큰 전부 무효화.
     await startDashboardSession(DB, 'admin', admin.id, payload.iat, { userAgent: c.req.header('User-Agent'), ip: reqIp });
@@ -338,7 +339,7 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
     
     let payload: any;
     try {
-      payload = await verify(refreshToken, JWT_SECRET, 'HS256');
+      payload = await verifyRefreshToken(refreshToken, JWT_SECRET);
     } catch (error) {
       console.warn('[Admin Refresh] Invalid refresh token:', error);
       return c.json({ success: false, error: 'Refresh Token이 유효하지 않거나 만료되었습니다.' }, 401);
@@ -432,7 +433,7 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
 
     const newAccessToken = await sign(newPayload, JWT_SECRET);
     const newRefreshPayload = { ...newPayload, exp: now + (30 * 24 * 60 * 60) };
-    const newRefreshToken = await sign(newRefreshPayload, JWT_SECRET);
+    const newRefreshToken = await signRefreshToken(newRefreshPayload, JWT_SECRET);
 
     // 새 refresh 저장
     try {
