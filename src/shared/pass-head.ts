@@ -45,6 +45,18 @@ export const PASS_HEAD = {
   onnuri: 'ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-medium align-middle',
   // 📏 2026-11-02 대표 확정 상세 C안(*"글자 크기들도 각각 너무 크고 공백이 많은 느낌 · 대기업스러움"*): 24 → **17**.
   h1: 'm-0 text-[16px] leading-[1.4] font-semibold tracking-[-.02em] text-[var(--gbd-ink)]',
+  // 💰 2026-11-09 (대표 *"계속 최적화"* — 폰 흉내: 사진·제목 1.5초 · 가격 3.5초): 별점 줄·가격도 서버 첫 화면이 그린다.
+  //   ⚠️ `PassHeadCard` 와 워커(`detail-ssr-body.ts`)가 **이 문자열 그대로** 쓴다 — 한쪽만 고치면 마운트 때 가격이 밀린다.
+  //   거리(`N km`)는 내 위치 기준이라 서버가 모른다 — 같은 줄 **오른쪽**이라 나중에 붙어도 높이가 안 바뀐다.
+  stats: 'mt-2 flex items-center justify-between gap-3 text-[13px]',
+  statsLeft: 'min-w-0 flex items-center flex-wrap gap-x-2 gap-y-1',
+  statsBtn: 'bg-transparent border-0 p-0 cursor-pointer',
+  price: 'mt-3',
+  priceRef: 'text-[13px]',
+  priceRow: 'flex items-baseline gap-2',
+  /** ⚠️ 움직임 클래스 `ur-pct-pop` 은 여기 넣지 않는다 — 앱 CSS 가 아니라 `PassHeadCard` 가 꽂는 CSS 라 첫 화면 CSS 검사에서 빠진다. 쓰는 쪽이 앞에 붙인다. */
+  pricePct: 'text-[16px] font-bold',
+  priceNow: 'text-[24px] font-bold tracking-[-.02em]',
 } as const
 
 /** 섹션 카드 — 회색 바탕 위 흰 판. 2026-10-11 PC 도 같은 카드(대표 "PC도 해야하는거 아니야?"). */

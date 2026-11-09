@@ -21,6 +21,7 @@
  * - 라이브 DB 의 상품 데이터(`voucher_expiry` 가 비어 있으면 화면이 무엇으로 폴백하는지).
  * - 지갑 다크 렌더. 대비는 CI 의 contrast 워크플로가 실제 렌더로 잰다.
  */
+import { PASS_HEAD } from '@/shared/pass-head'
 import { describe, it, expect } from 'vitest'
 import { readCode, sliceFrom } from '../helpers/source-text'
 
@@ -91,7 +92,10 @@ describe('상세 안 B — 같은 할인을 세 번 말하지 않는다', () => 
   const sizeOf = (block: string, needle: string) => {
     const line = block.split('\n').find((l) => l.includes(needle))
     expect(line, needle + ' 를 가격 줄에서 못 찾았다').toBeTruthy()
-    return Number(/text-\[(\d+)px\]/.exec(line!)![1])
+    // 2026-11-09 클래스가 `PASS_HEAD` 상수로 옮겨 갔다(서버 첫 화면과 같은 문자열) — 상수 이름이면 값을 읽는다.
+    const k = /PASS_HEAD\.(\w+)/.exec(line!)?.[1]
+    const cls = k ? (PASS_HEAD as Record<string, string>)[k] : line!
+    return Number(/text-\[(\d+)px\]/.exec(cls)![1])
   }
 
   it('판매가가 가장 크다 — 할인율·정가보다', () => {

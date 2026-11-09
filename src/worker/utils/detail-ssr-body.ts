@@ -72,6 +72,9 @@ import {
 import { getVoucherShortLabel, normalizeCategory } from '../../shared/constants/voucher-categories'
 import { PASS_HEAD, PASS_PAGE_BG, passSubLine } from '../../shared/pass-head'
 import { buildDetailNoscript } from './crawler-noscript'
+import { HOME_FS_CLASS, starFillPct } from './home-first-screen'
+import { derivePricing } from '../../pages/group-buy/pricing'
+import { formatNumber } from '../../utils/format'
 
 function escAttr(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -153,8 +156,51 @@ function titleHtml(d: DetailSeed): string {
       (sub ? `<div class="${PASS_HEAD.merchant}">${escText(sub)}${onnuri}</div>` : '') +
       `<h1 class="${PASS_HEAD.h1}">${escText(d.name || '')}</h1>` +
       (d.prelaunch ? `<span class="${PASS_HEAD.prelaunch}">오픈 예정 · 사전 응모 받는 중</span>` : '') +
+      statsAndPriceHtml(d) +
     '</div>'
   )
+}
+
+/**
+ * 💰 2026-11-09 별점 줄 + 가격 — `PassHeadCard` 와 **같은 클래스(`PASS_HEAD`)·같은 계산(`derivePricing`)·같은 숫자 형식**.
+ *   종전 ❌("주소 줄의 `· N km` 가 되감겨 가격이 밀린다")은 2026-11-02 상세 C안으로 주소 줄이 걷히고 거리가 이 줄 **오른쪽**으로
+ *   옮겨 가며 사라졌다. 거리는 서버가 모르니 안 그린다 — 같은 줄 오른쪽이라 나중에 붙어도 높이가 그대로다.
+ *   ⚠️ 남는 밀림 하나: 리뷰·구매가 0 인데 거리가 있으면 그 줄이 마운트 때 새로 생긴다(라이브 50건 중 2건).
+ */
+function statsAndPriceHtml(d: DetailSeed): string {
+  const rv = Number(d.avg_rating) || 0
+  const rc = Number(d.review_count) || 0
+  const hasReviews = rv > 0 && rc > 0
+  const buyers = Number(d.sold_count ?? d.group_buy_current) || 0
+  let stats = ''
+  if (hasReviews || buyers > 0) {
+    const star = hasReviews
+      ? `<span class="${HOME_FS_CLASS.starWrap}" style="font-size:12px;letter-spacing:0.5px" role="img" aria-label="5점 만점에 ${rv.toFixed(1)}점">` +
+        `<span class="${HOME_FS_CLASS.starBase}" aria-hidden="true">★★★★★</span>` +
+        `<span class="${HOME_FS_CLASS.starFill}" style="width:${starFillPct(rv)}%" aria-hidden="true">★★★★★</span></span>` +
+        `<b class="font-medium" style="color:var(--gbd-ink)">${rv.toFixed(1)}</b>` +
+        `<button type="button" class="${PASS_HEAD.statsBtn}" style="color:var(--gbd-sub)">(${formatNumber(rc)})</button>`
+      : ''
+    stats =
+      `<div class="${PASS_HEAD.stats}"><span class="${PASS_HEAD.statsLeft}">` + star +
+      (hasReviews && buyers > 0 ? '<span aria-hidden="true" style="color:var(--gbd-sub2)">·</span>' : '') +
+      (buyers > 0 ? `<span style="color:var(--gbd-sub)">${formatNumber(buyers)}명 구매</span>` : '') +
+      '</span></div>'
+  }
+  const price = Number(d.price)
+  if (!Number.isFinite(price) || price <= 0) return stats
+  const { unitPrice, refPrice, displayDiscountPct } = derivePricing({
+    price, original_price: Number(d.original_price) || undefined, current_discount_pct: Number(d.current_discount_pct) || 0,
+  })
+  if (!(unitPrice > 0)) return stats
+  return stats +
+    `<div class="${PASS_HEAD.price}">` +
+      (refPrice > unitPrice ? `<div class="${PASS_HEAD.priceRef}" style="color:var(--gbd-sub)"><s class="ur-strike">${formatNumber(refPrice)}원</s></div>` : '') +
+      `<div class="${PASS_HEAD.priceRow}">` +
+        (displayDiscountPct > 0 ? `<span class="ur-pct-pop ${PASS_HEAD.pricePct}" style="color:var(--sale)">${displayDiscountPct}%</span>` : '') +
+        `<span class="${PASS_HEAD.priceNow}" style="color:var(--gbd-ink)">${formatNumber(unitPrice)}원</span>` +
+      '</div>' +
+    '</div>'
 }
 
 interface DetailSeed {
@@ -182,6 +228,9 @@ interface DetailSeed {
   voucher_terms?: string | null
   avg_rating?: number | null
   review_count?: number | null
+  sold_count?: number | null
+  group_buy_current?: number | null
+  current_discount_pct?: number | null
 }
 
 /**
