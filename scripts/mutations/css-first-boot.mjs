@@ -51,7 +51,7 @@ export default [
   {
     name: '🚦 PC 상세에도 첫 화면 CSS 를 넣는다(서버가 PC 상세 첫 화면을 안 그린다 — 2026-11-09 재조준: PC 홈만 예외)',
     file: MOD,
-    find: "if (!shouldRenderMobileFirstScreen(ua)) return (pathname === '/' || pathname === '/index.html')",
+    find: "if (!shouldRenderMobileFirstScreen(ua)) return (pathname === '/' || pathname === '/index.html') || (!authed && guestTabOf(pathname) === 'login')",
     replace: "if (!shouldRenderMobileFirstScreen(ua)) return true",
     test: TEST,
     why: 'PC 홈 말고는 서버가 PC 첫 화면을 안 그린다 — 다른 PC 화면에 폰 표면 CSS 를 인라인하면 무게만 는다(로더-먼저만 걸어야 한다).',

@@ -18,6 +18,7 @@ import { loginFirstScreenBody } from '@/worker/utils/login-first-screen'
 import { LOGIN_CLS, LOGIN_COPY, LOGIN_UDAL_SIZE, LOGIN_LOGO_SIZE } from '@/shared/login-page'
 import { UDAL_HELLO_SRC } from '@/shared/mascot-art'
 import { logoHtml } from '@/worker/utils/logo-html'
+import { firstScreenApplies, criticalCssFor, criticalSurfaceOf } from '@/worker/utils/css-first-boot'
 
 const page = stripComments(readFileSync('src/pages/LoginPage.tsx', 'utf8'))
 
@@ -37,6 +38,20 @@ describe('① /login 은 네 번째 게스트 탭', () => {
     const html = buildGuestFirstScreen('login', '<div>LOADER</div>', 'n')
     expect(serverRoot().getAttribute('class')).toBe(LOGIN_CLS.root)
     expect(html).toContain("s.getItem('user_id')||s.getItem('session_login')")
+  })
+})
+
+describe('①-2 PC 도 그린다 — 로그인 화면은 PC 가 같은 한 열(max-w 400)이라 폰 전용 조건에서 예외', () => {
+  it('워커 분기와 첫 화면 CSS 자격 둘 다 login 을 PC 에서 허용한다', () => {
+    const worker = stripComments(readFileSync('src/worker/index.ts', 'utf8'))
+    expect(worker).toContain("guestTabOf(url.pathname) && (guestTabOf(url.pathname) === 'login' || shouldRenderMobileFirstScreen(")
+    const pcUa = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+    expect(firstScreenApplies('/login', pcUa, false)).toBe(true)
+    expect(firstScreenApplies('/login', pcUa, true), '세션 쿠키가 있으면 안 그린다').toBe(false)
+    expect(firstScreenApplies('/my-vouchers', pcUa, false), '다른 게스트 탭은 PC 에서 종전대로 안 그린다').toBe(false)
+    expect(criticalSurfaceOf('/login'), '로그인은 guest 표면 CSS 를 받는다').toBe('guest')
+    expect(criticalCssFor('/login', 'FULL', 'HOME', { guest: 'GUEST' })).toBe('GUEST')
+    expect(LOGIN_CLS.frame).toContain('md:max-w-[400px]')
   })
 })
 

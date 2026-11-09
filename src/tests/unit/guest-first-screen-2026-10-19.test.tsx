@@ -152,8 +152,8 @@ describe('② 로그인 흔적이면 걷어낸다', () => {
 
 describe('③ 워커 배선', () => {
   const worker = stripComments(readFileSync('src/worker/index.ts', 'utf8'))
-  it('세션 쿠키가 없고 세 경로이고 폰·크롤러일 때만 그린다', () => {
-    expect(worker).toMatch(/\} else if \(!authed && guestTabOf\(url\.pathname\) && shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\) \{ const guestFirst = buildGuestFirstScreen\(guestTabOf\(url\.pathname\)!, urdealLoaderHtml, nonce\)/)
+  it('세션 쿠키가 없고 네 경로이고 폰·크롤러일 때만 그린다(로그인 화면만 PC 도 — 2026-11-09)', () => {
+    expect(worker).toMatch(/\} else if \(!authed && guestTabOf\(url\.pathname\) && \(guestTabOf\(url\.pathname\) === 'login' \|\| shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\)\) \{ const guestFirst = buildGuestFirstScreen\(guestTabOf\(url\.pathname\)!, urdealLoaderHtml, nonce\)/)
   })
   it('경로 판정', () => {
     expect(guestTabOf('/my-vouchers')).toBe('pass')
