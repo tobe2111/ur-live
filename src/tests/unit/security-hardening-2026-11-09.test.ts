@@ -65,3 +65,11 @@ describe('② 공개 레포에 적힌 키로 여는 쓰기 엔드포인트가 �
     expect(hits).toEqual([])
   })
 })
+
+describe('③ 요청 본문의 키를 SQL 열 이름으로 쓰려면 허용 목록을 거친다', () => {
+  it('알림 채널 설정 PUT 은 허용된 열만 받는다', () => {
+    const code = readCode('src/features/admin/api/admin-notification-settings.routes.ts')
+    expect(code).toMatch(/CHANNEL_COLUMNS = new Set\(\['dashboard_enabled', 'email_enabled', 'alimtalk_enabled', 'push_enabled'\]\)/)
+    expect(code).toMatch(/typeof v === 'boolean' && CHANNEL_COLUMNS\.has\(k\)/)
+  })
+})

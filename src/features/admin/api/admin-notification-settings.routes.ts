@@ -110,6 +110,8 @@ app.get('/', async (c) => {
   }
 })
 
+const CHANNEL_COLUMNS = new Set(['dashboard_enabled', 'email_enabled', 'alimtalk_enabled', 'push_enabled'])
+
 app.put('/:type', async (c) => {
   try {
     await ensureTable(c.env.DB)
@@ -133,7 +135,8 @@ app.put('/:type', async (c) => {
         }
         continue
       }
-      if (typeof v === 'boolean') {
+      // 🔐 2026-11-09: 키는 SQL 열 이름으로 들어가므로 허용 목록만 받는다(키에 SQL 을 넣을 수 있었다).
+      if (typeof v === 'boolean' && CHANNEL_COLUMNS.has(k)) {
         sets.push(`${k} = ?`)
         params.push(v ? 1 : 0)
       }

@@ -29,4 +29,12 @@ export default [
     test: TEST,
     why: '키가 공개 레포에 있어 누구나 아무 매장에 상품·리뷰를 넣는다.',
   },
+  {
+    name: '[sec] 알림 설정 PUT 의 열 이름 허용 목록 검사를 뺀다',
+    file: 'src/features/admin/api/admin-notification-settings.routes.ts',
+    find: "if (typeof v === 'boolean' && CHANNEL_COLUMNS.has(k)) {",
+    replace: "if (typeof v === 'boolean') {",
+    test: TEST,
+    why: '본문 키가 그대로 SQL 에 들어가 관리자 비밀번호 해시를 읽을 수 있다.',
+  },
 ]
