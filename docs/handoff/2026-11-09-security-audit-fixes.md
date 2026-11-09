@@ -47,3 +47,14 @@
 - 가드: `src/tests/unit/security-hardening-2-2026-11-09.test.ts` + 주입 `scripts/mutations/security-hardening-2-2026-11-09.mjs`(11건 빨간불).
 - **틀렸던 판단**: 로컬에서 단위 시험 전체를 돌리면 이 환경은 수 분 뒤 프로세스가 사라진다 — 전체 검증은 PR CI(전체 3조각)에 맡기고,
   머지 직전 main 합치기로 동결값 충돌을 막는다. 머지 후 원격 브랜치는 자동 삭제되므로 강제 푸시가 필요 없다.
+
+## 3차 묶음 — 낮음 등급 (대표 "계속 진행")
+- 공개 결제 점검의 Toss 비밀키 글자 제거 · 재호스팅 래스터만 · 증빙/디지털 링크 http(s)·내부 경로만(저장+화면) ·
+  몰 공지 `//` 차단 · SSR 시드 JSON `<` 전부 이스케이프 [UNLOCK_LOADING] · 지오코딩 lazy 백필 IP 당 분 30회.
+- 가드: `src/tests/unit/security-hardening-3-2026-11-09.test.ts` + 주입 7건 빨간불.
+- **안 한 것과 이유**:
+  - Resend 웹훅 서명 필수화 — 라이브에 `RESEND_WEBHOOK_SECRET` 이 없어 켜면 반송 처리가 멎는다(대표가 시크릿을 넣은 뒤에).
+  - react-router 보안 수정은 7.x 에만 있다(현재 6.30) — 큰 버전 업그레이드라 별도. 역슬래시 이동은 `safeInternalPath` 가 막는다.
+  - Firebase RTDB 규칙(`firebase-rules.json` chats 쓰기 공개) — 레포 파일만 바꿔선 반영되지 않는다(배포된 규칙 확인 필요 · 라이브커머스 중단 상태).
+  - 공유 이미지 주소의 외부 이미지 리다이렉트 · 유어애즈 단축링크 — 기능 자체가 외부로 보내는 것이라 막으면 기능이 깨진다.
+  - `/api/_errors/log` — 이미 IP 당 분 60회 제한이 있다.
