@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-09",
+  "reason": "shell-sw 등록·새로고침 띠 접착 코드(+0.7KB, lib/shell-sw 는 deferred 청크로) + main 머지 드리프트(guest-motion +2.1 은 이 PR 변경 아님)",
+  "surfaces": [
+    "guestMy",
+    "guestPass",
+    "guestUShop",
+    "dash:my"
+  ],
+  "changes": [
+    "guestMy: 192.3 → 194.2 KB (+1.9, 허용 1.5) · 늘어난 것: guest-motion.js +2.1, app-utils.js +0.7, app-utils-deferred.js +0.7, index.js +0.4, index.css +0.3",
+    "guestPass: 190.7 → 192.7 KB (+2.0, 허용 1.5) · 늘어난 것: app-utils.js +0.7, app-utils-deferred.js +0.7",
+    "guestUShop: 191.6 → 193.6 KB (+2.0, 허용 1.5) · 늘어난 것: guest-motion.js +2.1, app-utils.js +0.7, app-utils-deferred.js +0.7, index.js +0.4",
+    "dash:my: 217.7 → 219.3 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils-deferred.js +0.7, app-utils.js +0.3"
+  ]
+}
