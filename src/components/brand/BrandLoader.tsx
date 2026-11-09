@@ -48,7 +48,9 @@ export default function BrandLoader({ fullScreen = false, label, forceLight = fa
    *   ① 문구 있는 로더("결제 승인 중") ② 대시보드(forceLight) ③ 섹션 안 인라인 로더.
    */
   const shy = quiet || (fullScreen && !forceLight && !label)
-  const phase = loaderPhaseVars(sinceFirstPaintS())
+  // ⏱️ 2026-11-09 HTML 이 늦어 서버 로더가 바로 보였으면(워커 loaderEarlyRevealScript) 앱 로더도 바로 — 교체 순간 다시 숨지 않는다.
+  const early = typeof window !== 'undefined' && !!(window as unknown as { __urLdrEarly?: number }).__urLdrEarly
+  const phase = loaderPhaseVars(sinceFirstPaintS(), early)
   const fsBg = forceLight ? 'bg-[#F4F5F7]' : forceDark ? 'bg-[#11141C]' : 'bg-white dark:bg-[#11141C]'
   return (
     <div

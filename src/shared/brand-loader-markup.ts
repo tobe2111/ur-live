@@ -32,6 +32,13 @@ export const LOADER_SHINE_S = 1.2
  *   대표가 둘을 섞으라고 골랐다 — 빠르면 깨끗하게, 느리면 멈춘 줄 모르게.
  */
 export const LOADER_REVEAL_S = 0.5
+/**
+ * ⏱️ 2026-11-09 — HTML 자체가 이만큼(ms) 넘게 걸려 왔으면 `shy` 의 0.5초를 **다시 기다리지 않는다**.
+ *   shy 는 "빠른 로딩엔 아무것도 안 보인다" 를 위한 것인데, 느린 회선에선 HTML 도착(이미 0.8~1.2초)에 0.5초를 더 숨겨
+ *   뼈대가 +0.7초에야 떴다(라이브 스크린샷 실측). 기다릴 예산(0.5초)을 HTML 이 이미 다 썼으면 바로 보인다.
+ *   값은 shy 창과 같다 — 둘이 다르면 "0.5초 안에 끝나면 안 보인다" 가 두 뜻이 된다.
+ */
+export const LOADER_EARLY_REVEAL_MS = LOADER_REVEAL_S * 1000
 
 const CSS =
   `.ur-ldr{width:100%;max-width:720px;margin:0 auto;padding:16px;box-sizing:border-box}` +
@@ -69,12 +76,13 @@ export function brandLoaderMarkup(rows = 4, shy = false): string {
 }
 
 /** 첫 페인트 이후 흐른 시간만큼의 음수 delay — 앱 로더가 서버 로더의 위상을 그대로 잇는다. */
-export function loaderPhaseVars(sinceFirstPaintS: number): Record<string, string> {
+export function loaderPhaseVars(sinceFirstPaintS: number, early = false): Record<string, string> {
   const t = Math.max(0, sinceFirstPaintS)
   return {
     '--ur-ldr-top-d': `-${Math.min(t, LOADER_TOP_S).toFixed(3)}s`,
     '--ur-ldr-shine-d': `-${(t % LOADER_SHINE_S).toFixed(3)}s`,
     // 서버 로더가 이미 나타났으면(지난 시간 ≥ 0.5초) 음수 → 앱 로더도 처음부터 보인다. 아니면 남은 시간만 더 숨는다.
-    '--ur-ldr-in-d': `${(LOADER_REVEAL_S - t).toFixed(3)}s`,
+    // ⏱️ early(HTML 이 늦어 서버 로더가 바로 보였다 — `window.__urLdrEarly`) 면 앱 로더도 바로 보인다(교체 순간 다시 숨지 않게).
+    '--ur-ldr-in-d': early ? '0.000s' : `${(LOADER_REVEAL_S - t).toFixed(3)}s`,
   }
 }

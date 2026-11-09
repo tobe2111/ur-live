@@ -151,3 +151,8 @@
 - 🩸 **FCP 는 이 로더를 못 본다** — 뼈대는 배경색 사각형이고 FCP 는 글자·이미지·SVG 만 센다. 그래서 vitals 의 /cart·/search FCP 는 그대로(앱 글자 시점)다. **로더-먼저의 판정은 스크린샷으로만** 한다(이 절의 방법). §25 에서 "첫 그림 0" 이라고 적은 것은 변수 부재가 원인이었고(투명) 지금은 보인다.
 - ✅ 로그인 유달이: HTML 0.85s → 그림 **1.14s**(종전 첫 글자 뒤 1.86s) — `fetchpriority="high"` 가 모듈 청크 앞으로 당겼다.
 - 남은 것(대표 판단 — §24 와 같다): PC 첫 화면 · critical CSS 상한(69,602/70,000 + 토큰판은 별도 2.3KB) · 배포 묶기 · giftishow 이미지.
+
+## 27. 로더 즉시 표시(HTML 이 늦었으면 shy 0.5초 생략) + 첫 로드 JS 미사용 분석
+- JS 커버리지(폰 홈, 로컬 dist + 라이브 API, hidden sourcemap 매핑 — `scratchpad/localcov.cjs`): 첫 로드 청크 997KB raw 중 미사용 594KB. 큰 덩어리는 **React 자체(74KB)** 와 **일부러 미리 받는 상세·지도 청크**(가 넘어가면 즉시 — 2026-10-15 결정)라 첫 그림 비용이 아니다. 첫 그림에 걸리는 미사용은 `urdeal-icons`(11KB raw ≈3KB br)·`App.tsx` 라우트 표(20KB raw)·`lib/api.ts`(9KB raw) 정도 — 각 3KB br 아래라 **번들은 실질 바닥**. 더 줄이려면 i18n(`locale-ko` 25KB br) 표면별 분할 같은 구조 변경이 필요하다(대표 판단).
+- 로더 즉시 표시: 잠금 기록 `2026-11-09-loader-early-reveal.md`. 배포 뒤 판정: `ldrshot.cjs /cart` 에서 TTFB > 0.5s 인 회차의 뼈대가 HTML +0.2~0.3s 에 보이는지(종전 +0.7s). 이 컨테이너는 TTFB 가 0.2~1.2s 로 요동치므로 TTFB 가 0.5s 넘은 회차만 판정에 쓴다.
+- 🧭 `/group-buy` 하드 로드는 301 → `/`(0.5초) 지만 앱 안 이동은 클라이언트 `Navigate` 라 네트워크가 없다 — 고칠 것 없음. `HomeTopHeader.goRegion` 이 `/group-buy?gucode=` 로 보내는 코드는 **죽은 페이지(MainHomePage)** 전용이라 무시.

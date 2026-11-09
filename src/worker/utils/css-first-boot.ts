@@ -35,6 +35,7 @@
  */
 
 import { guestTabOf } from './guest-first-screen'
+import { LOADER_EARLY_REVEAL_MS } from '../../shared/brand-loader-markup'
 import { shouldRenderMobileFirstScreen } from '../../shared/seo/crawler-ua'
 import { CRITICAL_CSS, CRITICAL_CSS_HOME, CRITICAL_CSS_SURFACES, CRITICAL_CSS_TOKENS } from '../generated/critical-css'
 
@@ -141,6 +142,18 @@ export const CRITICAL_STYLE_ID = 'ur-critical'
 /** 앱 CSS 를 가리키는 판정 — Vite 엔트리 CSS 는 `/assets/index-<hash>.css` 다. */
 const APP_CSS_TEST = "/\\/assets\\/index-[^/]*\\.css/"
 
+/**
+ * ⏱️ 2026-11-09 로더 즉시 표시 — HTML 이 `LOADER_EARLY_REVEAL_MS`(=shy 창 0.5초)보다 늦게 왔으면 shy 의 0.5초를 다시
+ *   기다리지 않는다. `:root` 에 `--ur-ldr-in-d:0s` 를 심어(서버 로더·index.html 사본 둘 다 상속) 바로 나타나고,
+ *   `window.__urLdrEarly` 로 앱 `BrandLoader` 도 같은 판정을 이어받는다(교체 순간 다시 숨지 않게).
+ *   라이브 스크린샷 실측(폰 4G): HTML 0.48s 도착 → 뼈대 +0.7s. 이 판정이면 HTML 직후 0.2초(페이드)에 보인다.
+ *   ES5 · try 로 감싼다 — 실패해도 로더는 종전(0.5초 뒤) 그대로다.
+ */
+export function loaderEarlyRevealScript(nonce: string): string {
+  const js = `(function(){try{var n=performance.getEntriesByType('navigation')[0];if(n&&n.responseStart>${LOADER_EARLY_REVEAL_MS}){document.documentElement.style.setProperty('--ur-ldr-in-d','0s');window.__urLdrEarly=1}}catch(e){}})()`
+  return `<script nonce="${nonce}">${js}</script>`
+}
+
 export function cssFirstBootScript(nonce: string, critical = false): string {
   // ⚠️ 구형 브라우저도 돌 수 있게 ES5 로만 쓴다(이게 실패하면 앱이 안 뜬다).
   // 🎨 2026-10-14 `critical` — 첫 화면 CSS 를 넣었으면 앱 CSS 링크는 `media=print`(렌더 안 막음)로 와 있다.
@@ -181,7 +194,7 @@ export function applyCssFirstBoot(rw: HTMLRewriter, nonce: string, on: boolean, 
   // ⏳ 2026-11-09: 첫 화면 CSS 가 없어도(로더-먼저 표면) 앱 CSS 는 `media=print` — 로더가 자기 스타일로 먼저 그려진다. 백스톱은 10초(앱 CSS 없이 React 를 켜지 않게).
   // 🎨 단 로더의 색은 var(--brand)·var(--rule) 라 **토큰판**(:root·.dark 변수만, 2~3KB)은 넣는다 — 없으면 로더가 투명해 첫 그림이 0 이다(배포 뒤 /cart 실측 2.1s).
   const styleCss = crit ? critical : criticalCssUsable(tokens) ? tokens : ''
-  const head = cssFirstBootScript(nonce, true) + (styleCss ? `<style id="${CRITICAL_STYLE_ID}">${styleCss}</style>` : '')
+  const head = cssFirstBootScript(nonce, true) + loaderEarlyRevealScript(nonce) + (styleCss ? `<style id="${CRITICAL_STYLE_ID}">${styleCss}</style>` : '') // ⏱️ HTML 이 늦었으면 로더 즉시
   rw = rw.on('link[rel="stylesheet"]', {
     element(el) { if (/^\/assets\/index-[^/]*\.css$/.test(el.getAttribute('href') || '')) el.setAttribute('media', 'print') },
   })
