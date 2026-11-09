@@ -19,6 +19,7 @@ dist/
 !public/sw.js
 !public/pwa-sw.js
 !public/push-sw.js
+!public/shell-sw.js
 
 # Wrangler local state
 .wrangler/
