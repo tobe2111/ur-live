@@ -184,8 +184,8 @@ test('릴스 만들기: 실제 영상(세로 1080x1920, 소리 트랙 포함)', 
 
 test('일일 게시 배선: 스레드에 이미지, 릴스는 주 3회·실패 시 캐러셀, 매장 사진은 사장님·손님 글만', () => {
   const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
-  assert.match(src, /threadsPublish\(\{ media_type: 'IMAGE', image_url, text \}\)/);
-  assert.match(src, /r \|\| await threadsPublish\(\{ media_type: 'TEXT', text \}\)/, '이미지 실패 시 글만');
+  assert.match(src, /publishTagged\(\{ media_type: 'IMAGE', image_url, text \}\)/);
+  assert.match(src, /r \|\| await publishTagged\(\{ media_type: 'TEXT', text \}\)/, '이미지 실패 시 글만');
   assert.ok(src.indexOf('// ---- Instagram') < src.indexOf('// ---- Threads ----'), '인스타 표지를 먼저 만들어 스레드가 같이 쓴다');
   assert.match(src, /\[1, 3, 5\]\.includes\(k\.getUTCDay\(\)\)/);
   assert.match(src, /릴스 게시 실패 → 캐러셀로 다시/);
@@ -219,4 +219,95 @@ test('일일 게시 배선: 스토리는 피드 게시 뒤·실패해도 진행,
   assert.match(src, /if \(fu\.problems\.length\) log\(`Threads 이어 쓰기 검수 걸림 → 생략/);
   const lib = fs.readFileSync(new URL('../src/lib.mjs', import.meta.url), 'utf8');
   assert.match(lib, /media_type: 'STORIES', image_url/);
+});
+
+// ---- 2026-11-09 4차(대표 "사람이 쓴 것처럼, 길게 쓴다고 다가 아니야" · "1~2 다 하자") ----
+import { threadsTopicTag, THREADS_TOPICS, pickEncore, encoreCandidates, ENCORE } from '../src/series.mjs';
+import { FORMATS } from '../src/variety.mjs';
+import { DEAI_SYSTEM, deAi } from '../src/style.mjs';
+
+// 2026-11-08 실제 인스타 게시분(408자, 문단 6개) — 이제 걸려야 한다
+const LONG_REAL = `수수료 얘기는 입점 안내에서 제일 뒤로 밀리곤 하는데, 저는 앞에 두는 게 맞다고 생각해요.
+
+직접 입점하시면 판매가의 10%, 사장님 몫은 90%예요. 대행사를 거쳐 들어오는 매장은 5%고요. 가입비, 월 이용료, 광고비는 0원이에요. 이용권이 팔리고 손님이 매장에서 실제로 쓴 뒤에만 수수료가 생겨요.
+
+카드 수수료는 사장님 몫에서 따로 빠지지 않고 유어딜 몫 안에서 내요. 지금은 약 2.75%인데, 카드사 정책에 따라 달라질 수 있어요. 바뀌면 그대로 말씀드릴게요.
+
+안 팔리면 0원이라는 건 저희 쪽 부담이기도 해요. 그래서 조건은 길게 설명하기보다 숫자로 먼저 보여드리고 싶었어요.
+
+입점 안내는 프로필 링크에서 보실 수 있고, 궁금한 건 카카오 채널로 편하게 물어봐 주세요.
+
+#유어딜 #소상공인`;
+const IG = { minLen: 60, maxPlain: 230, maxParas: 3 };
+
+test('길이: 실제 게시됐던 긴 글은 이제 걸린다(길이·문단·자기 글 설명)', () => {
+  const p = vetPost(LONG_REAL, { facts: '10% 90% 5% 2.75% 0원', ...IG }).join(' / ');
+  assert.match(p, /길다\(/);
+  assert.match(p, /문단이 많다/);
+  assert.match(p, /자기 글에 대한 말/);
+});
+test('길이: 짧은 사람 글은 통과', () => {
+  const ok = '수수료는 판매가의 10%. 사장님 몫은 90%예요.\n가입비도 광고비도 없고, 손님이 이용권을 쓴 뒤에만 나가요.\n조건은 프로필 링크에 있어요.\n\n#유어딜 #소상공인';
+  assert.deepEqual(vetPost(ok, { facts: '10% 90%', ...IG }), []);
+});
+test('지어낸 장면·운영자 취향을 막는다(11-07 실제 게시분)', () => {
+  const a = vetPost('이번에 딜 목록을 정리하다가 달빛한스푼 닭도리탕이 눈에 들어와서 소개해요. 국물 맛이 좋다고 소문난 곳이라 골라 봤어요.', { minLen: 10 });
+  assert.ok(a.some((x) => x.includes('지어낸')), a.join());
+  const b = vetPost('저는 닭도리탕을 고를 때 감자가 푹 익은 쪽이 취향이거든요. 이번 주 딜에 올려뒀어요.', { minLen: 10 });
+  assert.ok(b.some((x) => x.includes('지어낸')), b.join());
+});
+test('분량 지시가 짧아졌다(300자 형식 없음)', () => {
+  for (const f of FORMATS) { const n = Number(f.match(/(\d+)자/)[1]); assert.ok(n <= 170, f); }
+  const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /230자 안팎|350자 이내/);
+  assert.match(src, /instagram: \{ minLen: 60, maxPlain: 230, maxParas: 3 \}/);
+  assert.match(src, /'threads-reply'\);/, '이어 쓰기는 더 짧은 상한');
+});
+test('다듬기: 줄이기만 하고, 글을 늘리면 초안을 쓴다', async () => {
+  assert.match(DEAI_SYSTEM, /초안보다 짧거나 같아야/);
+  const draft = '수수료는 10%예요. 가입비는 없어요.';
+  assert.equal(await deAi(draft, 'x', async () => draft + ' 그래서 저희는 늘 사장님 편에서 생각하려고 노력하고 있어요. 앞으로도 잘 부탁드려요.'), draft);
+  assert.equal(await deAi(draft, 'x', async () => '수수료 10%. 가입비 없어요.'), '수수료 10%. 가입비 없어요.');
+});
+test('스레드 주제 태그: 트랙별로 돌고, 규칙(1~50자·마침표/& 없음)을 지킨다', () => {
+  for (const [t, list] of Object.entries(THREADS_TOPICS)) {
+    for (const tag of list) { assert.ok(tag.length >= 1 && tag.length <= 50 && !/[.&#]/.test(tag), tag); }
+    assert.equal(threadsTopicTag(t, 0), list[0]);
+    assert.equal(threadsTopicTag(t, list.length + 1), list[1 % list.length]);
+  }
+  assert.equal(threadsTopicTag('없는트랙', 0), THREADS_TOPICS.merchant[0]);
+  const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
+  assert.match(src, /threadsPublish\(\{ \.\.\.p, topic_tag \}\)/);
+  assert.match(src, /주제 태그 거부 → 태그 없이/, '태그가 거부돼도 글은 나간다');
+});
+test('다시 보기 후보: 2주 넘고 평균의 1.3배 이상, 트랙을 아는 글만', () => {
+  const now = Date.parse('2026-11-30T00:00:00Z'), d = 864e5;
+  const rows = [
+    { id: 'a', platform: 'threads', ms: now - 20 * d, text: '좋았던 글 https://urdeal.kr/?utm_x=1', metrics: { score: 300 } },
+    { id: 'b', platform: 'threads', ms: now - 3 * d, text: '최근 글', metrics: { score: 200 } }, // 너무 최근
+    { id: 'c', platform: 'threads', ms: now - 20 * d, text: '보통 글', metrics: { score: 100 } },
+    { id: 'd', platform: 'instagram', ms: now - 16 * d, text: '인스타 좋았던 글', metrics: { score: 90 } },
+    { id: 'e', platform: 'instagram', ms: now - 16 * d, text: '인스타 보통', metrics: { score: 20 } },
+    { id: 'f', platform: 'instagram', ms: now - 16 * d, text: '트랙 모름', metrics: { score: 95 } },
+  ];
+  const c = encoreCandidates(rows, new Map([['a', 'merchant'], ['c', 'merchant'], ['d', 'creator'], ['e', 'creator']]), new Map([['a', 'by-numbers']]), now);
+  assert.deepEqual(c.map((x) => x.id).sort(), ['a', 'd']);
+  assert.equal(c.find((x) => x.id === 'a').text, '좋았던 글', '링크는 뺀다');
+  assert.equal(c.find((x) => x.id === 'a').series, 'by-numbers');
+});
+test('다시 보기 고르기: 오늘 트랙, 아직 안 쓴 것, 반응 높은 순', () => {
+  const cands = [{ id: '1', track: 'merchant', text: 'x', ratio: 1.5 }, { id: '2', track: 'merchant', text: 'y', ratio: 2 }, { id: '3', track: 'creator', text: 'z', ratio: 3 }];
+  assert.equal(pickEncore(cands, 'merchant').id, '2');
+  assert.equal(pickEncore(cands, 'merchant', new Set(['2'])).id, '1');
+  assert.equal(pickEncore(cands, 'consumer'), null);
+  assert.equal(pickEncore(undefined, 'merchant'), null);
+  assert.ok(ENCORE.guide.includes('원글보다 짧게'));
+});
+test('다시 보기 배선: 일요일, 현장 메모가 이기고, 인스타는 릴스, 한 번만', () => {
+  const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
+  assert.match(src, /k\.getUTCDay\(\) === 0/);
+  assert.match(src, /if \(fieldNote\) \{ encore = null;/);
+  assert.match(src, /reel: reelDay \|\| !!encore/);
+  assert.match(src, /encore_of \}\)\)\]\.slice\(-300\)/, 'variety.json 에 encore_of 를 남겨 같은 글을 두 번 안 쓴다');
+  assert.match(src, /\.\.\.\(encore \? \[encore\.text\] : \[\]\)/, '원글과 거의 같은 글은 검수에서 막는다');
 });

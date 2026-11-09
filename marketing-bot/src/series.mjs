@@ -129,4 +129,58 @@ export const BRAND_WRITING = `[글 원칙 — 큰 브랜드 계정처럼]
 - 없던 일을 지어내지 않는다: "사장님께 들은 말", "지난주에 만난", "오늘 아침에", "얘기를 하다가" 같은 장면·대사·일화 금지(현장 메모가 있을 때만 그 내용 그대로).
 - 먹어본 척, 가본 척 금지. 고객인 척 금지.
 - 끝을 "A파세요, B파세요?" 같은 양자택일 질문이나 "여러분은 어떠세요?"로 맺지 않는다. 마무리는 정보형 한 줄.
-- 줄표(—), 느낌표 연발, "솔직히 말씀드리면", "사실 저도" 같은 AI 상투구를 쓰지 않는다.`;
+- 줄표(—), 느낌표 연발, "솔직히 말씀드리면", "사실 저도" 같은 AI 상투구를 쓰지 않는다.
+
+[사람이 쓴 글처럼 — 2026-11-09 대표 "길게 쓴다고 다가 아니야"]
+- 할 말만 쓰고 멈춘다. 빼도 뜻이 통하는 문장은 쓰지 않는다(앞말 되풀이, 이유 덧붙이기, "그래서 ~하고 싶었어요" 같은 자기 글 설명).
+- 모든 문장을 "~요"로 끝내지 않는다. "사장님 몫은 90%." 처럼 명사로 끝나는 짧은 문장을 섞는다.
+- 접속사("그런데", "그래서", "또한", "다만")로 문장을 잇지 않는다. 문장을 끊는다.
+- 맛·분위기 묘사, 운영자 취향("저는 ~가 취향이에요"), 떠오르는 장면 묘사를 쓰지 않는다.
+- 조건을 여러 개 늘어놓지 않는다. 오늘 메시지에 필요한 사실 한두 개만.
+- 나쁜 예(길고 설명조): "수수료 얘기는 입점 안내에서 제일 뒤로 밀리곤 하는데, 저는 앞에 두는 게 맞다고 생각해요. 직접 입점하시면 판매가의 10%, 사장님 몫은 90%예요. … 그래서 조건은 숫자로 먼저 보여드리고 싶었어요."
+- 좋은 예(같은 내용, 사람이 쓴 길이): "수수료는 판매가의 10%. 사장님 몫은 90%예요.\n가입비도 광고비도 없고, 손님이 이용권을 쓴 뒤에만 나가요.\n조건은 프로필 링크에 있어요."
+  (예시 문장은 베끼지 않는다. 길이와 온도만 참고.)`;
+
+// ---- 스레드 주제 태그 (2026-11-09 대표 승인 "1~2 다 하자") ----
+// 스레드는 글 하나에 주제 태그 하나를 달 수 있고, 그 주제를 보는 사람에게도 글이 뜬다(API: topic_tag, 1~50자, 마침표·& 금지).
+// 트랙별로 독자가 찾아볼 법한 주제를 돌려 쓴다.
+export const THREADS_TOPICS = {
+  merchant: ['자영업', '소상공인', '식당창업'],
+  creator: ['인플루언서', '블로그체험단'],
+  consumer: ['맛집', '동네맛집'],
+};
+export function threadsTopicTag(track, seed = 0) {
+  const list = THREADS_TOPICS[track] || THREADS_TOPICS.merchant;
+  return list[Math.abs(seed) % list.length];
+}
+
+// ---- 다시 보기: 반응 좋았던 글을 새 형식으로 (2026-11-09 대표 승인) ----
+// 주간 리뷰가 data/encore.json 에 "2주 넘게 지났고 반응이 평균보다 30% 이상 좋았던 글"을 남긴다.
+// 일요일(KST)에 오늘 트랙과 같은 후보가 있으면 그 글의 메시지를 새 문장·새 형식(인스타는 릴스)으로 다시 쓴다.
+// 한 글은 한 번만 다시 쓴다(data/variety.json 의 encore_of).
+export const ENCORE = {
+  id: 'encore',
+  name: '다시 보기',
+  guide: '[반응 좋았던 글]과 같은 메시지를 완전히 새로 쓴다. 첫 문장·구성·표현을 모두 바꾸고 원글 문장을 다시 쓰지 않는다. 원글보다 짧게. 원글에 없던 사실을 보태지 않는다.',
+  photo: 'local shop street',
+};
+export function pickEncore(candidates = [], track, used = new Set()) {
+  return (candidates || []).filter((c) => c?.id && c.text && c.track === track && !used.has(String(c.id)))
+    .sort((a, b) => (b.ratio || 0) - (a.ratio || 0))[0] || null;
+}
+// 주간 리뷰용: rows = [{ id, platform, ms, text, metrics: { score } }] → 후보 목록
+export function encoreCandidates(rows = [], idToTrack = new Map(), idToSeries = new Map(), now = Date.now(), { minAgeDays = 14, minRatio = 1.3, max = 5 } = {}) {
+  const avg = {};
+  for (const p of rows) { const a = (avg[p.platform] ||= { n: 0, s: 0 }); a.n++; a.s += p.metrics?.score || 0; }
+  return rows
+    .filter((p) => p.text && p.ms && now - p.ms >= minAgeDays * 864e5)
+    .map((p) => {
+      const base = avg[p.platform].s / avg[p.platform].n;
+      return { id: String(p.id), platform: p.platform, ratio: base ? Math.round(((p.metrics?.score || 0) / base) * 100) / 100 : 0,
+        track: idToTrack.get(String(p.id)) || p.track || null, series: idToSeries.get(String(p.id)) || null,
+        text: String(p.text).replace(/https?:\/\/\S+/g, '').trim().slice(0, 600), posted_at: new Date(p.ms).toISOString() };
+    })
+    .filter((c) => c.ratio >= minRatio && c.track)
+    .sort((a, b) => b.ratio - a.ratio)
+    .slice(0, max);
+}

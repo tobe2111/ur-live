@@ -51,7 +51,7 @@ test('봇이 저장 파일로 중복을 판정하지 않는다(배선)', () => {
   }
   assert.doesNotMatch(read('src/reply-comments.mjs'), /writeJson\(/, '댓글 응답이 다시 상태 파일을 쓴다');
   const weeklyWrites = [...read('src/weekly-review.mjs').matchAll(/writeJson\('([^']+)'/g)].map((m) => m[1]).sort();
-  assert.deepEqual(weeklyWrites, ['data/mix-state.json', 'data/schedule.json', 'data/series-state.json'], '주간 리뷰는 학습값만 저장한다(시간대·비율·코너 가중치)');
+  assert.deepEqual(weeklyWrites, ['data/encore.json', 'data/mix-state.json', 'data/schedule.json', 'data/series-state.json'], '주간 리뷰는 학습값만 저장한다(시간대·비율·코너 가중치·다시 보기 후보)');
   // 일일 게시: posts.json 은 맨 끝에서 덧붙이기만 한다. 그 밖의 자리에서 읽으면 판정에 쓰는 것이다.
   const daily = read('src/daily-post.mjs').split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
   const reads = daily.match(/data\/posts\.json/g) || [];

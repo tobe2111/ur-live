@@ -49,6 +49,11 @@ const FABRICATION_RE = [
   /(?:지난주|지난달|어제|오늘 아침|그저께)에?\s/,
   /(?:만난|찾아뵌|다녀온|뵈었던)\s*사장님/,
   /먹어\s*봤는데|가\s*봤는데|다녀왔는데/,
+  // 2026-11-09 실제 게시분: "딜 목록을 정리하다가 ○○이 눈에 들어와서" — 없던 장면
+  /(?:정리|보|살펴보)(?:하)?다가\s[^.\n]{0,30}눈에\s*(?:들어|띄)/,
+  // 운영자가 맛·취향을 말하는 것 = 먹어본 척(실제 게시분 "저는 … 쪽이 취향이거든요")
+  /저는\s[^.\n]{0,40}(?:취향이|좋아하는\s*편|좋아해요)/,
+  /장면이\s*(?:바로\s*)?떠오르/,
 ];
 // 누구나 알아보는 AI 상투 마무리·표현
 const FORMULA_RE = [
@@ -56,6 +61,8 @@ const FORMULA_RE = [
   [/여러분은?\s*어떠(?:세요|신가요)\s*\?/, '"여러분은 어떠세요?" 마무리'],
   [/—/, '줄표(—)'],
   [/솔직히 말씀드리면|사실 저도|결론부터 말하면/, 'AI 상투구'],
+  // 자기 글에 대한 말 — 사람은 "보여드리고 싶었어요"라고 쓰지 않고 그냥 보여 준다
+  [/보여\s*드리고\s*싶었|말씀\s*드리고\s*싶었|소개해\s*드리고\s*싶|(?:바뀌면|달라지면)\s*(?:그대로|바로|꼭)\s*(?:말씀|알려)/, '자기 글에 대한 말("보여드리고 싶었어요" 등)'],
 ];
 
 /**
@@ -63,12 +70,16 @@ const FORMULA_RE = [
  * @param {{facts?: string, recent?: string[], minLen?: number, maxLen?: number}} ctx
  * @returns {string[]} 문제 목록(비면 통과)
  */
-export function vetPost(body, { facts = '', recent = [], minLen = 80, maxLen = 2100, fieldNote = false } = {}) {
+export function vetPost(body, { facts = '', recent = [], minLen = 80, maxLen = 2100, maxPlain = Infinity, maxParas = Infinity, fieldNote = false } = {}) {
   const problems = [];
   const text = String(body || '').trim();
   const plain = text.replace(/https?:\/\/\S+/g, '').replace(/#\S+/g, '').trim();
   if (plain.length < minLen) problems.push(`본문이 너무 짧다(${plain.length}자, 최소 ${minLen}자)`);
   if (text.length > maxLen) problems.push(`본문이 너무 길다(${text.length}자, 최대 ${maxLen}자)`);
+  // 2026-11-09 대표 "길게 쓴다고 다가 아니야" — 링크·해시태그 뺀 본문 길이와 문단 수를 막는다
+  if (plain.length > maxPlain) problems.push(`길다(${plain.length}자, 최대 ${maxPlain}자) — 문장을 빼서 줄여라`);
+  const paras = plain.split(/\n\s*\n/).filter((x) => x.trim()).length;
+  if (paras > maxParas) problems.push(`문단이 많다(${paras}개, 최대 ${maxParas}개)`);
   for (const w of BANNED) if (text.includes(w)) problems.push(`금지 표현: "${w}"`);
   for (const re of PROMISE_RE) { const m = text.match(re); if (m) problems.push(`성과·수익 약속: "${m[0]}"`); }
   const known = factNumbers(facts);
