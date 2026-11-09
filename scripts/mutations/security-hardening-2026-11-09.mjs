@@ -136,8 +136,8 @@ export default [
   {
     name: '[sec] 웹훅이 Toss 조회 불일치에도 확정한다',
     file: 'src/worker/routes/webhook.routes.ts',
-    find: "      }).catch(swallow('webhook:sentry-lookup'));\n      return;\n    }",
-    replace: "      }).catch(swallow('webhook:sentry-lookup'));\n    }",
+    find: "if (verifiedKey == null) return; paymentKey = verifiedKey;",
+    replace: "paymentKey = verifiedKey ?? paymentKey;",
     test: 'src/tests/unit/webhook-payment.test.ts',
     why: '서명 없는 위조 본문으로 주문이 결제 완료가 되고 교환권이 실발송된다.',
   },
