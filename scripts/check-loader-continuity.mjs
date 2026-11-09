@@ -54,7 +54,7 @@ const CHECKS = [
   {
     file: 'src/components/brand/BrandLoader.tsx',
     name: 'BrandLoader = 같은 문자열 + 첫 페인트 기준 위상',
-    must: [/performance\.now\(\)/, /brandLoaderMarkup\(/, /loaderPhaseVars\(sinceFirstPaintS\(\)\)/],
+    must: [/performance\.now\(\)/, /brandLoaderMarkup\(/, /loaderPhaseVars\(sinceFirstPaintS\(\)(?:, early)?\)/], // ⏱️ 2026-11-09 early(HTML 늦음 표식) 선택 인자 허용
     mustNot: [/animationDelay:\s*['"]200ms['"]/, /UDAL_LOADER_SRC/],
     hint: '앱 로더는 SSOT 문자열을 그대로 그리고, 첫 페인트 이후 흐른 시간만큼 음수 delay(loaderPhaseVars)를 주세요.',
   },
