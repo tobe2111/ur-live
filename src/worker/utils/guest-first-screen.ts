@@ -81,7 +81,7 @@ function shopBody(): string {
 function mascot(): string {
   const w = GUEST_MY_MASCOT.width
   const h = Math.round((w * UDAL_HELLO_ART.h) / UDAL_HELLO_ART.w)
-  return `<img src="${UDAL_HELLO_SRC}" alt="" aria-hidden="true" draggable="false" width="${w}" height="${h}" loading="eager" decoding="async" data-udal="hello" class="select-none pointer-events-none" style="width:${w}px;height:auto">`
+  return `<img src="${UDAL_HELLO_SRC}" alt="" aria-hidden="true" draggable="false" width="${w}" height="${h}" loading="eager" fetchpriority="high" decoding="async" data-udal="hello" class="select-none pointer-events-none" style="width:${w}px;height:auto">`
 }
 
 function myBody(): string {

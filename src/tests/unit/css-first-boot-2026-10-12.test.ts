@@ -133,6 +133,27 @@ describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', 
 describe('④ 워커 배선', () => {
   const worker = stripComments(readFileSync('src/worker/index.ts', 'utf-8'))
   const mod = stripComments(readFileSync('src/worker/utils/css-first-boot.ts', 'utf-8'))
+  it('🎨 첫 화면 CSS 가 없는 로더-먼저 표면엔 토큰판(:root·.dark 변수)을 넣는다 — 없으면 로더의 var(--brand/--rule) 가 비어 투명(2026-11-09 /cart 실측 첫 그림 2.1s)', async () => {
+    const { applyCssFirstBoot } = await import('@/worker/utils/css-first-boot')
+    const fakeRewriter = () => {
+      const on: Array<[string, { element: (el: unknown) => void }]> = []
+      const rw = { on(sel: string, h: { element: (el: unknown) => void }) { on.push([sel, h]); return rw } }
+      return { rw: rw as unknown as HTMLRewriter, on }
+    }
+    const { rw, on } = fakeRewriter()
+    applyCssFirstBoot(rw, 'n', true, '', ':root{--brand: #1C69EF;--rule: #eee}')
+    const head = on.find(([sel]) => sel === 'head')!
+    let html = ''
+    head[1].element({ prepend: (h: string) => { html = h } } as unknown as Parameters<typeof head[1]['element']>[0])
+    expect(html).toContain('<style id="ur-critical">:root{--brand: #1C69EF;--rule: #eee}</style>')
+    // 첫 화면 CSS 가 있으면 그것이 우선(토큰은 이미 그 안에 있다)
+    const second = fakeRewriter()
+    applyCssFirstBoot(second.rw, 'n', true, '.a{}', ':root{--brand: x}')
+    let html2 = ''
+    second.on.find(([sel]) => sel === 'head')![1].element({ prepend: (h: string) => { html2 = h } } as unknown as Parameters<typeof head[1]['element']>[0])
+    expect(html2).toContain('<style id="ur-critical">.a{}</style>')
+    expect(html2).not.toContain('--brand: x')
+  })
   it('HTML 재작성기가 applyCssFirstBoot 로 시작하고, 적용 여부는 cssFirstApplies 한 곳이 정한다', () => {
     expect(worker).toMatch(/const cssFirst = cssFirstApplies\(url\.pathname, c\.req\.header\('user-agent'\) \|\| '', authed\);/)
     expect(worker).toMatch(/let rb = (?:applyEarlyData\()?applyCssFirstBoot\(new HTMLRewriter\(\), nonce, cssFirst, firstScreenApplies\(url\.pathname, c\.req\.header\('user-agent'\) \|\| '', authed\) \? criticalCssFor\(url\.pathname\) : ''\)/) // ⏳ 2026-11-09 첫 화면 CSS 는 첫 화면 표면에만 // 🏠 홈 전용 CSS 인자 · ⚡ 2026-11-05 로그인 화면 미리받기(early-data)가 바깥을 감싼다

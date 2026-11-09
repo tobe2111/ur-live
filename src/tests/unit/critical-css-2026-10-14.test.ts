@@ -21,7 +21,7 @@ import {
 import { PASS_HEAD } from '@/shared/pass-head'
 import { STRIP_CLS } from '@/shared/home-strip-banners'
 // @ts-expect-error — .mjs 생성기(타입 없음)
-import { ROOTS, importClosure, loaderBlock, positivePart, CRITICAL_CSS_MAX_BYTES } from '../../../scripts/generate-critical-css.mjs'
+import { ROOTS, importClosure, loaderBlock, positivePart, CRITICAL_CSS_MAX_BYTES, tokensCssOf } from '../../../scripts/generate-critical-css.mjs'
 
 /** Tailwind 클래스 → CSS 셀렉터 글자(이스케이프). */
 function sel(cls: string) {
@@ -225,6 +225,22 @@ describe('🧩 2026-11-08 표면별 첫 화면 CSS', () => {
       expect(n, k).toBeGreaterThan(10_000)
       expect(n, k).toBeLessThan(CRITICAL_CSS.length * 0.7)
     }
+  })
+  it('🎨 토큰판(tokensCssOf) — :root 와 .dark 변수 블록만, --brand/--rule 포함, 4KB 아래 (2026-11-09 로더가 투명하던 사고)', () => {
+    const t = tokensCssOf(CRITICAL_CSS)
+    expect(t.length).toBeGreaterThan(500)
+    expect(t.length).toBeLessThan(4000)
+    expect(t).toContain('--brand')
+    expect(t).toContain('--rule')
+    expect(t).toMatch(/\.dark,\[data-theme=dark\]\{--bg/)
+    // 변수 선언 블록만이다 — 클래스 규칙이 섞이면 "토큰판" 이 아니다
+    expect(t.replace(/\{[^}]*\}/g, '').replace(/:root|\.dark,\[data-theme=dark\]|\[data-theme=dark\],\.dark|\s/g, '')).toBe('')
+    // 연달아 선 두 블록(:root}.dark{) 의 둘째도 잡는다 — 첫 판의 정규식이 앞 `}` 를 소비해 빠뜨렸다
+    expect(tokensCssOf(':root{--a: 1}.dark,[data-theme=dark]{--a: 2}.x{color:red}')).toBe(':root{--a: 1}.dark,[data-theme=dark]{--a: 2}')
+    // 생성물에도 실린다
+    const gen = readFileSync('scripts/generate-critical-css.mjs', 'utf8')
+    expect(gen).toContain('export const CRITICAL_CSS_TOKENS: string = ${JSON.stringify(tokens)}')
+    expect(readFileSync('src/worker/generated/critical-css.ts', 'utf8')).toMatch(/export const CRITICAL_CSS_TOKENS: string = ''/)
   })
   it('실행 중 붙는 클래스(다크·키보드)를 모은다 — 그 조건의 규칙이 첫 화면에서 빠지지 않게', () => {
     expect(SURF.rt).toEqual(expect.arrayContaining(['dark', 'keyboard-open']))

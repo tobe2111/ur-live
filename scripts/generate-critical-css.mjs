@@ -213,6 +213,20 @@ export function runtimeClasses(root = ROOT) {
   return [...out].sort()
 }
 
+/**
+ * 🎨 2026-11-09 토큰판 — 전체판에서 **변수 선언 규칙만**(`:root{…}` · `.dark,[data-theme=dark]{…}`) 뽑는다.
+ *   🩸 왜: 로더-먼저 표면(검색·장바구니·뷰어 …)은 첫 화면 CSS 를 안 넣는데(2026-11-09), 로더 마크업은
+ *   `var(--brand)`·`var(--rule)` 로 색을 받는다. 변수가 없으면 로더가 **투명**이라 첫 그림이 0 이고 — 라이브 실측(배포 뒤):
+ *   `/cart` HTML 0.18s · 첫 그림 2.1s(앱이 그린 것). "로더가 먼저 보인다" 는 설계가 변수 한 벌이 없어 한 번도 안 보였다.
+ *   토큰판은 2~3KB 라 모든 로더-먼저 표면에 넣는다.
+ */
+export function tokensCssOf(fullCss) {
+  const out = []
+  const re = /(?<=^|\})\s*((?::root|\.dark,\[data-theme=dark\]|\[data-theme=dark\],\.dark)\s*\{[^}]*\})/g // 앞의 `}` 를 소비하지 않는다(연달아 선 두 블록의 둘째가 빠졌다)
+  for (const m of fullCss.matchAll(re)) out.push(m[1])
+  return out.join('')
+}
+
 export async function generateSurfaceCriticalCss(fullCss, roots) {
   const content = importClosure(roots).map((f) => readFileSync(join(ROOT, f), 'utf8')).join('\n') +
     readFileSync(join(ROOT, 'index.html'), 'utf8') + loaderBlock() + '\n' + runtimeClasses().join(' ')
@@ -232,6 +246,9 @@ if (isMain) {
     surfaces[k] = v
   }
   const home = surfaces.home
+  const tokens = tokensCssOf(css)
+  if (!tokens.includes('--brand') || !tokens.includes('--rule') || !/\.dark/.test(tokens)) throw new Error('[critical-css] 토큰판에 --brand/--rule/.dark 가 없다 — 로더가 보이지 않게 된다')
+  if (tokens.length > 4000) throw new Error(`[critical-css] 토큰판 ${tokens.length}B > 4000B — :root 가 비대해졌다`)
   mkdirSync(dirname(OUT), { recursive: true })
   const body =
     '// ⚠️ AUTO-GENERATED — scripts/generate-critical-css.mjs 가 빌드 때 만든다. 추적 안 함 · 수동 편집 금지.\n' +
@@ -240,7 +257,9 @@ if (isMain) {
     `// 🏠 홈(/) 전용 — ${home.length}B\n` +
     `export const CRITICAL_CSS_HOME: string = ${JSON.stringify(home)}\n` +
     `// 🧩 표면별 — ${Object.entries(surfaces).map(([k, v]) => `${k} ${v.length}B`).join(' · ')}\n` +
-    `export const CRITICAL_CSS_SURFACES: Record<string, string> = ${JSON.stringify(surfaces)}\n`
+    `export const CRITICAL_CSS_SURFACES: Record<string, string> = ${JSON.stringify(surfaces)}\n` +
+    `// 🎨 토큰판(:root · .dark 변수만) — ${tokens.length}B. 첫 화면이 없는 로더-먼저 표면에서 로더의 var(--brand/--rule) 가 값을 갖게.\n` +
+    `export const CRITICAL_CSS_TOKENS: string = ${JSON.stringify(tokens)}\n`
   const prev = existsSync(OUT) ? readFileSync(OUT, 'utf8') : ''
   if (prev !== body) writeFileSync(OUT, body)
   console.log(`✅ critical-css: ${css.length}B · ${Object.entries(surfaces).map(([k, v]) => `${k} ${v.length}`).join(' · ')} (${files.length} files)${prev === body ? ' — 변경 없음' : ''}`)

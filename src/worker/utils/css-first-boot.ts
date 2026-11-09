@@ -36,7 +36,7 @@
 
 import { guestTabOf } from './guest-first-screen'
 import { shouldRenderMobileFirstScreen } from '../../shared/seo/crawler-ua'
-import { CRITICAL_CSS, CRITICAL_CSS_HOME, CRITICAL_CSS_SURFACES } from '../generated/critical-css'
+import { CRITICAL_CSS, CRITICAL_CSS_HOME, CRITICAL_CSS_SURFACES, CRITICAL_CSS_TOKENS } from '../generated/critical-css'
 
 /**
  * 어디에 거나 — **서버가 첫 화면을 그리는 표면만**(폰 UA). 거기선 스크립트 없이도 내용이 보이므로
@@ -175,11 +175,13 @@ export function criticalCssUsable(css: string = CRITICAL_CSS): boolean {
  *      받는 시점은 그대로다: `Link` 헤더 preload(as=style · crossorigin)가 응답 머리에서 이미 출발시켰고,
  *      이 링크는 그 캐시를 쓴다(그래서 crossorigin 이 실제 태그와 같아야 한다 — `earlyHintsLink`).
  */
-export function applyCssFirstBoot(rw: HTMLRewriter, nonce: string, on: boolean, critical: string = CRITICAL_CSS): HTMLRewriter {
+export function applyCssFirstBoot(rw: HTMLRewriter, nonce: string, on: boolean, critical: string = CRITICAL_CSS, tokens: string = CRITICAL_CSS_TOKENS): HTMLRewriter {
   if (!on) return rw
   const crit = criticalCssUsable(critical)
   // ⏳ 2026-11-09: 첫 화면 CSS 가 없어도(로더-먼저 표면) 앱 CSS 는 `media=print` — 로더가 자기 스타일로 먼저 그려진다. 백스톱은 10초(앱 CSS 없이 React 를 켜지 않게).
-  const head = cssFirstBootScript(nonce, true) + (crit ? `<style id="${CRITICAL_STYLE_ID}">${critical}</style>` : '')
+  // 🎨 단 로더의 색은 var(--brand)·var(--rule) 라 **토큰판**(:root·.dark 변수만, 2~3KB)은 넣는다 — 없으면 로더가 투명해 첫 그림이 0 이다(배포 뒤 /cart 실측 2.1s).
+  const styleCss = crit ? critical : criticalCssUsable(tokens) ? tokens : ''
+  const head = cssFirstBootScript(nonce, true) + (styleCss ? `<style id="${CRITICAL_STYLE_ID}">${styleCss}</style>` : '')
   rw = rw.on('link[rel="stylesheet"]', {
     element(el) { if (/^\/assets\/index-[^/]*\.css$/.test(el.getAttribute('href') || '')) el.setAttribute('media', 'print') },
   })
