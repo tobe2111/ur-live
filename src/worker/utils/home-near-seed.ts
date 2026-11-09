@@ -22,7 +22,7 @@ import { HOME_NEAR_SEED_ID, HOME_SHORTS_SEED_ID } from '../../shared/home-near-s
 import type { SsrTarget, SsrPayloadResult } from './ssr-payload'
 
 /** 거리순 피드 시드를 기다리는 최대 시간. 넘으면 HTML 을 먼저 보낸다. */
-export const HOME_NEAR_SEED_DEADLINE_MS = 400
+export const HOME_NEAR_SEED_DEADLINE_MS = 200 // 2026-11-09 대표 "0.2초로 줄여줘" — 차가운 위치 키가 HTML 을 최대 0.4초 붙잡았다(첫 접속 검은 화면)
 
 /** 화면 요청과 **글자 하나 다르지 않은** 경로 — `GroupBuyFeed` 의 `/api/group-buy/products?status=active&category=all&near=키`. */
 export function homeNearSeedPath(key: string): string {
