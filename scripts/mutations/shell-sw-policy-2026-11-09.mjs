@@ -50,4 +50,20 @@ export default [
     test: T,
     why: '확인 전에 전체 손님에게 켜진다.',
   },
+  {
+    name: 'shellsw — 오프라인이면 브라우저 기본 오류로 돌아간다(안내 화면 제거)',
+    file: SW,
+    find: "try { res = await fetchShell(u.href) } catch (e) { return offlineResponse() }",
+    replace: 'res = await fetchShell(u.href)',
+    test: T,
+    why: '2026-11-09 대표 ④ — 지하철에서 끊기면 우리 화면이 떠야 한다. respondWith 안에서 던지면 브라우저가 네트워크 오류 화면을 낸다.',
+  },
+  {
+    name: 'shellsw — 안내 화면을 저장소에 남긴다(no-store 제거)',
+    file: SW,
+    find: "'Cache-Control': 'no-store', 'X-Shell-Served': 'offline'",
+    replace: "'X-Shell-Served': 'offline'",
+    test: T,
+    why: '안내 화면이 캐시되면 연결이 돌아와도 안내만 계속 뜬다.',
+  },
 ]

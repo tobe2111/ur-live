@@ -78,3 +78,13 @@
 - 실측 2.25초(로더뿐) → 네비 높이(68+1+44) + 색면 + 배너 3장(HOMEBANNERS 시드) + 큰 사진 preload. 화면 `PcHeroBanners` 가 공용 상수(`shared/pc-home-first-screen.ts`)를 쓰도록 바꿔 두 벌이 갈리면 가드가 잡는다.
 - ⚠️ 남은 것: 프로모 바가 켜지는 날의 밀림(시드 추가 처방) · 배포 뒤 라이브 캡처로 밀림 0 확인.
 - #2249(상세 썸네일·유어쇼츠·shell-sw 끄기) 는 머지됐다(dc653d3c5) — 배포 뒤 ① 킬스위치 ON(대표 승인 ①) ② 상세·유어쇼츠 재실측.
+
+## 15. [E4] #2249 배포 뒤 라이브 재실측 (Pixel 7 흉내)
+- 상세 `/pass/3112`: 큰 사진 아래 **검은 상자 0**(0.7s·2s·4s 모두) — 칸 색 테마화 + 썸네일 preload 헤더(`fetchpriority=auto`) 라이브 확인.
+- `/urshorts`: 목록 출발 2.2s → **1.26s**, 썸네일 10장 완료 4s → **1.5s**(시드 첫 렌더 + eager 4).
+- shell-sw: 저장본 FCP 65~80ms · 새로고침 띠 0.65s→2.3s · **끈 뒤 저장소 0건**(index.html 예외 수리 확인).
+- ⛔ 킬스위치 ON(`PUT /api/admin/tools/settings {"shell_sw_enabled":"true"}`)은 이 세션의 권한 분류기가 라이브 쓰기로 막았다 → 대표가 어드민 `/admin/platform-settings` 에서 켜거나 권한을 허용해야 한다(대표 승인 ①은 받았다).
+
+## 16. ④ 오프라인 안내 + ② 측정 결론
+- shell-sw v2: 허용 경로 끊김 → 저장본 또는 우리 안내 화면(가드·주입 추가, 로컬 평가 OK). **라이브 판정은 배포 뒤** Playwright `context.setOffline(true)` 로 `/life` 같은 미저장 허용 경로를 열어 `X-Shell-Served: offline` 확인.
+- ② 보류 근거는 잠금 기록 `2026-11-09-shell-sw.md` 후속 절. 로고 화면(manifest standalone·iOS 시작화면)은 2026-10-11 에 이미 있다.
