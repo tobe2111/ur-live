@@ -17,7 +17,7 @@ import { BlogMarkdown } from '@/features/blog/BlogMarkdown'
 import { blogMarkdownHtml, BLOG_DETAIL, blogDateLabel, blogReadMin, blogHasToc } from '@/shared/blog-page'
 import { blogToc } from '@/features/blog/BlogMarkdown'
 import { buildBlogDetailFirstScreen } from '@/worker/utils/blog-detail-first-screen'
-import { cssFirstApplies } from '@/worker/utils/css-first-boot'
+import { cssFirstApplies, firstScreenApplies } from '@/worker/utils/css-first-boot'
 import { stripComments } from '../helpers/source-text'
 
 const MD = [
@@ -120,7 +120,7 @@ describe('④ 배선', () => {
   it('CSS 먼저 적용 — /blog/:slug 폰에서만(목록 /blog 는 아니다)', () => {
     const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
     expect(cssFirstApplies('/blog/voucher-guide', PHONE)).toBe(true)
-    expect(cssFirstApplies('/blog/voucher-guide', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(false)
+    expect(firstScreenApplies('/blog/voucher-guide', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(false) // ⏳ 2026-11-09: PC 는 첫 화면 CSS 없음(로더-먼저 지연만 — cssFirstApplies 는 true)
   })
 })
 
@@ -163,6 +163,6 @@ describe('⑤ 블로그 목록 첫 화면', () => {
     expect(w).toMatch(/const blogFirst = !blogPhone \? '' : ssrSlot === 'BLOGPOST' && ssrPayload \? buildBlogDetailFirstScreen\(ssrPayload\) : ssrSlot === 'BLOG' \? buildBlogListFirstScreen\(ssrPayload\) : ''/)
     const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
     expect(cssFirstApplies('/blog', PHONE)).toBe(true)
-    expect(cssFirstApplies('/blog/rss/x', PHONE)).toBe(false)
+    expect(firstScreenApplies('/blog/rss/x', PHONE)).toBe(false) // ⏳ 2026-11-09: 첫 화면 표면이 아니다(지연 자체는 로더-먼저로 걸린다)
   })
 })
