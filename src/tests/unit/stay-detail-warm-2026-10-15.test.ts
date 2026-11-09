@@ -72,7 +72,7 @@ describe('③ 숙소 카드는 숙소 상세를 데운다 (GroupBuyFeedCard — 
     expect(s).toMatch(/const prefetchDetailChunk = isStay \? noopChunk : prefetchPassChunk/)
   })
   it('시점(hover/touch/focus · observer 100px · load 뒤)은 그대로', () => {
-    expect(s).toMatch(/onTouchStart=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\) \}\}/)
+    expect(s).toMatch(/onTouchStart=\{\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\)(; if \(isPassDetail\) warmDetailHero\(p as never\))? \}\}/)
     expect(s).toMatch(/rootMargin: '100px'/)
     expect(s).toMatch(/return runAfterLoad\(\(\) => \{ prefetch\(p\.id\); prefetchDetailChunk\(\) \}\)/)
   })

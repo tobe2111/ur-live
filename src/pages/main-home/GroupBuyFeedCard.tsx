@@ -5,6 +5,7 @@
  * 공구 핵심 정보 (현재/목표 인원 + 마감 시간) 한눈에.
  */
 
+import { warmDetailHero } from '@/lib/detail-hero-warm'
 import { loadRoute } from '@/lib/route-preload'
 import { DEAL_ROW, shortRegion } from '@/shared/deal-card-grid'
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
@@ -145,6 +146,8 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   //   이용권 상세(청크·데이터)를 데우고 있어 숙소 상세에선 소용이 없었다(라이브: 누른 뒤 로더 ~0.2초).
   //   시점(load 뒤·observer 100px·hover/touch/focus)은 한 글자도 안 바뀐다 — 무엇을 받느냐만.
   const isStay = (to ?? canonicalDetailPath(p) ?? '').startsWith('/stays/')
+  /** 👆 이용권 상세(`/pass/:id` · `/group-buy/:id`)로 가는 카드만 큰 사진을 미리 받는다 — 교환권·숙소 상세는 사진 주소가 다르다. */
+  const isPassDetail = /^\/(?:pass|group-buy)\/\d+/.test(canonicalDetailPath(p) ?? '')
   const prefetch = useCallback((id: number | string) => { if (isStay) warmStay(id); else prefetchGb(id) }, [isStay, prefetchGb])
   const prefetchDetailChunk = isStay ? noopChunk : prefetchPassChunk
 
@@ -265,7 +268,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
         runDealTransition(e.currentTarget.querySelector('img'), () => navigate(href))
       }}
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
-      onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
+      onTouchStart={() => { prefetch(p.id); prefetchDetailChunk(); if (isPassDetail) warmDetailHero(p as never) }} // 👆 2026-11-08 닿는 순간 상세 큰 사진(lib/detail-hero-warm)
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
       // 🧹 2026-08-19 (대표 신고 — "그루폰처럼 테두리를 없애줘. AI가 만든 티가 나"):
       //   **테두리·카드 배경·박스 그림자**를 걷어낸다. 그루폰 카드는 컨테이너가 아니라
