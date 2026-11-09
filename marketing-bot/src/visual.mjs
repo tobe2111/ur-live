@@ -12,6 +12,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { ROOT, DRY, log } from './lib.mjs';
 import { vetPost } from './vet.mjs';
+import { reviewCover, STOCK_SOURCES } from './judge.mjs';
 
 export const VISUAL_SYSTEM = `너는 큰 브랜드(네이버플러스스토어, 토스플레이스, NOL) 인스타그램 이미지를 만드는 에디터다.
 캡션을 받아 이미지에 들어갈 문구만 JSON 으로 만든다.
@@ -263,13 +264,20 @@ export async function makeVisual({ claudeFn, caption, facts, series, key, notePh
       if (v && vetVisual(v, facts, fieldNote).length) v = null;
     }
     if (!v) { log('이미지 문구를 만들지 못함 → 종전 카드로'); return null; }
-    const photo = await findPhoto({ notePhotos, productPhoto, storePhotos, query: v.photo_query || series.photo, dir });
-    const files = render({
-      out_dir: path.join(dir, 'out'),
+    let photo = await findPhoto({ notePhotos, productPhoto, storePhotos, query: v.photo_query || series.photo, dir });
+    const draw = (p, sub) => render({
+      out_dir: path.join(dir, sub),
       fonts: { heavy: process.env.FONT_HEAVY, semi: process.env.FONT_SEMI },
-      photo: photo?.file, series: series.name, title: v.title, sub: v.sub, slides: v.slides, cta: v.cta,
+      photo: p?.file, series: series.name, title: v.title, sub: v.sub, slides: v.slides, cta: v.cta,
       mascot: series.mascot && fs.existsSync(MASCOT) ? MASCOT : undefined,
     }, dir);
+    let files = draw(photo, 'out');
+    // 무료 사진 표지는 눈으로 한 번 더 본다(judge.mjs) — 어울리지 않으면 사진 없이 다시 그린다
+    if (photo && STOCK_SOURCES.includes(photo.source) && !DRY) {
+      const rv = await reviewCover(files[0], `${series.name} · ${v.title.join(' ')}`, claudeFn);
+      log(`표지 눈 검사: ${rv.ok ? '통과' : '탈락'} — ${rv.reason}`);
+      if (!rv.ok) { photo = null; files = draw(null, 'out-plain'); }
+    }
     log(`이미지 ${files.length}장 생성 (사진: ${photo ? `${photo.source} · ${photo.credit}` : '없음 — 브랜드 면'}) 제목: ${v.title.join(' / ')}`);
     const video = reel ? makeReel(files, dir) : null;
     const story = makeStory(files[0], dir);

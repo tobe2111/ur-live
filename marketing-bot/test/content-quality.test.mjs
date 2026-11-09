@@ -450,3 +450,31 @@ test('학습 배선: 고르기·기록·주간 갱신', () => {
   assert.match(wr, /writeJson\('data\/learn-state\.json'/);
   assert.match(wr, /지난 교훈 유지/);
 });
+
+// ---- 2026-11-09 8차(대표 "계속 개선"): 여러 개 써서 고르기 · 표지 눈 검사 ----
+import { parsePick, pickBest, parseCoverReview, reviewCover, STOCK_SOURCES } from '../src/judge.mjs';
+
+test('고르기: 후보 번호를 읽고, 이상하면 첫 번째', async () => {
+  assert.equal(parsePick('후보 2', 3), 1);
+  assert.equal(parsePick('9', 3), 0);
+  assert.equal(parsePick('', 3), 0);
+  assert.equal(await pickBest(['하나'], async () => '1'), 0, '하나면 안 묻는다');
+  let seen = '';
+  assert.equal(await pickBest(['가', '나', '다'], async (s, u) => { seen = u; return '3'; }, ['짧게 쓴다']), 2);
+  assert.match(seen, /\[배운 점\][\s\S]*짧게 쓴다/);
+  assert.equal(await pickBest(['가', '나'], async () => { throw new Error('x'); }), 0, '실패해도 게시는 막지 않는다');
+});
+test('표지 눈 검사: JSON 판정, 실패는 통과로', async () => {
+  assert.deepEqual(parseCoverReview('{"ok": false, "reason": "워터마크"}'), { ok: false, reason: '워터마크' });
+  assert.equal(parseCoverReview('엉망').ok, true);
+  assert.equal((await reviewCover('/없는/파일.jpg', 'x', async () => '{}')).ok, true);
+  assert.deepEqual(STOCK_SOURCES, ['pixabay', 'pexels', 'openverse'], '실제 매장·현장 사진은 검사 대상이 아니다');
+  const v = fs.readFileSync(new URL('../src/visual.mjs', import.meta.url), 'utf8');
+  assert.match(v, /if \(!rv\.ok\) \{ photo = null; files = draw\(null, 'out-plain'\); \}/);
+});
+test('여러 개 써서 고르기 배선: 통과한 것만 고르고, 하나도 없으면 다시 쓰기', () => {
+  const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
+  assert.match(src, /const passed = drafts\.filter\(\(d\) => !vetPost\(d, ctx\)\.length\)/);
+  assert.match(src, /pickBest\(passed, claude, learnState\?\.lessons/);
+  assert.match(src, /let body = drafts\[0\];\n  let problems = vetPost\(body, ctx\);/);
+});

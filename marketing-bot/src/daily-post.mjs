@@ -4,6 +4,7 @@ import { pickTrackByWeights } from './attribution.mjs';
 import { vetPost } from './vet.mjs';
 import { pickLeastRecent, rotateImages, pickHook, recentOpeners, slotFor, HOOKS, FORMATS } from './variety.mjs';
 import { thompsonPick, lessonsBlock } from './learn.mjs';
+import { pickBest } from './judge.mjs';
 import { ROOT, DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, igStory, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
 import { myRecentPosts, postedOn } from './live.mjs';
 import { pickSeries, seriesTopic, BRAND_WRITING, threadsTopicTag, ENCORE, SERIES, pickEncore, collabFor } from './series.mjs';
@@ -140,8 +141,20 @@ async function writeVetted(prompt, maxTokens, platform, info, kind, limitKey = p
   const openers = recentOpeners(recentTexts(platform));
   if (openers.length) prompt += `\n\n최근 글들은 이렇게 시작했다. 이 문장들과 비슷하게 시작하지 말고, 같은 표현("제일 많이 묻는", "제일 먼저 걱정" 등)도 반복하지 마라:\n- ${openers.join('\n- ')}`;
   // 사람 말투로 다듬은 *최종본*을 검수한다 — 다듬기가 숫자·표현을 바꿀 수 있어서다
-  let body = await humanize(await claude(SYSTEM, prompt, maxTokens), kind);
-  if (DRY) return { body, problems: [] }; // DRY 샘플 응답은 검수 대상이 아니다
+  const draft = async (k) => humanize(await claude(SYSTEM, k ? `${prompt}\n\n(후보 ${k + 1}: 다른 후보와 다른 첫 문장·다른 구성으로 쓴다)` : prompt, maxTokens), kind);
+  if (DRY) return { body: await draft(0), problems: [] }; // DRY 샘플 응답은 검수 대상이 아니다
+  // 후보 여러 개(judge.mjs) → 검수 통과한 것 중 편집장이 고른다. 하나도 통과 못 하면 아래 다시 쓰기로.
+  const n = Math.max(1, Math.min(5, Number(process.env.DRAFTS || 3)));
+  const drafts = (await Promise.all(Array.from({ length: n }, (_, k) => draft(k).catch((e) => { log(`후보 ${k + 1} 실패: ${e.message.slice(0, 100)}`); return null; })))).filter(Boolean);
+  if (!drafts.length) throw new Error(`${kind}: 후보를 하나도 못 썼다`);
+  const passed = drafts.filter((d) => !vetPost(d, ctx).length);
+  log(`${kind}: 후보 ${drafts.length}개 중 검수 통과 ${passed.length}개`);
+  if (passed.length) {
+    const k = await pickBest(passed, claude, learnState?.lessons || []);
+    if (passed.length > 1) log(`${kind}: 편집장 선택 — 후보 ${k + 1}`);
+    return { body: passed[k], problems: [] };
+  }
+  let body = drafts[0];
   let problems = vetPost(body, ctx);
   if (problems.length) {
     log(`${platform} 검수 걸림 → 다시 쓰기: ${problems.join(' / ')}`);

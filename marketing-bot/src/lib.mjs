@@ -83,7 +83,7 @@ export function claudeBody(system, user, maxTokens) {
 export async function claude(system, user, maxTokens = 800) {
   if (DRY || !process.env.ANTHROPIC_API_KEY) {
     if (!DRY) throw new Error('ANTHROPIC_API_KEY missing');
-    return `[DRY 샘플 응답] ${user.slice(0, 60)}`;
+    return `[DRY 샘플 응답] ${typeof user === 'string' ? user.slice(0, 60) : '(이미지)'}`;
   }
   // 빈 본문 / 거절로 링크만 게시되는 사고 방지: 1회 재시도 후 실패(일시적 빈 응답이 회차 전체를 죽이지 않게).
   let last = '';
