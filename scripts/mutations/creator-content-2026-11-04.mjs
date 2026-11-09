@@ -184,4 +184,12 @@ export default [
     test: 'src/tests/unit/feed-creator-count-2026-11-09.test.ts',
     why: '추첨 이용권이 하나라도 있으면 피드 전체의 SNS 후기 수가 사라진다(2026-11-09 라이브: 40개 중 0개).',
   },
+  {
+    name: '영상은 업종 이름 가게도 공개한다',
+    file: S,
+    find: '  if (isGenericStoreName(storeName)) return false // 영상\n',
+    replace: '',
+    test: 'src/tests/unit/creator-content-accuracy-2026-11-09.test.ts',
+    why: '전주 홍대돈까스 이용권에 인천 주안 돈까스집 영상이 뜬다(2026-11-10 실측).',
+  },
 ]

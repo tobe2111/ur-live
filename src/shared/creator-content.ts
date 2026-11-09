@@ -221,6 +221,8 @@ export function branchOf(storeName: string | null | undefined): string | null {
  * (같은 체인 다른 지점 영상: 실측 "샤브올데이 수영점" 영상이 명륜점에 걸렸다).
  */
 export function videoMatch(text: string, storeName: string): boolean {
+  // 업종 이름 가게("홍대돈까스")는 영상도 이름으로 못 가른다(2026-11-10 실측: 전주 이용권에 인천 주안 돈까스집 영상).
+  if (isGenericStoreName(storeName)) return false // 영상
   if (!mentionsStore(text, storeName)) return false
   const branch = branchOf(storeName)
   return branch ? normStoreName(text).includes(`${branch}점`) : true

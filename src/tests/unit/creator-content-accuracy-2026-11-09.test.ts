@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { blogAutoShow, titleNamesStore, isListPost, isVendorAuthor, isGenericStoreName } from '@/shared/creator-content'
+import { blogAutoShow, titleNamesStore, isListPost, isVendorAuthor, isGenericStoreName, videoMatch } from '@/shared/creator-content'
 import { pickBlogCandidates, blogSecondQuery } from '@/features/creator-content/api/content-collect'
 
 const read = (p: string) => readFileSync(p, 'utf8')
@@ -121,5 +121,17 @@ describe('⑤ 2026-11-09 저녁 — 빈 가게 줄이기 · 사진 우선순위'
   it('사진은 사진 있는 글이 3개 안 되는 가게부터', () => {
     const collect = read('src/features/creator-content/api/content-collect.ts')
     expect(collect).toMatch(/t\.status = 'visible' AND t\.thumb_url <> ''\) >= 3/)
+  })
+})
+
+describe('⑥ 2026-11-10 — 영상도 업종 이름 가게는 자동 공개 안 함', () => {
+  it('videoMatch', () => {
+    expect(videoMatch('인천 주안 홍대돈까스 제육돈까스', '홍대돈까스')).toBe(false)
+    expect(videoMatch('꾸꾸데쎄르 소금빵', '꾸꾸데쎄르')).toBe(true)
+  })
+  it('쌓인 공개 영상도 내리고 · 손님 응답도 거른다', () => {
+    const collect = read('src/features/creator-content/api/content-collect.ts')
+    expect(collect).toMatch(/isStoreOwnPost\(r\.author_name, r\.store_name\) \|\| !videoMatch\(r\.title \?\? '', r\.store_name\)/)
+    expect(read('src/features/creator-content/api/content.routes.ts')).toMatch(/r\.platform === 'youtube' && !videoMatch\(/)
   })
 })
