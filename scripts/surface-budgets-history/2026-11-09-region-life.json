@@ -1,0 +1,12 @@
+{
+  "date": "2026-11-09",
+  "reason": "2026-11-09 부품 정적 서빙(#2232)의 자가복구 안전장치(chunk-error refreshAssetCache — 잘못 저장된 부품을 cache:reload 로 덮는다) + 홈 거리순 시드 읽기(#2233). 모든 표면 공용 app-utils +~1KB",
+  "surfaces": [
+    "region",
+    "life"
+  ],
+  "changes": [
+    "region: 205.7 → 207.5 KB (+1.8, 허용 1.5) · 늘어난 것: app-utils.js +1.1, index.js +0.3",
+    "life: 188.0 → 189.6 KB (+1.7, 허용 1.5) · 늘어난 것: lz-homeL-homePcL.js +1.2, app-utils.js +0.8"
+  ]
+}
