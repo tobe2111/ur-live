@@ -231,25 +231,6 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       }, 401);
     }
 
-    // 2. 계정 상태 확인
-    if (seller.status === 'suspended') {
-      if (import.meta.env.DEV) console.warn('[Seller Login] Account suspended:', maskEmail(email));
-      return c.json<AuthResponse>({
-        success: false,
-        error: '정지된 계정입니다. 관리자에게 문의하세요.',
-        code: 'ACCOUNT_SUSPENDED'
-      }, 403);
-    }
-
-    if (seller.status === 'pending') {
-      if (import.meta.env.DEV) console.warn('[Seller Login] Account pending approval:', maskEmail(email));
-      return c.json<AuthResponse>({
-        success: false,
-        error: '승인 대기 중인 계정입니다. 관리자 승인 후 이용 가능합니다.',
-        code: 'ACCOUNT_PENDING'
-      }, 403);
-    }
-
     // 🛡️ 2026-04-22: 계정 잠금 확인 (brute force 방어)
     const lockStatus = await checkLockout(DB, 'seller', String(seller.id));
     if (lockStatus.locked) {
@@ -272,6 +253,25 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
         success: false,
         error: '이메일 또는 비밀번호가 올바르지 않습니다.'
       }, 401);
+    }
+
+    // 2. 계정 상태 확인 — 🔐 2026-11-09 비밀번호 확인 **뒤로** 옮겼다(앞에 있으면 비밀번호 없이 계정 존재·상태를 알 수 있었다).
+    if (seller.status === 'suspended') {
+      if (import.meta.env.DEV) console.warn('[Seller Login] Account suspended:', maskEmail(email));
+      return c.json<AuthResponse>({
+        success: false,
+        error: '정지된 계정입니다. 관리자에게 문의하세요.',
+        code: 'ACCOUNT_SUSPENDED'
+      }, 403);
+    }
+
+    if (seller.status === 'pending') {
+      if (import.meta.env.DEV) console.warn('[Seller Login] Account pending approval:', maskEmail(email));
+      return c.json<AuthResponse>({
+        success: false,
+        error: '승인 대기 중인 계정입니다. 관리자 승인 후 이용 가능합니다.',
+        code: 'ACCOUNT_PENDING'
+      }, 403);
     }
 
     // 🛡️ 성공 시 실패 카운터 초기화
