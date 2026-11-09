@@ -22,7 +22,7 @@
  * 켜지 않는다**(CLAUDE.md). 꺼져 있으면 이 레일은 존재하지 않는 것과 같고, 단일 구매는 무영향이다.
  */
 import { Hono } from 'hono'; import { getCookie } from 'hono/cookie'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { recordLedger } from '@/worker/utils/ledger'
 import { purchaseCreditFields } from '@/worker/utils/payout-account' // 💸 2026-10-01 구매 적립 escrow 경유(이중적립 제거)
@@ -65,7 +65,7 @@ async function normalizeRef(DB: D1Database, raw: unknown, userId: string): Promi
 /* ────────────────────────────────────────────────────────────────────────────
  * ① 결제 시작 — 금액은 **서버가 정한다**(클라가 보낸 값은 쓰지 않는다)
  * ──────────────────────────────────────────────────────────────────────────── */
-cartCheckoutRoutes.post('/cart/init', rateLimit({ action: 'gb_cart_init', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
+cartCheckoutRoutes.post('/cart/init', rateLimit({ action: 'gb_cart_init', max: 10, windowSec: 60 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
@@ -118,7 +118,7 @@ cartCheckoutRoutes.post('/cart/init', rateLimit({ action: 'gb_cart_init', max: 1
 /* ────────────────────────────────────────────────────────────────────────────
  * ② 결제 확정 — 여기서부터 돈이 움직인다
  * ──────────────────────────────────────────────────────────────────────────── */
-cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confirm', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
+cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confirm', max: 10, windowSec: 60 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env

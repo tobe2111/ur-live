@@ -11,7 +11,7 @@
  */
 
 import { Hono } from 'hono'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
@@ -77,7 +77,7 @@ async function ensureFollowsTable(DB: D1Database): Promise<void> {
 }
 
 // ── POST /:sellerId/follow — 단골 등록 ──
-sellerPublicRoutes.post('/:sellerId/follow', rateLimit({ action: 'seller_follow', max: 30, windowSec: 60 }), requireAuth(), async (c) => {
+sellerPublicRoutes.post('/:sellerId/follow', rateLimit({ action: 'seller_follow', max: 30, windowSec: 60 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const sellerId = Number(c.req.param('sellerId'))
@@ -102,7 +102,7 @@ sellerPublicRoutes.post('/:sellerId/follow', rateLimit({ action: 'seller_follow'
 })
 
 // ── DELETE /:sellerId/follow — 단골 해제 ──
-sellerPublicRoutes.delete('/:sellerId/follow', requireAuth(), async (c) => {
+sellerPublicRoutes.delete('/:sellerId/follow', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const sellerId = Number(c.req.param('sellerId'))
@@ -223,7 +223,7 @@ sellerPublicRoutes.post('/notify-followers',
 // ── PATCH /:sellerId/follow/preferences — 단골 알림 옵션 토글 ──
 // 🛡️ 2026-05-15: notify_new_product / notify_live_start / notify_group_buy 별도 ON/OFF
 //   사용자가 셀러별로 알림 종류 세분화 → 셀러 push 부담 ↓, 사용자 retention ↑
-sellerPublicRoutes.patch('/:sellerId/follow/preferences', requireAuth(), async (c) => {
+sellerPublicRoutes.patch('/:sellerId/follow/preferences', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const sellerId = Number(c.req.param('sellerId'))
@@ -360,7 +360,7 @@ sellerPublicRoutes.get('/seller/analytics', requireAuth(), async (c) => {
 })
 
 // ── GET /my/follows — 내가 단골 등록한 셀러 전체 + 알림 설정 ──
-sellerPublicRoutes.get('/my/follows', requireAuth(), async (c) => {
+sellerPublicRoutes.get('/my/follows', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const { DB } = c.env

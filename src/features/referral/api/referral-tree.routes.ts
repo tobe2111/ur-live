@@ -17,7 +17,7 @@
  */
 
 import { Hono } from 'hono'
-import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
@@ -646,7 +646,7 @@ referralTreeRoutes.post('/calculate-commission', async (c) => {
 // GET /my-network — View my referral network
 // ---------------------------------------------------------------------------
 
-referralTreeRoutes.get('/my-network', requireAuth(), async (c) => {
+referralTreeRoutes.get('/my-network', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
 
@@ -730,7 +730,7 @@ referralTreeRoutes.get('/my-network', requireAuth(), async (c) => {
 // GET /my-commissions — My commission history (paginated)
 // ---------------------------------------------------------------------------
 
-referralTreeRoutes.get('/my-commissions', requireAuth(), async (c) => {
+referralTreeRoutes.get('/my-commissions', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
 
@@ -945,13 +945,13 @@ referralTreeRoutes.get('/stats', requireAdmin(), async (c) => {
 //   라이브 실측(2026-10-12): `referral_commissions` 0행 · `commission_withdrawals` 0행 — 막아도 잃는 사람이 없다.
 //   확정 커미션은 딜로 쓰고, 현금이 필요한 매장 주인은 소개 수익 출금(`/api/curator/me/withdrawal`)을 쓴다.
 //   어드민 처리 라우트(아래 `/admin/withdrawals…`)는 **옛 신청이 남아 있을 때를 위해** 그대로 둔다.
-referralTreeRoutes.post('/withdrawals', requireAuth(), (c) => c.json({
+referralTreeRoutes.post('/withdrawals', requireUser(), (c) => c.json({
   success: false,
   code: 'GONE',
   error: '확정된 추천 수익은 딜로 적립돼요. 딜로 이용권을 살 수 있어요',
 }, 410))
 
-referralTreeRoutes.get('/withdrawals', requireAuth(), async (c) => {
+referralTreeRoutes.get('/withdrawals', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const { DB } = c.env

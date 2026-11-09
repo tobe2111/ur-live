@@ -231,6 +231,21 @@ export function makeReel(files, dir) {
   return out;
 }
 
+// 스토리용 세로 이미지: 표지를 가운데 두고 위아래는 같은 장을 흐리게, 아래에 "피드에서 이어 보기" 한 줄.
+export function storyArgs(cover, out, font) {
+  const text = font ? `,drawtext=fontfile='${font.replace(/'/g, "\\'")}':text='피드에서 이어 보기':fontcolor=white:fontsize=40:x=(w-text_w)/2:y=1720` : '';
+  return ['-y', '-i', cover, '-filter_complex',
+    `[0:v]split[a][b];[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=40:2,eq=brightness=-0.22[bg];`
+    + `[b]scale=1080:1350[fg];[bg][fg]overlay=0:285${text}`,
+    '-frames:v', '1', '-q:v', '3', out];
+}
+export function makeStory(cover, dir, font = process.env.FONT_SEMI) {
+  const out = path.join(dir, 'story.jpg');
+  const r = spawnSync('ffmpeg', storyArgs(cover, out, font && fs.existsSync(font) ? font : null), { encoding: 'utf8', timeout: 60_000 });
+  if (r.status !== 0 || !fs.existsSync(out)) { log(`스토리 이미지 실패: ${(r.stderr || r.error?.message || '').slice(-200)}`); return null; }
+  return out;
+}
+
 const MASCOT = path.join(ROOT, '..', 'public', 'assets', 'mascot', 'udal-social-wave.webp');
 
 // 전체: 성공하면 { images: [url...], set, credit, source, title } · 아니면 null
@@ -257,14 +272,16 @@ export async function makeVisual({ claudeFn, caption, facts, series, key, notePh
     }, dir);
     log(`이미지 ${files.length}장 생성 (사진: ${photo ? `${photo.source} · ${photo.credit}` : '없음 — 브랜드 면'}) 제목: ${v.title.join(' / ')}`);
     const video = reel ? makeReel(files, dir) : null;
+    const story = makeStory(files[0], dir);
     if (video) log(`릴스 영상 생성 (${reelPlan(files.length).total}초)`);
     const base = { set: `gen-${key}`, credit: photo?.credit, source: photo?.source || 'none', photo_url: photo?.url, title: v.title.join(' ') };
-    if (DRY) return { ...base, images: files, ...(video ? { video_url: video, cover_url: files[0] } : {}) };
-    const urls = await publishImages(video ? [...files, video] : files, key);
+    if (DRY) return { ...base, images: files, ...(video ? { video_url: video, cover_url: files[0] } : {}), ...(story ? { story_url: story } : {}) };
+    const urls = await publishImages([...files, ...(video ? [video] : []), ...(story ? [story] : [])], key);
     pruneCards();
-    const images = urls.filter((u) => !/\.mp4$/i.test(u));
+    const images = urls.filter((u) => /\/slide-\d+\.jpg$/.test(u));
     const video_url = urls.find((u) => /\.mp4$/i.test(u));
-    return { ...base, images, ...(video_url ? { video_url, cover_url: images[0] } : {}) };
+    const story_url = urls.find((u) => /\/story\.jpg$/.test(u));
+    return { ...base, images, ...(video_url ? { video_url, cover_url: images[0] } : {}), ...(story_url ? { story_url } : {}) };
   } catch (e) {
     log(`이미지 생성 실패 → 종전 카드로: ${e.message}`);
     return null;

@@ -10,7 +10,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, getCurrentUser, optionalAuth } from '@/worker/middleware/auth';
+import { requireAuth, requireUser, getCurrentUser, optionalAuth } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database';
 import { notifyUser } from '@/lib/notifications';
@@ -224,7 +224,7 @@ referralRoutes.post('/create', requireAuth(), async (c) => {
 });
 
 // POST /api/referral/join/:code — 그룹 참여 (티어 재계산)
-referralRoutes.post('/join/:code', requireAuth(), async (c) => {
+referralRoutes.post('/join/:code', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 
@@ -354,7 +354,7 @@ referralRoutes.post('/join/:code', requireAuth(), async (c) => {
 });
 
 // GET /api/referral/discount/:productId — 해당 상품에 대한 유저의 최고 달성 할인 조회 (티어 반영)
-referralRoutes.get('/discount/:productId', requireAuth(), async (c) => {
+referralRoutes.get('/discount/:productId', requireUser(), async (c) => {
   // 🧭 2026-06-17 (단일가 통일): 친구초대 동적 할인 종료 → 표시용 할인도 없음(서버 0%와 일치).
   if (REFERRAL_GROUP_DISCOUNT_DISABLED) return c.json({ success: true, data: null });
   const user = getCurrentUser(c);
@@ -400,7 +400,7 @@ referralRoutes.get('/discount/:productId', requireAuth(), async (c) => {
 });
 
 // GET /api/referral/my — 내 그룹 목록 (MUST be before /:code)
-referralRoutes.get('/my', requireAuth(), async (c) => {
+referralRoutes.get('/my', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 

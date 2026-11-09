@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow';
 import { intParam } from '@/shared/pagination'
@@ -20,7 +20,7 @@ async function ensureTables(DB: D1Database) {
 }
 
 // 팔로우 토글
-socialRoutes.post('/follow/:sellerId', requireAuth(), async (c) => {
+socialRoutes.post('/follow/:sellerId', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
@@ -43,7 +43,7 @@ socialRoutes.post('/follow/:sellerId', requireAuth(), async (c) => {
 })
 
 // 팔로우 상태 확인
-socialRoutes.get('/follow/:sellerId', requireAuth(), async (c) => {
+socialRoutes.get('/follow/:sellerId', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
@@ -53,7 +53,7 @@ socialRoutes.get('/follow/:sellerId', requireAuth(), async (c) => {
 })
 
 // 팔로잉 셀러 목록
-socialRoutes.get('/following', requireAuth(), async (c) => {
+socialRoutes.get('/following', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
@@ -71,7 +71,7 @@ socialRoutes.get('/following', requireAuth(), async (c) => {
 //   알림(쿠폰/이용권 만료·숙소 리마인더·KT 교환권·결제완료 등)이 목록엔 안 뜨는데
 //   미읽음 뱃지(unread-count 는 두 테이블 합산)엔 카운트돼 '안 지워지는 유령 뱃지'가 됐음.
 //   id 는 un_/n_ prefix(unified) 로 반환 → 읽음/삭제가 올바른 테이블로 라우팅.
-socialRoutes.get('/notifications', requireAuth(), async (c) => {
+socialRoutes.get('/notifications', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
@@ -103,7 +103,7 @@ socialRoutes.get('/notifications', requireAuth(), async (c) => {
 })
 
 // 알림 읽음 처리 — id prefix(un_/n_)로 대상 테이블 라우팅. prefix 없으면 양쪽 시도(하위호환).
-socialRoutes.put('/notifications/:id/read', requireAuth(), async (c) => {
+socialRoutes.put('/notifications/:id/read', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
@@ -131,7 +131,7 @@ socialRoutes.put('/notifications/:id/read', requireAuth(), async (c) => {
 })
 
 // 알림 전체 읽음 — 두 테이블 모두 처리(뱃지 = 두 테이블 합산이므로 양쪽 지워야 0).
-socialRoutes.put('/notifications/read-all', requireAuth(), async (c) => {
+socialRoutes.put('/notifications/read-all', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env

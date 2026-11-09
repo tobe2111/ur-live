@@ -6,7 +6,7 @@
  */
 
 import { Hono } from 'hono'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 export const reportsRoutes = new Hono<{ Bindings: Env }>()
@@ -83,7 +83,7 @@ reportsRoutes.post(
   }
 )
 
-reportsRoutes.get('/my', requireAuth(), async (c) => {
+reportsRoutes.get('/my', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
 

@@ -272,6 +272,21 @@ export async function igPublish(media, caption) {
   return { id: r.id, media_type };
 }
 
+// Instagram 스토리: 세로 이미지 한 장(1080x1920). 링크 스티커는 API 로 못 붙인다.
+// 반환 { id, media_type: 'STORIES' }. 2026-11-09 대표 승인("2,4").
+export async function igStory(image_url) {
+  image_url = publicMediaUrl(image_url);
+  const c = await insta('POST', `${IG_USER_ID}/media`, { media_type: 'STORIES', image_url });
+  for (let i = 0; i < 30 && !DRY; i++) {
+    const st = await insta('GET', c.id, { fields: 'status_code,status' });
+    if (st.status_code === 'FINISHED') break;
+    if (st.status_code === 'ERROR' || st.status_code === 'EXPIRED') throw new Error(`IG 스토리 컨테이너 ${c.id} ${st.status_code}: ${st.status || ''}`);
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  const r = await insta('POST', `${IG_USER_ID}/media_publish`, { creation_id: c.id });
+  return { id: r.id, media_type: 'STORIES' };
+}
+
 // Facebook 페이지: META_FB_PAGE_TOKEN 없으면 null (호출측에서 건너뜀).
 // media: { video_url } → /videos, { images: [2장+] } → 미게시 사진 업로드 후 /feed attached_media, 1장 → /photos, 없으면 /feed.
 // 멀티포토/영상이 실패하면 첫 이미지 단일 게시로 폴백.

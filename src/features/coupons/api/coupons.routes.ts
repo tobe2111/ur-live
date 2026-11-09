@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireUser, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { computeCouponDiscount } from '../coupon-discount'
 import type { Env } from '@/worker/types/env'
@@ -17,7 +17,7 @@ async function ensureTables(DB: D1Database) {
 }
 
 // 쿠폰 적용 (코드 입력 → 할인 금액 반환)
-couponRoutes.post('/apply', rateLimit({ action: 'coupon_apply', max: 10, windowSec: 60 }), requireAuth(), async (c) => {
+couponRoutes.post('/apply', rateLimit({ action: 'coupon_apply', max: 10, windowSec: 60 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
@@ -52,7 +52,7 @@ couponRoutes.post('/apply', rateLimit({ action: 'coupon_apply', max: 10, windowS
 // the coupon row + actual order_amount.
 // ✅ SECURITY FIX (Payment C5): Verify the order belongs to the caller and use
 // server-side total_amount. Also require max_discount cap for percent coupons.
-couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 60 }), requireAuth(), async (c) => {
+couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 60 }), requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
@@ -150,7 +150,7 @@ export async function restoreCouponsForOrders(DB: D1Database, orderIds: (number 
 //   했는데 발급되어 있다" — 이전 쿼리가 user_coupons (claim 테이블) 조회 안 하고
 //   coupons 전체를 반환 → 모든 active 쿠폰이 사용자 쿠폰함에 표시됨.
 //   수정: user_coupons (claim 기록) 와 INNER JOIN — claim 한 것만 표시.
-couponRoutes.get('/my', requireAuth(), async (c) => {
+couponRoutes.get('/my', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   await ensureTables(c.env.DB)
@@ -185,7 +185,7 @@ couponRoutes.get('/seed', requireAdmin(), async (c) => {
 })
 
 // 자동 쿠폰 발급 (링크 클릭 → 로그인 유저에게 자동 지급)
-couponRoutes.get('/claim/:code', requireAuth(), async (c) => {
+couponRoutes.get('/claim/:code', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
@@ -222,7 +222,7 @@ couponRoutes.get('/claim/:code', requireAuth(), async (c) => {
 //   존재하는 'WELCOME' 코드 쿠폰을 사용자에게 발급 (user_coupons 에 INSERT).
 //   - WELCOME 쿠폰이 admin 에 의해 코드로 등록돼 있어야 함 (없으면 silent skip).
 //   - 이미 받은 사용자면 already_claimed 반환 (idempotent).
-couponRoutes.post('/auto-issue/welcome', requireAuth(), async (c) => {
+couponRoutes.post('/auto-issue/welcome', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env

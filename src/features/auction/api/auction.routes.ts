@@ -10,7 +10,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { swallow } from '@/worker/utils/swallow';
@@ -311,7 +311,7 @@ auctionRoutes.post('/:id/bid', rateLimit({ action: 'auction_bid', max: 30, windo
 });
 
 // GET /api/auction/holds/me — 내 활성 hold 목록 (UI 표시용)
-auctionRoutes.get('/holds/me', requireAuth(), async (c) => {
+auctionRoutes.get('/holds/me', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 
@@ -657,7 +657,7 @@ auctionRoutes.get('/:id', async (c) => {
 // 🛡️ 2026-04-22 배치 115: hold 상태 조회 후 주문 데이터와 함께 반환.
 //   실제 hold consumption 은 체크아웃 완료 (주문 생성 시) 에 이뤄져야 하지만,
 //   현 MVP 에서는 /purchase 호출 시점에서 hold 를 주문 생성 플로우 로 넘김.
-auctionRoutes.post('/:id/purchase', requireAuth(), async (c) => {
+auctionRoutes.post('/:id/purchase', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 
@@ -702,7 +702,7 @@ auctionRoutes.post('/:id/purchase', requireAuth(), async (c) => {
 
 // POST /api/auction/:id/release-hold — 낙찰자가 구매 포기 시 hold 해제
 // 🛡️ 배치 115: 구매 거부 / 타임아웃 처리. 낙찰자 본인만 호출 가능.
-auctionRoutes.post('/:id/release-hold', requireAuth(), async (c) => {
+auctionRoutes.post('/:id/release-hold', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 
