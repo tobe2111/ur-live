@@ -17,7 +17,9 @@ beforeEach(() => {
 describe('useCurrentDong 임시 이름', () => {
   it('캐시가 없으면 쿠키의 마지막 이름을 바로 쓴다', () => {
     document.cookie = `ur_loc_n=${encodeURIComponent('회현동')}; path=/`
-    const { result } = renderHook(() => useCurrentDong({ lat: 37.5612, lng: 126.9801 }))
+    const seen: (string | undefined)[] = []
+    const { result } = renderHook(() => { const v = useCurrentDong({ lat: 37.5612, lng: 126.9801 }); seen.push(v?.dong); return v })
+    expect(seen[0], '첫 프레임부터 이름이 있어야 한다(앱이 화면을 넘겨받는 그 프레임)').toBe('회현동')
     expect(result.current?.dong).toBe('회현동')
   })
   it('쿠키도 없으면 null(호출부가 내 주변)', () => {
