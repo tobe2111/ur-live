@@ -197,5 +197,13 @@
     "platform": "threads",
     "track": "merchant",
     "date_kst": "2026-11-09"
+  },
+  {
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "온라인 노출이 진짜 방문이 됐는지 보이는 화면: 몇 장 팔렸고 그중 몇 명이 QR로 실제 방문했는지 매장 화면에 남는다",
+    "hook": "udal",
+    "media_set": "onboarding-steps",
+    "date_kst": "2026-11-09"
   }
 ]
