@@ -8,8 +8,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { sign as jwtSign, verify as jwtVerify } from 'hono/jwt';
-import { signRefreshToken } from '../../../worker/utils/refresh-token-key';
+import { sign as jwtSign, verify as jwtVerify } from 'hono/jwt'; import { signRefreshToken } from '../../../worker/utils/refresh-token-key';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 import { sessionPersistProbeCookie } from '../../../shared/session-persist-probe';
 // 🛡️ 2026-05-01: FirebaseAuthService import 제거 — KR Kakao 흐름은 Firebase 0.

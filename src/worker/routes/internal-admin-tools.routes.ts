@@ -16,8 +16,7 @@ import type { Env } from '@/worker/types/env';
 import { requireAdmin } from '../middleware/auth';
 import { patchBusinessNumbers } from '../utils/seller-business-number'
 import { hashPassword } from '@/lib/password';
-import { rateLimit } from '../middleware/rate-limit';
-import { secretEquals } from '../utils/secret-compare';
+import { rateLimit } from '../middleware/rate-limit'; import { secretEquals } from '../utils/secret-compare';
 
 const internalAdminToolsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -32,10 +31,7 @@ internalAdminToolsRoutes.post('/api/_bootstrap/reset-dashboard-password', rateLi
 
   let body: { email?: string; password?: string; role?: string } = {};
   try { body = await c.req.json(); } catch { body = {}; }
-  const { email, password, role = 'all' } = body;
-  // 🔐 2026-11-09: role 은 표 이름으로 들어가므로 정해진 값만 받는다(종전엔 `${role}s` 를 SQL 에 그대로 넣었다).
-  const ROLE_TABLE: Record<string, string> = { admin: 'admins', seller: 'sellers', agency: 'agencies' };
-  if (role !== 'all' && !ROLE_TABLE[role]) return c.json({ success: false, error: 'role 은 all/admin/seller/agency' }, 400);
+  const { email, password, role = 'all' } = body; const ROLE_TABLE: Record<string, string> = { admin: 'admins', seller: 'sellers', agency: 'agencies' }; if (role !== 'all' && !ROLE_TABLE[role]) return c.json({ success: false, error: 'role 은 all/admin/seller/agency' }, 400); // 🔐 2026-11-09 role 은 표 이름이 되므로 정해진 값만
 
   if (!email || !password) {
     return c.json({ success: false, error: 'email, password 필수' }, 400);
