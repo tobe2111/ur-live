@@ -22,7 +22,7 @@ import { requireAdmin, requireSeller, getCurrentUser } from '../../../worker/mid
 import { publicCache } from '../../../worker/middleware/edge-cache'
 import { safeError } from '../../../worker/utils/safe-error'
 import {
-  parseContentUrl, kindOf, sortForCustomer, youtubeThumb, isStoreOwnPost, blogAutoShow, MAX_POSTS_PER_AUTHOR,
+  parseContentUrl, kindOf, sortForCustomer, youtubeThumb, isStoreOwnPost, blogAutoShow, videoMatch, MAX_POSTS_PER_AUTHOR,
   type ContentItem, type ContentPlatform, type PinPerson,
 } from '../../../shared/creator-content'
 import { ensureCreatorContentTables, loadProductStore, HIDE_REF, type ProductStore } from './content-db'
@@ -138,6 +138,7 @@ creatorContentPublicRoutes.get('/:productId', publicCache(600), async (c) => {
       if (r.source !== 'auto') return true
       if (isStoreOwnPost(r.author_name, s.store_name ?? '')) return false
       // 블로그는 지금 자동 공개 기준으로 한 번 더(2026-11-09) — 쌓인 글의 재판정이 다 돌기 전에도 손님에겐 안 보인다.
+      if (r.platform === 'youtube' && !videoMatch(r.title ?? '', s.store_name ?? '', s.address)) return false
       if (r.platform === 'naver_blog' && !blogAutoShow({ title: r.title, summary: r.summary, author: r.author_name }, s.store_name ?? '', s.address)) return false
       const k = `${r.platform}:${(r.author_name || '').trim()}`
       const n = (perAuthor.get(k) ?? 0) + 1

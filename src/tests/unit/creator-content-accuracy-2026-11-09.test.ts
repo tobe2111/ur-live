@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { blogAutoShow, titleNamesStore, isListPost, isVendorAuthor, isGenericStoreName } from '@/shared/creator-content'
+import { blogAutoShow, titleNamesStore, isListPost, isVendorAuthor, isGenericStoreName, videoMatch, mentionsOtherRegion, isOffTopicVideo, branchOf } from '@/shared/creator-content'
 import { pickBlogCandidates, blogSecondQuery } from '@/features/creator-content/api/content-collect'
 
 const read = (p: string) => readFileSync(p, 'utf8')
@@ -121,5 +121,40 @@ describe('⑤ 2026-11-09 저녁 — 빈 가게 줄이기 · 사진 우선순위'
   it('사진은 사진 있는 글이 3개 안 되는 가게부터', () => {
     const collect = read('src/features/creator-content/api/content-collect.ts')
     expect(collect).toMatch(/t\.status = 'visible' AND t\.thumb_url <> ''\) >= 3/)
+  })
+})
+
+describe('⑥ 2026-11-10 — 영상도 업종 이름 가게는 자동 공개 안 함', () => {
+  it('videoMatch', () => {
+    expect(videoMatch('인천 주안 홍대돈까스 제육돈까스', '홍대돈까스')).toBe(false)
+    expect(videoMatch('꾸꾸데쎄르 소금빵', '꾸꾸데쎄르')).toBe(true)
+  })
+  it('쌓인 공개 영상도 내리고 · 손님 응답도 거른다', () => {
+    const collect = read('src/features/creator-content/api/content-collect.ts')
+    expect(collect).toMatch(/isStoreOwnPost\(r\.author_name, r\.store_name\) \|\| !videoMatch\(r\.title \?\? '', r\.store_name, r\.address\)/)
+    expect(read('src/features/creator-content/api/content.routes.ts')).toMatch(/r\.platform === 'youtube' && !videoMatch\(/)
+  })
+})
+
+describe('⑦ 2026-11-10 대표 "유튜브도 동일한 이름이지만 이용권과 관계없이" — 라이브 실측 사례', () => {
+  it('공연·캠페인 · 다른 지역 · 증거 없는 영상은 빠진다', () => {
+    expect(videoMatch('창작뮤지컬 \'달빛, 한스푼\'', '달빛한스푼', '서울 서초구 방배중앙로 165')).toBe(false)
+    // '후기' 가 있어도 공연이면 아니다(이 줄만 공연 판정 하나로 갈린다)
+    expect(videoMatch('대학로 뮤지컬 달빛한스푼 관람 후기', '달빛한스푼', '서울 서초구 방배중앙로 165')).toBe(false)
+    expect(videoMatch('「누구나 언제나 대만족」 2026 대만관광청 캠페인 영상', '대만족', '강원특별자치도 강릉시 하슬라로 16')).toBe(false)
+    expect(videoMatch('제주도 꾸꾸풀빌라 독채풀빌라 펜션추천', '꾸꾸풀빌라', '경북 경주시 보덕로 143-19')).toBe(false)
+    expect(videoMatch('부천 수플레팬케이크 - 띵크프룻', '띵크프룻', '서울 마포구 와우산로29길 14-12')).toBe(false)
+    expect(videoMatch('나루스시', '나루스시', '서울 송파구 올림픽로35가길 9')).toBe(false) // 이름 속 '스시' 는 증거가 아니다
+  })
+  it('진짜 방문 영상은 남는다', () => {
+    expect(videoMatch('[이수역TV] 민속주점 달빛한스푼', '달빛한스푼', '서울 서초구 방배중앙로 165')).toBe(true)
+    expect(videoMatch('홍대 수플레 맛집 띵크프룻', '띵크프룻', '서울 마포구 와우산로29길 14-12')).toBe(true)
+    expect(videoMatch('맛 다람쥐 제주흑돼지 전문점 고집132 성수 본점 다녀왔어요', '고집132 성수본점', '서울 성동구 왕십리로8길 5')).toBe(true)
+  })
+  it('부품', () => {
+    expect(mentionsOtherRegion('성수에서 만난 제주돼지', '서울 성동구')).toBe(false) // 음식 이름의 지역
+    expect(mentionsOtherRegion('부천 띵크프룻', '서울 마포구')).toBe(true)
+    expect(isOffTopicVideo('대학로 연극 JS 아트홀')).toBe(true)
+    expect(branchOf('고집132 성수본점')).toBe('성수')
   })
 })

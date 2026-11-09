@@ -154,18 +154,21 @@ describe('②-e 유튜브 — 이름만 · 체인점은 지점명까지 (2026-11
     expect(branchOf('보광정 이태원점')).toBe('이태원')
     expect(branchOf('다인리조트')).toBeNull()
   })
-  it('지점 없는 가게는 이름만 맞으면 공개', () => {
-    expect(videoMatch('잠실 블랙타고 그룹PT', '블랙타고')).toBe(true)
+  // 🎭 2026-11-10 대표 *"유튜브도 동일한 이름이지만 이용권과 관계없이 올라오네"* — "이름만" 은 동네나 다녀온 이야기 낱말까지로 좁혔다.
+  it('지점 없는 가게는 이름 + (동네 또는 다녀온 이야기 낱말)', () => {
+    expect(videoMatch('잠실NEW헬스케어센터 블랙타고 그룹PT', '블랙타고', '서울 송파구 석촌호수로 74')).toBe(true)
+    expect(videoMatch('블랙타고 완공과정을 공개합니다!', '블랙타고', '서울 송파구 석촌호수로 74')).toBe(false)
     expect(videoMatch('제주 애월 리조트', '다인리조트')).toBe(false)
   })
   it('체인점은 지점명까지 — 다른 지점 영상은 후보로', () => {
     expect(videoMatch('미나리 소고기 #샤브올데이명륜점 #동래맛집', '샤브올데이 부산명륜점')).toBe(true)
     expect(videoMatch('호텔뷔페 안가도 되겠네.. 수영점 진짜 대박 #샤브올데이', '샤브올데이 부산명륜점')).toBe(false)
-    expect(videoMatch('📍보광정이태원점', '보광정 이태원점')).toBe(true)
+    expect(videoMatch('이태원 숙성 삼겹살 맛집 보광정이태원점', '보광정 이태원점')).toBe(true)
+    expect(videoMatch('📍보광정이태원점', '보광정 이태원점')).toBe(false) // 핀 하나뿐 — 다녀온 이야기 증거가 없다
   })
   it('수집기 · 후보 재판정이 이 규칙을 쓴다', () => {
     const c = read('src/features/creator-content/api/content-collect.ts')
-    expect(c).toMatch(/confident: !isStoreOwnPost\(sn\.channelTitle, storeName\) && videoMatch\(text, storeName\)/)
+    expect(c).toMatch(/confident: !isStoreOwnPost\(sn\.channelTitle, storeName\) && videoMatch\(text, storeName, address\)/)
     expect(c).toMatch(/WHERE s\.platform = 'youtube' AND s\.status = 'candidate' AND s\.source = 'auto'/)
   })
 })

@@ -115,7 +115,7 @@ export function pickVideoCandidates(items: YtSearchItem[], storeName: string, ad
     const text = `${title} ${stripHtml(sn.description)}`
     if (!mentionsStore(text, storeName)) continue
     const thumb = sn.thumbnails?.high?.url ?? sn.thumbnails?.medium?.url ?? null
-    out.push({ extId: id, title: title.slice(0, 200), author: stripHtml(sn.channelTitle).slice(0, 80), thumb: thumb && thumb.startsWith('https://') ? thumb : null, published: sn.publishedAt?.slice(0, 10) ?? null, confident: !isStoreOwnPost(sn.channelTitle, storeName) && videoMatch(text, storeName) })
+    out.push({ extId: id, title: title.slice(0, 200), author: stripHtml(sn.channelTitle).slice(0, 80), thumb: thumb && thumb.startsWith('https://') ? thumb : null, published: sn.publishedAt?.slice(0, 10) ?? null, confident: !isStoreOwnPost(sn.channelTitle, storeName) && videoMatch(text, storeName, address) })
   }
   return out
 }
@@ -215,13 +215,22 @@ async function backfillThumbs(DB: D1Database, limit: number): Promise<number> {
  * 자동으로 들어온 후보만 — 사장님이 숨긴 것(hidden)·지운 것(deleted)은 건드리지 않는다. 한 번 읽고 한 번 쓴다(서브리퀘스트 2).
  */
 async function promoteVideoCandidates(DB: D1Database): Promise<number> {
-  const { results } = await DB.prepare(`SELECT s.id, s.title, s.author_name, c.store_name FROM store_creator_content s
+  const { results } = await DB.prepare(`SELECT s.id, s.title, s.author_name, c.store_name, c.address FROM store_creator_content s
       JOIN store_content_crawl c ON c.store_key = s.store_key
       WHERE s.platform = 'youtube' AND s.status = 'candidate' AND s.source = 'auto' LIMIT 300`)
-    .all<{ id: number; title: string | null; author_name: string | null; store_name: string }>()
-  const ids = (results ?? []).filter((r) => !isStoreOwnPost(r.author_name, r.store_name) && videoMatch(r.title ?? '', r.store_name)).map((r) => r.id)
-  if (!ids.length) return 0
-  await DB.batch(ids.map((id) => DB.prepare(`UPDATE store_creator_content SET status = 'visible', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'candidate'`).bind(id)))
+    .all<{ id: number; title: string | null; author_name: string | null; store_name: string; address: string | null }>()
+  const ids = (results ?? []).filter((r) => !isStoreOwnPost(r.author_name, r.store_name) && videoMatch(r.title ?? '', r.store_name, r.address)).map((r) => r.id)
+  // 반대 방향도 — 공개 중인 자동 영상이 지금 기준에서 떨어지면 후보로 내린다(업종 이름 가게 영상, 2026-11-10).
+  const { results: shown } = await DB.prepare(`SELECT s.id, s.title, s.author_name, c.store_name, c.address FROM store_creator_content s
+      JOIN store_content_crawl c ON c.store_key = s.store_key
+      WHERE s.platform = 'youtube' AND s.status = 'visible' AND s.source = 'auto' LIMIT 300`)
+    .all<{ id: number; title: string | null; author_name: string | null; store_name: string; address: string | null }>()
+  const down = (shown ?? []).filter((r) => isStoreOwnPost(r.author_name, r.store_name) || !videoMatch(r.title ?? '', r.store_name, r.address)).map((r) => r.id)
+  if (!ids.length && !down.length) return 0
+  await DB.batch([
+    ...ids.map((id) => DB.prepare(`UPDATE store_creator_content SET status = 'visible', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'candidate'`).bind(id)),
+    ...down.map((id) => DB.prepare(`UPDATE store_creator_content SET status = 'candidate', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'visible' AND source = 'auto'`).bind(id)),
+  ])
   return ids.length
 }
 
