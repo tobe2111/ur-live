@@ -103,3 +103,4 @@
 ## 19. 킬스위치 ON + 유어쇼츠 서버 첫 화면
 - **22:41 KST `shell_sw_enabled=true`**(대표 "권한 허용해줄게" → 어드민 PUT). 서버 조회 true. 손님 쪽 전파는 `/api/consumer-settings` 엣지 캐시(600+600s) 뒤 — 23:00 전후 확인 예정.
 - `/urshorts` 서버 첫 화면(잠금 기록 `2026-11-09-urshorts-first-screen.md`). 배포 뒤 vitals_nocb 로 FCP 재실측(종전 2.0s).
+- [E4] 22:58 KST 전파 확인(`shell_sw_enabled:true`, age 0) → 시험 표식 **없는** 손님이 `/shell-sw.js` 를 받고 세 번째 방문이 저장본(FCP **48ms**). 재방문 0초가 전체 손님에게 켜졌다. 관찰 1주(결재 문서 조건): 카카오 로그인·결제 복귀·마이·어드민 로그인 이상 시 같은 스위치 OFF.
