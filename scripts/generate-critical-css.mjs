@@ -53,6 +53,7 @@ export const ROOTS = [
   'src/worker/utils/map-first-screen.ts', // 🗺️ 2026-11-09 지도 껍데기
   'src/worker/utils/search-first-screen.ts', // 🔎 2026-11-10 검색 헤더·빈 검색 안내
   'src/worker/utils/faq-first-screen.ts', // ❓ 2026-11-10 자주 묻는 질문 전체
+  'src/worker/utils/notifications-first-screen.ts', // 🔔 2026-11-10 알림 머리줄(세션 있을 때만)
 ]
 
 /**
@@ -187,6 +188,7 @@ export const SURFACE_ROOTS = {
   map: ['src/worker/utils/map-first-screen.ts'], // 🗺️ 2026-11-09
   search: ['src/worker/utils/search-first-screen.ts'], // 🔎 2026-11-10
   faq: ['src/worker/utils/faq-first-screen.ts'], // ❓ 2026-11-10
+  notifications: ['src/worker/utils/notifications-first-screen.ts'], // 🔔 2026-11-10
 }
 
 /** 셀렉터의 클래스 이름들(이스케이프 해제) — `:not(…)` 안은 제외 조건이라 보지 않는다. */

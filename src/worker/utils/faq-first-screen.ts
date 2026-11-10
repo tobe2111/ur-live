@@ -10,7 +10,8 @@
  * 만드는데 그 CSS 는 앱이 붙인다 — 서버가 본문을 넣으면 첫 화면에서 답이 전부 펼쳐 보인다. 칸만 비워 둔다).
  * 🖥️ PC: `/faq` 는 430 액자 → 게스트 탭과 같은 [네비 높이 예약 + 액자].
  */
-import { SUB_PAGE_CLS, SUB_PAGE_HEAD, subPageTitleTransform } from '../../shared/sub-page-head'
+import { SUB_PAGE_CLS } from '../../shared/sub-page-head'
+import { subPageHeadHtml } from './sub-page-head-html'
 import { FAQ_CLS, FAQ_COPY } from '../../shared/faq-page'
 import { CONCEPT_FAQ } from '../../shared/seo/concept-content'
 import { PC_HOME_FS } from '../../shared/pc-home-first-screen'
@@ -19,15 +20,7 @@ import { GUEST_PC_FRAME } from './guest-first-screen'
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const escAttr = (s: string) => esc(s).replace(/"/g, '&quot;')
 
-/** 하위 화면 머리줄 — `SubPageHeader` 의 스크롤 0 상태(h1 숨김 · 큰 제목 원래 크기). 뒤로 화살표는 같은 크기 빈 칸. */
-export function subPageHeadHtml(title: string): string {
-  const t = subPageTitleTransform(0)
-  return `<header class="${SUB_PAGE_HEAD.header} "><div class="${SUB_PAGE_HEAD.row} ${SUB_PAGE_HEAD.rowCols} ${SUB_PAGE_HEAD.rowTail}">` +
-    `<span class="${SUB_PAGE_HEAD.back}" aria-hidden="true"><span class="${SUB_PAGE_HEAD.backIcon} block"></span></span>` +
-    `<h1 class="${SUB_PAGE_HEAD.h1} ${SUB_PAGE_HEAD.h1Hidden}">${esc(title)}</h1>` +
-    `<div class="${SUB_PAGE_HEAD.right} ${SUB_PAGE_HEAD.rightNarrow}"></div></div></header>` +
-    `<div aria-hidden="true" class="${SUB_PAGE_HEAD.titleWrap}"><p class="${SUB_PAGE_HEAD.title}" style="transform:${escAttr(t.transform)};opacity:${t.opacity}">${esc(title)}</p></div>`
-}
+export { subPageHeadHtml } // 머리줄 HTML 은 하위 화면 공용(`sub-page-head-html.ts`) — FAQ 가드가 여기서도 읽는다
 
 /** 분류 칩 — 화면과 같은 순서(`전체` + 질문 배열에 나온 순서의 고유 분류). */
 export function faqCategories(): string[] {
