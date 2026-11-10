@@ -13,3 +13,7 @@
 
 ## 가드
 `search-thumb-preload-2026-11-10.test.ts` 7건 · 주입 5건 되돌려 전부 빨간불.
+
+## 🩸 CI 가 잡은 것 — 청크 순환(`app-map-row ↔ lz-map`)
+새 상수 파일(`shared/row-thumb.ts`)을 묶음기가 지도 봉투(`lz-map`)에 넣어, 줄 묶음(`app-map-row`)이 지도 봉투를 다시 부르는 순환이 생겼다(런타임 TDZ 크래시 위험 — `vite.config.ts` 순환 감지가 빌드를 멈췄다). `MAP_ROW_MODULES` 에 그 파일을 더해 줄과 같은 묶음에 고정. 로컬 `build:client` 통과 · 무게 예산 search 187.3/188.8 · map 223.4/224.4.
+교훈: **잠금표 `manualChunks` 로 고정된 모듈이 새 파일을 import 하면 그 파일도 같은 목록에 넣는다** — tsc·vitest 는 못 보고 빌드만 본다(로컬 pre-push 는 워커 번들만 돌린다).
