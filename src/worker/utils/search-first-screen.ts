@@ -11,7 +11,7 @@
  *
  * 🖥️ PC: `MobileAppLayout` 이 이 화면을 430 액자로 감싼다(`/search` 는 풀폭 목록에 없다) → 게스트 탭과 같은 [네비 높이 예약 + 액자].
  */
-import { SEARCH_CLS, SEARCH_COPY, SEARCH_LENS, SEARCH_HERO_MASCOT, RECENT_SEARCHES_KEY, SEARCH_QUERY_MAX } from '../../shared/search-page'
+import { SEARCH_CLS, SEARCH_COPY, SEARCH_LENS, SEARCH_HERO_MASCOT, RECENT_SEARCHES_KEY, searchQueryOf } from '../../shared/search-page'
 import { UDAL_HELLO_SRC, UDAL_HELLO_ART } from '../../shared/mascot-art'
 import { PC_HOME_FS } from '../../shared/pc-home-first-screen'
 import { GUEST_PC_FRAME } from './guest-first-screen'
@@ -19,13 +19,7 @@ import { GUEST_PC_FRAME } from './guest-first-screen'
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const escAttr = (s: string) => esc(s).replace(/"/g, '&quot;')
 
-/** `?q=` — 화면(`useSearchParams().get('q')`)과 같은 값. 제어문자는 뺀다, 길이는 제안 API 와 같은 상한. */
-export function searchQueryOf(search: string): string {
-  try {
-    const q = new URLSearchParams(search).get('q') || ''
-    return q.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, SEARCH_QUERY_MAX)
-  } catch { return '' }
-}
+export { searchQueryOf } // 2026-11-10 shared/search-page.ts 로 옮겼다(시드 경로도 같은 함수) — 워커·가드가 여기서도 읽는다
 
 /** 헤더 — `SearchHeader` 쉬는 상태(포커스 전 · 제안 닫힘)와 같은 모양. 검색어가 있으면 `value` 로 되돌린다. */
 function header(query: string): string {

@@ -54,3 +54,55 @@ export const RECENT_SEARCHES_KEY = 'recent_searches_v1'
 
 /** 검색어 상한 — 서버 첫 화면이 입력창에 되돌려 그릴 때(제안 API 와 같은 200). */
 export const SEARCH_QUERY_MAX = 200
+
+/** `?q=` — 화면(`useSearchParams().get('q')`)과 같은 값. 제어문자는 뺀다, 길이는 제안 API 와 같은 상한. (서버 첫 화면·시드가 같이 쓴다) */
+export function searchQueryOf(search: string): string {
+  try {
+    const q = new URLSearchParams(search).get('q') || ''
+    return q.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, SEARCH_QUERY_MAX)
+  } catch { return '' }
+}
+
+/**
+ * 🌱 검색 결과 시드 (2026-11-10 — 라이브 폰 `/search?q=돈가스` LCP **3.7s**: 결과 목록이 앱 부팅 뒤 한 왕복(한국→LA) 더 기다렸다).
+ *   워커가 HTML 에 첫 장(50개)을 `__SSR_INITIAL_SEARCH__` 로 싣고, `useSearchInfinite` 가 같은 검색어·범위면 그걸 첫 장으로 쓴다.
+ *   경로는 훅의 요청과 **글자 하나 다르지 않아야** 한다(엣지 사본·직전 사본 키가 그 문자열이다).
+ */
+export const SEARCH_PAGE_SIZE = 50
+export const SEARCH_SEED_ID = '__SSR_INITIAL_SEARCH__'
+/** 시드를 기다리는 상한(ms) — 차가운 검색어는 D1 FTS 가 수백 ms 라 HTML 을 붙잡지 않게 자른다(늦으면 종전대로 앱이 받는다). */
+export const SEARCH_SEED_DEADLINE_MS = 700
+export type SearchScope = 'voucher' | 'exchange'
+
+/** `?scope=exchange` 만 교환권, 그 외 전부 이용권 — `SearchPage` 의 판정과 같다. */
+export function searchScopeOf(search: string): SearchScope {
+  try { return new URLSearchParams(search).get('scope') === 'exchange' ? 'exchange' : 'voucher' } catch { return 'voucher' }
+}
+
+/** 훅(`useSearchInfinite`)의 첫 장 요청 경로. 검색어가 2자 미만이면 ''(시드 없음 — 훅도 `enabled: false`). */
+export function searchSeedPath(search: string): string {
+  const q = searchQueryOf(search)
+  if (q.length < 2) return ''
+  const params = new URLSearchParams({ q, page: '1', limit: String(SEARCH_PAGE_SIZE), scope: searchScopeOf(search) })
+  return `/api/search?${params.toString()}`
+}
+
+/** 시드 `<script>` 의 표식 — 읽는 쪽이 검색어·범위가 같은지 대조한다(다른 검색어의 시드를 첫 장으로 쓰면 거짓 결과). */
+export function searchSeedAttrs(search: string): string {
+  const q = searchQueryOf(search).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+  return ` data-q="${q}" data-scope="${searchScopeOf(search)}"`
+}
+
+/** 브라우저에서 한 번 읽는다 — 같은 검색어·범위일 때만, 읽은 뒤 지운다(SPA 로 다른 검색어로 옮겨도 다시 안 쓴다). */
+export function readSearchSeed<T = unknown>(q: string, scope: SearchScope): T | null {
+  try {
+    if (typeof document === 'undefined') return null
+    const el = document.getElementById(SEARCH_SEED_ID)
+    if (!el) return null
+    const ok = el.getAttribute('data-q') === q && el.getAttribute('data-scope') === scope
+    el.remove()
+    if (!ok || !el.textContent) return null
+    const parsed = JSON.parse(el.textContent)
+    return parsed && Array.isArray(parsed.data) ? (parsed as T) : null
+  } catch { return null }
+}
