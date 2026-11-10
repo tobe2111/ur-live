@@ -53,7 +53,7 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
-import { StaticRouter } from 'react-router-dom/server'
+import { StaticRouter } from 'react-router-dom'
 import { readCode, readRaw, sliceFrom } from '../helpers/source-text'
 
 // 🛡️ `scripts/check-ssr-render-window.mjs` 와 **같은** no-op 스토리지 스텁. 그 스크립트가 2026-06-04 에

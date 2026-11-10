@@ -23,7 +23,7 @@ import { renderToString, renderToPipeableStream } from 'react-dom/server'
 // 🧵 2026-07-05 (prerender 스피너 근본수정): node:stream 은 이 번들의 유일 소비자가
 //   check-ssr-render-window.mjs(Node) 라서 안전 — worker 는 dist/server 를 임포트하지 않음.
 import { PassThrough } from 'node:stream'
-import { StaticRouter } from 'react-router-dom/server'
+import { StaticRouter } from 'react-router-dom'
 import App, { type RouterLike } from './App'
 
 export interface RenderResult {
