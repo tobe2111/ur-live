@@ -9,7 +9,7 @@
  * Seller route is mounted on the main app with requireAuth.
  */
 
-import { Hono } from 'hono';
+import { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import { cors } from 'hono/cors';
 import { executeQuery, executeRun, queryFirst } from '@/worker/utils/database';
 import { safeError } from '@/worker/utils/safe-error';
@@ -77,7 +77,7 @@ restaurantSettlementRoutes.post('/calculate', async (c) => {
     await executeRun(DB, `CREATE TABLE IF NOT EXISTS voucher_disputes (
       id INTEGER PRIMARY KEY AUTOINCREMENT, voucher_id INTEGER NOT NULL, product_id INTEGER, seller_id INTEGER,
       reason TEXT, status TEXT DEFAULT 'open', created_at DATETIME DEFAULT (datetime('now')), resolved_at DATETIME,
-      resolution TEXT, admin_note TEXT, UNIQUE(voucher_id))`).catch(() => {});
+      resolution TEXT, admin_note TEXT, UNIQUE(voucher_id))`).catch(swallow('restaurant-settlement'));
 
     // 💸 2026-07-08 (머니 감사 Guard 2 근본수정 — 안①, 기본 OFF 게이트): 이용권 이중 정산레일
     //   차단. ON 이면 이미 원장(Rail B)에 booking 된 voucher 를 이 수동 정산(Rail A)에서도 skip.

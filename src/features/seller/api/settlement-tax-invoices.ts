@@ -17,7 +17,7 @@ import {
   reverseInvoiceProvider,
   normalizeBizNo,
   type ReverseInvoiceEnv,
-} from '@/worker/utils/tax-invoice-gateway'
+} from '@/worker/utils/tax-invoice-gateway'; import { swallow } from '../../../worker/utils/swallow'
 
 /** 공급대가(부가세 포함) → 공급가액/세액 분리. 도매 splitWholesaleVat 와 동일 식(부가세 포함 기준). */
 export function splitSettlementVat(grossInclusive: number): { supply: number; vat: number; total: number } {
@@ -59,9 +59,9 @@ async function _doEnsure(DB: D1Database): Promise<void> {
     issued_at DATETIME,
     created_at DATETIME DEFAULT (datetime('now'))
   )`).run()
-  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_settlement_tax_inv_settlement ON settlement_tax_invoices(settlement_id)').run().catch(() => {})
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_settlement_tax_inv_seller ON settlement_tax_invoices(seller_id, created_at DESC)').run().catch(() => {})
-  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_settlement_tax_inv_status ON settlement_tax_invoices(status, created_at DESC)').run().catch(() => {})
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_settlement_tax_inv_settlement ON settlement_tax_invoices(settlement_id)').run().catch(swallow('settlement-tax-invoices'))
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_settlement_tax_inv_seller ON settlement_tax_invoices(seller_id, created_at DESC)').run().catch(swallow('settlement-tax-invoices'))
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_settlement_tax_inv_status ON settlement_tax_invoices(status, created_at DESC)').run().catch(swallow('settlement-tax-invoices'))
 }
 
 const DEV = (() => { try { return !!import.meta.env?.DEV } catch { return false } })()

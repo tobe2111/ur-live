@@ -28,6 +28,18 @@ const FILES = [
   // 3차(2026-11-10 대표 허가 — docs/locks/toss/2026-11-10-silent-catch-to-log.md) — 결제 잠금 파일
   'src/worker/routes/payment.routes.ts',
   'src/worker/routes/webhook.routes.ts',
+  // 4차(2026-11-10) — 환불·딜·정산·분쟁·숙소 남은 곳
+  'src/features/returns/api/returns.routes.ts',
+  'src/features/points/api/points.routes.ts',
+  'src/worker/utils/deal-refund.ts',
+  'src/worker/cron/payouts-generate.ts',
+  'src/worker/cron/auto-settlement.ts',
+  'src/features/settlement/api/restaurant-settlement.routes.ts',
+  'src/worker/utils/influencer-store-intro-commission.ts',
+  'src/features/seller/api/settlement-tax-invoices.ts',
+  'src/features/group-buy/api/voucher-dispute.routes.ts',
+  'src/features/group-buy/api/group-buy-voucher.routes.ts',
+  'src/features/group-buy/api/stays-public.routes.ts',
 ]
 
 describe('돈 관련 파일 — 빈 catch 0', () => {

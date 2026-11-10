@@ -9,7 +9,7 @@
  *   - POST /store-stats/:productId              사장님 통계 (PIN/Magic Link)
  */
 
-import type { Hono } from 'hono'
+import type { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { scanOrSellerAuth } from '../../seller/api/seller-scan-devices.routes'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -265,7 +265,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
                 DB, 'seller', String(merchantId), 'voucher_used',
                 '✅ 이용권 사용', `${meta.product_name} — 손님 셀프 사용 처리`,
                 '/seller/group-buy',
-              ).catch(() => {})
+              ).catch(swallow('group-buy-voucher'))
             } catch { /* fail-soft */ }
           })())
         }
@@ -321,7 +321,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       const { sanitizeUsageConditions } = await import('../../../shared/voucher-usage-conditions')
       const { keys, custom } = sanitizeUsageConditions(body.usage_conditions, body.usage_custom)
       const { setSellerMeta } = await import('../../../worker/utils/seller-meta')
-      await setSellerMeta(c.env.DB, Number(user.id), { voucher_usage_conditions: JSON.stringify(keys), voucher_usage_custom: custom || null }).catch(() => {})
+      await setSellerMeta(c.env.DB, Number(user.id), { voucher_usage_conditions: JSON.stringify(keys), voucher_usage_custom: custom || null }).catch(swallow('group-buy-voucher'))
       outConditions = keys; outCustom = custom
     }
     return c.json({ success: true, data: { mode, store_code: storeCode, ...(outConditions ? { usage_conditions: outConditions, usage_custom: outCustom } : {}) } })

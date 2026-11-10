@@ -147,3 +147,6 @@
 - npm audit moderate **10 → 4**: `npm audit fix`(잠금 파일만 — glob·minimatch·rimraf) + `@capacitor/cli` 8.5.2 → 8.6.0(xcode·uuid 해소). 전부 개발·네이티브 빌드 도구 — 웹 런타임 무변경.
 - 남은 4건은 `drizzle-kit` 이 끌고 오는 옛 esbuild(개발 서버 취약점). npm 이 제안하는 "수정"은 0.18.1 로의 **다운그레이드**라 따르지 않았다. `drizzle-kit` 을 부르는 스크립트는 없다(`drizzle.config.ts` 만 있음) — 지울지는 대표 판단.
 - `admin-products.routes.ts` 의 빈 catch 72곳은 상품 삭제 때 딸린 행 정리(어드민 전용)라 그대로 둠.
+- 빈 catch 4차: 환불(`returns`)·딜(`points`·`deal-refund`)·정산(`payouts-generate`·`auto-settlement`·`restaurant-settlement`·`settlement-tax-invoices`)·
+  영입 커미션·이용권 분쟁·이용권 발급·숙소 — 21곳 → `swallow`. `voucher-dispute` 의 `ALTER TABLE … ADD COLUMN` 한 곳은
+  **중복 컬럼 오류가 정상**이라 사유 주석을 단 채 조용히 둔다(로그로 바꾸면 콜드스타트마다 잡음). 관련 시험 73파일 996건 · tsc 0.

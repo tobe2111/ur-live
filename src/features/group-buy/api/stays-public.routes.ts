@@ -6,7 +6,7 @@
  *   - GET /stays/:productId/availability    — 특정 날짜 범위 가용 객실 조회
  *   - GET /stays/:productId/reviews         — 리뷰 목록
  */
-import { isDemoProductForPurchase, DEMO_PURCHASE_ERROR } from '../../../worker/utils/fcfs-gate'
+import { isDemoProductForPurchase, DEMO_PURCHASE_ERROR } from '../../../worker/utils/fcfs-gate'; import { swallow } from '../../../worker/utils/swallow'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { safeError } from '../../../worker/utils/safe-error'
@@ -1105,7 +1105,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
               c.env.DB, 'seller', String(sellerRow.seller_id), 'stay_booking_paid',
               '🏡 숙소 예약 확정', `${periodText}${claimed.length > 1 ? ` · ${claimed.length}객실` : ''} · ₩${Number(order.total_amount).toLocaleString('ko-KR')}`,
               '/seller/bookings?tab=stay',
-            ).catch(() => {})
+            ).catch(swallow('stays-public'))
           }
           // 🔔 2026-06-26 (소비자 감사 B): 셀러만 통보되고 소비자는 무통보이던 누락 보강 — 예약자 인앱 알림.
           //   물리상품 환불/취소는 알림 가는데 숙소 확정만 빠져있던 비대칭. fail-soft.
@@ -1115,7 +1115,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
               c.env.DB, String(order.user_id), 'stay_booking_confirmed',
               '🏡 숙소 예약이 확정됐어요', `${periodText}${claimed.length > 1 ? ` · ${claimed.length}객실` : ''} · ₩${Number(order.total_amount).toLocaleString('ko-KR')}`,
               '/my-stays',
-            ).catch(() => {})
+            ).catch(swallow('stays-public'))
           }
         } catch { /* fail-soft */ }
       })())
@@ -1279,7 +1279,7 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action
             : refundAmount > 0
               ? '예약이 취소됐어요 · 환불은 확인 후 처리됩니다'
               : '예약이 취소됐어요 (환불 정책상 환불금은 없습니다)'
-          await notifyUser(c.env.DB, String(booking.user_id), 'stay_booking_cancelled', '🏡 숙소 예약이 취소됐어요', msg, '/my-stays').catch(() => {})
+          await notifyUser(c.env.DB, String(booking.user_id), 'stay_booking_cancelled', '🏡 숙소 예약이 취소됐어요', msg, '/my-stays').catch(swallow('stays-public'))
         } catch { /* fail-soft */ }
       })())
     } catch { /* no ctx */ }

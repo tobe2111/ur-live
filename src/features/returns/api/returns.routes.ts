@@ -257,7 +257,7 @@ returnsRoutes.put('/:id/shipping', rateLimit({ action: 'return_shipping', max: 3
       await DB.prepare(
         `INSERT INTO shipping_tracking_events (order_id, carrier_code, tracking_number, status, status_text, source)
          VALUES (?, ?, ?, 'pending', '반품 회수 송장 등록', 'manual')`,
-      ).bind(returnRecord.order_id ?? 0, carrierKey, cleanedTracking, ).run().catch(() => {})
+      ).bind(returnRecord.order_id ?? 0, carrierKey, cleanedTracking, ).run().catch(swallow('returns'))
     } catch { /* ignore */ }
   }
 
@@ -640,9 +640,9 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     await refundDealPoints(DB, {
       userId: order.user_id, amount: restore, type: 'refund', ref: [order.order_number ?? null, String(returnRecord.order_id)],
       description: `[반품 환불] 딜 사용분 복원 (order:${order.order_number || returnRecord.order_id})`,
-    }).catch(() => {});
+    }).catch(swallow('returns'));
     await DB.prepare('UPDATE orders SET deal_used = MAX(0, deal_used - ?) WHERE id = ?')
-      .bind(restore, returnRecord.order_id).run().catch(() => {});
+      .bind(restore, returnRecord.order_id).run().catch(swallow('returns'));
     reversal.push({ step: '딜 사용분 복원', amount: restore });
   }
 

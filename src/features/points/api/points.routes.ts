@@ -914,7 +914,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     }
     await DB.prepare(
       'UPDATE coupons SET used_count = used_count + 1 WHERE id = ? AND (total_count = 0 OR used_count < total_count)'
-    ).bind(couponIdNum).run().catch(() => {});
+    ).bind(couponIdNum).run().catch(swallow('points'));
     couponClaimed = true;
     couponDiscount = computed;
     authoritativeTotal = Math.max(0, authoritativeTotal - couponDiscount);
@@ -1063,7 +1063,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     // 🏁 G3: 쿠폰 사용 기록에 주문 연결 (환불 시 restoreCouponsForOrders 가 order_id 로 복원)
     if (couponClaimed && firstOrderId != null) {
       await DB.prepare('UPDATE coupon_uses SET order_id = ? WHERE coupon_id = ? AND user_id = ?')
-        .bind(firstOrderId, couponIdNum, userId).run().catch(() => {});
+        .bind(firstOrderId, couponIdNum, userId).run().catch(swallow('points'));
     }
 
     // 🔔 2026-11-02: 상품 이름을 붙인다("딜 결제 12,000딜" 만으론 무엇이 팔렸는지 몰랐다 — 이 경로가 교환권 교환이다).
@@ -1189,7 +1189,7 @@ pointsRoutes.post('/refund',
       c.env.DB, 'admin', null, 'deal_refund_requested',
       '딜 환급 신청', `${r.amount.toLocaleString('ko-KR')}딜 충전 잔액 환급 신청이 들어왔습니다`,
       '/admin/payout-center',
-    ).catch(() => {})
+    ).catch(swallow('points'))
     return c.json({ success: true, data: { id: r.id, amount: r.amount, eta: '영업일 기준 3~5일 안에 입금돼요' } })
   },
 )

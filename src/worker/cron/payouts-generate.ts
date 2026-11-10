@@ -12,7 +12,7 @@
  *   pre-check 로 skip + payouts UNIQUE index 기반 INSERT OR IGNORE 로 이중 차단 →
  *   cron 이 두 번 돌거나 수동 재실행돼도 중복 pending payout 이 생기지 않음.
  */
-import type { Env } from '../types/env'
+import type { Env } from '../types/env'; import { swallow } from '../utils/swallow'
 import { logInfo, logError } from '../utils/logger'
 import { resolvePayoutHold } from '../utils/payout-hold'
 // 💸 2026-10-01 (결재 voucher-credit-double-rail): `merchant:N` 과 `seller:N` 은 **같은 가게**다.
@@ -133,7 +133,7 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
       const webhook = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL
       if (webhook) {
         const { sendDiscordAlert } = await import('../utils/discord-alert')
-        await sendDiscordAlert(webhook, '💸 주간 정산 생성', summary, 'info').catch(() => {})
+        await sendDiscordAlert(webhook, '💸 주간 정산 생성', summary, 'info').catch(swallow('payouts-generate'))
       }
     } catch { /* 하트비트 실패는 정산 생성에 영향 없음 */ }
 
