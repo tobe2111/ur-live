@@ -246,10 +246,10 @@ function heroBgHtml(hero: RegionHero): string {
   )
 }
 
-function chromeHtml(hero: RegionHero | null, locLabel: string = HOME_LOC_LABEL_DEFAULT): string {
+function chromeHtml(hero: RegionHero | null, locLabel: string = HOME_LOC_LABEL_DEFAULT, activeCat: string = 'all'): string {
   // 🏠 2026-11-02 탭 줄은 전체 표(생활 포함 — 폰에선 `/life` 링크). 화면과 같은 글자를 그려야 마운트 때 안 바뀐다.
   const cats = DEAL_CAT_LABELS.map(({ key, label }) =>
-    `<span class="${HOME_FS_CLASS.catBase} ${key === 'all' ? HOME_FS_CLASS.catOn : HOME_FS_CLASS.catOff}">${escText(label)}</span>`,
+    `<span class="${HOME_FS_CLASS.catBase} ${key === activeCat ? HOME_FS_CLASS.catOn : HOME_FS_CLASS.catOff}">${escText(label)}</span>`,
   ).join('')
   return (
     (hero
@@ -344,5 +344,17 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
 
   // 🧷 노드 id 는 `/pass/`·`/vouchers/` 와 같다 — `lib/boot-first-screen.ts` 가 경로를 안 가리고
   //   이 노드를 들고 있다가 Suspense 폴백 안에 **같은 노드로** 도로 붙인다(재파싱·재다운로드 0).
+  return `<div id="ur-first-screen">${body}</div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
+}
+
+/**
+ * 🧭 2026-11-10 홈 `?category=<키>` 의 첫 화면 — **머리(로고 · 위치 · 카테고리 줄)만** 그리고 그 아래는 로더.
+ *   전체 홈 첫 화면은 이 주소에 안 그린다(앱이 편성을 숨긴다 — `shared/home-query.ts`). 그 대가로 첫 글자가 0.85s → 2.9~3.7s 로 늦어져(라이브 실측)
+ *   머리만이라도 서버가 그린다. 머리는 전체 홈과 같은 조각(`chromeHtml`)이고 켜진 탭만 다르다 — 목록은 API 가 와야 안다(시드 없음 · 새 캐시 키 0).
+ */
+export function buildHomeCategoryFirstScreen(category: string, loaderHtml: string, cookieHeader: string | null = null): string {
+  // 전체 홈과 같은 보이지 않는 h1. `data-home-cat` 표식을 앞에 둔 건 전체 홈의 h1 글자열을 겨누는 주입 앵커가 이 줄에도 맞지 않게 하려는 것(한 곳이어야 한다).
+  const body = `<div class="${HOME_FS_CLASS.root}"><h1 data-home-cat="${escAttr(category)}" class="sr-only">${escText(HOME_H1)}</h1>` +
+    chromeHtml(regionHeroFromCookieHeader(cookieHeader), homeLocLabelFromCookieHeader(cookieHeader), category) + `</div>`
   return `<div id="ur-first-screen">${body}</div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }

@@ -72,8 +72,10 @@ describe('홈 피드 배선', () => {
 describe('화면 밖 카드는 레이아웃을 건너뛴다(content-visibility)', () => {
   it('홈 피드 카드 그리드에 ur-cv-grid 가 붙고, CSS 가 auto 높이 기억과 함께 정의돼 있다', () => {
     const feed = readFileSync('src/pages/main-home/GroupBuyFeed.tsx', 'utf8')
-    expect(feed).toMatch(/<div className=\{restoring \? gridCls : `\$\{gridCls\} ur-cv-grid`\}>\s*\{\/\* 🛡️ 2026-05-24 \(loading P0\)/)
+    expect(feed).toMatch(/<div className=\{restoring \? gridCls : `\$\{gridCls\} ur-cv-grid\$\{pc \? '' : ' ur-cv-feedrow'\}`\}>\s*\{\/\* 🛡️ 2026-05-24 \(loading P0\)/)
     const css = readFileSync('src/index.css', 'utf8')
+    // 📋 2026-11-10 폰은 줄 목록 — 추정 높이가 카드 값(260)이면 새 줄이 한 프레임 260 → 141 로 줄며 아래가 올라온다(라이브 CLS 0.17).
+    expect(css.match(/\.ur-cv-grid\.ur-cv-feedrow > \* \{([^}]*)\}/)?.[1] ?? '').toMatch(/contain-intrinsic-size:\s*auto 141px/)
     const rule = css.match(/\.ur-cv-grid > \* \{([^}]*)\}/)?.[1] ?? ''
     expect(rule).toMatch(/content-visibility:\s*auto/)
     // `auto` 가 빠지면 한 번 그린 칸의 높이를 잊어 스크롤 중 위로 튄다

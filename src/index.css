@@ -1281,6 +1281,11 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   content-visibility: auto;
   contain-intrinsic-size: auto 260px;
 }
+/* 📋 2026-11-10 폰 홈 피드는 줄 목록(사진 120px 칸)이다 — 추정이 카드 값(260px)이면 새로 그려진 줄이 한 프레임 260 으로 잡혔다가 141 로 줄며
+   아래가 통째로 올라온다(라이브 rAF 추적: `/?category=meal_voucher` 2.8s 에 CLS 0.17 · 첫 줄 260 → 141). 줄일 때는 줄 높이로 가정한다. */
+.ur-cv-grid.ur-cv-feedrow > * {
+  contain-intrinsic-size: auto 141px;
+}
 /* 지도 목록 행(`RestaurantRow`, 썸네일 80px + 위아래 여백) — 같은 이유, 행 높이 추정만 다르다. */
 .ur-cv-rows > * {
   content-visibility: auto;

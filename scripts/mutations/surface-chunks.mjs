@@ -180,8 +180,8 @@ export default [
   {
     name: '📐 뒤로가기로 돌아와도 홈 피드가 화면 밖 칸을 생략해 스크롤 복원이 빗나간다',
     file: 'src/pages/main-home/GroupBuyFeed.tsx',
-    find: '<div className={restoring ? gridCls : `${gridCls} ur-cv-grid`}>',
-    replace: '<div className={`${gridCls} ur-cv-grid`}>',
+    find: "<div className={restoring ? gridCls : `${gridCls} ur-cv-grid${pc ? '' : ' ur-cv-feedrow'}`}>",
+    replace: "<div className={`${gridCls} ur-cv-grid${pc ? '' : ' ur-cv-feedrow'}`}>",
     test: 'src/tests/unit/progressive-cap-2026-10-13.test.tsx',
     why: '새로 그린 칸은 높이를 기억 못 해(추정 260px) 깊이 내려갔다 돌아오면 다른 카드에 내려앉는다 — 에러 0.',
   },

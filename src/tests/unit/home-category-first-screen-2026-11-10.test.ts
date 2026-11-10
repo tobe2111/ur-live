@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { HOME_CATEGORY_KEYS, homeCategoryOf } from '@/shared/home-query'
+import { buildHomeCategoryFirstScreen, HOME_FS_CLASS } from '@/worker/utils/home-first-screen'
 import { HOME_CATEGORY_KEYS as SCREEN_KEYS } from '@/pages/main-home/useHomeQuerySync'
 
 const WORKER = readFileSync('src/worker/index.ts', 'utf8') // raw — 워커는 주석 제거기를 쓰지 않는다
@@ -37,6 +38,19 @@ describe('홈 ?category= 판정', () => {
     expect([...SCREEN_KEYS]).toEqual([...HOME_CATEGORY_KEYS])
     expect(HOOK).toContain("from '@/shared/home-query'")
     expect(HOOK).toContain('[...SHARED_HOME_CATEGORY_KEYS]')
+  })
+
+  it('🧭 카테고리 주소엔 머리만 그린다 — 켜진 탭이 그 카테고리 · 카드/배너 없음 · 로더 아래', () => {
+    const html = buildHomeCategoryFirstScreen('beauty_voucher', '<div style="min-height:100dvh">LOADER</div>', null)
+    const full = buildHomeCategoryFirstScreen('all', '', null)
+    expect(html).toContain('id="ur-first-screen"'); expect(html).toContain(HOME_FS_CLASS.catRow)
+    const on = [...html.matchAll(new RegExp(`<span class="${HOME_FS_CLASS.catBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ${HOME_FS_CLASS.catOn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}">([^<]*)</span>`, 'g'))].map((m) => m[1])
+    expect(on.length).toBe(1)
+    expect(on[0]).not.toBe([...full.matchAll(/<span class="[^"]*">([^<]*)<\/span>/g)].find((m) => full.includes(`${HOME_FS_CLASS.catOn}">${m[1]}`))?.[1]) // '전체' 가 아니다
+    expect(html).not.toContain(HOME_FS_CLASS.grid); expect(html).not.toContain(HOME_FS_CLASS.panel)
+    expect(html).toContain('<h1 data-home-cat="beauty_voucher" class="sr-only">') // 전체 홈과 같은 보이지 않는 제목 요소(크롤러)
+    expect(html).toContain('min-height:34dvh'); expect(html.indexOf('LOADER')).toBeGreaterThan(html.indexOf(HOME_FS_CLASS.catRow))
+    expect(WORKER).toContain("} else if (ssrSlot === 'MAIN' && isMainPage && shouldRenderMobileFirstScreen(c.req.header('user-agent')) && homeCategoryOf(url.search)) { const catFirst = buildHomeCategoryFirstScreen(homeCategoryOf(url.search)!, urdealLoaderHtml, c.req.header('cookie') ?? null);")
   })
 
   it('워커의 폰 홈 첫 화면 분기가 카테고리 쿼리를 제외한다', () => {

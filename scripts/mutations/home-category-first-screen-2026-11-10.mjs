@@ -41,4 +41,20 @@ export default [
     test: T,
     why: '2026-11-10 rAF 추적 — 첫 프레임에 편성 1,728px 이 그려지고 다음 프레임에 사라져 목록이 1873 → 145 로 올라온다(CLS 0.78).',
   },
+  {
+    name: '🏠 카테고리 머리 첫 화면 배선을 뺀다(첫 글자가 다시 로더 뒤 3초)',
+    file: 'src/worker/index.ts',
+    find: "} else if (ssrSlot === 'MAIN' && isMainPage && shouldRenderMobileFirstScreen(c.req.header('user-agent')) && homeCategoryOf(url.search)) {",
+    replace: "} else if (false && homeCategoryOf(url.search)) {",
+    test: T,
+    why: '2026-11-10 실측 — 전체 홈 그림을 걷은 뒤 그 주소의 첫 글자가 0.85s → 2.9~3.7s.',
+  },
+  {
+    name: '🏠 카테고리 머리의 켜진 탭이 늘 전체다(마운트 때 밑줄이 옮겨간다)',
+    file: 'src/worker/utils/home-first-screen.ts',
+    find: "${key === activeCat ? HOME_FS_CLASS.catOn : HOME_FS_CLASS.catOff}",
+    replace: "${key === 'all' ? HOME_FS_CLASS.catOn : HOME_FS_CLASS.catOff}",
+    test: T,
+    why: '서버는 전체에 밑줄, 앱은 그 카테고리에 밑줄 — 마운트 때 탭 표시가 바뀐다.',
+  },
 ]
