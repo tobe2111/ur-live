@@ -235,3 +235,8 @@
 - 기록 `docs/locks/loading/2026-11-10-landing-first-screen.md`. 🔑 사진은 preload 로 0.8s 에 와 있었는데 LCP 3.2~4.7s — "받는 것" 과 "그리는 것" 은 다르다. 제목·문장은 승인된 마스크 모션이라 일부러 안 그린다(사진이 LCP 라 충분하다).
 - §34 의 PC 이용권 탭 예시 사진(LCP 3.4s)은 **하지 않기로** — 예시 줄이 스크롤 등장 모션(`ur-gp-shelf`, 2026-11-04 대표 *"모션그래픽 제대로 넣어줘"*)이라 서버가 그리면 그 모션을 꺼야 하고, 사용자가 보는 내용은 이미 0.7s 에 떠 있다(측정 라벨만 바뀐다).
 - 배포 뒤 판정: `lcpel.cjs https://urdeal.kr/about`(LCP 요소가 서버 사진 · ≈0.8s) · `/partners` · `/influencer` · PC.
+
+## 44. 장바구니 정정 — 비로그인은 로그인 안내 화면(§42 의 오판) + 검색 결과 시드
+- 🩸 **이번에 틀렸던 판단**: 비로그인 장바구니를 "API 401 → 빈 장바구니" 로 추론해 `EmptyCart` 를 서버가 그렸다. 라이브 LCP 요소는 '장바구니를 이용하려면 로그인해 주세요'(로그인 안내 화면, `CartPage` `!loggedIn` 분기). 그 사이 바탕·문장이 통째로 바뀌는 깜빡임이 있었다 → 로그인 안내 화면 전체로 정정(`CART_GUEST_CLS`). 기록은 `2026-11-10-cart-first-screen.md` 정정 절.
+- 🌱 검색 결과 시드: `/search?q=` 의 LCP 3.7s(결과가 앱 부팅 뒤 한 왕복) → 워커가 첫 장(`/api/search?q&page=1&limit=50&scope`, 훅과 같은 경로)을 `__SSR_INITIAL_SEARCH__`(검색어·범위 표식)로 싣고 `useSearchInfinite` 가 initialData 로 쓴다. 마감 700ms(차가운 D1 이 HTML 을 붙잡지 않게). 가드 `search-seed-2026-11-10.test.ts` + 주입 6.
+- 배포 뒤 판정: 비로그인 `/cart` LCP 요소 = 서버 안내 문장(≈FCP) · `/search?q=돈가스` LCP(종전 3.7s) · `X-SSR-Status: SEARCH:*`(edge/stale/self/deadline 분포).

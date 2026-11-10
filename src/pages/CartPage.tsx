@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { useCart, useUpdateCartQuantity, useRemoveFromCart, useUpdateCartOption } from '@/hooks/useCart'
-import { CartHeader } from '@/components/cart/CartHeader'; import { CART_CLS, CART_COPY } from '@/shared/cart-page' // 🧺 2026-11-10 서버 첫 화면과 같은 뿌리·머리줄(로딩 분기도 같은 모양) — 한 줄: 파일크기 래칫(600)
+import { CartHeader } from '@/components/cart/CartHeader'; import { CART_CLS, CART_COPY, CART_GUEST_CLS, CART_GUEST_COPY } from '@/shared/cart-page' // 🧺 2026-11-10 서버 첫 화면과 같은 뿌리·머리줄(로딩 분기도 같은 모양) — 한 줄: 파일크기 래칫(600)
 import { CartItemComponent } from '@/components/cart/CartItem'
 import { CartGroupShippingRow } from '@/components/cart/CartGroupShippingRow'
 import { CartSummary } from '@/components/cart/CartSummary'
@@ -47,31 +47,31 @@ export default function CartPage() {
   // 비로그인 상태: v4 clean white design
   if (!loggedIn) {
     return (
-      <div className="flex flex-col min-h-screen bg-white dark:bg-[#11141C]">
+      <div className={CART_GUEST_CLS.root}>{/* 🔐 2026-11-10 서버 첫 화면(worker/utils/cart-first-screen.ts, 세션 쿠키 없음)과 같은 클래스·문구 */}
         <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
-        <div className="sticky top-0 z-10 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
-          <div className="ur-content-narrow flex items-center justify-between px-5 py-3">
-            <button type="button" onClick={goBack} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
-              <X className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
+        <div className={CART_GUEST_CLS.header}>
+          <div className={CART_GUEST_CLS.headerRow}>
+            <button type="button" onClick={goBack} aria-label={t('notifications.back')} className={CART_GUEST_CLS.back}>
+              <X className={CART_GUEST_CLS.backIcon} aria-hidden="true" />
             </button>
-            <h1 className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('cart.title')}</h1>
-            <div className="w-9" />
+            <h1 className={CART_GUEST_CLS.title}>{t('cart.title', { defaultValue: CART_COPY.title })}</h1>
+            <div className={CART_GUEST_CLS.spacer} />
           </div>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
-          <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center">
-            <BagIcon className="h-10 w-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
+        <div className={CART_GUEST_CLS.body}>
+          <div className={CART_GUEST_CLS.iconBox}>
+            <BagIcon className={CART_GUEST_CLS.icon} aria-hidden="true" />
           </div>
           <div>
-            <p className="text-[16px] font-semibold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
-            <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">{t('cart.loginRequired')}</p>
+            <p className={CART_GUEST_CLS.lead}>{t('common.loginRequired', { defaultValue: CART_GUEST_COPY.loginRequired })}</p>
+            <p className={CART_GUEST_CLS.desc}>{t('cart.loginRequired', { defaultValue: CART_GUEST_COPY.desc })}</p>
           </div>
           <button
             type="button"
             onClick={() => navigate(`/login?returnUrl=${encodeURIComponent('/cart')}`)}
-            className="w-full max-w-xs rounded-xl bg-brand py-4 text-[15px] font-bold text-white hover:bg-brand-dark active:scale-[0.98] transition-all"
+            className={CART_GUEST_CLS.btn}
           >
-            {t('common.loginButton')}
+            {t('common.loginButton', { defaultValue: CART_GUEST_COPY.loginButton })}
           </button>
           {/* 🏪 2026-08-12: 몰을 거쳐 온 손님은 유어딜 홈이 아니라 **그 가게로** (근거는 컴포넌트 주석) */}
           <ContinueShoppingLink onFallback={() => navigate('/')} />

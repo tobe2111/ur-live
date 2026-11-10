@@ -12,7 +12,7 @@ export default [
   {
     name: 'SSR시드위치 — body 핸들러가 MAIN 시드를 빠뜨린다',
     file: 'src/worker/index.ts',
-    find: '          el.append(`<script id="${scriptId}" type="application/json">${ssrPayload}</script>`, { html: true });',
+    find: '          el.append(`<script id="${scriptId}" type="application/json"${ssrSlot === \'SEARCH\' ? searchSeedAttrs(url.search) : \'\'}>${ssrPayload}</script>`, { html: true });', // 🌱 2026-11-10 검색 시드 표식이 붙었다
     replace: '',
     test: T,
     why: '시드가 없으면 0-RTT 가 깨져 첫 화면 뒤에 같은 데이터를 또 받는다.',

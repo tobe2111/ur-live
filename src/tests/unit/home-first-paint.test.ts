@@ -63,7 +63,8 @@ describe('홈 섹션 0-RTT — 피드와 섹션이 같은 화면이면 시드도
 
   it('두 시드를 병렬로 받는다 (직렬이면 그만큼 TTFB 가 늘어난다)', () => {
     const s = read(WORKER)
-    expect(s).toMatch(/Promise\.all\(\[\s*\n?\s*fetchSsrPayload\(ssrTarget/)
+    // 🌱 2026-11-10 검색 시드 마감: 첫 항목이 `seedP`(같은 줄에서 먼저 시작한 fetchSsrPayload) 를 감싼 삼항이 됐다 — 여전히 Promise.all 안에서 병렬이다.
+    expect(s).toMatch(/const seedP = fetchSsrPayload\(ssrTarget, origin0, c\.env, ssrWaitUntil\(c\)\); const \[r, extra[^\n]*= await Promise\.all\(\[\s*\n?\s*ssrTarget\.slot === 'SEARCH' \? withSeedDeadline\(seedP/)
   })
 
   it('보조 시드는 fail-soft — 없으면 주입만 건너뛴다', () => {

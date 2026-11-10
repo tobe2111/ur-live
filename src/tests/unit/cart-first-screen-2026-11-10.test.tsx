@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 import { buildCartFirstScreen } from '@/worker/utils/cart-first-screen'
-import { CART_CLS, CART_COPY, CART_BACK_ICON, CART_EMPTY_CLS, CART_EMPTY_ICON } from '@/shared/cart-page'
+import { CART_CLS, CART_COPY, CART_BACK_ICON, CART_GUEST_CLS, CART_GUEST_COPY, CART_EMPTY_CLS, CART_EMPTY_ICON } from '@/shared/cart-page'
 import { PC_HOME_FS } from '@/shared/pc-home-first-screen'
 import { GUEST_PC_FRAME } from '@/worker/utils/guest-first-screen'
 import { firstScreenApplies, criticalSurfaceOf, criticalCssFor } from '@/worker/utils/css-first-boot'
@@ -72,27 +72,31 @@ describe('③ 배선', () => {
   })
 })
 
-describe('⑤ 비로그인 = 머리줄 + 빈 장바구니(로더 없음) · 로그인 = 머리줄 + 로더', () => {
+describe('⑤ 비로그인 = 로그인 안내 화면 전체(로더 없음) · 로그인 = 머리줄 + 로더', () => {
   const guest = buildCartFirstScreen(LOADER, true, false)
-  it('비로그인 HTML 에 빈 장바구니 전부 · 로더 없음 · 가방 아이콘 36px 빈 칸', () => {
-    for (const v of Object.values(CART_EMPTY_CLS)) expect(guest).toContain(v)
-    for (const k of ['empty', 'emptySubtitle', 'continueShop'] as const) expect(guest).toContain(CART_COPY[k])
-    expect(guest).not.toContain('LOADER')
+  it('비로그인 HTML = CART_GUEST_CLS 전부 · 문구 셋 · 로더 없음 · 빈 장바구니(EmptyCart) 문구 없음', () => {
+    for (const v of Object.values(CART_GUEST_CLS)) expect(guest).toContain(v)
+    for (const v of Object.values(CART_GUEST_COPY)) expect(guest).toContain(v)
+    expect(guest).not.toContain('LOADER'); expect(guest).not.toContain(CART_COPY.empty); expect(guest).not.toContain(CART_CLS.root)
     const root = dom(guest).querySelector('#ur-first-screen > div')!
-    expect(root.children[1].getAttribute('class')).toBe(CART_EMPTY_CLS.wrap)
-    expect(root.querySelector(`.${CART_EMPTY_CLS.iconBox.split(' ')[0]} > span`)!.getAttribute('style')).toBe(`width:${CART_EMPTY_ICON}px;height:${CART_EMPTY_ICON}px`)
+    expect(root.getAttribute('class')).toBe(CART_GUEST_CLS.root)
+    expect(root.children[0].getAttribute('class')).toBe(CART_GUEST_CLS.header); expect(root.children[1].getAttribute('class')).toBe(CART_GUEST_CLS.body)
   })
-  it('로그인(기본값) HTML 엔 빈 장바구니가 없고 로더가 있다', () => {
-    expect(html).not.toContain(CART_COPY.empty); expect(html).toContain('LOADER')
+  it('로그인(기본값) HTML 엔 로그인 안내가 없고 로더가 있다', () => {
+    expect(html).not.toContain(CART_GUEST_COPY.desc); expect(html).toContain('LOADER')
     expect(buildCartFirstScreen(LOADER)).toBe(buildCartFirstScreen(LOADER, true, true))
   })
-  it('EmptyCart 가 같은 상수를 쓴다', () => {
-    for (const k of Object.keys(CART_EMPTY_CLS) as Array<keyof typeof CART_EMPTY_CLS>) {
-      expect(EMPTY, k).toContain(`CART_EMPTY_CLS.${k}`)
-      expect(EMPTY, `손으로 적은 ${k}`).not.toContain(`"${CART_EMPTY_CLS[k]}"`)
+  it('CartPage 비로그인 분기가 같은 상수를 쓴다(손으로 적은 클래스 0 · 문구는 상수 기본값)', () => {
+    const guestBranch = PAGE.slice(PAGE.indexOf('if (!loggedIn) {'), PAGE.indexOf('return <CartPageContent />'))
+    for (const k of Object.keys(CART_GUEST_CLS) as Array<keyof typeof CART_GUEST_CLS>) {
+      expect(guestBranch, k).toContain(`CART_GUEST_CLS.${k}`)
+      expect(guestBranch, `손으로 적은 ${k}`).not.toContain(`"${CART_GUEST_CLS[k]}"`)
     }
+    expect(guestBranch).toContain("defaultValue: CART_GUEST_COPY.loginRequired"); expect(guestBranch).toContain("defaultValue: CART_GUEST_COPY.desc"); expect(guestBranch).toContain("defaultValue: CART_GUEST_COPY.loginButton")
+  })
+  it('EmptyCart(로그인 뒤 빈 장바구니)는 여전히 같은 상수를 쓴다', () => {
+    for (const k of Object.keys(CART_EMPTY_CLS) as Array<keyof typeof CART_EMPTY_CLS>) expect(EMPTY, k).toContain(`CART_EMPTY_CLS.${k}`)
     expect(EMPTY).toContain('<BagIcon size={CART_EMPTY_ICON}')
-    for (const k of ['empty', 'emptySubtitle', 'continueShop'] as const) expect(EMPTY).toContain(`defaultValue: CART_COPY.${k}`)
   })
 })
 
