@@ -6,6 +6,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { CONCEPT_FAQ } from '@/shared/seo/concept-content'
+import { FAQ_CLS, FAQ_COPY } from '@/shared/faq-page' // ❓ 2026-11-10 서버 첫 화면(worker/utils/faq-first-screen.ts)과 같은 클래스·문구
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-02 11차 ② — 답이 툭 생기며 아래 질문을 한 번에 미는 대신, 높이가 부드럽게 열리고 닫힌다(grid 0fr→1fr).
 injectMotionCss('ur-m-faq', `.ur-faq-a { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.2,.9,.3,1); }.ur-faq-a > div { overflow: hidden; }.ur-faq-a.is-open { grid-template-rows: 1fr; }.ur-faq-a p { opacity: 0; transition: opacity .2s ease; }.ur-faq-a.is-open p { opacity: 1; transition-delay: .08s; }@media (prefers-reduced-motion: reduce){.ur-faq-a,.ur-faq-a p{transition:none!important}}`)
@@ -20,7 +21,7 @@ interface FAQ {
 export default function FAQPage() {
   const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState(t('faq.catAll', { defaultValue: '전체' }))
+  const [selectedCategory, setSelectedCategory] = useState(t('faq.catAll', { defaultValue: FAQ_COPY.catAll }))
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   /**
@@ -47,7 +48,7 @@ export default function FAQPage() {
     })),
   }
 
-  const catAll = t('faq.catAll', { defaultValue: '전체' })
+  const catAll = t('faq.catAll', { defaultValue: FAQ_COPY.catAll })
   const categories = [catAll, ...Array.from(new Set(faqs.map(f => f.category)))]
 
   const filteredFAQs = faqs.filter(faq => {
@@ -62,41 +63,37 @@ export default function FAQPage() {
     <div className={SUB_PAGE_CLS}>
       <SEO title={t('faq.seoTitle', { defaultValue: CONSUMER_SURFACE_SEO['/faq'].title })} description={t('faq.seoDesc', { defaultValue: CONSUMER_SURFACE_SEO['/faq'].description })} url="/faq" jsonLd={faqJsonLd} />
 
-      <SubPageHeader title={t('faq.title', { defaultValue: '자주 묻는 질문' })} fallback="/" backLabel={t('common.back', { defaultValue: '뒤로가기' })} />
+      <SubPageHeader title={t('faq.title', { defaultValue: FAQ_COPY.title })} fallback="/" backLabel={t('common.back', { defaultValue: '뒤로가기' })} />
 
-      <div className="ur-content-medium px-5 lg:px-8 pt-4 pb-20">
+      <div className={FAQ_CLS.content}>
         {/* Hero */}
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-2">
-            <HelpCircle className="w-5 h-5 text-gray-900 dark:text-white" />
-            <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('faq.heroTitle', { defaultValue: '무엇을 도와드릴까요?' })}</p>
+        <div className={FAQ_CLS.hero}>
+          <div className={FAQ_CLS.heroRow}>
+            <HelpCircle className={FAQ_CLS.heroIcon} />
+            <p className={FAQ_CLS.heroTitle}>{t('faq.heroTitle', { defaultValue: FAQ_COPY.heroTitle })}</p>
           </div>
-          <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('faq.heroDesc', { defaultValue: '궁금한 내용을 빠르게 찾아보세요.' })}</p>
+          <p className={FAQ_CLS.heroDesc}>{t('faq.heroDesc', { defaultValue: FAQ_COPY.heroDesc })}</p>
         </div>
 
         {/* Search */}
-        <div className="relative mb-5">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+        <div className={FAQ_CLS.search}>
+          <Search className={FAQ_CLS.searchIcon} />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t('faq.searchPlaceholder', { defaultValue: '궁금한 내용을 검색해보세요' })}
-            className="w-full pl-9 pr-4 py-3 bg-gray-100 dark:bg-[#1D1F29] rounded-xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:bg-white dark:focus:bg-[#11141C] focus:ring-1 focus:ring-gray-900 focus:outline-none transition-all"
+            placeholder={t('faq.searchPlaceholder', { defaultValue: FAQ_COPY.searchPlaceholder })}
+            className={FAQ_CLS.searchInput}
           />
         </div>
 
         {/* 카테고리 탭 */}
-        <div className="flex gap-2 mb-5 overflow-x-auto scrollbar-hide -mx-1 px-1">
+        <div className={FAQ_CLS.chips}>
           {categories.map(category => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all ${
-                selectedCategory === category
-                  ? 'bg-brand text-white'
-                  : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
-              }`}
+              className={`${FAQ_CLS.chip} ${selectedCategory === category ? FAQ_CLS.chipOn : FAQ_CLS.chipOff}`}
             >
               {category}
             </button>
@@ -110,32 +107,32 @@ export default function FAQPage() {
             <p className="text-[15px] text-gray-500 dark:text-gray-400">{t('faq.emptyTitle', { defaultValue: '검색 결과가 없습니다.' })}</p>
           </div>
         ) : (
-          <div className="border-t border-gray-100 dark:border-[#2C2F35]">
+          <div className={FAQ_CLS.list}>
             {filteredFAQs.map(faq => {
               const isOpen = expandedId === faq.id
               return (
-                <div key={faq.id} className="border-b border-gray-100 dark:border-[#2C2F35]">
+                <div key={faq.id} className={FAQ_CLS.item}>
                   <button
                     onClick={() => setExpandedId(isOpen ? null : faq.id)}
-                    className="w-full py-4 flex items-start gap-3 text-left hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors -mx-4 px-4"
+                    className={FAQ_CLS.q}
                   >
-                    <span className="shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-medium flex items-center justify-center mt-1">
-                      Q
+                    <span className={FAQ_CLS.qBadge}>
+                      {FAQ_COPY.badge}
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium mb-1">{faq.category}</p>
-                      <p className="text-[15px] font-medium text-gray-900 dark:text-white leading-snug">{faq.question}</p>
+                    <div className={FAQ_CLS.qText}>
+                      <p className={FAQ_CLS.qCat}>{faq.category}</p>
+                      <p className={FAQ_CLS.qTitle}>{faq.question}</p>
                     </div>
                     <ChevronDown
-                      className={`shrink-0 w-4 h-4 text-gray-400 dark:text-gray-500 mt-1 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                      className={`${FAQ_CLS.qChev} ${isOpen ? 'rotate-180' : ''}`}
                     />
                   </button>
 
                   {/* 답은 늘 그려 두고 높이만 연다 — 닫힌 동안은 읽기 프로그램·탭 이동에서 빠진다(inert). */}
                   <div className={`ur-faq-a${isOpen ? ' is-open' : ''}`} aria-hidden={!isOpen} {...(isOpen ? {} : { inert: '' })}>
                     <div>
-                      <div className="pb-4 pl-9 pr-4 -mt-1">
-                        <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">{faq.answer}</p>
+                      <div className={FAQ_CLS.aInner}>
+                        <p className={FAQ_CLS.aText}>{faq.answer}</p>
                       </div>
                     </div>
                   </div>
@@ -146,20 +143,20 @@ export default function FAQPage() {
         )}
 
         {/* 고객센터 */}
-        <div className="mt-8 bg-gray-50 dark:bg-[#1D1F29] rounded-2xl p-5">
-          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('faq.supportTitle', { defaultValue: '도움이 더 필요하신가요?' })}</h2>
-          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">{t('faq.supportDesc', { defaultValue: '궁금한 사항이 해결되지 않았다면 연락주세요.' })}</p>
-          <div className="space-y-2">
+        <div className={FAQ_CLS.support}>
+          <h2 className={FAQ_CLS.supportTitle}>{t('faq.supportTitle', { defaultValue: FAQ_COPY.supportTitle })}</h2>
+          <p className={FAQ_CLS.supportDesc}>{t('faq.supportDesc', { defaultValue: FAQ_COPY.supportDesc })}</p>
+          <div className={FAQ_CLS.supportRows}>
             {/* 🧹 2026-06-21 (대표 — 고객센터 전화번호 전체 비노출): 전화 행 제거, 이메일/운영시간만 안내. */}
-            <div className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-200">
-              <ClockIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-              <span className="text-gray-500 dark:text-gray-400 w-16">{t('faq.supportHours', { defaultValue: '운영시간' })}</span>
-              <span className="font-medium text-gray-900 dark:text-white">{t('faq.supportHoursValue', { defaultValue: '평일 09:00 - 18:00' })}</span>
+            <div className={FAQ_CLS.supportRow}>
+              <ClockIcon className={FAQ_CLS.supportIcon} />
+              <span className={FAQ_CLS.supportLabel}>{t('faq.supportHours', { defaultValue: FAQ_COPY.supportHours })}</span>
+              <span className={FAQ_CLS.supportValue}>{t('faq.supportHoursValue', { defaultValue: FAQ_COPY.supportHoursValue })}</span>
             </div>
-            <div className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-200">
-              <MailIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-              <span className="text-gray-500 dark:text-gray-400 w-16">{t('faq.supportEmail', { defaultValue: '이메일' })}</span>
-              <span className="font-medium text-gray-900 dark:text-white">{t('faq.supportEmailValue', { defaultValue: 'urteam.corp@gmail.com' })}</span>
+            <div className={FAQ_CLS.supportRow}>
+              <MailIcon className={FAQ_CLS.supportIcon} />
+              <span className={FAQ_CLS.supportLabel}>{t('faq.supportEmail', { defaultValue: FAQ_COPY.supportEmail })}</span>
+              <span className={FAQ_CLS.supportValue}>{t('faq.supportEmailValue', { defaultValue: FAQ_COPY.supportEmailValue })}</span>
             </div>
           </div>
         </div>

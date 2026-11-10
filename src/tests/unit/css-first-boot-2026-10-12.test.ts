@@ -104,7 +104,7 @@ describe('③ 문서 파싱 중이면 엔트리는 DOMContentLoaded 까지 기�
 describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', () => {
   const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
   const PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
-  it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228', '/vouchers', '/stays/2887', '/stays', '/map', '/urshorts', '/life', '/blog', '/search'])('첫 화면 표면(첫 화면 CSS 자격 + 지연): %s', (p) => {
+  it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228', '/vouchers', '/stays/2887', '/stays', '/map', '/urshorts', '/life', '/blog', '/search', '/faq'])('첫 화면 표면(첫 화면 CSS 자격 + 지연): %s', (p) => {
     expect(cssFirstApplies(p, PHONE)).toBe(true)
     expect(firstScreenApplies(p, PHONE)).toBe(true) // ⏳ 2026-11-09 로더-먼저가 생긴 뒤엔 이 줄이 "첫 화면 CSS 를 넣는다" 를 지킨다(cssFirstApplies 만으론 못 가른다)
   })
@@ -276,6 +276,7 @@ describe('⑤-2 서버가 그리는 첫 화면 = CSS 먼저 적용 표면 (2026-
     'src/worker/utils/urshorts-first-screen.ts': '/urshorts', // 2026-11-09 — 유어쇼츠 목록
     'src/worker/utils/map-first-screen.ts': '/map', // 2026-11-09 — 지도 껍데기
     'src/worker/utils/search-first-screen.ts': '/search', // 2026-11-10 — 검색 헤더·빈 검색 안내
+    'src/worker/utils/faq-first-screen.ts': '/faq', // 2026-11-10 — 자주 묻는 질문 전체
   }
   it('ROOTS 의 모든 첫 화면 모듈에 대표 경로가 있다(새 첫 화면이 생기면 여기서 멈춘다)', async () => {
     // @ts-expect-error — .mjs 생성기(타입 없음)

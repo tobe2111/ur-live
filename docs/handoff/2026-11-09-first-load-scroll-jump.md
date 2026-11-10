@@ -200,3 +200,9 @@
 - `/search?q=돈가스` 폰: FCP **1,016**(헤더가 먼저) · LCP 3,700(결과 목록 — API 뒤, 종전과 같은 구조) · CLS 0.
 - PC: FCP **464** · LCP 636 · CLS 0.0027(액자·네비 예약 효과 — 가로 밀림 0).
 - 남은 것: 검색어 있는 화면의 결과(LCP 3.7s)는 서버가 결과 API 를 self-fetch 해야 줄어든다(새 캐시 키 + 질의별이라 예열 불가 — 지금은 안 한다).
+
+## 37. 자주 묻는 질문 `/faq` 서버 첫 화면 (대표 "계속 최적화")
+- 기록 `docs/locks/loading/2026-11-10-faq-first-screen.md`. 화면 전체가 고정 문구라 **전부** 그린다(답변 본문만 뺀다 — 모션 CSS 전엔 펼쳐 보인다).
+- 🔑 `SubPageHeader` 클래스를 `shared/sub-page-head.ts` 로 옮겼다 — 마이 아래 하위 화면(찜·쿠폰·리뷰·숙소·탈퇴…)이 같은 머리줄을 쓰므로 **다음 하위 화면 첫 화면은 `subPageHeadHtml(title)` 한 줄**로 머리줄을 얻는다.
+- 다음 후보: `/about`(2.6s · 소개 랜딩, 풀폭) · `/cart`·`/notifications`(로그인 필요 — 게스트와 반대로 **세션 있을 때만** 그릴 껍데기).
+- 배포 뒤 판정: `vitals_nocb.cjs https://urdeal.kr/faq`(종전 FCP 2,880) · `… pc`.
