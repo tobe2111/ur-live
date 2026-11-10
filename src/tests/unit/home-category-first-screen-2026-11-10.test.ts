@@ -48,6 +48,7 @@ describe('홈 ?category= 판정', () => {
     expect(on.length).toBe(1)
     expect(on[0]).not.toBe([...full.matchAll(/<span class="[^"]*">([^<]*)<\/span>/g)].find((m) => full.includes(`${HOME_FS_CLASS.catOn}">${m[1]}`))?.[1]) // '전체' 가 아니다
     expect(html).not.toContain(HOME_FS_CLASS.grid); expect(html).not.toContain(HOME_FS_CLASS.panel)
+    expect(html).toContain('<h1 class="sr-only">') // 전체 홈과 같은 제목 요소(크롤러)
     expect(html).toContain('min-height:34dvh'); expect(html.indexOf('LOADER')).toBeGreaterThan(html.indexOf(HOME_FS_CLASS.catRow))
     expect(WORKER).toContain("} else if (ssrSlot === 'MAIN' && isMainPage && shouldRenderMobileFirstScreen(c.req.header('user-agent')) && homeCategoryOf(url.search)) { const catFirst = buildHomeCategoryFirstScreen(homeCategoryOf(url.search)!, urdealLoaderHtml, c.req.header('cookie') ?? null);")
   })
