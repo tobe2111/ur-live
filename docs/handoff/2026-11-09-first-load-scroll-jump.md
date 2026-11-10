@@ -182,3 +182,9 @@
 - PC 실측(1440px·4G·CPU 4배): 비로그인 이용권 FCP **2.69s** · 마이 **3.17s** · 로그인 1.23s(LCP 3.46 — 마운트 뒤 큰 글자 블록). 게스트 탭은 PC 에서 `MobileAppLayout` 이 `.mobile-app-container.app-framed`(430px 가운데) 로 감싸는데 서버는 액자를 몰라 종전엔 폰 UA 에만 그렸다.
 - 처방: `buildGuestFirstScreen(…, isMobile)` — PC 면 [네비 높이 예약(`PC_HOME_FS.topnav*`, 로그인 화면은 네비가 없어 제외)] + [`mobile-app-container app-framed` · `--app-frame:430px`] 로 감싼다(값은 `MobileAppLayout` 그대로 — 시험이 소스 대조). 거터 바탕(`body.app-frame-host`)은 React 가 테마를 알고 칠한다 — 색만 바뀌고 자리는 그대로. 워커 게스트 분기의 UA 조건을 빼고 빌더 인자로(앵커 재조준 3 · css-first-boot PC 가지 `guestTabOf !== null`).
 - 가드 ①-4 + 주입 2 되돌려 빨간불. 배포 뒤 판정: PC `vitals_nocb.cjs /my-vouchers pc`·`/user/profile pc` FCP ≈ HTML 직후, CLS < 0.01(액자 가로 밀림 0).
+
+## 34. [E4] #2278 · #2279 배포 뒤 판정(PC 1440px · 4G · CPU 4배) + 브랜치 재기동
+- **#2278 PC 상세 `/pass/2919`**: 요청 목록에 `width=960`(폰 히어로) **없음** — 1280 폭 한 장만 받는다(종전엔 숨긴 채 수백 KB 추가). LCP 1,300ms(HTML 681 → 사진), 그 회차 TTFB 641.
+- **#2279 로그인 전 탭 PC**: `/my-vouchers` FCP **1,020 · 628ms**(종전 2,690) · CLS 0.0029 / `/user/profile` FCP **828 · 464ms**(종전 3,170) · LCP 1,004 · 632 · CLS 0.0014. 액자 가로 밀림 0(남은 0.001~0.003 은 3.7s 에 하단 칩 줄 — 첫 화면 밖, 종전에도 있던 것).
+- 🔎 **남은 것 하나**: `/my-vouchers` PC 의 LCP 가 **3.4~3.7s** — 서버가 그린 제목(696ms, 7,399px²)보다 React 가 마운트한 **예시 사진**(`GUEST_EXAMPLE_IMG.cafe` `wallet-brunch.webp` 7.7KB, 7,709px²)이 아주 조금 커서 LCP 가 그 사진으로 넘어간다. 폰에선 사진이 작아 제목이 LCP 다. 처방 후보: 게스트 첫 화면 서버 본문에 예시 줄(`GuestExampleRows`)까지 그리기, 또는 최소한 그 사진 `<link rel=preload>`. 다음 작업.
+- 🩸 브랜치: 지정 브랜치의 원격이 머지 뒤 자동 삭제돼 `checkout -B … origin/main` 으로 다시 세웠다. `push --delete` 는 분류기가 막는다 — 원격이 남아 있으면 삭제 대신 `origin/main` 을 머지해 올린다(이번엔 원격이 없어 새 브랜치로 올라갔다).
