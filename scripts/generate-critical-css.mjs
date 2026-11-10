@@ -55,6 +55,7 @@ export const ROOTS = [
   'src/worker/utils/faq-first-screen.ts', // ❓ 2026-11-10 자주 묻는 질문 전체
   'src/worker/utils/notifications-first-screen.ts', // 🔔 2026-11-10 알림 머리줄(세션 있을 때만)
   'src/worker/utils/cart-first-screen.ts', // 🧺 2026-11-10 장바구니 머리줄
+  'src/worker/utils/landing-first-screen.ts', // 🧭 2026-11-10 안내 랜딩 셋 머리줄 + 사진 칸
 ]
 
 /**
@@ -191,6 +192,7 @@ export const SURFACE_ROOTS = {
   faq: ['src/worker/utils/faq-first-screen.ts'], // ❓ 2026-11-10
   notifications: ['src/worker/utils/notifications-first-screen.ts'], // 🔔 2026-11-10
   cart: ['src/worker/utils/cart-first-screen.ts'], // 🧺 2026-11-10
+  landing: ['src/worker/utils/landing-first-screen.ts'], // 🧭 2026-11-10
 }
 
 /** 셀렉터의 클래스 이름들(이스케이프 해제) — `:not(…)` 안은 제외 조건이라 보지 않는다. */

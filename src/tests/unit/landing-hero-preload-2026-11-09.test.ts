@@ -15,9 +15,11 @@ describe('landingHeroFor', () => {
     for (const p of ['/', '/about/print', '/new-openings', '/pass/1']) expect(landingHeroFor(p)).toBe('')
   })
   it('화면 사진 주소가 같은 상수다', () => {
-    const s = read('src/pages/landing/premium.tsx')
-    expect((s.match(/src: LANDING_HERO_SRC,/g) || []).length).toBe(3)
-    expect(s).not.toContain("src: '/static/partners/deal-photo.jpg'")
+    // 🧭 2026-11-10 사진 셋(`LANDING_PHOTOS`)이 shared/landing-photo.ts 로 옮겨갔다(서버 첫 화면과 공유) — 화면은 그걸 import 한다.
+    const shared = read('src/shared/landing-photo.ts'), s = read('src/pages/landing/premium.tsx')
+    expect((shared.match(/src: LANDING_HERO_SRC,/g) || []).length).toBe(3)
+    expect(s).toContain("import { LANDING_PHOTOS } from '@/shared/landing-photo'")
+    expect(s).not.toContain("src: '/static/partners/deal-photo.jpg'"); expect(shared).not.toContain("src: '/static/partners/deal-photo.jpg'")
   })
   it('워커가 응답 헤더에 싣는다', () => {
     expect(read('src/worker/index.ts')).toContain('appendLcpLink(c.res.headers, landingHeroFor(url.pathname));')
