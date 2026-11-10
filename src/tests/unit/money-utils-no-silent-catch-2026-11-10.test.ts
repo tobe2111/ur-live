@@ -6,7 +6,7 @@
  * 실패가 `[swallow:<파일>]` 로 워커 로그에 남게 했다.
  *
  * ## ⚠️ 못 보는 것
- * - 나머지 파일(전체 100여 곳)은 범위 밖 — 잠금 파일(payment·webhook)은 대표 허가가 필요하다.
+ * - 나머지 파일은 범위 밖(대부분 스키마 보정용 무시).
  * - `catch { }` 블록 형태와, 일부러 무시하는 사유 주석이 든 catch(ALTER 중복 무시)는 세지 않는다.
  */
 import { describe, it, expect } from 'vitest'
@@ -25,6 +25,9 @@ const FILES = [
   'src/worker/routes/disputes.routes.ts',
   'src/features/group-buy/api/experience-campaign.routes.ts',
   'src/worker/cron/wishlist-notify.ts',
+  // 3차(2026-11-10 대표 허가 — docs/locks/toss/2026-11-10-silent-catch-to-log.md) — 결제 잠금 파일
+  'src/worker/routes/payment.routes.ts',
+  'src/worker/routes/webhook.routes.ts',
 ]
 
 describe('돈 관련 파일 — 빈 catch 0', () => {

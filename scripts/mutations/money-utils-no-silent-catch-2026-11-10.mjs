@@ -17,4 +17,20 @@ export default [
     test: TEST,
     why: '표가 안 만들어져도 모른다.',
   },
+  {
+    name: '[silent] 결제 승인의 셀러 원장 기입 실패를 다시 삼킨다',
+    file: 'src/worker/routes/payment.routes.ts',
+    find: "await creditSellerOrderToLedger(c.env.DB, Number(order.id)).catch(swallow('payment'))",
+    replace: 'await creditSellerOrderToLedger(c.env.DB, Number(order.id)).catch(() => {})',
+    test: TEST,
+    why: '원장에 매출이 안 들어가도 로그가 없다.',
+  },
+  {
+    name: '[silent] 웹훅의 셀러 원장 기입 실패를 다시 삼킨다',
+    file: 'src/worker/routes/webhook.routes.ts',
+    find: "await creditSellerOrderToLedger(DB, Number(o.id)).catch(swallow('webhook'))",
+    replace: 'await creditSellerOrderToLedger(DB, Number(o.id)).catch(() => {})',
+    test: TEST,
+    why: '같음 — 웹훅 경로.',
+  },
 ]

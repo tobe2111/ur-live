@@ -140,4 +140,5 @@
   **번들이 바뀌는 변경은 `check-surface-budgets` 와 `check-exec-cost` 를 둘 다** 로컬에서 돌릴 것.
 - 빈 catch 2차: 주문(`order.routes`)·공구(`group-buy.routes`)·추첨(`fcfs`)·분쟁(`disputes`)·체험단·찜 알림 cron — 37곳 → `swallow('<파일>')`.
   `orders-fk-mismatch.mjs` 주입 앵커 2건이 그 줄을 잡고 있어 같이 고쳤다(되돌려-검증 빨간불 확인).
-- 남은 빈 catch: 잠금 파일(`payment.routes` 8 · `webhook.routes` 6 — 대표 허가 필요) · `admin-products`(72, 대부분 스키마 보정) · 그 외 소량.
+- 잠금 파일(`payment.routes` 8 · `webhook.routes` 6)도 대표 허가("허가해줄게 계속 개선")로 같은 처리 — 기록 `docs/locks/toss/2026-11-10-silent-catch-to-log.md`.
+- 남은 빈 catch: `admin-products`(72, 대부분 스키마 보정) · 그 외 소량.
