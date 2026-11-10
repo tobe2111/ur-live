@@ -66,6 +66,15 @@ function parseColumnDef(line) {
   return { col, notNull, hasDefault, type }
 }
 
+/** 라이브 D1 실측 컬럼(`snapshot-live-schema.mjs` 가 찍는다). 표가 사진에 없으면 null. */
+const LIVE = (() => {
+  try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'src/shared/db/live-schema.snapshot.json'), 'utf8')).tables || {} } catch { return {} }
+})()
+function liveCols(table) {
+  const raw = LIVE[String(table).toLowerCase()]
+  return typeof raw === 'string' ? new Set(raw.split(',').map((c) => c.trim().toLowerCase())) : null
+}
+
 function parseMigrations() {
   const migDir = path.join(ROOT, 'migrations')
   if (!fs.existsSync(migDir)) return
@@ -166,6 +175,10 @@ function scanFile(file) {
     const missing = []
     for (const [colName, info] of colMap) {
       if (info.notNull && !info.hasDefault && !cols.includes(colName)) {
+        // 🗄️ 2026-11-10 라이브에 **없는** 컬럼은 누락이 아니다 — 마이그레이션 파일엔 같은 표의 정의가 여러 벌이라
+        //   (search_logs.search_query · order_refund_history.amount) 실제 표에 없는 컬럼을 '빠졌다'고 매 커밋 경고했다.
+        //   라이브 사진에 그 표가 있을 때만 걸러낸다(사진에 없는 표는 종전대로 마이그레이션을 믿는다).
+        if (liveCols(table) && !liveCols(table).has(colName)) continue
         missing.push(colName)
       }
     }
