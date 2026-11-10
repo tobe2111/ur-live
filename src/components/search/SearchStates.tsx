@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePopularSearches } from '@/hooks/queries/usePopularSearches'
 import Udal from '@/components/mascot/Udal'
+import { SEARCH_CLS, SEARCH_COPY, SEARCH_HERO_MASCOT, RECENT_SEARCHES_KEY } from '@/shared/search-page' // 🔎 2026-11-10 서버 첫 화면과 같은 클래스·문구·저장 키
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-02 10차 ② — 지운 검색어는 작아지며 사라지고, 남은 검색어는 제자리로 미끄러져 빈자리를 채운다(FLIP).
 injectMotionCss('ur-m-chipout', `@keyframes ur-chip-out { to { opacity: 0; transform: scale(.6); } }.ur-rise.ur-chip-out { pointer-events: none; animation: ur-chip-out .2s ease-in forwards; }@media (prefers-reduced-motion: reduce){.ur-rise.ur-chip-out{animation:none!important;opacity:0}}`)
@@ -21,7 +22,7 @@ interface SearchStatesProps {
 
 // 🛡️ 2026-05-19: 최근 검색어 — localStorage 'recent_searches' (최대 10개, 24h ~ 영구).
 //   SearchPage / SearchHeader 진입 시 자동 표시.
-const RECENT_KEY = 'recent_searches_v1'
+const RECENT_KEY = RECENT_SEARCHES_KEY
 const MAX_RECENT = 10
 
 function loadRecent(): string[] {
@@ -122,7 +123,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
   // No Query State — 최근 검색어가 있으면 표시.
   if (!query) {
     return (
-      <div className="py-6">
+      <div className={SEARCH_CLS.states}>
         {recent.length > 0 ? (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-3">
@@ -165,10 +166,11 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 mb-5">
-            <Udal mood="hello" size={96} className="mb-3" />
-            <p className="text-[15px] font-medium text-gray-900 dark:text-white mb-1">검색어를 입력해주세요</p>
-            <p className="text-[13px] text-gray-500 dark:text-gray-400">상품명 또는 판매자명으로 검색할 수 있습니다</p>
+          <div className={SEARCH_CLS.hero}>
+            {/* 🔎 2026-11-10 서버 첫 화면이 같은 그림을 먼저 그린다 — 첫 화면 자리라 priority. */}
+            <Udal mood="hello" size={SEARCH_HERO_MASCOT.width} priority className={SEARCH_CLS.heroMascot} />
+            <p className={SEARCH_CLS.heroTitle}>{SEARCH_COPY.heroTitle}</p>
+            <p className={SEARCH_CLS.heroSub}>{SEARCH_COPY.heroSub}</p>
           </div>
         )}
 

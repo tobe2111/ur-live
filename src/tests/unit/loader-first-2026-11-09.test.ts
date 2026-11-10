@@ -14,16 +14,16 @@ const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKi
 const PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 
 describe('① 표면 판정', () => {
-  it.each(['/search', '/cart', '/videos', '/products/3', '/checkout', '/browse', '/u/jiwon/p/2887', '/map?category=x'])('소비자 화면 %s → 로더-먼저', (p) => {
+  it.each(['/cart', '/videos', '/products/3', '/checkout', '/browse', '/u/jiwon/p/2887', '/map?category=x'])('소비자 화면 %s → 로더-먼저', (p) => {
     expect(loaderFirstApplies(p.split('?')[0])).toBe(true); expect(cssFirstApplies(p.split('?')[0], PHONE)).toBe(true); expect(cssFirstApplies(p.split('?')[0], PC)).toBe(true)
   })
   it.each(['/admin', '/admin/login', '/seller/orders', '/agency', '/embed/live/1', '/wholesale/x', '/supplier', '/auth/kakao/callback', '/oauth/x', '/sync/callback', '/api/version'])('%s → 제외', (p) => {
     expect(loaderFirstApplies(p)).toBe(false); expect(cssFirstApplies(p, PHONE)).toBe(false)
   })
   it('③ 첫 화면 없는 표면엔 critical CSS 0 — 알려진 표면은 그대로', () => {
-    expect(criticalSurfaceOf('/search')).toBeNull(); expect(criticalCssFor('/search', 'FULL', 'HOME', { detail: 'D' })).toBe('')
+    expect(criticalSurfaceOf('/cart')).toBeNull(); expect(criticalCssFor('/cart', 'FULL', 'HOME', { detail: 'D' })).toBe('') // 🔎 2026-11-10 /search 는 첫 화면 표면이 됐다(search-first-screen) — /cart 로 재조준
     expect(criticalCssFor('/pass/1', 'FULL', 'HOME', { detail: 'D' })).toBe('D'); expect(criticalCssFor('/', 'FULL', 'HOME', {})).toBe('HOME')
-    expect(firstScreenApplies('/search', PHONE)).toBe(false)
+    expect(firstScreenApplies('/cart', PHONE)).toBe(false)
   })
 })
 
