@@ -44,11 +44,11 @@ describe('① /login 은 네 번째 게스트 탭', () => {
 describe('①-2 PC 도 그린다 — 로그인 화면은 PC 가 같은 한 열(max-w 400)이라 폰 전용 조건에서 예외', () => {
   it('워커 분기와 첫 화면 CSS 자격 둘 다 login 을 PC 에서 허용한다', () => {
     const worker = stripComments(readFileSync('src/worker/index.ts', 'utf8'))
-    expect(worker).toContain("guestTabOf(url.pathname) && (guestTabOf(url.pathname) === 'login' || shouldRenderMobileFirstScreen(")
+    expect(worker).toContain("buildGuestFirstScreen(guestTabOf(url.pathname)!, urdealLoaderHtml, nonce, shouldRenderMobileFirstScreen(c.req.header('user-agent')))") // 2026-11-09 PC 는 게스트 탭 전부(빌더 인자)
     const pcUa = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
     expect(firstScreenApplies('/login', pcUa, false)).toBe(true)
     expect(firstScreenApplies('/login', pcUa, true), '세션 쿠키가 있으면 안 그린다').toBe(false)
-    expect(firstScreenApplies('/my-vouchers', pcUa, false), '다른 게스트 탭은 PC 에서 종전대로 안 그린다').toBe(false)
+    expect(firstScreenApplies('/my-vouchers', pcUa, false), '2026-11-09 부터 다른 게스트 탭도 PC 에서 그린다(네비 예약 + 액자)').toBe(true)
     expect(criticalSurfaceOf('/login'), '로그인은 guest 표면 CSS 를 받는다').toBe('guest')
     expect(criticalCssFor('/login', 'FULL', 'HOME', { guest: 'GUEST' })).toBe('GUEST')
     expect(LOGIN_CLS.frame).toContain('md:max-w-[400px]')

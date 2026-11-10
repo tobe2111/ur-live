@@ -99,9 +99,9 @@ describe('④ 워커 배선 · PC CSS 자격', () => {
     expect(w).toContain("buildCuratorFirstScreen(ssrPayload, urdealLoaderHtml, shouldRenderMobileFirstScreen(c.req.header('user-agent')))")
     expect(w).not.toMatch(/\/\^\\\/u\\\/\[A-Za-z0-9_-\]\{1,40\}\\\/\?\$\/\.test\(url\.pathname\) && shouldRenderMobileFirstScreen/)
   })
-  it('firstScreenApplies(PC): /vouchers · /u/:handle 는 자격, /u/me · /search 는 아님', () => {
+  it('firstScreenApplies(PC): /vouchers · /u/:handle · /u/me(로그인 전 탭, 2026-11-09 액자) 는 자격, /search 는 아님', () => {
     expect(firstScreenApplies('/vouchers', PC)).toBe(true); expect(firstScreenApplies('/u/jiwon', PC)).toBe(true)
-    expect(firstScreenApplies('/u/me', PC)).toBe(false); expect(firstScreenApplies('/search', PC)).toBe(false)
+    expect(firstScreenApplies('/u/me', PC)).toBe(true); expect(firstScreenApplies('/search', PC)).toBe(false)
   })
   it('폰 교환권 본문은 종전 그대로(PC 클래스 없음)', () => {
     const m = buildVouchersFirstScreen(seed(20), LOADER, 'n', '커피/음료')

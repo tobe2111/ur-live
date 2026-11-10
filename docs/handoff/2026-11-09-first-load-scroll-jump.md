@@ -177,3 +177,8 @@
 
 ## 32. PC 상세가 폰 히어로를 또 받던 것 — `DetailGallery` 가 PC 에선 폰 블록을 렌더하지 않는다
 - §31 발견의 처방. `lg:hidden` 은 숨기기만 하고 안의 `<img>` 는 받아진다(960 폭, 상세마다 수백 KB). `isDesktop`(이미 쓰던 `useMediaQuery`) 이면 폰 슬라이드·폰 썸네일 줄을 DOM 에서 뺀다. PC 블록은 배경 이미지라 폰에선 원래 안 받는다. 가드 3 + 주입 2. 배포 뒤 판정: PC `lcpel.cjs /pass/2919 pc` 에 `width=960` 요청이 없는지.
+
+## 33. 로그인 전 탭 PC(430 액자) 첫 화면 — 네비 예약 + 액자 상자를 서버가 그린다
+- PC 실측(1440px·4G·CPU 4배): 비로그인 이용권 FCP **2.69s** · 마이 **3.17s** · 로그인 1.23s(LCP 3.46 — 마운트 뒤 큰 글자 블록). 게스트 탭은 PC 에서 `MobileAppLayout` 이 `.mobile-app-container.app-framed`(430px 가운데) 로 감싸는데 서버는 액자를 몰라 종전엔 폰 UA 에만 그렸다.
+- 처방: `buildGuestFirstScreen(…, isMobile)` — PC 면 [네비 높이 예약(`PC_HOME_FS.topnav*`, 로그인 화면은 네비가 없어 제외)] + [`mobile-app-container app-framed` · `--app-frame:430px`] 로 감싼다(값은 `MobileAppLayout` 그대로 — 시험이 소스 대조). 거터 바탕(`body.app-frame-host`)은 React 가 테마를 알고 칠한다 — 색만 바뀌고 자리는 그대로. 워커 게스트 분기의 UA 조건을 빼고 빌더 인자로(앵커 재조준 3 · css-first-boot PC 가지 `guestTabOf !== null`).
+- 가드 ①-4 + 주입 2 되돌려 빨간불. 배포 뒤 판정: PC `vitals_nocb.cjs /my-vouchers pc`·`/user/profile pc` FCP ≈ HTML 직후, CLS < 0.01(액자 가로 밀림 0).
