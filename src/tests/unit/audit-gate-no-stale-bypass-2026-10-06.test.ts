@@ -81,7 +81,9 @@ describe('🔓 허용목록 — 빈 승인으로 통과하지 못한다', () => 
   }
 
   it('① 모든 항목이 사유·승인자·날짜·재검토를 채우고 있다', () => {
-    expect(list.allow.length).toBeGreaterThan(0)   // 0건이면 통과가 아니라 파싱이 깨진 것
+    // 파싱이 깨지면 빈 목록처럼 보인다 — 길이 대신 구조로 판정한다(2026-11-10: vite 6 승격으로 면제가 정상적으로 0건이 됐다).
+    expect(Array.isArray(list.allow), 'allow 가 배열이 아니다(파싱 실패)').toBe(true)
+    expect(typeof (list as { _doc?: unknown })._doc, '_doc 이 없다(다른 파일을 읽었다)').toBe('string')
     for (const a of list.allow) {
       for (const f of ['ghsa', 'pkg', 'reason', 'accepted_by', 'date', 'review'] as const) {
         expect(String(a[f] ?? '').trim(), `${a.ghsa}.${f}`).not.toBe('')
