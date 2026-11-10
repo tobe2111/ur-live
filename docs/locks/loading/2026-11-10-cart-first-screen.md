@@ -15,3 +15,6 @@
 
 ## 가드
 `cart-first-screen-2026-11-10.test.tsx` · 주입 6건 되돌려 전부 빨간불 · 재조준 5(critical-css 표면 수 17→18 · 대표 경로 · loader-first/css-first-boot/pc-list 의 "첫 화면 없는 예시" `/cart` → `/checkout` · css-first-boot.mjs 확대 주입 · consumer-popups-dark 뿌리 앵커).
+
+## 후속(같은 날) — 비로그인은 빈 장바구니까지 서버가 그린다
+배포 뒤 실측(§41): FCP 2.1 → 0.41~0.50s 인데 **LCP 는 2.0~2.5s 그대로** — 가장 큰 요소가 빈 장바구니 안내(`EmptyCart`)였고 그건 API 뒤였다. 비로그인은 `/api/cart` 가 `requireUser` 401 이라 **언제나** 빈 장바구니다 ⇒ 세션 쿠키가 없으면 [머리줄 + 빈 장바구니](로더 없음 — 화면이 완성)를, 있으면 종전대로 [머리줄 + 로더]를 그린다. `EmptyCart` 클래스·문구는 `CART_EMPTY_CLS`/`CART_COPY` 로 SSOT. 가방 아이콘은 36px 빈 칸. 주입 +3(비로그인에 로더만 · authed 미전달 · 부품 손글씨).

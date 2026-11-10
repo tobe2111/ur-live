@@ -2,30 +2,31 @@ import React from 'react'
 import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
+import { CART_EMPTY_CLS, CART_EMPTY_ICON, CART_COPY } from '@/shared/cart-page' // 🧺 2026-11-10 서버 첫 화면(비로그인)과 같은 클래스·문구
 
 export const EmptyCart = React.memo(function EmptyCart() {
   const navigate = useNavigate()
   const { t } = useTranslation()
 
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-4">
-      <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mb-5">
-        <BagIcon size={36} className="text-gray-300 dark:text-gray-600" />
+    <div className={CART_EMPTY_CLS.wrap}>
+      <div className={CART_EMPTY_CLS.iconBox}>
+        <BagIcon size={CART_EMPTY_ICON} className={CART_EMPTY_CLS.icon} />
       </div>
 
-      <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">
-        {t('cart.empty', { defaultValue: '장바구니가 비어있습니다' })}
+      <h2 className={CART_EMPTY_CLS.title}>
+        {t('cart.empty', { defaultValue: CART_COPY.empty })}
       </h2>
 
-      <p className="text-[13px] text-gray-500 dark:text-gray-400 text-center mb-8">
-        {t('cart.emptySubtitle', { defaultValue: '마음에 드는 상품을 담아보세요' })}
+      <p className={CART_EMPTY_CLS.desc}>
+        {t('cart.emptySubtitle', { defaultValue: CART_COPY.emptySubtitle })}
       </p>
 
       <button
         onClick={() => navigate('/')}
-        className="px-8 py-3 bg-brand text-white text-[15px] font-bold rounded-xl hover:bg-brand-dark transition-colors active:scale-[0.98]"
+        className={CART_EMPTY_CLS.btn}
       >
-        {t('cart.continueShop', { defaultValue: '쇼핑 계속하기' })}
+        {t('cart.continueShop', { defaultValue: CART_COPY.continueShop })}
       </button>
     </div>
   )
