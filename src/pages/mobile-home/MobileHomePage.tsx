@@ -13,6 +13,7 @@ import BackToTop from './BackToTop' // 🎬 2026-11-02 시안 6차 맨 위로 �
 import { useNotificationSheet } from '@/components/notifications/useNotificationSheet'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
+import { homeCategoryOf } from '@/shared/home-query'
 import HomeSections from '@/components/home/HomeSections'
 import { resolveHomeNear, syncNearCookie } from '@/components/home/home-near'
 import UrShortsRail from '@/components/home/UrShortsRail'
@@ -77,7 +78,9 @@ export default function MobileHomePage() {
    */
   const near = resolveHomeNear({ userLoc, dongLabel: dong?.dong, regionKey: region.regionKey })
   useEffect(() => { syncNearCookie(near.key, near.label) }, [near.key, near.label])
-  const [category, setCategory] = useState<DealCategory>('all')
+  // 🧭 2026-11-10 — 주소의 `?category=` 를 **첫 렌더부터** 읽는다(PC 홈과 같다). 종전엔 'all' 로 시작해 한 프레임 동안 전체 홈(편성 1,700px)을
+  //   그렸다가 `useHomeQuerySync` 의 effect 가 카테고리로 바꿔 화면이 통째로 올라왔다 — 라이브 실측 CLS 0.78~0.83(`/meal-vouchers` 리다이렉트도 이 주소).
+  const [category, setCategory] = useState<DealCategory>(() => (typeof window !== 'undefined' ? homeCategoryOf(window.location.search) : null) ?? 'all')
   /**
    * 🧭 **위치가 저장된 지역을 이긴다** (2026-09-08 대표 *"여기엔 거리순, 가장 가까운 순이 먼저 떠야해"*).
    *

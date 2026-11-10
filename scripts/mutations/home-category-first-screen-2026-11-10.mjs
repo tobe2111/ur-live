@@ -33,4 +33,12 @@ export default [
     test: T,
     why: '카테고리가 하나 늘 때 워커가 모르면 그 주소에서 다시 통째로 밀린다.',
   },
+  {
+    name: '🏠 폰 홈이 카테고리를 다시 한 프레임 늦게 읽는다(전체 홈을 그렸다 통째로 올라온다)',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: "useState<DealCategory>(() => (typeof window !== 'undefined' ? homeCategoryOf(window.location.search) : null) ?? 'all')",
+    replace: "useState<DealCategory>('all')",
+    test: T,
+    why: '2026-11-10 rAF 추적 — 첫 프레임에 편성 1,728px 이 그려지고 다음 프레임에 사라져 목록이 1873 → 145 로 올라온다(CLS 0.78).',
+  },
 ]
