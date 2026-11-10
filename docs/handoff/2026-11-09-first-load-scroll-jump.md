@@ -230,3 +230,8 @@
 ## 42. 장바구니 후속 — 비로그인은 빈 장바구니까지 서버가(로더 없음)
 - §41 의 LCP 2.0~2.5s(빈 장바구니 안내가 API 뒤) 처방. `buildCartFirstScreen(…, authed)` — 세션 없음 → 머리줄 + `EmptyCart` 모양, 있음 → 머리줄 + 로더. 기록은 `2026-11-10-cart-first-screen.md` 후속 절.
 - 배포 뒤 판정: 비로그인 `lcpel.cjs https://urdeal.kr/cart` 의 LCP 요소가 서버가 그린 안내 문장(≈FCP)인지 · PC 도.
+
+## 43. 대외 안내 랜딩 셋 서버 첫 화면 — 머리줄 + 사진 칸 (대표 "계속 최적화")
+- 기록 `docs/locks/loading/2026-11-10-landing-first-screen.md`. 🔑 사진은 preload 로 0.8s 에 와 있었는데 LCP 3.2~4.7s — "받는 것" 과 "그리는 것" 은 다르다. 제목·문장은 승인된 마스크 모션이라 일부러 안 그린다(사진이 LCP 라 충분하다).
+- §34 의 PC 이용권 탭 예시 사진(LCP 3.4s)은 **하지 않기로** — 예시 줄이 스크롤 등장 모션(`ur-gp-shelf`, 2026-11-04 대표 *"모션그래픽 제대로 넣어줘"*)이라 서버가 그리면 그 모션을 꺼야 하고, 사용자가 보는 내용은 이미 0.7s 에 떠 있다(측정 라벨만 바뀐다).
+- 배포 뒤 판정: `lcpel.cjs https://urdeal.kr/about`(LCP 요소가 서버 사진 · ≈0.8s) · `/partners` · `/influencer` · PC.
