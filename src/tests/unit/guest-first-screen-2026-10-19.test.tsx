@@ -24,8 +24,9 @@ vi.mock('@/pages/guest/guest-login', () => ({ useGuestLoginPrepare: () => {}, st
 import GuestPassPage from '@/pages/guest/GuestPassPage'
 import GuestUrShopPage from '@/pages/guest/GuestUrShopPage'
 import GuestMyPage from '@/pages/guest/GuestMyPage'
-import { buildGuestFirstScreen, guestTabOf, guestFirstScreenGuardScript, type GuestTab } from '@/worker/utils/guest-first-screen'
-import { GUEST_COPY, GUEST_EXAMPLE_IMG } from '@/shared/guest-page'
+import { buildGuestFirstScreen, guestTabOf, guestFirstScreenGuardScript, GUEST_PC_FRAME, type GuestTab } from '@/worker/utils/guest-first-screen'
+import { PC_HOME_FS } from '@/shared/pc-home-first-screen'
+import { GUEST_COPY, GUEST_EXAMPLE_IMG, GUEST_CLS } from '@/shared/guest-page'
 import { UDAL_HELLO_SRC } from '@/shared/mascot-art'
 import GuestExampleRows from '@/pages/guest/GuestExampleRows'
 
@@ -128,6 +129,30 @@ describe('①-3 마이 유달이는 서버가 같은 공개 주소로 그린다 
   })
 })
 
+describe('①-4 PC 는 네비 높이 예약 + 430 액자 (2026-11-09 대표 승인 — PC 첫 화면)', () => {
+  it('pass·my: [네비 예약] + [액자(mobile-app-container app-framed · --app-frame:430px)] ⊃ 본문 · 로그인: 액자만(상단 네비 없음) · 폰: 종전 byte-동일', () => {
+    const layout = stripComments(readFileSync('src/components/MobileAppLayout.tsx', 'utf8'))
+    expect(layout).toContain("const frameWidth = '430px'")
+    expect(layout).toContain("className={`mobile-app-container ${framed ? 'app-framed' :")
+    for (const tab of ['pass', 'my'] as const) {
+      const d = document.createElement('div'); d.innerHTML = buildGuestFirstScreen(tab, '<div>LOADER</div>', 'n', false)
+      const root = d.querySelector('#ur-first-screen')!
+      expect(root.children.length).toBe(2)
+      expect(root.children[0].getAttribute('class')).toBe(PC_HOME_FS.topnav)
+      const frame = root.children[1]
+      expect(frame.getAttribute('class')).toBe(GUEST_PC_FRAME.cls)
+      expect(frame.getAttribute('style')).toBe(`--app-frame:${GUEST_PC_FRAME.width}`)
+      expect(frame.firstElementChild!.getAttribute('class')).toBe(GUEST_CLS.root)
+    }
+    const l = document.createElement('div'); l.innerHTML = buildGuestFirstScreen('login', '<div>LOADER</div>', 'n', false)
+    const lroot = l.querySelector('#ur-first-screen')!
+    expect(lroot.children.length).toBe(1)
+    expect(lroot.firstElementChild!.getAttribute('class')).toBe(GUEST_PC_FRAME.cls)
+    expect(buildGuestFirstScreen('my', '<div>LOADER</div>', 'n')).toBe(buildGuestFirstScreen('my', '<div>LOADER</div>', 'n', true))
+    expect(buildGuestFirstScreen('my', '<div>LOADER</div>', 'n')).not.toContain('app-framed')
+  })
+})
+
 describe('② 로그인 흔적이면 걷어낸다', () => {
   it('RouteGuards.isUserLoggedIn 과 같은 두 키를 본다', () => {
     const guard = readFileSync('src/components/auth/RouteGuards.tsx', 'utf8')
@@ -152,8 +177,8 @@ describe('② 로그인 흔적이면 걷어낸다', () => {
 
 describe('③ 워커 배선', () => {
   const worker = stripComments(readFileSync('src/worker/index.ts', 'utf8'))
-  it('세션 쿠키가 없고 네 경로이고 폰·크롤러일 때만 그린다(로그인 화면만 PC 도 — 2026-11-09)', () => {
-    expect(worker).toMatch(/\} else if \(!authed && guestTabOf\(url\.pathname\) && \(guestTabOf\(url\.pathname\) === 'login' \|\| shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\)\) \{ const guestFirst = buildGuestFirstScreen\(guestTabOf\(url\.pathname\)!, urdealLoaderHtml, nonce\)/)
+  it('세션 쿠키가 없고 네 경로일 때 그린다 — UA 는 조건이 아니라 빌더 인자(PC 면 네비 예약 + 430 액자, 2026-11-09)', () => {
+    expect(worker).toMatch(/\} else if \(!authed && guestTabOf\(url\.pathname\)\) \{ const guestFirst = buildGuestFirstScreen\(guestTabOf\(url\.pathname\)!, urdealLoaderHtml, nonce, shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\)/)
   })
   it('경로 판정', () => {
     expect(guestTabOf('/my-vouchers')).toBe('pass')

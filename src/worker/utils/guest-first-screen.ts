@@ -22,6 +22,7 @@ import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT, GUEST_CLOCK, KAKAO_BUBBLE_PATH 
 import { UDAL_HELLO_SRC, UDAL_HELLO_ART } from '../../shared/mascot-art'
 import { LOGIN_CLS } from '../../shared/login-page'
 import { loginFirstScreenBody } from './login-first-screen'
+import { PC_HOME_FS } from '../../shared/pc-home-first-screen' // 🖥️ PC 상단 네비 높이 예약(홈·상세·목록과 같은 상수)
 
 /** 🔐 2026-11-09 — `login`(`/login`)이 네 번째 탭. 로그인 전 탭·보호 경로가 전부 그 화면으로 보낸다(`login-first-screen.ts`). */
 export type GuestTab = 'pass' | 'shop' | 'my' | 'login'
@@ -97,9 +98,23 @@ export function guestFirstScreenGuardScript(nonce: string): string {
   return `<script nonce="${escAttr(nonce)}">${js}</script>`
 }
 
-export function buildGuestFirstScreen(tab: GuestTab, loaderHtml: string, nonce: string): string {
+/**
+ * 🖥️ PC(lg+) 액자 — `MobileAppLayout` 이 소비자 화면을 `.mobile-app-container.app-framed`(430px 가운데 액자, `--app-frame`)로 감싼다.
+ *   서버가 같은 상자를 그려야 마운트 때 가로가 안 움직인다. 거터 바탕(`body.app-frame-host`)은 React 가 테마를 알고 칠한다 — 색만 바뀌고 자리는 그대로.
+ *   값은 `MobileAppLayout.tsx` 의 className·`frameWidth` 그대로(시험이 소스와 대조).
+ */
+export const GUEST_PC_FRAME = { cls: 'mobile-app-container app-framed', width: '430px' } as const
+
+/**
+ * @param isMobile 폰·크롤러(`shouldRenderMobileFirstScreen`)면 종전 그대로. PC 면 **네비 높이 예약 + 430 액자**로 감싼다(2026-11-09 대표 승인 — PC 첫 화면).
+ *   로그인 화면(`login`)은 PC 에서 상단 네비가 없다(`consumerChromeHiddenByPath`) — 액자만.
+ */
+export function buildGuestFirstScreen(tab: GuestTab, loaderHtml: string, nonce: string, isMobile = true): string {
   const body = tab === 'pass' ? passBody() : tab === 'shop' ? shopBody() : tab === 'my' ? myBody() : loginFirstScreenBody()
   const root = tab === 'login' ? LOGIN_CLS.root : GUEST_CLS.root // 로그인 화면은 자기 뿌리(흰 바탕·가운데 정렬)다
+  const page = `<div class="${root}">${body}</div>`
+  const topnav = isMobile || tab === 'login' ? '' : `<div class="${PC_HOME_FS.topnav}"><div class="${PC_HOME_FS.topnavRow1}"></div><div class="${PC_HOME_FS.topnavRow2}"></div></div>`
+  const framed = isMobile ? page : `<div class="${GUEST_PC_FRAME.cls}" data-mobile-only="false" style="--app-frame:${GUEST_PC_FRAME.width}">${page}</div>`
   // 🧷 노드 id 는 다른 첫 화면과 같다 — `lib/boot-first-screen.ts` 가 이 노드를 Suspense 폴백에 도로 붙인다.
-  return `<div id="ur-first-screen"><div class="${root}">${body}</div></div>${guestFirstScreenGuardScript(nonce)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
+  return `<div id="ur-first-screen">${topnav}${framed}</div>${guestFirstScreenGuardScript(nonce)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }
