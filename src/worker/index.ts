@@ -684,8 +684,8 @@ app.use('*', async (c, next) => {
     //   늦게 끼어들어 "순서가 뒤바뀐 것"처럼 보인다. 둘을 **병렬**로 받는다(직렬이면 그만큼 느려진다).
     const nearSeedTarget = isMainPage ? homeNearSeedTarget(c.req.header('cookie')) : null; // 📍 2026-11-09 [LOADING_ADDITIVE] 위치 저장 손님의 거리순 피드를 별도 슬롯(MAINNEAR)으로 함께 — 400ms 마감. 사유: utils/home-near-seed.ts
     if (ssrTarget) {
-      const [r, extra, nearSeed, shortsSeed, bannersSeed] = await Promise.all([
-        ssrTarget.slot === 'SEARCH' ? withSeedDeadline(fetchSsrPayload(ssrTarget, origin0, c.env, ssrWaitUntil(c)), SEARCH_SEED_DEADLINE_MS).then((x) => x ?? { payload: null, status: 'deadline', timings: [] }) : fetchSsrPayload(ssrTarget, origin0, c.env, ssrWaitUntil(c)), // 🌱 검색 시드만 마감(차가운 검색어가 HTML 을 붙잡지 않게)
+      const seedP = fetchSsrPayload(ssrTarget, origin0, c.env, ssrWaitUntil(c)); const [r, extra, nearSeed, shortsSeed, bannersSeed] = await Promise.all([
+        ssrTarget.slot === 'SEARCH' ? withSeedDeadline(seedP, SEARCH_SEED_DEADLINE_MS).then((x) => x ?? { payload: null, status: 'deadline', timings: [] }) : seedP, // 🌱 검색 시드만 마감(차가운 검색어가 HTML 을 붙잡지 않게) — 원래 요청은 끊지 않는다(직전 사본을 채운다)
         ssrExtra ? fetchSsrPayload(ssrExtra, origin0, c.env, ssrWaitUntil(c)) : Promise.resolve(null),
         nearSeedTarget ? withSeedDeadline(fetchSsrPayload(nearSeedTarget.target, origin0, c.env, ssrWaitUntil(c)), HOME_NEAR_SEED_DEADLINE_MS) : Promise.resolve(null), isMainPage ? withSeedDeadline(fetchSsrPayload(HOME_SHORTS_SEED_TARGET, origin0, c.env, ssrWaitUntil(c)), HOME_NEAR_SEED_DEADLINE_MS) : Promise.resolve(null), isMainPage ? withSeedDeadline(fetchSsrPayload(HOME_BANNERS_SEED_TARGET, origin0, c.env, ssrWaitUntil(c)), HOME_NEAR_SEED_DEADLINE_MS) : Promise.resolve(null),
       ]); if (nearSeedTarget && nearSeed?.payload) homeNearSeedHtml = homeNearSeedScript(nearSeedTarget.key, nearSeed.payload); if (shortsSeed?.payload) homeNearSeedHtml += homeShortsSeedScript(shortsSeed.payload); if (bannersSeed?.payload) { homeNearSeedHtml += homeBannersSeedScript(bannersSeed.payload); homeBannersPayload = bannersSeed.payload } // 🎬 2026-11-09 홈 유어쇼츠 줄 시드 — utils/home-near-seed.ts

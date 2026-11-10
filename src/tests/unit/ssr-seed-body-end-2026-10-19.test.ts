@@ -19,7 +19,7 @@ const body = W.slice(W.indexOf(".on('body', {"), W.indexOf('\n      });', W.inde
 describe('SSR 시드는 </body> 앞', () => {
   it('① body 핸들러가 두 시드를 붙인다', () => {
     expect(W.indexOf(".on('body', {")).toBeGreaterThan(W.indexOf(".on('head', {"))
-    expect(body).toMatch(/<script id="\$\{scriptId\}" type="application\/json">\$\{ssrPayload\}<\/script>/)
+    expect(body).toMatch(/<script id="\$\{scriptId\}" type="application\/json"[^>]*>\$\{ssrPayload\}<\/script>/) // 🌱 2026-11-10 검색 시드는 그 사이에 검색어·범위 표식(`data-q`)을 단다
     expect(body).toMatch(/__SSR_INITIAL_\$\{ssrExtra\?\.slot \?\? 'SECTIONS'\}__/)
   })
   it('② head 핸들러엔 시드가 없고 사진 preload 는 있다', () => {

@@ -37,7 +37,7 @@ describe('① 시드 경로 = 훅 요청', () => {
 describe('② 워커', () => {
   it('SEARCH 슬롯 · 마감 · 표식', () => {
     expect(W).toContain("} else if (url.pathname === '/search' && searchSeedPath(url.search)) { ssrTarget = { slot: 'SEARCH', path: searchSeedPath(url.search) };")
-    expect(W).toContain("ssrTarget.slot === 'SEARCH' ? withSeedDeadline(fetchSsrPayload(ssrTarget, origin0, c.env, ssrWaitUntil(c)), SEARCH_SEED_DEADLINE_MS)")
+    expect(W).toContain("ssrTarget.slot === 'SEARCH' ? withSeedDeadline(seedP, SEARCH_SEED_DEADLINE_MS)"); expect(W).toContain('const seedP = fetchSsrPayload(ssrTarget, origin0, c.env, ssrWaitUntil(c));')
     expect(W).toContain("${ssrSlot === 'SEARCH' ? searchSeedAttrs(url.search) : ''}")
     expect(SEARCH_SEED_DEADLINE_MS).toBeLessThanOrEqual(1000)
     expect(searchSeedAttrs('?q=%EB%8F%88%22%3C&scope=exchange')).toBe(' data-q="돈&quot;&lt;" data-scope="exchange"')
