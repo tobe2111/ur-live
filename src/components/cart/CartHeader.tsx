@@ -2,6 +2,7 @@ import React from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n-lite'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { CART_CLS, CART_COPY, CART_BACK_ICON } from '@/shared/cart-page' // 🧺 2026-11-10 서버 첫 화면(worker/utils/cart-first-screen.ts)과 같은 머리줄
 
 interface CartHeaderProps {
   itemCount: number
@@ -31,18 +32,18 @@ export const CartHeader = React.memo(function CartHeader({
   return (
     <>
       {/* v4 sticky white header: X left, title center, spacer right */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className={CART_CLS.header}>
         {/* 🖥️ 2026-09-02 (대표 "PC 버전도 확인"): 본문 `<main>` 이 lg 에서 1020px 인데 이 줄만 448px(max-w-md) 이라
             닫기 버튼·제목이 본문과 다른 축에 섰다. 같은 폭으로. */}
-        <div className="mx-auto max-w-md lg:max-w-[1020px] flex items-center justify-between px-5 py-3">
-          <button type="button" onClick={handleBack} aria-label={t('common.back', { defaultValue: '뒤로 가기' })} className="w-9 h-9 flex items-center justify-center">
-            <X size={22} className="text-gray-900 dark:text-white" aria-hidden="true" />
+        <div className={CART_CLS.headerRow}>
+          <button type="button" onClick={handleBack} aria-label={t('common.back', { defaultValue: CART_COPY.back })} className={CART_CLS.back}>
+            <X size={CART_BACK_ICON} className={CART_CLS.backIcon} aria-hidden="true" />
           </button>
-          <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">
-            {t('cart.title', { defaultValue: '장바구니' })}{' '}
-            {itemCount > 0 && <span className="text-brand-text tabular-nums">{itemCount}</span>}
+          <h1 className={CART_CLS.title}>
+            {t('cart.title', { defaultValue: CART_COPY.title })}{' '}
+            {itemCount > 0 && <span className={CART_CLS.count}>{itemCount}</span>}
           </h1>
-          <div className="w-9" />
+          <div className={CART_CLS.spacer} />
         </div>
       </div>
 

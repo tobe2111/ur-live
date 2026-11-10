@@ -216,3 +216,8 @@
 - 기록 `docs/locks/loading/2026-11-10-notifications-first-screen.md`. 가드 방향이 게스트 탭과 **반대**(`authed`). 공용 머리줄을 `utils/sub-page-head-html.ts` 로 빼서 FAQ·알림이 같이 쓴다(`wide` 인자).
 - 🔴 E4 는 이 컨테이너가 못 잰다(소비자 세션 쿠키가 없다 — 비로그인 요청은 종전과 byte-동일한 로더). 판정은 ① 대표 폰 실측 또는 ② 월요일 RUM 표본(`vitals:…:FCP:/notifications`) 으로.
 - 다음 후보: `/cart`(비로그인도 접근 — 머리줄 + 빈 장바구니/로더) · `/about`(2.6s, 랜딩 — 모션 부품이 많아 서버 그림과 앱 첫 프레임을 맞추기 어렵다, 후순위).
+
+## 40. 장바구니 `/cart` 서버 첫 화면 — 머리줄 + 로더 (대표 "계속 최적화")
+- 기록 `docs/locks/loading/2026-11-10-cart-first-screen.md`. 로딩 분기(흰 바탕 + 전체 로더)도 완성 화면과 같은 뿌리 + 머리줄로 맞췄다(서버 그림 → 로딩 → 완성이 한 모양).
+- 🧭 "첫 화면 없는 표면" 예시를 쓰는 시험·주입이 `/search` → `/cart` → `/checkout` 으로 두 번 밀렸다. 다음엔 처음부터 `/checkout`(로그인 필요 + 결제 — 서버 첫 화면을 둘 일이 없다)을 예시로 쓸 것.
+- 배포 뒤 판정: `vitals_nocb.cjs https://urdeal.kr/cart`(종전 FCP 2,100) · `… pc`.
