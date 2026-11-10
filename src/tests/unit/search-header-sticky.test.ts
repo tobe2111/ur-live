@@ -9,6 +9,9 @@ import { stripComments as codeOnly } from '../helpers/source-text'
 const read = (p: string) => codeOnly(readFileSync(join(process.cwd(), p), 'utf8'))
 
 const HEADER = read('src/components/search/SearchHeader.tsx')
+// 🔎 2026-11-10 클래스가 `shared/search-page.ts`(서버 첫 화면과 공유)로 옮겨갔다 — 헤더는 `className={SEARCH_CLS.header}` 로 읽는다. 여기선 그 상수 문자열을 본다.
+const SHARED = read('src/shared/search-page.ts')
+const headerCls = () => { const m = SHARED.match(/\n\s*header: '([^']*)'/)?.[1] ?? ''; return m && HEADER.includes('className={SEARCH_CLS.header}') ? `<div className="${m}"` : '' }
 const NAV = read('src/components/main/DesktopTopNav.tsx')
 
 /**
@@ -33,19 +36,19 @@ describe('🔍 /search 자체 헤더가 md+ 에서 전역 네비와 자리를 �
   })
 
   it('🔒 검색 헤더는 md+ 에서 고정을 푼다 — 숫자 오프셋으로 때우지 않는다', () => {
-    const root = HEADER.match(/<div className="sticky top-0[^"]*"/)?.[0] ?? ''
+    const root = headerCls()
     expect(root, 'SearchHeader 루트의 sticky 선언을 못 찾았다 — 구조가 바뀌었으면 이 테스트도 갱신할 것').not.toBe('')
     // md+ 탈출구가 있어야 한다(고정 해제 또는 숨김). 없으면 네비를 덮는다.
     expect(root).toMatch(/md:static|md:relative|md:hidden/)
   })
 
   it('🔒 네비 높이를 외운 오프셋 금지 — 드리프트의 원인이었다', () => {
-    const root = HEADER.match(/<div className="sticky top-0[^"]*"/)?.[0] ?? ''
+    const root = headerCls()
     expect(root, '`md:top-[NNpx]` 는 다른 파일의 높이를 복사한 것이라 반드시 어긋난다').not.toMatch(/md:top-\[\d+px\]/)
   })
 
   it('🔒 모바일(<md)은 고정 그대로 — 거기엔 네비가 없다', () => {
-    const root = HEADER.match(/<div className="sticky top-0[^"]*"/)?.[0] ?? ''
+    const root = headerCls()
     expect(root).toMatch(/^<div className="sticky top-0\b/)
     expect(root).not.toMatch(/\bhidden\b/)   // 모바일에서 통째로 숨기면 검색창이 사라진다
   })

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, X } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n-lite'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { SEARCH_CLS, SEARCH_COPY, SEARCH_LENS } from '@/shared/search-page' // 🔎 2026-11-10 서버 첫 화면과 같은 클래스·문구·돋보기 path
 
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다
 // 🎬 2026-11-03 20차 ③ — 검색창을 누르면 돋보기가 선을 따라 지워지고 그 자리에 '닫기' 화살표가 그려진다(같은 그림이 이어서 바뀐다).
@@ -110,25 +111,25 @@ export default function SearchHeader({
    *   모바일(<md)은 네비가 `hidden md:block` 이라 없으므로 `top-0` 고정 그대로다.
    */
   return (
-    <div className="sticky top-0 md:static z-50 bg-white dark:bg-[#11141C]">
-      <div className="flex items-center gap-2 px-3 py-2">
-        <button onClick={goBack} className="shrink-0 p-1">
-          <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
+    <div className={SEARCH_CLS.header}>
+      <div className={SEARCH_CLS.headerRow}>
+        <button onClick={goBack} className={SEARCH_CLS.iconBtn}>
+          <ChevronLeft className={SEARCH_CLS.backIcon} />
         </button>
-        <div className="flex-1 relative">
-          <form onSubmit={handleSearch} className="relative">
+        <div className={SEARCH_CLS.field}>
+          <form onSubmit={handleSearch} className={SEARCH_CLS.form}>
             {/* 🎬 20차 ③ — 누르기 전엔 돋보기, 쓰는 중엔 화살표. 화살표를 누르면 키보드를 닫고 쓰기 전으로 돌아간다. */}
             <button
               type="button"
               tabIndex={isFocused ? 0 : -1}
               aria-hidden={!isFocused}
-              aria-label={t('search.closeTyping', { defaultValue: '검색 닫기' })}
+              aria-label={t('search.closeTyping', { defaultValue: SEARCH_COPY.closeTyping })}
               onClick={(e) => { if (!isFocused) return; e.currentTarget.form?.querySelector('input')?.blur(); setIsFocused(false); onPanelChange(false, inputValue) }}
-              className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-gray-400 dark:text-gray-500 ${isFocused ? 'ur-sm-on' : 'pointer-events-none'}`}
+              className={`${SEARCH_CLS.lensBtn} ${isFocused ? SEARCH_CLS.lensOn : SEARCH_CLS.lensIdle}`}
             >
-              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path className="ur-sm-lens" d="M10.5 4a6.5 6.5 0 1 1 0 13a6.5 6.5 0 1 1 0-13M15.3 15.3L20 20" />
-                <path className="ur-sm-arrow" d="M19 12H5M11 6l-6 6l6 6" />
+              <svg viewBox="0 0 24 24" className={SEARCH_CLS.lensSvg} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path className="ur-sm-lens" d={SEARCH_LENS.lens} />
+                <path className="ur-sm-arrow" d={SEARCH_LENS.arrow} />
               </svg>
             </button>
             <input
@@ -140,10 +141,8 @@ export default function SearchHeader({
                     나서, 닫힌 뒤에 click 이 와 아무 일도 안 일어난다(자동완성 최다 버그).
                     닫는 건 선택·제출·지움 셋뿐이고, 패널이 결과를 덮지 않아 닫을 이유도 없다. */
               onBlur={() => { /* 의도적 무동작 — 위 주석 */ }}
-              placeholder={typed ?? t('search.inputPlaceholder', { defaultValue: '상품명, 브랜드, 셀러 검색' })}
-              className={`w-full pl-10 pr-9 py-2 bg-gray-50 dark:bg-[#1D1F29] rounded-full text-[15px] text-gray-900 dark:text-white font-medium transition-all focus:outline-none ${
-                isFocused ? 'border-2 border-gray-900 bg-white dark:bg-[#11141C]' : 'border-2 border-transparent'
-              }`}
+              placeholder={typed ?? t('search.inputPlaceholder', { defaultValue: SEARCH_COPY.placeholder })}
+              className={`${SEARCH_CLS.inputBase} ${isFocused ? SEARCH_CLS.inputFocus : SEARCH_CLS.inputIdle}`}
             />
             {inputValue && (
               <button type="button" onClick={() => { setInputValue(''); onPanelChange(false, '') }} className="absolute right-3.5 top-1/2 -translate-y-1/2">
@@ -152,8 +151,8 @@ export default function SearchHeader({
             )}
           </form>
         </div>
-        <button onClick={() => navigate('/cart')} className="shrink-0 p-1">
-          <BagIcon className="w-5 h-5 text-gray-900 dark:text-white" />
+        <button onClick={() => navigate('/cart')} className={SEARCH_CLS.iconBtn}>
+          <BagIcon className={SEARCH_CLS.bagIcon} />
         </button>
       </div>
     </div>

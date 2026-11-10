@@ -14,6 +14,7 @@ import SearchSuggestPanel from '@/components/search/SearchSuggestPanel'
 import RestaurantRow from '@/pages/restaurant-map/RestaurantRow'
 import SortFilterBar from '@/components/search/SortFilterBar'
 import { priceDisplay } from '@/shared/price-display'
+import { SEARCH_CLS } from '@/shared/search-page' // 🔎 2026-11-10 서버 첫 화면(worker/utils/search-first-screen.ts)과 같은 클래스
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 14차 ⑥ — 검색어·정렬이 바뀌어 결과가 새로 그려지면 첫 여덟 줄이 차례로 떠오른다(더보기로 붙는 줄은 그대로).
 injectMotionCss('ur-m-search', `@keyframes ur-sr-in { from { opacity: 0; transform: translateY(10px); } }.ur-sr-list > *:nth-child(-n+8) { animation: ur-sr-in .35s cubic-bezier(.2,.9,.3,1) backwards; }.ur-sr-list > *:nth-child(2) { animation-delay: 40ms; }.ur-sr-list > *:nth-child(3) { animation-delay: 80ms; }.ur-sr-list > *:nth-child(4) { animation-delay: 120ms; }.ur-sr-list > *:nth-child(5) { animation-delay: 160ms; }.ur-sr-list > *:nth-child(6) { animation-delay: 200ms; }.ur-sr-list > *:nth-child(7) { animation-delay: 240ms; }.ur-sr-list > *:nth-child(8) { animation-delay: 280ms; }@keyframes ur-sr-end { from { opacity: 0; transform: translateY(8px); } }@keyframes ur-sr-ck { to { stroke-dashoffset: 0; } }.ur-sr-end { opacity: 0; }.ur-sr-end.on { opacity: 1; animation: ur-sr-end .35s cubic-bezier(.2,.9,.3,1); }.ur-sr-end.on path { stroke-dasharray: 20; stroke-dashoffset: 20; animation: ur-sr-ck .3s .15s ease-out forwards; }@media (prefers-reduced-motion: reduce){.ur-sr-list > *,.ur-sr-end.on,.ur-sr-end.on path{animation:none!important;stroke-dashoffset:0}}`)
@@ -209,7 +210,7 @@ export default function SearchPage() {
 
   // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
-    <div className="bg-white dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]">
+    <div className={SEARCH_CLS.root}>
       <SEO title={query ? t('search.seoTitleQuery', { query, defaultValue: `${query} 검색결과 - 유어딜` }) : t('search.pageTitle', { defaultValue: '검색 - 유어딜' })} description={t('search.seoDesc', { defaultValue: '유어딜에서 원하는 이용권을 검색하세요. 동네 가게 할인 이용권을 만나보세요.' })} url="/search" noindex />
       {/* Header */}
       <SearchHeader
@@ -230,7 +231,7 @@ export default function SearchPage() {
         />
       ) : (
       /* Content */
-      <div className="ur-content-wide px-5 lg:px-8 py-4">
+      <div className={SEARCH_CLS.content}>
         {/* States: Loading, Error, No Query, No Results */}
         <SearchStates
           loading={stillLoadingResults}

@@ -188,3 +188,9 @@
 - **#2279 로그인 전 탭 PC**: `/my-vouchers` FCP **1,020 · 628ms**(종전 2,690) · CLS 0.0029 / `/user/profile` FCP **828 · 464ms**(종전 3,170) · LCP 1,004 · 632 · CLS 0.0014. 액자 가로 밀림 0(남은 0.001~0.003 은 3.7s 에 하단 칩 줄 — 첫 화면 밖, 종전에도 있던 것).
 - 🔎 **남은 것 하나**: `/my-vouchers` PC 의 LCP 가 **3.4~3.7s** — 서버가 그린 제목(696ms, 7,399px²)보다 React 가 마운트한 **예시 사진**(`GUEST_EXAMPLE_IMG.cafe` `wallet-brunch.webp` 7.7KB, 7,709px²)이 아주 조금 커서 LCP 가 그 사진으로 넘어간다. 폰에선 사진이 작아 제목이 LCP 다. 처방 후보: 게스트 첫 화면 서버 본문에 예시 줄(`GuestExampleRows`)까지 그리기, 또는 최소한 그 사진 `<link rel=preload>`. 다음 작업.
 - 🩸 브랜치: 지정 브랜치의 원격이 머지 뒤 자동 삭제돼 `checkout -B … origin/main` 으로 다시 세웠다. `push --delete` 는 분류기가 막는다 — 원격이 남아 있으면 삭제 대신 `origin/main` 을 머지해 올린다(이번엔 원격이 없어 새 브랜치로 올라갔다).
+
+## 35. 검색 `/search` 서버 첫 화면 (대표 "계속 최적화")
+- 폰 공개 화면 열 곳을 다시 재서 고른 다음 표면: 홈·교환권·블로그·둘러보기는 0.7~0.8s, **검색 2.25 · 장바구니 2.1 · 알림 1.7 · about 2.6 · faq 2.9s**(로더-먼저만). 유입 통계(funnel)엔 `/pass` 만 있어 노출 경로로 골랐다 — 검색은 홈 머리에서 한 번에 간다.
+- 기록 `docs/locks/loading/2026-11-10-search-first-screen.md`. 🩸 한 줄 분기 꼬리 주석 뒤에 코드를 붙여 **통째로 주석**이 된 것을 주입 검사가 잡았다(tsc·텍스트 시험은 초록).
+- 다음 후보: `/faq`(2.9s · 전부 고정 문구 — `CONCEPT_FAQ` 공유 배열로 질문 목록까지 서버가 그릴 수 있다) · `/about`(2.6s) · `/cart`·`/notifications`(로그인 필요 — 게스트 분기와 비슷한 가드가 필요).
+- 배포 뒤 판정: `vitals_nocb.cjs https://urdeal.kr/search`(종전 FCP 2,252) · `… pc` · 검색어 있는 `/search?q=돈가스`.

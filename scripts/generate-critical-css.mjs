@@ -51,6 +51,7 @@ export const ROOTS = [
   'src/worker/utils/pc-home-first-screen.ts', // 🖥️ 2026-11-09 PC 홈(shared/pc-home-first-screen 은 import 로 따라온다)
   'src/worker/utils/urshorts-first-screen.ts', // 🎬 2026-11-09 유어쇼츠 목록
   'src/worker/utils/map-first-screen.ts', // 🗺️ 2026-11-09 지도 껍데기
+  'src/worker/utils/search-first-screen.ts', // 🔎 2026-11-10 검색 헤더·빈 검색 안내
 ]
 
 /**
@@ -183,6 +184,7 @@ export const SURFACE_ROOTS = {
   region: ['src/worker/utils/region-first-screen.ts'],
   urshorts: ['src/worker/utils/urshorts-first-screen.ts'], // 🎬 2026-11-09
   map: ['src/worker/utils/map-first-screen.ts'], // 🗺️ 2026-11-09
+  search: ['src/worker/utils/search-first-screen.ts'], // 🔎 2026-11-10
 }
 
 /** 셀렉터의 클래스 이름들(이스케이프 해제) — `:not(…)` 안은 제외 조건이라 보지 않는다. */
