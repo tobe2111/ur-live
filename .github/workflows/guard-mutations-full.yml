@@ -36,10 +36,15 @@ on:
     - cron: '40 18 * * *'
   workflow_dispatch:
 
-# main push 가 몰리면 최신 것만 — 대신 위 schedule 이 하루 한 번은 반드시 완주시킨다.
+# 🚦 2026-11-10 (대표 *"더 개선할 건?"*) — **돌던 전수는 끝까지 두고, 기다리는 것은 가장 최신 하나만.**
+#   실측(11/10 하루): 이 워크플로가 저장소 전체 검사 기계 시간의 **65%(4,161분)** 를 썼고, 그중
+#   **1,186분은 중간에 취소된 run** 이었다 — main 에 머지가 들어올 때마다 16대가 돌던 전수를 버리고 처음부터 다시 했다.
+#   `cancel-in-progress: false` 면 GitHub 이 돌던 run 은 끝내고 대기는 가장 최신 하나만 남긴다(중간 것은 시작 전에 버린다)
+#   ⇒ 버리는 시간 0, 완주한 run 은 언제나 그때의 최신 main 조합을 본다. 배포(main.yml)가 11/3 에 같은 처방을 받았다.
+#   가드: src/tests/unit/guard-mutations-full-throttle-2026-11-10.test.ts
 concurrency:
   group: guard-mutations-full-${{ github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   # 🧩 조각 수를 **세어서** 정한다. `npm ci` 가 필요 없다 —
@@ -70,6 +75,10 @@ jobs:
       # 🔴 한 조각이 빨간불이어도 나머지는 끝까지 돈다 — 전수의 목적이 "어디가 깨졌나" 를
       #    한 번에 다 보는 것이다. fail-fast 면 첫 빨간불 뒤가 통째로 안 돌아 다시 돌려야 한다.
       fail-fast: false
+      # 🚦 2026-11-10 — **한 번에 8대까지만.** 무료 계정은 저장소 전체가 동시에 20대뿐인데, 전수가 16대를 한꺼번에 잡으면
+      #   PR 검사·배포가 줄을 섰다(실측 11/10: PR 검사 조각이 20~30분 대기 · 배포 대기 p90 7.7분 — 라이브가 그만큼 늦는다).
+      #   8대면 전수 한 바퀴는 약 25~30분으로 늘지만, 위 concurrency 가 버리는 run 을 없애서 완주 횟수는 줄지 않는다.
+      max-parallel: 8
       matrix:
         shard: ${{ fromJSON(needs.plan.outputs.matrix) }}
     # 계획이 조각당 ~12분을 목표로 잡는다(+ 부대비용 실측 ~0.6분 — checkout·setup-node·npm ci).
