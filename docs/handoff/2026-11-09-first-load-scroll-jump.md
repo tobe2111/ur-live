@@ -250,3 +250,9 @@
 - §45 의 다음 처방. 시드의 화면에 보일 앞 4줄(범위 필터는 `SearchPage` 와 같은 판정) 사진을 응답 헤더 `Link: rel=preload`(auto)로. 주소는 줄과 같은 `cfImage(…, ROW_THUMB_OPTS)` — 옵션을 `shared/row-thumb.ts` 로 SSOT(`RestaurantRow` 가 읽는다, 지도 목록도 같은 부품이라 값 불변).
 - 잠금표: `worker/index.ts` 한 토막(유어쇼츠 preload 줄 앞, 2672줄 유지) — `[LOADING_ADDITIVE]`. 가드 `search-thumb-preload-2026-11-10.test.ts` + 주입 5.
 - 배포 뒤 판정: `lcpel.cjs "https://urdeal.kr/search?q=돈가스"` LCP(종전 2.6~2.8s) · 같은 썸네일 주소가 요청 목록에 **한 번만** 나오는지.
+
+## 47. 홈 `?category=` 통째 밀림(CLS 0.83) — 서버가 전체 홈을 안 그린다 (대표 "계속 최적화")
+- 폰 훑기에서 발견: `/?category=meal_voucher`(= `/meal-vouchers` 리다이렉트) **CLS 0.83**. 워커가 쿼리를 안 보고 전체 홈 첫 화면을 그렸고 앱은 카테고리면 편성을 숨긴다. 기록 `docs/locks/loading/2026-11-10-home-category-no-first-screen.md`.
+- 처방: `shared/home-query.ts`(`homeCategoryOf`) — 화면 훅과 워커가 같은 목록. 워커 폰 홈 분기에 `&& !homeCategoryOf(url.search)`.
+- 배포 뒤 판정: `vitals_nocb.cjs "https://urdeal.kr/?category=meal_voucher"` CLS(종전 0.83) · `/`·`/?sort=newest` 는 첫 화면 그대로인지.
+- 같은 훑기의 남은 후보: `/new-openings` CLS 0.75(1.57s 에 목록이 140→220 으로 내려간다) · `/map` LCP 5.5s · 로더만 있는 화면(gb-market 2.9 · partnership 3.0 · privacy 3.0 · terms 2.6 · area-report 2.5 · experience 2.4).

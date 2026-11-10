@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import type { DealCategory } from '@/pages/pc-home/PcHomeRail'
+import { HOME_CATEGORY_KEYS as SHARED_HOME_CATEGORY_KEYS } from '@/shared/home-query' // 🏠 2026-11-10 워커(홈 첫 화면을 그릴지)와 같은 목록
 
 /** 홈 카테고리 키 — 두 홈이 같은 집합을 쓴다(예전엔 PcHomePage 안에만 있었다). */
-export const HOME_CATEGORY_KEYS: DealCategory[] = ['all', 'meal_voucher', 'beauty_voucher', 'stay_voucher', 'home_voucher', 'etc_voucher']
+export const HOME_CATEGORY_KEYS: DealCategory[] = [...SHARED_HOME_CATEGORY_KEYS]
 
 /** 홈 정렬 키 — 두 홈이 같은 집합을 쓴다. */
 // 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 'deadline' 제거 — 목록에 없으면 그 쿼리는 무시된다(기본 유지).
