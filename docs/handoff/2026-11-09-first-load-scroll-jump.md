@@ -260,3 +260,8 @@
 ## 48. `/new-openings` 로딩 밀림(CLS 0.75) — 칩 줄·로더 자리 예약
 - 원인(rAF 추적): 2.0s 머리글 → 2.3s 응답과 함께 지역 칩 줄(40px)이 끼어들고 로더(작은 칸)가 90장 목록으로 바뀌어 맨 아래 출처 문단이 화면 밖으로. 처방: 응답 전 `mt-5 h-10` 예약 + 로더 `min-h-[100dvh]`. 잠금표 밖. 가드 `new-openings-reserve-2026-11-10.test.ts` + 주입 3.
 - 배포 뒤 판정: `vitals_nocb.cjs https://urdeal.kr/new-openings` CLS(종전 0.75).
+
+## 49. 마이 하위 화면 여섯 서버 첫 화면(머리줄 + 로더) — 세션 있을 때만 · 폰만
+- 기록 `docs/locks/loading/2026-11-10-my-sub-first-screen.md`. 알림과 같은 방식·같은 CSS 표면. 판정은 RUM(세션 필요 — 이 환경에서 못 잰다).
+- 후보로 남긴 것: 알림 첫 화면의 로더가 화면 아래(뿌리 100dvh) · `/wishlist`·`/my-gifticons`(뿌리 `WalletPageWrapper`) · PC.
+- `/map` 재측정: FCP 0.69s · LCP 3.6s(요소 = 카카오 지도 바탕 타일) — 지도 SDK 몫이라 손대지 않음.

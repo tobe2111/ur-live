@@ -36,6 +36,7 @@
 
 import { guestTabOf } from './guest-first-screen'
 import { landingPhotoKeyOf } from '../../shared/landing-photo' // 🧭 2026-11-10 안내 랜딩 셋
+import { mySubPageOf } from '../../shared/my-sub-pages'
 import { LOADER_EARLY_REVEAL_MS } from '../../shared/brand-loader-markup'
 import { shouldRenderMobileFirstScreen } from '../../shared/seo/crawler-ua'
 import { CRITICAL_CSS, CRITICAL_CSS_HOME, CRITICAL_CSS_SURFACES, CRITICAL_CSS_TOKENS } from '../generated/critical-css'
@@ -70,6 +71,7 @@ export function firstScreenApplies(pathname: string, ua: string, authed = false)
     || pathname === '/faq' || pathname === '/faq/' // ❓ 2026-11-10 자주 묻는 질문 전체(faq-first-screen.ts)
     || pathname === '/cart' || pathname === '/cart/' // 🧺 2026-11-10 장바구니 머리줄(cart-first-screen.ts)
     || landingPhotoKeyOf(pathname) !== null // 🧭 2026-11-10 안내 랜딩 셋 머리줄 + 사진 칸(landing-first-screen.ts)
+    || (authed && mySubPageOf(pathname) !== null) // 👤 2026-11-10 마이 하위 화면 여섯(주문내역·쿠폰함…) 머리줄 — 세션 쿠키가 있을 때만 · 폰만(buildMySubFirstScreen)
     || (authed && /^\/notifications\/?$/.test(pathname)) // 🔔 2026-11-10 알림 머리줄 — 게스트 탭과 반대로 **세션 쿠키가 있을 때만**(notifications-first-screen.ts)
     || /^\/blog(?:\/[^/]+)?\/?$/.test(pathname) // 📝 2026-10-19 블로그 목록·상세도 서버 첫 화면(blog-*-first-screen.ts)
     || /^\/(?:pass|group-buy|vouchers|stays)\/\d+\/?$/.test(pathname)
@@ -127,7 +129,7 @@ export function criticalSurfaceOf(pathname: string): string | null {
   if (p === '/map') return 'map'
   if (p === '/search') return 'search'
   if (p === '/faq') return 'faq'
-  if (p === '/notifications') return 'notifications'
+  if (p === '/notifications' || mySubPageOf(p) !== null) return 'notifications' // 👤 마이 하위 화면은 알림과 같은 머리줄 CSS 를 쓴다
   if (p === '/cart') return 'cart'
   if (landingPhotoKeyOf(p) !== null) return 'landing'
   if (/^\/region\/[^/]+(?:\/[^/]+)?$/.test(p)) return 'region'
