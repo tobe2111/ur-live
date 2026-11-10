@@ -15,6 +15,7 @@
 import { useTranslation } from '@/lib/i18n-lite'
 import { useRef } from 'react'
 import { Select } from '@/components/ui/select'
+import { SR_CLS, SR_COPY } from '@/shared/search-page'
 // 🎬 2026-11-02 시안 8차 "검색 결과 개수" — 개수가 바뀌면 새 숫자가 아래에서 올라온다(처음엔 안 움직인다).
 //   ⚖️ 공용 `RollingNumber` 를 쓰지 않는다 — 그걸 import 하면 검색 화면이 상세 묶음을 끌고 와 +2.8KB 였다(화면별 무게 실측).
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
@@ -31,23 +32,23 @@ export default function SortFilterBar({ totalResults, sortBy, onSortChange }: So
   const firstCount = useRef(totalResults) // 처음 받은 개수 — 그것과 다를 때만 움직인다
 
   return (
-    <div className="mb-5">
+    <div className={SR_CLS.bar}>
       {/* Result count + Sort */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('browse.totalResultsPrefix', { defaultValue: '총' })}</span>
+      <div className={SR_CLS.barRow}>
+        <div className={SR_CLS.countWrap}>
+          <span className={SR_CLS.countText}>{t('browse.totalResultsPrefix', { defaultValue: SR_COPY.prefix })}</span>
           {/* 🎨 2026-09-04: `text-red-500` → 잉크. 빨강은 이 레포에서 **기능 신호**(오류·위험)로 예약돼 있다 —
               검색 결과 개수는 그냥 숫자다. 강조는 굵기로 충분하다. */}
-          <span key={totalResults} className={`text-[13px] font-medium text-gray-900 dark:text-white${firstCount.current !== totalResults ? ' ur-cnt-in' : ''}`}>{totalResults}</span>
-          <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('browse.totalResultsSuffix', { defaultValue: '개' })}</span>
+          <span key={totalResults} className={`${SR_CLS.countNum}${firstCount.current !== totalResults ? ' ur-cnt-in' : ''}`}>{totalResults}</span>
+          <span className={SR_CLS.countText}>{t('browse.totalResultsSuffix', { defaultValue: SR_COPY.suffix })}</span>
         </div>
-        <div className="relative">
+        <div className={SR_CLS.sortWrap}>
           <Select
             value={sortBy}
             onChange={(e) => onSortChange(e.target.value as typeof sortBy)}
-            className="appearance-none pr-6 pl-3 py-2 text-[12px] font-medium text-gray-900 dark:text-white bg-transparent focus:outline-none cursor-pointer"
+            className={SR_CLS.sortBtn}
           >
-            <option value="relevance">{t('browse.sortRelevance', { defaultValue: '관련도순' })}</option>
+            <option value="relevance">{t('browse.sortRelevance', { defaultValue: SR_COPY.sortRelevance })}</option>
             <option value="price_low">{t('browse.sortPriceLow', { defaultValue: '낮은가격' })}</option>
             <option value="price_high">{t('browse.sortPriceHigh', { defaultValue: '높은가격' })}</option>
             <option value="newest">{t('browse.sortNewest', { defaultValue: '최신순' })}</option>

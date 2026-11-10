@@ -111,7 +111,7 @@ describe('④ PC = 네비 높이 예약 + 430 액자 · 폰은 그대로', () =>
 describe('⑤ 배선', () => {
   it('워커: /search 분기 — UA 는 빌더 인자 · 검색어는 searchQueryOf', () => {
     const w = readFileSync('src/worker/index.ts', 'utf8') // ⚠️ worker/index.ts 엔 stripComments 를 쓰지 않는다('/*' 라우트 문자열이 가운데를 날린다 — source-text 머리말)
-    expect(w).toContain("url.pathname === '/search') { const searchFirst = buildSearchFirstScreen(searchQueryOf(url.search), urdealLoaderHtml, nonce, shouldRenderMobileFirstScreen(c.req.header('user-agent')))")
+    expect(w).toContain("url.pathname === '/search') { const searchFirst = buildSearchFirstScreen(searchQueryOf(url.search), urdealLoaderHtml, nonce, shouldRenderMobileFirstScreen(c.req.header('user-agent')), ssrTarget?.slot === 'SEARCH' ? searchResultsHtml(ssrPayload, searchScopeOf(url.search)) : '');")
   })
   it('첫 화면 CSS 자격: 폰·PC 둘 다 · 표면 이름 search ↔ 생성기', () => {
     expect(firstScreenApplies('/search', PHONE)).toBe(true); expect(firstScreenApplies('/search/', PHONE)).toBe(true)

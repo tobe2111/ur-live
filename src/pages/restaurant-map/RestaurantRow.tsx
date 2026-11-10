@@ -17,7 +17,7 @@ import { priceDisplay } from '@/shared/price-display'
 import CatIcon from './CatIcon'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
-import { ROW_THUMB_OPTS } from '@/shared/row-thumb' // 🖼️ 2026-11-10 워커 preload(검색 시드 첫 줄)와 같은 옵션 — 주소가 갈리면 두 번 받는다
+import { ROW_THUMB_OPTS, ROW_CLS, ROW_NO_ADDRESS } from '@/shared/row-thumb' // 🖼️ 2026-11-10 워커 preload(검색 시드 첫 줄)와 같은 옵션 — 주소가 갈리면 두 번 받는다
 import { distanceKm, regionShort, stripStorePrefix } from './utils'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import type { Restaurant } from './types'
@@ -71,32 +71,28 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
       onContextMenu={(e) => { if (hold.current?.fired) e.preventDefault() }}
       style={{ WebkitTouchCallout: 'none' }}
       /* 🎬 2026-11-03 17차 ① — 누르는 동안 살짝 들어간다(배경 옅게는 종전 active:bg). 손을 떼면 돌아온다. */
-      className={`w-full flex gap-3 py-4 text-left transition-[background-color,transform] duration-150 active:scale-[0.985] motion-reduce:active:scale-100 ${
-        isSelected
-          ? 'bg-brand/[0.06] dark:bg-brand/[0.14]'
-          : 'hover:bg-gray-50/60 dark:hover:bg-[#0E0E0E] active:bg-gray-100 dark:active:bg-[#161616]'
-      }`}
+      className={`${ROW_CLS.btn} ${isSelected ? ROW_CLS.btnSelected : ROW_CLS.btnIdle}`}
     >
       {r.image_url ? (
         /* 🚑 2026-07-02 (대표 신고 "전체적으로 느림"): raw 원본(네이버 1MB급) → cfImage 리사이즈(88px@2x) */
-        <img src={cfImage(r.image_url, ROW_THUMB_OPTS) || r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />
+        <img src={cfImage(r.image_url, ROW_THUMB_OPTS) || r.image_url} alt="" className={ROW_CLS.thumb} loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />
       ) : (
-        <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center shrink-0">
+        <div className={ROW_CLS.thumbEmpty}>
           <CatIcon cat={r.category} className="w-7 h-7 text-gray-400" />
         </div>
       )}
-      <div className="flex-1 min-w-0">
+      <div className={ROW_CLS.body}>
         {/* 🎨 2026-07-02 (대표 — UI 우선순위): 이용권명(r.name)을 볼드 제목으로, 매장명은 보조 줄로.
             🎨 2026-07-03 (대표 — "칙칙해"): 제목 옆 흐린 회색 추첨 배지 제거 → 가격 아래 소셜프루프
             라인(FcfsBadge)으로 전용 줄에 배치(긴 제목 안 찌그러뜨림).
             🏷️ 2026-07-19 (대표 — 제목 중복 제거): 제목의 "매장명 · " 프리픽스 제거 — 매장명은 아랫줄 한 곳에만. */}
-        <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{stripStorePrefix(r.name, r.restaurant_name)}</p>
-        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 truncate">{r.restaurant_name}</p>
-        <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1 truncate flex items-center gap-1">
-          <PinIcon className="w-3 h-3 shrink-0" />
+        <p className={ROW_CLS.title}>{stripStorePrefix(r.name, r.restaurant_name)}</p>
+        <p className={ROW_CLS.store}>{r.restaurant_name}</p>
+        <p className={ROW_CLS.addr}>
+          <PinIcon className={ROW_CLS.pin} />
           {isFar
-            ? (regionShort(r.restaurant_address) || r.restaurant_address || '주소 미등록')
-            : (r.restaurant_address || '주소 미등록')}
+            ? (regionShort(r.restaurant_address) || r.restaurant_address || ROW_NO_ADDRESS)
+            : (r.restaurant_address || ROW_NO_ADDRESS)}
           {dist != null && (isFar ? (
             <span className="ml-1 shrink-0">· {Math.round(dist)}km</span>
           ) : (
@@ -105,14 +101,14 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
             </span>
           ))}
         </p>
-        <div className="flex items-baseline gap-2 mt-2">
+        <div className={ROW_CLS.priceRow}>
           {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 순수 빨강 → 웜 로즈 brand 토큰(라이트/다크 var 보정). */}
           {discount > 0 && (
-            <span className="text-[16px] font-bold text-sale">{discount}%</span>
+            <span className={ROW_CLS.discount}>{discount}%</span>
           )}
-          <span className="text-[16px] font-bold text-gray-900 dark:text-white">{formatNumber(r.price)}원</span>
+          <span className={ROW_CLS.price}>{formatNumber(r.price)}원</span>
           {r.original_price > r.price && (
-            <span className="text-[12px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(r.original_price)}원</span>
+            <span className={ROW_CLS.original}>{formatNumber(r.original_price)}원</span>
           )}
         </div>
         {fcfs && <div className="mt-2"><FcfsBadge info={fcfs} /></div>}

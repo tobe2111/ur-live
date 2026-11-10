@@ -44,6 +44,12 @@ describe('홈 ?category= 판정', () => {
     expect(WORKER).toContain("import { homeCategoryOf } from '../shared/home-query'")
   })
 
+  it('🩸 진짜 원인 — 폰 홈이 카테고리를 첫 렌더부터 읽는다(effect 로 한 프레임 늦게 읽으면 전체 홈을 그렸다가 통째로 올라온다)', () => {
+    // 2026-11-10 배포 뒤 실측: 서버 그림만 걷은 것(#2298)으로는 CLS 0.83 이 그대로였다 — rAF 추적으로 첫 프레임의 편성(1,728px)이 다음 프레임에 사라지는 것을 봤다.
+    expect(MOBILE).toContain("useState<DealCategory>(() => (typeof window !== 'undefined' ? homeCategoryOf(window.location.search) : null) ?? 'all')")
+    expect(MOBILE).not.toContain("useState<DealCategory>('all')")
+  })
+
   it('전제 — 폰 홈은 여전히 "전체" 일 때만 편성을 그린다(이 전제가 바뀌면 이 수리를 다시 볼 것)', () => {
     expect(MOBILE).toMatch(/category === 'all'/)
   })

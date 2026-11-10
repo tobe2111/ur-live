@@ -106,3 +106,35 @@ export function readSearchSeed<T = unknown>(q: string, scope: SearchScope): T | 
     return parsed && Array.isArray(parsed.data) ? (parsed as T) : null
   } catch { return null }
 }
+
+/**
+ * 🔎 검색 **결과 구역**(개수·정렬 줄 + 결과 목록)의 클래스·문구·움직임 SSOT (2026-11-10).
+ *   라이브 실측: 시드(#2293)·썸네일 preload(#2296) 뒤에도 결과 LCP 2.8~3.7s — 사진이 0.6s 에 와 있어도 **줄이 앱 마운트 뒤에** 그려졌다.
+ *   ⇒ 워커가 시드의 앞 줄을 그린다(`worker/utils/search-first-screen.ts`). 화면(`SortFilterBar`·`SearchPage`)과 이 상수 하나를 읽는다.
+ *   움직임(줄이 아래에서 올라온다 — 승인된 모션)은 서버가 그린 줄에서 **한 번** 돌고, 앱은 그 첫 목록을 다시 움직이지 않는다(`SearchPage`).
+ */
+export const SR_CLS = {
+  bar: 'mb-5',
+  barRow: 'flex items-center justify-between',
+  countWrap: 'flex items-center gap-1',
+  countText: 'text-[13px] text-gray-600 dark:text-gray-300',
+  countNum: 'text-[13px] font-medium text-gray-900 dark:text-white',
+  sortWrap: 'relative',
+  sortBtn: 'appearance-none pr-6 pl-3 py-2 text-[12px] font-medium text-gray-900 dark:text-white bg-transparent focus:outline-none cursor-pointer',
+  /** `components/ui/select.tsx` 가 버튼에 덧붙이는 꼬리·글자칸·화살표 — 시험이 그 소스와 대조한다. */
+  sortBtnTail: 'inline-flex items-center justify-between gap-2 text-left',
+  sortLabel: 'min-w-0 truncate ',
+  sortChevron: 'w-4 h-4 shrink-0 opacity-60',
+  list: 'flex flex-col divide-y divide-rule',
+  listMotion: 'ur-sr-list',
+} as const
+export const SR_COPY = { prefix: '총', suffix: '개', sortRelevance: '관련도순' } as const
+/** 서버가 그리는 줄 수 — 폰 한 화면(약 5줄) + 여유. 나머지는 앱이 마운트 때 잇는다(아래로만 자란다). */
+export const SR_SERVER_ROWS = 8
+/** 결과 줄 등장 움직임 — 앞 8줄이 40ms 간격으로 올라온다. 화면이 꽂던 CSS 의 그 부분 그대로. */
+export const SR_LIST_MOTION_CSS = '@keyframes ur-sr-in { from { opacity: 0; transform: translateY(10px); } }.ur-sr-list > *:nth-child(-n+8) { animation: ur-sr-in .35s cubic-bezier(.2,.9,.3,1) backwards; }.ur-sr-list > *:nth-child(2) { animation-delay: 40ms; }.ur-sr-list > *:nth-child(3) { animation-delay: 80ms; }.ur-sr-list > *:nth-child(4) { animation-delay: 120ms; }.ur-sr-list > *:nth-child(5) { animation-delay: 160ms; }.ur-sr-list > *:nth-child(6) { animation-delay: 200ms; }.ur-sr-list > *:nth-child(7) { animation-delay: 240ms; }.ur-sr-list > *:nth-child(8) { animation-delay: 280ms; }'
+export const SR_LIST_MOTION_REDUCE_CSS = '@media (prefers-reduced-motion: reduce){.ur-sr-list > *{animation:none!important}}'
+/** 가격 필터 기본 범위(`SearchPage` 의 priceRange 초기값) — 서버가 같은 줄을 고르려면 같은 범위여야 한다. */
+export const SR_PRICE_RANGE = { min: 0, max: 1000000 } as const
+/** 서버가 결과 줄을 그렸다는 표식 — 앱이 이걸 보고 첫 목록의 등장 움직임을 생략한다. */
+export const SR_SERVER_ROWS_ATTR = 'data-sr-rows'
