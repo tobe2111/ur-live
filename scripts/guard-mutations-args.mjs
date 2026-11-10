@@ -16,9 +16,9 @@
  */
 
 /** 값 없이 쓰는 인자 */
-export const FLAGS = ['-s', '--strict', '--verify-clean', '--map-only', '--dump-manifest', '--changed', '--count', '--scope-json']
+export const FLAGS = ['-s', '--strict', '--verify-clean', '--map-only', '--dump-manifest', '--changed', '--count', '--scope-json', '--near-edits']
 /** 다음 칸(또는 `=` 뒤)에 값을 받는 인자 */
-export const VALUE_FLAGS = ['--only', '--shard']
+export const VALUE_FLAGS = ['--only', '--shard', '--budget-sec']
 
 /**
  * 순수 — 러너가 모르는 인자를 돌려준다(빈 배열 = 정상).
