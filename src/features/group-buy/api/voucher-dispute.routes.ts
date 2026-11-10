@@ -16,7 +16,7 @@
  *   어드민: GET  /api/admin/voucher-dispute              — open 신고 목록
  *          POST /api/admin/voucher-dispute/:id/resolve  { action: 'settle'|'reactivate', note? }
  */
-import { Hono } from 'hono'
+import { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import type { Env } from '@/worker/types/env'
 import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error'
@@ -47,7 +47,7 @@ async function ensureDisputeTable(DB: D1Database) {
     await DB.prepare("CREATE INDEX IF NOT EXISTS idx_voucher_disputes_status ON voucher_disputes(status, created_at)").run()
     // 🔁 2026-06-23 양방향 분쟁: 기존 테이블에 손님 응답 컬럼 보강(fail-soft, 이미 있으면 무시).
     for (const col of ['customer_response TEXT', 'customer_response_at DATETIME']) {
-      await DB.prepare(`ALTER TABLE voucher_disputes ADD COLUMN ${col}`).run().catch(() => {})
+      await DB.prepare(`ALTER TABLE voucher_disputes ADD COLUMN ${col}`).run().catch(() => { /* 이미 있는 컬럼 — 정상 */ })
     }
   } catch { /* ignore */ }
 }
@@ -90,7 +90,7 @@ sellerApp.post('/report', async (c) => {
       const storeName = v.restaurant_name || v.product_name || '매장'
       await DB.prepare(
         "INSERT INTO notifications (user_id, user_type, type, title, message, created_at) VALUES (?, 'user', 'voucher_dispute', ?, ?, datetime('now'))"
-      ).bind(v.user_id, '이용권 사용 확인 요청', `[${storeName}] 방문이 확인되지 않아 매장이 확인을 요청했어요. 실제로 이용하셨다면 '내 이용권'에서 알려주세요.`).run().catch(() => {})
+      ).bind(v.user_id, '이용권 사용 확인 요청', `[${storeName}] 방문이 확인되지 않아 매장이 확인을 요청했어요. 실제로 이용하셨다면 '내 이용권'에서 알려주세요.`).run().catch(swallow('voucher-dispute'))
     }
     return c.json({ success: true, data: { voucherId: v.id, status: 'disputed', already } })
   } catch (err) { return safeError(c, err, '신고 처리 실패', '[voucher-dispute]') }
@@ -155,7 +155,7 @@ sellerApp.post('/:id/respond', async (c) => {
       // 손님이 "안 갔다" 인정 → voucher 재사용 복원(used→unused, 미정산만) + 분쟁 종료. 머니룰: 돈 이동 없음.
       await DB.prepare(
         "UPDATE vouchers SET status='unused', used_at=NULL WHERE id=? AND status='used' AND settlement_id IS NULL"
-      ).bind(d.voucher_id).run().catch(() => {})
+      ).bind(d.voucher_id).run().catch(swallow('voucher-dispute'))
       await DB.prepare(
         "UPDATE voucher_disputes SET status='resolved', resolution='reactivate', customer_response='conceded', customer_response_at=datetime('now'), resolved_at=datetime('now') WHERE id=? AND status='open'"
       ).bind(id).run()

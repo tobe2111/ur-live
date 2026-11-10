@@ -36,7 +36,7 @@
  * 대기 중 신청은 한 사람당 **하나**(부분 UNIQUE 인덱스) — 더블클릭·동시 요청이 두 줄을 못 만든다.
  * 반려는 CAS 로 선점한 뒤에만 잔액을 되돌린다(이중 복원 차단).
  */
-import { ensureDealBuckets, PAID_BALANCE_SQL } from './point-buckets'
+import { ensureDealBuckets, PAID_BALANCE_SQL } from './point-buckets'; import { swallow } from './swallow'
 import { recordPointTransaction } from './point-ledger'
 
 /** 한 사람이 동시에 가질 수 있는 대기 신청 상태. */
@@ -210,7 +210,7 @@ export async function requestDealRefund(
         WHERE user_id = ? AND ${PAID_BALANCE_SQL} >= ?`,
     ).bind(input.amount, uid, input.amount).run()
     if ((dec.meta?.changes ?? 0) === 0) {
-      await DB.prepare('DELETE FROM deal_refund_requests WHERE id = ?').bind(insertedId).run().catch(() => {})
+      await DB.prepare('DELETE FROM deal_refund_requests WHERE id = ?').bind(insertedId).run().catch(swallow('deal-refund'))
       const st = await getDealRefundState(DB, uid)
       const refundable = st.ok ? st.state.refundable : 0
       return { ok: false, code: 'EXCEEDS', error: `환급할 수 있는 금액은 ${refundable.toLocaleString('ko-KR')}딜이에요`, refundable }

@@ -1,4 +1,4 @@
-import { logInfo, logError } from '../utils/logger'
+import { logInfo, logError } from '../utils/logger'; import { swallow } from '../utils/swallow'
 /**
  * Auto-Settlement Cron Handler
  *
@@ -136,7 +136,7 @@ export async function handleAutoSettlement(env: Env) {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS voucher_disputes (
       id INTEGER PRIMARY KEY AUTOINCREMENT, voucher_id INTEGER NOT NULL, product_id INTEGER, seller_id INTEGER,
       reason TEXT, status TEXT DEFAULT 'open', created_at DATETIME DEFAULT (datetime('now')), resolved_at DATETIME,
-      resolution TEXT, admin_note TEXT, UNIQUE(voucher_id))`).run().catch(() => {});
+      resolution TEXT, admin_note TEXT, UNIQUE(voucher_id))`).run().catch(swallow('auto-settlement'));
 
     // 🗓️ 2026-06-23 (대표 결정): 주간 정산 — 월~일(KST) 사용분 → 차주 목요일(KST) 정산.
     //   (이전 'used 7일 롤링' 대체.) cutoff = 정산 도래한 가장 최근 주 일요일까지의 상한(UTC).

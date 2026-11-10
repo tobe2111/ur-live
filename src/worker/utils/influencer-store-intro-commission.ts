@@ -28,7 +28,7 @@
  * 멱등: (influencer_id, order_id, source='store_intro') 이미 있으면 skip.
  * Fail-soft: 실패해도 결제 흐름 막지 않음.
  */
-import { COMMISSION_DEFAULTS } from '../../shared/constants/policy'
+import { COMMISSION_DEFAULTS } from '../../shared/constants/policy'; import { swallow } from './swallow'
 import { parseUTCDate } from '../../utils/date'
 
 // 🔒 2026-06-27 (감사 #7): 매장영입 기본율 SSOT(policy.ts) — 흩어진 매직넘버 통일. 2026-08-27 대표 확정으로 값 1.5 → 2.0.
@@ -218,7 +218,7 @@ export async function creditInfluencerStoreIntroCommission(
       await DB.prepare(
         `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
          VALUES ('self_store_intro_purchase', ?, 'order', ?, ?, 'medium')`
-      ).bind(influencerIdStr, String(order.id), JSON.stringify({ seller_id: order.seller_id })).run().catch(() => {})
+      ).bind(influencerIdStr, String(order.id), JSON.stringify({ seller_id: order.seller_id })).run().catch(swallow('influencer-store-intro-commission'))
       return
     }
 
