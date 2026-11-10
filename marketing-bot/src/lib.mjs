@@ -232,6 +232,19 @@ export function publicMedia(media) {
   if (Array.isArray(out.images)) out.images = out.images.map(publicMediaUrl);
   return out;
 }
+// Instagram media_publish: 컨테이너가 FINISHED 여도 직후엔 "Media ID is not available"(9007/2207027)이
+// 나는 일이 있다(2026-11-10 첫 스토리 실측). 잠깐 쉬었다 다시 부르면 된다 — 최대 4번.
+export async function igPublishContainer(creation_id, { tries = 4, pauseMs = 8000 } = {}) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await insta('POST', `${IG_USER_ID}/media_publish`, { creation_id });
+    } catch (e) {
+      if (attempt >= tries || !/2207027|Media ID is not available|"code":9007/.test(e.message)) throw e;
+      await new Promise((r) => setTimeout(r, pauseMs * attempt));
+    }
+  }
+}
+
 // Instagram 게시: media = { images: [url...] } (1장=단일, 2~10장=캐러셀) 또는 { video_url } (Reels).
 // 컨테이너가 FINISHED 될 때까지 폴링 후 publish. 반환: { id, media_type }
 // opts.collaborators: 공동 작성자로 초대할 인스타 아이디(최대 3, 매장이 수락하면 양쪽 계정에 뜬다).
@@ -270,7 +283,7 @@ export async function igPublish(media, caption, { collaborators = [] } = {}) {
     }
   }
   await wait(id);
-  const r = await insta('POST', `${IG_USER_ID}/media_publish`, { creation_id: id });
+  const r = await igPublishContainer(id);
   return { id: r.id, media_type };
 }
 
@@ -285,7 +298,7 @@ export async function igStory(image_url) {
     if (st.status_code === 'ERROR' || st.status_code === 'EXPIRED') throw new Error(`IG 스토리 컨테이너 ${c.id} ${st.status_code}: ${st.status || ''}`);
     await new Promise((r) => setTimeout(r, 5000));
   }
-  const r = await insta('POST', `${IG_USER_ID}/media_publish`, { creation_id: c.id });
+  const r = await igPublishContainer(c.id);
   return { id: r.id, media_type: 'STORIES' };
 }
 
