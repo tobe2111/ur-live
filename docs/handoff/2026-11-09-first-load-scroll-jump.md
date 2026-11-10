@@ -256,3 +256,7 @@
 - 처방: `shared/home-query.ts`(`homeCategoryOf`) — 화면 훅과 워커가 같은 목록. 워커 폰 홈 분기에 `&& !homeCategoryOf(url.search)`.
 - 배포 뒤 판정: `vitals_nocb.cjs "https://urdeal.kr/?category=meal_voucher"` CLS(종전 0.83) · `/`·`/?sort=newest` 는 첫 화면 그대로인지.
 - 같은 훑기의 남은 후보: `/new-openings` CLS 0.75(1.57s 에 목록이 140→220 으로 내려간다) · `/map` LCP 5.5s · 로더만 있는 화면(gb-market 2.9 · partnership 3.0 · privacy 3.0 · terms 2.6 · area-report 2.5 · experience 2.4).
+
+## 48. `/new-openings` 로딩 밀림(CLS 0.75) — 칩 줄·로더 자리 예약
+- 원인(rAF 추적): 2.0s 머리글 → 2.3s 응답과 함께 지역 칩 줄(40px)이 끼어들고 로더(작은 칸)가 90장 목록으로 바뀌어 맨 아래 출처 문단이 화면 밖으로. 처방: 응답 전 `mt-5 h-10` 예약 + 로더 `min-h-[100dvh]`. 잠금표 밖. 가드 `new-openings-reserve-2026-11-10.test.ts` + 주입 3.
+- 배포 뒤 판정: `vitals_nocb.cjs https://urdeal.kr/new-openings` CLS(종전 0.75).
