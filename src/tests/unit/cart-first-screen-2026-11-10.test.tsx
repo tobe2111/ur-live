@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 import { buildCartFirstScreen } from '@/worker/utils/cart-first-screen'
-import { CART_CLS, CART_COPY, CART_BACK_ICON } from '@/shared/cart-page'
+import { CART_CLS, CART_COPY, CART_BACK_ICON, CART_EMPTY_CLS, CART_EMPTY_ICON } from '@/shared/cart-page'
 import { PC_HOME_FS } from '@/shared/pc-home-first-screen'
 import { GUEST_PC_FRAME } from '@/worker/utils/guest-first-screen'
 import { firstScreenApplies, criticalSurfaceOf, criticalCssFor } from '@/worker/utils/css-first-boot'
@@ -20,7 +20,7 @@ import { firstScreenApplies, criticalSurfaceOf, criticalCssFor } from '@/worker/
 import { SURFACE_ROOTS } from '../../../scripts/generate-critical-css.mjs'
 
 const src = (f: string) => stripComments(readFileSync(f, 'utf8'))
-const HEADER = src('src/components/cart/CartHeader.tsx'), PAGE = src('src/pages/CartPage.tsx')
+const HEADER = src('src/components/cart/CartHeader.tsx'), PAGE = src('src/pages/CartPage.tsx'), EMPTY = src('src/components/cart/EmptyCart.tsx')
 const LOADER = '<div style="min-height:100dvh">LOADER</div>'
 const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
 const PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
@@ -62,13 +62,37 @@ describe('② 화면이 같은 상수를 쓴다', () => {
 describe('③ 배선', () => {
   it('워커: /cart 분기 — 세션 조건 없음 · UA 는 빌더 인자', () => {
     const w = readFileSync('src/worker/index.ts', 'utf8') // ⚠️ worker/index.ts 엔 stripComments 금지(source-text 머리말)
-    expect(w).toContain("} else if (url.pathname === '/cart') { const cartFirst = buildCartFirstScreen(urdealLoaderHtml, shouldRenderMobileFirstScreen(c.req.header('user-agent')))")
+    expect(w).toContain("} else if (url.pathname === '/cart') { const cartFirst = buildCartFirstScreen(urdealLoaderHtml, shouldRenderMobileFirstScreen(c.req.header('user-agent')), authed)")
   })
   it('첫 화면 CSS 자격 폰·PC · 표면 cart ↔ 생성기', () => {
     expect(firstScreenApplies('/cart', PHONE)).toBe(true); expect(firstScreenApplies('/cart/', PHONE)).toBe(true); expect(firstScreenApplies('/cart', PC)).toBe(true)
     expect(firstScreenApplies('/cart/x', PHONE)).toBe(false); expect(firstScreenApplies('/checkout', PHONE)).toBe(false)
     expect(criticalSurfaceOf('/cart')).toBe('cart'); expect(criticalCssFor('/cart', 'FULL', 'HOME', { cart: 'C' })).toBe('C')
     expect(SURFACE_ROOTS.cart).toEqual(['src/worker/utils/cart-first-screen.ts'])
+  })
+})
+
+describe('⑤ 비로그인 = 머리줄 + 빈 장바구니(로더 없음) · 로그인 = 머리줄 + 로더', () => {
+  const guest = buildCartFirstScreen(LOADER, true, false)
+  it('비로그인 HTML 에 빈 장바구니 전부 · 로더 없음 · 가방 아이콘 36px 빈 칸', () => {
+    for (const v of Object.values(CART_EMPTY_CLS)) expect(guest).toContain(v)
+    for (const k of ['empty', 'emptySubtitle', 'continueShop'] as const) expect(guest).toContain(CART_COPY[k])
+    expect(guest).not.toContain('LOADER')
+    const root = dom(guest).querySelector('#ur-first-screen > div')!
+    expect(root.children[1].getAttribute('class')).toBe(CART_EMPTY_CLS.wrap)
+    expect(root.querySelector(`.${CART_EMPTY_CLS.iconBox.split(' ')[0]} > span`)!.getAttribute('style')).toBe(`width:${CART_EMPTY_ICON}px;height:${CART_EMPTY_ICON}px`)
+  })
+  it('로그인(기본값) HTML 엔 빈 장바구니가 없고 로더가 있다', () => {
+    expect(html).not.toContain(CART_COPY.empty); expect(html).toContain('LOADER')
+    expect(buildCartFirstScreen(LOADER)).toBe(buildCartFirstScreen(LOADER, true, true))
+  })
+  it('EmptyCart 가 같은 상수를 쓴다', () => {
+    for (const k of Object.keys(CART_EMPTY_CLS) as Array<keyof typeof CART_EMPTY_CLS>) {
+      expect(EMPTY, k).toContain(`CART_EMPTY_CLS.${k}`)
+      expect(EMPTY, `손으로 적은 ${k}`).not.toContain(`"${CART_EMPTY_CLS[k]}"`)
+    }
+    expect(EMPTY).toContain('<BagIcon size={CART_EMPTY_ICON}')
+    for (const k of ['empty', 'emptySubtitle', 'continueShop'] as const) expect(EMPTY).toContain(`defaultValue: CART_COPY.${k}`)
   })
 })
 
