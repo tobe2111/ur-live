@@ -91,6 +91,11 @@
 3. Cloudflare → Workers & Pages → `ur-live` → Settings → Variables and Secrets → `RESEND_API_KEY`(secret) + `RESEND_FROM`(예 `유어딜 <hello@urdeal.kr>`) 추가 → 재배포.
 4. 그 뒤 세션에 "Resend 켰어" 라고 알리면, 발송 작업을 레포 경로(`POST /api/admin/ads/influencer-pool/send-cold`)로 바꾼다 — 반송·수신거부가 DB 에 자동 기록되고 이 세션이 없어도 돈다.
 
+## 4-2. 2026-11-10 저녁 — 대표 "1, 3, 6 진행"
+- **① 시트 v2** `유어딜 매장 DM 141곳 (바로가기·복사용) 2026-11` (https://docs.google.com/spreadsheets/d/1g7P1oC5oS5ZfAd7VvVJRR6l0wDOAUgsb1CT8bKfMvi0/edit): 141곳 전부. 행마다 `당근`·`인스타` 가 가게 이름으로 바로 검색되는 HYPERLINK 수식이고, `DM 전문(복사)` 은 `첫 줄 & 줄바꿈 & $B$1(공통 문구)` 수식이라 한 칸만 복사하면 된다. 공통 문구를 B1 에서 고치면 141행이 같이 바뀐다. 상태 열(대기/보냄/답장/입점)과 보낸 날을 대표가 채우면 아침 보고가 그걸 읽어 상황판 `매장 DM 보냄` 과 퍼널을 채운다. 옛 40곳 시트는 그대로 두되 더 안 쓴다.
+- **③ 입점 페이지 폰 점검**(iPhone 390px, Playwright 실측): `/partners` 로드 1.6초, 세로 11,396px(약 13화면), 상단·하단 고정 CTA(`내 가게 등록`·`카카오 문의`) 항상 보임, 첫 화면 "체험단 말고, 계산하는 손님 / 수수료 10%", 90% 그래프, 앱 화면, 비교표, FAQ 6개. 결함 없음. **`/store/new` 는 비로그인 시 `/login?returnUrl=/store/new` 로 가는데 그 화면이 소비자용**("우리 동네 가게, 미리 사면 더 싸게" + 카카오로 시작하기)이라, DM 받고 들어온 사장님이 "여기가 맞나" 하고 멈출 수 있다 — returnUrl 이 `/store/new` 면 "가게 등록을 위해 로그인합니다" 한 줄을 보여 주는 것이 다음 개선 후보(코드 변경, 소비자 로그인 화면). 또 `/partners` 하단 "숨기지 않고 말씀드립니다" 문단이 *"판매 중 이용권 164건 가운데 실제 매장이 등록한 것은 2건"* 을 그대로 보여 준다 — 정직하지만 입점 설득엔 역풍일 수 있어 대표 판단 사항. 로그인 뒤 단계는 카카오 로그인이 필요해 자동 점검 못 함.
+- **⑥ 상황판 체크리스트**: 아침 보고 루틴이 시트 v2 를 읽어 `dm_sent`·답장·입점을 채우고, "오늘 할 일" 항목에 `done` 을 매긴다(상황판이 ✓·취소선으로 그린다). 제목도 `DM N/141` 을 포함.
+
 ## 5. 되돌리기
 예약 작업 네 개(`유어딜 제휴 제안 매일 발송` trig_01HQ2Lxy14ZVaAqGVtPJcUKr(비활성) · `유어딜 인스타 DM 확인` trig_01XRfZf7H1FwtqNFT2JuhRde · `유어딜 영업 일일 보고` trig_0174uVkfCe3HmzFHyDNnKkej · `유어딜 제휴 메일 답장 확인` trig_01DT49UroLKXEpHnwUv77XDx)를 끄면 전부 멈춘다. 대시보드 `유어딜 영업 상황판` https://claude.ai/artifact/HpWM54fZ8s77Fy8sA5e5K6 은 아침 보고 작업이 갱신한다. 코드 변경 0.
 
