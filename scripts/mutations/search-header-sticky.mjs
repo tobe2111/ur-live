@@ -5,9 +5,9 @@
 export default [
   {
     name: '🔍 검색 헤더가 전역 네비를 덮음 (md+ 반쪽 바)',
-    file: 'src/components/search/SearchHeader.tsx',
-    find: 'className="sticky top-0 md:static z-50',
-    replace: 'className="sticky top-0 z-50',
+    file: 'src/shared/search-page.ts', // 🔎 2026-11-10 클래스 SSOT 가 옮겨갔다(서버 첫 화면과 공유)
+    find: "header: 'sticky top-0 md:static z-50",
+    replace: "header: 'sticky top-0 z-50",
     test: 'src/tests/unit/search-header-sticky.test.ts',
     why:
       '네비와 페이지 헤더가 둘 다 `top-0` 에 붙는데 페이지 쪽 z-50 이 더 높다. 실측 @900(스크롤 500) 에서 ' +
@@ -16,9 +16,9 @@ export default [
   },
   {
     name: '🔍 네비 높이를 외운 오프셋으로 회귀 (드리프트 재발)',
-    file: 'src/components/search/SearchHeader.tsx',
-    find: 'className="sticky top-0 md:static z-50',
-    replace: 'className="sticky top-0 md:top-[114px] z-50',
+    file: 'src/shared/search-page.ts',
+    find: "header: 'sticky top-0 md:static z-50",
+    replace: "header: 'sticky top-0 md:top-[114px] z-50",
     test: 'src/tests/unit/search-header-sticky.test.ts',
     why:
       '2026-08 에 이 자리를 `md:top-[102px]` 로 고쳤다가 한 달 만에 네비가 114px 로 자라 조용히 틀어졌다. ' +
