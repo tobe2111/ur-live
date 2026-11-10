@@ -13,8 +13,8 @@ export default [
   {
     name: '🧹 면제 항목에서 판단 근거(reason)가 빠진다',
     file: AL,
-    find: '"reason": "vite dev server',
-    replace: '"reason": "",\n      "_reason": "vite dev server',
+    find: '"allow": []', // 2026-11-10 면제가 0건이 돼 빈 목록에 항목을 심는다
+    replace: "\"allow\": [{\"ghsa\": \"GHSA-aaaa-bbbb-cccc\", \"pkg\": \"example\", \"reason\": \"\", \"accepted_by\": \"대표 승인 — 주입 시험\", \"date\": \"2026-11-10\", \"review\": \"주입 시험\"}]",
     test: TEST,
     why: '근거 없는 면제는 다음 세션이 왜 면제인지 몰라 판단할 수 없다 — 영구 면제가 된다.',
   },
@@ -53,8 +53,8 @@ export default [
   {
     name: '🧹 런타임 axios 를 면제로 덮는다(상향 대신)',
     file: AL,
-    find: '      "ghsa": "GHSA-fx2h-pf6j-xcff",\n      "pkg": "vite",',
-    replace: '      "ghsa": "GHSA-x97p-jq2g-jp4f",\n      "pkg": "axios",',
+    find: '"allow": []',
+    replace: "\"allow\": [{\"ghsa\": \"GHSA-x97p-jq2g-jp4f\", \"pkg\": \"axios\", \"reason\": \"주입 시험용 면제\", \"accepted_by\": \"대표 승인 — 주입 시험\", \"date\": \"2026-11-10\", \"review\": \"주입 시험\"}]",
     test: TEST,
     why: 'axios 는 브라우저에서 쓰는 런타임 의존성이다(toFormData 프로토타입 오염이 닿는다) — 면제가 아니라 버전 상향이 답이다.',
   },
