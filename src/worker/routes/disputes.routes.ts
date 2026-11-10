@@ -267,12 +267,12 @@ disputesRoutes.post('/admin/:id/approve', requireAuth(), require2FA(), auditLog(
         idempotencyKey: `dispute-${id}-voucher-${voucher.id}`,
       })
       if (!cancelRes.ok) {
-        await DB.prepare("UPDATE vouchers SET status = 'unused' WHERE id = ? AND status = 'refunded'").bind(voucher.id).run().catch(() => {})
+        await DB.prepare("UPDATE vouchers SET status = 'unused' WHERE id = ? AND status = 'refunded'").bind(voucher.id).run().catch(swallow('disputes'))
         return c.json({ success: false, error: '카드 환불 실패 — 토스 취소가 거부되었습니다. 잠시 후 재시도하세요.' }, 502)
       }
-      await DB.prepare("UPDATE orders SET status = 'REFUNDED', updated_at = datetime('now') WHERE id = ?").bind(voucher.order_id).run().catch(() => {})
+      await DB.prepare("UPDATE orders SET status = 'REFUNDED', updated_at = datetime('now') WHERE id = ?").bind(voucher.order_id).run().catch(swallow('disputes'))
     } catch (e) {
-      await DB.prepare("UPDATE vouchers SET status = 'unused' WHERE id = ? AND status = 'refunded'").bind(voucher.id).run().catch(() => {})
+      await DB.prepare("UPDATE vouchers SET status = 'unused' WHERE id = ? AND status = 'refunded'").bind(voucher.id).run().catch(swallow('disputes'))
       return c.json({ success: false, error: '카드 환불 처리 중 오류 — 다시 시도하세요.' }, 502)
     }
   }

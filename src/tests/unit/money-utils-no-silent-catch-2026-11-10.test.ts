@@ -18,6 +18,13 @@ const FILES = [
   'src/worker/utils/affiliate-credit.ts',
   'src/worker/utils/visit-reward.ts',
   'src/features/admin/api/admin-payout-center.routes.ts',
+  // 2차(2026-11-10) — 주문·공구·추첨·분쟁·체험단·찜 알림
+  'src/worker/routes/order.routes.ts',
+  'src/features/group-buy/api/group-buy.routes.ts',
+  'src/features/group-buy/api/fcfs.routes.ts',
+  'src/worker/routes/disputes.routes.ts',
+  'src/features/group-buy/api/experience-campaign.routes.ts',
+  'src/worker/cron/wishlist-notify.ts',
 ]
 
 describe('돈 관련 파일 — 빈 catch 0', () => {
@@ -25,7 +32,7 @@ describe('돈 관련 파일 — 빈 catch 0', () => {
     it(f, () => {
       const src = readFileSync(f, 'utf8')
       expect(src.match(/\.catch\(\s*\(\)\s*=>\s*\{\s*\}\s*\)/g) ?? [], '빈 catch — swallow(\'<라벨>\') 로 바꿀 것').toEqual([])
-      expect(src).toMatch(/import \{ swallow \} from /)
+      expect(src).toMatch(/import \{[^}]*\bswallow\b[^}]*\} from /)
     })
   }
 })

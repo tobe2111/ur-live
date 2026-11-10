@@ -473,13 +473,13 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
                       // 소비 미발생 → 게이트 증가분 보상 복원 (used_count 과대계상 방지, 원자 감소)
                       await c.env.DB.prepare(
                         'UPDATE coupons SET used_count = used_count - 1 WHERE id = ? AND used_count > 0'
-                      ).bind(couponIdNum).run().catch(() => {});
+                      ).bind(couponIdNum).run().catch(swallow('order'));
                     }
                   } catch {
                     // UNIQUE 위반 = 이미 사용 → 게이트 증가분 보상 복원 + couponDiscount 0 (할인 없음)
                     await c.env.DB.prepare(
                       'UPDATE coupons SET used_count = used_count - 1 WHERE id = ? AND used_count > 0'
-                    ).bind(couponIdNum).run().catch(() => {});
+                    ).bind(couponIdNum).run().catch(swallow('order'));
                   }
                 }
               } catch { /* 게이트 실패 → couponDiscount 0 (할인 없음, 주문 차단 안 함) */ }
@@ -527,22 +527,22 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       if (order?.id && (regionCode !== 'normal' || extraShippingFee > 0)) {
         await c.env.DB.prepare(
           `UPDATE orders SET region_code = ?, extra_shipping_fee = ? WHERE id = ?`,
-        ).bind(regionCode, extraShippingFee, order.id).run().catch(() => {})
+        ).bind(regionCode, extraShippingFee, order.id).run().catch(swallow('order'))
       }
       // 💸 딜 사용분 저장(/confirm 성공 시 이 값만큼 잔액 차감) + 쿠폰 사용행을 주문에 링크(환불 역전용).
       if (order?.id && dealUsed > 0) {
         await ensureOrdersDealUsed(c.env.DB);
-        await c.env.DB.prepare('UPDATE orders SET deal_used = ? WHERE id = ?').bind(dealUsed, order.id).run().catch(() => {})
+        await c.env.DB.prepare('UPDATE orders SET deal_used = ? WHERE id = ?').bind(dealUsed, order.id).run().catch(swallow('order'))
       }
       if (order?.id && couponConsumed) {
         await c.env.DB.prepare('UPDATE coupon_uses SET order_id = ? WHERE coupon_id = ? AND user_id = ? AND order_id IS NULL')
-          .bind(order.id, couponIdNum, userId).run().catch(() => {})
+          .bind(order.id, couponIdNum, userId).run().catch(swallow('order'))
       }
     } catch (createErr) {
       // 💸 쿠폰 소비 롤백 (주문 실패 → 쿠폰 미사용 복원). 딜은 아직 미차감(/confirm)이라 복원 불필요.
       if (couponConsumed) {
-        await c.env.DB.prepare('DELETE FROM coupon_uses WHERE coupon_id = ? AND user_id = ? AND order_id IS NULL').bind(couponIdNum, userId).run().catch(() => {})
-        await c.env.DB.prepare('UPDATE coupons SET used_count = MAX(0, used_count - 1) WHERE id = ?').bind(couponIdNum).run().catch(() => {})
+        await c.env.DB.prepare('DELETE FROM coupon_uses WHERE coupon_id = ? AND user_id = ? AND order_id IS NULL').bind(couponIdNum, userId).run().catch(swallow('order'))
+        await c.env.DB.prepare('UPDATE coupons SET used_count = MAX(0, used_count - 1) WHERE id = ?').bind(couponIdNum).run().catch(swallow('order'))
       }
       // 주문 생성 실패 시 이미 차감한 재고를 복구 (보상 트랜잭션)
       console.error('[ORDERS] createOrder failed, restoring stock:', createErr);

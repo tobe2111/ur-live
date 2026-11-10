@@ -67,10 +67,10 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   //   분리. 컬럼/인덱스는 프로덕션 DB 에 이미 존재(멱등 no-op)인데 isolate 콜드마다 ~21 D1 왕복이
   //   버튼 클릭에 끼어들었음. curator /:handle 과 동일 패턴 — 신규 DB 는 repair-schema/cron 이 수렴.
   let _ddlDeferred = false
-  try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(ensureTables(DB).catch(() => {})); _ddlDeferred = true } } catch { /* no ctx */ }
-  if (!_ddlDeferred) await ensureTables(DB).catch(() => {})
+  try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(ensureTables(DB).catch(swallow('group-buy'))); _ddlDeferred = true } } catch { /* no ctx */ }
+  if (!_ddlDeferred) await ensureTables(DB).catch(swallow('group-buy'))
 
-  await ensureOrdersForeignKeysSane(DB).catch(() => {})  // 🧨 2026-09-19 깨진 FK 수리(멱등). 근거: ensure-orders-fk-sane.ts
+  await ensureOrdersForeignKeysSane(DB).catch(swallow('group-buy'))  // 🧨 2026-09-19 깨진 FK 수리(멱등). 근거: ensure-orders-fk-sane.ts
   const productIdRaw = c.req.param('id')
   const productIdNum = Number(productIdRaw)
   if (!Number.isFinite(productIdNum) || productIdNum <= 0 || !Number.isInteger(productIdNum)) {
@@ -733,7 +733,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
                 DB, 'seller', String(product.seller_id), 'voucher_sold',
                 '🎟️ 이용권 판매', `${product.name} ×${qty} — ₩${Number(totalAmount).toLocaleString('ko-KR')}`,
                 '/seller/group-buy',
-              ).catch(() => {})
+              ).catch(swallow('group-buy'))
             }
           } catch { /* fail-soft */ }
           try { await (await import('../../../worker/utils/admin-event-notify')).notifyAdminPurchase(DB, { product, qty, price: `${Number(totalAmount || 0).toLocaleString('ko-KR')}딜` }) } catch { /* 🔔 2026-11-02 어드민 업무 알림(교환권/이용권) — fail-soft */ }
@@ -1076,7 +1076,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   if (!Number.isFinite(qty)) return c.json({ success: false, error: '잘못된 수량' }, 400)
 
   const { DB } = c.env
-  await ensureOrdersForeignKeysSane(DB).catch(() => {})  // 🧨 깨진 FK 수리 — 반드시 **과금 전**(승인 뒤면 청구된 돈을 되돌리게 된다)
+  await ensureOrdersForeignKeysSane(DB).catch(swallow('group-buy'))  // 🧨 깨진 FK 수리 — 반드시 **과금 전**(승인 뒤면 청구된 돈을 되돌리게 된다)
   // 1. 상품 재검증 (Toss 결제 도중 마감/품절 등 상태 변경 가능).
   // 🧱 2026-06-26 서비스 분리: confirm-toss 재검증도 /join(category 격리)과 대칭으로 도매 원본 제외.
   const product = await DB.prepare(
@@ -1252,7 +1252,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
               DB, 'seller', String(product.seller_id), 'voucher_sold',
               '🎟️ 이용권 판매(카드)', `${product.name} ×${qty} — ₩${Number(expectedAmount).toLocaleString('ko-KR')}`,
               '/seller/group-buy',
-            ).catch(() => {})
+            ).catch(swallow('group-buy'))
           }
         } catch { /* fail-soft */ }
         try { const m = await import('../../../worker/utils/admin-event-notify'); await m.notifyAdminPurchase(DB, { product, qty, price: `${m.won(expectedAmount)} · 카드` }) } catch { /* 🔔 2026-11-02 어드민 업무 알림 — fail-soft */ }
@@ -1278,7 +1278,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
           await DB.prepare(
             `INSERT INTO user_notifications (user_id, type, title, message, link)
              VALUES (?, 'voucher_issued', ?, ?, ?)`
-          ).bind(String(userId), `🎟️ ${issuedVoucherLabel(product)}이 발급됐어요`, `${product.name} ×${qty} — 보관함에서 확인하세요`, Number(product?.deal_only) === 1 ? '/my-gifticons' : '/my-vouchers').run().catch(() => {})
+          ).bind(String(userId), `🎟️ ${issuedVoucherLabel(product)}이 발급됐어요`, `${product.name} ×${qty} — 보관함에서 확인하세요`, Number(product?.deal_only) === 1 ? '/my-gifticons' : '/my-vouchers').run().catch(swallow('group-buy'))
         } catch { /* ignore */ }
         try {
           const userRow = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(userId).first<{ phone: string | null }>()
