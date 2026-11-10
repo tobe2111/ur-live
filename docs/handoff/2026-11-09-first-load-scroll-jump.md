@@ -106,3 +106,7 @@
 ## 53. 폰 피드 줄의 화면 밖 높이 추정 260 → 141 (§51 의 남은 밀림 0.17)
 - `.ur-cv-grid > *` 의 추정(260px)은 PC 카드 값인데 폰은 줄 목록(141px)이다 — 새로 그려진 줄이 한 프레임 260 으로 잡혔다 줄어든다(rAF 추적: 첫 줄 260 → 141, 2.8s 에 CLS 0.17). `.ur-cv-grid.ur-cv-feedrow`(폰만) 141px. 잠금표 밖(`GroupBuyFeed`·`index.css`). 가드 `progressive-cap-2026-10-13` 재조준 + 주입 2.
 - 배포 뒤 판정: `catdbg.cjs "https://urdeal.kr/?category=meal_voucher"` 에서 SHIFT 0.17 이 사라지는지 · 홈 `/` CLS 가 0.0001 그대로인지.
+
+## 54. [E4] #2301 `/new-openings` 배포 뒤 판정 + 홈 카테고리 머리 첫 화면
+- `/new-openings` (폰 4G·CPU 4배, 3회): CLS **0.0162**(종전 0.75). 남은 0.016 은 칩 줄 실제 높이와 예약(40px)의 몇 px 차이.
+- 홈 `?category=` 머리 첫 화면: 기록 `docs/locks/loading/2026-11-10-home-category-head-first-screen.md`. 배포 뒤 판정: `vitals_nocb.cjs "https://urdeal.kr/?category=meal_voucher"` FCP(종전 2.9~3.7s) · CLS.
