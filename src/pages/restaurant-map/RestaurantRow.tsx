@@ -17,6 +17,7 @@ import { priceDisplay } from '@/shared/price-display'
 import CatIcon from './CatIcon'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { ROW_THUMB_OPTS } from '@/shared/row-thumb' // 🖼️ 2026-11-10 워커 preload(검색 시드 첫 줄)와 같은 옵션 — 주소가 갈리면 두 번 받는다
 import { distanceKm, regionShort, stripStorePrefix } from './utils'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import type { Restaurant } from './types'
@@ -78,7 +79,7 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
     >
       {r.image_url ? (
         /* 🚑 2026-07-02 (대표 신고 "전체적으로 느림"): raw 원본(네이버 1MB급) → cfImage 리사이즈(88px@2x) */
-        <img src={cfImage(r.image_url, { width: 176, quality: 85, format: 'auto' }) || r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />
+        <img src={cfImage(r.image_url, ROW_THUMB_OPTS) || r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />
       ) : (
         <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center shrink-0">
           <CatIcon cat={r.category} className="w-7 h-7 text-gray-400" />

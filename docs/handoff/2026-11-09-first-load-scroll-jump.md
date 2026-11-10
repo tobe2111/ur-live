@@ -245,3 +245,8 @@
 - **랜딩 셋**(LCP = 서버가 그린 사진): `/about` 폰 **1,812ms**(HTML 849) · `/partners` **1,748**(HTML 1,033) · `/influencer` **1,264**(HTML 518) — 종전 3.2~4.7s. PC `/about` LCP **880** · CLS 0.0012. 느린 회선 회차에서도 1초대.
 - **비로그인 장바구니**: LCP = FCP = 서버 안내 문장 **580ms**(HTML 176) · 느린 회차 1,804(HTML 826) — 종전 LCP 2.0~2.5s(앱 뒤). 오판 정정 뒤 마운트 때 바뀌는 글자 없음.
 - **검색 결과 `/search?q=돈가스`**: LCP **2.6~2.8s**(종전 3.7) — 요소가 **첫 줄 썸네일**(`IMG.w-[88px]`, 시드로 마운트 즉시 줄은 그려지고 사진이 그 뒤에 온다). `X-SSR-Status`: 반복 검색어 `SEARCH:edge-hit`(엣지 6ms) · 처음 검색어 `self-fetch-hit` 294~385ms(마감 700ms 안). 다음 처방: 시드의 첫 두 줄 썸네일을 응답 헤더 preload(유어쇼츠 §27 과 같은 방법 — `RestaurantRow` 의 cfImage 폭과 **같은 주소**여야 한다)로 당기면 LCP 가 마운트 시점(≈2.2s)으로.
+
+## 46. 검색 결과 첫 줄 썸네일 preload (대표 "계속 최적화")
+- §45 의 다음 처방. 시드의 화면에 보일 앞 4줄(범위 필터는 `SearchPage` 와 같은 판정) 사진을 응답 헤더 `Link: rel=preload`(auto)로. 주소는 줄과 같은 `cfImage(…, ROW_THUMB_OPTS)` — 옵션을 `shared/row-thumb.ts` 로 SSOT(`RestaurantRow` 가 읽는다, 지도 목록도 같은 부품이라 값 불변).
+- 잠금표: `worker/index.ts` 한 토막(유어쇼츠 preload 줄 앞, 2672줄 유지) — `[LOADING_ADDITIVE]`. 가드 `search-thumb-preload-2026-11-10.test.ts` + 주입 5.
+- 배포 뒤 판정: `lcpel.cjs "https://urdeal.kr/search?q=돈가스"` LCP(종전 2.6~2.8s) · 같은 썸네일 주소가 요청 목록에 **한 번만** 나오는지.

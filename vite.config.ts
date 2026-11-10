@@ -167,6 +167,7 @@ export const CROSS_MODULES = [
 export const MAP_ROW_MODULES = [
   '/src/pages/restaurant-map/RestaurantRow', '/src/pages/restaurant-map/prefetch-detail',
   '/src/pages/restaurant-map/utils.ts', '/src/pages/restaurant-map/CatIcon',
+  '/src/shared/row-thumb', // 🖼️ 2026-11-10 줄 썸네일 옵션 — 줄만 쓰는 값이라 같은 묶음(안 넣으면 묶음기가 lz-map 에 넣어 app-map-row ↔ lz-map 순환, CI 가 잡았다)
 ]
 
 /**
