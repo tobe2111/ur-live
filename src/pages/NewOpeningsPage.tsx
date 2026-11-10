@@ -52,6 +52,8 @@ export default function NewOpeningsPage() {
         <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 max-w-[42em] leading-relaxed">우리 동네에 새로 문을 연 식당·카페·뷰티숍을 지역별로 모았습니다. 지역 칩을 눌러 내 동네만 골라 볼 수 있어요.</p>
 
         {/* 지역 칩 */}
+        {/* 📐 2026-11-10 로딩 밀림(라이브 CLS 0.75) — 응답 전에도 칩 줄 자리(40px)를 잡아 둔다. 칩이 뒤늦게 끼어들며 목록을 80px 밀었다. */}
+        {loading && regions.length === 0 && <div className="mt-5 h-10" aria-hidden="true" />}
         {regions.length > 0 && (
           <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
             <button onClick={() => setRegion('')} className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-medium border ${!region ? 'bg-brand text-white border-brand dark:border-white' : 'bg-white text-gray-600 border-gray-200 dark:bg-[#121212] dark:text-gray-300 dark:border-[#2A2A2A]'}`}>전체</button>
@@ -64,8 +66,9 @@ export default function NewOpeningsPage() {
           </div>
         )}
 
+        {/* 📐 로더가 한 화면을 차지해야 맨 아래 출처 문단이 목록에 밀려 튀지 않는다 */}
         {loading ? (
-          <div className="py-16 flex justify-center"><BrandLoader /></div>
+          <div className="py-16 min-h-[100dvh] flex justify-center items-start"><BrandLoader /></div>
         ) : !data || data.openings.length === 0 ? (
           <div className="py-16 text-center text-gray-400 dark:text-gray-500 text-[15px]">이 지역의 최근 개업 소식이 아직 없어요.</div>
         ) : (

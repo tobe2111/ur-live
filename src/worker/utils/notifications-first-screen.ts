@@ -13,6 +13,7 @@ import { NOTIF_CLS, NOTIF_COPY, NOTIF_PULL_PATH } from '../../shared/notificatio
 import { PC_HOME_FS } from '../../shared/pc-home-first-screen'
 import { GUEST_PC_FRAME } from './guest-first-screen'
 import { subPageHeadHtml } from './sub-page-head-html'
+import { SUB_PAGE_CLS } from '../../shared/sub-page-head'
 
 export function buildNotificationsFirstScreen(loaderHtml: string, isMobile = true): string {
   const pull = `<div aria-hidden="true" class="${NOTIF_CLS.pullInd}"><svg viewBox="0 0 24 24" class="${NOTIF_CLS.pullIcon}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${NOTIF_PULL_PATH}"></path></svg></div>`
@@ -21,4 +22,14 @@ export function buildNotificationsFirstScreen(loaderHtml: string, isMobile = tru
   const framed = isMobile ? page : `<div class="${GUEST_PC_FRAME.cls}" data-mobile-only="false" style="--app-frame:${GUEST_PC_FRAME.width}">${page}</div>`
   // 🧷 노드 id 는 다른 첫 화면과 같다 — `lib/boot-first-screen.ts` 가 이 노드를 Suspense 폴백에 도로 붙인다. 목록 자리는 그 아래 로더가 채운다.
   return `<div id="ur-first-screen">${topnav}${framed}</div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
+}
+
+/**
+ * 👤 마이 하위 화면(`shared/my-sub-pages.ts`) 서버 첫 화면 — 머리줄 + 로더. 폰만(PC 는 화면마다 액자가 달라 그리지 않는다), 세션 쿠키가 있을 때만.
+ * 클래스가 알림 머리줄의 부분집합이라 첫 화면 CSS 는 알림 표면(`notifications`)을 같이 쓴다.
+ */
+export const MY_SUB_ROOT_CLS = SUB_PAGE_CLS.replace('min-h-[100dvh] ', '')
+export function buildMySubFirstScreen(title: string, loaderHtml: string): string {
+  // 📐 뿌리에서 `min-h-[100dvh]` 는 뺀다 — 그대로 두면 머리줄 칸이 한 화면을 차지해 로더가 화면 밖으로 밀린다(바탕색만 남긴다).
+  return `<div id="ur-first-screen"><div class="${MY_SUB_ROOT_CLS}">${subPageHeadHtml(title)}</div></div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }
