@@ -74,8 +74,25 @@
 
 ⚠️ **예약 작업 셋은 전부 세션 `session_01RPPico3Bz8xULY76nYdCAF` 로 되돌아와 돈다**(persistent). 새 세션으로 띄우면 지메일·인스타 연결(MCP·프록시 주입)이 **없다** — 2026-11-09 실측(`connectors` 파라미터 불가 + "stores no MCP connectors" 경고). 그래서 그 세션이 사라지면 셋 다 멎는다. 대안은 §6.
 
+## 4-1. 2026-11-10 변경 (대표 "메일은 지금 보내지 마" · "모두 해줘")
+- **제휴 메일 발송은 중단**(예약 작업 `유어딜 제휴 제안 매일 발송` 비활성). 11-10 09:53 에 20통이 나갔고 그 뒤로는 없다. 켤 때는 "메일 다시 보내" — 켜지면 **리드별 추적 링크**(`POST /influencer-pool/{id}/track-link` → `urdeal.kr/l/{code}`)와 **제목 A/B**(홀수 A · 짝수 B)가 함께 들어간다. 초안 단계는 없다(지메일이 초안의 링크를 `google.com/url?q=` 로 감싸 스팸처럼 보인다 — 실측).
+- 새 예약 작업 **`유어딜 제휴 메일 답장 확인`** `trig_01DT49UroLKXEpHnwUv77XDx`(11:53·15:53·19:53 KST): 답장·반송을 리드 DB 에 기록(수신거부 → `opted_out=1`, 반송 → `bounced`, 관심 → `interested`). 발송 중단 중에는 답장도 **초안만** 만든다.
+- 인스타 DM 작업은 관심 표현에 **"메뉴·정상가·할인가 세 가지만 알려 주시면 등록을 도와드린다"** 로 한 걸음 더 간다. ⚠️ 어드민이 매장 대신 이용권을 만드는 경로는 **없다**(2026-11-10 코드 확인: `seller-prospects` 는 영업 귀속용, 어드민 상품 생성은 데모 시드만). 대신 올리려면 사장님이 셀러 대시보드에서 **운영 위임**(`POST /api/seller/operators`, `seller_operators`)을 대표 계정에 해 줘야 한다. 그래서 DM 은 "대신 등록" 을 약속하지 않고 "같이 등록" 까지만 말한다.
+- 인스타 게시물: 계정엔 이미 **21개 게시물·팔로워 9,257**, 11-04 부터 매일 유달이 말투로 올라가고 있다(다른 세션·루틴의 일). 이 세션은 게시물을 올리지 않는다(세션 = 작업 하나). 11-10 에 만든 미발행 컨테이너 하나는 24시간 뒤 자동 소멸.
+
+### 이용권 미등록 3곳 전화 스크립트 (대표용)
+오레노라멘 합정본점(10-06 승인) · 박달집흑염소(9-23) · 청룡갈비(9-21). 입점은 됐는데 이용권이 0 이다.
+> "사장님, 유어딜 정지원입니다. 지난달 입점해 주셨는데 아직 이용권이 하나도 안 올라가 있어서요. 대표 메뉴 하나, 정상가, 할인가만 말씀해 주시면 제가 등록 화면까지 같이 봐 드릴게요. 5분이면 됩니다. 손님은 QR 만 찍으시면 되고, 팔린 뒤에만 수수료가 나갑니다."
+받은 메뉴·가격은 이 대화에 적어 주시면 세션이 등록 화면 입력값(이름·가격·설명·카테고리)을 바로 준비한다.
+
+### Resend 키 설정 (대표 10분 — 세션·지메일 의존을 없애는 길)
+1. resend.com 가입 → Domains 에 `urdeal.kr` 추가 → 안내하는 DNS 레코드(SPF·DKIM) 를 Cloudflare DNS 에 추가 → Verified.
+2. API Keys 에서 키 생성(Sending access).
+3. Cloudflare → Workers & Pages → `ur-live` → Settings → Variables and Secrets → `RESEND_API_KEY`(secret) + `RESEND_FROM`(예 `유어딜 <hello@urdeal.kr>`) 추가 → 재배포.
+4. 그 뒤 세션에 "Resend 켰어" 라고 알리면, 발송 작업을 레포 경로(`POST /api/admin/ads/influencer-pool/send-cold`)로 바꾼다 — 반송·수신거부가 DB 에 자동 기록되고 이 세션이 없어도 돈다.
+
 ## 5. 되돌리기
-예약 작업 세 개(`유어딜 제휴 제안 매일 발송` trig_01HQ2Lxy14ZVaAqGVtPJcUKr · `유어딜 인스타 DM 확인` trig_01XRfZf7H1FwtqNFT2JuhRde · `유어딜 영업 일일 보고` trig_0174uVkfCe3HmzFHyDNnKkej)를 끄면 전부 멈춘다. 코드 변경 0.
+예약 작업 네 개(`유어딜 제휴 제안 매일 발송` trig_01HQ2Lxy14ZVaAqGVtPJcUKr(비활성) · `유어딜 인스타 DM 확인` trig_01XRfZf7H1FwtqNFT2JuhRde · `유어딜 영업 일일 보고` trig_0174uVkfCe3HmzFHyDNnKkej · `유어딜 제휴 메일 답장 확인` trig_01DT49UroLKXEpHnwUv77XDx)를 끄면 전부 멈춘다. 대시보드 `유어딜 영업 상황판` https://claude.ai/artifact/HpWM54fZ8s77Fy8sA5e5K6 은 아침 보고 작업이 갱신한다. 코드 변경 0.
 
 ## 6. 더 튼튼하게 만들려면 (대표 선택)
 지메일 경로는 세션에 묶여 있다. 레포에는 이미 **같은 규칙이 코드로 박힌 발송 경로**가 있다 — `POST /api/admin/ads/influencer-pool/send-cold`(`outreach-cold.ts`: (광고) 표기·수신거부·야간 금지·1일 200·30일 쿨다운·반송 회로차단·접촉 기록 자동). 막힌 건 하나, Cloudflare 의 `RESEND_API_KEY` 가 비어 있다(세션은 플랫폼 쓰기를 하지 않는다 — CLAUDE.md ☁️ 절). 대표가 Resend 키를 넣으면(발신 도메인 `urdeal.kr` 인증 포함) 예약 작업을 그 엔드포인트 호출로 바꿔 **세션·지메일 의존을 없앨 수 있다**. 그때는 새 세션형 예약 작업으로도 된다(어드민 API 만 쓰므로).
