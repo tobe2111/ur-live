@@ -205,5 +205,30 @@
     "hook": "udal",
     "media_set": "onboarding-steps",
     "date_kst": "2026-11-09"
+  },
+  {
+    "id": "17959167453267054",
+    "platform": "instagram",
+    "track": "creator",
+    "topic": "어떻게 버나: 매장이 소개 몫을 건 딜이 내 링크로 팔리면 판매액의 소개비가 적립. 소개비율은 매장이 딜마다 정하고, 고르기 전에 미리 보인다",
+    "hook": "headline",
+    "media_set": "gen-2026-11-10-creator",
+    "series": "quick-guide",
+    "date_kst": "2026-11-10",
+    "format": "1",
+    "slot": "19:30",
+    "media": "carousel"
+  },
+  {
+    "id": "18001183322824426",
+    "platform": "threads",
+    "track": "creator",
+    "hook": "headline",
+    "series": "quick-guide",
+    "date_kst": "2026-11-10",
+    "len": "2",
+    "slot": "19:30",
+    "media": "image",
+    "topic_tag": "블로그체험단"
   }
 ]

@@ -546,5 +546,48 @@
     "slot_kst": "19:30",
     "bio_link": "https://urdeal.kr/partners?utm_source=instagram&utm_medium=social&utm_campaign=merchant-recruit&utm_content=ig-20261109",
     "text": "유달이: \"아이고 사장님, 광고 돌렸는데 진짜 온 사람이 몇 명인지는 아십니꺼?\"\n\n노출이 늘어도 그중 몇 분이 실제로 가게 문을 열고 들어오셨는지는 의외로 잘 안 보이더라고요. 유어딜은 이용권이 몇 장 팔렸고 그중 몇 명이 QR로 방문하셨는지가 매장 화면에 그대로 남습니다. 쓰시던 스마트폰으로 손님 QR만 스캔하시면 되고요.\n\n가입비와 월 이용료는 없고, 수수료는 이용권이 실제로 쓰인 뒤에만 나갑니다. 자세한 조건은 프로필 링크에 적어 두었습니다.\n\n#유어딜 #소상공인 #동네맛집 #입점안내"
+  },
+  {
+    "platform": "instagram",
+    "id": "17959167453267054",
+    "media_type": "CAROUSEL",
+    "media": "carousel",
+    "format": "1",
+    "media_set": "gen-2026-11-10-creator",
+    "series": "quick-guide",
+    "generated": {
+      "source": "none",
+      "title": "딜이 팔리면 소개비가 쌓여요",
+      "reel": false
+    },
+    "hook": "headline",
+    "topic": "어떻게 버나: 매장이 소개 몫을 건 딜이 내 링크로 팔리면 판매액의 소개비가 적립. 소개비율은 매장이 딜마다 정하고, 고르기 전에 미리 보인다",
+    "content_id": "ig",
+    "track": "creator",
+    "promo": false,
+    "posted_at": "2026-11-10T11:34:36.698Z",
+    "date_kst": "2026-11-10",
+    "slot_kst": "19:30",
+    "bio_link": "https://urdeal.kr/creators?utm_source=instagram&utm_medium=social&utm_campaign=creator-recruit&utm_content=ig-20261110",
+    "text": "소개 링크로 딜이 팔리면 판매액 일부가 소개비로 적립돼요. 소개비율은 매장이 딜마다 정하고, 딜을 고르기 전에 미리 보여요. 손님이 환불하면 적립도 같이 빠져요.\n\n자세한 내용은 프로필 링크에서 확인하세요.\n\n#유어딜 #소개파트너 #맛집뷰티"
+  },
+  {
+    "platform": "threads",
+    "id": "18001183322824426",
+    "reply_id": "17978583618161167",
+    "topic_tag": "블로그체험단",
+    "hook": "headline",
+    "len": "2",
+    "media": "image",
+    "content_id": "th",
+    "image": "https://raw.githubusercontent.com/tobe2111/ur-live/marketing-data/marketing-bot/data/cards/2026-11-10-creator/slide-1.jpg",
+    "track": "creator",
+    "series": "quick-guide",
+    "promo": false,
+    "posted_at": "2026-11-10T11:34:36.698Z",
+    "date_kst": "2026-11-10",
+    "slot_kst": "19:30",
+    "link": "https://urdeal.kr/creators?utm_source=threads&utm_medium=social&utm_campaign=creator-recruit&utm_content=th-20261110",
+    "text": "소개비는 딜마다 매장이 정해요. 딜을 고르기 전에 미리 보이고요.\n내 링크로 팔린 판매액만큼만 적립되니까 시작 비용은 0원.\n소개 파트너 신청은 urdeal.kr/creators 에서 하실 수 있어요"
   }
 ]
