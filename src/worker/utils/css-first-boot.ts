@@ -58,7 +58,7 @@ import { CRITICAL_CSS, CRITICAL_CSS_HOME, CRITICAL_CSS_SURFACES, CRITICAL_CSS_TO
  * 🖼️ 서버가 **첫 화면을 그리는** 표면인가 — 첫 화면 CSS(`criticalCssFor`)를 인라인할 자격. 폰(+크롤러)만, 단 PC 홈은 예외(2026-11-09 pc-home-first-screen).
  */
 export function firstScreenApplies(pathname: string, ua: string, authed = false): boolean {
-  if (!shouldRenderMobileFirstScreen(ua)) return (pathname === '/' || pathname === '/index.html') || (!authed && guestTabOf(pathname) !== null) || /^\/(?:pass|group-buy)\/\d+\/?$/.test(pathname) || pathname === '/vouchers' || (/^\/u\/[^/]+\/?$/.test(pathname) && !/^\/u\/me\/?$/.test(pathname)) || pathname === '/search' || pathname === '/faq' || (authed && /^\/notifications\/?$/.test(pathname)) // 🔎 2026-11-10 검색·❓ FAQ·🔔 알림(세션 있을 때만)은 PC 도 액자 // 🖥️ 2026-11-09 PC 홈 첫 화면(홈판 CSS 에 PC 클래스가 있다) · 🔐 로그인 화면은 PC 도 같은 한 열이라 PC 에도 그린다(guest 표면 CSS) · 🎟️ PC 상세(detail-pc-first-screen, 대표 승인)
+  if (!shouldRenderMobileFirstScreen(ua)) return (pathname === '/' || pathname === '/index.html') || (!authed && guestTabOf(pathname) !== null) || /^\/(?:pass|group-buy)\/\d+\/?$/.test(pathname) || pathname === '/vouchers' || (/^\/u\/[^/]+\/?$/.test(pathname) && !/^\/u\/me\/?$/.test(pathname)) || pathname === '/search' || pathname === '/faq' || pathname === '/cart' || (authed && /^\/notifications\/?$/.test(pathname)) // 🔎 2026-11-10 검색·❓ FAQ·🧺 장바구니·🔔 알림(세션 있을 때만)은 PC 도 액자 // 🖥️ 2026-11-09 PC 홈 첫 화면(홈판 CSS 에 PC 클래스가 있다) · 🔐 로그인 화면은 PC 도 같은 한 열이라 PC 에도 그린다(guest 표면 CSS) · 🎟️ PC 상세(detail-pc-first-screen, 대표 승인)
   return pathname === '/' || pathname === '/vouchers' || pathname === '/stays' // 🏨 2026-10-19 숙소 목록도 서버 첫 화면이 생겼다(stays-first-screen.ts)
     || (!authed && guestTabOf(pathname) !== null) // 🚪 2026-10-19 로그인 전 탭 셋 — 세션 쿠키 없을 때만 서버가 그린다(guest-first-screen.ts)
     || /^\/region\/[^/]+(?:\/[^/]+)?\/?$/.test(pathname) // 🗺️ 2026-11-08 지역 착지도 서버 첫 화면(region-first-screen.ts)
@@ -67,6 +67,7 @@ export function firstScreenApplies(pathname: string, ua: string, authed = false)
     || pathname === '/map' || pathname === '/map/' // 🗺️ 2026-11-09 지도 껍데기(map-first-screen.ts)
     || pathname === '/search' || pathname === '/search/' // 🔎 2026-11-10 검색 헤더·빈 검색 안내(search-first-screen.ts)
     || pathname === '/faq' || pathname === '/faq/' // ❓ 2026-11-10 자주 묻는 질문 전체(faq-first-screen.ts)
+    || pathname === '/cart' || pathname === '/cart/' // 🧺 2026-11-10 장바구니 머리줄(cart-first-screen.ts)
     || (authed && /^\/notifications\/?$/.test(pathname)) // 🔔 2026-11-10 알림 머리줄 — 게스트 탭과 반대로 **세션 쿠키가 있을 때만**(notifications-first-screen.ts)
     || /^\/blog(?:\/[^/]+)?\/?$/.test(pathname) // 📝 2026-10-19 블로그 목록·상세도 서버 첫 화면(blog-*-first-screen.ts)
     || /^\/(?:pass|group-buy|vouchers|stays)\/\d+\/?$/.test(pathname)
@@ -125,6 +126,7 @@ export function criticalSurfaceOf(pathname: string): string | null {
   if (p === '/search') return 'search'
   if (p === '/faq') return 'faq'
   if (p === '/notifications') return 'notifications'
+  if (p === '/cart') return 'cart'
   if (/^\/region\/[^/]+(?:\/[^/]+)?$/.test(p)) return 'region'
   if (/^\/u\/[^/]+$/.test(p) && p !== '/u/me') return 'curator'
   return null

@@ -220,7 +220,7 @@ describe('🧩 2026-11-08 표면별 첫 화면 CSS', () => {
     { encoding: 'utf8', maxBuffer: 8 << 20, timeout: 180_000 }))
   it('모든 첫 화면 ROOT 가 어느 표면에 속한다 · 표면마다 전체판의 70% 미만', () => {
     const covered = new Set(Object.values(SURF.keys.map((k: string) => k)))
-    expect(covered.size).toBe(17) // 🔔 2026-11-10 알림(notifications) · ❓ FAQ(faq) · 🔎 검색(search) · 🏠 2026-11-08 생활(life) · 🗺️ 지역(region) · 🎬 2026-11-09 유어쇼츠(urshorts) · 🗺️ 지도(map) 추가
+    expect(covered.size).toBe(18) // 🧺 2026-11-10 장바구니(cart) · 🔔 알림(notifications) · ❓ FAQ(faq) · 🔎 검색(search) · 🏠 2026-11-08 생활(life) · 🗺️ 지역(region) · 🎬 2026-11-09 유어쇼츠(urshorts) · 🗺️ 지도(map) 추가
     for (const [k, n] of Object.entries(SURF.o as Record<string, number>)) {
       expect(n, k).toBeGreaterThan(10_000)
       expect(n, k).toBeLessThan(CRITICAL_CSS.length * 0.7)
@@ -257,7 +257,7 @@ describe('🧩 2026-11-08 표면별 첫 화면 CSS', () => {
     const cases: Array<[string, string | null]> = [
       ['/', 'home'], ['/pass/12', 'detail'], ['/group-buy/12', 'detail'], ['/vouchers/3', 'voucherDetail'], ['/stays/9', 'stayDetail'],
       ['/vouchers', 'vouchers'], ['/stays', 'stays'], ['/blog', 'blogList'], ['/blog/what-is-urdeal', 'blogDetail'],
-      ['/user/profile', 'guest'], ['/u/me', 'guest'], ['/u/jiwon', 'curator'], ['/life', 'life'], ['/region/%EC%84%9C%EC%9A%B8', 'region'], ['/urshorts', 'urshorts'], ['/map', 'map'], ['/search', 'search'], ['/faq', 'faq'], ['/notifications', 'notifications'], ['/checkout', null],
+      ['/user/profile', 'guest'], ['/u/me', 'guest'], ['/u/jiwon', 'curator'], ['/life', 'life'], ['/region/%EC%84%9C%EC%9A%B8', 'region'], ['/urshorts', 'urshorts'], ['/map', 'map'], ['/search', 'search'], ['/faq', 'faq'], ['/notifications', 'notifications'], ['/cart', 'cart'], ['/checkout', null],
     ]
     for (const [p, k] of cases) expect(criticalSurfaceOf(p), p).toBe(k)
     const named = new Set(cases.map(([, k]) => k).filter(Boolean))

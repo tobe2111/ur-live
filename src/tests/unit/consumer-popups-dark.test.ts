@@ -79,8 +79,11 @@ describe('③ 장바구니 (CartPage)', () => {
   const src = R('pages/CartPage.tsx')
 
   it('로그인 상태 래퍼가 다크 배경을 가진다 — 없으면 화면 절반이 회색', () => {
-    const wrappers = [...src.matchAll(/className="flex flex-col min-h-\[100dvh\]([^"]*)"/g)].map((m) => m[1])
+    // 🧺 2026-11-10 뿌리 클래스는 `shared/cart-page.ts` CART_CLS.root 로 옮겨갔다(서버 첫 화면·로딩 분기와 공유) — 그 상수의 값을 본다.
+    const shared = R('shared/cart-page.ts')
+    const wrappers = [...shared.matchAll(/root: 'flex flex-col min-h-\[100dvh\]([^']*)'/g)].map((m) => m[1])
     expect(wrappers.length).toBeGreaterThan(0)
+    expect((src.match(/className=\{CART_CLS\.root\}/g) || []).length).toBe(2)
     for (const w of wrappers) expect(w, w).toMatch(PAGE_BG_RE)
     expect(src).not.toMatch(/bg-\[#F4F4F4\]/)
   })
@@ -93,7 +96,10 @@ describe('③ 장바구니 (CartPage)', () => {
     // 본문 <main> 의 lg 폭
     expect(src).toMatch(/lg:max-w-\[1020px\] lg:grid/)
     const header = R('components/cart/CartHeader.tsx')
-    const rows = [...header.matchAll(/className="mx-auto max-w-md([^"]*)"/g)].map((m) => m[1])
+    // 🧺 2026-11-10 제목 줄 클래스는 `shared/cart-page.ts` 로 옮겨갔다(서버 첫 화면과 공유) — 그 상수 + 남은 전체선택 줄 리터럴을 함께 본다.
+    const shared = R('shared/cart-page.ts')
+    const rows = [...header.matchAll(/className="mx-auto max-w-md([^"]*)"/g), ...shared.matchAll(/headerRow: 'mx-auto max-w-md([^']*)'/g)].map((m) => m[1])
+    expect(header).toContain('className={CART_CLS.headerRow}')
     expect(rows.length).toBe(2)
     for (const r of rows) expect(r, r).toMatch(/lg:max-w-\[1020px\]/)
   })

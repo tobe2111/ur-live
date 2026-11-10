@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { useCart, useUpdateCartQuantity, useRemoveFromCart, useUpdateCartOption } from '@/hooks/useCart'
-import { CartHeader } from '@/components/cart/CartHeader'
+import { CartHeader } from '@/components/cart/CartHeader'; import { CART_CLS, CART_COPY } from '@/shared/cart-page' // 🧺 2026-11-10 서버 첫 화면과 같은 뿌리·머리줄(로딩 분기도 같은 모양) — 한 줄: 파일크기 래칫(600)
 import { CartItemComponent } from '@/components/cart/CartItem'
 import { CartGroupShippingRow } from '@/components/cart/CartGroupShippingRow'
 import { CartSummary } from '@/components/cart/CartSummary'
@@ -404,17 +404,17 @@ function CartPageContent() {
   }
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (라우트 청크 로더와 위상 연속).
-  if (loading) {
+  if (loading) { // 🧺 2026-11-10 로딩도 완성 화면과 같은 뿌리(bg-warm) + 머리줄(개수 없음) — 서버 첫 화면(worker/utils/cart-first-screen.ts)이 같은 모양을 먼저 그리므로, 흰 바탕 + 큰 로더로 바꾸면 그 사이가 깜빡인다.
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
-        <BrandLoader fullScreen label={t('cart.loading')} />
+      <div className={CART_CLS.root}>
+        <CartHeader itemCount={0} allSelected={false} selectedCount={0} onToggleSelectAll={() => {}} onDeleteSelected={() => {}} /><BrandLoader label={t('cart.loading', { defaultValue: CART_COPY.loading })} />
       </div>
     )
   }
 
   return (
     // 🩸 2026-09-02 (대표 "장바구니 페이지도 심각하다"): 이 래퍼만 dark: 없이 라이트 회색이라 다크에서 아래 절반이 회색으로 남았다.
-    <div className="flex flex-col min-h-[100dvh] bg-warm">
+    <div className={CART_CLS.root}>
       <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
 
       {/* v4 Header + Select All */}

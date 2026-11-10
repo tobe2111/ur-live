@@ -10014,10 +10014,10 @@ canvas {
   },
   {
     name: '🎫 장바구니 래퍼가 다시 라이트 단독 배경 (다크에서 화면 절반 회색)',
-    file: 'src/pages/CartPage.tsx',
+    file: 'src/shared/cart-page.ts', // 🧺 2026-11-10 뿌리 클래스가 SSOT 로 옮겨갔다(서버 첫 화면과 공유)
     // 🔀 2026-09-15: 〃
-    find: 'min-h-[100dvh] bg-warm">',
-    replace: 'min-h-[100dvh] bg-[#F4F4F4]">',
+    find: "min-h-[100dvh] bg-warm'",
+    replace: "min-h-[100dvh] bg-[#F4F4F4]'",
     test: 'src/tests/unit/consumer-popups-dark.test.ts',
     why:
       '장바구니 로그인 래퍼 하나만 dark: 가 없어 빈 장바구니 아래가 회색으로 남았다. 같은 파일의 다른 래퍼는 ' +

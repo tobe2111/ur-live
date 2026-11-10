@@ -104,12 +104,12 @@ describe('③ 문서 파싱 중이면 엔트리는 DOMContentLoaded 까지 기�
 describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', () => {
   const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
   const PC = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
-  it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228', '/vouchers', '/stays/2887', '/stays', '/map', '/urshorts', '/life', '/blog', '/search', '/faq'])('첫 화면 표면(첫 화면 CSS 자격 + 지연): %s', (p) => {
+  it.each(['/', '/pass/2919', '/group-buy/2888', '/vouchers/2192', '/u/jiwon1228', '/vouchers', '/stays/2887', '/stays', '/map', '/urshorts', '/life', '/blog', '/search', '/faq', '/cart'])('첫 화면 표면(첫 화면 CSS 자격 + 지연): %s', (p) => {
     expect(cssFirstApplies(p, PHONE)).toBe(true)
     expect(firstScreenApplies(p, PHONE)).toBe(true) // ⏳ 2026-11-09 로더-먼저가 생긴 뒤엔 이 줄이 "첫 화면 CSS 를 넣는다" 를 지킨다(cssFirstApplies 만으론 못 가른다)
   })
   // ⏳ 2026-11-09 "로더 먼저": 첫 화면이 없는 소비자 화면도 부팅 지연(앱 CSS media=print)은 건다 — 단 **첫 화면 CSS 는 안 넣는다**(firstScreenApplies 가 가른다).
-  it.each(['/browse', '/u/jiwon1228/p/2887', '/cart', '/videos'])('로더-먼저 표면(첫 화면 없음): %s — 지연 O · 첫 화면 CSS X', (p) => {
+  it.each(['/browse', '/u/jiwon1228/p/2887', '/checkout', '/videos'])('로더-먼저 표면(첫 화면 없음): %s — 지연 O · 첫 화면 CSS X', (p) => {
     expect(cssFirstApplies(p, PHONE)).toBe(true)
     expect(firstScreenApplies(p, PHONE)).toBe(false)
   })
@@ -117,7 +117,7 @@ describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', 
     expect(cssFirstApplies(p, PHONE)).toBe(false); expect(loaderFirstApplies(p)).toBe(false)
   })
   it('🖥️ PC 홈·교환권·유어샵은 첫 화면 CSS 자격(2026-11-09 PC 첫 화면 대표 승인) · 그 외 PC 화면은 로더-먼저', () => {
-    expect(firstScreenApplies('/', PC)).toBe(true); expect(firstScreenApplies('/vouchers', PC)).toBe(true); expect(firstScreenApplies('/u/jiwon', PC)).toBe(true); expect(firstScreenApplies('/u/me', PC), '2026-11-09 로그인 전 유어샵 탭도 PC(액자)').toBe(true); expect(firstScreenApplies('/search', PC), '2026-11-10 검색도 PC 액자 첫 화면').toBe(true); expect(firstScreenApplies('/cart', PC)).toBe(false); expect(cssFirstApplies('/cart', PC)).toBe(true)
+    expect(firstScreenApplies('/', PC)).toBe(true); expect(firstScreenApplies('/vouchers', PC)).toBe(true); expect(firstScreenApplies('/u/jiwon', PC)).toBe(true); expect(firstScreenApplies('/u/me', PC), '2026-11-09 로그인 전 유어샵 탭도 PC(액자)').toBe(true); expect(firstScreenApplies('/search', PC), '2026-11-10 검색도 PC 액자 첫 화면').toBe(true); expect(firstScreenApplies('/checkout', PC)).toBe(false); expect(cssFirstApplies('/checkout', PC)).toBe(true)
   })
   // 🚪 2026-10-19 로그인 전 탭 셋은 서버가 그린다 — 단 세션 쿠키가 있으면(로그인) 그리지 않으므로 미적용.
   it.each(['/u/me', '/user/profile', '/my-vouchers'])('로그인 전 탭: %s — 비로그인 첫 화면 CSS · 로그인은 로더-먼저만', (p) => {
@@ -278,6 +278,7 @@ describe('⑤-2 서버가 그리는 첫 화면 = CSS 먼저 적용 표면 (2026-
     'src/worker/utils/search-first-screen.ts': '/search', // 2026-11-10 — 검색 헤더·빈 검색 안내
     'src/worker/utils/faq-first-screen.ts': '/faq', // 2026-11-10 — 자주 묻는 질문 전체
     'src/worker/utils/notifications-first-screen.ts': '/notifications', // 2026-11-10 — 알림 머리줄(세션 있을 때만 — 대표 경로 검사는 authed=true 로 본다)
+    'src/worker/utils/cart-first-screen.ts': '/cart', // 2026-11-10 — 장바구니 머리줄
   }
   it('ROOTS 의 모든 첫 화면 모듈에 대표 경로가 있다(새 첫 화면이 생기면 여기서 멈춘다)', async () => {
     // @ts-expect-error — .mjs 생성기(타입 없음)

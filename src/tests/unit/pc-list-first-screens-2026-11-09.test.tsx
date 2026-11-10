@@ -101,7 +101,7 @@ describe('④ 워커 배선 · PC CSS 자격', () => {
   })
   it('firstScreenApplies(PC): /vouchers · /u/:handle · /u/me(로그인 전 탭, 2026-11-09 액자) 는 자격, /cart 는 아님', () => {
     expect(firstScreenApplies('/vouchers', PC)).toBe(true); expect(firstScreenApplies('/u/jiwon', PC)).toBe(true)
-    expect(firstScreenApplies('/u/me', PC)).toBe(true); expect(firstScreenApplies('/cart', PC)).toBe(false) // 🔎 2026-11-10 /search 는 PC 첫 화면이 생겼다(search-first-screen) — /cart 로 재조준
+    expect(firstScreenApplies('/u/me', PC)).toBe(true); expect(firstScreenApplies('/checkout', PC)).toBe(false) // 🔎 2026-11-10 /search 는 PC 첫 화면이 생겼다(search-first-screen) — /cart 로 재조준
   })
   it('폰 교환권 본문은 종전 그대로(PC 클래스 없음)', () => {
     const m = buildVouchersFirstScreen(seed(20), LOADER, 'n', '커피/음료')
