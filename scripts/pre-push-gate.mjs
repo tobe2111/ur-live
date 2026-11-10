@@ -93,6 +93,18 @@ if (failed.length === 0) {
     process.stderr.write(`${err.stderr ?? ''}`)
     process.exit(1)
   }
+  // 🎯 2026-11-10: 고친 줄 근처의 주입만 미리 돈다(보통 수십 초, 큰 것 약 4분) — 화면 무게 다음으로 많던 CI 실패(최근 8건 중 6건).
+  //   주입이 살아남았을 때만 막는다(시간 한도·git 오류로는 막지 않는다). 우회 SKIP_MUTATION_PREPUSH=1. 근거: guard-mutations-near-edits.mjs 머리말.
+  if (process.env.SKIP_MUTATION_PREPUSH !== '1') {
+    try {
+      execFileSync('node', ['scripts/check-guard-mutations.mjs', '--near-edits', '--budget-sec', '300', '-s'], { stdio: 'inherit', timeout: 420_000 })
+    } catch (err) {
+      if (err && err.status === 1) {
+        console.error('   ↑ CI 가 이 커밋을 똑같이 막는다(약 11분 뒤). 주입 좌표를 재조준하거나 시험을 고칠 것. (우회: SKIP_MUTATION_PREPUSH=1 git push …)')
+        process.exit(1)
+      }
+    }
+  }
   // 📏 2026-11-10: 화면 코드를 바꾼 푸시면 화면 무게를 미리 잰다(약 43초) — CI 실패의 절반이 이것이었다.
   //   빌드가 이 환경 탓에 안 되면 막지 않는다. 우회 SKIP_SURFACE_PREPUSH=1. 근거: pre-push-surface-budget.mjs 머리말.
   try {

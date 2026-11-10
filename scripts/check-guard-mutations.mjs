@@ -44,13 +44,14 @@ import {
 } from './guard-mutations-manifest-diff.mjs'
 import { assignShards, parseShard } from './guard-mutations-shard.mjs'
 import { unknownArgs } from './guard-mutations-args.mjs'
+import { parseHunks, pickNearEdits } from './guard-mutations-near-edits.mjs'
 
 // 🚫 모르는 인자 = 시작하지 않는다 — 조용히 전수로 떨어져 소스를 망가뜨리는 사고가 두 번 있었다(근거: guard-mutations-args.mjs).
 {
   const bad = unknownArgs(process.argv.slice(2))
   if (bad.length) {
     console.error(`❌ check-guard-mutations: 모르는 인자 ${bad.join(' · ')} — 아무것도 주입하지 않고 멈춘다.`)
-    console.error('   쓸 수 있는 것: -s · --only <이름 일부> · --changed · --shard k/n · --verify-clean · --map-only · --count · --dump-manifest · --scope-json')
+    console.error('   쓸 수 있는 것: -s · --only <이름 일부> · --changed · --shard k/n · --near-edits [--budget-sec N] · --verify-clean · --map-only · --count · --dump-manifest · --scope-json')
     console.error('   (`--plan` 은 guard-mutations-shard.mjs 의 인자다)')
     process.exit(2)
   }
@@ -123,6 +124,18 @@ const MAP_ONLY = process.argv.includes('--map-only')
 const DUMP_MANIFEST = process.argv.includes('--dump-manifest')
 const CHANGED = process.argv.includes('--changed')
 /**
+ * 🎯 `--near-edits` — **올리기 전**(pre-push)에 내가 고친 자리 근처의 주입만 돈다 (2026-11-10).
+ * 고르는 규칙·근거·못 하는 것: `guard-mutations-near-edits.mjs` 머리말. CI 는 계속 `--changed` 를 돈다.
+ * `--budget-sec N` — 그 시간을 넘기면 남은 주입은 **건너뛰고 그렇다고 말한다**(푸시가 하염없이 늘지 않게).
+ */
+const NEAR = process.argv.includes('--near-edits')
+const BUDGET_MS = (() => {
+  const eq = process.argv.find((a) => a.startsWith('--budget-sec='))
+  const i = process.argv.indexOf('--budget-sec')
+  const v = Number(eq ? eq.slice('--budget-sec='.length) : i >= 0 ? process.argv[i + 1] : NaN)
+  return Number.isFinite(v) && v > 0 ? v * 1000 : 0
+})()
+/**
  * 🧩 `--shard k/n` — **전수를 n 조각으로 갈라 그중 k 번째만** 돈다 (2026-10-01).
  *
  * 왜: 전수 벽시계가 주입 수에 선형이라 `timeout-minutes: 90` 을 향해 기어올랐다(3주에 42→77분).
@@ -139,6 +152,11 @@ const SHARD = parseShard(process.argv)
 //   `--only` 와는 여전히 같이 쓰지 않는다(이름 필터 위에 조각을 얹으면 무엇이 돌았는지 말할 수 없다).
 if (SHARD && ONLY) {
   console.error('❌ --shard 는 --only 와 같이 쓸 수 없다 — 초록이 무엇을 보증하는지 모호해진다.')
+  process.exit(1)
+}
+// 🎯 `--near-edits` 는 그 자체로 "일부만" 고르는 장치다 — 다른 거르개와 겹치면 초록이 무엇을 보증하는지 말할 수 없다.
+if (NEAR && (ONLY || SHARD || CHANGED)) {
+  console.error('❌ --near-edits 는 --only · --shard · --changed 와 같이 쓸 수 없다.')
   process.exit(1)
 }
 const SCOPE = changedScope({
@@ -10740,6 +10758,34 @@ for (const sig of ['SIGINT', 'SIGTERM', 'uncaughtException']) {
   process.on(sig, (e) => { restoreAll(); if (e instanceof Error) console.error(e); process.exit(1) })
 }
 process.on('exit', restoreAll)
+/**
+ * 🎯 `--near-edits` 가 고른 주입(아니면 null — 거르지 않는다). 소스에 손대기 **전에** 정한다.
+ * git 을 못 읽으면 아무것도 주입하지 않고 끝낸다 — 안내 검사라 막지 않는다(CI 가 다시 본다).
+ * zero-scan-ok — 고른 주입 0건이 정상이다(문서만 바꾼 푸시 · 주입이 걸린 자리를 안 건드린 푸시).
+ */
+const NEAR_PICK = (() => {
+  if (!NEAR) return null
+  try {
+    const baseRef = process.env.GUARD_MUTATIONS_BASE || 'origin/main'
+    const git = (args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 })
+    const base = git(['merge-base', 'HEAD', baseRef]).trim()
+    const files = new Set(git(['diff', '--name-only', `${base}..HEAD`]).split('\n').filter(Boolean))
+    const hunks = parseHunks(git(['diff', '-U0', '--no-color', `${base}..HEAD`]))
+    const readSrc = (f) => { try { return fs.readFileSync(path.join(ROOT, f), 'utf8') } catch { return null } }
+    return pickNearEdits({ mutations: ALL, files, hunks, readSrc })
+  } catch (err) {
+    console.log(`⚠️ guard-mutations(--near-edits): 바뀐 줄을 못 읽었다(${String(err?.message ?? err).slice(0, 80)}) — 건너뛴다, CI 가 다시 본다.`)
+    process.exit(0)
+  }
+})()
+if (NEAR_PICK && NEAR_PICK.size === 0) {
+  console.log('✅ guard-mutations(--near-edits): 고친 자리 근처에 걸린 주입이 없다 — 0건(정상).')
+  process.exit(0)
+}
+const inNear = (m) => !NEAR_PICK || NEAR_PICK.has(m.name)
+const T0 = Date.now()
+let budgetSkipped = 0
+
 lockOn()   // 여기서부터 소스에 손을 댄다 — pre-commit 이 이 자물쇠를 보고 커밋을 거절한다
 
 /**
@@ -11001,7 +11047,7 @@ const SHARD_PICK = SHARD
   : null
 const inShard = (m) => !SHARD_PICK || SHARD_PICK.has(m.name)
 
-const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && inShard(m) && inChanged(m)).length
+const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && inShard(m) && inChanged(m) && inNear(m)).length
 if (SHARD) {
   console.log(
     `🧬 guard-mutations(--shard ${SHARD.index}/${SHARD.total}): 전체 ${ALL.length}건 중 **${planned}건**.\n` +
@@ -11013,6 +11059,9 @@ if (SHARD) {
     console.error(`❌ --shard ${SHARD.index}/${SHARD.total} 이 고른 주입이 0건이다 — 분배가 깨졌거나 n 이 과하다.`)
     process.exit(1)
   }
+} else if (NEAR_PICK) {
+  console.log(`🧬 guard-mutations(--near-edits): ${ALL.length}건 중 **${planned}건** — 고친 줄 근처·바꾼 시험에 걸린 것만.`)
+  console.log('   ⚠️ 올리기 전 안내다. CI 는 변경분(--changed)을 다시 돈다.\n')
 } else if (SCOPE.full) {
   console.log(`🧬 guard-mutations: ${ALL.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
   if (CHANGED) console.log(`   ⚠️ 전수로 돈다 — ${SCOPE.why}\n`)
@@ -11026,6 +11075,8 @@ for (const m of ALL) {
   if (ONLY && !m.name.includes(ONLY)) continue
   if (ONLY) onlyMatched += 1
   if (!inShard(m)) continue
+  if (!inNear(m)) continue
+  if (BUDGET_MS && Date.now() - T0 > BUDGET_MS) { budgetSkipped += 1; continue }
   if (!inScope(m, SCOPE) && !CHANGED_NAMES.has(m.name)) continue
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
@@ -11124,5 +11175,11 @@ if (ONLY && onlyMatched === 0) {
   console.error('   이 필터는 정규식이 아니라 이름 **부분일치**다 — "a|b" 같은 건 안 먹는다.')
   console.error('   여러 건을 돌리려면 각각 따로 부르거나 인자 없이 전수로 돌려라.')
   process.exit(1)
+}
+if (NEAR_PICK) {
+  const ran = planned - budgetSkipped
+  console.log(`\n✅ guard-mutations(--near-edits): ${ran}건 빨간불 확인 (${Math.round((Date.now() - T0) / 1000)}초).`)
+  if (budgetSkipped) console.log(`   ⚠️ 시간 한도로 ${budgetSkipped}건은 못 돌렸다 — CI 가 본다.`)
+  process.exit(0)
 }
 console.log(`\n✅ guard-mutations: ${ONLY ? `${onlyMatched}개(--only "${ONLY}")` : `${planned}개`} 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)
