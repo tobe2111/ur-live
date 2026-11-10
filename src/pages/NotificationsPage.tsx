@@ -7,7 +7,8 @@ import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import Udal from '@/components/mascot/Udal'
-import SubPageHeader, { SUB_PAGE_CLS } from '@/components/ui/sub-page-header'
+import SubPageHeader from '@/components/ui/sub-page-header'
+import { NOTIF_CLS, NOTIF_COPY, NOTIF_PULL_PATH } from '@/shared/notifications-page' // 🔔 2026-11-10 서버 첫 화면(worker/utils/notifications-first-screen.ts)과 같은 클래스·문구
 import { toast } from '@/hooks/useToast'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/queries/useNotifications'
@@ -98,23 +99,23 @@ export default function NotificationsPage() {
 
   // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
-    <div className={`${SUB_PAGE_CLS} pb-safe-nav md:pb-20`}>
+    <div className={NOTIF_CLS.root}>
       <SEO title={t('notifications.seoTitle', { defaultValue: '알림 - 유어딜' })} description={t('notifications.seoDesc', { defaultValue: '새로운 알림을 확인하세요' })} url="/notifications" noindex />
       {/* ← 2026-10-19: 마이 하위 화면 공용 머리줄. '모두 읽음' 은 안 읽은 게 있을 때만(누를 것이 없으면 안 선다). */}
       <SubPageHeader fallback="/"
-        title={t('notifications.title')}
-        backLabel={t('notifications.back')}
+        title={t('notifications.title', { defaultValue: NOTIF_COPY.title })}
+        backLabel={t('notifications.back', { defaultValue: NOTIF_COPY.back })}
         wideSides
         right={notifications.some(n => !n.is_read) ? (
-          <button type="button" onClick={markAllRead} className="text-[13px] font-medium text-brand-text whitespace-nowrap">{t('notifications.markAllRead')}</button>
+          <button type="button" onClick={markAllRead} className={NOTIF_CLS.markAll}>{t('notifications.markAllRead', { defaultValue: NOTIF_COPY.markAllRead })}</button>
         ) : null}
       />
 
-      <div className="relative">
-      <div ref={pullInd} aria-hidden="true" className="absolute left-1/2 top-1 -ml-4 w-8 h-8 rounded-full bg-surface shadow-lift flex items-center justify-center opacity-0 pointer-events-none z-10">
-        <svg viewBox="0 0 24 24" className="w-4 h-4 text-brand-text" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" /></svg>
+      <div className={NOTIF_CLS.wrap}>
+      <div ref={pullInd} aria-hidden="true" className={NOTIF_CLS.pullInd}>
+        <svg viewBox="0 0 24 24" className={NOTIF_CLS.pullIcon} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d={NOTIF_PULL_PATH} /></svg>
       </div>
-      <div ref={pullRef} className="ur-content-narrow px-5 lg:px-8 py-2">
+      <div ref={pullRef} className={NOTIF_CLS.list}>
         {loading ? (
           <BrandLoader />
         ) : error ? (

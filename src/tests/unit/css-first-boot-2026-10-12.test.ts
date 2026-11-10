@@ -277,6 +277,7 @@ describe('⑤-2 서버가 그리는 첫 화면 = CSS 먼저 적용 표면 (2026-
     'src/worker/utils/map-first-screen.ts': '/map', // 2026-11-09 — 지도 껍데기
     'src/worker/utils/search-first-screen.ts': '/search', // 2026-11-10 — 검색 헤더·빈 검색 안내
     'src/worker/utils/faq-first-screen.ts': '/faq', // 2026-11-10 — 자주 묻는 질문 전체
+    'src/worker/utils/notifications-first-screen.ts': '/notifications', // 2026-11-10 — 알림 머리줄(세션 있을 때만 — 대표 경로 검사는 authed=true 로 본다)
   }
   it('ROOTS 의 모든 첫 화면 모듈에 대표 경로가 있다(새 첫 화면이 생기면 여기서 멈춘다)', async () => {
     // @ts-expect-error — .mjs 생성기(타입 없음)
