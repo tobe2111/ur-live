@@ -10,7 +10,7 @@
  * referral_enabled/rate, user_points 적립, 알림+푸시). /track 라우트도 이 헬퍼를 호출하도록
  * 리팩토링 — 단일 SSOT.
  */
-import { adjustUserPoints } from './point-ledger'
+import { adjustUserPoints } from './point-ledger'; import { swallow } from './swallow'
 import { DEFAULT_AFFILIATE_RATE } from '../../shared/affiliate-rate'
 import { resolveStoreOwnerUserId } from './seller-operators'
 
@@ -153,7 +153,7 @@ export async function creditAffiliateForOrder(
       await DB.prepare(
         `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
          VALUES ('self_referral', ?, 'order', ?, ?, 'high')`
-      ).bind(String(referrerId), String(order.id), JSON.stringify({ buyer_id: order.user_id })).run().catch(() => {})
+      ).bind(String(referrerId), String(order.id), JSON.stringify({ buyer_id: order.user_id })).run().catch(swallow('affiliate-credit'))
       return { ok: false, code: 'SELF_REFERRAL' }
     }
 
@@ -176,7 +176,7 @@ export async function creditAffiliateForOrder(
         await DB.prepare(
           `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
            VALUES ('self_purchase', ?, 'order', ?, ?, 'high')`
-        ).bind(String(order.user_id), String(order.id), JSON.stringify({ sellerOwner, referrer_id: referrerId })).run().catch(() => {})
+        ).bind(String(order.user_id), String(order.id), JSON.stringify({ sellerOwner, referrer_id: referrerId })).run().catch(swallow('affiliate-credit'))
         return { ok: false, code: 'SELF_PURCHASE' }
       }
       // 💸 2026-07-07 (대표 결정 — 진입=세션 귀속의 이중지급 방지 가드): referrer 가 곧 상품의 판매자(셀러 소유주)면
@@ -241,7 +241,7 @@ export async function creditAffiliateForOrder(
           await DB.prepare(
             `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
              VALUES ('affiliate_referrer_cap', ?, 'order', ?, ?, 'medium')`
-          ).bind(String(referrerId), String(order.id), JSON.stringify({ daySum, monthSum, commission, dailyCap, monthlyCap })).run().catch(() => {})
+          ).bind(String(referrerId), String(order.id), JSON.stringify({ daySum, monthSum, commission, dailyCap, monthlyCap })).run().catch(swallow('affiliate-credit'))
           return { ok: false, code: 'REFERRER_CAP' }
         }
       }
@@ -272,7 +272,7 @@ export async function creditAffiliateForOrder(
     await DB.prepare(`
       INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
       VALUES (?, 'affiliate_earning', ?, ?, '/u/me/earnings', datetime('now'))
-    `).bind(String(referrerId), '🕒 적립 예정', `${commission.toLocaleString('ko-KR')}딜 적립 예정 (확정 시 알림드려요)`).run().catch(() => {})
+    `).bind(String(referrerId), '🕒 적립 예정', `${commission.toLocaleString('ko-KR')}딜 적립 예정 (확정 시 알림드려요)`).run().catch(swallow('affiliate-credit'))
 
     try {
       const { sendSystemPush } = await import('../../lib/system-push')
@@ -336,7 +336,7 @@ async function grantHoldingEarning(
   await DB.prepare(`
     INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
     VALUES (?, 'affiliate_earning', ?, ?, '/u/me/earnings', datetime('now'))
-  `).bind(String(row.referrer_id), '✅ 적립 확정!', `${amt.toLocaleString('ko-KR')}딜이 확정되었습니다`).run().catch(() => {})
+  `).bind(String(row.referrer_id), '✅ 적립 확정!', `${amt.toLocaleString('ko-KR')}딜이 확정되었습니다`).run().catch(swallow('affiliate-credit'))
   try {
     const { sendSystemPush } = await import('../../lib/system-push')
     await sendSystemPush(env as never, 'user', String(row.referrer_id), {
@@ -468,7 +468,7 @@ export async function ensureReferrerIntentsTable(DB: D1Database): Promise<void> 
       buyer_ip TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     )
-  `).run().catch(() => {})
+  `).run().catch(swallow('affiliate-credit'))
 }
 
 export async function saveReferrerIntent(

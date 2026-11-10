@@ -22,7 +22,7 @@
  *   설계 SSOT: docs/design/commission-funding-restructure.md
  *   🛡️ 가드: scripts/check-commission-budget.mjs — C1~C4 적립 헬퍼의 신규 직접 호출(아비터 우회)을 차단.
  */
-import type { D1Database } from '@cloudflare/workers-types'
+import type { D1Database } from '@cloudflare/workers-types'; import { swallow } from './swallow'
 import { COMMISSION_DEFAULTS } from '../../shared/constants/policy'
 import {
   computeCommissionBudget,
@@ -109,7 +109,7 @@ async function legacyCredit(DB: D1Database, orders: OrderLike[], opts?: CreditOr
     try {
       const { creditAffiliateFromIntent } = await import('./affiliate-credit')
       for (const o of orders) {
-        await creditAffiliateFromIntent(DB, opts?.env, Number(o.id)).catch(() => {})
+        await creditAffiliateFromIntent(DB, opts?.env, Number(o.id)).catch(swallow('order-commissions'))
       }
     } catch { /* fail-soft */ }
   }
@@ -150,7 +150,7 @@ async function legacyCredit(DB: D1Database, orders: OrderLike[], opts?: CreditOr
       for (const o of orders) {
         const oid = Number(o.id)
         if (oid && o.total_amount) {
-          await calculateMultiTierCommission(DB, oid, Number(o.total_amount), String(opts.buyerUserId)).catch(() => {})
+          await calculateMultiTierCommission(DB, oid, Number(o.total_amount), String(opts.buyerUserId)).catch(swallow('order-commissions'))
         }
       }
     } catch { /* fail-soft */ }
@@ -174,11 +174,11 @@ async function budgetedCreditForOrder(
   if (!order.seller_id) {
     if (opts?.withAffiliate && axisOn(opts, 'affiliate')) {
       const { creditAffiliateFromIntent } = await import('./affiliate-credit')
-      await creditAffiliateFromIntent(DB, opts?.env, oid).catch(() => {})
+      await creditAffiliateFromIntent(DB, opts?.env, oid).catch(swallow('order-commissions'))
     }
     if (opts?.buyerUserId && axisOn(opts, 'multi_tier')) {
       const { calculateMultiTierCommission } = await import('../../features/referral/api/referral-tree.routes')
-      await calculateMultiTierCommission(DB, oid, total, String(opts.buyerUserId)).catch(() => {})
+      await calculateMultiTierCommission(DB, oid, total, String(opts.buyerUserId)).catch(swallow('order-commissions'))
     }
     return
   }
@@ -239,11 +239,11 @@ async function budgetedCreditForOrder(
   // ── 적립 (C1 → C2 → C3 → C4 순차 — 상호배타 dedup 레이스 제거) ─────────
   if (affReq > 0) {
     // owner-펀딩이면 전액(현행 — 셀러 부담이라 캡 비대상), 아니면 배분액.
-    await creditAffiliateFromIntent(DB, opts?.env, oid, promoOwnerFunded ? undefined : { amountOverride: granted('affiliate') }).catch(() => {})
+    await creditAffiliateFromIntent(DB, opts?.env, oid, promoOwnerFunded ? undefined : { amountOverride: granted('affiliate') }).catch(swallow('order-commissions'))
   }
   if (mtReq > 0 && opts?.buyerUserId) {
     // owner-펀딩이면 전액(셀러 부담 — 예산 캡 비대상), 아니면 배분액.
-    await calculateMultiTierCommission(DB, oid, total, String(opts.buyerUserId), { totalCapKrw: promoOwnerFunded ? mtReq : granted('multi_tier') }).catch(() => {})
+    await calculateMultiTierCommission(DB, oid, total, String(opts.buyerUserId), { totalCapKrw: promoOwnerFunded ? mtReq : granted('multi_tier') }).catch(swallow('order-commissions'))
   }
   // C3/C4 는 요청 0(부적격)이어도 호출 — helper 자체가 안전 skip 하고, C4 는 signup 보너스
   // (월예산 캡, 거래 예산 밖 정액)를 독립 처리해야 하므로 항상 통과시킨다.

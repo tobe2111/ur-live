@@ -7,7 +7,7 @@
  * 머니 룰: 모든 상태 전환은 CAS(meta.changes 검사) — 이중 지급 차단.
  * 공급사 출금은 기존 전용 플로우(supplier-withdrawal) 존치 — 본 화면에서 링크만.
  */
-import { Hono } from 'hono'
+import { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import type { Env } from '../../../worker/types/env'
 import { safeError } from '../../../worker/utils/safe-error'
 import { createDashboardNotification } from '../../notifications/api/dashboard-notifications.routes'
@@ -41,7 +41,7 @@ async function ensurePayoutCols(DB: D1Database): Promise<void> {
       admin_memo TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     )
-  `).run().catch(() => {})
+  `).run().catch(swallow('admin-payout-center'))
 }
 
 // ── GET / — 3개 레일 대기 목록 + 최근 지급 이력 ──
@@ -54,7 +54,7 @@ payoutCenterRoutes.get('/', async (c) => {
     //   (원천징수 0 · 자격 누구나). SSOT `worker/utils/deal-refund.ts`.
     //   표가 아직 없으면 아래 '최근 지급 이력' UNION 이 통째로 깨지므로 먼저 보장한다.
     const { listOpenDealRefunds, ensureDealRefundTable } = await import('../../../worker/utils/deal-refund')
-    await ensureDealRefundTable(DB).catch(() => {})
+    await ensureDealRefundTable(DB).catch(swallow('admin-payout-center'))
     const [sellers, curators, agencies, recentPaid, refunds] = await Promise.all([
       DB.prepare(`
         SELECT st.id, st.seller_id, s.name AS seller_name, s.business_name,
@@ -148,7 +148,7 @@ payoutCenterRoutes.patch('/seller/:id/paid', require2FA(), async (c) => {
         DB, 'seller', String(row.seller_id), 'settlement_paid',
         '💸 정산금 입금 완료', `₩${Number(row.amount).toLocaleString('ko-KR')} 입금이 완료되었습니다`,
         '/seller/settlements',
-      ).catch(() => {})
+      ).catch(swallow('admin-payout-center'))
     }
 
     // 🧾 2026-07-01: 사업자 유저 셀러 정산 지급 → 매입세금계산서 역발행 초안 자동 생성(additive, fail-soft,
@@ -186,7 +186,7 @@ payoutCenterRoutes.patch('/curator/:id/paid', require2FA(), async (c) => {
       await DB.prepare(
         `INSERT INTO user_notifications (user_id, type, title, message, link)
          VALUES (?, 'withdrawal_paid', ?, ?, '/u/me/earnings')`
-      ).bind(row.user_id, '💸 환급 입금 완료', `₩${Number(row.net_amount).toLocaleString('ko-KR')} (원천징수 차감 후) 입금이 완료되었습니다`).run().catch(() => {})
+      ).bind(row.user_id, '💸 환급 입금 완료', `₩${Number(row.net_amount).toLocaleString('ko-KR')} (원천징수 차감 후) 입금이 완료되었습니다`).run().catch(swallow('admin-payout-center'))
     }
     return c.json({ success: true })
   } catch (err) {
@@ -215,7 +215,7 @@ payoutCenterRoutes.patch('/curator/:id/reject', async (c) => {
     if (row?.user_id && Number(row.deal_deducted) === 1) {
       await DB.prepare(
         "UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?"
-      ).bind(row.amount, row.user_id).run().catch(() => {})
+      ).bind(row.amount, row.user_id).run().catch(swallow('admin-payout-center'))
       // 💸 2026-08-01: 잔액은 위에서 이미 복원됐다 — 여기서 삼키면 원장 행 없는 유저가 남는다.
       //   확장 컬럼이 없는 환경 대비 최소 컬럼 폴백.
       try {
@@ -231,7 +231,7 @@ payoutCenterRoutes.patch('/curator/:id/reject', async (c) => {
       await DB.prepare(
         `INSERT INTO user_notifications (user_id, type, title, message, link)
          VALUES (?, 'withdrawal_rejected', ?, ?, '/u/me/earnings')`
-      ).bind(row.user_id, '환급 신청이 반려되었습니다', reason).run().catch(() => {})
+      ).bind(row.user_id, '환급 신청이 반려되었습니다', reason).run().catch(swallow('admin-payout-center'))
     }
     return c.json({ success: true })
   } catch (err) {
@@ -268,13 +268,13 @@ payoutCenterRoutes.post('/agency/:agencyId/paid', require2FA(), async (c) => {
 
     await DB.prepare(
       'INSERT INTO agency_commission_payouts (agency_id, amount, row_count, admin_memo) VALUES (?, ?, ?, ?)'
-    ).bind(agencyId, total, paidRows.length, (body.memo || '').slice(0, 300) || null).run().catch(() => {})
+    ).bind(agencyId, total, paidRows.length, (body.memo || '').slice(0, 300) || null).run().catch(swallow('admin-payout-center'))
 
     createDashboardNotification(
       DB, 'agency', String(agencyId), 'commission_paid',
       '💸 영입 커미션 입금 완료', `₩${total.toLocaleString('ko-KR')} (${paidRows.length}건) 입금이 완료되었습니다`,
       '/agency',
-    ).catch(() => {})
+    ).catch(swallow('admin-payout-center'))
 
     return c.json({ success: true, data: { amount: total, row_count: paidRows.length } })
   } catch (err) {
@@ -295,7 +295,7 @@ payoutCenterRoutes.patch('/refund/:id/paid', require2FA(), async (c) => {
     await c.env.DB.prepare(
       `INSERT INTO user_notifications (user_id, type, title, message, link)
        VALUES (?, 'deal_refund_paid', ?, ?, '/user/profile')`
-    ).bind(r.userId, '환급 입금 완료', `${r.amount.toLocaleString('ko-KR')}원 입금이 완료되었습니다`).run().catch(() => {})
+    ).bind(r.userId, '환급 입금 완료', `${r.amount.toLocaleString('ko-KR')}원 입금이 완료되었습니다`).run().catch(swallow('admin-payout-center'))
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '환급 지급 처리 중 오류가 발생했습니다', '[payout-center]')
@@ -314,7 +314,7 @@ payoutCenterRoutes.patch('/refund/:id/reject', async (c) => {
     await c.env.DB.prepare(
       `INSERT INTO user_notifications (user_id, type, title, message, link)
        VALUES (?, 'deal_refund_rejected', ?, ?, '/user/profile')`
-    ).bind(r.userId, '환급 신청이 반려되었어요 — 딜은 그대로 돌아왔어요', reason).run().catch(() => {})
+    ).bind(r.userId, '환급 신청이 반려되었어요 — 딜은 그대로 돌아왔어요', reason).run().catch(swallow('admin-payout-center'))
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '환급 반려 처리 중 오류가 발생했습니다', '[payout-center]')

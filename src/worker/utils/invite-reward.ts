@@ -8,7 +8,7 @@
  *
  * fail-soft: 어떤 실패도 throw 하지 않음 — 결제 흐름 보호 (호출측 waitUntil 권장).
  */
-import { executeRun, queryFirst } from './database'
+import { executeRun, queryFirst } from './database'; import { swallow } from './swallow'
 import { adjustUserPoints, recordPointTransaction } from './point-ledger'
 
 const _done_ensure = new WeakSet<D1Database>()
@@ -27,7 +27,7 @@ export async function ensureInviteRewardsTable(DB: D1Database): Promise<void> {
         UNIQUE(inviter_user_id, invited_user_id)
       )
     `).run()
-    await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_invite_rewards_pair ON invite_rewards(inviter_user_id, invited_user_id)').run().catch(() => {})
+    await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_invite_rewards_pair ON invite_rewards(inviter_user_id, invited_user_id)').run().catch(swallow('invite-reward'))
   } catch { /* exists */ }
 }
 
@@ -123,7 +123,7 @@ export async function grantInviteRewardForFirstPurchase(
     await executeRun(
       DB, 'UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?',
       [rewardAmount, inviterUserId],
-    ).catch(() => {})
+    ).catch(swallow('invite-reward'))
 
     // 초대자에게 인앱 알림 (best-effort)
     await DB.prepare(
@@ -133,7 +133,7 @@ export async function grantInviteRewardForFirstPurchase(
       inviterUserId,
       `🎁 친구 초대 보상 +${rewardAmount.toLocaleString('ko-KR')}딜`,
       '초대한 친구가 첫 구매를 완료했어요!',
-    ).run().catch(() => {})
+    ).run().catch(swallow('invite-reward'))
 
     return { granted: true, inviterUserId, amount: rewardAmount }
   } catch {
@@ -193,7 +193,7 @@ export async function reverseInviteRewardOnRefund(
       DB,
       "UPDATE user_points SET balance = MAX(0, balance - ?), free_balance = MAX(0, COALESCE(free_balance, 0) - ?), updated_at = datetime('now') WHERE user_id = ?",
       [amount, amount, String(row.inviter_user_id)],
-    ).catch(() => {})
+    ).catch(swallow('invite-reward'))
     // 장부 기록 (best-effort, 음수 delta).
     await recordPointTransaction(DB, {
       userId: String(row.inviter_user_id),
@@ -201,12 +201,12 @@ export async function reverseInviteRewardOnRefund(
       type: 'invite_reward_reversal',
       description: '초대 보상 회수 (친구 주문 환불)',
       freeDelta: -amount,
-    }).catch(() => {})
+    }).catch(swallow('invite-reward'))
     // users.deal_balance best-effort 역전.
     await executeRun(
       DB,
       'UPDATE users SET deal_balance = MAX(0, COALESCE(deal_balance, 0) - ?) WHERE id = ?',
       [amount, String(row.inviter_user_id)],
-    ).catch(() => {})
+    ).catch(swallow('invite-reward'))
   } catch { /* fail-soft */ }
 }

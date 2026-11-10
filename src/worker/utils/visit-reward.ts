@@ -16,7 +16,7 @@
  * 상권 매칭: product_regions.region_dong_code 가 캠페인 region_code(시군구 5자리/행정동 10자리)
  * prefix 로 시작하면 그 상권 매장 상품 (상권관 /local/:code · 어드민 상권 리포트와 동일 규약).
  */
-import type { D1Database } from '@cloudflare/workers-types'
+import type { D1Database } from '@cloudflare/workers-types'; import { swallow } from './swallow'
 import { creditFreePoints, ensureDealBuckets } from './point-buckets'
 import { recordPointTransaction } from './point-ledger'
 
@@ -50,7 +50,7 @@ export async function ensureVisitRewardTables(DB: D1Database): Promise<void> {
         UNIQUE(campaign_id, user_id)
       )
     `).run()
-    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_visit_reward_grants_order ON visit_reward_grants(order_ref)').run().catch(() => {})
+    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_visit_reward_grants_order ON visit_reward_grants(order_ref)').run().catch(swallow('visit-reward'))
   } catch { /* exists */ }
 }
 
@@ -151,7 +151,7 @@ export async function grantVisitRewardOnPurchase(
       })
       if (!credited) {
         await DB.prepare('DELETE FROM visit_reward_grants WHERE campaign_id = ? AND user_id = ?')
-          .bind(camp.id, uid).run().catch(() => {})
+          .bind(camp.id, uid).run().catch(swallow('visit-reward'))
         continue
       }
 
@@ -163,7 +163,7 @@ export async function grantVisitRewardOnPurchase(
         uid,
         `🏙️ 동네 방문 리워드 +${amount.toLocaleString('ko-KR')}딜`,
         `${camp.name} 첫 구매 감사 리워드가 적립됐어요!`,
-      ).run().catch(() => {})
+      ).run().catch(swallow('visit-reward'))
 
       // 지급 후 캡 도달 → 자동 종료 + 어드민 알림
       if (spent + amount >= Number(camp.total_budget)) {
@@ -205,7 +205,7 @@ export async function reverseVisitRewardOnRefund(
       // 무상 적립의 회수 — free 동반 회수 (MAX(0,…) clamp, 음수 방지)
       await DB.prepare(
         "UPDATE user_points SET balance = MAX(0, balance - ?), free_balance = MAX(0, COALESCE(free_balance, 0) - ?), updated_at = datetime('now') WHERE user_id = ?",
-      ).bind(amt, amt, String(g.user_id)).run().catch(() => {})
+      ).bind(amt, amt, String(g.user_id)).run().catch(swallow('visit-reward'))
       await recordPointTransaction(DB, {
         userId: String(g.user_id),
         delta: -amt,
@@ -213,7 +213,7 @@ export async function reverseVisitRewardOnRefund(
         description: '상권 방문 리워드 회수 (주문 환불)',
         orderId: `vr:${g.campaign_id}`, // 주문 ref 오염 방지 — 적립(vr:)과 동일 네임스페이스
         freeDelta: -amt,
-      }).catch(() => {})
+      }).catch(swallow('visit-reward'))
     }
   } catch { /* fail-soft */ }
 }
