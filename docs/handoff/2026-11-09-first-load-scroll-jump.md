@@ -110,3 +110,7 @@
 ## 54. [E4] #2301 `/new-openings` 배포 뒤 판정 + 홈 카테고리 머리 첫 화면
 - `/new-openings` (폰 4G·CPU 4배, 3회): CLS **0.0162**(종전 0.75). 남은 0.016 은 칩 줄 실제 높이와 예약(40px)의 몇 px 차이.
 - 홈 `?category=` 머리 첫 화면: 기록 `docs/locks/loading/2026-11-10-home-category-head-first-screen.md`. 배포 뒤 판정: `vitals_nocb.cjs "https://urdeal.kr/?category=meal_voucher"` FCP(종전 2.9~3.7s) · CLS.
+
+## 55. [E4] #2303 배포 뒤 판정(폰 4G·CPU 4배)
+- **검색 결과 `/search?q=돈가스`**: LCP **0.80 · 0.83 · 0.87 · 0.89s**(종전 2.8~3.7s) · FCP 0.60~0.66s · CLS 0~0.0001 — 서버가 그린 첫 줄 썸네일이 LCP. 한 회차는 FCP 1.95 · LCP 2.39(HTML 이 늦은 회차).
+- **홈 `/?category=meal_voucher`**: CLS **0.0001**(종전 0.83~1.03, 3회 모두) — 앱이 첫 렌더부터 카테고리를 읽는다. 첫 글자는 아직 2.96~3.42s(머리 첫 화면은 #2305).
