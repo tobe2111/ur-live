@@ -93,6 +93,13 @@ if (failed.length === 0) {
     process.stderr.write(`${err.stderr ?? ''}`)
     process.exit(1)
   }
+  // 📏 2026-11-10: 화면 코드를 바꾼 푸시면 화면 무게를 미리 잰다(약 43초) — CI 실패의 절반이 이것이었다.
+  //   빌드가 이 환경 탓에 안 되면 막지 않는다. 우회 SKIP_SURFACE_PREPUSH=1. 근거: pre-push-surface-budget.mjs 머리말.
+  try {
+    execFileSync('node', ['scripts/pre-push-surface-budget.mjs'], { stdio: 'inherit', timeout: 600_000 })
+  } catch (err) {
+    if (err && err.status === 1) process.exit(1) // 예산을 넘었을 때만 — 시간 초과·빌드 실패로는 막지 않는다
+  }
   process.exit(0)
 }
 
