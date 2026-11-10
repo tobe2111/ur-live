@@ -11,11 +11,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useSafeBack } from '@/hooks/useSafeBack'
 import { ArrowLeft } from 'lucide-react'
+import { SUB_PAGE_CLS, SUB_PAGE_HEADER_CLS, SUB_PAGE_HEAD, subPageTitleTransform } from '@/shared/sub-page-head' // ❓ 2026-11-10 클래스 SSOT — 서버 첫 화면(FAQ)이 같은 머리줄을 그린다
 
-/** 하위 화면 바탕 — 머리줄과 같은 톤이어야 머리줄이 떠 보이지 않는다. */
-export const SUB_PAGE_CLS = 'min-h-[100dvh] bg-warm'
-
-export const SUB_PAGE_HEADER_CLS = 'sticky top-0 md:top-14 z-40 bg-warm'
+/** 하위 화면 바탕 — 머리줄과 같은 톤이어야 머리줄이 떠 보이지 않는다. (값은 shared/sub-page-head.ts) */
+export { SUB_PAGE_CLS, SUB_PAGE_HEADER_CLS }
 
 export default function SubPageHeader({ title, onBack, right, backLabel = '뒤로', wideSides = false, fallback = '/user/profile' }: {
   title: ReactNode
@@ -43,24 +42,24 @@ export default function SubPageHeader({ title, onBack, right, backLabel = '뒤�
   }, [])
   return (
     <>
-    <header className={`${SUB_PAGE_HEADER_CLS} transition-shadow ${collapsed ? 'shadow-[0_1px_0_var(--rule)]' : ''}`}>
-      <div className={`ur-content-narrow grid ${wideSides ? 'grid-cols-[88px_1fr_88px]' : 'grid-cols-[44px_1fr_44px]'} items-center h-[52px] px-1`}>
+    <header className={`${SUB_PAGE_HEAD.header} ${collapsed ? SUB_PAGE_HEAD.headerCollapsed : ''}`}>
+      <div className={`${SUB_PAGE_HEAD.row} ${wideSides ? SUB_PAGE_HEAD.rowColsWide : SUB_PAGE_HEAD.rowCols} ${SUB_PAGE_HEAD.rowTail}`}>
         <button
           type="button"
           onClick={onBack ?? goBack}
           aria-label={backLabel}
-          className="w-11 h-11 flex items-center justify-center rounded-full active:bg-wash"
+          className={SUB_PAGE_HEAD.back}
         >
-          <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" strokeWidth={1.6} />
+          <ArrowLeft className={SUB_PAGE_HEAD.backIcon} strokeWidth={1.6} />
         </button>
-        <h1 className={`text-center text-[16px] font-semibold text-gray-900 dark:text-white truncate transition-[opacity,transform] duration-200 ${collapsed ? 'opacity-100' : 'opacity-0 translate-y-2'}`}>{title}</h1>
-        <div className={`h-11 flex items-center ${wideSides ? 'justify-end pr-3' : 'w-11 justify-center'}`}>{right}</div>
+        <h1 className={`${SUB_PAGE_HEAD.h1} ${collapsed ? SUB_PAGE_HEAD.h1Shown : SUB_PAGE_HEAD.h1Hidden}`}>{title}</h1>
+        <div className={`${SUB_PAGE_HEAD.right} ${wideSides ? SUB_PAGE_HEAD.rightWide : SUB_PAGE_HEAD.rightNarrow}`}>{right}</div>
       </div>
     </header>
-    <div aria-hidden="true" className="ur-content-narrow px-4 pt-1 pb-3 overflow-hidden">
+    <div aria-hidden="true" className={SUB_PAGE_HEAD.titleWrap}>
       <p
-        className="origin-left text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white truncate"
-        style={{ transform: `scale(${1 - k * 0.35}) translateY(${-k * 10}px)`, opacity: 1 - k }}
+        className={SUB_PAGE_HEAD.title}
+        style={subPageTitleTransform(k)}
       >{title}</p>
     </div>
     </>
