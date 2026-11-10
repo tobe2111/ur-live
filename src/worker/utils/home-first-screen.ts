@@ -353,8 +353,8 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
  *   머리만이라도 서버가 그린다. 머리는 전체 홈과 같은 조각(`chromeHtml`)이고 켜진 탭만 다르다 — 목록은 API 가 와야 안다(시드 없음 · 새 캐시 키 0).
  */
 export function buildHomeCategoryFirstScreen(category: string, loaderHtml: string, cookieHeader: string | null = null): string {
-  const srOnly = 'sr-only' // 전체 홈과 같은 h1 — 클래스를 변수로 둔 건 주입 앵커(그 h1 글자열은 이 파일에 한 곳이어야 한다)를 흐리지 않으려는 것
-  const body = `<div class="${HOME_FS_CLASS.root}"><h1 class="${srOnly}">${escText(HOME_H1)}</h1>` +
+  // 전체 홈과 같은 보이지 않는 h1. `data-home-cat` 표식을 앞에 둔 건 전체 홈의 h1 글자열을 겨누는 주입 앵커가 이 줄에도 맞지 않게 하려는 것(한 곳이어야 한다).
+  const body = `<div class="${HOME_FS_CLASS.root}"><h1 data-home-cat="${escAttr(category)}" class="sr-only">${escText(HOME_H1)}</h1>` +
     chromeHtml(regionHeroFromCookieHeader(cookieHeader), homeLocLabelFromCookieHeader(cookieHeader), category) + `</div>`
   return `<div id="ur-first-screen">${body}</div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }
