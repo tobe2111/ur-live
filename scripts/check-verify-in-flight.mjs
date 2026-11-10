@@ -19,6 +19,7 @@
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { getGithubJson } from './github-api.mjs'
 
 export const MIN_MINUTES = 5
 export const BYPASS_ENV = 'PUSH_ANYWAY'
@@ -53,10 +54,12 @@ async function main() {
   const url = `https://api.github.com/repos/${m[1]}/${m[2]}/actions/workflows/verify.yml/runs?branch=${encodeURIComponent(branch)}&per_page=5`
   let runs = []
   try {
-    const res = await fetch(url, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'urdeal-pre-push' }, signal: AbortSignal.timeout(6000) })
-    if (!res.ok) return
-    runs = (await res.json()).workflow_runs || []
-  } catch { return }
+    runs = (await getGithubJson(url)).workflow_runs || []
+  } catch (err) {
+    // 🩸 2026-11-10: 여기가 말없이 return 이라 클라우드(프록시)에선 11/3 부터 한 번도 안 돌았는데 아무도 몰랐다(github-api.mjs 머리말).
+    console.log(`⚠️ 검사 도중 재푸시 경고: GitHub 를 못 읽어 건너뛴다(${String(err?.message ?? err).slice(0, 60)}).`)
+    return
+  }
   const v = judgeInFlight({ runs, now: new Date() })
   if (!v.block) return
   console.error(

@@ -24,6 +24,7 @@
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { getGithubJson } from './github-api.mjs'
 
 export const MAX_FILES = 60
 export const MAX_AGE_HOURS = 6
@@ -57,11 +58,7 @@ function git(args) {
   return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
 }
 
-async function getJson(url) {
-  const res = await fetch(url, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'urdeal-pre-push' }, signal: AbortSignal.timeout(6000) })
-  if (!res.ok) throw new Error(String(res.status))
-  return res.json()
-}
+const getJson = (url) => getGithubJson(url)
 
 async function main() {
   let branch, base, repo
@@ -95,7 +92,11 @@ async function main() {
       } catch { return { number: p.number, title: '', files: [] } }
     }))
     overlaps = judgeOverlap({ mine, others })
-  } catch { return }
+  } catch (err) {
+    // 🩸 2026-11-10: 말없이 return 이라 클라우드(프록시)에선 11/3 부터 안 돌았다(github-api.mjs 머리말).
+    console.log(`⚠️ 열린 PR 겹침 경고: GitHub 를 못 읽어 건너뛴다(${String(err?.message ?? err).slice(0, 60)}).`)
+    return
+  }
   if (overlaps.length) {
     console.log(`🚧 다른 세션의 열린 PR 이 같은 파일을 고치고 있다 — 먼저 머지되는 쪽이 이기고, 나머지는 충돌을 풀고 검사를 다시 돈다:`)
     for (const o of overlaps.slice(0, 5)) {
