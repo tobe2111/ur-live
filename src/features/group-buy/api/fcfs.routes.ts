@@ -16,7 +16,7 @@
  *          GET  /api/admin/fcfs/:productId/applicants — 지원자 목록
  *          POST /api/admin/fcfs/:productId/select — 선정(winners[] 또는 count 랜덤) + 알림
  */
-import { Hono } from 'hono'
+import { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import { toPublicProductRows } from '@/shared/constants/demo-products'
 import type { Env } from '@/worker/types/env'
 import { requireAuth, requireAdmin } from '@/worker/middleware/auth'
@@ -337,7 +337,7 @@ adminApp.post('/:productId/select', async (c) => {
     ).bind(
       productId, adminId, method, Math.floor(Number(body.count) || winnerIds.length),
       pool.length, JSON.stringify(pool.slice(0, 5000)), JSON.stringify(winnerIds),
-    ).run().catch(() => {})
+    ).run().catch(swallow('fcfs'))
 
     const prod = await DB.prepare("SELECT name, restaurant_name, category, deal_only FROM products WHERE id=?").bind(productId).first<{ name?: string; restaurant_name?: string; category?: string; deal_only?: number }>().catch(() => null)
     const dealName = prod?.restaurant_name || prod?.name || '추첨 공구'
@@ -361,11 +361,11 @@ adminApp.post('/:productId/select', async (c) => {
     const isReplacement = (priorRows || []).some((r) => !winnerSet.has(String(r.user_id)))
 
     for (const uid of winnerIds) {
-      await DB.prepare("UPDATE fcfs_applications SET status='selected', selected_at=datetime('now') WHERE product_id=? AND user_id=?").bind(productId, uid).run().catch(() => {})
+      await DB.prepare("UPDATE fcfs_applications SET status='selected', selected_at=datetime('now') WHERE product_id=? AND user_id=?").bind(productId, uid).run().catch(swallow('fcfs'))
       // 선정 알림 + 결제 유도 딥링크
       await DB.prepare(
         "INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at) VALUES (?, 'user', 'fcfs_selected', ?, ?, ?, datetime('now'))"
-      ).bind(uid, '🎉 추첨 당첨!', `[${dealName}] 추첨에 당첨되셨어요! 지금 결제하시면 확정됩니다. (미결제 시 예비 당첨자에게 넘어갈 수 있어요)`, buyPath).run().catch(() => {})
+      ).bind(uid, '🎉 추첨 당첨!', `[${dealName}] 추첨에 당첨되셨어요! 지금 결제하시면 확정됩니다. (미결제 시 예비 당첨자에게 넘어갈 수 있어요)`, buyPath).run().catch(swallow('fcfs'))
     }
 
     // 🔔 2026-07-05 알림톡: 체험단 선정/승계 안내 — 앱을 안 여는 초기 유저 도달 채널 (waitUntil·fail-soft,
@@ -395,7 +395,7 @@ adminApp.post('/:productId/select', async (c) => {
             ? `[유어딜] ${dealName} 체험단 참여 기회가 회원님께 넘어왔어요!\n\n앞선 선정자의 미결제로 예비 순번이 승계되었습니다. 기한 내 결제하시면 참여가 확정됩니다.\n\n확정하기: https://urdeal.kr${buyPath}`
             : `[유어딜] ${dealName} 체험단에 선정되셨습니다! 🎉\n\n기한 내 결제하시면 참여가 확정됩니다. (미결제 시 예비 선정자에게 기회가 넘어갈 수 있어요)\n\n확정하기: https://urdeal.kr${buyPath}`
           for (const p of phones || []) {
-            await sendSystemAlimtalk(c.env, p.phone, tpl, msg).catch(() => {})
+            await sendSystemAlimtalk(c.env, p.phone, tpl, msg).catch(swallow('fcfs'))
           }
         } catch { /* fail-soft — 인앱 알림은 위에서 이미 기록됨 */ }
       }

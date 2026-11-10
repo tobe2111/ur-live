@@ -19,7 +19,7 @@ export default [
   {
     name: '🧨 수리 호출이 /join 에서 사라진다',
     file: 'src/features/group-buy/api/group-buy.routes.ts',
-    find: '  await ensureOrdersForeignKeysSane(DB).catch(() => {})  // 🧨 2026-09-19 깨진 FK 수리(멱등). 근거: ensure-orders-fk-sane.ts\n  const productIdRaw = c.req.param(\'id\')',
+    find: '  await ensureOrdersForeignKeysSane(DB).catch(swallow(\'group-buy\'))  // 🧨 2026-09-19 깨진 FK 수리(멱등). 근거: ensure-orders-fk-sane.ts\n  const productIdRaw = c.req.param(\'id\')',
     replace: '  const productIdRaw = c.req.param(\'id\')',
     test: TEST,
     why: '딜 결제 경로가 자가수리를 잃으면 그 경로만 조용히 다시 막힌다(카드 경로는 멀쩡해서 더 안 보인다).',
@@ -27,7 +27,7 @@ export default [
   {
     name: '🧨 수리가 토스 승인 **뒤**로 밀린다 (이미 청구된 돈을 되돌리는 경로로 떨어진다)',
     file: 'src/features/group-buy/api/group-buy.routes.ts',
-    find: "  await ensureOrdersForeignKeysSane(DB).catch(() => {})  // 🧨 깨진 FK 수리 — 반드시 **과금 전**(승인 뒤면 청구된 돈을 되돌리게 된다)\n",
+    find: "  await ensureOrdersForeignKeysSane(DB).catch(swallow('group-buy'))  // 🧨 깨진 FK 수리 — 반드시 **과금 전**(승인 뒤면 청구된 돈을 되돌리게 된다)\n",
     replace: '',
     test: TEST,
     why: '순서가 이 수정의 핵심이다 — 승인 뒤에 고치면 사용자는 여전히 "결제 실패"를 보고 토스엔 승인이 찍힌다.',

@@ -17,7 +17,7 @@
  * 통지 채널: 인앱(`notifyUser` → user_notifications) + 웹/네이티브 푸시(`sendSystemPush`, push_enabled 존중).
  * 권장 주기: 재입고=15~30분(또는 매시), 가격인하=매시/일배치. 부하 낮음(멱등, BATCH_CAP).
  */
-import type { Env } from '../types/env'
+import type { Env } from '../types/env'; import { swallow } from '../utils/swallow'
 import { notifyUser } from '../../lib/notifications'
 import { sendSystemPush } from '../../lib/system-push'
 import { isVoucherCategory } from '../../shared/constants/voucher-categories'
@@ -64,7 +64,7 @@ export async function ensureWishlistBaselineTables(DB: D1Database) {
       .run().then(() => true).catch(() => false)
     if (added) {
       await DB.prepare('UPDATE wishlist_price_notifications SET base_price = last_price WHERE base_price IS NULL')
-        .run().catch(() => {})
+        .run().catch(swallow('wishlist-notify'))
     }
   }
 }
@@ -91,11 +91,11 @@ export async function seedWishlistBaseline(DB: D1Database, userId: string | numb
     if (!p) return
     if (Number(p.stock) > 0) {
       await DB.prepare("INSERT OR IGNORE INTO wishlist_stock_notifications (user_id, product_id, notified_at) VALUES (?, ?, datetime('now'))")
-        .bind(uid, pid).run().catch(() => {})
+        .bind(uid, pid).run().catch(swallow('wishlist-notify'))
     }
     if (p.price != null && Number(p.price) > 0) {
       await DB.prepare('INSERT OR IGNORE INTO wishlist_price_notifications (user_id, product_id, last_price, base_price) VALUES (?, ?, ?, ?)')
-        .bind(uid, pid, Number(p.price), Number(p.price)).run().catch(() => {})
+        .bind(uid, pid, Number(p.price), Number(p.price)).run().catch(swallow('wishlist-notify'))
     }
   } catch { /* best-effort */ }
 }
@@ -106,8 +106,8 @@ export async function clearWishlistBaseline(DB: D1Database, userId: string | num
     const uid = String(userId)
     const pid = Number(productId)
     if (!Number.isFinite(pid)) return
-    await DB.prepare('DELETE FROM wishlist_stock_notifications WHERE user_id = ? AND product_id = ?').bind(uid, pid).run().catch(() => {})
-    await DB.prepare('DELETE FROM wishlist_price_notifications WHERE user_id = ? AND product_id = ?').bind(uid, pid).run().catch(() => {})
+    await DB.prepare('DELETE FROM wishlist_stock_notifications WHERE user_id = ? AND product_id = ?').bind(uid, pid).run().catch(swallow('wishlist-notify'))
+    await DB.prepare('DELETE FROM wishlist_price_notifications WHERE user_id = ? AND product_id = ?').bind(uid, pid).run().catch(swallow('wishlist-notify'))
   } catch { /* best-effort */ }
 }
 
@@ -151,8 +151,8 @@ export async function handleWishlistRestockNotify(env: Env): Promise<{ notified:
 
       const name = row.product_name || '찜한 상품'
       const link = productLink(row.product_id, row.category)
-      await notifyUser(DB, String(row.user_id), 'wishlist_restock', '🔔 찜한 상품 재입고!', `${name} 이(가) 다시 입고됐어요. 품절 전에 확인하세요!`, link).catch(() => {})
-      await sendSystemPush(env, 'user', row.user_id, { title: '🔔 찜한 상품 재입고!', body: `${name} 이(가) 다시 입고됐어요`, url: link }).catch(() => {})
+      await notifyUser(DB, String(row.user_id), 'wishlist_restock', '🔔 찜한 상품 재입고!', `${name} 이(가) 다시 입고됐어요. 품절 전에 확인하세요!`, link).catch(swallow('wishlist-notify'))
+      await sendSystemPush(env, 'user', row.user_id, { title: '🔔 찜한 상품 재입고!', body: `${name} 이(가) 다시 입고됐어요`, url: link }).catch(swallow('wishlist-notify'))
       notified++
     }
 
@@ -195,7 +195,7 @@ export async function handleWishlistPriceDropNotify(env: Env): Promise<{ notifie
         // 첫 관측 — baseline 기록만(통지 X). 이후 이 값보다 내려가면 통지.
         await DB.prepare(
           "INSERT OR IGNORE INTO wishlist_price_notifications (user_id, product_id, last_price, base_price) VALUES (?, ?, ?, ?)"
-        ).bind(String(row.user_id), row.product_id, price, price).run().catch(() => {})
+        ).bind(String(row.user_id), row.product_id, price, price).run().catch(swallow('wishlist-notify'))
         continue
       }
 
@@ -209,8 +209,8 @@ export async function handleWishlistPriceDropNotify(env: Env): Promise<{ notifie
       const name = row.product_name || '찜한 상품'
       const link = productLink(row.product_id, row.category)
       const priceStr = price.toLocaleString('ko-KR')
-      await notifyUser(DB, String(row.user_id), 'wishlist_price_drop', '💸 찜한 상품 가격 인하!', `${name} 이(가) ${priceStr}원으로 내려갔어요`, link).catch(() => {})
-      await sendSystemPush(env, 'user', row.user_id, { title: '💸 찜한 상품 가격 인하!', body: `${name} ${priceStr}원`, url: link }).catch(() => {})
+      await notifyUser(DB, String(row.user_id), 'wishlist_price_drop', '💸 찜한 상품 가격 인하!', `${name} 이(가) ${priceStr}원으로 내려갔어요`, link).catch(swallow('wishlist-notify'))
+      await sendSystemPush(env, 'user', row.user_id, { title: '💸 찜한 상품 가격 인하!', body: `${name} ${priceStr}원`, url: link }).catch(swallow('wishlist-notify'))
       notified++
     }
 

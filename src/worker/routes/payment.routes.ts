@@ -405,7 +405,7 @@ paymentsRouter.post('/confirm', async (c) => {
               .bind(String(r.user_id)).first<{ balance: number }>().catch(() => null);
             const avail = Math.max(0, Number(balRow?.balance ?? 0));
             if (avail > 0) {
-              await adjustUserPoints(c.env.DB, { userId: r.user_id, delta: -avail, type: 'order_payment', description: `주문 결제 딜 사용(부분 — 잔액부족) (#${r.id})`, orderId: r.id, guardBalance: true }).catch(() => {});
+              await adjustUserPoints(c.env.DB, { userId: r.user_id, delta: -avail, type: 'order_payment', description: `주문 결제 딜 사용(부분 — 잔액부족) (#${r.id})`, orderId: r.id, guardBalance: true }).catch(swallow('payment'));
             }
             captureException(new Error('ORDER_DEAL_DEDUCT_INSUFFICIENT'), {
               tags: { area: 'payment', kind: 'deal_deduct', severity: 'warning' },
@@ -504,7 +504,7 @@ paymentsRouter.post('/confirm', async (c) => {
               c.env.DB, 'seller', String(sellerId), 'order_paid',
               '💳 결제 확정', `주문 ${order.order_number} — ₩${amt.toLocaleString('ko-KR')} 결제가 확정되었습니다`,
               '/seller/orders',
-            ).catch(() => {})
+            ).catch(swallow('payment'))
           }
         } catch { /* fail-soft */ }
 
@@ -521,7 +521,7 @@ paymentsRouter.post('/confirm', async (c) => {
               c.env.DB, String(userId), 'order_paid',
               '✅ 결제가 완료됐어요', `주문 ${firstNum}${orders.length > 1 ? ` 외 ${orders.length - 1}건` : ''} — ₩${totalAmt.toLocaleString('ko-KR')} 결제 완료`,
               '/my-orders',
-            ).catch(() => {})
+            ).catch(swallow('payment'))
           }
         } catch { /* fail-soft */ }
 
@@ -541,7 +541,7 @@ paymentsRouter.post('/confirm', async (c) => {
                 id: Number(order.id),
                 seller_id: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
                 total_amount: (order as unknown as { total_amount?: number | null }).total_amount ?? null,
-              }).catch(() => {})
+              }).catch(swallow('payment'))
             }
           } catch { /* fail-soft — 기록 실패가 결제 무영향 */ }
         }
@@ -555,7 +555,7 @@ paymentsRouter.post('/confirm', async (c) => {
           try {
             const { creditSellerOrderToLedger } = await import('../utils/order-ledger-credit')
             for (const order of orders) {
-              await creditSellerOrderToLedger(c.env.DB, Number(order.id)).catch(() => {})
+              await creditSellerOrderToLedger(c.env.DB, Number(order.id)).catch(swallow('payment'))
             }
           } catch { /* fail-soft — 기록 실패가 결제 무영향 */ }
         }
@@ -575,7 +575,7 @@ paymentsRouter.post('/confirm', async (c) => {
                 userId: String(userId),
                 sellerId: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
                 amount: Number((order as unknown as { total_amount?: number | null }).total_amount ?? 0),
-              }, c.env).catch(() => {})
+              }, c.env).catch(swallow('payment'))
             }
           } catch { /* fail-soft — 발급 실패가 결제 무영향 */ }
         }
@@ -685,8 +685,8 @@ paymentsRouter.post('/confirm', async (c) => {
             }
               }
               let _deferred = false
-              try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg().catch(() => {})); _deferred = true } } catch { /* no ctx */ }
-              if (!_deferred) await _bg().catch(() => {})
+              try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_bg().catch(swallow('payment'))); _deferred = true } } catch { /* no ctx */ }
+              if (!_deferred) await _bg().catch(swallow('payment'))
             }
           }
         }

@@ -651,7 +651,7 @@ async function handlePaymentConfirmed(
             const balRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(String(r.user_id)).first<{ balance: number }>().catch(() => null)
             const avail = Math.max(0, Number(balRow?.balance ?? 0))
             if (avail > 0) {
-              await adjustUserPoints(DB, { userId: r.user_id, delta: -avail, type: 'order_payment', description: `주문 결제 딜 사용(부분 — 잔액부족) (#${r.id})`, orderId: r.id, guardBalance: true }).catch(() => {})
+              await adjustUserPoints(DB, { userId: r.user_id, delta: -avail, type: 'order_payment', description: `주문 결제 딜 사용(부분 — 잔액부족) (#${r.id})`, orderId: r.id, guardBalance: true }).catch(swallow('webhook'))
             }
           }
         }
@@ -692,7 +692,7 @@ async function handlePaymentConfirmed(
         const ledgerOrders = await DB.prepare('SELECT id FROM orders WHERE order_number = ?')
           .bind(orderNumber).all<{ id: number }>().catch(() => ({ results: [] as Array<{ id: number }> }))
         for (const o of (ledgerOrders?.results ?? [])) {
-          await creditSellerOrderToLedger(DB, Number(o.id)).catch(() => {})
+          await creditSellerOrderToLedger(DB, Number(o.id)).catch(swallow('webhook'))
         }
       } catch { /* fail-soft — 기록 실패가 결제 무영향 */ }
     }
@@ -713,7 +713,7 @@ async function handlePaymentConfirmed(
           DB, String(orow.user_id), 'order_paid',
           '✅ 결제가 완료됐어요', `주문 ${orderNumber} — ₩${Number(data.totalAmount ?? 0).toLocaleString('ko-KR')} 결제 완료`,
           '/my-orders',
-        ).catch(() => {})
+        ).catch(swallow('webhook'))
       }
     } catch (e) {
       console.error('[WEBHOOK] order_paid buyer notification failed:', String(e).slice(0, 200))
@@ -733,7 +733,7 @@ async function handlePaymentConfirmed(
           DB, 'seller', String(row.seller_id), 'order_paid',
           '💳 결제 확정', `주문 ${row.order_number} — ₩${Number(row.total_amount ?? 0).toLocaleString('ko-KR')} 결제가 확정되었습니다`,
           '/seller/orders',
-        ).catch(() => {})
+        ).catch(swallow('webhook'))
       }
     } catch (e) {
       console.error('[WEBHOOK] seller order_paid notification failed:', String(e).slice(0, 200))
@@ -887,7 +887,7 @@ async function handlePaymentCancelled(
       'SELECT user_id FROM orders WHERE order_number = ? AND user_id IS NOT NULL LIMIT 1'
     ).bind(orderNumber).first<{ user_id: string | number | null }>().catch(() => null);
     if (orow?.user_id) {
-      await notifyUser(DB, String(orow.user_id), 'order_cancelled', '주문이 취소되었습니다', `주문 ${orderNumber}이(가) 취소되었습니다. 환불은 결제수단에 따라 처리됩니다.`, '/my-orders').catch(() => {});
+      await notifyUser(DB, String(orow.user_id), 'order_cancelled', '주문이 취소되었습니다', `주문 ${orderNumber}이(가) 취소되었습니다. 환불은 결제수단에 따라 처리됩니다.`, '/my-orders').catch(swallow('webhook'));
     }
   } catch (e) {
     console.error('[WEBHOOK] order_cancelled buyer notification failed:', String(e).slice(0, 200));
@@ -962,7 +962,7 @@ async function handlePaymentFailed(
         '결제가 완료되지 않았습니다',
         `주문 ${orderNumber} 결제가 실패했습니다.${reason ? ` (${reason})` : ''} 장바구니에서 다시 시도할 수 있습니다.`,
         '/my-orders',
-      ).catch(() => {});
+      ).catch(swallow('webhook'));
     }
   } catch (e) {
     console.error('[WEBHOOK] payment_failed buyer notification failed:', String(e).slice(0, 200));

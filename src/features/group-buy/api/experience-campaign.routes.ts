@@ -24,7 +24,7 @@
  *          GET  /api/admin/experience-campaigns/:id/report[.csv] — 리포트
  *          GET  /api/admin/experience-campaigns/:id/draws — 추첨 이력(B2G 감사)
  */
-import { Hono } from 'hono'
+import { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import type { D1Database } from '@cloudflare/workers-types'
 import { requireAuth, requireAdmin, requireSeller, getCurrentUser } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
@@ -153,7 +153,7 @@ export async function issueExperienceVoucher(
     await DB.prepare(`
       INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
       VALUES (?, ?, ?, 0, 0, 1, 0)
-    `).bind(orderId, campaign.product_id, p?.name || '체험권').run().catch(() => {})
+    `).bind(orderId, campaign.product_id, p?.name || '체험권').run().catch(swallow('experience-campaign'))
     return vRow.id
   } catch {
     return null
@@ -163,7 +163,7 @@ export async function issueExperienceVoucher(
 async function notifyEntry(DB: D1Database, userId: string, title: string, message: string, link: string) {
   await DB.prepare(
     "INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at) VALUES (?, 'user', 'experience_campaign', ?, ?, ?, datetime('now'))",
-  ).bind(userId, title, message, link).run().catch(() => {})
+  ).bind(userId, title, message, link).run().catch(swallow('experience-campaign'))
 }
 
 // ══════════════════════════════════ 공개 + 유저 ══════════════════════════════════
@@ -327,7 +327,7 @@ adminApp.post('/:id/draw', async (c) => {
   // 추첨 이력 영구기록 (시드·풀·당첨자 — B2G 증빙).
   await c.env.DB.prepare(
     "INSERT INTO experience_draw_logs (campaign_id, admin_id, method, seed, pool_size, requested_count, pool_snapshot, winners) VALUES (?, ?, 'random', ?, ?, ?, ?, ?)",
-  ).bind(id, admin ? String(admin.id) : null, seed, poolIds.length, count, JSON.stringify(poolIds), JSON.stringify(winners)).run().catch(() => {})
+  ).bind(id, admin ? String(admin.id) : null, seed, poolIds.length, count, JSON.stringify(poolIds), JSON.stringify(winners)).run().catch(swallow('experience-campaign'))
 
   // 선정 처리 + 0원 체험권 발급 + 알림.
   let issued = 0
@@ -337,7 +337,7 @@ adminApp.post('/:id/draw', async (c) => {
     //   'issue_failed' 로 남겨 어드민 응모자 목록에서 가시화(수동 재처리 대상).
     await c.env.DB.prepare(
       "UPDATE experience_campaign_entries SET status=?, voucher_id=?, selected_at=datetime('now') WHERE campaign_id=? AND user_id=?",
-    ).bind(vid ? 'selected' : 'issue_failed', vid, id, uid).run().catch(() => {})
+    ).bind(vid ? 'selected' : 'issue_failed', vid, id, uid).run().catch(swallow('experience-campaign'))
     if (vid) {
       issued++
       await notifyEntry(c.env.DB, uid, '🎉 체험단 선정!', `[${camp.title}] 체험단에 선정되셨어요! 체험권이 이용권 지갑에 발급되었습니다.`, '/my-vouchers')
@@ -495,7 +495,7 @@ sellerApp.post('/:id/draw', async (c) => {
   const winners = cryptoShuffle(poolIds).slice(0, Math.min(count, poolIds.length))
   await c.env.DB.prepare(
     "INSERT INTO experience_draw_logs (campaign_id, admin_id, method, seed, pool_size, requested_count, pool_snapshot, winners) VALUES (?, ?, 'random', ?, ?, ?, ?, ?)",
-  ).bind(id, `seller:${sellerId}`, seed, poolIds.length, count, JSON.stringify(poolIds), JSON.stringify(winners)).run().catch(() => {})
+  ).bind(id, `seller:${sellerId}`, seed, poolIds.length, count, JSON.stringify(poolIds), JSON.stringify(winners)).run().catch(swallow('experience-campaign'))
   let issued = 0
   for (const uid of winners) {
     const vid = await issueExperienceVoucher(c.env.DB, camp, uid)
@@ -503,7 +503,7 @@ sellerApp.post('/:id/draw', async (c) => {
     //   'issue_failed' 로 남겨 어드민 응모자 목록에서 가시화(수동 재처리 대상).
     await c.env.DB.prepare(
       "UPDATE experience_campaign_entries SET status=?, voucher_id=?, selected_at=datetime('now') WHERE campaign_id=? AND user_id=?",
-    ).bind(vid ? 'selected' : 'issue_failed', vid, id, uid).run().catch(() => {})
+    ).bind(vid ? 'selected' : 'issue_failed', vid, id, uid).run().catch(swallow('experience-campaign'))
     if (vid) {
       issued++
       await notifyEntry(c.env.DB, uid, '🎉 체험단 선정!', `[${camp.title}] 체험단에 선정되셨어요! 체험권이 이용권 지갑에 발급되었습니다.`, '/my-vouchers')
