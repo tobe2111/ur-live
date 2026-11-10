@@ -142,3 +142,8 @@
   `orders-fk-mismatch.mjs` 주입 앵커 2건이 그 줄을 잡고 있어 같이 고쳤다(되돌려-검증 빨간불 확인).
 - 잠금 파일(`payment.routes` 8 · `webhook.routes` 6)도 대표 허가("허가해줄게 계속 개선")로 같은 처리 — 기록 `docs/locks/toss/2026-11-10-silent-catch-to-log.md`.
 - 남은 빈 catch: `admin-products`(72, 대부분 스키마 보정) · 그 외 소량.
+
+## 12차 — 대표 "계속 개선" (2026-11-10)
+- npm audit moderate **10 → 4**: `npm audit fix`(잠금 파일만 — glob·minimatch·rimraf) + `@capacitor/cli` 8.5.2 → 8.6.0(xcode·uuid 해소). 전부 개발·네이티브 빌드 도구 — 웹 런타임 무변경.
+- 남은 4건은 `drizzle-kit` 이 끌고 오는 옛 esbuild(개발 서버 취약점). npm 이 제안하는 "수정"은 0.18.1 로의 **다운그레이드**라 따르지 않았다. `drizzle-kit` 을 부르는 스크립트는 없다(`drizzle.config.ts` 만 있음) — 지울지는 대표 판단.
+- `admin-products.routes.ts` 의 빈 catch 72곳은 상품 삭제 때 딸린 행 정리(어드민 전용)라 그대로 둠.
