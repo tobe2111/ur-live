@@ -240,3 +240,8 @@
 - 🩸 **이번에 틀렸던 판단**: 비로그인 장바구니를 "API 401 → 빈 장바구니" 로 추론해 `EmptyCart` 를 서버가 그렸다. 라이브 LCP 요소는 '장바구니를 이용하려면 로그인해 주세요'(로그인 안내 화면, `CartPage` `!loggedIn` 분기). 그 사이 바탕·문장이 통째로 바뀌는 깜빡임이 있었다 → 로그인 안내 화면 전체로 정정(`CART_GUEST_CLS`). 기록은 `2026-11-10-cart-first-screen.md` 정정 절.
 - 🌱 검색 결과 시드: `/search?q=` 의 LCP 3.7s(결과가 앱 부팅 뒤 한 왕복) → 워커가 첫 장(`/api/search?q&page=1&limit=50&scope`, 훅과 같은 경로)을 `__SSR_INITIAL_SEARCH__`(검색어·범위 표식)로 싣고 `useSearchInfinite` 가 initialData 로 쓴다. 마감 700ms(차가운 D1 이 HTML 을 붙잡지 않게). 가드 `search-seed-2026-11-10.test.ts` + 주입 6.
 - 배포 뒤 판정: 비로그인 `/cart` LCP 요소 = 서버 안내 문장(≈FCP) · `/search?q=돈가스` LCP(종전 3.7s) · `X-SSR-Status: SEARCH:*`(edge/stale/self/deadline 분포).
+
+## 45. [E4] #2292 안내 랜딩 셋 · #2293 장바구니 정정 + 검색 시드 — 배포 뒤 판정(폰 4G·CPU 4배 / PC 1440px)
+- **랜딩 셋**(LCP = 서버가 그린 사진): `/about` 폰 **1,812ms**(HTML 849) · `/partners` **1,748**(HTML 1,033) · `/influencer` **1,264**(HTML 518) — 종전 3.2~4.7s. PC `/about` LCP **880** · CLS 0.0012. 느린 회선 회차에서도 1초대.
+- **비로그인 장바구니**: LCP = FCP = 서버 안내 문장 **580ms**(HTML 176) · 느린 회차 1,804(HTML 826) — 종전 LCP 2.0~2.5s(앱 뒤). 오판 정정 뒤 마운트 때 바뀌는 글자 없음.
+- **검색 결과 `/search?q=돈가스`**: LCP **2.6~2.8s**(종전 3.7) — 요소가 **첫 줄 썸네일**(`IMG.w-[88px]`, 시드로 마운트 즉시 줄은 그려지고 사진이 그 뒤에 온다). `X-SSR-Status`: 반복 검색어 `SEARCH:edge-hit`(엣지 6ms) · 처음 검색어 `self-fetch-hit` 294~385ms(마감 700ms 안). 다음 처방: 시드의 첫 두 줄 썸네일을 응답 헤더 preload(유어쇼츠 §27 과 같은 방법 — `RestaurantRow` 의 cfImage 폭과 **같은 주소**여야 한다)로 당기면 LCP 가 마운트 시점(≈2.2s)으로.
