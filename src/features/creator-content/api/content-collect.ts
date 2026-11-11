@@ -28,6 +28,7 @@ import {
 } from '../../../shared/creator-content'
 import { ensureCreatorContentTables, storeKeyFor } from './content-db'
 import { fetchPageMeta } from './content-meta'
+import { syncCreatorShorts } from './content-urshorts'
 
 const STORES_PER_RUN = 5
 /** 대표 사진이 없는 보이는 글을 회차마다 이만큼 채운다(검색 API 는 사진을 안 준다 — 글 페이지의 og:image). */
@@ -324,14 +325,16 @@ export async function runCreatorContentCollect(env: Env, now = Date.now()) {
     })
   }
   // 🖼️ 사진 채우기는 **남는 예산만큼** — 이번 회차에 찾은 가게가 적으면 더 많이 채운다(무료 50/인보케이션).
-  //   대략: 기본 D1 ~6 + 가게당 6 + 유튜브 승격 2 + 죽은 링크 5 + 유튜브 3 + 블로그 재판정 3, 나머지가 사진(배치 쓰기 1 포함).
+  //   대략: 기본 D1 ~6 + 가게당 6 + 유튜브 승격 2 + 죽은 링크 5 + 유튜브 3 + 블로그 재판정 3 + 유어쇼츠 옮겨 싣기 6, 나머지가 사진(배치 쓰기 1 포함).
   const paid = String((env as unknown as { ADS_PLAN?: string }).ADS_PLAN ?? '').trim().toLowerCase() === 'paid'
   const thumbRoom = paid ? THUMB_BACKFILL_PAID
-    : Math.max(THUMB_BACKFILL_MIN, Math.min(THUMB_BACKFILL_MAX, 48 - 6 - (results ?? []).length * 6 - 2 - 5 - 3 - 3 - 2))
+    : Math.max(THUMB_BACKFILL_MIN, Math.min(THUMB_BACKFILL_MAX, 48 - 6 - (results ?? []).length * 6 - 2 - 5 - 3 - 3 - 2 - 6))
   const thumbs = await backfillThumbs(DB, thumbRoom).catch(() => 0)
   const dead = await hideDeadLinks(DB).catch(() => 0)
   const promoted = await promoteVideoCandidates(DB).catch(() => 0)
   const rejudged = await rejudgeAutoBlogs(DB).catch(() => ({ demoted: 0, promoted: 0 }))
   const yt = await collectVideos(DB, env, now).catch(() => ({ searched: false, added: 0 }))
-  return { synced, stores: (results ?? []).length, blogs, thumbs, dead, promoted, demoted: rejudged.demoted, blogs_promoted: rejudged.promoted, yt_searched: yt.searched, videos: yt.added }
+  // 🎬 2026-11-11 공개 중인 3분 이하 영상을 유어쇼츠에도 싣는다(`content-urshorts.ts`).
+  const shorts = await syncCreatorShorts(DB, env).catch(() => ({ measured: 0, added: 0, off: 0 }))
+  return { shorts_measured: shorts.measured, shorts_added: shorts.added, shorts_off: shorts.off, synced, stores: (results ?? []).length, blogs, thumbs, dead, promoted, demoted: rejudged.demoted, blogs_promoted: rejudged.promoted, yt_searched: yt.searched, videos: yt.added }
 }

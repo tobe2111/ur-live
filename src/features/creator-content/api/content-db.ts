@@ -56,6 +56,8 @@ export async function ensureCreatorContentTables(DB: D1Database): Promise<void> 
   ]).catch(() => null)
   // 🪦 2026-11-09 죽은 링크 확인 시각 — 이미 있으면 무해(오류를 삼킨다).
   await DB.prepare(`ALTER TABLE store_creator_content ADD COLUMN checked_at TEXT`).run().catch(() => null)
+  // 🎬 2026-11-11 유어쇼츠 옮겨 싣기 — 유튜브 영상 길이(초). NULL = 아직 안 잼 · -1 = 잴 수 없음(지워짐·비공개).
+  await DB.prepare(`ALTER TABLE store_creator_content ADD COLUMN duration_sec INTEGER`).run().catch(() => null)
 }
 
 /**

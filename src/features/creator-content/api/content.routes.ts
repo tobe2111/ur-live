@@ -66,7 +66,8 @@ async function loadUrdealPeople(DB: D1Database, s: ProductStore) {
     .then((r) => r.results ?? []).catch(() => [])
   const shorts = await DB.prepare(`
     SELECT id, video_id, title, channel, thumb_url FROM home_shorts
-     WHERE product_id = ? AND is_active = 1 ORDER BY sort_order, id DESC LIMIT 6`).bind(s.product_id)
+     -- 🎬 2026-11-11 이 칸에서 옮겨 실은 영상(source='creator')은 다시 읽지 않는다 — 같은 영상이 두 번 뜬다(content-urshorts.ts).
+     WHERE product_id = ? AND is_active = 1 AND COALESCE(source, 'manual') != 'creator' ORDER BY sort_order, id DESC LIMIT 6`).bind(s.product_id)
     .all<{ id: number; video_id: string; title: string | null; channel: string | null; thumb_url: string | null }>()
     .then((r) => r.results ?? []).catch(() => [])
   const pins = await DB.prepare(`
