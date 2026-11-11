@@ -193,3 +193,10 @@
 - 못 본 것: 유튜브가 이 환경에서 막혀 표지가 6초 상한으로 걷혔다 — 실제 재생 시작에 걷히는지는 대표 폰.
 - 대표 *"지금도 문제가 있는 것 같은데 로딩이 느린듯 처음에"* → 실사용 표본: **HKG p50 166ms vs LAX p50 1,625ms**(표본 절반이 LAX). 무료 플랜 연결 단축 설정은 이미 전부 on(0rtt·http3·tls1.3 0-RTT·early hints). 결재 `docs/decisions/2026-11-10-cloudfront-trial-edge.md` 에 근거 보탬.
 - 🔎 덤으로 찾은 것: `/faq` 의 `[email protected]` 원인은 Cloudflare **Email Obfuscation(on)** 이다 — 풀이 스크립트를 우리 CSP 가 막는다. 고치는 길: 대시보드에서 그 설정 끄기, 또는 서버 HTML 에서 이메일을 `<!--email_off-->…<!--/email_off-->` 로 감싸기.
+
+## 71. 대표 결정 — CloudFront 시험 1번 · 이메일 · "안정성"
+- 대표 *"홈이었어. 1번으로 하고 이메일도 고쳐줘. 안정성도 부족한 것 같은데"*. 결재 문서에 결정·실행 절차(대표 손이 필요한 AWS·DNS 5단계) 기록.
+- 이메일: `/faq` 서버 첫 화면의 이메일 칸만 `<!--email_off-->` 로 감쌌다(`worker/utils/email-off.ts`). 다른 서버 화면의 이메일은 Cloudflare 가 안 건드리는 자리라 멀쩡했다(라이브 9개 화면 확인).
+- 측정 표시: AWS 경유 요청은 colo 앞에 `A`(`AICN`). 결재 문서 "측정" 절.
+- "안정성": 이 환경에서 175회 요청 전부 200 · cron 정체 0. 실사용 표본은 **연결 데이터센터에 따라 0.17s ↔ 1.6s(가끔 9s)** 로 들쭉날쭉 — 체감 불안정의 정체로 판단. 오류율은 Cloudflare 요청 통계 권한(Zone Analytics Read)이 토큰에 없어 못 봤다.
+- 이어받는 첫 액션(대표가 "됐어" 하면): `curl -sSI https://edge-test.urdeal.kr/` 의 `server-timing: colo;desc="A…"` · `x-amz-cf-pop: ICN…` 확인 → 대표 폰에서 두 주소를 번갈아 5회씩 → `analytics/summary` 의 `TTFB:colo:A*` 와 `colo:LAX/HKG` 비교.
