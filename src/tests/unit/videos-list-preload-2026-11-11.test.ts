@@ -19,7 +19,8 @@ const read = (f: string) => readFileSync(f, 'utf8')
 describe('뷰어 목록 미리 받기', () => {
   it('① 워커 배선 — /videos 에만', () => {
     const w = read('src/worker/index.ts') // raw — worker/index.ts 엔 주석 제거기를 쓰지 않는다
-    expect(w).toContain("if (url.pathname === '/videos' || url.pathname === '/videos/') c.res.headers.append('Link', SHORTS_ALL_PRELOAD_LINK);")
+    // 2026-11-11 재조준 — 같은 조건 안에 표지 preload 가 같이 들어와 중괄호가 생겼다(불변식 동일: /videos 에만 목록 Link)
+    expect(w).toContain("if (url.pathname === '/videos' || url.pathname === '/videos/') { c.res.headers.append('Link', SHORTS_ALL_PRELOAD_LINK);")
     expect(w).toContain("import { SHORTS_ALL_PRELOAD_LINK } from '../shared/urshorts-list-cache';")
   })
   it('② 같은 상수 — 앱이 받는 주소', () => {

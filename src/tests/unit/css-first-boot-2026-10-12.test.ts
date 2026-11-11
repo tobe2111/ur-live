@@ -281,6 +281,7 @@ describe('⑤-2 서버가 그리는 첫 화면 = CSS 먼저 적용 표면 (2026-
     'src/worker/utils/notifications-first-screen.ts': '/notifications', // 2026-11-10 — 알림 머리줄(세션 있을 때만 — 대표 경로 검사는 authed=true 로 본다)
     'src/worker/utils/cart-first-screen.ts': '/cart', // 2026-11-10 — 장바구니 머리줄
     'src/worker/utils/landing-first-screen.ts': '/about', // 2026-11-10 — 안내 랜딩 셋 머리줄 + 사진 칸
+    'src/worker/utils/videos-first-screen.ts': '/videos', // 2026-11-11 — 공유 링크 표지 한 장
   }
   it('ROOTS 의 모든 첫 화면 모듈에 대표 경로가 있다(새 첫 화면이 생기면 여기서 멈춘다)', async () => {
     // @ts-expect-error — .mjs 생성기(타입 없음)

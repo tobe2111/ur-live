@@ -20,6 +20,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 export const SLIDE_MS = 260
 /** 재생이 시작되지 않아도 덮개를 이만큼 뒤엔 걷는다(자동재생이 막힌 브라우저 — 탭하면 뜬다). */
 export const COVER_MAX_MS = 2500
+/** 🎬 2026-11-11 들어온 첫 영상의 덮개는 더 오래 둔다 — 재생기가 처음 켜지는 데(스크립트·iframe) 넘김보다 오래 걸린다. 걷히면 검은 화면이다. */
+export const INITIAL_COVER_MAX_MS = 6000
 
 function prefersReducedMotion(): boolean {
   try { return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false } catch { return false }
@@ -30,12 +32,16 @@ export function useSlideTransition(opts: {
   idx: number
   setIdx: (i: number) => void
   idOf: (i: number) => string | null
+  /** 🎬 들어오자마자 덮어 둘 영상(공유 링크의 `v`) — 서버가 그린 표지를 재생이 시작될 때까지 잇는다. */
+  initialCoverId?: string | null
 }) {
   const { count, idx, setIdx, idOf } = opts
   const [shift, setShift] = useState(0)
   const [animating, setAnimating] = useState(false)
   /** 방금 넘어온 영상 — 재생이 시작될 때까지 썸네일 덮개를 씌운다. */
-  const [coverId, setCoverId] = useState<string | null>(null)
+  const [coverId, setCoverId] = useState<string | null>(opts.initialCoverId ?? null)
+  /** 한 번이라도 넘겼는가 — 넘긴 뒤의 덮개는 종전 시간(`COVER_MAX_MS`)을 따른다. */
+  const moved = useRef(false)
   const busy = useRef(false)
   const live = useRef({ count, idx, setIdx, idOf })
   live.current = { count, idx, setIdx, idOf }
@@ -52,6 +58,7 @@ export function useSlideTransition(opts: {
     window.setTimeout(() => {
       setAnimating(false)
       set(next)
+      moved.current = true
       setCoverId(id(next))
       setShift(0)
       busy.current = false
@@ -78,7 +85,7 @@ export function useSlideTransition(opts: {
   const uncover = useCallback(() => setCoverId(null), [])
   useEffect(() => {
     if (!coverId) return
-    const t = window.setTimeout(() => setCoverId(null), COVER_MAX_MS)
+    const t = window.setTimeout(() => setCoverId(null), moved.current ? COVER_MAX_MS : INITIAL_COVER_MAX_MS)
     return () => window.clearTimeout(t)
   }, [coverId])
 
