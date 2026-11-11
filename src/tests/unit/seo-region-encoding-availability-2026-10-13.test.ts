@@ -296,7 +296,9 @@ describe('🎬 /urshorts — 색인 대상인데 크롤러 본문이 6자였다'
     const w = readCode('src/worker/index.ts')
     expect(w).not.toMatch(/url\.pathname === '\/urshorts'\) ssrPayload = null/)
     expect(readCode('src/pages/UrShortsBrowsePage.tsx')).toContain('loadShortsAll()') // 🎬 2026-11-09 한 벌(shared/urshorts-list-cache)이 ?all=1 을 받는다
-    expect(readCode('src/shared/urshorts-list-cache.ts')).toContain("fetch('/api/urshorts?all=1')")
+    // 2026-11-11 주소가 상수(SHORTS_ALL_PATH)로 옮겨갔다(워커의 preload 와 한 글자도 안 갈리게) — 값과 호출을 둘 다 본다
+    expect(readCode('src/shared/urshorts-list-cache.ts')).toContain("SHORTS_ALL_PATH = '/api/urshorts?all=1'")
+    expect(readCode('src/shared/urshorts-list-cache.ts')).toContain('fetch(SHORTS_ALL_PATH)')
     // 그리고 그 키는 예열 목록에 **실재**해야 한다(새 캐시 키를 만들지 않는 것이 이 설계의 전제).
     expect(w).toMatch(/slot: 'URSHORTS', path: '\/api\/urshorts'/)
     expect(readCode('src/worker/cron/cache-prewarm.ts')).toMatch(/'\/api\/urshorts'/)

@@ -183,7 +183,7 @@ import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
-import { resolveConsumerAlias } from '../shared/seo/consumer-redirects'; import { pinRedirectApiPath } from '../shared/seo/pin-link'; import { productCanonicalRedirect } from './utils/product-canonical-redirect';
+import { resolveConsumerAlias } from '../shared/seo/consumer-redirects'; import { pinRedirectApiPath } from '../shared/seo/pin-link'; import { productCanonicalRedirect } from './utils/product-canonical-redirect'; import { SHORTS_ALL_PRELOAD_LINK } from '../shared/urshorts-list-cache';
 import { applySurfaceMeta, applyCanonical, buildSellerSurfaceMeta, shouldNoindexMissingEntity, isRetiredSurface, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd, buildSellerShopJsonLd } from './utils/surface-list-jsonld';
 import { fetchSsrPayload, applySsrDiagHeaders, ssrWaitUntil, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
@@ -703,7 +703,7 @@ app.use('*', async (c, next) => {
     //   Cloudflare Early Hints(대시보드 Speed→Optimization toggle) 켜지면 103 으로 HTML 본문 전 송출(무료).
     //   toggle off 여도 응답 헤더라 브라우저가 본문 파싱 전 preconnect 시작 → 소폭 이득, 회귀 0.
     c.res.headers.append('Link', '<https://t1.kakaocdn.net>; rel=preconnect; crossorigin, <https://img1.kakaocdn.net>; rel=preconnect; crossorigin');
-    appendLcpLink(c.res.headers, landingHeroFor(url.pathname)); // 📸 2026-11-09 대외 안내 페이지 맨 위 사진(LCP)을 HTML 과 함께 출발 — 종전엔 앱 코드 뒤 1.7s 에 출발(shared/landing-photo.ts)
+    appendLcpLink(c.res.headers, landingHeroFor(url.pathname)); if (url.pathname === '/videos' || url.pathname === '/videos/') c.res.headers.append('Link', SHORTS_ALL_PRELOAD_LINK); /* 🎬 2026-11-11 뷰어의 영상 목록을 HTML 과 함께 출발(종전 앱 부팅 뒤 3.3s) — shared/urshorts-list-cache.ts */ // 📸 2026-11-09 대외 안내 페이지 맨 위 사진(LCP)을 HTML 과 함께 출발 — 종전엔 앱 코드 뒤 1.7s 에 출발(shared/landing-photo.ts)
 
     // ⚠️ 요약 **원본**을 따로 잡는다 — 봉투가 MAIN 시드와 같아 받는 쪽이 못 가른다. thin 판정은 시드를 보면 멀쩡한 지역을 thin 으로 읽는다(경기 49건인데 시드엔 0건).
     const digestRaw = digestP ? await digestP : null;
