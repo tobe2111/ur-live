@@ -735,7 +735,7 @@ app.use('*', async (c, next) => {
     const chunkSurface = routeSurface(url.pathname, isMobileUserAgent(c.req.header('user-agent')), authed); // 🧭 2026-10-15 표면 판정 SSOT(shared/route-surface — 앱 부팅도 같은 함수)
     const routeChunks = chunkSurface ? ROUTE_CHUNK_MAP[chunkSurface] : undefined;
     c.res.headers.set('X-Shell-Variant', authed ? 'user' : 'guest'); // 🏠 2026-11-09 shell-sw 가 로그인/비로그인 저장본을 가르는 표식(public/shell-sw.js)
-    const cssFirst = cssFirstApplies(url.pathname, c.req.header('user-agent') || '', authed); appendEdgeHeaders(c.res.headers, ENTRY_CSS, (c.req.raw as { cf?: { colo?: string } }).cf?.colo); let rb = applyEarlyData(applyCssFirstBoot(new HTMLRewriter(), nonce, cssFirst, firstScreenApplies(url.pathname, c.req.header('user-agent') || '', authed) ? criticalCssFor(url.pathname) : ''), url.pathname, authed, nonce) // 🚦 2026-10-12 [UNLOCK_LOADING] CSS 먼저 → 스크립트(utils/css-first-boot.ts)
+    const cssFirst = cssFirstApplies(url.pathname, c.req.header('user-agent') || '', authed); appendEdgeHeaders(c.res.headers, ENTRY_CSS, (c.req.raw as { cf?: { colo?: string } }).cf?.colo, c.req.header('via')); let rb = applyEarlyData(applyCssFirstBoot(new HTMLRewriter(), nonce, cssFirst, firstScreenApplies(url.pathname, c.req.header('user-agent') || '', authed) ? criticalCssFor(url.pathname) : ''), url.pathname, authed, nonce) // 🚦 2026-10-12 [UNLOCK_LOADING] CSS 먼저 → 스크립트(utils/css-first-boot.ts)
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
       })

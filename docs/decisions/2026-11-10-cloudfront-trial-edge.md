@@ -1,6 +1,6 @@
 # 한국 손님의 첫 응답 1~3초(회선 몫 91%)를 줄이기 위해 CloudFront 시험 주소를 하나 열어 볼까?
 
-상태: open
+상태: decided (2026-11-11)
 등급: C
 역할: dev
 올린 날: 2026-11-10
@@ -33,7 +33,29 @@
 시험 주소 DNS 삭제 + CloudFront 배포 삭제. 실서비스는 처음부터 무접촉.
 
 ## 결정 (대표가 한 말 그대로)
-<비워 둔다>
+2026-11-11: *"홈이었어. 1번으로 하고 이메일도 고쳐줘. 안정성도 부족한 것 같은데"*
+
+## 실행 절차 (대표 손이 필요한 것 — 세션은 AWS·Cloudflare 에 쓰지 않는다)
+시험 주소는 `edge-test.urdeal.kr` 로 둔다. 실서비스 `urdeal.kr` 는 아무것도 바뀌지 않는다.
+
+1. **AWS 계정**(없으면 만들기). 결제 수단 등록이 필요하다. 무료 구간(월 1TB 전송 · 1천만 요청) 안이면 0원.
+2. **인증서**: AWS Certificate Manager 에서 리전을 **버지니아 북부(us-east-1)** 로 바꾸고 `edge-test.urdeal.kr` 인증서를 DNS 검증으로 요청한다.
+   화면에 나오는 CNAME 한 줄을 Cloudflare DNS 에 그대로 넣는다(**프록시 끔 · 회색 구름**). 몇 분 뒤 "발급됨".
+3. **CloudFront 배포 만들기**
+   - 원본 도메인: `urdeal.kr` · 프로토콜: HTTPS 만
+   - 뷰어: HTTP → HTTPS 리디렉션 · 허용 메서드: GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE
+   - 기본 동작 캐시 정책: **CachingDisabled** · 원본 요청 정책: **AllViewerExceptHostHeader**
+   - 동작 하나 추가: 경로 `/assets/*` → 캐시 정책 **CachingOptimized**
+   - 대체 도메인: `edge-test.urdeal.kr` · 인증서: 2번 것 · HTTP/3 켜기 · 가격 등급: 모든 엣지
+4. **Cloudflare DNS**: `edge-test` CNAME → 3번에서 받은 `dxxxx.cloudfront.net` · **프록시 끔(회색 구름)**. 주황 구름이면 다시 Cloudflare 를 거쳐 시험이 무의미해진다.
+5. 끝나면 세션에 "됐어" 라고만 알려 주면 된다. 세션이 응답 헤더로 경로를 확인하고, 대표 폰에서 두 주소를 번갈아 여는 순서를 안내한다.
+
+**측정**: 워커가 AWS 를 거쳐 온 요청의 데이터센터 이름 앞에 `A` 를 붙인다(`ICN` → `AICN`, `css-first-boot.ts` `edgeColoLabel`). 실사용 측정 `TTFB:colo:A…` 가 시험 주소, 나머지가 평소 경로다.
+
+**알아 둘 한계**
+- 시험 주소에서는 모든 손님이 AWS 의 몇 개 IP 로 보인다 — 요청 수 제한(IP 기준)이 여럿이 동시에 쓰면 걸릴 수 있다. 대표 혼자 쓰는 시험엔 문제없다.
+- 로그인(카카오)은 `urdeal.kr` 로 돌아온다. 시험은 **로그인 없이 홈 첫 화면**을 본다.
+
 
 ## 반영 커밋
 <비워 둔다>

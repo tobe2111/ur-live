@@ -16,6 +16,7 @@ import { FAQ_CLS, FAQ_COPY } from '../../shared/faq-page'
 import { CONCEPT_FAQ } from '../../shared/seo/concept-content'
 import { PC_HOME_FS } from '../../shared/pc-home-first-screen'
 import { GUEST_PC_FRAME } from './guest-first-screen'
+import { emailOff } from './email-off'
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const escAttr = (s: string) => esc(s).replace(/"/g, '&quot;')
@@ -36,7 +37,7 @@ function body(): string {
     `<div class="${FAQ_CLS.qText}"><p class="${FAQ_CLS.qCat}">${esc(f.category)}</p><p class="${FAQ_CLS.qTitle}">${esc(f.question)}</p></div>` +
     `<span class="${FAQ_CLS.qChev}" aria-hidden="true"></span></div><div class="ur-faq-a" aria-hidden="true" inert=""></div></div>`).join('')
   const list = `<div class="${FAQ_CLS.list}">${rows}</div>`
-  const row = (label: string, value: string) => `<div class="${FAQ_CLS.supportRow}"><span class="${FAQ_CLS.supportIcon}" aria-hidden="true"></span><span class="${FAQ_CLS.supportLabel}">${esc(label)}</span><span class="${FAQ_CLS.supportValue}">${esc(value)}</span></div>`
+  const row = (label: string, value: string) => `<div class="${FAQ_CLS.supportRow}"><span class="${FAQ_CLS.supportIcon}" aria-hidden="true"></span><span class="${FAQ_CLS.supportLabel}">${esc(label)}</span><span class="${FAQ_CLS.supportValue}">${emailOff(esc(value))}</span></div>` // 📧 2026-11-11 Cloudflare 이메일 가리기 제외(email-off.ts)
   const support = `<div class="${FAQ_CLS.support}"><h2 class="${FAQ_CLS.supportTitle}">${esc(FAQ_COPY.supportTitle)}</h2><p class="${FAQ_CLS.supportDesc}">${esc(FAQ_COPY.supportDesc)}</p><div class="${FAQ_CLS.supportRows}">${row(FAQ_COPY.supportHours, FAQ_COPY.supportHoursValue)}${row(FAQ_COPY.supportEmail, FAQ_COPY.supportEmailValue)}</div></div>`
   return `<div class="${FAQ_CLS.content}">${hero}${search}${chips}${list}${support}</div>`
 }

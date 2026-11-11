@@ -219,7 +219,8 @@ describe('⑦ Link 헤더(Early Hints 원천) — 렌더 차단 CSS 만', () => 
   })
   it('워커가 모든 HTML 응답에 그 헤더를 단다 · 생성기가 ENTRY_CSS 를 낸다', () => {
     const w = stripComments(readFileSync('src/worker/index.ts', 'utf-8'))
-    expect(w).toMatch(/appendEdgeHeaders\(c\.res\.headers, ENTRY_CSS, \(c\.req\.raw as \{ cf\?: \{ colo\?: string \} \}\)\.cf\?\.colo\)/)
+    // 🔁 2026-11-11 재조준 — 넷째 인자로 요청의 Via 가 붙었다(CloudFront 시험 표시, email-off-2026-11-11.test.ts)
+    expect(w).toMatch(/appendEdgeHeaders\(c\.res\.headers, ENTRY_CSS, \(c\.req\.raw as \{ cf\?: \{ colo\?: string \} \}\)\.cf\?\.colo, c\.req\.header\('via'\)\)/)
     const g = readFileSync('scripts/generate-route-chunk-map.mjs', 'utf-8')
     expect(g).toMatch(/emit\(out, entry\.css, bootJs\)/)
     expect(g).toMatch(/export const ENTRY_CSS/)

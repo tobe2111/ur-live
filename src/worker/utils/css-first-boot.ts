@@ -257,9 +257,20 @@ export function earlyHintsLink(entryCss: readonly string[]): string {
  *   (`exposeHeaders` 에 이미 있다), `lib/web-vitals-report.ts` 가 그 값을 실사용자 표본으로 보낸다.
  *   ⚠️ `ssr-payload` 가 `Server-Timing` 을 **set** 하므로 여기서는 그 뒤에 **append** 한다.
  */
-export function appendEdgeHeaders(h: Headers, entryCss: readonly string[], colo: string | undefined): void {
+/**
+ * ☁️ 2026-11-11 CloudFront 시험(결재 `2026-11-10-cloudfront-trial-edge` — 대표 *"1번으로 하고"*): AWS 를 거쳐 온 요청은
+ *   콜로 이름 앞에 `A` 를 붙인다(`ICN` → `AICN`). 실사용 측정(`web-vitals-report` 의 `colo:XXX`)이 시험 주소의 첫 응답을
+ *   평소 손님과 **따로** 모으게 하는 표시다 — 둘이 섞이면 2주 비교가 안 된다. CloudFront 는 원본 요청에 `Via: … (CloudFront)` 를 단다.
+ */
+export function edgeColoLabel(colo: string | undefined, via: string | null | undefined): string {
+  const c = (colo || '').replace(/[^A-Z]/g, '').slice(0, 3)
+  if (!c) return ''
+  return /cloudfront/i.test(via || '') ? `A${c}` : c
+}
+
+export function appendEdgeHeaders(h: Headers, entryCss: readonly string[], colo: string | undefined, via?: string | null): void {
   h.append('Link', earlyHintsLink(entryCss))
-  const c = (colo || '').replace(/[^A-Z]/g, '').slice(0, 4)
+  const c = edgeColoLabel(colo, via)
   if (c) h.append('Server-Timing', `colo;desc="${c}"`)
 }
 
