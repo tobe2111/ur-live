@@ -47,8 +47,8 @@ export default [
   {
     name: '초대링크 — 서버 카드에서 에이전시 이름이 빠진다',
     file: 'src/worker/utils/store-invite-ssr.ts',
-    find: '  const c = agencyInviteCardCopy(name)',
-    replace: '  const c = agencyInviteCardCopy(null)',
+    find: '  const c = agencyInviteCardCopy(name, ', // 2026-11-11 수수료 인자 추가 — 이름 불변식은 그대로
+    replace: '  const c = agencyInviteCardCopy(null, ',
     test: T,
     why: '주소를 붙여 넣은 카드가 누가 보낸 링크인지 말하지 못한다.',
   },
