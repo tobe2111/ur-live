@@ -25,6 +25,7 @@ export default function StoreBizCertPage() {
   const [imageUrl, setImageUrl] = useState('')
   const [preview, setPreview] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [pct, setPct] = useState(0) // ⚡ 2026-11-11 올리는 중 진행률 — 멈춘 게 아니라는 표시
   const [bno, setBno] = useState('')
   const [nts, setNts] = useState<{ valid: boolean | null; message?: string } | null>(null)
   const [verifying, setVerifying] = useState(false)
@@ -39,14 +40,14 @@ export default function StoreBizCertPage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function upload(file: File) {
-    setUploading(true)
+    setUploading(true); setPct(0)
     setPreview(URL.createObjectURL(file))
     try {
       const prepared = await compressForDocument(file).catch(() => file)
       if (prepared.size > BUSINESS_CERT_MAX_FILE_BYTES) { toast.error('이미지가 너무 커요 — 다시 찍거나 다른 사진을 골라 주세요'); setPreview(''); return }
       const fd = new FormData()
       fd.append('file', prepared)
-      const r = await api.post('/api/upload/business-cert', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const r = await api.post('/api/upload/business-cert', fd, { headers: { 'Content-Type': 'multipart/form-data' }, onUploadProgress: (e) => { if (e.total) setPct(Math.min(99, Math.round((e.loaded / e.total) * 100))) } })
       const url = r.data?.data?.url || r.data?.url
       if (!url) throw new Error(r.data?.error || '업로드 실패')
       setImageUrl(url)
@@ -91,7 +92,7 @@ export default function StoreBizCertPage() {
           className={`ur-btn ur-btn-lg ur-btn-primary w-full disabled:opacity-40${submitting ? ' ur-busy-ring !opacity-100' : ''}`}>
           {submitting ? '보내는 중…' : '제출하고 다음'}
         </button>
-        {!imageUrl && <p className="mt-2 text-center text-[12px] text-ink-soft">{uploading ? '사진을 올리는 중이에요' : '등록증 사진을 올려 주세요'}</p>}
+        {!imageUrl && <p className="mt-2 text-center text-[12px] text-ink-soft">{uploading ? `사진을 올리는 중이에요${pct > 0 ? ` ${pct}%` : ''}` : '등록증 사진을 올려 주세요'}</p>}
       </>}>
       <input ref={cameraRef} {...fileProps} capture="environment" onChange={onPick} data-testid="biz-cert-camera" />
       <input ref={albumRef} {...fileProps} onChange={onPick} data-testid="biz-cert-album" />
