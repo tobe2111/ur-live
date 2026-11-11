@@ -3,6 +3,8 @@
  *   2026-08-20 대표 확정(실수령가 카드): "하나 판매 당 얼마인지 결과도 나와야겠지? 플랫폼 수수료와 인플루언서 수수료를 제한 금액으로."
  *   2026-10-24 대표: *"이용권 등록할 때 이용권 마진 계산기 간단하게 있으면 좋겠네. 유어딜 수수료, 인플루언서 수수료,
  *   할인금액 이렇게 빼고 최종 마진"* → 정가에서 **할인 · 유어딜 수수료 · 인플루언서 수수료**를 차례로 빼 최종 마진을 보인다.
+ *   2026-11-11 대표 *"2번 계산기 보강"* → 이 매장을 맡은 에이전시가 있으면 **에이전시 몫** 줄을 더한다(서버 `agency_shares`).
+ *   지급 스위치가 꺼져 있어도 보인다 — 그때도 사장님이 에이전시에게 직접 내는 돈이라 마진에서 빠지는 건 같다.
  *
  * 수수료율은 서버 `/api/seller/fee-context` 에서 받는다. 그 값은 **결제가 부르는 그 함수**
  * (`getSellerCommissionRate`)를 거쳐 나온 **지금 실제로 떼이는 %** 다(생활 파트너 20% 처럼 매장별로 다른 요율도 그대로).
@@ -31,7 +33,7 @@ import { voucherMargin } from '@/shared/voucher-margin'
 export { voucherMargin } from '@/shared/voucher-margin'
 
 export default function NetProceedsCard({ price, originalPrice, promoPct }: { price: number; originalPrice?: number; promoPct?: number }) {
-  const [fee, setFee] = useState<{ channel: string | null; platform_fee_pct: number; channel_rates_active?: boolean } | null>(null)
+  const [fee, setFee] = useState<{ channel: string | null; platform_fee_pct: number; channel_rates_active?: boolean; agency_shares?: Array<{ name: string; pct: number }> } | null>(null)
   const [influencerInput, setInfluencerInput] = useState('')
   useEffect(() => {
     api.get('/api/seller/fee-context')
@@ -41,15 +43,19 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
 
   if (!fee || !(price > 0)) return null
   const savedPromo = Number(promoPct) > 0
+  // 여러 에이전시가 맡으면 이용권마다 맡은 곳이 다르다 — 가장 큰 % 로 보수적으로 보인다.
+  const agencies = (fee.agency_shares ?? []).filter((a) => Number(a.pct) > 0)
+  const agencyPct = agencies.reduce((mx, a) => Math.max(mx, Number(a.pct)), 0)
   const m = voucherMargin({
     price,
     originalPrice,
     platformFeePct: fee.platform_fee_pct,
     influencerPct: savedPromo ? Number(promoPct) : Number(influencerInput),
+    agencyPct,
   })
   const platformCut = m.platformCut
   const net = m.net
-  const channelLabel = fee.channel === 'direct' ? ' · 직접 운영' : fee.channel === 'brokered' ? ' · 중개 운영' : ' · 운영 방식 미선택'
+  const channelLabel = fee.channel === 'direct' ? ' · 직접 운영' : fee.channel === 'brokered' ? ' · 에이전시 운영' : ' · 운영 방식 미선택'
 
   return (
     <div className="mt-3 rounded-xl border border-rule bg-white p-4">
@@ -87,6 +93,12 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
           </label>
           <span className="tabular-nums">−{formatNumber(m.influencerCut)}원</span>
         </div>
+        {m.agencyCut > 0 && (
+          <div className="flex justify-between text-gray-500">
+            <span>에이전시 몫 ({agencies.length > 1 ? `최대 ${m.agencyPct}%` : `${m.agencyPct}% · ${agencies[0].name}`})</span>
+            <span className="tabular-nums">−{formatNumber(m.agencyCut)}원</span>
+          </div>
+        )}
         <div className="flex justify-between border-t border-rule pt-2 text-[15px] font-extrabold text-tone-ok">
           <span>최종 마진</span>
           <span className="tabular-nums">{formatNumber(net)}원{m.discount > 0 && <span className="ml-1 text-[12px] font-bold">(정가의 {m.marginPct}%)</span>}</span>
@@ -94,9 +106,14 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
       </div>
       <p className="mt-2 text-[12px] leading-[1.55] text-gray-500">
         {m.influencerCut > 0
-          ? `인플루언서 수수료는 소개 링크로 팔렸을 때만 빠져요. 직접 팔리면 ${formatNumber(price - platformCut)}원이에요.`
+          ? `인플루언서 수수료는 소개 링크로 팔렸을 때만 빠져요. 직접 팔리면 ${formatNumber(price - platformCut - m.agencyCut)}원이에요.`
           : '인플루언서와 수수료를 약속했다면 그 %를 넣어 보세요. 계산용이라 저장되지 않아요.'}
       </p>
+      {m.agencyCut > 0 && (
+        <p className="mt-1 text-[12px] leading-[1.55] text-gray-500">
+          에이전시 몫은 에이전시가 맡아 판 이용권에서 빠져요{agencies.length > 1 ? '. 맡은 에이전시마다 % 가 달라 가장 큰 값으로 계산했어요' : ''}.
+        </p>
+      )}
     </div>
   )
 }
