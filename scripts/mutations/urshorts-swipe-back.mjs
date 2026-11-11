@@ -19,9 +19,9 @@ export default [
   },
   {
     name: '🖐️ 루트 오버스크롤 차단 제거 (touch-action 이 새는 브라우저에서 재발)',
-    file: V,
-    find: 'className="relative min-h-[100dvh] overflow-hidden overscroll-none bg-[#0A0C12]"',
-    replace: 'className="relative min-h-[100dvh] overflow-hidden bg-[#0A0C12]"',
+    file: 'src/shared/videos-first.ts', // 🔁 2026-11-11 재조준 — 루트 클래스가 서버 첫 화면과 한 벌이 됐다
+    find: "page: 'relative min-h-[100dvh] overflow-hidden overscroll-none bg-[#0A0C12]'",
+    replace: "page: 'relative min-h-[100dvh] overflow-hidden bg-[#0A0C12]'",
     test: TEST,
     why: '방어가 하나뿐이면 그 하나가 안 통하는 인앱 브라우저에서 같은 증상이 그대로 돌아온다.',
   },

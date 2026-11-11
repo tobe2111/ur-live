@@ -197,7 +197,9 @@ describe('🖐️ 위로 되돌아가는 스와이프가 브라우저에 먹히�
   })
 
   it('루트가 오버스크롤을 가둔다 (touch-action 이 새는 브라우저 대비)', () => {
-    expect(V2).toMatch(/min-h-\[100dvh\][^"]*overscroll-none/)
+    // 🔁 2026-11-11 재조준 — 루트 클래스가 `shared/videos-first.ts`(서버 첫 화면과 한 벌)로 옮겨갔다. 화면이 그 상수를 쓰는지 + 상수에 차단이 있는지 둘 다 본다.
+    expect(V2).toContain('<div className={VIDEOS_FS_CLS.page}>')
+    expect(readCode('src/shared/videos-first.ts')).toMatch(/page: 'relative min-h-\[100dvh\][^']*overscroll-none/)
   })
 
   it('판정이 뗄 때가 아니라 **이동 중 임계**에서 난다 — 취소돼도 이미 넘어가 있다', () => {
