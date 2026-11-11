@@ -205,3 +205,11 @@
 - `9e49f6f` 의 배포 3종(Pages · cron 워커 · ur-ads)이 전부 `binding <DB|ADS_DB|ADS_COMPANY_DB> of type d1 failed to generate. Please try again later` (code 10021)로 실패. 시도마다 걸리는 바인딩이 달랐다 → Cloudflare 쪽 일시 장애로 판단. 라이브는 이전 버전으로 정상(주요 화면·API 200).
 - 세션은 실패 잡 재실행·워크플로 수동 실행 둘 다 403(`Resource not accessible by integration`) — 다음 main 머지가 배포를 다시 돌린다.
 - 배포 뒤 판정(남은 것): `/faq` 서버 HTML 의 `__cf_email__` 0건 · `email_off` 표시가 Cloudflare 에서 존중되는지.
+
+## 73. 재방문 즉시 표시 — 첫 방문에 저장(`public/shell-sw.js` ⑧)
+- 대표 *"Aws는 안쓸거야"* → *"계속 최적화"*. AWS 없이 남은 가장 큰 처방이 재방문이라 그쪽을 팠다.
+- 실측(같은 브라우저로 홈 연속 방문, 폰 4G·CPU 4배): 종전 1차 1.15s → **2차 0.89s**(아직 네트워크) → 3차 0.24s. SW 가 첫 문서 요청 뒤에 설치돼 그 화면을 못 봐서다.
+- 수리: activate 때 열린 창의 주소를 같은 울타리(`shouldHandle`)로 걸러 저장본이 없을 때만 한 번 받는다(최대 3). 라이브에 새 SW 를 끼워(Playwright route) 잰 값: 1차 1.20s → **2차 0.17s** · 3차 0.18s · 4차 0.22s.
+- 울타리(허용·금지 목록)는 그대로다 — 결재 `2026-11-09-revisit-instant-shell` 범위 안. 대가: 첫 방문 손님의 HTML 요청이 한 번 더(뒤에서, 화면을 안 막는다).
+- 🩸 틀렸던 판단: 홈 코드 묶음 `lz-home-homePc` 를 "폰이 PC 코드를 받는다" 로 읽었다 — 이름은 **두 화면이 같이 쓰는 묶음**이라는 뜻이다(vite 묶음 이름 규칙).
+- 못 본 것: 카카오톡 인앱 브라우저가 SW 를 지원하는지(iOS 인앱은 대체로 안 된다) — 배포 뒤 대표 폰으로.
