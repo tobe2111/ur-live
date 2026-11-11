@@ -16,6 +16,7 @@ import SwipeHint from './videos/SwipeHint'
 import { useSlideTransition } from './videos/useSlideTransition'
 import { YT_TITLE_CLIP_PX } from '@/shared/urshorts-display'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { VIDEOS_FS_CLS, videosCoverSrc, videosStartIdOf } from '@/shared/videos-first'
 
 // 🐢 2026-11-02 대표 *"유어쇼츠도 느리더라"* — 이 화면 코드가 받아지는 **순간** 유튜브 재생기도 출발시킨다.
 //   홈·목록 카드를 누르는 사이(`pointerdown`) 이 코드를 미리 받으므로(`warm-viewer.ts` → 등록부 'videos'),
@@ -65,6 +66,8 @@ export default function VideosPage() {
    */
   const landedDirect = useLocation().key === 'default'
   const startVideo = params.get('v')
+  /** 🎬 2026-11-11 공유 링크의 영상 — 서버가 그린 표지를 로딩 중에도, 재생이 시작될 때까지도 잇는다(`shared/videos-first`). */
+  const [startCoverId] = useState(() => videosStartIdOf(window.location.search))
   const touchY = useRef<number | null>(null)
   const touchAt = useRef(0)
   // 🖱️ 휠은 한 번 굴려도 이벤트가 수십 개 온다 — 쿨다운이 없으면 한 번에 끝까지 넘어간다.
@@ -134,6 +137,7 @@ export default function VideosPage() {
     idx,
     setIdx,
     idOf: (i) => items?.[i]?.video_id ?? null,
+    initialCoverId: startCoverId,
   })
 
   // ▶️ **재생기를 한 번만 만든다.** YT 가 우리가 넣어 준 빈 div 를 iframe 으로 갈아치우므로,
@@ -225,7 +229,11 @@ export default function VideosPage() {
   }, [go, navigate, togglePlay])
 
   // 목록과 재생기 판정을 **함께** 기다린다. 먼저 그린 뒤 갈아 끼우면 재생기가 두 번 뜬다.
-  if (items === null || apiState === 'loading') return <BrandLoader fullScreen forceDark label="유어쇼츠" />
+  if (items === null || apiState === 'loading') {
+    // 🎬 2026-11-11 공유 링크면 로더 대신 **그 영상의 표지** — 서버가 이미 같은 사진을 그려 놨다(로더가 덮으면 표지 → 어두운 화면 → 영상으로 두 번 바뀐다).
+    if (startCoverId) return <div className={VIDEOS_FS_CLS.page} data-testid="shorts-first-cover"><img src={videosCoverSrc(startCoverId)} alt="" aria-hidden="true" className={VIDEOS_FS_CLS.cover} /></div>
+    return <BrandLoader fullScreen forceDark label="유어쇼츠" />
+  }
 
   if (items.length === 0) {
     return (

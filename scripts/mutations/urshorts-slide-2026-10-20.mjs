@@ -34,7 +34,7 @@ export default [
   {
     name: '🎞️ 덮개 백스톱이 없다',
     file: H,
-    find: '    const t = window.setTimeout(() => setCoverId(null), COVER_MAX_MS)\n',
+    find: '    const t = window.setTimeout(() => setCoverId(null), moved.current ? COVER_MAX_MS : INITIAL_COVER_MAX_MS)\n', // 🔁 2026-11-11 재조준 — 첫 영상의 덮개 시간이 따로 생겼다
     replace: '    const t = 0\n',
     test: TEST,
     why: '자동재생이 막힌 브라우저에서 썸네일 덮개가 영영 안 걷혀 영상이 안 보인다.',
