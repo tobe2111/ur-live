@@ -67,7 +67,9 @@ describe('③ 유튜브 제목 줄은 덮지 않고 잘라 낸다', () => {
     expect(YT_TITLE_CLIP_PX).toBeGreaterThanOrEqual(56)
   })
   it('루트가 넘친 부분을 자른다', () => {
-    expect(V).toMatch(/relative min-h-\[100dvh\] overflow-hidden/)
+    // 🔁 2026-11-11 재조준 — 루트 클래스가 `shared/videos-first.ts`(서버 첫 화면과 한 벌)로 옮겨갔다
+    expect(V).toContain('<div className={VIDEOS_FS_CLS.page}>')
+    expect(readCode('src/shared/videos-first.ts')).toMatch(/page: 'relative min-h-\[100dvh\] overflow-hidden/)
   })
   it('번호(1 / 10)는 여전히 없다 — 2026-09-08 대표 결정', () => {
     expect(V).not.toMatch(/\{idx \+ 1\}/)

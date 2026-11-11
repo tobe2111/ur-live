@@ -56,6 +56,7 @@ export const ROOTS = [
   'src/worker/utils/notifications-first-screen.ts', // 🔔 2026-11-10 알림 머리줄(세션 있을 때만)
   'src/worker/utils/cart-first-screen.ts', // 🧺 2026-11-10 장바구니 머리줄
   'src/worker/utils/landing-first-screen.ts', // 🧭 2026-11-10 안내 랜딩 셋 머리줄 + 사진 칸
+  'src/worker/utils/videos-first-screen.ts', // 🎬 2026-11-11 공유 링크 표지(인라인 스타일이라 규칙은 거의 안 늘어난다 — 목록에 있어야 가드가 본다)
 ]
 
 /**
