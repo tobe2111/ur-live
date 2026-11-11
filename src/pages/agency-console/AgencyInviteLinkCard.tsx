@@ -18,6 +18,9 @@ interface Invite { url: string; expiresAt?: string; useCount: number }
  *   - [카카오톡으로 보내기] 가 우리가 정한 카드(에이전시 이름 · 설명 · [매장 맡기기] 버튼)를 보낸다. 공유창은 **누른 순간**
  *     열어야 폰 브라우저가 막지 않으므로 SDK 를 미리 데워 두고 동기로 보낸다(`sendKakaoShare`), 안 데워졌으면 비동기로.
  *   - 카톡이 안 되면 기기 공유 → 복사 순으로 내려간다.
+ *
+ * 🤝 2026-11-11 대표 *"모두가 번거롭지 않게 자동화"* — **우리 몫 %** 를 여기서 한 번 정해 둔다. 사장님은 링크 화면에서
+ *   그 % 를 보고 [맡기기] 하고, 그 순간 그 매장의 몫으로 저장된다(사장님이 따로 적을 일이 없다).
  */
 export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean } = {}) {
   const [invite, setInvite] = useState<Invite | null | undefined>(undefined)
@@ -25,6 +28,8 @@ export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const agencyName = readAgencyProfile()?.agency.name || ''
+  const [sharePct, setSharePct] = useState<number | null>(null)
+  const [shareInput, setShareInput] = useState('')
 
   const create = useCallback(async (): Promise<Invite | null> => {
     const r = await agencyRequest<{ invite: Invite; message?: string }>('/store-invite', { method: 'POST' })
@@ -35,8 +40,10 @@ export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean
 
   const load = useCallback(async () => {
     setError('')
-    const r = await agencyRequest<{ invite: Invite | null }>('/store-invite')
+    const r = await agencyRequest<{ invite: Invite | null; sharePct?: number }>('/store-invite')
     if (!r.ok) { setError(r.data.error || '영입 링크를 불러오지 못했어요.'); return }
+    const pct = Number(r.data.sharePct) || 0
+    setSharePct(pct); setShareInput(pct ? String(pct) : '')
     if (r.data.invite) { setInvite(r.data.invite); return }
     // 살아 있는 링크가 없다(처음이거나 만료) — 바로 만든다. 끊을 옛 링크가 없으므로 묻지 않는다.
     // 🧑‍🤝‍🧑 직원은 만들 수 없다(서버 adminOnly) — 직원은 관리자가 만든 링크를 보내기만 한다.
@@ -65,6 +72,16 @@ export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean
     setBusy(false)
     if (!r.ok) { toast.error(r.data.error || '끊지 못했어요.'); return }
     setInvite(null)
+  }
+
+  async function saveShare() {
+    const pct = shareInput.trim() === '' ? 0 : Number(shareInput)
+    setBusy(true)
+    const r = await agencyRequest<{ sharePct: number; message?: string }>('/store-invite/share', { method: 'POST', body: { pct } })
+    setBusy(false)
+    if (!r.ok) { toast.error(r.data.error || '저장하지 못했어요.'); return }
+    setSharePct(Number(r.data.sharePct) || 0)
+    toast.success(r.data.message || '저장했어요.')
   }
 
   async function copy(url: string) {
@@ -97,6 +114,28 @@ export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean
       <p className="text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
         사장님이 링크를 열어 [맡기기] 한 번이면 바로 운영을 시작해요. 아직 유어딜에 없는 매장은 그 링크에서 등록하면 등록과 동시에 연결돼요. 한 링크를 여러 매장에 계속 보내도 돼요.
       </p>
+      {sharePct !== null && (
+        <div className="mt-3 flex items-center gap-3" data-testid="agency-invite-share">
+          <label htmlFor="agency-invite-share-pct" className="min-w-0 flex-1">
+            <span className="block text-[15px] font-medium text-gray-900 dark:text-white">우리 몫</span>
+            <span className="block text-[12px] text-gray-500 dark:text-gray-400">판매액의 %. 사장님이 링크에서 보고 맡기면 그 매장에 그대로 적용돼요</span>
+          </label>
+          {canManage ? (
+            <>
+              <span className="relative">
+                <input id="agency-invite-share-pct" type="number" inputMode="decimal" min={0} max={90} step={0.5} value={shareInput}
+                  onChange={(e) => setShareInput(e.target.value)} placeholder="0"
+                  className="h-10 w-20 rounded-xl bg-gray-50 dark:bg-white/5 pl-3 pr-7 text-right text-[15px] text-gray-900 dark:text-white tabular-nums outline-none" />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">%</span>
+              </span>
+              <button type="button" disabled={busy || (Number(shareInput) || 0) === sharePct} onClick={() => { void saveShare() }}
+                className="h-10 shrink-0 rounded-xl bg-gray-100 dark:bg-white/10 px-4 text-[13px] font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50">저장</button>
+            </>
+          ) : (
+            <span className="text-[15px] font-medium text-gray-900 dark:text-white tabular-nums">{sharePct ? `${sharePct}%` : '정하지 않음'}</span>
+          )}
+        </div>
+      )}
       {error ? (
         <>
           <p className="mt-3 text-[13px] text-tone-bad">{error}</p>

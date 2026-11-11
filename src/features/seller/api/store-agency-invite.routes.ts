@@ -27,6 +27,7 @@ import { isStoreOwner } from '../../../worker/utils/seller-operators'
 import { ensureAgencyConsoleTables } from '../../agency-console/api/agency-schema'
 import { frontendBase } from '../../agency-console/api/agency-auth.routes'
 import { AGENCY_LINKS_PER_STORE_MAX } from './seller-agency-link.routes'
+import { setAgencyShare } from '../../agency-console/api/agency-share'
 
 export const storeAgencyInviteRoutes = new Hono<{ Bindings: Env }>()
 
@@ -34,11 +35,18 @@ const TOKEN_RE = /^[0-9a-f]{64}$/
 
 async function liveInvite(DB: D1Database, token: string) {
   return DB.prepare(
-    `SELECT i.id, i.agency_id, i.created_by_staff_id, a.name AS agency_name
+    `SELECT i.id, i.agency_id, i.created_by_staff_id, a.name AS agency_name, d.pct AS share_pct
        FROM agency_store_invites i JOIN agency_accounts a ON a.id = i.agency_id
+       LEFT JOIN agency_share_defaults d ON d.agency_id = i.agency_id
       WHERE i.token = ? AND i.revoked_at IS NULL AND i.expires_at > datetime('now') AND a.status = 'active'
       LIMIT 1`,
-  ).bind(token).first<{ id: number; agency_id: number; created_by_staff_id: number; agency_name: string }>()
+  ).bind(token).first<{ id: number; agency_id: number; created_by_staff_id: number; agency_name: string; share_pct: number | null }>()
+}
+
+/** 에이전시가 미리 정해 둔 몫 % — 정하지 않았으면 0. */
+export function inviteSharePct(inv: { share_pct?: number | null } | null | undefined): number {
+  const n = Number(inv?.share_pct)
+  return Number.isFinite(n) && n > 0 ? n : 0
 }
 
 const LINK_DEAD = { success: false, code: 'LINK_INVALID', error: '링크가 만료됐거나 더 이상 쓸 수 없어요. 에이전시에 새 링크를 요청해 주세요.' } as const
@@ -50,7 +58,7 @@ type EntrustResult = { seller_id: number; ok: boolean; already?: boolean; error?
 
 /** 매장 하나를 맡긴다. 결과만 돌려주고 던지지 않는다 — 여러 매장 중 하나가 막혀도 나머지는 진행된다. */
 async function entrustOne(
-  DB: D1Database, inv: { id: number; agency_id: number; created_by_staff_id: number; agency_name: string },
+  DB: D1Database, inv: { id: number; agency_id: number; created_by_staff_id: number; agency_name: string; share_pct?: number | null },
   userId: number, sellerId: number,
 ): Promise<EntrustResult> {
   // 🔐 그 매장의 **주인**만 — 위임받은 운영자는 남의 매장을 다른 대행에 넘길 수 없다.
@@ -75,18 +83,31 @@ async function entrustOne(
         WHERE seller_id = ? AND agency_id = ? AND status IN ('pending','active') LIMIT 1`,
     ).bind(sellerId, inv.agency_id).first<{ id: number; status: string }>()
     if (open?.status === 'pending') {
-      await DB.prepare(
+      const up = await DB.prepare(
         `UPDATE agency_store_links SET status = 'active', accepted_at = datetime('now'), decided_by_staff_id = ?, updated_at = datetime('now')
           WHERE id = ? AND status = 'pending'`,
       ).bind(inv.created_by_staff_id, open.id).run()
+      if ((up.meta?.changes ?? 0) > 0) await applyInviteShare(DB, inv, sellerId, userId)
     }
     if (open) return { seller_id: sellerId, ok: true, already: open.status === 'active' }
     return { seller_id: sellerId, ok: false, error: '맡기지 못했어요. 잠시 뒤 다시 시도해 주세요.' }
   }
   await DB.prepare('UPDATE agency_store_invites SET use_count = use_count + 1 WHERE id = ?').bind(inv.id).run().catch(() => {})
+  await applyInviteShare(DB, inv, sellerId, userId)
   const store = await DB.prepare('SELECT business_name, name FROM sellers WHERE id = ? LIMIT 1')
     .bind(sellerId).first<{ business_name: string | null; name: string | null }>()
   return { seller_id: sellerId, ok: true, storeName: store?.business_name || store?.name || '매장' }
+}
+
+/**
+ * 🤝 2026-11-11 — 사장님이 초대 화면에서 본 몫 % 로 [맡기기] 했다 = 그 % 에 동의. 그 매장의 몫으로 저장한다.
+ * **새로 맡긴 순간에만** 부른다 — 이미 운영 중인 매장의 % 를 링크를 다시 연 것만으로 바꾸지 않는다(사장님이 따로 정한 값 보존).
+ * 실패해도 맡기기는 그대로(몫은 사장님이 셀러 화면에서 다시 정할 수 있다).
+ */
+async function applyInviteShare(DB: D1Database, inv: { agency_id: number; share_pct?: number | null }, sellerId: number, userId: number): Promise<void> {
+  const pct = inviteSharePct(inv)
+  if (pct <= 0) return
+  await setAgencyShare(DB, sellerId, inv.agency_id, pct, userId).catch(() => false)
 }
 
 /** 요청 본문 → 매장 id 목록. `seller_ids`(여럿) 우선, 옛 `seller_id`(하나)도 받는다. 중복 제거. */
@@ -119,7 +140,7 @@ storeAgencyInviteRoutes.get('/:token', rateLimit({ action: 'store_agency_invite_
       entrustedSellerIds = (results || []).map((r) => Number(r.seller_id))
       c.header('Cache-Control', 'private, no-store')
     }
-    return c.json({ success: true, agencyName: inv.agency_name, entrustedSellerIds })
+    return c.json({ success: true, agencyName: inv.agency_name, sharePct: inviteSharePct(inv), entrustedSellerIds })
   } catch (err) {
     return safeError(c, err, '링크를 확인하지 못했어요', '[store-agency-invite]')
   }
@@ -130,7 +151,7 @@ storeAgencyInviteRoutes.post('/accept', cors(), rateLimit({ action: 'store_agenc
     const sess = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user']).catch(() => null)
     const userId = Number(sess?.userId)
     if (!Number.isInteger(userId) || userId <= 0) return c.json({ success: false, code: 'LOGIN_REQUIRED', error: '로그인이 필요해요.' }, 401)
-    type AcceptBody = { token?: string; seller_id?: unknown; seller_ids?: unknown }
+    type AcceptBody = { token?: string; seller_id?: unknown; seller_ids?: unknown; share_pct?: unknown }
     const body = await c.req.json<AcceptBody>().catch((): AcceptBody => ({}))
     const token = typeof body.token === 'string' ? body.token : ''
     const sellerIds = entrustSellerIds(body)
@@ -144,6 +165,10 @@ storeAgencyInviteRoutes.post('/accept', cors(), rateLimit({ action: 'store_agenc
     await ensureAgencyConsoleTables(DB)
     const inv = await liveInvite(DB, token)
     if (!inv) return c.json(LINK_DEAD, 404)
+    // 🤝 사장님이 본 % 와 지금 % 가 다르면(그 사이 에이전시가 바꿨다) 맡기지 않는다 — 동의한 적 없는 % 가 저장되면 안 된다.
+    if (body.share_pct !== undefined && Number(body.share_pct) !== inviteSharePct(inv)) {
+      return c.json({ success: false, code: 'SHARE_CHANGED', error: '에이전시 몫이 바뀌었어요. 화면을 새로고침해 다시 확인해 주세요.', sharePct: inviteSharePct(inv) }, 409)
+    }
 
     const results: EntrustResult[] = []
     for (const id of sellerIds) results.push(await entrustOne(DB, inv, userId, id))
