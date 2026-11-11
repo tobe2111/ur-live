@@ -115,7 +115,7 @@ export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean
         사장님이 링크를 열어 [맡기기] 한 번이면 바로 운영을 시작해요. 아직 유어딜에 없는 매장은 그 링크에서 등록하면 등록과 동시에 연결돼요. 한 링크를 여러 매장에 계속 보내도 돼요.
       </p>
       {sharePct !== null && (
-        <div className="mt-4 flex items-center gap-3" data-testid="agency-invite-share">
+        <div className="mt-3 flex items-center gap-3" data-testid="agency-invite-share">
           <label htmlFor="agency-invite-share-pct" className="min-w-0 flex-1">
             <span className="block text-[15px] font-medium text-gray-900 dark:text-white">우리 몫</span>
             <span className="block text-[12px] text-gray-500 dark:text-gray-400">판매액의 %. 사장님이 링크에서 보고 맡기면 그 매장에 그대로 적용돼요</span>
