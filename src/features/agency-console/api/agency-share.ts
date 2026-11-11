@@ -62,3 +62,19 @@ export async function setAgencyShare(DB: D1Database, sellerId: number, agencyId:
   ).bind(sellerId, agencyId, pct, userId).run()
   return true
 }
+
+/**
+ * 🧮 마진 계산기용 — 이 매장을 지금 맡고 있는 에이전시와 그 지금 % (2026-11-11 대표 *"2번 계산기 보강"*).
+ * 표시 전용(정산은 판매 시각의 % 를 따로 읽는다). 표가 없거나 오류면 빈 배열 — 계산기는 그 줄을 안 그린다.
+ * 지급 스위치가 꺼져 있어도 보인다: 그때도 사장님이 에이전시에게 직접 내는 돈이라 마진에서 빠지는 건 같다.
+ */
+export async function activeAgencySharesForStore(DB: D1Database, sellerId: number): Promise<Array<{ name: string; pct: number }>> {
+  const r = await DB.prepare(
+    `SELECT a.name AS name, ${currentSharePctSql('l.seller_id', 'l.agency_id')} AS pct
+       FROM agency_store_links l JOIN agency_accounts a ON a.id = l.agency_id
+      WHERE l.seller_id = ? AND l.status = 'active' ORDER BY l.id`,
+  ).bind(sellerId).all<{ name: string; pct: number | null }>().catch(() => null)
+  return (r?.results ?? [])
+    .map((x) => ({ name: String(x.name || '에이전시'), pct: Math.max(0, Math.min(AGENCY_SHARE_PCT_MAX, Number(x.pct) || 0)) }))
+    .filter((x) => x.pct > 0)
+}

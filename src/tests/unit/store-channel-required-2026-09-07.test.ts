@@ -94,8 +94,9 @@ describe('⑤ 선택 카드', () => {
   })
   it('실수령 카드는 null 채널을 "중개" 라고 부르지 않는다', () => {
     const net = read(NET)
-    expect(net).toMatch(/fee\.channel === 'brokered' \? ' · 중개 운영'/)
-    expect(net).not.toMatch(/fee\.channel === 'direct' \? ' · 직접 운영' : ' · 중개 운영'/)
+    // 2026-11-11: 화면 이름 "중개" → "에이전시"(2026-10-11 명칭 통일) — 미지정을 그 이름으로 부르지 않는 불변식은 그대로.
+    expect(net).toMatch(/fee\.channel === 'brokered' \? ' · 에이전시 운영'/)
+    expect(net).not.toMatch(/fee\.channel === 'direct' \? ' · 직접 운영' : ' · (중개|에이전시) 운영'/)
   })
 })
 

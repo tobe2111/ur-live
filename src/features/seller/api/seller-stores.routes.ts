@@ -37,7 +37,7 @@ import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
 import { pickStoreChannel, registerStoreChannelRoutes } from './seller-store-channel.routes'
 import { registerStoreClaimRoutes } from './seller-store-claims.routes'; import { registerStoreReportRoutes } from './seller-store-reports.routes'
 import { registerBrokerTermsRoutes, prepareBrokerTerms, finalizeBrokeredStore } from './seller-broker-terms.routes' // 💸🔑 2026-09-19 요율·승계 코드
-import { storeTermsError, afterStoreCreated } from './store-signup-extras' // 📜🤝 2026-10-10 약관 동의 + 영입 귀속(유일한 가입 문)
+import { storeTermsError, afterStoreCreated } from './store-signup-extras'; import { activeAgencySharesForStore } from '../../agency-console/api/agency-share' // 📜🤝 2026-10-10 약관 동의 + 영입 귀속(유일한 가입 문) · 🧮 2026-11-11 계산기 에이전시 몫
 import { PERSONAL_BROKER_SIGNUP_DISABLED } from '@/shared/feature-flags'; import { BROKERED_VIA_AGENCY_MSG } from '@/shared/agency-copy'; import { normalizeKakaoPlaceUrl, kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -138,7 +138,7 @@ app.get('/fee-context', async (c) => {
         channel: picked.channel,                         // null = 아직 아무도 안 골랐다(화면이 선택을 요구한다)
         channel_set: picked.set,
         platform_fee_pct: fee.pct,                       // 지금 실제로 떼이는 %
-        channel_rates_active: fee.channelRatesActive,    // false 면 아래 설계값은 아직 미적용
+        channel_rates_active: fee.channelRatesActive, agency_shares: await activeAgencySharesForStore(c.env.DB, sellerId), // false 면 설계값 미적용 · agency_shares = 맡은 에이전시의 지금 %(표시 전용)
         channel_pct: fee.channelPct,                     // 채널 요율이 켜졌을 때의 설계값
         direct_pct: DEFAULT_FEE_RATES.platformPctDirect,
         brokered_pct: DEFAULT_FEE_RATES.platformPct,
