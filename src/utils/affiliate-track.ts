@@ -73,6 +73,29 @@ export function arrivedViaSomeoneElsesRef(): boolean {
   }
 }
 
+/**
+ * 🧭 2026-11-11 (대표 *"인플루언서 링크를 통해서 들어와선 유어쇼츠를 볼 수도 있잖아. 24시간 내에. 그럼 인플루언서 성과로
+ *    안잡히면 안되지"*): **어느 손님 화면으로 들어온 소개 링크든** 구매 귀속에 저장한다.
+ *
+ * 종전엔 상세·유어샵 화면만 저장했고, 홈·유어쇼츠·지도 등으로 들어온 `?ref=` 는 유입 클릭만 남았다 —
+ * 그런데 소개 링크 기본값(`affiliate.routes` 의 share_url)이 **홈**(`urdeal.kr?ref=`)이다. 그 링크로 와서
+ * 유어쇼츠를 보고 산 손님은 인플루언서 성과에서 빠졌다.
+ *
+ * 🔴 `ref` 가 **다른 뜻**인 화면은 제외한다 — `/store/new?ref=` 는 매장 영입인(`store-referrer`)이고, 대시보드·
+ *    로그인 화면의 값은 손님 소개가 아니다. 거기 들어온 값을 구매 귀속에 저장하면 엉뚱한 사람이 성과를 가져간다.
+ */
+export const LANDING_REF_EXCLUDED = ['/store', '/seller', '/admin', '/agency', '/supplier', '/wholesale', '/login', '/auth', '/sync', '/oauth'] as const
+
+export function isConsumerLandingPath(pathname: string): boolean {
+  const p = String(pathname || '/').toLowerCase()
+  return !LANDING_REF_EXCLUDED.some((x) => p === x || p.startsWith(`${x}/`))
+}
+
+export function captureLandingRef(pathname: string, ref: string | null | undefined): void {
+  if (isConsumerLandingPath(pathname)) storeAffiliateRef(ref) // 저장 + 유입 클릭(같은 ref 1회)
+  else captureInflowRef(ref)
+}
+
 export function captureInflowRef(ref: string | null | undefined): void {
   try {
     if (!ref || !/^\d{1,12}$/.test(ref)) return

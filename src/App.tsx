@@ -28,7 +28,7 @@ import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
 import { featureFlags } from '@/shared/config/feature-flags'
 import { CAMPAIGN_SIGNUP_ENABLED } from '@/shared/feature-flags'
-import { captureInflowRef } from '@/utils/affiliate-track'
+import { captureLandingRef } from '@/utils/affiliate-track'
 // lazy-loaded — only rendered conditionally, not on initial paint
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
@@ -365,10 +365,10 @@ function AppContent() {
         localStorage.setItem('pending_referral_inviter', JSON.stringify({ id: inviter, ts: Date.now() }))
       }
       // 📣 2026-08-09: 루트 등 상세 밖 랜딩의 ?ref= 도 유입 클릭(inflow_clicks)에 적재.
-      //   affiliate.routes 가 발급하는 share_url(`urdeal.kr/?ref=`)·캠페인 완료화면 링크가 지금까지
-      //   미적재되던 갭. 유입 기록만이며 어필리에이트 구매 귀속(affiliate_ref 저장)은 종전과 동일
-      //   (상세 페이지들의 storeAffiliateRef 만) — 머니 경로 무접촉. 캠페인 코드(?c=)는 함께 태워진다.
-      captureInflowRef(params.get('ref') || params.get('aff'))
+      //   affiliate.routes 가 발급하는 share_url(`urdeal.kr/?ref=`)·캠페인 완료화면 링크가 미적재되던 갭.
+      //   🧭 2026-11-11 대표 지시로 **구매 귀속도** 저장한다(홈으로 와서 유어쇼츠 보고 산 손님 = 그 인플루언서).
+      //   ref 뜻이 다른 화면(/store/new 매장 영입 등)은 제외 — 판정은 affiliate-track `isConsumerLandingPath`.
+      captureLandingRef(window.location.pathname, params.get('ref') || params.get('aff')) // 🧭 2026-11-11 홈·유어쇼츠로 온 소개도 구매 귀속(affiliate-track)
     } catch { /* ignore */ }
   }, [])
 

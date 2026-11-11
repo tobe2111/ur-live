@@ -16,6 +16,7 @@ import SwipeHint from './videos/SwipeHint'
 import { useSlideTransition } from './videos/useSlideTransition'
 import { YT_TITLE_CLIP_PX } from '@/shared/urshorts-display'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { writeTouch } from '@/utils/touch-store'
 import { VIDEOS_FS_CLS, videosCoverSrc, videosStartIdOf } from '@/shared/videos-first'
 
 // 🐢 2026-11-02 대표 *"유어쇼츠도 느리더라"* — 이 화면 코드가 받아지는 **순간** 유튜브 재생기도 출발시킨다.
@@ -481,6 +482,7 @@ export default function VideosPage() {
           </div>
           <Link
             to={`/pass/${cur.product_id}`}
+            onClick={() => writeTouch(`urshorts:${cur.video_id}`)} // 🎬 2026-11-11 무엇을 보고 샀나(성과는 소개 링크가 정한다 — touch-store)
             className="shrink-0 rounded-[10px] bg-brand px-[15px] py-[11px] text-[13px] font-medium text-white"
           >
             구매
