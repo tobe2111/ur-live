@@ -183,7 +183,7 @@ import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
-import { resolveConsumerAlias } from '../shared/seo/consumer-redirects';
+import { resolveConsumerAlias } from '../shared/seo/consumer-redirects'; import { pinRedirectApiPath } from '../shared/seo/pin-link';
 import { applySurfaceMeta, applyCanonical, buildSellerSurfaceMeta, shouldNoindexMissingEntity, isRetiredSurface, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd, buildSellerShopJsonLd } from './utils/surface-list-jsonld';
 import { fetchSsrPayload, applySsrDiagHeaders, ssrWaitUntil, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
@@ -2614,7 +2614,7 @@ export default {
         const alias = resolveConsumerAlias(url.pathname);
         // 🍽️ 2026-08-11: 목적지가 이미 쿼리를 갖는 별칭이 생겼다(`/meal-vouchers` → `/?category=…`).
         //   그냥 이어붙이면 `…?category=x?foo=y` — 두 번째 `?` 는 값의 일부로 먹힌다.
-        if (alias) return Response.redirect(`${url.origin}${alias}${url.search ? (alias.includes('?') ? `&${url.search.slice(1)}` : url.search) : ''}`, 301);
+        if (alias) return Response.redirect(`${url.origin}${alias}${url.search ? (alias.includes('?') ? `&${url.search.slice(1)}` : url.search) : ''}`, 301); const pinApi = pinRedirectApiPath(url.pathname); if (pinApi) return app.fetch(new Request(`${url.origin}${pinApi}`, request), env as never, ctx as never); // 🔗 2026-11-11 핀 공유 주소는 앱 껍데기 대신 서버가 바로 302(문서 두 번 → 한 번). shared/seo/pin-link.ts
       }
       let isWhHost = WHOLESALE_HOSTS.has(host);
       // 멀티몰: 정적 set 밖 + 소비자 호스트 아닌 미지 호스트만 등록 몰-호스트 조회(캐시 — 핫패스 영향 0).
