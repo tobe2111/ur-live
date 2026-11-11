@@ -189,6 +189,10 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
   // 🏛️ 사업자 진위확인 결과(국세청 상태 문자열 · 'unverified'). 이미 만들어진 테이블에 붙이는 열이라 ALTER 로 —
   //   batch 안에 두면 '이미 있음' 오류가 위 생성문까지 되돌린다. 실패(=이미 있음)는 조용히 넘어간다.
   try { await DB.prepare('ALTER TABLE agency_accounts ADD COLUMN business_status TEXT').run() } catch { /* 이미 있음 */ }
+  // 🤝 2026-11-11 대표 *"모두가 번거롭지 않게 자동화"* — 에이전시가 **미리 정해 두는 몫 %**. 사장님이 초대 화면에서 이 값을
+  //   보고 [맡기기] 를 누르면 그 매장의 몫(`agency_share_terms`)으로 저장된다. 행 없음·0 = 정하지 않음(종전 동작).
+  //   `agency_accounts` 에 열을 더하지 않고 표를 따로 둔다 — 라이브 표에 ALTER 하는 것보다 되돌리기 쉽고(표 하나), 기존 행을 안 건드린다.
+  try { await DB.prepare('CREATE TABLE IF NOT EXISTS agency_share_defaults (agency_id INTEGER PRIMARY KEY, pct REAL NOT NULL, updated_at TEXT NOT NULL DEFAULT (datetime(\'now\')))').run() } catch { /* 표가 막 생기는 중 */ }
   // 👥 직원의 매장 범위 — NULL·'all' = 맡은 매장 전부(종전 동작) · 'assigned' = 배정한 매장만.
   try { await DB.prepare('ALTER TABLE agency_staff ADD COLUMN store_scope TEXT').run() } catch { /* 이미 있음 */ }
   // 🟡 2026-10-26 대표 확정 — **카카오로 만든 에이전시**. 소비자 계정(users.id)과 잇는 열 + 이메일 계정으로 옮기는 중의 값.

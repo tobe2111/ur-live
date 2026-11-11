@@ -126,16 +126,17 @@ export default function StoreClaimPage() {
    */
   const inviteToken = (() => { const v = params.get(AGENCY_INVITE_QUERY); return isAgencyInviteToken(v) ? v : null })()
   const [inviteAgency, setInviteAgency] = useState<string | null>(null)
+  const [inviteShare, setInviteShare] = useState(0) // 🤝 2026-11-11 에이전시가 미리 정한 몫 %
   useEffect(() => {
     if (!inviteToken || !isLoggedInSync()) return
     api.get(`/api/store-agency-invite/${encodeURIComponent(inviteToken)}`)
-      .then((r) => { if (r.data?.success) setInviteAgency(r.data.agencyName || '에이전시') })
+      .then((r) => { if (r.data?.success) { setInviteAgency(r.data.agencyName || '에이전시'); setInviteShare(Number(r.data.sharePct) || 0) } })
       .catch(() => { /* 만료 — 등록은 그대로 */ })
   }, [inviteToken])
   async function entrustToInviter(sellerId: number | undefined): Promise<void> {
     if (!inviteToken || !sellerId) return
     try {
-      const r = await api.post('/api/store-agency-invite/accept', { token: inviteToken, seller_id: sellerId })
+      const r = await api.post('/api/store-agency-invite/accept', { token: inviteToken, seller_id: sellerId, share_pct: inviteShare })
       if (r.data?.success) { toast.success(`${r.data.agencyName || '에이전시'} 에이전시에 매장을 맡겼어요`); return }
       throw new Error(r.data?.error)
     } catch (e: any) {
@@ -253,7 +254,7 @@ export default function StoreClaimPage() {
               ) : (
                 <>
                   {/* ⌨️ 입력 중(키보드)엔 접는다 — `.ur-kb-hide`(index.css). 결과 칸이 키보드 위에 남게. */}
-                  {inviteAgency && <div className="ur-kb-hide"><AgencyInviteBanner name={inviteAgency} /></div>}
+                  {inviteAgency && <div className="ur-kb-hide"><AgencyInviteBanner name={inviteAgency} sharePct={inviteShare} /></div>}
                   {prospect?.store_name && (
                     <p className="ur-kb-hide mb-5 rounded-xl bg-brand-tint px-4 py-3 text-[13px] leading-relaxed">
                       <b className="font-medium">{prospect.store_name}</b> — 영입 담당자가 미리 준비한 매장이에요. 이 가게를 찾아 진행해 주세요.

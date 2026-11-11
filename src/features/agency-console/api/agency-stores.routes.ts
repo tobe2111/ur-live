@@ -35,6 +35,7 @@ import { registerAgencyNotificationRoutes } from './agency-store-notifications'
 import { releaseAgencyProducts } from './channel-sales'
 import { registerAgencySalesRoute } from './agency-store-sales'
 import { registerAgencyPayoutRoutes } from './agency-payout.routes' // 💸 2026-11-01 에이전시 몫 지급(게이트 OFF)
+import { validateSharePct } from './agency-share'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; FRONTEND_URL?: string }
 type Vars = { agencyStaff: AgencyStaffContext }
@@ -253,11 +254,13 @@ agencyStoresRoutes.get('/store-invite', requireAgencyStaff(), async (c) => {
         WHERE agency_id = ? AND revoked_at IS NULL AND expires_at > datetime('now')
         ORDER BY id DESC LIMIT 1`,
     ).bind(me.agencyId).first<{ token: string; expires_at: string; use_count: number }>()
-    const ag = await c.env.DB.prepare('SELECT name FROM agency_accounts WHERE id = ? LIMIT 1')
-      .bind(me.agencyId).first<{ name: string | null }>().catch(() => null)
+    const ag = await c.env.DB.prepare(
+      'SELECT a.name, d.pct AS default_share_pct FROM agency_accounts a LEFT JOIN agency_share_defaults d ON d.agency_id = a.id WHERE a.id = ? LIMIT 1',
+    ).bind(me.agencyId).first<{ name: string | null; default_share_pct: number | null }>().catch(() => null)
     return c.json({
       success: true,
       agencyName: ag?.name || '',
+      sharePct: Number(ag?.default_share_pct) > 0 ? Number(ag?.default_share_pct) : 0, // 🤝 미리 정해 둔 몫 %
       invite: row ? { url: storeInviteUrl(c.env, row.token), expiresAt: row.expires_at, useCount: row.use_count } : null,
     })
   } catch (err) {
@@ -282,6 +285,26 @@ agencyStoresRoutes.post('/store-invite', cors(), requireAgencyStaff({ adminOnly:
       return c.json({ success: true, invite: { url: storeInviteUrl(c.env, token), useCount: 0 }, message: '새 초대 링크를 만들었어요. 예전 링크는 이제 쓸 수 없어요.' })
     } catch (err) {
       return safeError(c, err, '초대 링크를 만들지 못했어요', '[agency-console:store-invite]')
+    }
+  })
+
+// 🤝 2026-11-11 — 에이전시가 **미리 정해 두는 몫 %**(관리자). 사장님이 초대 화면에서 보고 [맡기기] 하면 그 매장의 몫이 된다.
+//   이미 맡은 매장의 % 는 바뀌지 않는다(그건 사장님이 셀러 화면에서 정한다). 0 = 정하지 않음.
+agencyStoresRoutes.post('/store-invite/share', cors(), requireAgencyStaff({ adminOnly: true }),
+  rateLimit({ action: 'agency_store_invite_share', max: 30, windowSec: 3600 }), async (c) => {
+    try {
+      const me = c.get('agencyStaff')
+      const body = await c.req.json<{ pct?: unknown }>().catch(() => ({} as { pct?: unknown }))
+      const v = validateSharePct(body.pct)
+      if (!v.ok) return c.json({ success: false, error: v.error }, 400)
+      await ensureAgencyConsoleTables(c.env.DB)
+      await c.env.DB.prepare(
+        `INSERT INTO agency_share_defaults (agency_id, pct, updated_at) VALUES (?, ?, datetime('now'))
+         ON CONFLICT(agency_id) DO UPDATE SET pct = excluded.pct, updated_at = excluded.updated_at`,
+      ).bind(me.agencyId, v.pct).run()
+      return c.json({ success: true, sharePct: v.pct, message: v.pct ? `에이전시 몫을 ${v.pct}%로 정했어요.` : '에이전시 몫을 비웠어요.' })
+    } catch (err) {
+      return safeError(c, err, '몫을 저장하지 못했어요', '[agency-console:store-invite]')
     }
   })
 

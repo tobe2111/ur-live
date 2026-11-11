@@ -138,7 +138,8 @@ describe('⑤ 링크로 들어와 가입하면 바로 연결된다', () => {
   it('등록 화면은 토큰을 검증하고, 등록이 끝나면 같은 맡기기 API 를 부른다(중개 등록은 빠진다)', () => {
     const page = code('src/pages/StoreClaimPage.tsx')
     expect(page).toMatch(/isAgencyInviteToken\(v\) \? v : null/)
-    expect(page).toContain("api.post('/api/store-agency-invite/accept', { token: inviteToken, seller_id: sellerId })")
+    // 2026-11-11 — 같은 맡기기 API 에 사장님이 본 에이전시 몫 % 를 함께 보낸다(agency-invite-share-auto 시험).
+    expect(page).toContain("api.post('/api/store-agency-invite/accept', { token: inviteToken, seller_id: sellerId, share_pct: inviteShare })")
     // 🔁 2026-11-03 재조준: 등록 흐름이 4화면(`store-new/*`)이 되며 완료 처리가 `onRegistered` 로 옮겼다 — 순서 불변식 그대로.
     const handoff = page.indexOf('if (ownerClaimCode) { setHandoff(ownerClaimCode); return }')
     const entrust = page.indexOf('await entrustToInviter(sellerId)')
