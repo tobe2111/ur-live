@@ -61,7 +61,7 @@ export function statementMessage(s: StoreStatement): { title: string; message: s
   if (s.payByStore.length) parts.push(`직접 보내 주세요: ${s.payByStore.map(line).join(', ')} · 합계 ${won(sum(s.payByStore))}`)
   if (s.paidByUrdeal.length) parts.push(`정산금에서 빠진 금액(유어딜이 대신 지급): ${s.paidByUrdeal.map(line).join(', ')} · 합계 ${won(sum(s.paidByUrdeal))}`)
   if (!parts.length) return null
-  return { title: `🧾 ${s.label} 소개비·에이전시 몫 명세서`, message: parts.join(' / ') }
+  return { title: `🧾 ${s.label} 소개비·에이전시 수수료 명세서`, message: parts.join(' / ') }
 }
 
 const _ensured = new WeakSet<object>()

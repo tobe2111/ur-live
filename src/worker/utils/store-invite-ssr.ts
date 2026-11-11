@@ -9,17 +9,17 @@
  *   [카카오톡으로 보내기] 로 보내는 카드와 같은 문장) · **언제나 noindex** · 없는 토큰은 슬롯이 `ENTITY_SLOTS` 라 404 + noindex.
  * 🧷 같은 주소에 이름 없는 공통 메타(`agencyInviteSurfaceSeo`, 동적 표면)도 걸린다 — 그 rewrite 가 **나중에** 돌아
  *   덮으므로, 워커는 여기서 메타를 만들었으면 공통 rewrite 를 건너뛴다. 토큰이 없거나 조회 실패면 공통 메타(noindex)가 남는다.
- * 🔒 값은 공개 API(`GET /api/store-agency-invite/:token`)가 쿠키 없이 주는 **에이전시 이름 하나**뿐이다.
+ * 🔒 값은 공개 API(`GET /api/store-agency-invite/:token`)가 쿠키 없이 주는 **에이전시 이름과 수수료 %**뿐이다(2026-11-11 수수료 추가).
  */
 import { agencyInviteCardCopy } from '../../shared/agency-store-invite'
 import type { SurfaceRewriteMeta } from './surface-ssr-meta'
 import { seedObject } from './life-share-ssr'
 
 export function buildStoreInviteMeta(payload: unknown, origin: string, pathname: string): SurfaceRewriteMeta | null {
-  const p = seedObject(payload) as { success?: boolean; agencyName?: unknown } | null
+  const p = seedObject(payload) as { success?: boolean; agencyName?: unknown; sharePct?: unknown } | null
   if (!p || p.success !== true) return null
   const name = typeof p.agencyName === 'string' ? p.agencyName : ''
-  const c = agencyInviteCardCopy(name)
+  const c = agencyInviteCardCopy(name, typeof p.sharePct === 'number' ? p.sharePct : 0) // 🧾 2026-11-11 에이전시 수수료도 카드에
   return {
     pageTitle: `${c.title} - 유어딜`,
     title: c.title,

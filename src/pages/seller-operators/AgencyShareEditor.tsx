@@ -40,7 +40,7 @@ export default function AgencyShareEditor({ agencyId, agencyName, current, onSav
   return (
     <form onSubmit={save} className="mt-3">
       <label htmlFor={`agency-share-${agencyId}`} className="block text-[13px] font-semibold text-gray-700">
-        {agencyName} 에이전시 몫 (판매액의 %)
+        {agencyName} 에이전시 수수료 (판매액의 %)
       </label>
       <div className="mt-1 flex gap-2">
         <span className="relative">

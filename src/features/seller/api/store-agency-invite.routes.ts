@@ -167,7 +167,7 @@ storeAgencyInviteRoutes.post('/accept', cors(), rateLimit({ action: 'store_agenc
     if (!inv) return c.json(LINK_DEAD, 404)
     // 🤝 사장님이 본 % 와 지금 % 가 다르면(그 사이 에이전시가 바꿨다) 맡기지 않는다 — 동의한 적 없는 % 가 저장되면 안 된다.
     if (body.share_pct !== undefined && Number(body.share_pct) !== inviteSharePct(inv)) {
-      return c.json({ success: false, code: 'SHARE_CHANGED', error: '에이전시 몫이 바뀌었어요. 화면을 새로고침해 다시 확인해 주세요.', sharePct: inviteSharePct(inv) }, 409)
+      return c.json({ success: false, code: 'SHARE_CHANGED', error: '에이전시 수수료가 바뀌었어요. 화면을 새로고침해 다시 확인해 주세요.', sharePct: inviteSharePct(inv) }, 409)
     }
 
     const results: EntrustResult[] = []

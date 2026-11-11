@@ -79,8 +79,8 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
           <div className="mx-5 mt-5 rounded-xl bg-gray-50 dark:bg-white/5 px-3 py-3">
             <p className="text-[13px] font-medium text-gray-900 dark:text-white">
               {data.share?.pct == null
-                ? '우리 몫: 사장님이 아직 정하지 않았어요'
-                : `우리 몫 ${formatNumber(data.share.amount)}원 (${data.share.pct}%)`}
+                ? '우리 수수료: 사장님이 아직 정하지 않았어요'
+                : `우리 수수료 ${formatNumber(data.share.amount)}원 (${data.share.pct}%)`}
             </p>
             <p className="mt-1 text-[12px] leading-[1.55] text-gray-500 dark:text-gray-400">
               환불 안 된 판매에만 붙어요. 돈은 매장이 직접 보내고, 세금계산서는 우리가 매장에 발행해요.

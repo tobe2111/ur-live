@@ -22,12 +22,18 @@ export function isAgencyInviteToken(v: unknown): v is string {
   return typeof v === 'string' && TOKEN_RE.test(v)
 }
 
-/** 사장님이 받는 카드의 글. `agencyName` 이 없으면(스크래퍼 길) 이름 없이 같은 말을 한다. */
-export function agencyInviteCardCopy(agencyName?: string | null): { title: string; description: string; button: string } {
+/**
+ * 사장님이 받는 카드의 글. `agencyName` 이 없으면(스크래퍼 길) 이름 없이 같은 말을 한다.
+ * 🧾 2026-11-11 대표 *"매장 초대하는 링크에 에이전시 수수료 표기도 해야겠는데? 에이전시 몫이라고 표현하지 말고"* —
+ *   에이전시가 정해 둔 수수료가 있으면 카드 첫머리에 적는다(맡기기 전에 사장님이 알아야 하는 숫자다). 0 이면 안 적는다.
+ */
+export function agencyInviteCardCopy(agencyName?: string | null, feePct?: number | null): { title: string; description: string; button: string } {
   const name = (agencyName || '').trim()
+  const fee = Number(feePct)
+  const feeText = Number.isFinite(fee) && fee > 0 ? `에이전시 수수료 판매액의 ${fee}%. ` : ''
   return {
     title: name ? `${name} 에이전시가 매장 운영을 맡겠다고 해요` : '에이전시가 매장 운영을 맡겠다고 해요',
-    description: '링크를 열어 [맡기기] 한 번이면 이용권 등록·주문 관리를 대신 해 드려요. 아직 유어딜에 없는 매장도 등록하면 바로 연결돼요.',
+    description: `${feeText}링크를 열어 [맡기기] 한 번이면 이용권 등록·주문 관리를 대신 해 드려요. 아직 유어딜에 없는 매장도 등록하면 바로 연결돼요.`,
     button: '매장 맡기기',
   }
 }

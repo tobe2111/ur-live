@@ -12,7 +12,7 @@ export default function AgencyInviteBanner({ name, sharePct = 0 }: { name: strin
       </span>
       <span className="min-w-0">
         <span className="block text-[15px] font-medium text-gray-900 dark:text-white truncate">{name} 에이전시의 초대</span>
-        <span className="block mt-1 text-[13px] text-ink-soft">등록을 마치면 이 에이전시에 가게 운영을 맡겨요{sharePct > 0 ? ` · 에이전시 몫 ${sharePct}%` : ''}</span>
+        <span className="block mt-1 text-[13px] text-ink-soft">등록을 마치면 이 에이전시에 가게 운영을 맡겨요{sharePct > 0 ? ` · 에이전시 수수료 ${sharePct}%` : ''}</span>
       </span>
     </div>
   )
