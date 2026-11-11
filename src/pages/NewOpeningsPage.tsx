@@ -66,13 +66,15 @@ export default function NewOpeningsPage() {
           </div>
         )}
 
+        {/* 📐 2026-11-11 로더 칸과 목록 칸에 서로 다른 key — 같은 자리의 같은 태그라 React 가 한 요소로 재사용했고, 둘의 위(mt-5 20px)가 달라
+            그 요소가 '20px 움직인 것'으로 계산됐다(라이브 CLS 0.016). key 가 다르면 새 요소라 밀림이 아니다. */}
         {/* 📐 로더가 한 화면을 차지해야 맨 아래 출처 문단이 목록에 밀려 튀지 않는다 */}
         {loading ? (
-          <div className="py-16 min-h-[100dvh] flex justify-center items-start"><BrandLoader /></div>
+          <div key="loading" className="py-16 min-h-[100dvh] flex justify-center items-start"><BrandLoader /></div>
         ) : !data || data.openings.length === 0 ? (
           <div className="py-16 text-center text-gray-400 dark:text-gray-500 text-[15px]">이 지역의 최근 개업 소식이 아직 없어요.</div>
         ) : (
-          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div key="list" className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {data.openings.map((o, i) => (
               <div key={i} className="rounded-xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212] p-4">
                 <div className="flex items-start justify-between gap-2">

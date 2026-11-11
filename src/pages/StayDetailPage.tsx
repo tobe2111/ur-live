@@ -77,7 +77,7 @@ export default function StayDetailPage() {
   const [stay, setStay] = useState<StayDetail | null>(() => readStaySeed(productId))
   const [loading, setLoading] = useState(() => !readStaySeed(productId))
   const [rooms, setRooms] = useState<AvailRoom[]>([])
-  const [roomsLoading, setRoomsLoading] = useState(false)
+  const [roomsLoading, setRoomsLoading] = useState(false); const [roomsTried, setRoomsTried] = useState(false) // 📐 첫 객실 조회가 끝났나 — 머리의 가격 줄 자리 예약(StayHeadCard)
 
   const [checkIn, setCheckIn] = useState(params.get('check_in') || todayIso())
   const [checkOut, setCheckOut] = useState(params.get('check_out') || tomorrowIso())
@@ -158,7 +158,7 @@ export default function StayDetailPage() {
     api.get(`/api/group-buy/stays/${productId}/availability?check_in=${checkIn}&check_out=${checkOut}${refQs}`)
       .then((r) => { if (r.data?.success) setRooms(r.data.data.rooms || []) })
       .catch(() => setRooms([]))
-      .finally(() => setRoomsLoading(false))
+      .finally(() => { setRoomsLoading(false); setRoomsTried(true) })
     const p = new URLSearchParams(params)
     p.set('check_in', checkIn); p.set('check_out', checkOut); p.set('guests', String(guests))
     if (referrerId) p.set('ref', referrerId)
@@ -334,7 +334,7 @@ export default function StayDetailPage() {
         />
         {/* 🏨 2026-11-04 (대표 "왜 서로 다른거야" → "합쳐줘"): 폰 머리 = 이용권 상세와 같은 네 줄
             [유형 · 성급 · 지역] → 제목 → 별점 → 가격. 📱 모바일 전용 — PC 는 위 `DetailTitleHeader`. */}
-        <StayHeadCard stay={stay} name={stay.restaurant_name || stay.name} minPrice={minRoomPrice} priceLabel={roomsPriceLabel} />
+        <StayHeadCard stay={stay} name={stay.restaurant_name || stay.name} minPrice={minRoomPrice} priceLabel={roomsPriceLabel} pricePending={!roomsTried} />
 
         {/* 🗑️ 2026-11-04: 옛 '추천 할인 N% 적용' 배너 제거 — 11-03 소개 적립 통일 뒤 예약 생성은 옛 객실 할인을
             언제나 건너뛴다(`unifiedStayReferrer` on 고정). 남겨 두면 주지 않는 할인을 약속한다(이용권 상세도 10-15 에 같은 배너를 걷었다). */}

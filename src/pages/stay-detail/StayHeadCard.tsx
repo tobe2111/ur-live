@@ -21,13 +21,15 @@ import { STAY_HEAD, staySubLine } from '@/shared/stay-head'
 
 const goTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-export default function StayHeadCard({ stay, name, minPrice, priceLabel }: {
+export default function StayHeadCard({ stay, name, minPrice, priceLabel, pricePending = false }: {
   stay: { property_type?: string | null; star_rating?: number | null; address?: string | null; region_sido?: string | null; region_sigungu?: string | null; avg_rating?: number | null; review_count?: number | null }
   name: string
   /** 고른 날짜·인원에 팔 수 있는 객실의 최저 총액. 모르면(조회 중·매진) 가격 줄을 안 그린다. */
   minPrice: number | null
   /** 가격이 무엇의 값인지 — `2박 총액` · `숙소 이용권 1박` */
   priceLabel: string
+  /** 객실 조회가 아직 한 번도 안 끝났다 — 가격 줄 자리를 비워 둔다(끝나면 가격이 그 자리에 온다 · 매진이면 접힌다). */
+  pricePending?: boolean
 }) {
   const rv = Number(stay.avg_rating) || 0
   const rc = Number(stay.review_count) || 0
@@ -44,6 +46,7 @@ export default function StayHeadCard({ stay, name, minPrice, priceLabel }: {
           <button type="button" onClick={() => goTo('stay-sec-reviews')} className="bg-transparent border-0 p-0 cursor-pointer text-gray-500 dark:text-gray-400">({formatNumber(rc)})</button>
         </div>
       )}
+      {pricePending && !(minPrice != null && minPrice > 0) && <div className={STAY_HEAD.pricePending} aria-hidden="true" />}
       {minPrice != null && minPrice > 0 && (
         <div className="mt-3">
           <div className="text-[13px] text-gray-500 dark:text-gray-400">{priceLabel}</div>
