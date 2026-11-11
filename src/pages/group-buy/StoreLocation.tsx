@@ -33,6 +33,9 @@ import { isNaverMapAvailable } from '@/lib/naver-maps'
  */
 const NaverMiniMap = lazy(() => import('@/components/NaverMiniMap'))
 
+/** 지도 높이 — `RestaurantMiniMap`·`NaverMiniMap` 의 기본 `height` 와 같은 값이어야 한다(시험이 대조). */
+const STORE_MAP_H = 220
+
 export default function StoreLocation({
   name, address, phone, lat, lng, map, sellerId, productId, onProfile,
 }: {
@@ -90,9 +93,12 @@ export default function StoreLocation({
       </div>
       {/* 🪟 안 3(경계 없음) — 상자를 없앤다. 지도는 둥근 사진 한 장, 주소는 그 아래 본문 한 줄.
           섹션 구획은 위아래 여백이 이미 하고 있어서 테두리는 같은 일을 두 번 했다. */}
-      <div style={{ borderRadius: 14, overflow: 'hidden' }}>
+      {/* 📏 2026-11-11 밀림 수리: 지도 자리를 **실제 지도 높이(220)** 로 처음부터 잡는다. 호출부의 자리표시(잠금 파일)는
+          172 인데 카카오·네이버 지도는 둘 다 기본 220 이라, 지도가 뜨는 순간(~2.3초) 아래 전부가 48px 밀렸다
+          (라이브 /group-buy/2919 CLS 0.0079 매회). 상자가 최소 높이를 갖고 같은 회색이면 자리표시가 몇이든 안 밀린다. */}
+      <div style={{ borderRadius: 14, overflow: 'hidden', minHeight: STORE_MAP_H, background: 'var(--gbd-chip)' }}>
         {useNaver
-          ? <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
+          ? <Suspense fallback={<div style={{ height: STORE_MAP_H, background: 'var(--gbd-chip)' }} />}>
               <NaverMiniMap name={name || undefined} address={address || undefined} lat={lat} lng={lng} />
             </Suspense>
           : map}

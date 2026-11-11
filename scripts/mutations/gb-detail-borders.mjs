@@ -17,8 +17,9 @@ export default [
   {
     name: '[테두리] 지도 상자가 되살아난다 (섹션 갭과 경계가 두 겹)',
     file: STORE,
-    find: "<div style={{ borderRadius: 14, overflow: 'hidden' }}>",
-    replace: "<div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>",
+    // 📏 2026-11-11: 지도 상자가 최소 높이(220)를 갖게 됐다 — 앵커를 그 줄로 옮긴다.
+    find: "<div style={{ borderRadius: 14, overflow: 'hidden', minHeight: STORE_MAP_H, background: 'var(--gbd-chip)' }}>",
+    replace: "<div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', minHeight: STORE_MAP_H, background: 'var(--gbd-chip)', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>",
     test: TEST,
     why: '이 페이지는 이미 8px 색면 갭으로 섹션을 나눈다 — 상자를 또 두르면 같은 일을 두 번 한다(규칙 ① 위반).',
   },
