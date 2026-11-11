@@ -608,5 +608,39 @@
     "slot_kst": "19:30",
     "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261111",
     "text": "대행사에 맡겨도 정산 계좌와 사업자 정보는 대행사가 볼 수 없어요. 수수료 5%, 권한은 언제든 회수 가능."
+  },
+  {
+    "platform": "instagram",
+    "id": "18288414112291668",
+    "media_type": "REELS",
+    "media": "reel",
+    "format": "1",
+    "media_set": "gen-2026-11-11-merchant",
+    "series": "owner-note",
+    "generated": {
+      "source": "store",
+      "credit": "입점 매장 · 달빛한스푼",
+      "title": "불 다 켜면 음식이 납작해져요",
+      "photo_url": "https://media.ur-team.com/uploads/seller/26/2026-10/0F9CTfqE1eiqsu6n.jpg",
+      "reel": true
+    },
+    "hook": "udal",
+    "topic": "메뉴 사진은 어떻게 찍어야 맛있어 보이나 (빛 방향, 각도, 배경 정리)",
+    "content_id": "ig",
+    "track": "merchant",
+    "promo": false,
+    "posted_at": "2026-11-11T12:47:02.756Z",
+    "date_kst": "2026-11-11",
+    "slot_kst": "21:30",
+    "bio_link": "https://urdeal.kr/partners?utm_source=instagram&utm_medium=social&utm_campaign=merchant-recruit&utm_content=ig-20261111",
+    "text": "사장님, 사진 찍는다고 불 다 켜놓으면 음식이 더 납작해 보입니다.\n\n빛은 창가 옆이나 뒤쪽에서 비스듬히 받는 게 좋아요. 각도는 위에서 45도. 접시 주변 소품은 먼저 치우고 시작하세요.\n\n가게에 이용권을 올릴 때도 이 사진이 첫인상이 됩니다. 입점 조건은 프로필 링크에서 확인할 수 있어요.\n\n#사장님운영노트 #메뉴사진 #유어딜"
+  },
+  {
+    "platform": "instagram_story",
+    "id": "18231711307332685",
+    "track": "merchant",
+    "series": "owner-note",
+    "posted_at": "2026-11-11T12:47:02.756Z",
+    "date_kst": "2026-11-11"
   }
 ]

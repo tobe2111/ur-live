@@ -242,5 +242,26 @@
     "slot": "19:30",
     "media": "image",
     "topic_tag": "식당창업"
+  },
+  {
+    "id": "18288414112291668",
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "메뉴 사진은 어떻게 찍어야 맛있어 보이나 (빛 방향, 각도, 배경 정리)",
+    "hook": "udal",
+    "media_set": "gen-2026-11-11-merchant",
+    "series": "owner-note",
+    "date_kst": "2026-11-11",
+    "photo": "https://media.ur-team.com/uploads/seller/26/2026-10/0F9CTfqE1eiqsu6n.jpg",
+    "format": "1",
+    "slot": "21:30",
+    "media": "reel"
+  },
+  {
+    "id": "18231711307332685",
+    "platform": "instagram_story",
+    "track": "merchant",
+    "series": "owner-note",
+    "date_kst": "2026-11-11"
   }
 ]
