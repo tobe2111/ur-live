@@ -26,7 +26,7 @@ export function validateSharePct(raw: unknown): { ok: true; pct: number } | { ok
   // 숫자 또는 숫자 문자열만 — `Number(null)`·`Number(false)`·`Number('')` 는 0 이 되어 '0% 로 정함' 으로 조용히 저장된다.
   const pct = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : NaN
   if (!Number.isFinite(pct) || pct < 0 || pct > AGENCY_SHARE_PCT_MAX) {
-    return { ok: false, error: `에이전시 몫은 0 ~ ${AGENCY_SHARE_PCT_MAX}% 사이로 적어 주세요.` }
+    return { ok: false, error: `에이전시 수수료는 0 ~ ${AGENCY_SHARE_PCT_MAX}% 사이로 적어 주세요.` }
   }
   return { ok: true, pct: Math.round(pct * 10) / 10 }
 }

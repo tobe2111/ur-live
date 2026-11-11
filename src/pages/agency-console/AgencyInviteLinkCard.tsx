@@ -96,7 +96,7 @@ export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean
 
   async function sendKakao() {
     if (!invite) return
-    const c = agencyInviteCardCopy(agencyName)
+    const c = agencyInviteCardCopy(agencyName, sharePct)
     const payload = feedPayload({ title: c.title, description: c.description, url: invite.url, buttons: [{ title: c.button }] })
     if (sendKakaoShare(payload)) return
     if (await shareViaKakao(payload)) return
@@ -117,7 +117,7 @@ export function AgencyInviteLinkCard({ canManage = true }: { canManage?: boolean
       {sharePct !== null && (
         <div className="mt-3 flex items-center gap-3" data-testid="agency-invite-share">
           <label htmlFor="agency-invite-share-pct" className="min-w-0 flex-1">
-            <span className="block text-[15px] font-medium text-gray-900 dark:text-white">우리 몫</span>
+            <span className="block text-[15px] font-medium text-gray-900 dark:text-white">우리 수수료</span>
             <span className="block text-[12px] text-gray-500 dark:text-gray-400">판매액의 %. 사장님이 링크에서 보고 맡기면 그 매장에 그대로 적용돼요</span>
           </label>
           {canManage ? (

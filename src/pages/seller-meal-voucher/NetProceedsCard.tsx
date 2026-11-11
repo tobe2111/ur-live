@@ -95,7 +95,7 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
         </div>
         {m.agencyCut > 0 && (
           <div className="flex justify-between text-gray-500">
-            <span>에이전시 몫 ({agencies.length > 1 ? `최대 ${m.agencyPct}%` : `${m.agencyPct}% · ${agencies[0].name}`})</span>
+            <span>에이전시 수수료 ({agencies.length > 1 ? `최대 ${m.agencyPct}%` : `${m.agencyPct}% · ${agencies[0].name}`})</span>
             <span className="tabular-nums">−{formatNumber(m.agencyCut)}원</span>
           </div>
         )}
@@ -111,7 +111,7 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
       </p>
       {m.agencyCut > 0 && (
         <p className="mt-1 text-[12px] leading-[1.55] text-gray-500">
-          에이전시 몫은 에이전시가 맡아 판 이용권에서 빠져요{agencies.length > 1 ? '. 맡은 에이전시마다 % 가 달라 가장 큰 값으로 계산했어요' : ''}.
+          에이전시 수수료는 에이전시가 맡아 판 이용권에서 빠져요{agencies.length > 1 ? '. 맡은 에이전시마다 % 가 달라 가장 큰 값으로 계산했어요' : ''}.
         </p>
       )}
     </div>

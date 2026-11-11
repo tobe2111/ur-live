@@ -89,8 +89,8 @@ export default function StoreChannelPerformance() {
                       {r.kind === 'agency' && (
                         <span className="block text-[12px] text-gray-500">
                           {r.sharePct == null
-                            ? t('seller.channelPerf.shareUnset', { defaultValue: '몫 미정' })
-                            : t('seller.channelPerf.share', { pct: r.sharePct, n: formatNumber(r.shareAmount), defaultValue: '몫 {{pct}}% · {{n}}원' })}
+                            ? t('seller.channelPerf.shareUnset', { defaultValue: '수수료 미정' })
+                            : t('seller.channelPerf.share', { pct: r.sharePct, n: formatNumber(r.shareAmount), defaultValue: '수수료 {{pct}}% · {{n}}원' })}
                         </span>
                       )}
                     </td>

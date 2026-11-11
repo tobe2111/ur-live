@@ -53,7 +53,7 @@ export default function AgencyPayoutsCard() {
   }
 
   async function reject(row: PayoutRow) {
-    const memo = await promptDialog({ message: '반려 사유를 적어 주세요. 묶였던 몫은 다시 신청할 수 있게 돌아가요.', confirmText: '반려', danger: true, prompt: { required: true } })
+    const memo = await promptDialog({ message: '반려 사유를 적어 주세요. 묶였던 수수료는 다시 신청할 수 있게 돌아가요.', confirmText: '반려', danger: true, prompt: { required: true } })
     if (memo === null) return
     await act(row, 'reject', memo)
   }
@@ -81,11 +81,11 @@ export default function AgencyPayoutsCard() {
         {open.length > 0 && <span className="text-[13px] font-medium text-brand-text">{open.length}건 대기</span>}
       </div>
       <p className="mt-1 text-[13px] leading-relaxed text-gray-600">
-        에이전시가 맡은 매장에서 팔린 이용권의 에이전시 몫을 유어딜이 보내는 곳이에요. 송금은 여기서 하지 않아요. 보낸 뒤 '지급 완료' 를 눌러 주세요.
+        에이전시가 맡은 매장에서 팔린 이용권의 에이전시 수수료를 유어딜이 보내는 곳이에요. 송금은 여기서 하지 않아요. 보낸 뒤 '지급 완료' 를 눌러 주세요.
       </p>
       {enabled === false && (
         <p className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-[13px] text-gray-600">
-          지금은 꺼져 있어요(<code className="text-[12px]">agency_share_payout_enabled</code>). 켜기 전까지 에이전시 몫은 쌓이지 않고 신청도 들어오지 않아요.
+          지금은 꺼져 있어요(<code className="text-[12px]">agency_share_payout_enabled</code>). 켜기 전까지 에이전시 수수료는 쌓이지 않고 신청도 들어오지 않아요.
         </p>
       )}
 
@@ -111,7 +111,7 @@ export default function AgencyPayoutsCard() {
                 </p>
                 <p className="truncate text-[13px] text-gray-500">
                   보낼 돈 {formatNumber(r.net_amount)}원
-                  {r.withholding_amount > 0 ? ` (몫 ${formatNumber(r.gross_amount)} − 원천징수 ${formatNumber(r.withholding_amount)})` : ''}
+                  {r.withholding_amount > 0 ? ` (수수료 ${formatNumber(r.gross_amount)} − 원천징수 ${formatNumber(r.withholding_amount)})` : ''}
                   {' · '}{r.tax_mode === 'tax_invoice' ? `세금계산서 받기 · 사업자 ${r.business_number || '-'}` : '개인 3.3% 원천징수'}
                   {' · '}{formatKSTDate(r.created_at)} 신청
                   {r.paid_at ? ` · ${formatKSTDate(r.paid_at)} 처리` : ''}

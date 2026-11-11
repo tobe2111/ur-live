@@ -54,8 +54,8 @@ export default [
   {
     name: '영입 링크 — 카톡 카드에서 에이전시 이름이 빠진다',
     file: 'src/pages/agency-console/AgencyInviteLinkCard.tsx',
-    find: '    const c = agencyInviteCardCopy(agencyName)',
-    replace: '    const c = agencyInviteCardCopy(null)',
+    find: '    const c = agencyInviteCardCopy(agencyName, sharePct)', // 2026-11-11 수수료 인자 추가 — 이름 불변식은 그대로
+    replace: '    const c = agencyInviteCardCopy(null, sharePct)',
     test: T,
     why: '사장님이 어느 에이전시인지 모르는 카드를 받는다.',
   },

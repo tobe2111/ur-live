@@ -109,13 +109,13 @@ export default function AgencyLinkCard() {
                   {link.status === 'active'
                     ? `운영 중${link.acceptedAt ? ` · ${formatKSTDate(link.acceptedAt)} 부터` : ''} · 맡은 이용권 ${link.productCount}개`
                     : '수락 기다리는 중'}
-                  {` · 몫 ${link.sharePct == null ? '미정' : `${link.sharePct}%`}`}
+                  {` · 수수료 ${link.sharePct == null ? '미정' : `${link.sharePct}%`}`}
                 </p>
               </div>
               <button type="button" onClick={() => setOpenShare(openShare === link.agencyId ? null : link.agencyId)}
                 aria-expanded={openShare === link.agencyId}
                 className="h-9 rounded-lg px-3 text-[13px] font-semibold text-brand-text hover:bg-gray-100">
-                {openShare === link.agencyId ? '닫기' : '몫 정하기'}
+                {openShare === link.agencyId ? '닫기' : '수수료 정하기'}
               </button>
               {link.status === 'active' && (
                 <button type="button" onClick={() => setOpenAssign(openAssign === link.agencyId ? null : link.agencyId)}

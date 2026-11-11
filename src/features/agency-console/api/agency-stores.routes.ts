@@ -302,9 +302,9 @@ agencyStoresRoutes.post('/store-invite/share', cors(), requireAgencyStaff({ admi
         `INSERT INTO agency_share_defaults (agency_id, pct, updated_at) VALUES (?, ?, datetime('now'))
          ON CONFLICT(agency_id) DO UPDATE SET pct = excluded.pct, updated_at = excluded.updated_at`,
       ).bind(me.agencyId, v.pct).run()
-      return c.json({ success: true, sharePct: v.pct, message: v.pct ? `에이전시 몫을 ${v.pct}%로 정했어요.` : '에이전시 몫을 비웠어요.' })
+      return c.json({ success: true, sharePct: v.pct, message: v.pct ? `에이전시 수수료를 ${v.pct}%로 정했어요.` : '에이전시 수수료를 비웠어요.' })
     } catch (err) {
-      return safeError(c, err, '몫을 저장하지 못했어요', '[agency-console:store-invite]')
+      return safeError(c, err, '수수료를 저장하지 못했어요', '[agency-console:store-invite]')
     }
   })
 

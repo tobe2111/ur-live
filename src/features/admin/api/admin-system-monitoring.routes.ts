@@ -451,7 +451,7 @@ const OPS_GATES: OpsGate[] = [
   //   중개사(유저)에게 적립되고 인플루언서와 같은 성숙·원천징수·지급센터를 탄다.
   { key: 'broker_share_enabled', kind: 'setting', label: '중개사 몫 직접 송금', default_value: 'false', staging_ref: 'S-BROKER', turn_on_when: 'S-BROKER 5건 통과 시 — 특히 ①(주문당 1행) ③(환불 시 회수) ⑤(OFF 복귀 시 종전과 동일). 라이브 중개 매장 1곳·주문 0건이라 켜도 오늘 영향 0' },
   { key: 'toss_payouts_enabled', kind: 'setting', label: '토스 지급대행(매장 정산 송금)', default_value: 'false', staging_ref: 'S-TOSSPAYOUT', turn_on_when: '토스 지급대행 계약 + 시크릿 2개(TOSS_PAYOUT_SECRET_KEY·TOSS_PAYOUT_SECURITY_KEY) 등록 + S-TOSSPAYOUT 8건 통과 시. 12-17 개정 전금법 전에 켜야 매장 돈이 유어딜 통장을 거치지 않는다' },
-  { key: 'agency_share_payout_enabled', kind: 'setting', label: '에이전시 몫 유어딜 지급', default_value: 'false', staging_ref: 'S-AGENCYSHARE', turn_on_when: 'S-AGENCYSHARE 6건 통과 시 — 특히 ②(에이전시 판매엔 중개사 몫이 안 붙음) ③(환불 시 비례 회수 + 원장 역전) ⑥(OFF 복귀 시 종전과 동일). 라이브 에이전시 0곳이라 켜도 오늘 영향 0' },
+  { key: 'agency_share_payout_enabled', kind: 'setting', label: '에이전시 수수료 유어딜 지급', default_value: 'false', staging_ref: 'S-AGENCYSHARE', turn_on_when: 'S-AGENCYSHARE 6건 통과 시 — 특히 ②(에이전시 판매엔 중개사 몫이 안 붙음) ③(환불 시 비례 회수 + 원장 역전) ⑥(OFF 복귀 시 종전과 동일). 라이브 에이전시 0곳이라 켜도 오늘 영향 0' },
   { key: 'brand_cross_owner_redeem_enabled', kind: 'setting', label: '가맹점 간 이용권 사용 + 쓴 지점 정산', default_value: 'false', staging_ref: 'S-BRANDX', turn_on_when: 'S-BRANDX 5건 통과 시 — 특히 ②(정산이 쓴 지점 merchant 로 1회) ③(소개비 붙은 이용권은 거절) ⑤(OFF 복귀 시 1·2단계와 동일). 라이브 가맹점 0곳이라 켜도 오늘 영향 0' },
   // 💬 2026-10-10 (대표 "카카오톡으로 유어딜 세팅도 가능해? 이용권 관리같은거"): 채널 챗봇 매장 관리.
   //   둘 중 하나가 'true' 면 켜진다(env 는 배포 단위, setting 은 어드민 손잡이). 스킬 자체 게이트 KAKAO_SKILL_SECRET 와 별개.

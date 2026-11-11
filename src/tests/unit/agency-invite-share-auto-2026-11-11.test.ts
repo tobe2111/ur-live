@@ -134,6 +134,6 @@ describe('⑤ 배선', () => {
   it('사장님 두 화면(초대 · 등록)이 본 % 를 같이 보낸다', () => {
     expect(readCode('src/pages/StoreAgencyInvitePage.tsx')).toMatch(/seller_ids: picked, share_pct: sharePct/)
     expect(readCode('src/pages/StoreClaimPage.tsx')).toMatch(/seller_id: sellerId, share_pct: inviteShare/)
-    expect(readCode('src/pages/store-new/AgencyInviteBanner.tsx')).toMatch(/에이전시 몫 \$\{sharePct\}%/)
+    expect(readCode('src/pages/store-new/AgencyInviteBanner.tsx')).toMatch(/에이전시 수수료 \$\{sharePct\}%/)
   })
 })

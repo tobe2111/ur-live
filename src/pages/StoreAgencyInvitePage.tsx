@@ -174,7 +174,7 @@ export default function StoreAgencyInvitePage() {
           <li><b className="font-semibold text-gray-900 dark:text-white">맡기는 것</b> · 상품·이용권 등록과 수정, 주문 처리</li>
           <li><b className="font-semibold text-gray-900 dark:text-white">사장님께 남는 것</b> · 정산 계좌, 사업자 정보, 운영자 관리</li>
           {!partner && sharePct > 0 && (
-            <li data-testid="store-agency-invite-share"><b className="font-semibold text-gray-900 dark:text-white">에이전시 몫</b> · 에이전시가 판 이용권 판매액의 {sharePct}%. 맡기면 이 %로 정해져요</li>
+            <li data-testid="store-agency-invite-share"><b className="font-semibold text-gray-900 dark:text-white">에이전시 수수료</b> · 에이전시가 판 이용권 판매액의 {sharePct}%. 맡기면 이 %로 정해져요</li>
           )}
           <li><b className="font-semibold text-gray-900 dark:text-white">끊기</b> · 셀러 화면 운영자 관리에서 언제든. 끊으면 바로 못 들어와요</li>
         </ul>

@@ -2690,8 +2690,8 @@
       "unknownUser": "Utilisateur inconnu",
       "soldN": "{{n}} vendus",
       "commission": "Commission influenceur {{n}} KRW",
-      "share": "Part {{pct}}% · {{n}} KRW",
-      "shareUnset": "Part non définie",
+      "share": "Commission {{pct}}% · {{n}} KRW",
+      "shareUnset": "Commission non définie",
       "shareNote": "UrDeal calcule seulement le montant dû. La boutique paie l'agence directement et l'agence émet la facture à la boutique.",
       "note": "Les ventes par parrainage sont déjà incluses ci-dessus. Une même vente est vue de deux façons : qui l'a gérée et de quel lien elle vient."
     },

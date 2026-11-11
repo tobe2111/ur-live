@@ -117,7 +117,7 @@ export function registerAgencyPerformanceRoutes(app: Hono<{ Bindings: Env }>, re
       const changed = await setAgencyShare(DB, g.sellerId, agencyId, v.pct, g.userId)
       return c.json({ success: true, changed, data: { agencyId, pct: v.pct } })
     } catch (err) {
-      return safeError(c, err, '에이전시 몫을 저장하지 못했어요', '[seller-agency-performance]')
+      return safeError(c, err, '에이전시 수수료를 저장하지 못했어요', '[seller-agency-performance]')
     }
   })
 }

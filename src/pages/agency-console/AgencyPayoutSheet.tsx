@@ -121,7 +121,7 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
               )}
             </div>
             <p className="mt-3 px-1 text-[12px] leading-[1.55] text-gray-500 dark:text-gray-400">
-              팔린 이용권의 우리 몫은 환불 기간이 지나면 받을 수 있어요(기다리는 중). 환불되면 그만큼 빠져요.
+              팔린 이용권의 우리 수수료는 환불 기간이 지나면 받을 수 있어요(기다리는 중). 환불되면 그만큼 빠져요.
               사업자는 세금계산서로 공제 없이, 개인은 3.3%를 떼고 받아요.
               지급은 {payDay}에 한 번 해요. 신청하지 않아도 그날 {formatNumber(min)}원 이상이면 자동으로 묶여요.
             </p>
