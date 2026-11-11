@@ -119,3 +119,8 @@
 - `/?category=meal_voucher`: 첫 글자 **0.64 · 0.68 · 1.58s**(종전 2.96~3.42s) · LCP 0.89~1.69s · CLS **0.0001**(3회). 처음(#2298 전) 대비: CLS 0.83 → 0.0001, 첫 글자 0.85s 수준 회복.
 - 전체 홈 `/`: FCP 0.85 · CLS 0.0001 — 영향 없음.
 - 남은 후보: 로더만 있는 화면(gb-market · partnership · privacy · terms · area-report · experience) · 알림 첫 화면의 로더 위치 · `/wishlist`·`/my-gifticons`.
+
+## 57. 로그인한 사람의 내 이용권 첫 화면(제목 줄 + 로더) — RUM 으로 고른 다음 대상
+- 🔑 실사용 표본(어드민 `/api/analytics/summary?day=2026-11-10`)은 **하루 한 자릿수**다 — 표본이 있는 화면: `/` · `/my-vouchers` · `/user/profile` · `/stays` · `/pass` · `/influencer`. 약관·제휴 문의 등은 0 ⇒ 그쪽 첫 화면은 값이 낮다.
+- 기록 `docs/locks/loading/2026-11-11-authed-pass-first-screen.md`. 판정은 RUM(세션 필요).
+- 다음 후보(같은 근거): 로그인 상태의 마이(`/user/profile`) · 유어샵(`/u/me`) 첫 화면.

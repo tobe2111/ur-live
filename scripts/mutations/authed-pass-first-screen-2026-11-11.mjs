@@ -1,0 +1,11 @@
+/** 🧬 주입 — 로그인한 사람의 내 이용권 서버 첫 화면. 가드: src/tests/unit/authed-pass-first-screen-2026-11-11.test.tsx */
+const T = 'src/tests/unit/authed-pass-first-screen-2026-11-11.test.tsx'
+const B = 'src/worker/utils/guest-first-screen.ts'
+export default [
+  { name: '내이용권첫화면 — 워커 배선을 뺀다(로그인한 사람은 다시 로더 2초)', file: 'src/worker/index.ts', find: "} else if (authed && guestTabOf(url.pathname) === 'pass' && shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {", replace: "} else if (false && guestTabOf(url.pathname) === 'pass') {", test: T, why: '실사용 표본이 있는 화면이 다시 로더뿐이 된다.' },
+  { name: '내이용권첫화면 — CSS 자격을 뺀다(제목이 스타일 없이 뜬다)', file: 'src/worker/utils/css-first-boot.ts', find: "    || (authed && guestTabOf(pathname) === 'pass')", replace: "    || (false)", test: T, why: '첫 화면 CSS 가 안 실려 제목 줄이 맨 글자로 뜬다.' },
+  { name: '내이용권첫화면 — 제목 크기가 화면과 갈린다(마운트 때 글자가 변한다)', file: 'src/shared/guest-page.ts', find: "title: 'text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white',\n} as const\nexport const AUTHED_PASS_TITLE", replace: "title: 'text-[20px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white',\n} as const\nexport const AUTHED_PASS_TITLE", test: T, why: '서버 제목과 앱 제목의 크기가 다르면 마운트 때 튄다.' },
+  { name: '내이용권첫화면 — 뿌리가 한 화면 높이를 잡는다(로더가 화면 밖)', file: 'src/shared/guest-page.ts', find: "root: 'bg-warm text-gray-900 dark:text-white',\n  titleRow: 'ur-content-narrow px-5 lg:px-8 pt-4 pb-3", replace: "root: 'min-h-[100dvh] bg-warm text-gray-900 dark:text-white',\n  titleRow: 'ur-content-narrow px-5 lg:px-8 pt-4 pb-3", test: T, why: '제목 칸이 100dvh 면 그 아래 로더가 안 보인다.' },
+  { name: '내이용권첫화면 — 로그아웃 기기에서도 제목을 남긴다', file: B, find: "if(!(s.getItem('user_id')||s.getItem('session_login'))){var n=document.getElementById('ur-first-screen');if(n)n.remove()}", replace: "if(false){var n=document.getElementById('ur-first-screen');if(n)n.remove()}", test: T, why: '쿠키만 남은 사람에게 제목을 보여 줬다가 게스트 화면으로 바꾼다.' },
+  { name: '내이용권첫화면 — 걷어내는 조건이 뒤집힌다(로그인한 사람의 제목을 지운다)', file: B, find: "if(!(s.getItem('user_id')||s.getItem('session_login'))){var n=document.getElementById('ur-first-screen');if(n)n.remove()}", replace: "if((s.getItem('user_id')||s.getItem('session_login'))){var n=document.getElementById('ur-first-screen');if(n)n.remove()}", test: T, why: '반대 방향 — 정작 로그인한 사람에게 첫 화면이 안 보인다.' },
+]

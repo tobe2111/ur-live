@@ -18,7 +18,7 @@
  * 그려서 마운트 때 같은 `<img>` 로 이어진다. 빈 칸이던 때는 글자 0.45초 · 그림 2.3초였다(실측).
  * 아이콘(svg)은 여전히 빈 칸이다 — 여기서 path 를 손으로 베끼면 두 벌이 된다.
  */
-import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT, GUEST_CLOCK, KAKAO_BUBBLE_PATH } from '../../shared/guest-page'
+import { GUEST_CLS, GUEST_COPY, GUEST_MY_MASCOT, GUEST_CLOCK, KAKAO_BUBBLE_PATH, AUTHED_PASS_CLS, AUTHED_PASS_TITLE } from '../../shared/guest-page'
 import { UDAL_HELLO_SRC, UDAL_HELLO_ART } from '../../shared/mascot-art'
 import { LOGIN_CLS } from '../../shared/login-page'
 import { loginFirstScreenBody } from './login-first-screen'
@@ -117,4 +117,17 @@ export function buildGuestFirstScreen(tab: GuestTab, loaderHtml: string, nonce: 
   const framed = isMobile ? page : `<div class="${GUEST_PC_FRAME.cls}" data-mobile-only="false" style="--app-frame:${GUEST_PC_FRAME.width}">${page}</div>`
   // 🧷 노드 id 는 다른 첫 화면과 같다 — `lib/boot-first-screen.ts` 가 이 노드를 Suspense 폴백에 도로 붙인다.
   return `<div id="ur-first-screen">${topnav}${framed}</div>${guestFirstScreenGuardScript(nonce)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
+}
+
+/**
+ * 🎟️ 2026-11-11 로그인한 사람의 내 이용권 — 제목 줄 + 로더(폰만 · 세션 쿠키가 있을 때만). 목록은 본인 데이터라 서버가 모른다.
+ *   첫 화면 CSS 는 게스트 탭 표면(`guest`)을 같이 쓴다(이 파일이 그 표면의 뿌리).
+ */
+/** 쿠키는 있는데 이 기기는 로그아웃 상태면(앱이 게스트 화면을 그린다) 제목을 걷어낸다 — 게스트 쪽 스크립트의 반대 방향. */
+export function authedFirstScreenGuardScript(nonce: string): string {
+  const js = `(function(){try{var s=localStorage;if(!(s.getItem('user_id')||s.getItem('session_login'))){var n=document.getElementById('ur-first-screen');if(n)n.remove()}}catch(e){}})()`
+  return `<script nonce="${escAttr(nonce)}">${js}</script>`
+}
+export function buildAuthedPassFirstScreen(loaderHtml: string, nonce: string): string {
+  return `<div id="ur-first-screen"><div class="${AUTHED_PASS_CLS.root}"><div class="${AUTHED_PASS_CLS.titleRow}"><h1 class="${AUTHED_PASS_CLS.title}">${esc(AUTHED_PASS_TITLE)}</h1></div></div></div>${authedFirstScreenGuardScript(nonce)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }
