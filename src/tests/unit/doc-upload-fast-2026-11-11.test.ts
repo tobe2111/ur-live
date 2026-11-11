@@ -36,8 +36,10 @@ describe('문서 사진 빠른 길', () => {
     expect(fitWithin(1200, 900, 2000)).toEqual({ w: 1200, h: 900 })
   })
   it('③ 빠른 길은 압축 라이브러리를 부르지 않는다', () => {
-    const at = SRC.indexOf('export async function encodeDocumentFast')
+    const at = SRC.indexOf('export async function encodeFast') // 공용 함수(문서 빠른 길이 이것을 부른다)부터 파일 끝까지
     const body = SRC.slice(at)
+    expect(at).toBeGreaterThan(0)
+    expect(SRC.slice(SRC.indexOf('export async function encodeDocumentFast'))).toContain('encodeFast(file, DOCUMENT_FAST_MAX_SIDE')
     expect(body).not.toContain('loadImageCompression')
     expect(body).toContain("'image/webp'")
     expect(body).toContain("'image/jpeg'") // WebP 를 못 만드는 브라우저의 물러날 자리
@@ -46,6 +48,36 @@ describe('문서 사진 빠른 길', () => {
     const small = new File([new Uint8Array(2048)], 'a.jpg', { type: 'image/jpeg' })
     expect(await encodeDocumentFast(small)).toBe(small)
     expect(await encodeDocumentFast(new File([new Uint8Array(9)], 'a.pdf', { type: 'application/pdf' }))).toBeNull()
+  })
+  it('⑤ 일반 사진(`compressForUpload`)도 빠른 길을 먼저 타고, 안 되면 라이브러리로 간다', () => {
+    const at = SRC.indexOf('export async function compressForUpload')
+    const body = SRC.slice(at, SRC.indexOf('export async function compressForThumbnail'))
+    const fast = body.indexOf('encodeFast(file, maxWidthOrHeight, 0.82, maxSizeMB * 1024 * 1024).catch(() => null)')
+    expect(fast).toBeGreaterThan(0)
+    expect(body.indexOf('await loadImageCompression()')).toBeGreaterThan(fast) // 라이브러리는 물러날 자리로 남는다
+  })
+  it('⑤ 움직이는 그림·벡터는 빠른 길이 건드리지 않는다(첫 장면만 남는다)', async () => {
+    const { encodeFast } = await import('../../lib/image-compress')
+    // 이 환경엔 createImageBitmap 이 없어 뭘 넣어도 null 이다 — 있는 것처럼 세워, 거기까지 **가면** 던지게 한다.
+    const g = globalThis as { createImageBitmap?: unknown }; const keep = g.createImageBitmap
+    g.createImageBitmap = () => { throw new Error('디코드까지 갔다') }
+    try {
+    expect(await encodeFast(new File([new Uint8Array(900)], 'a.gif', { type: 'image/gif' }), 1280, 0.82, 5e5)).toBeNull()
+    expect(await encodeFast(new File([new Uint8Array(900)], 'a.svg', { type: 'image/svg+xml' }), 1280, 0.82, 5e5)).toBeNull()
+    } finally { g.createImageBitmap = keep }
+  })
+  it('⑥ 세 크기 올리기 — 첫 장으로 묶음 이름을 받고 나머지는 동시에', async () => {
+    const { uploadSizedImage } = await import('../../lib/image-sized')
+    const files = new Map([[320, new Blob([new Uint8Array(200)], { type: 'image/webp' })], [640, new Blob([new Uint8Array(200)], { type: 'image/webp' })], [1280, new Blob([new Uint8Array(200)], { type: 'image/webp' })]])
+    let inFlight = 0; let peak = 0; const order: string[] = []
+    const url = await uploadSizedImage(new Blob([new Uint8Array(10)], { type: 'image/jpeg' }), async (fd) => {
+      order.push(String(fd.get('width'))); inFlight++; peak = Math.max(peak, inFlight)
+      await new Promise((r) => setTimeout(r, 5)); inFlight--
+      return { success: true, data: { batch: '2026-11/abcdEFGH12345678', url: '/x' } }
+    }, async () => ({ ext: 'webp', files }))
+    expect(url).toBe('/x')
+    expect(order[0]).toBe('1280') // 서버는 묶음 이름 없는 요청에 가장 큰 폭만 받는다
+    expect(peak).toBe(2)          // 나머지 둘은 겹쳐서 간다(차례로 가면 1)
   })
   it('④ 화면이 올리는 중 진행률을 보여 준다', () => {
     expect(PAGE).toContain('onUploadProgress')

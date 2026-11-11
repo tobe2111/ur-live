@@ -75,9 +75,9 @@ export async function uploadSizedImage(
 ): Promise<string | null> {
   const v = await make(file).catch(() => null)
   if (!v) return null
-  let batch = ''
-  let url = ''
-  for (const w of [...SIZED_WIDTHS].reverse()) {
+  // ⚡ 2026-11-11: 가장 큰 것 하나로 묶음 이름을 받은 뒤 **나머지는 동시에** 올린다(종전엔 셋을 차례로 — 왕복 3번이 2번 몫이 된다).
+  //   서버는 묶음 이름이 없는 요청에 가장 큰 폭만 받으므로 첫 장은 혼자 가야 한다.
+  const send = async (w: number, batch: string) => {
     const blob = v.files.get(w)
     if (!blob) return null
     const fd = new FormData()
@@ -85,9 +85,12 @@ export async function uploadSizedImage(
     fd.append('width', String(w))
     if (batch) fd.append('batch', batch)
     const r = await post(fd).catch(() => null)
-    if (!r?.success || !r.data?.batch) return null
-    if (!batch) { batch = r.data.batch; url = r.data.url || '' }
-    else if (r.data.batch !== batch) return null
+    return r?.success && r.data?.batch ? r.data : null
   }
-  return url || null
+  const [first, ...rest] = [...SIZED_WIDTHS].reverse()
+  const head = await send(first, '')
+  if (!head?.batch) return null
+  const others = await Promise.all(rest.map((w) => send(w, head.batch as string)))
+  if (others.some((r) => !r || r.batch !== head.batch)) return null
+  return head.url || null
 }

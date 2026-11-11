@@ -41,6 +41,9 @@ export async function compressForUpload(
     return file
   }
 
+  // ⚡ 2026-11-11: 내장 기능으로 한 번에 — 되면 라이브러리(~51KB)와 그 워커가 매번 받는 외부 CDN 스크립트를 건너뛴다.
+  if (toWebP) { const fast = await encodeFast(file, maxWidthOrHeight, 0.82, maxSizeMB * 1024 * 1024).catch(() => null); if (fast) return fast }
+
   const targetType = toWebP ? 'image/webp' : file.type
   const imageCompression = await loadImageCompression()
 
@@ -94,7 +97,8 @@ export async function compressForDocument(file: File): Promise<File> {
  *
  * 느렸던 이유 둘:
  *   ① 2MB 미만이면 **원본을 그대로** 올렸다 — 폰 회선의 올리는 속도는 받는 속도의 몇 분의 일이라 1.9MB 가 그대로 대기 시간이다.
- *   ② 2MB 이상이면 압축 라이브러리(~51KB)를 그때 내려받고, 그 워커가 CDN 스크립트를 또 받으려다(CSP 가 막는다) 메인 스레드로 물러난다.
+ *   ② 2MB 이상이면 압축 라이브러리(~51KB)를 그때 내려받고, 그 워커가 **부를 때마다** 외부 CDN(jsdelivr)에서 같은 라이브러리를 또 받는다.
+ *      🩸 처음엔 "CSP 가 막아 메인 스레드로 물러난다" 고 적었는데 라이브에서 재 보니 **막히지 않고 실제로 받아 온다**(요청 2회에 2번).
  * 여기선 브라우저 내장 기능만 쓴다(내려받는 것 0 · 한 번에 끝): 긴 변 `DOCUMENT_FAST_MAX_SIDE` 로 줄여 WebP 로 다시 담는다.
  * WebP 를 못 만드는 브라우저(옛 iOS 사파리 — toBlob 이 PNG 를 돌려준다)는 JPEG 로.
  *
@@ -112,22 +116,37 @@ export function fitWithin(w: number, h: number, maxSide: number): { w: number; h
   return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) }
 }
 
-export async function encodeDocumentFast(file: File): Promise<File | null> {
-  if (!file.type.startsWith('image/')) return null
-  if (file.size <= DOCUMENT_FAST_SKIP_BYTES) return file
+/**
+ * 내장 기능만으로 한 번에 줄여 담는다 — 긴 변 `maxSide` · WebP `quality`(못 만들면 JPEG 0.85).
+ * `null` = 못 했다(디코드 불가 · 캔버스 없음 · 결과가 `ceilingBytes` 초과) → 부르는 쪽이 종전 길로 간다.
+ * 큰 사진을 한 번에 줄이면 계단이 지므로 절반씩 내려간다(`image-sized.ts` 와 같은 방식).
+ */
+export async function encodeFast(file: File, maxSide: number, quality: number, ceilingBytes: number): Promise<File | null> {
+  if (!file.type.startsWith('image/') || /gif|svg/.test(file.type)) return null
   if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return null
   const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' } as ImageBitmapOptions)
   try {
-    const { w, h } = fitWithin(bmp.width, bmp.height, DOCUMENT_FAST_MAX_SIDE)
-    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
-    const ctx = canvas.getContext('2d'); if (!ctx) return null
-    ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bmp, 0, 0, w, h)
+    const { w, h } = fitWithin(bmp.width, bmp.height, maxSide)
+    const mk = (cw: number, ch: number) => { const c = document.createElement('canvas'); c.width = cw; c.height = ch; return c }
+    let cur: CanvasImageSource = bmp; let cw = bmp.width; let ch = bmp.height
+    while (cw / 2 >= w) {
+      const step = mk(Math.round(cw / 2), Math.round(ch / 2)); const sx = step.getContext('2d'); if (!sx) return null
+      sx.imageSmoothingQuality = 'high'; sx.drawImage(cur, 0, 0, step.width, step.height); cur = step; cw = step.width; ch = step.height
+    }
+    const canvas = mk(w, h); const ctx = canvas.getContext('2d'); if (!ctx) return null
+    ctx.imageSmoothingQuality = 'high'; ctx.drawImage(cur, 0, 0, w, h)
     const blobOf = (type: string, q: number) => new Promise<Blob | null>((res) => canvas.toBlob(res, type, q))
-    let blob = await blobOf('image/webp', DOCUMENT_FAST_QUALITY)
+    let blob = await blobOf('image/webp', quality)
     if (!blob || blob.type !== 'image/webp') blob = await blobOf('image/jpeg', 0.85)
-    if (!blob || blob.size < 100 || blob.size > DOCUMENT_FAST_CEILING_BYTES) return null
-    if (blob.size >= file.size) return file.size <= DOCUMENT_FAST_CEILING_BYTES ? file : null
+    if (!blob || blob.size < 100 || blob.size > ceilingBytes) return null
+    if (blob.size >= file.size) return file.size <= ceilingBytes ? file : null
     const base = (file.name || '').replace(/\.[^.]+$/, '').trim() || `image_${Date.now()}`
     return new File([blob], `${base}.${blob.type === 'image/webp' ? 'webp' : 'jpg'}`, { type: blob.type })
   } finally { bmp.close?.() }
+}
+
+export async function encodeDocumentFast(file: File): Promise<File | null> {
+  if (!file.type.startsWith('image/')) return null
+  if (file.size <= DOCUMENT_FAST_SKIP_BYTES) return file
+  return encodeFast(file, DOCUMENT_FAST_MAX_SIDE, DOCUMENT_FAST_QUALITY, DOCUMENT_FAST_CEILING_BYTES)
 }
