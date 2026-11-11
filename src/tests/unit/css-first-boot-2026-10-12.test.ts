@@ -122,7 +122,8 @@ describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', 
   // 🚪 2026-10-19 로그인 전 탭 셋은 서버가 그린다 — 단 세션 쿠키가 있으면(로그인) 그리지 않으므로 미적용.
   it.each(['/u/me', '/user/profile', '/my-vouchers'])('로그인 전 탭: %s — 비로그인 첫 화면 CSS · 로그인은 로더-먼저만', (p) => {
     expect(firstScreenApplies(p, PHONE)).toBe(true)
-    expect(firstScreenApplies(p, PHONE, true)).toBe(false); expect(cssFirstApplies(p, PHONE, true)).toBe(true)
+    // 🎟️ 2026-11-11 내 이용권만 로그인 상태에서도 제목 줄을 그린다(authed-pass-first-screen) — 나머지 둘은 종전대로 로더-먼저만.
+    expect(firstScreenApplies(p, PHONE, true)).toBe(p === '/my-vouchers'); expect(cssFirstApplies(p, PHONE, true)).toBe(true)
   })
   it('PC 브라우저: 홈·상세·로그인은 첫 화면 CSS(2026-11-09 pc-home · PC 상세 대표 승인) · 교환권 목록은 로더-먼저만', () => {
     expect(firstScreenApplies('/', PC)).toBe(true); expect(cssFirstApplies('/', PC)).toBe(true)

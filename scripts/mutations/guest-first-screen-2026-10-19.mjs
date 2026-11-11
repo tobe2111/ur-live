@@ -11,6 +11,6 @@ export default [
   { name: '게스트첫화면 — 예시 줄 사진을 다른 주소로(2026-11-09)', file: 'src/shared/guest-page.ts', find: "  cafe: '/assets/guest/wallet-brunch.webp',", replace: "  cafe: '/assets/guest/example-brunch.webp',", test: T, why: '지갑과 같은 그림을 다른 주소로 한 번 더 받는다(종전 번들 사본 사고).' },
   { name: '게스트첫화면 — PC 에서 액자 없이 그린다(2026-11-09)', file: B, find: "const framed = isMobile ? page : `<div class=\"${GUEST_PC_FRAME.cls}\" data-mobile-only=\"false\" style=\"--app-frame:${GUEST_PC_FRAME.width}\">${page}</div>`", replace: 'const framed = page', test: T, why: 'PC 에서 마운트 때 430 액자가 끼며 본문이 가로로 줄어든다.' },
   { name: '게스트첫화면 — PC 탭에 네비 예약이 없다(2026-11-09)', file: B, find: "const topnav = isMobile || tab === 'login' ? '' :", replace: "const topnav = isMobile || tab !== 'xxx' ? '' :", test: T, why: 'sticky 네비(113px)가 마운트 때 본문을 내린다.' },
-  { name: '게스트첫화면 — 로그인 키가 갈린다', file: B, find: "s.getItem('session_login')", replace: "s.getItem('session')", test: T, why: '세션 로그인 사용자에게 게스트 화면이 잠깐 보인다.' },
+  { name: '게스트첫화면 — 로그인 키가 갈린다', file: B, find: "if(s.getItem('user_id')||s.getItem('session_login')){", replace: "if(s.getItem('user_id')||s.getItem('session')){", test: T, why: '세션 로그인 사용자에게 게스트 화면이 잠깐 보인다.' },
   { name: '게스트첫화면 — 세션 쿠키가 있어도 그린다', file: 'src/worker/index.ts', find: '} else if (!authed && guestTabOf(url.pathname)) {', replace: '} else if (guestTabOf(url.pathname)) {', test: T, why: '로그인한 사람에게 게스트 화면이 먼저 그려진다.' },
 ]

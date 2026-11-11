@@ -122,3 +122,16 @@ export const GUEST_EXAMPLE_PASSES = [
 
 /** 지갑 줄의 시계 그림 — `ClockIcon`(urdeal-icons)과 같은 획. 서버와 앱이 같은 path 를 쓴다. */
 export const GUEST_CLOCK = { circle: { cx: 12, cy: 12, r: 8.4 }, path: 'M12 7.4v4.9l3.2 1.9' } as const
+
+/**
+ * 🎟️ 로그인한 사람의 내 이용권(`/my-vouchers`) 머리 — 제목 줄의 클래스·문구 (2026-11-11).
+ *   실사용 표본이 실제로 있는 화면인데 로그인 상태면 서버가 아무것도 안 그려 로더가 2초였다. 서버는 **세션 쿠키가 있을 때만 · 폰만** 제목 + 로더를 그린다
+ *   (`worker/utils/guest-first-screen.ts` `buildAuthedPassFirstScreen`). `MyVouchersPage` 는 잠금 파일이라 손대지 않고, 시험이 그 소스의 글자열과 이 상수를 대조한다.
+ */
+export const AUTHED_PASS_CLS = {
+  /** `WalletPageWrapper theme="light"` 의 클래스(높이·아래 여백은 인라인 — 서버는 높이를 안 잡는다: 로더가 화면 밖으로 밀린다). */
+  root: 'bg-warm text-gray-900 dark:text-white',
+  titleRow: 'ur-content-narrow px-5 lg:px-8 pt-4 pb-3 flex items-center justify-between',
+  title: 'text-[24px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white',
+} as const
+export const AUTHED_PASS_TITLE = '내 이용권'
