@@ -200,3 +200,8 @@
 - 측정 표시: AWS 경유 요청은 colo 앞에 `A`(`AICN`). 결재 문서 "측정" 절.
 - "안정성": 이 환경에서 175회 요청 전부 200 · cron 정체 0. 실사용 표본은 **연결 데이터센터에 따라 0.17s ↔ 1.6s(가끔 9s)** 로 들쭉날쭉 — 체감 불안정의 정체로 판단. 오류율은 Cloudflare 요청 통계 권한(Zone Analytics Read)이 토큰에 없어 못 봤다.
 - 이어받는 첫 액션(대표가 "됐어" 하면): `curl -sSI https://edge-test.urdeal.kr/` 의 `server-timing: colo;desc="A…"` · `x-amz-cf-pop: ICN…` 확인 → 대표 폰에서 두 주소를 번갈아 5회씩 → `analytics/summary` 의 `TTFB:colo:A*` 와 `colo:LAX/HKG` 비교.
+
+## 72. #2321 머지 뒤 배포 실패 — Cloudflare D1 바인딩 오류(코드 무관)
+- `9e49f6f` 의 배포 3종(Pages · cron 워커 · ur-ads)이 전부 `binding <DB|ADS_DB|ADS_COMPANY_DB> of type d1 failed to generate. Please try again later` (code 10021)로 실패. 시도마다 걸리는 바인딩이 달랐다 → Cloudflare 쪽 일시 장애로 판단. 라이브는 이전 버전으로 정상(주요 화면·API 200).
+- 세션은 실패 잡 재실행·워크플로 수동 실행 둘 다 403(`Resource not accessible by integration`) — 다음 main 머지가 배포를 다시 돌린다.
+- 배포 뒤 판정(남은 것): `/faq` 서버 HTML 의 `__cf_email__` 0건 · `email_off` 표시가 Cloudflare 에서 존중되는지.
