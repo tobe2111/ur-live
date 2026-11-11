@@ -72,9 +72,9 @@ export default [
     name: '[상세B지갑E] 📍매장 위치 카드에 테두리가 되살아난다',
     file: 'src/pages/group-buy/StoreLocation.tsx',
     // 🌐 2026-11-02: 그 칸 안이 \`{map}\` 하나 → 외국어 네이버 지도 분기로 바뀌었다 — 칸 머리 줄로 앵커를 좁힌다.
-    find: `      <div style={{ borderRadius: 14, overflow: 'hidden' }}>
+    find: `      <div style={{ borderRadius: 14, overflow: 'hidden', minHeight: STORE_MAP_H, background: 'var(--gbd-chip)' }}>
         {useNaver`,
-    replace: `      <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gbd-line2)' }}>
+    replace: `      <div style={{ borderRadius: 14, overflow: 'hidden', minHeight: STORE_MAP_H, background: 'var(--gbd-chip)', border: '1px solid var(--gbd-line2)' }}>
         {useNaver`,
     test: TEST,
     why: '표면 규칙 ① "카드 테두리 0, 화이트만 들림 한 값". 테두리는 어디서든 조용히 되돌아온다.',

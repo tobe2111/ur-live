@@ -39,7 +39,8 @@ describe('걷어낸 것 — 카드를 두르던 테두리 4곳', () => {
     // 종전: 지도 `border … borderBottom:none` + 주소 `border … borderTop:none` 으로 상자 한 개.
     expect(STORE).not.toMatch(/borderRadius: '14px 14px 0 0'/)
     expect(STORE).not.toMatch(/borderRadius: '0 0 14px 14px'/)
-    expect(STORE).toMatch(/<div style=\{\{ borderRadius: 14, overflow: 'hidden' \}\}>/)
+    // 📏 2026-11-11: 지도 자리 예약(minHeight 220 + 회색 바탕)이 붙었다 — 지키는 것은 '테두리 없음' 이다.
+    expect(STORE).toMatch(/<div style=\{\{ borderRadius: 14, overflow: 'hidden'(?:, minHeight: STORE_MAP_H, background: 'var\(--gbd-chip\)')? \}\}>/)
   })
 
   it('② 주소 줄이 섹션 본문 여백에 맞는다 (좌우 패딩 0)', () => {
