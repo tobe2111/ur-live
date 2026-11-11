@@ -21,4 +21,12 @@ export default [
     test: T,
     why: '새 사장님이 "계좌 변경은 PIN 인증이 필요합니다" 토스트만 보고 판매 준비를 못 끝낸다.',
   },
+  {
+    name: '대시보드 계좌 저장이 PIN 요구를 실패로 보인다',
+    file: 'src/pages/SellerBusinessInfoPage.tsx',
+    find: "code === 'PIN_REQUIRED') { setBankPin(true); return }",
+    replace: "code === 'NEVER') { setBankPin(true); return }",
+    test: T,
+    why: '사장님이 "계좌 정보 저장에 실패했습니다" 만 보고 왜인지 모른다.',
+  },
 ]

@@ -39,3 +39,16 @@ describe('② 등록 2단계 계좌 — PIN 을 그 자리에서', () => {
     expect(page).toMatch(/onDone=\{\(\) => \{ setPinFor\(null\); void submit\(\) \}\}/)
   })
 })
+
+describe('③ 같은 종류 검수 (2026-11-11 대표 "유사하게 더 개선할 것들")', () => {
+  it('대시보드 사업자 정보의 계좌 저장도 PIN 요구를 그 자리에서 푼다', () => {
+    const page = read('src/pages/SellerBusinessInfoPage.tsx')
+    expect(page).toMatch(/code === 'PIN_REQUIRED'\) \{ setBankPin\(true\); return \}/)
+    expect(page).toMatch(/<SellerPinPrompt onVerified=\{\(\) => \{ setBankPin\(false\); void saveBank\(\) \}\}/)
+  })
+  it('입력이 있는 바닥 시트는 보이는 높이(dvh)를 따른다', () => {
+    for (const f of ['src/pages/MyAppointmentsPage.tsx', 'src/pages/MyStaysPage.tsx', 'src/pages/StaysSearchPage.tsx', 'src/pages/my-vouchers/ReviewBonusButton.tsx']) {
+      expect(read(f), f).not.toMatch(/max-h-\[90vh\]/)
+    }
+  })
+})
