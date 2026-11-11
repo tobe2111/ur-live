@@ -11,8 +11,8 @@ export default [
   {
     name: '[sized-image] 작은 크기 하나가 실패해도 주소를 준다',
     file: 'src/lib/image-sized.ts',
-    find: '    if (!r?.success || !r.data?.batch) return null',
-    replace: '    if (!r?.success || !r.data?.batch) continue',
+    find: '  if (others.some((r) => !r || r.batch !== head.batch)) return null',
+    replace: '  if (others.some((r) => r && r.batch !== head.batch)) return null', // 🔁 2026-11-11 재조준 — 나머지를 동시에 올리게 되면서 검사 자리가 옮겨갔다
     test: 'src/tests/unit/sized-image-2026-11-01.test.ts',
     why: '320 이 없는 주소가 저장되면 카드에서 사진이 깨진다.',
   },
