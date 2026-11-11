@@ -154,8 +154,34 @@ self.addEventListener('activate', function (event) {
       await Promise.all(keys.filter(function (k) { return k.indexOf('ur-shell-') === 0 && k !== SHELL_CACHE }).map(function (k) { return caches.delete(k) }))
     } catch (e) { /* 무시 */ }
     await self.clients.claim()
+    await warmOpenWindows()
   })())
 })
+
+/**
+ * ⑧ 첫 방문 데우기 (2026-11-11 · 실측: 저장이 두 번째 방문에야 일어나 즉시 표시가 **세 번째** 방문부터였다 — 2차 FCP 0.89s, 3차 0.24s).
+ *   SW 는 첫 방문의 문서 요청이 끝난 뒤에 설치되므로 그 화면을 못 본다. 그래서 켜지는 순간 **지금 열려 있는 창의 주소**를
+ *   같은 울타리(①~③ `shouldHandle`)로 거르고, 저장본이 없을 때만 한 번 받아 둔다 → 두 번째 방문부터 즉시.
+ *   허용 목록은 그대로다(울타리를 넓히지 않는다). 창이 여럿이어도 최대 `WARM_MAX` 개.
+ */
+var WARM_MAX = 3
+async function warmOpenWindows() {
+  try {
+    var cache = await caches.open(SHELL_CACHE)
+    var wins = await self.clients.matchAll({ type: 'window' })
+    var n = 0
+    for (var i = 0; i < wins.length && n < WARM_MAX; i++) {
+      var url = wins[i].url
+      if (!shouldHandle(url, 'GET', 'navigate', self.location.origin)) continue
+      var u = new URL(url)
+      var pathname = u.pathname.replace(/\/+$/, '') || '/'
+      var variant = await readVariant(cache)
+      if (await cache.match(cacheKey(pathname, variant))) continue
+      n++
+      await refresh(cache, pathname, u.href)
+    }
+  } catch (e) { /* 데우기는 가속일 뿐 — 실패해도 다음 방문에 저장된다 */ }
+}
 self.addEventListener('message', function (event) {
   var d = event.data
   if (!d || d.type !== 'ur-shell-off') return
@@ -189,4 +215,4 @@ self.addEventListener('fetch', function (event) {
 })
 
 // 시험이 이 파일을 평가해 정책을 대조한다.
-self.__urShellPolicy = { shouldHandle: shouldHandle, isDenied: isDenied, isAllowed: isAllowed, version: SHELL_VERSION, offlineHtml: OFFLINE_HTML }
+self.__urShellPolicy = { shouldHandle: shouldHandle, isDenied: isDenied, isAllowed: isAllowed, version: SHELL_VERSION, offlineHtml: OFFLINE_HTML, warmMax: WARM_MAX }
