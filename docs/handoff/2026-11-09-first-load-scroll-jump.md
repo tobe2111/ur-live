@@ -156,3 +156,12 @@
 ## 63. `/products/:id` 정본 302 — 입구 주소 훑기에서 찾은 두 번째 "앱이 켜진 뒤에야 넘기는" 경로
 - 기록 `docs/locks/loading/2026-11-11-product-canonical-redirect.md`. 훑는 법: 문서 요청과 주소 변화를 같이 찍는다(문서 1건인데 주소가 바뀌면 앱이 넘긴 것).
 - 배포 뒤 판정: `curl -sSI https://urdeal.kr/products/2919` → 302 · `location: /pass/2919` · `…/products/2919?ref=3` 은 200 그대로 · 누름→첫 글자(종전 2.0s).
+
+## 64. [E4] #2312 `/products/:id` 정본 302 — 배포 뒤 판정
+- `/products/2919` → **302 `/pass/2919`** · `/products/2192` → `/vouchers/2192` · `/products/3015` → `/stays/3015` · `?ref=3` 은 200 그대로(귀속 보존) · 없는 상품 404.
+- 누름→첫 글자 **1.17 · 1.21s**(종전 2.0s). 쿼리 달린 주소는 종전대로 앱이 넘긴다(2.36s) — 귀속 쿼리를 서버가 옮기는 것은 결재 사항이라 안 건드렸다.
+
+## 65. `/my-store` 서버 301 + `/videos` 목록 요청을 문서와 함께 출발
+- 기록 `docs/locks/loading/2026-11-11-videos-list-preload.md`. `/videos` 는 목록(`/api/urshorts?all=1`)이 앱이 켜진 뒤 3.3초에 출발했다 → 워커가 `Link: rel=preload; as=fetch` 로 문서와 같이 보낸다. 주소는 `SHORTS_ALL_PATH` 한 곳(화면 fetch 와 한 글자라도 갈리면 두 번 받는다).
+- 배포 뒤 판정: `curl -sSI https://urdeal.kr/my-store` → 301 `/user/profile` · `/videos` 응답 헤더에 그 Link · 브라우저에서 그 요청이 **한 번**이고 출발이 1초 안인지 · `measure-live-vitals /videos`(종전 FCP 1.5~1.7s · LCP 3.0~3.2s).
+- 🩸 옛 시험(`seo-region-encoding…`)이 `fetch('/api/…')` 리터럴을 찾고 있어 빨개졌다 — 값과 호출을 따로 보도록 재조준(불변식 동일).
