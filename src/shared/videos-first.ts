@@ -23,8 +23,10 @@ export const VIDEOS_FS_CLS = {
 } as const
 
 /** 서버가 쓰는 인라인 스타일 — 이 표면은 첫 화면 CSS 묶음이 없어(로더-먼저) 클래스가 아직 안 먹는다. 위 클래스와 같은 모양. */
+/** 바탕색은 위 클래스에서 꺼낸다 — 색을 두 번 적으면 한쪽만 바뀌는 날이 온다. */
+const VIDEOS_BG = VIDEOS_FS_CLS.page.match(/bg-\[(#[0-9A-Fa-f]{6})\]/)?.[1] ?? 'black'
 export const VIDEOS_FS_STYLE = {
-  page: 'position:relative;min-height:100dvh;overflow:hidden;background:#0A0C12',
+  page: `position:relative;min-height:100dvh;overflow:hidden;background:${VIDEOS_BG}`,
   cover: 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none',
 } as const
 

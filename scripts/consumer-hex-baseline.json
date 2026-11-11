@@ -80,7 +80,7 @@
     "src/pages/UMeRedirectPage.tsx": 1,
     "src/pages/UserGroupBuyCreatePage.tsx": 10,
     "src/pages/UserProfilePage.tsx": 3,
-    "src/pages/VideosPage.tsx": 2,
+    "src/pages/VideosPage.tsx": 1,
     "src/pages/VoucherDetailPage.tsx": 27,
     "src/pages/VoucherVerifyPage.tsx": 3,
     "src/pages/VouchersPage.tsx": 16,
@@ -262,6 +262,7 @@
     "src/shared/stays-list.ts": 4,
     "src/shared/stores/useTheme.ts": 2,
     "src/shared/ushop-share-card.ts": 1,
+    "src/shared/videos-first.ts": 1,
     "src/shared/vouchers-pc-first-screen.ts": 9
   }
 }

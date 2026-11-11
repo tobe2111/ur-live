@@ -258,7 +258,7 @@ export default function VideosPage() {
   const afterNextThumb = thumbOf(items[idx + 2])
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden overscroll-none bg-[#0A0C12]">
+    <div className={VIDEOS_FS_CLS.page}>
       {/* 🔎 문구·noindex 는 `CONSUMER_SURFACE_SEO` 한 곳. 2026-10-13 까지 이 `noindex` 는 **클라에만**
           있어서 JS 안 돌리는 크롤러(Yeti·AI 봇)에는 무효였다 — 서버는 `index, follow` 를 주고 있었다. */}
       <SEO
