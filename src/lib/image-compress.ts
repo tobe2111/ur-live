@@ -85,5 +85,49 @@ export async function compressForThumbnail(file: File): Promise<File> {
  *   뭉개져 어드민이 심사를 못 한다. 사람이 읽을 해상도를 남기고 크기만 확실히 낮춘다.
  */
 export async function compressForDocument(file: File): Promise<File> {
+  const fast = await encodeDocumentFast(file).catch(() => null); if (fast) return fast
   return compressForUpload(file, { maxSizeMB: 2, maxWidthOrHeight: 2400 })
+}
+
+/**
+ * ⚡ 2026-11-11 (대표 신고 — *"사진 올리는 속도 최적화 필요"*, 가게 등록 `/store/biz-cert`): 문서 사진의 **빠른 길**.
+ *
+ * 느렸던 이유 둘:
+ *   ① 2MB 미만이면 **원본을 그대로** 올렸다 — 폰 회선의 올리는 속도는 받는 속도의 몇 분의 일이라 1.9MB 가 그대로 대기 시간이다.
+ *   ② 2MB 이상이면 압축 라이브러리(~51KB)를 그때 내려받고, 그 워커가 CDN 스크립트를 또 받으려다(CSP 가 막는다) 메인 스레드로 물러난다.
+ * 여기선 브라우저 내장 기능만 쓴다(내려받는 것 0 · 한 번에 끝): 긴 변 `DOCUMENT_FAST_MAX_SIDE` 로 줄여 WebP 로 다시 담는다.
+ * WebP 를 못 만드는 브라우저(옛 iOS 사파리 — toBlob 이 PNG 를 돌려준다)는 JPEG 로.
+ *
+ * 🔑 가독성 하한은 그대로다 — 긴 변 2000px 이면 A4 등록증의 본문 글자가 20px 남짓이다(상품 사진 1280px 로 내리지 말 것 · 2026-09-15).
+ * 실패하거나(디코드 불가·캔버스 없음) 결과가 천장을 넘으면 `null` → 종전 길(라이브러리)이 받는다. 원본보다 커지면 원본을 돌려준다.
+ */
+export const DOCUMENT_FAST_SKIP_BYTES = 400 * 1024
+export const DOCUMENT_FAST_MAX_SIDE = 2000
+export const DOCUMENT_FAST_QUALITY = 0.8
+const DOCUMENT_FAST_CEILING_BYTES = 2 * 1024 * 1024
+
+/** 긴 변을 `maxSide` 에 맞춘 크기(키우지는 않는다). */
+export function fitWithin(w: number, h: number, maxSide: number): { w: number; h: number } {
+  const k = Math.min(1, maxSide / Math.max(w, h, 1))
+  return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) }
+}
+
+export async function encodeDocumentFast(file: File): Promise<File | null> {
+  if (!file.type.startsWith('image/')) return null
+  if (file.size <= DOCUMENT_FAST_SKIP_BYTES) return file
+  if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return null
+  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' } as ImageBitmapOptions)
+  try {
+    const { w, h } = fitWithin(bmp.width, bmp.height, DOCUMENT_FAST_MAX_SIDE)
+    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
+    const ctx = canvas.getContext('2d'); if (!ctx) return null
+    ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bmp, 0, 0, w, h)
+    const blobOf = (type: string, q: number) => new Promise<Blob | null>((res) => canvas.toBlob(res, type, q))
+    let blob = await blobOf('image/webp', DOCUMENT_FAST_QUALITY)
+    if (!blob || blob.type !== 'image/webp') blob = await blobOf('image/jpeg', 0.85)
+    if (!blob || blob.size < 100 || blob.size > DOCUMENT_FAST_CEILING_BYTES) return null
+    if (blob.size >= file.size) return file.size <= DOCUMENT_FAST_CEILING_BYTES ? file : null
+    const base = (file.name || '').replace(/\.[^.]+$/, '').trim() || `image_${Date.now()}`
+    return new File([blob], `${base}.${blob.type === 'image/webp' ? 'webp' : 'jpg'}`, { type: blob.type })
+  } finally { bmp.close?.() }
 }

@@ -165,3 +165,13 @@
 - 기록 `docs/locks/loading/2026-11-11-videos-list-preload.md`. `/videos` 는 목록(`/api/urshorts?all=1`)이 앱이 켜진 뒤 3.3초에 출발했다 → 워커가 `Link: rel=preload; as=fetch` 로 문서와 같이 보낸다. 주소는 `SHORTS_ALL_PATH` 한 곳(화면 fetch 와 한 글자라도 갈리면 두 번 받는다).
 - 배포 뒤 판정: `curl -sSI https://urdeal.kr/my-store` → 301 `/user/profile` · `/videos` 응답 헤더에 그 Link · 브라우저에서 그 요청이 **한 번**이고 출발이 1초 안인지 · `measure-live-vitals /videos`(종전 FCP 1.5~1.7s · LCP 3.0~3.2s).
 - 🩸 옛 시험(`seo-region-encoding…`)이 `fetch('/api/…')` 리터럴을 찾고 있어 빨개졌다 — 값과 호출을 따로 보도록 재조준(불변식 동일).
+
+## 66. [E4] #2313 배포 뒤 판정 — `/my-store` 는 됐고 `/videos` 는 화면이 안 빨라졌다
+- `/my-store` → 301 `/user/profile`. `/videos` 목록 요청 출발 3.3s → **0.25~0.8s**, 그러나 FCP 1.47·1.52·1.80s · LCP 2.82·2.95·3.26s 로 **그대로**.
+- 🩸 틀렸던 판단: 목록이 병목이라고 봤다 — 병목은 앱 시동(1.5s)이다. 빨라지려면 서버 첫 화면(검은 바탕 + 첫 표지)이 필요하다.
+- 목록 요청이 두 번 찍히는 것은 중복이 아니다 — 응답이 `Age > max-age` 로 와서 브라우저가 미리 받은 것을 쓰고 **뒤에서** 재확인한다(`If-Modified-Since`, 화면을 안 막는다).
+
+## 67. 사업자등록증 사진 올리기가 느리다 (대표 신고, `/store/biz-cert`)
+- 기록 `docs/locks/loading/2026-11-11-doc-upload-fast.md`. 2MB 미만 원본을 그대로 올리던 것 → 내장 기능으로 2000px WebP(합성 실측 1.88MB → 0.61MB · 0.8초) + 진행률 표시.
+- `compressForDocument` 를 쓰는 다섯 곳(가게 등록·매장 추가 창·영업신고증·사업자 정보·가입 부품)이 같이 빨라진다.
+- 이어받는 첫 액션: 대표께 폰에서 다시 올려 보시라고 부탁(세션은 로그인 화면이라 못 잰다). 여전히 느리면 올리는 요청의 서버 시간(`Server-Timing`)과 회선을 가른다.
