@@ -10,7 +10,7 @@
 
 // 🪶 2026-10-14: axios → 같은 모양의 작은 클라이언트(`http-client.ts`) — 첫 페인트 청크 −17KB br.
 import { createHttp, http, isHttpError, type AxiosError, type InternalRequestConfig as InternalAxiosRequestConfig } from './http-client';
-import { readAffiliateRef, pruneExpiredAffiliateRef } from '@/utils/affiliate-ref-store';
+import { readAffiliateRef, pruneExpiredAffiliateRef } from '@/utils/affiliate-ref-store'; import { readTouch } from '@/utils/touch-store';
 import { ensureCsrfToken } from './csrf-token'
 import { readCookie } from './read-cookie'
 import { type DashboardRole, isDashboardRefreshUrl, dashboardTokenKeys } from './dashboard-token';
@@ -177,7 +177,7 @@ api.interceptors.request.use(
     try {
       pruneExpiredAffiliateRef();
       const refRaw = readAffiliateRef()?.ref;
-      if (refRaw) config.headers['X-Affiliate-Ref'] = refRaw;
+      if (refRaw) config.headers['X-Affiliate-Ref'] = refRaw; const via = readTouch(); if (via) config.headers['X-Ur-Via'] = via; // 🎬 2026-11-11 무엇을 보고 샀나(기록만 — utils/touch-store)
     } catch { /* silent */ }
 
 // 🛡️ 2026-05-24: CSRF 토큰 자동 첨부 — double-submit cookie 패턴.

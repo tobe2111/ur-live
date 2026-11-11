@@ -12,6 +12,7 @@ import { Play } from 'lucide-react'
 import { naverBlogMobileUrl, type ContentItem, type CreatorContentPayload } from '@/shared/creator-content'
 import { PlatformMark, urdealBadge } from './content-marks'
 import { trackFunnel } from '@/lib/funnel'
+import { writeTouch } from '@/utils/touch-store'
 import type { BuyInfo } from './ContentViewer'
 
 const ContentViewer = lazy(() => import('./ContentViewer'))
@@ -52,7 +53,7 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
   const openAt = (list: ContentItem[], index: number) => {
     if (list[index]) trackFunnel('creator_content_opened', { p: productId, k: list[index].platform })
     setOpen({ list, index })
-    if (list[index]) setRead((s) => new Set(s).add(list[index].id))
+    if (list[index]) { setRead((s) => new Set(s).add(list[index].id)); writeTouch(`content:${list[index].id}`) } // 🎬 무엇을 보고 샀나(touch-store)
   }
 
   /**
@@ -61,7 +62,7 @@ export default function CreatorContentRow({ productId, buy, onBuy }: { productId
    * (닫으면 상세가 그대로 — 미리보기 한 장을 거치지 않는다).
    */
   const openBlog = (b: ContentItem) => {
-    setRead((s) => new Set(s).add(b.id))
+    setRead((s) => new Set(s).add(b.id)); writeTouch(`content:${b.id}`)
     if (!b.embeddable) trackFunnel('creator_content_opened', { p: productId, k: b.platform })
     // 창 안에서 넘겨 보는 목록도 띄울 수 있는 글만(막힌 글이 섞이면 미리보기 한 장이 다시 나온다).
     if (b.embeddable) { const list = blogs.filter((x) => x.embeddable); openAt(list, Math.max(0, list.findIndex((x) => x.id === b.id))); return }

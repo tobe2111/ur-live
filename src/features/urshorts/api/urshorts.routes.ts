@@ -589,4 +589,9 @@ sellerUrshortsRoutes.delete('/:id', requireSeller(), async (c) => {
   }
 })
 
+// 🧭 2026-11-11 결제 갈래(인플루언서 · 유어쇼츠 · 다녀온 사람들 · 유어딜) — 규칙은 `worker/utils/order-touch.ts`.
+adminUrshortsRoutes.get('/attribution', requireAdmin(), async (c) => {
+  try { const { loadTouchSummary } = await import('../../../worker/utils/order-touch'); return c.json({ success: true, data: await loadTouchSummary(c.env.DB, intParam(c.req.query('days'), 30)) }) }
+  catch (err) { return safeError(c, err, '결제 갈래를 불러오지 못했습니다', '[urshorts/attribution]') }
+})
 export { urshortsRoutes, adminUrshortsRoutes, sellerUrshortsRoutes }

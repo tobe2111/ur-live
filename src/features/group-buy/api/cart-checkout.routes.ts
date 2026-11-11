@@ -150,7 +150,9 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
   if (!derived.ok) return c.json({ success: false, error: derived.error, code: derived.code }, 400)
   const dealUsed = derived.dealUsed
 
-  const referralInfluencerId = await normalizeRef(DB, body.ref, userId)
+  // 🧭 2026-11-11 결제 완료 주소(`?cart=1`)에는 ref 가 없다 — 본문만 보면 장바구니 카드 결제는 **늘 무귀속**이었다.
+  //    단건 확정(`/confirm-toss`)·준비(`/cart/init`)와 같은 출처(본문→헤더→쿠키)로 읽는다.
+  const referralInfluencerId = await normalizeRef(DB, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref')), userId)
 
   // ── Toss 승인 (SSOT helper 호출만 — helper 자체는 무수정) ────────────────────
   const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
@@ -328,6 +330,11 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
       try {
         const { markAcquisitionFirstPurchase } = await import('../../../worker/utils/acquisition')
         await markAcquisitionFirstPurchase(DB, String(userId), orderNumber)
+      } catch { /* fail-soft */ }
+      // 🧭 2026-11-11 누가 데려왔나 · 무엇을 보고 샀나(돈 무관 · order-touch.ts) — 장바구니는 품목이 여럿이라 상품 칸은 비운다.
+      try {
+        const { recordOrderTouch } = await import('../../../worker/utils/order-touch')
+        await recordOrderTouch(DB, { orderRef: orderNumber, userId, productId: null, ref: referralInfluencerId, viaRaw: c.req.header('X-Ur-Via') })
       } catch { /* fail-soft */ }
       try {
         const { grantVisitRewardOnPurchase } = await import('../../../worker/utils/visit-reward')

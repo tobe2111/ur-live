@@ -63,7 +63,8 @@ describe('배선 고정 — 페이지·API·전역 ref 캡처가 실제로 걸�
   it('App.tsx 에 /campaign/:code 라우트(게이트 뒤) + 루트 ?ref 전역 캡처', () => {
     const a = readFileSync('src/App.tsx', 'utf8')
     expect(a).toMatch(/CAMPAIGN_SIGNUP_ENABLED && <Route path="\/campaign\/:code"/)
-    expect(a).toContain("captureInflowRef(params.get('ref') || params.get('aff'))")
+    // 🧭 2026-11-11 같은 자리가 구매 귀속까지 저장한다(captureLandingRef → 손님 화면이면 storeAffiliateRef, 아니면 유입만)
+    expect(a).toContain("captureLandingRef(window.location.pathname, params.get('ref') || params.get('aff'))")
   })
   it('클라 유입 발사가 캠페인 코드를 함께 보낸다 (?c= → inflow_clicks.campaign)', () => {
     const t = readFileSync('src/utils/affiliate-track.ts', 'utf8')

@@ -54,7 +54,8 @@ describe('🔌 배선 — 이용권 구매 세 곳이 같은 출처·같은 자�
     expect(fn).not.toMatch(/referralInfluencerId === userId\) referralInfluencerId = ''/)
   })
   it('장바구니 결제 시작도 같은 출처 + 같은 자기귀속 판정', () => {
-    expect(cart).toMatch(/normalizeRef\(DB, pickGbRefSource\(body\.ref, c\.req\.header\('X-Affiliate-Ref'\), getCookie\(c, 'affiliate_ref'\)\), userId\)/)
+    // 🧭 2026-11-11 확정(`/cart/confirm-toss`)도 같은 출처를 쓰게 되어 문자열이 두 번 나온다 — **시작 쪽 줄**을 따로 본다.
+    expect(cart).toMatch(/ref: await normalizeRef\(DB, pickGbRefSource\(body\.ref, c\.req\.header\('X-Affiliate-Ref'\), getCookie\(c, 'affiliate_ref'\)\), userId\) \|\| null/)
     expect(cart).toMatch(/await isSelfReferral\(DB, s, userId\)\) return ''/)
   })
 })

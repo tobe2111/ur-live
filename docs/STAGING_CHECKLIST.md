@@ -376,6 +376,7 @@ S3 `order:N`(✅ `order-ledger-credit.ts` 와 일치) · S5 `voucher:{id}` · S6
 | S-CART-13 | 🏷️ **교환권(`deal_only=1`) 을 카드 레일에 직접 밀어 넣기** — 화면을 거치지 않고 `POST /api/group-buy/cart/init` 에 그 상품 id 를 보낸다 | 400 `DEAL_ONLY_NOT_SUPPORTED` — **원화로 청구되지 않는다** |
 | S-CART-14 | 교환권 + 이용권을 함께 골라 `/cart` 에서 주문 시도 | 주문 버튼이 **비활성**이고 이유가 화면에 있다 · 총액이 두 줄(`N원` / `N딜`)로 갈려 있다 |
 | S-CART-15 | 교환권만 골라 주문 | 종전 `/checkout` **딜 모드** 로 간다(토스 옵션 없음) · 결제예정금액이 `N딜` |
+| S-CART-16 | (2026-11-11) 홈 `/?ref=<유저id>` 로 들어와 장바구니 카드 결제 | 그 주문에 소개자가 붙는다(확정이 헤더·쿠키도 읽음) · `order_touch.bucket='influencer'` |
 
 ## 💸 S-BROKER — 중개사 몫 유어딜 직접 송금 (2026-09-19)
 

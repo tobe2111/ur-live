@@ -751,6 +751,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             const { markAcquisitionFirstPurchase } = await import('../../../worker/utils/acquisition')
             await markAcquisitionFirstPurchase(DB, String(userId), orderNumber)
           } catch { /* fail-soft */ }
+          // 🧭 2026-11-11 누가 데려왔나 · 무엇을 보고 샀나(돈 무관 · order-touch.ts)
+          try {
+            const { recordOrderTouch } = await import('../../../worker/utils/order-touch')
+            await recordOrderTouch(DB, { orderRef: orderNumber, userId, productId: Number(productId), ref: referralInfluencerId, viaRaw: c.req.header('X-Ur-Via') })
+          } catch { /* fail-soft */ }
         }
         let _saleDeferred = false
         try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_saleFx()); _saleDeferred = true } } catch { /* no ctx */ }
@@ -1269,6 +1274,11 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         try {
           const { markAcquisitionFirstPurchase } = await import('../../../worker/utils/acquisition')
           await markAcquisitionFirstPurchase(DB, String(userId), orderNumber)
+        } catch { /* fail-soft */ }
+        // 🧭 2026-11-11 누가 데려왔나 · 무엇을 보고 샀나(돈 무관 · order-touch.ts)
+        try {
+          const { recordOrderTouch } = await import('../../../worker/utils/order-touch')
+          await recordOrderTouch(DB, { orderRef: orderNumber, userId, productId: Number(productId), ref: referralInfluencerId, viaRaw: c.req.header('X-Ur-Via') })
         } catch { /* fail-soft */ }
         // 🔔 2026-06-26 (소비자 감사 C): 카드 결제 buyer 무통보(딜 /join 은 알림톡 발송) 비대칭 보강.
         //   ① 발급 인앱 기록 ② 알림톡. 🏷️ 2026-08-12: '교환권' 고정 문구라 카드로 산 이용권에도 그게 떴다(셀러 알림은 '이용권') → issuedVoucherLabel.
