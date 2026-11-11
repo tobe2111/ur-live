@@ -23,6 +23,9 @@ export const STAY_HEAD = {
   heroWrap: 'relative -mx-4 -mt-5 lg:mx-0 lg:mt-0 bg-gray-100 dark:bg-[#1D1F29] lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2C2F35]',
   /** 제목 블록(모바일 전용 — PC 는 `DetailTitleHeader` 가 사진 **위**에 그린다). */
   titleBlock: 'mt-5 mb-5 lg:mt-0 lg:hidden',
+  /** 📐 2026-11-11 가격 줄 자리 예약 — 객실 조회가 끝나기 전(처음 한 번)에 가격 줄 높이(mt-3 12 + 라벨 19.5 + 가격 36 ≈ 68px)를 잡아 둔다.
+   *   라이브 rAF 추적: 머리 73 → 141px 로 커지며 '팔기' 줄·구역 탭·날짜 카드가 68px 내려갔다(CLS 0.03~0.045). */
+  pricePending: 'mt-3 h-14',
   /**
    * 성급 줄. ⚠️ **값이 없어도 이 div 는 그린다** — `mb-1`(4px)이 그 자리에 남아야 한다.
    * 라이브 49건 중 별점이 있는 것은 **12건**(hotel 9 · resort 3)뿐이라, 빼먹으면 37건이 4px 튄다.

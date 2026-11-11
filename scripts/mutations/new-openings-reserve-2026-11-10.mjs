@@ -25,4 +25,12 @@ export default [
     test: T,
     why: '예약과 실제 줄의 높이가 갈리면 그 차이만큼 다시 밀린다.',
   },
+  {
+    name: '📐 새 가게: 로더 칸과 목록 칸이 다시 같은 요소로 재사용된다(20px 밀림으로 계산)',
+    file: 'src/pages/NewOpeningsPage.tsx',
+    find: '<div key="list" className="mt-5 grid',
+    replace: '<div className="mt-5 grid',
+    test: T,
+    why: '2026-11-11 라이브 실측 CLS 0.016 — React 가 같은 div 를 재사용해 위치 차이가 밀림이 된다.',
+  },
 ]

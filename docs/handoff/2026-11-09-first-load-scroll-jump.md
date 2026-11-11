@@ -124,3 +124,10 @@
 - 🔑 실사용 표본(어드민 `/api/analytics/summary?day=2026-11-10`)은 **하루 한 자릿수**다 — 표본이 있는 화면: `/` · `/my-vouchers` · `/user/profile` · `/stays` · `/pass` · `/influencer`. 약관·제휴 문의 등은 0 ⇒ 그쪽 첫 화면은 값이 낮다.
 - 기록 `docs/locks/loading/2026-11-11-authed-pass-first-screen.md`. 판정은 RUM(세션 필요).
 - 다음 후보(같은 근거): 로그인 상태의 마이(`/user/profile`) · 유어샵(`/u/me`) 첫 화면.
+
+## 58. [E4] 전 화면 재훑기(2026-11-11, 폰 4G·CPU 4배) + 작은 밀림 둘 수리 (대표 "작은 밀림도 계속 봐줘")
+- 21개 화면 훑기: 첫 글자 0.4~0.8s · CLS ≤0.008 이 대부분. 눈에 띈 것: 숙소 상세 CLS 0.045 · `/new-openings` 0.016 · 지도 LCP 3.0s(카카오 타일). `/stays/2887` 은 404(시험 주소가 낡았다 — 실재 숙소는 `/stays/3015`).
+- **숙소 상세 0.03~0.045**: 객실 조회가 끝나면 머리에 가격 줄이 붙어 73 → 141px, 아래(팔기 줄·구역 탭·날짜 카드)가 68px 내려갔다. `StayHeadCard` 가 첫 조회 전 `STAY_HEAD.pricePending`(mt-3 h-14)로 자리를 잡는다. 가드 `stay-head-price-reserve-2026-11-11.test.tsx` + 주입 4.
+- **`/new-openings` 0.016**: 로더 칸과 목록 칸이 같은 자리의 같은 `div` 라 React 가 한 요소로 재사용 → 위치 차이 20px 이 밀림으로 계산. 서로 다른 `key`. 🩸 rAF·MutationObserver 추적에는 "20px 움직인 프레임"이 안 보였다 — 요소는 한 번도 안 움직였고 **다른 내용으로 바뀐 같은 노드**였다.
+- 남은 것: 숙소 상세의 접힘선 근처(쿠폰 칸 0 → 118px · 객실 칸 236 → 99 → 264px) · 이용권 상세 0.008 · 지도 0.004 · 소개 0.002.
+- 배포 뒤 판정: `vitals_nocb.cjs https://urdeal.kr/stays/3015` CLS(종전 0.045) · `/new-openings`(종전 0.016).
