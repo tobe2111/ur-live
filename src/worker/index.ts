@@ -183,7 +183,7 @@ import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
-import { resolveConsumerAlias } from '../shared/seo/consumer-redirects'; import { pinRedirectApiPath } from '../shared/seo/pin-link';
+import { resolveConsumerAlias } from '../shared/seo/consumer-redirects'; import { pinRedirectApiPath } from '../shared/seo/pin-link'; import { productCanonicalRedirect } from './utils/product-canonical-redirect';
 import { applySurfaceMeta, applyCanonical, buildSellerSurfaceMeta, shouldNoindexMissingEntity, isRetiredSurface, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd, buildSellerShopJsonLd } from './utils/surface-list-jsonld';
 import { fetchSsrPayload, applySsrDiagHeaders, ssrWaitUntil, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
@@ -709,7 +709,7 @@ app.use('*', async (c, next) => {
     const digestRaw = digestP ? await digestP : null;
     const crawlerPayload = digestRaw || ssrPayload;
     if (url.pathname === '/urshorts' && ssrPayload && isMobileUserAgent(c.req.header('user-agent'))) for (const th of urshortsThumbPreloadHrefs(ssrPayload)) appendLcpLink(c.res.headers, th, 'auto'); if (ssrTarget?.slot === 'SEARCH' && ssrPayload) for (const th of searchThumbPreloadHrefs(ssrPayload, searchScopeOf(url.search))) appendLcpLink(c.res.headers, th, 'auto'); /* 🖼️ 2026-11-10 검색 시드 첫 줄 썸네일(LCP 2.6s 가 그 사진이었다) */ // 🎬 2026-11-09 유어쇼츠 시드를 **주입한다**(종전엔 여기서 버렸다 — 목록이 앱 뒤 한 왕복 더 기다렸다) + 첫 두 썸네일 preload. 화면은 시드를 그린 뒤 ?all=1 로 갈아끼운다(utils/urshorts-seed.ts). 🎟️ 2026-11-08 교환권 facet 시드는 이제 주입한다 — 첫 화면을 서버가 그리고 화면이 같은 시드를 먹는다(VouchersPage readVouchersSsrSeed)
-    const ssrSlot = ssrTarget?.slot ?? 'MAIN';
+    const ssrSlot = ssrTarget?.slot ?? 'MAIN'; if (ssrSlot === 'PRODUCT' && !url.search) { const canon = productCanonicalRedirect(ssrPayload, url.pathname); if (canon) { c.res = new Response(null, { status: 302, headers: { Location: canon, 'Cache-Control': 'no-store' } }); return; } } // 🧭 2026-11-11 이용권·교환권·숙소를 `/products/:id` 로 열면 앱이 켜진 뒤에야 넘겼다(2.0s) — 시드로 바로 302. 쿼리(?ref=)가 있으면 손대지 않는다(귀속). utils/product-canonical-redirect.ts
     // 🧨 2026-10-12 [UNLOCK_LOADING] 철거된 표면(`/wholesale`·`/supplier`)은 **410 Gone**. 종전 `isWholesaleSurface`(2026-06-05 — 도매 라이트 테마로 홈 shell 깜빡임 차단)는 가릴 페이지가 없어졌다(#1710).
     //   판정은 `isRetiredSurface`(SSOT — 왜 410 이고 왜 301·robots 차단이 아닌지 그 함수 주석에), `#root` 는 소비자 catch-all 로더에 맡긴다(410 이어도 본문은 셸이라 `NotFoundPage` 가 정상 렌더).
     const retiredSurface = isRetiredSurface(url.pathname);
