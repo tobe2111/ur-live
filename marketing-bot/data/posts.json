@@ -589,5 +589,24 @@
     "slot_kst": "19:30",
     "link": "https://urdeal.kr/creators?utm_source=threads&utm_medium=social&utm_campaign=creator-recruit&utm_content=th-20261110",
     "text": "소개비는 딜마다 매장이 정해요. 딜을 고르기 전에 미리 보이고요.\n내 링크로 팔린 판매액만큼만 적립되니까 시작 비용은 0원.\n소개 파트너 신청은 urdeal.kr/creators 에서 하실 수 있어요"
+  },
+  {
+    "platform": "threads",
+    "id": "17966698293246663",
+    "reply_id": "18093373292220101",
+    "topic_tag": "식당창업",
+    "hook": "why",
+    "len": "1",
+    "media": "image",
+    "content_id": "th",
+    "image": "https://raw.githubusercontent.com/tobe2111/ur-live/marketing-data/marketing-bot/data/cards/2026-11-11-merchant-th/slide-1.jpg",
+    "track": "merchant",
+    "series": "udal-qna",
+    "promo": false,
+    "posted_at": "2026-11-11T11:22:49.878Z",
+    "date_kst": "2026-11-11",
+    "slot_kst": "19:30",
+    "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261111",
+    "text": "대행사에 맡겨도 정산 계좌와 사업자 정보는 대행사가 볼 수 없어요. 수수료 5%, 권한은 언제든 회수 가능."
   }
 ]

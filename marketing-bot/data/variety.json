@@ -230,5 +230,17 @@
     "slot": "19:30",
     "media": "image",
     "topic_tag": "블로그체험단"
+  },
+  {
+    "id": "17966698293246663",
+    "platform": "threads",
+    "track": "merchant",
+    "hook": "why",
+    "series": "udal-qna",
+    "date_kst": "2026-11-11",
+    "len": "1",
+    "slot": "19:30",
+    "media": "image",
+    "topic_tag": "식당창업"
   }
 ]
