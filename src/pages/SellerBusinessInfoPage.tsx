@@ -24,6 +24,7 @@ import BusinessInfoForm from './seller-business-info/BusinessInfoForm'
 import BankInfoSection from './seller-business-info/BankInfoSection'
 import BizRegSection from './seller-business-info/BizRegSection'
 import FoodPermitUpload from '@/components/seller/FoodPermitUpload'
+import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
 
 // 🛡️ 2026-06-10: 사업자 정보 / 계좌 정보 / 증명서 3개 영역 탭 분리.
 //   기존 deep link 호환: ?tab=business|bank|certificate + 기존 해시 진입(#bank-info-section → bank 탭) 유지.
@@ -98,6 +99,7 @@ export default function SellerBusinessInfoPage() {
     account_holder: '',
   })
   const [bankSubmitting, setBankSubmitting] = useState(false)
+  const [bankPin, setBankPin] = useState(false) // 🔑 412 PIN_REQUIRED — 그 자리에서 확인하고 다시 저장(2026-11-11)
 
   // 🛡️ 2026-05-19 (사용자 신고): 사업자등록증 업로드 UI.
   //   백엔드: POST /api/seller/business-registration/submit (image_url + business_number).
@@ -196,6 +198,10 @@ export default function SellerBusinessInfoPage() {
 
   async function handleBankSubmit(e: React.FormEvent) {
     e.preventDefault()
+    await saveBank()
+  }
+
+  async function saveBank() {
     if (!bankInfo.bank_name.trim() || !bankInfo.bank_account.trim() || !bankInfo.account_holder.trim()) {
       toast.error(t('seller.bankInfoRequired'))
       return
@@ -216,6 +222,8 @@ export default function SellerBusinessInfoPage() {
       }
     } catch (error) {
       if (import.meta.env.DEV) console.error('[BusinessInfo] save bank info failed:', error)
+      // 🔑 계좌는 PIN 확인이 필요하다(412 PIN_REQUIRED) — 종전엔 '저장에 실패했습니다' 만 떠서 왜인지 몰랐다(2026-11-11 검수).
+      if ((error as { response?: { data?: { code?: string } } })?.response?.data?.code === 'PIN_REQUIRED') { setBankPin(true); return }
       toast.error(t('seller.bankInfoSaveFailed', { defaultValue: '계좌 정보 저장에 실패했습니다' }))
     } finally {
       setBankSubmitting(false)
@@ -385,6 +393,7 @@ export default function SellerBusinessInfoPage() {
 
   return (
     <SellerLayout title={t('seller.businessInfoManagement')}>
+      {bankPin && <SellerPinPrompt onVerified={() => { setBankPin(false); void saveBank() }} onCancel={() => setBankPin(false)} />}
       <div className="mx-auto max-w-5xl space-y-6">
         {/* 🛡️ 2026-04-22 배치 128: 디자인 시스템 적용 */}
         <DashboardPageHeader
