@@ -24,6 +24,7 @@ import type { Env } from '../../../worker/types/env'
 import { parseIsoDurationSec, youTubeThumbUrl, URSHORTS_MAX_DURATION_SEC } from '../../../shared/urshorts'
 import { classifyShort } from '../../../shared/urshorts-tags'
 import { storeKeyFor } from './content-db'
+import { allInChunks } from '../../../worker/utils/d1-in-chunks'
 
 export const CREATOR_SHORTS_SOURCE = 'creator'
 /** 직접 넣은 영상(0) 뒤. 레일·뷰어 정렬이 `sort_order ASC, id DESC` 다. */
@@ -75,13 +76,12 @@ export async function syncCreatorShorts(DB: D1Database, env: Env): Promise<{ mea
   for (const it of body.items ?? []) if (it.id) sec.set(it.id, durationMark(parseIsoDurationSec(it.contentDetails?.duration)))
 
   const shorts = rows.filter((v) => isShortLength(sec.get(v.ext_id) ?? -1))
-  const names = [...new Set(shorts.map((v) => v.store_name))].slice(0, 90)
-  const products = names.length
-    ? (await DB.prepare(`SELECT id, restaurant_name AS name, restaurant_address AS address, category FROM products
-          WHERE group_buy_status = 'active' AND is_active = 1 AND COALESCE(deal_only, 0) = 0
-            AND restaurant_name IN (${names.map(() => '?').join(',')})
-          ORDER BY COALESCE(sold_count, 0) DESC, id ASC`).bind(...names).all<StoreProduct>().catch(() => ({ results: [] as StoreProduct[] }))).results ?? []
-    : []
+  const names = [...new Set(shorts.map((v) => v.store_name))]
+  // 한 가게의 이용권은 이름이 같아 늘 같은 조각에 든다 — 조각 안 판매량 순서가 곧 가게 안 순서다.
+  const products = await allInChunks(names, (chunk, marks) => DB.prepare(`SELECT id, restaurant_name AS name, restaurant_address AS address, category FROM products
+        WHERE group_buy_status = 'active' AND is_active = 1 AND COALESCE(deal_only, 0) = 0
+          AND restaurant_name IN (${marks})
+        ORDER BY COALESCE(sold_count, 0) DESC, id ASC`).bind(...chunk).all<StoreProduct>().then((r) => r.results ?? []))
   const byStore = productByStore(products)
   const seen = new Set<string>()
   const inserts = shorts.filter((v) => !seen.has(v.ext_id) && seen.add(v.ext_id)).map((v) => {
