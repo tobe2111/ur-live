@@ -6,13 +6,22 @@
  * 안내 문구의 정산일(매주 목요일 · 지난주 사용분)은 정산 가이드 SSOT(`guide-seed-settlement.ts`)와 같은 사실이다.
  * 💰 돈이 나가는 규칙은 하나도 안 바꾼다 — 계좌를 적는 화면만 옮겼다.
  */
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import { toast } from '@/hooks/useToast'
 import { MY_PATH } from '@/lib/seller-return'
 import StoreStepShell from './StoreStepShell'
+import { currentSeatId } from '@/lib/seller-seat'
+
+/**
+ * 🔑 2026-11-10 대표 신고(화면: *"계좌 변경은 PIN 인증이 필요합니다"* 토스트에서 멈춤) — 서버는 계좌를 넣을 때
+ * 15분 안의 PIN 확인을 요구한다(`seller-profile.routes` 412 `PIN_REQUIRED`, 계좌 탈취 방어). 마이의 `BankSheet` 는
+ * 2026-09-26 에 그 자리에서 PIN 을 걸게 고쳤는데 이 등록 2단계 화면은 같은 저장을 부르면서 그 분기가 없어
+ * **막다른 길**이었다. 같은 `PinSheet`(없으면 걸고 → 확인)를 열고, 끝나면 **저장을 다시 한다.**
+ */
+const PinSheet = lazy(() => import('@/pages/user-profile/seller-section/PinSheet'))
 
 /** 자주 쓰는 여덟 개는 바로 누르고, 나머지는 펼친다. 이름은 대시보드 은행 목록(`BankInfoSection`)과 같은 표기. */
 export const POPULAR_BANKS = ['KB국민은행', '신한은행', '우리은행', '하나은행', 'NH농협은행', 'IBK기업은행', '카카오뱅크', '토스뱅크'] as const
@@ -27,6 +36,7 @@ export default function StoreBankPage() {
   const [holder, setHolder] = useState('')
   const [saved, setSaved] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [pinFor, setPinFor] = useState<number | null>(null)
   const headers = { Authorization: `Bearer ${getSellerToken()}` }
 
   useEffect(() => {
@@ -52,7 +62,14 @@ export default function StoreBankPage() {
       toast.success('계좌를 저장했어요 — 판매 준비가 끝났어요')
       navigate(MY_PATH, { replace: true })
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || '계좌를 저장하지 못했어요. 잠시 뒤 다시 눌러 주세요')
+      const res = e?.response?.data as { error?: string; code?: string } | undefined
+      const seat = currentSeatId()
+      if (res?.code === 'PIN_REQUIRED' && seat) {
+        toast.info('정산 계좌는 돈이 들어가는 곳이라 PIN(숫자 비밀번호)으로 한 번 확인해요')
+        setPinFor(seat)
+        return
+      }
+      toast.error(res?.error || '계좌를 저장하지 못했어요. 잠시 뒤 다시 눌러 주세요')
     } finally { setSubmitting(false) }
   }
 
@@ -88,6 +105,11 @@ export default function StoreBankPage() {
         <input value={holder} onChange={(e) => setHolder(e.target.value)} placeholder="통장에 적힌 이름" maxLength={40}
           className="w-full h-[52px] px-4 rounded-xl border-[1.5px] border-line bg-transparent text-[16px] text-gray-900 dark:text-white placeholder:text-ink-faint focus:border-brand focus:outline-none" />
       </label>
+      {pinFor != null && (
+        <Suspense fallback={null}>
+          <PinSheet sellerId={pinFor} onClose={() => setPinFor(null)} onDone={() => { setPinFor(null); void submit() }} />
+        </Suspense>
+      )}
     </StoreStepShell>
   )
 }

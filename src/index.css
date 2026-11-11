@@ -1938,3 +1938,11 @@ canvas {
   .ur-my-flat .rounded-2xl.shadow-lift.overflow-hidden { background: transparent; box-shadow: none; border-radius: 0; margin-left: -16px; margin-right: -16px; }
   .ur-my-flat .border-b.border-rule.last\:border-b-0 { border-bottom-width: 0; }
 }
+
+/* ⌨️ 2026-11-11 대표 신고(화면: /store/new 에서 키보드가 올라오자 검색 결과 칸이 한 줄도 안 남았다) — 다른 페이지도 검수.
+   화면 높이를 꽉 잡는 폰 화면(`h-dvh`)은 키보드가 열리면 그만큼 줄어든다. 그때 입력칸 **위의 장식**(초대 배너·안내·큰 제목)이
+   자리를 다 먹어 결과가 안 보인다. ⇒ `.ur-kb-scope` 안에서 입력 중(input/textarea 포커스)이면 `.ur-kb-hide` 를 접는다.
+   폰만(lg 미만) — PC 키보드는 화면을 줄이지 않는다. 터치 기기에서 입력 포커스 = 키보드가 열린 상태다. */
+@media (max-width: 1023.98px) {
+  .ur-kb-scope:has(input:focus, textarea:focus) .ur-kb-hide { display: none; }
+}

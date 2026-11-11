@@ -34,9 +34,10 @@ export default function NaverPhotoSheet({ baseQuery, room, onClose, onAdd }: Pro
 
   return (
     <div className="fixed inset-0 z-[10500] flex items-end justify-center ur-veil p-2" onClick={onClose} role="dialog" aria-modal="true" aria-label="네이버에서 찾은 사진">
-      <div className="ur-glass-solid ur-pop-sheet w-full max-w-[480px] h-[85dvh] text-gray-900 dark:text-white flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="ur-kb-scope ur-glass-solid ur-pop-sheet w-full max-w-[480px] h-[85dvh] text-gray-900 dark:text-white flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-center pt-2"><span className="w-9 h-1 rounded-full bg-line" /></div>
-        <div className="px-5 pt-4 flex items-start justify-between">
+        {/* ⌨️ 검색어를 치는 동안(키보드)엔 제목 줄을 접어 사진 칸을 남긴다 — `.ur-kb-hide`(index.css, 2026-11-11) */}
+        <div className="ur-kb-hide px-5 pt-4 flex items-start justify-between">
           <div className="min-w-0">
             <h2 className="text-[20px] font-semibold">네이버에서 찾은 사진</h2>
             <p className="mt-1 text-[13px] text-ink-soft truncate">'{query}' 로 찾았어요</p>
