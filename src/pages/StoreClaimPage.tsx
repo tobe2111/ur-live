@@ -240,7 +240,7 @@ export default function StoreClaimPage() {
               </div>
             )}
 
-            <div key={step} className={`flex-1 min-h-0 flex flex-col px-5 lg:px-0 pt-6 pb-[calc(16px+env(safe-area-inset-bottom,0px))] ${dir < 0 ? 'ur-step-back' : 'ur-step-fwd'}`}>
+            <div key={step} className={`ur-kb-scope flex-1 min-h-0 flex flex-col px-5 lg:px-0 pt-6 pb-[calc(16px+env(safe-area-inset-bottom,0px))] ${dir < 0 ? 'ur-step-back' : 'ur-step-fwd'}`}>
               {handoff ? (
                 <BrokerHandoffPanel code={handoff} onDone={() => navigate(MY_PATH, { replace: true })} />
               ) : step === 'done' ? (
@@ -252,16 +252,19 @@ export default function StoreClaimPage() {
                   onEntered={() => navigate(MY_PATH, { replace: true })} onRetry={() => go('find', -1)} />
               ) : (
                 <>
-                  {inviteAgency && <AgencyInviteBanner name={inviteAgency} />}
+                  {/* ⌨️ 입력 중(키보드)엔 접는다 — `.ur-kb-hide`(index.css). 결과 칸이 키보드 위에 남게. */}
+                  {inviteAgency && <div className="ur-kb-hide"><AgencyInviteBanner name={inviteAgency} /></div>}
                   {prospect?.store_name && (
-                    <p className="mb-5 rounded-xl bg-brand-tint px-4 py-3 text-[13px] leading-relaxed">
+                    <p className="ur-kb-hide mb-5 rounded-xl bg-brand-tint px-4 py-3 text-[13px] leading-relaxed">
                       <b className="font-medium">{prospect.store_name}</b> — 영입 담당자가 미리 준비한 매장이에요. 이 가게를 찾아 진행해 주세요.
                     </p>
                   )}
                   {step === 'find' && (
                     <>
-                      <p className="text-[13px] font-medium text-brand-text lg:hidden">매장 이용권 판매 등록 · 무료</p>
-                      <h1 className="mt-2 lg:mt-0 text-[20px] font-semibold tracking-[-0.02em] leading-snug">가게 이름을 검색해 주세요</h1>
+                      <div className="ur-kb-hide">
+                        <p className="text-[13px] font-medium text-brand-text lg:hidden">매장 이용권 판매 등록 · 무료</p>
+                        <h1 className="mt-2 lg:mt-0 text-[20px] font-semibold tracking-[-0.02em] leading-snug">가게 이름을 검색해 주세요</h1>
+                      </div>
                       <StoreFindStep onPick={pick} hasAgency={!!inviteAgency} />
                     </>
                   )}
