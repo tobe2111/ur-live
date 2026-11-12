@@ -128,7 +128,10 @@ describe('⑤ 적용 표면 — 서버가 첫 화면을 그리는 곳(폰)만', 
   it('PC 브라우저: 홈·상세·로그인은 첫 화면 CSS(2026-11-09 pc-home · PC 상세 대표 승인) · 교환권 목록은 로더-먼저만', () => {
     expect(firstScreenApplies('/', PC)).toBe(true); expect(cssFirstApplies('/', PC)).toBe(true)
     expect(firstScreenApplies('/pass/2919', PC)).toBe(true); expect(firstScreenApplies('/group-buy/12', PC)).toBe(true); expect(cssFirstApplies('/pass/2919', PC)).toBe(true)
-    expect(firstScreenApplies('/vouchers/3', PC), '교환권 상세는 PC 첫 화면이 없다').toBe(false)
+    // 🖥️ 2026-11-12 교환권 상세도 PC 첫 화면(상단 네비 포함)을 그린다 — CSS 를 안 넣으면 `hidden md:block` 네비가 숨었다가
+    //    전체 CSS 도착 때 나타나 본문 전체를 민다(배포 뒤 실측 CLS 1.0). 그리는 곳엔 CSS 도 넣는다.
+    expect(firstScreenApplies('/vouchers/3', PC), '교환권 상세 PC 첫 화면 CSS').toBe(true)
+    expect(firstScreenApplies('/vouchers/3/x', PC)).toBe(false)
   })
 })
 
