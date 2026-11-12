@@ -83,7 +83,7 @@ export function homeFooterGroups(): FooterGroup[] {
 /** `SiteFooter` 하단 법적 고지 — 화면 문장 그대로. */
 export const HOME_FOOTER_LEGAL = [
   '상호명: 리스터코퍼레이션 · 대표자: 정지원 · 사업자등록번호: 479-09-02930 · 통신판매업신고: 2025-부산금정-0540',
-  '사업장주소: 서울특별시 강남구 남부순환로359길 14, 3층(도곡동) · 대표이메일: jiwon@ur-team.com',
+  '사업장주소: 부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84) · 대표이메일: jiwon@ur-team.com',
   '서비스 제공 기간: 상품 구매 후 평균 7일 이내 배송 완료',
   '© 2026 리스터코퍼레이션. All rights reserved.',
 ] as const

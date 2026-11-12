@@ -430,7 +430,7 @@ export default function IntroducePage() {
 
           <div className="pt-8 border-t border-[#2C2F35] text-[12px] text-gray-600 leading-relaxed">
             <p className="mb-2"><b className="text-gray-400">리스터코퍼레이션</b> · 대표: 정지원 · 사업자등록번호: 479-09-02930</p>
-            <p className="mb-5">서울특별시 강남구 남부순환로359길 14, 3층(도곡동) · 고객센터 평일 09:00~18:00</p>
+            <p className="mb-5">부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84) · 고객센터 평일 09:00~18:00</p>
             <div className="flex flex-wrap gap-3">
               <button onClick={() => navigate('/terms')} className="text-gray-600 hover:text-gray-300 transition-colors">이용약관</button>
               <button onClick={() => navigate('/privacy')} className="text-gray-600 hover:text-gray-300 font-bold transition-colors">개인정보처리방침</button>

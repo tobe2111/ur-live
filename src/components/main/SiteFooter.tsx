@@ -82,7 +82,7 @@ export default function SiteFooter() {
             상호명: 리스터코퍼레이션 · 대표자: 정지원 · 사업자등록번호: 479-09-02930 · 통신판매업신고: 2025-부산금정-0540
           </p>
           <p className="text-[12px] leading-[1.8]">
-            사업장주소: 서울특별시 강남구 남부순환로359길 14, 3층(도곡동) · 대표이메일: jiwon@ur-team.com
+            사업장주소: 부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84) · 대표이메일: jiwon@ur-team.com
           </p>
           <p className="text-[12px] leading-[1.8]">서비스 제공 기간: 상품 구매 후 평균 7일 이내 배송 완료</p>
           <p className="text-[12px] leading-[1.8] mt-2 text-gray-400 dark:text-gray-500">© 2026 리스터코퍼레이션. All rights reserved.</p>
