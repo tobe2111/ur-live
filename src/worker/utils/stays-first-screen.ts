@@ -15,12 +15,14 @@
  * - **아이콘(SVG)** — 같은 크기의 빈 칸만 세운다(path 를 워커로 옮기면 두 벌이 갈린다). 아이콘은 그 칸
  *   *안에서* 나중에 나타나므로 아무것도 밀지 않는다.
  * - **큐레이션 줄이 하나도 없을 때** — 그때 화면은 4열 그리드다. 지금은 그리지 않고 종전 로더로 돌아간다(무회귀).
- * - **PC** — 호출부가 폰 UA 에서만 부른다(PC 는 4열·넓은 여백이라 같은 마크업이 아니다).
+ * - ~~**PC** — 호출부가 폰 UA 에서만 부른다~~ → 🖥️ 2026-11-12 PC 도 그린다: 첫 화면(큐레이션 줄)은 반응형 클래스라 PC 에서도
+ *   같은 마크업이고, 앱의 상단 네비(`DesktopTopNav`, 풀너비 표면)만 `pcPath` 로 먼저 그린다. 라이브 끼워 재기 FCP 2.9 → 0.5~0.8s · CLS 0.0018 → 0.0015.
  *
  * ## 실패하면
  * 빈 문자열 — 호출부가 종전 `<noscript>` + 로더로 되돌아간다.
  */
 import { cardHtml, escText } from './home-first-screen'
+import { pcTopNavBlockHtml } from './pc-topnav-first-screen'
 import { stayRegionLabel } from '../../shared/stay-address'
 import { STAYS_LIST, STAYS_CHIPS, STAYS_ICON, buildStayCurations, stayCardHref, stayDateChipLabel, type StaySearchItem } from '../../shared/stays-list'
 
@@ -32,7 +34,7 @@ const iconSlot = (px: number) => `<span class="block shrink-0" style="width:${px
  * @param loaderHtml 종전 로더 — 그린 내용 **아래**에 짧게 붙인다
  * @param checkIn @param checkOut @param guests 기본 질의의 값(`defaultStaysQs` 와 같은 날짜)
  */
-export function buildStaysFirstScreen(seedJson: string, loaderHtml: string, checkIn: string, checkOut: string, guests = 2): string {
+export function buildStaysFirstScreen(seedJson: string, loaderHtml: string, checkIn: string, checkOut: string, guests = 2, pcPath?: string): string {
   let items: StaySearchItem[]
   try {
     const parsed = JSON.parse(seedJson) as { success?: boolean; data?: StaySearchItem[] }
@@ -88,5 +90,5 @@ export function buildStaysFirstScreen(seedJson: string, loaderHtml: string, chec
     `</div>`
 
   // 🧷 노드 id 는 다른 첫 화면과 같다 — `lib/boot-first-screen.ts` 가 이 노드를 Suspense 폴백에 도로 붙인다.
-  return `<div id="ur-first-screen">${body}</div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
+  return `<div id="ur-first-screen">${pcPath ? pcTopNavBlockHtml(pcPath) : ''}${body}</div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }

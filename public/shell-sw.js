@@ -142,13 +142,20 @@ var OFFLINE_HTML = '<!doctype html><html lang="ko"><head><meta charset="utf-8"><
 function offlineResponse() {
   return new Response(OFFLINE_HTML, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Shell-Served': 'offline' } })
 }
-async function fetchShell(url) {
-  // 🔴 새 Request 로 받는다 — navigate 요청(redirect mode 'manual')을 그대로 fetch 하지 않는다(사고 ④).
-  return fetch(url, { credentials: 'include', redirect: 'follow', cache: 'no-store' })
+/**
+ * 🔴 새 Request 로 받는다 — navigate 요청(redirect mode 'manual')을 그대로 fetch 하지 않는다(사고 ④).
+ * ⏱️ 2026-11-12 `ms` — **뒤에서 받는 요청**(저장본 갱신 · 데우기)은 시간제한을 둔다. 연결이 걸린 채로 멈추면(절전 해제 ·
+ *   와이파이 전환 뒤 죽은 연결) 그 요청이 영영 안 끝나 SW 를 붙잡는다 — 아래 ⑨.
+ */
+var BG_FETCH_MS = 8000
+async function fetchShell(url, ms) {
+  var opts = { credentials: 'include', redirect: 'follow', cache: 'no-store' }
+  if (ms && typeof AbortController !== 'undefined') { var ac = new AbortController(); setTimeout(function () { ac.abort() }, ms); opts.signal = ac.signal }
+  return fetch(url, opts)
 }
 async function refresh(cache, pathname, url) {
   try {
-    var res = await fetchShell(url)
+    var res = await fetchShell(url, BG_FETCH_MS)
     if (!isCacheableHtml(res)) return
     var variant = variantOf(res)
     await cache.put(cacheKey(pathname, variant), res.clone())
@@ -165,8 +172,12 @@ self.addEventListener('activate', function (event) {
       await Promise.all(keys.filter(function (k) { return k.indexOf('ur-shell-') === 0 && k !== SHELL_CACHE }).map(function (k) { return caches.delete(k) }))
     } catch (e) { /* 무시 */ }
     await self.clients.claim()
-    await warmOpenWindows()
   })())
+  // ⑨ 2026-11-12 (대표 신고 — 와이파이는 되는데 "인터넷 연결이 끊겼습니다" · 사진·앱 파일 무한 로딩 · 새로고침·캐시 비우기도 무반응):
+  //   데우기를 **활성화(waitUntil) 안에서 기다리지 않는다.** 활성화가 끝나기 전에는 이 SW 가 맡은 창의 **모든 요청**(사진·JS·
+  //   연결 확인)이 줄을 서서 기다린다 — 데우기 요청 하나가 걸리면 사이트 전체가 멈추고 새로고침도 같은 줄에 선다.
+  //   데우기는 가속일 뿐이므로 활성화와 떼어 뒤에서 돌린다(실패·중단돼도 다음 방문에 저장된다).
+  self.__urShellWarming = Promise.resolve().then(warmOpenWindows)
 })
 
 /**

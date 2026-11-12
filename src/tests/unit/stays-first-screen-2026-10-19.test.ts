@@ -117,15 +117,22 @@ describe('⑥ 폴백과 배선', () => {
     expect(buildStaysFirstScreen('{', LOADER, 'a', 'b')).toBe('')
     expect(buildStaysFirstScreen(JSON.stringify({ success: false, data: [] }), LOADER, 'a', 'b')).toBe('')
   })
-  it('워커 — catch-all 앞, 폰 UA 에서만, 실패면 종전과 같다', () => {
+  it('워커 — catch-all 앞, 폰·PC 모두(PC 는 상단 네비 포함 — 2026-11-12), 실패면 종전과 같다', () => {
     const w = code('src/worker/index.ts')
-    const i = w.indexOf("} else if (url.pathname === '/stays' && ssrExtraPayload && shouldRenderMobileFirstScreen(")
+    const i = w.indexOf("} else if (url.pathname === '/stays' && ssrExtraPayload) {")
     expect(i).toBeGreaterThan(0)
     const seg = w.slice(i, w.indexOf('} else {', i))
     expect(seg).toContain('staysFirst ? staysFirst + staysNs : staysNs + urdealLoaderHtml')
+    expect(seg).toContain("shouldRenderMobileFirstScreen(c.req.header('user-agent')) ? undefined : '/stays'")
   })
   it('CSS 먼저 적용 표면에 /stays (첫 화면 CSS 로 그린다)', () => {
     expect(cssFirstApplies('/stays', IPHONE)).toBe(true); expect(firstScreenApplies('/stays', IPHONE)).toBe(true)
-    expect(firstScreenApplies('/stays', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(false) // ⏳ 2026-11-09: PC 는 첫 화면 CSS 없음(로더-먼저 지연만)
+    expect(firstScreenApplies('/stays', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(true) // 🖥️ 2026-11-12 PC 도 서버 첫 화면 — 그리는 곳엔 CSS 도(교환권 상세 CLS 1.0 의 교훈)
+  })
+  it('🖥️ PC(pcPath) 면 상단 네비가 본문 앞 · 폰은 없음', () => {
+    const pc = buildStaysFirstScreen(SEED, LOADER, '2026-10-19', '2026-10-20', 2, '/stays')
+    expect(pc.indexOf('동네딜, 교환권, 상품 검색')).toBeGreaterThan(0)
+    expect(pc.indexOf('동네딜, 교환권, 상품 검색')).toBeLessThan(pc.indexOf(STAYS_LIST.bar))
+    expect(buildStaysFirstScreen(SEED, LOADER, '2026-10-19', '2026-10-20')).not.toContain('동네딜, 교환권, 상품 검색')
   })
 })
