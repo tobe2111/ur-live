@@ -58,14 +58,15 @@ export default function SellThisCard({ productId, price, sellerId, hideForOwner:
     // 비로그인이면 묻지 않는다 — 약정은 로그인한 소개자에게만 있다(묻으면 401).
     if (!getUserIdSync()) { setDeal(null); return }
     let alive = true
-    api.get(`/api/influencer-settlement/deal-for-seller/${id}`)
+    // 🤝💰 2026-11-11 — 이용권 번호도 보낸다: 에이전시가 맡은 이용권이면 그 에이전시의 소개비가 먼저다(결제와 같은 순서).
+    api.get(`/api/influencer-settlement/deal-for-seller/${id}?product_id=${productId}`)
       .then((r) => {
         const d = r.data?.data
         if (alive) setDeal(d?.active && Number(d.commission_pct) > 0 ? Number(d.commission_pct) : 0)
       })
       .catch(() => { if (alive) setDeal(0) })
     return () => { alive = false }
-  }, [sellerId, isOwner])
+  }, [sellerId, productId, isOwner])
 
   if (isOwner || !(productId > 0)) return null
 
