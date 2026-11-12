@@ -19,6 +19,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import { quietVt } from '@/lib/vt-quiet'
 import { Link, useNavigate } from 'react-router-dom'
 import { MapFoldIcon } from '@/components/icons/urdeal-icons'
 import { warmKakaoMapsAfterLoad, preconnectMapTiles } from './map-warmup'
@@ -60,7 +61,7 @@ export default function MapPill() {
     root.classList.add('ur-vt-map')
     const done = () => { root.classList.remove('ur-vt-map') }
     try {
-      doc.startViewTransition(() => { flushSync(() => navigate('/map')) }).finished.catch(() => {}).finally(done)
+      quietVt(doc.startViewTransition(() => { flushSync(() => navigate('/map')) })).finished.catch(() => {}).finally(done)
     } catch {
       done()
       navigate('/map')

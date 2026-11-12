@@ -14,6 +14,7 @@
  */
 import { flushSync } from 'react-dom'
 import { DEAL_HERO_VT } from './deal-vt-name'
+import { quietVt } from './vt-quiet'
 
 const HERO_WAIT_MS = 300
 
@@ -70,11 +71,11 @@ export function runDealTransition(cardImage: HTMLElement | null, go: () => void)
   const doc = document as VTDoc
   if (cardImage) cardImage.style.viewTransitionName = DEAL_HERO_VT
   try {
-    const vt = doc.startViewTransition!(async () => {
+    const vt = quietVt(doc.startViewTransition!(async () => {
       if (cardImage) cardImage.style.viewTransitionName = ''
       flushSync(go)
       await waitForHero()
-    })
+    }))
     vt.finished.catch(() => {}).finally(() => { if (cardImage) cardImage.style.viewTransitionName = '' })
   } catch {
     if (cardImage) cardImage.style.viewTransitionName = ''

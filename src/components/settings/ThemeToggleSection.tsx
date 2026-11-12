@@ -12,6 +12,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import { useTheme, type ThemeMode } from '@/shared/stores/useTheme'
 import { ROW_GEOM_CLS, ROW_LABEL_CLS } from '@/pages/user-profile/list-grammar'
 import { SettingsIcon } from '@/components/icons/urdeal-icons'
+import { quietVt } from '@/lib/vt-quiet'
 
 /**
  * 🎬 2026-11-03 18차 ② — 테마를 바꾸면 **누른 자리에서 새 색이 원으로 퍼지며** 화면 전체가 바뀐다.
@@ -28,7 +29,7 @@ export function revealTheme(e: { clientX: number; clientY: number }, apply: () =
   const root = document.documentElement
   root.classList.add('ur-vt-theme')
   if (!document.getElementById('ur-vt-theme-css')) document.head.appendChild(Object.assign(document.createElement('style'), { id: 'ur-vt-theme-css', textContent: 'html.ur-vt-theme::view-transition-old(root),html.ur-vt-theme::view-transition-new(root){animation:none;mix-blend-mode:normal}' }))
-  const vt = doc.startViewTransition(apply)
+  const vt = quietVt(doc.startViewTransition(apply))
   vt.ready.then(() => {
     root.animate({ clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] }, { duration: 520, easing: 'cubic-bezier(.4,0,.2,1)', pseudoElement: '::view-transition-new(root)' })
       .finished.finally(() => root.classList.remove('ur-vt-theme'))
