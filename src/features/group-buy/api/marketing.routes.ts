@@ -9,7 +9,7 @@ import type { Env } from '@/worker/types/env'
 import { requireSeller, requireAuth, optionalAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { findActiveDealPct } from '@/worker/utils/influencer-deal'
+import { dealPctForDisplay } from '@/features/agency-console/api/agency-influencer-deals' // 🤝💰 2026-11-11 표시도 결제와 같은 순서
 import { ensureInfluencerProfileTable, parseChannels, maxFollowers, parseJsonList } from '@/worker/utils/influencer-profile'
 import { intParam } from '@/shared/pagination'
 import { registerDiscoveryRoutes } from './marketing/discovery'
@@ -398,9 +398,9 @@ influencerApp.get('/deals', async (c) => {
   return c.json({ success: true, data: results || [] })
 })
 
-/** 🎁 표시 전용 — 이 이용권 상세에 "내 링크로 팔리면 N%" 를 띄울지. 조건은 결제 시점과 같은 SSOT. */
+/** 🎁 표시 전용 — 이 이용권 상세에 "내 링크로 팔리면 N%" 를 띄울지. 결제와 같은 순서(🤝 2026-11-11 `?product_id=` 면 에이전시 계약 먼저). */
 influencerApp.get('/deal-for-seller/:sellerId', async (c) => {
-  const pct = await findActiveDealPct(c.env.DB, Number(c.req.param('sellerId')), String((c.get('user') as AuthUser).id))
+  const pct = await dealPctForDisplay(c.env.DB, Number(c.req.param('sellerId')), Number(c.req.query('product_id')), String((c.get('user') as AuthUser).id))
   return c.json({ success: true, data: pct == null ? { active: false } : { active: true, commission_pct: pct } })
 })
 

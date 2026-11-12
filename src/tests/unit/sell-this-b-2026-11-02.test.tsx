@@ -45,7 +45,8 @@ describe('① 줄 오른쪽 값', () => {
     mockApi({ active: false })
     const { container } = render(<MemoryRouter><SellThisCard productId={2919} sellerId={26} /></MemoryRouter>)
     await waitFor(() => expect(get).toHaveBeenCalledWith('/api/seeding/offer/2919'))
-    expect(get, '로그아웃 상태에서 401 을 받을 요청을 보냈다').not.toHaveBeenCalledWith('/api/influencer-settlement/deal-for-seller/26')
+    // 2026-11-11 쿼리(?product_id=)가 붙어도 놓치지 않게 — 주소 앞부분으로 본다.
+    expect(get.mock.calls.some((c: unknown[]) => String(c[0]).startsWith('/api/influencer-settlement/deal-for-seller/')), '로그아웃 상태에서 401 을 받을 요청을 보냈다').toBe(false)
     expect(container.querySelector('[data-sell-value]')).toBeNull()
     expect(screen.getByText('이 이용권 팔기')).toBeTruthy()
   })
@@ -54,7 +55,7 @@ describe('① 줄 오른쪽 값', () => {
     localStorage.setItem('user_id', '3')
     mockApi({ active: true, commission_pct: 10 })
     render(<MemoryRouter><SellThisCard productId={2919} sellerId={26} /></MemoryRouter>)
-    expect(get).toHaveBeenCalledWith('/api/influencer-settlement/deal-for-seller/26')
+    expect(get).toHaveBeenCalledWith('/api/influencer-settlement/deal-for-seller/26?product_id=2919')
     await waitFor(() => expect(screen.getByText('딜 10%')).toBeTruthy())
   })
 
