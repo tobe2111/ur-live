@@ -161,6 +161,18 @@ affiliateRoutes.get('/stats', requireUser(), async (c) => {
 // ── GET /api/affiliate/funnel — 인플루언서 share 성과 funnel ──
 // 🛡️ 2026-05-15: 본인 share 링크 클릭 → 가입 → 첫 결제 funnel 시각화
 //   데이터: referral_commissions + point_transactions(type='referral_bonus')
+// 🧭 2026-11-12 내 링크로 산 결제 — 그중 유어쇼츠·다녀온 사람들을 보고 산 것(성과는 전부 나다 · order-touch.ts)
+affiliateRoutes.get('/touch', requireUser(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+  try {
+    const { loadMyLinkTouch } = await import('../../../worker/utils/order-touch')
+    return c.json({ success: true, data: await loadMyLinkTouch(c.env.DB, String(user.id), 30) })
+  } catch {
+    return c.json({ success: true, data: { days: 30, total: 0, urshorts: 0, content: 0, direct: 0 } })
+  }
+})
+
 affiliateRoutes.get('/funnel', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)

@@ -24,6 +24,7 @@ export function storeAffiliateRef(ref: string | null | undefined): void {
     const myId = localStorage.getItem('user_id')
     if (myId && myId === ref) return
     writeAffiliateRef(ref) // 마지막 링크 우선 — 덮어쓴다
+    syncAccountRef() // 🔗 2026-11-12 로그인 상태면 계정에도(다른 기기에서 사도 성과 — worker/utils/account-ref)
     // 📡 2026-07-13 (데이터 감사 2단계): 유입 클릭 이벤트 서버 발사 — 완결고리 '유입' 노드.
     //   전환 안 해도 인플루언서→방문자 유입이 서버에 보존(구매 전 유실 0). 같은 ref 는 1회만(dedup).
     fireInflowClick(ref)
@@ -96,6 +97,24 @@ export function captureLandingRef(pathname: string, ref: string | null | undefin
   else captureInflowRef(ref)
 }
 
+/**
+ * 🔗 2026-11-12 이 브라우저의 소개 링크(24시간 안)를 **계정**에도 남긴다 — 폰에서 링크를 누르고 PC 에서 사도 성과가 이어지게.
+ * 로그인했을 때만(`user_id` 가 있을 때). 같은 값·같은 시각은 한 번만 보낸다. 서버가 더 늦은 시각만 덮어쓴다(마지막 링크 우선).
+ */
+const ACCOUNT_REF_SENT_KEY = 'ur_account_ref_sent_v1'
+export function syncAccountRef(): void {
+  try {
+    if (!localStorage.getItem('user_id')) return
+    const cur = readAffiliateRef()
+    if (!cur) return
+    const sig = `${cur.ref}@${cur.at}`
+    if (localStorage.getItem(ACCOUNT_REF_SENT_KEY) === sig) return
+    void api.post('/api/acquisition/ref-touch', { ref: cur.ref, at: cur.at })
+      .then(() => { try { localStorage.setItem(ACCOUNT_REF_SENT_KEY, sig) } catch { /* quota */ } })
+      .catch(() => { /* best-effort — 다음 진입에 다시 */ })
+  } catch { /* noop */ }
+}
+
 export function captureInflowRef(ref: string | null | undefined): void {
   try {
     if (!ref || !/^\d{1,12}$/.test(ref)) return
@@ -147,6 +166,7 @@ function fireInflowClick(ref: string): void {
 export function bindInflowClicksIfLoggedIn(loggedIn: boolean): void {
   try {
     if (!loggedIn) return
+    syncAccountRef() // 🔗 2026-11-12 로그인 전에 누른 소개 링크를 계정에 옮긴다(24시간 안의 것만)
     // 이 브라우저가 `?ref=` 로 들어온 적이 없으면 묶을 것이 없다.
     const sent = localStorage.getItem(INFLOW_SENT_KEY)
     if (!sent) return

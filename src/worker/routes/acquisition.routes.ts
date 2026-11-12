@@ -74,6 +74,16 @@ acquisitionRoutes.post('/inflow/bind', rateLimit({ action: 'inflow_bind', max: 2
   return c.json({ success: true, data: { bound } })
 })
 
+// 🔗 2026-11-12 계정이 기억하는 마지막 소개 링크(다른 기기에서 산 결제도 소개 성과로) — 규칙은 utils/account-ref.
+acquisitionRoutes.post('/ref-touch', rateLimit({ action: 'ref_touch', max: 30, windowSec: 300 }), requireUser(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+  const body = await c.req.json<{ ref?: string; at?: number }>().catch(() => ({} as Record<string, never>))
+  const uid = await resolveUserIdString(c.env.DB, user.id, (user as { isDbId?: boolean }).isDbId)
+  const { recordAccountRef } = await import('../utils/account-ref')
+  return c.json({ success: true, data: { saved: await recordAccountRef(c.env.DB, uid, body.ref, body.at) } })
+})
+
 // 📣 2026-10-19 주간 SNS 리포트 — GitHub Actions 마케팅 봇이 읽는 UTM 집계(숫자만, 개인정보 없음).
 //   인증: `Authorization: Bearer <MARKETING_REPORT_TOKEN>` (Worker 시크릿 = Actions 시크릿 같은 값). 미설정이면 닫혀 있다(503).
 acquisitionRoutes.get('/utm-report', rateLimit({ action: 'acq_utm_report', max: 10, windowSec: 300 }), async (c) => {

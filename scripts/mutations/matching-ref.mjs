@@ -28,8 +28,9 @@ export default [
   {
     name: '🔗딜링크 /join 이 본문만 본다',
     file: GB,
-    find: "  const refRaw = pickGbRefSource(ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref'))",
-    replace: "  const refRaw = ref ? String(ref).trim() : ''",
+    // 🔗 2026-11-12 계정 기록(preferAccountRef)이 바깥을 감싼다 — 앵커를 안쪽 출처 고르기로.
+    find: "preferAccountRef(DB, userId, pickGbRefSource(ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref')))",
+    replace: "preferAccountRef(DB, userId, ref ? String(ref).trim() : '')",
     test: TEST,
     why: '딜 결제(이용권 딜 구매) 경로의 귀속이 다시 끊긴다.',
   },
@@ -44,8 +45,8 @@ export default [
   {
     name: '🔗딜링크 장바구니가 본문만 본다',
     file: CART,
-    find: "ref: await normalizeRef(DB, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref')), userId) || null,",
-    replace: 'ref: await normalizeRef(DB, body.ref, userId) || null,',
+    find: "ref: await normalizeRef(DB, await preferAccountRef(DB, userId, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref'))), userId) || null,",
+    replace: 'ref: await normalizeRef(DB, await preferAccountRef(DB, userId, body.ref), userId) || null,',
     test: TEST,
     why: '장바구니로 산 이용권만 딜 커미션이 빠진다(단건과 묶음이 다르게 정산).',
   },
