@@ -72,8 +72,23 @@ export async function loadTouchSummary(DB: D1Database, days: number) {
   const [buckets, influencerVia, topVideos] = await Promise.all([
     DB.prepare(`SELECT bucket, COUNT(*) n FROM order_touch WHERE created_at > datetime('now', ?) GROUP BY bucket`).bind(since).all<{ bucket: string; n: number }>(),
     DB.prepare(`SELECT COALESCE(via_kind, 'none') via, COUNT(*) n FROM order_touch WHERE bucket = 'influencer' AND created_at > datetime('now', ?) GROUP BY 1`).bind(since).all<{ via: string; n: number }>(),
-    DB.prepare(`SELECT via_id AS video_id, COUNT(*) n, SUM(bucket = 'influencer') via_influencer FROM order_touch
-        WHERE via_kind = 'urshorts' AND created_at > datetime('now', ?) GROUP BY via_id ORDER BY n DESC LIMIT 20`).bind(since).all<{ video_id: string; n: number; via_influencer: number }>(),
+    // 📮 2026-11-12 제휴 제안 근거(결재 2026-11-12-creator-content-no-revenue-share) — 누구 영상인지 같이 싣는다.
+    DB.prepare(`SELECT t.via_id AS video_id, COUNT(*) n, SUM(t.bucket = 'influencer') via_influencer,
+          MAX(s.title) title, MAX(s.channel) channel, MAX(p.restaurant_name) store
+        FROM order_touch t LEFT JOIN home_shorts s ON s.video_id = t.via_id LEFT JOIN products p ON p.id = s.product_id
+        WHERE t.via_kind = 'urshorts' AND t.created_at > datetime('now', ?) GROUP BY t.via_id ORDER BY n DESC LIMIT 20`)
+      .bind(since).all<{ video_id: string; n: number; via_influencer: number; title: string | null; channel: string | null; store: string | null }>(),
   ])
   return { days: d, buckets: buckets.results ?? [], influencer_via: influencerVia.results ?? [], top_videos: topVideos.results ?? [] }
+}
+
+/** 🧭 2026-11-12 인플루언서 본인 화면 — 내 링크로 산 결제(최근 N일)와, 그중 무엇을 보고 샀는지. 남의 ref 는 못 본다(호출부가 본인 id 만 넘긴다). */
+export async function loadMyLinkTouch(DB: D1Database, refId: string, days = 30) {
+  await ensureOrderTouchTable(DB)
+  const d = Math.max(1, Math.min(365, Math.floor(days) || 30))
+  const rows = await DB.prepare(`SELECT COALESCE(via_kind, 'none') via, COUNT(*) n FROM order_touch
+      WHERE ref = ? AND created_at > datetime('now', ?) GROUP BY 1`).bind(String(refId), `-${d} days`).all<{ via: string; n: number }>()
+  const by = Object.fromEntries((rows.results ?? []).map((r) => [r.via, Number(r.n) || 0])) as Record<string, number>
+  const urshorts = by.urshorts ?? 0, content = by.content ?? 0, direct = by.none ?? 0
+  return { days: d, total: urshorts + content + direct, urshorts, content, direct }
 }

@@ -31,6 +31,7 @@ import { getCommissionRates } from './commission-rates'
 import { getSellerCommissionRate, generateUniqueVoucherCodes, applyGroupBuyReferral } from './helpers'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { resolveGbOrderNumber, guardAwaitingDeposit, pickGbRefSource, isSelfReferral } from './gb-purchase-guards'
+import { preferAccountRef } from '../../../worker/utils/account-ref' // 🔗 2026-11-12 다른 기기에서 산 결제도 소개 성과로
 import { resolvePartialDealPlan, derivePartialDeal, spendPartialDeal, recordOrderDealUsed, restorePartialDeal } from './partial-deal'
 import { notifySellerVoucherSale } from './seller-sale-notify'
 import { normalizeCartLines, priceCartLines, cartOrderName, type PricedLine } from './cart-lines'
@@ -110,7 +111,7 @@ cartCheckoutRoutes.post('/cart/init', rateLimit({ action: 'gb_cart_init', max: 1
       clientKey: tossKey,
       flow,
       items: priced.lines.map(l => ({ productId: l.productId, qty: l.qty, unitPrice: l.unitPrice, subtotal: l.subtotal, name: l.name })),
-      ref: await normalizeRef(DB, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref')), userId) || null, // 🔗 딜 링크 귀속 — 단건과 같은 출처
+      ref: await normalizeRef(DB, await preferAccountRef(DB, userId, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref'))), userId) || null, // 🔗 딜 링크 귀속 — 단건과 같은 출처
     },
   })
 })
@@ -152,7 +153,7 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
 
   // 🧭 2026-11-11 결제 완료 주소(`?cart=1`)에는 ref 가 없다 — 본문만 보면 장바구니 카드 결제는 **늘 무귀속**이었다.
   //    단건 확정(`/confirm-toss`)·준비(`/cart/init`)와 같은 출처(본문→헤더→쿠키)로 읽는다.
-  const referralInfluencerId = await normalizeRef(DB, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref')), userId)
+  const referralInfluencerId = await normalizeRef(DB, await preferAccountRef(DB, userId, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref'))), userId)
 
   // ── Toss 승인 (SSOT helper 호출만 — helper 자체는 무수정) ────────────────────
   const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')

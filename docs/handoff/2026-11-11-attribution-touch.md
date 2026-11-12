@@ -35,3 +35,11 @@
   `consumer-settings-once-2026-11-12.test.ts` + 주입 2 · 기존 시험 2건·주입 1건 재조준.
 - 🩸 주입 전수를 한글 필터로 돌려 끊었더니 잠금 파일 `VouchersPage.tsx` 에 주입분이 남았다 — `git checkout` 으로 되돌림.
   **`--only` 는 영문 이름으로만**(한글은 셸에서 `???` 로 깨져 전수가 된다).
+
+## 2026-11-12 ②③⑤ (대표 *"모두 확인해봐 계속 진행"*)
+- ② 다른 기기: `worker/utils/account-ref.ts`(`user_ref_touch`) + `POST /api/acquisition/ref-touch`(로그인 필수) +
+  클라 `syncAccountRef`(링크 저장 때 · 로그인 때). 결제 4곳이 `preferAccountRef` 로 계정 기록을 먼저 본다. 결재 `2026-11-12-account-ref-cross-device`.
+  ⚠️ 못 하는 것: 로그인 없이 두 기기를 쓰는 손님 · 교환권(points)·숙소 결제 경로는 이번 범위 밖(이용권·장바구니만).
+- ③ 인플루언서 본인 `/user/affiliate` '내 링크로 산 결제'(0건이면 안 그림) ← `GET /api/affiliate/touch`.
+- ⑤ 어드민 집계 `top_videos` 에 제목·채널·가게. 제안 문안·규칙 `docs/business/outreach/README.md` §4-4.
+- 가드: `account-ref-2026-11-12.test.ts` 5 + 주입 5 · attribution 시험 확장(주입 8) · 관련 시험 490 통과.

@@ -10,6 +10,7 @@ import { useAffiliateStats, useAffiliateTopGroups, useAffiliateFunnel } from '@/
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import MyLinkSales from './affiliate/MyLinkSales'
 
 export default function AffiliatePage() {
   const { t } = useTranslation()
@@ -152,6 +153,9 @@ export default function AffiliatePage() {
               ))}
             </div>
           </div>
+
+          {/* 🧭 2026-11-12 내 링크로 산 결제 — 무엇을 보고 샀나(0건이면 안 그림) */}
+          <MyLinkSales />
 
           {/* 🛡️ 2026-05-15: 인플루언서 funnel — 카테고리별 분포 + 일별 추이 */}
           <FunnelStats />

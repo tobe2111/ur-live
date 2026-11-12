@@ -35,6 +35,7 @@ import { notifySellerVoucherSale } from './seller-sale-notify' // 📣 판매 �
 import { getVoucherShortLabel, VOUCHER_CATEGORY_SQL_IN } from '@/shared/constants/voucher-categories'
 // 🎟️ 2026-08-12 (소비자 공구 결제 결함 3건): 자기참여 판정·주문번호·가상계좌 가드 → gb-purchase-guards.ts
 import { isVoucherDealPaymentAllowed, groupBuyJoinBlockReason, isSelfOwnedGroupBuy, isSelfReferral, pickGbRefSource, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
+import { preferAccountRef } from '../../../worker/utils/account-ref' // 🔗 2026-11-12 다른 기기에서 산 결제도 소개 성과로
 import { resolvePartialDealPlan, derivePartialDeal, spendPartialDeal, recordOrderDealUsed, restorePartialDeal } from './partial-deal'
 import { findActiveDealPct } from '@/worker/utils/influencer-deal'
 // 🧺 2026-09-15 이용권 장바구니 결제(`/cart/init`·`/cart/confirm-toss`, 게이트 `voucher_cart_enabled` 기본 OFF)
@@ -111,7 +112,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   }
   // 🛡️ 2026-05-16: ref = 소개 파트너 ID (?ref= 진입 또는 본문). 형식 검증.
   // 🛡️ 2026-05-21 Phase D-3: 자기 자신 attribution 차단 (셀러가 본인 링크로 매출 인플레이션).
-  const refRaw = pickGbRefSource(ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref')) // 🔗 딜 링크 귀속(본문→헤더→쿠키) — 사유는 gb-purchase-guards
+  const refRaw = await preferAccountRef(DB, userId, pickGbRefSource(ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref'))) // 🔗 계정의 마지막 소개(기기 무관 · account-ref) → 본문→헤더→쿠키 — 사유는 gb-purchase-guards
   let referralInfluencerId = refRaw && /^[a-zA-Z0-9_\-:]{1,64}$/.test(refRaw) ? refRaw : ''
   if (referralInfluencerId && await isSelfReferral(DB, referralInfluencerId, userId)) {
     referralInfluencerId = ''  // 본인(users.id 또는 연결 sellers.id, 2026-09-02) → 귀속만 버림. 근거: gb-purchase-guards
@@ -1090,7 +1091,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
   // 🛡️ 2026-05-31: 카드 결제 referral 추출 (딜 /join 과 동일 검증) — 인플 attribution 용.
-  const refRaw = pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref')) // 🔗 /join 과 같은 출처 · 같은 자기귀속 판정
+  const refRaw = await preferAccountRef(DB, userId, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref'))) // 🔗 /join 과 같은 출처 · 같은 자기귀속 판정
   let referralInfluencerId = refRaw && /^[a-zA-Z0-9_\-:]{1,64}$/.test(refRaw) ? refRaw : ''
   if (referralInfluencerId && await isSelfReferral(DB, referralInfluencerId, userId)) referralInfluencerId = ''
   if (referralInfluencerId) {

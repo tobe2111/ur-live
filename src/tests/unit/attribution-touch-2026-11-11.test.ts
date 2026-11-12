@@ -18,7 +18,7 @@ const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) a
 import { captureLandingRef, isConsumerLandingPath } from '@/utils/affiliate-track'
 import { readAffiliateRef } from '@/utils/affiliate-ref-store'
 import { writeTouch, readTouch, TOUCH_TTL_MS } from '@/utils/touch-store'
-import { touchBucket, parseVia, recordOrderTouch, loadTouchSummary } from '@/worker/utils/order-touch'
+import { touchBucket, parseVia, recordOrderTouch, loadTouchSummary, loadMyLinkTouch } from '@/worker/utils/order-touch'
 
 const read = (p: string) => readFileSync(p, 'utf8')
 beforeEach(() => localStorage.clear())
@@ -47,7 +47,7 @@ describe('A. 소개 링크 — 어느 손님 화면으로 들어와도', () => {
 describe('B. 장바구니 카드 확정', () => {
   it('본문 → 헤더 → 쿠키 순으로 소개 링크를 읽는다', () => {
     expect(read('src/features/group-buy/api/cart-checkout.routes.ts'))
-      .toContain("const referralInfluencerId = await normalizeRef(DB, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref')), userId)")
+      .toContain("const referralInfluencerId = await normalizeRef(DB, await preferAccountRef(DB, userId, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref'))), userId)")
   })
 })
 
@@ -100,6 +100,10 @@ function makeD1() {
 describe('D. 주문마다 한 줄', () => {
   it('두 번 와도 한 줄 · 갈래가 같이 적힌다 · 집계가 센다', async () => {
     const { db, D1 } = makeD1()
+    db.prepare(`CREATE TABLE home_shorts (video_id TEXT, title TEXT, channel TEXT, product_id INTEGER)`).run()
+    db.prepare(`CREATE TABLE products (id INTEGER, restaurant_name TEXT)`).run()
+    db.prepare(`INSERT INTO home_shorts VALUES ('abcdefghijk', '달빛한스푼 후기', '맛집채널', 9)`).run()
+    db.prepare(`INSERT INTO products VALUES (9, '달빛한스푼')`).run()
     await recordOrderTouch(D1, { orderRef: 'GB-1', userId: 5, productId: 9, ref: '777', viaRaw: 'urshorts:abcdefghijk' })
     await recordOrderTouch(D1, { orderRef: 'GB-1', userId: 5, productId: 9, ref: null, viaRaw: null })
     await recordOrderTouch(D1, { orderRef: 'GB-2', userId: 6, productId: 9, ref: null, viaRaw: 'urshorts:abcdefghijk' })
@@ -111,8 +115,20 @@ describe('D. 주문마다 한 줄', () => {
       { order_ref: 'GB-3', bucket: 'direct', via_kind: null },
     ])
     const s = await loadTouchSummary(D1, 30)
-    expect(s.top_videos).toEqual([{ video_id: 'abcdefghijk', n: 2, via_influencer: 1 }])
+    // 📮 2026-11-12 제휴 제안 근거 — 누구 영상·어느 가게인지 같이 온다
+    expect(s.top_videos).toEqual([{ video_id: 'abcdefghijk', n: 2, via_influencer: 1, title: '달빛한스푼 후기', channel: '맛집채널', store: '달빛한스푼' }])
     expect(s.influencer_via).toEqual([{ via: 'urshorts', n: 1 }])
+  })
+  it('③ 인플루언서 본인 화면 — 내 링크로 산 결제와 무엇을 보고 샀나(남의 링크는 안 센다)', async () => {
+    const { D1 } = makeD1()
+    await recordOrderTouch(D1, { orderRef: 'A', userId: 1, ref: '777', viaRaw: 'urshorts:abcdefghijk' })
+    await recordOrderTouch(D1, { orderRef: 'B', userId: 2, ref: '777', viaRaw: 'content:c:3' })
+    await recordOrderTouch(D1, { orderRef: 'C', userId: 3, ref: '777', viaRaw: null })
+    await recordOrderTouch(D1, { orderRef: 'D', userId: 4, ref: '888', viaRaw: 'urshorts:abcdefghijk' })
+    expect(await loadMyLinkTouch(D1, '777')).toEqual({ days: 30, total: 3, urshorts: 1, content: 1, direct: 1 })
+    expect(read('src/features/affiliate/api/affiliate.routes.ts')).toContain("loadMyLinkTouch(c.env.DB, String(user.id), 30)")
+    expect(read('src/pages/AffiliatePage.tsx')).toContain('<MyLinkSales />')
+    expect(read('src/pages/affiliate/MyLinkSales.tsx')).toContain('if (!data || data.total <= 0) return null')
   })
   it('결제 세 곳(딜 · 카드 · 장바구니)이 모두 적는다', () => {
     const gb = read('src/features/group-buy/api/group-buy.routes.ts')
