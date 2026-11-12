@@ -41,6 +41,7 @@
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
 import { getVoucherShortLabel } from '../../shared/constants/voucher-categories'
 import { buildDetailNoscript } from './crawler-noscript'
+import { pcTopNavBlockHtml } from './pc-topnav-first-screen'
 
 function escAttr(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -94,7 +95,12 @@ interface VoucherSeed {
  * @param ssrPayload `__SSR_INITIAL_DETAIL__` 원문
  * @param loaderHtml 기존 URDEAL 로더(첫 화면 **아래**에 붙는다 — 아직 오는 중이라는 정직한 신호)
  */
-export function buildVoucherDetailFirstScreen(ssrPayload: string, loaderHtml: string): string {
+/**
+ * @param pcPath 데스크톱 요청이면 그 pathname(`/vouchers/123`). 🖥️ 2026-11-12 PC 실측 CLS 0.33 — 앱의 `DesktopTopNav`(풀너비 표면,
+ *   68+1+44px)가 `#root` 맨 위에 서는데 서버 그림엔 그 자리가 없어 마운트 때 본문 전체가 114px 내려갔다. PC 면 같은 네비를 먼저 그린다.
+ *   폰(`undefined`)은 종전 그대로.
+ */
+export function buildVoucherDetailFirstScreen(ssrPayload: string, loaderHtml: string, pcPath?: string): string {
   try {
     const d = (JSON.parse(ssrPayload) as { data?: VoucherSeed })?.data
     if (!d || !d.name) return ''
@@ -130,6 +136,7 @@ export function buildVoucherDetailFirstScreen(ssrPayload: string, loaderHtml: st
     //   그 장치는 경로를 안 가리므로 id 만 같으면 이 화면에도 그대로 적용된다.
     return (
       `<div id="ur-first-screen" class="${VOUCHER_FS_CLASS.root}">` +
+        (pcPath ? pcTopNavBlockHtml(pcPath) : '') +
         `<div class="${VOUCHER_FS_CLASS.barOuter}"><div class="${VOUCHER_FS_CLASS.barInner}"></div></div>` +
         `<div class="${VOUCHER_FS_CLASS.shell}">${photo}${info}</div>` +
         buildDetailNoscript(d) +

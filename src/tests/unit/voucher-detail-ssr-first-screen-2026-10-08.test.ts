@@ -137,7 +137,9 @@ describe('교환권 상세 — 서버가 그리는 첫 화면', () => {
     const vAt = worker.indexOf("ssrSlot === 'DETAIL' && ssrPayload && url.pathname.startsWith('/vouchers/')")
     expect(passAt, '이용권 상세 분기를 못 찾았다').toBeGreaterThan(0)
     expect(vAt, '교환권 상세 분기가 배선되지 않았다').toBeGreaterThan(passAt)
-    expect(worker).toContain('buildVoucherDetailFirstScreen(ssrPayload, urdealLoaderHtml)')
+    expect(worker).toContain('buildVoucherDetailFirstScreen(ssrPayload, urdealLoaderHtml')
+    // 🖥️ 2026-11-12 PC 는 상단 네비를 먼저 그린다 — 폰(첫 화면 UA)은 undefined 로 종전 그대로.
+    expect(worker).toContain("shouldRenderMobileFirstScreen(c.req.header('user-agent')) ? undefined : url.pathname)")
     // 실패하면 로더로 — 이 `||` 가 빠지면 빈 화면이 된다.
     expect(worker).toContain('voucherFirst || urdealLoaderHtml')
   })

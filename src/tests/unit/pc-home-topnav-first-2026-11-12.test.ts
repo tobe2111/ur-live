@@ -9,11 +9,12 @@
 import { describe, it, expect } from 'vitest'
 import { readRaw } from '../helpers/source-text'
 import { PC_TOPNAV_CLS, PC_TOPNAV_SERVICES, PC_TOPNAV_SEARCH_PLACEHOLDER } from '@/shared/pc-topnav-first'
-import { pcTopNavRowsHtml, buildPcHomeFirstScreen } from '@/worker/utils/pc-home-first-screen'
+import { buildPcHomeFirstScreen } from '@/worker/utils/pc-home-first-screen'
+import { pcTopNavRowsHtml } from '@/worker/utils/pc-topnav-first-screen'
 import { DEAL_CAT_LABELS } from '@/shared/deal-cats'
 
 const NAV = readRaw('src/components/main/DesktopTopNav.tsx')
-const [row1, row2] = pcTopNavRowsHtml().split('\u0000')
+const [row1, row2] = pcTopNavRowsHtml('/').split('\u0000')
 
 describe('① 클래스가 앱 헤더와 같다', () => {
   for (const [k, v] of Object.entries(PC_TOPNAV_CLS)) it(k, () => expect(NAV).toContain(v))

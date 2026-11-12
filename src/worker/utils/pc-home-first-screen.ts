@@ -22,9 +22,7 @@ import { resolveBannerLink } from '../../components/home/banner-link'
 import { PC_HOME_FS as F, PC_HERO_IMG, pcHeroBannersFromPayload, type PcHeroBanner } from '../../shared/pc-home-first-screen'
 import { escAttr, escText, cardHtml, type SectionsSeed } from './home-first-screen'
 import { PC_SECTION_CLS as SC, PC_SECTION_MAX_CARDS } from '../../shared/pc-home-first-screen'
-import { PC_TOPNAV_CLS as TN, PC_TOPNAV_SERVICES, PC_TOPNAV_SEARCH_PLACEHOLDER } from '../../shared/pc-topnav-first'
-import { DEAL_CAT_LABELS } from '../../shared/deal-cats'
-import { HOME_TOP_LOGO } from './home-top-markup'
+import { pcTopNavRowsHtml } from './pc-topnav-first-screen'
 import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_LG } from '../../shared/home-card-image'
 import { isHomeVisibleProduct } from '../../shared/deal-cats'
 import { resolveSectionMoreHref, isDeadEndHref } from '../../components/home/section-more-href'
@@ -78,25 +76,6 @@ export function pcFirstSectionHtml(sectionsSeedJson: string | null | undefined):
   return `<section class="${SC.panel}">${head}<div class="${SC.railWrap}"><div class="${SC.rail}">${cards}</div></div></section>`
 }
 
-/** `<UrDealLogo size={20} />` — 폰 머리의 17px 판(HOME_TOP_LOGO)과 같은 마크업에서 크기만 바꾼다(점 = 0.18·0.08 비율). */
-const PC_LOGO = HOME_TOP_LOGO.replace('font-size:17px', 'font-size:20px').replace('width:3.06px;height:3.06px', 'width:3.6px;height:3.6px').replace('margin-left:1.36px', 'margin-left:1.6px')
-const SEARCH_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>'
-
-/** 🖥️ 2026-11-12 상단 네비 두 줄(홈 · 전체가 켜진 상태). 아이콘은 같은 크기 빈 칸 — 앱이 헤더를 바꿀 때 글자가 옆으로 튀지 않게. */
-export function pcTopNavRowsHtml(): string {
-  const item = (label: string, href: string, on: boolean) =>
-    `<a href="${escAttr(href)}" class="${TN.itemBase} ${on ? TN.itemOn : TN.itemOff}"><span class="w-4 h-4" aria-hidden="true"></span>${escText(label)}` +
-    (on ? `<span aria-hidden="true" class="${TN.dot}"></span>` : '') + '</a>'
-  const services = PC_TOPNAV_SERVICES.map((x) => item(x.label, x.path, x.path === '/')).join('')
-  const cats = DEAL_CAT_LABELS.map(({ key, label }) => item(label, key === 'home_voucher' ? '/life' : key === 'all' ? '/' : `/?category=${key}`, key === 'all')).join('')
-  const row1 = `<div class="${TN.row1}"><a href="/" class="${TN.logoLink}">${PC_LOGO}</a>` +
-    `<form action="/search" method="get" class="${TN.searchForm}"><div class="relative"><span class="${TN.searchIcon}" aria-hidden="true">${SEARCH_SVG}</span>` +
-    `<input type="search" name="q" placeholder="${escAttr(PC_TOPNAV_SEARCH_PLACEHOLDER)}" class="${TN.searchInput}">` +
-    `<button type="submit" aria-label="검색" class="${TN.searchBtn}">${SEARCH_SVG}</button></div></form><div class="${TN.right}"></div></div>`
-  const row2 = `<div class="${TN.row2Wrap}"><div class="${TN.row2Inner}"><nav aria-label="카테고리" class="${TN.row2Nav}">${services}<span aria-hidden="true" class="${TN.sep}"></span>${cats}</nav></div></div>`
-  return row1 + '\u0000' + row2
-}
-
 export function buildPcHomeFirstScreen(bannersPayload: string | null | undefined, loaderHtml: string, sectionsSeedJson?: string | null): string {
   const banners = pcHeroBannersFromPayload(bannersPayload)
   if (banners.length === 0) return ''
@@ -107,7 +86,7 @@ export function buildPcHomeFirstScreen(bannersPayload: string | null | undefined
     (side.length ? `<div class="${F.sideGrid} ${side.length === 2 ? F.sideRows2 : F.sideRows1}">` +
       side.map((k) => `<div class="${F.sideCell}">${slideHtml(banners[k % n], false)}</div>`).join('') + '</div>' : '') +
     '</section>'
-  const [navRow1, navRow2] = pcTopNavRowsHtml().split('\u0000')
+  const [navRow1, navRow2] = pcTopNavRowsHtml('/').split('\u0000')
   const body = `<div class="hidden md:block">` +
     `<div class="${F.topnav}"><div class="${F.topnavRow1}">${navRow1}</div><div class="${F.topnavRow2}">${navRow2}</div></div>` +
     `<div class="${F.field}"><div class="${F.container}">${section}${pcFirstSectionHtml(sectionsSeedJson)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}</div></div>` +
