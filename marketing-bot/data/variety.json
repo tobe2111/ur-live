@@ -263,5 +263,38 @@
     "track": "merchant",
     "series": "owner-note",
     "date_kst": "2026-11-11"
+  },
+  {
+    "id": "17991431982094207",
+    "platform": "instagram",
+    "track": "consumer",
+    "topic": "오늘의 딜 상품을 운영자 입장에서 솔직하게 소개(왜 골랐는지, 어떤 상황에 좋은지)",
+    "hook": "why",
+    "media_set": "gen-2026-11-12-consumer",
+    "series": "deal-pick",
+    "date_kst": "2026-11-12",
+    "photo": "https://pixabay.com/get/g1830c41e6f7e1e14758aae6fcf422ed1671fc8094206656e6df7c2a38e90c5bc194beb3226751a87b2214dfac3b7945ec7d3feaf3164dc935dce654cb86da7ec_1280.jpg",
+    "format": "2",
+    "slot": "19:30",
+    "media": "carousel"
+  },
+  {
+    "id": "18056140196589620",
+    "platform": "instagram_story",
+    "track": "consumer",
+    "series": "deal-pick",
+    "date_kst": "2026-11-12"
+  },
+  {
+    "id": "18019355702747606",
+    "platform": "threads",
+    "track": "consumer",
+    "hook": "why",
+    "series": "deal-pick",
+    "date_kst": "2026-11-12",
+    "len": "2",
+    "slot": "19:30",
+    "media": "image",
+    "topic_tag": "동네맛집"
   }
 ]
