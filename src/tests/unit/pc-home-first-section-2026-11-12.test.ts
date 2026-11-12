@@ -34,7 +34,10 @@ describe('PC 홈 첫 섹션', () => {
     expect(html).toContain('많이 산 순')
     expect(html).toContain('>더보기</a>')
     expect(html.match(/<a href="\/pass\//g)?.length).toBe(5)
-    expect(html).toContain(`width=${HOME_CARD_IMG_WIDTH_LG}`)
+    // 대표 주소(src)가 4열 폭이어야 한다 — srcset 의 2배 후보에도 400 이 섞이므로 src 만 본다
+    const srcs = [...html.matchAll(/<img src="([^"]+)"/g)].map((m) => m[1])
+    expect(srcs.length).toBe(5)
+    for (const u of srcs) expect(u, u).toContain(`width=${HOME_CARD_IMG_WIDTH_LG},`)
   })
   it('③ near 첫째 · 시드 없음 · 깨진 시드 · 빈 섹션이면 빈 문자열', () => {
     expect(pcFirstSectionHtml(seed({ near: true }))).toBe('')
