@@ -28,7 +28,7 @@ export default [
   {
     name: '🖥️ 네비 높이 예약을 뺀다(마운트 때 배너가 114px 내려간다)',
     file: 'src/worker/utils/pc-home-first-screen.ts',
-    find: '`<div class="${F.topnav}"><div class="${F.topnavRow1}"></div><div class="${F.topnavRow2}"></div></div>` +',
+    find: '`<div class="${F.topnav}"><div class="${F.topnavRow1}">${navRow1}</div><div class="${F.topnavRow2}">${navRow2}</div></div>` +',
     replace: '',
     test: T,
     why: 'DesktopTopNav 는 첫 렌더에 68+1+44 를 차지한다 — 서버가 그 자리를 비워 두지 않으면 배너가 그만큼 민다.',

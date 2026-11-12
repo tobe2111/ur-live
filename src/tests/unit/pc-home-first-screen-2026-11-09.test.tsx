@@ -57,7 +57,8 @@ describe('① 같은 사진 주소 · ② 같은 클래스', () => {
     expect(server.querySelector('strong')!.textContent).toBe('커피·편의점 교환권, 딜로 바로')
   })
   it('③ 네비 높이 예약(68 + 경계선 + 44) 과 색면·컨테이너 — PcHomePage·DesktopTopNav 의 클래스와 같다', () => {
-    expect(html).toContain(`<div class="${PC_HOME_FS.topnav}"><div class="${PC_HOME_FS.topnavRow1}"></div><div class="${PC_HOME_FS.topnavRow2}"></div></div>`)
+    expect(html).toContain(`<div class="${PC_HOME_FS.topnav}"><div class="${PC_HOME_FS.topnavRow1}">`)
+    expect(html).toContain(`<div class="${PC_HOME_FS.topnavRow2}">`) // 2026-11-12 — 안이 채워졌다(pc-home-topnav-first 시험)
     expect(html).toContain(`<div class="${PC_HOME_FS.field}"><div class="${PC_HOME_FS.container}">`)
     const nav = readRaw('src/components/main/DesktopTopNav.tsx')
     expect(nav).toContain("'flex items-center gap-3 h-[68px] max-w-[1440px] mx-auto w-full px-5 lg:px-8'")
