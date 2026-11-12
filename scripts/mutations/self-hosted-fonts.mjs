@@ -93,8 +93,8 @@ export default [
   {
     name: '🔤 처음 오는 PC 가 load 전에 Pretendard 시트를 넣는다 (load 지연)',
     file: 'index.html',
-    find: "var done=0;\nfunction warm(n)",
-    replace: "var done=0;document.head.appendChild(l);l.media='print';\nfunction warm(n)",
+    find: "var done=0;\nfunction flip(ok)",
+    replace: "var done=0;document.head.appendChild(l);l.media='print';\nfunction flip(ok)",
     test: 'src/tests/unit/self-hosted-fonts-2026-10-12.test.ts',
     why: '2026-10-26 실측 — 느린 4G 에서 시트 60KB 가 load 를 약 0.3초 늦췄다(에러 0).',
   },

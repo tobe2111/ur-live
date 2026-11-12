@@ -484,6 +484,9 @@ p['catch'](function(){});window.__urStaysEarly={qs:q,p:p}})()</script>
            2026-10-26 실측: 일찍 넣으면 느린 4G 에서 load 가 약 0.3초 늦었다) 화면 글자에 필요한 조각만 미리 받아 **한 번에** 켠다
            (조각 하나 도착할 때마다 문서 전체를 다시 배치하던 2026-10-13 문제를 그대로 피한다 — 그때 만든 장치를 되살렸다).
            ⇒ 첫 방문 PC 에서만 화면이 뜬 0.5~1초 뒤 글자 모양이 한 번 바뀐다(줄 높이는 line-height 고정이라 그대로).
+         · 🔤 2026-11-12 [UNLOCK_LOADING] (대표 *"4 하자"* — PC 블로그 글 실측 CLS 0.15, 글꼴을 막으면 0): 처음 오는 PC 에서는
+           **켜지 않는다.** 화면 글자에 필요한 조각만 뒤에서 받아 두고(전부 받아지면 `ur_font_warm=1`), 다음 방문부터 처음부터 켠다.
+           ⇒ 읽는 도중 글자 폭이 바뀌어 줄이 다시 감기는 일(밀림) 0. 대가: 첫 방문 내내 기기 글꼴(맑은 고딕).
          · 판정은 창 폭이 아니라 **기기 종류**다 — 2026-10-26 대표 스크린샷에서 개발자 도구로 창이 좁아진 PC 가
            폭 기준 규칙을 놓쳤다. -->
     <script id="ur-pret-loader">(function(){try{var ua=navigator.userAgent||'';if(!/Windows NT|CrOS|X11/.test(ua)||/Android|Mobi/.test(ua))return;
@@ -491,13 +494,12 @@ var l=document.createElement('link');l.rel='stylesheet';l.id='ur-font-css';l.hre
 var warmNow=0;try{warmNow=localStorage.getItem('ur_font_warm')==='1'}catch(e){}
 if(warmNow){document.head.appendChild(l);return}
 var done=0;
-function warm(n){try{document.fonts.load('16px "Pretendard Variable"','가').then(function(f){if(f&&f.length){try{localStorage.setItem('ur_font_warm','1')}catch(e){}}else if(n<8)setTimeout(function(){warm(n+1)},1000)},function(){if(n<8)setTimeout(function(){warm(n+1)},1000)})}catch(e){}}
-function flip(){if(done>1)return;done=2;l.media='all';setTimeout(function(){warm(0)},0)}
+function flip(ok){if(done>1)return;done=2;if(ok){try{localStorage.setItem('ur_font_warm','1')}catch(e){}}}
 function hit(ur,cs){var p=ur.split(',');for(var i=0;i<p.length;i++){var m=/U\+([0-9A-F]+)(?:-([0-9A-F]+))?/i.exec(p[i]);if(!m)continue;var a=parseInt(m[1],16),b=m[2]?parseInt(m[2],16):a,lo=0,hi=cs.length;while(lo<hi){var md=(lo+hi)>>1;if(cs[md]<a)lo=md+1;else hi=md}if(lo<cs.length&&cs[lo]<=b)return 1}return 0}
 function on(){if(done)return;done=1;try{var rs=l.sheet&&l.sheet.cssRules,t=(document.body&&document.body.textContent)||'',sn={},cs=[],u=[];for(var i=0;i<t.length;i++){var cc=t.charCodeAt(i);if(!sn[cc]){sn[cc]=1;cs.push(cc)}}cs.sort(function(a,b){return a-b});
 for(var j=0;rs&&j<rs.length;j++){var r=rs[j];if(!r.style||r.type!==5)continue;var m=/url\(["']?([^"')]+\.woff2)/.exec(r.style.getPropertyValue('src'));if(m&&hit(r.style.getPropertyValue('unicode-range'),cs)){var h=m[1];try{h=new URL(h,l.href).href}catch(e){}u.push(h)}}
-var k=u.length,c=0;if(!k)return flip();function end(){if(++c>=k)flip()}for(var q=0;q<k;q++){var x=document.createElement('link');x.rel='preload';x.as='font';x.type='font/woff2';x.crossOrigin='anonymous';x.href=u[q];x.onload=x.onerror=end;document.head.appendChild(x)}setTimeout(flip,8000)}catch(e){flip()}}
-function go(){if(l.parentNode)return;l.media='print';l.onload=on;l.onerror=flip;document.head.appendChild(l);setTimeout(on,4000)}
+var k=u.length,c=0,okc=0;if(!k)return flip(false);function end(){if(++c>=k)flip(okc>=k)}for(var q=0;q<k;q++){var x=document.createElement('link');x.rel='preload';x.as='font';x.type='font/woff2';x.crossOrigin='anonymous';x.href=u[q];x.onload=function(){okc++;end()};x.onerror=end;document.head.appendChild(x)}setTimeout(function(){flip(false)},8000)}catch(e){flip(false)}}
+function go(){if(l.parentNode)return;l.media='print';l.onload=on;l.onerror=function(){flip(false)};document.head.appendChild(l);setTimeout(on,4000)}
 function idle(){(window.requestIdleCallback||function(f){setTimeout(f,1)})(go,{timeout:2000})}
 if(document.readyState==='complete')idle();else addEventListener('load',idle,{once:true});setTimeout(go,12000)}catch(e){}})()</script>
 
