@@ -14,11 +14,12 @@ const SRC = readFileSync('public/shell-sw.js', 'utf8')
 const ORIGIN = 'https://urdeal.kr'
 
 type Listener = (e: { waitUntil: (p: Promise<unknown>) => void }) => void
-function boot(windows: string[], opts: { cached?: string[]; fetchFails?: boolean } = {}) {
+function boot(windows: string[], opts: { cached?: string[]; fetchFails?: boolean; fetchHangs?: boolean } = {}) {
   const listeners: Record<string, Listener> = {}
   const store = new Map<string, unknown>()
   for (const k of opts.cached || []) store.set(k, { ok: true })
   const fetched: string[] = []
+  const signals: (AbortSignal | undefined)[] = []
   const cache = {
     match: async (req: { url: string } | string) => store.get(typeof req === 'string' ? req : req.url) ?? undefined,
     put: async (req: { url: string } | string, res: unknown) => { store.set(typeof req === 'string' ? req : req.url, res) },
@@ -32,8 +33,9 @@ function boot(windows: string[], opts: { cached?: string[]; fetchFails?: boolean
     registration: {},
   }
   const caches = { open: async () => cache, keys: async () => [], delete: async () => true }
-  const fetchFn = async (url: string) => {
+  const fetchFn = async (url: string, init?: { signal?: AbortSignal }) => {
     fetched.push(url)
+    if (opts.fetchHangs) { signals.push(init?.signal); return new Promise(() => {}) }
     if (opts.fetchFails) throw new Error('offline')
     return { status: 200, redirected: false, headers: new Headers({ 'Content-Type': 'text/html; charset=utf-8' }), clone() { return this } }
   }
@@ -41,8 +43,10 @@ function boot(windows: string[], opts: { cached?: string[]; fetchFails?: boolean
   class Res { body: unknown; constructor(b: unknown) { this.body = b } async json() { return JSON.parse(String(this.body)) } }
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
   new Function('self', 'caches', 'fetch', 'Response', 'Request', 'URL', 'Headers', SRC)(self, caches, fetchFn, Res, Req, URL, Headers)
-  const activate = async () => { let p: Promise<unknown> = Promise.resolve(); listeners.activate({ waitUntil: (x) => { p = x } }); await p }
-  return { activate, fetched, store, policy: self.__urShellPolicy as { warmMax: number } }
+  // 활성화(waitUntil)와 데우기(__urShellWarming)를 따로 기다린다 — 2026-11-12 ⑨: 데우기는 활성화를 붙잡지 않는다.
+  const activateOnly = async () => { let p: Promise<unknown> = Promise.resolve(); listeners.activate({ waitUntil: (x) => { p = x } }); await p }
+  const activate = async () => { await activateOnly(); await (self.__urShellWarming as Promise<unknown> | undefined) }
+  return { activate, activateOnly, fetched, signals, store, policy: self.__urShellPolicy as { warmMax: number } }
 }
 
 describe('첫 방문 데우기', () => {
@@ -71,5 +75,15 @@ describe('첫 방문 데우기', () => {
   it('④ 데우기가 실패해도 활성화는 끝난다', async () => {
     const b = boot([`${ORIGIN}/`], { fetchFails: true })
     await expect(b.activate()).resolves.toBeUndefined()
+  })
+  it('⑤ 2026-11-12 데우기 요청이 영영 안 끝나도 활성화는 끝난다(사이트 전체가 줄 서서 멈추던 것)', async () => {
+    const b = boot([`${ORIGIN}/`], { fetchHangs: true })
+    const done = await Promise.race([b.activateOnly().then(() => 'done'), new Promise((r) => setTimeout(() => r('stuck'), 200))])
+    expect(done).toBe('done')
+  })
+  it('⑥ 뒤에서 받는 요청엔 시간제한 신호가 붙는다', async () => {
+    const b = boot([`${ORIGIN}/`], { fetchHangs: true })
+    await b.activateOnly(); await new Promise((r) => setTimeout(r, 10))
+    expect(b.signals.length).toBe(1); expect(b.signals[0]).toBeDefined()
   })
 })

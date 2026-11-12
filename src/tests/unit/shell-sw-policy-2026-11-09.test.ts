@@ -80,7 +80,8 @@ describe('⑦ 오프라인 안내(2026-11-09 ④) — 허용 경로의 끊김만
 
 describe('③ 리다이렉트·fetch 모양 · 배선', () => {
   it("네트워크는 redirect:'follow' 새 요청으로 받고, 리다이렉트된 응답은 Response.redirect 로 바꾼다", () => {
-    expect(SRC).toMatch(/fetch\(url, \{ credentials: 'include', redirect: 'follow'/)
+    expect(SRC).toMatch(/var opts = \{ credentials: 'include', redirect: 'follow'/) // 2026-11-12 시간제한 신호를 붙이려고 옵션을 변수로
+    expect(SRC).toMatch(/return fetch\(url, opts\)/)
     expect(SRC).toMatch(/if \(res\.redirected\) return Response\.redirect\(res\.url, 302\)/)
     expect(SRC).toMatch(/res\.redirected\) return false/) // 리다이렉트된 응답은 저장하지 않는다
   })
