@@ -20,6 +20,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate, formatKSTShort as formatKSTDateTime } from '@/utils/date'
 import AgencyAssignList from './AgencyAssignList'
 import AgencyShareEditor from './AgencyShareEditor'
+import OwnerAgencyDeals from './OwnerAgencyDeals'
 
 interface LinkState { linkId: number; agencyId: number; status: 'pending' | 'active'; agencyName: string; requestedAt: string; acceptedAt: string | null; productCount: number; sharePct: number | null; budgetPct?: number | null }
 interface Activity { id: number; label: string; at: string; agencyName: string; staff: string }
@@ -147,6 +148,9 @@ export default function AgencyLinkCard() {
           ))}
         </ul>
       ) : null}
+
+      {/* 🤝💰 2026-11-11 에이전시가 건 인플루언서 소개비 — 상한 초과 제안은 여기서 승인(스위치 OFF 면 안 그린다) */}
+      <OwnerAgencyDeals />
 
       {activity.length > 0 && (
         <div className="mt-5">

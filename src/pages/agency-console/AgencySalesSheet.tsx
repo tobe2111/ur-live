@@ -10,6 +10,7 @@ import { formatNumber } from '@/utils/format'
 import { formatKSTShort } from '@/utils/date'
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import { agencyRequest } from './agency-api'
+import AgencyDealsSection from './AgencyDealsSection'
 
 type Period = 'month' | '30d' | 'all'
 interface Summary { sold: number; revenue: number; used: number; refunded: number }
@@ -86,6 +87,8 @@ export default function AgencySalesSheet({ sellerId, storeName, onClose }: { sel
               환불 안 된 판매에만 붙어요. 돈은 매장이 직접 보내고, 세금계산서는 우리가 매장에 발행해요.
             </p>
           </div>
+          {/* 🤝💰 2026-11-11 인플루언서 소개비(총 마케팅 비용 상한 안) — 스위치 OFF 면 그리지 않는다 */}
+          <AgencyDealsSection sellerId={sellerId} />
           {data.items.length === 0 ? (
             <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">이 기간에 팔린 우리 이용권이 없어요.</p>
           ) : (

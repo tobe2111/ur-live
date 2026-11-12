@@ -53,6 +53,7 @@ const KEYS_AT_CLEANUP = [
   'brand_cross_owner_redeem_enabled',
   'agency_share_payout_enabled', // 🤝 2026-11-01 에이전시 몫 유어딜 지급(결재 2026-10-11 3단계) — 새 손잡이
   'toss_payouts_enabled', // 💸 2026-11-03 토스 지급대행(결재 2026-11-03-settlement-structure) — 새 손잡이
+  'agency_influencer_deals_enabled', // 🤝💰 2026-11-11 에이전시 인플루언서 소개비(결재 2026-11-11 ⑤) — 새 손잡이
 ]
 
 describe('머니 스위치 라벨 — 짚을 수 있는가', () => {

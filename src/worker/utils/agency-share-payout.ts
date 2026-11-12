@@ -3,7 +3,7 @@
  * 2026-11-01 `AskUserQuestion` "지금 만들고 꺼 두기 (추천)") — 게이트 `agency_share_payout_enabled` **기본 OFF**.
  *
  * 결재 `docs/decisions/2026-10-11-agency-model-email-only.md` 규칙 1~3 그대로:
- *   - 규칙 1: 에이전시가 **자기 링크**로 판 건은 에이전시 몫만 붙고 소개비는 안 붙는다(`isOwnAgencyReferral`).
+ *   - (옛 규칙 1 — 에이전시 자기 링크엔 소개비 없음 — 은 2026-11-11 폐기. 합계 상한으로 대체)
  *   - 규칙 2: 유어딜 고정 상한 없음 — 바닥은 하나, 에이전시 몫이 매장 몫(90%)을 못 넘는다(`AGENCY_SHARE_PCT_MAX`).
  *   - 규칙 3: 기간 없음 — 사장님이 끊으면(맡은 기간이 닫히면) **다음 판매부터** 안 붙고, 붙은 몫은 그대로다.
  *
@@ -128,23 +128,8 @@ export async function findAgencyForSale(
   return { agencyId: Number(row.agency_id), pct: Number(row.pct) || 0 }
 }
 
-/**
- * 규칙 1 — 소개 링크(`ref` = users.id)의 주인이 **그 이용권을 맡은 에이전시의 직원**이면 true.
- * 그 판매에는 에이전시 몫만 붙고 소개비는 붙지 않는다. 게이트 OFF 면 언제나 false(종전과 동일).
- */
-export async function isOwnAgencyReferral(
-  DB: D1Database, refUserId: string | number | null | undefined, sellerId: number, productId: number,
-): Promise<boolean> {
-  const uid = Number(refUserId)
-  if (!Number.isFinite(uid) || uid <= 0) return false
-  if (!(await isAgencySharePayoutEnabled(DB))) return false
-  const ag = await findAgencyForSale(DB, sellerId, productId)
-  if (!ag) return false
-  const staff = await DB.prepare(
-    "SELECT 1 FROM agency_staff WHERE agency_id = ? AND user_id = ? AND status = 'active' LIMIT 1",
-  ).bind(ag.agencyId, uid).first().catch(() => null)
-  return !!staff
-}
+// 🤝 2026-11-11 — 옛 규칙 1(`isOwnAgencyReferral`: 에이전시 직원 링크엔 소개비 없음)은 대표 확정으로 폐기·삭제했다.
+//   수수료와 소개비는 따로 받고, 합계는 총 마케팅 비용 상한(`agency-influencer-deals.ts`)이 막는다.
 
 export interface CreditAgencyShareInput {
   sellerId: number

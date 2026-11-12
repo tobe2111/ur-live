@@ -37,9 +37,7 @@ export default [
   { name: '에이전시몫 — 회수가 인플 조기 반환 뒤로 밀린다', file: 'src/features/group-buy/api/voucher-clawback.ts',
     find: "    if (await clawbackAgencyShare(DB, { orderId, voucherId, denom: Math.max(1, Number(n?.n ?? 1)), reason })) clawed++\n",
     replace: '\n', test: T, why: '인플 소개가 없는 주문은 환불해도 에이전시 몫이 안 돌아온다.' },
-  { name: '에이전시몫 — 규칙1을 카드 경로에서 뺀다', file: 'src/features/group-buy/api/helpers.ts',
-    find: '    && !(await isOwnAgencyReferral(DB, p.referralInfluencerId, p.sellerId, p.productId))',
-    replace: '    && true', test: T, why: '에이전시가 자기 링크로 팔면 에이전시 몫과 소개비를 둘 다 받는다.' },
+  // (옛 '규칙1을 카드 경로에서 뺀다' 주입은 2026-11-11 규칙 1 폐기로 삭제 — 합계 상한 주입이 대신한다: agency-influencer-deals-2026-11-11.mjs)
   { name: '에이전시몫 — 이전이 dry_run 기본을 잃는다', file: 'src/features/agency-console/api/agency-payout.routes.ts',
     find: '      const dryRun = body.dry_run !== false', replace: '      const dryRun = body.dry_run === true', test: T,
     why: '본문 없이 한 번 눌러도 프로덕션 매장이 옮겨진다.' },

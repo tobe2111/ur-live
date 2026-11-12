@@ -22,6 +22,7 @@ export const STORE_GO_TARGETS = {
   settlements: '/seller/settlements', // 정산·계좌
   docs: '/seller/business-info',      // 사업자등록증·서류
   seeding: '/store/seeding',          // 🎁 2026-10-31 무상 체험 신청 — 승인·일정 확정(대시보드 밖)
+  agency: '/seller/operators',        // 🤝 2026-11-11 에이전시 소개비 승인 요청(총 마케팅 비용 상한 초과)
   home: '/seller',
 } as const
 

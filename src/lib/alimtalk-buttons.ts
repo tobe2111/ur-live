@@ -48,6 +48,7 @@ export const ALIMTALK_BUTTONS: Readonly<Record<string, readonly AlimtalkButtonSp
   home_quote_chosen: [{ name: '손님 연락처 보기', link: { kind: 'url', url: `${STORE_GO_ORIGIN}/life/pro` } }],
   // 🎁 2026-10-31 무상 체험 제공 — 사장님은 그 매장 요청함(`/store/seeding`), 인플루언서는 내 체험 신청.
   seeding_request_store: [{ name: '요청 확인하기', link: { kind: 'store', to: 'seeding' } }],
+  agency_deal_approval: [{ name: '승인하러 가기', link: { kind: 'store', to: 'agency' } }], // 🤝 2026-11-11 에이전시 소개비 상한 초과
   seeding_slots_store: [{ name: '요청 확인하기', link: { kind: 'store', to: 'seeding' } }],
   seeding_approved: [SEEDING_MINE],
   seeding_rejected: [SEEDING_MINE],
