@@ -16,10 +16,11 @@ import type { SurfaceRewriteMeta } from './surface-ssr-meta'
 import { seedObject } from './life-share-ssr'
 
 export function buildStoreInviteMeta(payload: unknown, origin: string, pathname: string): SurfaceRewriteMeta | null {
-  const p = seedObject(payload) as { success?: boolean; agencyName?: unknown; sharePct?: unknown } | null
+  const p = seedObject(payload) as { success?: boolean; agencyName?: unknown; sharePct?: unknown; budgetPct?: unknown } | null
   if (!p || p.success !== true) return null
   const name = typeof p.agencyName === 'string' ? p.agencyName : ''
-  const c = agencyInviteCardCopy(name, typeof p.sharePct === 'number' ? p.sharePct : 0) // 🧾 2026-11-11 에이전시 수수료도 카드에
+  const num = (v: unknown) => (typeof v === 'number' ? v : 0)
+  const c = agencyInviteCardCopy(name, num(p.sharePct), num(p.budgetPct)) // 🧾💰 2026-11-11 수수료 · 총 마케팅 비용 상한도 카드에
   return {
     pageTitle: `${c.title} - 유어딜`,
     title: c.title,

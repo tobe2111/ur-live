@@ -35,7 +35,7 @@ import { registerAgencyNotificationRoutes } from './agency-store-notifications'
 import { releaseAgencyProducts } from './channel-sales'
 import { registerAgencySalesRoute } from './agency-store-sales'
 import { registerAgencyPayoutRoutes } from './agency-payout.routes' // 💸 2026-11-01 에이전시 몫 지급(게이트 OFF)
-import { validateSharePct } from './agency-share'
+import { validateSharePct, validateBudgetPct } from './agency-share'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string; FRONTEND_URL?: string }
 type Vars = { agencyStaff: AgencyStaffContext }
@@ -255,12 +255,13 @@ agencyStoresRoutes.get('/store-invite', requireAgencyStaff(), async (c) => {
         ORDER BY id DESC LIMIT 1`,
     ).bind(me.agencyId).first<{ token: string; expires_at: string; use_count: number }>()
     const ag = await c.env.DB.prepare(
-      'SELECT a.name, d.pct AS default_share_pct FROM agency_accounts a LEFT JOIN agency_share_defaults d ON d.agency_id = a.id WHERE a.id = ? LIMIT 1',
-    ).bind(me.agencyId).first<{ name: string | null; default_share_pct: number | null }>().catch(() => null)
+      'SELECT a.name, d.pct AS default_share_pct, bd.pct AS default_budget_pct FROM agency_accounts a LEFT JOIN agency_share_defaults d ON d.agency_id = a.id LEFT JOIN agency_budget_defaults bd ON bd.agency_id = a.id WHERE a.id = ? LIMIT 1',
+    ).bind(me.agencyId).first<{ name: string | null; default_share_pct: number | null; default_budget_pct: number | null }>().catch(() => null)
     return c.json({
       success: true,
       agencyName: ag?.name || '',
-      sharePct: Number(ag?.default_share_pct) > 0 ? Number(ag?.default_share_pct) : 0, // 🤝 미리 정해 둔 몫 %
+      sharePct: Number(ag?.default_share_pct) > 0 ? Number(ag?.default_share_pct) : 0, // 🤝 미리 정해 둔 수수료 %
+      budgetPct: Number(ag?.default_budget_pct) > 0 ? Number(ag?.default_budget_pct) : 0, // 💰 총 마케팅 비용 상한(2026-11-11)
       invite: row ? { url: storeInviteUrl(c.env, row.token), expiresAt: row.expires_at, useCount: row.use_count } : null,
     })
   } catch (err) {
@@ -294,15 +295,22 @@ agencyStoresRoutes.post('/store-invite/share', cors(), requireAgencyStaff({ admi
   rateLimit({ action: 'agency_store_invite_share', max: 30, windowSec: 3600 }), async (c) => {
     try {
       const me = c.get('agencyStaff')
-      const body = await c.req.json<{ pct?: unknown }>().catch(() => ({} as { pct?: unknown }))
+      const body = await c.req.json<{ pct?: unknown; budget_pct?: unknown }>().catch(() => ({} as { pct?: unknown; budget_pct?: unknown }))
       const v = validateSharePct(body.pct)
       if (!v.ok) return c.json({ success: false, error: v.error }, 400)
+      // 💰 총 마케팅 비용 상한 — 비우면 0(정하지 않음). 정했다면 수수료보다 작을 수 없다.
+      const b = validateBudgetPct(body.budget_pct === undefined || body.budget_pct === '' ? 0 : body.budget_pct, v.pct)
+      if (!b.ok) return c.json({ success: false, error: b.error }, 400)
       await ensureAgencyConsoleTables(c.env.DB)
       await c.env.DB.prepare(
         `INSERT INTO agency_share_defaults (agency_id, pct, updated_at) VALUES (?, ?, datetime('now'))
          ON CONFLICT(agency_id) DO UPDATE SET pct = excluded.pct, updated_at = excluded.updated_at`,
       ).bind(me.agencyId, v.pct).run()
-      return c.json({ success: true, sharePct: v.pct, message: v.pct ? `에이전시 수수료를 ${v.pct}%로 정했어요.` : '에이전시 수수료를 비웠어요.' })
+      await c.env.DB.prepare(
+        `INSERT INTO agency_budget_defaults (agency_id, pct, updated_at) VALUES (?, ?, datetime('now'))
+         ON CONFLICT(agency_id) DO UPDATE SET pct = excluded.pct, updated_at = excluded.updated_at`,
+      ).bind(me.agencyId, b.pct).run()
+      return c.json({ success: true, sharePct: v.pct, budgetPct: b.pct, message: '저장했어요. 새로 맡기는 매장부터 적용돼요.' })
     } catch (err) {
       return safeError(c, err, '수수료를 저장하지 못했어요', '[agency-console:store-invite]')
     }

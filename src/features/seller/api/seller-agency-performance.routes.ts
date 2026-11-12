@@ -20,7 +20,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
 import { ensureAgencyConsoleTables } from '../../agency-console/api/agency-schema'
 import { assignAgencyProduct, parsePeriod, storeChannelPerformance } from '../../agency-console/api/channel-sales'
-import { setAgencyShare, validateSharePct } from '../../agency-console/api/agency-share'
+import { setAgencyShare, validateSharePct, setAgencyBudget, validateBudgetPct } from '../../agency-console/api/agency-share'
 
 type Ctx = Context<{ Bindings: Env }>
 type RequireOwner = (c: Ctx) => Promise<{ userId: number; sellerId: number } | Response>
@@ -102,11 +102,14 @@ export function registerAgencyPerformanceRoutes(app: Hono<{ Bindings: Env }>, re
     try {
       const g = await requireOwner(c)
       if (g instanceof Response) return g
-      const body = await c.req.json<{ agency_id?: unknown; pct?: unknown }>().catch(() => ({} as { agency_id?: unknown; pct?: unknown }))
+      const body = await c.req.json<{ agency_id?: unknown; pct?: unknown; budget_pct?: unknown }>().catch(() => ({} as { agency_id?: unknown; pct?: unknown; budget_pct?: unknown }))
       const agencyId = posInt(body.agency_id)
       if (!agencyId) return c.json({ success: false, error: '에이전시를 골라 주세요.' }, 400)
       const v = validateSharePct(body.pct)
       if (!v.ok) return c.json({ success: false, error: v.error }, 400)
+      // 💰 2026-11-11 총 마케팅 비용 상한 — 보낸 경우만 바꾼다(옛 화면은 수수료만 보낸다). 사장님은 언제든 바꾼다(지금부터).
+      const b = body.budget_pct === undefined ? null : validateBudgetPct(body.budget_pct === '' ? 0 : body.budget_pct, v.pct)
+      if (b && !b.ok) return c.json({ success: false, error: b.error }, 400)
       const DB = c.env.DB
       await ensureAgencyConsoleTables(DB)
       // 이 매장과 지금 함께하는(운영 중 · 수락 기다리는) 에이전시에만.
@@ -115,7 +118,8 @@ export function registerAgencyPerformanceRoutes(app: Hono<{ Bindings: Env }>, re
       ).bind(g.sellerId, agencyId).first<{ id: number }>()
       if (!link) return c.json({ success: false, code: 'AGENCY_NOT_LINKED', error: '이 매장과 함께하는 에이전시가 아니에요.' }, 409)
       const changed = await setAgencyShare(DB, g.sellerId, agencyId, v.pct, g.userId)
-      return c.json({ success: true, changed, data: { agencyId, pct: v.pct } })
+      const budgetChanged = b && b.ok ? await setAgencyBudget(DB, g.sellerId, agencyId, b.pct, g.userId) : false
+      return c.json({ success: true, changed: changed || budgetChanged, data: { agencyId, pct: v.pct, budgetPct: b && b.ok ? b.pct : undefined } })
     } catch (err) {
       return safeError(c, err, '에이전시 수수료를 저장하지 못했어요', '[seller-agency-performance]')
     }

@@ -18,7 +18,7 @@ import { rememberPartner, forgetPartner } from '@/utils/partner-return'
 import api from '@/lib/api'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { StoreIcon, OkIcon } from '@/components/icons/urdeal-icons'
-import { AGENCY_INVITE_QUERY } from '@/shared/agency-store-invite'
+import { AGENCY_INVITE_QUERY, agencyCostLine } from '@/shared/agency-store-invite'
 import { togglePick, entrustableIds } from './store-agency-invite/pick'
 
 interface OwnedStore { seller_id: number; name: string; status: string | null }
@@ -32,6 +32,7 @@ export default function StoreAgencyInvitePage() {
   const [agencyName, setAgencyName] = useState<string | null>(null)
   // 🤝 2026-11-11 — 에이전시가 미리 정해 둔 몫 %. 사장님이 보고 [맡기기] 하면 그 매장에 그대로 저장된다(0 = 정하지 않음).
   const [sharePct, setSharePct] = useState(0)
+  const [budgetPct, setBudgetPct] = useState(0) // 💰 총 마케팅 비용 상한(2026-11-11)
   const [dead, setDead] = useState('')
   const [stores, setStores] = useState<OwnedStore[] | null>(null)
   // 🏪 2026-10-31 대표 *"모두 진행해줘"* — 매장이 여러 곳인 사장님(지점 여럿)은 한 번에 고른다.
@@ -50,6 +51,7 @@ export default function StoreAgencyInvitePage() {
         if (!alive) return
         setAgencyName(r.data?.agencyName || '에이전시')
         setSharePct(Number(r.data?.sharePct) || 0)
+        setBudgetPct(Number(r.data?.budgetPct) || 0)
         setEntrusted(Array.isArray(r.data?.entrustedSellerIds) ? r.data.entrustedSellerIds.map(Number) : [])
       })
       .catch((e) => { if (alive) setDead(e?.response?.data?.error || '링크를 확인하지 못했어요.') })
@@ -91,12 +93,12 @@ export default function StoreAgencyInvitePage() {
         setDone({ agencyName: name, already: already && ok === 1, count: ok, failed, pending: true })
         return
       }
-      const r = await api.post('/api/store-agency-invite/accept', { token, seller_ids: picked, share_pct: sharePct })
+      const r = await api.post('/api/store-agency-invite/accept', { token, seller_ids: picked, share_pct: sharePct, budget_pct: budgetPct })
       if (!r.data?.success) throw new Error(r.data?.error)
       setDone({ agencyName: r.data.agencyName, already: !!r.data.already, count: Number(r.data.entrusted) || picked.length, failed: Number(r.data.failed) || 0 })
     } catch (e: any) {
       // 그 사이 에이전시가 몫을 바꿨다 — 새 % 를 보여 주고 다시 누르게 한다(동의 안 한 % 로 맡기지 않는다).
-      if (e?.response?.data?.code === 'SHARE_CHANGED') setSharePct(Number(e.response.data.sharePct) || 0)
+      if (e?.response?.data?.code === 'SHARE_CHANGED') { setSharePct(Number(e.response.data.sharePct) || 0); setBudgetPct(Number(e.response.data.budgetPct) || 0) }
       setError(e?.response?.data?.error || '맡기지 못했어요. 잠시 뒤 다시 시도해 주세요.')
     } finally {
       setBusy(false)
@@ -173,8 +175,8 @@ export default function StoreAgencyInvitePage() {
         <ul className="space-y-3 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
           <li><b className="font-semibold text-gray-900 dark:text-white">맡기는 것</b> · 상품·이용권 등록과 수정, 주문 처리</li>
           <li><b className="font-semibold text-gray-900 dark:text-white">사장님께 남는 것</b> · 정산 계좌, 사업자 정보, 운영자 관리</li>
-          {!partner && sharePct > 0 && (
-            <li data-testid="store-agency-invite-share"><b className="font-semibold text-gray-900 dark:text-white">에이전시 수수료</b> · 에이전시가 판 이용권 판매액의 {sharePct}%. 맡기면 이 %로 정해져요</li>
+          {!partner && (sharePct > 0 || budgetPct > 0) && (
+            <li data-testid="store-agency-invite-share"><b className="font-semibold text-gray-900 dark:text-white">비용</b> · {agencyCostLine(sharePct, budgetPct)}맡기면 이대로 정해지고, 셀러 화면에서 언제든 바꿀 수 있어요</li>
           )}
           <li><b className="font-semibold text-gray-900 dark:text-white">끊기</b> · 셀러 화면 운영자 관리에서 언제든. 끊으면 바로 못 들어와요</li>
         </ul>

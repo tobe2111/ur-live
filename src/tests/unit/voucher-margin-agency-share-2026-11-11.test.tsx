@@ -86,6 +86,11 @@ describe('④ 서버', () => {
     } as unknown as D1Database
     const { activeAgencySharesForStore } = await import('@/features/agency-console/api/agency-share')
     // 가: 최신 % 4 · 나: 끝남 · 다: 0% · 라: % 미설정 → 가 하나만
-    expect(await activeAgencySharesForStore(D1, 20)).toEqual([{ name: '가', pct: 4 }])
+    // 2026-11-11: 상한 표가 없는 DB(이 시험 그대로)에서도 수수료 줄은 남는다 — 상한만 0 으로 빠진다.
+    expect(await activeAgencySharesForStore(D1, 20)).toEqual([{ name: '가', pct: 4, budgetPct: 0 }])
+    db.exec("CREATE TABLE agency_budget_terms (id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER, agency_id INTEGER, pct REAL, effective_from TEXT, set_by_user_id INTEGER)")
+    db.exec("INSERT INTO agency_budget_terms (seller_id, agency_id, pct, effective_from) VALUES (20, 1, 15, '2026-11-01'), (20, 4, 12, '2026-11-01')")
+    // 표가 생기면 상한이 붙고, 수수료는 없어도 상한만 정한 에이전시(라)도 나온다.
+    expect(await activeAgencySharesForStore(D1, 20)).toEqual([{ name: '가', pct: 4, budgetPct: 15 }, { name: '라', pct: 0, budgetPct: 12 }])
   })
 })

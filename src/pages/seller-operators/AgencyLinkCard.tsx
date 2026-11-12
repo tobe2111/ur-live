@@ -21,7 +21,7 @@ import { formatKSTDate, formatKSTShort as formatKSTDateTime } from '@/utils/date
 import AgencyAssignList from './AgencyAssignList'
 import AgencyShareEditor from './AgencyShareEditor'
 
-interface LinkState { linkId: number; agencyId: number; status: 'pending' | 'active'; agencyName: string; requestedAt: string; acceptedAt: string | null; productCount: number; sharePct: number | null }
+interface LinkState { linkId: number; agencyId: number; status: 'pending' | 'active'; agencyName: string; requestedAt: string; acceptedAt: string | null; productCount: number; sharePct: number | null; budgetPct?: number | null }
 interface Activity { id: number; label: string; at: string; agencyName: string; staff: string }
 
 export default function AgencyLinkCard() {
@@ -110,6 +110,7 @@ export default function AgencyLinkCard() {
                     ? `운영 중${link.acceptedAt ? ` · ${formatKSTDate(link.acceptedAt)} 부터` : ''} · 맡은 이용권 ${link.productCount}개`
                     : '수락 기다리는 중'}
                   {` · 수수료 ${link.sharePct == null ? '미정' : `${link.sharePct}%`}`}
+                  {link.budgetPct ? ` · 총 마케팅 비용 최대 ${link.budgetPct}%` : ''}
                 </p>
               </div>
               <button type="button" onClick={() => setOpenShare(openShare === link.agencyId ? null : link.agencyId)}
@@ -131,7 +132,7 @@ export default function AgencyLinkCard() {
               {/* 🤝 에이전시 몫 %(2026-10-24 1단계) — 계산해 보여 주기만, 돈은 매장이 직접. */}
               {openShare === link.agencyId && (
                 <div className="basis-full">
-                  <AgencyShareEditor agencyId={link.agencyId} agencyName={link.agencyName} current={link.sharePct}
+                  <AgencyShareEditor agencyId={link.agencyId} agencyName={link.agencyName} current={link.sharePct} currentBudget={link.budgetPct ?? null}
                     onSaved={() => { setOpenShare(null); load() }} />
                 </div>
               )}
