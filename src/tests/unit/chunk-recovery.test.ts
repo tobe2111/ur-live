@@ -78,3 +78,37 @@ describe('recoverFromChunkError — 5분 8회 관용 + 지수 백오프 유예 �
     expect(JSON.parse(store['__ur_chunk_reload__']).n).toBe(1) // 3번 호출해도 카운트는 1
   })
 })
+
+describe('📵 2026-11-12 오프라인이면 새로고침하지 않고 연결을 기다린다', () => {
+  let store: Record<string, string>
+  let replace: ReturnType<typeof vi.fn>
+  let onlineCb: (() => void) | null
+  beforeEach(() => {
+    store = {}; replace = vi.fn(); onlineCb = null
+    vi.stubGlobal('sessionStorage', { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => { store[k] = v }, removeItem: (k: string) => { delete store[k] } })
+    vi.stubGlobal('window', { location: { href: 'https://urdeal.kr/my-vouchers', replace, reload: vi.fn() }, addEventListener: (t: string, f: () => void) => { if (t === 'online') onlineCb = f } })
+    vi.useFakeTimers()
+  })
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
+
+  it('오프라인: 새로고침 0 · 카운트 0 · online 이 오면 그때 한 번', async () => {
+    vi.stubGlobal('navigator', { onLine: false })
+    const { recoverFromChunkError } = await freshModule()
+    expect(recoverFromChunkError()).toBe(true)
+    vi.advanceTimersByTime(60_000)
+    expect(replace).not.toHaveBeenCalled()            // 쿼리 붙은 새로고침 = 오프라인에선 브라우저 오류 화면
+    expect(store['__ur_chunk_reload__']).toBeUndefined() // 배포 판정 카운트를 쓰지 않는다
+    expect(onlineCb).toBeTypeOf('function')
+    onlineCb!()
+    vi.advanceTimersByTime(400)
+    expect(replace).toHaveBeenCalledTimes(1)
+    expect(String(replace.mock.calls[0][0])).toContain('__cb=')
+  })
+  it('온라인이면 종전 그대로(유예 뒤 __cb 새로고침)', async () => {
+    vi.stubGlobal('navigator', { onLine: true })
+    const { recoverFromChunkError } = await freshModule()
+    expect(recoverFromChunkError()).toBe(true)
+    vi.advanceTimersByTime(700)
+    expect(replace).toHaveBeenCalledTimes(1)
+  })
+})

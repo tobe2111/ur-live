@@ -105,6 +105,20 @@ let _reloadPending = false // 🛡️ 유예 재시도 중 다중 청크에러�
  */
 export function recoverFromChunkError(): boolean {
   if (_reloadPending) return true // 이미 유예 재시도 예약됨 — 같은 버스트의 추가 청크에러는 무시(카운트 1회만).
+  /**
+   * 📵 2026-11-12 — **오프라인이면 새로고침하지 않고 연결을 기다린다.**
+   *   재방문 즉시 표시(shell-sw)가 저장본 HTML 을 주면 신호 없이도 화면이 뜨는데, 부품 하나만 못 받아도 이 함수가
+   *   "새 배포" 로 읽고 `?__cb=` 로 새로고침했다 → 쿼리가 붙은 주소는 SW 가 손대지 않으므로(울타리 ①) **브라우저 오류 화면**이 됐다
+   *   (라이브 실측: 오프라인 홈 → 0.3s "화면을 업데이트하고 있어요" → 2s 빈 오류 화면). 오프라인 실패는 배포 탓이 아니다.
+   *   ⇒ 지금 화면(오류 경계의 안내)을 그대로 두고, `online` 이 오면 그때 한 번 새로고침한다. 카운트는 쓰지 않는다(배포 판정이 아니므로).
+   */
+  try {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      _reloadPending = true
+      window.addEventListener('online', () => { setTimeout(reloadWithCacheBust, 300) }, { once: true })
+      return true
+    }
+  } catch { /* navigator 없음 — 아래 종전 경로 */ }
   try {
     const KEY = '__ur_chunk_reload__'
     const now = Date.now()
