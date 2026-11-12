@@ -27,9 +27,11 @@ describe('② 항목 · ③ 켜짐 · ④ 아이콘 자리', () => {
     expect(links.map((a) => a.textContent)).toEqual([...PC_TOPNAV_SERVICES.map((x) => x.label), ...DEAL_CAT_LABELS.map((x) => x.label)])
   })
   it('서비스 라벨이 앱 소스에 있다', () => { for (const x of PC_TOPNAV_SERVICES) expect(NAV).toContain(`'${x.label}'`) })
-  it('생활은 /life · 전체는 / · 나머지는 /?category=', () => {
+  it('전체는 / · 나머지는 /?category= · 생활(열려 있으면)은 /life', () => {
     const href = (t: string) => links.find((a) => a.textContent === t)!.getAttribute('href')
-    expect(href('생활')).toBe('/life'); expect(href('전체')).toBe('/'); expect(href('식사')).toBe('/?category=meal_voucher')
+    // 생활은 2026-11-12 #2342 로 닫힐 수 있다(life-closed.ts) — 있으면 /life, 없으면 서버도 안 그린다(DEAL_CAT_LABELS 를 같이 쓴다).
+    if (links.some((a) => a.textContent === '생활')) expect(href('생활')).toBe('/life')
+    expect(href('전체')).toBe('/'); expect(href('식사')).toBe('/?category=meal_voucher')
   })
   it('켜짐 점은 홈·전체 둘뿐', () => {
     const on = links.filter((a) => a.querySelector('span[class*="bg-brand"]')).map((a) => a.textContent)
