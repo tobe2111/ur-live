@@ -41,6 +41,11 @@ var ALLOW = [
   /^\/u\/[A-Za-z0-9_-]{1,40}$/,
   /^\/region\/[^/]+(?:\/[^/]+)?$/,
   /^\/blog(?:\/[^/]+)?$/,
+  // ➕ 2026-11-12 대표 *"넓혀줘"*(결재 2026-11-12-shell-sw-scope-expand 기본안 2) — 서버 HTML 에 개인 정보가 없는 넷.
+  /^\/my-vouchers$/, // 매장에서 QR 띄우는 이용권 탭. 서버는 제목 한 줄만 그린다(목록은 앱이 로그인으로 API 에서 받는다)
+  /^\/urshorts$/,
+  /^\/map$/,
+  /^\/faq$/,
 ]
 /** 허용 목록보다 먼저 본다. 접두사 일치. */
 var DENY_PREFIX = [
@@ -51,7 +56,13 @@ var DENY_PREFIX = [
   '/cdn-cgi', '/assets', '/static', '/_', '/sw.js', '/push-sw.js', '/pwa-sw.js', '/shell-sw.js',
 ]
 
+/**
+ * 금지 목록의 **정확히 이 주소만** 예외(접두사 아님). `/my-` 는 계속 막혀서 `/my-orders` · `/my-vouchers/123` 은 그대로 투명하다.
+ * 2026-11-12 결재 2026-11-12-shell-sw-scope-expand(대표 *"넓혀줘"*).
+ */
+var DENY_EXACT_EXCEPT = ['/my-vouchers']
 function isDenied(pathname) {
+  if (DENY_EXACT_EXCEPT.indexOf(pathname) >= 0) return false
   for (var i = 0; i < DENY_PREFIX.length; i++) {
     var p = DENY_PREFIX[i]
     if (pathname === p || pathname.indexOf(p + '/') === 0 || (p.slice(-1) === '/' && pathname.indexOf(p) === 0) || (p.slice(-1) === '-' && pathname.indexOf(p) === 0)) return true

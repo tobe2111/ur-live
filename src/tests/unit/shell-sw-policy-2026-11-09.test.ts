@@ -35,7 +35,7 @@ describe('① 사고 경로는 절대 안 다룬다', () => {
     '/checkout/return?paymentKey=p&orderId=o&amount=1',
     '/payment/success?paymentKey=p',
     '/pay/toss',
-    '/admin', '/admin/login', '/seller/login', '/agency', '/store/new', '/u/me', '/user/profile', '/my-vouchers', '/login',
+    '/admin', '/admin/login', '/seller/login', '/agency', '/store/new', '/u/me', '/user/profile', '/my-vouchers/123', '/my-orders', '/login', '/cart', // 2026-11-12: /my-vouchers 자체는 결재로 열렸다(아래 ⑧) — 그 하위·다른 /my- 는 계속 막힌다
     '/sw.js', '/push-sw.js', '/shell-sw.js', '/assets/index-abc.js', '/cdn-cgi/trace',
   ])('%s', (p) => { expect(nav(p)).toBe(false) })
 })
@@ -59,7 +59,7 @@ describe('② 쿼리·메서드·모드·출처', () => {
   })
   it('허용 목록(서버 첫 화면이 있는 소비자 경로)만 다룬다', () => {
     for (const p of ['/', '/vouchers', '/stays', '/life', '/pass/2919', '/group-buy/2919', '/vouchers/12', '/stays/5', '/u/jiwon1228', '/region/서울', '/blog', '/blog/some-post']) expect(nav(p), p).toBe(true)
-    for (const p of ['/map', '/search', '/browse', '/products/3', '/about', '/u/me']) expect(nav(p), p).toBe(false)
+    for (const p of ['/search', '/browse', '/products/3', '/about', '/u/me']) expect(nav(p), p).toBe(false) // 2026-11-12: /map 은 결재로 열렸다(⑧)
   })
 })
 
@@ -125,5 +125,21 @@ describe('③ 리다이렉트·fetch 모양 · 배선', () => {
     expect(util).toContain("out.shell_sw_enabled = s.shell_sw_enabled === 'true'")
     expect(readFileSync('src/worker/index.ts', 'utf8')).toContain("c.res.headers.set('X-Shell-Variant', authed ? 'user' : 'guest')")
     expect(readFileSync('src/lib/shell-sw.ts', 'utf8')).toMatch(/\(await loadConsumerSettings\(\)\)\?\.shell_sw_enabled === true/) // 🎛️ 2026-11-12 지도와 한 번의 요청을 나눠 쓴다
+  })
+})
+
+describe('⑧ 2026-11-12 범위 확대(결재 2026-11-12-shell-sw-scope-expand · 대표 "넓혀줘") — 정확히 네 주소만', () => {
+  it('이용권 탭 · 유어쇼츠 · 지도 · 자주 묻는 질문이 열렸다', () => {
+    for (const p of ['/my-vouchers', '/urshorts', '/map', '/faq']) expect(nav(p), p).toBe(true)
+  })
+  it('예외는 정확히 /my-vouchers 하나 — 다른 /my- 와 그 하위는 계속 금지', () => {
+    expect(P.isDenied('/my-vouchers')).toBe(false)
+    for (const p of ['/my-orders', '/my-coupons', '/my-vouchers/123', '/my-vouchersx', '/mypage', '/user/profile', '/u/me', '/cart', '/login', '/checkout']) {
+      expect(P.isDenied(p), p).toBe(true)
+      expect(nav(p), p).toBe(false)
+    }
+  })
+  it('열린 주소도 쿼리가 있으면 안 다룬다', () => {
+    for (const p of ['/my-vouchers?tab=used', '/map?lat=1', '/urshorts?city=서울', '/faq?q=환불']) expect(nav(p), p).toBe(false)
   })
 })
