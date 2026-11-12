@@ -156,8 +156,8 @@ export interface SeedProduct {
   /** 🎬 2026-11-09 그 가게 '다녀온 사람들' 콘텐츠 수(`content-counts.ts`) — 카드와 같은 문구로 미러. */
   creator_count?: number | null
 }
-interface SectionsSeed {
-  data?: Array<{ id?: number | string; title?: string | null; subtitle?: string | null; near?: boolean; products?: SeedProduct[] }>
+export interface SectionsSeed {
+  data?: Array<{ id?: number | string; title?: string | null; subtitle?: string | null; near?: boolean; more_href?: string | null; products?: SeedProduct[] }>
 }
 
 function starHtml(value: number): string {
@@ -172,7 +172,7 @@ function starHtml(value: number): string {
 
 /** 🏨 2026-10-19 숙소 목록 첫 화면도 이 카드를 쓴다(`stays-first-screen.ts`) — 카드는 한 벌이다. `href` 는 숙소의 날짜·인원 링크. */
 /** 📋 `row` = 2026-10-31 시안 10 홈 줄 목록 — 카드 `row` 와 같은 `DEAL_ROW` 클래스(숙소 목록은 종전 격자). */
-export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, row = false): string {
+export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, row = false, widthOverride?: number): string {
   const href = hrefOverride ?? canonicalDetailPath(p) ?? `/pass/${p.id}`
   const brandName = p.brand_name || p.gc_brand_name || null
   const merchant = p.restaurant_name || brandName
@@ -191,7 +191,7 @@ export function cardHtml(p: SeedProduct, eager: boolean, hrefOverride?: string, 
   // 🖼️ 사진 — 카드와 **같은 함수·같은 폭**(모바일 전용이라 base 폭 하나로 끝난다).
   const src = p.image_url || ''
   // 📋 2026-11-01 — 줄 목록(폰)은 120px 칸이라 ROW 폭. 클라 `homeCardImgWidth` 와 같은 판정(첫 화면은 폰 전용).
-  const w = row ? HOME_CARD_IMG_WIDTH_ROW : HOME_CARD_IMG_WIDTH_BASE
+  const w = widthOverride ?? (row ? HOME_CARD_IMG_WIDTH_ROW : HOME_CARD_IMG_WIDTH_BASE) // 🖥️ 2026-11-12 PC 섹션 줄은 4열 폭(LG) — 화면 `homeCardImgWidth(isLg)` 와 같은 주소
   const resized = src ? cfImage(src, { width: w, format: 'auto' }) || src : ''
   const set = src ? cfSrcSet(src, w, HOME_CARD_MAX_DPR) : ''
   const img = resized

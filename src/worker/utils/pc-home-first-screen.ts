@@ -20,7 +20,11 @@
 import { cfImage } from '../../utils/cf-image'
 import { resolveBannerLink } from '../../components/home/banner-link'
 import { PC_HOME_FS as F, PC_HERO_IMG, pcHeroBannersFromPayload, type PcHeroBanner } from '../../shared/pc-home-first-screen'
-import { escAttr, escText } from './home-first-screen'
+import { escAttr, escText, cardHtml, type SectionsSeed } from './home-first-screen'
+import { PC_SECTION_CLS as SC, PC_SECTION_MAX_CARDS } from '../../shared/pc-home-first-screen'
+import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_LG } from '../../shared/home-card-image'
+import { isHomeVisibleProduct } from '../../shared/deal-cats'
+import { resolveSectionMoreHref, isDeadEndHref } from '../../components/home/section-more-href'
 
 function slideHtml(b: PcHeroBanner, big: boolean): string {
   const src = b.image_url ? cfImage(b.image_url, big ? PC_HERO_IMG.big : PC_HERO_IMG.small) : ''
@@ -47,7 +51,31 @@ export function pcHomeLcpImage(bannersPayload: string | null | undefined): strin
  * `#root` 에 넣을 첫 화면 HTML. strip 배너가 하나도 없으면 ''(호출부가 로더로 폴백 — 무회귀).
  * 노드 id `ur-first-screen` 은 폰 홈·상세와 같다(`lib/boot-first-screen.ts` 가 경로를 안 가리고 이 노드를 들고 간다).
  */
-export function buildPcHomeFirstScreen(bannersPayload: string | null | undefined, loaderHtml: string): string {
+/**
+ * 🖥️ 2026-11-12 대표 *"아직 느리네"* — 첫 어드민 섹션 한 줄(제목 · 더보기 · 카드 가로 줄). 화면 `HomeSections`(rail) 와 같은 마크업.
+ *   빈 문자열이면 종전대로 로더만(무회귀). 위치 정렬 섹션(`near`)이 첫째면 그리지 않는다 — 부제가 손님 위치에 달려 서버가 모른다.
+ */
+export function pcFirstSectionHtml(sectionsSeedJson: string | null | undefined): string {
+  if (!sectionsSeedJson) return ''
+  let sec: { title?: string | null; subtitle?: string | null; near?: boolean; more_href?: string | null; products?: Parameters<typeof cardHtml>[0][] } | undefined
+  try {
+    const parsed = JSON.parse(sectionsSeedJson) as SectionsSeed
+    sec = (parsed?.data ?? [])
+      .map((x) => (Array.isArray(x?.products) ? { ...x, products: x.products.filter(isHomeVisibleProduct) } : x))
+      .find((x) => Array.isArray(x?.products) && x.products.length > 0)
+  } catch { return '' }
+  if (!sec || sec.near || !sec.title) return ''
+  const products = (sec.products ?? []).filter((p) => p && p.id != null).slice(0, PC_SECTION_MAX_CARDS)
+  if (products.length === 0) return ''
+  const more = resolveSectionMoreHref(sec.more_href)
+  const moreHtml = more && !isDeadEndHref(more) ? `<a href="${escAttr(more)}" class="${SC.more}">더보기</a>` : ''
+  const head = `<div class="${SC.head}"><div class="${SC.headText}"><h3 class="${SC.title}">${escText(sec.title)}</h3>` +
+    (sec.subtitle ? `<p class="${SC.sub}">${escText(sec.subtitle)}</p>` : '') + `</div>${moreHtml}</div>`
+  const cards = products.map((p, i) => cardHtml(p, i < HOME_CARD_ABOVE_FOLD, undefined, false, HOME_CARD_IMG_WIDTH_LG)).join('')
+  return `<section class="${SC.panel}">${head}<div class="${SC.railWrap}"><div class="${SC.rail}">${cards}</div></div></section>`
+}
+
+export function buildPcHomeFirstScreen(bannersPayload: string | null | undefined, loaderHtml: string, sectionsSeedJson?: string | null): string {
   const banners = pcHeroBannersFromPayload(bannersPayload)
   if (banners.length === 0) return ''
   const n = banners.length
@@ -59,7 +87,7 @@ export function buildPcHomeFirstScreen(bannersPayload: string | null | undefined
     '</section>'
   const body = `<div class="hidden md:block">` +
     `<div class="${F.topnav}"><div class="${F.topnavRow1}"></div><div class="${F.topnavRow2}"></div></div>` +
-    `<div class="${F.field}"><div class="${F.container}">${section}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}</div></div>` +
+    `<div class="${F.field}"><div class="${F.container}">${section}${pcFirstSectionHtml(sectionsSeedJson)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}</div></div>` +
     '</div>'
   return `<div id="ur-first-screen">${body}</div>`
 }

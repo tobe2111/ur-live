@@ -134,7 +134,7 @@ describe('홈 카드 사진 preload — 클라와 워커가 같은 URL 을 만�
     expect(media).toMatch(/cfSrcSet\(src, width, HOME_CARD_MAX_DPR\)/)
     expect(code('src/worker/utils/home-card-preload.ts')).toMatch(/cfSrcSet\(src, w, HOME_CARD_MAX_DPR\)/)
     expect(code('src/worker/utils/home-first-screen.ts')).toMatch(/cfSrcSet\(src, w, HOME_CARD_MAX_DPR\)/)
-    expect(code('src/worker/utils/home-first-screen.ts')).toMatch(/const w = row \? HOME_CARD_IMG_WIDTH_ROW : HOME_CARD_IMG_WIDTH_BASE/)
+    expect(code('src/worker/utils/home-first-screen.ts')).toMatch(/const w = widthOverride \?\? \(row \? HOME_CARD_IMG_WIDTH_ROW : HOME_CARD_IMG_WIDTH_BASE\)/) // 2026-11-12 PC 섹션 폭 인자(기본은 종전 그대로)
 
     for (const src of [
       '/api/media/uploads/demo/2026-08/a8818855-f067-4e32-bf0f-f54d6d3f3626.jpg',
