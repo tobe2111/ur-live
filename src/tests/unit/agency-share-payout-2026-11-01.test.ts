@@ -21,7 +21,7 @@ import { setAgencyShare } from '@/features/agency-console/api/agency-share'
 import { Hono } from 'hono'
 import { migrateBrokerStores, registerAdminAgencyPayoutRoutes } from '@/features/agency-console/api/agency-payout.routes'
 import {
-  calcAgencyShareAmount, clawbackAgencyShare, creditAgencyShare, isOwnAgencyReferral, planAgencyPayout,
+  calcAgencyShareAmount, clawbackAgencyShare, creditAgencyShare, planAgencyPayout,
   readAgencyShareBalance, rejectAgencyPayout, requestAgencyPayout, markAgencyPayoutPaid,
 } from '@/worker/utils/agency-share-payout'
 import { creditBrokerShare } from '@/worker/utils/broker-share'
@@ -94,7 +94,6 @@ describe('① 게이트 OFF', () => {
     expect(r).toEqual({ credited: 0, agencyId: null, matched: false })
     const t = db.prepare("SELECT name FROM sqlite_master WHERE name = 'agency_share_credits'").get()
     expect(t).toBeUndefined()
-    expect(await isOwnAgencyReferral(DB, 50, 7, 31)).toBe(false)
     const p = await requestAgencyPayout(DB, 1, 6)
     expect(p.ok).toBe(false)
   })
@@ -209,22 +208,8 @@ describe('④ 환불 회수', () => {
   })
 })
 
-describe('⑤ 규칙 1 — 자기 링크엔 소개비 없음', () => {
-  it('그 에이전시 직원 링크 = true · 남의 링크 · 사장님 이용권 = false', async () => {
-    const { DB } = await fresh()
-    expect(await isOwnAgencyReferral(DB, 50, 7, 31)).toBe(true)
-    expect(await isOwnAgencyReferral(DB, '50', 7, 31)).toBe(true)
-    expect(await isOwnAgencyReferral(DB, 51, 7, 31)).toBe(false)
-    expect(await isOwnAgencyReferral(DB, 50, 7, 30)).toBe(false)
-    expect(await isOwnAgencyReferral(DB, 'abc', 7, 31)).toBe(false)
-  })
-  it('두 결제 경로 모두 influencerActive 에 규칙 1을 건다(소스)', () => {
-    for (const f of ['src/features/group-buy/api/group-buy.routes.ts', 'src/features/group-buy/api/helpers.ts']) {
-      const src = stripComments(readFileSync(f, 'utf8'))
-      expect(src).toMatch(/influencerActive = !blocked[^\n]*\n\s*&& !\(await isOwnAgencyReferral\(/)
-    }
-  })
-})
+// ⑤ 옛 규칙 1(에이전시 자기 링크엔 소개비 없음)은 2026-11-11 대표 확정으로 폐기·삭제 — 대신 합계 상한
+//   (`agency-influencer-deals-2026-11-11.test.ts`). 두 결제 경로에서 사라졌는지는 그 시험이 지킨다.
 
 describe('⑥ 정산 분기', () => {
   it('사업자 = 세금계산서·공제 0 · 개인 = 3.3%(원 미만 버림)', () => {

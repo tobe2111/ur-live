@@ -9,7 +9,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { sendTextNotice } from '../../../lib/text-notice' // 📨 알림은 카톡 알림톡 하나로(SENS — 승인 전 템플릿은 보내지 않는다)
 import { existingColumns, columnNameOf } from '../../../worker/utils/ensure-columns'
 import { recordLedger } from '../../../worker/utils/ledger'
-import { isOwnAgencyReferral } from '../../../worker/utils/agency-share-payout' // 🤝 규칙 1 — 에이전시 자기 링크엔 소개비 없음
+import { agencyDealPctForSale } from '../../agency-console/api/agency-influencer-deals' // 🤝💰 2026-11-11 에이전시 소개비(상한 안 · 스위치 OFF=null)
 import { dbKey } from '../../../worker/utils/d1-read-replica' // 세션(사본)이어도 메모는 원본 기준
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
 // 💸 매장 수수료율(채널 > override > tier > default)은 `seller-commission-rate.ts` 로 분리했다
@@ -196,8 +196,8 @@ export async function applyGroupBuyReferral(
   const sellerRow = await DB.prepare(
     `SELECT COALESCE(marketing_enabled, 1) AS marketing_enabled, referred_by_influencer, referral_bonus_until FROM sellers WHERE id = ?`
   ).bind(p.sellerId).first<{ marketing_enabled: number; referred_by_influencer: string | null; referral_bonus_until: string | null }>().catch(() => null)
+  // 🤝 2026-11-11 대표 확정 — 옛 규칙 1("에이전시 자기 링크 = 소개비 없음")은 폐기. 수수료와 소개비는 따로 받고 합계가 상한을 못 넘는다.
   const influencerActive = !blocked && Number(sellerRow?.marketing_enabled ?? 1) === 1 && !p.productReferralDisabled
-    && !(await isOwnAgencyReferral(DB, p.referralInfluencerId, p.sellerId, p.productId)) // 🤝 규칙 1: 에이전시 자기 링크 = 소개비 없음
 
   let effectiveInfluencerPct = 0
   if (influencerActive) {
@@ -209,7 +209,8 @@ export async function applyGroupBuyReferral(
     effectiveInfluencerPct = calcInfluencerCommissionPct(rates, {
       is_referred_by_this_influencer: isReferredByThis,
       referral_bonus_active: referralBonusActive,
-      deal_commission_pct: dealRow?.commission_pct ?? null,
+      // 🤝💰 에이전시가 맡은 이용권이면 그 에이전시의 소개비 계약이 먼저(상한 재확인 포함). 없으면 종전 가게 단위 계약.
+      deal_commission_pct: (await agencyDealPctForSale(DB, p.sellerId, p.productId, p.referralInfluencerId)) ?? dealRow?.commission_pct ?? null,
     })
   }
   const influencerAmount = influencerActive ? Math.floor(p.totalAmount * effectiveInfluencerPct / 100) : 0

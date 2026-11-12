@@ -406,11 +406,30 @@ SSOT `src/worker/utils/agency-share-payout.ts` · 적립은 `creditBrokerShare` 
 | S-AGENCYSHARE-1 | 에이전시가 맡은 이용권(몫 10%) **카드** 결제 1건(10,000원) | `agency_share_credits` **1행**(1,000원) · 원장 `agency_share` debit=`seller:{id}` credit=`agency:{id}` |
 | S-AGENCYSHARE-2 | 옛 중개 매장을 이전한 뒤 결제 1건(broker_share_enabled 도 ON) | 에이전시 행 1개 · `broker_share` 행 **0**(매장 몫을 두 번 떼지 않는다) |
 | S-AGENCYSHARE-3 | S-AGENCYSHARE-1 주문 환불 | 그 행 `clawed_back`·amount 0 · 원장 `agency_share_reversal` 1건(같은 금액, 반대 방향) |
-| S-AGENCYSHARE-4 | 그 에이전시 직원의 소개 링크(`?ref=`)로 결제 | 에이전시 몫만 · 소개비(`influencer_attributions`) 0 (규칙 1) |
+| ~~S-AGENCYSHARE-4~~ | ~~그 에이전시 직원의 소개 링크로 결제 → 소개비 0 (규칙 1)~~ | **2026-11-11 폐기** — 규칙 1 삭제(대표 확정). 수수료·소개비 따로, 합계 상한은 S-AGENCYDEAL |
 | S-AGENCYSHARE-5 | 성숙 뒤 지급 신청 → 어드민 지급 처리 (사업자 1 · 개인 1) | 사업자 = 공제 0(`tax_invoice`) · 개인 = 3.3% 공제(`withholding_3_3`) · 행 `paid` |
 | S-AGENCYSHARE-6 | 게이트 OFF 복귀 후 결제 1건 | `agency_share_credits` 행 0 — 종전과 동일 |
 
 상태: ⬜ 미검증 (2026-11-01 배선). 통과 전 프로덕션 ON 금지.
+
+## 🤝💰 S-AGENCYDEAL — 에이전시 인플루언서 소개비(총 마케팅 비용 상한 안) (2026-11-11)
+
+**S-AGENCYDEAL** — 결재 `docs/decisions/2026-11-11-agency-share-auto-split.md` ⑤(대표 *"응 그걸로 확정하고 진행해줘"* → *"계속 진행해"*).
+게이트 `platform_settings.agency_influencer_deals_enabled`(기본 없음=꺼짐) · SSOT `src/features/agency-console/api/agency-influencer-deals.ts`
+(`agencyDealPctForSale` — 두 결제 경로 `group-buy.routes.ts`·`helpers.ts` 가 가게 단위 계약보다 먼저 본다) ·
+에이전시 API `/api/agency-console/stores/:id/influencer-deals` · 사장님 API `/api/seller/agency-link/deals`. **켜는 것은 대표 판단.**
+
+| ID | 시나리오 | 통과 기준 |
+|---|---|---|
+| S-AGENCYDEAL-1 | 수수료 3% · 상한 15% 매장에서 에이전시가 인플루언서 A 에게 12% → A 링크로 **에이전시 이용권** 10,000원 카드 결제 | 바로 `active` · `influencer_attributions` 1행 1,200원 |
+| S-AGENCYDEAL-2 | 같은 A 링크로 **사장님 이용권** 결제 | 에이전시 계약 미적용(가게 단위 계약이 없으면 소개비 0) |
+| S-AGENCYDEAL-3 | 에이전시가 B 에게 13%(상한 초과) | `pending_owner` · 사장님 앱 알림 · B 링크 결제 소개비 0 → 사장님 승인 후 결제 1,300원 |
+| S-AGENCYDEAL-4 | 사장님이 상한 10% 로 낮춘 뒤 A 링크 결제 | 700원(상한 − 수수료 = 7%) |
+| S-AGENCYDEAL-5 | 에이전시 직원 본인 유어샵 링크로 결제(수수료 게이트 ON 이면) | 에이전시 수수료 + 소개비 **둘 다**(옛 규칙 1 폐기) |
+| S-AGENCYDEAL-6 | S-AGENCYDEAL-1 주문 환불 | 그 소개비 회수(종전 인플 회수 경로) |
+| S-AGENCYDEAL-7 | 게이트 OFF 복귀 후 A 링크 결제 | 종전 동작(가게 단위 계약만) |
+
+상태: ⬜ 미검증 (2026-11-11 배선). 통과 전 프로덕션 ON 금지.
 
 ## 💸 S-TOSSPAYOUT — 토스 지급대행으로 매장 정산 송금 (2026-11-03)
 

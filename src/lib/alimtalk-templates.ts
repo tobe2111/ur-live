@@ -96,6 +96,8 @@ export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
   'sample_approved', 'store_listed',
   // 🎁 2026-10-31 무상 체험 제공 — 문안 docs/alimtalk-register-list.md §무상 체험(23~29). 등록·승인 전엔 앱 알림만 간다.
   'seeding_request_store', 'seeding_slots_store', 'seeding_approved', 'seeding_rejected',
+  // 🤝 2026-11-11 에이전시 소개비가 총 마케팅 비용 상한을 넘을 때 사장님 승인 요청 — 문안 docs/alimtalk-register-list.md §에이전시 소개비(30).
+  'agency_deal_approval',
   'seeding_scheduled', 'seeding_post_reminder', 'seeding_penalty',
 ] as const
 

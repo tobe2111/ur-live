@@ -128,7 +128,13 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
   {
     key: 'agency_share_payout_enabled', label: '에이전시 수수료 유어딜 지급', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 매장이 에이전시에 직접 송금)' }, { value: 'true', label: 'ON — 맡긴 이용권 판매마다 사장님이 정한 % 를 유어딜이 적립·지급' }],
-    hint: '🔴 머니 경로. 매장 몫에서 나간다(유어딜 수수료 불변). 에이전시 판매엔 옛 중개사 몫이 안 붙는다 · 에이전시 직원 링크로 팔면 소개비 없음 · 사업자는 세금계산서, 개인은 3.3% 공제. 라이브 에이전시 0곳이라 켜도 오늘 영향 0. 절차: S-AGENCYSHARE',
+    hint: '🔴 머니 경로. 매장 몫에서 나간다(유어딜 수수료 불변). 에이전시 판매엔 옛 중개사 몫이 안 붙는다 · 사업자는 세금계산서, 개인은 3.3% 공제(옛 규칙 1 "직원 링크엔 소개비 없음"은 2026-11-11 폐기). 라이브 에이전시 0곳이라 켜도 오늘 영향 0. 절차: S-AGENCYSHARE',
+  },
+  // 🤝💰 2026-11-11 결재 `2026-11-11-agency-share-auto-split.md` ⑤ — 에이전시가 총 마케팅 비용 상한 안에서 인플루언서 소개비를 건다.
+  {
+    key: 'agency_influencer_deals_enabled', label: '에이전시 인플루언서 소개비', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 소개비는 사장님이 건 가게 단위 계약만)' }, { value: 'true', label: 'ON — 에이전시가 상한 안에서 자기 이용권에 소개비를 건다(넘으면 사장님 승인)' }],
+    hint: '🔴 머니 경로. 매장 몫에서 나간다(유어딜 수수료 불변). 에이전시가 맡은 이용권에만 붙고, 정산 때 상한을 다시 본다(사장님 승인 계약 제외). 라이브 에이전시 0곳이라 켜도 오늘 영향 0. 절차: S-AGENCYDEAL',
   },
   // 🏷️ 2026-10-18 결재 `2026-10-18-franchise-cross-owner-redeem.md` — 점주가 다른 가맹점끼리 이용권 사용.
   //   🩸 `ops-gate-reachable` 이 이번에도 잡았다 — OPS_GATES 에 등재하고 손잡이를 안 만들었다.

@@ -24,6 +24,7 @@ import { frontendBase, normalizeEmail } from '../../agency-console/api/agency-au
 import { releaseAgencyProducts } from '../../agency-console/api/channel-sales'
 import { currentSharePctSql, currentBudgetPctSql } from '../../agency-console/api/agency-share'
 import { registerAgencyPerformanceRoutes } from './seller-agency-performance.routes'
+import { registerOwnerAgencyDealRoutes } from './seller-agency-deals.routes'
 
 type Ctx = Context<{ Bindings: Env }>
 type RequireOwner = (c: Ctx) => Promise<{ userId: number; sellerId: number } | Response>
@@ -176,4 +177,5 @@ export function registerAgencyLinkRoutes(app: Hono<{ Bindings: Env }>, requireOw
   })
 
   registerAgencyPerformanceRoutes(app, requireOwner) // 📊 누가 팔았나 · 이용권 맡기기(2026-10-24)
+  registerOwnerAgencyDealRoutes(app, requireOwner) // 🤝💰 2026-11-11 에이전시 소개비 승인·끝내기
 }
