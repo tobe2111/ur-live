@@ -7,7 +7,7 @@ export default [
   {
     name: '💸복구 자동 재시도가 예산을 다시 우회한다',
     file: 'index.html',
-    find: `            setTimeout(function () { if (takeReloadBudget()) bustReload(); }, 30000);`,
+    find: `            setTimeout(function () { if (offlineWait()) return; if (takeReloadBudget()) bustReload(); }, 30000);`, // 🔁 2026-11-12 재조준 — 오프라인 확인이 앞에 붙었다
     replace: `            setTimeout(bustReload, 30000);`,
     test: 'src/tests/unit/payment-recovery-budget-2026-09-13.test.ts',
     why:

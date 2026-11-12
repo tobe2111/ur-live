@@ -32,7 +32,7 @@ describe('🔁 재시도 예산', () => {
   it('🔴 자동 재시도가 예산을 지나간다 — 직접 bustReload 호출 금지', () => {
     // 종전: setTimeout(bustReload, 30000)  ← 카운터 우회
     expect(guard).not.toMatch(/setTimeout\(\s*bustReload\s*,\s*30000\s*\)/)
-    expect(guard).toMatch(/setTimeout\(function \(\) \{ if \(takeReloadBudget\(\)\) bustReload\(\); \}, 30000\)/)
+    expect(guard).toMatch(/setTimeout\(function \(\) \{ if \(offlineWait\(\)\) return; if \(takeReloadBudget\(\)\) bustReload\(\); \}, 30000\)/) // 2026-11-12 오프라인이면 재시도하지 않는다(offline-boot-guard 시험)
   })
 
   it('🔴 reloadOnce 도 같은 함수를 쓴다 — 카운터가 둘이면 상한이 두 배가 된다', () => {
