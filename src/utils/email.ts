@@ -235,7 +235,7 @@ export async function sendLiveStreamCreatedEmail(params: {
   <div class="footer">
     <p style="margin: 5px 0;">
       <strong>리스터코퍼레이션</strong><br>
-      서울특별시 강남구 남부순환로359길 14, 3층(도곡동)<br>
+      부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84)<br>
       이메일: jiwon@ur-team.com
     </p>
     <p style="margin: 15px 0 5px 0; font-size: 12px; color: #9ca3af;">
@@ -260,7 +260,7 @@ ${scheduledAt ? `예약 시간: ${new Date(scheduledAt).toLocaleString('ko-KR')}
 
 ---
 리스터코퍼레이션
-서울특별시 강남구 남부순환로359길 14, 3층(도곡동)
+부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84)
 이메일: jiwon@ur-team.com
   `
   

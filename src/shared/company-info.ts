@@ -16,7 +16,8 @@
  *    `2025-부산금정-0540`(종전 SiteFooter·noscript — 지금 홈에 보이던 값) vs
  *    `제2025-서울강남-0540호`(`pages/terms/terms-types.ts` TERMS_BIZ_FOOTER).
  *    어느 쪽이 맞는지는 대표만 안다 — 지금은 **화면에 보이던 값**을 유지하고 결재를 올렸다.
- *    사업자등록번호도 메일 템플릿 일부(`lib/system-email.ts` 등)가 `783-87-03224` 를 적고 있다.
+ *    사업자등록번호는 2026-11-12 사업자등록증 원본으로 `479-09-02930` 확인 — 메일 템플릿의 `783-87-03224` 를 고쳤다.
+ *    주소도 같은 날 사업자등록증의 사업장 소재지(부산 금정구)로 바꿨다(종전: 서울 강남구 도곡동).
  */
 export const COMPANY = {
   brand: '유어딜',
@@ -26,7 +27,7 @@ export const COMPANY = {
   /** 공정위 사업자정보 확인 링크에 쓰는 숫자만 */
   bizRegNoDigits: '4790902930',
   mailOrderNo: '2025-부산금정-0540',
-  address: '서울특별시 강남구 남부순환로359길 14, 3층(도곡동)',
+  address: '부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84)',
   email: 'jiwon@ur-team.com',
   /** 배포가 Cloudflare Pages 하나다(CLAUDE.md 배포 아키텍처) */
   hosting: 'Cloudflare, Inc.',

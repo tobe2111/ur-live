@@ -3,6 +3,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { useSafeBack } from '@/hooks/useSafeBack'
+import { COMPANY } from '@/shared/company-info'
 
 export default function RefundPolicyPage() {
   const goBack = useSafeBack('/')
@@ -40,6 +41,8 @@ export default function RefundPolicyPage() {
           <div className="bg-surface rounded-lg p-4 space-y-2">
             <p className="text-[13px] text-ink-soft"><span className="font-medium text-ink">상호명:</span> 리스터코퍼레이션 (LISTER Corporation)</p>
             <p className="text-[13px] text-ink-soft"><span className="font-medium text-ink">대표:</span> 정지원</p>
+            <p className="text-[13px] text-ink-soft"><span className="font-medium text-ink">사업자등록번호:</span> {COMPANY.bizRegNo}</p>
+            <p className="text-[13px] text-ink-soft"><span className="font-medium text-ink">주소:</span> {COMPANY.address}</p>
             <p className="text-[13px] text-ink-soft"><span className="font-medium text-ink">이메일:</span> jiwon@ur-team.com</p>
             <p className="text-[13px] text-ink-soft"><span className="font-medium text-ink">운영시간:</span> 평일 09:00 - 18:00 (주말 및 공휴일 휴무)</p>
           </div>
@@ -138,7 +141,7 @@ export default function RefundPolicyPage() {
           <div className="mb-5">
             <h3 className="text-[13px] font-medium text-ink mb-2">반품 주소</h3>
             <p className="text-[13px] text-ink-soft leading-relaxed">
-              서울특별시 강남구 남부순환로359길 14, 3층(도곡동)
+              부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84)
             </p>
           </div>
 
