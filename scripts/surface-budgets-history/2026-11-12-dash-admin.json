@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-12",
+  "reason": "2026-11-12 소개 링크 계정 동기화(syncAccountRef — 다른 기기 결제도 인플루언서 성과, 대표 '모두 확인해봐 계속 진행') +0.3KB 가 11-11 귀속 체계화(#2328 touch-store·captureLandingRef)·유어쇼츠 옮겨 싣기 누적분 위에 얹혀 dash:admin 허용(1.5)에 닿음. 엔트리를 lazy 로 쪼개 보니 오히려 +0.2 늘어 되돌림.",
+  "surfaces": [
+    "dash:admin"
+  ],
+  "changes": [
+    "dash:admin: 263.9 → 265.4 KB (+1.5, 허용 1.5) · 늘어난 것: app-components.js +0.6, lz-gbDetailL-productL.js +0.6"
+  ]
+}
