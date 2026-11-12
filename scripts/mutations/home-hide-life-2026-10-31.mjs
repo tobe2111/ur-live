@@ -45,11 +45,13 @@ export default [
     why: '토스 PG 심사가 입점 불가로 지적한 견적 문의 화면으로 가는 버튼이 홈에 다시 생긴다.',
   },
   {
-    name: 'home-hide-life — 워커 첫 화면 탭 줄이 생활을 뺀다(2026-11-02)',
+    // 🚧 2026-11-12 재조준 — 생활 입구가 닫힌 동안은 탭 표 자체에 생활이 없어 '빼는' 주입이 헛돈다.
+    //   지키려던 것(서버 탭 줄 = 화면 탭 줄)은 그대로다: 서버만 전체 표를 쓰면 서버에만 '생활' 이 그려진다.
+    name: 'home-hide-life — 워커 첫 화면 탭 줄이 화면과 다른 표를 쓴다(2026-11-12 재조준)',
     file: 'src/worker/utils/home-first-screen.ts',
     find: '  const cats = DEAL_CAT_LABELS.map(',
-    replace: "  const cats = DEAL_CAT_LABELS.filter(c => c.key !== 'home_voucher').map(",
-    test: T,
+    replace: "  const cats = [...DEAL_CAT_LABELS, { key: 'home_voucher', label: '생활' }].map(",
+    test: 'src/tests/unit/life-closed-2026-11-12.test.ts',
     why: '서버 탭 줄과 화면 탭 줄이 갈려 마운트 때 탭이 하나 끼어든다.',
   },
 ]
