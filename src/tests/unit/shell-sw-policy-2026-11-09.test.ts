@@ -124,6 +124,6 @@ describe('③ 리다이렉트·fetch 모양 · 배선', () => {
     const util = readFileSync('src/worker/routes/public-utility.routes.ts', 'utf8')
     expect(util).toContain("out.shell_sw_enabled = s.shell_sw_enabled === 'true'")
     expect(readFileSync('src/worker/index.ts', 'utf8')).toContain("c.res.headers.set('X-Shell-Variant', authed ? 'user' : 'guest')")
-    expect(readFileSync('src/lib/shell-sw.ts', 'utf8')).toMatch(/j\?\.data\?\.shell_sw_enabled === true/)
+    expect(readFileSync('src/lib/shell-sw.ts', 'utf8')).toMatch(/\(await loadConsumerSettings\(\)\)\?\.shell_sw_enabled === true/) // 🎛️ 2026-11-12 지도와 한 번의 요청을 나눠 쓴다
   })
 })

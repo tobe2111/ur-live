@@ -66,9 +66,9 @@ function testFlagOn(): boolean {
 
 async function settingOn(): Promise<boolean> {
   try {
-    const r = await fetch('/api/consumer-settings', { credentials: 'same-origin' })
-    const j = await r.json() as { data?: { shell_sw_enabled?: unknown } }
-    return j?.data?.shell_sw_enabled === true
+    // 🎛️ 2026-11-12 지도와 같은 한 번의 요청을 나눠 쓴다(`consumer-settings.ts`).
+    const { loadConsumerSettings } = await import('./consumer-settings')
+    return (await loadConsumerSettings())?.shell_sw_enabled === true
   } catch { return false }
 }
 

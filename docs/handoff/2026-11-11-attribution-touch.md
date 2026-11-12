@@ -26,3 +26,12 @@
 - staging 실결제 검증 미수행(이 환경에서 결제 불가) — 장바구니 귀속은 실결제로 확인할 것(`docs/STAGING_CHECKLIST.md` S-CART).
 - 다른 기기·브라우저에서 산 경우, 저장소를 지운 경우는 귀속이 없다(설계상 브라우저 저장).
 - 유튜버(외부 창작자)에게 성과를 돌려줄지는 미결정 — 지금은 기록만.
+
+## 2026-11-12 후속
+- 대표 *"1번 응응 그렇게 해줘"* — 외부 콘텐츠 주인과는 수익을 나누지 않는다. 판매 수는 제휴 제안 근거로만
+  (`docs/decisions/2026-11-12-creator-content-no-revenue-share.md`).
+- 대표 *"2번 응 그렇게 해줘"* — 지도 첫 화면 `/api/consumer-settings` ×2 제거: 공용 `src/lib/consumer-settings.ts`
+  (탭당 한 약속)를 서비스 워커(`shell-sw.ts`)와 지도(`useKakaoMap.ts`)가 나눠 쓴다. 가드
+  `consumer-settings-once-2026-11-12.test.ts` + 주입 2 · 기존 시험 2건·주입 1건 재조준.
+- 🩸 주입 전수를 한글 필터로 돌려 끊었더니 잠금 파일 `VouchersPage.tsx` 에 주입분이 남았다 — `git checkout` 으로 되돌림.
+  **`--only` 는 영문 이름으로만**(한글은 셸에서 `???` 로 깨져 전수가 된다).
