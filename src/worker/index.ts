@@ -2603,9 +2603,9 @@ export default {
         return Response.redirect(`https://urdeal.kr${url.pathname}${url.search || ''}`, 301);
       }
       // 🔗 블로그 슬러그 리네임 301 (맵/사유 SSOT: features/blog/api/blog-slug-redirects.ts)
-      if (request.method === 'GET' || request.method === 'HEAD') {
+      if (request.method === 'GET' || request.method === 'HEAD') { if (isClosedLifePath(url.pathname)) return Response.redirect(`${url.origin}/`, 302); /* 🚧 2026-11-12 생활 견적 입구 닫힘(PG 심사) — SSOT shared/life-closed.ts */
         const norm = normalizeDocPath(url.pathname); if (norm && isKnownAppPath(norm)) return Response.redirect(`${url.origin}${norm}${url.search || ''}`, 301); // 🔗 2026-10-14 끝 슬래시·`/index.html` 301(같은 내용의 다른 철자 — 404 가 아니다). SSOT: shared/seo/path-normalize
-        if (isClosedLifePath(url.pathname)) return Response.redirect(`${url.origin}/`, 302); /* 🚧 2026-11-12 생활 견적 입구 닫힘(PG 심사) — SSOT shared/life-closed.ts */ const renamed = resolveRenamedBlogPath(url.pathname);
+        const renamed = resolveRenamedBlogPath(url.pathname);
         if (renamed) return Response.redirect(`${url.origin}${renamed}${url.search || ''}`, 301);
         // 🔀 2026-07-29 별칭 경로 301 (SSOT: shared/seo/consumer-redirects).
         //   `App.tsx` 에 `<Navigate>` 로만 있던 경로들 — 서버는 그 URL 에도 SPA 셸을 200 + index,follow
