@@ -85,7 +85,7 @@ describe('④ 폴백 · ⑤⑥ 워커 배선', () => {
   })
   it('워커: 데스크톱 UA(폰·크롤러 아님) · 쿼리 없음 · 배너 시드 있음일 때만, LCP 헤더와 함께 — 폰 분기는 그대로', () => {
     const w = readRaw('src/worker/index.ts')
-    expect(w).toMatch(/else if \(ssrSlot === 'MAIN' && isMainPage && !url\.search && homeBannersPayload && !shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\) \{ const pcFirst = buildPcHomeFirstScreen\(homeBannersPayload, urdealLoaderHtml\); if \(pcFirst\) appendLcpLink\(c\.res\.headers, pcHomeLcpImage\(homeBannersPayload\)\);/)
+    expect(w).toMatch(/else if \(ssrSlot === 'MAIN' && isMainPage && !url\.search && homeBannersPayload && !shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\) \{ const pcFirst = buildPcHomeFirstScreen\(homeBannersPayload, urdealLoaderHtml, ssrExtraPayload\); if \(pcFirst\) appendLcpLink\(c\.res\.headers, pcHomeLcpImage\(homeBannersPayload\)\);/)
     expect(w).toMatch(/if \(bannersSeed\?\.payload\) \{ homeNearSeedHtml \+= homeBannersSeedScript\(bannersSeed\.payload\); homeBannersPayload = bannersSeed\.payload \}/)
     expect(w).toMatch(/else if \(ssrSlot === 'MAIN' && ssrExtraPayload && isMainPage && shouldRenderMobileFirstScreen\(/) // 폰 분기 보존
   })

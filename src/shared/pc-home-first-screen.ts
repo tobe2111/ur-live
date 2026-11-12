@@ -6,7 +6,8 @@
  * 한 토큰이라도 갈리면 마운트 때 그 자리가 튄다(시험이 컴포넌트를 렌더해 대조한다).
  *
  * 그리는 것: [상단 네비 **높이만**(68 + 1 + 44 — 글리프 없음)] + [색면 + 큰 배너 1 · 작은 배너 2]. 그 아래는 로더.
- * 안 그리는 것: 어드민 섹션 줄·지역 4칸·목록 — 서버가 모르는 상태(위치·카테고리)에 달려 있거나 화면 아래다.
+ * 안 그리는 것: 지역 4칸·목록 — 서버가 모르는 상태(위치·카테고리)에 달려 있거나 화면 아래다.
+ * (2026-11-12 부터 **첫 어드민 섹션 한 줄**은 그린다 — 위치 정렬 섹션(`near`)이 첫째면 안 그린다. 아래 `PC_SECTION_CLS`.)
  */
 export const PC_HOME_FS = {
   /** `DesktopTopNav` 헤더(홈): 1행 68px + 경계선 + 카테고리 행 44px. 글리프는 안 그린다(두 벌이 갈리는 클래스). */
@@ -35,6 +36,23 @@ export const PC_HOME_FS = {
   sideRows1: 'grid-rows-1',
   sideCell: 'relative min-h-0',
 } as const
+
+/**
+ * 🖥️ 2026-11-12 대표 *"아직 느리네"*(PC 홈 캡처 — 배너 아래가 회색 자리표시) — 서버가 **첫 어드민 섹션 한 줄**까지 그린다.
+ *   화면(`HomeSections` rail · `SectionRail`)과 **글자 그대로** 같은 클래스여야 마운트 때 안 튄다(시험이 두 소스를 대조한다).
+ */
+export const PC_SECTION_CLS = {
+  panel: 'ur-home-panel',
+  head: 'flex items-end justify-between gap-3 mb-3',
+  headText: 'min-w-0',
+  title: 'text-[20px] font-semibold tracking-[-.02em] text-gray-900 dark:text-white',
+  sub: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400',
+  more: 'shrink-0 text-[13px] text-gray-500 dark:text-gray-400 hover:underline underline-offset-4 whitespace-nowrap',
+  railWrap: 'relative',
+  rail: 'flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain scrollbar-hide [&>*]:snap-start [&>*]:shrink-0 [&>*]:w-[calc((100%-48px)/4)]',
+} as const
+/** 서버가 그리는 첫 섹션 카드 수 상한 — 줄은 4장이 보이고 나머지는 옆으로 넘긴다(화면은 전부 그린다 · 넘친 카드는 높이에 영향 없음). */
+export const PC_SECTION_MAX_CARDS = 12
 
 /** 사진 폭·화질 — 카드와 preload 가 같은 주소를 만들어야 한다(다르면 브라우저가 preload 를 버린다). */
 export const PC_HERO_IMG = { big: { width: 1100, quality: 76 }, small: { width: 560, quality: 76 } } as const
