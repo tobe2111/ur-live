@@ -12,13 +12,16 @@ import api from '@/lib/api'
 
 export const AGENCY_SHARE_NOTE = '유어딜은 줄 금액을 계산해 보여 주기만 해요. 돈은 매장이 에이전시에 직접 보내고, 세금계산서는 에이전시가 매장에 발행해요.'
 
-export default function AgencyShareEditor({ agencyId, agencyName, current, onSaved }: {
+export default function AgencyShareEditor({ agencyId, agencyName, current, currentBudget = null, onSaved }: {
   agencyId: number
   agencyName: string
   current: number | null
+  /** 💰 총 마케팅 비용 상한(수수료 + 소개비) — 2026-11-11. 사장님이 언제든 바꾼다. */
+  currentBudget?: number | null
   onSaved: () => void
 }) {
   const [value, setValue] = useState(current == null ? '' : String(current))
+  const [budget, setBudget] = useState(currentBudget == null || currentBudget === 0 ? '' : String(currentBudget))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -27,7 +30,7 @@ export default function AgencyShareEditor({ agencyId, agencyName, current, onSav
     if (busy) return
     setBusy(true); setError('')
     try {
-      const r = await api.post('/api/seller/agency-link/share', { agency_id: agencyId, pct: value })
+      const r = await api.post('/api/seller/agency-link/share', { agency_id: agencyId, pct: value, budget_pct: budget })
       if (!r.data?.success) throw new Error(r.data?.error)
       onSaved()
     } catch (err: any) {
@@ -55,6 +58,22 @@ export default function AgencyShareEditor({ agencyId, agencyName, current, onSav
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400">%</span>
         </span>
         <button type="submit" disabled={busy || value === ''} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">저장</button>
+      </div>
+      <label htmlFor={`agency-budget-${agencyId}`} className="mt-3 block text-[13px] font-semibold text-gray-700">
+        총 마케팅 비용 상한 (수수료 + 인플루언서 소개비, 판매액의 %)
+      </label>
+      <div className="mt-1 flex gap-2">
+        <span className="relative">
+          <input
+            id={`agency-budget-${agencyId}`}
+            type="number" inputMode="decimal" min={0} max={90} step={0.1}
+            value={budget}
+            onChange={(e) => setBudget(e.target.value)}
+            placeholder="정하지 않음"
+            className="h-10 w-24 rounded-lg border border-gray-200 pl-3 pr-7 text-right text-[15px] text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+          />
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400">%</span>
+        </span>
       </div>
       {error && <p className="mt-2 text-[13px] text-tone-bad">{error}</p>}
       <p className="mt-2 text-[12px] leading-[1.55] text-gray-500">

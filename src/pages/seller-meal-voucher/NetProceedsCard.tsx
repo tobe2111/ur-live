@@ -33,7 +33,7 @@ import { voucherMargin } from '@/shared/voucher-margin'
 export { voucherMargin } from '@/shared/voucher-margin'
 
 export default function NetProceedsCard({ price, originalPrice, promoPct }: { price: number; originalPrice?: number; promoPct?: number }) {
-  const [fee, setFee] = useState<{ channel: string | null; platform_fee_pct: number; channel_rates_active?: boolean; agency_shares?: Array<{ name: string; pct: number }> } | null>(null)
+  const [fee, setFee] = useState<{ channel: string | null; platform_fee_pct: number; channel_rates_active?: boolean; agency_shares?: Array<{ name: string; pct: number; budgetPct?: number }> } | null>(null)
   const [influencerInput, setInfluencerInput] = useState('')
   useEffect(() => {
     api.get('/api/seller/fee-context')
@@ -46,6 +46,8 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
   // 여러 에이전시가 맡으면 이용권마다 맡은 곳이 다르다 — 가장 큰 % 로 보수적으로 보인다.
   const agencies = (fee.agency_shares ?? []).filter((a) => Number(a.pct) > 0)
   const agencyPct = agencies.reduce((mx, a) => Math.max(mx, Number(a.pct)), 0)
+  // 💰 2026-11-11 총 마케팅 비용 상한 — 에이전시가 소개비까지 상한을 다 쓰면(가장 나쁜 경우) 남는 돈.
+  const budgetPct = (fee.agency_shares ?? []).reduce((mx, a) => Math.max(mx, Number(a.budgetPct) || 0), 0)
   const m = voucherMargin({
     price,
     originalPrice,
@@ -109,6 +111,11 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
           ? `인플루언서 수수료는 소개 링크로 팔렸을 때만 빠져요. 직접 팔리면 ${formatNumber(price - platformCut - m.agencyCut)}원이에요.`
           : '인플루언서와 수수료를 약속했다면 그 %를 넣어 보세요. 계산용이라 저장되지 않아요.'}
       </p>
+      {budgetPct > 0 && (
+        <p className="mt-1 text-[12px] leading-[1.55] text-gray-500" data-testid="margin-agency-budget">
+          에이전시가 소개비까지 총 마케팅 비용 상한({budgetPct}%)을 다 쓰면 최종 마진은 {formatNumber(Math.max(0, price - platformCut - Math.round((price * budgetPct) / 100)))}원이에요.
+        </p>
+      )}
       {m.agencyCut > 0 && (
         <p className="mt-1 text-[12px] leading-[1.55] text-gray-500">
           에이전시 수수료는 에이전시가 맡아 판 이용권에서 빠져요{agencies.length > 1 ? '. 맡은 에이전시마다 % 가 달라 가장 큰 값으로 계산했어요' : ''}.

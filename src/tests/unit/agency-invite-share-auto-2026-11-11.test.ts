@@ -49,7 +49,7 @@ function d1(db: Db) {
 
 const TOKEN = 'a'.repeat(64)
 
-async function fresh(pct: number | null) {
+async function fresh(pct: number | null, budget: number | null = null) {
   const db = new DatabaseSync(':memory:')
   db.exec('CREATE TABLE sellers (id INTEGER PRIMARY KEY, linked_user_id INTEGER, business_name TEXT, name TEXT)')
   db.exec('CREATE TABLE seller_operators (id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER, user_id INTEGER, role TEXT, revoked_at TEXT, granted_by_user_id INTEGER, created_at TEXT)')
@@ -58,6 +58,7 @@ async function fresh(pct: number | null) {
   await ensureAgencyConsoleTables(DB)
   db.exec("INSERT INTO agency_accounts (id, name, kind, status) VALUES (1, '리스터', 'business', 'active')")
   if (pct !== null) db.exec(`INSERT INTO agency_share_defaults (agency_id, pct) VALUES (1, ${pct})`)
+  if (budget !== null) db.exec(`INSERT INTO agency_budget_defaults (agency_id, pct) VALUES (1, ${budget})`)
   db.exec(`INSERT INTO agency_store_invites (agency_id, token, created_by_staff_id, expires_at) VALUES (1, '${TOKEN}', 11, datetime('now', '+30 days'))`)
   return { db, env: { DB, JWT_SECRET: 'x' } }
 }
@@ -132,8 +133,50 @@ describe('⑤ 배선', () => {
       .toMatch(/post\('\/store-invite\/share', cors\(\), requireAgencyStaff\(\{ adminOnly: true \}\)/)
   })
   it('사장님 두 화면(초대 · 등록)이 본 % 를 같이 보낸다', () => {
-    expect(readCode('src/pages/StoreAgencyInvitePage.tsx')).toMatch(/seller_ids: picked, share_pct: sharePct/)
-    expect(readCode('src/pages/StoreClaimPage.tsx')).toMatch(/seller_id: sellerId, share_pct: inviteShare/)
-    expect(readCode('src/pages/store-new/AgencyInviteBanner.tsx')).toMatch(/에이전시 수수료 \$\{sharePct\}%/)
+    expect(readCode('src/pages/StoreAgencyInvitePage.tsx')).toMatch(/seller_ids: picked, share_pct: sharePct, budget_pct: budgetPct/)
+    expect(readCode('src/pages/StoreClaimPage.tsx')).toMatch(/seller_id: sellerId, share_pct: inviteShare, budget_pct: inviteBudget/)
+    expect(readCode('src/pages/store-new/AgencyInviteBanner.tsx')).toMatch(/agencyCostLine\(sharePct, budgetPct\)/)
+  })
+})
+
+const budgets = (db: Db, sellerId: number) =>
+  db.prepare('SELECT pct FROM agency_budget_terms WHERE seller_id = ? AND agency_id = 1 ORDER BY id').all(sellerId).map((r) => Number((r as { pct: number }).pct))
+
+describe('⑥ 💰 총 마케팅 비용 상한(2026-11-11 대표 확정)', () => {
+  it('초대 조회가 상한도 알려 주고, 맡기면 상한도 그 매장에 저장된다', async () => {
+    const { db, env } = await fresh(3, 15)
+    const g = await storeAgencyInviteRoutes.request(`/${TOKEN}`, {}, env as never)
+    expect((await g.json() as { budgetPct: number }).budgetPct).toBe(15)
+    expect((await accept(env, { seller_ids: [7], share_pct: 3, budget_pct: 15 })).status).toBe(200)
+    expect(budgets(db, 7)).toEqual([15])
+  })
+  it('사장님이 본 상한과 지금 상한이 다르면 409 — 맡기지도 저장하지도 않는다', async () => {
+    const { db, env } = await fresh(3, 20)
+    const r = await accept(env, { seller_ids: [7], share_pct: 3, budget_pct: 15 })
+    expect(r.status).toBe(409)
+    expect(r.json.budgetPct).toBe(20)
+    expect(budgets(db, 7)).toEqual([])
+  })
+  it('상한을 정하지 않았으면 저장하지 않는다', async () => {
+    const { db, env } = await fresh(3, null)
+    await accept(env, { seller_ids: [7], share_pct: 3, budget_pct: 0 })
+    expect(budgets(db, 7)).toEqual([])
+  })
+  it('상한은 수수료보다 작을 수 없고 90 을 넘을 수 없다', async () => {
+    const { validateBudgetPct } = await import('@/features/agency-console/api/agency-share')
+    expect(validateBudgetPct(2, 3).ok).toBe(false)
+    expect(validateBudgetPct(91, 3).ok).toBe(false)
+    expect(validateBudgetPct(0, 3)).toEqual({ ok: true, pct: 0 })
+    expect(validateBudgetPct(15, 3)).toEqual({ ok: true, pct: 15 })
+  })
+  it('카드 한 줄 문구가 수수료와 상한을 함께 말한다', async () => {
+    const { agencyCostLine } = await import('@/shared/agency-store-invite')
+    expect(agencyCostLine(3, 15)).toBe('에이전시 수수료 판매액의 3% · 소개비 포함 총 마케팅 비용 최대 15%. ')
+    expect(agencyCostLine(3, 0)).toBe('에이전시 수수료 판매액의 3%. ')
+    expect(agencyCostLine(0, 0)).toBe('')
+  })
+  it('사장님 편집 화면이 상한을 보내고, 서버가 상한을 저장한다', () => {
+    expect(readCode('src/pages/seller-operators/AgencyShareEditor.tsx')).toMatch(/budget_pct: budget/)
+    expect(readCode('src/features/seller/api/seller-agency-performance.routes.ts')).toMatch(/setAgencyBudget\(DB, g\.sellerId, agencyId, b\.pct, g\.userId\)/)
   })
 })

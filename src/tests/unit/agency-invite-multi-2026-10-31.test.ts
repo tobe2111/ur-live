@@ -64,7 +64,7 @@ describe('② 카톡 카드 문구는 한 곳', () => {
   })
   it('카톡 보내기 버튼과 서버 메타가 같은 함수를 쓴다(서버는 조회한 에이전시 이름을 넣는다)', () => {
     // 2026-11-11 — 두 길 모두 에이전시 수수료 % 도 함께 넘긴다(agency-invite-fee-label 시험).
-    expect(CARD).toMatch(/agencyInviteCardCopy\(agencyName, sharePct\)/)
+    expect(CARD).toMatch(/agencyInviteCardCopy\(agencyName, sharePct, budgetPct\)/)
     expect(readCode('src/worker/utils/store-invite-ssr.ts')).toMatch(/agencyInviteCardCopy\(name, /)
   })
 })

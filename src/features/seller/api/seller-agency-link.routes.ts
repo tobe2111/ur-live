@@ -22,7 +22,7 @@ import { buildSystemEmailHtml, sendSystemEmail } from '@/lib/system-email'
 import { ensureAgencyConsoleTables } from '../../agency-console/api/agency-schema'
 import { frontendBase, normalizeEmail } from '../../agency-console/api/agency-auth.routes'
 import { releaseAgencyProducts } from '../../agency-console/api/channel-sales'
-import { currentSharePctSql } from '../../agency-console/api/agency-share'
+import { currentSharePctSql, currentBudgetPctSql } from '../../agency-console/api/agency-share'
 import { registerAgencyPerformanceRoutes } from './seller-agency-performance.routes'
 
 type Ctx = Context<{ Bindings: Env }>
@@ -35,18 +35,20 @@ async function readLinks(DB: D1Database, sellerId: number) {
   const { results } = await DB.prepare(
     `SELECT l.id, l.agency_id, l.status, l.created_at, l.accepted_at, a.name AS agency_name,
             (SELECT COUNT(*) FROM agency_products ap WHERE ap.seller_id = l.seller_id AND ap.agency_id = l.agency_id) AS product_count,
-            ${currentSharePctSql('l.seller_id', 'l.agency_id')} AS share_pct
+            ${currentSharePctSql('l.seller_id', 'l.agency_id')} AS share_pct,
+            ${currentBudgetPctSql('l.seller_id', 'l.agency_id')} AS budget_pct
        FROM agency_store_links l JOIN agency_accounts a ON a.id = l.agency_id
       WHERE l.seller_id = ? AND l.status IN ('pending','active')
       ORDER BY l.id ASC LIMIT 20`,
-  ).bind(sellerId).all<{ id: number; agency_id: number; status: string; created_at: string; accepted_at: string | null; agency_name: string; product_count: number; share_pct: number | null }>()
+  ).bind(sellerId).all<{ id: number; agency_id: number; status: string; created_at: string; accepted_at: string | null; agency_name: string; product_count: number; share_pct: number | null; budget_pct: number | null }>()
   return (results || []).map((l) => ({
     linkId: l.id,
     agencyId: l.agency_id,
     status: l.status === 'active' ? 'active' as const : 'pending' as const,
     agencyName: l.agency_name, requestedAt: l.created_at, acceptedAt: l.accepted_at,
     productCount: Number(l.product_count) || 0,
-    sharePct: l.share_pct == null ? null : Number(l.share_pct), // 🤝 에이전시 몫 %(정한 적 없으면 null)
+    sharePct: l.share_pct == null ? null : Number(l.share_pct), // 🤝 에이전시 수수료 %(정한 적 없으면 null)
+    budgetPct: l.budget_pct == null ? null : Number(l.budget_pct), // 💰 총 마케팅 비용 상한(2026-11-11)
   }))
 }
 

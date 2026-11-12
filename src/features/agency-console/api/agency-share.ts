@@ -18,6 +18,7 @@
  *   - 끊으면 그다음 판매부터 몫이 멈춘다 — 맡은 기간이 닫히므로 저절로 그렇다(`channel-sales.ts`).
  *   - 몫은 **환불 안 된 판매**의 결제가에 붙는다.
  */
+import { ensureAgencyConsoleTables } from './agency-schema'
 
 /** 매장 몫(유어딜 수수료를 뺀 나머지)을 넘지 않게 — 유어딜 최소 수수료가 5% 라 95, 여유를 두고 90. */
 export const AGENCY_SHARE_PCT_MAX = 90
@@ -53,6 +54,34 @@ export function shareSumSql(pr: string): string {
       ELSE COALESCE(v.applied_price, p.price, 0) * COALESCE(${sharePctAtSaleSql('p.seller_id', `${pr}.agency_id`)}, 0) END) / 100.0 AS share_raw`
 }
 
+/**
+ * 💰 총 마케팅 비용 상한(2026-11-11 대표 확정) — 에이전시 수수료 + 인플루언서 소개비의 합이 넘지 못하는 % .
+ * 0 = 정하지 않음(상한 없음이 아니라 "아직 안 정함" — 이 단계에선 표시·동의만 하고 막는 데 쓰지 않는다).
+ * 정했다면 수수료보다 작을 수 없다(수수료만으로 이미 넘는 상한은 뜻이 없다).
+ */
+export function validateBudgetPct(raw: unknown, feePct: number): { ok: true; pct: number } | { ok: false; error: string } {
+  const v = validateSharePct(raw)
+  if (!v.ok) return { ok: false, error: `총 마케팅 비용 상한은 0 ~ ${AGENCY_SHARE_PCT_MAX}% 사이로 적어 주세요.` }
+  if (v.pct > 0 && v.pct < feePct) return { ok: false, error: `총 마케팅 비용 상한은 에이전시 수수료(${feePct}%)보다 작을 수 없어요.` }
+  return v
+}
+
+/** 지금 상한 — 정한 적 없으면 NULL. */
+export function currentBudgetPctSql(sellerCol: string, agencyCol: string): string {
+  return `(SELECT b.pct FROM agency_budget_terms b WHERE b.seller_id = ${sellerCol} AND b.agency_id = ${agencyCol}
+      ORDER BY b.effective_from DESC, b.id DESC LIMIT 1)`
+}
+
+/** 상한을 정한다(지금부터). 같은 값이면 기록하지 않는다 — 이력은 지우지 않는다. */
+export async function setAgencyBudget(DB: D1Database, sellerId: number, agencyId: number, pct: number, userId: number | null): Promise<boolean> {
+  const cur = await DB.prepare(`SELECT ${currentBudgetPctSql('?', '?')} AS pct`).bind(sellerId, agencyId).first<{ pct: number | null }>()
+  if (cur?.pct != null && Number(cur.pct) === pct) return false
+  await DB.prepare(
+    "INSERT INTO agency_budget_terms (seller_id, agency_id, pct, effective_from, set_by_user_id) VALUES (?, ?, ?, datetime('now'), ?)",
+  ).bind(sellerId, agencyId, pct, userId).run()
+  return true
+}
+
 /** 사장님이 % 를 정한다(지금부터 판매에 적용). 같은 값이면 기록하지 않는다. */
 export async function setAgencyShare(DB: D1Database, sellerId: number, agencyId: number, pct: number, userId: number | null): Promise<boolean> {
   const cur = await DB.prepare(`SELECT ${currentSharePctSql('?', '?')} AS pct`).bind(sellerId, agencyId).first<{ pct: number | null }>()
@@ -68,13 +97,18 @@ export async function setAgencyShare(DB: D1Database, sellerId: number, agencyId:
  * 표시 전용(정산은 판매 시각의 % 를 따로 읽는다). 표가 없거나 오류면 빈 배열 — 계산기는 그 줄을 안 그린다.
  * 지급 스위치가 꺼져 있어도 보인다: 그때도 사장님이 에이전시에게 직접 내는 돈이라 마진에서 빠지는 건 같다.
  */
-export async function activeAgencySharesForStore(DB: D1Database, sellerId: number): Promise<Array<{ name: string; pct: number }>> {
-  const r = await DB.prepare(
-    `SELECT a.name AS name, ${currentSharePctSql('l.seller_id', 'l.agency_id')} AS pct
+export async function activeAgencySharesForStore(DB: D1Database, sellerId: number): Promise<Array<{ name: string; pct: number; budgetPct: number }>> {
+  const clamp = (v: unknown) => Math.max(0, Math.min(AGENCY_SHARE_PCT_MAX, Number(v) || 0))
+  // 상한 표(2026-11-11 신설)가 아직 없는 DB 에서 질의 전체가 실패하면 수수료 줄까지 사라진다 — 먼저 만든다(메모이즈라 한 번).
+  await ensureAgencyConsoleTables(DB).catch(() => {})
+  const q = (budgetCol: string) => DB.prepare(
+    `SELECT a.name AS name, ${currentSharePctSql('l.seller_id', 'l.agency_id')} AS pct, ${budgetCol} AS budget
        FROM agency_store_links l JOIN agency_accounts a ON a.id = l.agency_id
       WHERE l.seller_id = ? AND l.status = 'active' ORDER BY l.id`,
-  ).bind(sellerId).all<{ name: string; pct: number | null }>().catch(() => null)
+  ).bind(sellerId).all<{ name: string; pct: number | null; budget: number | null }>()
+  // 상한 표를 못 읽어도 수수료 줄은 남긴다(상한만 빠진다).
+  const r = await q(currentBudgetPctSql('l.seller_id', 'l.agency_id')).catch(() => q('NULL')).catch(() => null)
   return (r?.results ?? [])
-    .map((x) => ({ name: String(x.name || '에이전시'), pct: Math.max(0, Math.min(AGENCY_SHARE_PCT_MAX, Number(x.pct) || 0)) }))
-    .filter((x) => x.pct > 0)
+    .map((x) => ({ name: String(x.name || '에이전시'), pct: clamp(x.pct), budgetPct: clamp(x.budget) }))
+    .filter((x) => x.pct > 0 || x.budgetPct > 0)
 }
