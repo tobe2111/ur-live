@@ -17,6 +17,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import { ensureAgencyConsoleTables } from './agency-schema'
 import { AGENCY_SHARE_PCT_MAX, currentBudgetPctSql, currentSharePctSql } from './agency-share'
+import { findActiveDealPct } from '../../../worker/utils/influencer-deal'
 
 export const AGENCY_DEAL_GATE = 'agency_influencer_deals_enabled'
 /** 알림톡 템플릿 이름 — 카카오 검수 후 어드민 `alimtalk_approved_templates` 에 적으면 나간다. 문안: docs/alimtalk-register-list.md */
@@ -179,6 +180,15 @@ export async function agencyDealPctForSale(
   } catch {
     return null
   }
+}
+
+/**
+ * 🎁 표시 전용 — 이용권 상세 "내 링크로 팔리면 N%". **결제와 같은 순서**: 그 이용권을 맡은 에이전시의 계약 먼저
+ *   (스위치 OFF 면 null), 없으면 가게 단위 계약. 갈리면 화면은 0 인데 정산은 붙는다. 이용권 번호가 없으면 가게 단위만.
+ */
+export async function dealPctForDisplay(DB: D1Database, sellerId: number, productId: number, userId: string): Promise<number | null> {
+  const agency = Number.isInteger(productId) && productId > 0 ? await agencyDealPctForSale(DB, sellerId, productId, userId) : null
+  return agency ?? await findActiveDealPct(DB, sellerId, userId)
 }
 
 /** 알림톡·앱 알림 문안(사장님) — 검수 신청서와 같은 문장이어야 한다(docs/alimtalk-register-list.md). */

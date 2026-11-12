@@ -185,7 +185,10 @@ describe('⑥ 배선', () => {
   it('이용권 상세 표시도 결제와 같은 순서(에이전시 계약 먼저) · 화면이 이용권 번호를 보낸다', () => {
     const r = stripComments(readFileSync('src/features/group-buy/api/marketing.routes.ts', 'utf8'))
     const i = r.indexOf("get('/deal-for-seller/:sellerId'")
-    const seg = r.slice(i, i + 700)
+    expect(r.slice(i, i + 400)).toMatch(/dealPctForDisplay\(c\.env\.DB, [^\n]*product_id/)
+    const d = stripComments(readFileSync('src/features/agency-console/api/agency-influencer-deals.ts', 'utf8'))
+    const j = d.indexOf('export async function dealPctForDisplay')
+    const seg = d.slice(j, j + 500)
     expect(seg.indexOf('agencyDealPctForSale(')).toBeGreaterThan(0)
     expect(seg.indexOf('agencyDealPctForSale(')).toBeLessThan(seg.indexOf('findActiveDealPct('))
     expect(readFileSync('src/components/seeding/SellThisCard.tsx', 'utf8')).toMatch(/deal-for-seller\/\$\{id\}\?product_id=\$\{productId\}/)
