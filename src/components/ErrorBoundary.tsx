@@ -7,6 +7,12 @@ import { Component, ErrorInfo, ReactNode } from 'react';
 import { isChunkLoadError, recoverFromChunkError, reloadWithCacheBust } from '@/utils/chunk-error';
 import Udal from '@/components/mascot/Udal';
 
+/** 📵 오프라인 안내 문구(시험이 대조한다). */
+export const OFFLINE_COPY = { title: '인터넷 연결이 끊겼어요', desc: '연결되면 자동으로 다시 불러올게요.' } as const
+function isOfflineNow(): boolean {
+  try { return typeof navigator !== 'undefined' && navigator.onLine === false } catch { return false }
+}
+
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
@@ -76,6 +82,18 @@ class ErrorBoundary extends Component<Props, State> {
       //   (전용 문구 + 수동 새로고침 버튼) — 유어딜 BrandLoader 로 통일 대상 아님.
       if (this.state.isChunkError) {
         const exhausted = this.state.chunkExhausted;
+        // 📵 2026-11-12 — 오프라인 실패는 배포 탓이 아니다. "새 버전이 배포됐어요" 는 거짓말이고, 새로고침 버튼은
+        //   오프라인에서 브라우저 오류 화면으로 간다(쿼리 주소는 재방문 저장본이 안 받는다). 연결되면 chunk-error.ts 가 한 번 새로고침한다.
+        if (isOfflineNow()) {
+          return (
+            <div className="min-h-[100dvh] flex items-center justify-center bg-warm px-4" data-testid="chunk-offline">
+              <div className="max-w-sm w-full text-center">
+                <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white mb-2">{OFFLINE_COPY.title}</h2>
+                <p className="text-gray-500 dark:text-gray-400 text-[15px] leading-relaxed">{OFFLINE_COPY.desc}</p>
+              </div>
+            </div>
+          );
+        }
         return (
           <div className="min-h-[100dvh] flex items-center justify-center bg-warm px-4">
             <div className="max-w-sm w-full text-center">
