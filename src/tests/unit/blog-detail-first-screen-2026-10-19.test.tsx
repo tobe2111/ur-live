@@ -116,6 +116,9 @@ describe('④ 배선', () => {
     const w = stripComments(fs.readFileSync('src/worker/index.ts', 'utf8'))
     expect(w).toMatch(/const blogPhone = shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\); const blogFirst = !blogPhone \? '' :/)
     expect(w).toMatch(/const blogBody = blogFirst \? blogFirst : ssrSlot === 'BLOGPOST' && ssrPayload \? buildBlogPostBody\(ssrPayload\)/)
+
+    // 🖥️ 2026-11-12 PC 사람은 맨 글자 본문을 noscript 로 감추고 로더 — 마운트 때 본문이 갈려 CLS 0.14 였다.
+    expect(w).toContain('!blogPhone && blogBody ? `<noscript>${blogBody}</noscript>` + urdealLoaderHtml : blogBody')
   })
   it('CSS 먼저 적용 — /blog/:slug 폰에서만(목록 /blog 는 아니다)', () => {
     const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'

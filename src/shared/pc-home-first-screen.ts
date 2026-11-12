@@ -9,11 +9,13 @@
  * 안 그리는 것: 지역 4칸·목록 — 서버가 모르는 상태(위치·카테고리)에 달려 있거나 화면 아래다.
  * (2026-11-12 부터 **첫 어드민 섹션 한 줄**은 그린다 — 위치 정렬 섹션(`near`)이 첫째면 안 그린다. 아래 `PC_SECTION_CLS`.)
  */
+import { PC_TOPNAV_FRAME } from './pc-topnav-frame'
+
 export const PC_HOME_FS = {
   /** `DesktopTopNav` 헤더(홈): 1행 68px + 경계선 + 카테고리 행 44px. 글리프는 안 그린다(두 벌이 갈리는 클래스). */
-  topnav: 'hidden md:block bg-white/95 dark:bg-[#11141C]/95 border-b border-gray-100 dark:border-[#2C2F35]',
-  topnavRow1: 'h-[68px]',
-  topnavRow2: 'border-t border-gray-100 dark:border-[#2C2F35] h-11',
+  topnav: PC_TOPNAV_FRAME.outer,
+  topnavRow1: PC_TOPNAV_FRAME.row1,
+  topnavRow2: PC_TOPNAV_FRAME.row2,
   /** `PcHomePage` 루트·컨테이너 */
   field: 'bg-[var(--home-field)] min-h-[100dvh]',
   container: 'max-w-[1440px] mx-auto px-5 lg:px-8 pt-6 pb-10 flex flex-col gap-5',

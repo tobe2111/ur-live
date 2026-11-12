@@ -1014,7 +1014,7 @@ app.use('*', async (c, next) => {
       const blogBody = blogFirst ? blogFirst : ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogPostBody(ssrPayload)
         : ssrSlot === 'BLOG' ? buildBlogListBody(ssrPayload) : '';
       rb = rb.on('#root', {
-        element(el) { el.setInnerContent(blogBody, { html: true }); },
+        element(el) { el.setInnerContent(!blogPhone && blogBody ? `<noscript>${blogBody}</noscript>` + urdealLoaderHtml : blogBody, { html: true }); }, // 🖥️ 2026-11-12 PC 사람은 맨 글자 본문이 마운트 때 갈려 CLS 0.14 → noscript + 로더(크롤러는 위 blogPhone=true 로 첫 화면을 받는다)
       });
     } else if (ssrSlot === 'DETAIL' && ssrPayload && (url.pathname.startsWith('/pass/') || url.pathname.startsWith('/group-buy/'))) {
       // 🖼️ 2026-09-15 [UNLOCK_LOADING] (대표 "꼭 로딩이 걸려야 해?"): 시드에 상품이 이미 있고 히어로도 preload 로
@@ -1025,7 +1025,7 @@ app.use('*', async (c, next) => {
       rb = rb.on('#root', { element(el) { el.setInnerContent(firstScreen || urdealLoaderHtml, { html: true }); } });
     } else if (ssrSlot === 'DETAIL' && ssrPayload && url.pathname.startsWith('/vouchers/')) {
       // 🎁 2026-10-08 [UNLOCK_LOADING] (대표 "모두 다 하자"): 같은 DETAIL 슬롯·같은 시드인데 위 pathname 에서 빠져 로더만 보였다. 사유·경계: `utils/voucher-detail-ssr-body.ts`.
-      const voucherFirst = buildVoucherDetailFirstScreen(ssrPayload, urdealLoaderHtml);
+      const voucherFirst = buildVoucherDetailFirstScreen(ssrPayload, urdealLoaderHtml, shouldRenderMobileFirstScreen(c.req.header('user-agent')) ? undefined : url.pathname);
       rb = rb.on('#root', { element(el) { el.setInnerContent(voucherFirst || urdealLoaderHtml, { html: true }); } });
     } else if (ssrSlot === 'MAIN' && isMainPage && !url.search && homeBannersPayload && !shouldRenderMobileFirstScreen(c.req.header('user-agent'))) { const pcFirst = buildPcHomeFirstScreen(homeBannersPayload, urdealLoaderHtml, ssrExtraPayload); if (pcFirst) appendLcpLink(c.res.headers, pcHomeLcpImage(homeBannersPayload)); rb = rb.on('#root', { element(el) { el.setInnerContent(pcFirst || urdealLoaderHtml, { html: true }); } }); // 🖥️ 2026-11-09 [LOADING_ADDITIVE] PC 홈 — 첫 글자 2.25초(로더뿐) → 네비 높이 + 색면 + 배너 3장(HOMEBANNERS 시드). 사유·경계: utils/pc-home-first-screen.ts
     } else if (ssrSlot === 'MAIN' && isMainPage && shouldRenderMobileFirstScreen(c.req.header('user-agent')) && homeCategoryOf(url.search)) { const catFirst = buildHomeCategoryFirstScreen(homeCategoryOf(url.search)!, urdealLoaderHtml, c.req.header('cookie') ?? null); rb = rb.on('#root', { element(el) { el.setInnerContent(catFirst, { html: true }); } }); } else if (ssrSlot === 'MAIN' && ssrExtraPayload && isMainPage && shouldRenderMobileFirstScreen(c.req.header('user-agent')) && !homeCategoryOf(url.search)) { // 🏠 2026-11-10 `?category=` 면 앱이 편성을 숨긴다 — 전체 홈을 먼저 그리면 통째로 바뀐다(CLS 0.83). shared/home-query.ts
