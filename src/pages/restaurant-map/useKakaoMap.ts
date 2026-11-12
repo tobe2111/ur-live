@@ -523,8 +523,7 @@ export function useKakaoMap({
   useEffect(() => {
     if (!enabled) return
     let alive = true
-    // 🎛️ 2026-11-12 서비스 워커 판정과 같은 한 번의 요청을 나눠 쓴다(`lib/consumer-settings.ts` — 첫 화면 중복 요청 0).
-    import('@/lib/consumer-settings').then(({ loadConsumerSettings }) => loadConsumerSettings())
+    import('@/lib/consumer-settings').then(({ loadConsumerSettings }) => loadConsumerSettings()) // 🎛️ 2026-11-12 서비스 워커와 한 번의 요청을 나눠 쓴다(첫 화면 중복 0)
       .then((settings) => {
         if (!alive) return
         const v = settings?.map_highlight_discount_pct
