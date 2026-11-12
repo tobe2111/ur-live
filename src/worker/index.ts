@@ -184,7 +184,7 @@ import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
 import { resolveConsumerAlias } from '../shared/seo/consumer-redirects'; import { pinRedirectApiPath } from '../shared/seo/pin-link'; import { productCanonicalRedirect } from './utils/product-canonical-redirect'; import { SHORTS_ALL_PRELOAD_LINK } from '../shared/urshorts-list-cache'; import { videosStartIdOf, videosCoverSrc } from '../shared/videos-first'; import { buildVideosFirstScreen } from './utils/videos-first-screen';
-import { applySurfaceMeta, applyCanonical, buildSellerSurfaceMeta, shouldNoindexMissingEntity, isRetiredSurface, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd, buildSellerShopJsonLd } from './utils/surface-list-jsonld';
+import { isClosedLifePath } from '../shared/life-closed'; import { applySurfaceMeta, applyCanonical, buildSellerSurfaceMeta, shouldNoindexMissingEntity, isRetiredSurface, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd, buildSellerShopJsonLd } from './utils/surface-list-jsonld';
 import { fetchSsrPayload, applySsrDiagHeaders, ssrWaitUntil, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
 // 🛡️ 2026-05-18: 숙소 공구 에이전시 모니터링 — PR 1 Foundation.
@@ -2603,7 +2603,7 @@ export default {
         return Response.redirect(`https://urdeal.kr${url.pathname}${url.search || ''}`, 301);
       }
       // 🔗 블로그 슬러그 리네임 301 (맵/사유 SSOT: features/blog/api/blog-slug-redirects.ts)
-      if (request.method === 'GET' || request.method === 'HEAD') {
+      if (request.method === 'GET' || request.method === 'HEAD') { if (isClosedLifePath(url.pathname)) return Response.redirect(`${url.origin}/`, 302); /* 🚧 2026-11-12 생활 견적 입구 닫힘(PG 심사) — SSOT shared/life-closed.ts */
         const norm = normalizeDocPath(url.pathname); if (norm && isKnownAppPath(norm)) return Response.redirect(`${url.origin}${norm}${url.search || ''}`, 301); // 🔗 2026-10-14 끝 슬래시·`/index.html` 301(같은 내용의 다른 철자 — 404 가 아니다). SSOT: shared/seo/path-normalize
         const renamed = resolveRenamedBlogPath(url.pathname);
         if (renamed) return Response.redirect(`${url.origin}${renamed}${url.search || ''}`, 301);

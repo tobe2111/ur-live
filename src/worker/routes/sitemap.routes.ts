@@ -33,7 +33,7 @@ import { canonicalDetailPath } from '../../shared/product-flow';
 // 🎁 교환권 필터 카테고리 SSOT — canonical 이 믿는 집합과 **같은 목록**을 읽는다.
 import { VOUCHER_FILTER_CATEGORIES } from '../../shared/seo/consumer-surfaces';
 import { HOME_SERVICE_CATEGORIES } from '../../shared/home-service-categories';
-import { lifeCategoryPath } from '../../shared/life-seo';
+import { lifeCategoryPath } from '../../shared/life-seo'; import { LIFE_PUBLIC_CLOSED } from '../../shared/life-closed';
 import { LIFE_BIZ_MIN_INTRO } from '../../shared/life-biz-seo';
 import { PRO_OPEN_STATUS_SQL } from '../../shared/home-service';
 // 🎁 facet 주소 조립 + 재고 문턱 SSOT — canonical·허브 내부 링크와 **같은 함수**를 지난다.
@@ -145,9 +145,12 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     { loc: '/introduce', priority: 0.6, changefreq: 'monthly' },   // 서비스 소개
     { loc: '/faq', priority: 0.6, changefreq: 'weekly' },          // FAQPage JSON-LD 보유 → 리치 결과 후보
     // 🏠 2026-10-25 사장님 생활 서비스 — 허브 + 업종 견적 페이지(요청서). 업종 목록은 SSOT 에서 파생.
-    { loc: '/life', priority: 0.8, changefreq: 'weekly' },
-    ...HOME_SERVICE_CATEGORIES.map((d) => ({ loc: lifeCategoryPath(d.key), priority: 0.6, changefreq: 'monthly' })),
-    { loc: '/life/pro', priority: 0.5, changefreq: 'monthly' },     // 업체 모집 랜딩(로그인 전 화면)
+    //   🚧 2026-11-12 PG 심사로 생활 입구를 닫았다(`shared/life-closed.ts`) — 닫혀 있는 동안 제출하지 않는다.
+    ...(LIFE_PUBLIC_CLOSED ? [] : [
+      { loc: '/life', priority: 0.8, changefreq: 'weekly' },
+      ...HOME_SERVICE_CATEGORIES.map((d) => ({ loc: lifeCategoryPath(d.key), priority: 0.6, changefreq: 'monthly' })),
+      { loc: '/life/pro', priority: 0.5, changefreq: 'monthly' },     // 업체 모집 랜딩(로그인 전 화면)
+    ]),
     // 📜 약관·정책 — 유입은 적지만 **신뢰 신호**다(전자상거래 사업자 확인, 검색엔진 품질 평가).
     // 🧾 2026-10-13: 색인 대상(`CONSUMER_SURFACE_SEO` 에 항목 있고 noindex 아님)인데 제출이 빠져
     //   있던 둘. **본문이 있는 것만** 넣는다(실측 Googlebot: `/join` 134자 · `/terms/seller` 229자 —
@@ -402,6 +405,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
       for (const b of blogs.results || []) {
         if (b.slug) urls.push({ loc: `/blog/${b.slug}`, priority: 0.5, changefreq: 'monthly', lastmod: b.updated_at });
       }
+      if (!LIFE_PUBLIC_CLOSED) {
       // 🔗 2026-10-25 생활 요청 공유 페이지 — **모집 중인 것만**(대표 "노출해줘"). 마감은 noindex 라 제출하지 않는다.
       //   자리가 찬 요청도 빼서 "색인 요청 ↔ noindex" 모순을 만들지 않는다(`publicShareView.open` 과 같은 조건).
       const shares = await DB.prepare(
@@ -419,6 +423,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
           ORDER BY p.seller_id DESC LIMIT 500`
       ).all<{ seller_id: number }>().catch(() => ({ results: [] as { seller_id: number }[] }));
       for (const r of bizs.results || []) urls.push({ loc: `/life/biz/${r.seller_id}`, priority: 0.4, changefreq: 'weekly' });
+      }
     } catch {
       // DB 쿼리 실패해도 정적 URL 은 응답
     }

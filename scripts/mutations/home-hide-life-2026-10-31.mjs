@@ -34,19 +34,24 @@ export default [
     why: '메인 규칙이 지역 착지 페이지로 번져 생활 이용권이 거기서도 사라진다.',
   },
   {
-    name: 'home-hide-life — 폰 홈 탭에서 생활 버튼이 다시 사라진다(2026-11-02)',
+    // 🚧 2026-11-12 재조준 — 생활 입구가 닫혀 있는 동안(`life-closed.ts`)은 버튼이 없는 것이 맞다.
+    //   그래서 이 주입은 반대 방향을 잡는다: 닫힘을 무시하고 링크를 되살리면 PG 심사가 막은 입구가 다시 열린다.
+    //   (다시 열면 — LIFE_PUBLIC_CLOSED=false — 원래 주입(`{}` 로 버튼 제거)으로 되돌릴 것.)
+    name: 'home-hide-life — 생활 입구가 닫혔는데 홈 탭에 /life 링크가 되살아난다(2026-11-12)',
     file: 'src/shared/deal-cats.ts',
-    find: "export const HOME_TAB_LINKS: Readonly<Partial<Record<DealCategory, string>>> = { home_voucher: '/life' }",
-    replace: 'export const HOME_TAB_LINKS: Readonly<Partial<Record<DealCategory, string>>> = {}',
-    test: T,
-    why: '대표가 남기라고 한 생활 버튼이 홈에서 없어진다(이용권만 빼라고 했다).',
+    find: "= LIFE_PUBLIC_CLOSED ? {} : { home_voucher: '/life' }",
+    replace: "= { home_voucher: '/life' }",
+    test: 'src/tests/unit/life-closed-2026-11-12.test.ts',
+    why: '토스 PG 심사가 입점 불가로 지적한 견적 문의 화면으로 가는 버튼이 홈에 다시 생긴다.',
   },
   {
-    name: 'home-hide-life — 워커 첫 화면 탭 줄이 생활을 뺀다(2026-11-02)',
+    // 🚧 2026-11-12 재조준 — 생활 입구가 닫힌 동안은 탭 표 자체에 생활이 없어 '빼는' 주입이 헛돈다.
+    //   지키려던 것(서버 탭 줄 = 화면 탭 줄)은 그대로다: 서버만 전체 표를 쓰면 서버에만 '생활' 이 그려진다.
+    name: 'home-hide-life — 워커 첫 화면 탭 줄이 화면과 다른 표를 쓴다(2026-11-12 재조준)',
     file: 'src/worker/utils/home-first-screen.ts',
     find: '  const cats = DEAL_CAT_LABELS.map(',
-    replace: "  const cats = DEAL_CAT_LABELS.filter(c => c.key !== 'home_voucher').map(",
-    test: T,
+    replace: "  const cats = [...DEAL_CAT_LABELS, { key: 'home_voucher', label: '생활' }].map(",
+    test: 'src/tests/unit/life-closed-2026-11-12.test.ts',
     why: '서버 탭 줄과 화면 탭 줄이 갈려 마운트 때 탭이 하나 끼어든다.',
   },
 ]

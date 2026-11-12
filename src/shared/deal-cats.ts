@@ -14,10 +14,12 @@
  *   붙이고, 워커(`home-first-screen.ts`)가 같은 표로 첫 화면을 그린다.
  */
 
+import { LIFE_PUBLIC_CLOSED } from './life-closed'
+
 export type DealCategory = 'all' | 'meal_voucher' | 'beauty_voucher' | 'stay_voucher' | 'home_voucher' | 'etc_voucher'
 
 /** 홈 카테고리 탭의 키·라벨(표시 순서 그대로). */
-export const DEAL_CAT_LABELS: ReadonlyArray<{ key: DealCategory; label: string }> = [
+export const ALL_DEAL_CAT_LABELS: ReadonlyArray<{ key: DealCategory; label: string }> = [
   { key: 'all',            label: '전체' },
   { key: 'meal_voucher',   label: '식사' },
   { key: 'beauty_voucher', label: '미용' },
@@ -25,6 +27,10 @@ export const DEAL_CAT_LABELS: ReadonlyArray<{ key: DealCategory; label: string }
   { key: 'home_voucher',   label: '생활' },
   { key: 'etc_voucher',    label: '기타' },
 ]
+
+/** 🚧 2026-11-12 생활 입구가 닫혀 있으면(`life-closed.ts`) '생활' 탭을 홈·PC 네비·워커 첫 화면에서 같이 뺀다. */
+export const DEAL_CAT_LABELS: ReadonlyArray<{ key: DealCategory; label: string }> =
+  LIFE_PUBLIC_CLOSED ? ALL_DEAL_CAT_LABELS.filter(c => c.key !== 'home_voucher') : ALL_DEAL_CAT_LABELS
 
 /**
  * 🏠 2026-10-31 (대표 "생활 카테고리의 이용권들은 메인에서는 안보이게 해줘").
@@ -48,7 +54,7 @@ export const HOME_DEAL_CAT_LABELS = DEAL_CAT_LABELS.filter(c => !HOME_HIDDEN_CAT
  * ⇒ 폰 홈 탭 줄은 전체 표(`DEAL_CAT_LABELS`)를 그리고, 아래 탭은 **필터가 아니라 그 화면으로 가는 링크**다
  *   (PC 상단 네비의 '생활' → `/life` 와 같은 동작). 피드에는 여전히 생활 이용권이 안 뜬다.
  */
-export const HOME_TAB_LINKS: Readonly<Partial<Record<DealCategory, string>>> = { home_voucher: '/life' }
+export const HOME_TAB_LINKS: Readonly<Partial<Record<DealCategory, string>>> = LIFE_PUBLIC_CLOSED ? {} : { home_voucher: '/life' }
 
 /** 홈 피드·섹션에 그려도 되는 상품인가(생활 이용권이면 false). */
 export function isHomeVisibleProduct(p: { category?: string | null } | null | undefined): boolean {
