@@ -249,3 +249,7 @@
 - #2341 라이브(오프라인 홈): "인터넷 연결이 끊겼어요 · 연결되면 자동으로…" 8초 유지 · 새로고침 버튼 없음. 위 띠("인터넷 연결이 끊겼습니다")와 문장이 겹친다(미정리).
 - 대표 Sentry 메일: `InvalidStateError: Transition was aborted … Snapshot capture failed`(/stays/2970, 우리 기록에도 /stays/2983). 브라우저가 전환을 건너뛰면 `ready` 가 거절되는데 `finished` 만 받고 있었다 → `src/lib/vt-quiet.ts` `quietVt` 로 세 호출부(카드→상세 · 지도 알약 · 테마)를 감싼다. 손님 화면 영향은 없었다(이동은 이미 끝남).
 - 다음 후보(PC 실측): 교환권 상세 `/vouchers/:id` PC 서버 첫 화면이 상단 네비 자리를 안 비워 CLS 0.33 · `/blog` PC CLS 0.14 · `/stays` PC FCP 2.6~3.0s · `/vouchers` PC 측정기 load 60초 초과.
+
+## 80. 교환권 상세 · 블로그 PC 밀림(#2345) 배포 뒤 + 후속
+- 블로그 PC 라이브: `/blog` CLS **0.0051**(전 0.14) · 글 상세 **0.1499**(전 0.30~0.56, 남은 것은 첫 방문 Pretendard 켜짐 — 승인 설계라 무접촉).
+- 교환권 상세 PC 라이브: **1.0 으로 악화** — 첫 화면 CSS 가 PC 에 안 들어가 새 네비가 숨었다 나타났다. 기록 `docs/locks/loading/2026-11-12-voucher-detail-pc-css.md`. 🩸 측정 때 CSS 까지 같이 끼워서 놓쳤다 → **배포 전 끼워 재기는 라이브가 실제로 보낼 CSS 그대로** 해야 한다.
