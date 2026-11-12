@@ -50,7 +50,7 @@ export default function AgencyDealsSection({ sellerId }: { sellerId: number }) {
 
   return (
     <section className="mx-5 mt-5" data-testid="agency-deals">
-      <p className="text-[15px] font-semibold text-gray-900 dark:text-white">인플루언서 소개비</p>
+      <p className="text-[16px] font-semibold text-gray-900 dark:text-white">인플루언서 소개비</p>
       <p className="mt-1 text-[12px] leading-[1.55] text-gray-500 dark:text-gray-400">
         우리 수수료와 합쳐 사장님이 동의한 총 마케팅 비용 상한 안이면 바로 적용돼요. 넘으면 사장님 승인 뒤에 적용돼요. 우리가 맡은 이용권에만 붙어요.
       </p>
