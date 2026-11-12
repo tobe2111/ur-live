@@ -523,10 +523,10 @@ export function useKakaoMap({
   useEffect(() => {
     if (!enabled) return
     let alive = true
-    import('@/lib/api').then(({ default: api }) => api.get('/api/consumer-settings'))
-      .then((r) => {
+    import('@/lib/consumer-settings').then(({ loadConsumerSettings }) => loadConsumerSettings()) // 🎛️ 2026-11-12 서비스 워커와 한 번의 요청을 나눠 쓴다(첫 화면 중복 0)
+      .then((settings) => {
         if (!alive) return
-        const v = (r.data as { data?: { map_highlight_discount_pct?: number } })?.data?.map_highlight_discount_pct
+        const v = settings?.map_highlight_discount_pct
         if (v == null) return
         const before = mapHighlightPct()
         setMapHighlightPct(v)

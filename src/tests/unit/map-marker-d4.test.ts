@@ -221,10 +221,12 @@ describe('⑨ 임계값 어드민 조정 (2026-09-09 대표 "모두 다 해줘")
   })
   it('🔴 지도의 조정값 조회가 첫 화면을 막지 않는다', () => {
     const s = readFileSync('src/pages/restaurant-map/useKakaoMap.ts', 'utf8')
-    expect(s).toContain('/api/consumer-settings')
+    // 🎛️ 2026-11-12 서비스 워커 판정과 한 번의 요청을 나눠 쓴다 — 경로는 공용 모듈에 있다.
+    expect(s).toContain("import('@/lib/consumer-settings').then(({ loadConsumerSettings }) => loadConsumerSettings())")
+    expect(readFileSync('src/lib/consumer-settings.ts', 'utf8')).toContain("fetch('/api/consumer-settings'")
     // 🩸 2026-09-09: 처음엔 "`.then` 체인이 있는가"로 물었는데, 앞에 `await` 를 심어도 뒤의
     //   `.then` 이 남아 통과했다(주입이 잡았다). **있으면 안 되는 것**으로 물어야 한다.
-    expect(s, '조정값을 await 로 기다리면 그 자체가 블로킹이다').not.toMatch(/await[^\n]*consumer-settings/)
+    expect(s, '조정값을 await 로 기다리면 그 자체가 블로킹이다').not.toMatch(/await[^\n]*(consumer-settings|loadConsumerSettings)/)
     expect(s, '실패해도 조용히 기본값을 써야 한다').toMatch(/\.catch\(\(\) => \{[^}]*\}\)/)
   })
   it('서버가 같은 범위로 거른다 (화면만 걸러도 저장은 되어 다음 사람이 헷갈린다)', () => {

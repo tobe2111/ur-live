@@ -99,8 +99,9 @@ export default [
   {
     name: '🗺️ 조정값 조회가 첫 화면을 막는다 (렌더 경로에서 await)',
     file: 'src/pages/restaurant-map/useKakaoMap.ts',
-    find: "    import('@/lib/api').then(({ default: api }) => api.get('/api/consumer-settings'))",
-    replace: "    void (async () => { const api = (await import('@/lib/api')).default; await api.get('/api/consumer-settings') })(); Promise.resolve()",
+    // 🎛️ 2026-11-12 공용 모듈(`lib/consumer-settings`)로 옮겨 탔다 — 앵커도 그 줄로.
+    find: "    import('@/lib/consumer-settings').then(({ loadConsumerSettings }) => loadConsumerSettings())",
+    replace: "    void (async () => { const m = await import('@/lib/consumer-settings'); await m.loadConsumerSettings() })(); Promise.resolve()",
     test: 'src/tests/unit/map-marker-d4.test.ts',
     why:
       '마커 색 하나 때문에 지도 첫 페인트가 왕복 하나만큼 늦어진다. 이 값은 늦게 와도 되는 값이라 ' +
