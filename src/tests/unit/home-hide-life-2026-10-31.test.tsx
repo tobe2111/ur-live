@@ -12,7 +12,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readCode } from '../helpers/source-text'
-import { HOME_DEAL_CAT_LABELS, DEAL_CAT_LABELS, HOME_TAB_LINKS, isHomeVisibleProduct } from '@/shared/deal-cats'
+import { HOME_DEAL_CAT_LABELS, DEAL_CAT_LABELS, ALL_DEAL_CAT_LABELS, HOME_TAB_LINKS, isHomeVisibleProduct } from '@/shared/deal-cats'
+import { LIFE_PUBLIC_CLOSED } from '@/shared/life-closed'
 import { buildHomeFirstScreen } from '@/worker/utils/home-first-screen'
 
 const LIFE = { id: 1, name: '입주청소', image_url: 'https://media.ur-team.com/a.jpg', price: 90000, category: 'home_voucher', deal_only: 0 }
@@ -23,7 +24,10 @@ const seed = (sections: unknown[][]) =>
 describe('메인에서 생활 숨김', () => {
   it('홈 탭 표에 생활이 없고, 전체 표(상단 네비용)에는 있다', () => {
     expect(HOME_DEAL_CAT_LABELS.map(c => c.key)).not.toContain('home_voucher')
-    expect(DEAL_CAT_LABELS.map(c => c.key)).toContain('home_voucher')
+    expect(ALL_DEAL_CAT_LABELS.map(c => c.key)).toContain('home_voucher')
+    // 🚧 2026-11-12 생활 입구가 닫혀 있으면(PG 심사) 상단 네비용 표에서도 빠진다 — `life-closed-2026-11-12.test.ts`
+    if (LIFE_PUBLIC_CLOSED) expect(DEAL_CAT_LABELS.map(c => c.key)).not.toContain('home_voucher')
+    else expect(DEAL_CAT_LABELS.map(c => c.key)).toContain('home_voucher')
   })
 
   it('판정 함수 — 생활만 false', () => {
@@ -42,7 +46,8 @@ describe('메인에서 생활 숨김', () => {
     expect(text).not.toContain('줄2')
   })
 
-  it('🏠 생활 버튼은 남는다 — 폰 홈 탭 줄에 있고 `/life` 로 간다(필터 아님)', () => {
+  // 🚧 2026-11-12 생활 입구가 닫혀 있는 동안은 버튼도 없다 — 다시 열면(LIFE_PUBLIC_CLOSED=false) 이 시험이 돈다.
+  it.skipIf(LIFE_PUBLIC_CLOSED)('🏠 생활 버튼은 남는다 — 폰 홈 탭 줄에 있고 `/life` 로 간다(필터 아님)', () => {
     expect(HOME_TAB_LINKS.home_voucher).toBe('/life')
     const host = document.createElement('div')
     host.innerHTML = buildHomeFirstScreen(seed([[MEAL]]), '')

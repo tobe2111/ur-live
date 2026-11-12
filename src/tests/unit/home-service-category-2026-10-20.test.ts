@@ -16,7 +16,7 @@ import { readCode } from '../helpers/source-text'
 import {
   VOUCHER_CATEGORIES, VOUCHER_CATEGORY_SQL_IN, ALL_VOUCHER_CATEGORY_KEYS, isVoucherCategory, getVoucherShortLabel,
 } from '@/shared/constants/voucher-categories'
-import { DEAL_CAT_LABELS } from '@/shared/deal-cats'
+import { ALL_DEAL_CAT_LABELS } from '@/shared/deal-cats'
 import { STAYS_CHIPS } from '@/shared/stays-list'
 import { MAP_ICON_INNER_FOR_TEST } from '@/shared/map-marker-icons'
 import { CATEGORY_META } from '@/shared/deal-category-icon'
@@ -57,7 +57,8 @@ describe('생활(home_voucher) 카테고리', () => {
   })
 
   it('소비자 칩·지도 마커·카테고리 아이콘이 생활을 안다', () => {
-    expect(DEAL_CAT_LABELS.find((c) => c.key === 'home_voucher')?.label).toBe('생활')
+    // 🚧 2026-11-12 생활 입구가 닫혀 있는 동안 탭 표(DEAL_CAT_LABELS)에선 빠진다 — 카테고리 자체는 전체 표에 있다.
+    expect(ALL_DEAL_CAT_LABELS.find((c) => c.key === 'home_voucher')?.label).toBe('생활')
     expect(STAYS_CHIPS.find((c) => c.key === 'home_voucher')?.label).toBe('생활')
     expect(MAP_ICON_INNER_FOR_TEST.home_voucher).toBeTruthy()
     expect(CATEGORY_META.home_voucher?.label).toBe('생활')
