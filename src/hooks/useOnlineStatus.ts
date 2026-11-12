@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 /**
  * Hook that tracks browser online/offline status.
@@ -18,6 +18,14 @@ import { useState, useEffect } from 'react';
  *     ② 오프라인으로 판정된 동안 5초 워치독 probe → 복구되면 online 이벤트가 없어도 스스로 사라진다
  *     ③ 탭 복귀(visibilitychange)/focus 시 즉시 재확인 — 사용자가 보는 순간 가장 빨리 걷힌다
  *   probe 는 **오프라인 의심 구간에서만** 돈다(평상시 네트워크 비용 0).
+ *
+ * 🛡️ 2026-11-12 (대표 신고 — *"와이파이는 빵빵한데 왜 연결이 끊겼다고 하면서 로딩이 무한으로 길어지지?"*):
+ *   탭 복귀·창 클릭(focus)마다 probe 하는데, **와이파이는 멀쩡하고 우리 서버 응답만 3초 늦어도** "인터넷 연결이 끊겼습니다" 가 떴다.
+ *   그 문장은 틀렸다(인터넷은 됐다). 이제 상태가 셋이다:
+ *     · `offline`  — 브라우저도 오프라인(`navigator.onLine === false`)이고 probe 도 실패 → "인터넷 연결이 끊겼어요"
+ *     · `unstable` — 브라우저는 온라인인데 probe 가 **연속 두 번**(사이 4초) 실패 → "연결이 원활하지 않아요"(한 번 늦은 것으론 안 띄운다)
+ *     · `ok`
+ *   그리고 `ok` 로 돌아오는 순간, 그 사이 못 받은 사진(`<img>` 이 끝났는데 크기 0)을 한 번 다시 부른다.
  *   같은 클래스의 선례: keyboard-viewport 의 stuck 방지 워치독(2026-06-22).
  */
 
@@ -44,11 +52,36 @@ async function probeConnectivity(timeoutMs = 3000): Promise<boolean> {
 
 /** 오프라인 판정 후 재확인 주기 — 복구를 몇 초 안에 감지하되 과한 요청은 아니게. */
 const RECHECK_MS = 5000;
+/** 브라우저는 온라인인데 probe 가 실패했을 때, 다시 확인하기까지 기다리는 시간(한 번 늦은 것으로 띄우지 않는다). */
+const UNSTABLE_CONFIRM_MS = 4000;
 
-export function useOnlineStatus(): boolean {
-  const [isOnline, setIsOnline] = useState<boolean>(
-    !(typeof navigator !== 'undefined' && navigator.onLine === false)
+export type ConnectionState = 'ok' | 'unstable' | 'offline';
+
+/** 연결이 돌아왔을 때 — 그 사이 못 받은 사진을 한 번 다시 부른다(같은 주소를 다시 넣으면 브라우저가 새로 받는다). */
+export function retryBrokenImages(doc: Document = document): number {
+  let n = 0;
+  doc.querySelectorAll('img').forEach((img) => {
+    const el = img as HTMLImageElement;
+    if (!el.complete || el.naturalWidth > 0) return;
+    const src = el.getAttribute('src');
+    if (!src || src.startsWith('data:')) return;
+    el.setAttribute('src', src);
+    n++;
+  });
+  return n;
+}
+
+export function useConnectionState(): ConnectionState {
+  const [state, setState] = useState<ConnectionState>(
+    typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'ok'
   );
+  const isOnline = state === 'ok';
+  const prev = useRef<ConnectionState>(state);
+
+  useEffect(() => {
+    if (prev.current !== 'ok' && state === 'ok') { try { retryBrokenImages(); } catch { /* 무시 */ } }
+    prev.current = state;
+  }, [state]);
 
   // ① 이벤트는 "확인 신호" — 실제 판정은 probe 가 한다.
   useEffect(() => {
@@ -56,11 +89,18 @@ export function useOnlineStatus(): boolean {
 
     const verify = async () => {
       const ok = await probeConnectivity();
-      if (alive) setIsOnline(ok);
+      if (!alive) return;
+      if (ok) { setState('ok'); return; }
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) { setState('offline'); return; }
+      // 브라우저는 온라인이라는데 우리 서버가 늦다 — 한 번으로는 띄우지 않고 4초 뒤 다시 본다.
+      await new Promise((r) => setTimeout(r, UNSTABLE_CONFIRM_MS));
+      if (!alive) return;
+      const again = await probeConnectivity();
+      if (alive) setState(again ? 'ok' : (typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'unstable'));
     };
 
     // online 이벤트: 즉시 낙관적 복구(배너부터 걷어내고), probe 는 워치독이 이어서 확인.
-    const handleOnline = () => { if (alive) setIsOnline(true); };
+    const handleOnline = () => { if (alive) setState('ok'); };
     // offline 이벤트: 곧바로 믿지 않는다 — 확인 후에만 배너.
     const handleOffline = () => { void verify(); };
     const handleVisible = () => { if (!document.hidden) void verify(); };
@@ -88,10 +128,15 @@ export function useOnlineStatus(): boolean {
     let alive = true;
     const timer = setInterval(async () => {
       const ok = await probeConnectivity();
-      if (alive && ok) setIsOnline(true);
+      if (alive && ok) setState('ok');
     }, RECHECK_MS);
     return () => { alive = false; clearInterval(timer); };
   }, [isOnline]);
 
-  return isOnline;
+  return state;
+}
+
+/** 종전 API — 연결이 정상일 때만 true(QR 화면 등). */
+export function useOnlineStatus(): boolean {
+  return useConnectionState() === 'ok';
 }

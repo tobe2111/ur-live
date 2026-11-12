@@ -165,6 +165,13 @@ describe('🔤 첫 페인트를 막는 CSS 는 우리 오리진만 (2026-10-12)'
     expect(a[0].href).toBe('/static/fonts/pretendard-pc-v1.3.9-4.css')
     expect(a[0].media, '처음 오는 PC 에서 바로 켜면 앱 스크립트와 회선을 나눠 쓴다(2026-10-12 실측 1.8초)').toBe('print')
   })
+  it('②-5b 2026-11-12 처음 오는 PC: 시트가 와도 켜지 않는다(읽는 도중 줄이 다시 감기던 CLS 0.15)', () => {
+    const a = runLoader(WIN, false, true) as Array<{ media?: string; onload?: () => void }>
+    a[0].onload?.()
+    expect(a[0].media, '처음 방문에서 켜면 읽는 도중 글자 폭이 바뀐다').toBe('print')
+    expect(LOADER, '받아 둔 뒤 다음 방문 표시').toContain("localStorage.setItem('ur_font_warm','1')")
+    expect(LOADER).not.toContain("l.media='all'")
+  })
   it('②-6 한 번 받은 PC: 처음부터 켠다 (캐시 적중 — 글자 바뀜 0)', () => {
     const a = runLoader(WIN, true)
     expect(a.length).toBe(1)
