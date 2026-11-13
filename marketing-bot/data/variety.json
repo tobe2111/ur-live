@@ -317,5 +317,17 @@
     "track": "merchant",
     "series": "myth-fact",
     "date_kst": "2026-11-13"
+  },
+  {
+    "id": "18101007962112278",
+    "platform": "threads",
+    "track": "merchant",
+    "hook": "number",
+    "series": "by-numbers",
+    "date_kst": "2026-11-13",
+    "len": "1",
+    "slot": "21:30",
+    "media": "image",
+    "topic_tag": "소상공인"
   }
 ]

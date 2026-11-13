@@ -731,5 +731,24 @@
     "series": "myth-fact",
     "posted_at": "2026-11-13T11:25:07.670Z",
     "date_kst": "2026-11-13"
+  },
+  {
+    "platform": "threads",
+    "id": "18101007962112278",
+    "reply_id": "18112493440914736",
+    "topic_tag": "소상공인",
+    "hook": "number",
+    "len": "1",
+    "media": "image",
+    "content_id": "th",
+    "image": "https://raw.githubusercontent.com/tobe2111/ur-live/marketing-data/marketing-bot/data/cards/2026-11-13-merchant/slide-1.jpg",
+    "track": "merchant",
+    "series": "by-numbers",
+    "promo": false,
+    "posted_at": "2026-11-13T13:12:06.922Z",
+    "date_kst": "2026-11-13",
+    "slot_kst": "21:30",
+    "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261113",
+    "text": "0원, 가입비도 월 이용료도 광고비도 없어요. 이용권이 팔리고 손님이 와서 쓴 뒤에만 수수료가 나가요."
   }
 ]
