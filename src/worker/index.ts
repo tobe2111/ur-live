@@ -183,7 +183,7 @@ import { resolveRenamedBlogPath } from '../features/blog/api/blog-slug-redirects
 import { buildDetailMeta, buildStayDetailMeta, buildProductMeta } from './utils/detail-ssr-meta';
 // 🔎 2026-07-29 정적 소비자 표면 메타 SSOT(워커·클라 공용). ⚠️ 워커 값 import 는 alias 금지 — 상대경로.
 import { resolveConsumerSurfaceSeo } from '../shared/seo/consumer-surfaces';
-import { resolveConsumerAlias } from '../shared/seo/consumer-redirects'; import { pinRedirectApiPath } from '../shared/seo/pin-link'; import { productCanonicalRedirect } from './utils/product-canonical-redirect'; import { SHORTS_ALL_PRELOAD_LINK } from '../shared/urshorts-list-cache'; import { videosStartIdOf, videosCoverSrc } from '../shared/videos-first'; import { buildVideosFirstScreen } from './utils/videos-first-screen';
+import { resolveConsumerAlias } from '../shared/seo/consumer-redirects'; import { pinRedirectApiPath } from '../shared/seo/pin-link'; import { productCanonicalRedirect } from './utils/product-canonical-redirect'; import { curatorMovedRedirect } from './utils/curator-moved-redirect'; import { SHORTS_ALL_PRELOAD_LINK } from '../shared/urshorts-list-cache'; import { videosStartIdOf, videosCoverSrc } from '../shared/videos-first'; import { buildVideosFirstScreen } from './utils/videos-first-screen';
 import { isClosedLifePath } from '../shared/life-closed'; import { applySurfaceMeta, applyCanonical, buildSellerSurfaceMeta, shouldNoindexMissingEntity, isRetiredSurface, resolveRegionSeo } from './utils/surface-ssr-meta'; import { buildSurfaceListJsonLd, buildCuratorJsonLd, buildSellerShopJsonLd } from './utils/surface-list-jsonld';
 import { fetchSsrPayload, applySsrDiagHeaders, ssrWaitUntil, type SsrTarget } from './utils/ssr-payload'; import { MAP_SEED_PATH } from '../shared/map-feed-seed';
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2).
@@ -709,7 +709,7 @@ app.use('*', async (c, next) => {
     const digestRaw = digestP ? await digestP : null;
     const crawlerPayload = digestRaw || ssrPayload;
     if (url.pathname === '/urshorts' && ssrPayload && isMobileUserAgent(c.req.header('user-agent'))) for (const th of urshortsThumbPreloadHrefs(ssrPayload)) appendLcpLink(c.res.headers, th, 'auto'); if (ssrTarget?.slot === 'SEARCH' && ssrPayload) for (const th of searchThumbPreloadHrefs(ssrPayload, searchScopeOf(url.search))) appendLcpLink(c.res.headers, th, 'auto'); /* 🖼️ 2026-11-10 검색 시드 첫 줄 썸네일(LCP 2.6s 가 그 사진이었다) */ // 🎬 2026-11-09 유어쇼츠 시드를 **주입한다**(종전엔 여기서 버렸다 — 목록이 앱 뒤 한 왕복 더 기다렸다) + 첫 두 썸네일 preload. 화면은 시드를 그린 뒤 ?all=1 로 갈아끼운다(utils/urshorts-seed.ts). 🎟️ 2026-11-08 교환권 facet 시드는 이제 주입한다 — 첫 화면을 서버가 그리고 화면이 같은 시드를 먹는다(VouchersPage readVouchersSsrSeed)
-    const ssrSlot = ssrTarget?.slot ?? 'MAIN'; if (ssrSlot === 'PRODUCT' && !url.search) { const canon = productCanonicalRedirect(ssrPayload, url.pathname); if (canon) { c.res = new Response(null, { status: 302, headers: { Location: canon, 'Cache-Control': 'no-store' } }); return; } } // 🧭 2026-11-11 이용권·교환권·숙소를 `/products/:id` 로 열면 앱이 켜진 뒤에야 넘겼다(2.0s) — 시드로 바로 302. 쿼리(?ref=)가 있으면 손대지 않는다(귀속). utils/product-canonical-redirect.ts
+    const ssrSlot = ssrTarget?.slot ?? 'MAIN'; if (ssrSlot === 'PRODUCT' && !url.search) { const canon = productCanonicalRedirect(ssrPayload, url.pathname); if (canon) { c.res = new Response(null, { status: 302, headers: { Location: canon, 'Cache-Control': 'no-store' } }); return; } } if (ssrSlot === 'CURATOR' && !url.search) { const moved = curatorMovedRedirect(ssrPayload, url.pathname); if (moved) { c.res = new Response(null, { status: 302, headers: { Location: moved, 'Cache-Control': 'no-store' } }); return; } } // 🧭 2026-11-13 옛 유어샵 핸들 — 앱이 켜진 뒤 넘기던 것(1.4s)을 시드로 바로 302. utils/curator-moved-redirect.ts // 🧭 2026-11-11 이용권·교환권·숙소를 `/products/:id` 로 열면 앱이 켜진 뒤에야 넘겼다(2.0s) — 시드로 바로 302. 쿼리(?ref=)가 있으면 손대지 않는다(귀속). utils/product-canonical-redirect.ts
     // 🧨 2026-10-12 [UNLOCK_LOADING] 철거된 표면(`/wholesale`·`/supplier`)은 **410 Gone**. 종전 `isWholesaleSurface`(2026-06-05 — 도매 라이트 테마로 홈 shell 깜빡임 차단)는 가릴 페이지가 없어졌다(#1710).
     //   판정은 `isRetiredSurface`(SSOT — 왜 410 이고 왜 301·robots 차단이 아닌지 그 함수 주석에), `#root` 는 소비자 catch-all 로더에 맡긴다(410 이어도 본문은 셸이라 `NotFoundPage` 가 정상 렌더).
     const retiredSurface = isRetiredSurface(url.pathname);
@@ -1010,11 +1010,11 @@ app.use('*', async (c, next) => {
     } else if (isBlogSurface) {
       // 📝 블로그 #root = 서버렌더 본문 HTML — JS 미실행 크롤러(네이버 Yeti·AI 크롤러)가 읽을 텍스트 확보.
       //   사유/렌더러 SSOT: features/blog/api/blog-ssr-body.ts. 실패 시 '' → 기존 '빈 #root'(무회귀).
-      const blogPhone = shouldRenderMobileFirstScreen(c.req.header('user-agent')); const blogFirst = !blogPhone ? '' : ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogDetailFirstScreen(ssrPayload) : ssrSlot === 'BLOG' ? buildBlogListFirstScreen(ssrPayload) : ''; // 📝 2026-10-19 폰은 React 와 같은 모양(utils/blog-detail-first-screen.ts)
+      const blogPhone = shouldRenderMobileFirstScreen(c.req.header('user-agent')); const blogFirst = ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogDetailFirstScreen(ssrPayload) : ssrSlot === 'BLOG' ? buildBlogListFirstScreen(ssrPayload) : ''; // 📝 2026-10-19 폰은 React 와 같은 모양(utils/blog-detail-first-screen.ts) · 🖥️ 2026-11-13 PC 도 같은 첫 화면(본문 칸·목록 모양이 반응형으로 같다 — FCP 2.4~3.2 → 0.5~1.2s)
       const blogBody = blogFirst ? blogFirst : ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogPostBody(ssrPayload)
         : ssrSlot === 'BLOG' ? buildBlogListBody(ssrPayload) : '';
       rb = rb.on('#root', {
-        element(el) { el.setInnerContent(!blogPhone && blogBody ? `<noscript>${blogBody}</noscript>` + urdealLoaderHtml : blogBody, { html: true }); }, // 🖥️ 2026-11-12 PC 사람은 맨 글자 본문이 마운트 때 갈려 CLS 0.14 → noscript + 로더(크롤러는 위 blogPhone=true 로 첫 화면을 받는다)
+        element(el) { el.setInnerContent(!blogPhone && !blogFirst && blogBody ? `<noscript>${blogBody}</noscript>` + urdealLoaderHtml : blogBody, { html: true }); }, // 🖥️ 2026-11-13 첫 화면이 있으면 PC 도 그것 · 🖥️ 2026-11-12 PC 사람은 맨 글자 본문이 마운트 때 갈려 CLS 0.14 → noscript + 로더(크롤러는 위 blogPhone=true 로 첫 화면을 받는다)
       });
     } else if (ssrSlot === 'DETAIL' && ssrPayload && (url.pathname.startsWith('/pass/') || url.pathname.startsWith('/group-buy/'))) {
       // 🖼️ 2026-09-15 [UNLOCK_LOADING] (대표 "꼭 로딩이 걸려야 해?"): 시드에 상품이 이미 있고 히어로도 preload 로
