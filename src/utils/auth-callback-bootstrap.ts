@@ -105,6 +105,10 @@ export function processAuthCallbackParams(): void {
       localStorage.setItem('user_type', 'user')
       localStorage.setItem('user_id', urlParams.get('userId')!)
       localStorage.setItem('session_login', 'true')
+      // 📈 2026-11-13 로그인 성공 계측 — 실제 로그인은 이 경로(서버 콜백 → ?login=success)로 끝나는데 계측은
+      //   안 쓰이는 `KakaoCallbackPage` 에만 있어서 '로그인 성공' 이 8월부터 한 번도 안 찍혔다(벽 230 → 성공 0).
+      //   여기선 표식만 남기고 App 의 app_open 계측 자리가 보낸다(첫 화면 코드 무게 0). 위 sessionStorage.clear() 뒤라 지워지지 않는다.
+      try { sessionStorage.setItem('ur_login_ok_pending', urlParams.get('new') === '1' ? 'new' : '1') } catch { /* */ }
       // 🛡️ 2026-05-01: active_role 명시 — 카카오 user 로그인은 항상 'user' DISPLAY.
       //   linked seller 가 있어도 BottomNav 는 user UI 표시 (사용자가 명시 전환해야 seller).
       localStorage.setItem('active_role', 'user')
