@@ -697,5 +697,39 @@
     "slot_kst": "19:30",
     "link": "https://urdeal.kr/pass/2915?utm_source=threads&utm_medium=social&utm_campaign=todaydeal&utm_content=th-20261112",
     "text": "이번 주 동네딜에 홍대돈까스 세트 올렸어요. 점심이든 저녁이든 든든하게 한 끼 먹고 싶을 때 떠올리기 좋아요.\n\n방문 전에 이용권을 먼저 받아두면 가서 바로 쓸 수 있어요."
+  },
+  {
+    "platform": "instagram",
+    "id": "17915462778480509",
+    "media_type": "REELS",
+    "media": "reel",
+    "format": "1",
+    "media_set": "gen-2026-11-13-merchant",
+    "series": "myth-fact",
+    "generated": {
+      "source": "pixabay",
+      "credit": "Pixabay · JessicaKwok",
+      "title": "노쇼 걱정은 이용권 구조에서 줄어요",
+      "photo_url": "https://pixabay.com/get/gc6afad83fe71b592df4d8fb69586d7882d6942bcfb1653147981b3be64b6c9c66436fd0468347c06c10e260caa860aba3a03d7c5ba76b840abda9e054e81468a_1280.jpg",
+      "reel": true
+    },
+    "hook": "headline",
+    "topic": "노쇼·미사용 걱정: 정산은 실제 사용된 이용권만, 유효기간은 사장님이 정하고 지나면 미사용분은 자동 환불, 환불 응대는 유어딜이",
+    "content_id": "ig",
+    "track": "merchant",
+    "promo": false,
+    "posted_at": "2026-11-13T11:25:07.670Z",
+    "date_kst": "2026-11-13",
+    "slot_kst": "19:30",
+    "bio_link": "https://urdeal.kr/partners?utm_source=instagram&utm_medium=social&utm_campaign=merchant-recruit&utm_content=ig-20261113",
+    "text": "노쇼 걱정은 이용권 구조에서 먼저 줄어들어요.\n\n손님이 방문 전에 결제하고, 정산은 실제 사용된 이용권만 해요. 유효기간은 사장님이 정하고, 지나면 미사용분은 자동 환불돼요. 환불 응대는 유어딜이 맡아요.\n\n입점 조건은 프로필 링크에서 확인할 수 있어요.\n\n#유어딜 #소상공인 #사장님운영노트"
+  },
+  {
+    "platform": "instagram_story",
+    "id": "18140247553632958",
+    "track": "merchant",
+    "series": "myth-fact",
+    "posted_at": "2026-11-13T11:25:07.670Z",
+    "date_kst": "2026-11-13"
   }
 ]

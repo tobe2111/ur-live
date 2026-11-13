@@ -296,5 +296,26 @@
     "slot": "19:30",
     "media": "image",
     "topic_tag": "동네맛집"
+  },
+  {
+    "id": "17915462778480509",
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "노쇼·미사용 걱정: 정산은 실제 사용된 이용권만, 유효기간은 사장님이 정하고 지나면 미사용분은 자동 환불, 환불 응대는 유어딜이",
+    "hook": "headline",
+    "media_set": "gen-2026-11-13-merchant",
+    "series": "myth-fact",
+    "date_kst": "2026-11-13",
+    "photo": "https://pixabay.com/get/gc6afad83fe71b592df4d8fb69586d7882d6942bcfb1653147981b3be64b6c9c66436fd0468347c06c10e260caa860aba3a03d7c5ba76b840abda9e054e81468a_1280.jpg",
+    "format": "1",
+    "slot": "19:30",
+    "media": "reel"
+  },
+  {
+    "id": "18140247553632958",
+    "platform": "instagram_story",
+    "track": "merchant",
+    "series": "myth-fact",
+    "date_kst": "2026-11-13"
   }
 ]
