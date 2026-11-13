@@ -56,7 +56,7 @@ export function isSafeInternalPath(raw: unknown): raw is string {
  *   나머지 query/hash(에러 누적 ?error=... 등)와 open-redirect 방어는 기존 그대로.
  * ⚠️ worker 측 safeRedirect(kakao.routes.ts)와 동일 화이트리스트 — 양쪽 같이 갱신할 것.
  */
-const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto'] as const
+const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto', 'via', 'qty'] as const
 const PRESERVED_VALUE_RE = /^[A-Za-z0-9_-]{1,64}$/
 /**
  * 🔑 2026-09-20: 매장 코드 입구(`/store/find?code=` · `/i/join/:code?auto=1`)가 로그인 왕복에서
@@ -67,6 +67,9 @@ const PRESERVED_VALUE_RE = /^[A-Za-z0-9_-]{1,64}$/
 const PRESERVED_VALUE_RE_BY_KEY: Partial<Record<(typeof PRESERVED_QUERY_PARAMS)[number], RegExp>> = {
   code: /^(?:[A-Za-z0-9]{8}|[A-Za-z0-9]{4}-[A-Za-z0-9]{4})$/,
   auto: /^1$/,
+  // 🔐 2026-11-13 이용권 구매 중 로그인 → 돌아오면 그 수량으로 구매 창(`useAgentHandoff`). via 는 'login' 하나, qty 는 1~100.
+  via: /^login$/,
+  qty: /^(?:[1-9]\d?|100)$/,
 }
 
 /** query(+hash) 부분에서 화이트리스트 파라미터만 추출 — 안전값만, 없으면 '' */

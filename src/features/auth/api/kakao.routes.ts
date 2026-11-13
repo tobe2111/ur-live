@@ -196,9 +196,9 @@ const OAUTH_STATE_COOKIE = 'kakao_oauth_state';
  *   open-redirect 방어는 기존 그대로(약화 없음).
  * ⚠️ 프론트 safe-internal-path.ts 와 동일 화이트리스트 — 양쪽 같이 갱신할 것.
  */
-const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto'] as const;
+const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto', 'via', 'qty'] as const;
 const PRESERVED_VALUE_RE = /^[A-Za-z0-9_-]{1,64}$/;
-const PRESERVED_VALUE_RE_BY_KEY: Partial<Record<(typeof PRESERVED_QUERY_PARAMS)[number], RegExp>> = { code: /^(?:[A-Za-z0-9]{8}|[A-Za-z0-9]{4}-[A-Za-z0-9]{4})$/, auto: /^1$/ }; // 🔑 2026-09-20 매장 코드 입구 — code 는 8자 모양만, auto 는 1 만(프론트 동일)
+const PRESERVED_VALUE_RE_BY_KEY: Partial<Record<(typeof PRESERVED_QUERY_PARAMS)[number], RegExp>> = { code: /^(?:[A-Za-z0-9]{8}|[A-Za-z0-9]{4}-[A-Za-z0-9]{4})$/, auto: /^1$/, via: /^login$/, qty: /^(?:[1-9]\d?|100)$/ }; // 🔐 2026-11-13 구매 중 로그인 복귀(via=login&qty — 프론트 safe-internal-path 와 동일) · 🔑 2026-09-20 매장 코드 입구 — code 는 8자 모양만, auto 는 1 만(프론트 동일)
 
 /** query(+hash) 부분에서 화이트리스트 파라미터만 추출 — 안전값만, 없으면 '' */
 function extractPreservedQuery(rawQueryAndHash: string): string {

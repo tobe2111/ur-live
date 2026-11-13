@@ -382,7 +382,7 @@ export default function GroupBuyDetailPage() {
   async function handleJoin(payWithDeal = false) {
     if (!detail) return
     if (!isLoggedIn) {
-      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      localStorage.setItem('loginReturnUrl', `${window.location.pathname}?via=login&qty=${quantity}`) // 🔐 2026-11-13 돌아오면 이 수량으로 구매 창이 다시 열린다(useAgentHandoff)
       navigate('/login')
       return
     }

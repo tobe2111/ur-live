@@ -18,4 +18,7 @@ export default [
   { name: 'acctref: 로그인해도 계정에 안 보낸다', file: 'src/utils/affiliate-track.ts',
     find: '    if (!loggedIn) return\n    syncAccountRef()', replace: '    if (!loggedIn) return', test: T,
     why: '로그인 전에 누른 링크가 계정에 안 남아 다른 기기 결제에서 빠진다.' },
+  { name: 'acctref: 숙소 예약이 계정 기록을 안 본다', file: 'src/features/group-buy/api/stay-referral.ts',
+    find: "  const id = acc || (raw == null ? '' : String(raw).trim())", replace: "  const id = raw == null ? '' : String(raw).trim()", test: T,
+    why: '폰에서 링크를 누르고 PC 에서 숙소를 예약하면 소개 성과가 빠진다(이용권과 숙소가 다르게 동작).' },
 ]
