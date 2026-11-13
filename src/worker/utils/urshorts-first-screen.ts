@@ -16,6 +16,7 @@ import { shortDisplayTitle } from '../../shared/urshorts-display'
 import { URSHORTS_VIEWER_PATH, type UrShortItem } from '../../shared/urshorts'
 import { cityFacets, categoryFacets, MIN_FACETS_TO_SHOW, type Facet } from '../../pages/urshorts/facets'
 import { escAttr, escText } from './home-first-screen'
+import { URSHORTS_FIRST_CARDS } from '../../shared/urshorts-list-cache'
 
 /** `BrowseCard` 와 같은 썸네일 폭(`urshorts-seed.ts` 의 preload 도 같은 값). */
 export const URSHORTS_FS_THUMB_WIDTH = 360
@@ -25,7 +26,7 @@ export const URSHORTS_FS_EAGER = 4
  * 앱이 칩 줄을 하나 더 꽂아 격자가 52px 밀렸다: 라이브 CLS 0.15) 카드는 위에서 이만큼만 그린다. 나머지는 앱이 **아래에** 붙이므로
  * 밀림이 아니다(폰 첫 화면엔 카드 2~4장이 보인다). HTML 을 60장으로 불리지 않으려는 상한이다.
  */
-export const URSHORTS_FS_CARDS = 12
+export const URSHORTS_FS_CARDS = URSHORTS_FIRST_CARDS // 화면 첫 렌더와 같은 값(shared/urshorts-list-cache.ts)
 
 export const URSHORTS_FS_CLASS = {
   page: 'min-h-[100dvh] bg-[var(--bg)]',

@@ -10,7 +10,7 @@ import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import BrowseCard from '@/pages/urshorts/BrowseCard'
 import { buildUrShortsFirstScreen, urshortsCardHtml, URSHORTS_FS_CLASS, URSHORTS_FS_DESC, URSHORTS_FS_CARDS } from '@/worker/utils/urshorts-first-screen'
-import { SHORTS_ALL_PATH } from '@/shared/urshorts-list-cache'
+import { SHORTS_ALL_PATH, URSHORTS_FIRST_CARDS } from '@/shared/urshorts-list-cache'
 import { cssFirstApplies, criticalSurfaceOf } from '@/worker/utils/css-first-boot'
 import { readRaw } from '../helpers/source-text'
 import type { UrShortItem } from '@/shared/urshorts'
@@ -91,6 +91,14 @@ describe('⑦ 2026-11-13 시드 = 전량 — 편수·칩은 전량으로, 카드
     expect(d.querySelectorAll('div[aria-label="종류"] button').length).toBe(3) // 전체 + 식사·숙소(숙소는 25번째부터)
     expect(d.querySelectorAll('ul > li').length).toBe(URSHORTS_FS_CARDS)
     expect(URSHORTS_FS_CARDS).toBeGreaterThanOrEqual(4) // 폰 첫 화면(2열 × 2줄)은 서버가 다 그린다
+  })
+  it('화면 첫 렌더도 위 12장만(서버와 같은 수) — 60장을 한 번에 그리면 멈춤 0.18 → 0.5초(라이브) · 나머지는 load 뒤/스크롤/칩', () => {
+    const src = readRaw('src/pages/UrShortsBrowsePage.tsx')
+    expect(URSHORTS_FS_CARDS).toBe(URSHORTS_FIRST_CARDS)
+    expect(src).toContain('const cards = allCards ? shown : shown.slice(0, URSHORTS_FIRST_CARDS)')
+    expect(src).toContain('{cards.map((it, i) => (')
+    expect(src).toContain('const [allCards, setAllCards] = useState(() => !seeded)')
+    expect(src).toMatch(/const setFilter = \(next: Partial<ShortsFilter>\) => \{\n    setAllCards\(true\)/)
   })
   it('워커 시드 주소가 화면이 받는 전량 주소와 byte 일치(다르면 편수·칩이 다시 갈린다)', () => {
     expect(readRaw('src/worker/index.ts')).toContain(`ssrTarget = { slot: 'URSHORTS', path: '${SHORTS_ALL_PATH}' }`)

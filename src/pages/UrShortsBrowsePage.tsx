@@ -8,7 +8,8 @@ import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import BrowseCard from './urshorts/BrowseCard'
 import { useSafeBack } from '@/hooks/useSafeBack'
 import { readUrShortsSeed } from '@/shared/home-near-seed-read'
-import { loadShortsAll, peekShortsAll } from '@/shared/urshorts-list-cache'
+import { loadShortsAll, peekShortsAll, URSHORTS_FIRST_CARDS } from '@/shared/urshorts-list-cache'
+import { runAfterLoad } from '@/lib/after-load'
 import {
   cityFacets, categoryFacets, filterShorts, pruneFilter,
   MIN_FACETS_TO_SHOW, type Facet, type ShortsFilter,
@@ -52,6 +53,15 @@ export default function UrShortsBrowsePage() {
     loadShortsAll().then((list) => { if (alive) setItems(list) }) // 🎬 2026-11-09 한 벌(shared/urshorts-list-cache) — 뷰어·상세 알약과 같은 요청
     return () => { alive = false }
   }, [])
+  // 🎬 2026-11-13 첫 렌더는 위 12장만(서버 첫 화면과 같은 수) — 60장을 한 번에 그리면 멈춤이 0.5초. 나머지는 load 뒤 한가할 때 · 첫 스크롤 · 칩 선택 때 아래에 붙인다.
+  const [allCards, setAllCards] = useState(() => !seeded)
+  useEffect(() => {
+    if (allCards) return
+    const show = () => setAllCards(true)
+    window.addEventListener('scroll', show, { once: true, passive: true })
+    const cancel = runAfterLoad(show)
+    return () => { window.removeEventListener('scroll', show); cancel() }
+  }, [allCards])
 
   const all = items ?? []
   const cities = useMemo(() => cityFacets(all), [all])
@@ -63,8 +73,10 @@ export default function UrShortsBrowsePage() {
     { si: params.get('si'), category: params.get('cat') }, cities, cats,
   )
   const shown = useMemo(() => filterShorts(all, filter), [all, filter.si, filter.category])
+  const cards = allCards ? shown : shown.slice(0, URSHORTS_FIRST_CARDS)
 
   const setFilter = (next: Partial<ShortsFilter>) => {
+    setAllCards(true)
     const f = { ...filter, ...next }
     const p = new URLSearchParams()
     if (f.si) p.set('si', f.si)
@@ -136,7 +148,7 @@ export default function UrShortsBrowsePage() {
             </p>
           ) : (
             <ul className="grid grid-cols-2 gap-x-2 gap-y-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {shown.map((it, i) => (
+              {cards.map((it, i) => (
                 <li key={it.id} className={seeded ? undefined : 'ur-vc-in'} style={{ '--i': Math.min(i, 8) } as React.CSSProperties}>
                   {/* 첫 줄만 즉시 로드 — 아래는 스크롤할 때. 2열이면 두 장이 첫 화면이다. */}
                   <BrowseCard item={it} eager={i < 4} /> {/* 🎬 2026-11-09 폰 첫 화면은 2열×2줄 — 넷까지 eager */}
