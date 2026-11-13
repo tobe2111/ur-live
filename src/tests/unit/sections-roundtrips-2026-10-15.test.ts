@@ -321,10 +321,20 @@ describe('D1 읽기 복제 — 공개 편성 읽기만 사본으로', () => {
       'src/features/blog/api/blog.routes.ts', // 2단계 — 발행 글 읽기만(아래 시험)
       'src/features/group-buy/api/group-buy-public.routes.ts', // 3단계 — 공개 목록·상세 GET 만(아래 시험)
       'src/worker/routes/embed.routes.ts', // 🧩 2026-10-31 홈페이지 위젯 — 공개 GET 만, 쓰기 0(아래 시험). 엣지 캐시 5분이라 사본 지연은 묻힌다
+      'src/features/products/api/products.routes.ts', // 🔎 2026-11-13 공개 목록·검색 GET 만(아래 시험) — KV 60s 캐시라 사본 지연은 묻힌다
     ])
     const hits = execSync(`grep -rlE "publicReadDb\\(" src --include=*.ts --include=*.tsx`, { encoding: 'utf-8' })
       .split('\n').filter(Boolean).filter((f) => !f.includes('/tests/') && !f.endsWith('d1-read-replica.ts'))
     expect(hits.length, '쓰는 곳이 0 이면 복제를 켜도 아무 효과가 없다').toBeGreaterThan(0)
     for (const f of hits) expect(ALLOWED.has(f), `${f} 는 허용 목록 밖 — 사본 지연을 견디는 공개 읽기인지 판단 후 목록에 추가`).toBe(true)
+  })
+  it('🔎 2026-11-13 상품 목록·검색 — 사본은 GET / 의 목록 읽기 한 곳만 · 검색 기록 쓰기는 원본', () => {
+    const src = readCode('src/features/products/api/products.routes.ts')
+    expect((src.match(/publicReadDb\(/g) || []).length).toBe(1)
+    expect(src).toContain('new ProductService(publicReadDb(DB))')
+    const get = src.slice(src.indexOf("productsRoutes.get('/', cors()"), src.indexOf('productsRoutes.get(', src.indexOf("productsRoutes.get('/', cors()") + 10))
+    expect(get, '사본은 공개 목록 GET 안에만').toContain('publicReadDb(DB)')
+    expect(get.slice(0, 300)).not.toMatch(/requireAuth|requireAdmin|requireSeller/)
+    expect(get, '검색 기록은 원본 DB 로').toMatch(/new ProductRepository\(DB\)/)
   })
 })
