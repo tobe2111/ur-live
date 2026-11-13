@@ -68,8 +68,9 @@ export default [
   {
     name: '🔑매장코드 로그인 왕복에서 ?code= 가 다시 사라진다 (사장님이 코드를 손으로 다시 친다)',
     file: 'src/utils/safe-internal-path.ts',
-    find: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto'] as const",
-    replace: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite'] as const",
+    // 🔐 2026-11-13 via·qty(구매 중 로그인 복귀)가 붙었다 — code·auto 만 빼는 주입으로 재조준.
+    find: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto', 'via', 'qty'] as const",
+    replace: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'via', 'qty'] as const",
     test: 'src/tests/unit/safe-internal-path.test.ts',
     why: '2026-09-20 E4 판정에서 발견 — 링크로 온 사장님이 로그인 뒤 빈 입력칸을 만났다. 에러가 없어 아무도 신고하지 않는 종류.',
   },
@@ -84,8 +85,8 @@ export default [
   {
     name: '🔑매장코드 워커 safeRedirect 가 프론트와 갈린다 (카카오 왕복만 코드 소실)',
     file: 'src/features/auth/api/kakao.routes.ts',
-    find: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto'] as const;",
-    replace: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite'] as const;",
+    find: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto', 'via', 'qty'] as const;",
+    replace: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'via', 'qty'] as const;",
     test: 'src/tests/unit/kakao-safe-redirect.test.ts',
     why: '두 파일이 "양쪽 같이 갱신할 것" 주석으로만 묶여 있다 — 한쪽만 고치면 이메일 로그인은 되고 카카오 로그인만 코드를 잃는다.',
   },
