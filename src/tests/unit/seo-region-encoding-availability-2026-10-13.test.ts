@@ -299,8 +299,10 @@ describe('🎬 /urshorts — 색인 대상인데 크롤러 본문이 6자였다'
     // 2026-11-11 주소가 상수(SHORTS_ALL_PATH)로 옮겨갔다(워커의 preload 와 한 글자도 안 갈리게) — 값과 호출을 둘 다 본다
     expect(readCode('src/shared/urshorts-list-cache.ts')).toContain("SHORTS_ALL_PATH = '/api/urshorts?all=1'")
     expect(readCode('src/shared/urshorts-list-cache.ts')).toContain('fetch(SHORTS_ALL_PATH)')
-    // 그리고 그 키는 예열 목록에 **실재**해야 한다(새 캐시 키를 만들지 않는 것이 이 설계의 전제).
-    expect(w).toMatch(/slot: 'URSHORTS', path: '\/api\/urshorts'/)
+    // 🔁 2026-11-13 재조준: 서버 시드가 **전량**(?all=1)이 됐다 — 12편 시드면 서버가 칩 한 줄을 그리고 앱이 둘째 줄을 꽂아
+    //   격자가 52px 밀렸다(라이브 CLS 0.15). ?all=1 도 새 키가 아니다(목록·뷰어·상세 알약이 이미 받는 edgeCache 키).
+    //   예열 목록은 상한 50 에 붙어 있어 넣지 못했다 — 콜드면 상세 슬롯들처럼 그 자리에서 받는다. 레일 키는 홈이 계속 쓴다.
+    expect(w).toMatch(/slot: 'URSHORTS', path: '\/api\/urshorts\?all=1'/)
     expect(readCode('src/worker/cron/cache-prewarm.ts')).toMatch(/'\/api\/urshorts'/)
   })
 

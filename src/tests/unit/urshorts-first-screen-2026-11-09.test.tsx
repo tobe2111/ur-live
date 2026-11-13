@@ -9,7 +9,8 @@ import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import BrowseCard from '@/pages/urshorts/BrowseCard'
-import { buildUrShortsFirstScreen, urshortsCardHtml, URSHORTS_FS_CLASS, URSHORTS_FS_DESC } from '@/worker/utils/urshorts-first-screen'
+import { buildUrShortsFirstScreen, urshortsCardHtml, URSHORTS_FS_CLASS, URSHORTS_FS_DESC, URSHORTS_FS_CARDS } from '@/worker/utils/urshorts-first-screen'
+import { SHORTS_ALL_PATH } from '@/shared/urshorts-list-cache'
 import { cssFirstApplies, criticalSurfaceOf } from '@/worker/utils/css-first-boot'
 import { readRaw } from '../helpers/source-text'
 import type { UrShortItem } from '@/shared/urshorts'
@@ -78,6 +79,21 @@ describe('②③ 첫 화면 — 칩·격자·폴백', () => {
     const src = readRaw('src/pages/UrShortsBrowsePage.tsx')
     for (const k of ['page', 'header', 'back', 'h1', 'dot', 'count', 'desc', 'body', 'chipRow', 'chipOn', 'chipOff', 'grid'] as const) expect(src, k).toContain(URSHORTS_FS_CLASS[k])
     expect(src).toContain(`\`shrink-0 inline-flex items-center gap-1 h-9 px-4 rounded-full text-[13px] font-medium transition-colors \${className}\``)
+  })
+})
+
+describe('⑦ 2026-11-13 시드 = 전량 — 편수·칩은 전량으로, 카드는 위 12장만(라이브 CLS 0.15 → 앱이 칩 줄을 더 꽂지 않는다)', () => {
+  // 실측: 시드 12편이 전부 식사라 서버는 종류 칩 줄을 안 그렸고, 앱이 60편(숙소·미용 포함)을 받아 그 줄을 꽂아 격자가 52px 밀렸다.
+  const MANY = Array.from({ length: 30 }, (_, i) => IT({ id: i + 1, video_id: `m${i}`, thumb_url: `https://i.ytimg.com/vi/m${i}/hq.jpg`, region_si: i % 2 ? '서울' : '부산', category: i < 24 ? 'meal_voucher' : 'stay_voucher' }))
+  it('30편이면 머리 "30편" · 종류 칩 줄이 있다(13번째 이후에만 있는 종류도 센다) · 카드는 URSHORTS_FS_CARDS 장', () => {
+    const d = document.createElement('div'); d.innerHTML = buildUrShortsFirstScreen(payload(MANY), LOADER)
+    expect(d.querySelector('header')!.textContent).toContain('30편')
+    expect(d.querySelectorAll('div[aria-label="종류"] button').length).toBe(3) // 전체 + 식사·숙소(숙소는 25번째부터)
+    expect(d.querySelectorAll('ul > li').length).toBe(URSHORTS_FS_CARDS)
+    expect(URSHORTS_FS_CARDS).toBeGreaterThanOrEqual(4) // 폰 첫 화면(2열 × 2줄)은 서버가 다 그린다
+  })
+  it('워커 시드 주소가 화면이 받는 전량 주소와 byte 일치(다르면 편수·칩이 다시 갈린다)', () => {
+    expect(readRaw('src/worker/index.ts')).toContain(`ssrTarget = { slot: 'URSHORTS', path: '${SHORTS_ALL_PATH}' }`)
   })
 })
 
