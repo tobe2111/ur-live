@@ -284,3 +284,4 @@
   유어샵 522 · 검색 564 · 교환권 435.
 - 지역 착지 PC 첫 화면 — 기록 `docs/locks/loading/2026-11-13-region-pc-first-screen.md`. 🩸 끼워 재기 첫 판을 `/region/seoul` 로 했다가 '빈 첫 화면' — 경로는 한글(`/region/서울`)이다(sitemap 확인).
 - 유어쇼츠 #2355 라이브(폰 3+3회): CLS **0.15 → 0.0000~0.0004**. 🩸 대가: 화면이 첫 렌더에 60장을 그려 TBT 0.14~0.19 → **0.35~0.69s** — 첫 렌더도 위 12장(`URSHORTS_FIRST_CARDS`)만, 나머지는 load 뒤/첫 스크롤/칩 선택 때 아래에 붙인다.
+- 유어쇼츠 PC 첫 화면(430 액자) — 기록 `docs/locks/loading/2026-11-13-urshorts-pc-frame.md`.

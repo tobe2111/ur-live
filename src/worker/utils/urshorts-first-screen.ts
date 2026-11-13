@@ -18,6 +18,9 @@ import { cityFacets, categoryFacets, MIN_FACETS_TO_SHOW, type Facet } from '../.
 import { escAttr, escText } from './home-first-screen'
 import { URSHORTS_FIRST_CARDS } from '../../shared/urshorts-list-cache'
 
+/** PC 액자 — `guest-first-screen.ts` 의 `GUEST_PC_FRAME` 과 같은 값(시험이 대조). import 하지 않는 이유: 표면별 CSS 생성기가 import 를 따라가 손님 탭 클래스까지 끌려온다. */
+export const PC_FRAME = { cls: 'mobile-app-container app-framed', width: '430px' } as const
+
 /** `BrowseCard` 와 같은 썸네일 폭(`urshorts-seed.ts` 의 preload 도 같은 값). */
 export const URSHORTS_FS_THUMB_WIDTH = 360
 export const URSHORTS_FS_EAGER = 4
@@ -100,11 +103,14 @@ export function urshortsCardHtml(item: UrShortItem, eager: boolean): string {
 }
 
 /** `#root` 첫 화면 HTML. 영상이 0편이면 ''(호출부가 로더로 폴백 — 무회귀). */
-export function buildUrShortsFirstScreen(ssrPayload: string | null | undefined, loaderHtml: string): string {
+/** @param isMobile 폰·크롤러면 화면 그대로. 🖥️ 2026-11-13 PC 면 430 액자(`PC_FRAME`) — PC 유어쇼츠는 액자 화면이고 위 네비가 없다(라이브 실측). */
+export function buildUrShortsFirstScreen(ssrPayload: string | null | undefined, loaderHtml: string, isMobile = true): string {
   const items = urshortsItemsOf(ssrPayload)
   if (items.length === 0) return ''
   const header = `<header class="${C.header}"><span class="${C.back}" aria-hidden="true"></span><h1 class="${C.h1}">유어쇼츠<span aria-hidden="true" class="${C.dot}">.</span></h1><span class="${C.count}">${items.length}편</span></header>`
   const body = `<div class="${C.body}">${chipRowHtml('도시', cityFacets(items), items.length)}${chipRowHtml('종류', categoryFacets(items), items.length)}` +
     `<ul class="${C.grid}">${items.slice(0, URSHORTS_FS_CARDS).map((it, i) => `<li>${urshortsCardHtml(it, i < URSHORTS_FS_EAGER)}</li>`).join('')}</ul></div>`
-  return `<div id="ur-first-screen"><div class="${C.page}">${header}<p class="${C.desc}">${escText(URSHORTS_FS_DESC)}</p>${body}</div></div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
+  const page = `<div class="${C.page}">${header}<p class="${C.desc}">${escText(URSHORTS_FS_DESC)}</p>${body}</div>`
+  const framed = isMobile ? page : `<div class="${PC_FRAME.cls}" data-mobile-only="false" style="--app-frame:${PC_FRAME.width}">${page}</div>`
+  return `<div id="ur-first-screen">${framed}</div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }

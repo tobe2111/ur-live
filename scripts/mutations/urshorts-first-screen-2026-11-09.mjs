@@ -4,7 +4,7 @@ export default [
   {
     name: '🎬 유어쇼츠 첫 화면 배선을 뺀다(첫 글자 2.0초로 회귀)',
     file: 'src/worker/index.ts',
-    find: "else if (url.pathname === '/urshorts' && ssrPayload && shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {",
+    find: "else if (url.pathname === '/urshorts' && ssrPayload) {", // 2026-11-13 재조준: PC 도 그리게 되어 UA 조건이 빠졌다
     replace: "else if (false && url.pathname === '/urshorts' && ssrPayload) {",
     test: T,
     why: '라이브 실측(2026-11-09) 첫 글자 2.0초 — 로더만 보이다 앱이 켜져야 목록이 그려졌다.',

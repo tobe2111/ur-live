@@ -9,12 +9,14 @@ import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import BrowseCard from '@/pages/urshorts/BrowseCard'
-import { buildUrShortsFirstScreen, urshortsCardHtml, URSHORTS_FS_CLASS, URSHORTS_FS_DESC, URSHORTS_FS_CARDS } from '@/worker/utils/urshorts-first-screen'
+import { buildUrShortsFirstScreen, urshortsCardHtml, URSHORTS_FS_CLASS, URSHORTS_FS_DESC, URSHORTS_FS_CARDS, PC_FRAME } from '@/worker/utils/urshorts-first-screen'
 import { SHORTS_ALL_PATH, URSHORTS_FIRST_CARDS } from '@/shared/urshorts-list-cache'
-import { cssFirstApplies, criticalSurfaceOf } from '@/worker/utils/css-first-boot'
+import { cssFirstApplies, criticalSurfaceOf, firstScreenApplies } from '@/worker/utils/css-first-boot'
+import { GUEST_PC_FRAME } from '@/worker/utils/guest-first-screen'
 import { readRaw } from '../helpers/source-text'
 import type { UrShortItem } from '@/shared/urshorts'
 
+const PC_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 const MOBILE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
 const IT = (o: Partial<UrShortItem>): UrShortItem => ({ id: 1, video_id: 'abc', title: null, channel: null, thumb_url: null, product_id: null, product_name: null, store_name: null, product_image: null, price: null, original_price: null, discount_rate: null, ...o })
 const RICH = IT({ id: 1, video_id: 'v1', title: '싸와디 쌀국수 #부산맛집 🍜', channel: '먹방왕', thumb_url: 'https://i.ytimg.com/vi/v1/hq.jpg', duration_sec: 31, region_si: '부산', region_area: '연제', category: 'meal_voucher', product_name: '곱빼기 쌀국수 2인', store_name: '쌀국수집', price: 20200, original_price: 25000, discount_rate: 19 })
@@ -106,9 +108,18 @@ describe('⑦ 2026-11-13 시드 = 전량 — 편수·칩은 전량으로, 카드
 })
 
 describe('④⑤⑥ 배선', () => {
-  it('워커: 폰 UA · 시드 있음 → 첫 화면(없으면 로더) · PC 는 안 그린다', () => {
+  // 🖥️ 2026-11-13 PC 도 그린다(430 액자) — 라이브 PC 첫 글자 1.9~2.4s 가 로더뿐이었다.
+  it('워커: 시드 있음 → 첫 화면(없으면 로더) · 폰이 아니면 액자로', () => {
     const w = readRaw('src/worker/index.ts')
-    expect(w).toMatch(/else if \(url\.pathname === '\/urshorts' && ssrPayload && shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\) \{ const shortsFirst = buildUrShortsFirstScreen\(ssrPayload, urdealLoaderHtml\);[^\n]*shortsFirst \? shortsFirst \+ shortsNs : shortsNs \+ urdealLoaderHtml/)
+    expect(w).toMatch(/else if \(url\.pathname === '\/urshorts' && ssrPayload\) \{ const shortsFirst = buildUrShortsFirstScreen\(ssrPayload, urdealLoaderHtml, shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\);[^\n]*shortsFirst \? shortsFirst \+ shortsNs : shortsNs \+ urdealLoaderHtml/)
+  })
+  it('PC: 430 액자(손님 탭 PC 와 같은 값) 안에 같은 본문 · 첫 화면 CSS 도 PC 에', () => {
+    const pc = buildUrShortsFirstScreen(payload(ITEMS), LOADER, false)
+    const phone = buildUrShortsFirstScreen(payload(ITEMS), LOADER)
+    expect(PC_FRAME).toEqual(GUEST_PC_FRAME)
+    expect(pc).toContain(`<div class="${PC_FRAME.cls}" data-mobile-only="false" style="--app-frame:${PC_FRAME.width}">`)
+    expect(phone).not.toContain(PC_FRAME.cls)
+    expect(firstScreenApplies('/urshorts', PC_UA)).toBe(true)
   })
   it('CSS-first 표면 · critical CSS 표면에 등록됐다', () => {
     expect(cssFirstApplies('/urshorts', MOBILE_UA)).toBe(true)
