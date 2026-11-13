@@ -6,8 +6,8 @@ export default [
   {
     name: '숙소첫화면 — 카드 링크가 날짜·인원을 잃는다',
     file: 'src/worker/utils/stays-first-screen.ts',
-    find: '}, i === 0, stayCardHref(s.id, checkIn, checkOut, guests)) +',
-    replace: '}, i === 0) +',
+    find: '}, ri === 0 && i === 0, stayCardHref(s.id, checkIn, checkOut, guests)) +', // 2026-11-13 재조준: 두 줄이 되며 eager 조건에 줄 번호가 붙었다
+    replace: '}, ri === 0 && i === 0) +',
     test: T,
     why: '서버 카드는 /pass/:id 로, 화면 카드는 /stays/:id?… 로 간다 — 마운트 전에 누르면 다른 곳에 착지한다.',
   },
@@ -30,7 +30,7 @@ export default [
   {
     name: '숙소첫화면 — 첫 장이 eager 가 아니다',
     file: 'src/worker/utils/stays-first-screen.ts',
-    find: '}, i === 0, stayCardHref(',
+    find: '}, ri === 0 && i === 0, stayCardHref(',
     replace: '}, false, stayCardHref(',
     test: T,
     why: 'LCP 사진이 lazy 로 늦게 출발한다 — 이 첫 화면의 존재 이유가 사라진다.',
