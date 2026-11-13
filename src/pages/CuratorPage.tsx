@@ -142,7 +142,7 @@ export default function CuratorPage() {
   useEffect(() => {
     const cid = data?.curator?.id
     if (!cid || isOwner) return
-    storeAffiliateRef(String(cid))
+    storeAffiliateRef(String(cid), 'ushop') // 🧭 유입 기록상 '유어샵 방문'(링크 클릭과 구분)
   }, [data?.curator?.id, isOwner])
 
   useEffect(() => {

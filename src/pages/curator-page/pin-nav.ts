@@ -36,6 +36,6 @@ export function recordPinClick(handle: string, productId: number): void {
 
 /** 카드를 누른 순간 — 소개 값 저장(①) + 클릭 기록(②). 이동은 `Link` 가 한다(③). */
 export function onPinClick(handle: string, curatorUserId: number | null | undefined, productId: number): void {
-  if (curatorUserId) storeAffiliateRef(String(curatorUserId)) // 본인 유어샵이면 함수가 알아서 건너뛴다
+  if (curatorUserId) storeAffiliateRef(String(curatorUserId), 'ushop') // 본인 유어샵이면 함수가 알아서 건너뛴다
   recordPinClick(handle, productId)
 }
