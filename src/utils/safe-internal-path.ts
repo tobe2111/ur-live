@@ -82,6 +82,7 @@ function extractPreservedQuery(rawQueryAndHash: string): string {
     const kept = new URLSearchParams()
     for (const key of PRESERVED_QUERY_PARAMS) {
       const v = params.get(key)
+      if (key === 'qty' && params.get('via') !== 'login') continue // 🔐 수량은 '로그인 복귀' 표식과 함께일 때만 — 결제 결과 주소 등의 qty 는 종전대로 버린다
       if (v && (PRESERVED_VALUE_RE_BY_KEY[key] ?? PRESERVED_VALUE_RE).test(v)) kept.set(key, v)
     }
     const s = kept.toString()

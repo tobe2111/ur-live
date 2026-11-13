@@ -21,6 +21,7 @@ describe('로그인 복귀 → 구매 창', () => {
     expect(readFileSync('src/pages/GroupBuyDetailPage.tsx', 'utf8')).toContain("localStorage.setItem('loginReturnUrl', `${window.location.pathname}?via=login&qty=${quantity}`)")
     expect(safeInternalPath('/pass/2919?via=login&qty=2', '/')).toBe('/pass/2919?via=login&qty=2')
     expect(safeInternalPath('/pass/2919?via=agent&qty=0', '/')).toBe('/pass/2919') // 다른 값은 버린다
+    expect(safeInternalPath('/group-buy/confirm-payment?productId=9&qty=1', '/')).toBe('/group-buy/confirm-payment') // 로그인 복귀가 아니면 qty 도 종전대로 버린다
     // 서버(카카오 복귀 safeRedirect)도 같은 화이트리스트 — 한쪽만 바꾸면 카카오 왕복에서 다시 사라진다
     expect(readFileSync('src/features/auth/api/kakao.routes.ts', 'utf8')).toMatch(/PRESERVED_QUERY_PARAMS = \[[^\]]*'via', 'qty'\][\s\S]{0,400}via: \/\^login\$\/, qty: /)
   })

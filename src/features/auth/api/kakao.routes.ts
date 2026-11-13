@@ -209,7 +209,7 @@ function extractPreservedQuery(rawQueryAndHash: string): string {
     const params = new URLSearchParams(queryOnly);
     const kept = new URLSearchParams();
     for (const key of PRESERVED_QUERY_PARAMS) {
-      const v = params.get(key); if (v && (PRESERVED_VALUE_RE_BY_KEY[key] ?? PRESERVED_VALUE_RE).test(v)) kept.set(key, v);
+      const v = params.get(key); if (key === 'qty' && params.get('via') !== 'login') continue; if (v && (PRESERVED_VALUE_RE_BY_KEY[key] ?? PRESERVED_VALUE_RE).test(v)) kept.set(key, v); // 🔐 qty 는 via=login 과 함께일 때만(프론트 동일)
     }
     const s = kept.toString();
     return s ? `?${s}` : '';
