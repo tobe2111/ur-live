@@ -53,6 +53,7 @@ import { STAY_HEAD, staySubLine } from '../../shared/stay-head'
 import { propertyTypeLabel } from '../../shared/stay-property-type'
 import { crumbNavHtml, mobileThumbRowHtml, restSlidesHtml } from './detail-ssr-body'
 import { stayNoscriptFromPayload } from './crawler-noscript'
+import { pcTopNavBlockHtml } from './pc-topnav-first-screen'
 
 function escAttr(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -81,7 +82,12 @@ interface StaySeedProduct {
  * @param ssrPayload `__SSR_INITIAL_STAYDETAIL__` 원문 — 모양이 DETAIL 과 다르다(`{data:{product,rooms}}`)
  * @param loaderHtml 기존 URDEAL 로더(사진 아래에 붙는다 — 아직 오는 중이라는 정직한 신호)
  */
-export function buildStayDetailFirstScreen(ssrPayload: string, loaderHtml: string): string {
+/**
+ * @param pcPath 데스크톱 요청이면 그 pathname. 🖥️ 2026-11-13 PC 실측 CLS **1.0** — PC 엔 첫 화면 CSS 가 안 들어가서 `lg:hidden`
+ *   폰 본문(큰 사진)이 그대로 보였다가 앱 CSS 가 오는 순간 사라졌다. PC 면 앱의 상단 네비를 먼저 그리고(교환권 상세와 같다),
+ *   워커가 첫 화면 CSS 도 넣는다(`firstScreenApplies`). 폰(`undefined`)은 종전 그대로.
+ */
+export function buildStayDetailFirstScreen(ssrPayload: string, loaderHtml: string, pcPath?: string): string {
   try {
     const parsed = JSON.parse(ssrPayload) as { data?: { product?: StaySeedProduct } }
     const p = parsed?.data?.product
@@ -139,6 +145,7 @@ export function buildStayDetailFirstScreen(ssrPayload: string, loaderHtml: strin
     // 📰 `<noscript>` 요약은 JS 가 돌면 렌더조차 안 된다 → 사람 화면 밀림 0 · 추가 요청 0.
     return (
       `<div id="ur-first-screen" class="${STAY_HEAD.pageBg}">` +
+        (pcPath ? pcTopNavBlockHtml(pcPath) : '') +
         `<div class="${STAY_HEAD.shell}">` +
           // 📱 2026-10-27: 폰에선 빵부스러기 없이 사진이 맨 위(이용권 상세와 같다) — 화면도 `hidden lg:block`.
           (crumb ? `<div class="hidden lg:block">${crumb}</div>` : '') +

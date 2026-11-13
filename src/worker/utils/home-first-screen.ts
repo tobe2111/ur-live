@@ -65,6 +65,7 @@ import { resolveBannerLink } from '../../components/home/banner-link'
 import { HOME_TOP_LOGO, HOME_TOP_SEARCH, HOME_TOP_BELL, HOME_TOP_BAG, HOME_TOP_CHEVRON, HOME_TOP_LOCATE } from './home-top-markup'
 import { homeLocLabelFromCookieHeader, HOME_LOC_LABEL_DEFAULT } from '../../shared/home-loc-label-cookie'
 import { regionHeroFromCookieHeader, REGION_HERO_FADE_LIGHT, REGION_HERO_FADE_DARK, type RegionHero } from '../../shared/home-region-hero'
+import { STAR_FS, starFillPct } from '../../shared/star-rating-fs'
 
 export function escAttr(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -112,9 +113,9 @@ export const HOME_FS_CLASS = {
   title: 'text-[15px] font-medium line-clamp-2 leading-snug text-gray-900 dark:text-white',
   addr: 'flex items-center justify-between gap-2 mt-1 text-[12px] min-w-0 text-gray-500 dark:text-gray-400',
   rateRow: 'flex items-center gap-2 mt-1 text-[12px] text-gray-500 dark:text-gray-400',
-  starWrap: 'relative inline-block shrink-0 leading-none select-none align-middle',
-  starBase: 'text-gray-300 dark:text-gray-600',
-  starFill: 'absolute left-0 top-0 overflow-hidden whitespace-nowrap text-yellow-400',
+  starWrap: STAR_FS.wrap,
+  starBase: STAR_FS.base,
+  starFill: STAR_FS.fill,
   rateNum: 'font-medium text-gray-900 dark:text-white',
   priceWrap: 'mt-2',
   priceTop: 'flex items-baseline gap-1 leading-none',
@@ -131,9 +132,7 @@ export function homeCardSizes(width: number): string {
 }
 
 /** `StarRating` 의 채움 비율 — 같은 식이어야 문자열이 byte-일치한다. */
-export function starFillPct(value: number): number {
-  return Math.max(0, Math.min(100, (value / 5) * 100))
-}
+export { starFillPct } // 2026-11-13 본체는 shared/star-rating-fs.ts
 
 /** 시드에서 읽는 최소 모양 — 서버 `CARD_COLS`(section-rules.ts)의 부분집합. */
 export interface SeedProduct {
