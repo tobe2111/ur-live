@@ -13,7 +13,7 @@ export default [
   {
     name: '📌 유어샵 앱 안 이동: 누를 때 소개 값 저장을 뺀다',
     file: 'src/pages/curator-page/pin-nav.ts',
-    find: "  if (curatorUserId) storeAffiliateRef(String(curatorUserId)) // 본인 유어샵이면 함수가 알아서 건너뛴다\n",
+    find: "  if (curatorUserId) storeAffiliateRef(String(curatorUserId), 'ushop') // 본인 유어샵이면 함수가 알아서 건너뛴다\n",
     replace: "",
     test: TEST,
     why: '클릭 수는 그대로 세지는데 결제 때 실어 보낼 소개 값이 없다 — 돈이 새는 쪽.',
