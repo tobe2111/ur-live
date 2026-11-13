@@ -14,7 +14,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import fs from 'node:fs'
-import { buildStaysFirstScreen } from '@/worker/utils/stays-first-screen'
+import { buildStaysFirstScreen, STAYS_FS_ROWS } from '@/worker/utils/stays-first-screen'
 import { cardHtml } from '@/worker/utils/home-first-screen'
 import { STAYS_LIST, STAYS_CHIPS, buildStayCurations, stayCardHref, stayDateChipLabel } from '@/shared/stays-list'
 import { defaultStaysQs, readStaysSeed, STAYS_SEED_ID } from '@/shared/stays-early'
@@ -46,10 +46,16 @@ describe('① 같은 상수 — 화면과 워커', () => {
 describe('② 첫 화면 — 첫 큐레이션 줄 + 같은 카드', () => {
   const html = buildStaysFirstScreen(SEED, LOADER, '2026-10-19', '2026-10-20')
   const row = buildStayCurations(JSON.parse(SEED).data)[0]
-  it('첫 줄 제목과 그 줄의 카드 전부를 그린다', () => {
+  // 🖥️ 2026-11-13 1 → 2 줄: PC 둘째 줄 사진이 가장 큰 그림(LCP)인데 앱이 켜진 뒤에야 받았다(라이브 LCP 2.3~2.7s → 끼워 재기 1.4~1.9s).
+  it('처음 두 줄(STAYS_FS_ROWS) 제목과 그 줄들의 카드 전부를 그린다 · eager 는 첫 줄 첫 장 하나', () => {
+    const rows = buildStayCurations(JSON.parse(SEED).data).slice(0, STAYS_FS_ROWS)
+    expect(STAYS_FS_ROWS).toBe(2)
     expect(row.items.length).toBe(3)
-    expect(html).toContain(`<h2 class="${STAYS_LIST.rowTitle}">${row.title}</h2>`)
-    expect(html.match(new RegExp(`class="${STAYS_LIST.cell.replace(/[[\]%()]/g, '\\$&')}"`, 'g'))?.length).toBe(3)
+    for (const r of rows) expect(html).toContain(`<h2 class="${STAYS_LIST.rowTitle}">${r.title}</h2>`)
+    const n = rows.reduce((a, r) => a + r.items.length, 0)
+    expect(rows.length).toBeGreaterThan(1) // 픽스처가 두 줄을 실제로 밟는다(안 그러면 이 시험이 1줄과 구분 못 한다)
+    expect(html.match(new RegExp(`class="${STAYS_LIST.cell.replace(/[[\]%()]/g, '\\$&')}"`, 'g'))?.length).toBe(n)
+    expect(html.match(/<section>/g)?.length).toBe(rows.length)
   })
   it('카드 = 홈 첫 화면 카드 함수 · 첫 장만 eager · 링크는 날짜·인원을 잇는다', () => {
     const href = stayCardHref(1, '2026-10-19', '2026-10-20', 2)

@@ -34,6 +34,12 @@ const iconSlot = (px: number) => `<span class="block shrink-0" style="width:${px
  * @param loaderHtml 종전 로더 — 그린 내용 **아래**에 짧게 붙인다
  * @param checkIn @param checkOut @param guests 기본 질의의 값(`defaultStaysQs` 와 같은 날짜)
  */
+/**
+ * 서버가 그리는 큐레이션 줄 수 — 🖥️ 2026-11-13 1 → 2. PC(1440)에선 둘째 줄 사진(y≈685)이 첫 화면 안이고 **가장 큰 그림(LCP)** 인데
+ * 서버가 첫 줄만 그려 그 사진은 앱이 켜진 뒤(라이브 1.5s 출발) 받았다 — LCP 2.3~2.7s. 둘째 줄의 사진은 lazy(폰에선 화면 밖이라 안 받는다).
+ */
+export const STAYS_FS_ROWS = 2
+
 export function buildStaysFirstScreen(seedJson: string, loaderHtml: string, checkIn: string, checkOut: string, guests = 2, pcPath?: string): string {
   let items: StaySearchItem[]
   try {
@@ -43,8 +49,8 @@ export function buildStaysFirstScreen(seedJson: string, loaderHtml: string, chec
   } catch {
     return ''
   }
-  const row = buildStayCurations(items)[0]
-  if (!row) return ''
+  const rows = buildStayCurations(items).slice(0, STAYS_FS_ROWS)
+  if (rows.length === 0) return ''
 
   const chips = STAYS_CHIPS.map(({ key, label }) =>
     `<span class="${STAYS_LIST.chip} ${key === 'stay_voucher' ? STAYS_LIST.chipOn : STAYS_LIST.chipOff}">${iconSlot(STAYS_ICON.chip)}${escText(label)}</span>`,
@@ -64,8 +70,8 @@ export function buildStaysFirstScreen(seedJson: string, loaderHtml: string, chec
       `</div>` +
     `</div>`
 
-  // 카드 — `StayCardRow` 가 `GroupBuyFeedCard` 에 넘기는 값과 같은 매핑. 첫 줄의 첫 장만 eager(화면과 같다).
-  const cards = row.items.map((s, i) =>
+  // 카드 — `StayCardRow` 가 `GroupBuyFeedCard` 에 넘기는 값과 같은 매핑. 줄마다 첫 장만 eager 는 **첫 줄**만(화면과 같다).
+  const rowHtml = (row: (typeof rows)[number], ri: number) => row.items.map((s, i) =>
     `<div class="${STAYS_LIST.cell}">` +
       cardHtml({
         id: s.id,
@@ -76,17 +82,18 @@ export function buildStaysFirstScreen(seedJson: string, loaderHtml: string, chec
         restaurant_address: stayRegionLabel(s.region_sido, s.region_sigungu, s.address),
         avg_rating: s.avg_rating ?? undefined,
         review_count: s.review_count ?? undefined,
-      }, i === 0, stayCardHref(s.id, checkIn, checkOut, guests)) +
+      }, ri === 0 && i === 0, stayCardHref(s.id, checkIn, checkOut, guests)) +
     `</div>`,
   ).join('')
+  const sections = rows.map((row, ri) => `<section>` +
+        `<h2 class="${STAYS_LIST.rowTitle}">${escText(row.title)}</h2>` +
+        `<div class="${STAYS_LIST.row}">${rowHtml(row, ri)}</div>` +
+      `</section>`).join('')
 
   const body =
     `<div class="${STAYS_LIST.rootBg}">` +
       bar +
-      `<div class="${STAYS_LIST.results}"><div class="${STAYS_LIST.curations}"><section>` +
-        `<h2 class="${STAYS_LIST.rowTitle}">${escText(row.title)}</h2>` +
-        `<div class="${STAYS_LIST.row}">${cards}</div>` +
-      `</section></div></div>` +
+      `<div class="${STAYS_LIST.results}"><div class="${STAYS_LIST.curations}">${sections}</div></div>` +
     `</div>`
 
   // 🧷 노드 id 는 다른 첫 화면과 같다 — `lib/boot-first-screen.ts` 가 이 노드를 Suspense 폴백에 도로 붙인다.
