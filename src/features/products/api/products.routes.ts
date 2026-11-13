@@ -33,6 +33,7 @@ import { parsePickup, isEmptyPickup } from '../../../shared/pickup';
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta';
 import { MAIN_MALL } from '../../../shared/mall/resolve';
 import { registerProductViewRoutes } from './product-view.routes'
+import { publicReadDb } from '../../../worker/utils/d1-read-replica';
 
 // 🛡️ 2026-04-22: bare cors() 는 모든 origin 허용. 민감 routes 에 쓰지 말고 아래 tightCors 사용.
 const tightCors = () => cors({ origin: [...ALLOWED_ORIGINS], credentials: true });
@@ -250,7 +251,10 @@ productsRoutes.get('/', cors(), async (c) => {
     const KV = (c.env as any).SESSION_KV;
     const cacheKey = `products_list:${JSON.stringify({ filter, pagination })}`;
     const result = await cacheGet(KV, cacheKey, async () => {
-      const service = new ProductService(DB);
+      // 🌏 2026-11-13 공개 목록·검색 읽기는 가까운 읽기 사본으로(결재 2026-10-15 범위 — 로그인 없이 보는 목록).
+      //   한국 손님의 첫 검색어가 원본(미국 동부)을 왕복해 0.4~1.0s 걸려 서버 첫 화면 시드 마감(700ms)을 넘겼다.
+      //   목록은 이미 KV 60s 캐시라 사본의 잠깐 늦음은 묻힌다. 검색 기록(INSERT)은 아래에서 원본 DB 로 그대로 쓴다.
+      const service = new ProductService(publicReadDb(DB));
       return await service.getProducts(filter, pagination);
     }, { ttl: 60, staleWhileRevalidate: 30 });
 
