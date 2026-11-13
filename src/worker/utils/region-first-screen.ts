@@ -6,12 +6,13 @@
  * 딜 수는 같은 응답에 실은 `/api/regions` 시드(`__SSR_INITIAL_REGIONS__`)로 계산하고 화면도 같은 시드로 첫 렌더한다 —
  * 그래서 마운트 때 "아직 딜이 없어요" → "N개" 로 바뀌지 않는다(종전엔 그 깜빡임이 있었다).
  * 그리지 않는 것: 아이콘(같은 크기 빈 칸) · 딜 카드(그 아래 로더 — 카드는 종전처럼 화면이 그린다).
- * 폰만(호출부가 UA 로 가른다).
+ * 폰 · 🖥️ 2026-11-13 PC 도 — `pcPath` 가 오면 앱의 상단 네비(`pcTopNavBlockHtml`)를 먼저 그린다(라이브 PC 첫 글자 1.9~2.4s 가 로더뿐이었다).
  */
 import { REGION_CLS as C, REGION_COPY as T, REGION_CATEGORY_CHIPS, regionDealCount } from '../../shared/region-page'
 import { parseRegionPath, regionLabel, regionPath, addressInRegion, type SidoStat } from '../../shared/constants/region-slugs'
 import { FEED_PC_GRID, feedSoldOf } from '../../shared/deal-card-grid'
 import { cardHtml } from './home-first-screen'
+import { pcTopNavBlockHtml } from './pc-topnav-first-screen'
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const slot = (cls: string) => `<span class="${cls} inline-block" aria-hidden="true"></span>`
@@ -39,7 +40,7 @@ export function regionFirstCards(mainSeedJson: string | null, ref: { sido: strin
   } catch { return [] }
 }
 
-export function buildRegionFirstScreen(pathname: string, regionsJson: string | null, loaderHtml: string, mainSeedJson: string | null = null): string {
+export function buildRegionFirstScreen(pathname: string, regionsJson: string | null, loaderHtml: string, mainSeedJson: string | null = null, pcPath?: string): string {
   const seg = pathname.replace(/\/+$/, '').split('/').slice(2)
   const ref = parseRegionPath(seg[0], seg[1])
   if (!ref || !ref.sido) return ''
@@ -68,5 +69,5 @@ export function buildRegionFirstScreen(pathname: string, regionsJson: string | n
   const cards = regionFirstCards(mainSeedJson, ref)
   const grid = cards.length ? `<div><div class="${FEED_PC_GRID} ur-cv-grid">${cards.map((p) => cardHtml(p as never, true)).join('')}</div></div>` : ''
   const body = `<div class="${C.page}"><div class="${C.wrap}">${nav}<header class="${C.header}"><h1 class="${C.h1}">${esc(label)} 이용권·동네딜</h1><p class="${C.sub}">${sub}</p></header>${chips}${grid}</div></div>`
-  return `<div id="ur-first-screen">${body}</div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
+  return `<div id="ur-first-screen">${pcPath ? pcTopNavBlockHtml(pcPath) : ''}${body}</div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }

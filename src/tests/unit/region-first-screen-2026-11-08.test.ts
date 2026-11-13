@@ -10,11 +10,13 @@ import path from 'node:path'
 import { buildRegionFirstScreen, regionFirstCards, REGION_FS_CARDS } from '@/worker/utils/region-first-screen'
 import { FEED_PC_GRID } from '@/shared/deal-card-grid'
 import { regionDealCount } from '@/shared/region-page'
-import { cssFirstApplies, criticalSurfaceOf } from '@/worker/utils/css-first-boot'
+import { cssFirstApplies, criticalSurfaceOf, firstScreenApplies } from '@/worker/utils/css-first-boot'
+import { PC_TOPNAV_CLS } from '@/shared/pc-topnav-first'
 
 const read = (p: string) => fs.readFileSync(path.join(__dirname, '../../..', p), 'utf8')
 const SEOUL = '/region/' + encodeURIComponent('서울') + '/' + encodeURIComponent('성동구')
 const STATS = JSON.stringify({ success: true, data: [{ sido: '서울', count: 89, indexable: true, sigungu: [{ sigungu: '성동구', count: 8, indexable: true }] }] })
+const PC_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 
 describe('① 그리는 것', () => {
@@ -57,8 +59,17 @@ describe('③ 배선', () => {
   it('지역이면 통계 시드를 같이 받는다', () => {
     expect(w).toContain("else ssrExtra = { slot: 'REGIONS', path: '/api/regions' };")
   })
-  it('폰 UA · 쿼리 없는 지역 경로만 · 크롤러 요약은 뒤에 붙인다', () => {
-    expect(w).toMatch(/!url\.search && REGION_PATH_RE\.test\(url\.pathname\) && shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\) \{ const regionFirst = buildRegionFirstScreen\(url\.pathname, ssrExtraPayload, urdealLoaderHtml, ssrPayload\)/)
+  // 🖥️ 2026-11-13 PC 도 그린다(라이브 PC 첫 글자 1.9~2.4s 가 로더뿐) — 폰은 네비 없이, PC 는 앱의 상단 네비를 먼저.
+  it('쿼리 없는 지역 경로 · 폰은 pcPath 없이 / PC 는 pathname · 크롤러 요약은 뒤에 붙인다', () => {
+    expect(w).toMatch(/!url\.search && REGION_PATH_RE\.test\(url\.pathname\)\) \{ const regionFirst = buildRegionFirstScreen\(url\.pathname, ssrExtraPayload, urdealLoaderHtml, ssrPayload, shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\) \? undefined : url\.pathname\)/)
+  })
+  it('PC: 상단 네비를 본문 앞에 그리고 첫 화면 CSS 도 넣는다 · 폰엔 네비가 없다', () => {
+    const pc = buildRegionFirstScreen(SEOUL, STATS, '', null, '/region/서울')
+    const phone = buildRegionFirstScreen(SEOUL, STATS, '')
+    expect(pc.indexOf(PC_TOPNAV_CLS.row1)).toBeGreaterThan(0)
+    expect(pc.indexOf(PC_TOPNAV_CLS.row1)).toBeLessThan(pc.indexOf('<h1'))
+    expect(phone).not.toContain(PC_TOPNAV_CLS.row1)
+    expect(firstScreenApplies(SEOUL, PC_UA)).toBe(true)
   })
   it('CSS 먼저 + 전용 첫 화면 CSS', () => {
     expect(cssFirstApplies(SEOUL, PHONE)).toBe(true)
@@ -88,6 +99,6 @@ describe('④ 카드 — 화면과 같은 순서·같은 격자 (이용권이 �
     expect(buildRegionFirstScreen('/region/' + encodeURIComponent('제주'), STATS, '', MAIN)).not.toContain('ur-cv-grid')
   })
   it('워커가 MAIN 시드를 넘긴다', () => {
-    expect(read('src/worker/index.ts')).toContain('buildRegionFirstScreen(url.pathname, ssrExtraPayload, urdealLoaderHtml, ssrPayload)')
+    expect(read('src/worker/index.ts')).toContain('buildRegionFirstScreen(url.pathname, ssrExtraPayload, urdealLoaderHtml, ssrPayload,')
   })
 })
