@@ -27,6 +27,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readCode, readRaw } from '../helpers/source-text'
+import { firstScreenApplies } from '@/worker/utils/css-first-boot'
 import { buildStayDetailFirstScreen } from '@/worker/utils/stay-detail-ssr-body'
 import { stayNoscriptFromPayload } from '@/worker/utils/crawler-noscript'
 import { STAY_HEAD, STAY_PAGE_ROOT, STAY_GRID, staySubLine } from '@/shared/stay-head'
@@ -232,7 +233,14 @@ describe('🧯 ⑦ 폴백·배선·이스케이프', () => {
 
   it('워커가 이 빌더를 쓴다 (안 쓰면 아무것도 안 바뀐다)', () => {
     const idx = readRaw('src/worker/index.ts')
-    expect(idx).toContain('const stayFirst = buildStayDetailFirstScreen(ssrPayload, urdealLoaderHtml);')
+    // 🖥️ 2026-11-13 PC 는 상단 네비 + 첫 화면 CSS(전엔 CSS 가 없어 lg:hidden 폰 본문이 PC 에 보였다가 사라졌다 — CLS 1.0)
+    expect(idx).toContain("const stayFirst = buildStayDetailFirstScreen(ssrPayload, urdealLoaderHtml, shouldRenderMobileFirstScreen(c.req.header('user-agent')) ? undefined : url.pathname);")
     expect(idx).toContain("import { buildStayDetailFirstScreen } from './utils/stay-detail-ssr-body'")
+  })
+  it('🖥️ 2026-11-13 PC 판 — 상단 네비가 앞에 · 폰은 없음 · PC 에도 첫 화면 CSS', () => {
+    const pc = buildStayDetailFirstScreen(seed(), LOADER, '/stays/1')
+    expect(pc.indexOf('동네딜, 교환권, 상품 검색')).toBeGreaterThan(0)
+    expect(buildStayDetailFirstScreen(seed(), LOADER)).not.toContain('동네딜, 교환권, 상품 검색')
+    expect(firstScreenApplies('/stays/1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(true)
   })
 })

@@ -134,7 +134,7 @@ export default [
   {
     name: '🧯 워커가 첫 화면을 안 쓴다 — 빌더가 있어도 아무것도 안 바뀐다',
     file: 'src/worker/index.ts',
-    find: 'const stayFirst = buildStayDetailFirstScreen(ssrPayload, urdealLoaderHtml);',
+    find: "const stayFirst = buildStayDetailFirstScreen(ssrPayload, urdealLoaderHtml, shouldRenderMobileFirstScreen(c.req.header('user-agent')) ? undefined : url.pathname);",
     replace: "const stayFirst = '';",
     test: TEST,
     why: '이 레포가 반복해 당한 **조용한 부재** — 파일은 멀쩡히 있고 아무도 안 부른다.',

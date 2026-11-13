@@ -64,7 +64,7 @@ import {
 import { getVoucherShortLabel, normalizeCategory } from '../../shared/constants/voucher-categories'
 import { PASS_HEAD, PASS_PAGE_BG, passSubLine } from '../../shared/pass-head'
 import { buildDetailNoscript } from './crawler-noscript'
-import { HOME_FS_CLASS, starFillPct } from './home-first-screen'
+import { STAR_FS, starFillPct } from '../../shared/star-rating-fs'
 import { DETAIL_PC_FS, DETAIL_PC_THUMBS, DETAIL_PC_SCRIM_TOP, DETAIL_PC_SCRIM_BOTTOM, DETAIL_PC_COPY } from '../../shared/detail-pc-first-screen'
 import { PC_HOME_FS } from '../../shared/pc-home-first-screen' // 🖥️ PC 상단 네비 높이 예약(홈과 같은 상수)
 import { detailCropUrl, DETAIL_HERO_DESKTOP_WIDTH, DETAIL_PC_HERO_RATIO_MULTI, DETAIL_PC_HERO_RATIO_SINGLE, DETAIL_THUMB_WIDTH, DETAIL_PC_THUMB_RATIO } from '../../shared/detail-hero-image'
@@ -170,9 +170,9 @@ function statsAndPriceHtml(d: DetailSeed): string {
   let stats = ''
   if (hasReviews || buyers > 0) {
     const star = hasReviews
-      ? `<span class="${HOME_FS_CLASS.starWrap}" style="font-size:12px;letter-spacing:0.5px" role="img" aria-label="5점 만점에 ${rv.toFixed(1)}점">` +
-        `<span class="${HOME_FS_CLASS.starBase}" aria-hidden="true">★★★★★</span>` +
-        `<span class="${HOME_FS_CLASS.starFill}" style="width:${starFillPct(rv)}%" aria-hidden="true">★★★★★</span></span>` +
+      ? `<span class="${STAR_FS.wrap}" style="font-size:12px;letter-spacing:0.5px" role="img" aria-label="5점 만점에 ${rv.toFixed(1)}점">` +
+        `<span class="${STAR_FS.base}" aria-hidden="true">★★★★★</span>` +
+        `<span class="${STAR_FS.fill}" style="width:${starFillPct(rv)}%" aria-hidden="true">★★★★★</span></span>` +
         `<b class="font-medium" style="color:var(--gbd-ink)">${rv.toFixed(1)}</b>` +
         `<button type="button" class="${PASS_HEAD.statsBtn}" style="color:var(--gbd-sub)">(${formatNumber(rc)})</button>`
       : ''
@@ -382,9 +382,9 @@ function pcTitleHtml(d: DetailSeed): string {
     : ''
   const rating = hasRating
     ? `<span class="${DETAIL_PC_FS.metaGroup}">` +
-      `<span class="${HOME_FS_CLASS.starWrap}" style="font-size:15px;letter-spacing:0.5px" role="img" aria-label="5점 만점에 ${rv.toFixed(1)}점">` +
-        `<span class="${HOME_FS_CLASS.starBase}" aria-hidden="true">★★★★★</span>` +
-        `<span class="${HOME_FS_CLASS.starFill}" style="width:${starFillPct(rv)}%" aria-hidden="true">★★★★★</span></span>` +
+      `<span class="${STAR_FS.wrap}" style="font-size:15px;letter-spacing:0.5px" role="img" aria-label="5점 만점에 ${rv.toFixed(1)}점">` +
+        `<span class="${STAR_FS.base}" aria-hidden="true">★★★★★</span>` +
+        `<span class="${STAR_FS.fill}" style="width:${starFillPct(rv)}%" aria-hidden="true">★★★★★</span></span>` +
       `<b class="${DETAIL_PC_FS.ratingB}">${rv.toFixed(1)}</b>` +
       (rc > 0 ? `<span class="${DETAIL_PC_FS.ratingCount}">(${rc})</span>` : '') + '</span>'
     : ''
