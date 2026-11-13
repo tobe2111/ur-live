@@ -24,7 +24,7 @@ export function topNavActive(path: string, cur: string): boolean {
 }
 
 /** 두 줄 HTML(`\u0000` 으로 구분). `activePath` = 지금 주소의 pathname. */
-export function pcTopNavRowsHtml(activePath: string): string {
+export function pcTopNavRowsHtml(activePath: string, opts: { hideDealCats?: boolean } = {}): string {
   const item = (label: string, href: string, on: boolean) =>
     `<a href="${esc(href)}" class="${TN.itemBase} ${on ? TN.itemOn : TN.itemOff}"><span class="w-4 h-4" aria-hidden="true"></span>${esc(label)}` +
     (on ? `<span aria-hidden="true" class="${TN.dot}"></span>` : '') + '</a>'
@@ -35,12 +35,14 @@ export function pcTopNavRowsHtml(activePath: string): string {
     `<form action="/search" method="get" class="${TN.searchForm}"><div class="relative"><span class="${TN.searchIcon}" aria-hidden="true">${SEARCH_SVG}</span>` +
     `<input type="search" name="q" placeholder="${esc(PC_TOPNAV_SEARCH_PLACEHOLDER)}" class="${TN.searchInput}">` +
     `<button type="submit" aria-label="검색" class="${TN.searchBtn}">${SEARCH_SVG}</button></div></form><div class="${TN.right}"></div></div>`
-  const row2 = `<div class="${TN.row2Wrap}"><div class="${TN.row2Inner}"><nav aria-label="카테고리" class="${TN.row2Nav}">${services}<span aria-hidden="true" class="${TN.sep}"></span>${cats}</nav></div></div>`
+  // 🗺️ 지도(/map)는 앱이 딜 카테고리와 구분선을 숨긴다(`hideDealCats`) — 같은 모양이어야 마운트 때 안 바뀐다.
+  const tail = opts.hideDealCats ? '' : `<span aria-hidden="true" class="${TN.sep}"></span>${cats}`
+  const row2 = `<div class="${TN.row2Wrap}"><div class="${TN.row2Inner}"><nav aria-label="카테고리" class="${TN.row2Nav}">${services}${tail}</nav></div></div>`
   return row1 + '\u0000' + row2
 }
 
 /** 틀까지 포함한 상단 네비 한 덩어리. */
-export function pcTopNavBlockHtml(activePath: string): string {
-  const [r1, r2] = pcTopNavRowsHtml(activePath).split('\u0000')
+export function pcTopNavBlockHtml(activePath: string, opts: { hideDealCats?: boolean } = {}): string {
+  const [r1, r2] = pcTopNavRowsHtml(activePath, opts).split('\u0000')
   return `<div class="${FR.outer}"><div class="${FR.row1}">${r1}</div><div class="${FR.row2}">${r2}</div></div>`
 }

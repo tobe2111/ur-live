@@ -15,7 +15,7 @@ import SheetFilterBar from '@/pages/restaurant-map/SheetFilterBar'
 import { buildMapFirstScreen, MAP_FS_CLASS as C, MAP_FS_TEXT, MAP_FS_CHIP_LABELS } from '@/worker/utils/map-first-screen'
 import { MAP_VOUCHER_DEFS } from '@/pages/restaurant-map/voucher-types'
 import { SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE } from '@/pages/restaurant-map/useSheetDrag'
-import { cssFirstApplies, criticalSurfaceOf } from '@/worker/utils/css-first-boot'
+import { cssFirstApplies, criticalSurfaceOf, firstScreenApplies } from '@/worker/utils/css-first-boot'
 import { readRaw } from '../helpers/source-text'
 
 const MOBILE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
@@ -90,8 +90,9 @@ describe('② 시트 머리 — SheetFilterBar(hideChips) 와 같은 클래스·
 })
 
 describe('④⑤ 배선', () => {
-  it('워커: 폰 UA · 쿼리 없음 → 껍데기 + 크롤러 noscript', () => {
-    expect(readRaw('src/worker/index.ts')).toMatch(/else if \(url\.pathname === '\/map' && !url\.search && shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\)\) \{ const mapFirst = buildMapFirstScreen\(\); const mapNs = buildStaticSurfaceNoscript\(url\.pathname, crawlerPayload\);/)
+  it('워커: 쿼리 없음 → 껍데기 + 크롤러 noscript (폰 = 종전 · PC = 패널 판 — 2026-11-12)', () => {
+    expect(readRaw('src/worker/index.ts')).toContain("else if (url.pathname === '/map' && !url.search) { const mapFirst = buildMapFirstScreen(shouldRenderMobileFirstScreen(c.req.header('user-agent')) ? undefined : '/map');")
+    expect(readRaw('src/worker/index.ts')).toMatch(/const mapNs = buildStaticSurfaceNoscript\(url\.pathname, crawlerPayload\);/)
   })
   it('CSS-first 표면 · critical CSS 표면 map', () => {
     expect(cssFirstApplies('/map', MOBILE_UA)).toBe(true); expect(criticalSurfaceOf('/map')).toBe('map')
@@ -99,5 +100,34 @@ describe('④⑤ 배선', () => {
   })
   it('첫 화면은 lg:hidden 으로 감싼다(PC 는 좌측 패널 분할이라 모양이 다르다)', () => {
     expect(buildMapFirstScreen().startsWith('<div id="ur-first-screen"><div class="lg:hidden">')).toBe(true)
+  })
+  describe('🖥️ 2026-11-12 PC 판 — 상단 네비(딜 카테고리 없음) + 왼쪽 패널(MapTopBar panel) + 지도 자리', () => {
+    const pc = buildMapFirstScreen('/map')
+    const top = readRaw('src/pages/restaurant-map/MapTopBar.tsx')
+    it('패널 클래스가 MapTopBar 소스와 글자 그대로 같다', () => {
+      for (const k of ['panel', 'panelInner', 'panelGrid', 'panelBtnOff', 'panelBtnOn', 'panelBtn', 'panelLabel', 'panelCatLabel'] as const) expect(top, k).toContain(C[k])
+      expect(top).toContain("'text-gray-400 dark:text-gray-500'") // 검색 아이콘 색
+      expect(top).toContain("const PANEL_SURF = 'bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] shadow-sm'")
+    })
+    it('PC 판엔 lg:hidden 감싸기가 없고 네비 · 패널 · 지도 자리가 있다', () => {
+      expect(pc).not.toContain('<div class="lg:hidden">')
+      expect(pc).toContain('동네딜, 교환권, 상품 검색')
+      expect(pc).toContain(C.panelGrid)
+      expect(pc).toContain('style="top:0"')
+      expect(pc).toContain(MAP_FS_TEXT.mapLoading)
+    })
+    it('지도 네비엔 딜 카테고리가 없다(앱 hideDealCats)', () => {
+      const nav = pc.slice(0, pc.indexOf(C.screen)) // 네비 부분만(패널 칩에도 '전체' 가 있다)
+      expect(nav).toContain('>동네딜<'); expect(nav).not.toContain('>전체<'); expect(nav).not.toContain('>식사<')
+    })
+    it('칩 9칸 — 필터 · 내 주변 · 카테고리(짧은 라벨), 전체가 켜짐', () => {
+      const d = document.createElement('div'); d.innerHTML = pc
+      const cells = Array.from(d.querySelectorAll(`[class="${C.panelGrid}"] > span`)).map((x) => x.textContent)
+      expect(cells.slice(0, 3)).toEqual(['필터', '내 주변', '전체'])
+      expect(cells).toContain('뷰티')
+    })
+    it('PC 에 첫 화면 CSS 를 넣는다(그리는 곳엔 CSS 도)', () => {
+      expect(firstScreenApplies('/map', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(true)
+    })
   })
 })
