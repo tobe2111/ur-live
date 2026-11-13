@@ -1010,11 +1010,11 @@ app.use('*', async (c, next) => {
     } else if (isBlogSurface) {
       // 📝 블로그 #root = 서버렌더 본문 HTML — JS 미실행 크롤러(네이버 Yeti·AI 크롤러)가 읽을 텍스트 확보.
       //   사유/렌더러 SSOT: features/blog/api/blog-ssr-body.ts. 실패 시 '' → 기존 '빈 #root'(무회귀).
-      const blogPhone = shouldRenderMobileFirstScreen(c.req.header('user-agent')); const blogFirst = !blogPhone ? '' : ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogDetailFirstScreen(ssrPayload) : ssrSlot === 'BLOG' ? buildBlogListFirstScreen(ssrPayload) : ''; // 📝 2026-10-19 폰은 React 와 같은 모양(utils/blog-detail-first-screen.ts)
+      const blogPhone = shouldRenderMobileFirstScreen(c.req.header('user-agent')); const blogFirst = ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogDetailFirstScreen(ssrPayload) : ssrSlot === 'BLOG' ? buildBlogListFirstScreen(ssrPayload) : ''; // 📝 2026-10-19 폰은 React 와 같은 모양(utils/blog-detail-first-screen.ts) · 🖥️ 2026-11-13 PC 도 같은 첫 화면(본문 칸·목록 모양이 반응형으로 같다 — FCP 2.4~3.2 → 0.5~1.2s)
       const blogBody = blogFirst ? blogFirst : ssrSlot === 'BLOGPOST' && ssrPayload ? buildBlogPostBody(ssrPayload)
         : ssrSlot === 'BLOG' ? buildBlogListBody(ssrPayload) : '';
       rb = rb.on('#root', {
-        element(el) { el.setInnerContent(!blogPhone && blogBody ? `<noscript>${blogBody}</noscript>` + urdealLoaderHtml : blogBody, { html: true }); }, // 🖥️ 2026-11-12 PC 사람은 맨 글자 본문이 마운트 때 갈려 CLS 0.14 → noscript + 로더(크롤러는 위 blogPhone=true 로 첫 화면을 받는다)
+        element(el) { el.setInnerContent(!blogPhone && !blogFirst && blogBody ? `<noscript>${blogBody}</noscript>` + urdealLoaderHtml : blogBody, { html: true }); }, // 🖥️ 2026-11-13 첫 화면이 있으면 PC 도 그것 · 🖥️ 2026-11-12 PC 사람은 맨 글자 본문이 마운트 때 갈려 CLS 0.14 → noscript + 로더(크롤러는 위 blogPhone=true 로 첫 화면을 받는다)
       });
     } else if (ssrSlot === 'DETAIL' && ssrPayload && (url.pathname.startsWith('/pass/') || url.pathname.startsWith('/group-buy/'))) {
       // 🖼️ 2026-09-15 [UNLOCK_LOADING] (대표 "꼭 로딩이 걸려야 해?"): 시드에 상품이 이미 있고 히어로도 preload 로

@@ -36,12 +36,12 @@ export default [
     why: 'javascript: 링크가 서버 HTML 에 그대로 나간다.',
   },
   {
-    name: '블로그첫화면 — PC 에도 폰 모양을 그린다',
+    name: '블로그첫화면 — 서버 첫 화면 배선을 뺀다(PC·폰 모두 로더로 회귀)',
     file: 'src/worker/index.ts',
-    find: "const blogFirst = !blogPhone ? '' :",
-    replace: "const blogFirst = false ? '' :",
+    find: "const blogFirst = ssrSlot === 'BLOGPOST'",
+    replace: "const blogFirst = false && ssrSlot === 'BLOGPOST'",
     test: T,
-    why: 'PC 는 왼쪽 목차 칸이 그려져야 해서 다른 마크업이다 — 마운트 때 본문이 옆으로 밀린다.',
+    why: '2026-11-13 재조준 — 종전엔 "PC 에 그리면 목차 칸 때문에 본문이 옆으로 밀린다" 고 막았으나, 라이브 끼워 재기에서 본문 칸 위치가 같고(목차·추천은 빈 자리에 나중에 선다) CLS 그대로 · FCP 2.4~3.2 → 0.95s 로 측정돼 PC 도 그린다.',
   },
   {
     name: '블로그첫화면 — 날짜를 UTC 로 쓴다',

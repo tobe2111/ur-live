@@ -114,16 +114,17 @@ describe('③ 첫 화면 — 본문 전부 · 탈출', () => {
 describe('④ 배선', () => {
   it('워커는 폰(+크롤러)에서만, 없으면 종전 본문', () => {
     const w = stripComments(fs.readFileSync('src/worker/index.ts', 'utf8'))
-    expect(w).toMatch(/const blogPhone = shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\); const blogFirst = !blogPhone \? '' :/)
+    // 🖥️ 2026-11-13 PC 도 같은 첫 화면(반응형으로 같은 모양 — 라이브 끼워 재기 CLS 그대로, FCP 2.4~3.2 → 0.5~1.2s)
+    expect(w).toMatch(/const blogPhone = shouldRenderMobileFirstScreen\(c\.req\.header\('user-agent'\)\); const blogFirst = ssrSlot === 'BLOGPOST'/)
     expect(w).toMatch(/const blogBody = blogFirst \? blogFirst : ssrSlot === 'BLOGPOST' && ssrPayload \? buildBlogPostBody\(ssrPayload\)/)
 
     // 🖥️ 2026-11-12 PC 사람은 맨 글자 본문을 noscript 로 감추고 로더 — 마운트 때 본문이 갈려 CLS 0.14 였다.
-    expect(w).toContain('!blogPhone && blogBody ? `<noscript>${blogBody}</noscript>` + urdealLoaderHtml : blogBody')
+    expect(w).toContain('!blogPhone && !blogFirst && blogBody ? `<noscript>${blogBody}</noscript>` + urdealLoaderHtml : blogBody') // 첫 화면이 없을 때만 PC 맨 글자 감추기
   })
   it('CSS 먼저 적용 — /blog/:slug 폰에서만(목록 /blog 는 아니다)', () => {
     const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
     expect(cssFirstApplies('/blog/voucher-guide', PHONE)).toBe(true)
-    expect(firstScreenApplies('/blog/voucher-guide', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(false) // ⏳ 2026-11-09: PC 는 첫 화면 CSS 없음(로더-먼저 지연만 — cssFirstApplies 는 true)
+    expect(firstScreenApplies('/blog/voucher-guide', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(true) // 🖥️ 2026-11-13 PC 도 첫 화면 → CSS 도(그리는 곳엔 CSS 도)
   })
 })
 
@@ -163,7 +164,8 @@ describe('⑤ 블로그 목록 첫 화면', () => {
   })
   it('워커 배선 — 폰에서만, BLOG 슬롯이면 목록 첫 화면', () => {
     const w = stripComments(fs.readFileSync('src/worker/index.ts', 'utf8'))
-    expect(w).toMatch(/const blogFirst = !blogPhone \? '' : ssrSlot === 'BLOGPOST' && ssrPayload \? buildBlogDetailFirstScreen\(ssrPayload\) : ssrSlot === 'BLOG' \? buildBlogListFirstScreen\(ssrPayload\) : ''/)
+    expect(w).toMatch(/const blogFirst = ssrSlot === 'BLOGPOST' && ssrPayload \? buildBlogDetailFirstScreen\(ssrPayload\) : ssrSlot === 'BLOG' \? buildBlogListFirstScreen\(ssrPayload\) : ''/)
+    expect(firstScreenApplies('/blog', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(true)
     const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
     expect(cssFirstApplies('/blog', PHONE)).toBe(true)
     expect(firstScreenApplies('/blog/rss/x', PHONE)).toBe(false) // ⏳ 2026-11-09: 첫 화면 표면이 아니다(지연 자체는 로더-먼저로 걸린다)
