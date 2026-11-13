@@ -37,6 +37,7 @@ function getFid(): string {
 export function trackFunnel(event: FunnelEvent, meta?: Record<string, unknown>): void {
   try {
     if (typeof navigator === 'undefined' || typeof window === 'undefined') return
+    if (navigator.webdriver === true) return // 🤖 2026-11-13 자동 브라우저(점검 스크립트·봇)는 세지 않는다 — 사람 퍼널만(web-vitals-report 와 같은 판정)
     // app_open 은 세션당 1회만 (페이지뷰마다 X → D1 쓰기 상한 = 세션 수)
     if (event === 'app_open') {
       if (sessionStorage.getItem(SESSION_OPEN_KEY)) return

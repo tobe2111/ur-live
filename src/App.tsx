@@ -270,7 +270,7 @@ function AppContent() {
   //   sync/callback 이 세션 쿠키 발급 실패 / 카카오 토큰 교환 실패 등으로 ?error=... 부착 시
   //   사용자에게 명시적 토스트 + URL 정리. 묵음 실패 → 무한 스피너 시나리오 차단.
   // 🆕 2026-06-29 퍼널 계측: 앱 진입(세션당 1회, 익명) — DAU/리텐션 기준점.
-  useEffect(() => { trackFunnel('app_open') }, [])
+  useEffect(() => { trackFunnel('app_open'); try { const p = sessionStorage.getItem('ur_login_ok_pending'); if (p) { sessionStorage.removeItem('ur_login_ok_pending'); trackFunnel('login_succeeded', p === 'new' ? { new: 1 } : undefined) } } catch { /* */ } }, []) // 📈 2026-11-13 로그인 성공(표식은 auth-callback-bootstrap)
 
   // 📡 2026-07-05 유입 소스 어트리뷰션: ?src=(시설물 QR)/utm_source first-touch 30일 캡처 +
   //   로그인 상태면 유저 귀속(claim, 멱등). 랜딩→가입→첫구매 퍼널의 클라 시작점 (lib/acquisition.ts).

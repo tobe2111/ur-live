@@ -127,6 +127,9 @@ export function captureInflowRef(ref: string | null | undefined): void {
 /** 유입 클릭 서버 발사 — fail-soft·1회(ref별). 서버가 (anon_id, ref) UNIQUE 로 이중 방어. */
 function fireInflowClick(ref: string): void {
   try {
+    // 🤖 2026-11-13 자동 브라우저는 유입으로 세지 않는다 — 실측: 유입 251건이 전부 '새 방문자' 였고 대부분 대표 유어샵
+    //   (`/u/jiwon1228`)이었다. 점검 스크립트(Playwright)는 회차마다 새 브라우저라 매번 새 방문자로 찍힌다.
+    if (typeof navigator !== 'undefined' && navigator.webdriver === true) return
     if (localStorage.getItem(INFLOW_SENT_KEY) === ref) return // 같은 ref 이미 발사
     const anonId = getAnonId()
     void api.post('/api/acquisition/inflow', {
