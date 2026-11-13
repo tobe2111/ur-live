@@ -17,7 +17,12 @@ const INFLOW_BOUND_KEY = 'ur_inflow_bound_v1'
 //   🩸 2026-07-12 에 블로그 롱테일 때문에 24h→7d 로 늘렸던 것을 대표가 24h 로 되돌렸다.
 
 /** ?aff=/?ref= 값 저장 (24시간, 마지막 링크 우선) — 형식은 affiliate-ref-store SSOT. */
-export function storeAffiliateRef(ref: string | null | undefined): void {
+/**
+ * @param source 'link' = 누가 보낸 소개 링크(`?ref=`/`?aff=`)로 들어왔다 · 'ushop' = 그 사람의 유어샵을 열었다(링크 없이도).
+ *   🧭 2026-11-13: 둘 다 '유입' 으로 같은 이름(ref_type 'curator')에 쌓여, 대표 유어샵 방문 250건이 "인플루언서 링크 클릭" 으로 보고됐다.
+ *   이제 유입 기록에 구분해 남긴다(`inflow_clicks.ref_type` = 'link' | 'ushop_visit'). 구매 귀속 규칙은 둘이 같다(24시간 · 마지막).
+ */
+export function storeAffiliateRef(ref: string | null | undefined, source: 'link' | 'ushop' = 'link'): void {
   if (!ref || !/^\d{1,12}$/.test(ref)) return
   try {
     // 본인 추천 자기적립 방지 — 내 user_id 면 저장 안 함
@@ -27,7 +32,7 @@ export function storeAffiliateRef(ref: string | null | undefined): void {
     syncAccountRef() // 🔗 2026-11-12 로그인 상태면 계정에도(다른 기기에서 사도 성과 — worker/utils/account-ref)
     // 📡 2026-07-13 (데이터 감사 2단계): 유입 클릭 이벤트 서버 발사 — 완결고리 '유입' 노드.
     //   전환 안 해도 인플루언서→방문자 유입이 서버에 보존(구매 전 유실 0). 같은 ref 는 1회만(dedup).
-    fireInflowClick(ref)
+    fireInflowClick(ref, source)
   } catch { /* storage unavailable */ }
 }
 
@@ -125,7 +130,7 @@ export function captureInflowRef(ref: string | null | undefined): void {
 }
 
 /** 유입 클릭 서버 발사 — fail-soft·1회(ref별). 서버가 (anon_id, ref) UNIQUE 로 이중 방어. */
-function fireInflowClick(ref: string): void {
+function fireInflowClick(ref: string, source: 'link' | 'ushop' = 'link'): void {
   try {
     // 🤖 2026-11-13 자동 브라우저는 유입으로 세지 않는다 — 실측: 유입 251건이 전부 '새 방문자' 였고 대부분 대표 유어샵
     //   (`/u/jiwon1228`)이었다. 점검 스크립트(Playwright)는 회차마다 새 브라우저라 매번 새 방문자로 찍힌다.
@@ -135,7 +140,7 @@ function fireInflowClick(ref: string): void {
     void api.post('/api/acquisition/inflow', {
       anon_id: anonId,
       ref,
-      ref_type: 'curator',
+      ref_type: source === 'ushop' ? 'ushop_visit' : 'link',
       campaign: campaignFromUrl(),
       path: (typeof location !== 'undefined' ? location.pathname : '').slice(0, 200),
     }).then(() => {

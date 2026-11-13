@@ -77,6 +77,11 @@ export async function runOpsDailyDigest(env: Env): Promise<void> {
     if (expiringSoon > 0) lines.push(`⑤ 미사용 임박: 7일 내 만료 예정 이용권 ${expiringSoon}건 (D-7/3/1 알림 cron 발송 중)`)
     if (cronFails24h > 0) lines.push(`🔴 cron 실패 24h: ${cronFails24h}건 — /admin/system-monitoring`)
     if (abuseHigh24h > 0) lines.push(`🚨 어뷰징 high 24h: ${abuseHigh24h}건 — /admin/abuse`)
+    // 🔇 2026-11-13 조용히 죽은 계측 — 앞 단계는 있는데 다음 단계가 7일 0(로그인 성공이 석 달 0 이던 사고). utils/funnel-silence.
+    try {
+      const { loadFunnel7d, funnelSilenceWarnings } = await import('../utils/funnel-silence')
+      lines.push(...funnelSilenceWarnings(await loadFunnel7d(DB)))
+    } catch { /* 다이제스트 본문을 막지 않는다 */ }
 
     const title = `📰 일일 다이제스트 ${y.kstDate} (KST)`
     const body = lines.join('\n')
