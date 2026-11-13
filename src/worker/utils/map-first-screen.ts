@@ -14,7 +14,12 @@
  */
 import { MAP_VOUCHER_DEFS } from '../../pages/restaurant-map/voucher-types'
 import { SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE } from '../../pages/restaurant-map/useSheetDrag'
-import { escText } from './home-first-screen'
+import { pcTopNavBlockHtml } from './pc-topnav-first-screen'
+
+/** 홈 첫 화면 모듈의 escText 와 같다 — 그 모듈을 import 하면 지도 표면 CSS 가 홈 카드 클래스까지 끌고 와 상한(40KB)을 넘는다(2026-11-12 실측 42.6KB). */
+function escText(s: string): string {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;')
+}
 
 export const MAP_FS_CLASS = {
   screen: 'h-[100dvh] relative w-full bg-gray-100 dark:bg-[#1D1F29] overflow-hidden pb-16 lg:h-[calc(100dvh-102px)]',
@@ -45,6 +50,17 @@ export const MAP_FS_CLASS = {
   countNum: 'ur-count-in font-bold text-gray-900 dark:text-white',
   sortBtn: 'flex items-center gap-1 text-[12px] font-medium text-gray-700 dark:text-gray-200 px-2 py-1 rounded-lg active:bg-gray-100 dark:active:bg-[#1D1F29]',
   sortIcon: 'w-3 h-3 text-gray-400 dark:text-gray-500',
+  /** 🖥️ 2026-11-12 PC 패널 머리(`MapTopBar variant='panel'`) — 그 파일의 문자열과 글자 대조(시험). */
+  panel: 'hidden lg:block px-3 pt-3 pb-2 space-y-2 border-b border-gray-100 dark:border-[#2C2F35]',
+  panelInner: 'space-y-2',
+  panelSearchIcon: 'absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-gray-400 dark:text-gray-500',
+  panelInput: 'bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] shadow-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500',
+  panelGrid: 'grid grid-cols-7 gap-1',
+  panelBtnOff: 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05]',
+  panelBtnOn: 'text-brand-text bg-brand-tint font-bold',
+  panelBtn: 'flex flex-col items-center justify-center gap-1 py-2 rounded-lg transition-colors',
+  panelLabel: 'text-[12px] font-medium leading-none',
+  panelCatLabel: 'text-[12px] leading-none whitespace-nowrap',
 } as const
 const C = MAP_FS_CLASS
 /** ko 사전 값 그대로(`public/locales/ko/translation.json`) — 시험이 대조한다. */
@@ -53,7 +69,11 @@ export const MAP_FS_CHIP_LABELS: Record<string, string> = { all: '전체', meal_
 
 const blank = (cls: string) => `<span class="${cls}" aria-hidden="true"></span>`
 
-export function buildMapFirstScreen(): string {
+/**
+ * @param pcPath 데스크톱 요청이면 그 pathname. 🖥️ 2026-11-12 PC 는 첫 글자 2.8~4.3s(로더뿐)였다 — PC 는 [상단 네비(딜 카테고리 숨김)] +
+ *   [왼쪽 400px 패널: 검색 · 칩 7칸 그리드 · 개수/정렬 줄] + [오른쪽 지도 자리] 를 그린다. 폰(`undefined`)은 종전 그대로.
+ */
+export function buildMapFirstScreen(pcPath?: string): string {
   const mapWait = `<div class="${C.mapWait}">${blank(C.mapWaitIcon + ' block')}<p class="${C.mapWaitTitle}">${escText(MAP_FS_TEXT.mapLoading)}</p><p class="${C.mapWaitSub}">${escText(MAP_FS_TEXT.sdkLoading)}</p></div>`
   const chip = (cls: string, iconCls: string, label?: string) => `<span class="${C.chipBase} ${cls}">${blank(iconCls + ' block')}${label ? `<span>${escText(label)}</span>` : ''}</span>`
   const chips = `<div class="${C.chips}">` +
@@ -66,5 +86,19 @@ export function buildMapFirstScreen(): string {
     `<div class="${C.handleWrap}"><div class="${C.handle}"></div></div>` +
     `<div class="${C.filterBar}"><div class="${C.countRow}"><div class="${C.countLeft}"><span class="${C.countText}"><span class="${C.countNum}">…</span>${MAP_FS_TEXT.count}</span></div>` +
     `<span class="${C.sortBtn}">${blank(C.sortIcon + ' block')}<span>${escText(MAP_FS_TEXT.sortDefault)}</span>${blank(C.sortIcon + ' block')}</span></div></div></div>`
-  return `<div id="ur-first-screen"><div class="lg:hidden"><div class="${C.screen}">${mapWait}${bar}${sheet}</div></div></div>`
+  if (!pcPath) return `<div id="ur-first-screen"><div class="lg:hidden"><div class="${C.screen}">${mapWait}${bar}${sheet}</div></div></div>`
+  const pBtn = (on: boolean, rel: string, iconCls: string, label: string, labelCls: string) =>
+    `<span class="${rel}${C.panelBtn} ${on ? C.panelBtnOn : C.panelBtnOff}">${blank(iconCls + ' block')}<span class="${labelCls}">${escText(label)}</span></span>`
+  const panel = `<div class="${C.panel}"><div class="${C.panelInner}"><div class="${C.row1}"><div class="${C.searchWrap}">${blank(C.panelSearchIcon + ' block')}` +
+    `<input readonly placeholder="${escText(MAP_FS_TEXT.searchPlaceholder)}" aria-label="${escText(MAP_FS_TEXT.searchAria)}" class="${C.input} ${C.panelInput}"></div></div>` +
+    `<div class="${C.panelGrid}">` +
+      pBtn(false, 'relative ', 'w-[17px] h-[17px]', '필터', C.panelLabel) +
+      pBtn(false, '', 'w-[17px] h-[17px]', MAP_FS_TEXT.nearMe, C.panelLabel) +
+      MAP_VOUCHER_DEFS.map((v) => pBtn(v.key === 'all', '', 'w-[17px] h-[17px]', v.shortLabel ?? MAP_FS_CHIP_LABELS[v.key] ?? v.defaultLabel, C.panelCatLabel)).join('') +
+    '</div></div></div>'
+  const pcSheet = `<div class="${C.sheet}" role="dialog" aria-label="맛집 목록" style="top:0">` +
+    `<div class="${C.handleWrap}"><div class="${C.handle}"></div></div>` + panel +
+    `<div class="${C.filterBar}"><div class="${C.countRow}"><div class="${C.countLeft}"><span class="${C.countText}"><span class="${C.countNum}">…</span>${MAP_FS_TEXT.count}</span></div>` +
+    `<span class="${C.sortBtn}">${blank(C.sortIcon + ' block')}<span>${escText(MAP_FS_TEXT.sortDefault)}</span>${blank(C.sortIcon + ' block')}</span></div></div></div>`
+  return `<div id="ur-first-screen">${pcTopNavBlockHtml(pcPath, { hideDealCats: true })}<div class="${C.screen}">${mapWait}${pcSheet}</div></div>`
 }

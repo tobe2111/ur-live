@@ -4,8 +4,8 @@ export default [
   {
     name: '🗺️ 지도 첫 화면 배선을 뺀다(첫 글자 2.9초·번역 키 원문으로 회귀)',
     file: 'src/worker/index.ts',
-    find: "else if (url.pathname === '/map' && !url.search && shouldRenderMobileFirstScreen(c.req.header('user-agent'))) {",
-    replace: "else if (false && url.pathname === '/map') {",
+    find: "else if (url.pathname === '/map' && !url.search) { const mapFirst",
+    replace: "else if (false && url.pathname === '/map') { const mapFirst",
     test: T,
     why: '라이브 실측(2026-11-09) first-paint 1.96s · 첫 글자 2.93s — 소비자 화면 중 가장 늦었다.',
   },
