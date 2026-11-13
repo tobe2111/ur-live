@@ -20,6 +20,12 @@ import { escAttr, escText } from './home-first-screen'
 /** `BrowseCard` 와 같은 썸네일 폭(`urshorts-seed.ts` 의 preload 도 같은 값). */
 export const URSHORTS_FS_THUMB_WIDTH = 360
 export const URSHORTS_FS_EAGER = 4
+/**
+ * 서버가 그리는 카드 수 — 2026-11-13 시드가 전량(`?all=1`, 최대 60편)이 됐다. 편수·칩은 **전량으로** 세고(앱과 같은 값 — 안 그러면
+ * 앱이 칩 줄을 하나 더 꽂아 격자가 52px 밀렸다: 라이브 CLS 0.15) 카드는 위에서 이만큼만 그린다. 나머지는 앱이 **아래에** 붙이므로
+ * 밀림이 아니다(폰 첫 화면엔 카드 2~4장이 보인다). HTML 을 60장으로 불리지 않으려는 상한이다.
+ */
+export const URSHORTS_FS_CARDS = 12
 
 export const URSHORTS_FS_CLASS = {
   page: 'min-h-[100dvh] bg-[var(--bg)]',
@@ -98,6 +104,6 @@ export function buildUrShortsFirstScreen(ssrPayload: string | null | undefined, 
   if (items.length === 0) return ''
   const header = `<header class="${C.header}"><span class="${C.back}" aria-hidden="true"></span><h1 class="${C.h1}">유어쇼츠<span aria-hidden="true" class="${C.dot}">.</span></h1><span class="${C.count}">${items.length}편</span></header>`
   const body = `<div class="${C.body}">${chipRowHtml('도시', cityFacets(items), items.length)}${chipRowHtml('종류', categoryFacets(items), items.length)}` +
-    `<ul class="${C.grid}">${items.map((it, i) => `<li>${urshortsCardHtml(it, i < URSHORTS_FS_EAGER)}</li>`).join('')}</ul></div>`
+    `<ul class="${C.grid}">${items.slice(0, URSHORTS_FS_CARDS).map((it, i) => `<li>${urshortsCardHtml(it, i < URSHORTS_FS_EAGER)}</li>`).join('')}</ul></div>`
   return `<div id="ur-first-screen"><div class="${C.page}">${header}<p class="${C.desc}">${escText(URSHORTS_FS_DESC)}</p>${body}</div></div>${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}`
 }

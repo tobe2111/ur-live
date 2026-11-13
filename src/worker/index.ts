@@ -610,7 +610,7 @@ app.use('*', async (c, next) => {
     //   그 API 가 사라진 뒤 **매 요청 404 를 받고 있었다**(라이브 실측 `X-SSR-Status: WHOLESALE:self-fetch-404`).
     //   게다가 이 슬롯만 타임아웃 3000ms(최장)라 죽은 경로를 크롤할 때마다 그만큼 기다렸다 404 를 받고 셸을 내려보냈다 — 지우면 self-fetch·타임아웃·soft-404 가 한꺼번에 사라진다.
     //   (도매가 되살아나면 이 분기 + `timeoutFor` 의 WHOLESALE 3000ms + prewarm 키를 함께 복원할 것.)
-    } else if (url.pathname === '/urshorts' && !url.search) { ssrTarget = { slot: 'URSHORTS', path: '/api/urshorts' }; // 🎬 2026-10-13: 크롤러 본문 6자 → 이 키는 HOT_PATHS 에 **이미 있다**(새 캐시 키 0). 주입은 아래에서 끊는다(화면은 ?all=1 전량).
+    } else if (url.pathname === '/urshorts' && !url.search) { ssrTarget = { slot: 'URSHORTS', path: '/api/urshorts?all=1' }; /* 🎬 2026-11-13 전량(=SHORTS_ALL_PATH) — 12편 시드면 서버가 칩 한 줄·12편을 그리고 앱이 60편·두 줄로 바꿔 격자가 52px 밀렸다(CLS 0.15). utils/urshorts-first-screen.ts */ // 🎬 2026-10-13: 크롤러 본문 6자 → 이 키는 HOT_PATHS 에 **이미 있다**(새 캐시 키 0). 주입은 아래에서 끊는다(화면은 ?all=1 전량).
     } else if (url.pathname === '/blog' && !url.search) {
       // 📝 2026-07-01 블로그 목록 SSR — BlogListPage 가 __SSR_INITIAL_BLOG__ 를 0-RTT consume(마운트 후
       //   cold fetch 워터폴 제거) + 아래 head rewrite 에서 Blog/ItemList 구조화데이터 주입(검색 리치결과).
