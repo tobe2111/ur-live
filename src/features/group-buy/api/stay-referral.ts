@@ -18,6 +18,7 @@
 import { applyGroupBuyReferral } from './helpers'
 import { getCommissionRates } from './commission-rates'
 import { reverseAttributionLedgerShares, type AttributionShareToReverse } from '../../../worker/utils/attribution-ledger-reversal'
+import { readAccountRef } from '../../../worker/utils/account-ref'
 
 /**
  * 결제 확정된 숙소 주문에 소개 적립 — 이용권과 같은 `applyGroupBuyReferral`.
@@ -87,7 +88,9 @@ export async function clawbackStayReferral(DB: D1Database, p: {
  * `on` 은 호출부가 옛 객실 할인 분기를 건너뛰는 표시로 남겨 둔다.
  */
 export async function unifiedStayReferrer(DB: D1Database, raw: unknown, userId: unknown): Promise<{ on: boolean; id: string | null }> {
-  const id = raw == null ? '' : String(raw).trim()
+  // 🔗 2026-11-12 결재(account-ref-cross-device): 계정이 기억하는 마지막 소개(기기 무관)가 있으면 그것 — 이용권 결제와 같은 규칙.
+  const acc = await readAccountRef(DB, userId == null ? null : String(userId)).catch(() => '')
+  const id = acc || (raw == null ? '' : String(raw).trim())
   if (!id || id === String(userId)) return { on: true, id: null }
   const u = await DB.prepare('SELECT id FROM users WHERE id = ?').bind(id).first<{ id: string }>().catch(() => null)
   return { on: true, id: u ? String(u.id) : null }

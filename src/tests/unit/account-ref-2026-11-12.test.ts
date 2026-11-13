@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) as { DatabaseSync: new (p: string) => { prepare: (sql: string) => { run: (...a: never[]) => { changes: number | bigint }; get: (...a: never[]) => unknown; all: (...a: never[]) => unknown[] } } }
 import { recordAccountRef, readAccountRef, preferAccountRef, clampTouchAt } from '@/worker/utils/account-ref'
+import { unifiedStayReferrer } from '@/features/group-buy/api/stay-referral'
 
 function makeD1() {
   const db = new DatabaseSync(':memory:')
@@ -58,6 +59,19 @@ describe('② 결제 때', () => {
     expect(await preferAccountRef(DB, '5', '111')).toBe('700')
     expect(await preferAccountRef(DB, '5', '')).toBe('700')
     expect(await preferAccountRef(DB, null, '111')).toBe('111')
+  })
+})
+
+describe('②-b 숙소 예약도 같은 규칙 (2026-11-13)', () => {
+  it('계정 기록이 있으면 그것 · 없으면 보낸 값 · 자기 자신은 없음', async () => {
+    const DB = makeD1()
+    await DB.prepare('CREATE TABLE users (id INTEGER PRIMARY KEY)').run()
+    for (const id of [5, 700, 111]) await DB.prepare('INSERT INTO users (id) VALUES (?)').bind(id).run()
+    expect(await unifiedStayReferrer(DB, '111', 5)).toEqual({ on: true, id: '111' })
+    await recordAccountRef(DB, '5', '700', Date.now() - H)
+    expect(await unifiedStayReferrer(DB, '111', 5)).toEqual({ on: true, id: '700' })
+    expect(await unifiedStayReferrer(DB, '', 5)).toEqual({ on: true, id: '700' })
+    expect(await unifiedStayReferrer(DB, '700', 700)).toEqual({ on: true, id: null }) // 자기 링크
   })
 })
 

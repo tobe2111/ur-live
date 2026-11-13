@@ -8,15 +8,10 @@
  *
  * 2026-04-29 도입.
  */
+import { extractPreservedQuery, isSafeInternalPathname } from '@/shared/login-return-query'
 
-const FORBIDDEN_PREFIXES = [
-  '/login',
-  '/seller/login',
-  '/admin/login',
-  '/agency/login',
-  '/auth/',
-  '/oauth/',
-] as const
+
+// 🚫 차단 경로 목록·판정은 워커와 같은 파일 — `shared/login-return-query.ts`(2026-11-13).
 
 /**
  * 외부 입력 (returnUrl, state, redirect 파라미터) 이 안전한 내부 path 인지 검증.
@@ -30,63 +25,10 @@ const FORBIDDEN_PREFIXES = [
  *  - 인증/콜백 path (자기참조 루프 방지) — `/login`, `/auth/*` 등
  */
 export function isSafeInternalPath(raw: unknown): raw is string {
-  if (typeof raw !== 'string' || raw.length === 0) return false
-  if (!raw.startsWith('/')) return false
-  if (raw.startsWith('//')) return false
-  if (raw.includes('\\')) return false
-  if (/[\n\t\r\0]/.test(raw)) return false
-  for (const prefix of FORBIDDEN_PREFIXES) {
-    // trailing-slash prefix (`/auth/`, `/oauth/`) → startsWith 만 검사
-    // path-segment prefix (`/login`, `/seller/login` 등) → 정확 일치 또는 `?`/`#`/`/` 로 이어지는 경우 차단
-    if (prefix.endsWith('/')) {
-      if (raw.startsWith(prefix)) return false
-    } else {
-      if (raw === prefix || raw.startsWith(prefix + '?') || raw.startsWith(prefix + '/') || raw.startsWith(prefix + '#')) {
-        return false
-      }
-    }
-  }
-  return true
+  return isSafeInternalPathname(raw)
 }
 
-/**
- * 🧭 2026-07-11 (감사 §R2 어트리뷰션 생존성): query 제거 시에도 보존하는 파라미터 화이트리스트.
- *   ?ref=(인플 추천) · ?aff=(큐레이터 핀) · ?invite=(초대) 가 카카오 로그인 왕복(returnUrl)에서
- *   통째로 제거돼 콜백 후 재캡처 불가였음. 이 셋만 값 검증([A-Za-z0-9_-]{1,64}) 후 재부착 —
- *   나머지 query/hash(에러 누적 ?error=... 등)와 open-redirect 방어는 기존 그대로.
- * ⚠️ worker 측 safeRedirect(kakao.routes.ts)와 동일 화이트리스트 — 양쪽 같이 갱신할 것.
- */
-const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto'] as const
-const PRESERVED_VALUE_RE = /^[A-Za-z0-9_-]{1,64}$/
-/**
- * 🔑 2026-09-20: 매장 코드 입구(`/store/find?code=` · `/i/join/:code?auto=1`)가 로그인 왕복에서
- *   코드를 잃어 사장님이 코드를 손으로 다시 넣어야 했다(E4 판정에서 발견). `code` 는 **매장 코드
- *   모양(8자, 선택적 하이픈)만** 보존한다 — OAuth 인가 코드(수십 자)는 이 모양이 아니라 통과 못 한다.
- *   `auto` 는 `1` 만. 나머지 키는 종전 규칙 그대로.
- */
-const PRESERVED_VALUE_RE_BY_KEY: Partial<Record<(typeof PRESERVED_QUERY_PARAMS)[number], RegExp>> = {
-  code: /^(?:[A-Za-z0-9]{8}|[A-Za-z0-9]{4}-[A-Za-z0-9]{4})$/,
-  auto: /^1$/,
-}
-
-/** query(+hash) 부분에서 화이트리스트 파라미터만 추출 — 안전값만, 없으면 '' */
-function extractPreservedQuery(rawQueryAndHash: string): string {
-  if (!rawQueryAndHash.startsWith('?')) return ''
-  const hashIdx = rawQueryAndHash.indexOf('#')
-  const queryOnly = hashIdx >= 0 ? rawQueryAndHash.slice(1, hashIdx) : rawQueryAndHash.slice(1)
-  try {
-    const params = new URLSearchParams(queryOnly)
-    const kept = new URLSearchParams()
-    for (const key of PRESERVED_QUERY_PARAMS) {
-      const v = params.get(key)
-      if (v && (PRESERVED_VALUE_RE_BY_KEY[key] ?? PRESERVED_VALUE_RE).test(v)) kept.set(key, v)
-    }
-    const s = kept.toString()
-    return s ? `?${s}` : ''
-  } catch {
-    return ''
-  }
-}
+// 🧭 보존하는 주소 꼬리(ref·aff·invite·code·auto·via·qty)는 워커와 **같은 파일**을 쓴다 — `shared/login-return-query.ts`(2026-11-13).
 
 /**
  * 안전한 내부 path 만 통과시키고, 그 외엔 fallback (기본 '/').

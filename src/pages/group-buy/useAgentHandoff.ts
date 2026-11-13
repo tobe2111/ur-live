@@ -9,6 +9,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { readAgentHandoff } from '@/shared/agent-checkout'
 
+/** 로그인 벽 복귀 표식 — `GroupBuyDetailPage.handleJoin` 이 로그인 전에 저장하는 주소. 순수 함수. */
+export const LOGIN_RESUME_VIA = 'login'
+export function readLoginResume(search: string): { qty: number } | null {
+  let p: URLSearchParams
+  try { p = new URLSearchParams(search) } catch { return null }
+  if (p.get('via') !== LOGIN_RESUME_VIA) return null
+  const n = Math.trunc(Number(p.get('qty')))
+  return { qty: Number.isFinite(n) && n >= 1 ? Math.min(n, 100) : 1 }
+}
+
 export function useAgentHandoff({ ready, maxQty, setQuantity, setOpen }: {
   /** 지금 살 수 있고(주인 아님·판매 전 아님) 화면이 다 그려졌을 때 true. */
   ready: boolean
@@ -20,13 +30,15 @@ export function useAgentHandoff({ ready, maxQty, setQuantity, setOpen }: {
   const [fromAgent, setFromAgent] = useState(false)
   useEffect(() => {
     if (done.current || !ready || typeof window === 'undefined') return
-    const h = readAgentHandoff(window.location.search)
+    // 🔐 2026-11-13 (대표 "응, 고쳐줘") 로그인 벽에서 돌아온 손님(`?via=login&qty=N`)도 같은 창을 그 수량으로 다시 연다 — 구매를 두 번 누르게 하지 않는다.
+    const login = readLoginResume(window.location.search)
+    const h = readAgentHandoff(window.location.search) ?? login
     if (!h) return
     done.current = true
     const top = maxQty > 0 ? maxQty : 1
     setQuantity(() => Math.min(Math.max(1, h.qty), top))
     setOpen(true)
-    setFromAgent(true)
+    setFromAgent(!login) // 'AI 비서가 고른 수량이에요' 는 비서 링크일 때만
     try {
       const u = new URL(window.location.href)
       u.searchParams.delete('via'); u.searchParams.delete('qty')
