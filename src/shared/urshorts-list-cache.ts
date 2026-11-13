@@ -23,6 +23,13 @@ export const SHORTS_ALL_PATH = '/api/urshorts?all=1'
 /** 워커가 응답 헤더에 싣는 값. `crossorigin` 이 있어야 `fetch()` 의 요청 모드(cors · same-origin 자격)와 맞아 재사용된다. */
 export const SHORTS_ALL_PRELOAD_LINK = `<${SHORTS_ALL_PATH}>; rel=preload; as=fetch; crossorigin`
 
+/**
+ * 첫 렌더에 그리는 카드 수 — 서버 첫 화면(`worker/utils/urshorts-first-screen.ts`)과 화면(`UrShortsBrowsePage`)이 같은 값을 쓴다.
+ * 2026-11-13: 시드가 전량(60편)이 되자 화면이 첫 렌더에 60장을 한 번에 그려 멈춤(TBT)이 0.18 → 0.5초로 늘었다(라이브 실측).
+ * 위 12장만 먼저 그리고 나머지는 load 뒤 한가할 때(또는 첫 스크롤·칩 선택 때) 아래에 붙인다 — 아래에 붙으므로 밀림이 아니다.
+ */
+export const URSHORTS_FIRST_CARDS = 12
+
 export function peekShortsAll(): UrShortItem[] | null { return full }
 
 /** 전량 목록. 받는 중이면 같은 약속을 돌려준다(요청 1회). */
