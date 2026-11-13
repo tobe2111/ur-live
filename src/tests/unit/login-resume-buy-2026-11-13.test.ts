@@ -8,6 +8,25 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { readLoginResume } from '@/pages/group-buy/useAgentHandoff'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import { __safeRedirectForTest } from '@/features/auth/api/kakao.routes'
+import { stripComments } from '../helpers/source-text'
+
+describe('🧭 주소 꼬리 규칙은 한 파일 — 프론트·워커가 같이 쓴다(대표 "영구적으로 해결해")', () => {
+  it('두 곳이 공용 파일을 import 하고, 자기 복사본(목록·차단 경로)을 두지 않는다', () => {
+    const k = stripComments(readFileSync('src/features/auth/api/kakao.routes.ts', 'utf8'))
+    const f = stripComments(readFileSync('src/utils/safe-internal-path.ts', 'utf8'))
+    expect(k).toContain("from '../../../shared/login-return-query'")
+    expect(f).toContain("from '@/shared/login-return-query'")
+    for (const src of [k, f]) {
+      expect(src).not.toMatch(/PRESERVED_QUERY_PARAMS\s*=/)
+      expect(src).not.toMatch(/'\/seller\/login',\s*'\/admin\/login'/)
+    }
+  })
+  it('카카오 복귀(워커)와 이메일 복귀(프론트)가 같은 답을 낸다', () => {
+    const cases = ['/pass/2919?via=login&qty=2', '/store/find?code=AB12CD34', '/x?ref=77&error=a', '/login?via=login', '//evil.com', '/group-buy/confirm-payment?productId=9&qty=1']
+    for (const c of cases) expect(__safeRedirectForTest(c), c).toBe(safeInternalPath(c, '/'))
+  })
+})
 
 describe('로그인 복귀 → 구매 창', () => {
   it('표식을 읽는다 · 수량은 1~100 · 표식 없으면 null', () => {
@@ -22,8 +41,6 @@ describe('로그인 복귀 → 구매 창', () => {
     expect(safeInternalPath('/pass/2919?via=login&qty=2', '/')).toBe('/pass/2919?via=login&qty=2')
     expect(safeInternalPath('/pass/2919?via=agent&qty=0', '/')).toBe('/pass/2919') // 다른 값은 버린다
     expect(safeInternalPath('/group-buy/confirm-payment?productId=9&qty=1', '/')).toBe('/group-buy/confirm-payment') // 로그인 복귀가 아니면 qty 도 종전대로 버린다
-    // 서버(카카오 복귀 safeRedirect)도 같은 화이트리스트 — 한쪽만 바꾸면 카카오 왕복에서 다시 사라진다
-    expect(readFileSync('src/features/auth/api/kakao.routes.ts', 'utf8')).toMatch(/PRESERVED_QUERY_PARAMS = \[[^\]]*'via', 'qty'\][\s\S]{0,400}via: \/\^login\$\/, qty: /)
   })
   it('구매 창 훅이 로그인 복귀도 받고, 비서 문구는 비서 링크에만', () => {
     const s = readFileSync('src/pages/group-buy/useAgentHandoff.ts', 'utf8')

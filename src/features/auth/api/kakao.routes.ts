@@ -20,6 +20,7 @@ import type { AuthResponse, KakaoLoginResponse } from '../types';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { findOwnerSeatSellerRow, ownerGrantSeat } from '@/worker/utils/seller-operators';
 import { kakaoLoginScope, kakaoNeedsUserInfo, kakaoServiceTermsParam, recordKakaoMarketingConsent } from '../services/kakao-login-scope';
+import { extractPreservedQuery, isSafeInternalPathname } from '../../../shared/login-return-query'
 
 /**
  * 카카오 로그인 완료 시 linked seller / agency 있으면 자동 JWT 발급.
@@ -189,34 +190,7 @@ async function ensureKakaoColumns(DB: D1Database): Promise<void> {
 
 const OAUTH_STATE_COOKIE = 'kakao_oauth_state';
 
-/**
- * 🧭 2026-07-11 (감사 §R2 어트리뷰션 생존성): query 제거 시에도 보존하는 파라미터 화이트리스트.
- *   ?ref=(인플)·?aff=(큐레이터)·?invite=(초대) 가 카카오 왕복에서 통째로 제거돼 콜백 후
- *   재캡처 불가였음. 값 검증([A-Za-z0-9_-]{1,64}) 통과분만 재부착 — 나머지 query/hash 와
- *   open-redirect 방어는 기존 그대로(약화 없음).
- * ⚠️ 프론트 safe-internal-path.ts 와 동일 화이트리스트 — 양쪽 같이 갱신할 것.
- */
-const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto', 'via', 'qty'] as const;
-const PRESERVED_VALUE_RE = /^[A-Za-z0-9_-]{1,64}$/;
-const PRESERVED_VALUE_RE_BY_KEY: Partial<Record<(typeof PRESERVED_QUERY_PARAMS)[number], RegExp>> = { code: /^(?:[A-Za-z0-9]{8}|[A-Za-z0-9]{4}-[A-Za-z0-9]{4})$/, auto: /^1$/, via: /^login$/, qty: /^(?:[1-9]\d?|100)$/ }; // 🔐 2026-11-13 구매 중 로그인 복귀(via=login&qty — 프론트 safe-internal-path 와 동일) · 🔑 2026-09-20 매장 코드 입구 — code 는 8자 모양만, auto 는 1 만(프론트 동일)
-
-/** query(+hash) 부분에서 화이트리스트 파라미터만 추출 — 안전값만, 없으면 '' */
-function extractPreservedQuery(rawQueryAndHash: string): string {
-  if (!rawQueryAndHash.startsWith('?')) return '';
-  const hashIdx = rawQueryAndHash.indexOf('#');
-  const queryOnly = hashIdx >= 0 ? rawQueryAndHash.slice(1, hashIdx) : rawQueryAndHash.slice(1);
-  try {
-    const params = new URLSearchParams(queryOnly);
-    const kept = new URLSearchParams();
-    for (const key of PRESERVED_QUERY_PARAMS) {
-      const v = params.get(key); if (key === 'qty' && params.get('via') !== 'login') continue; if (v && (PRESERVED_VALUE_RE_BY_KEY[key] ?? PRESERVED_VALUE_RE).test(v)) kept.set(key, v); // 🔐 qty 는 via=login 과 함께일 때만(프론트 동일)
-    }
-    const s = kept.toString();
-    return s ? `?${s}` : '';
-  } catch {
-    return '';
-  }
-}
+// 🧭 보존하는 주소 꼬리는 프론트와 **같은 파일** — `shared/login-return-query.ts`(2026-11-13 대표 "영구적으로 해결해"). 복사본을 다시 두지 말 것.
 
 /**
  * redirect 대상에 query param 부착 — 🧭 2026-07-11: safeRedirect 가 보존 query(?ref= 등)를
@@ -234,8 +208,7 @@ function appendQuery(target: string, qs: string): string {
  *  - must NOT contain control chars (\n, \t, \r, \0)
  *  - must NOT be /login·/auth/*·/oauth/* (자기참조 OAuth hop 루프 방지)
  *
- * 🛡️ 2026-04-29: 프론트엔드 safe-internal-path.ts 와 동일한 규칙. Worker
- *   코드라 import 못 하므로 동일 규칙을 인라인으로 유지. 양쪽 같이 갱신할 것.
+ * 🛡️ 2026-04-29: 프론트엔드 safe-internal-path.ts 와 동일한 규칙. (보존 꼬리는 2026-11-13 부터 공용 파일 — 경로 검사는 아직 양쪽에 있다.)
  */
 function safeRedirect(path: string | null | undefined): string {
   if (!path || typeof path !== 'string') return '/';
@@ -253,17 +226,8 @@ function safeRedirect(path: string | null | undefined): string {
     path = path.slice(0, queryIdx);
   }
   if (!path) return '/';
-  const FORBIDDEN = ['/login', '/seller/login', '/admin/login', '/agency/login', '/auth/', '/oauth/'];
-  for (const prefix of FORBIDDEN) {
-    if (prefix.endsWith('/')) {
-      if (path.startsWith(prefix)) return '/';
-    } else {
-      if (path === prefix || path.startsWith(prefix + '?') || path.startsWith(prefix + '/') || path.startsWith(prefix + '#')) {
-        return '/';
-      }
-    }
-  }
-  return path + preserved;
+  // 🚫 차단 경로(로그인·OAuth 자기참조)는 프론트와 같은 판정 — `shared/login-return-query.ts`(2026-11-13).
+  return isSafeInternalPathname(path) ? path + preserved : '/';
 }
 
 // 🧪 단위 테스트용 export — frontend safeInternalPath 와 양쪽 일관성 검증

@@ -67,26 +67,27 @@ export default [
   },
   {
     name: '🔑매장코드 로그인 왕복에서 ?code= 가 다시 사라진다 (사장님이 코드를 손으로 다시 친다)',
-    file: 'src/utils/safe-internal-path.ts',
-    // 🔐 2026-11-13 via·qty(구매 중 로그인 복귀)가 붙었다 — code·auto 만 빼는 주입으로 재조준.
-    find: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto', 'via', 'qty'] as const",
-    replace: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'via', 'qty'] as const",
+    // 🧭 2026-11-13 규칙이 공용 파일(shared/login-return-query)로 옮겨 갔다 — 거기서 code·auto 를 뺀다.
+    file: 'src/shared/login-return-query.ts',
+    find: "export const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto', 'via', 'qty'] as const",
+    replace: "export const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'via', 'qty'] as const",
     test: 'src/tests/unit/safe-internal-path.test.ts',
     why: '2026-09-20 E4 판정에서 발견 — 링크로 온 사장님이 로그인 뒤 빈 입력칸을 만났다. 에러가 없어 아무도 신고하지 않는 종류.',
   },
   {
     name: '🔑매장코드 code 값 검증이 풀려 긴 OAuth 인가 코드까지 보존한다',
-    file: 'src/utils/safe-internal-path.ts',
-    find: '      if (v && (PRESERVED_VALUE_RE_BY_KEY[key] ?? PRESERVED_VALUE_RE).test(v)) kept.set(key, v)',
-    replace: '      if (v && PRESERVED_VALUE_RE.test(v)) kept.set(key, v)',
+    file: 'src/shared/login-return-query.ts',
+    find: '      if (v && (PRESERVED_VALUE_RE_BY_KEY[key] ?? DEFAULT_VALUE_RE).test(v)) kept.set(key, v)',
+    replace: '      if (v && DEFAULT_VALUE_RE.test(v)) kept.set(key, v)',
     test: 'src/tests/unit/safe-internal-path.test.ts',
     why: '키별 모양 검사가 없으면 콜백 URL 의 인가 코드가 returnUrl 에 실려 되돌아온다 — 보존은 매장 코드 8자에만.',
   },
   {
     name: '🔑매장코드 워커 safeRedirect 가 프론트와 갈린다 (카카오 왕복만 코드 소실)',
+    // 🧭 2026-11-13 두 파일이 공용 규칙을 import 한다 — '갈린다' 는 이제 워커가 공용 함수 대신 꼬리를 통째로 버리는 것.
     file: 'src/features/auth/api/kakao.routes.ts',
-    find: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto', 'via', 'qty'] as const;",
-    replace: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'via', 'qty'] as const;",
+    find: "    preserved = extractPreservedQuery(path.slice(queryIdx));",
+    replace: "    preserved = '';",
     test: 'src/tests/unit/kakao-safe-redirect.test.ts',
     why: '두 파일이 "양쪽 같이 갱신할 것" 주석으로만 묶여 있다 — 한쪽만 고치면 이메일 로그인은 되고 카카오 로그인만 코드를 잃는다.',
   },
