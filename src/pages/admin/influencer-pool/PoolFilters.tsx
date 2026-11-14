@@ -10,12 +10,15 @@
 import { REGION_TOKENS } from '@/shared/ads/region-tokens'
 import { POOL_CATEGORIES } from '../AdminInfluencerPoolPage'
 import { Select } from '@/components/ui/select'
+import { COUNTRY_FILTER_OPTIONS } from '@/shared/ads/influencer-country'
 
 export interface PoolFiltersProps {
   platform: string; setPlatform: (v: string) => void
   category: string; setCategory: (v: string) => void
   /** 📍 활동 지역 — 수집 키워드 접두에서 캡처된 값(거주지 아님). 지역×업종으로 매칭 후보를 좁힌다. */
   region: string; setRegion: (v: string) => void
+  /** 🌏 국가 — 채널이 밝힌 국가 + 이름·소개의 한국어 여부(판정 SSOT `influencer-country.ts`). */
+  country: string; setCountry: (v: string) => void
   /** 🏷️ 분류 신뢰도 — `content`(본문·소개글로 확인) vs `keyword`(발굴 키워드 상속 = 미확인). */
   catSource: string; setCatSource: (v: string) => void
   /** 📏 측정 여부 — 아직 한 번도 안 잰 리드는 연락처·본문분류가 통째로 비어 있다. */
@@ -58,6 +61,11 @@ export default function PoolFilters(p: PoolFiltersProps) {
       <Select value={p.region} onChange={e => p.setRegion(e.target.value)} className={SEL} title="수집 키워드에서 캡처된 활동 지역 — 거주지가 아니라 '그 지역을 다루는 콘텐츠'라는 신호">
         <option value="">전체 지역</option>
         {REGION_TOKENS.map(r => <option key={r} value={r}>{r}</option>)}
+      </Select>
+      {/* 🌏 국가 — 유튜브엔 외국 채널이 섞인다. '한국'은 국가 미표기라도 이름·소개가 한국어면 포함한다. */}
+      <Select value={p.country} onChange={e => p.setCountry(e.target.value)} className={SEL} title="채널이 밝힌 국가 + 이름·소개글의 한국어 여부로 가릅니다. 네이버 블로그·카페·티스토리는 전부 한국입니다.">
+        <option value="">전체 국가</option>
+        {COUNTRY_FILTER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </Select>
       {/* 🏷️ 분류 신뢰도 — 카테고리 값 자체는 이미 보이는데 **그게 믿을 만한 값인지**를 화면에서 못 갈랐다.
           실측 84%가 키워드 상속("강남 맛집"으로 발굴됐다고 맛집 블로거인 건 아니다) → 품질 작업의 대상 집합. */}

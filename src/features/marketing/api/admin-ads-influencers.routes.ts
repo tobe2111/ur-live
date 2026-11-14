@@ -19,7 +19,7 @@ import { COLD_SEND_MAX, COLD_COOLDOWN_DAYS, coldDailyKey, evaluateColdGuards } f
 import { sendEmail } from '@/services/email'
 import { classifyCategory } from './influencer-classify'
 import { planKeywordPatch } from './influencer-keyword-category' // 🎯 축 지정 화이트리스트(SSOT)
-import { buildInfluencerExportResponse } from './influencer-pool-export'
+import { buildInfluencerExportResponse, influencerCountryWhere } from './influencer-pool-export'
 import { mergeDuplicatePool, reextractPoolContacts } from './influencer-maintenance'
 import { getOrCreateClaimCode } from './lead-claim'
 import { ensureRecruitColumn } from './influencer-pool-stats'
@@ -76,7 +76,7 @@ app.get('/influencer-pool', async (c) => {
   //   쿼리할 수 없으면 이행이 통째로 수작업이 된다("강남 맛집 인플루언서 10명"을 못 고른다).
   //   `''`(확인했지만 지역 없음)와 NULL(미확인)은 필터 대상 아님 — 실제 지역 토큰일 때만.
   const region = (c.req.query('region') || '').trim()
-  if (region) { where.push('region = ?'); binds.push(region.slice(0, 20)) }
+  if (region) { where.push('region = ?'); binds.push(region.slice(0, 20)) }; { const cw = influencerCountryWhere(c.req.query('country')); if (cw) { where.push(cw.sql); binds.push(...cw.binds) } } // 🌏 국가 — `shared/ads/influencer-country.ts`
   // 🏷️ **분류 신뢰도** 필터(2026-07-29) — 대표 4축 ②의 작업 도구.
   //   `category_source` 는 이미 저장·CSV 에 나가는데 **쿼리할 수가 없었다.** 실측상 네이버 블로거의
   //   84%가 `keyword`(발굴 키워드 상속: "강남 맛집"으로 발굴됐다고 맛집 블로거인 건 아니다)인데,
@@ -593,7 +593,7 @@ app.get('/influencer-pool/export', async (c) => buildInfluencerExportResponse(
   adsLeadsDb(c.env), POOL, c.req.query('format') || 'xls', c.req.query('platform') || '',
   // 적합 카테고리 우선(coreFirst=0 끔) · newOnly=받은 건 안 준다(기본 contactable 따름 · 전체 덤프는 OFF — 근거 `pool-export-batch.ts`)
   { contactable: c.req.query('contactable') === '1', minScore: Number(c.req.query('minScore')),
-    coreFirst: c.req.query('contactable') === '1' && c.req.query('coreFirst') !== '0', newOnly: c.req.query('newOnly') ? c.req.query('newOnly') === '1' : c.req.query('contactable') === '1' },
+    coreFirst: c.req.query('contactable') === '1' && c.req.query('coreFirst') !== '0', newOnly: c.req.query('newOnly') ? c.req.query('newOnly') === '1' : c.req.query('contactable') === '1', country: c.req.query('country') || '' },
 ))
 
 

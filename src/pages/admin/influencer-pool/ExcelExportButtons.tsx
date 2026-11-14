@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { COUNTRY_FILTER_OPTIONS } from '@/shared/ads/influencer-country'
 
 /**
  * 📊 인플루언서 풀 엑셀 내보내기 버튼群 — AdminInfluencerPoolPage 에서 추출(2026-07-28, 600줄 캡).
@@ -13,7 +14,8 @@ const EXPORT_PLATS = [
   { v: 'naver_cafe', label: '네이버카페' }, { v: 'tistory', label: '티스토리' },
 ]
 
-export default function ExcelExportButtons({ variant }: { variant: 'all' | 'contactable' }) {
+/** 🌏 `country` — 화면의 국가 필터를 그대로 넘긴다(2026-11-14). 비면 전체. 판정 SSOT `shared/ads/influencer-country.ts`. */
+export default function ExcelExportButtons({ variant, country = '' }: { variant: 'all' | 'contactable'; country?: string }) {
   const [exporting, setExporting] = useState(false)
 
   /**
@@ -26,11 +28,12 @@ export default function ExcelExportButtons({ variant }: { variant: 'all' | 'cont
       // ⚠️ 20k행이면 ~40MB 스트리밍 — 기본 15s 타임아웃이면 다운로드 완료 전 중단("실패").
       //   서버는 pull 스트리밍이라 OOM 없음, 클라 타임아웃만 넉넉히(120s).
       const r = await api.get(
-        `/api/admin/ads/influencer-pool/export?format=xls${plat ? `&platform=${plat}` : ''}${contactable ? '&contactable=1' : ''}${newOnly === undefined ? '' : `&newOnly=${newOnly ? 1 : 0}`}`,
+        `/api/admin/ads/influencer-pool/export?format=xls${plat ? `&platform=${plat}` : ''}${contactable ? '&contactable=1' : ''}${newOnly === undefined ? '' : `&newOnly=${newOnly ? 1 : 0}`}${country ? `&country=${encodeURIComponent(country)}` : ''}`,
         { responseType: 'blob', timeout: 120000 },
       )
       const url = URL.createObjectURL(new Blob([r.data], { type: 'application/vnd.ms-excel' }))
-      const label = (plat ? (EXPORT_PLATS.find(p => p.v === plat)?.label || plat) : '전체') + (contactable ? '-연락대상' : '')
+      const countryLabel = country ? `-${COUNTRY_FILTER_OPTIONS.find(o => o.value === country)?.label || country}` : ''
+      const label = (plat ? (EXPORT_PLATS.find(p => p.v === plat)?.label || plat) : '전체') + (contactable ? '-연락대상' : '') + countryLabel
       const a = document.createElement('a')
       a.href = url; a.download = `인플루언서풀-${label}-${new Date().toISOString().slice(0, 10)}.xls`; a.click()
       URL.revokeObjectURL(url)
