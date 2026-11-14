@@ -6,6 +6,8 @@ import { ensureOutreachColumns } from './outreach-webhook'
 // ⚖️ 법적 문구는 **발송 경로와 같은 SSOT** 를 쓴다 — 여기서 따로 쓰면 법이 바뀔 때 한쪽만 고쳐진다.
 import { dedupeByEmail } from './outreach-queue'
 import { outreachSubject, outreachBody } from './outreach-template'
+import { influencerCountryWhere } from '../../../shared/ads/influencer-country'
+export { influencerCountryWhere }
 // 📥 "받은 건 다시 안 준다" — 도장/묶음 크기는 세 풀 공용 SSOT(`pool-export-batch.ts`).
 import { EXPORT_BATCH_ROWS, NOT_EXPORTED_SQL, ensureExportStamp, exportBatchStamp, exportStampFailedNote, stampExported } from './pool-export-batch'
 
@@ -41,7 +43,7 @@ export const EXPORT_PLATFORMS: Record<string, string> = {
  *     · 아직 연락 안 한 사람(contacted_at 없음)  · 반송·스팸신고 이력 제외(보내면 튕긴다)
  *   정렬은 기존과 동일(점수순) — 파일 위에서부터 순서대로 연락하면 된다. 미지정 시 기존 동작(전체) 불변.
  */
-export async function buildInfluencerExportResponse(DB: D1Database, poolId: number, format: string, platform?: string, opts?: { contactable?: boolean; minScore?: number; coreFirst?: boolean; newOnly?: boolean }): Promise<Response> {
+export async function buildInfluencerExportResponse(DB: D1Database, poolId: number, format: string, platform?: string, opts?: { contactable?: boolean; minScore?: number; coreFirst?: boolean; newOnly?: boolean; country?: string }): Promise<Response> {
   await ensureInfluencerSchema(DB)  // 성과/컨택 컬럼 보장(미보강 DB 에서 'no such column' 빈 파일 방지)
   await ensureQualityColumns(DB)    // lead_score/is_brand/category_source — SELECT·정렬이 참조
   await ensurePerfExtraColumns(DB)  // median_long_views/shorts_ratio/last_post_at
@@ -83,6 +85,9 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   //   한 묶음(500)이 되고, 모은 행에 도장이 찍혀 다음 다운로드엔 그 **다음** 500명이 나온다.
   //   ⚠️ 끄면(전체 덤프) 도장을 찍지 않는다 — 풀 사본 한 번이 전 리드를 소진시키면 안 된다.
   const newOnlyFilter = opts?.newOnly ? ` AND ${NOT_EXPORTED_SQL}` : ''
+  // 🌏 국가 — 화면 필터와 **같은 판정**(`influencer-country.ts`). 국가 코드 바인딩은 아래 bind 에 끼운다.
+  const cw = influencerCountryWhere(opts?.country)
+  const countryFilter = cw ? ` AND ${cw.sql}` : ''
   const PAGE = 5000, CAP = opts?.newOnly ? EXPORT_BATCH_ROWS : 60000
   for (let off = 0; off < CAP; off += Math.min(PAGE, CAP)) {
     const take = Math.min(PAGE, CAP - off) // 묶음 모드(500)에서 LIMIT 가 상한을 넘지 않게
@@ -90,8 +95,8 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
     const page = (await DB.prepare(`SELECT id, platform, name, handle, url, subscriber_count, email, instagram, tiktok, links, category, region, source_keyword, status, collected_at,
         recent_avg_views, recent_avg_comments, recent_posts_30d, contact_channel, contacted_at, follow_up_at, source, consented_at, memo,
         lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source, opted_out, exported_at
-      FROM ad_influencer_leads WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter}${newOnlyFilter} ORDER BY ${coreFirst}category, (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
-      .bind(...(plat ? [poolId, plat, take, off] : [poolId, take, off])).all<ExpRow>().catch(() => null))?.results || []
+      FROM ad_influencer_leads WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter}${newOnlyFilter}${countryFilter} ORDER BY ${coreFirst}category, (lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC LIMIT ? OFFSET ?`)
+      .bind(...[poolId, ...(plat ? [plat] : []), ...(cw?.binds || []), take, off]).all<ExpRow>().catch(() => null))?.results || []
     rows.push(...page)
     if (page.length < take) break
   }
@@ -108,8 +113,8 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
     stamped = await stampExported(DB, 'influencer', rows.map(r => r.id), batchStamp)
     // 남은 미다운로드 — **도장을 찍은 뒤** 세므로 이 묶음은 이미 빠져 있다(파일에 적는 값이 곧 다음 회차 분량).
     const cnt = await DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads
-      WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter}${newOnlyFilter}`)
-      .bind(...(plat ? [poolId, plat] : [poolId])).first<{ n: number }>().catch(() => null)
+      WHERE account_id = ?${platFilter}${contactFilter}${scoreFilter}${newOnlyFilter}${countryFilter}`)
+      .bind(...[poolId, ...(plat ? [plat] : []), ...(cw?.binds || [])]).first<{ n: number }>().catch(() => null)
     remaining = Number(cnt?.n) || 0
   }
   const PLAT: Record<string, string> = { youtube: '유튜브', naver_blog: '네이버블로그', naver_cafe: '네이버카페', tistory: '티스토리', instagram: '인스타그램', tiktok: '틱톡' }

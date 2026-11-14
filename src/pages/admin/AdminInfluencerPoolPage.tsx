@@ -102,7 +102,7 @@ export default function AdminInfluencerPoolPage() {
     return POOL_CATEGORIES.includes(raw) ? raw : (POOL_CATEGORIES.find(c => raw.includes(c)) || '')
   })
   // 📍 활동 지역 필터 — 수집 키워드 접두에서 캡처된 값(거주지 아님). 지역×업종으로 매칭 후보를 좁힌다.
-  const [region, setRegion] = useState('')
+  const [region, setRegion] = useState(''); const [country, setCountry] = useState('') // 🌏 국가(KR/외국/코드) — influencer-country.ts
   const [catSource, setCatSource] = useState('')   // 🏷️ 분류 신뢰도(content/keyword) — 대표 4축 ② 작업 대상 특정용
   const [measured, setMeasured] = useState('')     // 📏 측정 여부(1/0) — 대표 4축 ④ 백로그 가시화
   const [optedOutOnly, setOptedOutOnly] = useState(false) // 🚫 거부 표시된 리드만 — 자동 태깅 오탐 검수용
@@ -132,7 +132,7 @@ export default function AdminInfluencerPoolPage() {
     if (hasEmail) params.set('hasEmail', '1')
     if (hasInstagram) params.set('hasInstagram', '1')
     if (category) params.set('category', category)
-    if (region) params.set('region', region)
+    if (region) params.set('region', region); if (country) params.set('country', country)
     if (catSource) params.set('catSource', catSource)
     if (measured) params.set('measured', measured)
     if (optedOutOnly) params.set('optedOutOnly', '1')
@@ -147,7 +147,7 @@ export default function AdminInfluencerPoolPage() {
     if (dq.trim()) params.set('q', dq.trim())
     params.set('limit', String(PAGE)); params.set('offset', String(offset))
     return params
-  }, [platform, hasContact, hasEmail, hasInstagram, category, region, catSource, measured, optedOutOnly, collectedToday, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
+  }, [platform, hasContact, hasEmail, hasInstagram, category, region, country, catSource, measured, optedOutOnly, collectedToday, tier, sort, statusFilter, needFollowup, hideNoise, brandOnly, inboundOnly, dq])
 
   const loadLeads = useCallback(async () => {
     setLoading(true)
@@ -401,7 +401,7 @@ export default function AdminInfluencerPoolPage() {
         <div className="flex flex-wrap gap-2 mb-3">
           <button onClick={collectNow} disabled={collecting} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50" title="유튜브·네이버블로그·네이버카페 전 매체를 한 번에 수집 — YouTube 검색 예산 소진할 때까지 백그라운드로 연속 실행">{collecting ? '수집 중…' : '통합 수집'}</button>
           {collecting ? <span className="text-[11px] text-gray-500 self-center">백그라운드로 진행 중 — 페이지를 떠나도 계속됩니다</span> : null}
-          <ExcelExportButtons variant="all" />
+          <ExcelExportButtons variant="all" country={country} />
           <button onClick={exportCsv} disabled={csvExporting || !total} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm font-medium disabled:opacity-50" title="현재 필터 결과 전체(화면 로드분 아님)를 29열 CSV 로">{csvExporting ? 'CSV 내보내는 중…' : `CSV (필터 전체 ${formatNumber(total)}건)`}</button>
           {/* 🛍️ 최근 구현한 서비스 표면 바로가기 — 이 풀이 이행 재고인 서비스몰(광고주 주문 화면)과 주문 접수함 */}
           <a href="/ads/dashboard?tab=services" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg border border-rule bg-white text-gray-700 text-sm font-medium" title="광고주가 보는 유어애즈 대시보드(서비스몰 주문 화면) — 새 탭">서비스몰 (광고주 화면)</a>
@@ -427,7 +427,7 @@ export default function AdminInfluencerPoolPage() {
             <SendModeButtons leads={leads} selectedIds={selected} platform={platform} onReach={l => reachOut(l as unknown as Lead)} />
             <ConsentedSendPanel />
             <ColdSendPanel />
-            <ExcelExportButtons variant="contactable" />
+            <ExcelExportButtons variant="contactable" country={country} />
             <PoolExportBatches pool="influencer" />{/* 🔓 받은 묶음 되돌리기 — 다운로드가 끊겼거나 파일을 잃었을 때의 유일한 복구 경로 */}
             <MarkContactedPanel />
             <OutreachResultPanel />{/* 결과 유입 — 반응 루프의 열린 끝(엔드포인트는 있었는데 화면이 없어 email_status 가 0건이었다) */}
@@ -440,7 +440,7 @@ export default function AdminInfluencerPoolPage() {
         <PoolFilters
           platform={platform} setPlatform={setPlatform}
           category={category} setCategory={setCategory}
-          region={region} setRegion={setRegion}
+          region={region} setRegion={setRegion} country={country} setCountry={setCountry}
           tier={tier} setTier={setTier}
           sort={sort} setSort={setSort}
           hasEmail={hasEmail} setHasEmail={setHasEmail}
