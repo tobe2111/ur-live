@@ -48,6 +48,6 @@ describe('홈 맨 위 지역 사진 — 서버 첫 화면', () => {
     expect(src).toMatch(/document\.cookie = `\$\{HOME_HERO_COOKIE\}=\$\{homeHeroCookieValue\(hero\)\}; Path=\/; Max-Age=31536000; SameSite=Lax`/)
   })
   it('⑧ 워커가 쿠키를 넘긴다', () => {
-    expect(readFileSync('src/worker/index.ts', 'utf8')).toMatch(/buildHomeFirstScreen\(ssrExtraPayload, urdealLoaderHtml, nearLabelFromCookieHeader\(c\.req\.header\('cookie'\)\), c\.req\.header\('cookie'\) \?\? null\)/)
+    expect(readFileSync('src/worker/index.ts', 'utf8')).toMatch(/buildHomeFirstScreen\(ssrExtraPayload, urdealLoaderHtml, nearLabelFromCookieHeader\(c\.req\.header\('cookie'\)\), c\.req\.header\('cookie'\) \?\? null, homeBannersPayload\)/) // 2026-11-14 다섯째 인자: 배너 시드(둘째 섹션 inline 판정)
   })
 })
