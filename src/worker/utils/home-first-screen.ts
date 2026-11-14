@@ -60,7 +60,8 @@ import { priceDisplay } from '../../shared/price-display'
 import { stripStorePrefix } from '../../utils/deal-title'
 import { formatNumber } from '../../utils/format'
 import { creatorCountLabel } from '../../shared/home-creator-count'
-import { STRIP_CLS, stripBannersOf, stripBannerImageUrl, type SeededStripBanner } from '../../shared/home-strip-banners'
+import { STRIP_CLS, stripBannersOf, stripBannerImageUrl, bannersOfSlot, type SeededStripBanner } from '../../shared/home-strip-banners'
+import { resolveSectionMoreHref, isDeadEndHref } from '../../components/home/section-more-href'
 import { resolveBannerLink } from '../../components/home/banner-link'
 import { HOME_TOP_LOGO, HOME_TOP_SEARCH, HOME_TOP_BELL, HOME_TOP_BAG, HOME_TOP_CHEVRON, HOME_TOP_LOCATE } from './home-top-markup'
 import { homeLocLabelFromCookieHeader, HOME_LOC_LABEL_DEFAULT } from '../../shared/home-loc-label-cookie'
@@ -304,6 +305,37 @@ function stripBannerHtml(banners: SeededStripBanner[]): string {
     `<div class="${STRIP_CLS.rail} ${many ? STRIP_CLS.railMany : ''}">${card}</div></div></div>`
 }
 
+/** 화면(`HomeSections`, 폰 — rail 아님)의 섹션 머리 클래스. 글자 그대로 미러한다(시험이 소스와 대조). */
+export const HOME_SEC_HEAD = {
+  head: 'flex items-end justify-between gap-3 mb-3',
+  headText: 'min-w-0',
+  title: 'text-[16px] font-semibold tracking-tight text-gray-900 dark:text-white',
+  sub: 'mt-1 text-[13px] text-gray-500 dark:text-gray-400',
+  more: 'shrink-0 text-[13px] text-gray-500 dark:text-gray-400 hover:underline underline-offset-4 whitespace-nowrap',
+} as const
+
+/**
+ * 🏠 2026-11-14 대표 *"처음에 홈에서 밑 이용권들 불러오는게 늦어"* — 둘째 섹션('지금 인기 이용권')도 서버가 그린다.
+ *   종전엔 첫 섹션 4장 + 띠 배너까지만 그려, 그 아래는 앱이 켜진 뒤(라이브 폰 4G·CPU 4배 1.8~2.2s)에야 카드가 생기고
+ *   사진은 그 뒤 다른 요청 20여 개와 회선을 나눠 받았다. 같은 시드(`__SSR_INITIAL_SECTIONS__`)에 이미 와 있다.
+ *   안 그리는 경우(빈 문자열 — 종전 그대로): ① 위치 정렬 섹션(부제가 손님 위치에 달려 서버가 모른다)
+ *   ② `inline` 배너가 있다(화면은 띠 배너와 이 섹션 **사이**에 그것을 그린다 — 서버가 모르면 마운트 때 이 섹션이 밀린다)
+ *   ③ 배너 시드가 없다(②를 판정할 수 없다 — 모르면 안 그린다). 사진은 lazy(화면 밖).
+ */
+export function homeSecondSectionHtml(sec: { title?: string | null; subtitle?: string | null; near?: boolean; more_href?: string | null; products?: SeedProduct[] } | undefined, bannersPayload: string | null): string {
+  if (!sec || sec.near || !sec.title || !bannersPayload) return ''
+  let inline = 0
+  try { inline = bannersOfSlot(JSON.parse(bannersPayload), 'inline').length } catch { return '' }
+  if (inline > 0) return ''
+  const products = (sec.products ?? []).filter(p => p && p.id != null)
+  if (products.length === 0) return ''
+  const more = resolveSectionMoreHref(sec.more_href ?? null)
+  const moreHtml = more && !isDeadEndHref(more) ? `<a href="${escAttr(more)}" class="${HOME_SEC_HEAD.more}">더보기</a>` : ''
+  const head = `<div class="${HOME_SEC_HEAD.head}"><div class="${HOME_SEC_HEAD.headText}"><h3 class="${HOME_SEC_HEAD.title}">${escText(sec.title)}</h3>` +
+    (sec.subtitle ? `<p class="${HOME_SEC_HEAD.sub}">${escText(sec.subtitle)}</p>` : '') + `</div>${moreHtml}</div>`
+  return `<section class="${HOME_FS_CLASS.panel}">${head}<div class="${HOME_FS_CLASS.grid}">${products.map(p => cardHtml(p, false, undefined, true)).join('')}</div></section>`
+}
+
 /**
  * 홈 첫 화면 HTML — 실패하면 **빈 문자열**(호출부가 종전 로더로 되돌아간다. 무회귀).
  *
@@ -312,15 +344,19 @@ function stripBannerHtml(banners: SeededStripBanner[]): string {
  * @param _nearLabel 📍 2026-10-13 위치 라벨(쿠키 `ur_loc_n`). 2026-11-02 첫 섹션 제목 줄을 걷으면서 안 쓴다
  *   (호출부 `worker/index.ts` 는 잠금 파일이라 시그니처를 그대로 둔다).
  */
-export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: string, _nearLabel = '', cookieHeader: string | null = null): string {
-  let sec: { title?: string | null; subtitle?: string | null; near?: boolean; products?: SeedProduct[] } | undefined
+export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: string, _nearLabel = '', cookieHeader: string | null = null, bannersPayload: string | null = null): string {
+  type Sec = { title?: string | null; subtitle?: string | null; near?: boolean; more_href?: string | null; products?: SeedProduct[] }
+  let sec: Sec | undefined
+  let sec2: Sec | undefined
   let strip: SeededStripBanner[] = []
   try {
     const parsed = JSON.parse(sectionsSeedJson) as SectionsSeed
     // 🏠 생활 이용권은 메인에 안 뜬다 — 화면(`HomeSections`)과 같은 규칙으로 거른 뒤 첫 줄을 고른다.
-    sec = (parsed?.data ?? [])
+    const visible = (parsed?.data ?? [])
       .map(s => (Array.isArray(s?.products) ? { ...s, products: s.products.filter(isHomeVisibleProduct) } : s))
-      .find(s => Array.isArray(s?.products) && s.products.length > 0)
+      .filter(s => Array.isArray(s?.products) && s.products.length > 0) as Sec[]
+    sec = visible[0]
+    sec2 = visible[1]
     strip = stripBannersOf(parsed)
   } catch {
     return ''
@@ -339,7 +375,7 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
     //    화면(`MobileHomePage` → `HomeSections bareFirst`)과 같은 순서여야 마운트 때 안 튄다.
     `<div class="mt-3"><section class="${HOME_FS_CLASS.panel} ur-panel-flush">` +
     `<div class="${HOME_FS_CLASS.grid}">${cards}</div>` +
-    `</section>${stripBannerHtml(strip)}</div></div>`
+    `</section>${stripBannerHtml(strip)}${homeSecondSectionHtml(sec2, bannersPayload)}</div></div>`
 
   // 🧷 노드 id 는 `/pass/`·`/vouchers/` 와 같다 — `lib/boot-first-screen.ts` 가 경로를 안 가리고
   //   이 노드를 들고 있다가 Suspense 폴백 안에 **같은 노드로** 도로 붙인다(재파싱·재다운로드 0).
