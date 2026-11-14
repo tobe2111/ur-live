@@ -329,5 +329,38 @@
     "slot": "21:30",
     "media": "image",
     "topic_tag": "소상공인"
+  },
+  {
+    "id": "18061105241800206",
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "대행사에 맡기는 길: 대행사가 등록·운영 대행, 수수료 5%, 대행사는 정산 계좌·사업자 정보 접근 불가, 권한은 언제든 회수",
+    "hook": "compare",
+    "media_set": "gen-2026-11-14-merchant",
+    "series": "quick-guide",
+    "date_kst": "2026-11-14",
+    "photo": "https://pixabay.com/get/g563ac197682290fae3731a2d08ba407cf3e932b9ce5cf5367437f6969e2c5424178b169ea9653bc9c0462ce6318170266aa17ef56ff65266deae7fe5c70f3790_1280.jpg",
+    "format": "1",
+    "slot": "19:30",
+    "media": "carousel"
+  },
+  {
+    "id": "18117890003025687",
+    "platform": "instagram_story",
+    "track": "merchant",
+    "series": "quick-guide",
+    "date_kst": "2026-11-14"
+  },
+  {
+    "id": "18121558603757996",
+    "platform": "threads",
+    "track": "merchant",
+    "hook": "compare",
+    "series": "quick-guide",
+    "date_kst": "2026-11-14",
+    "len": "0",
+    "slot": "19:30",
+    "media": "image",
+    "topic_tag": "식당창업"
   }
 ]

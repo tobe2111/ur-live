@@ -750,5 +750,58 @@
     "slot_kst": "21:30",
     "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261113",
     "text": "0원, 가입비도 월 이용료도 광고비도 없어요. 이용권이 팔리고 손님이 와서 쓴 뒤에만 수수료가 나가요."
+  },
+  {
+    "platform": "instagram",
+    "id": "18061105241800206",
+    "media_type": "CAROUSEL",
+    "media": "carousel",
+    "format": "1",
+    "media_set": "gen-2026-11-14-merchant",
+    "series": "quick-guide",
+    "generated": {
+      "source": "pixabay",
+      "credit": "Pixabay · JessicaKwok",
+      "title": "대행사에 맡겨도 정산 계좌는 내 것",
+      "photo_url": "https://pixabay.com/get/g563ac197682290fae3731a2d08ba407cf3e932b9ce5cf5367437f6969e2c5424178b169ea9653bc9c0462ce6318170266aa17ef56ff65266deae7fe5c70f3790_1280.jpg",
+      "reel": false
+    },
+    "hook": "compare",
+    "topic": "대행사에 맡기는 길: 대행사가 등록·운영 대행, 수수료 5%, 대행사는 정산 계좌·사업자 정보 접근 불가, 권한은 언제든 회수",
+    "content_id": "ig",
+    "track": "merchant",
+    "promo": false,
+    "posted_at": "2026-11-14T10:48:08.155Z",
+    "date_kst": "2026-11-14",
+    "slot_kst": "19:30",
+    "bio_link": "https://urdeal.kr/partners?utm_source=instagram&utm_medium=social&utm_campaign=merchant-recruit&utm_content=ig-20261114",
+    "text": "대행사에 맡겨도 정산 계좌는 사장님 것이에요.\n등록과 운영은 대행사가 하지만, 정산 계좌와 사업자 정보는 대행사가 볼 수 없어요. 수수료는 5%. 권한은 언제든 회수할 수 있어요.\n조건은 프로필 링크에서 확인해 주세요.\n\n#유어딜 #소상공인 #입점안내"
+  },
+  {
+    "platform": "instagram_story",
+    "id": "18117890003025687",
+    "track": "merchant",
+    "series": "quick-guide",
+    "posted_at": "2026-11-14T10:48:08.155Z",
+    "date_kst": "2026-11-14"
+  },
+  {
+    "platform": "threads",
+    "id": "18121558603757996",
+    "reply_id": "18147380527609443",
+    "topic_tag": "식당창업",
+    "hook": "compare",
+    "len": "0",
+    "media": "image",
+    "content_id": "th",
+    "image": "https://raw.githubusercontent.com/tobe2111/ur-live/marketing-data/marketing-bot/data/cards/2026-11-14-merchant/slide-1.jpg",
+    "track": "merchant",
+    "series": "quick-guide",
+    "promo": false,
+    "posted_at": "2026-11-14T10:48:08.155Z",
+    "date_kst": "2026-11-14",
+    "slot_kst": "19:30",
+    "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261114",
+    "text": "대행사에 맡기면 수수료 5%예요. 권한은 언제든 회수할 수 있어요."
   }
 ]
