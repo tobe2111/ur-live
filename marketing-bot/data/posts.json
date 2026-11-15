@@ -803,5 +803,56 @@
     "slot_kst": "19:30",
     "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261114",
     "text": "대행사에 맡기면 수수료 5%예요. 권한은 언제든 회수할 수 있어요."
+  },
+  {
+    "platform": "instagram",
+    "id": "18093134186700874",
+    "media_type": "CAROUSEL",
+    "media": "carousel",
+    "format": "0",
+    "media_set": "gen-2026-11-15-creator",
+    "series": "by-numbers",
+    "generated": {
+      "source": "none",
+      "title": "시작 비용 0원 내 유어샵은 1분",
+      "reel": false
+    },
+    "hook": "number",
+    "topic": "3단계로 시작: 가입 → 소개하고 싶은 동네 맛집·뷰티 딜을 내 유어샵에 담기 → 인스타·블로그·카톡에 링크 하나 공유",
+    "content_id": "ig",
+    "track": "creator",
+    "promo": false,
+    "posted_at": "2026-11-15T11:22:59.195Z",
+    "date_kst": "2026-11-15",
+    "slot_kst": "19:30",
+    "bio_link": "https://urdeal.kr/creators?utm_source=instagram&utm_medium=social&utm_campaign=creator-recruit&utm_content=ig-20261115",
+    "text": "시작 비용은 0원이에요. 카카오 로그인 1분이면 내 유어샵이 만들어져요. 소개하고 싶은 동네 맛집·뷰티 딜을 담고 링크 하나만 공유하면 끝.\n\n소개비율은 딜마다 매장이 정하고, 고르기 전에 표시돼요. 소개 파트너 신청은 프로필 링크에서 확인하세요.\n\n#유어딜 #소개파트너 #크리에이터"
+  },
+  {
+    "platform": "instagram_story",
+    "id": "17939654988406585",
+    "track": "creator",
+    "series": "by-numbers",
+    "posted_at": "2026-11-15T11:22:59.195Z",
+    "date_kst": "2026-11-15"
+  },
+  {
+    "platform": "threads",
+    "id": "18153443608563895",
+    "reply_id": "18123872200954097",
+    "topic_tag": "인플루언서",
+    "hook": "number",
+    "len": "1",
+    "media": "image",
+    "content_id": "th",
+    "image": "https://raw.githubusercontent.com/tobe2111/ur-live/marketing-data/marketing-bot/data/cards/2026-11-15-creator/slide-1.jpg",
+    "track": "creator",
+    "series": "by-numbers",
+    "promo": false,
+    "posted_at": "2026-11-15T11:22:59.195Z",
+    "date_kst": "2026-11-15",
+    "slot_kst": "19:30",
+    "link": "https://urdeal.kr/creators?utm_source=threads&utm_medium=social&utm_campaign=creator-recruit&utm_content=th-20261115",
+    "text": "시작 비용 0원. 카카오 로그인 1분이면 내 유어샵이 만들어져요.\n가입, 딜 담기, 링크 공유. 이 세 단계가 전부예요."
   }
 ]

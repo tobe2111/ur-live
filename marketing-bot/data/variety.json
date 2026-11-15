@@ -362,5 +362,37 @@
     "slot": "19:30",
     "media": "image",
     "topic_tag": "식당창업"
+  },
+  {
+    "id": "18093134186700874",
+    "platform": "instagram",
+    "track": "creator",
+    "topic": "3단계로 시작: 가입 → 소개하고 싶은 동네 맛집·뷰티 딜을 내 유어샵에 담기 → 인스타·블로그·카톡에 링크 하나 공유",
+    "hook": "number",
+    "media_set": "gen-2026-11-15-creator",
+    "series": "by-numbers",
+    "date_kst": "2026-11-15",
+    "format": "0",
+    "slot": "19:30",
+    "media": "carousel"
+  },
+  {
+    "id": "17939654988406585",
+    "platform": "instagram_story",
+    "track": "creator",
+    "series": "by-numbers",
+    "date_kst": "2026-11-15"
+  },
+  {
+    "id": "18153443608563895",
+    "platform": "threads",
+    "track": "creator",
+    "hook": "number",
+    "series": "by-numbers",
+    "date_kst": "2026-11-15",
+    "len": "1",
+    "slot": "19:30",
+    "media": "image",
+    "topic_tag": "인플루언서"
   }
 ]
