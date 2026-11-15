@@ -30,3 +30,22 @@ KR 표기 17,427 · 해외 표기 1,514 · 미표기 5,731(23%)
 
 ## 틀렸던 판단
 - 처음엔 `country` 표기만으로 가르면 된다고 봤는데, 미표기 23% 중 94%가 한국 채널이라 그러면 한국 필터가 5천 명을 잃는다.
+
+---
+
+## 2. 외국 유튜버 수집 (2026-11-15)
+대표 *"필요하긴 해."* → 질문 셋에 대한 답: 대상 **"나라별 일반 인플루언서"** · 배분 **"10번 (약 11%)"** · 언어 **"영어, 중국어, 기타 동남아 언어, 일본어"**.
+
+- `src/features/marketing/api/influencer-yt-foreign.ts` — 6개 나라·언어(US/en · TW/zh-Hant · JP/ja · VN/vi · TH/th · ID/id) 키워드 회전, 회차당 최대 1번, 하루 기본 10번(env `ADS_YT_FOREIGN_SEARCH_BUDGET` 0~30, 0 = 끔).
+- 쿼터: 하루 총 90번은 그대로. **오늘 안 쓴 외국 몫을 한국 상한에서 미리 뺀다**(안 빼면 한국이 오전에 90을 다 써 외국은 매일 0).
+- `discoverYouTubeInfluencers` 에 `regionCode`·`relevanceLanguage` 옵션(기본 KR·ko — 한국 수집 불변).
+- 진행값 `platform_settings.ads_yt_foreign_used` = `"<태평양 날짜>:<오늘 쓴 수>:<누적>"`.
+- 가드 `influencer-yt-foreign-2026-11-15.test.ts` 13건 + 주입 4건 빨간불 확인.
+- 중국어는 대만(번체)으로 묻는다 — 본토는 유튜브가 막혀 있다.
+
+### 판정 (배포 후 며칠, 대표가 이어서 하라고 했을 때만)
+- `SELECT value FROM platform_settings WHERE key='ads_yt_foreign_used'` (메인 D1) → 오늘 쓴 수가 10 근처로 차는가.
+- 인플루언서 풀 → 유튜브 + '외국 채널' 수가 하루 수십 명씩 느는가 · 그중 이메일 보유 비율.
+
+### 틀릴 수 있는 것
+- 외국 채널은 소개란에 이메일을 덜 적는다 — 연락처 수율이 한국보다 낮을 수 있다. 낮으면 몫을 줄이는 판단은 대표.
