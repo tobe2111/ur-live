@@ -219,7 +219,7 @@ export type FetchBudget = { left: number; limitHit?: boolean; deadline?: number 
  *  opts.order: 검색 정렬 — 'relevance'(관련도) | 'date'(최신, 신생·소형) | 'viewCount'(인기) | 'rating'.
  *    같은 키워드도 정렬을 바꾸면 다른 채널이 나옴 → 매 실행 교대 시 top-N 재탕이 아니라 커버리지가 계속 확장(수렴). */
 export async function discoverYouTubeInfluencers(
-  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number; budget?: FetchBudget; searchType?: 'channel' | 'video'; order?: 'relevance' | 'date' | 'viewCount' | 'rating'; alreadyContacted?: AlreadyContacted } = {},
+  env: { YOUTUBE_API_KEY?: string }, keyword: string, opts: { maxResults?: number; enrichMax?: number; pages?: number; budget?: FetchBudget; searchType?: 'channel' | 'video'; order?: 'relevance' | 'date' | 'viewCount' | 'rating'; alreadyContacted?: AlreadyContacted; regionCode?: string; relevanceLanguage?: string } = {}, // 🌏 지역·언어 — 기본 KR·ko, 외국 수집은 `influencer-yt-foreign.ts`
 ): Promise<DiscoverResult> {
   const key = env.YOUTUBE_API_KEY
   if (!key) return { ok: false, error: 'NOT_CONFIGURED' }
@@ -239,7 +239,7 @@ export async function discoverYouTubeInfluencers(
   for (let p = 0; p < pages; p++) {
     if (outOfBudget(opts.budget)) break // 예산 소진 — 모은 만큼만 처리
     spendBudget(opts.budget); calls.search++
-    const searchUrl = `${YT_BASE}/search?part=snippet&type=${searchType}&maxResults=${n}&order=${order}&regionCode=KR&relevanceLanguage=ko&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
+    const searchUrl = `${YT_BASE}/search?part=snippet&type=${searchType}&maxResults=${n}&order=${order}&regionCode=${/^[A-Z]{2}$/.test(opts.regionCode || '') ? opts.regionCode : 'KR'}&relevanceLanguage=${/^[a-z]{2}(-[A-Za-z]{2,4})?$/.test(opts.relevanceLanguage || '') ? opts.relevanceLanguage : 'ko'}&q=${encodeURIComponent(q)}${pageToken ? `&pageToken=${pageToken}` : ''}&key=${key}`
     let searchData: YTSearchResp
     try {
       const res = await fetch(searchUrl, { signal: AbortSignal.timeout(15000) })

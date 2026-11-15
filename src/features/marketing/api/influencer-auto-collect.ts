@@ -93,6 +93,7 @@ import { mineHashtags } from './influencer-hashtag-mine'
 //   기존 import 경로 호환을 위해 재수출한다(`influencer-enrich-lane`·테스트 2개가 이 경로로 쓴다).
 export { YT_DAILY_TARGET_PCT, YT_SEARCH_BUDGET_DEFAULT, ytQuotaDayKey } from './influencer-yt-quota'
 import { YT_SEARCH_BUDGET_DEFAULT, ytQuotaDayKey, YT_USED_KEY, pickYtAngle } from './influencer-yt-quota'
+import { YT_FOREIGN_KEY, foreignYtReserve, runForeignYtSearch } from './influencer-yt-foreign'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 /**
@@ -186,7 +187,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   //   🏘️ `CAFE_GATE_KEY` — 어드민 원클릭 카페 게이트. **이 배치에 얹어 서브리퀘스트 추가 0**
   //   (낱개로 읽으면 게이트 하나가 발굴 fetch 하나를 잡아먹는다 — 이 배열이 존재하는 이유).
   //   ⚖️ `AXIS_CARRY_KEY` — 축별 이월 지분(불변식 ④). 이 배치에 얹어 서브리퀘스트 추가 0.
-  const SETTING_KEYS = [STATS_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CAFE_GATE_KEY, AXIS_CARRY_KEY, FRESHNESS_CAP_KEY, 'ads_naver_crawl_block']
+  const SETTING_KEYS = [STATS_KEY, subreqCapKey('influencer'), YT_USED_KEY, NAVER_USED_KEY, CAFE_GATE_KEY, AXIS_CARRY_KEY, FRESHNESS_CAP_KEY, 'ads_naver_crawl_block', YT_FOREIGN_KEY]
   const settings = await readSettings(DB, SETTING_KEYS)
   let prev: AutoCollectStats | null = null
   try { prev = settings[STATS_KEY] ? JSON.parse(settings[STATS_KEY] as string) as AutoCollectStats : null } catch { prev = null }
@@ -213,7 +214,8 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   const NAVER_EXTRA = Math.max(0, Math.min(40, parseInt(env.ADS_NAVER_EXTRA || '', 10) || 12))
   // 🌙 YT 예산 상태를 **배분보다 먼저** 읽는다(순수 파싱 — 파서는 `readYtBudgetState` SSOT).
   const ytState = readYtBudgetState(env, settings)
-  const { hasYouTube, pages: ytPages, budgetTotal: ytBudgetTotal, day: ytDay } = ytState
+  const { hasYouTube, pages: ytPages, budgetTotal: ytTotalCap, day: ytDay } = ytState
+  const ytBudgetTotal = Math.max(0, ytTotalCap - foreignYtReserve(settings[YT_FOREIGN_KEY], ytDay, env)) // 🌏 한국 몫 = 총량 − 오늘 남은 외국 몫(`influencer-yt-foreign.ts`)
   let ytSearchUsed = ytState.searchUsed
   let ytUsed = 0
   // 🌙 네이버 전용 회차? — 그런 회차는 키워드당 비용이 3분의 1이라 같은 예산으로 넓게 돈다(판정·근거는 SSOT).
@@ -480,6 +482,9 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
     const prevK = kwStats.get(k.id) // 같은 키가 한 실행에 중복되어도 누적
     kwStats.set(k.id, { found: (prevK?.found || 0) + kFound, saved: (prevK?.saved || 0) + kSaved })
   }
+  // 🌏 외국 유튜버 — 회차당 최대 1번, 하루 몫(기본 10)은 한국 상한에서 미리 빼 둔 것(`influencer-yt-foreign.ts`).
+  const foreign = await runForeignYtSearch(env, { raw: settings[YT_FOREIGN_KEY], day: ytDay, hasYouTube, quotaHit, ytUsedTotal: ytSearchUsed, ytTotalCap, budget, alreadyContacted, save: (leads, category, sourceKeyword) => saveLeadsBatch(DB, POOL_ACCOUNT_ID, leads, { category, sourceKeyword }) })
+  if (foreign.searched) { ytSearchUsed += 1; saved += foreign.saved; diag.yt.found += foreign.found; diag.yt.saved += foreign.saved; if (foreign.quota) quotaHit = true; if (foreign.error && !diag.yt.error) diag.yt.error = `foreign ${foreign.error}` }
   // 🩹 서브리퀘스트 한도 자가 교정(collect-budget) — 부딪혔으면 낮추고, 다 쓰고도 무사하면 조금 올린다.
   const hitLimit = isSubrequestLimitError(diag.yt.error) || isSubrequestLimitError(diag.naver.error)
   const nextCap = nextSubreqCap(budgetTotal - budget.left, hitLimit, learnedCap, envBudget, pcap)
@@ -555,7 +560,7 @@ async function _runAutoCollect(env: Env, ctx: CollectCtx): Promise<AutoCollectSt
   stats.freshness = fresh.stamp
   // 🧮 커서·카운터·통계를 1 batch 로 저장(2026-07-29) — 낱개 4 write = 4 서브리퀘스트였다.
   await writeSettings(DB, [
-    [YT_USED_KEY, `${ytDay}:${ytSearchUsed}`],
+    [YT_USED_KEY, `${ytDay}:${ytSearchUsed}`], [YT_FOREIGN_KEY, foreign.state],
     [NAVER_USED_KEY, `${naverDay}:${naverCalls}`],
     // ⚖️ 축별 이월 지분 — 이 줄이 없으면 carry 가 영구 0 이라 불변식 ④(작은 축 영구 0 불가)가 조용히
     //   사라진다. 이 레포에서 실제로 난 사고다(#930 집중 축 커서: 읽기 키와 쓰기 키가 갈려 값이 영구 0).
