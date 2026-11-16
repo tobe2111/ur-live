@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { regionTitleCore } from '@/shared/seo/region-title'
+import { regionTitleCore } from '@/shared/constants/region-slugs'
 
 describe('지역 제목', () => {
   it("'맛집' 과 '할인' 이 들어 있고 이용권 명칭을 지킨다", () => {

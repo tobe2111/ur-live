@@ -16,9 +16,8 @@
 import { escapeAttr, withSiteName, CONSUMER_SITE_NAME, type ResolvedSurfaceSeo } from '../../shared/seo/consumer-surfaces'
 import { canonicalShopPath } from '../../shared/seo/shop-canonical'
 // 🗺️ 워커 전용 — 이 표를 크리티컬 패스(consumer-surfaces)에서 끌어오면 app-constants 청크가 첫 페인트로 딸려온다.
-import { normalizeSido, regionPath } from '../../shared/constants/region-slugs'
+import { normalizeSido, regionPath, regionTitleCore } from '../../shared/constants/region-slugs'
 import { ROBOTS_NOINDEX } from '../../shared/seo/robots-directives'
-import { regionTitleCore } from '../../shared/seo/region-title'
 import { isHubCanonical, NOIMAGEINDEX_META } from '../../shared/seo/image-hub'
 
 /** 시군구 형태 — '중구'·'파주시'·'양양군'. 접두부 1글자 허용(중구·동구·남구가 탈락하지 않게). */
