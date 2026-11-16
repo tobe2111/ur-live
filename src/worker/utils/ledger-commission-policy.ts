@@ -28,6 +28,24 @@ export async function ownerFundedFor(DB: D1Database, ownerAccount: string): Prom
 }
 
 /**
+ * 🏢 **유어딜 운영사(유어팀) 계정** — 2026-11-16 대표 *"내 유어딜 계정 있지? 그걸로 매장 영입할 때는
+ *   그렇게 해줘"* (= 운영사가 직접 데려온 매장은 중개 5% 가 아니라 직접 10%).
+ *   `users.id = 3` 은 대표 본인 계정이다(CLAUDE.md "대표 본인 계정"). ⚠️ 30("유어팀 (정지원)")과 헷갈리지 말 것.
+ *   결재 기록: `docs/decisions/2026-11-16-operator-recruited-stores-direct.md`.
+ */
+export const PLATFORM_OPERATOR_USER_IDS: readonly number[] = [3]
+
+/**
+ * 중개(brokered)로 찍혔어도 **중개사가 운영사 본인**이면 직접(direct)으로 본다 — 떼어 줄 제3자가 없다.
+ * 그 밖의 값은 그대로 돌려준다(미지정은 미지정 — fail-soft 방향 유지).
+ */
+export function operatorBrokeredAsDirect(channel: unknown, brokerUserId: unknown): unknown {
+  if (channel !== 'brokered') return channel
+  const uid = Number(brokerUserId)
+  return Number.isFinite(uid) && PLATFORM_OPERATOR_USER_IDS.includes(uid) ? 'direct' : channel
+}
+
+/**
  * 💸 채널별 플랫폼 요율 — **직접 입점 10% / 대행사 경유 5%**(대표 최종 2026-08-20, 08-27 재확인:
  *   *"10%는 매장이 직접 입점해 이용권을 팔 때. 대행사로 가입하면 5%"*).
  *
@@ -54,7 +72,7 @@ export async function channelPlatformRate(
     if (gate?.value !== 'true') return undefined
     const { getSellerMeta } = await import('./seller-meta')
     const meta = (await getSellerMeta(DB, [id])).get(id)
-    const channel = meta?.store_channel
+    const channel = operatorBrokeredAsDirect(meta?.store_channel, meta?.broker_user_id)
     if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로
     const key = channel === 'direct' ? 'platform_fee_pct_direct' : 'platform_fee_pct_brokered'
     const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
