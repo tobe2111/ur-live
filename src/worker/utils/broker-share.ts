@@ -31,6 +31,7 @@ import { getSellerMeta, setSellerMeta } from './seller-meta'
 import { canOperateStore } from './seller-operators'
 import { DEAL_PCT_MAX } from '../../features/group-buy/api/commission-rates'
 import { creditAgencyShare } from './agency-share-payout'
+import { PLATFORM_OPERATOR_USER_IDS } from './ledger-commission-policy'
 
 export const BROKER_META = {
   userId: 'broker_user_id',
@@ -185,6 +186,7 @@ export async function creditBrokerShare(DB: D1Database, p: CreditBrokerShareInpu
     if (!Number.isFinite(p.orderId) || p.orderId <= 0) return { credited: 0, brokerUserId: null }
     const terms = await readBrokerTerms(DB, p.sellerId)
     if (!terms.brokerUserId || terms.sharePct <= 0) return { credited: 0, brokerUserId: null }
+    if (PLATFORM_OPERATOR_USER_IDS.includes(terms.brokerUserId)) return { credited: 0, brokerUserId: null } // 🏢 운영사 영입 매장 = 직접 10% — 중개사 몫 없음(2026-11-16 대표)
     // 🪑 2026-10-10: **지금 그 매장 좌석이 있는** 중개사에게만 적립한다. 종전엔 `broker_user_id` 만 보고
     //   적립해서, 사장님이 중개사 좌석을 회수(`revokeOperator` — revoked_at)한 뒤에도 매 판매마다 몫이 계속
     //   쌓였다(매장 몫에서 나가는 돈이다). 좌석 판정은 토큰 발급과 같은 SSOT(`canOperateStore`).
