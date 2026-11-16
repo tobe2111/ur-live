@@ -38,26 +38,6 @@ export const PLATFORM_OPERATOR_USER_IDS: readonly number[] = [3]
  *  *"리스터코퍼레이션 내 회사야. 그리고 이제 유어팀으로 회사명도 바꼈어"*). 이 계정이 맡은 매장도 직접 10% 이고 에이전시 몫은 없다. */
 export const PLATFORM_OPERATOR_AGENCY_IDS: readonly number[] = [1]
 
-/** 매장이 운영사 에이전시에 active 로 맡겨져 있나 — 중개(brokered) 매장 판정 때만 부른다. 조회 실패는 false(종전 그대로). */
-export async function isOperatorAgencyStore(DB: D1Database, sellerId: number): Promise<boolean> {
-  if (PLATFORM_OPERATOR_AGENCY_IDS.length === 0) return false
-  const row = await DB.prepare(
-    `SELECT 1 AS ok FROM agency_store_links WHERE seller_id = ? AND status = 'active'
-        AND agency_id IN (SELECT value FROM json_each(?)) LIMIT 1`,
-  ).bind(sellerId, JSON.stringify(PLATFORM_OPERATOR_AGENCY_IDS)).first<{ ok: number }>().catch(() => null)
-  return !!row
-}
-
-/**
- * 중개(brokered)로 찍혔어도 **중개사가 운영사 본인**이면 직접(direct)으로 본다 — 떼어 줄 제3자가 없다.
- * 그 밖의 값은 그대로 돌려준다(미지정은 미지정 — fail-soft 방향 유지).
- */
-export function operatorBrokeredAsDirect(channel: unknown, brokerUserId: unknown): unknown {
-  if (channel !== 'brokered') return channel
-  const uid = Number(brokerUserId)
-  return Number.isFinite(uid) && PLATFORM_OPERATOR_USER_IDS.includes(uid) ? 'direct' : channel
-}
-
 /**
  * 💸 채널별 플랫폼 요율 — **직접 입점 10% / 대행사 경유 5%**(대표 최종 2026-08-20, 08-27 재확인:
  *   *"10%는 매장이 직접 입점해 이용권을 팔 때. 대행사로 가입하면 5%"*).
@@ -85,8 +65,10 @@ export async function channelPlatformRate(
     if (gate?.value !== 'true') return undefined
     const { getSellerMeta } = await import('./seller-meta')
     const meta = (await getSellerMeta(DB, [id])).get(id)
-    let channel = operatorBrokeredAsDirect(meta?.store_channel, meta?.broker_user_id)
-    if (channel === 'brokered' && await isOperatorAgencyStore(DB, id)) channel = 'direct' // 🏢 운영사 에이전시가 맡은 매장
+    // 🏢 2026-11-16 대표 *"내가 하더라도 5%로 하고 싶은 곳은 할 수 있게끔"* — 저장값이 정본이다.
+    //   운영사 매장은 **등록 때 기본값을 direct 로 저장**하고(agency-store-register), 5% 로 할 곳은 어드민·등록 화면에서
+    //   brokered 로 고른다. 실행 시점에 저장값을 덮어쓰면 그 선택이 무시된다(그래서 덮어쓰기를 걷었다).
+    const channel = meta?.store_channel
     if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로
     const key = channel === 'direct' ? 'platform_fee_pct_direct' : 'platform_fee_pct_brokered'
     const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
