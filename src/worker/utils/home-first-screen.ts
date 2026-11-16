@@ -62,6 +62,7 @@ import { formatNumber } from '../../utils/format'
 import { creatorCountLabel } from '../../shared/home-creator-count'
 import { STRIP_CLS, stripBannersOf, stripBannerImageUrl, bannersOfSlot, type SeededStripBanner } from '../../shared/home-strip-banners'
 import { resolveSectionMoreHref, isDeadEndHref } from '../../components/home/section-more-href'
+import { homeFeedFirstScreen } from './home-feed-first-screen'
 import { resolveBannerLink } from '../../components/home/banner-link'
 import { HOME_TOP_LOGO, HOME_TOP_SEARCH, HOME_TOP_BELL, HOME_TOP_BAG, HOME_TOP_CHEVRON, HOME_TOP_LOCATE } from './home-top-markup'
 import { homeLocLabelFromCookieHeader, HOME_LOC_LABEL_DEFAULT } from '../../shared/home-loc-label-cookie'
@@ -344,10 +345,12 @@ export function homeSecondSectionHtml(sec: { title?: string | null; subtitle?: s
  * @param _nearLabel 📍 2026-10-13 위치 라벨(쿠키 `ur_loc_n`). 2026-11-02 첫 섹션 제목 줄을 걷으면서 안 쓴다
  *   (호출부 `worker/index.ts` 는 잠금 파일이라 시그니처를 그대로 둔다).
  */
-export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: string, _nearLabel = '', cookieHeader: string | null = null, bannersPayload: string | null = null): string {
+export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: string, _nearLabel = '', cookieHeader: string | null = null, bannersPayload: string | null = null, shortsSeedJson: string | null = null, mainSeedJson: string | null = null): string {
   type Sec = { title?: string | null; subtitle?: string | null; near?: boolean; more_href?: string | null; products?: SeedProduct[] }
   let sec: Sec | undefined
   let sec2: Sec | undefined
+  let visibleCount = 0
+  const sectionIds = new Set<number>()
   let strip: SeededStripBanner[] = []
   try {
     const parsed = JSON.parse(sectionsSeedJson) as SectionsSeed
@@ -357,6 +360,9 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
       .filter(s => Array.isArray(s?.products) && s.products.length > 0) as Sec[]
     sec = visible[0]
     sec2 = visible[1]
+    visibleCount = visible.length
+    // 목록이 뒤로 미루는 id = 시드의 **모든** 섹션 상품(`seededSectionProductIds` 와 같은 규칙 — 거르기 전 값)
+    for (const x of (parsed?.data ?? [])) for (const p of (Array.isArray(x?.products) ? x.products : [])) if (typeof p?.id === 'number') sectionIds.add(p.id)
     strip = stripBannersOf(parsed)
   } catch {
     return ''
@@ -365,6 +371,9 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
   if (!sec || products.length === 0 || !sec.title) return ''
 
   const cards = products.map((p, i) => cardHtml(p, i < HOME_CARD_ABOVE_FOLD, undefined, true)).join('')
+  const second = homeSecondSectionHtml(sec2, bannersPayload)
+  // 🏠 2026-11-16 그 아래(유어쇼츠 줄 + 목록 첫 6장) — 둘째 섹션을 그렸을 때만 이어 그린다(`home-feed-first-screen.ts`).
+  const below = second ? homeFeedFirstScreen({ visibleSectionCount: visibleCount, sectionIds, mainSeedJson, shortsSeedJson, bannersPayload, cookieHeader, cardHtml: cardHtml as never }) : null
   const body =
     `<div class="${HOME_FS_CLASS.root}">` +
     // 🩸 2026-10-13 — 크롤러가 받는 홈 문서에 제목 요소가 h3 하나뿐이었다. `sr-only` 라 박스가
@@ -375,7 +384,7 @@ export function buildHomeFirstScreen(sectionsSeedJson: string, loaderHtml: strin
     //    화면(`MobileHomePage` → `HomeSections bareFirst`)과 같은 순서여야 마운트 때 안 튄다.
     `<div class="mt-3"><section class="${HOME_FS_CLASS.panel} ur-panel-flush">` +
     `<div class="${HOME_FS_CLASS.grid}">${cards}</div>` +
-    `</section>${stripBannerHtml(strip)}${homeSecondSectionHtml(sec2, bannersPayload)}</div></div>`
+    `</section>${stripBannerHtml(strip)}${second}${below ? below.shorts : ''}</div>${below ? below.feed : ''}</div>`
 
   // 🧷 노드 id 는 `/pass/`·`/vouchers/` 와 같다 — `lib/boot-first-screen.ts` 가 경로를 안 가리고
   //   이 노드를 들고 있다가 Suspense 폴백 안에 **같은 노드로** 도로 붙인다(재파싱·재다운로드 0).
