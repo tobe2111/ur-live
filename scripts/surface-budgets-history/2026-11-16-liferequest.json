@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-16",
+  "reason": "2026-11-16 지역 제목 함수 regionTitleCore(검색어 '맛집·할인', region-slugs ~0.1KB)가 이전 머지 누적분(app-utils·gbDetail 청크) 위에 얹혀 lifeRequest 허용(1.5)에 닿음. 새 파일로 떼면 홈 청크에 묶여 +1.7KB 라 region-slugs 에 둠.",
+  "surfaces": [
+    "lifeRequest"
+  ],
+  "changes": [
+    "lifeRequest: 205.9 → 207.4 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.6, lz-gbDetailL-productL.js +0.5"
+  ]
+}
