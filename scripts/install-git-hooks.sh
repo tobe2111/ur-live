@@ -21,7 +21,7 @@ _STAGED_FOR_QUIET="$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/nul
 quiet_warn() {
   local _out
   _out="$("$@" 2>&1)" || true
-  printf '%s\n' "$_out" | node scripts/hook-quiet-filter.mjs "$_STAGED_FOR_QUIET" 2>/dev/null || printf '%s\n' "$_out"
+  printf '%s\n' "$_out" | node scripts/hook-quiet-filter.mjs "$_STAGED_FOR_QUIET" --no-note 2>/dev/null || printf '%s\n' "$_out"
   return 0
 }
 # 🤫 같은 날 — 진행 표시(`==> Pre-commit: …` 55줄)도 평소엔 숨긴다. 막는 검사는 실패하면 **자기 이유를 직접** 찍으므로
@@ -583,6 +583,7 @@ if [ -n "$worker_changed" ]; then
   }
 fi
 
+if [ "${HOOK_VERBOSE:-}" != "1" ]; then echo "   (경고만 하는 검사는 이번 커밋 파일에 걸린 줄만 보였다 — 전부 보기: HOOK_VERBOSE=1 git commit …)"; fi
 echo "✅ Pre-commit checks passed"
 EOF
 

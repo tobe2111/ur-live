@@ -68,3 +68,12 @@ describe('pre-commit 배선', () => {
     expect(body).toContain('HOOK_VERBOSE=1 git commit')
   })
 })
+
+describe('숨김 안내는 한 번만', () => {
+  it('훅은 검사마다 안내를 붙이지 않고(--no-note) 끝에 한 번 알린다', () => {
+    const s = readFileSync('scripts/install-git-hooks.sh', 'utf8')
+    expect(s).toContain('node scripts/hook-quiet-filter.mjs "$_STAGED_FOR_QUIET" --no-note')
+    expect(s).toContain('경고만 하는 검사는 이번 커밋 파일에 걸린 줄만 보였다')
+    expect(quietFilter(OUT, [], { note: false })).not.toContain(HIDDEN_NOTE)
+  })
+})

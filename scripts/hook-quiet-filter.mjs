@@ -31,10 +31,10 @@ export const HIDDEN_NOTE = '   (이번 커밋 파일과 무관한 기존 경고�
  * 순수 — 경고 검사 출력 줄이기.
  * @param {string} text 검사 출력
  * @param {string[]} staged 이번 커밋에 올린 파일
- * @param {{ verbose?: boolean }} [o]
+ * @param {{ verbose?: boolean, note?: boolean }} [o] `note:false` — 훅이 끝에 한 번만 알린다(검사마다 반복하지 않게)
  * @returns {string}
  */
-export function quietFilter(text, staged, { verbose = false } = {}) {
+export function quietFilter(text, staged, { verbose = false, note = true } = {}) {
   if (verbose) return text
   const set = new Set(staged.filter(Boolean))
   const lines = text.split('\n')
@@ -63,14 +63,14 @@ export function quietFilter(text, staged, { verbose = false } = {}) {
   if (hitLines.length) return [...otherLines, ...summary, ...hitLines].join('\n')
   if (!summary.length) return ''
   const out = summary.slice(0, MAX_SUMMARY)
-  if (dropped || summary.length > MAX_SUMMARY) out.push(HIDDEN_NOTE)
+  if (note && (dropped || summary.length > MAX_SUMMARY)) out.push(HIDDEN_NOTE)
   return out.join('\n')
 }
 
 function main() {
   const staged = (process.argv[2] || '').split('\n')
   const text = fs.readFileSync(0, 'utf8')
-  const out = quietFilter(text, staged, { verbose: process.env.HOOK_VERBOSE === '1' })
+  const out = quietFilter(text, staged, { verbose: process.env.HOOK_VERBOSE === '1', note: !process.argv.includes('--no-note') })
   if (out) process.stdout.write(out.endsWith('\n') ? out : `${out}\n`)
 }
 
