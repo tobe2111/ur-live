@@ -310,3 +310,8 @@
   #2347 뒤엔 2건뿐이고 **둘 다 vis=hidden**(숨은 탭을 브라우저가 멈춘 것). 11-11 Pixel 7 Chrome/153.0.8010.12 는 **이 환경의 측정 브라우저**다(노이즈).
 - 처방: `index.html` 워치독 — 숨은 동안은 세지 않고, 보이면 그때부터 12초(`armWatchdog`). 시험 `admin-errors-diagnose.test.ts`(가짜 document 로 실제 실행).
 - PC 홈 첫 섹션 아래(유어쇼츠 + 둘째 섹션) — 기록 `docs/locks/loading/2026-11-16-pc-home-below-first.md` · 홈 카테고리 탭 전환 0.44~0.73s · INP ≤104ms(확인만).
+
+## §90 (2026-11-16) 에러·장애 점검 — 알림 발송
+- 🔴 **cron 워커(Workers `ur-live`)에 `NCP_SENS_MAIL_SERVICE_ID` 가 없다** → cron 이 보내는 이메일·재시도 전부 `skipped: env not configured`(실패 100건). Pages 에는 있다. **대표 조치**(대시보드에서 추가) — 세션은 플랫폼 쓰기 안 함.
+- 배달 불가 자리표시 주소(`kakao-N@kakao.agency.urdeal.invalid`)로 보내려다 실패 큐에 쌓이던 것 → `sendSystemEmail` 이 `.invalid/.test/.example/.localhost` 를 보내지 않고 `undeliverable` 로 답함 + 재시도 cron 이 그 행을 닫음. 가드 `undeliverable-email-2026-11-16.test.ts` + 주입 2.
+- 알림톡: 30일간 발송 0 — 주문 0건·마지막 이용권 발급 10-12 라 **보낼 일이 없었던 것**으로 보인다(고장 판정 아님).

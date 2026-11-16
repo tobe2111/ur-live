@@ -81,6 +81,13 @@ export async function retryEmailFailures(env: Env) {
             SET resolved = 1, retry_count = retry_count + 1, updated_at = datetime('now')
             WHERE id = ?
           `).bind(row.id).run()
+        } else if (result.undeliverable) {
+          // 📭 2026-11-16 — 배달될 수 없는 자리표시 주소(.invalid 등). 재시도는 영원히 실패하므로 닫는다.
+          await env.DB.prepare(`
+            UPDATE email_failures
+            SET resolved = 1, error = 'undeliverable: reserved domain', updated_at = datetime('now')
+            WHERE id = ?
+          `).bind(row.id).run()
         } else if (result.skipped) {
           // 환경변수 미설정 — 재시도 무의미, resolved 처리하지 않고 backoff 만 늘림
           await env.DB.prepare(`
