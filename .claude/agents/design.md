@@ -11,7 +11,7 @@ model: inherit
 
 ## 먼저 읽는다
 1. `docs/design/ai-team-operating-model.md` (§2, §4)
-2. `CLAUDE.md` "🎫 디자인 시스템 확정" 절 + `docs/design/ticket-completion-reference-2026-09.md` (토큰·표면 규칙·아이콘 컨셉 SSOT)
+2. `docs/design/design-system-rules.md`(CLAUDE.md "🎫 디자인 시스템 확정" 절의 전문 — 2026-11-16 옮김) + `docs/design/ticket-completion-reference-2026-09.md` (토큰·표면 규칙·아이콘 컨셉 SSOT)
 3. `docs/design/anti-slop-direction-2026-09.md` · `.claude/skills/taste-skill/SKILL.md`
 4. `docs/design/index/` 의 줄 파일(목차: `node scripts/generate-design-index.mjs`) — **대표 확정 대기 시안**은 착수 금지 항목이다
 

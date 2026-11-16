@@ -123,9 +123,20 @@ const DIRECTED_KEYWORDS = [
 /** BUDGETS 가 이미 자기 상한으로 재는 파일 — 여기서 또 세면 이중 계산이다. */
 const BUDGETED = new Set(['CLAUDE.md', 'docs/CURRENT_WORK.md', 'docs/handoff/INDEX.local.md'])
 
+/**
+ * 📦 2026-11-16 — CLAUDE.md 의 절 **전문**을 옮겨 둔 문서(머리에 `MOVED_FROM_CLAUDE` 표식)는 CLAUDE.md 의 일부로 친다.
+ *   그 안에서 가리키던 문서들은 옮기기 전에 이 검사가 재던 것들이다 — 옮겼다고 감시에서 빠지면
+ *   16만 바이트 인계 같은 큰 문서가 경고 없이 자랄 수 있다(대표 승인 "둘 다 옮긴다" 때 실측: 6건이 빠질 뻔했다).
+ *   한 단계만 따라간다(옮긴 문서가 가리키는 문서까지 — 그 너머는 원래도 재지 않았다).
+ */
+const MOVED_FROM_CLAUDE = 'CLAUDE.md 에서 옮긴 전문'
+
 function directedDocs() {
-  const src = read('CLAUDE.md')
-  if (src == null) return []
+  const claude = read('CLAUDE.md')
+  if (claude == null) return []
+  const moved = [...claude.matchAll(/docs\/[A-Za-z0-9_\-./]*\.md/g)].map((m) => m[0])
+    .filter((p, i, a) => a.indexOf(p) === i && (read(p) || '').split('\n').slice(0, 4).some((l) => l.includes(MOVED_FROM_CLAUDE)))
+  const src = [claude, ...moved.map((p) => read(p) || '')].join('\n')
   const lines = src.split('\n')
   const found = new Map() // path -> tierA(boolean)
   for (let i = 0; i < lines.length; i++) {
