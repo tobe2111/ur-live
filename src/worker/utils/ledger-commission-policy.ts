@@ -41,10 +41,10 @@ export const PLATFORM_OPERATOR_AGENCY_IDS: readonly number[] = [1]
 /** 매장이 운영사 에이전시에 active 로 맡겨져 있나 — 중개(brokered) 매장 판정 때만 부른다. 조회 실패는 false(종전 그대로). */
 export async function isOperatorAgencyStore(DB: D1Database, sellerId: number): Promise<boolean> {
   if (PLATFORM_OPERATOR_AGENCY_IDS.length === 0) return false
-  const ph = PLATFORM_OPERATOR_AGENCY_IDS.map(() => '?').join(',')
   const row = await DB.prepare(
-    `SELECT 1 AS ok FROM agency_store_links WHERE seller_id = ? AND status = 'active' AND agency_id IN (${ph}) LIMIT 1`,
-  ).bind(sellerId, ...PLATFORM_OPERATOR_AGENCY_IDS).first<{ ok: number }>().catch(() => null)
+    `SELECT 1 AS ok FROM agency_store_links WHERE seller_id = ? AND status = 'active'
+        AND agency_id IN (SELECT value FROM json_each(?)) LIMIT 1`,
+  ).bind(sellerId, JSON.stringify(PLATFORM_OPERATOR_AGENCY_IDS)).first<{ ok: number }>().catch(() => null)
   return !!row
 }
 

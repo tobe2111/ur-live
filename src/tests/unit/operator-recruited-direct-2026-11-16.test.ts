@@ -19,7 +19,7 @@ function fakeDB(meta: Record<string, string>, opAgencyLinked = false) {
       const stmt = {
         bind(...a: unknown[]) { args = a; return stmt },
         async first() {
-          if (sql.includes('agency_store_links')) return opAgencyLinked && args.includes(1) ? { ok: 1 } : null
+          if (sql.includes('agency_store_links')) return opAgencyLinked && String(args[1]).includes('1') ? { ok: 1 } : null
           if (sql.includes("'fee_channel_rates_enabled'")) return { value: settings.fee_channel_rates_enabled }
           if (sql.includes('platform_settings')) return { value: settings[String(args[0])] }
           return null
