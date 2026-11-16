@@ -5,6 +5,7 @@ import { vetPost } from './vet.mjs';
 import { pickLeastRecent, rotateImages, pickHook, recentOpeners, slotFor, HOOKS, FORMATS } from './variety.mjs';
 import { thompsonPick, lessonsBlock } from './learn.mjs';
 import { CTA_VARIANTS, ctaFor } from './cta.mjs';
+import { seasonBlock } from './season.mjs';
 import { pickBest } from './judge.mjs';
 import { ROOT, DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, igStory, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
 import { myRecentPosts, postedOn } from './live.mjs';
@@ -123,7 +124,7 @@ function systemPrompt() { return `너는 로컬 맛집·뷰티 이용권 서비�
 ${trackGuide()}
 
 [오늘의 시리즈] ${series.name} — ${series.guide}
-${fieldNote ? `\n[현장 메모 — 대표가 보낸 실제 일. 이 내용만 쓴다]\n${fieldNote.text}\n` : ''}${encore ? `\n[반응 좋았던 글 — 메시지만 가져오고 문장은 전부 새로 쓴다]\n${encore.text}\n` : ''}
+${fieldNote ? `\n[현장 메모 — 대표가 보낸 실제 일. 이 내용만 쓴다]\n${fieldNote.text}\n` : ''}${encore ? `\n[반응 좋았던 글 — 메시지만 가져오고 문장은 전부 새로 쓴다]\n${encore.text}\n` : ''}${seasonBlock(k, track)}
 ${BRAND_WRITING}
 ${lessonsBlock(learnState?.lessons || [])}
 ${referenceStyleBlock()}
@@ -343,7 +344,7 @@ async function main() {
     log(`스레드 말투 참고 예시 ${threadsExamples.length}개`);
     log(`스레드 형식: ${tformat.id} · 끝 문장: ${ctaKey || "없음"} → ${target.url}`);
     const recentTh = recentTexts('threads');
-    const { body, problems } = await writeVetted(threadsPrompt({ info, topic: isPromo ? '' : topic, format: tformat, len, examplesBlock: styleBlock(threadsExamples) }), 600, 'threads', info, 'Threads 글', 'threads',
+    const { body, problems } = await writeVetted(threadsPrompt({ info, topic: isPromo ? '' : topic, format: tformat, len, examplesBlock: seasonBlock(k, track) + styleBlock(threadsExamples) }), 600, 'threads', info, 'Threads 글', 'threads',
       (d) => repeatProblems(d, recentTh, isPromo ? '' : topic));
     if (problems.length) {
       qualityError = qualityError || new Error(`Threads 검수 실패: ${problems.join(' / ')}`);

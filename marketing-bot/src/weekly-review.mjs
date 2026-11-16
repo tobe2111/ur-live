@@ -4,6 +4,7 @@ import { TRACKS, DEFAULT_WEIGHTS, DEFAULT_CAMPAIGNS, categoryPerformance, adjust
 import { myRecentPosts, utmFromText } from './live.mjs';
 import { SERIES, seriesWeights, encoreCandidates } from './series.mjs';
 import { allSlots } from './variety.mjs';
+import { clickLines } from './click-report.mjs';
 import { rewards, withClicks, fitArms, armsReport, LESSON_SYSTEM, parseLessons, lessonInput, learnLog } from './learn.mjs';
 
 const mixCfg = readJson('data/content-mix.json', {});
@@ -148,7 +149,7 @@ async function main() {
   const li = lessonInput(rows, rw);
   if (li) { try { const got = parseLessons(await claude(LESSON_SYSTEM, li, 400)); if (got.length) lessons = got; } catch (e) { log(`교훈 뽑기 실패(지난 교훈 유지): ${e.message}`); } }
   const learnLines = ['### 자동 학습 (선택지별 성과, 1 = 평균 — 다음 주 고르기에 반영)', armsReport(learnArms), '', '**이번 주 글쓰기 교훈** (다음 주 글에 들어감)', ...(lessons.length ? lessons.map((l) => `- ${l}`) : ['- 아직 비교할 글이 부족합니다.'])].join('\n');
-  const body = `최근 4주 게시물 ${rows.length}개 기준 (점수 = 노출 + 10×반응)\n\n${lines.join('\n')}\n\n### 상위 게시물\n${top}\n\n${recruit}\n\n${mixLines}\n\n${seriesLines}\n\n${encoreLines}\n\n${learnLines}\n\n### 다음 주 제안\n${advice}\n\n클릭/구매는 UTM(utm_content) 기준으로 어드민에서 함께 확인하세요.`;
+  const body = `최근 4주 게시물 ${rows.length}개 기준 (점수 = 노출 + 10×반응)\n\n${lines.join('\n')}\n\n### 상위 게시물\n${top}\n\n${recruit}\n\n${clickLines(clicks)}\n\n${mixLines}\n\n${seriesLines}\n\n${encoreLines}\n\n${learnLines}\n\n### 다음 주 제안\n${advice}\n\n클릭/구매는 UTM(utm_content) 기준으로 어드민에서 함께 확인하세요.`;
   // ⚠️ 최적 시간대·비율 조정을 저장할 곳이 아직 없다 — main 직접 push 는 룰셋이 막는다(live.mjs 머리말).
   //    이번 주 계산값은 리포트 이슈에만 남고 다음 게시에는 반영되지 않는다(후속: 상태 저장 경로).
   // marketing-data 브랜치에 저장된다(워크플로가 data/ 를 그 브랜치로 push). 게시물 자체는 실물 조회로 읽는다.

@@ -329,7 +329,7 @@ test('스레드 참고: 대표가 고른 글 우선, 매일 다른 조합, 중�
 });
 test('스레드 참고 배선: 스레드 프롬프트에 붙고, 베끼면 검수(유사도)에 걸린다', () => {
   const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
-  assert.match(src, /examplesBlock: styleBlock\(threadsExamples\)/); // 2026-11-16 스레드 2.0: 프롬프트는 threads-angle.mjs 가 만든다
+  assert.match(src, /examplesBlock: seasonBlock\(k, track\) \+ styleBlock\(threadsExamples\)/); // 2026-11-16 스레드 2.0: 프롬프트는 threads-angle.mjs 가 만든다
   assert.match(src, /platform === 'threads' \? threadsExamples : \[\]/);
   const wr = fs.readFileSync(new URL('../src/weekly-review.mjs', import.meta.url), 'utf8');
   assert.match(wr, /threads_top: threadsTop/);
