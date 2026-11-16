@@ -9,6 +9,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { shortUA, parseBootStuck, bootStuckNote, looksAutomated } from '@/pages/admin-errors/diagnose'
+import { readFileSync } from 'node:fs'
 
 describe('shortUA — 부팅 실패를 분류하려면 인앱웹뷰가 먼저 갈려야 한다', () => {
   it('인앱 웹뷰를 브라우저로 오분류하지 않는다', () => {
@@ -96,6 +97,30 @@ describe('bootStuckNote — 수수께끼를 데이터로 좁힌다', () => {
     expect(bootStuckNote({ t: 13010, nav: 'navigate', entryRan: 'n', chunkSeen: 'false' })).toContain('엔트리 미실행')
     expect(bootStuckNote({ t: 14000, nav: 'navigate', entryRan: 'y' })).toContain('마운트')
     expect(bootStuckNote({ t: 14000, nav: 'navigate', entryRan: 'n', chunkSeen: 'true' })).toContain('청크')
+  })
+})
+
+describe('2026-11-16 숨은 탭은 세지 않는다 — 다시 보이면 그때부터 12초 (index.html)', () => {
+  // 7일 실사용자 기록: shell-sw 수리 뒤 boot-stuck 2건이 모두 vis=hidden(브라우저가 숨은 탭을 멈춘 것)이었다.
+  const html = readFileSync('index.html', 'utf8')
+  it('워치독 시작은 armWatchdog 한 곳 — hidden 이면 visibilitychange 로 미룬다', () => {
+    expect(html).toContain("if (document.visibilityState === 'hidden') {")
+    expect(html).toContain("document.addEventListener('visibilitychange', function onVis() {")
+    expect(html).toContain("document.addEventListener('prerenderingchange', armWatchdog, { once: true });")
+    expect(html).not.toMatch(/\} else \{\n\s*setTimeout\(bootWatchdog, 12000\);\n\s*\}/)
+  })
+  it('실제로 돈다 — 숨은 동안은 안 부르고, 보이면 12초 뒤 부른다(가짜 document)', () => {
+    const m = html.match(/function armWatchdog\(\) \{[\s\S]*?\n        \}\n/)
+    expect(m).not.toBeNull()
+    const calls: number[] = []
+    const listeners: Array<() => void> = []
+    const doc = { visibilityState: 'hidden', addEventListener: (_: string, f: () => void) => listeners.push(f), removeEventListener: () => {} }
+    const timers: Array<[() => void, number]> = []
+    const fn = new Function('document', 'setTimeout', 'bootWatchdog', `${m![0]}; armWatchdog();`)
+    fn(doc, (f: () => void, ms: number) => timers.push([f, ms]), () => calls.push(1))
+    expect(timers.length).toBe(0) // 숨은 동안 시계를 안 건다
+    doc.visibilityState = 'visible'; listeners.forEach((f) => f())
+    expect(timers.map((t) => t[1])).toEqual([12000])
   })
 })
 
