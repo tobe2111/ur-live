@@ -54,6 +54,6 @@ describe('③④⑤⑥ 모양·순서·배선', () => {
     expect(html.indexOf('이벤트 배너')).toBeLessThan(html.indexOf('지금 인기 이용권'))
   })
   it('워커가 배너 시드를 다섯째 인자로 넘긴다', () => {
-    expect(readFileSync('src/worker/index.ts', 'utf8')).toContain("c.req.header('cookie') ?? null, homeBannersPayload); if (homeFirst)")
+    expect(readFileSync('src/worker/index.ts', 'utf8')).toContain("c.req.header('cookie') ?? null, homeBannersPayload, homeShortsPayload, ssrPayload); if (homeFirst)")
   })
 })
