@@ -414,5 +414,20 @@
     "track": "merchant",
     "series": "udal-qna",
     "date_kst": "2026-11-16"
+  },
+  {
+    "id": "18047478836832413",
+    "platform": "threads",
+    "track": "merchant",
+    "topic": "할인을 걸 메뉴와 걸면 안 되는 메뉴 고르는 법 (첫 방문 메뉴 vs 마진 좋은 세트)",
+    "hook": "udal",
+    "series": "owner-note",
+    "date_kst": "2026-11-16",
+    "len": "2",
+    "slot": "21:30",
+    "media": "image",
+    "topic_tag": "소상공인",
+    "tformat": "scene",
+    "cta": "merchant:ask"
   }
 ]

@@ -886,5 +886,27 @@
     "series": "udal-qna",
     "posted_at": "2026-11-16T03:49:11.242Z",
     "date_kst": "2026-11-16"
+  },
+  {
+    "platform": "threads",
+    "id": "18047478836832413",
+    "reply_id": "18043783238845074",
+    "topic_tag": "소상공인",
+    "hook": "udal",
+    "len": "2",
+    "tformat": "scene",
+    "cta": "merchant:ask",
+    "topic": "할인을 걸 메뉴와 걸면 안 되는 메뉴 고르는 법 (첫 방문 메뉴 vs 마진 좋은 세트)",
+    "media": "image",
+    "content_id": "th",
+    "image": "https://raw.githubusercontent.com/tobe2111/ur-live/marketing-data/marketing-bot/data/cards/2026-11-16-merchant/slide-1.jpg",
+    "track": "merchant",
+    "series": "owner-note",
+    "promo": false,
+    "posted_at": "2026-11-16T13:45:22.449Z",
+    "date_kst": "2026-11-16",
+    "slot_kst": "21:30",
+    "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261116",
+    "text": "손님이 \"뭐가 제일 많이 나가요?\" 물으면 대표 메뉴부터 말하게 되죠.\n할인은 거기에 걸지 마세요. 처음 오는 분이 부담 없이 시켜볼 단품에 거세요. 마진 좋은 세트는 그대로 두고요."
   }
 ]
