@@ -22,6 +22,22 @@ export function rewards(rows = []) {
   }));
 }
 
+// 2026-11-16: 모집 글의 목적은 반응이 아니라 링크를 누르는 것(→ 입점·신청). Threads 링크 클릭을 점수에 크게 얹는다.
+// clicks = { 링크URL: 누적클릭 } (Threads threads_insights clicks). 같은 utm_content 의 링크면 그 글의 클릭으로 본다.
+export const CLICK_WEIGHT = 30;
+export function withClicks(rows = [], clicks = null, weight = CLICK_WEIGHT) {
+  if (!clicks) return rows;
+  return rows.map((p) => {
+    if (p.platform !== 'threads' || !p.link) return p;
+    let content = null;
+    try { content = new URL(p.link).searchParams.get('utm_content'); } catch { /* 링크가 아니면 클릭 없음 */ }
+    let n = 0;
+    for (const [u, v] of Object.entries(clicks)) if (u === p.link || (content && u.includes(`utm_content=${content}`))) n += Number(v) || 0;
+    if (!n) return p;
+    return { ...p, metrics: { ...p.metrics, clicks: n, score: (p.metrics?.score || 0) + weight * n } };
+  });
+}
+
 // 기록(variety.json 항목) + 보상 → { dim: { arm: { n, mean } } }
 export function fitArms(log = [], reward = new Map(), dims = DIMS) {
   const acc = {};

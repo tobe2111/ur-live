@@ -31,3 +31,20 @@ test('배선: 고른 끝 문장이 링크 대상이 되고, 기록·학습에 �
   assert.equal((src.match(/cta: ctaKey \|\| undefined/g) || []).length, 2, '스레드·인스타 기록 둘 다');
   assert.match(fs.readFileSync(new URL('../src/learn.mjs', import.meta.url), 'utf8'), /'cta'\]/);
 });
+
+import { withClicks, rewards } from '../src/learn.mjs';
+test('학습 점수: 스레드 링크 클릭을 크게 얹는다(같은 utm_content)', () => {
+  const rows = [
+    { id: 'a', platform: 'threads', link: 'https://urdeal.kr/store/new?utm_content=th-20261116', metrics: { score: 100 } },
+    { id: 'b', platform: 'threads', link: 'https://urdeal.kr/partners?utm_content=th-20261115', metrics: { score: 100 } },
+    { id: 'c', platform: 'instagram', metrics: { score: 100 } },
+  ];
+  const out = withClicks(rows, { 'https://urdeal.kr/store/new?utm_source=threads&utm_content=th-20261116': 2 });
+  assert.equal(out[0].metrics.score, 160);
+  assert.equal(out[1].metrics.score, 100);
+  assert.equal(withClicks(rows, null), rows, '클릭을 못 읽으면 그대로');
+  const rw = rewards(out);
+  assert.ok(rw.get('a') > rw.get('b'));
+  const src = fs.readFileSync(new URL('../src/weekly-review.mjs', import.meta.url), 'utf8');
+  assert.match(src, /rewards\(withClicks\(rows, clicks\)\)/);
+});
