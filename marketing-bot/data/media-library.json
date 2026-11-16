@@ -1,6 +1,90 @@
 {
   "items": [
     {
+      "id": "pixabay-img-8388244",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 8388244,
+      "page_url": "https://pixabay.com/photos/coffee-cappuccino-barista-caffeine-8388244/",
+      "author": "Max_Dormann",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 2495,
+      "h": 3743,
+      "tags": "coffee, cappuccino, barista, caffeine, milk, latte art, latte, drink, espresso, cup, oat milk, breakfast, coffee cup, coffee art",
+      "preview": "https://pixabay.com/get/ge4a0c55a18b0ace4d24fc08c404ab1ca8e37b1794cfe27fb53e1f698649fc825fb9ce647ab6e3bf7bc61bc6fb0d1f0968ee5f69ac765e98c2b889fadfed7af94_640.jpg",
+      "query": "cafe owner barista",
+      "tracks": [
+        "merchant"
+      ],
+      "score": 8,
+      "note": "라떼아트를 붓는 순간이 선명하고 따뜻한 자연광 톤이라 동네 카페 느낌이 잘 살고, 얼굴 노출·로고·워터마크 없이 손만 보여 안전하며 어두운 배경 덕에 글자 얹을 여백도 충분함.",
+      "added_at": "2026-11-16T20:39:11.175Z",
+      "used": []
+    },
+    {
+      "id": "pixabay-img-4334647",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 4334647,
+      "page_url": "https://pixabay.com/photos/coffee-cappuccino-latte-espresso-4334647/",
+      "author": "13027327",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 5760,
+      "h": 3840,
+      "tags": "coffee, cappuccino, latte, espresso, americano, iced coffee, decaf, caffeinated coffee, barista, aftertaste, milk, coffee, coffee, coffee, coffee, coffee, espresso, espresso, espresso, barista",
+      "preview": "https://pixabay.com/get/gb84d965a3a8243eb4e335eb7edbaaf779545b5af30d3cb138f5b79fa8664face63151966605e289f6bc23ba730fa263bc1ee6947643a7df8bdcd0560e11a917f_640.jpg",
+      "query": "cafe owner barista",
+      "tracks": [
+        "merchant"
+      ],
+      "score": 7,
+      "note": "에스프레소 추출 클로즈업이 선명하고 따뜻한 톤이라 동네 카페 느낌과 잘 맞고 얼굴·로고·워터마크도 없지만, 사장님·바리스타 모습은 없고 우측 상단이 어수선해서 글자 여백은 제한적임",
+      "added_at": "2026-11-16T20:39:11.175Z",
+      "used": []
+    },
+    {
+      "id": "pixabay-img-5037804",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 5037804,
+      "page_url": "https://pixabay.com/photos/coffee-caffeine-cafe-food-drink-5037804/",
+      "author": "JessicaKwok",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 5993,
+      "h": 3995,
+      "tags": "coffee, caffeine, cafe, food, drink, cup, beverage, cappuccino, hot, fresh, espresso, doppio, coffee cup, brown food, brown coffee, brown cafe, brown cup",
+      "preview": "https://pixabay.com/get/gd39c40803f0e3ccd8aa030674112fb39d75deb4867ec69d7caf037af359b0f13faf9463b1c30b6699b4d51a96bbd01d7fe44b175404ed2c9838f89abb4af8d16_640.jpg",
+      "query": "cafe owner barista",
+      "tracks": [
+        "merchant"
+      ],
+      "score": 7,
+      "note": "나무 테이블 위 라떼 한 잔이 선명하고 배경이 부드럽게 흐려 글자 얹을 여백이 넉넉하며 로고·워터마크도 없음. 다만 검색어의 사장님·바리스타 장면은 아니고 분위기가 다소 서구적인 ",
+      "added_at": "2026-11-16T20:39:11.175Z",
+      "used": []
+    },
+    {
+      "id": "pixabay-img-4055825",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 4055825,
+      "page_url": "https://pixabay.com/photos/chefs-cooking-kitchen-restaurant-4055825/",
+      "author": "rickbella",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 5184,
+      "h": 3456,
+      "tags": "chefs, cooking, kitchen, restaurant, meal, food, cook, chef, preparation, chef, chef, chef, chef, chef",
+      "preview": "https://pixabay.com/get/g2529b0499b80cdfc7b11d309f2a91334a117cdf28e4a5a46f85d36000c3aec9d8b87f61e53f61ae28c79b454c90ccac399d2bbbfcbab99c029bc7982370b37ba_640.jpg",
+      "query": "chef plating food",
+      "tracks": [
+        "merchant"
+      ],
+      "score": 7,
+      "note": "선명하고 자연스러운 플레이팅 장면에 얼굴 노출이 없어 초상권 부담이 없고 글자 넣을 여백도 있지만, 흰 접시와 서양식 타코 느낌이라 한국 동네 가게 분위기는 조금 약함.",
+      "added_at": "2026-11-16T20:39:11.175Z",
+      "used": []
+    },
+    {
       "id": "pixabay-img-1284351",
       "kind": "image",
       "source": "pixabay",
@@ -20,14 +104,39 @@
       "note": "얼굴이 나오지 않고 손과 요리 장면 위주라 초상권 부담이 적고 선명함. 철판요리 느낌이라 일식 스타일이고 워터마크·로고는 안 보임. 다만 '사장님' 느낌보다는 셰프 연출 컷이고, ",
       "added_at": "2026-11-16T11:56:20.646Z",
       "used": []
+    },
+    {
+      "id": "pixabay-vid-32246",
+      "kind": "video",
+      "source": "pixabay",
+      "source_id": 32246,
+      "page_url": "https://pixabay.com/videos/id-32246/",
+      "author": "sensorycznyTata",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "duration": 19,
+      "w": 3840,
+      "h": 2160,
+      "tags": "coffee, coffee shop, cafe, drink, espresso, mug, tea, cup, people, shop, beverage, barista, meeting, communication, restaurant, starbucks, business, store",
+      "preview": "https://cdn.pixabay.com/video/2020/02/11/32246-390923732_large.jpg",
+      "query": "cafe owner barista",
+      "tracks": [
+        "merchant"
+      ],
+      "score": 7,
+      "note": "나무 테이블 위 흰 커피잔을 낮은 각도로 담아 선명하고 분위기 있으며 로고·워터마크 없고 배경 인물은 완전히 흐려 초상권 걱정이 없음; 다만 검색어의 사장님·바리스타 장면이 아니라",
+      "added_at": "2026-11-16T20:39:11.175Z",
+      "used": []
     }
   ],
   "topics_last": {
     "restaurant owner kitchen": "2026-11-16T11:56:20.646Z",
     "small restaurant counter": "2026-11-16T11:56:20.646Z",
-    "audio:upbeat acoustic": "2026-11-16T11:56:20.646Z"
+    "audio:upbeat acoustic": "2026-11-16T11:56:20.646Z",
+    "cafe owner barista": "2026-11-16T20:39:11.175Z",
+    "chef plating food": "2026-11-16T20:39:11.175Z",
+    "audio:happy ukulele": "2026-11-16T20:39:11.175Z"
   },
-  "updated_at": "2026-11-16T11:56:20.646Z",
+  "updated_at": "2026-11-16T20:39:11.175Z",
   "rejected": [
     "pixabay-img-5753302",
     "pixabay-img-4807317",
@@ -42,6 +151,17 @@
     "pixabay-img-4807333",
     "pixabay-img-9826328",
     "pixabay-img-1845295",
-    "pixabay-vid-10853"
+    "pixabay-vid-10853",
+    "pixabay-img-4618705",
+    "pixabay-img-8174279",
+    "pixabay-img-206142",
+    "pixabay-vid-202910",
+    "pixabay-vid-122504",
+    "pixabay-img-939437",
+    "pixabay-img-2585791",
+    "pixabay-img-4625935",
+    "pixabay-vid-1720",
+    "pixabay-vid-1721",
+    "pixabay-vid-11547"
   ]
 }
