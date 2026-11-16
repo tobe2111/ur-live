@@ -172,7 +172,12 @@ let threadsExamples = [];
 let gen = null;
 const cardKey = `${today}-${track}`;
 // 릴스는 월·수·금(KST) — 주 3회. 나머지 날은 캐러셀. REEL=1 이면 오늘 강제.
-const reelDay = process.env.REEL === '1' || [1, 3, 5].includes(k.getUTCDay());
+// 인스타 주 3회(월·수·금 KST) — 2026-11-16 대표 결정 "섞기": 인스타는 공들인 카드만, 스레드는 매일 짧은 글.
+// IG_DAYS 로 바꿀 수 있다(0=일 … 6=토). 수동 실행(FORCE)은 요일과 무관하게 올린다.
+const IG_DAYS = String(process.env.IG_DAYS || '1,3,5').split(',').map(Number);
+const igDay = force || IG_DAYS.includes(k.getUTCDay());
+// 릴스는 월요일만(수·금은 캐러셀 — 카드뉴스는 넘겨 보는 형식이 제일 잘 읽힌다)
+const reelDay = process.env.REEL === '1' || k.getUTCDay() === 1;
 // 실제 입점 매장 사진: 사장님·손님 글에만(크리에이터 글은 사람 사진이 맞다). 최근 인스타 4회에 쓴 사진은 뺀다.
 let storeCache = null;
 async function storePhotosToday() {
@@ -203,20 +208,21 @@ async function main() {
   const photosFor = async () => isPromo ? (await realStorePhotos(products)).filter((p) => String(p.id) === String(product.id)) : await storePhotosToday();
 
   // ---- Instagram (이미지 필수) ----
-  if (due('instagram') && !postedToday('instagram')) {
+  if (!igDay) log(`Instagram: 건너뜀 — 오늘은 인스타 쉬는 날(게시 요일 ${IG_DAYS.join(',')})`);
+  else if (due('instagram') && !postedToday('instagram')) {
     const id = cid('instagram');
     const link = utmLink(isPromo ? product : target, 'instagram', T.campaign || track, id, now);
     // 캡션을 먼저 쓴다 — 이미지 문구는 캡션에서 뽑는다(같은 메시지)
     const capPrompt = `${info}\n인스타그램 캡션 1개. 첫 줄은 핵심 메시지 한 문장, 이어서 2~3줄, 마지막 줄은 정보형 안내('프로필 링크에서 확인' 식 — 본문 링크는 클릭이 안 된다). 끝에 해시태그 2~3개만. 해시태그 빼고 200자 이내 — 짧을수록 좋다.`;
     // 토요일(KST)은 "이번 주 새 딜" 모음(visual.mjs makeDigest) — 실제 사진 있는 새 딜이 2곳 미만이면 평소 글
-    const digestDay = process.env.DIGEST === '1' || k.getUTCDay() === 6;
+    const digestDay = process.env.DIGEST === '1' || k.getUTCDay() === 5; // 금요일 = 이번 주 새 딜 모음(2곳 이상일 때)
     const digest = digestDay && !fieldNote && !encore ? await makeDigest(await newRealDeals(), `${cardKey}-digest`) : null;
     if (digestDay && !digest) log('새 딜 모음: 이번 주 실제 사진 있는 새 딜이 2곳 미만 → 평소 글');
     const cap = digest ? { body: digestCaption(digest.deals), problems: [] } : await writeVetted(capPrompt, 800, 'instagram', info, '인스타그램 캡션');
     // 게시할 때마다 새 이미지(visual.mjs) — 실패하면 아래 종전 카드 세트로 물러선다
     gen = digest || cap.problems.length ? digest : await makeVisual({
       claudeFn: claude, caption: cap.body, facts: factsFor(info), series, key: cardKey,
-      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await photosFor(), noStock: isPromo, fieldNote: !!fieldNote,
+      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await photosFor(), noStock: isPromo, deal, fieldNote: !!fieldNote,
       reel: reelDay || !!encore, // 다시 보기는 원글과 다른 형식(릴스)으로
     });
     // 미디어 결정: tracks.<t>.media 배열(캐러셀 images / Reels video_url, 날짜별 순환) → image_url → og:image → 상품 이미지
@@ -296,16 +302,14 @@ async function main() {
     }
   } else log(`Instagram: 건너뜀 — ${skipReason('instagram')}`);
 
-  // 오늘 표지(인스타용으로 만든 것)를 스레드에도 쓴다. 인스타가 오늘 이미 나갔으면 남아 있는 표지 파일을,
-  // 그것도 없으면 스레드 글로 표지를 새로 만든다.
-  async function threadsImage(body) {
+  // 오늘 인스타 표지가 있으면 스레드에도 쓴다. 인스타가 쉬는 날은 글만(2026-11-16 — 스레드는 매일 짧은 글,
+  // 공들인 카드는 인스타 주 3회에 몰아준다. 스레드용 카드를 따로 만들지 않는다).
+  async function threadsImage() {
     if (gen?.images?.[0] && gen.source !== 'digest') return gen.images[0]; // 새 딜 모음 표지는 스레드 글과 내용이 다르다
     if (fs.existsSync(path.join(ROOT, 'data', 'cards', cardKey, 'slide-1.jpg')) && process.env.GITHUB_REPOSITORY) {
       return `https://raw.githubusercontent.com/${process.env.GITHUB_REPOSITORY}/marketing-data/marketing-bot/data/cards/${cardKey}/slide-1.jpg`;
     }
-    const g = await makeVisual({ claudeFn: claude, caption: body, facts: factsFor(info), series, key: `${cardKey}-th`,
-      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await photosFor(), noStock: isPromo, fieldNote: !!fieldNote });
-    return g?.images?.[0] || null;
+    return null;
   }
 
   // ---- Threads ----
@@ -326,7 +330,7 @@ async function main() {
     const text = threadsText(body, link);
     log('Threads 본문:\n' + text);
     // 표지 이미지를 함께 올린다(글만 있는 것보다 피드에서 눈에 띈다). 실패하면 글만.
-    const image_url = await threadsImage(body);
+    const image_url = await threadsImage();
     log(`Threads 이미지: ${image_url || '없음 — 글만'}`);
     // 주제 태그(series.mjs THREADS_TOPICS) — 태그가 거부되면 태그 없이 한 번 더
     const topic_tag = threadsTopicTag(track, dayIdx);
