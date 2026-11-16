@@ -61,7 +61,7 @@ test('시리즈: 트랙에 맞는 코너를 고르고, 최근 쓴 건 피하고,
 test('이미지 문구 파싱: 줄수·길이 제한, 느낌표·줄표 제거', () => {
   const v = parseVisual('설명 {"title":["가입비 0원!","팔린 뒤에만 — 수수료"],"sub":"안 팔리면 낼 돈이 없어요","slides":[{"title":"등록 10분","body":"카카오맵에서 내 가게 찾기부터"}],"photo_query":"korean restaurant owner"}');
   assert.deepEqual(v.title, ['가입비 0원', '팔린 뒤에만  수수료']);
-  assert.equal(v.cta, '자세한 조건은 프로필 링크에서');
+  assert.equal(v.cta, '', '마지막 장에 매번 같은 "프로필 링크" 문구를 붙이지 않는다(2026-11-16)');
   assert.equal(parseVisual('그냥 글'), null);
   assert.equal(parseVisual('{"title":[]}'), null);
 });
@@ -187,7 +187,7 @@ test('일일 게시 배선: 스레드에 이미지, 릴스는 주 3회·실패 �
   assert.match(src, /publishTagged\(\{ media_type: 'IMAGE', image_url, text \}\)/);
   assert.match(src, /r \|\| await publishTagged\(\{ media_type: 'TEXT', text \}\)/, '이미지 실패 시 글만');
   assert.ok(src.indexOf('// ---- Instagram') < src.indexOf('// ---- Threads ----'), '인스타 표지를 먼저 만들어 스레드가 같이 쓴다');
-  assert.match(src, /\[1, 3, 5\]\.includes\(k\.getUTCDay\(\)\)/);
+  assert.match(src, /const reelDay = process\.env\.REEL === '1' \|\| k\.getUTCDay\(\) === 1;/, '릴스는 월요일(인스타 월·수·금 중)');
   assert.match(src, /릴스 게시 실패 → 캐러셀로 다시/);
   assert.match(src, /\['merchant', 'consumer'\]\.includes\(track\)/);
   assert.match(src, /pickSeries\(track, trackHist, dayIdx, \{ weights: seriesState\?\.weights \}\)/);
@@ -374,7 +374,7 @@ test('새 딜 모음: 실제 사진·최근 7일 딜만, 캡션은 목록 그대
   assert.equal(sp.slides.length, 2);
   assert.equal(sp.slides[1].photo, '/b', '장마다 자기 매장 사진');
   const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
-  assert.match(src, /k\.getUTCDay\(\) === 6/);
+  assert.match(src, /process\.env\.DIGEST === '1' \|\| k\.getUTCDay\(\) === 5/, '새 딜 모음은 금요일(인스타 게시일)');
   assert.match(src, /gen\.source !== 'digest'/, '새 딜 표지를 스레드에 쓰지 않는다');
 });
 test('콜라보: 아이디가 있는 매장만, 이름이 글에 나올 때, 최대 3', () => {

@@ -11,6 +11,7 @@ import { pickSeries, seriesTopic, BRAND_WRITING, threadsTopicTag, ENCORE, SERIES
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeVisual, realStorePhotos, freshStorePhotos, newRealDeals, makeDigest, digestCaption } from './visual.mjs';
+import { dealFacts } from './deal-facts.mjs';
 import { nextFieldNote, closeFieldNote } from './field-notes.mjs';
 import { ownerExamples, pickExamples, styleBlock } from './threads-style.mjs';
 
@@ -97,7 +98,9 @@ function trackGuide() { return {
 오늘 주제: ${topic}
 - 아래 [확인된 사실]에 있는 구조만 설명한다. 월 수익 예시, "누구나 쉽게 N만원" 같은 수익 약속 금지. 소개비율은 매장이 딜마다 정한다는 점을 정확히.
 - 마지막에 CTA 한 줄: ${T.cta}`,
-  consumer: `오늘은 소비자 딜 글: 아래 상품을 운영자 입장에서 소개한다(어떤 상황에 좋은지). 주어진 상품 정보 외 가격/할인율은 쓰지 않는다. 먹어본 척하지 않는다.`,
+  consumer: `오늘은 소비자 딜 글: 아래 상품을 운영자 입장에서 소개한다(어떤 상황에 좋은지). 주어진 상품 정보 외 가격/할인율은 쓰지 않는다. 먹어본 척하지 않는다.
+- 위치·지역 해시태그는 [확인된 사실]의 '매장 위치'에서만 쓴다. 가게 이름에 든 지명(예: '홍대돈까스'의 홍대)은 위치가 아니다.
+- 가격 차이가 있으면 그게 첫 줄의 주인공이다(정가 → 유어딜 가격).`,
 }[track]; }
 
 import { referenceStyleBlock } from './style.mjs';
@@ -169,7 +172,12 @@ let threadsExamples = [];
 let gen = null;
 const cardKey = `${today}-${track}`;
 // 릴스는 월·수·금(KST) — 주 3회. 나머지 날은 캐러셀. REEL=1 이면 오늘 강제.
-const reelDay = process.env.REEL === '1' || [1, 3, 5].includes(k.getUTCDay());
+// 인스타 주 3회(월·수·금 KST) — 2026-11-16 대표 결정 "섞기": 인스타는 공들인 카드만, 스레드는 매일 짧은 글.
+// IG_DAYS 로 바꿀 수 있다(0=일 … 6=토). 수동 실행(FORCE)은 요일과 무관하게 올린다.
+const IG_DAYS = String(process.env.IG_DAYS || '1,3,5').split(',').map(Number);
+const igDay = force || IG_DAYS.includes(k.getUTCDay());
+// 릴스는 월요일만(수·금은 캐러셀 — 카드뉴스는 넘겨 보는 형식이 제일 잘 읽힌다)
+const reelDay = process.env.REEL === '1' || k.getUTCDay() === 1;
 // 실제 입점 매장 사진: 사장님·손님 글에만(크리에이터 글은 사람 사진이 맞다). 최근 인스타 4회에 쓴 사진은 뺀다.
 let storeCache = null;
 async function storePhotosToday() {
@@ -192,23 +200,29 @@ async function main() {
   log(`오늘 시리즈: ${series.name}${encore ? ` (원글 ${encore.platform} ${encore.id}, 평균의 ${encore.ratio}배)` : ''}`);
   log(`event=${process.env.GITHUB_EVENT_NAME || 'local'} DRY=${DRY} force=${force} KST=${today} ${kstHM} slot(threads)=${todaysSlot('threads')} slot(ig)=${todaysSlot('instagram')}`);
   log(`오늘 트랙: ${track}${topic ? ` / 주제: ${topic.slice(0, 40)}` : ''}`);
-  const info = isPromo ? `상품: ${product.name} (${product.url})` : `링크 대상: ${target.url}`;
+  // 소비자 딜: 위치·가격은 상품 API(deal-facts.mjs)에서만. 가게 이름 속 지명을 위치로 쓰지 않게 주소를 사실로 준다.
+  const deal = isPromo ? await dealFacts(product) : null;
+  if (isPromo) log(deal ? `딜 사실: ${deal.store} · ${deal.region || '위치 없음'} · ${deal.price ?? '?'}원` : '딜 사실 조회 실패 → 상품 이름만 사실로');
+  const info = isPromo ? (deal ? `${deal.text}\n링크: ${product.url}` : `상품: ${product.name} (${product.url})\n매장 위치: 확인 안 됨 — 지역·동네 이름과 지역 해시태그를 쓰지 않는다`) : `링크 대상: ${target.url}`;
+  // 소비자 딜 글엔 그 가게 사진만(다른 가게 사진·무료 사진 금지)
+  const photosFor = async () => isPromo ? (await realStorePhotos(products)).filter((p) => String(p.id) === String(product.id)) : await storePhotosToday();
 
   // ---- Instagram (이미지 필수) ----
-  if (due('instagram') && !postedToday('instagram')) {
+  if (!igDay) log(`Instagram: 건너뜀 — 오늘은 인스타 쉬는 날(게시 요일 ${IG_DAYS.join(',')})`);
+  else if (due('instagram') && !postedToday('instagram')) {
     const id = cid('instagram');
     const link = utmLink(isPromo ? product : target, 'instagram', T.campaign || track, id, now);
     // 캡션을 먼저 쓴다 — 이미지 문구는 캡션에서 뽑는다(같은 메시지)
     const capPrompt = `${info}\n인스타그램 캡션 1개. 첫 줄은 핵심 메시지 한 문장, 이어서 2~3줄, 마지막 줄은 정보형 안내('프로필 링크에서 확인' 식 — 본문 링크는 클릭이 안 된다). 끝에 해시태그 2~3개만. 해시태그 빼고 200자 이내 — 짧을수록 좋다.`;
     // 토요일(KST)은 "이번 주 새 딜" 모음(visual.mjs makeDigest) — 실제 사진 있는 새 딜이 2곳 미만이면 평소 글
-    const digestDay = process.env.DIGEST === '1' || k.getUTCDay() === 6;
+    const digestDay = process.env.DIGEST === '1' || k.getUTCDay() === 5; // 금요일 = 이번 주 새 딜 모음(2곳 이상일 때)
     const digest = digestDay && !fieldNote && !encore ? await makeDigest(await newRealDeals(), `${cardKey}-digest`) : null;
     if (digestDay && !digest) log('새 딜 모음: 이번 주 실제 사진 있는 새 딜이 2곳 미만 → 평소 글');
     const cap = digest ? { body: digestCaption(digest.deals), problems: [] } : await writeVetted(capPrompt, 800, 'instagram', info, '인스타그램 캡션');
     // 게시할 때마다 새 이미지(visual.mjs) — 실패하면 아래 종전 카드 세트로 물러선다
     gen = digest || cap.problems.length ? digest : await makeVisual({
       claudeFn: claude, caption: cap.body, facts: factsFor(info), series, key: cardKey,
-      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await storePhotosToday(), fieldNote: !!fieldNote,
+      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await photosFor(), noStock: isPromo, deal, fieldNote: !!fieldNote,
       reel: reelDay || !!encore, // 다시 보기는 원글과 다른 형식(릴스)으로
     });
     // 미디어 결정: tracks.<t>.media 배열(캐러셀 images / Reels video_url, 날짜별 순환) → image_url → og:image → 상품 이미지
@@ -288,16 +302,14 @@ async function main() {
     }
   } else log(`Instagram: 건너뜀 — ${skipReason('instagram')}`);
 
-  // 오늘 표지(인스타용으로 만든 것)를 스레드에도 쓴다. 인스타가 오늘 이미 나갔으면 남아 있는 표지 파일을,
-  // 그것도 없으면 스레드 글로 표지를 새로 만든다.
-  async function threadsImage(body) {
+  // 오늘 인스타 표지가 있으면 스레드에도 쓴다. 인스타가 쉬는 날은 글만(2026-11-16 — 스레드는 매일 짧은 글,
+  // 공들인 카드는 인스타 주 3회에 몰아준다. 스레드용 카드를 따로 만들지 않는다).
+  async function threadsImage() {
     if (gen?.images?.[0] && gen.source !== 'digest') return gen.images[0]; // 새 딜 모음 표지는 스레드 글과 내용이 다르다
     if (fs.existsSync(path.join(ROOT, 'data', 'cards', cardKey, 'slide-1.jpg')) && process.env.GITHUB_REPOSITORY) {
       return `https://raw.githubusercontent.com/${process.env.GITHUB_REPOSITORY}/marketing-data/marketing-bot/data/cards/${cardKey}/slide-1.jpg`;
     }
-    const g = await makeVisual({ claudeFn: claude, caption: body, facts: factsFor(info), series, key: `${cardKey}-th`,
-      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await storePhotosToday(), fieldNote: !!fieldNote });
-    return g?.images?.[0] || null;
+    return null;
   }
 
   // ---- Threads ----
@@ -318,7 +330,7 @@ async function main() {
     const text = threadsText(body, link);
     log('Threads 본문:\n' + text);
     // 표지 이미지를 함께 올린다(글만 있는 것보다 피드에서 눈에 띈다). 실패하면 글만.
-    const image_url = await threadsImage(body);
+    const image_url = await threadsImage();
     log(`Threads 이미지: ${image_url || '없음 — 글만'}`);
     // 주제 태그(series.mjs THREADS_TOPICS) — 태그가 거부되면 태그 없이 한 번 더
     const topic_tag = threadsTopicTag(track, dayIdx);

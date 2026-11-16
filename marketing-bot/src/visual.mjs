@@ -10,18 +10,24 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { ROOT, DRY, log } from './lib.mjs';
 import { vetPost } from './vet.mjs';
-import { reviewCover, STOCK_SOURCES } from './judge.mjs';
+import { reviewCover, reviewDeck, STOCK_SOURCES } from './judge.mjs';
 
-export const VISUAL_SYSTEM = `너는 큰 브랜드(네이버플러스스토어, 토스플레이스, NOL) 인스타그램 이미지를 만드는 에디터다.
-캡션을 받아 이미지에 들어갈 문구만 JSON 으로 만든다.
-- title: 표지 제목 1~2줄 배열. 줄당 12자 안팎. 메시지 하나, 굵게 읽히는 말. 마침표 없이.
-- sub: 표지 부제 한 줄(22자 이내). 없어도 된다.
-- slides: 안쪽 장 0~4개. 각 {"title": 14자 이내, "body": 45자 이내}. 단계·이유·조건처럼 나눌 게 있을 때만.
-- cta: 마지막 장 한 줄(20자 이내, 안쪽 장이 있을 때만). 예: "자세한 조건은 프로필 링크에서".
-- photo_query: 표지 사진 검색어(영어 2~4단어, 사람·가게·음식처럼 구체적인 장면).
-- 캡션과 [확인된 사실]에 없는 숫자·조건·후기를 만들지 않는다. 느낌표·이모지·줄표(—) 금지.
+export const VISUAL_SYSTEM = `너는 한국 최고 브랜드(토스, 배달의민족, 오늘의집) 인스타그램 카드뉴스를 만드는 에디터다.
+캡션을 받아 카드에 들어갈 문구만 JSON 으로 만든다. 원칙: 한 장에 메시지 하나, 짧고 굵게, 두 번 읽지 않아도 들어오게.
+- title: 표지 제목 1~3줄 배열. 줄당 10자 안팎. 첫 장만 보고 멈춰 서게 하는 한 문장(구체적인 숫자·상황이 있으면 그걸로). 마침표 없이.
+- sub: 표지 부제 한 줄(20자 이내). 없어도 된다.
+- kicker: 표지 맨 위 작은 머리말(14자 이내, 예: "사장님 노트"). 없어도 된다.
+- slides: 안쪽 장 0~3개. 나눌 게 있을 때만. 각 장은 아래 중 하나:
+  {"type":"point","label":"8자 이내","title":"14자 이내 큰 문장(줄바꿈은 \\n)","body":"40자 이내"}
+  {"type":"steps","label":"8자 이내","title":"14자 이내","items":["14자 이내","…","…"]}  (순서가 있을 때, 3개)
+  {"type":"rows","label":"8자 이내","title":"14자 이내","rows":[{"k":"8자","v":"10자"},…]}  (조건·숫자를 나란히, 2~4줄)
+- cta: 마지막 장 큰 문장(16자 이내). 안쪽 장이 있을 때만. "프로필 링크" 같은 말을 매번 반복하지 말고 그 글에 맞는 행동 한 줄.
+- photo_query: 표지 사진 검색어(영어 2~4단어, 구체적인 장면).
+- 가격 장과 매장 정보 장은 프로그램이 [확인된 사실]로 따로 만든다 — slides 에 가격·주소를 다시 넣지 않는다.
+- 캡션과 [확인된 사실]에 없는 숫자·조건·후기·지명을 만들지 않는다. 느낌표·이모지·줄표(—) 금지.
 JSON 하나만 출력한다.`;
 
 export function parseVisual(text) {
@@ -29,15 +35,24 @@ export function parseVisual(text) {
   if (!m) return null;
   let v; try { v = JSON.parse(m[0]); } catch { return null; }
   const s = (x, n) => String(x ?? '').replace(/[!—]/g, '').trim().slice(0, n);
-  const title = (Array.isArray(v.title) ? v.title : [v.title]).map((t) => s(t, 20)).filter(Boolean).slice(0, 2);
+  const title = (Array.isArray(v.title) ? v.title : [v.title]).map((t) => s(t, 20)).filter(Boolean).slice(0, 3);
   if (!title.length) return null;
-  const slides = (Array.isArray(v.slides) ? v.slides : []).map((x) => ({ title: s(x?.title, 22), body: s(x?.body, 70) })).filter((x) => x.title).slice(0, 4);
-  return { title, sub: s(v.sub, 30), slides, cta: slides.length ? s(v.cta, 30) || '자세한 조건은 프로필 링크에서' : '', photo_query: s(v.photo_query, 60) };
+  const TYPES = ['point', 'steps', 'rows'];
+  const slides = (Array.isArray(v.slides) ? v.slides : []).map((x) => {
+    const type = TYPES.includes(x?.type) ? x.type : 'point';
+    const out = { type, label: s(x?.label, 12), title: s(x?.title, 30), body: s(x?.body, 70) };
+    if (type === 'steps') out.items = (Array.isArray(x?.items) ? x.items : []).map((t) => s(t, 20)).filter(Boolean).slice(0, 3);
+    if (type === 'rows') out.rows = (Array.isArray(x?.rows) ? x.rows : []).map((r) => ({ k: s(r?.k, 12), v: s(r?.v, 16) })).filter((r) => r.k && r.v).slice(0, 4);
+    if (type === 'steps' && out.items.length < 2) out.type = 'point';
+    if (type === 'rows' && out.rows.length < 2) out.type = 'point';
+    return out;
+  }).filter((x) => x.title).slice(0, 3);
+  return { title, sub: s(v.sub, 30), kicker: s(v.kicker, 20), slides, cta: slides.length ? s(v.cta, 30) || '' : '', photo_query: s(v.photo_query, 60) };
 }
 
 // 이미지 안 글자도 게시물이다 — 같은 검수(숫자·금지어·상투구)를 통과해야 한다.
 export function vetVisual(v, facts, fieldNote = false) {
-  const all = [...v.title, v.sub, ...v.slides.flatMap((x) => [x.title, x.body]), v.cta].filter(Boolean).join('\n');
+  const all = [...v.title, v.sub, v.kicker, ...v.slides.flatMap((x) => [x.label, x.title, x.body, ...(x.items || []), ...(x.rows || []).flatMap((r) => [r.k, r.v])]), v.cta].filter(Boolean).join('\n');
   return vetPost(all, { facts, minLen: 0, fieldNote });
 }
 
@@ -112,14 +127,13 @@ export function imageSize(file) {
 }
 
 // 사진 하나를 골라 로컬 파일로. 반환 { file, credit, source, url } 또는 null
-export async function findPhoto({ notePhotos = [], productPhoto = null, storePhotos = [], query = '', dir }) {
+// noStock: 특정 가게 글이면 무료 사진(Pixabay·Pexels·Openverse)을 쓰지 않는다 — 돈까스 글에 와인 사진이 선 사고(2026-11-12).
+export async function findPhoto({ notePhotos = [], productPhoto = null, storePhotos = [], query = '', dir, noStock = false, minSide = 700 }) {
   const tries = [
     ...notePhotos.map((url) => async () => ({ url, credit: '유어딜 현장', source: 'field-note', auth: true })),
-    ...(productPhoto ? [async () => ({ url: originalPhotoUrl(productPhoto), credit: '입점 매장', source: 'product', minSide: 700 })] : []),
-    ...storePhotos.map((p) => async () => ({ url: p.url, credit: `입점 매장 · ${p.name || ''}`.trim(), source: 'store', minSide: 700 })),
-    () => searchPixabay(query),
-    () => searchPexels(query),
-    () => searchOpenverse(query),
+    ...(productPhoto ? [async () => ({ url: originalPhotoUrl(productPhoto), credit: '입점 매장', source: 'product', minSide })] : []),
+    ...storePhotos.map((p) => async () => ({ url: p.url, credit: `입점 매장 · ${p.name || ''}`.trim(), source: 'store', minSide })),
+    ...(noStock ? [] : [() => searchPixabay(query), () => searchPexels(query), () => searchOpenverse(query)]),
   ];
   for (const t of tries) {
     try {
@@ -141,12 +155,64 @@ export function fontsReady(env = process.env) {
   return !!(env.FONT_HEAVY && env.FONT_SEMI && fs.existsSync(env.FONT_HEAVY) && fs.existsSync(env.FONT_SEMI));
 }
 
-export function render(spec, specDir) {
+// 그리기: Chromium(playwright)이 있으면 HTML 카드(scripts/render-html.mjs — 2차 시안 디자인),
+// 없으면 종전 PIL(render-post.py). RENDERER=pil 로 강제할 수 있다.
+export function htmlRendererReady(env = process.env) {
+  if (env.RENDERER === 'pil') return false;
+  try { createRequire(path.join(ROOT, 'package.json')).resolve('playwright'); return true; } catch { return false; }
+}
+// HTML 카드 spec → PIL spec (가격·표 장도 제목/설명 두 줄로 접는다)
+export function toPilSpec(spec) {
+  const slides = (spec.slides || []).filter((x) => x.type !== 'photo' || x.photo).map((x) => {
+    if (x.type === 'price') return { title: `${x.now}원`, body: [`정가 ${x.was}원`, x.save].filter(Boolean).join(' · ') };
+    if (x.type === 'steps') return { title: String(x.title).replace(/\n/g, ' '), body: (x.items || []).join(' → ') };
+    if (x.type === 'rows') return { title: String(x.title).replace(/\n/g, ' '), body: (x.rows || []).map((r) => `${r.k} ${r.v}`).join(' · ') };
+    return { title: String(x.title).replace(/\n/g, ' '), body: x.body, ...(x.photo ? { photo: x.photo } : {}) };
+  }).slice(0, 8);
+  const endTitle = spec.end ? [].concat(spec.end.title).join(' ') : spec.cta;
+  return { out_dir: spec.out_dir, fonts: { heavy: spec.fonts.heavy, semi: spec.fonts.semi }, photo: spec.photo, series: spec.series, title: spec.title, sub: spec.sub, slides, cta: slides.length ? endTitle : '', mascot: spec.mascot };
+}
+export function render(spec, specDir, { html = htmlRendererReady() } = {}) {
   const specFile = path.join(specDir, 'spec.json');
-  fs.writeFileSync(specFile, JSON.stringify(spec));
+  if (html) {
+    fs.writeFileSync(specFile, JSON.stringify(spec));
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'render-html.mjs'), specFile], { encoding: 'utf8', timeout: 90_000 });
+    if (r.status === 0) return JSON.parse(r.stdout.trim().split('\n').pop());
+    log(`HTML 카드 그리기 실패 → PIL 로: ${(r.stderr || r.error?.message || '').slice(-300)}`);
+  }
+  fs.writeFileSync(specFile, JSON.stringify(toPilSpec(spec)));
   const r = spawnSync('python3', [path.join(ROOT, 'scripts', 'render-post.py'), specFile], { encoding: 'utf8', timeout: 60_000 });
   if (r.status !== 0) throw new Error(`이미지 그리기 실패: ${(r.stderr || '').slice(-300)}`);
   return JSON.parse(r.stdout.trim().split('\n').pop());
+}
+
+// "전주시 덕진구" → "전주 덕진" (표지 머리말용)
+export const shortRegion = (r) => String(r || '').split(/\s+/).filter(Boolean).map((w) => (w.length > 2 ? w.replace(/(?:특별시|광역시|시|구|군)$/, '') : w)).join(' ');
+const won = (n) => Number(n).toLocaleString('ko-KR');
+// 소비자 딜 카드의 가격 장·사진 장·매장 정보 장 — Claude 가 아니라 확인된 사실(deal-facts.mjs)로 만든다.
+export function dealDeck(deal, { hasPhoto = false } = {}) {
+  if (!deal) return null;
+  const region = shortRegion(deal.region);
+  const slides = [];
+  if (deal.price) {
+    const save = deal.original_price ? deal.original_price - deal.price : 0;
+    slides.push(save > 0
+      ? { type: 'price', label: deal.name, was: won(deal.original_price), now: won(deal.price), note: '같은 매장, 같은 메뉴.\n유어딜 이용권으로 미리 사면 이 가격이에요.', save: `${won(save)}원 아껴요` }
+      : { type: 'price', label: deal.name, was: '', now: won(deal.price), note: '유어딜 이용권 가격이에요.' });
+  }
+  if (hasPhoto) slides.push({ type: 'photo', title: deal.store ? `${deal.store}의 한 접시` : '이 메뉴입니다' });
+  slides.push({ type: 'steps', label: '쓰는 법', title: '결제는 미리,\n매장에선 QR만', items: ['유어딜에서 이용권 구매', '폰으로 QR 받기', '계산대에서 보여주면 끝'], icons: true });
+  const rows = [
+    deal.store && { k: '매장', v: deal.store },
+    deal.address && { k: '위치', v: deal.address.replace(/^(?:\S+(?:도|특별자치도))\s+/, '') },
+    deal.price && { k: '가격', v: `${won(deal.price)}원${deal.original_price ? ` (정가 ${won(deal.original_price)}원)` : ''}` },
+    { k: '구매', v: '프로필 링크' },
+  ].filter(Boolean);
+  return {
+    kicker: [region, deal.store].filter(Boolean).join(' · '),
+    slides,
+    end: { label: '저장해 두세요', title: region ? `${region.split(' ')[0]} 가는 친구에게\n보내주세요` : '같이 갈 친구에게\n보내주세요', rows },
+  };
 }
 
 // marketing-data 브랜치에 올려 공개 URL 을 만든다(Contents API). 로컬 data/cards/ 에도 남겨
@@ -247,11 +313,18 @@ export function makeStory(cover, dir, font = process.env.FONT_SEMI) {
   return out;
 }
 
+// 모든 장을 가로로 이어 붙인 밑그림(눈 검사용). Pillow 가 없으면 null.
+export function contactSheet(files, out) {
+  const code = 'import sys,json\nfrom PIL import Image\nfs=json.loads(sys.argv[1]);w,h=360,450\nc=Image.new("RGB",(w*len(fs)+8*(len(fs)+1),h+16),"white")\nfor i,f in enumerate(fs): c.paste(Image.open(f).convert("RGB").resize((w,h)),(8+i*(w+8),8))\nc.save(sys.argv[2],quality=85)';
+  const r = spawnSync('python3', ['-c', code, JSON.stringify(files), out], { encoding: 'utf8', timeout: 30_000 });
+  return r.status === 0 && fs.existsSync(out) ? out : null;
+}
+
 const MASCOT = path.join(ROOT, '..', 'public', 'assets', 'mascot', 'udal-social-wave.webp');
 
 // 전체: 성공하면 { images: [url...], set, credit, source, title } · 아니면 null
 // reel: true 면 같은 장으로 릴스 영상도 만든다 → { video_url, cover_url } 가 붙는다(실패하면 사진만).
-export async function makeVisual({ claudeFn, caption, facts, series, key, notePhotos = [], productPhoto = null, storePhotos = [], fieldNote = false, reel = false }) {
+export async function makeVisual({ claudeFn, caption, facts, series, key, notePhotos = [], productPhoto = null, storePhotos = [], noStock = false, deal = null, fieldNote = false, reel = false }) {
   if (!fontsReady()) { log('이미지 생성 건너뜀 — 글꼴 없음(FONT_HEAVY/FONT_SEMI)'); return null; }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'urdeal-card-'));
   try {
@@ -264,19 +337,46 @@ export async function makeVisual({ claudeFn, caption, facts, series, key, notePh
       if (v && vetVisual(v, facts, fieldNote).length) v = null;
     }
     if (!v) { log('이미지 문구를 만들지 못함 → 종전 카드로'); return null; }
-    let photo = await findPhoto({ notePhotos, productPhoto, storePhotos, query: v.photo_query || series.photo, dir });
-    const draw = (p, sub) => render({
-      out_dir: path.join(dir, sub),
-      fonts: { heavy: process.env.FONT_HEAVY, semi: process.env.FONT_SEMI },
-      photo: p?.file, series: series.name, title: v.title, sub: v.sub, slides: v.slides, cta: v.cta,
-      mascot: series.mascot && fs.existsSync(MASCOT) ? MASCOT : undefined,
-    }, dir);
+    const html = htmlRendererReady();
+    // HTML 카드는 작은 사진(500px~)을 액자로 넣는다 — 늘려서 흐리게 하지 않는다(card-html.mjs photoMode)
+    let photo = await findPhoto({ notePhotos, productPhoto, storePhotos, query: v.photo_query || series.photo, dir, noStock, minSide: html ? 500 : 700 });
+    const draw = (p, sub) => {
+      const d = deal ? dealDeck(deal, { hasPhoto: !!p }) : null;
+      return render({
+        out_dir: path.join(dir, sub),
+        fonts: { heavy: process.env.FONT_HEAVY, bold: process.env.FONT_BOLD, semi: process.env.FONT_SEMI, medium: process.env.FONT_MEDIUM },
+        photo: p?.file, photo_size: p?.file ? imageSize(p.file) : undefined,
+        series: series.name, kicker: d?.kicker || v.kicker || series.name, title: v.title, sub: v.sub,
+        slides: d ? d.slides : v.slides,
+        ...(d ? { end: d.end } : v.cta ? { end: { title: v.cta } } : {}),
+        mascot: series.mascot && fs.existsSync(MASCOT) ? MASCOT : undefined,
+      }, dir, { html });
+    };
     let files = draw(photo, 'out');
     // 무료 사진 표지는 눈으로 한 번 더 본다(judge.mjs) — 어울리지 않으면 사진 없이 다시 그린다
     if (photo && STOCK_SOURCES.includes(photo.source) && !DRY) {
       const rv = await reviewCover(files[0], `${series.name} · ${v.title.join(' ')}`, claudeFn);
       log(`표지 눈 검사: ${rv.ok ? '통과' : '탈락'} — ${rv.reason}`);
       if (!rv.ok) { photo = null; files = draw(null, 'out-plain'); }
+    }
+    // 카드 전체 눈 검사(judge.mjs reviewDeck) — 탈락이면 지적을 반영해 한 번 다시 만든다. 둘 중 점수 높은 쪽을 쓴다.
+    if (!DRY || process.env.DECK_REVIEW === '1') {
+      const topic = `${series.name} · ${v.title.join(' ')}`;
+      const sheet = contactSheet(files, path.join(dir, 'sheet.jpg'));
+      const r1 = sheet ? await reviewDeck(sheet, topic, claudeFn) : { ok: true, score: null, fix: [] };
+      log(`카드 눈 검사: ${r1.ok ? '통과' : '탈락'} (점수 ${r1.score ?? '?'}) ${r1.fix.join(' / ')}`);
+      if (!r1.ok) {
+        if (r1.photo_bad && !deal) photo = null;
+        const v2 = r1.fix.length ? parseVisual(await claudeFn(VISUAL_SYSTEM, `${user}\n\n아트디렉터가 카드를 보고 반려했다. 고쳐라:\n- ${r1.fix.join('\n- ')}`, 900)) : null;
+        const prevV = v;
+        if (v2 && !vetVisual(v2, facts, fieldNote).length) v = v2;
+        const files2 = draw(photo, 'out-2');
+        const sheet2 = contactSheet(files2, path.join(dir, 'sheet-2.jpg'));
+        const r2 = sheet2 ? await reviewDeck(sheet2, topic, claudeFn) : { ok: true, score: null, fix: [] };
+        log(`카드 다시 그림 → 눈 검사: ${r2.ok ? '통과' : '탈락'} (점수 ${r2.score ?? '?'})`);
+        if (r2.ok || (r2.score ?? 0) >= (r1.score ?? 0)) files = files2;
+        else v = prevV;
+      }
     }
     log(`이미지 ${files.length}장 생성 (사진: ${photo ? `${photo.source} · ${photo.credit}` : '없음 — 브랜드 면'}) 제목: ${v.title.join(' / ')}`);
     const video = reel ? makeReel(files, dir) : null;
@@ -330,7 +430,8 @@ export async function makeDigest(deals, key, { reel = false } = {}) {
     for (const d of deals) { try { files.push(await download(d.photo, dir)); } catch (e) { log(`새 딜 사진 실패 ${d.store}: ${e.message}`); files.push(null); } }
     const ok = deals.filter((_, i) => files[i]);
     if (ok.length < 2) return null;
-    const out = render(digestSpec(ok, files.filter(Boolean), path.join(dir, 'out'), { heavy: process.env.FONT_HEAVY, semi: process.env.FONT_SEMI }), dir);
+    const spec = digestSpec(ok, files.filter(Boolean), path.join(dir, 'out'), { heavy: process.env.FONT_HEAVY, bold: process.env.FONT_BOLD, semi: process.env.FONT_SEMI, medium: process.env.FONT_MEDIUM });
+    const out = render({ ...spec, photo_size: imageSize(spec.photo) || undefined }, dir);
     log(`새 딜 모음 ${out.length}장 생성 (${ok.map((d) => d.store).join(', ')})`);
     const video = reel ? makeReel(out, dir) : null;
     const story = makeStory(out[0], dir);

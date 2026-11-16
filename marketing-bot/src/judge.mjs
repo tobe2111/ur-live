@@ -45,3 +45,35 @@ export async function reviewCover(file, topic, claudeFn) {
   } catch (e) { return { ok: true, reason: `검사 실패 — 통과로 둠(${e.message.slice(0, 60)})` }; }
 }
 export const STOCK_SOURCES = ['pixabay', 'pexels', 'openverse'];
+
+// ③ 카드 전체 눈 검사 (2026-11-16 대표 "대기업 퀄리티로") — 사진 출처와 무관하게 모든 카드를 본다.
+// 모든 장을 한 장의 밑그림(contact sheet)으로 이어 붙여 Claude 에게 보여 주고, 큰 브랜드 계정 기준으로 판정한다.
+// 탈락이면 visual.mjs 가 지적을 반영해 한 번 다시 만든다. 검사 자체가 실패하면 통과(게시를 막지 않는다).
+export const DECK_SYSTEM = `너는 토스·배달의민족 수준 인스타그램 카드뉴스의 아트디렉터다. 카드 전체(왼쪽부터 순서대로)를 보고 JSON 하나만 출력한다:
+{"ok": true|false, "score": 1~10, "fix": ["고칠 점 한 줄", ...], "photo_bad": true|false}
+감점 기준: 글자가 잘리거나 겹침 · 한 단어가 줄바꿈으로 쪼개짐 · 제목이 길어 한눈에 안 들어옴 · 장마다 같은 말 반복 · 사진이 흐리거나 주제와 동떨어짐(photo_bad) · 여백이 어색하게 비거나 몰림 · 첫 장만 봐서 무슨 글인지 모름.
+score 7 이상이면 ok=true. fix 는 문구로 고칠 수 있는 것 위주로 최대 3개.`;
+
+export function parseDeckReview(text) {
+  try {
+    const j = JSON.parse(String(text || '').replace(/^[^{]*/, '').replace(/[^}]*$/, ''));
+    const score = Number(j.score);
+    return {
+      ok: j.ok !== false && !(Number.isFinite(score) && score < 7),
+      score: Number.isFinite(score) ? score : null,
+      fix: (Array.isArray(j.fix) ? j.fix : []).map((x) => String(x).slice(0, 80)).slice(0, 3),
+      photo_bad: j.photo_bad === true,
+    };
+  } catch { return { ok: true, score: null, fix: [], photo_bad: false, reason: '판정 실패 — 통과로 둠' }; }
+}
+
+export async function reviewDeck(sheetFile, topic, claudeFn) {
+  try {
+    const data = fs.readFileSync(sheetFile).toString('base64');
+    const content = [
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } },
+      { type: 'text', text: `글 주제: ${topic}` },
+    ];
+    return parseDeckReview(await claudeFn(DECK_SYSTEM, content, 300));
+  } catch (e) { return { ok: true, score: null, fix: [], photo_bad: false, reason: `검사 실패 — 통과로 둠(${e.message.slice(0, 60)})` }; }
+}
