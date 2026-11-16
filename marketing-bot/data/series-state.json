@@ -1,0 +1,19 @@
+{
+  "weights": {
+    "owner-note": 1,
+    "myth-fact": 1,
+    "udal-qna": 1.39,
+    "quick-guide": 0.86,
+    "by-numbers": 0.58,
+    "deal-pick": 0.5
+  },
+  "counts": {
+    "owner-note": 1,
+    "myth-fact": 1,
+    "udal-qna": 2,
+    "quick-guide": 4,
+    "by-numbers": 3,
+    "deal-pick": 2
+  },
+  "updated_at": "2026-11-16T07:00:54.743Z"
+}
