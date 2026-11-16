@@ -42,6 +42,14 @@ interface RegisterBody {
   kakao_place_id?: string; kakao_place_url?: string; lat?: number; lng?: number
   manager_phone?: string; business_number?: string; business_cert_url?: string
   terms_agreed_version?: string
+  /** 운영사(유어팀) 계정만 — 'brokered' 면 이 매장은 5%. 기본 direct(10%). 다른 에이전시는 무시하고 언제나 brokered. */
+  fee_channel?: string
+}
+
+/** 🏢 등록 채널 — 운영사(유어팀) 에이전시는 기본 직접 10%, 고르면 5%(2026-11-16 대표). 다른 에이전시는 언제나 중개 5%. */
+export function operatorRegisterChannel(agencyId: number, picked: unknown): 'direct' | 'brokered' {
+  if (!PLATFORM_OPERATOR_AGENCY_IDS.includes(agencyId)) return 'brokered'
+  return picked === 'brokered' ? 'brokered' : 'direct'
 }
 
 /** 사장님 연락처 — 휴대폰만(승인 검토·사용 문의·승계 안내가 닿는 유일한 경로). 셀러 등록 문과 같은 규칙. */
@@ -130,7 +138,7 @@ export function registerAgencyStoreRegisterRoute(app: Hono<{ Bindings: Bindings;
           ?? kakaoPlaceUrlFromId(b.kakao_place_id)
         await setSellerMeta(DB, sellerId, {
           // 🏢 2026-11-16 대표 — 운영사(유어팀) 에이전시가 데려온 매장은 직접(10%). 저장값부터 맞춰 화면·정산이 같은 값을 본다.
-          store_channel: PLATFORM_OPERATOR_AGENCY_IDS.includes(me.agencyId) ? 'direct' : 'brokered', // 그 밖 = 채널 미지정 폴백과 같은 값(요율 불변)
+          store_channel: operatorRegisterChannel(me.agencyId, b.fee_channel), // 그 밖 = 채널 미지정 폴백과 같은 값(요율 불변)
           manager_phone: managerPhone,
           ...(b.kakao_place_id ? { kakao_place_id: String(b.kakao_place_id) } : {}),
           // 🔒 2026-10-13 — 생 `String` 이라 아무 도메인이나 저장됐다. SSOT 경유.

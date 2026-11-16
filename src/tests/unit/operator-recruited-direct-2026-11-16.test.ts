@@ -1,6 +1,8 @@
 /**
  * 🏢 운영사(유어팀) 계정이 영입한 매장 = 직접 10% (2026-11-16 대표 *"내 유어딜 계정 있지? 그걸로 매장 영입할 때는 그렇게 해줘"*)
  *
+ * 🔁 같은 날 대표 *"내가 하더라도 5%로 하고 싶은 곳은 할 수 있게끔"* → 실행 시점 덮어쓰기를 걷고 **저장값이 정본**,
+ *   운영사 계정은 등록 때 기본 10%·선택 5%.
  * 라이브 실측(11-16): 매장 20·25·26 이 `store_channel='brokered'` + `broker_user_id=3`(대표 본인) →
  * 떼어 줄 제3자가 없는데 5% 만 걷혔다. 이 시험은 실제 `channelPlatformRate` 를 가짜 DB 로 돌려 고정한다:
  *   ① 운영사가 중개사인 중개 매장 → 10%   ② 남이 중개사인 중개 매장 → 5%(그대로)
@@ -9,7 +11,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { channelPlatformRate, operatorBrokeredAsDirect, PLATFORM_OPERATOR_USER_IDS, PLATFORM_OPERATOR_AGENCY_IDS } from '@/worker/utils/ledger-commission-policy'
+import { channelPlatformRate, PLATFORM_OPERATOR_USER_IDS, PLATFORM_OPERATOR_AGENCY_IDS } from '@/worker/utils/ledger-commission-policy'
+import { operatorRegisterChannel } from '@/features/agency-console/api/agency-store-register'
 
 function fakeDB(meta: Record<string, string>, opAgencyLinked = false) {
   const settings: Record<string, string> = { fee_channel_rates_enabled: 'true', platform_fee_pct_direct: '10', platform_fee_pct_brokered: '5' }
@@ -41,25 +44,26 @@ describe('운영사 영입 매장 = 직접 10%', () => {
   it('대표 계정은 users.id=3 이다(30 아님)', () => {
     expect(PLATFORM_OPERATOR_USER_IDS).toEqual([3])
   })
-  it('① 운영사가 중개사인 중개 매장 → 10%', async () => {
-    expect(await channelPlatformRate(fakeDB({ store_channel: 'brokered', broker_user_id: '3' }), 26)).toBe(0.1)
+  it('① 저장값이 정본 — 운영사 매장이라도 5%(brokered)로 고른 곳은 5%', async () => {
+    expect(await channelPlatformRate(fakeDB({ store_channel: 'brokered', broker_user_id: '3' }, true), 26)).toBe(0.05)
+    expect(await channelPlatformRate(fakeDB({ store_channel: 'direct' }), 26)).toBe(0.1)
   })
-  it('② 남이 중개사인 중개 매장 → 5% 그대로', async () => {
-    expect(await channelPlatformRate(fakeDB({ store_channel: 'brokered', broker_user_id: '35' }), 26)).toBe(0.05)
-    expect(await channelPlatformRate(fakeDB({ store_channel: 'brokered' }), 26)).toBe(0.05)
-  })
-  it('③ 미지정은 미지정 — 운영사라도 10% 로 끌어올리지 않는다', async () => {
+  it('② 미지정은 미지정(fail-soft)', async () => {
     expect(await channelPlatformRate(fakeDB({ broker_user_id: '3' }), 26)).toBeUndefined()
-    expect(operatorBrokeredAsDirect(undefined, '3')).toBeUndefined()
+  })
+  it('③ 등록 채널: 유어팀은 기본 10%·고르면 5%, 다른 에이전시는 무엇을 보내도 5%', () => {
+    expect(operatorRegisterChannel(1, undefined)).toBe('direct')
+    expect(operatorRegisterChannel(1, 'brokered')).toBe('brokered')
+    expect(operatorRegisterChannel(1, 'weird')).toBe('direct')
+    expect(operatorRegisterChannel(2, 'direct')).toBe('brokered')
+    expect(operatorRegisterChannel(2, undefined)).toBe('brokered')
   })
   it('④ 중개사 몫 적립은 운영사에게 나가지 않는다', () => {
     const src = readFileSync('src/worker/utils/broker-share.ts', 'utf8')
     expect(src).toMatch(/PLATFORM_OPERATOR_USER_IDS\.includes\(terms\.brokerUserId\)\) return \{ credited: 0/)
   })
-  it('⑤ 운영사 에이전시(유어팀, agency 1)가 맡은 중개 매장 → 10%', async () => {
+  it('⑤ 유어팀 에이전시 id 는 1', () => {
     expect(PLATFORM_OPERATOR_AGENCY_IDS).toEqual([1])
-    expect(await channelPlatformRate(fakeDB({ store_channel: 'brokered', broker_user_id: '35' }, true), 26)).toBe(0.1)
-    expect(await channelPlatformRate(fakeDB({ store_channel: 'brokered', broker_user_id: '35' }, false), 26)).toBe(0.05)
   })
   it('⑥ 운영사 에이전시에는 에이전시 몫이 안 나가고 중개사 몫도 막는다(matched)', () => {
     const src = readFileSync('src/worker/utils/agency-share-payout.ts', 'utf8')
@@ -70,6 +74,8 @@ describe('운영사 영입 매장 = 직접 10%', () => {
 describe('운영사 에이전시가 등록하는 매장은 저장값부터 직접', () => {
   it('⑦ agency-store-register 가 운영사면 direct 를 저장한다(화면과 정산이 같은 값을 본다)', () => {
     const src = readFileSync('src/features/agency-console/api/agency-store-register.ts', 'utf8')
-    expect(src).toMatch(/store_channel: PLATFORM_OPERATOR_AGENCY_IDS\.includes\(me\.agencyId\) \? 'direct' : 'brokered'/)
+    expect(src).toMatch(/store_channel: operatorRegisterChannel\(me\.agencyId, b\.fee_channel\)/)
+    const card = readFileSync('src/pages/agency-console/AgencyRegisterStoreCard.tsx', 'utf8')
+    expect(card).toMatch(/\.\.\.\(operator \? \{ fee_channel: feeChannel \} : \{\}\)/)
   })
 })

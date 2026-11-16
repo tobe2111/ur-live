@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from '@/hooks/useToast'
 import { TERMS_CURRENT_VERSION } from '@/pages/terms/terms-types'
 import { agencyRequest } from './agency-api'
@@ -27,6 +27,15 @@ export function AgencyRegisterStoreCard({ onRegistered }: { onRegistered: () => 
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<Registered | null>(null)
   const codeRef = useRef<HTMLInputElement>(null)
+  // 🏢 2026-11-16 대표 — 유어팀 직영 계정만 수수료를 고른다(기본 10%, 고르면 5%). 다른 에이전시는 칸 자체가 없다(언제나 5%).
+  const [operator, setOperator] = useState(false)
+  const [feeChannel, setFeeChannel] = useState<'direct' | 'brokered'>('direct')
+  useEffect(() => {
+    if (!open) return
+    let alive = true
+    agencyRequest<{ agency?: { isOperator?: boolean } }>('/me').then((r) => { if (alive && r.ok) setOperator(r.data.agency?.isOperator === true) })
+    return () => { alive = false }
+  }, [open])
 
   const problem = !name.trim() ? '매장명을 입력해주세요'
     : !isMobile(phone) ? '사장님 휴대폰 번호(01x)를 입력해주세요'
@@ -40,12 +49,13 @@ export function AgencyRegisterStoreCard({ onRegistered }: { onRegistered: () => 
       '/stores/register', { method: 'POST', body: {
         name: name.trim(), address: address.trim(), manager_phone: digits(phone),
         ...(bno ? { business_number: digits(bno) } : {}), terms_agreed_version: TERMS_CURRENT_VERSION,
+        ...(operator ? { fee_channel: feeChannel } : {}),
       } })
     setBusy(false)
     if (!r.ok) { toast.error(r.data.error || '등록하지 못했어요.'); return }
     const d = r.data.data
     setDone({ sellerId: d.seller_id, claimCode: d.owner_claim_code, claimUrl: d.owner_claim_url })
-    setName(''); setAddress(''); setPhone(''); setBno(''); setAgreed(false)
+    setName(''); setAddress(''); setPhone(''); setBno(''); setAgreed(false); setFeeChannel('direct')
     onRegistered()
   }
 
@@ -98,6 +108,19 @@ export function AgencyRegisterStoreCard({ onRegistered }: { onRegistered: () => 
           <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-200">사업자번호 <span className="font-normal text-gray-400 dark:text-gray-500">(선택 — 사장님 매장 것)</span>
             <input value={bno} onChange={(e) => setBno(formatBizNo(e.target.value))} inputMode="numeric" maxLength={12} placeholder="000-00-00000" className={FIELD_CLS} />
           </label>
+          {operator && (
+            <fieldset>
+              <legend className="text-[13px] font-medium text-gray-700 dark:text-gray-200">유어딜 수수료 <span className="font-normal text-gray-400 dark:text-gray-500">(유어팀 직영 계정만)</span></legend>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                {([['direct', '10%', '기본'], ['brokered', '5%', '우대']] as const).map(([v, pct, sub]) => (
+                  <button key={v} type="button" aria-pressed={feeChannel === v} onClick={() => setFeeChannel(v)}
+                    className={`h-12 rounded-xl text-[15px] font-medium ${feeChannel === v ? 'bg-brand text-white' : 'bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-200'}`}>
+                    {pct} <span className="text-[12px] font-normal opacity-80">{sub}</span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <label className="flex items-start gap-2 text-[13px] text-gray-700 dark:text-gray-200">
             <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-brand" />
             <span>사장님을 대신해 판매자 이용약관에 동의합니다. <a href="/terms/seller" target="_blank" rel="noopener noreferrer" className="text-gray-500 dark:text-gray-400 underline">약관 보기</a></span>

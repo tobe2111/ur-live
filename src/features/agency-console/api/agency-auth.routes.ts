@@ -14,6 +14,7 @@
  * 에이전시인지 알아낼 수 있다.
  */
 import { Hono } from 'hono'
+import { PLATFORM_OPERATOR_AGENCY_IDS } from '@/worker/utils/ledger-commission-policy'
 import { cors } from 'hono/cors'
 import { hashPassword, verifyPassword, hashToken, validatePasswordComplexity } from '@/lib/password'
 import { buildSystemEmailHtml, sendSystemEmail } from '@/lib/system-email'
@@ -388,6 +389,7 @@ agencyConsoleRoutes.get('/me', requireAgencyStaff(), async (c) => {
     agency: {
       id: row.agency_id, name: row.agency_name, kind: row.kind === 'individual' ? 'individual' : 'business',
       businessNumber: me.role === 'admin' ? row.business_number : null,
+      isOperator: PLATFORM_OPERATOR_AGENCY_IDS.includes(Number(row.agency_id)), // 🏢 유어팀 직영 계정(등록 때 수수료 선택 칸)
     },
   })
 })
