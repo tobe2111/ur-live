@@ -171,9 +171,15 @@ describe('소비자 — 디스플레이 스케일 일곱 단계', () => {
      * 허용목록에 이름을 더해 통과시키는 것). 정본은 사람이 읽는 자리(CLAUDE.md 규칙 ⑧)에 있고,
      * 코드는 그것과 **같아야** 한다.
      */
-    const md = readFileSync('CLAUDE.md', 'utf8')
+    // 📦 2026-11-16: 디자인 절 전문이 CLAUDE.md → docs/design/design-system-rules.md 로 옮겨졌다(대표 승인 · 내용 무삭제).
+    //    정본 문장은 그 파일에 있고, CLAUDE.md 요약 줄도 같은 일곱 값을 말해야 한다(둘이 갈리면 빨간불).
+    const md = readFileSync('docs/design/design-system-rules.md', 'utf8')
     const m = md.match(/디스플레이\(26px 이상\)는 일곱 단계 — `([0-9 ·]+)`/)
-    expect(m, 'CLAUDE.md 규칙 ⑧ 에서 디스플레이 스케일 문장을 못 찾았다 — 문서와 코드가 갈렸다').toBeTruthy()
+    expect(m, '디자인 규칙 전문 ⑧ 에서 디스플레이 스케일 문장을 못 찾았다 — 문서와 코드가 갈렸다').toBeTruthy()
+    const summary = readFileSync('CLAUDE.md', 'utf8').match(/디스플레이 \*\*([0-9 ·]+)\*\*/)
+    expect(summary, 'CLAUDE.md 디자인 요약 줄에서 디스플레이 스케일을 못 찾았다').toBeTruthy()
+    expect(summary![1].split('·').map((x) => Number(x.trim())), 'CLAUDE.md 요약과 전문이 다른 스케일을 말한다')
+      .toEqual(m![1].split('·').map((x) => Number(x.trim())))
     const documented = m![1].split('·').map((x) => Number(x.trim()))
     expect(documented.length, '문서의 rung 수').toBe(7)
     expect([...DISPLAY].sort((a, b) => a - b), '코드의 DISPLAY 가 문서와 다르다').toEqual(documented)
