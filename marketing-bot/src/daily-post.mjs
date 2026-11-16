@@ -192,8 +192,8 @@ const cardKey = `${today}-${track}`;
 // IG_DAYS 로 바꿀 수 있다(0=일 … 6=토). 수동 실행(FORCE)은 요일과 무관하게 올린다.
 const IG_DAYS = String(process.env.IG_DAYS || '1,3,5').split(',').map(Number);
 const igDay = force || IG_DAYS.includes(k.getUTCDay());
-// 릴스: 월요일은 늘 릴스. 수·금은 성과로 고른다(2026-11-16 실측 — 릴스 평균의 1.87배(8개) · 캐러셀 0.77배(19개)).
-// 다만 직전 인스타 두 번이 다 릴스였으면 캐러셀 — 주에 한 번은 카드뉴스를 남겨 비교가 이어지게 한다.
+// 릴스: 월요일은 늘 릴스. 수·금은 성과로 고른다(2026-11-16 실측 — 학습 점수 릴스 1.87배(8개) · 캐러셀 0.77배(19개),
+// 도달은 릴스 86~122명 · 캐러셀 5~11명). 직전 인스타 다섯 번이 다 릴스면 한 번은 캐러셀 — 비교가 끊기지 않게.
 const reelDay = pickReelDay({ dow: k.getUTCDay(), forced: process.env.REEL === '1', mediaArms: arms.media,
   lastIgMedia: varietyLog.filter((p) => p.platform === 'instagram' && p.media).map((p) => p.media), seed: dayIdx * 7 + 6 });
 // 실제 입점 매장 사진: 사장님·손님 글에만(크리에이터 글은 사람 사진이 맞다). 최근 인스타 4회에 쓴 사진은 뺀다.

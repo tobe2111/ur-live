@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { pickReelDay } from '../src/learn.mjs';
 
-test('릴스 날: 월요일·강제는 늘 릴스, 직전 두 번이 릴스면 캐러셀', () => {
+test('릴스 날: 월요일·강제는 늘 릴스, 직전 다섯 번이 릴스면 캐러셀', () => {
   assert.equal(pickReelDay({ dow: 1 }), true);
   assert.equal(pickReelDay({ dow: 3, forced: true, lastIgMedia: ['reel', 'reel'] }), true);
-  assert.equal(pickReelDay({ dow: 5, lastIgMedia: ['carousel', 'reel', 'reel'] }), false);
+  assert.equal(pickReelDay({ dow: 5, lastIgMedia: ['carousel', 'reel', 'reel', 'reel', 'reel', 'reel'] }), false);
+  const good = { reel: { mean: 1.9, n: 20 }, carousel: { mean: 0.7, n: 20 } };
+  assert.equal(pickReelDay({ dow: 5, mediaArms: good, lastIgMedia: ['carousel', 'reel', 'reel'], seed: 3 }), true);
 });
 
 test('릴스 날: 수·금은 성과로 — 릴스가 확실히 앞서면 대부분 릴스, 뒤지면 대부분 캐러셀', () => {

@@ -76,7 +76,7 @@ export function posterior(stat) {
 // 인스타 릴스 날 고르기 (daily-post.mjs 에서 부른다)
 export function pickReelDay({ dow, forced = false, mediaArms = {}, lastIgMedia = [], seed = 0 }) {
   if (forced || dow === 1) return true;
-  if (lastIgMedia.length >= 2 && lastIgMedia.slice(-2).every((m) => m === 'reel')) return false;
+  if (lastIgMedia.length >= 5 && lastIgMedia.slice(-5).every((m) => m === 'reel')) return false;
   return thompsonPick(['reel', 'carousel'], mediaArms, seed) === 'reel';
 }
 
