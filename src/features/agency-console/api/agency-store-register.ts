@@ -17,6 +17,7 @@
  *   `store-seat-guard` 가 매 요청 맡김·직원·에이전시 상태를 다시 본다.
  */
 import type { Context, Hono } from 'hono'
+import { PLATFORM_OPERATOR_AGENCY_IDS } from '@/worker/utils/ledger-commission-policy'
 import { cors } from 'hono/cors'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
@@ -128,7 +129,8 @@ export function registerAgencyStoreRegisterRoute(app: Hono<{ Bindings: Bindings;
         const agencyPlaceUrl = normalizeKakaoPlaceUrl(b.kakao_place_url)
           ?? kakaoPlaceUrlFromId(b.kakao_place_id)
         await setSellerMeta(DB, sellerId, {
-          store_channel: 'brokered', // = 채널 미지정 수수료 폴백과 같은 값(요율 불변)
+          // 🏢 2026-11-16 대표 — 운영사(유어팀) 에이전시가 데려온 매장은 직접(10%). 저장값부터 맞춰 화면·정산이 같은 값을 본다.
+          store_channel: PLATFORM_OPERATOR_AGENCY_IDS.includes(me.agencyId) ? 'direct' : 'brokered', // 그 밖 = 채널 미지정 폴백과 같은 값(요율 불변)
           manager_phone: managerPhone,
           ...(b.kakao_place_id ? { kakao_place_id: String(b.kakao_place_id) } : {}),
           // 🔒 2026-10-13 — 생 `String` 이라 아무 도메인이나 저장됐다. SSOT 경유.

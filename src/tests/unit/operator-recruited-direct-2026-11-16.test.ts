@@ -66,3 +66,10 @@ describe('운영사 영입 매장 = 직접 10%', () => {
     expect(src).toMatch(/PLATFORM_OPERATOR_AGENCY_IDS\.includes\(ag\.agencyId\)\) return \{ credited: 0, agencyId: ag\.agencyId, matched: true \}/)
   })
 })
+
+describe('운영사 에이전시가 등록하는 매장은 저장값부터 직접', () => {
+  it('⑦ agency-store-register 가 운영사면 direct 를 저장한다(화면과 정산이 같은 값을 본다)', () => {
+    const src = readFileSync('src/features/agency-console/api/agency-store-register.ts', 'utf8')
+    expect(src).toMatch(/store_channel: PLATFORM_OPERATOR_AGENCY_IDS\.includes\(me\.agencyId\) \? 'direct' : 'brokered'/)
+  })
+})

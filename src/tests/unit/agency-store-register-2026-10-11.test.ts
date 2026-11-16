@@ -60,14 +60,14 @@ async function fresh() {
   db.exec('CREATE TABLE rate_limit_attempts (key TEXT, action TEXT, window_start INTEGER, count INTEGER, PRIMARY KEY (key, action, window_start))')
   const DB = d1(db)
   await ensureAgencyConsoleTables(DB)
-  db.exec(`INSERT INTO agency_accounts (id, name, status) VALUES (1, '바른대행', 'active')`)
+  db.exec(`INSERT INTO agency_accounts (id, name, status) VALUES (9, '바른대행', 'active')`)
   db.exec(`INSERT INTO agency_staff (id, agency_id, email, role, is_owner, status) VALUES
-    (5, 1, 'boss@ag.kr', 'admin', 1, 'active'), (6, 1, 'staff@ag.kr', 'staff', 0, 'active')`)
+    (5, 9, 'boss@ag.kr', 'admin', 1, 'active'), (6, 9, 'staff@ag.kr', 'staff', 0, 'active')`)
   invalidateStoreSeatCache(DB)
   const app = new Hono<{ Bindings: { DB: D1Database; JWT_SECRET: string } }>()
   app.route('/api/agency-console', agencyStoresRoutes)
   const call = async (path: string, staff: number, body?: unknown) => {
-    const token = (await issueAgencyStaffToken(SECRET, { id: staff, agency_id: 1 })).token
+    const token = (await issueAgencyStaffToken(SECRET, { id: staff, agency_id: 9 })).token
     return app.request(`/api/agency-console${path}`, {
       method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -93,9 +93,9 @@ describe('① 에이전시가 매장을 대신 등록한다', () => {
     expect(j.data.owner_claim_url).toContain(`/store/find?code=${encodeURIComponent(j.data.owner_claim_code)}`)
     expect(db.prepare('SELECT status, name FROM sellers WHERE id = ?').get(id)).toEqual({ status: 'pending', name: '성수 김밥' })
     expect(db.prepare('SELECT agency_id, status, decided_by_staff_id FROM agency_store_links WHERE seller_id = ?').get(id))
-      .toEqual({ agency_id: 1, status: 'active', decided_by_staff_id: 5 })
+      .toEqual({ agency_id: 9, status: 'active', decided_by_staff_id: 5 })
     const m = meta(db, id)
-    expect(m).toMatchObject({ registered_by_agency_id: '1', registered_by_agency_staff_id: '5', manager_phone: '01012345678', store_channel: 'brokered' })
+    expect(m).toMatchObject({ registered_by_agency_id: '9', registered_by_agency_staff_id: '5', manager_phone: '01012345678', store_channel: 'brokered' })
   })
 
   it('💰 돈 쪽은 안 건드린다 — 에이전시 몫 요율·영입 귀속이 없다', async () => {
