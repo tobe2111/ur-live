@@ -26,6 +26,8 @@ import { pcTopNavRowsHtml } from './pc-topnav-first-screen'
 import { HOME_CARD_ABOVE_FOLD, HOME_CARD_IMG_WIDTH_LG } from '../../shared/home-card-image'
 import { isHomeVisibleProduct } from '../../shared/deal-cats'
 import { resolveSectionMoreHref, isDeadEndHref } from '../../components/home/section-more-href'
+import { homeShortsPanelHtml } from './home-feed-first-screen'
+import { bannersOfSlot } from '../../shared/home-strip-banners'
 
 function slideHtml(b: PcHeroBanner, big: boolean): string {
   const src = b.image_url ? cfImage(b.image_url, big ? PC_HERO_IMG.big : PC_HERO_IMG.small) : ''
@@ -56,15 +58,22 @@ export function pcHomeLcpImage(bannersPayload: string | null | undefined): strin
  * 🖥️ 2026-11-12 대표 *"아직 느리네"* — 첫 어드민 섹션 한 줄(제목 · 더보기 · 카드 가로 줄). 화면 `HomeSections`(rail) 와 같은 마크업.
  *   빈 문자열이면 종전대로 로더만(무회귀). 위치 정렬 섹션(`near`)이 첫째면 그리지 않는다 — 부제가 손님 위치에 달려 서버가 모른다.
  */
-export function pcFirstSectionHtml(sectionsSeedJson: string | null | undefined): string {
+export function pcFirstSectionHtml(sectionsSeedJson: string | null | undefined, shortsSeedJson: string | null = null, bannersPayload: string | null = null): string {
   if (!sectionsSeedJson) return ''
-  let sec: { title?: string | null; subtitle?: string | null; near?: boolean; more_href?: string | null; products?: Parameters<typeof cardHtml>[0][] } | undefined
+  type Sec = { title?: string | null; subtitle?: string | null; near?: boolean; more_href?: string | null; products?: Parameters<typeof cardHtml>[0][] }
+  let visible: Sec[]
   try {
     const parsed = JSON.parse(sectionsSeedJson) as SectionsSeed
-    sec = (parsed?.data ?? [])
+    visible = (parsed?.data ?? [])
       .map((x) => (Array.isArray(x?.products) ? { ...x, products: x.products.filter(isHomeVisibleProduct) } : x))
-      .find((x) => Array.isArray(x?.products) && x.products.length > 0)
+      .filter((x) => Array.isArray(x?.products) && x.products.length > 0) as Sec[]
   } catch { return '' }
+  const first = pcSectionHtml(visible[0], true)
+  if (!first) return ''
+  return first + pcBelowFirstHtml(visible[1], shortsSeedJson, bannersPayload)
+}
+
+function pcSectionHtml(sec: { title?: string | null; subtitle?: string | null; near?: boolean; more_href?: string | null; products?: Parameters<typeof cardHtml>[0][] } | undefined, isFirst: boolean): string {
   if (!sec || sec.near || !sec.title) return ''
   const products = (sec.products ?? []).filter((p) => p && p.id != null).slice(0, PC_SECTION_MAX_CARDS)
   if (products.length === 0) return ''
@@ -72,11 +81,26 @@ export function pcFirstSectionHtml(sectionsSeedJson: string | null | undefined):
   const moreHtml = more && !isDeadEndHref(more) ? `<a href="${escAttr(more)}" class="${SC.more}">더보기</a>` : ''
   const head = `<div class="${SC.head}"><div class="${SC.headText}"><h3 class="${SC.title}">${escText(sec.title)}</h3>` +
     (sec.subtitle ? `<p class="${SC.sub}">${escText(sec.subtitle)}</p>` : '') + `</div>${moreHtml}</div>`
-  const cards = products.map((p, i) => cardHtml(p, i < HOME_CARD_ABOVE_FOLD, undefined, false, HOME_CARD_IMG_WIDTH_LG)).join('')
+  // 첫 섹션만 앞 4장 eager(화면 `aboveFold={i < 4 && sIdx === 0}`) — 둘째부터는 lazy.
+  const cards = products.map((p, i) => cardHtml(p, isFirst && i < HOME_CARD_ABOVE_FOLD, undefined, false, HOME_CARD_IMG_WIDTH_LG)).join('')
   return `<section class="${SC.panel}">${head}<div class="${SC.railWrap}"><div class="${SC.rail}">${cards}</div></div></section>`
 }
 
-export function buildPcHomeFirstScreen(bannersPayload: string | null | undefined, loaderHtml: string, sectionsSeedJson?: string | null): string {
+/**
+ * 🖥️ 2026-11-16 대표 *"계속 개선"* — 첫 섹션 아래 **유어쇼츠 줄 + 둘째 섹션**도 서버가 그린다. 화면(`HomeSections rail`)은
+ *   [첫 섹션 → 유어쇼츠(shortsAfter=0) → inline 배너 → 둘째 섹션] 순서다. 라이브(PC·CPU 4배): 첫 섹션 0.5~0.6s, 그 아래는 2.1~2.7s.
+ *   그리지 않는 경우(빈 문자열 — 종전 그대로): 유어쇼츠 시드 없음(줄 높이를 모른다) · 배너 시드 없음 · inline 배너 있음(둘째 섹션 앞에 온다).
+ *   둘째 섹션이 위치 정렬이면 유어쇼츠 줄까지만 그린다.
+ */
+function pcBelowFirstHtml(sec2: Parameters<typeof pcSectionHtml>[0], shortsSeedJson: string | null, bannersPayload: string | null): string {
+  const shorts = homeShortsPanelHtml(shortsSeedJson)
+  if (shorts == null || !bannersPayload) return ''
+  let inline = 0
+  try { inline = bannersOfSlot(JSON.parse(bannersPayload), 'inline').length } catch { return '' }
+  return shorts + (inline > 0 ? '' : pcSectionHtml(sec2, false))
+}
+
+export function buildPcHomeFirstScreen(bannersPayload: string | null | undefined, loaderHtml: string, sectionsSeedJson?: string | null, shortsSeedJson: string | null = null): string {
   const banners = pcHeroBannersFromPayload(bannersPayload)
   if (banners.length === 0) return ''
   const n = banners.length
@@ -89,7 +113,7 @@ export function buildPcHomeFirstScreen(bannersPayload: string | null | undefined
   const [navRow1, navRow2] = pcTopNavRowsHtml('/').split('\u0000')
   const body = `<div class="hidden md:block">` +
     `<div class="${F.topnav}"><div class="${F.topnavRow1}">${navRow1}</div><div class="${F.topnavRow2}">${navRow2}</div></div>` +
-    `<div class="${F.field}"><div class="${F.container}">${section}${pcFirstSectionHtml(sectionsSeedJson)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}</div></div>` +
+    `<div class="${F.field}"><div class="${F.container}">${section}${pcFirstSectionHtml(sectionsSeedJson, shortsSeedJson, bannersPayload ?? null)}${loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')}</div></div>` +
     '</div>'
   return `<div id="ur-first-screen">${body}</div>`
 }

@@ -51,6 +51,6 @@ describe('PC 홈 첫 섹션', () => {
     expect(a).toBeGreaterThan(0); expect(b).toBeGreaterThan(a); expect(c).toBeGreaterThan(b)
   })
   it('④ 워커가 섹션 시드를 넘긴다', () => {
-    expect(WORKER).toContain('buildPcHomeFirstScreen(homeBannersPayload, urdealLoaderHtml, ssrExtraPayload)')
+    expect(WORKER).toContain('buildPcHomeFirstScreen(homeBannersPayload, urdealLoaderHtml, ssrExtraPayload, homeShortsPayload)') // 2026-11-16 넷째 인자: 유어쇼츠 시드(첫 섹션 아래)
   })
 })

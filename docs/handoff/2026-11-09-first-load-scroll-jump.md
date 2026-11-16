@@ -309,3 +309,4 @@
 - 7일 boot-stuck 실사용 기록: 11-09 22:46(shell-sw 켠 5분 뒤 5연속) · 11-12 22:38~42 Pixel 10(대표 '무한 로딩' 시각, 5연속) — 둘 다 #2347 이전.
   #2347 뒤엔 2건뿐이고 **둘 다 vis=hidden**(숨은 탭을 브라우저가 멈춘 것). 11-11 Pixel 7 Chrome/153.0.8010.12 는 **이 환경의 측정 브라우저**다(노이즈).
 - 처방: `index.html` 워치독 — 숨은 동안은 세지 않고, 보이면 그때부터 12초(`armWatchdog`). 시험 `admin-errors-diagnose.test.ts`(가짜 document 로 실제 실행).
+- PC 홈 첫 섹션 아래(유어쇼츠 + 둘째 섹션) — 기록 `docs/locks/loading/2026-11-16-pc-home-below-first.md` · 홈 카테고리 탭 전환 0.44~0.73s · INP ≤104ms(확인만).
