@@ -11,6 +11,7 @@ import { pickSeries, seriesTopic, BRAND_WRITING, threadsTopicTag, ENCORE, SERIES
 import fs from 'node:fs';
 import path from 'node:path';
 import { makeVisual, realStorePhotos, freshStorePhotos, newRealDeals, makeDigest, digestCaption } from './visual.mjs';
+import { dealFacts } from './deal-facts.mjs';
 import { nextFieldNote, closeFieldNote } from './field-notes.mjs';
 import { ownerExamples, pickExamples, styleBlock } from './threads-style.mjs';
 
@@ -97,7 +98,9 @@ function trackGuide() { return {
 오늘 주제: ${topic}
 - 아래 [확인된 사실]에 있는 구조만 설명한다. 월 수익 예시, "누구나 쉽게 N만원" 같은 수익 약속 금지. 소개비율은 매장이 딜마다 정한다는 점을 정확히.
 - 마지막에 CTA 한 줄: ${T.cta}`,
-  consumer: `오늘은 소비자 딜 글: 아래 상품을 운영자 입장에서 소개한다(어떤 상황에 좋은지). 주어진 상품 정보 외 가격/할인율은 쓰지 않는다. 먹어본 척하지 않는다.`,
+  consumer: `오늘은 소비자 딜 글: 아래 상품을 운영자 입장에서 소개한다(어떤 상황에 좋은지). 주어진 상품 정보 외 가격/할인율은 쓰지 않는다. 먹어본 척하지 않는다.
+- 위치·지역 해시태그는 [확인된 사실]의 '매장 위치'에서만 쓴다. 가게 이름에 든 지명(예: '홍대돈까스'의 홍대)은 위치가 아니다.
+- 가격 차이가 있으면 그게 첫 줄의 주인공이다(정가 → 유어딜 가격).`,
 }[track]; }
 
 import { referenceStyleBlock } from './style.mjs';
@@ -192,7 +195,12 @@ async function main() {
   log(`오늘 시리즈: ${series.name}${encore ? ` (원글 ${encore.platform} ${encore.id}, 평균의 ${encore.ratio}배)` : ''}`);
   log(`event=${process.env.GITHUB_EVENT_NAME || 'local'} DRY=${DRY} force=${force} KST=${today} ${kstHM} slot(threads)=${todaysSlot('threads')} slot(ig)=${todaysSlot('instagram')}`);
   log(`오늘 트랙: ${track}${topic ? ` / 주제: ${topic.slice(0, 40)}` : ''}`);
-  const info = isPromo ? `상품: ${product.name} (${product.url})` : `링크 대상: ${target.url}`;
+  // 소비자 딜: 위치·가격은 상품 API(deal-facts.mjs)에서만. 가게 이름 속 지명을 위치로 쓰지 않게 주소를 사실로 준다.
+  const deal = isPromo ? await dealFacts(product) : null;
+  if (isPromo) log(deal ? `딜 사실: ${deal.store} · ${deal.region || '위치 없음'} · ${deal.price ?? '?'}원` : '딜 사실 조회 실패 → 상품 이름만 사실로');
+  const info = isPromo ? (deal ? `${deal.text}\n링크: ${product.url}` : `상품: ${product.name} (${product.url})\n매장 위치: 확인 안 됨 — 지역·동네 이름과 지역 해시태그를 쓰지 않는다`) : `링크 대상: ${target.url}`;
+  // 소비자 딜 글엔 그 가게 사진만(다른 가게 사진·무료 사진 금지)
+  const photosFor = async () => isPromo ? (await realStorePhotos(products)).filter((p) => String(p.id) === String(product.id)) : await storePhotosToday();
 
   // ---- Instagram (이미지 필수) ----
   if (due('instagram') && !postedToday('instagram')) {
@@ -208,7 +216,7 @@ async function main() {
     // 게시할 때마다 새 이미지(visual.mjs) — 실패하면 아래 종전 카드 세트로 물러선다
     gen = digest || cap.problems.length ? digest : await makeVisual({
       claudeFn: claude, caption: cap.body, facts: factsFor(info), series, key: cardKey,
-      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await storePhotosToday(), fieldNote: !!fieldNote,
+      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await photosFor(), noStock: isPromo, fieldNote: !!fieldNote,
       reel: reelDay || !!encore, // 다시 보기는 원글과 다른 형식(릴스)으로
     });
     // 미디어 결정: tracks.<t>.media 배열(캐러셀 images / Reels video_url, 날짜별 순환) → image_url → og:image → 상품 이미지
@@ -296,7 +304,7 @@ async function main() {
       return `https://raw.githubusercontent.com/${process.env.GITHUB_REPOSITORY}/marketing-data/marketing-bot/data/cards/${cardKey}/slide-1.jpg`;
     }
     const g = await makeVisual({ claudeFn: claude, caption: body, facts: factsFor(info), series, key: `${cardKey}-th`,
-      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await storePhotosToday(), fieldNote: !!fieldNote });
+      notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await photosFor(), noStock: isPromo, fieldNote: !!fieldNote });
     return g?.images?.[0] || null;
   }
 

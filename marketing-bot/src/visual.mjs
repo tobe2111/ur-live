@@ -112,14 +112,13 @@ export function imageSize(file) {
 }
 
 // 사진 하나를 골라 로컬 파일로. 반환 { file, credit, source, url } 또는 null
-export async function findPhoto({ notePhotos = [], productPhoto = null, storePhotos = [], query = '', dir }) {
+// noStock: 특정 가게 글이면 무료 사진(Pixabay·Pexels·Openverse)을 쓰지 않는다 — 돈까스 글에 와인 사진이 선 사고(2026-11-12).
+export async function findPhoto({ notePhotos = [], productPhoto = null, storePhotos = [], query = '', dir, noStock = false }) {
   const tries = [
     ...notePhotos.map((url) => async () => ({ url, credit: '유어딜 현장', source: 'field-note', auth: true })),
     ...(productPhoto ? [async () => ({ url: originalPhotoUrl(productPhoto), credit: '입점 매장', source: 'product', minSide: 700 })] : []),
     ...storePhotos.map((p) => async () => ({ url: p.url, credit: `입점 매장 · ${p.name || ''}`.trim(), source: 'store', minSide: 700 })),
-    () => searchPixabay(query),
-    () => searchPexels(query),
-    () => searchOpenverse(query),
+    ...(noStock ? [] : [() => searchPixabay(query), () => searchPexels(query), () => searchOpenverse(query)]),
   ];
   for (const t of tries) {
     try {
@@ -251,7 +250,7 @@ const MASCOT = path.join(ROOT, '..', 'public', 'assets', 'mascot', 'udal-social-
 
 // 전체: 성공하면 { images: [url...], set, credit, source, title } · 아니면 null
 // reel: true 면 같은 장으로 릴스 영상도 만든다 → { video_url, cover_url } 가 붙는다(실패하면 사진만).
-export async function makeVisual({ claudeFn, caption, facts, series, key, notePhotos = [], productPhoto = null, storePhotos = [], fieldNote = false, reel = false }) {
+export async function makeVisual({ claudeFn, caption, facts, series, key, notePhotos = [], productPhoto = null, storePhotos = [], noStock = false, fieldNote = false, reel = false }) {
   if (!fontsReady()) { log('이미지 생성 건너뜀 — 글꼴 없음(FONT_HEAVY/FONT_SEMI)'); return null; }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'urdeal-card-'));
   try {
@@ -264,7 +263,7 @@ export async function makeVisual({ claudeFn, caption, facts, series, key, notePh
       if (v && vetVisual(v, facts, fieldNote).length) v = null;
     }
     if (!v) { log('이미지 문구를 만들지 못함 → 종전 카드로'); return null; }
-    let photo = await findPhoto({ notePhotos, productPhoto, storePhotos, query: v.photo_query || series.photo, dir });
+    let photo = await findPhoto({ notePhotos, productPhoto, storePhotos, query: v.photo_query || series.photo, dir, noStock });
     const draw = (p, sub) => render({
       out_dir: path.join(dir, sub),
       fonts: { heavy: process.env.FONT_HEAVY, semi: process.env.FONT_SEMI },

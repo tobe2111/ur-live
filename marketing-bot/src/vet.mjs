@@ -65,6 +65,32 @@ const FORMULA_RE = [
   [/보여\s*드리고\s*싶었|말씀\s*드리고\s*싶었|소개해\s*드리고\s*싶|(?:바뀌면|달라지면)\s*(?:그대로|바로|꼭)\s*(?:말씀|알려)/, '자기 글에 대한 말("보여드리고 싶었어요" 등)'],
 ];
 
+
+// 지명 검수 (2026-11-16 — 전주 '홍대돈까스'를 "홍대에서"·#홍대맛집 으로 올린 사고).
+// 글에 나온 지명·지역 해시태그가 [확인된 사실]의 '이름이 아닌 부분'(주소 등)에 없으면 반려한다.
+// 가게·상품 이름 안의 지명은 위치가 아니므로 사실에서도 글에서도 지우고 비교한다.
+export const PLACES = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '제주', '서귀포', '수원', '성남', '판교', '분당', '일산', '고양', '용인', '부천', '안양', '송도', '전주', '덕진', '완산', '청주', '천안', '창원', '포항', '경주', '강릉', '속초', '춘천', '여수', '목포', '김해',
+  '홍대', '합정', '연남', '망원', '상수', '신촌', '이대', '강남', '역삼', '신사', '가로수길', '압구정', '청담', '성수', '서울숲', '건대', '왕십리', '이태원', '한남', '용산', '명동', '을지로', '종로', '익선동', '광화문', '잠실', '송파', '여의도', '영등포', '문래', '서초', '방배', '노원', '해운대', '서면', '광안리', '남포동', '동성로', '한옥마을'];
+const GENERIC_TAG = /^(?:동네|오늘|점심|저녁|혼밥|데이트|가성비|로컬|숨은|찐|인생|존|맛|진짜|우리동네|내돈내산)$/;
+export function namesInFacts(facts = '') {
+  const out = [];
+  for (const m of String(facts).matchAll(/^(?:상품|가게 이름|매장):\s*([^\n(]+)/gm)) out.push(m[1].trim());
+  return out.filter(Boolean);
+}
+const stripNames = (text, names) => names.reduce((t, n) => t.split(n).join(' ').split(n.replace(/\s+/g, '')).join(' '), String(text || ''));
+export function placeProblems(text, facts = '') {
+  const names = namesInFacts(facts);
+  const known = stripNames(String(facts).replace(/^(?:상품|가게 이름|매장):.*$/gm, ''), names);
+  const t = stripNames(text, names).replace(/부산\s*사투리/g, '');
+  const problems = [];
+  for (const p of PLACES) if (t.includes(p) && !known.includes(p)) problems.push(`확인 안 된 지명: "${p}" — 위치는 [확인된 사실]의 주소에서만 쓴다`);
+  for (const m of t.matchAll(/#([가-힣]+?)(?:맛집|핫플|데이트|카페|술집|여행)/g)) {
+    const place = m[1];
+    if (!GENERIC_TAG.test(place) && !known.includes(place)) problems.push(`확인 안 된 지역 해시태그: "${m[0]}"`);
+  }
+  return problems;
+}
+
 /**
  * @param {string} body  링크를 붙이기 전 본문
  * @param {{facts?: string, recent?: string[], minLen?: number, maxLen?: number}} ctx
@@ -94,6 +120,7 @@ export function vetPost(body, { facts = '', recent = [], minLen = 80, maxLen = 2
   if (emoji.length > 2) problems.push(`이모지가 많다(${emoji.length}개, 최대 2개)`);
   if (/[!！]{2,}/.test(text)) problems.push('느낌표 남발("!!")');
   if (/^\s*["'“]|["'”]\s*$/.test(text)) problems.push('따옴표로 감싼 메타 출력');
+  problems.push(...placeProblems(text, facts));
   for (const r of recent) {
     const s = similarity(text, r);
     if (s >= 0.6) { problems.push(`최근 글과 거의 같다(유사도 ${s.toFixed(2)})`); break; }
