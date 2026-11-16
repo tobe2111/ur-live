@@ -187,7 +187,7 @@ test('일일 게시 배선: 스레드에 이미지, 릴스는 주 3회·실패 �
   assert.match(src, /publishTagged\(\{ media_type: 'IMAGE', image_url, text \}\)/);
   assert.match(src, /r \|\| await publishTagged\(\{ media_type: 'TEXT', text \}\)/, '이미지 실패 시 글만');
   assert.ok(src.indexOf('// ---- Instagram') < src.indexOf('// ---- Threads ----'), '인스타 표지를 먼저 만들어 스레드가 같이 쓴다');
-  assert.match(src, /const reelDay = process\.env\.REEL === '1' \|\| k\.getUTCDay\(\) === 1;/, '릴스는 월요일(인스타 월·수·금 중)');
+  assert.match(src, /const reelDay = pickReelDay\(\{ dow: k\.getUTCDay\(\), forced: process\.env\.REEL === '1'/, '릴스: 월요일 고정 + 수·금은 성과로(reel-day.test.mjs)');
   assert.match(src, /릴스 게시 실패 → 캐러셀로 다시/);
   assert.match(src, /\['merchant', 'consumer'\]\.includes\(track\)/);
   assert.match(src, /pickSeries\(track, trackHist, dayIdx, \{ weights: seriesState\?\.weights \}\)/);
@@ -445,7 +445,7 @@ test('학습 배선: 고르기·기록·주간 갱신', () => {
   assert.match(src, /thompsonPick\(FORMATS\.map/);
   assert.match(src, /arms\.len/);
   assert.match(src, /lessonsBlock\(learnState\?\.lessons/);
-  assert.match(src, /format, len, slot: slot_kst, media, topic_tag \}\)\)/, '선택지를 기록해야 배울 수 있다');
+  assert.match(src, /format, len, slot: slot_kst, media, topic_tag, tformat, cta \}\)\)/, '선택지를 기록해야 배울 수 있다');
   const wr = fs.readFileSync(new URL('../src/weekly-review.mjs', import.meta.url), 'utf8');
   assert.match(wr, /writeJson\('data\/learn-state\.json'/);
   assert.match(wr, /지난 교훈 유지/);
