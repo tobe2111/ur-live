@@ -624,8 +624,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     ])
     const seller_handle = (handleRow?.handle && handleRow.handle.toLowerCase() !== 'me') ? handleRow.handle : null
     // 🎟️ meta 파생값 묶음(메뉴·한도·실효상한·장소URL·레벨·오픈예정·온누리) — `detail-meta-enrich.ts`
-    const { menu, max_per_person, qty_cap, kakao_place_url, min_review_level, prelaunch, onnuri_merchant } =
-      await buildDetailMeta(DB, id, metaMap, (product as { seller_id?: number }).seller_id)
+    const { menu, max_per_person, qty_cap, kakao_place_url, min_review_level, prelaunch, onnuri_merchant, creator_titles } =
+      await buildDetailMeta(DB, id, metaMap, (product as { seller_id?: number }).seller_id, { name: (product as { restaurant_name?: string | null }).restaurant_name, address: (product as { restaurant_address?: string | null }).restaurant_address })
 
     return c.json({
       success: true,
@@ -642,7 +642,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         ...(prelaunch ? { prelaunch: true } : {}),  // 🏷️ 오픈 예정형
         ...(kakao_place_url ? { kakao_place_url } : {}),  // 🎯 카카오 장소 페이지 URL (있을 때만)
         ...(min_review_level ? { min_review_level } : {}),  // 🗺️ 동네 리뷰어 레벨 전용 (있을 때만)
-        ...(onnuri_merchant ? { onnuri_merchant: true } : {}),  // 🏪 온누리 가맹 매장 (있을 때만)
+        ...(onnuri_merchant ? { onnuri_merchant: true } : {}), ...(creator_titles.length ? { creator_titles } : {}),  // 🏪 온누리 가맹 · 📰 다녀온 사람들 제목(크롤러 본문 재료 — detail-meta-enrich)
       },
     })
     } catch (err) {

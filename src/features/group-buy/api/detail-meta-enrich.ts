@@ -28,10 +28,17 @@ export type DetailMeta = {
   min_review_level: number | null
   prelaunch: boolean
   onnuri_merchant: boolean
+  /**
+   * 📰 2026-11-13 '다녀온 사람들' 공개 글·영상 제목 최대 5개 — 검색 크롤러 본문(`buildDetailNoscript`)의 재료.
+   * 실측: `/pass/2919` 크롤러 본문이 173자였다(설명 = 상품명이라 반복 제거됨). 가게마다 이미 모아 둔 실제 후기 제목이
+   * 가장 큰 고유 텍스트다(가게 이름 + 동네 + 메뉴). 없으면 빈 배열.
+   */
+  creator_titles: Array<{ title: string; author: string | null; platform: string }>
 }
 
 export async function buildDetailMeta(
   DB: D1Database, id: number | string, metaMap: MetaMap, sellerId: unknown,
+  store?: { name?: string | null; address?: string | null },
 ): Promise<DetailMeta> {
   const meta = metaMap?.get(Number(id))
 
@@ -64,7 +71,21 @@ export async function buildDetailMeta(
     }
   } catch { /* fail-soft */ }
 
+  // 📰 다녀온 사람들 제목(공개 · 고정 먼저 · 최신순 5개). 표가 없거나 실패하면 빈 배열(상세를 막지 않는다).
+  let creator_titles: DetailMeta['creator_titles'] = []
+  try {
+    if (store?.name) {
+      const { storeKeyFor } = await import('../../creator-content/api/content-db')
+      const { results } = await DB.prepare(`SELECT title, author_name, platform FROM store_creator_content
+          WHERE store_key = ? AND status = 'visible' AND title IS NOT NULL AND TRIM(title) != ''
+          ORDER BY pinned DESC, position ASC, id DESC LIMIT 5`).bind(storeKeyFor(store.name, store.address ?? null))
+        .all<{ title: string; author_name: string | null; platform: string }>()
+      creator_titles = (results ?? []).map((r) => ({ title: String(r.title).slice(0, 120), author: r.author_name ? String(r.author_name).slice(0, 40) : null, platform: r.platform }))
+    }
+  } catch { /* fail-soft */ }
+
   return {
+    creator_titles,
     menu,
     max_per_person,
     qty_cap,
