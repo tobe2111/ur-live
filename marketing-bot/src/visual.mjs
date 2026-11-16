@@ -14,6 +14,7 @@ import { createRequire } from 'node:module';
 import { ROOT, DRY, log } from './lib.mjs';
 import { vetPost } from './vet.mjs';
 import { reviewCover, reviewDeck, STOCK_SOURCES } from './judge.mjs';
+import { pickMedia, resolveMediaUrl, creditLine } from './media-library.mjs';
 
 export const VISUAL_SYSTEM = `너는 한국 최고 브랜드(토스, 배달의민족, 오늘의집) 인스타그램 카드뉴스를 만드는 에디터다.
 캡션을 받아 카드에 들어갈 문구만 JSON 으로 만든다. 원칙: 한 장에 메시지 하나, 짧고 굵게, 두 번 읽지 않아도 들어오게.
@@ -64,6 +65,26 @@ async function download(url, dir, headers = {}) {
   const buf = Buffer.from(await res.arrayBuffer());
   if (buf.length < 10_000) throw new Error('사진이 너무 작음');
   const f = path.join(dir, `photo-${Date.now()}`);
+  fs.writeFileSync(f, buf);
+  return f;
+}
+
+async function downloadAudio(url, dir) {
+  const res = await fetch(url, { headers: { 'user-agent': 'urdeal-marketing-bot' }, redirect: 'follow' });
+  if (!res.ok) throw new Error(`음악 다운로드 ${res.status}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length < 20_000 || buf.length > 30e6) throw new Error(`음악 크기 이상(${buf.length})`);
+  const ext = (url.match(/\.(mp3|ogg|wav|m4a|flac)(\?|$)/i)?.[1] || 'mp3').toLowerCase();
+  const f = path.join(dir, `music-${Date.now()}.${ext}`);
+  fs.writeFileSync(f, buf);
+  return f;
+}
+async function downloadVideo(url, dir) {
+  const res = await fetch(url, { headers: { 'user-agent': 'urdeal-marketing-bot' }, redirect: 'follow' });
+  if (!res.ok) throw new Error(`영상 다운로드 ${res.status}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length < 50_000 || buf.length > 80e6) throw new Error(`영상 크기 이상(${buf.length})`);
+  const f = path.join(dir, `broll-${Date.now()}.mp4`);
   fs.writeFileSync(f, buf);
   return f;
 }
@@ -128,11 +149,14 @@ export function imageSize(file) {
 
 // 사진 하나를 골라 로컬 파일로. 반환 { file, credit, source, url } 또는 null
 // noStock: 특정 가게 글이면 무료 사진(Pixabay·Pexels·Openverse)을 쓰지 않는다 — 돈까스 글에 와인 사진이 선 사고(2026-11-12).
-export async function findPhoto({ notePhotos = [], productPhoto = null, storePhotos = [], query = '', dir, noStock = false, minSide = 700 }) {
+// library: 자료 창고(media-library.mjs) — 미리 채점해 둔 무료 사진. 실시간 검색보다 먼저 본다(가게 글엔 안 씀).
+export async function findPhoto({ notePhotos = [], productPhoto = null, storePhotos = [], query = '', dir, noStock = false, minSide = 700, library = null, track = null }) {
+  const libPick = !noStock && library ? pickMedia(library, { kind: 'image', track, query }) : null;
   const tries = [
     ...notePhotos.map((url) => async () => ({ url, credit: '유어딜 현장', source: 'field-note', auth: true })),
     ...(productPhoto ? [async () => ({ url: originalPhotoUrl(productPhoto), credit: '입점 매장', source: 'product', minSide })] : []),
     ...storePhotos.map((p) => async () => ({ url: p.url, credit: `입점 매장 · ${p.name || ''}`.trim(), source: 'store', minSide })),
+    ...(libPick ? [async () => ({ url: await resolveMediaUrl(libPick), credit: creditLine(libPick), source: `library-${libPick.source}`, library_id: libPick.id, license: libPick.license, page_url: libPick.page_url })] : []),
     ...(noStock ? [] : [() => searchPixabay(query), () => searchPexels(query), () => searchOpenverse(query)]),
   ];
   for (const t of tries) {
@@ -145,7 +169,7 @@ export async function findPhoto({ notePhotos = [], productPhoto = null, storePho
         const sz = imageSize(file);
         if (sz && Math.min(sz.w, sz.h) < c.minSide) { log(`사진이 작아서 건너뜀(${sz.w}x${sz.h}): ${c.url}`); continue; }
       }
-      return { file, credit: c.credit, source: c.source, url: c.url };
+      return { file, credit: c.credit, source: c.source, url: c.url, library_id: c.library_id, license: c.license, page_url: c.page_url };
     } catch (e) { log(`사진 후보 실패: ${e.message}`); }
   }
   return null;
@@ -270,13 +294,23 @@ export function reelPlan(n) {
   const total = d.reduce((a, b) => a + b, 0) - REEL_DUR.fade * (n - 1);
   return { d, offsets, total: Math.round(total * 100) / 100 };
 }
-export function reelArgs(files, out) {
+// broll: 표지 장 배경으로 깔 영상(자료 창고). 있으면 표지 위아래가 흐린 같은 장 대신 움직이는 장면이 된다.
+export function reelArgs(files, out, { broll = null, music = null } = {}) {
   const { d, offsets, total } = reelPlan(files.length);
   const args = ['-y'];
   files.forEach((f) => args.push('-i', f));
   args.push('-f', 'lavfi', '-t', String(total), '-i', 'anullsrc=r=44100:cl=stereo');
+  const bIdx = files.length + 1;
+  if (broll) args.push('-stream_loop', '-1', '-i', broll);
+  const mIdx = bIdx + (broll ? 1 : 0);
+  if (music) args.push('-stream_loop', '-1', '-i', music);
   const parts = files.map((_, i) => {
     const fr = Math.round(d[i] * 30);
+    if (i === 0 && broll) {
+      return `[${bIdx}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,eq=brightness=-0.18:saturation=1.05,fps=30,trim=duration=${d[0]},setpts=PTS-STARTPTS,setsar=1[bg0];`
+        + `[0:v]scale=1188:1485,zoompan=z='min(1+0.06*on/${fr},1.06)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${fr}:s=1080x1350:fps=30,setsar=1[fg0];`
+        + `[bg0][fg0]overlay=0:285:shortest=1,format=yuv420p[v0]`;
+    }
     // 확대(최대 6%) → 세로 화면 가운데. 위아래는 같은 장을 흐리고 어둡게 깐 면(검은 띠보다 덜 비어 보인다)
     return `[${i}:v]split[a${i}][b${i}];`
       + `[a${i}]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=40:2,eq=brightness=-0.22,loop=${fr}:1:0,fps=30,setsar=1[bg${i}];`
@@ -285,15 +319,17 @@ export function reelArgs(files, out) {
   });
   let last = 'v0';
   offsets.forEach((o, i) => { parts.push(`[${last}][v${i + 1}]xfade=transition=fade:duration=${REEL_DUR.fade}:offset=${o}[x${i}]`); last = `x${i}`; });
-  args.push('-filter_complex', parts.join(';'), '-map', `[${last}]`, '-map', `${files.length}:a`,
+  // 배경 음악: 작게(35%), 처음 0.5초 올리고 끝 1.2초 내린다. 없으면 무음 트랙.
+  if (music) parts.push(`[${mIdx}:a]atrim=0:${total},asetpts=PTS-STARTPTS,volume=0.35,afade=t=in:st=0:d=0.5,afade=t=out:st=${Math.max(0, total - 1.2)}:d=1.2[aout]`);
+  args.push('-filter_complex', parts.join(';'), '-map', `[${last}]`, '-map', music ? '[aout]' : `${files.length}:a`,
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', '-r', '30',
     '-c:a', 'aac', '-b:a', '64k', '-shortest', '-movflags', '+faststart', out);
   return args;
 }
-export function makeReel(files, dir) {
+export function makeReel(files, dir, { broll = null, music = null } = {}) {
   if (files.length < 2) return null;
   const out = path.join(dir, 'reel.mp4');
-  const r = spawnSync('ffmpeg', reelArgs(files, out), { encoding: 'utf8', timeout: 180_000 });
+  const r = spawnSync('ffmpeg', reelArgs(files, out, { broll, music }), { encoding: 'utf8', timeout: 180_000 });
   if (r.status !== 0 || !fs.existsSync(out)) { log(`릴스 만들기 실패: ${(r.stderr || r.error?.message || '').slice(-300)}`); return null; }
   return out;
 }
@@ -324,7 +360,7 @@ const MASCOT = path.join(ROOT, '..', 'public', 'assets', 'mascot', 'udal-social-
 
 // 전체: 성공하면 { images: [url...], set, credit, source, title } · 아니면 null
 // reel: true 면 같은 장으로 릴스 영상도 만든다 → { video_url, cover_url } 가 붙는다(실패하면 사진만).
-export async function makeVisual({ claudeFn, caption, facts, series, key, notePhotos = [], productPhoto = null, storePhotos = [], noStock = false, deal = null, fieldNote = false, reel = false }) {
+export async function makeVisual({ claudeFn, caption, facts, series, key, notePhotos = [], productPhoto = null, storePhotos = [], noStock = false, deal = null, fieldNote = false, reel = false, library = null, track = null }) {
   if (!fontsReady()) { log('이미지 생성 건너뜀 — 글꼴 없음(FONT_HEAVY/FONT_SEMI)'); return null; }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'urdeal-card-'));
   try {
@@ -339,7 +375,7 @@ export async function makeVisual({ claudeFn, caption, facts, series, key, notePh
     if (!v) { log('이미지 문구를 만들지 못함 → 종전 카드로'); return null; }
     const html = htmlRendererReady();
     // HTML 카드는 작은 사진(500px~)을 액자로 넣는다 — 늘려서 흐리게 하지 않는다(card-html.mjs photoMode)
-    let photo = await findPhoto({ notePhotos, productPhoto, storePhotos, query: v.photo_query || series.photo, dir, noStock, minSide: html ? 500 : 700 });
+    let photo = await findPhoto({ notePhotos, productPhoto, storePhotos, query: v.photo_query || series.photo, dir, noStock, minSide: html ? 500 : 700, library, track });
     const draw = (p, sub) => {
       const d = deal ? dealDeck(deal, { hasPhoto: !!p }) : null;
       return render({
@@ -379,10 +415,30 @@ export async function makeVisual({ claudeFn, caption, facts, series, key, notePh
       }
     }
     log(`이미지 ${files.length}장 생성 (사진: ${photo ? `${photo.source} · ${photo.credit}` : '없음 — 브랜드 면'}) 제목: ${v.title.join(' / ')}`);
-    const video = reel ? makeReel(files, dir) : null;
+    // 릴스 표지 뒤에 자료 창고 영상을 깐다(가게 글은 제외 — 다른 곳 영상이 그 가게처럼 보이면 안 된다)
+    let broll = null;
+    if (reel && !noStock && library) {
+      const vid = pickMedia(library, { kind: 'video', track, query: v.photo_query || series.photo });
+      if (vid) {
+        try { const u = await resolveMediaUrl(vid); if (u) { broll = { file: await downloadVideo(u, dir), id: vid.id, credit: creditLine(vid) }; log(`릴스 배경 영상: ${broll.credit}`); } }
+        catch (e) { log(`릴스 배경 영상 실패 → 배경 없이: ${e.message}`); }
+      }
+    }
+    // 배경 음악(CC0) — 가게 글에도 쓴다(음악은 그 가게인 척하지 않는다)
+    let music = null;
+    if (reel && library) {
+      const au = pickMedia(library, { kind: 'audio', track, query: v.photo_query || series.photo, avoidDays: 14 });
+      if (au) {
+        try { music = { file: await downloadAudio(au.url, dir), id: au.id, credit: creditLine(au) }; log(`릴스 배경 음악: ${music.credit}`); }
+        catch (e) { log(`릴스 배경 음악 실패 → 무음: ${e.message}`); }
+      }
+    }
+    let video = reel ? makeReel(files, dir, { broll: broll?.file, music: music?.file }) : null;
+    if (reel && !video && music) { log('음악 넣은 릴스 실패 → 음악 없이 다시'); music = null; video = makeReel(files, dir, { broll: broll?.file }); }
     const story = makeStory(files[0], dir);
     if (video) log(`릴스 영상 생성 (${reelPlan(files.length).total}초)`);
-    const base = { set: `gen-${key}`, credit: photo?.credit, source: photo?.source || 'none', photo_url: photo?.url, title: v.title.join(' ') };
+    const base = { set: `gen-${key}`, credit: photo?.credit, source: photo?.source || 'none', photo_url: photo?.url, license: photo?.license, page_url: photo?.page_url, title: v.title.join(' '),
+      library_used: [photo?.library_id, video && broll ? broll.id : null, video && music ? music.id : null].filter(Boolean), broll_credit: video && broll ? broll.credit : undefined, music_credit: video && music ? music.credit : undefined };
     if (DRY) return { ...base, images: files, ...(video ? { video_url: video, cover_url: files[0] } : {}), ...(story ? { story_url: story } : {}) };
     const urls = await publishImages([...files, ...(video ? [video] : []), ...(story ? [story] : [])], key);
     pruneCards();

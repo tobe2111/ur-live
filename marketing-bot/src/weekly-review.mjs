@@ -4,7 +4,7 @@ import { TRACKS, DEFAULT_WEIGHTS, DEFAULT_CAMPAIGNS, categoryPerformance, adjust
 import { myRecentPosts, utmFromText } from './live.mjs';
 import { SERIES, seriesWeights, encoreCandidates } from './series.mjs';
 import { allSlots } from './variety.mjs';
-import { rewards, fitArms, armsReport, LESSON_SYSTEM, parseLessons, lessonInput, learnLog } from './learn.mjs';
+import { rewards, withClicks, fitArms, armsReport, LESSON_SYSTEM, parseLessons, lessonInput, learnLog } from './learn.mjs';
 
 const mixCfg = readJson('data/content-mix.json', {});
 const CAMPAIGNS = { ...DEFAULT_CAMPAIGNS, ...Object.fromEntries(TRACKS.map((t) => [t, mixCfg.tracks?.[t]?.campaign]).filter(([, v]) => v)) };
@@ -139,7 +139,8 @@ async function main() {
   const seriesLines = ['### 코너(시리즈)별 반응 (1 = 평균, 2개 이상 쌓인 코너만 반영)',
     ...(Object.keys(sw.counts).length ? Object.entries(sw.weights).sort((a, b) => b[1] - a[1]).map(([id, w]) => `- ${SERIES[id]?.name || id}: ${w} (글 ${sw.counts[id]}개)`) : ['- 아직 코너 기록이 있는 글이 없습니다.'])].join('\n');
   // 자동 학습(learn.mjs): 선택지별 성과 → data/learn-state.json. 게시 봇이 톰슨 샘플링으로 고른다.
-  const rw = rewards(rows);
+  // 링크 클릭(입점·신청으로 가는 길)을 점수에 얹어 배운다 — 클릭을 못 읽으면 반응 점수만.
+  const rw = rewards(withClicks(rows, clicks));
   // 기록(variety.json)에 실제 게시 정보(시간대·형식)를 붙인다 — 선택지 기록 전의 글도 시간대·형식은 배울 수 있다.
   const learnArms = fitArms(learnLog(vlog, rows), rw);
   const prevLearn = readJson('data/learn-state.json', null);
