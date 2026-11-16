@@ -16,4 +16,7 @@ export default [
   { name: 'operatordirect: 운영사 에이전시에 몫 적립', file: 'src/worker/utils/agency-share-payout.ts',
     find: '    if (PLATFORM_OPERATOR_AGENCY_IDS.includes(ag.agencyId)) return { credited: 0, agencyId: ag.agencyId, matched: true }', replace: '', test: T,
     why: '10% 를 걷으면서 자기 회사 에이전시 몫까지 셈한다.' },
+  { name: 'operatordirect: 운영사 에이전시 등록이 중개로 저장', file: 'src/features/agency-console/api/agency-store-register.ts',
+    find: "store_channel: PLATFORM_OPERATOR_AGENCY_IDS.includes(me.agencyId) ? 'direct' : 'brokered',", replace: "store_channel: 'brokered',", test: T,
+    why: '유어팀이 등록한 매장의 사장님 화면에 5% 가 뜨는데 실제로는 10% 가 떼인다.' },
 ]
