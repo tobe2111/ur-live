@@ -69,6 +69,16 @@ async function download(url, dir, headers = {}) {
   return f;
 }
 
+async function downloadAudio(url, dir) {
+  const res = await fetch(url, { headers: { 'user-agent': 'urdeal-marketing-bot' }, redirect: 'follow' });
+  if (!res.ok) throw new Error(`음악 다운로드 ${res.status}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length < 20_000 || buf.length > 30e6) throw new Error(`음악 크기 이상(${buf.length})`);
+  const ext = (url.match(/\.(mp3|ogg|wav|m4a|flac)(\?|$)/i)?.[1] || 'mp3').toLowerCase();
+  const f = path.join(dir, `music-${Date.now()}.${ext}`);
+  fs.writeFileSync(f, buf);
+  return f;
+}
 async function downloadVideo(url, dir) {
   const res = await fetch(url, { headers: { 'user-agent': 'urdeal-marketing-bot' }, redirect: 'follow' });
   if (!res.ok) throw new Error(`영상 다운로드 ${res.status}`);
@@ -285,13 +295,15 @@ export function reelPlan(n) {
   return { d, offsets, total: Math.round(total * 100) / 100 };
 }
 // broll: 표지 장 배경으로 깔 영상(자료 창고). 있으면 표지 위아래가 흐린 같은 장 대신 움직이는 장면이 된다.
-export function reelArgs(files, out, { broll = null } = {}) {
+export function reelArgs(files, out, { broll = null, music = null } = {}) {
   const { d, offsets, total } = reelPlan(files.length);
   const args = ['-y'];
   files.forEach((f) => args.push('-i', f));
   args.push('-f', 'lavfi', '-t', String(total), '-i', 'anullsrc=r=44100:cl=stereo');
   const bIdx = files.length + 1;
   if (broll) args.push('-stream_loop', '-1', '-i', broll);
+  const mIdx = bIdx + (broll ? 1 : 0);
+  if (music) args.push('-stream_loop', '-1', '-i', music);
   const parts = files.map((_, i) => {
     const fr = Math.round(d[i] * 30);
     if (i === 0 && broll) {
@@ -307,15 +319,17 @@ export function reelArgs(files, out, { broll = null } = {}) {
   });
   let last = 'v0';
   offsets.forEach((o, i) => { parts.push(`[${last}][v${i + 1}]xfade=transition=fade:duration=${REEL_DUR.fade}:offset=${o}[x${i}]`); last = `x${i}`; });
-  args.push('-filter_complex', parts.join(';'), '-map', `[${last}]`, '-map', `${files.length}:a`,
+  // 배경 음악: 작게(35%), 처음 0.5초 올리고 끝 1.2초 내린다. 없으면 무음 트랙.
+  if (music) parts.push(`[${mIdx}:a]atrim=0:${total},asetpts=PTS-STARTPTS,volume=0.35,afade=t=in:st=0:d=0.5,afade=t=out:st=${Math.max(0, total - 1.2)}:d=1.2[aout]`);
+  args.push('-filter_complex', parts.join(';'), '-map', `[${last}]`, '-map', music ? '[aout]' : `${files.length}:a`,
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', '-r', '30',
     '-c:a', 'aac', '-b:a', '64k', '-shortest', '-movflags', '+faststart', out);
   return args;
 }
-export function makeReel(files, dir, { broll = null } = {}) {
+export function makeReel(files, dir, { broll = null, music = null } = {}) {
   if (files.length < 2) return null;
   const out = path.join(dir, 'reel.mp4');
-  const r = spawnSync('ffmpeg', reelArgs(files, out, { broll }), { encoding: 'utf8', timeout: 180_000 });
+  const r = spawnSync('ffmpeg', reelArgs(files, out, { broll, music }), { encoding: 'utf8', timeout: 180_000 });
   if (r.status !== 0 || !fs.existsSync(out)) { log(`릴스 만들기 실패: ${(r.stderr || r.error?.message || '').slice(-300)}`); return null; }
   return out;
 }
@@ -410,11 +424,21 @@ export async function makeVisual({ claudeFn, caption, facts, series, key, notePh
         catch (e) { log(`릴스 배경 영상 실패 → 배경 없이: ${e.message}`); }
       }
     }
-    const video = reel ? makeReel(files, dir, { broll: broll?.file }) : null;
+    // 배경 음악(CC0) — 가게 글에도 쓴다(음악은 그 가게인 척하지 않는다)
+    let music = null;
+    if (reel && library) {
+      const au = pickMedia(library, { kind: 'audio', track, query: v.photo_query || series.photo, avoidDays: 14 });
+      if (au) {
+        try { music = { file: await downloadAudio(au.url, dir), id: au.id, credit: creditLine(au) }; log(`릴스 배경 음악: ${music.credit}`); }
+        catch (e) { log(`릴스 배경 음악 실패 → 무음: ${e.message}`); }
+      }
+    }
+    let video = reel ? makeReel(files, dir, { broll: broll?.file, music: music?.file }) : null;
+    if (reel && !video && music) { log('음악 넣은 릴스 실패 → 음악 없이 다시'); music = null; video = makeReel(files, dir, { broll: broll?.file }); }
     const story = makeStory(files[0], dir);
     if (video) log(`릴스 영상 생성 (${reelPlan(files.length).total}초)`);
     const base = { set: `gen-${key}`, credit: photo?.credit, source: photo?.source || 'none', photo_url: photo?.url, license: photo?.license, page_url: photo?.page_url, title: v.title.join(' '),
-      library_used: [photo?.library_id, video && broll ? broll.id : null].filter(Boolean), broll_credit: video && broll ? broll.credit : undefined };
+      library_used: [photo?.library_id, video && broll ? broll.id : null, video && music ? music.id : null].filter(Boolean), broll_credit: video && broll ? broll.credit : undefined, music_credit: video && music ? music.credit : undefined };
     if (DRY) return { ...base, images: files, ...(video ? { video_url: video, cover_url: files[0] } : {}), ...(story ? { story_url: story } : {}) };
     const urls = await publishImages([...files, ...(video ? [video] : []), ...(story ? [story] : [])], key);
     pruneCards();

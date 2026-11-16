@@ -14,6 +14,7 @@ export const LIB_FILE = 'data/media-library.json';
 export const PIXABAY_LICENSE = 'Pixabay Content License (상업 이용 가능, 출처 표기 불요)';
 export const MAX_IMAGES = 300;
 export const MAX_VIDEOS = 80;
+export const MAX_AUDIO = 40;
 export const MIN_SCORE = 7;
 
 // 주제: 트랙별로 실제 글에 쓰이는 장면(영어 검색어). 하루 2개씩 돌아가며 모은다.
@@ -33,6 +34,19 @@ export const TOPICS = [
   { q: 'seoul street night', tracks: ['consumer', 'creator'] },
   { q: 'qr code payment phone', tracks: ['merchant', 'consumer'] },
 ];
+
+// 릴스 배경 음악(2026-11-16): Openverse 오디오 중 CC0(출처 표기 불요·상업 이용 가능) 음악만.
+// 들어 볼 수 없어 Claude 채점 대신 조건으로 거른다: CC0 · 음악 분류 · 20초~4분.
+export const AUDIO_TOPICS = ['upbeat acoustic', 'happy ukulele', 'lofi chill', 'cafe jazz', 'bright instrumental pop', 'warm piano'];
+export async function searchOpenverseAudio(q, fetchImpl = fetch) {
+  const u = `https://api.openverse.org/v1/audio/?q=${encodeURIComponent(q)}&license=cc0&category=music&page_size=20&mature=false`;
+  const j = await (await fetchImpl(u)).json();
+  return (j.results || []).filter((r) => String(r.license || '').toLowerCase() === 'cc0' && r.url && (r.duration == null || (r.duration >= 20000 && r.duration <= 240000)))
+    .map((r) => ({
+      id: `openverse-audio-${r.id}`, kind: 'audio', source: 'openverse', source_id: r.id, url: r.url, page_url: r.foreign_landing_url, author: r.creator || '',
+      license: 'CC0 (출처 표기 불요)', duration_ms: r.duration ?? null, title: r.title || '', tags: (r.tags || []).map((t) => t.name).join(', '),
+    }));
+}
 
 export function emptyLibrary() { return { items: [], topics_last: {}, updated_at: null }; }
 
@@ -100,7 +114,7 @@ export function prune(items, maxImages = MAX_IMAGES, maxVideos = MAX_VIDEOS) {
   const keep = (kind, max) => items.filter((x) => x.kind === kind)
     .sort((a, b) => (b.score || 0) - (a.score || 0) || (a.used?.length || 0) - (b.used?.length || 0) || String(b.added_at).localeCompare(String(a.added_at)))
     .slice(0, max);
-  return [...keep('image', maxImages), ...keep('video', maxVideos)];
+  return [...keep('image', maxImages), ...keep('video', maxVideos), ...keep('audio', MAX_AUDIO)];
 }
 
 // 하루치 모으기. perRun = 이번에 새로 채점할 최대 개수(Claude 비용 상한).
@@ -119,6 +133,17 @@ export async function collect(lib, { key = process.env.PIXABAY_API_KEY, claudeFn
     try { add((await searchOpenverseImages(t.q, fetchImpl)).slice(0, 3)); } catch (e) { log(`자료 창고: Openverse 실패(${t.q}) ${e.message}`); }
     lib.topics_last = { ...(lib.topics_last || {}), [t.q]: now.toISOString() };
   }
+  // 음악: 하루 한 검색어, 조건 통과분 최대 3곡(채점 없음)
+  const aq = [...AUDIO_TOPICS].sort((a, b) => String(lib.topics_last?.[`audio:${a}`] || '').localeCompare(String(lib.topics_last?.[`audio:${b}`] || '')))[0];
+  let audioAdded = 0;
+  try {
+    for (const x of (await searchOpenverseAudio(aq, fetchImpl))) {
+      if (audioAdded >= 3 || have.has(x.id) || rejected.has(x.id)) continue;
+      lib.items.push({ ...x, query: aq, tracks: ['merchant', 'creator', 'consumer'], score: MIN_SCORE, note: '조건 통과(CC0 음악·길이)', added_at: now.toISOString(), used: [] });
+      have.add(x.id); audioAdded++;
+    }
+  } catch (e) { log(`자료 창고: Openverse 음악 실패(${aq}) ${e.message}`); }
+  lib.topics_last = { ...(lib.topics_last || {}), [`audio:${aq}`]: now.toISOString() };
   let kept = 0, dropped = 0;
   for (const c of cands.slice(0, perRun)) {
     let r;
@@ -130,7 +155,7 @@ export async function collect(lib, { key = process.env.PIXABAY_API_KEY, claudeFn
   lib.rejected = [...rejected].slice(-2000);
   lib.items = prune(lib.items);
   lib.updated_at = now.toISOString();
-  log(`자료 창고: 주제 ${picked.map((t) => t.q).join(', ')} · 후보 ${cands.length} · 채택 ${kept} · 탈락 ${dropped} · 보유 사진 ${lib.items.filter((x) => x.kind === 'image').length} / 영상 ${lib.items.filter((x) => x.kind === 'video').length}`);
+  log(`자료 창고: 주제 ${picked.map((t) => t.q).join(', ')} · 후보 ${cands.length} · 채택 ${kept} · 탈락 ${dropped} · 보유 사진 ${lib.items.filter((x) => x.kind === 'image').length} / 영상 ${lib.items.filter((x) => x.kind === 'video').length} / 음악 ${lib.items.filter((x) => x.kind === 'audio').length}(새로 ${audioAdded})`);
   return lib;
 }
 
