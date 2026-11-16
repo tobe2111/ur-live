@@ -394,5 +394,25 @@
     "slot": "19:30",
     "media": "image",
     "topic_tag": "인플루언서"
+  },
+  {
+    "id": "17947312806359869",
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "체험단 말고 계산하는 손님: 손님이 오기 전에 먼저 결제하니 예약만 잡고 안 오는 일이 없다",
+    "hook": "why",
+    "media_set": "gen-2026-11-16-merchant",
+    "series": "udal-qna",
+    "date_kst": "2026-11-16",
+    "format": "0",
+    "slot": "09:00",
+    "media": "reel"
+  },
+  {
+    "id": "18113054030351244",
+    "platform": "instagram_story",
+    "track": "merchant",
+    "series": "udal-qna",
+    "date_kst": "2026-11-16"
   }
 ]

@@ -854,5 +854,37 @@
     "slot_kst": "19:30",
     "link": "https://urdeal.kr/creators?utm_source=threads&utm_medium=social&utm_campaign=creator-recruit&utm_content=th-20261115",
     "text": "시작 비용 0원. 카카오 로그인 1분이면 내 유어샵이 만들어져요.\n가입, 딜 담기, 링크 공유. 이 세 단계가 전부예요."
+  },
+  {
+    "platform": "instagram",
+    "id": "17947312806359869",
+    "media_type": "REELS",
+    "media": "reel",
+    "format": "0",
+    "media_set": "gen-2026-11-16-merchant",
+    "series": "udal-qna",
+    "generated": {
+      "source": "none",
+      "title": "예약만 잡고 안 오는 일, 없어요",
+      "reel": true
+    },
+    "hook": "why",
+    "topic": "체험단 말고 계산하는 손님: 손님이 오기 전에 먼저 결제하니 예약만 잡고 안 오는 일이 없다",
+    "content_id": "ig",
+    "track": "merchant",
+    "promo": false,
+    "posted_at": "2026-11-16T03:49:11.242Z",
+    "date_kst": "2026-11-16",
+    "slot_kst": "09:00",
+    "bio_link": "https://urdeal.kr/partners?utm_source=instagram&utm_medium=social&utm_campaign=merchant-recruit&utm_content=ig-20261116",
+    "text": "예약만 잡고 안 오는 일, 이용권은 구조상 없어요.\n손님이 방문 전에 먼저 결제하고, 이용권이 폰에 발급돼요. 체험단이 아니라 이미 계산을 마친 손님이 오는 거예요.\n입점 조건은 프로필 링크에서 확인할 수 있어요.\n\n#유어딜 #노쇼걱정 #동네가게"
+  },
+  {
+    "platform": "instagram_story",
+    "id": "18113054030351244",
+    "track": "merchant",
+    "series": "udal-qna",
+    "posted_at": "2026-11-16T03:49:11.242Z",
+    "date_kst": "2026-11-16"
   }
 ]
