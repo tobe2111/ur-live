@@ -65,6 +65,14 @@ jobs:
         run: |
           npm i --no-save --no-audit --no-fund playwright@1.49.1
           npx playwright install --with-deps chromium
+      - name: Collect media library (자료 창고)
+        # 상업 이용 가능한 무료 사진·영상(Pixabay·Openverse CC0)을 하루 한 번 모아 채점해 둔다(src/media-library.mjs).
+        continue-on-error: true
+        env:
+          DRY_RUN: ${{ inputs.dry_run || '0' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+        run: node src/media-library.mjs
       - name: Run
         env:
           DRY_RUN: ${{ inputs.dry_run || '0' }}

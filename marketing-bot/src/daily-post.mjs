@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { makeVisual, realStorePhotos, freshStorePhotos, newRealDeals, makeDigest, digestCaption } from './visual.mjs';
 import { dealFacts } from './deal-facts.mjs';
+import { LIB_FILE, markUsed } from './media-library.mjs';
 import { nextFieldNote, closeFieldNote } from './field-notes.mjs';
 import { ownerExamples, pickExamples, styleBlock } from './threads-style.mjs';
 
@@ -76,6 +77,7 @@ let fieldNote = null;
 // 고르기는 학습값(learn.mjs — 톰슨 샘플링)으로: 성과 좋은 선택지를 더 자주, 덜 써 본 것도 계속 시험한다.
 // 학습값이 없으면 모두 평균으로 보고 고르게 시험한다. 같은 시작 방식이 이틀 연속 나오지 않게 어제 것은 뺀다.
 const learnState = readJson('data/learn-state.json', null);
+const mediaLib = readJson(LIB_FILE, null);
 const arms = learnState?.arms || {};
 const lastHook = varietyLog.filter((p) => p.hook && !p.skipped).slice(-1)[0]?.hook;
 const hook = HOOKS.find((h) => h.id === thompsonPick(HOOKS.map((h) => h.id), arms.hook, dayIdx * 7 + 1, { exclude: [lastHook] })) || pickHook(varietyLog.filter((p) => p.platform === 'instagram'), dayIdx);
@@ -224,6 +226,7 @@ async function main() {
       claudeFn: claude, caption: cap.body, facts: factsFor(info), series, key: cardKey,
       notePhotos: fieldNote?.photos || [], productPhoto: isPromo ? await productImage(product) : null, storePhotos: await photosFor(), noStock: isPromo, deal, fieldNote: !!fieldNote,
       reel: reelDay || !!encore, // 다시 보기는 원글과 다른 형식(릴스)으로
+      library: mediaLib, track, // 자료 창고(media-library.mjs) — 사장님·크리에이터 글의 분위기 사진·릴스 배경
     });
     // 미디어 결정: tracks.<t>.media 배열(캐러셀 images / Reels video_url, 날짜별 순환) → image_url → og:image → 상품 이미지
     // product_id 가 붙은 세트(손님 딜 카드)는 오늘 고른 상품과 같을 때만 — 다른 가게 카드가 나가지 않게
@@ -278,7 +281,7 @@ async function main() {
         runLog.push({ platform: 'instagram', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
       }
       if (r) {
-      runLog.push({ platform: 'instagram', id: r.id, encore_of: encore?.id, collaborators: collaborators.length ? collaborators : undefined, digest: digest ? digest.deals.map((d) => d.id) : undefined, media_type: r.media_type, media: media.video_url ? 'reel' : media.images.length > 1 ? 'carousel' : 'image', format: formatIdx, media_set: media.set, series: digest ? 'digest' : series.id, field_note: fieldNote?.number, generated: gen ? { source: gen.source, credit: gen.credit, title: gen.title, photo_url: gen.photo_url, reel: !!media.video_url } : undefined, hook: hook.id, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
+      runLog.push({ platform: 'instagram', id: r.id, encore_of: encore?.id, collaborators: collaborators.length ? collaborators : undefined, digest: digest ? digest.deals.map((d) => d.id) : undefined, media_type: r.media_type, media: media.video_url ? 'reel' : media.images.length > 1 ? 'carousel' : 'image', format: formatIdx, media_set: media.set, series: digest ? 'digest' : series.id, field_note: fieldNote?.number, generated: gen ? { source: gen.source, credit: gen.credit, license: gen.license, page_url: gen.page_url, broll: gen.broll_credit, title: gen.title, photo_url: gen.photo_url, reel: !!media.video_url } : undefined, hook: hook.id, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
       // ---- Facebook 페이지 — 2026-11-09 대표 "페이스북 페이지에는 올리지 않아도 돼. 인스타랑 스레드만" → 기본 끔.
       //      다시 켜려면 워크플로 env 에 FB_POST_ENABLED=1.
       if (process.env.FB_POST_ENABLED === '1') {
@@ -301,6 +304,11 @@ async function main() {
       }
     }
   } else log(`Instagram: 건너뜀 — ${skipReason('instagram')}`);
+  // 자료 창고에서 쓴 것 표시(같은 사진·영상이 30일 안에 다시 안 나오게)
+  if (gen?.library_used?.length && !DRY && runLog.some((x) => x.platform === 'instagram' && x.id)) {
+    for (const id of gen.library_used) markUsed(mediaLib, id, cardKey);
+    writeJson(LIB_FILE, mediaLib);
+  }
 
   // 오늘 인스타 표지가 있으면 스레드에도 쓴다. 인스타가 쉬는 날은 글만(2026-11-16 — 스레드는 매일 짧은 글,
   // 공들인 카드는 인스타 주 3회에 몰아준다. 스레드용 카드를 따로 만들지 않는다).
