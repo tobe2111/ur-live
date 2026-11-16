@@ -85,7 +85,7 @@ export default function RegionPage() {
   const known = regions.length > 0
   const noindex = !REGION_PAGES_ENABLED || (known && dealCount < REGION_INDEX_MIN_DEALS)
 
-  const title = `${regionTitleCore(label)} | 유어딜` // 🔎 2026-11-16 서버 메타와 같은 함수(shared/seo/region-title)
+  const title = `${regionTitleCore(label)} | 유어딜` // 🔎 2026-11-16 서버 메타와 같은 함수(shared/constants/region-slugs)
   const description = dealCount > 0
     ? `${label}의 식당·카페·뷰티·숙박 이용권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요. 현재 ${dealCount}개 딜 진행 중.`
     : `${label}의 식당·카페·뷰티·숙박 이용권을 할인가로. 온라인에서 사고 매장에서 QR·PIN으로 바로 사용하세요.`
