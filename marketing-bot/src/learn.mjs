@@ -73,6 +73,13 @@ export function posterior(stat) {
 }
 
 // 톰슨 샘플링: candidates 중 하나. exclude 는 피할 것(어제와 같은 것 등), 다 빠지면 무시.
+// 인스타 릴스 날 고르기 (daily-post.mjs 에서 부른다)
+export function pickReelDay({ dow, forced = false, mediaArms = {}, lastIgMedia = [], seed = 0 }) {
+  if (forced || dow === 1) return true;
+  if (lastIgMedia.length >= 2 && lastIgMedia.slice(-2).every((m) => m === 'reel')) return false;
+  return thompsonPick(['reel', 'carousel'], mediaArms, seed) === 'reel';
+}
+
 export function thompsonPick(candidates = [], stats = {}, seed = 0, { exclude = [] } = {}) {
   const pool = candidates.filter((c) => !exclude.includes(String(c)));
   const list = pool.length ? pool : candidates;

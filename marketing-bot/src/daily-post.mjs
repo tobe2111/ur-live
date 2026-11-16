@@ -3,7 +3,7 @@
 import { pickTrackByWeights } from './attribution.mjs';
 import { vetPost } from './vet.mjs';
 import { pickLeastRecent, rotateImages, pickHook, recentOpeners, slotFor, HOOKS, FORMATS } from './variety.mjs';
-import { thompsonPick, lessonsBlock } from './learn.mjs';
+import { thompsonPick, lessonsBlock, pickReelDay } from './learn.mjs';
 import { CTA_VARIANTS, ctaFor } from './cta.mjs';
 import { seasonBlock } from './season.mjs';
 import { pickBest } from './judge.mjs';
@@ -192,8 +192,10 @@ const cardKey = `${today}-${track}`;
 // IG_DAYS 로 바꿀 수 있다(0=일 … 6=토). 수동 실행(FORCE)은 요일과 무관하게 올린다.
 const IG_DAYS = String(process.env.IG_DAYS || '1,3,5').split(',').map(Number);
 const igDay = force || IG_DAYS.includes(k.getUTCDay());
-// 릴스는 월요일만(수·금은 캐러셀 — 카드뉴스는 넘겨 보는 형식이 제일 잘 읽힌다)
-const reelDay = process.env.REEL === '1' || k.getUTCDay() === 1;
+// 릴스: 월요일은 늘 릴스. 수·금은 성과로 고른다(2026-11-16 실측 — 릴스 평균의 1.87배(8개) · 캐러셀 0.77배(19개)).
+// 다만 직전 인스타 두 번이 다 릴스였으면 캐러셀 — 주에 한 번은 카드뉴스를 남겨 비교가 이어지게 한다.
+const reelDay = pickReelDay({ dow: k.getUTCDay(), forced: process.env.REEL === '1', mediaArms: arms.media,
+  lastIgMedia: varietyLog.filter((p) => p.platform === 'instagram' && p.media).map((p) => p.media), seed: dayIdx * 7 + 6 });
 // 실제 입점 매장 사진: 사장님·손님 글에만(크리에이터 글은 사람 사진이 맞다). 최근 인스타 4회에 쓴 사진은 뺀다.
 let storeCache = null;
 async function storePhotosToday() {
@@ -395,7 +397,7 @@ async function main() {
   // ⚠️ 중복 판정에는 쓰지 않는다 — 다음 회차는 Threads·인스타에 직접 물어 판정한다(저장 실패와 무관).
   log('이번 회차 결과:', JSON.stringify(runLog.map(({ text, ...r }) => r)));
   if (!DRY && runLog.length) writeJson('data/posts.json', [...readJson('data/posts.json', []), ...runLog].slice(-300));
-  if (!DRY && runLog.length) writeJson('data/variety.json', [...varietyLog, ...runLog.map(({ id, platform, track, topic, hook, media_set, series, skipped, date_kst, generated, encore_of, format, len, slot_kst, media, topic_tag }) => ({ id, platform, track, topic, hook, media_set, series, skipped, date_kst, photo: generated?.photo_url, encore_of, format, len, slot: slot_kst, media, topic_tag }))].slice(-300));
+  if (!DRY && runLog.length) writeJson('data/variety.json', [...varietyLog, ...runLog.map(({ id, platform, track, topic, hook, media_set, series, skipped, date_kst, generated, encore_of, format, len, slot_kst, media, topic_tag, tformat, cta }) => ({ id, platform, track, topic, hook, media_set, series, skipped, date_kst, photo: generated?.photo_url, encore_of, format, len, slot: slot_kst, media, topic_tag, tformat, cta }))].slice(-300));
   if (threadsError) throw new Error(`Threads 게시 실패: ${threadsError.message}`);
   if (igError) throw new Error(`Instagram 게시 실패: ${igError.message}`);
   if (qualityError) throw qualityError; // 기록은 저장했다. 다음 회차가 같은 날 다시 시도한다(skipped 는 미게시로 센다)
