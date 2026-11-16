@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-16",
+  "reason": "2026-11-16 regionTitleCore(region-slugs ~0.1KB, 지역 제목 검색어)가 이전 머지 누적분(app-utils·gbDetail 청크) 위에 얹혀 허용(1.5)에 닿은 화면.",
+  "surfaces": [
+    "lifePro"
+  ],
+  "changes": [
+    "lifePro: 214.8 → 216.4 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.6, lz-gbDetailL-productL.js +0.5"
+  ]
+}
