@@ -220,3 +220,14 @@ export function regionSeedRows(ssrPayload: string | null | undefined, ref: Regio
   }
   return out
 }
+
+/** 📰 '다녀온 사람들' 한 줄 — 제목(작성자) 을 가운데점 없이 쉼표로. 지어낸 문구 없음(규율): 실제 수집된 제목만. */
+export function creatorLine(items: Array<{ title?: string | null; author?: string | null; platform?: string | null }> | null | undefined): string {
+  const xs = (items ?? []).map((x) => {
+    const t = String(x?.title ?? '').replace(/\s+/g, ' ').trim()
+    if (!t) return ''
+    const a = String(x?.author ?? '').trim()
+    return a ? `${esc(t)}(${esc(a)})` : esc(t)
+  }).filter(Boolean).slice(0, 5)
+  return xs.length ? `다녀온 사람들: ${xs.join(', ')}` : ''
+}

@@ -52,7 +52,7 @@ import type { TermsDoc } from '../../pages/terms/terms-types'
 // 🧾 행·글자 조립은 `crawler-noscript-rows.ts` 로 추출됐다(2026-10-14, 685줄 → 래칫 600 초과).
 //    `esc` 는 밖에서도 쓰므로(`urshorts-noscript.ts`) 여기서 다시 export 한다.
 import {
-  esc, won, lines, wrap, capRowImages, liOf, rowHref, rowLine, parseSeed, regionSeedRows, sizedCdnCgi, type RegionSeedRow, type Row,
+  esc, won, lines, wrap, capRowImages, liOf, rowHref, rowLine, parseSeed, regionSeedRows, sizedCdnCgi, creatorLine, type RegionSeedRow, type Row,
 } from './crawler-noscript-rows'
 export { esc }
 export type { RegionSeedRow, Row }
@@ -115,6 +115,7 @@ export interface NoscriptDetailSeed {
   review_count?: number | null
   /** 🖼️ 2026-10-14 — 쇼핑 상세 사진 한 장(근거는 `rowImg` 머리말). */
   image_url?: string | null
+  creator_titles?: Array<{ title?: string | null; author?: string | null; platform?: string | null }> | null // 📰 2026-11-13 다녀온 사람들 제목(detail-meta-enrich) — 가게 고유 검색어
 }
 
 /**
@@ -154,7 +155,7 @@ export function buildDetailNoscript(d: NoscriptDetailSeed | null | undefined): s
     placeLine,
     descLine,
     expiry && `유효기간 ${esc(expiry)}`,
-    terms && esc(terms),
+    terms && esc(terms), creatorLine(d.creator_titles), // 📰 실제 후기 제목(크롤러 본문 173자 → 가게 고유 문구)
   ]))
 }
 
