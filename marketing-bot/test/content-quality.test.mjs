@@ -329,7 +329,7 @@ test('스레드 참고: 대표가 고른 글 우선, 매일 다른 조합, 중�
 });
 test('스레드 참고 배선: 스레드 프롬프트에 붙고, 베끼면 검수(유사도)에 걸린다', () => {
   const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
-  assert.match(src, /링크는 내가 끝에 붙일게\.\$\{styleBlock\(threadsExamples\)\}/);
+  assert.match(src, /examplesBlock: styleBlock\(threadsExamples\)/); // 2026-11-16 스레드 2.0: 프롬프트는 threads-angle.mjs 가 만든다
   assert.match(src, /platform === 'threads' \? threadsExamples : \[\]/);
   const wr = fs.readFileSync(new URL('../src/weekly-review.mjs', import.meta.url), 'utf8');
   assert.match(wr, /threads_top: threadsTop/);
@@ -474,7 +474,8 @@ test('표지 눈 검사: JSON 판정, 실패는 통과로', async () => {
 });
 test('여러 개 써서 고르기 배선: 통과한 것만 고르고, 하나도 없으면 다시 쓰기', () => {
   const src = fs.readFileSync(new URL('../src/daily-post.mjs', import.meta.url), 'utf8');
-  assert.match(src, /const passed = drafts\.filter\(\(d\) => !vetPost\(d, ctx\)\.length\)/);
+  assert.match(src, /const check = \(d\) => \[\.\.\.vetPost\(d, ctx\), \.\.\.extra\(d\)\]/); // 2026-11-16: 반복 검사(extra)를 함께 본다
+  assert.match(src, /const passed = drafts\.filter\(\(d\) => !check\(d\)\.length\)/);
   assert.match(src, /pickBest\(passed, claude, learnState\?\.lessons/);
-  assert.match(src, /let body = drafts\[0\];\n  let problems = vetPost\(body, ctx\);/);
+  assert.match(src, /let body = drafts\[0\];\n  let problems = check\(body\);/);
 });

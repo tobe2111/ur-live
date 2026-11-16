@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { makeVisual, realStorePhotos, freshStorePhotos, newRealDeals, makeDigest, digestCaption } from './visual.mjs';
 import { dealFacts } from './deal-facts.mjs';
+import { THREADS_FORMATS, threadsPrompt, repeatProblems } from './threads-angle.mjs';
 import { LIB_FILE, markUsed } from './media-library.mjs';
 import { nextFieldNote, closeFieldNote } from './field-notes.mjs';
 import { ownerExamples, pickExamples, styleBlock } from './threads-style.mjs';
@@ -85,6 +86,10 @@ const formatIdx = String(thompsonPick(FORMATS.map((_, i) => String(i)), arms.for
 const format = FORMATS[Number(formatIdx)] || FORMATS[0];
 const THREADS_LENS = ['한 문장, 60자 안팎', '1~2문장, 90자 안팎', '2~3문장, 130자 안팎'];
 const lenIdx = String(thompsonPick(THREADS_LENS.map((_, i) => String(i)), arms.len, dayIdx * 7 + 3));
+// 스레드 글 형식(threads-angle.mjs) — 성과로 학습, 어제 형식은 피한다
+const lastTformat = varietyLog.filter((p) => p.platform === 'threads' && p.tformat).slice(-1)[0]?.tformat;
+const tformatId = thompsonPick(THREADS_FORMATS.map((f) => f.id), arms.tformat, dayIdx * 7 + 4, { exclude: [lastTformat] }) || THREADS_FORMATS[dayIdx % THREADS_FORMATS.length].id;
+const tformat = THREADS_FORMATS.find((f) => f.id === tformatId) || THREADS_FORMATS[0];
 // 링크 대상: 입점/크리에이터 페이지 (없으면 상품, 그것도 없으면 홈)
 const target = { url: T.target || product?.url || 'https://urdeal.kr/' };
 // 글 id: 하루 한 번이라 날짜로 충분하다(utm_content = <id>-<YYYYMMDD>). 종전엔 posts.json 개수로 매겼다.
@@ -140,8 +145,9 @@ const LIMITS = {
   threads: { minLen: 30, maxPlain: 150, maxParas: 2 },
   'threads-reply': { minLen: 20, maxPlain: 100, maxParas: 1 },
 };
-async function writeVetted(prompt, maxTokens, platform, info, kind, limitKey = platform) {
+async function writeVetted(prompt, maxTokens, platform, info, kind, limitKey = platform, extra = () => []) {
   const SYSTEM = systemPrompt();
+  const check = (d) => [...vetPost(d, ctx), ...extra(d)];
   const ctx = { facts: factsFor(info), recent: [...recentTexts(platform), ...(encore ? [encore.text] : []), ...(platform === 'threads' ? threadsExamples : [])], fieldNote: !!fieldNote, ...LIMITS[limitKey] };
   const openers = recentOpeners(recentTexts(platform));
   if (openers.length) prompt += `\n\n최근 글들은 이렇게 시작했다. 이 문장들과 비슷하게 시작하지 말고, 같은 표현("제일 많이 묻는", "제일 먼저 걱정" 등)도 반복하지 마라:\n- ${openers.join('\n- ')}`;
@@ -152,7 +158,7 @@ async function writeVetted(prompt, maxTokens, platform, info, kind, limitKey = p
   const n = Math.max(1, Math.min(5, Number(process.env.DRAFTS || 3)));
   const drafts = (await Promise.all(Array.from({ length: n }, (_, k) => draft(k).catch((e) => { log(`후보 ${k + 1} 실패: ${e.message.slice(0, 100)}`); return null; })))).filter(Boolean);
   if (!drafts.length) throw new Error(`${kind}: 후보를 하나도 못 썼다`);
-  const passed = drafts.filter((d) => !vetPost(d, ctx).length);
+  const passed = drafts.filter((d) => !check(d).length);
   log(`${kind}: 후보 ${drafts.length}개 중 검수 통과 ${passed.length}개`);
   if (passed.length) {
     const k = await pickBest(passed, claude, learnState?.lessons || []);
@@ -160,11 +166,11 @@ async function writeVetted(prompt, maxTokens, platform, info, kind, limitKey = p
     return { body: passed[k], problems: [] };
   }
   let body = drafts[0];
-  let problems = vetPost(body, ctx);
+  let problems = check(body);
   if (problems.length) {
     log(`${platform} 검수 걸림 → 다시 쓰기: ${problems.join(' / ')}`);
     body = await humanize(await claude(SYSTEM, `${prompt}\n\n방금 쓴 글이 아래 문제로 반려됐다. 고쳐서 다시 써라:\n- ${problems.join('\n- ')}`, maxTokens), kind);
-    problems = vetPost(body, ctx);
+    problems = check(body);
   }
   return { body, problems };
 }
@@ -328,7 +334,10 @@ async function main() {
     // 말투 참고(threads-style.mjs): 대표가 고른 스레드 인기글 + 우리 스레드 인기글
     threadsExamples = pickExamples(await ownerExamples(), readJson('data/encore.json', null)?.threads_top || [], 3, dayIdx);
     log(`스레드 말투 참고 예시 ${threadsExamples.length}개`);
-    const { body, problems } = await writeVetted(`${info}\nThreads 글 1개를 ${len}로 써줘. 첫 문장이 곧 핵심. 해시태그 없이. 링크는 내가 끝에 붙일게.${styleBlock(threadsExamples)}`, 600, 'threads', info, 'Threads 글');
+    log(`스레드 형식: ${tformat.id}`);
+    const recentTh = recentTexts('threads');
+    const { body, problems } = await writeVetted(threadsPrompt({ info, topic: isPromo ? '' : topic, format: tformat, len, examplesBlock: styleBlock(threadsExamples) }), 600, 'threads', info, 'Threads 글', 'threads',
+      (d) => repeatProblems(d, recentTh, isPromo ? '' : topic));
     if (problems.length) {
       qualityError = qualityError || new Error(`Threads 검수 실패: ${problems.join(' / ')}`);
       console.log(`::error title=Threads 검수 실패 — 게시 안 함::${problems.join(' / ')}`);
@@ -369,7 +378,7 @@ async function main() {
         else { reply_id = (await threadsPublish({ media_type: 'TEXT', text: fu.body.trim().slice(0, 480), reply_to_id: r.id }))?.id; log(`Threads 이어 쓰기 게시: ${reply_id}\n${fu.body}`); }
       } catch (e) { log(`Threads 이어 쓰기 실패(본글은 정상): ${e.message.slice(0, 200)}`); }
     }
-    if (r) runLog.push({ platform: 'threads', id: r.id, reply_id, topic_tag, hook: hook.id, len: lenIdx, media: image_url && !/TEXT/.test(r.media_type || '') ? 'image' : 'text', encore_of: encore?.id, content_id: id, image: image_url && !/TEXT/.test(r.media_type || '') ? image_url : undefined, track, series: series.id, field_note: fieldNote?.number, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
+    if (r) runLog.push({ platform: 'threads', id: r.id, reply_id, topic_tag, hook: hook.id, len: lenIdx, tformat: tformat.id, topic: topic || undefined, media: image_url && !/TEXT/.test(r.media_type || '') ? 'image' : 'text', encore_of: encore?.id, content_id: id, image: image_url && !/TEXT/.test(r.media_type || '') ? image_url : undefined, track, series: series.id, field_note: fieldNote?.number, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
     }
   } else log(`Threads: 건너뜀 — ${skipReason('threads')}`);
 
