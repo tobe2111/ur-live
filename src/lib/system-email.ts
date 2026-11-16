@@ -7,6 +7,18 @@
 
 import { transactionalMailReady } from './ncp-sens-mail';
 
+/**
+ * 📭 2026-11-16 — 배달될 수 없는 주소(RFC 2606 예약 최상위 도메인 `.invalid` · `.test` · `.example` · `.localhost`).
+ *   카카오로 만든 에이전시 직원 행은 이메일 칸에 `kakao-N@kakao.agency.urdeal.invalid` 자리표시를 쓴다(`shared/agency-kakao.ts`).
+ *   그 주소로 초대·알림을 보내면 실패 → `email_failures` 에 쌓이고 → 재시도 cron 이 30분마다 다시 집어 영원히 돈다
+ *   (라이브 실측 2026-11-16: 실패 3건 전부 이 주소). 보내지 않고 `undeliverable` 로 답한다.
+ */
+export function isUndeliverableAddress(to: string | null | undefined): boolean {
+  if (typeof to !== 'string') return false
+  const host = to.trim().toLowerCase().split('@')[1] || ''
+  return /\.(invalid|test|example|localhost)$/.test(host) || ['invalid', 'test', 'example', 'localhost'].includes(host)
+}
+
 interface NotificationContent {
   subject: string;
   html: string;
@@ -18,7 +30,9 @@ export async function sendSystemEmail(
   content: NotificationContent,
   /** 계정 보안 메일(인증·초대·비밀번호)은 알림 수신 끔과 무관하게 보낸다 — 끄면 가입·복구가 막힌다. */
   opts: { ignorePreference?: boolean } = {},
-): Promise<{ success: boolean; skipped?: boolean; error?: string }> {
+): Promise<{ success: boolean; skipped?: boolean; undeliverable?: boolean; error?: string }> {
+  // 수단이 있든 없든 먼저 — 배달될 수 없는 주소는 실패 큐에 넣지 않는다(위 머리말).
+  if (isUndeliverableAddress(to)) return { success: false, skipped: true, undeliverable: true };
   const e = env as { RESEND_API_KEY?: string; RESEND_FROM?: string; DB?: D1Database };
   const apiKey = e?.RESEND_API_KEY || '';
   // 📮 2026-10-12: Resend 키가 없어도 SENS 메일이 설정돼 있으면 보낸다(`sendEmail` 이 SENS 를 먼저 쓴다).
