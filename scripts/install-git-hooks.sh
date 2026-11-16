@@ -14,6 +14,23 @@ cat > "$HOOK_FILE" << 'EOF'
 # Pre-commit hook — schema + auth + runtime build integrity
 set -e
 
+# 🤫 2026-11-16: 경고만 하는 검사(`|| true`)는 **이번 커밋 파일에 걸린 줄만** 보여 준다 — 근거 scripts/hook-quiet-filter.mjs 머리말
+#   (파일 하나 고친 커밋에 출력 357줄 · 약 7,500 토큰이었고, 대부분 레포 전체의 기존 잔여 목록이었다). 판정은 그대로다(원래 막지 않는다).
+#   전부 보려면 HOOK_VERBOSE=1 git commit …
+_STAGED_FOR_QUIET="$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null || true)"
+quiet_warn() {
+  local _out
+  _out="$("$@" 2>&1)" || true
+  printf '%s\n' "$_out" | node scripts/hook-quiet-filter.mjs "$_STAGED_FOR_QUIET" --no-note 2>/dev/null || printf '%s\n' "$_out"
+  return 0
+}
+# 🤫 같은 날 — 진행 표시(`==> Pre-commit: …` 55줄)도 평소엔 숨긴다. 막는 검사는 실패하면 **자기 이유를 직접** 찍으므로
+#   원인은 그대로 보인다. 실패하면 진행 표시를 켜는 법만 한 줄 덧붙인다.
+#   🩸 첫 판은 "멈춘 검사: <마지막 진행 표시>" 를 찍었는데, 진행 표시가 없는 막는 검사(충돌 마커 등 11개)에서
+#      **앞 검사 이름**을 찍었다 — 원인을 오진하게 만드는 메시지는 그 자체가 결함이라(CLAUDE.md 3-1) 이름을 뺐다.
+step() { if [ "${HOOK_VERBOSE:-}" = "1" ]; then echo "==> Pre-commit: $1"; fi; return 0; }
+trap '_rc=$?; if [ "$_rc" -ne 0 ]; then echo "   (어느 검사에서 멈췄는지 진행 표시까지 보려면: HOOK_VERBOSE=1 git commit …)"; fi' EXIT
+
 # 🔒 주입 검증(check-guard-mutations)이 도는 동안은 커밋 금지 — 그 스크립트는 소스에 **의도적 결함을
 #   심었다 지운다**. 그 창에서 `git add -A` 를 하면 결함이 그대로 스테이징된다.
 #   2026-08-03 실제 사고: `Promise.all(tracked)`(무한 대기 — 그 PR 이 고치려던 바로 그 고장)가 커밋됐고
@@ -45,7 +62,7 @@ if git diff --cached --name-only --diff-filter=ACMR | grep -q '^docs/handoff/'; 
   #   (2026-07-29 하루 10번+ · 2026-10-06 하루 3번). `.gitattributes` 의 `merge=union` 은
   #   **로컬 머지에만** 먹고 GitHub 서버측 머지는 그 드라이버를 안 쓴다 — 그래서 PR 이 멎고
   #   `Verify` 가 실패도 아니고 **부재**로 남았다(머지 커밋을 못 만들어 디스패치 0).
-  echo "==> Pre-commit: 인계 목차 재생성(사이드카 — stage 안 함)..."
+  step "인계 목차 재생성(사이드카 — stage 안 함)..."
   node scripts/generate-handoff-index.mjs > /dev/null 2>&1 || true
   # 🚦 기능 현황판 — feature-flags.ts 에서 재생성 + stage (손 관리하면 반드시 낡는다)
   node scripts/generate-feature-status.mjs > /dev/null 2>&1 || true
@@ -76,28 +93,28 @@ if [ -z "$staged_ts" ]; then
   exit 0
 fi
 
-echo "==> Pre-commit: schema references..."
+step "schema references..."
 bash scripts/check-schema-refs.sh || {
   echo "❌ Commit blocked. Fix schema reference issues."
   exit 1
 }
 
 # 🛡️ 2026-05-03: 대시보드 dark: variants 절대 금지 (사용자 요구).
-echo "==> Pre-commit: 대시보드 테마 정책 검증..."
+step "대시보드 테마 정책 검증..."
 bash scripts/check-dashboard-theme.sh || {
   echo "❌ Commit blocked. 셀러/어드민/에이전시 대시보드는 dark: variant 사용 절대 금지."
   exit 1
 }
 
 # 🚨 2026-04-27 (PWA 사고 재발 방지): Service Worker 등록 코드 차단
-echo "==> Pre-commit: Service Worker 등록 코드 검사..."
+step "Service Worker 등록 코드 검사..."
 bash scripts/check-no-sw-register.sh || {
   echo "❌ Commit blocked. PWA SW 재도입 시도 발견 — 2026-04-27 사고 재발 위험!"
   exit 1
 }
 
 # 🚨 2026-05-12/13 (405 사고 재발 방지): Hono v4 wildcard cors 안티패턴 차단
-echo "==> Pre-commit: Hono v4 라우터 안티패턴 검사..."
+step "Hono v4 라우터 안티패턴 검사..."
 if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_ROUTER_CHECK\]"; then
   bash scripts/check-router-patterns.sh || {
     echo "❌ Commit blocked. Wildcard cors 안티패턴 — 405 사고 재발 위험."
@@ -106,7 +123,7 @@ if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_ROUTER_CHECK
 fi
 
 # 🚨 2026-05-21 (CSP style-src nonce 사고 방지): 화면 깨짐 재발 차단
-echo "==> Pre-commit: CSP style-src nonce 검사..."
+step "CSP style-src nonce 검사..."
 if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_CSP_CHECK\]"; then
   bash scripts/check-csp-style-nonce.sh || {
     echo "❌ Commit blocked. style-src nonce 추가 — 화면 깨짐 사고 재발 위험."
@@ -115,7 +132,7 @@ if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_CSP_CHECK\]"
 fi
 
 # 🚨 2026-05-21 Phase D-5 (seller_type 직접 비교 금지 — single source 깨짐 방지)
-echo "==> Pre-commit: 셀러 role helper 사용 검증..."
+step "셀러 role helper 사용 검증..."
 if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_ROLE_CHECK\]"; then
   bash scripts/check-seller-role-helper.sh || {
     echo "❌ Commit blocked. seller_type 직접 비교 — helper 사용 필수."
@@ -124,7 +141,7 @@ if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_ROLE_CHECK\]
 fi
 
 # 🚨 2026-05-12 (vite build 단독 사고 방지): build:worker 누락 차단
-echo "==> Pre-commit: 빌드 명령 검사..."
+step "빌드 명령 검사..."
 if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_BUILD_CHECK\]"; then
   bash scripts/check-build-command.sh || {
     echo "❌ Commit blocked. 'vite build' 단독 사용 — _worker.js 미갱신 사고 재발 위험."
@@ -133,7 +150,7 @@ if ! echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_BUILD_CHECK\
 fi
 
 # 🚨 Secret 누출 차단 (public repo 영구 노출 방지)
-echo "==> Pre-commit: hardcoded secret 검사..."
+step "hardcoded secret 검사..."
 bash scripts/check-no-secrets.sh || {
   echo "❌ Commit blocked. Secret 누출 위험 — public repo 에 영구 노출됨."
   exit 1
@@ -141,52 +158,52 @@ bash scripts/check-no-secrets.sh || {
 
 # 🚨 2026-07-28: 위 검사는 '정해진 키 이름 패턴' 위주라 .md/.txt 안의 실제 키 본문을 못 잡았다.
 #   archive/ 19개 파일에 Firebase 서비스계정 개인키·Toss live·Stripe 시크릿이 추적된 채 남아 있었음.
-echo "==> Pre-commit: 시크릿 자재 전수 검사 (추적 파일)..."
+step "시크릿 자재 전수 검사 (추적 파일)..."
 node scripts/check-secret-material.mjs || {
   echo "❌ Commit blocked. 실제 키 본문이 파일에 있습니다 — public repo 는 커밋 즉시 영구 노출."
   exit 1
 }
 
 # ⚠️ Silent error swallowing 검출 (warn-only)
-echo "==> Pre-commit: silent error 패턴 검사 (warn-only)..."
-bash scripts/check-silent-errors.sh || true
+step "silent error 패턴 검사 (warn-only)..."
+quiet_warn bash scripts/check-silent-errors.sh
 
 # 💸 2026-06-11: 머니/정합성 버그 클래스 검사 (warn-only, 차단: STRICT_MONEY=1).
 #   감사에서 반복 발견된 패턴 — per-request DDL / 무환불 CANCELLED 플립.
-echo "==> Pre-commit: 머니 패턴 검사 (warn-only)..."
-bash scripts/check-money-patterns.sh || true
+step "머니 패턴 검사 (warn-only)..."
+quiet_warn bash scripts/check-money-patterns.sh
 
 # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 검사 (warn-only, CI 차단: STRICT_AUTH_COOKIE=1).
 #   ur_pending_* transfer 쿠키 / 콜백 302 Set-Cookie 역할토큰 → iOS 대시보드 로그인 조용히 깨짐.
-echo "==> Pre-commit: 카카오 OAuth iOS 쿠키 패턴 검사 (warn-only)..."
-bash scripts/check-auth-cookie-pattern.sh || true
+step "카카오 OAuth iOS 쿠키 패턴 검사 (warn-only)..."
+quiet_warn bash scripts/check-auth-cookie-pattern.sh
 
 # 🗺️ 2026-08-27: 주입 "지도" 만 빠르게 본다(0.5초 — 전수는 20분+ 라 로컬에서 못 돈다).
 #   가드가 붙은 코드를 고치면 그 주입의 `find` 가 낡는데, 그걸 CI 에 가서야 알면 한 사이클을 태운다
 #   (실제로 `aboveFold={i < 4 …}` 를 상수로 바꾸며 그렇게 했다). ⚠️ 되돌려-검증은 **안 한다** —
 #   그건 CI 전수와 `--only` 의 몫이고, 여기서는 지도가 낡았는지만 본다.
-echo "==> Pre-commit: 주입 지도 검사 (find 유일성, warn-only)..."
-node scripts/check-guard-mutations.mjs --map-only || true
+step "주입 지도 검사 (find 유일성, warn-only)..."
+quiet_warn node scripts/check-guard-mutations.mjs --map-only
 
 # 🛡️ 2026-05-17: CHECK 제약 위반 자동 탐지 (warn-only).
 #   admin live-monitor delete 사고 재발 방지 — 'status=\"deleted\"' 가 CHECK IN (...) 위반 → 500.
-echo "==> Pre-commit: CHECK 제약 위반 검사 (warn-only)..."
-node scripts/check-status-constraints.mjs || true
+step "CHECK 제약 위반 검사 (warn-only)..."
+quiet_warn node scripts/check-status-constraints.mjs
 
 # 🛡️ 2026-05-17: SQL prepare(?) vs bind(args) 개수 mismatch 검사 (warn-only).
 #   'wrong number of bindings' SqlError → 500 방지.
-echo "==> Pre-commit: SQL bind param 개수 검사 (warn-only)..."
-node scripts/check-sql-bind-params.mjs || true
+step "SQL bind param 개수 검사 (warn-only)..."
+quiet_warn node scripts/check-sql-bind-params.mjs
 
 # 🛡️ 2026-05-17: NOT NULL 컬럼 미포함 INSERT 검사 (warn-only).
 #   'NOT NULL constraint failed' SqlError → silent .catch fail → 알림 누락 사고 방지.
-echo "==> Pre-commit: NOT NULL INSERT 검사 (warn-only)..."
-node scripts/check-sql-not-null-insert.mjs || true
+step "NOT NULL INSERT 검사 (warn-only)..."
+quiet_warn node scripts/check-sql-not-null-insert.mjs
 
 # 🛡️ 2026-05-23: 존재하지 않는 컬럼 참조 검사 (strict — 차단).
 #   23건 일괄 fix 완료 (commit bcdd8990) 후 strict 활성. 새 mismatch commit 차단.
 #   'no such column' SqlError → silent .catch → 기능 동작 안 함 사고 영구 차단.
-echo "==> Pre-commit: 존재 없는 컬럼 참조 검사 (strict)..."
+step "존재 없는 컬럼 참조 검사 (strict)..."
 node scripts/check-sql-column-exists.mjs -s || {
   echo "❌ Commit blocked. SQL 컬럼 mismatch 발견 — production-schema.ts 와 정합 필요."
   exit 1
@@ -195,64 +212,64 @@ node scripts/check-sql-column-exists.mjs -s || {
 # 🛡️ 2026-07-01: 존재하지 않는 '테이블' 참조 검사 (strict — 차단).
 #   admin 리뷰관리가 없는 'reviews' 테이블(실제=product_reviews) 조회 → 항상 500 사고(대표 신고).
 #   'no such table' SqlError → 페이지 영구 500 영구 차단. 새 실제 테이블은 CREATE TABLE 추가 시 자동 인식.
-echo "==> Pre-commit: 존재 없는 테이블 참조 검사 (strict)..."
+step "존재 없는 테이블 참조 검사 (strict)..."
 node scripts/check-sql-table-exists.mjs -s || {
   echo "❌ Commit blocked. 없는 테이블 참조 발견 — 오타이거나 KNOWN_TABLES_EXTRA 등록 필요."
   exit 1
 }
 
 # 🛡️ 2026-05-17: 대시보드 NaN/undefined 노출 위험 검사 (warn-only)
-echo "==> Pre-commit: 대시보드 NaN 위험 패턴 검사 (warn-only)..."
-bash scripts/check-nan-dashboard.sh || true
+step "대시보드 NaN 위험 패턴 검사 (warn-only)..."
+quiet_warn bash scripts/check-nan-dashboard.sh
 
 # 🛡️ 2026-05-19: 변경성 엔드포인트 인증·rate-limit 커버리지 검사 (warn-only).
 #   src/features/*\/api/*.routes.ts + src/worker/routes 의 POST/PATCH/PUT/DELETE 가
 #   인증 미들웨어 / rate-limit / ownership 체크 없이 commit 되는 것 차단.
-echo "==> Pre-commit: 변경성 엔드포인트 커버리지 검사 (warn-only)..."
-node scripts/check-mutation-coverage.mjs || true
+step "변경성 엔드포인트 커버리지 검사 (warn-only)..."
+quiet_warn node scripts/check-mutation-coverage.mjs
 
 # 🛡️ 2026-05-19: PII (개인정보) production 로그 노출 검사 (warn-only).
 #   maskEmail/maskPhone 누락 + DEV 게이트 없이 raw 이메일/전화 출력 차단.
-echo "==> Pre-commit: PII 로그 redaction 검사 (warn-only)..."
-node scripts/check-pii-logs.mjs || true
+step "PII 로그 redaction 검사 (warn-only)..."
+quiet_warn node scripts/check-pii-logs.mjs
 
 # 🛡️ 2026-05-19: 다크 모드 보더 누락 검사 (warn-only).
 #   border-gray-50/100/200 에 dark:border-[#1A1A1A] 매핑 누락 시 다크 모드 흰 선 노출.
-echo "==> Pre-commit: 다크 모드 보더 매핑 검사 (warn-only)..."
-node scripts/check-dark-border.mjs || true
+step "다크 모드 보더 매핑 검사 (warn-only)..."
+quiet_warn node scripts/check-dark-border.mjs
 
 # 🛡️ 2026-05-31: 다크/라이트 테마 일관성 검사 (staged 파일만, warn-only).
 #   유저 대면 화이트-토글 페이지에서 bg-white/text-gray-900 등 라이트 색상에 dark: variant
 #   누락 시 다크 모드에서 흰 박스/검은 텍스트 노출. variant-aware (hover:/focus: 등 대응).
 #   대시보드(seller/admin/agency) + 순수 다크 페이지는 자동 제외. 차단: STRICT_THEME=1.
-echo "==> Pre-commit: 다크/라이트 테마 일관성 검사 (warn-only)..."
+step "다크/라이트 테마 일관성 검사 (warn-only)..."
 if echo "$(git log -1 --pretty=%B 2>/dev/null)" | grep -q "\[SKIP_THEME_CHECK\]"; then
   echo "   [SKIP_THEME_CHECK] — 건너뜀"
 else
-  node scripts/check-theme-consistency.mjs || true
+  quiet_warn node scripts/check-theme-consistency.mjs
 fi
 
 # 🛡️ 2026-06-17: React Query "stale initialData" 버그 클래스 (잔액 '딜 부족' 오표시 사고).
 #   initialData 가 initialDataUpdatedAt/refetchOnMount:'always' 없이 fresh 로 간주돼 cold mount
 #   refetch 누락. warn-only (차단은 verify.yml CI strict).
-echo "==> Pre-commit: React Query initialData 신선도 검사 (warn-only)..."
-node scripts/check-query-initialdata.mjs || true
+step "React Query initialData 신선도 검사 (warn-only)..."
+quiet_warn node scripts/check-query-initialdata.mjs
 
 # 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 (warn-only).
 #   localStorage user_type === 'user' 로 로그인 판단하는 안티패턴 신규 추가 감지 → 세션 풀림 사고 재발 차단.
-echo "==> Pre-commit: 듀얼 로그인 가드 (warn-only)..."
-node scripts/check-dual-login-guard.mjs || true
+step "듀얼 로그인 가드 (warn-only)..."
+quiet_warn node scripts/check-dual-login-guard.mjs
 
 # 🔐 2026-06-26: 유저↔어드민/셀러 상호 로그아웃 재발 방지 (warn-only).
 #   대시보드 로그인이 무조건 clearAuthData('user') 하면 KR httpOnly ur_session 쿠키까지 날아가
 #   소비자 강제 로그아웃. user 정리는 !isKorea() 게이트 안에서만. 차단은 verify.yml CI strict.
-echo "==> Pre-commit: 로그인 세션 공존 가드 (warn-only)..."
-node scripts/check-dashboard-login-session-coexist.mjs || true
+step "로그인 세션 공존 가드 (warn-only)..."
+quiet_warn node scripts/check-dashboard-login-session-coexist.mjs
 
 # 🧱 2026-06-26: 서비스 분리 — 소비자 단건 상품 조회의 도매 원본 격리 회귀 잠금 (warn-only).
 #   누수 닫은 사이트(상세/카트/공구확정)가 필터를 잃으면 도매 B2B 원본이 소비자에 노출. 차단은 verify.yml CI strict.
-echo "==> Pre-commit: 소비자 상품 도매 격리 가드 (warn-only)..."
-node scripts/check-consumer-product-supply-isolation.mjs || true
+step "소비자 상품 도매 격리 가드 (warn-only)..."
+quiet_warn node scripts/check-consumer-product-supply-isolation.mjs
 
 # 🧹 2026-10-12: 도매 자동재로그인·로그인 SPA 이동 가드 2건을 여기서 제거했다.
 #   2026-10-11 도매몰 철거로 그 스크립트가 **삭제됐는데 이 훅은 계속 불렀고**, `|| true` 라
@@ -265,85 +282,85 @@ node scripts/check-consumer-product-supply-isolation.mjs || true
 # 🛡️ 2026-06-18: group_buy_status 로 상품 종류(교환권/공구 vs 쇼핑) 판별·라우팅 금지 (warn-only).
 #   group_buy_status 는 모든 상품 DEFAULT 'active' → 종류 판별에 쓰면 쇼핑 상품이 교환권으로 오분류
 #   (핀 /group-buy 오라우팅 사고). 종류는 deal_only + isVoucherCategory SSOT 만. 차단은 verify.yml CI strict.
-echo "==> Pre-commit: group_buy_status 종류판별 가드 (warn-only)..."
-node scripts/check-groupbuy-status-classify.mjs || true
+step "group_buy_status 종류판별 가드 (warn-only)..."
+quiet_warn node scripts/check-groupbuy-status-classify.mjs
 
 # 🛡️ 2026-07-01: pagination parseInt/Number NaN 크래시 가드 (warn-only).
 #   도매몰 라이브 전수조사에서 GET /api/wholesale/catalog?page=abc → HTTP 500 발견. 비숫자 query 가
 #   NaN → SQL .bind(NaN) → 크래시. page/limit/offset 은 `parseInt(...) || <기본값>` 필수. 차단은 verify.yml CI strict.
-echo "==> Pre-commit: pagination NaN 크래시 가드 (warn-only)..."
-node scripts/check-pagination-nan.mjs || true
+step "pagination NaN 크래시 가드 (warn-only)..."
+quiet_warn node scripts/check-pagination-nan.mjs
 
 # 🛡️ 2026-07-01: 도매 공급가 모델 드리프트(폐기함수 직접호출) + 잔액 절대값 write 가드 (warn-only).
 #   공급가=resolveDistributorPrice SSOT / 잔액=원자증감·CAS. 차단은 verify.yml CI strict.
-echo "==> Pre-commit: 폐기 가격함수 가드 (warn-only)..."
-node scripts/check-deprecated-pricing.mjs || true
-echo "==> Pre-commit: 잔액 절대값 write 가드 (warn-only)..."
-node scripts/check-balance-absolute-write.mjs || true
+step "폐기 가격함수 가드 (warn-only)..."
+quiet_warn node scripts/check-deprecated-pricing.mjs
+step "잔액 절대값 write 가드 (warn-only)..."
+quiet_warn node scripts/check-balance-absolute-write.mjs
 
 # 🛡️ 2026-07-21: KV delete 무료한도(1천/일) 폭식 방지 (warn-only).
 #   cacheInvalidate 의 KV.delete 는 L2_KV_ENABLED 게이트 뒤에(쓰기 OFF 면 삭제 skip) + fan-out 금지.
 #   cacheGet L2 OFF 인데 삭제만 살아 28/호출 낭비한 사고. 차단은 verify.yml CI strict.
-echo "==> Pre-commit: KV delete 무료한도 가드 (warn-only)..."
-node scripts/check-kv-delete-budget.mjs || true
+step "KV delete 무료한도 가드 (warn-only)..."
+quiet_warn node scripts/check-kv-delete-budget.mjs
 
 # 🛡️ 2026-06-20: 라이트 고정 로그인/가입 페이지 입력 글자 흰색 재발 방지 (warn-only).
 #   standalone 라이트 auth 페이지가 force-light-theme(또는 *-light-theme/레이아웃) 없이 input 렌더 시
 #   다크모드에서 글자 안 보임 사고. 차단은 verify.yml CI strict (STRICT_LIGHT_INPUT=1).
-echo "==> Pre-commit: 로그인 입력 글자 가드 (warn-only)..."
-node scripts/check-light-input-guard.mjs || true
+step "로그인 입력 글자 가드 (warn-only)..."
+quiet_warn node scripts/check-light-input-guard.mjs
 
 # 🛡️ 2026-06-30: 배포-청크 자가복구(흰화면/무한로딩) 시스템 회귀 방지 (warn-only).
 #   인라인 부트가드 + chunk-error SSOT(캐시버스트) + main.tsx 배선 + worker SPA no-cache 4불변식.
 #   4번+ 재발한 버그 클래스 — 하나라도 빠지면 새 배포 후 대시보드 안 켜짐. 차단은 verify.yml CI strict.
-echo "==> Pre-commit: 배포-청크 자가복구 가드 (warn-only)..."
-node scripts/check-chunk-recovery-guard.mjs || true
+step "배포-청크 자가복구 가드 (warn-only)..."
+quiet_warn node scripts/check-chunk-recovery-guard.mjs
 
 # 🛡️ 2026-06-22: 모바일 뷰포트/스크롤 함정 래칫 — 신규 라인의 h-screen(100vh)/min-h-0 누락 차단.
 #   동네딜 지도 하단 잘림 사건 재발 방지. staged diff 추가라인만 검사(레거시 무시). warn-only.
-echo "==> Pre-commit: 모바일 뷰포트 함정 가드 (warn-only)..."
-node scripts/check-mobile-viewport.mjs || true
+step "모바일 뷰포트 함정 가드 (warn-only)..."
+quiet_warn node scripts/check-mobile-viewport.mjs
 
 # 🎨 2026-08-30: AI 디자인 흔적 래칫 — 평면 그라디언트(from/to 같은 색) · UI 자리 이모지.
 #   둘 다 에러를 안 내고 화면만 조용히 밋밋해진다. 커밋 전에 알려 준다. warn-only(차단은 CI).
-echo "==> Pre-commit: AI 디자인 흔적 래칫 (warn-only)..."
-node scripts/check-design-slop.mjs || true
-node scripts/check-dashboard-button-system.mjs || true
+step "AI 디자인 흔적 래칫 (warn-only)..."
+quiet_warn node scripts/check-design-slop.mjs
+quiet_warn node scripts/check-dashboard-button-system.mjs
 # 🩸 2026-09-14: 같은 가족인 카피 래칫 둘이 pre-commit 에 없어서, 주석 한 줄의 가운뎃점 때문에
 #   56분짜리 Verify 를 통째로 한 번 태웠다(PR #1425). 0.1초면 여기서 알려 준다. warn-only(차단은 CI).
-node scripts/check-anti-slop-copy.mjs || true
-node scripts/check-middle-dot-chain.mjs || true
+quiet_warn node scripts/check-anti-slop-copy.mjs
+quiet_warn node scripts/check-middle-dot-chain.mjs
 
 # 🛡️ 2026-06-29: 파일 크기 래칫 — god 파일 재발 방지. 신규 600줄 초과 / baseline 동결 파일 성장 경고.
 #   staged 파일만 검사. 줄인 뒤엔 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신. warn-only.
-echo "==> Pre-commit: 파일 크기 래칫 (god 파일 방지, warn-only)..."
-node scripts/check-file-size.mjs || true
+step "파일 크기 래칫 (god 파일 방지, warn-only)..."
+quiet_warn node scripts/check-file-size.mjs
 
 # 🛡️ 2026-06-26: CSV 수식 인젝션 가드 (warn-only) — csvEscape 류 함수에 = + - @ 탭/CR 선행 가드 강제.
-echo "==> Pre-commit: CSV 수식 인젝션 가드 (warn-only)..."
-node scripts/check-csv-injection.mjs || true
+step "CSV 수식 인젝션 가드 (warn-only)..."
+quiet_warn node scripts/check-csv-injection.mjs
 
 # 🛡️ 2026-07-01: 블로그 시드 최신성 가드 (warn-only) — 소비자 블로그 시드에 폐기 명칭/기능·도매몰 유입 차단.
-echo "==> Pre-commit: 블로그 시드 최신성 가드 (warn-only)..."
-node scripts/check-blog-seed-currency.mjs || true
+step "블로그 시드 최신성 가드 (warn-only)..."
+quiet_warn node scripts/check-blog-seed-currency.mjs
 
 # 🛡️ 2026-07-01: 블로그 fact 동기화 가드 (warn-only) — 수수료/원천징수/딜포인트 수치 변경 시 시드 갱신 유도.
-echo "==> Pre-commit: 블로그 fact 동기화 가드 (warn-only)..."
-bash scripts/check-blog-fact-sync.sh || true
+step "블로그 fact 동기화 가드 (warn-only)..."
+quiet_warn bash scripts/check-blog-fact-sync.sh
 
 # 🛡️ 2026-06-26: 쿼리 isError 소비 가드 (warn-only) — 도매/제조사 surface 의 data 페이지가 isError 분기
 #   없이 렌더하면 fetch 실패가 빈화면/₩0 으로 위장됨. 신규 추가 차단.
-echo "==> Pre-commit: 쿼리 isError 소비 가드 (warn-only)..."
-node scripts/check-query-iserror.mjs || true
+step "쿼리 isError 소비 가드 (warn-only)..."
+quiet_warn node scripts/check-query-iserror.mjs
 
 # 🛡️ 2026-06-27: 도매주문 상태 무결성 가드 (warn-only) — wholesale_orders.status 정의 밖 값 차단.
-echo "==> Pre-commit: 도매주문 상태 무결성 가드 (warn-only)..."
-node scripts/check-wholesale-order-status.mjs || true
+step "도매주문 상태 무결성 가드 (warn-only)..."
+quiet_warn node scripts/check-wholesale-order-status.mjs
 
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then
-  echo "==> Pre-commit: schema drift 검증 (migrations ↔ production-schema.ts)..."
+  step "schema drift 검증 (migrations ↔ production-schema.ts)..."
   if ! node scripts/verify-schema.mjs --json > /tmp/schema-drift.json 2>&1; then
     drift_count=$(jq '.summary.drift // 0' /tmp/schema-drift.json 2>/dev/null || echo 0)
     if [ "$drift_count" != "0" ]; then
@@ -353,20 +370,20 @@ if [ -n "$staged_migrations" ]; then
   fi
 fi
 
-echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
-bash scripts/check-guide-sync.sh || true
+step "운영 가이드 동기화 (warn-only)..."
+quiet_warn bash scripts/check-guide-sync.sh
 
 # 🔀 동시 세션 겹침 조기경보(2026-07-29 신설) — main 이 *이 브랜치가 고친 파일*을 그 사이에 바꿨으면 경고.
 #   단순 '뒤처짐'이 아니라 **실제 겹침**만 본다(매번 울면 우회가 습관이 된다).
-node scripts/check-branch-overlap.mjs || true
+quiet_warn node scripts/check-branch-overlap.mjs
 
 # 🔄 인계 문서 동기화 — 다음 세션이 옛 상태로 오판하는 것 방지(2026-07-28 신설).
 #   브랜치가 소스를 바꿨는데 인계가 통째로 없을 때만 경고. 세션당 한 번이면 통과.
-node scripts/check-current-work-sync.mjs || true
+quiet_warn node scripts/check-current-work-sync.mjs
 
 # 🛡️ 마이그레이션 ↔ repair-schema drift (warn-only) — prod D1 은 .sql 자동적용 X, repair-schema 가 SSOT.
-echo "==> Pre-commit: 마이그레이션/repair-schema drift (warn-only)..."
-node scripts/check-migration-repair-drift.mjs || true
+step "마이그레이션/repair-schema drift (warn-only)..."
+quiet_warn node scripts/check-migration-repair-drift.mjs
 
 # 🚨 주입 검증(check-guard-mutations)이 도는 중이면 커밋 금지 — 그 도구는 소스를 일부러
 #    망가뜨렸다가 되돌린다. 2026-08-25 에 실제로 그 중간 상태가 커밋에 담겼다(`721edf1`:
@@ -390,11 +407,11 @@ node scripts/check-conflict-markers.mjs -s || {
 }
 
 # 📑 소개서(docs/proposals/) 동기화 권고 (warn-only — 절대 차단 X).
-echo "==> Pre-commit: 소개서 동기화 권고 (warn-only)..."
-bash scripts/check-proposal-sync.sh || true
+step "소개서 동기화 권고 (warn-only)..."
+quiet_warn bash scripts/check-proposal-sync.sh
 
 # 🛡️ npm audit — high/critical 취약점 차단 (우회는 SKIP_NPM_AUDIT=1 뿐 — 2026-10-06 [SKIP_AUDIT] 제거)
-echo "==> Pre-commit: npm audit (high/critical)..."
+step "npm audit (high/critical)..."
 bash scripts/check-npm-audit.sh || {
   echo "❌ Commit blocked. npm audit high/critical 취약점 발견."
   echo "   긴급 우회: SKIP_NPM_AUDIT=1 git commit"
@@ -404,7 +421,7 @@ bash scripts/check-npm-audit.sh || {
 # 자동 참조 섹션 (페이지/엔드포인트 목록) 재생성 + staged 면 추가
 auto_ref_relevant=$(echo "$staged_ts" | grep -E '^(src/App\.tsx|src/(features|worker)/(.*?\.routes)?|src/worker/index\.ts)' || true)
 if [ -n "$auto_ref_relevant" ]; then
-  echo "==> Pre-commit: 가이드 자동 참조 재생성..."
+  step "가이드 자동 참조 재생성..."
   node scripts/generate-guide-references.mjs > /dev/null 2>&1 || true
 fi
 
@@ -412,7 +429,7 @@ fi
 #   요율·기능플래그를 고쳤는데 문서를 안 고치는 경로를 없앤다. 보장은 CI(--check) 가 한다 —
 #   원격 세션은 컨테이너가 새로 떠서 이 훅 자체가 없을 수 있기 때문이다.
 if [ -f scripts/generate-ops-handbook.mjs ]; then
-  echo "==> Pre-commit: 운영백서 숫자표 재생성..."
+  step "운영백서 숫자표 재생성..."
   node scripts/generate-ops-handbook.mjs > /dev/null 2>&1 || true
   git add src/features/guides/api/ops-handbook-auto.ts 2>/dev/null || true
   if ! git diff --quiet src/features/guides/api/auto-reference.ts 2>/dev/null; then
@@ -422,7 +439,7 @@ if [ -f scripts/generate-ops-handbook.mjs ]; then
 fi
 
 # --- TSC_CHECK_BEGIN · 시험이 이 블록만 떼어 실제로 돌린다(마커를 지우지 말 것) ---
-echo "==> Pre-commit: TypeScript check..."
+step "TypeScript check..."
 # 🩸 2026-11-01: 종전엔 `npx tsc … || { echo "Fix TypeScript errors."; exit 1; }` 한 줄이었다.
 #   `||` 는 "실패했다" 만 알고 **왜** 는 묻지 않는다. 그래서 이 레포에서 실제로 가장 자주 나는
 #   실패(**메모리 부족**)가 "타입 에러를 고쳐라" 로 보고됐고, 세션이 **없는 에러를 찾아 헤맸다**
@@ -488,7 +505,7 @@ fi
 # diff --cached 의 '+' 라인 중 import로 시작하는 것을 찾고,
 # 그 import가 이미 다른 import 블록 뒤에 있는지 확인 (휴리스틱).
 # 경고만 표시, 커밋은 허용. 빌드 검증이 실제 crash를 catch함.
-echo "==> Pre-commit: 새로 추가된 파일 중간 import 경고..."
+step "새로 추가된 파일 중간 import 경고..."
 git diff --cached -U0 --no-color -- '*.ts' '*.tsx' 2>/dev/null | awk '
   /^\+\+\+ b\// { file = substr($0, 7); next }
   /^@@ / {
@@ -512,7 +529,7 @@ worker_changed=$(echo "$staged_ts" | grep -E '^src/(worker|features|shared|lib)/
 worker_only_changed=$(echo "$staged_ts" | grep -E '^src/(worker/|features/[^/]+/api/)' || true)
 
 if [ -n "$worker_changed" ]; then
-  echo "==> Pre-commit: Worker 경로 파일의 @/ dynamic import 검출..."
+  step "Worker 경로 파일의 @/ dynamic import 검출..."
   dyn_viol=""
   for f in $worker_changed; do
     [ -f "$f" ] || continue
@@ -539,7 +556,7 @@ if [ -n "$worker_changed" ]; then
 
   # 🛡️ 브라우저 전용 패키지 검출 (worker에서 import하면 런타임 crash)
   # @sentry/react, react, react-dom, react-router-dom 등 window/document 참조 패키지
-  echo "==> Pre-commit: Worker 코드에서 브라우저 전용 패키지 import 검출..."
+  step "Worker 코드에서 브라우저 전용 패키지 import 검출..."
   browser_viol=""
   BROWSER_ONLY_PATTERN='@sentry/react|from ['"'"'"]react['"'"'"]|from ['"'"'"]react-dom['"'"'"]|from ['"'"'"]react-router-dom['"'"'"]|from ['"'"'"]react-helmet-async['"'"'"]|@tanstack/react-query'
   for f in $worker_only_changed; do
@@ -558,7 +575,7 @@ if [ -n "$worker_changed" ]; then
     exit 1
   fi
 
-  echo "==> Pre-commit: Worker 번들 빌드 (런타임 검증)..."
+  step "Worker 번들 빌드 (런타임 검증)..."
   npm run build:worker > /tmp/worker-build.log 2>&1 || {
     echo "❌ Worker 빌드 실패 — 런타임 crash 유발. 커밋 차단."
     tail -20 /tmp/worker-build.log
@@ -566,6 +583,7 @@ if [ -n "$worker_changed" ]; then
   }
 fi
 
+if [ "${HOOK_VERBOSE:-}" != "1" ]; then echo "   (경고만 하는 검사는 이번 커밋 파일에 걸린 줄만 보였다 — 전부 보기: HOOK_VERBOSE=1 git commit …)"; fi
 echo "✅ Pre-commit checks passed"
 EOF
 
