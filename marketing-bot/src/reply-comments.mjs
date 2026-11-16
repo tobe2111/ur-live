@@ -1,7 +1,8 @@
 // 2시간마다: 내 게시물 댓글 수집 → 분류 → 일반 댓글은 짧게 답글, 민감/불만/환불은 답글 없이 needs-owner 이슈.
 // "이미 답했나·이미 올렸나"는 저장 파일이 아니라 실물로 판정한다(live.mjs 머리말):
 //   답했나 = 그 댓글의 답글 중 내 계정이 있는가 · 올렸나 = needs-owner 이슈 본문에 그 댓글 ID 가 있는가.
-import { DRY, log, claude, humanize, threads, insta, threadsPublish, createIssue, PARTNER_FACTS, PARTNER_LINKS, opsAlert } from './lib.mjs';
+import { DRY, log, claude, humanize, threads, insta, threadsPublish, createIssue, PARTNER_FACTS, opsAlert, kstDateStr } from './lib.mjs';
+import { replyIntent, replyLink, linkInstruction, replyProblems } from './reply-intent.mjs';
 import { campaignToTrack } from './attribution.mjs';
 import { myRecentPosts, myUsernames, repliesOf, findMyReplies, escalatedCommentIds, utmFromText, metaTime } from './live.mjs';
 
@@ -32,9 +33,10 @@ async function fetchComments(posts, own) {
 const REPLY_SYSTEM = `너는 유어딜 운영자 본인이다. 내 게시물에 달린 댓글에 운영자가 폰으로 직접 답하듯 짧게(보통 1문장, 길어야 2문장) 답한다. 고객인 척, 제3자인 척 절대 금지.
 - 댓글 내용을 콕 집어 반응한다. "소중한 댓글 감사합니다", "좋은 하루 되세요", "많은 관심 부탁드려요" 같은 템플릿 문구 금지.
 - 편한 존댓말(~요). 이모지 0~1개, 해시태그 금지, 느낌표 최대 1개. 같은 표현 반복 금지 — 아래 [최근 내 답글]과 다른 말로 시작한다.
-- 사장님(가게 운영자)의 입점·수수료·정산·등록 문의: 아래 [확인된 사실] 범위에서만 짧게 답하고 입점 안내 ${PARTNER_LINKS.merchant} 를 안내한다. 사실에 없는 조건(특별 수수료, 노출 보장, 방문자 수, 계약 기간 등)은 약속하지 말고 "카카오 채널로 물어봐 주시면 정확히 안내드릴게요"로 넘긴다.
-- 인플루언서·크리에이터의 협업·소개 파트너 문의: 사실 범위에서 답하고 ${PARTNER_LINKS.creator} 를 안내한다. 수익 금액을 약속하지 않는다.
+- 사장님(가게 운영자)의 입점·수수료·정산·등록 문의: 아래 [확인된 사실] 범위에서만 짧게 답하고 [답글에 넣을 링크]를 안내한다. 사실에 없는 조건(특별 수수료, 노출 보장, 방문자 수, 계약 기간 등)은 약속하지 말고 "카카오 채널로 물어봐 주시면 정확히 안내드릴게요"로 넘긴다.
+- 인플루언서·크리에이터의 협업·소개 파트너 문의: 사실 범위에서 답하고 [답글에 넣을 링크]를 안내한다. 수익 금액을 약속하지 않는다.
 - 손님 문의: 모르는 사실(재고, 가격 변경, 영업시간)은 지어내지 말고 상품 페이지 확인을 안내.
+- 신청·가입·링크를 묻는 댓글엔 한 문장으로 바로 할 수 있는 길만 말한다(설명 늘어놓기 금지).
 
 [확인된 사실]
 ${PARTNER_FACTS}`;
@@ -78,7 +80,19 @@ async function main() {
     const track = utm ? campaignToTrack(utm.campaign) : null;
     const ctx = track ? `게시물 주제: ${TRACK_LABEL[track]}\n` : '';
     const recentR = recentReplies.slice(-8).map((r) => `- ${r}`).join('\n') || '- (없음)';
-    const reply = (await humanize(await claude(`${REPLY_SYSTEM}\n\n[최근 내 답글 — 이 말투/첫마디 반복 금지]\n${recentR}`, `${ctx}@${c.user} 댓글: ${c.text}`, 220), '댓글 답글')).slice(0, 300);
+    // 뜻을 가르고 → 맞는 페이지 하나(UTM) → 검수 통과한 답글만 (reply-intent.mjs 머리말)
+    const intent = replyIntent(c.text, track);
+    let productUrl = null;
+    try { if (utm?.link && intent.who === 'consumer') { const u = new URL(utm.link); productUrl = `${u.origin}${u.pathname}`; } } catch {}
+    const link = replyLink(intent, { platform: c.platform, commentId: c.id, productUrl, date: kstDateStr() });
+    const sys = `${REPLY_SYSTEM}\n\n${linkInstruction(c.platform, link)}\n\n[최근 내 답글 — 이 말투/첫마디 반복 금지]\n${recentR}`;
+    const write = async (extra = '') => (await humanize(await claude(sys, `${ctx}@${c.user} 댓글: ${c.text}${extra}`, 220), '댓글 답글')).slice(0, 300).trim();
+    const vetCtx = { platform: c.platform, link, facts: PARTNER_FACTS, recent: recentReplies.slice(-8) };
+    let reply = await write();
+    let problems = replyProblems(reply, vetCtx);
+    if (problems.length) { log(`답글 검수 걸림 → 고쳐 쓰기 ${c.id}: ${problems.join(' / ')}`); reply = await write(`\n\n[고칠 점] ${problems.join(' / ')}`); problems = replyProblems(reply, vetCtx); }
+    if (problems.length) { log(`답글 검수 두 번 실패 → 이번엔 안 올림 ${c.id}: ${problems.join(' / ')}`); skipped++; continue; }
+    log(`답글 뜻: ${intent.who}${intent.action ? ' · 신청/링크 요청' : ''} → ${c.platform === 'threads' ? link : '프로필 링크 안내'}`);
     recentReplies.push(reply);
     log(`답글(${c.platform} ${c.id}): ${reply}`);
     if (c.platform === 'threads') await threadsPublish({ media_type: 'TEXT', text: reply, reply_to_id: c.id });
