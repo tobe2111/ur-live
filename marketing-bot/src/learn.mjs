@@ -10,7 +10,7 @@
 import { BANNED_WORDS } from './vet.mjs';
 
 export const PRIOR = { mean: 1, n: 2, sd: 0.6 };
-export const DIMS = ['hook', 'format', 'len', 'slot', 'media', 'series', 'topic_tag', 'tformat'];
+export const DIMS = ['hook', 'format', 'len', 'slot', 'media', 'series', 'topic_tag', 'tformat', 'cta'];
 
 // 같은 플랫폼 평균 대비 배수(0~3). rows = [{ id, platform, metrics: { score } }]
 export function rewards(rows = []) {

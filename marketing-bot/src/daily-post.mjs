@@ -4,6 +4,7 @@ import { pickTrackByWeights } from './attribution.mjs';
 import { vetPost } from './vet.mjs';
 import { pickLeastRecent, rotateImages, pickHook, recentOpeners, slotFor, HOOKS, FORMATS } from './variety.mjs';
 import { thompsonPick, lessonsBlock } from './learn.mjs';
+import { CTA_VARIANTS, ctaFor } from './cta.mjs';
 import { pickBest } from './judge.mjs';
 import { ROOT, DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, igStory, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
 import { myRecentPosts, postedOn } from './live.mjs';
@@ -90,8 +91,14 @@ const lenIdx = String(thompsonPick(THREADS_LENS.map((_, i) => String(i)), arms.l
 const lastTformat = varietyLog.filter((p) => p.platform === 'threads' && p.tformat).slice(-1)[0]?.tformat;
 const tformatId = thompsonPick(THREADS_FORMATS.map((f) => f.id), arms.tformat, dayIdx * 7 + 4, { exclude: [lastTformat] }) || THREADS_FORMATS[dayIdx % THREADS_FORMATS.length].id;
 const tformat = THREADS_FORMATS.find((f) => f.id === tformatId) || THREADS_FORMATS[0];
-// 링크 대상: 입점/크리에이터 페이지 (없으면 상품, 그것도 없으면 홈)
-const target = { url: T.target || product?.url || 'https://urdeal.kr/' };
+// 끝 문장 + 링크 대상(cta.mjs) — 안내 페이지 / 바로 등록 등을 돌리며 성과로 학습. 학습 키는 '트랙:id'.
+const ctaList = CTA_VARIANTS[track] || [];
+const lastCta = varietyLog.filter((p) => p.track === track && p.cta).slice(-1)[0]?.cta;
+const ctaKey = ctaList.length ? thompsonPick(ctaList.map((c) => `${track}:${c.id}`), arms.cta, dayIdx * 7 + 5, { exclude: [lastCta] }) : null;
+const cta = ctaKey ? ctaFor(track, ctaKey.split(':')[1]) : null;
+if (cta) T.cta = cta.text;
+// 링크 대상: 고른 끝 문장의 페이지 → 입점/크리에이터 페이지 (없으면 상품, 그것도 없으면 홈)
+const target = { url: cta?.target || T.target || product?.url || 'https://urdeal.kr/' };
 // 글 id: 하루 한 번이라 날짜로 충분하다(utm_content = <id>-<YYYYMMDD>). 종전엔 posts.json 개수로 매겼다.
 const cid = (platform) => ({ threads: 'th', instagram: 'ig', facebook: 'fb' })[platform];
 
@@ -287,7 +294,7 @@ async function main() {
         runLog.push({ platform: 'instagram', skipped: 'error', error: e.message.slice(0, 300), track, posted_at: now.toISOString(), date_kst: today });
       }
       if (r) {
-      runLog.push({ platform: 'instagram', id: r.id, encore_of: encore?.id, collaborators: collaborators.length ? collaborators : undefined, digest: digest ? digest.deals.map((d) => d.id) : undefined, media_type: r.media_type, media: media.video_url ? 'reel' : media.images.length > 1 ? 'carousel' : 'image', format: formatIdx, media_set: media.set, series: digest ? 'digest' : series.id, field_note: fieldNote?.number, generated: gen ? { source: gen.source, credit: gen.credit, license: gen.license, page_url: gen.page_url, broll: gen.broll_credit, title: gen.title, photo_url: gen.photo_url, reel: !!media.video_url } : undefined, hook: hook.id, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
+      runLog.push({ platform: 'instagram', id: r.id, encore_of: encore?.id, collaborators: collaborators.length ? collaborators : undefined, digest: digest ? digest.deals.map((d) => d.id) : undefined, media_type: r.media_type, media: media.video_url ? 'reel' : media.images.length > 1 ? 'carousel' : 'image', format: formatIdx, media_set: media.set, series: digest ? 'digest' : series.id, field_note: fieldNote?.number, generated: gen ? { source: gen.source, credit: gen.credit, license: gen.license, page_url: gen.page_url, broll: gen.broll_credit, title: gen.title, photo_url: gen.photo_url, reel: !!media.video_url } : undefined, hook: hook.id, cta: ctaKey || undefined, topic: topic || undefined, content_id: id, track, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('instagram'), bio_link: link, text: body, dry: DRY || undefined });
       // ---- Facebook 페이지 — 2026-11-09 대표 "페이스북 페이지에는 올리지 않아도 돼. 인스타랑 스레드만" → 기본 끔.
       //      다시 켜려면 워크플로 env 에 FB_POST_ENABLED=1.
       if (process.env.FB_POST_ENABLED === '1') {
@@ -334,7 +341,7 @@ async function main() {
     // 말투 참고(threads-style.mjs): 대표가 고른 스레드 인기글 + 우리 스레드 인기글
     threadsExamples = pickExamples(await ownerExamples(), readJson('data/encore.json', null)?.threads_top || [], 3, dayIdx);
     log(`스레드 말투 참고 예시 ${threadsExamples.length}개`);
-    log(`스레드 형식: ${tformat.id}`);
+    log(`스레드 형식: ${tformat.id} · 끝 문장: ${ctaKey || "없음"} → ${target.url}`);
     const recentTh = recentTexts('threads');
     const { body, problems } = await writeVetted(threadsPrompt({ info, topic: isPromo ? '' : topic, format: tformat, len, examplesBlock: styleBlock(threadsExamples) }), 600, 'threads', info, 'Threads 글', 'threads',
       (d) => repeatProblems(d, recentTh, isPromo ? '' : topic));
@@ -378,7 +385,7 @@ async function main() {
         else { reply_id = (await threadsPublish({ media_type: 'TEXT', text: fu.body.trim().slice(0, 480), reply_to_id: r.id }))?.id; log(`Threads 이어 쓰기 게시: ${reply_id}\n${fu.body}`); }
       } catch (e) { log(`Threads 이어 쓰기 실패(본글은 정상): ${e.message.slice(0, 200)}`); }
     }
-    if (r) runLog.push({ platform: 'threads', id: r.id, reply_id, topic_tag, hook: hook.id, len: lenIdx, tformat: tformat.id, topic: topic || undefined, media: image_url && !/TEXT/.test(r.media_type || '') ? 'image' : 'text', encore_of: encore?.id, content_id: id, image: image_url && !/TEXT/.test(r.media_type || '') ? image_url : undefined, track, series: series.id, field_note: fieldNote?.number, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
+    if (r) runLog.push({ platform: 'threads', id: r.id, reply_id, topic_tag, hook: hook.id, len: lenIdx, tformat: tformat.id, cta: ctaKey || undefined, topic: topic || undefined, media: image_url && !/TEXT/.test(r.media_type || '') ? 'image' : 'text', encore_of: encore?.id, content_id: id, image: image_url && !/TEXT/.test(r.media_type || '') ? image_url : undefined, track, series: series.id, field_note: fieldNote?.number, promo: isPromo, product_id: isPromo ? product.id : undefined, posted_at: now.toISOString(), date_kst: today, slot_kst: todaysSlot('threads'), link, text: body, dry: DRY || undefined });
     }
   } else log(`Threads: 건너뜀 — ${skipReason('threads')}`);
 
