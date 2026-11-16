@@ -18,6 +18,7 @@ import { canonicalShopPath } from '../../shared/seo/shop-canonical'
 // 🗺️ 워커 전용 — 이 표를 크리티컬 패스(consumer-surfaces)에서 끌어오면 app-constants 청크가 첫 페인트로 딸려온다.
 import { normalizeSido, regionPath } from '../../shared/constants/region-slugs'
 import { ROBOTS_NOINDEX } from '../../shared/seo/robots-directives'
+import { regionTitleCore } from '../../shared/seo/region-title'
 import { isHubCanonical, NOIMAGEINDEX_META } from '../../shared/seo/image-hub'
 
 /** 시군구 형태 — '중구'·'파주시'·'양양군'. 접두부 1글자 허용(중구·동구·남구가 탈락하지 않게). */
@@ -319,7 +320,8 @@ export function resolveRegionSeo(
   }
 
   const label = sigunguRaw ? `${sido} ${sigunguRaw}` : sido
-  const t = withSiteName(`${label} 이용권·동네딜 할인`, siteName)
+  // 🔎 2026-11-16 사람들은 '서초 맛집 할인' 으로 찾는다 — 제목 앞머리에 그 말을(클라 RegionPage 제목과 같은 문자열 · 시험 대조).
+  const t = withSiteName(regionTitleCore(label), siteName)
   // 🔗 2026-10-13: 조립을 `regionPath` **한 곳**으로 — sitemap·빵부스러기·크롤러 링크·클라
   //   `<SEO url>` 가 전부 그 함수를 지난다(종전엔 다섯 벌이었고 둘이 날것이었다).
   const canonicalPath = regionPath({ sido, ...(sigunguRaw ? { sigungu: sigunguRaw } : {}) })
