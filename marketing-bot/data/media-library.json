@@ -1,0 +1,47 @@
+{
+  "items": [
+    {
+      "id": "pixabay-img-1284351",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 1284351,
+      "page_url": "https://pixabay.com/photos/restaurant-cooking-chef-kitchen-1284351/",
+      "author": "Pexels",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 5472,
+      "h": 3648,
+      "tags": "restaurant, cooking, chef, kitchen, food, professional, preparation, meal, dish, appetizer, cook, lunch, plate, prepare, food preparation, restaurant, restaurant, restaurant, restaurant, cooking, cooking, cooking, cooking, cooking, chef, chef, chef, kitchen, food, cook",
+      "preview": "https://pixabay.com/get/gf8533688322cc05d445582988a6514323c5e77228d1ee0c2916c2cddc1f427f9f9077fbaa04551618d0a7219a918292a8d763a0f1189c82e44248521833346de_640.jpg",
+      "query": "restaurant owner kitchen",
+      "tracks": [
+        "merchant"
+      ],
+      "score": 7,
+      "note": "얼굴이 나오지 않고 손과 요리 장면 위주라 초상권 부담이 적고 선명함. 철판요리 느낌이라 일식 스타일이고 워터마크·로고는 안 보임. 다만 '사장님' 느낌보다는 셰프 연출 컷이고, ",
+      "added_at": "2026-11-16T11:56:20.646Z",
+      "used": []
+    }
+  ],
+  "topics_last": {
+    "restaurant owner kitchen": "2026-11-16T11:56:20.646Z",
+    "small restaurant counter": "2026-11-16T11:56:20.646Z",
+    "audio:upbeat acoustic": "2026-11-16T11:56:20.646Z"
+  },
+  "updated_at": "2026-11-16T11:56:20.646Z",
+  "rejected": [
+    "pixabay-img-5753302",
+    "pixabay-img-4807317",
+    "pixabay-img-10005922",
+    "pixabay-img-4282016",
+    "pixabay-img-2711279",
+    "pixabay-vid-88225",
+    "pixabay-vid-75267",
+    "pixabay-vid-14127",
+    "pixabay-img-2590685",
+    "pixabay-img-226102",
+    "pixabay-img-4807333",
+    "pixabay-img-9826328",
+    "pixabay-img-1845295",
+    "pixabay-vid-10853"
+  ]
+}
