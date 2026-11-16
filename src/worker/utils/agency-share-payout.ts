@@ -32,6 +32,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import { ensureLedgerTable, recordLedger, sellerLedgerAccount } from './ledger'
 import { WITHHOLDING_RATES } from './tax-withholding'
+import { PLATFORM_OPERATOR_AGENCY_IDS } from './ledger-commission-policy'
 import { AGENCY_SHARE_PCT_MAX, sharePctAtSaleSql } from '../../features/agency-console/api/agency-share'
 
 export const AGENCY_SHARE_GATE = 'agency_share_payout_enabled'
@@ -153,6 +154,7 @@ export async function creditAgencyShare(
     if (!Number.isFinite(p.orderId) || p.orderId <= 0) return none
     const ag = await findAgencyForSale(DB, p.sellerId, p.productId)
     if (!ag) return none
+    if (PLATFORM_OPERATOR_AGENCY_IDS.includes(ag.agencyId)) return { credited: 0, agencyId: ag.agencyId, matched: true } // 🏢 운영사 에이전시 = 직접 10% — 몫 없음(중개사 몫도 막는다)
     const amount = calcAgencyShareAmount(p.totalAmount, ag.pct)
     if (amount <= 0) return { credited: 0, agencyId: ag.agencyId, matched: true }
     await ensureAgencyShareTables(DB)

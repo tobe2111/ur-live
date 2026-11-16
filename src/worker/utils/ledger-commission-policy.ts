@@ -34,6 +34,19 @@ export async function ownerFundedFor(DB: D1Database, ownerAccount: string): Prom
  *   결재 기록: `docs/decisions/2026-11-16-operator-recruited-stores-direct.md`.
  */
 export const PLATFORM_OPERATOR_USER_IDS: readonly number[] = [3]
+/** 🏢 운영사 **에이전시 계정** — `agency_accounts.id = 1` 은 대표 회사(옛 리스터코퍼레이션 → 현 유어팀, 2026-11-16 대표
+ *  *"리스터코퍼레이션 내 회사야. 그리고 이제 유어팀으로 회사명도 바꼈어"*). 이 계정이 맡은 매장도 직접 10% 이고 에이전시 몫은 없다. */
+export const PLATFORM_OPERATOR_AGENCY_IDS: readonly number[] = [1]
+
+/** 매장이 운영사 에이전시에 active 로 맡겨져 있나 — 중개(brokered) 매장 판정 때만 부른다. 조회 실패는 false(종전 그대로). */
+export async function isOperatorAgencyStore(DB: D1Database, sellerId: number): Promise<boolean> {
+  if (PLATFORM_OPERATOR_AGENCY_IDS.length === 0) return false
+  const row = await DB.prepare(
+    `SELECT 1 AS ok FROM agency_store_links WHERE seller_id = ? AND status = 'active'
+        AND agency_id IN (SELECT value FROM json_each(?)) LIMIT 1`,
+  ).bind(sellerId, JSON.stringify(PLATFORM_OPERATOR_AGENCY_IDS)).first<{ ok: number }>().catch(() => null)
+  return !!row
+}
 
 /**
  * 중개(brokered)로 찍혔어도 **중개사가 운영사 본인**이면 직접(direct)으로 본다 — 떼어 줄 제3자가 없다.
@@ -72,7 +85,8 @@ export async function channelPlatformRate(
     if (gate?.value !== 'true') return undefined
     const { getSellerMeta } = await import('./seller-meta')
     const meta = (await getSellerMeta(DB, [id])).get(id)
-    const channel = operatorBrokeredAsDirect(meta?.store_channel, meta?.broker_user_id)
+    let channel = operatorBrokeredAsDirect(meta?.store_channel, meta?.broker_user_id)
+    if (channel === 'brokered' && await isOperatorAgencyStore(DB, id)) channel = 'direct' // 🏢 운영사 에이전시가 맡은 매장
     if (channel !== 'direct' && channel !== 'brokered') return undefined  // 미지정 → 종전 경로
     const key = channel === 'direct' ? 'platform_fee_pct_direct' : 'platform_fee_pct_brokered'
     const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
