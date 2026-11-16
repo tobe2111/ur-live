@@ -284,14 +284,29 @@
         // 🔎 2026-08-01: **prerender 중에는 워치독을 돌리지 않는다.** 사용자가 보고 있는 화면이 아니라
         //   복구 오버레이도 beacon 도 의미가 없고, 그대로 두면 "아무도 안 본 화면"이 에러 통계를 채운다
         //   (index.html 의 Speculation Rules 가 상세 경로를 prerender 한다). 활성화되면 그때부터 12초를 센다.
-        //   ⚠️ 백그라운드 탭(hidden)은 **억제하지 않는다** — 진짜 실패를 놓칠 수 있어, 대신 beacon 에
-        //   `vis=` 로 기록만 하고 판단은 데이터를 보고 한다.
+        //   🔁 2026-11-16 데이터로 판정했다 — 종전엔 백그라운드 탭(hidden)도 억제하지 않고 `vis=` 로 기록만 했다.
+        //   7일 기록(실사용자): shell-sw 수리(#2347) 뒤 boot-stuck 은 **2건 모두 vis=hidden**(14s·29s — 브라우저가
+        //   숨은 탭의 스크립트를 멈춘 것)이었고, 보이는 탭의 실패는 0건이었다. 숨은 탭은 실패가 아니라 **멈춤**이다.
+        //   ⇒ 숨은 동안은 세지 않는다 — 다시 보이면 그때부터 12초를 센다(진짜 실패는 손님이 돌아와 보는 순간 그대로 잡힌다).
+        function armWatchdog() {
+          try {
+            if (document.visibilityState === 'hidden') {
+              document.addEventListener('visibilitychange', function onVis() {
+                if (document.visibilityState === 'hidden') return;
+                document.removeEventListener('visibilitychange', onVis);
+                setTimeout(bootWatchdog, 12000);
+              });
+              return;
+            }
+          } catch (e) { /* visibility API 없음 — 종전대로 */ }
+          setTimeout(bootWatchdog, 12000);
+        }
         if (document.prerendering) {
           try {
-            document.addEventListener('prerenderingchange', function () { setTimeout(bootWatchdog, 12000); }, { once: true });
-          } catch (e) { setTimeout(bootWatchdog, 12000); }
+            document.addEventListener('prerenderingchange', armWatchdog, { once: true });
+          } catch (e) { armWatchdog(); }
         } else {
-          setTimeout(bootWatchdog, 12000);
+          armWatchdog();
         }
       })();
     </script>
