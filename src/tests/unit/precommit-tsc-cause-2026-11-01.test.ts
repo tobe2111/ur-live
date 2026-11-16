@@ -50,7 +50,8 @@ function extractBlock(): string {
   const b = RAW.indexOf('# --- TSC_CHECK_END ---')
   expect(a, 'TSC_CHECK_BEGIN 마커가 없다 — 블록이 옮겨졌으면 이 테스트를 재조준할 것').toBeGreaterThan(-1)
   expect(b, 'TSC_CHECK_END 마커가 없다').toBeGreaterThan(a)
-  return '#!/bin/bash\nset -e\n' + RAW.slice(a, b)
+  // 2026-11-16: 훅의 진행 표시가 `step` 함수가 됐다(평소엔 조용) — 잘라 낸 구간만 돌릴 땐 같은 이름을 빈 함수로 둔다.
+  return '#!/bin/bash\nset -e\nstep() { :; }\n' + RAW.slice(a, b)
 }
 
 let dir = ''
