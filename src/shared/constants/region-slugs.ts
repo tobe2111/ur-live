@@ -181,3 +181,13 @@ export function addressInRegion(address: string | null | undefined, ref: RegionR
  * 페이지 자체는 미달이어도 열린다 — 링크가 죽지 않게. `noindex` 만 붙는다.
  */
 export const REGION_INDEX_MIN_DEALS = 3
+
+/**
+ * 🔎 지역 페이지 제목 본문 (2026-11-16 검색 유입 점검) — 서버 메타(`worker/utils/surface-ssr-meta.ts`)와
+ * 클라 `pages/region/RegionPage.tsx` 가 같은 함수를 쓴다(갈리면 마운트 때 제목이 바뀐다).
+ * 종전 `서울 서초구 이용권·동네딜 할인` 에 사람들이 치는 '맛집' 이 없었다. '이용권' 은 우리 명칭(SSOT)이라 남긴다.
+ * 📦 이 파일에 둔 이유: 지역 화면이 이미 읽는 모듈이다 — 새 파일로 떼면 묶음기가 홈 청크에 넣어 지역 첫 화면이 +1.7KB 됐다(실측).
+ */
+export function regionTitleCore(label: string): string {
+  return `${label} 맛집·뷰티 할인 이용권`
+}
