@@ -72,12 +72,12 @@ async function fresh(opts: { gate?: boolean; broker?: boolean; kind?: string } =
   if (opts.broker) db.exec("INSERT INTO platform_settings VALUES ('broker_share_enabled', 'true')")
   const DB = d1(db)
   await ensureAgencyConsoleTables(DB)
-  db.exec(`INSERT INTO agency_accounts (id, name, kind, status) VALUES (1, '에이', '${opts.kind ?? 'business'}', 'active')`)
-  db.exec("INSERT INTO agency_staff (id, agency_id, email, role, is_owner, status, user_id) VALUES (6, 1, 'a@x.com', 'admin', 1, 'active', 50)")
-  db.exec("INSERT INTO agency_store_links (agency_id, seller_id, status) VALUES (1, 7, 'active')")
-  db.exec("INSERT INTO agency_products (product_id, seller_id, agency_id) VALUES (31, 7, 1)")
-  db.exec("INSERT INTO agency_product_periods (product_id, seller_id, agency_id, started_at) VALUES (31, 7, 1, datetime('now', '-1 day'))")
-  db.exec("INSERT INTO agency_share_terms (seller_id, agency_id, pct, effective_from) VALUES (7, 1, 10, datetime('now', '-1 day'))")
+  db.exec(`INSERT INTO agency_accounts (id, name, kind, status) VALUES (9, '에이', '${opts.kind ?? 'business'}', 'active')`)
+  db.exec("INSERT INTO agency_staff (id, agency_id, email, role, is_owner, status, user_id) VALUES (6, 9, 'a@x.com', 'admin', 1, 'active', 50)")
+  db.exec("INSERT INTO agency_store_links (agency_id, seller_id, status) VALUES (9, 7, 'active')")
+  db.exec("INSERT INTO agency_products (product_id, seller_id, agency_id) VALUES (31, 7, 9)")
+  db.exec("INSERT INTO agency_product_periods (product_id, seller_id, agency_id, started_at) VALUES (31, 7, 9, datetime('now', '-1 day'))")
+  db.exec("INSERT INTO agency_share_terms (seller_id, agency_id, pct, effective_from) VALUES (7, 9, 10, datetime('now', '-1 day'))")
   return { db, DB }
 }
 
@@ -94,7 +94,7 @@ describe('① 게이트 OFF', () => {
     expect(r).toEqual({ credited: 0, agencyId: null, matched: false })
     const t = db.prepare("SELECT name FROM sqlite_master WHERE name = 'agency_share_credits'").get()
     expect(t).toBeUndefined()
-    const p = await requestAgencyPayout(DB, 1, 6)
+    const p = await requestAgencyPayout(DB, 9, 6)
     expect(p.ok).toBe(false)
   })
 })
@@ -103,13 +103,13 @@ describe('② 적립', () => {
   it('맡은 이용권이면 10% 를 1행으로, 원장 seller → agency', async () => {
     const { db, DB } = await fresh()
     const r = await creditAgencyShare(DB, sale())
-    expect(r).toMatchObject({ credited: 1000, agencyId: 1, matched: true })
+    expect(r).toMatchObject({ credited: 1000, agencyId: 9, matched: true })
     const rows = db.prepare('SELECT * FROM agency_share_credits').all() as Array<Record<string, unknown>>
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ agency_id: 1, seller_id: 7, amount: 1000, share_pct: 10, status: 'pending' })
+    expect(rows[0]).toMatchObject({ agency_id: 9, seller_id: 7, amount: 1000, share_pct: 10, status: 'pending' })
     const l = ledger(db, 'agency_share')
     expect(l).toHaveLength(1)
-    expect(l[0]).toMatchObject({ debit_account: 'seller:7', credit_account: 'agencyacct:1', amount: 1000 })
+    expect(l[0]).toMatchObject({ debit_account: 'seller:7', credit_account: 'agencyacct:9', amount: 1000 })
   })
   it('같은 주문을 두 번 확정해도(딜·카드 두 경로) 1행·원장 1건', async () => {
     const { db, DB } = await fresh()
@@ -130,12 +130,12 @@ describe('② 적립', () => {
   })
   it('판매 시각의 % — 미래 시각에 바꾼 % 는 지금 판매에 안 쓴다', async () => {
     const { db, DB } = await fresh()
-    db.exec("INSERT INTO agency_share_terms (seller_id, agency_id, pct, effective_from) VALUES (7, 1, 50, datetime('now', '+1 day'))")
+    db.exec("INSERT INTO agency_share_terms (seller_id, agency_id, pct, effective_from) VALUES (7, 9, 50, datetime('now', '+1 day'))")
     expect((await creditAgencyShare(DB, sale())).credited).toBe(1000)
   })
   it('% 를 바꾸면 그 뒤 판매는 새 % (setAgencyShare 가 지금부터 적용)', async () => {
     const { DB } = await fresh()
-    await setAgencyShare(DB, 7, 1, 20, null)
+    await setAgencyShare(DB, 7, 9, 20, null)
     expect((await creditAgencyShare(DB, sale({ orderId: 901 }))).credited).toBe(2000)
   })
   it('계산은 매장 몫 상한(90%)을 넘지 않는다 · 비정상 입력은 0', () => {
@@ -181,7 +181,7 @@ describe('④ 환불 회수', () => {
     expect(db.prepare('SELECT amount, status FROM agency_share_credits').get()).toEqual({ amount: 500, status: 'pending' })
     const rev = ledger(db, 'agency_share_reversal')
     expect(rev).toHaveLength(1)
-    expect(rev[0]).toMatchObject({ debit_account: 'agencyacct:1', credit_account: 'seller:7', amount: 500 })
+    expect(rev[0]).toMatchObject({ debit_account: 'agencyacct:9', credit_account: 'seller:7', amount: 500 })
     // 같은 장 다시 — 원장 UNIQUE 가 막는다(금액 CAS 가 통과해도 원장은 한 번).
     await clawbackAgencyShare(DB, { orderId: 900, voucherId: 1, denom: 1, reason: 'refund' })
     expect(ledger(db, 'agency_share_reversal')).toHaveLength(1)
@@ -223,27 +223,27 @@ describe('⑥ 정산 분기', () => {
     await creditAgencyShare(DB, sale({ orderId: 910, total: 200_000 }))
     await creditAgencyShare(DB, sale({ orderId: 911, total: 50_000 }))
     db.exec("UPDATE agency_share_credits SET available_at = '2000-01-01T00:00:00.000Z' WHERE order_id = 910")
-    const r = await requestAgencyPayout(DB, 1, 6)
+    const r = await requestAgencyPayout(DB, 9, 6)
     expect(r).toMatchObject({ ok: true, gross: 20_000 })
     expect(db.prepare('SELECT payout_id IS NULL AS free, status FROM agency_share_credits WHERE order_id = 911').get()).toEqual({ free: 1, status: 'pending' })
   })
   it('성숙분만 신청 · 처리 중엔 두 번째 신청 거절 · 반려하면 다시 · 지급 처리는 한 번', async () => {
     const { db, DB } = await fresh({ kind: 'individual' })
     await creditAgencyShare(DB, sale({ total: 200_000 }))
-    expect((await requestAgencyPayout(DB, 1, 6)).ok).toBe(false) // 아직 성숙 전
+    expect((await requestAgencyPayout(DB, 9, 6)).ok).toBe(false) // 아직 성숙 전
     db.exec("UPDATE agency_share_credits SET available_at = '2000-01-01T00:00:00.000Z'")
-    expect(await readAgencyShareBalance(DB, 1)).toMatchObject({ available: 20_000, pending: 0 })
-    const r1 = await requestAgencyPayout(DB, 1, 6)
+    expect(await readAgencyShareBalance(DB, 9)).toMatchObject({ available: 20_000, pending: 0 })
+    const r1 = await requestAgencyPayout(DB, 9, 6)
     expect(r1).toMatchObject({ ok: true, gross: 20_000, withholding: 660, net: 19_340, taxMode: 'withholding_3_3' })
-    expect((await requestAgencyPayout(DB, 1, 6)).ok).toBe(false)
+    expect((await requestAgencyPayout(DB, 9, 6)).ok).toBe(false)
     if (!r1.ok) throw new Error('unreachable')
     expect(await rejectAgencyPayout(DB, r1.payoutId, 1)).toBe(true)
-    const r2 = await requestAgencyPayout(DB, 1, 6)
+    const r2 = await requestAgencyPayout(DB, 9, 6)
     expect(r2.ok).toBe(true)
     if (!r2.ok) throw new Error('unreachable')
     expect(await markAgencyPayoutPaid(DB, r2.payoutId, 1)).toBe(true)
     expect(await markAgencyPayoutPaid(DB, r2.payoutId, 1)).toBe(false)
-    expect(await readAgencyShareBalance(DB, 1)).toMatchObject({ paid: 20_000, available: 0, requested: 0 })
+    expect(await readAgencyShareBalance(DB, 9)).toMatchObject({ paid: 20_000, available: 0, requested: 0 })
   })
 })
 
