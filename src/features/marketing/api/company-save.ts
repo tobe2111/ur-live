@@ -162,7 +162,8 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
            ELSE ad_company_leads.description END,
          business_no = COALESCE(ad_company_leads.business_no, excluded.business_no),
          contact_source = COALESCE(ad_company_leads.contact_source, excluded.contact_source),
-         active = CASE WHEN COALESCE(ad_company_leads.email, excluded.email) IS NOT NULL
+         active = CASE WHEN ad_company_leads.hold_reason IS NOT NULL THEN ad_company_leads.active -- 🧷 규칙 보류는 재수집이 못 푼다
+                       WHEN COALESCE(ad_company_leads.email, excluded.email) IS NOT NULL
                          OR COALESCE(ad_company_leads.phone, excluded.phone) IS NOT NULL
                        THEN 1 ELSE ad_company_leads.active END`
     ).bind(

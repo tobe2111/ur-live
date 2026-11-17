@@ -158,7 +158,7 @@ export async function runKakaoPhoneSweep(env: Env): Promise<{ scanned: number; f
   if (hits.length) {
     budget.left -= 1
     await DB.batch(hits.map(h => DB.prepare(
-      "UPDATE ad_company_leads SET phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'kakao'), active = 1 WHERE id = ?",
+      "UPDATE ad_company_leads SET phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'kakao'), active = CASE WHEN hold_reason IS NOT NULL THEN active ELSE 1 END WHERE id = ?", // 🧷 규칙 보류 유지
     ).bind(h.phone, h.id))).catch(() => null)
   }
   if (tried.length) {

@@ -46,7 +46,8 @@ function freshDb() {
   const db = new DatabaseSync(':memory:')
   db.exec(`CREATE TABLE ad_company_leads (
     id INTEGER PRIMARY KEY, company_name TEXT, phone TEXT, email TEXT, website TEXT,
-    category TEXT, contact_source TEXT, active INTEGER DEFAULT 1, merged_into INTEGER)`)
+    category TEXT, contact_source TEXT, active INTEGER DEFAULT 1, merged_into INTEGER,
+    source TEXT, status TEXT, memo TEXT, hold_reason TEXT)`) // 2026-11-17 v4: 보류 사유 판정 칸
   db.exec('CREATE TABLE platform_settings (key TEXT PRIMARY KEY, value TEXT)')
   return db
 }

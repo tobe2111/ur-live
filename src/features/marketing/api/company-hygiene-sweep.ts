@@ -31,7 +31,7 @@
 import type { HygieneRow } from './company-lead-hygiene'
 
 /** 스윕 세대. 위생 규칙이 바뀌어 **과거 행을 다시 훑어야 할 때만** 올린다(랩 버전과 무관). */
-export const HYGIENE_SWEEP_VERSION = 3 // 2026-11-17: 가짜(자리표시) 연락처 정리 — 테이블을 한 번 더 훑는다
+export const HYGIENE_SWEEP_VERSION = 4 // 2026-11-17: 규칙 보류(중국 메일·도어웨이)에 사유를 적는다 — 되살아난 행까지 다시 훑는다
 
 const HYGIENE_STATE = 'ads_company_hygiene_sweep'
 /** id 창 크기 — 회차당 스캔량을 예측 가능하게 묶는다(이 레인은 CPU 로 죽은 이력이 있다). */
@@ -80,11 +80,18 @@ export const PLACEHOLDER_CONTACT_SUSPECT_SQL = `(
           OR email LIKE 'daum.net@%' OR email LIKE 'hanmail@%' OR email LIKE '11%@%' OR email LIKE '00%@%'))
   )`
 
-/** 결함 후보 술어 — 전화 모양 + 이름에 남은 HTML 엔티티(`SM C&amp;C 성수`) + 해외 무료메일 온라인판매(🌏) + 가짜 연락처(🎭). */
+/** 🕳️ 도어웨이·빈 페이지 제목 좁히개(webkr 한정 — 판정은 `pageTitleHoldReason`, 여기는 넓게 잡아도 무해). */
+export const PAGE_HOLD_SUSPECT_SQL = `(source = 'webkr' AND hold_reason IS NULL AND (company_name LIKE '%벌초%' OR company_name LIKE '%이장%'
+    OR company_name LIKE '%파묘%' OR company_name LIKE '%유골%' OR company_name LIKE '%중입니다%' OR company_name LIKE '%중 입니다%'
+    OR company_name LIKE '%Forbidden%' OR company_name LIKE '%Not Found%' OR company_name LIKE '%페이지%' OR company_name LIKE '%문화대전%'
+    OR company_name LIKE 'site move' OR company_name LIKE 'index of%'))`
+
+/** 결함 후보 술어 — 전화 모양 + 이름에 남은 HTML 엔티티(`SM C&amp;C 성수`) + 해외 무료메일 온라인판매(🌏) + 가짜 연락처(🎭) + 도어웨이(🕳️). */
 export const HYGIENE_SUSPECT_SQL =
   `(company_name LIKE '%&%;%') OR (phone IS NOT NULL AND phone != '' AND ${PHONE_SHAPE_SUSPECT_SQL})`
-  + ` OR (active = 1 AND category = '온라인판매' AND (${OVERSEAS_FREEMAIL_DOMAINS.map(d => `email LIKE '%@${d}'`).join(' OR ')}))`
-  + ` OR ${PLACEHOLDER_CONTACT_SUSPECT_SQL}`
+  // 🧷 v4: `active = 1` 조건을 뺐다 — 이미 보류된 행에도 사유를 적어야 다음 재수집에 안 풀린다.
+  + ` OR (hold_reason IS NULL AND category = '온라인판매' AND (${OVERSEAS_FREEMAIL_DOMAINS.map(d => `email LIKE '%@${d}'`).join(' OR ')}))`
+  + ` OR ${PLACEHOLDER_CONTACT_SUSPECT_SQL} OR ${PAGE_HOLD_SUSPECT_SQL}`
 
 export interface HygieneSweepResult {
   scanned: number
@@ -126,7 +133,7 @@ export async function sweepCompanyHygiene(DB: D1Database, idWindow = ID_WINDOW):
 
   const hi = st.cursor + Math.max(1_000, idWindow)
   const rowsRes = (await DB.prepare(
-    `SELECT id, company_name, phone, email, website, category, contact_source
+    `SELECT id, company_name, phone, email, website, category, contact_source, source, status, memo, hold_reason
        FROM ad_company_leads
       WHERE merged_into IS NULL AND id > ? AND id <= ? AND (${HYGIENE_SUSPECT_SQL})
       ORDER BY id`,

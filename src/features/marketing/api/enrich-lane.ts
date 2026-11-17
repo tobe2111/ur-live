@@ -245,7 +245,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
     const r = await DB.prepare(
       `UPDATE ad_company_leads SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), website = COALESCE(website, ?),
          contact_source = COALESCE(contact_source, ?),
-         active = CASE WHEN COALESCE(phone, ?) IS NOT NULL OR COALESCE(email, ?) IS NOT NULL THEN 1 ELSE active END
+         active = CASE WHEN hold_reason IS NOT NULL THEN active WHEN COALESCE(phone, ?) IS NOT NULL OR COALESCE(email, ?) IS NOT NULL THEN 1 ELSE active END
        WHERE id = ?`
     ).bind(phone, email, website, source || null, phone, email, id).run().catch(() => null)
     if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0 && (phone || email)) enriched++

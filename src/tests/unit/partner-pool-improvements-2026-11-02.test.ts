@@ -49,7 +49,7 @@ describe('③ 빈 페이지 제목·도어웨이', () => {
     const s = src('company-discovery.ts')
     const branch = s.slice(s.indexOf('if (!c.ok) {'), s.indexOf("else { stmts.push(DB.prepare('DELETE"))
     expect(branch).toMatch(/HOLD_NOT_DELETE_REASONS\.has\(c\.reason/)
-    expect(branch).toMatch(/SET active = 0, lead_type = 'unknown'/)
+    expect(branch).toMatch(/SET active = 0, hold_reason = \?, lead_type = 'unknown'/) // 2026-11-17: 사유를 적어야 재수집이 안 되살린다
     expect(src('company-classify.ts')).toMatch(/HOLD_NOT_DELETE_REASONS[^\n]*new Set\(\['PLACEHOLDER_TITLE', 'DOORWAY_SPAM'\]\)/)
   })
 })
@@ -105,7 +105,7 @@ describe('⑦ 국세청 폐업 조회 — 여러 묶음', () => {
 describe('⑨ 중국 무료메일 온라인판매 — 보류', () => {
   const stmts = (r: Record<string, unknown>) => hygieneStatements({ id: 1, company_name: 'x', phone: null, email: null, website: null, category: null, contact_source: null, ...r } as never, sql => ({ bind: (..._a: unknown[]) => sql }))
   it('온라인판매 + 163.com → 보류 문장', () => {
-    expect(stmts({ email: '18822489716@163.com', category: '온라인판매' }).some(s => /SET active = 0 WHERE id = \? AND active = 1/.test(String(s)))).toBe(true)
+    expect(stmts({ email: '18822489716@163.com', category: '온라인판매' }).some(s => /SET active = 0, hold_reason = 'OVERSEAS_FREEMAIL' WHERE id = \? AND hold_reason IS NULL/.test(String(s)))).toBe(true)
   })
   it('다른 업종·국내 메일은 건드리지 않는다', () => {
     expect(stmts({ email: 'a@163.com', category: '대행사' })).toHaveLength(0)
@@ -114,9 +114,9 @@ describe('⑨ 중국 무료메일 온라인판매 — 보류', () => {
   })
   it('백로그 스윕의 좁히개도 같은 행을 집는다', () => {
     const db = new DatabaseSync(':memory:')
-    db.exec('CREATE TABLE ad_company_leads (id INTEGER PRIMARY KEY, company_name TEXT, phone TEXT, email TEXT, active INTEGER, category TEXT)')
-    db.prepare("INSERT INTO ad_company_leads VALUES (1, 'a', NULL, 'x@qq.com', 1, '온라인판매'), (2, 'b', NULL, 'x@naver.com', 1, '온라인판매'), (3, 'c', NULL, 'x@qq.com', 0, '온라인판매')").run()
-    const ids = (db.prepare(`SELECT id FROM ad_company_leads WHERE ${HYGIENE_SUSPECT_SQL}`).all() as Array<{ id: number }>).map(r => r.id)
-    expect(ids).toEqual([1])
+    db.exec('CREATE TABLE ad_company_leads (id INTEGER PRIMARY KEY, company_name TEXT, phone TEXT, email TEXT, active INTEGER, category TEXT, source TEXT, hold_reason TEXT)')
+    db.prepare("INSERT INTO ad_company_leads VALUES (1, 'a', NULL, 'x@qq.com', 1, '온라인판매', 'commerce', NULL), (2, 'b', NULL, 'x@naver.com', 1, '온라인판매', 'commerce', NULL), (3, 'c', NULL, 'x@qq.com', 0, '온라인판매', 'commerce', NULL), (4, 'd', NULL, 'x@qq.com', 0, '온라인판매', 'commerce', 'OVERSEAS_FREEMAIL')").run()
+    const ids = (db.prepare(`SELECT id FROM ad_company_leads WHERE ${HYGIENE_SUSPECT_SQL} ORDER BY id`).all() as Array<{ id: number }>).map(r => r.id)
+    expect(ids).toEqual([1, 3]) // 2026-11-17: 이미 보류된 행도 사유를 적으러 집는다 · 사유가 있으면 안 집는다
   })
 })

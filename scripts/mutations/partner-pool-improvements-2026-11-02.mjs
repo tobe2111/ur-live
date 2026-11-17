@@ -24,6 +24,6 @@ export default [
     find: '        break // 이 묶음은 조회 못 했다', replace: '        continue // 이 묶음은 조회 못 했다', test: T,
     why: '조회 실패한 묶음의 행이 폐업 확인 없이 건너뛰어진다.' },
   { name: '개선⑨ — 국내 업종의 중국 메일까지 보류한다', file: A + 'company-lead-hygiene.ts',
-    find: "  if (r.email && r.category === '온라인판매' && OVERSEAS_FREEMAIL.test(r.email)) {", replace: "  if (r.email && OVERSEAS_FREEMAIL.test(r.email)) {", test: T,
+    find: "  if (r.email && r.category === '온라인판매' && OVERSEAS_FREEMAIL.test(r.email) && !r.hold_reason) {", replace: "  if (r.email && OVERSEAS_FREEMAIL.test(r.email) && !r.hold_reason) {", test: T,
     why: '사람이 봐야 할 국내 업체가 조용히 보류된다.' },
 ]

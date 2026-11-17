@@ -17,6 +17,7 @@
  */
 import { isValidKrPhone, formatKrPhone, isPlatformRootUrl, NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
 import { OVERSEAS_FREEMAIL_DOMAINS } from './company-hygiene-sweep'
+import { classifyLead, HOLD_NOT_DELETE_REASONS } from './company-classify'
 import { isPlaceholderPhone, isPlaceholderEmail } from './company-contact-quality'
 
 /**
@@ -45,6 +46,11 @@ export interface HygieneRow {
   website: string | null
   category: string | null
   contact_source: string | null
+  /** 도어웨이 판정용(webkr 만 해당) · 사람이 손댄 행 보호 · 이미 규칙 보류인지 — 없으면 해당 규칙을 건너뛴다. */
+  source?: string | null
+  status?: string | null
+  memo?: string | null
+  hold_reason?: string | null
 }
 
 /**
@@ -107,8 +113,18 @@ export function hygieneStatements<T>(
   //   59개 법인에 붙어 있기도 하다. 오프라인 매장 입점·제휴 제안의 상대가 아니다.
   //   ⚠️ **지우지 않고 보류만**(active=0) — 연락처·행은 그대로 남는다. 온라인판매 카테고리에만 적용한다
   //     (다른 업종에서 중국 메일이 나오면 그건 사람이 볼 일이다).
-  if (r.email && r.category === '온라인판매' && OVERSEAS_FREEMAIL.test(r.email)) {
-    out.push(prep('UPDATE ad_company_leads SET active = 0 WHERE id = ? AND active = 1').bind(r.id))
+  //   🧷 2026-11-17 — `hold_reason` 을 같이 적는다. 안 적었더니 통신판매 재수집이 연락처를 보고 active=1 로
+  //     되살려 693 → 728 로 다시 늘었다. 이미 보류된(active=0) 행에도 적는다 — 그래야 다음 재수집에 안 풀린다.
+  if (r.email && r.category === '온라인판매' && OVERSEAS_FREEMAIL.test(r.email) && !r.hold_reason) {
+    out.push(prep("UPDATE ad_company_leads SET active = 0, hold_reason = 'OVERSEAS_FREEMAIL' WHERE id = ? AND hold_reason IS NULL").bind(r.id))
+  }
+
+  // 🕳️ 도어웨이·빈 페이지 제목 — 재분류가 보류했는데 보강이 연락처를 붙이며 되살린 행(실측 18건, v12 도장인데 active=1).
+  //   판정식은 분류기와 같은 상수(`pageTitleHoldReason`). 랩을 기다리지 않고 여기서 다시 보류하고 사유를 적는다.
+  //   ⚠️ 사람이 손댄 행(status≠new·메모)은 건드리지 않는다. `source` 가 없는 호출(재분류 랩 경로)은 이 규칙을 건너뛴다.
+  const pageHold = r.hold_reason || !r.source ? null : pageTitleHoldReason(r.company_name, r.source)
+  if (pageHold && r.status === 'new' && !r.memo) {
+    out.push(prep('UPDATE ad_company_leads SET active = 0, hold_reason = ? WHERE id = ? AND hold_reason IS NULL').bind(pageHold, r.id))
   }
 
   // 🎭 가짜(자리표시) 연락처 — `010-0000-0000` · `N/A` · `gmail.com@gmail.com` 류(판정 SSOT `company-contact-quality`).
@@ -122,6 +138,17 @@ export function hygieneStatements<T>(
   }
 
   return out
+}
+
+/**
+ * 🕳️ 도어웨이·빈 페이지 제목 판정 — **분류기 자체**(`classifyLead`)에 묻는다. 판정식을 여기 따로 두면 랩과 스윕이
+ * 서로를 되돌린다(2026-11-17). 재분류 랩 경로에서도 불리므로 값싼 앞거름(낱말)을 통과한 webkr 행만 분류기에 넣는다.
+ */
+const PAGE_HOLD_PREFILTER = /벌초|이장|파묘|유골|중\s*입니다|Forbidden|Not\s*Found|Error|페이지|문화대전|site\s*move|index\s+of/i
+export function pageTitleHoldReason(name: string | null | undefined, source: string | null | undefined): string | null {
+  if (!name || source !== 'webkr' || !PAGE_HOLD_PREFILTER.test(name)) return null
+  const c = classifyLead({ company_name: name, source })
+  return !c.ok && HOLD_NOT_DELETE_REASONS.has(c.reason || '') ? (c.reason as string) : null
 }
 
 /** 위 🌏 규칙의 판정식 — 도메인 목록 SSOT 는 `company-hygiene-sweep.ts`(좁히개 SQL 과 한 목록). */
