@@ -6,8 +6,7 @@
  *   - GET /stays/:productId/availability    — 특정 날짜 범위 가용 객실 조회
  *   - GET /stays/:productId/reviews         — 리뷰 목록
  */
-import { capValidityDays } from '../../../shared/voucher-validity'
-import { isDemoProductForPurchase, DEMO_PURCHASE_ERROR } from '../../../worker/utils/fcfs-gate'; import { swallow } from '../../../worker/utils/swallow'
+import { isDemoProductForPurchase, DEMO_PURCHASE_ERROR } from '../../../worker/utils/fcfs-gate'; import { swallow } from '../../../worker/utils/swallow'; import { capValidityDays } from '../../../shared/voucher-validity'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { safeError } from '../../../worker/utils/safe-error'
