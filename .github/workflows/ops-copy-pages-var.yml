@@ -1,0 +1,38 @@
+# 🔧 2026-11-17 대표 *"아니, 계속 너한테 무한정 맡기고 싶어. 영구적으로"* — 플랫폼 설정 쓰기를 세션에 영구 위임.
+#   그 위임의 첫 장치: **Pages(ur-live)에 일반값으로 있는 설정을 cron 워커(ur-live)에 옮긴다.**
+#   계기: 워커에 `NCP_SENS_MAIL_SERVICE_ID` 가 없어 cron 이 보내는 메일이 전부 `skipped: env not configured` 였다
+#   (2026-11-16 실측 — Pages 에는 plain_text 로 있다).
+#
+#   규칙(바꾸지 말 것):
+#   - **추가·갱신만** 한다. 지우지 않는다(지우는 일은 이 워크플로의 일이 아니다).
+#   - Pages 의 **plain_text** 값만 옮긴다 — secret_text 는 API 가 값을 안 돌려주므로 옮길 수 없다(조용히 빈 값을 넣지 않게 실패한다).
+#   - 값은 로그에 찍지 않는다(이름과 길이만). 워커에는 시크릿으로 넣는다 — `wrangler deploy` 가 [vars] 로 덮어써도 시크릿은 남는다.
+#   - 이름은 대문자·숫자·밑줄만. 실행 전후로 워커에 그 이름이 있는지 대조해 출력한다.
+#   실행: workflow_dispatch(names="A,B"). 세션은 GitHub REST `POST .../actions/workflows/ops-copy-pages-var.yml/dispatches` 로 부른다.
+name: Ops - copy Pages var to cron worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      names:
+        description: '옮길 설정 이름(쉼표로 구분). 예: NCP_SENS_MAIL_SERVICE_ID,NCP_MAIL_SENDER_NAME'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  copy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Copy (Pages plain_text → worker secret)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          NAMES: ${{ inputs.names }}
+        run: node scripts/ops/copy-pages-var-to-worker.mjs
