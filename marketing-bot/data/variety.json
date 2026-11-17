@@ -429,5 +429,11 @@
     "topic_tag": "소상공인",
     "tformat": "scene",
     "cta": "merchant:ask"
+  },
+  {
+    "platform": "threads",
+    "track": "merchant",
+    "skipped": "error",
+    "date_kst": "2026-11-17"
   }
 ]

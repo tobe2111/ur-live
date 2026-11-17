@@ -908,5 +908,13 @@
     "slot_kst": "21:30",
     "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261116",
     "text": "손님이 \"뭐가 제일 많이 나가요?\" 물으면 대표 메뉴부터 말하게 되죠.\n할인은 거기에 걸지 마세요. 처음 오는 분이 부담 없이 시켜볼 단품에 거세요. 마진 좋은 세트는 그대로 두고요."
+  },
+  {
+    "platform": "threads",
+    "skipped": "error",
+    "error": "Meta POST 29196793233237833/threads_publish: {\"message\":\"Fatal\",\"code\":-1,\"type\":\"OAuthException\",\"error_subcode\":4279047,\"is_transient\":false,\"error_user_msg\":\"The post you're trying to publish has an invalid link attachment.\",\"error_user_title\":\"Invalid Link Attachment\",\"fbtrace_id\":\"AZicUrh5h8WCP",
+    "track": "merchant",
+    "posted_at": "2026-11-17T14:33:58.640Z",
+    "date_kst": "2026-11-17"
   }
 ]
