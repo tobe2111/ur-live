@@ -3084,8 +3084,9 @@ canvas {
   {
     name: '🔢 사전확인 실패를 신규 0 으로 보고한다("수집 죽음"으로 오독된다)',
     file: 'src/features/marketing/api/company-save.ts',
-    find: '  return { inserted: countOk ? fresh : saved, upserted: saved }',
-    replace: '  return { inserted: fresh, upserted: saved }',
+    // 🔁 2026-11-17: 반환에 진단(error)이 붙어 앵커를 앞부분으로 좁혔다 — 주입하는 결함(countOk 무시)은 그대로.
+    find: '  return { inserted: countOk ? fresh : saved, upserted: saved,',
+    replace: '  return { inserted: fresh, upserted: saved,',
     test: 'src/tests/unit/company-save-count.test.ts',
     why:
       'D1 이 흔들려 사전확인이 실패하면 fresh 가 0 인 채로 남는다. 그걸 그대로 보고하면 상태줄이 ' +
