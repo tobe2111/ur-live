@@ -69,4 +69,20 @@ export default [
     test: TEST,
     why: '셀러 #N 이 유저 #N 의 찜 목록을 읽는다.',
   },
+  {
+    name: '[sec8] 유어샵 공개 응답이 계약 %를 그대로 싣는다',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: 'deal_pct: dealFlag(dealBySeller.get(Number(r.seller_id))),',
+    replace: 'deal_pct: dealBySeller.get(Number(r.seller_id)) ?? null,',
+    test: TEST,
+    why: '매장이 이 유어샵 주인에게 주는 소개비 %가 방문자 누구에게나 보인다.',
+  },
+  {
+    name: '[sec8] dealFlag 가 숫자를 그대로 돌려준다',
+    file: 'src/shared/curator-pin-order.ts',
+    find: '  return Number(pct) > 0 ? 1 : null\n',
+    replace: '  return Number(pct) > 0 ? (Number(pct) as 1) : null\n',
+    test: TEST,
+    why: '가린 척만 하고 %가 그대로 나간다.',
+  },
 ]

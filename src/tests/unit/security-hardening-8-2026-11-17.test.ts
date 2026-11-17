@@ -85,3 +85,21 @@ describe('④ 경매 공개 응답 가림(실행)', () => {
     expect(publicBid({ user_name: '김철수', amount: 5 })).toEqual({ user_name: '김**', amount: 5 })
   })
 })
+
+describe('⑤ 유어샵 공개 응답에 매장↔주인 계약 %가 없다 (2026-11-17 대표 "응 가려줘")', () => {
+  it('dealFlag — 있음 1 / 없음 null, 숫자는 안 남는다', async () => {
+    const { dealFlag, hasDealPin } = await import('@/shared/curator-pin-order')
+    expect(dealFlag(7.5)).toBe(1)
+    expect(dealFlag(0)).toBeNull()
+    expect(dealFlag(null)).toBeNull()
+    expect(dealFlag(undefined)).toBeNull()
+    // 화면의 정렬 판정은 그대로 — 계약 있는 핀이 위로 간다
+    expect(hasDealPin({ deal_pct: dealFlag(12) } as never)).toBe(true)
+    expect(hasDealPin({ deal_pct: dealFlag(null) } as never)).toBe(false)
+  })
+  it('공개 라우트가 dealFlag 를 거친다', () => {
+    const code = readCode('src/worker/routes/curator.routes.ts')
+    expect(code).toMatch(/deal_pct: dealFlag\(dealBySeller\.get\(Number\(r\.seller_id\)\)\)/)
+    expect(code).not.toMatch(/deal_pct: dealBySeller\.get\(/)
+  })
+})

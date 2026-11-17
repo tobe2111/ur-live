@@ -30,6 +30,11 @@ export function isVoucherPin(p: CuratorPinOrderFields): boolean {
 }
 
 /** 딜(소개비)이 붙는 핀인가. */
+/** 공개 응답용 — 계약 %를 '있음(1) / 없음(null)' 으로 줄인다. 실제 %는 계약 당사자만 본다(2026-11-17). */
+export function dealFlag(pct: number | null | undefined): 1 | null {
+  return Number(pct) > 0 ? 1 : null
+}
+
 export function hasDealPin(p: CuratorPinOrderFields): boolean {
   return Number(p.deal_pct) > 0
 }

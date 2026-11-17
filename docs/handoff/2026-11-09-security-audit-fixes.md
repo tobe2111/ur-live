@@ -85,3 +85,6 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
 - 일부러 안 한 것(낮음): `/api/account/check-restriction?email=`(탈퇴 계정 여부 — 시간당 20회) · 영입 중복 응답(`ALREADY_CLAIMED`) · 사업자번호 조회(로그인 필요·10분 20회).
 - 가드 `security-hardening-8` 10건 + 주입 `[sec8]` 8 · `[cid]` 5 전부 빨간불 · 관련 시험 101파일 1,529건 · tsc 0.
 - E4 판정 방법: 배포 뒤 관리자 토큰으로 `/api/orders`·`/api/gifts/sent`·`/api/seeding/me`·`/api/wishlists` → **403**, `/api/notifications` 200(빈 목록), 무인증 `/api/sellers/29/public` 200.
+- **대표 "응 가려줘" (2026-11-17)** — 유어샵 공개 응답(`/api/curator/:handle`)의 `pins[].deal_pct` 를 **있음 1 / 없음 null** 로 줄였다(`dealFlag`).
+  화면은 `> 0` 만 본다(`hasDealPin` — 계약 있는 핀을 위로). 주인은 로그인한 `/influencer` 발견 화면의 `my_deal_pct` 로 실제 %를 본다.
+  E4: 배포 뒤 `/api/curator/jiwon1228` 의 `pins[].deal_pct` 가 1 또는 null 뿐인지 + 유어샵 화면 순서 불변.
