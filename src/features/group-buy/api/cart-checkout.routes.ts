@@ -21,6 +21,7 @@
  * `platform_settings.voucher_cart_enabled = 'true'` 라야 열린다. 머니 경로라 **staging 실결제 전에는
  * 켜지 않는다**(CLAUDE.md). 꺼져 있으면 이 레일은 존재하지 않는 것과 같고, 단일 구매는 무영향이다.
  */
+import { resolveVoucherExpiresAt } from '../../../shared/voucher-validity'
 import { Hono } from 'hono'; import { getCookie } from 'hono/cookie'
 import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -250,7 +251,7 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
         stmts.push(DB.prepare(`
           INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price, introduced_by_influencer_id, intro_stamped_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(newOrderId, l.productId, userId, code, l.voucherExpiry, l.discountPct, l.unitPrice, stamp.introducerId, stamp.stampedAt))
+        `).bind(newOrderId, l.productId, userId, code, resolveVoucherExpiresAt(l.voucherExpiry), l.discountPct, l.unitPrice, stamp.introducerId, stamp.stampedAt))
       }
       stmts.push(DB.prepare('UPDATE products SET group_buy_current = COALESCE(group_buy_current, 0) + ? WHERE id = ?').bind(l.qty, l.productId))
     }

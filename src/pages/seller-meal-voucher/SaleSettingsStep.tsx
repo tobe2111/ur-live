@@ -62,7 +62,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
                 남겨 두면 "이 시각까지 판매돼요" 가 지켜지지 않는 약속이 된다(마감은 이제 아무것도 안 막는다). */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.voucherExpiry')}</label>
-              {/* 🗓️ 기본 = 제한 없음. 켜면 날짜 선택(편의상 90일 후 프리필). */}
+              {/* 🗓️ 기본 = 구매일로부터 12개월(2026-11-17 PG 심사 — 종전 '제한 없음'). 끄면 더 짧은 날짜 선택(편의상 90일 후 프리필). 12개월보다 먼 날짜는 발급 때 12개월로 줄어든다(shared/voucher-validity). */}
               <label className="flex items-center gap-2 py-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -73,7 +73,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
                   }}
                   className="w-4 h-4 accent-brand"
                 />
-                <span className="text-sm text-gray-700">{t('seller.mealVoucher.noExpiry', { defaultValue: '유효기간 제한 없음' })}</span>
+                <span className="text-sm text-gray-700">{t('seller.mealVoucher.defaultExpiry', { defaultValue: '기본 기한(구매일로부터 12개월)' })}</span>
               </label>
               {expiryEnabled && (
                 <DateInput

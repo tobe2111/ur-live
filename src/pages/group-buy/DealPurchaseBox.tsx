@@ -6,6 +6,7 @@
  *   상태/핸들러는 전부 GroupBuyDetailPage 소유(controlled) — 결제 로직(handleJoin) 무수정 재사용.
  *   색은 .gbd CSS 변수(테마 자동) — 상세 표면과 동톤.
  */
+import { VOUCHER_VALIDITY_LABEL } from '@/shared/voucher-validity'
 import type { ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { useFcfsDetail } from '@/features/group-buy/useFcfsDetail'
@@ -143,7 +144,7 @@ export default function DealPurchaseBox({
 
       {/* 🔒 안심 한 줄 — 모바일 구매 창과 같은 문구(2026-10-11 D안). 세 줄 배지는 "결제 즉시 교환권 발급"(용어 오류)을 담고 있었다. */}
       {raffle ? (
-        <div className="mt-3 text-[12px] text-center" style={{ color: 'var(--gbd-sub)' }}>{t('passBuy.raffleNote', { defaultValue: '결제 없이 응모해요 · 당첨되면 알려드려요' })}</div>
+        <div className="mt-3 text-[12px] text-center" style={{ color: 'var(--gbd-sub)' }}>{t('passBuy.raffleNote', { defaultValue: '결제 없이 응모해요 · 당첨되면 알려드려요' })}<br />{t('passBuy.raffleValidity', { defaultValue: `당첨 후 결제한 이용권은 ${VOUCHER_VALIDITY_LABEL} 안에 사용해요` })}</div>
       ) : <div className="mt-3 flex items-center justify-center gap-1 text-[12px]" style={{ color: 'var(--gbd-sub)' }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
         {t('passBuy.safePayNote', { defaultValue: '토스로 3초 안전결제, 미사용 시 100% 자동환불' })}

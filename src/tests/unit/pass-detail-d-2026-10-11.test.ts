@@ -30,7 +30,9 @@ describe('① 부연설명이 돌아오지 않는다', () => {
   })
   it('"발급 후 사용 기간 적용" — 유효기간이 없을 때의 빈 폴백', () => {
     expect(USAGE).not.toContain('발급 후 사용 기간 적용')
-    expect(USAGE, '유효기간은 값이 있을 때만 말한다').toMatch(/\{expiry && \(/)
+    // ⏳ 2026-11-17 재조준 — 유효기간은 이제 늘 말한다(PG 심사 · 값이 없으면 '구매일로부터 12개월' 이 그 값).
+    //   지키려던 것(아무 정보 없는 빈 폴백 문장 금지)은 그대로다: 폴백 자리에 실제 기한 문구가 선다.
+    expect(USAGE).toMatch(/\{expiry\s*\n?\s*\?[\s\S]{0,400}VOUCHER_VALIDITY_LABEL/)
   })
   it('모바일 셀러 카드는 걷었다 — 가게로 가는 입구는 매장 카드 머리에 있다', () => {
     expect(PAGE).toContain('<div className={`hidden lg:block ${PASS_CARD}`}><SellerCard')

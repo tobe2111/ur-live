@@ -2478,7 +2478,8 @@
       "channelSaving": "저장 중…",
       "channelSaved": "운영 방식을 저장했어요",
       "channelSaveFailed": "운영 방식을 저장하지 못했어요",
-      "seedingSaveFailed": "무상 체험 설정은 저장하지 못했어요. 매장 요청함에서 다시 켜 주세요"
+      "seedingSaveFailed": "무상 체험 설정은 저장하지 못했어요. 매장 요청함에서 다시 켜 주세요",
+      "defaultExpiry": "기본 기한(구매일로부터 12개월)"
     },
     "analyticsTitle": "매출 분석",
     "revenueChart": "매출 차트",
@@ -7157,7 +7158,10 @@
       "expiryUntil": "까지 사용",
       "terms": "유의사항",
       "defaultTermNoStacking": "현장에서 추가 할인이나 다른 쿠폰과 중복 적용되지 않아요.",
-      "defaultTermNoRefund": "잔액은 환불되지 않으니 한 번에 사용하시길 권장해요."
+      "defaultTermNoRefund": "잔액은 환불되지 않으니 한 번에 사용하시길 권장해요.",
+      "validity": "유효기간",
+      "validityValue": "구매일로부터 12개월",
+      "expiryMax": "최대 구매일로부터 12개월"
     },
     "seller": {
       "verified": "검증 셀러",
@@ -7285,6 +7289,7 @@
     "moreVouchers": "다른 이용권 보기",
     "issuedBand": "이용권 발급 완료",
     "kindsCount": "{{n}}종",
-    "expiryVaries": "사용 기한은 이용권마다 달라요"
+    "expiryVaries": "사용 기한은 이용권마다 달라요",
+    "raffleValidity": "당첨 후 결제한 이용권은 구매일로부터 12개월 안에 사용해요"
   }
 }

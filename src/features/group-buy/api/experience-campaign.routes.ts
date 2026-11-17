@@ -24,6 +24,7 @@
  *          GET  /api/admin/experience-campaigns/:id/report[.csv] — 리포트
  *          GET  /api/admin/experience-campaigns/:id/draws — 추첨 이력(B2G 감사)
  */
+import { resolveVoucherExpiresAt } from '../../../shared/voucher-validity'
 import { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import type { D1Database } from '@cloudflare/workers-types'
 import { requireAuth, requireAdmin, requireSeller, getCurrentUser } from '@/worker/middleware/auth'
@@ -124,7 +125,8 @@ export async function issueExperienceVoucher(
       .catch(() => null)
     // 2026-08-22 대표: 미설정 = 무기한 (90일 강제 기본값 폐지)
     const validityDays = Number(p?.voucher_validity_days) > 0 ? Number(p!.voucher_validity_days) : null
-    const expiresAt = validityDays ? new Date(Date.now() + validityDays * 86400_000).toISOString() : null
+    // ⏳ 2026-11-17 상한 12개월(PG 심사) — 미설정·초과는 발급일 + 12개월. SSOT shared/voucher-validity
+    const expiresAt = resolveVoucherExpiresAt(validityDays ? new Date(Date.now() + validityDays * 86400_000).toISOString().slice(0, 19).replace('T', ' ') : null)
     const orderNumber = `${orderPrefix}-${campaign.id}-${userId}-${cryptoInt(0x7fffffff)}`
 
     // 0원 order (payment_method='experience' — 만료환불 cron 자연 skip). status='PAID' (사용 가능).

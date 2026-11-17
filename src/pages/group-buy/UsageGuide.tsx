@@ -19,11 +19,16 @@
  *   ② `사용기한` 은 값이 있을 때만 한 줄로 말한다. 종전 폴백 *"발급 후 사용 기간 적용"* 은
  *      아무 정보도 없는 문장이었다(대표 지적 "부연설명이 많다").
  *   ③ `사용 방법: QR 제시 · 확인코드` 행 삭제 — 바로 위 타일이 같은 말을 한다.
+ *
+ * ## 2026-11-17 — 유효기간은 늘 말한다 (토스 PG 심사 "결제 이후 유효기간 12개월 이내 명시")
+ *   기한이 없던 이용권도 이제 발급일 + 12개월로 끝난다(`shared/voucher-validity.ts`). 그래서 ②의
+ *   "값이 있을 때만" 은 더 이상 맞지 않다 — 값이 없으면 `구매일로부터 12개월` 이 그 값이다.
  */
 import { safeDate } from '@/utils/safe-date'
 import { ClockIcon } from '@/components/icons/urdeal-icons'
 import RedeemHowTo from './RedeemHowTo'
 import { useTranslation } from '@/lib/i18n-lite'
+import { VOUCHER_VALIDITY_LABEL } from '@/shared/voucher-validity'
 
 const DEFAULT_TERMS: ReadonlyArray<readonly [string, string]> = [
   ['pass.usageGuide.defaultTermNoStacking', '현장에서 추가 할인이나 다른 쿠폰과 중복 적용되지 않아요.'],
@@ -42,12 +47,12 @@ export default function UsageGuide({
   return (
     <div style={{ padding: '20px 16px' }}>
       <h2 className="m-0 text-[15px] font-bold tracking-[-.01em]" style={{ color: 'var(--gbd-ink)' }}>{t('pass.usageGuide.title', { defaultValue: '이용 안내' })}</h2>
-      {expiry && (
-        <p className="mt-2 flex items-center gap-1 text-[13px]" style={{ color: 'var(--gbd-sub)' }}>
-          <ClockIcon className="w-4 h-4" />
-          <span><b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{expiry}</b>{t('pass.usageGuide.expiryUntil', { defaultValue: '까지 사용' })}</span>
-        </p>
-      )}
+      <p className="mt-2 flex items-center gap-1 text-[13px]" style={{ color: 'var(--gbd-sub)' }}>
+        <ClockIcon className="w-4 h-4" />
+        {expiry
+          ? <span><b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{expiry}</b>{t('pass.usageGuide.expiryUntil', { defaultValue: '까지 사용' })} ({t('pass.usageGuide.expiryMax', { defaultValue: `최대 ${VOUCHER_VALIDITY_LABEL}` })})</span>
+          : <span>{t('pass.usageGuide.validity', { defaultValue: '유효기간' })} <b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{t('pass.usageGuide.validityValue', { defaultValue: VOUCHER_VALIDITY_LABEL })}</b></span>}
+      </p>
       <div className="mt-3"><RedeemHowTo /></div>
 
       {/* 📎 유의사항은 접는다(대표 확정 시안 1) — 손님이 매장 앞에서 보는 건 위 세 단계다.
