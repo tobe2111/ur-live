@@ -29,7 +29,7 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
 }
 
 /** 신규/재확인을 분리해 돌려주는 판 — 상태줄이 "다 모았다"와 "수집이 죽었다"를 구분하려면 둘 다 필요하다. */
-export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead[], opts: { requireContact?: boolean } = {}): Promise<{ inserted: number; upserted: number }> {
+export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead[], opts: { requireContact?: boolean } = {}): Promise<{ inserted: number; upserted: number; error?: string }> {
   if (!leads.length) return { inserted: 0, upserted: 0 }
   await ensureCompanySchema(DB)
   const clamp = (v: unknown, n: number): string | null => { const s = v == null ? '' : String(v).trim(); return s ? s.slice(0, n) : null }
@@ -39,12 +39,13 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
   //   ② 카테고리 권위 위계(2026-07-27 대표 "카테고리 분류 정확한가"): **정부 등록부 공식 업종(registry)
   //      > 리드 텍스트 근거(evidence) > 검색 키워드(keyword)**. 상가정보 업종코드·통신판매 신고업태·공정위
   //      가맹·나라장터 소스의 category 는 공식 업종이라 정규식이 못 덮어씀 — 발굴 소스(local/webkr)만 재분류.
+  const rejectReasons: Record<string, number> = {}
   const rows = leads
     .map(l => ({ ...l, company_name: (l.company_name || '').trim() }))
     .filter(l => l.company_name.length >= 2)
     .map(l => {
       const c = classifyLead(l)
-      if (!c.ok) return null
+      if (!c.ok) { rejectReasons[c.reason || 'UNKNOWN'] = (rejectReasons[c.reason || 'UNKNOWN'] || 0) + 1; return null }
       const registry = REGISTRY_CATEGORY_SOURCES.has(String(l.source || '')) && !!l.category
       // 🔴 2026-08-08: 이름이 파편이면 **정체를 모른다** — 제안을 보낼 수 없다. partner 승격 금지.
       //   (대표 신고 건 `[광주` 가 정확히 이 경로로 발송 대상에 남아 있었다.)
@@ -66,7 +67,8 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
                _type: suspect && c.lead_type === 'partner' ? 'unknown' : c.lead_type, _conf: conf }
     })
     .filter((l): l is NonNullable<typeof l> => l !== null)
-  if (!rows.length) return { inserted: 0, upserted: 0 }
+  // 🩺 전부 탈락이면 왜인지 말한다 — '0건' 만으로는 분류에서 걸렸는지 저장에서 깨졌는지 모른다(2026-11-17).
+  if (!rows.length) return { inserted: 0, upserted: 0, ...(leads.length ? { error: `ALL_REJECTED ${JSON.stringify(Object.keys(rejectReasons).length ? rejectReasons : { NAME_TOO_SHORT: leads.length }).slice(0, 200)}` } : {}) }
   /**
    * 🔢 **신규 판정 — 전수를 세지 않고 넣을 것만 확인한다** (2026-08-27, 라이브 실측으로 교체).
    *
@@ -94,6 +96,7 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
   let saved = 0
   let fresh = 0
   let countOk = true
+  let batchError: string | undefined
   for (let i = 0; i < rows.length; i += CHUNK) {
     const slice = rows.slice(i, i + CHUNK)
     const uniqKeys = [...new Set(slice.map(l => companyKey(l)))]
@@ -173,10 +176,12 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
     if (closedKeys.length) {
       stmts.push(DB.prepare(`UPDATE ad_company_leads SET active = 0 WHERE company_key IN (${closedKeys.map(() => '?').join(',')})`).bind(...closedKeys))
     }
-    const res = await DB.batch(stmts).catch(() => null)
+    // 🩺 묶음 실패 원문을 남긴다(2026-11-17) — 여기서 삼키면 호출부는 '0건'만 보고 원인을 영영 모른다.
+    //   실측: 프랜차이즈 레인이 98회 × 600건 발견 · 저장 0 인데 예외가 위로 하나도 안 올라왔다(이 catch 때문).
+    const res = await DB.batch(stmts).catch((e: unknown) => { batchError = batchError || String((e as { message?: string } | null)?.message || e).slice(0, 300); return null })
     if (res) saved += slice.length
   }
   // 사전확인이 한 번이라도 실패하면 신규 수를 알 수 없다 — 그때는 **모른다고 0** 을 주는 대신 시도 수로
   //   폴백한다(0 을 주면 "수집 죽음"으로 오독된다. 여기선 과대 보고가 과소 보고보다 덜 위험하다).
-  return { inserted: countOk ? fresh : saved, upserted: saved }
+  return { inserted: countOk ? fresh : saved, upserted: saved, ...(batchError ? { error: batchError } : {}) }
 }
