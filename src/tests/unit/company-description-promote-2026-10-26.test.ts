@@ -48,7 +48,7 @@ function db(): Sqlite {
     company_key TEXT PRIMARY KEY, company_name TEXT, name_norm TEXT, category TEXT, subcategory TEXT,
     tier INTEGER, region TEXT, website TEXT, email TEXT, phone TEXT, address TEXT, description TEXT,
     business_no TEXT, contact_source TEXT, source TEXT, source_keyword TEXT, active INTEGER,
-    lead_type TEXT, classify_confidence TEXT, classified_v INTEGER, merged_into INTEGER)`)
+    lead_type TEXT, classify_confidence TEXT, classified_v INTEGER, merged_into INTEGER, hold_reason TEXT)`)
   return d
 }
 

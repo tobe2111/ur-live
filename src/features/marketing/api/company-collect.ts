@@ -415,7 +415,7 @@ export async function runCompanyAutoCollect(env: Env): Promise<CompanyCollectSta
       const c = await crawlContact(site, budget, undefined, t.category === '미디어') // 등록/자체 사이트라 requireName 불필요(발견 사이트만 가드)
       if (c.email || (c.phone && !t.phone)) {
         // 이메일(또는 없던 전화) 확보 → 연락처 생김 → active=1 승격("연락처 필수" 정책). 기존값 보존 COALESCE.
-        const r = await DB.prepare("UPDATE ad_company_leads SET email = COALESCE(email, ?), phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'homepage'), active = 1 WHERE id = ?")
+        const r = await DB.prepare("UPDATE ad_company_leads SET email = COALESCE(email, ?), phone = COALESCE(phone, ?), contact_source = COALESCE(contact_source, 'homepage'), active = CASE WHEN hold_reason IS NOT NULL THEN active ELSE 1 END WHERE id = ?")
           .bind(c.email, c.phone, t.id).run().catch(() => null)
         if (c.email && ((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0) emailed++
       }

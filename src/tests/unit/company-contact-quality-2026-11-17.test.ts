@@ -5,7 +5,7 @@
  *   ① 가짜 연락처 판정 — 라이브에서 실측한 값이 걸리고, 진짜 번호·회사 메일은 안 걸린다
  *   ② 남의 연락처 = 업종 3개 이상에 걸친 같은 연락처 → 칸을 비우고 억제 표에 넣는다.
  *      같은 브랜드 지점 묶음(업종 1개)과 등록부 출처 전화는 그대로 둔다. 주 1회만 돈다.
- *   ③ (다음 PR) 규칙 보류(`hold_reason`)가 재수집·보강에 안 풀리게 — 칸이 라이브에 생긴 뒤 붙인다
+ *   ③ 규칙 보류(`hold_reason`)는 재수집·보강·카카오·병합 되돌리기가 못 푼다 — 재활성 SQL 전부를 훑어 고정
  *   ④ 한 SQL 문장이 업체 DB 표와 리드 DB 표를 섞지 않는다(라우터가 한쪽 DB 로 보내 `no such table` 로 죽는다)
  *   ⑤ 위생 스윕이 조회 실패를 '결함 0' 으로 읽고 커서를 넘기지 않는다
  *
@@ -119,13 +119,26 @@ describe('위생 문장 — 가짜 연락처', () => {
   })
   it('스윕 좁히개가 같은 행을 집는다 · 세대가 올라갔다', () => {
     const db = new DatabaseSync(':memory:')
-    db.exec('CREATE TABLE ad_company_leads (id INTEGER PRIMARY KEY, company_name TEXT, phone TEXT, email TEXT, active INTEGER, category TEXT, merged_into INTEGER)')
-    db.prepare(`INSERT INTO ad_company_leads (id, company_name, phone, email, active, category) VALUES
-      (1, 'a', 'N/A', NULL, 1, '청소'), (2, 'b', NULL, 'email@naver.com', 1, '청소'), (3, 'c', '010-0000-0000', NULL, 1, '청소'),
-      (4, 'd', NULL, 'gmail.com@gmail.com', 1, '온라인판매'), (5, '정상', '02-3445-2030', 'info@ok.kr', 1, '청소')`).run()
+    db.exec('CREATE TABLE ad_company_leads (id INTEGER PRIMARY KEY, company_name TEXT, phone TEXT, email TEXT, active INTEGER, category TEXT, source TEXT, hold_reason TEXT, merged_into INTEGER)')
+    db.prepare(`INSERT INTO ad_company_leads (id, company_name, phone, email, active, category, source, hold_reason) VALUES
+      (1, 'a', 'N/A', NULL, 1, '청소', 'local', NULL), (2, 'b', NULL, 'email@naver.com', 1, '청소', 'local', NULL),
+      (3, 'c', '010-0000-0000', NULL, 1, '청소', 'local', NULL), (4, 'd', NULL, 'gmail.com@gmail.com', 1, '온라인판매', 'commerce', NULL),
+      (5, '정상', '02-3445-2030', 'info@ok.kr', 1, '청소', 'local', NULL),
+      (6, '함평 벌초대행', NULL, NULL, 1, '대행사', 'webkr', NULL), (7, 'e', NULL, 'x@qq.com', 0, '온라인판매', 'commerce', NULL),
+      (8, 'f', NULL, 'x@qq.com', 0, '온라인판매', 'commerce', 'OVERSEAS_FREEMAIL')`).run()
     const ids = (db.prepare(`SELECT id FROM ad_company_leads WHERE ${HYGIENE_SUSPECT_SQL} ORDER BY id`).all() as Array<{ id: number }>).map(r => r.id)
-    expect(ids).toEqual([1, 2, 3, 4])
-    expect(HYGIENE_SWEEP_VERSION).toBeGreaterThanOrEqual(3)
+    expect(ids).toEqual([1, 2, 3, 4, 6, 7]) // 이미 보류(active=0)인 중국 메일 행도 집는다 — 사유를 적어야 하니까 · 사유가 있으면 안 집는다
+    expect(HYGIENE_SWEEP_VERSION).toBeGreaterThanOrEqual(4)
+  })
+  it('중국 무료메일 보류는 사유를 적는다 · 이미 적힌 행은 다시 안 쓴다', () => {
+    expect(stmts({ email: 'a@163.com', category: '온라인판매' }).some(s => /hold_reason = 'OVERSEAS_FREEMAIL'/.test(String(s)))).toBe(true)
+    expect(stmts({ email: 'a@163.com', category: '온라인판매', hold_reason: 'OVERSEAS_FREEMAIL' })).toHaveLength(0)
+  })
+  it('도어웨이(webkr)는 보류하고 사유를 적는다 · 등록부 상호·사람이 손댄 행·출처 모르는 호출은 안 건드린다', () => {
+    expect(stmts({ company_name: '함평 벌초대행', source: 'webkr', status: 'new' }).some(s => /DOORWAY_SPAM/.test(String(s)))).toBe(true)
+    expect(stmts({ company_name: '한결벌초', source: 'commerce', status: 'new' })).toHaveLength(0)
+    expect(stmts({ company_name: '함평 벌초대행', source: 'webkr', status: 'contacted' })).toHaveLength(0)
+    expect(stmts({ company_name: '함평 벌초대행', status: 'new' })).toHaveLength(0)
   })
 })
 
@@ -141,6 +154,38 @@ function walk(dir: string): string[] {
   return readdirSync(dir).flatMap(n => { const p = join(dir, n); return statSync(p).isDirectory() ? (n === 'tests' ? [] : walk(p)) : p.endsWith('.ts') ? [p] : [] })
 }
 const FILES = walk('src')
+
+// `active = 1` 또는 `active = CASE … THEN/ELSE 1` — 단 WHERE/AND/OR 뒤의 조건식은 제외(그건 읽기다)
+const SETS_ACTIVE = /(?<!(?:WHERE|AND|OR)\s+)\bactive\s*=\s*(?:1\b|CASE\b(?:(?!\bEND\b)[\s\S])*?\b(?:THEN|ELSE)\s+1\b)/
+const WRITES_LEADS = /UPDATE\s+(?:OR\s+\w+\s+)?ad_company_leads|INSERT\s+INTO\s+ad_company_leads/
+
+describe('③ 규칙 보류는 어떤 경로로도 안 풀린다', () => {
+  it('업체 리드를 active=1 로 올리는 SQL 은 전부 hold_reason 을 먼저 본다', () => {
+    const offenders: string[] = []
+    for (const f of FILES) {
+      for (const { text, line } of sqlLiterals(readFileSync(f, 'utf8'))) {
+        if (WRITES_LEADS.test(text) && SETS_ACTIVE.test(text) && !/hold_reason/.test(text)) offenders.push(`${f}:${line}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+  it('검사가 헛돌지 않는다 — 알려진 재활성 경로 8곳(저장·보강·등록부·카카오·병합되돌리기·상가정보·수집 크롤·정비)을 실제로 본다', () => {
+    let seen = 0
+    for (const f of FILES) for (const { text } of sqlLiterals(readFileSync(f, 'utf8'))) if (WRITES_LEADS.test(text) && SETS_ACTIVE.test(text)) seen++
+    expect(seen).toBeGreaterThanOrEqual(8)
+  })
+  it('재분류 보류가 사유를 적는다(안 적으면 다음 재수집이 되살린다)', () => {
+    expect(readFileSync('src/features/marketing/api/company-discovery.ts', 'utf8')).toMatch(/SET active = 0, hold_reason = \?, lead_type = 'unknown'[^\n]*\.bind\(c\.reason,/)
+  })
+  it('진짜 SQLite — 재수집 upsert 가 규칙 보류 행을 되살리지 않는다(연락처 보류 행은 되살린다)', () => {
+    const db = new DatabaseSync(':memory:')
+    db.exec('CREATE TABLE t (id INTEGER PRIMARY KEY, email TEXT, phone TEXT, active INTEGER, hold_reason TEXT)')
+    db.exec("INSERT INTO t VALUES (1, 'x@qq.com', NULL, 0, 'OVERSEAS_FREEMAIL'), (2, NULL, NULL, 0, NULL)")
+    const sql = "UPDATE t SET email = COALESCE(email, ?), active = CASE WHEN hold_reason IS NOT NULL THEN active WHEN COALESCE(phone, ?) IS NOT NULL OR COALESCE(email, ?) IS NOT NULL THEN 1 ELSE active END WHERE id = ?"
+    db.prepare(sql).run('a@b.kr', null, 'a@b.kr', 1); db.prepare(sql).run('a@b.kr', null, 'a@b.kr', 2)
+    expect(db.prepare('SELECT id, active FROM t ORDER BY id').all()).toEqual([{ id: 1, active: 0 }, { id: 2, active: 1 }])
+  })
+})
 
 describe('④ 한 문장에 두 DB 의 표를 섞지 않는다', () => {
   it('업체 표(ad_company_*)와 리드 DB 표가 같은 SQL 에 없다', async () => {

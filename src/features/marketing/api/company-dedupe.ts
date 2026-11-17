@@ -155,7 +155,7 @@ export async function dedupeCompanyLeads(
 export async function undoDedupe(DB: D1Database, survivorId: number): Promise<number> {
   await ensureMergedColumn(DB)
   const r = await DB.prepare(
-    'UPDATE ad_company_leads SET active = 1, merged_into = NULL WHERE merged_into = ?',
+    'UPDATE ad_company_leads SET active = CASE WHEN hold_reason IS NOT NULL THEN 0 ELSE 1 END, merged_into = NULL WHERE merged_into = ?', // 🧷 규칙 보류는 병합 되돌리기로 안 풀린다
   ).bind(survivorId).run().catch(() => null)
   return (r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0
 }

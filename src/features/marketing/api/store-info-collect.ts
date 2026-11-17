@@ -157,7 +157,7 @@ export async function runStoreInfoCollect(env: Env): Promise<StoreInfoStats> {
       // ③ 홈페이지 크롤 — 이메일(mailto 우선) + 전화 보충.
       if (website && !outOfBudget(budget)) { const c = await crawlContact(website, budget); if (c.email) { email = c.email; source = 'homepage' } if (!phone && c.phone) phone = c.phone }
       if (phone || email || (website && website !== h.website)) {
-        const r = await DB.prepare("UPDATE ad_company_leads SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), website = COALESCE(website, ?), contact_source = COALESCE(contact_source, ?), active = CASE WHEN (COALESCE(phone, ?) IS NOT NULL OR COALESCE(email, ?) IS NOT NULL) THEN 1 ELSE active END WHERE id = ?")
+        const r = await DB.prepare("UPDATE ad_company_leads SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), website = COALESCE(website, ?), contact_source = COALESCE(contact_source, ?), active = CASE WHEN hold_reason IS NOT NULL THEN active WHEN (COALESCE(phone, ?) IS NOT NULL OR COALESCE(email, ?) IS NOT NULL) THEN 1 ELSE active END WHERE id = ?")
           .bind(phone, email, website, source, phone, email, h.id).run().catch(() => null)
         if (((r as { meta?: { changes?: number } } | null)?.meta?.changes ?? 0) > 0 && (phone || email)) enriched++
       }

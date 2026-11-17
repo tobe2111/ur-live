@@ -173,8 +173,7 @@ export const COMPANY_DDL: string[] = [
   //   생기면 활성이 맞다) 와 *규칙이 뺐다*(중국 무료메일 판매자·도어웨이 — 연락처가 생겨도 빼야 한다). 수집·보강
   //   경로 7곳은 앞의 뜻만 알아서 연락처를 보면 1 로 올렸고, 그래서 보류한 중국 메일 행이 693 → 728 로 다시 늘었다.
   //   값이 있으면 '규칙이 뺐다' 다 — 재활성 경로는 전부 `WHEN hold_reason IS NOT NULL THEN active` 를 먼저 본다.
-  //   ⚠️ **칸을 먼저 만들고 쓰는 코드는 다음 PR 에서** — 컬럼 가드는 라이브에 실제로 있는 칸만 믿는다
-  //     (`live-schema.snapshot.json`). 이 줄이 배포돼 칸이 생긴 걸 확인하고 사진을 다시 찍은 뒤 쓴다.
+  //   ⚠️ 칸을 먼저 만들고(#2389) 라이브에 생긴 걸 확인·사진을 다시 찍은 뒤 쓰는 코드를 붙였다(컬럼 가드는 라이브 사진 기준).
   'ALTER TABLE ad_company_leads ADD COLUMN hold_reason TEXT',
   `CREATE TABLE IF NOT EXISTS ad_email_suppress (
     email TEXT PRIMARY KEY,
@@ -225,7 +224,7 @@ export async function ensureCompanySchema(DB: D1Database): Promise<number> {
     //   ⚠️ **접힌 행(merged_into)은 제외** — 중복 병합의 패자는 전화가 있어서 보류된 게 아니라 *같은 업체라서*
     //   접힌 것이다. 이 스윕이 전화 유무만 보고 되살리면 **병합이 통째로 무효화**된다(2026-07-28 실측:
     //   첫 병합 1,523행이 전부 전화 보유 → 다음 정비 틱에 전원 부활할 뻔했다).
-    await DB.prepare("UPDATE ad_company_leads SET active = 1 WHERE active = 0 AND merged_into IS NULL AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))").run().catch(() => null)
+    await DB.prepare("UPDATE ad_company_leads SET active = 1 WHERE active = 0 AND merged_into IS NULL AND hold_reason IS NULL AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))").run().catch(() => null)
     await DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('ads_company_key_v2', '1')").run().catch(() => null)
   }
 
@@ -402,7 +401,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
       // 🛑 새 규칙의 탈락 사유(빈 페이지 제목·도어웨이)는 **지우지 않고 보류만** — 근거는 `HOLD_NOT_DELETE_REASONS`.
       //   기관(org)으로 표시하지 않는다 — 기관이 아니라 '정체 불명' 이다(분류 확인 필요 · 액션 풀 밖).
       if (HOLD_NOT_DELETE_REASONS.has(c.reason || '') && r.status === 'new' && !r.memo) {
-        stmts.push(DB.prepare("UPDATE ad_company_leads SET active = 0, lead_type = 'unknown', classify_confidence = 'none', classified_v = ? WHERE id = ?").bind(CLASSIFY_RULES_VERSION, r.id)); held++
+        stmts.push(DB.prepare("UPDATE ad_company_leads SET active = 0, hold_reason = ?, lead_type = 'unknown', classify_confidence = 'none', classified_v = ? WHERE id = ?").bind(c.reason, CLASSIFY_RULES_VERSION, r.id)); held++ // 🧷 사유를 적어야 재수집이 안 되살린다
         continue
       }
       const curated = r.status !== 'new' || !!r.memo

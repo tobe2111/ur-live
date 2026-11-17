@@ -106,3 +106,11 @@ D1 `ad_company_leads`(DB `0e9a8f82…`) 에서:
   그래서 업종마다 `(category, id)` 인덱스를 커서(`ads_enrich_prio_cursor`)로 내려가는 별 쿼리로 바꿨다 — 실측 **회당 28행**. `enrich-priority.ts`.
   판정(며칠 뒤): `SELECT category, SUM(email IS NOT NULL AND email!='') FROM ad_company_leads WHERE category IN (…) GROUP BY 1` 이 184·208·879 에서 늘었는가.
 - **화면**: `/admin/partner-pool` 운영 상태줄에 "연락처 정리" 한 줄(남의 연락처 주간 결과 · 위생 스윕 진척). 값은 `/stats` 의 `contactQuality`.
+
+## 8. 보류 고정 — `hold_reason` (2026-11-17, #2389 가 칸을 만든 뒤)
+- 재활성 8경로(저장 upsert · 보강 · 등록부 대조 · 카카오 · 병합 되돌리기 · 상가정보 · 수집 크롤 · 1회 정비)가 전부 `hold_reason` 을 먼저 본다.
+  가드: 업체 리드에 `active = 1`/`THEN 1` 을 쓰는 SQL 리터럴을 전수로 훑어 `hold_reason` 이 없으면 빨간불(주입 5건).
+- 사유를 적는 곳: 재분류 보류(`PLACEHOLDER_TITLE`·`DOORWAY_SPAM`) · 위생의 중국 무료메일(`OVERSEAS_FREEMAIL`)·도어웨이. 위생 스윕 v4 가 이미 보류된 행에도 사유를 적는다.
+- ⚠️ 가짜·남의 연락처로 연락처가 없어진 보류는 사유를 **안** 적는다 — 진짜 연락처가 생기면 활성이 맞다.
+- 판정(배포 후 하루): 중국 메일 활성 `SELECT SUM(active=1) … category='온라인판매' AND email LIKE '%@163.com' …` 가 728 → 0 근처로 가서 **다시 안 오르는가** · `SELECT hold_reason, COUNT(*) … GROUP BY 1`.
+- 라이브 첫 회차(13시) 실측: `hold_reason` 칸 생성 확인 · 남의 연락처 정리 이메일 16개(348행) · 전화 25개(502행) · 가짜 연락처 위생 v3 첫 창 308곳 · 업종 줄 커서 전진.
