@@ -2447,7 +2447,8 @@
       "channelSaving": "保存中…",
       "channelSaved": "已保存运营方式",
       "channelSaveFailed": "无法保存运营方式",
-      "seedingSaveFailed": "未能保存免费体验设置，请在门店申请页面重新开启"
+      "seedingSaveFailed": "未能保存免费体验设置，请在门店申请页面重新开启",
+      "defaultExpiry": "默认期限(自购买日起12个月)"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -7161,7 +7162,10 @@
       "expiryUntil": "[TODO:zh] 까지 사용",
       "terms": "[TODO:zh] 유의사항",
       "defaultTermNoStacking": "[TODO:zh] 현장에서 추가 할인이나 다른 쿠폰과 중복 적용되지 않아요.",
-      "defaultTermNoRefund": "[TODO:zh] 잔액은 환불되지 않으니 한 번에 사용하시길 권장해요."
+      "defaultTermNoRefund": "[TODO:zh] 잔액은 환불되지 않으니 한 번에 사용하시길 권장해요.",
+      "validity": "有效期",
+      "validityValue": "自购买日起12个月",
+      "expiryMax": "最长自购买日起12个月"
     },
     "seller": {
       "verified": "[TODO:zh] 검증 셀러",
@@ -7289,6 +7293,7 @@
     "moreVouchers": "[TODO:zh] 다른 이용권 보기",
     "issuedBand": "[TODO:zh] 이용권 발급 완료",
     "kindsCount": "[TODO:zh] {{n}}종",
-    "expiryVaries": "[TODO:zh] 사용 기한은 이용권마다 달라요"
+    "expiryVaries": "[TODO:zh] 사용 기한은 이용권마다 달라요",
+    "raffleValidity": "中签后付款的使用券请在购买日起12个月内使用"
   }
 }

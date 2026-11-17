@@ -1727,7 +1727,8 @@
       "channelSaving": "Guardando…",
       "channelSaved": "Tipo de gestión guardado",
       "channelSaveFailed": "No se pudo guardar el tipo de gestión",
-      "seedingSaveFailed": "No se pudo guardar la prueba gratuita. Actívala de nuevo en la bandeja de solicitudes de tu tienda"
+      "seedingSaveFailed": "No se pudo guardar la prueba gratuita. Actívala de nuevo en la bandeja de solicitudes de tu tienda",
+      "defaultExpiry": "Predeterminado (12 meses desde la compra)"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -7161,7 +7162,10 @@
       "expiryUntil": "[TODO:es] 까지 사용",
       "terms": "[TODO:es] 유의사항",
       "defaultTermNoStacking": "[TODO:es] 현장에서 추가 할인이나 다른 쿠폰과 중복 적용되지 않아요.",
-      "defaultTermNoRefund": "[TODO:es] 잔액은 환불되지 않으니 한 번에 사용하시길 권장해요."
+      "defaultTermNoRefund": "[TODO:es] 잔액은 환불되지 않으니 한 번에 사용하시길 권장해요.",
+      "validity": "Validez",
+      "validityValue": "12 meses desde la compra",
+      "expiryMax": "hasta 12 meses desde la compra"
     },
     "seller": {
       "verified": "[TODO:es] 검증 셀러",
@@ -7289,6 +7293,7 @@
     "moreVouchers": "[TODO:es] 다른 이용권 보기",
     "issuedBand": "[TODO:es] 이용권 발급 완료",
     "kindsCount": "[TODO:es] {{n}}종",
-    "expiryVaries": "[TODO:es] 사용 기한은 이용권마다 달라요"
+    "expiryVaries": "[TODO:es] 사용 기한은 이용권마다 달라요",
+    "raffleValidity": "Si ganas y pagas, usa el bono en los 12 meses siguientes a la compra"
   }
 }

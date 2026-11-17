@@ -2448,7 +2448,8 @@
       "channelSaving": "Saving…",
       "channelSaved": "Operating type saved",
       "channelSaveFailed": "Could not save the operating type",
-      "seedingSaveFailed": "Couldn't save the free-trial setting. Please turn it on again in your store request inbox"
+      "seedingSaveFailed": "Couldn't save the free-trial setting. Please turn it on again in your store request inbox",
+      "defaultExpiry": "Default (12 months from purchase)"
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",
@@ -7161,7 +7162,10 @@
       "expiryUntil": " is the last day to use",
       "terms": "Terms & notes",
       "defaultTermNoStacking": "Can't be combined with on-site discounts or other coupons.",
-      "defaultTermNoRefund": "Unused balance isn't refunded, so we recommend using it all at once."
+      "defaultTermNoRefund": "Unused balance isn't refunded, so we recommend using it all at once.",
+      "validity": "Valid for",
+      "validityValue": "12 months from purchase",
+      "expiryMax": "up to 12 months from purchase"
     },
     "seller": {
       "verified": "Verified seller",
@@ -7289,6 +7293,7 @@
     "moreVouchers": "See other vouchers",
     "issuedBand": "Vouchers issued",
     "kindsCount": "{{n}} types",
-    "expiryVaries": "Expiry dates vary by voucher"
+    "expiryVaries": "Expiry dates vary by voucher",
+    "raffleValidity": "If you win and pay, use the voucher within 12 months of purchase"
   }
 }

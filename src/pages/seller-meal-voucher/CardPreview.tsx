@@ -66,7 +66,7 @@ export default function CardPreview({ form }: { form: VoucherForm }) {
           <p className="text-[10px] text-gray-400 mt-1.5">
             {form.voucher_expiry
               ? `~${form.voucher_expiry}`
-              : t('seller.mealVoucher.noExpiry', { defaultValue: '유효기간 제한 없음' })}
+              : t('seller.mealVoucher.defaultExpiry', { defaultValue: '기본 기한(구매일로부터 12개월)' })}
           </p>
         </div>
       </div>

@@ -6,7 +6,7 @@
  *   - GET /stays/:productId/availability    — 특정 날짜 범위 가용 객실 조회
  *   - GET /stays/:productId/reviews         — 리뷰 목록
  */
-import { isDemoProductForPurchase, DEMO_PURCHASE_ERROR } from '../../../worker/utils/fcfs-gate'; import { swallow } from '../../../worker/utils/swallow'
+import { isDemoProductForPurchase, DEMO_PURCHASE_ERROR } from '../../../worker/utils/fcfs-gate'; import { swallow } from '../../../worker/utils/swallow'; import { capValidityDays } from '../../../shared/voucher-validity'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { safeError } from '../../../worker/utils/safe-error'
@@ -507,7 +507,7 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
     }
 
     // 유효기간: 매장이 설정하면 있고, 미설정이면 무기한 (2026-08-22 대표 — 180일 강제 기본값 폐지).
-    const voucherValidityDays = Number(room.voucher_validity_days) > 0 ? Number(room.voucher_validity_days) : null
+    const voucherValidityDays = capValidityDays(room.voucher_validity_days) // ⏳ 2026-11-17 상한 12개월(PG 심사). SSOT shared/voucher-validity
     const voucherExpiresAt = saleMode === 'voucher' && voucherValidityDays
       ? new Date(Date.now() + voucherValidityDays * 86400000).toISOString().slice(0, 19).replace('T', ' ')
       : null
@@ -696,7 +696,7 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ actio
         if (voucherType === 'weekday' && room.voucher_weekend_only) return c.json({ success: false, error: `${room.name}: 주말권만 판매 중` }, 400)
         if (voucherType === 'weekend' && room.voucher_weekday_only) return c.json({ success: false, error: `${room.name}: 평일권만 판매 중` }, 400)
         // 2026-08-22 대표: 미설정 = 무기한 (180일 강제 기본값 폐지)
-        const days = Number(room.voucher_validity_days) > 0 ? Number(room.voucher_validity_days) : null
+        const days = capValidityDays(room.voucher_validity_days) // ⏳ 2026-11-17 상한 12개월(PG 심사)
         voucherExpiresAt = days ? new Date(Date.now() + days * 86400000).toISOString().slice(0, 19).replace('T', ' ') : null
       }
 

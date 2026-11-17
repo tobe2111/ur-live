@@ -2447,7 +2447,8 @@
       "channelSaving": "保存中…",
       "channelSaved": "運営方式を保存しました",
       "channelSaveFailed": "運営方式を保存できませんでした",
-      "seedingSaveFailed": "無料体験の設定を保存できませんでした。店舗のリクエスト画面でもう一度オンにしてください"
+      "seedingSaveFailed": "無料体験の設定を保存できませんでした。店舗のリクエスト画面でもう一度オンにしてください",
+      "defaultExpiry": "標準期限(購入日から12か月)"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",
@@ -7161,7 +7162,10 @@
       "expiryUntil": "[TODO:ja] 까지 사용",
       "terms": "[TODO:ja] 유의사항",
       "defaultTermNoStacking": "[TODO:ja] 현장에서 추가 할인이나 다른 쿠폰과 중복 적용되지 않아요.",
-      "defaultTermNoRefund": "[TODO:ja] 잔액은 환불되지 않으니 한 번에 사용하시길 권장해요."
+      "defaultTermNoRefund": "[TODO:ja] 잔액은 환불되지 않으니 한 번에 사용하시길 권장해요.",
+      "validity": "有効期限",
+      "validityValue": "購入日から12か月",
+      "expiryMax": "最長で購入日から12か月"
     },
     "seller": {
       "verified": "[TODO:ja] 검증 셀러",
@@ -7289,6 +7293,7 @@
     "moreVouchers": "[TODO:ja] 다른 이용권 보기",
     "issuedBand": "[TODO:ja] 이용권 발급 완료",
     "kindsCount": "[TODO:ja] {{n}}종",
-    "expiryVaries": "[TODO:ja] 사용 기한은 이용권마다 달라요"
+    "expiryVaries": "[TODO:ja] 사용 기한은 이용권마다 달라요",
+    "raffleValidity": "当選後に決済した利用券は購入日から12か月以内に使えます"
   }
 }

@@ -4,6 +4,7 @@ import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import { useSafeBack } from '@/hooks/useSafeBack'
 import { COMPANY } from '@/shared/company-info'
+import { VOUCHER_VALIDITY_LABEL } from '@/shared/voucher-validity'
 
 export default function RefundPolicyPage() {
   const goBack = useSafeBack('/')
@@ -53,6 +54,14 @@ export default function RefundPolicyPage() {
           <h2 className="text-[15px] font-bold text-ink mb-5">이용권 환불</h2>
 
           <div className="space-y-3">
+            {/* ⏳ 2026-11-17 토스 PG 심사 "결제 이후 이용권 유효기간 12개월 이내 명시" — SSOT shared/voucher-validity */}
+            <div className="bg-surface rounded-lg p-4">
+              <h3 className="text-[13px] font-medium text-ink mb-1">이용권 유효기간</h3>
+              <p className="text-[13px] text-ink-soft leading-relaxed">
+                모든 이용권(응모 후 당첨되어 결제한 이용권 포함)의 유효기간은 <span className="font-medium text-ink">{VOUCHER_VALIDITY_LABEL}</span>을 넘지 않습니다.
+                매장이 더 짧은 기한을 정한 경우 그 날짜까지이며, 이용권 상세와 내 이용권 화면에 표시됩니다.
+              </p>
+            </div>
             <div className="bg-surface rounded-lg p-4">
               <h3 className="text-[13px] font-medium text-ink mb-1">유효기간 안에 쓰지 않은 이용권</h3>
               <p className="text-[13px] text-ink-soft leading-relaxed">
