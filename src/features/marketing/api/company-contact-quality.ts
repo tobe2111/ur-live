@@ -188,21 +188,3 @@ export async function sweepSharedContacts(DB: D1Database, nowMs = Date.now()): P
   return out
 }
 
-/**
- * 🧭 이메일 보강에서 **절반 자리를 먼저 받는 업종** — 유어딜 생활 칩(이사·청소·방역·소독·수리·설치)과 전문직(전문서비스).
- * 전화는 대부분 있는데 이메일이 거의 없다(2026-11-17 실측 3~6%). 이름은 `COMPANY_CATEGORIES` 와 같아야 한다(시험 대조).
- */
-export const ENRICH_PRIORITY_CATEGORIES = ['이사', '청소', '방역·소독', '수리·설치', '전문서비스'] as const
-
-/** 두 줄을 번갈아 세운다(우선 → 일반 → 우선 …). 같은 id 는 한 번만. 한쪽이 바닥나면 다른 쪽이 나머지를 채운다. */
-export function interleaveTargets<T extends { id: number }>(prio: T[], general: T[], cap: number): T[] {
-  const out: T[] = []
-  const seen = new Set<number>()
-  let i = 0, j = 0
-  while (out.length < cap && (i < prio.length || j < general.length)) {
-    const takePrio = (out.length % 2 === 0 && i < prio.length) || j >= general.length
-    const next = takePrio ? prio[i++] : general[j++]
-    if (next && !seen.has(next.id)) { seen.add(next.id); out.push(next) }
-  }
-  return out
-}

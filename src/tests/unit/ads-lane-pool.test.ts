@@ -129,7 +129,7 @@ describe('enrich-lane — Phase 2 는 순차 루프로 되돌아가지 않는다
   const SRC = readFileSync(resolve(process.cwd(), 'src/features/marketing/api/enrich-lane.ts'), 'utf8')
 
   it('runPooled 로 대상을 처리한다', () => {
-    expect(SRC).toMatch(/runPooled\(targets, concurrency, handleLead, stopP2\)/)
+    expect(SRC).toMatch(/runPooled\(queue, concurrency, handleLead, stopP2\)/)
   })
 
   it('동시성은 설정 해석기를 거친다(리터럴 하드코딩 금지 — 상한 클램프가 그 안에 있다)', () => {

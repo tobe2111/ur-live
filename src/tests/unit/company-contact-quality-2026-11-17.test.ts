@@ -164,24 +164,49 @@ describe('⑤ 위생 스윕 — 조회 실패에 커서를 안 넘긴다', () =>
   })
 })
 
-describe('⑥ 이메일 보강 — 생활·전문직에 자리를 번갈아 준다', async () => {
-  const { interleaveTargets, ENRICH_PRIORITY_CATEGORIES } = await import('@/features/marketing/api/company-contact-quality')
+describe('⑥ 이메일 보강 — 생활·전문직 업종 줄(커서)', async () => {
+  const P = await import('@/features/marketing/api/enrich-priority')
   const ids = (a: Array<{ id: number }>) => a.map(x => x.id)
-  it('번갈아 세운다 · 겹치면 한 번만', () => {
-    expect(ids(interleaveTargets([{ id: 1 }, { id: 2 }], [{ id: 9 }, { id: 1 }, { id: 8 }], 10))).toEqual([1, 9, 2, 8])
+  it('번갈아 세운다 · 겹치면 한 번만 · 한쪽이 비면 다른 쪽이 다 쓴다 · 상한', () => {
+    expect(ids(P.interleaveTargets([{ id: 1 }, { id: 2 }], [{ id: 9 }, { id: 1 }, { id: 8 }], 10))).toEqual([1, 9, 2, 8])
+    expect(ids(P.interleaveTargets([], [{ id: 5 }, { id: 6 }, { id: 7 }], 2))).toEqual([5, 6])
+    expect(ids(P.interleaveTargets([{ id: 1 }, { id: 2 }, { id: 3 }], [], 10))).toEqual([1, 2, 3])
   })
-  it('우선 줄이 비면 일반 줄이 자리를 다 쓴다(처리량 손해 0) · 상한을 넘지 않는다', () => {
-    expect(ids(interleaveTargets([], [{ id: 5 }, { id: 6 }, { id: 7 }], 2))).toEqual([5, 6])
-    expect(ids(interleaveTargets([{ id: 1 }, { id: 2 }, { id: 3 }], [], 10))).toEqual([1, 2, 3])
+  it('업종을 고르게 섞는다(한 업종이 앞자리를 다 먹지 않게)', () => {
+    const rows = [{ id: 9, category: '이사' }, { id: 8, category: '이사' }, { id: 7, category: '청소' }, { id: 6, category: '청소' }]
+    expect(ids(P.roundRobinByCategory(rows))).toEqual([9, 7, 8, 6])
   })
-  it('업종 이름이 분류표와 같다(다르면 우선 줄이 영영 빈다)', async () => {
+  it('커서: 큰 id 부터 연속으로 손댄 데까지만 · 0건 업종은 맨 위로', () => {
+    const fetched = [{ id: 30, category: '이사' }, { id: 20, category: '이사' }, { id: 10, category: '이사' }, { id: 50, category: '청소' }]
+    expect(P.nextPrioCursor({ 청소: 60, 방역·소독: 5 } as never, fetched, new Set([30, 10, 50]))).toEqual({ 이사: 30, 청소: 50 })
+    expect(P.nextPrioCursor({ 이사: 40 }, fetched, new Set())).toEqual({ 이사: 40 }) // 아무것도 못 했으면 그대로
+  })
+  it('진짜 SQLite — 커서 아래·이메일 없음·7일 지남만, 업종마다 상한만큼', () => {
+    const db = new DatabaseSync(':memory:')
+    db.exec(`CREATE TABLE ad_company_leads (id INTEGER PRIMARY KEY, company_name TEXT, category TEXT, region TEXT, address TEXT, website TEXT,
+      phone TEXT, email TEXT, source TEXT, source_keyword TEXT, status TEXT, merged_into INTEGER, enrich_checked_at TEXT, enrich_v INTEGER)`)
+    const ins = db.prepare('INSERT INTO ad_company_leads (id, company_name, category, email, enrich_checked_at, enrich_v) VALUES (?, ?, ?, ?, ?, ?)')
+    for (let i = 1; i <= 10; i++) ins.run(i, `이사${i}`, '이사', null, null, null)
+    ins.run(11, '메일있음', '이사', 'a@b.kr', null, null)
+    ins.run(12, '방금봄', '청소', null, new Date().toISOString().slice(0, 19).replace('T', ' '), 99)
+    ins.run(13, '청소집', '청소', null, null, null)
+    const q = P.priorityTargetsSql({ 이사: 9 }, 7)
+    const got = (db.prepare(q.sql).all(...(q.binds as never[])) as Array<{ id: number }>).map(r => r.id)
+    expect(got).toEqual([8, 7, 6, 13])
+    expect(q.binds).toHaveLength(P.ENRICH_PRIORITY_CATEGORIES.length * 2)
+  })
+  it('업종 이름이 분류표와 같다(다르면 업종 줄이 영영 빈다)', async () => {
     const { COMPANY_CATEGORIES } = await import('@/features/marketing/api/company-discovery')
-    for (const c of ENRICH_PRIORITY_CATEGORIES) expect(Object.keys(COMPANY_CATEGORIES), c).toContain(c)
+    for (const c of P.ENRICH_PRIORITY_CATEGORIES) expect(Object.keys(COMPANY_CATEGORIES), c).toContain(c)
   })
-  it('보강 레인이 실제로 두 줄을 번갈아 쓴다', () => {
+  it('보강 레인 배선 — 일반 쿼리엔 업종 조건이 없고(인덱스 유지), 두 줄을 번갈아 쓰고, 커서를 넘긴다', () => {
     const s = readFileSync('src/features/marketing/api/enrich-lane.ts', 'utf8')
-    expect(s).toMatch(/const targets = interleaveTargets\(prio, general, targetCap\)/)
-    expect(s).toMatch(/category IN \(\$\{ENRICH_PRIORITY_CATEGORIES/)
+    const general = s.slice(s.indexOf('const targets = (await DB.prepare('), s.indexOf('LIMIT ${targetCap}'))
+    expect(general).not.toMatch(/category IN/)
+    expect(s).toMatch(/const queue = interleaveTargets\(roundRobinByCategory\(prioRows\), targets, targetCap\)/)
+    expect(s).toMatch(/runPooled\(queue, concurrency, handleLead, stopP2\)/)
+    expect(s).toMatch(/nextPrioCursor\(prioCursor, prioRows, stampedIds\)/)
+    expect(s).toMatch(/pendingStamps\.push\(id\); stampedIds\.add\(id\)/)
   })
 })
 
