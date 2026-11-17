@@ -20,3 +20,8 @@
 
 ## 남은 것
 - 토스 "가맹점 사업자 지위" 질문 답변 방향 — 데모 상품(판매자 없는 실매장 이름 146개) 처리 미정(대표 판단).
+
+## 후속 (같은 날)
+- `/refund` 첫 글자 1.5~2.2s(앱 부팅 뒤 청크 출발) → `PRELOAD_ONLY_ROUTES.refund` + `route-surface` 'refund' + `registerBootPage('refund')` 로 페이지 청크를 워커가 미리받게 함(청크 구성 무변경). 예산 `surface-budgets.json` refund 218.5KB 등록.
+- 결재 올림: `docs/decisions/2026-11-17-overseas-payment-store-fee.md`(해외결제 추가 수수료 매장 부담 + 매장 켜기/끄기).
+- 토스 심사 테스트 계정 `tossreview@ur-team.com`(users 신규, 비밀번호는 대표에게 채팅으로만) — 심사 후 삭제·변경 권장.

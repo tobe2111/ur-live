@@ -67,6 +67,7 @@ export const PRELOAD_ONLY_ROUTES = {
   cart: ['src/pages/CartPage.tsx'],
   search: ['src/pages/SearchPage.tsx'],
   faq: ['src/pages/FAQPage.tsx'],
+  refund: ['src/pages/RefundPolicyPage.tsx'], // 🐢 2026-11-17 환불정책(PG 심사가 직접 여는 주소) — 첫 글자 1.5~2.2s 실측
   stays: ['src/pages/StaysSearchPage.tsx'],
   stayDetail: ['src/pages/StayDetailPage.tsx'],
   // 🏨 2026-10-15 블로그 목록·글 — 색인 진입점(같은 날 다른 세션이 함께 등재)
