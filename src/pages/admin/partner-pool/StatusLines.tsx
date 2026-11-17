@@ -29,12 +29,18 @@ export interface EnrichInfo { last_run?: string; processed?: number; enriched?: 
 export interface KakaoSweepInfo { last_run?: string; scanned?: number; found?: number; tried?: number; total_found?: number; limit_hit?: boolean; day?: string; day_lookups?: number }
 export interface EnrichRollupInfo { day: string; rounds: number; partial: number; deadline: number; limit: number; crash: number; processed: number; enriched: number; crawls: number; phase?: Record<string, number> }
 export interface RegistryMatchInfo { last_run?: string; scanned?: number; matched?: number; total_matched?: number; skip_reason?: Record<string, number> }
+/** ☎️📧 연락처 정리 — 남의 연락처(주 1회) + 가짜 연락처 위생 스윕 진척. */
+export interface ContactQualityInfo {
+  shared?: { week?: string; at?: string; emails?: number; email_rows?: number; phones?: number; phone_rows?: number; error?: string } | null
+  hygiene?: { v?: number; cursor?: number; fixed?: number; done?: boolean } | null
+}
 export interface LocalDataInfo { gate: boolean; run: { last_run?: string; saved?: number; updated?: number; closed?: number; pending_days?: number; backfill_days?: number; spent?: number; budget_total?: number; diag?: { configured?: boolean; error?: string } } | null }
 
-export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, localdata, enrichLast, enrichRollup, kakaoSweep, registryMatch }: {
+export default function StatusLines({ collect, storeinfo, commerce, franchise, nts, npsInfo, reclassifyInfo, agencyFunnel, localdata, enrichLast, enrichRollup, kakaoSweep, registryMatch, contactQuality }: {
   collect: Collect | null; storeinfo: StoreInfo | null; commerce: Commerce | null; franchise: Franchise | null
   nts: NtsSweep | null; npsInfo: NpsInfo | null; reclassifyInfo: ReclassifyInfo | null; agencyFunnel: AgencyFunnel | null
   localdata: LocalDataInfo | null; enrichLast: EnrichInfo | null; enrichRollup?: EnrichRollupInfo | null; kakaoSweep?: KakaoSweepInfo | null; registryMatch?: RegistryMatchInfo | null
+  contactQuality?: ContactQualityInfo | null
 }) {
   return (
     <>
@@ -159,6 +165,20 @@ export default function StatusLines({ collect, storeinfo, commerce, franchise, n
             추측으로 올리면 같은 키를 쓰는 보강 레인까지 쿼터를 잃는다. */}
         {typeof kakaoSweep.day_lookups === 'number' && (
           <span className="text-gray-400"> · 오늘 조회 {formatNumber(kakaoSweep.day_lookups)}건{kakaoSweep.day ? ` (${kakaoSweep.day})` : ''}</span>
+        )}
+      </div>
+    )}
+
+    {/* 연락처 정리 — 남의 연락처(호스팅·위젯, 업종 3개+ 에 걸린 것)는 주 1회 비우고 다시 저장 안 되게 막는다.
+        가짜(N/A·010-0000-0000·gmail.com@gmail.com)는 위생 스윕이 한 바퀴 돌며 비운다. 근거: company-contact-quality.ts */}
+    {(contactQuality?.shared || contactQuality?.hygiene) && (
+      <div className="mb-3 text-xs text-gray-500">
+        연락처 정리
+        {contactQuality.shared?.error ? <span className="text-tone-warn"> · 남의 연락처 정리 실패: {contactQuality.shared.error}</span>
+          : contactQuality.shared?.at ? <span> · 남의 연락처 {kstShort(contactQuality.shared.at)} · 이메일 {formatNumber(contactQuality.shared.emails ?? 0)}개(행 {formatNumber(contactQuality.shared.email_rows ?? 0)}) · 전화 {formatNumber(contactQuality.shared.phones ?? 0)}개(행 {formatNumber(contactQuality.shared.phone_rows ?? 0)}) 비움</span>
+            : <span className="text-gray-400"> · 남의 연락처 아직 실행 안 됨</span>}
+        {contactQuality.hygiene && (
+          <span> · 가짜 연락처·위생 {contactQuality.hygiene.done ? '한 바퀴 끝' : '진행 중'} · <b className="text-gray-700">{formatNumber(contactQuality.hygiene.fixed ?? 0)}곳 정리</b></span>
         )}
       </div>
     )}

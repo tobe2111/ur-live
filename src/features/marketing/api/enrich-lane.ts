@@ -16,7 +16,7 @@ import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitErro
 import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, shouldRecountRemaining, prevRemaining, ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
 import { ensureCompanySchema } from './company-discovery'
-import { isPlaceholderPhone, isPlaceholderEmail, parsePhoneBlock, SHARED_PHONE_KEY } from './company-contact-quality'
+import { isPlaceholderPhone, isPlaceholderEmail, parsePhoneBlock, SHARED_PHONE_KEY, ENRICH_PRIORITY_CATEGORIES, interleaveTargets } from './company-contact-quality'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
@@ -166,14 +166,24 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   Phase 1(전화)은 기본 0(`ADS_ENRICH_PHONE_CAP`)이고 Phase 2 는 이메일 전용이라, 이메일 있는 행은
   //   이 레인에서 할 일이 **하나도 없다.** 그래서 조건에서 아예 뺀다(도장을 찍어 7일마다 다시 줄 세우는 것보다 낫다).
   const targetCap = Math.min(400, Math.max(120, Math.floor(budget.left / 2)))
-  const targets = (await DB.prepare(`SELECT id, company_name, category, region, address, website, phone, email, source, source_keyword, status FROM ad_company_leads
+  type Target = { id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }
+  const pickTargets = async (extraWhere: string, limit: number): Promise<Target[]> => (await DB.prepare(`SELECT id, company_name, category, region, address, website, phone, email, source, source_keyword, status FROM ad_company_leads
       WHERE (email IS NULL OR email = '')
         AND merged_into IS NULL
-        AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})
+        AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < ${CRAWL_RULES_VERSION})${extraWhere}
       ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END),
                (CASE WHEN enrich_checked_at IS NULL THEN 0 ELSE 1 END),
-               (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT ${targetCap}`)
-    .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
+               (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT ${limit}`)
+    .all<Target>().catch(() => null))?.results || []
+  // 🧭 **생활·전문직 업종에 자리를 나눠 준다** (2026-11-17 대표 *"다 이상적으로 해줘"*). 실측: 이사 3,443곳 중 이메일 184 ·
+  //   청소 3,232 중 208 · 전문서비스 27,620 중 879. 정렬 첫 키가 "사이트 보유" 라 지역 언론사 같은 사이트 보유 행이 늘
+  //   앞줄을 차지했고, 회차는 마감선 때문에 앞의 **10건 남짓**만 실제로 처리한다(라운드 64회 전부 deadline).
+  //   ⇒ 두 줄을 **번갈아** 세운다 — 처리량은 그대로(같은 회차·같은 예산), 줄 서는 순서만 바뀐다.
+  //   ⚠️ 우선 줄이 비면 일반 줄이 그 자리를 다 쓴다(손해 0). 업종 목록 SSOT 는 `ENRICH_PRIORITY_CATEGORIES`.
+  const prio = await pickTargets(` AND category IN (${ENRICH_PRIORITY_CATEGORIES.map(c => `'${c}'`).join(',')})`, Math.ceil(targetCap / 2))
+  spendD1()
+  const general = await pickTargets('', targetCap)
+  const targets = interleaveTargets(prio, general, targetCap)
   // 시도 도장 — 크롤러 버전도 함께 기록(버전 bump = 이전 실패분 전량 즉시 재시도 대상).
   //   ⚠️ 2026-07-28: D1 쿼리도 **서브리퀘스트를 소모**한다. 도장은 대상 1건당 1회라 라운드당 수백 건이 되는데,
   //   한도 초과 시 `.catch(() => null)` 가 그 오류를 삼켜 **budget.limitHit 이 영영 false** 로 남았다

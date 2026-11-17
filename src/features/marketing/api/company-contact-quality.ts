@@ -103,7 +103,15 @@ export function kstWeekKey(nowMs: number): string {
 }
 
 export const SHARED_PHONE_KEY = 'ads_shared_phone_block'
-const SWEEP_KEY = 'ads_shared_contact_sweep'
+/** 마지막 정리 결과 — 어드민 상태줄이 읽는다(`/api/admin/partner-pool/stats` 의 `contactQuality`). */
+export const SWEEP_KEY = 'ads_shared_contact_sweep'
+
+/** 저장값의 주 열쇠 — JSON(`{week,…}`)이 표준이고, 첫 배포분은 주 문자열만 적었다(그것도 같은 주로 읽는다). */
+export function sweptWeek(raw: unknown): string | null {
+  const s = String(raw ?? '')
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  try { const v = JSON.parse(s); return typeof v?.week === 'string' ? v.week : null } catch { return null }
+}
 const PHONE_BLOCK_CAP = 1000
 
 export function parsePhoneBlock(raw: unknown): string[] {
@@ -127,7 +135,7 @@ export async function sweepSharedContacts(DB: D1Database, nowMs = Date.now()): P
   const out: SharedSweepResult = { emails: 0, phones: 0, email_rows: 0, phone_rows: 0 }
   const week = kstWeekKey(nowMs)
   const st = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SWEEP_KEY).first<{ value: string }>().catch(() => null)
-  if (st?.value === week) return { ...out, skipped: true }
+  if (sweptWeek(st?.value) === week) return { ...out, skipped: true }
 
   try {
     // ① 남의 이메일 → 억제 표(리드 DB)
@@ -174,6 +182,27 @@ export async function sweepSharedContacts(DB: D1Database, nowMs = Date.now()): P
     // 🩺 실패하면 주 도장을 안 찍는다 — 다음 회차가 다시 시도하고, 원문은 하트비트로 보인다.
     return { ...out, error: String((e as Error)?.message || e).slice(0, 200) }
   }
-  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(SWEEP_KEY, week).run().catch(() => null)
+  // 결과를 같이 남긴다 — 이 값이 화면에 보여야 "정리가 돌았는가 · 얼마나 지웠는가" 를 대표가 직접 본다.
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+    .bind(SWEEP_KEY, JSON.stringify({ week, at: new Date(nowMs).toISOString(), ...out })).run().catch(() => null)
+  return out
+}
+
+/**
+ * 🧭 이메일 보강에서 **절반 자리를 먼저 받는 업종** — 유어딜 생활 칩(이사·청소·방역·소독·수리·설치)과 전문직(전문서비스).
+ * 전화는 대부분 있는데 이메일이 거의 없다(2026-11-17 실측 3~6%). 이름은 `COMPANY_CATEGORIES` 와 같아야 한다(시험 대조).
+ */
+export const ENRICH_PRIORITY_CATEGORIES = ['이사', '청소', '방역·소독', '수리·설치', '전문서비스'] as const
+
+/** 두 줄을 번갈아 세운다(우선 → 일반 → 우선 …). 같은 id 는 한 번만. 한쪽이 바닥나면 다른 쪽이 나머지를 채운다. */
+export function interleaveTargets<T extends { id: number }>(prio: T[], general: T[], cap: number): T[] {
+  const out: T[] = []
+  const seen = new Set<number>()
+  let i = 0, j = 0
+  while (out.length < cap && (i < prio.length || j < general.length)) {
+    const takePrio = (out.length % 2 === 0 && i < prio.length) || j >= general.length
+    const next = takePrio ? prio[i++] : general[j++]
+    if (next && !seen.has(next.id)) { seen.add(next.id); out.push(next) }
+  }
   return out
 }

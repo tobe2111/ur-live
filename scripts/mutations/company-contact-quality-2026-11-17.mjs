@@ -20,4 +20,13 @@ export default [
   { name: '위생 스윕 — 조회 실패에 커서를 넘긴다', file: 'src/features/marketing/api/company-hygiene-sweep.ts',
     find: '  if (!rowsRes) return { scanned: 0, fixed: 0, cursor: st.cursor, done: false }', replace: '', test: T,
     why: '칸이 아직 없을 때 5만 칸씩 건너뛰어 그 구간을 영영 안 본다.' },
+  { name: '보강 순서 — 우선 업종 줄을 버린다', file: 'src/features/marketing/api/enrich-lane.ts',
+    find: '  const targets = interleaveTargets(prio, general, targetCap)', replace: '  const targets = general', test: T,
+    why: '사이트 보유 행이 계속 앞줄을 차지해 이사·청소·법무사 이메일이 안 찾아진다.' },
+  { name: '보강 순서 — 번갈아 세우지 않는다', file: Q,
+    find: '    const takePrio = (out.length % 2 === 0 && i < prio.length) || j >= general.length', replace: '    const takePrio = i < prio.length', test: T,
+    why: '우선 줄이 회차를 통째로 차지해 다른 업종 보강이 멈춘다.' },
+  { name: '정리 결과 — 어드민에 안 넘긴다', file: 'src/features/marketing/api/partner-pool.routes.ts',
+    find: ' contactQuality: { shared: sharedSweep, hygiene: hygieneSweep },', replace: '', test: T,
+    why: '정리가 돌았는지 화면에서 알 수 없다.' },
 ]

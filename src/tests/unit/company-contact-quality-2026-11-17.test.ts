@@ -163,3 +163,40 @@ describe('⑤ 위생 스윕 — 조회 실패에 커서를 안 넘긴다', () =>
     expect(s).toMatch(/await ensureCompanySchema\(DB\)/)
   })
 })
+
+describe('⑥ 이메일 보강 — 생활·전문직에 자리를 번갈아 준다', async () => {
+  const { interleaveTargets, ENRICH_PRIORITY_CATEGORIES } = await import('@/features/marketing/api/company-contact-quality')
+  const ids = (a: Array<{ id: number }>) => a.map(x => x.id)
+  it('번갈아 세운다 · 겹치면 한 번만', () => {
+    expect(ids(interleaveTargets([{ id: 1 }, { id: 2 }], [{ id: 9 }, { id: 1 }, { id: 8 }], 10))).toEqual([1, 9, 2, 8])
+  })
+  it('우선 줄이 비면 일반 줄이 자리를 다 쓴다(처리량 손해 0) · 상한을 넘지 않는다', () => {
+    expect(ids(interleaveTargets([], [{ id: 5 }, { id: 6 }, { id: 7 }], 2))).toEqual([5, 6])
+    expect(ids(interleaveTargets([{ id: 1 }, { id: 2 }, { id: 3 }], [], 10))).toEqual([1, 2, 3])
+  })
+  it('업종 이름이 분류표와 같다(다르면 우선 줄이 영영 빈다)', async () => {
+    const { COMPANY_CATEGORIES } = await import('@/features/marketing/api/company-discovery')
+    for (const c of ENRICH_PRIORITY_CATEGORIES) expect(Object.keys(COMPANY_CATEGORIES), c).toContain(c)
+  })
+  it('보강 레인이 실제로 두 줄을 번갈아 쓴다', () => {
+    const s = readFileSync('src/features/marketing/api/enrich-lane.ts', 'utf8')
+    expect(s).toMatch(/const targets = interleaveTargets\(prio, general, targetCap\)/)
+    expect(s).toMatch(/category IN \(\$\{ENRICH_PRIORITY_CATEGORIES/)
+  })
+})
+
+describe('⑦ 정리 결과가 어드민에 보인다', async () => {
+  const { sweptWeek } = await import('@/features/marketing/api/company-contact-quality')
+  it('결과를 JSON 으로 남기고, 첫 배포분(주 문자열)도 같은 주로 읽는다', () => {
+    expect(sweptWeek('2026-11-16')).toBe('2026-11-16')
+    expect(sweptWeek(JSON.stringify({ week: '2026-11-16', emails: 3 }))).toBe('2026-11-16')
+    expect(sweptWeek(null)).toBeNull()
+  })
+  it('stats 가 두 키를 읽어 contactQuality 로 내보내고 화면이 그린다', () => {
+    const r = readFileSync('src/features/marketing/api/partner-pool.routes.ts', 'utf8')
+    expect(r).toMatch(/readKey\('ads_shared_contact_sweep'\), readKey\('ads_company_hygiene_sweep'\)/)
+    expect(r).toMatch(/contactQuality: \{ shared: sharedSweep, hygiene: hygieneSweep \}/)
+    expect(readFileSync('src/pages/admin/AdminPartnerPoolPage.tsx', 'utf8')).toMatch(/contactQuality=\{contactQuality\}/)
+    expect(readFileSync('src/pages/admin/partner-pool/StatusLines.tsx', 'utf8')).toMatch(/contactQuality\.shared\?\.at/)
+  })
+})
