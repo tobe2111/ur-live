@@ -1,5 +1,10 @@
 # Pages(ur-live) 일반값 → cron 워커(ur-live) 로 옮길 설정 이름(한 줄에 하나). 이 파일이 main 에 머지되면
 # `.github/workflows/ops-copy-pages-var.yml` 이 돈다. 값은 여기에 적지 않는다(Pages 에서 읽는다).
-# 2026-11-17: cron 메일이 전부 'skipped: env not configured' 였던 원인.
+# 이미 옮긴 이름을 다시 적어도 같은 값으로 갱신될 뿐이다(무해).
+# 2026-11-17 ①: cron 메일이 전부 'skipped: env not configured' 였던 원인 — 반영 확인(워커 바인딩에 생김).
 NCP_SENS_MAIL_SERVICE_ID
 NCP_MAIL_SENDER_NAME
+# 2026-11-17 ②: cron 이 보내는 웹푸시(재시도·마감 알림)와 channel-watchdog 판정이 VAPID 없이 돌던 것.
+VAPID_PUBLIC_KEY
+VAPID_PRIVATE_KEY
+VAPID_SUBJECT
