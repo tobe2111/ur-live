@@ -28,7 +28,7 @@ import {
 import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS } from '../../shared/constants/policy'
 import { isVoucherCategory, voucherMinPriceError } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
-import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
+import { intParam } from '@/shared/pagination'; import { dealFlag } from '../../shared/curator-pin-order'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
 import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'; import { snsLinkStatus, SNS_LABEL, type SnsPlatform } from '../../shared/sns-link'
 import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'; import { loadUShopSnsFollowers } from '../utils/ushop-sns-followers'
 import { findOwnedApprovedSeller, OWNED_STORE_WHERE_SQL } from '../utils/seller-operators'; import { countUShopSales } from '../utils/ushop-sales'; import { publicReadDb, userReadDb, schemaPresent } from '../utils/d1-read-replica' // 한 줄: 래칫
@@ -255,12 +255,13 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //   핀마다 **이 유어샵 주인이 그 매장과 맺은 활성 딜의 %** 를 실어 보낸다.
     //   조건은 SSOT(`findActiveDealPctsBySeller`)가 갖는다 — 여기서 WHERE 를 베끼면 결제와 갈린다.
     //
-    //   ⚠️ 딜은 **유어샵 주인** 기준(보는 사람 무관 — 익명 엣지 캐시에 실려도 정확). 💸 왕복 1회.
+    //   ⚠️ 딜은 **유어샵 주인** 기준(보는 사람 무관 — 익명 엣지 캐시에 실려도 정확).
+    //   🔐 2026-11-17: 실제 %는 매장↔유어샵 주인의 계약 조건이라 방문자에게 안 준다. 화면은 `> 0` 만 본다(`hasDealPin`). 주인은 /influencer 발견 화면의 `my_deal_pct`(로그인)로 본다. 💸 왕복 1회.
     //   🛍️ 2026-10-15 대표 *"바꾸자"*: 누적 구매 = **이 유어샵을 거쳐** 팔린 수(`ushop-sales.ts`) — 같은 왕복에 실린다.
     const pins = gateAffiliateRows((pinsResult.results as Record<string, unknown>[]).map((r) => ({
       ...r,
       // null = 이 매장과 딜이 없음 → 팔려도 소개비 0. 화면이 두 덩어리로 가르는 근거.
-      deal_pct: dealBySeller.get(Number(r.seller_id)) ?? null,
+      deal_pct: dealFlag(dealBySeller.get(Number(r.seller_id))), // 🔐 2026-11-17 대표 "응 가려줘" — 공개 응답엔 %를 안 싣는다(있음 1 / 없음 null)
     })), affiliateOn)
 
     const headline = head?.linkshop_headline ?? null
