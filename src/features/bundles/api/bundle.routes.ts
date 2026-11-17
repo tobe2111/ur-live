@@ -207,8 +207,8 @@ bundleSellerRoutes.patch('/:id', async (c) => {
     }
     if (body.items && body.items.length >= 2) {
       const ids = body.items.map(i => Number(i.product_id))
-      if (ids.some(n => !Number.isInteger(n) || n <= 0)) return c.json({ success: false, error: '상품이 올바르지 않습니다' }, 400)
-      const owned = await executeQuery<{ id: number }>(c.env.DB, `SELECT id FROM products WHERE id IN (${ids.map(() => '?').join(',')}) AND seller_id = ?`, [...ids, sellerId])
+      if (ids.length > 50 || ids.some(n => !Number.isInteger(n) || n <= 0)) return c.json({ success: false, error: '상품이 올바르지 않습니다' }, 400)
+      const owned = await executeQuery<{ id: number }>(c.env.DB, `SELECT id FROM products WHERE id IN (${ids.map(() => '?').join(',')}) AND seller_id = ?`, [...ids, sellerId]) // d1-bind-ok: 위에서 50개로 막는다(+1)
       if (owned.length !== new Set(ids).size) return c.json({ success: false, error: '본인 소유 상품만 번들에 추가할 수 있습니다' }, 403)
     }
 
