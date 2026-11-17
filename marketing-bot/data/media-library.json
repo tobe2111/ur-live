@@ -1,6 +1,27 @@
 {
   "items": [
     {
+      "id": "pixabay-img-4682908",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 4682908,
+      "page_url": "https://pixabay.com/photos/hairdresser-maintenance-hair-4682908/",
+      "author": "Engin_Akyurt",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 6720,
+      "h": 4480,
+      "tags": "hairdresser, maintenance, hair, living room, fashion, beauty, woman, beautiful, portrait, people, girl, style, human, women, design, hairdresser, hairdresser, hairdresser, hairdresser, hairdresser, hair, living room, living room, people, women, women",
+      "preview": "https://pixabay.com/get/gfc9724c818f6046755730724918ba2534d5cd4edea786fac93453473587f9c60183935400c9a36ed7a5cb8c22cab103d434da94ed024450a3a0f0f0bba63249e_640.jpg",
+      "query": "hair salon interior",
+      "tracks": [
+        "merchant"
+      ],
+      "score": 8,
+      "note": "미용실 의자에 앉은 뒷모습이라 얼굴이 나오지 않아 초상권 걱정이 적고, 자연광과 흐릿한 배경이 실제 동네 미용실 분위기를 잘 살림. 워터마크·로고 없음, 상단과 좌측에 글자 얹을 ",
+      "added_at": "2026-11-17T19:17:45.169Z",
+      "used": []
+    },
+    {
       "id": "pixabay-img-8388244",
       "kind": "image",
       "source": "pixabay",
@@ -19,6 +40,27 @@
       "score": 8,
       "note": "라떼아트를 붓는 순간이 선명하고 따뜻한 자연광 톤이라 동네 카페 느낌이 잘 살고, 얼굴 노출·로고·워터마크 없이 손만 보여 안전하며 어두운 배경 덕에 글자 얹을 여백도 충분함.",
       "added_at": "2026-11-16T20:39:11.175Z",
+      "used": []
+    },
+    {
+      "id": "pixabay-img-2940553",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 2940553,
+      "page_url": "https://pixabay.com/photos/food-drinks-people-adult-alone-2940553/",
+      "author": "freestocks-photos",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 5030,
+      "h": 3353,
+      "tags": "food, drinks, people, adult, alone, beverage, cafe, cake, cell, check, coffee, communication, cosy, drink, girl, indoors, internet, lady, cafe, cafe, cafe, cafe, cafe, internet",
+      "preview": "https://pixabay.com/get/g178738064fc2bd17d6f8553e0bfb5a496841682cd09769e42b37e7dda3876814321e2ac453b31d747fbd6b8622e27afeca287d9e304bd12389d3583cd1ea6c97_640.jpg",
+      "query": "shop owner smartphone",
+      "tracks": [
+        "merchant"
+      ],
+      "score": 7,
+      "note": "카페 창가 자리에서 폰을 쓰는 따뜻한 자연광 장면이라 동네 가게·폰 사용 콘셉트와 잘 맞고 얼굴도 안 나와 초상권 걱정이 없음. 다만 '사장님'보다는 손님처럼 보이고 서양식 인테리",
+      "added_at": "2026-11-17T19:17:45.169Z",
       "used": []
     },
     {
@@ -134,9 +176,12 @@
     "audio:upbeat acoustic": "2026-11-16T11:56:20.646Z",
     "cafe owner barista": "2026-11-16T20:39:11.175Z",
     "chef plating food": "2026-11-16T20:39:11.175Z",
-    "audio:happy ukulele": "2026-11-16T20:39:11.175Z"
+    "audio:happy ukulele": "2026-11-16T20:39:11.175Z",
+    "shop owner smartphone": "2026-11-17T19:17:45.169Z",
+    "hair salon interior": "2026-11-17T19:17:45.169Z",
+    "audio:lofi chill": "2026-11-17T19:17:45.169Z"
   },
-  "updated_at": "2026-11-16T20:39:11.175Z",
+  "updated_at": "2026-11-17T19:17:45.169Z",
   "rejected": [
     "pixabay-img-5753302",
     "pixabay-img-4807317",
@@ -162,6 +207,20 @@
     "pixabay-img-4625935",
     "pixabay-vid-1720",
     "pixabay-vid-1721",
-    "pixabay-vid-11547"
+    "pixabay-vid-11547",
+    "pixabay-img-7862413",
+    "pixabay-img-2581913",
+    "pixabay-img-1875813",
+    "pixabay-img-8544672",
+    "pixabay-img-2507499",
+    "pixabay-vid-202987",
+    "pixabay-vid-38084",
+    "pixabay-vid-142641",
+    "pixabay-img-6797761",
+    "pixabay-img-4043096",
+    "pixabay-img-3277314",
+    "pixabay-img-2693077",
+    "pixabay-img-5441659",
+    "pixabay-vid-29917"
   ]
 }
