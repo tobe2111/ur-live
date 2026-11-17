@@ -31,8 +31,9 @@ cronDelegateRoutes.post('/api/_internal/cron-delegate/:job', async (c) => {
       const { runRestaurantGeocode } = await import('../cron/restaurant-geocode')
       result = await runRestaurantGeocode(c.env as unknown as { DB: D1Database; KAKAO_REST_API_KEY?: string })
     } else if (job === 'kt-alpha-catalog-sync') {
-      const { runKtAlphaCatalogSync } = await import('../cron/kt-alpha-catalog-sync')
-      result = await runKtAlphaCatalogSync(c.env as unknown as { DB: D1Database })
+      // 2026-11-17: 조각 갱신(회차당 몇 페이지) — 한 요청이 100초를 넘기지 않게. 전체 갱신은 어드민 수동 버튼에 남았다.
+      const { runKtAlphaCatalogChunk } = await import('../cron/kt-alpha-catalog-chunk')
+      result = await runKtAlphaCatalogChunk(c.env as never)
     } else {
       const { handleChannelWatchdog } = await import('../cron/channel-watchdog')
       await handleChannelWatchdog(c.env as never)

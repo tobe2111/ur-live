@@ -14,7 +14,9 @@
  *     - API 오류 시 catch + 마지막 sync 시각 유지
  *     - 1회 sync 최대 50 페이지 (5000개) — 한도
  */
-type Env = {
+import type { GiftishowGoodsItem } from '../utils/giftishow-api'
+
+export type Env = {
   DB: D1Database
   KT_ALPHA_AUTH_CODE?: string
   KT_ALPHA_TOKEN_KEY?: string
@@ -22,24 +24,7 @@ type Env = {
   KT_ALPHA_DEV_MODE?: string
 }
 
-export async function runKtAlphaCatalogSync(env: Env): Promise<{
-  synced: number; deactivated: number; balance: number | null; recategorized?: number; error?: string;
-}> {
-  if (!env.KT_ALPHA_AUTH_CODE) {
-    return { synced: 0, deactivated: 0, balance: null, error: 'KT_ALPHA_AUTH_CODE 미설정 — skip' }
-  }
-
-  try {
-    const { fetchAllGoods, goodsItemToCatalogRow, getBizMoneyBalance } = await import('../utils/giftishow-api')
-
-    // 1. 전체 상품 fetch.
-    const allItems = await fetchAllGoods(env, { pageSize: 100, maxPages: 50 })
-    const fetchedCodes = new Set<string>()
-    let synced = 0
-
-    // 🛡️ 2026-05-19: D1 batch INSERT 로 변경 (24개 페이지/2260개 상품 sync 시 30초 timeout 회피).
-    //   sequential await 5-10ms × 2260 = 11-23초 → batch 50개씩 chunk = 약 2-3초.
-    const upsertSql = `INSERT INTO gift_catalog (
+const UPSERT_SQL = `INSERT INTO gift_catalog (
        gift_code, goods_no, name, brand_code, brand_name, brand_icon_url,
        sale_price, discount_price, real_price, discount_rate,
        image_url_small, image_url_large, desc_image_url,
@@ -64,13 +49,20 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
        content_add_desc = excluded.content_add_desc, popular = excluded.popular,
        sync_at = datetime('now'), updated_at = datetime('now')`
 
+/** gift_catalog 에 UPSERT(50개 묶음, 묶음 실패 시 한 줄씩). 넣은 줄 수를 돌려준다. */
+export async function upsertCatalogItems(
+  env: Env, items: GiftishowGoodsItem[], onCode?: (code: string) => void,
+): Promise<number> {
+  const { goodsItemToCatalogRow } = await import('../utils/giftishow-api')
+  let synced = 0
+
     const BATCH_SIZE = 50
-    for (let i = 0; i < allItems.length; i += BATCH_SIZE) {
-      const chunk = allItems.slice(i, i + BATCH_SIZE)
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+      const chunk = items.slice(i, i + BATCH_SIZE)
       const statements = chunk.map((item) => {
         const row = goodsItemToCatalogRow(item)
-        fetchedCodes.add(String(row.gift_code))
-        return env.DB.prepare(upsertSql).bind(
+        onCode?.(String(row.gift_code))
+        return env.DB.prepare(UPSERT_SQL).bind(
           row.gift_code, row.goods_no, row.name, row.brand_code, row.brand_name, row.brand_icon_url,
           row.sale_price, row.discount_price, row.real_price, row.discount_rate,
           row.image_url_small, row.image_url_large, row.desc_image_url,
@@ -91,23 +83,12 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
       }
     }
 
-    // 2. fetch 안 된 row 들은 is_active=0 (단종/일시 중지).
-    let deactivated = 0
-    if (fetchedCodes.size > 0) {
-      // 안전: 한 번에 너무 많은 placeholders 회피 — chunk.
-      const allCurrent = await env.DB.prepare(
-        'SELECT gift_code FROM gift_catalog WHERE is_active = 1'
-      ).all<{ gift_code: string }>().catch(() => ({ results: [] }))
+  return synced
+}
 
-      const toDeactivate = (allCurrent.results || []).filter((r) => !fetchedCodes.has(r.gift_code))
-      for (const r of toDeactivate) {
-        await env.DB.prepare(
-          `UPDATE gift_catalog SET is_active = 0, goods_state = 'SUS', updated_at = datetime('now') WHERE gift_code = ?`
-        ).bind(r.gift_code).run().catch(() => { /* noop */ })
-        deactivated++
-      }
-    }
-
+/** 목록을 다 받은 뒤 할 일 — 잔액·통계·자동 분류·1회 정리. 전체 갱신과 조각 갱신이 같이 쓴다. */
+export async function afterCatalogSync(env: Env, synced: number): Promise<{ balance: number | null; recategorized: number }> {
+  const { getBizMoneyBalance } = await import('../utils/giftishow-api')
     // 3. 비즈머니 잔액 조회 + 저장.
     let balance: number | null = null
     try {
@@ -129,9 +110,13 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
            ON CONFLICT(key) DO UPDATE SET value = datetime('now'), updated_at = datetime('now')`
         ).run().catch(() => { /* noop */ })
 
-        // 🛡️ 2026-05-19: 잔액 부족 알림 — 10만 원 이하 시 어드민에게 dashboard 알림.
-        //   중복 방지: 24시간 내 같은 type 발송 안 함.
-        if (balance < 100_000) {
+        // 🛡️ 2026-05-19: 잔액 부족 알림 — 기준 이하 시 어드민에게 dashboard 알림. 중복 방지: 24시간 내 같은 type 발송 안 함.
+        //   2026-11-17: 기준을 `platform_settings.kt_alpha_low_balance_won` 으로(어드민 조정 · 없으면 10만 원).
+        const thrRow = await env.DB.prepare(
+          "SELECT value FROM platform_settings WHERE key = 'kt_alpha_low_balance_won'"
+        ).first<{ value: string }>().catch(() => null)
+        const lowThreshold = Number(thrRow?.value) > 0 ? Number(thrRow?.value) : 100_000
+        if (balance < lowThreshold) {
           const recentAlert = await env.DB.prepare(
             `SELECT id FROM dashboard_notifications
               WHERE type = 'kt_alpha_balance_low' AND created_at > datetime('now', '-24 hours') LIMIT 1`
@@ -153,7 +138,8 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
 
     // 4. sync 통계 저장.
     await env.DB.prepare(
-      `UPDATE platform_settings SET value = datetime('now'), updated_at = datetime('now') WHERE key = 'kt_alpha_last_sync_at'`
+      `INSERT INTO platform_settings (key, value, updated_at) VALUES ('kt_alpha_last_sync_at', datetime('now'), datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = datetime('now'), updated_at = datetime('now')`
     ).run().catch(() => { /* noop */ })
     await env.DB.prepare(
       `UPDATE platform_settings SET value = ?, updated_at = datetime('now') WHERE key = 'kt_alpha_last_sync_count'`
@@ -229,6 +215,46 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
     } catch (e) {
       console.error('[kt-alpha desc cleanup]', String(e).slice(0, 200))
     }
+
+  return { balance, recategorized }
+}
+
+export async function runKtAlphaCatalogSync(env: Env): Promise<{
+  synced: number; deactivated: number; balance: number | null; recategorized?: number; error?: string;
+}> {
+  if (!env.KT_ALPHA_AUTH_CODE) {
+    return { synced: 0, deactivated: 0, balance: null, error: 'KT_ALPHA_AUTH_CODE 미설정 — skip' }
+  }
+
+  try {
+    const { fetchAllGoods } = await import('../utils/giftishow-api')
+
+    // 1. 전체 상품 fetch.
+    const allItems = await fetchAllGoods(env, { pageSize: 100, maxPages: 50 })
+    const fetchedCodes = new Set<string>()
+
+    // 🛡️ 2026-05-19: D1 batch INSERT 로 변경 (24개 페이지/2260개 상품 sync 시 30초 timeout 회피).
+    //   2026-11-17: 조각 갱신(`kt-alpha-catalog-chunk.ts`)과 같은 UPSERT 를 쓰도록 `upsertCatalogItems` 로 뺐다.
+    const synced = await upsertCatalogItems(env, allItems, (code) => fetchedCodes.add(code))
+
+    // 2. fetch 안 된 row 들은 is_active=0 (단종/일시 중지).
+    let deactivated = 0
+    if (fetchedCodes.size > 0) {
+      // 안전: 한 번에 너무 많은 placeholders 회피 — chunk.
+      const allCurrent = await env.DB.prepare(
+        'SELECT gift_code FROM gift_catalog WHERE is_active = 1'
+      ).all<{ gift_code: string }>().catch(() => ({ results: [] }))
+
+      const toDeactivate = (allCurrent.results || []).filter((r) => !fetchedCodes.has(r.gift_code))
+      for (const r of toDeactivate) {
+        await env.DB.prepare(
+          `UPDATE gift_catalog SET is_active = 0, goods_state = 'SUS', updated_at = datetime('now') WHERE gift_code = ?`
+        ).bind(r.gift_code).run().catch(() => { /* noop */ })
+        deactivated++
+      }
+    }
+
+    const { balance, recategorized } = await afterCatalogSync(env, synced)
 
     return { synced, deactivated, balance, recategorized }
   } catch (err) {

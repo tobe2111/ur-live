@@ -192,7 +192,8 @@ describe('scheduled.ts 배선 — 도구만 있고 안 불리면 없는 것과 �
     // 하나라도 옛 `slotDue` 단독으로 되돌아가면 그 블록만 조용히 만회에서 빠진다.
     const daily = [
       '{ minute: 10, hour: 18 }', '{ minute: 30, hour: 18 }', '{ minute: 40, hour: 18 }',
-      '{ minute: 30, hour: 3 }', '{ minute: 35, hour: 3 }', '{ minute: 40, hour: 9 }',
+      // '{ minute: 30, hour: 3 }' — 2026-11-17 블록 자체를 뺐다(유일한 작업이던 KT 목록이 매시 :45 조각 갱신으로 옮겨감).
+      '{ minute: 35, hour: 3 }', '{ minute: 40, hour: 9 }',
       '{ minute: 45, hour: 0, dow: 1 }',
     ]
     for (const spec of daily) {
