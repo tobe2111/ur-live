@@ -321,3 +321,9 @@
 - 알림톡 시험 발송: 유저 3번(끝자리 6300)으로 `{"ok":true,"via":"alimtalk"}` — SENS 알림톡 경로는 살아 있다.
 - 첫 ops 장치: `.github/workflows/ops-copy-pages-var.yml` + `scripts/ops/copy-pages-var-to-worker.mjs`(Pages plain_text → cron 워커 시크릿, 추가·갱신만, 값 비노출). 머지 뒤 `names=NCP_SENS_MAIL_SERVICE_ID,NCP_MAIL_SENDER_NAME` 로 디스패치 → 워커 바인딩에 생겼는지 대조.
 - 🩸 틀렸던 판단: "CF 쓰기 = 대표 손" 이라고만 보고했다 — Pages 쪽 값이 plain_text 라 세션이 읽어 옮길 수 있었고, GitHub 배포 토큰으로 쓰는 선례(`sync-anthropic-secret.yml`)도 이미 있었다.
+
+## §92 (2026-11-17) cron 위임 — 대표 "2번으로 해줘"
+- cron 워커에 비밀값(secret_text, 복사 불가)이 없어 skip 되던 3작업(restaurant-geocode·kt-alpha-catalog-sync·channel-watchdog)을, 워커에 값이 없을 때만 Pages `POST /api/_internal/cron-delegate/:job`(INTERNAL_CRON_TOKEN fail-closed · 허용목록)로 맡긴다. 값이 생기면 종전처럼 워커가 직접(dual-mode).
+- 같은 PR 에서 `ops/requests/copy-pages-var.txt` 에 INTERNAL_CRON_TOKEN 추가 → 머지 시 워커로 복사.
+- 판정: 다음 회차(지오코딩·KT 동기화 낮 12:30~12:35 · watchdog 매시 25분) 하트비트 result 가 비지 않고 cron_failures 에 `cron-delegate` 오류가 없으면 E4.
+- 앞서(§91 뒤) VAPID 3개 복사 PR #2388 머지·워커 반영 확인.

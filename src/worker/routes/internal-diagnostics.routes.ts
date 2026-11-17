@@ -17,7 +17,10 @@ import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
 import { requireAdmin } from '../middleware/auth';
 
+import { cronDelegateRoutes } from './cron-delegate.routes';
 const internalDiagnosticsRoutes = new Hono<{ Bindings: Env }>();
+// 🔁 2026-11-17: cron 워커 → 웹사이트 위임 엔드포인트(POST /api/_internal/cron-delegate/:job)
+internalDiagnosticsRoutes.route('/', cronDelegateRoutes);
 
 // ─── 카카오 로그인 진단 (iOS WebKit 수정 효과 확인 + 회귀 감지) ───────────────
 //   기록은 kakao.routes.ts /sync/callback 가 fire-and-forget 으로 남김.
