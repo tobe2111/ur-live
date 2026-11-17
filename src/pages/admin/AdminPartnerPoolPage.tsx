@@ -22,7 +22,7 @@ import ContactListPanel from './partner-pool/ContactListPanel'
 import ReferralPanel from './partner-pool/ReferralPanel'
 import TradePanel from './partner-pool/TradePanel'
 import TierBreakdown from './partner-pool/TierBreakdown'
-import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type LocalDataInfo, type EnrichInfo, type EnrichRollupInfo, type KakaoSweepInfo, type RegistryMatchInfo } from './partner-pool/StatusLines'
+import StatusLines, { type Collect, type StoreInfo, type Commerce, type Franchise, type NtsSweep, type AgencyFunnel, type NpsInfo, type ReclassifyInfo, type LocalDataInfo, type EnrichInfo, type EnrichRollupInfo, type KakaoSweepInfo, type RegistryMatchInfo, type ContactQualityInfo } from './partner-pool/StatusLines'
 import { STAT_PICK, fmtRun, runStamp, parseStamp, fetchRunStatus } from './partner-pool/job-completion'
 import { FilterChip, ActionMenu } from './partner-pool/Controls'
 import CompanyKeywordManager, { type CompanyKeyword } from './partner-pool/CompanyKeywordManager'
@@ -91,6 +91,7 @@ export default function AdminPartnerPoolPage() {
   // 📞 전화 스윕 — 백로그 소진 속도의 지표(체인 깊이 조정 판단용).
   const [kakaoSweep, setKakaoSweep] = useState<KakaoSweepInfo | null>(null)
   const [registryMatch, setRegistryMatch] = useState<RegistryMatchInfo | null>(null) // 🔗 원부 이메일 이식(크롤 0회)
+  const [contactQuality, setContactQuality] = useState<ContactQualityInfo | null>(null) // ☎️📧 남의·가짜 연락처 정리
   const [localdata, setLocaldata] = useState<LocalDataInfo | null>(null) // 🏪 매장 후보(인허가) — 공개면 데이터원
   // ⏳ 서버 백그라운드 실행 상태(2026-07-27 대표 "실행 중 다른 페이지로 이동하면?") — 페이지를 떠났다
   //   돌아와도 무엇이 돌고 있는지 보이게(잠금 하트비트 기반). 작업은 서버에서 계속되므로 표시만 복원.
@@ -126,7 +127,7 @@ export default function AdminPartnerPoolPage() {
   const loadStats = useCallback(async (): Promise<Record<string, unknown> | null> => {
     try {
       const r = await api.get('/api/admin/partner-pool/stats')
-      if (r.data?.success) { setStats(r.data.stats); setInflow({ byDay: r.data.byDay || [], todayKst: typeof r.data.todayKst === 'string' ? r.data.todayKst : '' }); setSegments(r.data.segments || null); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setRunning(r.data.running || null); setLaneHealth(r.data.laneHealth || []) }
+      if (r.data?.success) { setStats(r.data.stats); setInflow({ byDay: r.data.byDay || [], todayKst: typeof r.data.todayKst === 'string' ? r.data.todayKst : '' }); setSegments(r.data.segments || null); setCollect(r.data.collect || null); setStoreinfo(r.data.storeinfo || null); setCommerce(r.data.commerce || null); setFranchise(r.data.franchise || null); setNts(r.data.nts || null); setAgencyFunnel(r.data.agencyEmailFunnel || null); setNpsInfo(r.data.nps || null); setReclassifyInfo(r.data.reclassify || null); setLocaldata(r.data.localdata || null); setEnrichInfo(r.data.enrichLast || null); setEnrichRollup(r.data.enrichRollup || null); setKakaoSweep(r.data.kakaoSweep || null); setRegistryMatch(r.data.registryMatch || null); setContactQuality(r.data.contactQuality || null); setRunning(r.data.running || null); setLaneHealth(r.data.laneHealth || []) }
       return r.data || null // 완료 감지 폴러가 원시 응답을 함께 사용
     } catch { return null }
   }, [])
@@ -403,7 +404,7 @@ export default function AdminPartnerPoolPage() {
         <button onClick={() => setShowOps(v => !v)} className="mb-2 text-xs text-gray-500 hover:text-gray-800">
           {showOps ? '▾ 수집 상태·키워드 접기' : '▸ 수집 상태·키워드 펼치기'}
         </button>
-        {showOps && <StatusLines enrichRollup={enrichRollup} kakaoSweep={kakaoSweep} collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} localdata={localdata} enrichLast={enrichInfo} registryMatch={registryMatch} />}
+        {showOps && <StatusLines enrichRollup={enrichRollup} kakaoSweep={kakaoSweep} collect={collect} storeinfo={storeinfo} commerce={commerce} franchise={franchise} nts={nts} npsInfo={npsInfo} reclassifyInfo={reclassifyInfo} agencyFunnel={agencyFunnel} localdata={localdata} enrichLast={enrichInfo} registryMatch={registryMatch} contactQuality={contactQuality} />}
 
         {showImport && <ImportPanel text={importText} onText={setImportText} busy={importing} onSubmit={submitImport} />}
 

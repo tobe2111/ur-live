@@ -17,6 +17,7 @@ import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, shouldRecount
 import { healSuspectNames } from './enrich-name-heal'
 import { ensureCompanySchema } from './company-discovery'
 import { isPlaceholderPhone, isPlaceholderEmail, parsePhoneBlock, SHARED_PHONE_KEY } from './company-contact-quality'
+import { PRIO_CURSOR_KEY, parsePrioCursor, priorityTargetsSql, roundRobinByCategory, interleaveTargets, nextPrioCursor } from './enrich-priority'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
@@ -174,6 +175,18 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
                (CASE WHEN enrich_checked_at IS NULL THEN 0 ELSE 1 END),
                (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT ${targetCap}`)
     .all<{ id: number; company_name: string; category: string | null; region: string | null; address: string | null; website: string | null; phone: string | null; email: string | null; source: string; source_keyword: string | null; status: string }>().catch(() => null))?.results || []
+  // 🧭 **생활·전문직 업종에 자리를 나눠 준다** (2026-11-17 대표 *"다 이상적으로 해줘"*). 실측: 이사 3,443곳 중 이메일 184 ·
+  //   청소 3,232 중 208 · 전문서비스 27,620 중 879. 정렬 첫 키가 "사이트 보유" 라 지역 언론사 같은 사이트 보유 행이 늘
+  //   앞줄을 차지했고, 회차는 마감선 때문에 앞의 **10건 남짓**만 실제로 처리한다(라운드 64회 전부 deadline).
+  //   ⇒ 두 줄을 **번갈아** 세운다 — 처리량은 그대로(같은 회차·같은 예산), 줄 서는 순서만 바뀐다.
+  //   ⚠️ 위 쿼리에 업종 조건을 붙이면 안 된다 — 정렬 인덱스를 못 타고 7만 행을 읽는다(실측 69,563행/회 = 하루 445만).
+  //     업종 줄은 `(category, id)` 인덱스를 업종마다 커서로 내려가는 별 쿼리다(실측 34행/회). 근거·규칙: `enrich-priority.ts`.
+  const prioCursorRaw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(PRIO_CURSOR_KEY).first<{ value: string }>().catch(() => null)
+  const prioCursor = parsePrioCursor(prioCursorRaw?.value)
+  const prioQ = priorityTargetsSql(prioCursor, CRAWL_RULES_VERSION)
+  const prioRows = (await DB.prepare(prioQ.sql).bind(...prioQ.binds).all<(typeof targets)[number]>().catch(() => null))?.results || []
+  spendD1(2)
+  const queue = interleaveTargets(roundRobinByCategory(prioRows), targets, targetCap)
   // 시도 도장 — 크롤러 버전도 함께 기록(버전 bump = 이전 실패분 전량 즉시 재시도 대상).
   //   ⚠️ 2026-07-28: D1 쿼리도 **서브리퀘스트를 소모**한다. 도장은 대상 1건당 1회라 라운드당 수백 건이 되는데,
   //   한도 초과 시 `.catch(() => null)` 가 그 오류를 삼켜 **budget.limitHit 이 영영 false** 로 남았다
@@ -183,7 +196,8 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   ⚠️ 지연 flush 의 실패 모드는 **안전한 쪽**이다 — 라운드가 flush 전에 죽으면 도장이 안 남아 그 리드를 다음
   //   라운드가 다시 집는다(= 원하는 동작). 반대(안 해보고 도장)가 백로그를 막던 실제 사고였다.
   const pendingStamps: number[] = []
-  const stamp = async (id: number) => { pendingStamps.push(id) } // 즉시 쓰지 않고 모은다(flushStamps 가 1회로 반영)
+  const stampedIds = new Set<number>() // 업종 줄 커서가 '실제로 손댄 행'을 알기 위해(아래 nextPrioCursor)
+  const stamp = async (id: number) => { pendingStamps.push(id); stampedIds.add(id) } // 즉시 쓰지 않고 모은다(flushStamps 가 1회로 반영)
   const flushStamps = async () => {
     if (!pendingStamps.length) return
     const ids = pendingStamps.splice(0).join(',') // 숫자 id 만 — 문자열 보간 안전(바인딩 개수 가변 회피)
@@ -265,7 +279,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
       platform_cap: pcap, // 🧱 이 라운드가 절대 넘을 수 없는 천장(학습 상한과 별개) — 보는 사람이 다시 유추하지 않게
       limit_hit: !!budget.limitHit, learned_cap: capForStamp, partial,
       run_id: runId, // 누적(ads_enrich_rollup)의 멱등 키 — 다음 라운드가 이 스냅샷을 접을 때 쓴다
-      phase, p2, at, elapsed_ms: Date.now() - t0, deadline_hit: outOfBudget(budget) && budget.left > 0, targets: targets.length,
+      phase, p2, at, elapsed_ms: Date.now() - t0, deadline_hit: outOfBudget(budget) && budget.left > 0, targets: queue.length, prio: prioRows.length,
       diag: { kakao: !!kakaoKey, naver: !!(nvId && nvSecret) },
     })
   }
@@ -290,7 +304,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   ⇒ 기본 0. 되살리려면 `ADS_ENRICH_PHONE_CAP` 에 **절대 건수**를 준다(비율 금지 — 그게 이 사고의 원인).
   const phoneCap = Math.max(0, Math.min(20, parseInt((env as unknown as { ADS_ENRICH_PHONE_CAP?: string }).ADS_ENRICH_PHONE_CAP || '', 10) || 0))
   let phoneSpent = 0
-  for (const t of targets) {
+  for (const t of queue) {
     if (outOfBudget(budget) || budget.limitHit || phoneSpent >= phoneCap) break
     if (t.phone || !kakaoKey || !t.address) continue
     phoneSpent++
@@ -308,7 +322,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   ✅ 동시 처리 안전: 아래 [잔량 검사 → 증가] 사이에 `await` 가 없다(동기 구문). JS 는 단일 스레드라
   //      그 구간이 원자적이므로 워커 K개가 같은 잔량을 두 번 쓰는 초과 사용이 생기지 않는다
   //      (블로거 레인의 예산 차감과 같은 논증).
-  const noSiteCap = noSiteSlotCap(targets.length)
+  const noSiteCap = noSiteSlotCap(queue.length)
   let noSiteUsed = 0
   // 🧵 **동시 처리**(2026-07-29) — 이 루프의 병목은 서브리퀘스트가 아니라 **네트워크 대기**였다.
   //   실측 스냅샷: `processed:3 · spent:21/60 · elapsed 9.7s · deadline_hit:false`, 당일 13라운드 중
@@ -391,10 +405,16 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
     //   된다(2026-07-28 실측: `phase:'p1_done'` · `p2:{}` 고정 = 1~9건 구간에서 죽었는데 신호가 0).
     if (++sinceSnapshot <= 3 || sinceSnapshot % 10 === 0) await snapshot(true)
   }
-  const pool = await runPooled(targets, concurrency, handleLead, stopP2)
+  const pool = await runPooled(queue, concurrency, handleLead, stopP2)
   if (pool.failed) p2.threw = pool.failed // 예외로 끝난 건수 — 조용히 삼키지 않고 스냅샷에 남긴다
   // 실제로 시도한 리드의 도장을 한 번에 반영 — 한도로 끊겼어도 '해본 것'은 기록해야 다음 라운드가 앞으로 나간다.
   await flushStamps()
+  // 🧭 업종 줄 커서 — 실제로 손댄(도장 찍힌) 행까지만 내려간다. 안 바뀌면 쓰지 않는다(쓰기 0).
+  const nextCursor = nextPrioCursor(prioCursor, prioRows, stampedIds)
+  if (JSON.stringify(nextCursor) !== JSON.stringify(prioCursor)) {
+    spendD1()
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(PRIO_CURSOR_KEY, JSON.stringify(nextCursor)).run().catch(() => null)
+  }
 
   // ── Phase 3: 이름 치유 소급 — 별 모듈(enrich-name-heal)로 분리(2026-07-28). 왜 필요한지는 그 파일 상단 참조.
   if (budget.left > 4 && !budget.limitHit) {

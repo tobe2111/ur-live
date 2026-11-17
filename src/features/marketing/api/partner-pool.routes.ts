@@ -263,14 +263,14 @@ app.get('/stats', async (c) => {
     const row = await adsLeadsDb(c.env).prepare('SELECT value FROM platform_settings WHERE key = ?').bind(k).first<{ value: string }>().catch(() => null)
     try { return row?.value ? JSON.parse(row.value) : null } catch { return null }
   }
-  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, registryMatch, lkAll, lkEnrich, lkReclassify, localdataRun, enrichRollup, kakaoSweep] = await Promise.all([
+  const [naraRun, mxRun, enrichLast, enrichBurst, reclassifyBurst, runAll, registryMatch, lkAll, lkEnrich, lkReclassify, localdataRun, enrichRollup, kakaoSweep, sharedSweep, hygieneSweep] = await Promise.all([
     readKey('ads_naracontract_stats'), readKey('ads_mxsweep_stats'), readKey('ads_enrich_last'), readKey('ads_enrich_burst_last'), readKey('ads_reclassify_burst_last'), readKey('ads_runall_last'), readKey('ads_registry_match_stats'),
     readKey('ads_runall_lock'), readKey('ads_enrich_burst_lock'), readKey('ads_reclassify_burst_lock'), readKey('ads_localdata_stats'),
     // 🧮 누적 — 스냅샷은 라운드마다 덮여 "전부 죽음"과 "마지막만 잘림"을 한 장으로 구분 못 했다.
     readKey('ads_enrich_rollup'),
     // 📞 카카오 전화 스윕(2026-07-29) — 145k 무연락처 리드의 **주 전화 확보 레인인데 화면에 없었다**.
     //   `day_lookups` 는 self-chain 깊이를 올리기 전에 카카오 쿼터 소비를 실측하기 위한 값.
-    readKey('ads_kakao_sweep_stats'),
+    readKey('ads_kakao_sweep_stats'), readKey('ads_shared_contact_sweep'), readKey('ads_company_hygiene_sweep'), // ☎️📧 연락처 정리(남의 것 주간 · 가짜 위생 스윕)
   ])
   // ⏳ 백그라운드 실행 중 표시(2026-07-27 대표 "다른 페이지로 이동하면?") — 페이지를 떠났다 돌아와도
   //   무엇이 돌고 있는지 보이게. 하트비트 4분 이내면 살아있는 작업(잠금 키와 동일 기준).
@@ -298,7 +298,7 @@ app.get('/stats', async (c) => {
     registryMatch,   // 🔗 원부 이메일 이식 결과(크롤 0회 레인)
     nara: { run: naraRun },
     mx: { run: mxRun },
-    enrichLast, enrichRollup, enrichBurst, reclassifyBurst, runAll, running, kakaoSweep,
+    enrichLast, enrichRollup, enrichBurst, reclassifyBurst, runAll, running, kakaoSweep, contactQuality: { shared: sharedSweep, hygiene: hygieneSweep },
     // 🏪 매장 후보(인허가) — 소비자 공개면/개업 웰컴의 데이터원. 상태줄에 없어 0건인 걸 아무도 몰랐음(2026-07-28).
     localdata: { gate: gate('localdata', false), run: localdataRun },
     // 🩺 수확 0 이 지속되는 레인(매장 화면과 같은 판정기) — 규칙·근거는 `lane-yield-health.ts` 헤더.

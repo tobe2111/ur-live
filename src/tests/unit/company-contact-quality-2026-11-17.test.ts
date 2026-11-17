@@ -163,3 +163,65 @@ describe('⑤ 위생 스윕 — 조회 실패에 커서를 안 넘긴다', () =>
     expect(s).toMatch(/await ensureCompanySchema\(DB\)/)
   })
 })
+
+describe('⑥ 이메일 보강 — 생활·전문직 업종 줄(커서)', async () => {
+  const P = await import('@/features/marketing/api/enrich-priority')
+  const ids = (a: Array<{ id: number }>) => a.map(x => x.id)
+  it('번갈아 세운다 · 겹치면 한 번만 · 한쪽이 비면 다른 쪽이 다 쓴다 · 상한', () => {
+    expect(ids(P.interleaveTargets([{ id: 1 }, { id: 2 }], [{ id: 9 }, { id: 1 }, { id: 8 }], 10))).toEqual([1, 9, 2, 8])
+    expect(ids(P.interleaveTargets([], [{ id: 5 }, { id: 6 }, { id: 7 }], 2))).toEqual([5, 6])
+    expect(ids(P.interleaveTargets([{ id: 1 }, { id: 2 }, { id: 3 }], [], 10))).toEqual([1, 2, 3])
+  })
+  it('업종을 고르게 섞는다(한 업종이 앞자리를 다 먹지 않게)', () => {
+    const rows = [{ id: 9, category: '이사' }, { id: 8, category: '이사' }, { id: 7, category: '청소' }, { id: 6, category: '청소' }]
+    expect(ids(P.roundRobinByCategory(rows))).toEqual([9, 7, 8, 6])
+  })
+  it('커서: 큰 id 부터 연속으로 손댄 데까지만 · 0건 업종은 맨 위로', () => {
+    const fetched = [{ id: 30, category: '이사' }, { id: 20, category: '이사' }, { id: 10, category: '이사' }, { id: 50, category: '청소' }]
+    expect(P.nextPrioCursor({ 청소: 60, 방역·소독: 5 } as never, fetched, new Set([30, 10, 50]))).toEqual({ 이사: 30, 청소: 50 })
+    expect(P.nextPrioCursor({ 이사: 40 }, fetched, new Set())).toEqual({ 이사: 40 }) // 아무것도 못 했으면 그대로
+  })
+  it('진짜 SQLite — 커서 아래·이메일 없음·7일 지남만, 업종마다 상한만큼', () => {
+    const db = new DatabaseSync(':memory:')
+    db.exec(`CREATE TABLE ad_company_leads (id INTEGER PRIMARY KEY, company_name TEXT, category TEXT, region TEXT, address TEXT, website TEXT,
+      phone TEXT, email TEXT, source TEXT, source_keyword TEXT, status TEXT, merged_into INTEGER, enrich_checked_at TEXT, enrich_v INTEGER)`)
+    const ins = db.prepare('INSERT INTO ad_company_leads (id, company_name, category, email, enrich_checked_at, enrich_v) VALUES (?, ?, ?, ?, ?, ?)')
+    for (let i = 1; i <= 10; i++) ins.run(i, `이사${i}`, '이사', null, null, null)
+    ins.run(11, '메일있음', '이사', 'a@b.kr', null, null)
+    ins.run(12, '방금봄', '청소', null, new Date().toISOString().slice(0, 19).replace('T', ' '), 99)
+    ins.run(13, '청소집', '청소', null, null, null)
+    const q = P.priorityTargetsSql({ 이사: 9 }, 7)
+    const got = (db.prepare(q.sql).all(...(q.binds as never[])) as Array<{ id: number }>).map(r => r.id)
+    expect(got).toEqual([8, 7, 6, 13])
+    expect(q.binds).toHaveLength(P.ENRICH_PRIORITY_CATEGORIES.length * 2)
+  })
+  it('업종 이름이 분류표와 같다(다르면 업종 줄이 영영 빈다)', async () => {
+    const { COMPANY_CATEGORIES } = await import('@/features/marketing/api/company-discovery')
+    for (const c of P.ENRICH_PRIORITY_CATEGORIES) expect(Object.keys(COMPANY_CATEGORIES), c).toContain(c)
+  })
+  it('보강 레인 배선 — 일반 쿼리엔 업종 조건이 없고(인덱스 유지), 두 줄을 번갈아 쓰고, 커서를 넘긴다', () => {
+    const s = readFileSync('src/features/marketing/api/enrich-lane.ts', 'utf8')
+    const general = s.slice(s.indexOf('const targets = (await DB.prepare('), s.indexOf('LIMIT ${targetCap}'))
+    expect(general).not.toMatch(/category IN/)
+    expect(s).toMatch(/const queue = interleaveTargets\(roundRobinByCategory\(prioRows\), targets, targetCap\)/)
+    expect(s).toMatch(/runPooled\(queue, concurrency, handleLead, stopP2\)/)
+    expect(s).toMatch(/nextPrioCursor\(prioCursor, prioRows, stampedIds\)/)
+    expect(s).toMatch(/pendingStamps\.push\(id\); stampedIds\.add\(id\)/)
+  })
+})
+
+describe('⑦ 정리 결과가 어드민에 보인다', async () => {
+  const { sweptWeek } = await import('@/features/marketing/api/company-contact-quality')
+  it('결과를 JSON 으로 남기고, 첫 배포분(주 문자열)도 같은 주로 읽는다', () => {
+    expect(sweptWeek('2026-11-16')).toBe('2026-11-16')
+    expect(sweptWeek(JSON.stringify({ week: '2026-11-16', emails: 3 }))).toBe('2026-11-16')
+    expect(sweptWeek(null)).toBeNull()
+  })
+  it('stats 가 두 키를 읽어 contactQuality 로 내보내고 화면이 그린다', () => {
+    const r = readFileSync('src/features/marketing/api/partner-pool.routes.ts', 'utf8')
+    expect(r).toMatch(/readKey\('ads_shared_contact_sweep'\), readKey\('ads_company_hygiene_sweep'\)/)
+    expect(r).toMatch(/contactQuality: \{ shared: sharedSweep, hygiene: hygieneSweep \}/)
+    expect(readFileSync('src/pages/admin/AdminPartnerPoolPage.tsx', 'utf8')).toMatch(/contactQuality=\{contactQuality\}/)
+    expect(readFileSync('src/pages/admin/partner-pool/StatusLines.tsx', 'utf8')).toMatch(/contactQuality\.shared\?\.at/)
+  })
+})

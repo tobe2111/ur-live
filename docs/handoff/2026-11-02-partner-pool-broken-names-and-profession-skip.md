@@ -98,3 +98,11 @@ D1 `ad_company_leads`(DB `0e9a8f82…`) 에서:
 - 처음 "남의 연락처 2,988행"으로 셌는데, 대부분은 **같은 브랜드 지점들**이었다(업종 1개). 진짜 남의 것은 업종이 흩어진 것뿐이다.
 - `contact_source NOT IN (…)` 은 NULL 행(54만)을 통째로 뺀다 — 첫 집계가 13개만 나온 이유. `COALESCE` 필요.
 - 가짜 판정 첫 판은 `02-928-6446(팩스)`(글자 섞임)와 `lawus@lawus.co.kr`(아이디=도메인)를 잡았다 — 라이브 후보에 돌려 보고 좁혔다.
+
+## 7. 이메일 보강 순서 + 정리 결과 화면 (2026-11-17 대표 *"다 이상적으로 해줘"*) — PR #2389 머지 `ba04aff` 뒤
+- **보강 순서**: 생활·전문직(`ENRICH_PRIORITY_CATEGORIES` — 이사·청소·방역·소독·수리·설치·전문서비스)과 일반 줄을 **번갈아** 세운다.
+  회차가 마감선 때문에 앞의 10건 남짓만 처리하므로(라운드 64회 전부 deadline) 순서가 곧 배분이다. 처리량은 그대로.
+  🩸 첫 판은 일반 쿼리에 `category IN` 을 붙였는데 라이브에서 **회당 69,563행**(하루 445만)을 읽었다 — 정렬 인덱스를 못 탄다.
+  그래서 업종마다 `(category, id)` 인덱스를 커서(`ads_enrich_prio_cursor`)로 내려가는 별 쿼리로 바꿨다 — 실측 **회당 28행**. `enrich-priority.ts`.
+  판정(며칠 뒤): `SELECT category, SUM(email IS NOT NULL AND email!='') FROM ad_company_leads WHERE category IN (…) GROUP BY 1` 이 184·208·879 에서 늘었는가.
+- **화면**: `/admin/partner-pool` 운영 상태줄에 "연락처 정리" 한 줄(남의 연락처 주간 결과 · 위생 스윕 진척). 값은 `/stats` 의 `contactQuality`.
