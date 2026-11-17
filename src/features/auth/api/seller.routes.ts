@@ -671,7 +671,7 @@ sellerRoutes.post('/forgot-password', cors(), rateLimit({ action: 'seller_forgot
       await DB.prepare(`
         INSERT INTO password_reset_tokens (user_type, user_id, token, expires_at)
         VALUES ('seller', ?, ?, ?)
-      `).bind(seller.id, token, expiresAt).run();
+      `).bind(seller.id, await hashToken(token), expiresAt).run(); // 🔐 2026-11-17 원문이 아니라 해시를 저장 — DB 가 읽혀도 재설정 링크를 못 만든다
 
       const baseUrl = FRONTEND_URL || 'https://urdeal.kr';
       // 🛡️ token URL-encode (URL 특수문자 방어) + baseUrl 검증
@@ -747,8 +747,8 @@ sellerRoutes.post('/reset-password', cors(), rateLimit({ action: 'seller_reset_p
     const row = await DB.prepare(`
       SELECT id, user_id, expires_at
       FROM password_reset_tokens
-      WHERE token = ? AND user_type = 'seller'
-    `).bind(token).first<{ id: number; user_id: number; expires_at: string }>();
+      WHERE token IN (?, ?) AND user_type = 'seller'
+    `).bind(await hashToken(token), /^[0-9a-f]{32}$/.test(token) ? token : '').first<{ id: number; user_id: number; expires_at: string }>(); // 해시 + 이행기(1시간) 옛 원문 행. 원문 대조는 **옛 형식(32자 hex)만** — 저장된 해시(`s256$…`)를 토큰인 척 내밀면 안 통한다
 
     if (!row) {
       return c.json<AuthResponse>({

@@ -64,3 +64,11 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
 - 빈 catch 4차: 환불(`returns`)·딜(`points`·`deal-refund`)·정산(`payouts-generate`·`auto-settlement`·`restaurant-settlement`·`settlement-tax-invoices`)·
   영입 커미션·이용권 분쟁·이용권 발급·숙소 — 21곳 → `swallow`. `voucher-dispute` 의 `ALTER TABLE … ADD COLUMN` 한 곳은
   **중복 컬럼 오류가 정상**이라 사유 주석을 단 채 조용히 둔다(로그로 바꾸면 콜드스타트마다 잡음). 관련 시험 73파일 996건 · tsc 0.
+
+## 13차 — 대표 "해킹이나 개인정보 탈취 등의 허점 없을까?" (2026-11-17)
+- **셀러 비밀번호 재설정 토큰을 해시로 저장**(`password_reset_tokens.token` 원문 → `hashToken`). 원문 대조는 옛 형식(32자 hex)만 1시간 이행.
+  🩸 첫 수정이 원문도 그대로 받게 해서, 저장된 해시를 토큰인 척 내밀면 통과했다 — 형식 검사로 막고 주입으로 고정.
+- 확인만(문제 없음): `dangerouslySetInnerHTML` 전수(정적·DOMPurify) · 서버 HTML/OG SVG 이스케이프 · 공개 응답 9곳 실측(손님 PII 0) ·
+  비밀번호 찾기 열거 방지 · 재설정 뒤 세션 무효화 · 라이브 오류 기록(라우터 7 이후 신규 0) · 머니 데이터 대조 · 11-10 이후 신규 쓰기 경로 6개.
+- 대표 판단 대기: 유어샵 공개 응답의 `pins[].deal_pct`(매장↔유어샵 주인 소개비 %)가 방문자에게도 보인다 · 자동화 관리자(10번) PIN/2FA 없음.
+- 읽기 IDOR 전수(주문·이용권·배송지 등)는 조사 에이전트 결과 대기 — 오면 이 파일에 이어 적는다.
