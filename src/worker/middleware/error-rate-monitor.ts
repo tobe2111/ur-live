@@ -45,6 +45,10 @@ export function errorRateMonitor() {
     const webhookUrl = env.DISCORD_WEBHOOK_URL as string | undefined;
     if (!DB || !webhookUrl) return;
 
+    // 🗺️ 2026-11-17 (대표 "유저가 갑자기 많아지는 경우도 대비"): 집계·알림은 응답 **뒤에** 돈다(waitUntil).
+    //   종전엔 5xx 응답이 쓰기 2번 + 읽기 1번(미국 원본)을 기다렸다 — D1 이 버거워 5xx 가 쏟아질 때
+    //   실패한 손님마다 그 왕복이 더 붙어 장애를 키웠다. 집계 내용·임계·알림은 그대로다.
+    const work = (async () => {
     try {
       const now = Math.floor(Date.now() / 1000);
       const windowStart = now - (now % WINDOW_SEC);
@@ -101,5 +105,7 @@ export function errorRateMonitor() {
     } catch {
       // monitoring 실패해도 요청 막지 않음
     }
+    })();
+    try { c.executionCtx.waitUntil(work) } catch { await work } // 테스트 등 executionCtx 없는 환경은 종전처럼 기다린다
   };
 }

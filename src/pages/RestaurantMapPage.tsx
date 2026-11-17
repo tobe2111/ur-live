@@ -39,7 +39,7 @@ import { panToRegionAccurate } from './restaurant-map/pan-to-region'
 import { useSearchPan, useSearchDeals } from './restaurant-map/useSearchPan'
 import GeoHelpSheet, { type GeoHelpReason } from './restaurant-map/GeoHelpSheet'
 import { detectInAppBrowser } from '@/lib/in-app-browser'
-import { checkPermission } from '@/lib/in-app-warning'
+import { checkPermission } from '@/lib/in-app-warning'; import { snapMapBbox } from '@/shared/map-bbox-snap' // 🗺️ 지도 이동을 캐시에 태운다
 import { readCachedLoc, rememberLoc } from '@/shared/utils/cached-loc'; export { prefetchMapSeedFirstPage } from '@/hooks/queries/useMapProducts' // 🐢 2026-11-02 홈 map-warmup 이 이 모듈로 지도 첫 목록을 미리 받는다(홈이 직접 import 하면 묶음 봉투가 다시 짜인다) · 한 줄: 래칫
 
 // re-export so that any callers importing KakaoPlace from RestaurantMapPage 가 깨지지 않음
@@ -494,7 +494,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         try {
           const b = map.getBounds(); if (!b) return
           const sw = b.getSouthWest(), ne = b.getNorthEast()
-          const bbox = `${sw.getLat()},${sw.getLng()},${ne.getLat()},${ne.getLng()}`
+          const bbox = snapMapBbox(sw.getLat(), sw.getLng(), ne.getLat(), ne.getLng())
           const cat = voucherType === 'all' ? 'all' : voucherType
           const level = map.getLevel()
           if (level >= AGG_LEVEL) {
