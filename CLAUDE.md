@@ -1372,7 +1372,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 
 ### 자동 배포 규칙
 - 브랜치 push → **PR → CI(Verify) 초록 → auto-merge(squash)** → main 머지 시 배포 (위 🔀 절)
-- ⚠️ 2026-11-17 정정: 여기 *"PostToolUse 훅이 자동 main 머지 (`scripts/auto-merge-main.sh`)"* 라고 적혀 있었지만 그 훅은 `.claude/settings.json` 에 **연결돼 있지 않다**(SessionStart 훅만 있음). 그 스크립트를 손으로 돌리면 PR·CI 를 건너뛰고 main 에 들어가니 쓰지 말 것.
+- ⚠️ 2026-11-17 정정: 여기 *"PostToolUse 훅이 자동 main 머지 (`scripts/auto-merge-main.sh`)"* 라고 적혀 있었지만 그 훅은 `.claude/settings.json` 에 **연결돼 있지 않다**(SessionStart 훅만 있음). 그 스크립트(손으로 돌리면 PR·CI 를 건너뛰고 main 에 들어갔다)는 같은 날 삭제했다.
 
 ### 변경 후 체크리스트
 1. `bash scripts/check-schema-refs.sh`

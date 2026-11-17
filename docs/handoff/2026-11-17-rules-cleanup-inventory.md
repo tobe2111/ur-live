@@ -15,7 +15,7 @@
 | 🚀 자동 배포 | PostToolUse 훅이 main 자동 머지 | 훅 연결 안 됨(SessionStart 만). 실제는 PR → auto-merge |
 | 🎨 다크 테마 | `bg-[#020202]` | 쓰는 페이지 0개, 색 SSOT 는 디자인 시스템 절 |
 
-## 대표 판단이 필요한 정리 후보 (아직 손대지 않음)
+## 정리 후보 (대표 *"응 다 해줘"* → 아래 결과)
 1. **`scripts/auto-merge-main.sh` 삭제** — 연결 안 됨 + 손으로 돌리면 PR·CI 를 건너뛰고 main 에 넣는다(위험만 남음).
 2. **`scripts/check-react-version.cjs` 삭제** — 아무 데서도 안 돈다.
 3. **도매 전용 검사 4개 축소/삭제** — 도매몰 2026-10-11 철거. 지금 스캔 대상이 거의 없다:
@@ -32,3 +32,10 @@
 
 ## 이어받는 세션의 첫 액션
 대표가 위 1~3 중 고른 번호만 실행. 3번은 `wholesale-teardown-2026-10-11.test.ts` 가 지키는 범위를 먼저 읽고 시작.
+
+## ✅ 실행 결과 (대표 *"응 다 해줘"*)
+- 삭제: `scripts/auto-merge-main.sh` + 짝 훅 `.claude/hooks/post-bash-auto-merge.sh`(이미 `exit 0` no-op) · `scripts/check-react-version.cjs`
+  · `check-wholesale-admin-nav-reachability` · `check-wholesale-admin-api-scope`(verify.yml·audit-gate 배선 제거, 불변식 116 → 114).
+- **남김(삭제 안 함)**: `check-wholesale-order-status` — 남은 정산 엔진(`wholesale-deposit-core.ts:183`)이 여전히 `status='FAILED'` 를 쓴다.
+  `check-seller-wholesale-redirect` — `RouteGuards.tsx` 등이 아직 `is_distributor` 를 읽어 겸업 lock-out 이 재발할 수 있다.
+- **안 한 것**: 도매 어드민 역할(`'wholesale'`)을 코드에서 지우는 것 — 인증(RBAC) 경로라 별개 작업. 지금은 `AdminLayout` 이 그 역할을 로그인으로 돌려보낸다.

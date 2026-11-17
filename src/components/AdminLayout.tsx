@@ -134,7 +134,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   // 🧨 2026-10-20 `/admin/maker-pool` 은 화면째 삭제(대표 "지워줘") — 아래 세 줄은 그때의 이유 기록.
   //   ① 영업 대상 리드 DB 는 유어팀 내부 자산이지 도매 파트너에게 보일 것이 아니고
   //   ② API 가 `/api/admin/maker-pool/*` 라 도매 RBAC 스코프 밖 → 파트너가 열면 403 빈화면이다.
-  //   (②는 `check-wholesale-admin-api-scope` 가 실제로 잡아냈다 — 밴드만 옮기고 여기를 안 고쳤을 때.)
+  //   (②는 옛 가드 `check-wholesale-admin-api-scope` 가 잡아냈다 — 그 가드는 2026-11-17 지킬 화면이 없어져 삭제.)
   const SUPER_ONLY_NAV = new Set(['/admin/accounts', '/admin/audit-log', '/admin/login-history', '/admin/wholesale-malls'])
   const stripSuperOnly = (groups: typeof VISIBLE_NAV_GROUPS) => groups
     .map((g) => ({ ...g, items: g.items.filter((it) => !SUPER_ONLY_NAV.has(it.path)) }))

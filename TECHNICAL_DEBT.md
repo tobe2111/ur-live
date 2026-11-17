@@ -83,7 +83,7 @@
 
 ### ✅ Tier 1 — 안전 게이트 (완료, commit)
 - **결제 SSOT `toss-gateway` 테스트 0→12** (`src/tests/unit/toss-gateway.test.ts`) — 순수함수 + confirm/cancel early-return 가드 + error-messages 매핑 (네트워크 X). 잠긴 gateway 미수정.
-- **배포 게이트**: `auto-merge-main.sh` 가 main 머지(=Cloudflare 배포) 전 `tsc --noEmit` 실행 → 타입에러로 깨진 배포 차단(esbuild 가 strip 하던 class). bypass `[SKIP_GATE]`/`SKIP_DEPLOY_GATE=1`.
+- **배포 게이트** (⚠️ 2026-11-17 `auto-merge-main.sh` 삭제 — 지금 게이트는 PR Verify + auto-merge): `auto-merge-main.sh` 가 main 머지(=Cloudflare 배포) 전 `tsc --noEmit` 실행 → 타입에러로 깨진 배포 차단(esbuild 가 strip 하던 class). bypass `[SKIP_GATE]`/`SKIP_DEPLOY_GATE=1`.
 
 ### 🔧 stale 정정 (재측정 결과 — 부채가 문서보다 적음)
 - **"클라 에러누출 ~33곳" → 실제 user-facing 0**. `seller-orders`/`seller-streams`/`seller-profile` 는 이미 전부 `safeError`. `products`(공개) 5곳은 이번 라운드 fix. **남은 실반환 누출은 admin-gated/internal ~5** (`admin-kt-alpha` 3·대부분 slice(200), `bulk-upload` row-result 1, `internal-diagnostics` 1) — 신뢰 사용자·저위험. cron 의 `(err).message` 들은 `logError` 호출(클라 반환 아님, 누출 아님).

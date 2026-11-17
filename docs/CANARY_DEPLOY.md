@@ -98,7 +98,7 @@ curl -X POST \
 # 이전 커밋으로 되돌리기 (새 커밋 생성 — revert 방식)
 git revert HEAD --no-edit
 git push origin main
-# auto-merge-main.sh 가 자동으로 Cloudflare Pages 배포 트리거
+# main 머지(PR auto-merge) 시 main.yml 이 Cloudflare Pages 배포 (auto-merge-main.sh 는 2026-11-17 삭제)
 ```
 
 ## 롤백 판단 기준
