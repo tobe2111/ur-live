@@ -106,6 +106,7 @@ export interface RegistryMatchStats {
 }
 import { phoneMatchKey, pickRegistryContact, type RegistryPhoneRow } from './registry-phone-match'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
+import { chunkForBinds } from '../../../shared/db/d1-binds'
 
 const STATS_KEY = 'ads_registry_match_stats'
 const CURSOR_KEY = 'ads_registry_match_cursor'
@@ -262,8 +263,7 @@ export async function matchRegistryEmails(env: Env, batch = 400, budget?: D1Budg
     //   ⇒ 억제 여부를 먼저 리드 DB 에 따로 묻고, UPDATE 는 업체 표 하나만 만진다.
     const wanted = [...new Set(updates.map(u => u.email).filter((e): e is string => !!e).map(e => e.toLowerCase()))]
     const suppressed = new Set<string>()
-    for (let i = 0; i < wanted.length; i += 90) {
-      const part = wanted.slice(i, i + 90)
+    for (const part of chunkForBinds(wanted)) {
       const r = await DB.prepare(`SELECT email FROM ad_email_suppress WHERE email IN (${part.map(() => '?').join(',')})`)
         .bind(...part).all<{ email: string }>().catch(() => null)
       spend(budget)

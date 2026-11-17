@@ -27,6 +27,8 @@
  *   공유 판정에서 뺀다(본사 대표번호를 지점들이 같이 쓰는 경우).
  */
 
+import { chunkForBinds } from '../../../shared/db/d1-binds'
+
 /** 가짜 전화 — 숫자 아닌 글자(`N/A`·`010-개인정보`)거나, 국번 뒤가 같은 숫자·연번이다. */
 export function isPlaceholderPhone(raw: string | null | undefined): boolean {
   const s = String(raw ?? '').trim()
@@ -131,8 +133,7 @@ export async function sweepSharedContacts(DB: D1Database, nowMs = Date.now()): P
     // ① 남의 이메일 → 억제 표(리드 DB)
     const cand = ((await DB.prepare(SHARED_EMAIL_CANDIDATE_SQL).all<{ v: string }>())?.results || []).map(r => String(r.v))
     const emails: string[] = []
-    for (let i = 0; i < cand.length; i += 90) {
-      const part = cand.slice(i, i + 90)
+    for (const part of chunkForBinds(cand)) {
       const r = (await DB.prepare(sharedEmailVerdictSql(part.length)).bind(...part).all<{ v: string }>())?.results || []
       for (const x of r) emails.push(String(x.v).trim().toLowerCase())
     }
@@ -145,8 +146,7 @@ export async function sweepSharedContacts(DB: D1Database, nowMs = Date.now()): P
     //   ⚠️ `lower(email)` 로 비교하면 인덱스를 못 탄다 — 그대로 비교한다(억제 표·저장값 모두 소문자로 들어온다).
     const sup = (await DB.prepare('SELECT email FROM ad_email_suppress LIMIT 5000').all<{ email: string }>())?.results || []
     const supList = [...new Set(sup.map(r => String(r.email)).filter(Boolean))]
-    for (let i = 0; i < supList.length; i += 90) {
-      const part = supList.slice(i, i + 90)
+    for (const part of chunkForBinds(supList)) {
       const r = await DB.prepare(
         `UPDATE ad_company_leads SET email = NULL,
            active = CASE WHEN phone IS NOT NULL AND phone != '' THEN active ELSE 0 END
@@ -161,8 +161,7 @@ export async function sweepSharedContacts(DB: D1Database, nowMs = Date.now()): P
     const phones = [...new Set([...ph.map(r => String(r.v).trim()), ...prev].filter(Boolean))].slice(0, PHONE_BLOCK_CAP)
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(SHARED_PHONE_KEY, JSON.stringify(phones)).run()
     const ids = ph.flatMap(r => String(r.ids || '').split(',').map(Number).filter(n => Number.isInteger(n) && n > 0))
-    for (let i = 0; i < ids.length; i += 90) {
-      const part = ids.slice(i, i + 90)
+    for (const part of chunkForBinds(ids)) {
       const r = await DB.prepare(
         `UPDATE ad_company_leads SET phone = NULL,
            active = CASE WHEN email IS NOT NULL AND email != '' THEN active ELSE 0 END
