@@ -17,6 +17,7 @@
  */
 import { isValidKrPhone, formatKrPhone, isPlatformRootUrl, NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
 import { OVERSEAS_FREEMAIL_DOMAINS } from './company-hygiene-sweep'
+import { isPlaceholderPhone, isPlaceholderEmail } from './company-contact-quality'
 
 /**
  * 🔤 **HTML 엔티티 디코딩** — 화면에 `SM C&amp;C 성수` 가 **글자 그대로** 보인다 (2026-08-13 실측 24건).
@@ -110,6 +111,16 @@ export function hygieneStatements<T>(
     out.push(prep('UPDATE ad_company_leads SET active = 0 WHERE id = ? AND active = 1').bind(r.id))
   }
 
+  // 🎭 가짜(자리표시) 연락처 — `010-0000-0000` · `N/A` · `gmail.com@gmail.com` 류(판정 SSOT `company-contact-quality`).
+  //   칸만 비운다. 남은 연락처가 없으면 보류 — 사유는 안 적는다(진짜 연락처가 생기면 활성이 맞다).
+  //   ⚠️ 위 전화 규칙들과 같은 칸을 만질 수 있다 — 가짜는 국번 검증(홈페이지 출처만)을 통과하는 것도 있어서 따로 본다.
+  if (r.phone && isPlaceholderPhone(r.phone)) {
+    out.push(prep("UPDATE ad_company_leads SET phone = NULL, active = CASE WHEN email IS NOT NULL AND email != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
+  }
+  if (r.email && isPlaceholderEmail(r.email)) {
+    out.push(prep("UPDATE ad_company_leads SET email = NULL, active = CASE WHEN phone IS NOT NULL AND phone != '' THEN active ELSE 0 END WHERE id = ?").bind(r.id))
+  }
+
   return out
 }
 
@@ -125,6 +136,9 @@ export const OVERSEAS_FREEMAIL = new RegExp(`@(?:${OVERSEAS_FREEMAIL_DOMAINS.map
  * ⚠️ fail-soft — 위생 작업이 재분류를 멈추게 하면 안 된다.
  */
 export async function sweepSuppressedEmails(DB: D1Database): Promise<void> {
-  await DB.prepare('UPDATE ad_company_leads SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
+  // 🗄️ 업체 행 쪽은 여기서 하지 않는다 (2026-11-17). 업체 리드가 `ADS_COMPANY_DB` 로 이사한 뒤로 억제 표는 리드 DB 에만
+  //   있어서, 두 표를 한 문장에 담은 이 UPDATE 는 업체 DB 로 가서 `no such table` 로 **매시간 조용히 실패**했다.
+  //   지금은 `company-contact-quality.ts` 의 주간 정리가 값 목록을 먼저 읽고 업체 표만 만진다.
+  //   (매장 후보 `store_prospects` 는 억제 표와 같은 리드 DB 라 아래 문장은 그대로 동작한다.)
   await DB.prepare('UPDATE store_prospects SET email = NULL WHERE email IS NOT NULL AND email IN (SELECT email FROM ad_email_suppress)').run().catch(() => null)
 }

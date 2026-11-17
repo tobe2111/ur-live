@@ -31,7 +31,7 @@
 import type { HygieneRow } from './company-lead-hygiene'
 
 /** 스윕 세대. 위생 규칙이 바뀌어 **과거 행을 다시 훑어야 할 때만** 올린다(랩 버전과 무관). */
-export const HYGIENE_SWEEP_VERSION = 2 // 2026-11-02: 해외(중국) 무료메일 온라인판매 보류 규칙 — 테이블을 한 번 더 훑는다
+export const HYGIENE_SWEEP_VERSION = 3 // 2026-11-17: 가짜(자리표시) 연락처 정리 — 테이블을 한 번 더 훑는다
 
 const HYGIENE_STATE = 'ads_company_hygiene_sweep'
 /** id 창 크기 — 회차당 스캔량을 예측 가능하게 묶는다(이 레인은 CPU 로 죽은 이력이 있다). */
@@ -63,10 +63,28 @@ export const PHONE_SHAPE_SUSPECT_SQL = `(
 /** 🌏 중국 무료메일 도메인 — 위생 규칙(`company-lead-hygiene` 🌏)과 아래 좁히개가 **같은 목록**을 쓴다. */
 export const OVERSEAS_FREEMAIL_DOMAINS = ['163.com', '126.com', 'qq.com', 'sina.com', 'sina.cn', 'sohu.com', 'yeah.net', 'foxmail.com', '139.com', 'aliyun.com'] as const
 
-/** 결함 후보 술어 — 전화 모양 + 이름에 남은 HTML 엔티티(`SM C&amp;C 성수`) + 해외 무료메일 온라인판매(🌏). */
+/**
+ * 🎭 가짜 연락처 좁히개 — 판정은 `company-contact-quality` 의 함수가 한다(여기는 넓게 잡아도 무해).
+ *   전화: 글자가 섞였거나(`N/A`·`010-개인정보`) 뒤 8자리가 반복·연번. 이메일: 예시 도메인·예시 아이디·아이디=도메인.
+ */
+export const PLACEHOLDER_CONTACT_SUSPECT_SQL = `(
+       (phone IS NOT NULL AND phone != '' AND (phone GLOB '*[^0-9 ()+.~-]*'
+          OR phone LIKE '%0000-0000' OR phone LIKE '%1111-1111' OR phone LIKE '%1234-5678' OR phone LIKE '%1234-1234'
+          OR phone LIKE '%5678-5678' OR phone LIKE '%8765-4321' OR length(replace(replace(phone,'-',''),' ','')) < 8))
+    OR (email IS NOT NULL AND email != '' AND (email LIKE '%@example.%' OR email LIKE '%@test.com' OR email LIKE '%@email.com'
+          OR email LIKE '%@domain.com' OR email LIKE '%@111.com' OR email LIKE '%@abc.com' OR email LIKE '%@aaa.com'
+          OR email LIKE '%@company.com' OR email LIKE '%@xxx.com' OR email LIKE '%@yourdomain.com'
+          OR email LIKE 'email@%' OR email LIKE 'mail@%' OR email LIKE 'test@%' OR email LIKE 'example@%' OR email LIKE 'admin@%'
+          OR email LIKE 'abc@%' OR email LIKE 'aaa@%' OR email LIKE 'id@%' OR email LIKE 'user@%' OR email LIKE 'none@%'
+          OR email LIKE 'gmail.com@%' OR email LIKE 'naver.com@%' OR email LIKE 'naver@%' OR email LIKE 'gmail@%'
+          OR email LIKE 'daum.net@%' OR email LIKE 'hanmail@%' OR email LIKE '11%@%' OR email LIKE '00%@%'))
+  )`
+
+/** 결함 후보 술어 — 전화 모양 + 이름에 남은 HTML 엔티티(`SM C&amp;C 성수`) + 해외 무료메일 온라인판매(🌏) + 가짜 연락처(🎭). */
 export const HYGIENE_SUSPECT_SQL =
   `(company_name LIKE '%&%;%') OR (phone IS NOT NULL AND phone != '' AND ${PHONE_SHAPE_SUSPECT_SQL})`
   + ` OR (active = 1 AND category = '온라인판매' AND (${OVERSEAS_FREEMAIL_DOMAINS.map(d => `email LIKE '%@${d}'`).join(' OR ')}))`
+  + ` OR ${PLACEHOLDER_CONTACT_SUSPECT_SQL}`
 
 export interface HygieneSweepResult {
   scanned: number
@@ -96,6 +114,10 @@ function readState(raw: string | null | undefined): SweepState {
  */
 export async function sweepCompanyHygiene(DB: D1Database, idWindow = ID_WINDOW): Promise<HygieneSweepResult> {
   const { hygieneStatements } = await import('./company-lead-hygiene')
+  // 🧱 스키마 보장을 먼저 한다(이미 했으면 무비용) — 좁히개가 새 칸을 읽게 되는 순간(다음 PR `hold_reason`),
+  //   배포 직후 그 칸이 아직 없으면 SELECT 가 실패한다. 실패는 아래에서 커서를 멈추게 했다.
+  const { ensureCompanySchema } = await import('./company-discovery')
+  await ensureCompanySchema(DB)
 
   const cur = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(HYGIENE_STATE)
     .first<{ value: string }>().catch(() => null)
@@ -103,12 +125,15 @@ export async function sweepCompanyHygiene(DB: D1Database, idWindow = ID_WINDOW):
   if (st.done) return { scanned: 0, fixed: 0, cursor: st.cursor, done: true, skipped: true }
 
   const hi = st.cursor + Math.max(1_000, idWindow)
-  const rows = (await DB.prepare(
+  const rowsRes = (await DB.prepare(
     `SELECT id, company_name, phone, email, website, category, contact_source
        FROM ad_company_leads
       WHERE merged_into IS NULL AND id > ? AND id <= ? AND (${HYGIENE_SUSPECT_SQL})
       ORDER BY id`,
-  ).bind(st.cursor, hi).all<HygieneRow>().catch(() => null))?.results || []
+  ).bind(st.cursor, hi).all<HygieneRow>().catch(() => null))
+  // 🩺 조회 실패는 '결함 0' 이 아니다 — 커서를 움직이지 않고 끝낸다(다음 회차가 같은 창을 다시 본다).
+  if (!rowsRes) return { scanned: 0, fixed: 0, cursor: st.cursor, done: false }
+  const rows = rowsRes.results || []
 
   const stmts: D1PreparedStatement[] = []
   let fixed = 0

@@ -70,3 +70,31 @@ D1 `ad_company_leads`(DB `0e9a8f82…`) 에서:
 - ❌ **프랜차이즈는 여전히 0** — 그리고 `diag.save_error` 도 비어 있었다. 원인: 저장 함수(`company-save.ts`) **안**의 `DB.batch(...).catch(() => null)` 이 먼저 삼켜 예외가 레인까지 안 왔다(11-02 진단이 헛돈 이유). 이번에 저장 함수가 직접 `error`(묶음 실패 원문 / `ALL_REJECTED {사유:건수}`)를 돌려주게 했다. 가드 `company-save-error-surface-2026-11-17.test.ts` + 주입 2.
 - 판정: 배포 후 `GET /api/admin/partner-pool/stats` → `franchise.run.diag.save_error` 원문.
 - 통신판매(온라인판매) 543,000곳 중 518,594곳(95%)은 아직 세부 업종 없이 `통신판매` — detail 수집이 돌수록 줄어든다(종합몰 11-02 2,623 → 7,543).
+
+## 6. ② 남의·가짜 연락처 정리 + 숨은 고장 2건 (2026-11-17 대표 *"다 해줘. 더 개선할 건?"*)
+라이브 실측(조회만):
+- **가짜 연락처** — 판정 `company-contact-quality.ts`. 전화 461행(`N/A` 213 · `010-0000-0000` 91 · `010-1234-5678` 52 · `010-개인정보` 25…) ·
+  이메일 66행(`gmail.com@gmail.com` 21 · `email@naver.com` 12 · `111@111.com` 10…). 그중 연락처가 하나도 안 남아 보류로 내려갈 활성 행 157.
+  입구(`company-save`·보강 저장)에서도 버린다. 백로그는 위생 스윕 v3(id 창 5만 · 약 하루).
+- **남의 연락처** = 같은 연락처가 **업종 3개 이상**에 걸림(행 5+). 이메일 16개(`hosting@gabia.com` 92행 · `support@dable.io` · `ad@daangn.com`…) ·
+  전화 25개(`052-5525-5255` 101행 · `031-709-8111` 48행…). 같은 브랜드 지점 묶음(업종 1~2개 — `그린프로청소`·`새집느낌`·`풍연1~9지점`)은 **안 건드린다.**
+  주 1회 정리(`sweepSharedContacts`, 재분류 레인 하트비트 `shared=`): 이메일은 `ad_email_suppress`(사유 `shared_vendor`) → 보강·등록부·발송이 모두 거른다 ·
+  전화는 `ads_shared_phone_block` 설정 → 보강 저장이 거른다. 등록부 출처(commerce·govreg·registry) 전화는 남긴다.
+- 🩸 **숨은 고장 ① — DB 를 섞은 SQL 2건.** 업체 리드가 `ADS_COMPANY_DB` 로 이사(08-23)한 뒤 `ad_email_suppress` 는 리드 DB 에만 있다.
+  `registry-email-match` 의 UPDATE 와 `sweepSuppressedEmails` 의 업체 쪽 UPDATE 가 그 표를 서브쿼리로 불러 **업체 DB 에서 `no such table`** 로 죽었다
+  (등록부 대조는 매칭이 0 인 날이 많아 안 보였을 뿐, 하나라도 맞으면 묶음 전체가 실패). 둘 다 "목록을 먼저 읽고 업체 표만 만진다"로 고침 + 가드(④).
+- 🩸 **숨은 고장 ② — 보류가 되살아난다.** `active = 0` 이 *연락처 없음* 과 *규칙이 뺌*(중국 메일·도어웨이)을 겸해서, 수집·보강 7경로가 연락처를 보면 1 로 올렸다.
+  중국 메일 활성 693(오전) → 728(오후) · v12 도장인데 활성인 도어웨이 18. ⇒ `hold_reason` 칸을 이번 PR 에서 **만들기만** 한다.
+  컬럼 가드는 라이브에 실제로 있는 칸만 믿으므로(`live-schema.snapshot.json`), **쓰는 코드는 다음 PR**.
+- 가드 `company-contact-quality-2026-11-17.test.ts`(진짜 SQLite) + 주입 5건 전부 빨간불.
+
+### 이어받는 세션의 첫 액션 (대표가 이어서 하라고 했을 때만)
+1. 배포 후 업체 DB(`0e9a8f82…`)에 `SELECT COUNT(*) FROM pragma_table_info('ad_company_leads') WHERE name='hold_reason'` → 1 이면
+   `node scripts/snapshot-live-schema.mjs` 로 사진을 다시 찍고, 보류 고정 PR(재활성 7경로 `WHEN hold_reason IS NOT NULL THEN active` ·
+   중국 메일/도어웨이 보류에 사유 기록 · 위생 스윕 v4 · 재활성 SQL 전수 가드)을 올린다.
+2. 재분류 하트비트 `shared=e16/… p25/…` 가 찍혔는지 · 위생 스윕 `hyg=` 가 v3 로 다시 돌기 시작했는지.
+
+### 틀렸던 판단
+- 처음 "남의 연락처 2,988행"으로 셌는데, 대부분은 **같은 브랜드 지점들**이었다(업종 1개). 진짜 남의 것은 업종이 흩어진 것뿐이다.
+- `contact_source NOT IN (…)` 은 NULL 행(54만)을 통째로 뺀다 — 첫 집계가 13개만 나온 이유. `COALESCE` 필요.
+- 가짜 판정 첫 판은 `02-928-6446(팩스)`(글자 섞임)와 `lawus@lawus.co.kr`(아이디=도메인)를 잡았다 — 라이브 후보에 돌려 보고 좁혔다.
