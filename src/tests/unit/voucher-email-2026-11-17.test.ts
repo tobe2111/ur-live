@@ -1,5 +1,5 @@
 /**
- * 🧪 2026-11-17 외국인 손님 이용권 이메일(`shared/voucher-email.ts` · `worker/utils/voucher-email-send.ts`).
+ * 🧪 2026-11-17 외국인 손님 이용권 이메일(`worker/utils/voucher-email-html.ts` · `worker/utils/voucher-email-send.ts`).
  *
  * ① 언어: ko·ja·zh 는 그대로, 그 밖(en·es·fr·모름)은 영어.
  * ② 내용: 코드·`/v/:code` 링크·매장 한국어 원문·유효기간(KST 날짜)·12개월 안내가 들어 있다. 이상한 코드·꺾쇠는 새지 않는다.
@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readCode } from '../helpers/source-text'
-import { buildVoucherIssuedEmail, voucherEmailLang, voucherEmailDate } from '@/shared/voucher-email'
+import { buildVoucherIssuedEmail, voucherEmailLang, voucherEmailDate } from '@/worker/utils/voucher-email-html'
 
 const base = { productName: '참치김밥 2줄', storeName: '김밥천국 홍대점', storeAddress: '서울 마포구 와우산로 21', codes: ['UD7K2Q9M'], expiresAt: '2027-11-16 20:00:00' }
 

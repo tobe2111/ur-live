@@ -10,7 +10,7 @@
  * QR 그림은 넣지 않는다 — 외부 QR 서비스에 코드를 보내면 코드가 새고, 메일 속 SVG 는 대부분 막힌다. 대신 버튼이
  * 같은 화면(`/v/:code`, 로그인 불필요)을 연다.
  */
-import { VOUCHER_VALIDITY_LABEL } from './voucher-validity'
+import { VOUCHER_VALIDITY_LABEL } from '../../shared/voucher-validity'
 
 export type VoucherEmailLang = 'en' | 'ja' | 'zh' | 'ko'
 

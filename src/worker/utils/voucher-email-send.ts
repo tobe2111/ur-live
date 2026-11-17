@@ -1,12 +1,12 @@
 /**
  * ✉️ 이용권 발급 이메일 보내기 (2026-11-17 — 외국인 해외 간편결제 손님용).
  *
- * 내용은 `shared/voucher-email.ts`(순수 함수)가 만들고, 여기서는 주문 → 이용권·상품·손님 이메일을 읽어 보낸다.
+ * 내용은 `worker/utils/voucher-email-html.ts`(순수 함수)가 만들고, 여기서는 주문 → 이용권·상품·손님 이메일을 읽어 보낸다.
  * 🔒 **기본 꺼짐** — `platform_settings.voucher_email_enabled = 'true'` 일 때만 보낸다(발송은 결재 C 등급).
  *   지금 이 함수를 부르는 결제 레일은 없다. 해외 간편결제(페이팔) 레일이 생기면 승인 직후 이걸 부른다.
  * 멱등: 같은 주문에 두 번 보내지 않는다 — 주문 단위 표 `order_voucher_email`(INSERT OR IGNORE 선점), 첫 호출 때 만든다.
  */
-import { buildVoucherIssuedEmail } from '../../shared/voucher-email'
+import { buildVoucherIssuedEmail } from './voucher-email-html'
 import { sendSystemEmail } from '../../lib/system-email'
 
 type D1 = D1Database

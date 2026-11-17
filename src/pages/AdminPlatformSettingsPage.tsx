@@ -173,6 +173,13 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     text: true,
   },
   {
+    // ✉️ 2026-11-17 외국인 이용권 발급 이메일(worker/utils/voucher-email-send.ts). 발송은 결재 — 켜기 전 S-VMAIL.
+    key: 'voucher_email_enabled',
+    label: '외국인 이용권 발급 이메일',
+    hint: "기본 꺼짐. 'true' 면 해외 간편결제 손님에게 결제 직후 이용권 링크 메일(en·ja·zh·ko)을 보낸다. 켜기 전 S-VMAIL 절차.",
+    text: true,
+  },
+  {
     key: 'home_service_quotes_disabled',
     label: '생활 견적 운영 중지(비상)',
     hint: "기본 꺼짐(=운영). 'true' 면 손님 요청 접수와 사장님 견적 보내기가 멈춘다. 충전된 참여권은 그대로.",
