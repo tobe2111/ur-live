@@ -24,7 +24,7 @@ import { ensureOrdersDealUsed } from '../utils/ensure-order-columns';
 import { revokeReferralCommissionsForOrder } from '../utils/referral-commission-revoke';
 import { swallow } from '../utils/swallow';
 import { hideOrder } from '../utils/hidden-orders';
-import { requireAuth, type AuthUser } from '../middleware/auth';
+import { requireUserType, type AuthUser } from '../middleware/auth';
 import { calculateShippingFee, generateId } from '../../shared/utils';
 import type { CreateOrderRequest } from '../../shared/types';
 import { tossCancelPayment } from '../utils/toss-payments';
@@ -40,7 +40,7 @@ type AuthVariables = { user: AuthUser };
 const ordersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
 // All order routes require authentication (Firebase + JWT support)
-ordersRouter.use('*', requireAuth());
+ordersRouter.use('*', requireUserType('user', 'admin')); // 🔐 2026-11-17 셀러·에이전시 토큰의 id 를 유저 id 로 읽던 것(주문 PII) — 셀러 주문은 /api/seller/orders
 
 /**
  * 🛡️ Order ID 포맷 검증 (스키마 이중화: INTEGER or TEXT/nanoid).

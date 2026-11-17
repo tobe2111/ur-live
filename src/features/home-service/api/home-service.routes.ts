@@ -17,7 +17,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, getCurrentUser, requireUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { parseRegionFromAddress } from '@/shared/constants/region-slugs'
 import { kstYmd } from '@/shared/stays-early'
@@ -171,7 +171,7 @@ homeServiceRoutes.get('/deal-subcats', publicCache(100), async (c) => {
   }
 })
 
-homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_service_request', max: 5, windowSec: 3600 }), async (c) => {
+homeServiceRoutes.post('/requests', requireUser(), rateLimit({ action: 'home_service_request', max: 5, windowSec: 3600 }), async (c) => {
   try {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)
@@ -223,7 +223,7 @@ homeServiceRoutes.post('/requests', requireAuth(), rateLimit({ action: 'home_ser
   }
 })
 
-homeServiceRoutes.get('/requests/mine', requireAuth(), async (c) => {
+homeServiceRoutes.get('/requests/mine', requireUser(), async (c) => {
   try {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)
@@ -239,7 +239,7 @@ homeServiceRoutes.get('/requests/mine', requireAuth(), async (c) => {
   }
 })
 
-homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
+homeServiceRoutes.get('/requests/:id', requireUser(), async (c) => {
   try {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)
@@ -303,7 +303,7 @@ homeServiceRoutes.get('/requests/:id', requireAuth(), async (c) => {
 })
 
 /** ⭐ 후기 — 고른 업체에 한 번(요청 하나에 하나). 고르기 전·남의 요청·두 번째는 막는다. */
-homeServiceRoutes.post('/requests/:id/review', requireAuth(), rateLimit({ action: 'home_service_review', max: 10, windowSec: 600 }), async (c) => {
+homeServiceRoutes.post('/requests/:id/review', requireUser(), rateLimit({ action: 'home_service_review', max: 10, windowSec: 600 }), async (c) => {
   try {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)
@@ -329,10 +329,10 @@ homeServiceRoutes.post('/requests/:id/review', requireAuth(), rateLimit({ action
 })
 
 // 💬 고르기 전 질문 — `home-service-chat.ts`.
-homeServiceRoutes.get('/requests/:id/quotes/:qid/messages', requireAuth(), customerListMessages)
-homeServiceRoutes.post('/requests/:id/quotes/:qid/messages', requireAuth(), rateLimit({ action: 'home_service_chat', max: 30, windowSec: 600 }), customerSendMessage)
+homeServiceRoutes.get('/requests/:id/quotes/:qid/messages', requireUser(), customerListMessages)
+homeServiceRoutes.post('/requests/:id/quotes/:qid/messages', requireUser(), rateLimit({ action: 'home_service_chat', max: 30, windowSec: 600 }), customerSendMessage)
 
-homeServiceRoutes.post('/requests/:id/choose', requireAuth(), async (c) => {
+homeServiceRoutes.post('/requests/:id/choose', requireUser(), async (c) => {
   try {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)
@@ -353,7 +353,7 @@ homeServiceRoutes.post('/requests/:id/choose', requireAuth(), async (c) => {
   }
 })
 
-homeServiceRoutes.post('/requests/:id/cancel', requireAuth(), async (c) => {
+homeServiceRoutes.post('/requests/:id/cancel', requireUser(), async (c) => {
   try {
     const DB = c.env.DB
     await ensureHomeServiceTables(DB)

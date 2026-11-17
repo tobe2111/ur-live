@@ -22,7 +22,7 @@
  */
 import { Hono } from 'hono'
 import type { D1Database, R2Bucket } from '@cloudflare/workers-types'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, getCurrentUser, requireUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { notifyUser } from '@/lib/notifications'
 import { dispatchNotification } from '@/lib/notification-dispatcher'
@@ -340,7 +340,7 @@ publicApp.get('/campaigns/:slug', async (c) => {
 
 // ══════════════════════════ 유저 ══════════════════════════
 const userApp = new Hono<{ Bindings: DistrictEnv }>()
-userApp.use('*', requireAuth())
+userApp.use('*', requireUser())
 
 // 영수증 등록 — multipart(image, store_id, amount, card_approval_no)
 userApp.post('/campaigns/:slug/receipts',

@@ -13,7 +13,7 @@ import { cors } from 'hono/cors';
 import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
-import { swallow } from '@/worker/utils/swallow';
+import { swallow } from '@/worker/utils/swallow'; import { publicAuction, publicBid } from './auction-public';
 const auctionRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ Numeric id validation — params used in SQL must be pure digits
@@ -353,7 +353,7 @@ auctionRoutes.get('/stream/:streamId', async (c) => {
     'SELECT user_name, amount, created_at FROM auction_bids WHERE auction_id = ? ORDER BY amount DESC LIMIT 10'
   ).bind(auction.id).all();
 
-  return c.json({ success: true, data: { ...auction, top_bids: bids } });
+  return c.json({ success: true, data: { ...publicAuction(auction), top_bids: (bids ?? []).map(publicBid) } });
 });
 
 // POST /api/auction/:id/end — 경매 종료
@@ -650,7 +650,7 @@ auctionRoutes.get('/:id', async (c) => {
     'SELECT user_name, amount, created_at FROM auction_bids WHERE auction_id = ? ORDER BY amount DESC LIMIT 20'
   ).bind(auction.id).all();
 
-  return c.json({ success: true, data: { ...auction, bids } });
+  return c.json({ success: true, data: { ...publicAuction(auction), bids: (bids ?? []).map(publicBid) } });
 });
 
 // POST /api/auction/:id/purchase — 낙찰자 구매 (낙찰가로 주문 생성)

@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
-import { swallow } from '@/worker/utils/swallow';
+import { swallow } from '@/worker/utils/swallow'; import { maskName } from '@/worker/utils/store-actor';
 import { intParam } from '@/shared/pagination'
 import { HIDDEN_FOR_USER, typeNotInSql, presentRow } from '@/shared/notification-catalog'
 const socialRoutes = new Hono<{ Bindings: Env }>()
@@ -157,8 +157,8 @@ socialRoutes.get('/supporters/:sellerId', async (c) => {
       LIMIT 50
     `).bind(sellerId).all()
 
-    const ranked = (results ?? []).map((r: any, i: number) => ({
-      ...r,
+    const ranked = (results ?? []).map(({ donor_user_id: _id, ...r }: any, i: number) => ({ // 🔐 2026-11-17 공개 랭킹엔 유저 id 없이 · 이름은 첫 글자만
+      ...r, donor_name: maskName(r.donor_name),
       rank: i + 1,
       badge: i === 0 ? 'crown' : i === 1 ? 'diamond' : i === 2 ? 'star' : null
     }))

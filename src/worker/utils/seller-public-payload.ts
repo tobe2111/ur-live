@@ -71,6 +71,11 @@ function pruneSellerPublicCol(err: unknown): boolean {
  * 기존 `GET /api/sellers/:id/public` 본문과 동일 — KV 캐시 + 자가치유 SELECT + additive enrich.
  * @returns 페이로드 객체, 없으면 null. (throw 는 호출측 처리 — 라우트는 500, 동봉측은 생략)
  */
+/** 사업자 신원을 공개해도 되는 상태인가 — 승인·활성만. */
+export function isSellerIdentityPublic(status: string | null | undefined): boolean {
+  return status === 'approved' || status === 'active'
+}
+
 export async function buildSellerPublicPayload(
   env: Pick<Env, 'DB' | 'SESSION_KV'>,
   param: string,
@@ -100,6 +105,15 @@ export async function buildSellerPublicPayload(
   );
 
   if (!seller) return null;
+
+  // 🔐 2026-11-17 승인 전·반려·정지 매장의 사업자 신원(등록번호·주소·대표자)은 공개하지 않는다 — 개인사업자는 집 주소인 경우가 많다.
+  //   행 자체는 그대로 준다(가입 직후 자기 유어샵 미리보기가 이 응답을 쓴다).
+  let identityPublic = true
+  try {
+    const st = await env.DB.prepare('SELECT status FROM sellers WHERE id = ?').bind((seller as { id?: number }).id ?? 0).first<{ status: string | null }>()
+    identityPublic = isSellerIdentityPublic(st?.status)
+    if (!identityPublic) { const s = seller as Record<string, unknown>; s.business_number = null; s.business_address = null; s.ceo_name = null }
+  } catch { /* 상태를 못 읽으면 종전 동작 */ }
 
   // 🏁 2026-06-12 (P5): 셀러에 연결된 유저가 큐레이터(핸들 보유)면 handle additive 동봉.
   try {
@@ -131,7 +145,7 @@ export async function buildSellerPublicPayload(
           'SELECT address, ceo_name FROM seller_business_info WHERE seller_id = ? ORDER BY id DESC LIMIT 1'
         ).bind(sid2).first()
       }
-      if (sbi) {
+      if (sbi && identityPublic) {
         const s = seller as Record<string, unknown>
         if (sbi.mail_order_number) s.mail_order_number = sbi.mail_order_number
         if (sbi.address && !s.business_address) s.business_address = sbi.address

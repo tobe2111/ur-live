@@ -416,7 +416,7 @@ cartRoutes.post('/', cartRateLimit, requireUser(), async (c) => {
  * PUT /api/cart/:id
  * 수량 변경
  */
-cartRoutes.put('/:id', cartRateLimit, requireAuth(), async (c) => {
+cartRoutes.put('/:id', cartRateLimit, requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);

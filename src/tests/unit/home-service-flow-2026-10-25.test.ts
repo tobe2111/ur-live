@@ -128,7 +128,7 @@ describe('🔑 로그인은 맨 끝 — 빠지지 않았다', () => {
   })
   it('접수 API 는 여전히 로그인 + 카카오 번호', () => {
     const src = readCode('src/features/home-service/api/home-service.routes.ts')
-    expect(src).toMatch(/homeServiceRoutes\.post\('\/requests', requireAuth\(\)/)
+    expect(src).toMatch(/homeServiceRoutes\.post\('\/requests', requireUser\(\)/)
     expect(src).toMatch(/code: 'PHONE_REQUIRED'/)
   })
   it('비로그인이면 답을 남기고 로그인으로 — 돌아올 주소를 싣는다', () => {

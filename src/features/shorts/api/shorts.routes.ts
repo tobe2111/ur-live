@@ -11,7 +11,7 @@
  */
 
 import { Hono } from 'hono'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, getCurrentUser, requireUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { getFeatureFlags } from '@/worker/utils/feature-flags'
 import type { Env } from '@/worker/types/env'
@@ -227,7 +227,7 @@ shortsRoutes.post('/:id/view', rateLimit({ action: 'shorts_view', max: 10, windo
 })
 
 // ── POST /api/shorts/:id/like — 좋아요 토글 ────────────────────────
-shortsRoutes.post('/:id/like', requireAuth(), async (c) => {
+shortsRoutes.post('/:id/like', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
 

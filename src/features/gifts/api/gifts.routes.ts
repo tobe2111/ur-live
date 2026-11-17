@@ -15,7 +15,7 @@
  */
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, getCurrentUser, requireUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker'
@@ -55,7 +55,7 @@ interface GiftRow {
 }
 
 // ── POST /api/gifts — 선물 생성 (결제 대기) ────────────────────────────
-giftsRoutes.post('/', requireAuth(), async (c) => {
+giftsRoutes.post('/', requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c)
     const userId = user?.id
@@ -119,7 +119,7 @@ giftsRoutes.post('/', requireAuth(), async (c) => {
 // ── POST /api/gifts/:id/confirm — 토스 결제 confirm + gift status='paid' ──
 //    클라이언트가 토스 결제 위젯에서 결제 완료 후 paymentKey 받으면 호출.
 //    토스 confirm API 호출 → 성공 시 gift status 업데이트 + 알림톡 발송 트리거.
-giftsRoutes.post('/:id/confirm', requireAuth(), async (c) => {
+giftsRoutes.post('/:id/confirm', requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c)
     const userId = user?.id
@@ -226,7 +226,7 @@ giftsRoutes.post('/:id/confirm', requireAuth(), async (c) => {
 })
 
 // ── GET /api/gifts/sent — 내가 보낸 선물 목록 ──────────────────────────
-giftsRoutes.get('/sent', requireAuth(), async (c) => {
+giftsRoutes.get('/sent', requireUser(), async (c) => {
   try {
     const user = getCurrentUser(c)
     const userId = user?.id

@@ -37,7 +37,7 @@ async function ensureTable(DB: D1Database) {
 
 // ── POST /api/interest/add — Add interest ──────────────────────
 
-interestRoutes.post('/add', requireAuth(), async (c) => {
+interestRoutes.post('/add', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: 'Authentication required' }, 401);
 
@@ -105,7 +105,7 @@ interestRoutes.post('/add', requireAuth(), async (c) => {
 
 // ── DELETE /api/interest/:id — Remove interest ─────────────────
 
-interestRoutes.delete('/:id', requireAuth(), async (c) => {
+interestRoutes.delete('/:id', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: 'Authentication required' }, 401);
 
@@ -132,7 +132,7 @@ interestRoutes.delete('/:id', requireAuth(), async (c) => {
 
 // ── POST /api/interest/remove — Remove by product_id + type ────
 
-interestRoutes.post('/remove', requireAuth(), async (c) => {
+interestRoutes.post('/remove', requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: 'Authentication required' }, 401);
 

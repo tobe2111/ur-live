@@ -29,3 +29,59 @@ describe('① 셀러 비밀번호 재설정 토큰 — 해시 저장', () => {
     expect(await hashToken(stored)).not.toBe(stored)
   })
 })
+
+describe('② 공개 응답에 사장님 연락처·미승인 매장 신원이 없다', () => {
+  it('/api/seller/public/:id 가 email·phone 을 고르지 않는다', () => {
+    const code = readCode('src/features/seller/api/seller-management.routes.ts')
+    const seg = code.slice(code.indexOf("sellerManagementRoutes.get('/public/:sellerId'"), code.indexOf("sellerManagementRoutes.get('/:sellerId/products-public'"))
+    expect(seg.length).toBeGreaterThan(500)
+    expect(seg).not.toMatch(/\bemail\b|\bphone\b/)
+  })
+  it('승인·활성 매장만 사업자 신원을 공개한다', async () => {
+    const { isSellerIdentityPublic } = await import('@/worker/utils/seller-public-payload')
+    for (const ok of ['approved', 'active']) expect(isSellerIdentityPublic(ok), ok).toBe(true)
+    for (const no of ['pending', 'rejected', 'suspended', '', null, undefined]) expect(isSellerIdentityPublic(no), String(no)).toBe(false)
+    const code = readCode('src/worker/utils/seller-public-payload.ts')
+    expect(code).toMatch(/if \(!identityPublic\) \{[^}]*business_number = null[^}]*business_address = null[^}]*ceo_name = null/)
+    expect(code).toMatch(/if \(sbi && identityPublic\)/)
+  })
+  it('경매·후원 랭킹은 이름 첫 글자만, 유저 id 없이', () => {
+    const a = readCode('src/features/auction/api/auction.routes.ts')
+    expect(a).not.toMatch(/data: \{ \.\.\.auction,/)
+    expect(a.match(/\.\.\.publicAuction\(auction\)/g)?.length).toBe(2)
+    expect(readCode('src/features/social/api/social.routes.ts')).toMatch(/\(\{ donor_user_id: _id, \.\.\.r \}: any, i: number\) => \(\{[^\n]*\n\s*\.\.\.r, donor_name: maskName\(r\.donor_name\)/)
+  })
+})
+
+describe('③ 손님 데이터는 손님 토큰으로만 — 셀러 #N 이 유저 #N 으로 읽히지 않는다', () => {
+  it('주문 라우터는 손님·관리자만', () => {
+    expect(readCode('src/worker/routes/order.routes.ts')).toMatch(/ordersRouter\.use\('\*', requireUserType\('user', 'admin'\)\)/)
+  })
+  it('알림: user_notifications 는 손님 토큰일 때만 묶인다', () => {
+    const code = readCode('src/features/notifications/api/notifications.routes.ts')
+    const un = code.split('\n').filter((l) => /user_notifications/.test(l) && /\.bind\(/.test(l))
+    expect(un.length).toBeGreaterThanOrEqual(2)
+    for (const l of un) expect(l, l.trim().slice(0, 80)).toMatch(/userType === 'user' \? userId : ''/)
+    expect(code).toMatch(/const unId = userType === 'user' \? userId : ''/)
+    expect(code).toMatch(/\.bind\(unId\)\.first<\{ c: number \}>\(\)/)
+    expect(code).toMatch(/bind\(userType === 'user' \? userId : '', opts\.limit\)/)
+    expect(code).toMatch(/bind\(numericId, userType === 'user' \? userId : ''\)\.run\(\);\n\s*updated/)
+  })
+  it('찜 조회·이의 대상·타임딜 생성', () => {
+    const w = readCode('src/features/wishlists/api/wishlists.routes.ts')
+    expect(w.match(/\(authUser\.type !== 'user' \|\| userId !== String\(authUser\.id\)\) && authUser\.type !== 'admin'/g)?.length).toBe(2)
+    expect(readCode('src/features/group-buy/api/voucher-dispute.routes.ts')).toMatch(/if \(user\.type !== 'user'\) return c\.json\(\{ success: true, data: \[\] \}\)/)
+    expect(readCode('src/features/timedeal/api/timedeal.routes.ts')).toMatch(/timedealRoutes\.post\('\/create', requireSeller\(\)/)
+  })
+})
+
+describe('④ 경매 공개 응답 가림(실행)', () => {
+  it('실명은 첫 글자만 · 유저 id 는 빠진다', async () => {
+    const { publicAuction, publicBid } = await import('@/features/auction/api/auction-public')
+    const a = publicAuction({ id: 1, winner_user_id: '3', winner_name: '정지원', current_price: 1000 }) as Record<string, unknown>
+    expect(a.winner_user_id).toBeUndefined()
+    expect(a.winner_name).toBe('정**')
+    expect(a.has_winner).toBe(true)
+    expect(publicBid({ user_name: '김철수', amount: 5 })).toEqual({ user_name: '김**', amount: 5 })
+  })
+})

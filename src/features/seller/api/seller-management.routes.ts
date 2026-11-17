@@ -405,13 +405,13 @@ sellerManagementRoutes.get('/public/:sellerId', async (c) => {
     const seller = isNumeric
       // 🛡️ 2026-05-07: 'approved' 와 'active' 모두 활성으로 인정 (status 표준 분기).
       ? await DB.prepare(
-          `SELECT id, username, slug, name, email, description, business_name, business_number, phone,
+          `SELECT id, username, slug, name, description, business_name, business_number, /* 🔐 2026-11-17 이메일·전화는 공개 응답에서 뺀다 */
                   profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
                   website_url, kakao_chat_link, status, created_at
            FROM sellers WHERE id = ? AND status IN ('approved', 'active')`
         ).bind(param).first()
       : await DB.prepare(
-          `SELECT id, username, slug, name, email, description, business_name, business_number, phone,
+          `SELECT id, username, slug, name, description, business_name, business_number, /* 🔐 2026-11-17 이메일·전화는 공개 응답에서 뺀다 */
                   profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
                   website_url, kakao_chat_link, status, created_at
            FROM sellers WHERE (slug = ? OR username = ?) AND status IN ('approved', 'active')`

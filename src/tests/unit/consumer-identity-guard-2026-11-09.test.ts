@@ -10,8 +10,8 @@
  * 새 경로를 넣어야 하면 그 핸들러가 `user.type` 을 확인하게 고치는 쪽이 맞다.
  *
  * ## ⚠️ 이 시험이 못 보는 것
- * - 휴리스틱이다: 라우트 선언 뒤 1,500자 안의 `user.id` 와 `user.type` 문자열만 본다(헬퍼로 빼낸 판정은 못 본다).
- * - `requireAuth` 를 미들웨어(`app.use`)로 건 경로, `optionalAuth` 경로.
+ * - 휴리스틱이다: 라우트 선언부터 다음 선언까지에서 신원을 읽는 글자와 종류를 보는 글자만 본다(다른 파일의 헬퍼로 빼낸 판정은 못 본다).
+ * - `optionalAuth` 경로 · 여러 줄에 걸쳐 선언한 미들웨어 · `use('/prefix/*', requireAuth())` 처럼 범위가 좁은 미들웨어.
  */
 import { describe, it, expect } from 'vitest'
 import { execSync } from 'node:child_process'
@@ -23,17 +23,24 @@ const ALLOWED = new Set([
   'src/features/kakao-social/api/kakao-social.routes.ts POST /message/broadcast',
   'src/features/kakao-social/api/kakao-social.routes.ts POST /calendar/add',
   'src/features/push/api/push.routes.ts POST /api/push/unsubscribe',
-  'src/features/seller-prospects/api/seller-prospects.routes.ts POST /',
-  'src/features/seller-prospects/api/seller-prospects.routes.ts GET /mine',
-  'src/features/seller-prospects/api/seller-prospects.routes.ts POST /:id/invite-link',
-  'src/features/seller-prospects/api/seller-prospects.routes.ts DELETE /:id',
   'src/features/seller-tiers/api/seller-tiers.routes.ts GET /my',
   'src/features/youtube-growth/api/youtube-growth.routes.ts POST /request',
   'src/features/youtube-growth/api/youtube-growth.routes.ts POST /confirm',
-  'src/worker/routes/region.routes.ts GET /region',
+  'src/features/youtube-growth/api/youtube-growth.routes.ts GET /my',
   'src/worker/routes/terms.routes.ts GET /status',
   'src/worker/routes/terms.routes.ts POST /agree',
 ])
+
+/**
+ * 🩸 2026-11-17 — 첫 판 스캐너는 `user.id` 라는 **글자**만 봤다. 그래서 같은 일을 다른 글자로 하는 경로를 통째로 놓쳤다:
+ *   `getCurrentUser(c)?.id` · `c.get('user').id` · `authUser.id` · `uid(c)`, 그리고 `router.use('*', requireAuth())` 로 건 경로.
+ *   그 틈에 주문(`/api/orders` — 수령인 이름·전화·주소)·알림·찜·선물·견적 요청·시딩 등 58곳이 남아 있었고,
+ *   라이브에서 관리자 토큰으로 `/api/orders` 가 200 이었다(같은 날 `/api/cart` 는 403).
+ *   ⇒ 신원을 읽는 **모든 형태**를 보고, 본문은 다음 라우트 선언까지 통째로 본다.
+ */
+const ID = /getCurrentUser\(c\)|c\.get\('user'( as never)?\)|\buid\(c\)|\bauthUser\b|\buser\.id\b|\bme\.id\b/
+// 🩸 `\.type` 를 아무 데서나 인정하면 본문 어딘가의 `tx.type`·`row.type` 만으로 통과한다(주입이 그걸 잡았다) — **신원 객체의** 종류만 인정한다.
+const TYPE = /\b(user|authUser|userAsAny|me|u|auth)\??\.type\b|c\.get\('user'\)\??\.type\b|getCurrentUser\(c\)\??\.type\b|requireUserType|requireUser\(|requireSeller|requireAdmin|isSeller\(|isAdmin\(/
 
 function scan(): string[] {
   const files = execSync("git ls-files 'src/features' 'src/worker/routes'", { encoding: 'utf8' })
@@ -41,15 +48,17 @@ function scan(): string[] {
   const hits: string[] = []
   for (const f of files) {
     const s = readFileSync(f, 'utf8')
-    const re = /\.(get|post|put|patch|delete)\(\s*'([^']+)'[^\n]*requireAuth\(\)/g
+    const routerAuth = /\.use\(\s*'\*'\s*,\s*requireAuth\(\)/.test(s)
+    const decl: Array<{ i: number; meth: string; path: string }> = []
+    const re = /\.(get|post|put|patch|delete)\(\s*'([^']+)'/g
     let m: RegExpExecArray | null
-    while ((m = re.exec(s))) {
-      const body = s.slice(m.index + m[0].length, m.index + m[0].length + 1500)
-      if (/(String\(user\.id\)|resolveUserIdString\(user\.id\)|user\.id\b)/.test(body)
-        && !/user\.type|requireUserType|isSeller|type ===|type !==/.test(body)) {
-        hits.push(`${f} ${m[1].toUpperCase()} ${m[2]}`)
-      }
-    }
+    while ((m = re.exec(s))) decl.push({ i: m.index, meth: m[1].toUpperCase(), path: m[2] })
+    decl.forEach((d, k) => {
+      const seg = s.slice(d.i, decl[k + 1]?.i ?? s.length)
+      const inline = /requireAuth\(\)/.test(seg.split('\n')[0])
+      if (!inline && !routerAuth) return
+      if (ID.test(seg) && !TYPE.test(seg)) hits.push(`${f} ${d.meth} ${d.path}`)
+    })
   }
   return hits
 }

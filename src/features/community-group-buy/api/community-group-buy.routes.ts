@@ -152,7 +152,7 @@ function generateInviteCode(): string {
 }
 
 // ── POST /create — 공동구매 생성 ──────────────────────────────────────
-communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', max: 5, windowSec: 300 }), requireAuth(), async (c) => {
+communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', max: 5, windowSec: 300 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
@@ -1076,7 +1076,7 @@ async function canAccessGroupMessages(
 }
 
 // GET /:id/messages — 협상 스레드 조회
-communityGroupBuyRoutes.get('/:id/messages', requireAuth(), async (c) => {
+communityGroupBuyRoutes.get('/:id/messages', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const groupId = Number(c.req.param('id'))
