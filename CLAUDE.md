@@ -992,6 +992,7 @@ Pre-commit hook 이 다음 파일 변경 시 `guide-seed.ts` 동시 수정 검�
 페이지 생성/수정 시 **반드시** 해당 테마에 맞는 색상 사용.
 
 ### 다크 테마 — 유저 대면 메인
+> ⚠️ **2026-11-17 정정 — 아래 색 값(`#020202` 등)은 낡았다.** 소비자 화면의 색 SSOT 는 위 🎫 디자인 시스템 절(`#11141C` 바탕 · `#1D1F29` 카드)이다. 실측: `bg-[#020202]` 을 쓰는 페이지 0개. 라이브·쇼츠는 영구 중단(`LIVE_COMMERCE_SUSPENDED`).
 - **해당**: 홈 (`/`), 라이브 (`/live/*`), 쇼츠 (`/shorts`), 마이 (`/user/profile`), 알림 (`/notifications`), 셀러 공개 (`/profile/*`, `/s/*`)
 - **배경**: `bg-[#020202]` (메인) / `bg-[#121212]` (카드) / `bg-[#1A1A1A]` (서브)
 - **텍스트**: `text-white` (제목) / `text-gray-300` (본문) / `text-gray-400`~`500` (보조)
@@ -1238,7 +1239,7 @@ Pre-commit hook 이 다음 파일 변경 시 `guide-seed.ts` 동시 수정 검�
 
 - Bearer 토큰 우선, 세션 쿠키 차선
 - 셀러/어드민: localStorage JWT 즉시 체크 (Firebase 대기 안 함)
-- 유저: Firebase Auth + optimistic rendering
+- 유저: 카카오 세션 쿠키(`ur_session`) — ~~Firebase Auth~~ 는 2026-07-28 인증 수단에서 제외(`check-no-firebase-auth.mjs`)
 - 한국 (live.ur-team.com): 카카오 세션 쿠키 전용, Firebase 호출 0
 - ProtectedRoute: `localStorage(user_type + user_id)` 동기 체크
 - `isKorea()` 분기로 Firebase 코드 건너뜀
@@ -1261,7 +1262,7 @@ navigate(returnUrl)
 
 ## 💰 딜 포인트 시스템
 
-- 충전: 1원 = 1딜 (수수료 없음)
+- 충전: **2026-07-18 종료**(`TOPUP_DISABLED = true`, 서버 403) — 옛 규칙은 1원 = 1딜
 - 후원/상품 결제: 딜 즉시 차감
 - 셀러 정산: 기본 5% 플랫폼 수수료 (`platform_settings.commission_rate_default`). 어드민이 셀러별로 `sellers.commission_rate` 조정 가능. 후원 수수료 별도 15%.
 - 최소 후원: 500딜
@@ -1370,15 +1371,15 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 - secret 은 한 번 저장하면 값 못 봄 — 외부 참조 시 별도 기록
 
 ### 자동 배포 규칙
-- feature 브랜치 push → PostToolUse 훅이 자동 main 머지 + 푸시 (`scripts/auto-merge-main.sh`)
-- 절대 feature 브랜치만 두지 말 것 — main 반영되어야 배포
+- 브랜치 push → **PR → CI(Verify) 초록 → auto-merge(squash)** → main 머지 시 배포 (위 🔀 절)
+- ⚠️ 2026-11-17 정정: 여기 *"PostToolUse 훅이 자동 main 머지 (`scripts/auto-merge-main.sh`)"* 라고 적혀 있었지만 그 훅은 `.claude/settings.json` 에 **연결돼 있지 않다**(SessionStart 훅만 있음). 그 스크립트를 손으로 돌리면 PR·CI 를 건너뛰고 main 에 들어가니 쓰지 말 것.
 
 ### 변경 후 체크리스트
 1. `bash scripts/check-schema-refs.sh`
 2. `bash scripts/check-api-auth.sh`
 3. `npx tsc --noEmit --skipLibCheck` (에러 0)
 4. `npm run build`  ← **`vite build` 아님!** (위 빌드 룰 참조)
-5. `git push origin <branch>` (훅이 main 자동 머지 + 배포)
+5. `git push origin <branch>` → PR 생성 → auto-merge (위 🔀 절)
 6. Actions 탭 녹색 확인
 7. 배포 후 `curl -i "https://urdeal.kr/api/version?cb=$RANDOM"` 등 핵심 endpoint smoke test
    > 🔴 **2026-08-04 정정**: 여기 오래 적혀 있던 `-X POST .../api/version` 은 **항상 404** 다
