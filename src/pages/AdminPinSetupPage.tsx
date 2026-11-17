@@ -4,7 +4,6 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { ShieldCheck, Loader2 } from 'lucide-react'
-import { normalizeAdminRole } from '@/shared/admin-roles'
 
 // 🔐 2026-06-17 (대표 결정 "6자리 입력"): 관리자 로그인 보안 PIN 설정.
 //   서버 POST /api/admin/set-login-pin (login_pin_hash 저장) → 이후 매 로그인 시 PIN 필수.
@@ -17,7 +16,6 @@ export default function AdminPinSetupPage() {
   const [confirm, setConfirm] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const role = normalizeAdminRole(typeof window !== 'undefined' ? localStorage.getItem('admin_role') : null)
 
   const submit = async () => {
     if (!/^\d{6}$/.test(pin)) { toast.error('6자리 숫자 PIN을 입력하세요'); return }
@@ -30,7 +28,7 @@ export default function AdminPinSetupPage() {
       if (r.data?.success) {
         localStorage.removeItem('admin_must_set_pin')
         toast.success('보안 PIN이 설정되었습니다. 다음 로그인부터 사용됩니다.')
-        navigate(role === 'wholesale' ? '/admin/wholesale-overview' : '/admin', { replace: true })
+        navigate('/admin', { replace: true })
       } else {
         toast.error(r.data?.error || 'PIN 설정 실패')
       }

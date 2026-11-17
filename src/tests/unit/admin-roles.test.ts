@@ -5,8 +5,9 @@ import {
   isSelfServiceAdminPath,
   canAdminRoleMutate,
   adminPathSegment,
-  isScopedAdminRole,
-  scopedRoleCanAccess,
+  isRetiredAdminRole,
+  ADMIN_ROLES,
+  ADMIN_ROLE_LABEL,
 } from '@/shared/admin-roles';
 
 describe('admin-roles RBAC SSOT', () => {
@@ -82,48 +83,44 @@ describe('admin-roles RBAC SSOT', () => {
   });
 });
 
-describe('wholesale 도메인-한정 역할 (외부 도매 파트너 — 읽기·쓰기 모두 도매만)', () => {
-  it('normalize + scoped 플래그', () => {
-    expect(normalizeAdminRole('wholesale')).toBe('wholesale');
-    expect(isScopedAdminRole('wholesale')).toBe(true);
-    expect(isScopedAdminRole('finance')).toBe(false); // finance 는 읽기 개방형(한정 아님)
-    expect(isScopedAdminRole('super')).toBe(false);
-  });
+/**
+ * 🪦 2026-11-17 도매 파트너(wholesale) 역할 폐지 — 대표 *"응 지워줘"*.
+ * 라이브 계정 4개는 전부 소프트 삭제(is_active=0)라 로그인 자체가 안 된다. 그래도 그 값을 가진
+ * 토큰·행이 남으면 normalize 가 viewer 로 내린다 → viewer 는 소비자 데이터를 **읽는다**.
+ * 즉 역할을 그냥 지우면 *아무것도 못 보던* 계정이 넓어진다. 그 방향을 이 시험이 막는다.
+ */
+describe('폐지된 역할 wholesale — viewer 로 새지 않고 전면 차단', () => {
+  const SECRET = 'test-secret-retired-role'
+  const now = () => Math.floor(Date.now() / 1000)
+  async function call(role: string, method: string, path: string) {
+    const jwt = await import('@tsndr/cloudflare-worker-jwt')
+    const { Hono } = await import('hono')
+    const { adminRbacMiddleware } = await import('@/worker/middleware/admin-rbac')
+    const tok = await jwt.sign({ sub: '20', type: 'admin', role, iat: now(), exp: now() + 600 }, SECRET)
+    const app = new Hono<{ Bindings: { JWT_SECRET: string } }>()
+    app.use('/api/admin/*', adminRbacMiddleware())
+    app.on(['GET', 'POST'], '/api/admin/*', (c) => c.text('HIT'))
+    const r = await app.request(path, { method, headers: { Authorization: `Bearer ${tok}` } }, { JWT_SECRET: SECRET })
+    return r.status
+  }
 
-  it('도매 도메인은 읽기·쓰기 모두 허용', () => {
-    for (const p of [
-      '/api/admin/wholesale-deposits/1/confirm',
-      '/api/admin/wholesale-withdrawals/2/approve',
-      '/api/admin/wholesale-orders/3',
-      '/api/admin/wholesale/tax/purchase-invoices/issue',
-      '/api/admin/wholesale/integrity',
-      '/api/admin/distributor/supply-bulk-import',
-      '/api/admin/distributor/grades',
-      '/api/admin/suppliers/9/approve',
-      '/api/admin/partnership-inquiries/4',
-    ]) {
-      expect(scopedRoleCanAccess('wholesale', p)).toBe(true); // 읽기
-      expect(canAdminRoleMutate('wholesale', p)).toBe(true);  // 쓰기
-    }
-  });
+  it('역할 목록·라벨에서 빠졌고, 폐지 판정은 원시값으로 한다', () => {
+    expect(ADMIN_ROLES as readonly string[]).not.toContain('wholesale')
+    expect(Object.keys(ADMIN_ROLE_LABEL)).not.toContain('wholesale')
+    expect(isRetiredAdminRole('wholesale')).toBe(true)
+    expect(isRetiredAdminRole(' WHOLESALE ')).toBe(true)
+    for (const r of ['super_admin', 'admin', 'ops', 'cs', 'finance', 'viewer', '', null]) expect(isRetiredAdminRole(r)).toBe(false)
+  })
 
-  it('도매 밖 영역은 읽기·쓰기 모두 차단 (유어딜 소비자 데이터 격리)', () => {
-    for (const p of [
-      '/api/admin/users/1',
-      '/api/admin/orders/1/cancel',
-      '/api/admin/settlements/approve',
-      '/api/admin-payouts/run',
-      '/api/admin/products/1',
-      '/api/admin/group-buy/1',
-    ]) {
-      expect(scopedRoleCanAccess('wholesale', p)).toBe(false); // 읽기 차단
-      expect(canAdminRoleMutate('wholesale', p)).toBe(false);  // 쓰기 차단
-    }
-  });
+  it('읽기(GET)·본인 보안 설정까지 전부 403 — viewer 였다면 GET 은 통과했다', async () => {
+    expect(await call('wholesale', 'GET', '/api/admin/users')).toBe(403)
+    expect(await call('wholesale', 'GET', '/api/admin/orders')).toBe(403)
+    expect(await call('wholesale', 'POST', '/api/admin/set-login-pin')).toBe(403)
+    expect(await call('wholesale', 'GET', '/api/admin/wholesale-orders')).toBe(403)
+  })
 
-  it('슈퍼 전용(계정/감사)은 도매 역할도 당연히 차단', () => {
-    expect(isSuperOnlyAdminPath('/api/admin/admins')).toBe(true);
-    expect(isSuperOnlyAdminPath('/api/admin/audit-logs')).toBe(true);
-    // (미들웨어가 isSuperOnlyAdminPath 를 scoped 검사보다 먼저 처리)
-  });
+  it('반대 방향: 다른 역할은 그대로다(viewer 는 읽기 통과)', async () => {
+    expect(await call('viewer', 'GET', '/api/admin/users')).toBe(200)
+    expect(await call('super_admin', 'GET', '/api/admin/admins')).toBe(200)
+  })
 });

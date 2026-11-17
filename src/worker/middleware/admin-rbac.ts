@@ -20,8 +20,7 @@ import {
   isSuperOnlyAdminPath,
   isSelfServiceAdminPath,
   canAdminRoleMutate,
-  isScopedAdminRole,
-  scopedRoleCanAccess,
+  isRetiredAdminRole,
   type AdminRole,
 } from '../../shared/admin-roles';
 import { parseSessionCookie } from '../utils/session';
@@ -36,7 +35,10 @@ import { parseSessionCookie } from '../utils/session';
  *      계정이 Authorization 헤더만 빼고 쿠키로 호출하면 전권(재무·타서비스) 우회. 쿠키 인증이면
  *      DB 에서 실제 role 을 조회해 Bearer 와 동일 스코핑을 적용해 우회를 차단.
  */
-async function adminRoleFromRequest(c: Context): Promise<AdminRole | null> {
+/** 🪦 폐지된 역할(wholesale) — viewer 로 내리지 않고 전면 차단하기 위한 표식. */
+type RequestRole = AdminRole | 'retired';
+
+async function adminRoleFromRequest(c: Context): Promise<RequestRole | null> {
   const secret = (c.env as { JWT_SECRET?: string }).JWT_SECRET;
   if (!secret) return null;
 
@@ -48,7 +50,7 @@ async function adminRoleFromRequest(c: Context): Promise<AdminRole | null> {
       // HS256 고정(alg-confusion 방어) — auth.ts verifyJWT 와 동일.
       if (await jwt.verify(token, secret, { algorithm: 'HS256' })) {
         const payload = (jwt.decode(token).payload || {}) as { type?: string; role?: string };
-        if (payload.type === 'admin') return normalizeAdminRole(payload.role);
+        if (payload.type === 'admin') return isRetiredAdminRole(payload.role) ? 'retired' : normalizeAdminRole(payload.role);
       }
     } catch { /* fall through to cookie */ }
   }
@@ -61,7 +63,7 @@ async function adminRoleFromRequest(c: Context): Promise<AdminRole | null> {
       try {
         const row = await DB.prepare('SELECT role FROM admins WHERE id = ?')
           .bind(su.userId).first<{ role?: string }>();
-        if (row) return normalizeAdminRole(row.role);
+        if (row) return isRetiredAdminRole(row.role) ? 'retired' : normalizeAdminRole(row.role);
         // 세션은 유효한데 admins row 없음 → 라우트 requireAdmin 이 판단(null).
       } catch {
         // 🔐 2026-07-12 (RBAC 감사 F): 인증된 어드민 쿠키인데 role 조회가 DB 오류 → 1회 재시도,
@@ -71,7 +73,7 @@ async function adminRoleFromRequest(c: Context): Promise<AdminRole | null> {
         try {
           const retry = await DB.prepare('SELECT role FROM admins WHERE id = ?')
             .bind(su.userId).first<{ role?: string }>();
-          if (retry) return normalizeAdminRole(retry.role);
+          if (retry) return isRetiredAdminRole(retry.role) ? 'retired' : normalizeAdminRole(retry.role);
         } catch { /* 재시도도 실패 — 아래 안전차단 */ }
         return 'viewer';
       }
@@ -90,25 +92,23 @@ export function adminRbacMiddleware() {
     // 비인증/미상 → 통과(라우트 requireAdmin 이 401). super → 전권.
     if (!role || role === 'super') return next();
 
+    // 🪦 폐지된 역할(도매 파트너) — self-service 포함 전부 차단. viewer 로 내리면 소비자 데이터를 읽게 된다.
+    if (role === 'retired') {
+      return c.json({ success: false, error: '폐지된 관리자 역할입니다', code: 'ADMIN_ROLE_RETIRED' }, 403);
+    }
+
     // 🔐 2026-11-09: 라우터가 쓰는 **디코드된** 경로로 판정한다 — 원문(%73ettings)으로 보면 라우터는 settings 로
     //   가는데 여기서는 다른 세그먼트로 읽혀 역할 검사를 비켜 갔다.
     const pathname = c.req.path;
 
     // 본인 계정 보안 self-service(로그인 PIN / 2FA 설정)는 역할 무관 허용 —
-    //   강제 보안 게이트가 제한·도메인-한정 역할(wholesale 등) 본인을 막아 데드락 나는 것 방지.
+    //   강제 보안 게이트가 제한 역할 본인을 막아 데드락 나는 것 방지.
     //   (requireAdmin 이 뒤에서 본인 토큰 검증, 본인 user.id 만 변경.)
     if (isSelfServiceAdminPath(pathname)) return next();
 
     // 계정관리·감사로그·2FA = 슈퍼 전용(읽기·쓰기 모두).
     if (isSuperOnlyAdminPath(pathname)) {
       return c.json({ success: false, error: '이 영역은 슈퍼관리자만 접근할 수 있습니다', code: 'ADMIN_ROLE_FORBIDDEN' }, 403);
-    }
-
-    // 🆕 도메인-한정 역할(도매 파트너 등) — 읽기·쓰기 모두 자기 도메인만. 그 외 /api/admin/* 는 읽기도 차단.
-    if (isScopedAdminRole(role)) {
-      return scopedRoleCanAccess(role, pathname)
-        ? next()
-        : c.json({ success: false, error: '담당 도메인 밖의 영역입니다 (도매 전용 계정)', code: 'ADMIN_ROLE_FORBIDDEN' }, 403);
     }
 
     // 🔐 2026-07-12 (RBAC 감사 D): GET 이지만 상태를 바꾸는(DDL/유지보수) 경로는 읽기 예외에서 제외 —

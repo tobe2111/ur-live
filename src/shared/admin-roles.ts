@@ -11,16 +11,27 @@
  *   - cs: 주문 조회·반품/클레임·문의·리뷰.
  *   - finance: 정산·출금·세금·수수료/등급 설정.
  *   - viewer: 읽기 전용(모든 변경 차단).
- *   - wholesale: 🆕 도매(유통스타트) 전용 — 도매 도메인만 읽기·쓰기, 그 외 /api/admin/* 전부 차단(외부 동업자).
  *
- * 정책: (일반역할) 읽기는 슈퍼전용 제외 전 허용, 변경은 도메인 제한.
- *       (도메인-한정역할 wholesale) 읽기·쓰기 모두 자기 도메인만 — 유어딜 소비자 어드민 데이터 격리.
- * ⚠️ ops/cs/finance/viewer/wholesale 는 신규 역할(기존 계정 0) → 강제해도 기존 super/admin 워크플로 무영향.
+ * 🪦 폐지된 역할(RETIRED_ADMIN_ROLES): wholesale(도매 파트너) — 2026-10-11 도매몰 철거, 2026-11-17 역할 삭제
+ *   (대표 *"응 지워줘"*). 라이브 계정 4개는 전부 소프트 삭제(is_active=0). 그래도 그 값을 가진 토큰·행은
+ *   **viewer 로 내려앉히지 않고 전면 차단**한다 — viewer 는 소비자 데이터를 읽을 수 있어, 그냥 지우면
+ *   *아무것도 못 보던* 계정이 오히려 넓어진다.
+ *
+ * 정책: 읽기는 슈퍼전용 제외 전 허용, 변경은 도메인 제한.
+ * ⚠️ ops/cs/finance/viewer 는 신규 역할(기존 계정 0) → 강제해도 기존 super/admin 워크플로 무영향.
  */
 
-export type AdminRole = 'super' | 'admin' | 'ops' | 'cs' | 'finance' | 'viewer' | 'wholesale';
+export type AdminRole = 'super' | 'admin' | 'ops' | 'cs' | 'finance' | 'viewer';
 
-export const ADMIN_ROLES: AdminRole[] = ['super', 'admin', 'ops', 'cs', 'finance', 'viewer', 'wholesale'];
+export const ADMIN_ROLES: AdminRole[] = ['super', 'admin', 'ops', 'cs', 'finance', 'viewer'];
+
+/** 🪦 폐지된 역할 — 이 값을 가진 계정·토큰은 어드민 어디에도 못 들어온다(로그인·refresh·RBAC 모두). */
+export const RETIRED_ADMIN_ROLES: readonly string[] = ['wholesale'];
+
+/** admins.role 원시값이 폐지된 역할인가. normalize 보다 **먼저** 불러야 한다(normalize 는 viewer 로 내린다). */
+export function isRetiredAdminRole(raw: string | null | undefined): boolean {
+  return RETIRED_ADMIN_ROLES.includes(String(raw || '').toLowerCase().trim());
+}
 
 /**
  * admins.role 원시값 → 정규화.
@@ -29,12 +40,13 @@ export const ADMIN_ROLES: AdminRole[] = ['super', 'admin', 'ops', 'cs', 'finance
  *   - 알려진 역할 → 그대로.
  *   - 미지/오타/손상된 non-empty 값 → viewer(최소권한, fail-CLOSED). 기존엔 이 경로도 super 라
  *     JWT 클레임/DB 의 손상·미지 role 문자열이 전권을 획득할 수 있었음.
+ *   - ⚠️ 폐지된 역할(wholesale)도 여기선 viewer 가 된다 — 그래서 호출자는 isRetiredAdminRole 로 먼저 막는다.
  */
 export function normalizeAdminRole(raw: string | null | undefined): AdminRole {
   const r = String(raw || '').toLowerCase().trim();
   if (r === '') return 'super';
   if (r === 'super_admin' || r === 'super') return 'super';
-  if (r === 'admin' || r === 'ops' || r === 'cs' || r === 'finance' || r === 'viewer' || r === 'wholesale') return r as AdminRole;
+  if (r === 'admin' || r === 'ops' || r === 'cs' || r === 'finance' || r === 'viewer') return r as AdminRole;
   return 'viewer';
 }
 
@@ -47,7 +59,7 @@ export function isSuperOnlyAdminPath(pathname: string): boolean {
 
 /**
  * 본인 계정 보안 self-service 경로 — 역할 무관 전 관리자 허용.
- * ⚠️ 강제 보안 게이트(로그인 PIN / 2FA)가 제한·도메인-한정 역할(wholesale 등)을 RBAC 로 막아
+ * ⚠️ 강제 보안 게이트(로그인 PIN / 2FA)가 제한 역할을 RBAC 로 막아
  *    "PIN 설정 강제됐는데 설정 API 는 403" 데드락이 나던 것 방지(대표 신고 2026-06-17).
  *    본인 토큰으로 본인 계정(user.id)만 변경하므로 도메인 격리와 무관하게 안전.
  */
@@ -86,35 +98,6 @@ const WRITE_DOMAINS: Record<'ops' | 'cs' | 'finance', readonly string[]> = {
 };
 
 /**
- * 🆕 도메인-한정 역할 — 읽기·쓰기 모두 자기 도메인만(그 외 /api/admin/* 전부 차단).
- *   ops/cs/finance(읽기 개방) 와 달리, 외부 동업자(wholesale)는 유어딜 소비자 데이터도 못 봄.
- *   prefixes: 세그먼트가 이 접두로 시작하면 허용. exact: 정확 일치 허용.
- */
-const SCOPED_ROLE_DOMAINS: Partial<Record<AdminRole, { prefixes: readonly string[]; exact: readonly string[] }>> = {
-  // 도매: /api/admin/wholesale*(deposits/withdrawals/orders/board/banners/products/malls/proposals/claims/quotes/tax/integrity/guide/overview)
-  //   + /api/admin/wholesale/*(tax·integrity) + distributor(등급/주문/일괄등록/통계) + suppliers(제조사) + partnership(제휴문의).
-  wholesale: {
-    prefixes: ['wholesale', 'partnership', 'distributor', 'supplier'],
-    exact: ['suppliers'],
-  },
-};
-
-/** 도메인-한정 역할인가(읽기까지 격리). */
-export function isScopedAdminRole(role: AdminRole): boolean {
-  return Object.prototype.hasOwnProperty.call(SCOPED_ROLE_DOMAINS, role);
-}
-
-/** 도메인-한정 역할이 이 경로(읽기·쓰기 공통)에 접근 가능한가. */
-export function scopedRoleCanAccess(role: AdminRole, pathname: string): boolean {
-  const cfg = SCOPED_ROLE_DOMAINS[role];
-  if (!cfg) return false;
-  const seg = adminPathSegment(pathname);
-  if (!seg) return false;
-  if (cfg.exact.includes(seg)) return true;
-  return cfg.prefixes.some((p) => seg === p || seg.startsWith(p));
-}
-
-/**
  * 🛡️ 2026-07-01 (권한 과대부여 감사): 재무성/파괴적 *하위경로*는 명시 역할만 변경 허용.
  *   WRITE_DOMAINS 는 경로 첫 세그먼트로만 매칭 → 도메인 하나를 주면 그 아래 민감 서브패스까지
  *   통째로 열렸음(예: ops 가 'tools' 로 정산일괄·플랫폼설정, 'sellers' 로 수수료율 / cs 가 'users' 로
@@ -132,7 +115,6 @@ const SENSITIVE_MUTATIONS: { readonly pattern: RegExp; readonly allow: readonly 
 export function canAdminRoleMutate(role: AdminRole, pathname: string): boolean {
   if (role === 'super' || role === 'admin') return true;
   if (role === 'viewer') return false;
-  if (isScopedAdminRole(role)) return scopedRoleCanAccess(role, pathname); // 도매: 자기 도메인만 변경
   // 재무성 하위경로: 넓은 세그먼트 도메인 grant 로 새지 않도록 명시 역할만(첫 세그먼트 매칭 갭 차단).
   const sensitive = SENSITIVE_MUTATIONS.find((s) => s.pattern.test(pathname));
   if (sensitive) return sensitive.allow.includes(role);
@@ -150,5 +132,4 @@ export const ADMIN_ROLE_LABEL: Record<AdminRole, string> = {
   cs: '고객응대(CS)',
   finance: '정산/회계',
   viewer: '읽기전용',
-  wholesale: '도매 파트너',
 };

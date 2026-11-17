@@ -6,7 +6,7 @@ import {
   LogOut, Menu, X, Search, ChevronDown, Star,
 } from 'lucide-react'
 import { logout as authLogout } from '@/utils/auth'
-import { normalizeAdminRole, ADMIN_ROLE_LABEL, type AdminRole } from '@/shared/admin-roles'
+import { normalizeAdminRole, isRetiredAdminRole, ADMIN_ROLE_LABEL, type AdminRole } from '@/shared/admin-roles'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import { usePersistScroll } from '@/hooks/usePersistScroll'
 import DashboardNotificationBell from './DashboardNotificationBell'
@@ -16,7 +16,6 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import {
   type NavItem, type NavGroup,
   VISIBLE_NAV_GROUPS, NAV_SECTIONS, navSectionOf, withoutWholesaleOnConsumer,
-  ALWAYS_ALLOWED_ADMIN_PATHS, WHOLESALE_EXTRA_ALLOWED_PATHS,
 } from '@/components/admin/admin-nav-config'
 import CommandPalette, { type CommandItem } from '@/components/dashboard/CommandPalette'
 
@@ -130,6 +129,8 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   const [adminName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('admin_name') || localStorage.getItem('admin_email') : null) || '관리자')
   // 🛡️ 2026-06-16 RBAC 네비 게이트 — 슈퍼 전용 항목(계정/감사/2FA)은 슈퍼만 노출. 변경 권한 강제는 서버(admin-rbac).
   const [adminRole] = useState<AdminRole>(() => normalizeAdminRole(typeof window !== 'undefined' ? localStorage.getItem('admin_role') : null))
+  // 🪦 2026-11-17 폐지된 역할(도매 파트너) — normalize 는 viewer 로 내리므로 원시값으로 따로 본다.
+  const [retiredRole] = useState<boolean>(() => isRetiredAdminRole(typeof window !== 'undefined' ? localStorage.getItem('admin_role') : null))
   // 🔒 슈퍼 전용 nav — 계정/감사/2FA + 2026-06-29(대표) '도매 몰 관리'(멀티-몰 CRUD). 도매 파트너도 숨김(서버도 super-only).
   // 🧨 2026-10-20 `/admin/maker-pool` 은 화면째 삭제(대표 "지워줘") — 아래 세 줄은 그때의 이유 기록.
   //   ① 영업 대상 리드 DB 는 유어팀 내부 자산이지 도매 파트너에게 보일 것이 아니고
@@ -140,14 +141,10 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
     .map((g) => ({ ...g, items: g.items.filter((it) => !SUPER_ONLY_NAV.has(it.path)) }))
     .filter((g) => g.items.length > 0)
   // 🧨 2026-08-03 (대표 "도매몰은 잔재도 없애는거야") — 소비자 도메인에선 도매 밴드를 숨긴다.
-  //   판정·근거는 `withoutWholesaleOnConsumer`(admin-nav-config) 주석. 도매 role 분기는 **건드리지 않는다** —
-  //   그쪽에 적용하면 도매 파트너가 도매 도메인 밖에서 nav 가 통째로 비어 원인을 알 수 없게 된다.
+  //   판정·근거는 `withoutWholesaleOnConsumer`(admin-nav-config) 주석. (도매 파트너 역할 분기는 2026-11-17 역할째 삭제.)
   const roleNavGroups = adminRole === 'super'
     ? withoutWholesaleOnConsumer(VISIBLE_NAV_GROUPS)
-    : adminRole === 'wholesale'
-      // 🆕 도매 파트너 — 도매 도메인 그룹만 노출(유어딜 소비자 어드민 전부 숨김) + 슈퍼전용(몰 관리 등) 제외.
-      ? stripSuperOnly(VISIBLE_NAV_GROUPS.filter((g) => g.domain === 'wholesale'))
-      : withoutWholesaleOnConsumer(stripSuperOnly(VISIBLE_NAV_GROUPS))
+    : withoutWholesaleOnConsumer(stripSuperOnly(VISIBLE_NAV_GROUPS))
 
   // ⭐ 2026-07-20 (대표 — "자주 쓰는 페이지를 좌측 상단에"): 즐겨찾기(고정). 각 메뉴의 ★ 토글로 고정하면
   //   사이드바 맨 위 '즐겨찾기' 섹션에 pin 순서대로 모임. 역할별로 보이는 항목만 고정 가능(roleNavGroups 해석).
@@ -157,9 +154,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   const commandItems: CommandItem[] = roleNavGroups.flatMap((g) =>
     g.items.map((it) => ({ path: it.path, label: it.label, icon: it.icon, group: g.title })),
   )
-  const DEFAULT_PINS = adminRole === 'wholesale'
-    ? ['/admin/wholesale-overview', '/admin/wholesale-orders', '/admin/suppliers']
-    : ['/admin', '/admin/orders', '/admin/settlement', '/admin/seller-approval']
+  const DEFAULT_PINS = ['/admin', '/admin/orders', '/admin/settlement', '/admin/seller-approval']
   // 🐛 2026-08-22 대표 신고 "즐겨찾기가 계속 초기화 돼" — 저장 위치를 **계정**으로 옮겼다.
   //   localStorage 는 오리진·브라우저·프로필마다 따로이고 시크릿창·"사이트 데이터 지우기"·
   //   기기 변경·도메인 전환(구 도메인 ↔ urdeal.kr 은 서로 다른 오리진)에 조용히 사라진다. 게다가 아래
@@ -226,20 +221,14 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   // 🏭 2026-06-29: nav item 의 `also` 경로도 도달 가능 집합에 포함 — `also` 는 "이 항목에 속한 딥링크/통합 서브탭"
   //   선언(통합현황 큐 카드의 `/admin/distributor-approval` 등)이라 RBAC 도 허용해야 바운스 안 됨. 안 그러면
   //   판매사 승인 통합 후 큐 카드 클릭이 /admin/wholesale-overview 로 튕김(이 가드가 isActive 와 동일 의미를 갖도록).
-  const willBounceWholesale = (() => {
-    if (adminRole !== 'wholesale') return false
-    const allowed = [
-      ...roleNavGroups.flatMap((g) => g.items.flatMap((it) => [it.path, ...(it.also || [])])),
-      ...ALWAYS_ALLOWED_ADMIN_PATHS, ...WHOLESALE_EXTRA_ALLOWED_PATHS,
-    ]
-    return !allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
-  })()
+  // 🪦 2026-11-17: 폐지된 역할(도매 파트너)은 볼 화면이 없다 — 서버도 전부 403(ADMIN_ROLE_RETIRED).
+  const willBounceRetired = retiredRole
   useEffect(() => {
     // 🧨 2026-10-11 도매몰 철거: 종전 목적지 `/admin/wholesale-overview` 가 **사라졌다.**
     //   그대로 두면 없는 경로로 튕기고 거기서 또 튕겨 **무한루프**가 된다(이 블록 머리말이 경고한 바로 그것).
     //   도매 도메인이 없어진 지금 `role='wholesale'`(라이브 4개 계정)이 볼 화면은 없다 ⇒ 로그인으로 보낸다
-    //   (AdminLayout 밖이라 재바운스가 구조적으로 불가능하다). ⚠️ 그 계정들의 비활성화는 대표 판단.
-    if (willBounceWholesale) navigate('/admin/login', { replace: true })
+    //   (AdminLayout 밖이라 재바운스가 구조적으로 불가능하다). 계정 4개는 2026-10-12 소프트 삭제, 역할은 2026-11-17 폐지.
+    if (willBounceRetired) navigate('/admin/login', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminRole, location.pathname])
 
@@ -334,9 +323,6 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
 
       {/* 🛡️ 2026-04-28: Global search bar — 실제 동작.
            숫자만: 주문 / @포함: 유저 / 일반: 유저 검색 */}
-      {/* 🔧 2026-06-24 (전수조사 MED-1): 전역 검색은 주문/유저(소비자 스코프)로 이동 → 도매 파트너(wholesale)는
-          RBAC 바운스 → 검색이 안 먹히는 것처럼 보임. 도매 역할에는 숨김(스코프 밖 목적지 제거). */}
-      {adminRole !== 'wholesale' && (
       <form onSubmit={handleSearch} className="px-4 py-3">
         <div
           className="flex items-center gap-2 rounded-lg border border-rule bg-gray-50 px-3 py-2 focus-within:ring-1 focus-within:ring-brand"
@@ -360,13 +346,12 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
           )}
         </div>
       </form>
-      )}
 
       {/* ⌘K 메뉴 빠른 이동 — 60여 개 메뉴를 이름으로 즉시 점프(전 역할). */}
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
-        className={`mx-4 mb-1 flex items-center gap-2 px-3 py-2 rounded-lg text-left ${adminRole === 'wholesale' ? 'mt-3' : ''}`}
+        className="mx-4 mb-1 flex items-center gap-2 px-3 py-2 rounded-lg text-left"
       >
         <Search size={13} className="flex-shrink-0 text-gray-400" />
         <span className="flex-1 text-[12px] text-gray-400">메뉴 빠른 이동</span>
@@ -453,7 +438,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
 
   // 🚑 2026-07-10 (로딩 전수조사): 리다이렉트 예정 프레임엔 콘솔 대신 라이트 로더 — 도매 RBAC/PIN 게이트
   //   바운스 직전에 다른 어드민 화면이 한 번 그려지던 플래시 제거. effect 가 즉시 navigate (조건 동일 — 위 주석).
-  if (willBounceWholesale || willBouncePin) {
+  if (willBounceRetired || willBouncePin) {
     return (
       <div className="admin-light-theme bg-warm [color-scheme:light]">
         <BrandLoader fullScreen forceLight />

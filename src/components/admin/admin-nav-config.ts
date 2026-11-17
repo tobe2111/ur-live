@@ -350,8 +350,4 @@ export const NAV_SECTIONS: Array<{ key: NavSectionKey; label?: string; accent?: 
 // 🛡️ 2026-06-17 (대표 신고 — 로그인 시 화면이 미친듯이 깜빡): 강제 보안 설정/계정 보안 페이지는
 //   역할과 무관하게 항상 도달 가능해야 한다. 도매 RBAC 리다이렉트가 강제 PIN 게이트와 충돌하면 무한 루프.
 export const ALWAYS_ALLOWED_ADMIN_PATHS = ['/admin/set-pin', '/admin/2fa']
-// 🆕 2026-06-24: '도매 통합 현황'의 승인 큐 카드가 가리키는 비-도매-nav 경로 — 도매 파트너도 도달 허용.
-// 🗂️ 2026-07-02 (1페이지화): 예치금/출금 nav 항목이 판매사·제조사 관리의 탭으로 흡수되며 딥링크
-//   경로가 nav 주항목에서 사라짐 → wholesale role 도달성 명시 허용(탭으로 열림).
-// 🧨 2026-10-11 도매몰 철거: 이 목록의 도매 딥링크 3개가 사라졌다(`/admin/products` 만 남는다).
-export const WHOLESALE_EXTRA_ALLOWED_PATHS = ['/admin/products']
+// 🪦 2026-11-17: `WHOLESALE_EXTRA_ALLOWED_PATHS` 는 도매 파트너 역할 폐지와 함께 삭제.
