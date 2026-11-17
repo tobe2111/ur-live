@@ -8,3 +8,5 @@ NCP_MAIL_SENDER_NAME
 VAPID_PUBLIC_KEY
 VAPID_PRIVATE_KEY
 VAPID_SUBJECT
+# 2026-11-17 ③: cron 위임(`utils/cron-delegate.ts`)이 웹사이트를 부를 때 쓰는 토큰.
+INTERNAL_CRON_TOKEN

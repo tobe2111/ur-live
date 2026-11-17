@@ -300,6 +300,8 @@ export async function handleCronScheduled(
     // 🔔 2026-07-01: 알림 채널 설정 회귀 감시 — LIVE 채널 키가 사라지면(true→false) 1회 critical
     //   경보(cron_failures + 어드민 벨). VAPID 미설정으로 웹푸시가 조용히 죽어있던 사고 재발 방지.
     ctx.waitUntil(slotCron('25 * * * *')('channel-watchdog', async () => {
+      const cd = await import('./utils/cron-delegate');  // 🔁 2026-11-17: 워커에 FIREBASE_* 가 없으면 Pages env 로 판정
+      if (cd.needsDelegation(env, 'channel-watchdog')) return cd.delegateToPages(env, 'channel-watchdog');
       const { handleChannelWatchdog } = await import('./cron/channel-watchdog');
       return handleChannelWatchdog(env);
     }));
@@ -326,6 +328,8 @@ export async function handleCronScheduled(
   // 🛡️ KT Alpha catalog sync — 매일 12:30 KST(03:30 UTC). 하루 1회 → KV 한도 무관(D1 only).
   if (cron === '*/5 * * * *' && slotOpen({ minute: 30, hour: 3 })) {
     ctx.waitUntil(slotCron('30 3 * * *')('kt-alpha-catalog-sync', async () => {
+      const cd = await import('./utils/cron-delegate')  // 🔁 2026-11-17: KT_ALPHA_AUTH_CODE 는 Pages 에만 있다
+      if (cd.needsDelegation(env, 'kt-alpha-catalog-sync')) return cd.delegateToPages(env, 'kt-alpha-catalog-sync')
       const { runKtAlphaCatalogSync } = await import('./cron/kt-alpha-catalog-sync')
       await runKtAlphaCatalogSync(env as { DB: D1Database })
     }))
@@ -335,6 +339,8 @@ export async function handleCronScheduled(
   // 🛡️ 이용권 주소 → 좌표 일괄 변환. 페이지 진입마다 Kakao 호출하던 것을 여기로 모았다(일 1만 → ~10).
   if (cron === '*/5 * * * *' && slotOpen({ minute: 35, hour: 3 })) {
     ctx.waitUntil(slotCron('35 3 * * *')('restaurant-geocode', async () => {
+      const cd = await import('./utils/cron-delegate')  // 🔁 2026-11-17: KAKAO_REST_API_KEY 는 Pages 에만 있다
+      if (cd.needsDelegation(env, 'restaurant-geocode')) return cd.delegateToPages(env, 'restaurant-geocode')
       const { runRestaurantGeocode } = await import('./cron/restaurant-geocode')
       await runRestaurantGeocode(env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
     }))
