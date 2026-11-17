@@ -25,3 +25,9 @@
 - `/refund` 첫 글자 1.5~2.2s(앱 부팅 뒤 청크 출발) → `PRELOAD_ONLY_ROUTES.refund` + `route-surface` 'refund' + `registerBootPage('refund')` 로 페이지 청크를 워커가 미리받게 함(청크 구성 무변경). 예산 `surface-budgets.json` refund 218.5KB 등록.
 - 결재 올림: `docs/decisions/2026-11-17-overseas-payment-store-fee.md`(해외결제 추가 수수료 매장 부담 + 매장 켜기/끄기).
 - 토스 심사 테스트 계정 `tossreview@ur-team.com`(users 신규, 비밀번호는 대표에게 채팅으로만) — 심사 후 삭제·변경 권장.
+
+## 외국인 이용권 이메일 (같은 날)
+- 대표 *"3번 이메일 부분 개발해두자"* · *"수수료는 손해가 나면 안돼"*(결재 파일에 기록).
+- `src/shared/voucher-email.ts`(en·ja·zh·ko, 매장 한국어 원문 병기, `/v/:code` 버튼 — 로그인 불필요 화면) + `src/worker/utils/voucher-email-send.ts`(주문 단위 선점 · `voucher_email_enabled` 기본 꺼짐).
+- **아직 아무 레일도 부르지 않는다** — 해외 간편결제 승인 직후에 붙인다. 켜는 것(발송)은 결재.
+- ⚠️ 메일의 "미사용 시 전액 자동 환불" 문구는 해외결제 환불 시 수수료 처리 결정에 따라 바뀔 수 있다.
