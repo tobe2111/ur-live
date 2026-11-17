@@ -17,6 +17,7 @@ import { validateFileMagicBytes } from '@/lib/upload-security'
 import { swallow } from '@/worker/utils/swallow'
 import { safeError } from '@/worker/utils/safe-error';
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { resolveStoreActor, OWNER_ONLY_MESSAGE } from '../../../worker/utils/store-actor'
 
 type Bindings = {
   DB: D1Database
@@ -52,6 +53,18 @@ sellerAccountRoutes.on(['PUT', 'PATCH'], '/personal-info', async (c) => {
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
     const body = await c.req.json();
+    // 🔐 2026-11-17: 이름·전화·이메일은 **매장 계정의 신원**이다 — 주인만 바꾼다. 특히 이메일은 로그인·비밀번호 재설정
+    //   주소라, 위임받은 운영자가 바꾸면 재설정 메일을 자기가 받아 계정을 통째로 가져갈 수 있었다.
+    const actor = await resolveStoreActor(authorization, c.env.JWT_SECRET, db);
+    if (!actor.isOwner) return c.json({ success: false, error: `계정 정보는 ${OWNER_ONLY_MESSAGE}` }, 403);
+    for (const k of ['name', 'phone', 'email'] as const) {
+      if (body[k] !== undefined && (typeof body[k] !== 'string' || body[k].length > 200)) {
+        return c.json({ success: false, error: '입력 값이 올바르지 않습니다' }, 400);
+      }
+    }
+    if (body.email !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      return c.json({ success: false, error: '이메일 형식이 올바르지 않습니다' }, 400);
+    }
     const fields: string[] = [];
     const values: (string | number | null)[] = [];
     if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name); }

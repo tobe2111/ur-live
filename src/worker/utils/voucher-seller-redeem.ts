@@ -77,7 +77,9 @@ export async function checkVoucherForStore(
   //   `recordVoucherRedeemStore` 가 받은 지점을 적고, 원장은 `settlementMerchantFor` 로 그 지점을 정산받는 매장으로 쓴다.
   if (actorSellerId !== null && Number(voucher.seller_id) !== Number(actorSellerId)
       && !(await canStoreRedeemProduct(DB, Number(voucher.product_id), voucher.seller_id, Number(actorSellerId), Number(voucher.id)))) {
-    return { ok: false, status: 403, error: '본인 매장의 voucher 가 아닙니다' }
+    // 🔐 2026-11-17: '없는 번호' 와 **같은 답**을 준다 — 종전 403 은 "남의 매장에 살아 있는 번호" 라는 뜻이라,
+    //   아무 셀러 계정으로 6자리를 돌리면 살아 있는 이용권 번호를 골라낼 수 있었다.
+    return { ok: false, status: 404, error: '바우처를 찾을 수 없습니다' }
   }
   if (voucher.status === 'used') return { ok: false, status: 400, error: '이미 사용된 바우처입니다' }
   if (voucher.status === 'expired') return { ok: false, status: 400, error: '만료된 바우처입니다' }

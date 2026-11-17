@@ -114,3 +114,48 @@ describe('⑥ 주문 라우터 — 관리자는 개별 조회·취소만', () =>
     expect(readCode('src/worker/routes/order.routes.ts')).toMatch(/c\.get\('user'\)\?\.type === 'admin' && !ADMIN_ORDER_PATH\.test\(c\.req\.path\) \? c\.json\(\{ success: false, error: 'Forbidden' \}, 403\) : next\(\)/)
   })
 })
+
+describe('⑦ 위임받은 운영자가 주인 자리를 못 차지한다 · 그 밖의 남은 틈', () => {
+  it('카카오 연결은 주인만 — 판정이 DB 조회보다 먼저', () => {
+    const code = readCode('src/features/seller/api/seller-kakao-link.routes.ts')
+    const seg = code.slice(code.indexOf("sellerKakaoLinkRoutes.post('/link-kakao'"), code.indexOf("sellerKakaoLinkRoutes.post('/relink-kakao'"))
+    const gate = seg.indexOf('if (!actor.isOwner) return c.json(')
+    expect(gate).toBeGreaterThan(0)
+    expect(gate).toBeLessThan(seg.indexOf('UPDATE sellers SET linked_user_id'))
+    expect(seg).toMatch(/resolveStoreActor\(c\.req\.header\('Authorization'\), c\.env\.JWT_SECRET, DB\)/)
+  })
+  it('계정 이름·전화·이메일 수정은 주인만 · 이메일은 형식 검사', () => {
+    const code = readCode('src/features/seller/api/seller-account.routes.ts')
+    const seg = code.slice(code.indexOf("sellerAccountRoutes.on(['PUT', 'PATCH'], '/personal-info'"), code.indexOf("sellerAccountRoutes.post('/change-password'"))
+    const gate = seg.indexOf('if (!actor.isOwner) return c.json(')
+    expect(gate).toBeGreaterThan(0)
+    expect(gate).toBeLessThan(seg.indexOf('UPDATE sellers SET'))
+    expect(seg).toMatch(/typeof body\[k\] !== 'string' \|\| body\[k\]\.length > 200/)
+  })
+  it('Resend 웹훅은 비밀값이 없으면 받지 않는다', () => {
+    const code = readCode('src/features/notifications/api/resend-webhook.routes.ts')
+    expect(code).toMatch(/\} else \{\s*return c\.json\(\{ success: false, error: 'webhook_not_configured' \}, 503\)/)
+    expect(code).not.toMatch(/signature verification skipped/)
+  })
+  it('남의 매장 이용권 번호는 없는 번호와 같은 답', () => {
+    const code = readCode('src/worker/utils/voucher-seller-redeem.ts')
+    expect(code).not.toMatch(/status: 403/)
+    expect(code.match(/status: 404, error: '바우처를 찾을 수 없습니다'/g)?.length).toBe(2)
+  })
+  it('번들 수정도 소유·할인 검사를 한다', () => {
+    const code = readCode('src/features/bundles/api/bundle.routes.ts')
+    const seg = code.slice(code.indexOf("bundleSellerRoutes.patch('/:id'"))
+    expect(seg.indexOf('본인 소유 상품만 번들에 추가할 수 있습니다')).toBeGreaterThan(0)
+    expect(seg.indexOf('본인 소유 상품만 번들에 추가할 수 있습니다')).toBeLessThan(seg.indexOf('DELETE FROM product_bundle_items'))
+    expect(seg).toMatch(/=== 'percent' && Number\(body\.discount_value \?\? cur\?\.discount_value\) > 90/)
+  })
+  it('재고 조회 — 남의 상품은 못 본다', async () => {
+    const { ownsProduct } = await import('@/features/inventory/api/inventory.routes')
+    expect(ownsProduct({ id: 5, type: 'seller' }, 5)).toBe(true)
+    expect(ownsProduct({ id: 5, type: 'seller' }, 6)).toBe(false)
+    expect(ownsProduct({ id: 5, type: 'user' }, 5)).toBe(false)
+    expect(ownsProduct({ id: 1, type: 'admin' }, 6)).toBe(true)
+    expect(ownsProduct(null, 5)).toBe(false)
+    expect(readCode('src/features/inventory/api/inventory.routes.ts').match(/ownsProduct\(getCurrentUser\(c\)/g)?.length).toBe(2)
+  })
+})

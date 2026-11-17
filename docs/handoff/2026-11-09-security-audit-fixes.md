@@ -90,3 +90,13 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
   E4: 배포 뒤 `/api/curator/jiwon1228` 의 `pins[].deal_pct` 가 1 또는 null 뿐인지 + 유어샵 화면 순서 불변.
 - **#2398 라이브 판정(E4, 2026-11-18 새벽)**: 관리자 토큰으로 `/api/home-service/requests/mine`·`/api/district/my`·`/api/gifts/sent`·`/api/seeding/me`·`/api/wishlists`·`/api/prospects/mine` → **403**(배포 전 200) · `/api/notifications` 200(빈 목록 — 설계) · 무인증 `/api/orders` 401 · `/api/sellers/29/public`·`/api/curator/jiwon1228` 200.
   🩸 `/api/orders` 는 관리자에게 **여전히 200** 이었다 — 개별 조회·취소의 관리자 예외 때문에 `requireUserType('user','admin')` 로 뒀는데, 그러면 '내 주문 목록'이 admins.id 를 users.id 로 읽는다. → 관리자는 `/api/orders/:id`·`/:id/cancel` 만(`ADMIN_ORDER_PATH`).
+
+## 14차 (2026-11-18 새벽) — 남은 영역 전수(쓰기 쪽 소유 검사·유어애즈·웹훅·업로드·역할·이용권·시크릿)
+대표 *"그리고 다른 부분들의 보안 문제는 없어?"*. 조사 에이전트가 올린 6건을 **코드로 직접 확인한 뒤** 전부 고쳤다.
+- **위임받은 운영자 → 주인** 2건(심각): `POST /api/seller/link-kakao` 와 `PUT /api/seller/personal-info` 에 주인 판정이 없었다. 둘 다 `resolveStoreActor().isOwner`(정산 계좌와 같은 판정).
+- Resend 웹훅: 비밀값이 없으면 통과 → **503**. 라이브는 `RESEND_API_KEY` 자체가 없어(메일은 NCP) 정상 발신원이 없다 ⇒ 닫아도 잃는 것 없음.
+- 이용권 사용(`use-by-seller`·카카오 챗봇): 남의 매장 번호에 403 → **없는 번호와 같은 404**.
+- 번들 PATCH 소유·할인 검사 · 재고 스캔/이력 소유 검사(`ownsProduct`).
+- 깨끗했던 곳: 유어애즈 워커(계정 격리)·인스타/카카오/토스 웹훅·업로드·에이전시 초대·이용권 CAS·설정 마스킹.
+- **이번에 틀릴 뻔한 것**: `tsc` 가 heap 부족으로 죽었는데 `| tail` 때문에 rc=0 으로 보였다 → `NODE_OPTIONS=--max-old-space-size=8192` + `PIPESTATUS`.
+- **남은 판단(대표)**: 운영자가 발급한 스캔 기기 키가 위임 회수 뒤에도 살아 있음(주인 화면에서 보이고 끌 수 있음) · 에이전시 지급 승인 라우트의 관리자 역할 제한 미확인.

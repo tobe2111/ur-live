@@ -16,6 +16,11 @@ import { requireUserType, getCurrentUser } from '@/worker/middleware/auth';
 
 // 🔐 2026-11-09: 재고·바코드는 셀러/어드민 도구 — 소비자 토큰(users.id=N)이 셀러 #N 으로 통하지 않게 종류를 묶는다.
 const sellerOrAdmin = () => requireUserType('seller', 'admin');
+/** 🔐 이 상품을 볼 수 있나 — 관리자거나, 그 매장 토큰. */
+export function ownsProduct(user: { id: unknown; type?: string } | null | undefined, sellerId: unknown): boolean {
+  if (!user) return false;
+  return user.type === 'admin' || (user.type === 'seller' && Number(user.id) === Number(sellerId));
+}
 import type { Env } from '@/worker/types/env';
 const inventoryRoutes = new Hono<{ Bindings: Env }>();
 
@@ -115,6 +120,8 @@ inventoryRoutes.get('/barcode/scan/:code', sellerOrAdmin(), async (c) => {
   `).bind(code, code, code).first();
 
   if (!product) return c.json({ success: false, error: '해당 바코드의 상품을 찾을 수 없습니다' }, 404);
+  // 🔐 2026-11-17: 남의 상품은 '없음' — 종전엔 아무 셀러나 다른 매장의 재고·입출고 이력을 읽었다.
+  if (!ownsProduct(getCurrentUser(c), (product as Record<string, unknown>).seller_id)) return c.json({ success: false, error: '해당 바코드의 상품을 찾을 수 없습니다' }, 404);
 
   // 최근 입출고 5건
   const { results: recentMovements } = await DB.prepare(`
@@ -268,6 +275,8 @@ inventoryRoutes.get('/stock/history/:productId', sellerOrAdmin(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
   const productId = c.req.param('productId');
+  const owner = await DB.prepare('SELECT seller_id FROM products WHERE id = ?').bind(productId).first<{ seller_id: number }>();
+  if (!owner || !ownsProduct(getCurrentUser(c), owner.seller_id)) return c.json({ success: true, data: [] }); // 🔐 남의 상품 이력은 안 준다
 
   const { results } = await DB.prepare(`
     SELECT id, type, quantity, stock_before, stock_after, reason, memo, created_by, created_at

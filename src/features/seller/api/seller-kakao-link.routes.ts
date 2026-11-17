@@ -12,6 +12,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken } from '@/lib/seller-shared'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { resolveStoreActor, OWNER_ONLY_MESSAGE } from '../../../worker/utils/store-actor'
 
 type Bindings = {
   DB: D1Database
@@ -35,6 +36,11 @@ sellerKakaoLinkRoutes.post('/link-kakao', async (c) => {
     if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
 
     const DB = c.env.DB
+
+    // 🔐 2026-11-17: 카카오 연결은 **주인 자리를 정하는 일**이다 — 위임받은 운영자·에이전시 좌석은 못 한다.
+    //   중개 등록 매장은 주인 자리(linked_user_id)가 비어 있어, 종전엔 운영자가 자기 카카오를 꽂으면 주인이 됐다.
+    const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, DB)
+    if (!actor.isOwner) return c.json({ success: false, error: `카카오 계정 연결은 ${OWNER_ONLY_MESSAGE}` }, 403)
 
     const seller = await DB.prepare(
       'SELECT id, linked_user_id FROM sellers WHERE id = ?'
