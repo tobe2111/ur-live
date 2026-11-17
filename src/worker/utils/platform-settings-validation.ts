@@ -112,6 +112,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   agency_share_payout_enabled: boolStr,
   // 🏠 2026-10-24 생활 견적 — read-site: features/home-service/api/home-service-pro.routes.ts · home-service.routes.ts
   home_service_charge_enabled: boolStr,
+  voucher_email_enabled: boolStr, // ✉️ 2026-11-17 외국인 이용권 발급 이메일(worker/utils/voucher-email-send.ts)
   seeding_pass_charge_enabled: boolStr,
   shell_sw_enabled: boolStr, // 🏠 2026-11-09 재방문 즉시 표시 SW 킬스위치(결재 2026-11-09-revisit-instant-shell)
   seeding_auto_send_to_store: boolStr,

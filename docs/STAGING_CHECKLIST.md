@@ -915,3 +915,11 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 - [ ] 카드 결제 1건 → `/confirm` 으로 확정된 뒤 도착한 Toss 웹훅이 `ORDER_ALREADY_CONFIRMED` 로 끝난다(이중 처리 0)
 - [ ] 웹훅만으로 확정되는 경로(가상계좌 입금 등)가 쓰이면: 입금 후 Toss 조회 DONE 으로 정상 확정된다
 - [ ] 위조 본문(가짜 paymentKey, 내 주문번호·금액) POST → 주문 상태 불변 · Sentry `WEBHOOK_TOSS_LOOKUP_MISMATCH`
+
+## ✉️ **S-VMAIL** — 외국인 이용권 발급 이메일 (2026-11-17, 게이트 `voucher_email_enabled` 기본 꺼짐)
+
+| # | 무엇을 | 기대 |
+|---|---|---|
+| S-VMAIL-1 | 해외 간편결제(페이팔) 테스트 결제 1건 직후 | 손님 이메일로 메일 1통(같은 주문 두 번 안 감) |
+| S-VMAIL-2 | 결제 화면 언어 en·ja·zh 각 1건 | 제목·본문이 그 언어, 매장 이름·주소는 한국어 원문 |
+| S-VMAIL-3 | Gmail(폰)·Outlook 에서 열기 | 표·버튼 모양 유지, "Open voucher" 가 `/v/:code` 를 로그인 없이 연다 |
