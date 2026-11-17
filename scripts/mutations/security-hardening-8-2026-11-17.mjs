@@ -85,4 +85,12 @@ export default [
     test: TEST,
     why: '가린 척만 하고 %가 그대로 나간다.',
   },
+  {
+    name: '[sec8] 관리자 토큰이 다시 주문 목록을 받는다',
+    file: 'src/worker/routes/order.routes.ts',
+    find: "c.get('user')?.type === 'admin' && !ADMIN_ORDER_PATH.test(c.req.path) ? c.json({ success: false, error: 'Forbidden' }, 403) : next()",
+    replace: 'next()',
+    test: TEST,
+    why: '관리자 #N 이 유저 #N 의 주문 목록(수령인 이름·전화·주소)을 받는다.',
+  },
 ]

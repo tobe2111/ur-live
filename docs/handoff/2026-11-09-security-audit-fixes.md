@@ -88,3 +88,5 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
 - **대표 "응 가려줘" (2026-11-17)** — 유어샵 공개 응답(`/api/curator/:handle`)의 `pins[].deal_pct` 를 **있음 1 / 없음 null** 로 줄였다(`dealFlag`).
   화면은 `> 0` 만 본다(`hasDealPin` — 계약 있는 핀을 위로). 주인은 로그인한 `/influencer` 발견 화면의 `my_deal_pct` 로 실제 %를 본다.
   E4: 배포 뒤 `/api/curator/jiwon1228` 의 `pins[].deal_pct` 가 1 또는 null 뿐인지 + 유어샵 화면 순서 불변.
+- **#2398 라이브 판정(E4, 2026-11-18 새벽)**: 관리자 토큰으로 `/api/home-service/requests/mine`·`/api/district/my`·`/api/gifts/sent`·`/api/seeding/me`·`/api/wishlists`·`/api/prospects/mine` → **403**(배포 전 200) · `/api/notifications` 200(빈 목록 — 설계) · 무인증 `/api/orders` 401 · `/api/sellers/29/public`·`/api/curator/jiwon1228` 200.
+  🩸 `/api/orders` 는 관리자에게 **여전히 200** 이었다 — 개별 조회·취소의 관리자 예외 때문에 `requireUserType('user','admin')` 로 뒀는데, 그러면 '내 주문 목록'이 admins.id 를 users.id 로 읽는다. → 관리자는 `/api/orders/:id`·`/:id/cancel` 만(`ADMIN_ORDER_PATH`).

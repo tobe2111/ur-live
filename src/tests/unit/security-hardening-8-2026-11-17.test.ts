@@ -103,3 +103,14 @@ describe('⑤ 유어샵 공개 응답에 매장↔주인 계약 %가 없다 (202
     expect(code).not.toMatch(/deal_pct: dealBySeller\.get\(/)
   })
 })
+
+describe('⑥ 주문 라우터 — 관리자는 개별 조회·취소만', () => {
+  it('경로 판정', async () => {
+    const { ADMIN_ORDER_PATH } = await import('@/worker/routes/order.routes')
+    for (const ok of ['/api/orders/123', '/api/orders/ORD-1-AB', '/api/orders/123/cancel']) expect(ADMIN_ORDER_PATH.test(ok), ok).toBe(true)
+    for (const no of ['/api/orders', '/api/orders/', '/api/orders/123/hide', '/api/orders/refund/x', '/api/orders/1/2/cancel']) expect(ADMIN_ORDER_PATH.test(no), no).toBe(false)
+  })
+  it('미들웨어가 걸려 있다', () => {
+    expect(readCode('src/worker/routes/order.routes.ts')).toMatch(/c\.get\('user'\)\?\.type === 'admin' && !ADMIN_ORDER_PATH\.test\(c\.req\.path\) \? c\.json\(\{ success: false, error: 'Forbidden' \}, 403\) : next\(\)/)
+  })
+})

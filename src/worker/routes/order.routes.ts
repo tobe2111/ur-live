@@ -37,10 +37,11 @@ import { createDashboardNotification } from '../../features/notifications/api/da
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
 
-const ordersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+const ordersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>(); export const ADMIN_ORDER_PATH = /^\/api\/orders\/[^/]+(\/cancel)?$/;
 
 // All order routes require authentication (Firebase + JWT support)
 ordersRouter.use('*', requireUserType('user', 'admin')); // 🔐 2026-11-17 셀러·에이전시 토큰의 id 를 유저 id 로 읽던 것(주문 PII) — 셀러 주문은 /api/seller/orders
+ordersRouter.use('*', async (c, next) => (c.get('user')?.type === 'admin' && !ADMIN_ORDER_PATH.test(c.req.path) ? c.json({ success: false, error: 'Forbidden' }, 403) : next())); // 관리자는 개별 조회·취소만 — '내 주문 목록'은 admins.id 를 users.id 로 읽는다
 
 /**
  * 🛡️ Order ID 포맷 검증 (스키마 이중화: INTEGER or TEXT/nanoid).
