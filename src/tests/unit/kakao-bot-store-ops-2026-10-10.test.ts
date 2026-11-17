@@ -282,7 +282,7 @@ describe('④ 사용 처리', () => {
 
   it('다른 매장 이용권은 확인도 묻지 않고 거절', async () => {
     const r = await say(env, '사용 UR-BBBB-2222')
-    expect(r.text).toContain('우리 매장의 이용권이 아니에요')
+    expect(r.text).toContain('이용권을 찾을 수 없어요') // 🔐 2026-11-17 없는 번호와 같은 답
     await say(env, '네')
     expect(one<{ status: string }>(db, 'SELECT status FROM vouchers WHERE id = 2').status).toBe('unused')
   })

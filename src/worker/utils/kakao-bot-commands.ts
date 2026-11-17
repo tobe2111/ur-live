@@ -207,8 +207,8 @@ export async function runStoreCommand(
       if (!SELLER_REDEEM_CODE_RE.test(cmd.code)) return reply('이용권 코드를 다시 확인해 주세요.')
       const chk = await checkVoucherForStore(ctx.DB, cmd.code, seat.sellerId)
       if (!chk.ok) {
-        const msg = chk.status === 403 ? '우리 매장의 이용권이 아니에요.'
-          : chk.status === 404 ? '이용권을 찾을 수 없어요. 코드를 다시 확인해 주세요.'
+        // 🔐 2026-11-17: 남의 매장 번호도 '없는 번호' 로 답한다(살아 있는 번호를 골라내는 단서를 안 준다).
+        const msg = chk.status === 404 ? '우리 매장에서 쓸 수 있는 이용권을 찾을 수 없어요. 코드를 다시 확인해 주세요.'
             : chk.error.includes('이미 사용') ? '이미 사용된 이용권이에요.'
               : chk.error.includes('만료') ? '기간이 지난 이용권이에요.'
                 : chk.error.includes('환불') ? '환불된 이용권이에요.' : '이 이용권은 처리할 수 없어요.'

@@ -91,8 +91,9 @@ resendWebhookRoutes.post('/', async (c) => {
       return c.json({ success: false, error: 'invalid_signature' }, 401)
     }
   } else {
-    // secret 미세팅: 경고 로그만 (긴급 롤백/개발 환경 호환)
-    console.warn('[ResendWebhook] RESEND_WEBHOOK_SECRET not configured — signature verification skipped')
+    // 🔐 2026-11-17: 비밀값이 없으면 **받지 않는다**. 종전엔 경고만 찍고 통과시켜, 누구든 아무 주소를
+    //   '반송됨' 으로 적어 넣을 수 있었다 — 그러면 그 주소로 가는 메일(비밀번호 재설정 포함)이 조용히 안 나간다.
+    return c.json({ success: false, error: 'webhook_not_configured' }, 503)
   }
 
   let body: ResendWebhookBody

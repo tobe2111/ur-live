@@ -198,6 +198,20 @@ bundleSellerRoutes.patch('/:id', async (c) => {
       items?: Array<{ product_id: number; quantity: number }>
     }>()
 
+    // 🔐 2026-11-17: 만들 때와 같은 검사 — 수정으로는 남의 상품·100% 할인이 들어갔다.
+    if (body.discount_type !== undefined && body.discount_type !== 'percent' && body.discount_type !== 'fixed') return c.json({ success: false, error: '할인 방식이 올바르지 않습니다' }, 400)
+    if (body.discount_value !== undefined && (!Number.isFinite(body.discount_value) || body.discount_value < 0)) return c.json({ success: false, error: '할인 값이 올바르지 않습니다' }, 400)
+    if (body.discount_value !== undefined || body.discount_type !== undefined) {
+      const cur = await c.env.DB.prepare('SELECT discount_type, discount_value FROM product_bundles WHERE id = ?').bind(bundleId).first<{ discount_type: string; discount_value: number }>()
+      if ((body.discount_type ?? cur?.discount_type) === 'percent' && Number(body.discount_value ?? cur?.discount_value) > 90) return c.json({ success: false, error: '최대 90% 할인까지 가능합니다' }, 400)
+    }
+    if (body.items && body.items.length >= 2) {
+      const ids = body.items.map(i => Number(i.product_id))
+      if (ids.length > 50 || ids.some(n => !Number.isInteger(n) || n <= 0)) return c.json({ success: false, error: '상품이 올바르지 않습니다' }, 400)
+      const owned = await executeQuery<{ id: number }>(c.env.DB, `SELECT id FROM products WHERE id IN (${ids.map(() => '?').join(',')}) AND seller_id = ?`, [...ids, sellerId]) // d1-bind-ok: 위에서 50개로 막는다(+1)
+      if (owned.length !== new Set(ids).size) return c.json({ success: false, error: '본인 소유 상품만 번들에 추가할 수 있습니다' }, 403)
+    }
+
     const sets: string[] = ['updated_at = datetime(\'now\')']
     const params: unknown[] = []
     if (body.name) { sets.push('name = ?'); params.push(body.name.trim()) }
