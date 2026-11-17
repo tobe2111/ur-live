@@ -97,17 +97,6 @@ const DOORWAY_WORD = /(벌초|묘지\s*이장|산소\s*이장|묘\s*이장|파�
  * 새로 들어오는 행은 종전대로 저장하지 않는다.
  */
 export const HOLD_NOT_DELETE_REASONS: ReadonlySet<string> = new Set(['PLACEHOLDER_TITLE', 'DOORWAY_SPAM'])
-/**
- * 🧷 위 두 사유를 **분류 전체를 돌리지 않고** 판정한다 — 위생 스윕(`company-lead-hygiene`)이 쓴다(2026-11-17).
- *   재분류 랩은 한 바퀴가 길어서, 보류됐다가 되살아난 도어웨이 행(실측 18건)을 다음 랩까지 못 본다.
- *   ⚠️ 판정식은 `classifyLead` 와 **같은 상수**다(둘이 갈리면 랩과 스윕이 서로를 되돌린다).
- */
-export function pageTitleHoldReason(name: string | null | undefined, source: string | null | undefined): 'PLACEHOLDER_TITLE' | 'DOORWAY_SPAM' | null {
-  if (!name || !DESC_IS_PAGE_BODY.has(source || '')) return null
-  if (PLACEHOLDER_TITLE.test(name)) return 'PLACEHOLDER_TITLE'
-  if (DOORWAY_WORD.test(name)) return 'DOORWAY_SPAM'
-  return null
-}
 /** 기관·비영리 접미 — 차단하진 않고 lead_type=org 로 분류(지역조직 파트너 가치 있음). */
 const ORG_WORD = /(구청|시청|도청|군청|읍사무소|면사무소|주민센터|행정복지센터|공단|공사|진흥원|진흥공단|재단|협회|연합회|조합|상인회|위원회|의회|교육청|보건소|센터장|정부|부처|청사)/
 /**

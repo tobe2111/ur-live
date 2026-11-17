@@ -17,7 +17,7 @@
  */
 import { isValidKrPhone, formatKrPhone, isPlatformRootUrl, NEWSROOM_EMAIL_LOCAL } from './contact-enrich'
 import { OVERSEAS_FREEMAIL_DOMAINS } from './company-hygiene-sweep'
-import { pageTitleHoldReason } from './company-classify'
+import { classifyLead, HOLD_NOT_DELETE_REASONS } from './company-classify'
 import { isPlaceholderPhone, isPlaceholderEmail } from './company-contact-quality'
 
 /**
@@ -138,6 +138,17 @@ export function hygieneStatements<T>(
   }
 
   return out
+}
+
+/**
+ * 🕳️ 도어웨이·빈 페이지 제목 판정 — **분류기 자체**(`classifyLead`)에 묻는다. 판정식을 여기 따로 두면 랩과 스윕이
+ * 서로를 되돌린다(2026-11-17). 재분류 랩 경로에서도 불리므로 값싼 앞거름(낱말)을 통과한 webkr 행만 분류기에 넣는다.
+ */
+const PAGE_HOLD_PREFILTER = /벌초|이장|파묘|유골|중\s*입니다|Forbidden|Not\s*Found|Error|페이지|문화대전|site\s*move|index\s+of/i
+export function pageTitleHoldReason(name: string | null | undefined, source: string | null | undefined): string | null {
+  if (!name || source !== 'webkr' || !PAGE_HOLD_PREFILTER.test(name)) return null
+  const c = classifyLead({ company_name: name, source })
+  return !c.ok && HOLD_NOT_DELETE_REASONS.has(c.reason || '') ? (c.reason as string) : null
 }
 
 /** 위 🌏 규칙의 판정식 — 도메인 목록 SSOT 는 `company-hygiene-sweep.ts`(좁히개 SQL 과 한 목록). */
