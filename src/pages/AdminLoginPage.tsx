@@ -131,8 +131,7 @@ export default function AdminLoginPage() {
           return
         }
 
-        // 🆕 도매 파트너(wholesale)는 소비자 어드민 홈(/admin) 접근 불가 → 도매 통합 현황으로 랜딩.
-        const landing = String(admin.role || '').toLowerCase() === 'wholesale' ? '/admin/wholesale-overview' : '/admin'
+        const landing = '/admin' // 🪦 도매 파트너 랜딩 분기는 2026-11-17 역할 폐지로 삭제(서버가 로그인 자체를 거부)
         navigate(landing, { replace: true })
       }
     } catch (err: any) {

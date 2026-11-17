@@ -16,6 +16,7 @@ import { executeQuery } from '@/worker/utils/database';
 import { startDashboardSession, isDashboardSessionCurrent } from '@/worker/utils/dashboard-session';
 import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/refresh-rotation';
 import { maskEmail } from '@/lib/mask';
+import { isRetiredAdminRole } from '@/shared/admin-roles';
 import { verifyTurnstile } from '@/worker/utils/turnstile';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
 import { rateLimit, resetRateLimit } from '@/worker/middleware/rate-limit';
@@ -140,6 +141,12 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
 
     const admin = admins[0];
 
+    // 🪦 2026-11-17: 폐지된 역할(도매 파트너)은 로그인 불가 — 없는 계정과 같은 응답(계정 존재 노출 방지).
+    if (isRetiredAdminRole(admin.role)) {
+      await verifyPassword(password, '$2b$10$CwTycUXWue0Thq9StjUM0uJ8mS8bL7JmJg0jVRjyZj3X5kQKqRHqO').catch(swallow('auth:api:admin'));
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401);
+    }
+
     // 🛡️ 2026-04-22: 계정 잠금 확인 (brute force 방어)
     const lockStatus = await checkLockout(DB, 'admin', String(admin.id));
     if (lockStatus.locked) {
@@ -169,7 +176,7 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     const reqIp = c.req.header('CF-Connecting-IP') || c.req.header('cf-connecting-ip') || null;
     let mustSetPin = false;
     {
-      const ENFORCED_PIN_ROLES = ['super_admin', 'wholesale'];
+      const ENFORCED_PIN_ROLES = ['super_admin'];
       const pinRow = await DB.prepare('SELECT login_pin_hash FROM admins WHERE id = ?')
         .bind(admin.id).first<{ login_pin_hash: string | null }>().catch(() => null);
       const hasPin = !!(pinRow && pinRow.login_pin_hash);
@@ -363,7 +370,7 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
       [adminId]
     );
 
-    if (admins.length === 0) {
+    if (admins.length === 0 || isRetiredAdminRole(admins[0].role)) {
       console.warn('[Admin Refresh] Admin not found or deactivated:', adminId);
       return c.json({ success: false, error: '계정을 찾을 수 없습니다.' }, 401);
     }

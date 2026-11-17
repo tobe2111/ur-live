@@ -39,3 +39,13 @@
 - **남김(삭제 안 함)**: `check-wholesale-order-status` — 남은 정산 엔진(`wholesale-deposit-core.ts:183`)이 여전히 `status='FAILED'` 를 쓴다.
   `check-seller-wholesale-redirect` — `RouteGuards.tsx` 등이 아직 `is_distributor` 를 읽어 겸업 lock-out 이 재발할 수 있다.
 - **안 한 것**: 도매 어드민 역할(`'wholesale'`)을 코드에서 지우는 것 — 인증(RBAC) 경로라 별개 작업. 지금은 `AdminLayout` 이 그 역할을 로그인으로 돌려보낸다.
+
+## ✅ 도매 파트너 어드민 역할 폐지 (대표 *"응 지워줘"*)
+- 실측(D1 읽기): `admins` 의 `wholesale` 4행 전부 `is_active=0`·`status='deleted'`, 그 밖엔 `super_admin` 2행뿐.
+- 🔴 **함정**: 역할만 지우면 `normalizeAdminRole('wholesale')` 이 **viewer** 가 된다 — viewer 는 소비자 데이터 GET 이 된다.
+  그래서 `RETIRED_ADMIN_ROLES`/`isRetiredAdminRole` 을 두고 **normalize 보다 먼저** 막는다: RBAC(`ADMIN_ROLE_RETIRED` 403, self-service 포함) ·
+  로그인(없는 계정과 같은 401) · refresh(401) · 프론트(AdminLayout 이 로그인으로).
+- 지운 것: `AdminRole`·`ADMIN_ROLES`·라벨의 wholesale, `SCOPED_ROLE_DOMAINS`·`isScopedAdminRole`·`scopedRoleCanAccess`,
+  계정 생성 허용값, PIN 강제 대상, 계정 관리 화면 선택지, 로그인/PIN 후 도매 랜딩, `WHOLESALE_EXTRA_ALLOWED_PATHS`.
+- 남긴 것: 로그인 이력 화면의 `wholesale` 라벨(옛 기록 표시용) · nav 의 `domain:'wholesale'` 밴드(ur-wholesale 묘비 프로젝트 쪽 — 별개).
+- 검증: 시험 5파일 89건 통과 · 차단 줄을 빼면 `admin-roles.test.ts` 가 빨강(주입 확인 후 복원) · `tsc -p tsconfig.json` 0.

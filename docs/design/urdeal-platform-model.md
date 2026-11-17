@@ -50,7 +50,7 @@
 > `loadPlatformCommissionPct`(어드민 상품) ③ buyer 풀 6 · maker 풀 4(**유어애즈 워커가 쓴다**) ·
 > 몰 인프라(위 공구 서비스) ④ **DB 테이블 전부**(회계 증빙 — 노출만 끊었다).
 >
-> ⚠️ **코드 밖에 남은 것**(대표 판단): `role='wholesale'` 어드민 계정 **4개**(철거 후 빈 콘솔을 본다) ·
+> ⚠️ **코드 밖에 남은 것**(대표 판단): `role='wholesale'` 어드민 계정 **4개**(2026-10-12 소프트 삭제 · **역할 자체는 2026-11-17 코드에서 폐지** — `RETIRED_ADMIN_ROLES`, 로그인·refresh·RBAC 전면 차단) ·
 > `utongstart.com` 도메인(두 Pages 프로젝트 어디에도 안 붙어 있다 — 실측) · `ur-wholesale` Pages 프로젝트.
 
 | 서비스 | 정체성 | 행위자 | 도메인 | 코드 경계 |
@@ -192,7 +192,7 @@
 ### 2-2. 도매(B2B) 행위자 — §12 참조
 - **판매사** (도매가로 사입해 재판매, `sellers.is_distributor=1`)
 - **제조사** (도매몰에 상품 공급, suppliers)
-- **도매 어드민** (`admin role='wholesale'`)
+- ~~**도매 어드민** (`admin role='wholesale'`)~~ — 🪦 2026-11-17 역할 폐지(`src/shared/admin-roles.ts` `RETIRED_ADMIN_ROLES`)
 
 ---
 
