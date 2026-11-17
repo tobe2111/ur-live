@@ -41,6 +41,10 @@ export async function runReclassifyLane(env: Env): Promise<Record<string, unknow
   //   화면에서 보는 것은 옛 번호다. 결함 행만 좁혀 도는 1회성이고 완주하면 설정 1행 읽기로 끝난다.
   //   ⚠️ fail-soft — 이 스윕이 죽어도 재분류는 그대로 돌아야 한다(부가 작업이 본업을 막으면 안 된다).
   const hygiene = await sweepCompanyHygiene(adsLeadsDb(env)).catch(() => null)
+  // ☎️📧 남의 연락처 정리 — 주 1회(그 주에 이미 했으면 설정 1행 읽기로 끝). 근거·비용은 `company-contact-quality.ts`.
+  const { sweepSharedContacts } = await import('./company-contact-quality')
+  const shared: import('./company-contact-quality').SharedSweepResult = await sweepSharedContacts(adsLeadsDb(env))
+    .catch((e: unknown) => ({ emails: 0, phones: 0, email_rows: 0, phone_rows: 0, error: String((e as Error)?.message || e).slice(0, 120) }))
   let last = await reclassifyCompanyLeads(adsLeadsDb(env), rowsPerPass) // 첫 패스만 housekeeping(억제 스윕)
   let passes = 1, rows = rowsPerPass
   for (; passes < 5 && !last.done && rows < maxRows && Date.now() - t0 < deadlineMs; passes++, rows += rowsPerPass) last = await reclassifyCompanyLeads(adsLeadsDb(env), rowsPerPass, false)
@@ -50,5 +54,7 @@ export async function runReclassifyLane(env: Env): Promise<Record<string, unknow
     stopped_by: last.done ? 'done' : (rows >= maxRows ? 'rows' : (Date.now() - t0 >= deadlineMs ? 'deadline' : 'passes')),
     // 위생 스윕 진척 — 완주 전엔 `hyg=fixed/scanned`, 완주 후엔 `hyg=done`(하트비트로 판정 가능하게).
     hyg: hygiene ? (hygiene.skipped ? 'done' : `${hygiene.fixed}/${hygiene.scanned}@${hygiene.cursor}${hygiene.done ? ' done' : ''}`) : 'err',
+    // 남의 연락처 — `shared=skip`(이번 주 끝) · `shared=e이메일수/행 p전화수/행` · 실패면 원문.
+    shared: shared.error ? `err:${shared.error}` : (shared.skipped ? 'skip' : `e${shared.emails}/${shared.email_rows} p${shared.phones}/${shared.phone_rows}`),
   }
 }

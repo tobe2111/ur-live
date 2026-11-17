@@ -169,6 +169,13 @@ export const COMPANY_DDL: string[] = [
   //   신뢰도로 거르지 않고 **전수 1회** 사이트에 물어본다. 이 플래그가 "정확히 한 번"을 보장한다:
   //   없으면 7일마다 영원히 재크롤하거나(낭비) 신뢰도 필터로 일부가 영영 빠진다(미커버 158건이 그거였다).
   'ALTER TABLE ad_company_leads ADD COLUMN name_verified INTEGER',
+  // 🧷 **보류가 되살아나지 않게** (2026-11-17 실측). `active = 0` 은 두 뜻을 겸했다 — *연락처가 없어서*(연락처가
+  //   생기면 활성이 맞다) 와 *규칙이 뺐다*(중국 무료메일 판매자·도어웨이 — 연락처가 생겨도 빼야 한다). 수집·보강
+  //   경로 7곳은 앞의 뜻만 알아서 연락처를 보면 1 로 올렸고, 그래서 보류한 중국 메일 행이 693 → 728 로 다시 늘었다.
+  //   값이 있으면 '규칙이 뺐다' 다 — 재활성 경로는 전부 `WHEN hold_reason IS NOT NULL THEN active` 를 먼저 본다.
+  //   ⚠️ **칸을 먼저 만들고 쓰는 코드는 다음 PR 에서** — 컬럼 가드는 라이브에 실제로 있는 칸만 믿는다
+  //     (`live-schema.snapshot.json`). 이 줄이 배포돼 칸이 생긴 걸 확인하고 사진을 다시 찍은 뒤 쓴다.
+  'ALTER TABLE ad_company_leads ADD COLUMN hold_reason TEXT',
   `CREATE TABLE IF NOT EXISTS ad_email_suppress (
     email TEXT PRIMARY KEY,
     reason TEXT,

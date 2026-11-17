@@ -36,7 +36,9 @@ describe('COMPANY_DDL', () => {
     //   → 옛 CREATE 가 v2 CREATE 로 **교체**되고 `DROP INDEX IF EXISTS` 한 문장이 늘어 31 → 32.
     //   🔑 이름을 바꾼 이유: `CREATE INDEX IF NOT EXISTS` 는 같은 이름이 있으면 컬럼이 달라도 **조용히
     //   아무것도 안 한다** — 이름을 유지하면 라이브엔 옛 4키 인덱스가 남아 플래너가 무시한다(읽기 폭증 재발).
-    expect(COMPANY_DDL).toHaveLength(32)
+    // 2026-11-17: `hold_reason` 칸 추가로 32 → 33. 규칙 보류(중국 무료메일·도어웨이)가 재수집에 되살아나지 않게 하는
+    //   표시다(그날 실측 693 → 728). 칸을 먼저 만들고, 쓰는 코드는 라이브에 생긴 걸 확인한 뒤 다음 PR 에서 붙인다.
+    expect(COMPANY_DDL).toHaveLength(33)
   })
 
   it('두 테이블을 만든다 — 리드 본체 + 반송 억제', () => {

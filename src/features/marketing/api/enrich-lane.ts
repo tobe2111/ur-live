@@ -16,6 +16,7 @@ import { subreqCapKey, resolveSubreqBudget, nextSubreqCap, isSubrequestLimitErro
 import { writeEnrichSnapshot, recordEnrichCrash, foldEnrichRollup, shouldRecountRemaining, prevRemaining, ENRICH_SNAPSHOT_KEY, ENRICH_ROLLUP_KEY } from './enrich-telemetry'
 import { healSuspectNames } from './enrich-name-heal'
 import { ensureCompanySchema } from './company-discovery'
+import { isPlaceholderPhone, isPlaceholderEmail, parsePhoneBlock, SHARED_PHONE_KEY } from './company-contact-quality'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 // 서브리퀘스트 예산 헬퍼(influencer-discovery 내부와 동일 — 그쪽은 미export 라 인라인).
@@ -204,7 +205,20 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   //   찾을 기회를 얻는다(슬롯 회수 + 수율 상승). website 컬럼 자체는 보존 — 사람이 수동 접촉할 땐 유용하다.
   // realSite 는 contact-enrich SSOT (수집 레인과 같은 판정을 쓰기 위해 2026-07-28 승격).
   // 통합 저장 — 전화/이메일 생기면 active=1 승격(기존값 보존 COALESCE). 허위 0(값 있을 때만 호출).
+  // ☎️📧 가짜·남의 연락처는 저장하지 않는다(판정 SSOT `company-contact-quality` — 2026-11-17). 남의 전화 목록은 주간 정리가
+  //   채우는 설정 1행이라 첫 전화 저장 때 **한 번만** 읽는다. 남의 이메일은 억제 표에 들어가 있어 아래 검사가 거른다.
+  let blockedPhones: Set<string> | null = null
   const save = async (id: number, phone: string | null, email: string | null, website: string | null, source: string) => {
+    if (phone && isPlaceholderPhone(phone)) phone = null
+    if (email && isPlaceholderEmail(email)) email = null
+    if (phone) {
+      if (!blockedPhones) {
+        spendD1()
+        const raw = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(SHARED_PHONE_KEY).first<{ value: string }>().catch(() => null)
+        blockedPhones = new Set(parsePhoneBlock(raw?.value))
+      }
+      if (blockedPhones.has(phone)) phone = null
+    }
     if (!phone && !email && !website) return
     // 📵 반송 억제 — 반송 확인된 이메일은 재크롤로 되살리지 않음(수동 발송 체계의 품질 루프).
     if (email) {

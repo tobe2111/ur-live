@@ -255,17 +255,31 @@ export async function matchRegistryEmails(env: Env, batch = 400, budget?: D1Budg
     //   `with_email` 은 **한 자리도 안 움직였다**(라이브 대조). 상태줄이 낙관 방향으로 거짓말한 것 —
     //   이번 세션 내내 고쳐온 '조용히 틀리는 코드'의 거울상(조용히 잘한 척)이다.
     //   ⇒ "줄 값이 있고(? IS NOT NULL) 그 칸이 비어 있을 때"만 UPDATE 가 걸리게 한다.
+    // 🗄️ **억제 목록은 다른 DB 에 있다** (2026-11-17 실측). 업체 리드가 `ADS_COMPANY_DB` 로 이사한 뒤로
+    //   `ad_email_suppress` 는 리드 DB 에만 남았는데, 이 UPDATE 는 그 표를 서브쿼리로 불렀다. 라우터는 문장을
+    //   업체 DB 로 보내고 거기엔 표가 없으니 **묶음 전체가 `no such table` 로 실패**한다 — 매칭이 0 인 날엔
+    //   안 보이다가, 하나라도 맞으면 `update_batch_failed` 로 조용히 사라진다(total_matched 167 은 이사 전 값이다).
+    //   ⇒ 억제 여부를 먼저 리드 DB 에 따로 묻고, UPDATE 는 업체 표 하나만 만진다.
+    const wanted = [...new Set(updates.map(u => u.email).filter((e): e is string => !!e).map(e => e.toLowerCase()))]
+    const suppressed = new Set<string>()
+    for (let i = 0; i < wanted.length; i += 90) {
+      const part = wanted.slice(i, i + 90)
+      const r = await DB.prepare(`SELECT email FROM ad_email_suppress WHERE email IN (${part.map(() => '?').join(',')})`)
+        .bind(...part).all<{ email: string }>().catch(() => null)
+      spend(budget)
+      for (const x of r?.results || []) suppressed.add(String(x.email).toLowerCase())
+    }
+    for (const u of updates) if (u.email && suppressed.has(u.email.toLowerCase())) u.email = null
     const rows = await DB.batch(updates.map(u => DB.prepare(
       `UPDATE ad_company_leads
-         SET email = CASE WHEN ? IS NOT NULL AND NOT EXISTS (SELECT 1 FROM ad_email_suppress s WHERE s.email = ?)
-                          THEN COALESCE(email, ?) ELSE email END,
+         SET email = CASE WHEN ? IS NOT NULL THEN COALESCE(email, ?) ELSE email END,
              website = COALESCE(website, ?),
              contact_source = COALESCE(contact_source, 'registry'),
              active = CASE WHEN COALESCE(email, ?) IS NOT NULL OR phone IS NOT NULL THEN 1 ELSE active END
        WHERE id = ?
          AND ((? IS NOT NULL AND (email IS NULL OR email = ''))
            OR (? IS NOT NULL AND (website IS NULL OR website = '')))`
-    ).bind(u.email, u.email, u.email, u.website, u.email, u.id, u.email, u.website))).catch(() => null)
+    ).bind(u.email, u.email, u.website, u.email, u.id, u.email, u.website))).catch(() => null)
     spend(budget)
     if (!rows) skip.update_batch_failed = (skip.update_batch_failed || 0) + 1 // 조용한 0건 금지
     matched = (rows || []).reduce((s, r) => s + ((r as { meta?: { changes?: number } })?.meta?.changes || 0), 0)

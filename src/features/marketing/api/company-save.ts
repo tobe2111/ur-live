@@ -10,6 +10,7 @@
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
 import { refineRegistryLabel } from './company-taxonomy'
 import { normalizeCompanyName } from './registry-email-match'
+import { isPlaceholderPhone, isPlaceholderEmail } from './company-contact-quality'
 import {
   ensureCompanySchema, hasContact, companyKey,
   COMPANY_TIER_MIN, COMPANY_TIER_MAX, type CompanyLead,
@@ -32,6 +33,11 @@ export async function saveCompanyLeads(DB: D1Database, leads: CompanyLead[], opt
 export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead[], opts: { requireContact?: boolean } = {}): Promise<{ inserted: number; upserted: number; error?: string }> {
   if (!leads.length) return { inserted: 0, upserted: 0 }
   await ensureCompanySchema(DB)
+  // 🎭 가짜(자리표시) 연락처는 입구에서 버린다 — `010-0000-0000`·`N/A`·`gmail.com@gmail.com` 류(2026-11-17 실측 수백 행,
+  //   대부분 통신판매 원부가 준 값). 칸만 비우고 리드는 저장한다(연락처 필수 정책이면 그 판정이 뒤에서 그대로 돈다).
+  leads = leads.map(l => (isPlaceholderPhone(l.phone) || isPlaceholderEmail(l.email))
+    ? { ...l, phone: isPlaceholderPhone(l.phone) ? null : l.phone, email: isPlaceholderEmail(l.email) ? null : l.email }
+    : l)
   const clamp = (v: unknown, n: number): string | null => { const s = v == null ? '' : String(v).trim(); return s ? s.slice(0, n) : null }
   const tierOf = (v: unknown): number | null => { const t = Math.round(Number(v)); return Number.isFinite(t) && t >= COMPANY_TIER_MIN && t <= COMPANY_TIER_MAX ? t : null }
   // 🧭 저장 전 판별·분류(SSOT company-classify) — 모든 소스(네이버/webkr/상가정보/통신판매/나라장터…)가 이 관문을 통과.
