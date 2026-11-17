@@ -235,6 +235,7 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
       return { inserted: 0, upserted: 0 }
     }) // 보류 → enrichHeldLeads 가 홈페이지 검색으로 연락처 채움
     saved += c.inserted; upserted += c.upserted
+    if ('error' in c && c.error) saveErr = saveErr || `batch: ${c.error}` // 저장 함수 안의 묶음 실패(위 catch 로는 안 온다)
     page++
   }
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(CURSOR_KEY, String(page)).run().catch(() => null)
