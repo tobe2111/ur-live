@@ -315,3 +315,9 @@
 - 🔴 **cron 워커(Workers `ur-live`)에 `NCP_SENS_MAIL_SERVICE_ID` 가 없다** → cron 이 보내는 이메일·재시도 전부 `skipped: env not configured`(실패 100건). Pages 에는 있다. **대표 조치**(대시보드에서 추가) — 세션은 플랫폼 쓰기 안 함.
 - 배달 불가 자리표시 주소(`kakao-N@kakao.agency.urdeal.invalid`)로 보내려다 실패 큐에 쌓이던 것 → `sendSystemEmail` 이 `.invalid/.test/.example/.localhost` 를 보내지 않고 `undeliverable` 로 답함 + 재시도 cron 이 그 행을 닫음. 가드 `undeliverable-email-2026-11-16.test.ts` + 주입 2.
 - 알림톡: 30일간 발송 0 — 주문 0건·마지막 이용권 발급 10-12 라 **보낼 일이 없었던 것**으로 보인다(고장 판정 아님).
+
+## §91 (2026-11-17) 대표 영구 위임 — 플랫폼 설정 쓰기·시험 발송은 세션이 한다
+- 대표 원문: *"아니, 계속 너한테 무한정 맡기고 싶어. 영구적으로"* → CLAUDE.md Cloudflare 자율 규율 ②에 기록(07-29 "조회 한정" 을 뒤집음. 삭제·purge·머니/게이트 결재는 범위 밖으로 남김).
+- 알림톡 시험 발송: 유저 3번(끝자리 6300)으로 `{"ok":true,"via":"alimtalk"}` — SENS 알림톡 경로는 살아 있다.
+- 첫 ops 장치: `.github/workflows/ops-copy-pages-var.yml` + `scripts/ops/copy-pages-var-to-worker.mjs`(Pages plain_text → cron 워커 시크릿, 추가·갱신만, 값 비노출). 머지 뒤 `names=NCP_SENS_MAIL_SERVICE_ID,NCP_MAIL_SENDER_NAME` 로 디스패치 → 워커 바인딩에 생겼는지 대조.
+- 🩸 틀렸던 판단: "CF 쓰기 = 대표 손" 이라고만 보고했다 — Pages 쪽 값이 plain_text 라 세션이 읽어 옮길 수 있었고, GitHub 배포 토큰으로 쓰는 선례(`sync-anthropic-secret.yml`)도 이미 있었다.
