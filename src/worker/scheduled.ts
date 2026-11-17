@@ -254,6 +254,13 @@ export async function handleCronScheduled(
     //   검색 키가 없어 첫 회차가 아무것도 못 가져왔다(대표 "2번은 가 로"). 여기 되살리지 말 것.
     // 🎁 2026-10-31 교환권 사진 R2 이관 — 매시 :05(:55 는 만회 전용),
     //   회차당 4장(서브리퀘스트 ≈ 장당 4). 다 옮기면 SELECT 1회 no-op. 상세: `cron/voucher-image-rehost.ts`.
+    // 🧩 2026-11-17 KT 교환권 목록 조각 갱신 — 매시 :45, 회차당 몇 페이지. 하루 한 바퀴를 다 돌면 그날은 KT 호출 0.
+    if (slotOpen({ minute: 45 })) ctx.waitUntil(slotCron('45 * * * *')('kt-alpha-catalog-sync', async () => {
+      const cd = await import('./utils/cron-delegate')  // 🔁 KT_ALPHA_AUTH_CODE 는 Pages 에만 있다
+      if (cd.needsDelegation(env, 'kt-alpha-catalog-sync')) return cd.delegateToPages(env, 'kt-alpha-catalog-sync')
+      const { runKtAlphaCatalogChunk } = await import('./cron/kt-alpha-catalog-chunk')
+      return runKtAlphaCatalogChunk(env as never)
+    }));
     if (slotOpen({ minute: 5 })) ctx.waitUntil(slotCron('5 * * * *')('voucher-image-rehost', async () => {
       const { handleVoucherImageRehost } = await import('./cron/voucher-image-rehost')
       return handleVoucherImageRehost(env)
@@ -325,16 +332,9 @@ export async function handleCronScheduled(
     runDailyLane('growth', { env, ctx, run: slotCron('40 18 * * *'), onFailure: (n, e) => notifyCronFailure(env, n, e) });
   }
 
-  // 🛡️ KT Alpha catalog sync — 매일 12:30 KST(03:30 UTC). 하루 1회 → KV 한도 무관(D1 only).
-  if (cron === '*/5 * * * *' && slotOpen({ minute: 30, hour: 3 })) {
-    ctx.waitUntil(slotCron('30 3 * * *')('kt-alpha-catalog-sync', async () => {
-      const cd = await import('./utils/cron-delegate')  // 🔁 2026-11-17: KT_ALPHA_AUTH_CODE 는 Pages 에만 있다
-      if (cd.needsDelegation(env, 'kt-alpha-catalog-sync')) return cd.delegateToPages(env, 'kt-alpha-catalog-sync')
-      const { runKtAlphaCatalogSync } = await import('./cron/kt-alpha-catalog-sync')
-      await runKtAlphaCatalogSync(env as { DB: D1Database })
-    }))
-    // 🧨 2026-10-20 '바이어 풀 자동 수집'(buyer-autofetch) 삭제 — 대표 "지워줘"(해외 바이어 풀 · 유어딜 무관).
-  }
+  // 🛡️ KT Alpha 목록 — 2026-11-17 부터 매시 :45 **조각 갱신**(`cron/kt-alpha-catalog-chunk.ts`, 위 매시 슬롯들 사이).
+  //   여기(매일 12:30 KST) 있던 하루 1회 전체 갱신은 한 요청이 100초를 넘겨 끊겼다(524). 되살리지 말 것.
+  // 🧨 2026-10-20 '바이어 풀 자동 수집'(buyer-autofetch) 삭제 — 대표 "지워줘"(해외 바이어 풀 · 유어딜 무관).
 
   // 🛡️ 이용권 주소 → 좌표 일괄 변환. 페이지 진입마다 Kakao 호출하던 것을 여기로 모았다(일 1만 → ~10).
   if (cron === '*/5 * * * *' && slotOpen({ minute: 35, hour: 3 })) {
@@ -374,6 +374,11 @@ export async function handleCronScheduled(
     ctx.waitUntil(slotCron('20 0 * * *')('vitals-slo', async () => {
       const { runVitalsSlo } = await import('./cron/vitals-slo')
       return runVitalsSlo(env)
+    }))
+    // 🩺 2026-11-17 데이터 신선도 — "돌았나" 가 아니라 "결과가 최근인가"(KT 목록 30시간 · 충전 잔액). 매일 09:20 KST.
+    ctx.waitUntil(slotCron('20 0 * * *')('data-freshness', async () => {
+      const { runDataFreshness } = await import('./cron/data-freshness')
+      return runDataFreshness(env)
     }))
   }
 

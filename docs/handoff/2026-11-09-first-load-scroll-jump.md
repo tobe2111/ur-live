@@ -327,3 +327,8 @@
 - 같은 PR 에서 `ops/requests/copy-pages-var.txt` 에 INTERNAL_CRON_TOKEN 추가 → 머지 시 워커로 복사.
 - 판정: 다음 회차(지오코딩·KT 동기화 낮 12:30~12:35 · watchdog 매시 25분) 하트비트 result 가 비지 않고 cron_failures 에 `cron-delegate` 오류가 없으면 E4.
 - 앞서(§91 뒤) VAPID 3개 복사 PR #2388 머지·워커 반영 확인.
+
+## §93 (2026-11-17) KT 목록 조각 갱신 + 데이터 신선도 감시 — 대표 "모두 가장 이상적이고 영구적으로"
+- 실측: KT `kt_alpha_last_sync_at` = 2026-05-19 — **반 년 동안 갱신 0**(워커에 KT_ALPHA_AUTH_CODE 없어 매일 skip 을 성공으로 기록). 위임 첫 회차(12:32)는 전체 갱신 한 요청이 100초 초과 → 524. 같은 함수를 Pages 에서 직접 돌리면 26초 · synced 2197 · deactivated 121 · 잔액 7,680원.
+- 처방: `cron/kt-alpha-catalog-chunk.ts`(매시 :45, 회차당 6페이지, 커서 `kt_alpha_sync_cursor` · 바퀴 완료 뒤에만 내리기 · 80% 미만이면 내리지 않음 · 20시간 안이면 idle) + `cron/data-freshness.ts`(매일 09:20 KST, KT 30시간·잔액 기준 미만이면 throw → cron_failures/벨/Discord) + 잔액 기준 `platform_settings.kt_alpha_low_balance_won`(없으면 10만 원) + `kt_alpha_last_sync_at` UPSERT. 옛 03:30 UTC 전체 갱신 블록은 제거(어드민 수동 버튼은 전체 갱신 그대로 — dual-mode).
+- 판정: 다음 :45 하트비트 `kt-alpha-catalog-sync` result 에 plan/received 가 찍히고, 늦어도 다음날 신선도 감시가 조용하면 E4. 잔액 7,680원은 기준(10만) 미만이라 **내일 아침 신선도 경보가 뜬다 — 의도된 것**(충전 필요).
