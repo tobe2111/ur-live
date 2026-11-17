@@ -2171,19 +2171,7 @@ app.route('/api/guides', guideRoutes);
 // ── 사이드 배너 (공개 API, 인증 불필요) · 🐌 2026-10-12 `edgeCache(600)` 추가 — 캐시 헤더가 **하나도 없어** 소비자 페이지마다 콜드 D1(실측 388ms) + 요청마다 `CREATE TABLE IF NOT EXISTS`(per-request DDL)로 왕복 2회였다. 이제 콜로당 10분에 한 번. ⚠️ 배너 편성이 최대 10분 늦게 반영된다(수동·드문 작업이라 수용). 상세: docs/handoff/2026-10-12-main-loading-fonts.md ⑥. 📏 한 줄로 쓴 이유는 이 파일 래칫(2672)이 꽉 차 있어서다 ──
 app.get('/api/side-banners', edgeCache(600), async (c) => {
   const env = c.env as Env;
-  try {
-    // Auto-create table if not exists
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS side_banners (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        image_url TEXT NOT NULL,
-        link_url TEXT,
-        is_active INTEGER DEFAULT 1,
-        sort_order INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT (datetime('now'))
-      )
-    `).run();
+  try { // 🗺️ 2026-11-17 공개 조회에서 표 만들기(DDL) 제거 — 로그인 손님은 에지 캐시를 비켜 매번 미국 원본에 쓰기를 보냈다. 표는 어드민 `ensureSideBannersTable` 이 만들고, 없으면 아래 catch 가 빈 목록.
     const { results } = await env.DB.prepare(
       `SELECT id, title, image_url, link_url, sort_order
        FROM side_banners WHERE is_active = 1 ORDER BY sort_order ASC, created_at DESC`
