@@ -147,7 +147,7 @@ function generateCode(): string {
 }
 
 // POST /api/referral/create — 그룹 생성 (티어 또는 단일 할인)
-referralRoutes.post('/create', requireAuth(), async (c) => {
+referralRoutes.post('/create', requireUser(), async (c) => {
   // 🧭 2026-06-17 (단일가 통일): 동적 할인 공구 생성 종료 — 신규 그룹 생성 차단(기존 데이터는 보존).
   if (REFERRAL_GROUP_DISCOUNT_DISABLED) {
     return c.json({ success: false, error: '친구초대 할인 공구는 현재 운영하지 않습니다. 지금 바로 단일 공구가로 구매하세요.' }, 410);

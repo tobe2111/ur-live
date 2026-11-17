@@ -21,7 +21,7 @@
 import { Hono } from 'hono'
 import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '../../../worker/types/env'
-import { requireAuth, getCurrentUser } from '../../../worker/middleware/auth'
+import { requireAuth, getCurrentUser, requireUser } from '../../../worker/middleware/auth'
 import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { safeError } from '../../../worker/utils/safe-error'
 import { cancelTossPayment, confirmTossPayment, decideTossFlow } from '../../../worker/utils/toss-gateway'
@@ -102,7 +102,7 @@ seedingRoutes.get('/offer/:productId', publicCache(30), async (c) => {
   }
 })
 
-seedingRoutes.get('/offer/:productId/me', requireAuth(), async (c) => {
+seedingRoutes.get('/offer/:productId/me', requireUser(), async (c) => {
   try {
     const DB = c.env.DB
     await ensureSeedingTables(DB)
@@ -121,7 +121,7 @@ seedingRoutes.get('/offer/:productId/me', requireAuth(), async (c) => {
   }
 })
 
-seedingRoutes.get('/me', requireAuth(), async (c) => {
+seedingRoutes.get('/me', requireUser(), async (c) => {
   try {
     const DB = c.env.DB
     await ensureSeedingTables(DB)
@@ -144,7 +144,7 @@ seedingRoutes.get('/me', requireAuth(), async (c) => {
   }
 })
 
-seedingRoutes.post('/apply', requireAuth(), rateLimit({ action: 'seeding_apply', max: 20, windowSec: 600 }), async (c) => {
+seedingRoutes.post('/apply', requireUser(), rateLimit({ action: 'seeding_apply', max: 20, windowSec: 600 }), async (c) => {
   try {
     const DB = c.env.DB
     await ensureSeedingTables(DB)
@@ -193,7 +193,7 @@ seedingRoutes.post('/apply', requireAuth(), rateLimit({ action: 'seeding_apply',
  * 사장님은 그 링크에서 그 사람에게 맞는 % 를 정해 제안한다. 돈 경로를 건드리지 않는다.
  * 같은 사람 → 같은 매장은 **하루 한 번**(알림 폭탄 방지).
  */
-seedingRoutes.post('/deal-request/:productId', requireAuth(), rateLimit({ action: 'deal_request', max: 10, windowSec: 3600 }), async (c) => {
+seedingRoutes.post('/deal-request/:productId', requireUser(), rateLimit({ action: 'deal_request', max: 10, windowSec: 3600 }), async (c) => {
   try {
     const DB = c.env.DB
     const me = uid(c)
@@ -229,7 +229,7 @@ async function ownApp(DB: D1Database, id: string, me: number) {
   return a && Number(a.user_id) === me ? a : null
 }
 
-seedingRoutes.post('/applications/:id/schedule', requireAuth(), async (c) => {
+seedingRoutes.post('/applications/:id/schedule', requireUser(), async (c) => {
   try {
     const DB = c.env.DB
     await ensureSeedingTables(DB)
@@ -258,7 +258,7 @@ seedingRoutes.post('/applications/:id/schedule', requireAuth(), async (c) => {
   }
 })
 
-seedingRoutes.post('/applications/:id/post', requireAuth(), async (c) => {
+seedingRoutes.post('/applications/:id/post', requireUser(), async (c) => {
   try {
     const DB = c.env.DB
     const a = await ownApp(c.env.DB, c.req.param('id') ?? '', uid(c))
@@ -275,7 +275,7 @@ seedingRoutes.post('/applications/:id/post', requireAuth(), async (c) => {
   }
 })
 
-seedingRoutes.post('/applications/:id/cancel', requireAuth(), async (c) => {
+seedingRoutes.post('/applications/:id/cancel', requireUser(), async (c) => {
   try {
     const a = await ownApp(c.env.DB, c.req.param('id') ?? '', uid(c))
     if (!a) return c.json({ success: false, error: '신청을 찾을 수 없어요' }, 404)
@@ -291,7 +291,7 @@ seedingRoutes.post('/applications/:id/cancel', requireAuth(), async (c) => {
 
 const ORDER_RE = /^SDP-(\d{1,10})-(p\d{1,3})-\d{10,16}$/
 
-seedingRoutes.post('/passes/charge', requireAuth(), rateLimit({ action: 'seeding_charge', max: 10, windowSec: 600 }), async (c) => {
+seedingRoutes.post('/passes/charge', requireUser(), rateLimit({ action: 'seeding_charge', max: 10, windowSec: 600 }), async (c) => {
   try {
     const DB = c.env.DB
     if ((await setting(DB, 'seeding_pass_charge_enabled')) !== 'true') {
@@ -311,7 +311,7 @@ seedingRoutes.post('/passes/charge', requireAuth(), rateLimit({ action: 'seeding
   }
 })
 
-seedingRoutes.post('/passes/confirm', requireAuth(), async (c) => {
+seedingRoutes.post('/passes/confirm', requireUser(), async (c) => {
   try {
     const DB = c.env.DB
     await ensureSeedingTables(DB)
@@ -339,7 +339,7 @@ seedingRoutes.post('/passes/confirm', requireAuth(), async (c) => {
   }
 })
 
-seedingRoutes.get('/passes/purchases', requireAuth(), async (c) => {
+seedingRoutes.get('/passes/purchases', requireUser(), async (c) => {
   await ensureSeedingTables(c.env.DB)
   return c.json({ success: true, data: await listPurchases(c.env.DB, uid(c)) })
 })
@@ -349,7 +349,7 @@ seedingRoutes.get('/passes/purchases', requireAuth(), async (c) => {
  * 순서: 원장 cancel 줄 + 유료 칸 CAS 차감(선점) → 토스 전액 취소 → 실패하면 선점을 되돌린다.
  * 토스 취소는 `cancelTossPayment`(V2 SSOT) 호출만 — 직접 fetch 금지.
  */
-seedingRoutes.post('/passes/purchases/:paymentKey/cancel', requireAuth(), rateLimit({ action: 'seeding_pass_cancel', max: 5, windowSec: 600 }), async (c) => {
+seedingRoutes.post('/passes/purchases/:paymentKey/cancel', requireUser(), rateLimit({ action: 'seeding_pass_cancel', max: 5, windowSec: 600 }), async (c) => {
   try {
     const DB = c.env.DB
     await ensureSeedingTables(DB)
@@ -377,7 +377,7 @@ seedingRoutes.post('/passes/purchases/:paymentKey/cancel', requireAuth(), rateLi
 
 // ── SNS 연동 ──────────────────────────────────────────────────────
 
-seedingRoutes.get('/sns/:platform/start', requireAuth(), async (c) => {
+seedingRoutes.get('/sns/:platform/start', requireUser(), async (c) => {
   try {
     const p = c.req.param('platform')
     if (!isSeedingPlatform(p)) return c.json({ success: false, error: '모르는 플랫폼이에요' }, 400)
@@ -396,7 +396,7 @@ seedingRoutes.get('/sns/:platform/start', requireAuth(), async (c) => {
  *   실패해도 **연동을 지우지 않는다** — 일시적 장애로 사람의 연동을 끊으면 안 된다.
  *   `reconnect:true` 면 화면이 "다시 연동" 을 권한다.
  */
-seedingRoutes.post('/sns/:platform/refresh', requireAuth(), async (c) => {
+seedingRoutes.post('/sns/:platform/refresh', requireUser(), async (c) => {
   try {
     const p = c.req.param('platform')
     if (!isSeedingPlatform(p)) return c.json({ success: false, error: '모르는 플랫폼이에요' }, 400)
@@ -409,7 +409,7 @@ seedingRoutes.post('/sns/:platform/refresh', requireAuth(), async (c) => {
   }
 })
 
-seedingRoutes.delete('/sns/:platform', requireAuth(), async (c) => {
+seedingRoutes.delete('/sns/:platform', requireUser(), async (c) => {
   const p = c.req.param('platform')
   if (!isSeedingPlatform(p)) return c.json({ success: false, error: '모르는 플랫폼이에요' }, 400)
   await c.env.DB.prepare(`DELETE FROM user_sns_links WHERE user_id = ? AND platform = ?`).bind(uid(c), p).run().catch(() => null)

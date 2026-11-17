@@ -15,18 +15,18 @@
  *   PATCH /api/prospects/:id           - 메모/증빙 수정
  *   DELETE /api/prospects/:id          - 만료 전 회수
  *
- * 보안: 영업자 본인 인증 필수 (카카오 user 세션 — `requireAuth()`).
+ * 보안: 영업자 본인 인증 필수 (카카오 user 세션 — `requireUser()`).
  */
 
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
-import { requireAuth } from '@/worker/middleware/auth'
+import { requireUser } from '@/worker/middleware/auth' // 🔐 2026-11-17 영업자 = 유저(introducer_type 'influencer') — 셀러 #N 이 유저 #N 의 영입 목록(연락처)을 읽던 것
 import { safeHttpHref } from '../../../utils/safe-external-url'
 
 const prospectsRoutes = new Hono<{ Bindings: Env }>()
 
 // 매장 사전 등록
-prospectsRoutes.post('/', requireAuth(), async (c) => {
+prospectsRoutes.post('/', requireUser(), async (c) => {
   const user = (c.get as (k: string) => unknown)('user') as { id: number; type?: string } | undefined
   if (!user?.id) return c.json({ success: false, error: '인증 필요' }, 401)
 
@@ -111,7 +111,7 @@ prospectsRoutes.post('/', requireAuth(), async (c) => {
 })
 
 // 본인 등록한 prospects 목록 (영업자 dashboard 용)
-prospectsRoutes.get('/mine', requireAuth(), async (c) => {
+prospectsRoutes.get('/mine', requireUser(), async (c) => {
   const user = (c.get as (k: string) => unknown)('user') as { id: number } | undefined
   if (!user?.id) return c.json({ success: false, error: '인증 필요' }, 401)
 
@@ -137,7 +137,7 @@ async function prospectToken(secret: string, id: number): Promise<string> {
 }
 
 // POST /:id/invite-link — 본인 prospect 의 사장님 가입 링크 발급(에이전시 코드 자동 포함).
-prospectsRoutes.post('/:id/invite-link', requireAuth(), async (c) => {
+prospectsRoutes.post('/:id/invite-link', requireUser(), async (c) => {
   const user = (c.get as (k: string) => unknown)('user') as { id: number } | undefined
   if (!user?.id) return c.json({ success: false, error: '인증 필요' }, 401)
   const id = Number(c.req.param('id'))
@@ -182,7 +182,7 @@ prospectsRoutes.get('/prefill/:id', async (c) => {
 })
 
 // prospect 회수 (만료 전)
-prospectsRoutes.delete('/:id', requireAuth(), async (c) => {
+prospectsRoutes.delete('/:id', requireUser(), async (c) => {
   const user = (c.get as (k: string) => unknown)('user') as { id: number } | undefined
   if (!user?.id) return c.json({ success: false, error: '인증 필요' }, 401)
 

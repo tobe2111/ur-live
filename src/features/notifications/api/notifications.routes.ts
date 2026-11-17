@@ -37,6 +37,7 @@ notificationsRoutes.get('/unread-count', async (c) => {
     const payload = await verify(auth.slice(7), c.env.JWT_SECRET, 'HS256') as { id?: string | number; type?: string };
     const userId = payload?.id?.toString() || '';
     const userType = payload?.type || 'user';
+    const unId = userType === 'user' ? userId : ''; // 🔐 2026-11-17 user_notifications 엔 종류 컬럼이 없다 — 셀러 #N 이 유저 #N 의 알림을 읽던 것
     if (!userId) return c.json({ success: true, count: 0 });
 
     const { DB } = c.env;
@@ -44,7 +45,7 @@ notificationsRoutes.get('/unread-count', async (c) => {
     try {
       const r1 = await DB.prepare(
         `SELECT COUNT(*) as c FROM user_notifications WHERE user_id = ? AND is_read = 0${typeNotInSql(HIDDEN_FOR_USER)}`
-      ).bind(userId).first<{ c: number }>();
+      ).bind(unId).first<{ c: number }>();
       count += r1?.c ?? 0;
     } catch {}
     try {
@@ -75,7 +76,7 @@ async function fetchUnifiedNotifications(DB: D1Database, userId: string, userTyp
              FROM user_notifications WHERE user_id = ?${typeNotInSql(HIDDEN_FOR_USER)}`;
     if (opts.unreadOnly) q += ` AND is_read = 0`;
     q += ` ORDER BY created_at DESC LIMIT ?`;
-    const r = await DB.prepare(q).bind(userId, opts.limit).all();
+    const r = await DB.prepare(q).bind(userType === 'user' ? userId : '', opts.limit).all(); // 🔐 손님 토큰일 때만
     all.push(...(r.results || []));
   } catch { /* 테이블 없음 */ }
   // notifications: user_type 매칭
@@ -134,7 +135,7 @@ notificationsRoutes.put('/:id/read', async (c) => {
       try {
         const r = await DB.prepare(
           `UPDATE user_notifications SET is_read = 1 WHERE id = ? AND user_id = ? AND is_read = 0`
-        ).bind(numericId, userId).run();
+        ).bind(numericId, userType === 'user' ? userId : '').run();
         updated += r.meta?.changes ?? 0;
       } catch {}
     }
@@ -162,7 +163,7 @@ notificationsRoutes.put('/read-all', async (c) => {
     const userType = user?.type || 'user';
     // 양쪽 테이블 모두 처리
     try {
-      await DB.prepare(`UPDATE user_notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0`).bind(userId).run();
+      await DB.prepare(`UPDATE user_notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0`).bind(userType === 'user' ? userId : '').run();
     } catch {}
     try {
       await DB.prepare(`UPDATE notifications SET is_read = 1 WHERE user_id = ? AND user_type = ? AND is_read = 0`).bind(userId, userType).run();
@@ -186,7 +187,7 @@ notificationsRoutes.delete('/:id', async (c) => {
     let deleted = 0;
     if (table === 'user_notifications' || table === 'auto') {
       try {
-        const r = await DB.prepare(`DELETE FROM user_notifications WHERE id = ? AND user_id = ?`).bind(numericId, userId).run();
+        const r = await DB.prepare(`DELETE FROM user_notifications WHERE id = ? AND user_id = ?`).bind(numericId, userType === 'user' ? userId : '').run();
         deleted += r.meta?.changes ?? 0;
       } catch {}
     }

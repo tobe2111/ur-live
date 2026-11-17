@@ -27,7 +27,7 @@
 import { resolveVoucherExpiresAt } from '../../../shared/voucher-validity'
 import { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import type { D1Database } from '@cloudflare/workers-types'
-import { requireAuth, requireAdmin, requireSeller, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireAdmin, requireSeller, getCurrentUser, requireUser } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { generateUniqueVoucherCode } from './helpers'
 
@@ -199,7 +199,7 @@ publicApp.get('/:id', async (c) => {
 })
 
 const userApp = new Hono<{ Bindings: Env }>()
-userApp.use('*', requireAuth())
+userApp.use('*', requireUser())
 
 userApp.post('/:id/apply', async (c) => {
   await ensureTables(c.env.DB)

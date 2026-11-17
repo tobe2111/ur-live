@@ -156,6 +156,6 @@ describe('⑥ 배선 — 화면이 리다이렉트 대신 갱신을 부른다', 
   })
 
   it('라우트가 인증을 요구한다', () => {
-    expect(ROUTES).toMatch(/seedingRoutes\.post\('\/sns\/:platform\/refresh', requireAuth\(\)/)
+    expect(ROUTES).toMatch(/seedingRoutes\.post\('\/sns\/:platform\/refresh', requireUser\(\)/)
   })
 })

@@ -17,7 +17,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { requireAuth, getCurrentUser, requireUser } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import type { AuthUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
@@ -70,7 +70,7 @@ let _wishlistDominantCol: boolean | null = null;
 let _wishlistBaseCol: boolean | null = null;
 
 // ── GET /api/wishlists  (인증 기반 내 위시리스트 - useWishlist hook) ───────────
-wishlistRoutes.get('/', requireAuth(), async (c) => {
+wishlistRoutes.get('/', requireUser(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
   try {
@@ -139,7 +139,7 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
 });
 
 // ── POST /api/wishlists/toggle  (useToggleWishlist hook) ──────────────────────
-wishlistRoutes.post('/toggle', wishlistRateLimit, requireAuth(), async (c) => {
+wishlistRoutes.post('/toggle', wishlistRateLimit, requireUser(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
   try {
@@ -170,7 +170,7 @@ wishlistRoutes.post('/toggle', wishlistRateLimit, requireAuth(), async (c) => {
 });
 
 // ── DELETE /api/wishlists  (useClearWishlist hook - 전체 비우기) ──────────────
-wishlistRoutes.delete('/', wishlistRateLimit, requireAuth(), async (c) => {
+wishlistRoutes.delete('/', wishlistRateLimit, requireUser(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
   try {
@@ -188,7 +188,7 @@ wishlistRoutes.delete('/', wishlistRateLimit, requireAuth(), async (c) => {
 });
 
 // 찜하기 추가
-wishlistRoutes.post('/', wishlistRateLimit, requireAuth(), async (c) => {
+wishlistRoutes.post('/', wishlistRateLimit, requireUser(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
@@ -236,7 +236,7 @@ wishlistRoutes.post('/', wishlistRateLimit, requireAuth(), async (c) => {
 });
 
 // 찜하기 삭제 (wishlist ID)
-wishlistRoutes.delete('/:id', wishlistRateLimit, requireAuth(), async (c) => {
+wishlistRoutes.delete('/:id', wishlistRateLimit, requireUser(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
@@ -265,7 +265,7 @@ wishlistRoutes.delete('/:id', wishlistRateLimit, requireAuth(), async (c) => {
 });
 
 // 찜하기 삭제 (상품 ID)
-wishlistRoutes.delete('/product/:productId', wishlistRateLimit, requireAuth(), async (c) => {
+wishlistRoutes.delete('/product/:productId', wishlistRateLimit, requireUser(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
@@ -303,7 +303,7 @@ wishlistRoutes.get('/:userId', requireAuth(), async (c) => {
 
     const userId = c.req.param('userId');
     // ✅ IDOR FIX: Only allow self-access unless admin
-    if (userId !== String(authUser.id) && authUser.type !== 'admin') {
+    if ((authUser.type !== 'user' || userId !== String(authUser.id)) && authUser.type !== 'admin') { // 🔐 2026-11-17 셀러 #N ≠ 유저 #N
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
@@ -351,7 +351,7 @@ wishlistRoutes.get('/check/:userId/:productId', requireAuth(), async (c) => {
 
     // 본인 user_id 와 경로 userId 일치 확인 (admin 은 예외적으로 모두 조회 가능)
     if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
-    if (userId !== String(authUser.id) && authUser.type !== 'admin') {
+    if ((authUser.type !== 'user' || userId !== String(authUser.id)) && authUser.type !== 'admin') {
       return c.json({ success: false, error: 'Forbidden — 본인 wishlist 만 조회 가능' }, 403);
     }
 

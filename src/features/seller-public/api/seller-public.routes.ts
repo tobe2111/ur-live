@@ -259,7 +259,7 @@ sellerPublicRoutes.patch('/:sellerId/follow/preferences', requireUser(), async (
 })
 
 // ── GET /:sellerId/follow/preferences — 본인 알림 설정 조회 ──
-sellerPublicRoutes.get('/:sellerId/follow/preferences', requireAuth(), async (c) => {
+sellerPublicRoutes.get('/:sellerId/follow/preferences', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: 'Unauthorized' }, 401)
   const sellerId = Number(c.req.param('sellerId'))

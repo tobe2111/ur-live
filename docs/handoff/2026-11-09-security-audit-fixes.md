@@ -64,3 +64,24 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
 - 빈 catch 4차: 환불(`returns`)·딜(`points`·`deal-refund`)·정산(`payouts-generate`·`auto-settlement`·`restaurant-settlement`·`settlement-tax-invoices`)·
   영입 커미션·이용권 분쟁·이용권 발급·숙소 — 21곳 → `swallow`. `voucher-dispute` 의 `ALTER TABLE … ADD COLUMN` 한 곳은
   **중복 컬럼 오류가 정상**이라 사유 주석을 단 채 조용히 둔다(로그로 바꾸면 콜드스타트마다 잡음). 관련 시험 73파일 996건 · tsc 0.
+
+## 13차 — 대표 "해킹이나 개인정보 탈취 등의 허점 없을까?" (2026-11-17)
+- **셀러 비밀번호 재설정 토큰을 해시로 저장**(`password_reset_tokens.token` 원문 → `hashToken`). 원문 대조는 옛 형식(32자 hex)만 1시간 이행.
+  🩸 첫 수정이 원문도 그대로 받게 해서, 저장된 해시를 토큰인 척 내밀면 통과했다 — 형식 검사로 막고 주입으로 고정.
+- 확인만(문제 없음): `dangerouslySetInnerHTML` 전수(정적·DOMPurify) · 서버 HTML/OG SVG 이스케이프 · 공개 응답 9곳 실측(손님 PII 0) ·
+  비밀번호 찾기 열거 방지 · 재설정 뒤 세션 무효화 · 라이브 오류 기록(라우터 7 이후 신규 0) · 머니 데이터 대조 · 11-10 이후 신규 쓰기 경로 6개.
+- 대표 판단 대기: 유어샵 공개 응답의 `pins[].deal_pct`(매장↔유어샵 주인 소개비 %)가 방문자에게도 보인다 · 자동화 관리자(10번) PIN/2FA 없음.
+- **읽기 IDOR 전수 — 4차 가드가 놓친 58곳을 닫았다.** 4차(#2258)의 스캐너는 `user.id` 글자만 봤다. 같은 일을 하는
+  `getCurrentUser(c)?.id` · `c.get('user').id` · `authUser.id` · `uid(c)` · `router.use('*', requireAuth())` 형태가 통째로 빠져 있었고,
+  **라이브에서 관리자 토큰으로 `/api/orders`·`/api/notifications`·`/api/gifts/sent`·`/api/seeding/me`·`/api/wishlists` 가 200** 이었다(같은 날 `/api/cart` 는 403).
+  셀러 #N 토큰이 유저 #N 의 주문(수령인 이름·전화·주소)·알림·선물 수신자 연락처·견적 요청 상세 주소를 읽을 수 있었다.
+  - `requireUser()`: 견적 요청 8 · 시딩 14 · 선물 3 · 동네 쿠폰(router) · 찜 6 · 영입 5 · 관심 3 · 제휴 2 · 동네공구 2 · 지역 2 · 장바구니 PUT · 쇼츠 좋아요 · 추천 그룹 생성 · 팔로우 설정 · 체험단(router).
+  - 주문 라우터 `requireUserType('user','admin')` · 알림은 `user_notifications` 를 손님 토큰일 때만(셀러·관리자도 쓰는 라우터라 통째로 못 바꾼다) ·
+    찜 `/:userId` 두 곳 종류 확인 · 이의 대상 손님만 · 타임딜 생성 `requireSeller()`(반대 방향 — 유저 #N 이 셀러 #N 행세).
+  - 스캐너 재작성(신원을 읽는 모든 형태 + 다음 라우트 선언까지) · ALLOWED 15 → 11.
+    🩸 넓힌 스캐너가 `\.type` 를 아무 데서나 인정해 본문의 `tx.type` 만으로 통과했다(기존 주입이 잡음) → **신원 객체의** 종류만 인정.
+- 공개 응답: `/api/seller/public/:id` 에서 email·phone 제거(라이브는 500 이라 지금은 안 새지만 쿼리가 살아나면 전 사장님 연락처가 열거된다) ·
+  미승인·반려·정지 매장의 등록번호·주소·대표자 가림(`isSellerIdentityPublic`) · 경매·후원 랭킹 실명 → 첫 글자, 유저 id 제거.
+- 일부러 안 한 것(낮음): `/api/account/check-restriction?email=`(탈퇴 계정 여부 — 시간당 20회) · 영입 중복 응답(`ALREADY_CLAIMED`) · 사업자번호 조회(로그인 필요·10분 20회).
+- 가드 `security-hardening-8` 10건 + 주입 `[sec8]` 8 · `[cid]` 5 전부 빨간불 · 관련 시험 101파일 1,529건 · tsc 0.
+- E4 판정 방법: 배포 뒤 관리자 토큰으로 `/api/orders`·`/api/gifts/sent`·`/api/seeding/me`·`/api/wishlists` → **403**, `/api/notifications` 200(빈 목록), 무인증 `/api/sellers/29/public` 200.

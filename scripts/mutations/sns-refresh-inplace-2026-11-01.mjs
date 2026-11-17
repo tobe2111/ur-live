@@ -89,7 +89,7 @@ export default [
   {
     name: '🔄 갱신 라우트가 인증 없이 열린다',
     file: ROUTES,
-    find: "seedingRoutes.post('/sns/:platform/refresh', requireAuth(), async (c) => {",
+    find: "seedingRoutes.post('/sns/:platform/refresh', requireUser(), async (c) => {",
     replace: "seedingRoutes.post('/sns/:platform/refresh', async (c) => {",
     test: T,
     why:

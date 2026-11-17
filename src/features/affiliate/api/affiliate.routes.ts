@@ -53,7 +53,7 @@ async function ensureTable(DB: D1Database) {
 // ✅ SECURITY FIX (Payment C1): requireAuth + server-side order lookup.
 // Previously unauthenticated and trusted client-supplied referrer_id / order_id /
 // order_amount, allowing anyone to credit unlimited points to any account.
-affiliateRoutes.post('/track', requireAuth(), async (c) => {
+affiliateRoutes.post('/track', requireUser(), async (c) => {
   const authUser = getCurrentUser(c)
   if (!authUser) return c.json({ success: false, error: '로그인 필요' }, 401)
 
@@ -313,7 +313,7 @@ affiliateRoutes.get('/top-groups', requireUser(), async (c) => {
 })
 
 // ── GET /api/affiliate/link/:type/:id — 추천 링크 생성 (상품/라이브) ──
-affiliateRoutes.get('/link/:type/:id', requireAuth(), async (c) => {
+affiliateRoutes.get('/link/:type/:id', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const type = c.req.param('type') // 'product' | 'live' | 'group-buy' | 'stay'

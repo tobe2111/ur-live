@@ -7,7 +7,7 @@
  *  매장 태깅(product_regions, restaurant-geocode cron)과 같은 카카오 coord2regioncode SSOT 사용.
  */
 import { Hono } from 'hono'
-import { requireAuth, requireAdmin, getCurrentUser } from '../middleware/auth'
+import { requireAuth, requireAdmin, getCurrentUser, requireUser } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import type { Env } from '../types/env'
 import { publicCache } from '../middleware/edge-cache'
@@ -36,7 +36,7 @@ async function ensureUserRegions(DB: D1Database): Promise<void> {
 export const meRegionRoutes = new Hono<{ Bindings: Env }>()
 
 // 내 동네 조회.
-meRegionRoutes.get('/region', requireAuth(), async (c) => {
+meRegionRoutes.get('/region', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
@@ -48,7 +48,7 @@ meRegionRoutes.get('/region', requireAuth(), async (c) => {
 })
 
 // 내 동네 설정 — GPS 좌표(lat/lng) 또는 수동 동코드.
-meRegionRoutes.post('/region', requireAuth(), async (c) => {
+meRegionRoutes.post('/region', requireUser(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env

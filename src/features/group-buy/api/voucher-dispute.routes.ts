@@ -117,6 +117,7 @@ sellerApp.get('/against-me', async (c) => {
     const DB = c.env.DB
     const user = getCurrentUser(c) as Vars['user']
     if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    if (user.type !== 'user') return c.json({ success: true, data: [] }) // 🔐 2026-11-17 손님 것만 — 셀러 #N ≠ 유저 #N
     await ensureDisputeTable(DB)
     const { results } = await DB.prepare(`
       SELECT d.id, d.voucher_id, d.reason, d.status, d.customer_response, d.created_at,

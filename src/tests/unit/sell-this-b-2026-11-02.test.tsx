@@ -121,7 +121,7 @@ describe('⑤ 서버 — 수수료 요청', () => {
   const body = ep.slice(0, ep.indexOf('\n})\n'))
 
   it('로그인 · 속도 제한', () => {
-    expect(body).toMatch(/requireAuth\(\), rateLimit\(\{ action: 'deal_request'/)
+    expect(body).toMatch(/requireUser\(\), rateLimit\(\{ action: 'deal_request'/)
   })
   it('같은 사람 → 같은 매장은 하루 한 번', () => {
     expect(body).toContain("created_at >= datetime('now', '-1 day')")

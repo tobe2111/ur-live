@@ -9,7 +9,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth';
+import { requireAuth, requireUser, requireSeller, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { executeRun, queryFirst } from '@/worker/utils/database';
@@ -72,7 +72,7 @@ async function ensureTables(DB: D1Database) {
 }
 
 // POST /api/timedeal/create — 셀러가 타임딜 / 라이브 공동구매 트리거
-timedealRoutes.post('/create', requireAuth(), async (c) => {
+timedealRoutes.post('/create', requireSeller(), async (c) => { // 🔐 2026-11-17 유저 #N 이 셀러 #N 의 상품·방송에 타임딜을 걸던 것
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 
