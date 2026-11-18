@@ -19,6 +19,7 @@ import { ensureOutreachColumns } from './outreach-webhook'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 import { harvestMarks, ensureListTab, applyEmailList, sentDayKST } from './pool-sheets-marks'
 import { syncGuideTab } from './pool-sheets-guide'
+import { tabGid, harvestHidden, applyHidden } from './pool-sheets-hidden'
 
 const TAB = 'pool' // 대상 탭 이름(없으면 자동 생성) — 이름 변경 시 동기화 끊김(변경 금지)
 /**
@@ -254,6 +255,8 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
   let marked = (await applyEmailList(DB, token, sheetId, 'ad_influencer_leads', cost).catch(() => ({ marked: 0 }))).marked
   // 📌 '안내' 탭(사용법) — 버전이 바뀐 회차에만 쓴다(평소엔 설정 1줄 읽기).
   await syncGuideTab(DB, token, sheetId, 'influencer', cost).catch(() => false)
+  // 🙈 행 숨기기 = '이메일 보냄'(`pool-sheets-hidden.ts`) — 숨기기 요청에 탭 번호가 필요하다(회차당 1번).
+  const gid = await tabGid(token, sheetId, TAB, cost).catch(() => null)
   while (wrote < ROWS_PER_RUN) {
     // 🧱 **이 사이클은 자기 스냅샷까지만 쓴다** — 그리드를 그 크기로만 넓혔기 때문이다(`cycleRoom` 주석).
     //   이 상한이 없어서 사이클 도중 늘어난 행을 그리드 밖에 쓰고 400 → 커서 고착이 났다.
@@ -263,6 +266,8 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
     // ✉️ 덮어쓰기 **전에**, 그리고 DB 를 읽기 **전에** 이 구간의 '이메일 보냄' 표시를 저장한다 — 그래야 이번에 쓰는 줄에
     //   방금 저장한 날짜가 바로 그려진다(읽고 나서 저장하면 표시가 한 사이클 동안 사라져 보인다). 줄은 ID 열로 찾는다.
     marked += await harvestMarks(DB, token, sheetId, 'ad_influencer_leads', TAB, MARK_LETTER, off + 2, take, cost).catch(() => 0)
+    // 🙈 사람이 숨긴 줄도 같은 뜻('이메일 보냄')으로 거둔다 — 덮어쓰면 숨김이 다른 사람으로 밀리므로 그 전에.
+    marked += await harvestHidden(DB, token, sheetId, 'ad_influencer_leads', TAB, off + 2, take, cost).catch(() => 0)
     const res = await adsLeadsDb(env).prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok, links,
         category, source_keyword, status, contact_channel, contacted_at, follow_up_at, source, consented_at, memo, collected_at,
         lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source, opted_out
@@ -287,6 +292,8 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
         return { ok: false, error: `WRITE: ${rowNo}행부터 기록 실패(${w?.status || 'net'})`, rows: wrote + i }
       }
     }
+    // 🙈 방금 쓴 줄을 DB 상태대로 숨기고 편다 — 숨김이 줄 위치가 아니라 사람을 따라다니게.
+    await applyHidden(token, sheetId, gid, off + 2, page.map(l => l.contact_channel === 'email' && !!l.contacted_at), cost)
     off += page.length
     wrote += page.length
     if (page.length < take) { done = true; break }
