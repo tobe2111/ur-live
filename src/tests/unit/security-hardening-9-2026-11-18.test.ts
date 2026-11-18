@@ -156,3 +156,18 @@ describe('⑤ 넓은 도메인에 실려 새던 민감 변경', () => {
     expect(seg).toMatch(/Number\(prevLink\.linked_user_id\) !== Number\(userId\)\) \{[\s\S]{0,400}bumpStoreSeatEpoch\(DB, Number\(sellerId\), 'admin_link_user'\);\s*await revokeAllScanDevices\(DB, Number\(sellerId\)\);/)
   })
 })
+
+describe('⑥ 동네공구 확정·환불 — 번호만 보지 않는다 · 에이전시 좌석은 스캔 기기 키를 못 만든다', () => {
+  it('확정은 매장 토큰, 환불은 손님 토큰일 때만 본인으로 본다', () => {
+    const code = readCode('src/features/community-group-buy/api/community-group-buy.routes.ts')
+    expect(code).toMatch(/const isSeller = user\.type === 'seller' && group\.restaurant_seller_id && String\(group\.restaurant_seller_id\) === String\(user\.id\)/)
+    expect(code).toMatch(/const isCreator = user\.type === 'user' && String\(group\.creator_user_id\) === String\(user\.id\)/)
+    expect(code).not.toMatch(/const isCreator = String\(group\.creator_user_id\)/)
+  })
+  it('에이전시 좌석의 허용 목록에 스캔 기기·이용권 사용 처리가 없다', async () => {
+    const { agencyScopeDecision } = await import('@/worker/utils/agency-product-scope')
+    for (const [m, p] of [
+      ['POST', '/api/seller/scan-devices'], ['GET', '/api/seller/scan-devices'], ['POST', '/api/seller/scan-devices/3/revoke'],
+    ] as const) expect(agencyScopeDecision(m, p).allow, `${m} ${p}`).toBe(false)
+  })
+})

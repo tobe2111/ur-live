@@ -82,4 +82,20 @@ export default [
     test: TEST,
     why: '이전 주인 쪽 기기가 새 주인 매장의 이용권을 계속 처리한다.',
   },
+  {
+    name: '[sec9] 동네공구 확정이 다시 번호만 본다',
+    file: 'src/features/community-group-buy/api/community-group-buy.routes.ts',
+    find: "const isSeller = user.type === 'seller' && group.restaurant_seller_id",
+    replace: 'const isSeller = group.restaurant_seller_id',
+    test: TEST,
+    why: '유저 #N 토큰이 매장 #N 의 공구를 확정한다.',
+  },
+  {
+    name: '[sec9] 동네공구 환불이 다시 번호만 본다',
+    file: 'src/features/community-group-buy/api/community-group-buy.routes.ts',
+    find: "const isCreator = user.type === 'user' && String(group.creator_user_id)",
+    replace: 'const isCreator = String(group.creator_user_id)',
+    test: TEST,
+    why: '매장 #N 토큰이 유저 #N 이 만든 공구의 보증금 환불을 건다.',
+  },
 ]
