@@ -2668,7 +2668,7 @@ canvas {
   {
     name: '홈 섹션 API 가 다시 엣지 캐시를 안 탄다',
     file: 'src/features/sections/api/sections.routes.ts',
-    find: "sectionsRoutes.get('/', edgeCache(120), async (c) => {",
+    find: "sectionsRoutes.get('/', publicCache(120), async (c) => {", // 2026-11-17 publicCache(로그인 손님도 캐시)
     replace: "sectionsRoutes.get('/', async (c) => {",
     test: 'src/tests/unit/home-first-paint.test.ts',
     why:
