@@ -24,7 +24,7 @@ export async function ensureRecruitColumn(DB: D1Database) {
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recruited_at TEXT').run().catch(() => null)
 }
 
-type Heavy = { agg: Record<string, unknown> | null; catFunnel: unknown[]; byDay: Array<{ d: string; n: number; reachable: number }>; tail: Record<string, unknown> }
+type Heavy = { agg: Record<string, unknown> | null; catFunnel: unknown[]; byDay: Array<{ d: string; n: number; reachable: number }>; tail: Record<string, unknown>; complete?: boolean }
 
 /**
  * ⏱️ **무거운 집계는 캐시한다** (2026-11-17 대표 *"인플루언서 풀 페이지 로딩이 너무 길어 · 매일 수집량 그래프가 사라졌어"*).
@@ -129,7 +129,11 @@ async function computeHeavy(DB: D1Database): Promise<Heavy> {
     GROUP BY d ORDER BY d DESC LIMIT 14`).bind(POOL).all().catch(() => null))?.results || []) as Heavy['byDay']
   // 🔗 퍼널 뒷단(가입 → 첫 판매) — 별도 쿼리(적립 원장 조인이라 위 집계와 분리). 실패 시 0.
   const tail = await getFunnelTailStats(DB).catch(() => ({ joined: 0, first_sale: 0 }))
-  return { agg: (agg as Record<string, unknown> | null) || null, catFunnel: catFunnel?.results || [], byDay, tail: tail as Record<string, unknown> }
+  // 🩸 조회 하나라도 실패했으면(위 .catch 가 null 로 바꾼다) **캐시에 넣지 않는다** — 2026-11-18 배포 직후 실측:
+  //   부하 중 실패한 계산이 빈 14일 표로 저장돼 그래프가 다시 사라질 뻔했다(30분 동안 그 빈 값이 나간다).
+  //   ⚠️ 14일 유입이 진짜로 0행인 풀은 없다(수집이 매시간 돈다) — 빈 표는 실패로 본다.
+  const complete = !!agg && !!catFunnel && byDay.length > 0
+  return { agg: (agg as Record<string, unknown> | null) || null, catFunnel: catFunnel?.results || [], byDay, tail: tail as Record<string, unknown>, complete }
 }
 
 /** 오늘(KST) 유입 — 매번 실시간. `collected_at` 인덱스로 오늘치만 읽는다. */
@@ -161,7 +165,7 @@ export async function buildInfluencerPoolStats(env: Env, opts: { fresh?: boolean
   await ensurePerfExtraColumns(DB)  // last_post_at/pub_checked_at — 아래 보강 진행률이 참조
   await ensureRecruitColumn(DB)     // 📣 recruited_at(모집 전환 분모)
   const [{ stats: heavy, at }, today] = await Promise.all([
-    getInfluencerStatsCached<Heavy>(DB, !!opts.fresh, () => computeHeavy(DB), opts.bg),
+    getInfluencerStatsCached<Heavy>(DB, !!opts.fresh, () => computeHeavy(DB), opts.bg, Date.now(), h => h.complete !== false),
     todayInflow(DB),
   ])
   const agg = heavy.agg

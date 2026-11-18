@@ -20,6 +20,8 @@ let refreshing = false
 
 export async function getInfluencerStatsCached<T>(
   DB: D1Database, fresh: boolean, compute: () => Promise<T>, bg?: (p: Promise<unknown>) => void, nowMs = Date.now(),
+  /** 저장해도 되는 결과인가 — 실패가 섞인 계산을 30분 동안 내보내지 않게(아니면 저장 안 하고, 낡은 캐시가 있으면 그걸 준다). */
+  storable: (t: T) => boolean = () => true,
 ): Promise<{ stats: T; at: number }> {
   const row = fresh ? null : await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
     .bind(INFLUENCER_STATS_CACHE_KEY).first<{ value: string }>().catch(() => null)
@@ -27,6 +29,7 @@ export async function getInfluencerStatsCached<T>(
   const age = cached ? nowMs - cached.at : -1
   if (!fresh && cached && age >= 0 && age < INFLUENCER_STATS_TTL_MS) return { stats: cached.data, at: cached.at }
   const store = async (stats: T, at: number) => {
+    if (!storable(stats)) return
     await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
       .bind(INFLUENCER_STATS_CACHE_KEY, JSON.stringify({ at, data: stats })).run().catch(() => null)
   }
@@ -39,6 +42,8 @@ export async function getInfluencerStatsCached<T>(
     return { stats: cached.data, at: cached.at }
   }
   const stats = await compute()
+  // 실패가 섞인 계산이면 저장하지 않고, 낡았어도 온전한 캐시가 있으면 그쪽을 준다(빈 그래프보다 낫다).
+  if (!storable(stats) && cached && age >= 0 && age < INFLUENCER_STATS_MAX_STALE_MS) return { stats: cached.data, at: cached.at }
   const at = nowMs // 기준 시각은 요청 시각(시험이 시계를 주입할 수 있게 — 계산 몇 초 차이는 의미 없다)
   await store(stats, at)
   return { stats, at }
