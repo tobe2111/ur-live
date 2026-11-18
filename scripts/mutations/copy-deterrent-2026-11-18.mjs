@@ -69,8 +69,8 @@ export default [
   {
     name: '[copy-deterrent] 대시보드에서도 글자 선택을 막는다',
     file: FILE,
-    find: 'export function shouldBlockSelect(pathname: string, target: Element | null): boolean {\n  if (isExemptPath(pathname)) return false\n',
-    replace: 'export function shouldBlockSelect(pathname: string, target: Element | null): boolean {\n',
+    find: 'export function isSelectAllowedPath(pathname: string): boolean {\n  if (isExemptPath(pathname)) return true\n',
+    replace: 'export function isSelectAllowedPath(pathname: string): boolean {\n',
     test: TEST,
     why: '운영자가 주문번호·연락처를 복사하지 못한다.',
   },
@@ -89,5 +89,21 @@ export default [
     replace: '',
     test: TEST,
     why: '선택은 막혔는데 복사할 길이 없다 — 사는 사람만 불편해진다.',
+  },
+  {
+    name: '[copy-deterrent] 내 주문·결제 결과 화면에서도 글자 선택을 막는다',
+    file: FILE,
+    find: "  if (pathname.startsWith('/my-')) return true\n  return SELECT_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))\n",
+    replace: "  return false\n",
+    test: TEST,
+    why: '손님이 주문번호·입금 계좌·운송장·약관 조항을 복사하지 못한다.',
+  },
+  {
+    name: '[copy-deterrent] 선택 허용이 접두사만 보고 공개 화면까지 연다',
+    file: FILE,
+    find: "  return SELECT_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))\n",
+    replace: "  return SELECT_ALLOWED_PREFIXES.some((p) => pathname.startsWith(p))\n",
+    test: TEST,
+    why: "'/pay' 가 '/pass/…'(이용권 상세)를, '/my' 가 다른 화면을 삼켜 공개 콘텐츠의 선택이 다시 열린다.",
   },
 ]
