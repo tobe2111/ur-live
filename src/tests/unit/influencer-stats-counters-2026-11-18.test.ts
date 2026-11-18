@@ -254,6 +254,18 @@ describe('③ 수집을 절대 멈추지 않게', () => {
     expect(await C.ensureStatsCounters(DB, T0 + 60_000)).toBe(false)     // 5분 안 — 아직 안 해 본다
     expect(await C.ensureStatsCounters(DB, T0 + C.ENSURE_RETRY_MS + 1)).toBe(true)
   })
+  it('새 isolate 첫 요청: 트리거가 다 있으면 확인 1번으로 끝난다 · 퍼널 뒷단은 맨 먼저 출발한다', async () => {
+    const { db, DB } = freshDb()
+    await install(DB, db)
+    let n = 0
+    const counting = { prepare: (sql: string) => { n++; return (DB as unknown as { prepare: (s: string) => unknown }).prepare(sql) }, batch: (DB as unknown as { batch: unknown }).batch } as unknown as D1Database
+    expect(await C.ensureStatsCounters(counting)).toBe(true)
+    expect(n).toBe(1)
+    expect(POOL_SRC.indexOf('const tailP = getFunnelTailStats(DB)')).toBeGreaterThan(0)
+    expect(POOL_SRC.indexOf('const tailP = getFunnelTailStats(DB)')).toBeLessThan(POOL_SRC.indexOf('if (!(await ensureStatsCounters(DB))) return null'))
+    const claim = readFileSync('src/features/marketing/api/lead-claim.ts', 'utf8')
+    expect(claim).toMatch(/await runDdlOnce\(DB, 'ads_ddl_lead_claim', CLAIM_DDL\)/)
+  })
   it('코드가 리드 id 를 고치는 곳이 없다(트리거가 NEW.id 하나로 구간을 판정한다)', () => {
     const bad: string[] = []
     const walk = (d: string) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) { if (!p.includes('tests')) walk(p) } else if (/\.(ts|tsx|mjs)$/.test(f)) { const t = readFileSync(p, 'utf8'); if (/UPDATE\s+ad_influencer_leads\s+SET\s+(?:[^`]*?,\s*)?id\s*=/i.test(t)) bad.push(p) } } }

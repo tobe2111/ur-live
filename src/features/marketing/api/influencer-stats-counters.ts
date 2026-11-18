@@ -258,10 +258,12 @@ export async function ensureStatsCounters(DB: D1Database, nowMs = Date.now()): P
     const have = await DB.prepare(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'ad_influencer_leads' AND name IN (${TRIGGER_NAMES.map(() => '?').join(',')})`) // d1-bind-ok: 트리거 이름 3개 고정(한도 100 에 닿을 수 없다)
       .bind(...TRIGGER_NAMES).all<{ name: string }>()
     const missing = TRIGGER_NAMES.filter(n => !(have.results || []).some(x => x.name === n))
+    // ⚡ 트리거가 다 있으면 표·색인도 이미 있다(트리거보다 먼저 만든다) — 새 isolate 의 첫 요청이 왕복 1번으로 끝나게.
+    if (!missing.length) { ready.add(DB); return true }
     await DB.prepare(counterTableDdl()).run()
     await DB.prepare(CONTACT_TODO_INDEX).run()
     for (const old of staleTriggerNames()) await DB.prepare(`DROP TRIGGER IF EXISTS ${old}`).run()
-    if (missing.length) {
+    {
       // 트리거가 없던 동안의 쓰기는 숫자표에 없다 → 처음부터 다시 채운다. 트리거 설치와 **같은 batch**(그 사이 행을 놓치지 않게).
       for (const n of TRIGGER_NAMES) await DB.prepare(`DROP TRIGGER IF EXISTS ${n}`).run()
       const [, ...triggers] = counterDdl()

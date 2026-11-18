@@ -150,6 +150,8 @@ const COUNTER_WORK_KEY = 'ads_influencer_stats_counter_attempt'
  * 다 채웠으면 숫자표를 쓰고, 한 시간이 지났으면 어긋남 검사만 응답 뒤로 예약한다.
  */
 async function buildFromCounters(DB: D1Database, bg?: (p: Promise<unknown>) => void) {
+  // ⚡ 퍼널 뒷단(가입·첫 판매)은 숫자표와 무관하다 — 맨 먼저 출발시켜 아래 왕복들과 겹친다(새 isolate 의 첫 요청이 길었다).
+  const tailP = getFunnelTailStats(DB).catch(() => ({ joined: 0, first_sale: 0 }))
   if (!(await ensureStatsCounters(DB))) return null
   const snap = await readStatsCounters(DB)
   if (!snap) return null
@@ -166,7 +168,7 @@ async function buildFromCounters(DB: D1Database, bg?: (p: Promise<unknown>) => v
   if (!snap.complete) return null
   const [todo, tail] = await Promise.all([
     DB.prepare(CONTACT_TODO_SQL).first<{ contacted7: number; need_followup: number; today_kst: string }>().catch(() => null),
-    getFunnelTailStats(DB).catch(() => ({ joined: 0, first_sale: 0 })),
+    tailP,
   ])
   if (!todo) return null
   const byDay = lastDays(snap.days, String(todo.today_kst))
