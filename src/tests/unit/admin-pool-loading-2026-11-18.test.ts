@@ -125,3 +125,33 @@ describe('⑤ 화면 — 첫 로드·폴링은 캐시, 바꾼 뒤에만 fresh', 
     expect(src('src/pages/admin/AdminInfluencerPoolPage.tsx')).toMatch(/useEffect\(\(\) => \{ loadStats\(\) \}, \[loadStats\]\)/)
   })
 })
+
+describe('⑥ 오늘의 컨택 — 이메일 줄·전화 줄을 따로, 인덱스 순서로', async () => {
+  const { contactListQueries } = await import('@/features/marketing/api/contact-list-queries')
+  const q = contactListQueries(10)
+  const db = new DatabaseSync(':memory:')
+  db.exec(`CREATE TABLE ad_company_leads (id INTEGER PRIMARY KEY, company_name TEXT, category TEXT, subcategory TEXT, tier INTEGER, region TEXT, email TEXT, phone TEXT, website TEXT, active INTEGER, merged_into INTEGER, status TEXT, collected_at TEXT);
+    CREATE INDEX idx_company_leads_active ON ad_company_leads(active, tier, id);
+    CREATE TABLE store_prospects (id INTEGER PRIMARY KEY, biz_name TEXT, category TEXT, region TEXT, email TEXT, phone TEXT, website TEXT, is_new_open INTEGER, apv_perm_ymd TEXT, active INTEGER, status TEXT);
+    CREATE INDEX idx_prospects_active ON store_prospects(active, category, id);
+    CREATE INDEX idx_prospects_newopen ON store_prospects(is_new_open, apv_perm_ymd);`)
+  db.exec(COMPANY_INDEX_DDL.find(x => x.includes('idx_company_leads_list_order'))!)
+  const plan = (sql: string) => (db.prepare('EXPLAIN QUERY PLAN ' + sql).all(10) as Array<{ detail: string }>).map(r => r.detail).join(' | ')
+  it('업체 두 줄은 목록 정렬 인덱스로 · 임시 정렬 없음', () => {
+    for (const k of ['companyEmail', 'companyPhone'] as const) {
+      expect(plan(q[k]), k).toMatch(/idx_company_leads_list_order/)
+      expect(plan(q[k]), k).not.toMatch(/TEMP B-TREE/)
+    }
+  })
+  it('매장 전화 줄은 개업·인허가 인덱스 순서로(active 인덱스를 타지 않게 +active)', () => {
+    expect(plan(q.storePhone)).toMatch(/idx_prospects_newopen/)
+    expect(q.storePhone).toMatch(/\+active = 1/)
+    expect(q.storeEmail).toMatch(/\+active = 1/)
+  })
+  it('진짜 SQLite — 결과는 이메일 그룹 먼저, 모자라면 전화로 채운다(라우트 배선)', () => {
+    const r = src('src/features/marketing/api/partner-pool.routes.ts')
+    expect(r).toMatch(/const companies = \[\.\.\.coEmail, \.\.\.await pick\(q\.companyPhone, limit - coEmail\.length\)\]/)
+    expect(r).toMatch(/const stores = \[\.\.\.stEmail, \.\.\.await pick\(q\.storePhone, limit - stEmail\.length\)\]/)
+    expect(r).not.toMatch(/ORDER BY \(CASE WHEN email IS NOT NULL AND email != '' THEN 0 ELSE 1 END\)/)
+  })
+})
