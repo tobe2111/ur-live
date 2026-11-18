@@ -68,12 +68,12 @@ export async function retryEmailFailures(env: Env) {
       retried++
       try {
         const { sendSystemEmail } = await import('../../lib/system-email')
-        // sendSystemEmail 가 다시 실패 시 INSERT 가 발생하지 않도록 DB 우회는 어렵지만,
-        // 동일 row 가 다시 INSERT 되어도 retry_count 가 격리되어 중복 처리 영향 미미.
+        // 🩸 2026-11-18 `noQueue` — 실패해도 새 실패 행을 만들지 않는다(이 행을 아래에서 갱신한다).
+        //   종전 주석은 "중복 영향 미미" 라고 했지만 라이브에선 시험 메일 1통이 142행으로 불었다(재시도 실패마다 retry_count=0 새 행).
         const result = await sendSystemEmail(env, row.recipient, {
           subject: row.subject,
           html: row.html,
-        })
+        }, { noQueue: true })
         if (result.success) {
           succeeded++
           await env.DB.prepare(`
