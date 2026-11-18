@@ -115,7 +115,7 @@ export default [
   {
     name: '🔔 상한에 잘렸는데 커서를 올린다',
     file: 'src/shared/seo/indexnow.ts',
-    find: '    cursor: changed.length > max ? prev : (maxLastmod || prev),',
+    find: '    cursor: take[take.length - 1].lastmod,',
     replace: '    cursor: maxLastmod || prev,',
     test: TEST,
     why:

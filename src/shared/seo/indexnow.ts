@@ -46,8 +46,9 @@ export const INDEXNOW_ENDPOINTS: readonly string[] = [
   'https://www.bing.com/indexnow',
 ]
 
-/** 한 회차 상한. IndexNow 규격은 1회 10,000까지지만 우리 변경량은 하루 수십 건이다. */
-export const INDEXNOW_MAX_URLS = 100
+/** 한 회차 상한. IndexNow 규격은 1회 10,000까지지만 우리 변경량은 하루 수십~수백 건이다.
+ *  🩸 2026-11-18: 100 이던 시절 변경이 146건 쌓이자 **영원히 멈췄다**(아래 planIndexNow 주석) — 1,000 으로 올렸다. */
+export const INDEXNOW_MAX_URLS = 1000
 
 /** 커서를 담는 `platform_settings` 키. */
 export const INDEXNOW_CURSOR_KEY = 'indexnow_cursor'
@@ -111,14 +112,30 @@ export function planIndexNow(
   if (!prev) return { urls: [], cursor: maxLastmod, note: `첫 회차: 커서만 세움(${entries.length}건 관측)` }
 
   const changed = entries.filter((e) => e.lastmod > prev)
-  // 🔴 **새 것부터** 자른다 — 상한에 걸리면 오래된 변경이 아니라 **최신 변경**이 먼저 가야 한다.
-  changed.sort((a, b) => (a.lastmod < b.lastmod ? 1 : a.lastmod > b.lastmod ? -1 : 0))
-  const urls = changed.slice(0, max).map((e) => e.loc)
+  if (changed.length <= max) {
+    // 다 들어가면 **새 것부터**(보기 좋은 순서일 뿐 전부 간다) 보내고 커서를 끝까지 올린다.
+    changed.sort((a, b) => (a.lastmod < b.lastmod ? 1 : a.lastmod > b.lastmod ? -1 : 0))
+    return { urls: changed.map((e) => e.loc), cursor: maxLastmod || prev, note: `변경 ${changed.length}건 중 ${changed.length}건 제출` }
+  }
+  /**
+   * 🩸 2026-11-18 상한에 잘릴 때 — 종전엔 "새 것부터 max 건 + 커서 유지" 였다. 커서가 그대로면 변경 집합은
+   *   줄지 않고 **늘기만** 해서 `changed.length > max` 가 영원히 참이 된다 ⇒ 매일 같은 최신 100건만 다시 보내고
+   *   오래된 변경은 끝내 안 갔다(라이브: 11-11 커서 고정 · 146건 중 100건 반복). 이제 **오래된 것부터** 보내고
+   *   커서를 보낸 마지막 건까지 올린다 — 매 회차 반드시 앞으로 간다. 같은 시각이 경계에 걸리면 그 시각은
+   *   통째로 다음 회차로 미룬다(커서 `>` 비교라 반만 보내면 나머지가 영구히 빠진다).
+   */
+  changed.sort((a, b) => (a.lastmod < b.lastmod ? -1 : a.lastmod > b.lastmod ? 1 : 0))
+  let take = changed.slice(0, max)
+  const edge = take[take.length - 1].lastmod
+  if (changed[max] && changed[max].lastmod === edge) {
+    const trimmed = take.filter((e) => e.lastmod !== edge)
+    // 한 시각에 max 건 넘게 몰렸으면 그 시각은 규격 상한까지 한 번에 보낸다(안 그러면 영원히 못 넘는다).
+    take = trimmed.length > 0 ? trimmed : changed.filter((e) => e.lastmod === edge).slice(0, INDEXNOW_SPEC_MAX)
+  }
   return {
-    urls,
-    // ⚠️ 상한에 잘렸으면 커서를 **올리지 않는다** — 올리면 못 보낸 변경이 영구히 빠진다.
-    cursor: changed.length > max ? prev : (maxLastmod || prev),
-    note: `변경 ${changed.length}건 중 ${urls.length}건 제출${changed.length > max ? ' (상한에 잘림, 커서 유지)' : ''}`,
+    urls: take.map((e) => e.loc),
+    cursor: take[take.length - 1].lastmod,
+    note: `변경 ${changed.length}건 중 ${take.length}건 제출 (상한 — 오래된 것부터, 다음 회차에 이어서)`,
   }
 }
 

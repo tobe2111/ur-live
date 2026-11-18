@@ -168,10 +168,30 @@ describe('③ IndexNow — 보낼 것만 보낸다', () => {
     expect(p.urls).toEqual(['https://urdeal.kr/pass/3', 'https://urdeal.kr/pass/2'])
   })
 
-  it('③-3 🔴 상한에 잘리면 커서를 올리지 않는다 (못 보낸 변경이 영구히 빠지지 않게)', () => {
-    const p = planIndexNow(entries, '2026-01-01', 1)
-    expect(p.urls.length).toBe(1)
-    expect(p.cursor).toBe('2026-01-01')
+  it('③-3 🔴 상한에 잘리면 오래된 것부터 보내고 커서를 그만큼만 올린다 (못 보낸 변경이 빠지지도, 멈추지도 않게)', () => {
+    // 2026-11-18 정정: 종전 "커서 유지" 는 변경이 상한을 넘는 순간 **영원히 멈췄다**(라이브 11-11 고정).
+    const p1 = planIndexNow(entries, '2026-01-01', 1)
+    expect(p1.urls).toEqual(['https://urdeal.kr/pass/1'])
+    expect(p1.cursor).toBe('2026-10-10T00:00:00Z')
+    // 회차를 반복하면 세 건이 빠짐없이 한 번씩 간다.
+    const p2 = planIndexNow(entries, p1.cursor, 1)
+    const p3 = planIndexNow(entries, p2.cursor, 1)
+    expect([...p1.urls, ...p2.urls, ...p3.urls]).toEqual(['https://urdeal.kr/pass/1', 'https://urdeal.kr/pass/2', 'https://urdeal.kr/pass/3'])
+    expect(planIndexNow(entries, p3.cursor, 1).urls).toEqual([])
+  })
+
+  it('③-3b 같은 시각이 경계에 걸리면 그 시각은 통째로 다음 회차 (반만 보내고 커서를 넘기면 나머지가 영구히 빠진다)', () => {
+    const tie = [
+      { loc: 'https://urdeal.kr/a', lastmod: '2026-10-10' },
+      { loc: 'https://urdeal.kr/b', lastmod: '2026-10-11' },
+      { loc: 'https://urdeal.kr/c', lastmod: '2026-10-11' },
+    ]
+    const p1 = planIndexNow(tie, '2026-01-01', 2)
+    expect(p1.urls).toEqual(['https://urdeal.kr/a'])
+    expect(p1.cursor).toBe('2026-10-10')
+    const p2 = planIndexNow(tie, p1.cursor, 1) // 한 시각에 상한보다 많이 몰려도 멈추지 않는다
+    expect(p2.urls.sort()).toEqual(['https://urdeal.kr/b', 'https://urdeal.kr/c'])
+    expect(p2.cursor).toBe('2026-10-11')
   })
 
   it('③-4 변경이 없으면 0건', () => {
