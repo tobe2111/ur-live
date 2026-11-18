@@ -30,3 +30,11 @@
 - 인스타 DM 루틴에 댓글 자동 응대 추가, "5분 → 10분" 정정.
 - 아침 보고에 전화 시트 진행·게시물 도달·유입 출처 추가.
 - 대표 결정: 청룡갈비·박달집흑염소 실제 여부, 메일 재개, 인스타 프로필 링크 변경.
+
+## 11-18 추가 (대표 "이 계정인데 너가 수정해서 마무리까지 해줘")
+- 인스타 프로필 링크는 **API 로 못 바꾼다** — `POST graph.instagram.com/v21.0/me website=…` 실측 `Unsupported post request`(code 100/33).
+  대신 사이트가 링크 표시 없이도 인스타·스레드 앱 방문을 알아보게 했다: `src/lib/acquisition.ts` `inferSourceFromEnv()`
+  (인앱 브라우저 UA `Instagram`·`BarcelonaApp` 또는 referrer `instagram.com`·`threads.net`). 명시 `?src=` 가 이긴다.
+  시험 `acquisition-infer-source-2026-11-18.test.ts` 4건, 판정 순서를 뒤집는 주입 → 1건 빨간불 확인 후 복원.
+- 청룡갈비(20)·박달집흑염소(23)는 대표 확인 "실제 영업 대상 아니야" → 아침 보고 실제 매장에서 제외(트리거 프롬프트 갱신).
+- 푸시는 pre-push npm audit(picomatch GHSA-fc5q-39xc-vjpf, 패치 버전 없음)에 막혀 있다. 우회는 하지 않았다 — 대표 결정 대기.
