@@ -7,6 +7,7 @@
  * - 배송 일괄 처리
  * - 쿠폰 관리
  */
+import { cleanSellerCoupon } from '../../../shared/coupon-scope'
 import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error';
@@ -208,13 +209,17 @@ sellerAnalyticsRoutes.post('/coupons', requireAuth(), async (c) => {
   if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
   const { code, name, type, value, min_order, max_discount, total_count, expires_at } = await c.req.json<any>()
   if (!code || !name) return c.json({ success: false, error: '코드와 이름을 입력해주세요' }, 400)
+  // 🔐 2026-11-18: 값 범위 검사(shared/coupon-scope) — 종전엔 방식·값·수량을 그대로 저장했다.
+  if (typeof code !== 'string' || typeof name !== 'string' || code.length > 40 || name.length > 80) return c.json({ success: false, error: '코드·이름이 올바르지 않습니다' }, 400)
+  const clean = cleanSellerCoupon({ type, value, min_order, max_discount, total_count })
+  if (!clean.ok) return c.json({ success: false, error: clean.error }, 400)
 
   await ensureCouponSellerCol(c.env.DB)
 
   await c.env.DB.prepare(`
     INSERT INTO coupons (code, name, type, value, min_order_amount, max_discount, total_count, used_count, seller_id, is_active, expires_at, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1, ?, datetime('now'))
-  `).bind(code, name, type || 'fixed', value || 0, min_order || 0, max_discount || null, total_count || 100, sellerId, expires_at || null).run()
+  `).bind(code, name, clean.type, clean.value, clean.minOrder, clean.maxDiscount, clean.totalCount, sellerId, expires_at || null).run()
 
   return c.json({ success: true, message: '쿠폰이 생성되었습니다' })
 })

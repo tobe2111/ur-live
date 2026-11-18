@@ -16,6 +16,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { QueryBuilder } from '../repositories/query-builder';
 import { computeCouponDiscount } from '../../features/coupons/coupon-discount';
+import { couponAppliesToOrder } from '../../shared/coupon-scope';
 // 🎟️ [gb-price-wiring 2026-07-29] 공구가 결제 배선 + 구 tier cap. 배경/이중할인 주의는 헬퍼 헤더 참조.
 import { loadGbOrderPricing, computeGroupBuyCap } from '../utils/gb-order-pricing';
 // 📦 픽업 = 배송 없음. 주문생성·견적이 **같은 판정**을 쓴다(헬퍼 헤더에 근거).
@@ -438,15 +439,17 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     if (Number.isFinite(couponIdNum) && couponIdNum > 0 && clientCoupon > 0) {
       try {
         const coupon = await c.env.DB.prepare(
-          'SELECT type, value, max_discount, min_order_amount, total_count, used_count, expires_at, starts_at FROM coupons WHERE id = ? AND is_active = 1'
-        ).bind(couponIdNum).first<{ type: string; value: number; max_discount: number | null; min_order_amount: number | null; total_count: number | null; used_count: number | null; expires_at: string | null; starts_at: string | null }>();
+          'SELECT type, value, max_discount, min_order_amount, total_count, used_count, expires_at, starts_at, seller_id FROM coupons WHERE id = ? AND is_active = 1'
+        ).bind(couponIdNum).first<{ type: string; value: number; max_discount: number | null; min_order_amount: number | null; total_count: number | null; used_count: number | null; expires_at: string | null; starts_at: string | null; seller_id: number | null }>();
         if (coupon) {
           const now = Date.now();
           const expired = coupon.expires_at ? new Date(coupon.expires_at).getTime() < now : false;
           const notStarted = coupon.starts_at ? new Date(coupon.starts_at).getTime() > now : false;
           const soldOut = (coupon.total_count ?? 0) > 0 && (coupon.used_count ?? 0) >= (coupon.total_count ?? 0);
           const belowMin = discountBase < Number(coupon.min_order_amount ?? 0);
-          if (!expired && !notStarted && !soldOut && !belowMin) {
+          // 🔐 2026-11-18: 매장 쿠폰은 그 매장 상품에만(shared/coupon-scope) — 종전엔 번호만 맞으면 아무 매장 상품에 통했다.
+          const inScope = couponAppliesToOrder(coupon, orderItems.map(i => i.seller_id), now);
+          if (!expired && !notStarted && !soldOut && !belowMin && inScope) {
             // 권위 상한 — 클라가 이보다 더 주장해도 cap 으로 잘림(과다할인 차단).
             const cap = computeCouponDiscount(coupon, discountBase);
             const claimed = Math.min(clientCoupon, cap);
