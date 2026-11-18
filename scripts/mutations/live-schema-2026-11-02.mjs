@@ -13,12 +13,8 @@ export default [
   //   Verify `주입 전수` 가 main 배포를 막았다(run 41403198511). 시험 ①은 그대로 남아 *새로* 읽는 컬럼이
   //   사진에도 ensure 에도 없으면 잡는다. ⚠️ 이 주입을 그대로 되살리지 말 것 — 사진에서 그 컬럼이 빠지는 일이
   //   생기면 그때 주입이 다시 의미를 갖는다.
-  {
-    name: '🩸 탈퇴 기록이 다시 안 남는다 (deleted_accounts.reason 보강 누락)',
-    file: 'src/worker/services/delete-account.service.ts',
-    find: "    await db.prepare('ALTER TABLE deleted_accounts ADD COLUMN reason TEXT').run().catch(() => null)",
-    replace: '',
-    test: 'src/tests/unit/live-column-repairs-2026-11-02.test.ts',
-    why: '2026-11-02 라이브 — reason 이 없어 INSERT 가 매번 실패, 탈퇴 기록 0행.',
-  },
+  // 🪦 2026-11-18 묘비 — '🩸 탈퇴 기록이 다시 안 남는다 (deleted_accounts.reason 보강 누락)' 주입을 지웠다(위와 같은 이유).
+  //   라이브 사진 갱신(2026-11-18)에 deleted_accounts.reason·original_name·reregister_available_at 이 들어왔다 —
+  //   라이브에 칸이 있으니 ensure ALTER 를 지워도 결함이 아니고, 시험이 빨개질 수 없었다(run 44307883469).
+  //   시험 ②는 그대로 남아 INSERT 가 사진에도 ensure 에도 없는 칸을 *새로* 쓰면 잡는다.
 ]
