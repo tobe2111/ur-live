@@ -32,7 +32,7 @@ import { buildStaticSurfaceNoscript } from '@/worker/utils/crawler-noscript'
  *   함께 훑는다. 한쪽에만 새면 약속이 두 벌이 되는데 **그건 에러를 내지 않는다.**
  * - 문구가 실제로 **렌더되는지**(소스·SSOT 실재만 본다)
  */
-const PAGE = 'src/pages/RefundPolicyPage.tsx'
+const PAGE = 'src/shared/refund-policy-content.ts' // ⚖️ 2026-11-18 재조준 — 화면 문구는 이 트리에서 그려진다(RefundPolicyPage 는 트리를 그리기만 한다)
 const BAR = 'src/pages/group-buy/DealBottomBar.tsx'
 const BOX = 'src/pages/group-buy/DealPurchaseBox.tsx'
 

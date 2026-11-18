@@ -192,7 +192,7 @@ const MallProductPage = lazy(() => import('./pages/MallProductPage'))
 const ServerErrorPage = lazy(() => import('./pages/ServerErrorPage'))
 
 // 약관 페이지들
-const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
+const TermsOfServicePage = lazyPage(() => import('./pages/TermsOfServicePage')); registerBootPage('terms', TermsOfServicePage.load)
 const InfluencerTermsPage = lazy(() => import('./pages/InfluencerTermsPage'))
 const SellerTermsPage = lazy(() => import('./pages/SellerTermsPage'))
 const GroupBuyTermsPage = lazy(() => import('./pages/GroupBuyTermsPage'))

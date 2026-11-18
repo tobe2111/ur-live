@@ -17,7 +17,7 @@ export type RouteSurface =
   | 'home' | 'homePc' | 'gbDetail' | 'voucherDetail' | 'product'
   | 'guestUShop' | 'guestMy' | 'guestPass'
   | 'cart' | 'search' | 'faq' | 'stays' | 'stayDetail' | 'region'
-  | 'linkshop' | 'vouchers' | 'browse' | 'map' | 'urshorts' | 'blog' | 'blogPost' | 'life' | 'lifePro' | 'login' | 'lifeRequest' | 'about' | 'partners' | 'influencer' | 'newOpenings' | 'refund'
+  | 'linkshop' | 'vouchers' | 'browse' | 'map' | 'urshorts' | 'blog' | 'blogPost' | 'life' | 'lifePro' | 'login' | 'lifeRequest' | 'about' | 'partners' | 'influencer' | 'newOpenings' | 'refund' | 'terms'
 
 /**
  * 홈이 PC 홈을 그리는 경계 — `HomeRoute` 가 이 쿼리로 두 홈을 고른다(Tailwind \`md\`).
@@ -44,6 +44,7 @@ export function routeSurface(pathname: string, mobileUa: boolean, authed: boolea
   if (p === '/cart') return 'cart'
   if (p === '/search') return 'search'
   if (p === '/faq') return 'faq'
+  if (p === '/terms') return 'terms' // ⚖️ 2026-11-18 이용약관 — 첫 그림 2.1~4.0s 실측(서버 첫 화면 + 청크 preload)
   if (p === '/refund') return 'refund' // 🐢 2026-11-17 환불정책 — 토스 심사가 여는 하드로드 진입점, 첫 글자 1.5~2.2s(앱 부팅 뒤 청크 출발) → preload
   if (p === '/stays') return 'stays'
   if (/^\/stays\/\d+(?:[/?#]|$)/.test(p)) return 'stayDetail'

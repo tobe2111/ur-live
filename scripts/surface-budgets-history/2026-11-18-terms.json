@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-18",
+  "reason": "2026-11-18 이용약관(/terms) 서버 첫 화면 + 청크 preload 등록 — 환불(/refund) 문구를 shared 트리로 옮김(청크 구성 무변경)",
+  "surfaces": [
+    "terms"
+  ],
+  "changes": [
+    "terms: 기준에 없는 화면 (192.1 KB) — 예산을 갖고 들어와야 한다"
+  ]
+}
