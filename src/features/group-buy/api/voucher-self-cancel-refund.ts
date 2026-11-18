@@ -63,7 +63,7 @@ export async function refundSelfCancelledVoucher(
   //   toss_refund_failures 에 기록 → toss-refund-retry cron(최대 5회 backoff)이 완성.
   //   → voucher='refunded' 유지가 정답(동기 revert 로 바꾸면 cron 재시도 성공 시 이중환불).
   const job = (async () => {
-    const alert = async (errorCode: string | undefined, errorMessage: string | undefined, httpStatus?: number, source = '유저 셀프취소') => {
+    const notifyAdmin = async (errorCode: string | undefined, errorMessage: string | undefined, httpStatus?: number, source = '유저 셀프취소') => {
       const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
       await alertTossRefundFailure(env, DB, { source, paymentKey: v.payment_key, voucherId: v.id, amount: split.card, errorCode, errorMessage, httpStatus })
     }
@@ -74,9 +74,9 @@ export async function refundSelfCancelledVoucher(
         reason: `구매 취소(청약철회): ${v.product_name}`, amount: split.card, idempotencyKey: `voucher-${v.id}-refund`,
       })
       // 🚨 non-retryable(4xx) 실패는 cron 이 안 집음 → 어드민 벨/Discord 로 수동환불 알림.
-      if (!result.ok) await alert(result.error_code, result.error_message, result.http_status)
+      if (!result.ok) await notifyAdmin(result.error_code, result.error_message, result.http_status)
     } catch (e) {
-      try { await alert('EXCEPTION', (e as Error)?.message, undefined, '유저 셀프취소(예외)') } catch { /* fail-soft */ }
+      try { await notifyAdmin('EXCEPTION', (e as Error)?.message, undefined, '유저 셀프취소(예외)') } catch { /* fail-soft */ }
     }
   })()
   if (ctx?.waitUntil) ctx.waitUntil(job); else await job
