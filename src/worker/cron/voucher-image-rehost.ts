@@ -26,6 +26,30 @@ export const VOUCHER_REHOST_PER_RUN = 4
 const RETRY_BASE_MS = 30 * 60 * 1000
 const RETRY_MAX_MS = 24 * 60 * 60 * 1000
 
+/**
+ * 🧯 2026-11-18 **길 전체가 막혔을 때 쉬기** — 라이브 실측: 11-05 이후 회차마다 `migrated=0 failed=4`(49초),
+ *   같은 96장만 하루 간격으로 돌았다(시도 21회). giftishow 가 한국 밖(Cloudflare·GitHub)을 막아서다.
+ *   장별 미루기만으로는 "매시간 4장 실패" 가 영원히 남는다. 연속 `LANE_FAIL_LIMIT` 회차를 한 장도 못 옮기면
+ *   `LANE_PAUSE_MS` 동안 회차 자체를 건너뛴다(쉬는 동안엔 외부 호출 0). 한 장이라도 옮기면 바로 풀린다.
+ */
+export const LANE_STATE_KEY = 'voucher_rehost_lane'
+export const LANE_FAIL_LIMIT = 3
+export const LANE_PAUSE_MS = 24 * 60 * 60 * 1000
+
+/** 다음 상태 — 순수 함수(시험용). */
+export function nextLaneState(prev: { fails: number; pausedUntil: number }, migrated: number, failed: number, now: number) {
+  if (migrated > 0) return { fails: 0, pausedUntil: 0 }
+  if (failed === 0) return prev
+  const fails = prev.fails + 1
+  return fails >= LANE_FAIL_LIMIT ? { fails: 0, pausedUntil: now + LANE_PAUSE_MS } : { fails, pausedUntil: 0 }
+}
+
+async function readLane(DB: D1Database): Promise<{ fails: number; pausedUntil: number }> {
+  const r = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(LANE_STATE_KEY)
+    .first<{ value: string }>().catch(() => null)
+  try { const j = JSON.parse(r?.value || '{}'); return { fails: Number(j.fails) || 0, pausedUntil: Number(j.pausedUntil) || 0 } } catch { return { fails: 0, pausedUntil: 0 } }
+}
+
 /** 다음 시도까지 기다릴 시간 — 30분, 1시간, 2시간 … 하루에서 멈춘다. */
 export function voucherRehostBackoffMs(tries: number): number {
   const t = Math.max(0, Math.floor(Number(tries) || 0))
@@ -59,6 +83,9 @@ export async function handleVoucherImageRehost(env: Env, perRun = VOUCHER_REHOST
   if (!bucketEnv.MEDIA_BUCKET) return 'skipped=NO_MEDIA_BUCKET'
   await ensureSupplyMetaTable(DB)
 
+  const lane = await readLane(DB)
+  if (lane.pausedUntil > Date.now()) return `paused=LANE_BLOCKED until=${new Date(lane.pausedUntil).toISOString()}`
+
   const nowIso = new Date().toISOString()
   const { results } = await DB.prepare(VOUCHER_REHOST_CANDIDATE_SQL)
     .bind(nowIso, perRun)
@@ -83,6 +110,12 @@ export async function handleVoucherImageRehost(env: Env, perRun = VOUCHER_REHOST
       await setSupplyMeta(DB, row.id, { voucher_img_tries: String(tries + 1), voucher_img_retry_after: retryAt }).catch(() => {})
       failed++
     }
+  }
+
+  const next = nextLaneState(lane, migrated, failed, Date.now())
+  if (next.fails !== lane.fails || next.pausedUntil !== lane.pausedUntil) {
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
+      .bind(LANE_STATE_KEY, JSON.stringify(next)).run().catch(() => null)
   }
 
   const left = await DB.prepare(
