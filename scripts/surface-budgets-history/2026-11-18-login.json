@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-18",
+  "reason": "login +1.6KB: #2415 외국인 손님 구글 로그인(LoginPage +0.6, app-utils +0.5)이 main 에 들어오며 늘었다. main 단독 빌드에서도 같은 값(#2416 변경과 무관) — 의도된 기능 추가분 잠금",
+  "surfaces": [
+    "login"
+  ],
+  "changes": [
+    "login: 203.8 → 205.4 KB (+1.6, 허용 1.5) · 늘어난 것: LoginPage.js +0.6, app-utils.js +0.5"
+  ]
+}
