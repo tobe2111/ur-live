@@ -9,12 +9,12 @@
  *   **다음 회차가 같은 이용권을 또 정산한다(이중 지급).** 에러는 cron 실패 알림 한 줄로만 남았다.
  *
  * 처방:
- *  1. 90개씩 나눈 UPDATE 를 `DB.batch` 로 보낸다 — D1 batch 는 **전부 되거나 전부 안 된다**.
+ *  1. 바인딩 한도 SSOT(`shared/db/d1-binds.ts`)로 나눈 UPDATE 를 `DB.batch` 로 보낸다 — D1 batch 는 **전부 되거나 전부 안 된다**.
  *  2. 묶기가 실패하면 방금 만든 정산행(아직 `pending`)을 지운다 — "행만 있고 표시는 없는" 상태를 남기지 않는다.
  *  3. 묶인 수가 정산행이 센 장수와 다르면(다른 회차가 먼저 일부를 가져감) 정산행을 지우고 실패로 올린다 —
  *     금액이 장수로 계산됐으므로 일부만 묶인 행은 그대로 지급하면 틀린 돈이 나간다. 다음 회차가 남은 것만 다시 센다.
  */
-import { chunkIds } from './d1-in-chunks'
+import { chunkForBinds } from '../../shared/db/d1-binds'
 
 export async function claimVouchersForSettlement(
   DB: D1Database,
@@ -25,7 +25,7 @@ export async function claimVouchersForSettlement(
   let claimed = 0
   try {
     const results = await DB.batch(
-      chunkIds(voucherIds).map((ch) =>
+      chunkForBinds(voucherIds, 1).map((ch) => // 바인딩 = settlement_id 1 + 묶음
         DB.prepare(
           `UPDATE vouchers SET settlement_id = ? WHERE id IN (${ch.map(() => '?').join(',')}) AND settlement_id IS NULL`,
         ).bind(settlementId, ...ch),
