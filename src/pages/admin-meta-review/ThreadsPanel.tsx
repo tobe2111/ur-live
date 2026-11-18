@@ -38,9 +38,7 @@ export default function ThreadsPanel({ connected }: { connected: boolean }) {
       <Section step="Step 2" title="Search public Threads posts by keyword" ko="키워드로 공개 스레드 글 찾기 → 사람이 확인한 답글 달기" perms={['threads_keyword_search', 'threads_manage_replies', 'threads_content_publish']}>
         <div className="flex flex-wrap gap-2">
           <input className={`${field} max-w-xs`} value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && search()} placeholder="keyword" />
-          <select className={`${field} w-auto`} value={type} onChange={e => setType(e.target.value as 'TOP' | 'RECENT')}>
-            <option value="TOP">Top</option><option value="RECENT">Recent</option>
-          </select>
+          <div className="flex gap-1"><Button size="sm" variant={type === 'TOP' ? 'default' : 'outline'} onClick={() => setType('TOP')}>Top</Button><Button size="sm" variant={type === 'RECENT' ? 'default' : 'outline'} onClick={() => setType('RECENT')}>Recent</Button></div>
           <Button onClick={search} disabled={!q.trim() || busy !== null}>{busy === 'search' ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Search className="mr-1 h-4 w-4" />}Search</Button>
         </div>
         {results && (results.length === 0 ? <Empty>No results.</Empty> : (

@@ -47,9 +47,7 @@ export default function InstagramPanel({ connected }: { connected: boolean }) {
         <div className="flex flex-wrap gap-2">
           <span className="self-center text-sm text-gray-500">#</span>
           <input className={`${field} max-w-xs`} value={tag} onChange={e => setTag(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchTag()} />
-          <select className={`${field} w-auto`} value={edge} onChange={e => setEdge(e.target.value as 'top' | 'recent')}>
-            <option value="top">Top media</option><option value="recent">Recent media</option>
-          </select>
+          <div className="flex gap-1"><Button size="sm" variant={edge === 'top' ? 'default' : 'outline'} onClick={() => setEdge('top')}>Top media</Button><Button size="sm" variant={edge === 'recent' ? 'default' : 'outline'} onClick={() => setEdge('recent')}>Recent media</Button></div>
           <Button onClick={searchTag} disabled={!tag.trim() || busy !== null}>{spin('tag') || <Search className="mr-1 h-4 w-4" />}Search hashtag</Button>
         </div>
         {media && (media.length === 0 ? <Empty>No media.</Empty> : (
