@@ -39,3 +39,12 @@ D1 `EXPLAIN`/rows_read 로 파트너 기본 목록 쿼리(목표 수백 행) · 
 - 처방: ① 실패한 조회 원문을 `platform_settings.ads_influencer_stats_cache_fail` 에 남긴다(`agg|catFunnel|byDay: 메시지`, byDay 0행도 기록) ② 다시 계산 시도는 모든 isolate 공통 5분에 한 번(`ads_influencer_stats_cache_attempt`).
 - 이어받는 첫 액션: 메인 D1 에서 `SELECT value FROM platform_settings WHERE key='ads_influencer_stats_cache_fail'` → 원문으로 실패 조회를 고친다.
 - 틀린 판단: `.catch(() => null)` 로 실패를 삼켜 "왜 안 갱신되나" 를 볼 수 없게 만든 것이 원인 규명을 막았다.
+
+## 증분 집계 (2026-11-18 오후 — 대표 *"증분 집계도 이어서 해줘"*)
+- 실측(리드 DB 하루): 읽기 약 2억 행 중 인플루언서 통계 재계산이 약 9,200만 행(회당 190만 × 48회). 수집이 늘수록 비례해 늘어난다.
+- 처방: `ad_influencer_stats_counter(k,n)` 숫자표 + 리드 표 트리거 3개(넣기·고치기·지우기)가 **바뀐 숫자만 ±1**. 화면은 숫자표(약 300행)만 읽는다.
+  `7일 안 컨택`·`팔로업 필요`는 부분 인덱스 `idx_ad_inf_leads_contact_todo` 로 매번 센다. `최근 7일`은 KST 날짜 7일 합(옛 값은 롤링 168시간).
+- 하루 한 번 전수 대조(한 batch, 원자적) — 라이브에서 SELECT 부분만 미리 돌려 봄: 약 8초 · 290만 행(옛 방식은 이걸 하루 48번+).
+- 안전: 설치 직후 자가 시험(풀 밖 시험 행 넣고·고치고·지움) → 실패하면 트리거 즉시 제거, 옛 경로로 계속. 오류 원문 `platform_settings.ads_influencer_stats_counter_error`.
+- 이어받는 첫 액션: 배포 후 인플루언서 통계 응답의 `stats_source` 가 `counter` 인지, 오류 키가 비었는지, 숫자표 `__reconciled_v1` 이 있는지(리드 DB `SELECT k,n FROM ad_influencer_stats_counter WHERE k LIKE '\_\_%' ESCAPE '\'`).
+- 틀린 판단: 대조 SQL 을 CTE + 따로 만든 문자열 조각으로 짰다가 테이블 가드가 `FROM a` 를 못 알아봤다 → json_each 펼치기로 한 문자열 안에 넣었다(가드도 `AS MATERIALIZED (` 를 CTE 로 인식하게 보강).
