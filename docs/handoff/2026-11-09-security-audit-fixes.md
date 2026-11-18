@@ -107,3 +107,12 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
 - **에이전시 지급 처리**: 코드 변경 없음 — 두 겹이 이미 있다: 전역 `adminRbacMiddleware`(super·admin 만) + 라우터의 `requireAdminRole('super','finance')`(이전은 super). 둘의 교집합이라 **실효는 super 만**이다(라우터가 의도한 finance 는 전역 게이트에 막힌다). 전역 쪽을 시험으로 고정했다. finance 에게 실제로 열지는 **대표 결재 사항**.
 - 🩸 틀린 판단: 처음엔 "등급 제한 미확인" 이라고 보고했다 — 라우터 파일(`agency-admin.routes.ts`)을 안 보고 등록 함수만 봤다.
 - picomatch `GHSA-fc5q-39xc-vjpf`(고친 버전 없음 · dev 전용) 면제 등재 — 대표 승인(AskUserQuestion).
+
+## 16차 (2026-11-18) — 대표 *"이후 문제들도 파악해줘"* (3차 전수 · 조사 에이전트 7건을 코드·라이브로 확인)
+- 🔴 **이메일 가입으로 매장 주인 되기**: `/api/auth/register`(주소 확인 없음)로 만든 계정이 `GET /api/curator/me/dashboard`·`GET /api/seller/my-seller-status` 의 "같은 이메일 매장 자동 연결" 을 탔다. 카카오 로그인 쪽은 `emailVerified===true` 게이트가 있었는데 이 두 읽기 경로엔 없었다 → `kakao_id IS NOT NULL AND email_verified = 1`. **라이브 실측: 미연결 승인 매장 11곳이 노출돼 있었고, 확인 안 된 계정에 연결된 매장은 0곳**(악용 흔적 없음).
+- 🔴 **어드민 역할 검사 우회(등록 순서)**: `adminRbacMiddleware` 가 `internalAdminToolsRoutes` 보다 **뒤에** 등록돼 있어 그 파일의 `/api/admin/*`(수수료 설정·딜 소급 지급·사업자 승인·DDL)는 `requireAdmin()` 만 탔다. 게이트를 그 앞으로 옮겼다. `/api/admin-review-bonus/*` 에도 게이트. `/api/_internal/repair-new-tables` 는 super.
+- 🔴 **재발급 토큰 전량 폐기가 오히려 전부 살렸다**: 재발급 경로는 "행 0 이면 서명만 보고 통과"(호환) → 비밀번호 변경이 행을 전부 DELETE 하면 옛 토큰이 30일 통했다. `revokeAllRefreshTokens`(`refresh-rotation.ts`)가 **묘비 행**을 남긴다. 호환 자체는 남겼다(카카오 좌석 토큰은 행을 안 만든다 — 없애면 전원 로그아웃).
+- 선물 결제: orderId 를 `gift_<id>_` 로 묶고 같은 paymentKey 재사용을 토스 호출 전에 거절. **라이브에 `gifts` 표가 없다 — 죽은 경로**(클라이언트도 없음).
+- ops 역할: `sellers/:id/link-user`·`tools/points-reconcile`·`tools/point-ledger-unlock` 은 super·admin 만, `verify-account` 는 finance. 관리자가 주인을 **바꾸면** 좌석 에포크 + 스캔 기기 키 전부 끊기.
+- **남긴 것(미수리)**: 에이전시 직원 좌석이 만든 스캔 기기 키(직원 제거·연결 해제 시) · `community-group-buy` confirm/refund 의 토큰 종류 미검사(SUSPECT, 미확인) · 이미지 프록시 R2 쓰기 남용 · 카카오/네이버 프록시 무인증(30/분) · `/api/_bootstrap/reset-dashboard-password role=all` 의 범위 · ops 의 `DELETE /sellers/:id`.
+- 🩸 틀린 판단: 주입 시험을 처음엔 "게이트보다 앞의 app.route 파일에 `/api/admin` 글자가 없다" 로 썼다가 `killer-sw.routes.ts`(클라이언트 스크립트 문자열)에 걸렸다 → 라우트 **정의**만 본다.
