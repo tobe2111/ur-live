@@ -12,4 +12,7 @@ export default [
   { name: '증분 — 설치 실패를 영영 기억한다', file: 'src/features/marketing/api/influencer-stats-counters.ts',
     find: '  if (f != null && nowMs - f >= 0 && nowMs - f < ENSURE_RETRY_MS) return false', replace: '  if (f != null) return false', test: 'src/tests/unit/influencer-stats-counters-2026-11-18.test.ts',
     why: '과부하 한 번에 그 isolate 가 수명 내내 옛 경로(전수 세기)로 돈다.' },
+  { name: '증분 — 트리거가 있어도 표·색인 DDL 을 매번 보낸다', file: 'src/features/marketing/api/influencer-stats-counters.ts',
+    find: '    if (!missing.length) { ready.add(DB); return true }\n', replace: '', test: 'src/tests/unit/influencer-stats-counters-2026-11-18.test.ts',
+    why: '새 isolate 마다 첫 통계 요청이 DDL 왕복만큼 느려진다(라이브 2.4초).' },
 ]

@@ -87,3 +87,8 @@ D1 `EXPLAIN`/rows_read 로 파트너 기본 목록 쿼리(목표 수백 행) · 
 - 처방: env 하나에 라우터 하나(WeakMap, 바인딩이 바뀌면 새로). 이제 그 기억이 isolate 수명만큼 가므로 `ensureStatsCounters` 실패 기억은 5분 뒤 재시도로 바꿨다.
 - 이어받는 첫 액션: 배포 후 `timings_ms.stats` 가 0.5초 안쪽으로 내려왔는지. 안 내려왔으면 env 객체가 요청마다 바뀌는 것(그땐 모듈 단위 캐시로).
 - 틀린 판단: "stats 가 느리다 = 쿼리가 느리다" 로 봤다 — 쿼리는 전부 1ms 안쪽이었고 왕복 횟수가 문제였다.
+
+## #2441 판정 + 새 isolate 첫 요청 (2026-11-18 오후 7시 반)
+- 같은 isolate 재요청: ensure 0 · stats 0.41~0.43초 · 응답 0.67초 ✅ (#2441 효과). 새 isolate 첫 요청: 여전히 stats 2.4~2.8초(6회 중 4회).
+- 처방: `ensureClaimSchema` 5문장 → `runDdlOnce`(설정 1줄) · `ensureStatsCounters` 는 트리거가 다 있으면 확인 1번으로 끝 · 퍼널 뒷단을 맨 먼저 출발시켜 겹친다.
+- 시트: 세 시트 안내 탭 v2 기록됨(`ads_sheet_guide_v:*`=2) · 숨긴 줄 거두기 `marked=0`(아직 숨긴 줄 없음) · 레인 정지 해제(`paused=false`).

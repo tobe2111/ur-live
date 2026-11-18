@@ -19,19 +19,29 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { parseSessionCookie } from '@/worker/utils/session'
 import { resolveUserId } from '@/worker/utils/resolve-user-id'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
+import { runDdlOnce } from './ads-schema-guard'
 
 const POOL = 0 // 공용 풀 센티넬(ad_influencer_leads.account_id)
 
 const _schemaDone = new WeakSet<object>()
+/** 초대 코드 · 연결 유저 칸과 색인. 문장 순서 = ALTER 먼저, 색인 나중. */
+export const CLAIM_DDL: string[] = [
+  'ALTER TABLE ad_influencer_leads ADD COLUMN claim_code TEXT',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN linked_user_id INTEGER',
+  'ALTER TABLE ad_influencer_leads ADD COLUMN joined_at TEXT',
+  // 코드 = 조회키(UNIQUE 라야 발급 경합이 안전), 유저 = 1인 1리드(중복 귀속 차단).
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_leads_claim_code ON ad_influencer_leads(claim_code) WHERE claim_code IS NOT NULL',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_leads_linked_user ON ad_influencer_leads(linked_user_id) WHERE linked_user_id IS NOT NULL',
+]
+
+/**
+ * ⚡ 체크섬 1회(`runDdlOnce`) — 이미 적용됐으면 설정 1줄 읽기로 끝난다. 🩸 2026-11-18 라이브: 예전엔 새 isolate 마다 5문장을
+ * 줄줄이 보냈고(ALTER 3개는 매번 '이미 있음'으로 실패), 인플루언서 풀 통계의 첫 요청이 그 왕복만큼 느렸다.
+ */
 export async function ensureClaimSchema(DB: D1Database): Promise<void> {
   if (_schemaDone.has(DB)) return
   _schemaDone.add(DB)
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN claim_code TEXT').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN linked_user_id INTEGER').run().catch(() => null)
-  await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN joined_at TEXT').run().catch(() => null)
-  // 코드 = 조회키(UNIQUE 라야 발급 경합이 안전), 유저 = 1인 1리드(중복 귀속 차단).
-  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_leads_claim_code ON ad_influencer_leads(claim_code) WHERE claim_code IS NOT NULL').run().catch(() => null)
-  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_leads_linked_user ON ad_influencer_leads(linked_user_id) WHERE linked_user_id IS NOT NULL').run().catch(() => null)
+  await runDdlOnce(DB, 'ads_ddl_lead_claim', CLAIM_DDL)
 }
 
 // 혼동 문자(I/O/0/1) 제외 — 메일에서 눈으로 옮겨 적는 경우 대비.
