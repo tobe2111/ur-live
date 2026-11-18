@@ -143,7 +143,27 @@ describe('사진 저장 억제 — JS 와 CSS 는 한 쌍이다', () => {
     for (const p of ['/admin/users', '/seller/orders', '/agency']) expect(shouldBlockSelect(p, el('P')), p).toBe(false)
     const s = code(read(PROTECT))
     expect(s).toMatch(/for \(const type of \['selectstart', 'copy', 'cut'\] as const\) \{\s*document\.addEventListener\(type, \(e\) => \{\s*if \(!shouldBlockSelect\(location\.pathname, elOf\(e\.target\)\)\) return\s*e\.preventDefault\(\)/)
-    expect(s).toMatch(/toggleAttribute\('data-nocopy', !isExemptPath\(location\.pathname\)\)/)
+    expect(s).toMatch(/toggleAttribute\('data-nocopy', !isSelectAllowedPath\(location\.pathname\)\)/)
+  })
+
+  // 📋 2026-11-18 대표 "2번 해주고"(복사 보강) — 내 화면·약관은 선택을 열어 둔다(주문번호·계좌·조항 복사).
+  it('내 화면과 약관에서는 글자 선택이 열려 있다 — 공개 콘텐츠 화면만 막는다', async () => {
+    const { isSelectAllowedPath, shouldBlockSelect, shouldBlockContextMenu } = await import('@/lib/image-protect')
+    const el = { tagName: 'P', parentElement: null, isContentEditable: false, hasAttribute: () => false } as unknown as Element
+    for (const p of [
+      '/my-orders', '/my-vouchers', '/my-coupons', '/my/digital', '/mypage/addresses', '/orders', '/payment/success', '/points/charge/success',
+      '/checkout', '/cart', '/account/settings', '/user/profile', '/notifications', '/life/requests/3',
+      '/terms', '/terms/group-buy', '/privacy', '/refund-policy', '/shipping-policy',
+    ]) {
+      expect(isSelectAllowedPath(p), p).toBe(true)
+      expect(shouldBlockSelect(p, el), p).toBe(false)
+      expect(shouldBlockContextMenu(p, el), `우클릭은 ${p} 에서도 막는다`).toBe(true)
+    }
+    // 공개 콘텐츠 — 계속 막는다. 접두사가 비슷한 주소가 딸려 열리면 안 된다.
+    for (const p of ['/', '/group-buy/12', '/pass/3122', '/u/jiwon', '/blog/x', '/browse', '/vouchers', '/map', '/myth', '/payments-guide', '/life', '/life/pro', '/termsx']) {
+      expect(isSelectAllowedPath(p), p).toBe(false)
+      expect(shouldBlockSelect(p, el), p).toBe(true)
+    }
   })
 
   it('CSS 짝 — 표식이 선택을 끄고, 입력 칸과 허용 표식은 되돌린다', () => {

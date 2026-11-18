@@ -152,3 +152,4 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
 - **2번(Cloudflare 무료 봇 차단)**: 코드 쪽(수확·복제 도구 UA 차단 — HTTrack·SiteSucker·WebCopier·python-requests 등, AI 학습 봇)은 이미 다 있었다. 대시보드 토글은 **세션 토큰에 봇 관리 권한이 없어 못 켰다**(`GET /zones/{id}/bot_management` → Authentication error). 판단: AI Labyrinth = 켜도 안전 · **Bot Fight Mode = 켜지 말 것**(무료 플랜은 예외 규칙을 못 걸어 토스 웹훅·uptime 프로브·cron 예열이 챌린지에 걸릴 수 있다) · **"AI 봇 차단" 토글 = 켜지 말 것**(검색·인용 봇까지 막아 2026-10-12 대표 지시 "AI 모든 서비스에서 검색 시 나오게" 와 충돌).
 - **1번(저장소 비공개)**: 대표가 *"꼭 다시 알려줘"* — 아직 public. 다음 보고에서 다시 알릴 것.
 
+- **20차 후속**(대표 *"2번 해주고"* — 복사 보강): 글자 선택을 **공개 콘텐츠 화면에서만** 막는다. 내 화면(`/my-*`·`/orders`·`/payment`·`/checkout`·`/cart`·`/account`·`/mypage`·`/points`·`/notifications`·`/life/requests`)과 약관·환불·개인정보 화면은 `isSelectAllowedPath` 로 열어 둔다(주문번호·입금 계좌·운송장·조항 복사). 우클릭·단축키 차단은 그 화면들에서도 그대로. 잠금 파일(`PaymentSuccessPage`)은 안 건드리고 주소로 풀었다.

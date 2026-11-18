@@ -91,16 +91,37 @@ function allowsCopy(target: Element | null): boolean {
   return false
 }
 
-/** 이 자리에서 글자 선택·복사를 막는가 — 소비자 화면이고, 입력 칸·`data-allow-copy` 가 아니면 막는다(순수 판정). */
+/**
+ * 📋 2026-11-18 (대표 *"2번 해주고"* — 복사 보강): 글자 선택을 **열어 두는** 화면.
+ *   막으려는 것은 남이 베껴 갈 **공개 콘텐츠**(홈·상세·유어샵·블로그)다. 아래는 그게 아니다:
+ *   · 내 화면(주문·결제 결과·내 이용권·쿠폰·설정) — 주문번호·입금 계좌·운송장·쿠폰코드를 손님이 복사한다.
+ *     로그인한 본인만 보는 화면이라 베낄 것도 없다.
+ *   · 약관·환불정책·개인정보처리방침 — 손님이 조항을 복사해 문의한다(법적 고지는 숨길 것이 아니다).
+ *   우클릭·단축키 차단은 이 화면들에서도 그대로다(그건 소스 보기 억제라 화면 종류와 무관하다).
+ *   판정은 정확일치 또는 `접두사/` — `/pay` 가 `/pass` 를, `/my` 가 `/myth` 를 삼키지 않는다. `/my-` 만 접두사 그대로.
+ */
+const SELECT_ALLOWED_PREFIXES = [
+  '/account', '/cart', '/checkout', '/payment', '/pay', '/points', '/orders', '/mypage', '/my', '/user/profile',
+  '/notifications', '/life/requests',
+  '/privacy', '/privacy-policy', '/refund', '/refund-policy', '/shipping-policy', '/terms', '/terms-of-service',
+]
+
+export function isSelectAllowedPath(pathname: string): boolean {
+  if (isExemptPath(pathname)) return true
+  if (pathname.startsWith('/my-')) return true
+  return SELECT_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
+}
+
+/** 이 자리에서 글자 선택·복사를 막는가 — 공개 콘텐츠 화면이고, 입력 칸·`data-allow-copy` 가 아니면 막는다(순수 판정). */
 export function shouldBlockSelect(pathname: string, target: Element | null): boolean {
-  if (isExemptPath(pathname)) return false
+  if (isSelectAllowedPath(pathname)) return false
   return !allowsCopy(target)
 }
 
 /** `<html data-nocopy>` — CSS 짝(index.css)이 이 표식으로 글자 선택을 끈다. 대시보드에서는 뗀다. */
 function syncNoCopyFlag(): void {
   try {
-    document.documentElement.toggleAttribute('data-nocopy', !isExemptPath(location.pathname))
+    document.documentElement.toggleAttribute('data-nocopy', !isSelectAllowedPath(location.pathname))
   } catch { /* 문서가 없는 환경 */ }
 }
 
