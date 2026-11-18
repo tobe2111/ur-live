@@ -25,3 +25,13 @@ export function ctaFor(track, id) {
   if (!list) return null;
   return list.find((c) => c.id === id) || list[0];
 }
+
+// 2026-11-17 실측: 스레드가 /store/new 링크 글을 "Invalid Link Attachment"(4279047)로 거절해 그날 글이 안 나갔다.
+// 거절되면 같은 트랙의 안내 페이지로 바꿔 한 번 더 올린다(UTM 은 그대로 — 클릭 집계가 안 끊긴다).
+const LINK_FALLBACK = [[/\/store\/new(?=[?#]|$)/, '/partners'], [/\/creators\/apply(?=[?#]|$)/, '/creators']];
+export function isInvalidLinkError(e) { return /4279047|Invalid Link Attachment|invalid link attachment/.test(String(e?.message || e)); }
+export function fallbackLink(url = '') {
+  for (const [re, to] of LINK_FALLBACK) if (re.test(url)) return url.replace(re, to);
+  return null;
+}
+export function swapLinkInText(text = '', from, to) { return from && to ? String(text).split(from).join(to) : text; }
