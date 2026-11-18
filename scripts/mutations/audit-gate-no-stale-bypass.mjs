@@ -37,8 +37,8 @@ export default [
   {
     name: '🔓 허용목록이 승인자 없이 통과한다 (내가 임의로 면제할 수 있게 된다)',
     file: '.audit-allowlist.json',
-    find: '"allow": []', // 2026-11-10 면제가 0건이 돼 빈 목록에 항목을 심는다
-    replace: "\"allow\": [{\"ghsa\": \"GHSA-aaaa-bbbb-cccc\", \"pkg\": \"example\", \"reason\": \"주입 시험용 면제\", \"accepted_by\": \"TODO\", \"date\": \"2026-11-10\", \"review\": \"주입 시험\"}]",
+    find: '"allow": [\n    {', // 2026-11-18 면제 1건(picomatch) — 목록 맨 앞에 잘못된 항목을 심는다
+    replace: "\"allow\": [\n    {\"ghsa\": \"GHSA-aaaa-bbbb-cccc\", \"pkg\": \"example\", \"reason\": \"주입 시험용 면제\", \"accepted_by\": \"TODO\", \"date\": \"2026-11-10\", \"review\": \"주입 시험\"},\n    {",
     test: TEST,
     why: '이 파일의 `accepted_by` 는 "대표가 그 위험을 받기로 했다" 는 **기록**이다. 비어 있거나 TODO 면 세션이 스스로 보안 예외를 만들 수 있게 되고, 그 기록은 거짓이 된다.',
   },
