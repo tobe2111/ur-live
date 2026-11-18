@@ -26,6 +26,10 @@ function fakeDb(rowsPerTable: Record<string, number>, opts?: { failPageAfter?: n
           if (/FROM sqlite_master WHERE type='table' ORDER BY name/.test(sql)) {
             return { results: Object.keys(rowsPerTable).sort().map((name) => ({ name })) as T[] }
           }
+          // 🧱 2026-11-18 표 구조 조회(schema.sql) — 실제 sqlite_master 처럼 표마다 CREATE TABLE 1줄.
+          if (/FROM sqlite_master WHERE sql IS NOT NULL AND type IN \('table','index'\)/.test(sql)) {
+            return { results: Object.keys(rowsPerTable).sort().map((name) => ({ type: 'table', name, tbl_name: name, sql: `CREATE TABLE "${name}" (id INTEGER PRIMARY KEY, body TEXT)` })) as T[] }
+          }
           const pt = /pragma_table_info\('([^']+)'\)/.exec(sql)
           if (pt) return { results: [{ name: 'id' }, { name: 'body' }] as T[] }
           const m = /FROM "([^"]+)" WHERE rowid > \? ORDER BY rowid LIMIT (\d+)/.exec(sql)
@@ -108,6 +112,12 @@ describe('분할 백업', () => {
     expect(r.reason).toBe('complete')
     expect(bucket.puts.some((p) => p.key.endsWith('manifest.json'))).toBe(true)
     expect(bucket.puts.filter((p) => p.key.endsWith('.sql')).length).toBeGreaterThanOrEqual(2)
+    // 🧱 2026-11-18 표 구조(schema.sql)가 manifest 보다 먼저 남는다 — 파트엔 INSERT 뿐이라 이게 없으면 빈 DB 에 되살릴 수 없다.
+    const keys = bucket.puts.map((p) => p.key)
+    const schemaAt = keys.findIndex((k) => k.endsWith('/schema.sql'))
+    expect(schemaAt, 'schema.sql 이 없다').toBeGreaterThan(-1)
+    expect(schemaAt).toBeLessThan(keys.findIndex((k) => k.endsWith('manifest.json')))
+    expect(bucket.puts[schemaAt].body).toContain('CREATE TABLE "orders"')
     // 끝났으면 커서를 지운다 — 안 지우면 다음 스냅샷이 **옛 날짜로 영원히** 이어진다.
     expect(store.has('backup_chunk:main'), '완료 후에도 커서가 남았다').toBe(false)
   })

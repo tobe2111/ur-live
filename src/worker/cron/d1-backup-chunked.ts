@@ -264,11 +264,22 @@ export async function backupChunked(
   // 전 테이블 완료 — 매니페스트를 쓰고 커서를 비운다(다음 스냅샷은 새 날짜).
   const totalParts = Object.values(counts).reduce((a, c) => a + c[0], 0)
   const totalRows = Object.values(counts).reduce((a, c) => a + c[1], 0)
+  // 🧱 2026-11-18 표 구조도 남긴다 — 파트에는 `INSERT OR IGNORE` 행만 있어서, 이 파일이 없으면 **빈 DB 에 되살릴 수가 없었다**
+  //   (표를 먼저 만들 방법이 백업 안에 없다). 유어애즈 DB 복구 연습(`.github/workflows/d1-restore-drill-ads.yml`)을 만들다 찾았다.
+  //   백업한 표의 CREATE TABLE + 그 표들의 색인. 실패하면 완료로 치지 않는다(구조 없는 백업은 되살릴 수 없는 백업이다).
+  reads += 1
+  const ddl = (await db.prepare(
+    "SELECT type, name, tbl_name, sql FROM sqlite_master WHERE sql IS NOT NULL AND type IN ('table','index') ORDER BY CASE type WHEN 'table' THEN 0 ELSE 1 END, name",
+  ).all<{ type: string; name: string; tbl_name: string; sql: string }>()).results || []
+  const keep = new Set(tables)
+  const schemaSql = ddl.filter((d) => keep.has(d.tbl_name)).map((d) => `${d.sql};`).join('\n')
+  if (!schemaSql.includes('CREATE TABLE')) return pause('error', `[backup/${label}] 표 구조(CREATE TABLE)를 못 읽었다`)
+  await bucket.put(`backups/${cur.date}/${label}/schema.sql`, schemaSql, { httpMetadata: { contentType: 'application/sql' } })
   await bucket.put(`backups/${cur.date}/${label}/manifest.json`, JSON.stringify({
     label, date: cur.date, finished_at: new Date().toISOString(),
     tables,
     // 복구 때 "이 파일들이 전부인가"를 판별하는 근거. 없으면 잘린 백업과 온전한 백업이 구분되지 않는다.
-    counts, total_parts: totalParts, total_rows: totalRows,
+    counts, total_parts: totalParts, total_rows: totalRows, has_schema: true,
   }, null, 1), { httpMetadata: { contentType: 'application/json' } })
   await writeCursor(stateDb, stateKey, null)
   // 🔁 **어느 날짜까지 끝냈는지**를 남긴다. 이게 없으면 다음 회차가 커서만 보고 판단하는데,

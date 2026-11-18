@@ -74,3 +74,11 @@
 
 회귀 방지: `src/tests/unit/d1-backup-restorable.test.ts` (옛 동작 3종을 주입해 빨강 확인 완료).
 무결성 경고에 `objectCount < 100` 추가 — 인덱스가 안 담기면 다음 주 백업이 스스로 신고한다.
+
+## 🧯 2026-11-18 유어애즈 DB(분할 백업) 복구 — 이제 자동으로 연습한다
+- **표 구조**: 분할 백업(`src/worker/cron/d1-backup-chunked.ts`)은 2026-11-18 부터 `backups/{날짜}/{라벨}/schema.sql` 을 manifest 앞에 남긴다.
+  그 전 백업은 조각에 `INSERT OR IGNORE` 행만 있어 **빈 DB 에 되살릴 수 없었다**(표를 만들 구조가 백업 안에 없었다).
+- **되살리는 순서**: `schema.sql` → manifest 의 `tables` 순서대로 `{표}.0000.sql` … `{표}.{조각수-1}.sql`. 표별 행 수는 manifest `counts[표][1]` 과 같아야 한다.
+- **자동 연습**: `.github/workflows/d1-restore-drill-ads.yml`(매주 금 07:00 KST) → `scripts/restore-drill-chunked.mjs ads company`.
+  빈 SQLite 에 되살려 행 수·`integrity_check` 를 본다. 실패하면 Discord. 첫 실행이 R2 읽기 권한을 확인해 준다(없으면 `R2 읽기 실패 403`).
+- 결재: `docs/decisions/2026-11-18-log-retention-and-ads-backup-drill.md`.
