@@ -13,7 +13,7 @@
  */
 import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
-import { requireAdmin } from '../middleware/auth';
+import { requireAdmin, requireAdminRole } from '../middleware/auth';
 import { patchBusinessNumbers } from '../utils/seller-business-number'
 import { hashPassword } from '@/lib/password';
 import { rateLimit } from '../middleware/rate-limit'; import { secretEquals } from '../utils/secret-compare';
@@ -101,7 +101,7 @@ internalAdminToolsRoutes.post('/api/_internal/reset-admin-password', rateLimit({
 // 🛡️ 2026-04-27: 신규 마이그레이션 0207~0230 테이블 일괄 생성 (admin 전용).
 // repair-schema 가 ALTER (컬럼 추가) 만 처리하므로, CREATE TABLE 신규 테이블은 본 endpoint 로 생성.
 // 멱등 (CREATE TABLE IF NOT EXISTS).
-internalAdminToolsRoutes.get('/api/_internal/repair-new-tables', requireAdmin(), async (c) => {
+internalAdminToolsRoutes.get('/api/_internal/repair-new-tables', requireAdminRole('super'), async (c) => { // 🔐 2026-11-18 DDL — /api/admin/* 밖이라 RBAC 게이트가 안 닿는다
   const env = c.env as any;
   const DB = env.DB as D1Database;
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);

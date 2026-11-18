@@ -839,7 +839,8 @@ curatorRoutes.get('/me/dashboard', requireUser(), async (c) => {
       //   조건은 아래 fallback 과 글자 그대로 같다(users.email = sellers.email · approved · 미연결이거나 나).
       DB.prepare(
         `SELECT s.id, s.username FROM sellers s JOIN users u ON u.email = s.email
-          WHERE u.id = ? AND s.status = 'approved' AND (s.linked_user_id IS NULL OR s.linked_user_id = ?) LIMIT 1`,
+          WHERE u.id = ? AND s.status = 'approved' AND (s.linked_user_id IS NULL OR s.linked_user_id = ?)
+            AND u.kakao_id IS NOT NULL AND u.email_verified = 1 LIMIT 1`, // 🔐 2026-11-18: 카카오가 확인한 이메일만 — 이메일 가입은 주소를 확인하지 않는다(남의 매장 이메일로 가입 → 주인 자리)
       ).bind(userId, userId).first<{ id: number; username: string }>().catch(() => null),
     ])
     let meRow = meRow0

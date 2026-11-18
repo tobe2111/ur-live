@@ -1183,6 +1183,13 @@ const serveNaverVerify = (c: { text: (b: string, s: number, h: Record<string, st
 app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68.html', (c) => serveNaverVerify(c));
 app.get('/naverd3ccc68d1f14dc53e76aa95f4a02bb68', (c) => serveNaverVerify(c));
 app.route('/', docsRoutes);
+// 🛡️ 어드민 RBAC 게이트 — 제한 역할(ops/cs/finance/viewer) 강제. **모든 /api/admin/* 라우트 등록보다 먼저** 와야 한다.
+//   🔐 2026-11-18: 종전엔 한참 아래(로그인 rate limit 옆)에 있어, 그 위에서 등록되는 `internalAdminToolsRoutes` 의
+//   /api/admin/* (수수료 설정·딜 소급 지급·사업자 승인·DDL)가 역할 검사 없이 `requireAdmin()` 만으로 통과했다
+//   (Hono 는 등록 순서대로 돈다 — 먼저 응답한 핸들러 뒤의 미들웨어는 안 돈다).
+app.use('/api/admin/*', adminRbacMiddleware());
+app.use('/api/admin-payouts/*', adminRbacMiddleware());
+app.use('/api/admin-review-bonus/*', adminRbacMiddleware()); // 후기 보너스 승인 = 딜 지급 — 뷰어가 하던 것
 app.route('/', internalDiagnosticsRoutes);
 app.route('/', opsAlertRoutes);
 app.route('/', internalAdminToolsRoutes);
@@ -1455,8 +1462,7 @@ app.use('/api/admin/refresh', rateLimit({ action: 'admin_refresh', max: 10, wind
 app.use('/api/admin/2fa/*', rateLimit({ action: 'admin_2fa', max: 5, windowSec: 300 }));
 // 🛡️ 2026-06-16 어드민 RBAC 게이트 — 제한 역할(ops/cs/finance/viewer) 강제. 모든 /api/admin/* 라우트보다 먼저.
 //   (login/refresh 는 토큰 전이라 통과 — 미들웨어가 role 미상 시 next). admin-payouts(하이픈)도 별도 게이트.
-app.use('/api/admin/*', adminRbacMiddleware());
-app.use('/api/admin-payouts/*', adminRbacMiddleware());
+// 🔐 2026-11-18: RBAC 게이트 두 줄은 위(`internalDiagnosticsRoutes` 앞)로 옮겼다 — 여기 있으면 그보다 먼저 등록된 /api/admin/* 라우트가 비켜 간다.
 // 🪑 2026-10-10 매장 좌석 토큰(30일)이 **지금도** 살아 있는지 매 요청 본다 — 회수·소유권 이전·탈퇴 뒤 옛 토큰 차단. 셀러 라우트보다 먼저.
 app.use('/api/*', storeSeatGuard());
 app.route('/api/admin', adminAuthRoutes);

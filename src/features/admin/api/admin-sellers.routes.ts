@@ -528,7 +528,15 @@ adminSellersRoutes.patch('/sellers/:id/link-user', cors(), async (c) => {
     const { checkStoreHandover, STORE_HANDOVER_BLOCKED } = await import('../../../worker/utils/store-handover-guard');
     const handover = await checkStoreHandover(DB, Number(sellerId), userId);
     if (handover.blocked) return c.json({ success: false, error: handover.reason, code: STORE_HANDOVER_BLOCKED, receivable: handover.receivable }, 409);
+    const prevLink = await DB.prepare('SELECT linked_user_id FROM sellers WHERE id = ?').bind(sellerId).first<{ linked_user_id: number | null }>();
     await executeRun(DB, `UPDATE sellers SET linked_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [userId, sellerId]);
+    // 🔐 2026-11-18: 주인이 **바뀌면**(빈 자리 채우기는 아님) 이전 주인 손의 좌석 토큰·스캔 기기 키를 끊는다 — 소유권 이전(`store-ownership-transfer`)과 같은 뒷처리.
+    if (prevLink?.linked_user_id && Number(prevLink.linked_user_id) !== Number(userId)) {
+      const { bumpStoreSeatEpoch } = await import('../../../worker/utils/store-seat-guard');
+      const { revokeAllScanDevices } = await import('../../../worker/utils/scan-device-revoke');
+      await bumpStoreSeatEpoch(DB, Number(sellerId), 'admin_link_user');
+      await revokeAllScanDevices(DB, Number(sellerId));
+    }
     await writeAuditLog(c, { action: 'link_seller_user', targetType: 'seller', targetId: sellerId, after: { linked_user_id: userId, handle } });
     return c.json({ success: true, data: { seller_id: Number(sellerId), linked_user_id: userId, handle } });
   } catch (err) {

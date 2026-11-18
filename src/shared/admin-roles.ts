@@ -109,6 +109,10 @@ const SENSITIVE_MUTATIONS: { readonly pattern: RegExp; readonly allow: readonly 
   { pattern: /\/tools\/settlements\/process(?:$|[/?])/, allow: ['finance'] },  // 정산 일괄 처리 — ops 차단
   { pattern: /\/tools\/settings(?:$|[/?])/, allow: ['finance'] },              // 플랫폼 설정(수수료 기본값 등) — ops 차단
   { pattern: /\/sellers\/[^/]+\/(?:donation-commission|commission(?:-settings)?)(?:$|[/?])/, allow: ['finance'] }, // 셀러 수수료율/영입보너스(commission-settings 포함) — ops 차단(2026-07-12 감사 E: -settings 미매칭 갭 수리)
+  // 🔐 2026-11-18: 넓은 `sellers`·`tools` 도메인(ops)에 실려 새던 것 — 주인 지정·출금 재개·잔액 병합·원장 잠금 해제.
+  { pattern: /\/sellers\/[^/]+\/link-user(?:$|[/?])/, allow: [] },                 // 매장 주인 지정 — super·admin 만
+  { pattern: /\/sellers\/[^/]+\/verify-account(?:$|[/?])/, allow: ['finance'] },   // 계좌 재인증(출금 재개) — ops 차단
+  { pattern: /\/tools\/(?:points-reconcile|point-ledger-unlock)(?:$|[/?])/, allow: [] }, // 잔액 병합·원장 DDL — super·admin 만
 ];
 
 /** 이 역할이 해당 경로에 '변경(mutation)' 을 할 수 있는가. (슈퍼전용 경로 차단은 호출 전 isSuperOnlyAdminPath 로) */
