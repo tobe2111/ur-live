@@ -7,8 +7,18 @@
 #   D1/시크릿 바인딩은 Cloudflare 대시보드에서 관리(대표 셋업) — 이 배포는 *코드*만 갱신.
 name: Deploy ur-ads Worker
 
+# 🖥️ 2026-11-18 (대표 *"일단 그렇게 하자"*) — **실행기를 변수 하나로 고른다** (저장소 비공개 전환 준비 ②).
+#   저장소 변수 `CI_RUNNER` 가 **비어 있으면 종전 그대로 GitHub 기계(`ubuntu-24.04`)** 에서 돈다 — 이 줄만으로는 아무것도 안 바뀐다.
+#   `CI_RUNNER=self-hosted` 로 두면 대표 PC 의 자체 실행기에서 돈다(비공개 저장소는 GitHub 기계가 월 2,000분까지만 무료).
+#   PC 가 꺼져 있을 때의 비상구: 수동 실행(workflow_dispatch)에 `runner=hosted` 를 주면 GitHub 기계에서 배포한다.
+#   SSOT·불변식: `src/tests/unit/ci-runner-switch-2026-11-18.test.ts`
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: "실행기 — 비우면 저장소 변수 CI_RUNNER 를 따른다. 'hosted' 면 GitHub 기계(PC 가 꺼져 있을 때의 비상구)."
+        type: string
+        default: ''
   push:
     branches: [main]
     paths:
@@ -38,7 +48,7 @@ concurrency:
 
 jobs:
   deploy-ads:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || github.event.inputs.runner == 'hosted') && 'ubuntu-24.04' || vars.CI_RUNNER }}
     # ⏱️ 15 → 25: 정각 회차 보호(최대 6분) + 레이트 리밋 백오프(최대 8.5분) + 설치·번들이 15분 안에 안 들어간다.
     #   짧게 두면 **대기 도중 타임아웃**으로 끝나 재시도가 또 무의미해진다.
     timeout-minutes: 25

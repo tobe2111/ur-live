@@ -18,6 +18,11 @@ name: PR Verification
 #   (그 브랜치는 어차피 main 에 못 들어가고, 로컬은 pre-push 게이트 94개가 막는다). 얻는 것: 취소본 0 ·
 #   Verify 부하 절반 · auto-merge 가 첫 초록에 발동. main push 는 종전대로 main.yml 이 처리.
 #   ⚠️ group 키의 `|| github.ref_name` 은 workflow_dispatch(브랜치 수동 실행) 때 head_ref 가 비어 있어 남긴다.
+# 🖥️ 2026-11-18 (대표 *"일단 그렇게 하자"*) — **실행기를 변수 하나로 고른다** (저장소 비공개 전환 준비 ②).
+#   저장소 변수 `CI_RUNNER` 가 **비어 있으면 종전 그대로 GitHub 기계(`ubuntu-24.04`)** 에서 돈다 — 이 줄만으로는 아무것도 안 바뀐다.
+#   `CI_RUNNER=self-hosted` 로 두면 대표 PC 의 자체 실행기에서 돈다(비공개 저장소는 GitHub 기계가 월 2,000분까지만 무료).
+#   PC 가 꺼져 있을 때의 비상구: PR 제목에 `[ci-hosted]` 를 넣으면 그 PR 은 GitHub 기계에서 돈다. 포크에서 온 PR 은 언제나 GitHub 기계다(남의 코드를 PC 에서 돌리지 않는다).
+#   SSOT·불변식: `src/tests/unit/ci-runner-switch-2026-11-18.test.ts`
 on:
   # 🔴 **pull_request 에는 paths-ignore 를 두지 않는다** (2026-08-03 실사고).
   #
@@ -52,7 +57,7 @@ jobs:
   #   좁을 때(대부분의 PR)는 종전 그대로 `Verify` 안의 `--changed` 단계가 돈다.
   #   판정은 러너 자신의 스코프(`--scope-json`)다 — 워크플로가 흉내 내면 둘이 갈라진다.
   mutation-plan:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || contains(github.event.pull_request.title, '[ci-hosted]') || github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: 주입 범위 판정
     timeout-minutes: 5
     outputs:
@@ -88,7 +93,7 @@ jobs:
   mutation-shards:
     needs: mutation-plan
     if: needs.mutation-plan.outputs.full == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || contains(github.event.pull_request.title, '[ci-hosted]') || github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: 주입 전수 ${{ matrix.shard }}/${{ needs.mutation-plan.outputs.total }}
     strategy:
       fail-fast: false
@@ -119,7 +124,7 @@ jobs:
   mutation-changed:
     needs: mutation-plan
     if: needs.mutation-plan.outputs.full != 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || contains(github.event.pull_request.title, '[ci-hosted]') || github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: 주입 변경분 ${{ matrix.shard }}/${{ needs.mutation-plan.outputs.changed_total }}
     strategy:
       fail-fast: false
@@ -149,7 +154,7 @@ jobs:
         continue-on-error: false
 
   unit-tests:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || contains(github.event.pull_request.title, '[ci-hosted]') || github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: 단위 시험 ${{ matrix.shard }}/3
     strategy:
       fail-fast: false
@@ -178,7 +183,7 @@ jobs:
   #   첫 화면 실행 비용(크롬 설치 + 화면 렌더 2.9분)과 이름 충돌 검사(경고만인데 2.8분).
   #   🔴 실행 비용은 머지를 막는 검사다 — `Verify` 대조 단계가 결과를 확인한다(건너뜀 = 통과 구멍).
   exec-cost:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || contains(github.event.pull_request.title, '[ci-hosted]') || github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: 첫 화면 실행 비용
     timeout-minutes: 30
     env:
@@ -217,7 +222,7 @@ jobs:
         run: node scripts/ci-run.mjs node scripts/check-exec-cost.mjs
 
   naming-conflicts:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || contains(github.event.pull_request.title, '[ci-hosted]') || github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: 이름 충돌 (경고만)
     timeout-minutes: 10
     steps:
@@ -232,7 +237,7 @@ jobs:
     #   머지된다. 그래서 언제나 돌고, 아래 첫 단계가 조각 결과를 **명시적으로** 대조해 실패시킨다.
     needs: [mutation-plan, mutation-shards, mutation-changed, unit-tests, exec-cost]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || contains(github.event.pull_request.title, '[ci-hosted]') || github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: Verify
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true

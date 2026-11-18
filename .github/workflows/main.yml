@@ -3,10 +3,20 @@ name: Deploy to Cloudflare Pages
 # 🛡️ 2026-05-13: push 트리거 복원 — main 으로 push 시 자동 배포.
 #   2026-05-07 ~ 5-13 동안 Actions 한도 소진으로 workflow_dispatch 로 비활성화했음.
 #   Workers 프로젝트의 cron 갱신은 별도 (수동 `wrangler deploy`).
+# 🖥️ 2026-11-18 (대표 *"일단 그렇게 하자"*) — **실행기를 변수 하나로 고른다** (저장소 비공개 전환 준비 ②).
+#   저장소 변수 `CI_RUNNER` 가 **비어 있으면 종전 그대로 GitHub 기계(`ubuntu-24.04`)** 에서 돈다 — 이 줄만으로는 아무것도 안 바뀐다.
+#   `CI_RUNNER=self-hosted` 로 두면 대표 PC 의 자체 실행기에서 돈다(비공개 저장소는 GitHub 기계가 월 2,000분까지만 무료).
+#   PC 가 꺼져 있을 때의 비상구: 수동 실행(workflow_dispatch)에 `runner=hosted` 를 주면 GitHub 기계에서 배포한다.
+#   SSOT·불변식: `src/tests/unit/ci-runner-switch-2026-11-18.test.ts`
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      runner:
+        description: "실행기 — 비우면 저장소 변수 CI_RUNNER 를 따른다. 'hosted' 면 GitHub 기계(PC 가 꺼져 있을 때의 비상구)."
+        type: string
+        default: ''
 
 # 🛡️ 2026-05-28: 동시 배포 1개만 — 새 push 시 진행 중 배포 취소 (latest-wins).
 #   이전: concurrency 없음 → 빠른 연속 push 마다 deploy 누적 (한 번 hang 시 10+ 개 동시 In progress).
@@ -25,7 +35,7 @@ jobs:
   #   (실측 — 한 대가 차례로). PR 검사처럼 네 대로 나눠 동시에 돌린다 → 배포가 머지 후 약 9~10분.
   #   🔴 배포는 시험이 **전부 통과해야** 시작한다(`needs`) — 합친 결과가 깨졌으면 라이브에 안 올린다(2026-07-25 사고 원칙 그대로).
   unit-tests:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || github.event.inputs.runner == 'hosted') && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: 단위 시험 ${{ matrix.shard }}/4
     timeout-minutes: 30
     strategy:
@@ -52,7 +62,7 @@ jobs:
   report-tests-failed:
     needs: unit-tests
     if: failure() && needs.unit-tests.result == 'failure'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || github.event.inputs.runner == 'hosted') && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: 배포 막힘 기록 (단위 시험 실패)
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +75,7 @@ jobs:
 
   deploy:
     needs: unit-tests
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || github.event.inputs.runner == 'hosted') && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: Deploy to Cloudflare Pages
     # 🛡️ 2026-05-28: 무한 hang 방어 — step 행 시 30분 후 실패 처리 (prerender hang 사고 재발 방지).
     timeout-minutes: 40

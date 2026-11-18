@@ -7,8 +7,9 @@ export default [
     file: '.github/workflows/verify.yml',
     // 🎯 2026-11-01 재조준: verify.yml 에 주입 판정·분할 잡이 생겨 `runs-on` 이 세 곳이 됐다.
     //   지키려던 것은 **필수 검사 `Verify` 의 실행 환경 고정**이라 그 잡의 줄을 함께 묶어 가른다.
-    find: '    if: always()\n    runs-on: ubuntu-24.04\n    name: Verify',
-    replace: '    if: always()\n    runs-on: ubuntu-latest\n    name: Verify',
+    // 🎯 2026-11-18 재조준: `runs-on` 이 실행기 스위치 식이 됐다 — 식 안의 GitHub 기계 라벨을 떠다니게 한다.
+    find: "    if: always()\n    runs-on: ${{ (vars.CI_RUNNER == '' || contains(github.event.pull_request.title, '[ci-hosted]') || github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-24.04' || vars.CI_RUNNER }}\n    name: Verify",
+    replace: "    if: always()\n    runs-on: ${{ (vars.CI_RUNNER == '' || contains(github.event.pull_request.title, '[ci-hosted]') || github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || vars.CI_RUNNER }}\n    name: Verify",
     test: 'src/tests/unit/ci-runner-pin-2026-10-18.test.ts',
   },
   {

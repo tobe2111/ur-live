@@ -13,9 +13,18 @@
 #   — main.yml Pages 배포와 동일 secret 재사용. 권한 부족 시 이 워크플로만 실패(안내 로그).
 name: Deploy Worker (cron sync)
 
+# 🖥️ 2026-11-18 (대표 *"일단 그렇게 하자"*) — **실행기를 변수 하나로 고른다** (저장소 비공개 전환 준비 ②).
+#   저장소 변수 `CI_RUNNER` 가 **비어 있으면 종전 그대로 GitHub 기계(`ubuntu-24.04`)** 에서 돈다 — 이 줄만으로는 아무것도 안 바뀐다.
+#   `CI_RUNNER=self-hosted` 로 두면 대표 PC 의 자체 실행기에서 돈다(비공개 저장소는 GitHub 기계가 월 2,000분까지만 무료).
+#   PC 가 꺼져 있을 때의 비상구: 수동 실행(workflow_dispatch)에 `runner=hosted` 를 주면 GitHub 기계에서 배포한다.
+#   SSOT·불변식: `src/tests/unit/ci-runner-switch-2026-11-18.test.ts`
 on:
   workflow_dispatch:
     inputs:
+      runner:
+        description: "실행기 — 비우면 저장소 변수 CI_RUNNER 를 따른다. 'hosted' 면 GitHub 기계(PC 가 꺼져 있을 때의 비상구)."
+        type: string
+        default: ''
       allow_schedule_drift:
         description: '스케줄 동기화 실패를 경고로 낮춘다(비상용). 기본 false = 실패하면 워크플로도 실패.'
         type: boolean
@@ -48,7 +57,7 @@ concurrency:
 
 jobs:
   deploy-worker:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || github.event.inputs.runner == 'hosted') && 'ubuntu-24.04' || vars.CI_RUNNER }}
     timeout-minutes: 25
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true

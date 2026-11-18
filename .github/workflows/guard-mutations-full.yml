@@ -35,6 +35,11 @@ name: Guard mutations (full)
 #   "머지 직후" 에서 **최대 6시간 뒤**로 늦어지고, 빨간불이 났을 때 그 6시간 사이 머지 중 어느 것 때문인지 가려야 한다.
 #   코드 자체의 오류와 **바뀐 주입**은 PR 단계(`verify.yml` 의 `--changed`)가 종전대로 즉시 잡는다.
 #   ⚠️ `push:` 를 되살리지 말 것 — 급하면 수동 실행(workflow_dispatch)이 있다.
+# 🖥️ 2026-11-18 (대표 *"일단 그렇게 하자"*) — **실행기를 변수 하나로 고른다** (저장소 비공개 전환 준비 ②).
+#   저장소 변수 `CI_RUNNER` 가 **비어 있으면 종전 그대로 GitHub 기계(`ubuntu-24.04`)** 에서 돈다 — 이 줄만으로는 아무것도 안 바뀐다.
+#   `CI_RUNNER=self-hosted` 로 두면 대표 PC 의 자체 실행기에서 돈다(비공개 저장소는 GitHub 기계가 월 2,000분까지만 무료).
+#   PC 가 꺼져 있을 때의 비상구: 수동 실행(workflow_dispatch)에 `runner=hosted` 를 주면 GitHub 기계에서 돈다.
+#   SSOT·불변식: `src/tests/unit/ci-runner-switch-2026-11-18.test.ts`
 on:
   schedule:
     # 18:40 UTC = 다음날 03:40 KST. 배포·정비 cron 과 겹치지 않는 시간대. **이 회차는 건너뛰지 않는다.**
@@ -42,6 +47,11 @@ on:
     # 00:40 · 06:40 · 12:40 UTC = 09:40 · 15:40 · 21:40 KST. main 이 그대로면 건너뛴다.
     - cron: '40 0,6,12 * * *'
   workflow_dispatch:
+    inputs:
+      runner:
+        description: "실행기 — 비우면 저장소 변수 CI_RUNNER 를 따른다. 'hosted' 면 GitHub 기계(PC 가 꺼져 있을 때의 비상구)."
+        type: string
+        default: ''
 
 # 🚦 2026-11-10 (대표 *"더 개선할 건?"*) — **돌던 전수는 끝까지 두고, 기다리는 것은 가장 최신 하나만.**
 #   실측(11/10 하루): 이 워크플로가 저장소 전체 검사 기계 시간의 **65%(4,161분)** 를 썼고, 그중
@@ -57,7 +67,7 @@ jobs:
   # 🧩 조각 수를 **세어서** 정한다. `npm ci` 가 필요 없다 —
   #    러너는 node 내장 + 로컬 `.mjs` 만 import 하므로 `--count` 가 수초에 끝난다.
   plan:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || github.event.inputs.runner == 'hosted') && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: 조각 계획
     timeout-minutes: 5
     permissions:
@@ -94,7 +104,7 @@ jobs:
   full:
     needs: plan
     if: needs.plan.outputs.skip != 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (vars.CI_RUNNER == '' || github.event.inputs.runner == 'hosted') && 'ubuntu-24.04' || vars.CI_RUNNER }}
     name: 전수 ${{ matrix.shard }}/${{ needs.plan.outputs.total }}
     strategy:
       # 🔴 한 조각이 빨간불이어도 나머지는 끝까지 돈다 — 전수의 목적이 "어디가 깨졌나" 를
