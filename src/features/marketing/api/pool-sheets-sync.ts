@@ -22,6 +22,7 @@ import { ensureCompanySchema } from './company-discovery'
 import { ensureProspectSchema } from './store-prospects'
 import { ensureMarkSchema, harvestMarks, ensureListTab, applyEmailList, sentDayKST } from './pool-sheets-marks'
 import { syncGuideTab } from './pool-sheets-guide'
+import { tabGid, harvestHidden, applyHidden } from './pool-sheets-hidden'
 
 export type SheetPool = 'company' | 'store'
 export const SHEET_POOLS: readonly SheetPool[] = ['company', 'store']
@@ -205,12 +206,16 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
   const budget = rowsPerRun(pool)
   let wrote = 0
   let done = false
+  // 🙈 행 숨기기 = '이메일 보냄'(`pool-sheets-hidden.ts`) — 숨기기 요청에 탭 번호가 필요하다(회차당 1번).
+  const gid = await tabGid(token, sheetId, TAB, cost)
   while (wrote < budget) {
     const room = cycleRoom(off, total)
     if (room <= 0) { done = true; break }
     const take = Math.min(PAGE, budget - wrote, room)
     // ✉️ 덮어쓰기 **전에** 이 구간의 '이메일 보냄' 표시를 읽어 DB 에 저장한다(줄의 ID 로 찾는다 — 밀려도 안전).
     marked += await harvestMarks(DB, token, sheetId, def.table, TAB, lastCol, off + 2, take, cost)
+    // 🙈 사람이 숨긴 줄도 같은 뜻('보냄')으로 거둔다 — 덮어쓰면 숨김이 다른 업체로 밀리므로 그 전에.
+    marked += await harvestHidden(DB, token, sheetId, def.table, TAB, off + 2, take, cost)
     cost.subreq += 1
     const res = await DB.prepare(`SELECT ${def.cols} FROM ${def.table} WHERE ${def.where} AND id > ? ORDER BY id ASC LIMIT ?`)
       .bind(lastId, take).all<Row>().catch(() => null)
@@ -230,6 +235,8 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
       await saveCursor(env, pool, off, total, lastId, nCols)
       return { ok: false, error: `WRITE: ${rowNo}행부터 기록 실패(${w?.status || 'net'})`, rows: wrote, marked }
     }
+    // 🙈 방금 쓴 줄을 DB 상태대로 숨기고 편다 — 숨김이 줄 위치가 아니라 업체를 따라다니게.
+    await applyHidden(token, sheetId, gid, rowNo, page.map(r => r.email_sent_at != null && r.email_sent_at !== ''), cost)
     off += page.length
     wrote += page.length
     lastId = Number(page[page.length - 1]!.id) || lastId

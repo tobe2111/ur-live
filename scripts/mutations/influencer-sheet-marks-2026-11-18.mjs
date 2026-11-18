@@ -16,7 +16,7 @@ export default [
     find: `    : "LOWER(email) IN (SELECT LOWER(value) FROM json_each(?))"`, replace: `    : "email IN (SELECT value FROM json_each(?))"`, test: T,
     why: '대문자 이메일이 안 맞고, 붙여넣을 때마다 58만 행 전수를 읽는다.' },
   { name: '인플 시트 표시 — DB 를 읽은 뒤에 표시를 저장한다', file: S,
-    find: "    marked += await harvestMarks(DB, token, sheetId, 'ad_influencer_leads', TAB, MARK_LETTER, off + 2, take, cost).catch(() => 0)\n    const res = await", replace: '    const res = await', test: T,
+    find: "    marked += await harvestMarks(DB, token, sheetId, 'ad_influencer_leads', TAB, MARK_LETTER, off + 2, take, cost).catch(() => 0)\n", replace: '', test: T,
     why: '시트에 적은 표시가 덮어쓰기에 지워지고 DB 에도 안 남는다.' },
   { name: '인플 시트 표시 — 열 수가 바뀌어도 사이클을 이어 간다', file: S,
     find: '  const cur = cur0.off > 0 && parseCursorCols(cRaw?.value) !== SHEET_HEADER.length ? { off: 0, total: 0 } : cur0', replace: '  const cur = cur0', test: T,
