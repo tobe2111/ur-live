@@ -117,3 +117,15 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
 - **남긴 것(미수리)**: 에이전시 직원 좌석이 만든 스캔 기기 키(직원 제거·연결 해제 시) · `community-group-buy` confirm/refund 의 토큰 종류 미검사(SUSPECT, 미확인) · 이미지 프록시 R2 쓰기 남용 · 카카오/네이버 프록시 무인증(30/분) · `/api/_bootstrap/reset-dashboard-password role=all` 의 범위 · ops 의 `DELETE /sellers/:id`.
 - 🩸 틀린 판단: 주입 시험을 처음엔 "게이트보다 앞의 app.route 파일에 `/api/admin` 글자가 없다" 로 썼다가 `killer-sw.routes.ts`(클라이언트 스크립트 문자열)에 걸렸다 → 라우트 **정의**만 본다.
 - **16차 후속**(대표 *"계속"*): 동네공구 `/:id/confirm`·`/:id/refund` 가 번호만 비교하던 것 → 확정은 `type==='seller'`, 환불은 `type==='user'` 일 때만 본인. **조사 결과 고칠 필요 없던 것**: ① 에이전시 직원 좌석의 스캔 기기 키 — 좌석 허용 목록(`agencyScopeDecision`)에 `/scan-devices` 가 없어 애초에 못 만든다(시험으로 고정) ② ops 의 `DELETE /sellers/:id` — 이름만 삭제이고 실제는 **정지**(되돌릴 수 있는 운영 업무) ③ `/api/_bootstrap/reset-dashboard-password` — 이메일 한 개만 대상, `BOOTSTRAP_TOKEN` 없으면 404. **남긴 것**: 이미지 변환·지도 중계 주소의 무인증 비용 남용(속도 제한을 걸면 한 공유기 뒤 손님들이 같이 막힐 수 있어 대표 방향 필요).
+- **#2407·#2408 라이브 판정(E4, 11:05)**: super 토큰으로 `/api/admin/pending-sellers`·`ops-snapshot`·`dashboard/stats`·`settlement-audit`·`agency-payouts` 200 · 무인증 401 · 무인증 `/api/_internal/repair-new-tables` 403. 제한 역할 계정이 없어 "막힌다" 쪽은 못 쟀다.
+
+## 17차 (2026-11-18) — 돈이 새던 구멍 5건 (4차 전수 · 대표 승인 AskUserQuestion "5건 모두 지금 수정")
+라이브 실측: 교환권(deal_only) 활성 2,260종 · `ad_reward` 지급 0건 · 소수 수량 주문 0건 · 쿠폰 1장(플랫폼) ⇒ **악용 흔적 없음.**
+- 딜 결제 수량: 1~999 **정수만**(`isValidPurchaseQty`). 종전 0.01 → 값 1%, KT 발송 루프는 1회 = 교환권 한 장.
+- 광고 보상: `AD_REWARD_DISABLED = true`(403). 시청 증명(광고망 서버 검증) 없이 호출만으로 50딜×10회/일. **되살릴 때는 검증부터.**
+- 쿠폰: 매장 쿠폰은 모든 상품이 그 매장 것일 때만(`couponAppliesToOrder` — 딜 결제·카드 주문 양쪽) · 교환권 값은 쿠폰으로 안 깎임(`capCouponToCouponable`) · 사업자 쿠폰 값 범위(`cleanSellerCoupon`). SSOT `src/shared/coupon-scope.ts`.
+- 숙소 다객실 취소: 금액 생략(=토스 전체 취소)은 **단독 예약의 100% 환불만**(`stay-cancel-amount.ts`). 예약 수를 못 세면 이 방 값만.
+- 카드 공구 확정: 과금 전에 `/join` 과 같은 문(`confirmTossGate` — 이용권/교환권 · 본인 상품 · 종료).
+- **미수리(결재 필요)**: 한 결제 키를 서로 다른 확정 주소 두 곳(시딩 패스 ↔ 공구 ↔ 숙소 ↔ 생활견적)에 내미는 재사용 — 토스가 재승인을 "이미 처리됨=성공" 으로 답하는지에 달렸고, 고치려면 결제 키 전역 장부가 필요하다(5개 머니 경로 · 실결제 필수). 그 밖: 카드 자가취소가 다매 주문 전체를 REFUNDED 로 찍음(B) · `/api/orders/refund` 의 숙소 가드(C) · 어필리에이트 다중 추천인(게이트 꺼짐) · 프로모 코드 한도 race(0행).
+- 실결제 목록: `docs/STAGING_CHECKLIST.md` S-MONEYHOLES.
+

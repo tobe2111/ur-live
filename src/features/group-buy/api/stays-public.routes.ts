@@ -1219,7 +1219,7 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action
         const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
         const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string }, orderRow.payment_key, {
           reason: `예약 취소 (정책 ${policy}, ${(refundRate * 100).toFixed(0)}% 환불) — ${reason || '사용자 요청'}`.slice(0, 200),
-          amount: refundRate < 1.0 ? refundAmount : undefined,  // 부분 환불일 때만 amount 명시
+          amount: await (await import('./stay-cancel-amount')).stayCancelAmountFor(c.env.DB, booking.order_id, refundRate, refundAmount),  // 🔐 2026-11-18 단독 예약의 100% 환불만 전체 취소 — 다객실은 이 방 값만
           idempotencyKey: `stay-cancel-${id}`,
         })
         refundActuallyDone = result.ok
