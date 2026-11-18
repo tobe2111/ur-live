@@ -1,5 +1,5 @@
 {
-  "total": 1845,
+  "total": 1849,
   "files": {
     "src/pages/AboutPage.tsx": 24,
     "src/pages/AboutServicePage.tsx": 1,
@@ -264,6 +264,7 @@
     "src/shared/terms-page.ts": 5,
     "src/shared/ushop-share-card.ts": 1,
     "src/shared/videos-first.ts": 1,
-    "src/shared/vouchers-pc-first-screen.ts": 9
+    "src/shared/vouchers-pc-first-screen.ts": 9,
+    "src/components/auth/GoogleLoginButton.tsx": 4
   }
 }

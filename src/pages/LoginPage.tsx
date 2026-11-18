@@ -21,6 +21,7 @@ import { hasConsumerSession } from '@/utils/auth'
 import { canGoBackInApp } from '@/hooks/useSafeBack'
 import { LOGIN_CLS, LOGIN_COPY, LOGIN_UDAL_SIZE, LOGIN_LOGO_SIZE } from '@/shared/login-page' // 🔐 2026-11-09 서버 첫 화면(worker/utils/login-first-screen.ts)과 같은 클래스·문구
 import { hadBootFirstScreen } from '@/lib/boot-first-screen'
+import GoogleLoginButton from '@/components/auth/GoogleLoginButton' // 🌏 2026-11-18 기기 언어가 한국어가 아닌 손님에게만(한국어면 요청도 안 한다)
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-03 15차 ① — 제목 → 서비스 칩(하나씩 톡) → 카카오 버튼이 차례로 떠오른다. 들어올 때 한 번뿐이고, 버튼을 **누를 때**는 아무 움직임도 없다(iOS 멈춤 — 10차 ⑨).
 injectMotionCss('ur-m-login', `@keyframes ur-lg-up { from { opacity: 0; transform: translateY(12px); } }.ur-lg-h { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .05s backwards; }.ur-lg-btn { animation: ur-lg-up .45s cubic-bezier(.2,.9,.3,1) .34s backwards; }@media (prefers-reduced-motion: reduce){.ur-lg-h,.ur-lg-btn{animation:none!important}}`)
@@ -350,6 +351,7 @@ export default function LoginPage() {
                 </>
               )}
             </button>
+            <GoogleLoginButton returnUrl={returnUrl} />
             {/* 📜 이용약관 v1.0 제5조 고지 — 2026-10-26 대표 지시로 링크 두 개만 남긴다. */}
             <p className={LOGIN_CLS.terms}>
               <Link to="/terms" className={LOGIN_CLS.termsLink}>{t('login.termsLink', { defaultValue: LOGIN_COPY.termsLink })}</Link>
