@@ -65,6 +65,12 @@
 
 ---
 
+## Cloudflare 런타임
+
+| 에러 메시지 | 발생 위치 | 진짜 원인 | 해결 |
+|---|---|---|---|
+| `internal error; reference = <영숫자>` (Sentry `logger=cloudflare-worker`, 보통 GET `/`) | 워커 안의 Cloudflare 바인딩 호출(에셋 `ASSETS.fetch` · `caches.default` · 서브요청) | **Cloudflare 런타임 일시 오류** — 우리 코드 버그 아님. 다시 열면 정상 | 막을 수 없다. 손님이 보는 것만 지킨다: 화면 요청이면 전역 처리기가 SPA 셸(실패 시 한국어 재시도 페이지)을 준다(2026-11-18 `error-handler.ts` `pageFallback`). 같은 reference 로 반복되거나 시간당 여러 건이면 그때 Cloudflare 상태 페이지 확인 |
+
 ## 수집 / 크롤 (유어애즈 파트너 풀 · 도매 제조사 풀)
 
 | 에러 메시지 (단어 그대로) | 발생 위치 | 진짜 원인 | 해결 |
