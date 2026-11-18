@@ -137,6 +137,18 @@ export async function getAccountBalance(DB: D1Database, account: string): Promis
  * 멱등: voucher_id 중복 호출 시 entry 중복 방지 (reference_id + event_type unique check).
  * 영구성: 환불 시 reverse entry 생성 (recordRefundLedger).
  */
+/** 🧾 이용권이 속한 주문의 **구매 때 플랫폼 요율**(비율 0~1). 결제가 계산해 적은 행만 — 아니면 undefined(호출부가 채널로). */
+export async function purchaseRateSnapshot(DB: D1Database, voucherId: number | string): Promise<number | undefined> {
+  try {
+    const r = await DB.prepare(
+      `SELECT o.commission_rate AS rate, o.seller_amount AS sa FROM vouchers v JOIN orders o ON o.id = v.order_id WHERE v.id = ? LIMIT 1`,
+    ).bind(voucherId).first<{ rate: number | null; sa: number | null }>()
+    const rate = Number(r?.rate)
+    if (!r || !(Number(r.sa) > 0) || !Number.isFinite(rate) || rate < 0 || rate > 100) return undefined
+    return rate / 100
+  } catch { return undefined }
+}
+
 export async function recordVoucherUsedLedger(
   DB: D1Database,
   params: {
@@ -160,6 +172,13 @@ export async function recordVoucherUsedLedger(
   //   ⚠️ env 가 아니라 platform_settings 인 게 의도다 — 어드민에서 **재배포 없이** 끌 수 있어야
   //   되돌리기가 빠르다(머니 경로의 롤백 시간이 곧 손실 크기다).
   //   명시 override(`params.platform_rate`, 어드민 캠페인)가 있으면 그게 최우선 — 여기 안 들어온다.
+  // 🧾 2026-11-18 **구매 때 요율 스냅샷**(대표 승인 "수수료를 구매 때 값으로") — 종전엔 쓰는 순간의 채널로 다시 계산해서
+  //   매장 채널을 바꾸면 이미 팔린 미사용 이용권 전부가 소급해 다시 매겨졌다(라이브: 주문 91 은 5% 로 팔렸는데 11-16 채널이
+  //   direct 가 된 뒤 쓰면 10% · 매장 몫 2,170원 차이). 결제가 계산해 적은 값(`orders.commission_rate`)을 쓴다.
+  //   ⚠️ 그 칸은 DB 기본값이 10 이라, 결제가 실제로 적었을 때(seller_amount > 0)만 믿는다 — 아니면 종전대로 채널.
+  if (platformRate === undefined) {
+    platformRate = await purchaseRateSnapshot(DB, params.voucher_id)
+  }
   if (platformRate === undefined) {
     platformRate = await channelPlatformRate(DB, params.merchant_id)
   }

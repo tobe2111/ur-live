@@ -31,6 +31,7 @@ import {
   expiredVoucherBookRefundSql,
   type ExpiredVoucherOutcome,
 } from './expired-voucher-refund-sql';
+import { markOrderRefundedIfFull } from './mark-order-refunded';
 
 /**
  * 💸 **미수령 환불 정책 로드** — 세션 ④-b (머니 경로, 게이트 뒤)
@@ -500,6 +501,7 @@ export async function handleExpiredVoucherRefunds(env: Env) {
         //   어드민·셀러·주문 세 자리 중 하나에서 **같은 돈이 또 나간다**(실측 1,800 → 3,600).
         //   ⚠️ 실패(`changes = 0`)는 **조용히 넘기지 않는다** — 돈은 이미 나갔다.
         await bookRefundOnOrder(DB, voucher.order_id, refundAmount, voucher.id);
+        await markOrderRefundedIfFull(DB, voucher.order_id);
 
         // Send notification to user (production notifications requires user_type)
         try {
@@ -531,11 +533,11 @@ export async function handleExpiredVoucherRefunds(env: Env) {
             },
           );
           if (result.ok) {
-            await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(voucher.order_id).run().catch(() => null);
             refundCount++;
             outcome = 'refunded';
             // 🧾 같은 이유로 카드(토스) 경로도 적는다 — 한쪽만 적으면 결제수단에 따라 상한이 갈린다.
             await bookRefundOnOrder(DB, voucher.order_id, refundAmount, voucher.id);
+            await markOrderRefundedIfFull(DB, voucher.order_id);
             try {
               await DB.prepare(`
                 INSERT INTO notifications (user_id, user_type, type, title, message, created_at, is_read)

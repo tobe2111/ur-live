@@ -9,9 +9,11 @@ export default [
     // ⚠️ 앵커에 뒤 줄까지 넣는다 — 들여쓰기만 다른 카드 경로(12칸)가 이 8칸 문자열을
     //   **부분문자열로 포함**해서 "주입 대상이 2곳" 으로 걸렸다(유일성 검사가 잡아 줬다).
     find: `await bookRefundOnOrder(DB, voucher.order_id, refundAmount, voucher.id);
+        await markOrderRefundedIfFull(DB, voucher.order_id);
 
         // Send notification to user`,
     replace: `/* 장부 기록 없음 */
+        await markOrderRefundedIfFull(DB, voucher.order_id);
 
         // Send notification to user`,
     test: 'src/tests/unit/expired-refund-booked-2026-10-06.test.ts',
@@ -21,8 +23,10 @@ export default [
     name: '만료환불 — 카드(토스) 경로만 안 적는다(결제수단에 따라 상한이 갈린다)',
     file: 'src/worker/cron/auto-settlement.ts',
     find: `await bookRefundOnOrder(DB, voucher.order_id, refundAmount, voucher.id);
+            await markOrderRefundedIfFull(DB, voucher.order_id);
             try {`,
     replace: `/* 카드 경로는 안 적음 */
+            await markOrderRefundedIfFull(DB, voucher.order_id);
             try {`,
     test: 'src/tests/unit/expired-refund-booked-2026-10-06.test.ts',
     why: '딜로 산 사람은 보호되고 카드로 산 사람은 이중환불에 노출된다 — 가장 찾기 어려운 모양이다.',

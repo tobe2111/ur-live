@@ -74,7 +74,10 @@ export function resolveCashFeePct(raw: unknown): number {
 export function resolveWithholdingRate(taxType: string | null | undefined, businessNumber: string | null | undefined): number {
   if (businessNumber || taxType === 'business_income') return WITHHOLDING_RATES.business_income
   if (taxType === 'other_income') return WITHHOLDING_RATES.other_income
-  return 0
+  // 💸 2026-11-18 (대표 승인 "원천징수 기록·기본값") — 종전엔 비어 있으면 **0%**(원천징수 안 함)였다. 하지만 3.3% 가
+  //   SSOT 기본(`tax-withholding.ts` — 반복적 활동은 사업소득)이고, 안 떼고 보내면 나중에 국가에 낼 세금을 회사가 떠안는다.
+  //   ⇒ 모르면 사업소득 3.3%. 원천징수 대상이 아닌 경우(사업자 등록)는 위에서 이미 걸린다.
+  return WITHHOLDING_RATES.business_income
 }
 
 /** 표시용 % (= 분수 × 100). 계산에는 쓰지 말 것 — 아래 주석 참조. */

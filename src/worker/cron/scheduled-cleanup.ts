@@ -191,8 +191,11 @@ export async function handleScheduled(env: Env, tiers: CleanupTiers = ALL_TIERS)
     const { results: cancelledOrders } = await DB.prepare(`
       UPDATE orders
       SET status = 'CANCELLED', cancel_reason = '결제 시간 초과 (24시간)', updated_at = datetime('now')
-      WHERE (status = 'PENDING' AND created_at < datetime('now', '-24 hours'))
-         OR (status = 'AWAITING_PAYMENT' AND created_at < datetime('now', '-7 days'))
+      WHERE ((status = 'PENDING' AND created_at < datetime('now', '-24 hours'))
+         OR (status = 'AWAITING_PAYMENT' AND created_at < datetime('now', '-7 days')))
+        -- 💸 2026-11-18 결제가 승인된 주문은 '취소' 로만 바꾸지 않는다(머니 룰 #4 — 상태만 바꾸면 손님은 환불을 못 받는다).
+        --   라이브: payment_status='approved' 인데 이 정리로 CANCELLED 된 주문 8건(2월 시험 키). 대표 승인 "결제된 주문 자동취소 막기".
+        AND LOWER(COALESCE(payment_status, '')) NOT IN ('approved', 'done', 'paid')
       RETURNING id
     `).all<{ id: number }>();
 

@@ -302,7 +302,7 @@ influencerApp.put('/me', async (c) => {
     ).bind(
       userId,
       body.business_number || null,
-      body.tax_type || 'other_income',
+      body.tax_type || 'business_income', // 💸 2026-11-18 SSOT 기본값 3.3%(tax-withholding.ts) — 종전 other_income(8.8%)
       body.bank_name || null,
       body.bank_account || null,
       body.account_holder || null,

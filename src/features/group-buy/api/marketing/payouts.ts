@@ -98,6 +98,15 @@ export function registerAdminPayoutRoutes(adminApp: Hono<{ Bindings: Env; Variab
         businessNumber: meta?.business_number,
         feePct: resolveCashFeePct(feeRow?.value),
       })
+      // 🧾 2026-11-18 원천징수 장부에 남긴다(지급명세서·월 요약이 이걸 읽는다) — 위 CAS claim 이 한 번만 통과하므로
+      //   source_id 는 이 지급 한 건(인플 id + 지급 직전 잔액 + 시각). 실패해도 지급은 막지 않는다.
+      if (cashBreakdown.withholding > 0) {
+        const { logInfluencerWithholding } = await import('../../../../worker/utils/influencer-withholding-log')
+        await logInfluencerWithholding(DB, {
+          influencerId: String(influencerId), gross: cashBreakdown.taxableBase, withholdingPct: cashBreakdown.withholdingPct,
+          withholding: cashBreakdown.withholding, net: cashBreakdown.net, sourceId: `influencer_cash:${influencerId}:${amount}:${Date.now()}`,
+        }).catch(swallow('marketing:influencer-payout:withholding-log'))
+      }
     }
     // attribution paid 처리 (잔고 claim 은 위에서 완료).
     await c.env.DB.prepare(
