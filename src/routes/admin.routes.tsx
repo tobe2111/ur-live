@@ -66,6 +66,7 @@ const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
 const AdminHomeServicePage = lazy(() => import('@/pages/admin/AdminHomeServicePage'))
 const AdminSeedingPage = lazy(() => import('@/pages/admin/AdminSeedingPage')) // 🎁 무상 체험 신청 큐(2026-10-31)
 const AdminInstagramAutoDmPage = lazy(() => import('@/pages/AdminInstagramAutoDmPage'))
+const AdminMetaReviewPage = lazy(() => import('@/pages/AdminMetaReviewPage')) // 🎬 2026-11-18 메타 앱 검수 시연
 const AdminSocialPage = lazy(() => import('@/pages/AdminSocialPage'))
 const AdminNotificationSettingsPage = lazy(() => import('@/pages/AdminNotificationSettingsPage'))
 const AdminSellerApprovalPage = lazy(() => import('@/pages/AdminSellerApprovalPage'))
@@ -373,6 +374,7 @@ export function AdminRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/admin/instagram-autodm" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminInstagramAutoDmPage /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/admin/meta-review" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminMetaReviewPage /></ErrorBoundary></ProtectedRoute>} />
       {/* 🆕 2026-07-15 소셜 홍보 자동화(스레드/인스타/유튜브) */}
       <Route path="/admin/social" element={
         <ProtectedRoute requireAdmin>

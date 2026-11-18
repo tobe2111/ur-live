@@ -242,6 +242,7 @@ export const NAV_GROUPS: NavGroup[] = [
       //   (메인의 직접 마운트만 주석 처리됐다. 그 주석만 보고 '죽은 화면' 으로 판정하면 틀린다 — 2026-10-20 실제로 그렇게 오판할 뻔했다).
       { path: '/admin/social',            label: '소셜 홍보',     icon: Share2 },
       { path: '/admin/instagram-autodm',  label: '인스타 자동 DM', icon: MessageSquare },
+      { path: '/admin/meta-review',       label: '메타 검수 시연', icon: MessageSquare },
       { path: '/admin/notices',           label: '공지사항',      icon: Send },
       { path: '/admin/bulk-email',        label: '단체메일',      icon: Mail },
       { path: '/admin/reviews',           label: '리뷰 자동 생성', icon: Sparkles },

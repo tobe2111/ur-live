@@ -34,6 +34,7 @@ import { authRouter } from './routes/auth.routes';
 import { authTokenRoutes } from './routes/auth-token.routes'; import { healthRoutes } from './routes/health.routes'; // Phase 2.3 · 📏 2026-11-09 래칫(2672) — #2245 가 1줄 넘겨 main 배포가 멎었다
 import { killerSwRoutes } from './routes/killer-sw.routes'; import { isRasterImageType, hardenImageHeaders } from './utils/image-proxy-safety'; // 2026-04-27 PWA 사고 복구
 import kakaoSkillWebhookRoutes from './routes/kakao-skill-webhook.routes'; // 💬 2026-07-19 CS FAQ 봇(오픈빌더 스킬, KAKAO_SKILL_SECRET 미설정=404)
+import { metaReviewPublicRoutes, metaReviewAdminRoutes } from '../features/meta-review/api/meta-review.routes'; // 🎬 2026-11-18 메타 앱 검수 시연(어드민 전용, 발송은 사람 승인)
 import { instagramWebhookRoutes, instagramAutoDmAdminRoutes, instagramAutoDmSellerRoutes } from '../features/instagram-autodm/api/autodm.routes'; // 💬 2026-10-01 인스타 댓글→자동 DM(어드민 '켜기' 전엔 0통)
 import { sitemapRoutes } from './routes/sitemap.routes'; // 2026-04-27 TD-006 분할
 import { ordersRouter } from './routes/order.routes';
@@ -1196,6 +1197,7 @@ app.route('/', internalAdminToolsRoutes);
 app.route('/', smokeTestRoutes);
 app.route('/', kakaoSkillWebhookRoutes); // 💬 CS FAQ 봇 — read-only, 시크릿 게이트(기본 404)
 app.route('/', instagramWebhookRoutes); // 💬 인스타 웹훅 — 서명 검증(앱 시크릿), 발송 게이트 기본 OFF
+app.route('/', metaReviewPublicRoutes); // 🎬 메타 검수 시연 로그인 콜백 — 서명 state 필수
 app.route('/', repairSchemaRoutes); app.route('/', voucherImageUploadRoutes); // 🎁 X-Repair-Token 전용 — utils 주석 참조
 app.route('/', errorTelemetryRoutes);
 app.route('/', healthcheckRoutes);
@@ -1838,6 +1840,7 @@ adminApp.route('/flags', adminFlagsRoutes);
 adminApp.route('/seeding', seedingAdminRoutes); // 🎁 무상 체험 신청 큐·설정
 adminApp.route('/blog', adminBlogRoutes); adminApp.route('/home-service', homeServiceAdminRoutes); // 🧾 생활 견적 대리 접수·직영 견적
 adminApp.route('/instagram-autodm', instagramAutoDmAdminRoutes); // 💬 인스타 자동 DM 설정·규칙·발송 기록
+adminApp.route('/meta-review', metaReviewAdminRoutes); // 🎬 메타 앱 검수 시연 — 로그인·검색·승인 후 답글/DM
 // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 자동화 라우트 마운트 분리(위 import 참조). 게이트 OFF·미사용이라
 //   /api/admin/social/* 는 다이어트 기간 404 — 라이브 영향 0. 재도입=이 줄+import+크론 원복.
 // adminApp.route('/social', socialMediaRoutes);
