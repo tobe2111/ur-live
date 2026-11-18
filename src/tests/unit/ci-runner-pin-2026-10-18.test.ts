@@ -32,7 +32,15 @@ const files = readdirSync(WF).filter(f => /\.ya?ml$/.test(f))
 const read = (f: string) => readFileSync(join(WF, f), 'utf8')
 // `#` 로 시작하는 주석 줄은 뺀다 — 이 설명을 인용하는 주석이 판정을 흔들지 않게.
 const code = (f: string) => read(f).split('\n').filter(l => !/^\s*#/.test(l)).join('\n')
-const runsOn = (src: string) => [...src.matchAll(/^\s*runs-on:\s*(\S+)/gm)].map(m => m[1])
+// 🖥️ 2026-11-18: 실행기 스위치(`ci-runner-switch-2026-11-18.test.ts`)가 `runs-on` 을 식으로 바꿨다 —
+//   `${{ … && 'ubuntu-24.04' || vars.CI_RUNNER }}`. 이 시험이 지키는 것은 **GitHub 기계로 돌 때의 이미지**이므로
+//   식이면 그 안의 GitHub 기계 라벨(따옴표 안의 `ubuntu-…`)로 읽는다. 식에 그 라벨이 없으면 식 원문을 그대로 돌려
+//   아래 판정들이 "ubuntu-버전 이 아님" 으로 잡는다.
+const runsOn = (src: string) => [...src.matchAll(/^\s*runs-on:\s*(.+)$/gm)].map(m => {
+  const v = m[1].trim()
+  if (!v.startsWith('${{')) return v.split(/\s/)[0]
+  return /'(ubuntu-[\w.]+)'/.exec(v)?.[1] ?? v
+})
 const installsBrowser = (src: string) => /playwright\s+install|install-deps|chromium/.test(src)
 
 /**
