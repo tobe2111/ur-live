@@ -126,10 +126,22 @@ function wrapStatement(stmt: Record<string, unknown>, side: Side): unknown {
  * 리드 테이블 쿼리는 `ADS_DB`, 나머지는 `DB` 로 보내는 핸들.
  * **`ADS_DB` 가 없으면 `env.DB` 를 그대로 반환한다**(래퍼 없음 = 현행과 동일).
  */
+/**
+ * 🧷 **env 하나에 핸들 하나** (2026-11-18 라이브 실측). 종전엔 부를 때마다 새 라우터 객체를 만들었다. 그런데 이 레포의 스키마
+ * 보강 함수 수십 개가 "이 DB 에서 이미 했다"를 `WeakSet<DB>` 로 기억한다 — **매 요청 새 객체면 그 기억이 한 번도 안 맞아**
+ * isolate 당 1회여야 할 DDL 이 요청마다 다시 돌았다. 인플루언서 풀 통계에서만 요청당 왕복 9번(ALTER 3 · CREATE INDEX 2 ·
+ * 트리거 확인 3~4) ≈ 2초였다(`timings_ms.stats` 2.1초 → 원인 추적). 라우터는 상태가 없으므로 같은 env 에 같은 객체를 돌려줘도 된다.
+ */
+const _routerByEnv = new WeakMap<object, unknown>()
+
 export function adsLeadsDb<E extends EnvLike>(env: E): E['DB'] {
   const main = env.DB as D1Like
   const ads = env.ADS_DB as D1Like | undefined
   if (!ads || typeof ads.prepare !== 'function') return main as E['DB']
+  const hit = _routerByEnv.get(env as object)
+  // 바인딩이 바뀐 env(시험의 가짜 env 등)면 새로 만든다 — 같은 DB 들을 가리킬 때만 재사용.
+  if (hit && (hit as { __main?: unknown; __ads?: unknown; __company?: unknown }).__main === main
+    && (hit as { __ads?: unknown }).__ads === ads && (hit as { __company?: unknown }).__company === env.ADS_COMPANY_DB) return hit as E['DB']
   // 🏢 업체 전용 DB. 미바인딩이면 `ads` 로 폴백 — 배선을 먼저 배포해도 깨지지 않는다.
   const companyDb = env.ADS_COMPANY_DB as D1Like | undefined
   const company = companyDb && typeof companyDb.prepare === 'function' ? companyDb : ads
@@ -141,6 +153,7 @@ export function adsLeadsDb<E extends EnvLike>(env: E): E['DB'] {
   const pick = (sql: string): D1Like => dbOf(sideOf(sql))
 
   const router = {
+    __main: main, __ads: ads, __company: env.ADS_COMPANY_DB,
     prepare(sql: string) {
       const side = sideOf(sql)
       return wrapStatement(dbOf(side).prepare(sql) as Record<string, unknown>, side)
@@ -166,5 +179,6 @@ export function adsLeadsDb<E extends EnvLike>(env: E): E['DB'] {
       return (main.dump as () => Promise<unknown>)()
     },
   }
+  _routerByEnv.set(env as object, router)
   return router as unknown as E['DB']
 }
