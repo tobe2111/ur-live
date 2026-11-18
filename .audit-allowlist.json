@@ -3,7 +3,7 @@
   "allow": [
     {
       "ghsa": "GHSA-fc5q-39xc-vjpf",
-      "package": "picomatch (<=4.0.7, 전 버전) — vite·tailwindcss·vitest·chokidar·fast-glob·tinyglobby 경유",
+      "pkg": "picomatch (<=4.0.7, 전 버전) — vite·tailwindcss·vitest·chokidar·fast-glob·tinyglobby 경유",
       "reason": "빌드·시험 도구의 파일 경로 글롭 매칭에서만 쓰인다. src 에서 import 0 — 워커·브라우저 번들에 안 실리고 손님 입력이 닿지 않는다. 2026-11-18 기준 패치 버전 없음(npm 최신 4.0.7 도 범위 안).",
       "accepted_by": "대표 (2026-11-18 질문 '예외 목록에 등록' 선택)",
       "date": "2026-11-18",
