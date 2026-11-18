@@ -62,7 +62,7 @@ export default function CopyTextButton({
           toast.success(t('common.copiedWhat', { defaultValue: '{{what}}를 복사했어요', what }))
           setTimeout(() => setDone(false), 1500)
         } else {
-          toast.error(t('common.copyFailed', { defaultValue: '복사하지 못했어요. 길게 눌러 다시 시도해 주세요' }))
+          toast.error(t('common.copyFailed', { defaultValue: '복사에 실패했습니다.' }))
         }
       }}
       className={`shrink-0 inline-flex items-center min-h-[32px] px-2 bg-transparent border-0 cursor-pointer text-[12px] font-medium text-brand active:opacity-60 ${className || ''}`}
