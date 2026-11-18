@@ -135,7 +135,7 @@ export function planIndexNow(
   return {
     urls: take.map((e) => e.loc),
     cursor: take[take.length - 1].lastmod,
-    note: `변경 ${changed.length}건 중 ${take.length}건 제출 (상한 — 오래된 것부터, 다음 회차에 이어서)`,
+    note: `변경 ${changed.length}건 중 ${take.length}건 제출 (상한: 오래된 것부터, 다음 회차에 이어서)`,
   }
 }
 
