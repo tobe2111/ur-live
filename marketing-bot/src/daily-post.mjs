@@ -4,7 +4,7 @@ import { pickTrackByWeights } from './attribution.mjs';
 import { vetPost } from './vet.mjs';
 import { pickLeastRecent, rotateImages, pickHook, recentOpeners, slotFor, HOOKS, FORMATS } from './variety.mjs';
 import { thompsonPick, lessonsBlock, pickReelDay } from './learn.mjs';
-import { CTA_VARIANTS, ctaFor } from './cta.mjs';
+import { CTA_VARIANTS, ctaFor, isInvalidLinkError, fallbackLink, swapLinkInText } from './cta.mjs';
 import { seasonBlock } from './season.mjs';
 import { pickBest } from './judge.mjs';
 import { ROOT, DRY, log, readJson, writeJson, claude, humanize, HUMAN_STYLE, threadsText, threadsPublish, igPublish, igStory, fbPagePost, utmLink, productImage, kstNow, PARTNER_FACTS , opsAlert } from './lib.mjs';
@@ -372,7 +372,13 @@ async function main() {
         try { r = await publishTagged({ media_type: 'IMAGE', image_url, text }); }
         catch (e) { log(`Threads 이미지 게시 실패 → 글만: ${e.message.slice(0, 200)}`); }
       }
-      r = r || await publishTagged({ media_type: 'TEXT', text });
+      try { r = r || await publishTagged({ media_type: 'TEXT', text }); }
+      catch (e) {
+        const alt = isInvalidLinkError(e) ? fallbackLink(link) : null;
+        if (!alt) throw e;
+        log(`Threads 가 링크를 거절(${link}) → 안내 페이지로 바꿔 다시: ${alt}`);
+        r = await publishTagged({ media_type: 'TEXT', text: swapLinkInText(text, link, alt) });
+      }
     } catch (e) {
       // Threads 실패가 Instagram 게시까지 막지 않도록 기록만 하고 계속 진행
       threadsError = e;

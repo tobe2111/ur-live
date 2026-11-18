@@ -1,6 +1,7 @@
 // 2시간마다: 내 게시물 댓글 수집 → 분류 → 일반 댓글은 짧게 답글, 민감/불만/환불은 답글 없이 needs-owner 이슈.
 // "이미 답했나·이미 올렸나"는 저장 파일이 아니라 실물로 판정한다(live.mjs 머리말):
 //   답했나 = 그 댓글의 답글 중 내 계정이 있는가 · 올렸나 = needs-owner 이슈 본문에 그 댓글 ID 가 있는가.
+import { isInvalidLinkError, fallbackLink, swapLinkInText } from './cta.mjs';
 import { DRY, log, claude, humanize, threads, insta, threadsPublish, createIssue, PARTNER_FACTS, opsAlert, kstDateStr } from './lib.mjs';
 import { replyIntent, replyLink, linkInstruction, replyProblems } from './reply-intent.mjs';
 import { campaignToTrack } from './attribution.mjs';
@@ -95,7 +96,10 @@ async function main() {
     log(`답글 뜻: ${intent.who}${intent.action ? ' · 신청/링크 요청' : ''} → ${c.platform === 'threads' ? link : '프로필 링크 안내'}`);
     recentReplies.push(reply);
     log(`답글(${c.platform} ${c.id}): ${reply}`);
-    if (c.platform === 'threads') await threadsPublish({ media_type: 'TEXT', text: reply, reply_to_id: c.id });
+    if (c.platform === 'threads') {
+      try { await threadsPublish({ media_type: 'TEXT', text: reply, reply_to_id: c.id }); }
+      catch (e) { const alt = isInvalidLinkError(e) ? fallbackLink(link) : null; if (!alt) throw e; log(`답글 링크 거절 → 안내 페이지로: ${alt}`); await threadsPublish({ media_type: 'TEXT', text: swapLinkInText(reply, link, alt), reply_to_id: c.id }); }
+    }
     else await insta('POST', `${c.id}/replies`, { message: reply });
     replied++;
   }
