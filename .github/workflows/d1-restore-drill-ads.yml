@@ -1,0 +1,39 @@
+name: D1 Restore Drill — 유어애즈 DB (주간 분할 백업 복원 검증)
+
+# 🧯 2026-11-18 대표 "1,2 모두 이상적으로 해줘" (결재 docs/decisions/2026-11-18-log-retention-and-ads-backup-drill.md 3번).
+#   유어애즈 리드 DB · 업체 DB 의 R2 분할 백업(cron/d1-backup-chunked.ts)을 빈 SQLite 에 실제로 되살려
+#   표별 행 수 = manifest · integrity_check = ok 를 본다. 로그에는 개수만 찍는다(공개 레포).
+#   본체: scripts/restore-drill-chunked.mjs (시험: src/tests/unit/restore-drill-chunked-2026-11-18.test.ts)
+
+on:
+  schedule:
+    - cron: '0 22 * * 4' # 목요일 22:00 UTC = 금요일 07:00 KST (메인 주간 백업 수요일과 분산)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 복원 + 검증 (ads · company)
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_D1_BACKUP_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/restore-drill-chunked.mjs ads company
+      - name: Discord notification (실패 시)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H 'Content-Type: application/json' \
+              -d "{\"content\":\"🚨 유어애즈 DB 복구 연습 FAILED — 분할 백업이 되살아나지 않을 수 있음. run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+              "$DISCORD_WEBHOOK_URL" || true
+          fi
