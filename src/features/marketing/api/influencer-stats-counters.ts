@@ -195,7 +195,7 @@ export async function ensureStatsCounters(DB: D1Database): Promise<boolean> {
   if (failed.has(DB)) return false
   try {
     // ⚠️ SQL 에 리드 테이블 이름이 있어야 라우터가 리드 DB 로 보낸다(없으면 메인 DB 의 sqlite_master 를 본다).
-    const have = await DB.prepare(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'ad_influencer_leads' AND name IN (${TRIGGER_NAMES.map(() => '?').join(',')})`)
+    const have = await DB.prepare(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'ad_influencer_leads' AND name IN (${TRIGGER_NAMES.map(() => '?').join(',')})`) // d1-bind-ok: 트리거 이름 3개 고정(한도 100 에 닿을 수 없다)
       .bind(...TRIGGER_NAMES).all<{ name: string }>()
     const missing = TRIGGER_NAMES.filter(n => !(have.results || []).some(x => x.name === n))
     const [table, ...triggers] = counterDdl()
