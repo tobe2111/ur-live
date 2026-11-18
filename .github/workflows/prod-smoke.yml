@@ -70,8 +70,12 @@ jobs:
           check "동네딜(공구) API"           "/api/group-buy/products?status=active"                    ''
           check "교환권 카테고리"            "/api/vouchers/categories"                                 ''
           # 소비자 홈 SSR — index.html #root 에 데이터 슬롯이 주입돼야 함(없으면 홈 스켈레톤/콜드 회귀).
-          HOME=$(curl -s --max-time 25 "$BASE/" 2>/dev/null || true)
-          if printf '%s' "$HOME" | grep -q "__SSR_INITIAL_MAIN__"; then
+          # 🩸 2026-11-18: 여기 `HOME=$(curl …)` 이었다 — HOME 은 이미 export 된 환경변수라 홈 HTML(183KB)이
+          #   그 안에 들어갔고, 128KB(환경변수 한 개 한도)를 넘은 11-09 부터 **이후 모든 명령이 E2BIG 로 죽었다**
+          #   (`Argument list too long`, 26회 연속 빨강 · 6~7절은 9일간 한 번도 안 돌았다). 파일로 받는다.
+          HOME_HTML_FILE=$(mktemp)
+          curl -s --max-time 25 "$BASE/" -o "$HOME_HTML_FILE" 2>/dev/null || true
+          if grep -q "__SSR_INITIAL_MAIN__" "$HOME_HTML_FILE"; then
             echo "✅ PASS  소비자 홈 SSR 슬롯 주입됨"
           else
             echo "❌ FAIL  소비자 홈 SSR 슬롯 없음 — 홈 콜드 스켈레톤 회귀 가능"
