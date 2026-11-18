@@ -24,7 +24,7 @@ export async function ensureRecruitColumn(DB: D1Database) {
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recruited_at TEXT').run().catch(() => null)
 }
 
-type Heavy = { agg: Record<string, unknown> | null; catFunnel: unknown[]; byDay: Array<{ d: string; n: number; reachable: number }>; tail: Record<string, unknown>; complete?: boolean }
+type Heavy = { agg: Record<string, unknown> | null; catFunnel: unknown[]; byDay: Array<{ d: string; n: number; reachable: number }>; tail: Record<string, unknown>; complete?: boolean; errors?: string[] }
 
 /**
  * ⏱️ **무거운 집계는 캐시한다** (2026-11-17 대표 *"인플루언서 풀 페이지 로딩이 너무 길어 · 매일 수집량 그래프가 사라졌어"*).
@@ -36,6 +36,9 @@ type Heavy = { agg: Record<string, unknown> | null; catFunnel: unknown[]; byDay:
  *   (`collected_at` 인덱스로 오늘치만 — 수천 행). 진단·게이트(`diag`·`gate`)는 원래 가볍고 매번 새로 읽는다.
  */
 async function computeHeavy(DB: D1Database): Promise<Heavy> {
+  // 🩺 어느 조회가 왜 실패했는지 남긴다 — 실패를 null 로만 바꾸면 "캐시가 왜 안 갱신되나" 를 아무도 못 본다(2026-11-18 실측).
+  const errors: string[] = []
+  const note = (tag: string) => (e: unknown) => { errors.push(`${tag}: ${String((e as Error)?.message || e).slice(0, 160)}`); return null }
   const agg = await DB.prepare(`SELECT
       COUNT(*) AS total,
       SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
@@ -103,7 +106,7 @@ async function computeHeavy(DB: D1Database): Promise<Heavy> {
       --    클라가 브라우저에서 오늘을 구하면 TZ 에 따라 9시간 어긋난다(반복 사고 클래스).
       --    ⚠️ 이 주석은 템플릿 리터럴 안이다 — 백틱을 쓰면 SQL 문자열이 거기서 끊긴다(실제로 한 번 냈다).
       DATE('now','+9 hours') AS today_kst
-    FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(() => null)
+    FROM ad_influencer_leads WHERE account_id = ?`).bind(POOL).first().catch(note('agg'))
   // 📊 카테고리별 전환 — "어떤 카테고리가 실제로 회신·계약으로 이어지나"(발송 문구/타겟 조정 근거).
   //   컨택 이력이 있는 카테고리만, 컨택 많은 순 상위 8개.
   const catFunnel = await DB.prepare(`SELECT COALESCE(category, '미분류') AS category,
@@ -114,7 +117,7 @@ async function computeHeavy(DB: D1Database): Promise<Heavy> {
       SUM(CASE WHEN consented_at IS NOT NULL THEN 1 ELSE 0 END) AS consented
     FROM ad_influencer_leads WHERE account_id = ?
     GROUP BY COALESCE(category, '미분류') HAVING reached > 0 ORDER BY reached DESC LIMIT 8`)
-    .bind(POOL).all().catch(() => null)
+    .bind(POOL).all().catch(note('catFunnel'))
   // 🕐 **최신화 내역(최근 14일 유입)** — 2026-08-19 대표 *"인플루언서 수집 페이지도 B2B 처럼 14일치를"*.
   //   총계(43,995 …)는 수집이 며칠 멈춰도 안 변한다 — **멈춤이 안 보이는 지표**다. 날짜별로만 보인다.
   //   ⚠️ KST 경계(`+9 hours`)로 센다. UTC 로 자르면 한국의 '오늘'이 09:00 에 시작한다.
@@ -126,14 +129,15 @@ async function computeHeavy(DB: D1Database): Promise<Heavy> {
   const byDay = ((await DB.prepare(`SELECT DATE(collected_at,'+9 hours') AS d, COUNT(*) AS n,
       SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS reachable
     FROM ad_influencer_leads WHERE +account_id = ? AND collected_at >= datetime('now','-14 days')
-    GROUP BY d ORDER BY d DESC LIMIT 14`).bind(POOL).all().catch(() => null))?.results || []) as Heavy['byDay']
+    GROUP BY d ORDER BY d DESC LIMIT 14`).bind(POOL).all().catch(note('byDay')))?.results || []) as Heavy['byDay']
   // 🔗 퍼널 뒷단(가입 → 첫 판매) — 별도 쿼리(적립 원장 조인이라 위 집계와 분리). 실패 시 0.
   const tail = await getFunnelTailStats(DB).catch(() => ({ joined: 0, first_sale: 0 }))
   // 🩸 조회 하나라도 실패했으면(위 .catch 가 null 로 바꾼다) **캐시에 넣지 않는다** — 2026-11-18 배포 직후 실측:
   //   부하 중 실패한 계산이 빈 14일 표로 저장돼 그래프가 다시 사라질 뻔했다(30분 동안 그 빈 값이 나간다).
   //   ⚠️ 14일 유입이 진짜로 0행인 풀은 없다(수집이 매시간 돈다) — 빈 표는 실패로 본다.
   const complete = !!agg && !!catFunnel && byDay.length > 0
-  return { agg: (agg as Record<string, unknown> | null) || null, catFunnel: catFunnel?.results || [], byDay, tail: tail as Record<string, unknown>, complete }
+  if (!byDay.length && !errors.some(e => e.startsWith('byDay'))) errors.push('byDay: 0행')
+  return { agg: (agg as Record<string, unknown> | null) || null, catFunnel: catFunnel?.results || [], byDay, tail: tail as Record<string, unknown>, complete, errors }
 }
 
 /** 오늘(KST) 유입 — 매번 실시간. `collected_at` 인덱스로 오늘치만 읽는다. */

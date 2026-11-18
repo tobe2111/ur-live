@@ -33,3 +33,9 @@ D1 `EXPLAIN`/rows_read 로 파트너 기본 목록 쿼리(목표 수백 행) · 
   배포 부하 중 조회가 실패했고 `.catch` 가 빈 값으로 바꾼 것을 **그대로 30분 캐시**했다 ⇒ 그래프가 다시 사라질 뻔했다.
 - 처방: 계산에 `complete` 표시(집계·퍼널 null 이거나 14일 표가 비면 거짓) → 거짓이면 저장하지 않고, 온전한 낡은 캐시가 있으면 그걸 준다.
 - 라이브 재측정(#2418 뒤): 인플루언서 통계 캐시 적중 0.33~1.4초(전 3.5~9.1초) · 파트너 목록 첫 페이지 인덱스 생성 첫 호출 11.4초(한 번) → 0.9초.
+
+## 후속 — 캐시가 안 갱신되던 것 (2026-11-18 오후)
+- 실측: 인플루언서 통계 캐시 `stats_at` 이 44분째 그대로 · 가끔 6.5~9초 응답. 다시 계산이 계속 실패해 저장이 안 됐고(`complete=false`), 실패할 때마다 회당 약 240만 행을 또 읽었다.
+- 처방: ① 실패한 조회 원문을 `platform_settings.ads_influencer_stats_cache_fail` 에 남긴다(`agg|catFunnel|byDay: 메시지`, byDay 0행도 기록) ② 다시 계산 시도는 모든 isolate 공통 5분에 한 번(`ads_influencer_stats_cache_attempt`).
+- 이어받는 첫 액션: 메인 D1 에서 `SELECT value FROM platform_settings WHERE key='ads_influencer_stats_cache_fail'` → 원문으로 실패 조회를 고친다.
+- 틀린 판단: `.catch(() => null)` 로 실패를 삼켜 "왜 안 갱신되나" 를 볼 수 없게 만든 것이 원인 규명을 막았다.
