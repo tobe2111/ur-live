@@ -16,7 +16,7 @@
 import type { Hono } from 'hono'
 import { requireAuth, requireUser, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
-import { rateLimit } from '@/worker/middleware/rate-limit'
+import { rateLimit } from '@/worker/middleware/rate-limit'; import { feedCacheAgeMs, FEED_CACHE_FRESH_MS } from './feed-cache-age'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
@@ -197,8 +197,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           ).bind(status, categoryParam).first<{ product_json: string; computed_at: string }>().catch(() => null)
           if (cached?.product_json) {
             // 5분 cron 기준, 10분 이상 stale 이면 무시 (실시간 fallback)
-            const ageMs = Date.now() - new Date(cached.computed_at + 'Z').getTime()
-            if (ageMs < 10 * 60_000) {
+            const ageMs = await feedCacheAgeMs(DB, cached.computed_at) // 🧮 2026-11-18 cron 의 '확인 시각' 도 본다 — `feed-cache-age.ts`
+            if (ageMs < FEED_CACHE_FRESH_MS) {
               try {
                 const parsed = JSON.parse(cached.product_json)
                 if (Array.isArray(parsed)) return parsed

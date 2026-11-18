@@ -42,6 +42,13 @@ const STATUSES = ['active', 'achieved', 'expired', 'all'] as const
  */
 export const FEED_FP_KEY = 'gb_feed_cache_fp'
 export const FEED_FORCE_REFRESH_MS = 60 * 60_000
+/**
+ * 🧮 2026-11-18 "지문이 같다고 확인했다" 시각 — 대표 승인 "응 두개 다 해줘" [UNLOCK_LOADING].
+ *   종전엔 지문이 같을 때 `group_buy_feed_cache` **24행 전부**의 computed_at 을 5분마다 고쳐 썼다
+ *   (라이브: 하루 10,800줄 · 메인 쓰기의 13%). 행 내용은 그대로이니 '확인 시각' 한 줄만 적는다.
+ *   소비자(`group-buy-public.routes.ts`)는 computed_at 이 10분을 넘었을 때만 이 시각을 본다.
+ */
+export const FEED_CHECKED_KEY = 'gb_feed_cache_checked_at'
 
 export async function computeFeedFingerprint(DB: { prepare: (sql: string) => { bind: (...a: unknown[]) => { first: <T>() => Promise<T | null> } } }): Promise<string | null> {
   const cats = VOUCHER_CATEGORIES as readonly string[]
@@ -115,8 +122,8 @@ export async function handleGroupBuyFeedCache(env: Env): Promise<{
       prevAt = Date.parse(v?.at ?? '') || 0
     } catch { /* 지문 기록이 없거나 깨짐 → 전체 갱신 */ }
     if (prevFp === fp && Date.now() - prevAt < FEED_FORCE_REFRESH_MS) {
-      const t = await DB.prepare("UPDATE group_buy_feed_cache SET computed_at = datetime('now')").run()
-        .catch(swallow('cron:group-buy-feed-cache:touch'))
+      const t = await DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, datetime('now'))").bind(FEED_CHECKED_KEY).run()
+        .catch(swallow('cron:group-buy-feed-cache:checked'))
       return { refreshed: 0, skipped: false, unchanged: true, touched: Number(t?.meta?.changes ?? 0) }
     }
   }

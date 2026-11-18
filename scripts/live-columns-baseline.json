@@ -31,7 +31,6 @@
   "src/worker/services/delete-account.service.ts|INSERT|deleted_accounts.reregister_available_at",
   "src/worker/services/delete-account.service.ts|SELECT|deleted_accounts.original_name",
   "src/worker/services/delete-account.service.ts|SELECT|deleted_accounts.reregister_available_at",
-  "src/worker/services/delete-account.service.ts|UPDATE|users.deleted_at",
-  "src/worker/utils/checkout.ts|INSERT|order_items.consignment_id"
+  "src/worker/services/delete-account.service.ts|UPDATE|users.deleted_at"
  ]
 }
