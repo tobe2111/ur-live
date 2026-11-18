@@ -108,13 +108,49 @@ describe('크롤링 차단 — robots.txt 와 헤더 차단은 한 쌍이다', (
 })
 
 describe('사진 저장 억제 — JS 와 CSS 는 한 쌍이다', () => {
-  it('이미지에서만 우클릭을 막는다 (페이지 전체 차단 금지)', () => {
+  // 🖱️ 2026-11-18 대표 지시 "오른쪽 마우스 금지" — 종전 불변식("이미지에서만")을 **대표가 바꿨다**.
+  //   남는 불변식: 입력 요소·대시보드는 예외 · 드래그 차단은 여전히 사진에만 · 사는 사람이 쓰는 키는 안 막는다.
+  it('소비자 화면 전체에서 우클릭을 막는다 — 입력 요소·대시보드는 예외', async () => {
     const s = code(read(PROTECT))
     expect(s).toContain("addEventListener(\n    'contextmenu'")
-    // 이미지 판정을 거치지 않고 무조건 preventDefault 하면 주소 복사까지 죽는다.
-    const ctx = s.slice(s.indexOf("'contextmenu'"), s.indexOf("'dragstart'"))
-    expect(ctx).toContain('imageAtEvent')
-    expect(ctx).toContain('isEditable')
+    const ctx = s.slice(s.indexOf("addEventListener(\n    'contextmenu'"), s.indexOf("addEventListener(\n    'keydown'"))
+    expect(ctx).toContain('shouldBlockContextMenu(location.pathname, e.target as Element)')
+    expect(ctx).toContain('e.preventDefault()')
+    const { shouldBlockContextMenu } = await import('@/lib/image-protect')
+    const el = (tag: string, parent: unknown = null, editable = false) => ({ tagName: tag, parentElement: parent, isContentEditable: editable }) as unknown as Element
+    expect(shouldBlockContextMenu('/', el('DIV'))).toBe(true)
+    expect(shouldBlockContextMenu('/group-buy/12', el('P', el('SECTION')))).toBe(true)
+    expect(shouldBlockContextMenu('/', null)).toBe(true)
+    for (const tag of ['INPUT', 'TEXTAREA', 'SELECT']) expect(shouldBlockContextMenu('/', el(tag)), tag).toBe(false)
+    expect(shouldBlockContextMenu('/', el('SPAN', el('DIV', null, true)))).toBe(false) // 편집 영역 안
+    for (const p of ['/admin', '/admin/users', '/seller/orders', '/agency', '/supplier/x', '/wholesale']) expect(shouldBlockContextMenu(p, el('DIV')), p).toBe(false)
+    expect(shouldBlockContextMenu('/agency-partner', el('DIV'))).toBe(true) // 접두사가 비슷한 소비자 화면
+  })
+
+  it('드래그 차단은 여전히 사진에만 건다 (글자 드래그는 정상 사용)', () => {
+    const s = code(read(PROTECT))
+    const drag = s.slice(s.indexOf("addEventListener(\n    'dragstart'"))
+    expect(drag).toContain('imageAtEvent')
+  })
+
+  it('소스 보기·저장·개발자도구 단축키만 막는다 — 사는 사람이 쓰는 키는 안 막는다', async () => {
+    const { isBlockedShortcut } = await import('@/lib/image-protect')
+    const k = (key: string, m: Partial<{ ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }> = {}) =>
+      ({ key, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...m })
+    for (const blocked of [
+      k('F12'), k('u', { ctrlKey: true }), k('U', { metaKey: true }), k('s', { ctrlKey: true }), k('s', { metaKey: true }),
+      k('I', { ctrlKey: true, shiftKey: true }), k('j', { ctrlKey: true, shiftKey: true }), k('C', { ctrlKey: true, shiftKey: true }),
+      k('i', { metaKey: true, altKey: true }), k('u', { metaKey: true, altKey: true }),
+    ]) expect(isBlockedShortcut(blocked), JSON.stringify(blocked)).toBe(true)
+    for (const allowed of [
+      k('c', { ctrlKey: true }), k('c', { metaKey: true }), k('v', { ctrlKey: true }), k('x', { ctrlKey: true }), k('a', { ctrlKey: true }),
+      k('r', { ctrlKey: true }), k('f', { ctrlKey: true }), k('F5'), k('u'), k('s'), k('ArrowLeft', { altKey: true }),
+      k('t', { ctrlKey: true }), k('p', { ctrlKey: true }), k('z', { ctrlKey: true }), k('Enter'),
+    ]) expect(isBlockedShortcut(allowed), JSON.stringify(allowed)).toBe(false)
+    const s = code(read(PROTECT))
+    const kd = s.slice(s.indexOf("addEventListener(\n    'keydown'"), s.indexOf("addEventListener(\n    'dragstart'"))
+    expect(kd).toContain('if (isExemptPath(location.pathname)) return')
+    expect(kd).toContain('isBlockedShortcut(e)')
   })
 
   it('입력 요소는 건드리지 않는다 (붙여넣기 메뉴 유지)', () => {

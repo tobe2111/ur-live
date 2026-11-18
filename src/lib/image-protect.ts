@@ -9,9 +9,13 @@
  *      · `cf-image.ts` HOTLINK_BLOCKED_HOSTS — 외부 도메인 핫링크
  *    그래서 이 파일만 지우면 억제가 사라질 뿐 아니라 **서버쪽이 있으니 괜찮다고 착각**하기 쉽다.
  *
+ * 🖱️ 2026-11-18 대표 지시 — *"오른쪽 마우스 금지하게끔 해줄래? 우리 사이트를 카피할 수 있는 요소들을 최대한 없애고 싶어"*.
+ *   ⇒ 우클릭은 이제 **소비자 화면 전체**에서 막는다(종전: 사진 위에서만). 소스 보기·저장·개발자도구 단축키도 막는다.
+ *   이것도 **억제**다 — 브라우저 메뉴로 개발자도구를 열거나 주소 앞에 `view-source:` 를 붙이는 것은 못 막는다.
+ *   사이트를 통째로 베끼는 가장 쉬운 길은 화면이 아니라 **공개된 코드 저장소**다(그건 이 파일 밖의 일이다).
+ *
  * 설계 원칙(이걸 어기면 사용자를 다치게 한다):
- *   ① **이미지에서만** 우클릭을 막는다. 페이지 전체 `contextmenu` 차단은 주소 복사·
- *      새 탭으로 열기·맞춤법 검사까지 죽여서, 훔치는 사람은 못 막고 사는 사람만 불편해진다.
+ *   ① 우클릭은 소비자 화면 전체에서 막되(2026-11-18), **입력 요소만은 예외**다(②).
  *   ② **입력 요소는 절대 건드리지 않는다**(input/textarea/contenteditable) — 붙여넣기 메뉴가
  *      사라지면 주소·쿠폰코드 입력이 지옥이 된다.
  *   ③ **대시보드는 제외**(어드민/셀러/에이전시/도매) — 운영자는 상품 사진을 실제로
@@ -62,6 +66,33 @@ function imageAtEvent(target: EventTarget | null): boolean {
   return false
 }
 
+/** 이 자리에서 우클릭 메뉴를 막는가 — 소비자 화면이고 입력 중이 아니면 막는다(순수 판정). */
+export function shouldBlockContextMenu(pathname: string, target: Element | null): boolean {
+  if (isExemptPath(pathname)) return false
+  let el = target
+  for (let i = 0; el && i < 4; i++) {
+    if (isEditable(el)) return false
+    el = el.parentElement
+  }
+  return true
+}
+
+/**
+ * 소스 보기·페이지 저장·개발자도구를 여는 단축키인가(순수 판정).
+ *   F12 · Ctrl/⌘+U(소스) · Ctrl/⌘+S(저장) · Ctrl+Shift+I/J/C · ⌘+⌥+I/J/C/U
+ * ⚠️ 복사(Ctrl+C)·붙여넣기·새로고침·뒤로 가기·찾기는 **절대 넣지 않는다** — 그건 사는 사람이 쓰는 키다.
+ */
+export function isBlockedShortcut(e: { key: string; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }): boolean {
+  const k = String(e.key || '').toLowerCase()
+  if (k === 'f12') return true
+  const mod = e.ctrlKey || e.metaKey
+  if (!mod) return false
+  if (!e.shiftKey && !e.altKey && (k === 'u' || k === 's')) return true
+  if (e.ctrlKey && e.shiftKey && (k === 'i' || k === 'j' || k === 'c')) return true
+  if (e.metaKey && e.altKey && (k === 'i' || k === 'j' || k === 'c' || k === 'u')) return true
+  return false
+}
+
 let installed = false
 
 /** 문서 레벨 리스너 1쌍만 건다(요소마다 거는 것은 카드 수백 개에서 비싸다). */
@@ -72,9 +103,18 @@ export function installImageProtection(): void {
   document.addEventListener(
     'contextmenu',
     (e) => {
+      if (!shouldBlockContextMenu(location.pathname, e.target as Element)) return
+      e.preventDefault()
+    },
+    { capture: true },
+  )
+
+  // 소스 보기·저장·개발자도구 단축키(소비자 화면에서만 — 운영자는 대시보드에서 개발자도구를 쓴다).
+  document.addEventListener(
+    'keydown',
+    (e) => {
       if (isExemptPath(location.pathname)) return
-      if (isEditable(e.target as Element)) return
-      if (!imageAtEvent(e.target)) return
+      if (!isBlockedShortcut(e)) return
       e.preventDefault()
     },
     { capture: true },
