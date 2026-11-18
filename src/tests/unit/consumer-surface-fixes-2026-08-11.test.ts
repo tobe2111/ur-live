@@ -300,7 +300,7 @@ describe('⑨ 소비자 언어 전환은 닫혀 있고, 그 선택도 ko 로 고
   it('🔴 저장된 선택을 무시하고 ko 로 고정한다 — 숨김만 하면 en 사용자가 갇힌다', () => {
     const i = code('src/i18n.ts')
     expect(i, '고정이 빠지면 이미 전환해 둔 사용자는 되돌릴 문이 없다')
-      .toMatch(/if \(CONSUMER_LANGUAGE_SWITCH_HIDDEN\) return 'ko'/)
+      .toMatch(/if \(CONSUMER_LANGUAGE_SWITCH_HIDDEN\) return consumerLanguageFor\(/) // 🌏 2026-11-18 재조준 — 저장값은 여전히 무시(갇힘 방지), 폰 언어로만 ko/en
   })
 
   it('지운 게 아니라 닫은 것이다 — 컴포넌트·번역 파일은 그대로', () => {
