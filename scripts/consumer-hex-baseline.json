@@ -265,6 +265,6 @@
     "src/shared/ushop-share-card.ts": 1,
     "src/shared/videos-first.ts": 1,
     "src/shared/vouchers-pc-first-screen.ts": 9,
-    "src/components/auth/GoogleLoginButton.tsx": 4
+    "src/pages/login/GoogleLoginButton.tsx": 4
   }
 }

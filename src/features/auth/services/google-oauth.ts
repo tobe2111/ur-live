@@ -1,7 +1,7 @@
 /**
  * 🌏 구글 로그인(외국인 손님 전용) — 토큰 교환 · id_token 클레임 확인 · 계정 찾기/만들기 (2026-11-18 대표 지시).
  *
- * 화면 쪽 조건(기기 언어가 한국어가 아닐 때만 버튼)은 `components/auth/GoogleLoginButton.tsx`, 라우트는
+ * 화면 쪽 조건(기기 언어가 한국어가 아닐 때만 버튼)은 `pages/login/GoogleLoginButton.tsx`, 라우트는
  * `features/auth/api/google.routes.ts`. 이 파일은 순수 로직이라 단위 시험이 실제 함수를 부른다.
  *
  * 🔒 Firebase 와 무관하다 — 2026-07-28 에 닫은 문(`check-no-firebase-auth.mjs`)은 *브라우저가 낸 Firebase ID 토큰을

@@ -28,7 +28,7 @@ export default [
     find: '  return !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_ID.trim() && env.GOOGLE_CLIENT_SECRET && env.GOOGLE_CLIENT_SECRET.trim())',
     replace: '  return !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_ID.trim())',
     why: '시크릿이 없는데 버튼이 떠서 누르면 항상 실패한다.' },
-  { name: 'google: 한국어 기기에도 버튼', file: 'src/components/auth/GoogleLoginButton.tsx', test: T,
+  { name: 'google: 한국어 기기에도 버튼', file: 'src/pages/login/GoogleLoginButton.tsx', test: T,
     find: "  return !l.startsWith('ko')", replace: '  return true',
     why: '한국어 손님의 로그인 화면이 바뀌고 요청이 하나 는다(대표 결정: 외국어 기기만).' },
 ]

@@ -5,7 +5,7 @@
  *   GET /auth/google/start         → 서명 state + state 쿠키 → 구글 동의 화면
  *   GET /auth/google/callback      → state 확인 → 서버에서 code 교환 → id_token 클레임 확인 → 회원 → 세션
  *
- * 버튼은 기기 언어가 한국어가 아닐 때만 보인다(`components/auth/GoogleLoginButton.tsx`) — 관광객은 한국 IP 라
+ * 버튼은 기기 언어가 한국어가 아닐 때만 보인다(`pages/login/GoogleLoginButton.tsx`) — 관광객은 한국 IP 라
  *   IP 로 가르지 않는다. 자격이 없으면 모든 길이 아무것도 안 한다(enabled=false · start/callback 은 /login 으로).
  *
  * 세션은 카카오와 **같은 방식**이다: 302 에 `ur_session`(크롬 등) + fragment `#st=` 확립 티켓(iOS — same-origin

@@ -23,7 +23,7 @@ import {
 import { googleOauthRoutes, resolveGoogleState, GOOGLE_STATE_PURPOSE, loginErrorPath } from '@/features/auth/api/google.routes'
 import { __signOauthStateForTest as signKakaoState } from '@/features/auth/api/kakao.routes'
 import { signPurposeState } from '@/worker/utils/oauth-signed-state'
-import GoogleLoginButton, { isForeignLanguage } from '@/components/auth/GoogleLoginButton'
+import GoogleLoginButton, { isForeignLanguage } from '@/pages/login/GoogleLoginButton'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 type Db = InstanceType<typeof DatabaseSync>

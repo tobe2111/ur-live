@@ -13,7 +13,7 @@
 | 토큰 교환(서버만) · id_token 클레임(aud·iss·exp·email_verified) · 계정 찾기/만들기 · 곁표 `user_identities` | `src/features/auth/services/google-oauth.ts` |
 | OAuth state 서명·검증 공용(카카오에서 꺼냄 — 클레임 모양 불변) | `src/worker/utils/oauth-signed-state.ts` |
 | 세션 확립 티켓 공용(카카오에서 꺼냄 — 본문 불변) | `src/worker/utils/session-establish-ticket.ts` |
-| 버튼 | `src/components/auth/GoogleLoginButton.tsx` → `src/pages/LoginPage.tsx` 카카오 버튼 아래 |
+| 버튼 | `src/pages/login/GoogleLoginButton.tsx` → `src/pages/LoginPage.tsx` 카카오 버튼 아래 |
 | 오류 안내(영어 토스트) `email_in_use_kakao` 등 | `src/App.tsx` 오류 표 |
 | 탈퇴 시 구글 신원 끊기 | `src/worker/services/delete-account.service.ts` |
 | Firebase 가드 R4(구글 라우트가 Firebase 토큰을 받지 않게) | `scripts/check-no-firebase-auth.mjs` |
