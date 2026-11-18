@@ -61,7 +61,9 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
     // 🛡️ credit 이 전기간 누적이 됐으므로 차감도 전기간 — 'pending' 도 포함해야 직전 run 이 만든
     //   미승인 pending payout 이 다음 주(다른 period) run 에서 같은 외상으로 재생성되는 이중 pending 을 차단.
     //   (rejected/failed/cancelled 는 미차감 → 그 외상은 다음 run 에서 정상 재포착.)
-    const paid = await DB.prepare(payoutPaidSql()).all<{ account: string; total: number }>().catch(() => ({ results: [] as Array<{ account: string; total: number }> }))
+    // 💸 2026-11-17 (대표 승인 "고침"): 실패를 빈 목록(=0원 지급됨)으로 삼키지 않는다 — 그러면 모든 payee 에
+    //   **전기간 누적액**만큼 pending payout 이 새로 생겼다(중복 검사는 같은 기간만 본다). 던져서 이 회차를 멈춘다.
+    const paid = await DB.prepare(payoutPaidSql()).all<{ account: string; total: number }>()
     const paidMap = new Map((paid.results || []).map(r => [r.account, r.total]))
 
     let created = 0
