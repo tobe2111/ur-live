@@ -378,6 +378,7 @@ export async function sendPushNotification(
       method: 'POST',
       headers,
       body,
+      signal: AbortSignal.timeout(8000), // ⏱️ 2026-11-17 푸시 서비스가 멈춰도 알림 줄 한 회차가 통째로 멈추지 않게(실패는 'transient')
     })
 
     if (response.status === 201 || response.status === 200 || response.status === 202) {

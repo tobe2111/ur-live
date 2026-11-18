@@ -52,7 +52,7 @@ export async function verifyTurnstile(
 
     const response = await fetch(
       'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-      { method: 'POST', body: formData },
+      { method: 'POST', body: formData, signal: AbortSignal.timeout(5000) }, // ⏱️ 2026-11-17 확인 서버가 멈추면 후원 요청이 같이 멈췄다
     );
 
     if (!response.ok) {

@@ -1290,7 +1290,9 @@ curatorRoutes.get('/me/introduced-stores', requireUser(), async (c) => {
          FROM ledger_entries
         WHERE event_type IN ('introduction_commission', 'introduction_commission_reconcile')
           AND credit_account IN (?, ?)`
-    ).bind(`user:${userId}`, `userdeal:${userId}`).first<{ total: number }>().catch(() => ({ total: 0 }))
+    ).bind(`user:${userId}`, `userdeal:${userId}`).first<{ total: number }>().catch(() => null)
+    // 💸 2026-11-17: 조회 실패를 '받은 소개비 0원' 으로 보여 주지 않는다(형식 함수도 null 을 ₩0 으로 그린다) — 실패는 실패로.
+    if (!commission) return c.json({ success: false, error: '소개비 내역을 지금 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.', code: 'COMMISSION_UNAVAILABLE' }, 503)
 
     return c.json({
       success: true,
