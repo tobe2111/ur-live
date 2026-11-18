@@ -277,9 +277,15 @@ describe('④ 구조', () => {
     expect([...used].filter(c => c !== 'id' && !(C.WATCHED_COLUMNS as readonly string[]).includes(c))).toEqual([])
     for (const c of C.WATCHED_COLUMNS) expect(LIVE_COLS).toContain(c)
   })
-  it('트리거 문장이 D1 문장 길이 한도(100KB) 안이다 · 합치기 줄이 SQLite 묶음 한도(500) 안이다', () => {
-    for (const s of C.counterDdl()) expect(s.length).toBeLessThan(90_000)
-    expect((C.counterDdl()[2].match(/UNION ALL/g) || []).length + 1).toBeLessThan(500)
+  it('D1 한도 안이다 — 문장 길이 100KB · 묶음(UNION) 5줄 · 함수 인자 127개 (라이브 실측 · node 는 더 관대해 여기서만 잡힌다)', () => {
+    const all = [...C.counterDdl(), ...C.rebuildStatements().map(x => x.sql), ...C.bootStepStatements(0, 10, 1).map(x => x.sql), C.DRIFT_SQL, C.CONTACT_TODO_SQL, C.CONTACT_TODO_INDEX]
+    for (const s of all) {
+      expect(s.length).toBeLessThan(90_000)
+      expect((s.match(/\bUNION\b/gi) || []).length + 1, s.slice(0, 80)).toBeLessThanOrEqual(C.D1_MAX_COMPOUND_TERMS)
+    }
+    // 한 함수 호출의 인자 수: 트리거의 json_array 짝 수 · 조각 세기의 json_object(키·값 두 개씩)
+    expect(C.UPDATE_TRIGGER_ARGS).toBeLessThanOrEqual(C.D1_MAX_FUNCTION_ARGS - 20) // 여유 20 — 숫자를 더 넣으면 여기서 먼저 빨강
+    expect(C.STATE_COUNTERS.length * 2).toBeLessThanOrEqual(C.D1_MAX_FUNCTION_ARGS - 20)
   })
   it('리드 표에 REPLACE 쓰기가 없다(지우는 쪽 트리거를 안 태운다)', () => {
     const bad: string[] = []

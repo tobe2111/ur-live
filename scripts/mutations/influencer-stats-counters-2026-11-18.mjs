@@ -29,4 +29,7 @@ export default [
   { name: '증분 — 어긋나도 다시 채우지 않는다', file: F,
     find: '  await DB.batch(rebuildStatements().map(s => DB.prepare(s.sql).bind(...s.binds))).catch(e => recordCounterError(DB, \'rebuild\', e))', replace: '', test: T,
     why: '숫자표가 틀어져도 영영 그 값을 보여 준다.' },
+  { name: '증분 — 트리거 짝을 UNION 으로 잇는다(D1 묶음 5줄 한도)', file: F,
+    find: "FROM json_each(json_array(${parts.join(', ')})))", replace: "FROM (${parts.map(p => `SELECT ${p} AS value`).join(' UNION ALL ')}))", test: T,
+    why: 'node 의 SQLite 는 500 줄까지 받아 시험이 통과하지만 D1 은 5줄에서 거부한다 — 트리거 설치가 라이브에서만 실패한다(2026-11-18 실측).' },
 ]
