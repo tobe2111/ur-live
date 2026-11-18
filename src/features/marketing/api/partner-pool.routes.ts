@@ -314,16 +314,15 @@ app.get('/stats', async (c) => {
 //   [이메일 보유 → 전화만] 순으로 미접촉(new)만 추려 반환 — "누구부터 접촉?"의 원버튼 답.
 app.get('/contact-list', async (c) => {
   const limit = Math.min(30, Math.max(3, intParam(c.req.query('limit'), 10)))
-  const companies = (await adsLeadsDb(c.env).prepare(
-    `SELECT id, company_name, category, subcategory, tier, region, email, phone, website FROM ad_company_leads
-     WHERE active = 1 AND merged_into IS NULL AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
-     ORDER BY (CASE WHEN email IS NOT NULL AND email != '' THEN 0 ELSE 1 END), (tier IS NULL) ASC, tier ASC, id DESC LIMIT ?`
-  ).bind(limit).all<Record<string, unknown>>().catch(() => null))?.results || []
-  const stores = (await adsLeadsDb(c.env).prepare(
-    `SELECT id, biz_name, category, region, email, phone, website, is_new_open FROM store_prospects
-     WHERE active = 1 AND status = 'new' AND ((email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != ''))
-     ORDER BY (CASE WHEN email IS NOT NULL AND email != '' THEN 0 ELSE 1 END), is_new_open DESC, apv_perm_ymd DESC, id DESC LIMIT ?`
-  ).bind(limit).all<Record<string, unknown>>().catch(() => null))?.results || []
+  const { contactListQueries } = await import('./contact-list-queries')
+  const q = contactListQueries(limit)
+  const DB = adsLeadsDb(c.env)
+  const pick = async (sql: string, n: number) => n > 0 ? ((await DB.prepare(sql).bind(n).all<Record<string, unknown>>().catch(() => null))?.results || []) : []
+  // 이메일 줄 먼저, 모자라면 전화 줄로 채운다(종전 한 쿼리의 '이메일 우선' 정렬과 같은 결과 — 근거는 contact-list-queries.ts).
+  const coEmail = await pick(q.companyEmail, limit)
+  const companies = [...coEmail, ...await pick(q.companyPhone, limit - coEmail.length)]
+  const stEmail = await pick(q.storeEmail, limit)
+  const stores = [...stEmail, ...await pick(q.storePhone, limit - stEmail.length)]
   return c.json({ success: true, companies, stores })
 })
 
