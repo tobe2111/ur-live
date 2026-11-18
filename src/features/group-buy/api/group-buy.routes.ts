@@ -851,15 +851,12 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             ).bind(productId, userId, product.seller_id, userId)
               .all<{ user_id: string }>()
               .catch(() => ({ results: [] as { user_id: string }[] }))
-            const { sendSystemPush } = await import('../../../lib/system-push')
-            for (const u of interested ?? []) {
-              try {
-                await sendSystemPush(c.env, 'user', u.user_id, {
-                  title: m.title, body: m.body,
-                  url: `/pass/${productId}`, tag: `gb-milestone-${productId}-${m.flag}`,
-                })
-              } catch { /* ignore */ }
-            }
+            // 📮 2026-11-17: 사람마다 요청 안에서 보내면 많을 때 뒤쪽이 조용히 빠졌다 → 줄에 넣고 첫 묶음만 바로 보낸다.
+            const pq = await import('../../../worker/utils/push-queue')
+            await pq.enqueuePush(DB, 'user', (interested ?? []).map((u) => u.user_id), {
+              title: m.title, body: m.body, url: `/pass/${productId}`, tag: `gb-milestone-${productId}-${m.flag}`,
+            })
+            await pq.drainPushJobs(c.env, pq.PUSH_INLINE_BATCH).catch(() => null)
           } catch { /* table may not exist */ }
         }
       }
@@ -884,23 +881,17 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
            JOIN order_items oi ON oi.order_id = o.id
            WHERE oi.product_id = ? AND o.user_id IS NOT NULL`
         ).bind(productId).all<{ user_id: string }>()
-        const { sendSystemPush } = await import('../../../lib/system-push')
-        for (const p of participants ?? []) {
-          try {
-            await DB.prepare(
-              `INSERT INTO user_notifications (user_id, type, title, message, link)
-               VALUES (?, 'group_buy_achieved', ?, ?, ?)`
-            ).bind(p.user_id, '🎉 공구 성공!', `${product.name} 곧 ${getVoucherShortLabel(product.category)}이 발급됩니다`, `/pass/${productId}`).run()
-          } catch { /* ignore */ }
-          try {
-            await sendSystemPush(c.env, 'user', p.user_id, {
-              title: '🎉 공구 성공!',
-              body: `${product.name} 곧 ${getVoucherShortLabel(product.category)}이 발급됩니다`,
-              url: `/pass/${productId}`,
-              tag: `gb-achieved-${productId}`,
-            })
-          } catch { /* ignore */ }
+        // 📮 2026-11-17: 인앱 알림은 50명씩 한 batch, 푸시는 줄에 넣고 첫 묶음만 바로(나머지는 5분 cron).
+        const msg = `${product.name} 곧 ${getVoucherShortLabel(product.category)}이 발급됩니다`
+        const ids = (participants ?? []).map((p) => p.user_id)
+        for (let i = 0; i < ids.length; i += 50) {
+          await DB.batch(ids.slice(i, i + 50).map((uid) => DB.prepare(
+            `INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, 'group_buy_achieved', ?, ?, ?)`,
+          ).bind(uid, '🎉 공구 성공!', msg, `/pass/${productId}`))).catch(() => null)
         }
+        const pq = await import('../../../worker/utils/push-queue')
+        await pq.enqueuePush(DB, 'user', ids, { title: '🎉 공구 성공!', body: msg, url: `/pass/${productId}`, tag: `gb-achieved-${productId}` })
+        await pq.drainPushJobs(c.env, pq.PUSH_INLINE_BATCH).catch(() => null)
       }
     } catch (e) { console.error('[group-buy achieved notify]', e) }
       }
