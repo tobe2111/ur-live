@@ -100,9 +100,21 @@ function randomOps(db: Db, seed: number, n: number) {
 
 const counters = (db: Db) => Object.fromEntries((db.prepare(`SELECT k, n FROM ${C.COUNTER_TABLE} WHERE k NOT LIKE '\\_\\_%' ESCAPE '\\' ORDER BY k`).all() as Array<{ k: string; n: number }>).filter(x => x.n !== 0).map(x => [x.k, x.n]))
 
-async function install(DB: D1Database) {
+const snapOf = (db: Db) => C.parseCounters(db.prepare(`SELECT k, n FROM ${C.COUNTER_TABLE}`).all() as Array<{ k: string; n: number }>)
+/** 다 채울 때까지 조각을 센다(작은 폭으로 — 조각 경계를 많이 지나게). */
+async function fill(DB: D1Database, db: Db, width = 37) {
+  for (let i = 0; i < 10_000 && !snapOf(db).complete; i++) await C.runBootSteps(DB, 1, width)
+  expect(snapOf(db).complete).toBe(true)
+}
+async function install(DB: D1Database, db: Db) {
   expect(await C.ensureStatsCounters(DB)).toBe(true)
-  expect(await C.reconcileStatsCounters(DB, 1)).toBe(true)
+  await fill(DB, db)
+}
+/** 같은 행을 처음부터 다시 센 값(쓰기 없이 다시 채운다). */
+async function recount(DB: D1Database, db: Db) {
+  await DB.batch(C.rebuildStatements().map(s => DB.prepare(s.sql).bind(...s.binds)))
+  await fill(DB, db, 101)
+  return counters(db)
 }
 
 /** 옛 화면 쿼리 원문(소스에서 그대로 꺼낸다 — 정의가 갈라지면 여기서 빨강). */
@@ -114,34 +126,72 @@ const oldSql = (name: 'agg' | 'catFunnel' | 'byDay') => {
   return m![1].replace(/\$\{personalEmailSqlClause\(\)\}/, personalEmailSqlClause())
 }
 
-describe('① 트리거가 맞춘 숫자 == 전수 대조', () => {
+describe('① 트리거가 맞춘 숫자 == 처음부터 다시 센 값', () => {
   for (const seed of [1, 2, 3]) {
-    it(`무작위 쓰기 400회 (seed ${seed})`, async () => {
+    it(`다 채운 뒤 무작위 쓰기 400회 (seed ${seed})`, async () => {
       const { db, DB } = freshDb()
       randomOps(db, seed * 100, 80)      // 트리거 설치 전에 이미 있던 행
-      await install(DB)
+      await install(DB, db)
       randomOps(db, seed, 400)
       const byTrigger = counters(db)
       expect(Object.keys(byTrigger).length).toBeGreaterThan(20)
-      await C.reconcileStatsCounters(DB, 2)
-      expect(byTrigger).toEqual(counters(db))
+      expect(byTrigger).toEqual(await recount(DB, db))
+    })
+    it(`채우는 도중에 쓰기가 끼어들어도 같다 — 안 센 행 고치기·지우기·새 행 (seed ${seed})`, async () => {
+      const { db, DB } = freshDb()
+      randomOps(db, seed * 100 + 7, 150)
+      expect(await C.ensureStatsCounters(DB)).toBe(true)
+      for (let i = 0; i < 10_000 && !snapOf(db).complete; i++) {
+        await C.runBootSteps(DB, 1, 23)
+        randomOps(db, seed * 1000 + i, 6)  // 조각 사이마다 쓰기
+      }
+      expect(snapOf(db).complete).toBe(true)
+      randomOps(db, seed + 50, 100)
+      expect(counters(db)).toEqual(await recount(DB, db))
     })
   }
+  it('두 isolate 가 같은 조각을 잡아도 한 번만 센다', async () => {
+    const { db, DB } = freshDb()
+    randomOps(db, 77, 120)
+    expect(await C.ensureStatsCounters(DB)).toBe(true)
+    const max = (db.prepare('SELECT MAX(id) m FROM ad_influencer_leads').get() as { m: number }).m
+    const run = (t: number) => DB.batch(C.bootStepStatements(0, max, t, 1_000_000).map(s => DB.prepare(s.sql).bind(...s.binds)))
+    await run(111)
+    const once = counters(db)
+    await run(222) // 진 쪽 — 커서가 이미 넘어갔다
+    expect(counters(db)).toEqual(once)
+    expect(snapOf(db).complete).toBe(true)
+    expect(once).toEqual(await recount(DB, db))
+  })
+  it('어긋나면 다시 채우기로 돌아가고, 다시 채우면 맞는다', async () => {
+    const { db, DB } = freshDb()
+    randomOps(db, 88, 200)
+    await install(DB, db)
+    expect(await C.checkDrift(DB, 5)).toBe(false)
+    expect(snapOf(db).checkedAt).toBe(5)
+    db.prepare(`UPDATE ${C.COUNTER_TABLE} SET n = n + 3 WHERE k = 'total'`).run()
+    expect(await C.checkDrift(DB, 6)).toBe(true)
+    expect(snapOf(db).complete).toBe(false)
+    randomOps(db, 89, 50)
+    await fill(DB, db)
+    const got = counters(db)
+    expect(got).toEqual(await recount(DB, db))
+  })
 })
 
 describe('② 정의가 옛 화면 쿼리와 같다', () => {
   it('전체 집계 키마다 옛 집계 SQL 값과 같다', async () => {
     const { db, DB } = freshDb()
-    await install(DB)
+    await install(DB, db)
     randomOps(db, 9, 500)
     const old = db.prepare(oldSql('agg').replace(/(--[^\n]*)/g, '')).get(0) as Record<string, number>
     const snap = C.parseCounters(db.prepare(`SELECT k, n FROM ${C.COUNTER_TABLE}`).all() as Array<{ k: string; n: number }>)
     for (const [k] of C.STATE_COUNTERS) expect([k, snap.state[k]]).toEqual([k, Number(old[k]) || 0])
-    expect(snap.reconciledAt).toBe(1)
+    expect(snap.complete).toBe(true)
   })
   it('카테고리별 전환이 옛 쿼리와 같다', async () => {
     const { db, DB } = freshDb()
-    await install(DB)
+    await install(DB, db)
     randomOps(db, 11, 500)
     const old = db.prepare(oldSql('catFunnel')).all(0) as Array<Record<string, unknown>>
     const snap = C.parseCounters(db.prepare(`SELECT k, n FROM ${C.COUNTER_TABLE}`).all() as Array<{ k: string; n: number }>)
@@ -152,7 +202,7 @@ describe('② 정의가 옛 화면 쿼리와 같다', () => {
   })
   it('14일 유입이 옛 쿼리와 같다(창 안의 온전한 날)', async () => {
     const { db, DB } = freshDb()
-    await install(DB)
+    await install(DB, db)
     randomOps(db, 13, 500)
     const old = db.prepare(oldSql('byDay')).all(0) as Array<{ d: string; n: number; reachable: number }>
     const today = (db.prepare("SELECT DATE('now','+9 hours') d").get() as { d: string }).d
@@ -171,47 +221,60 @@ describe('② 정의가 옛 화면 쿼리와 같다', () => {
 describe('③ 수집을 절대 멈추지 않게', () => {
   it('자가 시험 batch 가 돌고, 숫자를 안 바꾸고, 시험 행을 안 남긴다', async () => {
     const { db, DB } = freshDb()
-    await install(DB)
+    await install(DB, db)
     randomOps(db, 21, 200)
     const before = counters(db)
     await DB.batch(C.selfTestStatements().map(s => DB.prepare(s.sql).bind(...s.binds)))
     expect(counters(db)).toEqual(before)
     expect(db.prepare('SELECT COUNT(*) n FROM ad_influencer_leads WHERE account_id = -1').get()).toEqual({ n: 0 })
   })
-  it('트리거가 런타임에 깨지면 자가 시험이 잡아 내린다 → 쓰기가 계속 된다', async () => {
-    const { db, DB } = freshDb()
-    // 깨진 트리거를 흉내 낸다: 없는 칸을 읽는 트리거를 같은 이름으로 미리 깔아 둔다(설치 쪽은 IF NOT EXISTS 라 건너뛴다).
-    db.exec(`CREATE TABLE ${C.COUNTER_TABLE} (k TEXT PRIMARY KEY NOT NULL, n INTEGER NOT NULL DEFAULT 0)`)
-    db.exec(`CREATE TRIGGER ${C.TRIGGER_NAMES[0]} AFTER INSERT ON ad_influencer_leads BEGIN INSERT INTO ${C.COUNTER_TABLE} (k, n) VALUES (NEW.no_such_column, 1); END`)
+  it('트리거를 못 깔거나 자가 시험이 깨지면 트리거 0개로 물러나고, 쓰기가 계속 된다', async () => {
+    // 라이브 표에 감시 칸 하나가 없는 상황을 흉내 낸다(칸 이름 변경·되돌림 등).
+    const db = new DatabaseSync(':memory:')
+    const cols = LIVE_COLS.filter(c => c !== 'recruited_at')
+    db.exec(`CREATE TABLE ad_influencer_leads (${cols.map(c => `${c} ${REQUIRED[c] || ''}`).join(', ')}, UNIQUE(account_id, platform, channel_id))`)
+    db.exec('CREATE TABLE platform_settings (key TEXT PRIMARY KEY, value TEXT)')
+    const DB = d1(db)
     expect(await C.ensureStatsCounters(DB)).toBe(false)
     const left = db.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type = 'trigger'").get() as { n: number }
     expect(left.n).toBe(0)
     db.prepare("INSERT INTO ad_influencer_leads (account_id, channel_id, name, url) VALUES (0, 'z', 'n', 'u')").run()
+    db.prepare("UPDATE ad_influencer_leads SET status = 'hold' WHERE channel_id = 'z'").run()
     const err = db.prepare('SELECT value FROM platform_settings WHERE key = ?').get(C.COUNTER_ERROR_KEY) as { value: string }
-    expect(JSON.parse(err.value).stage).toBe('selftest')
+    expect(['ensure', 'selftest']).toContain(JSON.parse(err.value).stage)
   })
-  it('트리거를 새로 깔면 대조 표식을 지운다(그동안의 쓰기가 숫자표에 없다)', async () => {
+  it('코드가 리드 id 를 고치는 곳이 없다(트리거가 NEW.id 하나로 구간을 판정한다)', () => {
+    const bad: string[] = []
+    const walk = (d: string) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) { if (!p.includes('tests')) walk(p) } else if (/\.(ts|tsx|mjs)$/.test(f)) { const t = readFileSync(p, 'utf8'); if (/UPDATE\s+ad_influencer_leads\s+SET\s+(?:[^`]*?,\s*)?id\s*=/i.test(t)) bad.push(p) } } }
+    walk('src')
+    expect(bad).toEqual([])
+  })
+  it('트리거를 새로 깔면 처음부터 다시 채운다(그동안의 쓰기가 숫자표에 없다)', async () => {
     const { db, DB } = freshDb()
-    await install(DB)
+    randomOps(db, 31, 60)
+    await install(DB, db)
     for (const n of C.TRIGGER_NAMES) db.exec(`DROP TRIGGER ${n}`)
+    randomOps(db, 32, 60)                  // 트리거가 없던 동안의 쓰기
     const DB2 = d1(db) // 새 isolate
     expect(await C.ensureStatsCounters(DB2)).toBe(true)
-    const snap = C.parseCounters(db.prepare(`SELECT k, n FROM ${C.COUNTER_TABLE}`).all() as Array<{ k: string; n: number }>)
-    expect(snap.reconciledAt).toBeNull()
+    expect(snapOf(db).complete).toBe(false)
+    await fill(DB2, db)
+    expect(counters(db)).toEqual(await recount(DB2, db))
   })
 })
 
 describe('④ 구조', () => {
   it('`7일 안 컨택` 쿼리가 부분 인덱스만 읽는다', async () => {
     const { db, DB } = freshDb()
-    await install(DB)
+    await install(DB, db)
     const plan = (db.prepare(`EXPLAIN QUERY PLAN ${C.CONTACT_TODO_SQL}`).all() as Array<{ detail: string }>).map(x => x.detail).join(' | ')
     expect(plan).toMatch(/idx_ad_inf_leads_contact_todo/)
   })
   it('트리거가 읽는 칸이 전부 감시 목록에 있다(빠지면 그 칸이 바뀔 때 숫자가 안 움직인다)', () => {
     const upd = C.counterDdl()[2]
     const used = new Set([...upd.matchAll(/\b(?:NEW|OLD)\.([a-z_]+)/g)].map(m => m[1]))
-    expect([...used].filter(c => !(C.WATCHED_COLUMNS as readonly string[]).includes(c))).toEqual([])
+    // id 는 감시 대상이 아니다 — 채우기 구간 판정에만 쓰고, 코드가 id 를 고치는 곳은 없다(아래 시험).
+    expect([...used].filter(c => c !== 'id' && !(C.WATCHED_COLUMNS as readonly string[]).includes(c))).toEqual([])
     for (const c of C.WATCHED_COLUMNS) expect(LIVE_COLS).toContain(c)
   })
   it('트리거 문장이 D1 문장 길이 한도(100KB) 안이다 · 합치기 줄이 SQLite 묶음 한도(500) 안이다', () => {
@@ -231,7 +294,7 @@ describe('④ 구조', () => {
   })
   it('통계 빌더가 숫자표를 먼저 쓰고, 준비 전이면 옛 경로로 간다', () => {
     expect(POOL_SRC).toMatch(/const fast = await buildFromCounters\(DB, opts\.bg\)/)
-    expect(POOL_SRC).toMatch(/if \(snap\.reconciledAt == null\) return null/)
+    expect(POOL_SRC).toMatch(/if \(!snap\.complete\) return null/)
     expect(POOL_SRC).toMatch(/stats_source: fast \? 'counter' : 'scan'/)
   })
 })

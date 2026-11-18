@@ -10,8 +10,14 @@
  * - `ad_influencer_stats_counter(k, n)` — 키 하나에 숫자 하나. 키 셋 종류:
  *   전체 집계(`total` · `youtube` …) · 카테고리별(`cat|맛집|total` …) · 날짜별 유입(`day|2026-11-18|n` · `|reachable`).
  * - 트리거 3개(INSERT·UPDATE·DELETE). **바뀐 숫자만** 쓴다(변화량 0 은 안 쓴다) — 보강이 칸 하나를 고치면 쓰기 1행.
- * - **하루 한 번 전수 대조**(`reconcile`) — 한 batch(원자적)로 숫자표를 통째로 다시 만든다. 트리거가 잠시 빠졌거나
- *   (테이블 재생성 등) 무엇이 어긋나도 하루 안에 스스로 맞춰진다. 전수 대조 전에는 숫자표를 **안 쓴다**(옛 경로로 센다).
+ * - **처음 채우기는 조각으로**(`bootStep`) — id 25만 칸씩, 한 조각 = batch 하나(원자적). 🩸 왜 조각인가(2026-11-18 라이브):
+ *   풀 전체를 한 번에 세면 D1 이 `D1 DB is overloaded. Too many resources consumed within a 10 second window.` 로
+ *   거부했다 — 옛 통계가 44분 넘게 안 갱신된 진짜 원인이 이것이었다(`ads_influencer_stats_cache_fail` 원문).
+ *   한 번에 세는 대조(약 8초 · 290만 행)도 같은 벽에 닿는다.
+ * - 채우는 동안의 규칙: 트리거는 **이미 센 구간(id < 커서)과 채우기 시작 뒤 새로 들어온 행(id > 상한)** 에만 반응한다.
+ *   아직 안 센 행이 바뀌면 숫자표는 그대로 두고, 그 조각을 셀 때 **그 순간의 상태**로 한 번만 센다 — 이중 계산이 없다.
+ * - **한 시간에 한 번 어긋남 검사**(한 문장 — 숫자표의 `total` 과 실제 행 수를 같은 순간에 비교). 다르면 처음부터 다시 채운다.
+ *   채우기가 끝나기 전에는 숫자표를 **안 쓴다**(옛 경로로 센다).
  *
  * ## 🛡️ 수집을 절대 멈추지 않게
  * 트리거가 런타임에 오류를 내면 그 테이블의 **모든 쓰기가 실패한다**(수집 전멸). 그래서 설치 직후 자가 시험을 한다 —
@@ -23,17 +29,28 @@
  * 값이 바뀌므로 부분 인덱스(`idx_ad_inf_leads_contact_todo` — 컨택·팔로업 기록이 있는 행만)로 매번 센다.
  *
  * ⚠️ 이 파일이 못 막는 것: `INSERT OR REPLACE` 는 지우는 쪽 트리거를 안 태운다(SQLite 기본). 이 테이블엔 현재 0건이고
- *    시험이 소스 전수로 그걸 고정한다. 그래도 어긋나면 하루 대조가 고친다.
+ *    시험이 소스 전수로 그걸 고정한다. 그래도 어긋나면 한 시간마다 도는 어긋남 검사가 잡아 다시 채운다(단, total 이 맞고
+ *    다른 숫자만 틀어진 경우는 못 잡는다 — 그런 경로가 없다는 것을 위 두 시험이 지킨다).
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { personalEmailSqlClause } from './influencer-email-rules'
 
 export const COUNTER_TABLE = 'ad_influencer_stats_counter'
-/** 정의가 바뀌면 올린다 — 트리거 이름과 대조 표식이 버전을 달고 있어 옛 트리거를 내리고 다시 대조한다. */
+/** 정의가 바뀌면 올린다 — 트리거 이름이 버전을 달고 있어 옛 트리거를 내리고, 새 트리거를 깔면서 처음부터 다시 채운다. */
 export const COUNTER_VERSION = 1
-export const RECONCILED_KEY = `__reconciled_v${COUNTER_VERSION}`
-/** 하루 한 번 전수 대조. */
-export const RECONCILE_EVERY_MS = 24 * 60 * 60_000
+/** 채우기 상태 키 — 커서(다음에 셀 id) · 상한(채우기 시작 때의 최대 id) · 조각 소유 표식. 커서 > 상한 이면 다 채운 것. */
+export const BOOT_CURSOR = '__boot_cursor'
+export const BOOT_MAX = '__boot_max'
+export const BOOT_TOKEN = '__boot_token'
+export const CHECKED_AT = '__checked_at'
+/**
+ * 한 조각의 id 폭. 🔬 라이브 실측(2026-11-18): 행 58.8만인데 최대 id 439만(id 가 성기다) — 25만 폭에 행이 가장 많은 구간이
+ * 10.9만(맨 앞), 대개 3~5만. 1만 행 조각 세기가 23~47ms 였으니 가장 무거운 조각도 1초 안팎 · 읽기 33만 행 이하.
+ * 약 18조각, 응답 뒤에 두 조각씩 20초 간격 → 화면을 연 뒤 3분 안팎에 다 찬다.
+ */
+export const BOOT_STEP_IDS = 250_000
+/** 어긋남 검사 간격. */
+export const DRIFT_CHECK_EVERY_MS = 60 * 60_000
 const POOL = 0
 
 type Cond = (r: string) => string
@@ -125,13 +142,21 @@ function upsertBody(parts: string[]): string {
 
 export const TRIGGER_NAMES = ['ins', 'upd', 'del'].map(s => `trg_inf_stats_v${COUNTER_VERSION}_${s}`)
 
+/** 이 행이 이미 숫자표에 들어가 있는가(센 구간이거나 채우기 시작 뒤에 들어온 행). 키가 없으면 NULL → 반응 안 함. */
+const counted = (r: string) => `(${r}id < (SELECT n FROM ${COUNTER_TABLE} WHERE k = '${BOOT_CURSOR}') OR ${r}id > (SELECT n FROM ${COUNTER_TABLE} WHERE k = '${BOOT_MAX}'))`
+
+export function counterTableDdl(): string {
+  return `CREATE TABLE IF NOT EXISTS ${COUNTER_TABLE} (k TEXT PRIMARY KEY NOT NULL, n INTEGER NOT NULL DEFAULT 0)`
+}
+
+/** 트리거 3개. ⚠️ 고치기는 id 가 안 바뀐다(코드 전수에 id UPDATE 0건)는 전제로 NEW.id 하나로 판정한다. */
 export function counterDdl(): string[] {
   const [ins, upd, del] = TRIGGER_NAMES
   return [
-    `CREATE TABLE IF NOT EXISTS ${COUNTER_TABLE} (k TEXT PRIMARY KEY NOT NULL, n INTEGER NOT NULL DEFAULT 0)`,
-    `CREATE TRIGGER IF NOT EXISTS ${ins} AFTER INSERT ON ad_influencer_leads BEGIN ${upsertBody(arms('NEW.', 1))} END`,
-    `CREATE TRIGGER IF NOT EXISTS ${upd} AFTER UPDATE OF ${WATCHED_COLUMNS.join(', ')} ON ad_influencer_leads BEGIN ${upsertBody([...arms('NEW.', 1), ...arms('OLD.', -1)])} END`,
-    `CREATE TRIGGER IF NOT EXISTS ${del} AFTER DELETE ON ad_influencer_leads BEGIN ${upsertBody(arms('OLD.', -1))} END`,
+    counterTableDdl(),
+    `CREATE TRIGGER IF NOT EXISTS ${ins} AFTER INSERT ON ad_influencer_leads WHEN ${counted('NEW.')} BEGIN ${upsertBody(arms('NEW.', 1))} END`,
+    `CREATE TRIGGER IF NOT EXISTS ${upd} AFTER UPDATE OF ${WATCHED_COLUMNS.join(', ')} ON ad_influencer_leads WHEN ${counted('NEW.')} BEGIN ${upsertBody([...arms('NEW.', 1), ...arms('OLD.', -1)])} END`,
+    `CREATE TRIGGER IF NOT EXISTS ${del} AFTER DELETE ON ad_influencer_leads WHEN ${counted('OLD.')} BEGIN ${upsertBody(arms('OLD.', -1))} END`,
   ]
 }
 
@@ -142,27 +167,47 @@ export function staleTriggerNames(): string[] {
   return out
 }
 
-/** 전수 대조 — **한 batch** 로 실행한다(원자적: 그 사이 트리거가 끼어들지 못한다). */
-export function reconcileStatements(nowMs: number): Array<{ sql: string; binds: unknown[] }> {
-  // 열 → 행 펼치기는 json_each(json_object(…)) 로 한다 — 키 목록 하나로 한 번만 읽고(MATERIALIZED) 여러 행을 낸다.
+/** 처음부터 다시 채우기 시작 — 숫자를 비우고 커서 0 · 상한 = 지금의 최대 id. **트리거 설치와 같은 batch** 로 보낸다(그 사이 행을 놓치지 않게). */
+export function rebuildStatements(): Array<{ sql: string; binds: unknown[] }> {
+  return [
+    { sql: `DELETE FROM ${COUNTER_TABLE}`, binds: [] },
+    { sql: `INSERT INTO ${COUNTER_TABLE} (k, n) VALUES (?, 0), (?, 0)`, binds: [BOOT_CURSOR, BOOT_TOKEN] },
+    { sql: `INSERT INTO ${COUNTER_TABLE} (k, n) SELECT ?, COALESCE(MAX(id), 0) FROM ad_influencer_leads`, binds: [BOOT_MAX] },
+  ]
+}
+
+/**
+ * 조각 하나(id `lo`~`lo+폭-1`)를 센다 — 한 batch. 여러 isolate 가 같은 조각을 동시에 잡아도 **이긴 쪽만** 센다:
+ * ① 커서가 아직 `lo` 일 때만 소유 표식을 내 것(token)으로 ② 표식이 내 것일 때만 더하고 ③ 커서를 넘긴다.
+ * 진 쪽은 ①에서 커서가 이미 넘어가 있어 표식이 안 바뀌고, ②③이 아무것도 안 한다.
+ */
+export function bootStepStatements(lo: number, max: number, token: number, width = BOOT_STEP_IDS): Array<{ sql: string; binds: unknown[] }> {
+  // 🩸 상한(max)을 넘겨 세면 안 된다 — 그 위는 채우기 시작 뒤 들어온 행이라 트리거가 이미 셌다(시험이 잡은 이중 계산).
+  const hi = Math.min(lo + width - 1, max)
+  const mine = `EXISTS (SELECT 1 FROM ${COUNTER_TABLE} WHERE k = '${BOOT_TOKEN}' AND n = ?)`
   const st = STATE_COUNTERS.map(([, c], i) => `COALESCE(SUM(CASE WHEN ${c('')} THEN 1 ELSE 0 END), 0) AS c${i}`).join(',\n        ')
   const stPairs = STATE_COUNTERS.map(([k], i) => `'${k}', c${i}`).join(', ')
   const ct = CATEGORY_METRICS.map(([m, c]) => `SUM(CASE WHEN ${c('')} THEN 1 ELSE 0 END) AS m_${m}`).join(', ')
   const ctPairs = CATEGORY_METRICS.map(([m]) => `'${m}', m_${m}`).join(', ')
   const dy = DAY_METRICS.map(([m, c]) => `SUM(CASE WHEN ${c('')} THEN 1 ELSE 0 END) AS m_${m}`).join(', ')
   const dyPairs = DAY_METRICS.map(([m]) => `'${m}', m_${m}`).join(', ')
+  const add = 'ON CONFLICT(k) DO UPDATE SET n = n + excluded.n'
   return [
-    { sql: `DELETE FROM ${COUNTER_TABLE}`, binds: [] },
-    { sql: `WITH agg AS MATERIALIZED (SELECT ${st} FROM ad_influencer_leads WHERE account_id = ${POOL})
-      INSERT INTO ${COUNTER_TABLE} (k, n) SELECT j.key, j.value FROM agg, json_each(json_object(${stPairs})) j`, binds: [] },
-    { sql: `WITH cats AS MATERIALIZED (SELECT COALESCE(category, '미분류') AS g, ${ct} FROM ad_influencer_leads WHERE account_id = ${POOL} GROUP BY g)
-      INSERT INTO ${COUNTER_TABLE} (k, n) SELECT 'cat|' || cats.g || '|' || j.key, j.value FROM cats, json_each(json_object(${ctPairs})) j WHERE j.value != 0`, binds: [] },
+    { sql: `UPDATE ${COUNTER_TABLE} SET n = ? WHERE k = '${BOOT_TOKEN}' AND (SELECT n FROM ${COUNTER_TABLE} WHERE k = '${BOOT_CURSOR}') = ?`, binds: [token, lo] },
+    { sql: `WITH agg AS MATERIALIZED (SELECT ${st} FROM ad_influencer_leads WHERE id BETWEEN ? AND ? AND account_id = ${POOL})
+      INSERT INTO ${COUNTER_TABLE} (k, n) SELECT j.key, j.value FROM agg, json_each(json_object(${stPairs})) j WHERE j.value != 0 AND ${mine} ${add}`, binds: [lo, hi, token] },
+    { sql: `WITH cats AS MATERIALIZED (SELECT COALESCE(category, '미분류') AS g, ${ct} FROM ad_influencer_leads WHERE id BETWEEN ? AND ? AND account_id = ${POOL} GROUP BY g)
+      INSERT INTO ${COUNTER_TABLE} (k, n) SELECT 'cat|' || cats.g || '|' || j.key, j.value FROM cats, json_each(json_object(${ctPairs})) j WHERE j.value != 0 AND ${mine} ${add}`, binds: [lo, hi, token] },
     { sql: `WITH days AS MATERIALIZED (SELECT DATE(collected_at, '+9 hours') AS g, ${dy} FROM ad_influencer_leads
-        WHERE account_id = ${POOL} AND collected_at IS NOT NULL GROUP BY g)
-      INSERT INTO ${COUNTER_TABLE} (k, n) SELECT 'day|' || days.g || '|' || j.key, j.value FROM days, json_each(json_object(${dyPairs})) j WHERE j.value != 0`, binds: [] },
-    { sql: `INSERT INTO ${COUNTER_TABLE} (k, n) VALUES (?, ?)`, binds: [RECONCILED_KEY, nowMs] },
+        WHERE id BETWEEN ? AND ? AND account_id = ${POOL} AND collected_at IS NOT NULL GROUP BY g)
+      INSERT INTO ${COUNTER_TABLE} (k, n) SELECT 'day|' || days.g || '|' || j.key, j.value FROM days, json_each(json_object(${dyPairs})) j WHERE j.value != 0 AND ${mine} ${add}`, binds: [lo, hi, token] },
+    { sql: `UPDATE ${COUNTER_TABLE} SET n = ? WHERE k = '${BOOT_CURSOR}' AND n = ? AND ${mine}`, binds: [hi + 1, lo, token] },
   ]
 }
+
+/** 어긋남 검사 — 숫자표의 total 과 실제 행 수를 **한 문장**(같은 순간)에서 읽는다. */
+export const DRIFT_SQL = `SELECT (SELECT n FROM ${COUNTER_TABLE} WHERE k = 'total') AS counted,
+    (SELECT COUNT(*) FROM ad_influencer_leads WHERE account_id = ${POOL}) AS actual`
 
 /** 시험 행 — 풀 밖(account_id = -1)이라 숫자를 안 바꾸고, 같은 batch 안에서 사라진다. */
 const SELFTEST_CHANNEL = '__stats_trigger_selftest__'
@@ -187,7 +232,7 @@ const ready = new WeakSet<object>()
 const failed = new WeakSet<object>()
 
 /**
- * 숫자표·트리거를 준비한다(isolate 당 1회). 트리거를 **새로 만들었으면** 대조 표식을 지워 다시 대조하게 한다
+ * 숫자표·트리거를 준비한다(isolate 당 1회). 트리거를 **새로 만들었으면** 처음부터 다시 채운다
  * (트리거가 없던 동안의 쓰기는 숫자표에 안 들어갔다). 자가 시험이 실패하면 트리거를 내리고 false.
  */
 export async function ensureStatsCounters(DB: D1Database): Promise<boolean> {
@@ -198,13 +243,14 @@ export async function ensureStatsCounters(DB: D1Database): Promise<boolean> {
     const have = await DB.prepare(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'ad_influencer_leads' AND name IN (${TRIGGER_NAMES.map(() => '?').join(',')})`) // d1-bind-ok: 트리거 이름 3개 고정(한도 100 에 닿을 수 없다)
       .bind(...TRIGGER_NAMES).all<{ name: string }>()
     const missing = TRIGGER_NAMES.filter(n => !(have.results || []).some(x => x.name === n))
-    const [table, ...triggers] = counterDdl()
-    await DB.prepare(table).run()
+    await DB.prepare(counterTableDdl()).run()
     await DB.prepare(CONTACT_TODO_INDEX).run()
     for (const old of staleTriggerNames()) await DB.prepare(`DROP TRIGGER IF EXISTS ${old}`).run()
     if (missing.length) {
-      await DB.prepare(`DELETE FROM ${COUNTER_TABLE} WHERE k = ?`).bind(RECONCILED_KEY).run()
-      for (const t of triggers) await DB.prepare(t).run()
+      // 트리거가 없던 동안의 쓰기는 숫자표에 없다 → 처음부터 다시 채운다. 트리거 설치와 **같은 batch**(그 사이 행을 놓치지 않게).
+      for (const n of TRIGGER_NAMES) await DB.prepare(`DROP TRIGGER IF EXISTS ${n}`).run()
+      const [, ...triggers] = counterDdl()
+      await DB.batch([...rebuildStatements(), ...triggers.map(t => ({ sql: t, binds: [] }))].map(s => DB.prepare(s.sql).bind(...s.binds)))
       try {
         await DB.batch(selfTestStatements().map(s => DB.prepare(s.sql).bind(...s.binds)))
       } catch (e) {
@@ -229,18 +275,41 @@ async function recordCounterError(DB: D1Database, stage: string, e: unknown): Pr
     .bind(COUNTER_ERROR_KEY, JSON.stringify({ at: Date.now(), stage, error: String((e as Error)?.message || e).slice(0, 300) })).run().catch(() => null)
 }
 
-export async function reconcileStatsCounters(DB: D1Database, nowMs = Date.now()): Promise<boolean> {
-  try {
-    await DB.batch(reconcileStatements(nowMs).map(s => DB.prepare(s.sql).bind(...s.binds)))
-    return true
-  } catch (e) {
-    await recordCounterError(DB, 'reconcile', e)
-    return false
+/** 조각을 최대 `steps` 개 센다. 다 채웠으면 0. 반환 = 실제로 센 조각 수. */
+export async function runBootSteps(DB: D1Database, steps = 2, width = BOOT_STEP_IDS): Promise<number> {
+  let done = 0
+  for (let i = 0; i < steps; i++) {
+    const st = await DB.prepare(`SELECT k, n FROM ${COUNTER_TABLE} WHERE k IN (?, ?)`).bind(BOOT_CURSOR, BOOT_MAX).all<{ k: string; n: number }>().catch(() => null) // d1-bind-ok: 키 2개 고정
+    const cur = Number(st?.results?.find(x => x.k === BOOT_CURSOR)?.n)
+    const max = Number(st?.results?.find(x => x.k === BOOT_MAX)?.n)
+    if (!Number.isFinite(cur) || !Number.isFinite(max) || cur > max) break
+    const token = 1 + Math.floor(Math.random() * 2 ** 50)
+    try {
+      await DB.batch(bootStepStatements(cur, max, token, width).map(s => DB.prepare(s.sql).bind(...s.binds)))
+      done++
+    } catch (e) {
+      await recordCounterError(DB, 'boot', e)
+      break
+    }
   }
+  return done
+}
+
+/** 어긋났으면 처음부터 다시 채운다(트리거는 그대로 — 다시 채우는 동안 WHEN 이 안 센 구간을 거른다). 반환 = 어긋남 여부. */
+export async function checkDrift(DB: D1Database, nowMs = Date.now()): Promise<boolean> {
+  const r = await DB.prepare(DRIFT_SQL).first<{ counted: number | null; actual: number }>().catch(() => null)
+  if (!r) return false
+  await DB.prepare(`INSERT INTO ${COUNTER_TABLE} (k, n) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET n = excluded.n`).bind(CHECKED_AT, nowMs).run().catch(() => null)
+  if (Number(r.counted ?? -1) === Number(r.actual)) return false
+  await recordCounterError(DB, 'drift', new Error(`counted=${r.counted} actual=${r.actual}`))
+  await DB.batch(rebuildStatements().map(s => DB.prepare(s.sql).bind(...s.binds))).catch(e => recordCounterError(DB, 'rebuild', e))
+  return true
 }
 
 export type CounterSnapshot = {
-  reconciledAt: number | null
+  /** 다 채웠는가(커서 > 상한). 아니면 숫자표를 쓰지 않는다. */
+  complete: boolean
+  checkedAt: number | null
   state: Record<string, number>
   categories: Array<{ category: string; total: number; reached: number; replied: number; contracted: number; consented: number }>
   days: Map<string, { n: number; reachable: number }>
@@ -251,10 +320,10 @@ export function parseCounters(rows: Array<{ k: string; n: number }>): CounterSna
   const state: Record<string, number> = {}
   const cats = new Map<string, Record<string, number>>()
   const days = new Map<string, { n: number; reachable: number }>()
-  let reconciledAt: number | null = null
+  const meta: Record<string, number> = {}
   for (const { k, n } of rows) {
     const v = Number(n) || 0
-    if (k === RECONCILED_KEY) { reconciledAt = v; continue }
+    if (k.startsWith('__')) { meta[k] = v; continue }
     if (k.startsWith('cat|')) {
       const i = k.lastIndexOf('|'); const name = k.slice(4, i); const m = k.slice(i + 1)
       if (!cats.has(name)) cats.set(name, {})
@@ -264,13 +333,14 @@ export function parseCounters(rows: Array<{ k: string; n: number }>): CounterSna
       const cur = days.get(d) || { n: 0, reachable: 0 }
       if (m === 'n' || m === 'reachable') cur[m] = v
       days.set(d, cur)
-    } else if (!k.startsWith('__')) state[k] = v
+    } else state[k] = v
   }
   for (const [k] of STATE_COUNTERS) state[k] ??= 0
   const categories = [...cats.entries()].map(([category, m]) => ({
     category, total: m.total || 0, reached: m.reached || 0, replied: m.replied || 0, contracted: m.contracted || 0, consented: m.consented || 0,
   }))
-  return { reconciledAt, state, categories, days }
+  const complete = BOOT_CURSOR in meta && BOOT_MAX in meta && meta[BOOT_CURSOR] > meta[BOOT_MAX]
+  return { complete, checkedAt: CHECKED_AT in meta ? meta[CHECKED_AT] : null, state, categories, days }
 }
 
 /** 화면의 '카테고리별 전환' — 옛 쿼리와 같은 규칙(컨택 있는 카테고리만, 컨택 많은 순 8개). */
