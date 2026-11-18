@@ -18,7 +18,7 @@ describe('홈 첫 화면 — 섹션이 늦게 끼어들지 않는다', () => {
     // 실측 `cf-cache-status: DYNAMIC` · 0.6~1.2s — 미들웨어가 아예 안 붙어 있었다.
     // (소스 주석은 "on top of edge cache" 라고 적혀 있었지만 사실이 아니었다 — 낡은 주석.)
     const s = code('src/features/sections/api/sections.routes.ts')
-    expect(s).toMatch(/sectionsRoutes\.get\('\/',\s*edgeCache\(\d+\)/)
+    expect(s).toMatch(/sectionsRoutes\.get\('\/',\s*(?:edgeCache|publicCache)\(\d+\)/) // 2026-11-17 publicCache(로그인 손님도 캐시)
   })
 
   it('cron 이 섹션을 미리 데운다 (첫 방문자도 캐시 히트)', () => {
@@ -99,6 +99,6 @@ describe('홈 섹션 0-RTT — 피드와 섹션이 같은 화면이면 시드도
 
   it('/api/sections 가 예열·엣지캐시와 한 세트다 (self-fetch 가 콜드 D1 을 타면 의미 없다)', () => {
     expect(read('src/worker/cron/cache-prewarm.ts')).toContain("'/api/sections'")
-    expect(read('src/features/sections/api/sections.routes.ts')).toContain("sectionsRoutes.get('/', edgeCache(120)")
+    expect(read('src/features/sections/api/sections.routes.ts')).toMatch(/sectionsRoutes\.get\('\/', (?:edgeCache|publicCache)\(120\)/)
   })
 })
