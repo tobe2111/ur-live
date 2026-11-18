@@ -494,7 +494,7 @@ adminUsersRoutes.get('/users/:id/full-state', cors(), async (c) => {
     try {
       couponsCount = await DB.prepare('SELECT COUNT(*) AS c FROM user_coupons WHERE user_id = ?').bind(idStr).first<{ c: number }>() || { c: 0 };
       couponsRecent = await DB.prepare(
-        `SELECT id, coupon_code, status, created_at FROM user_coupons WHERE user_id = ? ORDER BY id DESC LIMIT 5`
+        `SELECT id, coupon_id, claimed_at AS created_at FROM user_coupons WHERE user_id = ? ORDER BY id DESC LIMIT 5` /* 🩸 2026-11-18 라이브 칸은 id·user_id·coupon_id·claimed_at 뿐 */
       ).bind(idStr).all();
     } catch { /* table missing */ }
 

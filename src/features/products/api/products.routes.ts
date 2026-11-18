@@ -381,7 +381,7 @@ productsRoutes.get('/:id/options', cors(), async (c) => {
     const KV = (c.env as any).SESSION_KV;
     const data = await cacheGet(KV, `product_options:${id}`, async () => {
       const result = await DB.prepare(
-        `SELECT id, product_id, option_type, option_value, price_adjustment, stock_quantity, created_at
+        `SELECT id, product_id, option_type, option_value, price_adjustment, stock AS stock_quantity, created_at /* 🩸 2026-11-18 라이브 칸 이름은 stock — 옵션이 늘 빈 목록이었다 */
          FROM product_options
          WHERE product_id = ?
          ORDER BY option_type, option_value`

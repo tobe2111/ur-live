@@ -295,7 +295,7 @@ authRouter.get('/me', async (c) => {
   const user = await qb.queryOne<{
     id: string; email: string; name: string;
     phone: string | null; avatar_url: string | null; created_at: string | null;
-  }>('SELECT id, email, name, phone, avatar_url, created_at FROM users WHERE id = ?', [authedUser.id]);
+  }>('SELECT id, email, name, phone, profile_image AS avatar_url, created_at FROM users WHERE id = ?' /* 🩸 2026-11-18 users 에 avatar_url 칸이 없다(라이브 실측) — 항상 500 이었다 */, [authedUser.id]);
 
   if (!user) {
     return c.json({ success: false, error: 'User not found' }, 404);
@@ -352,7 +352,7 @@ authRouter.patch('/profile', requireUser(), async (c) => {
         throw e1;
       }
     }
-    const updated = await db.prepare('SELECT id, email, name, phone, avatar_url FROM users WHERE id = ?').bind(id).first();
+    const updated = await db.prepare('SELECT id, email, name, phone, profile_image AS avatar_url FROM users WHERE id = ?' /* 🩸 2026-11-18 저장은 되고 이 줄이 던져 전화번호 입력창이 실패로 보였다 */).bind(id).first();
     return c.json({ success: true, data: updated });
   } catch (err: unknown) {
     // 🛡️ 2026-05-22: production 정보 누출 방지 — 상세 에러는 로그만, 응답은 generic.

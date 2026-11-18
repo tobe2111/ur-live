@@ -407,13 +407,13 @@ sellerManagementRoutes.get('/public/:sellerId', async (c) => {
       ? await DB.prepare(
           `SELECT id, username, slug, name, description, business_name, business_number, /* 🔐 2026-11-17 이메일·전화는 공개 응답에서 뺀다 */
                   profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
-                  website_url, kakao_chat_link, status, created_at
+                  website_url, kakao_chat_url AS kakao_chat_link, status, created_at
            FROM sellers WHERE id = ? AND status IN ('approved', 'active')`
         ).bind(param).first()
       : await DB.prepare(
           `SELECT id, username, slug, name, description, business_name, business_number, /* 🔐 2026-11-17 이메일·전화는 공개 응답에서 뺀다 */
                   profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
-                  website_url, kakao_chat_link, status, created_at
+                  website_url, kakao_chat_url AS kakao_chat_link, status, created_at
            FROM sellers WHERE (slug = ? OR username = ?) AND status IN ('approved', 'active')`
         ).bind(param, param).first();
 

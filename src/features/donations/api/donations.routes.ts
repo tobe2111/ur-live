@@ -132,7 +132,7 @@ donationsRoutes.post('/init', rateLimit({ action: 'donations_init', max: 10, win
 
   // 🛡️ 2026-05-05 P0: 자기 자신에게 후원 차단 (셀러 = 후원자 = 어뷰징 패턴)
   try {
-    const sellerOwner = await DB.prepare('SELECT user_id FROM sellers WHERE id = ?')
+    const sellerOwner = await DB.prepare('SELECT linked_user_id AS user_id FROM sellers WHERE id = ?' /* 🩸 2026-11-18 sellers 에는 그 칸이 없다(연결 유저는 linked_user_id) — 자기 후원 차단이 한 번도 안 돌았다 */)
       .bind(stream.seller_id).first<{ user_id: string }>();
     if (sellerOwner?.user_id && String(sellerOwner.user_id) === String(userId)) {
       try {
