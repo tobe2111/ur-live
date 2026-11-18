@@ -322,11 +322,10 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
 
   // 🛡️ 2026-05-22 옵션 B 마이그: toss-gateway 헬퍼 사용 — 토스 fetch / idempotency / circuit / 에러 표준화 한 곳.
   //   서버 검증된 pending.amount 사용 (defense-in-depth — 클라이언트 amount 신뢰 X).
+  { const pk = await (await import('../../../worker/utils/payment-key-claim')).claimPaymentKey(DB, paymentKey, 'points', orderId); if (!pk.ok) return c.json({ success: false, error: pk.error, code: pk.code }, pk.status) } // 🔑 2026-11-18 결제 키 한 개 = 구매 한 곳(payment-key-claim)
   const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
   const tossResult = await confirmTossPayment({
-    env: c.env,
-    paymentKey,
-    orderId,
+    env: c.env, paymentKey, orderId,
     amount: pending.amount,
   })
   if (!tossResult.ok) {

@@ -157,6 +157,7 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
   const referralInfluencerId = await normalizeRef(DB, await preferAccountRef(DB, userId, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref'))), userId)
 
   // ── Toss 승인 (SSOT helper 호출만 — helper 자체는 무수정) ────────────────────
+  { const pk = await (await import('../../../worker/utils/payment-key-claim')).claimPaymentKey(DB, paymentKey, 'gb-cart', orderId); if (!pk.ok) return c.json({ success: false, error: pk.error, code: pk.code }, pk.status) } // 🔑 2026-11-18 결제 키 한 개 = 구매 한 곳(payment-key-claim)
   const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
   const tossResult = await confirmTossPayment({
     env: c.env as { TOSS_SECRET_KEY?: string }, paymentKey, orderId, amount: chargedAmount,

@@ -959,7 +959,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
     // 🛡️ 2026-06-12 (B-1): Toss orderId 는 위젯 결제(requestPayment)와 동일한 'STAY-{orders.id}'.
     //   Toss orderId 최소 6자 요건 — 순수 숫자 orders.id 는 미충족. prefix 표준은 toss-gateway
     //   generateTossOrderId 의 'STAY' 와 동일 (결제 시작/승인 양쪽이 같은 문자열이어야 승인 성공).
-    const tossOrderId = `STAY-${orderId}`
+    const tossOrderId = `STAY-${orderId}`; { const pk = await (await import('../../../worker/utils/payment-key-claim')).claimPaymentKey(c.env.DB, paymentKey, 'stay', tossOrderId); if (!pk.ok) return c.json({ success: false, error: pk.error, code: pk.code }, pk.status) } // 🔑 2026-11-18 결제 키 한 개 = 구매 한 곳(payment-key-claim)
     const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
     const tossResult = await confirmTossPayment({
       env: c.env as unknown as { TOSS_SECRET_KEY?: string },

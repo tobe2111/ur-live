@@ -175,6 +175,7 @@ giftsRoutes.post('/:id/confirm', requireUser(), async (c) => {
 
     // 🛡️ 2026-05-22 옵션 B: toss-gateway 헬퍼 사용.
     //   defense-in-depth — DB-verified gift.amount 사용 (클라 body.amount 신뢰 X).
+    { const pk = await (await import('../../../worker/utils/payment-key-claim')).claimPaymentKey(c.env.DB, body.paymentKey, 'gift', body.orderId); if (!pk.ok) return c.json({ success: false, error: pk.error, code: pk.code }, pk.status) } // 🔑 2026-11-18 결제 키 한 개 = 구매 한 곳(payment-key-claim)
     const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
     const tossResult = await confirmTossPayment({
       env: { TOSS_SECRET_KEY: tossSecretKey },

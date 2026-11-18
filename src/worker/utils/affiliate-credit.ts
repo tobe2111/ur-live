@@ -188,9 +188,11 @@ export async function creditAffiliateForOrder(
       }
     } catch { /* */ }
 
+    // 🔐 2026-11-18: 주문 하나에 추천 수수료는 **한 번**. 종전엔 (추천인, 주문) 쌍으로만 봐서, 산 사람이 부계정 N개를
+    //   추천인으로 차례로 걸면 같은 주문에 N번 나갔다(프로그램은 지금 꺼져 있다 — 켤 때 그대로 따라온다).
     const existing = await DB.prepare(
-      'SELECT id FROM affiliate_earnings WHERE referrer_id = ? AND order_id = ?'
-    ).bind(String(referrerId), order.id).first()
+      'SELECT id FROM affiliate_earnings WHERE order_id = ?'
+    ).bind(order.id).first()
     if (existing) return { ok: false, code: 'DUPLICATE' }
 
     if (buyerIp) {
