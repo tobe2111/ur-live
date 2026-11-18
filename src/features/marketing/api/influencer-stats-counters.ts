@@ -122,23 +122,34 @@ const catKey = (r: string, m: string) => `'cat|' || COALESCE(${r}category, '미�
 const dayKey = (r: string, m: string) => `'day|' || DATE(${r}collected_at, '+9 hours') || '|${m}'`
 const one = (r: string, c: Cond) => `(CASE WHEN ${r}account_id = ${POOL} AND (${c(r)}) THEN 1 ELSE 0 END)`
 
-/** 한 쪽(NEW. 또는 OLD.) 행이 내는 (키, 변화량) 줄들. */
+/** 한 쪽(NEW. 또는 OLD.) 행이 내는 (키, 변화량) 짝들 — `json_array(키, 변화량)` 하나가 짝 하나. */
 function arms(r: string, sign: 1 | -1): string[] {
   const s = sign === 1 ? '' : '-'
   return [
-    ...STATE_COUNTERS.map(([k, c]) => `SELECT '${k}' AS k, ${s}${one(r, c)} AS d`),
-    ...CATEGORY_METRICS.map(([m, c]) => `SELECT ${catKey(r, m)} AS k, ${s}${one(r, c)} AS d`),
-    ...DAY_METRICS.map(([m, c]) => `SELECT ${dayKey(r, m)} AS k, ${s}${one(r, c)} AS d`),
+    ...STATE_COUNTERS.map(([k, c]) => `json_array('${k}', ${s}${one(r, c)})`),
+    ...CATEGORY_METRICS.map(([m, c]) => `json_array(${catKey(r, m)}, ${s}${one(r, c)})`),
+    ...DAY_METRICS.map(([m, c]) => `json_array(${dayKey(r, m)}, ${s}${one(r, c)})`),
   ]
 }
+
+/**
+ * D1 한도(2026-11-18 라이브 실측) — 🩸 첫 배포에서 트리거 설치가 `too many terms in compound SELECT` 로 실패했다.
+ * 짝마다 `SELECT … UNION ALL` 로 이었더니 96줄이었고, **D1 은 5줄까지만 받는다**(node 의 SQLite 는 500 이라 시험이 못 봤다).
+ * 그래서 짝들을 **함수 하나(json_array)의 인자**로 넣고 json_each 로 펼친다 — 묶음 0줄. 함수 인자는 127 까지 됐다(200 은 거부).
+ */
+export const D1_MAX_COMPOUND_TERMS = 5
+export const D1_MAX_FUNCTION_ARGS = 127
 
 /** 트리거 본문 — 같은 키를 합치고 **0 이 아닌 것만** 쓴다(쓰기 = 실제로 바뀐 숫자 수). */
 function upsertBody(parts: string[]): string {
   return `INSERT INTO ${COUNTER_TABLE} (k, n)
-      SELECT k, d FROM (SELECT k, SUM(d) AS d FROM (${parts.join(' UNION ALL ')}) GROUP BY k)
+      SELECT k, d FROM (SELECT k, SUM(d) AS d FROM (SELECT json_extract(value, '$[0]') AS k, json_extract(value, '$[1]') AS d FROM json_each(json_array(${parts.join(', ')}))) GROUP BY k)
       WHERE k IS NOT NULL AND d != 0
       ON CONFLICT(k) DO UPDATE SET n = n + excluded.n;`
 }
+
+/** 트리거 하나가 json_array 에 넣는 짝 수(고치기 = 새 값 + 옛 값) — 시험이 D1 한도와 대조한다. */
+export const UPDATE_TRIGGER_ARGS = (STATE_COUNTERS.length + CATEGORY_METRICS.length + DAY_METRICS.length) * 2
 
 export const TRIGGER_NAMES = ['ins', 'upd', 'del'].map(s => `trg_inf_stats_v${COUNTER_VERSION}_${s}`)
 

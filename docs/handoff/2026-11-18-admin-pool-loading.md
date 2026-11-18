@@ -52,3 +52,11 @@ D1 `EXPLAIN`/rows_read 로 파트너 기본 목록 쿼리(목표 수백 행) · 
 - 이어받는 첫 액션: 배포 후 인플루언서 풀 화면을 3분쯤 열어 둔 뒤 통계 응답의 `stats_source` 가 `counter` 인지, 메인 DB `ads_influencer_stats_counter_error` 가 비었는지, 리드 DB `SELECT k,n FROM ad_influencer_stats_counter WHERE k LIKE '\_\_%' ESCAPE '\'` 에서 `__boot_cursor > __boot_max` 인지.
 - 틀린 판단 ①: 한 번에 세는 전수 대조를 하루 1회로 줄이면 된다고 봤다 — 그것도 D1 과부하 벽에 닿는다(실패 원문을 읽고서야 알았다).
 - 틀린 판단 ②: 대조 SQL 을 CTE + 따로 만든 문자열 조각으로 짰다가 테이블 가드가 `FROM a` 를 못 알아봤다 → json_each 펼치기로 한 문자열 안에 넣었다(가드도 `AS MATERIALIZED (` 를 CTE 로 인식하게 보강).
+
+## 배포 1차 판정 — 트리거 설치 실패 → 수정 (2026-11-18 오후 4시대)
+- #2425 배포 후 라이브: 오류 키 `ensure: too many terms in compound SELECT`. **D1 은 UNION 묶음 5줄까지만 받는다**(실측: 5 성공 · 8 실패). 짝마다 SELECT 를 UNION ALL 로 이은 트리거(96줄)가 거부됐다. node SQLite(500)에선 통과해 시험이 못 봤다.
+- 안전장치는 의도대로 동작: 트리거 0개 · 숫자표 빈 채 · 화면은 옛 경로(`stats_source=scan`) · 수집 무영향. 부분 인덱스 `idx_ad_inf_leads_contact_todo` 는 만들어졌다.
+- 처방: 짝을 `json_array(키, 변화량)` 로 만들어 **json_array 하나의 인자**로 넣고 json_each 로 펼친다(묶음 0줄). 함수 인자 한도 실측: 127 성공 · 200 실패 → 고치기 트리거 96개.
+- 배포 전 확인: 고치기 트리거 본문을 라이브 D1 에서 실제 두 행으로 읽기 실행 → 성공, 바뀐 숫자 6개만 나옴.
+- 시험: 모든 문장의 UNION ≤ 5 · 인자 ≤ 107(한도 127 − 여유 20) 고정. 주입 9건 전부 빨강.
+- 틀린 판단: "진짜 SQLite 로 돌렸으니 라이브에서도 된다" — D1 은 컴파일 한도가 다르다. D1 에만 있는 한도는 라이브에서 읽기 쿼리로 먼저 재야 한다.
