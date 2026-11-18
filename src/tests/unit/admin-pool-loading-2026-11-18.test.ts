@@ -61,7 +61,7 @@ describe('① 인플루언서 통계 캐시', () => {
   })
   it('통계 빌더가 캐시를 거치고 오늘 값을 실시간으로 덮는다 · 라우트가 fresh·waitUntil 을 넘긴다', () => {
     const s = src('src/features/marketing/api/influencer-pool-stats.ts')
-    expect(s).toMatch(/getInfluencerStatsCached<Heavy>\(DB, !!opts\.fresh, \(\) => computeHeavy\(DB\), opts\.bg\)/)
+    expect(s).toMatch(/getInfluencerStatsCached<Heavy>\(DB, !!opts\.fresh, \(\) => computeHeavy\(DB\), opts\.bg,/)
     expect(s).toMatch(/const byDay = mergeTodayInflow\(heavy\.byDay, today\)/)
     expect(s).toMatch(/\.\.\.\(today \? \{ today: today\.n \} : \{\}\)/)
     expect(src('src/features/marketing/api/pool-timeline.routes.ts')).toMatch(/buildInfluencerPoolStats\(c\.env, \{ fresh: c\.req\.query\('fresh'\) === '1', bg \}\)/)
@@ -153,5 +153,23 @@ describe('⑥ 오늘의 컨택 — 이메일 줄·전화 줄을 따로, 인덱�
     expect(r).toMatch(/const companies = \[\.\.\.coEmail, \.\.\.await pick\(q\.companyPhone, limit - coEmail\.length\)\]/)
     expect(r).toMatch(/const stores = \[\.\.\.stEmail, \.\.\.await pick\(q\.storePhone, limit - stEmail\.length\)\]/)
     expect(r).not.toMatch(/ORDER BY \(CASE WHEN email IS NOT NULL AND email != '' THEN 0 ELSE 1 END\)/)
+  })
+})
+
+describe('⑦ 실패가 섞인 계산은 캐시하지 않는다', () => {
+  it('storable 이 거짓이면 저장 안 함 · 온전한 낡은 캐시가 있으면 그걸 준다', async () => {
+    const db = new DatabaseSync(':memory:'); db.exec('CREATE TABLE platform_settings (key TEXT PRIMARY KEY, value TEXT)')
+    const DB = d1(db); const NOW = 1_800_000_000_000
+    const bad = await getInfluencerStatsCached(DB, false, async () => ({ ok: false }), undefined, NOW, t => t.ok)
+    expect(bad.stats).toEqual({ ok: false })
+    expect(db.prepare('SELECT COUNT(*) n FROM platform_settings').get()).toEqual({ n: 0 })
+    db.prepare('INSERT INTO platform_settings VALUES (?, ?)').run(INFLUENCER_STATS_CACHE_KEY, JSON.stringify({ at: NOW - INFLUENCER_STATS_TTL_MS - 1, data: { ok: true } }))
+    const r = await getInfluencerStatsCached(DB, false, async () => ({ ok: false }), undefined, NOW, t => t.ok)
+    expect(r.stats).toEqual({ ok: true })
+  })
+  it('통계 빌더가 빈 14일 표·실패 조회를 complete=false 로 표시하고 저장 판정에 쓴다', () => {
+    const s = src('src/features/marketing/api/influencer-pool-stats.ts')
+    expect(s).toMatch(/const complete = !!agg && !!catFunnel && byDay\.length > 0/)
+    expect(s).toMatch(/h => h\.complete !== false\)/)
   })
 })
