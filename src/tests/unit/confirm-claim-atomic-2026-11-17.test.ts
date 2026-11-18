@@ -26,7 +26,12 @@ describe('/confirm 선점 — 원자적·실패는 실패로', () => {
     const at = PAY.indexOf("UPDATE orders SET status = 'DONE', toss_payment_key = ?")
     const tail = PAY.slice(at, at + 2200)
     expect(tail).toMatch(/\.catch\(\(e: unknown\) => \{ claimErr = e; return null \}\)/)
-    expect(tail).toMatch(/if \(claimErr\) \{[\s\S]*payment_update_retry[\s\S]*severity: 'critical'[\s\S]*PAYMENT_CONFIRMED_DB_DEFERRED/)
+    expect(tail).toMatch(/if \(claimErr\) \{[\s\S]{0,200}recordConfirmClaimFailure\(c\.env,[\s\S]{0,200}PAYMENT_CONFIRMED_DB_DEFERRED/)
+    // 복구 기록 본체: 키 보존 · retry 기록 · critical 알림
+    const REC_FN = fs.readFileSync('src/worker/utils/confirm-claim-recovery.ts', 'utf8')
+    expect(REC_FN).toMatch(/UPDATE orders SET toss_payment_key = \?/)
+    expect(REC_FN).toMatch(/'payment_update_retry'/)
+    expect(REC_FN).toMatch(/severity: 'critical'/)
   })
 
   it('보조 updateStatus 실패가 부수효과를 끊지 않는다', () => {

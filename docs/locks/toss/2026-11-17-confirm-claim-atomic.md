@@ -26,7 +26,7 @@
 
 ## 가드
 
-`src/tests/unit/confirm-claim-atomic-2026-11-17.test.ts` 4건 + 주입 `scripts/mutations/confirm-claim-atomic-2026-11-17.mjs` 2건(빨간불 확인).
+`src/tests/unit/confirm-claim-atomic-2026-11-17.test.ts` 4건 · 실패 복구 본체는 `src/worker/utils/confirm-claim-recovery.ts`(payment.routes 크기 래칫 976 안으로 떼어 냄) + 주입 `scripts/mutations/confirm-claim-atomic-2026-11-17.mjs` 2건(빨간불 확인).
 기존 결제·reconciliation 시험 13파일 155건 통과.
 
 ## ⚠️ 남은 검증

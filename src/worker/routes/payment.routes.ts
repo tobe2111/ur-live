@@ -20,7 +20,7 @@ import { captureException } from '../utils/sentry';
 import { adjustUserPoints } from '../utils/point-ledger';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { logInfo, logError, logWarn } from '../utils/logger';
-import { sendAlert } from '../utils/alerts';
+import { sendAlert } from '../utils/alerts'; import { recordConfirmClaimFailure } from '../utils/confirm-claim-recovery';
 
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
@@ -328,23 +328,8 @@ paymentsRouter.post('/confirm', async (c) => {
        WHERE order_number = ? AND status NOT IN ('DONE','PAID','CANCELLED','REFUNDED','FAILED')`
     ).bind(tossData.paymentKey ?? paymentKey, orderNumber, tossData.method ?? null, tossData.approvedAt ?? null, orderNumber)
       .run().catch((e: unknown) => { claimErr = e; return null });
-    if (claimErr) {
-      // 결제는 Toss 에서 끝났다. 키만이라도 남기면 reconciliation 1b(키 있는 PENDING → Toss 조회 → 확정)가 구한다.
-      await c.env.DB.prepare(
-        `UPDATE orders SET toss_payment_key = ?, updated_at = datetime('now')
-         WHERE order_number = ? AND (toss_payment_key IS NULL OR toss_payment_key = '') AND status = 'PENDING'`
-      ).bind(tossData.paymentKey ?? paymentKey, orderNumber).run().catch(swallow('payment:claim-fail-key-save'))
-      await c.env.DB.prepare(`
-        INSERT INTO webhook_events (id, source, event_type, payload, status, order_number, created_at)
-        VALUES (?, 'internal', 'payment_update_retry', ?, 'FAILED', ?, datetime('now'))
-      `).bind(`retry_${orderNumber}_${Date.now()}`, JSON.stringify({ paymentKey, stage: 'claim', totalAmount }), orderNumber)
-        .run().catch(swallow('payment:claim-fail-retry-log'))
-      await sendAlert(c.env, {
-        severity: 'critical',
-        title: 'Order claim failed after Toss confirm',
-        message: `Order ${orderNumber} paid at Toss but DONE claim failed (DB error).`,
-        context: { orderNumber, error: String(claimErr).slice(0, 200) },
-      }).catch(swallow('payment:send-alert-claim'))
+    if (claimErr) { // 키 보존 · retry 기록 · critical 알림 — utils/confirm-claim-recovery.ts
+      await recordConfirmClaimFailure(c.env, { orderNumber, paymentKey: tossData.paymentKey ?? paymentKey, totalAmount, error: claimErr })
       return c.json({ success: true, data: { orders, payment: tossData }, warning: 'PAYMENT_CONFIRMED_DB_DEFERRED' })
     }
     if (!confirmClaim || (confirmClaim.meta?.changes ?? 0) === 0) {
