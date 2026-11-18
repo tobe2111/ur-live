@@ -291,6 +291,8 @@
 
 ## 5. 경제 엔진 (Money Flows) — 전부 어드민 조정 기본값
 
+> 🗑️ **2026-11-18 셀러 등급제 폐지**(대표 *"셀러 등급제는 아예 없애줘"*) — 플랫폼 수수료는 **입점 채널(직접 10% · 중개 5%)과 어드민의 셀러별 설정**만 정한다. 매주 수수료를 등급표로 덮어쓰던 자동 평가·등급 화면·등급별 숙소 등록 한도·소개 할인 등급 제한이 함께 없어졌다. DB 의 옛 표(`seller_tiers`·`seller_tier_history`·`sellers.tier`)는 이력이라 남겨 두었다.
+
 ### 5-1. 딜포인트
 - **~~충전~~ 종료** (2026-07-18 대표 확정 "충전 자체를 빼자" — 앱 전환 Apple IAP 리스크 원천 제거):
   딜 = **활동 적립 전용 리워드 통화**(초대·추천 커미션·리뷰·이벤트·상권 방문 리워드). 유상 충전 진입 전부 게이트
@@ -547,7 +549,7 @@
 ## 18. 백그라운드 잡 (크론 60+, `wrangler.toml` 스케줄)
 - **정산/재무**: auto-settlement·payouts-generate·influencer-payout·reconciliation·ledger-reconcile·ledger-integrity-check·prospects-commission-activate
 - **에이전시**: agency-auto-settle·agency-monthly-invoices/report/tasks·agency-tier-eval·agency-creator-eval·agency-seller-match·agency-store-intro-monthly-bonus·agency-inactive-sellers
-- **셀러/등급**: seller-tier-eval·seller-daily-report·seller-churn-detect·wholesale-grade-eval
+- **셀러**: seller-daily-report·seller-churn-detect·wholesale-grade-eval
 - **캐시/성능**: cache-prewarm·cache-warming·group-buy-feed-cache
 - **숙소**: stay-checkout-transition·stay-pending-expire·stay-reminder·stay-voucher-expire
 - **교환권/외부**: kt-alpha-catalog-sync·kt-alpha-voucher-retry·voucher-expire·tiktok-videos-sync·youtube-*·shipping-sync·restaurant-geocode

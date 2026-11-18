@@ -11,7 +11,7 @@ import { getSellerCommissionRate } from '@/features/group-buy/api/helpers'
  * **활성 매장 7곳 전부 `commission_rate = 10`** 이라 1번에서 끝났다 — 대행사 매장 포함.
  *
  * ## 이 순서가 이 수정의 핵심이다 (채널이 override 보다 **위**)
- * `sellers.commission_rate` 는 쓰는 주체가 셋이다: 어드민 수동, `seller-tier-eval` cron(GMV 등급으로
+ * `sellers.commission_rate` 는 쓰는 주체가 셋이다: 어드민 수동, `seller-tier-eval` cron(2026-11-18 철거 — GMV 등급으로
  * 3~5% 를 덮어쓴다), 그리고 과거 잔재. 채널을 이 컬럼 **아래**에 두면 **cron 이 돌 때마다 채널 요율이
  * 조용히 지워진다.** 에러도 로그도 없다 — 이 레포가 반복해 만난 "실패가 아니라 침묵" 클래스다.
  * 실측이 그 증거다: 컬럼 기본값은 5, tier 표에도 10 은 없는데 7곳이 전부 10 이었다(아무도 의도 안 함).

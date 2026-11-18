@@ -149,7 +149,6 @@ const PUBLIC_API_PATHS = [
   '/api/restaurants',     // 식당 목록
   '/api/group-buy/products', // 공동구매 상품
   '/api/sections',        // 홈 섹션
-  '/api/seller-tiers',    // 셀러 등급
   '/api/blog/public/',    // 블로그 공개 글
 ];
 
@@ -367,7 +366,7 @@ api.interceptors.request.use(
       config.headers['Authorization'] = `Bearer ${token}`;
     } else {
       // 비로그인 상태 — 공개 API는 토큰 없이 진행, 인증 필요 API는 조용히 실패
-      const publicPrefixes = ['/api/products', '/api/streams', '/api/reviews', '/api/sections', '/api/seller-tiers', '/api/banners', '/api/search'];
+      const publicPrefixes = ['/api/products', '/api/streams', '/api/reviews', '/api/sections', '/api/banners', '/api/search'];
       const isPublic = publicPrefixes.some(p => config.url?.startsWith(p));
       if (!isPublic) {
         console.warn('[API] 토큰 없음 - 인증 필요 API 호출 스킵 가능');

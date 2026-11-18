@@ -282,7 +282,6 @@ import { couponRoutes } from '../features/coupons/api/coupons.routes';
 import { digitalRoutes } from '../features/digital/api/digital.routes';
 import { socialRoutes } from '../features/social/api/social.routes';
 import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
-import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
 import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
 import { sectionsRoutes } from '../features/sections/api/sections.routes';
 // 🎬 2026-09-07 유어쇼츠 — 홈 레일 + /videos 뷰어. 공개는 이용권이 붙은 영상만 나간다.
@@ -1556,7 +1555,6 @@ app.use('/api/sellers/*/public', publicCache(60), cacheControl(60));        // �
 app.use('/api/curator/:handle', edgeCache(300));    // 유어샵 — 소유자/인증 bypass→fresh, 익명/SSR/cron 만 edge 캐싱
 app.use('/api/curator/:handle/sns-posts', publicCache(600)); // 🌊 2026-11-04 — 핸들러의 CDN-Cache-Control 만으로는 캐시되지 않았다(DYNAMIC · 라이브 실측). 유어샵마다 D1+외부 API 직행이던 것
 app.use('/api/sections', publicCache(120), cacheControl(120));              // 홈 섹션 2min (변동 적음)
-app.use('/api/seller-tiers', publicCache(300), cacheControl(300));          // 셀러 등급 5min (거의 안 변함)
 app.use('/api/blog/public', publicCache(180), cacheControl(180));           // 📝 2026-07-01 블로그 목록(exact) — 목록 SSR 0-RTT edge-hit + prewarm 대상. `/*`(아래)는 상세만 매칭
 app.use('/api/blog/public/*', publicCache(180), cacheControl(180));         // 블로그 공개 글 3min
 app.use('/api/search/*', publicCache(30), cacheControl(30));                // 검색 결과 30s (query 기반 — user 무관)
@@ -2047,7 +2045,6 @@ app.route('/api/social', socialRoutes);
 app.route('/api/reviews', reviewsRoutes);
 
 // ── 셀러 등급 ──
-app.route('/api/seller-tiers', sellerTiersRoutes);
 
 // ── 바코드 + 재고 관리 ──
 app.route('/api/inventory', inventoryRoutes);

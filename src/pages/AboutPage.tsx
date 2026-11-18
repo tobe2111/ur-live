@@ -170,32 +170,14 @@ export default function AboutPage() {
               </p>
             </SubBlock>
 
-            <SubBlock title="2-3. 셀러 등급 시스템 (성장형 보상)" icon={<Trophy className="w-5 h-5" />}>
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                {['신규', '브론즈', '실버', '골드', '플래티넘'].map((tier, i) => (
-                  <div key={tier} className="flex items-center gap-2">
-                    <span className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-[#1D1F29] text-gray-900 dark:text-white text-[12px] lg:text-[15px] font-medium">
-                      {tier}
-                    </span>
-                    {i < 4 && <ArrowRight className="w-3.5 h-3.5 text-gray-400" />}
-                  </div>
-                ))}
-              </div>
-              <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-[15px] lg:text-[15px]">
-                <li>· 등급 진급 시 <strong>수수료 차감</strong> (플래티넘 최저)</li>
-                <li>· 알고리즘 노출 가중치 상승. 상위 등급 셀러가 홈과 카테고리 상단에</li>
-                <li>· 어드민에서 셀러별 commission_rate 개별 조정 (협상 여지)</li>
-              </ul>
-            </SubBlock>
-
-            <SubBlock title="2-4. 에이전시 매칭 (영업 없이 협업)" icon={<Bot className="w-5 h-5" />}>
+            <SubBlock title="2-3. 에이전시 매칭 (영업 없이 협업)" icon={<Bot className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-[15px] lg:text-[15px]">
                 <li>· 카테고리/규모/지역 기반 에이전시 매칭 추천</li>
                 <li>· 이용권 운영이 어려우면 검증된 에이전시가 등록·관리 대행</li>
               </ul>
             </SubBlock>
 
-            <SubBlock title="2-5. 무료 CRM 인프라" icon={<GiftBoxIcon className="w-5 h-5" />}>
+            <SubBlock title="2-4. 무료 CRM 인프라" icon={<GiftBoxIcon className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-[15px] lg:text-[15px]">
                 <li>· 알림톡 무료 크레딧 (가입 시 지급)</li>
                 <li>· 카카오 공유 → 클릭 → 구매 풀 퍼널 분석</li>
@@ -203,7 +185,7 @@ export default function AboutPage() {
               </ul>
             </SubBlock>
 
-            <SubBlock title="2-6. 업계 최단 정산" icon={<WalletIcon className="w-5 h-5" />}>
+            <SubBlock title="2-5. 업계 최단 정산" icon={<WalletIcon className="w-5 h-5" />}>
               <SimpleTable
                 headers={['정산 항목', '유어딜', '업계 평균']}
                 rows={[
@@ -304,7 +286,6 @@ export default function AboutPage() {
               { icon: <BagIcon className="w-5 h-5" />, title: '상품 / 주문', desc: '토스/가상계좌/카카오페이/딜 포인트. 배송 추적. 자동 D+5 정산.' },
               { icon: <WalletIcon className="w-5 h-5" />, title: '딜 포인트', desc: '1원 = 1딜. 기프티콘 교환권 결제에 사용.' },
               { icon: <UrShopIcon className="w-5 h-5" />, title: '유어샵', desc: '이용권·교환권을 담아 진열하고 소개. 매장과 맺은 딜만큼 커미션.' },
-              { icon: <Trophy className="w-5 h-5" />, title: '셀러 등급 / 수수료', desc: '신규→브론즈→실버→골드→플래티넘. 진급 시 수수료 차감 + 노출 가중.' },
               { icon: <PeopleIcon className="w-5 h-5" />, title: '에이전시 통합 관리', desc: '담당 매장의 이용권/주문/정산 한 화면. 정산 자동 일괄.' },
               { icon: <PinIcon className="w-5 h-5" />, title: '지역 기반', desc: '내 동네 지역·카테고리별 이용권 탐색. 지도로 가까운 순.' },
               { icon: <Bot className="w-5 h-5" />, title: 'AI 추천', desc: '셀러↔에이전시 매칭, 사용자↔이용권 추천 피드.' },

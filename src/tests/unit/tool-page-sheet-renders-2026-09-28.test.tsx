@@ -53,11 +53,11 @@ const mount = (path: string) =>
 
 describe('ToolPageSheet — 터지지 않는가', () => {
   it('🔴 바깥 라우터 안에서 열어도 안 터진다 (중첩 라우터 invariant)', () => {
-    expect(() => mount('/seller/tier')).not.toThrow()
+    expect(() => mount('/seller/profile')).not.toThrow()
   })
 
   it('🔴 에러 화면으로 떨어지지도 않는다', () => {
-    mount('/seller/tier')
+    mount('/seller/profile')
     expect(screen.queryByText('문제가 발생했습니다')).toBeNull()
   })
 
@@ -86,7 +86,7 @@ describe('ToolPageSheet — 터지지 않는가', () => {
   })
 
   it('🔴 이 시험이 헛돌지 않는다 — 시트 껍데기가 실제로 그려졌다', () => {
-    mount('/seller/tier')
+    mount('/seller/profile')
     expect(screen.getByText('테스트')).toBeTruthy()   // 시트 머리(title)
   })
 

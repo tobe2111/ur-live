@@ -39,8 +39,8 @@ export async function getMealVoucherCommissionRate(DB: D1Database): Promise<numb
  *   **아예 안 봤다** — 그래서 대행사 매장도 이 함수가 돌려주는 값을 그대로 냈다.
  *
  * 🩸 **왜 override 보다 위인가** (이 순서가 이 수정의 핵심이다):
- *   `sellers.commission_rate` 는 **쓰는 주체가 셋**이다 — 어드민 수동 설정, `seller-tier-eval` cron
- *   (GMV 등급으로 3~5% 를 덮어쓴다), 그리고 과거에 박힌 값. 채널을 이 컬럼 **아래**에 두면
+ *   `sellers.commission_rate` 는 **쓰는 주체가 둘**이다 — 어드민 수동 설정, 그리고 과거에 박힌 값
+ *   (등급 cron 이 3~5% 로 덮어쓰던 것은 2026-11-18 셀러 등급제 철거로 없어졌다). 채널을 이 컬럼 **아래**에 두면
  *   **cron 이 돌 때마다 채널 요율이 조용히 지워진다**(에러도 로그도 없다). 라이브 실측이 그 상태였다:
  *   활성 매장 7곳 전부 `commission_rate = 10` — 컬럼 기본값은 5 이고 tier cron 표에도 10 은 없으니
  *   **아무도 의도하지 않은 잔재**이고, 그 잔재가 대행사 매장에 10% 를 물리고 있었다.

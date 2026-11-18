@@ -28,7 +28,6 @@ import { beginCatchup, catchupOpens, claimCatchupJob, summarizeCatchup, type Cat
 
 // 🛡️ 2026-05-18: handleScheduled (49KB) dynamic import — cron 발생 시만 로드.
 import { runReconciliation } from './cron/reconciliation';
-import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
 import { handleWholesaleRestockNotify } from './cron/wholesale-restock-notify';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
@@ -533,13 +532,10 @@ export async function handleCronScheduled(
     //    auto-settle(정산 송금) · incentives · tier-eval · monthly-invoices · monthly-report.
     //    라이브 실측: 관계 0 · 지급 이력 0(한 번도 실행 결과가 없다). 중개는 셀러 대시보드 계정이 맡는다.
     //    설계 SSOT: docs/design/store-operator-model.md
-    //    ⚠️ 남은 2개는 에이전시와 무관해서 유지한다(셀러 등급 평가 · 판매사 도매 등급 평가).
+    //    ⚠️ 남은 1개는 에이전시와 무관해서 유지한다(판매사 도매 등급 평가).
+    // 🗑️ 2026-11-18 셀러 등급 평가 삭제(대표 "셀러 등급제는 아예 없애줘") — 매주 셀러 수수료율을 등급표 값(5%)으로
+    //    덮어써서 어드민이 바꾼 수수료가 되돌아갔다. 수수료는 입점 채널·어드민 설정만 정한다.
     ctx.waitUntil(slotCron('45 0 * * 1')('weekly-tier-batch', async () => {
-      const dayOfMonth = new Date().getUTCDate();
-      // 2026-04-27: 셀러 등급 자동 평가 (월 1주차)
-      if (dayOfMonth <= 7) {
-        await handleSellerTierEval(env).catch(e => notifyCronFailure(env, 'weekly-tier-batch/seller-tier-eval', e));
-      }
       // 🏭 BIZ-7 (2026-06-08): 판매사 도매 등급 자동 평가 (GMV 기반 승급 전용).
       //   매주 월요일 — platform_settings.wholesale_auto_grade_enabled='1' 일 때만 동작(off=no-op).
       await handleWholesaleGradeEval(env).catch(e => notifyCronFailure(env, 'weekly-tier-batch/wholesale-grade-eval', e));
