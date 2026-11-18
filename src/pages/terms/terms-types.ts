@@ -24,8 +24,7 @@ export interface TermsDoc {
   footer: string
 }
 
-export const TERMS_BIZ_FOOTER =
-  '사업자 정보: 상호 유어딜(리스터코퍼레이션) · 대표자 정지원 · 사업자등록번호 479-09-02930 · 통신판매업신고 제2025-서울강남-0540호 · 주소 부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84) · 연락처 jiwon@ur-team.com'
+// 🏢 사업자 정보 줄(`TERMS_BIZ_FOOTER`)은 2026-11-18 `./terms-biz-footer.ts` 로 옮겼다 — 이 파일은 import 0 을 지킨다(app-shared 봉투 · seller-approval-shared 시험).
 
 /** 약관 동의 기록용 현재 버전 (가입 시 서버로 전송) */
 export const TERMS_CURRENT_VERSION = '1.0'

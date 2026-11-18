@@ -37,6 +37,7 @@
 import { guestTabOf } from './guest-first-screen'
 import { landingPhotoKeyOf } from '../../shared/landing-photo' // 🧭 2026-11-10 안내 랜딩 셋
 import { mySubPageOf } from '../../shared/my-sub-pages'
+import { legalPathOf } from '../../shared/legal-first-paths' // ⚖️ 2026-11-18 환불·약관
 import { LOADER_EARLY_REVEAL_MS } from '../../shared/brand-loader-markup'
 import { shouldRenderMobileFirstScreen } from '../../shared/seo/crawler-ua'
 import { CRITICAL_CSS, CRITICAL_CSS_HOME, CRITICAL_CSS_SURFACES, CRITICAL_CSS_TOKENS } from '../generated/critical-css'
@@ -60,7 +61,7 @@ import { CRITICAL_CSS, CRITICAL_CSS_HOME, CRITICAL_CSS_SURFACES, CRITICAL_CSS_TO
  * 🖼️ 서버가 **첫 화면을 그리는** 표면인가 — 첫 화면 CSS(`criticalCssFor`)를 인라인할 자격. 폰(+크롤러)만, 단 PC 홈은 예외(2026-11-09 pc-home-first-screen).
  */
 export function firstScreenApplies(pathname: string, ua: string, authed = false): boolean {
-  if (!shouldRenderMobileFirstScreen(ua)) return (pathname === '/' || pathname === '/index.html') || (!authed && guestTabOf(pathname) !== null) || /^\/(?:pass|group-buy)\/\d+\/?$/.test(pathname) || /^\/(?:vouchers|stays)\/\d+\/?$/.test(pathname) || pathname === '/vouchers' || pathname === '/stays' || pathname === '/map' || /^\/blog(?:\/[^/]+)?\/?$/.test(pathname) || (/^\/u\/[^/]+\/?$/.test(pathname) && !/^\/u\/me\/?$/.test(pathname)) || pathname === '/search' || pathname === '/faq' || pathname === '/cart' || (authed && /^\/notifications\/?$/.test(pathname)) || landingPhotoKeyOf(pathname) !== null || /^\/region\/[^/]+(?:\/[^/]+)?\/?$/.test(pathname) /* 🖥️ 2026-11-13 지역 착지 PC(region-first-screen.ts — 네비 + 같은 본문) */ || pathname === '/urshorts' || pathname === '/urshorts/' /* 🖥️ 2026-11-13 유어쇼츠 PC(430 액자 — urshorts-first-screen.ts) */ // 🔎 2026-11-10 검색·❓ FAQ·🧺 장바구니·🔔 알림(세션 있을 때만)은 PC 도 액자 · 🧭 안내 랜딩 셋은 전체화면(폰·PC 같은 본문) // 🖥️ 2026-11-09 PC 홈 첫 화면(홈판 CSS 에 PC 클래스가 있다) · 🔐 로그인 화면은 PC 도 같은 한 열이라 PC 에도 그린다(guest 표면 CSS) · 🎟️ PC 상세(detail-pc-first-screen, 대표 승인)
+  if (!shouldRenderMobileFirstScreen(ua)) return (pathname === '/' || pathname === '/index.html') || (!authed && guestTabOf(pathname) !== null) || /^\/(?:pass|group-buy)\/\d+\/?$/.test(pathname) || /^\/(?:vouchers|stays)\/\d+\/?$/.test(pathname) || pathname === '/vouchers' || pathname === '/stays' || pathname === '/map' || /^\/blog(?:\/[^/]+)?\/?$/.test(pathname) || (/^\/u\/[^/]+\/?$/.test(pathname) && !/^\/u\/me\/?$/.test(pathname)) || pathname === '/search' || pathname === '/faq' || legalPathOf(pathname) !== null /* ⚖️ 2026-11-18 환불·약관(풀너비 — 네비 + 같은 본문) */ || pathname === '/cart' || (authed && /^\/notifications\/?$/.test(pathname)) || landingPhotoKeyOf(pathname) !== null || /^\/region\/[^/]+(?:\/[^/]+)?\/?$/.test(pathname) /* 🖥️ 2026-11-13 지역 착지 PC(region-first-screen.ts — 네비 + 같은 본문) */ || pathname === '/urshorts' || pathname === '/urshorts/' /* 🖥️ 2026-11-13 유어쇼츠 PC(430 액자 — urshorts-first-screen.ts) */ // 🔎 2026-11-10 검색·❓ FAQ·🧺 장바구니·🔔 알림(세션 있을 때만)은 PC 도 액자 · 🧭 안내 랜딩 셋은 전체화면(폰·PC 같은 본문) // 🖥️ 2026-11-09 PC 홈 첫 화면(홈판 CSS 에 PC 클래스가 있다) · 🔐 로그인 화면은 PC 도 같은 한 열이라 PC 에도 그린다(guest 표면 CSS) · 🎟️ PC 상세(detail-pc-first-screen, 대표 승인)
   return pathname === '/' || pathname === '/vouchers' || pathname === '/stays' // 🏨 2026-10-19 숙소 목록도 서버 첫 화면이 생겼다(stays-first-screen.ts)
     || (!authed && guestTabOf(pathname) !== null) // 🚪 2026-10-19 로그인 전 탭 셋 — 세션 쿠키 없을 때만 서버가 그린다(guest-first-screen.ts)
     || /^\/region\/[^/]+(?:\/[^/]+)?\/?$/.test(pathname) // 🗺️ 2026-11-08 지역 착지도 서버 첫 화면(region-first-screen.ts)
@@ -69,6 +70,7 @@ export function firstScreenApplies(pathname: string, ua: string, authed = false)
     || pathname === '/map' || pathname === '/map/' // 🗺️ 2026-11-09 지도 껍데기(map-first-screen.ts)
     || pathname === '/search' || pathname === '/search/' // 🔎 2026-11-10 검색 헤더·빈 검색 안내(search-first-screen.ts)
     || pathname === '/faq' || pathname === '/faq/' // ❓ 2026-11-10 자주 묻는 질문 전체(faq-first-screen.ts)
+    || legalPathOf(pathname) !== null // ⚖️ 2026-11-18 환불·약관 화면 전체(legal-first-screen.ts)
     || pathname === '/cart' || pathname === '/cart/' // 🧺 2026-11-10 장바구니 머리줄(cart-first-screen.ts)
     || landingPhotoKeyOf(pathname) !== null // 🧭 2026-11-10 안내 랜딩 셋 머리줄 + 사진 칸(landing-first-screen.ts)
     || (authed && guestTabOf(pathname) === 'pass') // 🎟️ 2026-11-11 로그인한 사람의 내 이용권 제목 줄 — 세션 쿠키가 있을 때만 · 폰만(buildAuthedPassFirstScreen)
@@ -130,6 +132,7 @@ export function criticalSurfaceOf(pathname: string): string | null {
   if (p === '/map') return 'map'
   if (p === '/search') return 'search'
   if (p === '/faq') return 'faq'
+  if (legalPathOf(p) !== null) return 'legal' // ⚖️ 2026-11-18 /refund · /terms
   if (p === '/notifications' || mySubPageOf(p) !== null) return 'notifications' // 👤 마이 하위 화면은 알림과 같은 머리줄 CSS 를 쓴다
   if (p === '/cart') return 'cart'
   if (landingPhotoKeyOf(p) !== null) return 'landing'

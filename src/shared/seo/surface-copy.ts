@@ -281,7 +281,7 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
       '마이 페이지에서 신청하시면 확인 후 등록하신 계좌로 입금해 드립니다.',
       '본 정책은 전자상거래 등에서의 소비자보호에 관한 법률을 준수합니다.',
     ],
-    source: ['src/pages/RefundPolicyPage.tsx'],
+    source: ['src/shared/refund-policy-content.ts'], // ⚖️ 2026-11-18 화면 문구는 이 트리에서 그려진다(RefundPolicyPage·서버 첫 화면 공용)
   },
 }
 

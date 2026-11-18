@@ -3,7 +3,7 @@
  * 「유어딜 이용약관」에 우선하여 판매자에게 적용. ⚠️ 문구 수정은 대표 확인 후에만.
  */
 import type { TermsDoc } from './terms-types'
-import { TERMS_BIZ_FOOTER } from './terms-types'
+import { TERMS_BIZ_FOOTER } from './terms-biz-footer'
 
 export const SELLER_TERMS: TermsDoc = {
   title: '유어딜 판매자 이용약관',

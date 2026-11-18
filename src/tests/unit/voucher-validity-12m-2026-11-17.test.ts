@@ -46,7 +46,7 @@ describe('이용권 유효기간 상한 12개월', () => {
     expect(ug).toContain('VOUCHER_VALIDITY_LABEL')
     expect(ug).not.toMatch(/\{expiry && \(\s*<p/)
     expect(readCode('src/pages/group-buy/DealPurchaseBox.tsx')).toMatch(/passBuy\.raffleValidity[\s\S]{0,80}VOUCHER_VALIDITY_LABEL/)
-    expect(readCode('src/pages/RefundPolicyPage.tsx')).toMatch(/이용권 유효기간[\s\S]{0,200}VOUCHER_VALIDITY_LABEL/)
+    expect(readCode('src/shared/refund-policy-content.ts')).toMatch(/이용권 유효기간[\s\S]{0,200}VOUCHER_VALIDITY_LABEL/) // ⚖️ 2026-11-18 환불 화면 문구는 이 트리에서(RefundPolicyPage 가 그린다)
   })
   it('④ 이용권 INSERT 레일이 늘면 이 시험부터 본다(개수 고정)', () => {
     const files = ['group-buy.routes', 'cart-checkout.routes', 'experience-campaign.routes']
