@@ -139,6 +139,7 @@ async function sendToSentry(
         'X-Sentry-Auth': `Sentry sentry_key=${url.username}, sentry_version=7`,
       },
       body: envelope,
+      signal: AbortSignal.timeout(5000), // ⏱️ 2026-11-17
     });
 
     // Error sent to Sentry
@@ -183,6 +184,7 @@ async function sendToDiscord(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ embeds: [embed] }),
+      signal: AbortSignal.timeout(5000), // ⏱️ 2026-11-17
     });
 
     // Error sent to Discord
@@ -227,12 +229,15 @@ export async function globalErrorHandler(
   const errorResponse = createErrorResponse(c, error, errorCode);
 
   // Sentry & Discord 전송 (비동기, 블로킹 안 함)
-  Promise.all([
+  // ⏱️ 2026-11-17: 응답 뒤에도 끝까지 보내도록 waitUntil 에 맡긴다 — 맡기지 않으면 응답이 나가는 순간 런타임이 이 전송을
+  //   취소할 수 있어, 장애가 한창일 때 알림이 빠졌다(가장 알림이 필요한 순간). 응답 시간은 그대로다.
+  const notify = Promise.all([
     sendToSentry(c, error as Error, errorResponse),
     sendToDiscord(c, error as Error, errorResponse),
   ]).catch((err) => {
     console.error('[Error Handler] Failed to send notifications:', err);
   });
+  try { c.executionCtx.waitUntil(notify) } catch { /* executionCtx 없는 환경(시험) — 위 promise 는 그대로 돈다 */ }
 
   // 사용자에게 에러 응답 반환
   return c.json(errorResponse, errorResponse.statusCode as any);

@@ -18,7 +18,7 @@ export async function fetchRegion(lng: number, lat: number, key: string): Promis
   if (!key || !Number.isFinite(lng) || !Number.isFinite(lat)) return null
   try {
     const url = `https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x=${lng}&y=${lat}`
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } })
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` }, signal: AbortSignal.timeout(5000) }) // ⏱️ 2026-11-17
     if (!res.ok) return null
     const data = await res.json() as {
       documents?: Array<{ region_type?: string; code?: string; region_1depth_name?: string; region_2depth_name?: string; region_3depth_name?: string }>

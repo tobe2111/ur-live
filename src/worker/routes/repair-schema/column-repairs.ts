@@ -1016,6 +1016,10 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     // 🏭 2026-06-05 [UNLOCK]: users.email partial UNIQUE — 두 카카오 계정이 같은 email 로 분리 생성되는 것 차단.
     //   best-effort: 기존 중복 email 이 있으면 생성 실패(아래 catch) → 중복 정리 후 재실행 시 적용.
     { desc: 'idx_users_email_unique', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL AND email != ''" },
+    // 🗂️ 2026-11-17 카카오 로그인마다 `WHERE LOWER(email) = LOWER(?)` 가 users·sellers 를 통째로 훑었다(KakaoAuthService
+    //   same-email 연결 · 운영자 초대 · 매장 소유 이전). 평문 email 색인은 LOWER() 비교를 못 받는다 — 식 색인을 둔다.
+    { desc: 'idx_users_email_ci', sql: "CREATE INDEX IF NOT EXISTS idx_users_email_ci ON users(LOWER(email))" },
+    { desc: 'idx_sellers_email_ci', sql: "CREATE INDEX IF NOT EXISTS idx_sellers_email_ci ON sellers(LOWER(email))" },
     // 🛡️ 2026-05-28: 영입 커미션 무기한(NULL) 일몰제 강제 — 레거시 영입 매장에 +12개월 캡 (LTV 보호).
     //   introduced_at 기준 (없으면 created_at). 이미 referral_bonus_until 설정된 매장은 불변.
     { desc: 'backfill: sellers.referral_bonus_until cap (introduced, NULL→+12mo)', sql: `UPDATE sellers SET referral_bonus_until = datetime(COALESCE(introduced_at, created_at, datetime('now')), '+12 months'), updated_at = datetime('now') WHERE referral_bonus_until IS NULL AND (introduced_by_agency_id IS NOT NULL OR introduced_by_influencer_id IS NOT NULL)` },

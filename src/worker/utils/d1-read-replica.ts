@@ -103,6 +103,7 @@ export function recentWriteMarker() {
  *   이 확인은 `sqlite_master` 와 `LIMIT 0` 읽기뿐이라 가까운 사본이 답한다. 하나라도 없으면 false →
  *   호출부가 종전대로 DDL 을 돈다(새 DB·옛 스키마는 지금과 똑같이 고쳐진다). 확인이 실패해도 false(안전한 쪽).
  * ──────────────────────────────────────────────────────────────────────────── */
+const _presentMemo = new WeakMap<object, Set<string>>() // DB 마다 따로(시험·다른 바인딩이 섞이지 않게)
 export async function schemaPresent(
   DB: D1Database,
   want: { tables?: string[]; indexes?: string[]; columns?: Array<{ table: string; cols: string[] }> },
@@ -110,6 +111,11 @@ export async function schemaPresent(
   // 확인은 **언제나 가까운 사본**에서 — 표·칸이 있는지는 사본 지연(1초 미만)에 영향받지 않는다
   //   (새로 생기는 표는 배포 전에 이미 생긴다). 원본(env.DB)을 받아도 여기서 세션을 연다 — 호출부가
   //   돈 경로여도 그 경로의 **데이터** 읽기는 원본 그대로이고, 이 함수는 스키마만 본다.
+  // 🗂️ 2026-11-17: '있다' 판정은 isolate 안에서 다시 묻지 않는다 — 표·칸은 생기기만 하고 사라지지 않는다(되돌리면 배포가
+  //   먼저다). 종전엔 호출마다 sqlite_master(색인 없음 · 표 390개+색인)를 훑어 하루 1,650번 · 수백만 줄을 읽었다.
+  //   '없다' 는 기억하지 않는다 — 호출부가 DDL 로 만든 뒤 다음 확인에서 '있다' 가 돼야 한다.
+  const memoKey = JSON.stringify(want)
+  if (_presentMemo.get(DB)?.has(memoKey)) return true
   const near = publicReadDb(DB)
   try {
     const names = [...(want.tables || []), ...(want.indexes || [])]
@@ -123,7 +129,9 @@ export async function schemaPresent(
       checks.push(near.prepare(`SELECT ${c.cols.join(', ')} FROM ${c.table} LIMIT 0`).all().then(() => true, () => false))
     }
     if (checks.length === 0) return false
-    return (await Promise.all(checks)).every(Boolean)
+    const ok = (await Promise.all(checks)).every(Boolean)
+    if (ok) { const m = _presentMemo.get(DB) ?? new Set<string>(); m.add(memoKey); _presentMemo.set(DB, m) }
+    return ok
   } catch {
     return false
   }

@@ -16,6 +16,9 @@ export const COMPANY_INDEX_DDL: readonly string[] = [
   'CREATE INDEX IF NOT EXISTS idx_company_leads_region ON ad_company_leads(region, id)',
   'CREATE INDEX IF NOT EXISTS idx_company_leads_cat ON ad_company_leads(category, id)',
   'CREATE INDEX IF NOT EXISTS idx_company_leads_active ON ad_company_leads(active, tier, id)',
+  // 🗂️ 2026-11-17 깨진 상호 수리(`enrich-name-heal.ts` repairBrokenNames)의 `instr(company_name, char(65533)) > 0` 은 식이라
+  //   어느 색인도 못 받아 **회차마다 표를 거꾸로 끝까지** 훑었다(라이브 하루 2,470만 줄 · 174회). WHERE 를 글자 그대로 둔 부분 색인.
+  "CREATE INDEX IF NOT EXISTS idx_company_broken_name ON ad_company_leads(id) WHERE merged_into IS NULL AND status = 'new' AND instr(company_name, char(65533)) > 0",
 
   /**
    * ① **"재분류할 게 있나"를 1행으로 답하기 위한 인덱스.**

@@ -126,6 +126,8 @@ export const PROSPECT_DDL: string[] = [
   'ALTER TABLE store_prospects ADD COLUMN website TEXT',
   'ALTER TABLE store_prospects ADD COLUMN contact_source TEXT',
   'CREATE INDEX IF NOT EXISTS idx_prospects_region ON store_prospects(region, id)',
+  // 🗂️ 2026-11-17 공개 상권 리포트의 지역 집계(`active = 1 … GROUP BY region`)가 행을 전부 읽었다(회당 ~80만). 덮는 색인.
+  'CREATE INDEX IF NOT EXISTS idx_prospects_active_region ON store_prospects(active, region)',
   'CREATE INDEX IF NOT EXISTS idx_prospects_active ON store_prospects(active, category, id)',
   'CREATE INDEX IF NOT EXISTS idx_prospects_newopen ON store_prospects(is_new_open, apv_perm_ymd)',
 ]
