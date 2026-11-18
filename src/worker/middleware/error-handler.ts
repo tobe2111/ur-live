@@ -193,6 +193,31 @@ async function sendToDiscord(
   }
 }
 
+/** 브라우저의 화면(문서) 요청인가 — API·에셋·비GET 은 아니다. */
+export function isPageRequest(method: string, path: string, accept: string | null | undefined): boolean {
+  if (method !== 'GET') return false;
+  if (path.startsWith('/api/') || path.startsWith('/auth/') || path.startsWith('/assets/')) return false;
+  if (/\.[a-z0-9]{1,5}$/i.test(path)) return false; // 파일(.js·.xml·.png …)
+  return (accept || '').includes('text/html');
+}
+
+const FALLBACK_HTML = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>유어딜</title><meta http-equiv="refresh" content="5"></head><body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#F8F7FC;color:#16181C;display:flex;align-items:center;justify-content:center;min-height:100dvh;text-align:center"><div style="padding:24px"><p style="font-size:17px;font-weight:700;margin:0 0 8px">잠시 연결이 불안정해요</p><p style="font-size:15px;color:#666C72;margin:0 0 20px">몇 초 뒤 자동으로 다시 열어요.</p><button onclick="location.reload()" style="border:0;border-radius:12px;padding:12px 20px;font-size:15px;font-weight:700;background:#1C69EF;color:#fff">다시 열기</button></div></body></html>`;
+
+/** 화면 요청이면 SPA 셸(없으면 안내 페이지)을 돌려준다. 화면 요청이 아니면 null. */
+export async function pageFallback(c: Context): Promise<Response | null> {
+  const url = new URL(c.req.url);
+  if (!isPageRequest(c.req.method, url.pathname, c.req.header('accept'))) return null;
+  const headers = { 'content-type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate' };
+  try {
+    const assets = (c.env as { ASSETS?: { fetch: (u: string) => Promise<Response> } } | undefined)?.ASSETS;
+    const res = assets ? await assets.fetch(new URL('/', url).toString()) : null;
+    if (res && res.ok && (res.headers.get('content-type') || '').includes('text/html')) {
+      return new Response(res.body, { status: 200, headers });
+    }
+  } catch { /* 셸도 못 받았다 — 아래 안내 페이지 */ }
+  return new Response(FALLBACK_HTML, { status: 503, headers: { ...headers, 'Retry-After': '5' } });
+}
+
 /**
  * Global Error Handler
  */
@@ -240,6 +265,15 @@ export async function globalErrorHandler(
   try { c.executionCtx.waitUntil(notify) } catch { /* executionCtx 없는 환경(시험) — 위 promise 는 그대로 돈다 */ }
 
   // 사용자에게 에러 응답 반환
+  // 🩹 2026-11-18 (Sentry JAVASCRIPT-REACT-38 — GET `/` 에서 `internal error; reference=…`):
+  //   그 문구는 Cloudflare 런타임 내부 일시 오류(에셋·캐시·서브요청)다. 문제는 그 다음이었다 —
+  //   **화면 요청에도 JSON 500 을 돌려줘서** 손님이 홈 대신 영어 오류 글자만 봤다.
+  //   화면 요청이면 SPA 셸을 다시 받아 그대로 준다(서버 시드만 빠지고 앱이 스스로 불러온다).
+  //   셸도 못 받으면 한국어 안내 + 자동 재시도 페이지. API·비GET 은 종전 그대로 JSON.
+  if (errorResponse.statusCode >= 500) {
+    const page = await pageFallback(c).catch(() => null);
+    if (page) return page;
+  }
   return c.json(errorResponse, errorResponse.statusCode as any);
 }
 
