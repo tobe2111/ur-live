@@ -19,9 +19,22 @@ export function isAutomatedBrowser(): boolean {
   try { return typeof navigator !== 'undefined' && navigator.webdriver === true } catch { return false }
 }
 
+/**
+ * 📉 2026-11-17 (결재 2026-11-17-traffic-surge-readiness 4번 — 대표 "모두 다 해줘"): **보낼지 말지를 브라우저가 한 번 정한다.**
+ *   종전엔 모든 방문이 신호 ~10개를 다 보내고 서버가 25% 만 남겼다 — 버릴 요청 75% 가 그대로 서버를 두드렸다.
+ *   이제 방문 단위로 25% 만 보내고(`s:1`), 서버는 표시된 것을 그대로 받는다. 남는 표본의 양·분포는 같다.
+ */
+export const CLIENT_VITALS_SAMPLE = 0.25
+let sampledVisit: boolean | null = null
+export function isSampledVisit(rand: () => number = Math.random): boolean {
+  if (sampledVisit === null) sampledVisit = rand() < CLIENT_VITALS_SAMPLE
+  return sampledVisit
+}
+
 function send(name: string, value: number, page: string, extra?: Record<string, unknown>) {
+  if (!isSampledVisit()) return
   try {
-    const body = JSON.stringify({ name, value, page, ...extra })
+    const body = JSON.stringify({ name, value, page, s: 1, ...extra })
     if (navigator.sendBeacon) {
       navigator.sendBeacon('/api/analytics/vitals', new Blob([body], { type: 'application/json' }))
     } else {

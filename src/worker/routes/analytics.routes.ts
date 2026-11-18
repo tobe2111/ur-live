@@ -63,10 +63,14 @@ async function incrementCounter(kv: KVNamespace, key: string, increment: number 
   } catch { /* KV 미설정 / 한도 초과 시 silent */ }
 }
 
+/** 📉 2026-11-17: 표본 칸(100)이 찬 뒤엔 20번에 1번만 바꿔 넣는다 — 종전엔 찬 뒤에도 신호마다 덮어써(KV 쓰기 ∝ 방문 수)
+ *   같은 키에 몰려 초당 1회 쓰기 한도로 유실됐다. 칸이 차기 전까지는 종전과 같다. 판정은 읽기 전에(읽기도 줄인다). */
+export const FULL_RESERVOIR_WRITE_RATE = 0.05
 async function appendSample(kv: KVNamespace, key: string, value: number | number[] | string, maxSamples: number = 100): Promise<void> {
   // 간단한 reservoir-ish: 기존 array (≤100) 에 push, 초과 시 무작위 교체
   try {
     const cur = await kv.get(key)
+    if (cur && cur.length > 2 && (JSON.parse(cur) as unknown[]).length >= maxSamples && Math.random() >= FULL_RESERVOIR_WRITE_RATE) return
     const arr: Array<number | number[] | string> = cur ? JSON.parse(cur) : []
     if (arr.length < maxSamples) arr.push(value)
     else {
@@ -90,8 +94,9 @@ export function isVitalsCountryAllowed(country: string | undefined | null): bool
 
 analyticsRoutes.post('/vitals', async (c) => {
   if (!isVitalsCountryAllowed(c.req.header('cf-ipcountry'))) return c.json({ ok: true, skipped: 'country' })
-  if (Math.random() > VITALS_SAMPLE_RATE) return c.json({ ok: true, sampled: false })
   const body = await c.req.json<VitalsBody>().catch(() => ({} as VitalsBody))
+  // 📉 2026-11-17: 브라우저가 이미 방문 단위로 골라 보낸 것(s:1)은 다시 버리지 않는다. 옛 클라이언트(표시 없음)만 서버가 25% 고른다.
+  if ((body as { s?: number }).s !== 1 && Math.random() > VITALS_SAMPLE_RATE) return c.json({ ok: true, sampled: false })
   if (!body.name || typeof body.value !== 'number' || !Number.isFinite(body.value)) {
     return c.json({ ok: false }, 400)
   }
@@ -122,7 +127,8 @@ analyticsRoutes.post('/vitals', async (c) => {
     const src = sanitizeClsSource(body.src)
     if (src) await appendSample(kv, `vitals:${day}:CLSS:${page}`, src)
   }
-  await incrementCounter(kv, `vitals_count:${day}:${body.name}`, 1)
+  // 📉 2026-11-17: 개수 세기는 20번에 1번만 쓰고 20을 더한다(기댓값 같음 · 아래 funnel 과 같은 보정) — 종전엔 신호마다 읽고-쓰기.
+  if (Math.random() < 0.05) await incrementCounter(kv, `vitals_count:${day}:${body.name}`, 20)
   return c.json({ ok: true })
 })
 

@@ -30,6 +30,8 @@ function emit(type: string, entries: Entry[]) {
 beforeEach(() => {
   vi.resetModules()
   vi.useFakeTimers()
+  // 📉 2026-11-17: 표본 결정이 브라우저로 옮겨왔다(방문의 25%) — 이 시험은 '보내는 방문' 의 CLS 판정을 본다.
+  vi.spyOn(Math, 'random').mockReturnValue(0)
   observers = []
   blobs.length = 0
   sent = []
@@ -50,7 +52,7 @@ beforeEach(() => {
   // 테스트 셋업이 window.location 을 평범한 객체로 바꿔 둬서 history 로는 경로가 안 바뀐다 — 직접 바꾼다.
   ;(window.location as { pathname: string }).pathname = '/my-vouchers'
 })
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); goTo('/') })
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); goTo('/') })
 
 const flushBeacons = async () => {
   await vi.advanceTimersByTimeAsync(1100)

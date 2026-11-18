@@ -10,6 +10,8 @@ import { readFileSync } from 'node:fs'
 const sent: Array<{ name: string; value: number; page: string }> = []
 beforeEach(() => {
   vi.resetModules(); sent.length = 0
+  // 📉 2026-11-17: 표본 결정이 브라우저로 옮겨왔다(방문의 25%) — 이 시험은 '보내는 방문' 을 본다.
+  vi.spyOn(Math, 'random').mockReturnValue(0)
   class FakePO { observe() {} disconnect() {} }
   vi.stubGlobal('PerformanceObserver', FakePO)
   Object.defineProperty(navigator, 'webdriver', { configurable: true, get: () => false })
@@ -19,7 +21,7 @@ beforeEach(() => {
   })
   ;(window.location as { pathname: string }).pathname = '/'
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('SRV — 서버 몫', () => {
   it('Server-Timing total 을 SRV 로 보낸다(같은 페이지 키)', async () => {
