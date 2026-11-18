@@ -1,5 +1,5 @@
 {
-  "_total": 169,
+  "_total": 168,
   "counts": {
     "src/features/admin/api/admin-influencer-outreach.routes.ts": 1,
     "src/features/admin/api/admin-kt-alpha/catalog.ts": 1,
@@ -96,7 +96,6 @@
     "src/worker/utils/point-buckets.ts": 1,
     "src/worker/utils/product-supply-meta.ts": 1,
     "src/worker/utils/seller-meta.ts": 1,
-    "src/worker/utils/seller-tier-limits.ts": 1,
     "src/worker/utils/state-machine.ts": 1,
     "src/worker/utils/store-brands.ts": 1,
     "src/worker/utils/terms-agreements.ts": 1,

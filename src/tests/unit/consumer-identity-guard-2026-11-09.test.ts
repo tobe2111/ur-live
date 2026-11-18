@@ -23,7 +23,6 @@ const ALLOWED = new Set([
   'src/features/kakao-social/api/kakao-social.routes.ts POST /message/broadcast',
   'src/features/kakao-social/api/kakao-social.routes.ts POST /calendar/add',
   'src/features/push/api/push.routes.ts POST /api/push/unsubscribe',
-  'src/features/seller-tiers/api/seller-tiers.routes.ts GET /my',
   'src/features/youtube-growth/api/youtube-growth.routes.ts POST /request',
   'src/features/youtube-growth/api/youtube-growth.routes.ts POST /confirm',
   'src/features/youtube-growth/api/youtube-growth.routes.ts GET /my',

@@ -5,7 +5,7 @@
  * (docs/design/seller-dashboard-v2.md — 매장업주·중개자 공용 콘솔)에서 nav 가 계속 바뀔 파일이라
  * 레이아웃 셸과 분리해 두는 것이 맞다. **여기는 데이터만** — 렌더링/필터링은 SellerLayout 이 한다.
  */
-import { LayoutDashboard, PlusCircle, ShoppingBag, Package, DollarSign, Megaphone, Bell, Building2, BarChart3, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Rocket, Undo2, Users } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, ShoppingBag, Package, DollarSign, Megaphone, Bell, Building2, BarChart3, Ticket, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Rocket, Undo2, Users } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SELLER_COUPONS_HIDDEN, SELLER_DORMANT_HIDDEN, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
 import { SELLER_TAB_GROUPS, tabGroupSiblings } from './seller-tab-groups'
 
@@ -151,13 +151,12 @@ function modesForSellerType(st: SellerType): SellerMode[] {
  * 🔎 **검색에만 나오는 페이지** (2026-09-03 대표 *"셀러대시보드도 어드민처럼 페이지 검색이 필요해"*).
  *
  * 셀러 라우트 64개 중 사이드바에 있는 건 절반뿐이고, 나머지에는 **실제로 쓰는 화면이 섞여 있다**
- * (내 정보·등급·예약·매장 원장·교환권 발송 이력…). 사이드바에 다 올리면 지금도 긴 메뉴가 두 배가 되고,
+ * (내 정보·예약·매장 원장·교환권 발송 이력…). 사이드바에 다 올리면 지금도 긴 메뉴가 두 배가 되고,
  * 안 올리면 존재조차 모른다 — 오늘 이용권 관리에서 그 대가를 치렀다.
  * ⇒ **사이드바는 그대로, 검색은 전부 닿게.** 로그인·콜백 같은 통과 화면은 넣지 않는다(갈 데가 아니다).
  */
 export const SELLER_SEARCH_ONLY: { path: string; labelKey: string; fallback: string; icon: any; group: string }[] = [
   { path: '/seller/profile', labelKey: 'seller.nav.profile', fallback: '내 정보', icon: Users, group: '설정' },
-  { path: '/seller/tier', labelKey: 'seller.nav.tier', fallback: '셀러 등급', icon: Star, group: '설정' },
   { path: '/seller/2fa', labelKey: 'seller.nav.twoFactor', fallback: '2단계 인증', icon: Bell, group: '설정' },
   { path: '/seller/bookings', labelKey: 'seller.nav.appointments', fallback: '예약 관리', icon: BarChart3, group: '주문·고객' },
   { path: '/seller/ledger', labelKey: 'seller.nav.ledger', fallback: '매장 원장', icon: Receipt, group: '수익' },

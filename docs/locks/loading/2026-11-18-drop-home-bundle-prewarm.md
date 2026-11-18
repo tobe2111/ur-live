@@ -8,4 +8,4 @@
 - **선례**: 2026-10-11 `/api/home/categories` 를 같은 이유(호출자 0)로 뺐다 — 같은 파일 바로 아래 주석.
 - **남긴 것**: 라우트·`publicCache(60)` 은 그대로(외부·옛 클라이언트 호출 대비). 예열만 멈춘다.
 - **판정(배포 뒤)**: 메인 D1 쿼리 통계에서 `home/bundle` 의 `latest`·`featured` 쿼리 호출 수가 0 근처로 떨어지는지. 홈 첫 화면 측정(`measure-live-vitals.mjs /`)은 이 주소를 안 쓰므로 변화 없어야 한다.
-- **가드**: `src/tests/unit/seller-tier-limits-2026-11-18.test.ts` 의 예열 항목(호출자 0 인 주소를 다시 넣으면 빨강).
+- **가드**: `src/tests/unit/seller-tier-teardown-2026-11-18.test.ts` 의 예열 항목(호출자 0 인 주소를 다시 넣으면 빨강).

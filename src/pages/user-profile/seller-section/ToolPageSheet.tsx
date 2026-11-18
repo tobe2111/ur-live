@@ -86,7 +86,7 @@ export function titleForPath(items: { path: string; label: string }[], path: str
  * ## 무엇을 끊나 (둘 다 필요하다)
  * - `LocationContext` → `null`: react-router 의 `useInRouterContext()` 가 이 값을 보고
  *   "이미 라우터 안" 을 판정한다. 끊어야 위 invariant 를 지난다.
- * - `RouteContext` → 빈 matches: 안 끊으면 안쪽 절대경로(`/seller/tier`)가 바깥이 매치한
+ * - `RouteContext` → 빈 matches: 안 끊으면 안쪽 절대경로(`/seller/profile`)가 바깥이 매치한
  *   `/user/profile` **아래로 중첩된 것**으로 계산돼 또 터진다.
  *
  * ⚠️ `UNSAFE_` 접두사는 react-router 가 **내부 구조가 바뀔 수 있다**고 경고하는 뜻이다(사설 API 는 아니다).

@@ -52,7 +52,6 @@ function LegacySellerRegisterRedirect() {
 const SellerWaitingPage = lazy(() => import('@/pages/SellerWaitingPage'))
 const SellerTikTokCallbackPage = lazy(() => import('@/pages/SellerTikTokCallbackPage'))
 const SellerBusinessInfoPage = lazy(() => import('@/pages/SellerBusinessInfoPage'))
-const SellerTierPage = lazy(() => import('@/pages/SellerTierPage'))
 const SellerOrdersPage = lazy(() => import('@/pages/SellerOrdersPage'))
 const SellerProductsPage = lazy(() => import('@/pages/SellerProductsPage'))
 const SellerInventoryPage = lazy(() => import('@/pages/SellerInventoryPage'))
@@ -141,11 +140,8 @@ export function SellerRoutes() {
       <Route path="/seller" element={<SellerHomeGone />} />
       <Route path="/seller/dashboard" element={<SellerHomeGone />} />
       <Route path="/seller/more" element={<SellerHomeGone />} />
-      <Route path="/seller/tier" element={
-        <ProtectedRoute requireSeller>
-          <SellerTierPage />
-        </ProtectedRoute>
-      } />
+      {/* 🗑️ 2026-11-18 셀러 등급 화면 삭제(대표 "셀러 등급제는 아예 없애줘") — 옛 링크는 셀러 홈 문으로 보낸다 */}
+      <Route path="/seller/tier" element={<SellerHomeGone />} />
       <Route path="/seller/business-info" element={
         <ProtectedRoute requireSeller>
           <SellerBusinessInfoPage />
