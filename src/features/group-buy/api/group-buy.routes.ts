@@ -1139,11 +1139,10 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const dealUsed = derived.dealUsed
 
   // 2. Toss confirm — gateway helper 사용. **실제 청구액**(딜 차감 후)으로 승인한다.
+  { const pk = await (await import('../../../worker/utils/payment-key-claim')).claimPaymentKey(DB, paymentKey, 'gb', orderId, { orderNumberMustBeOurs: orderId }); if (!pk.ok) return c.json({ success: false, error: pk.error, code: pk.code }, pk.status) } // 🔑 2026-11-18 결제 키 한 개 = 구매 한 곳(payment-key-claim)
   const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
   const tossResult = await confirmTossPayment({
-    env: c.env as { TOSS_SECRET_KEY?: string },
-    paymentKey,
-    orderId,
+    env: c.env as { TOSS_SECRET_KEY?: string }, paymentKey, orderId,
     amount: chargedAmount,
   })
   if (!tossResult.ok) {

@@ -16,7 +16,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { QueryBuilder } from '../repositories/query-builder';
 import { computeCouponDiscount } from '../../features/coupons/coupon-discount';
-import { couponAppliesToOrder } from '../../shared/coupon-scope';
+import { couponAppliesToOrder } from '../../shared/coupon-scope'; import { orderHasLiveStay, STAY_REFUND_ELSEWHERE } from '../utils/order-refund-guards';
 // 🎟️ [gb-price-wiring 2026-07-29] 공구가 결제 배선 + 구 tier cap. 배경/이중할인 주의는 헬퍼 헤더 참조.
 import { loadGbOrderPricing, computeGroupBuyCap } from '../utils/gb-order-pricing';
 // 📦 픽업 = 배송 없음. 주문생성·견적이 **같은 판정**을 쓴다(헬퍼 헤더에 근거).
@@ -806,6 +806,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       }, 400);
     }
 
+    if (await orderHasLiveStay(c.env.DB, order.id)) return c.json({ success: false, error: STAY_REFUND_ELSEWHERE, code: 'STAY_CANCEL' }, 409); // 🔐 2026-11-18 숙소는 취소 규정이 있는 숙소 취소로만
     // Toss 결제 취소 API 호출 (실제 환불)
     const payInfo = await orderRepo.getPaymentInfo(body.order_id);
     const paymentKey = payInfo?.toss_payment_key;

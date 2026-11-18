@@ -9,6 +9,7 @@
  *   - POST /store-stats/:productId              사장님 통계 (PIN/Magic Link)
  */
 
+import { ORDER_REFUNDED_WHEN_ALL_VOUCHERS_GONE_SQL } from '../../../worker/utils/order-refund-guards'
 import type { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { scanOrSellerAuth } from '../../seller/api/seller-scan-devices.routes'
@@ -503,7 +504,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
                 idempotencyKey: `voucher-${voucher.id}-refund`,
               })
               if (result.ok) {
-                await DB.prepare("UPDATE orders SET status = 'REFUNDED', payment_status = 'refunded' WHERE id = ?").bind(voucher.order_id).run().catch(() => null)
+                await DB.prepare(ORDER_REFUNDED_WHEN_ALL_VOUCHERS_GONE_SQL).bind(voucher.order_id, voucher.order_id).run().catch(() => null) // 🔐 2026-11-18 남은 이용권이 있으면 주문은 그대로(매장 정산 누락 방지)
               } else {
                 // 🚨 non-retryable(4xx) 실패는 cron 이 안 집음 → 어드민 벨/Discord 로 수동환불 알림.
                 const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
