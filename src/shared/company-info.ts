@@ -12,6 +12,7 @@
  * 워커 `home-footer-noscript.ts`(크롤러용 같은 글자). 셋이 이 파일 하나를 읽는다.
  *
  * ⚠️ **값은 지어내지 않는다.** 없는 항목(대표 전화번호·SNS 계정)은 줄째 뺐다.
+ * ✅ 2026-11-18 대표 *"2번은 부산금정으로 해줘"* — 약관 하단(`pages/terms/terms-biz-footer.ts` `TERMS_BIZ_FOOTER`)도 이제 `COMPANY` 를 읽는다(아래는 그 전 기록).
  * ⚠️ 2026-11-02 실측 — **통신판매업 신고번호가 레포 안에서 둘로 갈려 있다**:
  *    `2025-부산금정-0540`(종전 SiteFooter·noscript — 지금 홈에 보이던 값) vs
  *    `제2025-서울강남-0540호`(`pages/terms/terms-types.ts` TERMS_BIZ_FOOTER).

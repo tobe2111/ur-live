@@ -10,4 +10,5 @@ export default [
   { name: '정책첫화면 — 약관 첫 조항 칸에 클래스를 붙인다', file: B, find: "`<section class=\"${i > 0 ? C.sectionRest : ''}\">`", replace: '`<section class="${C.sectionRest}">`', test: T, why: '첫 조항 위에 구분선·여백이 생겼다가 마운트 때 사라진다(밀림).' },
   { name: '정책첫화면 — 환불 화면이 클래스를 손으로 적는다', file: 'src/pages/RefundPolicyPage.tsx', find: '<div className={REFUND_CLS.content}>', replace: '<div className="ur-content-medium px-5 pt-6">', test: T, why: '상수가 바뀌어도 화면이 안 따라와 서버와 갈린다.' },
   { name: '정책첫화면 — 약관 청크 preload 가 빠진다', file: 'scripts/generate-route-chunk-map.mjs', find: "  terms: ['src/pages/TermsOfServicePage.tsx'],", replace: '', test: T, why: '하드로드 때 약관 청크가 앱 부팅 뒤에야 출발한다.' },
+  { name: '정책첫화면 — 약관 하단이 신고번호를 손으로 적는다', file: 'src/pages/terms/terms-biz-footer.ts', find: '통신판매업신고 제${COMPANY.mailOrderNo}호', replace: '통신판매업신고 제2025-서울강남-0540호', test: T, why: '신고번호가 약관 하단과 홈 하단에서 다시 갈린다(2026-11-18 대표 결정 — 부산금정 하나).' },
 ]

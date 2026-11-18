@@ -100,6 +100,13 @@ describe('② 화면이 같은 상수를 쓴다(문구 두 벌 금지)', () => {
     expect(Array.from(h.querySelectorAll('h2')).map((x) => x.textContent)).toEqual(CONSUMER_TERMS.sections.map((s) => s.title))
     expect(h.textContent).toContain(CONSUMER_TERMS.footer)
   })
+  it('🏢 약관 하단 사업자 줄 = COMPANY(신고번호 부산금정 — 2026-11-18 대표 "2번은 부산금정으로") · 손으로 적은 값 0', () => {
+    expect(CONSUMER_TERMS.footer).toContain(`통신판매업신고 제${COMPANY.mailOrderNo}호`)
+    for (const v of [COMPANY.bizRegNo, COMPANY.address, COMPANY.email, COMPANY.ceo]) expect(CONSUMER_TERMS.footer).toContain(v)
+    const TT = stripComments(readFileSync('src/pages/terms/terms-biz-footer.ts', 'utf8'))
+    expect(TT).not.toContain('0540'); expect(TT).not.toContain('479-09-02930'); expect(TT).toContain('COMPANY.mailOrderNo')
+    expect(stripComments(readFileSync('src/pages/terms/terms-types.ts', 'utf8'))).not.toContain('사업자 정보')
+  })
 })
 
 describe('③ 첫 화면 노드 · 로더 · 이메일', () => {
