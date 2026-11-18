@@ -94,7 +94,8 @@ describe('R3 — 과세표준에서 수수료를 뺀다', () => {
 describe('R4 — 원천징수율 판정은 SSOT 하나', () => {
   it('사업자번호 있으면 3.3%', () => expect(resolveWithholdingPct(null, '123')).toBeCloseTo(3.3, 5))
   it('기타소득 8.8%', () => expect(resolveWithholdingPct('other_income', null)).toBeCloseTo(8.8, 5))
-  it('무신고 0', () => expect(resolveWithholdingPct(null, null)).toBe(0))
+  // 💸 2026-11-18 대표 승인 "원천징수 기록·기본값" — 종전 '무신고 0%' 를 SSOT 기본 3.3%(사업소득)로.
+  it('무신고는 사업소득 3.3%', () => expect(resolveWithholdingPct(null, null)).toBeCloseTo(3.3))
 
   // ⚠️ 2026-08-31: 지급 엔드포인트는 파일크기 래칫 때문에 `marketing.routes.ts` → `marketing/payouts.ts`
   //   로 **이동**했다(로직 불변). 이 목록을 안 따라가면 테스트가 **낡은 지도**가 되어, 코드가 없는

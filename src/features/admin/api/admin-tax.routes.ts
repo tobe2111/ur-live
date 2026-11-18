@@ -249,6 +249,13 @@ adminTaxRoutes.get('/admin/tax/monthly-accounting', requireAdmin(), async (c) =>
        WHERE payout_year = ? AND payout_month = ?
     `).bind(year, monthNum).first<{ n: number; gross: number; withholding: number; net: number }>()
       .catch(() => null)) ?? { n: 0, gross: 0, withholding: 0, net: 0 }
+    // 🧾 2026-11-18 인플루언서 현금 지급의 원천징수(별도 표 — `utils/influencer-withholding-log.ts`)를 같은 달 합계에 더한다.
+    const whtInf = (await DB.prepare(`
+      SELECT COUNT(*) AS n, COALESCE(SUM(gross_amount), 0) AS gross,
+             COALESCE(SUM(withholding_amount), 0) AS withholding, COALESCE(SUM(net_amount), 0) AS net
+        FROM influencer_withholding_log WHERE payout_year = ? AND payout_month = ?
+    `).bind(year, monthNum).first<{ n: number; gross: number; withholding: number; net: number }>().catch(() => null))
+    if (whtInf) { wht.n += Number(whtInf.n) || 0; wht.gross += Number(whtInf.gross) || 0; wht.withholding += Number(whtInf.withholding) || 0; wht.net += Number(whtInf.net) || 0 }
 
     // 부가세 분리(공급대가 → 공급가액/세액). 매출·수수료에만 적용(과세 표준 참고용).
     const supplyOf = (total: number) => Math.round(total / 1.1)
