@@ -38,6 +38,8 @@ export async function runReconciliation(env: Env): Promise<void> {
         AND created_at < datetime('now', '-24 hours')
         AND (toss_payment_key IS NULL OR toss_payment_key = '')
         AND (payment_key IS NULL OR payment_key = '')
+        -- 💸 2026-11-17: /confirm 이 "Toss 는 결제됨, DB 확정 실패" 를 남긴 주문은 결제 증거가 있는 것이다 — 자동 취소 금지(수동 검토).
+        AND NOT EXISTS (SELECT 1 FROM webhook_events we WHERE we.order_number = orders.order_number AND we.event_type = 'payment_update_retry')
       LIMIT 200
     `).all<{ id: number }>();
     const cancelIds = (toCancel.results || []).map(r => r.id);

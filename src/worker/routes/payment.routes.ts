@@ -316,10 +316,37 @@ paymentsRouter.post('/confirm', async (c) => {
     //   PENDING→DONE 전이를 원자적 UPDATE 로 claim — changes==0(이미 다른 요청이 처리)이면
     //   side-effect 재실행 없이 멱등 반환. webhook 경로(confirmPaymentAtomic)와 동일 원칙.
     //   (Toss confirm 은 이미 위에서 완료 — 멱등이라 이중과금 없음; 본 가드는 내부 정합용.)
+    // 💸 2026-11-17 [UNLOCK] (대표 승인 "잠금 풀고 고침"): ① 결제 키·결제 시각을 **같은 문장**에 싣는다 — 종전엔
+    //   DONE 만 먼저 쓰고 키는 뒤 updateStatus 가 썼는데, 그 뒤 쓰기가 실패하면 'DONE 인데 키 없음'으로 굳었다
+    //   (환불 불가·재고 미차감·복구 경로 0). ② 이 문장이 **던지면** 종전엔 `.catch(() => null)` 이 그것을 '이미 처리됨'
+    //   으로 읽어 success 만 돌려줬다 → 돈은 Toss 에 있는데 주문은 PENDING → 24시간 뒤 자동 취소. 이제 실패는 실패로 본다.
+    //   기록: docs/locks/toss/2026-11-17-confirm-claim-atomic.md
+    let claimErr: unknown = null
     const confirmClaim = await c.env.DB.prepare(
-      `UPDATE orders SET status = 'DONE', updated_at = datetime('now')
+      `UPDATE orders SET status = 'DONE', toss_payment_key = ?, toss_order_id = ?,
+              payment_method = COALESCE(?, payment_method), paid_at = COALESCE(?, paid_at), updated_at = datetime('now')
        WHERE order_number = ? AND status NOT IN ('DONE','PAID','CANCELLED','REFUNDED','FAILED')`
-    ).bind(orderNumber).run().catch(() => null);
+    ).bind(tossData.paymentKey ?? paymentKey, orderNumber, tossData.method ?? null, tossData.approvedAt ?? null, orderNumber)
+      .run().catch((e: unknown) => { claimErr = e; return null });
+    if (claimErr) {
+      // 결제는 Toss 에서 끝났다. 키만이라도 남기면 reconciliation 1b(키 있는 PENDING → Toss 조회 → 확정)가 구한다.
+      await c.env.DB.prepare(
+        `UPDATE orders SET toss_payment_key = ?, updated_at = datetime('now')
+         WHERE order_number = ? AND (toss_payment_key IS NULL OR toss_payment_key = '') AND status = 'PENDING'`
+      ).bind(tossData.paymentKey ?? paymentKey, orderNumber).run().catch(swallow('payment:claim-fail-key-save'))
+      await c.env.DB.prepare(`
+        INSERT INTO webhook_events (id, source, event_type, payload, status, order_number, created_at)
+        VALUES (?, 'internal', 'payment_update_retry', ?, 'FAILED', ?, datetime('now'))
+      `).bind(`retry_${orderNumber}_${Date.now()}`, JSON.stringify({ paymentKey, stage: 'claim', totalAmount }), orderNumber)
+        .run().catch(swallow('payment:claim-fail-retry-log'))
+      await sendAlert(c.env, {
+        severity: 'critical',
+        title: 'Order claim failed after Toss confirm',
+        message: `Order ${orderNumber} paid at Toss but DONE claim failed (DB error).`,
+        context: { orderNumber, error: String(claimErr).slice(0, 200) },
+      }).catch(swallow('payment:send-alert-claim'))
+      return c.json({ success: true, data: { orders, payment: tossData }, warning: 'PAYMENT_CONFIRMED_DB_DEFERRED' })
+    }
     if (!confirmClaim || (confirmClaim.meta?.changes ?? 0) === 0) {
       const updatedOrders = await orderRepo.findByOrderNumber(orderNumber);
       return c.json({ success: true, data: { orders: updatedOrders } });
@@ -364,14 +391,8 @@ paymentsRouter.post('/confirm', async (c) => {
         },
       }).catch(swallow('payment:send-alert-CRITICAL'));
 
-      // Do not call reduceStock — order rows weren't updated either. Return
-      // success to client so they see the payment-success page (the money is
-      // at Toss); reconciliation cron will catch up.
-      return c.json({
-        success: true,
-        data: { orders, payment: tossData },
-        warning: 'PAYMENT_CONFIRMED_DB_DEFERRED',
-      });
+      // 💸 2026-11-17: 위 CAS 가 이미 DONE·키·결제 시각을 같은 문장으로 남겼다 — 이 보조 쓰기가 실패해도 주문 행은 온전하다.
+      //   종전엔 여기서 return 해 재고 차감·교환권·커미션이 영영 안 돌았다(그 'retry' 행은 아무도 안 읽는다). 이제 이어 간다.
     }
 
     // Reduce stock
