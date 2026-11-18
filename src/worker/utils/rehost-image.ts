@@ -132,6 +132,25 @@ export async function validateImageLoads(url: string | null | undefined): Promis
   } catch { return false }
 }
 
+/**
+ * 🩺 2026-11-18 세 갈래 판정 — 모니터용. `validateImageLoads` 는 시간 초과·연결 실패도 `false`(깨짐)로 돌려줘서
+ *   "우리 서버가 못 닿는다" 와 "사진이 진짜 깨졌다" 가 섞였다(라이브: 하루 표본 30장 전부 시간 초과 → 181초 · 오탐).
+ *   `unreachable` = 응답이 없었다(시간 초과·네트워크) · `broken` = 응답은 왔는데 사진이 아니다.
+ */
+export async function imageLoadStatus(url: string, timeoutMs = 4000): Promise<'ok' | 'broken' | 'unreachable'> {
+  if (!/^https?:\/\//i.test(url) || url.includes('/api/media/')) return 'ok'
+  let res: Response
+  try {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+    try { res = await fetch(url, { signal: ctrl.signal }) } finally { clearTimeout(timer) }
+  } catch { return 'unreachable' }
+  if (!res.ok) return res.status >= 500 || res.status === 429 ? 'unreachable' : 'broken'
+  if (!isRasterImageType((res.headers.get('content-type') || '').toLowerCase())) return 'broken'
+  const len = Number(res.headers.get('content-length') || 0)
+  return len && len < 500 ? 'broken' : 'ok'
+}
+
 /** 우리 도메인/R2 가 아닌 외부 http(s) URL 인지 — 재호스팅 후보 판정. */
 export function isExternalImageUrl(u: string | null | undefined): boolean {
   if (!u || typeof u !== 'string') return false

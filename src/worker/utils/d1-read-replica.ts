@@ -115,7 +115,10 @@ export async function schemaPresent(
   //   먼저다). 종전엔 호출마다 sqlite_master(색인 없음 · 표 390개+색인)를 훑어 하루 1,650번 · 수백만 줄을 읽었다.
   //   '없다' 는 기억하지 않는다 — 호출부가 DDL 로 만든 뒤 다음 확인에서 '있다' 가 돼야 한다.
   const memoKey = JSON.stringify(want)
-  if (_presentMemo.get(DB)?.has(memoKey)) return true
+  // 🩸 2026-11-18 메모 키는 `dbKey(DB)` 다 — 세션(사본) 객체로 부르는 곳(유어샵·블로그·쿠폰·피드 등)은 요청마다 새 객체라
+  //   `DB` 를 키로 쓰면 **한 번도 안 맞았다**(라이브: 메모 뒤에도 하루 1,961회 × 1,116줄). 위 dbKey 주석이 경고한 그 모양.
+  const memoOwner = dbKey(DB)
+  if (_presentMemo.get(memoOwner)?.has(memoKey)) return true
   const near = publicReadDb(DB)
   try {
     const names = [...(want.tables || []), ...(want.indexes || [])]
@@ -130,7 +133,7 @@ export async function schemaPresent(
     }
     if (checks.length === 0) return false
     const ok = (await Promise.all(checks)).every(Boolean)
-    if (ok) { const m = _presentMemo.get(DB) ?? new Set<string>(); m.add(memoKey); _presentMemo.set(DB, m) }
+    if (ok) { const m = _presentMemo.get(memoOwner) ?? new Set<string>(); m.add(memoKey); _presentMemo.set(memoOwner, m) }
     return ok
   } catch {
     return false

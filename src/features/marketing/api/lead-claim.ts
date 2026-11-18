@@ -112,7 +112,9 @@ export async function getFunnelTailStats(DB: D1Database): Promise<{ joined: numb
   await ensureClaimSchema(DB)
   // ① 연결된 유저 id — 유어애즈 DB
   const linked = await DB.prepare(
-    'SELECT linked_user_id AS uid FROM ad_influencer_leads WHERE account_id = ? AND linked_user_id IS NOT NULL',
+    // 🩸 2026-11-18 라이브: 플래너가 이 부분 색인 대신 (account_id, LOWER(instagram)) 색인을 골라 **연결 0건인데** 58만 줄을 훑었다
+    //   (하루 14회 × 58.8만 줄). 색인을 못 박는다 — 같은 함수 첫 줄(ensureClaimSchema)이 이 색인을 만든다.
+    'SELECT linked_user_id AS uid FROM ad_influencer_leads INDEXED BY idx_ad_leads_linked_user WHERE account_id = ? AND linked_user_id IS NOT NULL',
   ).bind(POOL).all<{ uid: number | string | null }>().catch(() => null)
   const ids = (linked?.results || []).map((r) => String(r.uid)).filter((v) => v && v !== 'null')
   if (!ids.length) return { joined: 0, first_sale: 0 }

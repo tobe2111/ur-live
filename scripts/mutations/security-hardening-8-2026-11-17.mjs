@@ -112,7 +112,7 @@ export default [
   {
     name: '[sec8] Resend 웹훅이 다시 서명 없이 통과한다',
     file: 'src/features/notifications/api/resend-webhook.routes.ts',
-    find: "    return c.json({ success: false, error: 'webhook_not_configured' }, 503)\n",
+    find: "    return c.json({ success: false, error: 'webhook_not_configured', ignored: true }, 202)\n",
     replace: '',
     test: TEST,
     why: '누구든 아무 주소를 반송 목록에 넣어 그 주소의 메일을 끊는다.',

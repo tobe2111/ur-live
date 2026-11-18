@@ -93,7 +93,9 @@ resendWebhookRoutes.post('/', async (c) => {
   } else {
     // 🔐 2026-11-17: 비밀값이 없으면 **받지 않는다**. 종전엔 경고만 찍고 통과시켜, 누구든 아무 주소를
     //   '반송됨' 으로 적어 넣을 수 있었다 — 그러면 그 주소로 가는 메일(비밀번호 재설정 포함)이 조용히 안 나간다.
-    return c.json({ success: false, error: 'webhook_not_configured' }, 503)
+    // 🔕 2026-11-18 503 → 202(받았지만 무시). 처리는 여전히 **안 한다**(위 보안 수리 그대로). 503 은 발신 쪽이 계속 재시도하게 하고
+    //   우리 5xx 경보를 울렸다(라이브: 01:58 5xx_path + 같은 창 5xx_spike). 비밀값이 없다는 건 아직 안 켠 것이지 장애가 아니다.
+    return c.json({ success: false, error: 'webhook_not_configured', ignored: true }, 202)
   }
 
   let body: ResendWebhookBody

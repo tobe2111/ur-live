@@ -93,6 +93,8 @@ export const BEAT_RENAMED_TO: Readonly<Record<string, string>> = {
   //   beat-retire-ok group-buy-deadline-push
   // 🪦 2026-10-20: `buyer-autofetch` 도 **후임이 없다** — 해외 바이어 풀이 대표 "지워줘"로 통째 삭제됐다.
   //   beat-retire-ok buyer-autofetch
+  // 🪦 2026-11-18: `wholesale-restock-notify` 도 **후임이 없다** — 도매몰 철거(10-11)로 알릴 상품이 없다.
+  //   beat-retire-ok wholesale-restock-notify
   //   ⚠️ 그 하트비트 행은 삭제 후 최대 하루 빨갛다 — 5분 임계 × 8배(40분)와 하루 하한을 함께
   //   넘겨야 `retired` 로 분류되기 때문이다(위 규칙 ②). 주간 임계였던 `d1-backup` 의 58일과
   //   달리 하루면 자동으로 걷힌다.
