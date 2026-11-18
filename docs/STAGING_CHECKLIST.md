@@ -923,3 +923,8 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 | S-VMAIL-1 | 해외 간편결제(페이팔) 테스트 결제 1건 직후 | 손님 이메일로 메일 1통(같은 주문 두 번 안 감) |
 | S-VMAIL-2 | 결제 화면 언어 en·ja·zh 각 1건 | 제목·본문이 그 언어, 매장 이름·주소는 한국어 원문 |
 | S-VMAIL-3 | Gmail(폰)·Outlook 에서 열기 | 표·버튼 모양 유지, "Open voucher" 가 `/v/:code` 를 로그인 없이 연다 |
+
+## 💸 **S-CLAIMATOMIC** — /confirm 선점 원자화 (2026-11-17 · `docs/locks/toss/2026-11-17-confirm-claim-atomic.md`)
+- [ ] 카드 결제 1건(대표 통제 매장) → 주문 `DONE` · `toss_payment_key`·`paid_at` 채워짐 · 재고 1 차감 · 이용권 발급 · 커미션 1회(종전과 같은 결과)
+- [ ] 같은 결제 `/confirm` 재호출(새로고침) → 부수효과 재실행 0(멱등)
+- [ ] 결제 후 환불 → 결제 키로 정상 취소된다

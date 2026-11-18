@@ -11,6 +11,7 @@
  */
 import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
+import { logError } from '@/worker/utils/logger'
 import { requireAdmin, requireAdminRole } from '../../../worker/middleware/auth'
 // 🔐 2026-07-11 (사전점검 보안감사 R3 ③): 돈 액션 require2FA — 옵트인(2FA 미등록 관리자는 no-op 통과,
 //   등록 시 X-2FA-Code 헤더 필수 — disputes.routes.ts 와 동일 패턴). 클라 인터셉터(api.ts:425)가
@@ -181,7 +182,7 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance
     const otherPaid = await DB.prepare(
       `SELECT COALESCE(SUM(amount), 0) AS total FROM payouts
         WHERE (payee_type || ':' || payee_id) IN (${keys.map(() => '?').join(', ')}) AND status IN ('approved','sent') AND id != ?`
-    ).bind(...keys, id).first<{ total: number }>().catch(() => ({ total: 0 }))
+    ).bind(...keys, id).first<{ total: number }>() // 💸 2026-11-17: 실패를 0 으로 치지 않는다 — 아래 catch 가 승인을 멈춘다
     const available = receivable - Number(otherPaid?.total ?? 0)
     if (Number(row.amount) > available + 1) {
       return c.json({
@@ -191,7 +192,12 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance
         data: { requested: Number(row.amount), available: Math.max(0, available) },
       }, 409)
     }
-  } catch { /* getLedgerReceivable 실패 시 가드 skip (기존 동작 보존) */ }
+  } catch (e) {
+    // 💸 2026-11-17 (대표 승인 "고침"): 잔액을 못 쟀으면 **승인하지 않는다**. 종전엔 가드를 건너뛰어(fail-open)
+    //   초과 지급 건이 그대로 승인됐다. 잠시 뒤 다시 누르면 된다.
+    logError('[admin-payouts] receivable guard failed — approve blocked', { id, error: String(e).slice(0, 200) })
+    return c.json({ success: false, error: '정산 가능 잔액을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.', code: 'RECEIVABLE_CHECK_FAILED' }, 503)
+  }
 
   // 💸 2026-07-08 (머니 감사 ③): CAS 선점 — 동시 승인 이중 실행 방지(머니 룰 #1). status='pending' 조건.
   const approveRes = await DB.prepare(

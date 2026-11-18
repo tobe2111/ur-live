@@ -180,7 +180,9 @@ export async function runStoreCommand(
       return reply(`[${seat.storeName}] 사용 대기 이용권\n${n}장`)
     }
     case 'payout': {
-      const amt = await getPayablePending(ctx.DB, sellerLedgerAccount(seat.sellerId))
+      // 💸 2026-11-17: 조회 실패를 0원으로 보여 주지 않는다(헬퍼가 이제 던진다).
+      const amt = await getPayablePending(ctx.DB, sellerLedgerAccount(seat.sellerId)).catch(() => null)
+      if (amt === null) return reply(`[${seat.storeName}] 정산 금액을 지금 확인하지 못했어요. 잠시 후 다시 보내 주세요.`)
       return reply(`[${seat.storeName}] 정산 예정 금액\n${won(Math.max(0, amt))}\n\n자세한 내역은 셀러 대시보드 [정산]에서 볼 수 있어요.`)
     }
     case 'list': {
