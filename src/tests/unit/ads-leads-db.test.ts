@@ -167,7 +167,9 @@ describe('R2 · 이사 대상은 남는 테이블과 같은 쿼리에 등장하�
         // FROM/JOIN 만 보면 `INSERT INTO 리드 SELECT ... FROM 남는것` 을 놓친다.
         const tabs = new Set([...sql.matchAll(/\b(?:FROM|JOIN|INTO|UPDATE)\s+"?([a-z_][a-z0-9_]*)"?/gi)].map((x) => x[1]))
         const leads = [...tabs].filter((t) => (ADS_LEADS_TABLES as readonly string[]).includes(t))
-        const stay = [...tabs].filter((t) => !(ADS_LEADS_TABLES as readonly string[]).includes(t) && !STAY_OK.has(t.toLowerCase()))
+        // 같은 문장 안의 CTE(`WITH x AS (` · `AS MATERIALIZED (`) 는 테이블이 아니라 그 문장의 별칭이다(2026-11-18 증분 집계 대조).
+        const ctes = new Set([...sql.matchAll(/(?:\bWITH\s+(?:RECURSIVE\s+)?|,\s*)(\w+)\s+AS\s*(?:NOT\s+)?(?:MATERIALIZED\s*)?\(/gi)].map((x) => x[1].toLowerCase()))
+        const stay = [...tabs].filter((t) => !(ADS_LEADS_TABLES as readonly string[]).includes(t) && !STAY_OK.has(t.toLowerCase()) && !ctes.has(t.toLowerCase()))
         if (leads.length && stay.length) mixed.push(`${f}: ${leads} × ${stay}`)
       }
     }
