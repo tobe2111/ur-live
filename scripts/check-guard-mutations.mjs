@@ -2635,17 +2635,15 @@ const MUTATIONS = [
       '그 사용자만 빈 화면을 본다.',
   },
   {
-    name: '우클릭을 페이지 전체에서 막는다(주소 복사·새 탭이 죽는다)',
+    name: '드래그 차단이 사진 판정을 안 거친다(글자 드래그까지 죽는다)',
     file: 'src/lib/image-protect.ts',
-    // ⚠️ 앵커는 **정확히 1회**여야 한다 — 같은 줄이 dragstart 핸들러에도 있어 짧게 잡으면
-    //    엉뚱한 쪽이 바뀌고 의도한 결함이 안 생긴다(2026-08-22 에 실제로 그랬다).
-    find: `      if (isEditable(e.target as Element)) return
-      if (!imageAtEvent(e.target)) return`,
-    replace: '      /* 전체 차단 */',
+    // 🔁 2026-11-18 재조준: 종전 항목은 "우클릭을 페이지 전체에서 막는다" 였다 — 대표가 그 규칙을 바꿨다
+    //    (*"오른쪽 마우스 금지하게끔"*). 우클릭 쪽 불변식(입력 칸·대시보드 예외)은 mutations/copy-deterrent-2026-11-18.mjs 가 지킨다.
+    //    여기 남는 것은 드래그 — 사진에만 건다. 이 줄은 이제 파일에 한 번뿐이다.
+    find: `      if (!imageAtEvent(e.target)) return\n`,
+    replace: '',
     test: 'src/tests/unit/content-protection.test.ts',
-    why:
-      '"우클릭 방지"를 요청받으면 document 전체 차단이 가장 먼저 떠오른다. 그러면 훔치는 사람은 ' +
-      '개발자도구로 그대로 받아 가고, 매장 주소를 복사하려던 손님만 막힌다.',
+    why: '글자를 끌어 선택·이동하는 정상 사용까지 막힌다.',
   },
   {
     name: 'iOS 길게 눌러 저장 차단(CSS)이 사라진다',
