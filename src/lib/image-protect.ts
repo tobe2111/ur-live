@@ -20,7 +20,10 @@
  *      사라지면 주소·쿠폰코드 입력이 지옥이 된다.
  *   ③ **대시보드는 제외**(어드민/셀러/에이전시/도매) — 운영자는 상품 사진을 실제로
  *      저장·교체해야 한다. 소비자 표면에서만 건다.
- *   ④ 텍스트 선택은 막지 않는다 — 매장 주소·전화번호를 복사하는 것이 정상 사용이다.
+ *   ④ 🔁 2026-11-18 대표 *"3번만 해줘. 복사 버튼 두면 되겠네"* — 글자 선택·복사도 소비자 화면에서 막는다.
+ *      종전("텍스트 선택은 막지 않는다 — 주소·전화번호 복사가 정상 사용")의 걱정은 **복사 버튼**으로 푼다:
+ *      복사가 필요한 값(매장 주소·전화번호·이용권 번호) 옆에 `CopyTextButton` 을 두거나, 그 요소에
+ *      `data-allow-copy` 를 붙이면 선택이 다시 열린다. 막기만 하고 버튼을 안 두면 사는 사람만 불편해진다.
  */
 
 /** 대시보드 = 제외. 운영자는 사진을 저장해야 한다. */
@@ -77,6 +80,30 @@ export function shouldBlockContextMenu(pathname: string, target: Element | null)
   return true
 }
 
+/** 이 요소(또는 가까운 조상)가 복사를 **허용**하는 자리인가 — 입력 칸이거나 `data-allow-copy` 가 붙었다. */
+function allowsCopy(target: Element | null): boolean {
+  let el = target
+  for (let i = 0; el && i < 6; i++) {
+    if (isEditable(el)) return true
+    if (typeof el.hasAttribute === 'function' && el.hasAttribute('data-allow-copy')) return true
+    el = el.parentElement
+  }
+  return false
+}
+
+/** 이 자리에서 글자 선택·복사를 막는가 — 소비자 화면이고, 입력 칸·`data-allow-copy` 가 아니면 막는다(순수 판정). */
+export function shouldBlockSelect(pathname: string, target: Element | null): boolean {
+  if (isExemptPath(pathname)) return false
+  return !allowsCopy(target)
+}
+
+/** `<html data-nocopy>` — CSS 짝(index.css)이 이 표식으로 글자 선택을 끈다. 대시보드에서는 뗀다. */
+function syncNoCopyFlag(): void {
+  try {
+    document.documentElement.toggleAttribute('data-nocopy', !isExemptPath(location.pathname))
+  } catch { /* 문서가 없는 환경 */ }
+}
+
 /**
  * 소스 보기·페이지 저장·개발자도구를 여는 단축키인가(순수 판정).
  *   F12 · Ctrl/⌘+U(소스) · Ctrl/⌘+S(저장) · Ctrl+Shift+I/J/C · ⌘+⌥+I/J/C/U
@@ -108,6 +135,23 @@ export function installImageProtection(): void {
     },
     { capture: true },
   )
+
+  // 글자 선택·복사 — 소비자 화면에서만, 입력 칸·`data-allow-copy` 는 예외. 텍스트 노드에서 시작하면 부모 요소로 본다.
+  const elOf = (t: EventTarget | null): Element | null => {
+    const n = t as Node | null
+    return n && n.nodeType === 3 ? n.parentElement : (n as Element | null)
+  }
+  for (const type of ['selectstart', 'copy', 'cut'] as const) {
+    document.addEventListener(type, (e) => {
+      if (!shouldBlockSelect(location.pathname, elOf(e.target))) return
+      e.preventDefault()
+    }, { capture: true })
+  }
+  // CSS 짝의 표식 — 앱 안 이동(주소만 바뀜)에도 맞게, 손이 닿는 순간마다 다시 맞춘다(속성 하나라 비용 0).
+  syncNoCopyFlag()
+  for (const type of ['pointerdown', 'touchstart'] as const) {
+    document.addEventListener(type, syncNoCopyFlag, { capture: true, passive: true })
+  }
 
   // 소스 보기·저장·개발자도구 단축키(소비자 화면에서만 — 운영자는 대시보드에서 개발자도구를 쓴다).
   document.addEventListener(

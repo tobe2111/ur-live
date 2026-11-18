@@ -1863,7 +1863,7 @@ html.dark .gbd, [data-theme="dark"] .gbd {
    iOS Safari 는 사진을 길게 눌러도 `contextmenu` 를 **안 쏜다**. 그래서 JS 로만 막으면
    (`src/lib/image-protect.ts`) 모바일에서는 아무것도 안 막힌 것이 된다 — 우리 트래픽의
    대부분이 모바일이므로 이 CSS 가 없으면 그 기능은 사실상 없는 것이다.
-   ⚠️ `user-select` 는 건드리지 않는다 — 매장 주소·전화번호 복사는 정상 사용이다.
+   🔁 2026-11-18: 글자 선택은 이제 아래 `html[data-nocopy]` 블록이 따로 끈다(복사 버튼으로 보완).
    ⚠️ 대시보드(`*-light-theme` 래퍼)는 되돌린다 — 운영자는 상품 사진을 저장·교체해야 한다. */
 img,
 picture,
@@ -1880,6 +1880,25 @@ canvas {
 .agency-light-theme canvas {
   -webkit-touch-callout: default;
   -webkit-user-drag: auto;
+}
+
+/* 📋 글자 선택·복사 억제 (2026-11-18 대표 지시 — "3번만 해줘. 복사 버튼 두면 되겠네")
+   `src/lib/image-protect.ts` 가 소비자 화면에서만 `<html data-nocopy>` 를 붙인다(대시보드에서는 뗀다).
+   JS 의 `selectstart` 차단만으로는 모바일 길게 누르기 선택이 남는다 — 이 CSS 가 짝이다.
+   ⚠️ 입력 칸과 `data-allow-copy` 는 반드시 되돌린다. 안 그러면 주소·쿠폰코드 입력에서 커서·붙여넣기가 죽는다.
+   ⚠️ 복사가 필요한 값(매장 주소·전화번호)에는 `CopyTextButton` 을 둔다 — 막기만 하면 사는 사람만 불편해진다. */
+html[data-nocopy] body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+html[data-nocopy] input,
+html[data-nocopy] textarea,
+html[data-nocopy] select,
+html[data-nocopy] [contenteditable],
+html[data-nocopy] [data-allow-copy],
+html[data-nocopy] [data-allow-copy] * {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* 🛍️ 2026-09-02 (대표 확정 — 유어샵 안P1): PC(lg+) 2단 — 좌 300px 프로필 고정(sticky) + 우 3열 진열대.

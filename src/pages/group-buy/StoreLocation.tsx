@@ -24,6 +24,7 @@ import BrandBranchesLink from './BrandBranchesLink'
 import NeighborhoodLink from './NeighborhoodLink'
 import { useTranslation } from '@/lib/i18n-lite'
 import { isNaverMapAvailable } from '@/lib/naver-maps'
+import CopyTextButton from '@/components/ui/copy-text-button'
 
 /**
  * 🗺️ 2026-11-02 대표 확정("외국어일 때만 네이버맵"): 카카오맵은 지명이 한국어뿐이라 외국어 손님에겐
@@ -108,6 +109,8 @@ export default function StoreLocation({
         <div style={{ flex: 1, minWidth: 0 }}>
           {address && <div style={{ fontSize: 13, color: 'var(--gbd-sub)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{address}</div>}
         </div>
+        {/* 📋 2026-11-18 글자 선택을 막았으므로(image-protect) 주소는 버튼으로 복사한다. */}
+        {address && <CopyTextButton text={address} what={t('pass.location.addressWord', { defaultValue: '주소' })} className="-mx-2" />}
         {phone && (
           <a href={`tel:${phone}`} aria-label={t('pass.location.callAria', { defaultValue: '매장에 전화 ({{phone}})', phone })} style={btn}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.68 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.32 1.85.55 2.81.68A2 2 0 0 1 22 16.92z" /></svg>
