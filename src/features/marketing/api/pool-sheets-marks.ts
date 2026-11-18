@@ -41,10 +41,29 @@ export async function ensureMarkSchema(DB: D1Database): Promise<number> {
 
 /** 표시 저장 SQL — 처음 표시된 행만(이미 날짜가 있으면 그대로). 새 리드면 상태를 '연락함'으로 올린다. */
 export function markSql(table: string, matchCol: 'id' | 'email'): string {
+  if (table === 'ad_influencer_leads') return influencerMarkSql(matchCol)
   const contacted = table === 'ad_company_leads' ? ", contacted_at = COALESCE(contacted_at, datetime('now'))" : ''
   const match = matchCol === 'id' ? 'id IN (SELECT value FROM json_each(?))' : "email IN (SELECT value FROM json_each(?)) AND email IS NOT NULL AND email != ''"
   return `UPDATE ${table} SET email_sent_at = datetime('now'), status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END${contacted}
     WHERE ${match} AND email_sent_at IS NULL`
+}
+
+/**
+ * 👤 **인플루언서는 새 칸을 만들지 않는다** (2026-11-18 대표 *"인플루언서 시트에도 이메일 보냄 표시 넣어줘"*).
+ * 인플루언서의 "보냈다" 기록은 이미 `contacted_at` + `contact_channel='email'` 이다 — 어드민 일괄 '보냄' 버튼
+ * (`/influencer-pool/mark-contacted`)과 하루 20통 발송 기록이 쓰는 그 칸이다. 칸을 따로 만들면 "보냈다" 가 두 곳에
+ * 갈라져 다음 내보내기·쿨다운이 서로 다른 답을 낸다. 그래서 시트 표시도 같은 칸에 쓴다.
+ * - 처음 보낸 날은 보존한다(`COALESCE`). 채널은 'email' 로 — 시트의 '이메일 보냄' 이 그 칸을 보고 날짜를 그린다.
+ * - 이미 이메일로 기록된 행은 건드리지 않는다(멱등 · changes 0).
+ * - 이메일 매칭은 `(account_id, LOWER(email))` 인덱스를 탄다 — 그냥 `email IN` 이면 풀 58만 행 전수다.
+ */
+export function influencerMarkSql(matchCol: 'id' | 'email'): string {
+  const match = matchCol === 'id'
+    ? 'id IN (SELECT value FROM json_each(?))'
+    : "LOWER(email) IN (SELECT LOWER(value) FROM json_each(?))"
+  return `UPDATE ad_influencer_leads SET contacted_at = COALESCE(contacted_at, datetime('now')), contact_channel = 'email',
+      status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END
+    WHERE account_id = 0 AND ${match} AND NOT (contact_channel = 'email' AND contacted_at IS NOT NULL)`
 }
 
 /** 시트 두 열(ID · 표시)을 줄 맞춰 받아 → 표시가 있는 줄의 ID 목록. 숫자가 아닌 ID(헤더 등)는 버린다. */
