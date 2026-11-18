@@ -435,5 +435,20 @@
     "track": "merchant",
     "skipped": "error",
     "date_kst": "2026-11-17"
+  },
+  {
+    "id": "18110026292214999",
+    "platform": "threads",
+    "track": "creator",
+    "topic": "매장이 보낸 소개 제안을 받고 정산까지 앱에서 확인하는 흐름",
+    "hook": "headline",
+    "series": "udal-qna",
+    "date_kst": "2026-11-18",
+    "len": "0",
+    "slot": "09:00",
+    "media": "text",
+    "topic_tag": "블로그체험단",
+    "tformat": "list",
+    "cta": "creator:apply"
   }
 ]

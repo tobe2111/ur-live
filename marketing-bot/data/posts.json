@@ -916,5 +916,26 @@
     "track": "merchant",
     "posted_at": "2026-11-17T14:33:58.640Z",
     "date_kst": "2026-11-17"
+  },
+  {
+    "platform": "threads",
+    "id": "18110026292214999",
+    "reply_id": "18066795056527571",
+    "topic_tag": "블로그체험단",
+    "hook": "headline",
+    "len": "0",
+    "tformat": "list",
+    "cta": "creator:apply",
+    "topic": "매장이 보낸 소개 제안을 받고 정산까지 앱에서 확인하는 흐름",
+    "media": "text",
+    "content_id": "th",
+    "track": "creator",
+    "series": "udal-qna",
+    "promo": false,
+    "posted_at": "2026-11-18T05:07:35.899Z",
+    "date_kst": "2026-11-18",
+    "slot_kst": "09:00",
+    "link": "https://urdeal.kr/creators/apply?utm_source=threads&utm_medium=social&utm_campaign=creator-recruit&utm_content=th-20261118",
+    "text": "소개 제안도 정산도 앱에서 한 번에 확인.\n카카오 로그인 1분이면 내 유어샵이 생겨요."
   }
 ]
