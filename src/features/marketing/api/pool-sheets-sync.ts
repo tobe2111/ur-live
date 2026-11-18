@@ -22,7 +22,7 @@ import { ensureCompanySchema } from './company-discovery'
 import { ensureProspectSchema } from './store-prospects'
 import { ensureMarkSchema, harvestMarks, ensureListTab, applyEmailList, sentDayKST } from './pool-sheets-marks'
 import { syncGuideTab } from './pool-sheets-guide'
-import { tabGid, harvestHidden, applyHidden } from './pool-sheets-hidden'
+import { tabGid, harvestHiddenTwoWay, applyHidden, noteHideFailure } from './pool-sheets-hidden'
 
 export type SheetPool = 'company' | 'store'
 export const SHEET_POOLS: readonly SheetPool[] = ['company', 'store']
@@ -140,7 +140,7 @@ export async function setPoolSheetId(env: Env, pool: SheetPool, input: string): 
   return { ok: true, sheetId: id }
 }
 
-export type PoolSyncResult = { ok: boolean; skipped?: string; rows?: number; error?: string; partial?: boolean; next?: number; total?: number; marked?: number }
+export type PoolSyncResult = { ok: boolean; skipped?: string; rows?: number; error?: string; partial?: boolean; next?: number; total?: number; marked?: number; unmarked?: number }
 
 /** 한 풀 한 회차. 절대 throw 하지 않는다 — 결과를 스탬프에 남긴다. */
 export async function syncPoolToSheets(env: Env, pool: SheetPool, trigger: SyncTrigger = 'unknown'): Promise<PoolSyncResult> {
@@ -155,7 +155,7 @@ export async function syncPoolToSheets(env: Env, pool: SheetPool, trigger: SyncT
   if (r.skipped !== 'not_configured') {
     await writeSetting(env, stampKey(pool), JSON.stringify({
       at: new Date().toISOString(), ok: r.ok, rows: r.rows ?? null, partial: !!r.partial, total: r.total ?? null,
-      error: (r.error || '').slice(0, 300) || null, subreq: cost.subreq, trigger, marked: r.marked ?? 0,
+      error: (r.error || '').slice(0, 300) || null, subreq: cost.subreq, trigger, marked: r.marked ?? 0, unmarked: r.unmarked ?? 0,
     }))
   }
   return r
@@ -180,6 +180,7 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
   cost.subreq += 1
   let { off, total, lastId } = cursorForCols(parsePoolCursor(await readSetting(env, cursorKey(pool))), nCols)
   let marked = 0
+  let unmarked = 0
 
   if (off === 0) {
     lastId = 0
@@ -215,7 +216,10 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
     // ✉️ 덮어쓰기 **전에** 이 구간의 '이메일 보냄' 표시를 읽어 DB 에 저장한다(줄의 ID 로 찾는다 — 밀려도 안전).
     marked += await harvestMarks(DB, token, sheetId, def.table, TAB, lastCol, off + 2, take, cost)
     // 🙈 사람이 숨긴 줄도 같은 뜻('보냄')으로 거둔다 — 덮어쓰면 숨김이 다른 업체로 밀리므로 그 전에.
-    marked += await harvestHidden(DB, token, sheetId, def.table, TAB, off + 2, take, cost)
+    // ↩️ 업체·매장은 두 방향 — 숨긴 줄 → 보냄, 우리가 숨겼는데 사람이 편 줄 → 안 보냄(대표 결정 A · 안전장치는 함수 머리말).
+    const hv = await harvestHiddenTwoWay(DB, token, sheetId, def.table as 'ad_company_leads' | 'store_prospects', TAB, lastCol, off + 2, take, cost)
+    marked += hv.marked
+    unmarked += hv.unmarked
     cost.subreq += 1
     const res = await DB.prepare(`SELECT ${def.cols} FROM ${def.table} WHERE ${def.where} AND id > ? ORDER BY id ASC LIMIT ?`)
       .bind(lastId, take).all<Row>().catch(() => null)
@@ -236,7 +240,9 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
       return { ok: false, error: `WRITE: ${rowNo}행부터 기록 실패(${w?.status || 'net'})`, rows: wrote, marked }
     }
     // 🙈 방금 쓴 줄을 DB 상태대로 숨기고 편다 — 숨김이 줄 위치가 아니라 업체를 따라다니게.
-    await applyHidden(token, sheetId, gid, rowNo, page.map(r => r.email_sent_at != null && r.email_sent_at !== ''), cost)
+    if (!(await applyHidden(token, sheetId, gid, rowNo, page.map(r => r.email_sent_at != null && r.email_sent_at !== ''), cost))) {
+      await noteHideFailure(DB, sheetId) // 숨기기 실패 — 7일 동안 '편 줄 → 안 보냄' 을 쉰다(실패로 펴진 줄을 사람이 편 것으로 읽지 않게)
+    }
     off += page.length
     wrote += page.length
     lastId = Number(page[page.length - 1]!.id) || lastId
@@ -250,10 +256,10 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
     cost.subreq += 1
     await sheetsFetch(token, sheetId, `/values/${encodeURIComponent(`${TAB}!A${off + 2}:${lastCol}`)}:clear`, { method: 'POST', body: '{}' }).catch(() => null)
     await saveCursor(env, pool, 0, off, 0, nCols)
-    return { ok: true, rows: off, partial: false, total: off, marked }
+    return { ok: true, rows: off, partial: false, total: off, marked, unmarked }
   }
   await saveCursor(env, pool, off, total, lastId, nCols)
-  return { ok: true, rows: wrote, partial: true, next: off, total, marked }
+  return { ok: true, rows: wrote, partial: true, next: off, total, marked, unmarked }
 }
 
 async function saveCursor(env: Env, pool: SheetPool, off: number, total: number, lastId: number, cols: number): Promise<void> {

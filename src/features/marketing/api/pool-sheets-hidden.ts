@@ -91,8 +91,112 @@ export function hideRequests(gid: number, fromRow: number, sent: readonly boolea
 }
 
 /** 덮어쓴 뒤: 방금 쓴 줄을 DB 상태대로 숨기고 편다. 실패는 조용히(다음 바퀴가 다시 맞춘다). */
-export async function applyHidden(token: string, sheetId: string, gid: number | null, fromRow: number, sent: readonly boolean[], cost: { subreq: number }): Promise<void> {
-  if (gid == null || !sent.length) return
+export async function applyHidden(token: string, sheetId: string, gid: number | null, fromRow: number, sent: readonly boolean[], cost: { subreq: number }): Promise<boolean> {
+  if (!sent.length) return true
+  if (gid == null) return false
   cost.subreq += 1
-  await sheetsFetch(token, sheetId, ':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: hideRequests(gid, fromRow, sent) }) }).catch(() => null)
+  const r = await sheetsFetch(token, sheetId, ':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: hideRequests(gid, fromRow, sent) }) }).catch(() => null)
+  return !!r?.ok
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+/**
+ * ↩️ **펴면 '안 보냄'으로 되돌린다 — 업체·매장 시트만** (2026-11-18 대표 *"다시 펴면 보내지 않은걸로 변경되게 하면 안돼?"* →
+ *    세 갈래 중 (A) *"업체·매장 시트만 되돌리기, 인플루언서는 유지"*).
+ *
+ * 인플루언서는 안 한다 — 그 '보냄' 기록은 실제 발송 원장(하루 20통 · 30일 쿨다운 · 미접촉 내보내기)과 같은 칸이라, 시트에서
+ * 줄을 편 것만으로 지우면 이미 받은 사람에게 다시 보낼 수 있다. 업체·매장의 `email_sent_at` 은 시트 표시 전용이다(전수 grep).
+ *
+ * 되돌리는 조건(셋 다):
+ *  ① 그 줄의 '이메일 보냄' 칸에 **우리가 쓴 날짜**(YYYY-MM-DD)가 있고 ② 지금 **숨겨져 있지 않다** — 우리가 숨겼는데 사람이 편 줄.
+ *     방금 "o" 를 적은 줄 · 발송기록 탭으로 표시돼 아직 다시 안 쓴 줄은 날짜가 없으니 해당 없음.
+ *  ③ **우리 숨기기가 최근(7일) 실패한 적이 없다** — 실패로 펴져 있는 줄을 "사람이 폈다" 로 오판하지 않게.
+ * 🧯 한 구간에서 되돌릴 줄이 50개를 넘으면 **아무것도 안 한다**(전체 선택 → 숨기기 취소 같은 실수로 기록이 통째로 날아가지 않게) —
+ *    그 사실은 `ads_sheet_unhide_skipped:<시트>` 에 남긴다.
+ */
+export const UNHIDE_MAX_PER_RANGE = 50
+export const HIDE_FAIL_QUIET_MS = 7 * 86_400_000
+export const hideFailKey = (sheetId: string) => `ads_sheet_hide_fail:${sheetId}`
+export const unhideSkippedKey = (sheetId: string) => `ads_sheet_unhide_skipped:${sheetId}`
+const SHEET_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+type Cell = { effectiveValue?: { numberValue?: number; stringValue?: string }; formattedValue?: string }
+type GridBlock = { rowMetadata?: { hiddenByUser?: boolean }[]; rowData?: { values?: Cell[] }[] }
+
+/** 두 구간(ID 열 · 표시 열) 그리드 → 숨긴 ID · 폈는데 날짜가 있는 ID. 순수 함수(시험 대상). */
+export function hiddenAndUnhidden(idBlock: GridBlock | undefined, markBlock: GridBlock | undefined): { hidden: number[]; unhiddenDated: number[] } {
+  const hidden: number[] = []
+  const unhiddenDated: number[] = []
+  const meta = idBlock?.rowMetadata || []
+  const rows = idBlock?.rowData || []
+  const marks = markBlock?.rowData || []
+  for (let i = 0; i < Math.max(meta.length, rows.length); i++) {
+    const v = rows[i]?.values?.[0]?.effectiveValue
+    const id = Number(v?.numberValue ?? v?.stringValue)
+    if (!Number.isInteger(id) || id <= 0) continue
+    if (meta[i]?.hiddenByUser) { hidden.push(id); continue }
+    const m = marks[i]?.values?.[0]
+    const mark = String(m?.effectiveValue?.stringValue ?? m?.formattedValue ?? '').trim()
+    if (SHEET_DATE.test(mark)) unhiddenDated.push(id)
+  }
+  return { hidden, unhiddenDated }
+}
+
+/** '안 보냄'으로 되돌리는 SQL — 업체는 시트 표시가 함께 올린 '연락함'(연락일 = 표시일)도 되돌린다. */
+export function unmarkSql(table: 'ad_company_leads' | 'store_prospects'): string {
+  const revert = table === 'ad_company_leads'
+    ? `, status = CASE WHEN status = 'contacted' AND contacted_at = email_sent_at THEN 'new' ELSE status END,
+         contacted_at = CASE WHEN contacted_at = email_sent_at THEN NULL ELSE contacted_at END`
+    : ''
+  return `UPDATE ${table} SET email_sent_at = NULL${revert}
+    WHERE id IN (SELECT value FROM json_each(?)) AND email_sent_at IS NOT NULL`
+}
+
+interface SettingsDb { prepare(sql: string): { bind(...a: unknown[]): { first<T>(): Promise<T | null>; run(): Promise<{ meta?: { changes?: number } } | unknown> } } }
+
+/**
+ * 업체·매장 시트용: 숨긴 줄 → 보냄 · (조건이 맞으면) 편 줄 → 안 보냄. 덮어쓰기·DB 읽기 **전에** 부른다.
+ * @param markLetter '이메일 보냄' 열 글자
+ */
+export async function harvestHiddenTwoWay(
+  DB: SettingsDb, token: string, sheetId: string, table: 'ad_company_leads' | 'store_prospects', tab: string, markLetter: string,
+  fromRow: number, count: number, cost: { subreq: number }, nowMs = Date.now(),
+): Promise<{ marked: number; unmarked: number; skipped: boolean }> {
+  const out = { marked: 0, unmarked: 0, skipped: false }
+  if (!(count > 0)) return out
+  const to = fromRow + count - 1
+  const ranges = [`${tab}!A${fromRow}:A${to}`, `${tab}!${markLetter}${fromRow}:${markLetter}${to}`]
+  cost.subreq += 1
+  const r = await sheetsFetch(token, sheetId,
+    `?${ranges.map(x => `ranges=${encodeURIComponent(x)}`).join('&')}&fields=${encodeURIComponent('sheets(data(rowMetadata(hiddenByUser),rowData(values(effectiveValue,formattedValue))))')}`).catch(() => null)
+  if (!r?.ok) return out
+  const j = await r.json().catch(() => null) as { sheets?: { data?: GridBlock[] }[] } | null
+  const blocks = j?.sheets?.[0]?.data || []
+  const { hidden, unhiddenDated } = hiddenAndUnhidden(blocks[0], blocks[1])
+  for (let i = 0; i < hidden.length; i += MARK_CHUNK) {
+    cost.subreq += 1
+    const res = await DB.prepare(markSql(table, 'id')).bind(JSON.stringify(hidden.slice(i, i + MARK_CHUNK))).run().catch(() => null) as { meta?: { changes?: number } } | null
+    out.marked += Number(res?.meta?.changes) || 0
+  }
+  if (!unhiddenDated.length) return out
+  cost.subreq += 1
+  const fail = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(hideFailKey(sheetId)).first<{ value: string }>().catch(() => null)
+  const failAt = Number(fail?.value) || 0
+  if (failAt && nowMs - failAt >= 0 && nowMs - failAt < HIDE_FAIL_QUIET_MS) { out.skipped = true; return out }
+  if (unhiddenDated.length > UNHIDE_MAX_PER_RANGE) {
+    out.skipped = true
+    cost.subreq += 1
+    await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(unhideSkippedKey(sheetId),
+      JSON.stringify({ at: nowMs, rows: `${fromRow}-${to}`, count: unhiddenDated.length })).run().catch(() => null)
+    return out
+  }
+  cost.subreq += 1
+  const res = await DB.prepare(unmarkSql(table)).bind(JSON.stringify(unhiddenDated)).run().catch(() => null) as { meta?: { changes?: number } } | null
+  out.unmarked = Number(res?.meta?.changes) || 0
+  return out
+}
+
+/** 우리 숨기기가 실패했음을 남긴다(7일 동안 되돌리기를 쉰다). */
+export async function noteHideFailure(DB: SettingsDb, sheetId: string, nowMs = Date.now()): Promise<void> {
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(hideFailKey(sheetId), String(nowMs)).run().catch(() => null)
 }
