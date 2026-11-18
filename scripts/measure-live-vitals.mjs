@@ -35,7 +35,7 @@ const PHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWe
 export const THROTTLE = { latency: 150, downloadThroughput: (1.6e6 / 8) * 4, uploadThroughput: 750e3 / 8, cpuRate: 4 }
 
 async function measureOnce(browser, url) {
-  const ctx = await browser.newContext(pc ? { viewport: { width: 1440, height: 900 } } : { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: PHONE_UA })
+  const ctx = await browser.newContext({ locale: 'ko-KR' /* 🌏 2026-11-18 화면 언어가 폰 언어를 따른다 — 기본 en-US 면 영어 화면을 잰다 */, ...(pc ? { viewport: { width: 1440, height: 900 } } : { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: PHONE_UA }) })
   try {
     const page = await ctx.newPage()
     const cdp = await ctx.newCDPSession(page)

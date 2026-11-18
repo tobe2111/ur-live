@@ -747,6 +747,7 @@ fs.mkdirSync(OUTDIR, { recursive: true })
 
 const browser = await chromium.launch(exe ? { executablePath: exe } : {})
 const ctx = await browser.newContext({
+    locale: 'ko-KR', // 🌏 2026-11-18 화면 언어가 폰 언어를 따른다(shared/consumer-language) — 지정 안 하면 헤드리스 기본 en-US 로 영어 화면을 잰다
   // 🖥️ 2026-08-31 `--pc` — PC 홈은 레이아웃이 아예 다르다(히어로 + 가로 레일 + 흰 패널).
   //   모바일 폭으로만 보면 PC 회귀를 못 본다 — 실제로 PC 홈이 모바일과 다른 규칙을 쓰는 것을
   //   라이브 판정에서야 발견했다.
