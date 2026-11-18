@@ -63,7 +63,7 @@ describe('① 인플루언서 통계 캐시', () => {
     const s = src('src/features/marketing/api/influencer-pool-stats.ts')
     expect(s).toMatch(/getInfluencerStatsCached<Heavy>\(DB, !!opts\.fresh, \(\) => computeHeavy\(DB\), opts\.bg,/)
     // 2026-11-18 증분 집계 — 숫자표가 있으면 그쪽, 없으면 캐시 경로(옛 값 + 오늘 실시간 덮기).
-    expect(s).toMatch(/const byDay = fast \? fast\.byDay : mergeTodayInflow\(heavy\.byDay, today\)/)
+    expect(s).toMatch(/const byDay = fast \? fast\.byDay : mergeTodayInflow\(heavy!\.byDay, today\)/)
     expect(s).toMatch(/\.\.\.\(today \? \{ today: today\.n \} : \{\}\)/)
     expect(src('src/features/marketing/api/pool-timeline.routes.ts')).toMatch(/buildInfluencerPoolStats\(c\.env, \{ fresh: c\.req\.query\('fresh'\) === '1', bg \}\)/)
   })

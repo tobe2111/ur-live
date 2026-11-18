@@ -298,6 +298,12 @@ describe('④ 구조', () => {
     expect(ADS_LEADS_TABLES as readonly string[]).toContain(C.COUNTER_TABLE)
     expect(touchesAdsLeadsTable(`SELECT k, n FROM ${C.COUNTER_TABLE}`)).toBe(true)
   })
+  it('통계 · 진단 스탬프 · ur-ads 게이트를 동시에 돌리고 단계 시간을 내보낸다(라이브 3초 — 줄줄이였다)', () => {
+    expect(POOL_SRC).toMatch(/const \[stat, diag, gates\] = await Promise\.all\(\[/)
+    expect(POOL_SRC).toMatch(/getAdsPoolDiag\(DB\)\.then\(d => \{ mark\('diag'\); return d \}\)/)
+    expect(POOL_SRC).toMatch(/timings_ms: timings,/)
+    expect(POOL_SRC).not.toMatch(/const diag = await getAdsPoolDiag\(DB\)/)
+  })
   it('통계 빌더가 숫자표를 먼저 쓰고, 준비 전이면 옛 경로로 간다', () => {
     expect(POOL_SRC).toMatch(/const fast = await buildFromCounters\(DB, opts\.bg\)/)
     expect(POOL_SRC).toMatch(/if \(!snap\.complete\) return null/)

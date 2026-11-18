@@ -164,12 +164,14 @@ async function buildFromCounters(DB: D1Database, bg?: (p: Promise<unknown>) => v
     }
   }
   if (!snap.complete) return null
-  const todo = await DB.prepare(CONTACT_TODO_SQL).first<{ contacted7: number; need_followup: number; today_kst: string }>().catch(() => null)
+  const [todo, tail] = await Promise.all([
+    DB.prepare(CONTACT_TODO_SQL).first<{ contacted7: number; need_followup: number; today_kst: string }>().catch(() => null),
+    getFunnelTailStats(DB).catch(() => ({ joined: 0, first_sale: 0 })),
+  ])
   if (!todo) return null
   const byDay = lastDays(snap.days, String(todo.today_kst))
   // '최근 7일' = 오늘 포함 KST 7일(숫자표의 날짜 키 합). 옛 값은 롤링 168시간이었다 — 차이는 하루치 경계뿐이다.
   const recent7 = byDay.slice(0, 7).reduce((a, x) => a + x.n, 0)
-  const tail = await getFunnelTailStats(DB).catch(() => ({ joined: 0, first_sale: 0 }))
   return {
     stats: { ...snap.state, contacted7: Number(todo.contacted7) || 0, need_followup: Number(todo.need_followup) || 0,
       today: byDay[0]?.n || 0, recent7, today_kst: String(todo.today_kst) } as Record<string, unknown>,
@@ -202,39 +204,61 @@ export function mergeTodayInflow(byDay: Heavy['byDay'], today: { d: string; n: n
  */
 export async function buildInfluencerPoolStats(env: Env, opts: { fresh?: boolean; bg?: (p: Promise<unknown>) => void } = {}): Promise<Record<string, unknown>> {
   const DB = adsLeadsDb(env)
+  // ⏱️ 단계별 시간(진단 — 응답 `timings_ms`). 2026-11-18 실측: 숫자표로 바꾼 뒤에도 응답이 3초 — 통계가 아니라
+  //   다른 단계가 느렸는데, 단계가 줄줄이 돌고 시간이 안 찍혀 어디인지 몰랐다.
+  const t0 = Date.now()
+  const timings: Record<string, number> = {}
+  const mark = (k: string) => { timings[k] = Date.now() - t0 }
   await ensureInfluencerSchema(DB)  // 통계도 최신 컬럼(contact_channel/consented_at 등) 참조 — 스키마 선보강(멱등)
   await ensureOutreachColumns(DB)   // opened/bounced 집계 컬럼 선보강
   await ensureQualityColumns(DB)    // is_brand/lead_score 집계 선보강
   await ensurePerfExtraColumns(DB)  // last_post_at/pub_checked_at — 아래 보강 진행률이 참조
   await ensureRecruitColumn(DB)     // 📣 recruited_at(모집 전환 분모)
-  // 🧮 증분 집계가 준비됐으면 숫자표만 읽는다(풀 크기와 무관). 준비 전·실패면 아래 옛 경로(전수 + 캐시).
-  const fast = await buildFromCounters(DB, opts.bg)
-  const [{ stats: heavy, at }, today] = fast ? [{ stats: null as unknown as Heavy, at: 0 }, null] : await Promise.all([
-    getInfluencerStatsCached<Heavy>(DB, !!opts.fresh, () => computeHeavy(DB), opts.bg, Date.now(), h => h.complete !== false),
-    todayInflow(DB),
+  mark('ensure')
+  // ⚡ 서로 기다릴 이유가 없는 셋(통계 · 진단 스탬프 · ur-ads 게이트)을 **동시에** 돌린다 — 종전엔 줄줄이였다.
+  const [stat, diag, gates] = await Promise.all([
+    (async () => {
+      // 🧮 증분 집계가 준비됐으면 숫자표만 읽는다(풀 크기와 무관). 준비 전·실패면 아래 옛 경로(전수 + 캐시).
+      const fast = await buildFromCounters(DB, opts.bg)
+      mark('stats')
+      if (fast) return { fast, heavy: null as Heavy | null, at: 0, today: null as Awaited<ReturnType<typeof todayInflow>> }
+      const [{ stats: heavy, at }, today] = await Promise.all([
+        getInfluencerStatsCached<Heavy>(DB, !!opts.fresh, () => computeHeavy(DB), opts.bg, Date.now(), h => h.complete !== false),
+        todayInflow(DB),
+      ])
+      mark('stats')
+      return { fast: null, heavy, at, today }
+    })(),
+    // 📊 진단 스탬프 묶음(마지막 수집·lease·시트 동기화·야간 정비·📝 보강 레인) — `ads-pool-diag.ts` SSOT.
+    getAdsPoolDiag(DB).then(d => { mark('diag'); return d }),
+    // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 메인의
+    //   env 를 읽어 "켰는데 안 돌거나/도는데 꺼짐 표시" 양쪽 오류 — 서비스바인딩 health 로 ur-ads 쪽 값을 조회
+    //   (실패/미바인딩 시 메인 env 폴백 = 기존 동작).
+    //   📊 시트 미러 게이트도 같은 health 응답에서 가져온다(추가 왕복 0). 이게 없으면 어드민이 "34시간째
+    //   멈춰 있어요 — 매시간 도는 작업입니다"를 **꺼져 있을 때도** 띄운다(2026-07-28: 실제로 그랬다).
+    //   '고장'과 '꺼짐'은 다음 행동이 정반대라 반드시 구분돼야 한다.
+    (async () => {
+      let gate = env.ADS_AUTO_COLLECT_ENABLED === 'true'
+      let sheetsGate: boolean | null = null
+      try {
+        if (env.ADS?.fetch) {
+          const hr = await env.ADS.fetch(new Request('https://ur-ads/__ads/health'))
+          const hj = await hr.json().catch(() => null) as { gates?: { auto_collect?: boolean; sheets_sync?: boolean } } | null
+          if (typeof hj?.gates?.auto_collect === 'boolean') gate = hj.gates.auto_collect
+          if (typeof hj?.gates?.sheets_sync === 'boolean') sheetsGate = hj.gates.sheets_sync
+        }
+      } catch { /* 폴백 유지 */ }
+      mark('health')
+      return { gate, sheetsGate }
+    })(),
   ])
-  const agg = fast ? fast.stats : heavy.agg
-  const catFunnel = { results: fast ? fast.categoryFunnel : heavy.catFunnel }
-  const byDay = fast ? fast.byDay : mergeTodayInflow(heavy.byDay, today)
-  const tail = fast ? fast.tail : heavy.tail
-  // 📊 진단 스탬프 묶음(마지막 수집·lease·시트 동기화·야간 정비·📝 보강 레인) — `ads-pool-diag.ts` SSOT.
-  const diag = await getAdsPoolDiag(DB)
-  // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 메인의
-  //   env 를 읽어 "켰는데 안 돌거나/도는데 꺼짐 표시" 양쪽 오류 — 서비스바인딩 health 로 ur-ads 쪽 값을 조회
-  //   (실패/미바인딩 시 메인 env 폴백 = 기존 동작).
-  let gate = env.ADS_AUTO_COLLECT_ENABLED === 'true'
-  // 📊 시트 미러 게이트도 같은 health 응답에서 가져온다(추가 왕복 0). 이게 없으면 어드민이 "34시간째
-  //   멈춰 있어요 — 매시간 도는 작업입니다"를 **꺼져 있을 때도** 띄운다(2026-07-28: 실제로 그랬다).
-  //   '고장'과 '꺼짐'은 다음 행동이 정반대라 반드시 구분돼야 한다.
-  let sheetsGate: boolean | null = null
-  try {
-    if (env.ADS?.fetch) {
-      const hr = await env.ADS.fetch(new Request('https://ur-ads/__ads/health'))
-      const hj = await hr.json().catch(() => null) as { gates?: { auto_collect?: boolean; sheets_sync?: boolean } } | null
-      if (typeof hj?.gates?.auto_collect === 'boolean') gate = hj.gates.auto_collect
-      if (typeof hj?.gates?.sheets_sync === 'boolean') sheetsGate = hj.gates.sheets_sync
-    }
-  } catch { /* 폴백 유지 */ }
+  const { fast, heavy, at, today } = stat
+  const agg = fast ? fast.stats : heavy!.agg
+  const catFunnel = { results: fast ? fast.categoryFunnel : heavy!.catFunnel }
+  const byDay = fast ? fast.byDay : mergeTodayInflow(heavy!.byDay, today)
+  const tail = fast ? fast.tail : heavy!.tail
+  const { gate, sheetsGate } = gates
+  mark('total')
   return {
     // '오늘'은 실시간 값으로 덮는다(캐시된 집계의 today 는 최대 30분 낡았다).
     stats: { ...(agg || {}), ...tail, ...(today ? { today: today.n } : {}) },
@@ -242,6 +266,7 @@ export async function buildInfluencerPoolStats(env: Env, opts: { fresh?: boolean
     today_kst: String(today?.d || agg?.today_kst || ''), // 화면의 '진행 중' 표시·추세 제외 기준(서버 권위)
     stats_at: fast ? Date.now() : at, // 집계가 언제 기준인지(캐시) — 최신값으로 오해하지 않게. 숫자표면 지금.
     stats_source: fast ? 'counter' : 'scan', // 진단 — 증분 숫자표 / 전수(캐시)
+    timings_ms: timings, // ⏱️ 단계별 누적 시간(ensure → stats · diag · health 는 동시 출발)
     gate,
     sheets_gate: sheetsGate, // null = ur-ads 미바인딩/조회 실패(알 수 없음 — 경고를 단정하지 않는다)
     ...diag,
