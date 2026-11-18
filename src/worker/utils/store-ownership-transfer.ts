@@ -106,6 +106,9 @@ export async function transferStoreOwnership(
   //   - 정체성 없는 토큰(매장 계정 로그인 · 옛 link 좌석): 누구 것인지 모른다 → 에포크로 전부 끊는다.
   //   새 주인은 이 뒤에 좌석을 받으므로 영향이 없다. fail-soft(이전 자체를 되돌리지 않는다).
   await bumpStoreSeatEpoch(DB, sellerId, 'ownership_transfer')
+  // 🔐 2026-11-18: 스캔 기기 키도 전부 끈다 — 이전 주인 쪽 기기가 새 주인 매장의 이용권을 계속 처리하면 안 된다.
+  const { revokeAllScanDevices } = await import('./scan-device-revoke')
+  await revokeAllScanDevices(DB, sellerId)
 
   return { ok: true, previousOwnerId: prev }
 }

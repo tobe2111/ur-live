@@ -145,6 +145,8 @@ app.post('/account/withdraw', rateLimit({ action: 'seller_withdraw', max: 5, win
     await c.env.DB.prepare(
       "UPDATE seller_operators SET revoked_at = datetime('now') WHERE seller_id = ? AND revoked_at IS NULL"
     ).bind(seat).run().catch(() => { /* 테이블 부재 등 — 무시 */ })
+    // 🔐 2026-11-18: 계산대 스캔 기기 키도 끈다 — 탈퇴한 매장의 이용권이 기기 링크로 계속 처리되면 안 된다.
+    await (await import('../../../worker/utils/scan-device-revoke')).revokeAllScanDevices(c.env.DB, Number(seat))
 
     // ④ 세션 무효화 — 이미 발급된 seller_token 이 만료 전까지 유효하므로 그 매장의 좌석을 끊는다.
     //   🩸 2026-10-10: 여기 있던 `startDashboardSession(…'seller'…)` 는 2026-08-20 에 셀러가 단일 세션

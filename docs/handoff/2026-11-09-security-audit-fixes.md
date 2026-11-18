@@ -100,3 +100,8 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
 - 깨끗했던 곳: 유어애즈 워커(계정 격리)·인스타/카카오/토스 웹훅·업로드·에이전시 초대·이용권 CAS·설정 마스킹.
 - **이번에 틀릴 뻔한 것**: `tsc` 가 heap 부족으로 죽었는데 `| tail` 때문에 rc=0 으로 보였다 → `NODE_OPTIONS=--max-old-space-size=8192` + `PIPESTATUS`.
 - **남은 판단(대표)**: 운영자가 발급한 스캔 기기 키가 위임 회수 뒤에도 살아 있음(주인 화면에서 보이고 끌 수 있음) · 에이전시 지급 승인 라우트의 관리자 역할 제한 미확인.
+- **#2402 라이브 판정(E4, 01:58)**: 관리자 토큰 `/api/orders` 403 · 무인증 `POST /api/webhooks/resend` 503 `webhook_not_configured` · `/api/inventory/stock/history/1` 200. 운영자·사업자 토큰이 필요한 4건은 라이브에서 못 쟀다(시험·주입까지).
+
+## 15차 (2026-11-18) — 대표 *"모두 이상적으로 해줘"*
+- **스캔 기기 키**: 발급자(운영자일 때만)를 옆 표 `seller_scan_device_issuers` 에 적고, `revokeOperator` 가 그 사람이 그 매장에서 만든 키를 같이 끈다. 주인 변경(`transferStoreOwnership`)·매장 탈퇴는 그 매장 키 전부. SSOT `src/worker/utils/scan-device-revoke.ts`. 못 막는 것: 이 변경 이전 발급분(발급자 기록 없음) · 에이전시 직원 좌석 발급분.
+- **에이전시 지급 처리**: 코드 변경 없음 — 전역 `adminRbacMiddleware` 가 이미 super·admin 만 통과시킨다(`agency-payouts`·`agency-accounts` 는 어떤 제한 역할의 쓰기 도메인에도 없다). 시험으로 고정했다. 재무 역할에게 열지는 **대표 결재 사항**이라 열지 않았다.
