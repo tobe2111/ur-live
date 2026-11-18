@@ -44,7 +44,6 @@ import { handleDisputesEscalation } from './disputes-escalation'
 import { handleAutoSeedReviews } from './auto-seed-reviews'
 import { handleSellerChurnDetect } from './seller-churn-detect'
 import { handleLedgerReconcile } from './ledger-reconcile'
-import { handleTikTokVideosSync } from './tiktok-videos-sync'
 import { handleSellerDailyReport } from './seller-daily-report'
 import { handleReviewRequest } from './review-request'
 import { handleSellerDocsNudge } from './seller-docs-nudge'
@@ -164,12 +163,11 @@ export function runDailyLane(group: DailyGroup, d: DailyLaneDeps): void {
   //    이고 **지급 이력 0**(`agency_store_intro_commissions` 0행) — 즉 이 코드는 한 번도 돈을 낸 적이
   //    없다. 중개는 이제 에이전시가 아니라 **셀러 대시보드 계정 + `seller_operators`** 가 맡는다.
   //    설계 SSOT: docs/design/store-operator-model.md
-  //    ⚠️ 남은 3개는 에이전시와 무관해서 유지한다(틱톡 동기화 · 셀러 일일 리포트 · 광고 슬롯 낙찰).
+  //    ⚠️ 남은 것은 에이전시와 무관해서 유지한다(셀러 일일 리포트 · 광고 슬롯 낙찰 — 틱톡 동기화는 2026-11-18 삭제).
   ctx.waitUntil(run('growth-daily-batch', async () => {
     const flags = await getFeatureFlags((env as unknown as { RATE_LIMIT_KV?: KVNamespace }).RATE_LIMIT_KV, env.DB)
-    if (flags.enable_tiktok_videos_sync) {
-      await handleTikTokVideosSync(env).catch(e => onFailure('growth-daily-batch/tiktok', e))
-    }
+    // 🗑️ 2026-11-18 틱톡 동기화 삭제 — 틱톡 연동 라우트가 이미 내려가 있었고(index.ts 주석 처리) 연결 표의 칸도
+    //   라이브와 달라 돌 일이 없었다. (대표 "남은 과제도 다 해줘")
     // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
     await handleSellerDailyReport(env).catch(e => onFailure('growth-daily-batch/seller-daily-report', e))
     // 📮 2026-10-18 (대표 "4,5,6번 하자"): 이용권 쓴 다음 날 후기 요청 · 서류 빠진 사장님 보완 안내 — 둘 다 게이트 기본 OFF

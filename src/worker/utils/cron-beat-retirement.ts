@@ -82,8 +82,8 @@ export const BEAT_RENAMED_TO: Readonly<Record<string, string>> = {
   '__tick': '__tick:*/5 * * * *',
   // 🌇 2026-09-04 에이전시 완전 일몰(대표 확정) — 두 배치에서 에이전시 작업을 전부 걷어내자
   //   이름이 내용과 어긋났다(에이전시가 하나도 없는 'agency-*' 배치). 남은 작업으로 개명했다:
-  //     agency-cron-batch   → 틱톡 동기화 · 셀러 일일 리포트 · 광고 슬롯 낙찰
-  //     agency-weekly-batch → 셀러 등급 평가 · 판매사 도매 등급 평가
+  //     agency-cron-batch   → 셀러 일일 리포트 · 광고 슬롯 낙찰 (틱톡 동기화는 2026-11-18 삭제)
+  //     agency-weekly-batch → 셀러 등급 평가 · 판매사 도매 등급 평가 (둘 다 2026-11-18 삭제 — 슬롯만 빈 채로 남았다)
   //   후임을 여기 안 적으면 옛 이름의 하트비트 행이 **영원히 빨갛고**, 그 하나가 경보 채널 전체를
   //   침묵시킨다(#1056 이 21일). 실제로 이 PR 의 CI 가 그걸 잡았다.
   'agency-cron-batch': 'growth-daily-batch',

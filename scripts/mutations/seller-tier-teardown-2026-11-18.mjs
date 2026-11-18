@@ -11,4 +11,7 @@ export default [
   { name: 'tierteardown: 옛 등급 링크가 404', file: 'src/routes/seller.routes.tsx',
     find: '      <Route path="/seller/tier" element={<SellerHomeGone />} />\n', replace: '', test: T,
     why: '알림·북마크의 옛 등급 링크가 빈 화면으로 떨어진다.' },
+  { name: 'tierteardown: 빈 주간 슬롯을 지운다', file: 'src/worker/scheduled.ts',
+    find: "ctx.waitUntil(slotCron('45 0 * * 1')('weekly-tier-batch',", replace: "ctx.waitUntil(slotCron('45 0 * * 1')('weekly-x',", test: T,
+    why: '옛 하트비트가 약 8주 동안 늦음으로 빨갛게 남아 경보 채널을 덮는다.' },
 ]

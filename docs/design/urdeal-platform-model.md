@@ -549,10 +549,10 @@
 ## 18. 백그라운드 잡 (크론 60+, `wrangler.toml` 스케줄)
 - **정산/재무**: auto-settlement·payouts-generate·influencer-payout·reconciliation·ledger-reconcile·ledger-integrity-check·prospects-commission-activate
 - **에이전시**: agency-auto-settle·agency-monthly-invoices/report/tasks·agency-tier-eval·agency-creator-eval·agency-seller-match·agency-store-intro-monthly-bonus·agency-inactive-sellers
-- **셀러**: seller-daily-report·seller-churn-detect·wholesale-grade-eval
+- **셀러**: seller-daily-report·seller-churn-detect
 - **캐시/성능**: cache-prewarm·cache-warming·group-buy-feed-cache
 - **숙소**: stay-checkout-transition·stay-pending-expire·stay-reminder·stay-voucher-expire
-- **교환권/외부**: kt-alpha-catalog-sync·kt-alpha-voucher-retry·voucher-expire·tiktok-videos-sync·youtube-*·shipping-sync·restaurant-geocode
+- **교환권/외부**: kt-alpha-catalog-sync·kt-alpha-voucher-retry·voucher-expire·youtube-*·shipping-sync·restaurant-geocode
 - **운영/안전**: anomaly-detect·disputes-escalation·daily-self-diagnostic·d1-backup·scheduled-cleanup·channel-watchdog·toss-refund-retry·blog-ai-draft(킬스위치)
 - **schema-repair-daily**(18 UTC): migrations 누락 컬럼/테이블 자동 보장(신규 컬럼은 다음날 자동 적용 — 또는 어드민 수동 `/api/_internal/repair-schema`).
 
