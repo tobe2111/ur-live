@@ -148,7 +148,7 @@ function makeCacheMiddleware(ttlSeconds: number, opts: CacheOptions = {}) {
 
     const cacheUrl = new URL(c.req.url);
     const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
-    // @ts-expect-error — Cloudflare Workers 전역 caches
+    // @ts-ignore — (워커 타입엔 있고 브라우저 타입엔 없다 — 두 tsconfig 공용이라 expect-error 대신) Cloudflare Workers 전역 caches
     const cache = caches.default;
     const swr = Math.max(60, Math.min(600, ttlSeconds * 10));
 

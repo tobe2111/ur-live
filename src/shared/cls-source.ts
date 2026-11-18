@@ -22,11 +22,12 @@ interface SourceLike { node?: Node | null; previousRect: RectLike; currentRect: 
 /** 요소 → `tag#id.cls1.cls2` (화면 글자 없음 · 클래스 앞 둘만). */
 export function describeNode(node: Node | null | undefined): string {
   if (!node || node.nodeType !== 1) return '?'
-  const el = node as Element
+  // 서버 타입(workers-types)의 Element 는 HTMLRewriter 요소라 id·className 이 없다 — 쓰는 모양만 적는다.
+  const el = node as unknown as { tagName: string; id?: string; className?: unknown; getAttribute?: (n: string) => string | null }
   const tag = el.tagName.toLowerCase()
   const id = el.id ? `#${el.id}` : ''
   const raw = typeof el.className === 'string' ? el.className : (el.getAttribute?.('class') || '')
-  const cls = raw.split(/\s+/).filter((c) => c && /^[A-Za-z0-9_:\-/[\]!.]+$/.test(c)).slice(0, 2)
+  const cls = raw.split(/\s+/).filter((c: string) => c && /^[A-Za-z0-9_:\-/[\]!.]+$/.test(c)).slice(0, 2)
   return `${tag}${id}${cls.length ? '.' + cls.join('.') : ''}`
 }
 

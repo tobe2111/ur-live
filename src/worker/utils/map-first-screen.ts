@@ -12,8 +12,8 @@
  *   3. 하단 시트(peek) 껍데기: 손잡이 + 개수·정렬 줄(`SheetFilterBar hideChips`) — 목록은 안 그린다(앱이 받는다).
  * 아이콘(뒤로·검색·필터·나침반·카테고리·정렬 화살표)은 같은 크기의 빈 칸. 글자는 ko 사전의 값 그대로(시험이 대조).
  */
-import { MAP_VOUCHER_DEFS } from '../../pages/restaurant-map/voucher-types'
-import { SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE } from '../../pages/restaurant-map/useSheetDrag'
+import { MAP_VOUCHER_LABELS as MAP_VOUCHER_DEFS } from '../../pages/restaurant-map/voucher-labels'
+import { SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE } from '../../pages/restaurant-map/sheet-geometry'
 import { pcTopNavBlockHtml } from './pc-topnav-first-screen'
 
 /** 홈 첫 화면 모듈의 escText 와 같다 — 그 모듈을 import 하면 지도 표면 CSS 가 홈 카드 클래스까지 끌고 와 상한(40KB)을 넘는다(2026-11-12 실측 42.6KB). */

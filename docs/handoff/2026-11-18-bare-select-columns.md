@@ -27,3 +27,12 @@
 - 쿼리 플래너 통계: 매일 청소 28번 `PRAGMA optimize=0x10002`(거절 시 ANALYZE). 판정: 배포 다음 날 메인 D1 `SELECT tbl, idx, stat FROM sqlite_stat1 WHERE tbl='products'` 의 첫 숫자가 2,000 이상 · 결과 `stats_refresh` 값(1=optimize, 2=ANALYZE, -1=둘 다 거절).
 - 리뷰 이름 백필 부분 색인 `idx_product_reviews_name_missing`. 판정: sqlite_master 에 생겼는지.
 - 남은 것: `/api/home/bundle` 예열 제거(쓰는 화면 0 · 로딩 잠금 → 대표 승인 필요) · KT 충전 잔액 7,680원(운영) · `seller-tier-limits` 등급 조회 고장(고치면 월 한도가 걸리기 시작 — 결정 필요) · 원격에 남은 실수 브랜치 `fix-seller-public-500`(삭제 403).
+
+## 이어서 ② — 머지 #2419 = `cc3f51e8c` · 다음 PR: 서버 타입 검사 strict · SSR 파일럿·스크래퍼 의존성
+- **서버 타입 검사 348 → 0**, verify.yml `Type check (worker)` 의 `continue-on-error` 제거. 워커 전역 선언은 `types-worker/`(src 밖 — 안에 두면 브라우저 검사가 DOM 과 겹친다). 워커 첫 화면은 `sheet-geometry.ts`·`voucher-labels.ts`(순수 모듈)를 읽는다.
+- **SSR 파일럿**(`apps/ssr`, ur-ssr-pilot workers.dev): react-router 7.18.5 · vite 6.4.6 · 안 쓰던 `@cloudflare/vite-plugin` 제거. 운영 의존성 취약점 1 → 0, 전체 높음 19 → 5(picomatch ReDoS, 고친 판 없음). 머지되면 `ssr-pilot.yml` 이 자동 배포 + 스모크 4경로.
+- **스크래퍼**: `npm audit fix`(호환 범위)로 운영 의존성 높음 0. 남은 34건은 jest 안쪽(큰 버전 변경 필요).
+- `docs/business/proposals` 높음 2건은 sharp 큰 버전 변경 필요 — 두었다.
+
+### 틀렸던 판단 ②
+- `npx tsc … | grep -c "error TS"` 가 0 이어서 통과로 봤는데, pre-commit 이 같은 코드에서 오류 1건을 냈다. **exit code 를 같이 볼 것**(재실행하니 exit 0 · 오류 0 은 고친 뒤 값이다). CLAUDE.md 3-1 과 같은 클래스.

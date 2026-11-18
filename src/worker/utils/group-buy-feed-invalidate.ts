@@ -36,7 +36,7 @@ export async function invalidateGroupBuyFeed(
   } catch { /* 테이블 없음 등 — best-effort */ }
   // 2) 엣지 캐시(caches.default) 퍼지 — 홈/피드 키.
   try {
-    // @ts-expect-error — Cloudflare Workers 전역 caches
+    // @ts-ignore — (워커 타입엔 있고 브라우저 타입엔 없다 — 두 tsconfig 공용이라 expect-error 대신) Cloudflare Workers 전역 caches
     const cache = caches.default
     const jobs = FEED_EDGE_PATHS.map((p) => cache.delete(new Request(`${origin}${p}`, { method: 'GET' })) as Promise<boolean>)
     const all = Promise.all(jobs).then(() => undefined)

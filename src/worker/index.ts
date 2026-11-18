@@ -2247,7 +2247,7 @@ app.get('/api/image/resize', async (c) => {
     //   수리: ① 요청 단위 엣지 캐시(repeat ~ms) ② zone 리사이저(cdn-cgi — 오늘 Enable, cf-resized 실측 OK)
     //   경유로 변환 ③ 변환 실패 시 원본 폴백(이미지는 항상 보임 — 기존 동작 보존).
     const cacheKey = new Request(c.req.url, { method: 'GET' });
-    // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 동일 패턴)
+    // @ts-ignore — (워커 타입엔 있고 브라우저 타입엔 없다 — 두 tsconfig 공용이라 expect-error 대신) Cloudflare Workers 전역 caches (edge-cache.ts:110 동일 패턴)
     const edge = caches.default as Cache;
     const hit = await edge.match(cacheKey).catch(() => null);
     if (hit && isRasterImageType(hit.headers.get('Content-Type'))) return hit; // 🔐 2026-11-09 수리 전 캐시된 비-이미지는 버린다

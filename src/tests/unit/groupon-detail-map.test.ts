@@ -139,7 +139,7 @@ describe('/map — 지도 위 컨트롤이 왼쪽 리스트 상단으로 (PC)', 
   it('좁은 칸에서 긴 라벨이 잘리지 않게 짧은 라벨을 쓴다', () => {
     // 칸당 ~53px 라 '뷰티·헬스'(5자)는 잘린다. SSOT 에 shortLabel 을 두고 패널에서만 쓴다
     // (지도 오버레이는 폭이 넓어 긴 라벨 유지 — 카테고리 이름 자체를 줄이는 게 아니다).
-    expect(code('src/pages/restaurant-map/voucher-types.ts')).toMatch(/shortLabel: '뷰티'/)
+    expect(code('src/pages/restaurant-map/voucher-labels.ts')).toMatch(/shortLabel: '뷰티'/)
     expect(code(TOPBAR)).toMatch(/panel && v\.shortLabel \? v\.shortLabel :/)
   })
 

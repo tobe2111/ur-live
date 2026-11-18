@@ -135,7 +135,7 @@ function staleKey(origin: string, path: string): Request {
 /** 사본 갱신 — 성공이면 넣고, 404 면 지운다(내려간 상품을 1시간 동안 살려 두지 않는다). */
 async function writeStale(origin: string, path: string, text: string | null, status: string): Promise<void> {
   try {
-    // @ts-expect-error — Cloudflare Workers 전역 caches
+    // @ts-ignore — (워커 타입엔 있고 브라우저 타입엔 없다 — 두 tsconfig 공용이라 expect-error 대신) Cloudflare Workers 전역 caches
     const cache = caches.default;
     if (text && text.startsWith('{')) {
       await cache.put(staleKey(origin, path), new Response(text, {
@@ -161,7 +161,7 @@ export async function fetchSsrPayload(
   const edgeStart = Date.now();
   try {
     const cacheKey = new Request(`${origin}${target.path}`, { method: 'GET' });
-    // @ts-expect-error — Cloudflare Workers 전역 caches
+    // @ts-ignore — (워커 타입엔 있고 브라우저 타입엔 없다 — 두 tsconfig 공용이라 expect-error 대신) Cloudflare Workers 전역 caches
     const cached = await caches.default.match(cacheKey);
     if (cached && cached.status >= 200 && cached.status < 300) {
       payload = escapeForScript(await cached.text());
@@ -189,7 +189,7 @@ export async function fetchSsrPayload(
   if (!payload && staleable) {
     const staleStart = Date.now();
     try {
-      // @ts-expect-error — Cloudflare Workers 전역 caches
+      // @ts-ignore — (워커 타입엔 있고 브라우저 타입엔 없다 — 두 tsconfig 공용이라 expect-error 대신) Cloudflare Workers 전역 caches
       const hit = await caches.default.match(staleKey(origin, target.path));
       if (hit && hit.status >= 200 && hit.status < 300) {
         const text = await hit.text();

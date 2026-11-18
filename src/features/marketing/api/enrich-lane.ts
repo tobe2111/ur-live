@@ -121,7 +121,7 @@ async function enrichHeldLeadsInner(env: Env): Promise<{ processed: number; enri
   // 직전 라운드 접기 — 접을 것이 없으면(같은 run_id·구형 스냅샷) 쓰지 않으므로 비용 0.
   if (await foldEnrichRollup(DB, ENRICH_ROLLUP_KEY, bootVal(ENRICH_SNAPSHOT_KEY), bootVal(ENRICH_ROLLUP_KEY))) spendD1()
   // 🆔 라운드 식별자 — 누적이 같은 라운드를 두 번 세지 않게 하는 유일한 수단(멱등 키).
-  const runId = (globalThis.crypto?.randomUUID?.() || `t${Date.now()}`).slice(0, 8)
+  const runId = (crypto?.randomUUID?.() || `t${Date.now()}`).slice(0, 8)
   // 대상 = 보류(연락처 없음) + 이메일 없는 기존 리드(전화만 있어도 이메일 소급).
   //   정렬 = **홈페이지 보유 우선**(크롤 즉시 가능 = 이메일 수율 최고 — 대표 "이메일이 전화보다 중요") → 보류 → tier1.
   //   🔁 재시도 쿨다운(2026-07-27 최종 점검): enrich_checked_at 없던 시절엔 같은 상위 200행을 매시간

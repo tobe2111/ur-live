@@ -260,7 +260,7 @@ export const csrfClient = {
       const response = await fetch('/api/csrf-token', {
         method: 'GET',
         credentials: 'include' // 쿠키 포함
-      });
+      } as RequestInit); // 서버 타입(workers-types)의 RequestInit 엔 credentials 가 없다 — 이 파일은 브라우저에서 돈다
 
       if (!response.ok) {
         console.error('Failed to get CSRF token:', response.status);

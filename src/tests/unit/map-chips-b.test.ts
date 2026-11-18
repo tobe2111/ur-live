@@ -62,8 +62,8 @@ describe('③ 칩 아이콘 = 유어딜 선 아이콘, 이모지 0', () => {
   it('voucher-types 에 emoji 필드가 없고 icon 이 있다', () => {
     const s = code(read(DEFS))
     expect(s).not.toMatch(/emoji/)
-    expect(s).toMatch(/icon: GridIcon/)
-    expect(s).toMatch(/icon: TicketStubIcon/)
+    expect(s).toMatch(/all: GridIcon/)
+    expect(s).toMatch(/etc_voucher: TicketStubIcon/)
   })
   it('MapTopBar·SheetFilterBar 가 <v.icon /> 으로 그린다', () => {
     expect(code(read(TOPBAR))).toMatch(/<v\.icon size=/)
