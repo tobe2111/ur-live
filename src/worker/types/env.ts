@@ -73,6 +73,10 @@ export interface Env {
   /** 📅 이용권 만료일 톡캘린더 버튼 게이트 — 카카오 콘솔 톡캘린더 권한·동의항목 설정 후 'true'. */
   KAKAO_TALK_CALENDAR_ENABLED?: string;
 
+  // ---- Google (외국인 손님 로그인 · 2026-11-18) ---- 둘 다 있어야 버튼이 뜬다. 시크릿은 서버 전용(code 교환).
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+
   // ---- Cafe24 ----
   CAFE24_CLIENT_ID?: string;
   CAFE24_CLIENT_SECRET?: string;

@@ -93,7 +93,7 @@ import { adminDecisionsRoutes } from '../features/admin/api/admin-decisions.rout
 import { adminAbuseRoutes } from '../features/admin/api/admin-abuse.routes';
 import { adminReviewGeneratorRoutes } from '../features/admin/api/admin-review-generator.routes';
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
-import { kakaoRoutes } from '../features/auth/api/kakao.routes';
+import { kakaoRoutes } from '../features/auth/api/kakao.routes'; import { googleOauthRoutes } from '../features/auth/api/google.routes'; // 🌏 2026-11-18 외국인 손님 구글 로그인(서버 code 교환 — Firebase 아님)
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
 import { sellerOperatorsRoutes } from '../features/seller/api/seller-operators.routes'; // 🏪 매장 운영 주체(store-operator-model.md 2단계)
 import { brandsPublicRoutes } from '../features/brands/api/brands-public.routes'; // 🏷️ 2026-10-17 브랜드 페이지(프랜차이즈 지점 묶음)
@@ -1432,6 +1432,7 @@ app.route('/api/auth', authTokenRoutes);
 // Feature: Kakao OAuth  →  /auth/kakao/sync/callback + /api/auth/kakao/*
 app.route('/auth/kakao', kakaoRoutes);
 app.route('/api/auth/kakao', kakaoRoutes);
+app.route('/auth/google', googleOauthRoutes); app.route('/api/auth/google', googleOauthRoutes); // 🌏 start·callback / enabled — 자격 없으면 아무것도 안 한다
 
 // 🛡️ 2026-04-22: 민감 endpoint 에 bot protection 적용 — 자동화 도구 차단
 // 합법 bot (Googlebot, Kakao 등) 은 allowlist 로 통과.

@@ -494,6 +494,7 @@
 
 ### 14-2. 로그인 플로우
 - **카카오(소비자)**: OAuth → `state` CSRF + `safeRedirect` → 콜백. **iOS 쿠키 미영속** 대응: 세션은 fragment(`#st=`) 티켓 → same-origin `POST /api/auth/session/establish` 로 `ur_session` 200-발급 / 역할토큰은 fragment(`#auth=`, `pending-auth.ts`). 302 Set-Cookie 의존 금지.
+- **구글(소비자 · 외국인 손님만 · 2026-11-18)**: 기기 언어가 한국어가 아니고 `GET /api/auth/google/enabled` 가 참일 때만 `/login` 에 버튼(`GoogleLoginButton`). `/auth/google/start` → 구글 → `/auth/google/callback` 에서 **서버가 code 를 교환**하고 id_token 클레임(aud·iss·exp·email_verified)을 본다(Firebase 아님). 신원은 곁표 `user_identities(provider, subject)` — users 에 컬럼 없음. 같은 이메일 회원이 있으면 **잇지 않는다**(`/login?error=email_in_use_kakao`). 세션은 카카오와 같은 `#st=` 티켓. 역할 토큰은 발급하지 않는다(손님 계정만). 자격 `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET` 없으면 전부 무동작.
 - **연결 역할 자동발급**: `issueLinkedRoleTokens(DB, jwtSecret, userId)` — `sellers.linked_user_id = userId` (status active/approved) → `seller_token`(30일) 발급. agency 동일. **pending/suspended 는 미발급**. → 사업자 유저는 카카오 로그인 한 번에 셀러 토큰까지.
 - **same-email 자동연결**: `KakaoAuthService.upsertUser` 가 `email_verified` + `LOWER(email)=LOWER(?)` + COUNT≤1(모호성 게이트)일 때만 미연결 셀러를 링크(takeover 방어).
 - **대시보드 직접 로그인**: `/seller/login`·`/admin/login`·`/agency/login` (이메일/비번 또는 카카오) → 해당 역할 JWT+refresh.
