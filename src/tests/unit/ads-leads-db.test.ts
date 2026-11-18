@@ -287,3 +287,15 @@ describe('adsLeadsDb 라우터', () => {
     expect(log[1].startsWith('main:exec')).toBe(true)
   })
 })
+
+describe('R5 · env 하나에 핸들 하나 (2026-11-18 — 요청마다 새 핸들이면 WeakSet 스키마 기억이 안 맞아 DDL 이 매번 돈다)', () => {
+  const fakeDb = () => ({ prepare: () => ({}) })
+  it('같은 env 는 같은 핸들 · 바인딩이 다르면 다른 핸들', () => {
+    const env = { DB: fakeDb(), ADS_DB: fakeDb() }
+    expect(adsLeadsDb(env)).toBe(adsLeadsDb(env))
+    const env2 = { DB: env.DB, ADS_DB: fakeDb() }
+    expect(adsLeadsDb(env2)).not.toBe(adsLeadsDb(env))
+    env.ADS_DB = fakeDb() // 같은 env 객체라도 바인딩이 바뀌면 새로 만든다
+    expect(adsLeadsDb(env)).not.toBe(adsLeadsDb(env2))
+  })
+})

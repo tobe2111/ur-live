@@ -243,6 +243,17 @@ describe('③ 수집을 절대 멈추지 않게', () => {
     const err = db.prepare('SELECT value FROM platform_settings WHERE key = ?').get(C.COUNTER_ERROR_KEY) as { value: string }
     expect(['ensure', 'selftest']).toContain(JSON.parse(err.value).stage)
   })
+  it('설치가 실패하면 5분 뒤 다시 해 본다(일시 오류로 isolate 수명 내내 옛 경로에 묶이지 않게)', async () => {
+    const db = new DatabaseSync(':memory:')
+    db.exec(`CREATE TABLE ad_influencer_leads (${LIVE_COLS.filter(c => c !== 'recruited_at').map(c => `${c} ${REQUIRED[c] || ''}`).join(', ')}, UNIQUE(account_id, platform, channel_id))`)
+    db.exec('CREATE TABLE platform_settings (key TEXT PRIMARY KEY, value TEXT)')
+    const DB = d1(db)
+    const T0 = 1_800_000_000_000
+    expect(await C.ensureStatsCounters(DB, T0)).toBe(false)
+    db.exec('ALTER TABLE ad_influencer_leads ADD COLUMN recruited_at TEXT') // 원인이 사라졌다
+    expect(await C.ensureStatsCounters(DB, T0 + 60_000)).toBe(false)     // 5분 안 — 아직 안 해 본다
+    expect(await C.ensureStatsCounters(DB, T0 + C.ENSURE_RETRY_MS + 1)).toBe(true)
+  })
   it('코드가 리드 id 를 고치는 곳이 없다(트리거가 NEW.id 하나로 구간을 판정한다)', () => {
     const bad: string[] = []
     const walk = (d: string) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) { if (!p.includes('tests')) walk(p) } else if (/\.(ts|tsx|mjs)$/.test(f)) { const t = readFileSync(p, 'utf8'); if (/UPDATE\s+ad_influencer_leads\s+SET\s+(?:[^`]*?,\s*)?id\s*=/i.test(t)) bad.push(p) } } }

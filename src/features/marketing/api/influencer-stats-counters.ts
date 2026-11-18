@@ -240,15 +240,19 @@ export const CONTACT_TODO_SQL = `SELECT
   FROM ad_influencer_leads WHERE account_id = ${POOL} AND (contacted_at IS NOT NULL OR follow_up_at IS NOT NULL)`
 
 const ready = new WeakSet<object>()
-const failed = new WeakSet<object>()
+/** 실패한 시각 — 5분 뒤 다시 해 본다(과부하 같은 일시 오류로 isolate 수명 내내 옛 경로에 묶이지 않게).
+ *  🩸 `adsLeadsDb` 가 env 마다 같은 핸들을 돌려주게 된 뒤(2026-11-18)로는 이 기억이 진짜로 isolate 수명만큼 간다. */
+const failedAt = new WeakMap<object, number>()
+export const ENSURE_RETRY_MS = 5 * 60_000
 
 /**
  * 숫자표·트리거를 준비한다(isolate 당 1회). 트리거를 **새로 만들었으면** 처음부터 다시 채운다
  * (트리거가 없던 동안의 쓰기는 숫자표에 안 들어갔다). 자가 시험이 실패하면 트리거를 내리고 false.
  */
-export async function ensureStatsCounters(DB: D1Database): Promise<boolean> {
+export async function ensureStatsCounters(DB: D1Database, nowMs = Date.now()): Promise<boolean> {
   if (ready.has(DB)) return true
-  if (failed.has(DB)) return false
+  const f = failedAt.get(DB)
+  if (f != null && nowMs - f >= 0 && nowMs - f < ENSURE_RETRY_MS) return false
   try {
     // ⚠️ SQL 에 리드 테이블 이름이 있어야 라우터가 리드 DB 로 보낸다(없으면 메인 DB 의 sqlite_master 를 본다).
     const have = await DB.prepare(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'ad_influencer_leads' AND name IN (${TRIGGER_NAMES.map(() => '?').join(',')})`) // d1-bind-ok: 트리거 이름 3개 고정(한도 100 에 닿을 수 없다)
@@ -267,7 +271,7 @@ export async function ensureStatsCounters(DB: D1Database): Promise<boolean> {
       } catch (e) {
         for (const n of TRIGGER_NAMES) await DB.prepare(`DROP TRIGGER IF EXISTS ${n}`).run().catch(() => null)
         await recordCounterError(DB, 'selftest', e)
-        failed.add(DB)
+        failedAt.set(DB, nowMs)
         return false
       }
     }
@@ -275,7 +279,7 @@ export async function ensureStatsCounters(DB: D1Database): Promise<boolean> {
     return true
   } catch (e) {
     await recordCounterError(DB, 'ensure', e)
-    failed.add(DB)
+    failedAt.set(DB, nowMs)
     return false
   }
 }
