@@ -212,6 +212,9 @@ export async function revokeOperator(
         WHERE seller_id = ? AND user_id = ? AND revoked_at IS NULL`
     ).bind(sellerId, userId).run()
     invalidateStoreSeatCache(DB, sellerId)
+    // 🔐 2026-11-18: 그 사람이 만든 계산대 스캔 기기 키도 같이 끈다 — 안 그러면 회수 뒤에도 이용권 사용 처리가 된다.
+    const { revokeScanDevicesIssuedBy } = await import('./scan-device-revoke')
+    await revokeScanDevicesIssuedBy(DB, sellerId, userId)
     return { ok: true, changed: r.meta?.changes ?? 0 }
   } catch {
     return { ok: false, changed: 0 }
