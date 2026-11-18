@@ -212,7 +212,9 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
     const spent = await spendPartialDeal(DB, c.env as unknown as { TOSS_SECRET_KEY?: string }, {
       userId, dealUsed, orderNumber, paymentKey,
       productId: priced.lines[0]!.productId,
-      qty: priced.lines.reduce((s, l) => s + l.qty, 0),
+      // 📦 2026-11-18: 0 — 실패 시 재고는 아래 rollbackStock() 이 줄 단위로 되돌린다. 전체 수량을 넘기면 첫 상품 재고가
+      //   한 번 더(+전체 수량) 늘어 초과 판매가 됐다(A 2장 + B 3장 → A 재고 +7).
+      qty: 0,
       productName: cartOrderName(priced.lines),
     })
     if (!spent.ok) {
