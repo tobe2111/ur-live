@@ -151,5 +151,18 @@ export async function handleCronStaleWatch(env: Env): Promise<{ checked: number;
       .bind(ALERT_STATE_KEY, JSON.stringify(next).slice(0, 4000)).run()
   } catch { /* fail-soft */ }
 
+  // ✅ 2026-11-18 회복한 작업의 경보는 닫는다(대표 "더 개선할 것들 찾아줘") — 종전엔 닫는 곳이 어드민 수동 버튼뿐이라
+  //   미해결 cron_failures 281건 중 대부분이 이미 회복한 8~10월 `stale:*` 였다(진짜 신호 11건이 묻혔다).
+  //   지금 멈춤(stale)·차단(blocked)으로 판정된 이름은 **건드리지 않는다** — 그 둘만 남기고 나머지 `stale:`·`blocked:` 를 닫는다.
+  //   이번 회차의 비트 목록이 있을 때만(위 `!beats.length` 조기 반환) — 비트를 못 읽었는데 전부 닫는 일은 없다.
+  try {
+    const stillOpen = [...stale.map((b) => `stale:${b.name}`), ...blocked.map((b) => `blocked:${b.name}`)]
+    await DB.prepare(
+      `UPDATE cron_failures SET resolved = 1
+        WHERE resolved = 0 AND (job_name LIKE 'stale:%' OR job_name LIKE 'blocked:%')
+          AND job_name NOT IN (SELECT value FROM json_each(?))`,
+    ).bind(JSON.stringify(stillOpen)).run()
+  } catch { /* fail-soft — 다음 회차에 다시 닫는다 */ }
+
   return { checked: beats.length, alerted }
 }

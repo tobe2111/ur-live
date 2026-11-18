@@ -29,7 +29,12 @@ export async function sendSystemEmail(
   to: string,
   content: NotificationContent,
   /** 계정 보안 메일(인증·초대·비밀번호)은 알림 수신 끔과 무관하게 보낸다 — 끄면 가입·복구가 막힌다. */
-  opts: { ignorePreference?: boolean } = {},
+  opts: {
+    ignorePreference?: boolean
+    /** 🩸 2026-11-18 재시도 cron 이 부를 때 — 실패해도 `email_failures` 에 **새 행을 만들지 않는다**(그 행은 호출부가 갱신한다).
+     *  종전엔 재시도 실패마다 retry_count=0 인 새 행이 생겨, 시험 메일 1통이 142행으로 불어났다(라이브). */
+    noQueue?: boolean
+  } = {},
 ): Promise<{ success: boolean; skipped?: boolean; undeliverable?: boolean; error?: string }> {
   // 수단이 있든 없든 먼저 — 배달될 수 없는 주소는 실패 큐에 넣지 않는다(위 머리말).
   if (isUndeliverableAddress(to)) return { success: false, skipped: true, undeliverable: true };
@@ -65,7 +70,7 @@ export async function sendSystemEmail(
 
     // 🛡️ 2026-05-12: 실패 시 retry/dead-letter queue.
     //   alimtalk_failures 와 동일 패턴 (5분 후 재시도, 최대 3회).
-    if (!result.success && e?.DB) {
+    if (!result.success && e?.DB && !opts.noQueue) {
       try {
         await e.DB.prepare(`
           CREATE TABLE IF NOT EXISTS email_failures (

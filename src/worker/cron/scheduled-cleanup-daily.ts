@@ -229,4 +229,16 @@ export async function runDailyCleanup(DB: D1Database, results: Record<string, nu
     results.stats_refresh = n > 0 ? 2 : -1;
     if (n === 0) logError('[Cron] stats refresh error:', { error: String(e1) });
   }
+  // ── 29. 📮 2026-11-18 같은 메일의 묵은 실패 행을 하나로 — 재시도가 실패할 때마다 새 행을 만들던 버그(같은 날 수리 —
+  //   `system-email.ts` noQueue) 로 시험 메일 1통이 142행이 됐다. 재시도를 다 쓴 행 중 **같은 받는 사람·제목의 가장 최근 1건만**
+  //   열어 두고(어드민이 실패를 계속 본다) 나머지는 닫는다. 진행 중(재시도 남음)인 행은 건드리지 않는다.
+  try {
+    const r = await DB.prepare(
+      `UPDATE email_failures SET resolved = 1, error = 'dup: 같은 메일의 더 최근 실패 행이 남아 있다'
+        WHERE resolved = 0 AND retry_count >= max_retries
+          AND id NOT IN (SELECT MAX(id) FROM email_failures WHERE resolved = 0 GROUP BY recipient, subject)`,
+    ).run();
+    const n = Number(r.meta?.changes ?? 0);
+    if (n > 0) results.email_failure_dups_closed = n;
+  } catch { /* 표 없음 */ }
 }
