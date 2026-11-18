@@ -55,11 +55,29 @@ function regionCodeFromPath(pathname: string): string | null {
   return m ? m[1] : null
 }
 
+/**
+ * 📣 2026-11-18 링크에 ?src= 가 없어도 인스타·스레드 앱에서 온 방문은 출처를 안다.
+ *   인스타 프로필 링크가 `https://urdeal.kr/` 그대로였고(?src=ig 없음), 프로필 링크는 API 로 못 바꾼다
+ *   (Graph API 에 프로필 편집 경로가 없다 — 2026-11-18 실측 `Unsupported post request`). 그래서 그 앱의
+ *   인앱 브라우저 표시(UA)나 referrer 로 판정한다. 프로필 링크·스토리·DM 의 링크가 전부 여기에 잡힌다.
+ *   명시적 ?src= / utm_source 가 있으면 그게 이긴다(이 함수는 그 둘이 없을 때만 불린다).
+ *   스레드 앱 UA 에도 'Instagram' 이 섞일 수 있어 스레드를 먼저 본다.
+ */
+export function inferSourceFromEnv(ua: string, referrer: string): string | null {
+  const u = ua || ''
+  let host = ''
+  try { host = referrer ? new URL(referrer).hostname.toLowerCase() : '' } catch { host = '' }
+  if (/BarcelonaApp/i.test(u) || /(^|\.)threads\.(net|com)$/.test(host)) return 'threads'
+  if (/instagram/i.test(u) || /(^|\.)instagram\.com$/.test(host)) return 'ig'
+  return null
+}
+
 /** 랜딩 시 1회 호출 — first-touch 캡처 + landing 이벤트 발사. */
 export function captureAcquisitionSource(): void {
   try {
     const params = new URLSearchParams(window.location.search)
     const src = validSrc(params.get('src')) || validSrc(params.get('utm_source'))
+      || inferSourceFromEnv(navigator.userAgent, document.referrer)
     if (!src) return
     const existing = readStored()
     if (existing) return // first-touch 고정 — 30일 내 새 소스는 무시
