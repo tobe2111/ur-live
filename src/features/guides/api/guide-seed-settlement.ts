@@ -112,5 +112,8 @@ export const ADMIN_SETTLEMENT_SECTION: SeedSection = {
 - **동일 수령자·기간 중복 송금 차단**: 같은 수령자·기간에 이미 'sent' 건이 있으면 \`PAYOUT_ALREADY_SENT_PERIOD\` 409 — 이중지급 방어(정말 별건인지 먼저 확인).
 - **과다지급 가드**: 승인 시 현재 원장 net receivable 을 재검증 — 초과분은 \`PAYOUT_EXCEEDS_RECEIVABLE\` 로 차단(오래된 gross 건은 취소 후 재생성).
 - **미회수 clawback 조회**: 지급 후 환불이 들어오면 자동 회수가 안 되고 의무만 기록됨 — \`GET /api/admin/payouts/clawbacks\` 로 pending 회수 대상·금액 합계를 확인하고 회수/상계 처리.
-- **두 레일 대사**: 같은 매장이 restaurant_settlements 와 payouts 양쪽에 미지급 노출되면 이중지급 위험 — \`GET /api/admin/payouts/rail-reconciliation\` 으로 확인 후 **한 레일에서만** 지급.`,
+- **두 레일 대사**: 같은 매장이 restaurant_settlements 와 payouts 양쪽에 미지급 노출되면 이중지급 위험 — \`GET /api/admin/payouts/rail-reconciliation\` 으로 확인 후 **한 레일에서만** 지급.
+- **장부 조정 (2026-11-18)**: 원장이 잘못 쌓였을 때(같은 구매 두 번 적립 등) — 원장은 지우지 않고 **반대 방향 한 줄**을 적는다.
+  \`POST /api/admin/ledger/adjustments\` {debit_account, credit_account, amount, reason, key, payout_id?} — \`payout_id\` 를 주면 **지급 대기** 행 금액도 같이 줄인다(승인·송금된 건은 거부). 같은 \`key\` 를 다시 보내면 아무것도 안 바뀐다.
+  받으면 안 되는 중개사 몫·추천 몫(지급 전)은 \`POST /api/admin/ledger/attributions/:id/cancel\` {reason} — 잔액과 원장을 함께 되돌린다. 기록 보기: \`GET /api/admin/ledger/adjustments\`. 전부 감사 로그에 남는다.`,
 }

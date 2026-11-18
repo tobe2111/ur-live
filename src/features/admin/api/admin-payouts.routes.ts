@@ -30,8 +30,10 @@ import { csvEscape } from '../../../worker/utils/csv-safe'
 import { registerTossPayoutRoutes } from './admin-payouts/toss-payouts'
 import { resolvePayeeAccount } from '../../../worker/utils/payout-payee-account'
 import { handoverCloseout } from './admin-payouts/handover-closeout'
+import { registerLedgerCorrectionRoutes } from './admin-payouts/ledger-corrections'
 
 export const adminPayoutsRoutes = new Hono<{ Bindings: Env }>()
+registerLedgerCorrectionRoutes(adminPayoutsRoutes) // 🧾 2026-11-18 장부 조정
 // 💸 2026-11-03 토스 지급대행(게이트 기본 OFF) — 600줄 래칫 때문에 같은이름 폴더로 뺐다.
 registerTossPayoutRoutes(adminPayoutsRoutes)
 
