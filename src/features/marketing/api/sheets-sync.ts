@@ -17,6 +17,7 @@ import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns } from './influencer-performance'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
+import { harvestMarks, ensureListTab, applyEmailList, sentDayKST } from './pool-sheets-marks'
 
 const TAB = 'pool' // 대상 탭 이름(없으면 자동 생성) — 이름 변경 시 동기화 끊김(변경 금지)
 /**
@@ -99,7 +100,9 @@ export async function getToken(env: Env): Promise<string | null> {
 //   2026-07-27 엑셀 다운로드(influencer-pool-export)와 "같은 열 세계"로 확장 — 🏅점수·롱폼중앙값·쇼츠%·
 //   마지막글·메일상태·분류근거·브랜드. 시트는 **기계값 미러**(status='new' 등 raw — 필터/재활용용,
 //   한국어 라벨은 엑셀 다운로드 담당).
-export const SHEET_HEADER = ['ID', '플랫폼', '이름', '핸들', 'URL', '점수', '구독자수', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타', '틱톡', '기타링크(유튜브·블로그·링크인바이오)', '카테고리', '분류근거', '제외태그', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일'] as const
+export const SHEET_HEADER = ['ID', '플랫폼', '이름', '핸들', 'URL', '점수', '구독자수', '평균조회수', '롱폼중앙값', '쇼츠%', '평균댓글', '月포스팅', '마지막글', '이메일', '메일상태', '인스타', '틱톡', '기타링크(유튜브·블로그·링크인바이오)', '카테고리', '분류근거', '제외태그', '수집키워드', '상태', '컨택채널', '컨택일', '팔로업', '출처', '동의일', '메모', '수집일', '이메일 보냄'] as const
+/** '이메일 보냄' 열 글자(마지막 열) — 시트에서 표시를 읽고, 사이클 끝 꼬리 지우기의 끝 열이다. */
+export const MARK_LETTER = (() => { let n: number = SHEET_HEADER.length, s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26) } return s })()
 export interface SheetLead {
   id: number; platform: string; name: string; handle: string | null; url: string
   subscriber_count: number; recent_avg_views: number | null; recent_avg_comments: number | null; recent_posts_30d: number | null
@@ -117,7 +120,9 @@ export function leadToRow(l: SheetLead): (string | number)[] {
     l.tiktok || '', l.links || '', l.category || '', l.category ? (l.category_source || 'keyword') : '',     // 🚫 '제외태그'(구 '브랜드') — 거부 명시가 브랜드보다 강한 신호라 우선. 열 추가 없이 한 칸에 담는다
     //   (시트는 기계값 미러라 라벨이 아니라 코드값: 'optout' / 'brand' / '').
     l.opted_out ? 'optout' : l.is_brand ? 'brand' : '', l.source_keyword || '', l.status, l.contact_channel || '', l.contacted_at || '',
-    l.follow_up_at || '', l.source || '', l.consented_at || '', l.memo || '', l.collected_at]
+    l.follow_up_at || '', l.source || '', l.consented_at || '', l.memo || '', l.collected_at,
+    // ✉️ '이메일 보냄' — 이메일로 연락한 날(한국 날짜). 시트에서 이 칸에 아무 글자나 적으면 다음 동기화가 DB 에 저장한다.
+    sentDayKST(l.contact_channel === 'email' ? l.contacted_at : null)]
 }
 
 export async function sheetsFetch(token: string, sheetId: string, path: string, init?: RequestInit): Promise<Response> {
@@ -129,25 +134,27 @@ export async function sheetsFetch(token: string, sheetId: string, path: string, 
 /** pool 탭 보장 + 그리드 크기(행/열)를 데이터 전량에 맞게 확장.
  *  ⚠️ 신규 시트/탭 기본 그리드는 1000행이라 28k행 미러 시 2001행+ 기록이 'exceeds grid limits'(400)로 실패.
  *  → 쓰기 전에 rowCount/columnCount 를 needRows/needCols 이상으로 키운다(작으면만; 이미 크면 no-op). */
-async function ensurePoolSheet(token: string, sheetId: string, needRows: number, needCols: number): Promise<void> {
+async function ensurePoolSheet(token: string, sheetId: string, needRows: number, needCols: number): Promise<string[]> {
   const meta = await sheetsFetch(token, sheetId, '?fields=sheets.properties(sheetId,title,gridProperties)').catch(() => null)
-  if (!meta?.ok) return
+  if (!meta?.ok) return []
   const j = await meta.json().catch(() => null) as { sheets?: { properties?: { sheetId?: number; title?: string; gridProperties?: { rowCount?: number; columnCount?: number } } }[] } | null
+  const titles = (j?.sheets || []).map(x => String(x.properties?.title || ''))
   const tab = j?.sheets?.find(s => s.properties?.title === TAB)?.properties
   if (!tab) { // 없으면 필요한 크기로 바로 생성
     await sheetsFetch(token, sheetId, ':batchUpdate', {
       method: 'POST', body: JSON.stringify({ requests: [{ addSheet: { properties: { title: TAB, gridProperties: { rowCount: needRows, columnCount: needCols } } } }] }),
     }).catch(() => null)
-    return
+    return titles
   }
   const curRows = tab.gridProperties?.rowCount || 0, curCols = tab.gridProperties?.columnCount || 0
-  if (curRows >= needRows && curCols >= needCols) return // 이미 충분
+  if (curRows >= needRows && curCols >= needCols) return titles // 이미 충분
   await sheetsFetch(token, sheetId, ':batchUpdate', {
     method: 'POST', body: JSON.stringify({ requests: [{ updateSheetProperties: {
       properties: { sheetId: tab.sheetId, gridProperties: { rowCount: Math.max(curRows, needRows), columnCount: Math.max(curCols, needCols) } },
       fields: 'gridProperties.rowCount,gridProperties.columnCount',
     } }] }),
   }).catch(() => null)
+  return titles
 }
 
 /** 이 회차를 누가 돌렸는지 — 스탬프에 남는다(아래 trigger 기록 사유 참조). */
@@ -179,7 +186,7 @@ export async function syncInfluencerPoolToSheets(env: Env, trigger: SyncTrigger 
   }
   await adsLeadsDb(env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
     .bind('ads_sheets_last_sync', JSON.stringify({
-      at: new Date().toISOString(), ok: r.ok, rows: r.rows ?? null,
+      at: new Date().toISOString(), ok: r.ok, rows: r.rows ?? null, marked: r.marked ?? 0,
       error: (r.error || '').slice(0, 300) || null, subreq: cost.subreq, trigger,
     })).run().catch(() => null)
   // 🕘 cron 회차는 **성공/실패 무관** 별도 키에도 마지막 시각을 남긴다 — 위 스탬프는 수동 실행이 덮어쓰므로
@@ -192,7 +199,7 @@ export async function syncInfluencerPoolToSheets(env: Env, trigger: SyncTrigger 
 }
 
 /** 회차 결과 — `partial` 이면 사이클이 안 끝났고 `next` 부터 다음 회차가 이어받는다. */
-export type SheetSyncResult = { ok: boolean; rows?: number; error?: string; partial?: boolean; from?: number; next?: number; total?: number }
+export type SheetSyncResult = { ok: boolean; rows?: number; error?: string; partial?: boolean; from?: number; next?: number; total?: number; marked?: number }
 
 async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncResult> {
   if (!env.GSHEETS_SHEET_ID || !env.GSHEETS_SA_EMAIL || !env.GSHEETS_SA_KEY) {
@@ -210,7 +217,10 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
   const cRaw = await adsLeadsDb(env).prepare('SELECT value FROM platform_settings WHERE key = ?').bind(CURSOR_KEY)
     .first<{ value: string }>().catch(() => null)
   cost.subreq += 1
-  const cur = startCursor(parseSheetCursor(cRaw?.value))
+  // 열 수가 바뀌었으면(2026-11-18 '이메일 보냄' 열 추가 30 → 31) 처음부터 — 그리드 폭·헤더는 사이클 시작에만 맞추므로, 도중에 넓은 줄을 쓰면
+  //   그리드 밖이라 400 → 커서 고착이다(업체 시트의 `cursorForCols` 와 같은 이유).
+  const cur0 = startCursor(parseSheetCursor(cRaw?.value))
+  const cur = cur0.off > 0 && parseCursorCols(cRaw?.value) !== SHEET_HEADER.length ? { off: 0, total: 0 } : cur0
   let off = cur.off
   let total = cur.total
 
@@ -221,7 +231,8 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
     total = Math.max(0, Number(cnt?.n) || 0)
     // 탭 보장 + 그리드를 전량 크기로 확장(1000행 기본 한계 → 2001행+ 400 방지). 사이클당 1회면 충분하다.
     cost.subreq += 1
-    await ensurePoolSheet(token, sheetId, total + 2, SHEET_HEADER.length)
+    const titles = await ensurePoolSheet(token, sheetId, total + 2, SHEET_HEADER.length)
+    await ensureListTab(token, sheetId, titles, cost) // ✉️ '발송기록' 탭(보낸 이메일 붙여넣기) — 없을 때만 만든다
     // 헤더는 사이클 시작에 한 번만 쓴다.
     cost.subreq += 1
     const h = await sheetsFetch(token, sheetId, `/values/${encodeURIComponent(`${TAB}!A1`)}?valueInputOption=RAW`, {
@@ -237,12 +248,18 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
   const startOff = off
   let done = false
   let wrote = 0
+  // ✉️ '발송기록' 탭에 붙여넣은 이메일 → 표시(그리고 탭을 비운다). 탭이 없거나 비었으면 읽기 1번.
+  const DB = adsLeadsDb(env)
+  let marked = (await applyEmailList(DB, token, sheetId, 'ad_influencer_leads', cost).catch(() => ({ marked: 0 }))).marked
   while (wrote < ROWS_PER_RUN) {
     // 🧱 **이 사이클은 자기 스냅샷까지만 쓴다** — 그리드를 그 크기로만 넓혔기 때문이다(`cycleRoom` 주석).
     //   이 상한이 없어서 사이클 도중 늘어난 행을 그리드 밖에 쓰고 400 → 커서 고착이 났다.
     const room = cycleRoom(off, total)
     if (room <= 0) { done = true; break }
     const take = Math.min(PAGE, ROWS_PER_RUN - wrote, room)
+    // ✉️ 덮어쓰기 **전에**, 그리고 DB 를 읽기 **전에** 이 구간의 '이메일 보냄' 표시를 저장한다 — 그래야 이번에 쓰는 줄에
+    //   방금 저장한 날짜가 바로 그려진다(읽고 나서 저장하면 표시가 한 사이클 동안 사라져 보인다). 줄은 ID 열로 찾는다.
+    marked += await harvestMarks(DB, token, sheetId, 'ad_influencer_leads', TAB, MARK_LETTER, off + 2, take, cost).catch(() => 0)
     const res = await adsLeadsDb(env).prepare(`SELECT id, platform, name, handle, url, subscriber_count, recent_avg_views, recent_avg_comments, recent_posts_30d, email, instagram, tiktok, links,
         category, source_keyword, status, contact_channel, contacted_at, follow_up_at, source, consented_at, memo, collected_at,
         lead_score, median_long_views, shorts_ratio, is_brand, email_status, last_post_at, category_source, opted_out
@@ -277,13 +294,13 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
     //   ⚠️ 옛 구조는 매 회차 전체 clear 후 다시 채웠다. 그건 전량을 한 번에 쓸 수 있을 때만 성립한다.
     if (off < total) {
       cost.subreq += 1
-      await sheetsFetch(token, sheetId, `/values/${encodeURIComponent(`${TAB}!A${off + 2}:AE`)}:clear`, { method: 'POST', body: '{}' }).catch(() => null)
+      await sheetsFetch(token, sheetId, `/values/${encodeURIComponent(`${TAB}!A${off + 2}:${MARK_LETTER}`)}:clear`, { method: 'POST', body: '{}' }).catch(() => null)
     }
     await saveSheetCursor(env, 0, off)   // 다음 회차는 새 사이클
-    return { ok: true, rows: off, partial: false, from: startOff }
+    return { ok: true, rows: off, partial: false, from: startOff, marked }
   }
   await saveSheetCursor(env, off, total)
-  return { ok: true, rows: wrote, partial: true, from: startOff, next: off, total }
+  return { ok: true, rows: wrote, partial: true, from: startOff, next: off, total, marked }
 }
 
 /**
@@ -323,7 +340,12 @@ export function parseSheetCursor(raw: string | null | undefined): { off: number;
   } catch { return { off: 0, total: 0 } }
 }
 
+/** 커서에 적힌 열 수(없으면 0 — 옛 커서). 지금 열 수와 다르면 사이클을 처음부터 한다. */
+export function parseCursorCols(raw: string | null | undefined): number {
+  try { return Math.max(0, Math.floor(Number((JSON.parse(String(raw || '{}')) as { cols?: unknown }).cols) || 0)) } catch { return 0 }
+}
+
 async function saveSheetCursor(env: Env, off: number, total: number): Promise<void> {
   await adsLeadsDb(env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-    .bind(CURSOR_KEY, JSON.stringify({ off, total, at: new Date().toISOString() })).run().catch(() => null)
+    .bind(CURSOR_KEY, JSON.stringify({ off, total, cols: SHEET_HEADER.length, at: new Date().toISOString() })).run().catch(() => null)
 }
