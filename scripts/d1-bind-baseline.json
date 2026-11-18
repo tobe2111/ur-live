@@ -1,5 +1,5 @@
 {
-  "_total": 171,
+  "_total": 169,
   "counts": {
     "src/features/admin/api/admin-influencer-outreach.routes.ts": 1,
     "src/features/admin/api/admin-kt-alpha/catalog.ts": 1,
@@ -41,7 +41,6 @@
     "src/features/ledger/api/ledger.routes.ts": 1,
     "src/features/marketing/api/admin-ads-influencers.routes.ts": 4,
     "src/features/marketing/api/biz-blog-router.ts": 1,
-    "src/features/marketing/api/business-status-sweep.ts": 1,
     "src/features/marketing/api/company-dedupe.ts": 2,
     "src/features/marketing/api/company-discovery.ts": 2,
     "src/features/marketing/api/company-save.ts": 2,
@@ -71,7 +70,6 @@
     "src/features/supply/api/wholesale-helpers.ts": 2,
     "src/features/supply/api/wholesale-settlement.ts": 2,
     "src/shared/constants/voucher-categories.ts": 1,
-    "src/worker/cron/auto-settlement.ts": 1,
     "src/worker/cron/demo-fcfs-renew.ts": 1,
     "src/worker/cron/group-buy-feed-cache.ts": 2,
     "src/worker/cron/reconciliation.ts": 1,

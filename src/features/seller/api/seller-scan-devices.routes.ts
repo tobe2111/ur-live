@@ -18,6 +18,8 @@ import { requireAuth } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
 import { parseScanSession, insertScanSession } from './scan-session-store'
+import { resolveStoreActor } from '../../../worker/utils/store-actor'
+import { recordScanDeviceIssuer } from '../../../worker/utils/scan-device-revoke'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
@@ -106,6 +108,9 @@ sellerScanDevicesRoutes.post('/scan-devices', rateLimit({ action: 'scan_device_i
     const r = await DB.prepare(
       'INSERT INTO seller_scan_devices (seller_id, name, token_hash) VALUES (?, ?, ?)'
     ).bind(sellerId, name, hash).run()
+    // 🔐 2026-11-18: 위임받은 운영자가 만든 키는 **누가 만들었는지** 적어 둔다 — 그 위임이 끝나면 같이 끈다.
+    const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, DB)
+    await recordScanDeviceIssuer(DB, Number(r.meta?.last_row_id), Number(sellerId), actor.isOwner ? null : actor.operatorUserId)
     // key 원문은 이 응답 1회만 — 서버엔 해시만 남음
     return c.json({ success: true, data: { id: r.meta?.last_row_id, name, key, link: `/store/scan?dk=${key}` } })
   } catch (err) {

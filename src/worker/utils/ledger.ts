@@ -417,7 +417,7 @@ export async function getUnsettledBalance(
   const earmarked = await DB.prepare(
     `SELECT COALESCE(SUM(amount), 0) as total FROM payouts
       WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('pending','approved','sent')`,
-  ).bind(...paidKeys).first<{ total: number }>().catch(() => ({ total: 0 }))
+  ).bind(...paidKeys).first<{ total: number }>() // 💸 2026-11-17: 실패를 0 으로 치면 잔액이 과대 — 던진다(손바뀜 가드가 보류로 받는다)
   return receivable - Number(earmarked?.total ?? 0)
 }
 
@@ -432,7 +432,7 @@ export async function getPayablePending(
   const paid = await DB.prepare(
     `SELECT COALESCE(SUM(amount), 0) as total FROM payouts
       WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('approved','sent')`,
-  ).bind(...paidKeys).first<{ total: number }>().catch(() => ({ total: 0 }))
+  ).bind(...paidKeys).first<{ total: number }>() // 💸 2026-11-17: 실패를 0 으로 치면 지급 가능액이 과대 — 던진다
   return receivable - Number(paid?.total ?? 0)
 }
 

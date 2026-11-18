@@ -125,7 +125,8 @@ sellerAccountRoutes.post('/change-password', rateLimit({ action: 'seller_change_
     const newHash = await hp(newPassword);
     await db.prepare("UPDATE sellers SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").bind(newHash, sellerId).run();
     // 🛡️ 비번 변경 시 기존 refresh token 전량 revoke
-    await db.prepare("DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ?").bind(Number(sellerId)).run().catch(swallow('seller:api:seller-management'));
+    //   🔐 2026-11-18: 지우기만 하면 '행 0 = 서명만 보고 통과' 로 옛 토큰이 되살아난다 — 묘비를 남긴다(refresh-rotation.ts).
+    await (await import('../../../worker/utils/refresh-rotation')).revokeAllRefreshTokens(db, 'seller', Number(sellerId)).catch(swallow('seller:api:seller-management'));
     return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
   } catch (err: unknown) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-account]');

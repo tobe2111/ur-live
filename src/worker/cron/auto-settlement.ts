@@ -23,7 +23,7 @@ import {
   unclaimedRefundAmount,
   type UnclaimedPolicy,
 } from '../../shared/pickup-refund';
-import { recordLedger } from '../utils/ledger';
+import { recordLedger } from '../utils/ledger'; import { claimVouchersForSettlement } from '../utils/settlement-claim';
 import { ensureRedeemStoreTable, REDEEM_STORE_SETTLEMENT_SQL } from '../utils/brand-cross-owner';
 import {
   expiredVoucherSelectSql,
@@ -246,14 +246,11 @@ export async function handleAutoSettlement(env: Env) {
         // 🛡️ 2026-06-26 [머니] claim CAS — `AND settlement_id IS NULL` 가드 추가. 가드 없으면
         //   두 정산 run 이 겹칠 때(현재는 일 1회 cron 만 트리거 → 사실상 없음) 같은 voucher 가
         //   두 정산행에 동시 귀속될 수 있었음. 이제 voucher 는 한 정산행에만 한 번 claim.
+        // 💸 2026-11-17: 100장 이상이면 한 문장 UPDATE 가 바인딩 한도로 던져 **다음 회차 이중 지급**이 됐다 → 90개 묶음
+        //   batch(전부/전무) + 실패·불일치 시 정산행 삭제. 상세 `utils/settlement-claim.ts`.
         if (result.meta?.last_row_id && vouchers.length > 0) {
           const voucherIds = vouchers.map((v: any) => Number(v.id)).filter(Number.isFinite);
-          if (voucherIds.length > 0) {
-            const placeholders = voucherIds.map(() => '?').join(',');
-            await DB.prepare(
-              `UPDATE vouchers SET settlement_id = ? WHERE id IN (${placeholders}) AND settlement_id IS NULL`
-            ).bind(result.meta.last_row_id, ...voucherIds).run();
-          }
+          await claimVouchersForSettlement(DB, Number(result.meta.last_row_id), voucherIds);
         }
         processedSellers++;
       } catch (sellerErr) {

@@ -4,10 +4,10 @@
     {
       "ghsa": "GHSA-fc5q-39xc-vjpf",
       "pkg": "picomatch",
-      "reason": "ReDoS — 공격자가 glob 패턴을 넣어야 터진다. picomatch 는 빌드·시험 도구(vite·tailwindcss·vitest·fast-glob)에서만 우리 고정 패턴으로 쓰이고, 클라이언트 번들·워커 소스에는 없다(2026-11-18 grep 0). 고친 버전 없음(<=4.0.7 = 최신).",
-      "accepted_by": "대표 2026-11-18 '보안 예외 등록해'",
+      "reason": "picomatch ReDoS(반복 extglob). 2026-11-18 실측: 고친 버전이 없다(advisory 범위 <=4.0.7 = 최신). `npm ls picomatch --omit=dev` 가 비어 있다 — vite·tailwind·vitest·chokidar 가 **우리 설정의 glob** 을 맞출 때만 쓰는 빌드·시험 도구 전용이고, 배포 산출물(dist/client + _worker.js)에는 없다. 외부 입력이 이 매처에 닿는 경로가 없다.",
+      "accepted_by": "대표(urteam.corp) 승인 — 2026-11-18 AskUserQuestion \"예외 등록 (Recommended)\"",
       "date": "2026-11-18",
-      "review": "2026-12-18 — picomatch 패치 버전이 나오면 업그레이드 후 이 줄 삭제"
+      "review": "picomatch 가 고친 버전(4.0.8+ 또는 2.3.3+)을 내면 overrides 로 올리고 이 항목을 지울 것. check-npm-audit.sh 가 audit 에서 사라진 면제를 경고로 알려 준다."
     }
   ]
 }

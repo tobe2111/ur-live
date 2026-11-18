@@ -61,6 +61,7 @@ CREATE TABLE products (id INTEGER PRIMARY KEY, seller_id INTEGER, name TEXT, res
 CREATE TABLE vouchers (id INTEGER PRIMARY KEY, order_id INTEGER, product_id INTEGER, user_id TEXT, code TEXT UNIQUE, status TEXT, used_at TEXT, expires_at TEXT, created_at TEXT DEFAULT (datetime('now')), applied_price INTEGER);
 CREATE TABLE orders (id INTEGER PRIMARY KEY, seller_id INTEGER, status TEXT, total_amount INTEGER, created_at TEXT DEFAULT (datetime('now')));
 CREATE TABLE platform_settings (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE payouts (id INTEGER PRIMARY KEY AUTOINCREMENT, payee_type TEXT, payee_id TEXT, amount INTEGER, status TEXT);
 CREATE TABLE rate_limit_attempts (key TEXT, action TEXT, window_start INTEGER, count INTEGER, PRIMARY KEY (key, action, window_start));
 CREATE TABLE seller_operators (id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER NOT NULL, user_id INTEGER NOT NULL, role TEXT NOT NULL DEFAULT 'operator', granted_by_user_id INTEGER, granted_at DATETIME, revoked_at DATETIME, created_at DATETIME);
 CREATE TABLE ledger_entries (id INTEGER PRIMARY KEY AUTOINCREMENT, event_type TEXT NOT NULL, reference_id TEXT NOT NULL, amount INTEGER NOT NULL, debit_account TEXT NOT NULL, credit_account TEXT NOT NULL, fee_amount INTEGER DEFAULT 0, fee_account TEXT, metadata TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
@@ -251,6 +252,13 @@ describe('④ 조회 명령', () => {
   it('정산 — 원장 헬퍼를 읽기만 한다(원장 없으면 0원)', async () => {
     const r = await say(env, '정산')
     expect(r.text).toContain('0원')
+  })
+
+  it('정산 — 지급 기록 조회가 실패하면 0원이 아니라 다시 시도 안내(2026-11-17)', async () => {
+    db.exec('DROP TABLE payouts')
+    const r = await say(env, '정산')
+    expect(r.text).not.toContain('0원')
+    expect(r.text).toContain('확인하지 못했어요')
   })
 
   it('모르는 말 → FAQ 가 없으면 명령 안내', async () => {
