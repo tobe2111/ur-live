@@ -12,3 +12,11 @@
 
 ## 틀렸던 판단
 - 없음(이번 세션 범위). `--only` 는 파일명이 아니라 주입 이름 부분일치다(`money1118`).
+
+## 2026-11-18 이어서 — 장부 조정 기능 (대표 "장부 조정 기능도 만들어줘. 너가 알아서 마무리까지")
+- 본체 `src/worker/utils/ledger-correction.ts` · API `src/features/admin/api/admin-payouts/ledger-corrections.ts`
+  (`POST/GET /api/admin/ledger/adjustments` · `POST /api/admin/ledger/attributions/:id/cancel`, finance + 2FA + 감사 로그).
+- 원장은 안 지우고 반대 방향 한 줄(`admin_adjustment`, `adj:{key}` 부분 UNIQUE). 지급 대기 행은 선점(CAS) 후 원장, 원장 실패 시 되돌림.
+- 가드 `ledger-correction-2026-11-18.test.ts`(라이브 두 건을 픽스처로) + 주입 6. 가이드 v67. staging `S-LEDGERADJ`.
+- 라이브 적용 계획(배포 뒤): ① `seller:14 → platform:escrow` 950, payout_id 1, key `store14-dup-950` ② attribution 1 취소.
+  950 의 짝을 escrow 로 잡은 이유: 옛 `group_buy_join`(id 3)은 user→seller 직행이라 escrow 에 들어온 적이 없는데 `voucher_used`(id 4)가 escrow 에서 950 을 뺐다 → escrow 가 950 모자라다. 이 한 줄이 양쪽을 동시에 맞춘다.
