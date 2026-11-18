@@ -15,6 +15,6 @@ export default [
     find: '    reqs.push(prop(start + i, start + j + 1, true))', replace: '    reqs.push(prop(start + i, start + j, true))', test: T,
     why: '보낸 줄 묶음의 마지막 줄이 안 숨겨진다.' },
   { name: '숨김 표시 — 파트너 시트가 덮어쓴 뒤에 거둔다', file: 'src/features/marketing/api/pool-sheets-sync.ts',
-    find: '    marked += await harvestHidden(DB, token, sheetId, def.table, TAB, off + 2, take, cost)\n', replace: '', test: T,
+    find: "    const hv = await harvestHiddenTwoWay(DB, token, sheetId, def.table as 'ad_company_leads' | 'store_prospects', TAB, lastCol, off + 2, take, cost)\n", replace: "    const hv = { marked: 0, unmarked: 0 }\n", test: T,
     why: '사람이 숨긴 줄이 저장되기 전에 덮어써져 숨김이 다른 업체로 밀린다.' },
 ]

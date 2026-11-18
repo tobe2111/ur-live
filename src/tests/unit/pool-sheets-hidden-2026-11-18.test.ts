@@ -71,9 +71,9 @@ describe('④ 배선 — 거두기는 덮어쓰기·DB 읽기 전, 숨기기는 
   }
   it('파트너/매장 시트', () => {
     const s = readFileSync('src/features/marketing/api/pool-sheets-sync.ts', 'utf8')
-    order(s, 'marked += await harvestHidden(DB, token, sheetId, def.table, TAB, off + 2, take, cost)',
+    order(s, "const hv = await harvestHiddenTwoWay(DB, token, sheetId, def.table as 'ad_company_leads' | 'store_prospects', TAB, lastCol, off + 2, take, cost)",
       'const res = await DB.prepare(`SELECT ${def.cols} FROM ${def.table}',
-      "await applyHidden(token, sheetId, gid, rowNo, page.map(r => r.email_sent_at != null && r.email_sent_at !== ''), cost)")
+      "if (!(await applyHidden(token, sheetId, gid, rowNo, page.map(r => r.email_sent_at != null && r.email_sent_at !== ''), cost))) {")
   })
   it('인플루언서 시트', () => {
     const s = readFileSync('src/features/marketing/api/sheets-sync.ts', 'utf8')
@@ -83,7 +83,7 @@ describe('④ 배선 — 거두기는 덮어쓰기·DB 읽기 전, 숨기기는 
   })
   it('안내 탭이 숨기기 = 보냄 을 알린다(버전 2)', async () => {
     const { guideLines, GUIDE_VERSION } = await import('@/features/marketing/api/pool-sheets-guide')
-    expect(GUIDE_VERSION).toBeGreaterThanOrEqual(2)
+    expect(GUIDE_VERSION).toBeGreaterThanOrEqual(3)
     const t = guideLines('company').join('\n')
     expect(t).toMatch(/\[행 숨기기\]/)
     expect(t).toMatch(/숨긴 줄은 전부 "보냄"으로 저장됩니다/)
