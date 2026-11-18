@@ -22,6 +22,11 @@ app.get('/influencer-pool/timeline', async (c) =>
 
 // GET /api/admin/ads/influencer-pool/stats — 누적/최근 실행 통계 + 플랫폼별 카운트
 //   집계 본문은 `influencer-pool-stats.ts`(SSOT) — 이 라우트는 인증/응답만.
-app.get('/influencer-pool/stats', async (c) => c.json({ success: true, ...await buildInfluencerPoolStats(c.env) }))
+//   ⏱️ 무거운 집계는 캐시(`influencer-stats-cache.ts`) — `?fresh=1` 은 화면이 데이터를 바꾼 직후에만 넘긴다.
+app.get('/influencer-pool/stats', async (c) => {
+  let bg: ((p: Promise<unknown>) => void) | undefined
+  try { const ctx = c.executionCtx; bg = (p) => ctx.waitUntil(p) } catch { bg = undefined } // 테스트 등 ctx 없으면 동기 계산
+  return c.json({ success: true, ...await buildInfluencerPoolStats(c.env, { fresh: c.req.query('fresh') === '1', bg }) })
+})
 
 export { app as poolReadRoutes }

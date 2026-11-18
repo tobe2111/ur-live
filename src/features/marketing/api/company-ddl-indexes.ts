@@ -188,4 +188,15 @@ export const COMPANY_INDEX_DDL: readonly string[] = [
    */
   `CREATE INDEX IF NOT EXISTS idx_company_leads_storeinfo_queue ON ad_company_leads(source, id)
      WHERE active = 0 AND merged_into IS NULL`,
+  /**
+   * ⑩ **어드민 목록 첫 페이지가 업체 표 전체를 정렬하던 것** (2026-11-17 대표 *"B2B 파트너 풀 로딩이 너무 길어"*).
+   *
+   * `/admin/partner-pool` 의 기본 목록(보류 포함)은 `ORDER BY active DESC, (tier IS NULL), tier, collected_at DESC, id DESC`
+   * 인데 맞는 인덱스가 없어 50행을 보여 주려고 **136만 행**을 읽고 임시 정렬을 했다(라이브 실측 0.78초 · 페이지를 넘기거나
+   * 필터를 바꿀 때마다). 정렬 키를 그대로 인덱스로 만들면 앞에서 50행만 읽는다(`node:sqlite` 실증: 보류 포함은
+   * `SCAN … USING INDEX`, `active = 1` 필터는 `SEARCH … (active=?)` — 둘 다 임시 정렬 없음).
+   * ⚠️ 정렬 키·방향·부분 조건은 `listCompanyLeads` 와 **글자까지 같아야** 탄다(시험이 대조한다).
+   */
+  `CREATE INDEX IF NOT EXISTS idx_company_leads_list_order ON ad_company_leads(
+     active DESC, (tier IS NULL), tier, collected_at DESC, id DESC) WHERE merged_into IS NULL`,
 ]

@@ -17,9 +17,11 @@ import type { Keyword } from './KeywordManager'
 export function usePoolMeta(applyMeta: (d: Record<string, unknown>) => void) {
   const [keywords, setKeywords] = useState<Keyword[]>([])
 
-  const loadStats = useCallback(async () => {
+  // ⏱️ `fresh` — 데이터를 바꾼 직후(키워드 편집·액션 뒤)에만 캐시를 건너뛴다. 첫 로드·폴링은 캐시(서버 30분)로 즉시.
+  //   🩸 예전엔 매번 전수 집계라 3.5~9초 걸렸고, 15초 한도에 걸리면 아래 catch 가 삼켜 그래프가 통째로 사라졌다.
+  const loadStats = useCallback(async (fresh = false) => {
     try {
-      const s = await api.get('/api/admin/ads/influencer-pool/stats')
+      const s = await api.get(`/api/admin/ads/influencer-pool/stats${fresh ? '?fresh=1' : ''}`)
       if (s.data?.success) applyMeta(s.data)
     } catch { /* soft */ }
   }, [applyMeta])
@@ -31,7 +33,7 @@ export function usePoolMeta(applyMeta: (d: Record<string, unknown>) => void) {
     } catch { /* soft */ }
   }, [])
 
-  const loadMeta = useCallback(async () => { await Promise.all([loadStats(), loadKeywords()]) }, [loadStats, loadKeywords])
+  const loadMeta = useCallback(async () => { await Promise.all([loadStats(true), loadKeywords()]) }, [loadStats, loadKeywords])
 
   return { keywords, loadStats, loadKeywords, loadMeta }
 }

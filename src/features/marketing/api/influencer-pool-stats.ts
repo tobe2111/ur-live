@@ -12,6 +12,7 @@ import { ensureQualityColumns } from './influencer-quality'
 import { getFunnelTailStats } from './lead-claim'
 import { getAdsPoolDiag } from './ads-pool-diag' // 진단 스탬프(수집/정비/시트/보강 레인) SSOT — 중복 구현 금지
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
+import { getInfluencerStatsCached } from './influencer-stats-cache'
 
 const POOL = 0
 
@@ -23,14 +24,18 @@ export async function ensureRecruitColumn(DB: D1Database) {
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN recruited_at TEXT').run().catch(() => null)
 }
 
-/** 어드민 인플루언서 풀 대시보드 1회 조회 페이로드(집계 + 마지막 실행/정비/보강 스냅샷 + 게이트). */
-export async function buildInfluencerPoolStats(env: Env): Promise<Record<string, unknown>> {
-  const DB = adsLeadsDb(env)
-  await ensureInfluencerSchema(DB)  // 통계도 최신 컬럼(contact_channel/consented_at 등) 참조 — 스키마 선보강(멱등)
-  await ensureOutreachColumns(DB)   // opened/bounced 집계 컬럼 선보강
-  await ensureQualityColumns(DB)    // is_brand/lead_score 집계 선보강
-  await ensurePerfExtraColumns(DB)  // last_post_at/pub_checked_at — 아래 보강 진행률이 참조
-  await ensureRecruitColumn(DB)     // 📣 recruited_at(모집 전환 분모)
+type Heavy = { agg: Record<string, unknown> | null; catFunnel: unknown[]; byDay: Array<{ d: string; n: number; reachable: number }>; tail: Record<string, unknown> }
+
+/**
+ * ⏱️ **무거운 집계는 캐시한다** (2026-11-17 대표 *"인플루언서 풀 페이지 로딩이 너무 길어 · 매일 수집량 그래프가 사라졌어"*).
+ *
+ * 라이브 실측: 이 페이로드 한 번이 **3.5~9.1초** 걸렸고(동시 3회면 전부 9초대) D1 을 **약 240만 행** 읽었다 —
+ * 전수 집계(58만) · 카테고리 퍼널(117만) · 14일 유입(66만, 인덱스를 엉뚱한 것으로 탐). 화면은 정비가 도는 동안
+ * 이걸 **10초마다** 부르고, 클라이언트 시간 한도(15초)에 걸리면 실패를 조용히 삼켜 **그래프·카드가 통째로 빠졌다.**
+ * ⇒ 파트너 풀(`company-stats-cache.ts`)과 같은 처방: 무거운 절반만 30분 캐시, **오늘 유입만 매번 실시간**으로 덮어쓴다
+ *   (`collected_at` 인덱스로 오늘치만 — 수천 행). 진단·게이트(`diag`·`gate`)는 원래 가볍고 매번 새로 읽는다.
+ */
+async function computeHeavy(DB: D1Database): Promise<Heavy> {
   const agg = await DB.prepare(`SELECT
       COUNT(*) AS total,
       SUM(CASE WHEN platform='youtube' THEN 1 ELSE 0 END) AS youtube,
@@ -116,12 +121,53 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
   //   ⚠️ `reachable` = **이메일 보유**. 인스타/틱톡 링크는 세지 않는다 — CLAUDE.md 가 못 박은 대로
   //      이 DB 의 성공 지표는 총원이 아니라 *제안을 보낼 수 있는 리드 수*이고, 발송 채널은 이메일뿐이다.
   //      (`with_contact` 는 링크까지 포함하는 다른 숫자다. 둘을 섞으면 "연락 가능"이 부풀려진다.)
-  const byDay = (await DB.prepare(`SELECT DATE(collected_at,'+9 hours') AS d, COUNT(*) AS n,
+  //   ⚡ `+account_id` — 단항 + 로 그 칸의 인덱스를 못 쓰게 해 `collected_at` 인덱스를 타게 한다. 안 그러면 플래너가
+  //     `(account_id, …)` 인덱스를 골라 풀 전체(66만 행)를 읽는다(실측 → 이걸로 15.8만 행).
+  const byDay = ((await DB.prepare(`SELECT DATE(collected_at,'+9 hours') AS d, COUNT(*) AS n,
       SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS reachable
-    FROM ad_influencer_leads WHERE account_id = ? AND collected_at >= datetime('now','-14 days')
-    GROUP BY d ORDER BY d DESC LIMIT 14`).bind(POOL).all().catch(() => null))?.results || []
+    FROM ad_influencer_leads WHERE +account_id = ? AND collected_at >= datetime('now','-14 days')
+    GROUP BY d ORDER BY d DESC LIMIT 14`).bind(POOL).all().catch(() => null))?.results || []) as Heavy['byDay']
   // 🔗 퍼널 뒷단(가입 → 첫 판매) — 별도 쿼리(적립 원장 조인이라 위 집계와 분리). 실패 시 0.
   const tail = await getFunnelTailStats(DB).catch(() => ({ joined: 0, first_sale: 0 }))
+  return { agg: (agg as Record<string, unknown> | null) || null, catFunnel: catFunnel?.results || [], byDay, tail: tail as Record<string, unknown> }
+}
+
+/** 오늘(KST) 유입 — 매번 실시간. `collected_at` 인덱스로 오늘치만 읽는다. */
+async function todayInflow(DB: D1Database): Promise<{ d: string; n: number; reachable: number } | null> {
+  const r = await DB.prepare(`SELECT DATE('now','+9 hours') AS d, COUNT(*) AS n,
+      SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) AS reachable
+    FROM ad_influencer_leads WHERE +account_id = ? AND collected_at >= datetime('now','+9 hours','start of day','-9 hours')`)
+    .bind(POOL).first<{ d: string; n: number; reachable: number | null }>().catch(() => null)
+  return r ? { d: String(r.d), n: Number(r.n) || 0, reachable: Number(r.reachable) || 0 } : null
+}
+
+/** 캐시된 14일 표에 오늘 값을 덮어쓴다(오늘 줄이 없으면 맨 앞에 넣는다). 순수함수 — 시험 대상. */
+export function mergeTodayInflow(byDay: Heavy['byDay'], today: { d: string; n: number; reachable: number } | null): Heavy['byDay'] {
+  if (!today) return byDay
+  const rest = byDay.filter(x => x.d !== today.d)
+  return [today, ...rest].sort((a, b) => (a.d < b.d ? 1 : -1)).slice(0, 14)
+}
+
+/**
+ * 어드민 인플루언서 풀 대시보드 1회 조회 페이로드(집계 + 마지막 실행/정비/보강 스냅샷 + 게이트).
+ * @param opts.fresh `?fresh=1` — 캐시를 건너뛴다(화면이 데이터를 바꾼 직후 부른다).
+ * @param opts.bg `waitUntil` — 낡은 값을 먼저 주고 갱신을 응답 뒤로 미룬다.
+ */
+export async function buildInfluencerPoolStats(env: Env, opts: { fresh?: boolean; bg?: (p: Promise<unknown>) => void } = {}): Promise<Record<string, unknown>> {
+  const DB = adsLeadsDb(env)
+  await ensureInfluencerSchema(DB)  // 통계도 최신 컬럼(contact_channel/consented_at 등) 참조 — 스키마 선보강(멱등)
+  await ensureOutreachColumns(DB)   // opened/bounced 집계 컬럼 선보강
+  await ensureQualityColumns(DB)    // is_brand/lead_score 집계 선보강
+  await ensurePerfExtraColumns(DB)  // last_post_at/pub_checked_at — 아래 보강 진행률이 참조
+  await ensureRecruitColumn(DB)     // 📣 recruited_at(모집 전환 분모)
+  const [{ stats: heavy, at }, today] = await Promise.all([
+    getInfluencerStatsCached<Heavy>(DB, !!opts.fresh, () => computeHeavy(DB), opts.bg),
+    todayInflow(DB),
+  ])
+  const agg = heavy.agg
+  const catFunnel = { results: heavy.catFunnel }
+  const byDay = mergeTodayInflow(heavy.byDay, today)
+  const tail = heavy.tail
   // 📊 진단 스탬프 묶음(마지막 수집·lease·시트 동기화·야간 정비·📝 보강 레인) — `ads-pool-diag.ts` SSOT.
   const diag = await getAdsPoolDiag(DB)
   // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 메인의
@@ -141,9 +187,11 @@ export async function buildInfluencerPoolStats(env: Env): Promise<Record<string,
     }
   } catch { /* 폴백 유지 */ }
   return {
-    stats: { ...(agg || {}), ...tail },
+    // '오늘'은 실시간 값으로 덮는다(캐시된 집계의 today 는 최대 30분 낡았다).
+    stats: { ...(agg || {}), ...tail, ...(today ? { today: today.n } : {}) },
     by_day: byDay,
-    today_kst: String(agg?.today_kst || ''), // 화면의 '진행 중' 표시·추세 제외 기준(서버 권위)
+    today_kst: String(today?.d || agg?.today_kst || ''), // 화면의 '진행 중' 표시·추세 제외 기준(서버 권위)
+    stats_at: at, // 집계가 언제 기준인지(캐시) — 최신값으로 오해하지 않게
     gate,
     sheets_gate: sheetsGate, // null = ur-ads 미바인딩/조회 실패(알 수 없음 — 경고를 단정하지 않는다)
     ...diag,
