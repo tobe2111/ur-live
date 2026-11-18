@@ -47,7 +47,10 @@ interface PrewarmEnv {
  *   3) edge cache TTL ≥ 60s 인 endpoint (5분 prewarm 주기와 정합)
  */
 const HOT_PATHS: readonly string[] = [
-  '/api/home/bundle',
+  // 🗑️ 2026-11-18 [UNLOCK_LOADING] (대표 "3번은 로딩 잠금 승인해줄게"): `/api/home/bundle` 을 뺐다. 화면이 그 주소를
+  //   **한 번도** 부르지 않는다(호출자 0 — 10-11 `/api/home/categories` 와 같은 경우). 라이브 24시간: 예열만으로 그 안의
+  //   `latest` 쿼리 410회·198만 행 · `featured`(view_count 정렬) 291회·140만 행 · 영구 중단된 라이브 쿼리 3개.
+  //   라우트는 남긴다(외부 호출 대비) — 예열만 멈춘다. 근거 `docs/locks/loading/2026-11-18-drop-home-bundle-prewarm.md`.
   // 🔁 2026-10-11 [UNLOCK_LOADING]: `/api/home/categories` → 홈 피드 기본 요청으로 교체. 화면이 그 주소를
   //   **한 번도** 부르지 않는다(호출자 0 — 워커 라우트만 남았다). 홈 피드(GroupBuyFeed)는 기본 정렬이 인기순이라
   //   첫 요청이 정확히 아래 주소다(`status=active&category=all&sort=popular`) — 그게 예열 밖이었다.

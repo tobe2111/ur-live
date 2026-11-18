@@ -65,7 +65,6 @@
   "src/worker/services/delete-account.service.ts|SELECT|deleted_accounts.original_name",
   "src/worker/services/delete-account.service.ts|SELECT|deleted_accounts.reregister_available_at",
   "src/worker/services/delete-account.service.ts|UPDATE|users.deleted_at",
-  "src/worker/utils/checkout.ts|INSERT|order_items.consignment_id",
-  "src/worker/utils/seller-tier-limits.ts|SELECT|seller_tier_history.tier_name"
+  "src/worker/utils/checkout.ts|INSERT|order_items.consignment_id"
  ]
 }
