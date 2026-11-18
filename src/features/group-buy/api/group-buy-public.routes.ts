@@ -197,7 +197,15 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           ).bind(status, categoryParam).first<{ product_json: string; computed_at: string }>().catch(() => null)
           if (cached?.product_json) {
             // 5분 cron 기준, 10분 이상 stale 이면 무시 (실시간 fallback)
-            const ageMs = Date.now() - new Date(cached.computed_at + 'Z').getTime()
+            let ageMs = Date.now() - new Date(cached.computed_at + 'Z').getTime()
+            // 🧮 2026-11-18 cron 이 목록이 그대로라고 확인만 한 회차는 행을 안 고친다 — 그 '확인 시각'으로 신선도를 본다
+            //   (`cron/group-buy-feed-cache.ts` FEED_CHECKED_KEY). computed_at 이 이미 신선하면 안 읽는다(추가 읽기 0).
+            if (ageMs >= 10 * 60_000) {
+              const chk = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'gb_feed_cache_checked_at'")
+                .first<{ value: string }>().catch(() => null)
+              const chkMs = chk?.value ? Date.now() - new Date(chk.value + 'Z').getTime() : Infinity
+              if (chkMs < ageMs) ageMs = chkMs
+            }
             if (ageMs < 10 * 60_000) {
               try {
                 const parsed = JSON.parse(cached.product_json)

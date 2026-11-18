@@ -1,5 +1,5 @@
 {
-  "_total": 168,
+  "_total": 167,
   "counts": {
     "src/features/admin/api/admin-influencer-outreach.routes.ts": 1,
     "src/features/admin/api/admin-kt-alpha/catalog.ts": 1,
@@ -83,7 +83,7 @@
     "src/worker/routes/payment.routes.ts": 2,
     "src/worker/routes/public-utility.routes.ts": 1,
     "src/worker/utils/auto-seed-fake-reviews.ts": 1,
-    "src/worker/utils/checkout.ts": 3,
+    "src/worker/utils/checkout.ts": 2,
     "src/worker/utils/d1-in-chunks.ts": 1,
     "src/worker/utils/database.ts": 2,
     "src/worker/utils/gb-order-pricing.ts": 1,

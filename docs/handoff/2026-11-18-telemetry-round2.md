@@ -28,3 +28,8 @@
 - 지도 LCP 는 카카오 지도 바탕 타일(bg_tile.png) — 지도 자체 로딩이라 손댈 여지 작음.
 - 홈·숙소만 `MAIN:kv-hit`(전역 KV) → **지역 복사본 1분**([UNLOCK_LOADING], `ssr-payload.ts`). 교환권 카테고리 **KV 6시간 + KT 동기화 때 삭제**([UNLOCK_LOADING]). 근거 `docs/locks/loading/2026-11-18-kv-edge-copy-and-voucher-cat-ttl.md`.
 - 🩸 틀릴 뻔한 것: 직접 만든 측정 스크립트가 영어 브라우저라 `locale-en` 을 받는 것을 "한국 화면에 영어 번역을 받는다"로 읽을 뻔했다 — 오늘(11-18)부터 화면 언어가 폰 언어를 따른다. 공식 `measure-live-vitals.mjs` 는 이미 `ko-KR`.
+## 이어서 ④ — 대표 "응 두개 다 해줘"
+- **공구 피드 캐시 touch 제거** [UNLOCK_LOADING] — 24행 갱신 → `gb_feed_cache_checked_at` 한 줄. 근거 `docs/locks/loading/2026-11-18-feed-cache-checked-at.md`.
+- **결제 경로의 위탁 자동 매핑 삭제**(머니 경로 · 대표 승인) — 라이브에 표가 없어 결제마다 실패하던 조회 + 한 번도 안 탄 consignment_id INSERT 갈래. 실제 타던 단순 INSERT 만 남겨 동작 변화 0. `consignment-door-closed` 시험이 이제 반대("다시 묻지 않는다")를 고정.
+- 이번 라운드에 본 것(정상): cron 156개 정상(실패 1 = KT 잔액) · 보안 헤더 전부 · JS 캐시 HIT+br. 홈 첫 렌더 281ms 긴 작업은 React 렌더라 큰 작업으로 남김.
+- 🩸 틀릴 뻔한 것: 하트비트 결과 문자열을 90자로 잘라 읽어 `ads:collect` 의 total_saved 를 6건으로 오독 — 실제 615,452건. **잘린 출력으로 결론 내지 말 것.**

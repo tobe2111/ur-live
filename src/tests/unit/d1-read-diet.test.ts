@@ -16,7 +16,7 @@
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { handleGroupBuyFeedCache, computeFeedFingerprint, FEED_FP_KEY, FEED_FORCE_REFRESH_MS } from '@/worker/cron/group-buy-feed-cache'
+import { handleGroupBuyFeedCache, computeFeedFingerprint, FEED_FP_KEY, FEED_FORCE_REFRESH_MS, FEED_CHECKED_KEY } from '@/worker/cron/group-buy-feed-cache'
 import { INDEX_REPAIRS } from '@/worker/routes/repair-schema/index-repairs'
 
 const SCHEDULED = readFileSync('src/worker/scheduled.ts', 'utf8')
@@ -101,12 +101,22 @@ function fakeFeedDb(opts: { prevFp?: string | null; prevAt?: string; fpRow?: Rec
 
 describe('② 피드 캐시 지문 게이트', () => {
   const FP = '5|9|x|3|1|2|10|20|99'
-  it('지문이 같고 60분 안이면 computed_at 만 갱신하고 20개 쿼리를 안 돌린다', async () => {
+  it('지문이 같고 60분 안이면 확인 시각 한 줄만 적고 20개 쿼리를 안 돌린다', async () => {
+    // 🧮 2026-11-18: 종전엔 24행 computed_at 을 매번 고쳐 썼다(하루 10,800줄) — 이제 platform_settings 한 줄.
     const { db, calls } = fakeFeedDb({ prevFp: FP })
     const out = await handleGroupBuyFeedCache({ DB: db } as never)
-    expect(out).toMatchObject({ refreshed: 0, unchanged: true, touched: 20 })
+    expect(out).toMatchObject({ refreshed: 0, unchanged: true })
     expect(calls.filter((c) => c.startsWith('SELECT p.id')).length).toBe(0)
-    expect(calls.some((c) => c.startsWith("UPDATE group_buy_feed_cache SET computed_at = datetime('now')"))).toBe(true)
+    expect(calls.some((c) => c.startsWith('UPDATE group_buy_feed_cache'))).toBe(false)
+    expect(calls.some((c) => c.startsWith('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, datetime'))).toBe(true)
+  })
+  it('🧮 소비자는 computed_at 이 10분을 넘었을 때만 확인 시각을 본다', () => {
+    const src = readFileSync('src/features/group-buy/api/group-buy-public.routes.ts', 'utf8')
+    const i = src.indexOf("let ageMs = Date.now() - new Date(cached.computed_at + 'Z').getTime()")
+    expect(i).toBeGreaterThan(0)
+    const seg = src.slice(i, i + 900)
+    expect(seg).toMatch(/if \(ageMs >= 10 \* 60_000\) \{[\s\S]*key = 'gb_feed_cache_checked_at'[\s\S]*if \(chkMs < ageMs\) ageMs = chkMs/)
+    expect(FEED_CHECKED_KEY).toBe('gb_feed_cache_checked_at')
   })
   it('지문이 다르면 전부 갱신하고 지문을 저장한다', async () => {
     const { db, calls } = fakeFeedDb({ prevFp: 'old' })

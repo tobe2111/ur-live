@@ -254,47 +254,13 @@ export async function processCheckout(
       }
     }
 
-    // 🛡️ 2026-04-28: MD 위탁 판매 자동 매핑.
-    //   각 product_id 에 대해 active 한 consignment_partnership 이 있는지 조회 →
-    //   있으면 order_items.consignment_id 에 기록 (정산 시 분배 분기용).
-    //   조회 실패는 무시 (consignment_partnerships 테이블 미존재 환경 허용).
-    const consignmentMap = new Map<string, number>()
-    try {
-      const productIds = products.map(p => String(p.productId))
-      if (productIds.length > 0) {
-        const placeholders = productIds.map(() => '?').join(',')
-        const { results: cps } = await db
-          .prepare(
-            `SELECT id, product_id FROM consignment_partnerships
-             WHERE product_id IN (${placeholders}) AND status = 'active'`
-          )
-          .bind(...productIds)
-          .all<{ id: number; product_id: number }>()
-        for (const cp of cps ?? []) {
-          consignmentMap.set(String(cp.product_id), Number(cp.id))
-        }
-      }
-    } catch { /* table missing or query failure — proceed without consignment */ }
-
+    // 🗑️ 2026-11-18 위탁 판매 자동 매핑 삭제(대표 승인 "응 두개 다 해줘") — 위탁 판매는 2026-09-28 에 닫혔고
+    //   `consignment_partnerships` 표는 라이브에 **없다**(조회가 결제마다 한 번씩 실패하고 삼켜졌다). 그래서 아래의
+    //   consignment_id 를 넣는 갈래는 한 번도 안 탔다 — 지금 주문이 실제로 타는 단순 INSERT 하나만 남긴다(동작 변화 0).
     await db.batch([
-      // 주문 아이템 생성 (schema: order_id, product_id, product_name [NOT NULL], quantity, price, consignment_id?)
+      // 주문 아이템 생성 (schema: order_id, product_id, product_name [NOT NULL], quantity, price)
       // 🛡️ price 는 server-side priceMap 에서 가져옴 (client price_snapshot 무시)
       ...products.map((item) => {
-        const cid = consignmentMap.get(String(item.productId))
-        if (cid != null) {
-          return db
-            .prepare(
-              'INSERT INTO order_items (order_id, product_id, product_name, quantity, price, consignment_id) VALUES (?, ?, ?, ?, ?, ?)'
-            )
-            .bind(
-              newOrderId,
-              item.productId,
-              nameMap.get(String(item.productId)) ?? `Product ${item.productId}`,
-              item.quantity,
-              priceMap.get(String(item.productId)) ?? 0,
-              cid
-            )
-        }
         return db
           .prepare(
             'INSERT INTO order_items (order_id, product_id, product_name, quantity, price) VALUES (?, ?, ?, ?, ?)'

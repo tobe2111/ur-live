@@ -15,19 +15,11 @@ export default [
     why: '테이블이 없어 API 일곱 개가 전부 `no such table` 로 죽는 화면이다 — 북마크로 닿으면 그걸 본다.',
   },
   {
-    name: '🪦위탁 결제 경로의 자동 매핑까지 같이 지운다',
+    name: '🪦위탁 결제가 없는 표를 다시 묻는다',
     file: 'src/worker/utils/checkout.ts',
-    find: '          `SELECT id, product_id FROM consignment_partnerships',
-    replace: '          `SELECT id, product_id FROM consignment_partnerships_REMOVED',
+    find: '    await db.batch([\n      // 주문 아이템 생성',
+    replace: '    try { await db.prepare(`SELECT id, product_id FROM consignment_partnerships WHERE status = \'active\'`).all() } catch { /* */ }\n    await db.batch([\n      // 주문 아이템 생성',
     test: TEST,
-    why: '문만 닫은 것이지 기능을 없앤 게 아니다 — 살릴지 없앨지는 대표 판단이고 위탁 정산은 머니 경로다.',
-  },
-  {
-    name: '🪦위탁 테이블 부재를 더 이상 허용하지 않는다',
-    file: 'src/worker/utils/checkout.ts',
-    find: '    try {\n      const productIds = products.map(p => String(p.productId))',
-    replace: '    if (true) {\n      const productIds = products.map(p => String(p.productId))',
-    test: TEST,
-    why: '`catch` 가 사라지면 테이블 없는 라이브에서 **주문 생성이 통째로 실패**한다.',
+    why: '2026-11-18 대표 결정으로 지운 조회다 — 라이브에 표가 없어 결제마다 한 번씩 실패한다.',
   },
 ]
