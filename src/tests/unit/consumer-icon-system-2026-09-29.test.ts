@@ -106,7 +106,8 @@ const OPERATION = new Set([
    main 전수 주입(`뜻 아이콘이 한 건 되돌아온다`)이 shard 10/16 에서 빨간불이 됐다(head 8e93b1a). 같은 규칙대로 내린다(아홉 번째). */
 /* 🔧 2026-10-19: 130 → **129**. 딜 내역 화면(MyDealHistoryPage)의 빈 상태 `Inbox` 를 걷었다(흰 카드 정리) — 같은 규칙대로 같은 PR 에서 내린다(열 번째). */
 /* 🔧 2026-11-04: 129 → **128**. 가입 환영 창(WelcomeOnboardingModal) 삭제로 lucide 뜻 아이콘 1건이 빠졌다 — 같은 PR 에서 내린다(PR CI 주입이 잡았다, 열한 번째). */
-const MEANING_BASELINE = 128
+/* 🔧 2026-11-18: 128 → **126**. 셀러 등급제 폐지로 `/about` 의 등급 블록(`Trophy`)·기능 카드가 빠졌다 — 같은 PR 에서 내린다(PR CI 주입이 잡았다, 열두 번째). */
+const MEANING_BASELINE = 126
 
 const read = (f: string) => readFileSync(f, 'utf8')
 
