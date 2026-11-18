@@ -39,3 +39,16 @@ D1 `EXPLAIN`/rows_read 로 파트너 기본 목록 쿼리(목표 수백 행) · 
 - 처방: ① 실패한 조회 원문을 `platform_settings.ads_influencer_stats_cache_fail` 에 남긴다(`agg|catFunnel|byDay: 메시지`, byDay 0행도 기록) ② 다시 계산 시도는 모든 isolate 공통 5분에 한 번(`ads_influencer_stats_cache_attempt`).
 - 이어받는 첫 액션: 메인 D1 에서 `SELECT value FROM platform_settings WHERE key='ads_influencer_stats_cache_fail'` → 원문으로 실패 조회를 고친다.
 - 틀린 판단: `.catch(() => null)` 로 실패를 삼켜 "왜 안 갱신되나" 를 볼 수 없게 만든 것이 원인 규명을 막았다.
+
+## 증분 집계 (2026-11-18 오후 — 대표 *"증분 집계도 이어서 해줘"*)
+- 실측(리드 DB 하루): 읽기 약 2억 행 중 인플루언서 통계 재계산이 약 9,200만 행(회당 190만 × 48회). 수집이 늘수록 비례해 늘어난다.
+- 처방: `ad_influencer_stats_counter(k,n)` 숫자표 + 리드 표 트리거 3개(넣기·고치기·지우기)가 **바뀐 숫자만 ±1**. 화면은 숫자표(약 300행)만 읽는다.
+  `7일 안 컨택`·`팔로업 필요`는 부분 인덱스 `idx_ad_inf_leads_contact_todo` 로 매번 센다. `최근 7일`은 KST 날짜 7일 합(옛 값은 롤링 168시간).
+- 🩸 **원인 확정(#2423 실패 원문)**: `catFunnel/byDay: D1 DB is overloaded. Too many resources consumed within a 10 second window.` — 풀 전체 세기를 연달아 하면 D1 이 10초 자원 창을 넘었다고 거부한다. 그래서 처음 설계(하루 1회 한 번에 전수 대조, 약 8초·290만 행)도 버리고 **조각 채우기**로 바꿨다.
+- 처음 채우기: id 25만 폭 조각(가장 무거운 조각 ≈ 10.9만 행 · 1초 안팎), 응답 뒤 두 조각씩 20초 간격. 트리거는 `id < 커서 OR id > 상한` 에만 반응 → 안 센 행의 변화는 그 조각을 셀 때 한 번만 반영(이중 계산 없음). 같은 조각을 두 isolate 가 잡아도 소유 표식으로 한 번만.
+- 한 시간마다 어긋남 검사(숫자표 total 과 실제 행 수를 한 문장에서 비교, 실측 0.07초) → 다르면 처음부터 다시 채운다.
+- 옛 경로 캐시: 낡은 지 2시간이 넘어도 5분 재시도 제한을 적용(넘기자 요청마다 동기 재계산 → 5초 응답 실측).
+- 안전: 설치 직후 자가 시험(풀 밖 시험 행 넣고·고치고·지움) → 실패하면 트리거 즉시 제거, 옛 경로로 계속. 오류 원문 `platform_settings.ads_influencer_stats_counter_error`.
+- 이어받는 첫 액션: 배포 후 인플루언서 풀 화면을 3분쯤 열어 둔 뒤 통계 응답의 `stats_source` 가 `counter` 인지, 메인 DB `ads_influencer_stats_counter_error` 가 비었는지, 리드 DB `SELECT k,n FROM ad_influencer_stats_counter WHERE k LIKE '\_\_%' ESCAPE '\'` 에서 `__boot_cursor > __boot_max` 인지.
+- 틀린 판단 ①: 한 번에 세는 전수 대조를 하루 1회로 줄이면 된다고 봤다 — 그것도 D1 과부하 벽에 닿는다(실패 원문을 읽고서야 알았다).
+- 틀린 판단 ②: 대조 SQL 을 CTE + 따로 만든 문자열 조각으로 짰다가 테이블 가드가 `FROM a` 를 못 알아봤다 → json_each 펼치기로 한 문자열 안에 넣었다(가드도 `AS MATERIALIZED (` 를 CTE 로 인식하게 보강).

@@ -53,6 +53,8 @@ export const ADS_LEADS_TABLES = [
   // ⚠️ 리드는 아니지만 **같은 batch 에 묶여 있어** 함께 옮긴다. 안 옮기면 그 batch 가
   //    두 DB에 걸쳐 원자성을 잃는다(실측: 섞인 batch 는 이 한 건뿐이었다).
   'ad_email_suppress',
+  // 🧮 인플루언서 풀 통계 숫자표(2026-11-18) — ad_influencer_leads 의 트리거가 쓰므로 반드시 같은 DB 에 산다.
+  'ad_influencer_stats_counter',
 ] as const
 
 export type AdsLeadsTable = (typeof ADS_LEADS_TABLES)[number]

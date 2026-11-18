@@ -8,6 +8,7 @@ import type { Env } from '@/worker/types/env'
 import { ensureInfluencerSchema } from './influencer-discovery'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { ensurePerfExtraColumns, personalEmailSqlClause } from './influencer-performance'
+import { CONTACT_TODO_SQL, DRIFT_CHECK_EVERY_MS, checkDrift, ensureStatsCounters, lastDays, readStatsCounters, runBootSteps, topCategoryFunnel } from './influencer-stats-counters'
 import { ensureQualityColumns } from './influencer-quality'
 import { getFunnelTailStats } from './lead-claim'
 import { getAdsPoolDiag } from './ads-pool-diag' // 진단 스탬프(수집/정비/시트/보강 레인) SSOT — 중복 구현 금지
@@ -140,6 +141,44 @@ async function computeHeavy(DB: D1Database): Promise<Heavy> {
   return { agg: (agg as Record<string, unknown> | null) || null, catFunnel: catFunnel?.results || [], byDay, tail: tail as Record<string, unknown>, complete, errors }
 }
 
+/** 숫자표 뒷일(채우기 조각 · 어긋남 검사)을 시도하는 간격(모든 isolate 공통) — D1 의 10초 자원 창을 넘지 않게. */
+const COUNTER_WORK_RETRY_MS = 20_000
+const COUNTER_WORK_KEY = 'ads_influencer_stats_counter_attempt'
+
+/**
+ * 증분 숫자표로 통계를 만든다. 아직 다 안 채웠으면 null(옛 경로) + 다음 조각을 응답 뒤로 예약한다.
+ * 다 채웠으면 숫자표를 쓰고, 한 시간이 지났으면 어긋남 검사만 응답 뒤로 예약한다.
+ */
+async function buildFromCounters(DB: D1Database, bg?: (p: Promise<unknown>) => void) {
+  if (!(await ensureStatsCounters(DB))) return null
+  const snap = await readStatsCounters(DB)
+  if (!snap) return null
+  const now = Date.now()
+  const needWork = !snap.complete || snap.checkedAt == null || now - snap.checkedAt >= DRIFT_CHECK_EVERY_MS
+  if (needWork && bg) {
+    const last = Number((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(COUNTER_WORK_KEY)
+      .first<{ value: string }>().catch(() => null))?.value) || 0
+    if (!(now - last >= 0 && now - last < COUNTER_WORK_RETRY_MS)) {
+      await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(COUNTER_WORK_KEY, String(now)).run().catch(() => null)
+      bg(snap.complete ? checkDrift(DB, now) : runBootSteps(DB))
+    }
+  }
+  if (!snap.complete) return null
+  const todo = await DB.prepare(CONTACT_TODO_SQL).first<{ contacted7: number; need_followup: number; today_kst: string }>().catch(() => null)
+  if (!todo) return null
+  const byDay = lastDays(snap.days, String(todo.today_kst))
+  // '최근 7일' = 오늘 포함 KST 7일(숫자표의 날짜 키 합). 옛 값은 롤링 168시간이었다 — 차이는 하루치 경계뿐이다.
+  const recent7 = byDay.slice(0, 7).reduce((a, x) => a + x.n, 0)
+  const tail = await getFunnelTailStats(DB).catch(() => ({ joined: 0, first_sale: 0 }))
+  return {
+    stats: { ...snap.state, contacted7: Number(todo.contacted7) || 0, need_followup: Number(todo.need_followup) || 0,
+      today: byDay[0]?.n || 0, recent7, today_kst: String(todo.today_kst) } as Record<string, unknown>,
+    categoryFunnel: topCategoryFunnel(snap.categories) as unknown[],
+    byDay,
+    tail: tail as Record<string, unknown>,
+  }
+}
+
 /** 오늘(KST) 유입 — 매번 실시간. `collected_at` 인덱스로 오늘치만 읽는다. */
 async function todayInflow(DB: D1Database): Promise<{ d: string; n: number; reachable: number } | null> {
   const r = await DB.prepare(`SELECT DATE('now','+9 hours') AS d, COUNT(*) AS n,
@@ -168,14 +207,16 @@ export async function buildInfluencerPoolStats(env: Env, opts: { fresh?: boolean
   await ensureQualityColumns(DB)    // is_brand/lead_score 집계 선보강
   await ensurePerfExtraColumns(DB)  // last_post_at/pub_checked_at — 아래 보강 진행률이 참조
   await ensureRecruitColumn(DB)     // 📣 recruited_at(모집 전환 분모)
-  const [{ stats: heavy, at }, today] = await Promise.all([
+  // 🧮 증분 집계가 준비됐으면 숫자표만 읽는다(풀 크기와 무관). 준비 전·실패면 아래 옛 경로(전수 + 캐시).
+  const fast = await buildFromCounters(DB, opts.bg)
+  const [{ stats: heavy, at }, today] = fast ? [{ stats: null as unknown as Heavy, at: 0 }, null] : await Promise.all([
     getInfluencerStatsCached<Heavy>(DB, !!opts.fresh, () => computeHeavy(DB), opts.bg, Date.now(), h => h.complete !== false),
     todayInflow(DB),
   ])
-  const agg = heavy.agg
-  const catFunnel = { results: heavy.catFunnel }
-  const byDay = mergeTodayInflow(heavy.byDay, today)
-  const tail = heavy.tail
+  const agg = fast ? fast.stats : heavy.agg
+  const catFunnel = { results: fast ? fast.categoryFunnel : heavy.catFunnel }
+  const byDay = fast ? fast.byDay : mergeTodayInflow(heavy.byDay, today)
+  const tail = fast ? fast.tail : heavy.tail
   // 📊 진단 스탬프 묶음(마지막 수집·lease·시트 동기화·야간 정비·📝 보강 레인) — `ads-pool-diag.ts` SSOT.
   const diag = await getAdsPoolDiag(DB)
   // 🛡️ 2026-07-23 전수조사: 자동수집 게이트는 **ur-ads 워커 env** 가 실체(cron 이 그걸 읽음)인데 메인의
@@ -199,7 +240,8 @@ export async function buildInfluencerPoolStats(env: Env, opts: { fresh?: boolean
     stats: { ...(agg || {}), ...tail, ...(today ? { today: today.n } : {}) },
     by_day: byDay,
     today_kst: String(today?.d || agg?.today_kst || ''), // 화면의 '진행 중' 표시·추세 제외 기준(서버 권위)
-    stats_at: at, // 집계가 언제 기준인지(캐시) — 최신값으로 오해하지 않게
+    stats_at: fast ? Date.now() : at, // 집계가 언제 기준인지(캐시) — 최신값으로 오해하지 않게. 숫자표면 지금.
+    stats_source: fast ? 'counter' : 'scan', // 진단 — 증분 숫자표 / 전수(캐시)
     gate,
     sheets_gate: sheetsGate, // null = ur-ads 미바인딩/조회 실패(알 수 없음 — 경고를 단정하지 않는다)
     ...diag,

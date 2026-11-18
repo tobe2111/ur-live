@@ -46,7 +46,8 @@ export async function getInfluencerStatsCached<T>(
   // 🧯 다시 계산하는 시도는 **5분에 한 번만**(모든 isolate 공통 — 설정 1행). 계산이 계속 실패하면 화면이 10초마다
   //   부를 때마다 회당 약 240만 행을 다시 읽고 또 실패했다(2026-11-18 실측: 캐시가 44분째 안 갱신). 실패해도 직전의
   //   온전한 값을 계속 보여 주므로 화면은 멀쩡하고, 읽기만 막는다.
-  if (!fresh && cached && age >= 0 && age < INFLUENCER_STATS_MAX_STALE_MS) {
+  //   ⚠️ 낡은 지 2시간이 넘어도 같다(2026-11-18 실측: 2시간을 넘기자 요청마다 동기 재계산 → 5초 응답 + 과부하로 또 실패).
+  if (!fresh && cached && age >= 0) {
     const last = Number((await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(INFLUENCER_STATS_ATTEMPT_KEY)
       .first<{ value: string }>().catch(() => null))?.value) || 0
     if (nowMs - last >= 0 && nowMs - last < INFLUENCER_STATS_RETRY_MS) return { stats: cached.data, at: cached.at }

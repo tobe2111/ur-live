@@ -157,7 +157,8 @@ function extractSqlStrings(src) {
 /** SQL 문자열 내 CTE(WITH x AS, , y AS) 이름 수집 — 로컬 별칭이라 미지테이블 오탐 방지. */
 function cteNames(sql) {
   const names = new Set()
-  const re = /(?:\bWITH\s+(?:RECURSIVE\s+)?|,\s*)[`"]?(\w+)[`"]?\s+AS\s*\(/gi
+  // `AS MATERIALIZED (` · `AS NOT MATERIALIZED (` 도 CTE 다(SQLite 3.35+) — 2026-11-18 증분 집계 대조 쿼리가 쓴다.
+  const re = /(?:\bWITH\s+(?:RECURSIVE\s+)?|,\s*)[`"]?(\w+)[`"]?\s+AS\s*(?:NOT\s+)?(?:MATERIALIZED\s*)?\(/gi
   let m
   while ((m = re.exec(sql))) names.add(m[1].toLowerCase())
   return names
