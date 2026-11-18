@@ -473,7 +473,7 @@ const MEASURE_ONE = (sel) => {
 /* PNG 픽셀 읽기 — 의존성을 새로 들이지 않으려고 chromium 자신에게 디코딩을 시킨다
    (sharp/pngjs 를 추가하면 이 가드 하나 때문에 설치가 무거워진다). */
 const SHOTDIR = fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', 'dc-'))
-const shotPage = await (await browser.newContext()).newPage()
+const shotPage = await (await browser.newContext({ locale: 'ko-KR' })).newPage()
 const readPng = async (file) => {
   const b64 = fs.readFileSync(file).toString('base64')
   return await shotPage.evaluate(async (data) => {
@@ -596,6 +596,7 @@ let measured = 0
 const perRoute = []
 for (const R of ROUTES) {
   const ctx = await browser.newContext({
+    locale: 'ko-KR', // 🌏 2026-11-18 화면 언어가 폰 언어를 따른다(shared/consumer-language) — 지정 안 하면 헤드리스 기본 en-US 로 영어 화면을 잰다
     viewport: { width: R.pc ? 1440 : 430, height: 1400 },
     colorScheme: 'dark',
   })

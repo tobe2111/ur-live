@@ -15,7 +15,7 @@
  */
 
 import { Hono } from 'hono';
-import { edgeCache, markDegraded } from '../../../worker/middleware/edge-cache';
+import { publicCache, markDegraded } from '../../../worker/middleware/edge-cache';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import { cacheGet, cacheInvalidate } from '@/worker/utils/cache';
@@ -104,7 +104,7 @@ async function ensureTables(DB: D1Database) {
  *   ⚠️ 120s 인 이유: 어드민이 편성을 바꾸면 최대 그만큼 늦게 반영된다(5분은 편집 확인이 답답하다).
  *      `bypassIfAuthed` 라 어드민 자신은 항상 최신을 본다.
  */
-sectionsRoutes.get('/', edgeCache(120), async (c) => {
+sectionsRoutes.get('/', publicCache(120), async (c) => { // 🗺️ 2026-11-17 로그인 손님도 캐시 — 홈 섹션은 사람마다 다르지 않다
   const { SESSION_KV } = c.env as Env & { SESSION_KV?: KVNamespace };
   // 🌏 2026-10-15 결재(D1 읽기 복제): 공개 편성 읽기는 가까운 사본에서 — 근거·금지 경로는 `d1-read-replica.ts`.
   const DB = publicReadDb((c.env as Env).DB);

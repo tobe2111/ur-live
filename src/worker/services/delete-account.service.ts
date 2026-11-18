@@ -248,6 +248,9 @@ export async function deleteUserAccount(
     if (!anonymizeOk) {
       throw new Error('users 테이블 익명화 실패 — 모든 컬럼 조합 시도 실패')
     }
+    // 🌏 2026-11-18: 구글 로그인 신원(곁표)도 끊는다 — 남기면 그 구글 계정이 '탈퇴 회원' 행으로 다시 들어온다.
+    //   표가 아직 없는 환경(구글 로그인을 한 번도 안 씀)은 조용히 넘어간다.
+    await db.prepare('DELETE FROM user_identities WHERE user_id = ?').bind(userId).run().catch(() => null)
 
     // 4. 탈퇴 기록 저장 — kakao_id 도 보존 (재가입 시 복원 동의 화면용).
     //    🛡️ 2026-05-01: deleted_accounts 테이블 자동 생성 (production 에 없을 수 있음).

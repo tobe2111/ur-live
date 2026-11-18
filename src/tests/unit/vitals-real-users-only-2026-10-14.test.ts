@@ -26,6 +26,8 @@ function setWebdriver(v: boolean) {
 
 beforeEach(() => {
   vi.resetModules()
+  // 📉 2026-11-17: 표본 결정이 브라우저로 옮겨왔다(방문의 25%) — 이 시험은 '보내는 방문' 을 본다.
+  vi.spyOn(Math, 'random').mockReturnValue(0)
   blobs.length = 0
   class FakePO { observe() {} disconnect() {} }
   vi.stubGlobal('PerformanceObserver', FakePO)
@@ -35,7 +37,7 @@ beforeEach(() => {
   })
   ;(window.location as { pathname: string }).pathname = '/map'
 })
-afterEach(() => { setWebdriver(false); vi.unstubAllGlobals() })
+afterEach(() => { setWebdriver(false); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('① 자동화 브라우저는 보고하지 않는다', () => {
   it('webdriver 면 성능 표본을 한 건도 안 보낸다', async () => {

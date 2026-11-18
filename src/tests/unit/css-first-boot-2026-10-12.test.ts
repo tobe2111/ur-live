@@ -282,6 +282,7 @@ describe('⑤-2 서버가 그리는 첫 화면 = CSS 먼저 적용 표면 (2026-
     'src/worker/utils/map-first-screen.ts': '/map', // 2026-11-09 — 지도 껍데기
     'src/worker/utils/search-first-screen.ts': '/search', // 2026-11-10 — 검색 헤더·빈 검색 안내
     'src/worker/utils/faq-first-screen.ts': '/faq', // 2026-11-10 — 자주 묻는 질문 전체
+    'src/worker/utils/legal-first-screen.ts': '/refund', // 2026-11-18 — 환불·약관 화면 전체(/terms 도)
     'src/worker/utils/notifications-first-screen.ts': '/notifications', // 2026-11-10 — 알림 머리줄(세션 있을 때만 — 대표 경로 검사는 authed=true 로 본다)
     'src/worker/utils/cart-first-screen.ts': '/cart', // 2026-11-10 — 장바구니 머리줄
     'src/worker/utils/landing-first-screen.ts': '/about', // 2026-11-10 — 안내 랜딩 셋 머리줄 + 사진 칸

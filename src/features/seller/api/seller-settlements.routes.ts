@@ -228,7 +228,9 @@ sellerSettlementsRoutes.get('/settlement-options', async (c) => {
     const balanceRow = await db.prepare(
       `SELECT COALESCE(SUM(amount), 0) as available_amount
          FROM settlements WHERE seller_id = ? AND status = 'approved'`
-    ).bind(sellerId).first<{ available_amount: number }>().catch(() => ({ available_amount: 0 }));
+    ).bind(sellerId).first<{ available_amount: number }>().catch(() => null);
+    // 💸 2026-11-17: 조회 실패를 '정산 잔액 0원' 으로 보여 주지 않는다 — 사장님이 받을 돈이 없다고 읽고 문의·오판한다.
+    if (!balanceRow) return c.json({ success: false, error: '정산 잔액을 지금 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.', code: 'BALANCE_UNAVAILABLE' }, 503);
 
     return c.json({
       success: true,

@@ -34,7 +34,7 @@ async function ensureSnsPostsTable(DB: D1Database) {
 const okHttps = (u: unknown): string | null => (typeof u === 'string' && /^https:\/\//.test(u) ? u : null)
 
 async function fetchInstagram(token: string): Promise<UShopSnsPost[]> {
-  const r = await fetch(`https://graph.instagram.com/v23.0/me/media?${new URLSearchParams({ fields: 'id,media_type,media_url,thumbnail_url,permalink,timestamp', limit: String(USHOP_SNS_POSTS_MAX), access_token: token })}`)
+  const r = await fetch(`https://graph.instagram.com/v23.0/me/media?${new URLSearchParams({ fields: 'id,media_type,media_url,thumbnail_url,permalink,timestamp', limit: String(USHOP_SNS_POSTS_MAX), access_token: token })}`, { signal: AbortSignal.timeout(5000) })
   if (!r.ok) return []
   const j = (await r.json().catch(() => null)) as { data?: Array<Record<string, unknown>> } | null
   return (j?.data ?? []).flatMap((m) => {
@@ -46,7 +46,7 @@ async function fetchInstagram(token: string): Promise<UShopSnsPost[]> {
 
 async function fetchYouTube(channelId: string, key: string): Promise<UShopSnsPost[]> {
   if (!/^UC[\w-]{22}$/.test(channelId)) return []
-  const r = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?${new URLSearchParams({ part: 'snippet', playlistId: `UU${channelId.slice(2)}`, maxResults: String(USHOP_SNS_POSTS_MAX), key })}`)
+  const r = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?${new URLSearchParams({ part: 'snippet', playlistId: `UU${channelId.slice(2)}`, maxResults: String(USHOP_SNS_POSTS_MAX), key })}`, { signal: AbortSignal.timeout(5000) })
   if (!r.ok) return []
   const j = (await r.json().catch(() => null)) as { items?: Array<{ snippet?: { publishedAt?: string; resourceId?: { videoId?: string }; thumbnails?: Record<string, { url?: string }> } }> } | null
   return (j?.items ?? []).flatMap((it) => {

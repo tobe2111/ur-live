@@ -325,6 +325,7 @@ homeServiceProRoutes.post('/credits/confirm', requireSeller(), async (c) => {
     const done = await DB.prepare(`SELECT 1 AS x FROM home_service_credit_tx WHERE kind = 'charge' AND ref = ?`).bind(ref).first()
     if (done) return c.json({ success: true, data: { credits_added: 0, balance: await creditBalance(DB, sid) }, message: '이미 충전된 결제입니다' })
 
+    { const pk = await (await import('../../../worker/utils/payment-key-claim')).claimPaymentKey(DB, paymentKey, 'home-service', orderId); if (!pk.ok) return c.json({ success: false, error: pk.error, code: pk.code }, pk.status) } // 🔑 2026-11-18 결제 키 한 개 = 구매 한 곳(payment-key-claim)
     const toss = await confirmTossPayment({
       env: c.env, paymentKey, orderId, amount: pkg.price, idempotencyKey: `hsc_${orderId}`, circuitName: 'toss-confirm-home-service',
     })

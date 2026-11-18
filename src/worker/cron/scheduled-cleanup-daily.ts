@@ -208,4 +208,9 @@ export async function runDailyCleanup(DB: D1Database, results: Record<string, nu
     const n = await mergeDuplicateDemoStays(DB as never);
     if (n > 0) results.demo_stay_merged = n;
   } catch (e) { logError('[Cron] demo stay merge error:', { error: String(e) }); }
+  // ── 27. 🗑️ 2026-11-18 쌓이기만 하던 기록 표 보관 기간(대표 "1,2 모두 이상적으로") — 규칙·제외 사유 SSOT `utils/log-retention.ts`.
+  try {
+    const { purgeOldLogs } = await import('../utils/log-retention');
+    await purgeOldLogs(DB as never, results);
+  } catch (e) { logError('[Cron] log retention error:', { error: String(e) }); }
 }

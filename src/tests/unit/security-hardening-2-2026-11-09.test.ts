@@ -189,6 +189,7 @@ describe('⑥ 로그인 토큰 판정은 한 곳 — 옛 재발급 토큰은 수
       'src/worker/utils/refresh-token-key.ts', 'src/features/agency-console/api/agency-session.ts',
       'src/features/marketing/api/ads-account.ts', 'src/worker/utils/login-token-policy.ts',
       'src/features/auth/api/kakao.routes.ts', // OAuth state·확정 티켓(로그인 토큰 아님)
+      'src/worker/utils/oauth-signed-state.ts', // OAuth state(카카오·구글 공용 — 2026-11-18)
       'src/features/seller/api/seller-pin.routes.ts', // PIN 확인 토큰(purpose) 자체를 검증
     ])
     // hono verify 를 **실제로 Bearer 에 부르는** 곳만 센다(import 만 하고 안 쓰는 파일은 해가 없다).

@@ -73,6 +73,16 @@ if (idxSrc && !idxSrc.includes(ALLOW_MARK)) {
   }
 }
 
+// ── R4. 구글 OAuth(외국인 손님 · 2026-11-18)는 서버 code 교환만 — Firebase 토큰을 받지 않을 것 ──────
+//   `googleOauthRoutes` 는 R3 의 `googleRoutes`(Firebase ID 토큰 수용)와 다른 것이다. 같은 클래스가 그 이름으로 돌아오는 것을 막는다.
+for (const f of ['src/features/auth/api/google.routes.ts', 'src/features/auth/services/google-oauth.ts']) {
+  const src = read(f)
+  if (!src || src.includes(ALLOW_MARK)) continue
+  if (/verifyFirebase|firebase-admin|identitytoolkit|securetoken\.google/i.test(stripComments(src))) {
+    err(`${f} — 구글 로그인이 Firebase 토큰을 받는다. 이 경로는 서버가 구글 토큰 엔드포인트에서 code 를 직접 바꿔야 한다.`)
+  }
+}
+
 if (fail) {
   console.error(`\n  🔧 의도적으로 되살리는 경우에만: 해당 파일에 '${ALLOW_MARK}' 주석을 넣고,`)
   console.error(`     새 서비스계정 키 발급 + docs/AUDIT_INVARIANTS.md 갱신을 함께 할 것.\n`)

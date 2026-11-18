@@ -42,7 +42,7 @@ app.get('/kakao/place/search', rateLimit({ action: 'kakao_proxy', max: 30, windo
   }
   try {
     const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=${size}${category && !category.includes(',') ? `&category_group_code=${category}` : ''}`;
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` }, signal: AbortSignal.timeout(5000) }); // ⏱️ 2026-11-17 카카오가 안 답해도 손님 요청이 끝없이 기다리지 않게
     const data = await res.json();
     if (KV && (data as { documents?: unknown[] })?.documents?.length) {
       c.executionCtx?.waitUntil?.(KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 24 * 60 * 60 }).catch(() => {}));
@@ -78,7 +78,7 @@ app.get('/kakao/place/nearby', rateLimit({ action: 'kakao_proxy', max: 30, windo
   }
   try {
     const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=${category}&x=${x}&y=${y}&radius=${Math.min(20000, Number(radius) || 1000)}&size=${size}&sort=distance`;
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` }, signal: AbortSignal.timeout(5000) }); // ⏱️ 2026-11-17 카카오가 안 답해도 손님 요청이 끝없이 기다리지 않게
     const data = await res.json();
     if (KV && (data as { documents?: unknown[] })?.documents?.length) {
       c.executionCtx?.waitUntil?.(KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 10 * 60 }).catch(() => {}));
@@ -106,7 +106,7 @@ app.get('/kakao/coord2region', rateLimit({ action: 'kakao_proxy', max: 30, windo
   }
   try {
     const url = `https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x=${gx}&y=${gy}`;
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` }, signal: AbortSignal.timeout(5000) }); // ⏱️ 2026-11-17 카카오가 안 답해도 손님 요청이 끝없이 기다리지 않게
     const raw = await res.json() as { documents?: Array<{ region_type?: string; region_2depth_name?: string; region_3depth_name?: string }> };
     // 행정동('H') 우선, 없으면 첫 결과. dong=행정동, city=시군구.
     const doc = raw.documents?.find((d) => d.region_type === 'H') || raw.documents?.[0];
@@ -140,7 +140,7 @@ app.get('/kakao/place/address', rateLimit({ action: 'kakao_proxy', max: 30, wind
 
   try {
     const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(query)}`;
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` }, signal: AbortSignal.timeout(5000) }); // ⏱️ 2026-11-17 카카오가 안 답해도 손님 요청이 끝없이 기다리지 않게
     const data = await res.json();
 
     // 결과 있을 때만 30일 캐시 — waitUntil로 백그라운드 write (응답 지연 방지)
@@ -175,6 +175,7 @@ app.get('/naver/place/search', rateLimit({ action: 'naver_place', max: 30, windo
     const url = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=${display}&sort=comment`;
     const res = await fetch(url, {
       headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
+      signal: AbortSignal.timeout(5000), // ⏱️ 2026-11-17
     });
     const data = await res.json();
     if (KV && (data as { items?: unknown[] })?.items?.length) {
@@ -210,6 +211,7 @@ app.get('/naver/image/search', rateLimit({ action: 'naver_image', max: 30, windo
     const url = `https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(query)}&display=${display}&sort=sim&filter=large`;
     const res = await fetch(url, {
       headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
+      signal: AbortSignal.timeout(5000), // ⏱️ 2026-11-17
     });
     const data = await res.json();
     if (KV && (data as { items?: unknown[] })?.items?.length) {

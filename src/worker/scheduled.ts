@@ -224,6 +224,7 @@ export async function handleCronScheduled(
     // 🛡️ 2026-05-12: 이메일 / 푸시 dead-letter 재시도 drainer
     ctx.waitUntil(safeCron('retry-email-failures', () => retryEmailFailures(env)));
     ctx.waitUntil(safeCron('retry-push-failures', () => retryPushFailures(env)));
+    ctx.waitUntil(safeCron('push-jobs-drain', async () => { const q = await import('./utils/push-queue'); await q.drainPushJobs(env); await q.cleanupPushJobs(env.DB) })); // 📮 2026-11-17 알림 줄(공구 달성·단골)
     // 🪦 2026-09-05: '공구 마감 3시간/1시간 전 push' cron 제거 — 마감 개념이 없어져 영구히 0건이었다.
     //   5분마다 products 를 창 3개로 훑고(하루 ~150만 행) 매번 ALTER 를 두 번 시도하던 자리다.
     // 🛡️ 2026-05-21 Phase E-3: 예약 시작 +30분 지난 confirmed 노쇼 자동 알림.

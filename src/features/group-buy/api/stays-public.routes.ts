@@ -959,7 +959,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
     // 🛡️ 2026-06-12 (B-1): Toss orderId 는 위젯 결제(requestPayment)와 동일한 'STAY-{orders.id}'.
     //   Toss orderId 최소 6자 요건 — 순수 숫자 orders.id 는 미충족. prefix 표준은 toss-gateway
     //   generateTossOrderId 의 'STAY' 와 동일 (결제 시작/승인 양쪽이 같은 문자열이어야 승인 성공).
-    const tossOrderId = `STAY-${orderId}`
+    const tossOrderId = `STAY-${orderId}`; { const pk = await (await import('../../../worker/utils/payment-key-claim')).claimPaymentKey(c.env.DB, paymentKey, 'stay', tossOrderId); if (!pk.ok) return c.json({ success: false, error: pk.error, code: pk.code }, pk.status) } // 🔑 2026-11-18 결제 키 한 개 = 구매 한 곳(payment-key-claim)
     const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
     const tossResult = await confirmTossPayment({
       env: c.env as unknown as { TOSS_SECRET_KEY?: string },
@@ -1219,7 +1219,7 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action
         const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
         const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string }, orderRow.payment_key, {
           reason: `예약 취소 (정책 ${policy}, ${(refundRate * 100).toFixed(0)}% 환불) — ${reason || '사용자 요청'}`.slice(0, 200),
-          amount: refundRate < 1.0 ? refundAmount : undefined,  // 부분 환불일 때만 amount 명시
+          amount: await (await import('./stay-cancel-amount')).stayCancelAmountFor(c.env.DB, booking.order_id, refundRate, refundAmount),  // 🔐 2026-11-18 단독 예약의 100% 환불만 전체 취소 — 다객실은 이 방 값만
           idempotencyKey: `stay-cancel-${id}`,
         })
         refundActuallyDone = result.ok

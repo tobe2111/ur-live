@@ -3,7 +3,7 @@
  * ⚠️ 문구 수정은 대표 확인 후에만. 개정 시 버전 +0.1 및 terms_consents 기록 버전 갱신.
  */
 import type { TermsDoc } from './terms-types'
-import { TERMS_BIZ_FOOTER } from './terms-types'
+import { TERMS_BIZ_FOOTER } from './terms-biz-footer'
 
 export const CONSUMER_TERMS: TermsDoc = {
   title: '유어딜 이용약관',

@@ -31,3 +31,8 @@
 - `src/worker/utils/voucher-email-html.ts`(en·ja·zh·ko, 매장 한국어 원문 병기, `/v/:code` 버튼 — 로그인 불필요 화면) + `src/worker/utils/voucher-email-send.ts`(주문 단위 선점 · `voucher_email_enabled` 기본 꺼짐).
 - **아직 아무 레일도 부르지 않는다** — 해외 간편결제 승인 직후에 붙인다. 켜는 것(발송)은 결재.
 - ⚠️ 메일의 "미사용 시 전액 자동 환불" 문구는 해외결제 환불 시 수수료 처리 결정에 따라 바뀔 수 있다.
+
+## 환불·약관 서버 첫 화면 (2026-11-18)
+- `/refund` 첫 그림 1.5~3.0s · `/terms` 2.1~4.0s(폰 4G) → 서버가 화면 전체를 그린다(`src/worker/utils/legal-first-screen.ts`). 환불 문구는 `src/shared/refund-policy-content.ts` 트리로 옮겼다(화면·서버 공용, 렌더 HTML 바이트 동일). 약관 클래스는 `src/shared/terms-page.ts`. 잠금 기록 `docs/locks/loading/2026-11-18-refund-terms-first-screen.md`.
+- 통신판매업 신고번호: 대표 *"2번은 부산금정으로 해줘. 나중에 변경해야하니 알려줘"* — 약관 하단이 `제2025-서울강남-0540호` 를 손으로 적고 있던 것을 `src/pages/terms/terms-biz-footer.ts`(값은 `COMPANY`)로. **나중에 바꿀 곳은 `src/shared/company-info.ts` `COMPANY.mailOrderNo` 한 줄.**
+- 상태: E2(로컬 시험·tsc). 배포 뒤 `node scripts/measure-live-vitals.mjs /refund /terms` + `--pc` 로 FCP·CLS 를 잰다(E4).

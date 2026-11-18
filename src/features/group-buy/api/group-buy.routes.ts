@@ -35,7 +35,7 @@ import { notifySellerVoucherSale } from './seller-sale-notify' // 📣 판매 �
 // 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 이용권 hardcode 제거 — getVoucherShortLabel 사용.
 import { getVoucherShortLabel, VOUCHER_CATEGORY_SQL_IN } from '@/shared/constants/voucher-categories'
 // 🎟️ 2026-08-12 (소비자 공구 결제 결함 3건): 자기참여 판정·주문번호·가상계좌 가드 → gb-purchase-guards.ts
-import { isVoucherDealPaymentAllowed, groupBuyJoinBlockReason, isSelfOwnedGroupBuy, isSelfReferral, pickGbRefSource, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
+import { isVoucherDealPaymentAllowed, groupBuyJoinBlockReason, isSelfOwnedGroupBuy, isSelfReferral, pickGbRefSource, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel, confirmTossGate } from './gb-purchase-guards'
 import { preferAccountRef } from '../../../worker/utils/account-ref' // 🔗 2026-11-12 다른 기기에서 산 결제도 소개 성과로
 import { resolvePartialDealPlan, derivePartialDeal, spendPartialDeal, recordOrderDealUsed, restorePartialDeal } from './partial-deal'
 import { findActiveDealPct } from '@/worker/utils/influencer-deal'
@@ -851,15 +851,12 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             ).bind(productId, userId, product.seller_id, userId)
               .all<{ user_id: string }>()
               .catch(() => ({ results: [] as { user_id: string }[] }))
-            const { sendSystemPush } = await import('../../../lib/system-push')
-            for (const u of interested ?? []) {
-              try {
-                await sendSystemPush(c.env, 'user', u.user_id, {
-                  title: m.title, body: m.body,
-                  url: `/pass/${productId}`, tag: `gb-milestone-${productId}-${m.flag}`,
-                })
-              } catch { /* ignore */ }
-            }
+            // 📮 2026-11-17: 사람마다 요청 안에서 보내면 많을 때 뒤쪽이 조용히 빠졌다 → 줄에 넣고 첫 묶음만 바로 보낸다.
+            const pq = await import('../../../worker/utils/push-queue')
+            await pq.enqueuePush(DB, 'user', (interested ?? []).map((u) => u.user_id), {
+              title: m.title, body: m.body, url: `/pass/${productId}`, tag: `gb-milestone-${productId}-${m.flag}`,
+            })
+            await pq.drainPushJobs(c.env, pq.PUSH_INLINE_BATCH).catch(() => null)
           } catch { /* table may not exist */ }
         }
       }
@@ -884,23 +881,17 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
            JOIN order_items oi ON oi.order_id = o.id
            WHERE oi.product_id = ? AND o.user_id IS NOT NULL`
         ).bind(productId).all<{ user_id: string }>()
-        const { sendSystemPush } = await import('../../../lib/system-push')
-        for (const p of participants ?? []) {
-          try {
-            await DB.prepare(
-              `INSERT INTO user_notifications (user_id, type, title, message, link)
-               VALUES (?, 'group_buy_achieved', ?, ?, ?)`
-            ).bind(p.user_id, '🎉 공구 성공!', `${product.name} 곧 ${getVoucherShortLabel(product.category)}이 발급됩니다`, `/pass/${productId}`).run()
-          } catch { /* ignore */ }
-          try {
-            await sendSystemPush(c.env, 'user', p.user_id, {
-              title: '🎉 공구 성공!',
-              body: `${product.name} 곧 ${getVoucherShortLabel(product.category)}이 발급됩니다`,
-              url: `/pass/${productId}`,
-              tag: `gb-achieved-${productId}`,
-            })
-          } catch { /* ignore */ }
+        // 📮 2026-11-17: 인앱 알림은 50명씩 한 batch, 푸시는 줄에 넣고 첫 묶음만 바로(나머지는 5분 cron).
+        const msg = `${product.name} 곧 ${getVoucherShortLabel(product.category)}이 발급됩니다`
+        const ids = (participants ?? []).map((p) => p.user_id)
+        for (let i = 0; i < ids.length; i += 50) {
+          await DB.batch(ids.slice(i, i + 50).map((uid) => DB.prepare(
+            `INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, 'group_buy_achieved', ?, ?, ?)`,
+          ).bind(uid, '🎉 공구 성공!', msg, `/pass/${productId}`))).catch(() => null)
         }
+        const pq = await import('../../../worker/utils/push-queue')
+        await pq.enqueuePush(DB, 'user', ids, { title: '🎉 공구 성공!', body: msg, url: `/pass/${productId}`, tag: `gb-achieved-${productId}` })
+        await pq.drainPushJobs(c.env, pq.PUSH_INLINE_BATCH).catch(() => null)
       }
     } catch (e) { console.error('[group-buy achieved notify]', e) }
       }
@@ -1092,7 +1083,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id, voucher_expiry, category, group_buy_tiers, referral_disabled, deal_only FROM products WHERE id = ? AND is_active = 1 AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)"
   ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; seller_id: number; voucher_expiry: string | null; category: string; group_buy_tiers: string | null; referral_disabled: number | null; deal_only: number | null }>()
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
-
+  { const gate = confirmTossGate(product, await isSelfOwnedGroupBuy(DB, product.seller_id, userId)); if (gate) return c.json({ success: false, error: gate.error, ...(gate.code ? { code: gate.code } : {}) }, gate.status) } // 🔐 2026-11-18 과금 전 — /join 과 같은 문(gb-purchase-guards)
   // 🛡️ 2026-05-31: 카드 결제 referral 추출 (딜 /join 과 동일 검증) — 인플 attribution 용.
   const refRaw = await preferAccountRef(DB, userId, pickGbRefSource(body.ref, c.req.header('X-Affiliate-Ref'), getCookie(c, 'affiliate_ref'))) // 🔗 /join 과 같은 출처 · 같은 자기귀속 판정
   let referralInfluencerId = refRaw && /^[a-zA-Z0-9_\-:]{1,64}$/.test(refRaw) ? refRaw : ''
@@ -1148,11 +1139,10 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const dealUsed = derived.dealUsed
 
   // 2. Toss confirm — gateway helper 사용. **실제 청구액**(딜 차감 후)으로 승인한다.
+  { const pk = await (await import('../../../worker/utils/payment-key-claim')).claimPaymentKey(DB, paymentKey, 'gb', orderId, { orderNumberMustBeOurs: orderId }); if (!pk.ok) return c.json({ success: false, error: pk.error, code: pk.code }, pk.status) } // 🔑 2026-11-18 결제 키 한 개 = 구매 한 곳(payment-key-claim)
   const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
   const tossResult = await confirmTossPayment({
-    env: c.env as { TOSS_SECRET_KEY?: string },
-    paymentKey,
-    orderId,
+    env: c.env as { TOSS_SECRET_KEY?: string }, paymentKey, orderId,
     amount: chargedAmount,
   })
   if (!tossResult.ok) {

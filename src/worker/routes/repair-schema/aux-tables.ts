@@ -534,6 +534,7 @@ export const AUX_TABLE_REPAIRS: Array<{ name: string; sql: string }> = [
       UNIQUE(store_key, platform, ext_id)
     )` },
     { name: 'idx_scc_store_status', sql: `CREATE INDEX IF NOT EXISTS idx_scc_store_status ON store_creator_content(store_key, status, pinned, position)` },
+    { name: 'idx_scc_platform_ext', sql: `CREATE INDEX IF NOT EXISTS idx_scc_platform_ext ON store_creator_content(platform, ext_id, status)` }, // 🗂️ 2026-11-17 유어쇼츠 동기화 전체 훑기 제거
     { name: 'store_content_crawl', sql: `CREATE TABLE IF NOT EXISTS store_content_crawl (
       store_key TEXT PRIMARY KEY,
       seller_id INTEGER NOT NULL,

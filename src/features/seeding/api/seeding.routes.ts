@@ -328,6 +328,7 @@ seedingRoutes.post('/passes/confirm', requireUser(), async (c) => {
     if (Number(body.amount) !== pkg.price) return c.json({ success: false, error: '결제 금액이 묶음 가격과 달라요' }, 400)
     const done = await DB.prepare(`SELECT 1 AS x FROM seeding_pass_tx WHERE kind = 'charge' AND ref = ?`).bind(`pay:${paymentKey}`).first()
     if (done) return c.json({ success: true, data: { passes: await passBalance(DB, me) }, message: '이미 처리된 결제예요' })
+    { const pk = await (await import('../../../worker/utils/payment-key-claim')).claimPaymentKey(DB, paymentKey, 'seeding-pass', orderId); if (!pk.ok) return c.json({ success: false, error: pk.error, code: pk.code }, pk.status) } // 🔑 2026-11-18 결제 키 한 개 = 구매 한 곳(payment-key-claim)
     const toss = await confirmTossPayment({
       env: c.env, paymentKey, orderId, amount: pkg.price, idempotencyKey: `sdp_${orderId}`, circuitName: 'toss-confirm-seeding-pass',
     })

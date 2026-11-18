@@ -157,6 +157,16 @@ giftsRoutes.post('/:id/confirm', requireUser(), async (c) => {
       return c.json({ success: false, error: '금액이 일치하지 않습니다' }, 400)
     }
 
+    // 🔐 2026-11-18: 결제 한 건 = 선물 한 건. 종전엔 orderId 가 선물과 안 묶여 있고 paymentKey 중복도 안 봐서,
+    //   한 번 낸 결제의 (paymentKey, orderId)로 같은 금액의 다른 선물을 몇 개든 '결제됨' 으로 만들 수 있었다
+    //   (토스는 같은 키의 재승인을 '이미 처리됨 = 성공' 으로 답한다).
+    if (!String(body.orderId).startsWith(`gift_${giftId}_`)) {
+      return c.json({ success: false, error: '주문 번호가 이 선물의 것이 아닙니다' }, 400)
+    }
+    const reused = await c.env.DB.prepare('SELECT id FROM gifts WHERE toss_payment_key = ? AND id != ? LIMIT 1')
+      .bind(body.paymentKey, giftId).first<{ id: number }>().catch(() => null)
+    if (reused) return c.json({ success: false, error: '이미 다른 선물에 쓰인 결제입니다' }, 409)
+
     // 3) 토스 결제 confirm 호출
     const tossSecretKey = (c.env as { TOSS_SECRET_KEY?: string }).TOSS_SECRET_KEY
     if (!tossSecretKey) {
@@ -165,6 +175,7 @@ giftsRoutes.post('/:id/confirm', requireUser(), async (c) => {
 
     // 🛡️ 2026-05-22 옵션 B: toss-gateway 헬퍼 사용.
     //   defense-in-depth — DB-verified gift.amount 사용 (클라 body.amount 신뢰 X).
+    { const pk = await (await import('../../../worker/utils/payment-key-claim')).claimPaymentKey(c.env.DB, body.paymentKey, 'gift', body.orderId); if (!pk.ok) return c.json({ success: false, error: pk.error, code: pk.code }, pk.status) } // 🔑 2026-11-18 결제 키 한 개 = 구매 한 곳(payment-key-claim)
     const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
     const tossResult = await confirmTossPayment({
       env: { TOSS_SECRET_KEY: tossSecretKey },

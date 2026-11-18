@@ -8,7 +8,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { sign as jwtSign, verify as jwtVerify } from 'hono/jwt'; import { signRefreshToken } from '../../../worker/utils/refresh-token-key';
+import { sign as jwtSign } from 'hono/jwt'; import { signEstablishTicket } from '../../../worker/utils/session-establish-ticket'; import { signPurposeState, verifyPurposeState } from '../../../worker/utils/oauth-signed-state'; import { signRefreshToken } from '../../../worker/utils/refresh-token-key';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 import { sessionPersistProbeCookie } from '../../../shared/session-persist-probe';
 // 🛡️ 2026-05-01: FirebaseAuthService import 제거 — KR Kakao 흐름은 Firebase 0.
@@ -138,21 +138,7 @@ export async function issueLinkedRoleTokens(
  *   쿠키를 200 에 발급. **토큰을 localStorage 에 두지 않음**(OWASP 권장 — XSS 면역).
  *   티켓은 서명(HS256/JWT_SECRET)이라 위조 불가 + 120초 만료 → 재생/CSRF 안전(별도 저장 불필요).
  */
-async function signEstablishTicket(
-  secret: string,
-  user: { id: number | string; name?: string; email?: string | null; profile_image?: string | null },
-): Promise<string> {
-  const now = Math.floor(Date.now() / 1000)
-  return jwtSign({
-    p: 'session_establish',
-    uid: String(user.id),
-    name: user.name || '',
-    email: user.email || '',
-    img: user.profile_image || '',
-    iat: now,
-    exp: now + 120,
-  }, secret)
-}
+// 🔁 2026-11-18: 본문은 공용 파일로 옮겼다(구글 로그인이 같은 티켓을 쓴다) — worker/utils/session-establish-ticket.ts
 
 // 🧪 단위 테스트용 export — 티켓 클레임/만료 회귀 가드
 export { signEstablishTicket as __signEstablishTicketForTest };
@@ -232,6 +218,8 @@ function safeRedirect(path: string | null | undefined): string {
 
 // 🧪 단위 테스트용 export — frontend safeInternalPath 와 양쪽 일관성 검증
 export { safeRedirect as __safeRedirectForTest };
+// 🔐 2026-11-18 구글 로그인(google.routes.ts)이 같은 복귀 주소 규칙을 쓴다 — 복사본을 두지 않는다.
+export { safeRedirect as oauthSafeRedirect, readCookie as oauthReadCookie };
 
 /** Extract a named cookie value from a Cookie header string. */
 function readCookie(cookieHeader: string | null | undefined, name: string): string | null {
@@ -287,11 +275,8 @@ async function signOauthState(
   nonce: string,
   secret: string,
 ): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  return jwtSign(
-    { p: STATE_TOKEN_PURPOSE, n: nonce, r: redirect, i: intent, iat: now, exp: now + 1800 },
-    secret,
-  );
+  // 🔁 2026-11-18: 서명·검증 본문은 공용(worker/utils/oauth-signed-state.ts) — 클레임 모양(p·n·r·i·iat·exp)은 그대로.
+  return signPurposeState(STATE_TOKEN_PURPOSE, { n: nonce, r: redirect, i: intent }, secret);
 }
 
 /** Verify a signed state token. Returns redirect/intent on success, null otherwise. */
@@ -299,20 +284,13 @@ async function verifySignedState(
   state: string | null | undefined,
   secret: string,
 ): Promise<{ redirect: string; intent: 'user' | 'seller' | 'agency' } | null> {
-  if (!state || !secret) return null;
-  // JWT(점 2개)만 시도 — 레거시 opaque UUID state 는 검증 대상 아님.
-  if (state.split('.').length !== 3) return null;
-  try {
-    const payload = await jwtVerify(state, secret, 'HS256') as Record<string, unknown>;
-    if (!payload || payload.p !== STATE_TOKEN_PURPOSE) return null;
-    const redirect = safeRedirect(typeof payload.r === 'string' ? payload.r : '/');
-    const intentRaw = payload.i;
-    const intent = (intentRaw === 'seller' || intentRaw === 'agency') ? intentRaw : 'user';
-    return { redirect, intent };
-  } catch {
-    // 만료/서명 불일치 — hono/jwt verify 가 throw.
-    return null;
-  }
+  // JWT(점 2개)만 시도 — 레거시 opaque UUID state 는 검증 대상 아님(공용 함수가 판정).
+  const payload = await verifyPurposeState(state, STATE_TOKEN_PURPOSE, secret);
+  if (!payload) return null;
+  const redirect = safeRedirect(typeof payload.r === 'string' ? payload.r : '/');
+  const intentRaw = payload.i;
+  const intent = (intentRaw === 'seller' || intentRaw === 'agency') ? intentRaw : 'user';
+  return { redirect, intent };
 }
 
 // 🧪 단위 테스트용 export — signed-state 왕복(CSRF/쿠키유실 복구) 회귀 검증

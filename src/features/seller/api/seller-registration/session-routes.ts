@@ -68,7 +68,9 @@ export function mountSellerSessionRoutes(
       //   해결: 카카오 검증된 user.email 과 sellers.email 매칭 시 자동 link (보안: 카카오는 email 검증 의무).
       if (!seller) {
         try {
-          const userRow = await db.prepare('SELECT email FROM users WHERE id = ?')
+          // 🔐 2026-11-18: **카카오가 확인한 이메일**일 때만 잇는다. 이 세션 쿠키는 이메일 가입(`/api/auth/register` —
+          //   주소 확인 없음)으로도 생긴다 ⇒ 종전엔 남의 매장 이메일로 가입만 하면 그 매장의 주인 자리가 붙었다.
+          const userRow = await db.prepare('SELECT email FROM users WHERE id = ? AND kakao_id IS NOT NULL AND email_verified = 1')
             .bind(sessionUser.userId).first<{ email: string | null }>();
           const userEmail = userRow?.email?.trim().toLowerCase();
           if (userEmail) {

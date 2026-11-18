@@ -1,5 +1,5 @@
 {
-  "total": 1845,
+  "total": 1849,
   "files": {
     "src/pages/AboutPage.tsx": 24,
     "src/pages/AboutServicePage.tsx": 1,
@@ -155,7 +155,6 @@
     "src/pages/stay-detail/GuestIdentityFields.tsx": 3,
     "src/pages/stay-detail/StayDateGuestPicker.tsx": 3,
     "src/pages/stay-detail/StayInfoSections.tsx": 1,
-    "src/pages/terms/TermsDocument.tsx": 5,
     "src/pages/user-profile/AccountControlsSection.tsx": 1,
     "src/pages/vouchers/ShoppingGrid.tsx": 4,
     "src/pages/vouchers/TopChromeReserve.tsx": 1,
@@ -262,8 +261,10 @@
     "src/shared/stay-head.ts": 2,
     "src/shared/stays-list.ts": 4,
     "src/shared/stores/useTheme.ts": 2,
+    "src/shared/terms-page.ts": 5,
     "src/shared/ushop-share-card.ts": 1,
     "src/shared/videos-first.ts": 1,
-    "src/shared/vouchers-pc-first-screen.ts": 9
+    "src/shared/vouchers-pc-first-screen.ts": 9,
+    "src/pages/login/GoogleLoginButton.tsx": 4
   }
 }

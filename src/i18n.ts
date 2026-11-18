@@ -2,6 +2,7 @@
 import i18n, { initReactI18next } from './lib/i18n-lite'
 import { CRITICAL_I18N } from './i18n-critical'
 import { CONSUMER_LANGUAGE_SWITCH_HIDDEN } from './shared/feature-flags'
+import { consumerLanguageFor } from './shared/consumer-language'
 
 // 🛡️ 2026-05-07: locales 청크 분할 — 6개 언어를 한 번에 로드하던 것을
 //   기본 언어만 eagerly load + 나머지는 lazy load 로 변경.
@@ -99,7 +100,10 @@ function detectInitialLanguage(): Lang {
   // 🌐 2026-08-11: 언어 전환을 닫았으면 **저장된 선택도 무시하고 ko 로 고정**한다.
   //   숨기기만 하면 이미 en 으로 바꿔 둔 사용자는 되돌릴 문이 없어 **갇힌다** — 숨김과 고정은 한 쌍이다.
   //   (셀러 대시보드의 언어 전환은 이 함수를 안 타므로 영향 없다.)
-  if (CONSUMER_LANGUAGE_SWITCH_HIDDEN) return 'ko'
+  // 🌏 2026-11-18 (대표 *"외국인한테만"* — 영어 경로·구글 로그인): 전환 UI 는 그대로 닫혀 있고, 저장된 선택도 여전히 무시한다
+  //   (갇힘 방지 그대로). 대신 **폰 언어**로만 고른다 — 한국어 폰이면 ko, 그 밖이면 en(번역이 채워진 유일한 외국어).
+  //   IP 국가로 고르지 않는다: 한국에 온 관광객은 한국 IP 다. SSOT: consumerLanguageFor()
+  if (CONSUMER_LANGUAGE_SWITCH_HIDDEN) return consumerLanguageFor(typeof window !== 'undefined' ? window.navigator?.languages ?? [window.navigator?.language] : [])
   if (typeof window !== 'undefined') {
     try {
       const stored = window.localStorage?.getItem('i18nextLng')

@@ -8,7 +8,7 @@
  * GET  /api/points/history       - 거래 내역
  */
 
-import { Hono } from 'hono';
+import { Hono } from 'hono'; import { couponAppliesToOrder, capCouponToCouponable, isValidPurchaseQty, AD_REWARD_DISABLED } from '../../../shared/coupon-scope';
 import { cors } from 'hono/cors';
 import { requireUser, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
@@ -322,11 +322,10 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
 
   // 🛡️ 2026-05-22 옵션 B 마이그: toss-gateway 헬퍼 사용 — 토스 fetch / idempotency / circuit / 에러 표준화 한 곳.
   //   서버 검증된 pending.amount 사용 (defense-in-depth — 클라이언트 amount 신뢰 X).
+  { const pk = await (await import('../../../worker/utils/payment-key-claim')).claimPaymentKey(DB, paymentKey, 'points', orderId); if (!pk.ok) return c.json({ success: false, error: pk.error, code: pk.code }, pk.status) } // 🔑 2026-11-18 결제 키 한 개 = 구매 한 곳(payment-key-claim)
   const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
   const tossResult = await confirmTossPayment({
-    env: c.env,
-    paymentKey,
-    orderId,
+    env: c.env, paymentKey, orderId,
     amount: pending.amount,
   })
   if (!tossResult.ok) {
@@ -596,7 +595,7 @@ const AD_REWARD_DESC_PREFIX = '[광고리워드]'; // description 기반 구분
 // POST /api/points/ad-reward — 광고 시청 완료 후 딜 지급
 pointsRoutes.post('/ad-reward', rateLimit({ action: 'points_ad_reward', max: 5, windowSec: 300 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
-  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  if (!user || AD_REWARD_DISABLED) return user ? c.json({ success: false, error: '광고 보상은 준비 중입니다', code: 'AD_REWARD_DISABLED' }, 403) : c.json({ success: false, error: '로그인이 필요합니다' }, 401); // 🔐 2026-11-18 시청 증명 없이 딜이 나가던 것(shared/coupon-scope)
 
   const { DB } = c.env;
   await ensureTables(DB);
@@ -804,7 +803,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       return c.json({ success: false, error: `상품을 찾을 수 없거나 판매 중단된 상품입니다 (id: ${item.product_id})` }, 404);
     }
     const qty = Number(item.quantity) || 0;
-    if (qty <= 0) {
+    if (!isValidPurchaseQty(qty)) { // 🔐 2026-11-18 1 이상의 정수만 — 0.01 개로 교환권을 1% 값에 받던 것
       return c.json({ success: false, error: '수량이 유효하지 않습니다' }, 400);
     }
     if (p.stock < qty) {
@@ -875,12 +874,12 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
   let couponClaimed = false;
   if (wantCoupon) {
     const coupon = await DB.prepare(
-      'SELECT id, type, value, max_discount, min_order_amount, total_count, used_count, expires_at FROM coupons WHERE id = ? AND is_active = 1'
+      'SELECT id, type, value, max_discount, min_order_amount, total_count, used_count, expires_at, starts_at, seller_id FROM coupons WHERE id = ? AND is_active = 1'
     ).bind(couponIdNum).first<{
-      id: number; type: string; value: number; max_discount: number | null;
+      id: number; type: string; value: number; max_discount: number | null; starts_at: string | null; seller_id: number | null;
       min_order_amount: number | null; total_count: number; used_count: number; expires_at: string | null;
     }>();
-    if (!coupon) return c.json({ success: false, error: '유효하지 않은 쿠폰입니다' }, 400);
+    if (!coupon || !couponAppliesToOrder(coupon, normalizedItems.map(i => i.seller_id))) return c.json({ success: false, error: coupon ? '이 주문에는 쓸 수 없는 쿠폰입니다' : '유효하지 않은 쿠폰입니다' }, 400); // 🔐 2026-11-18 매장 쿠폰은 그 매장 상품에만
     if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
       return c.json({ success: false, error: '만료된 쿠폰입니다' }, 400);
     }
@@ -894,7 +893,7 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       ? Math.round(itemsSubtotal * coupon.value / 100)
       : Number(coupon.value) || 0;
     if (coupon.max_discount && computed > coupon.max_discount) computed = coupon.max_discount;
-    if (computed > authoritativeTotal) computed = authoritativeTotal;
+    if (computed > authoritativeTotal) computed = authoritativeTotal; computed = capCouponToCouponable(computed, normalizedItems); // 🔐 2026-11-18 교환권은 쿠폰으로 안 깎는다
     if (computed < 0) computed = 0;
 
     // 원자적 소진 — 동시요청은 UNIQUE 위반으로 정확히 1건만 통과 (order_id 는 주문 생성 후 채움)

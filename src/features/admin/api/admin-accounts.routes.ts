@@ -290,7 +290,7 @@ adminAccountsRoutes.delete('/admins/:id', cors(), async (c) => {
     //   ② dashboard_sessions.min_valid_iat 를 현재 시각으로 bump → 이미 발급된 access 토큰/세션쿠키가
     //      requireAuth 의 단일세션 검사(isDashboardSessionCurrent)에서 거부 → 즉시 로그아웃(최대 24h 잔존 제거).
     //   삭제 계정은 로그인·리프레시 쿼리의 is_active/status 게이트로 재로그인 불가라 영구 차단.
-    await executeRun(DB, `DELETE FROM auth_refresh_tokens WHERE user_type = 'admin' AND user_id = ?`, [adminId])
+    await executeRun(DB, `DELETE FROM auth_refresh_tokens WHERE user_type = 'admin' AND user_id = ?`, [adminId]) // refresh-delete-ok: 삭제 계정은 재발급 쿼리의 is_active/status 게이트가 막는다(묘비 불필요)
       .catch(() => { /* best-effort */ });
     try {
       // 🔐 2026-11-09: 동시 로그인 허용(multi_session=1) 계정은 아래 경계 올리기를 건너뛰므로, 삭제할 때 먼저 끈다
@@ -349,9 +349,9 @@ adminAccountsRoutes.post('/admins/:id/reset-password', cors(), rateLimit({ actio
     const passwordHash = await hashPassword(newPassword);
     await executeRun(DB, `UPDATE admins SET password_hash = ? WHERE id = ?`, [passwordHash, adminId]);
 
-    await DB.prepare(
-      "DELETE FROM auth_refresh_tokens WHERE user_type = 'admin' AND user_id = ?"
-    ).bind(Number(adminId)).run().catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
+    // 🔐 2026-11-18: 지우기만 하면 '행 0 = 서명만 보고 통과' 로 옛 토큰이 되살아난다 — 묘비를 남긴다(refresh-rotation.ts).
+    await (await import('../../../worker/utils/refresh-rotation')).revokeAllRefreshTokens(DB, 'admin', Number(adminId))
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
 
     await writeAuditLog(c, {
       action: 'reset_admin_password',

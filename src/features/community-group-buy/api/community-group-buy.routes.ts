@@ -724,7 +724,7 @@ communityGroupBuyRoutes.patch('/:id/confirm', requireAuth(), async (c) => {
 
   // 권한 확인: 어드민이거나 restaurant_seller_id가 본인인 경우만 허용
   const isAdmin = user.type === 'admin' || user.role === 'admin';
-  const isSeller = group.restaurant_seller_id && String(group.restaurant_seller_id) === String(user.id);
+  const isSeller = user.type === 'seller' && group.restaurant_seller_id && String(group.restaurant_seller_id) === String(user.id); // 🔐 2026-11-18 번호만 보지 않는다(유저 #N 토큰이 매장 #N 으로 읽히던 것)
 
   if (!isAdmin && !isSeller) {
     return c.json({ success: false, error: '권한이 없습니다' }, 403);
@@ -813,7 +813,7 @@ communityGroupBuyRoutes.post('/:id/refund', rateLimit({ action: 'community_gb_re
 
   // 환불 가능 상태 확인: failed 또는 생성자/어드민이 요청
   const isAdmin = user.type === 'admin' || user.role === 'admin';
-  const isCreator = String(group.creator_user_id) === String(user.id);
+  const isCreator = user.type === 'user' && String(group.creator_user_id) === String(user.id); // 🔐 2026-11-18 매장 #N 토큰이 유저 #N 으로 읽히던 것
 
   if (!isAdmin && !isCreator) {
     return c.json({ success: false, error: '생성자 또는 어드민만 환불할 수 있습니다' }, 403);

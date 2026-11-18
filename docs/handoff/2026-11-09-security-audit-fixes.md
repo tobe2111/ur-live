@@ -100,3 +100,41 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
 - 깨끗했던 곳: 유어애즈 워커(계정 격리)·인스타/카카오/토스 웹훅·업로드·에이전시 초대·이용권 CAS·설정 마스킹.
 - **이번에 틀릴 뻔한 것**: `tsc` 가 heap 부족으로 죽었는데 `| tail` 때문에 rc=0 으로 보였다 → `NODE_OPTIONS=--max-old-space-size=8192` + `PIPESTATUS`.
 - **남은 판단(대표)**: 운영자가 발급한 스캔 기기 키가 위임 회수 뒤에도 살아 있음(주인 화면에서 보이고 끌 수 있음) · 에이전시 지급 승인 라우트의 관리자 역할 제한 미확인.
+- **#2402 라이브 판정(E4, 01:58)**: 관리자 토큰 `/api/orders` 403 · 무인증 `POST /api/webhooks/resend` 503 `webhook_not_configured` · `/api/inventory/stock/history/1` 200. 운영자·사업자 토큰이 필요한 4건은 라이브에서 못 쟀다(시험·주입까지).
+
+## 15차 (2026-11-18) — 대표 *"모두 이상적으로 해줘"*
+- **스캔 기기 키**: 발급자(운영자일 때만)를 옆 표 `seller_scan_device_issuers` 에 적고, `revokeOperator` 가 그 사람이 그 매장에서 만든 키를 같이 끈다. 주인 변경(`transferStoreOwnership`)·매장 탈퇴는 그 매장 키 전부. SSOT `src/worker/utils/scan-device-revoke.ts`. 못 막는 것: 이 변경 이전 발급분(발급자 기록 없음) · 에이전시 직원 좌석 발급분.
+- **에이전시 지급 처리**: 코드 변경 없음 — 두 겹이 이미 있다: 전역 `adminRbacMiddleware`(super·admin 만) + 라우터의 `requireAdminRole('super','finance')`(이전은 super). 둘의 교집합이라 **실효는 super 만**이다(라우터가 의도한 finance 는 전역 게이트에 막힌다). 전역 쪽을 시험으로 고정했다. finance 에게 실제로 열지는 **대표 결재 사항**.
+- 🩸 틀린 판단: 처음엔 "등급 제한 미확인" 이라고 보고했다 — 라우터 파일(`agency-admin.routes.ts`)을 안 보고 등록 함수만 봤다.
+- picomatch `GHSA-fc5q-39xc-vjpf`(고친 버전 없음 · dev 전용) 면제 등재 — 대표 승인(AskUserQuestion).
+
+## 16차 (2026-11-18) — 대표 *"이후 문제들도 파악해줘"* (3차 전수 · 조사 에이전트 7건을 코드·라이브로 확인)
+- 🔴 **이메일 가입으로 매장 주인 되기**: `/api/auth/register`(주소 확인 없음)로 만든 계정이 `GET /api/curator/me/dashboard`·`GET /api/seller/my-seller-status` 의 "같은 이메일 매장 자동 연결" 을 탔다. 카카오 로그인 쪽은 `emailVerified===true` 게이트가 있었는데 이 두 읽기 경로엔 없었다 → `kakao_id IS NOT NULL AND email_verified = 1`. **라이브 실측: 미연결 승인 매장 11곳이 노출돼 있었고, 확인 안 된 계정에 연결된 매장은 0곳**(악용 흔적 없음).
+- 🔴 **어드민 역할 검사 우회(등록 순서)**: `adminRbacMiddleware` 가 `internalAdminToolsRoutes` 보다 **뒤에** 등록돼 있어 그 파일의 `/api/admin/*`(수수료 설정·딜 소급 지급·사업자 승인·DDL)는 `requireAdmin()` 만 탔다. 게이트를 그 앞으로 옮겼다. `/api/admin-review-bonus/*` 에도 게이트. `/api/_internal/repair-new-tables` 는 super.
+- 🔴 **재발급 토큰 전량 폐기가 오히려 전부 살렸다**: 재발급 경로는 "행 0 이면 서명만 보고 통과"(호환) → 비밀번호 변경이 행을 전부 DELETE 하면 옛 토큰이 30일 통했다. `revokeAllRefreshTokens`(`refresh-rotation.ts`)가 **묘비 행**을 남긴다. 호환 자체는 남겼다(카카오 좌석 토큰은 행을 안 만든다 — 없애면 전원 로그아웃).
+- 선물 결제: orderId 를 `gift_<id>_` 로 묶고 같은 paymentKey 재사용을 토스 호출 전에 거절. **라이브에 `gifts` 표가 없다 — 죽은 경로**(클라이언트도 없음).
+- ops 역할: `sellers/:id/link-user`·`tools/points-reconcile`·`tools/point-ledger-unlock` 은 super·admin 만, `verify-account` 는 finance. 관리자가 주인을 **바꾸면** 좌석 에포크 + 스캔 기기 키 전부 끊기.
+- **남긴 것(미수리)**: 에이전시 직원 좌석이 만든 스캔 기기 키(직원 제거·연결 해제 시) · `community-group-buy` confirm/refund 의 토큰 종류 미검사(SUSPECT, 미확인) · 이미지 프록시 R2 쓰기 남용 · 카카오/네이버 프록시 무인증(30/분) · `/api/_bootstrap/reset-dashboard-password role=all` 의 범위 · ops 의 `DELETE /sellers/:id`.
+- 🩸 틀린 판단: 주입 시험을 처음엔 "게이트보다 앞의 app.route 파일에 `/api/admin` 글자가 없다" 로 썼다가 `killer-sw.routes.ts`(클라이언트 스크립트 문자열)에 걸렸다 → 라우트 **정의**만 본다.
+- **16차 후속**(대표 *"계속"*): 동네공구 `/:id/confirm`·`/:id/refund` 가 번호만 비교하던 것 → 확정은 `type==='seller'`, 환불은 `type==='user'` 일 때만 본인. **조사 결과 고칠 필요 없던 것**: ① 에이전시 직원 좌석의 스캔 기기 키 — 좌석 허용 목록(`agencyScopeDecision`)에 `/scan-devices` 가 없어 애초에 못 만든다(시험으로 고정) ② ops 의 `DELETE /sellers/:id` — 이름만 삭제이고 실제는 **정지**(되돌릴 수 있는 운영 업무) ③ `/api/_bootstrap/reset-dashboard-password` — 이메일 한 개만 대상, `BOOTSTRAP_TOKEN` 없으면 404. **남긴 것**: 이미지 변환·지도 중계 주소의 무인증 비용 남용(속도 제한을 걸면 한 공유기 뒤 손님들이 같이 막힐 수 있어 대표 방향 필요).
+- **#2407·#2408 라이브 판정(E4, 11:05)**: super 토큰으로 `/api/admin/pending-sellers`·`ops-snapshot`·`dashboard/stats`·`settlement-audit`·`agency-payouts` 200 · 무인증 401 · 무인증 `/api/_internal/repair-new-tables` 403. 제한 역할 계정이 없어 "막힌다" 쪽은 못 쟀다.
+
+## 17차 (2026-11-18) — 돈이 새던 구멍 5건 (4차 전수 · 대표 승인 AskUserQuestion "5건 모두 지금 수정")
+라이브 실측: 교환권(deal_only) 활성 2,260종 · `ad_reward` 지급 0건 · 소수 수량 주문 0건 · 쿠폰 1장(플랫폼) ⇒ **악용 흔적 없음.**
+- 딜 결제 수량: 1~999 **정수만**(`isValidPurchaseQty`). 종전 0.01 → 값 1%, KT 발송 루프는 1회 = 교환권 한 장.
+- 광고 보상: `AD_REWARD_DISABLED = true`(403). 시청 증명(광고망 서버 검증) 없이 호출만으로 50딜×10회/일. **되살릴 때는 검증부터.**
+- 쿠폰: 매장 쿠폰은 모든 상품이 그 매장 것일 때만(`couponAppliesToOrder` — 딜 결제·카드 주문 양쪽) · 교환권 값은 쿠폰으로 안 깎임(`capCouponToCouponable`) · 사업자 쿠폰 값 범위(`cleanSellerCoupon`). SSOT `src/shared/coupon-scope.ts`.
+- 숙소 다객실 취소: 금액 생략(=토스 전체 취소)은 **단독 예약의 100% 환불만**(`stay-cancel-amount.ts`). 예약 수를 못 세면 이 방 값만.
+- 카드 공구 확정: 과금 전에 `/join` 과 같은 문(`confirmTossGate` — 이용권/교환권 · 본인 상품 · 종료).
+- **미수리(결재 필요)**: 한 결제 키를 서로 다른 확정 주소 두 곳(시딩 패스 ↔ 공구 ↔ 숙소 ↔ 생활견적)에 내미는 재사용 — 토스가 재승인을 "이미 처리됨=성공" 으로 답하는지에 달렸고, 고치려면 결제 키 전역 장부가 필요하다(5개 머니 경로 · 실결제 필수). 그 밖: 카드 자가취소가 다매 주문 전체를 REFUNDED 로 찍음(B) · `/api/orders/refund` 의 숙소 가드(C) · 어필리에이트 다중 추천인(게이트 꺼짐) · 프로모 코드 한도 race(0행).
+- 실결제 목록: `docs/STAGING_CHECKLIST.md` S-MONEYHOLES.
+
+## 18차 (2026-11-18) — 대표 *"다 해결해줘"* (17차의 "미수리" 목록)
+- **결제 키 전역 장부** `payment_key_claims`(`src/worker/utils/payment-key-claim.ts`): 토스 승인을 부르는 확정 7곳(이용권 단건·장바구니·숙소·체험 신청권·생활견적·딜 충전·선물)이 **승인 전에** (키 → 구매 종류·주문)을 선점한다. 같은 종류·같은 주문은 통과(새로고침), 그 밖은 `PAYMENT_KEY_REUSED` 409. 이용권 단건은 주문 번호가 자유 형식이라 `orderNumberMustBeOurs` 로 "그 번호가 다른 결제의 주문" 도 거절. **잠금 파일(`payment.routes`·`toss-gateway`) 무접촉** — 일반 주문 확정은 장부를 안 쓴다(주문 번호가 서버 행에 묶여 있다). 장부를 못 읽으면 503 거절(fail-closed).
+  ⚠️ 전제(토스가 재승인에 "이미 처리됨"으로 답하고 게이트웨이가 성공으로 읽는다)는 **코드에서 읽은 것**이고 실결제로 재현 안 했다.
+- 이용권 한 장 카드 취소: 주문을 `REFUNDED` 로 찍는 것은 **그 주문의 이용권이 전부 환불됐을 때만**(`order-refund-guards.ts`).
+- `/api/orders/refund`: 살아 있는 숙소 예약이 묶인 주문은 `STAY_CANCEL` 409(숙소 취소로). 조회 실패는 거절.
+- 추천 수수료: 중복 판정을 (추천인, 주문) → **주문** 으로(프로그램은 꺼져 있다).
+- **안 고친 것**: ① 프로모 코드 한도의 동시 요청 초과 — `promo_codes` 라이브 0행 · 고치려면 선점-후-복원 구조가 크기 동결 파일(`group-buy.routes.ts`) 안에 들어가야 한다. 프로모 코드를 쓰기 전에 고칠 것. ② 이미지 변환·지도 중계 주소의 무인증 호출(비용) — 속도 제한은 공유 IP 손님을 같이 막는다(대표 방향 대기). ③ 지역 쿠폰 자동 발급분의 환불 시 회수(`district_coupons` 0행).
+- 실결제 목록: `docs/STAGING_CHECKLIST.md` S-PKCLAIM.
+

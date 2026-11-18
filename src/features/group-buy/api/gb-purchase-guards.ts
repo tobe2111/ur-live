@@ -8,7 +8,7 @@
  * 세 함수 전부 결제 확정 경로에서 불리므로, 각 함수의 실패 방향(fail-open/closed)을 주석에 명시한다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
-import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
+import { getVoucherShortLabel, ALL_VOUCHER_CATEGORY_KEYS } from '@/shared/constants/voucher-categories'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // ⓪ 발급 알림 문구 — **교환권 ≠ 이용권**
@@ -326,4 +326,21 @@ export function pickGbRefSource(
     if (/^\d{1,12}$/.test(s)) return s
   }
   return ''
+}
+
+/**
+ * 🔐 2026-11-18 (대표 승인) — 카드 공구 확정(`/confirm-toss`)이 **과금 전에** 다시 통과시키는 문.
+ * 결제창을 여는 쪽(`/join` 의 toss 분기)과 같은 세 가지다: 이용권/교환권인가 · 본인 상품이 아닌가 · 종료되지 않았나.
+ * 이 주소는 사전 단계 없이도 직접 부를 수 있어, 종전엔 본인 상품(자기 상품을 사고 방문·초대 보상 수령)·
+ * 종료된 공구·이용권이 아닌 상품이 여기서 통했다. 거절은 **승인 전**이라 환불이 필요 없다(토스 쪽 자동 만료).
+ */
+export function confirmTossGate(
+  product: { category?: string | null; deal_only?: number | null; group_buy_status?: string | null },
+  selfOwned: boolean,
+): { status: 400 | 403 | 404; error: string; code?: string } | null {
+  const isVoucher = Number(product.deal_only) === 1 || ALL_VOUCHER_CATEGORY_KEYS.includes(String(product.category ?? ''))
+  if (!isVoucher) return { status: 404, error: '상품을 찾을 수 없습니다' }
+  if (selfOwned) return { status: 403, error: '본인의 공동구매 상품에는 참여할 수 없습니다', code: 'SELF_PARTICIPATION_BLOCKED' }
+  if (product.group_buy_status === 'expired' || product.group_buy_status === 'cancelled') return { status: 400, error: '종료된 공동구매입니다' }
+  return null
 }

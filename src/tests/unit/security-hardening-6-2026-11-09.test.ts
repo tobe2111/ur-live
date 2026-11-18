@@ -21,7 +21,7 @@ const ALLOWED_CALLS: Record<string, number> = {
   'src/worker/utils/refresh-token-key.ts': 2, // 재발급 토큰(새 키 + 이행기 옛 키)
   'src/features/agency-console/api/agency-session.ts': 1, // 에이전시 좌석 키
   'src/features/marketing/api/ads-account.ts': 1, // 유어애즈 별도 키
-  'src/features/auth/api/kakao.routes.ts': 1, // OAuth state
+  'src/worker/utils/oauth-signed-state.ts': 1, // OAuth state(카카오·구글 공용 — 2026-11-18 카카오 라우트에서 꺼냄)
   'src/worker/routes/auth.routes.ts': 1, // 세션 확정 티켓(p=session_establish)
   'src/features/seller/api/seller-pin.routes.ts': 2, // PIN·카카오 확인 토큰(purpose) 자체
 }

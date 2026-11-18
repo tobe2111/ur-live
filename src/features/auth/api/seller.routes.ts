@@ -780,9 +780,8 @@ sellerRoutes.post('/reset-password', cors(), rateLimit({ action: 'seller_reset_p
 
     // 🛡️ 2026-04-22: 비번 변경 시 기존 refresh token 전부 revoke.
     // 탈취된 토큰 유지 문제 방지 — 비번을 바꿨는데도 공격자가 기존 토큰으로 접근 가능하던 버그.
-    await DB.prepare(
-      "DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ?"
-    ).bind(row.user_id).run().catch(swallow('auth:api:seller'));
+    await (await import('../../../worker/utils/refresh-rotation')).revokeAllRefreshTokens(DB, 'seller', Number(row.user_id))
+      .catch(swallow('auth:api:seller')); // 🔐 2026-11-18 지우기만 하면 옛 토큰이 되살아난다 — 묘비를 남긴다
 
     // 🔒 2026-06-22 (보안 감사 H2): refresh 만 지우면 탈취된 access 토큰(최대 30일 TTL)이 비번 재설정 후에도
     //   만료까지 유효. min_valid_iat 를 현재로 올려 이전 발급 seller access 토큰 전부 무효화(단일세션 경계).

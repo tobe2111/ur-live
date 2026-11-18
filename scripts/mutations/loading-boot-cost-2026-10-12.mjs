@@ -26,7 +26,7 @@ export default [
   {
     name: '⏱️부팅 사이드 배너 엣지 캐시가 사라진다 (페이지마다 콜드 D1 388ms + DDL)',
     file: 'src/worker/index.ts',
-    find: "app.get('/api/side-banners', edgeCache(600), async (c) => {",
+    find: "app.get('/api/side-banners', publicCache(600), async (c) => {", // 2026-11-17 publicCache(로그인 손님도 캐시)
     replace: "app.get('/api/side-banners', async (c) => {",
     test: T,
     why: '요청마다 CREATE TABLE IF NOT EXISTS + SELECT 가 돈다. 소비자 전 페이지가 이 주소를 연다.',

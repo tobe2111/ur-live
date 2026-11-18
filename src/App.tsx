@@ -192,7 +192,7 @@ const MallProductPage = lazy(() => import('./pages/MallProductPage'))
 const ServerErrorPage = lazy(() => import('./pages/ServerErrorPage'))
 
 // 약관 페이지들
-const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
+const TermsOfServicePage = lazyPage(() => import('./pages/TermsOfServicePage')); registerBootPage('terms', TermsOfServicePage.load)
 const InfluencerTermsPage = lazy(() => import('./pages/InfluencerTermsPage'))
 const SellerTermsPage = lazy(() => import('./pages/SellerTermsPage'))
 const GroupBuyTermsPage = lazy(() => import('./pages/GroupBuyTermsPage'))
@@ -303,6 +303,12 @@ function AppContent() {
       no_code: '카카오 인증 코드를 받지 못했어요. 다시 시도해주세요.',
       oauth_state_mismatch: '인증 정보가 만료됐어요. 다시 시도해주세요.',
       oauth_state_expired: '로그인 세션이 만료됐어요. 처음부터 다시 시도해주세요.',
+      // 🌏 2026-11-18 구글 로그인(외국인 손님만 보는 버튼) — 그 손님이 읽을 말이라 영어로 둔다.
+      email_in_use_kakao: 'This email is already registered with Kakao. Please continue with Kakao.',
+      email_in_use: 'This email is already registered. Please log in with your email and password.',
+      google_auth_failed: 'Google sign-in failed. Please try again.',
+      google_cancelled: 'Google sign-in was cancelled.',
+      google_unavailable: 'Google sign-in is not available right now.',
     }
     const msg = errorMessages[errorCode] || `로그인 중 오류가 발생했어요 (${errorCode})`
 
@@ -315,6 +321,7 @@ function AppContent() {
       'session_cookie_failed', 'kakao_auth_failed', 'kakao_sync_failed',
       'database_error', 'firebase_config_error', 'no_code', 'oauth_state_mismatch',
       'env_missing', 'oauth_state_expired',
+      'email_in_use_kakao', 'email_in_use', 'google_auth_failed', 'google_unavailable',
     ]
     const isKakaoOAuthError = errorCode.startsWith('kakao_oauth_')
     if (authErrors.includes(errorCode) || isKakaoOAuthError) {
