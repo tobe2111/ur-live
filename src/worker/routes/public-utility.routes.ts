@@ -10,6 +10,7 @@
  * 작성일: 2026-04-26 (P1)
  */
 
+import { VOUCHER_CATEGORIES_CACHE_KEY, VOUCHER_CATEGORIES_KV_TTL_S } from '../utils/voucher-categories-cache'
 import { Hono } from 'hono'
 import { loadBrandIconMap } from '../utils/brand-icon-rehost'
 import { publicCache } from '../middleware/edge-cache'
@@ -338,7 +339,7 @@ publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
   //   stale-while-revalidate 2분 → 백그라운드 갱신, 사용자 즉시 응답.
   //   debug=1 은 캐시 우회.
   const KV = (c.env as { SESSION_KV?: KVNamespace }).SESSION_KV
-  const CACHE_KEY = 'vouchers_categories_v5'
+  const CACHE_KEY = VOUCHER_CATEGORIES_CACHE_KEY // 🧾 2026-11-18 키·수명 SSOT `utils/voucher-categories-cache.ts`
   if (!debug && KV) {
     try {
       const cached = await KV.get(CACHE_KEY)
@@ -407,10 +408,10 @@ publicUtilityRoutes.get('/api/vouchers/categories', async (c) => {
       brands: catMap.get(cat.category)?.brands || [],
     }))
 
-    // KV 캐시 저장 (5분 TTL).
+    // KV 캐시 저장 — 2026-11-18 5분 → 6시간(KT 동기화가 성공하면 지운다). 헤더(잠금 항목)는 그대로.
     if (!debug && KV) {
       const body = JSON.stringify({ success: true, data: sections })
-      try { await KV.put(CACHE_KEY, body, { expirationTtl: 300 }) } catch { /* fail-open */ }
+      try { await KV.put(CACHE_KEY, body, { expirationTtl: VOUCHER_CATEGORIES_KV_TTL_S }) } catch { /* fail-open */ }
       c.header('X-Cache', 'MISS')
       c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=120')
       return c.body(body, 200, { 'Content-Type': 'application/json' })

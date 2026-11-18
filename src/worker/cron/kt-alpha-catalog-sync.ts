@@ -14,6 +14,7 @@
  *     - API 오류 시 catch + 마지막 sync 시각 유지
  *     - 1회 sync 최대 50 페이지 (5000개) — 한도
  */
+import { VOUCHER_CATEGORIES_CACHE_KEY } from '../utils/voucher-categories-cache'
 import type { GiftishowGoodsItem } from '../utils/giftishow-api'
 
 export type Env = {
@@ -216,6 +217,10 @@ export async function afterCatalogSync(env: Env, synced: number): Promise<{ bala
       console.error('[kt-alpha desc cleanup]', String(e).slice(0, 200))
     }
 
+  // 🧹 2026-11-18 교환권 카테고리 캐시를 비운다 — 그 캐시는 이제 6시간을 산다(`public-utility.routes.ts`).
+  //   목록이 실제로 바뀌는 때가 이 동기화뿐이라, 여기서 지우면 손님은 다음 요청에서 바로 새 목록을 본다(대표 승인 "해줘").
+  //   삭제는 하루 몇 번뿐이라 KV 무료 한도에 영향 없다.
+  if (synced > 0) await (env as unknown as { SESSION_KV?: KVNamespace }).SESSION_KV?.delete(VOUCHER_CATEGORIES_CACHE_KEY).catch(() => { /* 다음 TTL 에 저절로 갱신 */ })
   return { balance, recategorized }
 }
 
