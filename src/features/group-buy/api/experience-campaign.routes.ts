@@ -120,7 +120,7 @@ export async function issueExperienceVoucher(
 ): Promise<number | null> {
   try {
     // 상품(제공 이용권) 정보 — 유효기간 산출(기본 +90일).
-    const p = await DB.prepare('SELECT name, seller_id, voucher_validity_days FROM products WHERE id = ?')
+    const p = await DB.prepare('SELECT name, seller_id, NULL AS voucher_validity_days FROM products WHERE id = ?' /* 🩸 2026-11-18 products 에 그 칸이 없어 조회 전체가 null(셀러 id 까지) — 미설정은 원래 규칙대로 12개월 */)
       .bind(campaign.product_id).first<{ name: string; seller_id: number | null; voucher_validity_days: number | null }>()
       .catch(() => null)
     // 2026-08-22 대표: 미설정 = 무기한 (90일 강제 기본값 폐지)

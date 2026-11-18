@@ -928,7 +928,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 🛡️ 2026-05-15: 이메일 영수증 — voucher 코드 첨부, best-effort (실패해도 join 성공).
     //   유저 email 조회 → Resend 발송 → 실패 시 silent (push 알림이 백업).
     try {
-      const userRow = await DB.prepare("SELECT email, display_name FROM users WHERE id = ?")
+      const userRow = await DB.prepare("SELECT email, name AS display_name FROM users WHERE id = ?" /* 🩸 2026-11-18 users 에는 표시 이름 칸이 없다(name 을 쓴다) — 영수증 메일이 한 통도 안 나갔다 */)
         .bind(userId).first<{ email: string | null; display_name: string | null }>().catch(() => null)
       const userEmail = userRow?.email
       if (userEmail && transactionalMailReady(c.env)) { // 📮 Resend 또는 SENS 메일(2026-10-12)

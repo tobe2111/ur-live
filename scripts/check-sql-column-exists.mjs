@@ -371,6 +371,45 @@ function scanSelectAliases(file) {
   }
 }
 
+/**
+ * 🔍 2026-11-18 **alias 없는 단일 테이블 SELECT** — 위 스캐너가 "못 잡는 것" 으로 적어 둔 첫 줄.
+ *
+ * 🩸 실측: `seller-management.routes.ts` 의 `GET /api/seller/public/:id` 가 `SELECT …, kakao_chat_link, …
+ *   FROM sellers WHERE …` 로 **없는 컬럼**(실제는 `kakao_chat_url`)을 읽어 **언제나 500** 이었다(라이브 5xx 1위).
+ *   alias 가 없어 위 스캐너 사각지대였다.
+ *
+ * 좁게 본다(오탐이 나면 아무도 안 켠다): 선택 목록에 괄호·점·따옴표·보간이 **하나도 없고**, `FROM <t>` 바로 뒤가
+ * `WHERE|ORDER|LIMIT|GROUP|끝` 인(=JOIN·alias 없음) 문장만. 테이블은 **라이브 사진에 있는 것만**(레포 정의는 여러 벌이라 안 믿는다).
+ * 항목은 `col` · `col AS x` · `col x` 만 검사하고 그 외 모양이 하나라도 있으면 그 문장은 건너뛴다.
+ */
+function scanSelectBare(file) {
+  const src = blankComments(fs.readFileSync(file, 'utf8'))
+  for (const m of src.matchAll(/\bSELECT\s+(?:DISTINCT\s+)?([^`;()'".$]{1,1500}?)\s+FROM\s+(\w+)\s*(?=WHERE\b|ORDER\b|LIMIT\b|GROUP\b|`)/gi)) {
+    const table = m[2].toLowerCase()
+    if (!LIVE_TABLE_NAMES.has(table)) continue
+    const cols = schema.get(table)
+    if (!cols || cols.size < 3) continue
+    const items = m[1].split(',').map((x) => x.trim())
+    const parsed = []
+    let ok = true
+    for (const it of items) {
+      const mm = /^([A-Za-z_]\w*)(?:\s+(?:AS\s+)?[A-Za-z_]\w*)?$/i.exec(it)
+      if (!mm || /^(?:NULL|TRUE|FALSE|CASE|COUNT|SUM|MAX|MIN)$/i.test(mm[1])) { ok = false; break }
+      parsed.push(mm[1])
+    }
+    if (!ok) continue
+    for (const c of parsed) {
+      const col = c.toLowerCase()
+      if (col === 'rowid' || cols.has(col)) continue
+      if (KNOWN_DROPPED_COLUMNS.has(`${table}.${col}`) || SELECT_ALIAS_OK.has(`${table}.${col}`)) continue
+      const at = src.indexOf(c, m.index)
+      const line = at < 0 ? 1 : src.slice(0, at).split('\n').length
+      stats.selectChecks++
+      violations.push({ file: path.relative(ROOT, file), line, op: 'SELECT', table, missingCol: c, knownCols: [...cols].slice(0, 10) })
+    }
+  }
+}
+
 function walkSelect(dir) {
   if (!fs.existsSync(dir)) return
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -380,6 +419,7 @@ function walkSelect(dir) {
       walkSelect(full)
     } else if (e.isFile() && e.name.endsWith('.ts')) {
       try { scanSelectAliases(full) } catch { /* skip */ }
+      try { scanSelectBare(full) } catch { /* skip */ }
     }
   }
 }
@@ -399,10 +439,12 @@ const LIVE = !process.argv.includes('--no-live') && fs.existsSync(LIVE_SNAPSHOT)
 const REBASELINE_LIVE = process.argv.includes('--rebaseline-live')
 const LIVE_BASELINE = path.join(ROOT, 'scripts/live-columns-baseline.json')
 let liveTables = 0
+const LIVE_TABLE_NAMES = new Set()
 if (LIVE) {
   const snap = JSON.parse(fs.readFileSync(LIVE_SNAPSHOT, 'utf8'))
   for (const [t, cols] of Object.entries(snap.tables)) {
     schema.set(t.toLowerCase(), new Set(String(cols).split(',').map((c) => c.toLowerCase())))
+    LIVE_TABLE_NAMES.add(t.toLowerCase())
     liveTables++
   }
   if (liveTables < 100) {

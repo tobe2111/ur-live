@@ -164,7 +164,7 @@ export async function refundOrderFully(
 ): Promise<RefundOrderResult> {
   const order = await DB.prepare(
     `SELECT id, order_number, user_id, seller_id, status,
-            total_amount, amount, toss_payment_key, payment_key, payment_method
+            total_amount, toss_payment_key, payment_key, payment_method /* 🩸 2026-11-18 orders 에 amount 칸이 없다(라이브 실측) — 이 한 단어로 전액 환불이 매번 던졌다(대표 승인 "고침") */
        FROM orders WHERE (id = ? OR order_number = ?) LIMIT 1`
   ).bind(orderIdOrNumber, orderIdOrNumber).first<OrderRow>()
 

@@ -88,7 +88,7 @@ app.get('/search', async (c) => {
     let sections: Array<{ section_key: string; title: string; content: string }> = [];
     try {
       const rows = await c.env.DB.prepare(`
-        SELECT section_key, title, content
+        SELECT section_key, section_title AS title, content_md AS content /* 🩸 2026-11-18 라이브 칸 이름 */
         FROM operation_guides
         WHERE guide_type = ?
       `).bind(r).all<{ section_key: string; title: string; content: string }>().catch(() => null);

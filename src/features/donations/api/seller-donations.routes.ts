@@ -191,10 +191,10 @@ sellerDonationsRoutes.get('/donations/settlements', async (c) => {
   try {
     const { results } = await DB.prepare(`
       SELECT id, total_amount, commission_amount, settlement_amount, donation_count,
-             status, requested_at, settled_at, admin_memo, bank_info, created_at
+             status, requested_at, settled_at, admin_memo, bank_info, requested_at AS created_at
       FROM donation_settlements
       WHERE seller_id = ?
-      ORDER BY created_at DESC LIMIT 50
+      ORDER BY requested_at DESC LIMIT 50
     `).bind(sellerId).all();
 
     return c.json({ success: true, data: results ?? [] });
