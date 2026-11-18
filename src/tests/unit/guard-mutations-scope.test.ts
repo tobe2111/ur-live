@@ -69,12 +69,23 @@ describe('🔴 전수는 반드시 어딘가에서 돈다', () => {
     expect(FULL, '전수 워크플로가 좁혀 돌면 전수가 사라진다').not.toMatch(/--changed/)
   })
 
-  it('main push 와 야간에 돈다 — 둘 중 하나만으로는 부족하다', () => {
-    // main push 만: main 이 조용한 날 전수가 며칠씩 안 돈다.
-    // 야간만: 머지된 조합이 하루 동안 검증 없이 산다.
-    expect(FULL).toMatch(/push:\s*\n\s*branches: \[main\]/)
-    expect(FULL).toMatch(/schedule:/)
-    expect(FULL).toMatch(/cron: '[^']+'/)
+  // 🔁 2026-11-18 대표 승인 "응 해줘" — 머지마다(main push) → **하루 네 번**. 종전 불변식("main push 와 야간")의
+  //   걱정은 둘이었다: ① main 이 조용한 날 전수가 며칠씩 안 돈다 → 야간 회차는 건너뛰지 않는다
+  //   ② 머지된 조합이 하루 동안 검증 없이 산다 → 낮에 세 번 더 돌아 최대 6시간으로 줄인다.
+  it('야간은 반드시, 낮에는 6시간 간격으로 세 번 더 돈다 — 머지마다는 돌지 않는다', () => {
+    const live = FULL.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n')
+    expect(live).toMatch(/schedule:/)
+    expect(live).toMatch(/- cron: '40 18 \* \* \*'/)           // 야간 03:40 KST
+    expect(live).toMatch(/- cron: '40 0,6,12 \* \* \*'/)       // 09:40 · 15:40 · 21:40 KST
+    expect(live).toMatch(/workflow_dispatch:/)
+    expect(live, 'push 를 되살리면 머지마다 전수가 돈다(하루 2,877분)').not.toMatch(/\n {2}push:/)
+  })
+
+  it('낮 회차만 "main 이 그대로면" 건너뛴다 — 야간·수동은 언제나, 모르면 돈다', () => {
+    const live = FULL.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n')
+    expect(live).toMatch(/\[ "\$\{\{ github\.event_name \}\}" = "schedule" \] && \[ "\$\{\{ github\.event\.schedule \}\}" != "40 18 \* \* \*" \] && \[ -n "\$LAST" \] && \[ "\$LAST" = "\$\{\{ github\.sha \}\}" \]/)
+    expect(live).toMatch(/\n {2}full:\n {4}needs: plan\n {4}if: needs\.plan\.outputs\.skip != 'true'/)
+    expect(live).toMatch(/actions: read/)
   })
 
   it('전수 잡에 타임아웃이 있다 — 무한 대기로 조용히 안 끝나면 안 돈 것과 같다', () => {
