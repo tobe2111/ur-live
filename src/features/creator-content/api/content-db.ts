@@ -58,6 +58,12 @@ export async function ensureCreatorContentTables(DB: D1Database): Promise<void> 
   await DB.prepare(`ALTER TABLE store_creator_content ADD COLUMN checked_at TEXT`).run().catch(() => null)
   // 🎬 2026-11-11 유어쇼츠 옮겨 싣기 — 유튜브 영상 길이(초). NULL = 아직 안 잼 · -1 = 잴 수 없음(지워짐·비공개).
   await DB.prepare(`ALTER TABLE store_creator_content ADD COLUMN duration_sec INTEGER`).run().catch(() => null)
+  // 🗂️ 2026-11-17 유어쇼츠 동기화가 (platform, ext_id) 로 찾는데 색인이 store_key 로만 시작해 **한 번에 표 전체**를 훑었다
+  //   (라이브 실측 하루 2,000만 줄 읽음 · 60회). 두 조회가 쓰는 모양 그대로 색인을 둔다.
+  await DB.batch([
+    DB.prepare(`CREATE INDEX IF NOT EXISTS idx_scc_platform_ext ON store_creator_content(platform, ext_id, status)`),
+    DB.prepare(`CREATE INDEX IF NOT EXISTS idx_scc_needs_duration ON store_creator_content(id) WHERE platform = 'youtube' AND status = 'visible' AND duration_sec IS NULL`),
+  ]).catch(() => null)
 }
 
 /**

@@ -38,7 +38,7 @@ describe('COMPANY_DDL', () => {
     //   아무것도 안 한다** — 이름을 유지하면 라이브엔 옛 4키 인덱스가 남아 플래너가 무시한다(읽기 폭증 재발).
     // 2026-11-17: `hold_reason` 칸 추가로 32 → 33. 규칙 보류(중국 무료메일·도어웨이)가 재수집에 되살아나지 않게 하는
     //   표시다(그날 실측 693 → 728). 칸을 먼저 만들고, 쓰는 코드는 라이브에 생긴 걸 확인한 뒤 다음 PR 에서 붙인다.
-    expect(COMPANY_DDL).toHaveLength(33)
+    expect(COMPANY_DDL).toHaveLength(34) // 2026-11-17 +idx_company_broken_name
   })
 
   it('두 테이블을 만든다 — 리드 본체 + 반송 억제', () => {
@@ -93,7 +93,7 @@ describe('COMPANY_DDL', () => {
 /** 매장 후보도 같은 이관(9 DDL) — 대표 우선순위(음식점·카페·미용실·숙박)가 얹히는 테이블이라 더 중요하다. */
 describe('PROSPECT_DDL', () => {
   it('문장 수가 유지된다', () => {
-    expect(PROSPECT_DDL).toHaveLength(9)
+    expect(PROSPECT_DDL).toHaveLength(10) // 2026-11-17 +idx_prospects_active_region
   })
 
   it('🔒 보강 파이프라인이 의존하는 컬럼이 전부 있다', () => {

@@ -72,6 +72,8 @@ async function ensureTable(DB: D1Database) {
   await DB.prepare(
     `CREATE INDEX IF NOT EXISTS idx_home_shorts_live ON home_shorts(is_active, sort_order, id)`
   ).run().catch(() => {})
+  // 🗂️ 2026-11-17 유어쇼츠 동기화의 끄기 문장(`source = … AND is_active = 1`)용.
+  await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_home_shorts_src ON home_shorts(source, is_active)`).run().catch(() => {})
 }
 
 /**

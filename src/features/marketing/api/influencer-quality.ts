@@ -276,9 +276,9 @@ export async function runQualityPass(DB: D1Database, opts?: { max?: number; budg
     //   (undefined → 연락 불가로 오판 / 활동성 중립 폴백 불가). 컬럼 추가 시 이 SELECT 를 함께 볼 것.
     const rows = (await DB.prepare(`SELECT id, platform, name, description, subscriber_count, recent_avg_views,
         median_long_views, recent_posts_30d, email, instagram, links, category, is_brand, consented_at, source,
-        url, last_post_at, opted_out
+        url, last_post_at, opted_out, lead_score
       FROM ad_influencer_leads WHERE account_id = 0 AND id > ? ORDER BY id ASC LIMIT ?`)
-      .bind(cursor, PAGE).all<ScoreInput & { id: number; name: string | null; description: string | null }>().catch(() => null))?.results || []
+      .bind(cursor, PAGE).all<ScoreInput & { id: number; name: string | null; description: string | null; lead_score: number | null }>().catch(() => null))?.results || []
     // ⚠️ 2026-07-28: 예산 소진으로 빈 배열이 온 것을 "끝났다"로 오판하면 아래에서 커서를 0 으로 리셋해
     //   **매번 같은 앞부분만 돌고 영원히 전진하지 못한다**(전화 스윕 커서 버그와 같은 클래스).
     if (!rows.length) { if (!opts?.budget?.exhausted) done = true; break }
@@ -299,6 +299,9 @@ export async function runQualityPass(DB: D1Database, opts?: { max?: number; budg
       if (brand && !r.is_brand) branded++
       if (optOut && !r.opted_out) optedOut++
       scored++
+      // 🗂️ 2026-11-17 바뀐 것이 없으면 쓰지 않는다 — 종전엔 훑은 행을 전부 다시 써서 하루 ~27만 줄(유료 쓰기 포함분의 큰 몫).
+      //   커서가 끝에서 0 으로 돌아 이 패스는 멈추지 않으므로, 쓰기가 '바뀐 것' 에 비례하게 만드는 게 맞다.
+      if (Number(r.is_brand ?? 0) === brand && Number(r.opted_out ?? 0) === optOut && r.lead_score != null && Number(r.lead_score) === score) continue
       stmts.push(DB.prepare('UPDATE ad_influencer_leads SET is_brand = ?, lead_score = ?, opted_out = ? WHERE id = ?').bind(brand, score, optOut, r.id))
     }
     for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100)).catch(() => null)
