@@ -20,7 +20,7 @@ describe('② 외부 이미지를 우리 저장소로 옮길 때 래스터만', 
   it("startsWith('image/') 판정이 남지 않았다(SVG 통과)", () => {
     const code = readCode('src/worker/utils/rehost-image.ts')
     expect(code).not.toMatch(/startsWith\('image\/'\)/)
-    expect(code.match(/isRasterImageType\(/g)?.length).toBe(4)
+    expect(code.match(/isRasterImageType\(/g)?.length).toBe(5) // 2026-11-18 +1: 모니터용 imageLoadStatus 도 래스터만 성함으로 본다
   })
 })
 

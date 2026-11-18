@@ -134,7 +134,8 @@ describe('⑦ 위임받은 운영자가 주인 자리를 못 차지한다 · 그
   })
   it('Resend 웹훅은 비밀값이 없으면 받지 않는다', () => {
     const code = readCode('src/features/notifications/api/resend-webhook.routes.ts')
-    expect(code).toMatch(/\} else \{\s*return c\.json\(\{ success: false, error: 'webhook_not_configured' \}, 503\)/)
+    // 2026-11-18: 503 → 202(무시). 핵심은 '처리하지 않고 돌아간다' — 상태 코드가 아니다.
+    expect(code).toMatch(/\} else \{[\s\S]{0,400}?return c\.json\(\{ success: false, error: 'webhook_not_configured', ignored: true \}, 202\)/)
     expect(code).not.toMatch(/signature verification skipped/)
   })
   it('남의 매장 이용권 번호는 없는 번호와 같은 답', () => {

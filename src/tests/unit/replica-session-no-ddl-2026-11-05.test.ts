@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest'
 import { createRequire } from 'module'
 import { readFileSync } from 'node:fs'
 import { ensureBannerColumns } from '@/features/banners/api/banners.routes'
-import { schemaPresent } from '@/worker/utils/d1-read-replica'
+import { schemaPresent, publicReadDb } from '@/worker/utils/d1-read-replica'
 import { ensureSellerMetaTable } from '@/worker/utils/seller-meta'
 import { ensureSupplyMetaTable } from '@/worker/utils/product-supply-meta'
 import { ensureVoucherGiftTable } from '@/worker/utils/voucher-gift'
@@ -130,5 +130,18 @@ describe('2차 — 원본(env.DB)으로 부르던 손님 경로의 표 보장도
     const primary = { withSession: () => session, prepare: () => { seen.push('primary'); throw new Error('원본으로 오면 안 된다') } } as unknown as D1Database
     await schemaPresent(primary, { tables: ['x'] })
     expect(seen).toEqual(['session'])
+  })
+  it('🩸 2026-11-18 세션 객체로 불러도 두 번째부터는 묻지 않는다(메모 키 = dbKey)', async () => {
+    const real = sqliteDb()
+    real.db.exec('CREATE TABLE memo_t (a INTEGER)')
+    let asked = 0
+    const primary = {
+      withSession: () => ({ prepare: (q: string) => { asked++; return real.D1.prepare(q) } }), // 요청마다 새 세션 객체
+      prepare: (q: string) => real.D1.prepare(q),
+    } as unknown as D1Database
+    expect(await schemaPresent(publicReadDb(primary), { tables: ['memo_t'] })).toBe(true)
+    const first = asked
+    expect(await schemaPresent(publicReadDb(primary), { tables: ['memo_t'] })).toBe(true)
+    expect(asked, '다른 세션 객체로 불렀다고 sqlite_master 를 또 훑으면 메모가 헛돈다').toBe(first)
   })
 })

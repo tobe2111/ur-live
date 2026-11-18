@@ -40,6 +40,11 @@ export const INDEX_REPAIRS: Array<{ name: string; sql: string }> = [
   //      (라이브: 빈 이름 0건 · 하루 118,596행). 빈 이름만 담는 부분 색인이면 0건일 때 0행을 읽는다.
   //      UPDATE 의 WHERE 와 글자까지 같다(`(user_name IS NULL OR user_name = '')`) — node:sqlite EXPLAIN 으로 사용 확인.
   { name: 'idx_product_reviews_name_missing', sql: `CREATE INDEX IF NOT EXISTS idx_product_reviews_name_missing ON product_reviews(user_id) WHERE user_name IS NULL OR user_name = ''` },
+  //   2026-11-18: 상품 목록(`ProductRepository.findAll` — `WHERE is_active = 1 … ORDER BY created_at DESC, id DESC`)이
+  //      활성 상품 전부를 읽고 임시 정렬했다(라이브: 1회 4,823줄 · 같은 계열 하루 약 330만 줄 · 메인 읽기의 12%).
+  //      `(is_active, created_at DESC, id DESC)` 면 정렬 단계가 사라지고 LIMIT 에서 멈춘다 — node:sqlite EXPLAIN 으로 확인
+  //      (통계가 있든 없든 이 색인을 탄다. `created_at` 만의 부분 색인은 통계가 있어도 안 탔다).
+  { name: 'idx_products_active_created', sql: `CREATE INDEX IF NOT EXISTS idx_products_active_created ON products(is_active, created_at DESC, id DESC)` },
   //   ② 였던 `idx_products_gb_deadline_active` 는 **2026-09-05 에 제거했다.** 그 인덱스의 유일한 독자가
   //      `group-buy-deadline-push` cron 이었는데, 마감 개념이 없어져(대표 "마감 개념은 없어") 그 cron 을
   //      통째로 걷어냈다. 읽는 사람이 없는 인덱스는 products 쓰기만 무겁게 한다.

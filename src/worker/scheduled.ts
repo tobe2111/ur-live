@@ -28,7 +28,6 @@ import { beginCatchup, catchupOpens, claimCatchupJob, summarizeCatchup, type Cat
 
 // 🛡️ 2026-05-18: handleScheduled (49KB) dynamic import — cron 발생 시만 로드.
 import { runReconciliation } from './cron/reconciliation';
-import { handleWholesaleRestockNotify } from './cron/wholesale-restock-notify';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
@@ -301,8 +300,8 @@ export async function handleCronScheduled(
       return healDemoNamesInPlace(env.DB);
     }));
     // 🏭 2026-06-08 TAX-1: 공급사 정산 성숙 매시간 tick (기존 maturity helper 호출, idempotent).
-    // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 판매사 알림.
-    ctx.waitUntil(slotCron('25 * * * *')('wholesale-restock-notify', () => handleWholesaleRestockNotify(env)));
+    // 🗑️ 2026-11-18 도매 재입고 알림 삭제 — 도매몰 철거(10-11) 뒤에도 매시 돌며 하루 6.2만 줄을 읽고 notified=0,
+    //   알림 링크는 사라진 `/wholesale/product/<id>` 였다(대표 "개선할 것 더 찾아줘").
     // 🔔 2026-07-01: 알림 채널 설정 회귀 감시 — LIVE 채널 키가 사라지면(true→false) 1회 critical
     //   경보(cron_failures + 어드민 벨). VAPID 미설정으로 웹푸시가 조용히 죽어있던 사고 재발 방지.
     ctx.waitUntil(slotCron('25 * * * *')('channel-watchdog', async () => {
@@ -351,8 +350,8 @@ export async function handleCronScheduled(
     }))
     // 🖼️ 2026-07-22 (대표 "이미지 자동 모니터링"): 커버 깨짐 표본검증 → 임계 초과 시 알림(dedup 12h).
     ctx.waitUntil(slotCron('35 3 * * *')('image-health-monitor', async () => {
-      const { imageHealthMonitor } = await import('./cron/image-health-monitor')
-      await imageHealthMonitor(env)
+      const { imageHealthMonitor, imageHealthLine } = await import('./cron/image-health-monitor')
+      return imageHealthLine(await imageHealthMonitor(env)) // 🩺 2026-11-18 결과를 하트비트에 남긴다(종전 181초에 결과 없음)
     }))
   }
 
