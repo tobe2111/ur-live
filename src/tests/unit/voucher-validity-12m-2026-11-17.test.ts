@@ -22,8 +22,9 @@ describe('이용권 유효기간 상한 12개월', () => {
     expect(resolveVoucherExpiresAt(null, NOW)).toBe('2027-11-17 03:00:00')
     expect(resolveVoucherExpiresAt('', NOW)).toBe('2027-11-17 03:00:00')
     expect(resolveVoucherExpiresAt('2030-01-01', NOW)).toBe('2027-11-17 03:00:00')
-    expect(resolveVoucherExpiresAt('2027-03-31', NOW)).toBe('2027-03-31')
-    expect(resolveVoucherExpiresAt('2027-11-17', NOW)).toBe('2027-11-17')
+    // 2026-11-18: 날짜만이면 그날 한국 23:59:59(=14:59:59 UTC) — 상한 날짜와 같은 날이면 상한 시각.
+    expect(resolveVoucherExpiresAt('2027-03-31', NOW)).toBe('2027-03-31 14:59:59')
+    expect(resolveVoucherExpiresAt('2027-11-17', NOW)).toBe('2027-11-17 03:00:00')
     expect(resolveVoucherExpiresAt('엉터리', NOW)).toBe('2027-11-17 03:00:00')
   })
   it('① 숙소 일수 — 0·빈 값·초과는 365, 짧으면 그대로', () => {

@@ -35,9 +35,26 @@ export function voucherExpiryCap(now: Date = new Date()): string {
 export function resolveVoucherExpiresAt(productExpiry: string | null | undefined, now: Date = new Date()): string {
   const cap = voucherExpiryCap(now)
   const raw = typeof productExpiry === 'string' ? productExpiry.trim() : ''
-  if (/^\d{4}-\d{2}-\d{2}/.test(raw) && raw.slice(0, 10) <= cap.slice(0, 10)) return raw
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw) && raw.slice(0, 10) <= cap.slice(0, 10)) {
+    const v = dateOnlyToKstEndOfDay(raw)
+    return v === raw || v <= cap ? v : cap // 상한 날짜와 같은 날이면 12개월을 넘기지 않게 상한 시각에서 멈춘다
+  }
   return cap
 }
+
+/**
+ * 📅 2026-11-18 (대표 승인 "기한 마지막 날 9시 만료 고치기"): 매장 입력칸이 날짜만(`type="date"`) 받아 `'2026-12-31'` 이
+ * 그대로 저장됐고, 비교가 `expires_at < datetime('now')`(UTC 문자열)라 **12/31 00:00 UTC = 한국 오전 9시**에 이미 만료였다.
+ * 손님은 "12/31까지" 로 안내받는다 ⇒ 날짜만이면 **그날 한국시간 23:59:59 = 같은 날 14:59:59 UTC** 로 적는다.
+ * 시각까지 적힌 값은 그대로 둔다.
+ */
+export function dateOnlyToKstEndOfDay(raw: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw} 14:59:59` : raw
+}
+
+/** SQL 판(이미 발급된 행 고치기) — 날짜만 적힌 `expires_at` 을 그날 한국 자정 직전으로. 몇 번 돌려도 같다. */
+export const VOUCHER_DATE_ONLY_EXPIRY_FIX_SQL =
+  "UPDATE vouchers SET expires_at = expires_at || ' 14:59:59' WHERE length(expires_at) = 10 AND expires_at GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' AND status = 'unused'"
 
 /** 숙소 이용권처럼 '며칠' 로 정하는 레일 — 일수를 상한(365일) 안으로. 0·빈 값이면 상한. */
 export function capValidityDays(days: number | null | undefined): number {

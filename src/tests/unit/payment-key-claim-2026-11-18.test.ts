@@ -108,8 +108,9 @@ describe('② 이용권 한 장 취소가 주문 전체를 환불됨으로 찍�
     expect(db.prepare('SELECT id, status FROM orders ORDER BY id').all()).toEqual([{ id: 1, status: 'PAID' }, { id: 2, status: 'REFUNDED' }])
   })
   it('셀프 취소가 그 문장을 쓴다', () => {
-    const code = readCode('src/features/group-buy/api/group-buy-voucher.routes.ts')
-    expect(code).toMatch(/DB\.prepare\(ORDER_REFUNDED_WHEN_ALL_VOUCHERS_GONE_SQL\)\.bind\(voucher\.order_id, voucher\.order_id\)/)
+    // 2026-11-18: 셀프 취소는 돌려주기 전에 주문에 적는 `bookVoucherRefundOnOrder` 를 거치고, 그 함수가 이 문장을 쓴다.
+    expect(readCode('src/features/group-buy/api/voucher-self-cancel-refund.ts')).toContain('await bookVoucherRefundOnOrder(DB, v.order_id, refundAmount)')
+    expect(readCode('src/worker/utils/order-refund-guards.ts')).toMatch(/DB\.prepare\(ORDER_REFUNDED_WHEN_ALL_VOUCHERS_GONE_SQL\)\.bind\(orderId, orderId\)/)
   })
 })
 

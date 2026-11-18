@@ -16,7 +16,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { QueryBuilder } from '../repositories/query-builder';
 import { computeCouponDiscount } from '../../features/coupons/coupon-discount';
-import { couponAppliesToOrder } from '../../shared/coupon-scope'; import { orderHasLiveStay, STAY_REFUND_ELSEWHERE } from '../utils/order-refund-guards';
+import { couponAppliesToOrder } from '../../shared/coupon-scope'; import { orderHasLiveStay, STAY_REFUND_ELSEWHERE, voucherOrderSelfCancelBlock } from '../utils/order-refund-guards';
 // 🎟️ [gb-price-wiring 2026-07-29] 공구가 결제 배선 + 구 tier cap. 배경/이중할인 주의는 헬퍼 헤더 참조.
 import { loadGbOrderPricing, computeGroupBuyCap } from '../utils/gb-order-pricing';
 // 📦 픽업 = 배송 없음. 주문생성·견적이 **같은 판정**을 쓴다(헬퍼 헤더에 근거).
@@ -807,6 +807,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
     }
 
     if (await orderHasLiveStay(c.env.DB, order.id)) return c.json({ success: false, error: STAY_REFUND_ELSEWHERE, code: 'STAY_CANCEL' }, 409); // 🔐 2026-11-18 숙소는 취소 규정이 있는 숙소 취소로만
+    { const vb = await voucherOrderSelfCancelBlock(c.env.DB, Number(order.id), { cancelAmount: body.refund_amount }); if (vb) return c.json({ success: false, error: vb.error, code: vb.code }, 400) } // 🎟️ 이용권은 장 단위 규칙
     // Toss 결제 취소 API 호출 (실제 환불)
     const payInfo = await orderRepo.getPaymentInfo(body.order_id);
     const paymentKey = payInfo?.toss_payment_key;
@@ -1020,7 +1021,8 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
     if (paymentMadeStatuses.includes(order.status)) {
       // 🎁 2026-10-11 대표 결정 "받은 뒤엔 환불 막기": 선물로 넘긴 이용권이 든 주문은 셀프로 못 무른다(어드민은 통과).
       if (c.get('user').type !== 'admin' && await orderHasGiftedVoucher(c.env.DB, orderId)) return c.json({ success: false, error: GIFTED_REFUND_BLOCKED, code: 'GIFTED' }, 400); if (c.get('user').type !== 'admin' && await orderHasPendingGift(c.env.DB, orderId)) return c.json({ success: false, error: GIFT_PENDING_REFUND_BLOCKED, code: 'GIFT_PENDING' }, 409); // 🎁 2026-10-12 선물 중이면 먼저 회수
-      // 🎟️ 2026-09-28 이용권은 **장 단위**로만 무른다 — 판정·계산·실행은 voucher-partial-refund.ts
+      // 🎟️ 2026-09-28 이용권은 **장 단위**로만 무른다 — 판정·계산·실행은 voucher-partial-refund.ts · 2026-11-18 셀프는 미사용·7일 규칙(voucherOrderSelfCancelBlock)
+      if (c.get('user').type !== 'admin') { const vb = await voucherOrderSelfCancelBlock(c.env.DB, Number(orderId), { cancelAmount, cancelQty: body.cancel_qty }); if (vb) return c.json({ success: false, error: vb.error, code: vb.code }, 400) }
       const vPartial = await tryVoucherPartialRefund(c, order, body.cancel_qty, reason)
       if (vPartial) return vPartial
       // 💸 2026-06-26 셀프취소 머니버그 근본수정 — 전액취소는 refundOrderFully SSOT 경유.

@@ -241,4 +241,12 @@ export async function runDailyCleanup(DB: D1Database, results: Record<string, nu
     const n = Number(r.meta?.changes ?? 0);
     if (n > 0) results.email_failure_dups_closed = n;
   } catch { /* 표 없음 */ }
+  // ── 30. 📅 2026-11-18 날짜만 적힌 이용권 기한을 그날 한국 자정 직전으로 — 그대로 두면 마지막 날 오전 9시에 만료된다
+  //   (새로 발급되는 것은 `resolveVoucherExpiresAt` 이 이미 고쳐 적는다 — 이건 그 전에 발급된 미사용 행).
+  try {
+    const { VOUCHER_DATE_ONLY_EXPIRY_FIX_SQL } = await import('../../shared/voucher-validity');
+    const r = await DB.prepare(VOUCHER_DATE_ONLY_EXPIRY_FIX_SQL).run();
+    const n = Number(r.meta?.changes ?? 0);
+    if (n > 0) results.voucher_date_only_expiry_fixed = n;
+  } catch (e) { logError('[Cron] voucher expiry date-only fix error:', { error: String(e) }); }
 }

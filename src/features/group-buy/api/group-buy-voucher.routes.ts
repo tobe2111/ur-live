@@ -9,7 +9,6 @@
  *   - POST /store-stats/:productId              사장님 통계 (PIN/Magic Link)
  */
 
-import { ORDER_REFUNDED_WHEN_ALL_VOUCHERS_GONE_SQL } from '../../../worker/utils/order-refund-guards'
 import type { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth'
 import { scanOrSellerAuth } from '../../seller/api/seller-scan-devices.routes'
@@ -464,67 +463,16 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
         const refundAmount = Number(voucher.applied_price) > 0 ? Number(voucher.applied_price) : Number(voucher.product_price || 0)
 
+        // 💸 돈 돌려주기(딜 · 카드 · 혼합) + 주문 장부 기록 — voucher-self-cancel-refund.ts (2026-11-18)
+        const { refundSelfCancelledVoucher } = await import('./voucher-self-cancel-refund')
+        if (!(await refundSelfCancelledVoucher(DB, c.env as unknown as { TOSS_SECRET_KEY?: string; DISCORD_WEBHOOK_URL?: string }, c.executionCtx, voucher, refundAmount))) {
+          return c.json({ success: false, error: '이미 환불이 진행된 주문입니다. 고객센터에 문의해 주세요', code: 'ORDER_ALREADY_REFUNDED' }, 409)
+        }
+
         // 재고/참여수 원복 — 이 교환권은 그룹에서 이탈 (clamp 로 음수 방어).
         await DB.prepare(
           "UPDATE products SET stock = stock + 1, group_buy_current = MAX(0, group_buy_current - 1), updated_at = CURRENT_TIMESTAMP WHERE id = ?"
         ).bind(voucher.product_id).run().catch(() => null)
-
-        // 딜 결제 — 즉시 지갑 환불
-        // 💸 2026-07-05 버킷: 원거래(order_number)에서 무상으로 차감된 만큼 무상 복원 (refundDealPoints SSOT).
-        if (voucher.payment_method === 'deal_points' && refundAmount > 0) {
-          const { refundDealPoints } = await import('../../../worker/utils/point-buckets')
-          const orderRow = await DB.prepare('SELECT order_number FROM orders WHERE id = ?')
-            .bind(voucher.order_id).first<{ order_number: string }>().catch(() => null)
-          await refundDealPoints(DB, {
-            userId: voucher.user_id,
-            amount: refundAmount,
-            ref: orderRow?.order_number || null,
-            type: 'refund',
-            description: `구매 취소 환불: ${voucher.product_name}`,
-          })
-          // 🏙️ 2026-07-05: 트리거 주문 셀프취소 → 방문 리워드 회수 (멱등 CAS, fail-soft)
-          try {
-            const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward')
-            await reverseVisitRewardOnRefund(DB, orderRow?.order_number)
-          } catch { /* fail-soft */ }
-        }
-        // 토스 카드 결제 — cancelTossPayment (waitUntil 비동기, 영업일 3~5일).
-        //   ⚠️ 이 async+cron 패턴은 의도된 설계: retryable(5xx/PROVIDER) 실패는 gateway 가
-        //   toss_refund_failures 에 기록 → toss-refund-retry cron(최대 5회 backoff)이 완성.
-        //   → voucher='refunded' 유지가 정답(동기 revert 로 바꾸면 cron 재시도 성공 시 이중환불).
-        //   셀러(/refund)·어드민 강제환불과 동일 패턴.
-        else if ((voucher.payment_method === 'toss' || voucher.payment_method === 'CARD') && voucher.order_id) {
-          c.executionCtx?.waitUntil((async () => {
-            try {
-              if (!voucher.payment_key) return
-              const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
-              const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string; DB?: D1Database }, voucher.payment_key, {
-                reason: `구매 취소(청약철회): ${voucher.product_name}`,
-                amount: refundAmount,
-                idempotencyKey: `voucher-${voucher.id}-refund`,
-              })
-              if (result.ok) {
-                await DB.prepare(ORDER_REFUNDED_WHEN_ALL_VOUCHERS_GONE_SQL).bind(voucher.order_id, voucher.order_id).run().catch(() => null) // 🔐 2026-11-18 남은 이용권이 있으면 주문은 그대로(매장 정산 누락 방지)
-              } else {
-                // 🚨 non-retryable(4xx) 실패는 cron 이 안 집음 → 어드민 벨/Discord 로 수동환불 알림.
-                const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
-                await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
-                  source: '유저 셀프취소', paymentKey: voucher.payment_key, voucherId: voucher.id,
-                  amount: refundAmount, errorCode: result.error_code, errorMessage: result.error_message, httpStatus: result.http_status,
-                })
-              }
-            } catch (e) {
-              if (import.meta.env?.DEV) console.warn('[voucher self-cancel toss]', e)
-              try {
-                const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
-                await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
-                  source: '유저 셀프취소(예외)', paymentKey: voucher.payment_key, voucherId: voucher.id, amount: refundAmount,
-                  errorCode: 'EXCEPTION', errorMessage: (e as Error)?.message,
-                })
-              } catch { /* fail-soft */ }
-            }
-          })())
-        }
 
         // ledger reverse entry (멱등)
         c.executionCtx?.waitUntil((async () => {
@@ -642,11 +590,23 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
       // 부분 환불 — 유저 user_points 에 차액 환불 + ledger reverse entry
       // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT).
+      // 💳 2026-11-18: 먼저 주문 장부에 적고(이중 환불 방지), 카드 결제는 토스 부분취소(voucher-self-cancel-refund.ts) — 종전엔 카드면 0원을 돌려주고 성공이라 했다.
+      const order = await DB.prepare("SELECT o.id, o.payment_method, o.order_number, o.payment_key, o.total_amount, COALESCE(o.deal_used, 0) AS deal_used FROM orders o JOIN vouchers v ON v.order_id = o.id WHERE v.id = ?").bind(voucher.id).first<{ id: number; payment_method: string; order_number: string; payment_key: string | null; total_amount: number; deal_used: number }>()
+      const { bookVoucherRefundOnOrder } = await import('../../../worker/utils/order-refund-guards')
+      const undoUse = () => DB.prepare("UPDATE vouchers SET status = 'unused', used_at = NULL WHERE id = ? AND status = 'used'").bind(voucher.id).run()
+      if (!order || !(await bookVoucherRefundOnOrder(DB, order.id, refundAmount))) { await undoUse(); return c.json({ success: false, error: '이미 환불이 진행된 주문입니다' }, 409) }
+      let cardPending = false
+      if (order.payment_method !== 'deal_points') {
+        const { refundStorePartialCard } = await import('./voucher-self-cancel-refund')
+        const r = await refundStorePartialCard(DB, c.env as unknown as { TOSS_SECRET_KEY?: string }, { voucherId: voucher.id, userId: voucher.user_id, orderId: order.id, paymentKey: order.payment_key, dealUsed: order.deal_used, orderTotal: order.total_amount, orderNumber: order.order_number, amount: refundAmount, productName: voucher.product_name })
+        if (!r.ok) { await DB.prepare('UPDATE orders SET refunded_amount = MAX(0, COALESCE(refunded_amount, 0) - ?) WHERE id = ?').bind(refundAmount, order.id).run(); await undoUse(); return c.json({ success: false, error: r.error }, 502) }
+        cardPending = r.pending
+      }
       try {
-        const order = await DB.prepare("SELECT o.payment_method, o.order_number FROM orders o JOIN vouchers v ON v.order_id = o.id WHERE v.id = ?").bind(voucher.id).first<{ payment_method: string; order_number: string }>()
-        if (order?.payment_method === 'deal_points' && voucher.user_id) {
+        const isDeal = order.payment_method === 'deal_points'
+        if (voucher.user_id) { // 💳 2026-11-18: 카드도 아래 장부·알림을 탄다(돈은 위에서 돌려줬다)
           const { refundDealPoints } = await import('../../../worker/utils/point-buckets')
-          await refundDealPoints(DB, {
+          if (isDeal) await refundDealPoints(DB, {
             userId: voucher.user_id,
             amount: refundAmount,
             ref: order?.order_number || null,
@@ -675,7 +635,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
               const { sendSystemPush } = await import('../../../lib/system-push')
               await sendSystemPush(c.env, 'user', voucher.user_id, {
                 title: '부분 환불 완료',
-                body: `사용 ${usedAmount.toLocaleString()}원 / 환불 ${refundAmount.toLocaleString()}딜`,
+                body: `사용 ${usedAmount.toLocaleString()}원 / 환불 ${refundAmount.toLocaleString()}${isDeal ? '딜' : '원(카드)'}`,
                 url: '/user/profile', tag: `partial-refund-${voucher.id}`,
               })
             } catch { /* ignore */ }
@@ -694,7 +654,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
       return c.json({
         success: true,
-        data: { used: usedAmount, refunded: refundAmount, message: `${usedAmount}원 사용, ${refundAmount}원 환불` },
+        data: { used: usedAmount, refunded: refundAmount, message: `${usedAmount}원 사용, ${refundAmount}원 환불${cardPending ? ' (카드 환불 처리 중)' : ''}` },
       })
     }
   )
