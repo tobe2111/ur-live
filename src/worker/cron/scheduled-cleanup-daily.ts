@@ -213,4 +213,20 @@ export async function runDailyCleanup(DB: D1Database, results: Record<string, nu
     const { purgeOldLogs } = await import('../utils/log-retention');
     await purgeOldLogs(DB as never, results);
   } catch (e) { logError('[Cron] log retention error:', { error: String(e) }); }
+  // ── 28. 📊 2026-11-18 쿼리 플래너 통계 갱신 — 라이브 실측: `sqlite_stat1` 이 처음 만든 뒤 한 번도 안 바뀌어
+  //   products=10행(실제 2,572)으로 기록돼 있었다. 그래서 목록 쿼리가 좋은 색인(`idx_products_deal_price` 등)을
+  //   두고 활성 상품 94% 를 읽은 뒤 임시 정렬을 했다(하루 수백만 행). `0x10002` = 이 연결이 안 건드린 표도 본다
+  //   (워커의 새 연결은 아무 표도 안 읽었으므로 플래그 없이는 아무 일도 안 한다). 통계가 낡은 표만 다시 잰다.
+  //   D1 이 인자 붙은 PRAGMA 를 거절하면 자주 읽는 표만 직접 ANALYZE 한다. 어느 쪽이 됐는지 결과에 남긴다(배포 뒤 `sqlite_stat1` 로 판정).
+  try {
+    await DB.prepare('PRAGMA optimize=0x10002').run();
+    results.stats_refresh = 1;
+  } catch (e1) {
+    let n = 0;
+    for (const t of ['products', 'orders', 'sellers', 'users', 'product_vouchers']) {
+      try { await DB.prepare(`ANALYZE ${t}`).run(); n++; } catch { /* 표 없음 · 거절 */ }
+    }
+    results.stats_refresh = n > 0 ? 2 : -1;
+    if (n === 0) logError('[Cron] stats refresh error:', { error: String(e1) });
+  }
 }
