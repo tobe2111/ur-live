@@ -86,7 +86,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     quantity?: number; payment_method?: 'deal' | 'toss'; promo_code?: string; ref?: string; idempotency_key?: string
     deal_use?: number | null   // 🪙 딜로 낼 금액(없으면 최대한)
   }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined, ref: undefined as string | undefined, idempotency_key: undefined as string | undefined, deal_use: undefined as number | null | undefined }))
-  const { quantity, payment_method, promo_code, ref, idempotency_key, deal_use } = body
+  const { quantity, promo_code, ref, idempotency_key, deal_use } = body
+  // 🔐 2026-11-18 (대표 승인 "결제 없이 발급 막기"): 결제수단을 **빼고** 보내면 카드 분기도 딜 차감 분기도 안 타고
+  //   주문이 PAID 로 들어가 이용권(교환권이면 실제 기프티콘 MMS)이 공짜로 나갔다. 빈 값은 JSON 파싱 실패 폴백과
+  //   똑같이 'deal' 로 본다 — 그러면 아래 딜 차감(잔액 CAS)을 반드시 지난다.
+  const payment_method: 'deal' | 'toss' = body.payment_method ?? 'deal'
 
   // 🛡️ 2026-05-23 idempotency — 중복 클릭 / 네트워크 retry 시 중복 발급 영구 차단.
   //   client 가 unique idempotency_key 보내고, server 가 같은 key 의 기존 order 있으면 그 결과 반환.
