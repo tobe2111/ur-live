@@ -1,6 +1,6 @@
 {
  "_readme": "라이브 D1 의 실제 테이블·컬럼(이름만). 손으로 고치지 말 것 — node scripts/snapshot-live-schema.mjs 로 다시 찍는다.",
- "generatedAt": "2026-11-17",
+ "generatedAt": "2026-11-18",
  "tables": {
   "__probe": "id,t",
   "_migration_history": "id,action,details,applied_at",
@@ -26,6 +26,7 @@
   "ad_discovery_keywords": "id,keyword,category,active,hits,source,created_at,found_total,saved_total,last_saved,last_run_at,barren_streak,yt_leads,yt_contacts,nb_measured,nb_contacts,activated_at,epoch_runs,epoch_saved,retired_at,nb_start",
   "ad_email_suppress": "email,reason,created_at",
   "ad_influencer_leads": "id,account_id,platform,channel_id,handle,name,url,subscriber_count,view_count,video_count,country,thumbnail,email,instagram,tiktok,links,description,status,memo,collected_at,category,source_keyword,contacted_at,follow_up_at,contact_channel,outreach_draft,bio_checked_at,source,consented_at,recent_avg_views,recent_avg_comments,recent_posts_30d,perf_checked_at,email_status,opened_at,replied_at,last_event_at,channel_published_at,pub_checked_at,is_brand,lead_score,median_long_views,shorts_ratio,last_post_at,category_source,recruited_at,claim_code,linked_user_id,joined_at,campaign_sent_at,region,opted_out,exported_at",
+  "ad_influencer_stats_counter": "k,n",
   "ad_media_jobs": "id,account_id,kind,prompt,provider,provider_job_id,status,result_url,error,created_at,updated_at",
   "ad_partner_referrals": "id,partner_lead_id,partner_name,store_name,region,phone,memo,status,created_at,reward_amount,reward_status,reward_paid_at,reward_memo",
   "ad_price_watches": "id,seller_id,query,my_price,last_lowest,last_mall,last_total,last_checked_at,created_at",
@@ -135,7 +136,7 @@
   "dashboard_sessions": "account_type,account_id,min_valid_iat,updated_at,user_agent,ip,multi_session",
   "deal_refund_requests": "id,user_id,amount,bank_name,bank_account,account_holder,status,rejection_reason,admin_memo,requested_at,processed_at",
   "decision_answers": "slug,answer,answered_by,answered_at,synced_at,synced_ref",
-  "deleted_accounts": "id,user_id,kakao_id,email,name,deleted_at,restorable_until,restored_at,purge_after",
+  "deleted_accounts": "id,user_id,kakao_id,email,name,deleted_at,restorable_until,restored_at,purge_after,original_name,reregister_available_at,reason",
   "digital_download_logs": "id,access_id,user_id,product_id,ip,user_agent,bytes_served,status,created_at",
   "digital_product_access": "id,user_id,product_id,order_id,order_item_id,access_token,expires_at,download_count,download_limit,last_accessed,status,created_at",
   "disputes": "id,voucher_code,user_id,reason_text,evidence_url,ai_category,ai_confidence,ai_reasoning,action,admin_notes,admin_user_id,resolved_at,created_at,escalation_alerted_at",
@@ -244,6 +245,7 @@
   "promo_redemptions": "id,promo_id,user_id,order_number,product_id,discount_amount,created_at",
   "promote_boost_coupons": "id,agency_id,seller_id,tier,duration_hours,status,issued_at,expires_at,used_at,used_live_id,boost_ends_at,note",
   "push_failures": "id,user_type,user_id,title,body,url,subscription_count,retry_count,max_retries,next_retry_at,resolved,created_at",
+  "push_jobs": "id,user_type,user_id,title,body,url,tag,status,attempts,created_at,updated_at",
   "push_notification_history": "id,user_id,user_type,title,body,data,status,sent_at",
   "push_subscriptions": "id,user_id,user_type,endpoint,p256dh,auth,is_active,created_at,updated_at",
   "rate_limit_attempts": "key,action,window_start,count",
