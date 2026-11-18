@@ -81,6 +81,12 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     //   미사용 DB 에서 idempotent ALTER (이미 있으면 SQLite 가 에러 throw → repair-schema 가 swallow).
     { desc: 'users.phone', sql: "ALTER TABLE users ADD COLUMN phone TEXT" },
     { desc: 'users.updated_at', sql: "ALTER TABLE users ADD COLUMN updated_at TEXT" },
+    // 🩸 2026-11-18 탈퇴 기록 표의 칸은 지금까지 **첫 탈퇴 때** 서비스 코드가 ALTER 로 붙였다(delete-account.service).
+    //   그 전엔 재가입 제한·복구 조회(KakaoAuthService.checkRestorable 등)가 없는 칸을 읽어 조용히 '해당 없음'이 됐다.
+    //   배포 때 미리 만들어 둔다(라이브 실측: 4칸 모두 없음 · 행 0).
+    { desc: 'deleted_accounts.original_name', sql: "ALTER TABLE deleted_accounts ADD COLUMN original_name TEXT" },
+    { desc: 'deleted_accounts.reregister_available_at', sql: "ALTER TABLE deleted_accounts ADD COLUMN reregister_available_at DATETIME" },
+    { desc: 'deleted_accounts.reason', sql: "ALTER TABLE deleted_accounts ADD COLUMN reason TEXT" },
     // 🛡️ 2026-06-06 (보안): 카카오 email verified 플래그 — become(도매/제조) same-email 자동연결 게이트.
     { desc: 'users.email_verified', sql: "ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0" },
     // 🛡️ 2026-06-12 (감사 1단계): 알림 설정 토글 실동작화 — push/email 발송 게이트 (system-push/system-email).

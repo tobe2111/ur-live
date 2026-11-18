@@ -160,7 +160,6 @@ import { homeServiceRoutes } from '../features/home-service/api/home-service.rou
 // import { donationsRoutes } from '../features/donations/api/donations.routes';
 // import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
 // import youtubeRoutes from '../features/youtube/api/youtube.routes';
-// import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
 import { requireAdmin, requireAuth, requireSeller } from './middleware/auth';
@@ -219,7 +218,6 @@ import { proxyRoutes } from './routes/proxy.routes';
 import { debugRoutes } from './routes/debug.routes';
 import { publicUtilityRoutes } from './routes/public-utility.routes';
 // 🥗 2026-07-15 워커 다이어트 3차(대표 승인): 틱톡 Login/Display 라우트 분리(위 참조). 재도입=원복.
-// import { tiktokRoutes } from '../features/multi-platform/api/tiktok.routes';
 import { bundlePublicRoutes, bundleSellerRoutes, bundleCartRoutes } from '../features/bundles/api/bundle.routes';
 import { guideRoutes } from '../features/guides/api/guide.routes';
 import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
@@ -2123,7 +2121,6 @@ app.route('/api/debug', debugRoutes);
 app.route('/', publicUtilityRoutes);
 
 // ── 🛡️ 2026-04-26 T1: TikTok Login + Display API ── 🥗 2026-07-15 워커 다이어트 3차(대표 승인): 마운트 분리. 재도입=원복.
-// app.route('/api/seller/tiktok', tiktokRoutes);
 
 // ── 블로그 (어드민 CRUD + 공개 조회) ──
 // SECURITY: /api/admin/blog는 adminApp 내부에서 등록되어 requireAdmin + IP 화이트리스트 적용
@@ -2168,7 +2165,6 @@ app.route('/api/guides', guideRoutes);
 // app.route('/api/youtube', youtubeRoutes); // legacy path alias
 
 // 🥗 2026-07-15 워커 다이어트 3차(대표 승인): 다중 플랫폼(멀티스트림/RTMP, 라이브 전용) 마운트 분리. 재도입=원복.
-// app.route('/api', multiPlatformRoutes);
 
 // 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/live·/api/chat(라이브 SSE+채팅) 마운트 제거.
 

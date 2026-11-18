@@ -51,3 +51,17 @@ describe('셀러 등급제 철거', () => {
     expect(list.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')).not.toMatch(/'\/api\/home\/bundle'/)
   })
 })
+
+// 🗑️ 같은 날 — 이미 내려간 기능의 예약 작업 정리(대표 "남은 과제도 다 해줘").
+describe('내려간 기능의 예약 작업이 다시 돌지 않는다', () => {
+  it('도매 등급 평가 · 틱톡 동기화 · 라이브 실시간 모듈이 없다', () => {
+    for (const f of ['src/worker/cron/wholesale-grade-eval.ts', 'src/worker/cron/tiktok-videos-sync.ts',
+      'src/lib/sse-realtime.ts', 'src/features/multi-platform/api/tiktok.routes.ts']) expect(fs.existsSync(f), f).toBe(false)
+    expect(R('src/worker/scheduled.ts')).not.toMatch(/handleWholesaleGradeEval/)
+    expect(R('src/worker/cron/daily-lane.ts')).not.toMatch(/handleTikTokVideosSync/)
+  })
+  it('빈 주간 슬롯은 하트비트를 위해 남아 있다(지우면 8주 동안 거짓 경보)', () => {
+    expect(R('src/worker/scheduled.ts')).toMatch(/slotCron\('45 0 \* \* 1'\)\('weekly-tier-batch'/)
+  })
+})
+

@@ -28,7 +28,6 @@ import { beginCatchup, catchupOpens, claimCatchupJob, summarizeCatchup, type Cat
 
 // 🛡️ 2026-05-18: handleScheduled (49KB) dynamic import — cron 발생 시만 로드.
 import { runReconciliation } from './cron/reconciliation';
-import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
 import { handleWholesaleRestockNotify } from './cron/wholesale-restock-notify';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
@@ -532,13 +531,12 @@ export async function handleCronScheduled(
     //    auto-settle(정산 송금) · incentives · tier-eval · monthly-invoices · monthly-report.
     //    라이브 실측: 관계 0 · 지급 이력 0(한 번도 실행 결과가 없다). 중개는 셀러 대시보드 계정이 맡는다.
     //    설계 SSOT: docs/design/store-operator-model.md
-    //    ⚠️ 남은 1개는 에이전시와 무관해서 유지한다(판매사 도매 등급 평가).
     // 🗑️ 2026-11-18 셀러 등급 평가 삭제(대표 "셀러 등급제는 아예 없애줘") — 매주 셀러 수수료율을 등급표 값(5%)으로
     //    덮어써서 어드민이 바꾼 수수료가 되돌아갔다. 수수료는 입점 채널·어드민 설정만 정한다.
     ctx.waitUntil(slotCron('45 0 * * 1')('weekly-tier-batch', async () => {
-      // 🏭 BIZ-7 (2026-06-08): 판매사 도매 등급 자동 평가 (GMV 기반 승급 전용).
-      //   매주 월요일 — platform_settings.wholesale_auto_grade_enabled='1' 일 때만 동작(off=no-op).
-      await handleWholesaleGradeEval(env).catch(e => notifyCronFailure(env, 'weekly-tier-batch/wholesale-grade-eval', e));
+      // 🗑️ 2026-11-18 판매사 도매 등급 평가도 삭제 — 도매몰은 2026-10-11 철거됐다(대표 "남은 과제도 다 해줘").
+      //   ⇒ 이 회차는 **지금 할 일이 없다.** 그래도 슬롯을 남기는 이유: 지우면 이 하트비트가 주간 임계 × 8배(약 8주)
+      //   동안 '늦음' 으로 빨갛게 남아 경보 채널을 덮는다(`cron-beat-retirement.ts` 규칙 ②). 새 주간 일이 생기면 여기에 둔다.
       // 🎯 [urads-split Phase E 2026-07-18] 유어애즈 AI 주간 리포트 → ur-ads worker cron("0 0 * * 1")으로
       //   이관(src/worker-ads/index.ts, 주당 1회 멱등 유지) — 메인의 마지막 marketing cron 참조 제거. 재도입=원복.
     }));
