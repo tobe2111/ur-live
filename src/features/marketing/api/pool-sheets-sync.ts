@@ -21,6 +21,7 @@ import { getToken, sheetsFetch, parseSheetCursor, startCursor, cycleRoom, type S
 import { ensureCompanySchema } from './company-discovery'
 import { ensureProspectSchema } from './store-prospects'
 import { ensureMarkSchema, harvestMarks, ensureListTab, applyEmailList, sentDayKST } from './pool-sheets-marks'
+import { syncGuideTab } from './pool-sheets-guide'
 
 export type SheetPool = 'company' | 'store'
 export const SHEET_POOLS: readonly SheetPool[] = ['company', 'store']
@@ -198,6 +199,8 @@ async function core(env: Env, pool: SheetPool, cost: { subreq: number }): Promis
 
   // ✉️ '발송기록' 탭에 붙여넣은 이메일 목록 → 표시(회차당 한 번). 아래 페이지 SELECT 보다 먼저라 이번 회차 그림에 바로 반영된다.
   marked += (await applyEmailList(DB, token, sheetId, def.table, cost)).marked
+  // 📌 '안내' 탭(사용법) — 버전이 바뀐 회차에만 쓴다(평소엔 설정 1줄 읽기).
+  await syncGuideTab(DB, token, sheetId, pool, cost).catch(() => false)
 
   const budget = rowsPerRun(pool)
   let wrote = 0

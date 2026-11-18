@@ -18,6 +18,7 @@ import { ensurePerfExtraColumns } from './influencer-performance'
 import { ensureOutreachColumns } from './outreach-webhook'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 import { harvestMarks, ensureListTab, applyEmailList, sentDayKST } from './pool-sheets-marks'
+import { syncGuideTab } from './pool-sheets-guide'
 
 const TAB = 'pool' // 대상 탭 이름(없으면 자동 생성) — 이름 변경 시 동기화 끊김(변경 금지)
 /**
@@ -251,6 +252,8 @@ async function _syncCore(env: Env, cost: { subreq: number }): Promise<SheetSyncR
   // ✉️ '발송기록' 탭에 붙여넣은 이메일 → 표시(그리고 탭을 비운다). 탭이 없거나 비었으면 읽기 1번.
   const DB = adsLeadsDb(env)
   let marked = (await applyEmailList(DB, token, sheetId, 'ad_influencer_leads', cost).catch(() => ({ marked: 0 }))).marked
+  // 📌 '안내' 탭(사용법) — 버전이 바뀐 회차에만 쓴다(평소엔 설정 1줄 읽기).
+  await syncGuideTab(DB, token, sheetId, 'influencer', cost).catch(() => false)
   while (wrote < ROWS_PER_RUN) {
     // 🧱 **이 사이클은 자기 스냅샷까지만 쓴다** — 그리드를 그 크기로만 넓혔기 때문이다(`cycleRoom` 주석).
     //   이 상한이 없어서 사이클 도중 늘어난 행을 그리드 밖에 쓰고 400 → 커서 고착이 났다.
