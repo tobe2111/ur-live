@@ -1477,7 +1477,7 @@ app.route('/api/admin', adminAuthRoutes);
 app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
 app.route('/api/seller', sellerOperatorsRoutes); // 🏪 my-stores · 매장 전환 · 운영자 관리
-app.use('/api/brands/*', edgeCache(300)); app.route('/api/brands', brandsPublicRoutes); // 🏷️ 2026-10-17 브랜드 페이지 — 읽기 전용, 콜로당 5분 캐시(지점 추가가 최대 5분 늦게 보인다)
+app.use('/api/brands/*', publicCache(300)); app.route('/api/brands', brandsPublicRoutes); // 🏷️ 2026-10-17 브랜드 페이지 — 읽기 전용, 콜로당 5분 캐시(지점 추가가 최대 5분 늦게 보인다) · 🗺️ 2026-11-17 누구에게나 같은 응답이라 로그인 손님도 캐시(publicCache)
 app.route('/api/agency-console', agencyConsoleRoutes); app.route('/api/agency-console', agencyStaffRoutes); app.route('/api/agency-console', agencyStoresRoutes); app.use('/api/store-agency-invite/accept', csrfProtection()); app.use('/api/store-agency-invite/partner-request', csrfProtection()); app.route('/api/store-agency-invite', storeAgencyInviteRoutes); // 🏢 에이전시 가입·로그인·직원(별도 서명 열쇠 — requireAuth 로는 안 통한다)
 app.route('/api/seller/seeding', seedingSellerRoutes); app.route('/api/seller/instagram-dm', instagramAutoDmSellerRoutes); app.route('/api/seller/urshorts', sellerUrshortsRoutes); app.route('/api/seller/creator-content', creatorContentSellerRoutes); // 💬 매장 인스타 자동 DM(좌석 토큰) · 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
 app.route('/api/influencer-profile', influencerProfileRoutes); app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller', sellerWithdrawRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
@@ -2175,7 +2175,7 @@ app.route('/api/guides', guideRoutes);
 // 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/live·/api/chat(라이브 SSE+채팅) 마운트 제거.
 
 // ── 사이드 배너 (공개 API, 인증 불필요) · 🐌 2026-10-12 `edgeCache(600)` 추가 — 캐시 헤더가 **하나도 없어** 소비자 페이지마다 콜드 D1(실측 388ms) + 요청마다 `CREATE TABLE IF NOT EXISTS`(per-request DDL)로 왕복 2회였다. 이제 콜로당 10분에 한 번. ⚠️ 배너 편성이 최대 10분 늦게 반영된다(수동·드문 작업이라 수용). 상세: docs/handoff/2026-10-12-main-loading-fonts.md ⑥. 📏 한 줄로 쓴 이유는 이 파일 래칫(2672)이 꽉 차 있어서다 ──
-app.get('/api/side-banners', edgeCache(600), async (c) => {
+app.get('/api/side-banners', publicCache(600), async (c) => { // 🗺️ 2026-11-17 로그인 손님도 캐시(누구에게나 같은 응답)
   const env = c.env as Env;
   try { // 🗺️ 2026-11-17 공개 조회에서 표 만들기(DDL) 제거 — 로그인 손님은 에지 캐시를 비켜 매번 미국 원본에 쓰기를 보냈다. 표는 어드민 `ensureSideBannersTable` 이 만들고, 없으면 아래 catch 가 빈 목록.
     const { results } = await env.DB.prepare(

@@ -21,7 +21,7 @@
  *    `@/shared/urshorts-tags` 가 저장 시점에 한 번 뽑아 컬럼에 넣는다. 화면은 컬럼만 읽는다.
  */
 import { Hono } from 'hono'
-import { edgeCache } from '@/worker/middleware/edge-cache'
+import { publicCache } from '@/worker/middleware/edge-cache'
 import { requireAdmin, requireSeller, getCurrentUser } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error'
 import { intParam } from '@/shared/pagination'
@@ -126,7 +126,7 @@ const PUBLIC_SQL = `
    LIMIT ?`
 
 // ── 공개 ──────────────────────────────────────────────────────────────────────
-urshortsRoutes.get('/', edgeCache(300), async (c) => {
+urshortsRoutes.get('/', publicCache(300), async (c) => { // 🗺️ 2026-11-17 로그인 손님도 캐시 — 응답이 사람마다 다르지 않다
   try {
     const DB = c.env.DB
     await ensureTable(DB)

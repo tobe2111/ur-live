@@ -42,6 +42,17 @@ const AUTH_SENSITIVE_ACTIONS = new Set<string>([
   'verify-code',
 ]);
 
+/** 🗺️ 2026-11-17 isolate 메모리 창 — 민감하지 않은 GET 전용(위 rateLimit 주석). 키 수가 5,000 을 넘으면 만료분을 비운다. */
+const MEMORY_WINDOWS = new Map<string, { count: number; resetAt: number }>();
+export function memoryHit(key: string, resetAt: number): number {
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (MEMORY_WINDOWS.size > 5000) for (const [k, v] of MEMORY_WINDOWS) if (v.resetAt <= nowSec) MEMORY_WINDOWS.delete(k);
+  const cur = MEMORY_WINDOWS.get(key);
+  if (!cur || cur.resetAt !== resetAt) { MEMORY_WINDOWS.set(key, { count: 1, resetAt }); return 1; }
+  cur.count += 1;
+  return cur.count;
+}
+
 function isAuthSensitive(action: string): boolean {
   const a = action.toLowerCase();
   if (AUTH_SENSITIVE_ACTIONS.has(a)) return true;
@@ -75,6 +86,24 @@ export function rateLimit(opts: RateLimitOptions) {
     const key = opts.keyFn ? opts.keyFn(c) : defaultKey(c, opts.action);
     const now = Math.floor(Date.now() / 1000);
     const windowStart = now - (now % opts.windowSec); // align to window boundary
+
+    // 🗺️ 2026-11-17 (결재 2026-11-17-traffic-surge-readiness 3번 — 대표 "모두 다 해줘"): **민감하지 않은 조회(GET)** 는
+    //   원본 DB 에 세지 않는다. 종전엔 지도 장소 검색·지역 판정·선물 보기 같은 조회마다 미국 원본에 쓰기 1 + 읽기 1 —
+    //   사람이 몰리면 그만큼 느려지고 쓰기 포함분을 먹었다. 이 요청들은 실패 시에도 열어 두던(fail-open) 것이라
+    //   isolate 메모리 창으로 세도 보호 수준이 같다. 로그인류(authSensitive)·sensitive 지정·바꾸는 요청은 종전대로 DB.
+    const method = c.req.method.toUpperCase();
+    if (!authSensitive && (method === 'GET' || method === 'HEAD')) {
+      const count = memoryHit(`${opts.action}|${key}`, windowStart + opts.windowSec);
+      if (count > opts.max) {
+        c.header('Retry-After', String(windowStart + opts.windowSec - now));
+        c.header('X-RateLimit-Limit', String(opts.max));
+        c.header('X-RateLimit-Remaining', '0');
+        return c.json({ success: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, 429);
+      }
+      c.header('X-RateLimit-Limit', String(opts.max));
+      c.header('X-RateLimit-Remaining', String(Math.max(0, opts.max - count)));
+      return next();
+    }
 
     try {
       // Upsert: insert or increment count for this window

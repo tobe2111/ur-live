@@ -195,25 +195,21 @@ sellerPublicRoutes.post('/notify-followers',
       return c.json({ success: true, data: { sent: 0, total_followers: 0, message: '알림 받기로 한 단골 없음 — 발송 안 함' } })
     }
 
-    const { sendSystemPush } = await import('../../../lib/system-push')
-    let sent = 0
-    for (const f of followers) {
-      try {
-        // dashboard notification
-        await DB.prepare(
-          `INSERT INTO user_notifications (user_id, type, title, message, link)
-           VALUES (?, ?, ?, ?, ?)`
-        ).bind(f.user_id, `seller_${body.reason || 'custom'}`, title, message, url).run().catch(swallow('seller-public:follower-notify-insert'))
-
-        // web push
-        await sendSystemPush(c.env, 'user', f.user_id, {
-          title, body: message, url, tag: `seller-${sellerId}-${body.reason || 'custom'}`,
-        }).catch(swallow('seller-public:follower-push'))
-        sent++
-      } catch { /* skip individual failures */ }
+    // 📮 2026-11-17: 단골마다 요청 안에서 보내면 단골이 많을수록 뒤쪽이 조용히 빠지고 응답도 느려졌다.
+    //   인앱 알림은 50명씩 batch, 푸시는 줄(push_jobs)에 넣고 첫 묶음만 바로 — 나머지는 5분 cron 이 보낸다.
+    const ids = followers.map((f) => f.user_id)
+    const kind = `seller_${body.reason || 'custom'}`
+    for (let i = 0; i < ids.length; i += 50) {
+      await DB.batch(ids.slice(i, i + 50).map((uid) => DB.prepare(
+        `INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)`,
+      ).bind(uid, kind, title, message, url))).catch(swallow('seller-public:follower-notify-insert'))
     }
+    const pq = await import('../../../worker/utils/push-queue')
+    // tag 에 시각을 붙인다 — 같은 사유로 다음 주에 또 보내는 것은 새 알림이다(줄의 중복 방지는 한 번 보낸 것만 막는다).
+    const sent = await pq.enqueuePush(DB, 'user', ids, { title, body: message, url, tag: `seller-${sellerId}-${body.reason || 'custom'}-${Date.now()}` })
+    try { c.executionCtx.waitUntil(pq.drainPushJobs(c.env, pq.PUSH_INLINE_BATCH).catch(() => null)) } catch { await pq.drainPushJobs(c.env, pq.PUSH_INLINE_BATCH).catch(() => null) }
 
-    return c.json({ success: true, data: { sent, total_followers: followers.length } })
+    return c.json({ success: true, data: { sent, total_followers: followers.length, queued: true } })
   } catch (err) {
     console.error('[seller-public notify-followers]', err)
     return c.json({ success: false, error: '알림 발송 실패' }, 500)

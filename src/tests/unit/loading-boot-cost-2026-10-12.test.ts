@@ -91,7 +91,7 @@ describe('② ③ 예열 — 사람이 기다리는 주소를 미리 데운다',
 
   it('사이드 배너에 엣지 캐시가 붙어 있다 (요청마다 DDL+SELECT 를 돌던 자리)', () => {
     expect(code(WORKER), '`/api/side-banners` 가 다시 무캐시가 됐다 — 페이지마다 콜드 D1 388ms')
-      .toMatch(/app\.get\('\/api\/side-banners',\s*edgeCache\(\d+\)/)
+      .toMatch(/app\.get\('\/api\/side-banners',\s*(?:edgeCache|publicCache)\(\d+\)/)
   })
 })
 
