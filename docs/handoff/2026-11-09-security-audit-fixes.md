@@ -104,4 +104,6 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
 
 ## 15차 (2026-11-18) — 대표 *"모두 이상적으로 해줘"*
 - **스캔 기기 키**: 발급자(운영자일 때만)를 옆 표 `seller_scan_device_issuers` 에 적고, `revokeOperator` 가 그 사람이 그 매장에서 만든 키를 같이 끈다. 주인 변경(`transferStoreOwnership`)·매장 탈퇴는 그 매장 키 전부. SSOT `src/worker/utils/scan-device-revoke.ts`. 못 막는 것: 이 변경 이전 발급분(발급자 기록 없음) · 에이전시 직원 좌석 발급분.
-- **에이전시 지급 처리**: 코드 변경 없음 — 전역 `adminRbacMiddleware` 가 이미 super·admin 만 통과시킨다(`agency-payouts`·`agency-accounts` 는 어떤 제한 역할의 쓰기 도메인에도 없다). 시험으로 고정했다. 재무 역할에게 열지는 **대표 결재 사항**이라 열지 않았다.
+- **에이전시 지급 처리**: 코드 변경 없음 — 두 겹이 이미 있다: 전역 `adminRbacMiddleware`(super·admin 만) + 라우터의 `requireAdminRole('super','finance')`(이전은 super). 둘의 교집합이라 **실효는 super 만**이다(라우터가 의도한 finance 는 전역 게이트에 막힌다). 전역 쪽을 시험으로 고정했다. finance 에게 실제로 열지는 **대표 결재 사항**.
+- 🩸 틀린 판단: 처음엔 "등급 제한 미확인" 이라고 보고했다 — 라우터 파일(`agency-admin.routes.ts`)을 안 보고 등록 함수만 봤다.
+- picomatch `GHSA-fc5q-39xc-vjpf`(고친 버전 없음 · dev 전용) 면제 등재 — 대표 승인(AskUserQuestion).
