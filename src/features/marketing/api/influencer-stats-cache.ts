@@ -20,7 +20,8 @@ export const INFLUENCER_STATS_RETRY_MS = 5 * 60_000
 export const INFLUENCER_STATS_ATTEMPT_KEY = 'ads_influencer_stats_cache_attempt'
 export const INFLUENCER_STATS_FAIL_KEY = 'ads_influencer_stats_cache_fail'
 
-let refreshing = false
+/** 갱신 중 표시(시작 시각). 응답 뒤 작업이 잘리면 finally 가 안 돌아 영영 true 로 남았다 — 60초 지나면 풀린 것으로 본다. */
+let refreshingSince = 0
 
 export async function getInfluencerStatsCached<T>(
   DB: D1Database, fresh: boolean, compute: () => Promise<T>, bg?: (p: Promise<unknown>) => void, nowMs = Date.now(),
@@ -53,9 +54,9 @@ export async function getInfluencerStatsCached<T>(
   }
   if (!fresh && bg && cached && age >= 0 && age < INFLUENCER_STATS_MAX_STALE_MS) {
     // 화면은 10초마다 부른다 — 갱신(약 9초)이 끝나기 전에 온 요청마다 또 돌리지 않게 한 isolate 안에선 하나만.
-    if (!refreshing) {
-      refreshing = true
-      bg(compute().then(s => store(s, nowMs)).catch(() => null).finally(() => { refreshing = false }))
+    if (!(refreshingSince && nowMs - refreshingSince >= 0 && nowMs - refreshingSince < 60_000)) {
+      refreshingSince = nowMs
+      bg(compute().then(s => store(s, nowMs)).catch(() => null).finally(() => { refreshingSince = 0 }))
     }
     return { stats: cached.data, at: cached.at }
   }
