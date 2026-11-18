@@ -43,7 +43,8 @@ describe('첫 페인트 — 키워드 224KB 를 받지 않는다', () => {
   })
 
   it('🔒 키워드 편집 뒤에는 둘 다 다시 받는다(분류 통계도 같이 바뀐다)', () => {
-    expect(HOOK).toMatch(/const loadMeta = useCallback\(async \(\) => \{ await Promise\.all\(\[loadStats\(\), loadKeywords\(\)\]\) \}/)
+    // 2026-11-18: 편집 뒤엔 통계 캐시를 건너뛴다(fresh) — 안 그러면 바뀐 분류 통계가 최대 30분 안 보인다.
+    expect(HOOK).toMatch(/const loadMeta = useCallback\(async \(\) => \{ await Promise\.all\(\[loadStats\(true\), loadKeywords\(\)\]\) \}/)
     expect(PAGE).toMatch(/onChanged=\{loadMeta\}/)
   })
 })
