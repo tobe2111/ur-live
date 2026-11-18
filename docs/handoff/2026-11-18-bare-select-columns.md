@@ -21,3 +21,9 @@
 
 ## 틀렸던 판단
 - 처음엔 5xx 1건짜리 버그로 봤다. 같은 모양을 전수로 찾자 환불 전체가 죽어 있었다 — **하나를 고치면 같은 클래스를 전수로 볼 것.**
+
+## 이어서 (같은 날, 텔레메트리 조사 후속) — 머지 #2417 = `c4ab9ec`
+- 교환권 사진 옮기기: 연속 3회 0장이면 24시간 쉰다(`voucher_rehost_lane`). 판정: 하트비트가 `paused=LANE_BLOCKED` 로 바뀌는지.
+- 쿼리 플래너 통계: 매일 청소 28번 `PRAGMA optimize=0x10002`(거절 시 ANALYZE). 판정: 배포 다음 날 메인 D1 `SELECT tbl, idx, stat FROM sqlite_stat1 WHERE tbl='products'` 의 첫 숫자가 2,000 이상 · 결과 `stats_refresh` 값(1=optimize, 2=ANALYZE, -1=둘 다 거절).
+- 리뷰 이름 백필 부분 색인 `idx_product_reviews_name_missing`. 판정: sqlite_master 에 생겼는지.
+- 남은 것: `/api/home/bundle` 예열 제거(쓰는 화면 0 · 로딩 잠금 → 대표 승인 필요) · KT 충전 잔액 7,680원(운영) · `seller-tier-limits` 등급 조회 고장(고치면 월 한도가 걸리기 시작 — 결정 필요) · 원격에 남은 실수 브랜치 `fix-seller-public-500`(삭제 403).

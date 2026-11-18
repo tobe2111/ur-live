@@ -36,6 +36,10 @@ export const INDEX_REPAIRS: Array<{ name: string; sql: string }> = [
   //      `SELECT content FROM product_reviews WHERE COALESCE(is_generated,0)=0 … ORDER BY created_at DESC LIMIT 2000`
   //      이 인덱스가 없어 12만 행을 정렬했다. 부분 인덱스의 WHERE 는 쿼리와 **글자까지 같아야** 플래너가 함의를 인정한다.
   { name: 'idx_product_reviews_real_created', sql: `CREATE INDEX IF NOT EXISTS idx_product_reviews_real_created ON product_reviews(created_at DESC) WHERE COALESCE(is_generated,0) = 0` },
+  //   2026-11-18: 매일 `review-username-backfill`(daily-lane) 이 이름 빈 리뷰를 찾느라 **11.8만 행 전부**를 읽었다
+  //      (라이브: 빈 이름 0건 · 하루 118,596행). 빈 이름만 담는 부분 색인이면 0건일 때 0행을 읽는다.
+  //      UPDATE 의 WHERE 와 글자까지 같다(`(user_name IS NULL OR user_name = '')`) — node:sqlite EXPLAIN 으로 사용 확인.
+  { name: 'idx_product_reviews_name_missing', sql: `CREATE INDEX IF NOT EXISTS idx_product_reviews_name_missing ON product_reviews(user_id) WHERE user_name IS NULL OR user_name = ''` },
   //   ② 였던 `idx_products_gb_deadline_active` 는 **2026-09-05 에 제거했다.** 그 인덱스의 유일한 독자가
   //      `group-buy-deadline-push` cron 이었는데, 마감 개념이 없어져(대표 "마감 개념은 없어") 그 cron 을
   //      통째로 걷어냈다. 읽는 사람이 없는 인덱스는 products 쓰기만 무겁게 한다.

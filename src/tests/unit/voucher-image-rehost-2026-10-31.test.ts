@@ -106,3 +106,21 @@ describe('④ 배선', () => {
     expect(SCHED).toMatch(/slotOpen\(\{ minute: 5 \}\)\) ctx\.waitUntil\(slotCron\('5 \* \* \* \*'\)\('voucher-image-rehost'/)
   })
 })
+
+// 🧯 2026-11-18 길 전체가 막혔을 때 쉬기 — 라이브: 11-05 이후 매시간 migrated=0 failed=4(49초) · 같은 96장 21회 시도.
+describe('⑤ 길 전체가 막히면 하루 쉰다', () => {
+  it('연속 3회 한 장도 못 옮기면 하루 쉬고, 한 장이라도 옮기면 바로 풀린다', async () => {
+    const m = await import('@/worker/cron/voucher-image-rehost')
+    const t = 1_000_000
+    let s = { fails: 0, pausedUntil: 0 }
+    s = m.nextLaneState(s, 0, 4, t); expect(s).toEqual({ fails: 1, pausedUntil: 0 })
+    s = m.nextLaneState(s, 0, 4, t); expect(s.fails).toBe(2)
+    s = m.nextLaneState(s, 0, 4, t); expect(s).toEqual({ fails: 0, pausedUntil: t + m.LANE_PAUSE_MS })
+    expect(m.nextLaneState({ fails: 2, pausedUntil: 0 }, 1, 3, t)).toEqual({ fails: 0, pausedUntil: 0 })
+    expect(m.nextLaneState({ fails: 2, pausedUntil: 0 }, 0, 0, t)).toEqual({ fails: 2, pausedUntil: 0 }) // 할 일 없음 ≠ 실패
+  })
+  it('쉬는 동안엔 외부 호출 전에 돌아간다', () => {
+    const i = SRC.indexOf('paused=LANE_BLOCKED'), j = SRC.indexOf('rehostImageToR2(bucketEnv')
+    expect(i).toBeGreaterThan(0); expect(i).toBeLessThan(j)
+  })
+})
