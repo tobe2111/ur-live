@@ -162,7 +162,7 @@ describe('⑦ 실패가 섞인 계산은 캐시하지 않는다', () => {
     const DB = d1(db); const NOW = 1_800_000_000_000
     const bad = await getInfluencerStatsCached(DB, false, async () => ({ ok: false }), undefined, NOW, t => t.ok)
     expect(bad.stats).toEqual({ ok: false })
-    expect(db.prepare('SELECT COUNT(*) n FROM platform_settings').get()).toEqual({ n: 0 })
+    expect(db.prepare('SELECT COUNT(*) n FROM platform_settings WHERE key = ?').get(INFLUENCER_STATS_CACHE_KEY)).toEqual({ n: 0 })
     db.prepare('INSERT INTO platform_settings VALUES (?, ?)').run(INFLUENCER_STATS_CACHE_KEY, JSON.stringify({ at: NOW - INFLUENCER_STATS_TTL_MS - 1, data: { ok: true } }))
     const r = await getInfluencerStatsCached(DB, false, async () => ({ ok: false }), undefined, NOW, t => t.ok)
     expect(r.stats).toEqual({ ok: true })
@@ -171,5 +171,23 @@ describe('⑦ 실패가 섞인 계산은 캐시하지 않는다', () => {
     const s = src('src/features/marketing/api/influencer-pool-stats.ts')
     expect(s).toMatch(/const complete = !!agg && !!catFunnel && byDay\.length > 0/)
     expect(s).toMatch(/h => h\.complete !== false\)/)
+  })
+})
+
+describe('⑧ 다시 계산은 5분에 한 번 · 실패 원문을 남긴다', async () => {
+  const C = await import('@/features/marketing/api/influencer-stats-cache')
+  it('낡은 캐시가 있으면 5분 안의 두 번째 요청은 계산하지 않는다 · 실패는 원문을 남긴다', async () => {
+    const db = new DatabaseSync(':memory:'); db.exec('CREATE TABLE platform_settings (key TEXT PRIMARY KEY, value TEXT)')
+    const DB = d1(db); const NOW = 1_800_000_000_000
+    db.prepare('INSERT INTO platform_settings VALUES (?, ?)').run(C.INFLUENCER_STATS_CACHE_KEY, JSON.stringify({ at: NOW - C.INFLUENCER_STATS_TTL_MS - 1, data: { ok: true } }))
+    let calls = 0
+    const bad = async () => { calls++; return { ok: false, errors: ['catFunnel: boom'] } }
+    expect((await C.getInfluencerStatsCached(DB, false, bad, undefined, NOW, t => t.ok)).stats).toEqual({ ok: true })
+    expect((await C.getInfluencerStatsCached(DB, false, bad, undefined, NOW + 60_000, t => t.ok)).stats).toEqual({ ok: true })
+    expect(calls).toBe(1)
+    const fail = db.prepare('SELECT value FROM platform_settings WHERE key = ?').get(C.INFLUENCER_STATS_FAIL_KEY) as { value: string }
+    expect(JSON.parse(fail.value).errors).toEqual(['catFunnel: boom'])
+    await C.getInfluencerStatsCached(DB, false, bad, undefined, NOW + C.INFLUENCER_STATS_RETRY_MS + 1, t => t.ok)
+    expect(calls).toBe(2)
   })
 })
