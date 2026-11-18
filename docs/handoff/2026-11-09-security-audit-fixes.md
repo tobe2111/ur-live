@@ -145,3 +145,10 @@ PR tobe2111/ur-live#2247·#2251·#2254·#2258·#2261·#2263·#2264·#2266·#2273
 - 실측: 소스맵 비공개(`/assets/*.map` 은 앱 화면을 돌려준다 — `sourcemap: 'hidden'`) · robots `ai-train=no` + 학습·수확 봇 헤더 차단은 이미 있음.
 - 🔴 **가장 큰 복사 경로는 화면이 아니라 이 저장소다 — `tobe2111/ur-live` 가 public**(포크 0). 비공개 전환은 대표 결정(무료 플랜의 Actions 분 한도·CLAUDE.md 의 "공개 레포" 전제들 확인 필요).
 
+## 20차 (2026-11-18) — 대표 *"3번만 해줘. 복사 버튼 두면 되겠네. 1번은 꼭 다시 알려줘. 2번은 무료로만 할 것들 해줘."*
+- **3번(글자 선택·복사 금지)**: `image-protect.ts` 가 소비자 화면에서 `selectstart`·`copy`·`cut` 을 막고 `<html data-nocopy>` 를 붙인다(CSS 짝 `index.css` — 모바일 길게 누르기). 예외: 입력 칸 · `data-allow-copy`(자손 포함) · 대시보드. 복사가 필요한 값에는 `CopyTextButton`(`src/components/ui/copy-text-button.tsx`) — 상세의 매장 주소, 내 이용권의 주소·전화번호. **새로 복사가 필요한 값이 보이면 버튼을 두거나 `data-allow-copy` 를 붙일 것**(주문번호·약관 등은 아직 안 붙였다).
+- 종전 불변식 "텍스트 선택은 막지 않는다" 시험은 은퇴 — 그 걱정은 "선택을 막은 자리에는 복사 버튼이 있다" 가 이어받았다.
+- 번들: app-utils +0.8KB · 상세 +0.5KB → `surface-budgets` 6개 화면 기준 갱신(사유 기록 `scripts/surface-budgets-history/2026-11-18-*.json`).
+- **2번(Cloudflare 무료 봇 차단)**: 코드 쪽(수확·복제 도구 UA 차단 — HTTrack·SiteSucker·WebCopier·python-requests 등, AI 학습 봇)은 이미 다 있었다. 대시보드 토글은 **세션 토큰에 봇 관리 권한이 없어 못 켰다**(`GET /zones/{id}/bot_management` → Authentication error). 판단: AI Labyrinth = 켜도 안전 · **Bot Fight Mode = 켜지 말 것**(무료 플랜은 예외 규칙을 못 걸어 토스 웹훅·uptime 프로브·cron 예열이 챌린지에 걸릴 수 있다) · **"AI 봇 차단" 토글 = 켜지 말 것**(검색·인용 봇까지 막아 2026-10-12 대표 지시 "AI 모든 서비스에서 검색 시 나오게" 와 충돌).
+- **1번(저장소 비공개)**: 대표가 *"꼭 다시 알려줘"* — 아직 public. 다음 보고에서 다시 알릴 것.
+

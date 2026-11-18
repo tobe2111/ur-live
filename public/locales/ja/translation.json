@@ -189,7 +189,9 @@
     "checkNetworkRetry": "ネットワークを確認して再試行してください",
     "goHome": "ホームへ",
     "prev": "前へ",
-    "seeAll": "すべて見る"
+    "seeAll": "すべて見る",
+    "copyWhat": "{{what}}をコピー",
+    "copiedWhat": "{{what}}をコピーしました"
   },
   "auth": {
     "email": "メールアドレス",
@@ -7154,7 +7156,9 @@
       "giftLinkOrCancel": "[TODO:ja] 선물 링크 보기, 보내기 취소",
       "gift": "[TODO:ja] 선물하기",
       "receivedGiftNote": "[TODO:ja] 선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요",
-      "liveHint": "お店が読み取るとすぐに切り替わります"
+      "liveHint": "お店が読み取るとすぐに切り替わります",
+      "phoneWord": "電話番号",
+      "addressWord": "住所"
     }
   },
   "pass": {
@@ -7208,7 +7212,8 @@
       "viewStore": "[TODO:ja] 가게 보기",
       "callAria": "[TODO:ja] 매장에 전화 ({{phone}})",
       "call": "[TODO:ja] 전화",
-      "directions": "[TODO:ja] 길찾기"
+      "directions": "[TODO:ja] 길찾기",
+      "addressWord": "住所"
     },
     "otherDeals": {
       "title": "[TODO:ja] 이 가게의 다른 이용권",

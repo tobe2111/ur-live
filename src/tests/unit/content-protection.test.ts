@@ -113,7 +113,9 @@ describe('사진 저장 억제 — JS 와 CSS 는 한 쌍이다', () => {
   it('소비자 화면 전체에서 우클릭을 막는다 — 입력 요소·대시보드는 예외', async () => {
     const s = code(read(PROTECT))
     expect(s).toContain("addEventListener(\n    'contextmenu'")
-    const ctx = s.slice(s.indexOf("addEventListener(\n    'contextmenu'"), s.indexOf("addEventListener(\n    'keydown'"))
+    // 끝은 **바로 다음 블록**(`const elOf` — 글자 선택 차단)까지만. 더 길게 자르면 그쪽의 preventDefault 가 대신 걸려 헛돈다.
+    const ctx = s.slice(s.indexOf("addEventListener(\n    'contextmenu'"), s.indexOf('const elOf'))
+    expect(ctx.length).toBeLessThan(400)
     expect(ctx).toContain('shouldBlockContextMenu(location.pathname, e.target as Element)')
     expect(ctx).toContain('e.preventDefault()')
     const { shouldBlockContextMenu } = await import('@/lib/image-protect')
@@ -125,6 +127,49 @@ describe('사진 저장 억제 — JS 와 CSS 는 한 쌍이다', () => {
     expect(shouldBlockContextMenu('/', el('SPAN', el('DIV', null, true)))).toBe(false) // 편집 영역 안
     for (const p of ['/admin', '/admin/users', '/seller/orders', '/agency', '/supplier/x', '/wholesale']) expect(shouldBlockContextMenu(p, el('DIV')), p).toBe(false)
     expect(shouldBlockContextMenu('/agency-partner', el('DIV'))).toBe(true) // 접두사가 비슷한 소비자 화면
+  })
+
+  // 📋 2026-11-18 대표 "3번만 해줘. 복사 버튼 두면 되겠네" — 글자 선택·복사도 막는다. 짝: CSS 표식 + 복사 버튼.
+  it('소비자 화면에서 글자 선택·복사를 막는다 — 입력 칸·data-allow-copy·대시보드는 예외', async () => {
+    const { shouldBlockSelect } = await import('@/lib/image-protect')
+    const el = (tag: string, parent: unknown = null, o: { editable?: boolean; allow?: boolean } = {}) =>
+      ({ tagName: tag, parentElement: parent, isContentEditable: !!o.editable, hasAttribute: (n: string) => n === 'data-allow-copy' && !!o.allow }) as unknown as Element
+    expect(shouldBlockSelect('/', el('P'))).toBe(true)
+    expect(shouldBlockSelect('/group-buy/12', el('SPAN', el('DIV')))).toBe(true)
+    expect(shouldBlockSelect('/', null)).toBe(true)
+    for (const tag of ['INPUT', 'TEXTAREA', 'SELECT']) expect(shouldBlockSelect('/', el(tag)), tag).toBe(false)
+    expect(shouldBlockSelect('/', el('SPAN', el('DIV', null, { allow: true })))).toBe(false) // 허용 표식 안쪽
+    expect(shouldBlockSelect('/', el('B', el('I', el('DIV', null, { editable: true }))))).toBe(false)
+    for (const p of ['/admin/users', '/seller/orders', '/agency']) expect(shouldBlockSelect(p, el('P')), p).toBe(false)
+    const s = code(read(PROTECT))
+    expect(s).toMatch(/for \(const type of \['selectstart', 'copy', 'cut'\] as const\) \{\s*document\.addEventListener\(type, \(e\) => \{\s*if \(!shouldBlockSelect\(location\.pathname, elOf\(e\.target\)\)\) return\s*e\.preventDefault\(\)/)
+    expect(s).toMatch(/toggleAttribute\('data-nocopy', !isExemptPath\(location\.pathname\)\)/)
+  })
+
+  it('CSS 짝 — 표식이 선택을 끄고, 입력 칸과 허용 표식은 되돌린다', () => {
+    const css = read(CSS)
+    expect(css).toMatch(/html\[data-nocopy\] body \{\s*-webkit-user-select: none;\s*user-select: none;\s*\}/)
+    const back = css.slice(css.indexOf('html[data-nocopy] input,'), css.indexOf('html[data-nocopy] input,') + 400)
+    for (const sel of ['html[data-nocopy] input', 'html[data-nocopy] textarea', 'html[data-nocopy] [contenteditable]', 'html[data-nocopy] [data-allow-copy]']) expect(back, sel).toContain(sel)
+    expect(back).toMatch(/-webkit-user-select: text;\s*user-select: text;/)
+  })
+
+  it('선택을 막은 자리에는 복사 버튼이 있다 (매장 주소·전화번호)', async () => {
+    expect(code(read('src/pages/group-buy/StoreLocation.tsx'))).toMatch(/\{address && <CopyTextButton text=\{address\}/)
+    const qr = code(read('src/pages/my-vouchers/QRModal.tsx'))
+    expect(qr).toMatch(/<CopyTextButton text=\{voucher\.restaurant_address\}/)
+    expect(qr).toMatch(/<CopyTextButton text=\{voucher\.restaurant_phone\}/)
+    const { copyTextToClipboard } = await import('@/components/ui/copy-text-button')
+    expect(await copyTextToClipboard('')).toBe(false)
+    const wrote: string[] = []
+    const prev = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { clipboard: { writeText: async (v: string) => { wrote.push(v) } } } })
+    try {
+      expect(await copyTextToClipboard('전북 전주시 완산구 1')).toBe(true)
+      expect(wrote).toEqual(['전북 전주시 완산구 1'])
+    } finally {
+      if (prev) Object.defineProperty(globalThis, 'navigator', prev)
+    }
   })
 
   it('드래그 차단은 여전히 사진에만 건다 (글자 드래그는 정상 사용)', () => {
@@ -192,11 +237,9 @@ describe('사진 저장 억제 — JS 와 CSS 는 한 쌍이다', () => {
     expect(revert![1]).toMatch(/-webkit-touch-callout:\s*default/)
   })
 
-  it('텍스트 선택은 막지 않는다 (주소·전화 복사는 정상 사용)', () => {
-    const s = code(read(PROTECT))
-    expect(s).not.toMatch(/user-select|selectstart|preventDefault\(\)\s*;?\s*}\s*,\s*{\s*capture:\s*true\s*}\s*\)\s*$/m)
-    expect(s).not.toContain("'copy'")
-  })
+  // 🪦 2026-11-18: 여기 있던 "텍스트 선택은 막지 않는다" 시험은 대표가 규칙을 바꾸면서 은퇴했다
+  //   (*"3번만 해줘. 복사 버튼 두면 되겠네"*). 그 시험이 지키던 걱정(주소·전화 복사)은 위의
+  //   "선택을 막은 자리에는 복사 버튼이 있다" 가 이어받았다.
 })
 
 /**

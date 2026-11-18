@@ -20,6 +20,7 @@ import { takeQrOrigin, growFrom } from './qr-origin'
 import SameStoreDeals from './SameStoreDeals'
 import TalkCalendarButton from './TalkCalendarButton'
 import GiftVoucherSheet from './GiftVoucherSheet'
+import CopyTextButton from '@/components/ui/copy-text-button'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-stamp', `@keyframes ur-slam { 0% { opacity: 0; transform: rotate(-24deg) scale(1.9); } 60% { opacity: 1; transform: rotate(-12deg) scale(.94); } 100% { opacity: 1; transform: rotate(-12deg) scale(1); } }.ur-slam { animation: ur-slam .38s cubic-bezier(.3,1.4,.5,1) both; }@keyframes ur-thud { 0%,100% { transform: none; } 30% { transform: translateY(4px) scale(.995); } 60% { transform: translateY(-1px); } }.ur-thud { animation: ur-thud .35s ease-out .22s both; }@media (prefers-reduced-motion: reduce){.ur-slam,.ur-thud{animation:none!important}}`)
 // 🎬 2026-11-03 19차 ② — 쓰기 전 QR 화면엔 파란 점이 천천히 숨 쉬듯 퍼진다 — 화면이 멈춘 게 아니라 '연결되어 기다리는 중'(실제로 5초마다 사용 여부를 확인한다).
@@ -436,7 +437,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                     {voucher.restaurant_address && (
                       <p className="flex items-start gap-2 text-[12px] text-gray-500 dark:text-gray-400 leading-snug">
                         <PinIcon className="w-3 h-3 mt-1 shrink-0" />
-                        <span>{voucher.restaurant_address}
+                        <span>{voucher.restaurant_address}<CopyTextButton text={voucher.restaurant_address} what={t('wallet.qr.addressWord', { defaultValue: '주소' })} className="-my-2" />
                           {mapUrl && <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="ml-1 font-medium text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60">{t('voucher.directions', { defaultValue: '길찾기' })}</a>}
                         </span>
                       </p>
@@ -444,7 +445,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                     {voucher.restaurant_phone && (
                       <p className="flex items-center gap-2 text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                         <Phone className="w-3 h-3 shrink-0" />
-                        <a href={`tel:${voucher.restaurant_phone}`} className="font-medium text-gray-900 dark:text-white active:opacity-60">{voucher.restaurant_phone}</a>
+                        <a href={`tel:${voucher.restaurant_phone}`} className="font-medium text-gray-900 dark:text-white active:opacity-60">{voucher.restaurant_phone}</a><CopyTextButton text={voucher.restaurant_phone} what={t('wallet.qr.phoneWord', { defaultValue: '전화번호' })} className="-my-2" />
                       </p>
                     )}
                   </div>

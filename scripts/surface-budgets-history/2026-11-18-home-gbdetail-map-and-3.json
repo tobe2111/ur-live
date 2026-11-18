@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-18",
+  "reason": "2026-11-18 대표 지시 — 소비자 화면 우클릭·글자 선택·복사 금지 + 복사 버튼(image-protect 는 첫 화면부터 걸려야 해 eager · app-utils +0.8KB, 상세 +0.5KB)",
+  "surfaces": [
+    "home",
+    "gbDetail",
+    "map",
+    "search",
+    "stayDetail",
+    "dash:my"
+  ],
+  "changes": [
+    "home: 211.6 → 213.1 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.8",
+    "gbDetail: 220.3 → 222.2 KB (+1.9, 허용 1.5) · 늘어난 것: app-utils.js +0.8, lz-gbDetail.js +0.5",
+    "map: 229.7 → 231.3 KB (+1.6, 허용 1.5) · 늘어난 것: app-utils.js +0.8",
+    "search: 194.1 → 195.7 KB (+1.7, 허용 1.5) · 늘어난 것: app-utils.js +0.8",
+    "stayDetail: 226.9 → 228.8 KB (+1.9, 허용 1.5) · 늘어난 것: app-utils.js +0.8, lz-gbDetail.js +0.5",
+    "dash:my: 224.8 → 226.4 KB (+1.5, 허용 1.5) · 늘어난 것: app-utils.js +0.8"
+  ]
+}

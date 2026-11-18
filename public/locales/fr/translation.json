@@ -189,7 +189,9 @@
     "checkNetworkRetry": "Vérifiez votre réseau puis réessayez",
     "goHome": "Aller à l'accueil",
     "prev": "Précédent",
-    "seeAll": "Tout voir"
+    "seeAll": "Tout voir",
+    "copyWhat": "Copier {{what}}",
+    "copiedWhat": "{{what}} copié"
   },
   "seller": {
     "crossOwner": {
@@ -7154,7 +7156,9 @@
       "giftLinkOrCancel": "[TODO:fr] 선물 링크 보기, 보내기 취소",
       "gift": "[TODO:fr] 선물하기",
       "receivedGiftNote": "[TODO:fr] 선물 받은 이용권이에요 · 취소·환불은 고객센터로 문의해 주세요",
-      "liveHint": "Se met à jour dès que le commerçant le scanne"
+      "liveHint": "Se met à jour dès que le commerçant le scanne",
+      "phoneWord": "numéro de téléphone",
+      "addressWord": "adresse"
     }
   },
   "pass": {
@@ -7208,7 +7212,8 @@
       "viewStore": "[TODO:fr] 가게 보기",
       "callAria": "[TODO:fr] 매장에 전화 ({{phone}})",
       "call": "[TODO:fr] 전화",
-      "directions": "[TODO:fr] 길찾기"
+      "directions": "[TODO:fr] 길찾기",
+      "addressWord": "adresse"
     },
     "otherDeals": {
       "title": "[TODO:fr] 이 가게의 다른 이용권",

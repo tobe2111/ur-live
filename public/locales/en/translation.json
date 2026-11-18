@@ -189,7 +189,9 @@
     "checkNetworkRetry": "Check your network and try again",
     "goHome": "Go to home",
     "prev": "Previous",
-    "seeAll": "See all"
+    "seeAll": "See all",
+    "copyWhat": "Copy {{what}}",
+    "copiedWhat": "{{what}} copied"
   },
   "auth": {
     "email": "Email",
@@ -7154,7 +7156,9 @@
       "giftLinkOrCancel": "View gift link or cancel gift",
       "gift": "Gift",
       "receivedGiftNote": "This voucher was a gift · Contact support for cancellation or refund",
-      "liveHint": "Updates as soon as the store scans it"
+      "liveHint": "Updates as soon as the store scans it",
+      "phoneWord": "phone number",
+      "addressWord": "address"
     }
   },
   "pass": {
@@ -7208,7 +7212,8 @@
       "viewStore": "View store",
       "callAria": "Call the store ({{phone}})",
       "call": "Call",
-      "directions": "Directions"
+      "directions": "Directions",
+      "addressWord": "address"
     },
     "otherDeals": {
       "title": "More passes from this store",
