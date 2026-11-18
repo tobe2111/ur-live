@@ -132,6 +132,18 @@ function staleKey(origin: string, path: string): Request {
   return new Request(`${origin}${STALE_PREFIX}${path}`, { method: 'GET' });
 }
 
+/**
+ * 🧊 2026-11-18 KV 에서 읽은 첫 화면 데이터를 **이 지역 캐시에 잠깐** 복사한다(대표 승인 "해줘" — [UNLOCK_LOADING]).
+ *   라이브: 홈·숙소는 매번 `MAIN:kv-hit`(전역 KV 읽기)라 응답 0.22~0.49초로 들쭉날쭉, 지역 캐시를 쓰는 상세·이용권은 0.2초 안팎.
+ *   ⚠️ API 캐시 키(`${origin}${path}`)와 **다른 키**를 쓴다 — 그 키는 publicCache 가 API 응답에 쓰므로 섞으면 API 헤더가 바뀐다.
+ *   1분만 둔다: KV 는 cron 이 15분마다 갱신하고, 1분 늦는 것은 지금(KV 그대로)과 같은 신선도 범위다.
+ */
+export const KV_EDGE_COPY_PREFIX = '/__ssr-kv-copy'
+export const KV_EDGE_COPY_MAX_AGE_S = 60
+function kvCopyKey(origin: string, path: string): Request {
+  return new Request(`${origin}${KV_EDGE_COPY_PREFIX}${path}`, { method: 'GET' });
+}
+
 /** 사본 갱신 — 성공이면 넣고, 404 면 지운다(내려간 상품을 1시간 동안 살려 두지 않는다). */
 async function writeStale(origin: string, path: string, text: string | null, status: string): Promise<void> {
   try {
@@ -170,6 +182,18 @@ export async function fetchSsrPayload(
   } catch { /* edge cache unavailable */ }
   timings.push(`edge;dur=${Date.now() - edgeStart}`);
 
+  // ①-b KV 의 지역 복사본(아래 ②가 남긴 1분짜리) — 같은 지역의 다음 손님은 KV 까지 안 간다.
+  if (!payload && isKvWarmedPath(target.path)) {
+    try {
+      // @ts-ignore — (워커 타입엔 있고 브라우저 타입엔 없다 — 두 tsconfig 공용이라 expect-error 대신) Cloudflare Workers 전역 caches
+      const hit = await caches.default.match(kvCopyKey(origin, target.path));
+      if (hit && hit.status >= 200 && hit.status < 300) {
+        const text = await hit.text();
+        if (text.startsWith('{')) { payload = escapeForScript(text); status = 'kv-copy-hit'; }
+      }
+    } catch { /* 지역 캐시 불가 — ②로 */ }
+  }
+
   // ② 전역 KV — 다른 콜로에서 예열된 것을 받는다. **cron 이 쓰는 키만** 묻는다(위 KV_WARMED).
   if (!payload && env.CACHE_KV && isKvWarmedPath(target.path)) {
     const kvStart = Date.now();
@@ -178,6 +202,14 @@ export async function fetchSsrPayload(
       if (raw && raw.startsWith('{')) {
         payload = escapeForScript(raw);
         status = 'kv-hit';
+        if (waitUntil) {
+          waitUntil((async () => {
+            // @ts-ignore — (워커 타입엔 있고 브라우저 타입엔 없다 — 두 tsconfig 공용이라 expect-error 대신) Cloudflare Workers 전역 caches
+            await caches.default.put(kvCopyKey(origin, target.path), new Response(raw, {
+              headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${KV_EDGE_COPY_MAX_AGE_S}` },
+            }))
+          })().catch(() => { /* 복사본은 가속일 뿐 */ }))
+        }
       }
     } catch { /* KV 불가 — self-fetch 폴백 */ }
     timings.push(`kv;dur=${Date.now() - kvStart}`);

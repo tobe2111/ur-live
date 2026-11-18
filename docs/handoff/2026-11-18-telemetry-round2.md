@@ -22,3 +22,9 @@
 - 메인 D1 `sqlite_master` 확인 쿼리 호출 수가 하루 1,961 → 수십으로.
 - `EXPLAIN QUERY PLAN` findAll → `idx_products_active_created`, TEMP B-TREE 없음.
 - 하트비트 `image-health-monitor` 결과 `checked=… unreachable=… browser_only=…` 가 찍히는지, ms 가 181초 → 수 초.
+
+## 이어서 ③ — 주요 화면 실측 + 대표 승인 2건 (머지 #2433)
+- 폰 4G 실측(FCP / LCP): 홈 1.10~1.52 / 1.17~1.60 · 이용권 0.56~1.40 / 1.42~2.30 · 상세 0.74~0.89 / 0.92~1.13 · 지도 0.68~1.45 / 2.73~3.33 · 검색 0.64~0.90 / 0.73~1.05 · 숙소 1.13~1.54 / 1.19~1.56.
+- 지도 LCP 는 카카오 지도 바탕 타일(bg_tile.png) — 지도 자체 로딩이라 손댈 여지 작음.
+- 홈·숙소만 `MAIN:kv-hit`(전역 KV) → **지역 복사본 1분**([UNLOCK_LOADING], `ssr-payload.ts`). 교환권 카테고리 **KV 6시간 + KT 동기화 때 삭제**([UNLOCK_LOADING]). 근거 `docs/locks/loading/2026-11-18-kv-edge-copy-and-voucher-cat-ttl.md`.
+- 🩸 틀릴 뻔한 것: 직접 만든 측정 스크립트가 영어 브라우저라 `locale-en` 을 받는 것을 "한국 화면에 영어 번역을 받는다"로 읽을 뻔했다 — 오늘(11-18)부터 화면 언어가 폰 언어를 따른다. 공식 `measure-live-vitals.mjs` 는 이미 `ko-KR`.
