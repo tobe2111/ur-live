@@ -15,33 +15,25 @@
  */
 import { GridIcon, MealLineIcon, BeautyLineIcon, StayLineIcon, HomeServiceLineIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 
-/** 'all'(전체) + 실제 4종 카테고리. VOUCHER_CATEGORIES 와 1:1. */
-export type MapVoucherType = 'all' | 'meal_voucher' | 'beauty_voucher' | 'stay_voucher' | 'home_voucher' | 'etc_voucher'
+import { MAP_VOUCHER_LABELS, type MapVoucherType, type MapVoucherLabel } from './voucher-labels'
+export type { MapVoucherType } from './voucher-labels'
 
-export interface MapVoucherDef {
-  key: MapVoucherType
-  labelKey: string
-  defaultLabel: string
+export interface MapVoucherDef extends MapVoucherLabel {
   /** 유어딜 선 아이콘 컴포넌트(urdeal-icons). `<v.icon size={15} />` 로 그린다. */
   icon: typeof GridIcon
-  /**
-   * 🗺️ 2026-08-19 (대표 — "카카오맵처럼 한 줄 안에 모든 카테고리"): PC 좌측 400px 패널은
-   *   7칸을 한 줄에 넣으므로 칸당 ~53px 다. '뷰티·헬스'(5자)는 그 폭에서 잘린다.
-   *   ⇒ **좁은 자리 전용 짧은 라벨**. 없으면 `defaultLabel` 을 쓴다(대부분 이미 짧다).
-   *   ⚠️ 카테고리 자체를 줄이는 게 아니다 — 넓은 지도 오버레이는 계속 긴 라벨을 쓴다.
-   */
-  shortLabel?: string
 }
 
-/** 칩 정의 — 헬스는 '뷰티·헬스'(beauty)에, 반려·액티비티는 '기타'(etc)에 통합됨. */
-export const MAP_VOUCHER_DEFS: MapVoucherDef[] = [
-  { key: 'all', labelKey: 'map.voucher.all', defaultLabel: '전체', icon: GridIcon },
-  { key: 'meal_voucher', labelKey: 'map.voucher.meal', defaultLabel: '식사', icon: MealLineIcon },
-  { key: 'beauty_voucher', labelKey: 'map.voucher.beauty', defaultLabel: '뷰티·헬스', icon: BeautyLineIcon, shortLabel: '뷰티' },
-  { key: 'stay_voucher', labelKey: 'map.voucher.stay', defaultLabel: '숙소', icon: StayLineIcon },
-  { key: 'home_voucher', labelKey: 'map.voucher.home', defaultLabel: '생활', icon: HomeServiceLineIcon },
-  { key: 'etc_voucher', labelKey: 'map.voucher.etc', defaultLabel: '기타', icon: TicketStubIcon },
-]
+/** 아이콘 — 글자·순서는 `voucher-labels.ts`(워커와 같은 표). */
+const ICON_BY_KEY: Record<MapVoucherType, typeof GridIcon> = {
+  all: GridIcon,
+  meal_voucher: MealLineIcon,
+  beauty_voucher: BeautyLineIcon,
+  stay_voucher: StayLineIcon,
+  home_voucher: HomeServiceLineIcon,
+  etc_voucher: TicketStubIcon,
+}
+
+export const MAP_VOUCHER_DEFS: MapVoucherDef[] = MAP_VOUCHER_LABELS.map((d) => ({ ...d, icon: ICON_BY_KEY[d.key] }))
 
 /** 카테고리별 빈 상태 문구. */
 export const MAP_EMPTY_MSG: Record<MapVoucherType, string> = {

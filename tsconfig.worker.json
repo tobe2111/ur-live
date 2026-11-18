@@ -25,11 +25,9 @@
   "include": [
     "src/worker/**/*",
     "src/shared/types/**/*",
-    "src/shared/utils/**/*",
-    "src/shared/constants/**/*",
-    "src/shared/config/**/*",
     "src/durable-object.ts",
-    "src/types/**/*"
+    "src/types/**/*",
+    "types-worker/**/*"
   ],
   "exclude": [
     "node_modules",

@@ -216,11 +216,12 @@ async function encryptPushPayload(
   if (authSecret.length !== 16) throw new Error('invalid auth secret length')
 
   // Application-server ephemeral ECDH keypair.
-  const asKeyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits'])
-  const asPublic = new Uint8Array(await crypto.subtle.exportKey('raw', asKeyPair.publicKey)) // 65 bytes
+  const asKeyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']) as CryptoKeyPair
+  const asPublic = new Uint8Array(await crypto.subtle.exportKey('raw', asKeyPair.publicKey) as ArrayBuffer) // 65 bytes
   const uaKey = await crypto.subtle.importKey('raw', uaPublic as BufferSource, { name: 'ECDH', namedCurve: 'P-256' }, false, [])
   const ecdhSecret = new Uint8Array(
-    await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, asKeyPair.privateKey, 256),
+    // 브라우저 타입은 `public`, workers-types 는 `$public` 으로 적는다 — 런타임 이름은 `public`(Web Crypto 표준).
+    await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey } as unknown as Parameters<typeof crypto.subtle.deriveBits>[0], asKeyPair.privateKey, 256),
   ) // 32 bytes
 
   // RFC 8291 §3.4 — derive the input keying material (IKM) for RFC 8188.

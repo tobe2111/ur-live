@@ -482,7 +482,7 @@ curatorRoutes.post('/me/pins', requireUser(), async (c) => {
       //   me/profile (:572) 의 기존 purge 블록 패턴 복제 (best-effort, 실패해도 핀 저장 완료).
       try {
         const url = new URL(c.req.url)
-        // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
+        // @ts-ignore — (워커 타입엔 있고 브라우저 타입엔 없다 — 두 tsconfig 공용이라 expect-error 대신) Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
         const purge = caches.default.delete(new Request(`${url.origin}/api/curator/${encodeURIComponent(handle)}`)) as Promise<boolean>
         c.executionCtx.waitUntil(purge.then(() => undefined))
       } catch { /* best-effort */ }
@@ -538,7 +538,7 @@ curatorRoutes.delete('/me/pins/:id', requireUser(), async (c) => {
         .bind(userId).first<{ handle: string | null }>()
       if (me?.handle) {
         const url = new URL(c.req.url)
-        // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
+        // @ts-ignore — (워커 타입엔 있고 브라우저 타입엔 없다 — 두 tsconfig 공용이라 expect-error 대신) Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
         const purge = caches.default.delete(new Request(`${url.origin}/api/curator/${encodeURIComponent(me.handle)}`)) as Promise<boolean>
         c.executionCtx.waitUntil(purge.then(() => undefined))
       }
@@ -759,7 +759,7 @@ curatorRoutes.patch('/me/profile', requireUser(), async (c) => {
           const me = await c.env.DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
             .bind(userId).first<{ handle: string | null }>()
           if (me?.handle) {
-            // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
+            // @ts-ignore — (워커 타입엔 있고 브라우저 타입엔 없다 — 두 tsconfig 공용이라 expect-error 대신) Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
             await (caches.default.delete(new Request(`${origin}/api/curator/${encodeURIComponent(me.handle)}`)) as Promise<boolean>)
           }
         } catch { /* best-effort — purge 실패해도 저장 완료 */ }

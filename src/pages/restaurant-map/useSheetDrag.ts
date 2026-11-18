@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type React from 'react'
+import { SHEET_SNAP_TRANSLATE, type SheetSnap } from './sheet-geometry'
+export { SHEET_PEEK_VISIBLE_PX, SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE, type SheetSnap } from './sheet-geometry'
 
 /**
  * 🗺️ 2026-07-25 (대표 "버벅거림/불완전한 스와이프" — 지도 전수조사 H1/H2/H4/M1/M2):
@@ -25,22 +27,12 @@ import type React from 'react'
  *      full: safe-area+104px). useKakaoMap 의 centerOffsetForSheet 가 이 값을 미러 — 변경 시 함께 갱신.
  */
 
-export type SheetSnap = 'peek' | 'mid' | 'full'
 
-/** 시트 top 고정값 = full 위치. 이동은 전부 transform 으로(레이아웃 불변 → 컴포지터 애니메이션). */
-/** peek 시트가 화면 아래에서 덮는 높이(px). 아래 peek translate·useKakaoMap(가려진 타일 미루기)이 같은 값을 쓴다. */
-export const SHEET_PEEK_VISIBLE_PX = 240
 /** 시트 윗모서리 반경(rounded-t-3xl). 지도 칸을 이만큼 시트 밑으로 겹쳐야 둥근 모서리 뒤가 회색으로 안 비친다. */
 export const SHEET_CORNER_PX = 24
 /** 지금 PC 폭(lg, 1024+)인가 — 시트 대신 좌측 패널이라 가려지는 아래가 없다. */
 export const isLgNow = (): boolean =>
   typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(min-width: 1024px)').matches
-export const SHEET_BASE_TOP = 'calc(env(safe-area-inset-top, 0px) + 104px)'
-export const SHEET_SNAP_TRANSLATE: Record<SheetSnap, string> = {
-  full: 'translateY(0px)',
-  mid: 'translateY(calc(40dvh - env(safe-area-inset-top, 0px) - 104px))',
-  peek: `translateY(calc(100dvh - ${SHEET_PEEK_VISIBLE_PX}px - env(safe-area-inset-top, 0px) - 104px))`,
-}
 // 🎬 2026-11-02 13차 ⑩ — 놓으면 가까운 높이로 **살짝 튀며** 자리 잡는다(종전 0.3s 감속 곡선 → 0.42s 약한 되튐 곡선).
 //   되튐은 몇 px 이라 '전체' 높이에서 시트 머리가 잠깐 위로 넘쳐도 상단 막대 뒤에 가려진다.
 export const SHEET_SNAP_TRANSITION = 'transform 0.42s cubic-bezier(0.3, 1.18, 0.5, 1)'
