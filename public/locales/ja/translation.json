@@ -344,7 +344,7 @@
   "cart": {
     "title": "カート",
     "empty": "カートは空です",
-    "continueShop": "Continue Shopping",
+    "continueShop": "買い物を続ける",
     "goToCheckout": "Proceed to Checkout",
     "itemAdded": "Item added to cart",
     "itemRemoved": "Item removed from cart",

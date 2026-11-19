@@ -42,7 +42,7 @@ export default function StayStickyBar({
     <BuyBarFrame>
       <div className="flex items-center gap-3">
         <BuyBarPrice
-          caption={hasCart ? `${cartCount}종 객실 / ${cartTotalQty}객실` : nightsLabel}
+          caption={hasCart ? `${cartCount}종 객실 / ${cartTotalQty}객실` : raffle ? '당첨되면 이 가격에' : nightsLabel}
           amount={hasCart ? cartSubtotal : (minPrice ?? 0)}
           suffix={hasCart ? undefined : '부터'}
         />

@@ -74,7 +74,7 @@ export default function CartPage() {
             {t('common.loginButton', { defaultValue: CART_GUEST_COPY.loginButton })}
           </button>
           {/* 🏪 2026-08-12: 몰을 거쳐 온 손님은 유어딜 홈이 아니라 **그 가게로** (근거는 컴포넌트 주석) */}
-          <ContinueShoppingLink onFallback={() => navigate('/')} />
+          <ContinueShoppingLink label={t('cart.continueShop', { defaultValue: CART_COPY.continueShop })} onFallback={() => navigate('/')} />
         </div>
       </div>
     )

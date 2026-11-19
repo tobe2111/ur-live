@@ -109,7 +109,9 @@ export default function DealBottomBar({
         ) : null}
         {isOwner && onManage ? <OwnerManagePanel onManage={onManage} compact /> : (
         <div className="flex items-center gap-3">
-          {!isPrelaunch && <BuyBarPrice strike={refPrice > unitPrice ? refPrice * quantity : null} discountPct={discountPct} amount={total} />}
+          {/* 🎯 2026-11-18 (로그아웃 화면 재검토): 추첨 상품이면 가격 바로 옆 버튼이 '응모하기 (무료)' 라 "돈을 내나, 공짜인가" 가 헷갈렸다.
+               응모는 무료이고 이 값은 **당첨되면 내는 가격**이라는 것을 가격 위에 적는다(취소선 자리). */}
+          {!isPrelaunch && <BuyBarPrice strike={raffle ? null : refPrice > unitPrice ? refPrice * quantity : null} caption={raffle ? '당첨되면 이 가격에' : undefined} discountPct={discountPct} amount={total} />}
           <BuyBarCta
             data-deal-buy=""
             on={ctaOn}

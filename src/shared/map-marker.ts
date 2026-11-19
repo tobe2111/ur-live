@@ -67,6 +67,30 @@ export function mapMarkerTier({ discount, isSelected, isSeen }: MapMarkerTierInp
 }
 
 /**
+ * 🗺️ 2026-11-18 (로그아웃 화면 재검토 — 지도 가격 핀끼리 겹침): 클러스터 격자를 **화면 픽셀**로 잡는다.
+ *
+ * 종전 격자는 도(°) 고정값(`level<=5 → 0.001`, `<=7 → 0.005`, 그 위 `0.02`)이었는데, 실측(카카오 SDK
+ * `containerPointFromCoords`, 위도 37.5) 으로 그 칸은 화면에서 **가로 22~27px** 이었다 — 가격 핀(`ur-pin-pill`)
+ * 하나가 **94×27px** 이라 칸이 핀보다 4배 좁았다. 그래서 "한 칸에 혼자인 핀" 끼리도 옆 칸에서 서로 덮었다
+ * (/map 해운대: 59% 핀이 169,000 핀을 가림).
+ *
+ * 카카오 지도는 레벨이 하나 오를 때 축척이 정확히 절반이다(실측: level 3 → 경도 88,400 · 위도 111,000 px/°,
+ * 레벨마다 ÷2). 그래서 칸을 [핀 폭 × 핀 높이] 픽셀로 잡아 도로 바꾼다. 같은 레벨이면 칸이 같으니
+ * 팬해도 클러스터 키가 안 바뀐다(깜빡임 0 — 종전과 같은 성질).
+ *
+ * `level <= 3` 이면 `null`(격자 없음 — 최대 줌은 개별 핀). 종전 규칙 그대로다.
+ */
+export const MAP_CELL_PX = { w: 88, h: 40 } as const
+export function mapCellSizeDeg(level: number): { lng: number; lat: number } | null {
+  if (!Number.isFinite(level) || level <= 3) return null
+  const scale = 2 ** (level - 3)
+  return { lng: (MAP_CELL_PX.w * scale) / 88400, lat: (MAP_CELL_PX.h * scale) / 111000 }
+}
+export function mapCellKey(lat: number, lng: number, cell: { lng: number; lat: number }): string {
+  return `${Math.floor(lng / cell.lng)}_${Math.floor(lat / cell.lat)}`
+}
+
+/**
  * 이름 라벨을 붙일지 — **겹치면 안 붙인다.**
  *
  * N1 의 실제 구현 비용이 여기다(시안에서도 이름이 이웃 마커를 침범한 자리가 보였다).
