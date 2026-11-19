@@ -24,7 +24,7 @@
  *   2026-09-01 승인분을 그대로 옮겼다. 이번 변경은 **배치와 크기**이고 새 주장은 넣지 않는다.
  *   연락·사업자 정보는 `shared/partners-facts`(덱과 대조되는 SSOT) 한 곳에서만 읽는다.
  */
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { StoreIcon, PeopleIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { Megaphone, QrCode, BadgePercent, ArrowRight, FileText } from 'lucide-react'
@@ -71,6 +71,16 @@ export default function AboutServicePage() {
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('ur-mk-on'); io.unobserve(e.target) } }), { threshold: 1, rootMargin: '0px 0px -10% 0px' })
     marks.forEach((m) => io.observe(m)); return () => io.disconnect()
   }, [])
+  // 📱 2026-11-18 (로그아웃 화면 재검토): 모바일 고정 CTA 가 첫 화면에서 히어로의 같은 버튼과 겹쳐 두 개로 보였고,
+  //   그 아래 '매장 입점 안내' 버튼을 덮었다. 히어로 버튼 줄이 화면에서 벗어난 뒤에만 고정 CTA 를 올린다.
+  const heroCtaRef = useRef<HTMLDivElement>(null)
+  const [heroCtaVisible, setHeroCtaVisible] = useState(true)
+  useEffect(() => {
+    const el = heroCtaRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') { setHeroCtaVisible(false); return }
+    const io = new IntersectionObserver(([e]) => setHeroCtaVisible(e.isIntersecting))
+    io.observe(el); return () => io.disconnect()
+  }, [])
   return (
     <div className="min-h-[100dvh] bg-warm ur-landing-type overflow-x-clip">
       <SEO title={CONSUMER_SURFACE_SEO['/about'].title} description={CONSUMER_SURFACE_SEO['/about'].description} url="/about" />
@@ -105,7 +115,7 @@ export default function AboutServicePage() {
             <p style={loadDelay(320)} className="ur-load mt-8 lg:mt-8 text-[15px] lg:text-[16px] leading-[1.7] text-white/80 max-w-[26em]">
               서울 서초구 상권 활성화 사업을 수행하고 있어요.
             </p>
-            <div style={loadDelay(460)} className="ur-load mt-12 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
+            <div ref={heroCtaRef} style={loadDelay(460)} className="ur-load mt-12 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
               <Link to="/"
                 className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[16px] font-bold active:scale-[0.98] transition-transform">
                 내 주변 딜 보러가기 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
@@ -259,7 +269,7 @@ export default function AboutServicePage() {
       </main>
 
       {/* 📱 모바일 고정 CTA. PC 는 상단 헤더 버튼과 각 섹션 CTA 가 담당한다(lg 에서 숨김) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur-md border-t border-rule px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
+      <div style={heroCtaVisible ? { transform: 'translateY(100%)', pointerEvents: 'none', visibility: 'hidden' } : undefined} className="lg:hidden fixed bottom-0 left-0 right-0 z-30 transition-[transform,visibility] duration-300 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur-md border-t border-rule px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <div className="max-w-xl mx-auto">
           <Link to="/" className="flex h-12 rounded-2xl bg-brand text-white items-center justify-center gap-2 text-[15px] font-bold active:scale-[0.98] transition-transform">
             내 주변 딜 보러가기 <ArrowRight className="w-4 h-4" />
