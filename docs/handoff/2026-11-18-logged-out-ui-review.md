@@ -33,3 +33,9 @@
 - 지도: 클러스터 칸을 도(°) 고정값 → **화면 픽셀(88×40, 핀 크기)** 로. 실측 종전 칸은 22~35px 로 94px 핀보다 4배 좁았다(`shared/map-marker` `mapCellSizeDeg`). ⚠️ 중간 줌에서 묶음 버블이 종전보다 많아진다 — 의도.
 - 교환권 브랜드 칩: 로고가 원본까지 실패하면 이름 두 글자(빈 흰 칸 방지). 로고 자체는 의도적 원본 직결(2026-10-31) — 이 환경은 giftishow 접속 불가라 실패율 판정 못 함.
 - 약관 충전 문구: 결재함 `docs/decisions/2026-11-18-terms-deal-topup-wording.md`(파일 머리 "대표 확인 후에만").
+
+## 3차 — 라이브 판정(PR #2455 배포 뒤) + 시안
+- 영어 하단 탭 `Home · Gift Cards · Passes · UrShop · My` · 추첨 하단 바 "당첨되면 이 가격에" 노출 · /map 해운대 겹치던 두 핀이 묶음 1개(69,000원~ 2)로.
+- 측정(폰 4G·CPU4배 3회): /map FCP 0.87~1.52s CLS 0.004~0.006 · /pass/3066 FCP 0.77~1.52s **CLS 0.039** · /vouchers FCP 1.02~1.19s CLS 0.
+- ⚠️ /pass/3066 CLS 0.039 의 밀림 요소는 `bg-[var(--gbd-bg)] overflow-hidden border-t border-rule empt…` 섹션(2.6~2.9s) — 이번 변경(고정 하단 바)과 다른 요소. 변경 전 값이 없어 원인 미판정.
+- 시안: `docs/design/logged-out-ui-proposals-2026-11.md`.
