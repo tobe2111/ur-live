@@ -450,5 +450,20 @@
     "topic_tag": "블로그체험단",
     "tformat": "list",
     "cta": "creator:apply"
+  },
+  {
+    "id": "18320120107304610",
+    "platform": "threads",
+    "track": "merchant",
+    "topic": "등록 절차 4단계(약 10분): 카카오맵에서 내 가게 찾기 → 담당자 번호 → 운영 주체 선택 → 사업자등록증 사진. 등록증은 사람이 직접 확인",
+    "hook": "udal",
+    "series": "by-numbers",
+    "date_kst": "2026-11-19",
+    "len": "2",
+    "slot": "21:30",
+    "media": "text",
+    "topic_tag": "소상공인",
+    "tformat": "myth",
+    "cta": "merchant:signup"
   }
 ]

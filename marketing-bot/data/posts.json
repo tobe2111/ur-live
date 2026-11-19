@@ -937,5 +937,26 @@
     "slot_kst": "09:00",
     "link": "https://urdeal.kr/creators/apply?utm_source=threads&utm_medium=social&utm_campaign=creator-recruit&utm_content=th-20261118",
     "text": "소개 제안도 정산도 앱에서 한 번에 확인.\n카카오 로그인 1분이면 내 유어샵이 생겨요."
+  },
+  {
+    "platform": "threads",
+    "id": "18320120107304610",
+    "reply_id": "17978202957030683",
+    "topic_tag": "소상공인",
+    "hook": "udal",
+    "len": "2",
+    "tformat": "myth",
+    "cta": "merchant:signup",
+    "topic": "등록 절차 4단계(약 10분): 카카오맵에서 내 가게 찾기 → 담당자 번호 → 운영 주체 선택 → 사업자등록증 사진. 등록증은 사람이 직접 확인",
+    "media": "text",
+    "content_id": "th",
+    "track": "merchant",
+    "series": "by-numbers",
+    "promo": false,
+    "posted_at": "2026-11-19T14:33:32.763Z",
+    "date_kst": "2026-11-19",
+    "slot_kst": "21:30",
+    "link": "https://urdeal.kr/store/new?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261119",
+    "text": "입점 등록이 번거로울 거라 생각하기 쉬운데, 4단계로 끝나요. 카카오맵에서 내 가게 찾고, 담당자 번호, 운영 주체 선택, 사업자등록증 사진까지 약 10분. 등록증은 사람이 직접 확인해요."
   }
 ]
