@@ -1,6 +1,116 @@
 {
   "items": [
     {
+      "id": "pixabay-img-1607479",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 1607479,
+      "page_url": "https://pixabay.com/photos/tteokbokki-food-korean-food-1607479/",
+      "author": "jelly",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 4954,
+      "h": 3303,
+      "tags": "tteokbokki, food, korean food, spicy food, tteokbokki, tteokbokki, korean food, korean food, korean food, korean food, korean food",
+      "preview": "https://pixabay.com/get/gac7b79c75994e09e87f8ba4c93cfe0958c98294c05f577749707659ee07960340f5745ffd2cf7c62ac7d5d52d10ed11a2619b6f54c152aaab578ec79bbcbc4ce_640.jpg",
+      "query": "korean food table",
+      "tracks": [
+        "consumer",
+        "merchant"
+      ],
+      "score": 8,
+      "note": "나무 테이블 위 흰 그릇에 담긴 떡볶이가 선명하고 자연광 느낌이라 한국 동네 분식집 분위기와 잘 맞고, 워터마크·로고·얼굴이 없으며 위쪽과 좌우 나무 여백에 글자를 얹기 좋음.",
+      "added_at": "2026-11-19T19:13:07.149Z",
+      "used": []
+    },
+    {
+      "id": "pixabay-img-749360",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 749360,
+      "page_url": "https://pixabay.com/photos/herbs-five-grain-rice-full-day-749360/",
+      "author": "jyleen21",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 4288,
+      "h": 2848,
+      "tags": "herbs, five grain rice, full day, korean, food, five grain rice, five grain rice, five grain rice, korean, korean, korean, korean, korean",
+      "preview": "https://pixabay.com/get/g9f805bece200793ee60c27360661a954731c0c2c4f677244a93aab34b2cdf1c9d727ca58c35e79e891e27cb16ea286b2_640.jpg",
+      "query": "korean food table",
+      "tracks": [
+        "consumer",
+        "merchant"
+      ],
+      "score": 8,
+      "note": "자연광 느낌의 선명한 한식 상차림(곤드레밥·나물 반찬)이라 동네 식당 분위기와 잘 맞고 얼굴·로고·워터마크도 없음. 다만 붉은 테이블 반사가 강하고 위쪽 여백이 거의 없어 글자를 ",
+      "added_at": "2026-11-19T19:13:07.149Z",
+      "used": []
+    },
+    {
+      "id": "pixabay-img-7683986",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 7683986,
+      "page_url": "https://pixabay.com/photos/%EB%96%A1%EB%B3%B6%EC%9D%B4-tteokbokki-korean-food-korea-7683986/",
+      "author": "홍대앞고깃집",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 4000,
+      "h": 2667,
+      "tags": "떡볶이, tteokbokki, korean food, korea, 떡볶이, 떡볶이, 떡볶이, tteokbokki, tteokbokki, tteokbokki, tteokbokki, tteokbokki, korean food",
+      "preview": "https://pixabay.com/get/gb2fc20c90a8ef3cedde68b2ef768ef2da49ae8c8e52db46fca1b6ed76250721a74165c6312725483d2907d3dc793b3d658d42dca7784b6b437041eed825e4075_640.jpg",
+      "query": "korean food table",
+      "tracks": [
+        "consumer",
+        "merchant"
+      ],
+      "score": 8,
+      "note": "라볶이가 선명하고 자연스러운 톤이라 한국 분식집 느낌이 잘 살고, 워터마크·로고·얼굴 없이 위쪽 나무 배경에 글자 얹을 여백도 있음.",
+      "added_at": "2026-11-19T19:13:07.149Z",
+      "used": []
+    },
+    {
+      "id": "pixabay-img-749358",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 749358,
+      "page_url": "https://pixabay.com/photos/alum-dining-food-korean-749358/",
+      "author": "jyleen21",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 7360,
+      "h": 4912,
+      "tags": "alum, dining, food, korean, korean food, food photography, korean food, korean food, korean food, korean food, korean food",
+      "preview": "https://pixabay.com/get/g9740387b867147505a4e8efeb5950405ab684e41ba0826c8ed0bdf869a5fc65f1d10f6f221c60db3251b0be229012138_640.jpg",
+      "query": "korean food table",
+      "tracks": [
+        "consumer",
+        "merchant"
+      ],
+      "score": 8,
+      "note": "선명한 자연광의 한식 한 상(쌈·찌개·나물·보리밥)으로 동네 식당 느낌이 좋고 얼굴·워터마크·로고가 없음. 다만 상 전체가 꽉 차 있어 글자 얹을 여백은 적고, 매트의 한자 글씨가",
+      "added_at": "2026-11-19T19:13:07.149Z",
+      "used": []
+    },
+    {
+      "id": "pixabay-img-8579177",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 8579177,
+      "page_url": "https://pixabay.com/photos/korean-barbecue-barbecue-korean-food-8579177/",
+      "author": "nicehee0610",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 4000,
+      "h": 2252,
+      "tags": "korean barbecue, barbecue, korean food, grilling, grilled beef, grilled korean beef",
+      "preview": "https://pixabay.com/get/gdfabdb818e936a29eb7c0f632ced162c05fde8b3c1e776bb7191d7e0550c8ab5f054382242aa0adedf298e551b36b9dcbc83116169e7ff6b2765894607d16bf8_640.jpg",
+      "query": "korean food table",
+      "tracks": [
+        "consumer",
+        "merchant"
+      ],
+      "score": 8,
+      "note": "숯불 위 고기를 집게로 뒤집는 장면이 선명하고 한국 동네 고깃집 분위기가 잘 살아 있으며, 얼굴이 크게 안 나오고 워터마크·로고도 없음. 다만 하단과 좌측 반찬 그릇 때문에 화면이",
+      "added_at": "2026-11-19T19:13:07.149Z",
+      "used": []
+    },
+    {
       "id": "pixabay-img-5641450",
       "kind": "image",
       "source": "pixabay",
@@ -124,6 +234,28 @@
       "score": 8,
       "note": "라떼아트를 붓는 순간이 선명하고 따뜻한 자연광 톤이라 동네 카페 느낌이 잘 살고, 얼굴 노출·로고·워터마크 없이 손만 보여 안전하며 어두운 배경 덕에 글자 얹을 여백도 충분함.",
       "added_at": "2026-11-16T20:39:11.175Z",
+      "used": []
+    },
+    {
+      "id": "pixabay-img-3955616",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 3955616,
+      "page_url": "https://pixabay.com/photos/buffet-korean-food-birthday-3955616/",
+      "author": "allybally4b",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 5616,
+      "h": 3744,
+      "tags": "buffet, korean food, wedding ceremony, happy birthday, food, reception, restaurant, table, congrats, dining, event, catering, plate, kettering",
+      "preview": "https://pixabay.com/get/gba159de7a217e8d89004b8f55b4bbc8c8877f1cb2421f51cfbeeb60c5322d551034423a65706ff7422c9fa967fc4c5fa3a0661a6bf849c08850f82152434f70d_640.jpg",
+      "query": "korean food table",
+      "tracks": [
+        "consumer",
+        "merchant"
+      ],
+      "score": 7,
+      "note": "선명하고 따뜻한 뷔페 장면에 꽃 장식이 있어 동네 식당 느낌이 나지만, 사람들이 화면 곳곳에 보여 얼굴이 크게 나오진 않아도 초상권 확인이 필요하고, 음식이 한국 음식인지는 불분명",
+      "added_at": "2026-11-19T19:13:07.149Z",
       "used": []
     },
     {
@@ -297,6 +429,51 @@
       "used": []
     },
     {
+      "id": "pixabay-vid-22728",
+      "kind": "video",
+      "source": "pixabay",
+      "source_id": 22728,
+      "page_url": "https://pixabay.com/videos/id-22728/",
+      "author": "Alanchevereau",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "duration": 30,
+      "w": 1920,
+      "h": 1080,
+      "tags": "café, coffee, drink, porcelain, cafe, smoke, caffeine, cup, ceramic",
+      "preview": "https://cdn.pixabay.com/video/2019/04/10/22728-329691509_large.jpg",
+      "query": "vlogger cafe",
+      "tracks": [
+        "creator"
+      ],
+      "score": 8,
+      "note": "곰돌이 머그컵과 커피콩, 프렌치프레스가 따뜻한 자연광에 선명하게 담겨 동네 카페 느낌이 좋고 글자 얹을 여백도 충분하며, 워터마크·로고·얼굴 노출 없음.",
+      "added_at": "2026-11-19T19:13:07.149Z",
+      "used": []
+    },
+    {
+      "id": "pixabay-vid-163382",
+      "kind": "video",
+      "source": "pixabay",
+      "source_id": 163382,
+      "page_url": "https://pixabay.com/videos/id-163382/",
+      "author": "livesmart",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "duration": 14,
+      "w": 2558,
+      "h": 1439,
+      "tags": "pot, bowl, spicy, hot, tteokbokki, cooking, republic of korea, korea, food, table, dining, lunch, dinner, korean food",
+      "preview": "https://cdn.pixabay.com/video/2023/05/17/163382-827845479_large.jpg",
+      "query": "korean food table",
+      "tracks": [
+        "consumer",
+        "merchant"
+      ],
+      "score": 7,
+      "note": "보글보글 끓는 떡볶이 전골 클로즈업이라 한국 동네 분식집 느낌이 살고 식감도 선명하지만, 화면이 음식으로 꽉 차 글자 얹을 여백이 거의 없고 영상 캡처라 약간 거칠다.",
+      "added_at": "2026-11-19T19:13:07.149Z",
+      "used": []
+    },
+    {
       "id": "pixabay-vid-32246",
       "kind": "video",
       "source": "pixabay",
@@ -331,9 +508,12 @@
     "audio:lofi chill": "2026-11-17T19:17:45.169Z",
     "food photography smartphone": "2026-11-18T18:58:38.852Z",
     "woman filming video phone": "2026-11-18T18:58:38.852Z",
-    "audio:cafe jazz": "2026-11-18T18:58:38.852Z"
+    "audio:cafe jazz": "2026-11-18T18:58:38.852Z",
+    "vlogger cafe": "2026-11-19T19:13:07.149Z",
+    "korean food table": "2026-11-19T19:13:07.149Z",
+    "audio:bright instrumental pop": "2026-11-19T19:13:07.149Z"
   },
-  "updated_at": "2026-11-18T18:58:38.852Z",
+  "updated_at": "2026-11-19T19:13:07.149Z",
   "rejected": [
     "pixabay-img-5753302",
     "pixabay-img-4807317",
@@ -382,6 +562,14 @@
     "pixabay-img-593134",
     "pixabay-img-1192032",
     "pixabay-img-5431597",
-    "pixabay-img-465563"
+    "pixabay-img-465563",
+    "pixabay-img-4697753",
+    "pixabay-img-3537801",
+    "pixabay-img-819362",
+    "pixabay-img-9641925",
+    "pixabay-img-2847957",
+    "pixabay-img-3803551",
+    "pixabay-vid-236256",
+    "pixabay-vid-27230"
   ]
 }
