@@ -8,7 +8,8 @@
 
 export const GUEST_CLS = {
   /** 🧷 2026-11-03 — 아래 고정 카카오 버튼(`dock`) 높이만큼 끝을 비워 마지막 줄이 버튼에 가리지 않게 한다. */
-  root: 'min-h-[100dvh] bg-warm pb-32',
+  /** 🖥️ 2026-11-18 — 세 탭은 PC 에서 액자를 벗는다(`pc-fullbleed`) → 1440 폭 왼쪽에 붙어 줄이 화면 끝까지 늘어났다. PC 는 720 가운데. */
+  root: 'min-h-[100dvh] bg-warm pb-32 lg:max-w-[720px] lg:mx-auto',
   title: 'px-4 pt-4 pb-2 text-[16px] font-bold tracking-tight text-gray-900 dark:text-white',
   /** 머리 — 큰 문장 두 줄 + 한 줄 설명. 세 탭이 같은 모양이다(2026-11-03 대표 "제안대로"). */
   hero: 'px-4 pt-2',
@@ -37,9 +38,13 @@ export const GUEST_CLS = {
   stepText: 'block mt-1 text-[13px] font-medium leading-snug text-gray-900 dark:text-white',
   /**
    * 🧷 아래 고정 카카오 버튼 — 하단 탭(56px + 선 1px) 바로 위. 스크롤해도 늘 보인다.
-   *   `app-frame-bar` 로 PC 액자 폭에 맞추고, 키보드가 열리면 하단 탭과 같이 숨는다.
+   *   키보드가 열리면 하단 탭과 같이 숨는다.
+   *   🩸 2026-11-18 — 여기 `app-frame-bar` 가 붙어 있었는데, 세 탭(이용권·유어샵·마이)은 PC 에서 `pc-fullbleed` 라
+   *   `body.pc-fullbleed .app-frame-bar { display:none }`(하단 탭을 PC 에서 숨기는 규칙)에 같이 걸려 **PC 에서 로그인 버튼이
+   *   통째로 사라졌다**(실측 1440px: display none · "로그인 후 보여요" 만 있고 누를 곳이 없음). PC 엔 하단 탭이 없으니
+   *   본문 열(720)에 맞춰 화면 맨 아래에 붙인다.
    */
-  dock: 'fixed left-0 right-0 bottom-[calc(57px+env(safe-area-inset-bottom,0px))] z-30 app-frame-bar hide-on-keyboard bg-warm px-4 pt-3 pb-3',
+  dock: 'fixed left-0 right-0 bottom-[calc(57px+env(safe-area-inset-bottom,0px))] z-30 hide-on-keyboard bg-warm px-4 pt-3 pb-3 lg:bottom-0 lg:left-1/2 lg:right-auto lg:w-full lg:max-w-[720px] lg:-translate-x-1/2 lg:pb-6',
   dockNote: 'mt-2 text-center text-[12px] text-gray-500 dark:text-gray-400',
   kakao: 'w-full h-[52px] rounded-xl bg-[#FEE500] text-[#3C1E1E] text-[15px] font-bold flex items-center justify-center gap-2 active:opacity-80',
   kakaoIcon: 'w-[18px] h-[18px]',
