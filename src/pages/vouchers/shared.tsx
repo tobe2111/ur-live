@@ -305,6 +305,9 @@ export const BrandChip = memo(function BrandChip({
   /** PC 레일(56px)과 모바일 스트립(60px)의 라벨 폭 차이만 외부에서 지정. */
   labelWidthClass?: string
 }) {
+  // 🖼️ 2026-11-18 (로그아웃 화면 재검토): 로고가 원본까지 못 오면 `cfImageOnError` 가 그림을 숨겨 **빈 흰 칸**만 남았다
+  //   (브랜드 줄이 통째로 빈 동그라미 — 무엇을 고르는지 이름 줄로만 알 수 있었다). 그땐 로고 없는 브랜드처럼 이름 두 글자를 보인다.
+  const [iconFailed, setIconFailed] = useState(false)
   return (
     <button
       type="button"
@@ -318,7 +321,7 @@ export const BrandChip = memo(function BrandChip({
           selected ? 'ring-2 ring-brand scale-105' : ''
         }`}
       >
-        {brand.brand_icon_url ? (
+        {brand.brand_icon_url && !iconFailed ? (
           <img
             src={cfImage(brand.brand_icon_url, { width: 96, format: 'auto' }) || brand.brand_icon_url}
             alt={brand.brand_name}
@@ -327,7 +330,7 @@ export const BrandChip = memo(function BrandChip({
             width={32}
             height={32}
             className="w-8 h-8 object-contain"
-            onError={(e) => cfImageOnError(e.currentTarget, brand.brand_icon_url)}
+            onError={(e) => { cfImageOnError(e.currentTarget, brand.brand_icon_url); if (e.currentTarget.dataset.cfFallback === '2') setIconFailed(true) }}
           />
         ) : (
           <span className="text-[13px] font-medium text-gray-500 dark:text-gray-400">{brand.brand_name.slice(0, 2)}</span>

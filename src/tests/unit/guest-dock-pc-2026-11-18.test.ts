@@ -13,6 +13,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { GUEST_CLS } from '@/shared/guest-page'
 import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
+import { mapCellSizeDeg, MAP_CELL_PX } from '@/shared/map-marker'
+import en from '../../../public/locales/en/translation.json'
 
 describe('로그인 전 탭의 카카오 버튼은 PC 에서도 보인다', () => {
   it('세 탭이 pc-fullbleed 인 한 dock 에 app-frame-bar 를 붙이지 않는다', () => {
@@ -37,5 +39,48 @@ describe('/about 모바일 고정 CTA 는 히어로 버튼이 보이는 동안 �
   it('히어로 버튼 줄을 관찰하고, 보이는 동안 고정 바를 내린다', () => {
     expect(s).toContain('ref={heroCtaRef}')
     expect(s).toMatch(/style=\{heroCtaVisible \? \{ transform: 'translateY\(100%\)'/)
+  })
+})
+
+// ── 2026-11-18 2차 (대표 "모두 고치고") ──────────────────────────────────────────
+
+describe('지도 클러스터 칸은 핀보다 좁지 않다', () => {
+  it('레벨 4~10 에서 칸이 화면 기준 핀 크기(88×40px)다 — 종전 도 고정값은 22~35px 였다', () => {
+    for (let L = 4; L <= 10; L++) {
+      const c = mapCellSizeDeg(L)!
+      const pxPerDegLng = 88400 / 2 ** (L - 3), pxPerDegLat = 111000 / 2 ** (L - 3) // 카카오 SDK 실측(위도 37.5)
+      expect(Math.round(c.lng * pxPerDegLng)).toBe(MAP_CELL_PX.w)
+      expect(Math.round(c.lat * pxPerDegLat)).toBe(MAP_CELL_PX.h)
+    }
+    expect(MAP_CELL_PX.w, '가격 핀 실측 폭 94px 의 대부분은 덮어야 한다').toBeGreaterThanOrEqual(80)
+    expect(mapCellSizeDeg(3), '최대 줌은 격자 없음(개별 핀)').toBeNull()
+  })
+  it('useKakaoMap 이 도(°) 고정 격자로 돌아가지 않는다', () => {
+    const s = readFileSync('src/pages/restaurant-map/useKakaoMap.ts', 'utf-8')
+    expect(s).not.toMatch(/level <= 5 \? 0\.001/)
+    expect(s).not.toMatch(/\/ gridSize\)/)
+    expect(s).toContain('mapCellSizeDeg(level)')
+  })
+})
+
+describe('영어 하단 탭에 같은 이름이 두 개 뜨지 않는다', () => {
+  it('교환권 탭과 이용권 탭의 영어 라벨이 다르다', () => {
+    const nav = (en as { nav: Record<string, string> }).nav
+    expect(nav.vouchers).not.toBe(nav.myGbVouchers)
+  })
+})
+
+describe('추첨 상품 하단 바는 가격이 "당첨되면" 값임을 적는다', () => {
+  it('이용권·숙소 하단 바', () => {
+    expect(readFileSync('src/pages/group-buy/DealBottomBar.tsx', 'utf-8')).toMatch(/caption=\{raffle \? '당첨되면 이 가격에'/)
+    expect(readFileSync('src/pages/stay-detail/StayStickyBar.tsx', 'utf-8')).toMatch(/raffle \? '당첨되면 이 가격에'/)
+  })
+})
+
+describe('교환권 브랜드 칩 — 로고가 끝내 실패하면 이름 두 글자', () => {
+  it('iconFailed 로 이름 분기에 떨어진다', () => {
+    const s = readFileSync('src/pages/vouchers/shared.tsx', 'utf-8')
+    expect(s).toContain('brand.brand_icon_url && !iconFailed ?')
+    expect(s).toMatch(/dataset\.cfFallback === '2'\) setIconFailed\(true\)/)
   })
 })

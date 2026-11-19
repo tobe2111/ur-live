@@ -344,7 +344,7 @@
   "cart": {
     "title": "购物车",
     "empty": "购物车为空",
-    "continueShop": "Continue Shopping",
+    "continueShop": "继续购物",
     "goToCheckout": "Proceed to Checkout",
     "itemAdded": "Item added to cart",
     "itemRemoved": "Item removed from cart",

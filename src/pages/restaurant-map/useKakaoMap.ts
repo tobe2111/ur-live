@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react
 import { distanceKm } from './utils'
 import { attachKakaoTouchShim } from '@/lib/kakao-touch-shim'
 import { buildAggContent, buildClusterContent, buildPinContent, buildPlaceContent, buildMeContent, applyPinTierStyle, spreadFromCluster } from './map-overlays'
-import { mapMarkerTier, shouldShowMarkerLabel, setMapHighlightPct, mapHighlightPct } from '@/shared/map-marker'
+import { mapMarkerTier, shouldShowMarkerLabel, setMapHighlightPct, mapHighlightPct, mapCellSizeDeg, mapCellKey } from '@/shared/map-marker'
 import { priceDisplay } from '@/shared/price-display'
 import { readRecentlyViewedIds } from '@/components/group-buy/RecentlyViewedStrip'
 import type { Restaurant, KakaoPlace } from './types'
@@ -277,7 +277,9 @@ export function useKakaoMap({
 
     // 🗺️ 2026-07-25 (M3): 클러스터 gridSize 는 현재 줌 레벨에서 직접 계산(state 경유 X — 핀치 중 리렌더 0).
     const level: number = mapInstance.current.getLevel?.() ?? 7
-    const gridSize = level <= 3 ? 0 : level <= 5 ? 0.001 : level <= 7 ? 0.005 : 0.02
+    // 🗺️ 2026-11-18: 칸은 화면 픽셀(핀 크기) 기준 — 종전 도(°) 고정값은 핀보다 4배 좁아 핀끼리 덮었다(SSOT map-marker `mapCellSizeDeg`).
+    const cell = mapCellSizeDeg(level)
+    const gridSize = cell ? level : 0 // 0 = 격자 없음. 값은 줌 구간 표식으로만 쓴다(클러스터 key).
 
     // 🌍 레이어 3 — 줌아웃 서버 집계 모드: 페이지가 집계를 내려주면 개별 핀/로컬 클러스터 대신 집계 버블만.
     //   전국 뷰에서도 오버레이 수가 격자 수(수십 개)로 고정 → 매장 수만 개여도 지도 가벼움.
@@ -327,9 +329,7 @@ export function useKakaoMap({
     const clusters = new Map<string, Restaurant[]>()
     if (!aggMode && gridSize > 0) {
       visible.forEach(r => {
-        const gx = Math.floor(r.restaurant_lng / gridSize)
-        const gy = Math.floor(r.restaurant_lat / gridSize)
-        const key = `${gx}_${gy}`
+        const key = mapCellKey(r.restaurant_lat, r.restaurant_lng, cell!)
         if (!clusters.has(key)) clusters.set(key, [])
         clusters.get(key)!.push(r)
       })
@@ -374,9 +374,7 @@ export function useKakaoMap({
     const occupiedCells = new Set<string>()
     if (!aggMode && gridSize > 0) {
       visible.forEach(r => {
-        const gx = Math.floor(r.restaurant_lng / gridSize)
-        const gy = Math.floor(r.restaurant_lat / gridSize)
-        const k = `${gx}_${gy}`
+        const k = mapCellKey(r.restaurant_lat, r.restaurant_lng, cell!)
         if (!clusteredKeys.has(k)) occupiedCells.add(k)
       })
     }
@@ -385,16 +383,14 @@ export function useKakaoMap({
 
     ;(aggMode ? [] : visible).forEach(r => {
       if (gridSize > 0) {
-        const gx = Math.floor(r.restaurant_lng / gridSize)
-        const gy = Math.floor(r.restaurant_lat / gridSize)
-        if (clusteredKeys.has(`${gx}_${gy}`)) return
+        if (clusteredKeys.has(mapCellKey(r.restaurant_lat, r.restaurant_lng, cell!))) return
       }
       const isFav = favorites.includes(r.id)
       const groupKey = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
       const groupSize = coordGroupSize.get(groupKey) || 1
       // 🗺️ 2026-09-09 (안 D4): 이름 라벨은 **옆 칸이 비었을 때만** — 규칙은 shared/map-marker SSOT.
       const cellKey = gridSize > 0
-        ? `${Math.floor(r.restaurant_lng / gridSize)}_${Math.floor(r.restaurant_lat / gridSize)}`
+        ? mapCellKey(r.restaurant_lat, r.restaurant_lng, cell!)
         : null
       const showLabel = shouldShowMarkerLabel(cellKey, occupiedCells)
       const isSeen = seenIds.has(r.id)
