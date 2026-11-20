@@ -958,5 +958,62 @@
     "slot_kst": "21:30",
     "link": "https://urdeal.kr/store/new?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261119",
     "text": "입점 등록이 번거로울 거라 생각하기 쉬운데, 4단계로 끝나요. 카카오맵에서 내 가게 찾고, 담당자 번호, 운영 주체 선택, 사업자등록증 사진까지 약 10분. 등록증은 사람이 직접 확인해요."
+  },
+  {
+    "platform": "instagram",
+    "id": "18128203409314343",
+    "media_type": "REELS",
+    "media": "reel",
+    "format": "1",
+    "media_set": "gen-2026-11-20-consumer",
+    "series": "deal-pick",
+    "generated": {
+      "source": "product",
+      "credit": "입점 매장",
+      "title": "14,500원 돈가스, 7,500원에",
+      "photo_url": "https://d2uja84sd90jmv.cloudfront.net/posts/_TtozWo9bUxKncT51tuQGw/ms.jpg?updated=-62167392000",
+      "reel": true
+    },
+    "hook": "headline",
+    "topic": "오늘의 딜 상품을 운영자 입장에서 솔직하게 소개(왜 골랐는지, 어떤 상황에 좋은지)",
+    "content_id": "ig",
+    "track": "consumer",
+    "promo": true,
+    "product_id": 2915,
+    "posted_at": "2026-11-20T14:06:43.646Z",
+    "date_kst": "2026-11-20",
+    "slot_kst": "21:30",
+    "bio_link": "https://urdeal.kr/pass/2915?utm_source=instagram&utm_medium=social&utm_campaign=todaydeal&utm_content=ig-20261120",
+    "text": "전주 덕진구 홍대돈까스의 버크셔 프리미엄 돈가스 1인 세트, 유어딜에서 7,500원에 올렸어요. 정가는 14,500원.\n\n방문 전에 결제해 두면 이용권이 폰으로 발급돼요. 프로필 링크에서 확인하세요.\n\n#전주맛집 #덕진구맛집 #돈가스"
+  },
+  {
+    "platform": "instagram_story",
+    "id": "18343438075275693",
+    "track": "consumer",
+    "series": "deal-pick",
+    "posted_at": "2026-11-20T14:06:43.646Z",
+    "date_kst": "2026-11-20"
+  },
+  {
+    "platform": "threads",
+    "id": "18251133223309720",
+    "reply_id": "18102019550646499",
+    "topic_tag": "동네맛집",
+    "hook": "headline",
+    "len": "1",
+    "tformat": "list",
+    "topic": "오늘의 딜 상품을 운영자 입장에서 솔직하게 소개(왜 골랐는지, 어떤 상황에 좋은지)",
+    "media": "image",
+    "content_id": "th",
+    "image": "https://raw.githubusercontent.com/tobe2111/ur-live/marketing-data/marketing-bot/data/cards/2026-11-20-consumer/slide-1.jpg",
+    "track": "consumer",
+    "series": "deal-pick",
+    "promo": true,
+    "product_id": 2915,
+    "posted_at": "2026-11-20T14:06:43.646Z",
+    "date_kst": "2026-11-20",
+    "slot_kst": "21:30",
+    "link": "https://urdeal.kr/pass/2915?utm_source=threads&utm_medium=social&utm_campaign=todaydeal&utm_content=th-20261120",
+    "text": "전주 덕진구 돈가스 14,500원 → 7,500원. 버크셔 프리미엄 돈가스 1인 세트예요. 주말 앞둔 금요일 저녁 메뉴로 괜찮아요."
   }
 ]
