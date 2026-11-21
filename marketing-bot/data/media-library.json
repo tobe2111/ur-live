@@ -237,6 +237,28 @@
       "used": []
     },
     {
+      "id": "pixabay-img-6918828",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 6918828,
+      "page_url": "https://pixabay.com/photos/south-korea-street-seoul-dusk-6918828/",
+      "author": "rmsep4",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 6000,
+      "h": 4000,
+      "tags": "south korea, street, seoul, dusk, sunset, city, landscape, nature, film photography, alley",
+      "preview": "https://pixabay.com/get/g346fda3275999707fe0f8e6436e69dba241c9f4f79f203de198b6c7a1f971de741217b2d6ecd5d2654085cf2c45bb70f4fe7cb70bcdad91a7d246fb83f79380c_640.jpg",
+      "query": "seoul street night",
+      "tracks": [
+        "consumer",
+        "creator"
+      ],
+      "score": 7,
+      "note": "밤 골목 분위기와 한국 동네 느낌이 실제처럼 자연스럽지만, 왼쪽 파란 방향 표지판과 간판 글자가 보이고 어두운 곳이 많아 글자 얹을 여백은 제한적이다.",
+      "added_at": "2026-11-21T17:44:46.800Z",
+      "used": []
+    },
+    {
       "id": "pixabay-img-3955616",
       "kind": "image",
       "source": "pixabay",
@@ -499,7 +521,7 @@
   "topics_last": {
     "restaurant owner kitchen": "2026-11-16T11:56:20.646Z",
     "small restaurant counter": "2026-11-16T11:56:20.646Z",
-    "audio:upbeat acoustic": "2026-11-16T11:56:20.646Z",
+    "audio:upbeat acoustic": "2026-11-21T17:44:46.800Z",
     "cafe owner barista": "2026-11-16T20:39:11.175Z",
     "chef plating food": "2026-11-16T20:39:11.175Z",
     "audio:happy ukulele": "2026-11-16T20:39:11.175Z",
@@ -514,9 +536,11 @@
     "audio:bright instrumental pop": "2026-11-19T19:13:07.149Z",
     "korean street food night": "2026-11-20T18:44:26.705Z",
     "friends eating restaurant": "2026-11-20T18:44:26.705Z",
-    "audio:warm piano": "2026-11-20T18:44:26.705Z"
+    "audio:warm piano": "2026-11-20T18:44:26.705Z",
+    "seoul street night": "2026-11-21T17:44:46.800Z",
+    "qr code payment phone": "2026-11-21T17:44:46.800Z"
   },
-  "updated_at": "2026-11-20T18:44:26.705Z",
+  "updated_at": "2026-11-21T17:44:46.800Z",
   "rejected": [
     "pixabay-img-5753302",
     "pixabay-img-4807317",
@@ -589,6 +613,19 @@
     "pixabay-img-3029539",
     "pixabay-img-7260331",
     "pixabay-img-2368360",
-    "pixabay-img-2368349"
+    "pixabay-img-2368349",
+    "pixabay-img-7358078",
+    "pixabay-img-2162772",
+    "pixabay-img-5040704",
+    "pixabay-img-4165342",
+    "pixabay-img-7696906",
+    "pixabay-vid-23258",
+    "pixabay-img-5417252",
+    "pixabay-img-5417256",
+    "pixabay-img-5417262",
+    "pixabay-img-5417261",
+    "pixabay-img-5417253",
+    "pixabay-img-5417257",
+    "pixabay-vid-200636"
   ]
 }
