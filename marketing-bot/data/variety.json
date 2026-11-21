@@ -500,5 +500,20 @@
     "media": "image",
     "topic_tag": "동네맛집",
     "tformat": "list"
+  },
+  {
+    "id": "18120491815816309",
+    "platform": "threads",
+    "track": "merchant",
+    "topic": "할인율·수량·유효기간은 사장님이 정한다: 유어딜은 최소 할인율을 요구하지 않음, 첫 방문 메뉴는 크게 마진 좋은 세트는 작게",
+    "hook": "udal",
+    "series": "myth-fact",
+    "date_kst": "2026-11-21",
+    "len": "0",
+    "slot": "21:30",
+    "media": "text",
+    "topic_tag": "자영업",
+    "tformat": "scene",
+    "cta": "merchant:guide"
   }
 ]
