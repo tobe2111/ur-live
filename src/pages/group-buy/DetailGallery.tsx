@@ -47,9 +47,25 @@ const PC_THUMBS = 2
 const BLUR_START = { filter: 'blur(10px)', transform: 'scale(1.04)', transition: 'filter .45s ease, transform .45s ease' } as const
 const sharpen = (e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.transform = 'none' }
 
+/**
+ * 🖐️ 2026-11-22 (대표 *"사진 넘기는거 초반에 넘기려해도 잘 안넘어가"*): 첫 ~2초 동안 손님이 만지는 것은 **서버가 그린 첫 화면**
+ *   (`#ur-first-screen`, 10-27 부터 넘길 수 있다)이다. 앱이 뜨면 그 화면을 통째로 갈아끼우는데, 우리 사진 줄은 **늘 첫 장**에서
+ *   시작해서 넘긴 사진이 1번으로 되돌아갔다(실측: 폰 4G·CPU 4배, 2.1초에 교체 — 그 전에 넘긴 것은 전부 사라짐).
+ *   ⇒ 갈아끼우기 직전(첫 렌더 — 아직 서버 화면이 DOM 에 있다)에 거기서 몇 번째 사진이었는지 읽어 그 장에서 시작한다.
+ *   서버 화면이 없으면(앱 안에서 이동) 읽을 것도 없다 → 0. 레이아웃은 이미 그려진 뒤라 읽기 비용이 거의 없다.
+ */
+function serverSwipedIndex(): number {
+  try {
+    const s = document.querySelector('#ur-first-screen [style*="scroll-snap-type"]') as HTMLElement | null
+    if (!s) return 0
+    const left = s.scrollLeft
+    return left > 0 ? Math.round(left / Math.max(1, s.clientWidth)) : 0
+  } catch { return 0 }
+}
+
 export default function DetailGallery({ images: rawImages, alt, badges, fallback, overlay }: Props) {
   const { t } = useTranslation()
-  const [active, setActive] = useState(0)
+  const [active, setActive] = useState(() => Math.min(serverSwipedIndex(), Math.max(0, rawImages.length - 1)))
   const [lightbox, setLightbox] = useState(false)
   // 🎬 2026-11-02 시안 5차 "사진 크게 보기": 열 때 커지며 나타나고, 닫을 때 작아지며 사라진다.
   //   폰은 대표 확정 ③B 팝업(DetailLightboxMobile)이 손가락 따라가기를 따로 맡는다 — 여기선 열고 닫힘만.
@@ -132,6 +148,11 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
   //   브라우저가 페이지 전체 배치를 그 자리에서 계산해 첫 화면에 긴 작업 하나가 생겼다(CPU×4 프로파일 66ms — 이 줄).
   //   처음엔 늘 첫 사진·맨 왼쪽이라 맞출 것이 없다. 사람이 사진을 고른 뒤(active 변경)·크게 보기에서 돌아올 때만 잰다.
   const syncedOnce = useRef(false)
+  // 🖐️ 2026-11-22: 서버 화면에서 넘겨 둔 장으로 **그리기 전에** 옮긴다(useEffect 면 첫 장이 한 번 보였다가 넘어간다).
+  useLayoutEffect(() => {
+    const el = galRef.current
+    if (el && active > 0) { syncedOnce.current = true; el.scrollLeft = active * el.clientWidth }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- 처음 한 번만(그 뒤는 아래 효과가 맡는다)
   useEffect(() => {
     const el = galRef.current
     if (!el || lightbox) return
