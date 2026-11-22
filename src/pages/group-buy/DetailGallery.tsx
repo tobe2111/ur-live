@@ -54,12 +54,30 @@ const sharpen = (e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget
  *   ⇒ 갈아끼우기 직전(첫 렌더 — 아직 서버 화면이 DOM 에 있다)에 거기서 몇 번째 사진이었는지 읽어 그 장에서 시작한다.
  *   서버 화면이 없으면(앱 안에서 이동) 읽을 것도 없다 → 0. 레이아웃은 이미 그려진 뒤라 읽기 비용이 거의 없다.
  */
+// 🖐️ 2026-11-22 ② 교체 순간 사진이 **아직 미끄러지는 중**이면(라이브: 1.5초에 넘기면 2.1초 교체 때 반쯤 와 있었다) 반올림이
+//   첫 장으로 떨어졌다. 서버 화면 사진 줄의 마지막 움직임 방향을 적어 두고, 중간에 걸렸으면 **가던 쪽** 장을 고른다.
+let ssrSwipeDir = 0
+if (typeof document !== 'undefined') {
+  const last = new WeakMap<EventTarget, number>()
+  document.addEventListener('scroll', (e) => {
+    const t = e.target as HTMLElement | null
+    if (!t || typeof t.closest !== 'function' || !t.closest('#ur-first-screen')) return
+    const prev = last.get(t) ?? 0
+    if (t.scrollLeft !== prev) ssrSwipeDir = t.scrollLeft > prev ? 1 : -1
+    last.set(t, t.scrollLeft)
+  }, { capture: true, passive: true })
+}
 function serverSwipedIndex(): number {
   try {
     const s = document.querySelector('#ur-first-screen [style*="scroll-snap-type"]') as HTMLElement | null
     if (!s) return 0
     const left = s.scrollLeft
-    return left > 0 ? Math.round(left / Math.max(1, s.clientWidth)) : 0
+    if (!(left > 0)) return 0
+    const pos = left / Math.max(1, s.clientWidth)
+    const frac = pos - Math.floor(pos)
+    if (frac < 0.1 || frac > 0.9) return Math.round(pos)
+    // 미끄러지는 중 — 방향을 알면 가던 쪽, 모르면 앞으로(첫 화면은 늘 첫 장에서 시작하니 처음 2초의 넘김은 거의 다 앞으로다).
+    return ssrSwipeDir < 0 ? Math.floor(pos) : Math.ceil(pos)
   } catch { return 0 }
 }
 

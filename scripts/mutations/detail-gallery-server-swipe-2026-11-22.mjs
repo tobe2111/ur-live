@@ -10,4 +10,7 @@ export default [
   { name: 'srvswipe: 마지막 장 상한 없음', file: F,
     find: 'Math.min(serverSwipedIndex(), Math.max(0, rawImages.length - 1))', replace: 'serverSwipedIndex()', test: T,
     why: '없는 장으로 밀려 빈 칸이 보인다.' },
+  { name: 'srvswipe: 미끄러지는 중이면 반올림(첫 장으로 떨어짐)', file: F,
+    find: '    return ssrSwipeDir < 0 ? Math.floor(pos) : Math.ceil(pos)', replace: '    return Math.round(pos)', test: T,
+    why: '교체 순간 반쯤 넘어가 있던 사진이 첫 장으로 돌아간다(라이브 1.5초 넘김).' },
 ]

@@ -39,6 +39,11 @@ describe('서버 첫 화면에서 넘긴 사진을 이어받는다', () => {
     const b = render(<DetailGallery images={IMGS} alt="가게" />)
     expect(scroller(b.container).scrollLeft).toBe(0)
   })
+  it('교체 순간 아직 미끄러지는 중(1/3 쯤 왔음)이면 가던 쪽(다음 장)을 고른다 — 반올림이면 첫 장으로 떨어졌다', () => {
+    serverScreen(130)
+    const { container } = render(<DetailGallery images={IMGS} alt="가게" />)
+    expect(scroller(container).scrollLeft).toBe(390)
+  })
   it('사진 수보다 큰 번호는 마지막 장으로 자른다', () => {
     serverScreen(390 * 9)
     const { container } = render(<DetailGallery images={IMGS} alt="가게" />)
