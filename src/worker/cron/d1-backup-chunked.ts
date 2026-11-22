@@ -92,7 +92,13 @@ function lit(v: unknown): string {
 
 /** 테이블별 누적 산출량 — `[파트 수, 행 수]`. manifest 가 잘림을 판별하는 근거다. */
 type Counts = Record<string, [number, number]>
-interface Cursor { date: string; ti: number; rowid: number; part: number; counts?: Counts }
+/**
+ * 🩸 2026-11-22: 커서는 표를 **순번(`ti`)이 아니라 이름**으로 기억한다(`table` · `seen`). 회차마다 표 목록을 이름순으로
+ *   다시 읽는데, 백업 도중에 이름이 앞쪽인 새 표(`ad_influencer_stats_counter`, 11-18)가 생기자 순번이 한 칸 밀려
+ *   `store_prospects` 를 **처음부터 다시** 뜨고 조각 수·행 수는 두 번 더해졌다 — manifest 가 159조각·762,907행이라 했지만
+ *   실제는 84조각·403,407행이었고, 복구 연습이 75조각 "없음" 으로 실패했다(run 44663503923). `ti` 는 보고용으로만 남는다.
+ */
+interface Cursor { date: string; ti: number; rowid: number; part: number; counts?: Counts; table?: string; seen?: string[] }
 
 async function readCursor(DB: D1Database, key: string): Promise<Cursor | null> {
   const r = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key)
@@ -160,6 +166,13 @@ export async function backupChunked(
   if (!cur) cur = { date: new Date().toISOString().slice(0, 10), ti: 0, rowid: 0, part: 0, counts: {} }
   if (!cur.counts) cur.counts = {}
   const counts = cur.counts
+  // 옛 커서(순번만 있음)는 한 번만 이름으로 옮긴다 — 그 순번까지는 끝난 것으로 본다.
+  if (!cur.seen) { cur.seen = tables.slice(0, cur.ti); if (cur.table === undefined && (cur.rowid > 0 || cur.part > 0)) cur.table = tables[cur.ti] }
+  const seen = new Set(cur.seen)
+  // 진행 중이던 표가 그 사이 지워졌으면 그 표는 끝난 것으로 치고 다음 표로 간다.
+  if (cur.table && !tables.includes(cur.table)) { seen.add(cur.table); cur.seen = [...seen]; cur.table = undefined; cur.rowid = 0; cur.part = 0 }
+  /** 다음에 뜰 표 — 진행 중인 표가 있으면 그것, 없으면 아직 안 뜬 표 중 이름순 첫째(도중에 생긴 표도 빠지지 않는다). */
+  const nextTable = (): string | undefined => cur!.table ?? tables.find((n) => !seen.has(n))
 
   let partsWritten = 0
   let bytes = 0
@@ -167,13 +180,14 @@ export async function backupChunked(
   const pause = async (reason: ChunkedResult['reason'], error?: string): Promise<ChunkedResult> => {
     await writeCursor(stateDb, stateKey, cur as Cursor)
     if (error) logError(`[D1 Backup/chunked] ${label} 중단: ${error}`)
-    return { label, date: (cur as Cursor).date, done: false, tables: tables.length, tableIndex: (cur as Cursor).ti, partsWritten, bytes, reads, error, reason }
+    return { label, date: (cur as Cursor).date, done: false, tables: tables.length, tableIndex: seen.size, partsWritten, bytes, reads, error, reason }
   }
 
-  while (cur.ti < tables.length) {
+  for (let t = nextTable(); t !== undefined; t = nextTable()) {
     if (Date.now() - t0 > RUN_MS) return pause('budget')
     if (reads >= maxReads) return pause('reads')
-    const t = tables[cur.ti]
+    cur.table = t
+    const finishTable = () => { seen.add(t as string); cur!.seen = [...seen]; cur!.ti = seen.size; cur!.table = undefined; cur!.rowid = 0; cur!.part = 0 }
     reads += 1
     let cols: string[]
     try {
@@ -182,7 +196,7 @@ export async function backupChunked(
     } catch (e) {
       return pause('error', `pragma_table_info(${t}): ${(e as Error)?.message || e}`)
     }
-    if (!cols.length) { cur.ti++; cur.rowid = 0; cur.part = 0; continue }
+    if (!cols.length) { finishTable(); continue }
     const colList = cols.map((c) => `"${c}"`).join(',')
     /**
      * 🩸 2026-08-25: **D1 은 결과셋 컬럼 수에 한도(100)가 있다.** `products` 는 그 한도까지
@@ -252,13 +266,14 @@ export async function backupChunked(
         return pause('error', `R2 put ${key}: ${(e as Error)?.message || e}`)
       }
       partsWritten++; bytes += size
-      const c0 = counts[t] || [0, 0]
-      counts[t] = [c0[0] + 1, c0[1] + rowsInPart]
+      // 조각 수는 **번호로** 적고(더하지 않는다), 표를 처음부터 뜨는 중이면 행 수도 0 부터 — 같은 표를 다시 거쳐도 두 번 세지 않는다.
+      const prevRows = cur.part === 0 ? 0 : (counts[t]?.[1] ?? 0)
+      counts[t] = [cur.part + 1, prevRows + rowsInPart]
       cur.part++
     }
     cur.rowid = last
     if (readFail) return pause('error', readFail)
-    if (drained) { cur.ti++; cur.rowid = 0; cur.part = 0 }
+    if (drained) finishTable()
   }
 
   // 전 테이블 완료 — 매니페스트를 쓰고 커서를 비운다(다음 스냅샷은 새 날짜).
