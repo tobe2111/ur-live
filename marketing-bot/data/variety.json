@@ -515,5 +515,21 @@
     "topic_tag": "자영업",
     "tformat": "scene",
     "cta": "merchant:guide"
+  },
+  {
+    "id": "18035174000681821",
+    "platform": "threads",
+    "track": "merchant",
+    "topic": "리뷰 답글: 칭찬 리뷰와 아쉬운 리뷰에 각각 어떻게 답하나",
+    "hook": "headline",
+    "series": "encore",
+    "date_kst": "2026-11-22",
+    "encore_of": "17896959072417783",
+    "len": "2",
+    "slot": "21:30",
+    "media": "text",
+    "topic_tag": "소상공인",
+    "tformat": "operator",
+    "cta": "merchant:signup"
   }
 ]

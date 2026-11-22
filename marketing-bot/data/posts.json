@@ -1036,5 +1036,27 @@
     "slot_kst": "21:30",
     "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261121",
     "text": "첫 방문 메뉴 할인은 크게, 마진 좋은 세트는 작게. 그 비율은 사장님이 정해요."
+  },
+  {
+    "platform": "threads",
+    "id": "18035174000681821",
+    "reply_id": "18113549480351552",
+    "topic_tag": "소상공인",
+    "hook": "headline",
+    "len": "2",
+    "tformat": "operator",
+    "cta": "merchant:signup",
+    "topic": "리뷰 답글: 칭찬 리뷰와 아쉬운 리뷰에 각각 어떻게 답하나",
+    "media": "text",
+    "encore_of": "17896959072417783",
+    "content_id": "th",
+    "track": "merchant",
+    "series": "encore",
+    "promo": false,
+    "posted_at": "2026-11-22T13:25:49.549Z",
+    "date_kst": "2026-11-22",
+    "slot_kst": "21:30",
+    "link": "https://urdeal.kr/store/new?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261122",
+    "text": "칭찬 리뷰엔 \"맛있게 드셨다니 다행이에요, 또 오세요\" 정도로 짧게. 아쉬운 리뷰엔 사과 한 줄, 바로잡을 점 한 줄, 다시 와 주시길 한 줄. 길게 변명하면 그 글을 읽는 다음 손님이 더 멀어지는 것 같아서, 저희는 이 길이로 정했어요."
   }
 ]
