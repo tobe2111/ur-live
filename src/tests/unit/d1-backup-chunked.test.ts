@@ -237,6 +237,41 @@ describe('분할 백업', () => {
   })
 })
 
+describe('🩸 2026-11-22 백업 도중 새 표가 생겨도 표를 다시 뜨거나 두 번 세지 않는다', () => {
+  /**
+   * 라이브(유어애즈 DB, 11-17~18 백업): `store_prospects` 를 뜨는 도중 이름이 앞쪽인 새 표(`ad_influencer_stats_counter`)가 생겼다.
+   * 커서가 순번(ti)만 기억해 한 칸 밀렸고, `store_prospects` 를 처음부터 다시 떠 조각 0~83 을 덮어쓰며 조각·행 수를 **더했다**
+   * → manifest 159조각·762,907행 vs 실제 84조각·403,407행. 복구 연습이 "조각 75개 없음" 으로 실패했다(run 44663503923).
+   */
+  it('도중에 앞쪽 이름의 표가 생겨도: 진행 중이던 표는 이어서, 새 표도 뜨고, manifest 수가 실제와 같다', async () => {
+    const bucket = fakeBucket()
+    const store = new Map<string, string>()
+    const rows: Record<string, number> = { b_small: 3, store_prospects: 20_000 }
+    const db = fakeDb(rows)
+    const env = { BACKUP_BUCKET: bucket } as never
+    const r1 = await backupChunked(env, { db, label: 'ads', stateDb: fakeStateDb(store), maxReads: 12 })
+    expect(r1.done, '첫 회차에 끝나면 이 시험이 아무것도 안 본다 — 예산을 줄일 것').toBe(false)
+    rows.ad_counter = 4 // 이름순으로 store_prospects 앞(그리고 b_small 앞)에 끼는 새 표
+    let r = r1
+    for (let i = 0; i < 50 && !r.done; i++) r = await backupChunked(env, { db, label: 'ads', stateDb: fakeStateDb(store), maxReads: 12 })
+    expect(r.done).toBe(true)
+    const man = JSON.parse(bucket.puts.find((p) => p.key.endsWith('manifest.json'))!.body) as { counts: Record<string, [number, number]>; total_rows: number }
+    const parts = (t: string) => new Set(bucket.puts.filter((p) => p.key.includes(`/${t}.`)).map((p) => p.key)).size
+    expect(man.counts.store_prospects, '같은 표를 다시 떠 두 번 셌다').toEqual([parts('store_prospects'), 20_000])
+    expect(man.counts.ad_counter, '도중에 생긴 표를 빠뜨렸다').toEqual([1, 4])
+    expect(man.counts.b_small).toEqual([1, 3])
+    expect(man.total_rows).toBe(20_007)
+  })
+
+  it('옛 커서(순번만 있는 것)도 이어서 한다', async () => {
+    const bucket = fakeBucket()
+    const store = new Map<string, string>([['backup_chunk:ads', JSON.stringify({ date: '2026-02-02', ti: 1, rowid: 0, part: 0, counts: { orders: [1, 5] } })]])
+    const r = await backupChunked({ BACKUP_BUCKET: bucket } as never, { db: fakeDb({ orders: 5, users: 4 }), label: 'ads', stateDb: fakeStateDb(store) })
+    expect(r.done).toBe(true)
+    expect(bucket.puts.some((p) => p.key.includes('/orders.')), 'orders 를 다시 떴다').toBe(false)
+  })
+})
+
 describe('라벨 회전 — 메인 DB 가 자기 차례를 받는가', () => {
   /**
    * 🩸 2026-08-24 실측: 분할 백업 도입 뒤 **메인 DB 는 한 번도 백업된 적이 없었다.**
