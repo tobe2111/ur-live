@@ -519,12 +519,12 @@
     }
   ],
   "topics_last": {
-    "restaurant owner kitchen": "2026-11-16T11:56:20.646Z",
-    "small restaurant counter": "2026-11-16T11:56:20.646Z",
+    "restaurant owner kitchen": "2026-11-22T17:59:19.130Z",
+    "small restaurant counter": "2026-11-22T17:59:19.130Z",
     "audio:upbeat acoustic": "2026-11-21T17:44:46.800Z",
     "cafe owner barista": "2026-11-16T20:39:11.175Z",
     "chef plating food": "2026-11-16T20:39:11.175Z",
-    "audio:happy ukulele": "2026-11-16T20:39:11.175Z",
+    "audio:happy ukulele": "2026-11-22T17:59:19.130Z",
     "shop owner smartphone": "2026-11-17T19:17:45.169Z",
     "hair salon interior": "2026-11-17T19:17:45.169Z",
     "audio:lofi chill": "2026-11-17T19:17:45.169Z",
@@ -540,7 +540,7 @@
     "seoul street night": "2026-11-21T17:44:46.800Z",
     "qr code payment phone": "2026-11-21T17:44:46.800Z"
   },
-  "updated_at": "2026-11-21T17:44:46.800Z",
+  "updated_at": "2026-11-22T17:59:19.130Z",
   "rejected": [
     "pixabay-img-5753302",
     "pixabay-img-4807317",
@@ -626,6 +626,10 @@
     "pixabay-img-5417261",
     "pixabay-img-5417253",
     "pixabay-img-5417257",
-    "pixabay-vid-200636"
+    "pixabay-vid-200636",
+    "pixabay-img-1850276",
+    "pixabay-img-10186541",
+    "pixabay-vid-16166",
+    "pixabay-vid-124746"
   ]
 }
