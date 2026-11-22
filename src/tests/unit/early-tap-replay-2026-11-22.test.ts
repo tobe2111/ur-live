@@ -67,7 +67,6 @@ describe('② 실행 — 교체 뒤', () => {
     const clicked = button(); tap()
     expect(clicked).not.toHaveBeenCalled()
     root.removeChild(node) // 진짜 교체
-    await new Promise((r) => setTimeout(r, 0))
-    expect(clicked).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(clicked).toHaveBeenCalledTimes(1))
   })
 })
