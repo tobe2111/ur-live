@@ -46,6 +46,47 @@ export function captureBootFirstScreen(): void {
   if (!el) return
   bootNode = el
   bootPath = window.location.pathname
+  watchForSwapThenReplayTap(el)
+}
+
+/** 누른 뒤 이 시간이 지나면 대신 눌러 주지 않는다 — 한참 전에 누른 것이 뒤늦게 실행되면 더 놀란다. */
+export const EARLY_TAP_MAX_AGE_MS = 6000
+interface EarlyTap { x: number; y: number; t: number; sy: number }
+
+/**
+ * 👆 2026-11-22 앱이 뜨기 전에 누른 것을 대신 눌러 준다 (대표 "유료 제외 모두 진행").
+ *   자리 기록은 워커 부팅 스크립트(`css-first-boot.ts` — `window.__urTap`)가 한다. 여기는 **실행** 쪽.
+ * 조건을 좁게 잡는다 — 틀린 것을 누르느니 안 누르는 편이 낫다:
+ *   최근(6초 안)에 눌렀고 · 그 뒤로 화면을 안 내렸고(±4px) · 같은 자리에 **버튼**(button · role=button)이 있을 때만.
+ * 한 번만 한다. 링크는 기록 단계에서 이미 빠져 있다.
+ */
+export function replayEarlyTap(now: number = Date.now()): boolean {
+  try {
+    const w = window as unknown as { __urTap?: EarlyTap | null }
+    const tap = w.__urTap
+    w.__urTap = null
+    if (!tap || now - tap.t > EARLY_TAP_MAX_AGE_MS || Math.abs(window.scrollY - tap.sy) > 4) return false
+    const btn = (document.elementFromPoint(tap.x, tap.y) as HTMLElement | null)?.closest?.('button,[role="button"]') as HTMLElement | null
+    if (!btn || btn.closest(`#${BOOT_FIRST_SCREEN_ID}`)) return false
+    btn.click()
+    return true
+  } catch { return false }
+}
+
+/** 서버 첫 화면 노드가 문서에서 **완전히** 빠지는 순간(=앱 화면으로 교체)을 기다렸다가, 그린 뒤(두 프레임) 대신 누른다. */
+function watchForSwapThenReplayTap(node: HTMLElement): void {
+  try {
+    const root = node.parentNode
+    if (!root || typeof MutationObserver === 'undefined') return
+    const mo = new MutationObserver(() => {
+      // 폴백이 같은 노드를 도로 붙이는 동안엔 연결돼 있다 — 정말 빠졌을 때만.
+      if (node.isConnected) return
+      mo.disconnect()
+      requestAnimationFrame(() => requestAnimationFrame(() => { replayEarlyTap() }))
+    })
+    mo.observe(root, { childList: true, subtree: true })
+    setTimeout(() => mo.disconnect(), 30000)
+  } catch { /* 관측 실패는 부팅과 무관 */ }
 }
 
 /** 지금 그리려는 경로가 부팅 경로와 같을 때만 그 노드를 돌려준다. 아니면 `null`(종전 로더). */

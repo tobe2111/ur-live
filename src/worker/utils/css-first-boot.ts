@@ -171,6 +171,10 @@ export function loaderEarlyRevealScript(nonce: string): string {
   return `<script nonce="${nonce}">${js}</script>`
 }
 
+// 👆 2026-11-22 (대표 "유료 제외 모두 진행" — 앱이 뜨기 전 누른 것 기억하기): 앱 코드가 오기 전(느린 폰 ≈2초)에는 서버가 그린
+//   첫 화면의 버튼(사진 크게 보기·리뷰 수)을 눌러도 아무 일도 없었다. 이 스크립트가 유일하게 그 전에 도는 코드라 여기서
+//   **마지막으로 누른 자리**만 적어 둔다(`window.__urTap`) — 링크(<a>)는 브라우저가 스스로 이동하니 뺀다. 앱이 첫 화면을
+//   갈아끼운 뒤 `lib/boot-first-screen.ts` 가 같은 자리의 버튼을 대신 눌러 준다. 실패해도 부팅과 무관(try).
 export function cssFirstBootScript(nonce: string, critical = false): string {
   // ⚠️ 구형 브라우저도 돌 수 있게 ES5 로만 쓴다(이게 실패하면 앱이 안 뜬다).
   // 🎨 2026-10-14 `critical` — 첫 화면 CSS 를 넣었으면 앱 CSS 링크는 `media=print`(렌더 안 막음)로 와 있다.
@@ -181,6 +185,7 @@ var ls=d.querySelectorAll('link[rel="${DEFERRED_PRELOAD_REL}"]');for(var i=0;i<l
 function entry(){var es=d.querySelectorAll('script[type="${DEFERRED_ENTRY_TYPE}"]');for(var j=0;j<es.length;j++){var s=d.createElement('script');s.type='module';s.crossOrigin='';s.src=es[j].getAttribute('src');d.head.appendChild(s)}}
 if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',entry,{once:true});else entry()}
 function hit(e){var t=e.target;if(t&&t.tagName==='LINK'&&t.rel==='stylesheet'&&${APP_CSS_TEST}.test(t.href||''))run()}
+d.addEventListener('click',function(e){try{var t=e.target;if(t&&t.closest&&t.closest('#ur-first-screen')&&!t.closest('a'))window.__urTap={x:e.clientX,y:e.clientY,t:Date.now(),sy:window.scrollY}}catch(_){}},true);
 d.addEventListener('load',hit,true);d.addEventListener('error',hit,true);setTimeout(run,${critical ? CRITICAL_BACKSTOP_MS : CSS_FIRST_BACKSTOP_MS});
 d.addEventListener('DOMContentLoaded',function(){var c=d.querySelector('link[rel="stylesheet"][href*="/assets/index-"]');if(!c||c.sheet)run()},{once:true})})()`
   return `<script nonce="${nonce}">${js}</script>`
