@@ -227,7 +227,7 @@ export default function FirstVoucherPage() {
                     </div>
                     <button type="button" role="switch" aria-checked={callBooking} aria-label="방문 전에 전화 예약이 필요해요" onClick={() => setCallBooking((v) => !v)}
                       className={`relative h-[26px] w-11 shrink-0 rounded-full transition-colors ${callBooking ? 'bg-brand' : 'bg-gray-300 dark:bg-white/20'}`}>
-                      <span className="absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-white" style={{ transition: 'transform .3s cubic-bezier(.3,1.4,.5,1)', transform: callBooking ? 'translateX(18px)' : undefined }} />
+                      <span className="absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-white dark:bg-white" style={{ transition: 'transform .3s cubic-bezier(.3,1.4,.5,1)', transform: callBooking ? 'translateX(18px)' : undefined }} />
                     </button>
                   </div>
                   <p className="mt-3 text-[13px] text-ink-soft">사용 조건은 올린 뒤에 더할 수 있어요.</p>

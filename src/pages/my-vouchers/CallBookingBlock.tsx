@@ -14,7 +14,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { DateInput } from '@/components/ui/date-input'
-import { PhoneIcon } from '@/components/icons/urdeal-icons'
+import { PhoneIcon } from '@/components/icons/phone-icon'
 import { useTranslation } from '@/lib/i18n-lite'
 
 export interface MyVisitPlan {
@@ -137,7 +137,7 @@ export default function CallBookingBlock({ code, className = '' }: { code?: stri
             ? t('wallet.callBooking.shareOn', { defaultValue: '매장에 내 번호를 알려줘요' })
             : t('wallet.callBooking.shareOff', { defaultValue: '매장에 내 번호를 알리지 않아요' }))}
           className={`relative h-[26px] w-11 shrink-0 rounded-full transition-colors disabled:opacity-60 ${plan.share_phone ? 'bg-brand' : 'bg-gray-300 dark:bg-white/20'}`}>
-          <span className="absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-white" style={{ transition: 'transform .3s cubic-bezier(.3,1.4,.5,1)', transform: plan.share_phone ? 'translateX(18px)' : undefined }} />
+          <span className="absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-white dark:bg-white" style={{ transition: 'transform .3s cubic-bezier(.3,1.4,.5,1)', transform: plan.share_phone ? 'translateX(18px)' : undefined }} />
         </button>
       </div>
     </section>
