@@ -1,6 +1,27 @@
 {
   "items": [
     {
+      "id": "pixabay-img-3759005",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 3759005,
+      "page_url": "https://pixabay.com/photos/coffee-espresso-latte-hand-drops-3759005/",
+      "author": "poedynchuk",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 4243,
+      "h": 5304,
+      "tags": "coffee, espresso, latte, hand, drops, glass, barista, black wallpaper, black, coffee, coffee, coffee, coffee, coffee, espresso, barista, black wallpaper, black wallpaper",
+      "preview": "https://pixabay.com/get/g998d225e36e1d1ef41d39add57fab36a30f545a461de10148dc36183047ce6130879a0945c8a96138e5f2c0bf253b1233ce00e95fa1c9d1527133e2ee67a45bb_640.jpg",
+      "query": "cafe owner barista",
+      "tracks": [
+        "merchant"
+      ],
+      "score": 8,
+      "note": "어두운 배경에 에스프레소가 얼음 우유 위로 떨어지는 순간이 선명하고, 얼굴 노출·워터마크·로고 없이 카페 분위기가 잘 살아 있음. 위쪽 여백이 있어 글자 얹기 좋지만 전체적으로 어",
+      "added_at": "2026-11-23T16:07:39.814Z",
+      "used": []
+    },
+    {
       "id": "pixabay-img-1607479",
       "kind": "image",
       "source": "pixabay",
@@ -111,32 +132,6 @@
       "used": []
     },
     {
-      "id": "pixabay-img-5641450",
-      "kind": "image",
-      "source": "pixabay",
-      "source_id": 5641450,
-      "page_url": "https://pixabay.com/photos/smartphone-flat-lay-macarons-5641450/",
-      "author": "Ylanite",
-      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
-      "w": 6000,
-      "h": 4000,
-      "tags": "smartphone, flat lay, macarons, composition, photography, phone photography, food photography, french macarons, plant, desserts, sweets, cookies, snacks, baked goods, hand, nature, telephone, cellphone, picture taking, taking a photo, capture, food, dessert",
-      "preview": "https://pixabay.com/get/gaf3825992bd26dd1cf2f59defa714edc6f21b269422e83732b8af84e29d8a4d95a244535785dc700e98467d0f5d210fdaa6bee0c22d1162748032e552a4fd369_640.jpg",
-      "query": "food photography smartphone",
-      "tracks": [
-        "creator"
-      ],
-      "score": 8,
-      "note": "자연광에 선명한 폰 촬영 장면과 파스텔 마카롱이 예쁘고 얼굴·워터마크·글자도 없으며, 위쪽 여백도 있어 글자 얹기 좋음. 다만 서양풍 소품 느낌이 살짝 있음.",
-      "added_at": "2026-11-18T18:58:38.852Z",
-      "used": [
-        {
-          "at": "2026-11-23T13:31:49.666Z",
-          "post": "2026-11-23-creator"
-        }
-      ]
-    },
-    {
       "id": "pixabay-img-1853300",
       "kind": "image",
       "source": "pixabay",
@@ -240,6 +235,32 @@
       "note": "라떼아트를 붓는 순간이 선명하고 따뜻한 자연광 톤이라 동네 카페 느낌이 잘 살고, 얼굴 노출·로고·워터마크 없이 손만 보여 안전하며 어두운 배경 덕에 글자 얹을 여백도 충분함.",
       "added_at": "2026-11-16T20:39:11.175Z",
       "used": []
+    },
+    {
+      "id": "pixabay-img-5641450",
+      "kind": "image",
+      "source": "pixabay",
+      "source_id": 5641450,
+      "page_url": "https://pixabay.com/photos/smartphone-flat-lay-macarons-5641450/",
+      "author": "Ylanite",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "w": 6000,
+      "h": 4000,
+      "tags": "smartphone, flat lay, macarons, composition, photography, phone photography, food photography, french macarons, plant, desserts, sweets, cookies, snacks, baked goods, hand, nature, telephone, cellphone, picture taking, taking a photo, capture, food, dessert",
+      "preview": "https://pixabay.com/get/gaf3825992bd26dd1cf2f59defa714edc6f21b269422e83732b8af84e29d8a4d95a244535785dc700e98467d0f5d210fdaa6bee0c22d1162748032e552a4fd369_640.jpg",
+      "query": "food photography smartphone",
+      "tracks": [
+        "creator"
+      ],
+      "score": 8,
+      "note": "자연광에 선명한 폰 촬영 장면과 파스텔 마카롱이 예쁘고 얼굴·워터마크·글자도 없으며, 위쪽 여백도 있어 글자 얹기 좋음. 다만 서양풍 소품 느낌이 살짝 있음.",
+      "added_at": "2026-11-18T18:58:38.852Z",
+      "used": [
+        {
+          "at": "2026-11-23T13:31:49.666Z",
+          "post": "2026-11-23-creator"
+        }
+      ]
     },
     {
       "id": "pixabay-img-6918828",
@@ -532,12 +553,12 @@
     "restaurant owner kitchen": "2026-11-22T17:59:19.130Z",
     "small restaurant counter": "2026-11-22T17:59:19.130Z",
     "audio:upbeat acoustic": "2026-11-21T17:44:46.800Z",
-    "cafe owner barista": "2026-11-16T20:39:11.175Z",
-    "chef plating food": "2026-11-16T20:39:11.175Z",
+    "cafe owner barista": "2026-11-23T16:07:39.814Z",
+    "chef plating food": "2026-11-23T16:07:39.814Z",
     "audio:happy ukulele": "2026-11-22T17:59:19.130Z",
     "shop owner smartphone": "2026-11-17T19:17:45.169Z",
     "hair salon interior": "2026-11-17T19:17:45.169Z",
-    "audio:lofi chill": "2026-11-17T19:17:45.169Z",
+    "audio:lofi chill": "2026-11-23T16:07:39.814Z",
     "food photography smartphone": "2026-11-18T18:58:38.852Z",
     "woman filming video phone": "2026-11-18T18:58:38.852Z",
     "audio:cafe jazz": "2026-11-18T18:58:38.852Z",
@@ -550,7 +571,7 @@
     "seoul street night": "2026-11-21T17:44:46.800Z",
     "qr code payment phone": "2026-11-21T17:44:46.800Z"
   },
-  "updated_at": "2026-11-22T17:59:19.130Z",
+  "updated_at": "2026-11-23T16:07:39.814Z",
   "rejected": [
     "pixabay-img-5753302",
     "pixabay-img-4807317",
