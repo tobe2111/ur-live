@@ -61,6 +61,6 @@ describe('배선', () => {
     // 🗓️ 2026-11-04 (대표 "합쳐"): 두 칸 → 예약 화면 하나. 안에서 [시간 예약 | 숙소 예약] (`SellerBookingsPage`).
     expect(orders).toContain("path: '/seller/bookings'")
     expect(orders).not.toContain("path: '/seller/stays/bookings'")
-    expect(read('src/pages/SellerBookingsPage.tsx')).toContain("{tab === 'stay' ? <SellerStaysBookingsPage embedded /> : <SellerAppointmentsPage embedded />}")
+    expect(read('src/pages/SellerBookingsPage.tsx')).toContain("{tab === 'stay' ? <SellerStaysBookingsPage embedded /> : tab === 'call' ? <CallBookingsPanel /> : <SellerAppointmentsPage embedded />}") // 📞 2026-11-23 전화 예약 탭 추가
   })
 })

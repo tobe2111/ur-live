@@ -4,6 +4,7 @@
  * 상품은 모든 이용권과 같은 `POST /api/seller/products` 로 이미 만들어졌다. 여기서는:
  *   - 숙박: 숙소 정보(`/stays/:id/info`) + 객실들(`/stays/:id/rooms`)
  *   - 시간 예약: 시간표(`/products/:id/booking-slots`)
+ *   - 전화 예약: 스위치(`/products/:id/call-booking`)
  * 실패하면 **상품은 남기고** 무엇을 못 붙였는지 돌려준다 — 사장님이 [수정]에서 이어서 붙일 수 있다(지우면 사진·매장 입력이 날아간다).
  */
 import api from '@/lib/api'
@@ -42,6 +43,11 @@ export async function attachBooking(productId: number, form: VoucherForm, header
     try {
       await api.post(`/api/seller/products/${productId}/booking-slots`, { slots: form.time_slots }, { headers })
     } catch { return '예약 시간을 저장하지 못했어요. [예약 시간]에서 다시 넣어 주세요' }
+  }
+  if (form.booking_mode === 'call') {
+    try {
+      await api.put(`/api/seller/products/${productId}/call-booking`, { enabled: true }, { headers })
+    } catch { return '전화 예약 설정을 저장하지 못했어요. 이용권 목록에서 [전화 예약]을 다시 켜 주세요' }
   }
   return null
 }

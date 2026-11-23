@@ -35,7 +35,7 @@ describe('사장님 예약 화면 하나', () => {
     expect(r).toContain('<Route path="/seller/appointments" element={<Navigate to="/seller/bookings" replace />} />')
     expect(r).toContain('<Route path="/seller/stays/bookings" element={<Navigate to="/seller/bookings?tab=stay" replace />} />')
     const page = read('src/pages/SellerBookingsPage.tsx')
-    expect(page).toContain("const tab: BookingsTab = params.get('tab') === 'stay' ? 'stay' : 'time'")
+    expect(page).toContain("const tab: BookingsTab = q === 'stay' ? 'stay' : q === 'call' ? 'call' : 'time'") // 📞 2026-11-23 전화 예약 탭 추가(기본은 여전히 시간 예약)
     for (const f of ['src/pages/SellerAppointmentsPage.tsx', 'src/pages/SellerStaysBookingsPage.tsx']) {
       expect(read(f), `${f} 가 안에 들어가도 바깥 틀을 또 그린다`).toContain('const Frame = embedded ? EmbeddedFrame : SellerLayout')
     }

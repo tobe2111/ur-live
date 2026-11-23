@@ -60,6 +60,7 @@ export default function FirstVoucherPage() {
   const [photos, setPhotos] = useState<PickedPhoto[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [createdId, setCreatedId] = useState<number | null>(null)
+  const [callBooking, setCallBooking] = useState(false) // 📞 2026-11-23 방문 전 전화 예약(헬스·뷰티 등 날짜를 잡아야 가는 이용권)
   const authed = isSellerAuthenticated()
   // 💸 받는 돈 — 수수료율은 **서버가 준 값만** 쓴다(`/api/seller/fee-context` = 결제가 부르는 그 함수). 화면에서 채널로 다시 계산하지 않는다.
   const [feePct, setFeePct] = useState<number | null>(null)
@@ -124,7 +125,13 @@ export default function FirstVoucherPage() {
         group_buy_tiers: null,
       }, { headers: { Authorization: `Bearer ${getSellerToken()}` } })
       if (!res.data?.success) throw new Error(res.data?.error)
-      setCreatedId(Number(res.data.data?.id) || 0)
+      const newId = Number(res.data.data?.id) || 0
+      // 📞 전화 예약을 켰으면 붙인다 — 실패해도 이용권은 남는다(이용권 목록에서 다시 켤 수 있다).
+      if (callBooking && newId > 0) {
+        await api.put(`/api/seller/products/${newId}/call-booking`, { enabled: true }, { headers: { Authorization: `Bearer ${getSellerToken()}` } })
+          .catch(() => toast.error('전화 예약 설정은 저장하지 못했어요. 이용권 목록에서 다시 켜 주세요'))
+      }
+      setCreatedId(newId)
     } catch (e: any) {
       toast.error(e?.response?.data?.error || e?.message || '이용권을 올리지 못했어요. 잠시 뒤 다시 눌러 주세요')
     } finally { setSubmitting(false) }
@@ -213,7 +220,17 @@ export default function FirstVoucherPage() {
                       </div>
                     )}
                   </div>
-                  <p className="mt-3 text-[13px] text-ink-soft">사용 조건·예약 방식은 올린 뒤에 더할 수 있어요.</p>
+                  <div className="mt-5 flex items-center justify-between gap-3" data-testid="first-voucher-call-booking">
+                    <div className="min-w-0">
+                      <p className="text-[15px] font-medium">방문 전에 전화 예약이 필요해요</p>
+                      <p className="mt-1 text-[13px] text-ink-soft">손님 이용권에 [매장에 전화해 예약하기]가 떠요.</p>
+                    </div>
+                    <button type="button" role="switch" aria-checked={callBooking} aria-label="방문 전에 전화 예약이 필요해요" onClick={() => setCallBooking((v) => !v)}
+                      className={`relative h-[26px] w-11 shrink-0 rounded-full transition-colors ${callBooking ? 'bg-brand' : 'bg-gray-300 dark:bg-white/20'}`}>
+                      <span className="absolute top-[3px] left-[3px] h-5 w-5 rounded-full bg-white dark:bg-white" style={{ transition: 'transform .3s cubic-bezier(.3,1.4,.5,1)', transform: callBooking ? 'translateX(18px)' : undefined }} />
+                    </button>
+                  </div>
+                  <p className="mt-3 text-[13px] text-ink-soft">사용 조건은 올린 뒤에 더할 수 있어요.</p>
                 </>
               )}
             </div>

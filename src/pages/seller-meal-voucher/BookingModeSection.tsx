@@ -1,7 +1,7 @@
 /**
  * 🗓️ 이용권 등록 3단계 — **예약 방식** (2026-11-03 숙소·예약 통일 ①)
  *
- * [바로 사용] · [외부 예약 링크] · [시간 예약]. 숙박은 2단계에서 객실을 넣으므로 여기 오지 않는다(날짜·객실 예약).
+ * [바로 사용] · [전화 예약](2026-11-23) · [시간 예약] · [외부 예약 링크]. 숙박은 2단계에서 객실을 넣으므로 여기 오지 않는다(날짜·객실 예약).
  * 시간 예약은 종전에도 코드(`/seller/products/:id/booking-slots`)가 있었는데 **설정하러 들어가는 길이 0** 이라
  * 라이브 설정·예약이 0건이었다(2026-11-03 실측). 이제 등록할 때 바로 정한다.
  */
@@ -15,6 +15,7 @@ const INPUT = 'w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text
 
 const MODES: ReadonlyArray<{ key: BookingMode; label: string; desc: string }> = [
   { key: 'none', label: '바로 사용', desc: '예약 없이 매장에서 바로 써요' },
+  { key: 'call', label: '전화 예약', desc: '손님이 산 뒤 매장에 전화해 날짜를 정해요' },
   { key: 'time', label: '시간 예약', desc: '손님이 산 뒤 날짜·시간을 골라요' },
   { key: 'external', label: '외부 예약', desc: '네이버 예약 등 내 예약 링크로' },
 ]
@@ -28,7 +29,7 @@ export default function BookingModeSection({ form, update }: {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4" data-booking-mode>
       <h2 className="text-base font-bold text-gray-900">예약 방식</h2>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {MODES.map((m) => (
           <button key={m.key} type="button" onClick={() => update('booking_mode', m.key)}
             className={`p-3 rounded-lg border-2 text-center ${form.booking_mode === m.key ? 'border-brand bg-brand-tint' : 'border-gray-200 bg-white'}`}>
@@ -37,6 +38,13 @@ export default function BookingModeSection({ form, update }: {
           </button>
         ))}
       </div>
+
+      {form.booking_mode === 'call' && (
+        <p className="text-[12px] leading-relaxed text-gray-500">
+          손님 이용권에 [매장에 전화해 예약하기] 버튼이 뜨고, 이용권이 팔리면 알림을 보내 드려요. 통화로 정한 날짜는 [예약 관리]에 적어 둘 수 있어요.
+          손님이 오면 평소처럼 QR 로 사용 처리하면 돼요.
+        </p>
+      )}
 
       {form.booking_mode === 'external' && (
         <input type="url" value={form.external_booking_url} onChange={(e) => update('external_booking_url', e.target.value)}

@@ -397,6 +397,11 @@ export async function handleCronScheduled(
       const { runMealVoucherExpireCron } = await import('./cron/voucher-expire')
       await runMealVoucherExpireCron(env as Parameters<typeof runMealVoucherExpireCron>[0])
     }))
+    // 📅 2026-11-23: 전화 예약형 이용권 — 방문 전날 앱 알림(손님이나 사장님이 적어 둔 날짜 기준).
+    ctx.waitUntil(slotCron('40 9 * * *')('visit-eve-reminder', async () => {
+      const { runVisitEveReminder } = await import('./cron/visit-eve-reminder')
+      await runVisitEveReminder(env as { DB: D1Database })
+    }))
     // ⏰ 2026-07-19 (운영 자동화 ② — 게이트 OPS_SEQUENCES_ENABLED, 기본 OFF): 소비자 시퀀스 2종.
     //   드랍 D-1 예고(fcfs 응모자, KST 18:00) + 체험단 게시 리마인드(당첨 48h 경과, 평생 1회).
     ctx.waitUntil(slotCron('40 9 * * *')('drop-d1-reminder', async () => {
