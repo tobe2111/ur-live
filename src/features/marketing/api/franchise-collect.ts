@@ -136,6 +136,15 @@ export interface FranchiseStats { last_run: string; found: number; saved: number
 const STATS_KEY = 'ads_franchise_stats'
 const CURSOR_KEY = 'ads_franchise_cursor'
 
+/** 수집 키워드 = 원부의 관리번호(브랜드 → 가맹본부 순). 없으면 고정값 — **상호(brandNm)로는 절대 폴백하지 않는다**. */
+export function franchiseKeyword(it: Record<string, unknown>): string {
+  for (const k of ['brandMnno', 'jnghdqrtrsMnno', 'brandMngtNo', 'jnghdMngtNo']) {
+    const v = String(it?.[k] ?? '').trim()
+    if (v) return v
+  }
+  return 'franchise'
+}
+
 export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
   const DB = adsLeadsDb(env)
   await ensureCompanySchema(DB)
@@ -213,15 +222,19 @@ export async function runFranchiseCollect(env: Env): Promise<FranchiseStats> {
       const brand = g(it, 'brandNm', 'brand', 'brandName')
       const corp = g(it, 'corpNm', 'jnghdCorpNm', 'coNm')
       const induty = [g(it, 'indutyLclasNm', 'induty', 'idustyLclasNm'), g(it, 'indutyMlsfcNm', 'idustyMlsfcNm')].filter(Boolean).join('>')
-      const rep = g(it, 'jnghdRprsntvNm', 'rprsntvNm', 'prsdntNm', 'rprsvNm', 'ceoNm')
-      const prod = g(it, 'mnProductNm', 'prductNm', 'mnProduct')
+      // 🔬 실제 응답 칸 이름(2026-11-23 라이브 `diag.sample`): jnghdqrtrsRprsvNm · majrGdsNm · brandMnno · jnghdqrtrsMnno.
+      const rep = g(it, 'jnghdqrtrsRprsvNm', 'jnghdRprsntvNm', 'rprsntvNm', 'prsdntNm', 'rprsvNm', 'ceoNm')
+      const prod = g(it, 'majrGdsNm', 'mnProductNm', 'prductNm', 'mnProduct')
       return {
         company_name: brand || corp, category: '창업', subcategory: '프랜차이즈본사', tier: 5,
         region: null, address: null, phone: null, email: null, website: null,
         business_no: g(it, 'brno', 'bizrno', 'bzmnRegNo') || null,
         description: [corp && brand && corp !== brand ? `법인 ${corp}` : '', rep ? `대표 ${rep}` : '', induty, prod ? `상품 ${prod}` : ''].filter(Boolean).join(' · ') || null,
         contact_source: null, // 직접 연락처 없음 → 보강(네이버 홈페이지 검색→크롤)이 채움
-        source: 'franchise', source_keyword: g(it, 'brandMngtNo', 'jnghdMngtNo', 'brandNm') || 'franchise',
+        // 🩸 2026-11-23 라이브: 100회 실행 · 회당 600건 발견 · 저장 0 — `save_error: ALL_REJECTED {"KEYWORD_ECHO":100}`.
+        //   관리번호 칸 이름이 실제(brandMnno)와 달라 못 찾았고, 그 폴백이 **브랜드명**이라 "상호 = 수집 키워드" 가 돼
+        //   분류기의 키워드 메아리 규칙(검색어를 상호로 오인한 것)이 전부 걸렀다. 수집 키워드에는 상호를 절대 넣지 않는다.
+        source: 'franchise', source_keyword: franchiseKeyword(it),
       }
     }).filter(l => l.company_name.length >= 2)
     found += leads.length
