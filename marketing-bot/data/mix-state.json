@@ -4,7 +4,7 @@
     "creator": 25,
     "consumer": 15
   },
-  "updated_at": "2026-11-16T07:00:52.735Z",
+  "updated_at": "2026-11-23T07:58:22.519Z",
   "history": [
     {
       "at": "2026-10-26T05:07:41.719Z",
@@ -50,6 +50,20 @@
     },
     {
       "at": "2026-11-16T07:00:52.735Z",
+      "from": {
+        "merchant": 60,
+        "creator": 25,
+        "consumer": 15
+      },
+      "to": {
+        "merchant": 60,
+        "creator": 25,
+        "consumer": 15
+      },
+      "reason": "데이터 부족(카테고리별 글 2개 미만) — 유지"
+    },
+    {
+      "at": "2026-11-23T07:58:22.519Z",
       "from": {
         "merchant": 60,
         "creator": 25,

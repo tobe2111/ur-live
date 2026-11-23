@@ -1,19 +1,21 @@
 {
   "weights": {
-    "owner-note": 1,
-    "myth-fact": 1,
-    "udal-qna": 1.39,
-    "quick-guide": 0.86,
-    "by-numbers": 0.58,
-    "deal-pick": 0.5
+    "owner-note": 1.98,
+    "deal-pick": 1.15,
+    "myth-fact": 1.93,
+    "udal-qna": 1.43,
+    "quick-guide": 0.92,
+    "by-numbers": 1.09,
+    "encore": 1
   },
   "counts": {
-    "owner-note": 1,
-    "myth-fact": 1,
-    "udal-qna": 2,
-    "quick-guide": 4,
-    "by-numbers": 3,
-    "deal-pick": 2
+    "owner-note": 2,
+    "deal-pick": 4,
+    "myth-fact": 2,
+    "udal-qna": 3,
+    "quick-guide": 5,
+    "by-numbers": 4,
+    "encore": 1
   },
-  "updated_at": "2026-11-16T07:00:54.743Z"
+  "updated_at": "2026-11-23T07:58:25.319Z"
 }
