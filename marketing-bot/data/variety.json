@@ -531,5 +531,20 @@
     "topic_tag": "소상공인",
     "tformat": "operator",
     "cta": "merchant:signup"
+  },
+  {
+    "id": "17954673651054979",
+    "platform": "threads",
+    "track": "creator",
+    "topic": "시작에 드는 돈 0원: 카카오 로그인 1분이면 내 유어샵이 자동으로 생긴다",
+    "hook": "udal",
+    "series": "quick-guide",
+    "date_kst": "2026-11-23",
+    "len": "1",
+    "slot": "12:30",
+    "media": "text",
+    "topic_tag": "인플루언서",
+    "tformat": "scene",
+    "cta": "creator:try"
   }
 ]
