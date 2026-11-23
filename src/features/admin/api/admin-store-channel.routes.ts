@@ -28,6 +28,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
 import { DEFAULT_PG_RESERVE_PCT } from '@/worker/utils/commission-budget'
 import { COMMISSION_DEFAULTS } from '@/shared/constants/policy'
+import { channelMismatch, loadStoreChannelRow, mismatchText, recruiterLabel } from '@/worker/utils/store-channel-audit'
 
 const adminStoreChannelRoutes = new Hono<{ Bindings: Env }>()
 
@@ -63,6 +64,13 @@ async function loadSplitRates(DB: D1Database): Promise<{
   }
 }
 
+async function recruiterInfo(DB: D1Database, sellerId: number): Promise<{ recruited_by: string | null; channel_warning: string | null }> {
+  const row = await loadStoreChannelRow(DB, sellerId)
+  if (!row) return { recruited_by: null, channel_warning: null }
+  const m = channelMismatch(row)
+  return { recruited_by: recruiterLabel(row), channel_warning: m ? mismatchText(m) : null }
+}
+
 /** GET /api/admin/sellers/:id/channel — 현재 채널 + 게이트 상태 */
 adminStoreChannelRoutes.get('/sellers/:id/channel', cors(), async (c) => {
   try {
@@ -83,6 +91,8 @@ adminStoreChannelRoutes.get('/sellers/:id/channel', cors(), async (c) => {
         //   ⚠️ **어드민 전용이다**(대표: "3번 결과는 운영자인 나만 보여야 해") — PG 준비금과
         //   유어딜 마진이 들어 있어 매장·소개자에게 보일 성질이 아니다. 셀러 API 에 넣지 말 것.
         rates: await loadSplitRates(c.env.DB),
+        // 🧾 2026-11-23 — 누가 데려왔나 + 채널과 어긋나는지(경고만, 자동 변경 없음). utils/store-channel-audit
+        ...(await recruiterInfo(c.env.DB, sellerId)),
       },
     })
   } catch (err) {
