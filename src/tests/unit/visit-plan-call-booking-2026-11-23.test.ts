@@ -16,6 +16,7 @@ import {
 } from '@/worker/utils/visit-plan'
 import { runVisitEveReminder } from '@/worker/cron/visit-eve-reminder'
 import { notifyCallBookingSale } from '@/features/group-buy/api/seller-sale-notify'
+import { buildDetailMeta } from '@/features/group-buy/api/detail-meta-enrich'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 type Db = InstanceType<typeof DatabaseSync>
@@ -199,5 +200,22 @@ describe('배선', () => {
     expect(readFileSync('src/pages/seller-group-buy/VoucherRow.tsx', 'utf8')).toMatch(/<CallBookingToggle productId=\{v\.id\} \/>/)
     expect(readFileSync('src/pages/SellerBookingsPage.tsx', 'utf8')).toMatch(/tab === 'call' \? <CallBookingsPanel \/>/)
     expect(readFileSync('src/pages/store-new/FirstVoucherPage.tsx', 'utf8')).toMatch(/if \(callBooking && newId > 0\)/)
+  })
+})
+
+describe('⑥ 구매 전 안내 — 상세 응답과 화면 (2026-11-23 대표 허가, 잠금 파일에 값 하나)', () => {
+  it('메타가 1 이면 call_booking true, 아니면 false(실제 함수)', async () => {
+    const { DB } = await fresh()
+    const on = await buildDetailMeta(DB, 31, new Map([[31, { call_booking: '1' }]]), null)
+    const off = await buildDetailMeta(DB, 32, new Map([[32, {}]]), null)
+    expect(on.call_booking).toBe(true)
+    expect(off.call_booking).toBe(false)
+  })
+  it('상세 응답은 켠 이용권에만 키를 싣는다', () => {
+    expect(readFileSync('src/features/group-buy/api/group-buy-public.routes.ts', 'utf8')).toMatch(/\.\.\.\(call_booking \? \{ call_booking: true \} : \{\}\)/)
+  })
+  it('상세 화면이 값을 이용 안내로 넘기고, 이용 안내가 그 줄을 그린다', () => {
+    expect(readFileSync('src/pages/GroupBuyDetailPage.tsx', 'utf8')).toMatch(/callBooking=\{\(detail as \{ call_booking\?: boolean \}\)\.call_booking\}/)
+    expect(readFileSync('src/pages/group-buy/UsageGuide.tsx', 'utf8')).toMatch(/\{callBooking && \(/)
   })
 })

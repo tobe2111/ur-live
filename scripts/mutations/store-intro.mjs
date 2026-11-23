@@ -10,8 +10,8 @@ export default [
   {
     name: '설명 문단을 이용 안내 꼬리로 되돌린다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: '<UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} />',
-    replace: '<UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} />\n          {detail.description && <p>{detail.description}</p>}',
+    find: '<UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} callBooking={(detail as { call_booking?: boolean }).call_booking} />',
+    replace: '<UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} callBooking={(detail as { call_booking?: boolean }).call_booking} />\n          {detail.description && <p>{detail.description}</p>}',
     test: 'src/tests/unit/store-intro-2026-09-24.test.ts',
     why:
       '2026-09-15 `faed018ff` 가 UsageGuide 를 이 앵커로 끌어올리면서 설명 문단이 뒤로 밀렸고, ' +

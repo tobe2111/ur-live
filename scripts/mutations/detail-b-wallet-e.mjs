@@ -12,7 +12,7 @@ export default [
   {
     name: '[상세B지갑E] 🎟️상세에 고정 안내 3줄이 되살아난다',
     file: GB,
-    find: `          <UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} />`,
+    find: `          <UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} callBooking={(detail as { call_booking?: boolean }).call_booking} />`, // 📞 2026-11-23 callBooking 전달이 붙어 앵커 재조준(지키는 것은 그대로)
     replace: `          <div>{['즉시 교환권 발급', '전 지점 사용', '결제 즉시 사용'].map((l) => <span key={l}>{l}</span>)}</div>`,
     test: TEST,
     why:

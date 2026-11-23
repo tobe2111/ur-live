@@ -28,6 +28,8 @@ export type DetailMeta = {
   min_review_level: number | null
   prelaunch: boolean
   onnuri_merchant: boolean
+  /** 📞 2026-11-23 전화 예약형 이용권 — 구매 전에 "구매 후 매장에 전화해 날짜를 예약" 을 알린다(`worker/utils/visit-plan.ts`). */
+  call_booking: boolean
   /**
    * 📰 2026-11-13 '다녀온 사람들' 공개 글·영상 제목 최대 5개 — 검색 크롤러 본문(`buildDetailNoscript`)의 재료.
    * 실측: `/pass/2919` 크롤러 본문이 173자였다(설명 = 상품명이라 반복 제거됨). 가게마다 이미 모아 둔 실제 후기 제목이
@@ -94,5 +96,6 @@ export async function buildDetailMeta(
     min_review_level,
     prelaunch: meta?.prelaunch === '1',  // 🏷️ 오픈 예정형(상세 배지·구매 CTA 분기)
     onnuri_merchant,
+    call_booking: meta?.call_booking === '1',
   }
 }

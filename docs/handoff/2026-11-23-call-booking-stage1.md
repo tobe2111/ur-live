@@ -21,6 +21,6 @@
 - 판매 알림 호출부는 상품 id 를 안 넘긴다 → 매장의 전화 예약형 상품 이름과 대조(결제 경로 파일 무수정).
 
 ## 남은 것
-- 상세 페이지 구매 전 안내 — `group-buy-public.routes.ts`·`GroupBuyDetailPage.tsx` 가 잠금 파일이라 대표 허가 필요.
+- (완료) 상세 페이지 구매 전 안내 — 대표 *"응 허가해줄게"* → 응답 `call_booking` + 이용 안내 한 줄. 잠금 기록 `docs/locks/loading/2026-11-23-call-booking-detail-notice.md`.
 - 라이브 판정(E4): 배포 뒤 전화 예약형 이용권을 하나 켜고 지갑·결제 완료·예약 탭을 확인(로그인 화면이라 대표 확인 필요) + `measure-live-vitals` 는 로그인 필요 화면이라 못 잰다.
 - 2단계(앱 안 예약 요청)는 주문이 생긴 뒤.

@@ -30,4 +30,13 @@ export default [
   { name: 'visitplan: 남의 이용권 날짜를 바꿀 수 있다', file: R,
     find: '         FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code = ? AND v.user_id = ?`,', replace: '         FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code = ? AND ? IS NOT NULL`,', test: T,
     why: '코드만 알면 남의 이용권 예약 날짜·동의를 바꾼다.' },
+  { name: 'visitplan: 모든 이용권에 예약 필요 안내', file: 'src/features/group-buy/api/detail-meta-enrich.ts',
+    find: "    call_booking: meta?.call_booking === '1',", replace: '    call_booking: true,', test: T,
+    why: '예약이 필요 없는 이용권에도 방문 전 예약 필요가 뜬다.' },
+  { name: 'visitplan: 상세 응답에서 안내 값이 빠진다', file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: ' ...(call_booking ? { call_booking: true } : {}),', replace: '', test: T,
+    why: '손님이 산 뒤에야 전화 예약이 필요한 걸 안다.' },
+  { name: 'visitplan: 이용 안내가 그 줄을 안 그린다', file: 'src/pages/group-buy/UsageGuide.tsx',
+    find: '      {callBooking && (', replace: '      {false && (', test: T,
+    why: '값은 오는데 화면에 안 보인다.' },
 ]
