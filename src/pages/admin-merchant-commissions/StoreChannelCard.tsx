@@ -32,6 +32,10 @@ interface ChannelData {
   channel: Channel | null
   channel_rates_active: boolean
   rates: Rates
+  /** 누가 데려왔나(에이전시·중개사 기록) — 2026-11-23 */
+  recruited_by?: string | null
+  /** 채널이 그 기록과 어긋나면 사람이 읽는 문장 */
+  channel_warning?: string | null
 }
 
 /** 표에 쓰는 기준 주문액. 감각을 잡는 용도라 딱 떨어지는 값으로 고정한다. */
@@ -63,6 +67,7 @@ export default function StoreChannelCard({
       const res = await api.patch(`/api/admin/sellers/${sellerId}/channel`, { channel: next })
       if (res.data?.success) {
         setData((d) => (d ? { ...d, channel: next } : d))
+        api.get(`/api/admin/sellers/${sellerId}/channel`).then((r) => { if (r.data?.success) setData(r.data.data) }).catch(() => {})
         // 게이트가 꺼져 있으면 서버가 그 사실을 message 로 알려준다 — 숨기지 않고 그대로 띄운다.
         toast.success(res.data.message || '채널을 변경했습니다')
       } else {
@@ -114,6 +119,14 @@ export default function StoreChannelCard({
         ))}
       </div>
 
+      {data.recruited_by && (
+        <p className="text-xs text-gray-600">데려온 곳: <b className="text-gray-900">{data.recruited_by}</b></p>
+      )}
+      {data.channel_warning && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+          확인 필요 — {data.channel_warning}. 맞는 값으로 바꾸거나, 일부러 그렇게 한 것이면 그대로 두세요.
+        </p>
+      )}
       {channel === null && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
           아직 지정 안 됨 — 요율은 종전 경로가 정하고, <b>영입 2%는 나가지 않습니다.</b>

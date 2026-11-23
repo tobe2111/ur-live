@@ -11,6 +11,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdminRole } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error'
+import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { invalidateStoreSeatCache } from '@/worker/utils/store-seat-guard'
 import { ensureAgencyConsoleTables } from './agency-schema'
 import { registerAdminAgencyPayoutRoutes } from './agency-payout.routes'
@@ -116,5 +117,32 @@ agencyAdminRoutes.post('/agency-accounts/:id/unsuspend', requireAdminRole('super
     return c.json({ success: true, message: '정지를 풀었어요.' })
   } catch (err) {
     return safeError(c, err, '처리하지 못했어요', '[admin:agency-accounts]')
+  }
+})
+
+/**
+ * ✏️ 2026-11-23 (대표 "1,2 해주고") — 에이전시 이름을 어드민이 바꾼다. 종전엔 에이전시 콘솔(그 계정 관리자)에서만 됐다.
+ *   회사명이 바뀐 계정(리스터코퍼레이션 → 유어팀)을 그 계정으로 로그인하지 않고도 고친다. 요율은 이름이 아니라 id 로 판정하므로 무관.
+ */
+export const AGENCY_NAME_MAX = 40
+agencyAdminRoutes.patch('/agency-accounts/:id/name', requireAdminRole('super', 'ops'), async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    const body = await c.req.json<{ name?: unknown }>().catch(() => ({} as { name?: unknown }))
+    const name = typeof body.name === 'string' ? body.name.trim() : ''
+    if (!Number.isInteger(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청이에요.' }, 400)
+    if (!name || name.length > AGENCY_NAME_MAX) return c.json({ success: false, error: `이름을 1~${AGENCY_NAME_MAX}자로 적어 주세요.` }, 400)
+    const DB = c.env.DB
+    await ensureAgencyConsoleTables(DB)
+    const before = await DB.prepare('SELECT name FROM agency_accounts WHERE id = ? LIMIT 1').bind(id).first<{ name: string }>()
+    if (!before) return c.json({ success: false, error: '에이전시를 찾지 못했어요.' }, 404)
+    await DB.prepare("UPDATE agency_accounts SET name = ?, updated_at = datetime('now') WHERE id = ?").bind(name, id).run()
+    await writeAuditLog(c, {
+      action: 'rename_agency_account', targetType: 'agency_account', targetId: String(id),
+      before: { name: before.name }, after: { name },
+    }).catch(() => { /* 감사 로그 실패가 변경을 되돌리지는 않는다 */ })
+    return c.json({ success: true, message: `이름을 '${name}'(으)로 바꿨어요.` })
+  } catch (err) {
+    return safeError(c, err, '이름을 바꾸지 못했어요', '[admin:agency-accounts]')
   }
 })

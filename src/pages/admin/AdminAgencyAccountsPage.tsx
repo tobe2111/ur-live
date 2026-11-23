@@ -33,6 +33,7 @@ export default function AdminAgencyAccountsPage() {
   const [open, setOpen] = useState<number | null>(null)
   const [stores, setStores] = useState<Record<number, StoreRow[]>>({})
   const [busy, setBusy] = useState<number | null>(null)
+  const [renaming, setRenaming] = useState<{ id: number; name: string } | null>(null) // ✏️ 2026-11-23 어드민 이름 변경
 
   const load = useCallback(async () => {
     setError('')
@@ -72,6 +73,24 @@ export default function AdminAgencyAccountsPage() {
       await load()
     } catch (e: any) {
       toast.error(e?.response?.data?.error || '처리하지 못했어요')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function saveName() {
+    if (!renaming) return
+    const name = renaming.name.trim()
+    if (!name) { toast.error('이름을 적어 주세요'); return }
+    setBusy(renaming.id)
+    try {
+      const r = await api.patch(`/api/admin/agency-accounts/${renaming.id}/name`, { name })
+      if (!r.data?.success) throw new Error(r.data?.error)
+      toast.success(r.data.message || '바꿨어요')
+      setRenaming(null)
+      await load()
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || '이름을 바꾸지 못했어요')
     } finally {
       setBusy(null)
     }
@@ -133,6 +152,18 @@ export default function AdminAgencyAccountsPage() {
                         {r.pending_count > 0 ? ` (요청 ${r.pending_count})` : ''} · {formatKSTDate(r.created_at)} 가입
                       </p>
                     </button>
+                    {renaming?.id === r.id ? (
+                      <span className="flex items-center gap-2">
+                        <input value={renaming.name} maxLength={40} autoFocus onChange={(e) => setRenaming({ id: r.id, name: e.target.value })}
+                          onKeyDown={(e) => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setRenaming(null) }}
+                          aria-label="에이전시 이름" className="h-9 w-40 rounded-lg bg-gray-50 px-3 text-[13px] text-gray-900 outline-none focus:ring-2 focus:ring-brand/30" />
+                        <button type="button" disabled={busy === r.id} onClick={saveName} className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-50">저장</button>
+                        <button type="button" onClick={() => setRenaming(null)} className="h-9 rounded-lg px-3 text-[13px] font-semibold text-gray-700 hover:bg-gray-50">취소</button>
+                      </span>
+                    ) : (
+                      <button type="button" onClick={() => setRenaming({ id: r.id, name: r.name })}
+                        className="h-9 rounded-lg px-3 text-[13px] font-semibold text-gray-700 hover:bg-gray-50">이름 바꾸기</button>
+                    )}
                     {r.status === 'active' && (
                       <button type="button" disabled={busy === r.id} onClick={() => setSuspended(r, true)}
                         className="h-9 rounded-lg px-3 text-[13px] font-semibold text-tone-bad hover:bg-gray-50 disabled:opacity-50">정지</button>

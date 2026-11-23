@@ -82,6 +82,11 @@ export async function runOpsDailyDigest(env: Env): Promise<void> {
       const { loadFunnel7d, funnelSilenceWarnings } = await import('../utils/funnel-silence')
       lines.push(...funnelSilenceWarnings(await loadFunnel7d(DB)))
     } catch { /* 다이제스트 본문을 막지 않는다 */ }
+    // 🧾 2026-11-23 수수료 채널이 '누가 데려왔나' 와 어긋난 매장(11-16 에 7곳이 조용히 어긋나 있었다). utils/store-channel-audit.
+    try {
+      const { loadStoreChannelRows, storeChannelWarnings } = await import('../utils/store-channel-audit')
+      lines.push(...storeChannelWarnings(await loadStoreChannelRows(DB)))
+    } catch { /* 다이제스트 본문을 막지 않는다 */ }
 
     const title = `📰 일일 다이제스트 ${y.kstDate} (KST)`
     const body = lines.join('\n')
