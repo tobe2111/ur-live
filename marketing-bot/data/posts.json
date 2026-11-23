@@ -1079,5 +1079,43 @@
     "slot_kst": "12:30",
     "link": "https://urdeal.kr/creators/apply?utm_source=threads&utm_medium=social&utm_campaign=creator-recruit&utm_content=th-20261123",
     "text": "월요일 아침에 새 계정 만드는 거, 솔직히 귀찮죠. 카카오 로그인 하나면 1분 안에 내 유어샵이 자동으로 만들어져요."
+  },
+  {
+    "platform": "instagram",
+    "id": "18122264372072603",
+    "media_type": "REELS",
+    "media": "reel",
+    "format": "1",
+    "media_set": "gen-2026-11-23-creator",
+    "series": "myth-fact",
+    "generated": {
+      "source": "library-pixabay",
+      "credit": "Pixabay · Ylanite · Pixabay Content License (상업 이용 가능, 출처 표기 불요) · https://pixabay.com/photos/smartphone-flat-lay-macarons-5641450/",
+      "license": "Pixabay Content License (상업 이용 가능, 출처 표기 불요)",
+      "page_url": "https://pixabay.com/photos/smartphone-flat-lay-macarons-5641450/",
+      "broll": "Pixabay · Alanchevereau · Pixabay Content License (상업 이용 가능, 출처 표기 불요) · https://pixabay.com/videos/id-22728/",
+      "title": "소개 글엔 광고 표기 꼭 넣어요",
+      "photo_url": "https://pixabay.com/get/g0025bf053f45ebe270ba9843c90a7a7367384f9f9f848f9afd0930bc1a7ba9227453a6032e4d34f1af52bfbebda9ea5bceb77887ef3a1d198410a23c1fc624c8_1280.jpg",
+      "reel": true
+    },
+    "hook": "headline",
+    "cta": "creator:apply",
+    "topic": "협찬 표기는 꼭: 소개 글엔 광고/소개 링크임을 밝히는 게 기본이고 유어딜도 그렇게 안내한다",
+    "content_id": "ig",
+    "track": "creator",
+    "promo": false,
+    "posted_at": "2026-11-23T13:30:32.035Z",
+    "date_kst": "2026-11-23",
+    "slot_kst": "21:30",
+    "bio_link": "https://urdeal.kr/creators/apply?utm_source=instagram&utm_medium=social&utm_campaign=creator-recruit&utm_content=ig-20261123",
+    "text": "소개 글에는 광고·소개 링크라는 표기를 꼭 넣어주세요. 유어딜도 그렇게 안내하고 있어요. 오해하지 마세요, 독자에게 하는 기본 약속이에요.\n\n소개비율은 딜마다 매장이 정해요. 고르기 전에 화면에서 보여요.\n\n프로필 링크에서 확인하세요.\n\n#유어딜 #크리에이터 #소개파트너"
+  },
+  {
+    "platform": "instagram_story",
+    "id": "18489792316112316",
+    "track": "creator",
+    "series": "myth-fact",
+    "posted_at": "2026-11-23T13:30:32.035Z",
+    "date_kst": "2026-11-23"
   }
 ]

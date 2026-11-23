@@ -546,5 +546,27 @@
     "topic_tag": "인플루언서",
     "tformat": "scene",
     "cta": "creator:try"
+  },
+  {
+    "id": "18122264372072603",
+    "platform": "instagram",
+    "track": "creator",
+    "topic": "협찬 표기는 꼭: 소개 글엔 광고/소개 링크임을 밝히는 게 기본이고 유어딜도 그렇게 안내한다",
+    "hook": "headline",
+    "media_set": "gen-2026-11-23-creator",
+    "series": "myth-fact",
+    "date_kst": "2026-11-23",
+    "photo": "https://pixabay.com/get/g0025bf053f45ebe270ba9843c90a7a7367384f9f9f848f9afd0930bc1a7ba9227453a6032e4d34f1af52bfbebda9ea5bceb77887ef3a1d198410a23c1fc624c8_1280.jpg",
+    "format": "1",
+    "slot": "21:30",
+    "media": "reel",
+    "cta": "creator:apply"
+  },
+  {
+    "id": "18489792316112316",
+    "platform": "instagram_story",
+    "track": "creator",
+    "series": "myth-fact",
+    "date_kst": "2026-11-23"
   }
 ]
