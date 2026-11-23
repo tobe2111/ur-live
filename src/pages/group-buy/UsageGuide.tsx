@@ -23,6 +23,8 @@
  * ## 2026-11-17 — 유효기간은 늘 말한다 (토스 PG 심사 "결제 이후 유효기간 12개월 이내 명시")
  *   기한이 없던 이용권도 이제 발급일 + 12개월로 끝난다(`shared/voucher-validity.ts`). 그래서 ②의
  *   "값이 있을 때만" 은 더 이상 맞지 않다 — 값이 없으면 `구매일로부터 12개월` 이 그 값이다.
+ *
+ * ## 2026-11-23 — 전화 예약형이면 "방문 전 예약 필요" 한 줄 (대표 허가 — 잠금 파일에 값 하나만 추가)
  */
 import { safeDate } from '@/utils/safe-date'
 import { ClockIcon } from '@/components/icons/urdeal-icons'
@@ -36,8 +38,8 @@ const DEFAULT_TERMS: ReadonlyArray<readonly [string, string]> = [
 ]
 
 export default function UsageGuide({
-  voucherExpiry, voucherTerms,
-}: { voucherExpiry?: string | null; voucherTerms?: string | null }) {
+  voucherExpiry, voucherTerms, callBooking,
+}: { voucherExpiry?: string | null; voucherTerms?: string | null; callBooking?: boolean }) {
   const { t } = useTranslation()
   const expiry = voucherExpiry ? safeDate(voucherExpiry)?.toLocaleDateString('ko-KR') : null
   const terms = voucherTerms
@@ -53,6 +55,13 @@ export default function UsageGuide({
           ? <span><b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{expiry}</b>{t('pass.usageGuide.expiryUntil', { defaultValue: '까지 사용' })} ({t('pass.usageGuide.expiryMax', { defaultValue: `최대 ${VOUCHER_VALIDITY_LABEL}` })})</span>
           : <span>{t('pass.usageGuide.validity', { defaultValue: '유효기간' })} <b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{t('pass.usageGuide.validityValue', { defaultValue: VOUCHER_VALIDITY_LABEL })}</b></span>}
       </p>
+      {/* 📞 2026-11-23 전화 예약형 이용권 — 사기 전에 알린다(산 뒤에야 알면 안 된다). 그 밖의 이용권에선 안 그린다. */}
+      {callBooking && (
+        <p className="mt-2 text-[13px] leading-[1.5]" style={{ color: 'var(--gbd-sub)' }} data-call-booking-notice>
+          <b className="font-medium" style={{ color: 'var(--gbd-ink)' }}>{t('pass.usageGuide.callBookingTitle', { defaultValue: '방문 전 예약 필요' })}</b>
+          {' '}{t('pass.usageGuide.callBookingDesc', { defaultValue: '구매 후 매장에 전화해 날짜를 정해요. 구매하면 전화 버튼이 바로 나와요.' })}
+        </p>
+      )}
       <div className="mt-3"><RedeemHowTo /></div>
 
       {/* 📎 유의사항은 접는다(대표 확정 시안 1) — 손님이 매장 앞에서 보는 건 위 세 단계다.

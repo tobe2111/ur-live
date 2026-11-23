@@ -769,7 +769,7 @@ export default function GroupBuyDetailPage() {
             있는 것만 말하고, 없으면 그 행이 스스로 폴백한다. 아래에 있던 같은 블록은 제거했다(중복).
             ⚠️ 상단 탭 `gb-sec-info`(라벨 '이용권 정보')가 이 앵커로 스크롤한다 — id 는 유지해야 한다. */}
         <div id="gb-sec-info" className={PASS_CARD} style={{ scrollMarginTop: 116 }}>
-          <UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} />
+          <UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} callBooking={(detail as { call_booking?: boolean }).call_booking} />
         </div>
 
         {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md). 추출: DealMenuList */}
