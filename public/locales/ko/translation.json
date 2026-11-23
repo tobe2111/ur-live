@@ -7155,6 +7155,26 @@
       "liveHint": "사장님이 찍으면 바로 바뀌어요",
       "phoneWord": "전화번호",
       "addressWord": "주소"
+    },
+    "callBooking": {
+      "saveFail": "저장하지 못했어요. 잠시 뒤 다시 눌러 주세요",
+      "titleSet": "방문 예약 {{when}}",
+      "title": "방문 전에 예약이 필요해요",
+      "descSet": "전날 알림을 보내 드려요. 날짜가 바뀌면 매장에 먼저 알려 주세요.",
+      "desc": "매장에 전화해 날짜를 정한 뒤, 가서 QR 을 보여 주세요.",
+      "callAgain": "매장에 전화하기",
+      "call": "매장에 전화해 예약하기",
+      "noPhone": "매장 전화번호가 등록돼 있지 않아요. 매장 정보에서 연락처를 확인해 주세요.",
+      "date": "방문 날짜",
+      "time": "방문 시간(선택)",
+      "saved": "예약 날짜를 적어 뒀어요",
+      "saveDate": "이 날짜로 적어두기",
+      "change": "날짜 바꾸기",
+      "addDate": "예약한 날짜 적어두기",
+      "share": "매장이 먼저 전화할 수 있게 내 번호 알려주기",
+      "shareNote": "방문 다음 날까지만 매장에 보여요.",
+      "shareOn": "매장에 내 번호를 알려줘요",
+      "shareOff": "매장에 내 번호를 알리지 않아요"
     }
   },
   "pass": {
@@ -7166,7 +7186,9 @@
       "defaultTermNoRefund": "잔액은 환불되지 않으니 한 번에 사용하시길 권장해요.",
       "validity": "유효기간",
       "validityValue": "구매일로부터 12개월",
-      "expiryMax": "최대 구매일로부터 12개월"
+      "expiryMax": "최대 구매일로부터 12개월",
+      "callBookingTitle": "방문 전 예약 필요",
+      "callBookingDesc": "구매 후 매장에 전화해 날짜를 정해요. 구매하면 전화 버튼이 바로 나와요."
     },
     "seller": {
       "verified": "검증 셀러",

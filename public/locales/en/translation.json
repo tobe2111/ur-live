@@ -7159,6 +7159,26 @@
       "liveHint": "Updates as soon as the store scans it",
       "phoneWord": "phone number",
       "addressWord": "address"
+    },
+    "callBooking": {
+      "saveFail": "Couldn't save. Please try again in a moment",
+      "titleSet": "Visit booked for {{when}}",
+      "title": "Book before you visit",
+      "descSet": "We'll remind you the day before. If the date changes, tell the store first.",
+      "desc": "Call the store to set a date, then show your QR when you arrive.",
+      "callAgain": "Call the store",
+      "call": "Call the store to book",
+      "noPhone": "This store hasn't listed a phone number. Check the store info for contact details.",
+      "date": "Visit date",
+      "time": "Visit time (optional)",
+      "saved": "Your visit date is saved",
+      "saveDate": "Save this date",
+      "change": "Change date",
+      "addDate": "Note the date you booked",
+      "share": "Let the store call me first (share my number)",
+      "shareNote": "The store can see it only until the day after your visit.",
+      "shareOn": "The store can now see your number",
+      "shareOff": "The store can no longer see your number"
     }
   },
   "pass": {
@@ -7170,7 +7190,9 @@
       "defaultTermNoRefund": "Unused balance isn't refunded, so we recommend using it all at once.",
       "validity": "Valid for",
       "validityValue": "12 months from purchase",
-      "expiryMax": "up to 12 months from purchase"
+      "expiryMax": "up to 12 months from purchase",
+      "callBookingTitle": "Booking required",
+      "callBookingDesc": "After you buy, call the store to set a date. The call button appears right after purchase."
     },
     "seller": {
       "verified": "Verified seller",
