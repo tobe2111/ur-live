@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   generateOrderId,
   generateRandomId,
@@ -15,10 +15,59 @@ describe('orderIdGenerator', () => {
       expect(id).toMatch(/^\d{18}$/);
     });
 
-    it('returns unique values on successive calls', () => {
-      const ids = new Set(Array.from({ length: 50 }, () => generateOrderId()));
-      // With 6 random digits the collision chance across 50 calls is negligible
-      expect(ids.size).toBe(50);
+    // 🎲 2026-11-23 — 이 자리에 있던 시험은 "50번 연속 호출하면 50개가 전부 다르다" 를 **진짜 난수로** 단언했다.
+    //   뒤 6자리는 900,000 가지뿐이고 50번은 같은 1초 안에 돌기 때문에(앞 12자리 동일) 생일 문제가 된다:
+    //   겹칠 확률 ≈ 50·49 / (2·900,000) ≈ 0.14% — 약 730번에 한 번 **코드가 멀쩡한데** 빨개진다
+    //   (실제로 2026-11-23 배포 run 45191275420 이 `expected 49 to be 50` 로 멈췄다. 옛 주석의 "negligible" 은 틀렸다).
+    //   ⇒ 확률적 결과가 아니라 **이 시험이 지키려던 성질 자체**를 난수를 고정해서 단언한다. 우연으로는 실패할 수 없다.
+    //   (같은 1초에 번호가 실제로 겹치는 경우는 생성기가 아니라 DB 가 막는다 — orders.order_number UNIQUE.)
+    describe('uniqueness comes from the random suffix (deterministic)', () => {
+      afterEach(() => {
+        vi.restoreAllMocks();
+        vi.useRealTimers();
+      });
+
+      /** crypto.getRandomValues 가 `values` 를 차례로 돌려주게 고정한다. */
+      function stubRandom(values: number[]) {
+        let i = 0;
+        return vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation(((arr: Uint32Array) => {
+          arr[0] = values[i++ % values.length];
+          return arr;
+        }) as typeof crypto.getRandomValues);
+      }
+
+      it('distinct random values → distinct ids, even within the same second', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 10, 23, 9, 53, 12)); // 시계를 멈춘다 — 앞 12자리는 전부 같다
+        stubRandom(Array.from({ length: 50 }, (_, n) => n * 17_999)); // 전부 다르고 전부 900,000 미만
+
+        const ids = Array.from({ length: 50 }, () => generateOrderId());
+
+        expect(new Set(ids.map((id) => id.slice(0, 12))).size).toBe(1); // 날짜 부분은 구분에 기여하지 않았다
+        expect(new Set(ids).size).toBe(50); // 그런데도 50개가 전부 다르다 — 뒤 6자리가 구분한다
+      });
+
+      it('draws the suffix from crypto.getRandomValues once per call (not a counter or a constant)', () => {
+        const spy = stubRandom([123_456, 123_456, 7]);
+
+        const a = generateOrderId();
+        const b = generateOrderId();
+        const c = generateOrderId();
+
+        expect(spy).toHaveBeenCalledTimes(3);
+        expect(a.slice(12)).toBe('223456'); // 100000 + 123456
+        expect(b.slice(12)).toBe('223456'); // 같은 난수 → 같은 뒷자리: 고유성은 오직 난수에서 온다
+        expect(c.slice(12)).toBe('100007');
+      });
+
+      it('uses the whole 900,000-value space (both ends reachable, modulo wraps)', () => {
+        stubRandom([0, 899_999, 900_000, 0xffffffff]);
+
+        expect(generateOrderId().slice(12)).toBe('100000');
+        expect(generateOrderId().slice(12)).toBe('999999');
+        expect(generateOrderId().slice(12)).toBe('100000'); // 900000 % 900000 = 0
+        expect(generateOrderId().slice(12)).toBe(String(100000 + (0xffffffff % 900000)));
+      });
     });
 
     it('starts with the current date prefix (YYMMDDHHmmss)', () => {
