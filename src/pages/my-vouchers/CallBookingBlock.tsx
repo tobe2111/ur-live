@@ -8,13 +8,12 @@
  *
  * 지갑(QR 창)과 결제 완료 화면이 같이 쓴다. 목록은 한 번만 받는다(`['visit-plans','mine']`).
  */
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import { DateInput } from '@/components/ui/date-input'
-import { PhoneIcon } from '@/components/icons/phone-icon'
+import { PhoneIcon } from './PhoneIcon'
 import { useTranslation } from '@/lib/i18n-lite'
 
 export interface MyVisitPlan {
@@ -25,6 +24,9 @@ export interface MyVisitPlan {
   visit_time: string | null
   share_phone: boolean
 }
+
+// 달력 입력은 [날짜 적어두기]를 눌렀을 때만 받는다 — 정적으로 물리면 모든 화면이 받는 공용 묶음으로 올라간다(실측).
+const DateInput = lazy(() => import('@/components/ui/date-input'))
 
 const KEY = ['visit-plans', 'mine'] as const
 const DAYS = ['일', '월', '화', '수', '목', '금', '토']
@@ -105,12 +107,14 @@ export default function CallBookingBlock({ code, className = '' }: { code?: stri
 
       {editing ? (
         <div className="mt-3">
+          <Suspense fallback={<div className="h-11" />}>
           <div className="grid grid-cols-2 gap-2">
             <DateInput type="date" value={date} min={todayKst()} onChange={(e) => setDate(e.target.value)} aria-label={t('wallet.callBooking.date', { defaultValue: '방문 날짜' })}
               className="h-11 w-full rounded-xl bg-gray-50 dark:bg-white/5 px-3 text-[15px] text-gray-900 dark:text-white" />
             <DateInput type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label={t('wallet.callBooking.time', { defaultValue: '방문 시간(선택)' })}
               className="h-11 w-full rounded-xl bg-gray-50 dark:bg-white/5 px-3 text-[15px] text-gray-900 dark:text-white" />
           </div>
+          </Suspense>
           <div className="mt-2 flex gap-2">
             <button type="button" onClick={() => setEditing(false)} className="ur-btn ur-btn-md ur-btn-ghost dark:text-gray-300">{t('common.cancel', { defaultValue: '취소' })}</button>
             <button type="button" disabled={!date || busy}
