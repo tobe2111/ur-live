@@ -21,6 +21,7 @@ import SameStoreDeals from './SameStoreDeals'
 import TalkCalendarButton from './TalkCalendarButton'
 import GiftVoucherSheet from './GiftVoucherSheet'
 import CopyTextButton from '@/components/ui/copy-text-button'
+import CallBookingBlock from './CallBookingBlock'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 injectMotionCss('ur-m-stamp', `@keyframes ur-slam { 0% { opacity: 0; transform: rotate(-24deg) scale(1.9); } 60% { opacity: 1; transform: rotate(-12deg) scale(.94); } 100% { opacity: 1; transform: rotate(-12deg) scale(1); } }.ur-slam { animation: ur-slam .38s cubic-bezier(.3,1.4,.5,1) both; }@keyframes ur-thud { 0%,100% { transform: none; } 30% { transform: translateY(4px) scale(.995); } 60% { transform: translateY(-1px); } }.ur-thud { animation: ur-thud .35s ease-out .22s both; }@media (prefers-reduced-motion: reduce){.ur-slam,.ur-thud{animation:none!important}}`)
 // 🎬 2026-11-03 19차 ② — 쓰기 전 QR 화면엔 파란 점이 천천히 숨 쉬듯 퍼진다 — 화면이 멈춘 게 아니라 '연결되어 기다리는 중'(실제로 5초마다 사용 여부를 확인한다).
@@ -375,6 +376,8 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
             </p>
           )}
 
+          {/* 📞 2026-11-23 전화 예약형 이용권 — 매장에 전화해 날짜를 정한다(그 밖의 이용권에선 안 그린다). */}
+          {voucher.status === 'unused' && <CallBookingBlock code={voucher.code} className="mt-5" />}
           {/* 🎟️ 2026-07-06 이용 안내 — 사용 절차(사용방식별 단계) + 유효기간 + 매장 정보 + 주의사항 통합. */}
           {voucher.status === 'unused' && (
             <div className="mt-5 rounded-xl border border-rule-strong overflow-hidden text-left">

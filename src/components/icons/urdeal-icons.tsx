@@ -486,6 +486,18 @@ export const ClockIcon = forwardRef<SVGSVGElement, IconProps>(function ClockIcon
   )
 })
 
+/** 전화(매장에 전화 걸기) — 비스듬한 수화기. 2026-11-23 전화 예약형 이용권의 주 행동. */
+export const PhoneIcon = forwardRef<SVGSVGElement, IconProps>(function PhoneIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path
+        d="M7.2 4.2h2.5l1.3 3.6-1.7 1.3a10.4 10.4 0 0 0 5.6 5.6l1.3-1.7 3.6 1.3v2.5a1.9 1.9 0 0 1-2.1 1.9A14.6 14.6 0 0 1 5.3 6.3a1.9 1.9 0 0 1 1.9-2.1Z"
+        fill={filled ? 'currentColor' : 'none'}
+      />
+    </svg>
+  )
+})
+
 /** 매장(남의 가게) — 차양 없는 **건물 앞면**. 유어샵(내 진열대)과 실루엣이 겹치면 안 된다. */
 export const StoreIcon = forwardRef<SVGSVGElement, IconProps>(function StoreIcon({ size = 24, filled, ...props }, ref) {
   return (

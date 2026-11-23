@@ -42,6 +42,7 @@ import { stripeRouter } from './routes/stripe.routes';
 import { sellersRouter } from './routes/seller.routes';
 import { emailRoutes } from '../features/notifications/api/email.routes';
 import { appointmentsRoutes } from '../features/appointments/api/appointments.routes';
+import { visitPlanRoutes } from '../features/visit-plans/api/visit-plans.routes';
 import { adminPayoutsRoutes } from '../features/admin/api/admin-payouts.routes';
 import { adminFeeBreakdownRoutes } from '../features/admin/api/admin-fee-breakdown.routes';
 // 🧾 2026-07-10 불변식 #44 검증 콕핏 (promo 재원 원장 감사 — read-only, finance role)
@@ -1937,6 +1938,7 @@ app.route('/api/regions', regionsRoutes);
 app.route('/api', uploadRoutes);
 // 🛡️ 2026-05-21: 자체 예약 캘린더 (뷰티/액티비티/건강/펫 등 sub-1day 예약) — 숙소는 별도 stay_bookings 유지. routes 내부 prefix 가 /seller/, /products/, /appointments/ 등 다양.
 app.route('/api', appointmentsRoutes);
+app.route('/api', visitPlanRoutes); // 📞 2026-11-23 전화 예약형 이용권 — 방문 계획
 // 🛡️ 2026-05-21 Phase C: 통합 정산 (payouts 어드민).
 app.route('/api', adminPayoutsRoutes);
 // 🆕 2026-06-29: fee-resolver 그림자 ↔ 현행 정산 비교(읽기 전용, authoritative 전환 검증용).

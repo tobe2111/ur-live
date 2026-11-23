@@ -16,7 +16,7 @@
  * ■ 지키는 것
  *   체크 원 0 · 그라디언트 0 · 색깔 정보상자 0 · 카드 테두리 0(화이트만 shadow-lift). 로즈/블루는 밴드·outline 글자·강조 단어 셋에만.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, X } from 'lucide-react'
 import api from '@/lib/api'
@@ -27,6 +27,8 @@ import { safeDate } from '@/utils/safe-date'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { TicketCard, TicketRow, TicketOutlineButton, TicketNotes } from '@/components/ticket/TicketCard'
 import './payment-complete-motion.css'
+
+const CallBookingBlock = lazy(() => import('@/pages/my-vouchers/CallBookingBlock'))
 
 type ProductLite = {
   id: number
@@ -114,7 +116,7 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
   // 방금 발급된 이용권 — 지갑 쿼리는 confirm 직후 invalidate 됐으므로 여기서 다시 읽으면 새 행이 있다.
   const { data: vouchersRaw } = useMyVouchers()
   const issued = useMemo(() => {
-    const list = (vouchersRaw ?? []) as Array<{ product_id?: number; status: string; expires_at?: string; created_at?: string; restaurant_name?: string; product_name?: string }>
+    const list = (vouchersRaw ?? []) as Array<{ product_id?: number; status: string; expires_at?: string; created_at?: string; restaurant_name?: string; product_name?: string; code?: string }>
     return list
       .filter((v) => Number(v.product_id) === productId && v.status === 'unused')
       .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))[0] ?? null
@@ -177,6 +179,8 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
           </div>
         </TicketCard>
 
+        {/* 📞 2026-11-23 전화 예약형 이용권이면 바로 여기서 매장에 전화한다(아니면 아무것도 안 그린다 — 늦게 받는다). */}
+        {!stay && issued?.code && <Suspense fallback={null}><CallBookingBlock code={issued.code} className="ur-pc-notes mt-5" /></Suspense>}
         <div className="ur-pc-notes mt-5 mb-8">
           <TicketNotes items={stay ? [
             '체크인할 때 프런트에 QR 을 보여 주세요. 휴대폰이 없으면 예약자 이름을 말해도 돼요.',

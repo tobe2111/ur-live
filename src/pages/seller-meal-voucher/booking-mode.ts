@@ -12,9 +12,11 @@
  *   - 상품: `POST /api/seller/products` (모든 이용권과 같은 길 — 매장·사진·사장님 링크·매장 프로필)
  *   - 숙소: `POST /api/seller/stays/:id/info` + `POST /api/seller/stays/:id/rooms`
  *   - 시간: `POST /api/seller/products/:id/booking-slots`
+ *   - 전화: `PUT /api/seller/products/:id/call-booking` (2026-11-23 — 날짜는 통화로 정하고 손님·사장님이 적어만 둔다)
  */
 
-export type BookingMode = 'none' | 'external' | 'time'
+/** `call` = 전화 예약(2026-11-23) — 손님이 산 뒤 매장에 전화해 날짜를 정한다. 저장은 `PUT /api/seller/products/:id/call-booking`. */
+export type BookingMode = 'none' | 'external' | 'time' | 'call'
 
 export interface StayRoomDraft {
   name: string

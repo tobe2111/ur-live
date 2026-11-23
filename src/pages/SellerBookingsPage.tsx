@@ -17,16 +17,19 @@ import BrandLoader from '@/components/brand/BrandLoader'
 
 const SellerAppointmentsPage = lazy(() => import('./SellerAppointmentsPage'))
 const SellerStaysBookingsPage = lazy(() => import('./SellerStaysBookingsPage'))
+const CallBookingsPanel = lazy(() => import('./seller-bookings/CallBookingsPanel')) // 📞 2026-11-23 전화 예약 손님
 
-export type BookingsTab = 'time' | 'stay'
+export type BookingsTab = 'time' | 'stay' | 'call'
 export const BOOKING_TABS: readonly { key: BookingsTab; label: string }[] = [
   { key: 'time', label: '시간 예약' },
   { key: 'stay', label: '숙소 예약' },
+  { key: 'call', label: '전화 예약' },
 ]
 
 export default function SellerBookingsPage() {
   const [params, setParams] = useSearchParams()
-  const tab: BookingsTab = params.get('tab') === 'stay' ? 'stay' : 'time'
+  const q = params.get('tab')
+  const tab: BookingsTab = q === 'stay' ? 'stay' : q === 'call' ? 'call' : 'time'
   return (
     <SellerLayout title="예약 관리">
       <div className="mx-auto max-w-5xl mb-4 flex gap-2" role="tablist" aria-label="예약 종류">
@@ -39,7 +42,7 @@ export default function SellerBookingsPage() {
         ))}
       </div>
       <Suspense fallback={<BrandLoader />}>
-        {tab === 'stay' ? <SellerStaysBookingsPage embedded /> : <SellerAppointmentsPage embedded />}
+        {tab === 'stay' ? <SellerStaysBookingsPage embedded /> : tab === 'call' ? <CallBookingsPanel /> : <SellerAppointmentsPage embedded />}
       </Suspense>
     </SellerLayout>
   )

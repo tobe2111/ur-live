@@ -20,6 +20,8 @@ export async function notifySellerVoucherSale(
   DB: D1Database,
   sale: { sellerId: unknown; productName: string; qty: number; amount: number },
 ): Promise<void> {
+  // 📞 2026-11-23 전화 예약형 이용권이 팔렸으면 사장님 대시보드에 '손님 전화가 올 거예요' 를 따로 알린다(알림톡과 무관 — 벨).
+  await notifyCallBookingSale(DB, sale).catch(() => null)
   try {
     const target = await resolveSellerNotifyTarget(DB, sale.sellerId)
     if (!target?.phone) return // 휴대폰이 없으면 첫 판매 표시도 남기지 않는다 — 번호가 생기면 그때 안내받는다
@@ -40,4 +42,20 @@ export async function notifySellerVoucherSale(
       sellerId: sale.sellerId,
     })
   } catch { /* fail-soft — 알림이 결제를 막지 않는다 */ }
+}
+
+/** 이 판매에 전화 예약형 이용권이 들어 있으면 대시보드 알림 1건. 호출부는 상품 id 를 안 넘기므로 매장의 전화 예약형 상품 이름과 대조한다. */
+export async function notifyCallBookingSale(DB: D1Database, sale: { sellerId: unknown; productName: string }): Promise<boolean> {
+  const sid = Number(sale.sellerId)
+  if (!Number.isFinite(sid) || sid <= 0) return false
+  const { results } = await DB.prepare(
+    `SELECT p.name FROM products p JOIN product_supply_meta m ON m.product_id = p.id AND m.key = 'call_booking' AND m.value = '1'
+      WHERE p.seller_id = ? LIMIT 50`,
+  ).bind(sid).all<{ name: string }>().catch(() => ({ results: [] as { name: string }[] }))
+  const hit = (results || []).find((r) => r.name && sale.productName.includes(r.name))
+  if (!hit) return false
+  const { notifySeller } = await import('../../../lib/notifications')
+  await notifySeller(DB, sid, 'call_booking_sold', '📞 예약이 필요한 이용권이 팔렸어요',
+    `${hit.name} — 손님이 전화로 날짜를 잡을 거예요. [예약 손님]에서 확인하세요.`, '/seller/bookings?tab=call')
+  return true
 }

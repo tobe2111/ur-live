@@ -1,0 +1,33 @@
+/** 🧬 주입 — 전화 예약형 이용권 1단계 (2026-11-23) · 가드: src/tests/unit/visit-plan-call-booking-2026-11-23.test.ts */
+const T = 'src/tests/unit/visit-plan-call-booking-2026-11-23.test.ts'
+const U = 'src/worker/utils/visit-plan.ts'
+const R = 'src/features/visit-plans/api/visit-plans.routes.ts'
+export default [
+  { name: 'visitplan: 동의 없이도 손님 번호가 보인다', file: U,
+    find: '  if (!plan || !plan.sharePhone) return false', replace: '  if (!plan) return false', test: T,
+    why: '동의하지 않은 손님의 전화번호가 사장님 화면에 뜬다.' },
+  { name: 'visitplan: 방문이 지나도 번호가 계속 보인다', file: U,
+    find: '  return today <= addDays(plan.visitDate, 1)', replace: '  return true', test: T,
+    why: '방문 다음 날까지만이라던 약속이 깨진다.' },
+  { name: 'visitplan: 사장님 저장이 동의를 끈다', file: U,
+    find: '    sharePhone: patch.sharePhone !== undefined ? patch.sharePhone : cur?.sharePhone ?? false,', replace: '    sharePhone: patch.sharePhone ?? false,', test: T,
+    why: '사장님이 날짜를 적으면 손님이 켠 동의가 조용히 꺼진다.' },
+  { name: 'visitplan: 전날 알림이 두 번 간다', file: 'src/worker/cron/visit-eve-reminder.ts',
+    find: '    if (Number(claim?.meta?.changes ?? 0) !== 1) continue', replace: '', test: T,
+    why: 'cron 이 겹쳐 돌면 같은 알림이 두 번 간다.' },
+  { name: 'visitplan: 날짜를 바꿔도 새 알림이 안 간다', file: U,
+    find: "       eve_notified_at = CASE WHEN ? = 1 THEN NULL ELSE voucher_visit_plans.eve_notified_at END,", replace: "       eve_notified_at = CASE WHEN ? = 2 THEN NULL ELSE voucher_visit_plans.eve_notified_at END,", test: T,
+    why: '날짜를 옮긴 손님이 새 날짜 전날 알림을 못 받는다.' },
+  { name: 'visitplan: 사용한 이용권에도 전날 알림', file: 'src/worker/cron/visit-eve-reminder.ts',
+    find: "       JOIN vouchers v ON v.id = vp.voucher_id AND v.status = 'unused'", replace: '       JOIN vouchers v ON v.id = vp.voucher_id', test: T,
+    why: '이미 다녀온 손님에게 내일 방문 알림이 간다.' },
+  { name: 'visitplan: 모든 판매에 전화 예약 알림', file: 'src/features/group-buy/api/seller-sale-notify.ts',
+    find: '  if (!hit) return false', replace: '  if (!hit && !results) return false', test: T,
+    why: '전화 예약형이 아닌 이용권이 팔려도 손님 전화가 올 거라고 알린다.' },
+  { name: 'visitplan: 사장님 목록이 번호를 그대로 싣는다', file: R,
+    find: '        buyer_phone: show ? r.buyer_phone : null,', replace: '        buyer_phone: r.buyer_phone,', test: T,
+    why: '동의·기한 판정을 건너뛰고 모든 손님 번호가 나간다.' },
+  { name: 'visitplan: 남의 이용권 날짜를 바꿀 수 있다', file: R,
+    find: '         FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code = ? AND v.user_id = ?`,', replace: '         FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code = ? AND ? IS NOT NULL`,', test: T,
+    why: '코드만 알면 남의 이용권 예약 날짜·동의를 바꾼다.' },
+]
