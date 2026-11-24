@@ -159,6 +159,14 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`),
     DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_share_terms_pair ON agency_share_terms(seller_id, agency_id, effective_from)'),
+    // 🩸 2026-11-24 — 아래 세 표(2026-11-11 추가)는 처음에 **느린 경로에만** 있었다. 라이브는 열이 이미 다 있어
+    //   빠른 경로에서 바로 return 하므로 이 표들이 **한 번도 안 만들어졌다**(실측: 라이브 D1 `no such table`).
+    //   그 결과 에이전시 [수수료 저장]·사장님 초대 링크 열기가 전부 500 이었다. 새 표는 반드시 이 묶음에 넣을 것 —
+    //   가드 `agency-schema-fast-path-2026-11-24.test.ts`.
+    DB.prepare("CREATE TABLE IF NOT EXISTS agency_share_defaults (agency_id INTEGER PRIMARY KEY, pct REAL NOT NULL, updated_at TEXT NOT NULL DEFAULT (datetime('now')))"),
+    DB.prepare("CREATE TABLE IF NOT EXISTS agency_budget_defaults (agency_id INTEGER PRIMARY KEY, pct REAL NOT NULL, updated_at TEXT NOT NULL DEFAULT (datetime('now')))"),
+    DB.prepare('CREATE TABLE IF NOT EXISTS agency_budget_terms (id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER NOT NULL, agency_id INTEGER NOT NULL, pct REAL NOT NULL, effective_from TEXT NOT NULL, set_by_user_id INTEGER)'),
+    DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_budget_terms_pair ON agency_budget_terms(seller_id, agency_id, effective_from)'),
   ])
   // ⚡ 2026-11-02 대표 *"매장 영입 링크 생성하는데에도 시간이 왜이리 걸려?"* — 아래 뒷정리(채우기 1 + 열 추가 5
   //   + 인덱스 1)는 **하나씩 차례로** 돌아 새 워커마다 DB 왕복이 7번 더 붙었다(영입 링크 시트는 읽기 → 만들기
