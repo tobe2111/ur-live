@@ -74,6 +74,7 @@ import { adminStatsRoutes } from '../features/admin/api/admin-stats.routes';
 import { adminSellersRoutes } from '../features/admin/api/admin-sellers.routes';
 import { adminSellerOcrRoutes } from '../features/admin/api/admin-seller-ocr.routes';
 import { adminStoreChannelRoutes } from '../features/admin/api/admin-store-channel.routes';
+import { adminStoreBankRoutes } from '../features/admin/api/admin-store-bank.routes';
 import { adminStoreOwnerRoutes } from '../features/admin/api/admin-store-owner.routes'; // 🪑 매장 소유자 지정·이전 + 소유권 신청 심사 (3단계)
 import { adminProductsRoutes } from '../features/admin/api/admin-products.routes';
 // 🏭 [wholesale-split 2026-07-16] adminSuppliersRoutes → src/worker/mount-wholesale.ts (도매 분리)
@@ -1796,6 +1797,7 @@ adminApp.route('/', adminSellersRoutes);
 adminApp.route('/', adminSellerOcrRoutes); // 🔍 2026-09-16 서류 OCR — 같은 인증·IP·audit 체인. 본체는 별 파일(크기 동결)
 // 🏪 매장 등록 채널(직접/대행사) 지정 — 요율을 정하는 값이라 어드민이 확정할 수 있어야 한다(2026-08-27).
 adminApp.route('/', adminStoreChannelRoutes);
+adminApp.route('/', adminStoreBankRoutes); // 🏦 2026-11-24 매장 정산 계좌 — 어드민 대신 입력
 adminApp.route('/', adminStoreOwnerRoutes);
 // 🛡️ 2026-04-22 배치 148 (TD-006 부분): admin-products + sample-requests 분리
 adminApp.route('/', adminProductsRoutes);

@@ -18,6 +18,7 @@ import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import StoreChannelCard from './admin-merchant-commissions/StoreChannelCard'
+import StoreBankCard from './admin-merchant-commissions/StoreBankCard'
 import IntroducerAssign from './admin-merchant-commissions/IntroducerAssign'
 import { DateInput } from '@/components/ui/date-input'
 
@@ -176,6 +177,8 @@ export default function AdminMerchantCommissionsPage() {
               {/* 💰 2026-08-31 대표 "되게 복잡해졌어" — 채널(요율)과 돈 갈림을 이 카드 안에서 끝낸다.
                   그전엔 채널을 바꿀 화면이 아예 없었다(API 만 있고 UI 미배선). */}
               <StoreChannelCard sellerId={cs.id} hasIntroducer={!!cs.introduced_by_influencer_id} />
+              {/* 🏦 2026-11-24: 정산 계좌 대신 입력 — 사장님이 안 넣은 계좌를 대표가 받아서 넣는다(역할·감사 로그·사장님 알림). */}
+              <StoreBankCard sellerId={cs.id} />
               {/* 🤝 2026-08-31: 영입자 지정 — 그전엔 DB 로만 가능했다. */}
               <IntroducerAssign
                 sellerId={cs.id}
