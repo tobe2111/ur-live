@@ -194,9 +194,9 @@ export async function handleKtAlphaVoucherRetry(env: Env): Promise<void> {
           bannerId: sMap.kt_alpha_banner_id || undefined,
         })
         await DB.prepare(
-          `UPDATE voucher_orders SET status = 'sent', external_order_id = ?, coupon_code = COALESCE(?, coupon_code),
+          `UPDATE voucher_orders SET status = 'sent', external_order_id = COALESCE(NULLIF(external_order_id, ''), ?), coupon_code = COALESCE(?, coupon_code),
                   sent_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
-        ).bind(res.orderNo || trId, res.pinNo || null, v.id).run().catch(() => null)
+        ).bind(trId /* 🔗 2026-11-25 처음 발송 때 적힌 주문 열쇠(u{주문}-…)가 있으면 그대로 둔다 — 덮으면 지갑·재발송 방지·환불 판정이 이 주문을 못 찾는다 */, res.pinNo || null, v.id).run().catch(() => null)
         healed++
       } catch (sendErr) {
         const msg = (sendErr as Error).message.slice(0, 300)

@@ -438,6 +438,10 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           const label = voucher.status === 'used' ? '사용' : voucher.status === 'refunded' ? '환불' : '만료'
           return c.json({ success: false, error: `이미 ${label}된 교환권입니다`, code: 'NOT_CANCELLABLE' }, 400)
         }
+        // 🎁 2026-11-25 이미 발송된 교환권(기프티콘)은 무르지 않는다 — 내부 행은 발송 뒤에도 unused 라 종전엔 딜이 그대로 환불됐다.
+        if (await (await import('../../../worker/utils/kt-delivered')).ktCouponDelivered(DB, voucher.order_id)) {
+          return c.json({ success: false, error: (await import('../../../worker/utils/kt-delivered')).KT_DELIVERED_REFUND_BLOCKED, code: 'KT_DELIVERED' }, 400)
+        }
 
         // 🏡 2026-10-25 숙소=이용권 통일 — 숙소 이용권은 날짜별 환불율·달력 풀기가 있는 숙소 취소로만 무른다.
         {

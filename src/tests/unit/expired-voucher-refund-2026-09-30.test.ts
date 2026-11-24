@@ -62,6 +62,7 @@ function seed(): Db {
       status TEXT, expires_at TEXT, applied_price INTEGER, refund_status TEXT, stay_booking_id INTEGER
     );
     CREATE TABLE stay_bookings (id INTEGER PRIMARY KEY, sale_mode TEXT, status TEXT);
+    CREATE TABLE voucher_orders (id INTEGER PRIMARY KEY, source TEXT, status TEXT, external_order_id TEXT);
     INSERT INTO products VALUES (7, 9000, '치즈돈가스', 14);
     INSERT INTO orders VALUES (70, NULL, 'u3', 'deal_points', NULL);
   `)

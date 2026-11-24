@@ -44,6 +44,21 @@ export function pickStoreChannel(stored: unknown): { channel: StoreChannel | nul
   return { channel: null, effective: 'brokered', set: false }
 }
 
+/**
+ * 🔒 2026-11-25 — 사장님이 `POST /stores/:id/channel` 로 **스스로 수수료 구분을 바꾸는 길**을 닫는다.
+ *   그 라우트는 소유자 확인만 하고 값을 그대로 저장했다 ⇒ 직접 입점(10%) 매장이 `brokered`(5%)로 바꾸면 수수료가 반이 된다
+ *   (시험 환경에서 200 확인). 화면은 그 라우트를 부르지 않지만 API 는 살아 있었다.
+ *   규칙은 위 set-once 라우트와 같다: 처음 한 번만 고른다 · 개인 중개 가입이 닫혀 있는 동안 `brokered` 는 고를 수 없다 · 변경은 어드민.
+ * 반환: 막을 이유 또는 null(저장해도 된다).
+ */
+export async function ownerChannelChangeBlock(DB: Env['DB'], sellerId: number, next: StoreChannel, brokerClosed: boolean): Promise<{ success: false; error: string; code: string } | null> {
+  if (next === 'brokered' && brokerClosed) return { success: false, error: '중개 운영은 에이전시 계정으로 등록해 주세요.', code: 'BROKER_VIA_AGENCY' }
+  await ensureSellerMetaTable(DB)
+  const current = pickStoreChannel((await getSellerMeta(DB, [sellerId])).get(sellerId)?.store_channel)
+  if (current.set && current.channel !== next) return { success: false, error: '이 매장의 운영 방식은 이미 정해져 있어요. 변경은 고객센터로 요청해주세요.', code: 'CHANNEL_ALREADY_SET' }
+  return null
+}
+
 export function registerStoreChannelRoutes(app: Hono<{ Bindings: Env }>) {
   // ── POST /fee-context/channel — 미지정 좌석이 채널을 한 번 고른다 (set-once) ──────────
   app.post('/fee-context/channel', rateLimit({ action: 'store_channel_pick', max: 10, windowSec: 3600 }), async (c) => {

@@ -13,6 +13,7 @@
  * - ②: 조회가 실패하면 **살아 있다고 본다**(거절). 손님은 다시 시도하거나 숙소 취소를 쓰면 된다 — 반대는 돈이 나간다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { ktCouponDelivered, KT_DELIVERED_REFUND_BLOCKED } from './kt-delivered'
 
 /** 바인딩 2개(order_id, order_id). 남은(환불 안 된) 이용권이 하나라도 있으면 아무 행도 안 바뀐다. */
 export const ORDER_REFUNDED_WHEN_ALL_VOUCHERS_GONE_SQL =
@@ -61,6 +62,7 @@ export async function voucherOrderSelfCancelBlock(
   p: { cancelAmount?: number; cancelQty?: number },
 ): Promise<{ error: string; code: string } | null> {
   if (await orderHasAnyStay(DB, orderId)) return { error: STAY_REFUND_ELSEWHERE, code: 'STAY_CANCEL' }
+  if (await ktCouponDelivered(DB, orderId)) return { error: KT_DELIVERED_REFUND_BLOCKED, code: 'KT_DELIVERED' } // 🎁 2026-11-25 발송된 교환권
   const r = await DB.prepare(
     `SELECT status, CASE WHEN created_at > datetime('now', '-7 days') THEN 1 ELSE 0 END AS fresh FROM vouchers WHERE order_id = ?`,
   ).bind(orderId).all<{ status: string; fresh: number }>().catch(() => null)

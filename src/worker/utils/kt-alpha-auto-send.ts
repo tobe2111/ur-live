@@ -246,7 +246,7 @@ export async function autoSendKtAlphaVouchersForOrders(
           if (voId) {
             await env.DB.prepare(
               `UPDATE voucher_orders SET status = 'sent', external_order_id = ?, coupon_code = COALESCE(?, coupon_code), sent_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
-            ).bind(res.orderNo || trId, res.pinNo || null, voId).run().catch(() => { /* noop */ })
+            ).bind(trId /* 🔗 2026-11-25 우리 주문 열쇠(u{주문}-…)를 지킨다 — KT 주문번호로 덮으면 지갑·재발송 방지·환불 판정이 이 주문을 못 찾는다 */, res.pinNo || null, voId).run().catch(() => { /* noop */ })
           }
           totalSent++
           // 🔔 2026-07-01: 발송 성공 알림(이전엔 실패만 알림). 유료 교환권 수령 확인 필요.

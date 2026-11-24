@@ -51,6 +51,7 @@ function seed(total = 1800): Db {
       status TEXT, expires_at TEXT, applied_price INTEGER, refund_status TEXT, stay_booking_id INTEGER
     );
     CREATE TABLE stay_bookings (id INTEGER PRIMARY KEY, sale_mode TEXT, status TEXT);
+    CREATE TABLE voucher_orders (id INTEGER PRIMARY KEY, source TEXT, status TEXT, external_order_id TEXT);
     INSERT INTO products VALUES (7, 9000, '아메리카노(Hot)', 14);
   `)
   db.prepare('INSERT INTO orders (id, user_id, payment_method, total_amount, refunded_amount) VALUES (70, ?, ?, ?, NULL)')

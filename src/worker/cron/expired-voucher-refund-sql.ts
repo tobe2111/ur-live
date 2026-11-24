@@ -25,6 +25,8 @@
  * 동작이지 더 나쁘지는 않다.
  */
 
+import { ktCouponDeliveredSql } from '../utils/kt-delivered'
+
 /**
  * 🏨 **숙소 예약에 묶인 이용권은 만료 환불 대상이 아니다** — 날짜 지정이든 먼저 산 숙박권이든.
  *   2026-11-25 대표 *"날짜 지정 시에 오지 않으면 환불되는게 아니라 소비한 것으로 해야하지 않을까?"* →
@@ -40,6 +42,14 @@ export function notStaySql(voucherAlias: string): string {
   return `${voucherAlias}.stay_booking_id IS NULL`
 }
 
+/**
+ * 🎁 이미 발송된 교환권(기프티콘)도 만료 환불 대상이 아니다 (2026-11-25 — `worker/utils/kt-delivered.ts`).
+ * 내부 이용권 행은 발송 뒤에도 `unused` 라, 이 조건이 없으면 유효기간이 지날 때마다 **받은 기프티콘의 딜을 자동으로 돌려준다.**
+ */
+export function notDeliveredGiftSql(voucherAlias: string): string {
+  return `NOT ${ktCouponDeliveredSql(`${voucherAlias}.order_id`)}`
+}
+
 /** 환불 대상 조회. `withRefundStatus=false` 는 컬럼 부재 환경용 폴백(종전 동작). */
 export function expiredVoucherSelectSql(withRefundStatus: boolean): string {
   return `
@@ -53,6 +63,7 @@ export function expiredVoucherSelectSql(withRefundStatus: boolean): string {
         AND (v.status = 'unused'${withRefundStatus ? " OR v.status = 'expired'" : ''})
         ${withRefundStatus ? "AND COALESCE(v.refund_status, '') = ''" : ''}
         AND ${notStaySql('v')}
+        AND ${notDeliveredGiftSql('v')}
       ORDER BY v.expires_at ASC
       LIMIT 5000
     `
@@ -69,8 +80,8 @@ export function expiredVoucherClaimSql(withRefundStatus: boolean): string {
   return withRefundStatus
     ? `UPDATE vouchers SET status = 'expired', refund_status = 'claimed'
               WHERE id = ? AND COALESCE(refund_status, '') = '' AND status IN ('unused', 'expired')
-                AND ${notStaySql('vouchers')}`
-    : `UPDATE vouchers SET status = 'expired' WHERE id = ? AND status = 'unused' AND ${notStaySql('vouchers')}`
+                AND ${notStaySql('vouchers')} AND ${notDeliveredGiftSql('vouchers')}`
+    : `UPDATE vouchers SET status = 'expired' WHERE id = ? AND status = 'unused' AND ${notStaySql('vouchers')} AND ${notDeliveredGiftSql('vouchers')}`
 }
 
 /**

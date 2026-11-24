@@ -25,6 +25,8 @@ import type { JWTPayload } from 'hono/utils/jwt/types'
 import { hashPassword, verifyPassword } from '@/lib/password'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { ensureSellerMetaTable, getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
+import { resolveStoreActor } from '@/worker/utils/store-actor'
+import { resolveTokenActorUserId } from '@/worker/utils/store-seat-guard'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
@@ -87,8 +89,17 @@ sellerPinRoutes.post('/set-pin', rateLimit({ action: 'seller_set_pin', max: 5, w
   ).bind(sellerId).first<{ password_hash: string; linked_user_id: number | null }>()
   if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404)
 
+  // 🔑 2026-11-25 — `/store/new` 로 만든 매장은 비밀번호가 없고(`password_hash=''`) `linked_user_id` 도 없다(소유는 `seller_operators`).
+  //   그러면 아래가 "현재 비밀번호" 를 요구하는데 맞출 비밀번호가 없다 ⇒ PIN 을 못 만들고 ⇒ 정산 계좌를 못 넣는다
+  //   (라이브 2026-11-25: 승인 매장 13곳 중 12곳이 이 상태 · 계좌 등록 0곳). 카카오로 들어온 **소유자 좌석**이
+  //   비밀번호 없는 매장의 **첫 PIN** 을 만드는 것은 허용한다 — 카카오 연결 매장과 같은 수준의 확인이다.
+  //   이미 PIN 이 있으면 이 길로 덮어쓸 수 없다(바꾸기는 재설정 경로).
+  const firstPinByOwnerSeat = !seller.linked_user_id && !seller.password_hash && !(await readPinHash(c.env.DB, sellerId))
+    && (await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB)).isOwner
+    && !!(await resolveTokenActorUserId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)) // 누구인지 실린 좌석만(정체 없는 옛 토큰 제외)
+
   // 비밀번호 있는 셀러는 current_password 필수
-  if (!seller.linked_user_id) {
+  if (!seller.linked_user_id && !firstPinByOwnerSeat) {
     if (!current_password) {
       // 🔑 2026-09-26: `code` 를 함께 준다 — 화면이 한국어 문장으로 분기하면 문구를 다듬는 순간 깨진다.
       //   마이의 PIN 시트가 이걸 보고 비밀번호 칸을 연다(어느 계정이 필요한지 미리 알 수 없다).

@@ -6,7 +6,7 @@
  * 별도 시험 서버(staging)가 없어서 생긴 자리다. 못 보는 것: 진짜 카드사의 응답 · 브라우저 화면 · Cloudflare 런타임.
  */
 import { createRequire } from 'node:module'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { sign } from 'hono/jwt'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
@@ -97,7 +97,8 @@ export function stubOutbound(): { toss: TossCall[]; other: string[]; restore: ()
   const orig = globalThis.fetch
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-    const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {}
+    let body: Record<string, unknown> = {}
+    try { body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {} } catch { /* 폼 인코딩 본문(기프티콘 발송사) */ }
     if (url === 'https://api.tosspayments.com/v1/payments/confirm') {
       toss.push({ kind: 'confirm', paymentKey: String(body.paymentKey), amount: Number(body.amount), body })
       return new Response(JSON.stringify({ paymentKey: body.paymentKey, orderId: body.orderId, status: 'DONE', totalAmount: body.amount, method: '카드', approvedAt: new Date().toISOString() }), { status: 200, headers: { 'Content-Type': 'application/json' } })
@@ -108,18 +109,23 @@ export function stubOutbound(): { toss: TossCall[]; other: string[]; restore: ()
       return new Response(JSON.stringify({ paymentKey: m[1], status: 'CANCELED', cancels: [{ cancelAmount: body.cancelAmount ?? 0 }] }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }
     other.push(url)
+    // 기프티콘 발송사(KT Alpha) — 늘 성공으로 답한다(주문번호·PIN 을 돌려준다).
+    if (url.includes('bizapi.giftishow.com')) {
+      return new Response(JSON.stringify({ code: '0000', message: 'OK', result: { code: '0000', message: 'OK', result: { orderNo: `KT${other.length}`, pinNo: '1234567890' } } }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
     return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } })
   }) as typeof fetch
   return { toss, other, restore: () => { globalThis.fetch = orig } }
 }
 
 /** 판정을 모은다 — 하나가 틀려도 끝까지 돌려 전부 보고한다. */
-export function makeReport() {
+export function makeReport(flushTo?: string) {
   const lines: string[] = []
   const fails: string[] = []
   return {
     lines, fails,
-    section: (t: string) => { lines.push('', `## ${t}`) },
+    // 단계마다 파일에 흘려 둔다 — 중간에 예외로 끊겨도 거기까지의 기록이 남는다.
+    section: (t: string) => { lines.push('', `## ${t}`); if (flushTo) writeFileSync(flushTo, lines.join('\n') + '\n') },
     note: (t: string) => { lines.push(`- ${t}`) },
     check: (name: string, ok: boolean, detail = '') => {
       lines.push(`- ${ok ? '✅' : '❌'} ${name}${detail ? ` — ${detail}` : ''}`)

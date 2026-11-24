@@ -28,6 +28,7 @@ function seed(): Db {
     CREATE TABLE products (id INTEGER PRIMARY KEY, price INTEGER, name TEXT, seller_id INTEGER);
     CREATE TABLE orders (id INTEGER PRIMARY KEY, order_number TEXT, user_id TEXT, payment_method TEXT, payment_key TEXT);
     CREATE TABLE stay_bookings (id INTEGER PRIMARY KEY, sale_mode TEXT, status TEXT);
+    CREATE TABLE voucher_orders (id INTEGER PRIMARY KEY, source TEXT, status TEXT, external_order_id TEXT);
     CREATE TABLE voucher_gifts (id INTEGER PRIMARY KEY, voucher_id INTEGER, status TEXT);
     CREATE TABLE vouchers (
       id INTEGER PRIMARY KEY, order_id INTEGER, product_id INTEGER, user_id TEXT, code TEXT,
