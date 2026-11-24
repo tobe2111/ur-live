@@ -5,6 +5,7 @@ import { stayStepError, emptyRoom } from '@/pages/seller-meal-voucher/booking-mo
 import { emptyVoucherForm } from '@/pages/seller-meal-voucher/voucher-form'
 import { smsHref, telDigits, stayVoucherExpired } from '@/pages/my-stays/StayVoucherContact'
 import { expiredVoucherSelectSql, expiredVoucherClaimSql } from '@/worker/cron/expired-voucher-refund-sql'
+import { stayCancelRefundRate } from '@/features/group-buy/api/stay-cancel-amount'
 
 /**
  * 🏨 숙박 이용권 '먼저 판매' 기본 — 결재 `docs/decisions/2026-11-24-stay-voucher-buy-first.md` (대표 "추천대로 진행").
@@ -119,8 +120,12 @@ describe('Q4 만료 미사용 환불 — 기존 이용권 만료 환불이 숙�
     expect(s.slice(i, i + 700)).toMatch(/settleStayVoucherAfterManual\(c\.env\.DB, \{ bookingId, sellerId/)
   })
   it('만료 뒤 셀프 취소는 0원이다(만료 환불과 겹쳐 두 번 나가지 않는다)', () => {
-    const s = readFileSync('src/features/group-buy/api/stays-public.routes.ts', 'utf8')
-    expect(s).toMatch(/refundRate = notUsed && notExpired \? 1\.0 : 0/)
+    // 2026-11-25: 계산이 stay-cancel-amount.ts 로 옮겨졌다 — 글자 대신 함수를 직접 부른다.
+    const now = Date.parse('2026-11-25T00:00:00Z')
+    expect(stayCancelRefundRate({ sale_mode: 'voucher', voucher_expires_at: '2026-11-24 14:59:59' }, 'standard', NaN, now)).toBe(0)
+    expect(stayCancelRefundRate({ sale_mode: 'voucher', voucher_expires_at: '2026-11-26 14:59:59' }, 'standard', NaN, now)).toBe(1)
+    expect(stayCancelRefundRate({ sale_mode: 'voucher', voucher_expires_at: '2026-11-26 14:59:59', voucher_used_at: '2026-11-24 01:00:00' }, 'standard', NaN, now)).toBe(0)
+    expect(readFileSync('src/features/group-buy/api/stays-public.routes.ts', 'utf8')).toMatch(/const refundRate = sca\.stayCancelRefundRate\(booking, policy, hoursUntil\)/)
   })
   it('만료된 이용권에는 연락 버튼을 그리지 않는다', () => {
     const now = Date.parse('2026-11-25T00:00:00Z')

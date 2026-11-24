@@ -108,7 +108,9 @@ describe('④ 숙소 취소 금액', () => {
   })
   it('취소 라우트가 그 함수를 쓴다', () => {
     const code = readCode('src/features/group-buy/api/stays-public.routes.ts')
-    expect(code).toMatch(/amount: await \(await import\('\.\/stay-cancel-amount'\)\)\.stayCancelAmountFor\(c\.env\.DB, booking\.order_id, refundRate, refundAmount\),/)
+    // 2026-11-25: 같은 모듈을 핸들러 머리에서 한 번 불러(`sca`) 환불율·만료 판정과 함께 쓴다 — 부르는 함수와 인자는 그대로.
+    expect(code).toMatch(/const sca = await import\('\.\/stay-cancel-amount'\)/)
+    expect(code).toMatch(/amount: await sca\.stayCancelAmountFor\(c\.env\.DB, booking\.order_id, refundRate, refundAmount\),/)
     expect(code).not.toMatch(/amount: refundRate < 1\.0 \? refundAmount : undefined/)
   })
 })

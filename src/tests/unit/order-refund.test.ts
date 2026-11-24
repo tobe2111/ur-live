@@ -7,12 +7,13 @@ import { refundOrderFully } from '@/worker/utils/order-refund'
  *   (Toss 취소·cascade 역적립은 dynamic import 라 여기선 가드 분기만 — 가장 사고 위험 큰 경로.)
  */
 
-function dbWithOrder(order: Record<string, unknown> | null) {
+// 2026-11-25: 숙소 주문 판정(`orderHasAnyStay`)이 `stay_bookings` 를 한 번 더 묻는다 — 그 질문에는 따로 답한다.
+function dbWithOrder(order: Record<string, unknown> | null, hasStay = false) {
   return {
     prepare(_sql: string) {
       const api = {
         bind: (..._a: unknown[]) => api,
-        first: async () => order,
+        first: async () => (/FROM stay_bookings/.test(_sql) ? (hasStay ? { x: 1 } : null) : order),
         run: async () => ({ meta: {} }),
         all: async () => ({ results: [] }),
       }
@@ -48,6 +49,14 @@ describe('refundOrderFully — 환불 진입 가드', () => {
     const r = await refundOrderFully(dbWithOrder(order), env, 1, { reason: 'x' })
     expect(r.ok).toBe(false)
     expect(r.status).toBe(400)
+  })
+
+  it('🏨 숙소 예약이 묶인 주문은 여기서 환불하지 않는다 → 400 (숙소 취소로 보낸다)', async () => {
+    const order = { id: 1, order_number: 'STAYORD-1', user_id: 'u', seller_id: 5, status: 'PAID', total_amount: 80000, payment_method: 'toss', payment_key: 'pk' }
+    const r = await refundOrderFully(dbWithOrder(order, true), env, 1, { reason: 'x' })
+    expect(r.ok).toBe(false)
+    expect(r.status).toBe(400)
+    expect(r.error).toContain('숙소 예약은 예약 내역에서 취소')
   })
 
   it('카드결제인데 payment key 없음 → 422 PAYMENT_KEY_MISSING', async () => {

@@ -28,6 +28,7 @@ import { ensureRedeemStoreTable, REDEEM_STORE_SETTLEMENT_SQL } from '../utils/br
 import {
   expiredVoucherSelectSql,
   expiredVoucherClaimSql,
+  stayBookingAfterExpiryRefundSql,
   expiredVoucherBookRefundSql,
   type ExpiredVoucherOutcome,
 } from './expired-voucher-refund-sql';
@@ -574,6 +575,8 @@ export async function handleExpiredVoucherRefunds(env: Env) {
         await DB.prepare('UPDATE vouchers SET refund_status = ? WHERE id = ?')
           .bind(outcome, voucher.id).run().catch(() => null);
       }
+      // 🏨 숙소 이용권이면 예약 표도 '환불됨' 으로(돈은 위에서 이미 나갔다 — 표시만 맞춘다).
+      if (outcome === 'refunded') await DB.prepare(stayBookingAfterExpiryRefundSql()).bind(refundAmount, voucher.id).run().catch(() => null);
     }
 
     logInfo(`[Cron] Expired voucher refunds: ${expireCount} expired, ${refundCount} refunded, ${forfeitCount} forfeited`);

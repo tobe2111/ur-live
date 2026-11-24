@@ -10,6 +10,7 @@
  * ⚠️ 잠긴 SSOT helper(tossCancelPayment)는 호출만. 상태전이는 transitionOrderStatus CAS 로 멱등.
  */
 import { swallow } from './swallow'
+import { orderHasAnyStay, STAY_REFUND_ELSEWHERE } from './order-refund-guards'
 
 export interface RefundOrderResult {
   ok: boolean
@@ -177,6 +178,8 @@ export async function refundOrderFully(
 
   const status = String(order.status || '').toUpperCase()
   if (status === 'REFUNDED') return { ok: true, status: 200, already: true }
+  // 🏨 2026-11-25 숙소 주문은 여기서 환불하지 않는다(날짜별 환불율·달력·예약 상태를 이 함수가 모른다) — 손님·사장님·어드민 공통.
+  if (await orderHasAnyStay(DB, Number(order.id))) return { ok: false, status: 400, error: STAY_REFUND_ELSEWHERE }
   if (!CANCELLABLE.includes(status)) {
     return { ok: false, status: 400, error: `현재 상태(${status})에서는 환불할 수 없습니다` }
   }

@@ -34,6 +34,20 @@ export async function orderHasLiveStay(DB: D1Database, orderId: number | string)
 }
 
 /**
+ * 🏨 2026-11-25 — 이 주문에 숙소 예약이 **하나라도**(취소·환불된 것 포함) 묶여 있는가. 모르면 true.
+ *   `orderHasLiveStay` 는 살아 있는 예약만 보고 `POST /api/orders/refund` 한 곳에만 걸려 있었다. 시험 환경에서 돌려 보니
+ *   `POST /api/orders/:id/cancel` 로는 ① 확정된 날짜 예약을 취소 규정 없이 전액 환불(예약은 확정인 채 남는다)
+ *   ② 50% 환불받은 예약의 나머지 50% 도 받을 수 있었다. 숙소 주문의 돈은 **숙소 취소·어드민 숙소 환불로만** 나간다.
+ */
+export async function orderHasAnyStay(DB: D1Database, orderId: number | string): Promise<boolean> {
+  try {
+    return !!(await DB.prepare('SELECT 1 AS x FROM stay_bookings WHERE order_id = ? LIMIT 1').bind(orderId).first<{ x: number }>())
+  } catch (err) {
+    return !/no such table/i.test(String((err as Error)?.message || ''))
+  }
+}
+
+/**
  * 🎟️ 2026-11-18 (대표 승인 "주문 취소 구멍 3건 막기") — **이용권 주문의 셀프 취소**는 장 단위 규칙(미사용 · 구매 7일 안)을 지킨다.
  *   종전 `POST /api/orders/:id/cancel` 은 주문 상태(PAID)만 봤다:
  *   ① 이미 **사용한** 이용권 주문도 전체 취소로 전액 환불(매장이 손해) · ② 7일이 지나도 취소 ·
@@ -46,6 +60,7 @@ export async function voucherOrderSelfCancelBlock(
   orderId: number,
   p: { cancelAmount?: number; cancelQty?: number },
 ): Promise<{ error: string; code: string } | null> {
+  if (await orderHasAnyStay(DB, orderId)) return { error: STAY_REFUND_ELSEWHERE, code: 'STAY_CANCEL' }
   const r = await DB.prepare(
     `SELECT status, CASE WHEN created_at > datetime('now', '-7 days') THEN 1 ELSE 0 END AS fresh FROM vouchers WHERE order_id = ?`,
   ).bind(orderId).all<{ status: string; fresh: number }>().catch(() => null)
