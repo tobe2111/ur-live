@@ -12,12 +12,15 @@ import { GIFT_SEND_HIDDEN } from '@/shared/feature-flags'
 describe('선물 버튼 숨김 · 마일스톤 알림 대상', () => {
   it('① 선물 버튼과 보내기 창은 GIFT_SEND_HIDDEN 뒤에 있다', () => {
     expect(GIFT_SEND_HIDDEN).toBe(true)
-    const s = readFileSync('src/pages/ProductDetailPage.tsx', 'utf8')
-    const btn = s.indexOf('setGiftModalOpen(true)')
-    const gate = s.lastIndexOf('{!GIFT_SEND_HIDDEN && (', btn)
-    expect(gate).toBeGreaterThan(0)
-    expect(btn - gate).toBeLessThan(1500)
-    expect(s).toContain('{!GIFT_SEND_HIDDEN && giftModalOpen && (')
+    // 버튼(떠 있는 부품)은 플래그가 켜져 있으면 아무것도 안 그린다.
+    const fab = readFileSync('src/components/gift/GiftSendFab.tsx', 'utf8')
+    expect(fab).toMatch(/if \(GIFT_SEND_HIDDEN\) return null/)
+    expect(fab.indexOf('if (GIFT_SEND_HIDDEN) return null')).toBeLessThan(fab.indexOf('<button'))
+    // 상품 상세는 버튼을 그 부품으로만 그리고, 보내기 창도 플래그 뒤에 둔다.
+    const page = readFileSync('src/pages/ProductDetailPage.tsx', 'utf8')
+    expect(page).toContain('<GiftSendFab onOpen')
+    expect(page).not.toMatch(/<button[^>]*\n?[^>]*setGiftModalOpen\(true\)/)
+    expect(page).toContain('{!GIFT_SEND_HIDDEN && giftModalOpen && (')
   })
   it('② 마일스톤 알림 조회가 없는 표를 읽지 않는다', () => {
     const s = readFileSync('src/features/group-buy/api/group-buy.routes.ts', 'utf8')

@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { GiftBoxIcon, WarnIcon } from '@/components/icons/urdeal-icons'
+import { WarnIcon } from '@/components/icons/urdeal-icons'
+import GiftSendFab from '@/components/gift/GiftSendFab'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight, ChevronLeft, Map, Bookmark } from 'lucide-react'
@@ -835,30 +836,8 @@ export default function ProductDetailPage() {
         />}
       </Suspense>{ownerSheet}
 
-      {/* 🏭 2026-06-04 (사용자 요청 — 배치/디자인 정리): 선물·담기 보조 액션을 하나의 그룹으로 통합.
-           기존: 분리된 floating 핑크 원 + 보라 pill 이 하단 바와 겹침(거의 겹쳐짐). 이모지 📌 아이콘.
-           변경: 일관된 라벨 pill(중립 배경 + 컬러 lucide 아이콘) 세로 스택 + 간격 + 바 위로 충분히 띄움.
-           위치는 safe-area + 하단 바 높이(~104px) 위로 계산해 겹침 0. */}
-      {/* 🙈 2026-11-24 대표 "숨기기" — 선물하기는 결제·알림 연결이 없는 미완성 기능이라 누르면 항상 오류였다(GIFT_SEND_HIDDEN). */}
-      {!GIFT_SEND_HIDDEN && (
-      <div
-        className="fixed left-0 right-0 z-30 px-4 pr-5 pointer-events-none"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 96px)' }}
-      >
-        <div className="ur-content-wide mx-auto flex flex-col items-end gap-2">
-          {/* 🧭 2026-06-22: 중복 '담기' floating pill 제거 — 본문의 '📌 내 유어샵에 담기 + 추천 링크 복사'
-               CTA(적립액 표시 + 링크 복사 포함)가 정규 담기 진입점. floating 은 보조 액션(선물)만 유지. */}
-          <button
-            onClick={() => setGiftModalOpen(true)}
-            className="pointer-events-auto inline-flex items-center gap-2 h-10 pl-3 pr-4 rounded-full bg-surface border border-line shadow-lg active:scale-95 transition-transform"
-            aria-label={t('productDetailPage.ariaGift')}
-          >
-            <GiftBoxIcon className="w-4 h-4 text-gray-900 dark:text-white" />
-            <span className="text-[12px] font-medium text-gray-900 dark:text-white">선물</span>
-          </button>
-        </div>
-      </div>
-      )}
+      {/* 🙈 선물 버튼 — `GIFT_SEND_HIDDEN` 이면 안 그린다(2026-11-24 대표 "숨기기"). 모양·자리는 GiftSendFab 에. */}
+      <GiftSendFab onOpen={() => setGiftModalOpen(true)} />
       {!GIFT_SEND_HIDDEN && giftModalOpen && (
         <Suspense fallback={null}>
           <GiftSendModal
