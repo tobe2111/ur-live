@@ -568,5 +568,20 @@
     "track": "creator",
     "series": "myth-fact",
     "date_kst": "2026-11-23"
+  },
+  {
+    "id": "18375834589245454",
+    "platform": "threads",
+    "track": "merchant",
+    "topic": "솔직한 현황: 유어딜은 아직 초기 서비스라 '몇 명이 온다'를 약속하지 않는다. 대신 안 팔리면 0원이라 잃을 게 없는 구조",
+    "hook": "udal",
+    "series": "udal-qna",
+    "date_kst": "2026-11-24",
+    "len": "0",
+    "slot": "21:30",
+    "media": "text",
+    "topic_tag": "자영업",
+    "tformat": "operator",
+    "cta": "merchant:guide"
   }
 ]

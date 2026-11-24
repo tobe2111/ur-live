@@ -1117,5 +1117,26 @@
     "series": "myth-fact",
     "posted_at": "2026-11-23T13:30:32.035Z",
     "date_kst": "2026-11-23"
+  },
+  {
+    "platform": "threads",
+    "id": "18375834589245454",
+    "reply_id": "18105735158353031",
+    "topic_tag": "자영업",
+    "hook": "udal",
+    "len": "0",
+    "tformat": "operator",
+    "cta": "merchant:guide",
+    "topic": "솔직한 현황: 유어딜은 아직 초기 서비스라 '몇 명이 온다'를 약속하지 않는다. 대신 안 팔리면 0원이라 잃을 게 없는 구조",
+    "media": "text",
+    "content_id": "th",
+    "track": "merchant",
+    "series": "udal-qna",
+    "promo": false,
+    "posted_at": "2026-11-24T14:09:58.161Z",
+    "date_kst": "2026-11-24",
+    "slot_kst": "21:30",
+    "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261124",
+    "text": "아직 초기 서비스라 몇 명 온다는 약속은 안 드려요. 대신 안 팔리면 0원이라 잃을 게 없게 만들었어요."
   }
 ]
