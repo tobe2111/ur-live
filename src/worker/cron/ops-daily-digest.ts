@@ -88,6 +88,12 @@ export async function runOpsDailyDigest(env: Env): Promise<void> {
       lines.push(...storeChannelWarnings(await loadStoreChannelRows(DB)))
     } catch { /* 다이제스트 본문을 막지 않는다 */ }
 
+    // 🏦 2026-11-24 정산 계좌가 없는 매장(11-24 실측: 승인 13곳 중 0곳 등록 — 돈이 생겨도 보낼 곳이 없다). utils/bank-missing.
+    try {
+      const { loadBankMissingStores, bankMissingDigestLines } = await import('../utils/bank-missing')
+      lines.push(...bankMissingDigestLines(await loadBankMissingStores(DB)))
+    } catch { /* 다이제스트 본문을 막지 않는다 */ }
+
     const title = `📰 일일 다이제스트 ${y.kstDate} (KST)`
     const body = lines.join('\n')
 
