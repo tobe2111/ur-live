@@ -24,3 +24,14 @@
 - (완료) 상세 페이지 구매 전 안내 — 대표 *"응 허가해줄게"* → 응답 `call_booking` + 이용 안내 한 줄. 잠금 기록 `docs/locks/loading/2026-11-23-call-booking-detail-notice.md`.
 - 라이브 판정(E4): 배포 뒤 전화 예약형 이용권을 하나 켜고 지갑·결제 완료·예약 탭을 확인(로그인 화면이라 대표 확인 필요) + `measure-live-vitals` 는 로그인 필요 화면이라 못 잰다.
 - 2단계(앱 안 예약 요청)는 주문이 생긴 뒤.
+
+## 머지·배포·라이브 판정 (2026-11-23 밤)
+- 본체 tobe2111/ur-live#2466(`4c28fa2c`) · 상세 구매 전 안내 tobe2111/ur-live#2467(`c20c92df`) 머지.
+- 첫 배포(4c28fa2c)는 **무관한 시험의 우연 실패**로 건너뛰어졌다 — `orderIdGenerator.test.ts` "returns unique values"(50개가 같은 초에 6자리 난수 → 약 0.14% 로 겹친다). 두 번째 배포(c20c92df)에 함께 반영. 그 시험 수리는 별도 제안으로 올림(이 작업 범위 밖).
+- 라이브: `/api/visit-plans/mine` · `/api/seller/visit-plans` 가 404 → **401**(배포됨). 안 켠 이용권(`/api/group-buy/products/2919`) 응답에 `call_booking` 키 없음.
+- 속도 `/pass/2919`(폰 4G·CPU 4배 3회): FCP 1388 · 892 · 1356ms / LCP 3972(배포 직후 첫 접속) · 992 · 1540ms / CLS 0.0009 ×3. 같은 주소의 변경 전 값은 없다(11-18 `/pass/3066` FCP 0.77~1.52s 와 같은 범위).
+- **못 본 것**: 켠 이용권에서 안내·전화 버튼·예약 탭이 실제로 뜨는지(로그인 화면 + 아직 켠 이용권 0) — 대표 확인 대기.
+
+## 이어받는 세션의 첫 액션 (대표가 이 작업을 이어 하라고 했을 때만)
+`SELECT product_id FROM product_supply_meta WHERE key='call_booking' AND value='1'` (메인 D1) → 행이 생겼으면 그 상품의
+`/api/group-buy/products/<id>` 에 `call_booking:true` 가 있는지, `SELECT COUNT(*) FROM voucher_visit_plans` 로 손님이 날짜·동의를 실제로 쓰는지 본다.
