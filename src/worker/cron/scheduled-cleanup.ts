@@ -862,6 +862,10 @@ export async function handleScheduled(env: Env, tiers: CleanupTiers = ALL_TIERS)
 
     // Step 2: status='failed' OR 'expired' 인 그룹의 deposited 멤버 환불 (멱등)
     //   환불 처리 안 된 멤버만 추출 → 딜 복구 + 멤버 status='refunded' + refund 레코드 INSERT.
+    //   🩸 2026-11-24: 아래 NOT EXISTS 가 읽는 멱등 표를 **먼저 만든다**. 예전엔 라우트만 만들어서, 표가 없는 동안
+    //   이 쿼리가 터지고 catch 가 빈 결과로 삼켜 자동 환불이 한 번도 돌지 않았다. 표를 못 만들면 이 단계는 건너뛴다.
+    const { ensureCommunityRefundTable } = await import('../../features/community-group-buy/api/refund-table')
+    await ensureCommunityRefundTable(DB)
     const { results: refundMembers } = await DB.prepare(`
       SELECT m.id as member_id, m.group_buy_id, m.user_id, m.deposit_amount, g.status as group_status
       FROM community_group_buy_members m

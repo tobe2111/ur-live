@@ -13,6 +13,7 @@
  */
 
 import { Hono } from 'hono';
+import { ensureCommunityRefundTable } from './refund-table'
 import { cors } from 'hono/cors';
 import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
@@ -27,20 +28,8 @@ const communityGroupBuyRoutes = new Hono<{ Bindings: Env }>();
 
 // ── 테이블 자동 생성 + 마이그레이션 ───────────────────────────────────
 async function ensureRefundTable(DB: D1Database) {
-  if (_done_ensureRefundTable.has(DB)) return
-  _done_ensureRefundTable.add(DB)
-  try {
-    await DB.prepare(`
-      CREATE TABLE IF NOT EXISTS community_group_buy_refunds (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        group_id INTEGER NOT NULL,
-        user_id TEXT NOT NULL,
-        amount INTEGER NOT NULL,
-        refunded_at DATETIME DEFAULT (datetime('now')),
-        UNIQUE(group_id, user_id)
-      )
-    `).run();
-  } catch { /* exists */ }
+  // 표 정의는 cron 과 공유한다(refund-table.ts) — 한쪽에만 두면 다른 쪽이 표 없이 읽는다(2026-11-24).
+  try { await ensureCommunityRefundTable(DB) } catch { /* 다음 요청에서 재시도 */ }
 }
 
 async function ensureTables(DB: D1Database) {
@@ -1194,4 +1183,3 @@ export { communityGroupBuyRoutes };
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
 const _done_ensureMessagesTable = new WeakSet<object>()
 const _done_ensureTables = new WeakSet<object>()
-const _done_ensureRefundTable = new WeakSet<object>()
