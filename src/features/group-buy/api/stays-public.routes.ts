@@ -147,7 +147,7 @@ staysPublicRoutes.get('/stays/my-bookings', cors(), async (c) => {
          LEFT JOIN products p ON p.id = b.product_id
          LEFT JOIN product_stay_rooms r ON r.id = b.room_id
         WHERE b.user_id = ?
-        ORDER BY COALESCE(b.check_in_date, b.created_at) DESC LIMIT 100`
+        ORDER BY COALESCE(NULLIF(b.check_in_date, ''), b.created_at) DESC LIMIT 100`
     ).bind(userId).all<Record<string, unknown>>().catch(() => ({ results: [] }))
     const list = rows.results || []
     await (await import('./stay-voucher-unify')).attachStayVoucherCodes(c.env.DB, list) // 🏡 지갑 QR 코드·상태
@@ -512,9 +512,9 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
       ? new Date(Date.now() + voucherValidityDays * 86400000).toISOString().slice(0, 19).replace('T', ' ')
       : null
 
-    // 날짜 모드: check_in_date / check_out_date 저장. voucher: NULL.
-    const bindCheckIn = saleMode === 'date' ? checkIn : null
-    const bindCheckOut = saleMode === 'date' ? checkOut : null
+    // 날짜 모드: 날짜 저장. 숙박권(voucher): 빈 문자열 — 라이브 표가 NOT NULL 이라 NULL 은 500 이었다(2026-11-25, stay-open-date 시험).
+    const bindCheckIn = saleMode === 'date' ? checkIn : ''
+    const bindCheckOut = saleMode === 'date' ? checkOut : ''
 
     const bookingResult = await c.env.DB.prepare(
       `INSERT INTO stay_bookings (
@@ -562,8 +562,8 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'st
         check_in_code: code,
         sale_mode: saleMode,
         // date 모드:
-        check_in_date: bindCheckIn,
-        check_out_date: bindCheckOut,
+        check_in_date: bindCheckIn || null,
+        check_out_date: bindCheckOut || null,
         // voucher 모드:
         voucher_type: voucherType,
         voucher_expires_at: voucherExpiresAt,
@@ -800,8 +800,8 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ actio
          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         orderId, productId, p.room.id, sellerId, userId,
-        saleMode === 'date' ? p.checkIn : null,
-        saleMode === 'date' ? p.checkOut : null,
+        saleMode === 'date' ? p.checkIn : '', // 숙박권은 빈 문자열(표가 NOT NULL — 위 단일 예약과 같다)
+        saleMode === 'date' ? p.checkOut : '',
         p.nights,
         p.guestCount, guestName, guestPhone,
         body?.guest_email || null, body?.special_request || null,
@@ -1073,7 +1073,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
         `UPDATE orders
             SET status = 'PAID',
                 payment_status = 'approved',
-                payment_key = ?,
+                payment_key = ?, payment_method = 'toss',
                 updated_at = datetime('now')
           WHERE id = ?`
       ).bind(paymentKey, orderId),
@@ -1127,8 +1127,8 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 's
         booking_id: order.stay_booking_id,
         order_id: orderId, product_id: firstClaimed.product_id, // 🏨 2026-11-04 product_id — 결제 완료 티켓(이용권과 같은 화면)이 상품을 그린다
         amount: order.total_amount,
-        check_in: firstClaimed.check_in_date,
-        check_out: firstClaimed.check_out_date,
+        check_in: firstClaimed.check_in_date || null, // 숙박권은 날짜 칸이 빈 문자열 — 화면에는 없음(null)으로 준다
+        check_out: firstClaimed.check_out_date || null,
         bookings_confirmed: claimed.length,
       },
     })
@@ -1168,6 +1168,9 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action
       return c.json({ success: false, error: `상태 '${booking.status}' 에서 취소 불가` }, 400)
     }
 
+    // ⏳ 2026-11-25 유효기간이 지난 미사용 숙박권은 취소를 받지 않는다 — 만료 환불이 전액 돌려준다(여기서 닫으면 그 환불이 사라진다).
+    const sca = await import('./stay-cancel-amount')
+    if (sca.stayVoucherExpiredUnused(booking)) return c.json({ success: false, code: 'STAY_VOUCHER_EXPIRED', error: sca.STAY_VOUCHER_EXPIRED_CANCEL }, 400)
     // 🛡️ 2026-06-11 동시요청 race 가드: 취소 가능 상태를 원자 claim — 진 thread(changes==0)는 409,
     //   재고 이중 복원(팬텀 재고) 차단. Toss 환불은 idempotency-key 로도 막히지만 재고 복원은 키가 없다.
     // 🏡 숙소=이용권 통일 — 묶인 이용권을 **먼저** 잡는다(스캔과 겹치면 CAS 먼저 이긴 쪽). 이미 썼으면 거절.
@@ -1183,27 +1186,10 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action
       return c.json({ success: false, error: '이미 취소 처리된 예약입니다' }, 409)
     }
 
-    // 취소 정책 따른 환불 비율 계산.
+    // 취소 환불율 — 계산은 stay-cancel-amount.ts(숙박권: 미사용·미만료 100% / 날짜 예약: 정책별 시간 기준).
     const hoursUntil = (new Date(booking.check_in_date).getTime() - Date.now()) / 3600000
-    let refundRate = 0
     const policy = booking.cancellation_policy || 'standard'
-    if (booking.sale_mode === 'voucher') {
-      // 🛡️ 2026-06-12 (전수조사 4차 B-3): voucher 숙소권은 check_in_date 가 NULL 이라
-      //   기존 hoursUntil 계산이 NaN → 모든 정책 분기 false → 무조건 0원 환불 + 숙소권 영구 무효.
-      //   정책: **미사용 + 미만료** 숙소권의 셀프취소 = 100% 환불 (날짜 미지정 상품이라 노쇼/임박
-      //   취소 손실 개념이 없음 — 달력 재고도 미차감). 사용 후 또는 만료 후엔 기존대로 0원.
-      const notUsed = !booking.voucher_used_at
-      const notExpired = !booking.voucher_expires_at || new Date(booking.voucher_expires_at).getTime() > Date.now()
-      refundRate = notUsed && notExpired ? 1.0 : 0
-    } else if (policy === 'flexible') {
-      refundRate = hoursUntil >= 24 ? 1.0 : 0
-    } else if (policy === 'standard') {
-      refundRate = hoursUntil >= 48 ? 1.0 : (hoursUntil >= 24 ? 0.5 : 0)
-    } else if (policy === 'strict') {
-      refundRate = hoursUntil >= 72 ? 0.5 : 0
-    } else if (policy === 'non_refundable') {
-      refundRate = 0
-    }
+    const refundRate = sca.stayCancelRefundRate(booking, policy, hoursUntil)
     const refundAmount = Math.floor(booking.total_amount * refundRate)
 
     // 🛡️ 2026-05-18: 토스 카드 환불 자동 트리거 — refund_amount > 0 인 경우.
@@ -1219,7 +1205,7 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action
         const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
         const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string }, orderRow.payment_key, {
           reason: `예약 취소 (정책 ${policy}, ${(refundRate * 100).toFixed(0)}% 환불) — ${reason || '사용자 요청'}`.slice(0, 200),
-          amount: await (await import('./stay-cancel-amount')).stayCancelAmountFor(c.env.DB, booking.order_id, refundRate, refundAmount),  // 🔐 2026-11-18 단독 예약의 100% 환불만 전체 취소 — 다객실은 이 방 값만
+          amount: await sca.stayCancelAmountFor(c.env.DB, booking.order_id, refundRate, refundAmount),  // 🔐 2026-11-18 단독 예약의 100% 환불만 전체 취소 — 다객실은 이 방 값만
           idempotencyKey: `stay-cancel-${id}`,
         })
         refundActuallyDone = result.ok
@@ -1229,6 +1215,8 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action
       }
     }
 
+    // 🧾 2026-11-25 환불한 금액을 주문 장부에도 적는다(상한 CAS · 전부 환불이면 REFUNDED) — 다른 환불 경로와 같은 규칙.
+    if (refundActuallyDone) await (await import('../../../worker/utils/order-refund-guards')).bookVoucherRefundOnOrder(c.env.DB, Number(booking.order_id), refundAmount).catch(() => false)
     // 🛡️ 2026-05-18/31: bind 인자 계산을 명시적 변수로 분리 (audit script 가 JS ternary `?`
     //   를 placeholder 로 오인하지 않도록). 환불 성공 시 status='refunded' (어드민 경로와 정합).
     const nextStatus = refundActuallyDone ? 'refunded' : 'cancelled'

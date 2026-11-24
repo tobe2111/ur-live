@@ -66,6 +66,21 @@ const PRODUCT_SUBPATHS = new Set(['group-buy', 'brand-wide', 'resend-store-link'
 
 const PRODUCT_ONE = /^\/api\/seller\/products\/(\d+)(?:\/([a-z-]+))?$/
 
+/**
+ * 🏨 2026-11-25 숙박 이용권의 등록·수정 화면 — 숙소 정보 · 객실 · 달력. 그 이용권이 이 에이전시 것일 때만.
+ *   시험 환경에서 에이전시 좌석으로 숙박을 올려 보니 상품(`POST /api/seller/products`)은 생기는데 이어지는
+ *   숙소 정보·객실 저장이 전부 막혀 **객실 없는 반쪽 숙박권**이 남았다(손님 화면엔 "객실 없음").
+ *   예약 목록·체크인·사용 처리(`/stays/bookings/*` · `/stays/:id/bookings` · `/stays-bookings`)는 **열지 않는다** —
+ *   손님 연락처가 실려 있고 사용 처리는 매장이 하는 일이다. 숫자가 아닌 둘째 마디는 이 식에 안 걸린다.
+ */
+const STAY_ONE = /^\/api\/seller\/stays\/(\d+)(?:\/(info|rooms|calendar)(?:\/(\d+))?)?$/
+const STAY_METHODS: Record<string, { one: string[]; child?: string[] }> = {
+  '': { one: ['GET', 'PUT'] },
+  info: { one: ['POST'] },
+  rooms: { one: ['POST'], child: ['PUT', 'DELETE'] },
+  calendar: { one: ['GET', 'PUT'] },
+}
+
 /** 매장을 가리키지 않거나 이미 자기 몫인 읽기 — 이용권 등록 화면이 여는 것들. */
 const OPEN = new Set([
   'GET /api/seller/products', // 목록 — 라우트가 이 에이전시 이용권만 고른다
@@ -93,6 +108,12 @@ export function agencyScopeDecision(method: string, path: string): AgencyScopeDe
     const sub = one[2]
     if (!sub) return ['GET', 'PUT', 'DELETE'].includes(m) ? { allow: true, productId } : { allow: false }
     if (PRODUCT_SUBPATHS.has(sub) && ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(m)) return { allow: true, productId }
+  }
+  const stay = STAY_ONE.exec(p)
+  if (stay) {
+    const rule = STAY_METHODS[stay[2] ?? '']
+    const allowed = stay[3] ? rule?.child : rule?.one
+    if (allowed?.includes(m)) return { allow: true, productId: Number(stay[1]) }
   }
   return { allow: false }
 }

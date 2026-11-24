@@ -245,7 +245,8 @@ export default function SellerStaysBookingsPage({ embedded = false }: { embedded
                         <td className="px-3 py-3 font-medium text-gray-900 max-w-[140px] truncate">{b.product_name}</td>
                         <td className="px-3 py-3 text-gray-700">{b.room_name}</td>
                         <td className="px-3 py-3 text-gray-700">
-                          {b.check_in_date} ~ {b.check_out_date}
+                          {/* 먼저 판매 숙박권은 날짜가 없다(빈 값) — 사용 처리할 때 사장님이 날짜를 적는다 */}
+                          {b.check_in_date ? `${b.check_in_date} ~ ${b.check_out_date}` : '날짜 미정 · 숙박권'}
                           <span className="text-gray-400 ml-1">({b.nights}박)</span>
                         </td>
                         <td className="px-3 py-3">

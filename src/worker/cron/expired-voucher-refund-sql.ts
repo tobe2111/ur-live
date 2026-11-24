@@ -102,3 +102,15 @@ export function expiredVoucherBookRefundSql(): string {
 
 /** 처리 결과(관측 + 재선점 차단). 'claimed' 로 남기지 않는다 — 무엇이 일어났는지 모르는 행이 생긴다. */
 export type ExpiredVoucherOutcome = 'refunded' | 'forfeited' | 'failed' | 'none'
+
+/**
+ * 🏨 2026-11-25 만료 환불 뒤 **숙소 예약 표를 맞춘다**(바인딩: 환불액, 이용권 id).
+ * 종전엔 이용권만 환불되고 예약은 `confirmed` 로 남아, 손님·사장님 화면에 '확정' 으로 보였다.
+ * 돈을 움직이지 않는다 — 이미 환불된 것을 예약 표에 적을 뿐이고 `confirmed` 일 때만 바뀐다.
+ */
+export function stayBookingAfterExpiryRefundSql(): string {
+  return `UPDATE stay_bookings
+             SET status = 'refunded', refund_amount = ?, refunded_at = datetime('now'),
+                 cancellation_reason = '유효기간 만료 자동 환불', updated_at = datetime('now')
+           WHERE id = (SELECT stay_booking_id FROM vouchers WHERE id = ?) AND status = 'confirmed'`
+}
