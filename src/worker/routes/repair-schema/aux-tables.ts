@@ -73,6 +73,23 @@ export const AUX_TABLE_REPAIRS: Array<{ name: string; sql: string }> = [
     )` },
     // 2026-08-01: is_visible 은 이전에 is_hidden 이었다 — 현실과 반대라 교정(경위: admin-moderation.routes.ts).
     { name: 'product_reviews', sql: `CREATE TABLE IF NOT EXISTS product_reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL, user_id INTEGER NOT NULL, order_id INTEGER, rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5), title TEXT, content TEXT, images TEXT DEFAULT '[]', is_visible INTEGER DEFAULT 1, is_sponsored INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)` },
+    // 🩸 2026-11-24: migrations/0242 에만 있고 라이브에 적용된 적이 없던 표(마이그레이션 CI 미작동). 부정 탐지 기록 7곳이
+    //   이 표에 쓰는데 전부 조용히 실패해 어드민 [부정 탐지] 화면·이상 탐지 cron·운영 다이제스트가 늘 0건이었다.
+    //   (차단 판정 자체는 기록과 별개라 정상 동작했다 — 잃은 건 기록과 관측.) 매일 schema-repair 가 만든다.
+    { name: 'abuse_detections', sql: `CREATE TABLE IF NOT EXISTS abuse_detections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pattern TEXT NOT NULL,
+      user_id TEXT,
+      ref_type TEXT,
+      ref_id TEXT,
+      evidence TEXT NOT NULL,
+      severity TEXT NOT NULL CHECK(severity IN ('low','medium','high')),
+      reviewed INTEGER DEFAULT 0,
+      reviewed_at DATETIME,
+      reviewer_id TEXT,
+      resolution TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
     { name: 'order_refund_history', sql: `CREATE TABLE IF NOT EXISTS order_refund_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       order_id INTEGER NOT NULL,

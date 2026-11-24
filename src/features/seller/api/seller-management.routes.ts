@@ -389,11 +389,12 @@ sellerManagementRoutes.get('/products/:id/options', async (c) => {
     ).bind(productId, sellerId).first<ProductIdRow>();
     if (!product) return c.json({ success: false, error: 'Product not found' }, 404);
 
-    // 🛡️ 2026-04-30 TD-005: stock_quantity / stock 양쪽 호환 — canonical 은 stock,
-    //   legacy 는 stock_quantity. COALESCE 로 양쪽 안전 + alias 유지 (FE 호환).
+    // 🛡️ 2026-04-30 TD-005: canonical 은 stock. alias stock_quantity 는 FE 호환으로 유지.
+    // 🩸 2026-11-24: 여기서 stock_quantity 열도 함께 읽었는데(COALESCE 두 번째 인자) 라이브 product_options 에 그 열이
+    //   **없어** 이 조회가 매번 `no such column` 으로 실패했다(셀러 상품 옵션 목록 500). 라이브 스키마 실측으로 확인.
     const result = await DB.prepare(
       `SELECT id, product_id, option_type, option_value, price_adjustment,
-              COALESCE(stock, stock_quantity, 0) AS stock_quantity
+              COALESCE(stock, 0) AS stock_quantity
        FROM product_options WHERE product_id = ? ORDER BY option_type, option_value`
     ).bind(productId).all();
 
