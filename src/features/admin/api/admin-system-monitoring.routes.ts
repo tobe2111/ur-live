@@ -15,6 +15,9 @@ import { listCronHeartbeats, getCronHealth, cpuDeathKey } from '@/worker/utils/c
 import { planBulkResolve, type BulkResolveInput } from '@/worker/utils/cron-failure-bulk'
 import { listUnanswered } from '@/worker/utils/cs-unanswered'
 import { intParam } from '@/shared/pagination'
+import { getTossPayment } from '@/worker/utils/toss-gateway'
+import { interpretTossLookupCode } from '@/worker/utils/toss-access-probe'
+import { TOSS_KEY_PROBE_ID } from '@/worker/cron/daily-self-diagnostic'
 import { neverFiredLanes, orphanLaneBeats, KNOWN_LANES_KEY } from '@/worker-ads/lane-cadence'
 
 export const adminSystemMonitoringRoutes = new Hono<{ Bindings: Env }>()
@@ -510,6 +513,23 @@ const OPS_GATES: OpsGate[] = [
   { key: 'invite_reward_enabled', kind: 'setting', label: '초대 보상 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 심플 모델로 정리하며 종료한 축이다' },
   { key: 'multi_tier_enabled', kind: 'setting', label: '멀티티어 추천 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 다단계 성격이라 되살릴 이유가 없다' },
 ]
+
+// 🌏 토스 접근 점검 — 호출자가 닿은 Cloudflare 거점에서 토스 조회 1회(없는 결제키 · 부수효과 0).
+//   해외 거점에서 나간 호출을 토스 "대한민국만 허용" 정책이 막는지 실측하는 용도다.
+adminSystemMonitoringRoutes.get('/toss-access-probe', async (c) => {
+  try {
+    const looked = await getTossPayment({ env: c.env, paymentKey: TOSS_KEY_PROBE_ID, timeoutMs: 5_000 })
+    const cf = (c.req.raw as unknown as { cf?: { colo?: string; country?: string } }).cf
+    return c.json({ success: true, data: {
+      verdict: looked.ok ? 'unknown' : interpretTossLookupCode(looked.code),
+      toss_code: looked.code ?? null,
+      colo: cf?.colo ?? null,
+      caller_country: cf?.country ?? c.req.header('cf-ipcountry') ?? null,
+    } })
+  } catch (err) {
+    return safeError(c, err, '토스 접근 점검 중 오류가 발생했습니다', '[toss-access-probe]')
+  }
+})
 
 adminSystemMonitoringRoutes.get('/ops-status', async (c) => {
   const { DB } = c.env
