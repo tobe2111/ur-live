@@ -38,3 +38,17 @@
 | 정상 | 나머지 표 33개 — 해당 기능이 꺼져 있거나 아직 한 번도 안 쓰임(쓰는 순간 생성) | 없음 | — |
 
 틀렸던 판단: 하위 점검이 `store_weekly_picks` 를 "체크섬이 메인에 남아 영영 안 만들어진다" 고 했지만 실측상 그 키가 메인에 없다 — 화면이 한 번도 안 열린 것(정상)으로 판정.
+
+## 3차 — 정적 SQL 전수 대조 (대표 *"너가 파악하지 못하는 문제 더 없어?"*)
+방법: 라이브 3개 D1 의 sqlite_master 로 **로컬 SQLite 사본**을 만들고, 코드의 정적 SQL 5,624개를 `EXPLAIN`(실행 없음) — 오류를 삼키는 곳도 잡힌다.
+스크립트는 세션 스크래치(레포 밖)에 두었다 — 가드로 올리는 건 다음 작업 후보.
+
+| 결과 | 무엇 | 처리 |
+|---|---|---|
+| 고장 | 셀러 상품 옵션 목록 조회 — 없는 `product_options.stock_quantity` 를 읽어 매번 500 | 수정 |
+| 고장(관측) | `abuse_detections` 표가 라이브에 없음(migrations/0242 미적용) — 부정 탐지 기록 7곳 조용히 실패, 어드민 화면·이상탐지 cron 0건. 차단 판정은 정상 | 매일 schema-repair 에 추가 |
+| 고장·결정 필요 | 상품 상세 [선물] 버튼 — `gifts` 표 없음 + 결제/알림톡 미연결(미완성 기능) | 대표에게 숨김 여부 질문 |
+| 고장·결정 필요 | 공구 마일스톤 알림 — `interest_list`(없음) UNION 때문에 단골(seller_follows) 알림까지 전부 실패 | 고치면 알림이 실제로 나간다 → 발송 = 결재 |
+| 작음 | 비밀번호 변경 시 refresh_tokens 의 없는 `user_type` 으로 무효화 실패(삼킴) · 셀러 분석 전환율(product_views 없음) 0 · 가입 IP 이상탐지(registration_ip 없음) | 보고만 |
+| 죽은/레거시 | processRefund(호출 0) · GoogleAuthService(옛 경로, 새 구글 로그인은 user_identities) · deal_balance 동기화(try) · donations·auction·funding·consignment·live_* | 영향 없음 |
+| 오탐 | fcfs_applications·fcfs_draw_logs — 라이브에 있음(사본 생성 순서 문제) | — |
