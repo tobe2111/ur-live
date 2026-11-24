@@ -29,7 +29,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   checked_in: { label: '체크인 완료', color: 'bg-tone-ok-bg text-tone-ok' },
   checked_out: { label: '이용 완료', color: 'bg-tone-info-bg text-tone-info' },
   cancelled: { label: '취소됨', color: 'bg-gray-100 text-gray-500 dark:bg-[#1D1F29] dark:text-gray-400' },
-  no_show: { label: '노쇼', color: 'bg-tone-bad-bg text-tone-bad' },
+  no_show: { label: '이용 처리(미방문)', color: 'bg-tone-bad-bg text-tone-bad' },
   refunded: { label: '환불됨', color: 'bg-tone-warn-bg text-tone-warn' },
   dispute: { label: '분쟁 중', color: 'bg-tone-warn-bg text-tone-warn' },
 }

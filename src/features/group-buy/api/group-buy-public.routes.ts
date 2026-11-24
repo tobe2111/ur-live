@@ -783,7 +783,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       SELECT v.id, v.code, v.user_id, v.product_id, v.order_id, v.status,
              v.expires_at, v.used_at, v.created_at, v.refund_status,
              v.gift_from_user_id, v.delivered_gift_name,
-             v.applied_price, v.applied_discount_pct,
+             v.applied_price, v.applied_discount_pct, v.stay_booking_id,
              p.name AS product_name, p.image_url AS product_image, p.deal_only,
              p.restaurant_name, p.restaurant_address,
              p.restaurant_lat, p.restaurant_lng, p.restaurant_phone

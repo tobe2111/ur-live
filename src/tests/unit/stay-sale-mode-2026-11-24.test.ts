@@ -107,9 +107,9 @@ describe('Q4 만료 미사용 환불 — 기존 이용권 만료 환불이 숙�
     expect(unify).toMatch(/INSERT OR IGNORE INTO vouchers \(order_id, product_id, user_id, code, expires_at,[^)]*stay_booking_id\)/)
     expect(unify).toMatch(/codes\[i\], stayVoucherExpiresAt\(b\),/)
   })
-  it('만료 환불 조회·선점 SQL 에 숙소를 빼는 조건이 없다', () => {
+  it('만료 환불 조회·선점 SQL 은 먼저 판매 숙박권을 빼지 않는다(빼는 것은 날짜 지정 예약뿐 — 2026-11-25)', () => {
     for (const sql of [expiredVoucherSelectSql(true), expiredVoucherSelectSql(false), expiredVoucherClaimSql(true), expiredVoucherClaimSql(false)]) {
-      expect(sql).not.toMatch(/stay_booking_id/)
+      expect(sql).toMatch(/COALESCE\(sb\.sale_mode, 'date'\) <> 'voucher'/)
     }
   })
   it('사장님 수동 [사용 처리] 가 묶인 이용권도 사용 처리한다(안 하면 쓰고도 만료 환불된다)', () => {

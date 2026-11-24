@@ -25,6 +25,21 @@
  * 동작이지 더 나쁘지는 않다.
  */
 
+/**
+ * 🏨 날짜 지정 숙소 예약에 묶인 이용권은 **만료 환불 대상이 아니다** (2026-11-25 대표
+ * *"날짜 지정 시에 오지 않으면 환불되는게 아니라 소비한 것으로 해야하지 않을까?"*).
+ *
+ * 2026-11-03 숙소를 이용권으로 합친 뒤 날짜 예약의 이용권 만료 시각은 체크아웃 날 밤이고, 이 cron 은 숙소를 가리지
+ * 않았다 ⇒ 손님이 안 오거나 사장님이 체크인을 안 누르면 다음 날 새벽 **전액 환불**됐다(전날 취소는 0~50% 인데
+ * 안 가고 가만히 있으면 100%). 그 이용권은 `stay-no-show.ts` 가 **사용한 것으로** 닫고 사장님 정산에 넣는다.
+ * 먼저 판매 숙박권(`sale_mode='voucher'`)은 종전대로 만료 미사용 전액 환불이다(결재 2026-11-24 Q4-1).
+ *
+ * ⚠️ 이 조건을 빼면 날짜 예약 노쇼가 다시 전액 환불된다 — 그리고 `stay-no-show` 와 같은 행을 두 cron 이 다툰다.
+ */
+export function notDateStaySql(voucherAlias: string): string {
+  return `NOT EXISTS (SELECT 1 FROM stay_bookings sb WHERE sb.id = ${voucherAlias}.stay_booking_id AND COALESCE(sb.sale_mode, 'date') <> 'voucher')`
+}
+
 /** 환불 대상 조회. `withRefundStatus=false` 는 컬럼 부재 환경용 폴백(종전 동작). */
 export function expiredVoucherSelectSql(withRefundStatus: boolean): string {
   return `
@@ -37,6 +52,7 @@ export function expiredVoucherSelectSql(withRefundStatus: boolean): string {
       WHERE v.expires_at < datetime('now')
         AND (v.status = 'unused'${withRefundStatus ? " OR v.status = 'expired'" : ''})
         ${withRefundStatus ? "AND COALESCE(v.refund_status, '') = ''" : ''}
+        AND ${notDateStaySql('v')}
       ORDER BY v.expires_at ASC
       LIMIT 5000
     `
@@ -52,8 +68,9 @@ export function expiredVoucherSelectSql(withRefundStatus: boolean): string {
 export function expiredVoucherClaimSql(withRefundStatus: boolean): string {
   return withRefundStatus
     ? `UPDATE vouchers SET status = 'expired', refund_status = 'claimed'
-              WHERE id = ? AND COALESCE(refund_status, '') = '' AND status IN ('unused', 'expired')`
-    : "UPDATE vouchers SET status = 'expired' WHERE id = ? AND status = 'unused'"
+              WHERE id = ? AND COALESCE(refund_status, '') = '' AND status IN ('unused', 'expired')
+                AND ${notDateStaySql('vouchers')}`
+    : `UPDATE vouchers SET status = 'expired' WHERE id = ? AND status = 'unused' AND ${notDateStaySql('vouchers')}`
 }
 
 /**

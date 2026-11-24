@@ -7,6 +7,8 @@ export interface Voucher {
   restaurant_name?: string
   restaurant_address?: string
   restaurant_phone?: string  // 🎟️ 2026-07-06 이용 안내 — 매장 전화(/vouchers/my 가 p.restaurant_phone 반환)
+  /** 🏨 숙소 예약에 묶인 이용권(2026-11-25) — 만료 규칙이 일반 이용권과 달라 주의사항 문구를 바꾼다. */
+  stay_booking_id?: number | null
   restaurant_lat?: number
   restaurant_lng?: number
   product_image?: string
