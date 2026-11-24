@@ -5,7 +5,7 @@ import { useTranslation } from '@/lib/i18n-lite'
 import { ChevronRight, ChevronLeft, Map, Bookmark } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId, getUserIdSync, hasConsumerSession } from '@/utils/auth'
-import { TOPUP_DISABLED } from '@/shared/feature-flags'
+import { TOPUP_DISABLED, GIFT_SEND_HIDDEN } from '@/shared/feature-flags'
 import { resolveProductFlow, canonicalDetailPath } from '@/shared/product-flow'
 import { buildDirectPurchaseItem } from './product-detail/buildDirectPurchaseItem'
 // ✅ Zustand 직접 사용
@@ -839,6 +839,8 @@ export default function ProductDetailPage() {
            기존: 분리된 floating 핑크 원 + 보라 pill 이 하단 바와 겹침(거의 겹쳐짐). 이모지 📌 아이콘.
            변경: 일관된 라벨 pill(중립 배경 + 컬러 lucide 아이콘) 세로 스택 + 간격 + 바 위로 충분히 띄움.
            위치는 safe-area + 하단 바 높이(~104px) 위로 계산해 겹침 0. */}
+      {/* 🙈 2026-11-24 대표 "숨기기" — 선물하기는 결제·알림 연결이 없는 미완성 기능이라 누르면 항상 오류였다(GIFT_SEND_HIDDEN). */}
+      {!GIFT_SEND_HIDDEN && (
       <div
         className="fixed left-0 right-0 z-30 px-4 pr-5 pointer-events-none"
         style={{ bottom: 'calc(env(safe-area-inset-bottom) + 96px)' }}
@@ -856,8 +858,8 @@ export default function ProductDetailPage() {
           </button>
         </div>
       </div>
-
-      {giftModalOpen && (
+      )}
+      {!GIFT_SEND_HIDDEN && giftModalOpen && (
         <Suspense fallback={null}>
           <GiftSendModal
             open={giftModalOpen}
