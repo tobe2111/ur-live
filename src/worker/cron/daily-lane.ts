@@ -74,6 +74,12 @@ export function runDailyLane(group: DailyGroup, d: DailyLaneDeps): void {
   if (group === 'money') {
     ctx.waitUntil(run('auto-settlement', () => handleAutoSettlement(env)))
     ctx.waitUntil(run('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)))
+    // 🏨 2026-11-25 날짜 지정 숙소 예약 — 체크아웃이 지나도록 안 쓴 이용권을 사용한 것으로 닫고 정산에 넣는다
+    //   (대표 "오지 않으면 환불이 아니라 소비한 것으로"). 만료 환불은 그 이용권을 조회·선점에서 뺀다(notDateStaySql).
+    ctx.waitUntil(run('stay-no-show-settle', async () => {
+      const { handleStayNoShows } = await import('./stay-no-show')
+      await handleStayNoShows(env)
+    }))
     // 🛡️ 2026-06-01 도매몰: 공급자 정산 성숙 (환불창 지난 pending → available).
     ctx.waitUntil(run('supplier-settlement-mature', async () => {
       const { matureSupplierSettlements } = await import('../../features/supply/api/supply-settlement')

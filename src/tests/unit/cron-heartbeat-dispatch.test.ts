@@ -68,7 +68,7 @@ describe('일간 레인 — 인보케이션 분리', () => {
 })
 
 describe('일간 레인 — 그룹 배정', () => {
-  const MONEY = ['auto-settlement', 'expired-voucher-refund', 'supplier-settlement-mature',
+  const MONEY = ['auto-settlement', 'expired-voucher-refund', 'stay-no-show-settle', 'supplier-settlement-mature',
     'affiliate-mature', 'referral-mature']
 
   it('🔴 머니 작업이 전부 money 그룹 안에 있다', () => {
@@ -77,8 +77,9 @@ describe('일간 레인 — 그룹 배정', () => {
     for (const n of MONEY) expect(block, `${n} 이 money 그룹 밖으로 나갔다`).toContain(`'${n}'`)
   })
 
-  it('작업 16개가 전부 남아 있다 — 분리하면서 흘리지 않았다', () => {
+  // 2026-11-25: 16 → 17 (`stay-no-show-settle` 추가 — 날짜 지정 숙소 노쇼 마감).
+  it('작업 17개가 전부 남아 있다 — 분리하면서 흘리지 않았다', () => {
     const names = [...lane.matchAll(/run\('([^']+)'/g)].map((m) => m[1])
-    expect(new Set(names).size, `이관된 작업: ${names.join(', ')}`).toBe(16)
+    expect(new Set(names).size, `이관된 작업: ${names.join(', ')}`).toBe(17)
   })
 })

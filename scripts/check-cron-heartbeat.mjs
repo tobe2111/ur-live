@@ -127,6 +127,7 @@ if (fail) {
 const CRITICAL_JOBS = [
   'auto-settlement',              // 정산 확정
   'expired-voucher-refund',       // 만료 이용권 환불
+  'stay-no-show-settle',          // 날짜 지정 숙소 노쇼 → 사용 처리 + 정산 원장
   'supplier-settlement-mature',   // 공급자 정산 성숙
   'affiliate-mature',             // 추천 적립 성숙(T+7)
   'referral-mature',              // 추천 트리 적립 성숙

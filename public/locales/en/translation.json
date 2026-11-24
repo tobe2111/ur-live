@@ -7150,6 +7150,7 @@
       "caution2": "Single-use voucher; it can't be used twice",
       "caution3": "Not exchangeable for cash; no change given",
       "caution4": "If it expires, it's refunded automatically to your payment method",
+      "caution4Stay": "A stay booked for set dates counts as used once the dates pass (no refund). An open-date stay pass is refunded automatically when it expires",
       "giftPendingTitle": "Gift to a friend pending",
       "giftPendingDesc1": "You can't use this voucher until your friend accepts it.",
       "giftPendingDesc2": "Cancel the gift to use it again.",

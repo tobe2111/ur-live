@@ -7150,6 +7150,7 @@
       "caution2": "[TODO:es] 1회용 이용권으로 중복 사용은 안 돼요",
       "caution3": "[TODO:es] 현금 교환·잔액 환급은 불가해요",
       "caution4": "[TODO:es] 유효기간이 지나면 결제 수단으로 자동 환불돼요",
+      "caution4Stay": "Una reserva con fechas fijas se considera usada cuando pasan las fechas (sin reembolso). Un bono de estancia sin fecha se reembolsa automáticamente al caducar",
       "giftPendingTitle": "[TODO:es] 친구에게 선물 중이에요",
       "giftPendingDesc1": "[TODO:es] 친구가 받기 전까지는 이 이용권을 쓸 수 없어요.",
       "giftPendingDesc2": "[TODO:es] 선물 보내기를 취소하면 다시 쓸 수 있어요.",
