@@ -347,3 +347,12 @@ export const PERSONAL_BROKER_SIGNUP_DISABLED = true
  *   보존: 제출 내역·어드민/매장 검증 큐·레벨 API 는 그대로(과거 제출분 처리). true 로 바꾸면 즉시 복원(가역).
  */
 export const KAKAO_REVIEW_BONUS_ENABLED = false
+
+/**
+ * GIFT_SEND_HIDDEN — 쇼핑 상품 상세의 [선물] 버튼 숨김 (2026-11-24 대표 결정 "숨기기").
+ *   배경: 선물하기(`features/gifts`)는 2026-04-28 에 받기 화면까지만 만들고 결제·알림톡 연결이 '후속' 으로 남은
+ *         미완성 기능이다. 라이브 D1 에 `gifts` 표도 없어(migrations/0237 미적용) 버튼을 누르면 **항상 오류**였다.
+ *   true: 상품 상세의 떠 있는 [선물] 버튼과 보내기 창을 그리지 않는다. 받기 링크(`/gift/claim/:token`)·API·코드는 보존.
+ *   되돌리려면: 결제 연결 + `gifts` 표 생성을 먼저 끝낸 뒤 false 로(그 전에 켜면 다시 오류 버튼이 된다).
+ */
+export const GIFT_SEND_HIDDEN = true

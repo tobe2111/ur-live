@@ -228,7 +228,7 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 ### 공동구매 — 2026-05-15 이상적 구현 완료
 1. **전용 detail page** (\`/pass/:id\`): 카운트다운, 참여자 아바타, KakaoLink share
 2. **단일 공구가** (2026-05-30 단일가 모델): 인원수와 무관하게 모든 참여자에게 동일 공구가 적용, voucher 마다 실제 결제가(\`applied_price\`) 기록 — 동적 '단계별 할인(티어)' 은 '먼저 산 고객이 더 비싸지는 문제' 때문에 폐지
-3. **마일스톤 푸시** (50/80/lastone): interest_list 등록자에게 hot 알림 (atomic CAS dedup)
+3. **마일스톤 푸시** (50/80/lastone): 단골(매장 팔로우·알림 켬)에게 hot 알림 (atomic CAS dedup)
 4. **이메일 영수증**: Resend 로 voucher 코드 + 매장 정보 발송
 5. **동적 OG 이미지** (\`/api/og/group-buy/:id\`): KakaoLink/Twitter share 시 1200x630 SVG (진행률 포함)
 6. **JSON-LD Product/Offer/BreadcrumbList**: Google rich result 노출
