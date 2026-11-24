@@ -32,10 +32,10 @@ async function ensureTables(DB: D1Database) {
   } catch { /* exists */ }
   // 멀티 이미지 컬럼
   try { await DB.prepare('ALTER TABLE products ADD COLUMN images TEXT DEFAULT \'[]\'').run(); } catch { /* exists */ }
-  try { await DB.prepare('ALTER TABLE products ADD COLUMN category_main TEXT').run(); } catch { /* exists */ }
-  try { await DB.prepare('ALTER TABLE products ADD COLUMN category_sub TEXT').run(); } catch { /* exists */ }
-  try { await DB.prepare('ALTER TABLE products ADD COLUMN option_type TEXT').run(); } catch { /* exists */ }
-  try { await DB.prepare('ALTER TABLE products ADD COLUMN option_values TEXT DEFAULT \'[]\'').run(); } catch { /* exists */ }
+  // 🩸 2026-11-24 — 여기서 products 에 category_main·category_sub·option_type·option_values 를 ALTER 로 더하려 했지만
+  //   products 는 컬럼 예산 동결(scripts/products-column-baseline.json)이라 라이브에 그 열이 **없다**. 실패를 `/* exists */`
+  //   로 삼켜 아래 INSERT 가 행마다 `no column named category_main` 으로 터졌다(일괄 등록 전 행 실패).
+  //   → 열을 더하지 않는다. 대카테고리는 products.category 에, 옵션은 product_options 표에 넣는다.
 }
 
 // GET /api/bulk-upload/template — CSV 양식 다운로드
@@ -133,7 +133,6 @@ bulkUploadRoutes.post('/upload', requireAuth(), async (c) => {
       const originalPrice = parseInt(p['정가(비교가격)'] || p['original_price'] || '0') || null;
       const stock = parseInt(p['재고수량*'] || p['stock'] || '0');
       const categoryMain = stripFormula(p['대카테고리'] || p['category_main'] || '');
-      const categorySub = stripFormula(p['중카테고리'] || p['category_sub'] || '');
       const description = stripFormula(p['상품설명'] || p['description'] || '');
       const optionType = p['옵션타입(예:색상)'] || p['option_type'] || null;
       const optionValues = p['옵션값(예:블랙,화이트,네이비)'] || p['option_values'] || '';
@@ -188,20 +187,27 @@ bulkUploadRoutes.post('/upload', requireAuth(), async (c) => {
       // 옵션값 파싱
       const optionValuesArray = optionValues ? optionValues.split(',').map((v: string) => v.trim()).filter(Boolean) : [];
 
-      await DB.prepare(`
+      const ins = await DB.prepare(`
         INSERT INTO products (
           name, description, price, original_price, discount_rate,
           image_url, stock, category, is_active,
-          seller_id, min_stock_alert, category_main, category_sub,
-          option_type, option_values, images, detail_images
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)
+          seller_id, min_stock_alert, images, detail_images
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
       `).bind(
         name, description, price, originalPrice, discountRate,
-        mainImages[0] || null, stock, categoryMain || 'lifestyle', // category (1단계 호환)
-        sellerId, minStockAlert, categoryMain, categorySub,
-        optionType, JSON.stringify(optionValuesArray),
+        mainImages[0] || null, stock, categoryMain || 'lifestyle', // 대카테고리 → category (중카테고리는 저장 칸이 없어 받지 않는다)
+        sellerId, minStockAlert,
         JSON.stringify(mainImages), JSON.stringify(detailImages),
       ).run();
+      // 옵션 → product_options (상품 편집 화면과 같은 표). 옵션별 재고는 CSV 에 없어 0 — 셀러가 편집 화면에서 채운다.
+      const productId = Number(ins.meta?.last_row_id);
+      const optType = typeof optionType === 'string' ? stripFormula(optionType.trim()) : '';
+      if (productId > 0 && optType && optionValuesArray.length) {
+        await DB.batch(optionValuesArray.slice(0, 50).map((v: string) => DB.prepare(
+          `INSERT INTO product_options (product_id, option_type, option_value, price_adjustment, stock, created_at)
+           VALUES (?, ?, ?, 0, 0, datetime('now'))`,
+        ).bind(productId, optType, stripFormula(v))));
+      }
 
       results.push({ row: i + 1, status: 'success', name });
       successCount++;
