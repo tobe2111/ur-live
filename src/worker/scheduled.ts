@@ -397,6 +397,11 @@ export async function handleCronScheduled(
       const { runMealVoucherExpireCron } = await import('./cron/voucher-expire')
       await runMealVoucherExpireCron(env as Parameters<typeof runMealVoucherExpireCron>[0])
     }))
+    // 🏦 2026-11-24: 정산 계좌가 없는 매장에 대시보드 알림(매장마다 7일에 한 번 · 앱 알림만).
+    ctx.waitUntil(slotCron('40 9 * * *')('bank-missing-nudge', async () => {
+      const { sendBankMissingNudges } = await import('./utils/bank-missing')
+      return sendBankMissingNudges(env.DB)
+    }))
     // 📅 2026-11-23: 전화 예약형 이용권 — 방문 전날 앱 알림(손님이나 사장님이 적어 둔 날짜 기준).
     ctx.waitUntil(slotCron('40 9 * * *')('visit-eve-reminder', async () => {
       const { runVisitEveReminder } = await import('./cron/visit-eve-reminder')
