@@ -462,9 +462,9 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                       t('wallet.qr.caution1', { defaultValue: '사용 후 환불·취소가 불가해요' }),
                       t('wallet.qr.caution2', { defaultValue: '1회용 이용권으로 중복 사용은 안 돼요' }),
                       t('wallet.qr.caution3', { defaultValue: '현금 교환·잔액 환급은 불가해요' }),
-                      // 🏨 2026-11-25 숙소 예약 이용권은 규칙이 다르다(날짜 예약은 기간이 지나면 이용한 것으로 처리) — 틀린 약속을 하지 않는다.
+                      // 🏨 2026-11-25 숙소 이용권은 규칙이 다르다(기간·유효기간이 지나면 환불 없이 이용한 것으로 처리) — 틀린 약속을 하지 않는다.
                       voucher.stay_booking_id
-                        ? t('wallet.qr.caution4Stay', { defaultValue: '날짜를 정한 숙소 예약은 기간이 지나면 이용한 것으로 처리돼요(환불 없음). 날짜 없이 산 숙박권은 유효기간이 지나면 자동 환불돼요' })
+                        ? t('wallet.qr.caution4Stay', { defaultValue: '숙소 이용권은 예약한 기간이나 유효기간이 지나면 이용한 것으로 처리돼요(환불 없음)' })
                         : t('wallet.qr.caution4', { defaultValue: '유효기간이 지나면 결제 수단으로 자동 환불돼요' }),
                     ].map((cn, i) => (
                       <li key={i} className="flex gap-2 text-[12px] text-gray-400 dark:text-gray-500 leading-snug"><span aria-hidden>·</span><span>{cn}</span></li>

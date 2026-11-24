@@ -74,8 +74,8 @@ export function runDailyLane(group: DailyGroup, d: DailyLaneDeps): void {
   if (group === 'money') {
     ctx.waitUntil(run('auto-settlement', () => handleAutoSettlement(env)))
     ctx.waitUntil(run('expired-voucher-refund', () => handleExpiredVoucherRefunds(env)))
-    // 🏨 2026-11-25 날짜 지정 숙소 예약 — 체크아웃이 지나도록 안 쓴 이용권을 사용한 것으로 닫고 정산에 넣는다
-    //   (대표 "오지 않으면 환불이 아니라 소비한 것으로"). 만료 환불은 그 이용권을 조회·선점에서 뺀다(notDateStaySql).
+    // 🏨 2026-11-25 숙소 이용권 — 기간(체크아웃 · 숙박권 유효기간)이 지나도록 안 쓴 것은 사용한 것으로 닫고 정산에 넣는다
+    //   (대표 "숙소는 시간 지나면 자동환불이 아니라 사용 완료"). 만료 환불은 숙소 이용권을 조회·선점에서 뺀다(notStaySql).
     ctx.waitUntil(run('stay-no-show-settle', async () => {
       const { handleStayNoShows } = await import('./stay-no-show')
       await handleStayNoShows(env)

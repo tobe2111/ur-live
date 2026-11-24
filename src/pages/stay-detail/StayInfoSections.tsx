@@ -135,7 +135,7 @@ export function StayPolicyInfo({
         <InfoBlock label="취소 정책">
           {cancellationLabel(policy)}
           {/* 🏨 2026-11-25 대표 "오지 않으면 환불이 아니라 소비한 것으로" — 결제 전에 알린다(서버 `cron/stay-no-show.ts` 와 짝). */}
-          <span className="block mt-1 text-[13px] text-gray-500 dark:text-gray-400" data-stay-no-show-note>날짜를 정해 예약한 뒤 체크인하지 않으면 이용한 것으로 처리돼요(환불 없음).</span>
+          <span className="block mt-1 text-[13px] text-gray-500 dark:text-gray-400" data-stay-no-show-note>예약한 날 체크인하지 않거나 숙박권 유효기간이 지나면 이용한 것으로 처리돼요(환불 없음).</span>
           {customText && (
             <span className="block mt-1 text-[13px] text-gray-500 dark:text-gray-400">{customText}</span>
           )}

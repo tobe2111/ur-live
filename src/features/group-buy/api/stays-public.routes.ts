@@ -1168,7 +1168,7 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action
       return c.json({ success: false, error: `상태 '${booking.status}' 에서 취소 불가` }, 400)
     }
 
-    // ⏳ 2026-11-25 유효기간이 지난 미사용 숙박권은 취소를 받지 않는다 — 만료 환불이 전액 돌려준다(여기서 닫으면 그 환불이 사라진다).
+    // ⏳ 2026-11-25 유효기간이 지난 미사용 숙박권은 취소를 받지 않는다 — 환불 없이 이용한 것으로 닫힌다(여기서 취소로 닫으면 사장님 정산에서 빠진다).
     const sca = await import('./stay-cancel-amount')
     if (sca.stayVoucherExpiredUnused(booking)) return c.json({ success: false, code: 'STAY_VOUCHER_EXPIRED', error: sca.STAY_VOUCHER_EXPIRED_CANCEL }, 400)
     // 🛡️ 2026-06-11 동시요청 race 가드: 취소 가능 상태를 원자 claim — 진 thread(changes==0)는 409,

@@ -261,7 +261,7 @@ export default function StayDetailPage() {
               className={inputCls} />
           </div>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-2">
-            결제한 뒤 매장에 전화·문자로 날짜를 잡아요. 유효기간 {stay.voucher_validity_days || 180}일, 쓰기 전에는 전액 환불돼요.
+            결제한 뒤 매장에 전화·문자로 날짜를 잡아요. 유효기간 {stay.voucher_validity_days || 180}일 안에는 쓰기 전이면 전액 환불돼요. 유효기간이 지나면 이용한 것으로 처리돼요(환불 없음).
           </p>
           {stay.house_rules && <p className="text-[12px] text-gray-700 dark:text-gray-200 mt-1 whitespace-pre-line">이용 안내: {stay.house_rules}</p>}
         </>

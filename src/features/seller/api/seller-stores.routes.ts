@@ -34,7 +34,7 @@ import { isSeatableStoreStatus } from '@/shared/seller-status'; import { ensureS
 import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
 import { getEffectivePlatformFee } from '@/worker/utils/effective-platform-fee'
 import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
-import { pickStoreChannel, registerStoreChannelRoutes } from './seller-store-channel.routes'
+import { pickStoreChannel, registerStoreChannelRoutes, ownerChannelChangeBlock } from './seller-store-channel.routes'
 import { registerStoreClaimRoutes } from './seller-store-claims.routes'; import { registerStoreReportRoutes } from './seller-store-reports.routes'
 import { registerBrokerTermsRoutes, prepareBrokerTerms, finalizeBrokeredStore } from './seller-broker-terms.routes' // 💸🔑 2026-09-19 요율·승계 코드
 import { storeTermsError, afterStoreCreated } from './store-signup-extras'; import { activeAgencySharesForStore } from '../../agency-console/api/agency-share' // 📜🤝 2026-10-10 약관 동의 + 영입 귀속(유일한 가입 문) · 🧮 2026-11-11 계산기 에이전시 몫
@@ -590,7 +590,7 @@ app.post('/stores/:id/channel', async (c) => {
     if (!(await isStoreOwner(c.env.DB, userId, sellerId))) {
       return c.json({ success: false, error: '매장 소유자만 채널을 변경할 수 있습니다' }, 403)
     }
-    await setSellerMeta(c.env.DB, sellerId, { store_channel: b.channel })
+    { const blocked = await ownerChannelChangeBlock(c.env.DB, sellerId, b.channel, PERSONAL_BROKER_SIGNUP_DISABLED); if (blocked) return c.json(blocked, 409) }; await setSellerMeta(c.env.DB, sellerId, { store_channel: b.channel }) // 🔒 2026-11-25 스스로 수수료 낮추기 차단
     return c.json({ success: true, data: { channel: b.channel } })
   } catch (err) {
     return safeError(c, err, '채널 변경 중 오류가 발생했습니다', '[seller-stores]')

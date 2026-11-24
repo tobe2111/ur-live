@@ -1,12 +1,14 @@
 /**
- * 🏨 날짜 지정 숙소 예약 — 체크아웃이 지나도록 안 쓴 이용권을 **사용한 것으로** 닫는다 (2026-11-25 대표
- * *"날짜 지정 시에 오지 않으면 환불되는게 아니라 소비한 것으로 해야하지 않을까?"*).
+ * 🏨 숙소 이용권 — **기간이 지나도록 안 쓴 것은 사용한 것으로 닫는다**(환불 없음). 날짜 지정 · 먼저 산 숙박권 둘 다.
  *
- * ## 왜
- * 날짜 예약은 방을 그 날짜에 비워 둔다. 손님이 안 오면 사장님은 그 방을 다른 손님에게 못 판 채로 끝난다.
- * 그런데 2026-11-03 숙소=이용권 통일 뒤로 그 이용권은 일반 만료 환불(`auto-settlement`)을 탔다 ⇒ 안 오면 전액 환불.
- * 전날 취소는 정책대로 0~50% 인데 가만히 있으면 100% 였다. 만료 환불은 이제 날짜 예약을 뺀다
- * (`expired-voucher-refund-sql.ts` `notDateStaySql`) — 이 파일이 그 빈자리를 맡는다.
+ * ## 대표가 정한 규칙 (2026-11-25)
+ *   *"날짜 지정 시에 오지 않으면 환불되는게 아니라 소비한 것으로 해야하지 않을까?"* →
+ *   *"숙소는 시간 지나면 자동환불이 아니라 사용 완료로 환불이 안되는건데"*.
+ *   기간 = 날짜 예약은 체크아웃 날 밤, 숙박권은 유효기간(3·6·12개월). 그 전의 미사용 숙박권은 손님이 취소하면 전액 환불된다.
+ *
+ * ## 왜 이 파일이 있나
+ * 2026-11-03 숙소=이용권 통일 뒤로 숙소 이용권은 일반 만료 환불(`auto-settlement`)을 탈 자리였다 ⇒ 기간이 지나면 전액 환불.
+ * 만료 환불은 이제 숙소를 뺀다(`expired-voucher-refund-sql.ts` `notStaySql`) — 이 파일이 그 빈자리를 맡는다.
  *
  * ## 하는 일 (이용권 1장당)
  *   ① 이용권을 원자 선점 `unused|expired → used` (머니 룰 #1 — `changes = 1` 인 실행만 아래로 간다)
@@ -15,9 +17,8 @@
  *   ④ 손님에게 앱 안 알림(외부 발송 아님)
  *
  * ## 대상이 아닌 것
- *   - 먼저 판매 숙박권(`sale_mode='voucher'`) — 만료 미사용은 전액 환불(결재 2026-11-24 Q4-1).
  *   - 취소·환불된 예약 — 취소 경로가 이용권을 먼저 `refunded` 로 잡는다(`holdStayVoucherForCancel`).
- *   - 만료 환불이 이미 처리한 이용권(`refund_status` 가 채워진 것).
+ *   - 유효기간이 없는 옛 숙박권(`expires_at` NULL) — 기간이 없으니 지나지도 않는다.
  *
  * ⚠️ 선점 뒤 원장 기록이 실패하면 그 이용권은 `used` 인데 원장이 없다 — 다음 회차가 다시 잡지 못한다.
  *   그래서 실패를 삼키지 않고 크게 로그한다(같은 트레이드오프를 만료 환불이 이미 택했다 — 이중 지급보다 누락이 안전).
@@ -31,14 +32,13 @@ export function stayNoShowSelectSql(): string {
   return `
       SELECT v.id, v.user_id, v.product_id, v.applied_price,
              p.seller_id, p.name AS product_name,
-             sb.id AS booking_id, sb.status AS booking_status
+             sb.id AS booking_id, sb.status AS booking_status, sb.sale_mode
       FROM vouchers v
       JOIN stay_bookings sb ON sb.id = v.stay_booking_id
       JOIN products p ON p.id = v.product_id
       WHERE v.expires_at < datetime('now')
         AND v.status IN ('unused', 'expired')
         AND COALESCE(v.refund_status, '') = ''
-        AND COALESCE(sb.sale_mode, 'date') <> 'voucher'
         AND sb.status IN ('confirmed', 'checked_in', 'checked_out', 'no_show')
       ORDER BY v.expires_at ASC
       LIMIT 500
@@ -56,7 +56,7 @@ export function stayNoShowClaimSql(): string {
 
 interface NoShowRow {
   id: number; user_id: string; product_id: number; applied_price: number | null
-  seller_id: number; product_name: string | null; booking_id: number; booking_status: string
+  seller_id: number; product_name: string | null; booking_id: number; booking_status: string; sale_mode: string | null
 }
 
 export async function handleStayNoShows(env: Env): Promise<{ closed: number }> {
@@ -76,7 +76,7 @@ export async function handleStayNoShows(env: Env): Promise<{ closed: number }> {
       if (moved?.meta?.changes) {
         await DB.prepare(
           `INSERT INTO stay_booking_status_log (booking_id, prev_status, new_status, changed_by_role, changed_by_id, reason)
-           VALUES (?, 'confirmed', 'no_show', 'system', NULL, '체크아웃 경과 · 체크인 기록 없음 — 이용한 것으로 마감')`,
+           VALUES (?, 'confirmed', 'no_show', 'system', NULL, '기간 경과 · 이용 기록 없음 — 이용한 것으로 마감')`,
         ).bind(v.booking_id).run().catch(() => { /* 로그는 best-effort */ })
       }
     }
@@ -93,8 +93,11 @@ export async function handleStayNoShows(env: Env): Promise<{ closed: number }> {
     if (v.booking_status === 'confirmed' && v.user_id) {
       try {
         const { notifyUser } = await import('../../lib/notifications')
-        await notifyUser(DB, String(v.user_id), 'stay_no_show', '숙소 예약 기간이 지났어요',
-          `${v.product_name || '숙소'} 예약이 체크인 기록 없이 끝나 이용한 것으로 처리됐어요. 환불은 되지 않아요.`, '/my-stays')
+        const openDate = v.sale_mode === 'voucher'
+        await notifyUser(DB, String(v.user_id), 'stay_no_show', openDate ? '숙박권 유효기간이 지났어요' : '숙소 예약 기간이 지났어요',
+          openDate
+            ? `${v.product_name || '숙소'} 숙박권의 유효기간이 지나 이용한 것으로 처리됐어요. 환불은 되지 않아요.`
+            : `${v.product_name || '숙소'} 예약이 체크인 기록 없이 끝나 이용한 것으로 처리됐어요. 환불은 되지 않아요.`, '/my-stays')
       } catch { /* 알림은 best-effort */ }
     }
   }

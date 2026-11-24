@@ -4,9 +4,10 @@
  * 실제 라우트·cron 을 라이브와 같은 구조의 DB 위에서 부른다(카드사만 가짜 — `helpers/live-d1.ts`).
  * 이 시험을 처음 돌렸을 때 나온 결함 — 전부 이 PR 에서 고쳤고, 되돌리면 여기서 빨간불이 난다:
  *   ① 먼저 판매 숙박권은 **살 수 없었다** — 예약 표의 날짜 칸이 NOT NULL 인데 NULL 을 넣었다(500)
- *   ② 기한 지난 숙박권이 **환불되지 않았다** — 숙소 주문에 결제 수단이 안 적혀 만료 환불이 건너뛰었다
+ *   ② 숙소 주문에 결제 수단이 안 적혔다(환불·정산이 결제 수단을 본다) · 기간이 지난 숙소 이용권은 환불이 아니라
+ *      **이용한 것으로 닫는다**(대표 2026-11-25 "숙소는 시간 지나면 … 사용 완료") — 날짜 예약 · 먼저 산 숙박권 둘 다
  *   ③ 숙소 주문을 '주문 취소' 로 돌리면 취소 규정 없이 **전액 환불**(예약은 확정인 채) · 50% 환불 뒤 나머지도 환불
- *   ④ 숙소 취소 환불액이 주문 장부에 안 적혔다 · 기한 지난 숙박권을 손님이 취소하면 받을 환불이 사라졌다
+ *   ④ 숙소 취소 환불액이 주문 장부에 안 적혔다 · 기한 지난 숙박권을 손님이 취소하면 '취소됨' 으로 닫혀 사장님 정산에서 빠졌다
  *   ⑤ 에이전시가 숙박을 올리면 상품만 생기고 숙소 정보·객실 저장이 막혀 **객실 없는 숙박권**이 남았다
  *
  * 못 막는 것: 진짜 카드사 응답(부분 취소 한도 · 지연) · 화면 · 실제 cron 시각. 시간에 기대는 판정(임박 취소 환불율)은
@@ -290,37 +291,36 @@ describe('숙박 전체 흐름 — 사장님 · 유저 · 에이전시 (로컬 �
       raw.exec(`UPDATE vouchers SET expires_at = ${past} WHERE id IN (${va.id}, ${vb.id})`)
       raw.exec(`UPDATE stay_bookings SET voucher_expires_at = ${past} WHERE id = ${a3.bookingId}`)
       const early = await call('PATCH', `/api/group-buy/stays/bookings/${a3.bookingId}/cancel`, uTok, { reason: '기한 지난 뒤 취소' })
-      R.check('A3: 기한이 지난 숙박권은 취소를 받지 않고 자동 환불을 안내한다(이용권은 그대로)', early.status === 400 && early.json.code === 'STAY_VOUCHER_EXPIRED' && voucherOf(a3.bookingId)?.status !== 'refunded' && bookingOf(a3.bookingId)?.status === 'confirmed', fail(early))
+      R.check('A3: 기한이 지난 숙박권은 취소·환불을 받지 않는다(이용권·예약 그대로)', early.status === 400 && early.json.code === 'STAY_VOUCHER_EXPIRED' && voucherOf(a3.bookingId)?.status !== 'refunded' && bookingOf(a3.bookingId)?.status === 'confirmed', fail(early))
       const before = tossBefore()
+      await handleExpiredVoucherRefunds(env as never) // 만료 환불을 먼저 돌려도 숙소는 건드리지 않아야 한다
+      R.check('만료 환불(일반 이용권용)은 숙소 이용권을 건드리지 않는다', out.toss.length === before && !voucherOf(a3.bookingId)?.refund_status && !voucherOf(b3.bookingId)?.refund_status, JSON.stringify({ a: voucherOf(a3.bookingId), b: voucherOf(b3.bookingId) }))
       const ns = await handleStayNoShows(env as never)
-      await handleExpiredVoucherRefunds(env as never)
       const cancels = out.toss.slice(before).filter((t) => t.kind === 'cancel')
       const vb2 = voucherOf(b3.bookingId)!, va2 = voucherOf(a3.bookingId)!
-      R.check('날짜 B3(안 옴): 환불 0원 · 이용한 것으로 마감(used) · 예약 no_show', ns.closed === 1 && vb2.status === 'used' && bookingOf(b3.bookingId)?.status === 'no_show' && !cancels.some((t) => t.paymentKey === b3.paymentKey), JSON.stringify({ closed: ns.closed, v: vb2, b: bookingOf(b3.bookingId)?.status }))
+      R.check('날짜 B3(안 옴): 환불 0원 · 이용한 것으로 마감(used) · 예약 no_show', vb2.status === 'used' && bookingOf(b3.bookingId)?.status === 'no_show' && !cancels.some((t) => t.paymentKey === b3.paymentKey), JSON.stringify({ closed: ns.closed, v: vb2, b: bookingOf(b3.bookingId)?.status }))
       const ledB = ledgerFor(vb.id)
       R.check('B3: 사장님 정산 원장에 결제액이 들어간다', ledB.reduce((n, l) => n + l.amount, 0) === b3.total && ledB.some((l) => l.credit_account === `merchant:${SELLER}`), JSON.stringify(ledB))
-      const noti = q1<{ n: number }>(raw, "SELECT COUNT(*) n FROM user_notifications WHERE user_id = ? AND type = 'stay_no_show'", String(USER))?.n
-      R.check('B3: 손님에게 앱 안 알림 1건', noti === 1, `알림 ${noti}건`)
-      R.check('숙박권 A3(기한 지남·미사용): 전액 자동 환불', va2.refund_status === 'refunded' && cancels.filter((t) => t.paymentKey === a3.paymentKey).length === 1, JSON.stringify({ v: va2, cancels }))
-      const amt = cancels.find((t) => t.paymentKey === a3.paymentKey)?.amount
-      R.check('A3: 환불 금액 = 결제액 · 주문 장부에 기록', (amt === a3.total || amt === null) && orderOf(a3.orderId)?.refunded_amount === a3.total, `toss cancelAmount=${amt} order=${JSON.stringify(orderOf(a3.orderId))}`)
-      R.check('A3: 원장에 사장님 몫이 생기지 않았다', ledgerFor(va.id).filter((l) => l.event_type === 'voucher_used').length === 0, JSON.stringify(ledgerFor(va.id)))
+      R.check('숙박권 A3(유효기간 지남·미사용): 환불 0원 · 이용한 것으로 마감(used) · 예약 no_show', ns.closed === 2 && va2.status === 'used' && bookingOf(a3.bookingId)?.status === 'no_show' && !cancels.some((t) => t.paymentKey === a3.paymentKey), JSON.stringify({ closed: ns.closed, v: va2, b: bookingOf(a3.bookingId)?.status, cancels }))
+      const ledA = ledgerFor(va.id)
+      R.check('A3: 사장님 정산 원장에 결제액이 들어간다 · 주문은 환불 표시 없음', ledA.reduce((n, l) => n + l.amount, 0) === a3.total && ledA.some((l) => l.credit_account === `merchant:${SELLER}`) && orderOf(a3.orderId)?.refunded_amount === 0 && orderOf(a3.orderId)?.status === 'PAID', JSON.stringify({ ledA, o: orderOf(a3.orderId) }))
+      const noti = q<{ title: string }>(raw, "SELECT title FROM user_notifications WHERE user_id = ? AND type = 'stay_no_show' ORDER BY id", String(USER))
+      R.check('손님에게 앱 안 알림 — 날짜 예약 1건 · 숙박권 1건', noti.length === 2 && noti.some((n) => n.title.includes('숙박권 유효기간')) && noti.some((n) => n.title.includes('숙소 예약 기간')), JSON.stringify(noti))
       const again = tossBefore()
       const ns2 = await handleStayNoShows(env as never)
       await handleExpiredVoucherRefunds(env as never)
-      R.check('새벽 처리를 한 번 더 돌려도 환불·마감이 반복되지 않는다', ns2.closed === 0 && out.toss.length === again && ledgerFor(vb.id).length === ledB.length)
+      R.check('새벽 처리를 한 번 더 돌려도 마감·환불이 반복되지 않는다', ns2.closed === 0 && out.toss.length === again && ledgerFor(vb.id).length === ledB.length && ledgerFor(va.id).length === ledA.length)
       const lateCancel = await call('PATCH', `/api/group-buy/stays/bookings/${a3.bookingId}/cancel`, uTok, {})
-      R.check('A3: 환불된 뒤 손님이 취소를 눌러도 카드사 환불은 다시 안 나간다', lateCancel.status >= 400 && out.toss.length === again, fail(lateCancel))
-      R.check('A3: 만료 환불 뒤 예약 표도 환불됨(refunded)으로 맞춰진다', bookingOf(a3.bookingId)?.status === 'refunded' && bookingOf(a3.bookingId)?.refund_amount === a3.total, JSON.stringify(bookingOf(a3.bookingId)))
+      R.check('A3: 마감된 뒤 손님이 취소를 눌러도 환불이 나가지 않는다', lateCancel.status >= 400 && out.toss.length === again, fail(lateCancel))
     }
 
     // ════════ 8. 정산 ════════
     R.section('8. 정산 — 사장님이 받을 돈')
     const led = q<{ credit_account: string; total: number }>(raw, "SELECT credit_account, SUM(amount) total FROM ledger_entries WHERE event_type = 'voucher_used' GROUP BY credit_account ORDER BY credit_account")
     R.note(`원장 합계: ${led.map((l) => `${l.credit_account} ${Number(l.total).toLocaleString('ko-KR')}원`).join(' / ')}`)
-    const usedTotal = (a1?.total || 0) + (b1?.total || 0) + (b2?.total || 0) + (b3?.total || 0)
+    const usedTotal = (a1?.total || 0) + (b1?.total || 0) + (b2?.total || 0) + (b3?.total || 0) + (a3?.total || 0)
     const ledSum = led.reduce((n, l) => n + Number(l.total), 0)
-    R.check(`원장 총액 = 이용 처리된 4건의 결제액 합(${usedTotal.toLocaleString('ko-KR')}원)`, ledSum === usedTotal, `원장 ${ledSum}`)
+    R.check(`원장 총액 = 이용 처리된 5건(사용 3 · 기간 경과 2)의 결제액 합(${usedTotal.toLocaleString('ko-KR')}원)`, ledSum === usedTotal, `원장 ${ledSum}`)
     const merchant = Number(led.find((l) => l.credit_account === `merchant:${SELLER}`)?.total || 0)
     const platform = Number(led.find((l) => l.credit_account === 'platform:revenue')?.total || 0)
     R.note(`사장님 몫 ${merchant.toLocaleString('ko-KR')}원 · 유어딜 수수료 ${platform.toLocaleString('ko-KR')}원 (${usedTotal ? (platform / usedTotal * 100).toFixed(1) : '-'}%)`)

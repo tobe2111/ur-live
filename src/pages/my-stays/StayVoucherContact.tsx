@@ -17,7 +17,7 @@ export function smsHref(phone: string, productName: string, code: string | null 
 }
 
 /**
- * 유효기간이 지났나. 지난 이용권은 만료 환불 cron 이 돌려주므로(그 뒤에도 예약 행은 confirmed 로 남는다)
+ * 유효기간이 지났나. 지난 숙박권은 환불 없이 이용한 것으로 닫히므로(`cron/stay-no-show.ts`)
  * 연락 버튼을 그리지 않는다. DB 시각은 `Z` 없는 UTC 문자열이라 `safeDate` 로 읽는다.
  */
 export function stayVoucherExpired(expiresAt: string | null | undefined, now: number = Date.now()): boolean {

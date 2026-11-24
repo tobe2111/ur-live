@@ -5,18 +5,19 @@ import { expiredVoucherSelectSql, expiredVoucherClaimSql } from '@/worker/cron/e
 import { stayNoShowSelectSql, stayNoShowClaimSql } from '@/worker/cron/stay-no-show'
 
 /**
- * 🏨 2026-11-25 대표 *"날짜 지정 시에 오지 않으면 환불되는게 아니라 소비한 것으로 해야하지 않을까?"*
+ * 🏨 2026-11-25 대표 *"날짜 지정 시에 오지 않으면 환불되는게 아니라 소비한 것으로 해야하지 않을까?"* →
+ *   같은 날 *"숙소는 시간 지나면 자동환불이 아니라 사용 완료로 환불이 안되는건데"*.
  *
- * 종전: 날짜 예약의 이용권은 체크아웃 날 밤에 만료되고, 일반 만료 환불 cron 이 숙소를 가리지 않아 안 오면 **전액 환불**됐다.
- * 지금: 만료 환불은 날짜 예약을 빼고(`notDateStaySql`), `stay-no-show` 가 그 이용권을 **사용한 것으로** 닫아 정산에 넣는다.
+ * 종전: 숙소 이용권(날짜 예약 · 먼저 산 숙박권)은 일반 만료 환불 cron 이 가리지 않아 기간이 지나면 **전액 환불**될 자리였다.
+ * 지금: 만료 환불은 숙소를 전부 빼고(`notStaySql`), `stay-no-show` 가 그 이용권을 **사용한 것으로** 닫아 정산에 넣는다.
  *
  * 실제 sqlite 에 돌려서 고정하는 것:
  *   ① 같은 이용권을 두 cron 이 **둘 다 잡는 일은 없다**(환불 + 정산 = 돈이 두 번 나간다)
  *   ② **아무도 안 잡는 만료 미사용 이용권도 없다**(환불도 정산도 없이 플랫폼이 돈을 쥐고 있게 된다)
- *   ③ 먼저 판매 숙박권 · 일반 이용권은 종전대로 환불 쪽
+ *   ③ 일반 이용권은 종전대로 환불 쪽 · **숙소는 두 방식 모두 마감 쪽**
  *   ④ 취소·환불된 예약, 이미 쓴 이용권, 기한이 안 지난 이용권은 어느 쪽도 안 잡는다
  *   ⑤ 선점은 한 번만 — 한쪽이 잡으면 다른 쪽 선점은 changes = 0
- * 못 막는 것: 원장 금액이 맞는지(스캔과 같은 함수 `recordVoucherUseSettlement` 를 쓴다는 배선만 본다) · 실결제(staging S-STAYNOSHOW).
+ * 못 막는 것: 원장 금액이 맞는지(스캔과 같은 함수 `recordVoucherUseSettlement` 를 쓴다는 배선만 본다) · 실결제.
  */
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')
 type Db = InstanceType<typeof DatabaseSync>
@@ -27,6 +28,7 @@ function seed(): Db {
     CREATE TABLE products (id INTEGER PRIMARY KEY, price INTEGER, name TEXT, seller_id INTEGER);
     CREATE TABLE orders (id INTEGER PRIMARY KEY, order_number TEXT, user_id TEXT, payment_method TEXT, payment_key TEXT);
     CREATE TABLE stay_bookings (id INTEGER PRIMARY KEY, sale_mode TEXT, status TEXT);
+    CREATE TABLE voucher_orders (id INTEGER PRIMARY KEY, source TEXT, status TEXT, external_order_id TEXT);
     CREATE TABLE voucher_gifts (id INTEGER PRIMARY KEY, voucher_id INTEGER, status TEXT);
     CREATE TABLE vouchers (
       id INTEGER PRIMARY KEY, order_id INTEGER, product_id INTEGER, user_id TEXT, code TEXT,
@@ -58,7 +60,7 @@ const noShowPicks = (db: Db) => ids(db, stayNoShowSelectSql())
 function world(): Db {
   const db = seed()
   add(db, { id: 1 })                                                        // 일반 이용권, 만료 미사용
-  add(db, { id: 2, booking: { mode: 'voucher', status: 'confirmed' } })     // 먼저 판매 숙박권, 만료 미사용
+  add(db, { id: 2, booking: { mode: 'voucher', status: 'confirmed' } })     // 먼저 산 숙박권, 유효기간 지남·미사용
   add(db, { id: 3, booking: { mode: 'date', status: 'confirmed' } })        // 날짜 예약, 안 옴
   add(db, { id: 4, status: 'expired', booking: { mode: null, status: 'confirmed' } }) // sale_mode 없는 옛 예약 = 날짜 · 매시 cron 이 먼저 expired 로 표시
   add(db, { id: 5, booking: { mode: 'date', status: 'no_show' } })          // 사장님이 손으로 노쇼를 눌렀다
@@ -76,10 +78,10 @@ describe('날짜 지정 숙소 노쇼 — 환불이 아니라 이용한 것으�
     expect(refundPicks(db).length).toBeGreaterThan(0)
     expect(noShowPicks(db).length).toBeGreaterThan(0)
   })
-  it('③ 일반 이용권과 먼저 판매 숙박권은 환불 쪽, 날짜 예약은 노쇼 마감 쪽', () => {
+  it('③ 일반 이용권만 환불 쪽 — 숙소는 날짜 예약도 먼저 산 숙박권도 마감 쪽', () => {
     const db = world()
-    expect(refundPicks(db)).toEqual([1, 2])
-    expect(noShowPicks(db)).toEqual([3, 4, 5, 6])
+    expect(refundPicks(db)).toEqual([1])
+    expect(noShowPicks(db)).toEqual([2, 3, 4, 5, 6])
   })
   it('① 두 cron 이 같은 이용권을 둘 다 잡지 않는다', () => {
     const db = world()
@@ -99,8 +101,10 @@ describe('날짜 지정 숙소 노쇼 — 환불이 아니라 이용한 것으�
     expect(Number(db.prepare(stayNoShowClaimSql()).run(3).changes)).toBe(1)
     expect(Number(db.prepare(stayNoShowClaimSql()).run(3).changes)).toBe(0)           // 두 번째는 0
     expect((db.prepare('SELECT status FROM vouchers WHERE id = 3').get() as { status: string }).status).toBe('used')
-    expect(Number(db.prepare(expiredVoucherClaimSql(true)).run(2).changes)).toBe(1)   // 먼저 판매 숙박권은 환불 선점된다
-    expect(Number(db.prepare(stayNoShowClaimSql()).run(2).changes)).toBe(0)           // 환불이 잡은 것은 노쇼가 못 잡는다
+    expect(Number(db.prepare(expiredVoucherClaimSql(true)).run(2).changes)).toBe(0)   // 먼저 산 숙박권도 환불 선점 거절
+    expect(Number(db.prepare(stayNoShowClaimSql()).run(2).changes)).toBe(1)           // 마감 쪽이 잡는다
+    expect(Number(db.prepare(expiredVoucherClaimSql(true)).run(1).changes)).toBe(1)   // 일반 이용권은 종전대로 환불 선점
+    expect(Number(db.prepare(stayNoShowClaimSql()).run(1).changes)).toBe(0)           // 환불이 잡은 것은 마감이 못 잡는다
   })
   it('선물 중(받기 전)인 이용권은 건너뛰고, 회수하면 잡는다', () => {
     const db = world()
@@ -132,8 +136,13 @@ describe('배선', () => {
     expect(readFileSync('scripts/check-cron-heartbeat.mjs', 'utf8')).toContain("'stay-no-show-settle'")
   })
   it('손님에게 결제 전·지갑에서 알린다', () => {
-    expect(readFileSync('src/pages/stay-detail/StayInfoSections.tsx', 'utf8')).toContain('체크인하지 않으면 이용한 것으로 처리돼요(환불 없음)')
+    expect(readFileSync('src/pages/stay-detail/StayInfoSections.tsx', 'utf8')).toContain('예약한 날 체크인하지 않거나 숙박권 유효기간이 지나면 이용한 것으로 처리돼요(환불 없음).')
     expect(readFileSync('src/pages/my-vouchers/QRModal.tsx', 'utf8')).toMatch(/voucher\.stay_booking_id\s+\? t\('wallet\.qr\.caution4Stay'/)
+    expect(readFileSync('src/pages/StayDetailPage.tsx', 'utf8')).toContain('유효기간이 지나면 이용한 것으로 처리돼요(환불 없음).')
+    for (const l of ['ko', 'en', 'ja', 'zh', 'es', 'fr']) {
+      const t = JSON.stringify(JSON.parse(readFileSync(`public/locales/${l}/translation.json`, 'utf8')))
+      expect(t, `${l}: 숙소 이용권 주의사항이 자동 환불을 약속한다`).not.toMatch(/"caution4Stay":"[^"]*(자동 환불|refunded automatically|自動で返金|自动退款|reembolsa automáticamente|remboursé automatiquement)/)
+    }
     expect(readFileSync('src/features/group-buy/api/group-buy-public.routes.ts', 'utf8')).toMatch(/v\.applied_discount_pct, v\.stay_booking_id,/)
   })
 })
