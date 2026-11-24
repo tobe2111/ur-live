@@ -142,7 +142,7 @@ staysPublicRoutes.get('/stays/my-bookings', cors(), async (c) => {
 
     // 🛡️ 2026-05-18: voucher 모드는 check_in_date 가 NULL — created_at 으로 fallback.
     const rows = await c.env.DB.prepare(
-      `SELECT b.*, p.name as product_name, r.name as room_name, p.image_url
+      `SELECT b.*, p.name as product_name, r.name as room_name, p.image_url, p.restaurant_phone as store_phone
          FROM stay_bookings b
          LEFT JOIN products p ON p.id = b.product_id
          LEFT JOIN product_stay_rooms r ON r.id = b.room_id

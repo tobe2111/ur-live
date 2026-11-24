@@ -18,6 +18,7 @@ import { safeDate } from '@/utils/safe-date'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useMyStays, type MyBooking } from '@/hooks/queries/useMyStays'
 import BrandLoader from '@/components/brand/BrandLoader'
+import StayVoucherContact, { stayVoucherExpired } from './my-stays/StayVoucherContact'
 const injectMotionCss = (id: string, css: string) => { if (typeof document !== 'undefined' && !document.getElementById(id)) document.head.appendChild(Object.assign(document.createElement('style'), { id, textContent: css })) } // 움직임 CSS 를 이 부품이 불러올 때 한 번 꽂는다 — 공유 모듈로 빼면 묶음기가 화면마다 청크를 하나 더 만든다(2026-11-02 실측)
 // 🎬 2026-11-02 10차 ⑧ — 별을 고르면 그 별까지 하나씩 통통 튀며 채워진다(별 안쪽만 다시 그려 버튼 포커스는 그대로).
 injectMotionCss('ur-m-starpick', `@keyframes ur-star-pick { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: none; } }.ur-star-pick { display: inline-block; animation: ur-star-pick .32s cubic-bezier(.3,1.4,.5,1) backwards; animation-delay: calc(var(--sn, 0) * 60ms); }@media (prefers-reduced-motion: reduce){.ur-star-pick{animation:none!important}}`)
@@ -121,7 +122,10 @@ export default function MyStaysPage() {
                         )}
                       </p>
                       {b.sale_mode === 'voucher' ? (
-                        <VoucherInfo booking={b} />
+                        <>
+                          <VoucherInfo booking={b} />
+                          {b.status === 'confirmed' && !b.voucher_used_at && !stayVoucherExpired(b.voucher_expires_at) && <StayVoucherContact phone={b.store_phone} productName={b.product_name} code={b.check_in_code} />}
+                        </>
                       ) : (
                         <div className="flex items-center gap-1 text-[12px] text-gray-700 dark:text-gray-300 mt-1">
                           <Calendar className="w-3 h-3" />
@@ -133,9 +137,9 @@ export default function MyStaysPage() {
                         <Link to="/my-vouchers" className="mt-2 inline-flex items-center gap-1 h-9 px-3 rounded-full bg-brand text-white text-[13px] font-medium">
                           체크인 QR 보기 ›
                         </Link>
-                      ) : b.check_in_code && b.status === 'confirmed' && (
+                      ) : b.check_in_code && b.status === 'confirmed' && b.sale_mode !== 'voucher' && (
                         <div className="mt-2 inline-flex items-center gap-2 px-2 py-1 bg-blue-50 dark:bg-blue-500/20 rounded">
-                          <span className="text-[12px] text-blue-700 dark:text-blue-300">{b.sale_mode === 'voucher' ? '이용권 코드' : '체크인 코드'}</span>
+                          <span className="text-[12px] text-blue-700 dark:text-blue-300">체크인 코드</span>
                           <span className="text-[12px] tabular-nums font-medium text-blue-800 dark:text-blue-200">{b.check_in_code}</span>
                         </div>
                       )}

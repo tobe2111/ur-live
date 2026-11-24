@@ -18,6 +18,8 @@ import { MultiImageUpload } from '@/components/upload/ImageUpload'
 import { formatNumber } from '@/utils/format'
 import CalendarTab from './StayCalendarTab'
 import { DateInput } from '@/components/ui/date-input'
+import StaySaleFields from '../seller-meal-voucher/StaySaleFields'
+import { isStaySaleMode, resolveStaySale, type StaySaleMode } from '@/shared/stay-sale-mode'
 
 export interface StayRoom {
   id: number
@@ -63,6 +65,10 @@ interface StayInfo {
   min_nights: number
   advance_booking_days: number
   is_active: number
+  /** 🏨 2026-11-24 판매 방식(`shared/stay-sale-mode`) — 서버가 `psi.*` 로 함께 내려준다. */
+  sale_mode?: string | null
+  voucher_validity_days?: number | null
+  house_rules?: string | null
 }
 
 /**
@@ -118,7 +124,11 @@ function InfoTab({ info, productId, onSaved }: { info: StayInfo; productId: numb
   const [saving, setSaving] = useState(false)
   const [f, setF] = useState(info)
 
+  const saleMode: StaySaleMode = isStaySaleMode(f.sale_mode) ? f.sale_mode : 'date'
+
   async function save() {
+    const sale = resolveStaySale({ sale_mode: saleMode, voucher_validity_days: f.voucher_validity_days })
+    if (!sale.ok) { toast.error(sale.error); return }
     setSaving(true)
     try {
       const token = localStorage.getItem('seller_token')
@@ -167,6 +177,8 @@ function InfoTab({ info, productId, onSaved }: { info: StayInfo; productId: numb
           />
         </div>
       </div>
+      <StaySaleFields mode={saleMode} validityDays={Number(f.voucher_validity_days) || 0} note={f.house_rules || ''}
+        onChange={(p) => setF({ ...f, ...(p.mode !== undefined ? { sale_mode: p.mode } : {}), ...(p.validityDays !== undefined ? { voucher_validity_days: p.validityDays } : {}), ...(p.note !== undefined ? { house_rules: p.note } : {}) })} />
       <button
         type="button"
         onClick={save}

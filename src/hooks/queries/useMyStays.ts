@@ -31,6 +31,8 @@ export interface MyBooking {
   voucher_type?: 'weekday' | 'weekend' | null
   voucher_expires_at?: string | null
   voucher_used_at?: string | null
+  /** 🏨 2026-11-24 매장 전화(먼저 산 숙소 이용권의 날짜 잡기 버튼용). */
+  store_phone?: string | null
 }
 
 const CACHE_KEY = 'my-stays'

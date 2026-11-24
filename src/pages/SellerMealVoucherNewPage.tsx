@@ -44,7 +44,7 @@ import SaleSettingsStep from './seller-meal-voucher/SaleSettingsStep'
 import BookingModeSection from './seller-meal-voucher/BookingModeSection'
 import { attachBooking } from './seller-meal-voucher/booking-submit'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
-import { slotsError, stayRoomsError } from './seller-meal-voucher/booking-mode'
+import { slotsError, stayStepError } from './seller-meal-voucher/booking-mode'
 import { kakaoPlaceUrlFromId } from '@/shared/kakao-place-url'
 import {
   emptyVoucherForm, applyStoreContext, lifeSubcatMissing,
@@ -231,7 +231,7 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
       toast.error(t('seller.mealVoucher.channelFirst', { defaultValue: '이 매장을 누가 운영하는지 먼저 골라주세요' }))
       return false
     }
-    const stayErr = s === 1 && form.category === 'stay_voucher' ? stayRoomsError(form.stay_rooms) : null // 🏨 객실부터(판매가는 객실에서 나온다)
+    const stayErr = s === 1 && form.category === 'stay_voucher' ? stayStepError(form) : null // 🏨 객실부터(판매가는 객실에서 나온다)
     if (stayErr) { toast.error(stayErr); return false }
     if (s === 2 && form.category !== 'stay_voucher' && form.booking_mode === 'time') { const e = slotsError(form.time_slots); if (e) { toast.error(e); return false } } // 🗓️ 시간 예약
     if (s === 1 && (!form.name.trim() || !(form.price > 0))) {
