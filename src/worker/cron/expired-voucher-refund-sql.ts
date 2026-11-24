@@ -26,18 +26,18 @@
  */
 
 /**
- * 🏨 날짜 지정 숙소 예약에 묶인 이용권은 **만료 환불 대상이 아니다** (2026-11-25 대표
- * *"날짜 지정 시에 오지 않으면 환불되는게 아니라 소비한 것으로 해야하지 않을까?"*).
+ * 🏨 **숙소 예약에 묶인 이용권은 만료 환불 대상이 아니다** — 날짜 지정이든 먼저 산 숙박권이든.
+ *   2026-11-25 대표 *"날짜 지정 시에 오지 않으면 환불되는게 아니라 소비한 것으로 해야하지 않을까?"* →
+ *   같은 날 *"숙소는 시간 지나면 자동환불이 아니라 사용 완료로 환불이 안되는건데"*.
  *
- * 2026-11-03 숙소를 이용권으로 합친 뒤 날짜 예약의 이용권 만료 시각은 체크아웃 날 밤이고, 이 cron 은 숙소를 가리지
- * 않았다 ⇒ 손님이 안 오거나 사장님이 체크인을 안 누르면 다음 날 새벽 **전액 환불**됐다(전날 취소는 0~50% 인데
- * 안 가고 가만히 있으면 100%). 그 이용권은 `stay-no-show.ts` 가 **사용한 것으로** 닫고 사장님 정산에 넣는다.
- * 먼저 판매 숙박권(`sale_mode='voucher'`)은 종전대로 만료 미사용 전액 환불이다(결재 2026-11-24 Q4-1).
+ * 2026-11-03 숙소를 이용권으로 합친 뒤 이 cron 은 숙소를 가리지 않았다 ⇒ 기간이 지난 숙소 이용권이 일반 이용권처럼
+ * 전액 환불될 자리였다. 숙소는 기간이 지나면 `stay-no-show.ts` 가 **사용한 것으로** 닫고 사장님 정산에 넣는다.
+ * (기간 **안**의 미사용 숙박권은 손님이 숙소 취소로 전액 환불받을 수 있다 — 그건 이 cron 이 아니라 취소 경로다.)
  *
- * ⚠️ 이 조건을 빼면 날짜 예약 노쇼가 다시 전액 환불된다 — 그리고 `stay-no-show` 와 같은 행을 두 cron 이 다툰다.
+ * ⚠️ 이 조건을 빼면 숙소가 다시 전액 환불된다 — 그리고 `stay-no-show` 와 같은 행을 두 cron 이 다툰다.
  */
-export function notDateStaySql(voucherAlias: string): string {
-  return `NOT EXISTS (SELECT 1 FROM stay_bookings sb WHERE sb.id = ${voucherAlias}.stay_booking_id AND COALESCE(sb.sale_mode, 'date') <> 'voucher')`
+export function notStaySql(voucherAlias: string): string {
+  return `${voucherAlias}.stay_booking_id IS NULL`
 }
 
 /** 환불 대상 조회. `withRefundStatus=false` 는 컬럼 부재 환경용 폴백(종전 동작). */
@@ -52,7 +52,7 @@ export function expiredVoucherSelectSql(withRefundStatus: boolean): string {
       WHERE v.expires_at < datetime('now')
         AND (v.status = 'unused'${withRefundStatus ? " OR v.status = 'expired'" : ''})
         ${withRefundStatus ? "AND COALESCE(v.refund_status, '') = ''" : ''}
-        AND ${notDateStaySql('v')}
+        AND ${notStaySql('v')}
       ORDER BY v.expires_at ASC
       LIMIT 5000
     `
@@ -69,8 +69,8 @@ export function expiredVoucherClaimSql(withRefundStatus: boolean): string {
   return withRefundStatus
     ? `UPDATE vouchers SET status = 'expired', refund_status = 'claimed'
               WHERE id = ? AND COALESCE(refund_status, '') = '' AND status IN ('unused', 'expired')
-                AND ${notDateStaySql('vouchers')}`
-    : `UPDATE vouchers SET status = 'expired' WHERE id = ? AND status = 'unused' AND ${notDateStaySql('vouchers')}`
+                AND ${notStaySql('vouchers')}`
+    : `UPDATE vouchers SET status = 'expired' WHERE id = ? AND status = 'unused' AND ${notStaySql('vouchers')}`
 }
 
 /**
@@ -102,15 +102,3 @@ export function expiredVoucherBookRefundSql(): string {
 
 /** 처리 결과(관측 + 재선점 차단). 'claimed' 로 남기지 않는다 — 무엇이 일어났는지 모르는 행이 생긴다. */
 export type ExpiredVoucherOutcome = 'refunded' | 'forfeited' | 'failed' | 'none'
-
-/**
- * 🏨 2026-11-25 만료 환불 뒤 **숙소 예약 표를 맞춘다**(바인딩: 환불액, 이용권 id).
- * 종전엔 이용권만 환불되고 예약은 `confirmed` 로 남아, 손님·사장님 화면에 '확정' 으로 보였다.
- * 돈을 움직이지 않는다 — 이미 환불된 것을 예약 표에 적을 뿐이고 `confirmed` 일 때만 바뀐다.
- */
-export function stayBookingAfterExpiryRefundSql(): string {
-  return `UPDATE stay_bookings
-             SET status = 'refunded', refund_amount = ?, refunded_at = datetime('now'),
-                 cancellation_reason = '유효기간 만료 자동 환불', updated_at = datetime('now')
-           WHERE id = (SELECT stay_booking_id FROM vouchers WHERE id = ?) AND status = 'confirmed'`
-}

@@ -29,7 +29,7 @@ export async function stayCancelAmountFor(
   return stayCancelAmount(refundRate, refundAmount, stayIsSoleBooking(row?.n))
 }
 
-export const STAY_VOUCHER_EXPIRED_CANCEL = '유효기간이 지난 숙박권이에요. 결제 수단으로 자동 환불돼요(보통 다음 날 새벽).'
+export const STAY_VOUCHER_EXPIRED_CANCEL = '유효기간이 지난 숙박권은 취소·환불할 수 없어요. 이용한 것으로 처리돼요.'
 
 interface CancelBooking { sale_mode?: string | null; voucher_used_at?: string | null; voucher_expires_at?: string | null }
 
@@ -39,9 +39,9 @@ function dbUtcMs(v: string): number {
 }
 
 /**
- * 먼저 판매 숙박권이 **안 쓴 채 유효기간이 지났나.** 그 숙박권은 만료 환불 cron 이 전액 돌려준다.
- * 그 사이(최대 하루)에 손님이 취소를 누르면 종전엔 환불 0원으로 닫히고 이용권이 `refunded` 로 바뀌어
- * **cron 도 더는 못 잡았다** — 받을 환불이 사라진다. 그래서 취소를 받지 않고 자동 환불을 안내한다.
+ * 먼저 산 숙박권이 **안 쓴 채 유효기간이 지났나.** 그 숙박권은 환불 없이 이용한 것으로 닫힌다(`cron/stay-no-show.ts`,
+ * 2026-11-25 대표 "숙소는 시간 지나면 … 사용 완료"). 새벽 마감 전(최대 하루)에 손님이 취소를 눌러도 결과는 같아야 하므로
+ * 취소를 받지 않는다 — 받으면 예약이 '취소됨' 으로 닫혀 사장님 정산에서 빠진다.
  */
 export function stayVoucherExpiredUnused(b: CancelBooking, now: number = Date.now()): boolean {
   if (b.sale_mode !== 'voucher' || b.voucher_used_at || !b.voucher_expires_at) return false

@@ -15,8 +15,8 @@ import { stayCancelRefundRate } from '@/features/group-buy/api/stay-cancel-amoun
  *   Q3 먼저 판매(`voucher`·`both`)는 유효기간 3·6·12개월이 없으면 화면·서버 둘 다 막는다.
  *   Q5 이용 안내는 `house_rules` 로 저장돼 구매 전 화면(먼저 판매 상자)에 보인다.
  *   Q2 구매 뒤 화면에 매장 전화·문자 버튼이 붙는다(번호가 있을 때).
- *   Q4 만료 미사용 환불은 **새 코드가 아니다** — 2026-11-03 통일 뒤 숙소 이용권은 `vouchers` 행이고
- *      기존 만료 환불 cron 이 숙소를 빼지 않는다. 여기서는 그 연결(만료 시각 전달 · 숙소 제외 조건 없음)을 고정한다.
+ *   Q4 기간이 지난 숙소 이용권은 **환불하지 않고 이용 처리한다**(2026-11-25 대표가 Q4-1 '자동 환불' 을 바꿨다).
+ *      만료 환불은 숙소를 전부 빼고, `cron/stay-no-show.ts` 가 닫는다 — 상세 판정은 `stay-no-show-2026-11-25.test.ts`.
  * 못 막는 것: 실결제 흐름(구매 → 사용 처리 → 취소 환불 → 만료 환불) — staging 에서 본다(S-STAYFIRST).
  */
 const okRoom = { ...emptyRoom(), name: '오션뷰', price_weekday: 80000, price_weekend: 120000 }
@@ -101,25 +101,25 @@ describe('손님 화면', () => {
   })
 })
 
-describe('Q4 만료 미사용 환불 — 기존 이용권 만료 환불이 숙소 이용권도 잡는다', () => {
+describe('Q4 기간이 지난 숙소 이용권 — 환불이 아니라 이용 처리(결재 Q4-1 을 2026-11-25 대표가 바꿨다)', () => {
   const unify = readFileSync('src/features/group-buy/api/stay-voucher-unify.ts', 'utf8')
   it('먼저 판매 이용권의 만료 시각은 예약의 voucher_expires_at 그대로다', () => {
     expect(unify).toMatch(/if \(b\.sale_mode === 'voucher'\) return b\.voucher_expires_at \|\| null/)
     expect(unify).toMatch(/INSERT OR IGNORE INTO vouchers \(order_id, product_id, user_id, code, expires_at,[^)]*stay_booking_id\)/)
     expect(unify).toMatch(/codes\[i\], stayVoucherExpiresAt\(b\),/)
   })
-  it('만료 환불 조회·선점 SQL 은 먼저 판매 숙박권을 빼지 않는다(빼는 것은 날짜 지정 예약뿐 — 2026-11-25)', () => {
+  it('만료 환불 조회·선점 SQL 은 숙소 이용권을 전부 뺀다 — 숙소는 기간이 지나면 환불이 아니라 이용 처리(2026-11-25 대표)', () => {
     for (const sql of [expiredVoucherSelectSql(true), expiredVoucherSelectSql(false), expiredVoucherClaimSql(true), expiredVoucherClaimSql(false)]) {
-      expect(sql).toMatch(/COALESCE\(sb\.sale_mode, 'date'\) <> 'voucher'/)
+      expect(sql).toMatch(/stay_booking_id IS NULL/)
     }
   })
-  it('사장님 수동 [사용 처리] 가 묶인 이용권도 사용 처리한다(안 하면 쓰고도 만료 환불된다)', () => {
+  it('사장님 수동 [사용 처리] 가 묶인 이용권도 사용 처리한다(안 하면 지갑에 사용 가능으로 남는다)', () => {
     const s = readFileSync('src/features/seller/api/seller-stays.routes.ts', 'utf8')
     const i = s.indexOf("'voucher 사용 — 실제 체크인-체크아웃'")
     expect(i).toBeGreaterThan(0)
     expect(s.slice(i, i + 700)).toMatch(/settleStayVoucherAfterManual\(c\.env\.DB, \{ bookingId, sellerId/)
   })
-  it('만료 뒤 셀프 취소는 0원이다(만료 환불과 겹쳐 두 번 나가지 않는다)', () => {
+  it('만료 뒤 셀프 취소는 0원이다', () => {
     // 2026-11-25: 계산이 stay-cancel-amount.ts 로 옮겨졌다 — 글자 대신 함수를 직접 부른다.
     const now = Date.parse('2026-11-25T00:00:00Z')
     expect(stayCancelRefundRate({ sale_mode: 'voucher', voucher_expires_at: '2026-11-24 14:59:59' }, 'standard', NaN, now)).toBe(0)
