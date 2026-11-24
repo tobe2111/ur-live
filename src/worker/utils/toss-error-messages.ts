@@ -106,6 +106,10 @@ const TOSS_ERROR_MAP: Record<string, TossErrorInfo> = {
     { message: '결제 시스템 인증 오류 — 관리자에게 문의해주세요.', category: 'merchant_config' },
 
   // 403
+  // 2026-11-24 [UNLOCK] API 키 접근 정책(docs /reference/using-api/api-key-access-policy) —
+  //   우리 서버 IP 가 토스 허용 범위 밖일 때. 손님 탓이 아니라 가맹점 설정 문제다.
+  API_KEY_ACCESS_DENIED:
+    { message: '결제 시스템 설정 오류 — 관리자에게 문의해주세요.', category: 'merchant_config' },
   REJECT_ACCOUNT_PAYMENT:
     { message: '잔액 부족으로 결제에 실패했습니다.', category: 'card_issue', retryable: true },
   REJECT_CARD_PAYMENT:

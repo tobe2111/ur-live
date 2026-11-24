@@ -17,7 +17,10 @@ import type { Env } from '../types/env';
 /** 토스 키 검증용 **존재하지 않는** 결제키. 조회만 하므로 부수효과 0. */
 export const TOSS_KEY_PROBE_ID = 'urdeal_keyprobe_does_not_exist';
 
-export type TossKeyVerdict = 'valid' | 'invalid' | 'unknown' | 'skipped';
+export type TossKeyVerdict = 'valid' | 'invalid' | 'blocked' | 'unknown' | 'skipped';
+
+/** 토스 "API 키 접근 정책"(등록된 IP·국가 밖에서 호출) 거부 코드. 2026-11-09 부터 전 가맹점 적용. */
+export const TOSS_ACCESS_DENIED_CODE = 'API_KEY_ACCESS_DENIED';
 
 /**
  * 🔑 토스 키 프로브 응답 해석 (순수 — 유닛으로 고정).
@@ -25,12 +28,26 @@ export type TossKeyVerdict = 'valid' | 'invalid' | 'unknown' | 'skipped';
  * 없는 결제키를 조회하면 **인증 결과와 데이터 유무가 상태코드로 갈린다**:
  *   - `401` → 인증 자체가 거부됐다 = **키가 잘못됐거나 폐기됨**
  *   - `404` → 인증은 통과했고 그 결제가 없을 뿐 = **키 정상**
+ *   - `code === API_KEY_ACCESS_DENIED` → 키는 멀쩡한데 **우리 서버 IP 가 토스 허용 범위 밖**이다.
+ *     결제 승인·취소·조회가 전부 같은 이유로 막히므로 이슈로 올린다(2026-11-24 — 종전엔 403 이
+ *     '판정 불가' 로 조용히 넘어갔다). 상태코드가 아니라 **응답 코드**로 가른다: 403 은 다른 뜻도 있다.
  *   - 그 외(5xx·429 등) → 토스 쪽 사정. **키 문제로 단정하지 않는다.**
  *
  * ⚠️ 이 프로브가 **증명하지 않는 것**: 그 키로 *환불이 성공*하는지. 인증 유효성까지다.
  *   결제를 취소하려면 그 결제를 만든 키와 같은 키여야 하는데, 그건 실제 대상이 있어야 알 수 있다.
  */
-export function interpretTossKeyProbe(status: number): { verdict: TossKeyVerdict; message: string } {
+export function interpretTossKeyProbe(
+  status: number,
+  body?: { code?: unknown; message?: unknown } | null,
+): { verdict: TossKeyVerdict; message: string } {
+  if (body && body.code === TOSS_ACCESS_DENIED_CODE) {
+    // 토스 메시지에 "요청 IP: x.x.x.x" 가 들어 있다 — 어느 IP 가 막혔는지 그대로 남긴다(키 값 아님).
+    const detail = typeof body.message === 'string' ? body.message.slice(0, 200) : '';
+    return {
+      verdict: 'blocked',
+      message: `토스 API 키 접근 정책에 막힘(${TOSS_ACCESS_DENIED_CODE}) — 우리 서버 IP 가 허용 범위 밖. 결제 승인·취소·조회가 전부 막힌다. 토스 개발자센터 > API 키 접근 정책에서 허용 범위를 넓힐 것. ${detail}`.trim(),
+    };
+  }
   if (status === 401) {
     return { verdict: 'invalid', message: 'TOSS_SECRET_KEY 인증 실패(401) — 키가 잘못됐거나 폐기됨. 환불·정합이 전부 실패한다' };
   }
@@ -109,9 +126,13 @@ export async function runDailySelfDiagnostic(env: Env) {
         headers: { Authorization: `Basic ${btoa(`${tossKey}:`)}` },
         signal: AbortSignal.timeout(5000),
       });
-      const v = interpretTossKeyProbe(res.status);
+      // 404(정상)·401 은 본문이 필요 없다. 그 외에만 코드를 읽는다(본문이 JSON 이 아니어도 판정은 계속).
+      const body = res.status === 404 || res.status === 401
+        ? null
+        : await res.json().catch(() => null) as { code?: unknown; message?: unknown } | null;
+      const v = interpretTossKeyProbe(res.status, body);
       tossVerdict = v.verdict;
-      if (v.verdict === 'invalid') issues.push(`🔴 ${v.message}`);
+      if (v.verdict === 'invalid' || v.verdict === 'blocked') issues.push(`🔴 ${v.message}`);
       else info.push(`TOSS 키: ${v.message}`);
     } catch {
       tossVerdict = 'unknown';

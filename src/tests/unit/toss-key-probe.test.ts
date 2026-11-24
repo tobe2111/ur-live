@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
-import { interpretTossKeyProbe, TOSS_KEY_PROBE_ID } from '../../worker/cron/daily-self-diagnostic'
+import { getTossErrorInfo } from '../../worker/utils/toss-error-messages'
+import { interpretTossKeyProbe, TOSS_ACCESS_DENIED_CODE, TOSS_KEY_PROBE_ID } from '../../worker/cron/daily-self-diagnostic'
 
 /**
  * 🔑 "키가 있다" ≠ "키가 맞다" — 토스 키 유효성 프로브 〔2026-08-02 신설〕
@@ -42,6 +43,24 @@ describe('interpretTossKeyProbe — 인증 실패와 데이터 없음을 가른�
     for (const s of [200, 429, 500, 502, 503]) {
       expect(interpretTossKeyProbe(s).verdict, `status=${s}`).toBe('unknown')
     }
+  })
+
+  it('API_KEY_ACCESS_DENIED 는 IP 차단 — 이슈로 올리고 막힌 IP 를 남긴다', () => {
+    // 2026-11-24: 토스가 등록된 IP·국가 밖 호출을 막기 시작했다. 종전엔 403 이 '판정 불가' 로
+    //   조용히 넘어가서, 결제 승인이 전부 막혀도 알림이 안 왔다.
+    const r = interpretTossKeyProbe(403, {
+      code: TOSS_ACCESS_DENIED_CODE,
+      message: 'API 키 접근 정책에 의해 허용되지 않은 요청입니다. 요청 IP: 123.45.0.1',
+    })
+    expect(r.verdict).toBe('blocked')
+    expect(r.message).toContain('123.45.0.1')
+  })
+
+  it('코드 없는 403 은 IP 차단으로 단정하지 않는다', () => {
+    // 403 은 다른 뜻(FORBIDDEN_REQUEST 등)도 있다 — 상태코드가 아니라 응답 코드로 가른다.
+    expect(interpretTossKeyProbe(403).verdict).toBe('unknown')
+    expect(interpretTossKeyProbe(403, { code: 'FORBIDDEN_REQUEST' }).verdict).toBe('unknown')
+    expect(interpretTossKeyProbe(403, null).verdict).toBe('unknown')
   })
 
   it('판정 불가 메시지에 상태코드가 남는다 (다음 조사를 위해)', () => {
@@ -100,5 +119,14 @@ describe('진단이 조용히 사라지지 않는다', () => {
   it('키 값을 로그로 흘리지 않는다', () => {
     // 진단이 키를 찍으면 그 자체가 유출 경로다.
     expect(SRC).not.toMatch(/console\.(log|warn|error)\([^)]*tossKey/)
+  })
+})
+
+describe('API_KEY_ACCESS_DENIED — 손님에게 나가는 안내', () => {
+  it('에러 안내표에 있고 가맹점 설정 문제로 분류된다', () => {
+    // 표에 없으면 손님에게 토스 원문("…요청 IP: x.x.x.x")이나 일반 오류가 나간다.
+    const info = getTossErrorInfo('API_KEY_ACCESS_DENIED')
+    expect(info?.category).toBe('merchant_config')
+    expect(info?.message).not.toMatch(/IP/)
   })
 })
