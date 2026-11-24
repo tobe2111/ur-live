@@ -112,6 +112,7 @@ const SENSITIVE_MUTATIONS: { readonly pattern: RegExp; readonly allow: readonly 
   // 🔐 2026-11-18: 넓은 `sellers`·`tools` 도메인(ops)에 실려 새던 것 — 주인 지정·출금 재개·잔액 병합·원장 잠금 해제.
   { pattern: /\/sellers\/[^/]+\/link-user(?:$|[/?])/, allow: [] },                 // 매장 주인 지정 — super·admin 만
   { pattern: /\/sellers\/[^/]+\/verify-account(?:$|[/?])/, allow: ['finance'] },   // 계좌 재인증(출금 재개) — ops 차단
+  { pattern: /\/sellers\/[^/]+\/bank-account(?:$|[/?])/, allow: ['finance'] },     // 🏦 2026-11-24 정산 계좌 대신 입력(돈이 가는 곳) — ops·cs 차단
   { pattern: /\/tools\/(?:points-reconcile|point-ledger-unlock)(?:$|[/?])/, allow: [] }, // 잔액 병합·원장 DDL — super·admin 만
 ];
 
