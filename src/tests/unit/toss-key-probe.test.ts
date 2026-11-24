@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
+import { interpretTossLookupCode } from '../../worker/utils/toss-access-probe'
 import { getTossErrorInfo } from '../../worker/utils/toss-error-messages'
 import { interpretTossKeyProbe, TOSS_ACCESS_DENIED_CODE, TOSS_KEY_PROBE_ID } from '../../worker/cron/daily-self-diagnostic'
 
@@ -128,5 +129,25 @@ describe('API_KEY_ACCESS_DENIED — 손님에게 나가는 안내', () => {
     const info = getTossErrorInfo('API_KEY_ACCESS_DENIED')
     expect(info?.category).toBe('merchant_config')
     expect(info?.message).not.toMatch(/IP/)
+  })
+})
+
+describe('토스 접근 점검(어드민) — 거점별 실측', () => {
+  it('없는 결제 = 통과 · 접근 정책 거부 = 차단 · 그 외는 단정하지 않는다', () => {
+    expect(interpretTossLookupCode('NOT_FOUND_PAYMENT')).toBe('valid')
+    expect(interpretTossLookupCode('API_KEY_ACCESS_DENIED')).toBe('blocked')
+    expect(interpretTossLookupCode('UNAUTHORIZED_KEY')).toBe('invalid')
+    for (const c of ['NETWORK', 'HTTP_503', 'FORBIDDEN_REQUEST', undefined]) {
+      expect(interpretTossLookupCode(c), String(c)).toBe('unknown')
+    }
+  })
+
+  it('라우트가 SSOT 헬퍼로 조회하고 거점 이름을 함께 돌려준다', () => {
+    // 거점 이름이 없으면 "어디서 통과했는지" 를 모르는 판정이 된다 — 이 점검의 전부가 그것이다.
+    const src = readFileSync('src/features/admin/api/admin-system-monitoring.routes.ts', 'utf8')
+    const body = src.slice(src.indexOf("get('/toss-access-probe'"), src.indexOf("get('/ops-status'"))
+    expect(body).toContain('getTossPayment(')
+    expect(body).toContain('colo: cf?.colo')
+    expect(body).not.toContain('api.tosspayments.com')
   })
 })
