@@ -24,6 +24,8 @@ export async function attachBooking(productId: number, form: VoucherForm, header
         longitude: form.restaurant_lng ? Number(form.restaurant_lng) : null,
         description_full: form.description || null,
         amenities: form.stay_amenities, room_amenities: form.stay_room_amenities, // 상세 '서비스 및 부대시설'
+        // 🏨 2026-11-24 판매 방식(기본 먼저 판매) · 유효기간 · 이용 안내(쓸 수 없는 날) — 서버가 같은 규칙으로 다시 판정한다.
+        sale_mode: form.stay_sale_mode, voucher_validity_days: form.stay_validity_days, house_rules: form.stay_use_note,
       }, { headers })
     } catch { return '숙소 정보를 저장하지 못했어요. [수정]에서 다시 넣어 주세요' }
     let failed = 0

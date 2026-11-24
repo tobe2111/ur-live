@@ -229,7 +229,7 @@
 > 여기서 고정하는 것은 **"이름과 경제가 다르다"는 사실을 다음 세션이 알고 시작한다**는 것뿐이다.
 
 | **일반 상품(쇼핑)** | 일반 이커머스 상품 | `exclude_deal_only` | `/browse`, `/products/:id` (탭 잠정숨김 `SHOPPING_TAB_HIDDEN`) | 3P 5% / 1P 0% |
-| **숙소(stays)** | 날짜 캘린더 예약형 — 사기 전(객실·날짜·달력)만 숙소 전용, 산 뒤(이용권 행·지갑 QR·스캔 체크인·사용 시점 원장)는 이용권과 같은 뼈대(2026-10-25, 게이트 `stay_voucher_unify_enabled`) | `stays` + `vouchers.stay_booking_id` | `/stays`, `/stays/:id` | reserve-before-charge |
+| **숙소(stays)** | 판매 방식 둘(2026-11-24 결재 — 사장님이 등록 때 고른다): **먼저 판매**(기본 · 평일권/주말권을 먼저 사고 날짜는 매장과 따로, 유효기간 3·6·12개월 필수) / **날짜 지정**(달력 예약형) / 둘 다. SSOT `shared/stay-sale-mode.ts`. 날짜 지정은 사기 전(객실·날짜·달력)만 숙소 전용, 산 뒤(이용권 행·지갑 QR·스캔 체크인·사용 시점 원장)는 이용권과 같은 뼈대(2026-10-25, 게이트 `stay_voucher_unify_enabled`) | `stays` + `vouchers.stay_booking_id` | `/stays`, `/stays/:id` | reserve-before-charge |
 | **디지털** | 다운로드/코드형 (보관함 발급) | `digital` | `/my/digital` | — |
 | **선물(gifts)** | 교환권 선물하기 | `gifts` | `/gift/claim/:token` | — |
 | **체험 캠페인** | 무료 응모→공정추첨→**0원 체험권**(매장 자기부담) → QR 사용·성과 리포트 (2026-07-12, PR #499 draft) | `experience_campaigns` + `vouchers.is_experience=1` | `/experience` | **비정산** — 정산·커미션·5% 무관(원장 amount>0 게이트 우회) |

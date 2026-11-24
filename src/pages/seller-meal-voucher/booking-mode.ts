@@ -15,6 +15,8 @@
  *   - 전화: `PUT /api/seller/products/:id/call-booking` (2026-11-23 — 날짜는 통화로 정하고 손님·사장님이 적어만 둔다)
  */
 
+import { resolveStaySale } from '@/shared/stay-sale-mode'
+
 /** `call` = 전화 예약(2026-11-23) — 손님이 산 뒤 매장에 전화해 날짜를 정한다. 저장은 `PUT /api/seller/products/:id/call-booking`. */
 export type BookingMode = 'none' | 'external' | 'time' | 'call'
 
@@ -63,6 +65,14 @@ export function stayRoomsError(rooms: StayRoomDraft[]): string | null {
     if (Number(r.max_guests) < Number(r.base_guests)) return `${n}: 최대 인원이 기준 인원보다 적어요`
   }
   return null
+}
+
+/** 🏨 숙소 단계 전체의 막힘 — 객실 → 판매 방식·유효기간 순. 화면의 [다음]과 등록이 같은 판정을 쓴다(2026-11-24). */
+export function stayStepError(f: { stay_rooms: StayRoomDraft[]; stay_sale_mode: unknown; stay_validity_days: unknown }): string | null {
+  const rooms = stayRoomsError(f.stay_rooms)
+  if (rooms) return rooms
+  const sale = resolveStaySale({ sale_mode: f.stay_sale_mode, voucher_validity_days: f.stay_validity_days })
+  return sale.ok ? null : sale.error
 }
 
 /** 시간 예약의 막힘 — 칸이 하나도 없거나 끝이 시작보다 이르면 막는다. */

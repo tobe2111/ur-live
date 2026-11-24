@@ -26,6 +26,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { safeError } from '@/worker/utils/safe-error';
 import { intParam } from '@/shared/pagination'
 import { insertStayInfo } from './stay-info-insert'
+import { resolveStaySale, cleanStayUseNote } from '@/shared/stay-sale-mode'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 type Vars = { sellerId?: number }
@@ -135,8 +136,13 @@ sellerStaysRoutes.post('/stays/:productId/info', cors(), async (c) => {
     const exists = await c.env.DB.prepare('SELECT 1 AS x FROM product_stay_info WHERE product_id = ?').bind(productId).first()
     if (exists) return c.json({ success: true, data: { product_id: productId, already: true } })
     const body = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
+    // 🏨 2026-11-24 결재(대표 "추천대로 진행"): 판매 방식을 사장님이 고른다. 종전엔 여기서 `date` 로 고정해 저장했다.
+    //   먼저 판매(`voucher`·`both`)는 유효기간 3·6·12개월이 필수 — 판정은 화면과 같은 `resolveStaySale`.
+    const sale = resolveStaySale(body)
+    if (!sale.ok) return c.json({ success: false, error: sale.error }, 400)
     // 소개 할인·수수료(옛 숙소 방식)는 받지 않는다 — 소개 적립은 이용권과 같은 길(딜 N% 약정)로 간다.
-    await insertStayInfo(c.env.DB, productId, { ...body, referral_enabled: 0, influencer_discount_pct: 0, influencer_commission_pct: 0, sale_mode: 'date' })
+    await insertStayInfo(c.env.DB, productId, { ...body, referral_enabled: 0, influencer_discount_pct: 0, influencer_commission_pct: 0,
+      sale_mode: sale.sale_mode, voucher_validity_days: sale.voucher_validity_days, house_rules: cleanStayUseNote(body.house_rules) })
     return c.json({ success: true, data: { product_id: productId } })
   } catch (err) {
     return safeError(c, err, '숙소 정보를 저장하지 못했어요', '[seller-stays]')
@@ -198,6 +204,13 @@ sellerStaysRoutes.put('/stays/:productId', cors(), async (c) => {
       return c.json({ success: false, error: '권한 없음' }, 403)
     }
     const body = await c.req.json<Record<string, any>>()
+    // 🏨 2026-11-24: 판매 방식을 바꿀 때도 등록과 같은 규칙 — 먼저 판매면 유효기간 3·6·12개월 필수.
+    if (body.sale_mode !== undefined) {
+      const sale = resolveStaySale(body)
+      if (!sale.ok) return c.json({ success: false, error: sale.error }, 400)
+      body.sale_mode = sale.sale_mode; body.voucher_validity_days = sale.voucher_validity_days
+    }
+    if (body.house_rules !== undefined) body.house_rules = cleanStayUseNote(body.house_rules)
 
     const fields = [
       'property_type','star_rating','total_rooms','check_in_time','check_out_time',

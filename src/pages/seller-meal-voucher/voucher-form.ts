@@ -9,6 +9,7 @@
 
 import { utcToKstInput } from '@/utils/date'
 import type { VoucherCategory as PlatformVoucherCategory } from '@/shared/constants/voucher-categories'
+import type { StaySaleMode } from '@/shared/stay-sale-mode'
 
 /**
  * 🗂️ 이용권 카테고리 — **플랫폼 SSOT 를 그대로 쓴다**(`shared/constants/voucher-categories`).
@@ -66,6 +67,10 @@ export interface VoucherForm {
   stay_rooms: StayRoomDraft[]
   stay_amenities: string[]
   stay_room_amenities: string[]
+  /** 🏨 2026-11-24 숙박 판매 방식(`shared/stay-sale-mode`) — 기본 '먼저 판매'. 유효기간 0 = 아직 안 고름(먼저 판매면 필수). */
+  stay_sale_mode: StaySaleMode
+  stay_validity_days: number
+  stay_use_note: string
   time_slots: SlotDraft[]
 }
 
@@ -100,6 +105,7 @@ export function emptyVoucherForm(): VoucherForm {
     kakao_place_url: '', external_booking_url: '', region_si: '', region_gu: '',
     booking_mode: 'none', stay_property_type: 'pension', stay_check_in: '15:00', stay_check_out: '11:00',
     stay_rooms: [emptyRoom()], stay_amenities: [], stay_room_amenities: [], time_slots: defaultSlots(),
+    stay_sale_mode: 'voucher', stay_validity_days: 0, stay_use_note: '',
   }
 }
 

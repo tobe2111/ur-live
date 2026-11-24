@@ -9,6 +9,7 @@
 import { Plus, Trash2, BedDouble } from 'lucide-react'
 import type { VoucherForm } from './voucher-form'
 import StayAmenityPicker from './StayAmenityPicker'
+import StaySaleFields from './StaySaleFields'
 import { STAY_PROPERTY_TYPES, emptyRoom, stayFromPrice, type StayRoomDraft } from './booking-mode'
 import { DateInput } from '@/components/ui/date-input'
 
@@ -73,6 +74,8 @@ export default function StayRoomsFields({ form, update }: {
         </button>
         <p className="text-[12px] text-gray-500">날짜별 요금·예약 막기는 등록 뒤 [수정]의 달력에서 바꿀 수 있어요.</p>
       </div>
+      <StaySaleFields mode={form.stay_sale_mode} validityDays={form.stay_validity_days} note={form.stay_use_note}
+        onChange={(p) => { if (p.mode !== undefined) update('stay_sale_mode', p.mode); if (p.validityDays !== undefined) update('stay_validity_days', p.validityDays); if (p.note !== undefined) update('stay_use_note', p.note) }} />
       <StayAmenityPicker amenities={form.stay_amenities} roomAmenities={form.stay_room_amenities} onChange={(f, v) => update(f, v)} />
     </div>
   )
