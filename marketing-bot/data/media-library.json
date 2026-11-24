@@ -556,12 +556,12 @@
     "cafe owner barista": "2026-11-23T16:07:39.814Z",
     "chef plating food": "2026-11-23T16:07:39.814Z",
     "audio:happy ukulele": "2026-11-22T17:59:19.130Z",
-    "shop owner smartphone": "2026-11-17T19:17:45.169Z",
-    "hair salon interior": "2026-11-17T19:17:45.169Z",
+    "shop owner smartphone": "2026-11-24T15:57:27.537Z",
+    "hair salon interior": "2026-11-24T15:57:27.537Z",
     "audio:lofi chill": "2026-11-23T16:07:39.814Z",
     "food photography smartphone": "2026-11-18T18:58:38.852Z",
     "woman filming video phone": "2026-11-18T18:58:38.852Z",
-    "audio:cafe jazz": "2026-11-18T18:58:38.852Z",
+    "audio:cafe jazz": "2026-11-24T15:57:27.537Z",
     "vlogger cafe": "2026-11-19T19:13:07.149Z",
     "korean food table": "2026-11-19T19:13:07.149Z",
     "audio:bright instrumental pop": "2026-11-19T19:13:07.149Z",
@@ -571,7 +571,7 @@
     "seoul street night": "2026-11-21T17:44:46.800Z",
     "qr code payment phone": "2026-11-21T17:44:46.800Z"
   },
-  "updated_at": "2026-11-23T16:07:39.814Z",
+  "updated_at": "2026-11-24T15:57:27.537Z",
   "rejected": [
     "pixabay-img-5753302",
     "pixabay-img-4807317",
@@ -661,6 +661,10 @@
     "pixabay-img-1850276",
     "pixabay-img-10186541",
     "pixabay-vid-16166",
-    "pixabay-vid-124746"
+    "pixabay-vid-124746",
+    "pixabay-img-763731",
+    "pixabay-img-10282981",
+    "pixabay-vid-29920",
+    "pixabay-vid-21147"
   ]
 }
