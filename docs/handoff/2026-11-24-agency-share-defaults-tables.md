@@ -52,3 +52,10 @@
 | 작음 | 비밀번호 변경 시 refresh_tokens 의 없는 `user_type` 으로 무효화 실패(삼킴) · 셀러 분석 전환율(product_views 없음) 0 · 가입 IP 이상탐지(registration_ip 없음) | 보고만 |
 | 죽은/레거시 | processRefund(호출 0) · GoogleAuthService(옛 경로, 새 구글 로그인은 user_identities) · deal_balance 동기화(try) · donations·auction·funding·consignment·live_* | 영향 없음 |
 | 오탐 | fcfs_applications·fcfs_draw_logs — 라이브에 있음(사본 생성 순서 문제) | — |
+
+## 4차 — 대표 결정 3건 반영 (2026-11-24 저녁)
+- [선물] 버튼 숨김: `GIFT_SEND_HIDDEN = true` (feature-flags · ProductDetailPage). FEATURE_STATUS·운영백서 재생성, `GUIDE_SEED_VERSION` 69 → 70.
+- 마일스톤 알림: 없는 찜 표 UNION 제거 → 단골만. ⚠️ 목표 인원 있는 판매 상품이 0개라 당장 발송 0건(E4 판정은 그런 공구가 생긴 뒤에야 가능).
+- 숙박권: 결재 `docs/decisions/2026-11-24-stay-voucher-buy-first.md` **decided — "추천대로 진행"**(Q1-1~Q5-1). 구현은 다음 PR부터. Q4(만료 자동 환불)는 머니 경로 → staging 실결제 뒤에 켠다.
+- 실측 추가: 유어딜 안에서는 같은 방 이중 판매를 막는다 — 결제 승인 뒤 `available_count > 0` 가드 차감, 실패 시 자동 환불(`stays-public.routes.ts` confirm 5단계). 남는 위험은 다른 예약 앱과의 이중 판매뿐.
+- 가드 `gift-hidden-milestone-follows-2026-11-24.test.ts` (옛 코드로 되돌리면 2건 빨간불 확인). 관련 시험 76파일 1,107건 · tsc 에러 0.

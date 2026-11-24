@@ -842,17 +842,15 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           const cas = await DB.prepare(`UPDATE products SET ${colName} = 1 WHERE id = ? AND ${colName} = 0`).bind(productId).run().catch(() => ({ meta: { changes: 0 } }))
           if ((cas.meta?.changes ?? 0) === 0) continue
 
-          // 관심 유저 알림 (interest_list 등록자) — 참여자 본인은 제외
+          // 단골 알림 — 참여자 본인은 제외
           try {
-            // 🛡️ 2026-05-15: 마일스톤 알림 대상 = interest_list (찜) + seller_follows (단골 notify_group_buy=1)
-            //   본인 참여자 + 셀러는 제외 (이미 받음 / 본인 매장)
+            // 🛡️ 2026-05-15: 마일스톤 알림 대상 = seller_follows (단골 notify_group_buy=1). 본인 참여자는 제외.
+            // 🩸 2026-11-24 (대표 승인 "고쳐서 알림 보내기"): 여기 찜 표를 UNION 으로 같이 읽었는데 그 표는 라이브에 없다
+            //   (어디서도 만들지 않는다). 그래서 문장 전체가 `no such table` 로 실패하고 아래 catch 가 빈 목록으로 삼켜
+            //   **단골 알림까지 한 번도 안 나갔다.** 없는 표를 빼고 단골만 읽는다.
             const { results: interested } = await DB.prepare(
-              `SELECT DISTINCT user_id FROM (
-                SELECT user_id FROM interest_list WHERE product_id = ? AND user_id IS NOT NULL AND user_id != ?
-                UNION
-                SELECT user_id FROM seller_follows WHERE seller_id = ? AND notify_group_buy = 1 AND user_id != ?
-              )`
-            ).bind(productId, userId, product.seller_id, userId)
+              'SELECT DISTINCT user_id FROM seller_follows WHERE seller_id = ? AND notify_group_buy = 1 AND user_id != ?',
+            ).bind(product.seller_id, userId)
               .all<{ user_id: string }>()
               .catch(() => ({ results: [] as { user_id: string }[] }))
             // 📮 2026-11-17: 사람마다 요청 안에서 보내면 많을 때 뒤쪽이 조용히 빠졌다 → 줄에 넣고 첫 묶음만 바로 보낸다.
