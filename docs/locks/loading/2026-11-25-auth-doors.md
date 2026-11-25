@@ -19,3 +19,15 @@
 - **전후 실측**(로컬 빌드, brotli KB · 기준 → 고치기 전 → 고친 뒤): `__boot__` 162.6 → 164.0 → **163.7** · `about` 211.2 → 212.7 → **212.5** · `refund` 218.5 → 220.0 → **219.7**. 35개 화면 전부 예산 안.
 - **되돌리는 법**: PR revert.
 - **근거 시험**: `auth-doors-2026-11-25.test.ts`(문구는 새 모듈에서 · `App.tsx` 에는 문구가 없고 동적 import 가 있다) · `node scripts/check-surface-budgets.mjs`.
+
+## 같은 날 덧붙임 2 — 로그인 문 3차 (`[LOADING_ADDITIVE]` `kakao.routes.ts` · `KakaoCallbackPage.tsx`)
+
+- **무엇을**:
+  - `src/features/auth/api/kakao.routes.ts`: 로그인 문 `POST /callback` 이 `state` 를 확인(쿠키와 맞거나 서명이 유효)한 뒤에만 코드를 바꾼다 · 동의 전용 문 `POST /consent-callback` 신설(세션을 만들지 않고, 지금 로그인한 손님과 카카오 번호가 같을 때만 토큰 저장).
+  - `src/pages/KakaoCallbackPage.tsx`: 그 POST 에 주소의 `state` 를 실어 보내는 한 줄.
+- **왜**: 두 문이 `state` 없이 코드를 받아 그 코드의 주인으로 브라우저를 로그인시켰다(로그인 CSRF). 동의 흐름은 state 쿠키를 굽기만 하고 아무도 읽지 않았다.
+- **잠긴 항목에 닿았나**: 아니다. `issueLinkedRoleTokens` 응답의 `seller.username` · `KakaoCallbackPage` 의 `seller_username` 저장과 `user_type` 보존은 한 글자도 안 바뀌었다. 정상 로그인(GET `/sync/callback`)은 무접촉.
+- **로딩에 주는 영향**: 없다. 이 두 화면은 로그인 왕복에서만 뜬다.
+- **되돌리는 법**: PR revert.
+- **근거 시험**: `src/tests/unit/auth-doors-3-2026-11-25.test.ts` (25건 · 주입 16).
+

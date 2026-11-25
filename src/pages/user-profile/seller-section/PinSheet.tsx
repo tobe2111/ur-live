@@ -137,6 +137,11 @@ export default function PinSheet({ sellerId, onClose, onDone }: {
               className={field}
             />
           </label>
+          {pinSet && (
+            <p className="text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
+              PIN 을 잊었다면 고객센터로 알려 주세요. 본인 확인 뒤 초기화해 드리고, 그다음 새 PIN 을 만들 수 있어요.
+            </p>
+          )}
           {!pinSet && (
             <label className="block">
               <span className="block text-[13px] font-medium text-gray-900 dark:text-white mb-2">한 번 더</span>

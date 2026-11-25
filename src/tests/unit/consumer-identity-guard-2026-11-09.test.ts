@@ -18,8 +18,6 @@ import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
 const ALLOWED = new Set([
-  'src/features/group-buy/api/owner-viewer.routes.ts GET /viewer/:id',
-  'src/features/group-buy/api/owner-viewer.routes.ts POST /viewer/:id/active',
   'src/features/kakao-social/api/kakao-social.routes.ts POST /message/broadcast',
   'src/features/kakao-social/api/kakao-social.routes.ts POST /calendar/add',
   'src/features/push/api/push.routes.ts POST /api/push/unsubscribe',
@@ -65,7 +63,7 @@ function scan(): string[] {
 describe('종류를 안 보는 로그인 경로가 user.id 를 쓰지 않는다', () => {
   const hits = scan()
   it('측정이 돈다 — 허용 목록의 경로가 실제로 잡힌다', () => {
-    expect(hits.filter((h) => ALLOWED.has(h)).length, '스캐너가 아무것도 못 잡는다 — 검사가 헛돈다').toBeGreaterThanOrEqual(10)
+    expect(hits.filter((h) => ALLOWED.has(h)).length, '스캐너가 아무것도 못 잡는다 — 검사가 헛돈다').toBeGreaterThanOrEqual(8) // 2026-11-25: 내 가게 상품 열람 둘이 손님 전용이 돼 10 → 8
   })
   it('허용 목록 밖에서 새로 생기지 않았다', () => {
     expect(hits.filter((h) => !ALLOWED.has(h)), '소비자 전용이면 requireUser(), 셀러용이면 user.type 을 확인할 것').toEqual([])

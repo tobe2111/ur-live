@@ -74,7 +74,7 @@ sellerKakaoLinkRoutes.post('/link-kakao', async (c) => {
       const { parseSessionCookie } = await import('../../../worker/utils/session')
       const sessionUser = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user'])
       if (!sessionUser) {
-        return c.json({ success: false, error: '카카오 로그인이 필요합니다. 팝업에서 카카오 인증을 완료해주세요.' }, 400)
+        return c.json({ success: false, error: '카카오 로그인이 필요해요', code: 'LOGIN_REQUIRED' }, 400)
       }
       const userId = Number(sessionUser.userId)
       if (!Number.isFinite(userId)) {

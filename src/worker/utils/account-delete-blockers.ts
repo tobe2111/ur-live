@@ -10,6 +10,8 @@
  * | 환급 가능한 충전 딜 | 탈퇴 순간 딜은 0 이 된다(`zeroOutUserPoints`) — 손님이 낸 돈이 사라진다 | 환급 신청(`POST /api/points/refund`) |
  * | 처리 중인 딜 환급 신청 | 반려되면 딜이 **탈퇴한 계정**으로 돌아간다 | 처리가 끝날 때까지 기다림 |
  * | 주인인 가게 | 가게는 별도 신원이라 손님 탈퇴가 안 건드린다 — 주인 없는 가게가 남는다 | 가게 탈퇴 먼저 |
+ * | 받을 소개비(2026-11-25) | 확정·대기 소개비는 `influencer_balances` 에 있고 탈퇴가 안 건드린다 — 받을 사람이 사라진다 | 정산을 받은 뒤 |
+ * | 처리 중인 출금 신청(2026-11-25) | 반려되면 돈이 탈퇴한 계정으로 돌아간다 | 처리가 끝날 때까지 기다림 |
  *
  * 무상 딜(선물·보상)은 막지 않는다 — 결재대로 고지하고 소멸한다. 쿠폰·찜·단골도 지금대로 즉시 삭제.
  *
@@ -30,7 +32,19 @@ export interface AccountDeleteBlockers {
   owned_stores: number
   /** 카카오로 만든 에이전시의 주인인 곳 수 — 탈퇴하면 그 카카오 계정으로 다시 들어올 길이 없다(2026-11-25). */
   owned_agencies: number
+  /** 받을 소개비(확정 + 대기, 원) — 탈퇴하면 받을 계정이 없어진다(2026-11-25). */
+  earned_commission: number
+  /** 처리 중인 출금 신청 수(`user_withdrawals` requested·approved) — 2026-11-25. */
+  withdrawals_pending: number
 }
+
+/** 받을 소개비 — `influencer_balances` 는 손님 번호를 글자로도 숫자로도 적어 왔다. 바인드: 정규화 id · raw id. */
+export const EARNED_COMMISSION_SQL = `SELECT COALESCE(SUM(COALESCE(pending_amount, 0) + COALESCE(available_amount, 0)), 0) AS n
+  FROM influencer_balances WHERE influencer_id IN (?, ?)`
+
+/** 처리 중인 출금 신청 — 끝난 것(paid·rejected)은 세지 않는다. 바인드: 정규화 id · raw id. */
+export const WITHDRAWALS_PENDING_SQL = `SELECT COUNT(*) AS n FROM user_withdrawals
+ WHERE user_id IN (?, ?) AND status IN ('requested', 'approved')`
 
 /**
  * 안 쓴 매장 이용권 — `/api/vouchers/my` 와 같은 user_id 이중키(정규화 id · raw id)로 센다.
@@ -67,8 +81,11 @@ export const OWNED_AGENCIES_SQL = `SELECT COUNT(*) AS n
 const OWNED_STORES_LINKED_ONLY_SQL = `SELECT COUNT(*) AS n FROM sellers
  WHERE COALESCE(status, '') NOT IN ('suspended', 'rejected') AND linked_user_id = ?`
 
+const zeroIfNoTable = (e: unknown): { n: number } => { if (/no such table/i.test(String((e as Error)?.message ?? e))) return { n: 0 }; throw e }
+
 export function isAccountDeleteBlocked(b: AccountDeleteBlockers): boolean {
   return b.unused_vouchers > 0 || b.refundable_deal > 0 || b.deal_refund_pending || b.owned_stores > 0 || b.owned_agencies > 0
+    || b.earned_commission > 0 || b.withdrawals_pending > 0
 }
 
 /**
@@ -84,7 +101,7 @@ export async function countAccountDeleteBlockers(
     const uidNorm = await resolveUserIdString(DB, rawId, isDbId)
     const numId = await resolveUserId(DB, rawId, isDbId)
 
-    const [vouchers, deal, stores, agencies] = await Promise.all([
+    const [vouchers, deal, stores, agencies, commission, withdrawals] = await Promise.all([
       DB.prepare(UNUSED_STORE_VOUCHERS_SQL).bind(uidNorm, uidRaw).first<{ n: number }>(),
       // 딜은 탈퇴 경로(`deleteUserAccount` → `zeroOutUserPoints`)와 같은 키로 읽는다 — 다른 키로 읽으면
       // 지우는 잔액과 세는 잔액이 갈린다.
@@ -97,6 +114,10 @@ export async function countAccountDeleteBlockers(
       numId == null
         ? Promise.resolve({ n: 0 })
         : DB.prepare(OWNED_AGENCIES_SQL).bind(numId).first<{ n: number }>().catch(() => ({ n: 0 })),
+      // 소개비·출금 표는 그 기능을 한 번도 안 쓴 환경엔 없다 — 그때는 0(받을 것이 있을 수 없다).
+      //   표가 없다는 오류만 0 으로 읽는다 — 그 밖의 실패는 던져서 탈퇴를 막는다(돈을 못 읽었는데 여는 일은 없다).
+      DB.prepare(EARNED_COMMISSION_SQL).bind(uidNorm, uidRaw).first<{ n: number }>().catch(zeroIfNoTable),
+      DB.prepare(WITHDRAWALS_PENDING_SQL).bind(uidNorm, uidRaw).first<{ n: number }>().catch(zeroIfNoTable),
     ])
     if (!deal.ok) return { ok: false }
 
@@ -108,6 +129,8 @@ export async function countAccountDeleteBlockers(
         deal_refund_pending: deal.state.pending != null,
         owned_stores: Math.max(0, Number(stores?.n) || 0),
         owned_agencies: Math.max(0, Number(agencies?.n) || 0),
+        earned_commission: Math.max(0, Math.floor(Number(commission?.n) || 0)),
+        withdrawals_pending: Math.max(0, Number(withdrawals?.n) || 0),
       },
     }
   } catch {

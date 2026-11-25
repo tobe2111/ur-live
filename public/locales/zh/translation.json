@@ -5254,7 +5254,7 @@
     "authCancelled": "Kakao 认证已取消",
     "linkFailed": "关联失败",
     "unlinkHint": "可随时使用上方的 \"解除\" 按钮取消关联。",
-    "unlinkPasswordPrompt": "请输入密码以验证身份。\n(如果仅通过Kakao注册，请先通过\"找密码\"设置密码)",
+    "unlinkPasswordPrompt": "请输入密码以验证身份。\n(没有密码的店铺无法解除)",
     "checkingStatus": "检查关联状态中...",
     "linkedStatus": "✓ Kakao账号已关联",
     "unlinkBtn": "解除",

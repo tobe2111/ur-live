@@ -19,7 +19,7 @@
 import { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import { toPublicProductRows } from '@/shared/constants/demo-products'
 import type { Env } from '@/worker/types/env'
-import { requireAuth, requireAdmin } from '@/worker/middleware/auth'
+import { requireAdmin, requireUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { publicCache, markDegraded } from '@/worker/middleware/edge-cache'
 import { chunkForBinds } from '@/shared/db/d1-binds'
@@ -191,7 +191,7 @@ publicApp.get('/:productId', publicCache(30), async (c) => {
 
 // ─────────────────────────────── 유저 ───────────────────────────────
 const userApp = new Hono<{ Bindings: Env; Variables: Vars }>()
-userApp.use('*', requireAuth())
+userApp.use('*', requireUser()) // 🔒 2026-11-25: 손님 토큰만 — 셀러·어드민 토큰의 번호를 손님 번호로 읽지 않는다
 
 // 🧯 2026-07-02 (대표 "트래픽 폭주에도 이상적으로"): 오픈런 표면 — IP당 10회/분 캡.
 //   정상 유저는 1탭 1회(멱등)라 무영향, 봇/연타만 차단. INSERT OR IGNORE 멱등은 기존 유지.

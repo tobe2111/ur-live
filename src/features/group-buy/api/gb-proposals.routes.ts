@@ -7,7 +7,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
-import { requireAuth } from '../../../worker/middleware/auth'
+import { requireUser } from '../../../worker/middleware/auth'
 import { getSellerIdFromToken } from '../../../lib/seller-shared'
 import { isVoucherCategory } from '../../../shared/constants/voucher-categories'
 import { validateGbSession, type GbSession } from '../../../shared/gb-session'
@@ -71,7 +71,7 @@ async function approveAndOpen(db: D1Database, row: GbProposalRow, note: string |
 // ─────────────── 인플루언서 측 (소비자 세션) ───────────────
 
 // POST / — 인플루언서 → 매장 제안
-app.post('/', requireAuth(), async (c) => {
+app.post('/', requireUser(), async (c) => {
   try {
     const db = c.env.DB
     if (!(await gbEngineOn(db))) return c.json({ success: false, error: '공구 엔진 비활성', code: 'GB_ENGINE_OFF' }, 403)
@@ -96,7 +96,7 @@ app.post('/', requireAuth(), async (c) => {
 })
 
 // GET /mine — 내(인플루언서) 관련 제안 (내가 낸 것 + 매장이 내게 보낸 것)
-app.get('/mine', requireAuth(), async (c) => {
+app.get('/mine', requireUser(), async (c) => {
   try {
     const db = c.env.DB
     const uid = authUserId(c)
@@ -110,7 +110,7 @@ app.get('/mine', requireAuth(), async (c) => {
 })
 
 // POST /:id/respond — 인플루언서가 '매장→인플' 제안에 응답 (approve|reject)
-app.post('/:id/respond', requireAuth(), async (c) => {
+app.post('/:id/respond', requireUser(), async (c) => {
   try {
     const db = c.env.DB
     if (!(await gbEngineOn(db))) return c.json({ success: false, error: '공구 엔진 비활성', code: 'GB_ENGINE_OFF' }, 403)

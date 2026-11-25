@@ -5254,7 +5254,7 @@
     "authCancelled": "Authentification KakaoTalk annulée",
     "linkFailed": "Échec de la liaison",
     "unlinkHint": "Vous pouvez délier à tout moment avec le bouton \"Délier\" ci-dessus.",
-    "unlinkPasswordPrompt": "Entrez votre mot de passe pour vérifier votre identité.\n(Si vous n'avez utilisé que Kakao, configurez d'abord un mot de passe via \"Trouver le mot de passe\")",
+    "unlinkPasswordPrompt": "Entrez votre mot de passe pour vérifier votre identité.\n(Les boutiques sans mot de passe ne peuvent pas dissocier)",
     "checkingStatus": "Vérification du statut de liaison...",
     "linkedStatus": "✓ Compte Kakao lié",
     "unlinkBtn": "Délier",

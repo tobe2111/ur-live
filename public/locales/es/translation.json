@@ -5254,7 +5254,7 @@
     "authCancelled": "Autenticación de KakaoTalk cancelada",
     "linkFailed": "Vinculación fallida",
     "unlinkHint": "Puedes desvincular en cualquier momento con el botón \"Desvincular\" de arriba.",
-    "unlinkPasswordPrompt": "Ingrese su contraseña para verificar su identidad.\n(Si solo se registró con Kakao, primero configure una contraseña en \"Encontrar contraseña\")",
+    "unlinkPasswordPrompt": "Ingrese su contraseña para verificar su identidad.\n(Las tiendas sin contraseña no pueden desvincular)",
     "checkingStatus": "Comprobando estado de vinculación...",
     "linkedStatus": "✓ Cuenta Kakao vinculada",
     "unlinkBtn": "Desvincular",

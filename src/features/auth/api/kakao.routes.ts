@@ -12,7 +12,7 @@ import { sign as jwtSign } from 'hono/jwt'; import { signEstablishTicket } from 
 import { KakaoAuthService } from '../services/KakaoAuthService';
 import { sessionPersistProbeCookie } from '../../../shared/session-persist-probe';
 // 🛡️ 2026-05-01: FirebaseAuthService import 제거 — KR Kakao 흐름은 Firebase 0.
-import { createSessionCookie, clearSessionCookie } from '@/worker/utils/session';
+import { createSessionCookie, clearSessionCookie, parseSessionCookie } from '@/worker/utils/session';
 import { recordKakaoLoginDiag } from '@/worker/utils/kakao-login-diag';
 import { startDashboardSession } from '@/worker/utils/dashboard-session';
 import { encryptAtRest } from '@/worker/utils/data-crypto';
@@ -814,12 +814,19 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
   const { DB } = c.env;
   
   try {
-    const { code, redirect_uri } = await c.req.json();
-    
+    const { code, redirect_uri, state } = await c.req.json();
+
     if (!code) {
       return c.json({ success: false, error: 'Authorization code is required' }, 400);
     }
-    
+    // 🔒 2026-11-25: 이 문은 `state` 없이 코드를 받아 그 코드의 주인으로 브라우저를 로그인시켰다(남의 코드로 피해자를 공격자 계정에 — 로그인 CSRF).
+    //   정상 로그인은 서버 콜백(GET /sync/callback)으로 끝나므로 여기는 같은 규칙(쿠키와 맞거나 서명이 유효)을 통과한 요청만 받는다.
+    const loginState = parseStateCookie(readCookie(c.req.header('Cookie') || '', OAUTH_STATE_COOKIE));
+    const st = typeof state === 'string' ? state : '';
+    if (!st || !((loginState && st === loginState.state) || (await verifySignedState(st, c.env.JWT_SECRET)))) {
+      return c.json({ success: false, error: '로그인 요청이 만료됐어요. 다시 시도해 주세요', code: 'OAUTH_STATE_INVALID' }, 400);
+    }
+
     if (!c.env.KAKAO_REST_API_KEY) {
       if (import.meta.env.DEV) console.error('[Kakao Callback] KAKAO_REST_API_KEY not configured');
       return c.json({ success: false, error: 'Server configuration error' }, 500);
@@ -925,6 +932,38 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
     if (import.meta.env.DEV) console.error('[Kakao Callback] Error:', error);
     // 🛡️ 2026-05-31: raw error 반환 금지(계정 enumeration/내부구조 누출). generic 메시지만.
     return c.json({ success: false, error: '카카오 로그인 처리 중 오류가 발생했습니다' }, 500);
+  }
+});
+
+/**
+ * POST /api/auth/kakao/consent-callback — 추가 동의(톡캘린더·톡메시지)로 받은 토큰만 저장한다.
+ * 🔒 2026-11-25: 종전엔 동의 콜백이 로그인 문(`/callback`)을 같이 써서 **코드의 주인으로 세션을 갈아 끼웠다**(state 쿠키는 쓰기만 하고 아무도 안 읽었다).
+ *   여기는 세션을 만들지도 바꾸지도 않는다 — 지금 로그인한 손님의 카카오 번호와 코드의 카카오 번호가 같을 때만 토큰을 적는다.
+ *   ⇒ 남의 코드를 들고 와도 붙을 계정이 없다(state 가 없어도 안전한 모양이라 iOS 쿠키 유실과 무관하다).
+ */
+kakaoRoutes.post('/consent-callback', rateLimit({ action: 'kakao_consent_callback', max: 20, windowSec: 60 }), async (c) => {
+  const { DB } = c.env;
+  try {
+    const session = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user']);
+    if (!session?.isDbId) return c.json({ success: false, error: '로그인이 필요해요', code: 'LOGIN_REQUIRED' }, 401);
+    const { code, redirect_uri } = await c.req.json();
+    if (!code || !c.env.KAKAO_REST_API_KEY) return c.json({ success: false, error: '동의 처리에 필요한 값이 없어요' }, 400);
+    const me = await DB.prepare('SELECT id, kakao_id FROM users WHERE id = ?').bind(Number(session.userId)).first<{ id: number; kakao_id: string | null }>();
+    const kakaoService = new KakaoAuthService(DB, c.env.KAKAO_REST_API_KEY);
+    const tokenData = await kakaoService.exchangeCodeFull(code, redirect_uri || `${new URL(c.req.url).origin}/auth/kakao/consent/callback`);
+    const kakaoUser = await kakaoService.getUserInfo(tokenData.access_token);
+    if (!me?.kakao_id || String(me.kakao_id) !== String(kakaoUser.kakaoId)) {
+      return c.json({ success: false, error: '지금 로그인한 카카오 계정으로 동의해 주세요', code: 'KAKAO_ACCOUNT_MISMATCH' }, 409);
+    }
+    await ensureKakaoColumns(DB);
+    const kek = (c.env as any).DATA_ENCRYPTION_KEY as string | undefined;
+    const encAccess = await encryptAtRest(tokenData.access_token, kek);
+    const encRefresh = tokenData.refresh_token ? await encryptAtRest(tokenData.refresh_token, kek) : null;
+    await DB.prepare('UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?').bind(encAccess, encRefresh, me.id).run();
+    return c.json({ success: true });
+  } catch (error) {
+    if (import.meta.env.DEV) console.error('[Kakao Consent] Error:', error);
+    return c.json({ success: false, error: '동의 처리 중 오류가 발생했습니다' }, 500);
   }
 });
 

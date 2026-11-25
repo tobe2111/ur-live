@@ -6,6 +6,7 @@
  *
  *   GET /api/admin/sellers/:id/bank-account   현재 값(계좌번호는 끝 4자리만)
  *   PUT /api/admin/sellers/:id/bank-account   { bank_name, bank_account, account_holder, confirm_overwrite? }
+ *   POST /api/admin/sellers/:id/bank-account/reset-pin   잊은 매장 PIN 초기화(2026-11-25) — 주인이 새 PIN 을 만든다
  *
  * ## 🔒 돈이 가는 곳을 정하는 값이다 — 그래서 넷을 건다
  *   ① 역할: super·admin·finance 만(`shared/admin-roles.ts` SENSITIVE_MUTATIONS — ops·cs 차단)
@@ -22,6 +23,7 @@ import type { Env } from '@/worker/types/env'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { safeError } from '@/worker/utils/safe-error'
 import { BANKS } from '@/shared/banks'
+import { ensureSellerMetaTable, getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
 
 export const adminStoreBankRoutes = new Hono<{ Bindings: Env }>()
 
@@ -90,5 +92,34 @@ adminStoreBankRoutes.put('/sellers/:id/bank-account', cors(), async (c) => {
     })
   } catch (err) {
     return safeError(c, err, '계좌를 저장하지 못했습니다', '[admin:store-bank]')
+  }
+})
+
+/**
+ * 🔑 잊은 매장 PIN 초기화 (2026-11-25).
+ * PIN 은 계좌 변경·지급 신청을 지키는 값인데 **재설정 길이 없었다** — 카카오로 만든 매장(비밀번호 없음)의 주인이 PIN 을 잊으면
+ * 계좌를 영영 못 바꿨다. 주인이 화면에서 스스로 지우게 하면 PIN 이 세션만큼만 안전해지므로(세션을 가진 사람이 지우고 새로 건다),
+ * 사람이 본인 확인을 한 뒤 어드민이 지운다. 지우면 주인 자리가 새 PIN 을 만든다(`seller-pin.routes` 의 첫 PIN 길).
+ * 역할은 계좌와 같다(경로가 `/bank-account/` 아래 — super·admin·finance). 감사 로그 + 사장님 알림.
+ */
+adminStoreBankRoutes.post('/sellers/:id/bank-account/reset-pin', cors(), async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isInteger(id) || id <= 0) return c.json({ success: false, error: '매장 ID 가 올바르지 않습니다' }, 400)
+    const DB = c.env.DB
+    const seller = await DB.prepare('SELECT id FROM sellers WHERE id = ?').bind(id).first<{ id: number }>()
+    if (!seller) return c.json({ success: false, error: '매장을 찾을 수 없습니다' }, 404)
+    await ensureSellerMetaTable(DB)
+    const had = !!(await getSellerMeta(DB, [id])).get(id)?.pin_hash
+    if (!had) return c.json({ success: true, data: { pin_set: false }, message: '이 매장은 PIN 이 걸려 있지 않아요.' })
+    await setSellerMeta(DB, id, { pin_hash: null })
+    await writeAuditLog(c, { action: 'admin_reset_seller_pin', targetType: 'seller', targetId: String(id), before: { pin_set: true }, after: { pin_set: false } })
+      .catch(() => { /* 감사 로그 실패가 초기화를 되돌리지는 않는다 */ })
+    await DB.prepare(
+      `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link) VALUES ('seller', ?, 'seller_pin_reset', ?, ?, '/seller/settlements')`,
+    ).bind(String(id), '🔑 매장 PIN 이 초기화됐어요', '유어딜이 매장 PIN 을 초기화했어요. 정산 화면에서 새 PIN 을 만들어 주세요. 요청한 적이 없다면 바로 고객센터로 알려 주세요.').run().catch(() => null)
+    return c.json({ success: true, data: { pin_set: false }, message: 'PIN 을 초기화했어요. 사장님에게 알렸어요.' })
+  } catch (err) {
+    return safeError(c, err, 'PIN 을 초기화하지 못했습니다', '[admin:store-bank]')
   }
 })

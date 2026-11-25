@@ -25,6 +25,8 @@ export interface AccountDeleteBlockers {
   deal_refund_pending: boolean
   owned_stores: number
   owned_agencies?: number
+  earned_commission?: number
+  withdrawals_pending?: number
 }
 
 /** 가게 탈퇴가 있는 화면(가게 관리 맨 아래 `SellerWithdrawSection`). 마이 시트로 열린다. */
@@ -137,6 +139,27 @@ export default function DeleteBlockers({
         title={t('accountDeleteWarning.blockAgency', { defaultValue: '운영 중인 에이전시 {{count}}곳', count: blockers.owned_agencies })}
         body={t('accountDeleteWarning.blockAgencyBody', { defaultValue: '탈퇴하면 이 카카오 계정으로 에이전시에 다시 들어올 수 없어요. 에이전시를 이메일 계정으로 옮긴 뒤 탈퇴해 주세요.' })}
         action={<Link to="/agency" className={LINK_CLS}>{t('accountDeleteWarning.goAgency', { defaultValue: '에이전시로 가기' })}</Link>}
+      />,
+    )
+  }
+  if ((blockers.earned_commission ?? 0) > 0) {
+    rows.push(
+      <Row
+        key="commission"
+        icon={<WalletIcon className="w-5 h-5" />}
+        title={t('accountDeleteWarning.blockCommission', { defaultValue: '받을 소개비 {{amount}}원', amount: formatNumber(blockers.earned_commission) })}
+        body={t('accountDeleteWarning.blockCommissionBody', { defaultValue: '탈퇴하면 받을 수 없어요. 정산을 받은 뒤 탈퇴해 주세요. 금액이 작아 정산을 못 받는다면 고객센터로 알려 주세요.' })}
+        action={<Link to="/influencer/settlement" className={LINK_CLS}>{t('accountDeleteWarning.goSettlement', { defaultValue: '정산 보기' })}</Link>}
+      />,
+    )
+  }
+  if ((blockers.withdrawals_pending ?? 0) > 0) {
+    rows.push(
+      <Row
+        key="withdrawal"
+        icon={<ClockIcon className="w-5 h-5" />}
+        title={t('accountDeleteWarning.blockWithdrawal', { defaultValue: '출금 신청을 처리하고 있어요' })}
+        body={t('accountDeleteWarning.blockWithdrawalBody', { defaultValue: '입금이 끝난 뒤에 탈퇴할 수 있어요.' })}
       />,
     )
   }

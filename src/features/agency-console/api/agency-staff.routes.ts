@@ -99,7 +99,7 @@ agencyStaffRoutes.post('/staff/invite', cors(), requireAgencyStaff({ adminOnly: 
           return c.json({ success: false, code: 'EMAIL_IN_OTHER_AGENCY', error: '이 이메일은 다른 에이전시 계정으로 쓰이고 있어요. 다른 이메일로 초대해 주세요.' }, 409)
         }
         if (found.status === 'active') return c.json({ success: false, code: 'ALREADY_STAFF', error: '이미 함께 일하는 직원이에요.' }, 409)
-        // 초대 중이거나 내보냈던 사람 — 같은 행을 초대 상태로 되살린다.
+        // 초대 중인 사람 — 같은 행을 다시 초대한다(내보낸 사람은 이메일 자리가 비어 있어 여기로 안 온다 — 새 행으로 초대된다).
         await DB.prepare(
           "UPDATE agency_staff SET status = 'invited', role = ?, invited_by_staff_id = ?, updated_at = datetime('now') WHERE id = ? AND agency_id = ? AND status IN ('invited','removed')",
         ).bind(role, me.staffId, found.id, me.agencyId).run()
@@ -145,10 +145,13 @@ agencyStaffRoutes.post('/staff/:id/remove', cors(), requireAgencyStaff({ adminOn
     if (id === me.staffId) return c.json({ success: false, error: '자기 자신은 내보낼 수 없어요.' }, 400)
     const nowSec = Math.floor(Date.now() / 1000)
     // is_owner = 0 조건을 UPDATE 안에 둔다 — 대표 계정은 어떤 경로로도 안 빠진다.
+    // 📧 2026-11-25: 이메일 자리를 비운다 — 종전엔 내보낸 행이 그 이메일을 계속 쥐고 있어(이메일은 유일 인덱스),
+    //   그 사람은 새로 가입도(「이미 계정이 있어요」), 로그인도(「들어올 수 없어요」), 다른 에이전시 초대도(「다른 에이전시 계정」) 못 했다.
+    //   행은 남긴다(누가 무엇을 했는지) — 원래 주소는 `removed.<id>.<시각>:` 뒤에 그대로 붙여 둔다(메일 주소로는 안 맞는 모양).
     const r = await c.env.DB.prepare(
-      `UPDATE agency_staff SET status = 'removed', tokens_valid_after = ?, updated_at = datetime('now')
+      `UPDATE agency_staff SET status = 'removed', tokens_valid_after = ?, email = 'removed.' || id || '.' || ? || ':' || email, updated_at = datetime('now')
         WHERE id = ? AND agency_id = ? AND is_owner = 0 AND status IN ('active','invited')`,
-    ).bind(nowSec, id, me.agencyId).run()
+    ).bind(nowSec, nowSec, id, me.agencyId).run()
     if ((r.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '내보낼 수 없는 직원이에요.' }, 404)
     await c.env.DB.prepare("DELETE FROM agency_tokens WHERE staff_id = ? AND used_at IS NULL").bind(id).run().catch(swallow('agency-console:remove-tokens'))
     // 이 직원이 열어 둔 매장 좌석도 지금 끊는다(같은 isolate 즉시 · 다른 isolate 는 15초 안에).

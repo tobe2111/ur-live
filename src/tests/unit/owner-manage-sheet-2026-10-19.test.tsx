@@ -166,7 +166,7 @@ describe('③ 패널 문구 · 배선', () => {
     expect(get.indexOf('if (!isOwner || !p)')).toBeGreaterThan(-1)
     expect(get.indexOf('if (!isOwner || !p)')).toBeLessThan(get.indexOf('ownedStats('))
     const act = r.slice(r.indexOf("router.post('/viewer/:id/active'"))
-    expect(act).toMatch(/requireAuth\(\)/)
+    expect(act).toMatch(/requireUser\(\)/) // 🔁 2026-11-25 재조준: 손님 토큰만
     expect(act.indexOf('isSelfOwnedGroupBuy(')).toBeGreaterThan(-1)
     expect(act.indexOf('isSelfOwnedGroupBuy(')).toBeLessThan(act.indexOf('UPDATE products'))
     expect(act).toMatch(/COALESCE\(status,''\) <> 'DELETED'/)

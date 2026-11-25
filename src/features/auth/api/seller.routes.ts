@@ -633,6 +633,9 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
   }
 });
 
+/** 🪦 셀러 비밀번호 찾기 메일은 닫혀 있다(2026-11-25) — 링크가 가리키는 화면이 없다. 화면을 되살릴 때 false 로. */
+const SELLER_FORGOT_PASSWORD_CLOSED: boolean = true;
+
 /**
  * POST /api/seller/forgot-password
  * 비밀번호 재설정 이메일 발송 요청
@@ -645,6 +648,9 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
  */
 sellerRoutes.post('/forgot-password', cors(), rateLimit({ action: 'seller_forgot_password', max: 2, windowSec: 3600 }), async (c) => {
   const { DB, RESEND_API_KEY, RESEND_FROM, FRONTEND_URL } = c.env;
+  // 🪦 2026-11-25: 닫음 — 이 메일의 링크(`/seller/reset-password`)는 화면이 사라져 `/login` 으로 떨어진다(받은 사람은 재설정을 못 한다).
+  //   부르는 화면도 없다. 셀러 화면은 카카오 로그인 → 내 매장으로 들어온다. 재설정 화면을 되살리면 이 줄을 지운다.
+  if (SELLER_FORGOT_PASSWORD_CLOSED) return c.json<AuthResponse>({ success: false, error: '셀러 비밀번호 찾기는 종료됐어요. 카카오 로그인으로 들어와 주세요.' }, 410);
 
   try {
     const body = await c.req.json<{ email: string }>();
