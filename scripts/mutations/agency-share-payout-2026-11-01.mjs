@@ -28,7 +28,7 @@ export default [
     find: "  if (kind === 'individual') {", replace: "  if (kind === 'individual_x') {", test: T,
     why: '개인 에이전시에 원천징수 없이 지급한다(세법 위반).' },
   { name: '에이전시몫 — 성숙 전 몫도 신청에 묶인다', file: F,
-    find: "      WHERE agency_id = ? AND payout_id IS NULL AND status IN ('pending','available')\n        AND available_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now')`,",
+    find: "      WHERE agency_id = ? AND payout_id IS NULL AND status IN ('pending','available')\n        AND ${mature}`,",
     replace: "      WHERE agency_id = ? AND payout_id IS NULL AND status IN ('pending','available')`,", test: T,
     why: '환불 창이 안 끝난 몫을 송금하면 그 뒤 환불은 회수할 수 없다.' },
   { name: '에이전시몫 — 중개사 몫이 함께 붙는다', file: 'src/worker/utils/broker-share.ts',

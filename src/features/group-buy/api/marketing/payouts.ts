@@ -49,11 +49,17 @@ export function registerAdminPayoutRoutes(adminApp: Hono<{ Bindings: Env; Variab
     const body = await c.req.json<{ influencer_id: string; method: 'cash' | 'deal'; net_amount?: number }>().catch(() => ({ influencer_id: '', method: 'cash' as const, net_amount: undefined }))
     const influencerId = String(body.influencer_id || '').trim()
     if (!influencerId) return c.json({ success: false, error: 'invalid' }, 400)
+    // 🔒 2026-11-25 — 방식이 안 왔거나 틀리면 현금으로 떨어지던 것을 막는다(잔액이 0 으로 밀린 뒤라 되돌릴 길이 없다).
+    if (!['cash', 'deal'].includes(String(body.method))) return c.json({ success: false, error: '지급 방식을 골라 주세요', code: 'INVALID_METHOD' }, 400)
     const DB = c.env.DB
     const balance = await DB.prepare(
-      "SELECT available_amount FROM influencer_balances WHERE influencer_id = ?"
-    ).bind(influencerId).first<{ available_amount: number }>().catch(() => null)
+      "SELECT available_amount, bank_account FROM influencer_balances WHERE influencer_id = ?"
+    ).bind(influencerId).first<{ available_amount: number; bank_account: string | null }>().catch(() => null)
     if (!balance || balance.available_amount <= 0) return c.json({ success: false, error: '잔액 없음' }, 400)
+    // 🔒 2026-11-25 — 보낼 계좌가 없는데 '현금 지급 완료' 로 잔액을 0 으로 밀 수 있었다(시험 `payout-cycle-full`). 매장 지급의 `PAYOUT_NO_ACCOUNT` 와 같은 규칙.
+    if (body.method === 'cash' && !String(balance.bank_account || '').trim()) {
+      return c.json({ success: false, error: '받을 계좌가 등록되지 않았어요. 계좌 등록 뒤 지급해 주세요.', code: 'PAYOUT_NO_ACCOUNT' }, 409)
+    }
     const amount = balance.available_amount
 
     // 🛡️ 2026-06-04: 이중 지급 차단 CAS — available_amount 가 아직 amount 일 때만 0 으로 claim.

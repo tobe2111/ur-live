@@ -65,7 +65,7 @@ async function fresh(opts: { gate?: boolean; broker?: boolean; kind?: string } =
   db.exec('CREATE TABLE vouchers (id INTEGER PRIMARY KEY, order_id INTEGER, status TEXT)')
   db.exec(`CREATE TABLE influencer_attributions (id INTEGER PRIMARY KEY AUTOINCREMENT, influencer_id TEXT, order_id INTEGER, product_id INTEGER,
     seller_id INTEGER, commission_amount INTEGER, status TEXT, available_at TEXT, source TEXT, paid_at TEXT, voucher_id INTEGER, clawback_reason TEXT)`)
-  db.exec(`CREATE TABLE influencer_balances (influencer_id TEXT PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0, updated_at TEXT)`)
+  db.exec(`CREATE TABLE influencer_balances (influencer_id TEXT PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0, tax_type TEXT DEFAULT 'other_income', updated_at TEXT)`)
   db.exec("INSERT INTO products (id, seller_id) VALUES (30, 7), (31, 7)")
   db.exec("INSERT INTO users (id, name) VALUES (50, '직원'), (77, '중개사')")
   if (opts.gate !== false) db.exec("INSERT INTO platform_settings VALUES ('agency_share_payout_enabled', 'true')")

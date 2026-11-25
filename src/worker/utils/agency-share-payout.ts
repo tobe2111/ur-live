@@ -34,6 +34,7 @@ import { ensureLedgerTable, recordLedger, sellerLedgerAccount } from './ledger'
 import { WITHHOLDING_RATES } from './tax-withholding'
 import { PLATFORM_OPERATOR_AGENCY_IDS } from './ledger-commission-policy'
 import { AGENCY_SHARE_PCT_MAX, sharePctAtSaleSql } from '../../features/agency-console/api/agency-share'
+import { resolvePayoutUseGate } from './payout-use-gate'
 
 export const AGENCY_SHARE_GATE = 'agency_share_payout_enabled'
 export const AGENCY_SHARE_EVENT = 'agency_share'
@@ -224,12 +225,24 @@ export async function clawbackAgencyShare(
 
 export interface AgencyShareBalance { pending: number; available: number; requested: number; paid: number }
 
+/**
+ * 🔒 2026-11-25 성숙 조건 — 환불 기간이 지났고 **그 주문의 이용권이 쓰였다**(소개비와 같은 규칙: `payout-use-gate.ts`,
+ * 설정 `payout_requires_voucher_use`). 종전엔 시간(7일)만 봐서, 안 쓴 이용권의 몫이 먼저 지급되고 그 뒤 기한 만료로
+ * 손님이 전액 환불받으면 **지급된 몫은 회수되지 않고 매장이 그 돈을 물었다**(시험 `payout-cycle-full-2026-11-25`).
+ * 잔액 표시 · 지급 신청 · 정산일 자동 신청 세 곳이 이 조각 하나를 쓴다(갈리면 "보이는데 신청이 안 된다"가 난다).
+ */
+async function matureSql(DB: D1Database): Promise<string> {
+  const gate = await resolvePayoutUseGate(DB, 'agency_share_credits')
+  return `(available_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now') ${gate.sql})`
+}
+
 /** 잔액 — 권위 출처(`agency_share_credits`)를 그때그때 합한다. 성숙 = available_at 이 지난 pending/available. */
 export async function readAgencyShareBalance(DB: D1Database, agencyId: number): Promise<AgencyShareBalance> {
+  const mature = await matureSql(DB)
   const r = await DB.prepare(
     `SELECT
-       COALESCE(SUM(CASE WHEN payout_id IS NULL AND status IN ('pending','available') AND available_at > strftime('%Y-%m-%dT%H:%M:%fZ','now') THEN amount ELSE 0 END), 0) AS pending,
-       COALESCE(SUM(CASE WHEN payout_id IS NULL AND status IN ('pending','available') AND available_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now') THEN amount ELSE 0 END), 0) AS available,
+       COALESCE(SUM(CASE WHEN payout_id IS NULL AND status IN ('pending','available') AND NOT ${mature} THEN amount ELSE 0 END), 0) AS pending,
+       COALESCE(SUM(CASE WHEN payout_id IS NULL AND status IN ('pending','available') AND ${mature} THEN amount ELSE 0 END), 0) AS available,
        COALESCE(SUM(CASE WHEN status = 'requested' THEN amount ELSE 0 END), 0) AS requested,
        COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) AS paid
      FROM agency_share_credits WHERE agency_id = ?`,
@@ -272,10 +285,11 @@ export async function requestAgencyPayout(
   } catch {
     return { ok: false, error: '처리 중인 지급 신청이 있어요. 끝난 뒤 다시 신청해 주세요.' }
   }
+  const mature = await matureSql(DB)
   await DB.prepare(
     `UPDATE agency_share_credits SET payout_id = ?, status = 'requested', updated_at = datetime('now')
       WHERE agency_id = ? AND payout_id IS NULL AND status IN ('pending','available')
-        AND available_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now')`,
+        AND ${mature}`,
   ).bind(payoutId, agencyId).run()
   const sum = await DB.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM agency_share_credits WHERE payout_id = ?')
     .bind(payoutId).first<{ s: number }>()
@@ -301,10 +315,11 @@ export async function requestAgencyPayout(
 export async function autoRequestAgencyPayouts(DB: D1Database): Promise<{ requested: number; total: number }> {
   if (!(await isAgencySharePayoutEnabled(DB))) return { requested: 0, total: 0 }
   await ensureAgencyShareTables(DB)
+  const mature = await matureSql(DB)
   const { results } = await DB.prepare(
     `SELECT agency_id, SUM(amount) AS s FROM agency_share_credits
       WHERE payout_id IS NULL AND status IN ('pending','available')
-        AND available_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        AND ${mature}
         AND agency_id NOT IN (SELECT agency_id FROM agency_share_payouts WHERE status = 'requested')
       GROUP BY agency_id HAVING SUM(amount) >= ?`,
   ).bind(AGENCY_PAYOUT_MIN).all<{ agency_id: number; s: number }>()

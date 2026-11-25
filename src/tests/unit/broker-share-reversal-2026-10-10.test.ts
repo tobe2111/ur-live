@@ -57,7 +57,7 @@ function fresh() {
       voucher_id INTEGER, product_id INTEGER, seller_id INTEGER, commission_amount INTEGER NOT NULL, status TEXT DEFAULT 'pending',
       created_at DATETIME DEFAULT (datetime('now')), available_at DATETIME, paid_at DATETIME, clawback_reason TEXT, source TEXT);
     CREATE TABLE influencer_balances (influencer_id TEXT PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0,
-      total_paid_out INTEGER DEFAULT 0, updated_at TEXT);
+      total_paid_out INTEGER DEFAULT 0, tax_type TEXT DEFAULT 'other_income', updated_at TEXT);
     CREATE TABLE orders (id INTEGER PRIMARY KEY, order_number TEXT);
     CREATE TABLE ledger_entries (id INTEGER PRIMARY KEY AUTOINCREMENT, event_type TEXT NOT NULL, reference_id TEXT NOT NULL,
       amount INTEGER NOT NULL, debit_account TEXT NOT NULL, credit_account TEXT NOT NULL, fee_amount INTEGER DEFAULT 0, fee_account TEXT,

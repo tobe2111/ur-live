@@ -573,8 +573,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           ).bind(referralInfluencerId, newOrderId ?? 0, productId, product.seller_id, influencerAmount, availableAt).run()
           // balance pending 증가 (UPSERT)
           await DB.prepare(
-            `INSERT INTO influencer_balances (influencer_id, pending_amount, updated_at)
-             VALUES (?, ?, datetime('now'))
+            `INSERT INTO influencer_balances (influencer_id, pending_amount, tax_type, updated_at)
+             VALUES (?, ?, 'business_income', datetime('now'))
              ON CONFLICT(influencer_id) DO UPDATE SET pending_amount = pending_amount + excluded.pending_amount, updated_at = datetime('now')`
           ).bind(referralInfluencerId, influencerAmount).run()
           // ledger entry — 셀러 receivable 차감 → 인플 balance

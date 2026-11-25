@@ -242,8 +242,8 @@ export async function applyGroupBuyReferral(
          VALUES (?, ?, ?, ?, ?, 'pending', ?)`
       ).bind(p.referralInfluencerId, p.orderId ?? 0, p.productId, p.sellerId, influencerAmount, availableAt).run()
       await DB.prepare(
-        `INSERT INTO influencer_balances (influencer_id, pending_amount, updated_at)
-         VALUES (?, ?, datetime('now'))
+        `INSERT INTO influencer_balances (influencer_id, pending_amount, tax_type, updated_at)
+         VALUES (?, ?, 'business_income', datetime('now'))
          ON CONFLICT(influencer_id) DO UPDATE SET pending_amount = pending_amount + excluded.pending_amount, updated_at = datetime('now')`
       ).bind(p.referralInfluencerId, influencerAmount).run()
       await recordLedger(DB, {

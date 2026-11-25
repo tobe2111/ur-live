@@ -78,8 +78,8 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       // 정확한 동기: available_amount 를 모든 'available' 의 SUM 으로 다시 설정
       // (pending → available 이동이 누적되므로 누적 보정)
       await DB.prepare(`
-        INSERT INTO influencer_balances (influencer_id, available_amount, pending_amount, updated_at)
-        VALUES (?, ?, COALESCE((SELECT SUM(commission_amount) FROM influencer_attributions WHERE influencer_id = ? AND status = 'pending'), 0), datetime('now'))
+        INSERT INTO influencer_balances (influencer_id, available_amount, pending_amount, tax_type, updated_at)
+        VALUES (?, ?, COALESCE((SELECT SUM(commission_amount) FROM influencer_attributions WHERE influencer_id = ? AND status = 'pending'), 0), 'business_income', datetime('now'))
         ON CONFLICT(influencer_id) DO UPDATE SET
           available_amount = ?,
           pending_amount = COALESCE((SELECT SUM(commission_amount) FROM influencer_attributions WHERE influencer_id = ? AND status = 'pending'), 0),

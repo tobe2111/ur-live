@@ -256,6 +256,14 @@ adminTaxRoutes.get('/admin/tax/monthly-accounting', requireAdmin(), async (c) =>
         FROM influencer_withholding_log WHERE payout_year = ? AND payout_month = ?
     `).bind(year, monthNum).first<{ n: number; gross: number; withholding: number; net: number }>().catch(() => null))
     if (whtInf) { wht.n += Number(whtInf.n) || 0; wht.gross += Number(whtInf.gross) || 0; wht.withholding += Number(whtInf.withholding) || 0; wht.net += Number(whtInf.net) || 0 }
+    // 🧾 2026-11-25 개인 에이전시에게 지급하며 뗀 3.3% 도 같은 달 합계에 — 종전엔 `agency_share_payouts` 에만 남아 이 요약에서 빠졌다(표가 없으면 0).
+    const whtAg = (await DB.prepare(`
+      SELECT COUNT(*) AS n, COALESCE(SUM(gross_amount), 0) AS gross,
+             COALESCE(SUM(withholding_amount), 0) AS withholding, COALESCE(SUM(net_amount), 0) AS net
+        FROM agency_share_payouts
+       WHERE status = 'paid' AND withholding_amount > 0 AND strftime('%Y-%m', datetime(paid_at, '+9 hours')) = ?
+    `).bind(month).first<{ n: number; gross: number; withholding: number; net: number }>().catch(() => null))
+    if (whtAg) { wht.n += Number(whtAg.n) || 0; wht.gross += Number(whtAg.gross) || 0; wht.withholding += Number(whtAg.withholding) || 0; wht.net += Number(whtAg.net) || 0 }
 
     // 부가세 분리(공급대가 → 공급가액/세액). 매출·수수료에만 적용(과세 표준 참고용).
     const supplyOf = (total: number) => Math.round(total / 1.1)
