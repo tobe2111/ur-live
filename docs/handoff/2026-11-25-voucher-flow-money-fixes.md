@@ -23,6 +23,10 @@
 
 ## 안 고친 것 (2026-11-25 오전 갱신 — 대표 *"그래서 찾은 에러들은?"* 뒤 2차 수리 반영)
 **2차로 고친 것**(결재 기록 `docs/decisions/2026-11-25-payout-refund-ledger-fixes.md`): 받을 돈을 넘는 지급(일괄 승인·바로 송금 완료·이체 파일) · 조회 전용 어드민의 환불 실행 · 환불 원장 계정과 만료 환불 원장 줄 · 일부 사용 뒤 환불의 매장 몫 · 소개비 확정 시각 비교 · 어드민 수익 추정 요율.
+- 2차 PR: tobe2111/ur-live#2491 · **머지 `f03918ee5`** (2026-11-25 11:38 KST, CI 1회차 초록).
+- 배포 뒤 라이브 판정(11:50 KST): Pages·cron 워커 배포 성공 · 번들 `index-ZwWenw_v.js` → `index-DV4Zn_Hs.js` · `guide_seed_version` 75 · 어드민 정산 가이드에 초과 지급·환불 역할 문구가 떴다(섹션 `updated_at` 이 배포 시각).
+  - 읽기 경로로 새 코드가 라이브에서 도는 것까지 봤다: `GET /api/admin/payouts?status=pending` 200 · `GET /api/admin/payouts/transfer-csv?status=pending` 200(`X-Total-Count 1` · `X-Skipped-Count 1`(계좌 없음) · `X-Blocked-Count 0`).
+  - **라이브에서 못 잰 것**: 초과 지급 차단·환불 원장·일부 사용 정산·역할 게이트의 "막히는 쪽" 은 해당 데이터가 0건이고 쓰기 요청이라 찔러 보지 않았다. 근거는 로컬 시험(E2)까지다. 실물 확인은 `S-PAYOUTGUARD`.
 
 **재확인해서 목록에서 내린 것**
 - ~~`StoreBankPage` "매주 목요일" 문구가 틀렸다~~ → 목요일은 대표가 정한 규칙이다(`partners-facts.ts` `storePayoutDay`). 문구는 맞다. 남는 확인거리는 목요일 장치(`auto-settlement`, 라이브 `restaurant_settlements` 0행)와 월요일 09:45 장치(`payouts-generate`, 보류 14일) 중 어느 쪽이 실제로 돈을 내보내는가(미실행).
