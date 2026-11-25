@@ -168,7 +168,7 @@ export default function InfluencerSettlementPage() {
 
   return (
     <div className="min-h-[100dvh] bg-warm pb-20">
-      <SEO title="매장 소개 정산 - 유어딜" description={ownerFunded ? '매장 몫에서 지급되는 소개 수익의 잔액·송금 내역·세금 정보 관리' : '소개 수익 잔액·송금 내역·세금 정보 관리'} url="/influencer/settlement" />
+      <SEO title="매장 소개 정산 - 유어딜" description={ownerFunded ? '매장 몫에서 지급되는 소개비의 잔액·송금 내역·세금 정보 관리' : '소개비 잔액·송금 내역·세금 정보 관리'} url="/influencer/settlement" />
       <header className="sticky top-0 z-30 bg-warm border-b border-rule px-2 h-12 flex items-center">
         <button type="button" onClick={back} aria-label="뒤로" className="w-10 h-10 flex items-center justify-center text-gray-700 dark:text-gray-200 active:opacity-60">
           <ChevronLeft className="w-5 h-5" />
@@ -195,7 +195,7 @@ export default function InfluencerSettlementPage() {
             {commissionPayoutDayLabel(payoutDay)} 지급 · 다음 지급일 {nextCommissionPayoutDate(Date.now(), payoutDay).replace(/-/g, '.')}
           </p>
           {ownerFunded && (
-            <p className="mt-5 text-[12px] text-gray-500 dark:text-gray-400">소개 수익은 각 매장이 자기 몫에서 지급해요. 유어딜 수수료와는 별개예요.</p>
+            <p className="mt-5 text-[12px] text-gray-500 dark:text-gray-400">소개비는 각 매장이 자기 몫에서 지급해요. 유어딜 수수료와는 별개예요.</p>
           )}
         </section>
 
@@ -211,10 +211,10 @@ export default function InfluencerSettlementPage() {
         <div className="mt-8 space-y-3"><DealsAndCodesSection ownerFunded={ownerFunded} /></div>
         <ConditionalDealsSection />
 
-        <div className="mt-8"><SectionTitle>최근 소개 수익</SectionTitle></div>
+        <div className="mt-8"><SectionTitle>최근 소개비</SectionTitle></div>
         <ListPlate className="mt-3">
           {recent.length === 0 ? (
-            <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">아직 소개 수익이 없어요</p>
+            <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">아직 받은 소개비가 없어요</p>
           ) : recent.map(r => {
             const st = statusLabel(r.status, useGate)
             return (

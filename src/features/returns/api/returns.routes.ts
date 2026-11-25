@@ -700,7 +700,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
       await DB.prepare(
         "UPDATE referral_commissions SET status = 'withdrawn' WHERE order_id = ? AND status = 'granted'"
       ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns'));
-      reversal.push({ step: '추천 커미션 회수', count: commissions.results.length, amount: commissions.results.reduce((s, r) => s + (r.commission_amount || 0), 0) });
+      reversal.push({ step: '소개비 회수', count: commissions.results.length, amount: commissions.results.reduce((s, r) => s + (r.commission_amount || 0), 0) });
     }
     // ⏳ 2026-06-15 (T+7 hold): 미성숙(pending=보류, 잔액 미적립) 추천 커미션은 잔액 회수 없이 상태만 닫음.
     await DB.prepare(

@@ -209,7 +209,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // 🏷️ 라벨에 **서비스를 밝힌다.** `influencer_attributions` 는 전부 유어딜에서 생긴다
       //   (매장 영입 `store_intro` + 공구 추천)인데, 이름이 📣 유어애즈의 '인플루언서 풀'
       //   (외부 수집 DB)과 겹쳐 대표가 "어느 쪽이야?" 를 묻게 만들던 자리다.
-      { path: '/admin/influencer-payouts', label: '유어딜 추천 커미션 송금', icon: Wallet },
+      { path: '/admin/influencer-payouts', label: '유어딜 소개비 송금', icon: Wallet },
       { path: '/admin/withholding',      label: '원천징수/지급조서', icon: Shield },
       { path: '/admin/commission-settings', label: '정산 마진 설정', icon: Settings },
       { path: '/admin/merchant-commissions', label: '매장 커미션', icon: Store },
@@ -225,7 +225,7 @@ export const NAV_GROUPS: NavGroup[] = [
     section: 'common',
     items: [
       { path: '/admin/disputes',         label: '분쟁 큐',       icon: AlertOctagon },
-      { path: '/admin/influencer-disputes', label: '유어딜 추천 커미션 분쟁', icon: AlertOctagon },
+      { path: '/admin/influencer-disputes', label: '유어딜 소개비 분쟁', icon: AlertOctagon },
       { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
       { path: '/admin/review-moderation', label: '리뷰 관리',     icon: MessageSquare },
       { path: '/admin/policy',           label: '정책 대시보드', icon: Shield },

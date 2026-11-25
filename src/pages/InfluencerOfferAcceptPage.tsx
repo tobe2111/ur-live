@@ -94,7 +94,7 @@ export default function InfluencerOfferAcceptPage() {
             )}
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-3">
-                <p className="text-[12px] text-gray-500 dark:text-gray-400">판매 커미션</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">소개비</p>
                 <p className="text-[16px] font-bold text-gray-900 dark:text-white">{offer.commission_pct}%</p>
               </div>
               <div className="bg-gray-50 dark:bg-[#121212] rounded-xl p-3">

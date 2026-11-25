@@ -127,7 +127,7 @@ export default function StoreChannelPerformance() {
                   </span>
                   <span className="shrink-0 text-right tabular-nums">
                     <span className="block text-gray-900">{t('seller.channelPerf.soldN', { n: formatNumber(r.sold), defaultValue: '{{n}}장' })} · {formatNumber(r.revenue)}원</span>
-                    <span className="block text-[12px] text-gray-400">{t('seller.channelPerf.commission', { n: formatNumber(r.commission), defaultValue: '인플루언서 수수료 {{n}}원' })}</span>
+                    <span className="block text-[12px] text-gray-400">{t('seller.channelPerf.commission', { n: formatNumber(r.commission), defaultValue: '소개비 {{n}}원' })}</span>
                   </span>
                 </li>
               ))}

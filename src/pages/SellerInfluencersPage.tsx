@@ -248,7 +248,7 @@ function ProposalModal({ count, leadIds, contactFee, onClose, onDone }: {
           </label>
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <span className="text-xs font-bold text-gray-700">판매 커미션 (%)</span>
+              <span className="text-xs font-bold text-gray-700">소개비 (%)</span>
               <input value={pct} onChange={e => setPct(e.target.value)} inputMode="decimal"
                 className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900" />
               <span className="text-[10px] text-gray-400">이용권이 팔릴 때마다 지급 (사장님 몫에서)</span>

@@ -155,7 +155,7 @@ export async function clawbackVoucherCommission(
           userId: row.referrer_id,
           delta: -share,
           type: 'affiliate_clawback',
-          description: `추천 커미션 회수 (${reason})`,
+          description: `소개비 회수 (${reason})`,
           orderId,
         }).catch(() => null)
         const remaining = row.commission - share

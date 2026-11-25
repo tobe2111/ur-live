@@ -1,5 +1,5 @@
 /**
- * 💸 주문 환불/취소 시 추천 커미션 회수 — `order.routes` 에서 추출(2026-08-01).
+ * 💸 주문 환불/취소 시 소개비 회수 — `order.routes` 에서 추출(2026-08-01).
  *
  * 라우트 안에 있던 머니 로직을 옮겼다. 옮긴 이유는 두 가지다:
  *   ① 라우트 파일이 이미 god 파일이라 여기에 한 줄 더 얹는 게 반복됐다
@@ -48,7 +48,7 @@ export async function revokeReferralCommissionsForOrder(
       userId: co.beneficiary_id,
       delta: -amount,
       type: 'referral_commission_revoked',
-      description: '주문 취소 — 추천 커미션 회수',
+      description: '주문 취소 — 소개비 회수',
       orderId: String(orderId),
     }).catch(onError)
     revoked++
