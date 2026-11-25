@@ -55,7 +55,7 @@ describe('② ③ 화면', () => {
     expect(screen.getByText('−4,800원')).toBeTruthy()
     expect(screen.getByText('−6,000원')).toBeTruthy()
     expect(screen.getByText(/^19,200원/)).toBeTruthy()
-    fireEvent.change(screen.getByLabelText(/인플루언서 수수료/), { target: { value: '10' } })
+    fireEvent.change(screen.getByLabelText(/소개비/), { target: { value: '10' } })
     await waitFor(() => expect(screen.getByText(/^16,800원/)).toBeTruthy())
     expect(screen.getByText(/직접 팔리면 19,200원/)).toBeTruthy()
   })
@@ -63,7 +63,7 @@ describe('② ③ 화면', () => {
     feeCtx(5)
     render(<NetProceedsCard price={10000} promoPct={15} />)
     await screen.findByText('마진 계산기')
-    const input = screen.getByLabelText(/인플루언서 수수료/) as HTMLInputElement
+    const input = screen.getByLabelText(/소개비/) as HTMLInputElement
     expect(input.disabled).toBe(true)
     expect(input.value).toBe('15')
     expect(screen.getByText(/^8,000원/)).toBeTruthy()

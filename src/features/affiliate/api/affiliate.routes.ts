@@ -73,7 +73,7 @@ affiliateRoutes.post('/track', requireUser(), async (c) => {
     .bind(order_id).first<{ user_id: string | number }>()
   if (!ownOrder) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
   if (String(ownOrder.user_id) !== String(authUser.id)) {
-    return c.json({ success: false, error: '주문의 구매자만 추천 수수료를 기록할 수 있습니다' }, 403)
+    return c.json({ success: false, error: '주문의 구매자만 소개비를 기록할 수 있습니다' }, 403)
   }
 
   const result = await creditAffiliateForOrder(DB, c.env, {
@@ -86,14 +86,14 @@ affiliateRoutes.post('/track', requireUser(), async (c) => {
       case 'NOT_FOUND': return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
       case 'NOT_PAID': return c.json({ success: false, error: '결제 완료된 주문만 수수료 대상입니다' }, 400)
       case 'SELF_REFERRAL': return c.json({ success: false, error: '본인 추천 불가' }, 400)
-      case 'SELF_PURCHASE': return c.json({ success: false, error: '셀러 본인 구매는 추천 수수료 대상이 아닙니다' }, 400)
+      case 'SELF_PURCHASE': return c.json({ success: false, error: '셀러 본인 구매는 소개비 대상이 아닙니다' }, 400)
       case 'DUPLICATE': return c.json({ success: true, message: '이미 기록됨' })
       case 'IP_ABUSE': return c.json({ success: false, error: '비정상 패턴 감지' }, 400)
       case 'REFERRAL_DISABLED': return c.json({ success: false, error: '이 상품은 추천 보상 대상이 아닙니다', code: 'REFERRAL_DISABLED' }, 400)
       default: return c.json({ success: false, error: '추천 기록 중 오류' }, 500)
     }
   }
-  return c.json({ success: true, message: '추천 수수료 기록 완료', commission: result.commission })
+  return c.json({ success: true, message: '소개비 기록 완료', commission: result.commission })
 })
 
 // ── GET /api/affiliate/stats — 내 추천 실적 ──

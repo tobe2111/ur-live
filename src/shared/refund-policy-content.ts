@@ -103,7 +103,7 @@ export const REFUND_BODY: RefundNode[] = [
       el('ul', UL,
         bullet('환급 한도는 ', el('span', STRONG, '충전하신 금액'), '까지입니다.'),
         bullet('이벤트·리워드로 받은 딜은 환급 대상이 아닙니다.'),
-        bullet('충전한 돈을 돌려드리는 것이므로 ', el('span', STRONG, '원천징수를 하지 않습니다'), '. 소개 수익 출금과는 별개의 절차입니다.')))),
+        bullet('충전한 돈을 돌려드리는 것이므로 ', el('span', STRONG, '원천징수를 하지 않습니다'), '. 소개비 출금과는 별개의 절차입니다.')))),
 
   el('section', SEC,
     el('h2', H2_5, '배송 상품 교환 및 반품'),

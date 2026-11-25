@@ -70,7 +70,7 @@ function buildOutreachHtml(p: {
       <p style="font-size:13px;color:#888;margin:0 0 16px">유어딜(urdeal.kr) 협업 제안</p>
       <h1 style="font-size:20px;color:#111;margin:0 0 8px">${esc(p.leadName)}님, ${esc(p.sellerName)}에서 협업을 제안했어요</h1>
       ${p.productName ? `<p style="font-size:14px;color:#444;margin:0 0 4px">제안 이용권: <strong>${esc(p.productName)}</strong></p>` : ''}
-      <p style="font-size:14px;color:#444;margin:0 0 16px">판매 커미션 <strong>${p.commissionPct}%</strong> · 상품 ${p.support === 'free' ? '무상 제공' : '유상'}</p>
+      <p style="font-size:14px;color:#444;margin:0 0 16px">소개비 <strong>${p.commissionPct}%</strong> · 상품 ${p.support === 'free' ? '무상 제공' : '유상'}</p>
       <div style="background:#fafafa;border-radius:10px;padding:16px;font-size:13.5px;color:#333;white-space:pre-wrap;margin:0 0 20px">${esc(p.message)}</div>
       <a href="${p.acceptUrl}" style="display:block;text-align:center;background:#1C69EF;color:#fff;text-decoration:none;border-radius:12px;padding:14px;font-weight:700;font-size:15px">제안 확인하고 수락하기</a>
       <p style="font-size:12px;color:#999;margin:16px 0 0">수락하면 카카오 로그인 후 전용 홍보 링크가 바로 발급됩니다. 이용권이 사용될 때마다 커미션이 적립돼요.</p>
@@ -135,7 +135,7 @@ export async function enqueueOutreachEmails(env: Env, outreachId: number): Promi
     const acceptUrl = `https://urdeal.kr/i/offer/${inv.token}`
     const unsubUrl = `https://urdeal.kr/api/influencer-offers/unsubscribe/${inv.token}`
     // 정보통신망법 §50: 사전 동의 없는 영리목적 이메일은 "(광고)" 표기 의무
-    const subject = `(광고) [유어딜] ${req.seller_name || '매장'} 협업 제안 — 판매 커미션 ${req.commission_pct}%`
+    const subject = `(광고) [유어딜] ${req.seller_name || '매장'} 협업 제안 — 소개비 ${req.commission_pct}%`
     const html = buildOutreachHtml({
       leadName: lead.name || lead.handle || '크리에이터', sellerName: req.seller_name || '유어딜 입점 매장',
       productName: req.product_name, commissionPct: Number(req.commission_pct) || 0,

@@ -449,7 +449,7 @@ const OPS_GATES: OpsGate[] = [
   { key: 'fee_channel_rates_enabled', kind: 'setting', label: '채널별 플랫폼 요율(직판 10% / 중개 5%)', default_value: 'false', staging_ref: 'S7', turn_on_when: '직판·중개 주문 각 1건의 원장 fee 가 의도한 요율로 찍히는 것이 staging 실결제로 확인되면' },
   // 🔒 2026-09-16 (사기 방어 ①): 소개 커미션 성숙을 **사용 확인 뒤로**. 켜지기 전엔 서비스가
   //   한 번도 안 일어나도 T+7 이면 송금 대기에 올랐다(가짜 매장이 돈을 가져가는 경로).
-  { key: 'payout_requires_voucher_use', kind: 'setting', label: '소개 커미션 사용 확인 게이트', default_value: 'false', staging_ref: 'S-USEGATE', turn_on_when: 'S-USEGATE 8건 통과 시 — 특히 ②(미사용은 pending 유지) ③(1장 사용 즉시 성숙) ⑦(무기한 이용권이 천장일에 풀림)이 확인되면. 라이브 attribution 0건이라 켜도 오늘 영향 0' },
+  { key: 'payout_requires_voucher_use', kind: 'setting', label: '소개비 사용 확인 게이트', default_value: 'false', staging_ref: 'S-USEGATE', turn_on_when: 'S-USEGATE 8건 통과 시 — 특히 ②(미사용은 pending 유지) ③(1장 사용 즉시 성숙) ⑦(무기한 이용권이 천장일에 풀림)이 확인되면. 라이브 attribution 0건이라 켜도 오늘 영향 0' },
   // 💸 2026-09-19 (결재 `2026-09-16-broker-payout-model.md` 안 1): 중개사 몫을 유어딜이 직접 송금.
   //   OFF 면 종전(중개사는 매장과 장부 밖 거래). 켜면 중개 매장 결제마다 `broker_share_pct` 가 매장 몫에서
   //   중개사(유저)에게 적립되고 인플루언서와 같은 성숙·원천징수·지급센터를 탄다.

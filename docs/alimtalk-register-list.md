@@ -223,8 +223,8 @@ TX: #{거래번호}
 | `appointment_noshow_alert` | `apptnoshowalert` | 예약 기능 — 지금까지 예약 0건 |
 | `fcfs_selected` | `fcfsselected` | 체험단 — 신청 7건 전부 데모 상품 |
 | `fcfs_replacement` | `fcfsreplacement` | 체험단 — 신청 7건 전부 데모 상품 |
-| `commission_withdrawal_approved` | `commwithdrawok` | 추천 커미션 — 출금 신청 0건, 적립 0건 |
-| `commission_withdrawal_rejected` | `commwithdrawno` | 추천 커미션 — 출금 신청 0건, 적립 0건 |
+| `commission_withdrawal_approved` | `commwithdrawok` | 소개비 — 출금 신청 0건, 적립 0건 |
+| `commission_withdrawal_rejected` | `commwithdrawno` | 소개비 — 출금 신청 0건, 적립 0건 |
 | `seller_reactivated` | `sellerreactivated` | 정지 해제 — 드물다, 앱 알림으로 충분 |
 | `business_registration_verified` | `bizregverified` | 서류 확인 — 드물고 판매 승인 알림이 같은 소식을 전한다 |
 
@@ -276,14 +276,14 @@ TX: #{거래번호}
 확정하기: https://urdeal.kr#{결제경로}
 ```
 
-### 16. `commission_withdrawal_approved` · 코드 `commwithdrawok` — 추천 커미션 출금 승인
+### 16. `commission_withdrawal_approved` · 코드 `commwithdrawok` — 소개비 출금 승인
 ```
-[유어딜] 추천 커미션 #{금액}원이 #{은행} #{계좌} 계좌로 송금되었습니다. 입금 확인 후 영수증 확인 부탁드립니다.
+[유어딜] 소개비 #{금액}원이 #{은행} #{계좌} 계좌로 송금되었습니다. 입금 확인 후 영수증 확인 부탁드립니다.
 ```
 
-### 17. `commission_withdrawal_rejected` · 코드 `commwithdrawno` — 추천 커미션 출금 거절
+### 17. `commission_withdrawal_rejected` · 코드 `commwithdrawno` — 소개비 출금 거절
 ```
-[유어딜] 추천 커미션 출금 신청 #{금액}원이 거절되었습니다.
+[유어딜] 소개비 출금 신청 #{금액}원이 거절되었습니다.
 사유: #{사유}
 잔액은 원상 복원되어 다시 신청 가능합니다.
 ```
