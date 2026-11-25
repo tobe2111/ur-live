@@ -106,7 +106,14 @@ export async function computeMonthlyAccounting(DB: D1Database, month: string): P
 const won = (n: number) => `${Math.round(Number(n) || 0).toLocaleString('ko-KR')}원`
 
 /** 순수 — 월 마감 알림 한 장. 원천세 신고·납부 기한(다음 달 10일)을 같이 적는다. */
-export function monthlyCloseMessage(a: MonthlyAccounting, unsent: { n: number; total: number }): { title: string; message: string } {
+export interface MonthlyCloseExtras {
+  /** 🧾 수수료 세금계산서 초안(정발행 — `fee-tax-invoice.ts`). */
+  feeInvoices?: { drafts: number; missingBizNo: number }
+  /** 분기 첫 달이면 지난 분기 판매대행 명세 제출 기한(YYYY-MM-DD). */
+  salesAgencyDue?: string | null
+}
+
+export function monthlyCloseMessage(a: MonthlyAccounting, unsent: { n: number; total: number }, extras: MonthlyCloseExtras = {}): { title: string; message: string } {
   const [y, m] = a.month.split('-').map(Number)
   const payTotal = a.payouts.reduce((s, p) => s + (Number(p.total) || 0), 0)
   const due = new Date(Date.UTC(y, m, 10)) // 다음 달 10일
@@ -119,6 +126,13 @@ export function monthlyCloseMessage(a: MonthlyAccounting, unsent: { n: number; t
     `원천징수 ${won(a.wht.withholding)}${a.wht.withholding > 0 ? ` — 원천세 신고·납부 ${dueLabel}까지` : ''}`,
   ]
   if ((a.feeVat ?? 0) > 0) parts.push(`수수료 부가세(예수금) ${won(a.feeVat ?? 0)} — 부가세 신고 때 납부`)
+  if (extras.feeInvoices && extras.feeInvoices.drafts > 0) {
+    parts.push(`매장 수수료 세금계산서 ${extras.feeInvoices.drafts}장 준비됨 — ${dueLabel}까지 발행${extras.feeInvoices.missingBizNo > 0 ? `(⚠️ 사업자번호 없는 매장 ${extras.feeInvoices.missingBizNo}곳)` : ''}`)
+  }
+  if (extras.salesAgencyDue) {
+    const [, dm, dd] = extras.salesAgencyDue.split('-').map(Number)
+    parts.push(`지난 분기 판매대행 명세 국세청 제출 ${dm}월 ${dd}일까지`)
+  }
   if (unsent.n > 0) parts.push(`⚠️ 승인됐는데 아직 안 보낸 정산 ${unsent.n}건 ${won(unsent.total)}`)
   return { title: `🧾 ${y}년 ${m}월 회계 마감 요약 — 세무사용 CSV 준비됨`, message: parts.join(' · ') }
 }
@@ -145,7 +159,19 @@ export async function sendMonthlyCloseSummary(DB: D1Database, nowMs: number = Da
   const ins = await DB.prepare('INSERT OR IGNORE INTO monthly_close_reports (month, payload) VALUES (?, ?)')
     .bind(month, JSON.stringify({ ...acc, unsent })).run()
   if (!ins.meta?.changes) return { sent: false, month }
-  const msg = monthlyCloseMessage(acc, { n: Number(unsent.n) || 0, total: Number(unsent.total) || 0 })
+  // 🧾 2026-11-25 같은 날 매장 수수료 세금계산서 초안을 만들고(정발행), 분기 첫 달이면 판매대행 명세 기한을 붙인다.
+  const extras: MonthlyCloseExtras = {}
+  try {
+    const { buildFeeInvoiceDrafts } = await import('./fee-tax-invoice')
+    const r = await buildFeeInvoiceDrafts(DB, month)
+    extras.feeInvoices = { drafts: r.drafts, missingBizNo: r.missingBizNo }
+  } catch (e) { console.error('[monthly-close] fee invoice drafts failed', e) }
+  const thisMonth = new Date(nowMs + 9 * 3600_000).getUTCMonth() + 1
+  if ([1, 4, 7, 10].includes(thisMonth)) {
+    const { previousKstQuarter, quarterInfo } = await import('./sales-agency-report')
+    extras.salesAgencyDue = quarterInfo(previousKstQuarter(nowMs))?.due ?? null
+  }
+  const msg = monthlyCloseMessage(acc, { n: Number(unsent.n) || 0, total: Number(unsent.total) || 0 }, extras)
   const { createDashboardNotification } = await import('../../features/notifications/api/dashboard-notifications.routes')
   await createDashboardNotification(DB, 'admin', null, 'monthly_close_report', msg.title, msg.message, '/admin/payouts?tab=annual')
   return { sent: true, month }
