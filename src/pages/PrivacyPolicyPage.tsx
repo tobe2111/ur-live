@@ -213,7 +213,7 @@ export default function PrivacyPolicyPage() {
                   </div>
 
                   {/* 🪪 2026-11-25 개인 소개자·개인 에이전시 원천징수 — 주민등록번호 수집(법령 근거, 암호화 보관) */}
-                  <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
+                  <div className="bg-surface rounded-lg p-4">
                     <h3 className="text-[13px] font-medium text-gray-900 dark:text-white mb-1">⑤ 소개비·에이전시 수수료 지급(개인)</h3>
                     <p>필수항목: 실명, 주민등록번호, 정산 계좌(은행명·계좌번호·예금주)</p>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">
