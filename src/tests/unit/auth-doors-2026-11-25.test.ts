@@ -87,9 +87,15 @@ describe('카카오 가입 — 같은 이메일이 이미 다른 방법으로 �
     expect(r.location).not.toContain('database_error')
     expect(q(raw, 'SELECT id FROM users').length).toBe(1)
   })
-  it('그 오류 코드에 손님이 읽을 안내 문구가 있다(없으면 "로그인 중 오류가 발생했어요 (코드)" 로 보인다)', () => {
+  it('그 오류 코드에 손님이 읽을 안내 문구가 있다(없으면 "로그인 중 오류가 발생했어요 (코드)" 로 보인다)', async () => {
+    const { oauthErrorMessage } = await import('@/utils/oauth-error-messages')
+    expect(oauthErrorMessage('email_already_linked')).toContain('이메일로 이미 가입')
+    expect(oauthErrorMessage('never_seen_code')).toBe('로그인 중 오류가 발생했어요 (never_seen_code)')
+    // 문구 표는 첫 화면 코드(App)에 싣지 않는다 — 그 순간에만 불러온다. 흔적 정리 목록에는 이 코드가 남아 있어야 한다.
     const app = readFileSync('src/App.tsx', 'utf8')
-    expect(app).toMatch(/email_already_linked: '[^']*이메일로 이미 가입/)
+    expect(app).not.toContain('이메일로 이미 가입한 계정이 있어요')
+    expect(app).toContain("import('@/utils/oauth-error-messages')")
+    expect(app).toMatch(/'oauth_state_expired', 'email_already_linked',/)
   })
 })
 

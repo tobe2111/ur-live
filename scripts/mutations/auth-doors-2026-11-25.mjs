@@ -20,9 +20,9 @@ export default [
   },
   {
     name: '[auth-doors] 같은 이메일 가입 안내 문구가 사라진다',
-    file: 'src/App.tsx',
-    find: "      email_already_linked: '",
-    replace: "      email_already_linked_x: '",
+    file: 'src/utils/oauth-error-messages.ts',
+    find: "  email_already_linked: '",
+    replace: "  email_already_linked_x: '",
     test: T,
     why: '손님에게 "로그인 중 오류가 발생했어요 (email_already_linked)" 로 보인다.',
   },
