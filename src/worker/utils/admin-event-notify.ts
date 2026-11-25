@@ -15,6 +15,7 @@ import type { Context } from 'hono'
 export type AdminEventType =
   | 'user_signup' | 'agency_signup' | 'store_registered'
   | 'voucher_purchased' | 'gifticon_purchased'
+  | 'refund_failed' // 2026-11-25 만료 자동 환불의 카드 취소 실패 — 손으로 환불해야 한다
 
 export interface AdminEvent {
   type: AdminEventType

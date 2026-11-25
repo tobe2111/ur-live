@@ -789,7 +789,7 @@ export async function handleScheduled(env: Env, tiers: CleanupTiers = ALL_TIERS)
       WHERE v.status = 'unused'
         AND v.expires_at IS NOT NULL
         AND v.expires_at > datetime('now', '+6 days')
-        AND v.expires_at <= datetime('now', '+7 days')
+        AND v.expires_at <= datetime('now', '+7 days') AND v.stay_booking_id IS NULL AND (p.kt_alpha_gift_code IS NULL OR p.kt_alpha_gift_code = '')
         AND v.reminder_d7_sent_at IS NULL
       LIMIT 100
     `).all<{ id: number; user_id: string; code: string; expires_at: string; product_name: string | null }>();
@@ -819,7 +819,7 @@ export async function handleScheduled(env: Env, tiers: CleanupTiers = ALL_TIERS)
       WHERE v.status = 'unused'
         AND v.expires_at IS NOT NULL
         AND v.expires_at > datetime('now')
-        AND v.expires_at <= datetime('now', '+1 day')
+        AND v.expires_at <= datetime('now', '+1 day') AND v.stay_booking_id IS NULL AND (p.kt_alpha_gift_code IS NULL OR p.kt_alpha_gift_code = '')
         AND v.reminder_d1_sent_at IS NULL
       LIMIT 100
     `).all<{ id: number; user_id: string; code: string; expires_at: string; product_name: string | null }>();

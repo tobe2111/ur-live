@@ -47,7 +47,7 @@ export async function runMealVoucherExpireCron(env: Env): Promise<{ d30: number;
       LEFT JOIN users u ON CAST(u.id AS TEXT) = v.user_id
      WHERE v.status = 'unused'
        AND v.expires_at IS NOT NULL
-       AND (p.kt_alpha_gift_code IS NULL OR p.kt_alpha_gift_code = '')
+       AND (p.kt_alpha_gift_code IS NULL OR p.kt_alpha_gift_code = '') AND v.stay_booking_id IS NULL -- 2026-11-25 숙소는 자기 알림(stay-voucher-expire)이 맡는다: 이 문구(매장에서 QR, 자동 환불 전제)가 숙소엔 틀리다
        AND CAST(julianday(v.expires_at) - julianday('now') AS INTEGER) IN (30, 7, 3, 1)
      ORDER BY v.expires_at ASC
      LIMIT 500

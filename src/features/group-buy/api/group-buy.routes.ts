@@ -945,7 +945,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         const html = `
           <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fff;">
             <div style="text-align:center;padding:20px 0;border-bottom:1px solid #e5e7eb;">
-              <h1 style="margin:0;font-size:22px;color:#111827;">🎫 공동구매 참여 영수증</h1>
+              <h1 style="margin:0;font-size:22px;color:#111827;">🎫 구매 영수증</h1>
               <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">유어딜 (urdeal.kr)</p>
             </div>
             <div style="padding:20px 0;">
@@ -975,7 +975,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             </div>
           </div>`
         await sendSystemEmail(c.env, userEmail, {
-          subject: `[유어딜] 공구 참여 완료 — ${product.name} (${qty}장)`,
+          subject: `[유어딜] 구매 완료 — ${product.name} (${qty}장)`,
           html,
         }).catch((e) => { if (import.meta.env?.DEV) console.warn('[group-buy email]', e) })
       }
@@ -1286,7 +1286,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         } catch { /* ignore */ }
         try {
           const userRow = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(userId).first<{ phone: string | null }>()
-          if (userRow?.phone) {
+          if (userRow?.phone && Number((product as { deal_only?: number | null }).deal_only) !== 1) { // 🎟️ 2026-11-25 교환권엔 "매장에서 QR" 문구가 틀리다 — 딜 경로와 같은 조건
             await sendBuyerVoucherIssuedAlimtalk(
               c.env,
               userRow.phone,
