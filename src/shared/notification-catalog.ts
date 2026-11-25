@@ -65,6 +65,7 @@ export const ADMIN_NOTIF_GROUP: Readonly<Record<string, AdminNotifGroup>> = {
   settlement_request: 'business',
   agency_settlement: 'business',
   payouts_generated: 'business',      // 주간 정산 생성 → 지급 승인이 필요하다
+  toss_settlement_mismatch: 'business', // 🔎 2026-11-25 토스 입금 대사 불일치 — 매장 정산 승인 전에 확인할 돈 문제
   fee_vat_notice: 'business',         // 🧾 2026-11-25 수수료 부가세 별도 사전 안내(시작일 전 매장마다 한 번) — 정산 조건 변경 고지
   monthly_close_report: 'business',   // 🧾 2026-11-25 매월 1일 회계 마감 요약 — 원천세 신고·세무사 전달이 필요하다
   commission_clawback_needed: 'business', // 환불이 이미 지급된 소개비에 닿았다 → 다음 지급에서 직접 조정(2026-11-25)

@@ -39,3 +39,20 @@
 - `shared/store-payout-min.ts` — 어드민 `payout_min_krw`(기본 1만 원) · 그달 마지막 목요일 회차는 1원 이상이면 정산. `payouts-generate` 가 사용.
 - 사장님 정산 화면 · FAQ(`minPayoutRule`) · 가이드 v83 · 머니 스위치 칸. 결재 `docs/decisions/2026-11-25-payout-min-monthend.md`.
 - 세금계산서를 "정산한 달에만" 발행하는 안은 대표가 괜찮다고 했지만 공급시기 문제로 세무사 확인 대기(코드는 사용월 기준 유지).
+
+## 5단계 — 볼타 보류 · 주민번호/간이지급명세서 (대표 *"일단 이건 보류하고 나머지 다른 할 일 하고"*)
+- 볼타 연동(PR #2511)은 **보류** — PR 은 닫고 코드는 `docs/handoff/patches/2026-11-25-bolta-integration.patch` 로 보관(`git am` 으로 되살린다).
+- 개인 소개자 주민번호: `worker/utils/payee-tax-id.ts`(키 없으면 저장 거부, `v1:` 암호문) · 인플루언서 정산 화면 "주민등록번호" 줄 · `PUT/GET /api/influencer-settlement/tax-id`.
+- 간이지급명세서 집계 `worker/utils/simplified-payment-statement.ts` · 어드민 CSV `GET /api/admin/tax/simplified-statement`(2FA·감사) · 월 1일 요약에 대상·미등록 수.
+- 결재 `docs/decisions/2026-11-25-payee-rrn-collection.md`. 남은 것: 개인정보 처리방침 문구 · 개인 에이전시 입력 화면(표는 지원).
+
+## 6단계 — 처리방침 · 개인 에이전시 (대표 *"일단 그건 보류. 다른 할 것들을 해줘"*)
+- 개인정보 처리방침 ⑤ 소개비·에이전시 수수료 지급(개인): 실명·주민등록번호·정산 계좌 + 보관 5년(국세기본법) · 최종 개정 2026-11-25.
+- 개인 에이전시 주민번호: `GET/PUT /api/agency-console/tax-id`(저장은 관리자) · 에이전시 정산 시트 버튼 · `TaxIdSheet` 에 저장 함수 주입.
+- 어드민 가이드 v84 간이지급명세서 안내. 송금 완료 자동 기록(거래내역 조회)은 대표 보류.
+
+## 7단계 — 정산 안전장치 3종 (대표 *"응 모두 해줘"*)
+- 토스 입금 대사 `worker/utils/toss-settlement-recon.ts` — 매일(정산 cron) 3일 전 결제분, `GET /v1/settlements`(읽기) ↔ `orders`. 표 `toss_settlement_recon`(day UNIQUE). 토스에 없는 결제·금액 불일치면 어드민 알림 `toss_settlement_mismatch`. ⚠️ 토스 실응답 형식은 문서 기준 — 첫 실행 로그(`toss_recon day=… toss=… ours=…`)로 판정할 것.
+- 주민번호 미등록 개인(사업자번호 없음): cron 송금 대기에서 빼고 본인 알림(`tax_id_required`) · 어드민 지급 `PAYOUT_NO_TAX_ID` 409.
+- 정산 건 생성 시 매장에 `payout_scheduled`(목요일 입금 예정). 송금 완료 알림은 기존 `payout-sent-notify`.
+- 결재 `docs/decisions/2026-11-25-settlement-safety-guards.md` · 시험 `settlement-safety-2026-11-25.test.ts` · `payout-cycle-full` 에 주민번호 단계 추가.

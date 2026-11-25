@@ -15,7 +15,7 @@ import { intParam } from '@/shared/pagination'
 import { registerDiscoveryRoutes } from './marketing/discovery'
 import { checkStoreInfluencerPct } from '@/worker/utils/broker-share' // 🎯 2026-10-10: 딜 % 검증 SSOT(90 · 매장 상한 · 중개사 몫 합)
 import { registerAdminPayoutRoutes } from './marketing/payouts'
-import { registerCollabCodeRoutes } from './marketing/collab-codes'
+import { registerCollabCodeRoutes } from './marketing/collab-codes'; import { registerTaxIdRoutes } from './marketing/tax-id' // 🪪 2026-11-25 주민번호(간이지급명세서)
 import { resolveCommissionPayoutDay } from '@/shared/commission-payout-day'
 
 // 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
@@ -763,6 +763,6 @@ registerAdminPayoutRoutes(adminApp)
 registerDiscoveryRoutes(sellerApp, discoverApp)
 // ───────── 🔑 협업 코드 · 딜 조정 · 인플루언서 수락 — `marketing/collab-codes.ts` (2026-09-19 대표 확정 플로우) ─────────
 //   ⚠️ 같은 인스턴스에 얹는다 — sellerApp=requireSeller · influencerApp=requireAuth · discoverApp=optionalAuth.
-registerCollabCodeRoutes(sellerApp, influencerApp, discoverApp)
+registerCollabCodeRoutes(sellerApp, influencerApp, discoverApp); registerTaxIdRoutes(influencerApp)
 
 export { sellerApp as sellerMarketingRoutes, influencerApp as influencerSettlementRoutes, adminApp as adminPayoutRoutes, discoverApp as influencerDiscoverRoutes, rankingApp as influencerRankingsRoutes }

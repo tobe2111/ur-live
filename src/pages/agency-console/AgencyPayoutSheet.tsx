@@ -13,6 +13,7 @@ import { formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
 import { agencyRequest } from './agency-api'
+import TaxIdSheet from '@/pages/influencer-settlement/TaxIdSheet'
 import { commissionPayoutDayLabel, resolveCommissionPayoutDay } from '@/shared/commission-payout-day'
 // 🎬 2026-11-02 시안 7차 "정산 요청"(대표 "7차도 다 해주고") — 신청하면 '지금 받을 수 있어요' 금액이 새 값으로 올라와 바뀌고,
 //   신청한 돈이 옮겨 간 '처리 중' 칸이 옅은 파랑으로 한 번 켜진다. 사장님 정산은 신청 버튼이 없어(매주 자동) 이 화면에만 있다.
@@ -57,6 +58,12 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
   }, [onChanged])
 
   useEffect(() => { void load() }, [load])
+  // 🪪 2026-11-25 개인 에이전시 — 3.3% 신고(간이지급명세서)에 주민등록번호가 필요하다. 사업자는 해당 없음.
+  const [taxId, setTaxId] = useState<string | null>(null)
+  const [taxSheet, setTaxSheet] = useState(false)
+  useEffect(() => {
+    void agencyRequest<{ data?: { registered?: boolean; masked?: string } }>('/tax-id').then((r) => { if (r.ok && r.data.data?.registered) setTaxId(r.data.data.masked || '등록됨') })
+  }, [])
 
   const b = data?.balance
   const min = data?.minAmount ?? 10_000
@@ -125,6 +132,13 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
               사업자는 세금계산서로 공제 없이, 개인은 3.3%를 떼고 받아요.
               지급은 {payDay}에 한 번 해요. 신청하지 않아도 그날 {formatNumber(min)}원 이상이면 자동으로 묶여요.
             </p>
+            {canManage && (
+              <button type="button" onClick={() => setTaxSheet(true)} data-testid="agency-taxid-open"
+                className="mt-3 flex h-12 w-full items-center justify-between rounded-xl bg-surface px-4 text-[15px] font-medium text-gray-900 dark:text-white shadow-lift">
+                <span>주민등록번호 (개인만)</span>
+                <span className="text-[13px] text-gray-500 dark:text-gray-400">{taxId ?? '3.3% 신고에 필요'}</span>
+              </button>
+            )}
 
             <h3 className="mt-8 px-1 text-[15px] font-bold text-gray-900 dark:text-white">지급 내역</h3>
             {data.payouts.length === 0 ? (
@@ -150,6 +164,13 @@ export default function AgencyPayoutSheet({ canManage, initial, onClose, onChang
           </>
         )}
       </div>
+      {taxSheet && (
+        <TaxIdSheet onClose={() => setTaxSheet(false)} onSaved={(m) => setTaxId(m)}
+          save={async (legal_name, rrn) => {
+            const r = await agencyRequest<{ data?: { masked?: string }; error?: string }>('/tax-id', { method: 'PUT', body: { legal_name, rrn } })
+            return r.ok ? { ok: true, masked: r.data.data?.masked } : { ok: false, error: r.data.error }
+          }} />
+      )}
     </Sheet>
   )
 }

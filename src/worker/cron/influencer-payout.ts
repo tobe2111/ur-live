@@ -113,6 +113,15 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       logError('[cron:influencer-payout] fee vat notice failed', { error: String(e) })
     }
 
+    // 🔎 2026-11-25 토스 입금 대사 — 매일 한 번(3일 전 결제분). 읽기 전용, 불일치면 어드민 알림. SSOT `utils/toss-settlement-recon.ts`.
+    try {
+      const { runTossSettlementRecon } = await import('../utils/toss-settlement-recon')
+      const r = await runTossSettlementRecon(DB, env.TOSS_SECRET_KEY)
+      if (r.result) logInfo(`[cron:influencer-payout] toss_recon day=${r.result.day} toss=${r.result.tossCount} ours=${r.result.ourCount} missing=${r.result.missingInToss.length} mismatched=${r.result.mismatched.length}`)
+    } catch (e) {
+      logError('[cron:influencer-payout] toss recon failed', { error: String(e) })
+    }
+
     const dayRow = await DB.prepare(
       'SELECT value FROM platform_settings WHERE key = ?'
     ).bind(COMMISSION_PAYOUT_DAY_KEY).first<{ value: string }>().catch(() => null)
@@ -156,6 +165,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
     let payoutTotal = 0
     let dealCount = 0
     const missingBank: string[] = []
+    const missingTaxId: string[] = []
 
     for (const inf of toPayout.results || []) {
       // 💎 딜 수령자 — 계좌를 요구하지 않는다.
@@ -206,6 +216,19 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       const withholdingPct = cash.withholdingPct
       const withholding = cash.withholding
       const netAmount = cash.net
+      // 🪪 2026-11-25 사업자번호 없는 개인(3.3% 원천징수)인데 주민등록번호가 없으면 이번 달 송금 대기에서 뺀다 — 간이지급명세서에 빈칸이 생긴다.
+      //   잔액은 그대로 쌓이고(사라지지 않는다), 본인에게 등록 요청 알림. 조회 실패는 막지 않는다(로그만).
+      if (withholding > 0 && !String(inf.business_number || '').trim()) {
+        const { getTaxIdStatus } = await import('../utils/payee-tax-id')
+        const tid = await getTaxIdStatus(DB, 'influencer', String(inf.influencer_id)).catch((e) => { logError('[cron:influencer-payout] tax id lookup failed', { error: String(e) }); return { registered: true } })
+        if (!tid.registered) {
+          missingTaxId.push(inf.influencer_id)
+          const { notifyUser } = await import('../../lib/notifications')
+          await notifyUser(DB, String(inf.influencer_id), 'tax_id_required', '🪪 소개비를 받으려면 주민등록번호가 필요해요',
+            `${inf.available_amount.toLocaleString()}원이 기다리고 있어요. 3.3%를 떼어 대신 신고하는 데 필요해요 — 등록하면 다음 정산일에 보내 드려요.`, '/influencer/settlement')
+          continue
+        }
+      }
 
       // 실제 송금은 PG 연동 필요 — 여기선 어드민 dashboard 에 송금 대기 notification
       // 🛡️ 2026-05-31 H2: 당월 동일 인플 송금대기 알림 중복 방지 — cron 재실행/재트리거 시
@@ -276,7 +299,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       logError('[cron:influencer-payout] store statements failed', { error: String(e) })
     }
 
-    logInfo(`[cron:influencer-payout] statements=${statementsSent} agency_queued=${agencyQueued} transitioned=${transitioned} payouts_queued=${payoutCount} deal_queued=${dealCount} total_net=${payoutTotal} missing_bank=${missingBank.length}`)
+    logInfo(`[cron:influencer-payout] statements=${statementsSent} agency_queued=${agencyQueued} transitioned=${transitioned} payouts_queued=${payoutCount} deal_queued=${dealCount} total_net=${payoutTotal} missing_bank=${missingBank.length} missing_tax_id=${missingTaxId.length}`)
   } catch (e) {
     // 🔔 2026-07-08 (무인운영 감사): 이전엔 삼켜 safeCron 실패 알림에 안 닿았음(성숙 전환/송금대기
     //   집계가 조용히 실패해도 경보 0). 재throw → safeCron → notifyCronFailure(Discord + cron_failures + 벨).
