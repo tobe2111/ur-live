@@ -18,6 +18,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { aiText } from '../utils/ai-text'
+import { adminRbacMiddleware } from '../middleware/admin-rbac'
 import { requireAuth, getCurrentUser } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import { auditLog } from '../middleware/audit-log'
@@ -32,6 +33,8 @@ interface AIEnv {
 }
 
 const disputesRoutes = new Hono<{ Bindings: Env }>()
+// 🔐 2026-11-25: 어드민 분쟁 처리(환불 실행)에 역할 검사 — `/api/admin/*` 밖이라 전역 게이트가 안 닿았다(viewer 통과). 정책 `shared/admin-roles.ts`.
+disputesRoutes.use('/admin/*', adminRbacMiddleware())
 
 const SYSTEM_PROMPT = `당신은 한국 공동구매 플랫폼의 분쟁 분류 도우미입니다.
 유저의 분쟁 사유를 읽고 다음 카테고리 중 하나로 분류하세요:

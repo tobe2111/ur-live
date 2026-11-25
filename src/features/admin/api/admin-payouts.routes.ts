@@ -20,7 +20,7 @@ import { require2FA } from '../../../worker/middleware/require-2fa'
 // 🛡️ 2026-05-21 정합성: 모든 sensitive action 에 audit log 강제.
 import { auditLog } from '../../../worker/middleware/audit-log'
 import type { Env } from '../../../worker/types/env'
-import { markPayoutSent, isTransferable, checkPayeeAccountCurrent, type PayoutRow } from '../../../worker/utils/payout-sent'
+import { markPayoutSent, isTransferable, checkPayeeAccountCurrent, checkPayoutWithinReceivable, type PayoutRow } from '../../../worker/utils/payout-sent'
 import { resolvePayoutHold } from '../../../worker/utils/payout-hold'
 // 💸 2026-10-01 (결재 voucher-credit-double-rail): `merchant:N` 과 `seller:N` 은 같은 가게다.
 //   이 화면과 cron 이 **같은 조각**을 써야 한다 — 갈리면 운영자가 화면에서 본 금액과 실제 생성분이 달라진다.
@@ -171,34 +171,11 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance
   const acctCheck = await checkPayeeAccountCurrent(DB, row)
   if (!acctCheck.ok) return c.json({ success: false, error: acctCheck.error, code: acctCheck.code }, 409)
 
-  // 💸 2026-07-01 (정산 정합 — 대표 승인): 과다지급 방지 가드.
-  //   payout.amount 는 *생성 시점* 값이라, net 집계 수정(2026-07-01) 이전에 생성된 pending 은
-  //   gross(수수료 미차감) 금액일 수 있음. 승인 순간 현재 순 receivable 로 재검증 → 초과 시 차단.
-  //   available = getLedgerReceivable(원장 net) − 이미 approved/sent 된 다른 payout 합.
-  try {
-    const { getLedgerReceivable } = await import('../../../worker/utils/ledger')
-    // 🔗 2026-10-10: 접힌 계정 + 양쪽 payout 키(`seller`/`store_owner`) — 위 목록과 같은 규칙.
-    const account = payoutRowLedgerAccount(row.payee_type, row.payee_id) ?? `${row.payee_type}:${row.payee_id}`
-    const receivable = await getLedgerReceivable(DB, account)
-    const keys = paidPayeeAliases(account)
-    const otherPaid = await DB.prepare(
-      `SELECT COALESCE(SUM(amount), 0) AS total FROM payouts
-        WHERE (payee_type || ':' || payee_id) IN (${keys.map(() => '?').join(', ')}) AND status IN ('approved','sent') AND id != ?`
-    ).bind(...keys, id).first<{ total: number }>() // 💸 2026-11-17: 실패를 0 으로 치지 않는다 — 아래 catch 가 승인을 멈춘다
-    const available = receivable - Number(otherPaid?.total ?? 0)
-    if (Number(row.amount) > available + 1) {
-      return c.json({
-        success: false,
-        error: '지급 금액이 현재 정산 가능 잔액을 초과합니다. 정산식 정정 이전 생성된 오래된 건일 수 있어 취소 후 재생성이 필요합니다.',
-        code: 'PAYOUT_EXCEEDS_RECEIVABLE',
-        data: { requested: Number(row.amount), available: Math.max(0, available) },
-      }, 409)
-    }
-  } catch (e) {
-    // 💸 2026-11-17 (대표 승인 "고침"): 잔액을 못 쟀으면 **승인하지 않는다**. 종전엔 가드를 건너뛰어(fail-open)
-    //   초과 지급 건이 그대로 승인됐다. 잠시 뒤 다시 누르면 된다.
-    logError('[admin-payouts] receivable guard failed — approve blocked', { id, error: String(e).slice(0, 200) })
-    return c.json({ success: false, error: '정산 가능 잔액을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.', code: 'RECEIVABLE_CHECK_FAILED' }, 503)
+  // 💸 과다지급 방지(2026-07-01 대표 승인) — 판정은 `checkPayoutWithinReceivable` SSOT(2026-11-25: 일괄 승인·송금 완료·이체 파일도 같은 함수).
+  const within = await checkPayoutWithinReceivable(DB, { ...row, id })
+  if (!within.ok) {
+    if (within.code === 'RECEIVABLE_CHECK_FAILED') logError('[admin-payouts] receivable guard failed — approve blocked', { id })
+    return c.json({ success: false, error: within.error, code: within.code, data: within.data }, within.code === 'RECEIVABLE_CHECK_FAILED' ? 503 : 409)
   }
 
   // 💸 2026-07-08 (머니 감사 ③): CAS 선점 — 동시 승인 이중 실행 방지(머니 룰 #1). status='pending' 조건.
@@ -284,7 +261,8 @@ adminPayoutsRoutes.get('/admin/payouts/transfer-csv', requireAdminRole('finance'
   const transferable = all.filter(isTransferable)
   // 🔐 2026-10-10: 계좌 미재확인·옛 계좌 스냅샷은 파일에 싣지 않는다 — 파일에 실리면 은행이 그대로 보낸다.
   const rows: PayoutRow[] = []
-  for (const r of transferable) if ((await checkPayeeAccountCurrent(DB, r)).ok) rows.push(r)
+  // 💸 2026-11-25: 받을 돈을 넘는 건도 싣지 않는다(만든 뒤 환불된 건) — 같은 이유다.
+  for (const r of transferable) if ((await checkPayeeAccountCurrent(DB, r)).ok && (await checkPayoutWithinReceivable(DB, r)).ok) rows.push(r)
   const skipped = all.length - transferable.length
   const blockedCount = transferable.length - rows.length
 
@@ -347,7 +325,7 @@ adminPayoutsRoutes.patch('/admin/payouts/bulk-sent', requireAdminRole('finance')
   })
 })
 
-/** 🏦 일괄 승인 — pending → approved. 돈이 나가지 않는 전이라 검사는 상태 CAS 하나로 충분하다. */
+/** 🏦 일괄 승인 — pending → approved. 건별 승인과 같은 검사(계좌 · 받을 돈)를 건마다 한다. */
 adminPayoutsRoutes.patch('/admin/payouts/bulk-approve', requireAdminRole('finance'), require2FA(), auditLog('payouts.bulk_approve'), async (c) => {
   type BulkIdsBody = { ids?: unknown }
   const body: BulkIdsBody = await c.req.json<BulkIdsBody>().catch(() => ({} as BulkIdsBody))
@@ -362,11 +340,16 @@ adminPayoutsRoutes.patch('/admin/payouts/bulk-approve', requireAdminRole('financ
   const blocked: Array<{ id: number; code: string; error: string }> = []
   for (const id of ids) {
     // 🔐 2026-10-10: 단건 승인과 같은 계좌 검사 — 일괄이라고 건너뛰면 미재확인 계좌로 나간다.
-    const pr = await DB.prepare('SELECT payee_type, payee_id, account_number, kind FROM payouts WHERE id = ?')
-      .bind(id).first<Pick<PayoutRow, 'payee_type' | 'payee_id' | 'account_number' | 'kind'>>().catch(() => null)
+    const pr = await DB.prepare('SELECT id, status, payee_type, payee_id, amount, account_number, kind FROM payouts WHERE id = ?')
+      .bind(id).first<Pick<PayoutRow, 'id' | 'status' | 'payee_type' | 'payee_id' | 'amount' | 'account_number' | 'kind'>>().catch(() => null)
     if (pr) {
       const chk = await checkPayeeAccountCurrent(DB, pr)
       if (!chk.ok) { blocked.push({ id, code: chk.code, error: chk.error }); continue }
+      // 💸 2026-11-25: 건별 승인과 같은 받을 돈 검사 — 일괄이라고 건너뛰면 환불된 건이 그대로 승인된다.
+      if (pr.status === 'pending') {
+        const within = await checkPayoutWithinReceivable(DB, pr)
+        if (!within.ok) { blocked.push({ id, code: within.code, error: within.error }); continue }
+      }
     }
     const r = await DB.prepare(
       `UPDATE payouts SET status = 'approved', approved_at = datetime('now')

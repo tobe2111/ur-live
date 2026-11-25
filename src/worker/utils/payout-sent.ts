@@ -15,7 +15,8 @@
  *   운영자가 이체한 뒤 그 사실을 적는 것이다. 그래서 `transaction_id`(은행 거래번호)가 필수다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
-import { canonicalPaidPayee } from './payout-account'
+import { canonicalPaidPayee, payoutRowLedgerAccount, paidPayeeAliases } from './payout-account'
+import { getLedgerReceivable } from './ledger'
 import { resolvePayeeAccount } from './payout-payee-account'
 
 export interface PayoutRow {
@@ -35,7 +36,7 @@ export interface PayoutRow {
 
 export type SentFailCode =
   | 'NOT_FOUND' | 'ALREADY_PROCESSED' | 'PAYOUT_NO_ACCOUNT' | 'PAYOUT_ALREADY_SENT_PERIOD'
-  | AccountCheckCode
+  | AccountCheckCode | ReceivableCheckCode
 
 export interface SentResult {
   id: number
@@ -55,6 +56,7 @@ export async function markPayoutSent(
   id: number,
   txId: string,
   adminMemo?: string | null,
+  opts: { moneyAlreadyOut?: boolean } = {},
 ): Promise<SentResult> {
   const row = await DB.prepare('SELECT * FROM payouts WHERE id = ?').bind(id)
     .first<PayoutRow>().catch(() => null)
@@ -74,6 +76,13 @@ export async function markPayoutSent(
   // ①-b 계좌 변경 후 미재확인 · 생성 이후 계좌가 바뀐 스냅샷 → 그 계좌로 보내면 안 된다(아래 함수 머리말).
   const acct = await checkPayeeAccountCurrent(DB, row)
   if (!acct.ok) return { id, ok: false, code: acct.code, error: acct.error }
+
+  // ①-c 승인을 안 거친(pending) 건은 받을 돈 검사를 여기서 한다 — 승인이 그 검사의 자리인데 건너뛴 길이다.
+  //   `moneyAlreadyOut`(토스 지급대행 완료 기록)은 제외: 돈이 이미 나간 사실은 적어야 한다.
+  if (row.status === 'pending' && !opts.moneyAlreadyOut) {
+    const within = await checkPayoutWithinReceivable(DB, row)
+    if (!within.ok) return { id, ok: false, code: within.code, error: within.error }
+  }
 
   // ② 같은 수령자·같은 기간이 이미 송금됐으면 중복이다(생성 UNIQUE 를 우회한 재생성 대비).
   if (row.period_start && row.period_end) {
@@ -100,6 +109,43 @@ export async function markPayoutSent(
     return { id, ok: false, code: 'ALREADY_PROCESSED', error: '이미 처리된 건입니다' }
   }
   return { id, ok: true, row }
+}
+
+export type ReceivableCheckCode = 'PAYOUT_EXCEEDS_RECEIVABLE' | 'RECEIVABLE_CHECK_FAILED'
+
+/**
+ * 💸 **이 지급이 지금 받을 돈 안에 있는가** (건별 승인 · 일괄 승인 · 승인 없는 송금 완료 · 이체 파일 공용 — 2026-11-25).
+ *
+ * `payouts.amount` 는 **만들어진 시점** 값이다. 그 뒤 환불·회수로 원장 순액이 줄면 초과 지급이 된다.
+ * available = 원장 순액(`getLedgerReceivable`) − 이미 승인·송금된 **다른** 지급 합.
+ * 🩸 이 검사는 2026-07-01 부터 건별 승인에만 있었다 — 일괄 승인·바로 송금 완료·이체 파일(대기 건)은 그냥 지나갔다
+ *   (시험 `payout-receivable-guard-2026-11-25.test.ts` 가 세 길을 재현). 판정을 한 곳에 두고 네 길이 같이 부른다.
+ * 잔액을 못 재면 **통과시키지 않는다**(2026-11-17 대표 승인 "고침" 그대로).
+ */
+export async function checkPayoutWithinReceivable(
+  DB: D1Database,
+  row: Pick<PayoutRow, 'id' | 'payee_type' | 'payee_id' | 'amount'>,
+): Promise<{ ok: true } | { ok: false; code: ReceivableCheckCode; error: string; data?: { requested: number; available: number } }> {
+  try {
+    const account = payoutRowLedgerAccount(row.payee_type, row.payee_id) ?? `${row.payee_type}:${row.payee_id}`
+    const receivable = await getLedgerReceivable(DB, account)
+    const keys = paidPayeeAliases(account)
+    const otherPaid = await DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM payouts
+        WHERE (payee_type || ':' || payee_id) IN (${keys.map(() => '?').join(', ')}) AND status IN ('approved','sent') AND id != ?`, // d1-bind-ok: keys 는 한 수령자의 별칭 최대 2개(`paidPayeeAliases`) + 바인드 1 = 3 (한도 100)
+    ).bind(...keys, row.id).first<{ total: number }>() // 실패를 0 으로 치지 않는다 — 아래 catch 가 멈춘다
+    const available = receivable - Number(otherPaid?.total ?? 0)
+    if (Number(row.amount) > available + 1) {
+      return {
+        ok: false, code: 'PAYOUT_EXCEEDS_RECEIVABLE',
+        error: '지급 금액이 현재 정산 가능 잔액을 초과합니다. 만든 뒤 환불이 있었거나 오래된 건일 수 있어 취소 후 재생성이 필요합니다.',
+        data: { requested: Number(row.amount), available: Math.max(0, available) },
+      }
+    }
+    return { ok: true }
+  } catch {
+    return { ok: false, code: 'RECEIVABLE_CHECK_FAILED', error: '정산 가능 잔액을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.' }
+  }
 }
 
 /**

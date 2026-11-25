@@ -353,7 +353,7 @@ export async function syncTossPayout(DB: D1Database, env: TossPayoutEnv, tossPay
   await DB.prepare("UPDATE toss_payout_requests SET status = ?, error = ?, updated_at = datetime('now') WHERE toss_payout_id = ?")
     .bind(mapped, r.data.entityBody?.error?.message ?? null, tossPayoutId).run()
   if (mapped === 'COMPLETED') {
-    const sent = await markPayoutSent(DB, Number(req.payout_id), `toss:${tossPayoutId}`, '토스 지급대행 완료')
+    const sent = await markPayoutSent(DB, Number(req.payout_id), `toss:${tossPayoutId}`, '토스 지급대행 완료', { moneyAlreadyOut: true })
     // 이미 sent 면 ALREADY_PROCESSED — 웹훅 재전송이다(정상).
     if (!sent.ok && sent.code !== 'ALREADY_PROCESSED') return { ok: false, status: mapped, error: sent.error }
   }

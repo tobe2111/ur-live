@@ -1004,3 +1004,10 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 - [ ] KT 충전 뒤 교환권 1건 딜 구매 → 문자 수신 → `voucher_orders.external_order_id` 가 `u{주문번호}-` 로 시작하는가 → '구매 취소' 가 400 `KT_DELIVERED` 인가
 - [ ] 실제 매장 사장님 1명이 카카오로 들어와 첫 PIN → 계좌 등록까지 폰에서 되는가
 - [ ] 직접 입점 매장의 다음 주문 `orders.commission_rate` 가 10 으로 찍히는가
+
+## 🧪 **S-PAYOUTGUARD** — 지급·환불 장부 2차 수리 (2026-11-25 · `payout-receivable-guard` · `voucher-partial-refund-ledger` · `admin-role-gate-outside-prefix`)
+코드 판정은 로컬 시험에서 끝났다(고치기 전 빨강 → 초록). 남은 것은 실물뿐이다:
+- [ ] 다음 실제 지급 주기에 `/admin/payouts` 일괄 승인 1회 — 정상 건이 그대로 승인되는가(응답 `blocked` 0)
+- [ ] 첫 실제 환불(셀프 취소 또는 만료) 뒤 `ledger_entries` 에 `voucher_refund` 가 `platform:escrow → user:N` 으로 적혔는가
+- [ ] 제한 역할(cs·viewer) 계정을 처음 만들 때: viewer 로 분쟁 승인 403 · cs 로 통과
+

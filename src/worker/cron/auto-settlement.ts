@@ -23,7 +23,7 @@ import {
   unclaimedRefundAmount,
   type UnclaimedPolicy,
 } from '../../shared/pickup-refund';
-import { recordLedger } from '../utils/ledger'; import { claimVouchersForSettlement } from '../utils/settlement-claim';
+import { recordLedger, recordRefundLedger } from '../utils/ledger'; import { claimVouchersForSettlement } from '../utils/settlement-claim';
 import { ensureRedeemStoreTable, REDEEM_STORE_SETTLEMENT_SQL } from '../utils/brand-cross-owner';
 import {
   expiredVoucherSelectSql,
@@ -308,6 +308,8 @@ async function bookRefundOnOrder(
   const oid = Number(orderId);
   const amt = Math.round(Number(amount));
   if (!Number.isFinite(oid) || oid <= 0 || !Number.isFinite(amt) || amt <= 0) return;
+  // 🧾 2026-11-25: 원장에도 적는다(보관금 → 구매자). 종전엔 만료 환불만 원장 줄이 없어 보관금이 영영 남았다. 멱등 · fail-soft.
+  await recordRefundLedger(DB, { voucher_id: voucherId as number, reason: '유효기간 만료 환불', amount: amt }).catch(() => undefined);
   try {
     const r = await DB.prepare(expiredVoucherBookRefundSql()).bind(amt, oid, amt).run();
     if (!r.meta?.changes) {

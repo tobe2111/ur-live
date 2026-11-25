@@ -344,7 +344,15 @@ export async function creditUserCommission(
  */
 
 /**
- * 환불 시 reverse entries (멱등 보장).
+ * 환불 시 원장을 되돌린다 (멱등 — `voucher:{id}:refund` 가 있으면 no-op).
+ *
+ * 🩸 2026-11-25 정정: 종전엔 무엇이든 `platform:revenue → platform:escrow` 한 줄이었다("단순화"). 틀린 계정이다 —
+ *   구매는 `user → platform:escrow` 이고 미사용 환불은 그 반대(`platform:escrow → user`)여야 한다. 그 한 줄은
+ *   ① 유어딜 수입을 환불액만큼 깎고(받은 적 없는 수입) ② 보관금(escrow)을 줄이는 대신 늘렸다 → 어드민의
+ *   "유어딜 몫에서 나간 돈" 집계(`debit_account = 'platform:revenue'`)에 환불이 성장 비용처럼 섞인다.
+ *   라이브 실측(2026-11-25) `voucher_refund` 0행이라 고칠 과거 행은 없다.
+ * 사용된 이용권이 환불되면(지금 호출부는 전부 미사용만 돌린다) 사용 때 나눈 줄(매장·셀러·유어딜)을 먼저 뒤집는다 —
+ *   안 뒤집으면 환불된 이용권의 매장 몫이 받을 돈에 남는다.
  */
 export async function recordRefundLedger(
   DB: D1Database,
@@ -360,13 +368,28 @@ export async function recordRefundLedger(
     `SELECT id FROM ledger_entries WHERE reference_id = ? LIMIT 1`,
   ).bind(ref).first().catch(() => null)
   if (existing) return
+  const used = await DB.prepare(
+    `SELECT amount, debit_account, credit_account FROM ledger_entries WHERE reference_id = ? AND event_type = 'voucher_used'`,
+  ).bind(`voucher:${params.voucher_id}`).all<{ amount: number; debit_account: string; credit_account: string }>().catch(() => ({ results: [] as Array<{ amount: number; debit_account: string; credit_account: string }> }))
+  for (const u of used.results || []) {
+    if (!(Number(u.amount) > 0)) continue
+    await recordLedger(DB, {
+      event_type: 'voucher_refund',
+      reference_id: ref,
+      amount: Number(u.amount),
+      debit_account: u.credit_account, // 받았던 쪽에서 회수
+      credit_account: u.debit_account, // 보관금으로 복원
+      metadata: { kind: 'use_reversal', reason: params.reason, voucher_id: params.voucher_id },
+    })
+  }
+  const v = await DB.prepare('SELECT user_id FROM vouchers WHERE id = ?').bind(params.voucher_id).first<{ user_id: string | number | null }>().catch(() => null)
   await recordLedger(DB, {
     event_type: 'voucher_refund',
     reference_id: ref,
     amount: params.amount,
-    debit_account: 'platform:revenue', // 모든 분배 취소 (단순화 — admin 이 세분화 가능)
-    credit_account: 'platform:escrow',
-    metadata: { reason: params.reason, voucher_id: params.voucher_id },
+    debit_account: 'platform:escrow',
+    credit_account: `user:${v?.user_id ?? 'unknown'}`,
+    metadata: { kind: 'refund_to_buyer', reason: params.reason, voucher_id: params.voucher_id },
   })
 }
 

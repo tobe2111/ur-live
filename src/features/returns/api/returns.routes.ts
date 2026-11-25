@@ -15,21 +15,21 @@
  */
 
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
+import { adminRbacMiddleware } from '@/worker/middleware/admin-rbac'
 import { requireAuth, requireUser, getCurrentUser } from '@/worker/middleware/auth';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import type { Env } from '@/worker/types/env';
 import { tossCancelPayment } from '@/worker/utils/toss-payments';
 import { splitPartialRefund } from '@/features/group-buy/api/partial-deal';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
-
 import { swallow } from '@/worker/utils/swallow';
 import { intParam } from '@/shared/pagination'
 import { parsePickup, isEmptyPickup, canRequestReturn } from '../../../shared/pickup';
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta';
 import { orderHasGiftedVoucher, GIFTED_REFUND_BLOCKED, orderHasPendingGift, GIFT_PENDING_REFUND_BLOCKED } from '../../../worker/utils/voucher-gift'; // 🎁 2026-10-11 "받은 뒤엔 환불 막기"(대표 결정) — 선물로 넘긴 이용권 주문은 환불 요청 불가
 const returnsRoutes = new Hono<{ Bindings: Env }>();
-
+// 🔐 2026-11-25: 어드민이 대신 처리하는 네 경로에 역할 검사 — `/api/admin/*` 밖이라 조회 전용(viewer)도 환불을 실행할 수 있었다. 어드민 토큰이 아닌 요청은 그대로 통과(정책 `shared/admin-roles.ts`).
+for (const p of ['/:id/approve', '/:id/reject', '/:id/inspect', '/:id/refund']) returnsRoutes.use(p, adminRbacMiddleware())
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
 // ── Auto-create table ────────────────────────────────────────────────────────

@@ -22,7 +22,12 @@ describe('지급 — 조회 실패는 0원이 아니다', () => {
   })
 
   it('승인: 잔액을 못 쟀으면 503 으로 멈춘다(가드 건너뛰기 금지)', () => {
-    expect(ADM).toMatch(/code: 'RECEIVABLE_CHECK_FAILED' \}, 503\)/)
+    // 🔀 2026-11-25: 판정이 `payout-sent.ts` `checkPayoutWithinReceivable` 로 옮겨졌다(일괄 승인·송금 완료·이체 파일 공용). 두 자리를 같이 본다.
+    const SENT = read('src/worker/utils/payout-sent.ts')
+    const fn = SENT.slice(SENT.indexOf('export async function checkPayoutWithinReceivable('), SENT.indexOf('export async function checkPayoutWithinReceivable(') + 1800)
+    expect(fn).toMatch(/catch \{\s*return \{ ok: false, code: 'RECEIVABLE_CHECK_FAILED'/)
+    expect(fn).not.toMatch(/first<\{ total: number \}>\(\)\.catch\(/)
+    expect(ADM).toMatch(/within\.code === 'RECEIVABLE_CHECK_FAILED' \? 503 : 409/)
     expect(ADM).not.toMatch(/catch \{ \/\* getLedgerReceivable 실패 시 가드 skip/)
   })
 
