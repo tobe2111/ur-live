@@ -4,7 +4,7 @@
  *   전부 멱등: 밤마다 돌려도 이미 정리된 풀엔 no-op. 실행 결과는 platform_settings('ads_maintenance_last')에 기록.
  *   🔒 서비스 분리: ad_* + platform_settings 만 접근.
  */
-import type { D1Database } from '@cloudflare/workers-types'
+import type { D1Database } from '@cloudflare/workers-types'; import { mergedSuppression, ensureSuppressionColumns } from './influencer-merge-suppression'
 import type { Env } from '@/worker/types/env'
 import { ensureInfluencerSchema, extractContacts, stripVideoTitles } from './influencer-discovery'
 import { reextractEmail, runReclassifyPool, runCategoryRescan, runYtLiveRefetch, enrichNaverActivity, poolScanShouldStop } from './influencer-performance'
@@ -28,11 +28,11 @@ const POOL = 0
 
 /** 🧬 중복 리드 통합 — 1차 이메일 / 2차 인스타(가드) / 3차 공유링크(가드) / 4차 이름+카테고리. 멱등(재실행 수렴). */
 export async function mergeDuplicatePool(DB: D1Database, opts?: { groupCap?: number }): Promise<{ merged: number; mergedEmail: number; mergedInsta: number; mergedLink: number; mergedName: number; groups: number }> {
-  await ensureInfluencerSchema(DB)
+  await ensureInfluencerSchema(DB); await ensureSuppressionColumns(DB)
 
   const rank = "CASE status WHEN 'contracted' THEN 4 WHEN 'interested' THEN 3 WHEN 'contacted' THEN 2 WHEN 'hold' THEN 1 ELSE 0 END"
-  type MRow = { id: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; status: string | null; consented_at: string | null; source: string | null; memo: string | null; contacted_at: string | null; follow_up_at: string | null; subscriber_count: number | null; recent_avg_views: number | null; description: string | null }
-  const MERGE_COLS = 'id, email, instagram, tiktok, links, status, consented_at, source, memo, contacted_at, follow_up_at, subscriber_count, recent_avg_views, description'
+  type MRow = { id: number; email: string | null; instagram: string | null; tiktok: string | null; links: string | null; status: string | null; consented_at: string | null; source: string | null; memo: string | null; contacted_at: string | null; follow_up_at: string | null; subscriber_count: number | null; recent_avg_views: number | null; description: string | null; opted_out: number | null; email_status: string | null; campaign_sent_at: string | null; exported_at: string | null; is_brand: number | null }
+  const MERGE_COLS = 'id, email, instagram, tiktok, links, status, consented_at, source, memo, contacted_at, follow_up_at, subscriber_count, recent_avg_views, description, opted_out, email_status, campaign_sent_at, exported_at, is_brand'
   const rankOf = (s: string | null) => (({ contracted: 4, interested: 3, contacted: 2, hold: 1 }) as Record<string, number>)[s || ''] || 0
   const GROUP_CAP = Math.max(20, Math.min(400, opts?.groupCap ?? 400)) // 실행당 패스별 그룹 상한(잔여는 다음 실행이 이어받음, 멱등)
   // 한 그룹(같은 키의 리드들)을 대표 1건으로 통합 — 삭제되는 행의 정보를 대표에 **보존 백필**(소실 방지).
@@ -49,15 +49,15 @@ export async function mergeDuplicatePool(DB: D1Database, opts?: { groupCap?: num
     const keep = rows[0]; const drop = rows.slice(1)
     const firstNonEmpty = (k: keyof MRow) => (rows.find(r => r[k] != null && r[k] !== '')?.[k] ?? null)
     const em = firstNonEmpty('email'), ig = firstNonEmpty('instagram'), tt = firstNonEmpty('tiktok'), lk = firstNonEmpty('links'), memo = firstNonEmpty('memo'), desc = firstNonEmpty('description')
-    const status = rows.reduce<string | null>((a, r) => rankOf(r.status) > rankOf(a) ? r.status : a, keep.status) // 그룹 최고 상태
+    const status = rows.reduce<string | null>((a, r) => rankOf(r.status) > rankOf(a) ? r.status : a, rows.find(r => r.status === 'rejected')?.status ?? keep.status) // 그룹 최고 상태 — 🚫 2026-11-25 거절(rejected)은 new 에 지지 않는다(종전: 지워지는 행의 거절이 사라졌다)
     const src = rows.find(r => r.source === 'inbound')?.source ?? keep.source ?? null                            // inbound(동의출처) 우선
     const consent = rows.map(r => r.consented_at).filter((v): v is string => !!v).sort()[0] ?? null              // 최초 동의시각
     const contacted = rows.map(r => r.contacted_at).filter((v): v is string => !!v).sort()[0] ?? null
     const followUp = rows.map(r => r.follow_up_at).filter((v): v is string => !!v).sort()[0] ?? null
     const maxSubs = Math.max(...rows.map(r => Number(r.subscriber_count) || 0))                                  // 도달력 지표 그룹 최대 보존
-    const maxAvg = Math.max(...rows.map(r => Number(r.recent_avg_views) || 0))
-    await DB.prepare('UPDATE ad_influencer_leads SET email=?, instagram=?, tiktok=?, links=?, status=?, consented_at=?, source=?, memo=?, contacted_at=?, follow_up_at=?, subscriber_count=?, recent_avg_views=?, description=COALESCE(description, ?) WHERE id=?')
-      .bind(em, ig, tt, lk, status, consent, src, memo, contacted, followUp, maxSubs, maxAvg, desc, keep.id).run().catch(() => null)
+    const maxAvg = Math.max(...rows.map(r => Number(r.recent_avg_views) || 0)); const sup = mergedSuppression(rows) // 🚫 2026-11-25 수신거부·반송·발송/내보내기 이력·브랜드 표시를 그룹에서 보존(종전: 지워지는 행의 것은 사라져 다시 발송 대상이 됐다)
+    await DB.prepare('UPDATE ad_influencer_leads SET email=?, instagram=?, tiktok=?, links=?, status=?, consented_at=?, source=?, memo=?, contacted_at=?, follow_up_at=?, subscriber_count=?, recent_avg_views=?, description=COALESCE(description, ?), opted_out=?, email_status=?, campaign_sent_at=?, exported_at=?, is_brand=? WHERE id=?')
+      .bind(em, ig, tt, lk, status, consent, src, memo, contacted, followUp, maxSubs, maxAvg, desc, sup.optedOut, sup.emailStatus, sup.campaignSentAt, sup.exportedAt, sup.isBrand, keep.id).run().catch(() => null)
     await DB.batch(drop.map(r => DB.prepare('DELETE FROM ad_influencer_leads WHERE id = ? AND account_id = ?').bind(r.id, POOL))).catch(() => null)
     return drop.length
   }

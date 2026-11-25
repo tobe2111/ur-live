@@ -111,7 +111,9 @@ describe('무엇을 쓰는가 — 되돌릴 수 없는 것은 좁게', () => {
 
   it('🔒 상태 문자열이 SQL 에 그대로 들어가는 곳은 enum 안에서만 온다(주입 불가)', () => {
     // bounced/complained 는 리터럴로 들어간다 — 그 값은 isOutreachStatus 를 통과한 것만이다.
-    expect(outreachSetClause('bounced').sql).toBe("email_status = 'bounced'")
+    // 2026-11-25: 더 강한 표시(수신거부·신고)를 덮지 않게 CASE 로 감쌌다 — 리터럴이 enum 값 하나뿐이라는 점은 같다.
+    expect(outreachSetClause('bounced').sql).toBe("email_status = CASE WHEN email_status IN ('opt_out','complained') THEN email_status ELSE 'bounced' END")
+    expect(outreachSetClause('complained').sql).toBe("email_status = CASE WHEN email_status IN ('opt_out') THEN email_status ELSE 'complained' END")
   })
 })
 

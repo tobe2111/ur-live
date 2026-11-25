@@ -19,6 +19,7 @@
  *    인증 안 된 도메인은 위 7겹을 다 해도 스팸함으로 간다.
  */
 import { sendEmail } from '../../../services/email'
+import { isNightKST } from './outreach-send'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 import type { Env } from '../../../worker/types/env'
 
@@ -155,6 +156,7 @@ export async function enqueueOutreachEmails(env: Env, outreachId: number): Promi
  */
 export async function drainOutreachEmails(env: Env): Promise<void> {
   if (!env.RESEND_API_KEY) return
+  if (isNightKST(Date.now())) return // 🌙 2026-11-25 야간(21~08시 KST) 광고성 메일 금지 — 다른 발송 길은 다 보는데 이 5분 드립만 안 봤다
   const db = adsLeadsDb(env)
   await ensureOutreachEmailTables(db)
 
