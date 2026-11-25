@@ -12,8 +12,24 @@
  * (`urdeal.kr`)이고 GLOBAL 은 폐기(#804)라 번역 우선순위는 대표 판단이다. 여기서 고정하는 것은
  * **"표식이 사용자에게 보이지 않는다"** 하나뿐이고, 그건 번역 여부와 무관하게 항상 참이어야 한다.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
+
+// 🧹 `i18n.ts` 를 import 하면 부팅이 번역 파일(`translation.json?i18n-core`)을 받으러 간다. 그 `?i18n-core`
+//   는 빌드 플러그인이 풀어 주는 주소라 시험 환경에서는 파싱에 실패하고, `ensureLanguageLoaded` 가
+//   `[i18n] Failed to load locale` 을 **시험이 끝난 뒤에** 찍는다. 그 늦은 로그가 vitest 정리 단계와 겹치면
+//   시험이 전부 통과하고도 `EnvironmentTeardownError: Closing rpc while "onUserConsoleLog" was pending`
+//   으로 CI 가 빨개진다(2026-10-06 main 배포 · 2026-11-25 PR 2502 — 둘 다 변경과 무관했다).
+//   이 파일은 표식 정규식과 배선만 보고 번역 본문은 안 쓰므로, 그 한 종류의 로그만 삼킨다.
+//   ⚠️ 다른 console.error 는 그대로 통과시킨다 — 통째로 끄면 진짜 오류가 가려진다.
+vi.hoisted(() => {
+  const orig = console.error
+  console.error = (...args: unknown[]) => {
+    if (typeof args[0] === 'string' && args[0].startsWith('[i18n] Failed to load')) return
+    orig(...args)
+  }
+})
+
 import { TODO_MARKER } from '../../i18n'
 
 const src = readFileSync('src/i18n.ts', 'utf8')
