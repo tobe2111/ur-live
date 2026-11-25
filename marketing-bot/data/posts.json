@@ -1138,5 +1138,62 @@
     "slot_kst": "21:30",
     "link": "https://urdeal.kr/partners?utm_source=threads&utm_medium=social&utm_campaign=merchant-recruit&utm_content=th-20261124",
     "text": "아직 초기 서비스라 몇 명 온다는 약속은 안 드려요. 대신 안 팔리면 0원이라 잃을 게 없게 만들었어요."
+  },
+  {
+    "platform": "instagram",
+    "id": "18125798906287785",
+    "media_type": "REELS",
+    "media": "reel",
+    "format": "1",
+    "media_set": "gen-2026-11-25-consumer",
+    "series": "deal-pick",
+    "generated": {
+      "source": "product",
+      "credit": "입점 매장",
+      "title": "닭도리탕 35,000원이 31,000원",
+      "photo_url": "https://media.ur-team.com/uploads/seller/26/2026-10/0F9CTfqE1eiqsu6n.jpg",
+      "reel": true
+    },
+    "hook": "headline",
+    "topic": "오늘의 딜 상품을 운영자 입장에서 솔직하게 소개(왜 골랐는지, 어떤 상황에 좋은지)",
+    "content_id": "ig",
+    "track": "consumer",
+    "promo": true,
+    "product_id": 2919,
+    "posted_at": "2026-11-25T13:22:09.927Z",
+    "date_kst": "2026-11-25",
+    "slot_kst": "21:30",
+    "bio_link": "https://urdeal.kr/pass/2919?utm_source=instagram&utm_medium=social&utm_campaign=todaydeal&utm_content=ig-20261125",
+    "text": "닭도리탕 35,000원이 유어딜에서는 31,000원이에요.\n\n서울 서초구 방배중앙로에 있는 달빛한스푼 이용권이에요. 연말 모임 자리 알아보는 때, 사람 수 많은 식사는 가격 차이가 꽤 크죠. 자세한 내용은 프로필 링크에서 확인하세요.\n\n#방배맛집 #서초구맛집 #닭도리탕"
+  },
+  {
+    "platform": "instagram_story",
+    "id": "18150578434574435",
+    "track": "consumer",
+    "series": "deal-pick",
+    "posted_at": "2026-11-25T13:22:09.927Z",
+    "date_kst": "2026-11-25"
+  },
+  {
+    "platform": "threads",
+    "id": "18204886942387258",
+    "reply_id": "18109003649365899",
+    "topic_tag": "맛집",
+    "hook": "headline",
+    "len": "1",
+    "tformat": "scene",
+    "topic": "오늘의 딜 상품을 운영자 입장에서 솔직하게 소개(왜 골랐는지, 어떤 상황에 좋은지)",
+    "media": "image",
+    "content_id": "th",
+    "image": "https://raw.githubusercontent.com/tobe2111/ur-live/marketing-data/marketing-bot/data/cards/2026-11-25-consumer/slide-1.jpg",
+    "track": "consumer",
+    "series": "deal-pick",
+    "promo": true,
+    "product_id": 2919,
+    "posted_at": "2026-11-25T13:22:09.927Z",
+    "date_kst": "2026-11-25",
+    "slot_kst": "21:30",
+    "link": "https://urdeal.kr/pass/2919?utm_source=threads&utm_medium=social&utm_campaign=todaydeal&utm_content=th-20261125",
+    "text": "수요일 저녁엔 메뉴 고르는 게 제일 큰 일이죠. 방배 달빛한스푼 닭도리탕, 정가 35,000원인데 유어딜에서 31,000원이에요."
   }
 ]
