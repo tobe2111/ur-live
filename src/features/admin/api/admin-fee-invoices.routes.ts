@@ -7,11 +7,14 @@
  *   GET  /api/admin/tax/fee-invoices/csv?period=YYYY-MM    홈택스 수기 발행용 CSV
  *   POST /api/admin/tax/fee-invoices/:id/issued {nts_confirm_num?}  홈택스에서 발행한 뒤 "발행 완료"
  *   GET  /api/admin/tax/sales-agency-report?quarter=YYYY-Qn  분기 판매·결제대행 명세 집계 CSV
+ *   GET  /api/admin/tax/simplified-statement?month=YYYY-MM  간이지급명세서(사업소득) — 주민번호 원문 포함이라 2FA·감사 로그
  * 돈을 옮기지 않는다(서류·집계만).
  */
 import type { Hono } from 'hono'
 import { requireAdminRole } from '../../../worker/middleware/auth'
 import { auditLog } from '../../../worker/middleware/audit-log'
+import { require2FA } from '../../../worker/middleware/require-2fa'
+import { computeSimplifiedStatement, simplifiedStatementCsv } from '../../../worker/utils/simplified-payment-statement'
 import type { Env } from '../../../worker/types/env'
 import { safeError } from '../../../worker/utils/safe-error'
 import {
@@ -77,6 +80,20 @@ export function registerFeeInvoiceRoutes(app: Hono<{ Bindings: Env }, any, any>)
       return c.json({ success: true })
     } catch (err) {
       return safeError(c, err, '발행 완료 처리에 실패했습니다', '[fee-invoices]')
+    }
+  })
+
+  app.get('/admin/tax/simplified-statement', requireAdminRole('finance'), require2FA(), auditLog('tax.simplified_statement_export'), async (c) => {
+    try {
+      const month = periodOf(c.req.query('month'))
+      const rows = await computeSimplifiedStatement(c.env.DB, c.env.DATA_ENCRYPTION_KEY, month, true)
+      return c.body(simplifiedStatementCsv(month, rows), 200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="urdeal-simplified-statement-${month}.csv"`,
+        'Cache-Control': 'no-store',
+      })
+    } catch (err) {
+      return safeError(c, err, '간이지급명세서를 만들지 못했습니다', '[simplified-statement]')
     }
   })
 

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from '@/hooks/useToast'
 import { promptDialog } from '@/components/ui/confirm-dialog'
+import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 
 interface Row { id: number; seller_id: number; buyer_name: string | null; buyer_biz_no: string | null; supply_amount: number; vat_amount: number; status: string; nts_confirm_num: string | null }
@@ -39,6 +40,18 @@ async function download(url: string, name: string) {
   link.download = name
   link.click()
   URL.revokeObjectURL(link.href)
+}
+
+// 🪪 간이지급명세서 — 주민번호 원문이 담겨 서버가 2FA 를 요구한다. axios 인스턴스가 2FA 코드를 물어 1회 재시도한다.
+async function downloadStatement(month: string) {
+  try {
+    const r = await api.get(`/api/admin/tax/simplified-statement?month=${month}`, { responseType: 'blob' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(r.data as Blob)
+    link.download = `urdeal-simplified-statement-${month}.csv`
+    link.click()
+    URL.revokeObjectURL(link.href)
+  } catch { toast.error('다운로드하지 못했어요(2단계 인증 확인)') }
 }
 
 export default function FeeInvoicesCard() {
@@ -116,6 +129,11 @@ export default function FeeInvoicesCard() {
           )}
         </>
       )}
+      <div className="mt-5 border-t border-gray-100 pt-4">
+        <h3 className="text-xs font-bold text-gray-900 mb-1">간이지급명세서 — 사업소득 (매월 제출)</h3>
+        <p className="text-xs text-gray-500 mb-2">개인 인플루언서·개인 에이전시에게 3.3% 를 떼고 지급한 달의 다음 달 말일까지. 주민번호가 담겨 2단계 인증을 요구합니다</p>
+        <button type="button" onClick={() => { void downloadStatement(period) }} className="ur-btn ur-btn-sm ur-btn-primary rounded-lg px-4 text-xs">{period} CSV 받기</button>
+      </div>
       <div className="mt-5 border-t border-gray-100 pt-4">
         <h3 className="text-xs font-bold text-gray-900 mb-1">분기 판매·결제대행 명세 (국세청 제출)</h3>
         <p className="text-xs text-gray-500 mb-2">매장별·월별 결제금액 집계. 분기 다음 달 15일까지 제출 — 제출 형식은 세무사와 확인</p>
