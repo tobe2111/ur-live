@@ -29,9 +29,10 @@ export default [
   },
   {
     name: '[payout-cycle] 회계 자료의 원천징수 합계에서 에이전시분이 빠진다',
-    file: 'src/features/admin/api/admin-tax.routes.ts',
-    find: "    if (whtAg) { wht.n += Number(whtAg.n) || 0;",
-    replace: "    if (false && whtAg) { wht.n += Number(whtAg.n) || 0;",
+    // 🔀 2026-11-25: 집계가 `monthly-accounting.ts` 로 옮겨졌다(라우트가 그 함수를 부른다 — 시험은 라우트를 실제로 돈다).
+    file: 'src/worker/utils/monthly-accounting.ts',
+    find: "  if (whtAg) { wht.n += Number(whtAg.n) || 0;",
+    replace: "  if (false && whtAg) { wht.n += Number(whtAg.n) || 0;",
     test: T,
     why: '개인 에이전시에게 뗀 3.3% 가 신고 자료에서 빠진다.',
   },
