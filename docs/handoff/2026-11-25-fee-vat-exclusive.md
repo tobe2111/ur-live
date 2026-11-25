@@ -13,8 +13,14 @@
 - 문구: 판매자 약관 정산 조항 · 파트너 사실표 `feeVatNote` · 랜딩 FAQ · 셀러/어드민 가이드(매장 역발행 안내 → 정발행 안내, 가이드 v81) · 블로그 정산 글(v18) · 사업계획서 · 플랫폼 모델 §5-2.
 - 시험 `src/tests/unit/fee-vat-exclusive-2026-11-25.test.ts`(실 스키마 D1 로 분개·취소·안내·월 요약).
 
+## 2단계 (같은 날, 대표 *"내가 해야하는거 말고 일단 너가 할 수 있는거 해줘"*)
+- 매장 수수료 세금계산서 정발행 초안: `worker/utils/fee-tax-invoice.ts`(표 `fee_tax_invoices`, UNIQUE seller·period) — 매월 1일 요약(`sendMonthlyCloseSummary`)이 만들고 장수를 알린다. 시작 전(부가세 줄 없음) 건은 수수료를 부가세 포함으로 나눈다.
+- 분기 판매·결제대행 명세 집계: `worker/utils/sales-agency-report.ts` — 1·4·7·10월 요약에 기한.
+- 어드민 문: `features/admin/api/admin-fee-invoices.routes.ts`(세무 라우트에 등록) · 카드 `pages/admin-payouts/FeeInvoicesCard.tsx`.
+- 시험 `fee-tax-invoice-2026-11-25.test.ts`.
+
 ## 이어받는 세션의 첫 액션 (대표가 이어서 하라고 했을 때만)
-- 다음 단계 = 수수료 세금계산서 **정발행 자동화**: 매월 1일 매장별 수수료 합계(원장 `platform:revenue` 사용월 기준) → 발행 사업자 API. 업체는 대표가 가입(볼타 정발행 90원/건 공개가 · 팝빌 200원/건). 기존 `tax-invoice-gateway.ts` 는 **역발행 전용**이라 정발행 어댑터를 새로 둔다.
+- 다음 단계 = 발행 사업자 API 어댑터(초안은 이미 자동 생성됨): `fee_tax_invoices` draft → 업체 API → `status='issued'`. 업체는 대표가 가입(볼타 정발행 90원/건 공개가 · 팝빌 200원/건). 기존 `tax-invoice-gateway.ts` 는 **역발행 전용**이라 정발행 어댑터를 새로 둔다.
 - 사업자 인플루언서 소개비·에이전시 수수료는 역발행(또는 위수탁) — 대표 아이디어: 최초 1회 위임 동의 후 매월 10일 지급 때 자동 발행.
 
 ## 이번에 틀렸던 판단

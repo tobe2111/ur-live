@@ -17,6 +17,7 @@ import { listAdminSettlementInvoices, reissueSettlementInvoice } from '../../sel
 import { reverseInvoiceProvider } from '../../../worker/utils/tax-invoice-gateway'
 import { safeError } from '../../../worker/utils/safe-error'
 import { computeMonthlyAccounting } from '../../../worker/utils/monthly-accounting'
+import { registerFeeInvoiceRoutes } from './admin-fee-invoices.routes'
 
 export const adminTaxRoutes = new Hono<{ Bindings: Env }>()
 
@@ -247,3 +248,6 @@ adminTaxRoutes.get('/admin/tax/monthly-accounting', requireAdmin(), async (c) =>
     return safeError(c, err, '월별 회계 export 중 오류가 발생했습니다', '[admin-tax]')
   }
 })
+
+// 🧾 2026-11-25 매장 수수료 세금계산서(정발행) 초안 · 분기 판매대행 명세 — 문은 별도 파일(크기 상한).
+registerFeeInvoiceRoutes(adminTaxRoutes)

@@ -21,6 +21,7 @@ import { formatWon } from '@/utils/format'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import TossSendButton, { useTossPayoutStatus } from './admin-payouts/TossSendButton'
 import MonthlyAccountingCard from './admin-payouts/MonthlyAccountingCard'
+import FeeInvoicesCard from './admin-payouts/FeeInvoicesCard'
 import { Select } from '@/components/ui/select'
 
 interface Payout {
@@ -469,7 +470,7 @@ export default function AdminPayoutsPage() {
       )}
 
       {/* 📄 연말 정산 리포트 — CSV download */}
-      {tab === 'annual' && <MonthlyAccountingCard />}
+      {tab === 'annual' && <><MonthlyAccountingCard /><FeeInvoicesCard /></>}
       {tab === 'annual' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-xl">
           <h2 className="text-sm font-bold text-gray-900 mb-4">연말 정산 리포트</h2>
