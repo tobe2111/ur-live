@@ -8,7 +8,18 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
 
-export default function TaxIdSheet({ onClose, onSaved }: { onClose: () => void; onSaved: (masked: string) => void }) {
+/** 저장 문 — 기본은 소개자(`/api/influencer-settlement/tax-id`). 에이전시 화면은 자기 인증으로 부르는 함수를 넘긴다. */
+export type TaxIdSave = (legalName: string, rrn: string) => Promise<{ ok: boolean; masked?: string; error?: string }>
+const saveInfluencer: TaxIdSave = async (legalName, rrn) => {
+  try {
+    const r = await api.put('/api/influencer-settlement/tax-id', { legal_name: legalName, rrn })
+    return r.data?.success ? { ok: true, masked: String(r.data.data?.masked || '') } : { ok: false, error: r.data?.error }
+  } catch (e) {
+    return { ok: false, error: (e as { response?: { data?: { error?: string } } })?.response?.data?.error }
+  }
+}
+
+export default function TaxIdSheet({ onClose, onSaved, save: saveFn = saveInfluencer }: { onClose: () => void; onSaved: (masked: string) => void; save?: TaxIdSave }) {
   const [name, setName] = useState('')
   const [rrn, setRrn] = useState('')
   const [saving, setSaving] = useState(false)
@@ -19,14 +30,11 @@ export default function TaxIdSheet({ onClose, onSaved }: { onClose: () => void; 
     if (!ok || saving) return
     setSaving(true)
     try {
-      const r = await api.put('/api/influencer-settlement/tax-id', { legal_name: name.trim(), rrn: digits })
-      if (!r.data?.success) { toast.error(r.data?.error || '저장하지 못했어요'); return }
+      const r = await saveFn(name.trim(), digits)
+      if (!r.ok) { toast.error(r.error || '저장하지 못했어요. 잠시 후 다시 시도해 주세요'); return }
       toast.success('저장했어요')
-      onSaved(String(r.data.data?.masked || ''))
+      onSaved(r.masked || '')
       onClose()
-    } catch (e) {
-      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      toast.error(msg || '저장하지 못했어요. 잠시 후 다시 시도해 주세요')
     } finally { setSaving(false) }
   }
 
@@ -43,7 +51,7 @@ export default function TaxIdSheet({ onClose, onSaved }: { onClose: () => void; 
     >
       <div className="space-y-5 pb-2">
         <p className="text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
-          소개비에서 3.3%를 떼어 대신 신고할 때 국세청에 내는 서류(간이지급명세서)에 필요해요. 암호화해서 보관하고, 신고 외에는 쓰지 않아요.
+          개인으로 받으면 3.3%를 떼어 대신 신고할 때 국세청에 내는 서류(간이지급명세서)에 필요해요. 암호화해서 보관하고, 신고 외에는 쓰지 않아요.
         </p>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="실명" aria-label="실명" autoComplete="name"
           className="w-full h-12 px-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none" />

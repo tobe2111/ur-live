@@ -29,7 +29,7 @@ export default function PrivacyPolicyPage() {
       {/* Content */}
       <div className="ur-content-medium px-5 pt-6">
         <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-8">
-          {isKR ? '시행일: 2024년 1월 15일 | 유어딜 (리스터코퍼레이션)' : 'Effective: January 15, 2024 | YourDeal (Lister Corporation)'}
+          {isKR ? '시행일: 2024년 1월 15일 · 최종 개정: 2026년 11월 25일 | 유어딜 (리스터코퍼레이션)' : 'Effective: January 15, 2024 | YourDeal (Lister Corporation)'}
         </p>
 
         {!isKR && (
@@ -179,6 +179,7 @@ export default function PrivacyPolicyPage() {
                         <li>소비자 불만 또는 분쟁처리에 관한 기록: 3년</li>
                       </ul>
                     </li>
+                    <li>「국세기본법」에 따른 원천징수·지급명세서 관련 기록(실명·주민등록번호 포함): 5년</li>
                   </ul>
                 </div>
               </div>
@@ -208,6 +209,15 @@ export default function PrivacyPolicyPage() {
                     <p>계좌이체시: 은행명, 계좌번호 등</p>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">
                       * 결제 정보는 토스페이먼츠를 통해 안전하게 처리되며, 회사는 최소한의 정보만 보관합니다.
+                    </p>
+                  </div>
+
+                  {/* 🪪 2026-11-25 개인 소개자·개인 에이전시 원천징수 — 주민등록번호 수집(법령 근거, 암호화 보관) */}
+                  <div className="bg-surface rounded-lg p-4">
+                    <h3 className="text-[13px] font-medium text-gray-900 dark:text-white mb-1">⑤ 소개비·에이전시 수수료 지급(개인)</h3>
+                    <p>필수항목: 실명, 주민등록번호, 정산 계좌(은행명·계좌번호·예금주)</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">
+                      * 개인에게 소개비·수수료를 지급할 때 소득세를 원천징수하고 국세청에 지급명세서를 제출하기 위해 「소득세법」에 따라 처리합니다(개인정보 보호법 제24조의2). 주민등록번호는 암호화해 보관하며 신고 목적 외에는 쓰지 않습니다.
                     </p>
                   </div>
 

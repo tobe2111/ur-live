@@ -45,3 +45,8 @@
 - 개인 소개자 주민번호: `worker/utils/payee-tax-id.ts`(키 없으면 저장 거부, `v1:` 암호문) · 인플루언서 정산 화면 "주민등록번호" 줄 · `PUT/GET /api/influencer-settlement/tax-id`.
 - 간이지급명세서 집계 `worker/utils/simplified-payment-statement.ts` · 어드민 CSV `GET /api/admin/tax/simplified-statement`(2FA·감사) · 월 1일 요약에 대상·미등록 수.
 - 결재 `docs/decisions/2026-11-25-payee-rrn-collection.md`. 남은 것: 개인정보 처리방침 문구 · 개인 에이전시 입력 화면(표는 지원).
+
+## 6단계 — 처리방침 · 개인 에이전시 (대표 *"일단 그건 보류. 다른 할 것들을 해줘"*)
+- 개인정보 처리방침 ⑤ 소개비·에이전시 수수료 지급(개인): 실명·주민등록번호·정산 계좌 + 보관 5년(국세기본법) · 최종 개정 2026-11-25.
+- 개인 에이전시 주민번호: `GET/PUT /api/agency-console/tax-id`(저장은 관리자) · 에이전시 정산 시트 버튼 · `TaxIdSheet` 에 저장 함수 주입.
+- 어드민 가이드 v84 간이지급명세서 안내. 송금 완료 자동 기록(거래내역 조회)은 대표 보류.
