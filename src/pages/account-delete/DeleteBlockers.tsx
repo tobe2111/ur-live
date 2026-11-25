@@ -142,17 +142,7 @@ export default function DeleteBlockers({
       />,
     )
   }
-  if ((blockers.earned_commission ?? 0) > 0) {
-    rows.push(
-      <Row
-        key="commission"
-        icon={<WalletIcon className="w-5 h-5" />}
-        title={t('accountDeleteWarning.blockCommission', { defaultValue: '받을 소개비 {{amount}}원', amount: formatNumber(blockers.earned_commission) })}
-        body={t('accountDeleteWarning.blockCommissionBody', { defaultValue: '탈퇴하면 받을 수 없어요. 정산을 받은 뒤 탈퇴해 주세요. 금액이 작아 정산을 못 받는다면 고객센터로 알려 주세요.' })}
-        action={<Link to="/influencer/settlement" className={LINK_CLS}>{t('accountDeleteWarning.goSettlement', { defaultValue: '정산 보기' })}</Link>}
-      />,
-    )
-  }
+  // 받을 소개비는 여기서 막지 않는다 — 아래 동의 칸에서 금액을 보여 주고 포기 동의를 받는다(2026-11-25 대표).
   if ((blockers.withdrawals_pending ?? 0) > 0) {
     rows.push(
       <Row

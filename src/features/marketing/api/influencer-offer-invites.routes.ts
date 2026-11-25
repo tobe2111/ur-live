@@ -115,6 +115,9 @@ async function handleUnsubscribe(c: { env: Env; req: { param: (k: string) => str
     // 3중 서프레션 등록 — 리드 플래그 + 유어애즈 억제 + 메인 억제(발송기 최종 필터)
     await db.prepare('UPDATE ad_influencer_leads SET opted_out = 1 WHERE id = ?').bind(inv.lead_id).run().catch(() => null)
     if (email) {
+      // 📧 2026-11-25: 수신거부는 **사람(주소)** 이 한다 — 같은 주소를 쓰는 다른 채널 행(유튜브 + 블로그)에도 적는다.
+      //   종전엔 누른 그 행만 적어, 형제 행이 다음 내보내기에 다시 올라왔다.
+      await db.prepare('UPDATE ad_influencer_leads SET opted_out = 1 WHERE account_id = 0 AND LOWER(TRIM(email)) = ? AND COALESCE(opted_out, 0) = 0').bind(email).run().catch(() => null)
       await db.prepare("INSERT OR IGNORE INTO ad_email_suppress (email, reason) VALUES (?, 'unsubscribe')").bind(email).run().catch(() => null)
       await db.prepare("INSERT OR IGNORE INTO email_suppressions (email, reason) VALUES (?, 'unsubscribe')").bind(email).run().catch(() => null)
     }

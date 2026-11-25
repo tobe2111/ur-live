@@ -109,7 +109,7 @@ export default [
   {
     name: '📩사장님통보 훅이 줄을 안 세운다',
     file: 'src/worker/utils/seller-approved-hooks.ts',
-    find: "  const notice = await queueOwnerNotice(DB, sellerId, phone?.phone).catch(() => 'skip_error')",
+    find: "  const notice = await queueOwnerNotice(DB, sellerId, phone).catch(() => 'skip_error')", // 2026-11-25 재조준 — 번호를 담당자 휴대폰 우선으로 고르게 되며 줄이 바뀌었다
     replace: "  const notice = 'skip_error'; void phone",
     test: TEST,
     why: '훅은 불리는데 줄이 안 선다 — 배선은 멀쩡해 보이고 통보만 영영 안 간다.',

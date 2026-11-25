@@ -13,7 +13,9 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 import { clearSessionCookie } from '@/worker/utils/session';
 import { safeError } from '@/worker/utils/safe-error';
 import { userReadDb, schemaPresent } from '@/worker/utils/d1-read-replica';
-import { countAccountDeleteBlockers, isAccountDeleteBlocked } from '@/worker/utils/account-delete-blockers';
+import { countAccountDeleteBlockers, isAccountDeleteBlocked, needsCommissionForfeit } from '@/worker/utils/account-delete-blockers';
+import { forfeitEarnedCommission } from '@/worker/utils/commission-forfeit';
+import { resolveUserIdString } from '@/worker/utils/resolve-user-id';
 import {
   deleteUserAccount,
   checkReregistrationRestriction,
@@ -169,8 +171,23 @@ accountRoutes.delete('/delete', requireUser(), async (c) => {
       }, 409);
     }
 
+    // 💸 2026-11-25 (대표 "포기 동의 후 탈퇴로"): 받을 소개비가 있으면 **포기에 동의했을 때만** 탈퇴한다. 모르고 잃지 않게.
+    if (needsCommissionForfeit(pre.blockers) && (body as { forfeit_commission?: unknown }).forfeit_commission !== true) {
+      return c.json({
+        success: false,
+        code: 'COMMISSION_FORFEIT_REQUIRED',
+        message: '받을 소개비를 포기하는 데 동의해야 탈퇴할 수 있어요.',
+        data: { earned_commission: pre.blockers.earned_commission },
+      }, 409);
+    }
+
     // 계정 삭제 처리
     const result = await deleteUserAccount({ userId, reason }, c.env.DB);
+    // 탈퇴가 끝난 뒤에 소개비를 내린다(먼저 내렸다가 탈퇴가 실패하면 소개비만 잃는다). 실패해도 탈퇴는 그대로다.
+    if (result.success && needsCommissionForfeit(pre.blockers)) {
+      const uidNorm = await resolveUserIdString(c.env.DB, authenticatedUser.id, authenticatedUser.isDbId).catch(() => userId);
+      await forfeitEarnedCommission(c.env.DB, [uidNorm, userId]).catch((e) => { console.error('[account-delete] commission forfeit failed', (e as Error)?.message) });
+    }
 
     // 🔑 2026-06-29 (로그아웃 근본수정 — 탈퇴 시 세션 무효화): 소비자 탈퇴는 row 를 soft-delete/익명화
     //   하지만 이미 발급된 httpOnly ur_session JWT 는 만료 전까지 유효 → 탈퇴 직후에도 그 쿠키로 재인증되는

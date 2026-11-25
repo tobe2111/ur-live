@@ -47,4 +47,5 @@
 - 수리는 전권 위임(2026-11-25)에 따라 세션 실행.
 
 ## 반영 커밋
+머지 `f03918ee5`.
 이 문서와 같은 PR. 가드 `src/tests/unit/payout-receivable-guard-2026-11-25.test.ts` · `admin-role-gate-outside-prefix-2026-11-25.test.ts` · `voucher-partial-refund-ledger-2026-11-25.test.ts`.

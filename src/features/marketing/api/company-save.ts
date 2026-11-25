@@ -7,6 +7,7 @@
  *
  *   ⚠️ 호출부 호환: `company-discovery.ts` 가 그대로 re-export 하므로 기존 import 경로는 바뀌지 않는다.
  */
+import { suppressedEmails } from './email-suppress-cache'
 import { classifyLead, suspectCompanyName, REGISTRY_CATEGORY_SOURCES, CLASSIFY_RULES_VERSION } from './company-classify'
 import { refineRegistryLabel } from './company-taxonomy'
 import { normalizeCompanyName } from './registry-email-match'
@@ -38,6 +39,10 @@ export async function saveCompanyLeadsCounted(DB: D1Database, leads: CompanyLead
   leads = leads.map(l => (isPlaceholderPhone(l.phone) || isPlaceholderEmail(l.email))
     ? { ...l, phone: isPlaceholderPhone(l.phone) ? null : l.phone, email: isPlaceholderEmail(l.email) ? null : l.email }
     : l)
+  // 🚫 2026-11-25: 보내면 안 되는 주소(반송·거부·남의 것)는 입구에서 비운다 — 종전엔 지운 주소를 다음 수집이 다시 채웠다
+  //   (`email = COALESCE(기존, 새값)`). 차단 표는 메모리 사본으로 본다(`email-suppress-cache.ts` — 문장을 더하지 않는다).
+  const blocked = await suppressedEmails(DB)
+  if (blocked.size) leads = leads.map(l => (l.email && blocked.has(String(l.email).trim().toLowerCase())) ? { ...l, email: null } : l)
   const clamp = (v: unknown, n: number): string | null => { const s = v == null ? '' : String(v).trim(); return s ? s.slice(0, n) : null }
   const tierOf = (v: unknown): number | null => { const t = Math.round(Number(v)); return Number.isFinite(t) && t >= COMPANY_TIER_MIN && t <= COMPANY_TIER_MAX ? t : null }
   // 🧭 저장 전 판별·분류(SSOT company-classify) — 모든 소스(네이버/webkr/상가정보/통신판매/나라장터…)가 이 관문을 통과.

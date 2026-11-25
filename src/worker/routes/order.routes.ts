@@ -33,7 +33,7 @@ import { reverseOrderAncillaryOnRefund } from '../utils/order-refund';
 import { tryVoucherPartialRefund } from '../utils/voucher-partial-refund'
 import { notifyOrderCancelled } from '../utils/order-cancel-notify'
 import { safeError } from '../utils/safe-error';
-import { orderHasGiftedVoucher, GIFTED_REFUND_BLOCKED, orderHasPendingGift, GIFT_PENDING_REFUND_BLOCKED } from '../utils/voucher-gift';
+import { orderHasGiftedVoucher, GIFTED_REFUND_BLOCKED, orderHasPendingGift, GIFT_PENDING_REFUND_BLOCKED } from '../utils/voucher-gift'; import { PARTIAL_SELF_REFUND_BLOCKED } from '../utils/order-self-refund';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
@@ -808,7 +808,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
     }
 
     if (await orderHasLiveStay(c.env.DB, order.id)) return c.json({ success: false, error: STAY_REFUND_ELSEWHERE, code: 'STAY_CANCEL' }, 409); // 🔐 2026-11-18 숙소는 취소 규정이 있는 숙소 취소로만
-    { const vb = await voucherOrderSelfCancelBlock(c.env.DB, Number(order.id), { cancelAmount: body.refund_amount }); if (vb) return c.json({ success: false, error: vb.error, code: vb.code }, 400) } // 🎟️ 이용권은 장 단위 규칙
+    { const vb = await voucherOrderSelfCancelBlock(c.env.DB, Number(order.id), { cancelAmount: body.refund_amount }); if (vb) return c.json({ success: false, error: vb.error, code: vb.code }, 400) } if (c.get('user').type !== 'admin' && (await orderHasGiftedVoucher(c.env.DB, String(order.id)) || await orderHasPendingGift(c.env.DB, String(order.id)))) return c.json({ success: false, error: GIFTED_REFUND_BLOCKED, code: 'GIFTED' }, 400); if (c.get('user').type !== 'admin' && body.refund_amount != null && Math.round(Number(body.refund_amount)) !== Number(order.total_amount)) return c.json({ success: false, error: PARTIAL_SELF_REFUND_BLOCKED, code: 'PARTIAL_NOT_ALLOWED' }, 400); // 🎁💸 2026-11-25: 선물한 이용권 검사(취소 경로와 같게) · 손님이 금액을 정하는 부분 환불 금지(주문은 PAID 로 남고 정산은 전액이었다) // 🎟️ 이용권은 장 단위 규칙
     // Toss 결제 취소 API 호출 (실제 환불)
     const payInfo = await orderRepo.getPaymentInfo(body.order_id);
     const paymentKey = payInfo?.toss_payment_key;
@@ -1031,7 +1031,7 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
       //   ② 혼합결제(카드+딜) deal_used 미복원 ③ 쿠폰·referral_bonus·affiliate/공급/에이전시/영입자 미역전.
       //   refundOrderFully: 카드 Toss취소(또는 딜 환급) + 딜 사용분 복원 + 쿠폰복원 + 전 적립 역전 + CAS 멱등.
       const remaining = Number(order.total_amount ?? 0) - Number(order.refunded_amount ?? 0);
-      const isFullCancel = cancelAmount === undefined || cancelAmount >= remaining;
+      const isFullCancel = cancelAmount === undefined || cancelAmount >= remaining; if (!isFullCancel && c.get('user').type !== 'admin') return c.json({ success: false, error: PARTIAL_SELF_REFUND_BLOCKED, code: 'PARTIAL_NOT_ALLOWED' }, 400); // 💸 2026-11-25 손님은 전액 취소만(일부는 반품 절차)
       if (isFullCancel) {
         const { refundOrderFully } = await import('../utils/order-refund');
         const r = await refundOrderFully(c.env.DB, c.env, orderId, { reason });

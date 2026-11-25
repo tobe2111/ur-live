@@ -7,7 +7,7 @@
 
 ## 완료분
 - 시험: `src/tests/unit/voucher-full-flow-2026-11-25.test.ts` (실제 라우트·cron, 라이브 구조 DB, 가짜 Toss·KT). 9개 구간 39항목.
-- 수리 3건: 결재 기록 `docs/decisions/2026-11-25-voucher-flow-money-fixes.md`
+- 수리 3건: 결재 기록 `docs/decisions/archive/2026-11-25-voucher-flow-money-fixes.md`
 - 숙박 정정(같은 PR 첫 커밋 e35871305): 숙소는 기간이 지나면 환불이 아니라 이용 처리(먼저 산 숙박권 포함)
 - PR: tobe2111/ur-live#2487 (커밋 e35871305 · b97ff5b1d). **머지 `a11f1d3e7`** (2026-11-25 07:19 KST, CI 3회차 전부 초록).
 - 배포 뒤 라이브 판정(2026-11-25 07:30 KST): Pages·cron 워커 배포 성공, 번들 `index-D93RscVi.js` → `index-ZwWenw_v.js`. `guide_seed_version` 74. 셀러 가이드의 숙박 문구("유효기간이 지나면 환불 없이 이용한 것으로 처리")와 교환권 문구("발송된 교환권은 손님이 직접 취소·환불할 수 없습니다")가 라이브에 떴다(두 섹션 `updated_at` 이 배포 시각).
@@ -22,13 +22,13 @@
 - 어드민 조사 보고의 "`pending` 지급을 바로 `sent` 로 넘길 수 있다" · "viewer 가 환불할 수 있다" 는 **코드 읽기(E1)** 다. 시험으로 돌린 것은 "역할 admin 이 지급 승인에서 403" 하나뿐.
 
 ## 안 고친 것 (2026-11-25 오전 갱신 — 대표 *"그래서 찾은 에러들은?"* 뒤 2차 수리 반영)
-**2차로 고친 것**(결재 기록 `docs/decisions/2026-11-25-payout-refund-ledger-fixes.md`): 받을 돈을 넘는 지급(일괄 승인·바로 송금 완료·이체 파일) · 조회 전용 어드민의 환불 실행 · 환불 원장 계정과 만료 환불 원장 줄 · 일부 사용 뒤 환불의 매장 몫 · 소개비 확정 시각 비교 · 어드민 수익 추정 요율.
+**2차로 고친 것**(결재 기록 `docs/decisions/archive/2026-11-25-payout-refund-ledger-fixes.md`): 받을 돈을 넘는 지급(일괄 승인·바로 송금 완료·이체 파일) · 조회 전용 어드민의 환불 실행 · 환불 원장 계정과 만료 환불 원장 줄 · 일부 사용 뒤 환불의 매장 몫 · 소개비 확정 시각 비교 · 어드민 수익 추정 요율.
 - 2차 PR: tobe2111/ur-live#2491 · **머지 `f03918ee5`** (2026-11-25 11:38 KST, CI 1회차 초록).
 - 배포 뒤 라이브 판정(11:50 KST): Pages·cron 워커 배포 성공 · 번들 `index-ZwWenw_v.js` → `index-DV4Zn_Hs.js` · `guide_seed_version` 75 · 어드민 정산 가이드에 초과 지급·환불 역할 문구가 떴다(섹션 `updated_at` 이 배포 시각).
   - 읽기 경로로 새 코드가 라이브에서 도는 것까지 봤다: `GET /api/admin/payouts?status=pending` 200 · `GET /api/admin/payouts/transfer-csv?status=pending` 200(`X-Total-Count 1` · `X-Skipped-Count 1`(계좌 없음) · `X-Blocked-Count 0`).
   - **라이브에서 못 잰 것**: 초과 지급 차단·환불 원장·일부 사용 정산·역할 게이트의 "막히는 쪽" 은 해당 데이터가 0건이고 쓰기 요청이라 찔러 보지 않았다. 근거는 로컬 시험(E2)까지다. 실물 확인은 `S-PAYOUTGUARD`.
 
-**3차(대표 *"끝까지 다 고쳐줘"*) — 묶음 A 정산 경로**: 손님 셀프 사용이 정산 원장을 안 적던 것 · 사용 되돌림의 원장 · 계좌 없이 만들어진 지급 건 자동 채움 · 토스 완료 기록 우회. 기록 `docs/decisions/2026-11-25-settlement-path-fixes.md`. 라이브에서 셀러·어드민 가이드 재시드(얼어 있던 12섹션 해소 — 같은 기록). 열린 결재: 목요일 약속 ↔ 영업일 10일 보류(`2026-11-25-store-payout-thursday-vs-hold.md`).
+**3차(대표 *"끝까지 다 고쳐줘"*) — 묶음 A 정산 경로**: 손님 셀프 사용이 정산 원장을 안 적던 것 · 사용 되돌림의 원장 · 계좌 없이 만들어진 지급 건 자동 채움 · 토스 완료 기록 우회. 기록 `docs/decisions/archive/2026-11-25-settlement-path-fixes.md`. 라이브에서 셀러·어드민 가이드 재시드(얼어 있던 12섹션 해소 — 같은 기록). 열린 결재: 목요일 약속 ↔ 영업일 10일 보류(`2026-11-25-store-payout-thursday-vs-hold.md`).
 - 묶음 A: tobe2111/ur-live#2493 · 머지 `75276e571`.
 - **묶음 B 딜·유저 화면**: 리뷰 보상 장부 종류(`charge` → `review_reward`) · 무상 보상의 `total_charged` · 딜 안내 문구 SSOT(`shared/deal-earn-hint.ts`) · 후원 경로 410 · 리뷰어 레벨 잠금(후기 보너스 꺼진 동안 해제) · 지급된 소개비 환불 시 어드민 알림. 열린 결재: `2026-11-25-paid-commission-clawback.md`.
 - 묶음 B: tobe2111/ur-live#2494 · 머지 `cf629d2b1`.

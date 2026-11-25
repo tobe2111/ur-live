@@ -10,7 +10,8 @@ import { swallow } from '../utils/swallow'
  */
 import type { Env } from '../types/env'
 import { reportCronFailure } from '../utils/cron-reporter'
-import { sendSensAlimtalk, sensConfigured, type SensEnv } from '../../lib/ncp-sens'
+import { sensConfigured } from '../../lib/ncp-sens'
+import { resendFailedAlimtalk } from '../../lib/text-notice'
 
 interface FailureRow {
   id: number
@@ -57,9 +58,15 @@ export async function handleRetryAlimtalk(env: Env) {
     for (const row of results) {
       retried++
       try {
-        // 기록 코드가 `alimtalk:<이름>` 형태면 이름만 — SENS 템플릿 코드 = 우리 이름.
-        const templateCode = row.template_code.replace(/^(alimtalk|pending):/, '')
-        const result = await sendSensAlimtalk(env as unknown as SensEnv, { templateCode, to: row.phone, content: row.message })
+        // 🔁 2026-11-25: 처음 보낼 때와 **같은 코드·버튼**으로(`text-notice.ts`). 종전엔 기록의 이름을 그대로 SENS 에 넘겨
+        //   `이름=코드` 로 등록한 템플릿은 틀린 코드로, 버튼 있는 템플릿은 버튼 없이 보냈다(카카오가 거절한다).
+        const result = await resendFailedAlimtalk(env, row.phone, row.template_code, row.message)
+        if (result.giveUp) {
+          // 다시 보내도 같은 결과(승인이 풀렸다 · 꺼진 알림 · 옛 형식 기록) — 그만 집는다. 기록은 남는다.
+          await env.DB.prepare("UPDATE alimtalk_failures SET retry_count = max_retries, error = ?, updated_at = datetime('now') WHERE id = ?")
+            .bind(`gave_up:${result.error || ''}`.slice(0, 500), row.id).run()
+          continue
+        }
         if (result.success) {
           succeeded++
           await env.DB.prepare(`

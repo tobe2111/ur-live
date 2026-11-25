@@ -10,7 +10,7 @@
  * | 환급 가능한 충전 딜 | 탈퇴 순간 딜은 0 이 된다(`zeroOutUserPoints`) — 손님이 낸 돈이 사라진다 | 환급 신청(`POST /api/points/refund`) |
  * | 처리 중인 딜 환급 신청 | 반려되면 딜이 **탈퇴한 계정**으로 돌아간다 | 처리가 끝날 때까지 기다림 |
  * | 주인인 가게 | 가게는 별도 신원이라 손님 탈퇴가 안 건드린다 — 주인 없는 가게가 남는다 | 가게 탈퇴 먼저 |
- * | 받을 소개비(2026-11-25) | 확정·대기 소개비는 `influencer_balances` 에 있고 탈퇴가 안 건드린다 — 받을 사람이 사라진다 | 정산을 받은 뒤 |
+ * | (막지 않음) 받을 소개비 | 2026-11-25 대표 *"포기 동의 후 탈퇴로"* — 막지 않고 금액을 보여 주고 동의를 받는다(`needsCommissionForfeit`) | 포기 동의 · 탈퇴 뒤 0 으로(`commission-forfeit.ts`) |
  * | 처리 중인 출금 신청(2026-11-25) | 반려되면 돈이 탈퇴한 계정으로 돌아간다 | 처리가 끝날 때까지 기다림 |
  *
  * 무상 딜(선물·보상)은 막지 않는다 — 결재대로 고지하고 소멸한다. 쿠폰·찜·단골도 지금대로 즉시 삭제.
@@ -32,7 +32,7 @@ export interface AccountDeleteBlockers {
   owned_stores: number
   /** 카카오로 만든 에이전시의 주인인 곳 수 — 탈퇴하면 그 카카오 계정으로 다시 들어올 길이 없다(2026-11-25). */
   owned_agencies: number
-  /** 받을 소개비(확정 + 대기, 원) — 탈퇴하면 받을 계정이 없어진다(2026-11-25). */
+  /** 받을 소개비(확정 + 대기, 원). **탈퇴를 막지 않는다** — 0 보다 크면 포기 동의가 있어야 탈퇴한다(2026-11-25 대표). */
   earned_commission: number
   /** 처리 중인 출금 신청 수(`user_withdrawals` requested·approved) — 2026-11-25. */
   withdrawals_pending: number
@@ -83,9 +83,14 @@ const OWNED_STORES_LINKED_ONLY_SQL = `SELECT COUNT(*) AS n FROM sellers
 
 const zeroIfNoTable = (e: unknown): { n: number } => { if (/no such table/i.test(String((e as Error)?.message ?? e))) return { n: 0 }; throw e }
 
+/** 받을 소개비가 있어 **포기 동의**가 필요한가 — 막는 것이 아니라 묻는 것이다. */
+export function needsCommissionForfeit(b: AccountDeleteBlockers): boolean {
+  return b.earned_commission > 0
+}
+
 export function isAccountDeleteBlocked(b: AccountDeleteBlockers): boolean {
   return b.unused_vouchers > 0 || b.refundable_deal > 0 || b.deal_refund_pending || b.owned_stores > 0 || b.owned_agencies > 0
-    || b.earned_commission > 0 || b.withdrawals_pending > 0
+    || b.withdrawals_pending > 0
 }
 
 /**

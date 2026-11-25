@@ -29,7 +29,8 @@ import { adminStoreBankRoutes } from '@/features/admin/api/admin-store-bank.rout
 import { canAdminRoleMutate } from '@/shared/admin-roles'
 import { ensureSellerMetaTable, getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
 import { ensureAgencyConsoleTables } from '@/features/agency-console/api/agency-schema'
-import { countAccountDeleteBlockers, isAccountDeleteBlocked } from '@/worker/utils/account-delete-blockers'
+import { countAccountDeleteBlockers, isAccountDeleteBlocked, needsCommissionForfeit } from '@/worker/utils/account-delete-blockers'
+import { forfeitEarnedCommission, FORFEIT_ACCOUNT } from '@/worker/utils/commission-forfeit'
 import { deleteUserAccount, restoreUser } from '@/worker/services/delete-account.service'
 import { sign } from 'hono/jwt'
 
@@ -260,7 +261,7 @@ describe('⑤ 내보낸 에이전시 직원의 이메일은 다시 쓸 수 있�
 })
 
 describe('⑥ 탈퇴 — 돈이 남으면 막고, 정리는 실제로 된다', () => {
-  it('받을 소개비가 있으면 막는다 · 처리 중 출금이 있으면 막는다 · 없으면 연다', async () => {
+  it('받을 소개비는 막지 않고 포기 동의를 요구한다 · 처리 중 출금은 막는다 · 없으면 연다', async () => {
     const raw = openLiveSchema()
     const a = insert(raw, 'users', { name: 'a', email: 'a@example.test', kakao_id: '31' })
     const b = insert(raw, 'users', { name: 'b', email: 'b@example.test', kakao_id: '32' })
@@ -272,7 +273,9 @@ describe('⑥ 탈퇴 — 돈이 남으면 막고, 정리는 실제로 된다', (
     const rb = await countAccountDeleteBlockers(d1(raw), b, true)
     const rc = await countAccountDeleteBlockers(d1(raw), c, true)
     expect(ra.ok && ra.blockers.earned_commission).toBe(5000)
-    expect(ra.ok && isAccountDeleteBlocked(ra.blockers)).toBe(true)
+    expect(ra.ok && isAccountDeleteBlocked(ra.blockers), '소개비가 탈퇴를 막는다(2026-11-25 대표: 포기 동의 후 탈퇴)').toBe(false)
+    expect(ra.ok && needsCommissionForfeit(ra.blockers)).toBe(true)
+    expect(rc.ok && needsCommissionForfeit(rc.blockers)).toBe(false)
     expect(rb.ok && rb.blockers.withdrawals_pending).toBe(1)
     expect(rb.ok && isAccountDeleteBlocked(rb.blockers)).toBe(true)
     expect(rc.ok && isAccountDeleteBlocked(rc.blockers), '끝난 출금이 탈퇴를 막았다').toBe(false)
@@ -314,6 +317,52 @@ describe('⑥ 탈퇴 — 돈이 남으면 막고, 정리는 실제로 된다', (
   })
 
   const mountAccount = (app: Hono) => { app.route('/api/account', accountRoutes) }
+
+  it('받을 소개비가 있는 사람: 동의 없이는 탈퇴 안 됨 → 동의하면 탈퇴되고 소개비는 0 · 원장에 한 줄', async () => {
+    const h = harness(mountAccount)
+    const u = insert(h.raw, 'users', { name: '소개자', email: 'earner@example.test', kakao_id: '91' })
+    insert(h.raw, 'influencer_balances', { influencer_id: String(u), pending_amount: 1200, available_amount: 3800 })
+    const cookie = await sessionCookie(u)
+    const no = await h.call('DELETE', '/api/account/delete', { cookie, body: {} })
+    expect([no.status, no.json.code], JSON.stringify(no.json).slice(0, 300)).toEqual([409, 'COMMISSION_FORFEIT_REQUIRED'])
+    expect((no.json.data as { earned_commission?: number }).earned_commission).toBe(5000)
+    expect(q1<{ e: string }>(h.raw, 'SELECT email e FROM users WHERE id = ?', u)?.e, '동의 없이 탈퇴됐다').toBe('earner@example.test')
+    const yes = await h.call('DELETE', '/api/account/delete', { cookie, body: { forfeit_commission: true } })
+    h.out.restore()
+    expect(yes.status, JSON.stringify(yes.json).slice(0, 300)).toBe(200)
+    expect(q1<{ e: string }>(h.raw, 'SELECT email e FROM users WHERE id = ?', u)?.e).toMatch(/@deleted\.invalid$/)
+    expect(q1<{ p: number; a: number }>(h.raw, 'SELECT pending_amount p, available_amount a FROM influencer_balances WHERE influencer_id = ?', String(u))).toEqual({ p: 0, a: 0 })
+    const led = q<{ amount: number; debit_account: string; credit_account: string }>(h.raw, "SELECT amount, debit_account, credit_account FROM ledger_entries WHERE event_type = 'commission_forfeit'")
+    expect(led).toEqual([{ amount: 5000, debit_account: `influencer:${u}`, credit_account: FORFEIT_ACCOUNT }])
+  })
+
+  it('포기 처리는 두 번 불려도 원장에 한 번만 적힌다 · 소개비가 없으면 아무것도 안 한다', async () => {
+    const raw = openLiveSchema()
+    insert(raw, 'influencer_balances', { influencer_id: '77', pending_amount: 0, available_amount: 900 })
+    insert(raw, 'influencer_balances', { influencer_id: '78', pending_amount: 0, available_amount: 0 })
+    expect(await forfeitEarnedCommission(d1(raw), ['77', 77])).toBe(900)
+    expect(await forfeitEarnedCommission(d1(raw), ['77'])).toBe(0)
+    expect(await forfeitEarnedCommission(d1(raw), ['78'])).toBe(0)
+    expect(q(raw, "SELECT id FROM ledger_entries WHERE event_type = 'commission_forfeit'").length).toBe(1)
+  })
+
+  it('읽은 뒤 다른 요청이 먼저 내렸으면(동시 탈퇴 요청) 원장에 적지 않는다', async () => {
+    const raw = openLiveSchema()
+    insert(raw, 'influencer_balances', { influencer_id: '79', pending_amount: 0, available_amount: 700 })
+    const real = d1(raw)
+    // 잔액을 내리는 문장 직전에 "다른 요청" 이 먼저 0 으로 내린 상황을 만든다
+    const racing = { ...real, prepare: (sql: string) => { if (/^UPDATE influencer_balances/.test(sql.trim())) raw.exec("UPDATE influencer_balances SET available_amount = 0 WHERE influencer_id = '79'"); return real.prepare(sql) } } as typeof real
+    expect(await forfeitEarnedCommission(racing, ['79'])).toBe(0)
+    expect(q(raw, "SELECT id FROM ledger_entries WHERE event_type = 'commission_forfeit'"), '선점에 진 요청이 원장에 한 줄을 더 적었다').toEqual([])
+  })
+
+  it('탈퇴 화면: 받을 소개비가 있으면 포기 동의 칸이 있어야 버튼이 열린다 · 차단 목록에는 안 넣는다', () => {
+    const page = readCode('src/pages/AccountDeleteWarningPage.tsx')
+    expect(page).toContain("(earnedCommission === 0 || forfeitAgreed)")
+    expect(page).toContain("earnedCommission > 0 ? { data: { forfeit_commission: true } } : undefined")
+    expect(page).toContain('data-testid="forfeit-commission"')
+    expect(readCode('src/pages/account-delete/DeleteBlockers.tsx')).not.toContain('accountDeleteWarning.blockCommission')
+  })
 
   it('탈퇴 여부 조회: 로그인 없이는 401 · 남의 이메일은 403', async () => {
     const h = harness(mountAccount)

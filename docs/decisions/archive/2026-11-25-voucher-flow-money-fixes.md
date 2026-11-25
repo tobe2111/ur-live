@@ -42,4 +42,5 @@
 - 수리는 전권 위임(2026-11-25)에 따라 세션 실행.
 
 ## 반영 커밋
+머지 `a11f1d3e7`.
 이 문서와 같은 PR. 가드 `src/tests/unit/voucher-full-flow-2026-11-25.test.ts`.

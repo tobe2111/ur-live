@@ -1,5 +1,5 @@
 {
-  "_total": 166,
+  "_total": 165,
   "counts": {
     "src/features/admin/api/admin-influencer-outreach.routes.ts": 1,
     "src/features/admin/api/admin-kt-alpha/catalog.ts": 1,
@@ -39,7 +39,7 @@
     "src/features/home-service/api/home-service-db.ts": 1,
     "src/features/home-service/api/home-service.routes.ts": 1,
     "src/features/ledger/api/ledger.routes.ts": 1,
-    "src/features/marketing/api/admin-ads-influencers.routes.ts": 4,
+    "src/features/marketing/api/admin-ads-influencers.routes.ts": 3,
     "src/features/marketing/api/biz-blog-router.ts": 1,
     "src/features/marketing/api/company-dedupe.ts": 2,
     "src/features/marketing/api/company-discovery.ts": 2,

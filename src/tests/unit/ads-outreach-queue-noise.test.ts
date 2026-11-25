@@ -29,7 +29,7 @@ describe('buildSendQueueWhere — 이름 기반 노이즈를 큐에서 제외한
     expect(where).toContain("status = 'new'")
     expect(where).toContain('contacted_at IS NULL')
     expect(where).toContain("url LIKE 'http%'")   // 스킴 있는 url 만 = pickReach 와 같은 기준
-    expect(where).toContain("NOT IN ('bounced','complained')")
+    expect(where).toContain("NOT IN ('bounced','complained','opt_out')") // 🔁 2026-11-25 재조준: 거부 회신(opt_out)도 뺀다
     expect(where).toContain('COALESCE(is_brand, 0) = 0')
     expect(where).toContain("platform != 'naver_cafe'")
   })

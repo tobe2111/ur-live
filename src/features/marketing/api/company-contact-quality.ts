@@ -152,8 +152,14 @@ export async function sweepSharedContacts(DB: D1Database, nowMs = Date.now()): P
 
     // ② 억제 표 전체(반송·거부·남의 것)를 업체 행에서 비운다 — 값 목록을 먼저 읽고 업체 표만 만지는 문장으로.
     //   ⚠️ `lower(email)` 로 비교하면 인덱스를 못 탄다 — 그대로 비교한다(억제 표·저장값 모두 소문자로 들어온다).
-    const sup = (await DB.prepare('SELECT email FROM ad_email_suppress LIMIT 5000').all<{ email: string }>())?.results || []
-    const supList = [...new Set(sup.map(r => String(r.email)).filter(Boolean))]
+    //   📄 2026-11-25: 쪽으로 끝까지 읽는다 — 종전엔 정렬 없이 5,000건만 읽어, 표가 그보다 커지면 넘는 주소는 영영 안 비워졌다.
+    const supList: string[] = []
+    for (let last = 0, guard = 0; guard < 40; guard++) {
+      const page = (await DB.prepare('SELECT rowid AS rid, email FROM ad_email_suppress WHERE rowid > ? ORDER BY rowid LIMIT 5000').bind(last).all<{ rid: number; email: string }>())?.results || []
+      for (const r of page) if (r.email) supList.push(String(r.email))
+      if (page.length < 5000) break
+      last = Number(page[page.length - 1].rid)
+    }
     for (const part of chunkForBinds(supList)) {
       const r = await DB.prepare(
         `UPDATE ad_company_leads SET email = NULL,

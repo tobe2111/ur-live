@@ -51,6 +51,7 @@ PR revert. 4번의 라이브 행 수리는 값을 `other_income` 으로 되돌�
 전권 위임(2026-11-25)에 따라 세션 실행. 대표 *"공구서비스는 안봐도 되고, 나머지 빠짐없이 모두 해줘야지."*
 
 ## 반영 커밋
+머지 `d6704c9f9`.
 `b54fa6b73` (브랜치 `claude/kind-dijkstra-48a07y` — 머지 해시는 인계 `docs/handoff/2026-11-25-remaining-flows-audit.md`)
 
 ## 안 한 것 (대표 판단)

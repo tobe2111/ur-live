@@ -69,4 +69,5 @@ PR 단위 revert. A1 을 되돌리면 셀프 사용 매출이 다시 주간 지�
 - 수리는 전권 위임(2026-11-25)에 따라 세션 실행.
 
 ## 반영 커밋
+머지 `75276e571`(묶음 A) · `cf629d2b1`(B) · `d47f919d6`(C) · `d6704c9f9`(D). 라이브 판정은 인계 `docs/handoff/2026-11-25-remaining-flows-audit.md`.
 묶음마다 PR 하나. 가드 `voucher-self-redeem-settlement-2026-11-25.test.ts` · `payout-missing-account-2026-11-25.test.ts` · `deal-side-fixes-2026-11-25.test.ts` · `admin-outside-write-gate-2026-11-25.test.ts`.

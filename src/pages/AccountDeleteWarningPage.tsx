@@ -49,6 +49,7 @@ export default function AccountDeleteWarningPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [agreed, setAgreed] = useState(false)
   const [confirmText, setConfirmText] = useState('')
+  const [forfeitAgreed, setForfeitAgreed] = useState(false)
 
   // 💸 그 사람이 실제로 잃는 것. fresh — 탈퇴 직전 화면이라 1분 묵은 잔액을 보여 주면 안 된다.
   const balanceQ = useBalance({ fresh: true })
@@ -88,7 +89,9 @@ export default function AccountDeleteWarningPage() {
   }, [navigate])
 
   // 잃는 딜을 보여 주기 전에는, 그리고 서버가 '정리할 것 없음' 을 말하기 전에는 탈퇴를 열지 않는다.
-  const canProceed = agreed && !dealChecking && blockersClear && confirmText === t('accountDeleteWarning.confirmText')
+  // 💸 받을 소개비(확정 + 대기)가 있으면 포기에 따로 동의해야 한다(2026-11-25 대표 "포기 동의 후 탈퇴로") — 서버도 같은 것을 요구한다.
+  const earnedCommission = Math.max(0, Number(blockers?.earned_commission ?? 0))
+  const canProceed = agreed && !dealChecking && blockersClear && (earnedCommission === 0 || forfeitAgreed) && confirmText === t('accountDeleteWarning.confirmText')
 
   const handleProceedToDelete = async () => {
     if (!canProceed) {
@@ -107,7 +110,7 @@ export default function AccountDeleteWarningPage() {
       const userId = await getUserId()
       if (!userId) throw new Error(t('accountDeleteWarning.userIdNotFound'))
 
-      const response = await api.delete('/api/account/delete')
+      const response = await api.delete('/api/account/delete', earnedCommission > 0 ? { data: { forfeit_commission: true } } : undefined)
       if (!response.data.success) throw new Error('delete_failed')
 
       await authLogout()
@@ -237,6 +240,22 @@ export default function AccountDeleteWarningPage() {
                 : t('accountDeleteWarning.agree', { defaultValue: '위 내용을 확인했어요' })}
             </span>
           </label>
+          {earnedCommission > 0 && (
+            <label className="mt-4 flex items-start gap-3 cursor-pointer" data-testid="forfeit-commission">
+              <input
+                type="checkbox"
+                checked={forfeitAgreed}
+                onChange={(e) => setForfeitAgreed(e.target.checked)}
+                className="w-5 h-5 mt-1 rounded accent-brand shrink-0"
+              />
+              <span className="text-[15px] text-gray-900 dark:text-white leading-relaxed">
+                {t('accountDeleteWarning.agreeForfeit', { defaultValue: '받을 소개비 {{amount}}원을 받지 않고 탈퇴하는 데 동의해요', amount: formatNumber(earnedCommission) })}
+                <span className="block mt-1 text-[13px] text-gray-500 dark:text-gray-400">
+                  {t('accountDeleteWarning.agreeForfeitSub', { defaultValue: '탈퇴하면 이 소개비는 받을 수 없어요. 먼저 받으려면 정산 화면에서 확인해 주세요.' })}
+                </span>
+              </span>
+            </label>
+          )}
 
           <p className="mt-5 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
             <Trans

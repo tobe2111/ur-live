@@ -3,7 +3,7 @@
  *   같은 /api/admin/ads 마운트(app.route). 결과 열람/큐레이션 + 키워드 관리 + 수동 트리거.
  *   ⚠️ 공용 풀 = account_id 0. 수집 엔진(ur-ads cron)과 분리 — 여기는 조회/정비만.
  */
-import { Hono } from 'hono'; import { NOT_SUPPRESSED_SQL } from './influencer-send-guard'
+import { Hono } from 'hono'; import { NOT_SUPPRESSED_SQL } from './influencer-send-guard'; import { markLeadsContacted, normalizeContactChannel } from './influencer-mark-contacted'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
@@ -352,8 +352,8 @@ app.post('/influencer-pool/send-cold', async (c) => {
   }
   // 1일 카운터는 **실제 발송분만** 누적(실패·억제는 안 셈) — 상한이 '보낸 양'을 뜻하도록.
   if (sent > 0) {
-    await adsLeadsDb(c.env).prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)')
-      .bind(dayKey, String(used + sent)).run().catch(() => null)
+    await adsLeadsDb(c.env).prepare("INSERT INTO platform_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(value AS INTEGER) + ? AS TEXT)") // 🔢 2026-11-25 더하기는 DB 가(읽고-더해-쓰기는 동시 발송 때 한쪽 수가 사라졌다)
+      .bind(dayKey, String(sent), sent).run().catch(() => null)
   }
   const eligible = new Set(rows.map(r => r.id))
   return c.json({ success: true, sent, failed: failedIds, suppressed: suppressedIds,
@@ -575,13 +575,10 @@ app.post('/influencer-pool/mark-contacted', async (c) => {
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const ids = (Array.isArray(b.ids) ? (b.ids as unknown[]) : []).map(Number).filter((n) => Number.isFinite(n) && n > 0).slice(0, 500)
   if (!ids.length) return c.json({ success: false, error: '처리할 ID 를 넣어주세요' }, 400)
-  const ch = ['email', 'dm', 'note', 'kakao', 'call', 'other'].includes(String(b.channel || '')) ? String(b.channel) : 'email'
-  const ph = ids.map(() => '?').join(',')
-  const r = await adsLeadsDb(c.env).prepare(`UPDATE ad_influencer_leads
-      SET contacted_at = COALESCE(contacted_at, datetime('now')), contact_channel = COALESCE(contact_channel, ?),
-          status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END
-    WHERE account_id = ? AND id IN (${ph})`).bind(ch, POOL, ...ids).run().catch(() => null)
-  return c.json({ success: true, updated: r?.meta?.changes ?? 0, requested: ids.length })
+  // 🔁 2026-11-25: 같은 주소의 형제 행까지 · 40개씩 묶어서(`influencer-mark-contacted.ts` — 종전엔 ID 가 98개를 넘으면 0건이 됐다)
+  const updated = await markLeadsContacted(adsLeadsDb(c.env), POOL, ids, normalizeContactChannel(b.channel)).catch(() => null)
+  if (updated == null) return c.json({ success: false, error: '처리하지 못했어요. 잠시 뒤 다시 시도해 주세요' }, 500)
+  return c.json({ success: true, updated, requested: ids.length })
 })
 
 // GET /api/admin/ads/influencer-pool/export?format=xls|csv — 🎯 풀 전체 다운로드 (2026-07-20 대표 "엑셀 + 카테고리별 분리")

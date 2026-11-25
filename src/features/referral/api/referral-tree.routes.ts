@@ -16,6 +16,7 @@
  *   calculateMultiTierCommission(DB, orderId, orderAmount, buyerUserId)
  */
 
+import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-phone'
 import { Hono } from 'hono'
 import { requireAuth, requireUser, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
@@ -1099,8 +1100,7 @@ async function notifyCommissionWithdrawal(
       const row = await DB.prepare("SELECT phone FROM agencies WHERE id = ?").bind(beneficiaryId).first<{ phone: string }>().catch(() => null)
       phone = row?.phone || null
     } else if (beneficiaryType === 'seller') {
-      const row = await DB.prepare("SELECT phone FROM sellers WHERE id = ?").bind(beneficiaryId).first<{ phone: string }>().catch(() => null)
-      phone = row?.phone || null
+      phone = (await resolveSellerNotifyTarget(DB, beneficiaryId).catch(() => null))?.phone || null // 📱 2026-11-25 담당자 휴대폰 우선
     } else {
       const row = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(beneficiaryId).first<{ phone: string }>().catch(() => null)
       phone = row?.phone || null

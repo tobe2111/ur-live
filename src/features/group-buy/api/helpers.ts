@@ -266,6 +266,12 @@ export async function sendRefundAlimtalk(
   userId: string | null,
   productName: string,
   amount: number,
+  /**
+   * 🔁 2026-11-25: 이용권 번호 등 — 같은 사람에게 한 시간 안에 환불이 둘이면 둘째가 조용히 막혔다
+   *   (기본 중복 차단이 (번호, 템플릿) 1시간 1통). 건마다 다른 값을 넘기면 건마다 간다.
+   *   ⚠️ 이 문구는 "환불 완료" 다 — **돈이 실제로 돌아간 뒤에만** 부를 것(카드 취소가 대기·실패면 부르지 않는다).
+   */
+  dedupKey?: string,
 ): Promise<void> {
   try {
     if (!userId) return
@@ -273,7 +279,7 @@ export async function sendRefundAlimtalk(
     if (!user?.phone) return
     const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
     const msg = `[유어딜] 환불 완료 — ${productName}\n${amount.toLocaleString('ko-KR')}원이 환불 처리되었습니다.\n(딜 결제건은 즉시 잔액 반영, 카드 결제건은 영업일 기준 3~5일 소요)`
-    await sendSystemAlimtalk(env, user.phone, 'voucher_refunded', msg)
+    await sendSystemAlimtalk(env, user.phone, 'voucher_refunded', msg, dedupKey ? { dedupKey } : undefined)
   } catch { /* best-effort */ }
 }
 
