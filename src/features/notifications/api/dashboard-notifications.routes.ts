@@ -116,7 +116,7 @@ dashboardNotificationsRoutes.get('/', requireAuth(), async (c) => {
 
   if (recipientType === 'admin') {
     // Admins see notifications where recipient_type='admin' (recipient_id NULL = all admins)
-    whereClause = `recipient_type = 'admin' AND (recipient_id IS NULL OR recipient_id = ?)`;
+    whereClause = `recipient_type = 'admin' AND (recipient_id IS NULL OR recipient_id = ? OR recipient_id = 'all')`;
     params = [recipientId];
   } else if (recipientType === 'agency') {
     whereClause = `recipient_type = 'agency' AND recipient_id = ?`;
@@ -188,7 +188,7 @@ dashboardNotificationsRoutes.put('/read-all', requireAuth(), async (c) => {
     const systemIn = ADMIN_SYSTEM_TYPES.map((t) => `'${t}'`).join(',');
     const scope = g === 'system' ? ` AND type IN (${systemIn})` : g === 'business' ? ` AND type NOT IN (${systemIn})` : '';
     await DB.prepare(
-      `UPDATE dashboard_notifications SET is_read = 1 WHERE recipient_type = 'admin' AND (recipient_id IS NULL OR recipient_id = ?) AND is_read = 0${scope}`
+      `UPDATE dashboard_notifications SET is_read = 1 WHERE recipient_type = 'admin' AND (recipient_id IS NULL OR recipient_id = ? OR recipient_id = 'all') AND is_read = 0${scope}`
     ).bind(recipientId).run();
   } else if (recipientType === 'agency') {
     await DB.prepare(
@@ -217,7 +217,7 @@ dashboardNotificationsRoutes.put('/:id/read', requireAuth(), async (c) => {
   let whereClause: string;
   let params: unknown[];
   if (user.type === 'admin') {
-    whereClause = 'id = ? AND recipient_type = ? AND (recipient_id IS NULL OR recipient_id = ?)';
+    whereClause = "id = ? AND recipient_type = ? AND (recipient_id IS NULL OR recipient_id = ? OR recipient_id = 'all')";
     params = [id, 'admin', String(user.id)];
   } else if (user.type === 'seller') {
     whereClause = 'id = ? AND recipient_type = ? AND recipient_id = ?';

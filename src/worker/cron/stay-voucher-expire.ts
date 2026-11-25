@@ -80,9 +80,9 @@ export async function runVoucherExpireCron(env: Env): Promise<{ d30: number; d7:
           const message =
             `[유어딜] 숙소 이용권 유효기간 안내\n\n` +
             `${r.product_name} ${voucherTypeKr}이 ${daysLeft}일 후 만료됩니다.\n\n` +
-            `· voucher 코드: ${r.check_in_code || '-'}\n` +
+            `· 이용권 코드: ${r.check_in_code || '-'}\n` +
             `· 만료일: ${r.voucher_expires_at.slice(0, 10)}\n\n` +
-            `매장에 연락하여 사용 일정을 잡아주세요.`
+            `매장에 연락하여 사용 일정을 잡아주세요. 기간이 지나면 이용한 것으로 처리되어 환불되지 않습니다.`
 
           const sent = await sendTextNotice(env, phone, { tpl: templateCode, title: '유어딜 알림', text: message })
 

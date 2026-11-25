@@ -1,4 +1,4 @@
-import { logInfo, logError } from '../utils/logger'; import { swallow } from '../utils/swallow'
+import { logInfo, logError } from '../utils/logger'; import { swallow } from '../utils/swallow'; import { notifyAdminEvent } from '../utils/admin-event-notify'
 /**
  * Auto-Settlement Cron Handler
  *
@@ -509,10 +509,10 @@ export async function handleExpiredVoucherRefunds(env: Env) {
         try {
           await DB.prepare(`
             INSERT INTO notifications (user_id, user_type, type, title, message, created_at, is_read)
-            VALUES (?, 'user', 'refund', '바우처 만료 환불', ?, datetime('now'), 0)
+            VALUES (?, 'user', 'refund', '이용권 만료 환불', ?, datetime('now'), 0)
           `).bind(
             voucher.user_id,
-            `바우처가 만료되어 ${refundAmount.toLocaleString('ko-KR')}딜 포인트가 환불되었습니다 (${voucher.product_name})`
+            `이용권 유효기간이 지나 ${refundAmount.toLocaleString('ko-KR')}딜이 환불되었습니다 (${voucher.product_name})`
           ).run();
         } catch (e) {
           if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement notifications insert]', e);
@@ -543,15 +543,15 @@ export async function handleExpiredVoucherRefunds(env: Env) {
             try {
               await DB.prepare(`
                 INSERT INTO notifications (user_id, user_type, type, title, message, created_at, is_read)
-                VALUES (?, 'user', 'refund', '바우처 만료 환불', ?, datetime('now'), 0)
+                VALUES (?, 'user', 'refund', '이용권 만료 환불', ?, datetime('now'), 0)
               `).bind(
                 voucher.user_id,
-                `바우처가 만료되어 ${refundAmount.toLocaleString('ko-KR')}원이 환불 처리되었습니다 — 카드 환불은 영업일 기준 3~5일 소요 (${voucher.product_name})`
+                `이용권 유효기간이 지나 ${refundAmount.toLocaleString('ko-KR')}원을 환불했습니다 — 카드 환불은 영업일 기준 3~5일 소요 (${voucher.product_name})`
               ).run();
             } catch (e) { if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement toss notif]', e); }
           } else {
             outcome = 'failed';
-            logError('[Cron] expired voucher toss refund failed', { voucher_id: voucher.id, error_code: result.error_code });
+            logError('[Cron] expired voucher toss refund failed', { voucher_id: voucher.id, error_code: result.error_code }); await notifyAdminEvent(DB, { type: 'refund_failed', title: '만료 환불 실패 — 손으로 환불해야 해요', message: `이용권 #${voucher.id} · ${refundAmount.toLocaleString('ko-KR')}원 · ${String(result.error_code || '').slice(0, 40)}`, link: '/admin/vouchers' }) // 🔔 2026-11-25 종전엔 로그 한 줄뿐이라 손님도 어드민도 몰랐다
           }
         } catch (e) {
           outcome = 'failed';

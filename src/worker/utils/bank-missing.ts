@@ -37,7 +37,7 @@ const won = (n: number) => `${Math.floor(n).toLocaleString('ko-KR')}원`
 export function bankNudgeMessage(r: BankMissingRow): { title: string; message: string } {
   return r.waiting > 0
     ? { title: `🏦 정산 ${won(r.waiting)}이 계좌를 기다리고 있어요`, message: '정산받을 계좌를 등록하면 다음 정산일에 보내 드려요. 마이 › 정산 › 계좌 등록' }
-    : { title: '🏦 정산받을 계좌를 등록해 주세요', message: '이용권이 팔리고 사용되면 매주 자동으로 정산돼요. 계좌가 있어야 보낼 수 있어요. 마이 › 정산 › 계좌 등록' }
+    : { title: '🏦 정산받을 계좌를 등록해 주세요', message: '이용권이 사용되면 정산 대상이 돼요. 계좌가 있어야 보낼 수 있어요. 마이 › 정산 › 계좌 등록' }
 }
 
 /** 대표 아침 요약 줄 — 없으면 빈 배열(조용히). */

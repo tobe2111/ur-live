@@ -10,6 +10,7 @@
  *   GET    /api/admin/payouts — 목록 조회 (status 필터)
  */
 import { Hono } from 'hono'
+import { notifyPayoutSent } from '../../../worker/utils/payout-sent-notify'
 import { safeError } from '@/worker/utils/safe-error'
 import { logError } from '@/worker/utils/logger'
 import { requireAdmin, requireAdminRole } from '../../../worker/middleware/auth'
@@ -211,30 +212,8 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdminRole('finance'),
   }
   const row = sent.row!
 
-  // 🛡️ 2026-05-21 Phase D-3: 송금 완료 자동 알림톡 (waitUntil 비동기).
-  //   수령자 type 별 phone 조회 → template 'payout_completed' 발송.
-  //   env 미설정 시 silent skip.
-  c.executionCtx?.waitUntil((async () => {
-    try {
-      let phone: string | null = null
-      let name: string | null = null
-      if (row.payee_type === 'agency') {
-        const r = await DB.prepare("SELECT phone, name FROM agencies WHERE id = ?").bind(row.payee_id).first<{ phone: string | null; name: string | null }>().catch(() => null)
-        phone = r?.phone || null; name = r?.name || null
-      } else if (row.payee_type === 'seller' || row.payee_type === 'store_owner') {
-        const r = await DB.prepare("SELECT phone, business_name FROM sellers WHERE id = ?").bind(row.payee_id).first<{ phone: string | null; business_name: string | null }>().catch(() => null)
-        phone = r?.phone || null; name = r?.business_name || null
-      } else if (row.payee_type === 'user') {
-        const r = await DB.prepare("SELECT phone, name FROM users WHERE id = ?").bind(row.payee_id).first<{ phone: string | null; name: string | null }>().catch(() => null)
-        phone = r?.phone || null; name = r?.name || null
-      }
-      if (!phone) return
-      const masked = row.account_number && row.account_number.length >= 4 ? `****${row.account_number.slice(-4)}` : (row.account_number || '')
-      const message = `[유어딜] 정산 송금 완료\n${name || ''} 님 ${row.amount.toLocaleString('ko-KR')}원이 ${row.bank_name || ''} ${masked} 계좌로 입금되었습니다.\nTX: ${txId}`
-      const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
-      await sendSystemAlimtalk(c.env as unknown as Record<string, unknown>, phone, 'payout_completed', message)
-    } catch (e) { if (import.meta.env?.DEV) console.warn('[payout sent alimtalk]', e) }
-  })())
+  // 📣 송금 완료 알림 — 건별·일괄이 같은 길(`payout-sent-notify.ts`: 담당자 휴대폰 알림톡 + 사장님 알림함). 실패해도 마감을 막지 않는다.
+  c.executionCtx?.waitUntil(notifyPayoutSent(c.env as unknown as Record<string, unknown>, DB, row, txId).then(() => undefined))
 
   return c.json({ success: true })
 })
@@ -319,6 +298,8 @@ adminPayoutsRoutes.patch('/admin/payouts/bulk-sent', requireAdminRole('finance')
   for (const id of ids) results.push(await markPayoutSent(DB, id, txId, body.admin_memo || null))
 
   const ok = results.filter((r) => r.ok)
+  // 📣 2026-11-25 일괄 완료도 건마다 알린다(종전: 아무에게도 안 알렸다).
+  c.executionCtx?.waitUntil(Promise.all(ok.filter((r) => r.row).map((r) => notifyPayoutSent(c.env as unknown as Record<string, unknown>, DB, r.row!, txId))).then(() => undefined))
   const failed = results.filter((r) => !r.ok).map(({ id, code, error }) => ({ id, code, error }))
   return c.json({
     success: true,
