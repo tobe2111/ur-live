@@ -84,7 +84,7 @@ export const PARTNER_FACTS = {
   /** 📞 연락 (기획 §7-6 확정) */
   contactEmail: 'jiwon@ur-team.com',
   kakaoChannel: 'http://pf.kakao.com/_AITdn/chat',
-  biz: '리스터코퍼레이션 · 사업자등록번호 479-09-02930',
+  biz: '유어팀 · 사업자등록번호 479-09-02930',
 } as const
 
 /** 수수료율을 숫자로 — 계산기가 문자열을 파싱하지 않게. `feeDirect` 와 갈리면 테스트가 잡는다. */

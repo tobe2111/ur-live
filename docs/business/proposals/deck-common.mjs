@@ -51,7 +51,7 @@ export const FACTS = {
   brokerShareMax: '50%', brokerTermsSumMax: '90%',
   influencerPayoutMin: '10만원', influencerPayoutDay: '매월 10일', clawbackWindow: '7일', // 📅 2026-11-03 대표 확정 "10일로 할까? 에이전시도 같은 날로" (결재 2026-11-03-settlement-structure)
   storePayoutDay: '매주 목요일', storePayoutRange: '월~일 사용분',
-  contactEmail: 'jiwon@ur-team.com', kakaoChannel: 'pf.kakao.com/_AITdn', site: 'urdeal.kr', biz: '리스터코퍼레이션 · 사업자등록번호 479-09-02930',
+  contactEmail: 'jiwon@ur-team.com', kakaoChannel: 'pf.kakao.com/_AITdn', site: 'urdeal.kr', biz: '유어팀 · 사업자등록번호 479-09-02930',
   ...LIVE,
 };
 
@@ -107,7 +107,7 @@ export async function roundedImage(file, radiusPx = 28) {
 export async function createDeck({ title, footer, shotsDir, shotKeys = [], phoneStyle = process.env.PHONE_STYLE || 'minimal', icons = [] }) {
   const pres = new pptxgen();
   pres.layout = 'LAYOUT_WIDE';
-  pres.author = '리스터코퍼레이션';
+  pres.author = '유어팀';
   pres.title = title;
 
   const wmDark = await wordmark(C.ink);

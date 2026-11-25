@@ -77,7 +77,7 @@ function buildOutreachHtml(p: {
     </div>
     <p style="font-size:11px;color:#aaa;margin:20px 4px 0;line-height:1.6">
       본 메일은 공개된 채널 정보를 바탕으로 비즈니스 협업을 제안드리기 위해 발송되었습니다.<br/>
-      발신: 유어딜(리스터코퍼레이션) · <a href="https://urdeal.kr/about" style="color:#aaa">urdeal.kr</a><br/>
+      발신: 유어딜(유어팀) · <a href="https://urdeal.kr/about" style="color:#aaa">urdeal.kr</a><br/>
       더 이상 제안을 받고 싶지 않으시면 <a href="${p.unsubUrl}" style="color:#888;text-decoration:underline">수신거부</a>를 눌러주세요. 즉시 처리되며 다시 보내지 않습니다.
     </p>
   </div></body></html>`

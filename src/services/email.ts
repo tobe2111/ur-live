@@ -72,7 +72,7 @@ export async function sendEmail(
   db?: D1Database
 ): Promise<{ success: boolean; error?: string }> {
   // Priority: 1) params.from, 2) defaultFrom (env var), 3) fallback
-  const fromAddress = params.from || defaultFrom || '리스터코퍼레이션 <onboarding@resend.dev>'
+  const fromAddress = params.from || defaultFrom || '유어팀 <onboarding@resend.dev>'
   const { to, subject, html } = params
 
   // ✉️ 거래성 메일만 SENS — 커스텀 헤더(List-Unsubscribe = 대량·홍보)나 회신 주소가 붙은 메일은 Resend 로 둔다
@@ -193,7 +193,7 @@ export function getSellerApprovalEmailHTML(sellerName: string, sellerUsername: s
               </p>
               
               <p style="margin: 0 0 20px; color: #1d1d1f; font-size: 16px; line-height: 1.6;">
-                <strong>리스터코퍼레이션</strong> 판매자로 승인되셨습니다! 🎊
+                <strong>유어팀</strong> 판매자로 승인되셨습니다! 🎊
               </p>
               
               <div style="background-color: #f9f9f9; border-left: 4px solid #d1d5db; padding: 20px; margin: 30px 0; border-radius: 8px;">
@@ -230,10 +230,10 @@ export function getSellerApprovalEmailHTML(sellerName: string, sellerUsername: s
           <tr>
             <td style="background-color: #f9f9f9; padding: 30px; text-align: center; border-top: 1px solid #e5e5e5;">
               <p style="margin: 0 0 10px; color: #666; font-size: 14px;">
-                <strong>리스터코퍼레이션</strong> | 라이브 커머스 플랫폼
+                <strong>유어팀</strong> | 라이브 커머스 플랫폼
               </p>
               <p style="margin: 0; color: #999; font-size: 12px;">
-                © 2026 리스터코퍼레이션. All rights reserved.
+                © 2026 유어팀. All rights reserved.
               </p>
             </td>
           </tr>
@@ -278,7 +278,7 @@ export function getSellerRejectionEmailHTML(sellerName: string, reason: string):
               </p>
               
               <p style="margin: 0 0 20px; color: #1d1d1f; font-size: 16px; line-height: 1.6;">
-                죄송하게도 현재 리스터코퍼레이션 판매자 승인이 보류되었습니다.
+                죄송하게도 현재 유어팀 판매자 승인이 보류되었습니다.
               </p>
               
               <div style="background-color: #fff3cd; border-left: 4px solid #d1d5db; padding: 20px; margin: 30px 0; border-radius: 8px;">
@@ -305,10 +305,10 @@ export function getSellerRejectionEmailHTML(sellerName: string, reason: string):
           <tr>
             <td style="background-color: #f9f9f9; padding: 30px; text-align: center; border-top: 1px solid #e5e5e5;">
               <p style="margin: 0 0 10px; color: #666; font-size: 14px;">
-                <strong>리스터코퍼레이션</strong> | 라이브 커머스 플랫폼
+                <strong>유어팀</strong> | 라이브 커머스 플랫폼
               </p>
               <p style="margin: 0; color: #999; font-size: 12px;">
-                © 2026 리스터코퍼레이션. All rights reserved.
+                © 2026 유어팀. All rights reserved.
               </p>
             </td>
           </tr>

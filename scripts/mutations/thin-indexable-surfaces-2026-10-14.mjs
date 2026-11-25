@@ -90,10 +90,10 @@ export default [
   {
     name: '🔥 /gdpr 본문에 낡은 법정 문구(Firebase)를 승격한다',
     file: COPY,
-    find: "      'Lister Corporation (\"YourDeal\") is the data controller for personal data processed through urdeal.kr.',",
+    find: "      'UrTeam (\"YourDeal\") is the data controller for personal data processed through urdeal.kr.',",
     replace:
       "      'Data is processed on Cloudflare (global edge network) and Firebase (Google Cloud). Both providers maintain adequate safeguards for international data transfers.',\n" +
-      "      'Lister Corporation (\"YourDeal\") is the data controller for personal data processed through urdeal.kr.',",
+      "      'UrTeam (\"YourDeal\") is the data controller for personal data processed through urdeal.kr.',",
     test: TEST,
     why:
       'Firebase 클라이언트는 2026-08-04 에 **전면 삭제**됐다(#804). 낡았을 수 있는 **법정 문구**를 ' +

@@ -53,7 +53,7 @@ export const BRAND_JSONLD = {
         addressRegion: '부산광역시',
         addressCountry: 'KR',
       },
-      parentOrganization: { '@type': 'Organization', name: '리스터코퍼레이션' },
+      parentOrganization: { '@type': 'Organization', name: '유어팀' },
     },
     {
       '@type': 'WebSite',

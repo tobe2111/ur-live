@@ -774,7 +774,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     });
     hr(s, px + 0.35, py + 3.56, pw - 0.7, { dark: true });
     T(s, '후보 매장 몇 곳의 이름과 동네만 보내 주세요. 하루 안에 확인해 첫 방문 일정을 잡습니다.', { x: px + 0.35, y: py + 3.6, w: pw - 0.7, h: 0.26, fontSize: 9.5, color: C.darkText });
-    const contact = [['FiMessageW', FACTS.kakaoChannel + '  카카오톡 채널'], ['FiMailW', FACTS.contactEmail], ['FiGlobeW', 'urdeal.kr'], ['FiFileTextW', '리스터코퍼레이션, 사업자등록번호 479-09-02930']];
+    const contact = [['FiMessageW', FACTS.kakaoChannel + '  카카오톡 채널'], ['FiMailW', FACTS.contactEmail], ['FiGlobeW', 'urdeal.kr'], ['FiFileTextW', '유어팀, 사업자등록번호 479-09-02930']];
     contact.forEach(([i, t], k) => {
       s.addImage({ data: ic[i], x: px + 0.35, y: py + 3.9 + k * 0.18, w: 0.15, h: 0.15 });
       T(s, t, { x: px + 0.62, y: py + 3.84 + k * 0.18, w: pw - 1.0, h: 0.27, fontSize: k === 3 ? 8.5 : 10.5, bold: k < 3, color: C.darkText, valign: 'middle' });

@@ -220,7 +220,7 @@ export const SURFACE_COPY: Readonly<Record<string, SurfaceCopy>> = {
         h1 을 이미 낸다(같은 말을 두 번 하지 않는다 — 2026-10-12 숙소 상세와 같은 규율). */
   '/gdpr': {
     lines: [
-      'Lister Corporation ("YourDeal") is the data controller for personal data processed through urdeal.kr.',
+      'UrTeam ("YourDeal") is the data controller for personal data processed through urdeal.kr.',
       'We retain personal data for as long as your account is active. Order data is kept for 5 years for tax compliance. You can delete your account at any time.',
       'We use essential cookies for authentication and session management. No third-party tracking cookies are used without consent.',
     ],
