@@ -39,3 +39,10 @@
 - `shared/store-payout-min.ts` — 어드민 `payout_min_krw`(기본 1만 원) · 그달 마지막 목요일 회차는 1원 이상이면 정산. `payouts-generate` 가 사용.
 - 사장님 정산 화면 · FAQ(`minPayoutRule`) · 가이드 v83 · 머니 스위치 칸. 결재 `docs/decisions/2026-11-25-payout-min-monthend.md`.
 - 세금계산서를 "정산한 달에만" 발행하는 안은 대표가 괜찮다고 했지만 공급시기 문제로 세무사 확인 대기(코드는 사용월 기준 유지).
+
+## 4단계 — 볼타 연동 (대표 *"일단 볼타 서비스를 쓸까 해"*)
+- `worker/utils/bolta-invoice.ts` — `POST https://xapi.bolta.io/v1/taxInvoices/issue`, Basic(키:), `Bolta-Client-Reference-Id = urdeal-fee-{seller}-{period}`, 영수·과세. 응답 `issuanceKey` → 상태 `requested`.
+- 키: env `BOLTA_API_KEY` 우선, 없으면 `platform_settings.bolta_api_key`(어드민 설정 연동 자격 칸). 자동 발행 스위치 `fee_invoice_auto_send`(기본 false).
+- 어드민 카드 [볼타로 발행] · 실패 사유 표시. 시험 `fee-tax-invoice-2026-11-25.test.ts` ⑤.
+- ⚠️ **docs.bolta.io 는 이 작업 환경 프록시가 막아 원문을 못 읽었다**(검색 요약으로 확인). supplier/supplied 안의 상호·대표자·담당자 필드 이름은 추정 — 대표가 **테스트 키(test_)** 를 넣고 [볼타로 발행] 한 번 → 실패 사유가 카드에 뜨면 `boltaIssueBody` 만 고친다.
+- 아직 없는 것: 국세청 결과 웹훅/조회(지금은 접수까지 → [발행 완료] 수동).

@@ -1011,3 +1011,11 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 - [ ] 첫 실제 환불(셀프 취소 또는 만료) 뒤 `ledger_entries` 에 `voucher_refund` 가 `platform:escrow → user:N` 으로 적혔는가
 - [ ] 제한 역할(cs·viewer) 계정을 처음 만들 때: viewer 로 분쟁 승인 403 · cs 로 통과
 
+
+## 🧾 S-BOLTA — 매장 수수료 세금계산서 볼타 정발행 (2026-11-25)
+
+**S-BOLTA** — 결재 `docs/decisions/2026-11-25-fee-vat-exclusive.md`(대표 *"일단 볼타 서비스를 쓸까 해"*). 게이트 `fee_invoice_auto_send`(기본 false).
+1. 볼타 가입 · 유어딜 공동인증서 등록(대표) · 어드민 설정 연동 자격 칸에 **테스트 키(test_)** 입력
+2. `/admin/payouts` 연말 리포트 → 수수료 세금계산서 카드 → [초안 다시 만들기] → [볼타로 발행] — 실패 사유가 뜨면 `worker/utils/bolta-invoice.ts` `boltaIssueBody` 필드 이름 수정
+3. 성공(볼타 접수, 테스트 키 표시) 확인 → 운영 키로 교체 → 1장 실제 발행 → 홈택스·매장 이메일에서 세금계산서 확인 → [발행 완료]
+4. 그 뒤 `fee_invoice_auto_send = true` — 다음 달 1일 요약 알림에 "볼타 자동 발행 N장"

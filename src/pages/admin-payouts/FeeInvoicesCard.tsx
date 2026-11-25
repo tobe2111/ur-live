@@ -11,7 +11,7 @@ import { toast } from '@/hooks/useToast'
 import { promptDialog } from '@/components/ui/confirm-dialog'
 import { formatNumber } from '@/utils/format'
 
-interface Row { id: number; seller_id: number; buyer_name: string | null; buyer_biz_no: string | null; supply_amount: number; vat_amount: number; status: string; nts_confirm_num: string | null }
+interface Row { id: number; seller_id: number; buyer_name: string | null; buyer_biz_no: string | null; supply_amount: number; vat_amount: number; status: string; nts_confirm_num: string | null; last_error?: string | null }
 interface Data { period: string; dueDate: string; invoices: Row[]; totals: { count: number; issued: number; supply: number; vat: number } }
 
 const lastMonth = () => {
@@ -66,6 +66,19 @@ export default function FeeInvoicesCard() {
     } finally { setBusy(false) }
   }
 
+  async function sendBolta() {
+    setBusy(true)
+    try {
+      const res = await fetch('/api/admin/tax/fee-invoices/send-bolta', { method: 'POST', headers: { ...auth(), 'Content-Type': 'application/json' }, body: JSON.stringify({ period }) })
+      const j = await readJson(res)
+      if (!j?.success) { toast.error(j?.error || '볼타 발행 요청에 실패했어요'); return }
+      const d = j.data as { requested: number; failed: number; test: boolean; errors: Array<{ error: string }> }
+      if (d.failed > 0) toast.error(`접수 ${d.requested}장 · 실패 ${d.failed}장 — ${d.errors[0]?.error || ''}`)
+      else toast.success(`볼타 접수 ${d.requested}장${d.test ? ' (테스트 키 — 실제 발행 아님)' : ''}`)
+      await load()
+    } finally { setBusy(false) }
+  }
+
   async function markIssued(r: Row) {
     const num = await promptDialog({
       title: '발행 완료 기록',
@@ -86,13 +99,14 @@ export default function FeeInvoicesCard() {
       <h2 className="text-sm font-bold text-gray-900 mb-2">매장 수수료 세금계산서 (정발행)</h2>
       <p className="text-xs text-gray-500 mb-4 leading-relaxed">
         • 매월 1일 지난달 이용권 사용분 수수료로 매장별 초안이 자동으로 만들어집니다(작성일 = 말일)<br />
-        • 발행 기한은 다음 달 10일 — 지금은 CSV 를 받아 홈택스에서 발행한 뒤 [발행 완료]를 누릅니다<br />
+        • 발행 기한은 다음 달 10일 — [볼타로 발행](키가 있을 때) 또는 CSV 로 홈택스에서 발행한 뒤 [발행 완료]<br />
         • 매장 승인은 필요 없습니다(정발행)
       </p>
       <div className="flex flex-wrap gap-2 mb-3">
         <input type="month" value={period} onChange={e => setPeriod(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
         <button type="button" disabled={busy} onClick={() => { void build() }} className="ur-btn ur-btn-sm rounded-lg px-4 text-xs border border-gray-200 text-gray-700 disabled:opacity-40">초안 다시 만들기</button>
-        <button type="button" onClick={() => { void download(`/api/admin/tax/fee-invoices/csv?period=${period}`, `urdeal-fee-invoices-${period}.csv`) }} className="ur-btn ur-btn-sm ur-btn-primary rounded-lg px-4 text-xs">홈택스용 CSV</button>
+        <button type="button" onClick={() => { void download(`/api/admin/tax/fee-invoices/csv?period=${period}`, `urdeal-fee-invoices-${period}.csv`) }} className="ur-btn ur-btn-sm rounded-lg px-4 text-xs border border-gray-200 text-gray-700">홈택스용 CSV</button>
+        <button type="button" disabled={busy} onClick={() => { void sendBolta() }} className="ur-btn ur-btn-sm ur-btn-primary rounded-lg px-4 text-xs disabled:opacity-40">볼타로 발행</button>
       </div>
       {data && (
         <>
@@ -107,6 +121,8 @@ export default function FeeInvoicesCard() {
                 <li key={r.id} className="flex items-center gap-3 py-2">
                   <span className="flex-1 text-gray-900">{r.buyer_name || `매장 #${r.seller_id}`} <span className="text-gray-400">{r.buyer_biz_no || '사업자번호 없음'}</span></span>
                   <span className="tabular-nums text-gray-700">{formatNumber(r.supply_amount)} + {formatNumber(r.vat_amount)}원</span>
+                  {r.status === 'requested' && <span className="text-gray-500">볼타 접수 — 국세청 결과 대기</span>}
+                  {r.status === 'draft' && r.last_error && <span className="max-w-[12rem] truncate text-red-600" title={r.last_error}>실패: {r.last_error}</span>}
                   {r.status === 'issued'
                     ? <span className="text-gray-400">발행 완료{r.nts_confirm_num ? ` · ${r.nts_confirm_num}` : ''}</span>
                     : <button type="button" onClick={() => { void markIssued(r) }} className="ur-btn ur-btn-sm rounded-lg px-3 text-xs border border-gray-200 text-gray-700">발행 완료</button>}

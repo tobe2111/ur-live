@@ -108,7 +108,7 @@ const won = (n: number) => `${Math.round(Number(n) || 0).toLocaleString('ko-KR')
 /** 순수 — 월 마감 알림 한 장. 원천세 신고·납부 기한(다음 달 10일)을 같이 적는다. */
 export interface MonthlyCloseExtras {
   /** 🧾 수수료 세금계산서 초안(정발행 — `fee-tax-invoice.ts`). */
-  feeInvoices?: { drafts: number; missingBizNo: number }
+  feeInvoices?: { drafts: number; missingBizNo: number; autoSent?: number; autoFailed?: number }
   /** 분기 첫 달이면 지난 분기 판매대행 명세 제출 기한(YYYY-MM-DD). */
   salesAgencyDue?: string | null
 }
@@ -127,7 +127,10 @@ export function monthlyCloseMessage(a: MonthlyAccounting, unsent: { n: number; t
   ]
   if ((a.feeVat ?? 0) > 0) parts.push(`수수료 부가세(예수금) ${won(a.feeVat ?? 0)} — 부가세 신고 때 납부`)
   if (extras.feeInvoices && extras.feeInvoices.drafts > 0) {
-    parts.push(`매장 수수료 세금계산서 ${extras.feeInvoices.drafts}장 준비됨 — ${dueLabel}까지 발행${extras.feeInvoices.missingBizNo > 0 ? `(⚠️ 사업자번호 없는 매장 ${extras.feeInvoices.missingBizNo}곳)` : ''}`)
+    const fi = extras.feeInvoices
+    parts.push(fi.autoSent !== undefined
+      ? `매장 수수료 세금계산서 ${fi.drafts}장 중 볼타 자동 발행 ${fi.autoSent}장${fi.autoFailed ? ` · ⚠️ 실패 ${fi.autoFailed}장(${dueLabel}까지 처리)` : ''}`
+      : `매장 수수료 세금계산서 ${fi.drafts}장 준비됨 — ${dueLabel}까지 발행${fi.missingBizNo > 0 ? `(⚠️ 사업자번호 없는 매장 ${fi.missingBizNo}곳)` : ''}`)
   }
   if (extras.salesAgencyDue) {
     const [, dm, dd] = extras.salesAgencyDue.split('-').map(Number)
@@ -142,7 +145,7 @@ export function monthlyCloseMessage(a: MonthlyAccounting, unsent: { n: number; t
  * 숫자는 세무사용 CSV 와 같은 `computeMonthlyAccounting`. 같은 달 두 번 보내지 않는다(UNIQUE + INSERT OR IGNORE).
  * 돈을 옮기지 않는다 — 읽고 알리기만.
  */
-export async function sendMonthlyCloseSummary(DB: D1Database, nowMs: number = Date.now()): Promise<{ sent: boolean; month: string }> {
+export async function sendMonthlyCloseSummary(DB: D1Database, nowMs: number = Date.now(), env?: { BOLTA_API_KEY?: string }): Promise<{ sent: boolean; month: string }> {
   const month = previousKstMonthKey(nowMs)
   await DB.prepare(`CREATE TABLE IF NOT EXISTS monthly_close_reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -165,6 +168,18 @@ export async function sendMonthlyCloseSummary(DB: D1Database, nowMs: number = Da
     const { buildFeeInvoiceDrafts } = await import('./fee-tax-invoice')
     const r = await buildFeeInvoiceDrafts(DB, month)
     extras.feeInvoices = { drafts: r.drafts, missingBizNo: r.missingBizNo }
+    // 🧾 볼타 자동 발행 — 키가 있고 `fee_invoice_auto_send = 'true'` 일 때만(기본 꺼짐). 실패분은 초안으로 남는다.
+    const auto = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'fee_invoice_auto_send' LIMIT 1").first<{ value: string }>().catch(() => null)
+    if (auto?.value === 'true') {
+      const { resolveBoltaKey } = await import('./bolta-invoice')
+      const key = await resolveBoltaKey(DB, env)
+      if (key) {
+        const { sendFeeInvoicesViaBolta } = await import('./fee-tax-invoice')
+        const s = await sendFeeInvoicesViaBolta(DB, key, month)
+        extras.feeInvoices.autoSent = s.requested
+        extras.feeInvoices.autoFailed = s.failed
+      }
+    }
   } catch (e) { console.error('[monthly-close] fee invoice drafts failed', e) }
   const thisMonth = new Date(nowMs + 9 * 3600_000).getUTCMonth() + 1
   if ([1, 4, 7, 10].includes(thisMonth)) {

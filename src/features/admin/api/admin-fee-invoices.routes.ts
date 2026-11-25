@@ -7,6 +7,7 @@
  *   GET  /api/admin/tax/fee-invoices/csv?period=YYYY-MM    홈택스 수기 발행용 CSV
  *   POST /api/admin/tax/fee-invoices/:id/issued {nts_confirm_num?}  홈택스에서 발행한 뒤 "발행 완료"
  *   GET  /api/admin/tax/sales-agency-report?quarter=YYYY-Qn  분기 판매·결제대행 명세 집계 CSV
+ *   POST /api/admin/tax/fee-invoices/send-bolta {period, ids?}  볼타로 발행 요청(초안만, 키 없으면 409)
  * 돈을 옮기지 않는다(서류·집계만).
  */
 import type { Hono } from 'hono'
@@ -18,6 +19,8 @@ import {
   buildFeeInvoiceDrafts, listFeeInvoices, markFeeInvoiceIssued, feeInvoicesCsv, previousKstPeriod, invoiceDates,
 } from '../../../worker/utils/fee-tax-invoice'
 import { computeSalesAgencyReport, salesAgencyCsv, previousKstQuarter } from '../../../worker/utils/sales-agency-report'
+import { resolveBoltaKey } from '../../../worker/utils/bolta-invoice'
+import { sendFeeInvoicesViaBolta } from '../../../worker/utils/fee-tax-invoice'
 
 const periodOf = (raw: unknown) => {
   const p = String(raw ?? '').trim()
@@ -77,6 +80,19 @@ export function registerFeeInvoiceRoutes(app: Hono<{ Bindings: Env }, any, any>)
       return c.json({ success: true })
     } catch (err) {
       return safeError(c, err, '발행 완료 처리에 실패했습니다', '[fee-invoices]')
+    }
+  })
+
+  app.post('/admin/tax/fee-invoices/send-bolta', requireAdminRole('finance'), auditLog('tax.fee_invoices_send_bolta'), async (c) => {
+    try {
+      const body = await c.req.json().catch(() => ({})) as { period?: string; ids?: unknown }
+      const key = await resolveBoltaKey(c.env.DB, c.env as unknown as { BOLTA_API_KEY?: string })
+      if (!key) return c.json({ success: false, code: 'BOLTA_NOT_CONFIGURED', error: '볼타 API 키가 없습니다. 어드민 설정에 넣어 주세요' }, 409)
+      const ids = Array.isArray(body.ids) ? body.ids.map(Number).filter((n) => Number.isInteger(n) && n > 0) : undefined
+      const r = await sendFeeInvoicesViaBolta(c.env.DB, key, periodOf(body.period), ids)
+      return c.json({ success: true, data: { ...r, test: key.startsWith('test_') } })
+    } catch (err) {
+      return safeError(c, err, '볼타 발행 요청에 실패했습니다', '[fee-invoices]')
     }
   })
 

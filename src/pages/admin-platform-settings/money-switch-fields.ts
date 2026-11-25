@@ -129,6 +129,12 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     key: 'payout_auto_approve_max_krw', label: '정산 소액 자동 승인 상한 (원)', default: '0',
     hint: '0 = 꺼짐(전부 사람이 승인). 값을 넣으면 그 금액 이하 주간 정산 건이 생성 직후 자동 승인된다 — 계좌 재확인·받을 돈 초과 검사는 단건 승인과 같다(막힌 건은 사람 칸에 남음). 승인 ≠ 송금: 송금은 이체 파일로 그대로',
   },
+  // 🧾 2026-11-25 대표 *"일단 볼타 서비스를 쓸까 해"* — 매월 1일 수수료 세금계산서 초안을 볼타로 자동 발행.
+  {
+    key: 'fee_invoice_auto_send', label: '수수료 세금계산서 볼타 자동 발행', default: 'false',
+    options: [{ value: 'false', label: 'OFF (어드민에서 [볼타로 발행] 또는 홈택스 수기)' }, { value: 'true', label: 'ON — 매월 1일 초안을 볼타로 바로 발행' }],
+    hint: '볼타 API 키(아래 자격 칸)가 있어야 동작. 실패한 장은 초안으로 남고 요약 알림에 뜬다. 켜기 전에 테스트 키로 한 장 보내 필드를 확인할 것',
+  },
   // 💰 2026-11-25 대표 *"고치면 좋은 점 두가지도 해줘"* — 주간 정산 최소 금액(미만은 이월, 그달 마지막 목요일엔 금액 무관).
   {
     key: 'payout_min_krw', label: '주간 정산 최소 금액 (원)', default: '10000',

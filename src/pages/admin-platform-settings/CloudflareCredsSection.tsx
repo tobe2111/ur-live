@@ -26,11 +26,13 @@ export default function CloudflareCredsSection({ settings, setSettings, savedTic
     //   화면 안내가 좁아서 좁게 만들어진 토큰이 3주간 백업을 죽인 적이 있다.
     { key: 'cf_api_token', label: 'Cloudflare API 토큰', hint: 'My Profile → API Tokens → Custom Token · 만료일은 비워 두세요(무기한). 권한: Account → D1 / Workers Scripts / Workers KV / Workers R2 / Pages = Edit · Account Settings = Read · User → API Tokens · User Details = Read. 값은 생성 화면에서 한 번만 보입니다.' },
     { key: 'cf_account_id', label: 'Cloudflare 계정 ID', hint: '대시보드 우측 사이드바에 표시됩니다.' },
+    // 🧾 2026-11-25 대표 "볼타 서비스를 쓸까 해" — 매장 수수료 세금계산서 정발행. test_ 로 시작하는 키는 가상 발행.
+    { key: 'bolta_api_key', label: '볼타 API 키 (세금계산서 발행)', hint: '볼타 개발자센터 → API 키. test_ 로 시작하는 테스트 키는 실제로 발행되지 않습니다(필드 확인용). 정발행 전에 볼타에서 유어딜 공동인증서를 등록하세요.' },
   ]
   return (
     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mt-6">
       <div className="px-5 py-4 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-gray-900">☁️ Cloudflare 진단 자격 (선택)</h2>
+        <h2 className="text-sm font-semibold text-gray-900">☁️ 연동 자격 — Cloudflare 진단 · 볼타 세금계산서 (선택)</h2>
         <p className="text-xs text-gray-400 mt-0.5">라이브 인프라 조회용. 없어도 서비스는 정상 동작합니다.</p>
       </div>
       <div className="divide-y divide-gray-100">

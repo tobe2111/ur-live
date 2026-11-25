@@ -83,7 +83,7 @@ describe('③ 월 회계 마감 요약', () => {
     expect(util).toMatch(/INSERT OR IGNORE INTO monthly_close_reports/)
     const cron = read('src/worker/cron/influencer-payout.ts')
     expect(cron).toMatch(/getUTCDate\(\) === 1\)/)
-    expect(cron).toMatch(/sendMonthlyCloseSummary\(DB\)/)
+    expect(cron).toMatch(/sendMonthlyCloseSummary\(DB, Date\.now\(\), env/)
   })
 })
 

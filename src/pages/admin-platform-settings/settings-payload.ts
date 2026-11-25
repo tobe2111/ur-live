@@ -5,7 +5,7 @@
  */
 
 /** ☁️ 자격 키 — 빈 값이면 저장 페이로드에서 제외한다(아래 save 참조). 섹션과 공유. */
-export const CREDENTIAL_KEYS = ['cf_api_token', 'cf_account_id'] as const
+export const CREDENTIAL_KEYS = ['cf_api_token', 'cf_account_id', 'bolta_api_key'] as const // 🧾 2026-11-25 볼타(세금계산서) 키
 
 /**
  * 🩸 **바뀐 키만 골라낸다** (2026-08-25 — 이 페이지가 8월 내내 아무것도 저장 못 하던 원인).
@@ -35,7 +35,7 @@ export function buildSettingsPayload(
     // 빈 값 = '교체' 를 눌러 칸만 열어 둔 상태. 보내면 저장돼 있던 토큰이 **지워진다**.
     if (!v || base[k] === v) continue
     payload[k] = v
-    creds.push(k === 'cf_api_token' ? 'API 토큰' : '계정 ID')
+    creds.push(k === 'cf_api_token' ? 'API 토큰' : k === 'bolta_api_key' ? '볼타 API 키' : '계정 ID')
   }
   return { payload, creds }
 }

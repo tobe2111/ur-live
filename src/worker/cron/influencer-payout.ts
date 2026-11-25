@@ -97,7 +97,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
     if (new Date(Date.now() + 9 * 3600_000).getUTCDate() === 1) {
       try {
         const { sendMonthlyCloseSummary } = await import('../utils/monthly-accounting')
-        const r = await sendMonthlyCloseSummary(DB)
+        const r = await sendMonthlyCloseSummary(DB, Date.now(), env as unknown as { BOLTA_API_KEY?: string })
         logInfo(`[cron:influencer-payout] monthly_close month=${r.month} sent=${r.sent}`)
       } catch (e) {
         logError('[cron:influencer-payout] monthly close failed', { error: String(e) })

@@ -105,10 +105,16 @@ export async function ensureFeeInvoiceTable(DB: D1Database): Promise<void> {
     nts_confirm_num TEXT,
     issued_at TEXT,
     issued_by INTEGER,
+    provider_ref TEXT,
+    last_error TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`).run()
   await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_fee_tax_invoices_seller_period ON fee_tax_invoices(seller_id, period)').run()
+  // 🧾 볼타 접수 번호(issuanceKey) · 마지막 오류 — 표가 먼저 생긴 라이브에도 붙도록(있으면 무시).
+  for (const col of ['provider_ref TEXT', 'last_error TEXT']) {
+    await DB.prepare(`ALTER TABLE fee_tax_invoices ADD COLUMN ${col}`).run().catch(() => null)
+  }
   _ensured.add(DB)
 }
 
@@ -150,6 +156,7 @@ export interface FeeInvoiceRow {
   id: number; seller_id: number; period: string; write_date: string; supply_amount: number; vat_amount: number; total_amount: number
   voucher_count: number; buyer_biz_no: string | null; buyer_name: string | null; buyer_ceo: string | null; buyer_email: string | null
   buyer_address: string | null; status: string; nts_confirm_num: string | null; issued_at: string | null
+  provider_ref?: string | null; last_error?: string | null
 }
 
 export async function listFeeInvoices(DB: D1Database, period: string): Promise<FeeInvoiceRow[]> {
@@ -164,9 +171,38 @@ export async function markFeeInvoiceIssued(DB: D1Database, id: number, adminId: 
   const num = confirmNum && /^[0-9A-Za-z-]{8,40}$/.test(confirmNum) ? confirmNum : null
   const r = await DB.prepare(
     `UPDATE fee_tax_invoices SET status = 'issued', provider = 'hometax_manual', nts_confirm_num = ?, issued_at = datetime('now'),
-            issued_by = ?, updated_at = datetime('now') WHERE id = ? AND status = 'draft'`,
+            issued_by = ?, updated_at = datetime('now') WHERE id = ? AND status IN ('draft', 'requested')`,
   ).bind(num, adminId, id).run()
   return (r.meta?.changes ?? 0) > 0
+}
+
+/**
+ * 볼타로 보내기 — 초안(draft)만. 접수되면 'requested'(국세청 결과 대기), 실패하면 초안 그대로 + 오류 기록.
+ * `ids` 가 없으면 그 달 초안 전부. 반환: 접수·실패 수.
+ */
+export async function sendFeeInvoicesViaBolta(
+  DB: D1Database, key: string, period: string, ids?: number[], fetchImpl?: typeof fetch,
+): Promise<{ requested: number; failed: number; errors: Array<{ id: number; error: string }> }> {
+  const { issueFeeInvoiceViaBolta } = await import('./bolta-invoice')
+  const rows = (await listFeeInvoices(DB, period)).filter((r) => r.status === 'draft' && (!ids || ids.includes(r.id)))
+  let requested = 0, failed = 0
+  const errors: Array<{ id: number; error: string }> = []
+  for (const r of rows) {
+    const res = await issueFeeInvoiceViaBolta(key, r, fetchImpl)
+    if (res.ok && res.issuanceKey) {
+      const u = await DB.prepare(
+        `UPDATE fee_tax_invoices SET status = 'requested', provider = ?, provider_ref = ?, last_error = NULL, updated_at = datetime('now')
+          WHERE id = ? AND status = 'draft'`,
+      ).bind(res.test ? 'bolta_test' : 'bolta', res.issuanceKey, r.id).run()
+      if ((u.meta?.changes ?? 0) > 0) requested++
+    } else {
+      failed++
+      errors.push({ id: r.id, error: res.error || '알 수 없는 오류' })
+      await DB.prepare(`UPDATE fee_tax_invoices SET last_error = ?, updated_at = datetime('now') WHERE id = ? AND status = 'draft'`)
+        .bind(String(res.error || '').slice(0, 300), r.id).run().catch(() => null)
+    }
+  }
+  return { requested, failed, errors }
 }
 
 /** 순수 — 홈택스 수기 발행용 CSV(공급받는자·작성일·공급가액·세액·품목). 수식 인젝션 방어. */
@@ -179,7 +215,7 @@ export function feeInvoicesCsv(rows: FeeInvoiceRow[]): string {
   const header = ['번호', '상태', '작성일자', '공급받는자 사업자번호', '상호', '대표자', '이메일', '주소', '품목', '공급가액', '세액', '합계', '이용권 수', '국세청 승인번호']
   const body = rows.map((r) => {
     const [y, m] = r.period.split('-').map(Number)
-    return [r.id, r.status === 'issued' ? '발행 완료' : '발행 대기', r.write_date, r.buyer_biz_no || '(사업자번호 없음)', r.buyer_name, r.buyer_ceo,
+    return [r.id, r.status === 'issued' ? '발행 완료' : r.status === 'requested' ? '볼타 접수' : '발행 대기', r.write_date, r.buyer_biz_no || '(사업자번호 없음)', r.buyer_name, r.buyer_ceo,
       r.buyer_email, r.buyer_address, `유어딜 중개수수료 (${y}년 ${m}월)`, r.supply_amount, r.vat_amount, r.total_amount, r.voucher_count, r.nts_confirm_num]
   })
   return '﻿' + [header, ...body].map((r) => r.map(cell).join(',')).join('\r\n')

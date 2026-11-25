@@ -98,3 +98,42 @@ describe('④ 월 1일 요약', () => {
     expect(m.message).toMatch(/판매대행 명세 국세청 제출 1월 15일까지/)
   })
 })
+
+describe('⑤ 볼타 정발행', () => {
+  it('영수·과세 · 유어딜 → 매장 · 중복 방지 헤더 · Basic 인증 · 접수되면 requested, 실패하면 초안 + 오류', async () => {
+    const { boltaIssueBody, boltaAuthHeader } = await import('@/worker/utils/bolta-invoice')
+    const { sendFeeInvoicesViaBolta } = await import('@/worker/utils/fee-tax-invoice')
+    const raw = openLiveSchema()
+    const DB = d1(raw)
+    const A = insert(raw, 'sellers', { username: 'bo-a', password_hash: '', name: 'A', email: 'a@example.test', business_name: '가게A', business_number: '111-11-11111', status: 'approved', seller_type: 'store_owner' })
+    const B = insert(raw, 'sellers', { username: 'bo-b', password_hash: '', name: 'B', email: 'b@example.test', business_name: '가게B', business_number: '222-22-22222', status: 'approved', seller_type: 'store_owner' })
+    insert(raw, 'platform_settings', { key: 'fee_vat_exclusive_from', value: '2020-01-01' })
+    await recordVoucherUsedLedger(DB, { voucher_id: 11, order_amount: 10000, merchant_id: A, platform_rate: 0.1, seller_rate: 0 })
+    await recordVoucherUsedLedger(DB, { voucher_id: 12, order_amount: 10000, merchant_id: B, platform_rate: 0.1, seller_rate: 0 })
+    const period = thisMonth()
+    await buildFeeInvoiceDrafts(DB, period)
+    const rows = await listFeeInvoices(DB, period)
+    const body = boltaIssueBody(rows[0]) as { purpose: string; taxType: string; supplier: { identificationNumber: string }; supplied: { identificationNumber: string }; items: Array<{ supplyCost: number; tax: number }> }
+    expect(body).toMatchObject({ purpose: 'RECEIPT', taxType: 'TAXABLE' })
+    expect(body.supplier.identificationNumber).toBe('4790902930')
+    expect(body.supplied.identificationNumber).toBe('1111111111')
+    expect(body.items[0]).toMatchObject({ supplyCost: 1000, tax: 100 })
+    expect(boltaAuthHeader('test_abc')).toBe(`Basic ${btoa('test_abc:')}`)
+    const calls: Array<{ url: string; headers: Record<string, string> }> = []
+    const fakeFetch = (async (url: string, init: { headers: Record<string, string>; body: string }) => {
+      calls.push({ url, headers: init.headers })
+      const sup = JSON.parse(init.body).supplied.identificationNumber
+      return sup === '1111111111'
+        ? new Response(JSON.stringify({ issuanceKey: 'iss_1' }), { status: 200 })
+        : new Response(JSON.stringify({ code: 'INVALID_REQUEST', message: 'supplied.managers 가 필요합니다' }), { status: 400 })
+    }) as unknown as typeof fetch
+    const r = await sendFeeInvoicesViaBolta(DB, 'test_abc', period, undefined, fakeFetch)
+    expect(r).toMatchObject({ requested: 1, failed: 1 })
+    expect(calls[0].url).toBe('https://xapi.bolta.io/v1/taxInvoices/issue')
+    expect(calls[0].headers['Bolta-Client-Reference-Id']).toBe(`urdeal-fee-${A}-${period}`)
+    expect(q1(raw, 'SELECT status, provider, provider_ref FROM fee_tax_invoices WHERE seller_id = ?', A)).toEqual({ status: 'requested', provider: 'bolta_test', provider_ref: 'iss_1' })
+    expect(q1(raw, 'SELECT status, last_error FROM fee_tax_invoices WHERE seller_id = ?', B)).toEqual({ status: 'draft', last_error: 'supplied.managers 가 필요합니다' })
+    // 접수된 건은 다시 안 보낸다
+    expect((await sendFeeInvoicesViaBolta(DB, 'test_abc', period, undefined, fakeFetch)).requested).toBe(0)
+  })
+})
