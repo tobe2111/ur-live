@@ -220,6 +220,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   review_reward_video: nonNegNum,
   influencer_payout_min: nonNegNum,    // cron/influencer-payout.ts:74
   commission_payout_day: intRange(1, 28), // shared/commission-payout-day.ts — 인플루언서·에이전시 월 정산일(2026-11-03 대표 확정 10일)
+  fee_vat_exclusive_from: (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v.trim()) || ['off', ''].includes(v.trim().toLowerCase()) ? null : 'YYYY-MM-DD 또는 off 만 허용됩니다'), // shared/fee-vat.ts — 수수료 부가세 별도 시작일(2026-11-25)
   payout_auto_approve_max_krw: intRange(0, 100000000), // worker/utils/payout-approve.ts — 주간 정산 소액 자동 승인 상한(0=꺼짐, 2026-11-25)
   curator_min_withdrawal: nonNegNum,
   seller_upgrade_threshold: nonNegNum,

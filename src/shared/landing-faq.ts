@@ -27,7 +27,7 @@ export interface LandingFaq { question: string; answer: string }
 export const PARTNER_FAQ: readonly LandingFaq[] = [
   {
     question: '얼마 떼가나요? 숨은 비용은 없나요?',
-    answer: `직접 등록하시면 팔린 이용권 금액의 ${F.feeDirect}, 대행사를 통해 들어오시면 ${F.feeBrokered}입니다. 그 밖에는 없습니다. 가입비와 월 이용료, 선불 광고비, 정산 수수료가 전부 0원입니다. ${F.pgNote}`,
+    answer: `직접 등록하시면 팔린 이용권 금액의 ${F.feeDirect}, 대행사를 통해 들어오시면 ${F.feeBrokered}입니다. 그 밖에는 없습니다. 가입비와 월 이용료, 선불 광고비, 정산 수수료가 전부 0원입니다. ${F.feeVatNote} ${F.pgNote}`,
   },
   {
     question: '뭘 해야 하나요? 제가 바쁜데요.',

@@ -19,6 +19,7 @@ import SEO from '@/components/SEO'
 import VoucherPhotos, { type PickedPhoto } from './VoucherPhotos'
 import FirstVoucherDone from './FirstVoucherDone'
 import { voucherMargin } from '@/shared/voucher-margin'
+import { feePctWithVat } from '@/shared/fee-vat'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
 import { voucherMinPriceError } from '@/shared/constants/voucher-categories'
 import { MY_PATH } from '@/lib/seller-return'
@@ -64,6 +65,7 @@ export default function FirstVoucherPage() {
   const authed = isSellerAuthenticated()
   // 💸 받는 돈 — 수수료율은 **서버가 준 값만** 쓴다(`/api/seller/fee-context` = 결제가 부르는 그 함수). 화면에서 채널로 다시 계산하지 않는다.
   const [feePct, setFeePct] = useState<number | null>(null)
+  const [feeVat, setFeeVat] = useState(false) // 🧾 2026-11-25 수수료 부가세 별도 — 적용 중이면 수수료 × 1.1
 
   // 좌석이 없으면(새로고침·직접 진입) 마이로 — 이 화면은 매장 등록 직후의 다리다.
   useEffect(() => { if (!authed) navigate(MY_PATH, { replace: true }) }, [authed, navigate])
@@ -74,7 +76,7 @@ export default function FirstVoucherPage() {
       .then((r) => { const s = r.data?.data?.store as StoreCtx | undefined; if (s?.name) setStore((prev) => ({ ...prev, ...s })) })
       .catch(() => { /* 넘겨받은 값으로 진행 */ })
     api.get('/api/seller/fee-context', { headers: { Authorization: `Bearer ${getSellerToken()}` } })
-      .then((r) => { const v = Number(r.data?.data?.platform_fee_pct); if (r.data?.success && Number.isFinite(v)) setFeePct(v) })
+      .then((r) => { const v = Number(r.data?.data?.platform_fee_pct); if (r.data?.success && Number.isFinite(v)) { setFeeVat(r.data.data.fee_vat_on === true); setFeePct(v) } })
       .catch(() => { /* 못 받으면 그 줄을 안 그린다 — 추측한 % 로 채우지 않는다 */ })
   }, [authed])
 
@@ -215,8 +217,8 @@ export default function FirstVoucherPage() {
                     {feePct !== null && priceN > 0 && (
                       <div className="flex items-center py-3" data-testid="first-voucher-net">
                         <span className="w-[72px] shrink-0 text-[13px] text-ink-soft">받는 돈</span>
-                        <span className="flex-1 text-[15px] font-medium">{formatNumber(voucherMargin({ price: priceN, originalPrice: origN || priceN, platformFeePct: feePct, influencerPct: 0 }).net)}원</span>
-                        <span className="text-[12px] text-ink-soft">수수료 {feePct}% 뺀 값</span>
+                        <span className="flex-1 text-[15px] font-medium">{formatNumber(voucherMargin({ price: priceN, originalPrice: origN || priceN, platformFeePct: feePctWithVat(feePct, feeVat), influencerPct: 0 }).net)}원</span>
+                        <span className="text-[12px] text-ink-soft">수수료 {feePct}%{feeVat ? '+부가세' : ''} 뺀 값</span>
                       </div>
                     )}
                   </div>

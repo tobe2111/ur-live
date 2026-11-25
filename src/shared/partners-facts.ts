@@ -22,6 +22,8 @@ export const PARTNER_FACTS = {
   feeDirect: '10%',
   /** 중개(대행사 경유) 매장. 같은 SSOT */
   feeBrokered: '5%',
+  /** 🧾 2026-11-25 대표 "부가세 별도로 하자" — 수수료는 부가세 별도. SSOT `shared/fee-vat.ts` (시작일 어드민 `fee_vat_exclusive_from`) */
+  feeVatNote: '수수료는 부가세 별도입니다(2027년 1월 1일 사용분부터 수수료의 10%). 일반과세 매장은 유어딜이 발행하는 세금계산서로 부가세 신고 때 돌려받습니다.',
   /** 사장님 순수취 — 직접 입점 기준 */
   storeShareDirect: '90%',
   /**

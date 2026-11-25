@@ -28,12 +28,13 @@ import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 import { voucherMargin } from '@/shared/voucher-margin'
+import { feePctWithVat } from '@/shared/fee-vat'
 
 // 계산은 공용 순수 함수(`@/shared/voucher-margin`) — 이 카드와 첫 이용권 화면이 같은 함수를 쓴다.
 export { voucherMargin } from '@/shared/voucher-margin'
 
 export default function NetProceedsCard({ price, originalPrice, promoPct }: { price: number; originalPrice?: number; promoPct?: number }) {
-  const [fee, setFee] = useState<{ channel: string | null; platform_fee_pct: number; channel_rates_active?: boolean; agency_shares?: Array<{ name: string; pct: number; budgetPct?: number }> } | null>(null)
+  const [fee, setFee] = useState<{ channel: string | null; platform_fee_pct: number; channel_rates_active?: boolean; agency_shares?: Array<{ name: string; pct: number; budgetPct?: number }>; fee_vat_on?: boolean; fee_vat_from?: string | null } | null>(null)
   const [influencerInput, setInfluencerInput] = useState('')
   useEffect(() => {
     api.get('/api/seller/fee-context')
@@ -48,10 +49,12 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
   const agencyPct = agencies.reduce((mx, a) => Math.max(mx, Number(a.pct)), 0)
   // 💰 2026-11-11 총 마케팅 비용 상한 — 에이전시가 소개비까지 상한을 다 쓰면(가장 나쁜 경우) 남는 돈.
   const budgetPct = (fee.agency_shares ?? []).reduce((mx, a) => Math.max(mx, Number(a.budgetPct) || 0), 0)
+  // 🧾 2026-11-25 수수료 부가세 별도 — 적용 중이면 수수료 × 1.1 이 빠진다(서버가 준 적용 여부만 쓴다).
+  const vatOn = fee.fee_vat_on === true
   const m = voucherMargin({
     price,
     originalPrice,
-    platformFeePct: fee.platform_fee_pct,
+    platformFeePct: feePctWithVat(fee.platform_fee_pct, vatOn),
     influencerPct: savedPromo ? Number(promoPct) : Number(influencerInput),
     agencyPct,
   })
@@ -74,7 +77,7 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
           </div>
         )}
         <div className="flex justify-between text-gray-500">
-          <span>유어딜 수수료 ({fee.platform_fee_pct}%{channelLabel})</span>
+          <span>유어딜 수수료 ({fee.platform_fee_pct}%{vatOn ? ' + 부가세' : ''}{channelLabel})</span>
           <span className="tabular-nums">−{formatNumber(platformCut)}원</span>
         </div>
         <div className="flex items-center justify-between gap-3 text-gray-500">
@@ -111,6 +114,11 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
           ? `소개비는 소개 링크로 팔렸을 때만 빠져요. 직접 팔리면 ${formatNumber(price - platformCut - m.agencyCut)}원이에요.`
           : '인플루언서와 소개비를 약속했다면 그 %를 넣어 보세요. 계산용이라 저장되지 않아요.'}
       </p>
+      {!vatOn && fee.fee_vat_from && (
+        <p className="mt-1 text-[12px] leading-[1.55] text-gray-500" data-testid="margin-fee-vat-notice">
+          {fee.fee_vat_from.replace(/^(\d{4})-(\d{2})-(\d{2})$/, (_, y, mo, d) => `${y}년 ${Number(mo)}월 ${Number(d)}일`)}부터 수수료에 부가세(수수료의 10%)가 더해져요. 일반과세 매장은 부가세 신고 때 돌려받아요.
+        </p>
+      )}
       {budgetPct > 0 && (
         <p className="mt-1 text-[12px] leading-[1.55] text-gray-500" data-testid="margin-agency-budget">
           에이전시가 소개비까지 총 마케팅 비용 상한({budgetPct}%)을 다 쓰면 최종 마진은 {formatNumber(Math.max(0, price - platformCut - Math.round((price * budgetPct) / 100)))}원이에요.

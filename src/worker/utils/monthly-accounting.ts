@@ -7,6 +7,7 @@
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { COMMISSION_DEFAULTS } from '../../shared/constants/policy'
+import { FEE_VAT_ACCOUNT } from '../../shared/fee-vat'
 
 export interface MonthlyAccounting {
   month: string
@@ -15,6 +16,8 @@ export interface MonthlyAccounting {
   refunds: { n: number; refunded: number }
   payouts: Array<{ payee_type: string; n: number; total: number }>
   wht: { n: number; gross: number; withholding: number; net: number }
+  /** 🧾 2026-11-25 수수료 부가세 예수금(원장 `platform:vat_payable` 순증, 사용월 기준). 유어딜 수익 아님 — 부가세 신고 때 낸다. */
+  feeVat?: number
 }
 
 /** 지난달(KST) 'YYYY-MM'. 순수. */
@@ -88,7 +91,16 @@ export async function computeMonthlyAccounting(DB: D1Database, month: string): P
      WHERE status = 'paid' AND withholding_amount > 0 AND strftime('%Y-%m', datetime(paid_at, '+9 hours')) = ?
   `).bind(month).first<{ n: number; gross: number; withholding: number; net: number }>().catch(() => null))
   if (whtAg) { wht.n += Number(whtAg.n) || 0; wht.gross += Number(whtAg.gross) || 0; wht.withholding += Number(whtAg.withholding) || 0; wht.net += Number(whtAg.net) || 0 }
-  return { month, defaultRate, sales, refunds, payouts: payouts.results || [], wht }
+  // ⑤ 수수료 부가세 예수금 — 적립(credit) − 사용 취소로 되돌린 것(debit). 표가 없거나 실패하면 0.
+  const vatRow = await DB.prepare(`
+    SELECT COALESCE(SUM(CASE WHEN credit_account = ? THEN amount ELSE 0 END), 0)
+         - COALESCE(SUM(CASE WHEN debit_account = ? THEN amount ELSE 0 END), 0) AS v
+      FROM ledger_entries
+     WHERE (credit_account = ? OR debit_account = ?)
+       AND strftime('%Y-%m', datetime(created_at, '+9 hours')) = ?
+  `).bind(FEE_VAT_ACCOUNT, FEE_VAT_ACCOUNT, FEE_VAT_ACCOUNT, FEE_VAT_ACCOUNT, month).first<{ v: number }>().catch(() => null)
+  const feeVat = Math.max(0, Math.round(Number(vatRow?.v) || 0))
+  return { month, defaultRate, sales, refunds, payouts: payouts.results || [], wht, feeVat }
 }
 
 const won = (n: number) => `${Math.round(Number(n) || 0).toLocaleString('ko-KR')}원`
@@ -106,6 +118,7 @@ export function monthlyCloseMessage(a: MonthlyAccounting, unsent: { n: number; t
     `지급 완료 ${won(payTotal)}`,
     `원천징수 ${won(a.wht.withholding)}${a.wht.withholding > 0 ? ` — 원천세 신고·납부 ${dueLabel}까지` : ''}`,
   ]
+  if ((a.feeVat ?? 0) > 0) parts.push(`수수료 부가세(예수금) ${won(a.feeVat ?? 0)} — 부가세 신고 때 납부`)
   if (unsent.n > 0) parts.push(`⚠️ 승인됐는데 아직 안 보낸 정산 ${unsent.n}건 ${won(unsent.total)}`)
   return { title: `🧾 ${y}년 ${m}월 회계 마감 요약 — 세무사용 CSV 준비됨`, message: parts.join(' · ') }
 }

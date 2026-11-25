@@ -104,6 +104,15 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       }
     }
 
+    // 📣 2026-11-25 수수료 부가세 별도 — 시작일 전까지 매일, 아직 안내 안 받은 승인 매장에 한 번씩(약관 30일 전 고지).
+    try {
+      const { sendFeeVatNotices } = await import('../utils/fee-vat-notice')
+      const r = await sendFeeVatNotices(DB)
+      if (r.sent > 0) logInfo(`[cron:influencer-payout] fee_vat_notice sent=${r.sent}`)
+    } catch (e) {
+      logError('[cron:influencer-payout] fee vat notice failed', { error: String(e) })
+    }
+
     const dayRow = await DB.prepare(
       'SELECT value FROM platform_settings WHERE key = ?'
     ).bind(COMMISSION_PAYOUT_DAY_KEY).first<{ value: string }>().catch(() => null)

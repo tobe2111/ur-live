@@ -21,6 +21,9 @@
 // 💸 커미션 재원·요율 **정책**은 별도 모듈(파일크기 래칫 — 원장 기록과 정책 판단은 층이 다르다).
 import { ownerFundedFor, channelPlatformRate } from './ledger-commission-policy'
 import { ledgerAccountAliases, paidPayeeAliases } from './payout-account'
+// 🧾 2026-11-25 수수료 부가세 별도(대표 "부가세 별도로 하자") — 사용 시점에 수수료의 10% 를 매장 몫에서 함께 뗀다.
+import { feeVatFor } from './fee-vat-policy'
+import { FEE_VAT_ACCOUNT } from '../../shared/fee-vat'
 
 interface LedgerEntry {
   event_type: string  // group_buy_join | refund | charge | settlement | dispute_refund
@@ -159,7 +162,7 @@ export async function recordVoucherUsedLedger(
     platform_rate?: number        // 명시 시 override (어드민 캠페인별)
     seller_rate?: number          // 명시 시 override
   },
-): Promise<{ merchant_amount: number; seller_amount: number; platform_amount: number }> {
+): Promise<{ merchant_amount: number; seller_amount: number; platform_amount: number; vat_amount: number }> {
   await ensureLedgerTable(DB)
   // 🛡️ 2026-05-21 Phase D: platform_settings 에서 비율 조회 — 어드민 조정 가능.
   let platformRate = params.platform_rate
@@ -205,14 +208,20 @@ export async function recordVoucherUsedLedger(
   const merchantRate = 1 - platformRate - sellerRate
   const platformAmount = Math.floor(params.order_amount * platformRate)
   const sellerAmount = Math.floor(params.order_amount * sellerRate)
-  const merchantAmount = params.order_amount - platformAmount - sellerAmount
+  // 🧾 수수료 부가세(공급가액 × 10%) — 매장 몫에서 함께 떼어 `platform:vat_payable`(예수금)에 쌓는다.
+  //   매장 몫이 음수가 되지 않게 남은 몫 안에서만. 시작일 전이면 0 = 종전과 같다.
+  const vatAmount = Math.min(
+    await feeVatFor(DB, platformAmount),
+    Math.max(0, params.order_amount - platformAmount - sellerAmount),
+  )
+  const merchantAmount = params.order_amount - platformAmount - sellerAmount - vatAmount
   const ref = `voucher:${params.voucher_id}`
 
   // 멱등 — 이미 적힌(아직 안 뒤집힌) 사용분이 있으면 skip. 🔁 2026-11-25: 사용 취소(`reverseVoucherUsedLedger`)로 뒤집힌 뒤
   //   다시 쓰면 새로 적는다 — 종전엔 '한 번이라도 적혔으면 skip' 이라 뒤집을 길 자체가 없었다.
   const existing = (await openVoucherUseRows(DB, params.voucher_id)).length > 0
   if (existing) {
-    return { merchant_amount: merchantAmount, seller_amount: sellerAmount, platform_amount: platformAmount }
+    return { merchant_amount: merchantAmount, seller_amount: sellerAmount, platform_amount: platformAmount, vat_amount: vatAmount }
   }
 
   // 1) 업체 receivable
@@ -244,8 +253,19 @@ export async function recordVoucherUsedLedger(
     credit_account: 'platform:revenue',
     metadata: { kind: 'platform_fee', voucher_id: params.voucher_id },
   })
+  // 4) 수수료 부가세(예수금 — 유어딜 수익 아님). 사용 취소는 `reverseVoucherUsedLedger` 가 이 줄도 같이 뒤집는다.
+  if (vatAmount > 0) {
+    await recordLedger(DB, {
+      event_type: 'voucher_used',
+      reference_id: ref,
+      amount: vatAmount,
+      debit_account: 'platform:escrow',
+      credit_account: FEE_VAT_ACCOUNT,
+      metadata: { kind: 'platform_fee_vat', voucher_id: params.voucher_id, fee: platformAmount },
+    })
+  }
 
-  return { merchant_amount: merchantAmount, seller_amount: sellerAmount, platform_amount: platformAmount }
+  return { merchant_amount: merchantAmount, seller_amount: sellerAmount, platform_amount: platformAmount, vat_amount: vatAmount }
 }
 
 /**

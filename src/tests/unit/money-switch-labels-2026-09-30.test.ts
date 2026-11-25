@@ -42,7 +42,7 @@ const RAW = readRaw('src/pages/admin-platform-settings/money-switch-fields.ts')
 const KEYS_AT_CLEANUP = [
   'commission_budget_enabled', 'pg_reserve_pct', 'commission_priority_axes',
   'promo_funding_source', 'seller_promo_field_enabled', 'gb_engine_enabled',
-  'fee_channel_rates_enabled', 'platform_fee_pct_direct', 'platform_fee_pct_brokered',
+  'fee_channel_rates_enabled', 'fee_vat_exclusive_from', 'platform_fee_pct_direct', 'platform_fee_pct_brokered',
   'affiliate_program_enabled', 'payout_requires_voucher_use', 'payout_unused_max_wait_days',
   'broker_share_enabled', 'invite_reward_monthly_budget_krw',
   'agency_signup_bonus_monthly_budget_krw', 'voucher_deal_payment_enabled',
