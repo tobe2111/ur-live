@@ -147,9 +147,9 @@ export function adminOutsideWriteGate() {
   return async (c: Context, next: Next) => {
     const method = c.req.method.toUpperCase();
     if (method === 'OPTIONS') return next();
-    const pathname = c.req.path;
-    if (/^\/api\/(?:admin|admin-payouts|admin-review-bonus)\//.test(pathname)) return next();
-    if ((method === 'GET' || method === 'HEAD') && !isGetMutationOutside(pathname)) return next();
+    const reqPath = c.req.path; // 라우터가 쓰는 디코드된 경로(위 게이트와 같은 이유)
+    if (/^\/api\/(?:admin|admin-payouts|admin-review-bonus)\//.test(reqPath)) return next();
+    if ((method === 'GET' || method === 'HEAD') && !isGetMutationOutside(reqPath)) return next();
     if (!mayBeAdminActor(c)) return next();
 
     const role = await adminRoleFromRequest(c);
@@ -157,7 +157,7 @@ export function adminOutsideWriteGate() {
     if (role === 'retired') {
       return c.json({ success: false, error: '폐지된 관리자 역할입니다', code: 'ADMIN_ROLE_RETIRED' }, 403);
     }
-    if (canAdminRoleWriteOutside(role, pathname)) return next();
+    if (canAdminRoleWriteOutside(role, reqPath)) return next();
     return c.json(
       { success: false, error: '이 작업을 수행할 권한이 없습니다 (제한된 관리자 계정)', code: 'ADMIN_ROLE_FORBIDDEN' },
       403,
