@@ -89,7 +89,7 @@ const STATUS_MAP: Record<string, string> = {
   PAY_COMPLETE: 'DONE',   // 프론트 → DB
   PAID: 'DONE',
 };
-const VALID_STATUSES = ['PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'DONE', 'PAID', 'PENDING'];
+const VALID_STATUSES = ['PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED']; // 🔒 2026-11-25 DONE·PAID·PENDING 제거 — 사장님이 미결제 주문을 결제 완료로, 환불된 주문을 DONE 으로 바꿀 수 있었다(화면은 이 넷만 보낸다)
 
 // ─── GET /api/seller/orders ────────────────────────────────────────────────
 sellerOrdersRoutes.get('/orders', async (c) => {
@@ -647,7 +647,7 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
     const FORWARD_PREV: Record<string, string[]> = {
       PREPARING: ['PAID', 'DONE', 'PREPARING'],
       SHIPPING: ['PAID', 'DONE', 'PREPARING', 'SHIPPING'],
-      DELIVERED: ['SHIPPING', 'DELIVERED'],
+      DELIVERED: ['SHIPPING', 'DELIVERED'], CANCELLED: ['PENDING', 'AWAITING_PAYMENT', 'FAILED', 'CANCELLED'], // 취소는 미결제에서만 — 환불된 주문의 상태를 덮지 않는다
     };
     const allowedPrev = FORWARD_PREV[dbStatus];
     let statusGuardSql = '';

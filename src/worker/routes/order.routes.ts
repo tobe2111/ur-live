@@ -6,7 +6,7 @@
 // POST /api/orders/:id/cancel - Cancel order (+ Toss Payments cancel)
 // ============================================================
 
-import { Hono } from 'hono';
+import { Hono } from 'hono'; import { SHOPPING_TAB_HIDDEN } from '../../shared/feature-flags'
 import { getCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rate-limit';
@@ -109,6 +109,7 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
   // 🛡️ 2026-05-23: stage 추적 — 500 발생 시 어느 단계에서 실패했는지 _debug 에 노출.
   //   사용자 신고 후 운영 _debug 만 보고 진짜 원인 (auth? schema? stock? insert?) 즉시 식별.
   let stage = 'init';
+  if (SHOPPING_TAB_HIDDEN) return c.json({ success: false, error: '지금은 쇼핑 주문을 받지 않아요', code: 'SHOPPING_CLOSED' }, 410); // 🔒 2026-11-25 숨긴 탭의 서버 문 — 이 길은 이용권을 발급하지 않는다(shopping-rail-closed 시험)
   try {
     stage = 'auth';
     const firebaseUid = String(c.get('user').id);

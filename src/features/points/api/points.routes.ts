@@ -22,7 +22,7 @@ import { swallow } from '@/worker/utils/swallow';
 import { summarizeItems } from '@/worker/utils/admin-event-notify'
 import { ensureDealBuckets, PAID_BALANCE_SQL, creditFreePoints } from '@/worker/utils/point-buckets';
 import { intParam } from '@/shared/pagination'
-import { TOPUP_DISABLED, LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
+import { TOPUP_DISABLED, LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 const pointsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -691,7 +691,7 @@ pointsRoutes.get('/ad-reward/status', requireUser(), async (c) => {
 pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 300 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
-
+  if (SHOPPING_TAB_HIDDEN) return c.json({ success: false, error: '지금은 쇼핑 주문을 받지 않아요', code: 'SHOPPING_CLOSED' }, 410); // 🔒 2026-11-25 이 길로 이용권을 사면 딜만 빠지고 이용권이 안 나왔다
   const { DB } = c.env;
   await ensureTables(DB);
 
