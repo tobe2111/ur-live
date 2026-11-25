@@ -118,11 +118,16 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     options: [{ value: 'false', label: 'OFF (현행 — 중개사는 매장과 직접 정산)' }, { value: 'true', label: 'ON — 매장 등록 때 정한 % 를 유어딜이 중개사에게' }],
     hint: '🔴 머니 경로. 매장 몫에서 나간다(유어딜 5% 불변). 라이브 중개 매장 1곳·주문 0건이라 켜도 오늘 영향 0. 절차: S-BROKER',
   },
-  // 💸 2026-11-03 결재 `2026-11-03-settlement-structure.md` — 매장 정산을 토스 지급대행으로(12-17 개정 전금법).
+  // 💸 2026-11-03 결재 `2026-11-03-settlement-structure.md` — 매장 정산 토스 지급대행. 2026-11-25 대표: 의무 아님 → 선택(나중 도입용).
   {
     key: 'toss_payouts_enabled', label: '토스 지급대행(매장 정산 송금)', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 은행 이체 파일로 송금)' }, { value: 'true', label: 'ON — 정산 화면에 [토스로 보내기], 토스가 매장 계좌로 직접 송금' }],
-    hint: '🔴 머니 경로. 시크릿 TOSS_PAYOUT_SECRET_KEY·TOSS_PAYOUT_SECURITY_KEY 가 없으면 켜도 동작 안 함. 매장 정산만(커미션은 은행 이체). 장부는 토스가 완료를 알려야 송금 완료. 절차: 토스 계약 → S-TOSSPAYOUT',
+    hint: '🔴 머니 경로. 시크릿 TOSS_PAYOUT_SECRET_KEY·TOSS_PAYOUT_SECURITY_KEY 가 없으면 켜도 동작 안 함. 매장 정산만(커미션은 은행 이체). 장부는 토스가 완료를 알려야 송금 완료. 선택 사항(2026-11-25 — 의무 아님). 절차: 토스 계약 → S-TOSSPAYOUT',
+  },
+  // ✅ 2026-11-25 대표 *"최대한 자동화하자 지급대행 안쓰는 선에서"* — 주간 정산 소액 자동 승인(0 = 꺼짐).
+  {
+    key: 'payout_auto_approve_max_krw', label: '정산 소액 자동 승인 상한 (원)', default: '0',
+    hint: '0 = 꺼짐(전부 사람이 승인). 값을 넣으면 그 금액 이하 주간 정산 건이 생성 직후 자동 승인된다 — 계좌 재확인·받을 돈 초과 검사는 단건 승인과 같다(막힌 건은 사람 칸에 남음). 승인 ≠ 송금: 송금은 이체 파일로 그대로',
   },
   // 🤝 2026-11-01 결재 `2026-10-11-agency-model-email-only.md` 3단계 — 에이전시 몫을 유어딜이 걷어 지급.
   {

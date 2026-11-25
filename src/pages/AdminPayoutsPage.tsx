@@ -20,6 +20,7 @@ import { Wallet, CheckCircle, Send, XCircle } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import TossSendButton, { useTossPayoutStatus } from './admin-payouts/TossSendButton'
+import MonthlyAccountingCard from './admin-payouts/MonthlyAccountingCard'
 import { Select } from '@/components/ui/select'
 
 interface Payout {
@@ -61,7 +62,8 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 
 export default function AdminPayoutsPage() {
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'pending_ledger' | 'payouts' | 'rates' | 'annual'>('pending_ledger')
+  // 🧾 2026-11-25: 월 마감 알림이 `?tab=annual` 로 연다.
+  const [tab, setTab] = useState<'pending_ledger' | 'payouts' | 'rates' | 'annual'>(() => (new URLSearchParams(window.location.search).get('tab') === 'annual' ? 'annual' : 'pending_ledger'))
   const [filter, setFilter] = useState<'pending' | 'approved' | 'sent' | 'all'>('pending')
   // 🏦 2026-08-27: 일괄 처리 선택. 필터를 바꾸면 비운다 — 안 보이는 행이 선택된 채로 남으면
   //   화면엔 3건인데 실제로는 30건이 처리되는 사고가 난다.
@@ -467,6 +469,7 @@ export default function AdminPayoutsPage() {
       )}
 
       {/* 📄 연말 정산 리포트 — CSV download */}
+      {tab === 'annual' && <MonthlyAccountingCard />}
       {tab === 'annual' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-xl">
           <h2 className="text-sm font-bold text-gray-900 mb-4">연말 정산 리포트</h2>

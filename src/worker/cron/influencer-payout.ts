@@ -92,6 +92,18 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
     //   성숙(pending → available)과 잔액 동기화는 위에서 **매일** 한다 — 소개자 화면의
     //   '받을 수 있는 금액'은 매일 정확해야 하기 때문이다. 묶는 것은 지급 대기 알림뿐이다.
     //   SSOT: `shared/commission-payout-day.ts` · 결재 `docs/decisions/2026-11-03-settlement-structure.md`
+    // 🧾 2026-11-25 대표 *"최대한 자동화하자 지급대행 안쓰는 선에서"* — 매월 1일(KST) 지난달 회계 마감 요약.
+    //   세무사용 CSV 와 같은 숫자(`computeMonthlyAccounting`) · 원천세 신고 기한 · 안 보낸 정산을 한 장으로. 돈은 안 옮긴다.
+    if (new Date(Date.now() + 9 * 3600_000).getUTCDate() === 1) {
+      try {
+        const { sendMonthlyCloseSummary } = await import('../utils/monthly-accounting')
+        const r = await sendMonthlyCloseSummary(DB)
+        logInfo(`[cron:influencer-payout] monthly_close month=${r.month} sent=${r.sent}`)
+      } catch (e) {
+        logError('[cron:influencer-payout] monthly close failed', { error: String(e) })
+      }
+    }
+
     const dayRow = await DB.prepare(
       'SELECT value FROM platform_settings WHERE key = ?'
     ).bind(COMMISSION_PAYOUT_DAY_KEY).first<{ value: string }>().catch(() => null)

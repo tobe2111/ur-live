@@ -436,7 +436,7 @@ SSOT `src/worker/utils/agency-share-payout.ts` · 적립은 `creditBrokerShare` 
 **S-TOSSPAYOUT** — 결재 `docs/decisions/2026-11-03-settlement-structure.md`(대표 *"1번 일단 해주고"* — 12-17 개정 전금법 대응).
 게이트 `platform_settings.toss_payouts_enabled`(기본 없음=꺼짐) + 시크릿 `TOSS_PAYOUT_SECRET_KEY`·`TOSS_PAYOUT_SECURITY_KEY`(결제 키와 별개) ·
 SSOT `src/worker/utils/toss-payouts.ts` · 어드민 `POST /api/admin/payouts/:id/toss` · 웹훅 `POST /api/webhooks/toss-payouts`(토스 개발자센터에 등록).
-**선행**: 대표가 토스 지급대행 계약(상점관리자 > 서비스 추가 신청). **켜는 것은 대표 판단.**
+**선행**: 대표가 토스 지급대행 계약(상점관리자 > 서비스 추가 신청). **켜는 것은 대표 판단.** ⚠️ 2026-11-25 대표 확인 — 지급대행은 **의무가 아니다**. 지금은 은행 이체로 운영하고, 나중에 도입할 때 이 체크리스트를 쓴다.
 
 | ID | 시나리오 | 통과 기준 |
 |---|---|---|

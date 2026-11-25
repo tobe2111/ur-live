@@ -74,7 +74,9 @@ describe('④ 인플루언서 원천징수 기록·기본값', () => {
   })
   it('지급 경로가 기록하고, 어드민 월 요약이 그 표를 더한다', () => {
     expect(R('src/features/group-buy/api/marketing/payouts.ts')).toMatch(/await logInfluencerWithholding\(DB, \{/)
-    expect(R('src/features/admin/api/admin-tax.routes.ts')).toMatch(/FROM influencer_withholding_log WHERE payout_year = \? AND payout_month = \?/)
+    // 🔀 2026-11-25: 월 요약 집계가 `monthly-accounting.ts` 로 옮겨졌다(월 1일 자동 요약과 공용) — 라우트는 그 함수를 부른다.
+    expect(R('src/worker/utils/monthly-accounting.ts')).toMatch(/FROM influencer_withholding_log WHERE payout_year = \? AND payout_month = \?/)
+    expect(R('src/features/admin/api/admin-tax.routes.ts')).toMatch(/computeMonthlyAccounting\(DB, month\)/)
   })
   it('세금 종류가 비어 있으면 3.3%(SSOT 기본) · 새 행 기본값도 사업소득', () => {
     expect(resolveWithholdingPct(null, null)).toBeCloseTo(3.3)

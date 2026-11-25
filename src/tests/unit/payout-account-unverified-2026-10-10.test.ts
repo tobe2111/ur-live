@@ -104,8 +104,14 @@ describe('③ 배선 — 승인·일괄 승인·이체 파일·화면', () => {
   const src = (p: string) => stripComments(readFileSync(p, 'utf8'))
   const R = src('src/features/admin/api/admin-payouts.routes.ts')
   it('단건 승인이 CAS 전에 검사하고 code 를 돌려준다', () => {
+    // 🔀 2026-11-25: 단건 승인의 가드가 `payout-approve.ts` `approvePayoutGuarded` 로 옮겨졌다(소액 자동 승인과 공용).
+    //   라우트는 그 함수를 부르고, 검사 순서·code 는 그 함수에서 본다 — 두 자리를 같이 본다.
     const at = R.indexOf("adminPayoutsRoutes.patch('/admin/payouts/:id/approve'")
-    const body = R.slice(at, R.indexOf("adminPayoutsRoutes.patch('/admin/payouts/:id/sent'"))
+    const route = R.slice(at, R.indexOf("adminPayoutsRoutes.patch('/admin/payouts/:id/sent'"))
+    expect(route).toMatch(/approvePayoutGuarded\(c\.env\.DB, id\)/)
+    expect(route).toMatch(/code: r\.code/)
+    const U = src('src/worker/utils/payout-approve.ts')
+    const body = U.slice(U.indexOf('export async function approvePayoutGuarded'), U.indexOf('export function resolveAutoApproveMax'))
     const chk = body.indexOf('await checkPayeeAccountCurrent(DB, row)')
     expect(chk).toBeGreaterThan(0)
     expect(body.indexOf("SET status = 'approved'")).toBeGreaterThan(chk)

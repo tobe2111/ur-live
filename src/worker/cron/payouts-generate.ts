@@ -115,11 +115,32 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
     }
     if (created > 0) logInfo(`[payouts-cron] created ${created} pending payouts for ${periodStart} ~ ${periodEnd} (hold ${hold.days}d)`)
 
+    // ✅ 2026-11-25 대표 *"최대한 자동화하자 지급대행 안쓰는 선에서"* — 소액 자동 승인(기본 꺼짐,
+    //   `payout_auto_approve_max_krw`). 단건 승인과 같은 가드(`approvePayoutGuarded`)를 지난 건만 승인되고,
+    //   막힌 건은 사람 칸에 남는다. 승인 ≠ 송금 — 송금은 여전히 이체 파일(지급대행 미사용).
+    let auto = { max: 0, approved: 0, total: 0, blocked: 0 }
+    try {
+      const { autoApproveSmallPayouts } = await import('../utils/payout-approve')
+      auto = await autoApproveSmallPayouts(DB)
+      if (auto.approved > 0) logInfo(`[payouts-cron] auto-approved ${auto.approved} (≤${auto.max}) total=${auto.total} blocked=${auto.blocked}`)
+    } catch (e) {
+      logError('[payouts-cron] auto-approve failed', { error: (e as Error).message })
+    }
+    // 사람이 할 일 = 아직 pending(승인) + approved(이체 파일로 송금). 알림에 그대로 적는다.
+    const todo = await DB.prepare(
+      `SELECT SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_n,
+              SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved_n,
+              COALESCE(SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END), 0) AS approved_total
+         FROM payouts WHERE status IN ('pending', 'approved')`,
+    ).first<{ pending_n: number; approved_n: number; approved_total: number }>().catch(() => null)
+
     // 🔔 2026-07-08 (무인운영 감사): 성공 하트비트 — 주간 정산 생성이 조용히 멈추면(무소식)
     //   운영자가 알아채도록 매 run 요약을 어드민 벨 + Discord 로 push. 리포트가 "안 오는 것"이
     //   곧 이상신호가 되게 한다. 집계/INSERT 로직은 불변 — 요약 통지 1블록만 추가.
     try {
-      const summary = `주간 정산 생성: ${created}건 (${periodStart} ~ ${periodEnd})`
+      const autoNote = auto.max > 0 ? ` · 자동 승인 ${auto.approved}건(${auto.max.toLocaleString('ko-KR')}원 이하)` : ''
+      const todoNote = todo ? ` · 승인 대기 ${Number(todo.pending_n) || 0}건 · 이체할 건 ${Number(todo.approved_n) || 0}건(${(Number(todo.approved_total) || 0).toLocaleString('ko-KR')}원, 이체 파일 받기)` : ''
+      const summary = `주간 정산 생성: ${created}건 (${periodStart} ~ ${periodEnd})${autoNote}${todoNote}`
       try {
         const { createDashboardNotification } = await import('../../features/notifications/api/dashboard-notifications.routes')
         // 🔔 2026-11-02 (대표 "업무 칸 소음 정리"): 0건이면 할 일이 없다 — 하트비트(돌았다는 기록)는 남기되 **시스템 칸**으로.
