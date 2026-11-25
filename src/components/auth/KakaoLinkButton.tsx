@@ -4,8 +4,8 @@
  *
  * 동작:
  *  1. 현재 연동 상태 조회 (GET .../kakao-link-status)
- *  2. 미연동: "카카오 계정 연동하기" 버튼 → 팝업으로 카카오 OAuth 진행
- *  3. 팝업 콜백에서 code 받으면 POST .../link-kakao 호출
+ *  2. 미연동: "카카오 계정 연동하기" 버튼 → 지금 로그인한 카카오 세션으로 POST .../link-kakao (2026-11-25 — 팝업 없음)
+ *  3. 카카오 로그인이 없으면 로그인하고 이 화면으로 돌아온다
  *  4. 성공 시 "연동됨" 상태로 전환 (user 정보 표시 + 해제 버튼)
  */
 
@@ -45,65 +45,32 @@ export function KakaoLinkButton({ role }: Props) {
   useEffect(() => { refresh() }, [refresh])
 
   async function startLink() {
-    // 플로우:
-    //  1) 팝업에서 /auth/kakao/start 호출 → 카카오 OAuth → 서버 sync/callback
-    //     (code 소비 + users upsert + 세션 쿠키 세팅)
-    //  2) 서버가 /auth/kakao/link/callback?login=success&userId=... 로 리다이렉트
-    //  3) 팝업의 KakaoLinkCallbackPage 가 opener 에게 postMessage 전송
-    //  4) 부모가 POST /link-kakao (body 비움) → 서버는 세션 쿠키의 userId 로 연동
-    const w = 500, h = 700
-    const left = Math.floor((window.screen.availWidth - w) / 2)
-    const top = Math.floor((window.screen.availHeight - h) / 2)
-
-    const popupUrl = `/auth/kakao/start?redirect=${encodeURIComponent('/auth/kakao/link/callback')}`
-    const popup = window.open(
-      popupUrl,
-      'ur-kakao-link',
-      `popup=yes,width=${w},height=${h},left=${left},top=${top}`
-    )
-
-    if (!popup) {
-      toast.error(t('auth.kakao.popupBlocked'))
-      return
-    }
-
-    const origin = window.location.origin
-    const handler = async (ev: MessageEvent) => {
-      if (ev.origin !== origin) return
-      const { type, success, error } = (ev.data || {}) as { type?: string; success?: boolean; error?: string }
-      if (type !== 'kakao_link_result') return
-      window.removeEventListener('message', handler)
-      try { popup.close() } catch { /* ignore */ }
-
-      if (error || !success) {
-        toast.error(error ? `${t('kakaoLink.authFailed')}: ${error}` : t('kakaoLink.authCancelled'))
+    // 🔗 2026-11-25: 종전엔 팝업으로 카카오 로그인을 다시 시키고 `/auth/kakao/link/callback` 으로 돌아오게 했다.
+    //   로그인 복귀 주소 검사가 `/auth/` 로 시작하는 주소를 전부 막아서 팝업은 홈에 떨어졌고, 이 버튼은 30초 뒤 조용히 포기했다.
+    //   셀러 화면은 카카오 로그인으로 들어오므로 로그인은 이미 돼 있다. 그 세션으로 바로 연결한다(서버 `link-kakao` 의 세션 방식).
+    setWorking(true)
+    try {
+      const res = await api.post(`${basePath}/link-kakao`, {})
+      if (res.data?.success) {
+        toast.success(t('auth.kakao.linked'))
+        await refresh()
+      } else {
+        toast.error(res.data?.error || t('kakaoLink.linkFailed'))
+      }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string; code?: string } } }
+      if (err.response?.data?.code === 'LOGIN_REQUIRED') {
+        // 이 브라우저에 카카오 로그인이 없다 — 로그인하고 이 화면으로 돌아온다(돌아와서 한 번 더 누른다).
+        window.location.href = `/auth/kakao/start?redirect=${encodeURIComponent(window.location.pathname)}`
         return
       }
-
-      // 서버에 link 요청 (session 모드 — body 비움)
-      setWorking(true)
-      try {
-        const res = await api.post(`${basePath}/link-kakao`, {})
-        if (res.data?.success) {
-          toast.success(t('auth.kakao.linked'))
-          await refresh()
-        } else {
-          toast.error(res.data?.error || t('auth.pin.verifyFailed'))
-        }
-      } catch (e: unknown) {
-        const err = e as { response?: { data?: { error?: string } } }
-        toast.error(err.response?.data?.error || t('kakaoLink.linkFailed'))
-      } finally { setWorking(false) }
-    }
-    window.addEventListener('message', handler)
-
-    // 팝업 강제 닫힘 감지 (30초 후 listener 제거)
-    setTimeout(() => window.removeEventListener('message', handler), 30000)
+      toast.error(err.response?.data?.error || t('kakaoLink.linkFailed'))
+    } finally { setWorking(false) }
   }
 
   async function unlink() {
     if (!(await confirmDialog(t('kakaoLink.unlinkConfirm')))) return
-    const pw = (await promptDialog({ message: t('kakaoLink.unlinkPasswordPrompt', { defaultValue: '본인 확인을 위해 비밀번호를 입력해주세요.\n(카카오로만 가입하셨다면 먼저 "비밀번호 찾기" 로 설정하세요)' }), prompt: {} }))
+    const pw = (await promptDialog({ message: t('kakaoLink.unlinkPasswordPrompt', { defaultValue: '본인 확인을 위해 비밀번호를 입력해주세요.\n(비밀번호가 없는 매장은 해제할 수 없어요)' }), prompt: {} }))
     if (!pw) return
     setWorking(true)
     try {

@@ -5254,7 +5254,7 @@
     "authCancelled": "KakaoTalk authentication cancelled",
     "linkFailed": "Link failed",
     "unlinkHint": "You can unlink anytime using the \"Unlink\" button above.",
-    "unlinkPasswordPrompt": "Enter your password to verify identity.\n(If you signed up with Kakao only, first set a password via \"Find Password\")",
+    "unlinkPasswordPrompt": "Enter your password to verify identity.\n(Stores without a password cannot unlink)",
     "checkingStatus": "Checking link status...",
     "linkedStatus": "✓ Kakao account linked",
     "unlinkBtn": "Unlink",

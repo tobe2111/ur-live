@@ -53,7 +53,7 @@ export default function AccountDeleteWarningPage() {
   // 💸 그 사람이 실제로 잃는 것. fresh — 탈퇴 직전 화면이라 1분 묵은 잔액을 보여 주면 안 된다.
   const balanceQ = useBalance({ fresh: true })
   // 🚪 먼저 정리할 것 — 서버가 센다(탈퇴 요청을 막는 것과 같은 함수). 판정도 서버 값(`can_delete`)만 쓴다.
-  const blockersQ = useQuery<{ blockers: AccountDeleteBlockers; can_delete: boolean }>({
+  const blockersQ = useQuery<{ blockers: AccountDeleteBlockers; can_delete: boolean; can_restore?: boolean }>({
     queryKey: ['account', 'delete-blockers'],
     queryFn: () => api.get('/api/account/delete-blockers').then((r) => {
       if (!r.data?.success) throw new Error('blockers_failed')
@@ -65,6 +65,9 @@ export default function AccountDeleteWarningPage() {
   })
   const blockers = blockersQ.data?.blockers ?? null
   const blockersClear = blockersQ.data?.can_delete === true
+  // 🔁 되살리기는 카카오 계정만 된다(서버가 카카오 번호로 찾는다). 이메일·구글로만 가입한 계정에 "돌아와요" 라고 말하지 않는다.
+  //   서버 답을 받기 전에는 약속하지 않는 쪽(false)으로 둔다.
+  const canRestore = blockersQ.data?.can_restore === true
   //   ⚠️ 서버 값을 **받기 전**엔 숫자를 말하지 않는다 — 캐시 seed(없으면 0)를 그대로 쓰면 딜 보유자에게
   //   "소멸될 딜이 없어요" 라고 말한 채 탈퇴 버튼이 열린다. 받기 전 = 확인 중, 실패 = 모름.
   const dealKnown = balanceQ.isFetchedAfterMount && !balanceQ.isError
@@ -140,7 +143,9 @@ export default function AccountDeleteWarningPage() {
             {t('accountDeleteWarning.headline', { defaultValue: '탈퇴하기 전에 확인해 주세요' })}
           </h2>
           <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            {t('accountDeleteWarning.headlineSub', { defaultValue: '30일 안에 같은 카카오 계정으로 다시 로그인하면 계정을 되살릴 수 있어요. 다만 바로 사라지는 것은 되살아나지 않아요.' })}
+            {canRestore
+              ? t('accountDeleteWarning.headlineSub', { defaultValue: '30일 안에 같은 카카오 계정으로 다시 로그인하면 계정을 되살릴 수 있어요. 다만 바로 사라지는 것은 되살아나지 않아요.' })
+              : t('accountDeleteWarning.headlineSubNoRestore', { defaultValue: '탈퇴하면 이 계정은 되살릴 수 없어요. 아래 내용을 확인해 주세요.' })}
           </p>
         </div>
 
@@ -190,7 +195,9 @@ export default function AccountDeleteWarningPage() {
             {t('accountDeleteWarning.keptTitle', { defaultValue: '30일 동안 보관돼요' })}
           </h3>
           <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
-            {t('accountDeleteWarning.keptSub', { defaultValue: '30일 안에 같은 카카오 계정으로 로그인하면 돌아와요' })}
+            {canRestore
+              ? t('accountDeleteWarning.keptSub', { defaultValue: '30일 안에 같은 카카오 계정으로 로그인하면 돌아와요' })
+              : t('accountDeleteWarning.keptSubNoRestore', { defaultValue: '보관되는 동안에도 이 계정으로 다시 들어올 수는 없어요' })}
           </p>
           <p className="mt-3 text-[15px] text-gray-900 dark:text-white leading-relaxed">
             {t('accountDeleteWarning.keptOthers', { defaultValue: '구매·이용 기록과 작성한 리뷰도 그대로 있어요. 리뷰의 이름은 탈퇴회원으로 바뀌어요.' })}

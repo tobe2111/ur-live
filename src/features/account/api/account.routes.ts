@@ -111,7 +111,10 @@ accountRoutes.get('/delete-blockers', requireUser(), async (c) => {
   if (!user) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
   const r = await countAccountDeleteBlockers(c.env.DB, user.id, user.isDbId);
   if (!r.ok) return c.json({ success: false, error: '탈퇴 가능 여부를 확인하지 못했어요' }, 503);
-  return c.json({ success: true, data: { blockers: r.blockers, can_delete: !isAccountDeleteBlocked(r.blockers) } });
+  // 🔁 2026-11-25: 되살리기는 **카카오 번호**로만 찾는다(`restoreUser`) — 이메일·구글로만 가입한 계정은 30일 안에도 못 돌아온다.
+  //   화면이 그 사실대로 말하게 알려 준다. 못 읽으면 false(되살릴 수 있다고 말하지 않는다).
+  const kk = await c.env.DB.prepare('SELECT kakao_id FROM users WHERE id = ?').bind(user.id).first<{ kakao_id: string | null }>().catch(() => null);
+  return c.json({ success: true, data: { blockers: r.blockers, can_delete: !isAccountDeleteBlocked(r.blockers), can_restore: !!kk?.kakao_id && !String(kk.kakao_id).startsWith('deleted_') } });
 });
 
 /**
@@ -199,7 +202,8 @@ accountRoutes.delete('/delete', requireUser(), async (c) => {
  *   availableAt?: string; // ISO 8601 date string
  * }
  */
-accountRoutes.get('/check-restriction', rateLimit({ action: 'account_check_restriction', max: 20, windowSec: 3600 }), async (c) => {
+// 🔐 2026-11-25: 로그인한 본인의 이메일만 — 종전엔 로그인 없이 아무 이메일이나 넣어 "이 주소가 최근 30일 안에 탈퇴했는가" 를 물을 수 있었다(부르는 화면은 없다).
+accountRoutes.get('/check-restriction', rateLimit({ action: 'account_check_restriction', max: 20, windowSec: 3600 }), requireUser(), async (c) => {
   try {
     const email = c.req.query('email');
 
@@ -209,6 +213,8 @@ accountRoutes.get('/check-restriction', rateLimit({ action: 'account_check_restr
         message: '이메일이 필요합니다.'
       }, 400);
     }
+    const me = await c.env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(getCurrentUser(c)?.id ?? 0).first<{ email: string | null }>().catch(() => null)
+    if (!me?.email || me.email.toLowerCase() !== email.trim().toLowerCase()) return c.json({ success: false, message: '본인 이메일만 확인할 수 있어요.' }, 403)
 
     const result = await checkReregistrationRestriction(email, c.env.DB);
 

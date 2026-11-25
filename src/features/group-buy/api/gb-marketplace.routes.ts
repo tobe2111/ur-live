@@ -7,7 +7,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
-import { requireAuth } from '../../../worker/middleware/auth'
+import { requireUser } from '../../../worker/middleware/auth'
 import { getGbSessions } from '../../../worker/utils/gb-session-store'
 import { resolveGbPricing, isGbActive } from '../../../shared/gb-session'
 import { isVoucherCategory } from '../../../shared/constants/voucher-categories'
@@ -90,7 +90,7 @@ app.get('/', async (c) => {
 })
 
 // GET /my-performance — 소개 콘솔: 내가 담은(핀) 진행 중 공구별 실적(판매·확정/예정 소개비)
-app.get('/my-performance', requireAuth(), async (c) => {
+app.get('/my-performance', requireUser(), async (c) => {
   try {
     const db = c.env.DB
     if (!(await gbEngineOn(db))) return c.json({ success: true, data: [], gb_engine: false })

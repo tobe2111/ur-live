@@ -37,7 +37,13 @@ export function d1(db: Raw): D1Database {
   }
   return {
     prepare: (sql: string) => stmt(sql),
-    batch: async (list: Array<{ run: () => Promise<unknown> }>) => { const out = []; for (const s of list) out.push(await s.run()); return out },
+    // 진짜 D1 의 batch 는 전부 아니면 전무다 — 하나가 실패하면 앞 문장도 되돌린다(2026-11-25: 종전 도우미는 앞 문장을 남겼다).
+    batch: async (list: Array<{ run: () => Promise<unknown> }>) => {
+      const out = []
+      db.exec('BEGIN')
+      try { for (const s of list) out.push(await s.run()); db.exec('COMMIT') } catch (e) { db.exec('ROLLBACK'); throw e }
+      return out
+    },
     exec: async (sql: string) => { db.exec(sql); return { count: 1, duration: 0 } },
     withSession: () => d1(db),
   } as unknown as D1Database

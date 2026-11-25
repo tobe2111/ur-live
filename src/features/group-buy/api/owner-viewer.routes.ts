@@ -9,7 +9,7 @@
  * 이용권·숙소·쇼핑 상품이 전부 `products` 한 테이블이라 엔드포인트는 하나다. 숫자만 종류마다 다르다.
  */
 import type { Hono } from 'hono'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { getCurrentUser, requireUser } from '@/worker/middleware/auth'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { swallow } from '@/worker/utils/swallow'
 import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories'
@@ -57,7 +57,7 @@ async function readOwned(DB: D1Database, pid: number): Promise<OwnedRow | null> 
 }
 
 export function registerOwnerViewerEndpoints(router: Hono<{ Bindings: Env }>) {
-  router.get('/viewer/:id', requireAuth(), async (c) => {
+  router.get('/viewer/:id', requireUser(), async (c) => {
     const user = getCurrentUser(c)
     const pid = Number(c.req.param('id'))
     c.header('Cache-Control', 'private, no-store')
@@ -76,7 +76,7 @@ export function registerOwnerViewerEndpoints(router: Hono<{ Bindings: Env }>) {
 
   // 판매 중지 / 다시 판매 — 셀러 상품 수정(`PUT /api/seller/products/:id`)과 같은 값을 쓴다
   //   (`is_active` + `status` HIDDEN/ACTIVE). 삭제된 상품은 되살리지 않는다(복구는 셀러 화면의 일).
-  router.post('/viewer/:id/active', requireAuth(), async (c) => {
+  router.post('/viewer/:id/active', requireUser(), async (c) => {
     const user = getCurrentUser(c)
     const pid = Number(c.req.param('id'))
     c.header('Cache-Control', 'private, no-store')

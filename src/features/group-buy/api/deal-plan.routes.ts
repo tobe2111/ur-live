@@ -27,7 +27,7 @@
  */
 import type { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
-import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
+import { getCurrentUser, requireUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { safeError } from '@/worker/utils/safe-error'
@@ -37,7 +37,7 @@ import { resolvePartialDealPlan, isPartialDealEnabled, getDealBalance, MIN_CARD_
 export function registerDealPlanEndpoint(app: Hono<{ Bindings: Env }>) {
   app.get('/deal-plan/:productId',
     rateLimit({ action: 'group_buy_deal_plan', max: 30, windowSec: 60 }),
-    requireAuth(),
+    requireUser(), // 🔒 2026-11-25: 손님 토큰만
     async (c) => {
       try {
         const user = getCurrentUser(c)

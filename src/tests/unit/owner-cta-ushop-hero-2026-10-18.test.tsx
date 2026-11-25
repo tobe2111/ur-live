@@ -97,7 +97,7 @@ describe('② 화면 — 주인에겐 [관리하기]', () => {
     const i = r.indexOf("router.get('/viewer/:id'")
     expect(i).toBeGreaterThan(-1)
     const block = r.slice(i, r.indexOf('\n})', i))
-    expect(block).toMatch(/requireAuth\(\)/)
+    expect(block).toMatch(/requireUser\(\)/) // 🔁 2026-11-25 재조준: 손님 토큰만
     expect(block).toMatch(/no-store/)
     expect(block).toMatch(/isSelfOwnedGroupBuy\(/)
     expect(readCode('src/pages/group-buy/useViewerIsOwner.ts')).toMatch(/\/api\/group-buy\/viewer\//)

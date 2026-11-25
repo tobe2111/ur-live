@@ -89,9 +89,16 @@ export default function Admin2FASetupPage() {
       <div className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="2단계 인증 (어드민)"
-          subtitle="환불 / 분쟁 / 강제 처리 endpoint 보호"
+          subtitle="지금은 꺼져 있어요. 등록해도 로그인과 송금 때 묻지 않습니다."
           icon={<Shield className="h-5 w-5" />}
         />
+
+        {/* 🔕 2026-11-25: 2단계 인증은 2026-07-19 대표 결정으로 서버에서 꺼져 있다(`require-2fa.ts` TWO_FA_DISABLED · 로그인 게이트).
+            이 화면은 "환불/분쟁 보호" 라고 말해 켜면 지켜지는 것처럼 읽혔다. 꺼져 있다는 사실을 먼저 말한다. */}
+        <p className="rounded-xl bg-gray-50 px-4 py-3 text-[13px] leading-relaxed text-gray-700" data-testid="twofa-off-notice">
+          2단계 인증은 지금 서버에서 꺼져 있습니다. 여기서 인증 앱을 등록해 두어도 로그인, 환불, 송금, 장부 수정 때 인증 번호를 묻지 않습니다.
+          다시 켜는 것은 대표 결정 사항입니다. 켜지기 전까지 계정 보호는 비밀번호와 PIN, 단일 세션이 맡습니다.
+        </p>
 
         <div className={`rounded-[var(--dash-radius,16px)] p-5 border-2 flex items-center gap-4 ${enabled ? 'bg-white border-rule' : 'bg-white border-rule'}`}>
           {enabled ? <ShieldCheck className="w-10 h-10 text-tone-ok shrink-0" /> : <ShieldAlert className="w-10 h-10 text-tone-warn shrink-0" />}

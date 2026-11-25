@@ -111,7 +111,7 @@ describe('🔌 배선 — 고른 값이 서버까지 가는가', () => {
 
   it('조회 엔드포인트는 읽기 전용이다 — 딜을 여기서 차감하지 않는다', () => {
     expect(plan).not.toMatch(/spendPartialDeal|adjustUserPoints|INSERT INTO|UPDATE /)
-    expect(plan).toMatch(/requireAuth\(\)/)
+    expect(plan).toMatch(/requireUser\(\)/) // 🔁 2026-11-25 재조준: 손님 토큰만(셀러·어드민 토큰의 번호를 손님 번호로 읽지 않는다)
   })
 
   it('🔴 모바일 — 고르는 자리가 결제 버튼 **위**에 있다', () => {

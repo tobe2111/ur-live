@@ -139,10 +139,13 @@ export async function deleteUserAccount(
       .run()
       .catch(swallow("cleanup"));
 
-    // Mark referral commissions as inactive (stop future earnings)
+    // 아직 지급 전인 추천 커미션을 거둔다 — 탈퇴한 계정으로 뒤늦게 적립되지 않게.
+    // 🩹 2026-11-25: 종전 문장은 한 번도 동작한 적이 없다 — 이 표엔 `user_id` 칸이 없고(`beneficiary_id`),
+    //   `'cancelled'` 는 CHECK 제약 밖이다. 오류는 아래 `.catch` 가 삼켰다. 거둔 상태는 환불 경로와 같은 `'withdrawn'`.
+    //   이미 지급된(`granted`) 것은 딜로 들어가 위에서 잔액과 함께 소멸했으므로 기록만 남긴다.
     await db
       .prepare(
-        "UPDATE referral_commissions SET status = 'cancelled' WHERE user_id = ? AND status = 'granted'"
+        "UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE beneficiary_id = ? AND beneficiary_type = 'user' AND status = 'pending'"
       )
       .bind(userIdStr)
       .run()
@@ -345,35 +348,42 @@ export async function restoreUser(
     //   신규 row 는 방금 만들어진 빈 계정이므로 kakao_id 를 소프트-폐기(prefix)해 점유를 해제 →
     //   옛 row 가 raw kakao_id 를 되찾을 수 있게 한다. 신규 row 는 로그인 매칭에서 배제(deleted_at set).
     //   (복원 성공 후 프론트가 /login 재로그인 → raw kakao_id 로 옛 row 매칭 = 이력 그대로 복귀.)
-    if (newUserId != null && String(newUserId) !== String(userId)) {
-      await db
-        .prepare(
-          `UPDATE users
-             SET kakao_id = 'restored_dup_' || id || '_' || CAST(strftime('%s','now') AS TEXT),
-                 deleted_at = COALESCE(deleted_at, CURRENT_TIMESTAMP),
-                 updated_at = CURRENT_TIMESTAMP
-           WHERE id = ? AND kakao_id = ?`
-        )
-        .bind(String(newUserId), kakaoId)
-        .run()
-        .catch(swallow('restore: neutralize dup new row'))
-    }
-
-    // 2. users row 복원 — kakao_id prefix 제거, 익명화 정보 갱신
-    await db
+    // 🔁 2026-11-25: 두 UPDATE 를 **한 묶음**으로 — 종전엔 새 행을 먼저 치우고(오류는 삼킴) 그다음 옛 행을 살렸다.
+    //   옛 행을 살리는 문장이 실패하면 새 행은 이미 죽어 있어 그 사람에게 쓸 수 있는 계정이 하나도 남지 않았다.
+    //   순서는 못 바꾼다(카카오 번호가 유일이라 새 행이 먼저 내려놔야 한다) — 그래서 D1 batch(전부 아니면 전무)로 묶는다.
+    //   📧 새 행은 이메일도 내려놓는다 — `users.email` 도 유일이라, 옛 행에 새 행의 이메일을 적는 순간 충돌했다
+    //   (이메일이 있는 카카오 계정의 복구는 **언제나** 실패했고, 그때 새 행은 이미 죽어 있었다 — 시험 `auth-doors-3`).
+    //   🧱 `deleted_at` 은 **있을 때만** 쓴다 — 라이브 `users` 표에는 그 칸이 없다(넓은 표라 ALTER 가 조용히 실패한다).
+    //   종전 문장은 그 칸을 무조건 적어서 라이브에서는 `no such column` 으로 언제나 실패했다. 탈퇴 표시는 이메일·카카오 번호가 맡는다.
+    const hasDeletedAt = !!(await db.prepare("SELECT 1 AS ok FROM pragma_table_info('users') WHERE name = 'deleted_at'").first<{ ok: number }>().catch(() => null))
+    const revive = db
       .prepare(
         `UPDATE users
          SET kakao_id = ?,
              name = ?,
              email = ?,
-             profile_image = ?,
-             deleted_at = NULL,
+             profile_image = ?,${hasDeletedAt ? `
+             deleted_at = NULL,` : ''}
              updated_at = CURRENT_TIMESTAMP,
              last_login_at = CURRENT_TIMESTAMP
          WHERE id = ?`
       )
       .bind(kakaoId, newName, newEmail, newProfileImage, userId)
-      .run()
+    if (newUserId != null && String(newUserId) !== String(userId)) {
+      const neutralize = db
+        .prepare(
+          `UPDATE users
+             SET kakao_id = 'restored_dup_' || id || '_' || CAST(strftime('%s','now') AS TEXT),
+                 email = 'restored_dup_' || id || '@deleted.invalid',${hasDeletedAt ? `
+                 deleted_at = COALESCE(deleted_at, CURRENT_TIMESTAMP),` : ''}
+                 updated_at = CURRENT_TIMESTAMP
+           WHERE id = ? AND kakao_id = ?`
+        )
+        .bind(String(newUserId), kakaoId)
+      await db.batch([neutralize, revive])
+    } else {
+      await revive.run()
+    }
 
     // 3. deleted_accounts 기록 삭제 (복원 완료)
     await db.prepare('DELETE FROM deleted_accounts WHERE user_id = ?').bind(userId).run().catch(swallow('restore'))

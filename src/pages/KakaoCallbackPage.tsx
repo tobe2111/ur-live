@@ -45,6 +45,7 @@ export default function KakaoCallbackPage() {
         //   불일치였다(주 흐름은 서버 /sync/callback 이라 휴면 버그였지만, 이 SPA 경로로 code 가 오면 실패).
         const res = await api.post('/api/auth/kakao/callback', {
           code,
+          state, // 🔒 2026-11-25: 서버가 state 를 확인한다(없으면 400 — 남의 코드로 로그인시키기 차단)
           redirect_uri: `${window.location.origin}/auth/kakao/callback`,
         })
 

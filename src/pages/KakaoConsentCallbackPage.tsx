@@ -43,7 +43,8 @@ export default function KakaoConsentCallbackPage() {
 
     async function processConsent() {
       try {
-        await api.post('/api/auth/kakao/callback', {
+        // 🔒 2026-11-25: 로그인 문(`/callback`)이 아니라 동의 전용 문 — 세션을 바꾸지 않고 토큰만 저장한다.
+        await api.post('/api/auth/kakao/consent-callback', {
           code,
           redirect_uri: `${window.location.origin}/auth/kakao/consent/callback`,
         })

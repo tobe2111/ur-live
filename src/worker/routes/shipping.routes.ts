@@ -21,7 +21,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
-import { requireAuth, requireAdmin, requireUserType } from '../middleware/auth'
+import { requireAdmin, requireUserType, requireUser } from '../middleware/auth'
 import { safeError } from '../utils/safe-error'
 import { fetchTrackerDelivery } from '../utils/tracker-delivery'
 import {
@@ -105,7 +105,7 @@ shippingRoutes.get('/track/:carrier/:trackingNumber', async (c) => {
 // GET /api/shipping/order/:orderId/track (requireUser)
 // 본인 주문의 추적 — DB 캐시 우선, stale 시 tracker.delivery 호출
 // ============================================================
-shippingRoutes.get('/order/:orderId/track', requireAuth(), async (c) => {
+shippingRoutes.get('/order/:orderId/track', requireUser(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)

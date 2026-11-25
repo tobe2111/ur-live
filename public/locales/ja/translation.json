@@ -5254,7 +5254,7 @@
     "authCancelled": "カカオ認証キャンセル",
     "linkFailed": "連携失敗",
     "unlinkHint": "上の \"解除\" ボタンでいつでも連携解除できます。",
-    "unlinkPasswordPrompt": "本人確認のためパスワードを入力してください。\n(カカオのみで登録した場合、先に「パスワード検索」で設定してください)",
+    "unlinkPasswordPrompt": "本人確認のためパスワードを入力してください。\n(パスワードのない店舗は解除できません)",
     "checkingStatus": "連携状態確認中...",
     "linkedStatus": "✓ カカオアカウント連携済み",
     "unlinkBtn": "解除",

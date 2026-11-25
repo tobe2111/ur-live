@@ -343,6 +343,19 @@ async function requireOwnerOfCurrentStore(c: Ctx): Promise<{ userId: number; sel
   return { userId, sellerId }
 }
 
+/**
+ * 🔒 2026-11-25: 이메일 초대는 **카카오가 확인한 이메일**만 본다. 종전엔 `users.email` 이 같은 첫 행을 골랐는데,
+ *   이메일 가입은 주소 확인을 안 한다 — 남의 주소로 먼저 가입해 두면 그 매장의 운영 권한을 받았다.
+ *   이메일만으로 가입한 사람은 핸들로 초대한다(핸들은 유일하고 주인이 직접 고른다). 같은 주소가 둘이면 고르지 않는다.
+ */
+export async function findInviteeByVerifiedEmail(DB: D1Database, email: string): Promise<{ id: number; name: string; handle: string } | 'ambiguous' | null> {
+  const r = await DB.prepare(
+    "SELECT id, name, handle FROM users WHERE LOWER(email) = LOWER(?) AND kakao_id IS NOT NULL AND kakao_id <> '' AND kakao_id NOT LIKE 'deleted_%' LIMIT 2",
+  ).bind(email).all<{ id: number; name: string; handle: string }>().catch(() => ({ results: [] as Array<{ id: number; name: string; handle: string }> }))
+  const rows = r.results || []
+  return rows.length === 1 ? rows[0] : rows.length > 1 ? 'ambiguous' : null
+}
+
 // ── GET /operators ────────────────────────────────────────────────────────
 app.get('/operators', async (c) => {
   try {
@@ -368,8 +381,8 @@ app.post('/operators', rateLimit({ action: 'seller_operator_grant', max: 20, win
     const target = handle
       ? await c.env.DB.prepare('SELECT id, name, handle FROM users WHERE handle = ? LIMIT 1')
           .bind(handle).first<{ id: number; name: string; handle: string }>().catch(() => null)
-      : await c.env.DB.prepare('SELECT id, name, handle FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1')
-          .bind(email).first<{ id: number; name: string; handle: string }>().catch(() => null)
+      : await findInviteeByVerifiedEmail(c.env.DB, email)
+    if (target === 'ambiguous') return c.json({ success: false, error: '이 이메일로는 한 사람을 특정할 수 없어요. 그분의 유어샵 주소(@핸들)로 초대해 주세요', code: 'EMAIL_AMBIGUOUS' }, 409)
     if (!target) return c.json({ success: false, error: '해당 사용자를 찾을 수 없습니다. 유어딜 가입 후 다시 시도해주세요' }, 404)
     if (target.id === g.userId) return c.json({ success: false, error: '본인은 이미 이 매장의 소유자입니다' }, 400)
 

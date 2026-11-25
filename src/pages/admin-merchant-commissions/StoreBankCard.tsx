@@ -59,6 +59,18 @@ export default function StoreBankCard({ sellerId }: { sellerId: number }) {
     } finally { setSaving(false) }
   }
 
+  // 🔑 잊은 매장 PIN 초기화(2026-11-25) — 사장님 본인 확인을 한 뒤에만 누른다. 지우면 사장님이 새 PIN 을 만든다.
+  async function resetPin() {
+    if (!(await confirmDialog({ message: '이 매장의 PIN 을 초기화할까요? 사장님 본인이 요청했는지 확인한 뒤에만 눌러 주세요. 사장님에게 알림이 갑니다.', danger: true }))) return
+    try {
+      const r = await api.post(`/api/admin/sellers/${sellerId}/bank-account/reset-pin`, {})
+      if (r.data?.success) toast.success(r.data.message || 'PIN 을 초기화했어요')
+      else toast.error(r.data?.error || 'PIN 을 초기화하지 못했어요')
+    } catch (err: unknown) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'PIN 을 초기화하지 못했어요')
+    }
+  }
+
   const ready = !!bank && account.trim().length >= 8 && !!holder.trim()
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
@@ -70,9 +82,12 @@ export default function StoreBankCard({ sellerId }: { sellerId: number }) {
             : <p className="text-xs text-amber-700 mt-0.5">등록된 계좌가 없어요. 정산이 생겨도 보낼 수 없습니다.</p>}
         </div>
         {!open && (
-          <button type="button" onClick={() => setOpen(true)} className="h-9 shrink-0 rounded-lg px-3 text-[13px] font-semibold text-gray-700 hover:bg-gray-50">
-            {data.registered ? '바꾸기' : '대신 입력'}
-          </button>
+          <div className="flex shrink-0 gap-1">
+            <button type="button" onClick={resetPin} className="h-9 rounded-lg px-3 text-[13px] font-semibold text-gray-500 hover:bg-gray-50">PIN 초기화</button>
+            <button type="button" onClick={() => setOpen(true)} className="h-9 rounded-lg px-3 text-[13px] font-semibold text-gray-700 hover:bg-gray-50">
+              {data.registered ? '바꾸기' : '대신 입력'}
+            </button>
+          </div>
         )}
       </div>
 
