@@ -11,6 +11,7 @@
  * 환불은 그 주문 안에서 매장 금액 비율로 나눈다. 결제월 = `paid_at`(없으면 `created_at`) KST.
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { chunkForBinds } from '../../shared/db/d1-binds'
 
 export interface SalesAgencyRow {
   sellerId: number; month: string; method: 'card' | 'deal'; orders: number; gross: number; refunded: number; net: number
@@ -73,8 +74,7 @@ export async function computeSalesAgencyReport(DB: D1Database, quarter: string):
   }
   const rows = [...agg.values()]
   const ids = [...new Set(rows.map((r) => r.sellerId))]
-  for (let i = 0; i < ids.length; i += 50) {
-    const chunk = ids.slice(i, i + 50)
+  for (const chunk of chunkForBinds(ids)) {
     const { results: ss } = await DB.prepare(
       `SELECT id, business_number, COALESCE(business_name, name) AS bname FROM sellers WHERE id IN (${chunk.map(() => '?').join(',')})`,
     ).bind(...chunk).all<{ id: number; business_number: string | null; bname: string | null }>()
