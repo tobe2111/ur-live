@@ -40,7 +40,7 @@ describe('지급 한 주기 — 에이전시 몫 · 인플루언서 현금 · �
     const DB = d1(raw)
     const R = makeReport(OUT || undefined)
     const out = stubOutbound()
-    const env = { DB, JWT_SECRET: SECRET, TOSS_SECRET_KEY: 'test_sk_local', TOSS_CLIENT_KEY: 'test_ck_local', ENVIRONMENT: 'development', FRONTEND_URL: 'https://urdeal.kr' } as Record<string, unknown>
+    const env = { DB, JWT_SECRET: SECRET, DATA_ENCRYPTION_KEY: 'test-kek-0123456789abcdef', TOSS_SECRET_KEY: 'test_sk_local', TOSS_CLIENT_KEY: 'test_ck_local', ENVIRONMENT: 'development', FRONTEND_URL: 'https://urdeal.kr' } as Record<string, unknown>
 
     const app = new Hono()
     app.use('/api/*', storeSeatGuard())
@@ -263,6 +263,11 @@ describe('지급 한 주기 — 에이전시 몫 · 인플루언서 현금 · �
       R.check('설정한 적 없는 인플루언서의 세금 종류는 사업소득(3.3%)으로 잡힌다(종전: 표 기본값 기타소득 8.8%)', taxType === 'business_income', String(taxType))
       const setAcct = await call('PUT', '/api/influencer-settlement/me', iTok, { bank_name: '국민', bank_account: '123-45-678901', account_holder: '시험소개', payout_method: 'cash' })
       R.check('인플루언서가 받을 계좌 등록', setAcct.status === 200, fail(setAcct))
+      // 🪪 2026-11-25 — 사업자번호 없는 개인은 주민등록번호(간이지급명세서)가 있어야 현금으로 보낸다.
+      const noTaxId = await call('POST', '/api/admin-payouts/payouts/process', financeTok, { influencer_id: String(INFL), method: 'cash' })
+      R.check('주민등록번호가 없으면 현금 지급 완료로 처리할 수 없다 — 잔액이 그대로다', noTaxId.status === 409 && noTaxId.json.code === 'PAYOUT_NO_TAX_ID' && bal()?.available_amount === 6000, `${fail(noTaxId)} ${JSON.stringify(bal())}`)
+      const setTax = await call('PUT', '/api/influencer-settlement/tax-id', iTok, { legal_name: '시험소개', rrn: '900101-1234567' })
+      R.check('인플루언서가 주민등록번호 등록(암호화 저장)', setTax.status === 200 && !JSON.stringify(q1(raw, 'SELECT rrn_enc FROM payee_tax_ids')).includes('1234567'), fail(setTax))
       const pay = await call('POST', '/api/admin-payouts/payouts/process', financeTok, { influencer_id: String(INFL), method: 'cash' })
       const cash = pay.json.cash as { gross: number; withholding: number; net: number } | undefined
       R.check('현금 지급: 6,000원에서 3.3%(198원) 떼고 5,802원을 보내라고 알려준다', pay.status === 200 && cash?.gross === 6000 && cash.withholding === 198 && cash.net === 5802 && bal()?.available_amount === 0, `${fail(pay)} ${JSON.stringify(bal())}`)

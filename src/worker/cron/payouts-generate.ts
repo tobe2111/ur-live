@@ -113,7 +113,18 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
           `INSERT OR IGNORE INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, bank_name, account_number, account_holder)
            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
         ).bind(payeeType, id, pending, periodStart, periodEnd, acct.bankName, acct.accountNumber, acct.accountHolder).run()
-        if ((ins.meta?.changes ?? 0) > 0) created++
+        if ((ins.meta?.changes ?? 0) > 0) {
+          created++
+          // 📣 2026-11-25 대표 *"응 모두 해줘"* — 사장님에게 "이번 주 목요일 N원 입금 예정" 을 미리 알린다(송금 완료 알림은 `payout-sent-notify`).
+          //   생성에 성공한 건만(재실행해도 한 번). 실패해도 정산 생성을 막지 않는다.
+          if (payeeType === 'store_owner' || payeeType === 'seller') {
+            const { createDashboardNotification } = await import('../../features/notifications/api/dashboard-notifications.routes')
+            const [, tm, td] = minRule.thursday.split('-').map(Number)
+            await createDashboardNotification(DB, 'seller', String(id), 'payout_scheduled',
+              `📅 ${tm}월 ${td}일(목) 정산 ${pending.toLocaleString('ko-KR')}원 입금 예정`,
+              `지난주까지 손님이 사용한 이용권 금액이에요. 등록하신 계좌로 보내 드리고, 보내면 다시 알려 드려요.`, '/seller/payouts').catch(() => undefined)
+          }
+        }
       } catch (e) {
         logError('[payouts-cron] insert failed', { account: c.credit_account, error: (e as Error).message })
       }
