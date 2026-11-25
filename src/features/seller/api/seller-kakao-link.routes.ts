@@ -197,10 +197,12 @@ sellerKakaoLinkRoutes.post('/relink-kakao', rateLimit({ action: 'seller_relink',
 /**
  * POST /api/seller/unlink-kakao — 연동 해제
  */
-sellerKakaoLinkRoutes.post('/unlink-kakao', async (c) => {
+sellerKakaoLinkRoutes.post('/unlink-kakao', rateLimit({ action: 'seller_unlink_kakao', max: 5, windowSec: 600 }), async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
     if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    // 🔒 2026-11-25: 비밀번호를 맞혀 보는 길인데 횟수 제한도 주인 확인도 없었다 — 위임받은 운영 자리가 주인의 카카오 연결을 끊을 수 있었다.
+    if (!(await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB)).isOwner) return c.json({ success: false, error: OWNER_ONLY_MESSAGE, code: 'OWNER_ONLY' }, 403)
 
     // 🛡️ 카카오 전용 생성된 셀러(/register-from-user 경로)는 임시 비번(랜덤 hex)이 저장돼 있어
     //   unlink 시 이메일 로그인 불가 → 영구 lockout. current_password 검증으로 방어.

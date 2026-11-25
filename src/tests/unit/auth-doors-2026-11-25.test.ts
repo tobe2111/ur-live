@@ -13,8 +13,18 @@ import { readFileSync } from 'node:fs'
 import { d1, openLiveSchema, insert, q, makeCtx, stubOutbound, SECRET } from '../helpers/live-d1'
 import { kakaoRoutes, __signOauthStateForTest } from '@/features/auth/api/kakao.routes'
 import { accountRoutes } from '@/features/account/api/account.routes'
+import { sellerPinRoutes } from '@/features/seller/api/seller-pin.routes'
+import { hostingRoutes } from '@/worker/routes/hosting.routes'
+import { influencerProfileRoutes } from '@/features/marketing/api/influencer-profile.routes'
+import { sellerToken } from '../helpers/live-d1'
+import { sellerOperatorsRoutes } from '@/features/seller/api/seller-operators.routes'
+import { storeSeatGuard } from '@/worker/utils/store-seat-guard'
+import { sign } from 'hono/jwt'
 import { userToken, q1 } from '../helpers/live-d1'
 import { ensureAgencyConsoleTables } from '@/features/agency-console/api/agency-schema'
+import { verifyPassword } from '@/lib/password'
+import { stripComments } from '../helpers/source-text'
+import { bumpStoreSeatEpoch, verifyStoreSeat } from '@/worker/utils/store-seat-guard'
 
 async function setup() {
   const raw = openLiveSchema()
@@ -77,9 +87,15 @@ describe('카카오 가입 — 같은 이메일이 이미 다른 방법으로 �
     expect(r.location).not.toContain('database_error')
     expect(q(raw, 'SELECT id FROM users').length).toBe(1)
   })
-  it('그 오류 코드에 손님이 읽을 안내 문구가 있다(없으면 "로그인 중 오류가 발생했어요 (코드)" 로 보인다)', () => {
+  it('그 오류 코드에 손님이 읽을 안내 문구가 있다(없으면 "로그인 중 오류가 발생했어요 (코드)" 로 보인다)', async () => {
+    const { oauthErrorMessage } = await import('@/utils/oauth-error-messages')
+    expect(oauthErrorMessage('email_already_linked')).toContain('이메일로 이미 가입')
+    expect(oauthErrorMessage('never_seen_code')).toBe('로그인 중 오류가 발생했어요 (never_seen_code)')
+    // 문구 표는 첫 화면 코드(App)에 싣지 않는다 — 그 순간에만 불러온다. 흔적 정리 목록에는 이 코드가 남아 있어야 한다.
     const app = readFileSync('src/App.tsx', 'utf8')
-    expect(app).toMatch(/email_already_linked: '[^']*이메일로 이미 가입/)
+    expect(app).not.toContain('이메일로 이미 가입한 계정이 있어요')
+    expect(app).toContain("import('@/utils/oauth-error-messages')")
+    expect(app).toMatch(/'oauth_state_expired', 'email_already_linked',/)
   })
 })
 
@@ -138,5 +154,106 @@ describe('회원 탈퇴 — 남은 로그인 · 남의 가게 자리 · 카카�
     const del = await call('DELETE', '/api/account/delete', tok, { reason: '시험' })
     expect([del.status, del.json.code]).toEqual([409, 'DELETE_BLOCKED'])
     expect(q1<{ name: string }>(raw, 'SELECT name FROM users WHERE id = ?', U)?.name).toBe('에이전시주인')
+  })
+})
+
+describe('매장 PIN — 주인만 만든다·바꾼다', () => {
+  it('카카오 연결 매장에서 위임받은 운영자 자리로는 PIN 을 덮어쓸 수 없다(종전: 아무 검사 없이 통과)', async () => {
+    const raw = openLiveSchema()
+    const DB = d1(raw)
+    const env = { DB, JWT_SECRET: SECRET, ENVIRONMENT: 'development' } as Record<string, unknown>
+    const app = new Hono()
+    app.use('/api/*', storeSeatGuard())
+    app.route('/api/seller', sellerOperatorsRoutes)
+    app.route('/api/seller', sellerPinRoutes)
+    const OWNER = insert(raw, 'users', { name: '주인', email: 'own@example.test', kakao_id: 'k-o' })
+    const OP = insert(raw, 'users', { name: '운영자', email: 'op@example.test', kakao_id: 'k-p' })
+    const S = insert(raw, 'sellers', { username: 'linked-store', password_hash: '', name: '주인', email: 'own@example.test', business_name: '연결매장', status: 'approved', linked_user_id: OWNER })
+    insert(raw, 'seller_operators', { seller_id: S, user_id: OWNER, role: 'owner' })
+    insert(raw, 'seller_operators', { seller_id: S, user_id: OP, role: 'operator' })
+    const nowS = Math.floor(Date.now() / 1000)
+    const call = async (method: string, path: string, headers: Record<string, string>, body?: unknown) => {
+      const { ctx, drain } = makeCtx()
+      raw.exec('DELETE FROM rate_limit_attempts')
+      const res = await app.request(path, { method, headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.9', 'User-Agent': 'Mozilla/5.0 authdoors', ...headers }, body: body === undefined ? undefined : JSON.stringify(body) }, env, ctx)
+      await drain()
+      const text = await res.text()
+      let json: Record<string, unknown> = {}
+      try { json = JSON.parse(text) } catch { json = { _raw: text.slice(0, 200) } }
+      return { status: res.status, json }
+    }
+    const seatOf = async (userId: number, name: string) => {
+      const cookie = `ur_session=${await sign({ sub: String(userId), name, type: 'user', isDbId: true, iat: nowS, exp: nowS + 3600 }, SECRET)}`
+      const r = await call('POST', `/api/seller/stores/${S}/token`, { Cookie: cookie }, {})
+      return String(((r.json.data ?? {}) as { seller_token?: string }).seller_token || '')
+    }
+    const opSeat = await seatOf(OP, '운영자'), ownerSeat = await seatOf(OWNER, '주인')
+    expect(opSeat.length).toBeGreaterThan(20)
+    expect(ownerSeat.length).toBeGreaterThan(20)
+    const pinRow = () => q1<{ value: string }>(raw, "SELECT value FROM seller_meta WHERE seller_id = ? AND key LIKE '%pin%'", S)?.value
+    const byOp = await call('POST', '/api/seller/set-pin', { Authorization: `Bearer ${opSeat}` }, { pin: '111111' })
+    expect([byOp.status, byOp.json.code], JSON.stringify(byOp.json)).toEqual([403, 'OWNER_ONLY'])
+    expect(pinRow()).toBeUndefined()
+    const byOwner = await call('POST', '/api/seller/set-pin', { Authorization: `Bearer ${ownerSeat}` }, { pin: '222222' })
+    expect(byOwner.status, JSON.stringify(byOwner.json)).toBe(200)
+    expect(pinRow()).toBeTruthy()
+  })
+})
+
+describe('손님 전용 경로 — 셀러·어드민 토큰의 번호를 손님 번호로 읽지 않는다', () => {
+  it('셀러 #N · 어드민 #N 토큰으로 손님 #N 의 호스팅 내역·인플루언서 프로필에 들어갈 수 없다', async () => {
+    const raw = openLiveSchema()
+    const env = { DB: d1(raw), JWT_SECRET: SECRET, ENVIRONMENT: 'development' } as Record<string, unknown>
+    const app = new Hono()
+    app.route('/api/hosting', hostingRoutes)
+    app.route('/api/influencer-profile', influencerProfileRoutes)
+    const U = insert(raw, 'users', { name: '손님', email: 'c@example.test' })
+    const S = insert(raw, 'sellers', { username: 'same-id', password_hash: '', name: '사장', email: 's@example.test', business_name: '가게', status: 'approved' })
+    expect(S).toBe(U) // 번호가 같아야 혼동이 재현된다
+    const A = insert(raw, 'admins', { username: 'adm', email: 'adm@example.test', password_hash: 'x', name: 'adm', role: 'super_admin' })
+    const nowS = Math.floor(Date.now() / 1000)
+    const aTok = await sign({ type: 'admin', sub: String(A), admin_id: A, userId: A, role: 'super_admin', iat: nowS, exp: nowS + 3600 }, SECRET)
+    const sTok = await sellerToken(S), uTok = await userToken(U)
+    const hit = async (method: string, path: string, tok: string) => {
+      const { ctx, drain } = makeCtx()
+      raw.exec('DELETE FROM rate_limit_attempts')
+      const res = await app.request(path, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}`, 'CF-Connecting-IP': '203.0.113.9', 'User-Agent': 'Mozilla/5.0 authdoors' }, body: method === 'GET' ? undefined : '{}' }, env, ctx)
+      await drain()
+      return res.status
+    }
+    for (const [name, tok] of [['셀러', sTok], ['어드민', aTok]] as const) {
+      expect(await hit('GET', '/api/hosting/me', tok), `${name} 토큰 · 호스팅 내역`).toBe(403)
+      expect(await hit('PATCH', '/api/hosting/me/1/cancel', tok), `${name} 토큰 · 호스팅 취소`).toBe(403)
+      expect(await hit('PUT', '/api/influencer-profile/me', tok), `${name} 토큰 · 프로필 저장`).toBe(403)
+    }
+    expect(await hit('GET', '/api/hosting/me', uTok), '손님 토큰은 그대로 된다').toBe(200)
+  })
+})
+
+describe('작은 문들', () => {
+  it('비밀번호가 없는 계정(카카오·구글 가입)에 이메일 로그인을 시도해도 터지지 않고 "틀렸다" 로 답한다', async () => {
+    expect(await verifyPassword('anything', null as unknown as string)).toEqual({ valid: false, isLegacy: false })
+    expect(await verifyPassword('anything', '')).toEqual({ valid: false, isLegacy: false })
+  })
+  it('카카오 연결 해제는 횟수 제한이 있고 주인만 한다', () => {
+    const src = stripComments(readFileSync('src/features/seller/api/seller-kakao-link.routes.ts', 'utf8'))
+    const i = src.indexOf("sellerKakaoLinkRoutes.post('/unlink-kakao'")
+    const block = src.slice(i, i + 900)
+    expect(block).toContain("rateLimit({ action: 'seller_unlink_kakao'")
+    expect(block).toContain('.isOwner')
+    expect(block).toContain("code: 'OWNER_ONLY'")
+  })
+  it('매장 좌석 에포크를 올리면 그 전에 받은 비밀번호 로그인 토큰이 끊긴다(셀러 비밀번호 재설정이 쓰는 장치)', async () => {
+    // 재설정 라우트 자체는 여기서 돌리지 않는다 — 그 파일을 시험이 읽지 못한다(고객센터 주소가 들어 있어 보호 장치가 막는다).
+    // 대신 그 라우트가 부르는 장치가 실제로 옛 토큰을 끊는지를 본다.
+    const raw = openLiveSchema()
+    const DB = d1(raw)
+    const S = insert(raw, 'sellers', { username: 'pw-store', password_hash: 'x', name: '사장', email: 'pw@example.test', business_name: '가게', status: 'approved' })
+    const iat = Math.floor(Date.now() / 1000) - 60
+    const before = await verifyStoreSeat(DB, { type: 'seller', seller_id: S, iat })
+    expect(before.kind).toBe('live')
+    await bumpStoreSeatEpoch(DB, S, 'password_reset')
+    const after = await verifyStoreSeat(DB, { type: 'seller', seller_id: S, iat })
+    expect(after.kind).not.toBe('live')
   })
 })

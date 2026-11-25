@@ -152,6 +152,9 @@ export async function verifyPassword(
   password: string,
   storedHash: string
 ): Promise<{ valid: boolean; isLegacy: boolean }> {
+  // 🚪 2026-11-25: 비밀번호가 없는 계정(카카오·구글로만 가입, `password_hash` NULL·빈 값)은 틀린 것으로 답한다.
+  //   종전엔 아래 `.startsWith` 가 null 에서 터져, 그런 계정에 이메일 로그인을 시도하면 "아이디 또는 비밀번호가 틀려요" 대신 500 이 났다.
+  if (typeof storedHash !== 'string' || storedHash.length === 0) return { valid: false, isLegacy: false };
 
   // ── 고엔트로피 토큰 빠른 해시 검증 (s256$ prefix) ──────────────
   //   🏭 2026-06-29: hashToken() 으로 저장된 refresh 토큰. 단일 SHA-256 비교(상수시간).

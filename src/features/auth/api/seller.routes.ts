@@ -786,6 +786,9 @@ sellerRoutes.post('/reset-password', cors(), rateLimit({ action: 'seller_reset_p
     // 🔒 2026-06-22 (보안 감사 H2): refresh 만 지우면 탈취된 access 토큰(최대 30일 TTL)이 비번 재설정 후에도
     //   만료까지 유효. min_valid_iat 를 현재로 올려 이전 발급 seller access 토큰 전부 무효화(단일세션 경계).
     await startDashboardSession(DB, 'seller', row.user_id, Math.floor(Date.now() / 1000)).catch(swallow('auth:api:seller'));
+    // 🔒 2026-11-25: 위 호출은 셀러에겐 아무 일도 안 한다('seller' 는 단일 세션 대상이 아니다) — 그래서 재설정 뒤에도 옛 토큰이 30일 살았다.
+    //   비밀번호 로그인으로 받은 토큰(사람이 실리지 않은 토큰)은 매장 좌석 에포크로 끊는다. 카카오로 들어온 주인·운영 자리는 DB 행으로 판정돼 그대로다.
+    await (await import('../../../worker/utils/store-seat-guard')).bumpStoreSeatEpoch(DB, Number(row.user_id), 'password_reset').catch(swallow('auth:api:seller'));
 
     return c.json({
       success: true,

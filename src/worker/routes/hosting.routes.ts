@@ -21,7 +21,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
-import { requireAuth } from '../middleware/auth'
+import { requireAuth, requireUser } from '../middleware/auth'
 import { safeError } from '../utils/safe-error'
 import { HOSTING_DEFAULTS } from '../../shared/constants/policy'
 import { intParam } from '@/shared/pagination'
@@ -147,7 +147,7 @@ hostingRoutes.get('/catalog', requireAuth(), async (c) => {
 // POST /api/hosting/me (requireUser) — 호스팅 시작 (1탭)
 // Body: { product_id, target_quantity?, note?, deadline_at? }
 // ============================================================
-hostingRoutes.post('/me', requireAuth(), async (c) => {
+hostingRoutes.post('/me', requireUser(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -226,7 +226,7 @@ hostingRoutes.post('/me', requireAuth(), async (c) => {
 // ============================================================
 // GET /api/hosting/me (requireUser) — 본인 호스팅 목록 + 통계
 // ============================================================
-hostingRoutes.get('/me', requireAuth(), async (c) => {
+hostingRoutes.get('/me', requireUser(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -263,7 +263,7 @@ hostingRoutes.get('/me', requireAuth(), async (c) => {
 // ============================================================
 // GET /api/hosting/me/:id (requireUser) — 본인 호스팅 상세 + 참여자
 // ============================================================
-hostingRoutes.get('/me/:id', requireAuth(), async (c) => {
+hostingRoutes.get('/me/:id', requireUser(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -297,7 +297,7 @@ hostingRoutes.get('/me/:id', requireAuth(), async (c) => {
 // ============================================================
 // PATCH /api/hosting/me/:id/cancel (requireUser)
 // ============================================================
-hostingRoutes.patch('/me/:id/cancel', requireAuth(), async (c) => {
+hostingRoutes.patch('/me/:id/cancel', requireUser(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)

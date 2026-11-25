@@ -9,3 +9,13 @@
 - **로딩에 주는 영향**: 없다. 정상 로그인 경로(쿠키 일치 · 서명 state)는 한 줄도 바뀌지 않았다.
 - **되돌리는 법**: PR revert.
 - **근거 시험**: `src/tests/unit/auth-doors-2026-11-25.test.ts` (7건 · 주입 7).
+
+## 같은 날 덧붙임 — 로그인 오류 문구 표를 첫 화면 코드 밖으로 (`[LOADING_ADDITIVE]` `App.tsx` · `vite.config.ts`)
+
+- **무엇을**: `App.tsx` 안의 로그인 오류 문구 표(16줄)를 `src/utils/oauth-error-messages.ts` 로 옮기고, 로그인이 실패해 돌아온 그 순간에만 토스트와 함께 동적으로 불러온다. `vite.config.ts` 의 `app-utils-deferred` 파일 목록에 `oauth-error-messages` 한 이름 추가.
+- **왜**: 위에서 문구 한 줄(`email_already_linked`)을 `App.tsx` 에 더한 것이 소개 화면(`about`)의 첫 화면 무게를 예산 +1.5KB 밖으로 밀었다. **main 의 "Bundle budget" 이 그 머지(`e3fc65df1`)부터 세 번 빨간불이었다** — PR 검사는 초록이었고 머지 뒤 검사만 빨갛게 됐는데 세션이 보지 않았다.
+- **먼저 틀린 처방**: 문구 파일을 `src/utils/` 에 두기만 하면 빠질 줄 알았다. 그 폴더는 빌드 규칙(catch-all)이 `app-utils`(첫 화면 봉투)로 보낸다 — 동적 import 여도 같다. 다시 재니 오히려 +1.6KB 가 됐다. 이름을 `app-utils-deferred` 목록에 넣어야 빠진다.
+- **잠긴 항목에 닿았나**: 아니다. `manualChunks` 의 기존 봉투는 그대로이고 목록에 이름 하나를 **더했다**. `App.tsx` 의 idle prefetch 도 그대로다. 흔적 정리 목록(`authErrors`)은 `App.tsx` 에 남겼다(즉시 돌아야 한다).
+- **전후 실측**(로컬 빌드, brotli KB · 기준 → 고치기 전 → 고친 뒤): `__boot__` 162.6 → 164.0 → **163.7** · `about` 211.2 → 212.7 → **212.5** · `refund` 218.5 → 220.0 → **219.7**. 35개 화면 전부 예산 안.
+- **되돌리는 법**: PR revert.
+- **근거 시험**: `auth-doors-2026-11-25.test.ts`(문구는 새 모듈에서 · `App.tsx` 에는 문구가 없고 동적 import 가 있다) · `node scripts/check-surface-budgets.mjs`.

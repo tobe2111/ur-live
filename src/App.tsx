@@ -293,28 +293,10 @@ function AppContent() {
     const errorCode = urlParams.get('error')
     if (!errorCode) return
 
-    const errorMessages: Record<string, string> = {
-      session_cookie_failed: '로그인 세션 발급에 실패했어요. 다시 시도해주세요.',
-      kakao_auth_failed: '카카오 인증에 실패했어요. 다시 시도해주세요.',
-      kakao_sync_failed: '카카오 로그인에 일시적 문제가 발생했어요. 다시 시도해주세요.',
-      database_error: '서버 오류가 발생했어요. 잠시 후 다시 시도해주세요.',
-      firebase_config_error: '인증 설정 오류가 발생했어요. 관리자에게 문의해주세요.',
-      env_missing: '서버 환경 설정이 누락됐어요. 관리자에게 문의해주세요.',
-      no_code: '카카오 인증 코드를 받지 못했어요. 다시 시도해주세요.',
-      oauth_state_mismatch: '인증 정보가 만료됐어요. 다시 시도해주세요.',
-      oauth_state_expired: '로그인 세션이 만료됐어요. 처음부터 다시 시도해주세요.',
-      // 🚪 2026-11-25: 카카오 계정의 이메일이 이미 다른 방법으로 가입돼 있을 때 — 종전엔 "서버 오류" 로 보였다(다시 해도 같은 결과).
-      email_already_linked: '이 이메일로 이미 가입한 계정이 있어요. 로그인 화면의 "이메일로 로그인"(또는 처음 가입한 방법)으로 들어와 주세요.',
-      // 🌏 2026-11-18 구글 로그인(외국인 손님만 보는 버튼) — 그 손님이 읽을 말이라 영어로 둔다.
-      email_in_use_kakao: 'This email is already registered with Kakao. Please continue with Kakao.',
-      email_in_use: 'This email is already registered. Please log in with your email and password.',
-      google_auth_failed: 'Google sign-in failed. Please try again.',
-      google_cancelled: 'Google sign-in was cancelled.',
-      google_unavailable: 'Google sign-in is not available right now.',
-    }
-    const msg = errorMessages[errorCode] || `로그인 중 오류가 발생했어요 (${errorCode})`
-
-    import('@/hooks/useToast').then(({ toast }) => toast.error(msg)).catch(swallow('app:oauth-error-toast-import'))
+    // 🪶 2026-11-25: 문구 표는 첫 화면 코드에 싣지 않는다 — 로그인이 실패해 돌아온 그 순간에만 토스트와 함께 불러온다(`utils/oauth-error-messages.ts`).
+    Promise.all([import('@/hooks/useToast'), import('@/utils/oauth-error-messages')])
+      .then(([{ toast }, { oauthErrorMessage }]) => toast.error(oauthErrorMessage(errorCode)))
+      .catch(swallow('app:oauth-error-toast-import'))
 
     // 잘못된 세션 흔적 정리 — 모든 카카오 콜백 에러에서 localStorage 인증 흔적 제거.
     //   세션이 발급 안 됐는데 user_id 만 stale 하게 남아있으면 ProtectedRoute 통과 → 401 무한 루프.
