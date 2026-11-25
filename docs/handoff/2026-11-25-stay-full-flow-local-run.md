@@ -2,7 +2,7 @@
 
 서비스: 유어딜(숙소 이용권 · 에이전시 콘솔). 머니 경로: **있음**(환불·주문 장부·만료 환불). 롤백: revert.
 대표: *"시험 환경에서 숙박 결제 및 사용 완료와 정산까지의 흐름을 에이전시, 사장님, 유저 입장에서 모두 돌려줘."*
-사후 결재 기록: `docs/decisions/2026-11-25-stay-flow-money-fixes.md`.
+사후 결재 기록: `docs/decisions/archive/2026-11-25-stay-flow-money-fixes.md`.
 
 ## 이어받는 세션의 첫 액션
 `npx vitest run src/tests/unit/stay-full-flow-2026-11-25.test.ts` — 86항목이 전부 ✅ 인지 본다.

@@ -8,7 +8,7 @@
 
 ## 완료분
 - 묶음 C(관리자 역할 검사 전수) 머지 `d47f919d6`(PR 2495). **라이브 판정**: 가이드 77판 반영 · 어드민 정산 가이드에 "조회 전용(viewer) 계정은 어디서도" 문구 · super 토큰 `GET /api/admin/payouts` 200 · 분쟁 목록 200.
-- 묶음 D(지급 주기) — 결재 `docs/decisions/2026-11-25-payout-cycle-fixes.md`. 시험 `payout-cycle-full-2026-11-25.test.ts`(36건) · `influencer-settlement-screen-2026-11-25.test.tsx`(3건, 훅을 되돌리면 빨간불 확인).
+- 묶음 D(지급 주기) — 결재 `docs/decisions/archive/2026-11-25-payout-cycle-fixes.md`. 시험 `payout-cycle-full-2026-11-25.test.ts`(36건) · `influencer-settlement-screen-2026-11-25.test.tsx`(3건, 훅을 되돌리면 빨간불 확인).
   - 에이전시 몫 확정 = 소개비와 같은 "사용돼야 확정" 규칙 · 회계 자료 원천징수 합계에 에이전시분 · 현금 지급의 계좌·방식 검사 · 새 잔액 행 세금 종류 3.3% · 정산 화면 훅 순서 · "딜 +20%" 상수 제거.
 - 묶음 D 머지 `d6704c9f9`(PR 2496).
 - 묶음 G(화면 걸어 보기) — 라이브를 브라우저로 열었다: 비로그인 손님 화면 54곳(폰 390) · 어드민 81곳(1440). 스크립트는 세션 스크래치에만 있다(읽기만 한다).
@@ -17,22 +17,22 @@
   - 🔎 실측으로 안 것: **어드민 쿠키만으로는 `/api/admin/*` 밖의 요청이 인증되지 않는다**(쿠키만 실어 호출: `/api/admin/payouts` 200 · 그 밖 401). 그래서 어드민 화면은 Bearer 가 붙는 주소 규칙 안에서만 동작한다.
 
 - 묶음 G 머지 `6e65c19ea`(PR 2497). 묶음 D 라이브 판정: 배포 완료 · 인플루언서 잔액 1행의 세금 종류가 `business_income` 으로 바뀜(수리 경로가 배포 뒤 자동 실행) · 월별 회계 자료 200.
-- 묶음 E·H — 결재 `docs/decisions/2026-11-25-shopping-closed-and-auth-doors.md`.
+- 묶음 E·H — 결재 `docs/decisions/archive/2026-11-25-shopping-closed-and-auth-doors.md`.
   - E: 숨긴 쇼핑 길의 새 주문 두 길을 서버에서 닫음(410) · 사장님 주문 상태는 준비·배송·완료·취소만. 시험 `shopping-rail-closed-2026-11-25`(6 · 주입 3).
   - H: state 없는 카카오 콜백 차단 · 같은 이메일 가입 안내 · 탈퇴한 유저의 쓰기 차단 · 탈퇴 때 운영 자리 회수 · 카카오로 만든 에이전시 주인은 탈퇴 전 정리. 시험 `auth-doors-2026-11-25`(7 · 주입 7).
 
 - 묶음 E·H 머지 `e3fc65df1`(PR 2498).
-- 묶음 F(유어애즈) — 결재 `docs/decisions/2026-11-25-ads-suppression.md`. 시험 `ads-suppression-2026-11-25`(13 · 주입 7).
+- 묶음 F(유어애즈) — 결재 `docs/decisions/archive/2026-11-25-ads-suppression.md`. 시험 `ads-suppression-2026-11-25`(13 · 주입 7).
   - 야간 병합이 수신거부·반송·거절·발송/내보내기 이력·브랜드 표시를 그룹에서 보존 · 수신거부 기록 PATCH 가 실제로 적힘 · 결과 업로드가 나쁜 표시를 안 덮음 · 어드민 발송 버튼 둘의 대상 조건 · 드립의 야간 금지 · 명단 내보내기는 쓰기 권한 · 셀러용 목록은 공용 풀만.
   - 라이브 실측(2026-11-25): 공용 풀 608,430 · 수신거부 1,429 · 연락함 23 · 반송/신고/거절 0 · 같은 이메일이 두 행에 있는 것 0 · 보낼 수 있는 리드 108,023 · 고객 계정 리드 110.
 
 - 묶음 F 머지 `fad8303db`(PR 2499).
-- 묶음 I(알림) — 결재 `docs/decisions/2026-11-25-notify-fixes.md`. 시험 `notify-fixes-2026-11-25`(9 · 주입 6).
+- 묶음 I(알림) — 결재 `docs/decisions/archive/2026-11-25-notify-fixes.md`. 시험 `notify-fixes-2026-11-25`(9 · 주입 6).
   - 정산 송금 완료: 담당자 휴대폰으로 알림톡 + 사장님 알림함 · 일괄 완료도 건마다 · `'all'` 로 적힌 어드민 알림이 보임 · 만료 환불의 카드 취소 실패가 어드민 알림으로 · 문구(계좌 안내 · 카드 교환권 · 숙소 만료 · "바우처" · 영수증 메일).
   - 라이브 실측: 승인된 알림톡 템플릿은 7종(`voucher_issued` · `seller_first_voucher` · `voucher_refunded` · `seller_approved` · `business_registration_rejected` · `seller_bank_changed` · `payout_completed`). **그 밖은 코드가 불러도 안 나간다**: `seller_voucher_sold`(두 번째 판매부터) · `voucher_expire_soon` · `stay_voucher_expire_soon` · `gift_received` · `agency_deal_approval` · `business_registration_verified`. 카카오 심사 등록은 대표 몫.
 
 - 묶음 I 머지 `959d3e3ee`(PR 2500). 라이브 판정(묶음 G·H): 고친 어드민 화면 5곳을 브라우저로 다시 열어 이상 0 · FAQ 서버 본문에 새 문구 · 보안 헤더 `frame-src 'self' blob:` · state 없는 카카오 콜백은 `oauth_state_expired` 로 돌아간다.
-- 묶음 J(로그인 2차) — 결재 `docs/decisions/2026-11-25-auth-doors-2.md`. 시험 `auth-doors-2026-11-25`(12 · 주입 12).
+- 묶음 J(로그인 2차) — 결재 `docs/decisions/archive/2026-11-25-auth-doors-2.md`. 시험 `auth-doors-2026-11-25`(12 · 주입 12).
   - 매장 PIN 은 주인만(운영·에이전시 자리가 덮어쓸 수 있었다 — 재현) · 호스팅 내역·인플루언서 프로필은 손님 토큰만 · 비밀번호 없는 계정의 이메일 로그인 500 · 카카오 연결 해제에 횟수 제한과 주인 확인 · 셀러 비밀번호 재설정 뒤 옛 토큰 끊기.
 
 - 묶음 J 머지 `ba595e81b`(PR 2501 — 로그인 2차 + 화면 무게 예산 복구).
@@ -141,3 +141,10 @@
 - 앞선 인계의 열린 결재 4건 그대로(중개 수수료 · 숙박권 법적 확인 · 목요일 약속과 보류 · 지급된 소개비 회수).
 - 쇼핑 탭: 숨긴 채로 **서버도 닫을지**는 이번에 세션이 닫는 쪽으로 진행한다(새 주문만. 취소·환불은 연다). 다시 열 계획이 있으면 대표가 말해 줄 것.
 - 실제 카드 결제(Toss)와 실제 KT 발송은 세션이 못 한다.
+
+
+## PR 2504 의 Verify 빨간불 (2026-11-25 저녁)
+- 원인: 화면 무게 검사(총 gzip 2.261 / 2.26 MB, 약 1KB 초과). 코드가 아니라 **결재 문서**다 — 어드민 결재함이 `docs/decisions/*.md` 를 통째로 싣는데 오늘 결재를 여러 건 더했다.
+- 처방: 예산은 그대로 두고, 반영이 끝난 결재 9건(묶음 A~J)에 머지 해시를 적어 `docs/decisions/archive/` 로 옮겼다(+ 반려 1건). 2026-09-28 대표 승인 규칙 그대로다. 로컬 빌드 실측 **2.250 / 2.26 MB**, 결재함 청크 292 → 252 KB.
+- 남은 여유는 약 10KB 다. 다음에 결재를 올릴 때는 묶음 K~N 결재(머지 뒤)도 같은 방식으로 내릴 것.
+- 틀렸던 판단: PR 이 `blocked` 인 것을 '검사가 도는 중' 으로 읽고 기다렸다. 실제로는 Verify 가 이미 실패해 있었다. `mergeable_state` 만 보지 말고 check-runs 의 결론을 볼 것.
