@@ -29,7 +29,7 @@ export default function PrivacyPolicyPage() {
       {/* Content */}
       <div className="ur-content-medium px-5 pt-6">
         <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-8">
-          {isKR ? '시행일: 2024년 1월 15일 | 유어딜 (리스터코퍼레이션)' : 'Effective: January 15, 2024 | YourDeal (Lister Corporation)'}
+          {isKR ? '시행일: 2024년 1월 15일 | 유어딜 (유어팀)' : 'Effective: January 15, 2024 | YourDeal (UrTeam)'}
         </p>
 
         {!isKR && (
@@ -109,7 +109,7 @@ export default function PrivacyPolicyPage() {
             <section>
               <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 space-y-1">
                 <p className="text-[13px] font-medium text-gray-900 dark:text-white mb-2">사업자 정보</p>
-                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 상호명: 리스터코퍼레이션</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 상호명: 유어팀</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표자: 정지원</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 사업자등록번호: 479-09-02930</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 통신판매업신고번호: 2025-부산금정-0540</p>
@@ -121,7 +121,7 @@ export default function PrivacyPolicyPage() {
             <section className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">1. 개인정보의 처리 목적</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
-                <p>리스터코퍼레이션(상호명: 리스터코퍼레이션, 대표자: 정지원, 이하 "회사")는 다음의 목적을 위하여 개인정보를 처리합니다.
+                <p>유어팀(상호명: 유어팀, 대표자: 정지원, 이하 "회사")은 다음의 목적을 위하여 개인정보를 처리합니다.
                   처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며,
                   이용 목적이 변경되는 경우에는 「개인정보 보호법」 제18조에 따라 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.</p>
 

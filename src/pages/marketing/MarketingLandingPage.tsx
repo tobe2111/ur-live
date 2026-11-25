@@ -502,7 +502,7 @@ export default function MarketingLandingPage() {
             <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>지원</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href={CONTACT}>도움말</a><a href={CONTACT}>문의하기</a><Link to={loginHref}>대시보드</Link></div></div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginTop: 44, paddingTop: 24, borderTop: '1px solid var(--line)' }}>
-            <span style={{ fontSize: 12, color: 'var(--muted)' }}>© 2026 UR Ads · 유어팀(리스터코퍼레이션). All rights reserved.</span>
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>© 2026 UR Ads · 유어팀. All rights reserved.</span>
             <div style={{ display: 'flex', gap: 20, fontSize: 12, color: 'var(--muted)' }}><a href="/ads/terms">이용약관</a><a href="/ads/privacy">개인정보처리방침</a><span>네이버 공식 API 기반</span></div>
           </div>
         </div>

@@ -971,7 +971,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
               </p>
             </div>
             <div style="padding:16px 0;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af;">
-              <p style="margin:0;">© 2026 리스터코퍼레이션. 문의: jiwon@ur-team.com</p>
+              <p style="margin:0;">© 2026 유어팀. 문의: jiwon@ur-team.com</p>
             </div>
           </div>`
         await sendSystemEmail(c.env, userEmail, {

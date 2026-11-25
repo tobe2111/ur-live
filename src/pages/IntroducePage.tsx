@@ -429,14 +429,14 @@ export default function IntroducePage() {
           </div>
 
           <div className="pt-8 border-t border-[#2C2F35] text-[12px] text-gray-600 leading-relaxed">
-            <p className="mb-2"><b className="text-gray-400">리스터코퍼레이션</b> · 대표: 정지원 · 사업자등록번호: 479-09-02930</p>
+            <p className="mb-2"><b className="text-gray-400">유어팀</b> · 대표: 정지원 · 사업자등록번호: 479-09-02930</p>
             <p className="mb-5">부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84) · 고객센터 평일 09:00~18:00</p>
             <div className="flex flex-wrap gap-3">
               <button onClick={() => navigate('/terms')} className="text-gray-600 hover:text-gray-300 transition-colors">이용약관</button>
               <button onClick={() => navigate('/privacy')} className="text-gray-600 hover:text-gray-300 font-bold transition-colors">개인정보처리방침</button>
               <button onClick={() => navigate('/refund')} className="text-gray-600 hover:text-gray-300 transition-colors">배송/환불</button>
             </div>
-            <p className="mt-5 text-gray-700">© 2026 리스터코퍼레이션. All rights reserved.</p>
+            <p className="mt-5 text-gray-700">© 2026 유어팀. All rights reserved.</p>
           </div>
         </div>
       </footer>

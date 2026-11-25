@@ -35,7 +35,7 @@ export default function MobileFooter() {
 
       {/* Company Info */}
       <div className="space-y-1 text-center">
-        <p style={{ fontSize: '7px', lineHeight: '1.3' }} className="text-gray-600 dark:text-gray-300">상호명: 리스터코퍼레이션 | 대표자: 정지원</p>
+        <p style={{ fontSize: '7px', lineHeight: '1.3' }} className="text-gray-600 dark:text-gray-300">상호명: 유어팀 | 대표자: 정지원</p>
         <p style={{ fontSize: '7px', lineHeight: '1.3' }} className="text-gray-600 dark:text-gray-300">사업자등록번호: 479-09-02930 | 통신판매업신고: 2025-부산금정-0540</p>
         <p style={{ fontSize: '7px', lineHeight: '1.3' }} className="text-gray-600 dark:text-gray-300">사업장주소: 부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84)</p>
         <p style={{ fontSize: '7px', lineHeight: '1.3' }} className="text-gray-600 dark:text-gray-300">대표이메일: jiwon@ur-team.com</p>
@@ -45,7 +45,7 @@ export default function MobileFooter() {
       {/* Copyright */}
       <div className="mt-3 pt-2 border-t border-line">
         <p style={{ fontSize: '7px', lineHeight: '1.3' }} className="text-gray-500 dark:text-gray-400 text-center">
-          © 2026 리스터코퍼레이션. All rights reserved.
+          © 2026 유어팀. All rights reserved.
         </p>
       </div>
     </footer>

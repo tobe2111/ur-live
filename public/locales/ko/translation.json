@@ -1760,7 +1760,7 @@
     "businessNumber": "사업자등록번호",
     "businessNumberHint": "숫자만 입력하면 자동으로 하이픈이 추가됩니다.",
     "businessName": "상호(법인명)",
-    "businessNamePlaceholder": "예: (주)리스터코퍼레이션",
+    "businessNamePlaceholder": "예: (주)유어팀",
     "representative": "담당자",
     "representativePlaceholder": "예: 홍길동",
     "businessType": "업태",

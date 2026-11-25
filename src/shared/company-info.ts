@@ -22,7 +22,7 @@
  */
 export const COMPANY = {
   brand: '유어딜',
-  legalName: '리스터코퍼레이션',
+  legalName: '유어팀',
   ceo: '정지원',
   bizRegNo: '479-09-02930',
   /** 공정위 사업자정보 확인 링크에 쓰는 숫자만 */

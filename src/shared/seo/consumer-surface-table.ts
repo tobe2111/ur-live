@@ -264,7 +264,7 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
   /* 🩸 2026-10-14 — 이 항목만 **필드 계약을 깨고** ` - YourDeal` 을 담아, `withSiteName` 이
      한국어 접미사를 또 붙였다(라이브 `<title>` 브랜드 **2회**). ❌ 영문 별칭을 `withSiteName` 에
      가르치는 길은 안 간다: 브랜드 JSON-LD 의 별칭은 `['urdeal','UrDeal']` 이고 `YourDeal` 은
-     개인정보처리방침의 **법적 당사자 표기**(`Lister Corporation ("YourDeal")`)다 — 브랜드 표기·
+     개인정보처리방침의 **법적 당사자 표기**(`UrTeam ("YourDeal")`)다 — 브랜드 표기·
      법무 문서는 대표 몫이다. 가드: `surface-title-contract-2026-10-14.test.ts`. */
   '/gdpr': {
     crumb: 'Privacy Policy',

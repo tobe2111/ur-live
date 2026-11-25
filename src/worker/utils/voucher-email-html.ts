@@ -148,7 +148,7 @@ export function buildVoucherIssuedEmail(input: VoucherEmailInput): { subject: st
       </table>
     </td></tr>
     <tr><td style="padding:16px 8px 0;font-size:12px;line-height:1.6;color:${SUB};text-align:center;">
-      ${esc(c.help)}<br>리스터코퍼레이션 (LISTER Corporation) · 사업자등록번호 479-09-02930<br>
+      ${esc(c.help)}<br>유어팀 (UrTeam) · 사업자등록번호 479-09-02930<br>
       <a href="${esc(origin)}/refund" style="color:${SUB};">Refund policy</a>
     </td></tr>
   </table>

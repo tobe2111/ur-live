@@ -33,7 +33,7 @@ export async function sendEmail(params: EmailParams): Promise<{ success: boolean
         ],
         from: {
           email: 'noreply@urdeal.kr',
-          name: '리스터코퍼레이션',
+          name: '유어팀',
         },
         subject: subject,
         content: [
@@ -234,12 +234,12 @@ export async function sendLiveStreamCreatedEmail(params: {
   
   <div class="footer">
     <p style="margin: 5px 0;">
-      <strong>리스터코퍼레이션</strong><br>
+      <strong>유어팀</strong><br>
       부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84)<br>
       이메일: jiwon@ur-team.com
     </p>
     <p style="margin: 15px 0 5px 0; font-size: 12px; color: #9ca3af;">
-      © 2026 리스터코퍼레이션. All rights reserved.
+      © 2026 유어팀. All rights reserved.
     </p>
   </div>
 </body>
@@ -259,14 +259,14 @@ ${scheduledAt ? `예약 시간: ${new Date(scheduledAt).toLocaleString('ko-KR')}
 🔗 라이브 페이지: ${liveUrl}
 
 ---
-리스터코퍼레이션
+유어팀
 부산광역시 금정구 놀이마당로 26, 1402호(청룡동, 금정산롯데인벤스84)
 이메일: jiwon@ur-team.com
   `
   
   return sendEmail({
     to: 'jiwon@ur-team.com',
-    subject: `[리스터코퍼레이션] 🎉 새 라이브 스트림 생성: ${title}`,
+    subject: `[유어팀] 🎉 새 라이브 스트림 생성: ${title}`,
     htmlContent,
     textContent,
   })

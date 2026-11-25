@@ -94,7 +94,8 @@ describe('① 🔴 SSOT 의 모든 줄이 그 페이지 소스에 실재한다 (
     // 🇪🇺 2026-10-14 — `/gdpr`(영문 법정 문서). 382자이고 전부 `<p>` 통째 문장을 **옮긴** 것이다
     //   (이메일이 든 줄 · 낡았을 수 있는 `Firebase` 줄 · h1 과 겹치는 줄은 일부러 뺐다 — 사유는
     //   `surface-copy.ts` 의 그 항목 주석).
-    '/gdpr': 380,
+    // 2026-11-25: 상호 변경(Lister Corporation → UrTeam)으로 글자 수가 줄었다(382 → 372) — 줄이 빠진 게 아니다.
+    '/gdpr': 370,
     '/creators': 230,
     '/creators/apply': 150,
     '/experience': 120,

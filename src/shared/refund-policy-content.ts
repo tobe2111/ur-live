@@ -68,7 +68,7 @@ export const REFUND_BODY: RefundNode[] = [
   el('section', undefined,
     el('h2', H2_3, '운영 회사 정보'),
     el('div', 'bg-surface rounded-lg p-4 space-y-2',
-      label('상호명:', ' 리스터코퍼레이션 (LISTER Corporation)'),
+      label('상호명:', ' 유어팀 (UrTeam)'),
       label('대표:', ' 정지원'),
       label('사업자등록번호:', ` ${COMPANY.bizRegNo}`),
       label('주소:', ` ${COMPANY.address}`),
@@ -170,7 +170,7 @@ export const REFUND_BODY: RefundNode[] = [
       label('이메일:', ' jiwon@ur-team.com'))),
 
   el('div', 'border-t border-rule pt-6 mt-8 text-center space-y-1',
-    label('상호명:', ' 리스터코퍼레이션 (LISTER Corporation)'),
+    label('상호명:', ' 유어팀 (UrTeam)'),
     label('대표:', ' 정지원'),
     el('p', 'text-[12px] text-ink-faint mt-3', '본 정책은 전자상거래 등에서의 소비자보호에 관한 법률을 준수합니다.')),
 ]
