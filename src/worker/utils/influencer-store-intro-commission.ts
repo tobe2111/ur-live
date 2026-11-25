@@ -248,8 +248,8 @@ export async function creditInfluencerStoreIntroCommission(
 
     // 6. 즉시 가시성 — balance pending 반영 (cron 이 SUM 으로 재집계하므로 중복 안전).
     await DB.prepare(
-      `INSERT INTO influencer_balances (influencer_id, pending_amount, updated_at)
-       VALUES (?, ?, datetime('now'))
+      `INSERT INTO influencer_balances (influencer_id, pending_amount, tax_type, updated_at)
+       VALUES (?, ?, 'business_income', datetime('now'))
        ON CONFLICT(influencer_id) DO UPDATE SET pending_amount = pending_amount + excluded.pending_amount, updated_at = datetime('now')`
     ).bind(influencerIdStr, commission).run().catch(() => { /* balance best-effort — cron 재집계로 보정 */ })
   } catch {

@@ -64,7 +64,7 @@ function fresh(): { db: Db; DB: D1Database } {
       voucher_id INTEGER, product_id INTEGER, seller_id INTEGER, commission_amount INTEGER NOT NULL, status TEXT DEFAULT 'pending',
       created_at DATETIME DEFAULT (datetime('now')), available_at DATETIME, paid_at DATETIME, clawback_reason TEXT, source TEXT);
     CREATE TABLE influencer_balances (influencer_id TEXT PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0,
-      total_paid_out INTEGER DEFAULT 0, updated_at TEXT);
+      total_paid_out INTEGER DEFAULT 0, tax_type TEXT DEFAULT 'other_income', updated_at TEXT);
     INSERT INTO sellers (id, name, business_name, status) VALUES (1, '홍대돈까스', '홍대돈까스', 'approved');
     INSERT INTO sellers (id, name, business_name, status) VALUES (2, '정지매장', '정지매장', 'suspended');
     INSERT INTO users (id, name, handle) VALUES (100, '대행사', 'agency'), (200, '인플', 'inf'), (300, '차단인플', 'blocked');

@@ -207,8 +207,8 @@ export async function creditBrokerShare(DB: D1Database, p: CreditBrokerShareInpu
     if (!ins.meta?.changes) return { credited: 0, brokerUserId: terms.brokerUserId } // 이미 적립됨(멱등)
 
     await DB.prepare(
-      `INSERT INTO influencer_balances (influencer_id, pending_amount, updated_at)
-       VALUES (?, ?, datetime('now'))
+      `INSERT INTO influencer_balances (influencer_id, pending_amount, tax_type, updated_at)
+       VALUES (?, ?, 'business_income', datetime('now'))
        ON CONFLICT(influencer_id) DO UPDATE SET pending_amount = pending_amount + excluded.pending_amount, updated_at = datetime('now')`,
     ).bind(brokerId, amount).run()
     await recordLedger(DB, {

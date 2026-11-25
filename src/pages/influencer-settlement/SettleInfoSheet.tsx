@@ -26,17 +26,19 @@ export interface SettleForm {
 export const TAX_LABEL: Record<TaxType, string> = {
   business_income: '사업소득 3.3%',
   other_income: '기타소득 8.8%',
-  unreported: '원천징수 안 함',
+  unreported: '사업소득 3.3%',
 }
 
 const BANKS = ['KB국민은행', '신한은행', '우리은행', '하나은행', 'NH농협은행', 'IBK기업은행', '케이뱅크', '카카오뱅크', '토스뱅크', '새마을금고', '신협', '우체국']
 const labelCls = 'block text-[13px] font-medium text-gray-700 dark:text-gray-200 mb-1'
 const inputCls = 'w-full h-12 px-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-brand/40'
 
-export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, onSave, onClose }: {
+export default function SettleInfoSheet({ form, setForm, ownerFunded, dealBonusPct = 0, saving, onSave, onClose }: {
   form: SettleForm
   setForm: (f: (prev: SettleForm) => SettleForm) => void
   ownerFunded: boolean
+  /** 딜 수령 보너스 %(서버 설정값). 0 이면 '+N%' 를 적지 않는다 — 2026-11-25 까지 상수 '+20%' 였다(설정은 0). */
+  dealBonusPct?: number
   saving: boolean
   onSave: () => void
   onClose: () => void
@@ -68,7 +70,7 @@ export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, on
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">원천징수 후 계좌 입금 · 10만원 이상부터</p>
             </button>
             <button type="button" onClick={() => setForm(f => ({ ...f, payout_method: 'deal' }))} className={choice(form.payout_method === 'deal')}>
-              <p className="text-[15px] font-bold text-gray-900 dark:text-white">딜 <span className="text-brand-text">+20%</span></p>
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white">딜{dealBonusPct > 0 && <span className="text-brand-text"> +{dealBonusPct}%</span>}</p>
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{ownerFunded ? '매장 몫에서 지급, 유어딜 결제에 사용' : '유어딜 결제에 사용, 환불 불가'}</p>
               <p className="text-[12px] font-medium text-brand-text mt-1">금액 제한 없음</p>
             </button>
@@ -78,15 +80,16 @@ export default function SettleInfoSheet({ form, setForm, ownerFunded, saving, on
         <div>
           <label className={labelCls} htmlFor="settle-tax">세금</label>
           <Select id="settle-tax" value={form.tax_type} onChange={(e) => setForm(f => ({ ...f, tax_type: e.target.value as TaxType }))} className={inputCls}>
-            <option value="other_income">기타소득 8.8% (사업자 없어도 됨)</option>
-            <option value="business_income">사업소득 3.3% (사업자번호 필요)</option>
-            <option value="unreported">원천징수 안 함 (본인 신고)</option>
+            {/* 🧾 2026-11-25 지급 경로(`influencer-payout-math.ts`)와 같은 말만 적는다 — 기본은 사업소득 3.3%, 기타소득을 고르면 8.8%.
+                '원천징수 안 함' 은 2026-11-18 부터 서버가 3.3% 를 떼므로 선택지에서 뺐다(고른 사람은 3.3% 로 보인다). */}
+            <option value="business_income">사업소득 3.3% (꾸준히 활동, 기본)</option>
+            <option value="other_income">기타소득 8.8% (한 번만 하는 협업)</option>
           </Select>
           {form.tax_type === 'business_income' && (
             <input
               value={form.business_number}
               onChange={(e) => setForm(f => ({ ...f, business_number: formatBizNo(e.target.value) }))}
-              placeholder="사업자번호 000-00-00000"
+              placeholder="사업자번호 000-00-00000 (있으면)"
               inputMode="numeric"
               className={`${inputCls} mt-2 tabular-nums`}
             />

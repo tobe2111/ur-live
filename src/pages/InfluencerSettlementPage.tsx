@@ -97,9 +97,11 @@ export default function InfluencerSettlementPage() {
   const [ownerFunded, setOwnerFunded] = useState(false)
   /** 사용 확인 게이트가 켜져 있는가 — 보류 문구를 고르는 데만 쓴다. */
   const [useGate, setUseGate] = useState(false)
+  /** 딜로 받을 때의 보너스 %(설정값) — 0 이면 화면에 '+N%' 를 적지 않는다. */
+  const [dealBonusPct, setDealBonusPct] = useState(0)
   const [form, setForm] = useState<SettleForm>({
     business_number: '',
-    tax_type: 'other_income',
+    tax_type: 'business_income',
     bank_name: '',
     bank_account: '',
     account_holder: '',
@@ -121,10 +123,11 @@ export default function InfluencerSettlementPage() {
           setRecent(r.data.data.recent || [])
           setOwnerFunded(r.data.data.funding_source === 'owner')
           setUseGate(!!r.data.data.requires_voucher_use)
+          setDealBonusPct(Math.max(0, Number(r.data.data.deal_bonus_pct) || 0))
           setPayoutDay(resolveCommissionPayoutDay(r.data.data.payout_day))
           setForm({
             business_number: b.business_number || '',
-            tax_type: (b.tax_type as 'business_income' | 'other_income' | 'unreported') || 'other_income',
+            tax_type: b.tax_type === 'other_income' ? 'other_income' : 'business_income', // 🧾 2026-11-25 지급 경로와 같은 판정 — 기타소득을 고른 사람만 8.8%, 나머지는 3.3%
             bank_name: b.bank_name || '',
             bank_account: b.bank_account || '',
             account_holder: b.account_holder || '',
@@ -154,11 +157,14 @@ export default function InfluencerSettlementPage() {
     } finally { setSaving(false) }
   }
 
+  // 🩸 2026-11-25 — 훅은 조기 반환보다 **위**에 둔다. 아래 로더 반환 밑에 있을 때는 첫 그림(로딩)과 다음 그림의 훅 개수가 달라
+  //   React 가 "Rendered more hooks than during the previous render" 로 화면을 통째로 떨어뜨렸다(정산 화면이 열리지 않음).
+  const back = useSafeBack('/u/me/manage')
+
   if (loading) return <BrandLoader fullScreen />  // 🎯 2026-07-18 로딩 단일화
 
-  const back = useSafeBack('/u/me/manage')
   const acct = balance?.bank_account ? `${balance.bank_name || ''} ··${balance.bank_account.replace(/\D/g, '').slice(-4)}`.trim() : ''
-  const payoutHint = balance?.payout_method === 'deal' ? '딜 +20%' : '현금'
+  const payoutHint = balance?.payout_method === 'deal' ? (dealBonusPct > 0 ? `딜 +${dealBonusPct}%` : '딜') : '현금'
 
   return (
     <div className="min-h-[100dvh] bg-warm pb-20">
@@ -198,7 +204,7 @@ export default function InfluencerSettlementPage() {
         <ListPlate className="mt-3">
           <ListRow icon={rowIco(WalletIcon)} label="받는 방법" hint={payoutHint} onClick={() => setSheet('info')} testId="settle-info-open" />
           <ListRow icon={rowIco(ReceiptIcon)} label="계좌" hint={acct || '등록 필요'} onClick={() => setSheet('info')} />
-          <ListRow icon={rowIco(ReceiptIcon)} label="세금" hint={TAX_LABEL[balance?.tax_type ?? 'other_income'] ?? '기타소득 8.8%'} onClick={() => setSheet('info')} />
+          <ListRow icon={rowIco(ReceiptIcon)} label="세금" hint={TAX_LABEL[balance?.tax_type === 'other_income' ? 'other_income' : 'business_income']} onClick={() => setSheet('info')} />
         </ListPlate>
 
         {/* 협업 코드 입력 · 매장별 링크 · 성과 · 제안 수락 — 일거리는 여기서 받는다 */}
@@ -236,7 +242,7 @@ export default function InfluencerSettlementPage() {
       </main>
 
       {sheet === 'info' && (
-        <SettleInfoSheet form={form} setForm={setForm} ownerFunded={ownerFunded} saving={saving} onSave={save} onClose={() => setSheet(null)} />
+        <SettleInfoSheet form={form} setForm={setForm} ownerFunded={ownerFunded} dealBonusPct={dealBonusPct} saving={saving} onSave={save} onClose={() => setSheet(null)} />
       )}
       {sheet === 'dispute' && <DisputeSheet onClose={() => setSheet(null)} />}
     </div>

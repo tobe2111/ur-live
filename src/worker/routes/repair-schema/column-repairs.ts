@@ -824,6 +824,8 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     { desc: 'seed: influencer_payout_min', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_payout_min', '100000', '인플루언서 월 최소 송금액 (원)', datetime('now'))" },
     // 🛡️ 2026-05-16: 정산일자 조절 + 인플 송금방식 (migration 0248)
     { desc: 'influencer_balances.payout_method', sql: "ALTER TABLE influencer_balances ADD COLUMN payout_method TEXT DEFAULT 'cash'" },
+    // 🧾 2026-11-25 표 기본값이 기타소득(8.8%)이라, 수령 설정을 한 번도 저장하지 않은 행이 8.8% 로 떼였다(SSOT 기본은 사업소득 3.3%). 계좌·사업자번호·지급 이력이 모두 없는 행만 고친다 — 직접 고른 사람은 건드리지 않는다. 멱등.
+    { desc: 'backfill: influencer_balances.tax_type default → business_income', sql: "UPDATE influencer_balances SET tax_type = 'business_income' WHERE tax_type = 'other_income' AND (bank_account IS NULL OR bank_account = '') AND (business_number IS NULL OR business_number = '') AND COALESCE(total_paid_out, 0) = 0" },
     { desc: 'sellers.settlement_frequency', sql: "ALTER TABLE sellers ADD COLUMN settlement_frequency TEXT DEFAULT 'on_use_plus_7'" },
     { desc: 'sellers.settlement_day', sql: "ALTER TABLE sellers ADD COLUMN settlement_day INTEGER DEFAULT 1" },
     { desc: 'seed: influencer_payout_frequency', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_payout_frequency', 'monthly', '인플 송금 주기', datetime('now'))" },
