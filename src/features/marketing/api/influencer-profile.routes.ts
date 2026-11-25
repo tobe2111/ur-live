@@ -12,7 +12,7 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
-import { requireAuth } from '@/worker/middleware/auth'
+import { requireAuth, requireUser } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
@@ -30,7 +30,7 @@ export const PROFILE_REGIONS = [
 type Vars = { user?: AuthUser }
 const app = new Hono<{ Bindings: Env; Variables: Vars }>()
 
-app.get('/me', requireAuth(), async (c) => {
+app.get('/me', requireUser(), async (c) => {
   try {
     const me = c.get('user')
     if (!me?.id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -49,7 +49,7 @@ app.get('/me', requireAuth(), async (c) => {
   }
 })
 
-app.put('/me', requireAuth(), rateLimit({ action: 'influencer_profile_save', max: 30, windowSec: 3600 }), async (c) => {
+app.put('/me', requireUser(), rateLimit({ action: 'influencer_profile_save', max: 30, windowSec: 3600 }), async (c) => {
   try {
     const me = c.get('user')
     if (!me?.id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)

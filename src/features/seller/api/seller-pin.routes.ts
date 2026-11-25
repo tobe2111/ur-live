@@ -89,13 +89,19 @@ sellerPinRoutes.post('/set-pin', rateLimit({ action: 'seller_set_pin', max: 5, w
   ).bind(sellerId).first<{ password_hash: string; linked_user_id: number | null }>()
   if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404)
 
+  // 🔒 2026-11-25 — PIN 은 **주인만** 만들고 바꾼다. 종전엔 카카오 연결 매장(`linked_user_id`)이면 아래 검사를 통째로 건너뛰어,
+  //   위임받은 운영자 자리나 에이전시 자리의 토큰으로도 주인의 PIN 을 덮어쓸 수 있었다(시험 `auth-doors-2026-11-25`).
+  //   PIN 은 정산 계좌 변경과 지급 신청을 지키는 값이다 — 운영 자리가 가질 권한이 아니다.
+  const pinActor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB)
+  if (!pinActor.isOwner) return c.json({ success: false, error: 'PIN 은 매장 주인만 설정할 수 있어요', code: 'OWNER_ONLY' }, 403)
+
   // 🔑 2026-11-25 — `/store/new` 로 만든 매장은 비밀번호가 없고(`password_hash=''`) `linked_user_id` 도 없다(소유는 `seller_operators`).
   //   그러면 아래가 "현재 비밀번호" 를 요구하는데 맞출 비밀번호가 없다 ⇒ PIN 을 못 만들고 ⇒ 정산 계좌를 못 넣는다
   //   (라이브 2026-11-25: 승인 매장 13곳 중 12곳이 이 상태 · 계좌 등록 0곳). 카카오로 들어온 **소유자 좌석**이
   //   비밀번호 없는 매장의 **첫 PIN** 을 만드는 것은 허용한다 — 카카오 연결 매장과 같은 수준의 확인이다.
   //   이미 PIN 이 있으면 이 길로 덮어쓸 수 없다(바꾸기는 재설정 경로).
   const firstPinByOwnerSeat = !seller.linked_user_id && !seller.password_hash && !(await readPinHash(c.env.DB, sellerId))
-    && (await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET, c.env.DB)).isOwner
+    && pinActor.isOwner
     && !!(await resolveTokenActorUserId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)) // 누구인지 실린 좌석만(정체 없는 옛 토큰 제외)
 
   // 비밀번호 있는 셀러는 current_password 필수
