@@ -137,7 +137,8 @@ describe('④ 문구 — 지금 사실과 같은 말만', () => {
   })
   it('카드로 산 교환권에는 "매장에서 QR" 알림톡을 보내지 않는다(딜 경로와 같은 조건)', () => {
     const src = stripComments(readFileSync('src/features/group-buy/api/group-buy.routes.ts', 'utf8'))
-    expect(src.split(".deal_only) !== 1").length - 1).toBeGreaterThanOrEqual(2)
+    expect(src).toContain('if (userRow?.phone && Number((product as { deal_only?: number | null }).deal_only ?? 0) !== 1) {') // 카드 경로
+    expect(src).toContain('if (userRow?.phone && Number((product as { deal_only?: number | null }).deal_only) !== 1) {') // 딜 경로(기존)
     expect(src).not.toMatch(/if \(userRow\?\.phone\) \{\s*await sendBuyerVoucherIssuedAlimtalk/)
   })
   it('일반 만료 알림 세 곳이 숙소 이용권을 뺀다 · 숙소 알림은 환불되지 않는다고 말한다', () => {

@@ -1286,7 +1286,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         } catch { /* ignore */ }
         try {
           const userRow = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(userId).first<{ phone: string | null }>()
-          if (userRow?.phone && Number((product as { deal_only?: number | null }).deal_only) !== 1) { // 🎟️ 2026-11-25 교환권엔 "매장에서 QR" 문구가 틀리다 — 딜 경로와 같은 조건
+          if (userRow?.phone && Number((product as { deal_only?: number | null }).deal_only ?? 0) !== 1) { // 🎟️ 2026-11-25 교환권엔 "매장에서 QR" 문구가 틀리다 — 딜 경로와 같은 조건
             await sendBuyerVoucherIssuedAlimtalk(
               c.env,
               userRow.phone,
