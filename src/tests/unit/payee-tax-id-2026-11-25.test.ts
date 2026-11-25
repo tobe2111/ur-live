@@ -74,3 +74,16 @@ describe('④ 문', () => {
     expect(read('src/features/admin/api/admin-fee-invoices.routes.ts')).toMatch(/simplified-statement', requireAdminRole\('finance'\), require2FA\(\), auditLog\(/)
   })
 })
+
+describe('⑤ 에이전시 · 처리방침', () => {
+  it('개인 에이전시도 같은 표에 · 저장은 관리자만', () => {
+    const src = read('src/features/agency-console/api/agency-payout.routes.ts')
+    expect(src).toMatch(/app\.put\('\/tax-id', cors\(\), requireAgencyStaff\(\{ adminOnly: true \}\)/)
+    expect(src).toMatch(/saveTaxId\(c\.env\.DB as D1Database, \(c\.env as \{ DATA_ENCRYPTION_KEY\?: string \}\)\.DATA_ENCRYPTION_KEY, 'agency'/)
+  })
+  it('개인정보 처리방침이 주민등록번호 수집·보관 기간을 적는다', () => {
+    const p = read('src/pages/PrivacyPolicyPage.tsx')
+    expect(p).toMatch(/필수항목: 실명, 주민등록번호, 정산 계좌/)
+    expect(p).toMatch(/원천징수·지급명세서 관련 기록\(실명·주민등록번호 포함\): 5년/)
+  })
+})

@@ -25,6 +25,7 @@ import {
   rejectAgencyPayout, requestAgencyPayout, AGENCY_PAYOUT_MIN,
 } from '@/worker/utils/agency-share-payout'
 import { COMMISSION_PAYOUT_DAY_KEY, resolveCommissionPayoutDay } from '@/shared/commission-payout-day'
+import { getTaxIdStatus, saveTaxId, TaxIdError } from '@/worker/utils/payee-tax-id' // 🪪 2026-11-25 개인 에이전시 주민번호
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyHono = Hono<any>
@@ -56,6 +57,30 @@ export function registerAgencyPayoutRoutes(app: AnyHono): void {
       })
     } catch (err) {
       return safeError(c, err, '정산 내역을 불러오지 못했어요', '[agency-console:payouts]')
+    }
+  })
+
+  // 🪪 2026-11-25 개인 에이전시 주민등록번호(간이지급명세서) — SSOT `worker/utils/payee-tax-id.ts`. 보기는 직원, 저장은 관리자.
+  app.get('/tax-id', requireAgencyStaff(), async (c) => {
+    try {
+      const me = c.get('agencyStaff') as { agencyId: number }
+      return c.json({ success: true, data: await getTaxIdStatus(c.env.DB as D1Database, 'agency', String(me.agencyId)) })
+    } catch (err) {
+      return safeError(c, err, '정보를 불러오지 못했어요', '[agency-console:tax-id]')
+    }
+  })
+  app.put('/tax-id', cors(), requireAgencyStaff({ adminOnly: true }), async (c) => {
+    try {
+      const me = c.get('agencyStaff') as { agencyId: number }
+      const body = await c.req.json().catch(() => ({})) as { legal_name?: unknown; rrn?: unknown }
+      try {
+        return c.json({ success: true, data: await saveTaxId(c.env.DB as D1Database, (c.env as { DATA_ENCRYPTION_KEY?: string }).DATA_ENCRYPTION_KEY, 'agency', String(me.agencyId), body.legal_name, body.rrn) })
+      } catch (e) {
+        if (e instanceof TaxIdError) return c.json({ success: false, code: e.code, error: e.message }, e.code === 'NO_KEY' ? 503 : 400)
+        throw e
+      }
+    } catch (err) {
+      return safeError(c, err, '저장하지 못했어요', '[agency-console:tax-id]')
     }
   })
 
