@@ -9,7 +9,7 @@
  */
 
 // 🪶 2026-10-14: axios → 같은 모양의 작은 클라이언트(`http-client.ts`) — 첫 페인트 청크 −17KB br.
-import { createHttp, http, isHttpError, type AxiosError, type InternalRequestConfig as InternalAxiosRequestConfig } from './http-client';
+import { createHttp, http, isHttpError, type AxiosError, type InternalRequestConfig as InternalAxiosRequestConfig } from './http-client'; import { isAdminOnlyOutsidePatterns } from './api-admin-paths'
 import { readAffiliateRef, pruneExpiredAffiliateRef } from '@/utils/affiliate-ref-store'; import { readTouch } from '@/utils/touch-store';
 import { ensureCsrfToken } from './csrf-token'
 import { readCookie } from './read-cookie'
@@ -192,6 +192,7 @@ api.interceptors.request.use(
       }
     }
 
+    if (isAdminOnlyOutsidePatterns(url, method)) { const token = await ensureFreshDashboardToken('admin'); if (token) config.headers['Authorization'] = `Bearer ${token}`; return config; } // 🛡️ 2026-11-25 공개 판정보다 먼저 — 어드민 전용인데 공개 목록·패턴에 가려 토큰 없이 나가던 주소(`api-admin-paths.ts`: 홈 섹션 관리 · KV 모니터링 · 맛집 수요가 401 이었다)
     // 공개 API: 토큰 불필요
     if (isPublicAPI(url)) return config;
 

@@ -59,7 +59,10 @@ export default function AdminReviewModerationPage() {
   }, [])
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (stats + reviews 리스트, 필터 key 반응형).
-  const statsQ = useApiQuery<ReviewStats | null>(['admin', 'review-stats'], '/api/admin/reviews/stats', { select: (r: any) => (r?.success ? r.data : null) })
+  const statsQ = useApiQuery<ReviewStats | null>(['admin', 'review-stats'], '/api/admin/reviews/stats', {
+    // 🩸 2026-11-25 서버는 평균을 `avg_rating` 으로 준다. 화면이 `average_rating.toFixed` 를 불러 이 화면이 통째로 오류 화면이었다.
+    select: (r: any) => (r?.success && r.data ? { ...r.data, average_rating: Number(r.data.average_rating ?? r.data.avg_rating ?? 0) || 0 } : null),
+  })
   const stats = statsQ.data ?? null
   const reviewsQ = useApiQuery<{ rows: Review[]; totalPages: number }>(['admin', 'review-list', page, filters], '/api/admin/reviews/list', {
     params: { page, limit: 20, ...filters },
