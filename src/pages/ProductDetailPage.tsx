@@ -1,3 +1,4 @@
+import { DEAL_SHORT_MESSAGE } from '@/shared/deal-earn-hint'
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { WarnIcon } from '@/components/icons/urdeal-icons'
 import GiftSendFab from '@/components/gift/GiftSendFab'
@@ -277,7 +278,7 @@ export default function ProductDetailPage() {
         setDealConfirm(null)
         // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
         if (TOPUP_DISABLED) {
-          showToast(t('groupBuy.insufficientDealEarn', { defaultValue: '딜이 부족해요. 딜은 친구 초대·유어샵 추천으로 모을 수 있어요.' }), 'error')
+          showToast(DEAL_SHORT_MESSAGE, 'error')
           return
         }
         showToast(t('groupBuy.insufficientDeal', { defaultValue: '딜이 부족해요. 충전 페이지로 이동합니다.' }), 'error')

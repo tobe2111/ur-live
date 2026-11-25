@@ -7,6 +7,7 @@
  *
  * 핵심 결제 처리 콜백 (onPaymentSuccess / onBeforePayment) 은 부모에서 props 로 전달.
  */
+import { DEAL_EARN_HINT } from '@/shared/deal-earn-hint'
 import { lazy, Suspense } from 'react'
 import { useTranslation } from '@/lib/i18n-lite'
 import { formatNumber } from '@/utils/format'
@@ -95,7 +96,7 @@ export default function PaymentSection({
         TOPUP_DISABLED ? (
           <div className="w-full py-4 px-4 rounded-2xl bg-gray-100 dark:bg-white/[0.06] text-center mb-3">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white">딜이 {(totalBeforeDeal - dealBalance).toLocaleString()}딜 부족해요</p>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">딜은 친구 초대·유어샵 추천으로 모을 수 있어요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{DEAL_EARN_HINT}</p>
           </div>
         ) : (
         <a

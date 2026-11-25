@@ -65,6 +65,7 @@ export const ADMIN_NOTIF_GROUP: Readonly<Record<string, AdminNotifGroup>> = {
   settlement_request: 'business',
   agency_settlement: 'business',
   payouts_generated: 'business',      // 주간 정산 생성 → 지급 승인이 필요하다
+  commission_clawback_needed: 'business', // 환불이 이미 지급된 소개비에 닿았다 → 다음 지급에서 직접 조정(2026-11-25)
   supplier_clawback_shortfall: 'business',
   kt_alpha_send_failed: 'business',   // 교환권이 손님에게 안 갔다
   visit_reward_ended: 'business',

@@ -1,3 +1,4 @@
+import { DEAL_EARN_HINT } from '@/shared/deal-earn-hint'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { IOS_HIDE_DIGITAL_TOPUP, TOPUP_DISABLED } from '@/shared/feature-flags'
@@ -25,7 +26,7 @@ function TopupClosedNotice() {
       <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">딜 충전이 종료되었어요</h1>
       <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
         이제 딜은 충전이 아니라 <b className="text-gray-900 dark:text-white">활동으로 모으는 리워드</b>예요.<br />
-        친구 초대·유어샵 추천으로 딜을 모아 교환권과 이용권에 사용하세요.<br />
+        {DEAL_EARN_HINT}. 모은 딜은 교환권과 이용권에 쓸 수 있어요.<br />
         이미 보유하신 딜은 그대로 사용·환불 가능합니다.
       </p>
       <div className="mt-8 flex gap-2">

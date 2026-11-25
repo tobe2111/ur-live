@@ -154,9 +154,8 @@ export async function priceCartLines(
     // 🗺️ 동네 리뷰어 레벨 게이트
     try {
       const mrlRaw = meta?.get(productId)?.min_review_level
-      const need = mrlRaw != null && Number.isFinite(Number(mrlRaw)) && Number(mrlRaw) > 1 ? Math.floor(Number(mrlRaw)) : 0
+      const { getUserReviewLevelValue, requiredReviewLevel } = await import('../../../worker/utils/review-level'); const need = requiredReviewLevel(mrlRaw) // 후기 보너스가 꺼진 동안은 0(잠금 없음)
       if (need > 0) {
-        const { getUserReviewLevelValue } = await import('../../../worker/utils/review-level')
         const myLevel = await getUserReviewLevelValue(DB, String(userId))
         if (myLevel < need) {
           return { ok: false, error: `${p.name}: 동네 리뷰어 Lv.${need} 전용입니다 (현재 Lv.${myLevel})`, code: 'REVIEW_LEVEL_REQUIRED', productId }

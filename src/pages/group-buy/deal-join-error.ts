@@ -7,6 +7,7 @@
  *     "충전 자체를 빼자")로는 충전 유도 대신 **딜 모으는 법**을 알려 준다.
  *  3. 그 외 — 서버 문구 그대로.
  */
+import { DEAL_SHORT_MESSAGE } from '@/shared/deal-earn-hint'
 import { toast } from '@/hooks/useToast'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 
@@ -24,7 +25,7 @@ export async function handleDealJoinError(err: unknown, nav: {
   }
   if (code === 'INSUFFICIENT_POINTS') {
     if (TOPUP_DISABLED) {
-      toast.error('딜이 부족해요. 딜은 친구 초대·유어샵 추천으로 모을 수 있어요.')
+      toast.error(DEAL_SHORT_MESSAGE)
       return
     }
     if (await nav.confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')) {

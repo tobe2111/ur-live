@@ -1,3 +1,4 @@
+import { DEAL_SHORT_MESSAGE } from '@/shared/deal-earn-hint'
 import { useEffect, useState } from 'react'
 import { voucherDetailTitle } from '@/shared/seo/detail-title'
 import { InfoIcon } from '@/components/icons/urdeal-icons'
@@ -241,7 +242,7 @@ export default function VoucherDetailPage() {
       if (code === 'INSUFFICIENT_POINTS') {
         // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 유도 → 적립 안내 (TOPUP_DISABLED)
         if (TOPUP_DISABLED) {
-          toast.error('딜이 부족해요. 딜은 친구 초대·유어샵 추천으로 모을 수 있어요.')
+          toast.error(DEAL_SHORT_MESSAGE)
           return
         }
         const charge = await confirmDialog('딜이 부족합니다. 충전 페이지로 이동할까요?')
