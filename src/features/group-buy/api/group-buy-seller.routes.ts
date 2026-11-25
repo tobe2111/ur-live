@@ -20,7 +20,7 @@ import { auditLog } from '@/worker/middleware/audit-log'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
-import { clawbackVoucherCommission } from './helpers'
+import { clawbackVoucherCommission, sendRefundAlimtalk } from './helpers'
 import { intParam } from '@/shared/pagination'
 import { voucherCategoriesSqlClause } from '@/shared/constants/voucher-categories'
 
@@ -99,18 +99,10 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
           } catch (e) { if (import.meta.env?.DEV) console.warn('[refund ledger]', e) }
         })())
 
-        // 🛡️ 2026-05-21 Phase D-4: 환불 사용자 알림톡 (waitUntil 비동기).
-        c.executionCtx?.waitUntil((async () => {
-          try {
-            if (!v.user_id) return
-            const user = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(v.user_id).first<{ phone: string }>()
-            if (!user?.phone) return
-            const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
-            const amount = refundAmount.toLocaleString('ko-KR')
-            const msg = `[유어딜] 환불 완료 — ${product.name}\n${amount}원이 환불 처리되었습니다.\n(딜 결제건은 즉시 잔액 반영, 카드 결제건은 영업일 기준 3~5일 소요)`
-            await sendSystemAlimtalk(c.env as unknown as Record<string, unknown>, user.phone, 'voucher_refunded', msg)
-          } catch (e) { if (import.meta.env?.DEV) console.warn('[refund alimtalk]', e) }
-        })())
+        // 🔔 환불 알림톡 — 2026-11-25: **돈이 돌아간 뒤에만** 보낸다. 종전엔 카드 취소(아래 비동기)를 걸기 전에
+        //   "환불 완료" 를 먼저 보냈다(취소가 실패해도 손님은 환불됐다고 들었다). 딜은 아래에서 바로, 카드는 취소 성공 뒤.
+        //   이용권마다 따로 보낸다(dedupKey) — 한 사람이 여러 장이면 둘째부터 1시간 제한에 막혔다.
+        const tellRefunded = () => sendRefundAlimtalk(c.env as unknown as Record<string, unknown>, DB, v.user_id ? String(v.user_id) : null, product.name, refundAmount, `voucher:${v.id}`)
 
         // 딜 결제건 1 voucher 당 applied_price(실제 결제가) 환불 (BUG #45: total_amount 사용 시 N배 환불 위험)
         // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT).
@@ -127,6 +119,7 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
             type: 'refund',
             description: `공동구매 미달성 환불: ${product.name}`,
           })
+          c.executionCtx?.waitUntil(tellRefunded())
           // 🏙️ 2026-07-05: 트리거 주문 환불 → 방문 리워드 회수 (멱등 CAS, fail-soft)
           try {
             const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward')
@@ -147,6 +140,7 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
               })
               if (result.ok) {
                 await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(v.order_id).run().catch(() => null)
+                await tellRefunded()
               } else {
                 // retryable(5xx)은 gateway 가 toss_refund_failures 기록 → cron 재시도.
                 // 🚨 non-retryable(4xx)은 cron 이 안 집음 → 어드민 벨/Discord 수동환불 알림.

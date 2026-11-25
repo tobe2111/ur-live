@@ -12,6 +12,7 @@
  * - POST   /settlement/execute     — 자동 정산 실행 (실제/preview)
  * - GET    /settlement/export-csv  — CSV 내보내기
  */
+import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-phone'
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
@@ -317,7 +318,9 @@ adminSettlementsRoutes.post('/settlement/execute', cors(), rateLimit({ action: '
       try {
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
         for (const seller of result.sellers) {
-          const row = await DB.prepare("SELECT phone, business_name FROM sellers WHERE id = ?").bind(seller.seller_id).first<{ phone: string; business_name: string }>().catch(() => null);
+          // 📱 2026-11-25: 담당자 휴대폰 우선(대표번호는 유선이 많아 알림톡이 안 간다)
+          const t = await resolveSellerNotifyTarget(DB, seller.seller_id).catch(() => null);
+          const row = t?.phone ? { phone: t.phone, business_name: t.businessName || t.name || '' } : null;
           if (!row?.phone) continue;
           const amount = (seller.settlement_amount || 0).toLocaleString('ko-KR');
           const message = `[유어딜] ${row.business_name || ''} 정산이 완료되었습니다.\n정산 금액: ${amount}원\n자세한 내역: urdeal.kr/seller/settlements`;

@@ -494,7 +494,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
         // 환불 완료 알림톡 (통합 헬퍼)
         c.executionCtx?.waitUntil(
-          sendRefundAlimtalk(c.env as unknown as Record<string, unknown>, DB, voucher.user_id, voucher.product_name, refundAmount)
+          sendRefundAlimtalk(c.env as unknown as Record<string, unknown>, DB, voucher.user_id, voucher.product_name, refundAmount, `voucher:${voucher.id}`)
         )
         // 🔔 2026-10-10 (전수조사): 손님이 스스로 취소하면 사장님은 몰랐다 — 판매 벨은 왔는데 취소 벨이 없어
         //   "손님이 온다" 고 준비한 채로 남았다. 판매 벨과 같은 자리(대시보드)로 알린다.
@@ -662,7 +662,8 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
           // 환불 완료 알림톡 (통합 헬퍼 — 취소/부분환불 공통)
           c.executionCtx?.waitUntil(
-            sendRefundAlimtalk(c.env as unknown as Record<string, unknown>, DB, voucher.user_id, voucher.product_name, refundAmount)
+            // 💳 2026-11-25: 카드 취소가 아직 대기 중이면 "환불 완료" 라고 말하지 않는다(돈이 안 돌아갔다).
+            cardPending ? Promise.resolve() : sendRefundAlimtalk(c.env as unknown as Record<string, unknown>, DB, voucher.user_id, voucher.product_name, refundAmount, `voucher:${voucher.id}:partial`)
           )
         }
       } catch (e) { console.error('[partial-refund]', e) }

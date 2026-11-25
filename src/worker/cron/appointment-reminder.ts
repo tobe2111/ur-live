@@ -45,7 +45,7 @@ export async function handleAppointmentReminder(env: Env): Promise<void> {
       `SELECT a.id, a.product_id, a.seller_id, a.user_id, a.user_phone, a.user_name,
               a.booking_date, a.start_time, a.end_time,
               p.name as product_name, p.restaurant_name, p.restaurant_address,
-              s.phone as seller_phone
+              COALESCE(NULLIF((SELECT m.value FROM seller_meta m WHERE m.seller_id = s.id AND m.key = 'manager_phone'), ''), s.phone) as seller_phone /* 📱 2026-11-25 담당자 휴대폰 우선 */
          FROM appointment_bookings a
          LEFT JOIN products p ON p.id = a.product_id
          LEFT JOIN sellers s ON s.id = a.seller_id

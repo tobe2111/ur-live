@@ -10,6 +10,7 @@
  *
  * 숙소 (stay_bookings) 는 별도 — 본 시스템은 시간 슬롯 기반.
  */
+import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-phone'
 import { Hono } from 'hono'
 import { requireUser, requireSeller, getCurrentUser } from '../../../worker/middleware/auth'
 import type { Env } from '../../../worker/types/env'
@@ -213,7 +214,8 @@ appointmentsRoutes.post('/appointments/book', requireUser(), async (c) => {
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
         const env = c.env as unknown as Record<string, unknown>
         // 매장 phone
-        const sellerRow = await DB.prepare('SELECT phone FROM sellers WHERE id = ?').bind(product.seller_id).first<{ phone: string }>().catch(() => null)
+        // 📱 2026-11-25: 담당자 휴대폰 우선(대표번호는 유선이 많다)
+        const sellerRow = await resolveSellerNotifyTarget(DB, product.seller_id).catch(() => null)
         if (sellerRow?.phone) {
           const msg = `[유어딜] 신규 예약 — ${product.name}\n${bookingDate} ${startTime}~${endTime}\n고객: ${body.user_name || ''} ${body.user_phone || ''}`
           await sendSystemAlimtalk(env, sellerRow.phone, 'appointment_seller_new', msg)

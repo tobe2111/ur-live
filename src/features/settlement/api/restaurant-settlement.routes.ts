@@ -9,6 +9,7 @@
  * Seller route is mounted on the main app with requireAuth.
  */
 
+import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-phone'
 import { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swallow'
 import { cors } from 'hono/cors';
 import { executeQuery, executeRun, queryFirst } from '@/worker/utils/database';
@@ -269,15 +270,17 @@ restaurantSettlementRoutes.patch('/:id/complete', requireAdminRole('finance'), a
     c.executionCtx?.waitUntil((async () => {
       try {
         const row = await DB.prepare(
-          `SELECT rs.settlement_amount, rs.restaurant_name, s.phone
-             FROM restaurant_settlements rs LEFT JOIN sellers s ON s.id = rs.seller_id
+          `SELECT rs.settlement_amount, rs.restaurant_name, rs.seller_id
+             FROM restaurant_settlements rs
             WHERE rs.id = ?`
-        ).bind(id).first<{ settlement_amount: number; restaurant_name: string | null; phone: string | null }>();
-        if (!row?.phone) return;
+        ).bind(id).first<{ settlement_amount: number; restaurant_name: string | null; seller_id: number | null }>();
+        // 📱 2026-11-25: 담당자 휴대폰 우선(대표번호는 유선이 많아 알림톡이 안 간다)
+        const phone = row ? (await resolveSellerNotifyTarget(DB, row.seller_id).catch(() => null))?.phone ?? null : null;
+        if (!row || !phone) return;
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk');
         const amt = Number(row.settlement_amount || 0).toLocaleString('ko-KR');
         const msg = `[유어딜] 정산 완료 — ${row.restaurant_name || '매장'}\n정산액 ${amt}원이 등록하신 계좌로 입금 처리되었습니다.`;
-        await sendSystemAlimtalk(c.env as unknown as Record<string, unknown>, row.phone, 'settlement_completed', msg);
+        await sendSystemAlimtalk(c.env as unknown as Record<string, unknown>, phone, 'settlement_completed', msg);
       } catch { /* best-effort — 알림 실패해도 정산은 완료 */ }
     })());
 

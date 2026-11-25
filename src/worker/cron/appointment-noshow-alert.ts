@@ -44,7 +44,7 @@ export async function handleAppointmentNoshowAlert(env: Env): Promise<void> {
       `SELECT a.id, a.product_id, a.seller_id, a.user_id, a.user_phone, a.user_name,
               a.booking_date, a.start_time, a.end_time,
               p.name as product_name,
-              s.phone as seller_phone
+              COALESCE(NULLIF((SELECT m.value FROM seller_meta m WHERE m.seller_id = s.id AND m.key = 'manager_phone'), ''), s.phone) as seller_phone /* 📱 2026-11-25 담당자 휴대폰 우선 */
          FROM appointment_bookings a
          LEFT JOIN products p ON p.id = a.product_id
          LEFT JOIN sellers s ON s.id = a.seller_id
@@ -69,7 +69,7 @@ export async function handleAppointmentNoshowAlert(env: Env): Promise<void> {
           await DB.prepare("UPDATE appointment_bookings SET noshow_alert_sent_at = datetime('now') WHERE id = ?").bind(apt.id).run()
           continue
         }
-        const msg = `[유어딜] 노쇼 의심 — ${apt.product_name || '예약'}\n📅 ${apt.booking_date} ${apt.start_time}~${apt.end_time}\n👤 ${apt.user_name || apt.user_id} ${apt.user_phone || ''}\n\n실제 방문 안 했으면: https://urdeal.kr/seller/appointments → 노쇼 처리\n방문 완료했으면: → 완료 처리`
+        const msg = `[유어딜] 노쇼 의심 — ${apt.product_name || '예약'}\n📅 ${apt.booking_date} ${apt.start_time}~${apt.end_time}\n👤 ${apt.user_name || '고객'} ${apt.user_phone || ''}\n\n실제 방문 안 했으면: https://urdeal.kr/seller/appointments → 노쇼 처리\n방문 완료했으면: → 완료 처리`
         await sendSystemAlimtalk(envRecord, apt.seller_phone, 'appointment_noshow_alert', msg)
         await DB.prepare("UPDATE appointment_bookings SET noshow_alert_sent_at = datetime('now') WHERE id = ?").bind(apt.id).run()
         sent++

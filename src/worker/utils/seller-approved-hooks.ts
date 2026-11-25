@@ -10,6 +10,7 @@
  * 승인 자체는 이미 끝났다. 여기서 뭐가 실패해도 승인을 되돌리지 않고, 한 훅의 실패가
  * 다른 훅을 막지도 않는다.
  */
+import { resolveSellerNotifyTarget } from './seller-notify-phone'
 import type { D1Database } from '@cloudflare/workers-types'
 import { markExposureGrace } from './store-verify'
 import { queueOwnerNotice } from './store-owner-notice'
@@ -27,8 +28,8 @@ export async function runSellerApprovedHooks(
   // ⏳ 노출 유예 마커 — 기본 OFF, 재승인 제외(store-verify.ts 참조).
   const graceHours = await markExposureGrace(DB, sellerId, prevStatus).catch(() => 0)
   // 📩 사장님 통보 줄 세우기 — 010 만. 발송은 게이트 뒤(store-owner-notice.ts 참조).
-  const phone = await DB.prepare('SELECT phone FROM sellers WHERE id = ?')
-    .bind(sellerId).first<{ phone: string | null }>().catch(() => null)
-  const notice = await queueOwnerNotice(DB, sellerId, phone?.phone).catch(() => 'skip_error')
+  // 📱 2026-11-25: 매장 대표번호(유선이 많다)가 아니라 담당자 휴대폰 우선 — `seller-notify-phone.ts` 한 곳에서 고른다.
+  const phone = (await resolveSellerNotifyTarget(DB, sellerId).catch(() => null))?.phone ?? null
+  const notice = await queueOwnerNotice(DB, sellerId, phone).catch(() => 'skip_error')
   return { graceHours, notice }
 }

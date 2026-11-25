@@ -8,6 +8,7 @@
  *
  * 🔐 매장 판정은 판매 내역 라우트와 같은 문장(우리가 운영 중 + 이 직원에게 배정된 매장). 경로의 sellerId 는 '요청'일 뿐.
  */
+import { resolveSellerNotifyTarget } from '../../../worker/utils/seller-notify-phone'
 import type { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -76,7 +77,9 @@ export function registerAgencyDealRoutes(app: Hono<{ Bindings: Bindings; Variabl
           const agency = await DB.prepare('SELECT name FROM agency_accounts WHERE id = ? LIMIT 1').bind(me.agencyId).first<{ name: string | null }>().catch(() => null)
           const msg = msgAgencyDealApproval({ store: store?.name || '매장', agency: agency?.name || '에이전시', influencer: user.name || `@${handle}`, pct: Number(pct), fee: r.fee, budget: r.budget })
           await notifySeller(DB, sellerId, 'agency_deal', '에이전시 소개비 승인 요청', `${agency?.name || '에이전시'} · ${user.name || `@${handle}`} · ${pct}%`, storeGoPath(sellerId, 'agency')).catch(() => null)
-          if (store?.phone) await sendSystemAlimtalk(c.env, store.phone, AGENCY_DEAL_TPL, msg, { sellerId, dedupKey: `agencydeal:${r.id}` }).catch(() => null)
+          // 📱 2026-11-25: 담당자 휴대폰 우선(대표번호는 유선이 많다)
+          const ownerPhone = (await resolveSellerNotifyTarget(DB, sellerId).catch(() => null))?.phone
+          if (ownerPhone) await sendSystemAlimtalk(c.env, ownerPhone, AGENCY_DEAL_TPL, msg, { sellerId, dedupKey: `agencydeal:${r.id}` }).catch(() => null)
         }
         return c.json({
           success: true, id: r.id, status: r.status,

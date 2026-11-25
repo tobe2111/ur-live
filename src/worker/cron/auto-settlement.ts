@@ -1,3 +1,4 @@
+import { notifyExpiredRefund } from '../utils/expired-refund-notify'
 import { logInfo, logError } from '../utils/logger'; import { swallow } from '../utils/swallow'; import { notifyAdminEvent } from '../utils/admin-event-notify'
 /**
  * Auto-Settlement Cron Handler
@@ -517,6 +518,7 @@ export async function handleExpiredVoucherRefunds(env: Env) {
         } catch (e) {
           if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement notifications insert]', e);
         }
+        await notifyExpiredRefund(env, DB, { voucherId: voucher.id, userId: voucher.user_id, productName: voucher.product_name, amount: refundAmount, via: 'deal' }) // 🔔 2026-11-25 푸시 + 알림톡
       }
       // 🛡️ 2026-05-30: 토스(카드) 결제 낙전 환불 — 기존엔 deal_points 만 환불되어
       //   카드 결제 미사용 만료건이 환불 누락(금전 손실)됐음. tossCancelPayment 는 toss-gateway SSOT wrapper.
@@ -549,6 +551,7 @@ export async function handleExpiredVoucherRefunds(env: Env) {
                 `이용권 유효기간이 지나 ${refundAmount.toLocaleString('ko-KR')}원을 환불했습니다 — 카드 환불은 영업일 기준 3~5일 소요 (${voucher.product_name})`
               ).run();
             } catch (e) { if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement toss notif]', e); }
+            await notifyExpiredRefund(env, DB, { voucherId: voucher.id, userId: voucher.user_id, productName: voucher.product_name, amount: refundAmount, via: 'card' })
           } else {
             outcome = 'failed';
             logError('[Cron] expired voucher toss refund failed', { voucher_id: voucher.id, error_code: result.error_code }); await notifyAdminEvent(DB, { type: 'refund_failed', title: '만료 환불 실패 — 손으로 환불해야 해요', message: `이용권 #${voucher.id} · ${refundAmount.toLocaleString('ko-KR')}원 · ${String(result.error_code || '').slice(0, 40)}`, link: '/admin/vouchers' }) // 🔔 2026-11-25 종전엔 로그 한 줄뿐이라 손님도 어드민도 몰랐다

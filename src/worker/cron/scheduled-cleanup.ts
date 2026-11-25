@@ -794,16 +794,12 @@ export async function handleScheduled(env: Env, tiers: CleanupTiers = ALL_TIERS)
       LIMIT 100
     `).all<{ id: number; user_id: string; code: string; expires_at: string; product_name: string | null }>();
     for (const v of d7 ?? []) {
-      try {
-        await DB.prepare(
-          `INSERT INTO user_notifications (user_id, type, title, message, link)
-           VALUES (?, 'voucher_expiring', ?, ?, ?)`
-        ).bind(v.user_id, '이용권 만료 7일 전', `${v.product_name ?? '바우처'} 사용을 잊지 마세요`, '/my-vouchers').run();
-      } catch {}
+      // 🔕 2026-11-25: 앱 안 알림은 여기서 안 쓴다 — `voucher-expire.ts` 가 같은 날(D-7·D-1) 한 줄을 쓴다(둘이 다 쓰면 목록에 두 줄).
+      //   여기는 **푸시만** 맡는다(그쪽은 푸시를 안 보낸다).
       try {
         await sendSystemPush(env as unknown, 'user', v.user_id, {
           title: '이용권 만료 7일 전',
-          body: `${v.product_name ?? '바우처'} 사용을 잊지 마세요`,
+          body: `${v.product_name ?? '이용권'} 사용을 잊지 마세요`,
           url: '/my-vouchers',
           tag: `voucher-d7-${v.id}`,
         });
@@ -825,15 +821,9 @@ export async function handleScheduled(env: Env, tiers: CleanupTiers = ALL_TIERS)
     `).all<{ id: number; user_id: string; code: string; expires_at: string; product_name: string | null }>();
     for (const v of d1 ?? []) {
       try {
-        await DB.prepare(
-          `INSERT INTO user_notifications (user_id, type, title, message, link)
-           VALUES (?, 'voucher_expiring', ?, ?, ?)`
-        ).bind(v.user_id, '이용권 만료 1일 전', `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`, '/my-vouchers').run();
-      } catch {}
-      try {
         await sendSystemPush(env as unknown, 'user', v.user_id, {
           title: '이용권 만료 1일 전',
-          body: `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`,
+          body: `${v.product_name ?? '이용권'} 오늘 안에 사용해주세요`,
           url: '/my-vouchers',
           tag: `voucher-d1-${v.id}`,
         });

@@ -19,7 +19,12 @@
  *  ⇒ 템플릿이 하나씩 승인될 때마다 어드민에서 이름을 적어 넣기만 하면 **배포 없이** 알림톡으로 넘어간다.
  *
  * 성공·실패는 둘 다 남긴다 — "안 나갔는데 아무도 모른다" 가 이 파일이 생긴 이유다.
- *  - 성공: `alimtalk_dispatch_log`(번호는 해시만) · 실패: `alimtalk_failures`(재시도 0회로 기록만)
+ *  - 성공: `alimtalk_dispatch_log`(번호는 해시만) · 실패: `alimtalk_failures`
+ *
+ * 🔁 2026-11-25 — **보내다 실패한 것은 다시 보낸다.** 종전엔 모든 실패를 "재시도 0회" 로 적어 재시도 cron 이 한 건도 집지 않았다
+ *    (게다가 그 cron 은 `이름=코드` 표와 버튼을 안 봐서, 집었어도 카카오가 거절했다). 지금은:
+ *    - 승인 전(`pending:`) · 버튼에 필요한 매장 번호가 없는 것 · 카카오가 내용을 거절한 것 → 기록만(다시 보내도 같은 결과다)
+ *    - 통신이 끊겼거나 SENS 가 5xx·429 로 답한 것 → 3회까지 재시도(`resendFailedAlimtalk` — 처음과 같은 코드·버튼으로)
  */
 import type { D1Database } from '@cloudflare/workers-types'
 import { sendSensAlimtalk, sensConfigured, type SensEnv } from './ncp-sens'
@@ -131,7 +136,10 @@ export async function sendTextNotice(
   const result = await sendSensAlimtalk(e as SensEnv, {
     templateCode: approved.get(n.tpl) || n.tpl, to, content: n.text, ...(buttons.length ? { buttons } : {}),
   })
-  await recordOutcome(db, to, `alimtalk:${n.tpl}`, n.text, result).catch(() => {})
+  // 🔁 다시 보내면 될 실패(통신 끊김 · SENS 5xx·429)만 재시도 큐에 태운다. 카카오가 내용을 거절한 것(템플릿 불일치 등)은
+  //   몇 번을 보내도 같은 답이라 기록만 한다(2026-10-11 가드 `text-notice-2026-10-11` 의 A013 사례).
+  const transient = !result.success && isTransientSensError(result.error)
+  await recordOutcome(db, to, transient ? retryCode(n.tpl, n.sellerId) : `alimtalk:${n.tpl}`, n.text, result, transient ? 3 : 0).catch(() => {})
   return result.success ? { ok: true, via: 'alimtalk' } : { ok: false, via: 'alimtalk', error: result.error || 'unknown' }
 }
 
@@ -150,6 +158,8 @@ async function recordOutcome(
   code: string,
   text: string,
   result: { success: boolean; error?: string },
+  /** 실패했을 때 재시도 cron 이 몇 번까지 다시 보낼지 — 기본 0(기록만). 실제 발송 실패만 3 을 넘긴다. */
+  maxRetries = 0,
 ): Promise<void> {
   if (!db) return
   if (result.success) {
@@ -160,11 +170,55 @@ async function recordOutcome(
     return
   }
   await ensureFailuresTable(db)
-  // 재시도 큐(retry-alimtalk)는 알림톡 템플릿으로 다시 보내므로 문자 실패를 거기 태우면 안 된다 — 기록만(max_retries 0).
   await db
-    .prepare('INSERT INTO alimtalk_failures (phone, template_code, message, error, max_retries) VALUES (?, ?, ?, ?, 0)')
-    .bind(to, code, text.slice(0, 1000), String(result.error ?? 'unknown').slice(0, 500))
+    .prepare('INSERT INTO alimtalk_failures (phone, template_code, message, error, max_retries) VALUES (?, ?, ?, ?, ?)')
+    .bind(to, code, text.slice(0, 1000), String(result.error ?? 'unknown').slice(0, 500), maxRetries)
     .run()
+}
+
+/** 다시 보내면 될 실패인가 — `ncp-sens.ts` 의 오류 문자열 모양으로 가른다: `[SENS] …`(통신 예외) · `[SENS 5xx|429] …`. */
+export function isTransientSensError(error: unknown): boolean {
+  const e = String(error ?? '')
+  return /^\[SENS\] /.test(e) || /^\[SENS (5\d\d|429)\]/.test(e)
+}
+
+/** 재시도 큐에 적는 코드 — `alimtalk:<이름>` 뒤에 버튼용 매장 번호를 붙인다(`#s12`). 번호가 없으면 이름만. */
+export function retryCode(tpl: string, sellerId?: unknown): string {
+  const id = Number(sellerId)
+  return `alimtalk:${tpl}${Number.isInteger(id) && id > 0 ? `#s${id}` : ''}`
+}
+
+export function parseRetryCode(code: string): { tpl: string; sellerId: number | null } | null {
+  const m = /^alimtalk:([A-Za-z0-9_]+)(?:#s(\d+))?$/.exec(String(code ?? ''))
+  return m ? { tpl: m[1], sellerId: m[2] ? Number(m[2]) : null } : null
+}
+
+/**
+ * 🔁 재시도 cron 이 부른다 — **처음 보낼 때와 같은 코드·버튼**으로 다시 보낸다.
+ * `giveUp` = 다시 보내도 같은 결과(승인이 풀렸다 · 대표가 껐다 · 옛 형식 기록) → cron 이 그 건을 그만 집는다.
+ */
+export async function resendFailedAlimtalk(
+  env: unknown, phone: string, code: string, text: string,
+): Promise<{ success: boolean; error?: string; giveUp?: boolean }> {
+  const e = (env ?? {}) as Record<string, unknown>
+  const parsed = parseRetryCode(code)
+  if (!parsed) return { success: false, giveUp: true, error: 'not_retryable' }
+  if (isAlimtalkOff(parsed.tpl)) return { success: false, giveUp: true, error: 'turned_off' }
+  const to = normalizeMobile(phone)
+  if (!to) return { success: false, giveUp: true, error: 'invalid_phone' }
+  const db = e.DB as D1Database | undefined
+  const approved = await approvedTemplates(db)
+  if (!approved.has(parsed.tpl)) return { success: false, giveUp: true, error: 'template_not_approved' }
+  const buttons = alimtalkButtons(parsed.tpl, { sellerId: parsed.sellerId })
+  if (buttons === null) return { success: false, giveUp: true, error: 'missing_store_id_for_buttons' }
+  const result = await sendSensAlimtalk(e as SensEnv, {
+    templateCode: approved.get(parsed.tpl) || parsed.tpl, to, content: text, ...(buttons.length ? { buttons } : {}),
+  })
+  if (result.success && db) {
+    await db.prepare('INSERT OR IGNORE INTO alimtalk_dispatch_log (phone_hash, template_code, message_hash) VALUES (?, ?, ?)')
+      .bind(await hashShort(to), `alimtalk:${parsed.tpl}`, await hashShort(text)).run().catch(() => {})
+  }
+  return result.success ? { success: true } : { success: false, error: result.error || 'unknown' }
 }
 
 // 실패 기록 테이블 — 종전엔 system-alimtalk 이 발송 실패 때 만들었다. 발송이 이 파일로 옮겨와 생성도 여기서(워커당 1회).

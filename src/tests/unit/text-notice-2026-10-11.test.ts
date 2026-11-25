@@ -86,7 +86,10 @@ describe('sendTextNotice — 카톡만: 승인된 템플릿만 알림톡, 문자
     const r = await sendTextNotice({ ...ENV, DB }, '01033334444', { tpl: 'voucher_issued', title: 't', text: 'x' })
     expect(r.ok).toBe(false)
     const fail = DB.writes.find((w) => w.sql.includes('INSERT INTO alimtalk_failures'))!
-    expect(fail.sql).toMatch(/max_retries\) VALUES \(\?, \?, \?, \?, 0\)/)
+    // 🔁 2026-11-25 재조준: 재시도 횟수가 SQL 글자에서 바인드 값으로 옮겨갔다(통신 실패는 3회 재시도하게 됐다 — `notify-fixes-2`).
+    //   이 사례(카카오가 내용을 거절 — A013)는 몇 번을 보내도 같은 답이라 여전히 0 이다.
+    expect(fail.sql).toMatch(/max_retries\) VALUES \(\?, \?, \?, \?, \?\)/)
+    expect(fail.args[4]).toBe(0)
     expect(fail.args[1]).toBe('alimtalk:voucher_issued')
   })
   it('승인 목록 파싱 — 쉼표·공백·줄바꿈', () => {
