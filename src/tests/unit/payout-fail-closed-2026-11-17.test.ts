@@ -27,7 +27,9 @@ describe('지급 — 조회 실패는 0원이 아니다', () => {
     const fn = SENT.slice(SENT.indexOf('export async function checkPayoutWithinReceivable('), SENT.indexOf('export async function checkPayoutWithinReceivable(') + 1800)
     expect(fn).toMatch(/catch \{\s*return \{ ok: false, code: 'RECEIVABLE_CHECK_FAILED'/)
     expect(fn).not.toMatch(/first<\{ total: number \}>\(\)\.catch\(/)
-    expect(ADM).toMatch(/within\.code === 'RECEIVABLE_CHECK_FAILED' \? 503 : 409/)
+    // 🔀 2026-11-25: 단건 승인의 판정이 `payout-approve.ts` 로 옮겨졌다(소액 자동 승인 공용) — 503 분기는 거기서 본다.
+    expect(read('src/worker/utils/payout-approve.ts')).toMatch(/within\.code === 'RECEIVABLE_CHECK_FAILED' \? 503 : 409/)
+    expect(ADM).toMatch(/approvePayoutGuarded\(c\.env\.DB, id\)/)
     expect(ADM).not.toMatch(/catch \{ \/\* getLedgerReceivable 실패 시 가드 skip/)
   })
 

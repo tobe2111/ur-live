@@ -29,6 +29,7 @@ import { canonicalPayee, payoutPendingRowsSql, payoutPeriodPendingSql, payoutRow
 
 import { csvEscape } from '../../../worker/utils/csv-safe'
 import { registerTossPayoutRoutes } from './admin-payouts/toss-payouts'
+import { approvePayoutGuarded } from '../../../worker/utils/payout-approve'
 import { resolvePayeeAccount } from '../../../worker/utils/payout-payee-account'
 import { handoverCloseout } from './admin-payouts/handover-closeout'
 import { registerLedgerCorrectionRoutes } from './admin-payouts/ledger-corrections'
@@ -162,33 +163,16 @@ adminPayoutsRoutes.get('/admin/payouts', requireAdmin(), async (c) => {
 adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance'), require2FA(), auditLog('payouts.approve'), async (c) => {
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
-  const { DB } = c.env
-  const row = await DB.prepare('SELECT status, payee_type, payee_id, amount, account_number, kind FROM payouts WHERE id = ?')
-    .bind(id).first<{ status: string; payee_type: string; payee_id: string; amount: number; account_number: string | null; kind: string | null }>()
-  if (!row) return c.json({ success: false, error: 'Not found' }, 404)
-  if (row.status !== 'pending') return c.json({ success: false, error: 'Not pending' }, 409)
-
-  // 🏦 2026-11-25: 계좌 없이 만들어진 건은 지금 계좌로 채우고, 그래도 없으면 승인하지 않는다(승인해도 송금 기록이 막힌다).
-  await fillMissingPayoutAccount(DB, { ...row, id })
-  const acctNow = await DB.prepare('SELECT account_number FROM payouts WHERE id = ?').bind(id).first<{ account_number: string | null }>()
-  if (!acctNow?.account_number) return c.json({ success: false, error: '수령자 정산 계좌가 아직 없습니다. 매장이 계좌를 등록하면 승인할 수 있습니다', code: 'PAYOUT_NO_ACCOUNT' }, 409)
-  row.account_number = acctNow.account_number
-  // 🔐 2026-10-10: 계좌 변경 후 미재확인 · 생성 이후 계좌가 바뀐 건은 승인하지 않는다(송금과 같은 SSOT).
-  const acctCheck = await checkPayeeAccountCurrent(DB, row)
-  if (!acctCheck.ok) return c.json({ success: false, error: acctCheck.error, code: acctCheck.code }, 409)
-
-  // 💸 과다지급 방지(2026-07-01 대표 승인) — 판정은 `checkPayoutWithinReceivable` SSOT(2026-11-25: 일괄 승인·송금 완료·이체 파일도 같은 함수).
-  const within = await checkPayoutWithinReceivable(DB, { ...row, id })
-  if (!within.ok) {
-    if (within.code === 'RECEIVABLE_CHECK_FAILED') logError('[admin-payouts] receivable guard failed — approve blocked', { id })
-    return c.json({ success: false, error: within.error, code: within.code, data: within.data }, within.code === 'RECEIVABLE_CHECK_FAILED' ? 503 : 409)
+  // ✅ 2026-11-25: 가드(계좌 채우기 · 계좌 재확인 · 받을 돈 · CAS)를 `approvePayoutGuarded` SSOT 로.
+  //   소액 자동 승인(`autoApproveSmallPayouts`)이 같은 함수를 부른다 — 따로 두면 가드가 갈린다.
+  //   판정 내용·순서·에러코드·상태코드는 이전과 동일.
+  const r = await approvePayoutGuarded(c.env.DB, id)
+  if (!r.ok) {
+    if (r.code === 'RECEIVABLE_CHECK_FAILED') logError('[admin-payouts] receivable guard failed — approve blocked', { id })
+    if (r.code === 'NOT_FOUND') return c.json({ success: false, error: r.error }, 404)
+    if (r.code === 'NOT_PENDING') return c.json({ success: false, error: r.error }, 409)
+    return c.json({ success: false, error: r.error, code: r.code, ...(r.data ? { data: r.data } : {}) }, r.status as 409 | 503)
   }
-
-  // 💸 2026-07-08 (머니 감사 ③): CAS 선점 — 동시 승인 이중 실행 방지(머니 룰 #1). status='pending' 조건.
-  const approveRes = await DB.prepare(
-    `UPDATE payouts SET status = 'approved', approved_at = datetime('now') WHERE id = ? AND status = 'pending'`,
-  ).bind(id).run()
-  if ((approveRes.meta?.changes ?? 0) === 0) return c.json({ success: false, error: 'Not pending' }, 409)
   return c.json({ success: true })
 })
 
