@@ -61,6 +61,16 @@ export function registerAdminPayoutRoutes(adminApp: Hono<{ Bindings: Env; Variab
       return c.json({ success: false, error: '받을 계좌가 등록되지 않았어요. 계좌 등록 뒤 지급해 주세요.', code: 'PAYOUT_NO_ACCOUNT' }, 409)
     }
     const amount = balance.available_amount
+    // 🪪 2026-11-25 사업자번호 없는 개인(3.3%)인데 주민등록번호가 없으면 현금 지급을 막는다 — 간이지급명세서에 빈칸이 생긴다(cron 과 같은 규칙).
+    if (body.method === 'cash') {
+      const pre = await DB.prepare('SELECT tax_type, business_number FROM influencer_balances WHERE influencer_id = ?')
+        .bind(influencerId).first<{ tax_type: string | null; business_number: string | null }>().catch(() => null)
+      if (!String(pre?.business_number || '').trim()) { // 사업자번호가 없는 개인 — 간이지급명세서 대상
+        const { getTaxIdStatus } = await import('../../../../worker/utils/payee-tax-id')
+        const tid = await getTaxIdStatus(DB, 'influencer', influencerId).catch(() => ({ registered: true }))
+        if (!tid.registered) return c.json({ success: false, error: '소개자가 주민등록번호를 아직 등록하지 않았어요(3.3% 신고에 필요). 등록 뒤 지급해 주세요.', code: 'PAYOUT_NO_TAX_ID' }, 409)
+      }
+    }
 
     // 🛡️ 2026-06-04: 이중 지급 차단 CAS — available_amount 가 아직 amount 일 때만 0 으로 claim.
     //   더블클릭/동시 요청이 둘 다 잔액을 읽고 둘 다 딜포인트를 적립하던 이중 지급 버그 방지.
