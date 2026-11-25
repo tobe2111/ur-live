@@ -34,3 +34,8 @@
 
 ## 반영 커밋
 (PR 에 기록)
+
+## 3단계 — 매장 정산 최소 금액 · 월말 상한 (같은 날)
+- `shared/store-payout-min.ts` — 어드민 `payout_min_krw`(기본 1만 원) · 그달 마지막 목요일 회차는 1원 이상이면 정산. `payouts-generate` 가 사용.
+- 사장님 정산 화면 · FAQ(`minPayoutRule`) · 가이드 v83 · 머니 스위치 칸. 결재 `docs/decisions/2026-11-25-payout-min-monthend.md`.
+- 세금계산서를 "정산한 달에만" 발행하는 안은 대표가 괜찮다고 했지만 공급시기 문제로 세무사 확인 대기(코드는 사용월 기준 유지).

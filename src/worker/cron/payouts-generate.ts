@@ -34,9 +34,14 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
     lastSunday.setUTCDate(lastMonday.getUTCDate() + 6)
     const periodStart = lastMonday.toISOString().slice(0, 10)
     const periodEnd = lastSunday.toISOString().slice(0, 10)
-    // 🛡️ 2026-05-22 정책 중앙화 — REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL
-    const { REFUND_POLICY } = await import('../../shared/constants/policy')
-    const MIN_AMOUNT = REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL
+    // 💰 2026-11-25 대표 *"고치면 좋은 점 두가지도 해줘"* — 최소 금액은 어드민 설정(`payout_min_krw`, 기본 1만 원 =
+    //   종전 REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL), 그달 **마지막 목요일** 회차는 금액과 상관없이 보낸다(한 달 넘게 안 기다린다).
+    //   설정을 못 읽으면 기본값 — 월말 상한은 설정과 무관하게 항상 건다. SSOT `shared/store-payout-min.ts`.
+    const { PAYOUT_MIN_KEY, resolvePayoutMin, effectivePayoutMin } = await import('../../shared/store-payout-min')
+    const minRow = await DB.prepare('SELECT value FROM platform_settings WHERE key = ? LIMIT 1')
+      .bind(PAYOUT_MIN_KEY).first<{ value: string }>().catch(() => null)
+    const minRule = effectivePayoutMin(resolvePayoutMin(minRow?.value), now.getTime())
+    const MIN_AMOUNT = minRule.min
 
     // 🛡️ 2026-06-26 [머니수정] credit 집계를 '지난주만' → '전기간 누적' 으로 변경.
     //   기존엔 credit 은 1주치인데 차감(paid)은 전기간이라, 누적 payout 이 1주 credit 을
@@ -113,7 +118,7 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
         logError('[payouts-cron] insert failed', { account: c.credit_account, error: (e as Error).message })
       }
     }
-    if (created > 0) logInfo(`[payouts-cron] created ${created} pending payouts for ${periodStart} ~ ${periodEnd} (hold ${hold.days}d)`)
+    if (created > 0) logInfo(`[payouts-cron] created ${created} pending payouts for ${periodStart} ~ ${periodEnd} (hold ${hold.days}d, min ${MIN_AMOUNT}${minRule.monthEnd ? ' month-end' : ''})`)
 
     // ✅ 2026-11-25 대표 *"최대한 자동화하자 지급대행 안쓰는 선에서"* — 소액 자동 승인(기본 꺼짐,
     //   `payout_auto_approve_max_krw`). 단건 승인과 같은 가드(`approvePayoutGuarded`)를 지난 건만 승인되고,

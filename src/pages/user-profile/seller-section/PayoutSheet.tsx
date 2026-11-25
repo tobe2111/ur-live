@@ -134,7 +134,7 @@ export default function PayoutSheet({ sellerId, onClose, onFixBank }: {
           </p>
           <p className="mt-2 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
             {/* 📅 2026-11-03 대표 확정 — 매주 목요일, 지난주(월~일) 사용분. 요일은 settlement-schedule 상수 SSOT. */}
-            매주 목요일, 지난주(월~일) 손님이 사용한 이용권을 모아 등록하신 계좌로 보내요. 따로 신청하지 않아도 돼요.
+            매주 목요일, 지난주(월~일) 손님이 사용한 이용권을 모아 등록하신 계좌로 보내요. 따로 신청하지 않아도 돼요. 모인 돈이 1만 원보다 적은 주는 다음 주로 넘기고, 그달 마지막 목요일에는 금액과 상관없이 보내요.
             <span className="block mt-1 font-medium text-gray-900 dark:text-white" data-testid="payout-next-date">
               다음 정산일 {formatPayDate(nextWeeklySettlementDateKst(Date.now()))}
             </span>
