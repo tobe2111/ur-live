@@ -1,5 +1,5 @@
 {
-  "_total": 167,
+  "_total": 166,
   "counts": {
     "src/features/admin/api/admin-influencer-outreach.routes.ts": 1,
     "src/features/admin/api/admin-kt-alpha/catalog.ts": 1,
@@ -7,7 +7,7 @@
     "src/features/admin/api/admin-kt-alpha/settings.ts": 1,
     "src/features/admin/api/admin-moderation.routes.ts": 2,
     "src/features/admin/api/admin-orders.routes.ts": 3,
-    "src/features/admin/api/admin-payouts.routes.ts": 2,
+    "src/features/admin/api/admin-payouts.routes.ts": 1,
     "src/features/admin/api/admin-products.routes.ts": 6,
     "src/features/admin/api/admin-promo-ledger.routes.ts": 3,
     "src/features/admin/api/admin-settlements.routes.ts": 1,

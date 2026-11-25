@@ -132,7 +132,7 @@ export async function checkPayoutWithinReceivable(
     const keys = paidPayeeAliases(account)
     const otherPaid = await DB.prepare(
       `SELECT COALESCE(SUM(amount), 0) AS total FROM payouts
-        WHERE (payee_type || ':' || payee_id) IN (${keys.map(() => '?').join(', ')}) AND status IN ('approved','sent') AND id != ?`,
+        WHERE (payee_type || ':' || payee_id) IN (${keys.map(() => '?').join(', ')}) AND status IN ('approved','sent') AND id != ?`, // d1-bind-ok: keys 는 한 수령자의 별칭 최대 2개(`paidPayeeAliases`) + 바인드 1 = 3 (한도 100)
     ).bind(...keys, row.id).first<{ total: number }>() // 실패를 0 으로 치지 않는다 — 아래 catch 가 멈춘다
     const available = receivable - Number(otherPaid?.total ?? 0)
     if (Number(row.amount) > available + 1) {
