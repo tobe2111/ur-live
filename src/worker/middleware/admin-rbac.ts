@@ -89,6 +89,11 @@ async function adminRoleFromRequest(c: Context): Promise<RequestRole | null> {
   return null;
 }
 
+/** 리드 명단 내보내기(인플루언서 · 업체 · 매장) — 읽기 전용 계정이 받아 가면 안 되고, 받는 순간 배치가 소진된다. */
+export function isLeadExportPath(pathname: string): boolean {
+  return /^\/api\/admin\/(ads\/influencer-pool|partner-pool|store-prospects)\/export(?:$|[/?])/.test(String(pathname || ''))
+}
+
 export function adminRbacMiddleware() {
   return async (c: Context, next: Next) => {
     const method = c.req.method.toUpperCase();
@@ -121,7 +126,7 @@ export function adminRbacMiddleware() {
     //   viewer 등 읽기전용/제한역할이 GET 으로 우회해 변경하지 못하게 mutate 검사로 넘긴다.
     //   (/api/admin/optimize-db 는 CREATE INDEX DDL 실행 — 세그먼트가 어떤 WRITE_DOMAINS 에도 없어
     //    canAdminRoleMutate 가 super/admin 만 통과시킴 → viewer/ops/cs/finance 403.)
-    const isGetMutation = /\/optimize-db(?:$|[/?])/.test(pathname);
+    const isGetMutation = /\/optimize-db(?:$|[/?])/.test(pathname) || isLeadExportPath(pathname); // 📇 2026-11-25 명단 내보내기는 GET 이지만 '내보냄' 도장을 찍고 연락처 수만 건을 내려준다 — 쓰기로 본다
     // 읽기는 허용(대시보드 조회).
     if ((method === 'GET' || method === 'HEAD') && !isGetMutation) return next();
 

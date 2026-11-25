@@ -3,7 +3,7 @@
  *   같은 /api/admin/ads 마운트(app.route). 결과 열람/큐레이션 + 키워드 관리 + 수동 트리거.
  *   ⚠️ 공용 풀 = account_id 0. 수집 엔진(ur-ads cron)과 분리 — 여기는 조회/정비만.
  */
-import { Hono } from 'hono'
+import { Hono } from 'hono'; import { NOT_SUPPRESSED_SQL } from './influencer-send-guard'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
@@ -212,7 +212,7 @@ app.patch('/influencer-pool/:id{[0-9]+}', async (c) => {
     sets.push('status = ?'); binds.push(b.status)
     if (['contacted', 'interested', 'contracted'].includes(b.status)) sets.push("contacted_at = COALESCE(contacted_at, datetime('now'))")
   }
-  if (typeof b.memo === 'string') { sets.push('memo = ?'); binds.push(b.memo.slice(0, 500)) }
+  if (typeof b.memo === 'string') { sets.push('memo = ?'); binds.push(b.memo.slice(0, 500)) }; if (b.opted_out === 1 || b.opted_out === true) sets.push("opted_out = 1", "email_status = 'opt_out'") // 🚫 2026-11-25 수신거부 기록 — 운영 문서(`docs/business/outreach/README.md` §2.7)가 이 길을 쓰라고 하는데 종전엔 받지 않아 "변경 항목 없음"(400)으로 아무것도 안 적혔다. 켜기만 된다(해제는 받지 않는다).
   // 컨택 채널(이메일/인스타DM/네이버쪽지/카톡/전화/기타) — 빈 문자열이면 해제.
   if (b.contact_channel !== undefined) {
     const ch = b.contact_channel
@@ -277,7 +277,7 @@ app.post('/influencer-pool/send-consented', async (c) => {
   // ⚖️ 동의 강제: consented_at + email 있는 행만 — 미동의/이메일 없는 id 는 조용히 제외(응답에 skipped 로 보고).
   const ph = ids.map(() => '?').join(',')
   const rows = (await adsLeadsDb(c.env).prepare(`SELECT id, name, email FROM ad_influencer_leads
-    WHERE account_id = ? AND id IN (${ph}) AND consented_at IS NOT NULL AND email IS NOT NULL ${dedupe}`)
+    WHERE account_id = ? AND id IN (${ph}) AND consented_at IS NOT NULL AND email IS NOT NULL ${NOT_SUPPRESSED_SQL} ${dedupe}`)
     .bind(POOL, ...ids).all<{ id: number; name: string; email: string }>().catch(() => null))?.results || []
   if (!rows.length) return c.json({ success: true, sent: 0, failed: [], suppressed: [], skipped: ids, recent_skipped: ids.length,
     note: force ? '발송 가능한 리드가 없습니다' : `선택한 리드가 모두 최근 ${RESEND_COOLDOWN_DAYS}일 내 발송 대상이거나 발송 조건(사전동의 + 이메일)을 만족하지 않습니다` })
@@ -333,7 +333,7 @@ app.post('/influencer-pool/send-cold', async (c) => {
     WHERE account_id = ? AND id IN (${ph}) AND consented_at IS NULL
       AND email IS NOT NULL AND email != ''
       AND (email_status IS NULL OR email_status NOT IN ('bounced','complained'))
-      AND (campaign_sent_at IS NULL OR campaign_sent_at <= datetime('now', '-${COLD_COOLDOWN_DAYS} days'))
+      ${NOT_SUPPRESSED_SQL} AND COALESCE(is_brand, 0) = 0 AND contacted_at IS NULL AND (campaign_sent_at IS NULL OR campaign_sent_at <= datetime('now', '-${COLD_COOLDOWN_DAYS} days'))
     LIMIT ?`).bind(POOL, ...ids, Math.min(ids.length, guard.remaining || 0))
     .all<{ id: number; name: string; email: string }>().catch(() => null))?.results) || []
   if (!rows.length) return c.json({ success: true, sent: 0, failed: [], suppressed: [], skipped: ids, remaining_today: guard.remaining,

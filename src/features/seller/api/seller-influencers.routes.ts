@@ -114,6 +114,7 @@ app.get('/list', async (c) => {
     const offset = (page - 1) * limit
 
     const where: string[] = [
+      "account_id = 0",                   // 🔒 2026-11-25 공용 풀만 — 종전엔 유어애즈 고객 계정이 따로 모은 리드(라이브 110건)가 다른 셀러의 목록에 섞였다
       "COALESCE(opted_out, 0) = 0",       // 수신 거부 존중
       "COALESCE(is_brand, 0) = 0",        // 브랜드 계정 제외 — 개인 크리에이터만
       "COALESCE(subscriber_count, 0) > 0",
@@ -173,7 +174,7 @@ app.get('/categories', async (c) => {
     const db = adsLeadsDb(c.env)
     const rows = await db.prepare(`
       SELECT category, COUNT(*) AS n FROM ad_influencer_leads
-       WHERE category IS NOT NULL AND category != '' AND COALESCE(opted_out,0)=0 AND COALESCE(is_brand,0)=0
+       WHERE account_id = 0 AND category IS NOT NULL AND category != '' AND COALESCE(opted_out,0)=0 AND COALESCE(is_brand,0)=0
        GROUP BY category ORDER BY n DESC LIMIT 30
     `).all<{ category: string; n: number }>().catch(() => ({ results: [] as never[] }))
     return c.json({ success: true, data: rows.results || [] })

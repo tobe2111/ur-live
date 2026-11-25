@@ -106,20 +106,23 @@ export function normalizeOutreachItems(raw: unknown): { items: OutreachItem[]; i
  * ⚠️ `sent` 가 `contacted_at` 을 **덮지 않는** 이유: 그 컬럼은 발송 큐의 "이미 보냈나" 판정에 쓰인다.
  *   재업로드가 시각을 갱신하면 리마인더 창(D+N)이 매번 밀려 **영원히 안 보내는** 상태가 된다.
  */
+const STICKY = "'bounced','complained','opt_out'"
+
 export function outreachSetClause(status: OutreachStatus): { sql: string; usesAt: boolean } {
   switch (status) {
     case 'sent':
-      return { sql: "email_status = 'sent', contacted_at = COALESCE(contacted_at, ?)", usesAt: true }
+      // 🚫 2026-11-25 반송·신고·수신거부 표시는 덮지 않는다(종전: '발송함' 업로드 한 번에 반송 표시가 사라져 다시 발송 대상이 됐다).
+      return { sql: `email_status = CASE WHEN email_status IN (${STICKY}) THEN email_status ELSE 'sent' END, contacted_at = COALESCE(contacted_at, ?)`, usesAt: true }
     case 'opened':
-      return { sql: "email_status = 'opened', opened_at = COALESCE(opened_at, ?)", usesAt: true }
+      return { sql: `email_status = CASE WHEN email_status IN (${STICKY}) THEN email_status ELSE 'opened' END, opened_at = COALESCE(opened_at, ?)`, usesAt: true }
     case 'replied':
       // 회신은 가장 강한 신호 — 반송/신고보다 뒤에 와도 이걸로 덮는다(사람이 실제로 답했다).
-      return { sql: "email_status = 'replied', replied_at = COALESCE(replied_at, ?)", usesAt: true }
+      return { sql: "email_status = CASE WHEN email_status = 'opt_out' THEN email_status ELSE 'replied' END, replied_at = COALESCE(replied_at, ?)", usesAt: true }
     case 'opt_out':
       // 🚫 법적 의사표시 — 자동 해제하지 않는다. 해제는 사람이 어드민에서.
       return { sql: "email_status = 'opt_out', opted_out = 1", usesAt: false }
-    default: // bounced | complained
-      return { sql: `email_status = '${status}'`, usesAt: false }
+    default: // bounced | complained — 더 강한 표시(수신거부, 그리고 반송 위의 신고)는 덮지 않는다. opted_out 은 건드리지 않는다(그 칸은 opt_out 만 쓴다)
+      return { sql: `email_status = CASE WHEN email_status IN (${status === 'bounced' ? "'opt_out','complained'" : "'opt_out'"}) THEN email_status ELSE '${status}' END`, usesAt: false }
   }
 }
 

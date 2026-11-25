@@ -21,8 +21,8 @@
 3. **하루 상한 20통**(코드 상한 200 보다 훨씬 보수적 — 매장이 채워지기 전이라 대표가 "일단"이라 했다).
 4. **대상**: `status='new'` · `contacted_at IS NULL` · 이메일 보유 · `opted_out=0` · `is_brand=0` · `email_status` 가 bounced/complained 아님 · `consented_at IS NULL` · `outreach-queue.ts` 의 노이즈 이름 제외 · **개인 메일 도메인**(gmail/naver/daum/kakao/hanmail) 우선. 유튜브는 구독자 5천~30만 · 최근 평균 조회 3천 이상.
 5. **보낸 직후** `POST /api/admin/ads/influencer-pool/mark-contacted {ids, channel:'email'}` 로 기록한다 — 안 하면 다음 날 같은 사람에게 또 간다.
-6. **재발송 금지 30일**(`COLD_COOLDOWN_DAYS`). 기록이 있으면 mark-contacted 가 거른다.
-7. **수신거부 답장**("수신거부"·"그만"·"보내지 마세요")이 오면 `PATCH /influencer-pool/:id {opted_out:1}` 로 즉시 제외. 반송(mailer-daemon)은 `email_status='bounced'`.
+6. **재발송 금지 30일**(`COLD_COOLDOWN_DAYS`). 거르는 것은 4번의 대상 조건(`contacted_at IS NULL`)이다 — mark-contacted 는 기록만 하고 거르지 않는다(2026-11-25 정정).
+7. **수신거부 답장**("수신거부"·"그만"·"보내지 마세요")이 오면 `PATCH /influencer-pool/:id {opted_out:1}` 로 즉시 제외(2026-11-25 까지 이 요청은 400 으로 아무것도 적지 않았다 — 지금은 적힌다). 반송(mailer-daemon)은 `POST /api/admin/ads/outreach/status` 에 `bounced` 로 올린다.
 8. **반송·신고가 최근 발송의 8% 를 넘으면 멈춘다**(`COLD_BOUNCE_MAX_PCT`). 지메일 발신 평판은 되돌리기 어렵다.
 
 ⚠️ 정보통신망법 §50 의 사전동의 미비 리스크는 남는다(2026-07-28 `outreach-cold.ts` 헤더에 고지 기록). 공개된 **비즈니스 문의용 주소**에만, 소량·개인화로 보낸다.

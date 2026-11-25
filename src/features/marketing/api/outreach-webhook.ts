@@ -60,7 +60,7 @@ export async function applyResendEventToPool(
   } else if (type === 'email.opened') {
     // 참여 신호 — 최초 개봉 시점 기록. bounced/complained 는 email_status 유지(악화 금지).
     sql = `UPDATE ad_influencer_leads SET opened_at=COALESCE(opened_at, datetime('now')), last_event_at=datetime('now'),
-      email_status=CASE WHEN email_status IN ('bounced','complained') THEN email_status ELSE 'opened' END
+      email_status=CASE WHEN email_status IN ('bounced','complained','opt_out') THEN email_status ELSE 'opened' END
       WHERE account_id=? AND email IS NOT NULL AND LOWER(email)=?`
   } else if (type === 'email.delivered') {
     sql = `UPDATE ad_influencer_leads SET last_event_at=datetime('now'),
@@ -91,7 +91,7 @@ export async function applyInboundReplyToPool(DB: D1Database, fromEmail: string,
     await DB.prepare('INSERT OR IGNORE INTO email_suppressions (email, reason) VALUES (?, ?)').bind(addr, 'opt_out_reply').run().catch(() => null)
     const r = await DB.prepare(
       `UPDATE ad_influencer_leads SET replied_at=COALESCE(replied_at, datetime('now')), last_event_at=datetime('now'),
-         email_status='opt_out',
+         email_status='opt_out', opted_out=1,
          status=CASE WHEN status='contracted' THEN status ELSE 'rejected' END
        WHERE account_id=? AND email IS NOT NULL AND LOWER(email)=?`,
     ).bind(POOL, addr).run().catch(() => null)
