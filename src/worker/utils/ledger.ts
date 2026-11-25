@@ -208,10 +208,9 @@ export async function recordVoucherUsedLedger(
   const merchantAmount = params.order_amount - platformAmount - sellerAmount
   const ref = `voucher:${params.voucher_id}`
 
-  // 멱등 — 이미 처리한 voucher 면 skip
-  const existing = await DB.prepare(
-    `SELECT id FROM ledger_entries WHERE reference_id = ? AND event_type = 'voucher_used' LIMIT 1`,
-  ).bind(ref).first().catch(() => null)
+  // 멱등 — 이미 적힌(아직 안 뒤집힌) 사용분이 있으면 skip. 🔁 2026-11-25: 사용 취소(`reverseVoucherUsedLedger`)로 뒤집힌 뒤
+  //   다시 쓰면 새로 적는다 — 종전엔 '한 번이라도 적혔으면 skip' 이라 뒤집을 길 자체가 없었다.
+  const existing = (await openVoucherUseRows(DB, params.voucher_id)).length > 0
   if (existing) {
     return { merchant_amount: merchantAmount, seller_amount: sellerAmount, platform_amount: platformAmount }
   }
@@ -343,6 +342,53 @@ export async function creditUserCommission(
  * ⚠️ 되살리려면 함수를 새로 만들어야 한다 — 설정값(`influencer_intro_share_pct`)만 바꿔서는 안 살아난다.
  */
 
+type UseRow = { amount: number; debit_account: string; credit_account: string }
+
+/**
+ * 이 이용권의 **아직 안 뒤집힌 사용 줄**(가장 최근 사용분) — 마지막 `voucher_use_reversal` 뒤에 적힌 `voucher_used` 만.
+ * 조회 실패는 '있다' 쪽으로 닫지 않는다: 빈 배열이면 호출부가 사용을 **한 번 더 적을 수** 있으므로 실패는 던진다(호출부 fail-soft).
+ */
+async function openVoucherUseRows(DB: D1Database, voucherId: number | string): Promise<UseRow[]> {
+  const ref = `voucher:${voucherId}`
+  const r = await DB.prepare(
+    `SELECT amount, debit_account, credit_account FROM ledger_entries
+      WHERE reference_id = ? AND event_type = 'voucher_used'
+        AND id > COALESCE((SELECT MAX(id) FROM ledger_entries WHERE reference_id = ? AND event_type = 'voucher_use_reversal'), 0)
+      ORDER BY id`,
+  ).bind(ref, ref).all<UseRow>()
+  return r.results || []
+}
+
+/**
+ * 🔁 **사용 취소 — 사용 때 나눈 줄(매장·셀러·유어딜)을 뒤집는다** (2026-11-25).
+ *
+ * 이용권이 '사용됨' 에서 '미사용' 으로 돌아가는 길이 셋 있다(셀프 사용 60초 취소 · 분쟁에서 손님 인정 · 분쟁 재활성).
+ * 종전엔 어느 길도 원장을 안 건드려, 안 쓴 이용권의 매장 몫이 받을 돈에 남았다(보류 14일 뒤 지급 대상이 된다).
+ * 뒤집은 뒤 다시 쓰면 `recordVoucherUsedLedger` 가 새로 적는다. 멱등: 열린 사용 줄이 없으면 no-op.
+ */
+export async function reverseVoucherUsedLedger(DB: D1Database, voucherId: number | string, reason: string): Promise<{ reversed: number }> {
+  await ensureLedgerTable(DB)
+  const rows = await openVoucherUseRows(DB, voucherId)
+  let reversed = 0
+  for (const u of rows) {
+    if (!(Number(u.amount) > 0)) continue
+    await recordLedger(DB, {
+      event_type: 'voucher_use_reversal',
+      reference_id: `voucher:${voucherId}`,
+      amount: Number(u.amount),
+      debit_account: u.credit_account, // 받았던 쪽에서 회수
+      credit_account: u.debit_account, // 보관금으로 복원
+      metadata: { kind: 'use_reversal', reason, voucher_id: voucherId },
+    })
+    reversed++
+  }
+  // 금액 0 인 줄만 있었어도 '열린 사용' 을 닫아야 다음 사용이 새로 적힌다 — 표식 한 줄.
+  if (rows.length > 0 && reversed === 0) {
+    await recordLedger(DB, { event_type: 'voucher_use_reversal', reference_id: `voucher:${voucherId}`, amount: 0, debit_account: 'platform:escrow', credit_account: 'platform:escrow', metadata: { kind: 'use_reversal_marker', reason, voucher_id: voucherId } })
+  }
+  return { reversed }
+}
+
 /**
  * 환불 시 원장을 되돌린다 (멱등 — `voucher:{id}:refund` 가 있으면 no-op).
  *
@@ -368,10 +414,8 @@ export async function recordRefundLedger(
     `SELECT id FROM ledger_entries WHERE reference_id = ? LIMIT 1`,
   ).bind(ref).first().catch(() => null)
   if (existing) return
-  const used = await DB.prepare(
-    `SELECT amount, debit_account, credit_account FROM ledger_entries WHERE reference_id = ? AND event_type = 'voucher_used'`,
-  ).bind(`voucher:${params.voucher_id}`).all<{ amount: number; debit_account: string; credit_account: string }>().catch(() => ({ results: [] as Array<{ amount: number; debit_account: string; credit_account: string }> }))
-  for (const u of used.results || []) {
+  const used = await openVoucherUseRows(DB, params.voucher_id).catch(() => [] as UseRow[]) // 이미 뒤집힌 사용분은 다시 안 뒤집는다
+  for (const u of used) {
     if (!(Number(u.amount) > 0)) continue
     await recordLedger(DB, {
       event_type: 'voucher_refund',

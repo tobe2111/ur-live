@@ -972,7 +972,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           await recordVoucherRedemptionLocation(DB, Number(row.id), body.lat, body.lng)
         } catch { /* best-effort */ }
         // 🏷️ 2026-10-18 받은 지점 기록 — 다른 점주 지점이면 주간 정산이 그 지점으로(게이트 OFF 면 늘 판 지점) · 판 지점이면 옛 기록 삭제.
-        try { const { recordVoucherRedeemStore } = await import('../../../worker/utils/brand-cross-owner'); await recordVoucherRedeemStore(DB, { voucherId: Number(row.id), soldSellerId: pre.seller_id, storeSellerId: redeemStore ?? pre.seller_id }) } catch { /* 기록 실패 = 판 지점 정산 */ }
+        try { const { recordVoucherRedeemStore } = await import('../../../worker/utils/brand-cross-owner'); await recordVoucherRedeemStore(DB, { voucherId: Number(row.id), soldSellerId: pre.seller_id, storeSellerId: redeemStore ?? pre.seller_id }) } catch { /* 기록 실패 = 판 지점 정산 */ }; try { const { recordVoucherUseSettlement } = await import('../../../worker/utils/voucher-seller-redeem'); if (pre.seller_id != null) await recordVoucherUseSettlement(DB, { id: Number(row.id), applied_price: Number(row.applied_price || 0), seller_id: Number(pre.seller_id), consigned_from_seller_id: null }) } catch (e) { console.error('[self-redeem settlement]', e) } // 🧾 2026-11-25 정산 원장(보관금 → 매장 · 유어딜) — 셀프 사용만 이 줄이 없어 주간 지급에서 빠졌다. 스캔 사용과 같은 SSOT · 멱등
         // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
         try {
           const { recordVoucherVisit } = await import('../../../worker/utils/voucher-visit')
@@ -1050,7 +1050,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         try {
           const { removeVoucherVisit } = await import('../../../worker/utils/voucher-visit')
           await removeVoucherVisit(DB, Number(pre.voucher_id))
-        } catch { /* best-effort */ }
+        } catch { /* best-effort */ }; try { const { reverseVoucherUsedLedger } = await import('../../../worker/utils/ledger'); await reverseVoucherUsedLedger(DB, pre.voucher_id, '셀프 사용 60초 취소') } catch (e) { console.error('[cancel-redeem ledger]', e) } // 🔁 2026-11-25 사용 정산 줄을 뒤집는다(안 쓴 이용권의 매장 몫이 남지 않게)
       }
       // 🔔 취소도 사장님에게 즉시 알림 — "사용완료 보여주고 취소" 수법의 가시화(악용 억제 핵심).
       if (pre?.seller_id != null) {

@@ -20,6 +20,7 @@ import { Hono } from 'hono'; import { swallow } from '../../../worker/utils/swal
 import type { Env } from '@/worker/types/env'
 import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error'
+import { reverseVoucherUsedLedger } from '@/worker/utils/ledger'
 import { ensureVoucherRedemptionsTable } from '@/worker/utils/voucher-redemption'
 
 type Vars = { user?: { id: string | number; type?: string; role?: string } }
@@ -154,9 +155,11 @@ sellerApp.post('/:id/respond', async (c) => {
 
     if (body.action === 'concede') {
       // 손님이 "안 갔다" 인정 → voucher 재사용 복원(used→unused, 미정산만) + 분쟁 종료. 머니룰: 돈 이동 없음.
-      await DB.prepare(
+      const undone = await DB.prepare(
         "UPDATE vouchers SET status='unused', used_at=NULL WHERE id=? AND status='used' AND settlement_id IS NULL"
       ).bind(d.voucher_id).run().catch(swallow('voucher-dispute'))
+      // 🔁 2026-11-25: 되살렸으면 사용 정산 줄도 뒤집는다 — 종전엔 안 쓴 이용권의 매장 몫이 받을 돈에 남았다(보류 뒤 지급 대상).
+      if ((undone as { meta?: { changes?: number } } | undefined)?.meta?.changes) await reverseVoucherUsedLedger(DB, d.voucher_id, '분쟁 — 손님 인정(재사용 복원)').catch(swallow('voucher-dispute:ledger'))
       await DB.prepare(
         "UPDATE voucher_disputes SET status='resolved', resolution='reactivate', customer_response='conceded', customer_response_at=datetime('now'), resolved_at=datetime('now') WHERE id=? AND status='open'"
       ).bind(id).run()
@@ -214,6 +217,7 @@ adminApp.post('/:id/resolve', async (c) => {
         "UPDATE vouchers SET status='unused', used_at=NULL WHERE id=? AND status='used' AND settlement_id IS NULL"
       ).bind(d.voucher_id).run()
       if ((vres.meta?.changes || 0) !== 1) return c.json({ success: false, error: '이미 정산되었거나 상태가 변경되어 재사용 처리할 수 없습니다' }, 409)
+      await reverseVoucherUsedLedger(DB, d.voucher_id, '분쟁 — 어드민 재사용 복원').catch(swallow('voucher-dispute:ledger')) // 🔁 2026-11-25 사용 정산 줄을 뒤집는다
     }
     await DB.prepare(
       "UPDATE voucher_disputes SET status='resolved', resolution=?, admin_note=?, resolved_at=datetime('now') WHERE id=?"
