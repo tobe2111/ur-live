@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from '@/hooks/useToast'
+import { promptDialog } from '@/components/ui/confirm-dialog'
 import { formatNumber } from '@/utils/format'
 
 interface Row { id: number; seller_id: number; buyer_name: string | null; buyer_biz_no: string | null; supply_amount: number; vat_amount: number; status: string; nts_confirm_num: string | null }
@@ -66,7 +67,12 @@ export default function FeeInvoicesCard() {
   }
 
   async function markIssued(r: Row) {
-    const num = window.prompt(`${r.buyer_name || `매장 #${r.seller_id}`} — 홈택스에서 발행했으면 국세청 승인번호를 적어 주세요(비워도 됩니다)`, '')
+    const num = await promptDialog({
+      title: '발행 완료 기록',
+      message: `${r.buyer_name || `매장 #${r.seller_id}`} — 홈택스에서 발행했으면 국세청 승인번호를 적어 주세요(비워도 됩니다)`,
+      confirmText: '발행 완료',
+      prompt: { placeholder: '국세청 승인번호(선택)' },
+    })
     if (num === null) return
     const res = await fetch(`/api/admin/tax/fee-invoices/${r.id}/issued`, { method: 'POST', headers: { ...auth(), 'Content-Type': 'application/json' }, body: JSON.stringify({ nts_confirm_num: num }) })
     const j = await readJson(res)
