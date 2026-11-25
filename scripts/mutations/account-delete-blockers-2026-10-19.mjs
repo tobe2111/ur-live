@@ -74,8 +74,8 @@ export default [
   {
     name: '탈퇴차단 — 화면이 막힘 판정 없이 탈퇴 버튼을 연다',
     file: P,
-    find: '!dealChecking && blockersClear && confirmText',
-    replace: '!dealChecking && confirmText',
+    find: '!dealChecking && blockersClear && (earnedCommission',
+    replace: '!dealChecking && (earnedCommission',
     test: T,
     why: '막을 것이 있는데 버튼이 열리면 누른 뒤에 409 를 맞는다 — 화면이 먼저 막아야 한다.',
   },
