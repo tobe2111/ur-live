@@ -114,6 +114,11 @@ const SENSITIVE_MUTATIONS: { readonly pattern: RegExp; readonly allow: readonly 
   { pattern: /\/sellers\/[^/]+\/verify-account(?:$|[/?])/, allow: ['finance'] },   // 계좌 재인증(출금 재개) — ops 차단
   { pattern: /\/sellers\/[^/]+\/bank-account(?:$|[/?])/, allow: ['finance'] },     // 🏦 2026-11-24 정산 계좌 대신 입력(돈이 가는 곳) — ops·cs 차단
   { pattern: /\/tools\/(?:points-reconcile|point-ledger-unlock)(?:$|[/?])/, allow: [] }, // 잔액 병합·원장 DDL — super·admin 만
+  // 🔐 2026-11-25: `/api/admin/*` **밖**에 있는 어드민 쓰기 — 역할 검사가 그 접두사에만 걸려 있어 조회 전용(viewer)도 통과했다.
+  //   라우트 파일이 직접 `adminRbacMiddleware()` 를 건다(`disputes.routes.ts` · `returns.routes.ts`). 첫 세그먼트 규칙이 안 맞는 경로라 여기서 역할을 정한다.
+  { pattern: /^\/api\/disputes\/admin\//, allow: ['cs', 'finance'] },                              // 분쟁 승인 = 환불 실행
+  { pattern: /^\/api\/returns\/[^/]+\/refund(?:$|[/?])/, allow: ['cs', 'finance'] },               // 반품 환불 실행
+  { pattern: /^\/api\/returns\/[^/]+\/(?:approve|reject|inspect)(?:$|[/?])/, allow: ['cs', 'ops'] }, // 반품 접수·검수
 ];
 
 /** 이 역할이 해당 경로에 '변경(mutation)' 을 할 수 있는가. (슈퍼전용 경로 차단은 호출 전 isSuperOnlyAdminPath 로) */

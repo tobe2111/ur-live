@@ -578,10 +578,19 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       }
 
       const refundAmount = voucherValue - usedAmount
+      // 🧾 2026-11-25: **쓴 만큼** 정산을 적는다(보관금 → 매장 · 유어딜, 스캔 사용과 같은 SSOT). 종전엔 이 라우트만 정산 없이
+      //   '사용됨' 으로 닫아 매장 몫이 0 이었다(`voucher-partial-refund-ledger-2026-11-25.test.ts`). 멱등(이용권당 한 번) · fail-soft.
+      const settleUsedPart = async (amount: number) => {
+        try {
+          const { recordVoucherUseSettlement } = await import('../../../worker/utils/voucher-seller-redeem')
+          await recordVoucherUseSettlement(DB, { id: voucher.id, applied_price: amount, seller_id: voucher.seller_id, consigned_from_seller_id: null })
+        } catch (e) { console.error('[partial-refund settlement]', e) }
+      }
       if (refundAmount === 0) {
         // 전액 사용 — 일반 use 와 동일
         const useResult = await DB.prepare(`UPDATE vouchers SET status = 'used', used_at = datetime('now') WHERE id = ? AND status = 'unused' AND ${noPendingGiftSql('vouchers.id')}`).bind(voucher.id).run()
         if (!useResult.meta?.changes) return c.json({ success: false, error: '동시성 충돌' }, 409)
+        await settleUsedPart(voucherValue) // 🧾 2026-11-25: 종전엔 '사용됨' 으로만 닫고 정산을 안 적었다(매장 몫 0)
         return c.json({ success: true, data: { used: usedAmount, refunded: 0, message: '전액 사용 처리' } })
       }
 
@@ -606,6 +615,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         if (!r.ok) { await DB.prepare('UPDATE orders SET refunded_amount = MAX(0, COALESCE(refunded_amount, 0) - ?) WHERE id = ?').bind(refundAmount, order.id).run(); await undoUse(); return c.json({ success: false, error: r.error }, 502) }
         cardPending = r.pending
       }
+      await settleUsedPart(usedAmount)
       try {
         const isDeal = order.payment_method === 'deal_points'
         if (voucher.user_id) { // 💳 2026-11-18: 카드도 아래 장부·알림을 탄다(돈은 위에서 돌려줬다)
@@ -618,14 +628,15 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
             description: `부분 환불 (사용 ${usedAmount}원/${voucherValue}원): ${reason || code}`,
           })
 
-          // 🛡️ 2026-05-15 (TD-G05): ledger reverse entry — 셀러 receivable 차감, 유저 wallet 환불
+          // 🧾 2026-11-25: 환불분은 **보관금 → 구매자** 다. 종전엔 `seller → user` 로 적어, 받은 적 없는 돈을 매장 받을 돈에서 뺐다
+          //   (10,000원 중 6,000원 사용 → 매장 장부 −4,000원). 쓴 만큼의 정산은 위 `settleUsedPart`.
           try {
             await recordLedger(DB, {
               event_type: 'partial_refund',
               reference_id: `voucher-${voucher.id}`,
               amount: refundAmount,
-              debit_account: `seller:${voucher.seller_id}`,  // 셀러 receivable 차감
-              credit_account: `user:${voucher.user_id}`,     // 유저 wallet 환불
+              debit_account: 'platform:escrow',
+              credit_account: `user:${voucher.user_id}`,
               metadata: { voucher_id: voucher.id, code, used_amount: usedAmount, total_value: voucherValue, reason: reason || null },
             })
           } catch (e) { if (import.meta.env?.DEV) console.warn('[partial-refund ledger]', e) }

@@ -140,7 +140,14 @@ platformMetricsRoutes.get('/overview', async (c) => {
     )
 
     // ── 순수익률 추정 (ESTIMATE) ──
-    const consumerCommissionRev = Math.round(consumerGmv * (consumerCommissionPct / 100))
+    // 🧾 2026-11-25: 주문에 적힌 **구매 때 요율**(`orders.commission_rate` — 직접 10% · 중개 5%)로 센다. 종전엔 전부 기본값(5%)을 곱해
+    //   직접 입점 매장 매출의 수수료를 절반으로 보여 줬다. 결제가 요율을 안 적은 옛 주문(seller_amount 없음)만 기본값.
+    const consumerCommissionRev = Math.round(await sum(
+      DB,
+      `SELECT COALESCE(SUM(total_amount * (CASE WHEN COALESCE(seller_amount, 0) > 0 AND commission_rate BETWEEN 0 AND 100 THEN commission_rate ELSE ? END) / 100.0), 0) AS v
+         FROM orders WHERE status IN ('PAID','DONE','DELIVERED') AND ${sinceClause}`,
+      [consumerCommissionPct],
+    ))
     const wholesaleMarginRev = await sum(
       DB,
       `SELECT COALESCE(SUM(margin_total),0) AS v FROM wholesale_orders WHERE status IN ('PAID','SHIPPED','PARTIAL_REFUNDED','DONE','ON_CREDIT') AND ${sinceClause}`
@@ -234,8 +241,8 @@ platformMetricsRoutes.get('/overview', async (c) => {
         consumer_commission_pct: consumerCommissionPct,
         donation_fee_pct: DONATION_FEE_PCT,
         pg_fee_pct: PG_FEE_PCT,
-        note: '순수익률은 추정치입니다. PG 수수료 2.5%(외상 제외 결제 GMV), 소비자 수수료 ' +
-          `${consumerCommissionPct}%, 후원 수수료 ${DONATION_FEE_PCT}% 가정. 실제 PG 정산서가 아닙니다.`,
+        note: '순수익률은 추정치입니다. PG 수수료 2.5%(외상 제외 결제 GMV), 소비자 수수료는 주문에 적힌 요율(없으면 ' +
+          `${consumerCommissionPct}%), 후원 수수료 ${DONATION_FEE_PCT}% 가정. 실제 PG 정산서가 아닙니다.`,
       },
       gmv: {
         consumer: consumerGmv,

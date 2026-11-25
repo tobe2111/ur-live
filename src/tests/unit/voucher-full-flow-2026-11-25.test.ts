@@ -175,6 +175,16 @@ describe('이용권·교환권 전체 흐름 — 유저 · 사장님 · 인플�
       const vv = voucherByOrder(v4.orderId)[0]
       R.check('V4: 기한이 지난 미사용 이용권 → 카드 전액 자동 환불(일반 이용권 규칙)', vv.refund_status === 'refunded' && cancels.length === 1 && cancels[0].paymentKey === v4.paymentKey, `${JSON.stringify(vv)} toss=${JSON.stringify(cancels)}`)
     }
+    {
+      // 🧾 2026-11-25: 환불은 원장에 "보관금 → 구매자" 로 적힌다. 종전엔 셀프 취소가 `platform:revenue → platform:escrow`(유어딜 수입 차감)로 적혔고 만료 환불은 줄이 없었다.
+      const rf = q<{ reference_id: string; amount: number; debit_account: string; credit_account: string }>(raw, "SELECT reference_id, amount, debit_account, credit_account FROM ledger_entries WHERE event_type = 'voucher_refund' ORDER BY id")
+      const want = [v3?.v?.id, v4?.v?.id].filter(Boolean).map((id) => `voucher:${id}:refund`).sort()
+      R.check('환불 원장: 셀프 취소·만료 환불 둘 다 보관금 → 구매자 10,000원 (유어딜 수입을 깎지 않는다)',
+        JSON.stringify(rf.map((r) => r.reference_id).sort()) === JSON.stringify(want) && rf.every((r) => r.amount === 10000 && r.debit_account === 'platform:escrow' && r.credit_account === `user:${BUYER}`)
+        && q(raw, "SELECT id FROM ledger_entries WHERE debit_account = 'platform:revenue'").length === 0, JSON.stringify(rf))
+      const esc = q1<{ bal: number }>(raw, "SELECT COALESCE(SUM(CASE WHEN credit_account = 'platform:escrow' THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN debit_account = 'platform:escrow' THEN amount ELSE 0 END), 0) AS bal FROM ledger_entries")
+      R.check('보관금 잔액 = 0 (산 것 4건 40,000 − 사용 2건 20,000 − 환불 2건 20,000)', esc?.bal === 0, JSON.stringify(esc))
+    }
 
     // ════════ 6. 인플루언서: 소개비 받기 ════════
     R.section('6. 인플루언서 — 소개비 성숙 · 지급')

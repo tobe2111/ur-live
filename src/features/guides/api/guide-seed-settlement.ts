@@ -70,6 +70,8 @@ export const ADMIN_SETTLEMENT_SECTION: SeedSection = {
 | 매장 월간 명세서 | **매월 10일** 자동 발송(소개비·에이전시 수수료) | 할 일 없음 — 매장 알림으로 간다 |
 
 - 월 정산일은 \`platform_settings.commission_payout_day\`(1~28, 기본 10)로 바꾼다.
+- 🛑 **받을 돈을 넘는 지급은 어느 길로도 안 나간다**(2026-11-25): 지급 대상을 만든 뒤 환불이 생기면 그 건은 건별 승인·**일괄 승인**·이체 파일·승인 없는 송금 완료에서 모두 걸러진다(\`PAYOUT_EXCEEDS_RECEIVABLE\`). 걸린 건은 **취소**하면 다음 주 생성 때 맞는 금액으로 다시 만들어진다.
+- 🔐 분쟁 승인(환불)·반품 환불은 **cs·finance**, 반품 접수·검수는 **cs·ops** 역할만 할 수 있다(조회 전용 계정은 불가 — 2026-11-25).
 - 💸 **토스 지급대행**(\`toss_payouts_enabled\`, 기본 꺼짐): 12-17 개정 전금법 대응. 켜지면 매장 정산은 토스가 매장 계좌로 직접 보내고, 토스가 완료를 알리면(웹훅 \`/api/webhooks/toss-payouts\`) 장부가 자동으로 '송금 완료'가 된다. 켜기 전 staging **S-TOSSPAYOUT** 8건.
 
 ### 🏦 지급 센터 (\`/admin/payout-center\`) — 2026-06-12 신설, 권장 진입점

@@ -122,7 +122,9 @@ describe('③ 배선', () => {
   })
   it('어드민 승인·목록이 payoutRowLedgerAccount 로 원장을 묻는다(merchant 치환 없음)', () => {
     const s = src('src/features/admin/api/admin-payouts.routes.ts')
-    expect((s.match(/payoutRowLedgerAccount\((String\()?(row|r)\.payee_type/g) || []).length).toBe(2)
+    // 🔀 2026-11-25: 승인 쪽 판정은 `payout-sent.ts` `checkPayoutWithinReceivable` 로 옮겨졌다 — 목록(여기) 1 + 판정(거기) 1.
+    expect((s.match(/payoutRowLedgerAccount\((String\()?(row|r)\.payee_type/g) || []).length).toBe(1)
+    expect((src('src/worker/utils/payout-sent.ts').match(/payoutRowLedgerAccount\(row\.payee_type/g) || []).length).toBe(1)
     expect(s).not.toMatch(/=== 'store_owner' \? 'merchant'/)
   })
 })

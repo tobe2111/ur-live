@@ -59,7 +59,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
          SET status = 'available'
        WHERE status = 'pending'
          AND available_at IS NOT NULL
-         AND available_at <= datetime('now')
+         AND datetime(available_at) <= datetime('now') -- 🕐 2026-11-25: available_at 은 ISO('…T…Z')라 글자 비교로는 같은 날 안에 영영 안 익었다(최대 하루 지연)
          ${useGate.sql}
     `).run().catch(() => ({ meta: { changes: 0 } }))
 
