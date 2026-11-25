@@ -12,7 +12,7 @@ import { clawbackAgencyShare } from '../../../worker/utils/agency-share-payout'
  * 🛡️ 2026-05-30: 인플루언서 커미션 clawback — voucher 환불/취소 시 미지급 커미션 회수.
  *   admin force-refund(group-buy-admin.routes.ts:272) / 만료 cron(auto-settlement.ts:259) 의
  *   인라인 로직을 공유 헬퍼로 통합 — 셀러 /refund + 사용자 셀프취소 누수 차단.
- *   pending/available + paid_at IS NULL 건만 회수 (이미 송금된 'paid' 는 미차감 — 다음 정산 음수 처리).
+ *   pending/available + paid_at IS NULL 건만 회수. 이미 송금된 'paid' 는 **자동 회수하지 않는다** — 어드민 알림만 남긴다(2026-11-25 · 자동 상계는 결재 전).
  *   best-effort: 호출자가 try/catch 또는 waitUntil 로 감쌀 것 (환불 자체는 항상 진행).
  */
 export async function clawbackVoucherCommission(
@@ -54,6 +54,23 @@ export async function clawbackVoucherCommission(
          WHERE voucher_id = ? AND status IN ('pending', 'available') AND paid_at IS NULL`
       ).bind(voucherId).all<{ id: number; influencer_id: string; commission_amount: number; status: string; source: string | null }>()
   const attrs = attrRows.results || []
+  // 🔔 2026-11-25: **이미 지급한 소개비**는 여기서 회수하지 못한다(아래는 미지급분만 돈다). 종전엔 아무 흔적 없이 지나갔고
+  //   머리말의 "다음 정산 음수 처리" 는 구현된 적이 없다. 자동 상계 방식은 결재(`docs/decisions/2026-11-25-paid-commission-clawback.md`)
+  //   전이라, 우선 **어드민 알림**으로 남긴다 — 조용히 새는 것을 눈에 보이는 일로 바꾼다. 실패가 환불을 막지 않는다.
+  if (orderId) {
+    try {
+      const paid = await DB.prepare(
+        `SELECT COUNT(*) AS n, COALESCE(SUM(commission_amount), 0) AS total FROM influencer_attributions
+          WHERE order_id = ? AND order_id != 0 AND (status = 'paid' OR paid_at IS NOT NULL)`,
+      ).bind(orderId).first<{ n: number; total: number }>()
+      if (Number(paid?.n) > 0 && Number(paid?.total) > 0) {
+        const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+        await createDashboardNotification(DB, 'admin', null, 'commission_clawback_needed', '지급된 소개비 회수 필요',
+          `주문 #${orderId} 의 이용권이 환불됐는데 소개비 ${Number(paid?.total).toLocaleString('ko-KR')}원은 이미 지급됐어요 (${reason}). 다음 지급에서 직접 조정해 주세요.`,
+          '/admin/influencer-payouts')
+      }
+    } catch { /* 알림 실패가 환불을 막지 않는다 */ }
+  }
   if (attrs.length === 0) return 0
 
   // 비례 분모: 주문 내 아직 회수 안 된 바우처 수(이 바우처 포함). 환불 flow 가 voucher.status='refunded'/'expired'

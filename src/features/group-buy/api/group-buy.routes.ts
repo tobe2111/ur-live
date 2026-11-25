@@ -155,9 +155,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     //   설정 시: 유저 동네 리뷰어 레벨(user_review_scores — 카카오맵 후기 승인으로 상승)이 그
     //   이상이어야 구매 가능. fail-open — 레벨 조회 실패가 구매를 막지 않음(소프트 게이트).
     const mrlRaw = mppMeta?.get(Number(productId))?.min_review_level
-    const minReviewLevel = mrlRaw != null && Number.isFinite(Number(mrlRaw)) && Number(mrlRaw) > 1 ? Math.floor(Number(mrlRaw)) : 0
+    const { getUserReviewLevelValue, requiredReviewLevel } = await import('../../../worker/utils/review-level'); const minReviewLevel = requiredReviewLevel(mrlRaw) // 후기 보너스가 꺼진 동안은 0(잠금 없음)
     if (minReviewLevel > 0) {
-      const { getUserReviewLevelValue } = await import('../../../worker/utils/review-level')
       const myLevel = await getUserReviewLevelValue(DB, String(userId))
       if (myLevel < minReviewLevel) {
         return c.json({ success: false, error: `동네 리뷰어 Lv.${minReviewLevel} 전용 이용권입니다 (현재 Lv.${myLevel}) — 이용권 사용 후 카카오맵 후기 인증으로 레벨을 올릴 수 있어요`, code: 'REVIEW_LEVEL_REQUIRED' }, 403)
@@ -1110,9 +1109,8 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     // 🗺️ 2026-07-02 (레벨 게이트 race 차단): /join 사전검증과 대칭 — **과금 전** 재검증.
     //   초과면 403 — 승인 안 된 결제는 Toss 측 자동 만료(환불 불필요, PER_PERSON_LIMIT 동일 패턴).
     const mrlRaw = mppMeta?.get(Number(productId))?.min_review_level
-    const minReviewLevel = mrlRaw != null && Number.isFinite(Number(mrlRaw)) && Number(mrlRaw) > 1 ? Math.floor(Number(mrlRaw)) : 0
+    const { getUserReviewLevelValue, requiredReviewLevel } = await import('../../../worker/utils/review-level'); const minReviewLevel = requiredReviewLevel(mrlRaw) // 후기 보너스가 꺼진 동안은 0(잠금 없음)
     if (minReviewLevel > 0) {
-      const { getUserReviewLevelValue } = await import('../../../worker/utils/review-level')
       const myLevel = await getUserReviewLevelValue(DB, String(userId))
       if (myLevel < minReviewLevel) {
         return c.json({ success: false, error: `동네 리뷰어 Lv.${minReviewLevel} 전용 이용권입니다 (현재 Lv.${myLevel})`, code: 'REVIEW_LEVEL_REQUIRED' }, 403)

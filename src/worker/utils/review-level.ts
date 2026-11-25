@@ -15,8 +15,21 @@
 
 import { swallow } from './swallow'
 import { dbKey, schemaPresent } from './d1-read-replica'
+import { KAKAO_REVIEW_BONUS_ENABLED } from '../../shared/feature-flags'
 
 export const REVIEW_LEVEL_MAX = 5
+
+/**
+ * 🗺️ **이 상품이 지금 요구하는 리뷰어 레벨** (0 = 잠금 없음) — 구매 3곳(join · confirm-toss · 장바구니)이 같이 쓴다.
+ *
+ * 2026-11-25: 레벨을 올리는 유일한 길(카카오맵 후기 인증)이 꺼져 있는 동안(`KAKAO_REVIEW_BONUS_ENABLED=false`)은 **잠그지 않는다.**
+ * 잠그면 새 유저는 영영 살 수 없고, 거절 문구는 "후기 인증으로 레벨을 올릴 수 있어요" 라고 불가능한 길을 안내했다.
+ * 후기 보너스를 다시 켜면 잠금도 같이 살아난다.
+ */
+export function requiredReviewLevel(raw: unknown): number {
+  if (!KAKAO_REVIEW_BONUS_ENABLED) return 0
+  return raw != null && Number.isFinite(Number(raw)) && Number(raw) > 1 ? Math.floor(Number(raw)) : 0
+}
 /** 사용자-가시 레벨 라벨 (명칭 SSOT 준수 — 사람 지칭 금지어 없음). */
 export const REVIEW_LEVEL_LABELS: Record<number, string> = {
   1: '새싹',

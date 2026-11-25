@@ -115,8 +115,7 @@ export async function grantInviteRewardForFirstPurchase(
       delta: rewardAmount,
       type: 'invite_reward',
       description: '친구 초대 첫 구매 보상',
-      bumpTotalCharged: true,
-      bucket: 'free', // 💸 2026-07-05: 초대 보상 = 무상 딜 (출금 제외·우선 차감)
+      bucket: 'free', // 💸 2026-07-05: 초대 보상 = 무상 딜 (출금 제외·우선 차감) · 🧾 2026-11-25: total_charged 는 올리지 않는다 — 무상 보상이 '충전액' 으로 세어져 딜 환급 한도를 부풀렸다
     })
     if (!adjusted.ok) return { granted: false, reason: 'error' }
     // users.deal_balance best-effort (컬럼 없을 수 있음)

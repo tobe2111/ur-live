@@ -422,7 +422,7 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
     const newBalance = updatedRow?.balance ?? rewardAmount;
 
     await DB.prepare('INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, free_delta) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .bind(ptsUserId, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc, rewardAmount).run();
+      .bind(ptsUserId, 'review_reward', rewardAmount, rewardAmount, newBalance, rewardDesc, rewardAmount).run(); // 🧾 2026-11-25: 종전 'charge' — 무상 보상이 '충전' 으로 적혀 딜 환급 한도(충전 합)와 옛 잔액 재분류 판정을 부풀렸다
 
     // deal_balance도 동기화 (users 테이블)
     await DB.prepare('UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?')

@@ -22,7 +22,7 @@ import { swallow } from '@/worker/utils/swallow';
 import { summarizeItems } from '@/worker/utils/admin-event-notify'
 import { ensureDealBuckets, PAID_BALANCE_SQL, creditFreePoints } from '@/worker/utils/point-buckets';
 import { intParam } from '@/shared/pagination'
-import { TOPUP_DISABLED } from '@/shared/feature-flags'
+import { TOPUP_DISABLED, LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 const pointsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -399,6 +399,7 @@ pointsRoutes.post('/charge/confirm', rateLimit({ action: 'points_charge_confirm'
 pointsRoutes.post('/donate', rateLimit({ action: 'points_donate', max: 20, windowSec: 300 }), requireUser(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  if (LIVE_COMMERCE_SUSPENDED) return c.json({ success: false, error: '후원은 종료된 기능입니다', code: 'DONATE_OFF' }, 410); // 🧾 2026-11-25: 라이브 영구 중단인데 서버 경로만 열려 있었다(무상 딜 → 셀러 현금 정산 길)
 
   const body = await c.req.json<{
     stream_id: number;
