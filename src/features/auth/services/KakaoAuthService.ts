@@ -561,6 +561,9 @@ export class KakaoAuthService {
       return { ...user, isNewUser };
       
     } catch (error) {
+      // 🚪 2026-11-25: 우리가 일부러 던진 "이 이메일은 다른 방법으로 가입돼 있다" 는 감싸지 않는다. 종전엔 `Database error:` 로 감싸져
+      //   코드가 사라졌고, 손님은 "서버 오류, 잠시 후 다시 시도" 를 영영 봤다(다시 해도 같은 결과 — `auth-doors-2026-11-25.test.ts`).
+      if ((error as { code?: string })?.code === 'EMAIL_ALREADY_LINKED_TO_OTHER_METHOD') throw error;
       console.error('[KakaoAuthService] DB error:', error);
       throw new Error(`Database error: ${(error as Error).message}`);
     }

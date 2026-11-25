@@ -28,6 +28,8 @@ export interface AccountDeleteBlockers {
   deal_refund_pending: boolean
   /** 주인으로 있는 운영 중(정지·반려 아님) 가게 수. */
   owned_stores: number
+  /** 카카오로 만든 에이전시의 주인인 곳 수 — 탈퇴하면 그 카카오 계정으로 다시 들어올 길이 없다(2026-11-25). */
+  owned_agencies: number
 }
 
 /**
@@ -53,12 +55,20 @@ export const OWNED_STORES_SQL = `SELECT COUNT(DISTINCT s.id) AS n
         OR EXISTS (SELECT 1 FROM seller_operators o
                     WHERE o.seller_id = s.id AND o.user_id = ? AND o.role = 'owner' AND o.revoked_at IS NULL))`
 
+/**
+ * 카카오로 만든 에이전시의 주인 — 에이전시 계정은 `agency_staff.user_id` 로 이 카카오 유저에 묶여 있다.
+ * 탈퇴하면 `kakao_id` 가 바뀌어 그 에이전시에 다시 들어올 길이 없고, 맡은 매장과 정산이 주인 없이 남는다.
+ */
+export const OWNED_AGENCIES_SQL = `SELECT COUNT(*) AS n
+  FROM agency_staff st JOIN agency_accounts a ON a.id = st.agency_id
+ WHERE st.user_id = ? AND st.is_owner = 1 AND st.status = 'active' AND COALESCE(a.status, '') = 'active'`
+
 /** `seller_operators` 가 없는 옛 환경용 — 옛 길만 센다(그 테이블이 없으면 주인 좌석도 없다). */
 const OWNED_STORES_LINKED_ONLY_SQL = `SELECT COUNT(*) AS n FROM sellers
  WHERE COALESCE(status, '') NOT IN ('suspended', 'rejected') AND linked_user_id = ?`
 
 export function isAccountDeleteBlocked(b: AccountDeleteBlockers): boolean {
-  return b.unused_vouchers > 0 || b.refundable_deal > 0 || b.deal_refund_pending || b.owned_stores > 0
+  return b.unused_vouchers > 0 || b.refundable_deal > 0 || b.deal_refund_pending || b.owned_stores > 0 || b.owned_agencies > 0
 }
 
 /**
@@ -74,7 +84,7 @@ export async function countAccountDeleteBlockers(
     const uidNorm = await resolveUserIdString(DB, rawId, isDbId)
     const numId = await resolveUserId(DB, rawId, isDbId)
 
-    const [vouchers, deal, stores] = await Promise.all([
+    const [vouchers, deal, stores, agencies] = await Promise.all([
       DB.prepare(UNUSED_STORE_VOUCHERS_SQL).bind(uidNorm, uidRaw).first<{ n: number }>(),
       // 딜은 탈퇴 경로(`deleteUserAccount` → `zeroOutUserPoints`)와 같은 키로 읽는다 — 다른 키로 읽으면
       // 지우는 잔액과 세는 잔액이 갈린다.
@@ -83,6 +93,10 @@ export async function countAccountDeleteBlockers(
         ? Promise.resolve({ n: 0 })
         : DB.prepare(OWNED_STORES_SQL).bind(numId, numId).first<{ n: number }>()
             .catch(() => DB.prepare(OWNED_STORES_LINKED_ONLY_SQL).bind(numId).first<{ n: number }>()),
+      // 에이전시 표는 에이전시를 한 번도 안 쓴 환경엔 없다 — 그때는 0(주인일 수 없다).
+      numId == null
+        ? Promise.resolve({ n: 0 })
+        : DB.prepare(OWNED_AGENCIES_SQL).bind(numId).first<{ n: number }>().catch(() => ({ n: 0 })),
     ])
     if (!deal.ok) return { ok: false }
 
@@ -93,6 +107,7 @@ export async function countAccountDeleteBlockers(
         refundable_deal: Math.max(0, Math.floor(Number(deal.state.refundable) || 0)),
         deal_refund_pending: deal.state.pending != null,
         owned_stores: Math.max(0, Number(stores?.n) || 0),
+        owned_agencies: Math.max(0, Number(agencies?.n) || 0),
       },
     }
   } catch {

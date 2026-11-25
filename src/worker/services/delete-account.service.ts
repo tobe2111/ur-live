@@ -16,6 +16,8 @@
  */
 
 import { zeroOutUserPoints } from '../utils/point-ledger';
+import { invalidateStoreSeatCache } from '../utils/store-seat-guard'
+import { forgetAliveUser } from '../utils/deleted-user-guard'
 
 /**
  * Optional cleanup step that logs in DEV but never throws in PROD.
@@ -251,6 +253,11 @@ export async function deleteUserAccount(
     // 🌏 2026-11-18: 구글 로그인 신원(곁표)도 끊는다 — 남기면 그 구글 계정이 '탈퇴 회원' 행으로 다시 들어온다.
     //   표가 아직 없는 환경(구글 로그인을 한 번도 안 씀)은 조용히 넘어간다.
     await db.prepare('DELETE FROM user_identities WHERE user_id = ?').bind(userId).run().catch(() => null)
+    // 🪑 2026-11-25: 남의 가게에 받아 둔 운영 자리도 끊는다 — 종전엔 탈퇴해도 자리가 남아, 다른 기기의 남은 로그인으로 그 가게 대시보드에 들어갈 수 있었다.
+    //   (주인인 가게는 탈퇴 전에 막힌다 — `account-delete-blockers`.) 자리 판정은 요청마다 DB 를 보므로(`store-seat-guard`) 캐시만 비우면 바로 막힌다.
+    await db.prepare("UPDATE seller_operators SET revoked_at = datetime('now') WHERE user_id = ? AND revoked_at IS NULL").bind(userId).run().catch(() => null)
+    invalidateStoreSeatCache(db)
+    forgetAliveUser(userId)
 
     // 4. 탈퇴 기록 저장 — kakao_id 도 보존 (재가입 시 복원 동의 화면용).
     //    🛡️ 2026-05-01: deleted_accounts 테이블 자동 생성 (production 에 없을 수 있음).

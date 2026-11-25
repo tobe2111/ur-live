@@ -473,7 +473,11 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       fireDiag('error', 'oauth_state_expired');
       return c.redirect(`/?error=oauth_state_expired`);
     } else {
-      redirectTarget = safeRedirect(receivedState);
+      // 🔒 2026-11-25: 쿠키도 `?state=` 도 없는 요청 — 종전엔 검사 없이 코드를 바꿔 로그인시켰다(남의 코드로 피해자를 공격자 계정에 로그인: 로그인 CSRF).
+      //   라이브 5개월(성공 111건: 쿠키 86 · 서명 복구 25) 동안 이 길로 들어온 정상 로그인은 0건이다 ⇒ 닫는다(`auth-doors-2026-11-25.test.ts`).
+      c.header('Set-Cookie', clearStateCookieHeader());
+      fireDiag('error', 'oauth_state_missing');
+      return c.redirect(`/?error=oauth_state_expired`);
     }
   }
 
@@ -772,6 +776,12 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       if (import.meta.env.DEV) console.error('[Kakao Sync] Service error:', serviceError);
       const errorMsg = (serviceError as Error).message || 'Unknown error';
       c.header('Set-Cookie', clearStateCookieHeader());
+      // 🚪 2026-11-25: 같은 이메일이 다른 방법(이메일·구글)으로 이미 가입돼 있는 경우 — 서버 오류가 아니라 그 사실을 알려준다.
+      if ((serviceError as { code?: string })?.code === 'EMAIL_ALREADY_LINKED_TO_OTHER_METHOD') {
+        fireDiag('error', 'email_already_linked');
+        const method = (serviceError as { existingMethod?: string })?.existingMethod === 'password' ? 'password' : 'other';
+        return c.redirect(appendQuery(redirectTarget, `error=email_already_linked&method=${method}`));
+      }
       fireDiag('error', errorMsg.includes('Database') ? 'database_error' : 'kakao_auth_failed');
 
       // 🛡️ 2026-05-01: Firebase 분기 제거 (KR 미사용). Database 만 별도 처리.
