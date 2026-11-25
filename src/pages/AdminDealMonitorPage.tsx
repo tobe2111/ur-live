@@ -202,7 +202,7 @@ export default function AdminDealMonitorPage() {
           icon={<Zap className="w-5 h-5 text-tone-warn" />}
           label={t('admin.dealMonitor.k003', { defaultValue: "발급 딜" })}
           value={`${fmt(s?.totals.total_points_issued)}딜`}
-          sub={`후원 ${fmt(s?.donations.total_donated)}딜`}
+          sub={`사용 ${fmt(s?.donations.total_donated)}딜`}
           bg="border border-rule bg-white"
         />
         <StatCard
@@ -266,7 +266,7 @@ export default function AdminDealMonitorPage() {
               className="text-sm text-gray-900 border rounded-lg px-3 py-2"
             >
               <option value="total_charged">{t('admin.dealMonitor.k007', { defaultValue: '충전액순' })}</option>
-              <option value="total_donated">{t('admin.dealMonitor.k008', { defaultValue: '후원액순' })}</option>
+              <option value="total_donated">{t('admin.dealMonitor.k008', { defaultValue: '사용액순' })}</option>
               <option value="balance">{t('admin.dealMonitor.k009', { defaultValue: '잔액순' })}</option>
               <option value="last_charged">{t('admin.dealMonitor.k010', { defaultValue: '최근충전순' })}</option>
             </Select>
@@ -329,7 +329,7 @@ export default function AdminDealMonitorPage() {
                   <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k012', { defaultValue: '유저' })}</th>
                   <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k019', { defaultValue: '충전 횟수' })}</th>
                   <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k002', { defaultValue: '총 충전액' })}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k020', { defaultValue: '총 후원액' })}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k020', { defaultValue: '총 사용액' })}</th>
                   <th className="px-4 py-3 text-right font-medium">{t('admin.dealMonitor.k016', { defaultValue: '현재 잔액' })}</th>
                   <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k021', { defaultValue: '최근 충전' })}</th>
                   <th className="px-4 py-3 text-left font-medium">{t('admin.dealMonitor.k022', { defaultValue: '가입일' })}</th>

@@ -545,7 +545,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
 
   // 1. 주문에서 payment_key 조회
   const order = await DB.prepare(
-    'SELECT id, toss_payment_key, payment_key, total_amount, payment_method, user_id, order_number FROM orders WHERE id = ?'
+    'SELECT id, toss_payment_key, payment_key, total_amount, payment_method, user_id, order_number, status, refunded_amount FROM orders WHERE id = ?'
   ).bind(returnRecord.order_id).first<{
     id: number;
     toss_payment_key: string | null;
@@ -553,7 +553,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     total_amount: number | null;
     payment_method: string | null;
     user_id: string | number | null;
-    order_number: string | null;
+    order_number: string | null; status: string | null; refunded_amount: number | null;
   }>();
 
   if (!order) {
@@ -563,9 +563,9 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   const paymentKey = order.toss_payment_key || order.payment_key;
   const orderAmount = order.total_amount || 0;
 
-  if (returnRecord.refund_amount > orderAmount) {
-    return c.json({ success: false, error: '환불 금액이 주문 금액을 초과합니다' }, 400);
-  }
+  // 💸 2026-11-25 — 돈이 움직이기 **전에** 셋을 한다: ① 이미 환불·취소된 주문이면 또 주지 않는다 ② 남은 금액(총액 − 이미 환불)을 넘지 않는다 ③ 반품 건을 선점한다. 종전엔 딜 환급이 선점보다 먼저라 같은 딜이 두 번 나갔다(셀러 환불 뒤 반품 처리 · 동시 두 번).
+  if (['REFUNDED', 'CANCELLED'].includes(String(order.status))) { await DB.prepare(`UPDATE returns SET status = 'refunded', refunded_at = datetime('now') WHERE id = ? AND status = 'inspected'`).bind(returnId).run(); return c.json({ success: true, message: '이미 환불 처리된 주문입니다' }) }
+  if (returnRecord.refund_amount > orderAmount - Number(order.refunded_amount ?? 0)) return c.json({ success: false, error: '환불 금액이 남은 주문 금액을 초과합니다' }, 400); const claimed = await DB.prepare(`UPDATE returns SET status = 'refunded', refunded_at = datetime('now') WHERE id = ? AND status = 'inspected'`).bind(returnId).run(); if ((claimed.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '이미 처리 중인 반품입니다', code: 'RETURN_ALREADY_CLAIMED' }, 409);
 
   // 🏁 2026-06-12 (전수조사 🔴 G4): 딜(deal_points) 결제 주문의 반품 환불 시 딜 미환급이던 갭 —
   //   cancel 경로(order.routes:624 패턴)와 동일하게 환급 + 장부 기록. Toss 키 없고 딜 결제면 이 분기가 실환불.
@@ -601,7 +601,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
       refundSplit.card,
     );
 
-    if (!cancelResult.success) {
+    if (!cancelResult.success) { await DB.prepare(`UPDATE returns SET status = 'inspected', refunded_at = NULL WHERE id = ? AND status = 'refunded'`).bind(returnId).run().catch(() => null) // 선점을 되돌린다(돈이 안 나갔다)
       return c.json({
         success: false,
         error: `환불 처리 실패: ${'message' in cancelResult ? cancelResult.message : '알 수 없는 오류'}`,
@@ -611,7 +611,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
 
   // 4. 주문 상태 업데이트 (state machine CAS) — 이미 REFUNDED인 경우 false
   //    중복 승인 시 이중 복구/이중 환불을 차단하기 위해 transition 성공 시에만 재고 복구.
-  const { transitionOrderStatus } = await import('../../../worker/utils/state-machine');
+  await DB.prepare('UPDATE orders SET refunded_amount = MIN(COALESCE(total_amount, 0), COALESCE(refunded_amount, 0) + ?) WHERE id = ?').bind(Number(returnRecord.refund_amount) || 0, returnRecord.order_id).run().catch(() => null); const { transitionOrderStatus } = await import('../../../worker/utils/state-machine'); // 🧾 환불액을 장부(refunded_amount)에 적는다 — 안 적으면 다른 환불 길의 상한이 0 인 채로 남는다
   const transitioned = await transitionOrderStatus(DB, returnRecord.order_id, 'REFUNDED', {
     extraSets: {
       refund_status: 'completed',
