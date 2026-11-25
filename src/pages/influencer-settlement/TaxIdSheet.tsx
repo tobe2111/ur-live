@@ -41,7 +41,7 @@ export default function TaxIdSheet({ onClose, onSaved }: { onClose: () => void; 
         </button>
       }
     >
-      <div className="space-y-4 pb-2">
+      <div className="space-y-5 pb-2">
         <p className="text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
           소개비에서 3.3%를 떼어 대신 신고할 때 국세청에 내는 서류(간이지급명세서)에 필요해요. 암호화해서 보관하고, 신고 외에는 쓰지 않아요.
         </p>
