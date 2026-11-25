@@ -119,6 +119,23 @@ const SENSITIVE_MUTATIONS: { readonly pattern: RegExp; readonly allow: readonly 
   { pattern: /^\/api\/disputes\/admin\//, allow: ['cs', 'finance'] },                              // 분쟁 승인 = 환불 실행
   { pattern: /^\/api\/returns\/[^/]+\/refund(?:$|[/?])/, allow: ['cs', 'finance'] },               // 반품 환불 실행
   { pattern: /^\/api\/returns\/[^/]+\/(?:approve|reject|inspect)(?:$|[/?])/, allow: ['cs', 'ops'] }, // 반품 접수·검수
+  // 🔐 2026-11-25 (전수): 같은 자리의 나머지 — 돈이 나가거나 값을 주는 것. 전역 게이트(`adminOutsideWriteGate`)가 읽는다.
+  { pattern: /^\/api\/(?:group-buy|vouchers)\/admin\/force-refund\//, allow: ['cs', 'finance'] },          // 상품의 미사용 이용권 전부 환불
+  { pattern: /^\/api\/(?:group-buy|vouchers)\/admin\/seller-closure\//, allow: [] },                       // 매장 폐업 일괄 환불 — super·admin 만
+  { pattern: /^\/api\/(?:group-buy|vouchers)\/refund\//, allow: ['cs', 'finance'] },                        // 미달 공구 환불
+  { pattern: /^\/api\/(?:group-buy|vouchers)\/voucher\/[^/]+\/partial-refund(?:$|[/?])/, allow: ['cs', 'finance'] }, // 일부 사용 + 나머지 환불
+  { pattern: /^\/api\/(?:group-buy|vouchers)\/[^/]+\/use-by-seller(?:$|[/?])/, allow: ['ops', 'cs'] },      // 대신 사용 처리(정산이 붙는다)
+  { pattern: /^\/api\/orders\/[^/]+\/cancel(?:$|[/?])/, allow: ['cs', 'finance'] },                         // 주문 취소 = 카드 환불
+  { pattern: /^\/api\/returns\/[^/]+\/amount(?:$|[/?])/, allow: ['cs', 'finance'] },                        // 반품 환불액 지정
+  { pattern: /^\/api\/community-group-buy\/[^/]+\/refund(?:$|[/?])/, allow: ['cs', 'finance'] },
+  { pattern: /^\/api\/referral-tree\/admin\/withdrawals\//, allow: ['finance'] },                          // 커미션 출금 승인·반려
+  { pattern: /^\/api\/referral-tree\/register(?:$|[/?])/, allow: [] },                                      // 추천 관계 지정(커미션 귀속) — super·admin 만
+  { pattern: /^\/api\/auction\/[^/]+\/(?:winner-paid|forfeit-winner|promote-runner-up)(?:$|[/?])/, allow: ['cs', 'finance'] },
+  { pattern: /^\/api\/coupons\/seed(?:$|[/?])/, allow: ['finance'] },                                       // GET 인데 쿠폰을 만든다
+  { pattern: /^\/api\/guides\//, allow: ['ops'] },                                                          // 운영 가이드 수정·삭제·재시드
+  { pattern: /^\/api\/flags\//, allow: ['ops'] },                                                           // 전역 기능 플래그
+  { pattern: /^\/api\/kakao-social\/test\//, allow: [] },                                                  // 카카오 시험 발송 — super·admin 만
+  { pattern: /^\/api\/upload\/image\//, allow: ['ops'] },                                                  // 저장소 객체 삭제
 ];
 
 /** 이 역할이 해당 경로에 '변경(mutation)' 을 할 수 있는가. (슈퍼전용 경로 차단은 호출 전 isSuperOnlyAdminPath 로) */
@@ -132,6 +149,35 @@ export function canAdminRoleMutate(role: AdminRole, pathname: string): boolean {
   if (!seg) return false;
   const domains = WRITE_DOMAINS[role as 'ops' | 'cs' | 'finance'];
   return !!domains && domains.includes(seg);
+}
+
+/**
+ * 🔐 **`/api/admin/*` 밖** 에서 어드민이 쓰기를 해도 되는가 (2026-11-25 전수 — `adminOutsideWriteGate`).
+ *
+ * 역할 검사는 그 접두사에만 걸려 있었고, 밖에는 "어드민 토큰인가" 만 보는 쓰기 핸들러가 66개 있었다(조사 2026-11-25).
+ * 여기서는 한 줄 규칙으로 닫는다:
+ *   - super·admin 은 전부.
+ *   - 조회 전용(viewer)은 **아무것도 못 바꾼다**(본인 계정 보안·알림 읽음 처리만 예외).
+ *   - ops·cs·finance 는 `SENSITIVE_MUTATIONS` 에 적힌 경로만 역할로 가르고, 그 밖의 운영 쓰기는 종전대로 허용한다
+ *     (상품·섹션·재고·배송처럼 역할 구분이 없던 것 — 좁히려면 위 표에 한 줄을 더한다).
+ * ⚠️ 호출부가 "이 요청의 실효 신원이 어드민인가" 를 먼저 판정한다. 손님·사장님 요청에는 이 함수를 부르지 않는다.
+ */
+export function canAdminRoleWriteOutside(role: AdminRole, pathname: string): boolean {
+  if (role === 'super' || role === 'admin') return true
+  if (isAdminSelfServiceOutside(pathname)) return true
+  if (role === 'viewer') return false
+  const sensitive = SENSITIVE_MUTATIONS.find((s) => s.pattern.test(pathname))
+  return sensitive ? sensitive.allow.includes(role) : true
+}
+
+/** 밖에 있는 본인 전용 쓰기 — 2단계 인증 · 내 알림 읽음 처리 · 로그인/로그아웃/토큰 갱신. 역할과 무관하다. */
+export function isAdminSelfServiceOutside(pathname: string): boolean {
+  return /^\/api\/(?:2fa|dashboard-notifications|auth)(?:\/|$)/.test(String(pathname || ''))
+}
+
+/** GET 인데 상태를 바꾸는 밖의 경로 — 읽기 예외에서 뺀다(조회 전용이 GET 으로 우회하지 못하게). */
+export function isGetMutationOutside(pathname: string): boolean {
+  return /^\/api\/coupons\/seed(?:$|[/?])/.test(String(pathname || ''))
 }
 
 /** 친화 라벨(배지/안내용). */

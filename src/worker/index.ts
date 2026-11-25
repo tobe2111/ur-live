@@ -166,7 +166,7 @@ import { homeServiceRoutes } from '../features/home-service/api/home-service.rou
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
 import { requireAdmin, requireAuth, requireSeller } from './middleware/auth';
 import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-security';
-import { adminRbacMiddleware } from './middleware/admin-rbac';
+import { adminRbacMiddleware, adminOutsideWriteGate } from './middleware/admin-rbac';
 import { storeSeatGuard } from './utils/store-seat-guard';
 import { rateLimit } from './middleware/rate-limit';
 import { hashPassword } from '../lib/password';
@@ -1189,6 +1189,9 @@ app.route('/', docsRoutes);
 app.use('/api/admin/*', adminRbacMiddleware());
 app.use('/api/admin-payouts/*', adminRbacMiddleware());
 app.use('/api/admin-review-bonus/*', adminRbacMiddleware()); // 후기 보너스 승인 = 딜 지급 — 뷰어가 하던 것
+// 🔐 2026-11-25: `/api/admin/*` **밖**의 쓰기에도 어드민 역할을 적용한다(역할 검사 없는 쓰기 핸들러 66개 — 조사 2026-11-25).
+//   실효 신원이 어드민인 요청에만 작동한다 — 손님·사장님 요청은 서명 검증도 없이 지나간다. 정책 `shared/admin-roles.ts` `canAdminRoleWriteOutside`.
+app.use('/api/*', adminOutsideWriteGate());
 app.route('/', internalDiagnosticsRoutes);
 app.route('/', opsAlertRoutes);
 app.route('/', internalAdminToolsRoutes);

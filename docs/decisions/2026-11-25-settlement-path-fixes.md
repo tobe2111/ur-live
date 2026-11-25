@@ -25,6 +25,11 @@
 8. **리뷰어 레벨 잠금이 풀 길 없이 살아 있었다.** 레벨을 올리는 유일한 길(카카오맵 후기 인증)이 꺼져 있다. 라이브에 설정된 9개 상품은 값이 비어 실제로 잠긴 것은 없다.
 9. **환불이 이미 지급된 소개비에 닿으면 아무 흔적이 없었다.**
 
+### 묶음 C — 관리자 역할 검사 전수
+10. **`/api/admin/*` 밖의 쓰기 66곳이 역할을 안 봤다.** 조회 전용(viewer) 어드민이 이용권 일괄 환불 · 주문 취소(카드 환불) · 커미션 출금 승인 · 기능 플래그 변경 · 가이드 재시드까지 할 수 있었다. 오전에 닫은 것은 그중 분쟁·반품뿐이었다.
+11. **어드민 토큰이 번호가 같은 매장으로 동작했다.** 셀러 분석·쿠폰 라우트가 `admins.id` 를 `sellers.id` 로 읽었다.
+12. **역할 판정이 다른 사람의 쿠키를 읽었다.** 유효한 손님·사장님 토큰으로 온 요청인데 같은 브라우저에 어드민 쿠키가 남아 있으면 그 어드민의 역할로 판정했다(오전에 건 게이트에서 사장님 반품 처리가 막힐 수 있었다).
+
 ## 선택지
 1. 전부 고친다 (아래)
 2. 돈이 걸린 A1·A3 만
@@ -46,11 +51,15 @@
 | B8 | 레벨 잠금 상시 적용 | 후기 보너스가 꺼진 동안은 잠그지 않는다(켜면 같이 살아난다) | `review-level.ts` · `group-buy.routes.ts` · `cart-lines.ts` |
 | B9 | 지급된 소개비 환불: 무흔적 | 어드민 알림 `지급된 소개비 회수 필요`. 자동 상계는 결재(`2026-11-25-paid-commission-clawback.md`) | `voucher-clawback.ts` · `notification-catalog.ts` |
 
+| C10 | 밖의 쓰기: 어드민이면 전부 통과 | 전역 게이트 `adminOutsideWriteGate`: 조회 전용은 쓰기 불가 · 돈이 나가는 16개 경로는 역할 지정 · 그 밖의 운영 쓰기는 종전대로 | `admin-rbac.ts` · `shared/admin-roles.ts` · `worker/index.ts` |
+| C11 | 어드민 #N = 매장 #N | 셀러 분석·쿠폰 라우트는 어드민 토큰을 받지 않는다 | `seller-analytics.routes.ts` |
+| C12 | 역할 판정이 쿠키로 내려감 | 실효 신원(유효한 Bearer 우선 → 쿠키 순서)으로 판정 — `requireAuth` 와 같은 순서 | `admin-rbac.ts` |
+
 **라이브에서 직접 실행한 것(어드민 쓰기)**: 셀러·어드민 운영 가이드 재시드(`POST /api/guides/{seller,admin}/reseed`). 전: "수동 편집" 표시 12섹션이 4월 내용으로 얼어 있었다(셀러 FAQ "플랫폼 10% + 에이전시 2% = 총 12% 차감" 등). 표시는 실제 손 편집이 아니라 2026-04-27 일괄 표시였다(같은 초 · 수정자 없음 · 내용이 옛 시드). 후: 두 가이드 전 섹션이 현재 시드와 일치, 표시 0. 되돌리는 법: 재시드 전 내용을 세션 스크래치에 백업했다(옛 시드 문구라 git 이력의 `guide-seed-*.ts` 에서도 복원 가능).
 
 시험 생략 판단: 실결제(staging) 없음. 실제 라우트를 라이브 구조 DB 위에서 돌렸다 — `voucher-self-redeem-settlement`(3) · `payout-missing-account`(5). 셀프 사용 시험은 고치기 전 3건 빨강 확인.
 
-못 막는 것: 열린 매장 분쟁(`voucher_disputes`)이 14일 넘게 안 닫히면 그 이용권의 매장 몫이 지급 대상에 들어갈 수 있다(되살릴 때 뒤집힌다). 수동 지급 생성(`POST /admin/payouts/generate`)은 보류를 안 본다(승인 때 초과 검사가 잡는다).
+못 막는 것: ops·cs·finance 사이는 표에 적힌 16개 경로만 가른다(상품·섹션·재고 같은 운영 쓰기는 셋 다 된다). 열린 매장 분쟁(`voucher_disputes`)이 14일 넘게 안 닫히면 그 이용권의 매장 몫이 지급 대상에 들어갈 수 있다(되살릴 때 뒤집힌다). 수동 지급 생성(`POST /admin/payouts/generate`)은 보류를 안 본다(승인 때 초과 검사가 잡는다).
 
 ## 롤백
 PR 단위 revert. A1 을 되돌리면 셀프 사용 매출이 다시 주간 지급에서 빠진다.
@@ -60,4 +69,4 @@ PR 단위 revert. A1 을 되돌리면 셀프 사용 매출이 다시 주간 지�
 - 수리는 전권 위임(2026-11-25)에 따라 세션 실행.
 
 ## 반영 커밋
-묶음마다 PR 하나. 가드 `voucher-self-redeem-settlement-2026-11-25.test.ts` · `payout-missing-account-2026-11-25.test.ts` · `deal-side-fixes-2026-11-25.test.ts`.
+묶음마다 PR 하나. 가드 `voucher-self-redeem-settlement-2026-11-25.test.ts` · `payout-missing-account-2026-11-25.test.ts` · `deal-side-fixes-2026-11-25.test.ts` · `admin-outside-write-gate-2026-11-25.test.ts`.
