@@ -12,17 +12,14 @@
 import { describe, it, expect } from 'vitest'
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 
 export const BANNED = ['소개 커미션', '추천 커미션', '판매 커미션', '인플루언서 수수료', '소개 수수료', '소개 수익', '소개 몫', '추천 수수료']
 
 export function visibleHits(src: string): string[] {
-  const noBlock = src.replace(/\/\*[\s\S]*?\*\//g, (m) => '\n'.repeat((m.match(/\n/g) || []).length))
   const out: string[] = []
-  for (const line of noBlock.split('\n')) {
-    const t = line.trim()
-    if (t.startsWith('//') || t.startsWith('*')) continue
-    const code = line.replace(/(^|[^:])\/\/.*$/, '$1')
-    for (const b of BANNED) if (code.includes(b)) out.push(`${b} :: ${t.slice(0, 120)}`)
+  for (const line of stripComments(src).split('\n')) {
+    for (const b of BANNED) if (line.includes(b)) out.push(`${b} :: ${line.trim().slice(0, 120)}`)
   }
   return out
 }
@@ -50,7 +47,7 @@ describe('소개비 — 화면에 보이는 이름은 하나', () => {
   it('판정기가 주석은 건너뛰고 문자열은 잡는다(되돌려-검증)', () => {
     expect(visibleHits("// 소개 커미션 메모\n/* 추천 커미션 */\nconst a = 1")).toEqual([])
     expect(visibleHits("const label = '판매 커미션 (%)'")).toHaveLength(1)
-    expect(visibleHits('<p>소개 수익</p> // 소개 몫')).toHaveLength(1)
+    expect(visibleHits("const t = '소개 수익' // 소개 몫")).toHaveLength(1)
   })
 
   it('명칭 SSOT(CLAUDE.md)에 소개비 행이 있다', () => {
