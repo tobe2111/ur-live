@@ -140,7 +140,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   outreach_auto_send: boolStr,                 // seller-influencers.routes.ts:251
   promo_bar_enabled: boolStr,                  // public-utility.routes.ts:518
   invite_reward_enabled: boolStr,              // invite-reward.ts:50 (종료된 축)
-  // 🔒 2026-09-16: 소개 커미션 사용 확인 게이트. read-site 는 `payout-use-gate.ts:119` 인데
+  // 🔒 2026-09-16: 소개비 사용 확인 게이트. read-site 는 `payout-use-gate.ts:119` 인데
   //   비교 좌변이 `String(r.value)` 라 `check-gate-registry` 의 정규식에 **안 걸린다**
   //   (그 가드는 `키 === 'true'` 형태만 본다). 즉 이 키는 기계가 못 보는 자리에 있었다 —
   //   'True'/'1' 이 저장되면 켠 줄 알지만 실제로는 꺼진 채 돈다. 그 형태를 가드가 보게 하는 건 별건.

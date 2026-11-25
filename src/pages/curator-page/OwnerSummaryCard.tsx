@@ -28,7 +28,7 @@ export default function OwnerSummaryCard() {
         <span className="text-[13px] text-gray-500 dark:text-gray-400">자세히 ›</span>
       </div>
       <div className="mt-2 grid grid-cols-3">
-        {([['방문', cell(s?.unique_clicks_30d ?? s?.clicks_30d)], ['구매', cell(s?.purchases_30d)], ['소개 수익', cell(s?.month_earnings, '원')]] as const).map(([label, val]) => (
+        {([['방문', cell(s?.unique_clicks_30d ?? s?.clicks_30d)], ['구매', cell(s?.purchases_30d)], ['소개비', cell(s?.month_earnings, '원')]] as const).map(([label, val]) => (
           <div key={label}>
             <p className="text-[12px] text-gray-500 dark:text-gray-400">{label}</p>
             <p className="mt-1 text-[20px] font-bold tabular-nums text-gray-900 dark:text-white">{val}</p>

@@ -53,7 +53,7 @@ export default [
   {
     name: '[어드민nav] 공통 데스크 항목에서 서비스 표시를 뗀다(어느 서비스 인플루언서인지 알 수 없다)',
     file: 'src/components/admin/admin-nav-config.ts',
-    find: "label: '유어딜 추천 커미션 송금'",
+    find: "label: '유어딜 소개비 송금'",
     replace: "label: '인플루언서 송금'",
     test: 'src/tests/unit/admin-nav-classification.test.ts',
     why:

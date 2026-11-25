@@ -104,11 +104,11 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
   {
     key: 'payout_requires_voucher_use', label: '소개 정산을 이용권 사용 뒤로', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 주문 + 환불창 7일이면 익음)' }, { value: 'true', label: 'ON — 사용 확인 뒤에만 익음' }],
-    hint: '🔴 머니 경로. OFF 면 아무도 그 가게에 안 가도 소개 몫이 송금 대기에 오른다(매장 몫은 이미 사용 시점). 라이브 적립 0건이라 켜도 오늘 영향 0. 절차: S-USEGATE',
+    hint: '🔴 머니 경로. OFF 면 아무도 그 가게에 안 가도 소개비가 송금 대기에 오른다(매장 몫은 이미 사용 시점). 라이브 적립 0건이라 켜도 오늘 영향 0. 절차: S-USEGATE',
   },
   {
     key: 'payout_unused_max_wait_days', label: '↳ 무기한 이용권 정산 천장 (일)', default: '180',
-    hint: '바로 위 **소개 정산을 이용권 사용 뒤로** 가 ON 일 때만. 유효기간이 없는 이용권은 발급 후 이 기간이 지나야 소개 몫이 정리된다 — 비우면 180. **소비자의 사용 권리와 무관**(소비자는 계속 무기한)',
+    hint: '바로 위 **소개 정산을 이용권 사용 뒤로** 가 ON 일 때만. 유효기간이 없는 이용권은 발급 후 이 기간이 지나야 소개비가 정리된다 — 비우면 180. **소비자의 사용 권리와 무관**(소비자는 계속 무기한)',
   },
   // 💸 2026-09-19 결재 `2026-09-16-broker-payout-model.md` 안 1 — 중개사 몫을 유어딜이 직접 송금.
   //   OFF = 중개사는 매장과 장부 밖 거래(2026-09-04). ON = 중개 매장 결제마다 `broker_share_pct` 가 매장 몫에서

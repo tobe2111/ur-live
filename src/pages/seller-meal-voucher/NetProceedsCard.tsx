@@ -79,7 +79,7 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
         </div>
         <div className="flex items-center justify-between gap-3 text-gray-500">
           <label htmlFor="voucher-margin-influencer" className="flex items-center gap-2">
-            <span>인플루언서 수수료</span>
+            <span>소개비</span>
             <span className="relative">
               <input
                 id="voucher-margin-influencer"
@@ -108,8 +108,8 @@ export default function NetProceedsCard({ price, originalPrice, promoPct }: { pr
       </div>
       <p className="mt-2 text-[12px] leading-[1.55] text-gray-500">
         {m.influencerCut > 0
-          ? `인플루언서 수수료는 소개 링크로 팔렸을 때만 빠져요. 직접 팔리면 ${formatNumber(price - platformCut - m.agencyCut)}원이에요.`
-          : '인플루언서와 수수료를 약속했다면 그 %를 넣어 보세요. 계산용이라 저장되지 않아요.'}
+          ? `소개비는 소개 링크로 팔렸을 때만 빠져요. 직접 팔리면 ${formatNumber(price - platformCut - m.agencyCut)}원이에요.`
+          : '인플루언서와 소개비를 약속했다면 그 %를 넣어 보세요. 계산용이라 저장되지 않아요.'}
       </p>
       {budgetPct > 0 && (
         <p className="mt-1 text-[12px] leading-[1.55] text-gray-500" data-testid="margin-agency-budget">

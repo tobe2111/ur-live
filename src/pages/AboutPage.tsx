@@ -103,7 +103,7 @@ export default function AboutPage() {
               icon={<Sparkles className="w-6 h-6" />}
               tag="소개"
               title="유어샵으로 소개"
-              desc="내 유어샵에 이용권을 담아 링크로 공유. 매장이 소개 몫을 건 이용권이면 그 몫이 쌓여요."
+              desc="내 유어샵에 이용권을 담아 링크로 공유. 매장이 소개비를 건 이용권이면 소개비가 쌓여요."
               color="purple"
             />
             <ValueCard

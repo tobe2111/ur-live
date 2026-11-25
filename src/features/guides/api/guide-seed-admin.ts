@@ -828,7 +828,7 @@ CURATOR_DEFAULTS.HANDLE_PATTERN            // 핸들 정규식
 
 ### 관련 페이지
 - \`/u/:handle\` — 공개 큐레이터 페이지 (다크 테마)
-- \`/u/me/earnings\` — 소개 수익 대시보드`,
+- \`/u/me/earnings\` — 소개비 대시보드`,
   },
   // 🛡️ 2026-05-25 (migration 0279): 배송 재설계
   {
@@ -891,7 +891,7 @@ SHIPPING_DEFAULTS.ISLAND_EXTRA_FEE            // 5000원
   //   '셀러 자동 승급'은 신분 계층 모델이라 확정 모델과 충돌한다.
   {
     key: 'hosting-and-curator-payout', icon: '🎉', title: '소개 정산 — 지금의 규칙', order: 820,
-    content: `### 지금 소개 커미션은 어디서 생기나
+    content: `### 지금 소개비는 어디서 생기나
 **매장이 맺은 딜 하나뿐이다**(\`seller_influencer_deals\`). 매장이 비율을 정해 제안하고 상대가 수락하면,
 그 사람의 유어샵 링크로 팔린 건에 그 비율이 붙는다. 판정 SSOT = \`findActiveDealPct\`
 (\`worker/utils/influencer-deal.ts\`) — **결제 적립과 화면 표시가 같은 함수**라 "화면엔 N% 인데 정산은 0" 이 안 난다.
@@ -921,7 +921,7 @@ WHERE created_at > datetime('now', '-1 day') GROUP BY host_user_id HAVING cnt > 
 - \`/admin/user-withdrawals\` (기존 페이지)
 - 신규: \`user_withdrawals.user_id\` 가 string ('123') 일 수 있음 — 호환성
 
-#### 누적 소개 수익 상위 (참고)
+#### 누적 소개비 상위 (참고)
 \`\`\`sql
 SELECT id, name, handle, curator_total_lifetime_earnings FROM users
 WHERE curator_total_lifetime_earnings >= 500000 ORDER BY 4 DESC LIMIT 50;
