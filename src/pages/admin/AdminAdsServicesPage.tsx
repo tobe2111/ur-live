@@ -151,7 +151,7 @@ export default function AdminAdsServicesPage() {
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <div className="flex items-center gap-1.5">
                         {o.toss_payment_key ? <span className="px-1.5 py-0.5 rounded bg-tone-info-bg text-tone-info text-[10.5px] font-bold" title="토스 카드/간편결제 완료 주문">카드</span> : null}
-                        <button disabled={busy === o.id} onClick={() => patchOrder(o.id, { payment_status: o.payment_status === 'paid' ? 'unpaid' : 'paid' }, o.payment_status === 'paid' ? '입금 대기로' : '입금 확인')}
+                        <button disabled={busy === o.id || !!o.toss_payment_key} title={o.toss_payment_key ? '카드 결제 주문은 결제 상태를 손으로 바꿀 수 없어요(환불은 환불 버튼)' : undefined} onClick={() => patchOrder(o.id, { payment_status: o.payment_status === 'paid' ? 'unpaid' : 'paid' }, o.payment_status === 'paid' ? '입금 대기로' : '입금 확인')}
                           className={`px-2 py-0.5 rounded text-[11.5px] font-bold ${o.payment_status === 'paid' ? 'bg-tone-ok-bg text-tone-ok' : o.payment_status === 'refunded' ? 'bg-gray-100 text-gray-500' : 'bg-tone-warn-bg text-tone-warn'}`}>
                           {PAY_KO[o.payment_status] || o.payment_status}{o.payment_status === 'unpaid' ? ' → 확인' : ''}
                         </button>

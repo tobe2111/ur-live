@@ -38,7 +38,7 @@ describe('발송 큐 선별 SSOT — 프리필과 큐가 갈리지 않는다', (
         expect(where).toContain("status = 'new'")
         expect(where).toContain('contacted_at IS NULL')
         expect(where).toContain("(email IS NOT NULL OR instagram IS NOT NULL OR url LIKE 'http%')")
-        expect(where).toContain("COALESCE(email_status,'') NOT IN ('bounced','complained')")
+        expect(where).toContain("COALESCE(email_status,'') NOT IN ('bounced','complained','opt_out')") // 🔁 2026-11-25 재조준: 거부 회신(opt_out)도 뺀다
         expect(where).toContain('COALESCE(is_brand, 0) = 0')
         expect(where).toContain("platform != 'naver_cafe'")
       }

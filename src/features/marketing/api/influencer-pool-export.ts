@@ -4,7 +4,7 @@ import { ensureQualityColumns } from './influencer-quality'
 import { ensurePerfExtraColumns } from './influencer-performance'
 import { ensureOutreachColumns } from './outreach-webhook'
 // ⚖️ 법적 문구는 **발송 경로와 같은 SSOT** 를 쓴다 — 여기서 따로 쓰면 법이 바뀔 때 한쪽만 고쳐진다.
-import { dedupeByEmail } from './outreach-queue'
+import { contactableExportSql, dedupeByEmail } from './outreach-queue'
 import { outreachSubject, outreachBody } from './outreach-template'
 import { influencerCountryWhere } from '../../../shared/ads/influencer-country'
 export { influencerCountryWhere }
@@ -64,9 +64,9 @@ export async function buildInfluencerExportResponse(DB: D1Database, poolId: numb
   //   ⚠️ **측정된 것 중 죽은 것만** 뺀다(`perf_checked_at IS NOT NULL AND recent_posts_30d = 0`).
   //      미측정(대부분)은 남긴다 — 안 그러면 아직 측정 못 한 리드가 통째로 사라진다.
   const contactFilter = opts?.contactable
-    // 🚫 제안 거부를 명시한 사람 제외 — 발송 큐(`buildSendQueueWhere`)와 같은 기준.
-    ? " AND email IS NOT NULL AND email != '' AND COALESCE(is_brand,0) = 0 AND COALESCE(opted_out,0) = 0 AND contacted_at IS NULL"
-      + " AND (email_status IS NULL OR email_status NOT IN ('bounced','complained'))"
+    // 🚫 발송 대기열과 **같은 기준**(`outreach-queue.ts` `contactableExportSql` — 2026-11-25 한 곳으로). 종전엔 여기만 조건이 달라
+    //   손으로 거절·보류한 리드 · 거부 회신 · 카페 · 뉴스/대행사 이름이 파일에 실려 나갔다.
+    ? contactableExportSql()
       + " AND NOT (perf_checked_at IS NOT NULL AND COALESCE(recent_posts_30d, -1) = 0)"
     : ''
   const minScore = Number.isFinite(opts?.minScore) ? Math.max(0, Math.min(100, Number(opts?.minScore))) : null

@@ -589,8 +589,8 @@ app.get('/export', async (c) => {
   })
   return csvResponse({
     filename: 'partner-leads.csv',
-    header: ['tier', 'category', 'subcategory', 'company_name', 'region', 'phone', 'email', 'website', 'address', 'status', 'contact_channel', 'follow_up_at', 'memo', 'source', 'source_keyword', 'collected_at'],
-    rows: rows.map(r => [r.tier ?? '', r.category, r.subcategory, r.company_name, r.region, r.phone, r.email, r.website, r.address, r.status, r.contact_channel, r.follow_up_at, r.memo, r.source, r.source_keyword, (r.collected_at || '').slice(0, 10)]),
+    header: ['id', 'tier', 'category', 'subcategory', 'company_name', 'region', 'phone', 'email', 'website', 'address', 'status', 'contact_channel', 'follow_up_at', 'memo', 'source', 'source_keyword', 'collected_at'],
+    rows: rows.map(r => [r.id, r.tier ?? '', r.category, r.subcategory, r.company_name, r.region, r.phone, r.email, r.website, r.address, r.status, r.contact_channel, r.follow_up_at, r.memo, r.source, r.source_keyword, (r.collected_at || '').slice(0, 10)]),
     cap,
     notes,
   })

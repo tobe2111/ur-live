@@ -92,18 +92,19 @@ export async function flushCrawlBlock(DB: MinimalDB, nowMs: number): Promise<voi
   const addB = blocked; const addOk = ok
   blocked = 0; ok = 0
   try {
-    const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
-      .bind(CRAWL_BLOCK_KEY).first<{ value?: string }>()
-    let prevB = 0; let prevOk = 0
-    try {
-      const j = row?.value ? JSON.parse(row.value) as { day?: string; blocked?: number; ok?: number } : {}
-      if (j.day === day) { prevB = Number(j.blocked) || 0; prevOk = Number(j.ok) || 0 }
-    } catch { /* 형식이 깨졌으면 새 날로 취급 — 추측하지 않는다 */ }
+    // 🔢 2026-11-25: **한 문장으로 더한다.** 종전엔 읽고 → 더해 → 썼다. 레인이 여럿 동시에 돌면(측정 · 발굴) 서로의 값을 덮어
+    //   `blocked` 가 실제보다 적게 남았다 — 이 값은 "처리량을 되돌릴지" 를 정하는 숫자다. 읽기 한 번도 준다(왕복 2 → 1).
+    //   같은 날이면 더하고, 날이 바뀌었거나 저장값이 깨졌으면 새 날로 시작한다(추측하지 않는다).
+    const lastAt = new Date(nowMs).toISOString().slice(0, 19).replace('T', ' ')
     await DB.prepare(
-      `INSERT INTO platform_settings (key, value) VALUES (?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    ).bind(CRAWL_BLOCK_KEY, JSON.stringify({
-      day, blocked: prevB + addB, ok: prevOk + addOk, last_at: new Date(nowMs).toISOString().slice(0, 19).replace('T', ' '),
-    })).run()
+      `INSERT INTO platform_settings (key, value) VALUES (?, json_object('day', ?, 'blocked', ?, 'ok', ?, 'last_at', ?))
+       ON CONFLICT(key) DO UPDATE SET value = CASE
+         WHEN json_valid(platform_settings.value) AND json_extract(platform_settings.value, '$.day') = json_extract(excluded.value, '$.day')
+           THEN json_object('day', json_extract(excluded.value, '$.day'),
+                  'blocked', COALESCE(json_extract(platform_settings.value, '$.blocked'), 0) + json_extract(excluded.value, '$.blocked'),
+                  'ok', COALESCE(json_extract(platform_settings.value, '$.ok'), 0) + json_extract(excluded.value, '$.ok'),
+                  'last_at', json_extract(excluded.value, '$.last_at'))
+         ELSE excluded.value END`,
+    ).bind(CRAWL_BLOCK_KEY, day, addB, addOk, lastAt).run()
   } catch { /* 계측 실패는 레인을 막지 않는다 */ }
 }

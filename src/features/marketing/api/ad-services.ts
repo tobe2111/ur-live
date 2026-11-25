@@ -255,6 +255,11 @@ export async function adminUpdateOrder(DB: D1Database, id: number, patch: { stat
   }
   if (patch.payment_status !== undefined) {
     if (!PAYMENT_STATUSES.includes(patch.payment_status as PaymentStatus)) return { ok: false, error: '잘못된 결제 상태 값' }
+    // 💳 2026-11-25: 카드(Toss)로 결제된 주문의 결제 상태는 손으로 못 바꾼다. 종전엔 '입금 완료 → 입금 대기' 토글이 카드 주문에도
+    //   먹었는데, 그러면 환불 경로(`/refund` 는 `paid` 만 받는다)가 막혀 **손님 카드에서 나간 돈을 돌려줄 길이 사라졌다.**
+    //   카드 주문의 상태는 결제 승인·환불 경로만 바꾼다. 무통장(키 없음) 주문은 종전대로.
+    const card = await DB.prepare("SELECT 1 AS ok FROM ad_service_orders WHERE id = ? AND COALESCE(toss_payment_key, '') <> ''").bind(id).first<{ ok: number }>().catch(() => null)
+    if (card) return { ok: false, error: '카드로 결제된 주문은 결제 상태를 손으로 바꿀 수 없어요. 환불은 환불 버튼으로 해 주세요.' }
     sets.push('payment_status = ?'); binds.push(patch.payment_status)
   }
   if (patch.fulfillment_method !== undefined) { sets.push('fulfillment_method = ?'); binds.push(String(patch.fulfillment_method).slice(0, 40) || '') }

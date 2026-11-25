@@ -256,8 +256,8 @@ app.get('/export', async (c) => {
   })
   return csvResponse({
     filename: 'store-prospects.csv',
-    header: ['category', 'biz_name', 'region', 'phone', 'email', 'website', 'addr_road', 'status', 'is_new_open', 'apv_perm_ymd', 'collected_at'],
-    rows: rows.map(r => [r.category, r.biz_name, r.region, r.phone, r.email, r.website, r.addr_road, r.status, r.is_new_open ? '개업' : '', r.apv_perm_ymd, (r.collected_at || '').slice(0, 10)]),
+    header: ['id', 'category', 'biz_name', 'region', 'phone', 'email', 'website', 'addr_road', 'status', 'is_new_open', 'apv_perm_ymd', 'collected_at'],
+    rows: rows.map(r => [r.id, r.category, r.biz_name, r.region, r.phone, r.email, r.website, r.addr_road, r.status, r.is_new_open ? '개업' : '', r.apv_perm_ymd, (r.collected_at || '').slice(0, 10)]),
     cap,
     notes,
   })

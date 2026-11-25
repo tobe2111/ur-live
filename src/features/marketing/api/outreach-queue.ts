@@ -34,6 +34,20 @@ export const OUTREACH_NOISE_WORDS = [
   '리뷰어 모집', '마케팅 대행', '광고 대행', '대행사', '구청', '시청',
 ] as const
 
+/**
+ * 📇 "지금 연락할 사람" 내보내기에 붙는 **고정 조건** — 발송 대기열(`buildSendQueueWhere`)과 같은 기준을 글자로 편 것.
+ * 2026-11-25: 내보내기는 자기 조건을 따로 갖고 있어서 대기열이 빼는 것을 내보냈다 — 손으로 '거절'·'보류' 한 리드 ·
+ * 거부 회신(`email_status='opt_out'`) · 커뮤니티(카페) · 뉴스·대행사 같은 이름. 내보낸 파일로 대표가 직접 보내므로
+ * 여기서 새면 그대로 발송이 된다. 값 바인딩이 없다(전부 이 파일의 상수) — 내보내기는 조건을 글자로 이어 붙인다.
+ */
+export function contactableExportSql(): string {
+  const noise = OUTREACH_NOISE_WORDS.map((w) => ` AND name NOT LIKE '%${w.replace(/'/g, "''")}%'`).join('')
+  return " AND platform != 'naver_cafe' AND COALESCE(status, 'new') = 'new'"
+    + " AND email IS NOT NULL AND email != '' AND COALESCE(is_brand,0) = 0 AND COALESCE(opted_out,0) = 0 AND contacted_at IS NULL"
+    + " AND (email_status IS NULL OR email_status NOT IN ('bounced','complained','opt_out'))"
+    + noise
+}
+
 /** ④ 점수 높은 순(미채점은 후순위) — score_hot 부터 소진. */
 export const SEND_QUEUE_ORDER_BY = '(lead_score IS NULL) ASC, lead_score DESC, subscriber_count DESC, id DESC'
 
@@ -58,7 +72,7 @@ export function buildSendQueueWhere(
     "status = 'new'", 'contacted_at IS NULL',
     // ① 열 수 있는 채널 — url 은 **스킴이 있어야** 실제로 열린다(pickReach 와 동일 기준).
     "(email IS NOT NULL OR instagram IS NOT NULL OR url LIKE 'http%')",
-    "COALESCE(email_status,'') NOT IN ('bounced','complained')",
+    "COALESCE(email_status,'') NOT IN ('bounced','complained','opt_out')", // 2026-11-25: 거부 회신(opt_out)도 뺀다 — 옛 회신은 opted_out 을 안 올렸다
     'COALESCE(is_brand, 0) = 0',
     // 🚫 소개글에 제안 거부를 명시한 사람 제외 — 노이즈(낭비)와 달리 이건 **거부 의사 무시**라
     //   보내면 안 된다. 태깅은 `declinesOutreach`(저장 시점 + 야간 품질 패스).
