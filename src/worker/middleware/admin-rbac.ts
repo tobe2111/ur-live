@@ -20,6 +20,8 @@ import {
   isSuperOnlyAdminPath,
   isSelfServiceAdminPath,
   canAdminRoleMutate,
+  canAdminRoleWriteOutside,
+  isGetMutationOutside,
   isRetiredAdminRole,
   type AdminRole,
 } from '../../shared/admin-roles';
@@ -51,13 +53,17 @@ async function adminRoleFromRequest(c: Context): Promise<RequestRole | null> {
       if (await jwt.verify(token, secret, { algorithm: 'HS256' })) {
         const payload = (jwt.decode(token).payload || {}) as { type?: string; role?: string };
         if (payload.type === 'admin') return isRetiredAdminRole(payload.role) ? 'retired' : normalizeAdminRole(payload.role);
+        // 🔐 2026-11-25: 유효한 **비어드민** Bearer 면 이 요청의 신원은 그 토큰이다(`requireAuth` 가 Bearer 를 먼저 쓴다).
+        //   종전엔 쿠키로 내려가, 같은 브라우저에 제한 역할 어드민 쿠키가 남아 있으면 손님·사장님 요청을 어드민 역할로 판정했다.
+        return null;
       }
     } catch { /* fall through to cookie */ }
   }
 
   // 2) httpOnly 어드민 세션 쿠키 (Bearer 없을 때 requireAdmin 이 수락하는 경로 — 게이트도 커버).
   try {
-    const su = await parseSessionCookie(c.req.header('Cookie'), secret, ['admin']);
+    // `requireAuth` 와 같은 순서(user → seller → admin → agency)로 읽는다 — 앞선 쿠키가 있으면 라우트는 그 신원으로 돈다.
+    const su = await parseSessionCookie(c.req.header('Cookie'), secret);
     if (su && su.type === 'admin' && su.userId) {
       const DB = (c.env as { DB: D1Database }).DB;
       try {
@@ -126,4 +132,48 @@ export function adminRbacMiddleware() {
       403,
     );
   };
+}
+
+/**
+ * 🔐 **`/api/admin/*` 밖의 쓰기에도 어드민 역할을 적용한다** (2026-11-25 전수 — 조사에서 역할 검사 없는 쓰기 핸들러 66개).
+ *
+ * `app.use('/api/*', …)` 로 건다. 손님·사장님 요청은 실효 신원이 어드민이 아니라 그대로 지나간다.
+ *   - 값싼 사전 판정: Bearer 의 (서명 미검증) type 이 admin 도 아니고 어드민 쿠키 이름도 없으면 서명 검증 없이 통과 —
+ *     모든 쓰기 요청에 HMAC 한 번을 더 얹지 않는다. 이 판정은 "검사를 할지" 만 정한다(권한을 주지 않는다).
+ *   - 이미 게이트가 있는 접두사(`/api/admin/` · `/api/admin-payouts/` · `/api/admin-review-bonus/`)는 그쪽 규칙이 판정한다.
+ *   - 정책은 `shared/admin-roles.ts` `canAdminRoleWriteOutside`.
+ */
+export function adminOutsideWriteGate() {
+  return async (c: Context, next: Next) => {
+    const method = c.req.method.toUpperCase();
+    if (method === 'OPTIONS') return next();
+    const reqPath = c.req.path; // 라우터가 쓰는 디코드된 경로(위 게이트와 같은 이유)
+    if (/^\/api\/(?:admin|admin-payouts|admin-review-bonus)\//.test(reqPath)) return next();
+    if ((method === 'GET' || method === 'HEAD') && !isGetMutationOutside(reqPath)) return next();
+    if (!mayBeAdminActor(c)) return next();
+
+    const role = await adminRoleFromRequest(c);
+    if (!role || role === 'super') return next();
+    if (role === 'retired') {
+      return c.json({ success: false, error: '폐지된 관리자 역할입니다', code: 'ADMIN_ROLE_RETIRED' }, 403);
+    }
+    if (canAdminRoleWriteOutside(role, reqPath)) return next();
+    return c.json(
+      { success: false, error: '이 작업을 수행할 권한이 없습니다 (제한된 관리자 계정)', code: 'ADMIN_ROLE_FORBIDDEN' },
+      403,
+    );
+  };
+}
+
+/** 서명 검증 없이 "어드민일 수 있는 요청인가" 만 본다 — 아니면 본 검사를 건너뛴다. */
+function mayBeAdminActor(c: Context): boolean {
+  if (/(?:^|;\s*)ur_admin_session=/.test(c.req.header('Cookie') || '')) return true;
+  const authHeader = c.req.header('Authorization') || '';
+  const seg = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim().split('.')[1] : '';
+  if (!seg) return false;
+  try {
+    const b64 = seg.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))) as { type?: string };
+    return payload.type === 'admin';
+  } catch { return true; } // 못 읽으면 본 검사로 넘긴다(건너뛰는 쪽이 아니라 확인하는 쪽으로)
 }

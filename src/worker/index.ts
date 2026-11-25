@@ -166,7 +166,7 @@ import { homeServiceRoutes } from '../features/home-service/api/home-service.rou
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
 import { requireAdmin, requireAuth, requireSeller } from './middleware/auth';
 import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-security';
-import { adminRbacMiddleware } from './middleware/admin-rbac';
+import { adminRbacMiddleware, adminOutsideWriteGate } from './middleware/admin-rbac';
 import { storeSeatGuard } from './utils/store-seat-guard';
 import { rateLimit } from './middleware/rate-limit';
 import { hashPassword } from '../lib/password';
@@ -1186,6 +1186,9 @@ app.route('/', docsRoutes);
 //   🔐 2026-11-18: 종전엔 한참 아래(로그인 rate limit 옆)에 있어, 그 위에서 등록되는 `internalAdminToolsRoutes` 의
 //   /api/admin/* (수수료 설정·딜 소급 지급·사업자 승인·DDL)가 역할 검사 없이 `requireAdmin()` 만으로 통과했다
 //   (Hono 는 등록 순서대로 돈다 — 먼저 응답한 핸들러 뒤의 미들웨어는 안 돈다).
+// 🔐 2026-11-25: `/api/admin/*` **밖**의 쓰기에도 어드민 역할을 적용한다(역할 검사 없는 쓰기 핸들러 66개 — 조사 2026-11-25).
+//   실효 신원이 어드민인 요청에만 작동한다 — 손님·사장님 요청은 서명 검증도 없이 지나간다. 정책 `shared/admin-roles.ts` `canAdminRoleWriteOutside`.
+app.use('/api/*', adminOutsideWriteGate());
 app.use('/api/admin/*', adminRbacMiddleware());
 app.use('/api/admin-payouts/*', adminRbacMiddleware());
 app.use('/api/admin-review-bonus/*', adminRbacMiddleware()); // 후기 보너스 승인 = 딜 지급 — 뷰어가 하던 것

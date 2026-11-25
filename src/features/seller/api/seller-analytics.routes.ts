@@ -40,7 +40,9 @@ async function getSellerId(c: any): Promise<number | null> {
   if (!user) return null
   // 🛡️ 2026-04-22: user.type === 'seller' (또는 admin) 확인 — 이전엔 user 타입도
   // id 가 sellers 테이블에 존재하면 통과 → 다른 셀러 매출/고객 데이터 열람 가능.
-  if (user.type !== 'seller' && user.type !== 'admin') return null
+  // 🔐 2026-11-25: 어드민 토큰은 받지 않는다 — 종전엔 `admins.id` 를 `sellers.id` 로 그대로 읽어, 어드민 #N 이 **번호가 같은 남의 매장**으로
+  //   쿠폰 발급·리뷰 답글·송장 일괄 입력을 할 수 있었다(같은 번호의 매장이 없으면 그냥 403).
+  if (user.type !== 'seller') return null
   const seller = await c.env.DB.prepare('SELECT id FROM sellers WHERE id = ?').bind(String(user.id)).first() as { id: number } | null
   return seller?.id ?? null
 }
