@@ -109,6 +109,8 @@ const won = (n: number) => `${Math.round(Number(n) || 0).toLocaleString('ko-KR')
 export interface MonthlyCloseExtras {
   /** 🧾 수수료 세금계산서 초안(정발행 — `fee-tax-invoice.ts`). */
   feeInvoices?: { drafts: number; missingBizNo: number }
+  /** 🪪 지난달 원천징수한 개인 소득자 수 · 그중 주민번호 미등록 수(간이지급명세서 — 이번 달 말일까지). */
+  simplified?: { payees: number; missingId: number; due: string }
   /** 분기 첫 달이면 지난 분기 판매대행 명세 제출 기한(YYYY-MM-DD). */
   salesAgencyDue?: string | null
 }
@@ -128,6 +130,10 @@ export function monthlyCloseMessage(a: MonthlyAccounting, unsent: { n: number; t
   if ((a.feeVat ?? 0) > 0) parts.push(`수수료 부가세(예수금) ${won(a.feeVat ?? 0)} — 부가세 신고 때 납부`)
   if (extras.feeInvoices && extras.feeInvoices.drafts > 0) {
     parts.push(`매장 수수료 세금계산서 ${extras.feeInvoices.drafts}장 준비됨 — ${dueLabel}까지 발행${extras.feeInvoices.missingBizNo > 0 ? `(⚠️ 사업자번호 없는 매장 ${extras.feeInvoices.missingBizNo}곳)` : ''}`)
+  }
+  if (extras.simplified && extras.simplified.payees > 0) {
+    const [, sm, sd] = extras.simplified.due.split('-').map(Number)
+    parts.push(`간이지급명세서(사업소득) ${extras.simplified.payees}명 — ${sm}월 ${sd}일까지 제출${extras.simplified.missingId > 0 ? ` · ⚠️ 주민번호 미등록 ${extras.simplified.missingId}명` : ''}`)
   }
   if (extras.salesAgencyDue) {
     const [, dm, dd] = extras.salesAgencyDue.split('-').map(Number)
@@ -166,6 +172,12 @@ export async function sendMonthlyCloseSummary(DB: D1Database, nowMs: number = Da
     const r = await buildFeeInvoiceDrafts(DB, month)
     extras.feeInvoices = { drafts: r.drafts, missingBizNo: r.missingBizNo }
   } catch (e) { console.error('[monthly-close] fee invoice drafts failed', e) }
+  try {
+    const { computeSimplifiedStatement } = await import('./simplified-payment-statement')
+    const rows = await computeSimplifiedStatement(DB, undefined, month, false)
+    const [sy, sm] = month.split('-').map(Number)
+    extras.simplified = { payees: rows.length, missingId: rows.filter((r) => !r.name).length, due: new Date(Date.UTC(sy, sm + 1, 0)).toISOString().slice(0, 10) }
+  } catch (e) { console.error('[monthly-close] simplified statement failed', e) }
   const thisMonth = new Date(nowMs + 9 * 3600_000).getUTCMonth() + 1
   if ([1, 4, 7, 10].includes(thisMonth)) {
     const { previousKstQuarter, quarterInfo } = await import('./sales-agency-report')

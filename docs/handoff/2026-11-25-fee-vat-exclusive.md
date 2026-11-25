@@ -39,3 +39,9 @@
 - `shared/store-payout-min.ts` — 어드민 `payout_min_krw`(기본 1만 원) · 그달 마지막 목요일 회차는 1원 이상이면 정산. `payouts-generate` 가 사용.
 - 사장님 정산 화면 · FAQ(`minPayoutRule`) · 가이드 v83 · 머니 스위치 칸. 결재 `docs/decisions/2026-11-25-payout-min-monthend.md`.
 - 세금계산서를 "정산한 달에만" 발행하는 안은 대표가 괜찮다고 했지만 공급시기 문제로 세무사 확인 대기(코드는 사용월 기준 유지).
+
+## 5단계 — 볼타 보류 · 주민번호/간이지급명세서 (대표 *"일단 이건 보류하고 나머지 다른 할 일 하고"*)
+- 볼타 연동(PR #2511)은 **보류** — PR 은 닫고 코드는 `docs/handoff/patches/2026-11-25-bolta-integration.patch` 로 보관(`git am` 으로 되살린다).
+- 개인 소개자 주민번호: `worker/utils/payee-tax-id.ts`(키 없으면 저장 거부, `v1:` 암호문) · 인플루언서 정산 화면 "주민등록번호" 줄 · `PUT/GET /api/influencer-settlement/tax-id`.
+- 간이지급명세서 집계 `worker/utils/simplified-payment-statement.ts` · 어드민 CSV `GET /api/admin/tax/simplified-statement`(2FA·감사) · 월 1일 요약에 대상·미등록 수.
+- 결재 `docs/decisions/2026-11-25-payee-rrn-collection.md`. 남은 것: 개인정보 처리방침 문구 · 개인 에이전시 입력 화면(표는 지원).
