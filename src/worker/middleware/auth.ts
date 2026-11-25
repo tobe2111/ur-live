@@ -10,6 +10,7 @@
  */
 
 import { Context, Next } from 'hono';
+import { rejectDeletedUserWrite } from '../utils/deleted-user-guard';
 import * as jwt from '@tsndr/cloudflare-worker-jwt';
 import { unauthorizedResponse, forbiddenResponse } from '../utils/response';
 import { parseSessionCookie } from '../utils/session';
@@ -131,6 +132,12 @@ async function verifyJWT(
  * 2. Bearer JWT (seller/admin)
  */
 export function requireAuth() {
+  // 🚪 2026-11-25: 인증이 끝난 뒤 한 번 — 탈퇴한 유저의 남은 세션으로는 쓰기를 못 한다(`utils/deleted-user-guard.ts`).
+  const core = requireAuthCore();
+  return async (c: Context, next: Next) => core(c, (async () => (await rejectDeletedUserWrite(c)) ?? next()) as Next);
+}
+
+function requireAuthCore() {
   return async (c: Context, next: Next) => {
     const jwtSecret = c.env.JWT_SECRET;
     if (!jwtSecret) {

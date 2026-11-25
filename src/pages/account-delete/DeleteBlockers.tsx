@@ -24,6 +24,7 @@ export interface AccountDeleteBlockers {
   refundable_deal: number
   deal_refund_pending: boolean
   owned_stores: number
+  owned_agencies?: number
 }
 
 /** 가게 탈퇴가 있는 화면(가게 관리 맨 아래 `SellerWithdrawSection`). 마이 시트로 열린다. */
@@ -125,6 +126,17 @@ export default function DeleteBlockers({
         title={t('accountDeleteWarning.blockStore', { defaultValue: '운영 중인 가게 {{count}}곳', count: blockers.owned_stores })}
         body={t('accountDeleteWarning.blockStoreBody', { defaultValue: '회원 탈퇴는 가게를 닫지 않아요. 가게 탈퇴를 먼저 해 주세요.' })}
         action={<Link to={sellerEntryPath(STORE_WITHDRAW_PATH)} className={LINK_CLS}>{t('accountDeleteWarning.goStore', { defaultValue: '가게 관리로 가기' })}</Link>}
+      />,
+    )
+  }
+  if ((blockers.owned_agencies ?? 0) > 0) {
+    rows.push(
+      <Row
+        key="agency"
+        icon={<StoreIcon className="w-5 h-5" />}
+        title={t('accountDeleteWarning.blockAgency', { defaultValue: '운영 중인 에이전시 {{count}}곳', count: blockers.owned_agencies })}
+        body={t('accountDeleteWarning.blockAgencyBody', { defaultValue: '탈퇴하면 이 카카오 계정으로 에이전시에 다시 들어올 수 없어요. 에이전시를 이메일 계정으로 옮긴 뒤 탈퇴해 주세요.' })}
+        action={<Link to="/agency" className={LINK_CLS}>{t('accountDeleteWarning.goAgency', { defaultValue: '에이전시로 가기' })}</Link>}
       />,
     )
   }

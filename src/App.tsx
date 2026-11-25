@@ -303,6 +303,8 @@ function AppContent() {
       no_code: '카카오 인증 코드를 받지 못했어요. 다시 시도해주세요.',
       oauth_state_mismatch: '인증 정보가 만료됐어요. 다시 시도해주세요.',
       oauth_state_expired: '로그인 세션이 만료됐어요. 처음부터 다시 시도해주세요.',
+      // 🚪 2026-11-25: 카카오 계정의 이메일이 이미 다른 방법으로 가입돼 있을 때 — 종전엔 "서버 오류" 로 보였다(다시 해도 같은 결과).
+      email_already_linked: '이 이메일로 이미 가입한 계정이 있어요. 로그인 화면의 "이메일로 로그인"(또는 처음 가입한 방법)으로 들어와 주세요.',
       // 🌏 2026-11-18 구글 로그인(외국인 손님만 보는 버튼) — 그 손님이 읽을 말이라 영어로 둔다.
       email_in_use_kakao: 'This email is already registered with Kakao. Please continue with Kakao.',
       email_in_use: 'This email is already registered. Please log in with your email and password.',
@@ -320,7 +322,7 @@ function AppContent() {
     const authErrors = [
       'session_cookie_failed', 'kakao_auth_failed', 'kakao_sync_failed',
       'database_error', 'firebase_config_error', 'no_code', 'oauth_state_mismatch',
-      'env_missing', 'oauth_state_expired',
+      'env_missing', 'oauth_state_expired', 'email_already_linked',
       'email_in_use_kakao', 'email_in_use', 'google_auth_failed', 'google_unavailable',
     ]
     const isKakaoOAuthError = errorCode.startsWith('kakao_oauth_')
