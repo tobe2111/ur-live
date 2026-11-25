@@ -17,8 +17,8 @@ export default [
   {
     name: '알림 — 실패를 재시도 큐에 태운다',
     file: 'src/lib/text-notice.ts',
-    find: 'max_retries) VALUES (?, ?, ?, ?, 0)',
-    replace: 'max_retries) VALUES (?, ?, ?, ?, 3)',
+    find: 'n.text, result, transient ? 3 : 0)', // 2026-11-25 재조준 — 재시도 횟수가 SQL 글자에서 바인드 값으로 옮겨갔다(통신 실패만 3)
+    replace: 'n.text, result, 3)',
     test: T,
     why: '거절된 템플릿을 같은 본문으로 3번 더 보내 거절당한다(원인이 안 바뀌었다).',
   },

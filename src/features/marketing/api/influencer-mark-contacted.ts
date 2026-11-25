@@ -9,9 +9,10 @@
  * 멱등: 이미 `contacted_at` 이 있으면 덮지 않는다(최초 발송일 보존).
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { chunkForBinds, D1_MAX_BINDS } from '../../../shared/db/d1-binds'
 
 export const CONTACT_CHANNELS = ['email', 'dm', 'note', 'kakao', 'call', 'other'] as const
-/** 한 문장의 ID 수 — 바인드는 `채널 + 풀 + ID×2 + 풀` = 3 + 2×40 = 83개(D1 한도 100). */
+/** 한 문장의 ID 수 — 바인드는 `채널 + 풀 + ID×2 + 풀` = 3 + 2×40 = 83개(D1 한도 100). ID 가 두 번 들어가므로 한도의 절반보다 작게. */
 export const MARK_CONTACTED_CHUNK = 40
 
 export function normalizeContactChannel(raw: unknown): string {
@@ -21,8 +22,8 @@ export function normalizeContactChannel(raw: unknown): string {
 
 export async function markLeadsContacted(DB: D1Database, poolId: number, ids: number[], channel: string): Promise<number> {
   let updated = 0
-  for (let i = 0; i < ids.length; i += MARK_CONTACTED_CHUNK) {
-    const chunk = ids.slice(i, i + MARK_CONTACTED_CHUNK)
+  // 묶음은 한도 SSOT(`chunkForBinds`)로 — "나머지 바인드" 자리에 (한도 − 40)을 넘겨 한 묶음을 40개로 만든다.
+  for (const chunk of chunkForBinds(ids, D1_MAX_BINDS - MARK_CONTACTED_CHUNK)) {
     const ph = chunk.map(() => '?').join(',')
     const r = await DB.prepare(`UPDATE ad_influencer_leads
         SET contacted_at = COALESCE(contacted_at, datetime('now')), contact_channel = COALESCE(contact_channel, ?),

@@ -964,7 +964,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
                 <tbody>${voucherList}</tbody>
               </table>
               <div style="margin:24px 0;padding:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">
-                <p style="margin:0;font-size:13px;color:#991b1b;">${Number((product as { deal_only?: number | null }).deal_only ?? 0) === 1 ? '💡 교환권은 <a href="https://urdeal.kr/my-vouchers" style="color:#6b7280;text-decoration:none;font-weight:700;">내 이용권</a> 보관함에서 확인하고 사용해 주세요.' : '💡 매장 방문 시 위 코드를 보여주세요. QR 코드는 <a href="https://urdeal.kr/my-vouchers" style="color:#6b7280;text-decoration:none;font-weight:700;">내 이용권</a> 페이지에서 확인할 수 있어요.'}</p>
+                <p style="margin:0;font-size:13px;color:#991b1b;">${Number((product as { deal_only?: number | null }).deal_only ?? 0) === 1 ? '💡 교환권은 ' : '💡 매장 방문 시 위 코드를 보여주세요. QR 코드는 '}<a href="https://urdeal.kr/my-vouchers" style="color:#6b7280;text-decoration:none;font-weight:700;">내 이용권</a>${Number((product as { deal_only?: number | null }).deal_only ?? 0) === 1 ? ' 보관함에서 확인하고 사용해 주세요.' : ' 페이지에서 확인할 수 있어요.'}</p>
               </div>
               <p style="margin:16px 0 0;text-align:center;">
                 <a href="https://urdeal.kr/my-vouchers" style="display:inline-block;padding:12px 24px;background:#6b7280;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:700;">내 이용권 보기</a>
