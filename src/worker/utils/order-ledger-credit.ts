@@ -14,6 +14,7 @@
  *   - net 규칙 준수(ledger.ts): credit.amount=gross + fee_amount=플랫폼 수수료 → 집계가 net 산출.
  *   - 역전: 환불 시 reverseSellerOrderLedger (order-refund.ts reverseOrderAncillaryOnRefund 에서 호출).
  */
+import { feeVatFor } from './fee-vat-policy'
 import { recordLedger } from './ledger'
 import { COMMISSION_DEFAULTS } from '../../shared/constants/policy'
 import { VOUCHER_CATEGORIES } from '../../shared/constants/voucher-categories'
@@ -90,7 +91,10 @@ export async function creditSellerOrderToLedger(
     }
   } catch { promoFee = 0 }
 
-  const sellerNet = Math.max(0, total - platformFee - promoFee)
+  // 🧾 2026-11-25 수수료 부가세 별도 — 수수료(공급가액)의 10% 를 함께 뗀다(시작일 전이면 0). 셀러 net 음수 방지.
+  //   fee_amount 에 합쳐 싣고 metadata.fee_vat 로 구분한다 — 역전은 amount−fee_amount 기준이라 자동 대칭.
+  const feeVat = Math.min(await feeVatFor(DB, platformFee), Math.max(0, total - platformFee - promoFee))
+  const sellerNet = Math.max(0, total - platformFee - promoFee - feeVat)
 
   // 단일 균형 엔트리(공구와 동일 패턴): 유저 wallet 차감 = 셀러 receivable, fee_amount=수수료(+promo).
   await recordLedger(DB, {
@@ -99,9 +103,9 @@ export async function creditSellerOrderToLedger(
     amount: total,                 // gross; 집계 net = amount − fee_amount
     debit_account: `user:${order.user_id ?? 0}`,
     credit_account: sellerAccount,
-    fee_amount: platformFee + promoFee,
+    fee_amount: platformFee + promoFee + feeVat,
     fee_account: 'platform:commission',
-    metadata: { kind: 'order_seller', order_id: orderId, ...(promoFee > 0 ? { promo_fee: promoFee } : {}) },
+    metadata: { kind: 'order_seller', order_id: orderId, ...(promoFee > 0 ? { promo_fee: promoFee } : {}), ...(feeVat > 0 ? { fee_vat: feeVat } : {}) },
   })
   return { credited: sellerNet }
 }

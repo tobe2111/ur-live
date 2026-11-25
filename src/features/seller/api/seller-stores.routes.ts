@@ -33,6 +33,7 @@ import { parseSessionCookie } from '@/worker/utils/session'
 import { isSeatableStoreStatus } from '@/shared/seller-status'; import { ensureStoreCode } from '@/worker/utils/redemption-settings'
 import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
 import { getEffectivePlatformFee } from '@/worker/utils/effective-platform-fee'
+import { feeVatContext } from '@/worker/utils/fee-vat-policy'
 import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
 import { pickStoreChannel, registerStoreChannelRoutes, ownerChannelChangeBlock } from './seller-store-channel.routes'
 import { registerStoreClaimRoutes } from './seller-store-claims.routes'; import { registerStoreReportRoutes } from './seller-store-reports.routes'
@@ -142,6 +143,8 @@ app.get('/fee-context', async (c) => {
         channel_pct: fee.channelPct,                     // 채널 요율이 켜졌을 때의 설계값
         direct_pct: DEFAULT_FEE_RATES.platformPctDirect,
         brokered_pct: DEFAULT_FEE_RATES.platformPct,
+        // 🧾 2026-11-25 수수료 부가세 별도 — 시작일(KST)과 지금 적용 중인지. 화면은 적용 중이면 수수료 × 1.1 로 실수령을 계산한다.
+        ...(await feeVatContext(c.env.DB)),
       },
     })
   } catch (err) {

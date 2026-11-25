@@ -129,6 +129,11 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     key: 'payout_auto_approve_max_krw', label: '정산 소액 자동 승인 상한 (원)', default: '0',
     hint: '0 = 꺼짐(전부 사람이 승인). 값을 넣으면 그 금액 이하 주간 정산 건이 생성 직후 자동 승인된다 — 계좌 재확인·받을 돈 초과 검사는 단건 승인과 같다(막힌 건은 사람 칸에 남음). 승인 ≠ 송금: 송금은 이체 파일로 그대로',
   },
+  // 🧾 2026-11-25 대표 *"1번 부가세 별도로 하자"* — 플랫폼 수수료 부가세 별도(수수료 × 10% 를 매장 몫에서 함께 뗀다).
+  {
+    key: 'fee_vat_exclusive_from', label: '수수료 부가세 별도 시작일 (KST)', default: '2027-01-01',
+    hint: '🔴 머니 경로. 이 날짜(YYYY-MM-DD, 한국시간) 이후 사용분부터 매장 몫에서 수수료의 10% 를 부가세로 함께 떼어 부가세 예수금(platform:vat_payable)에 쌓는다. 비우면 2027-01-01 · off = 적용 안 함. 결재 2026-11-25-fee-vat-exclusive.md',
+  },
   // 🤝 2026-11-01 결재 `2026-10-11-agency-model-email-only.md` 3단계 — 에이전시 몫을 유어딜이 걷어 지급.
   {
     key: 'agency_share_payout_enabled', label: '에이전시 수수료 유어딜 지급', default: 'false',
