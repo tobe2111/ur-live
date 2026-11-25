@@ -65,6 +65,19 @@ export async function markPayoutSent(
     return { id, ok: false, code: 'ALREADY_PROCESSED', error: '이미 처리된 건입니다' }
   }
 
+  // 💸 2026-11-25: 토스 지급대행이 **이미 돈을 보낸 뒤**의 기록은 아래 검사를 건너뛴다 — 계좌가 비었거나 바뀌었다는 이유로
+  //   '송금됨' 을 못 적으면 행이 approved 로 남고, 그걸 취소하면 다음 주에 같은 돈이 또 나간다(토스 지급은 켜기 전이라 실측 0).
+  if (opts.moneyAlreadyOut) {
+    const done = await DB.prepare(
+      `UPDATE payouts SET status = 'sent', sent_at = datetime('now'), transaction_id = ?, admin_memo = ?
+        WHERE id = ? AND status IN ('pending','approved')`,
+    ).bind(txId, adminMemo || null, id).run()
+    return (done.meta?.changes ?? 0) === 0
+      ? { id, ok: false, code: 'ALREADY_PROCESSED', error: '이미 처리된 건입니다' }
+      : { id, ok: true, row }
+  }
+  await fillMissingPayoutAccount(DB, row)
+
   // ① 계좌 누락 → 이체가 불가능한 상태다. '송금됨'으로 적으면 장부만 맞고 돈은 안 간다.
   if (!row.account_number) {
     return {
@@ -78,8 +91,7 @@ export async function markPayoutSent(
   if (!acct.ok) return { id, ok: false, code: acct.code, error: acct.error }
 
   // ①-c 승인을 안 거친(pending) 건은 받을 돈 검사를 여기서 한다 — 승인이 그 검사의 자리인데 건너뛴 길이다.
-  //   `moneyAlreadyOut`(토스 지급대행 완료 기록)은 제외: 돈이 이미 나간 사실은 적어야 한다.
-  if (row.status === 'pending' && !opts.moneyAlreadyOut) {
+  if (row.status === 'pending') {
     const within = await checkPayoutWithinReceivable(DB, row)
     if (!within.ok) return { id, ok: false, code: within.code, error: within.error }
   }
@@ -109,6 +121,33 @@ export async function markPayoutSent(
     return { id, ok: false, code: 'ALREADY_PROCESSED', error: '이미 처리된 건입니다' }
   }
   return { id, ok: true, row }
+}
+
+/**
+ * 🏦 **계좌 없이 만들어진 지급 건에 지금 계좌를 채운다** (2026-11-25).
+ *
+ * 주간 생성은 계좌가 없는 매장에도 지급 건을 만든다(받을 돈은 실재한다 — 계좌 안내 알림이 그 금액을 읽는다).
+ * 그런데 행에는 **만들 때의 빈 계좌**가 박히고 그걸 고치는 코드가 없었다 ⇒ 사장님이 계좌를 등록해도 그 건은
+ * 영영 '계좌 없음' 으로 막혔다(어드민이 취소해야 다음 주에 다시 만들어졌다). 안내 문구는 "등록하면 다음 정산에 보내요" 였다.
+ * 셀러(매장) 수령자 · 지금 계좌가 **재확인된 상태**일 때만 채운다(`checkPayeeAccountCurrent` 와 같은 조건). 손바뀜 마감은 제외.
+ * 넘겨받은 `row` 도 같이 고친다(뒤따르는 검사가 채워진 값을 보게).
+ */
+export async function fillMissingPayoutAccount(
+  DB: D1Database,
+  row: Pick<PayoutRow, 'id' | 'payee_type' | 'payee_id' | 'account_number' | 'kind'> & Partial<Pick<PayoutRow, 'bank_name' | 'account_holder'>>,
+): Promise<boolean> {
+  if (row.account_number || row.kind === 'handover_closeout') return false
+  const payee = canonicalPaidPayee(row.payee_type, row.payee_id)
+  if (!payee || payee.kind !== 'seller') return false
+  const acct = await resolvePayeeAccount(DB, payee).catch(() => null)
+  if (!acct?.accountNumber || !acct.accountVerified) return false
+  const r = await DB.prepare(
+    `UPDATE payouts SET bank_name = ?, account_number = ?, account_holder = ?
+      WHERE id = ? AND COALESCE(account_number, '') = '' AND status IN ('pending','approved')`,
+  ).bind(acct.bankName, acct.accountNumber, acct.accountHolder, row.id).run().catch(() => null)
+  if (!(r?.meta?.changes)) return false
+  row.bank_name = acct.bankName; row.account_number = acct.accountNumber; row.account_holder = acct.accountHolder
+  return true
 }
 
 export type ReceivableCheckCode = 'PAYOUT_EXCEEDS_RECEIVABLE' | 'RECEIVABLE_CHECK_FAILED'

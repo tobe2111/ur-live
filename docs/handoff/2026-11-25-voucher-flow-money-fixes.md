@@ -28,6 +28,10 @@
   - 읽기 경로로 새 코드가 라이브에서 도는 것까지 봤다: `GET /api/admin/payouts?status=pending` 200 · `GET /api/admin/payouts/transfer-csv?status=pending` 200(`X-Total-Count 1` · `X-Skipped-Count 1`(계좌 없음) · `X-Blocked-Count 0`).
   - **라이브에서 못 잰 것**: 초과 지급 차단·환불 원장·일부 사용 정산·역할 게이트의 "막히는 쪽" 은 해당 데이터가 0건이고 쓰기 요청이라 찔러 보지 않았다. 근거는 로컬 시험(E2)까지다. 실물 확인은 `S-PAYOUTGUARD`.
 
+**3차(대표 *"끝까지 다 고쳐줘"*) — 묶음 A 정산 경로**: 손님 셀프 사용이 정산 원장을 안 적던 것 · 사용 되돌림의 원장 · 계좌 없이 만들어진 지급 건 자동 채움 · 토스 완료 기록 우회. 기록 `docs/decisions/2026-11-25-settlement-path-fixes.md`. 라이브에서 셀러·어드민 가이드 재시드(얼어 있던 12섹션 해소 — 같은 기록). 열린 결재: 목요일 약속 ↔ 영업일 10일 보류(`2026-11-25-store-payout-thursday-vs-hold.md`).
+- 이번에 틀렸던 판단: "목요일 문구는 맞다" 고 아침에 정정했는데 **절반만 맞다** — 목요일은 대표가 정한 날이지만 보류 14일 때문에 '지난주 사용분' 은 그 목요일에 나갈 수 없다. 문구가 틀린 게 아니라 두 결정이 부딪힌다.
+- "셀프 취소(60초)" 는 지금 어느 매장도 못 쓴다(매장 방식에서 `self_free` 가 빠졌다). 되돌림 원장은 분쟁 경로에서만 실제로 돈다.
+
 **재확인해서 목록에서 내린 것**
 - ~~`StoreBankPage` "매주 목요일" 문구가 틀렸다~~ → 목요일은 대표가 정한 규칙이다(`partners-facts.ts` `storePayoutDay`). 문구는 맞다. 남는 확인거리는 목요일 장치(`auto-settlement`, 라이브 `restaurant_settlements` 0행)와 월요일 09:45 장치(`payouts-generate`, 보류 14일) 중 어느 쪽이 실제로 돈을 내보내는가(미실행).
 - ~~숙박 주문이 사장님 "오늘 매출" 에 안 잡힌다~~ → 코드를 다시 읽으니 오늘 매출 집계 둘(`seller-management.routes.ts` · `seller-operators.routes.ts`)은 `orders.seller_id` 기준이고 숙박 주문도 그 칸을 채운다. 처음 보고의 근거(시험 기록)가 남아 있지 않다 — **시험으로 다시 재지는 않았다(E1)**. 주문 목록처럼 `order_items` 로 묶는 화면에는 숙박 주문이 안 보일 수 있다(숙소는 전용 예약 목록이 있다).

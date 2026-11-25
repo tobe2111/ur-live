@@ -20,7 +20,7 @@ import { require2FA } from '../../../worker/middleware/require-2fa'
 // 🛡️ 2026-05-21 정합성: 모든 sensitive action 에 audit log 강제.
 import { auditLog } from '../../../worker/middleware/audit-log'
 import type { Env } from '../../../worker/types/env'
-import { markPayoutSent, isTransferable, checkPayeeAccountCurrent, checkPayoutWithinReceivable, type PayoutRow } from '../../../worker/utils/payout-sent'
+import { markPayoutSent, isTransferable, checkPayeeAccountCurrent, checkPayoutWithinReceivable, fillMissingPayoutAccount, type PayoutRow } from '../../../worker/utils/payout-sent'
 import { resolvePayoutHold } from '../../../worker/utils/payout-hold'
 // 💸 2026-10-01 (결재 voucher-credit-double-rail): `merchant:N` 과 `seller:N` 은 같은 가게다.
 //   이 화면과 cron 이 **같은 조각**을 써야 한다 — 갈리면 운영자가 화면에서 본 금액과 실제 생성분이 달라진다.
@@ -167,6 +167,11 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance
   if (!row) return c.json({ success: false, error: 'Not found' }, 404)
   if (row.status !== 'pending') return c.json({ success: false, error: 'Not pending' }, 409)
 
+  // 🏦 2026-11-25: 계좌 없이 만들어진 건은 지금 계좌로 채우고, 그래도 없으면 승인하지 않는다(승인해도 송금 기록이 막힌다).
+  await fillMissingPayoutAccount(DB, { ...row, id })
+  const acctNow = await DB.prepare('SELECT account_number FROM payouts WHERE id = ?').bind(id).first<{ account_number: string | null }>()
+  if (!acctNow?.account_number) return c.json({ success: false, error: '수령자 정산 계좌가 아직 없습니다. 매장이 계좌를 등록하면 승인할 수 있습니다', code: 'PAYOUT_NO_ACCOUNT' }, 409)
+  row.account_number = acctNow.account_number
   // 🔐 2026-10-10: 계좌 변경 후 미재확인 · 생성 이후 계좌가 바뀐 건은 승인하지 않는다(송금과 같은 SSOT).
   const acctCheck = await checkPayeeAccountCurrent(DB, row)
   if (!acctCheck.ok) return c.json({ success: false, error: acctCheck.error, code: acctCheck.code }, 409)
@@ -258,6 +263,7 @@ adminPayoutsRoutes.get('/admin/payouts/transfer-csv', requireAdminRole('finance'
   ).bind(status).all<PayoutRow>().catch(() => ({ results: [] as PayoutRow[] }))
 
   const all = results || []
+  for (const r of all) await fillMissingPayoutAccount(DB, r) // 🏦 계좌 없이 만들어진 건 — 지금 계좌로 채운 뒤 싣는다
   const transferable = all.filter(isTransferable)
   // 🔐 2026-10-10: 계좌 미재확인·옛 계좌 스냅샷은 파일에 싣지 않는다 — 파일에 실리면 은행이 그대로 보낸다.
   const rows: PayoutRow[] = []
@@ -343,6 +349,8 @@ adminPayoutsRoutes.patch('/admin/payouts/bulk-approve', requireAdminRole('financ
     const pr = await DB.prepare('SELECT id, status, payee_type, payee_id, amount, account_number, kind FROM payouts WHERE id = ?')
       .bind(id).first<Pick<PayoutRow, 'id' | 'status' | 'payee_type' | 'payee_id' | 'amount' | 'account_number' | 'kind'>>().catch(() => null)
     if (pr) {
+      await fillMissingPayoutAccount(DB, pr) // 🏦 계좌 없이 만들어진 건 — 지금 계좌로 채운다
+      if (!pr.account_number) { blocked.push({ id, code: 'PAYOUT_NO_ACCOUNT', error: '수령자 정산 계좌가 아직 없습니다' }); continue }
       const chk = await checkPayeeAccountCurrent(DB, pr)
       if (!chk.ok) { blocked.push({ id, code: chk.code, error: chk.error }); continue }
       // 💸 2026-11-25: 건별 승인과 같은 받을 돈 검사 — 일괄이라고 건너뛰면 환불된 건이 그대로 승인된다.
