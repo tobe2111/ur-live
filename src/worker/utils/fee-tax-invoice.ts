@@ -83,6 +83,32 @@ export async function computeFeeInvoiceLines(DB: D1Database, period: string): Pr
   return [...by.values()].filter((l) => l.total > 0).sort((a, b) => a.sellerId - b.sellerId)
 }
 
+/**
+ * 🔁 그 달 수수료가 **마이너스**인 매장(전달에 사용 처리됐던 이용권이 이번 달에 사용 취소된 경우) — 2026-11-26.
+ * 종전엔 `total > 0` 필터에 걸려 **조용히 사라졌다** → 이미 발행된 전달 세금계산서가 과다한 채 남는다.
+ * 이번 달 다른 수수료와 상계해 0 이상이면 문제없다. 끝까지 마이너스면 **수정세금계산서(환입)** 가 필요하다 — 월 요약이 알린다.
+ */
+export async function computeFeeInvoiceNegatives(DB: D1Database, period: string): Promise<Array<{ sellerId: number; total: number }>> {
+  const { results } = await DB.prepare(`
+    SELECT MAX(CASE WHEN credit_account LIKE 'merchant:%' THEN substr(credit_account, 10)
+                    WHEN debit_account LIKE 'merchant:%' THEN substr(debit_account, 10) END) AS merchant,
+           SUM(CASE WHEN credit_account = 'platform:revenue' THEN amount WHEN debit_account = 'platform:revenue' THEN -amount ELSE 0 END)
+         + SUM(CASE WHEN credit_account = ?1 THEN amount WHEN debit_account = ?1 THEN -amount ELSE 0 END) AS total
+      FROM ledger_entries
+     WHERE event_type IN ('voucher_used', 'voucher_use_reversal')
+       AND reference_id LIKE 'voucher:%'
+       AND strftime('%Y-%m', datetime(created_at, '+9 hours')) = ?2
+     GROUP BY reference_id`,
+  ).bind(FEE_VAT_ACCOUNT, period).all<{ merchant: string | null; total: number }>()
+  const by = new Map<number, number>()
+  for (const r of results || []) {
+    const id = Number(r.merchant)
+    if (!Number.isInteger(id) || id <= 0) continue
+    by.set(id, (by.get(id) ?? 0) + (Number(r.total) || 0))
+  }
+  return [...by.entries()].filter(([, t]) => t < 0).map(([sellerId, total]) => ({ sellerId, total })).sort((a, b) => a.sellerId - b.sellerId)
+}
+
 const _ensured = new WeakSet<object>()
 export async function ensureFeeInvoiceTable(DB: D1Database): Promise<void> {
   if (_ensured.has(DB)) return
@@ -107,12 +133,13 @@ export async function ensureFeeInvoiceTable(DB: D1Database): Promise<void> {
     issued_by INTEGER,
     provider_ref TEXT,
     last_error TEXT,
+    nts_state TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`).run()
   await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_fee_tax_invoices_seller_period ON fee_tax_invoices(seller_id, period)').run()
   // 🧾 발행 사업자 문서번호 · 마지막 오류 — 표가 먼저 생긴 라이브에도 붙도록(있으면 무시).
-  for (const col of ['provider_ref TEXT', 'last_error TEXT']) {
+  for (const col of ['provider_ref TEXT', 'last_error TEXT', 'nts_state TEXT']) {
     await DB.prepare(`ALTER TABLE fee_tax_invoices ADD COLUMN ${col}`).run().catch(() => null)
   }
   _ensured.add(DB)
@@ -122,7 +149,7 @@ export async function ensureFeeInvoiceTable(DB: D1Database): Promise<void> {
  * 초안 만들기(멱등). 이미 발행된(issued) 행은 건드리지 않고, 초안(draft)은 최신 원장 값으로 덮는다.
  * 매장 사업자 정보도 그때의 값으로 스냅샷한다. 반환: 초안 수·합계·사업자번호 없는 매장 수.
  */
-export async function buildFeeInvoiceDrafts(DB: D1Database, period: string): Promise<{ drafts: number; supply: number; vat: number; missingBizNo: number }> {
+export async function buildFeeInvoiceDrafts(DB: D1Database, period: string): Promise<{ drafts: number; supply: number; vat: number; missingBizNo: number; negatives: Array<{ sellerId: number; total: number }> }> {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) throw new Error('period must be YYYY-MM')
   await ensureFeeInvoiceTable(DB)
   const lines = await computeFeeInvoiceLines(DB, period)
@@ -149,7 +176,14 @@ export async function buildFeeInvoiceDrafts(DB: D1Database, period: string): Pro
       s?.representative_name ?? null, s?.email ?? null, s?.addr ?? null).run()
     drafts++; supply += l.supply; vat += l.vat
   }
-  return { drafts, supply, vat, missingBizNo }
+  // 이번 달 수수료가 없어진(0 이하) 매장의 묵은 초안은 지운다 — 남겨 두면 없는 수수료로 세금계산서가 나간다. 발행된 건은 안 건드린다.
+  const keep = new Set(lines.map((l) => l.sellerId))
+  const { results: stale } = await DB.prepare("SELECT id, seller_id FROM fee_tax_invoices WHERE period = ? AND status = 'draft'").bind(period).all<{ id: number; seller_id: number }>()
+  for (const d of stale || []) {
+    if (!keep.has(Number(d.seller_id))) await DB.prepare("DELETE FROM fee_tax_invoices WHERE id = ? AND status = 'draft'").bind(d.id).run().catch(() => null)
+  }
+  const negatives = await computeFeeInvoiceNegatives(DB, period).catch(() => [])
+  return { drafts, supply, vat, missingBizNo, negatives }
 }
 
 export interface FeeInvoiceRow {
@@ -227,4 +261,34 @@ export function feeInvoicesCsv(rows: FeeInvoiceRow[]): string {
       r.buyer_email, r.buyer_address, `유어딜 중개수수료 (${y}년 ${m}월)`, r.supply_amount, r.vat_amount, r.total_amount, r.voucher_count, r.nts_confirm_num]
   })
   return '﻿' + [header, ...body].map((r) => r.map(cell).join(',')).join('\r\n')
+}
+
+/**
+ * 🛰️ 국세청 전송 결과 확인 — 2026-11-26. 팝빌 즉시 발행은 승인번호를 바로 주지만 **국세청 전송은 그 뒤에** 한다(보통 다음 날).
+ * 전송이 반려(305)되면 세금계산서가 신고되지 않은 것인데 아무도 모른다 → 매일 최근 40일 발행분 중 결과가 안 끝난 것만 본다.
+ * 304 전송성공 → 'nts_state=304' 로 끝. 305 → 기록 + 어드민 알림 1회. 돈을 옮기지 않는다.
+ */
+export async function checkIssuedInvoiceStates(
+  DB: D1Database, creds: import('./popbill-invoice').PopbillCreds, fetchImpl?: typeof fetch,
+): Promise<{ checked: number; ok: number; failed: Array<{ id: number; sellerId: number; period: string; code: string }> }> {
+  await ensureFeeInvoiceTable(DB)
+  const { getPopbillInvoiceState } = await import('./popbill-invoice')
+  const { results } = await DB.prepare(
+    `SELECT id, seller_id, period, provider_ref FROM fee_tax_invoices
+      WHERE status = 'issued' AND provider = ? AND provider_ref IS NOT NULL
+        AND COALESCE(nts_state, '') NOT IN ('304', '305', '600') AND issued_at >= datetime('now', '-40 days')
+      ORDER BY id LIMIT 30`,
+  ).bind(creds.isTest ? 'popbill_test' : 'popbill').all<{ id: number; seller_id: number; period: string; provider_ref: string }>()
+  let checked = 0, ok = 0
+  const failed: Array<{ id: number; sellerId: number; period: string; code: string }> = []
+  for (const r of results || []) {
+    const st = await getPopbillInvoiceState(creds, r.provider_ref, fetchImpl).catch(() => null)
+    if (!st?.stateCode) continue
+    checked++
+    await DB.prepare(`UPDATE fee_tax_invoices SET nts_state = ?, last_error = ?, updated_at = datetime('now') WHERE id = ?`)
+      .bind(st.stateCode, st.stateCode === '305' ? `국세청 전송 실패(${st.ntsErr || '사유 미상'}) — 팝빌에서 확인 후 재발행` : null, r.id).run()
+    if (st.stateCode === '304') ok++
+    if (st.stateCode === '305') failed.push({ id: r.id, sellerId: r.seller_id, period: r.period, code: st.ntsErr || '' })
+  }
+  return { checked, ok, failed }
 }

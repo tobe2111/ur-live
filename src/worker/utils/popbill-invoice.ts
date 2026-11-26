@@ -197,3 +197,16 @@ export function popbillHealthWarnings(chk: PopbillCheckResult, ctx: { drafts: nu
   if (ctx.autoSend && chk.test) w.push('자동 발행이 켜져 있지만 팝빌 테스트 서버라 실제로는 발행되지 않음 — 운영 전환 후 "팝빌 테스트 서버" 끄기')
   return w
 }
+
+/** 발행 상태(GetInfo) — `stateCode` 304 전송성공 · 305 전송실패 · 600 발행취소. 실패해도 던지지 않고 null. */
+export async function getPopbillInvoiceState(c: PopbillCreds, mgtKey: string, fetchImpl: typeof fetch = fetch, nowIso: string = linkhubDate()): Promise<{ stateCode: string; ntsErr: string | null } | null> {
+  if (!/^[A-Za-z0-9_-]{1,24}$/.test(mgtKey)) return null
+  const t = await getPopbillToken(c, fetchImpl, nowIso)
+  if (!t.token) return null
+  const h: Record<string, string> = { Authorization: `Bearer ${t.token}` }
+  if (c.userId) h['x-pb-userid'] = c.userId
+  const res = await fetchImpl(`https://${popbillHost(c)}/Taxinvoice/SELL/${encodeURIComponent(mgtKey)}`, { method: 'GET', headers: h })
+  if (!res.ok) return null
+  const j = await res.json().catch(() => ({})) as { stateCode?: number | string; ntssendErrCode?: string }
+  return j.stateCode === undefined ? null : { stateCode: String(j.stateCode), ntsErr: j.ntssendErrCode || null }
+}
