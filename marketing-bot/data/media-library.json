@@ -1,6 +1,29 @@
 {
   "items": [
     {
+      "id": "openverse-24117948-df8f-42fd-9043-f811059aac3e",
+      "kind": "image",
+      "source": "openverse",
+      "source_id": "24117948-df8f-42fd-9043-f811059aac3e",
+      "url": "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvcHg3MzI5MDgtaW1hZ2Uta3d2eGltdWwuanBn.jpg",
+      "page_url": "https://www.rawpixel.com/image/5921703/photo-image-public-domain-food-free",
+      "author": "",
+      "license": "CC0 (출처 표기 불요)",
+      "w": 7360,
+      "h": 4912,
+      "tags": "korean, korean cuisine, korean dish, korean food, korean traditional, korean traditional food, traditional food, vegan",
+      "preview": "https://api.openverse.org/v1/images/24117948-df8f-42fd-9043-f811059aac3e/thumb/",
+      "query": "korean food table",
+      "tracks": [
+        "consumer",
+        "merchant"
+      ],
+      "score": 8,
+      "note": "한국 한상차림을 위에서 자연광으로 담은 선명한 사진이라 동네 식당 분위기와 잘 맞고, 얼굴·워터마크·브랜드 로고가 없어 쓰기 안전함. 다만 한지 매트의 글자 무늬가 약간 복잡하고 ",
+      "added_at": "2026-11-26T15:24:51.609Z",
+      "used": []
+    },
+    {
       "id": "pixabay-img-3759005",
       "kind": "image",
       "source": "pixabay",
@@ -584,16 +607,16 @@
     "food photography smartphone": "2026-11-25T15:43:21.115Z",
     "woman filming video phone": "2026-11-25T15:43:21.115Z",
     "audio:cafe jazz": "2026-11-24T15:57:27.537Z",
-    "vlogger cafe": "2026-11-19T19:13:07.149Z",
-    "korean food table": "2026-11-19T19:13:07.149Z",
+    "vlogger cafe": "2026-11-26T15:24:51.609Z",
+    "korean food table": "2026-11-26T15:24:51.609Z",
     "audio:bright instrumental pop": "2026-11-25T15:43:21.115Z",
     "korean street food night": "2026-11-20T18:44:26.705Z",
     "friends eating restaurant": "2026-11-20T18:44:26.705Z",
-    "audio:warm piano": "2026-11-20T18:44:26.705Z",
+    "audio:warm piano": "2026-11-26T15:24:51.609Z",
     "seoul street night": "2026-11-21T17:44:46.800Z",
     "qr code payment phone": "2026-11-21T17:44:46.800Z"
   },
-  "updated_at": "2026-11-25T15:43:21.115Z",
+  "updated_at": "2026-11-26T15:24:51.609Z",
   "rejected": [
     "pixabay-img-5753302",
     "pixabay-img-4807317",
@@ -689,6 +712,9 @@
     "pixabay-vid-29920",
     "pixabay-vid-21147",
     "pixabay-img-5941358",
-    "pixabay-vid-5129"
+    "pixabay-vid-5129",
+    "pixabay-vid-2339",
+    "openverse-4bba409e-35a0-41ce-bdaf-a5a618e3ed9a",
+    "openverse-ba8e6f0a-f9c7-42e2-8925-1afa727019fd"
   ]
 }
