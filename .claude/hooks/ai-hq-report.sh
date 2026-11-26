@@ -9,12 +9,15 @@
 #   - 어드민 자격(URDEAL_ADMIN_EMAIL/PASSWORD)이 없거나 AI_HQ_REPORT=0 이면 아무것도 안 한다.
 #   - 비밀번호·토큰을 어디에도 찍지 않는다. 토큰은 컨테이너 안 임시 파일(권한 600)에 50분 재사용.
 EVENT="${1:-}"
-case "$EVENT" in start|prompt|stop) ;; *) exit 0 ;; esac
-[ "${AI_HQ_REPORT:-1}" = "0" ] && exit 0
-[ -n "${URDEAL_ADMIN_EMAIL:-}" ] && [ -n "${URDEAL_ADMIN_PASSWORD:-}" ] || exit 0
-command -v python3 >/dev/null 2>&1 || exit 0
+# 일찍 끝날 때도 입력(stdin)을 끝까지 읽고 끝낸다 — 안 읽고 나가면 보내는 쪽이 EPIPE 를 맞는다
+#   (2026-11-26 CI 실측: 시험이 `spawnSync bash EPIPE` 로 간헐 실패).
+quit() { cat >/dev/null 2>&1; exit 0; }
+case "$EVENT" in start|prompt|stop) ;; *) quit ;; esac
+[ "${AI_HQ_REPORT:-1}" = "0" ] && quit
+[ -n "${URDEAL_ADMIN_EMAIL:-}" ] && [ -n "${URDEAL_ADMIN_PASSWORD:-}" ] || quit
+command -v python3 >/dev/null 2>&1 || quit
 
-INPUT_FILE="$(mktemp 2>/dev/null)" || exit 0
+INPUT_FILE="$(mktemp 2>/dev/null)" || quit
 head -c 200000 > "$INPUT_FILE" 2>/dev/null
 
 nohup python3 - "$EVENT" "$INPUT_FILE" >/dev/null 2>&1 <<'PY' &

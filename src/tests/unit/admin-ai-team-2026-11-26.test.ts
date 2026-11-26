@@ -152,6 +152,14 @@ describe('⑥ 사무실 평면도', () => {
     }
     const src = read('src/pages/admin/ai-team/OfficeView.tsx')
     expect(src, '한 자리에 한 명(자리 맡기)').toMatch(/taken\.set\(/)
+    expect(src, '걷는 길은 차선을 탄다').not.toMatch(/a\.path = route\(/)
+  })
+  it('⚡ 최적화 — 안 보이면 멈추고(화면 밖·탭 가림), 30fps, 서 있는 사람은 다시 그리지 않는다 (2026-11-26 대표 "최적화도 해")', () => {
+    const src = read('src/pages/admin/ai-team/OfficeView.tsx')
+    expect(src).toMatch(/new IntersectionObserver\(/)
+    expect(src).toMatch(/visibilitychange', onVis\)/)
+    expect(src).toMatch(/FRAME_MS = 1000 \/ 30/)
+    expect(src).toMatch(/if \(tf !== a\.drawn\)/)
   })
 })
 
@@ -162,6 +170,7 @@ describe('⑦ 작업실(세션) 연결', () => {
     const s = parseAiSession({ session_id: 'd2567341-4e61-58c5', event: 'prompt', title: 'x'.repeat(200), branch: 'claude/a b' })
     expect(s?.title?.length).toBe(80)
     expect(s?.branch).toBeNull()
+    expect(parseAiSession({ session_id: 'd2567341-4e61-58c5', event: 'prompt', title: '<task-notification> <task-type>x' })?.title, '시스템 알림 글은 제목이 아니다').toBeNull()
   })
   it('레포 훅이 시작·질문·턴 끝 세 곳에 걸려 있다(새 세션도 자동으로 붙는 근거)', () => {
     const settings = JSON.parse(read('.claude/settings.json'))
@@ -176,11 +185,23 @@ describe('⑦ 작업실(세션) 연결', () => {
     expect(out).toBe('')
     const src = read('.claude/hooks/ai-hq-report.sh')
     expect(src).toMatch(/nohup python3 [^\n]*>\/dev\/null 2>&1 <<'PY' &/)
+    expect(src, '일찍 끝날 때도 stdin 을 비운다(EPIPE)').not.toMatch(/\|\| exit 0|&& exit 0|\*\) exit 0/)
   })
   it('API 경로가 있다', () => {
     const r = read('src/features/admin/api/admin-ai-team.routes.ts')
     expect(r).toContain("'/ai-team/session'")
     expect(r).toContain("'/ai-team/sessions'")
     expect(read('src/worker/routes/repair-schema/aux-tables.ts')).toContain("name: 'ai_team_sessions'")
+  })
+})
+
+describe('⑧ 걷는 차선(통로 겹침)', () => {
+  it('같은 길을 걸어도 사람마다 다른 줄을 타고, 도착점은 정확하다', async () => {
+    const { laneRoute } = await import('@/pages/admin/ai-team/OfficeView')
+    const a = deskOf('sales')!.seat, b = deskOf('qa')!.seat
+    const p1 = laneRoute('sales', a, b), p2 = laneRoute('design', a, b)
+    expect(p1[p1.length - 1]).toEqual(b)
+    expect(p2[p2.length - 1]).toEqual(b)
+    expect(JSON.stringify(p1.slice(0, -1))).not.toEqual(JSON.stringify(p2.slice(0, -1)))
   })
 })

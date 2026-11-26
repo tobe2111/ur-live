@@ -19,12 +19,26 @@ import { ROOMS, VIEW, DEPT_COLOR, TEAM_DEPT, SPOTS, deskOf, route, type Pt } fro
 const SPEED = 70 // px/초
 const JUST_DONE_MS = 10 * 60 * 1000
 
-interface Agent { key: string; x: number; y: number; path: Pt[]; wait: number; carrying: boolean; delivered: Set<number>; moving: boolean; away: boolean; spot: string | null }
+interface Agent { key: string; x: number; y: number; drawn: string; path: Pt[]; wait: number; carrying: boolean; delivered: Set<number>; moving: boolean; away: boolean; spot: string | null }
 const spotKey = (p: Pt) => `${p.x},${p.y}`
 
 const PEOPLE = [{ key: 'ceo', name: '대표', initial: '대' }, ...TEAMS.map(t => ({ key: t.key, name: t.name, initial: t.initial }))]
+/** 🧍 걷는 줄(차선) — 복도·통로에서 같은 길을 걷는 사람이 한 점에 포개지지 않게, 사람마다 정해진 만큼 비켜 걷는다.
+ *  도착점은 그대로(자리·쉬는 자리 정확히). 2026-11-26 대표 "사람이 그리고 겹쳐". */
+const LANE: Record<string, number> = Object.fromEntries(PEOPLE.map((p, i) => [p.key, ((i % 5) - 2) * 7]))
+export function laneRoute(key: string, a: Pt, b: Pt): Pt[] {
+  const o = LANE[key] ?? 0
+  const path = route(a, b)
+  return path.map((q, i) => (i === path.length - 1 ? q : { x: q.x + o, y: q.y + o }))
+}
 const CEO_SEAT = { desk: { x: 870, y: 85 }, seat: { x: 870, y: 120 } }
-const seatOf = (k: string) => (k === 'ceo' ? CEO_SEAT : deskOf(k))
+// ⚡ 자리 좌표는 고정이라 한 번만 계산한다(그림을 그릴 때마다 방 목록을 뒤지지 않게).
+const SEATS: Record<string, { desk: Pt; seat: Pt } | null> = Object.fromEntries(
+  [['ceo', CEO_SEAT], ...TEAMS.map(t => [t.key, deskOf(t.key)])],
+)
+const seatOf = (k: string) => SEATS[k] ?? null
+/** ⚡ 30fps — 걷는 속도(초당 70)에서는 60fps 와 눈으로 구분이 안 되고, 계산은 절반이다. */
+const FRAME_MS = 1000 / 30
 const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)]
 
 function bubbleFor(s: TeamStatus | undefined): { text: string; tone: 'work' | 'bad' | 'warn' } | null {
@@ -52,13 +66,14 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
   const statusRef = useRef(status)
   statusRef.current = status
   const [carry, setCarry] = useState<Record<string, boolean>>({})
+  const boxRef = useRef<HTMLDivElement | null>(null)
   const reduce = useMemo(() => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches, [])
 
   // 처음 자리에 앉힌다
   if (Object.keys(agents.current).length === 0) {
     for (const p of PEOPLE) {
       const s = seatOf(p.key)
-      if (s) agents.current[p.key] = { key: p.key, x: s.seat.x, y: s.seat.y, path: [], wait: Math.random() * 4, carrying: false, delivered: new Set(), moving: false, away: false, spot: null }
+      if (s) agents.current[p.key] = { key: p.key, x: s.seat.x, y: s.seat.y, drawn: '', path: [], wait: Math.random() * 4, carrying: false, delivered: new Set(), moving: false, away: false, spot: null }
     }
   }
 
@@ -66,6 +81,16 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
     if (reduce) return
     let raf = 0
     let last = performance.now()
+    // ⚡ 사무실이 화면 밖(아래로 스크롤)이거나 탭이 가려지면 멈춘다 — 안 보이는 그림을 그리지 않는다.
+    let visible = true
+    const start = () => { if (!raf && visible && document.visibilityState === 'visible') { last = performance.now(); raf = requestAnimationFrame(tick) } }
+    const stop = () => { if (raf) { cancelAnimationFrame(raf); raf = 0 } }
+    const io = typeof IntersectionObserver !== 'undefined' && boxRef.current
+      ? new IntersectionObserver(([e]) => { visible = !!e?.isIntersecting; if (visible) start(); else stop() })
+      : null
+    if (io && boxRef.current) io.observe(boxRef.current)
+    const onVis = () => (document.visibilityState === 'visible' ? start() : stop())
+    document.addEventListener('visibilitychange', onVis)
     // 🧍 2026-11-26 대표 "사람이 그리고 겹쳐" — 쉬는 곳·보고 자리는 한 자리에 한 명. 빈 자리가 없으면 안 간다.
     const taken = new Map<string, string>()
     const release = (a: Agent) => { if (a.spot) { taken.delete(a.spot); a.spot = null } }
@@ -82,7 +107,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
       const seat = seatOf(a.key)?.seat
       if (!seat) return
       const s = statusRef.current[a.key]
-      const back = () => { release(a); return route({ x: a.x, y: a.y }, seat) }
+      const back = () => { release(a); return laneRoute(a.key, { x: a.x, y: a.y }, seat) }
       // 방금 끝낸 일 → 보고서 전달(한 번만)
       const done = s?.lastDone
       if (a.key !== 'ceo' && a.key !== 'ceo-office' && done && done.state === 'done' && !a.delivered.has(done.id)
@@ -92,7 +117,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
           a.delivered.add(done.id)
           a.carrying = true
           setCarry(c => ({ ...c, [a.key]: true }))
-          a.path = route({ x: a.x, y: a.y }, drop)
+          a.path = laneRoute(a.key, { x: a.x, y: a.y }, drop)
           a.wait = 1.5
           return
         }
@@ -102,11 +127,13 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
       if (!atSeat) { a.path = back(); a.wait = 4 + Math.random() * 6; return }
       const r = Math.random()
       const to = a.key === 'ceo' ? null : r < 0.18 ? claim(a, SPOTS.coffee) : r < 0.28 ? claim(a, SPOTS.meeting) : null
-      if (to) { a.path = route(seat, to); a.wait = 3 + Math.random() * 5 }
+      if (to) { a.path = laneRoute(a.key, seat, to); a.wait = 3 + Math.random() * 5 }
       else a.wait = 5 + Math.random() * 8
     }
-    const tick = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000)
+    function tick(now: number) {
+      raf = requestAnimationFrame(tick)
+      if (now - last < FRAME_MS - 1) return
+      const dt = Math.min(0.1, (now - last) / 1000)
       last = now
       for (const a of Object.values(agents.current)) {
         if (a.path.length) {
@@ -127,21 +154,21 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
         const moving = a.path.length > 0
         const el = refs.current[a.key]
         if (el) {
-          el.setAttribute('transform', `translate(${a.x.toFixed(1)} ${a.y.toFixed(1)})`)
+          const tf = `translate(${a.x.toFixed(1)} ${a.y.toFixed(1)})`
+          if (tf !== a.drawn) { el.setAttribute('transform', tf); a.drawn = tf } // ⚡ 서 있는 사람은 건드리지 않는다
           if (moving !== a.moving) { el.classList.toggle('ai-walk', moving); a.moving = moving }
           const st = seatOf(a.key)?.seat
           const away = !!st && Math.hypot(a.x - st.x, a.y - st.y) > 2
           if (away !== a.away) { el.classList.toggle('ai-away', away); a.away = away }
         }
       }
-      raf = requestAnimationFrame(tick)
     }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+    start()
+    return () => { stop(); io?.disconnect(); document.removeEventListener('visibilitychange', onVis) }
   }, [reduce])
 
   return (
-    <div className="rounded-[var(--dash-radius,16px)] bg-white p-2 overflow-x-auto">
+    <div ref={boxRef} className="rounded-[var(--dash-radius,16px)] bg-white p-2 overflow-x-auto">
       <style>{`
         @keyframes aiBob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
         @keyframes aiType { 0%,100% { opacity: .25 } 50% { opacity: 1 } }

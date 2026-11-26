@@ -46,6 +46,11 @@ function shortText(v: unknown, max: number): string | null {
   return t ? t.slice(0, max) : null
 }
 
+function titleText(v: unknown): string | null {
+  const t = shortText(v, 80)
+  return t && !t.startsWith('<') ? t : null
+}
+
 export function parseAiSession(body: unknown): AiSessionInput | null {
   if (!body || typeof body !== 'object') return null
   const b = body as Record<string, unknown>
@@ -56,7 +61,8 @@ export function parseAiSession(body: unknown): AiSessionInput | null {
   return {
     session_id: id,
     event: b.event as AiSessionEvent,
-    title: shortText(b.title, 80),
+    // 첫 "질문"이 시스템 알림(<task-notification>… 같은 태그 글)이면 제목으로 쓰지 않는다 — 사람이 쓴 첫 질문을 기다린다.
+    title: titleText(b.title),
     branch,
     summary: shortText(b.summary, 200),
   }
@@ -77,7 +83,7 @@ export async function recordAiSession(DB: D1Database, s: AiSessionInput): Promis
     `INSERT INTO ai_team_sessions (session_id, title, branch, state, last_summary, turns)
      VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(session_id) DO UPDATE SET
-       title = COALESCE(ai_team_sessions.title, excluded.title),
+       title = CASE WHEN ai_team_sessions.title IS NULL OR ai_team_sessions.title LIKE '<%' THEN excluded.title ELSE ai_team_sessions.title END,
        branch = COALESCE(excluded.branch, ai_team_sessions.branch),
        state = excluded.state,
        last_summary = COALESCE(excluded.last_summary, ai_team_sessions.last_summary),
