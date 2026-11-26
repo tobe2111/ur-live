@@ -45,5 +45,6 @@ PR revert.
 전권 위임(2026-11-25)에 따라 세션 실행. 대표 *"이어서 다 고쳐줘."*
 
 ## 반영 커밋
+- ✅ **반영 끝 — 2026-11-26 main 대조 확인**: 6198c8d95
 머지 `6198c8d95`.
 브랜치 `claude/kind-dijkstra-48a07y` (머지 해시는 인계 `docs/handoff/2026-11-25-remaining-flows-audit.md`)

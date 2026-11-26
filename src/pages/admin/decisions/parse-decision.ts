@@ -22,7 +22,8 @@ export interface Decision {
   rollback: string
   decision: string
   applied: string
-  /** 파일 상태가 approved 이고 반영 커밋에 "머지 대기" 가 없으며 해시가 하나라도 있으면 true */
+  /** 파일 상태가 approved 이고 반영 커밋에 "머지 대기"·"⏸ 대기"·"🟡 남은 일" 이 없으며 해시가 하나라도 있으면 true
+   *  (2026-11-26: 대기·남은 일 줄에도 해시가 들어가 "반영 끝" 으로 잘못 세던 것 수리) */
   fullyApplied: boolean
   /** 반영 칸에 '⏸ 대기' 줄이 있으면 true — 구현할 것이 아니라 대표·외부 조치를 기다린다(2026-11-26) */
   waiting: boolean
@@ -63,7 +64,7 @@ export function parseDecision(slug: string, raw: string): Decision {
   const decision = section(text, '결정')
   const applied = section(text, '반영 커밋')
   const fullyApplied =
-    status === 'approved' && !isBlank(applied) && !/머지 대기/.test(applied) && /\b[0-9a-f]{7,40}\b/.test(applied)
+    status === 'approved' && !isBlank(applied) && !/머지 대기|⏸\s*대기|🟡\s*남은 일/.test(applied) && /\b[0-9a-f]{7,40}\b/.test(applied)
   const waiting = status === 'approved' && !fullyApplied && /⏸\s*대기/.test(applied)
   return {
     slug,

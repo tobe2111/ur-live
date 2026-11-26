@@ -38,14 +38,14 @@
 - 묶음 J 머지 `ba595e81b`(PR 2501 — 로그인 2차 + 화면 무게 예산 복구).
   - **라이브 판정(묶음 J)**: 배포 완료 · main 의 **Bundle budget 이 다시 초록**(세 번 빨간불 뒤) · 어드민 토큰으로 `/api/influencer-profile/me` · `/api/hosting/me` → 403 `Required user type: user`(토큰 없으면 401). 폰 4G 실측 3회: 홈 FCP 0.84~1.02초 · LCP 0.94~1.15초 · CLS 0(최근 기록 0.75~1.01 과 같은 범위) · 소개 FCP 0.67~0.69초 · LCP 1.35~1.95초 · CLS 0.002. PIN 주인 확인 · 재설정 뒤 옛 토큰 · 연결 해제 횟수 제한은 매장 로그인이 필요해 라이브에서 못 봤다(시험까지).
   - 라이브 확인(묶음 E·F·I, 읽기만): 어드민 알림함 200(`'all'` 로 적힌 행은 라이브에 아직 0건이라 고친 효과는 판정 못 함) · 쇼핑 결제 문은 비로그인 401 이 먼저라 410 은 못 봄 · 수신거부 1,429 그대로. **셋 다 E3 까지다.**
-- 묶음 K(로그인 3차) — 결재 `docs/decisions/2026-11-25-auth-doors-3.md`. 시험 `auth-doors-3-2026-11-25`(25 · 주입 16).
+- 묶음 K(로그인 3차) — 결재 `docs/decisions/archive/2026-11-25-auth-doors-3.md`. 시험 `auth-doors-3-2026-11-25`(25 · 주입 16).
   - 카카오 로그인 문의 state 확인 · 동의 전용 문 · 손님 전용 경로 여섯 곳 · 직원 이메일 초대 · 어드민 PIN 초기화 · 카카오 연결 버튼 · 셀러 비밀번호 찾기 문 닫음 · 내보낸 직원 이메일 · 탈퇴 차단 조건과 정리 · 되살리기 · 2단계 인증 화면 문구.
   - 시험 도우미 `live-d1` 의 `batch` 를 진짜 D1 처럼 전부 아니면 전무로 바꿨다(종전엔 앞 문장을 남겼다).
-- 묶음 L(알림 2차) — 결재 `docs/decisions/2026-11-25-notify-fixes-2.md`. 시험 `notify-fixes-2-2026-11-25`(15 · 주입 12).
+- 묶음 L(알림 2차) — 결재 `docs/decisions/archive/2026-11-25-notify-fixes-2.md`. 시험 `notify-fixes-2-2026-11-25`(15 · 주입 12).
   - 실패한 알림톡 재시도(`text-notice.ts` `resendFailedAlimtalk` · `retry-alimtalk.ts`) · 만료 환불 손님 알림(`expired-refund-notify.ts`) · "환불 완료" 는 돈이 돌아간 뒤에만 · 환불 알림은 이용권마다 · 매장 알림 수신 번호 여섯 곳 · 만료 알림 중복 · 영수증 메일 문구.
-- 묶음 M(유어애즈 2차) — 결재 `docs/decisions/2026-11-25-ads-suppression-2.md`. 시험 `ads-suppression-2-2026-11-25`(15 · 주입 12).
+- 묶음 M(유어애즈 2차) — 결재 `docs/decisions/archive/2026-11-25-ads-suppression-2.md`. 시험 `ads-suppression-2-2026-11-25`(15 · 주입 12).
   - `influencer-mark-contacted.ts`(주소 단위 · 40개씩) · `contactableExportSql`(내보내기 = 대기열) · `email-suppress-cache.ts`(저장 관문의 차단 주소 거르기) · 카드 주문 결제 상태 잠금 · 차단 기록과 하루 발송 수는 DB 가 더한다.
-- 묶음 N(쇼핑 환불) — 결재 `docs/decisions/2026-11-25-shopping-refund-holes.md`. 시험 `shopping-refund-holes-2026-11-25`(10 · 주입 8).
+- 묶음 N(쇼핑 환불) — 결재 `docs/decisions/archive/2026-11-25-shopping-refund-holes.md`. 시험 `shopping-refund-holes-2026-11-25`(10 · 주입 8).
   - 손님의 금액 지정 부분 환불 차단(`order-self-refund.ts`) · 손님 환불 길의 선물 검사 · 반품 환불의 확인 → 선점 → 지급 · 딜 화면의 "후원" → "사용".
   - **닫힌 길의 나머지는 고치지 않았다**(새 주문이 있어야 생기는 일 · 실결제 확인이 필요한 돈 계산). 쇼핑 탭을 다시 열면 `shopping-rail-closed-2026-11-25` 가 빨간불로 위 표를 가리킨다.
 
