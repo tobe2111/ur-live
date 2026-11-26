@@ -23,6 +23,14 @@ interface Agent { key: string; x: number; y: number; drawn: string; path: Pt[]; 
 const spotKey = (p: Pt) => `${p.x},${p.y}`
 
 const PEOPLE = [{ key: 'ceo', name: '대표', initial: '대' }, ...TEAMS.map(t => ({ key: t.key, name: t.name, initial: t.initial }))]
+/** 🧍 걷는 줄(차선) — 복도·통로에서 같은 길을 걷는 사람이 한 점에 포개지지 않게, 사람마다 정해진 만큼 비켜 걷는다.
+ *  도착점은 그대로(자리·쉬는 자리 정확히). 2026-11-26 대표 "사람이 그리고 겹쳐". */
+const LANE: Record<string, number> = Object.fromEntries(PEOPLE.map((p, i) => [p.key, ((i % 5) - 2) * 7]))
+export function laneRoute(key: string, a: Pt, b: Pt): Pt[] {
+  const o = LANE[key] ?? 0
+  const path = route(a, b)
+  return path.map((q, i) => (i === path.length - 1 ? q : { x: q.x + o, y: q.y + o }))
+}
 const CEO_SEAT = { desk: { x: 870, y: 85 }, seat: { x: 870, y: 120 } }
 // ⚡ 자리 좌표는 고정이라 한 번만 계산한다(그림을 그릴 때마다 방 목록을 뒤지지 않게).
 const SEATS: Record<string, { desk: Pt; seat: Pt } | null> = Object.fromEntries(
@@ -99,7 +107,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
       const seat = seatOf(a.key)?.seat
       if (!seat) return
       const s = statusRef.current[a.key]
-      const back = () => { release(a); return route({ x: a.x, y: a.y }, seat) }
+      const back = () => { release(a); return laneRoute(a.key, { x: a.x, y: a.y }, seat) }
       // 방금 끝낸 일 → 보고서 전달(한 번만)
       const done = s?.lastDone
       if (a.key !== 'ceo' && a.key !== 'ceo-office' && done && done.state === 'done' && !a.delivered.has(done.id)
@@ -109,7 +117,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
           a.delivered.add(done.id)
           a.carrying = true
           setCarry(c => ({ ...c, [a.key]: true }))
-          a.path = route({ x: a.x, y: a.y }, drop)
+          a.path = laneRoute(a.key, { x: a.x, y: a.y }, drop)
           a.wait = 1.5
           return
         }
@@ -119,7 +127,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
       if (!atSeat) { a.path = back(); a.wait = 4 + Math.random() * 6; return }
       const r = Math.random()
       const to = a.key === 'ceo' ? null : r < 0.18 ? claim(a, SPOTS.coffee) : r < 0.28 ? claim(a, SPOTS.meeting) : null
-      if (to) { a.path = route(seat, to); a.wait = 3 + Math.random() * 5 }
+      if (to) { a.path = laneRoute(a.key, seat, to); a.wait = 3 + Math.random() * 5 }
       else a.wait = 5 + Math.random() * 8
     }
     function tick(now: number) {
