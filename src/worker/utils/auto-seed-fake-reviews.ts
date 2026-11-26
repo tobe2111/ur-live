@@ -156,7 +156,7 @@ export async function autoSeedMissingReviews(
      WHERE is_active = 1
        AND (review_count IS NULL OR review_count = 0)
        AND seller_id IS NULL
-       AND (p.slug IS NULL OR p.slug NOT LIKE 'demo-deal-%')
+       AND (p.slug IS NULL OR p.slug NOT LIKE 'demo-%') -- 🛑 2026-11-26: 데모 전 종류(deal·stay·linkshop) 제외 — 데모 리뷰 중단(DEMO_SOCIAL_PROOF_OFF)
        AND NOT EXISTS (SELECT 1 FROM product_reviews r WHERE r.product_id = p.id)
        AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'prelaunch' AND m.value = '1')
      ORDER BY created_at DESC
