@@ -7,6 +7,7 @@ import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import Sheet from '@/pages/user-profile/seller-section/Sheet'
+import { Select } from '@/components/ui/select'
 
 const COUNTRIES: Array<[string, string]> = [
   ['US', '미국'], ['JP', '일본'], ['CN', '중국'], ['TW', '대만'], ['HK', '홍콩'], ['VN', '베트남'], ['TH', '태국'], ['PH', '필리핀'],
@@ -80,10 +81,10 @@ export default function OverseasPayeeSheet({ status, onClose, onChanged }: { sta
           해외에 살면 여기서 받는 곳을 등록해 주세요. 매달 정산일에 유어딜이 해외송금으로 보내요.
           {typeof status?.withholding_pct === 'number' && ` 한국 세법에 따라 ${status.withholding_pct}%를 떼고 보낼 수 있어요.`} 암호화해서 보관해요.
         </p>
-        <select value={COUNTRIES.some(([c]) => c === country) ? country : ''} onChange={(e) => setCountry(e.target.value)} aria-label="거주 나라" className={field}>
+        <Select value={COUNTRIES.some(([c]) => c === country) ? country : ''} onChange={(e) => setCountry(e.target.value)} aria-label="거주 나라" className={field}>
           {COUNTRIES.map(([c, label]) => <option key={c} value={c}>{label}</option>)}
           <option value="">다른 나라(코드 입력)</option>
-        </select>
+        </Select>
         {!COUNTRIES.some(([c]) => c === country) && (
           <input value={country} onChange={(e) => setCountry(e.target.value.replace(/[^a-zA-Z]/g, '').slice(0, 2).toUpperCase())} placeholder="나라 코드 2자리 (예: NZ)" aria-label="나라 코드" className={field} />
         )}
