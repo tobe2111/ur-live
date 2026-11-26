@@ -37,13 +37,13 @@
 결재함은 남는다 — **대표만 답할 수 있는 것**(사업 방향·가격·대외 약속·취향)은 계속 `docs/decisions/` 에 `open` 으로 올린다.
 기록 `docs/decisions/2026-11-25-full-delegation.md` · 가드 `src/tests/unit/full-delegation-2026-11-25.test.ts`.
 
-## 🤖 AI 팀 운영 모델 — 역할 7(판정 6 + 운영 1) · 결재함 1 · 완료 판정 E1~E5 (2026-09-07 대표 확정, 모든 세션 준수)
+## 🤖 AI 팀 운영 모델 — 역할 12(4본부 + 비서실 + 독립 검사, 2026-11-26 개편) · 결재함 1 · 완료 판정 E1~E5 (2026-09-07 대표 확정, 모든 세션 준수)
 
 대표: *"세계 최고의 전문가 담당자(경영·기획·마케팅·디자인·개발·정산) 팀을 빌딩해서 최대한 자동화 운영"* +
 *"미완성·에러·문제가 곳곳에 숨어있었는데도 완성되었다고 판단하는 경우가 많았어."*
 
 **SSOT = `docs/design/ai-team-operating-model.md`.** 세 가지가 파일로 고정돼 있다:
-1. **역할** — `.claude/agents/{ceo-office,planning,marketing,design,dev,finance,ops}.md`. 세션이 어떤 역할로 일하는지는 이 파일의
+1. **역할** — `.claude/agents/{ceo-office,planning,marketing,design,dev,finance,ops,sales,partnerships,support,qa,legal}.md` (조직도 SSOT §3). 세션이 어떤 역할로 일하는지는 이 파일의
    프론트매터(허용 도구·결정권·금지 레일·읽을 SSOT·보고 형식)가 정한다. 채팅에서 즉석으로 역할을 부여하지 않는다.
 2. **결재함** — 대표가 판단할 것은 **`docs/decisions/<날짜>-<슬러그>.md` 로만** 올린다(필수 필드는 `_template.md`).
    handoff·PR·채팅에 "대표 판단 필요" 라고만 적고 끝내는 것 금지. 결정은 대표가 한 말 **그대로** 옮긴다.
