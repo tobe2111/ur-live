@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { formatKSTShort } from '@/utils/date'
 import { alertDialog } from '@/components/ui/confirm-dialog'
+import AdminLayout from '@/components/AdminLayout'
 
 interface OutreachRow {
   id: number; seller_id: number; seller_name: string | null; product_id: number | null; product_name: string | null
@@ -21,7 +22,7 @@ interface Target {
 
 const STATUS_LABEL: Record<string, string> = { submitted: '접수됨', approved: '검토 완료', sent: '발송 완료', rejected: '반려' }
 
-export default function AdminInfluencerOutreachPage() {
+function AdminInfluencerOutreachPageBody() {
   const [rows, setRows] = useState<OutreachRow[]>([])
   const [error, setError] = useState(false)
   const [openId, setOpenId] = useState<number | null>(null)
@@ -151,4 +152,10 @@ export default function AdminInfluencerOutreachPage() {
       </div>
     </div>
   )
+}
+
+// 🧱 2026-11-26 대표 "배경이 어둡네" — 이 화면은 어드민 공통 틀(흰 바탕·왼쪽 메뉴) 밖에 있어서
+//   PC·폰이 다크 모드면 바탕이 검게 나왔다. 틀로 감싼다(가드 admin-pages-in-layout-2026-11-26).
+export default function AdminInfluencerOutreachPage() {
+  return <AdminLayout title="인플루언서 제안 발송 큐"><AdminInfluencerOutreachPageBody /></AdminLayout>
 }

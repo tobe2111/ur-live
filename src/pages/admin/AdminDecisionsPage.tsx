@@ -10,6 +10,7 @@ import MarkdownView from '@/components/MarkdownView'
 import api from '@/lib/api'
 import AnswerBox, { type PendingAnswer } from './decisions/AnswerBox'
 import { parseDecision, sortDecisions, slugFromPath, isDecisionFile, type Decision, type DecisionStatus } from './decisions/parse-decision'
+import AdminLayout from '@/components/AdminLayout'
 
 // ⚠️ repo 의 실제 결재 파일을 빌드 시 인라인. 파일 추가·수정 → 배포 → 자동 반영.
 const RAW = import.meta.glob('../../../docs/decisions/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>
@@ -96,7 +97,7 @@ function DecisionCard({ d, open, onToggle, pending, onSaved }: { d: Decision; op
   )
 }
 
-export default function AdminDecisionsPage() {
+function AdminDecisionsPageBody() {
   const decisions = useMemo(() => {
     const list = Object.entries(RAW)
       .filter(([p]) => isDecisionFile(p))
@@ -145,4 +146,10 @@ export default function AdminDecisionsPage() {
       )}
     </div>
   )
+}
+
+// 🧱 2026-11-26 대표 "배경이 어둡네" — 이 화면은 어드민 공통 틀(흰 바탕·왼쪽 메뉴) 밖에 있어서
+//   PC·폰이 다크 모드면 바탕이 검게 나왔다. 틀로 감싼다(가드 admin-pages-in-layout-2026-11-26).
+export default function AdminDecisionsPage() {
+  return <AdminLayout title="결재함"><AdminDecisionsPageBody /></AdminLayout>
 }

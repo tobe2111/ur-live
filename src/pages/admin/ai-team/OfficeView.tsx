@@ -19,7 +19,8 @@ import { ROOMS, VIEW, DEPT_COLOR, TEAM_DEPT, SPOTS, deskOf, route, type Pt } fro
 const SPEED = 70 // px/초
 const JUST_DONE_MS = 10 * 60 * 1000
 
-interface Agent { key: string; x: number; y: number; path: Pt[]; wait: number; carrying: boolean; delivered: Set<number>; moving: boolean }
+interface Agent { key: string; x: number; y: number; path: Pt[]; wait: number; carrying: boolean; delivered: Set<number>; moving: boolean; away: boolean; spot: string | null }
+const spotKey = (p: Pt) => `${p.x},${p.y}`
 
 const PEOPLE = [{ key: 'ceo', name: '대표', initial: '대' }, ...TEAMS.map(t => ({ key: t.key, name: t.name, initial: t.initial }))]
 const CEO_SEAT = { desk: { x: 870, y: 85 }, seat: { x: 870, y: 120 } }
@@ -57,7 +58,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
   if (Object.keys(agents.current).length === 0) {
     for (const p of PEOPLE) {
       const s = seatOf(p.key)
-      if (s) agents.current[p.key] = { key: p.key, x: s.seat.x, y: s.seat.y, path: [], wait: Math.random() * 4, carrying: false, delivered: new Set(), moving: false }
+      if (s) agents.current[p.key] = { key: p.key, x: s.seat.x, y: s.seat.y, path: [], wait: Math.random() * 4, carrying: false, delivered: new Set(), moving: false, away: false, spot: null }
     }
   }
 
@@ -65,28 +66,43 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
     if (reduce) return
     let raf = 0
     let last = performance.now()
+    // 🧍 2026-11-26 대표 "사람이 그리고 겹쳐" — 쉬는 곳·보고 자리는 한 자리에 한 명. 빈 자리가 없으면 안 간다.
+    const taken = new Map<string, string>()
+    const release = (a: Agent) => { if (a.spot) { taken.delete(a.spot); a.spot = null } }
+    const claim = (a: Agent, list: Pt[]): Pt | null => {
+      const free = list.filter(p => !taken.has(spotKey(p)))
+      if (!free.length) return null
+      const p = pick(free)
+      release(a)
+      a.spot = spotKey(p)
+      taken.set(a.spot, a.key)
+      return p
+    }
     const decide = (a: Agent) => {
       const seat = seatOf(a.key)?.seat
       if (!seat) return
       const s = statusRef.current[a.key]
-      const back = () => route({ x: a.x, y: a.y }, seat)
+      const back = () => { release(a); return route({ x: a.x, y: a.y }, seat) }
       // 방금 끝낸 일 → 보고서 전달(한 번만)
       const done = s?.lastDone
       if (a.key !== 'ceo' && a.key !== 'ceo-office' && done && done.state === 'done' && !a.delivered.has(done.id)
         && Date.now() - parseUTCDate(done.created_at).getTime() < JUST_DONE_MS) {
-        a.delivered.add(done.id)
-        a.carrying = true
-        setCarry(c => ({ ...c, [a.key]: true }))
-        a.path = route({ x: a.x, y: a.y }, SPOTS.secretaryDrop)
-        a.wait = 1.5
-        return
+        const drop = claim(a, SPOTS.secretaryDrop)
+        if (drop) {
+          a.delivered.add(done.id)
+          a.carrying = true
+          setCarry(c => ({ ...c, [a.key]: true }))
+          a.path = route({ x: a.x, y: a.y }, drop)
+          a.wait = 1.5
+          return
+        }
       }
       const atSeat = Math.hypot(a.x - seat.x, a.y - seat.y) < 2
       if (s && ['working', 'failed', 'stuck'].includes(s.state)) { if (!atSeat) a.path = back(); a.wait = 3; return }
       if (!atSeat) { a.path = back(); a.wait = 4 + Math.random() * 6; return }
       const r = Math.random()
-      if (a.key !== 'ceo' && r < 0.18) { a.path = route(seat, pick(SPOTS.coffee)); a.wait = 3 + Math.random() * 4 }
-      else if (a.key !== 'ceo' && r < 0.28) { a.path = route(seat, pick(SPOTS.meeting)); a.wait = 4 + Math.random() * 4 }
+      const to = a.key === 'ceo' ? null : r < 0.18 ? claim(a, SPOTS.coffee) : r < 0.28 ? claim(a, SPOTS.meeting) : null
+      if (to) { a.path = route(seat, to); a.wait = 3 + Math.random() * 5 }
       else a.wait = 5 + Math.random() * 8
     }
     const tick = (now: number) => {
@@ -99,7 +115,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
           const step = SPEED * dt
           if (d <= step) {
             a.x = t.x; a.y = t.y; a.path.shift()
-            if (!a.path.length && a.carrying && Math.hypot(a.x - SPOTS.secretaryDrop.x, a.y - SPOTS.secretaryDrop.y) < 2) {
+            if (!a.path.length && a.carrying && SPOTS.secretaryDrop.some(d => Math.hypot(a.x - d.x, a.y - d.y) < 2)) {
               a.carrying = false
               setCarry(c => ({ ...c, [a.key]: false }))
             }
@@ -113,6 +129,9 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
         if (el) {
           el.setAttribute('transform', `translate(${a.x.toFixed(1)} ${a.y.toFixed(1)})`)
           if (moving !== a.moving) { el.classList.toggle('ai-walk', moving); a.moving = moving }
+          const st = seatOf(a.key)?.seat
+          const away = !!st && Math.hypot(a.x - st.x, a.y - st.y) > 2
+          if (away !== a.away) { el.classList.toggle('ai-away', away); a.away = away }
         }
       }
       raf = requestAnimationFrame(tick)
@@ -128,6 +147,8 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
         @keyframes aiType { 0%,100% { opacity: .25 } 50% { opacity: 1 } }
         .ai-walk .ai-body { animation: aiBob .35s ease-in-out infinite }
         .ai-dot { animation: aiType 1s ease-in-out infinite }
+        .ai-name { display: none }
+        .ai-away .ai-name { display: inline }
         @media (prefers-reduced-motion: reduce) { .ai-walk .ai-body, .ai-dot { animation: none } }
       `}</style>
       <svg viewBox={`0 0 ${VIEW.w} ${VIEW.h}`} className="w-full min-w-[640px] h-auto select-none" role="img" aria-label="AI 팀 사무실">
@@ -146,8 +167,11 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
           const s = seatOf(p.key)
           if (!s) return null
           const n = p.key === 'ceo' ? 0 : tasksOf(p.key).length
+          const sel = selected === p.key
           return (
-            <g key={`desk-${p.key}`}>
+            <g key={`desk-${p.key}`} onClick={() => onSelect(p.key)} style={{ cursor: 'pointer' }}>
+              {sel && <rect x={s.desk.x - 40} y={s.desk.y - 20} width="80" height="78" rx="8" fill="#1C69EF" opacity=".08" />}
+              <text x={s.seat.x} y={s.seat.y + 30} fontSize="11" fontWeight="600" fill="#6B7280" textAnchor="middle">{p.name}</text>
               <rect x={s.desk.x - 34} y={s.desk.y - 14} width="68" height="28" rx="4" fill="#FFFFFF" stroke="#C7CCD6" />
               <rect x={s.desk.x - 12} y={s.desk.y - 10} width="24" height="15" rx="2" fill="#1F2937" />
               {Array.from({ length: Math.min(n, 4) }).map((_, i) => (
@@ -195,7 +219,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
                 <text x="0" y="10" fontSize="9" fontWeight="700" fill="#FFFFFF" textAnchor="middle">{p.initial}</text>
                 {carry[p.key] && <rect x="9" y="-2" width="10" height="13" rx="1" fill="#FFFFFF" stroke="#6B7280" strokeWidth="0.8" />}
               </g>
-              <text x="0" y="30" fontSize="11" fontWeight="600" fill="#374151" textAnchor="middle">{p.name}</text>
+              <g className="ai-name"><rect x={-p.name.length * 6 - 4} y="19" width={p.name.length * 12 + 8} height="15" rx="7" fill="#FFFFFF" opacity=".92" /><text x="0" y="30" fontSize="11" fontWeight="600" fill="#111827" textAnchor="middle">{p.name}</text></g>
               {b && (
                 <g transform="translate(0 -44)">
                   {b.tone === 'work' ? (
@@ -216,9 +240,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
           )
         })}
       </svg>
-      <p className="px-2 pt-1 text-[12px] text-gray-400">
-        사람을 누르면 그 팀 카드가 아래에 열립니다. 일하는 중이면 자리에서 타이핑하고, 일을 끝내면 보고서를 들고 비서실로 갑니다. 책상 위 숫자는 쌓인 일감입니다.
-      </p>
+      <p className="px-2 pt-1 text-[12px] text-gray-400">사람이나 책상을 누르면 오른쪽에 그 팀 카드가 열립니다.</p>
     </div>
   )
 }
