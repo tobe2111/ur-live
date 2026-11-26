@@ -22,7 +22,7 @@
 - 가드: `stay-unify-a-2026-11-03.test.ts` + 재조준 2(`voucher-nav-reachability`·`detail-unify-head-box`)
 
 ## B — 결재 대기
-`docs/decisions/2026-11-03-stay-referral-unify.md`. 숙소 소개 적립을 `?aff`/딜 N% 로 + 숙소 상세 '팔아보기'.
+`docs/decisions/archive/2026-11-03-stay-referral-unify.md`. 숙소 소개 적립을 `?aff`/딜 N% 로 + 숙소 상세 '팔아보기'.
 결제 확정 블록(`payment.routes.ts` ~608, 잠금)을 건드리므로 단독 세션 + staging 실결제.
 
 ## 이번에 틀렸던 판단

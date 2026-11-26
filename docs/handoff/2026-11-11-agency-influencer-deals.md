@@ -1,6 +1,6 @@
 # 2026-11-11 — 에이전시 인플루언서 소개비(총 마케팅 비용 상한 안) · 스위치 OFF
 
-대표 *"계속 진행해"* — 결재 `docs/decisions/2026-11-11-agency-share-auto-split.md` ⑤.
+대표 *"계속 진행해"* — 결재 `docs/decisions/archive/2026-11-11-agency-share-auto-split.md` ⑤.
 
 ## 한 것 (머니 경로 — 게이트 `agency_influencer_deals_enabled` 기본 OFF, 머지돼도 돈 흐름 무변경)
 - SSOT `src/features/agency-console/api/agency-influencer-deals.ts`: 표 `agency_influencer_deals` · `fitsBudget` · `capDealPct` ·

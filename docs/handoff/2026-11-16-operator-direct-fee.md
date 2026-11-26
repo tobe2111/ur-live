@@ -1,6 +1,6 @@
 # 2026-11-16 운영사 영입 매장 = 직접 10%
 
-대표 *"내 유어딜 계정 있지? 그걸로 매장 영입할 때는 그렇게 해줘."* — 결재 `docs/decisions/2026-11-16-operator-recruited-stores-direct.md`.
+대표 *"내 유어딜 계정 있지? 그걸로 매장 영입할 때는 그렇게 해줘."* — 결재 `docs/decisions/archive/2026-11-16-operator-recruited-stores-direct.md`.
 
 ## 한 것
 - `ledger-commission-policy.ts`: `PLATFORM_OPERATOR_USER_IDS=[3]` + `operatorBrokeredAsDirect()` — `channelPlatformRate` 가 중개사=운영사인 중개 매장을 10% 로 판정(요율 판정의 단일 지점).

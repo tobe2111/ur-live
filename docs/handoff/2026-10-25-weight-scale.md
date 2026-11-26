@@ -39,7 +39,7 @@
 - PC 글꼴 블록이 `UrDigits` 로 시작해서 `digits-font` 시험의 정규식이 그쪽에 맞아 **헛돌았다**(주입이 잡음) → 기본 body 규칙을 콕 집도록.
 - smoke A-2 의 `useContext` 실패는 vite dev 첫 방문 재최적화 리로드(배포본엔 없음) — B·D 와 같은 처방을 A-2 에도.
 
-**남은 결정**: `docs/decisions/2026-10-25-stay-qr-checkin.md`(숙소 QR 통일 + 숙소 정산 원장 구멍). 상세 시안 E(이용권·숙소)는 캔버스 Ghiv1iHiF9TB4sUw4R9CZw 에 있고 대표 선택 대기.
+**남은 결정**: `docs/decisions/archive/2026-10-25-stay-qr-checkin.md`(숙소 QR 통일 + 숙소 정산 원장 구멍). 상세 시안 E(이용권·숙소)는 캔버스 Ghiv1iHiF9TB4sUw4R9CZw 에 있고 대표 선택 대기.
 
 ## 3차 (2026-10-25) — 숙소 QR 결재 답 · 통일 제안
 - PR #2007 머지(02dde9d4). 대표 답 "1번" + "숙소랑 이용권 로직 통일하는게 낫지 않아?" 를 결재 문서에 원문 기록.

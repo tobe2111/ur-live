@@ -1,7 +1,7 @@
 # 2026-11-11 — 에이전시 몫 % 자동 확정 (결재 ①)
 
 대표: *"모두가 번거롭지 않게 자동화"* → *"응 그렇게 진행해줘. 사장님이 에이전시에게 직접 주는거 말고 자동 분배"*.
-결재: `docs/decisions/2026-11-11-agency-share-auto-split.md` (approved · ①만 구현, ②③ 대기).
+결재: `docs/decisions/archive/2026-11-11-agency-share-auto-split.md` (approved · ①만 구현, ②③ 대기).
 
 ## 한 것 (돈 이동 0 — 저장만)
 - 새 표 `agency_share_defaults(agency_id PK, pct)` (ensure 안) — 에이전시가 미리 정하는 몫 %.

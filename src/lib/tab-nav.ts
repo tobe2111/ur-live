@@ -1,5 +1,5 @@
 /**
- * 하단 탭 이력 규칙 (2026-11-03 대표 승인 — 결재 `docs/decisions/2026-11-03-back-navigation-locked-files.md` ③).
+ * 하단 탭 이력 규칙 (2026-11-03 대표 승인 — 결재 `docs/decisions/archive/2026-11-03-back-navigation-locked-files.md` ③).
  *
  * 🩸 라이브 실측: 탭을 7번 누르면 폰 뒤로를 7번 눌러야 앱을 나갔다 — 탭마다 이력이 한 칸씩 쌓였다.
  * 쿠팡·당근 앱 방식으로 바꾼다: **어느 탭에서든 뒤로 한 번 → 홈, 한 번 더 → 앱 밖.**

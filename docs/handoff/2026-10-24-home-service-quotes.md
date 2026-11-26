@@ -1,6 +1,6 @@
 # 2026-10-24 — 생활 견적 매칭(숨고식) 신설
 
-결재: `docs/decisions/2026-10-24-home-service-quotes.md` (대표 "좋아 그대로 진행해줘").
+결재: `docs/decisions/archive/2026-10-24-home-service-quotes.md` (대표 "좋아 그대로 진행해줘").
 서비스: **유어딜(소비자)**. 머니 경로: **있음** — 참여권 카드 충전(Toss). 롤백: 게이트 `home_service_quotes_disabled=true` / `git revert`.
 
 ## 무엇이 생겼나
@@ -35,7 +35,7 @@
 - cron 을 `safeCron` 으로 슬롯 블록 안에 걸면 오탐 — 슬롯은 `slotCron('<식>')`, 분은 다른 그룹과 겹치면 안 된다(:25 → :50).
 
 ## 남은 결정/대기
-- 보안 경보: dompurify 3.4.17 · follow-redirects 1.16.1 · undici 7.30.1 로 올렸다. vite·zod 는 대표 '1번 승인' 으로 예외 등록(zod 는 2026-11-07 까지 4 이행 판단) — `docs/decisions/2026-10-24-npm-audit-vite-zod.md`.
+- 보안 경보: dompurify 3.4.17 · follow-redirects 1.16.1 · undici 7.30.1 로 올렸다. vite·zod 는 대표 '1번 승인' 으로 예외 등록(zod 는 2026-11-07 까지 4 이행 판단) — `docs/decisions/archive/2026-10-24-npm-audit-vite-zod.md`.
 - 대표가 '실제 사장님에게 가는 가짜 요청'을 다시 요청했다(2026-10-24). 만들지 않았다. 팀 시뮬레이션 기능은 대표 지시로 지웠다.
 - 대표가 말한 영업 방안 중 **"이사 수요건 있는 척 하면서" 사장님이 비딩하게 하는 것은 만들지 않았다** — 가짜 요청으로 돈을 받으면 기만이다(결재 문서 "하지 않는 것"). 대신 실제 쌓인 요청 수 + 무료 참여권 3장.
 - 참여권 1,000~1,500원 단가는 어드민 `home_service_packages`(JSON)로 조정.

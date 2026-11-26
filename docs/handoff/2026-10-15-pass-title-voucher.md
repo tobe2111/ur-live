@@ -309,7 +309,7 @@ curl -sS -A "$UA" https://urdeal.kr/pass/2919 | grep -o '<title>[^<]*</title>'
 # 🧾 결재 상정 — `?ref=` 배너의 죽은 보너스 약속 (대표 *"`?ref=` 배너 결재 올려줘"*)
 
 위 E4 가 남긴 `0.5% 보너스` **1건**이 그대로 이 결재의 대상이다.
-결재문: **`docs/decisions/2026-10-15-ref-banner-dead-bonus.md`**(안 1~4 + 동반 질문 ⓐⓑⓒ).
+결재문: **`docs/decisions/archive/2026-10-15-ref-banner-dead-bonus.md`**(안 1~4 + 동반 질문 ⓐⓑⓒ).
 
 ## 실측 — 결재문에 담지 않은 코드 경로 전수
 
@@ -377,7 +377,7 @@ audit log 에는 인용이 남아 있어서 아무도 모른다. ⇒ **승인을
 ## 🗑️ `?ref=` 배너 결재 승인 → 수리 (2026-10-15 — PR #1861)
 
 **대표 결재 답 그대로**: ***"0.5% 레퍼럴은 아예 없어."***
-결재문 `docs/decisions/2026-10-15-ref-banner-dead-bonus.md` 를 `approved` 로 닫았다(안 1 + ⓑ).
+결재문 `docs/decisions/archive/2026-10-15-ref-banner-dead-bonus.md` 를 `approved` 로 닫았다(안 1 + ⓑ).
 
 ### 🔑 답을 받고 나서 범위가 넓어졌다 — "배너 하나" 가 아니었다
 

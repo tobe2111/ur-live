@@ -414,7 +414,7 @@ SSOT `src/worker/utils/agency-share-payout.ts` · 적립은 `creditBrokerShare` 
 
 ## 🤝💰 S-AGENCYDEAL — 에이전시 인플루언서 소개비(총 마케팅 비용 상한 안) (2026-11-11)
 
-**S-AGENCYDEAL** — 결재 `docs/decisions/2026-11-11-agency-share-auto-split.md` ⑤(대표 *"응 그걸로 확정하고 진행해줘"* → *"계속 진행해"*).
+**S-AGENCYDEAL** — 결재 `docs/decisions/archive/2026-11-11-agency-share-auto-split.md` ⑤(대표 *"응 그걸로 확정하고 진행해줘"* → *"계속 진행해"*).
 게이트 `platform_settings.agency_influencer_deals_enabled`(기본 없음=꺼짐) · SSOT `src/features/agency-console/api/agency-influencer-deals.ts`
 (`agencyDealPctForSale` — 두 결제 경로 `group-buy.routes.ts`·`helpers.ts` 가 가게 단위 계약보다 먼저 본다) ·
 에이전시 API `/api/agency-console/stores/:id/influencer-deals` · 사장님 API `/api/seller/agency-link/deals`. **켜는 것은 대표 판단.**
@@ -833,7 +833,7 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 ## 🤖 S-AGENT — AI 비서 검색 창구 (2026-10-19)
 
 **S-AGENT** — 대표 *"남은 3가지도 다 해줘"* ②. 찾기 전용(결제·원장 무접촉). 게이트 `agent_search_enabled` 기본 `false` —
-결재 `docs/decisions/2026-10-19-ai-agent-channel.md` 승인 뒤 대표가 켠다.
+결재 `docs/decisions/archive/2026-10-19-ai-agent-channel.md` 승인 뒤 대표가 켠다.
 
 | # | 무엇을 | 기대 |
 |---|---|---|
@@ -881,7 +881,7 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 ## 🏡 S-STAYV — 숙소 = 이용권 통일 (2026-10-25)
 ⚠️ 2026-11-03 대표 *"합쳐줘"* — 게이트(`stay_voucher_unify_enabled`)를 **제거**했다(한 번도 켜진 적 없음). 이제 숙소 결제 확정 때 언제나 지갑 이용권이 생긴다. 아래 항목은 **배포 뒤 첫 숙소 결제**에서 확인한다.
 
-**S-STAYV** — 결재 `docs/decisions/2026-10-25-stay-qr-checkin.md`(대표 "1번" → "숙소를 이용권 방식으로 합치는 안으로 진행하자. 끝까지."). 게이트 `stay_voucher_unify_enabled`(기본 OFF). 코드 SSOT `src/features/group-buy/api/stay-voucher-unify.ts`.
+**S-STAYV** — 결재 `docs/decisions/archive/2026-10-25-stay-qr-checkin.md`(대표 "1번" → "숙소를 이용권 방식으로 합치는 안으로 진행하자. 끝까지."). 게이트 `stay_voucher_unify_enabled`(기본 OFF). 코드 SSOT `src/features/group-buy/api/stay-voucher-unify.ts`.
 
 | # | 절차 | 기대 |
 |---|---|---|
@@ -1014,7 +1014,7 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 
 ## 🧾 S-POPBILL — 매장 수수료 세금계산서 팝빌 즉시 발행 (2026-11-26)
 
-**S-POPBILL** — 결재 `docs/decisions/2026-11-25-fee-vat-exclusive.md`(대표 *"팝빌로 할 것 같아"*). 게이트 `fee_invoice_auto_send`(기본 false) · 서버 `popbill_is_test`(기본 true).
+**S-POPBILL** — 결재 `docs/decisions/archive/2026-11-25-fee-vat-exclusive.md`(대표 *"팝빌로 할 것 같아"*). 게이트 `fee_invoice_auto_send`(기본 false) · 서버 `popbill_is_test`(기본 true).
 1. 팝빌 회원가입(유어딜 사업자) · 연동 신청(LinkID·SecretKey) · 공동인증서 등록 · 포인트 충전(대표) → 어드민 설정 연동 자격 칸에 LinkID·SecretKey 입력
 2. `popbill_is_test = true` 인 채로 `/admin/payouts` 연말 리포트 → 수수료 세금계산서 카드 → [초안 다시 만들기] → [팝빌로 발행] — 실패 사유가 뜨면 `worker/utils/popbill-invoice.ts` `popbillTaxinvoice` 수정
 3. 성공(테스트 서버 표시) → `popbill_is_test = false` → 1장 실제 발행 → 홈택스·매장 이메일에서 확인

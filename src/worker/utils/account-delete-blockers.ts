@@ -1,7 +1,7 @@
 /**
  * 🚪 회원 탈퇴를 막는 것 — 돈·가게가 걸려 있으면 먼저 정리하게 한다 (2026-10-19 대표 결재 *"권장안대로 해줘"*)
  *
- * 결재 `docs/decisions/2026-10-19-account-deletion-assets.md` 안 2. 셀러 탈퇴(`countWithdrawBlockers`)와 같은 원칙이다:
+ * 결재 `docs/decisions/archive/2026-10-19-account-deletion-assets.md` 안 2. 셀러 탈퇴(`countWithdrawBlockers`)와 같은 원칙이다:
  *   **결제한 돈이 묶이거나 가게가 주인 없이 남으면 못 나간다.** 막고 끝내지 않고 무엇을 정리할지 보여 준다.
  *
  * | 막는 것 | 왜 | 정리하는 길 |

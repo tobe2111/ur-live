@@ -79,3 +79,4 @@ platform_settings.influencer_payout_cash_fee_pct   ← 키 자체가 없음(미�
 | 답이 오면 `computeCashPayout` 확정 + 단독 세션 | 세션 |
 
 ## 반영 커밋
+- ⏸ 대기(세무사): 결정 자체가 "세무사 답을 받아 확정". 코드 변경 0. (2026-11-26 main 대조)

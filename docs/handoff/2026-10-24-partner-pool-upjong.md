@@ -229,7 +229,7 @@ cursor(page) 113   ·   totalCount 11,175   ·   numOfRows 100   ⇒ 마지막 �
 숫자가 `0` 일 때 "실패" 와 "할 일이 없음" 은 같은 모양으로 보인다 — 이 레포가 오늘 세 번째로 밟은 클래스다.
 
 ### ④ `npm audit` 게이트가 **모든 PR 을 막고 있다** — 결재함으로 올렸다
-`docs/decisions/2026-10-24-npm-audit-three-majors.md`. 패치로 되는 2건(dompurify 3.4.13→3.4.17 ·
+`docs/decisions/archive/2026-10-24-npm-audit-three-majors.md`. 패치로 되는 2건(dompurify 3.4.13→3.4.17 ·
 follow-redirects)과 **메이저가 필요한 3건**(vite 5→8 · zod 3→4 · undici=wrangler, npm 제안이 **다운그레이드**)을
 분리했다. 이 PR 에서 손대지 않은 이유: 셋 다 빌드·배포 체인이고 그중 유일한 런타임(`zod`)이
 **결제·주문 입력 검증**을 지난다 — "모든 PR 이 막힌 것을 푸는 일" 과 같은 커밋에 둘 수 없다.
@@ -251,7 +251,7 @@ follow-redirects)과 **메이저가 필요한 3건**(vite 5→8 · zod 3→4 · 
 §3 의 "발송 제외 여부" 질문은 닫혔다. **다음 세션이 다시 올리지 말 것.**
 
 ### ② npm audit → 대표가 세션에 위임("3번은 알아서 해줘") → **섞기 실행 완료**
-결재 파일에 결정·근거 기재: `docs/decisions/2026-10-24-npm-audit-three-majors.md`.
+결재 파일에 결정·근거 기재: `docs/decisions/archive/2026-10-24-npm-audit-three-majors.md`.
 
 **결재 본문이 "패치 2건" 이라 썼는데 전수로 재니 7개가 비-메이저로 고쳐졌다.**
 `fixAvailable` 만 보면 안 된다 — `undici` 는 npm 이 *"wrangler 4.35.0(사실상 다운그레이드)"* 라 답하지만

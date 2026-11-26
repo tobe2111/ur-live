@@ -1,7 +1,7 @@
 /**
  * 🏠 생활 견적 — 테이블 · 참여권 원장 · 사장님 매칭 (2026-10-24)
  *
- * 결재: `docs/decisions/2026-10-24-home-service-quotes.md`. 규칙 SSOT: `src/shared/home-service.ts`.
+ * 결재: `docs/decisions/archive/2026-10-24-home-service-quotes.md`. 규칙 SSOT: `src/shared/home-service.ts`.
  *
  * 💸 참여권은 돈이다(카드로 충전한다). 그래서 머니 룰 그대로:
  *  ① 잔액 변경은 원자 증감(`balance = balance ± 1`)과 CAS(`WHERE balance >= 1`)로만 — 절대값 쓰기 금지.

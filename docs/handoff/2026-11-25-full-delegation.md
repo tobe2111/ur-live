@@ -3,7 +3,7 @@
 ## 무엇
 대표 *"이건 모든 세션 다 적용인데 너가 모든 권한을 갖도록 승인할게. 계정을 만들든"* → 범위 질문에 **"전부 맡김, 조건 없음"**.
 `CLAUDE.md` 🔓 절(운영 모델 절 바로 위) · `docs/design/ai-team-operating-model.md` §2 위임 문단 · 결재 기록
-`docs/decisions/2026-11-25-full-delegation.md` · 가드 `src/tests/unit/full-delegation-2026-11-25.test.ts`(4건, 주입 1건 빨간불 확인).
+`docs/decisions/archive/2026-11-25-full-delegation.md` · 가드 `src/tests/unit/full-delegation-2026-11-25.test.ts`(4건, 주입 1건 빨간불 확인).
 
 ## 이어받는 세션의 첫 액션
 없다(규칙 변경이라 이어서 할 일이 없다). C 였던 일을 실행할 때 `CLAUDE.md` 🔓 절의 다섯 가지를 따른다.

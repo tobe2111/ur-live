@@ -17,7 +17,7 @@
 | 첫 화면 CSS 를 커밋하지 않는다 — 추적 파일은 빈 자리표시자, 빌드가 `.build.ts` 로 만들고 플러그인이 번들 때 바꿔 끼움 + 번들 대조 | `scripts/critical-css-plugin.cjs` · `scripts/build-worker.js` · `scripts/generate-critical-css.mjs` · `src/worker/generated/critical-css.ts` |
 | 디자인 시안 표 = 한 줄 파일 하나(`docs/design/index/`, 89개 이관) · 목차는 생성물 | `scripts/generate-design-index.mjs` · `docs/design/README.md` |
 | 이 브랜치 Verify 가 5분+ 돌고 있으면 푸시 직전 멈춰 알림(우회 `PUSH_ANYWAY=1`, 조회 실패·시간 초과는 통과) | `scripts/check-verify-in-flight.mjs` · `scripts/pre-push-gate.mjs` |
-| 머지 대기열 준비: `merge_group` 트리거 + 결재 | `docs/decisions/2026-11-03-merge-queue-org-move.md` |
+| 머지 대기열 준비: `merge_group` 트리거 + 결재 | `docs/decisions/archive/2026-11-03-merge-queue-org-move.md` |
 
 검증: 관련 시험 79파일 1,192건 통과 · 새/재조준 주입 전부 빨간불 확인 · 실제 `npm run build:worker` 에서 첫 화면 CSS 61,428B 번들 확인 ·
 임시 작업공간에서 변경분 25건 → 3조각 12+7+6, 182건 → 2조각 92+90(합 = 변경분).
@@ -31,7 +31,7 @@
 - 루프 조건을 `inChanged(m)` 로 바꿨다가 그 모양을 지키는 기존 시험·주입 둘을 깨뜨렸다 → 원래 줄로 되돌림(뜻이 같으면 모양을 보존).
 
 ## 남은 결정
-- 머지 대기열(조직 이전) — 결재 `docs/decisions/2026-11-03-merge-queue-org-move.md`.
+- 머지 대기열(조직 이전) — 결재 `docs/decisions/archive/2026-11-03-merge-queue-org-move.md`.
 - 번역 6종(각 11회) · `surface-budgets.json`(14회)은 이번에 안 건드렸다 — 번역은 파일을 이름공간별로 쪼개는 큰 변경이라 별도.
 
 ## 2차 (같은 날 · 대표 *"더 개선할 건 없어?"* → *"다 하자"*)
@@ -56,4 +56,4 @@
 - `main.yml` concurrency `cancel-in-progress: false` — 돌던 배포는 끝내고 대기는 최신 하나만(쌓이지도 굶지도 않는다).
   가드 `main-deploy-parallel` ⑤ + 주입 1.
 - 남은 큰 레버: **머지 대기열**(PR 이 main 과 충돌해 조용히 멎는 것 — 오늘 #2155 도 검사 통과 뒤 `dirty` 로 멎었다).
-  결재 `docs/decisions/2026-11-03-merge-queue-org-move.md`(대표 결정: 11/10 재측정 후).
+  결재 `docs/decisions/archive/2026-11-03-merge-queue-org-move.md`(대표 결정: 11/10 재측정 후).

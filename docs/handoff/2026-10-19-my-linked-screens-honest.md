@@ -3,7 +3,7 @@
 대표 *"모두 다 가장 이상적으로 개선해줘 · 탈퇴하면 어떻게 각각 하는게 좋을까?"*
 
 ## 다음 세션의 첫 액션
-1. 결재 `docs/decisions/2026-10-19-account-deletion-assets.md` 답 확인 → 안 2 면 손님 탈퇴 preflight(셀러 탈퇴 `countWithdrawBlockers` 와 같은 모양) 구현.
+1. 결재 `docs/decisions/archive/2026-10-19-account-deletion-assets.md` 답 확인 → 안 2 면 손님 탈퇴 preflight(셀러 탈퇴 `countWithdrawBlockers` 와 같은 모양) 구현.
 2. 배포 후 E4: 로그인 상태로 `urdeal.kr/account/delete-warning` 이 실제 딜 잔액·안 쓴 이용권 장수를 띄우는지,
    `/my-reviews` 의 "리뷰 쓰기" 가 이용권 상세의 리뷰 구역(`#gb-sec-reviews`)으로 내려가는지.
 3. 확인 못 한 것: 만료 자동환불 cron 이 탈퇴 계정의 이용권을 환불하는지(결재 파일 ⚠️).

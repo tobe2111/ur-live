@@ -9,7 +9,7 @@
  *     등록 폼에서 '숙박' 을 누르면 숙소 등록 화면으로 간다 — 그 폼으로는 **객실 없는 숙소**가 만들어졌다.
  *
  * ⚠️ 이 시험이 못 보는 것: 숙소 소개 적립(?aff → 딜 N%)과 '팔아보기' — 그건 머니 경로라 결재 B
- *   (`docs/decisions/2026-11-03-stay-referral-unify.md`)에서 한다. 화면이 실제로 보기 좋은지는 그려서 봐야 한다.
+ *   (`docs/decisions/archive/2026-11-03-stay-referral-unify.md`)에서 한다. 화면이 실제로 보기 좋은지는 그려서 봐야 한다.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'

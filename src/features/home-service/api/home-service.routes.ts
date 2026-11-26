@@ -1,5 +1,5 @@
 /**
- * 🏠 생활 견적 — 손님 쪽 API (2026-10-24 대표 확정, 결재 `docs/decisions/2026-10-24-home-service-quotes.md`)
+ * 🏠 생활 견적 — 손님 쪽 API (2026-10-24 대표 확정, 결재 `docs/decisions/archive/2026-10-24-home-service-quotes.md`)
  *
  *   GET  /api/home-service/config              카테고리·요청서 칸·켜짐 여부(공개)
  *   POST /api/home-service/requests            요청서 접수 → 맞는 사장님에게 알림톡

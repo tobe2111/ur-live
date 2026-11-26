@@ -1,5 +1,5 @@
 /**
- * 🏠 Shell Service Worker — 재방문 손님의 검은 화면을 0초로 (2026-11-09 대표 승인, 결재 docs/decisions/2026-11-09-revisit-instant-shell.md)
+ * 🏠 Shell Service Worker — 재방문 손님의 검은 화면을 0초로 (2026-11-09 대표 승인, 결재 docs/decisions/archive/2026-11-09-revisit-instant-shell.md)
  *
  * ## 무엇을 하나
  *   손님 폰에 **마지막으로 받은 소비자 화면 HTML** 을 저장해 두고, 다음에 같은 주소로 들어오면 서버(한국→LA 연결 1.8초)를

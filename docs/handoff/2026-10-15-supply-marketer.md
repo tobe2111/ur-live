@@ -3,7 +3,7 @@
 대표: *"유어딜 전문 자동 마케터 … 내가 작업을 하지 않아도 되게"* → *"한동안은 매장을 꾸준히 모으는 형태로 가야지. 인플루언서도 모아야하고 양면성 플랫폼이잖아. 가장 이상적으로 진행해줘."*
 
 ## 다음 세션의 첫 액션
-1. 결재 `docs/decisions/2026-10-15-supply-marketer-launch.md` 의 답을 본다. 답이 없으면 아무것도 켜지 말 것(전부 C).
+1. 결재 `docs/decisions/archive/2026-10-15-supply-marketer-launch.md` 의 답을 본다. 답이 없으면 아무것도 켜지 말 것(전부 C).
 2. Q1 "예" 이후: `GET /api/admin/social/accounts` 로 계정 연결 확인 → 다음 날 09:00 KST 뒤 `GET /api/admin/social/posts` 에 `audience` 가 `store`/`creator` 인 초안이 생겼는지 · 하트비트 `cron_hb:ads:social-draft` 확인.
 3. 발행 후: `GET /api/admin/social/funnel` 에 `sns-…` 행이 쌓이는지. 0 이면 먼저 `acquisition_landings` 에 `sns-` 랜딩이 있는지 본다(링크를 안 누른 것 vs 귀속이 깨진 것을 가른다).
 4. Q2 가 "2번"이면 2주 뒤 자동 승인 규칙(숫자 없는 글만 예약 발행) 구현 + 재결재.

@@ -1,7 +1,7 @@
 # [UNLOCK] 결제를 마친 주문이면 결제창이 비킨다 — 2026-11-03
 
 - **바꾼 잠금 파일**: `src/pages/TossWidgetPayPage.tsx`
-- **대표 승인**: 결재 `docs/decisions/2026-11-03-back-navigation-locked-files.md` ② 선택(2026-11-03, 세션 질문 응답 — "② 카드 결제 뒤 뒤로").
+- **대표 승인**: 결재 `docs/decisions/archive/2026-11-03-back-navigation-locked-files.md` ② 선택(2026-11-03, 세션 질문 응답 — "② 카드 결제 뒤 뒤로").
 - **docs 근거**: 결제위젯 `requestPayment` 는 successUrl 로 **문서를 바꿔** 돌아온다(https://docs.tosspayments.com/reference/widget-sdk#requestpayment). 그래서 앞 칸(`/pay/widget`)이 이력에 남고 우리가 지울 수 없다.
 
 ## 증상

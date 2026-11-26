@@ -1,6 +1,6 @@
 /**
  * 💸 2026-11-17 정산행에 이용권을 **한 덩어리로** 묶는다 — 대표 *"모두 다 해줘 가장 이상적이고 영구적으로"*
- *   (결재 `docs/decisions/2026-11-17-traffic-surge-readiness.md` 1번).
+ *   (결재 `docs/decisions/archive/2026-11-17-traffic-surge-readiness.md` 1번).
  *
  * 🩸 무엇이 깨져 있었나(`cron/auto-settlement.ts`): 정산행을 INSERT 한 뒤
  *   `UPDATE vouchers SET settlement_id = ? WHERE id IN (…)` 를 **한 문장**으로 보냈다.

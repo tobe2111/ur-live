@@ -11,7 +11,7 @@
  *   ⑥ 머리줄이 네 모양 — 화면마다 다른 앱처럼 보였다.
  *
  * ⚠️ 이 시험이 **못 보는 것**: 문장이 자연스러운지 · 실제 렌더(`visual-preview` 로 본다) ·
- *   서버 탈퇴 정책 자체가 옳은지(그건 `docs/decisions/2026-10-19-account-deletion-assets.md` — 대표 결재).
+ *   서버 탈퇴 정책 자체가 옳은지(그건 `docs/decisions/archive/2026-10-19-account-deletion-assets.md` — 대표 결재).
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'

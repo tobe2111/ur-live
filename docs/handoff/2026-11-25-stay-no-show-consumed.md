@@ -1,7 +1,7 @@
 # 2026-11-25 날짜 지정 숙소 노쇼 = 이용한 것으로 마감
 
 서비스: 유어딜(숙소 이용권). 머니 경로: **있음**(만료 환불 대상 변경 · 정산 원장). 롤백: revert(만료 환불이 다시 날짜 예약을 잡는다).
-결재: `docs/decisions/2026-11-25-stay-expiry-refund-gaps.md` — 대표 *"날짜 지정 시에 오지 않으면 환불되는게 아니라 소비한 것으로 해야하지 않을까?"*
+결재: `docs/decisions/archive/2026-11-25-stay-expiry-refund-gaps.md` — 대표 *"날짜 지정 시에 오지 않으면 환불되는게 아니라 소비한 것으로 해야하지 않을까?"*
 
 ## 이어받는 세션의 첫 액션
 staging 에서 `docs/STAGING_CHECKLIST.md` **S-STAYNOSHOW** 를 돈다. 판정 쿼리:

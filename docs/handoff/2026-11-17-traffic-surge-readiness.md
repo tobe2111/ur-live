@@ -20,7 +20,7 @@
 2. **공개 배너 조회가 요청마다 CREATE TABLE** — 로그인 손님은 에지 캐시를 비켜 매번 미국 원본 쓰기. 제거.
 3. **5xx 감시가 실패 응답마다 원본 왕복 3번을 기다림** — 장애 때 장애를 키움. `waitUntil` 로.
 
-## 대표 판단이 필요한 것 → `docs/decisions/2026-11-17-traffic-surge-readiness.md`
+## 대표 판단이 필요한 것 → `docs/decisions/archive/2026-11-17-traffic-surge-readiness.md`
 (정산 이중 지급 위험 · 로그인 손님 캐시 비켜감(잠금 파일) · 성능 표본 쓰기 · 요청 제한 장치의 DB 쓰기 · 알림 일괄 발송)
 
 ## 우선순위 낮음 (기록만)
@@ -44,7 +44,7 @@
 - **PR #2405 (머지)** 머니 3건: 정산 100장 이중 지급(`settlement-claim.ts`) · [UNLOCK] /confirm 선점 원자화(결제됐는데 24h 자동취소 경로 · `docs/locks/toss/2026-11-17-confirm-claim-atomic.md` · staging **S-CLAIMATOMIC**) · 지급 금액 fail-open(생성 중단·승인 503·헬퍼 던짐).
 - **PR #2409 (머지)** 결재 2~5: 푸시 줄 `push_jobs` · 민감하지 않은 GET 요청제한 메모리 · 속도 측정 방문 표본 · 홈 섹션·숏폼·배너·브랜드 publicCache.
 - **이 PR** 라이브 rows_read 상위 색인 5종 + 안 바뀐 행 재기록 중단 + 스키마 확인 기억 · 외부 호출 시간 제한 8곳 · 오류 알림 waitUntil · 정산 잔액/소개비 조회 실패 503.
-- **결재로 올림**: `docs/decisions/2026-11-18-log-retention-and-ads-backup-drill.md`(쌓이기만 하는 기록 표 삭제 기간 · 유어애즈 DB 복구 연습).
+- **결재로 올림**: `docs/decisions/archive/2026-11-18-log-retention-and-ads-backup-drill.md`(쌓이기만 하는 기록 표 삭제 기간 · 유어애즈 DB 복구 연습).
 
 ### 이번에 틀렸던 판단 (2026-11-18)
 - 보조 조사가 "공용 캐시로 옮길 숏폼 핸들러가 로그인 정보를 읽는다" 로 잡혔는데 **내 시험의 핸들러 끝 판정이 틀려** 아래 판매자 전용 라우트까지 읽은 오탐이었다 — 끝을 `\n})` 로 고침.

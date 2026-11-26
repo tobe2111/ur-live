@@ -1,6 +1,6 @@
 /**
  * 결제를 마친 주문 표시 — 완료 화면에서 폰 뒤로를 눌러 **이미 쓴 결제창**(`/pay/widget`)으로
- * 돌아가지 않게 한다 (2026-11-03 대표 승인 — 결재 `docs/decisions/2026-11-03-back-navigation-locked-files.md` ②).
+ * 돌아가지 않게 한다 (2026-11-03 대표 승인 — 결재 `docs/decisions/archive/2026-11-03-back-navigation-locked-files.md` ②).
  *
  * 🩸 카드 결제 이력: 상세 → `/pay/widget` → (토스) → 완료 화면. 토스는 문서를 통째로 바꿔 돌아오므로
  *   우리가 앞 칸을 지울 수 없다. 그래서 **결제창이 다시 열릴 때** 스스로 알아보고 비킨다:

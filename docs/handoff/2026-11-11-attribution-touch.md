@@ -1,7 +1,7 @@
 # 2026-11-11 — 결제 귀속 체계화: 소개 링크 우선 + 무엇을 보고 샀나
 
 대표: *"인플루언서 링크를 통해서 들어와선 유어쇼츠를 볼 수도 있잖아. 24시간 내에. 그럼 인플루언서 성과로 안잡히면 안되지.
-이런 케이스들을 체계적으로 잡아줘"* · 결재 기록 `docs/decisions/2026-11-11-attribution-influencer-first.md`.
+이런 케이스들을 체계적으로 잡아줘"* · 결재 기록 `docs/decisions/archive/2026-11-11-attribution-influencer-first.md`.
 서비스: 유어딜(소비자). **머니 경로 접촉: 있음**(소개 귀속 → 매장이 정한 소개비). 롤백은 결재 파일 참조.
 
 ## 규칙 (SSOT `src/worker/utils/order-touch.ts`)
@@ -29,7 +29,7 @@
 
 ## 2026-11-12 후속
 - 대표 *"1번 응응 그렇게 해줘"* — 외부 콘텐츠 주인과는 수익을 나누지 않는다. 판매 수는 제휴 제안 근거로만
-  (`docs/decisions/2026-11-12-creator-content-no-revenue-share.md`).
+  (`docs/decisions/archive/2026-11-12-creator-content-no-revenue-share.md`).
 - 대표 *"2번 응 그렇게 해줘"* — 지도 첫 화면 `/api/consumer-settings` ×2 제거: 공용 `src/lib/consumer-settings.ts`
   (탭당 한 약속)를 서비스 워커(`shell-sw.ts`)와 지도(`useKakaoMap.ts`)가 나눠 쓴다. 가드
   `consumer-settings-once-2026-11-12.test.ts` + 주입 2 · 기존 시험 2건·주입 1건 재조준.

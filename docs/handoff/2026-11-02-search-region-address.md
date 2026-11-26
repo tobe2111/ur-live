@@ -84,7 +84,7 @@
 2. **동결 47종 분류(전수)** — 실제 결함 셋을 찾았다:
    - '내 단골 가게' 늘 빈 목록 + 새 상품 알림 미발송 (seller_follows `notify_new_product`·`notify_live_start` 라이브 부재, 단골 3건) → **고침**(ensure ALTER)
    - 탈퇴 기록 0행 (deleted_accounts `reason` 보강 누락) → **고침**
-   - 부분 환불 내역 0행 (`refund.ts` 가 `amount`, 라이브는 `refund_amount`) → **잠금 파일이라 결재** `docs/decisions/2026-11-02-refund-history-column.md`
+   - 부분 환불 내역 0행 (`refund.ts` 가 `amount`, 라이브는 `refund_amount`) → **잠금 파일이라 결재** `docs/decisions/archive/2026-11-02-refund-history-column.md`
    나머지: 중단 기능(틱톡·경매·라이브·후원 0건·타임딜·위탁 — consignment_partnerships 표 자체가 라이브에 없음) ·
    런타임 ensure 가 첫 사용 때 만드는 컬럼(반품 금액·공급사 payout_ref·벌크업로드·유어애즈) · graceful(`users.terms_agreed_at`).
    ⚠️ 동결 목록은 아직 47 — 위 고침은 **ensure 가 라이브에서 돈 뒤** 주간 대조가 "+" 로 잡으면 사진을 다시 찍어 내린다.

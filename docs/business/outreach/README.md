@@ -103,7 +103,7 @@
 
 ## 4-4. 2026-11-12 — 제안의 근거 숫자: "당신 영상으로 이만큼 팔렸다"
 
-대표 결정(`docs/decisions/2026-11-12-creator-content-no-revenue-share.md`): 우리 화면에 실린 외부 영상·블로그 주인과는
+대표 결정(`docs/decisions/archive/2026-11-12-creator-content-no-revenue-share.md`): 우리 화면에 실린 외부 영상·블로그 주인과는
 **수익을 나누지 않는다.** 대신 그 영상을 보고 산 결제 수를 **제휴 제안의 근거**로 쓴다.
 - 숫자 출처: 어드민 `GET /api/admin/urshorts/attribution?days=30` 의 `top_videos` — 영상별 `n`(결제 수) · `title` · `channel` · `store`.
 - 문안 예: "○○님 영상이 유어딜에 실려 '{가게}' 이용권이 최근 30일 {n}장 팔렸습니다. 가입하시면 다음부터는 링크로 들어온 결제에 소개비가 붙습니다."

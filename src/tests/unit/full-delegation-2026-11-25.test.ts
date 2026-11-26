@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs'
  */
 const claude = readFileSync('CLAUDE.md', 'utf8')
 const model = readFileSync('docs/design/ai-team-operating-model.md', 'utf8')
-const decision = readFileSync('docs/decisions/2026-11-25-full-delegation.md', 'utf8')
+const decision = readFileSync('docs/decisions/archive/2026-11-25-full-delegation.md', 'utf8')
 const section = claude.slice(claude.indexOf('## 🔓 전권 위임'), claude.indexOf('## 🤖 AI 팀 운영 모델'))
 
 describe('전권 위임 (2026-11-25)', () => {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 🧯 분할 백업(R2) 복구 연습 — 2026-11-18 대표 *"1,2 모두 이상적으로 해줘"*
- *   (결재 `docs/decisions/2026-11-18-log-retention-and-ads-backup-drill.md` 3번).
+ *   (결재 `docs/decisions/archive/2026-11-18-log-retention-and-ads-backup-drill.md` 3번).
  *
  * 왜: 유어애즈 리드 DB(1.25GB)·업체 DB(424MB)는 `cron/d1-backup-chunked.ts` 가 R2 에 조각으로 떠 두지만
  *   **한 번도 되살려 본 적이 없었다.** 되살려 본 적 없는 백업은 백업이라고 부르기 어렵다 — 실제로 이걸 만들다가

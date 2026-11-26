@@ -2,6 +2,7 @@
  * 🏢 AI 팀 근무 기록 어드민 API (2026-11-26 대표 "어드민 대시보드에 한 페이지에서")
  *   - GET  /ai-team/activity?limit=  — 최근 근무 기록(어드민 `/admin/ai-team` 이 30초마다 읽는다)
  *   - POST /ai-team/activity         — 팀 루틴이 시작·끝에 한 줄 {team, state, routine?, summary?, grade?, session_url?}
+ *   - GET  /ai-team/tasks?fresh=1      — 규칙으로 찾은 팀별 일감(저장 안 함 · 해결되면 사라짐 · 60초 메모)
  *   adminApp 아래 마운트라 requireAdmin·IP 화이트리스트·감사 미들웨어를 상속한다. 머니 경로 없음.
  */
 import { Hono } from 'hono'
@@ -11,6 +12,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { safeError } from '@/worker/utils/safe-error'
 import { intParam } from '@/shared/pagination'
 import { listAiTeamActivity, parseAiTeamActivity, recordAiTeamActivity } from '@/worker/utils/ai-team-activity'
+import { findAiTeamTasks } from '@/worker/utils/ai-team-tasks'
 
 export const adminAiTeamRoutes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>()
 
@@ -39,3 +41,12 @@ adminAiTeamRoutes.post(
     }
   },
 )
+
+adminAiTeamRoutes.get('/ai-team/tasks', async (c) => {
+  try {
+    const result = await findAiTeamTasks(c.env.DB, { fresh: c.req.query('fresh') === '1' })
+    return c.json({ success: true, ...result })
+  } catch (err) {
+    return safeError(c, err, 'AI 팀 일감을 불러오지 못했습니다', '[admin-ai-team]')
+  }
+})
