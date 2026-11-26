@@ -12,7 +12,7 @@ import { resolve } from 'node:path'
 import { AI_TEAM_KEYS, parseAiTeamActivity } from '@/worker/utils/ai-team-activity'
 import { deriveTeamStatus, WORKING_WINDOW_MS, type ActivityRow } from '@/pages/admin/ai-team/derive'
 import { AI_TEAM_RULES, findAiTeamTasks } from '@/worker/utils/ai-team-tasks'
-import { ROOMS, deskOf, route, AISLE_X, CORRIDOR_Y } from '@/pages/admin/ai-team/office-layout'
+import { ROOMS, deskOf, route, AISLE_X, CORRIDOR_Y, SPOTS } from '@/pages/admin/ai-team/office-layout'
 import { parseAiSession } from '@/worker/utils/ai-team-sessions'
 import { execFileSync } from 'node:child_process'
 
@@ -139,6 +139,19 @@ describe('⑥ 사무실 평면도', () => {
     const same = route(deskOf('planning')!.seat, deskOf('dev')!.seat)
     expect(same.some(q => q.x === AISLE_X)).toBe(false)
     expect(CORRIDOR_Y.length).toBe(2)
+  })
+  it('사람이 겹치지 않는다 — 쉬는 자리끼리, 그리고 남의 의자와 이름표 폭(55) 이상 떨어져 있다 (2026-11-26 대표 "사람이 그리고 겹쳐")', () => {
+    const spots = [...SPOTS.coffee, ...SPOTS.meeting, ...SPOTS.secretaryDrop]
+    const seats = AI_TEAM_KEYS.map(k => deskOf(k)!.seat)
+    for (let i = 0; i < spots.length; i++) {
+      for (let j = i + 1; j < spots.length; j++) {
+        const a = spots[i], b = spots[j]
+        expect(Math.abs(a.y - b.y) > 30 || Math.abs(a.x - b.x) >= 55, `쉬는 자리 ${JSON.stringify(a)}·${JSON.stringify(b)} 겹침`).toBe(true)
+      }
+      for (const st of seats) expect(Math.hypot(spots[i].x - st.x, spots[i].y - st.y) >= 55, `쉬는 자리 ${JSON.stringify(spots[i])} 가 의자와 겹침`).toBe(true)
+    }
+    const src = read('src/pages/admin/ai-team/OfficeView.tsx')
+    expect(src, '한 자리에 한 명(자리 맡기)').toMatch(/taken\.set\(/)
   })
 })
 
