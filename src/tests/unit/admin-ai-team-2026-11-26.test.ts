@@ -185,6 +185,7 @@ describe('⑦ 작업실(세션) 연결', () => {
     expect(out).toBe('')
     const src = read('.claude/hooks/ai-hq-report.sh')
     expect(src).toMatch(/nohup python3 [^\n]*>\/dev\/null 2>&1 <<'PY' &/)
+    expect(src, '일찍 끝날 때도 stdin 을 비운다(EPIPE)').not.toMatch(/\|\| exit 0|&& exit 0|\*\) exit 0/)
   })
   it('API 경로가 있다', () => {
     const r = read('src/features/admin/api/admin-ai-team.routes.ts')
