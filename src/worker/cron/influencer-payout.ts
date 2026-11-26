@@ -113,6 +113,24 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       logError('[cron:influencer-payout] fee vat notice failed', { error: String(e) })
     }
 
+    // 🛰️ 2026-11-26 팝빌로 발행한 세금계산서의 국세청 전송 결과 — 매일(반려 305 면 어드민 알림 1회). 자격 없으면 건너뜀.
+    try {
+      const { resolvePopbillCreds } = await import('../utils/popbill-invoice')
+      const creds = await resolvePopbillCreds(DB, env as unknown as { POPBILL_LINK_ID?: string; POPBILL_SECRET_KEY?: string })
+      if (creds) {
+        const { checkIssuedInvoiceStates } = await import('../utils/fee-tax-invoice')
+        const r = await checkIssuedInvoiceStates(DB, creds)
+        if (r.checked > 0) logInfo(`[cron:influencer-payout] nts_state checked=${r.checked} ok=${r.ok} failed=${r.failed.length}`)
+        if (r.failed.length > 0) {
+          const { createDashboardNotification } = await import('../../features/notifications/api/dashboard-notifications.routes')
+          await createDashboardNotification(DB, 'admin', null, 'fee_invoice_nts_failed', `🛰️ 세금계산서 국세청 전송 실패 ${r.failed.length}장`,
+            r.failed.map((f) => `${f.period} 매장 #${f.sellerId}${f.code ? `(${f.code})` : ''}`).join(' · ') + ' — 팝빌에서 사유 확인 후 재발행', '/admin/payouts')
+        }
+      }
+    } catch (e) {
+      logError('[cron:influencer-payout] nts state check failed', { error: String(e) })
+    }
+
     // 🔎 2026-11-25 토스 입금 대사 — 매일 한 번(3일 전 결제분). 읽기 전용, 불일치면 어드민 알림. SSOT `utils/toss-settlement-recon.ts`.
     try {
       const { runTossSettlementRecon } = await import('../utils/toss-settlement-recon')

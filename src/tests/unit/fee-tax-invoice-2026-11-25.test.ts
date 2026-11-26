@@ -218,3 +218,50 @@ describe('⑥ 팝빌 미리 경고 — 오래 쓰면 조용히 멈추는 곳', (
   })
 })
 
+
+describe('⑦ 달을 넘긴 사용 취소 · 국세청 전송 결과', () => {
+  it('지난달 사용분이 이번 달 취소되면 마이너스로 잡혀 알린다 · 수수료가 없어진 매장의 묵은 초안은 지운다', async () => {
+    const raw = openLiveSchema()
+    const DB = d1(raw)
+    const A = insert(raw, 'sellers', { username: 'neg-a', password_hash: '', name: 'A', email: 'a@example.test', business_name: '가게A', representative_name: '대표A', business_number: '111-11-11111', status: 'approved', seller_type: 'store_owner' })
+    insert(raw, 'platform_settings', { key: 'fee_vat_exclusive_from', value: '2020-01-01' })
+    await recordVoucherUsedLedger(DB, { voucher_id: 41, order_amount: 10000, merchant_id: A, platform_rate: 0.1, seller_rate: 0 })
+    raw.exec("UPDATE ledger_entries SET created_at = datetime('now', '-40 days')") // 사용은 지난달
+    const period = thisMonth()
+    await buildFeeInvoiceDrafts(DB, period)
+    insert(raw, 'fee_tax_invoices', { seller_id: A, period, write_date: `${period}-28`, supply_amount: 1, vat_amount: 0, total_amount: 1, status: 'draft' }) // 묵은 초안
+    await reverseVoucherUsedLedger(DB, 41, 'test') // 취소는 이번 달
+    const r = await buildFeeInvoiceDrafts(DB, period)
+    expect(r.negatives).toEqual([{ sellerId: A, total: -1100 }])
+    expect(q1(raw, 'SELECT COUNT(*) AS n FROM fee_tax_invoices WHERE period = ?', period)).toEqual({ n: 0 })
+    const acc = { month: period, sales: { gmv: 0, n: 0, commission: 0 }, refunds: { refunded: 0 }, payouts: [], wht: { withholding: 0 } } as unknown as MonthlyAccounting
+    expect(monthlyCloseMessage(acc, { n: 0, total: 0 }, { feeInvoices: { drafts: 0, missingBizNo: 0, negatives: 1 } }).message).toMatch(/수정세금계산서/)
+  })
+  it('국세청 전송: 304 는 끝 · 305 는 기록하고 알린다 · 끝난 건은 다시 묻지 않는다', async () => {
+    const { checkIssuedInvoiceStates } = await import('@/worker/utils/fee-tax-invoice')
+    const { ensureFeeInvoiceTable } = await import('@/worker/utils/fee-tax-invoice')
+    const raw = openLiveSchema()
+    const DB = d1(raw)
+    await ensureFeeInvoiceTable(DB)
+    for (const [sid, ref] of [[1, 'UD202701-1'], [2, 'UD202701-2']] as const) {
+      raw.prepare("INSERT INTO fee_tax_invoices (seller_id, period, write_date, status, provider, provider_ref, issued_at) VALUES (?, '2027-01', '2027-01-31', 'issued', 'popbill', ?, datetime('now'))").run(sid, ref)
+    }
+    const asked: string[] = []
+    const fake = (async (url: string) => {
+      if (url.includes('/Token')) return new Response(JSON.stringify({ session_token: 'tok' }), { status: 200 })
+      asked.push(url)
+      return url.endsWith('UD202701-1')
+        ? new Response(JSON.stringify({ stateCode: 304 }), { status: 200 })
+        : new Response(JSON.stringify({ stateCode: 305, ntssendErrCode: 'SVR015' }), { status: 200 })
+    }) as unknown as typeof fetch
+    const creds = { linkId: 'U', secretKey: Buffer.from('k').toString('base64'), isTest: false }
+    const r = await checkIssuedInvoiceStates(DB, creds, fake)
+    expect(r).toMatchObject({ checked: 2, ok: 1, failed: [{ sellerId: 2, code: 'SVR015' }] })
+    expect(asked[0]).toBe('https://popbill.linkhub.co.kr/Taxinvoice/SELL/UD202701-1')
+    expect(q1(raw, "SELECT nts_state, last_error FROM fee_tax_invoices WHERE seller_id = 2")).toMatchObject({ nts_state: '305', last_error: expect.stringMatching(/국세청 전송 실패/) })
+    asked.length = 0
+    expect((await checkIssuedInvoiceStates(DB, creds, fake)).checked).toBe(0)
+    expect(asked).toEqual([])
+    expect(readFileSync('src/worker/cron/influencer-payout.ts', 'utf8')).toMatch(/checkIssuedInvoiceStates\(DB, creds\)/)
+  })
+})
