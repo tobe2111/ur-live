@@ -12,7 +12,7 @@ import { resolve } from 'node:path'
 import { AI_TEAM_KEYS, parseAiTeamActivity } from '@/worker/utils/ai-team-activity'
 import { deriveTeamStatus, WORKING_WINDOW_MS, type ActivityRow } from '@/pages/admin/ai-team/derive'
 import { AI_TEAM_RULES, findAiTeamTasks } from '@/worker/utils/ai-team-tasks'
-import { ROOMS, deskOf, route, AISLE_X, CORRIDOR_Y, SPOTS } from '@/pages/admin/ai-team/office-layout'
+import { ROOMS, deskOf, route, AISLE_X, CORRIDOR_Y, SPOTS, separation, PERSONAL_SPACE } from '@/pages/admin/ai-team/office-layout'
 import { parseAiSession } from '@/worker/utils/ai-team-sessions'
 import { execFileSync } from 'node:child_process'
 
@@ -203,5 +203,26 @@ describe('⑧ 걷는 차선(통로 겹침)', () => {
     expect(p1[p1.length - 1]).toEqual(b)
     expect(p2[p2.length - 1]).toEqual(b)
     expect(JSON.stringify(p1.slice(0, -1))).not.toEqual(JSON.stringify(p2.slice(0, -1)))
+  })
+})
+
+describe('⑨ 비켜 서기(마주쳐도 안 포개짐)', () => {
+  it('같은 점·가까운 두 사람은 보정 뒤 거리가 PERSONAL_SPACE 이상, 앉은 사람은 안 밀린다', () => {
+    const sim = (pts: { x: number; y: number; fixed: boolean }[]) => {
+      let o = pts.map(() => ({ x: 0, y: 0 }))
+      for (let k = 0; k < 40; k++) {
+        const s = separation(pts.map((p, i) => ({ ...p, x: p.x + o[i].x, y: p.y + o[i].y })))
+        o = o.map((v, i) => ({ x: v.x + s[i].x * 0.5, y: v.y + s[i].y * 0.5 }))
+      }
+      return pts.map((p, i) => ({ x: p.x + o[i].x, y: p.y + o[i].y }))
+    }
+    const [a, b] = sim([{ x: 500, y: 300, fixed: false }, { x: 500, y: 300, fixed: false }])
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(PERSONAL_SPACE - 1)
+    const [s0, w] = sim([{ x: 100, y: 100, fixed: true }, { x: 105, y: 100, fixed: false }])
+    expect(s0).toEqual({ x: 100, y: 100 })
+    expect(Math.hypot(w.x - 100, w.y - 100)).toBeGreaterThanOrEqual(PERSONAL_SPACE - 1)
+  })
+  it('사무실이 그 보정을 그릴 때 쓴다', () => {
+    expect(read('src/pages/admin/ai-team/OfficeView.tsx')).toMatch(/a\.x \+ a\.ox/)
   })
 })

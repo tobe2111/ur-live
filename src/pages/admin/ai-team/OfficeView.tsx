@@ -14,12 +14,12 @@ import { parseUTCDate } from '@/utils/date'
 import { TEAMS } from './teams'
 import type { TeamStatus } from './derive'
 import type { AiTeamTask } from './Desk'
-import { ROOMS, VIEW, DEPT_COLOR, TEAM_DEPT, SPOTS, deskOf, route, type Pt } from './office-layout'
+import { ROOMS, VIEW, DEPT_COLOR, TEAM_DEPT, SPOTS, deskOf, route, separation, type Pt } from './office-layout'
 
 const SPEED = 70 // px/초
 const JUST_DONE_MS = 10 * 60 * 1000
 
-interface Agent { key: string; x: number; y: number; drawn: string; path: Pt[]; wait: number; carrying: boolean; delivered: Set<number>; moving: boolean; away: boolean; spot: string | null }
+interface Agent { key: string; x: number; y: number; drawn: string; ox: number; oy: number; path: Pt[]; wait: number; carrying: boolean; delivered: Set<number>; moving: boolean; away: boolean; spot: string | null }
 const spotKey = (p: Pt) => `${p.x},${p.y}`
 
 const PEOPLE = [{ key: 'ceo', name: '대표', initial: '대' }, ...TEAMS.map(t => ({ key: t.key, name: t.name, initial: t.initial }))]
@@ -73,7 +73,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
   if (Object.keys(agents.current).length === 0) {
     for (const p of PEOPLE) {
       const s = seatOf(p.key)
-      if (s) agents.current[p.key] = { key: p.key, x: s.seat.x, y: s.seat.y, drawn: '', path: [], wait: Math.random() * 4, carrying: false, delivered: new Set(), moving: false, away: false, spot: null }
+      if (s) agents.current[p.key] = { key: p.key, x: s.seat.x, y: s.seat.y, drawn: '', ox: 0, oy: 0, path: [], wait: Math.random() * 4, carrying: false, delivered: new Set(), moving: false, away: false, spot: null }
     }
   }
 
@@ -135,7 +135,8 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
       if (now - last < FRAME_MS - 1) return
       const dt = Math.min(0.1, (now - last) / 1000)
       last = now
-      for (const a of Object.values(agents.current)) {
+      const list = Object.values(agents.current)
+      for (const a of list) {
         if (a.path.length) {
           const t = a.path[0]
           const d = Math.hypot(t.x - a.x, t.y - a.y)
@@ -151,10 +152,20 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
           a.wait -= dt
           if (a.wait <= 0) decide(a)
         }
+      }
+      // 🧍 비켜 서기 — 가까운 사람끼리 밀어낸 보정값을 부드럽게 따라간다(자리에 앉은 사람은 그대로).
+      const sep = separation(list.map(a => {
+        const st = seatOf(a.key)?.seat
+        return { x: a.x, y: a.y, fixed: !!st && !a.path.length && Math.hypot(a.x - st.x, a.y - st.y) < 2 }
+      }))
+      for (let i = 0; i < list.length; i++) {
+        const a = list[i]
+        a.ox += (sep[i].x - a.ox) * 0.25
+        a.oy += (sep[i].y - a.oy) * 0.25
         const moving = a.path.length > 0
         const el = refs.current[a.key]
         if (el) {
-          const tf = `translate(${a.x.toFixed(1)} ${a.y.toFixed(1)})`
+          const tf = `translate(${(a.x + a.ox).toFixed(1)} ${(a.y + a.oy).toFixed(1)})`
           if (tf !== a.drawn) { el.setAttribute('transform', tf); a.drawn = tf } // ⚡ 서 있는 사람은 건드리지 않는다
           if (moving !== a.moving) { el.classList.toggle('ai-walk', moving); a.moving = moving }
           const st = seatOf(a.key)?.seat

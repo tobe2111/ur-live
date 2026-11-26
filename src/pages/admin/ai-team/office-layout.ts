@@ -75,3 +75,26 @@ export function route(a: Pt, b: Pt): Pt[] {
   path.push({ x: b.x, y: cb }, b)
   return path
 }
+
+/** 🧍 사람끼리 비켜 서기 (2026-11-26 대표 "사람이 그리고 겹쳐" — 걷는 줄만으로는 통로에서 마주치면 포개졌다).
+ *  가까이(R 안) 있는 두 사람을 서로 반대쪽으로 밀어낸 **그리는 위치 보정값**을 돌려준다(실제 위치·길은 그대로).
+ *  자리에 앉은 사람(fixed)은 밀리지 않고, 걷는·서 있는 사람만 비켜 선다. 이름표(폭 약 55·높이 15)가 안 겹치게 R=34. */
+export const PERSONAL_SPACE = 34
+export function separation(people: { x: number; y: number; fixed: boolean }[], R = PERSONAL_SPACE): Pt[] {
+  const out = people.map(() => ({ x: 0, y: 0 }))
+  for (let i = 0; i < people.length; i++) {
+    for (let j = i + 1; j < people.length; j++) {
+      const a = people[i], b = people[j]
+      let dx = a.x - b.x, dy = a.y - b.y
+      let d = Math.hypot(dx, dy)
+      if (d >= R) continue
+      if (d < 0.01) { dx = i % 2 ? 1 : -1; dy = 0.3; d = Math.hypot(dx, dy) } // 정확히 같은 점이면 좌우로 가른다
+      const push = (R - d) / d
+      const sa = a.fixed ? 0 : b.fixed ? 1 : 0.5
+      const sb = b.fixed ? 0 : a.fixed ? 1 : 0.5
+      out[i].x += dx * push * sa; out[i].y += dy * push * sa
+      out[j].x -= dx * push * sb; out[j].y -= dy * push * sb
+    }
+  }
+  return out
+}
