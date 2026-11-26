@@ -14,8 +14,8 @@ export default [
   {
     name: '[payout-cycle] 계좌 없이 현금 지급 완료로 처리된다',
     file: 'src/features/group-buy/api/marketing/payouts.ts',
-    find: "    if (body.method === 'cash' && !String(balance.bank_account || '').trim()) {",
-    replace: "    if (body.method === 'cash_x' && !String(balance.bank_account || '').trim()) {",
+    find: "    if (body.method === 'cash' && !overseas.registered && !String(balance.bank_account || '').trim()) {",
+    replace: "    if (body.method === 'cash_x' && !overseas.registered && !String(balance.bank_account || '').trim()) {",
     test: T,
     why: '보낼 곳이 없는데 잔액이 0 으로 밀리고 되돌릴 길이 없다.',
   },

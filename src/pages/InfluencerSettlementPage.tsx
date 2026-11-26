@@ -23,6 +23,7 @@ import { SectionTitle, ListPlate, ListRow } from './user-profile/list-grammar'
 import SettleInfoSheet, { TAX_LABEL, type SettleForm } from './influencer-settlement/SettleInfoSheet'
 import DisputeSheet from './influencer-settlement/DisputeSheet'
 import TaxIdSheet from './influencer-settlement/TaxIdSheet'
+import OverseasPayeeSheet, { type OverseasStatus } from './influencer-settlement/OverseasPayeeSheet'
 import ConditionalDealsSection from './influencer-settlement/ConditionalDealsSection'
 import DealsAndCodesSection from './influencer-settlement/DealsAndCodesSection'
 import PublicProfileSection from './influencer-settlement/PublicProfileSection'
@@ -86,7 +87,8 @@ const rowIco = (I: typeof WalletIcon) => <I className="w-[18px] h-[18px]" aria-h
 
 export default function InfluencerSettlementPage() {
   const rank = useMyRank()
-  const [sheet, setSheet] = useState<null | 'info' | 'dispute' | 'taxid'>(null)
+  const [sheet, setSheet] = useState<null | 'info' | 'dispute' | 'taxid' | 'overseas'>(null)
+  const [overseas, setOverseas] = useState<OverseasStatus | null>(null) // 🌍 2026-11-26 해외 거주면 국내 계좌·주민번호 대신
   const [taxIdMasked, setTaxIdMasked] = useState<string | null>(null) // 🪪 2026-11-25 간이지급명세서용 — 등록돼 있으면 앞 7자리
   const [balance, setBalance] = useState<Balance | null>(null)
   // 📅 2026-11-03 대표 *"인플루언서 정산은 월 1회 정해진 날로 묶자"* — 기본 10일(서버 값 우선).
@@ -117,6 +119,9 @@ export default function InfluencerSettlementPage() {
 
   function load() {
     setLoading(true)
+    api.get('/api/influencer-settlement/overseas')
+      .then((r) => { if (r.data?.success) setOverseas(r.data.data as OverseasStatus) })
+      .catch(() => { /* 못 받으면 해외 줄은 '해외에 살면 등록' 으로 둔다 */ })
     api.get('/api/influencer-settlement/tax-id')
       .then((r) => { if (r.data?.success && r.data.data?.registered) setTaxIdMasked(String(r.data.data.masked || '등록됨')) })
       .catch(() => { /* 못 받으면 '세금 신고에 필요' 로 둔다 */ })
@@ -210,7 +215,8 @@ export default function InfluencerSettlementPage() {
           <ListRow icon={rowIco(WalletIcon)} label="받는 방법" hint={payoutHint} onClick={() => setSheet('info')} testId="settle-info-open" />
           <ListRow icon={rowIco(ReceiptIcon)} label="계좌" hint={acct || '등록 필요'} onClick={() => setSheet('info')} />
           <ListRow icon={rowIco(ReceiptIcon)} label="세금" hint={TAX_LABEL[balance?.tax_type === 'other_income' ? 'other_income' : 'business_income']} onClick={() => setSheet('info')} />
-          {!balance?.business_number && <ListRow icon={rowIco(ReceiptIcon)} label="주민등록번호" hint={taxIdMasked ?? '세금 신고에 필요'} onClick={() => setSheet('taxid')} testId="settle-taxid-open" />}
+          <ListRow icon={rowIco(WalletIcon)} label="해외에서 받기" hint={overseas?.registered ? `${overseas.country} · ${overseas.masked}` : '해외에 살면 등록'} onClick={() => setSheet('overseas')} testId="settle-overseas-open" />
+          {!balance?.business_number && !overseas?.registered && <ListRow icon={rowIco(ReceiptIcon)} label="주민등록번호" hint={taxIdMasked ?? '세금 신고에 필요'} onClick={() => setSheet('taxid')} testId="settle-taxid-open" />}
         </ListPlate>
 
         {/* 협업 코드 입력 · 매장별 링크 · 성과 · 제안 수락 — 일거리는 여기서 받는다 */}
@@ -251,6 +257,7 @@ export default function InfluencerSettlementPage() {
         <SettleInfoSheet form={form} setForm={setForm} ownerFunded={ownerFunded} dealBonusPct={dealBonusPct} saving={saving} onSave={save} onClose={() => setSheet(null)} />
       )}
       {sheet === 'dispute' && <DisputeSheet onClose={() => setSheet(null)} />}
+      {sheet === 'overseas' && <OverseasPayeeSheet status={overseas} onClose={() => setSheet(null)} onChanged={setOverseas} />}
       {sheet === 'taxid' && <TaxIdSheet onClose={() => setSheet(null)} onSaved={(m) => setTaxIdMasked(m)} />}
     </div>
   )

@@ -51,3 +51,4 @@
 - 2026-11-17 🪦 **도매 파트너 어드민 역할(`wholesale`) 폐지**(대표 *"응 지워줘"*) — 역할 목록·라벨·도메인 한정 스코프 삭제, `RETIRED_ADMIN_ROLES` 로 로그인·refresh·RBAC 전면 차단(viewer 로 내려앉아 소비자 데이터를 읽는 것을 막음). 라이브 계정 4개는 이미 소프트 삭제. 가드 `admin-roles.test.ts`(주입 확인). [E2]
 - 2026-11-18 🗑️ **셀러 등급제 폐지**(대표 *"셀러 등급제는 아예 없애줘"*) — 등급 cron(매주 `sellers.commission_rate` 덮어쓰기)·어드민 등급 재계산(옛 12/10/8% 표)·`/api/seller-tiers`·`/api/seller/tier`·`/seller/tier` 화면·등급 배지·숙소 등록 등급 한도 삭제. `/about`·사업계획서의 "팔수록 등급 진급 → 수수료 인하" 약속도 뺐다. 가드 `seller-tier-teardown-2026-11-18.test.ts`.
 - 2026-11-25 🔄 **정산 재구성 — 지급대행은 선택**(대표 *"알고보니 지급대행 필수가 아니었어 … 최대한 자동화하자"*) — 승인 가드 SSOT `payout-approve.ts` + 소액 자동 승인(기본 꺼짐) · 월 1일 회계 마감 요약(`monthly-accounting.ts`, 세무사 CSV 와 같은 집계) · 문구에서 "12월부터 지급대행" 제거. [E2]
+- 2026-11-26 🌍 **해외 거주 소득자 레일**(대표 *"응 만들어줘"*) — 받는 곳 `overseas_payees`·지급 기록 `overseas_payouts`(SSOT `worker/utils/overseas-payee.ts`) · 해외 원천징수율 어드민 `overseas_withholding_pct` · 송금은 사람(Wise·은행). 결재 `2026-11-26-overseas-payee.md`

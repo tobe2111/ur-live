@@ -29,7 +29,7 @@ export default function PrivacyPolicyPage() {
       {/* Content */}
       <div className="ur-content-medium px-5 pt-6">
         <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-8">
-          {isKR ? '시행일: 2024년 1월 15일 · 최종 개정: 2026년 11월 25일 | 유어딜 (유어팀)' : 'Effective: January 15, 2024 | YourDeal (UrTeam)'}
+          {isKR ? '시행일: 2024년 1월 15일 · 최종 개정: 2026년 11월 26일 | 유어딜 (유어팀)' : 'Effective: January 15, 2024 | YourDeal (UrTeam)'}
         </p>
 
         {!isKR && (
@@ -216,8 +216,9 @@ export default function PrivacyPolicyPage() {
                   <div className="bg-surface rounded-lg p-4">
                     <h3 className="text-[13px] font-medium text-gray-900 dark:text-white mb-1">⑤ 소개비·에이전시 수수료 지급(개인)</h3>
                     <p>필수항목: 실명, 주민등록번호, 정산 계좌(은행명·계좌번호·예금주)</p>
+                    <p className="mt-1">해외 거주자: 거주 국가, 영문 이름, 받는 곳(해외 은행명·계좌번호 또는 IBAN·SWIFT 코드, 또는 Wise·PayPal 이메일), 받을 통화</p>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">
-                      * 개인에게 소개비·수수료를 지급할 때 소득세를 원천징수하고 국세청에 지급명세서를 제출하기 위해 「소득세법」에 따라 처리합니다(개인정보 보호법 제24조의2). 주민등록번호는 암호화해 보관하며 신고 목적 외에는 쓰지 않습니다.
+                      * 개인에게 소개비·수수료를 지급할 때 소득세를 원천징수하고 국세청에 지급명세서를 제출하기 위해 「소득세법」에 따라 처리합니다(개인정보 보호법 제24조의2). 주민등록번호와 해외 받는 곳은 암호화해 보관하며 지급·신고 목적 외에는 쓰지 않습니다. 해외 송금은 송금 대행 업체(Wise 등)나 은행을 거칩니다.
                     </p>
                   </div>
 

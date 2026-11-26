@@ -166,6 +166,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
     let dealCount = 0
     const missingBank: string[] = []
     const missingTaxId: string[] = []
+    let overseasQueued = 0
 
     for (const inf of toPayout.results || []) {
       // 💎 딜 수령자 — 계좌를 요구하지 않는다.
@@ -182,6 +183,27 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       //   여기서는 계좌 검사를 건너뛰고 **딜 전용 알림**을 넣는다. 실제 적립은 종전대로
       //   어드민의 [송금 처리]가 한다 — 이 cron 은 돈을 옮기지 않는다(현금 경로와 동일한 역할).
       const wantsDeal = inf.payout_method === 'deal'
+      // 🌍 2026-11-26 해외 거주 소개자 — 국내 계좌·주민번호 대신 해외 받는 곳으로 보낸다. 어드민이 Wise·은행 해외송금 뒤
+      //   [완료 처리] 한다(이 cron 은 알림만). 원천징수는 어드민 `overseas_withholding_pct`(세무사 확인 전 기본 22%).
+      if (!wantsDeal) {
+        const { getOverseasPayee } = await import('../utils/overseas-payee')
+        const ov = await getOverseasPayee(DB, 'influencer', String(inf.influencer_id)).catch((e) => { logError('[cron:influencer-payout] overseas lookup failed', { error: String(e) }); return { registered: false } as { registered: boolean; country?: string; masked?: string } })
+        if (ov.registered) {
+          const title = `🌍 해외 송금 대기: ${inf.influencer_id}`
+          const dupOv = await DB.prepare(
+            `SELECT 1 FROM dashboard_notifications WHERE type = 'influencer_payout_pending' AND title = ? AND created_at >= datetime('now', 'start of month') LIMIT 1`
+          ).bind(title).first().catch(() => null)
+          if (!dupOv) {
+            const ovNote = `${inf.available_amount.toLocaleString()}원 · ${ov.country || ''} ${ov.masked || ''} — 해외송금 후 완료 처리`
+            await DB.prepare(
+              `INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
+               VALUES ('admin', 'all', 'influencer_payout_pending', ?, ?, '/admin/influencer-payouts', datetime('now'))`
+            ).bind(title, ovNote).run().catch(swallow('cron:influencer-payout:overseas-notify'))
+            overseasQueued++
+          }
+          continue
+        }
+      }
       if (!wantsDeal && (!inf.bank_name || !inf.bank_account || !inf.account_holder)) {
         // 계좌 정보 누락 → 송금 보류 + alert
         missingBank.push(inf.influencer_id)
@@ -299,7 +321,7 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
       logError('[cron:influencer-payout] store statements failed', { error: String(e) })
     }
 
-    logInfo(`[cron:influencer-payout] statements=${statementsSent} agency_queued=${agencyQueued} transitioned=${transitioned} payouts_queued=${payoutCount} deal_queued=${dealCount} total_net=${payoutTotal} missing_bank=${missingBank.length} missing_tax_id=${missingTaxId.length}`)
+    logInfo(`[cron:influencer-payout] statements=${statementsSent} agency_queued=${agencyQueued} transitioned=${transitioned} payouts_queued=${payoutCount} deal_queued=${dealCount} total_net=${payoutTotal} missing_bank=${missingBank.length} missing_tax_id=${missingTaxId.length} overseas_queued=${overseasQueued}`)
   } catch (e) {
     // 🔔 2026-07-08 (무인운영 감사): 이전엔 삼켜 safeCron 실패 알림에 안 닿았음(성숙 전환/송금대기
     //   집계가 조용히 실패해도 경보 0). 재throw → safeCron → notifyCronFailure(Discord + cron_failures + 벨).
