@@ -90,3 +90,30 @@ export async function loadTaxIdsForStatement(DB: D1Database, kek: string | undef
   }
   return out
 }
+
+/**
+ * 🗑️ 보관기간이 지난 주민등록번호 파기 — 2026-11-26 대표 *"가장 이상적인 형태"*.
+ * 개인정보 보호법 제21조(목적 달성·보관기간 경과 시 지체 없이 파기). 지급명세서 관련 기록은 국세기본법상 5년 보관이라
+ * **마지막 지급(원천징수 기록) 뒤 6년**(신고기한 여유 1년)이 지나고 그동안 다시 등록·수정이 없었던 행만 지운다.
+ * 개인 소개자만 — 에이전시는 지급 장부가 달라 기준 날짜를 확정하지 못해 건드리지 않는다(남기는 쪽이 안전).
+ * 해외 거주자 받는 곳(`overseas_payees`)도 같은 규칙(기준: `overseas_payouts`).
+ */
+export async function purgeExpiredPayeeIds(DB: D1Database, years = 6): Promise<{ taxIds: number; overseas: number }> {
+  await ensureTable(DB)
+  const cutoff = `-${Math.max(5, Math.floor(years))} years`
+  const t = await DB.prepare(`
+    DELETE FROM payee_tax_ids
+     WHERE payee_kind = 'influencer' AND updated_at < datetime('now', ?1)
+       AND NOT EXISTS (SELECT 1 FROM influencer_withholding_log w
+                        WHERE w.influencer_id = payee_tax_ids.payee_id AND w.created_at >= datetime('now', ?1))`,
+  ).bind(cutoff).run().catch(() => null)
+  const { ensureOverseasTables } = await import('./overseas-payee')
+  await ensureOverseasTables(DB)
+  const o = await DB.prepare(`
+    DELETE FROM overseas_payees
+     WHERE payee_kind = 'influencer' AND updated_at < datetime('now', ?1)
+       AND NOT EXISTS (SELECT 1 FROM overseas_payouts p
+                        WHERE p.payee_kind = 'influencer' AND p.payee_id = overseas_payees.payee_id AND p.created_at >= datetime('now', ?1))`,
+  ).bind(cutoff).run().catch(() => null)
+  return { taxIds: Number(t?.meta?.changes ?? 0), overseas: Number(o?.meta?.changes ?? 0) }
+}
