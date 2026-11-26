@@ -92,6 +92,7 @@ import { adminModerationRoutes } from '../features/admin/api/admin-moderation.ro
 import { adminUsersRoutes } from '../features/admin/api/admin-users.routes';
 import { adminMiscRoutes } from '../features/admin/api/admin-misc.routes';
 import { adminDecisionsRoutes } from '../features/admin/api/admin-decisions.routes'; // 📥 2026-09-08 결재함 답
+import { adminAiTeamRoutes } from '../features/admin/api/admin-ai-team.routes'; // 🏢 2026-11-26 AI 팀 근무 기록
 import { adminAbuseRoutes } from '../features/admin/api/admin-abuse.routes';
 import { adminReviewGeneratorRoutes } from '../features/admin/api/admin-review-generator.routes';
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
@@ -1827,6 +1828,7 @@ adminApp.route('/', adminUsersRoutes);
 // 🛡️ 2026-04-22 배치 155 (TD-006 부분): admin-misc (donations/deals/commission/audit) 분리
 adminApp.route('/', adminMiscRoutes);
 adminApp.route('/', adminDecisionsRoutes); // 📥 결재함 답 우편함(/api/admin/decisions/*)
+adminApp.route('/', adminAiTeamRoutes); // 🏢 AI 팀 근무 기록(/api/admin/ai-team/*)
 // 2026-05-05: 어뷰징 탐지 + 광고 슬롯 관리
 adminApp.route('/', adminAbuseRoutes);
 // 🛡️ 2026-04-22 배치 156 (TD-006 부분): admin-review-generator 분리
