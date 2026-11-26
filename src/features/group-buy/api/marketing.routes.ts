@@ -15,8 +15,7 @@ import { intParam } from '@/shared/pagination'
 import { registerDiscoveryRoutes } from './marketing/discovery'
 import { checkStoreInfluencerPct } from '@/worker/utils/broker-share' // 🎯 2026-10-10: 딜 % 검증 SSOT(90 · 매장 상한 · 중개사 몫 합)
 import { registerAdminPayoutRoutes } from './marketing/payouts'
-import { registerCollabCodeRoutes } from './marketing/collab-codes'; import { registerTaxIdRoutes } from './marketing/tax-id' // 🪪 2026-11-25 주민번호(간이지급명세서)
-import { registerOverseasPayeeRoutes } from './marketing/overseas' // 🌍 2026-11-26 해외 거주 소개자
+import { registerCollabCodeRoutes } from './marketing/collab-codes'; import { registerTaxIdRoutes } from './marketing/tax-id'; import { registerOverseasPayeeRoutes } from './marketing/overseas' // 🪪 주민번호(간이지급명세서) · 🌍 해외 거주 소개자
 import { resolveCommissionPayoutDay } from '@/shared/commission-payout-day'
 
 // 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
