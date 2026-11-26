@@ -1,27 +1,10 @@
 /**
  * 🏢 AI 팀 조직도 데이터 (2026-11-26). 조직도 SSOT 는 `docs/design/ai-team-operating-model.md` §3,
- *   역할 정의 SSOT 는 `.claude/agents/<key>.md`. 설명 한 줄은 그 파일의 프론트매터 `description` 을
- *   빌드 때 그대로 읽는다(?raw) — 파일을 고치면 배포마다 화면이 따라온다.
+ *   역할 정의 SSOT 는 `.claude/agents/<key>.md`(팀 목록이 그 폴더와 같은지는 시험이 대조한다).
+ *   ⚠️ 그 파일들을 ?raw 로 통째로 넣지 않는다 — 2026-11-26 넣었더니 전체 JS 예산(gzip 2.27MB)을 넘었다.
+ *      화면은 한 줄 설명(`job`)만 쓰면 된다.
  *   정기 근무(`schedule`)는 지금 켜진 예약 작업 기준이다(KST). 예약 작업을 바꾸면 여기도 바꾼다.
  */
-import ceoOffice from '../../../../.claude/agents/ceo-office.md?raw'
-import sales from '../../../../.claude/agents/sales.md?raw'
-import partnerships from '../../../../.claude/agents/partnerships.md?raw'
-import marketing from '../../../../.claude/agents/marketing.md?raw'
-import support from '../../../../.claude/agents/support.md?raw'
-import ops from '../../../../.claude/agents/ops.md?raw'
-import planning from '../../../../.claude/agents/planning.md?raw'
-import design from '../../../../.claude/agents/design.md?raw'
-import dev from '../../../../.claude/agents/dev.md?raw'
-import qa from '../../../../.claude/agents/qa.md?raw'
-import finance from '../../../../.claude/agents/finance.md?raw'
-import legal from '../../../../.claude/agents/legal.md?raw'
-
-export const AGENT_RAW: Record<string, string> = {
-  'ceo-office': ceoOffice, sales, partnerships, marketing, support, ops,
-  planning, design, dev, qa, finance, legal,
-}
-
 export interface TeamInfo {
   key: string
   name: string
@@ -53,9 +36,3 @@ export const FLOORS: { no: string; name: string; teams: string[] }[] = [
   { no: '1F', name: '경영지원 · 품질·보안실', teams: ['finance', 'legal', 'qa'] },
 ]
 
-/** 프론트매터의 description 한 줄. 없으면 빈 문자열. */
-export function agentDescription(raw: string | undefined): string {
-  const m = raw?.match(/^---\n([\s\S]*?)\n---/)
-  const line = m?.[1].split('\n').find(l => l.startsWith('description:'))
-  return line ? line.slice('description:'.length).trim() : ''
-}

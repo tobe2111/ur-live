@@ -2,13 +2,13 @@
  * 🏢 2026-11-26 (대표 "유어딜 어드민 대시보드에 한 페이지에서 볼 수 있으면 좋겠는데?"):
  *   AI 팀 본사 — 12역할을 층별 조직도로 그리고, 각 팀 루틴이 남긴 근무 기록(/api/admin/ai-team/activity)으로
  *   책상 불빛을 켠다. 30초마다 새로 읽고, 탭이 가려지면 쉰다.
- *   조직도·역할 설명은 레포 파일(빌드 인라인), 근무 상태는 D1. 기록이 없는 팀은 "부르면 출근".
+ *   조직도는 `./ai-team/teams.ts`, 근무 상태는 D1. 기록이 없는 팀은 "부르면 출근".
  */
 import { useEffect, useMemo, useState } from 'react'
 import { Building2, ExternalLink } from 'lucide-react'
 import api from '@/lib/api'
 import { formatKSTShort, relativeFromNow } from '@/utils/date'
-import { AGENT_RAW, FLOORS, TEAMS, agentDescription, type TeamInfo } from './ai-team/teams'
+import { FLOORS, TEAMS, type TeamInfo } from './ai-team/teams'
 import { deriveTeamStatus, STATE_LABEL, type ActivityRow, type TeamState, type TeamStatus } from './ai-team/derive'
 
 const LAMP: Record<TeamState, string> = {
@@ -21,10 +21,9 @@ const CHIP: Record<TeamState, string> = {
 const REFRESH_MS = 30_000
 
 function Desk({ t, s }: { t: TeamInfo; s: TeamStatus }) {
-  const desc = agentDescription(AGENT_RAW[t.key])
   const shown = s.state === 'working' || s.state === 'stuck' ? s.last : s.lastDone
   return (
-    <article className="rounded-xl bg-white p-3 flex flex-col gap-2 min-w-0" title={desc}>
+    <article className="rounded-xl bg-white p-3 flex flex-col gap-2 min-w-0">
       <div className="flex items-center gap-2.5">
         <div className="relative shrink-0 w-10 h-10 rounded-full bg-brand/10 text-brand grid place-items-center text-[14px] font-bold">
           {t.initial}

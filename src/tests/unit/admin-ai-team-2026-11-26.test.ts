@@ -20,10 +20,10 @@ describe('① 같은 12팀', () => {
   it('API 허용 팀 = .claude/agents 파일', () => {
     expect([...AI_TEAM_KEYS].sort()).toEqual(agentFiles)
   })
-  it('화면 TEAMS·FLOORS·raw import 가 12팀을 전부 갖는다', () => {
+  it('화면 TEAMS·FLOORS 가 12팀을 전부 갖고, 역할 파일을 통째로 넣지 않는다(JS 예산)', () => {
     const src = read('src/pages/admin/ai-team/teams.ts')
+    expect(src, '역할 파일 ?raw 인라인은 전체 JS 예산을 넘긴다(2026-11-26 실측)').not.toMatch(/\.claude\/agents\/[\w-]+\.md\?raw/)
     for (const k of agentFiles) {
-      expect(src, `teams.ts 에 ${k}.md import 없음`).toContain(`.claude/agents/${k}.md?raw`)
       expect(src, `TEAMS 에 ${k} 없음`).toContain(`key: '${k}'`)
       expect(src, `FLOORS 에 ${k} 없음`).toMatch(new RegExp(`teams: \\[[^\\]]*'${k}'`))
     }
