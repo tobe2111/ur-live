@@ -153,6 +153,13 @@ describe('⑥ 사무실 평면도', () => {
     const src = read('src/pages/admin/ai-team/OfficeView.tsx')
     expect(src, '한 자리에 한 명(자리 맡기)').toMatch(/taken\.set\(/)
   })
+  it('⚡ 최적화 — 안 보이면 멈추고(화면 밖·탭 가림), 30fps, 서 있는 사람은 다시 그리지 않는다 (2026-11-26 대표 "최적화도 해")', () => {
+    const src = read('src/pages/admin/ai-team/OfficeView.tsx')
+    expect(src).toMatch(/new IntersectionObserver\(/)
+    expect(src).toMatch(/visibilitychange', onVis\)/)
+    expect(src).toMatch(/FRAME_MS = 1000 \/ 30/)
+    expect(src).toMatch(/if \(tf !== a\.drawn\)/)
+  })
 })
 
 describe('⑦ 작업실(세션) 연결', () => {
