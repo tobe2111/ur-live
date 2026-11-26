@@ -51,7 +51,10 @@ describe('① JWE — 토스 문서 규격 + 독립 구현과 상호 운용', ()
     await expect(encryptJwe({}, 'abc')).rejects.toThrow(/64자 hex/)
     const t = await encryptJwe({ v: 1 }, KEY)
     const p = t.split('.')
-    p[3] = p[3].slice(0, -2) + (p[3].endsWith('A') ? 'BB' : 'AA')
+    // 🩸 2026-11-26: 예전엔 끝 두 글자를 바꿨는데, base64url 마지막 글자의 아래 비트는 버려지는 자리라
+    //   가끔(원래 끝에서 둘째 글자가 이미 'A' 일 때) 바이트가 그대로 → 복호화 성공 → 이 시험이 무작위로 빨개져
+    //   main 배포를 막았다(#2523 머지 뒤 실측). 첫 글자는 6비트 모두 쓰이므로 항상 바이트가 바뀐다.
+    p[3] = (p[3][0] === 'A' ? 'B' : 'A') + p[3].slice(1)
     await expect(decryptJwe(p.join('.'), KEY)).rejects.toBeTruthy()
   })
 })
