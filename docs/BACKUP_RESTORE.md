@@ -81,4 +81,4 @@
 - **되살리는 순서**: `schema.sql` → manifest 의 `tables` 순서대로 `{표}.0000.sql` … `{표}.{조각수-1}.sql`. 표별 행 수는 manifest `counts[표][1]` 과 같아야 한다.
 - **자동 연습**: `.github/workflows/d1-restore-drill-ads.yml`(매주 금 07:00 KST) → `scripts/restore-drill-chunked.mjs ads company`.
   빈 SQLite 에 되살려 행 수·`integrity_check` 를 본다. 실패하면 Discord. 첫 실행이 R2 읽기 권한을 확인해 준다(없으면 `R2 읽기 실패 403`).
-- 결재: `docs/decisions/2026-11-18-log-retention-and-ads-backup-drill.md`.
+- 결재: `docs/decisions/archive/2026-11-18-log-retention-and-ads-backup-drill.md`.

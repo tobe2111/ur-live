@@ -8,7 +8,7 @@ import { expiredVoucherSelectSql, expiredVoucherClaimSql } from '@/worker/cron/e
 import { stayCancelRefundRate } from '@/features/group-buy/api/stay-cancel-amount'
 
 /**
- * 🏨 숙박 이용권 '먼저 판매' 기본 — 결재 `docs/decisions/2026-11-24-stay-voucher-buy-first.md` (대표 "추천대로 진행").
+ * 🏨 숙박 이용권 '먼저 판매' 기본 — 결재 `docs/decisions/archive/2026-11-24-stay-voucher-buy-first.md` (대표 "추천대로 진행").
  *
  * 고정하는 것:
  *   Q1 등록 화면의 기본값은 먼저 판매이고, 서버가 더는 `date` 로 덮어쓰지 않는다.

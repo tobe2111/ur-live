@@ -1,7 +1,7 @@
 /**
  * 🧾 수수료 부가세 별도 — 워커 쪽 판단(설정 읽기). 규칙 자체는 `src/shared/fee-vat.ts`.
  *
- * 결재 `docs/decisions/2026-11-25-fee-vat-exclusive.md`. 대표 2026-11-25 *"1번 부가세 별도로 하자"*.
+ * 결재 `docs/decisions/archive/2026-11-25-fee-vat-exclusive.md`. 대표 2026-11-25 *"1번 부가세 별도로 하자"*.
  *
  * 설정을 못 읽으면 **기본 시작일(2027-01-01)** 을 쓴다 — 대표가 정한 규칙이 기본이고, 끄려면
  * `platform_settings.fee_vat_exclusive_from = 'off'` 를 명시해야 한다(조회 실패가 조용히 끄지 않게).

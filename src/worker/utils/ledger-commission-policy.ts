@@ -31,7 +31,7 @@ export async function ownerFundedFor(DB: D1Database, ownerAccount: string): Prom
  * 🏢 **유어딜 운영사(유어팀) 계정** — 2026-11-16 대표 *"내 유어딜 계정 있지? 그걸로 매장 영입할 때는
  *   그렇게 해줘"* (= 운영사가 직접 데려온 매장은 중개 5% 가 아니라 직접 10%).
  *   `users.id = 3` 은 대표 본인 계정이다(CLAUDE.md "대표 본인 계정"). ⚠️ 30("유어팀 (정지원)")과 헷갈리지 말 것.
- *   결재 기록: `docs/decisions/2026-11-16-operator-recruited-stores-direct.md`.
+ *   결재 기록: `docs/decisions/archive/2026-11-16-operator-recruited-stores-direct.md`.
  */
 export const PLATFORM_OPERATOR_USER_IDS: readonly number[] = [3]
 /** 🏢 운영사 **에이전시 계정** — `agency_accounts.id = 1` 은 대표 회사(옛 리스터코퍼레이션 → 현 유어팀, 2026-11-16 대표

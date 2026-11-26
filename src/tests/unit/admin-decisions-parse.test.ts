@@ -54,3 +54,23 @@ describe('admin-decisions parse', () => {
     expect(sorted).toEqual(['open-early', 'open-late', 'wip', 'done'])
   })
 })
+
+// 🗂️ 2026-11-26 대표 "결재함에 있는 것들은 다 구현 중이고 대기 중인거야 실제로? 왜 저렇게 많지?"
+//   실측: "구현 중" 45건 중 34건이 이미 끝났는데 반영 칸을 아무도 안 채워 남아 있었다(그리고 이 페이지가
+//   결재 전문을 빌드에 넣어 사이트에서 가장 무거운 청크 98KB 가 됐다 → 전체 JS 예산을 막았다).
+//   ⚠️ 못 막는 것: 반영 칸을 아예 안 채우는 것(구현 여부는 코드를 봐야 안다 — 당번이 주기적으로 대조한다).
+describe('결재함 정리 — 끝난 결재는 보관함으로', () => {
+  it('"반영 끝" 줄이 있는 결재가 docs/decisions/ 에 남아 있지 않다(archive/ 로 옮길 것)', () => {
+    const stale = files.filter(f => /✅\s*\*\*반영 끝/.test(readFileSync(join(DIR, f), 'utf8')))
+    expect(stale, `보관함으로 옮길 것: ${stale.join(', ')}`).toEqual([])
+  })
+
+  it("반영 칸의 '⏸ 대기' 줄은 '대표·외부 조치 대기' 로 읽힌다(구현 중으로 세지 않는다)", () => {
+    const raw = '# 제목입니다 충분히 길게\n상태: approved\n등급: C\n역할: dev\n기한: 2026-12-01\n\n## 질문\nq\n## 반영 커밋\n- ⏸ 대기(세무사): 답 오면 진행\n'
+    const d = parseDecision('2026-11-26-x', raw)
+    expect(d.waiting).toBe(true)
+    expect(d.fullyApplied).toBe(false)
+    const done = parseDecision('2026-11-26-y', raw.replace('⏸ 대기(세무사): 답 오면 진행', 'abc1234 (#1)'))
+    expect(done.waiting).toBe(false)
+  })
+})

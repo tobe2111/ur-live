@@ -1,5 +1,5 @@
 /**
- * 🤖 AI 비서 검색 창구 (2026-10-19 · 결재 docs/decisions/2026-10-19-ai-agent-channel.md).
+ * 🤖 AI 비서 검색 창구 (2026-10-19 · 결재 docs/decisions/archive/2026-10-19-ai-agent-channel.md).
  *
  * 이 시험이 못 보는 것: 라이브 결과 · AI 비서가 실제로 이 창구를 쓰는지 · 엣지 캐시 동작.
  */

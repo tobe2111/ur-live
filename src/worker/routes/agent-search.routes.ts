@@ -1,5 +1,5 @@
 /**
- * 🤖 GET /api/agent/search — AI 비서 검색 창구 (2026-10-19, 결재 `docs/decisions/2026-10-19-ai-agent-channel.md`).
+ * 🤖 GET /api/agent/search — AI 비서 검색 창구 (2026-10-19, 결재 `docs/decisions/archive/2026-10-19-ai-agent-channel.md`).
  *
  * 입력 정리·응답 모양은 `shared/agent-search.ts`(순수). 여기는 게이트 · 조회 · 캐시만 한다.
  * 🔒 찾기 전용 — 결제·주문·원장 무접촉. 결제는 사람이 `url`(우리 상세)에서 한다.

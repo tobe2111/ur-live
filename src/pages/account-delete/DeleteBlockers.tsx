@@ -1,5 +1,5 @@
 /**
- * 🚪 탈퇴 전에 먼저 정리할 것 (2026-10-19 대표 결재 *"권장안대로 해줘"* — `docs/decisions/2026-10-19-account-deletion-assets.md` 안 2)
+ * 🚪 탈퇴 전에 먼저 정리할 것 (2026-10-19 대표 결재 *"권장안대로 해줘"* — `docs/decisions/archive/2026-10-19-account-deletion-assets.md` 안 2)
  *
  * 숫자는 **서버가 센다**(`GET /api/account/delete-blockers` → `countAccountDeleteBlockers`). 같은 함수가 탈퇴 요청도
  * 막으므로 화면과 서버가 다른 말을 할 수 없다 — 화면이 이용권을 따로 세면 두 숫자가 갈린다(2026-10-07 지갑 사고).

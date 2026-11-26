@@ -43,7 +43,7 @@ on:
   # 🚦 2026-11-03 — 머지 대기열(merge queue)용. 대기열이 "main + 줄 선 PR" 을 합친 상태로 Verify 를 돌리고 통과하면
   #   순서대로 머지한다 — 세션이 main 을 손으로 합칠 일이 없어지고, 합친 결과로 main 이 빨개지는 일이 사라진다.
   #   ⚠️ 대기열은 **조직(organization) 저장소에서만** 켜진다(지금은 개인 계정 저장소라 이 트리거는 아직 안 돈다 — 해가 없다).
-  #   켜는 절차: docs/decisions/2026-11-03-merge-queue-org-move.md
+  #   켜는 절차: docs/decisions/archive/2026-11-03-merge-queue-org-move.md
   merge_group:
 
 concurrency:

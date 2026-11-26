@@ -5,7 +5,7 @@
  *   ⚠️ 템플릿의 필드명·섹션 제목이 바뀌면 여기와 테스트를 같이 고칠 것.
  */
 
-export type DecisionStatus = 'open' | 'approved' | 'rejected' | 'expired' | 'done'
+export type DecisionStatus = 'open' | 'approved' | 'rejected' | 'expired' | 'done' | 'waiting'
 
 export interface Decision {
   slug: string
@@ -24,6 +24,8 @@ export interface Decision {
   applied: string
   /** 파일 상태가 approved 이고 반영 커밋에 "머지 대기" 가 없으며 해시가 하나라도 있으면 true */
   fullyApplied: boolean
+  /** 반영 칸에 '⏸ 대기' 줄이 있으면 true — 구현할 것이 아니라 대표·외부 조치를 기다린다(2026-11-26) */
+  waiting: boolean
 }
 
 const FIELD_RE = /^(상태|등급|역할|올린 날|기한):\s*(.*)$/
@@ -49,7 +51,7 @@ export function parseDecision(slug: string, raw: string): Decision {
     if (m) fields[m[1]] = m[2].trim()
   }
   const statusRaw = (fields['상태'] ?? 'open').toLowerCase()
-  const status: DecisionStatus = (['open', 'approved', 'rejected', 'expired', 'done'] as const).includes(statusRaw as DecisionStatus)
+  const status: DecisionStatus = (['open', 'approved', 'rejected', 'expired', 'done'] as const).includes(statusRaw as 'open')
     ? (statusRaw as DecisionStatus)
     : 'open'
   const optionsBody = section(text, '선택지')
@@ -62,6 +64,7 @@ export function parseDecision(slug: string, raw: string): Decision {
   const applied = section(text, '반영 커밋')
   const fullyApplied =
     status === 'approved' && !isBlank(applied) && !/머지 대기/.test(applied) && /\b[0-9a-f]{7,40}\b/.test(applied)
+  const waiting = status === 'approved' && !fullyApplied && /⏸\s*대기/.test(applied)
   return {
     slug,
     title,
@@ -78,11 +81,12 @@ export function parseDecision(slug: string, raw: string): Decision {
     decision: isBlank(decision) ? '' : decision,
     applied: isBlank(applied) ? '' : applied,
     fullyApplied,
+    waiting,
   }
 }
 
 /** 표시 순서: 대표 답이 필요한 것 → 구현 중 → 끝난 것 → 반려/만료. 같은 묶음 안에서는 기한 이른 순. */
-const ORDER: Record<DecisionStatus, number> = { open: 0, approved: 1, done: 2, rejected: 3, expired: 3 }
+const ORDER: Record<DecisionStatus, number> = { open: 0, waiting: 1, approved: 1, done: 2, rejected: 3, expired: 3 }
 export function sortDecisions(list: Decision[]): Decision[] {
   return [...list].sort((a, b) => {
     const ra = a.fullyApplied ? ORDER.done : ORDER[a.status]

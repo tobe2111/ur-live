@@ -1,5 +1,5 @@
 /**
- * 🏠 생활 견적 — 사장님 쪽 API (2026-10-24, 결재 `docs/decisions/2026-10-24-home-service-quotes.md`)
+ * 🏠 생활 견적 — 사장님 쪽 API (2026-10-24, 결재 `docs/decisions/archive/2026-10-24-home-service-quotes.md`)
  *
  *   GET  /api/home-service/pro/me                 내 등록(카테고리·지역)·참여권 잔액·묶음
  *   PUT  /api/home-service/pro/me                 등록/수정 — 처음이면 무료 참여권 3장 + 보관된 요청 보내기

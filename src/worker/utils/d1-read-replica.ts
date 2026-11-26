@@ -1,6 +1,6 @@
 /**
  * 🌏 D1 읽기 복제본 — 손님 공개 읽기 전용 (2026-10-15 대표 결재 *"응 켜고 코드 작업 진행해줘"*,
- *   결재 파일 `docs/decisions/2026-10-15-d1-read-replication.md`).
+ *   결재 파일 `docs/decisions/archive/2026-10-15-d1-read-replication.md`).
  *
  * 왜: 유어딜 DB 는 미국 동부(ENAM) 한 곳이다. 한국 콜로에서 캐시가 빈 요청은 질의마다 태평양을 왕복한다.
  *   읽기 복제를 켜면 Cloudflare 가 가까운 지역에 읽기 전용 사본을 두는데, **세션 API 로 물어야만** 사본으로 간다

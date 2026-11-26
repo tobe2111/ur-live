@@ -35,7 +35,7 @@
 5. **역할 루틴**(`.claude/agents/*.md`)의 일 범위와 도구는 프론트매터 그대로다 — 상한을 푼 것이지 루틴의 일을 넓힌 것이 아니다.
 
 결재함은 남는다 — **대표만 답할 수 있는 것**(사업 방향·가격·대외 약속·취향)은 계속 `docs/decisions/` 에 `open` 으로 올린다.
-기록 `docs/decisions/2026-11-25-full-delegation.md` · 가드 `src/tests/unit/full-delegation-2026-11-25.test.ts`.
+기록 `docs/decisions/archive/2026-11-25-full-delegation.md` · 가드 `src/tests/unit/full-delegation-2026-11-25.test.ts`.
 
 ## 🤖 AI 팀 운영 모델 — 역할 12(4본부 + 비서실 + 독립 검사, 2026-11-26 개편) · 결재함 1 · 완료 판정 E1~E5 (2026-09-07 대표 확정, 모든 세션 준수)
 

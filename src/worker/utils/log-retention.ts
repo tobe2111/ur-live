@@ -1,6 +1,6 @@
 /**
  * 🗑️ 2026-11-18 쌓이기만 하던 기록 표의 보관 기간 SSOT — 대표 *"1,2 모두 이상적으로 해줘"*
- *   (결재 `docs/decisions/2026-11-18-log-retention-and-ads-backup-drill.md` 1번).
+ *   (결재 `docs/decisions/archive/2026-11-18-log-retention-and-ads-backup-drill.md` 1번).
  *
  * 기간은 "그 표를 **다시 읽는 코드가 보는 가장 먼 과거**" 보다 넉넉하게 잡았다(근거는 각 줄).
  * 매일 04:20 KST 청소(`scheduled-cleanup-daily.ts`)가 돌고, 한 표에서 한 번에 최대 5,000행만 지운다

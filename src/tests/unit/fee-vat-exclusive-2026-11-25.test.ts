@@ -1,6 +1,6 @@
 /**
  * 🧾 수수료 부가세 별도 — 2026-11-25 대표 *"1번 부가세 별도로 하자. 그렇게 구현도 해줘"*
- *   결재 `docs/decisions/2026-11-25-fee-vat-exclusive.md`
+ *   결재 `docs/decisions/archive/2026-11-25-fee-vat-exclusive.md`
  *
  * 고정하는 것:
  *   ① 규칙(순수): 시작일(KST) 이상이면 수수료 × 10% · 비우면 2027-01-01 · `off` 면 끔.

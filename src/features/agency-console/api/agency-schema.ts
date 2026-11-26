@@ -203,7 +203,7 @@ export async function ensureAgencyConsoleTables(DB: D1Database): Promise<void> {
   try { await DB.prepare('CREATE TABLE IF NOT EXISTS agency_share_defaults (agency_id INTEGER PRIMARY KEY, pct REAL NOT NULL, updated_at TEXT NOT NULL DEFAULT (datetime(\'now\')))').run() } catch { /* 표가 막 생기는 중 */ }
   // 💰 2026-11-11 대표 확정 *"응 그걸로 확정하고 진행해줘"* — **총 마케팅 비용 상한**(에이전시 수수료 + 인플루언서 소개비 합계).
   //   에이전시가 초대 때 제안(`agency_budget_defaults`) → 사장님이 [맡기기] 로 동의 → 그 매장의 상한(`agency_budget_terms`).
-  //   사장님은 언제든 바꾼다(지금부터 적용, 이력 보존). 결재 `docs/decisions/2026-11-11-agency-share-auto-split.md`.
+  //   사장님은 언제든 바꾼다(지금부터 적용, 이력 보존). 결재 `docs/decisions/archive/2026-11-11-agency-share-auto-split.md`.
   try { await DB.prepare('CREATE TABLE IF NOT EXISTS agency_budget_defaults (agency_id INTEGER PRIMARY KEY, pct REAL NOT NULL, updated_at TEXT NOT NULL DEFAULT (datetime(\'now\')))').run() } catch { /* 표가 막 생기는 중 */ }
   try { await DB.prepare('CREATE TABLE IF NOT EXISTS agency_budget_terms (id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER NOT NULL, agency_id INTEGER NOT NULL, pct REAL NOT NULL, effective_from TEXT NOT NULL, set_by_user_id INTEGER)').run() } catch { /* 표가 막 생기는 중 */ }
   try { await DB.prepare('CREATE INDEX IF NOT EXISTS idx_agency_budget_terms_pair ON agency_budget_terms(seller_id, agency_id, effective_from)').run() } catch { /* 표가 막 생기는 중 */ }

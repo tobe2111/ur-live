@@ -38,7 +38,7 @@ export const AUDIENCE_LABEL: Record<SocialAudience, string> = {
  *    (`affiliate_program_enabled`)은 **꺼져 있다**(`actor-benefit-map.md` §1). 마케터가 그 페이지로
  *    사람을 보내면 거짓 약속을 확성한다. 대표 결정(같은 날 Q3=A)으로 두 페이지 문구는
  *    "매장이 소개 몫을 건 딜이면" 조건부로 고쳤지만, 신청서가 여전히 가장 정확한 착지다
- *    (`docs/decisions/2026-10-15-supply-marketer-launch.md`).
+ *    (`docs/decisions/archive/2026-10-15-supply-marketer-launch.md`).
  */
 export const AUDIENCE_LANDING: Record<SocialAudience, string> = {
   store: '/partners',

@@ -14,7 +14,7 @@
 - 코드에 정기결제(빌링키) 경로가 **0개**다: `grep -rn "billingKey\|/v1/billing" src` 결과 없음.
 - 대외 약속: 매장은 **가입비·월정액 0** (`docs/business/urdeal-business-plan.md:121,180`). 매장에게 월 요금을 받는 데 쓰면 이 약속과 충돌한다.
 - 공구 서비스(운영자 몰)는 사업설계상 **초기 무료**(`docs/design/operator-mall-saas-gap.md:213,251`).
-- AI 가 손님 카드로 혼자 자동결제하는 것은 하지 않기로 이미 정했다(`docs/decisions/2026-10-19-ai-agent-channel.md:39`).
+- AI 가 손님 카드로 혼자 자동결제하는 것은 하지 않기로 이미 정했다(`docs/decisions/archive/2026-10-19-ai-agent-channel.md:39`).
 
 ## 선택지
 1. **당장은 붙이지 않고 보관** — 장점: 약속과 충돌 없음, 개발 0 / 단점: 계약만 있고 매출 없음 / 머니 접촉 없음

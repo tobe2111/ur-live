@@ -1,5 +1,5 @@
 /**
- * 🏠 Shell SW 등록·해제 (2026-11-09 대표 승인 — 결재 docs/decisions/2026-11-09-revisit-instant-shell.md)
+ * 🏠 Shell SW 등록·해제 (2026-11-09 대표 승인 — 결재 docs/decisions/archive/2026-11-09-revisit-instant-shell.md)
  *
  * 켜지는 조건 **둘 중 하나**:
  *   ① `platform_settings.shell_sw_enabled = 'true'`(`/api/consumer-settings` 가 실어 준다 · 어드민 킬스위치 · **기본 OFF**)

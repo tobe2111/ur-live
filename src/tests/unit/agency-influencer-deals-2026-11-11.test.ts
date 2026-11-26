@@ -1,6 +1,6 @@
 /**
  * 🤝💰 에이전시 소개비 계약 — 총 마케팅 비용 상한 안에서 (2026-11-11 대표 *"응 그걸로 확정하고 진행해줘"* → *"계속 진행해"*)
- *   결재 `docs/decisions/2026-11-11-agency-share-auto-split.md` ⑤ · 진짜 SQLite(node:sqlite)로 잰다.
+ *   결재 `docs/decisions/archive/2026-11-11-agency-share-auto-split.md` ⑤ · 진짜 SQLite(node:sqlite)로 잰다.
  *
  * 지키는 것:
  *  ① 스위치 OFF 면 만들기 403 · 정산 null(= 종전 동작)

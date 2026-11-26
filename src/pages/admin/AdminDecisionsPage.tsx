@@ -17,18 +17,19 @@ const RAW = import.meta.glob('../../../docs/decisions/*.md', { query: '?raw', im
 const GITHUB_DIR = 'https://github.com/tobe2111/ur-live/blob/main/docs/decisions/'
 
 const STATUS_LABEL: Record<DecisionStatus, string> = {
-  open: '답 필요', approved: '승인 · 구현 중', done: '반영 끝', rejected: '반려', expired: '만료',
+  open: '답 필요', approved: '승인 · 구현 중', waiting: '대표·외부 조치 대기', done: '반영 끝', rejected: '반려', expired: '만료',
 }
 const STATUS_CLS: Record<DecisionStatus, string> = {
   open: 'bg-tone-warn-bg text-tone-warn',
   approved: 'bg-tone-info-bg text-tone-info',
+  waiting: 'bg-tone-warn-bg text-tone-warn',
   done: 'bg-gray-100 text-gray-600',
   rejected: 'bg-tone-bad-bg text-tone-bad',
   expired: 'bg-gray-100 text-gray-500',
 }
 
 function effectiveStatus(d: Decision): DecisionStatus {
-  return d.fullyApplied ? 'done' : d.status
+  return d.fullyApplied ? 'done' : d.waiting ? 'waiting' : d.status
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -118,7 +119,8 @@ export default function AdminDecisionsPage() {
   }, [])
 
   const needAnswer = decisions.filter(d => d.status === 'open').length
-  const inProgress = decisions.filter(d => d.status === 'approved' && !d.fullyApplied).length
+  const inProgress = decisions.filter(d => d.status === 'approved' && !d.fullyApplied && !d.waiting).length
+  const waiting = decisions.filter(d => d.waiting).length
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
@@ -127,7 +129,8 @@ export default function AdminDecisionsPage() {
         <h1 className="text-xl font-extrabold text-gray-900">결재함</h1>
       </div>
       <p className="text-[13px] text-gray-500 mb-4">
-        대표가 판단할 것만 올라옵니다. 답 필요 <span className="font-bold text-gray-900">{needAnswer}</span> · 구현 중 <span className="font-bold text-gray-900">{inProgress}</span> · 전체 {decisions.length}.
+        대표가 판단할 것만 올라옵니다. 답 필요 <span className="font-bold text-gray-900">{needAnswer}</span> · 조치 대기 <span className="font-bold text-gray-900">{waiting}</span> · 구현 중 <span className="font-bold text-gray-900">{inProgress}</span> · 전체 {decisions.length}.
+        반영이 끝난 결재는 <a className="text-brand" href="https://github.com/tobe2111/ur-live/tree/main/docs/decisions/archive" target="_blank" rel="noopener noreferrer">보관함</a>으로 옮긴다(이 화면 무게를 줄이려고 — 2026-11-26).
         카드에서 번호를 누르거나 한 줄을 적으면 답이 저장되고, 4시간 안에 결재 파일에 반영돼 구현이 시작됩니다. 결재 내용은 코드(<code className="px-1 rounded bg-gray-100 text-[0.85em]">docs/decisions/*.md</code>)와 연동돼 배포 시 자동 최신화됩니다.
       </p>
 
