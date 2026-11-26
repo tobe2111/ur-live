@@ -87,3 +87,22 @@ describe('⑤ 에이전시 · 처리방침', () => {
     expect(p).toMatch(/원천징수·지급명세서 관련 기록\(실명·주민등록번호 포함\): 5년/)
   })
 })
+
+describe('⑤ 보관기간 지난 주민번호 파기 (2026-11-26)', () => {
+  it('마지막 지급 뒤 6년 지난 개인 소개자만 지운다 · 최근 지급이 있거나 최근 등록이면 남긴다 · 에이전시는 안 건드린다', async () => {
+    const { purgeExpiredPayeeIds } = await import('@/worker/utils/payee-tax-id')
+    const raw = openLiveSchema()
+    const DB = d1(raw)
+    for (const id of ['old', 'recentpay', 'fresh']) await saveTaxId(DB, KEK, 'influencer', id, '홍길동', '900101-1234567')
+    await saveTaxId(DB, KEK, 'agency', 'oldagency', '김대표', '900101-1234567')
+    raw.exec("UPDATE payee_tax_ids SET updated_at = datetime('now', '-7 years') WHERE payee_id IN ('old', 'recentpay', 'oldagency')")
+    raw.exec(`CREATE TABLE IF NOT EXISTS influencer_withholding_log (id INTEGER PRIMARY KEY AUTOINCREMENT, influencer_id TEXT NOT NULL, payout_year INTEGER NOT NULL, payout_month INTEGER NOT NULL, gross_amount INTEGER NOT NULL, withholding_rate REAL NOT NULL, withholding_amount INTEGER NOT NULL, net_amount INTEGER NOT NULL, source_id TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')))`)
+    raw.exec("INSERT INTO influencer_withholding_log (influencer_id, payout_year, payout_month, gross_amount, withholding_rate, withholding_amount, net_amount, source_id) VALUES ('recentpay', 2026, 11, 100000, 0.033, 3300, 96700, 's1')")
+    const r = await purgeExpiredPayeeIds(DB)
+    expect(r.taxIds).toBe(1)
+    const left = (raw.prepare('SELECT payee_id FROM payee_tax_ids ORDER BY payee_id').all() as Array<{ payee_id: string }>).map((x) => x.payee_id)
+    expect(left).toEqual(['fresh', 'oldagency', 'recentpay'])
+    expect(read('src/worker/utils/monthly-accounting.ts')).toMatch(/purgeExpiredPayeeIds\(DB\)/)
+    expect(read('src/pages/PrivacyPolicyPage.tsx')).toMatch(/팝빌\(주식회사 링크허브\)/)
+  })
+})

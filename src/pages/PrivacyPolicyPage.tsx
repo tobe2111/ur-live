@@ -258,6 +258,12 @@ export default function PrivacyPolicyPage() {
                     <p>위탁기간: 회원 탈퇴 시 또는 위탁계약 종료 시</p>
                   </div>
 
+                  <div className="bg-surface rounded-lg p-4">
+                    <p className="font-medium text-gray-900 dark:text-white">팝빌(주식회사 링크허브)</p>
+                    <p>위탁업무: 매장 수수료 전자세금계산서 발행·국세청 전송(상호·대표자명·사업자번호·이메일·주소)</p>
+                    <p>위탁기간: 위탁계약 종료 시(발행된 세금계산서는 관계 법령에 따른 기간 보관)</p>
+                  </div>
+
                   <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
                     <p className="font-medium text-gray-900 dark:text-white">Cloudflare</p>
                     <p>위탁업무: 클라우드 인프라 제공</p>

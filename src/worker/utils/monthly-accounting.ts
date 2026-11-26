@@ -204,6 +204,12 @@ export async function sendMonthlyCloseSummary(DB: D1Database, nowMs: number = Da
     const [sy, sm] = month.split('-').map(Number)
     extras.simplified = { payees: rows.length, missingId: rows.filter((r) => !r.name).length, due: new Date(Date.UTC(sy, sm + 1, 0)).toISOString().slice(0, 10) }
   } catch (e) { console.error('[monthly-close] simplified statement failed', e) }
+  // 🗑️ 보관기간(마지막 지급 뒤 6년)이 지난 개인 주민번호·해외 받는 곳 파기 — 매월 한 번.
+  try {
+    const { purgeExpiredPayeeIds } = await import('./payee-tax-id')
+    const p = await purgeExpiredPayeeIds(DB)
+    if (p.taxIds + p.overseas > 0) console.log(`[monthly-close] purged tax_ids=${p.taxIds} overseas=${p.overseas}`)
+  } catch (e) { console.error('[monthly-close] purge failed', e) }
   const thisMonth = new Date(nowMs + 9 * 3600_000).getUTCMonth() + 1
   if ([1, 4, 7, 10].includes(thisMonth)) {
     const { previousKstQuarter, quarterInfo } = await import('./sales-agency-report')
