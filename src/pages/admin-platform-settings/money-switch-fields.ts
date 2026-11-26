@@ -24,6 +24,8 @@ export type MoneySwitchField = {
   default: string
   options?: Array<{ value: string; label: string }>
   hint?: string
+  /** 숫자가 아닌 칸(날짜 등) — 있으면 저장 전 숫자 검사 대신 이 형식을 본다(2026-11-26: 날짜 칸이 "숫자만" 으로 막혀 페이지 저장이 통째로 안 됐다). */
+  pattern?: { re: RegExp; message: string }
 }
 
 // 💸 2026-07-04 [INV-CB] 커미션 예산 아비터 스위치 (docs/design/commission-funding-restructure.md).
@@ -154,6 +156,7 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
   // 🧾 2026-11-25 대표 *"1번 부가세 별도로 하자"* — 플랫폼 수수료 부가세 별도(수수료 × 10% 를 매장 몫에서 함께 뗀다).
   {
     key: 'fee_vat_exclusive_from', label: '수수료 부가세 별도 시작일 (KST)', default: '2027-01-01',
+    pattern: { re: /^(\d{4}-\d{2}-\d{2}|off)?$/i, message: 'YYYY-MM-DD 날짜 또는 off 만 쓸 수 있어요' },
     hint: '🔴 머니 경로. 이 날짜(YYYY-MM-DD, 한국시간) 이후 사용분부터 매장 몫에서 수수료의 10% 를 부가세로 함께 떼어 부가세 예수금(platform:vat_payable)에 쌓는다. 비우면 2027-01-01 · off = 적용 안 함. 결재 2026-11-25-fee-vat-exclusive.md',
   },
   // 🤝 2026-11-01 결재 `2026-10-11-agency-model-email-only.md` 3단계 — 에이전시 몫을 유어딜이 걷어 지급.
