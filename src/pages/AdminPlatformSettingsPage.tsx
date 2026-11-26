@@ -449,6 +449,7 @@ export default function AdminPlatformSettingsPage() {
                   <input
                     value={settings[f.key] ?? ''}
                     placeholder="미설정"
+                    autoComplete="off" name={`ops-${f.key}`} // 브라우저가 로그인 아이디를 여기 채우지 않게(2026-11-26)
                     onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
                     className={settingControlCls(f.text ? 'sm:w-56' : 'sm:w-28', f.text ? '' : 'text-right')}
                   />

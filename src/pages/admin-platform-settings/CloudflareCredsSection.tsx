@@ -57,7 +57,10 @@ export default function CloudflareCredsSection({ settings, setSettings, savedTic
                 </div>
               ) : (
                 <input
-                  type="password" autoComplete="off" placeholder="붙여넣기"
+                  // 🩸 2026-11-26 — `autoComplete="off"` 는 비밀번호 칸에서 크롬이 무시한다. 저장된 로그인 정보를 채우면서
+                  //   **앞쪽 글자 칸(8월 flip 파일럿 매장)에 아이디(이메일)를 넣어** 저장이 "양의 정수 CSV" 로 막혔다(대표 신고).
+                  //   `new-password` 는 "새 값을 만드는 칸" 이라 자동 채움을 하지 않는다.
+                  type="password" autoComplete="new-password" name={`cred-${f.key}`} placeholder="붙여넣기"
                   value={settings[f.key] ?? ''}
                   onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
                   className="w-full sm:w-64 sm:shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
