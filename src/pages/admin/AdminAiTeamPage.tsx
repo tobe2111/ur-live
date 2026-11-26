@@ -84,7 +84,7 @@ export default function AdminAiTeamPage() {
           </div>
           <p className="text-[13px] text-gray-500">팀 12개가 일을 시작하고 끝낼 때마다 기록이 남고, 서버가 찾은 일감이 담당 팀 책상에 쌓입니다. 30초마다 새로 읽습니다.</p>
         </div>
-        <a href="/admin/decisions" className="shrink-0 px-3 py-2 rounded-lg bg-brand text-white text-[13px] font-semibold">결재함 열기</a>
+        <a href="/admin/decisions" className="shrink-0 ur-btn ur-btn-md ur-btn-primary">결재함 열기</a>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
