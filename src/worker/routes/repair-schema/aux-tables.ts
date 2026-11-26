@@ -130,6 +130,17 @@ export const AUX_TABLE_REPAIRS: Array<{ name: string; sql: string }> = [
       synced_at TEXT,
       synced_ref TEXT
     )` },
+    // 🔗 2026-11-26 작업실(세션) 연결 — worker/utils/ai-team-sessions.ts SSOT 미러.
+    { name: 'ai_team_sessions', sql: `CREATE TABLE IF NOT EXISTS ai_team_sessions (
+      session_id TEXT PRIMARY KEY,
+      title TEXT,
+      branch TEXT,
+      state TEXT NOT NULL DEFAULT 'idle',
+      last_summary TEXT,
+      turns INTEGER NOT NULL DEFAULT 0,
+      started_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )` },
     // 🏢 2026-11-26 AI 팀 근무 기록 — worker/utils/ai-team-activity.ts SSOT 미러.
     { name: 'ai_team_activity', sql: `CREATE TABLE IF NOT EXISTS ai_team_activity (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

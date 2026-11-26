@@ -3,6 +3,8 @@
  *   - GET  /ai-team/activity?limit=  — 최근 근무 기록(어드민 `/admin/ai-team` 이 30초마다 읽는다)
  *   - POST /ai-team/activity         — 팀 루틴이 시작·끝에 한 줄 {team, state, routine?, summary?, grade?, session_url?}
  *   - GET  /ai-team/tasks?fresh=1      — 규칙으로 찾은 팀별 일감(저장 안 함 · 해결되면 사라짐 · 60초 메모)
+ *   - POST /ai-team/session            — 레포 훅(.claude/hooks/ai-hq-report.sh)이 세션 시작·질문·턴 끝마다 {session_id, event, title?, branch?, summary?}
+ *   - GET  /ai-team/sessions?hours=     — 최근 움직인 세션(열린 작업실)
  *   adminApp 아래 마운트라 requireAdmin·IP 화이트리스트·감사 미들웨어를 상속한다. 머니 경로 없음.
  */
 import { Hono } from 'hono'
@@ -13,6 +15,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { intParam } from '@/shared/pagination'
 import { listAiTeamActivity, parseAiTeamActivity, recordAiTeamActivity } from '@/worker/utils/ai-team-activity'
 import { findAiTeamTasks } from '@/worker/utils/ai-team-tasks'
+import { listAiSessions, parseAiSession, recordAiSession } from '@/worker/utils/ai-team-sessions'
 
 export const adminAiTeamRoutes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>()
 
@@ -48,5 +51,29 @@ adminAiTeamRoutes.get('/ai-team/tasks', async (c) => {
     return c.json({ success: true, ...result })
   } catch (err) {
     return safeError(c, err, 'AI 팀 일감을 불러오지 못했습니다', '[admin-ai-team]')
+  }
+})
+
+adminAiTeamRoutes.post(
+  '/ai-team/session',
+  rateLimit({ action: 'ai_team_session', max: 300, windowSec: 600 }),
+  async (c) => {
+    const input = parseAiSession(await c.req.json().catch(() => null))
+    if (!input) return c.json({ success: false, error: 'INVALID_SESSION' }, 400)
+    try {
+      await recordAiSession(c.env.DB, input)
+      return c.json({ success: true })
+    } catch (err) {
+      return safeError(c, err, '작업실 기록을 저장하지 못했습니다', '[admin-ai-team]')
+    }
+  },
+)
+
+adminAiTeamRoutes.get('/ai-team/sessions', async (c) => {
+  try {
+    const items = await listAiSessions(c.env.DB, intParam(c.req.query('hours'), 48))
+    return c.json({ success: true, items })
+  } catch (err) {
+    return safeError(c, err, '작업실 목록을 불러오지 못했습니다', '[admin-ai-team]')
   }
 })

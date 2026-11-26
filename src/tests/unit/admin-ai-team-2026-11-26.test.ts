@@ -12,6 +12,9 @@ import { resolve } from 'node:path'
 import { AI_TEAM_KEYS, parseAiTeamActivity } from '@/worker/utils/ai-team-activity'
 import { deriveTeamStatus, WORKING_WINDOW_MS, type ActivityRow } from '@/pages/admin/ai-team/derive'
 import { AI_TEAM_RULES, findAiTeamTasks } from '@/worker/utils/ai-team-tasks'
+import { ROOMS, deskOf, route, AISLE_X, CORRIDOR_Y } from '@/pages/admin/ai-team/office-layout'
+import { parseAiSession } from '@/worker/utils/ai-team-sessions'
+import { execFileSync } from 'node:child_process'
 
 const ROOT = resolve(__dirname, '../../..')
 const read = (p: string) => readFileSync(resolve(ROOT, p), 'utf-8')
@@ -112,5 +115,59 @@ describe('⑤ 일감 자동 발견 규칙', () => {
   it('라우트가 마운트돼 있고 화면이 일감을 읽는다', () => {
     expect(read('src/features/admin/api/admin-ai-team.routes.ts')).toContain("'/ai-team/tasks'")
     expect(read('src/pages/admin/AdminAiTeamPage.tsx')).toContain('/api/admin/ai-team/tasks')
+  })
+})
+
+// ⑥ 사무실 보기(2026-11-26 대표 "메타버스처럼 직원들이 움직이고") · ⑦ 작업실 연결("모든 세션들 모두 연결해서")
+//   ⚠️ 못 막는 것: 움직임이 보기 좋은지(눈으로 봐야 한다) · 다른 레포의 세션(그 레포엔 이 훅이 없다).
+describe('⑥ 사무실 평면도', () => {
+  it('12팀 모두 책상이 있고, 책상·자리가 자기 방 안에 있다', () => {
+    for (const k of AI_TEAM_KEYS) {
+      const d = deskOf(k)
+      expect(d, `${k} 책상 없음`).toBeTruthy()
+      const room = ROOMS.find(r => r.teams.includes(k))!
+      for (const p of [d!.desk, d!.seat]) {
+        expect(p.x > room.x && p.x < room.x + room.w && p.y > room.y && p.y < room.y + room.h, `${k} 가 방 밖`).toBe(true)
+      }
+    }
+  })
+  it('걷는 길은 목적지에서 끝나고, 다른 층이면 가운데 통로를 지난다', () => {
+    const a = deskOf('ceo-office')!.seat, b = deskOf('qa')!.seat
+    const p = route(a, b)
+    expect(p[p.length - 1]).toEqual(b)
+    expect(p.some(q => q.x === AISLE_X)).toBe(true)
+    const same = route(deskOf('planning')!.seat, deskOf('dev')!.seat)
+    expect(same.some(q => q.x === AISLE_X)).toBe(false)
+    expect(CORRIDOR_Y.length).toBe(2)
+  })
+})
+
+describe('⑦ 작업실(세션) 연결', () => {
+  it('세션 보고 검증 — 이상한 id·이벤트는 거부, 제목은 80자로 자른다', () => {
+    expect(parseAiSession({ session_id: 'abc', event: 'start' })).toBeNull()
+    expect(parseAiSession({ session_id: 'd2567341-4e61-58c5', event: 'delete' })).toBeNull()
+    const s = parseAiSession({ session_id: 'd2567341-4e61-58c5', event: 'prompt', title: 'x'.repeat(200), branch: 'claude/a b' })
+    expect(s?.title?.length).toBe(80)
+    expect(s?.branch).toBeNull()
+  })
+  it('레포 훅이 시작·질문·턴 끝 세 곳에 걸려 있다(새 세션도 자동으로 붙는 근거)', () => {
+    const settings = JSON.parse(read('.claude/settings.json'))
+    for (const ev of ['SessionStart', 'UserPromptSubmit', 'Stop']) {
+      const cmds = JSON.stringify(settings.hooks?.[ev] ?? [])
+      expect(cmds, `${ev} 훅 없음`).toContain('ai-hq-report.sh')
+    }
+  })
+  it('훅은 아무것도 출력하지 않고 바로 끝난다(질문 훅 출력은 대화에 끼어든다)', () => {
+    const env = { ...process.env, URDEAL_ADMIN_EMAIL: '', URDEAL_ADMIN_PASSWORD: '' }
+    const out = execFileSync('bash', [resolve(ROOT, '.claude/hooks/ai-hq-report.sh'), 'prompt'], { input: '{"session_id":"x"}', env }).toString()
+    expect(out).toBe('')
+    const src = read('.claude/hooks/ai-hq-report.sh')
+    expect(src).toMatch(/nohup python3 [^\n]*>\/dev\/null 2>&1 <<'PY' &/)
+  })
+  it('API 경로가 있다', () => {
+    const r = read('src/features/admin/api/admin-ai-team.routes.ts')
+    expect(r).toContain("'/ai-team/session'")
+    expect(r).toContain("'/ai-team/sessions'")
+    expect(read('src/worker/routes/repair-schema/aux-tables.ts')).toContain("name: 'ai_team_sessions'")
   })
 })
