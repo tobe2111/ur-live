@@ -3,55 +3,23 @@
  *   AI 팀 본사 — 12역할을 층별 조직도로 그리고, 각 팀 루틴이 남긴 근무 기록(/api/admin/ai-team/activity)으로
  *   책상 불빛을 켠다. 30초마다 새로 읽고, 탭이 가려지면 쉰다.
  *   조직도는 `./ai-team/teams.ts`, 근무 상태는 D1. 기록이 없는 팀은 "부르면 출근".
+ *   2026-11-26 추가(대표 "실제로 자동으로 할 일들을 찾아서"): 규칙이 찾은 일감(/api/admin/ai-team/tasks)을
+ *   담당 팀 책상에 더미로 쌓고, 아래 "일감 게시판"에 전부 보인다. 팀 루틴·당번이 이 목록을 보고 일한다.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { Building2, ExternalLink } from 'lucide-react'
 import api from '@/lib/api'
-import { formatKSTShort, relativeFromNow } from '@/utils/date'
-import { FLOORS, TEAMS, type TeamInfo } from './ai-team/teams'
-import { deriveTeamStatus, STATE_LABEL, type ActivityRow, type TeamState, type TeamStatus } from './ai-team/derive'
+import { formatKSTShort, formatKSTDate } from '@/utils/date'
+import { FLOORS, TEAMS } from './ai-team/teams'
+import { deriveTeamStatus, type ActivityRow, type TeamStatus } from './ai-team/derive'
+import Desk, { SEV_DOT, type AiTeamTask } from './ai-team/Desk'
 
-const LAMP: Record<TeamState, string> = {
-  working: 'bg-tone-ok animate-pulse', stuck: 'bg-tone-warn', failed: 'bg-tone-bad', done: 'bg-brand', oncall: 'bg-gray-300',
-}
-const CHIP: Record<TeamState, string> = {
-  working: 'bg-tone-ok-bg text-tone-ok', stuck: 'bg-tone-warn-bg text-tone-warn', failed: 'bg-tone-bad-bg text-tone-bad',
-  done: 'bg-gray-100 text-gray-600', oncall: 'bg-gray-100 text-gray-500',
-}
 const REFRESH_MS = 30_000
-
-function Desk({ t, s }: { t: TeamInfo; s: TeamStatus }) {
-  const shown = s.state === 'working' || s.state === 'stuck' ? s.last : s.lastDone
-  return (
-    <article className="rounded-xl bg-white p-3 flex flex-col gap-2 min-w-0">
-      <div className="flex items-center gap-2.5">
-        <div className="relative shrink-0 w-10 h-10 rounded-full bg-brand/10 text-brand grid place-items-center text-[14px] font-bold">
-          {t.initial}
-          <span className={`absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full border-2 border-white ${LAMP[s.state]}`} />
-        </div>
-        <div className="min-w-0">
-          <h3 className="text-[15px] font-semibold text-gray-900 leading-tight">{t.name}</h3>
-          <p className="text-[12px] text-gray-400">{t.key}</p>
-        </div>
-      </div>
-      <p className="text-[13px] text-gray-600">{t.job}</p>
-      <span className={`self-start px-2 py-0.5 rounded-full text-[12px] font-semibold ${CHIP[s.state]}`}>
-        {STATE_LABEL[s.state]}{s.last && s.state !== 'oncall' ? ` · ${relativeFromNow(s.last.created_at)}` : ''}
-      </span>
-      {shown?.summary && (
-        <p className="text-[12px] text-gray-600 leading-snug">
-          {shown.grade && <span className="font-mono text-gray-400 mr-1">[{shown.grade}]</span>}{shown.summary}
-        </p>
-      )}
-      <ul className="mt-auto pt-2 border-t border-gray-100 text-[12px] text-gray-400 space-y-0.5">
-        {t.schedule.length ? t.schedule.map(x => <li key={x}>{x}</li>) : <li>요청 시</li>}
-      </ul>
-    </article>
-  )
-}
 
 export default function AdminAiTeamPage() {
   const [rows, setRows] = useState<ActivityRow[] | null>(null)
+  const [tasks, setTasks] = useState<AiTeamTask[] | null>(null)
+  const [taskErrors, setTaskErrors] = useState<string[]>([])
   const [error, setError] = useState(false)
   const [, setTick] = useState(0)
 
@@ -62,6 +30,9 @@ export default function AdminAiTeamPage() {
       api.get('/api/admin/ai-team/activity?limit=200')
         .then(res => { if (alive && res.data?.success) { setRows(res.data.items as ActivityRow[]); setError(false) } })
         .catch(() => { if (alive) setError(true) })
+      api.get('/api/admin/ai-team/tasks')
+        .then(res => { if (alive && res.data?.success) { setTasks(res.data.tasks as AiTeamTask[]); setTaskErrors(res.data.errors ?? []) } })
+        .catch(() => { if (alive) setTaskErrors(['all']) })
       setTick(n => n + 1)
     }
     load()
@@ -78,6 +49,10 @@ export default function AdminAiTeamPage() {
   const working = TEAMS.filter(t => status[t.key].state === 'working').length
   const trouble = TEAMS.filter(t => ['failed', 'stuck'].includes(status[t.key].state)).length
   const teamName = (k: string) => TEAMS.find(t => t.key === k)?.name ?? k
+  const tasksOf = (k: string) => (tasks ?? []).filter(x => x.team === k)
+  const today = formatKSTDate(new Date().toISOString())
+  const doneToday = (rows ?? []).filter(r => r.state === 'done' && formatKSTDate(r.created_at) === today).length
+  const urgent = (tasks ?? []).filter(x => x.severity === 'high').length
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col gap-5">
@@ -87,9 +62,22 @@ export default function AdminAiTeamPage() {
           <h1 className="text-xl font-bold text-gray-900">AI 팀 본사</h1>
         </div>
         <p className="text-[13px] text-gray-500">
-          대표 1 · 비서실장 1 · 4본부 · 품질·보안실, 팀 12. 지금 일하는 중 <b className="text-gray-900">{working}</b> · 실패·응답 없음 <b className="text-gray-900">{trouble}</b>.
-          팀이 일을 시작하고 끝낼 때마다 기록이 남고, 이 화면은 30초마다 새로 읽습니다.
+          대표 1 · 비서실장 1 · 4본부 · 품질·보안실, 팀 12. 팀이 일을 시작하고 끝낼 때마다 기록이 남고,
+          서버가 회사 전체를 훑어 찾은 일감이 담당 팀 책상에 쌓입니다. 이 화면은 30초마다 새로 읽습니다.
         </p>
+        <div className="mt-3 flex flex-wrap gap-2 text-[13px]">
+          {[
+            ['지금 일하는 중', working],
+            ['남은 일감', tasks ? tasks.length : '—'],
+            ['급한 일감', tasks ? urgent : '—'],
+            ['오늘 끝낸 일', rows ? doneToday : '—'],
+            ['실패·응답 없음', trouble],
+          ].map(([label, v]) => (
+            <span key={String(label)} className="px-3 py-1.5 rounded-lg bg-white text-gray-600">
+              {label} <b className="text-gray-900 tabular-nums">{v}</b>
+            </span>
+          ))}
+        </div>
         {error && <p className="mt-2 text-[13px] text-tone-bad">근무 기록을 불러오지 못했습니다. 조직도는 그대로 보입니다.</p>}
       </div>
 
@@ -112,12 +100,31 @@ export default function AdminAiTeamPage() {
             <div className="grid gap-2.5 p-3 grid-cols-[repeat(auto-fill,minmax(210px,1fr))] min-w-0">
               {f.teams.map(k => {
                 const t = TEAMS.find(x => x.key === k)
-                return t ? <Desk key={k} t={t} s={status[k]} /> : null
+                return t ? <Desk key={k} t={t} s={status[k]} tasks={tasksOf(k)} /> : null
               })}
             </div>
           </section>
         ))}
       </div>
+
+      <section className="rounded-xl bg-white p-4">
+        <h2 className="text-[15px] font-semibold text-gray-900 mb-1">일감 게시판</h2>
+        <p className="text-[12px] text-gray-400 mb-2">규칙이 찾은 일입니다(AI 를 쓰지 않는 집계). 해결되면 저절로 사라집니다.{taskErrors.length > 0 && <span className="text-tone-bad"> 확인 못 한 규칙: {taskErrors.join(', ')}</span>}</p>
+        {!tasks ? <p className="text-[13px] text-gray-400">불러오는 중</p>
+          : tasks.length === 0 ? <p className="text-[13px] text-gray-400">지금 쌓인 일감이 없습니다.</p>
+          : (
+            <ul className="divide-y divide-gray-100">
+              {tasks.map(k => (
+                <li key={k.id} className="py-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[13px]">
+                  <span className={`w-2 h-2 rounded-full shrink-0 self-center ${SEV_DOT[k.severity]}`} />
+                  <span className="font-semibold text-gray-900 w-20 shrink-0">{teamName(k.team)}</span>
+                  {k.link ? <a href={k.link} className="text-gray-900 hover:text-brand">{k.title}</a> : <span className="text-gray-900">{k.title}</span>}
+                  {k.detail && <span className="text-gray-500 min-w-0 flex-1">{k.detail}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+      </section>
 
       <section className="rounded-xl bg-white p-4">
         <h2 className="text-[15px] font-semibold text-gray-900 mb-2">최근 근무 기록</h2>

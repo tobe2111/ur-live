@@ -11,6 +11,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { AI_TEAM_KEYS, parseAiTeamActivity } from '@/worker/utils/ai-team-activity'
 import { deriveTeamStatus, WORKING_WINDOW_MS, type ActivityRow } from '@/pages/admin/ai-team/derive'
+import { AI_TEAM_RULES, findAiTeamTasks } from '@/worker/utils/ai-team-tasks'
 
 const ROOT = resolve(__dirname, '../../..')
 const read = (p: string) => readFileSync(resolve(ROOT, p), 'utf-8')
@@ -72,5 +73,44 @@ describe('④ 배선', () => {
     expect(read('src/components/admin/admin-nav-config.ts')).toContain("path: '/admin/ai-team'")
     expect(read('src/worker/index.ts')).toContain("adminApp.route('/', adminAiTeamRoutes)")
     expect(read('src/worker/routes/repair-schema/aux-tables.ts')).toContain("name: 'ai_team_activity'")
+  })
+})
+
+// ⑤ 일감 자동 발견(2026-11-26 대표 "실제로 자동으로 할 일들을 찾아서 일한다던지" → "응 해봐")
+//   ⚠️ 못 막는 것: 규칙의 SQL 이 라이브 컬럼과 맞는지(시험 DB 가 없다 — 2026-11-26 라이브 D1 에 읽기로 12개 전부 돌려 확인함).
+
+describe('⑤ 일감 자동 발견 규칙', () => {
+  it('규칙 id 가 겹치지 않고, 담당 팀이 12팀 안에 있다', () => {
+    const ids = AI_TEAM_RULES.map(r => r.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    for (const r of AI_TEAM_RULES) expect(AI_TEAM_KEYS as readonly string[], `${r.id} 의 팀 ${r.team}`).toContain(r.team)
+  })
+
+  it('읽기 전용 — 규칙 파일에 UPDATE·INSERT·DELETE 가 없다', () => {
+    const src = read('src/worker/utils/ai-team-tasks.ts')
+    expect(src).not.toMatch(/\b(UPDATE|INSERT|DELETE)\s/)
+  })
+
+  it('규칙 하나가 터져도 나머지는 나오고, 터진 규칙은 errors 에 이름이 남는다(0 으로 위장 금지)', async () => {
+    const DB = {
+      prepare: (sql: string) => ({
+        first: async () => {
+          if (sql.includes('FROM sellers WHERE status')) throw new Error('boom')
+          if (sql.includes("orders WHERE status = 'REFUND_REQUIRED'")) return { n: 2 }
+          return { n: 0 }
+        },
+        all: async () => ({ results: [] }),
+        run: async () => ({}),
+      }),
+    } as unknown as D1Database
+    const r = await findAiTeamTasks(DB, { fresh: true })
+    expect(r.errors).toContain('seller-approval')
+    expect(r.tasks.map(t => t.id)).toEqual(['refund-required'])
+    expect(r.tasks[0]).toMatchObject({ team: 'ops', count: 2, severity: 'high' })
+  })
+
+  it('라우트가 마운트돼 있고 화면이 일감을 읽는다', () => {
+    expect(read('src/features/admin/api/admin-ai-team.routes.ts')).toContain("'/ai-team/tasks'")
+    expect(read('src/pages/admin/AdminAiTeamPage.tsx')).toContain('/api/admin/ai-team/tasks')
   })
 })
