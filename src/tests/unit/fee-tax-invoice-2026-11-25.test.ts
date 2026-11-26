@@ -147,14 +147,49 @@ describe('⑤ 팝빌 즉시 발행', () => {
       if (corp === '3333333333') return new Response(JSON.stringify({ code: -11000011, message: '이미 사용중인 문서번호입니다.' }), { status: 400 })
       return new Response(JSON.stringify({ code: -11000002, message: '공급받는자 이메일이 올바르지 않습니다.' }), { status: 400 })
     }) as unknown as typeof fetch
-    const creds = { linkId: 'URDEAL', secretKey: Buffer.from('k').toString('base64'), isTest: true }
+    const creds = { linkId: 'URDEAL', secretKey: Buffer.from('k').toString('base64'), isTest: false }
     const r = await sendFeeInvoicesViaPopbill(DB, creds, period, undefined, fakeFetch)
     expect(r).toMatchObject({ issued: 2, failed: 1 })
-    const issue = calls.find((c) => c.url === 'https://popbill-test.linkhub.co.kr/Taxinvoice')!
+    const issue = calls.find((c) => c.url === 'https://popbill.linkhub.co.kr/Taxinvoice')!
     expect(issue.headers).toMatchObject({ Authorization: 'Bearer tok', 'X-HTTP-Method-Override': 'ISSUE' })
-    expect(q1(raw, 'SELECT status, provider, nts_confirm_num FROM fee_tax_invoices WHERE seller_id = ?', A)).toEqual({ status: 'issued', provider: 'popbill_test', nts_confirm_num: '20270201-41000000-00000001' })
-    expect(q1(raw, 'SELECT status, last_error FROM fee_tax_invoices WHERE seller_id = ?', B)).toEqual({ status: 'draft', last_error: '공급받는자 이메일이 올바르지 않습니다.' })
+    expect(q1(raw, 'SELECT status, provider, nts_confirm_num FROM fee_tax_invoices WHERE seller_id = ?', A)).toEqual({ status: 'issued', provider: 'popbill', nts_confirm_num: '20270201-41000000-00000001' })
+    expect(q1(raw, 'SELECT status, last_error FROM fee_tax_invoices WHERE seller_id = ?', B)).toEqual({ status: 'draft', last_error: '공급받는자 이메일이 올바르지 않습니다. (-11000002)' })
     expect(q1<{ status: string }>(raw, 'SELECT status FROM fee_tax_invoices WHERE seller_id = ?', C)?.status).toBe('issued')
     expect((await sendFeeInvoicesViaPopbill(DB, creds, period, undefined, fakeFetch)).issued).toBe(0)
+  })
+  it('테스트 서버 발행은 초안을 발행 완료로 바꾸지 않는다(국세청에 안 갔다)', async () => {
+    const { sendFeeInvoicesViaPopbill } = await import('@/worker/utils/fee-tax-invoice')
+    const raw = openLiveSchema()
+    const DB = d1(raw)
+    const A = insert(raw, 'sellers', { username: 'pt-a', password_hash: '', name: 'A', email: 'a@example.test', business_name: '가게A', representative_name: '대표A', business_number: '111-11-11111', status: 'approved', seller_type: 'store_owner' })
+    insert(raw, 'platform_settings', { key: 'fee_vat_exclusive_from', value: '2020-01-01' })
+    await recordVoucherUsedLedger(DB, { voucher_id: 31, order_amount: 10000, merchant_id: A, platform_rate: 0.1, seller_rate: 0 })
+    const period = thisMonth()
+    await buildFeeInvoiceDrafts(DB, period)
+    const fakeFetch = (async (url: string) => url.includes('/Token')
+      ? new Response(JSON.stringify({ session_token: 'tok' }), { status: 200 })
+      : new Response(JSON.stringify({ code: 1, ntsConfirmNum: 'TEST-1' }), { status: 200 })) as unknown as typeof fetch
+    const r = await sendFeeInvoicesViaPopbill(DB, { linkId: 'U', secretKey: Buffer.from('k').toString('base64'), isTest: true }, period, undefined, fakeFetch)
+    expect(r).toMatchObject({ issued: 0, tested: 1 })
+    expect(q1(raw, 'SELECT status, last_error FROM fee_tax_invoices WHERE seller_id = ?', A)).toMatchObject({ status: 'draft', last_error: '테스트 서버 발행 확인됨(실제 발행 아님) · TEST-1' })
+  })
+  it('연결 확인: 인증·공동인증서·포인트 + 테스트 서버에서만 가짜 공급받는자 1장', async () => {
+    const { checkPopbill } = await import('@/worker/utils/popbill-invoice')
+    const urls: string[] = []
+    const fake = (async (url: string, init: { body?: string }) => {
+      urls.push(url)
+      if (url.includes('/Token')) return new Response(JSON.stringify({ session_token: 'tok' }), { status: 200 })
+      if (url.endsWith('/CertCheck')) return new Response(JSON.stringify({ code: 1, message: '유효성 확인' }), { status: 200 })
+      if (url.endsWith('/Point')) return new Response(JSON.stringify({ remainPoint: '1000' }), { status: 200 })
+      expect(JSON.parse(String(init.body)).invoiceeCorpNum).toBe('8888888888')
+      return new Response(JSON.stringify({ code: 1 }), { status: 200 })
+    }) as unknown as typeof fetch
+    const key = Buffer.from('k').toString('base64')
+    const t = await checkPopbill({ linkId: 'U', secretKey: key, isTest: true }, { sample: true }, fake, '2026-11-26T05:00:00Z')
+    expect(t).toMatchObject({ test: true, auth: { ok: true }, cert: { ok: true }, point: { remain: '1000' }, sample: { ok: true } })
+    urls.length = 0
+    const p = await checkPopbill({ linkId: 'U', secretKey: key, isTest: false }, { sample: true }, fake, '2026-11-26T05:00:00Z')
+    expect(p.sample, '운영 서버에선 가짜 발행을 하지 않는다').toBeUndefined()
+    expect(urls.some((u) => u.endsWith('/Taxinvoice'))).toBe(false)
   })
 })
