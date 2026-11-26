@@ -3,9 +3,9 @@
  *   움직임은 tailwind 기본 animate-* 만 쓰고 전부 motion-safe: 로 감싼다(움직임 줄이기 설정 존중).
  */
 import { FileText, Send } from 'lucide-react'
-import { relativeFromNow, parseUTCDate } from '@/utils/date'
-import type { TeamInfo } from './teams'
-import { STATE_LABEL, type TeamState, type TeamStatus } from './derive'
+import { relativeFromNow, parseUTCDate, formatKSTShort } from '@/utils/date'
+import { scheduleLines, type TeamInfo } from './teams'
+import { STATE_LABEL, type ActivityRow, type TeamState, type TeamStatus } from './derive'
 
 export interface AiTeamTask {
   id: string
@@ -51,7 +51,10 @@ function Pile({ n }: { n: number }) {
   )
 }
 
-export default function Desk({ t, s, tasks }: { t: TeamInfo; s: TeamStatus; tasks: AiTeamTask[] }) {
+/** 🔗 history — 이 팀의 최근 근무 기록(끝난 것). 사무실에서 사람을 누르면 "무슨 일을 했고 결과가 어디 있나"가 여기 뜬다
+ *  (2026-11-26 대표 "진짜 일을 해서 움직이는거 맞아?" → 움직임마다 실제 결과로 이어지게). */
+export default function Desk({ t, s, tasks, history }: { t: TeamInfo; s: TeamStatus; tasks: AiTeamTask[]; history?: ActivityRow[] }) {
+  const recent = (history ?? []).filter(r => r.team === t.key && r.state !== 'started').slice(0, 3)
   const shown = s.state === 'working' || s.state === 'stuck' ? s.last : s.lastDone
   const justDone = s.state === 'done' && s.last && Date.now() - parseUTCDate(s.last.created_at).getTime() < JUST_DONE_MS
   return (
@@ -99,8 +102,22 @@ export default function Desk({ t, s, tasks }: { t: TeamInfo; s: TeamStatus; task
           {tasks.length > 2 && <li className="text-[12px] text-gray-400 pl-3">외 {tasks.length - 2}건</li>}
         </ul>
       )}
+      {recent.length > 0 && (
+        <div className="pt-2 border-t border-gray-100">
+          <p className="text-[12px] font-semibold text-gray-500 mb-1">최근 한 일</p>
+          <ul className="flex flex-col gap-1.5">
+            {recent.map(r => (
+              <li key={r.id} className="text-[12px] leading-snug">
+                <span className="font-mono text-gray-400 mr-1.5">{formatKSTShort(r.created_at)}</span>
+                <span className={r.state === 'failed' ? 'text-tone-bad' : 'text-gray-700'}>{r.grade ? `[${r.grade}] ` : ''}{r.summary ?? r.routine ?? ''}</span>
+                {r.session_url && <a href={r.session_url} target="_blank" rel="noopener noreferrer" className="ml-1.5 text-brand whitespace-nowrap">작업 화면</a>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <ul className="mt-auto pt-2 border-t border-gray-100 text-[12px] text-gray-400 space-y-0.5">
-        {t.schedule.length ? t.schedule.map(x => <li key={x} className="flex items-center gap-1"><FileText className="w-3 h-3" />{x}</li>) : <li>요청 시</li>}
+        {scheduleLines(t).length ? scheduleLines(t).map(x => <li key={x} className="flex items-center gap-1"><FileText className="w-3 h-3" />{x}</li>) : <li>요청 시</li>}
       </ul>
     </article>
   )

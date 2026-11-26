@@ -54,12 +54,11 @@ export function deskOf(team: string): { desk: Pt; seat: Pt } | null {
 export const CORRIDOR_Y = [190, 405] as const
 export const AISLE_X = 500
 
-/** 쉬는 곳·보고 자리 — 한 자리에 한 명만 선다(OfficeView 가 자리를 맡는다). 이름표 폭(약 55)보다 넓게 띄운다.
- *  ⚠️ 비서실 보고 자리는 비서실장 의자(630,121)와 떨어뜨린다 — 겹치면 둘이 한 사람처럼 보인다. */
+/** 보고 자리 — 일을 끝낸 사람이 보고서를 놓는 곳. 한 자리에 한 명만 선다(OfficeView 가 자리를 맡는다).
+ *  ⚠️ 비서실장 의자(630,121)와 떨어뜨린다 — 겹치면 둘이 한 사람처럼 보인다.
+ *  (2026-11-26 탕비실·회의실 "쉬러 가는 자리"는 지웠다 — 대표 "진짜 일을 해서 움직이는거 맞아?": 꾸밈 걸음 없음.) */
 export const SPOTS = {
   secretaryDrop: [{ x: 565, y: 120 }, { x: 700, y: 120 }] as Pt[],
-  coffee: [{ x: 290, y: 105 }, { x: 350, y: 105 }, { x: 410, y: 105 }, { x: 470, y: 105 }] as Pt[],
-  meeting: [{ x: 45, y: 92 }, { x: 215, y: 92 }] as Pt[],
 }
 
 function nearestCorridor(p: Pt): number {
