@@ -85,10 +85,32 @@ export default function FeeInvoicesCard() {
       const res = await fetch('/api/admin/tax/fee-invoices/send-popbill', { method: 'POST', headers: { ...auth(), 'Content-Type': 'application/json' }, body: JSON.stringify({ period }) })
       const j = await readJson(res)
       if (!j?.success) { toast.error(j?.error || '팝빌 발행에 실패했어요'); return }
-      const d = j.data as { issued: number; failed: number; test: boolean; errors: Array<{ error: string }> }
+      const d = j.data as { issued: number; failed: number; tested?: number; test: boolean; errors: Array<{ error: string }> }
       if (d.failed > 0) toast.error(`발행 ${d.issued}장 · 실패 ${d.failed}장 — ${d.errors[0]?.error || ''}`)
-      else toast.success(`팝빌 발행 ${d.issued}장${d.test ? ' (테스트 서버 — 실제 발행 아님)' : ''}`)
+      else if (d.test) toast.success(`테스트 서버 발행 ${d.tested ?? 0}장 확인 — 실제 발행 아님(초안 그대로)`)
+      else toast.success(`팝빌 발행 ${d.issued}장`)
       await load()
+    } finally { setBusy(false) }
+  }
+
+  // 🔌 팝빌 연결 확인 — 인증·공동인증서·포인트(+ 테스트 서버면 가짜 1장). 초안은 건드리지 않는다.
+  async function checkPopbill() {
+    setBusy(true)
+    try {
+      const res = await fetch('/api/admin/tax/popbill/check', { method: 'POST', headers: { ...auth(), 'Content-Type': 'application/json' }, body: JSON.stringify({ sample: true }) })
+      const j = await readJson(res)
+      if (!j?.success) { toast.error(j?.error || '연결 확인에 실패했어요'); return }
+      const d = j.data as { test: boolean; auth: { ok: boolean; error?: string }; cert?: { ok: boolean; message: string }; point?: { remain: string | null }; sample?: { ok: boolean; error?: string } }
+      const lines = [
+        `서버: ${d.test ? '테스트' : '운영'}`,
+        `인증: ${d.auth.ok ? '정상' : `실패 — ${d.auth.error || ''}`}`,
+        d.cert ? `공동인증서: ${d.cert.ok ? '정상' : `문제 — ${d.cert.message}`}` : '',
+        d.point ? `잔여 포인트: ${d.point.remain ?? '확인 못 함'}` : '',
+        d.sample ? `시험 발행(가짜 공급받는자): ${d.sample.ok ? '성공' : `실패 — ${d.sample.error || ''}`}` : '',
+      ].filter(Boolean)
+      const allOk = d.auth.ok && d.cert?.ok && (!d.sample || d.sample.ok)
+      if (allOk) toast.success(lines.join(' · '))
+      else toast.error(lines.join(' · '))
     } finally { setBusy(false) }
   }
 
@@ -119,6 +141,7 @@ export default function FeeInvoicesCard() {
         <input type="month" value={period} onChange={e => setPeriod(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
         <button type="button" disabled={busy} onClick={() => { void build() }} className="ur-btn ur-btn-sm rounded-lg px-4 text-xs border border-gray-200 text-gray-700 disabled:opacity-40">초안 다시 만들기</button>
         <button type="button" onClick={() => { void download(`/api/admin/tax/fee-invoices/csv?period=${period}`, `urdeal-fee-invoices-${period}.csv`) }} className="ur-btn ur-btn-sm rounded-lg px-4 text-xs border border-gray-200 text-gray-700">홈택스용 CSV</button>
+        <button type="button" disabled={busy} onClick={() => { void checkPopbill() }} className="ur-btn ur-btn-sm rounded-lg px-4 text-xs border border-gray-200 text-gray-700 disabled:opacity-40">팝빌 연결 확인</button>
         <button type="button" disabled={busy} onClick={() => { void sendPopbill() }} className="ur-btn ur-btn-sm ur-btn-primary rounded-lg px-4 text-xs disabled:opacity-40">팝빌로 발행</button>
       </div>
       {data && (

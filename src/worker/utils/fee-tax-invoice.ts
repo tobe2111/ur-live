@@ -183,13 +183,20 @@ export async function markFeeInvoiceIssued(DB: D1Database, id: number, adminId: 
  */
 export async function sendFeeInvoicesViaPopbill(
   DB: D1Database, creds: import('./popbill-invoice').PopbillCreds, period: string, ids?: number[], fetchImpl?: typeof fetch,
-): Promise<{ issued: number; failed: number; errors: Array<{ id: number; error: string }> }> {
+): Promise<{ issued: number; failed: number; tested: number; errors: Array<{ id: number; error: string }> }> {
   const { issueFeeInvoiceViaPopbill } = await import('./popbill-invoice')
   const rows = (await listFeeInvoices(DB, period)).filter((r) => r.status === 'draft' && (!ids || ids.includes(r.id)))
-  let issued = 0, failed = 0
+  let issued = 0, failed = 0, tested = 0
   const errors: Array<{ id: number; error: string }> = []
   for (const r of rows) {
     const res = await issueFeeInvoiceViaPopbill(creds, r, fetchImpl)
+    // 🧪 2026-11-26 테스트 서버 발행은 국세청에 안 간다 — 초안을 '발행 완료' 로 바꾸면 실제 발행이 영영 빠진다. 초안 그대로 두고 표시만.
+    if ((res.ok || res.duplicate) && creds.isTest) {
+      tested++
+      await DB.prepare(`UPDATE fee_tax_invoices SET last_error = ?, updated_at = datetime('now') WHERE id = ? AND status = 'draft'`)
+        .bind(`테스트 서버 발행 확인됨(실제 발행 아님)${res.ntsConfirmNum ? ` · ${res.ntsConfirmNum}` : ''}`, r.id).run().catch(() => null)
+      continue
+    }
     if (res.ok || res.duplicate) {
       const u = await DB.prepare(
         `UPDATE fee_tax_invoices SET status = 'issued', provider = ?, provider_ref = ?, nts_confirm_num = ?, last_error = NULL,
@@ -203,7 +210,7 @@ export async function sendFeeInvoicesViaPopbill(
         .bind(String(res.error || '').slice(0, 300), r.id).run().catch(() => null)
     }
   }
-  return { issued, failed, errors }
+  return { issued, failed, tested, errors }
 }
 
 /** 순수 — 홈택스 수기 발행용 CSV(공급받는자·작성일·공급가액·세액·품목). 수식 인젝션 방어. */
