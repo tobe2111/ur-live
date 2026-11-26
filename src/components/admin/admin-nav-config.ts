@@ -93,6 +93,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/revenue',          label: '매출 분석',     icon: BarChart3 },
       { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
       { path: '/admin/decisions',        label: '결재함',        icon: Inbox },
+      { path: '/admin/ai-team',          label: 'AI 팀 본사',    icon: Building2 },
       { path: '/admin/platform-model',   label: '플랫폼 모델',   icon: FileText },
       { path: '/admin/proposals',        label: '대외 제안서',   icon: FileText },
       // 🗺️ 2026-08-16: 상권 3종(동네별 딜 밀도·상권 성과·방문 리워드)은 **유어딜 전용**이라

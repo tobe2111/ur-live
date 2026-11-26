@@ -61,6 +61,7 @@ const AdminVoucherOrdersPage = lazy(() => import('@/pages/AdminVoucherOrdersPage
 const AdminVoucherTransactionsPage = lazy(() => import('@/pages/AdminVoucherTransactionsPage'))
 const AdminOperationsGuidePage = lazy(() => import('@/pages/admin/AdminOperationsGuidePage'))
 const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformModelPage')); const AdminProposalsPage = lazy(() => import('@/pages/admin/AdminProposalsPage')); const AdminDecisionsPage = lazy(() => import('@/pages/admin/AdminDecisionsPage')) // 📥 2026-09-08 결재함(docs/decisions ?raw)
+const AdminAiTeamPage = lazy(() => import('@/pages/admin/AdminAiTeamPage')) // 🏢 2026-11-26 AI 팀 본사
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
 const AdminHomeServicePage = lazy(() => import('@/pages/admin/AdminHomeServicePage'))
@@ -150,6 +151,11 @@ export function AdminRoutes() {
       <Route path="/admin/decisions" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminDecisionsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/ai-team" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminAiTeamPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/ads-accounts" element={

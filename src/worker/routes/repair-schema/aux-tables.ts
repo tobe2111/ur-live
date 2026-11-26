@@ -130,6 +130,17 @@ export const AUX_TABLE_REPAIRS: Array<{ name: string; sql: string }> = [
       synced_at TEXT,
       synced_ref TEXT
     )` },
+    // 🏢 2026-11-26 AI 팀 근무 기록 — worker/utils/ai-team-activity.ts SSOT 미러.
+    { name: 'ai_team_activity', sql: `CREATE TABLE IF NOT EXISTS ai_team_activity (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      team TEXT NOT NULL,
+      routine TEXT,
+      state TEXT NOT NULL,
+      summary TEXT,
+      grade TEXT,
+      session_url TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )` },
     { name: 'coupons', sql: `CREATE TABLE IF NOT EXISTS coupons (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT UNIQUE NOT NULL,
