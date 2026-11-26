@@ -12,11 +12,18 @@
 
 import type { Env } from '../types/env'
 import { autoSeedMissingReviews } from '../utils/auto-seed-fake-reviews'
-import { seedMissingDemoReviews, refreshDemoReviews } from '../utils/demo-review-generator'
+import { seedMissingDemoReviews, refreshDemoReviews, hideDemoSocialProof } from '../utils/demo-review-generator'
 import { updateReviewGenStats } from '../utils/review-gen-tuning'
 import { logError, logInfo } from '../utils/logger'
 
 export async function handleAutoSeedReviews(env: Env): Promise<void> {
+  // 🛑 2026-11-26 (대표 "응 모두 하자"): 데모 매장의 리뷰·별점·"N명 구매"를 숨긴다 — 매시간 멱등(이미 0 이면 0행).
+  try {
+    const h = await hideDemoSocialProof(env)
+    if (h.products > 0 || h.reviews > 0) logInfo(`[cron] demo social proof hidden: products=${h.products} reviews=${h.reviews}`)
+  } catch (e) {
+    logError('[cron] demo social proof hide FAILED', { error: String(e) })
+  }
   // 📈 2026-07-07 (대표 "생성하면서 학습"): 실제 유저 리뷰 통계 → 데모 생성 파라미터 자동튜닝(피드백 루프).
   //   refresh 전에 갱신해 이번 재생성부터 반영. 표본 부족(초기)이면 손튜닝 기본값 유지(무해).
   try {

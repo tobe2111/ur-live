@@ -88,6 +88,23 @@ export const AI_TEAM_RULES: Rule[] = [
     },
   },
   {
+    // 🧾 2026-11-26 가상 손님 100명 패널(대표 "응 모두 하자"): 근처 손님도 "몇 인분인지·구성이 뭔지 없다"로 18명이 떠났다.
+    //   팔고 있는 실제 이용권 중 구성 설명(description)이 비었거나 제목만 되풀이하는 것 → 매장영업이 사장님께 받아 채운다.
+    id: 'products-missing-info', team: 'sales',
+    run: async (DB) => {
+      const rows = await all(DB, `SELECT p.id, p.name, COALESCE(NULLIF(p.restaurant_name,''), s.name) store
+        FROM products p JOIN sellers s ON s.id = p.seller_id
+        WHERE p.is_active = 1 AND COALESCE(p.is_supply_product,0) = 0 AND s.status = 'approved' AND s.id NOT IN (${EXCL})
+          AND COALESCE(p.group_buy_status,'') = 'active'
+          AND (TRIM(COALESCE(p.description,'')) = '' OR TRIM(p.description) = TRIM(p.name))
+        ORDER BY p.id DESC LIMIT 50`)
+      if (!rows.length) return null
+      return { title: `구성 설명이 없는 이용권 ${rows.length}개`, count: rows.length, severity: 'mid',
+        detail: rows.slice(0, 4).map(r => `${str(r.store)} ${str(r.name)}`).join(', ') + ' — 몇 인분·구성·사진을 사장님께 받기',
+        link: '/admin/products' }
+    },
+  },
+  {
     id: 'store-inquiries', team: 'sales',
     run: async (DB) => {
       const r = await first(DB, "SELECT COUNT(*) n FROM partnership_inquiries WHERE status = 'new'")

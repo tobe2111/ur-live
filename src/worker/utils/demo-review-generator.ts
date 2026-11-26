@@ -15,6 +15,7 @@
  */
 import type { Env } from '../types/env'
 import { type ReviewTuning, DEFAULT_TUNING, getReviewGenTuning } from './review-gen-tuning'
+import { DEMO_SLUG_SQL } from '../../shared/constants/demo-products'
 
 const KOREAN_NAMES = ['김민서', '이서연', '박지훈', '최유진', '정도윤', '한서진', '오재원', '신다은', '윤하준', '장예린',
   '조현우', '임수아', '강민재', '백서윤', '문지호', '서하은', '권태윤', '홍채원', '류지안', '배소율',
@@ -267,6 +268,29 @@ function casualGroup(topic: Topic): keyof typeof CASUAL {
 /** 결정론 폴백 — 업종 특색 문구 조합(배송어 없음, 별점별 톤).
  *  🎭 2026-07-04 (대표 "최대 다양성, AI 티 0"): 길이 극단(한마디~2문장)·오프너·말투 꼬리 조합으로
  *  같은 상품 안에서도 문장 구조가 겹치지 않게. avoid(이미 쓴 문구) 재시도는 buildStoreReviews 가 담당. */
+/**
+ * 🛑 2026-11-26 대표 "응 모두 하자"(가상 손님 100명 패널 → "88명 구매라면서 저는 왜 못 사요?").
+ *   결제할 수 없는 오픈 준비 중(데모) 매장에 만든 리뷰·별점·"N명 구매"를 손님에게 보이지 않는다.
+ *   데모 리뷰를 **새로 만들지도 다시 만들지도 않는다**(시드·재생성·매장 교체 시드 전부 여기서 멈춘다).
+ *   이미 있는 것은 지우지 않고 숨긴다 → `hideDemoSocialProof()`(매시간, 멱등). 되돌리려면 이 값을 false 로.
+ *   기록: docs/decisions/archive/2026-11-26-demo-social-proof-off.md · 가드 demo-social-proof-off-2026-11-26.test.ts
+ */
+export const DEMO_SOCIAL_PROOF_OFF = true
+
+/** 데모 상품의 숫자(리뷰 수·별점·판매 수)를 0 으로, 만들어 둔 리뷰는 숨김(is_visible=0) — 지우지 않는다. 바뀐 행 수를 돌려준다. */
+export async function hideDemoSocialProof(env: Env): Promise<{ products: number; reviews: number }> {
+  const DB = env.DB
+  const demo = `SELECT id FROM products WHERE ${DEMO_SLUG_SQL}`
+  const r = await DB.prepare(
+    `UPDATE product_reviews SET is_visible = 0 WHERE is_generated = 1 AND COALESCE(is_visible,1) = 1 AND product_id IN (${demo})`,
+  ).run().catch(() => null)
+  const p = await DB.prepare(
+    `UPDATE products SET review_count = 0, avg_rating = 0, sold_count = 0
+      WHERE ${DEMO_SLUG_SQL} AND (COALESCE(review_count,0) > 0 OR COALESCE(avg_rating,0) > 0 OR COALESCE(sold_count,0) > 0)`,
+  ).run().catch(() => null)
+  return { products: Number(p?.meta?.changes ?? 0), reviews: Number(r?.meta?.changes ?? 0) }
+}
+
 export function composeDemoReview(rating: number, topic: Topic, storeName?: string | null, seen?: Set<string>, term?: string | null, tuning: ReviewTuning = DEFAULT_TUNING): string {
   const pool = POOLS[topic] || POOLS.etc
   const emojiPct = tuning.emojiPct
@@ -434,6 +458,7 @@ export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8
  * review_count/avg_rating/sold_count 갱신까지 — 시간당 generic cron 이 안 건드리게(review_count>0).
  */
 export async function seedDemoReviews(env: Env, p: DemoProduct, count = 8, seenShared?: Set<string>): Promise<number> {
+  if (DEMO_SOCIAL_PROOF_OFF) return 0
   const DB = env.DB
   const existing = await DB.prepare('SELECT COUNT(*) AS c FROM product_reviews WHERE product_id = ?')
     .bind(p.id).first<{ c: number }>().catch(() => ({ c: 0 }))
@@ -473,6 +498,7 @@ interface DemoRow { id: number; name: string; category: string; restaurant_name:
  *   구조적으로 대체(그쪽은 데모 제외됨). 배치 공용 seen 으로 매장 간 리뷰 중복 방지.
  */
 export async function seedMissingDemoReviews(env: Env, maxBatch = 400): Promise<{ seeded: number }> {
+  if (DEMO_SOCIAL_PROOF_OFF) return { seeded: 0 }
   const DB = env.DB
   const rows = await DB.prepare(
     `SELECT p.id, p.name, p.category, p.restaurant_name, p.price FROM products p
@@ -498,6 +524,7 @@ export async function seedMissingDemoReviews(env: Env, maxBatch = 400): Promise<
  *   반환 remaining>0 이면 다시 호출(클라 루프). force 로 마커 무시 재실행 가능.
  */
 export async function refreshDemoReviews(env: Env, limit = 20, force = false): Promise<{ refreshed: number; reviews: number; remaining: number }> {
+  if (DEMO_SOCIAL_PROOF_OFF) return { refreshed: 0, reviews: 0, remaining: 0 }
   const DB = env.DB
   const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='8')`
   const baseWhere = `p.slug LIKE 'demo-deal-%' AND COALESCE(p.slug,'') NOT LIKE 'retired-%' AND COALESCE(p.is_active,1)=1
