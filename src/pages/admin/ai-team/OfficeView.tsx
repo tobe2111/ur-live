@@ -160,8 +160,8 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
       }))
       for (let i = 0; i < list.length; i++) {
         const a = list[i]
-        a.ox += (sep[i].x - a.ox) * 0.25
-        a.oy += (sep[i].y - a.oy) * 0.25
+        a.ox += (sep[i].x - a.ox) * 0.5
+        a.oy += (sep[i].y - a.oy) * 0.5
         const moving = a.path.length > 0
         const el = refs.current[a.key]
         if (el) {
