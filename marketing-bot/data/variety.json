@@ -618,5 +618,20 @@
     "media": "image",
     "topic_tag": "맛집",
     "tformat": "scene"
+  },
+  {
+    "id": "18405060007200442",
+    "platform": "threads",
+    "track": "creator",
+    "topic": "투명한 규칙: 손님이 환불하면 적립도 자동 회수(원장 기준), 적립금은 정산 계좌로 출금(사업소득 원천징수 후 지급), 최소 지급액 1만원",
+    "hook": "udal",
+    "series": "udal-qna",
+    "date_kst": "2026-11-26",
+    "len": "2",
+    "slot": "21:30",
+    "media": "text",
+    "topic_tag": "블로그체험단",
+    "tformat": "contrast",
+    "cta": "creator:try"
   }
 ]
