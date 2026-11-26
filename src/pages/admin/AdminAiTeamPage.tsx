@@ -17,6 +17,7 @@ import { deriveTeamStatus, type ActivityRow, type TeamStatus } from './ai-team/d
 import Desk, { SEV_DOT, type AiTeamTask } from './ai-team/Desk'
 import OfficeView, { type SessionRow } from './ai-team/OfficeView'
 import NowPanel from './ai-team/NowPanel'
+import { plainSummary } from './ai-team/plain'
 
 const REFRESH_MS = 30_000
 
@@ -71,6 +72,12 @@ export default function AdminAiTeamPage() {
     { label: '오늘 끝낸 일', value: rows ? doneToday : '—' },
     { label: '실패·응답 없음', value: trouble, alert: trouble > 0 },
   ]
+  // 🔁 최근 24시간 끝낸 근무 — 사무실 "다시 보기" 재료(실제 기록만, 쉬운 한 줄로).
+  //   "오늘(KST)" 로 자르면 자정 뒤엔 0건이 돼 밤마다 사무실이 멈춘다(2026-11-26 로컬 실측).
+  const replay = (rows ?? [])
+    .filter(r => r.state === 'done' && Date.now() - parseUTCDate(r.created_at).getTime() < 24 * 3600_000)
+    .map(r => ({ id: r.id, team: r.team, text: plainSummary(r.summary ?? r.routine, 24) }))
+    .filter(r => r.text)
   const liveSessions = (sessions ?? []).filter(x => x.state === 'working' || Date.now() - parseUTCDate(x.updated_at).getTime() < 3600_000)
 
   return (
@@ -106,7 +113,7 @@ export default function AdminAiTeamPage() {
 
       {view === 'office' ? (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px] items-start">
-          <OfficeView sessions={liveSessions} status={status} tasksOf={tasksOf} selected={picked} onSelect={k => setPicked(p => (p === k ? null : k))} />
+          <OfficeView replay={replay} sessions={liveSessions} status={status} tasksOf={tasksOf} selected={picked} onSelect={k => setPicked(p => (p === k ? null : k))} />
           <aside className="flex flex-col gap-3 min-w-0">
             {picked && picked !== 'ceo' && (() => {
               const t = TEAMS.find(x => x.key === picked)
@@ -158,10 +165,10 @@ export default function AdminAiTeamPage() {
               {sessions.slice(0, 20).map(x => (
                 <li key={x.session_id} className="py-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[13px]">
                   <span className={`w-2 h-2 rounded-full shrink-0 self-center ${x.state === 'working' ? 'bg-tone-ok' : 'bg-gray-300'}`} />
-                  <span className="font-semibold text-gray-900 min-w-0 flex-1">{x.title ?? '제목 없는 작업'}</span>
+                  <span className="font-semibold text-gray-900 min-w-0 flex-1">{plainSummary(x.title, 40) || '제목 없는 작업'}</span>
                   <span className="text-gray-400 font-mono text-[12px]">{x.branch ?? ''}</span>
                   <span className="text-gray-500 w-20 shrink-0 text-right">{x.state === 'working' ? '일하는 중' : relativeFromNow(x.updated_at)}</span>
-                  {x.last_summary && <span className="basis-full pl-5 text-[12px] text-gray-500">{x.last_summary}</span>}
+                  {x.last_summary && <span title={x.last_summary} className="basis-full pl-5 text-[12px] text-gray-500">{plainSummary(x.last_summary, 70)}</span>}
                 </li>
               ))}
             </ul>
@@ -200,7 +207,7 @@ export default function AdminAiTeamPage() {
                   <span className="font-mono text-gray-400 w-24 shrink-0">{formatKSTShort(r.created_at)}</span>
                   <span className="font-semibold text-gray-900 w-20 shrink-0">{teamName(r.team)}</span>
                   <span className={r.state === 'failed' ? 'text-tone-bad' : 'text-gray-500'}>{r.state === 'started' ? '시작' : r.state === 'done' ? '끝' : '실패'}</span>
-                  <span className="text-gray-700 min-w-0 flex-1">{r.grade ? `[${r.grade}] ` : ''}{r.summary ?? r.routine ?? ''}</span>
+                  <span title={r.summary ?? ''} className="text-gray-700 min-w-0 flex-1">{plainSummary(r.summary ?? r.routine, 70)}</span>
                   {r.session_url && (
                     <a href={r.session_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-brand">
                       <ExternalLink className="w-3 h-3" /> 작업 화면

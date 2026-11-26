@@ -6,6 +6,7 @@ import { FileText, Send } from 'lucide-react'
 import { relativeFromNow, parseUTCDate, formatKSTShort } from '@/utils/date'
 import { scheduleLines, type TeamInfo } from './teams'
 import { STATE_LABEL, type ActivityRow, type TeamState, type TeamStatus } from './derive'
+import { plainSummary } from './plain'
 
 export interface AiTeamTask {
   id: string
@@ -88,7 +89,7 @@ export default function Desk({ t, s, tasks, history }: { t: TeamInfo; s: TeamSta
       </span>
       {shown?.summary && (
         <p className="text-[12px] text-gray-600 leading-snug">
-          {shown.grade && <span className="font-mono text-gray-400 mr-1">[{shown.grade}]</span>}{shown.summary}
+          <span title={shown.summary}>{plainSummary(shown.summary, 80)}</span>
         </p>
       )}
       {tasks.length > 0 && (
@@ -109,7 +110,7 @@ export default function Desk({ t, s, tasks, history }: { t: TeamInfo; s: TeamSta
             {recent.map(r => (
               <li key={r.id} className="text-[12px] leading-snug">
                 <span className="font-mono text-gray-400 mr-1.5">{formatKSTShort(r.created_at)}</span>
-                <span className={r.state === 'failed' ? 'text-tone-bad' : 'text-gray-700'}>{r.grade ? `[${r.grade}] ` : ''}{r.summary ?? r.routine ?? ''}</span>
+                <span title={r.summary ?? ''} className={r.state === 'failed' ? 'text-tone-bad' : 'text-gray-700'}>{plainSummary(r.summary ?? r.routine, 60)}</span>
                 {r.session_url && <a href={r.session_url} target="_blank" rel="noopener noreferrer" className="ml-1.5 text-brand whitespace-nowrap">작업 화면</a>}
               </li>
             ))}
