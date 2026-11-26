@@ -1011,3 +1011,11 @@ fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보
 - [ ] 첫 실제 환불(셀프 취소 또는 만료) 뒤 `ledger_entries` 에 `voucher_refund` 가 `platform:escrow → user:N` 으로 적혔는가
 - [ ] 제한 역할(cs·viewer) 계정을 처음 만들 때: viewer 로 분쟁 승인 403 · cs 로 통과
 
+
+## 🧾 S-POPBILL — 매장 수수료 세금계산서 팝빌 즉시 발행 (2026-11-26)
+
+**S-POPBILL** — 결재 `docs/decisions/2026-11-25-fee-vat-exclusive.md`(대표 *"팝빌로 할 것 같아"*). 게이트 `fee_invoice_auto_send`(기본 false) · 서버 `popbill_is_test`(기본 true).
+1. 팝빌 회원가입(유어딜 사업자) · 연동 신청(LinkID·SecretKey) · 공동인증서 등록 · 포인트 충전(대표) → 어드민 설정 연동 자격 칸에 LinkID·SecretKey 입력
+2. `popbill_is_test = true` 인 채로 `/admin/payouts` 연말 리포트 → 수수료 세금계산서 카드 → [초안 다시 만들기] → [팝빌로 발행] — 실패 사유가 뜨면 `worker/utils/popbill-invoice.ts` `popbillTaxinvoice` 수정
+3. 성공(테스트 서버 표시) → `popbill_is_test = false` → 1장 실제 발행 → 홈택스·매장 이메일에서 확인
+4. 그 뒤 `fee_invoice_auto_send = true` — 다음 달 1일 요약 알림에 "팝빌 자동 발행 N장"

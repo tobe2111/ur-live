@@ -105,10 +105,16 @@ export async function ensureFeeInvoiceTable(DB: D1Database): Promise<void> {
     nts_confirm_num TEXT,
     issued_at TEXT,
     issued_by INTEGER,
+    provider_ref TEXT,
+    last_error TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`).run()
   await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_fee_tax_invoices_seller_period ON fee_tax_invoices(seller_id, period)').run()
+  // 🧾 발행 사업자 문서번호 · 마지막 오류 — 표가 먼저 생긴 라이브에도 붙도록(있으면 무시).
+  for (const col of ['provider_ref TEXT', 'last_error TEXT']) {
+    await DB.prepare(`ALTER TABLE fee_tax_invoices ADD COLUMN ${col}`).run().catch(() => null)
+  }
   _ensured.add(DB)
 }
 
@@ -150,6 +156,7 @@ export interface FeeInvoiceRow {
   id: number; seller_id: number; period: string; write_date: string; supply_amount: number; vat_amount: number; total_amount: number
   voucher_count: number; buyer_biz_no: string | null; buyer_name: string | null; buyer_ceo: string | null; buyer_email: string | null
   buyer_address: string | null; status: string; nts_confirm_num: string | null; issued_at: string | null
+  provider_ref?: string | null; last_error?: string | null
 }
 
 export async function listFeeInvoices(DB: D1Database, period: string): Promise<FeeInvoiceRow[]> {
@@ -164,9 +171,39 @@ export async function markFeeInvoiceIssued(DB: D1Database, id: number, adminId: 
   const num = confirmNum && /^[0-9A-Za-z-]{8,40}$/.test(confirmNum) ? confirmNum : null
   const r = await DB.prepare(
     `UPDATE fee_tax_invoices SET status = 'issued', provider = 'hometax_manual', nts_confirm_num = ?, issued_at = datetime('now'),
-            issued_by = ?, updated_at = datetime('now') WHERE id = ? AND status = 'draft'`,
+            issued_by = ?, updated_at = datetime('now') WHERE id = ? AND status IN ('draft', 'requested')`,
   ).bind(num, adminId, id).run()
   return (r.meta?.changes ?? 0) > 0
+}
+
+/**
+ * 팝빌로 즉시 발행 — 초안(draft)만. 발행되면 'issued'(국세청 승인번호 기록), 실패하면 초안 그대로 + 오류 기록.
+ * 팝빌이 "이미 쓴 문서번호" 로 거부하면 같은 달에 이미 발행된 것이다 — 'issued' 로 맞추고 승인번호는 비워 둔다(팝빌 화면에서 확인).
+ * `ids` 가 없으면 그 달 초안 전부. 반환: 발행·실패 수.
+ */
+export async function sendFeeInvoicesViaPopbill(
+  DB: D1Database, creds: import('./popbill-invoice').PopbillCreds, period: string, ids?: number[], fetchImpl?: typeof fetch,
+): Promise<{ issued: number; failed: number; errors: Array<{ id: number; error: string }> }> {
+  const { issueFeeInvoiceViaPopbill } = await import('./popbill-invoice')
+  const rows = (await listFeeInvoices(DB, period)).filter((r) => r.status === 'draft' && (!ids || ids.includes(r.id)))
+  let issued = 0, failed = 0
+  const errors: Array<{ id: number; error: string }> = []
+  for (const r of rows) {
+    const res = await issueFeeInvoiceViaPopbill(creds, r, fetchImpl)
+    if (res.ok || res.duplicate) {
+      const u = await DB.prepare(
+        `UPDATE fee_tax_invoices SET status = 'issued', provider = ?, provider_ref = ?, nts_confirm_num = ?, last_error = NULL,
+                issued_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND status = 'draft'`,
+      ).bind(creds.isTest ? 'popbill_test' : 'popbill', `UD${period.replace('-', '')}-${r.seller_id}`, res.ntsConfirmNum ?? null, r.id).run()
+      if ((u.meta?.changes ?? 0) > 0) issued++
+    } else {
+      failed++
+      errors.push({ id: r.id, error: res.error || '알 수 없는 오류' })
+      await DB.prepare(`UPDATE fee_tax_invoices SET last_error = ?, updated_at = datetime('now') WHERE id = ? AND status = 'draft'`)
+        .bind(String(res.error || '').slice(0, 300), r.id).run().catch(() => null)
+    }
+  }
+  return { issued, failed, errors }
 }
 
 /** 순수 — 홈택스 수기 발행용 CSV(공급받는자·작성일·공급가액·세액·품목). 수식 인젝션 방어. */

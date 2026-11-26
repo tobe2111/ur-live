@@ -56,3 +56,16 @@
 - 주민번호 미등록 개인(사업자번호 없음): cron 송금 대기에서 빼고 본인 알림(`tax_id_required`) · 어드민 지급 `PAYOUT_NO_TAX_ID` 409.
 - 정산 건 생성 시 매장에 `payout_scheduled`(목요일 입금 예정). 송금 완료 알림은 기존 `payout-sent-notify`.
 - 결재 `docs/decisions/2026-11-25-settlement-safety-guards.md` · 시험 `settlement-safety-2026-11-25.test.ts` · `payout-cycle-full` 에 주민번호 단계 추가.
+## 4단계 — 볼타 연동 (대표 *"일단 볼타 서비스를 쓸까 해"*)
+- `worker/utils/bolta-invoice.ts` — `POST https://xapi.bolta.io/v1/taxInvoices/issue`, Basic(키:), `Bolta-Client-Reference-Id = urdeal-fee-{seller}-{period}`, 영수·과세. 응답 `issuanceKey` → 상태 `requested`.
+- 키: env `BOLTA_API_KEY` 우선, 없으면 `platform_settings.bolta_api_key`(어드민 설정 연동 자격 칸). 자동 발행 스위치 `fee_invoice_auto_send`(기본 false).
+- 어드민 카드 [볼타로 발행] · 실패 사유 표시. 시험 `fee-tax-invoice-2026-11-25.test.ts` ⑤.
+- ⚠️ **docs.bolta.io 는 이 작업 환경 프록시가 막아 원문을 못 읽었다**(검색 요약으로 확인). supplier/supplied 안의 상호·대표자·담당자 필드 이름은 추정 — 대표가 **테스트 키(test_)** 를 넣고 [볼타로 발행] 한 번 → 실패 사유가 카드에 뜨면 `boltaIssueBody` 만 고친다.
+- 아직 없는 것: 국세청 결과 웹훅/조회(지금은 접수까지 → [발행 완료] 수동).
+
+## 8단계 — 팝빌 연동 (대표 2026-11-26 *"팝빌로 할 것 같아. 일단 너가 할 수 있는거 더 없어?"*)
+- 볼타 대신 **팝빌**. 보관했던 볼타 패치(삭제)를 바탕으로 연결부만 `worker/utils/popbill-invoice.ts` 로 바꿨다.
+- 프로토콜 출처: developers.popbill.com 은 이 환경에서 막혀 **공식 SDK 를 받아 읽었다**(npm `popbill` 1.64.2 · `linkhub` 1.8.2 TokenBuilder 서명 식, Maven `popbill-sdk` 1.71.4 `Taxinvoice`/`TaxinvoiceDetail` 클래스 필드). 서명 식은 시험이 node:crypto 로 따로 계산해 대조한다.
+- 즉시 발행(ISSUE) → 응답 승인번호로 바로 `issued`. 문서번호 `UD{yyyymm}-{매장id}` — 팝빌이 중복을 거부하므로 같은 달 두 번 발행되지 않는다(거부 문구면 issued 로 맞춤).
+- 자격: env `POPBILL_LINK_ID`/`POPBILL_SECRET_KEY` 또는 어드민 연동 자격 칸 · 서버 `popbill_is_test`(기본 true) · 자동 발행 `fee_invoice_auto_send`(기본 false) · 절차 `S-POPBILL`.
+- ⚠️ 값 표기(정과금·정발행·영수·과세·사업자)는 팝빌 표기 기억에 기댄 부분이 있다 — 테스트 서버 1장으로 확인(S-POPBILL 2).
