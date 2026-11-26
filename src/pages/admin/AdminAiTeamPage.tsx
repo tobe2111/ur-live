@@ -5,14 +5,16 @@
  *   조직도는 `./ai-team/teams.ts`, 근무 상태는 D1. 기록이 없는 팀은 "부르면 출근".
  *   2026-11-26 추가(대표 "실제로 자동으로 할 일들을 찾아서"): 규칙이 찾은 일감(/api/admin/ai-team/tasks)을
  *   담당 팀 책상에 더미로 쌓고, 아래 "일감 게시판"에 전부 보인다. 팀 루틴·당번이 이 목록을 보고 일한다.
+ *   2026-11-26 추가(대표 "메타버스처럼 직원들이 움직이고"): 기본 보기는 사무실(`./ai-team/OfficeView`) — 같은 상태로 사람이 걷는다.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { Building2, ExternalLink } from 'lucide-react'
 import api from '@/lib/api'
-import { formatKSTShort, formatKSTDate } from '@/utils/date'
+import { formatKSTShort, formatKSTDate, parseUTCDate, relativeFromNow } from '@/utils/date'
 import { FLOORS, TEAMS } from './ai-team/teams'
 import { deriveTeamStatus, type ActivityRow, type TeamStatus } from './ai-team/derive'
 import Desk, { SEV_DOT, type AiTeamTask } from './ai-team/Desk'
+import OfficeView, { type SessionRow } from './ai-team/OfficeView'
 
 const REFRESH_MS = 30_000
 
@@ -22,6 +24,9 @@ export default function AdminAiTeamPage() {
   const [taskErrors, setTaskErrors] = useState<string[]>([])
   const [error, setError] = useState(false)
   const [, setTick] = useState(0)
+  const [view, setView] = useState<'office' | 'org'>('office')
+  const [sessions, setSessions] = useState<SessionRow[] | null>(null)
+  const [picked, setPicked] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -30,6 +35,9 @@ export default function AdminAiTeamPage() {
       api.get('/api/admin/ai-team/activity?limit=200')
         .then(res => { if (alive && res.data?.success) { setRows(res.data.items as ActivityRow[]); setError(false) } })
         .catch(() => { if (alive) setError(true) })
+      api.get('/api/admin/ai-team/sessions?hours=48')
+        .then(res => { if (alive && res.data?.success) setSessions(res.data.items as SessionRow[]) })
+        .catch(() => { if (alive) setSessions([]) })
       api.get('/api/admin/ai-team/tasks')
         .then(res => { if (alive && res.data?.success) { setTasks(res.data.tasks as AiTeamTask[]); setTaskErrors(res.data.errors ?? []) } })
         .catch(() => { if (alive) setTaskErrors(['all']) })
@@ -90,22 +98,62 @@ export default function AdminAiTeamPage() {
         <a href="/admin/decisions" className="text-[13px] font-semibold text-brand">결재함 열기</a>
       </section>
 
-      <div className="flex flex-col gap-1.5 rounded-[var(--dash-radius,16px)] bg-gray-200 p-1.5">
-        {FLOORS.map(f => (
-          <section key={f.no} className="grid grid-cols-1 sm:grid-cols-[88px_minmax(0,1fr)] rounded-xl bg-gray-50">
-            <div className="px-3 py-2 sm:py-3 flex sm:flex-col gap-2 sm:gap-0.5 items-baseline border-b sm:border-b-0 sm:border-r border-dashed border-gray-200">
-              <span className="font-mono text-[20px] text-brand">{f.no}</span>
-              <span className="text-[12px] font-semibold text-gray-600 break-keep">{f.name}</span>
-            </div>
-            <div className="grid gap-2.5 p-3 grid-cols-[repeat(auto-fill,minmax(210px,1fr))] min-w-0">
-              {f.teams.map(k => {
-                const t = TEAMS.find(x => x.key === k)
-                return t ? <Desk key={k} t={t} s={status[k]} tasks={tasksOf(k)} /> : null
-              })}
-            </div>
-          </section>
+      <div className="flex gap-1 self-start rounded-lg bg-white p-1 text-[13px] font-semibold">
+        {([['office', '사무실'], ['org', '조직도']] as const).map(([k, label]) => (
+          <button key={k} type="button" onClick={() => setView(k)}
+            className={`px-3 py-1.5 rounded-md ${view === k ? 'bg-brand text-white' : 'text-gray-600 hover:text-gray-900'}`}>{label}</button>
         ))}
       </div>
+
+      {view === 'office' ? (
+        <>
+          <OfficeView sessions={(sessions ?? []).filter(x => x.state === 'working' || Date.now() - parseUTCDate(x.updated_at).getTime() < 3600_000)} status={status} tasksOf={tasksOf} selected={picked} onSelect={k => setPicked(p => (p === k ? null : k))} />
+          {picked && picked !== 'ceo' && (() => {
+            const t = TEAMS.find(x => x.key === picked)
+            return t ? <div className="max-w-sm"><Desk t={t} s={status[picked]} tasks={tasksOf(picked)} /></div> : null
+          })()}
+          {picked === 'ceo' && (
+            <p className="text-[13px] text-gray-600">대표실 — 방향·가격·대외 약속을 정하고 현장 영업을 합니다. <a href="/admin/decisions" className="text-brand font-semibold">결재함 열기</a></p>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-col gap-1.5 rounded-[var(--dash-radius,16px)] bg-gray-200 p-1.5">
+          {FLOORS.map(f => (
+            <section key={f.no} className="grid grid-cols-1 sm:grid-cols-[88px_minmax(0,1fr)] rounded-xl bg-gray-50">
+              <div className="px-3 py-2 sm:py-3 flex sm:flex-col gap-2 sm:gap-0.5 items-baseline border-b sm:border-b-0 sm:border-r border-dashed border-gray-200">
+                <span className="font-mono text-[20px] text-brand">{f.no}</span>
+                <span className="text-[12px] font-semibold text-gray-600 break-keep">{f.name}</span>
+              </div>
+              <div className="grid gap-2.5 p-3 grid-cols-[repeat(auto-fill,minmax(210px,1fr))] min-w-0">
+                {f.teams.map(k => {
+                  const t = TEAMS.find(x => x.key === k)
+                  return t ? <Desk key={k} t={t} s={status[k]} tasks={tasksOf(k)} /> : null
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      <section className="rounded-xl bg-white p-4">
+        <h2 className="text-[15px] font-semibold text-gray-900 mb-1">열린 작업실 (Claude 세션)</h2>
+        <p className="text-[12px] text-gray-400 mb-2">이 레포에서 열린 세션은 새로 만들어도 자동으로 여기 붙습니다(시작·질문·턴 끝마다 보고). 최근 48시간.</p>
+        {!sessions ? <p className="text-[13px] text-gray-400">불러오는 중</p>
+          : sessions.length === 0 ? <p className="text-[13px] text-gray-400">아직 보고한 세션이 없습니다. 다음에 열리는 세션부터 붙습니다.</p>
+          : (
+            <ul className="divide-y divide-gray-100">
+              {sessions.slice(0, 20).map(x => (
+                <li key={x.session_id} className="py-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[13px]">
+                  <span className={`w-2 h-2 rounded-full shrink-0 self-center ${x.state === 'working' ? 'bg-tone-ok' : 'bg-gray-300'}`} />
+                  <span className="font-semibold text-gray-900 min-w-0 flex-1">{x.title ?? '제목 없는 작업'}</span>
+                  <span className="text-gray-400 font-mono text-[12px]">{x.branch ?? ''}</span>
+                  <span className="text-gray-500 w-20 shrink-0 text-right">{x.state === 'working' ? '일하는 중' : relativeFromNow(x.updated_at)}</span>
+                  {x.last_summary && <span className="basis-full pl-5 text-[12px] text-gray-500">{x.last_summary}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+      </section>
 
       <section className="rounded-xl bg-white p-4">
         <h2 className="text-[15px] font-semibold text-gray-900 mb-1">일감 게시판</h2>
