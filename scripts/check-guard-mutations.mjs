@@ -1594,8 +1594,9 @@ const MUTATIONS = [
   {
     name: '💰 어드민 송금 화면이 자체 계산으로 회귀 (화면과 실지급이 갈린다)',
     file: 'src/pages/AdminInfluencerPayoutsPage.tsx',
-    find: '                  const w = computeCashPayout({ gross: r.available_amount, taxType: r.tax_type, businessNumber: r.business_number, feePct: cashFeePct })',
-    replace: '                  const w = { net: r.available_amount, withholdingPct: 0, withholding: 0, fee: 0, feePct: 0 }',
+    // 🌍 2026-11-26 두 자리가 `cashOf()` 로 합쳐졌다 — 그 함수 본체를 자체 계산으로 바꾼다.
+    find: '  const cashOf = (r: PayoutRow) => computeCashPayout({ gross: r.available_amount, taxType: r.tax_type, businessNumber: r.business_number, feePct: cashFeePct, withholdingRateOverride: r.overseas ? overseasPct / 100 : undefined })',
+    replace: '  const cashOf = (r: PayoutRow) => ({ gross: r.available_amount, taxableBase: r.available_amount, net: r.available_amount, withholdingPct: 0, withholding: 0, fee: 0, feePct: 0 })',
     test: 'src/tests/unit/influencer-cash-fee.test.ts',
     why:
       '원천징수가 cron · 라우트 · 이 화면 **세 곳**에서 따로 계산되고 있었다. 수수료를 얹으면 ' +

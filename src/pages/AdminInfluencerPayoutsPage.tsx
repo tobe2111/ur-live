@@ -30,6 +30,8 @@ interface PayoutRow {
   bank_account: string | null
   account_holder: string | null
   updated_at: string
+  /** 🌍 2026-11-26 해외 거주 — 국내 계좌 대신 해외 받는 곳(가린 값). 원천징수는 `overseas_withholding_pct`. */
+  overseas?: { country: string; method: 'wise' | 'paypal' | 'bank'; currency: string; masked: string; name_en: string }
 }
 
 // 💰 2026-08-31: 이 화면이 갖고 있던 자체 계산을 `computeCashPayout` SSOT 로 위임.
@@ -40,15 +42,32 @@ interface PayoutRow {
 
 export default function AdminInfluencerPayoutsPage() {
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (list + payout_min).
-  const { data: payoutData, isLoading: loading, isError, error, refetch } = useApiQuery<{ list: PayoutRow[]; payout_min: number; cash_fee_pct: number }>(
+  const { data: payoutData, isLoading: loading, isError, error, refetch } = useApiQuery<{ list: PayoutRow[]; payout_min: number; cash_fee_pct: number; overseas_pct: number }>(
     ['admin', 'influencer-payouts'], '/api/admin-payouts/payouts',
-    { select: (r: any) => (r?.success ? { list: r.data.list || [], payout_min: r.data.payout_min || 100000, cash_fee_pct: r.data.cash_fee_pct ?? 0 } : { list: [], payout_min: 100000, cash_fee_pct: 0 }) },
+    { select: (r: any) => (r?.success ? { list: r.data.list || [], payout_min: r.data.payout_min || 100000, cash_fee_pct: r.data.cash_fee_pct ?? 0, overseas_pct: r.data.overseas_withholding_pct ?? 22 } : { list: [], payout_min: 100000, cash_fee_pct: 0, overseas_pct: 22 }) },
   )
   const list = payoutData?.list ?? []
   const payoutMin = payoutData?.payout_min ?? 100000
   // 💰 수수료율은 **서버가 준 값만** 쓴다(`?? 0`). 자체 기본값을 두면 대표가 율을 바꿔도
   //   이 화면만 옛 숫자를 보여준다 — 실지급과 갈리는 그 사고를 막는다.
   const cashFeePct = payoutData?.cash_fee_pct ?? 0
+  const overseasPct = payoutData?.overseas_pct ?? 22
+  // 💰 화면 계산도 서버와 같은 SSOT — 해외 거주면 해외 원천징수율로.
+  const cashOf = (r: PayoutRow) => computeCashPayout({ gross: r.available_amount, taxType: r.tax_type, businessNumber: r.business_number, feePct: cashFeePct, withholdingRateOverride: r.overseas ? overseasPct / 100 : undefined })
+  const pctOf = (r: PayoutRow, w: { withholdingPct: number }) => (r.overseas ? overseasPct : w.withholdingPct)
+  // 🌍 해외 받는 곳 원문 — 서버가 2FA 를 요구한다(axios 인스턴스가 코드를 물어 1회 재시도).
+  async function showOverseas(r: PayoutRow) {
+    try {
+      const res = await api.get(`/api/admin-payouts/payouts/${encodeURIComponent(r.influencer_id)}/overseas-destination`)
+      const d = res.data?.data
+      if (!d) { toast.error('받는 곳을 불러오지 못했어요'); return }
+      const dest = d.destination || {}
+      const lines = d.method === 'bank'
+        ? [`은행: ${dest.bankName || '-'}`, `계좌/IBAN: ${dest.account || '-'}`, `SWIFT: ${dest.swift || '-'}`]
+        : [`${d.method === 'wise' ? 'Wise' : 'PayPal'} 이메일: ${dest.email || '-'}`]
+      await confirmDialog([`받는 사람: ${d.name_en} (${d.country})`, ...lines, `통화: ${d.currency}`].join('\n'))
+    } catch { toast.error('받는 곳을 불러오지 못했어요(2단계 인증 확인)') }
+  }
   const load = () => refetch()
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -72,14 +91,14 @@ export default function AdminInfluencerPayoutsPage() {
   async function bulkProcess() {
     const targets = list.filter(r => selectedIds.has(r.influencer_id))
     if (targets.length === 0) { toast.error('선택된 항목 없음'); return }
-    const cashCount = targets.filter(r => r.payout_method !== 'deal' && r.bank_name && r.bank_account && r.account_holder).length
+    const cashCount = targets.filter(r => r.payout_method !== 'deal' && !r.overseas && r.bank_name && r.bank_account && r.account_holder).length
     const dealCount = targets.filter(r => r.payout_method === 'deal').length
     const skipCount = targets.length - cashCount - dealCount
-    if (!(await confirmDialog(`${targets.length}건 일괄 처리:\n- 현금 ${cashCount}건 (송금 후 status='paid')\n- 딜 ${dealCount}건 (즉시 적립)\n- 계좌 누락 ${skipCount}건 (skip)\n진행?`))) return
+    if (!(await confirmDialog(`${targets.length}건 일괄 처리:\n- 현금 ${cashCount}건 (송금 후 status='paid')\n- 딜 ${dealCount}건 (즉시 적립)\n- 계좌 누락·해외 ${skipCount}건 (skip — 해외는 한 건씩)\n진행?`))) return
     setBulkProcessing(true)
     let ok = 0, fail = 0
     for (const r of targets) {
-      if (r.payout_method !== 'deal' && (!r.bank_name || !r.bank_account || !r.account_holder)) { fail++; continue }
+      if (r.payout_method !== 'deal' && (r.overseas || !r.bank_name || !r.bank_account || !r.account_holder)) { fail++; continue }
       try {
         const res = await api.post('/api/admin-payouts/payouts/process', { influencer_id: r.influencer_id, method: r.payout_method || 'cash' })
         if (res.data?.success) ok++; else fail++
@@ -94,10 +113,10 @@ export default function AdminInfluencerPayoutsPage() {
 
   async function process(row: PayoutRow) {
     const method = row.payout_method || 'cash'
-    const w = computeCashPayout({ gross: row.available_amount, taxType: row.tax_type, businessNumber: row.business_number, feePct: cashFeePct })
+    const w = cashOf(row)
     const msg = method === 'deal'
       ? `${row.influencer_id} 에게 딜로 ${row.available_amount.toLocaleString()}원 (+ 보너스) 지급?`
-      : `${row.influencer_id} 에게 현금 ${w.net.toLocaleString()}원 (${w.fee > 0 ? `정산수수료 ${w.feePct}% = ${w.fee.toLocaleString()}원, ` : ''}원천징수 ${w.withholdingPct}% = ${w.withholding.toLocaleString()}원) 송금 완료 처리?\n\n계좌: ${row.bank_name || '-'} ${row.bank_account || '-'} (${row.account_holder || '-'})`
+      : `${row.influencer_id} 에게 현금 ${w.net.toLocaleString()}원 (${w.fee > 0 ? `정산수수료 ${w.feePct}% = ${w.fee.toLocaleString()}원, ` : ''}원천징수 ${pctOf(row, w)}% = ${w.withholding.toLocaleString()}원) 송금 완료 처리?\n\n${row.overseas ? `해외 송금: ${row.overseas.name_en} (${row.overseas.country}) ${row.overseas.masked} · ${row.overseas.currency} — 원화 ${w.net.toLocaleString()}원 상당을 보냈을 때 누르세요` : `계좌: ${row.bank_name || '-'} ${row.bank_account || '-'} (${row.account_holder || '-'})`}`
     if (!(await confirmDialog(msg))) return
     setProcessingId(row.influencer_id)
     try {
@@ -121,7 +140,7 @@ export default function AdminInfluencerPayoutsPage() {
     .filter(r => methodFilter === 'all' || r.payout_method === methodFilter)
     .filter(r => {
       if (accountFilter === 'all') return true
-      const ok = r.payout_method === 'deal' || (r.bank_name && r.bank_account && r.account_holder)
+      const ok = r.payout_method === 'deal' || !!r.overseas || (r.bank_name && r.bank_account && r.account_holder)
       return accountFilter === 'ok' ? ok : !ok
     })
     .sort((a, b) => {
@@ -204,8 +223,8 @@ export default function AdminInfluencerPayoutsPage() {
               </thead>
               <tbody>
                 {filteredSorted.map((r) => {
-                  const w = computeCashPayout({ gross: r.available_amount, taxType: r.tax_type, businessNumber: r.business_number, feePct: cashFeePct })
-                  const accountOk = r.payout_method === 'deal' || (r.bank_name && r.bank_account && r.account_holder)
+                  const w = cashOf(r)
+                  const accountOk = r.payout_method === 'deal' || !!r.overseas || (r.bank_name && r.bank_account && r.account_holder)
                   return (
                     <tr key={r.influencer_id} className="border-t border-gray-100">
                       <td className="px-4 py-3"><input type="checkbox" checked={selectedIds.has(r.influencer_id)} onChange={() => toggleSelect(r.influencer_id)} /></td>
@@ -221,13 +240,15 @@ export default function AdminInfluencerPayoutsPage() {
                           <>
                             <p className="font-bold text-gray-900">{w.net.toLocaleString()}원</p>
                             <p className="text-[10px] text-gray-500">
-                              {w.fee > 0 && <>수수료 {w.feePct}% · </>}원천 {w.withholdingPct}%
+                              {w.fee > 0 && <>수수료 {w.feePct}% · </>}원천 {pctOf(r, w)}%
                             </p>
                           </>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center text-[10px]">
-                        {r.payout_method === 'deal' ? <span className="text-gray-400">-</span> : accountOk ? (
+                        {r.payout_method === 'deal' ? <span className="text-gray-400">-</span> : r.overseas ? (
+                          <button type="button" onClick={() => { void showOverseas(r) }} className="text-brand-text underline">해외 {r.overseas.country}<br />{r.overseas.masked}</button>
+                        ) : accountOk ? (
                           <span className="text-gray-700">{r.bank_name}<br />{r.bank_account}</span>
                         ) : (
                           <span className="text-tone-bad font-bold">계좌 미등록</span>

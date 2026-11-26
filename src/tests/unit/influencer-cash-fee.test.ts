@@ -118,7 +118,14 @@ describe('R4 — 원천징수율 판정은 SSOT 하나', () => {
   // 화면은 **두 자리**에서 금액을 보여준다(확인창 + 목록 행). 존재만 보면 한쪽이
   //   자체 계산으로 회귀해도 나머지 한 호출 때문에 통과한다(주입 검증에서 실제로 그랬다).
   //   ⚠️ 두 자리를 하나로 합치는 리팩토링을 하면 이 숫자도 함께 줄일 것.
-  const MIN_CALLS: Record<string, number> = { 'src/pages/AdminInfluencerPayoutsPage.tsx': 2 }
+  //   🌍 2026-11-26 두 자리가 `cashOf()` 하나로 합쳐졌다(해외 세율 분기를 한 곳에) — 호출은 1, 대신 두 자리가
+  //   그 함수를 쓰는지(아래 `cashOf(` 2회 이상)를 본다.
+  const MIN_CALLS: Record<string, number> = { 'src/pages/AdminInfluencerPayoutsPage.tsx': 1 }
+  it('어드민 송금 화면의 두 자리(확인창 + 목록 행)가 모두 같은 계산 함수를 쓴다', () => {
+    const code = codeOnly(readFileSync('src/pages/AdminInfluencerPayoutsPage.tsx', 'utf8'))
+    expect(code).toMatch(/const cashOf = \(r: PayoutRow\) => computeCashPayout\(/)
+    expect(code.split('cashOf(').length - 1).toBeGreaterThanOrEqual(2) // 확인창 + 목록 행
+  })
 
   for (const f of SITES) {
     it(`${f} 가 computeCashPayout 을 쓴다 (자리 수까지)`, () => {
