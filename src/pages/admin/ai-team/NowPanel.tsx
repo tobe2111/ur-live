@@ -4,7 +4,7 @@
  *   손이 필요한 팀(실패·응답 없음·일감) · 일하는 팀 · 열린 작업실. 줄을 누르면 그 팀 카드로 바뀐다.
  *   아래에 범례(몸통 색 = 본부, 머리 위 표시 = 상태).
  */
-import { TEAMS } from './teams'
+import { TEAMS, DUTY_SHIFTS, nextShift } from './teams'
 import { STATE_LABEL, type TeamStatus } from './derive'
 import { SEV_DOT, type AiTeamTask } from './Desk'
 import { DEPT_COLOR } from './office-layout'
@@ -26,6 +26,12 @@ export default function NowPanel({ status, tasksOf, sessions, onPick }: {
     .sort((a, b) => rank(b) - rank(a))
   const working = TEAMS.filter(t => status[t.key].state === 'working')
   const liveSessions = sessions.filter(x => x.state === 'working')
+  const nextAny = (() => {
+    const all = [...TEAMS.map(t => ({ t, n: nextShift(t) })), { t: null, n: nextShift({ key: 'duty', name: '당번', initial: '', job: '', shifts: DUTY_SHIFTS }) }]
+      .filter(x => x.n).sort((a, b) => a.n!.at.getTime() - b.n!.at.getTime())
+    const f = all[0]
+    return f ? `${f.n!.label} ${f.t ? f.t.name : '일감 처리 당번'}(${f.n!.what})` : null
+  })()
 
   return (
     <div className="rounded-xl bg-white p-4 flex flex-col gap-4">
@@ -51,7 +57,7 @@ export default function NowPanel({ status, tasksOf, sessions, onPick }: {
 
       <section>
         <h3 className="text-[13px] font-semibold text-gray-900 mb-1.5">일하는 팀</h3>
-        {working.length === 0 ? <p className="text-[13px] text-gray-400">지금은 없습니다. 정해진 시간과 당번 때 출근합니다.</p> : (
+        {working.length === 0 ? <p className="text-[13px] text-gray-400">지금은 없습니다. {nextAny ? `다음 출근: ${nextAny}` : '정해진 시간과 당번 때 출근합니다.'}</p> : (
           <ul className="flex flex-col">
             {working.map(t => (
               <li key={t.key}>
@@ -88,6 +94,7 @@ export default function NowPanel({ status, tasksOf, sessions, onPick }: {
           ))}
         </ul>
         <ul className="mt-2 flex flex-col gap-1 text-[12px] text-gray-600">
+          <li>움직이는 사람 = 지금 실제로 일하는 팀. 흐린 사람은 일이 없어 쉬는 중이고, 이름 아래가 다음 출근 시각</li>
           <li>검은 말풍선과 초록 점: 자리에서 일하는 중</li>
           <li>빨간 ! 는 실패, 주황 ? 는 응답 없음</li>
           <li>서류를 들고 걷기: 일을 끝내고 비서실로 보고하러 가는 중</li>

@@ -113,7 +113,7 @@ export default function AdminAiTeamPage() {
               return t ? (
                 <div className="flex flex-col gap-2">
                   <button type="button" onClick={() => setPicked(null)} className="self-start text-[12px] text-gray-500 hover:text-gray-900">← 전체 상황으로</button>
-                  <Desk t={t} s={status[picked]} tasks={tasksOf(picked)} />
+                  <Desk t={t} s={status[picked]} tasks={tasksOf(picked)} history={rows ?? []} />
                 </div>
               ) : null
             })()}
@@ -139,7 +139,7 @@ export default function AdminAiTeamPage() {
               <div className="grid gap-2.5 p-3 grid-cols-[repeat(auto-fill,minmax(210px,1fr))] min-w-0">
                 {f.teams.map(k => {
                   const t = TEAMS.find(x => x.key === k)
-                  return t ? <Desk key={k} t={t} s={status[k]} tasks={tasksOf(k)} /> : null
+                  return t ? <Desk key={k} t={t} s={status[k]} tasks={tasksOf(k)} history={rows ?? []} /> : null
                 })}
               </div>
             </section>

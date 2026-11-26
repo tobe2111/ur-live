@@ -141,7 +141,7 @@ describe('⑥ 사무실 평면도', () => {
     expect(CORRIDOR_Y.length).toBe(2)
   })
   it('사람이 겹치지 않는다 — 쉬는 자리끼리, 그리고 남의 의자와 이름표 폭(55) 이상 떨어져 있다 (2026-11-26 대표 "사람이 그리고 겹쳐")', () => {
-    const spots = [...SPOTS.coffee, ...SPOTS.meeting, ...SPOTS.secretaryDrop]
+    const spots = [...SPOTS.secretaryDrop]
     const seats = AI_TEAM_KEYS.map(k => deskOf(k)!.seat)
     for (let i = 0; i < spots.length; i++) {
       for (let j = i + 1; j < spots.length; j++) {
@@ -224,5 +224,37 @@ describe('⑨ 비켜 서기(마주쳐도 안 포개짐)', () => {
   })
   it('사무실이 그 보정을 그릴 때 쓴다', () => {
     expect(read('src/pages/admin/ai-team/OfficeView.tsx')).toMatch(/a\.x \+ a\.ox/)
+  })
+})
+
+// ⑩ 진짜 일만 움직인다 (2026-11-26 대표 "이게 근데 지금 진짜 일을 해서 움직이는거 맞아?" → "모두 다 해줘")
+//   ⚠️ 못 막는 것: 예약 작업이 실제로 켜져 있는지(레포 밖 — 시각은 list_triggers 와 손으로 맞췄다).
+describe('⑩ 진짜 일만 움직인다 · 12팀 모두 근무 일정', () => {
+  it('12팀 모두 정기 근무가 있다(부르면 출근으로 남은 팀 0)', async () => {
+    const { TEAMS } = await import('@/pages/admin/ai-team/teams')
+    for (const t of TEAMS) expect(t.shifts.length, `${t.key} 근무 없음`).toBeGreaterThan(0)
+  })
+  it('꾸밈 걸음이 없다 — 쉬러 가는 자리도, 그 자리를 고르는 코드도 없다', () => {
+    const v = read('src/pages/admin/ai-team/OfficeView.tsx')
+    expect(v).not.toMatch(/SPOTS\.(coffee|meeting)/)
+    expect(v).not.toMatch(/Math\.random\(\) < 0\./)
+    expect(Object.keys(SPOTS)).toEqual(['secretaryDrop'])
+  })
+  it('다음 출근(KST) — 매일 근무는 오늘/내일, 요일 근무는 그 요일', async () => {
+    const { nextShift } = await import('@/pages/admin/ai-team/teams')
+    const now = new Date('2026-11-26T12:00:00Z') // 목 21:00 KST
+    const daily = { key: 'x', name: '', initial: '', job: '', shifts: [{ days: [], hm: '08:41', what: 'a' }] }
+    expect(nextShift(daily, now)?.label).toBe('내일 08:41')
+    const fri = { ...daily, shifts: [{ days: [5], hm: '14:43', what: 'b' }] }
+    expect(nextShift(fri, now)?.label).toBe('내일 14:43') // 목요일 밤 → 금요일은 내일
+    const sat = { ...daily, shifts: [{ days: [6], hm: '09:00', what: 'b' }] }
+    expect(nextShift(sat, now)?.label).toBe('토 09:00')
+    const today = { ...daily, shifts: [{ days: [], hm: '22:10', what: 'c' }] }
+    expect(nextShift(today, now)?.label).toBe('오늘 22:10')
+    expect(nextShift(today, now)?.at.toISOString()).toBe('2026-11-26T13:10:00.000Z')
+  })
+  it('사람을 누르면 최근 한 일과 작업 화면이 열린다', () => {
+    expect(read('src/pages/admin/ai-team/Desk.tsx')).toMatch(/최근 한 일[\s\S]*session_url/)
+    expect(read('src/pages/admin/AdminAiTeamPage.tsx')).toMatch(/history=\{rows \?\? \[\]\}/)
   })
 })

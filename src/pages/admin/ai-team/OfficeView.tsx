@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { parseUTCDate } from '@/utils/date'
-import { TEAMS } from './teams'
+import { TEAMS, nextShift } from './teams'
 import type { TeamStatus } from './derive'
 import type { AiTeamTask } from './Desk'
 import { ROOMS, VIEW, DEPT_COLOR, TEAM_DEPT, SPOTS, deskOf, route, separation, type Pt } from './office-layout'
@@ -67,6 +67,14 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
   statusRef.current = status
   const [carry, setCarry] = useState<Record<string, boolean>>({})
   const boxRef = useRef<HTMLDivElement | null>(null)
+  // 다음 출근 시각(일하는 중이 아닐 때만) — 30초마다 부모가 다시 그리므로 그때 갱신된다
+  const next: Record<string, string> = {}
+  for (const t of TEAMS) {
+    const st = status[t.key]?.state
+    if (st === 'working' || st === 'stuck') continue
+    const n = nextShift(t)
+    if (n) next[t.key] = n.label
+  }
   const reduce = useMemo(() => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches, [])
 
   // 처음 자리에 앉힌다
@@ -125,10 +133,9 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
       const atSeat = Math.hypot(a.x - seat.x, a.y - seat.y) < 2
       if (s && ['working', 'failed', 'stuck'].includes(s.state)) { if (!atSeat) a.path = back(); a.wait = 3; return }
       if (!atSeat) { a.path = back(); a.wait = 4 + Math.random() * 6; return }
-      const r = Math.random()
-      const to = a.key === 'ceo' ? null : r < 0.18 ? claim(a, SPOTS.coffee) : r < 0.28 ? claim(a, SPOTS.meeting) : null
-      if (to) { a.path = laneRoute(a.key, seat, to); a.wait = 3 + Math.random() * 5 }
-      else a.wait = 5 + Math.random() * 8
+      // 🧾 2026-11-26 대표 "진짜 일을 해서 움직이는거 맞아?" — 일이 없으면 움직이지 않는다(꾸밈 걸음 없음).
+      //   화면의 움직임은 실제 근무 기록 하나와 1:1 이다: 일하는 중 = 타이핑, 끝냄 = 보고서 들고 비서실.
+      a.wait = 5
     }
     function tick(now: number) {
       raf = requestAnimationFrame(tick)
@@ -210,6 +217,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
             <g key={`desk-${p.key}`} onClick={() => onSelect(p.key)} style={{ cursor: 'pointer' }}>
               {sel && <rect x={s.desk.x - 40} y={s.desk.y - 20} width="80" height="78" rx="8" fill="#1C69EF" opacity=".08" />}
               <text x={s.seat.x} y={s.seat.y + 30} fontSize="11" fontWeight="600" fill="#6B7280" textAnchor="middle">{p.name}</text>
+              {next[p.key] && <text x={s.seat.x} y={s.seat.y + 43} fontSize="9.5" fill="#9CA3AF" textAnchor="middle">다음 {next[p.key]}</text>}
               <rect x={s.desk.x - 34} y={s.desk.y - 14} width="68" height="28" rx="4" fill="#FFFFFF" stroke="#C7CCD6" />
               <rect x={s.desk.x - 12} y={s.desk.y - 10} width="24" height="15" rx="2" fill="#1F2937" />
               {Array.from({ length: Math.min(n, 4) }).map((_, i) => (
@@ -245,12 +253,14 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
           if (!a) return null
           const color = DEPT_COLOR[TEAM_DEPT[p.key]] ?? '#6B7280'
           const b = p.key === 'ceo' ? null : bubbleFor(status[p.key])
+          const st = status[p.key]?.state
+          const idle = p.key !== 'ceo' && (!st || st === 'oncall' || st === 'done') && !carry[p.key]
           const sel = selected === p.key
           return (
             <g key={p.key} ref={el => { refs.current[p.key] = el }} transform={`translate(${a.x} ${a.y})`}
               onClick={() => onSelect(p.key)} style={{ cursor: 'pointer' }}>
               <ellipse cx="0" cy="14" rx="12" ry="4" fill="#000" opacity=".12" />
-              <g className="ai-body">
+              <g className="ai-body" opacity={idle ? 0.45 : 1}>
                 {sel && <circle cx="0" cy="-2" r="19" fill="none" stroke="#1C69EF" strokeWidth="2" />}
                 <rect x="-10" y="-4" width="20" height="18" rx="7" fill={color} />
                 <circle cx="0" cy="-10" r="8" fill="#F5D0B5" />
