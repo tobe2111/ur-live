@@ -98,3 +98,58 @@ describe('④ 월 1일 요약', () => {
     expect(m.message).toMatch(/판매대행 명세 국세청 제출 1월 15일까지/)
   })
 })
+
+describe('⑤ 팝빌 즉시 발행', () => {
+  it('링크허브 토큰 서명 — 공식 SDK(linkhub 1.8.2 TokenBuilder) 식과 같다', async () => {
+    const { linkhubTokenRequest } = await import('@/worker/utils/popbill-invoice')
+    const { createHash, createHmac } = await import('node:crypto')
+    const secret = Buffer.from('test-secret-key-0123456789').toString('base64')
+    const xDate = '2026-11-26T00:00:00.000Z'
+    const r = await linkhubTokenRequest({ linkId: 'URDEAL', secretKey: secret, isTest: true }, '4790902930', xDate)
+    expect(r.url).toBe('https://auth.linkhub.co.kr/POPBILL_TEST/Token')
+    expect(JSON.parse(r.body)).toEqual({ access_id: '4790902930', scope: ['member', '110'] })
+    // SDK 와 같은 식을 node:crypto 로 따로 계산해 맞춘다(구현을 베끼지 않은 대조군).
+    const bodyDigest = createHash('sha256').update(r.body).digest('base64')
+    const target = 'POST\n' + bodyDigest + '\n' + xDate + '\n' + '*\n' + '2.0\n' + '/POPBILL_TEST/Token'
+    const sig = createHmac('sha256', Buffer.from(secret, 'base64')).update(target).digest('base64')
+    expect(r.headers.Authorization).toBe(`LINKHUB URDEAL ${sig}`)
+    expect(r.headers).toMatchObject({ 'x-lh-date': xDate, 'x-lh-version': '2.0', 'x-lh-forwarded': '*' })
+  })
+  it('Taxinvoice: 정과금·정발행·영수·과세 · 유어딜 → 매장 · 문서번호 UD{yyyymm}-{매장} · 금액은 문자열', async () => {
+    const { popbillTaxinvoice } = await import('@/worker/utils/popbill-invoice')
+    const t = popbillTaxinvoice({ id: 1, seller_id: 7, period: '2027-01', write_date: '2027-01-31', supply_amount: 3000, vat_amount: 300, total_amount: 3300, voucher_count: 2, buyer_biz_no: '1234567890', buyer_name: '시험식당', buyer_ceo: null, buyer_email: 'a@example.test', buyer_address: null, status: 'draft', nts_confirm_num: null, issued_at: null })
+    expect(t).toMatchObject({ writeDate: '20270131', chargeDirection: '정과금', issueType: '정발행', purposeType: '영수', taxType: '과세', invoicerCorpNum: '4790902930', invoicerMgtKey: 'UD202701-7', invoiceeType: '사업자', invoiceeCorpNum: '1234567890', invoiceeEmail1: 'a@example.test', supplyCostTotal: '3000', taxTotal: '300', totalAmount: '3300' })
+    expect(t).not.toHaveProperty('invoiceeCEOName') // 빈 값은 뺀다(SDK _stringify)
+    expect((t.detailList as Array<Record<string, unknown>>)[0]).toMatchObject({ serialNum: 1, purchaseDT: '20270131', supplyCost: '3000', tax: '300' })
+  })
+  it('토큰 → 발행 · 성공은 issued(승인번호) · 실패는 초안 + 사유 · 이미 쓴 문서번호는 issued · 다시 보내지 않는다', async () => {
+    const { sendFeeInvoicesViaPopbill } = await import('@/worker/utils/fee-tax-invoice')
+    const raw = openLiveSchema()
+    const DB = d1(raw)
+    const A = insert(raw, 'sellers', { username: 'pb-a', password_hash: '', name: 'A', email: 'a@example.test', business_name: '가게A', business_number: '111-11-11111', status: 'approved', seller_type: 'store_owner' })
+    const B = insert(raw, 'sellers', { username: 'pb-b', password_hash: '', name: 'B', email: 'b@example.test', business_name: '가게B', business_number: '222-22-22222', status: 'approved', seller_type: 'store_owner' })
+    const C = insert(raw, 'sellers', { username: 'pb-c', password_hash: '', name: 'C', email: 'c@example.test', business_name: '가게C', business_number: '333-33-33333', status: 'approved', seller_type: 'store_owner' })
+    insert(raw, 'platform_settings', { key: 'fee_vat_exclusive_from', value: '2020-01-01' })
+    for (const [v, m] of [[21, A], [22, B], [23, C]] as const) await recordVoucherUsedLedger(DB, { voucher_id: v, order_amount: 10000, merchant_id: m, platform_rate: 0.1, seller_rate: 0 })
+    const period = thisMonth()
+    await buildFeeInvoiceDrafts(DB, period)
+    const calls: Array<{ url: string; headers: Record<string, string> }> = []
+    const fakeFetch = (async (url: string, init: { headers: Record<string, string>; body: string }) => {
+      calls.push({ url, headers: init.headers })
+      if (url.includes('/Token')) return new Response(JSON.stringify({ session_token: 'tok', expiration: '2099-01-01T00:00:00Z' }), { status: 200 })
+      const corp = JSON.parse(init.body).invoiceeCorpNum
+      if (corp === '1111111111') return new Response(JSON.stringify({ code: 1, message: '발행 완료', ntsConfirmNum: '20270201-41000000-00000001' }), { status: 200 })
+      if (corp === '3333333333') return new Response(JSON.stringify({ code: -11000011, message: '이미 사용중인 문서번호입니다.' }), { status: 400 })
+      return new Response(JSON.stringify({ code: -11000002, message: '공급받는자 이메일이 올바르지 않습니다.' }), { status: 400 })
+    }) as unknown as typeof fetch
+    const creds = { linkId: 'URDEAL', secretKey: Buffer.from('k').toString('base64'), isTest: true }
+    const r = await sendFeeInvoicesViaPopbill(DB, creds, period, undefined, fakeFetch)
+    expect(r).toMatchObject({ issued: 2, failed: 1 })
+    const issue = calls.find((c) => c.url === 'https://popbill-test.linkhub.co.kr/Taxinvoice')!
+    expect(issue.headers).toMatchObject({ Authorization: 'Bearer tok', 'X-HTTP-Method-Override': 'ISSUE' })
+    expect(q1(raw, 'SELECT status, provider, nts_confirm_num FROM fee_tax_invoices WHERE seller_id = ?', A)).toEqual({ status: 'issued', provider: 'popbill_test', nts_confirm_num: '20270201-41000000-00000001' })
+    expect(q1(raw, 'SELECT status, last_error FROM fee_tax_invoices WHERE seller_id = ?', B)).toEqual({ status: 'draft', last_error: '공급받는자 이메일이 올바르지 않습니다.' })
+    expect(q1<{ status: string }>(raw, 'SELECT status FROM fee_tax_invoices WHERE seller_id = ?', C)?.status).toBe('issued')
+    expect((await sendFeeInvoicesViaPopbill(DB, creds, period, undefined, fakeFetch)).issued).toBe(0)
+  })
+})

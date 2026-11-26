@@ -8,6 +8,7 @@
  *   POST /api/admin/tax/fee-invoices/:id/issued {nts_confirm_num?}  홈택스에서 발행한 뒤 "발행 완료"
  *   GET  /api/admin/tax/sales-agency-report?quarter=YYYY-Qn  분기 판매·결제대행 명세 집계 CSV
  *   GET  /api/admin/tax/simplified-statement?month=YYYY-MM  간이지급명세서(사업소득) — 주민번호 원문 포함이라 2FA·감사 로그
+ *   POST /api/admin/tax/fee-invoices/send-popbill {period, ids?}  팝빌로 즉시 발행(초안만, 자격 없으면 409)
  * 돈을 옮기지 않는다(서류·집계만).
  */
 import type { Hono } from 'hono'
@@ -21,6 +22,8 @@ import {
   buildFeeInvoiceDrafts, listFeeInvoices, markFeeInvoiceIssued, feeInvoicesCsv, previousKstPeriod, invoiceDates,
 } from '../../../worker/utils/fee-tax-invoice'
 import { computeSalesAgencyReport, salesAgencyCsv, previousKstQuarter } from '../../../worker/utils/sales-agency-report'
+import { resolvePopbillCreds } from '../../../worker/utils/popbill-invoice'
+import { sendFeeInvoicesViaPopbill } from '../../../worker/utils/fee-tax-invoice'
 
 const periodOf = (raw: unknown) => {
   const p = String(raw ?? '').trim()
@@ -94,6 +97,19 @@ export function registerFeeInvoiceRoutes(app: Hono<{ Bindings: Env }, any, any>)
       })
     } catch (err) {
       return safeError(c, err, '간이지급명세서를 만들지 못했습니다', '[simplified-statement]')
+    }
+  })
+
+  app.post('/admin/tax/fee-invoices/send-popbill', requireAdminRole('finance'), auditLog('tax.fee_invoices_send_popbill'), async (c) => {
+    try {
+      const body = await c.req.json().catch(() => ({})) as { period?: string; ids?: unknown }
+      const creds = await resolvePopbillCreds(c.env.DB, c.env as unknown as { POPBILL_LINK_ID?: string; POPBILL_SECRET_KEY?: string })
+      if (!creds) return c.json({ success: false, code: 'POPBILL_NOT_CONFIGURED', error: '팝빌 연동 자격(LinkID·SecretKey)이 없습니다. 어드민 설정에 넣어 주세요' }, 409)
+      const ids = Array.isArray(body.ids) ? body.ids.map(Number).filter((n) => Number.isInteger(n) && n > 0) : undefined
+      const r = await sendFeeInvoicesViaPopbill(c.env.DB, creds, periodOf(body.period), ids)
+      return c.json({ success: true, data: { ...r, test: creds.isTest } })
+    } catch (err) {
+      return safeError(c, err, '팝빌 발행에 실패했습니다', '[fee-invoices]')
     }
   })
 
