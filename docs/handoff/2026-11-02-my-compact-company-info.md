@@ -8,7 +8,7 @@
 ## 1. 이어받는 세션의 첫 액션 (대표가 이 작업을 이어서 하라고 했을 때만)
 배포 후 폰 UA 로 `https://urdeal.kr/` 를 열고 끝까지 내려 회색 회사 정보 블록이 있는지,
 `document.querySelector('[data-company-info]')` 가 있는지 본다. 마이는 로그인 화면이라 대표 폰으로 확인.
-결재 `docs/decisions/2026-11-02-mail-order-registration-number.md` 답이 오면 `src/shared/company-info.ts` 값 한 줄 +
+결재 `docs/decisions/archive/2026-11-02-mail-order-registration-number.md` 답이 오면 `src/shared/company-info.ts` 값 한 줄 +
 SiteFooter·noscript·약관 문구를 같은 값으로 맞춘다(가드 ③이 화면끼리 같은지를 잡는다).
 
 ## 2. 완료분

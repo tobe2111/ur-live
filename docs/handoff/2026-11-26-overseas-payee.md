@@ -1,7 +1,7 @@
 # 2026-11-26 해외 거주 소개자 받는 곳 · 해외 송금 대기
 
 대표: *"지금 해외 송금 서비스 붙히면 안돼?"* → 업체(Wise 등) 가입·세무 확인 전이라 업체와 무관한 부분만 → *"응 만들어줘"*.
-결재 `docs/decisions/2026-11-26-overseas-payee.md`.
+결재 `docs/decisions/archive/2026-11-26-overseas-payee.md`.
 
 ## 한 것
 - SSOT `worker/utils/overseas-payee.ts` — 표 `overseas_payees`(받는 곳, 암호화 `v1:`) · `overseas_payouts`(지급 기록 = 비거주자 지급명세서 원장). 원천징수율 어드민 `overseas_withholding_pct`(기본 22).

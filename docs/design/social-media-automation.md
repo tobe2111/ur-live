@@ -173,6 +173,6 @@ YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET  (기존 youtube 기능과 공유)
 - **성과 퍼널** `GET /api/admin/social/funnel` — 랜딩(`acquisition_landings`) → 가입(`user_acquisition`) → 매장 등록(랜딩 **이후** 생긴 `seller_operators` 주인 좌석, 회수 제외) → 소개 파트너 신청(`acquisition_conversions kind='creator_apply'`, 신청서가 first-touch 소스를 실어 보낸다).
 - **되먹임** 다음 주제 = 안 써 본 주제 먼저, 다 썼으면 게시물당 공급 전환이 높은 주제(`pickTopicByPerformance`).
 - **주기** 초안 생성 매일 09:00 KST(ur-ads `runDailySocialDraftJob`, 하트비트 `social-draft`). 키가 없어도 결정론 작성기로 만든다.
-- **바뀌지 않은 것** 초안은 여전히 draft, 발행은 승인 + 플랫폼 스위치 + 계정의 3중 조건. 켜는 결정: `docs/decisions/2026-10-15-supply-marketer-launch.md`.
+- **바뀌지 않은 것** 초안은 여전히 draft, 발행은 승인 + 플랫폼 스위치 + 계정의 3중 조건. 켜는 결정: `docs/decisions/archive/2026-10-15-supply-marketer-launch.md`.
 - 🛑 `/influencer`·`/creators` 로 보내지 않는다 — 그 두 페이지가 꺼진 담기 보상을 약속한다(결재 Q3).
 - 가드: `social-supply-marketer-2026-10-15.test.ts`(조합 전수 · 검증기 자체 · 진짜 SQLite 퍼널 · 배선) + 주입 13건.

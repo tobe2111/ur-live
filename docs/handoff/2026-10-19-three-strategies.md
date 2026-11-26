@@ -16,7 +16,7 @@
 3. **AI 비서 검색 창구** (미커밋 — 아래 "다음 첫 액션") — `GET /api/agent/search`, 게이트 `agent_search_enabled` **기본 OFF**.
    - SSOT `src/shared/agent-search.ts`, 라우트 `src/worker/routes/agent-search.routes.ts`(public-utility 아래 마운트, `worker/index.ts` 무접촉).
    - 검색어나 지역 필수 · 최대 10건 · 데모/도매원본/미승인/교환권 제외 · 응답은 우리 상세 주소. 결제는 사람이 상세에서.
-   - 게이트 3곳 등록 + `STAGING_CHECKLIST` S-AGENT. 결재 `docs/decisions/2026-10-19-ai-agent-channel.md`(① 켜기 ② 에이전트 결제 설계 여부).
+   - 게이트 3곳 등록 + `STAGING_CHECKLIST` S-AGENT. 결재 `docs/decisions/archive/2026-10-19-ai-agent-channel.md`(① 켜기 ② 에이전트 결제 설계 여부).
 
 ## 다음 세션의 첫 액션
 - `git status` → ③ 파일들(agent-search 3개 · public-utility · 게이트 3곳 · STAGING_CHECKLIST · 결재 · 이 문서)이 미커밋이면:

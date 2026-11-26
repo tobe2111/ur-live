@@ -1,6 +1,6 @@
 # 2026-11-02 · [UNLOCK] · `src/worker/utils/refund.ts` — 부분 환불 내역 INSERT 컬럼 이름
 
-**대표 승인(그대로)**: *"응 고쳐도 돼."* — 결재 `docs/decisions/2026-11-02-refund-history-column.md`
+**대표 승인(그대로)**: *"응 고쳐도 돼."* — 결재 `docs/decisions/archive/2026-11-02-refund-history-column.md`
 
 ## 무엇을 왜
 - `refundOrderPartial` 4단계 `INSERT INTO order_refund_history (order_id, amount, reason)` →

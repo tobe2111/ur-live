@@ -152,7 +152,7 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 - 2026-11-05 홈 LCP: 지역 사진(진짜 LCP)을 응답 헤더 preload 로(배너보다 먼저) + fetchpriority=high. 잠금 기록 `docs/locks/loading/2026-11-05-home-hero-lcp.md`. 판정: 배포 후 RUM 폰 홈 LCP p75.
 
 ## 2026-11-05 첫 로딩 전수 — 대표 *"어떤 요인들이 있는지 최대한 알아주고 모두 최적화"*
-- 요인 표(실측): ① 한국 밖 콜로(HKG/NRT/LAX) 연결 p95 ~2s — CF 무료 토글(HTTP/3·0-RTT·Early Hints·TLS1.3)은 **이미 전부 켜짐**(존 설정 조회), 남은 건 유료 판단(결재 `docs/decisions/2026-11-04-korea-icn-routing.md`) ② 홈 LCP = 지역 사진인데 preload 가 배너를 가리킴 → #2212 로 고침(라이브 Link 헤더 확인) ③ **교환권 사진 2,252장 전부 giftishow 원본** — R2 이관 cron 이 5일간 8장(`migrated=0 failed=4`, giftishow 가 CF 이그레스 차단) → 러너 경유 이관 경로 신설(`voucher-image-upload.routes.ts` + `.github/workflows/voucher-image-rehost.yml`) ④ 홈 JS 343KB·TBT 0.5~0.7s(CPU×4) — 청크는 이미 표면별로 정밀 분리됨(남은 큰 레버 아님) ⑤ 이용권 상세 부팅 뒤 API 9개(첫 그림 뒤라 LCP 무관).
+- 요인 표(실측): ① 한국 밖 콜로(HKG/NRT/LAX) 연결 p95 ~2s — CF 무료 토글(HTTP/3·0-RTT·Early Hints·TLS1.3)은 **이미 전부 켜짐**(존 설정 조회), 남은 건 유료 판단(결재 `docs/decisions/archive/2026-11-04-korea-icn-routing.md`) ② 홈 LCP = 지역 사진인데 preload 가 배너를 가리킴 → #2212 로 고침(라이브 Link 헤더 확인) ③ **교환권 사진 2,252장 전부 giftishow 원본** — R2 이관 cron 이 5일간 8장(`migrated=0 failed=4`, giftishow 가 CF 이그레스 차단) → 러너 경유 이관 경로 신설(`voucher-image-upload.routes.ts` + `.github/workflows/voucher-image-rehost.yml`) ④ 홈 JS 343KB·TBT 0.5~0.7s(CPU×4) — 청크는 이미 표면별로 정밀 분리됨(남은 큰 레버 아님) ⑤ 이용권 상세 부팅 뒤 API 9개(첫 그림 뒤라 LCP 무관).
 - 판정: 러너 첫 실행 요약 `옮김 N` · D1 `SELECT COUNT(*) … giftishow` 감소. 러너도 막히면 워크플로가 빨간불(조용히 초록 금지).
 - 2026-11-05 로그인 화면 미리받기(`early-data.ts`): 마이·내 이용권의 데이터를 HTML 도착 즉시 출발. 판정: RUM /user/profile LCP p75 2.5s 대비.
 
@@ -161,7 +161,7 @@ main(b673c0e) 자체가 이미 초과(linkshop +1.8)였다. 이 PR 몫은 화면
 - 🏠 홈 전용 첫 화면 CSS(62KB→30KB) — `docs/locks/loading/2026-11-08-home-critical-css.md`.
 - 2026-11-08 대표 결정: 교환권 사진 한국 IP 이관 = **B. 보류**(*"우선 B. 보류"*). 사진은 지금처럼 giftishow 원본. 다시 하려면 대표 PC 원격 연결(Remote Control 폴더) 후 `voucher-image-rehost.yml` 와 같은 절차를 그 PC 에서.
 - 2026-11-08 E4: 홈 전용 CSS 라이브 — HTML 압축 40→34KB · 첫 화면 CSS 62→30KB · `#root` 압축 위치 24→18KB. 스크립트 끈 캡처로 서버 첫 화면 정상 확인. 폰 조건 5회 FCP 0.56~0.71s · LCP 0.61~0.79s(전 0.66~0.75 · 0.73~0.96).
-- 남은 큰 요인: 한국 밖 콜로(HKG/NRT/LAX) 연결·왕복 — 서버 CPU 는 p50 7ms·p90 35ms(CF 통계)라 병목이 아니다. 유료 판단(결재 `docs/decisions/2026-11-04-korea-icn-routing.md`).
+- 남은 큰 요인: 한국 밖 콜로(HKG/NRT/LAX) 연결·왕복 — 서버 CPU 는 p50 7ms·p90 35ms(CF 통계)라 병목이 아니다. 유료 판단(결재 `docs/decisions/archive/2026-11-04-korea-icn-routing.md`).
 - 2026-11-08 표면별 첫 화면 CSS(9표면 추가) — `docs/locks/loading/2026-11-08-surface-critical-css.md`.
 - 2026-11-08 유어샵 첫 줄 사진 lazy 해제 + 헤더 preload — `docs/locks/loading/2026-11-08-curator-lcp.md`. 판정: 같은 조건 LCP(전 2.18s).
 - 2026-11-08 블로그 사진 보이는 크기로(`blogCoverSrc` — 커버 960 · 썸네일 240 · 본문 960, 워커·React 같은 주소) + 큰 커버 즉시·high. 실측 전: 목록 원본 7장 485KB · 상세 커버 139KB(lazy). 판정: 배포 후 같은 페이지 이미지 바이트·LCP.

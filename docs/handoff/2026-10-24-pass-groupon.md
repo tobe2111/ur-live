@@ -13,4 +13,4 @@
 - 시안과 다른 점 둘: 사진 썸네일 2장 미적용(첫 화면 preload 계약 재정합 필요 — 별건), 선물하기 링크 없음
 
 ## 남은 결정
-- npm audit vite·zod 허용목록: `docs/decisions/2026-10-24-npm-audit-vite-zod.md` (CI 가 이것 때문에 전 PR 빨강)
+- npm audit vite·zod 허용목록: `docs/decisions/archive/2026-10-24-npm-audit-vite-zod.md` (CI 가 이것 때문에 전 PR 빨강)

@@ -1,13 +1,13 @@
 # 2026-11-24 숙박권 '먼저 판매' 기본 (결재 Q1·Q2·Q3·Q5 구현 · Q4 는 기존 장치가 이미 맡음)
 
 서비스: 유어딜(숙박 이용권 — 사장님 등록 화면 / 손님 상세·내 예약).
-결재: `docs/decisions/2026-11-24-stay-voucher-buy-first.md` — 대표 방향 *"그래 그렇게 하자"* → 세부 5개 **"추천대로 진행"**.
+결재: `docs/decisions/archive/2026-11-24-stay-voucher-buy-first.md` — 대표 방향 *"그래 그렇게 하자"* → 세부 5개 **"추천대로 진행"**.
 
 ## 이어받는 세션의 첫 액션
 staging 에서 `docs/STAGING_CHECKLIST.md` **S-STAYFIRST** 를 한 바퀴 돈다(등록 → 카드 결제 → 사용 처리 → 셀프 취소 → 만료 환불).
 만료 환불은 예약의 `voucher_expires_at` 과 묶인 `vouchers.expires_at` 을 과거로 두고 03:00 회차 뒤
 `SELECT status, refund_status FROM vouchers WHERE stay_booking_id = ?` 가 `expired / refunded` 면 통과.
-그 다음은 결재 `docs/decisions/2026-11-25-stay-expiry-refund-gaps.md`(open) 의 대표 답에 따른다.
+그 다음은 결재 `docs/decisions/archive/2026-11-25-stay-expiry-refund-gaps.md`(open) 의 대표 답에 따른다.
 
 ## Q4 는 새 코드가 아니었다 (2026-11-25 확인)
 - 숙소 결제 확정 → `issueStayVouchers` 가 `vouchers` 행을 만든다(`expires_at = stayVoucherExpiresAt` — 먼저 판매는 `voucher_expires_at`).

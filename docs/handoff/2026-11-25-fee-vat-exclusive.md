@@ -1,6 +1,6 @@
 # 2026-11-25 수수료 부가세 별도 (정산·세금계산서)
 
-대표: *"1번 부가세 별도로 하자. 그렇게 구현도 해줘."* — 결재 `docs/decisions/2026-11-25-fee-vat-exclusive.md`.
+대표: *"1번 부가세 별도로 하자. 그렇게 구현도 해줘."* — 결재 `docs/decisions/archive/2026-11-25-fee-vat-exclusive.md`.
 
 ## 한 것
 - 규칙 SSOT `src/shared/fee-vat.ts` · 설정 읽기 `src/worker/utils/fee-vat-policy.ts`(조회 실패 = 기본 시작일).
@@ -37,7 +37,7 @@
 
 ## 3단계 — 매장 정산 최소 금액 · 월말 상한 (같은 날)
 - `shared/store-payout-min.ts` — 어드민 `payout_min_krw`(기본 1만 원) · 그달 마지막 목요일 회차는 1원 이상이면 정산. `payouts-generate` 가 사용.
-- 사장님 정산 화면 · FAQ(`minPayoutRule`) · 가이드 v83 · 머니 스위치 칸. 결재 `docs/decisions/2026-11-25-payout-min-monthend.md`.
+- 사장님 정산 화면 · FAQ(`minPayoutRule`) · 가이드 v83 · 머니 스위치 칸. 결재 `docs/decisions/archive/2026-11-25-payout-min-monthend.md`.
 - 세금계산서를 "정산한 달에만" 발행하는 안은 대표가 괜찮다고 했지만 공급시기 문제로 세무사 확인 대기(코드는 사용월 기준 유지).
 
 ## 5단계 — 볼타 보류 · 주민번호/간이지급명세서 (대표 *"일단 이건 보류하고 나머지 다른 할 일 하고"*)
@@ -55,7 +55,7 @@
 - 토스 입금 대사 `worker/utils/toss-settlement-recon.ts` — 매일(정산 cron) 3일 전 결제분, `GET /v1/settlements`(읽기) ↔ `orders`. 표 `toss_settlement_recon`(day UNIQUE). 토스에 없는 결제·금액 불일치면 어드민 알림 `toss_settlement_mismatch`. ⚠️ 토스 실응답 형식은 문서 기준 — 첫 실행 로그(`toss_recon day=… toss=… ours=…`)로 판정할 것.
 - 주민번호 미등록 개인(사업자번호 없음): cron 송금 대기에서 빼고 본인 알림(`tax_id_required`) · 어드민 지급 `PAYOUT_NO_TAX_ID` 409.
 - 정산 건 생성 시 매장에 `payout_scheduled`(목요일 입금 예정). 송금 완료 알림은 기존 `payout-sent-notify`.
-- 결재 `docs/decisions/2026-11-25-settlement-safety-guards.md` · 시험 `settlement-safety-2026-11-25.test.ts` · `payout-cycle-full` 에 주민번호 단계 추가.
+- 결재 `docs/decisions/archive/2026-11-25-settlement-safety-guards.md` · 시험 `settlement-safety-2026-11-25.test.ts` · `payout-cycle-full` 에 주민번호 단계 추가.
 ## 4단계 — 볼타 연동 (대표 *"일단 볼타 서비스를 쓸까 해"*)
 - `worker/utils/bolta-invoice.ts` — `POST https://xapi.bolta.io/v1/taxInvoices/issue`, Basic(키:), `Bolta-Client-Reference-Id = urdeal-fee-{seller}-{period}`, 영수·과세. 응답 `issuanceKey` → 상태 `requested`.
 - 키: env `BOLTA_API_KEY` 우선, 없으면 `platform_settings.bolta_api_key`(어드민 설정 연동 자격 칸). 자동 발행 스위치 `fee_invoice_auto_send`(기본 false).
