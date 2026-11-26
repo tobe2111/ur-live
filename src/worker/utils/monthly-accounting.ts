@@ -108,11 +108,13 @@ const won = (n: number) => `${Math.round(Number(n) || 0).toLocaleString('ko-KR')
 /** 순수 — 월 마감 알림 한 장. 원천세 신고·납부 기한(다음 달 10일)을 같이 적는다. */
 export interface MonthlyCloseExtras {
   /** 🧾 수수료 세금계산서 초안(정발행 — `fee-tax-invoice.ts`). */
-  feeInvoices?: { drafts: number; missingBizNo: number; autoSent?: number; autoFailed?: number }
+  feeInvoices?: { drafts: number; missingBizNo: number; autoSent?: number; autoFailed?: number; negatives?: number }
   /** 🪪 지난달 원천징수한 개인 소득자 수 · 그중 주민번호 미등록 수(간이지급명세서 — 이번 달 말일까지). */
   simplified?: { payees: number; missingId: number; due: string }
   /** 분기 첫 달이면 지난 분기 판매대행 명세 제출 기한(YYYY-MM-DD). */
   salesAgencyDue?: string | null
+  /** 🔌 팝빌 미리 경고(인증·인증서 만료·포인트·테스트 서버) — `popbillHealthWarnings`. */
+  popbillWarnings?: string[]
 }
 
 export function monthlyCloseMessage(a: MonthlyAccounting, unsent: { n: number; total: number }, extras: MonthlyCloseExtras = {}): { title: string; message: string } {
@@ -142,6 +144,8 @@ export function monthlyCloseMessage(a: MonthlyAccounting, unsent: { n: number; t
     const [, dm, dd] = extras.salesAgencyDue.split('-').map(Number)
     parts.push(`지난 분기 판매대행 명세 국세청 제출 ${dm}월 ${dd}일까지`)
   }
+  if (extras.feeInvoices?.negatives) parts.push(`⚠️ 지난달 사용 취소로 수수료가 마이너스인 매장 ${extras.feeInvoices.negatives}곳 — 전에 발행한 세금계산서의 수정세금계산서(환입) 필요(세무사 확인)`)
+  for (const pw of extras.popbillWarnings || []) parts.push(`⚠️ ${pw}`)
   if (unsent.n > 0) parts.push(`⚠️ 승인됐는데 아직 안 보낸 정산 ${unsent.n}건 ${won(unsent.total)}`)
   return { title: `🧾 ${y}년 ${m}월 회계 마감 요약 — 세무사용 CSV 준비됨`, message: parts.join(' · ') }
 }
@@ -173,12 +177,19 @@ export async function sendMonthlyCloseSummary(DB: D1Database, nowMs: number = Da
   try {
     const { buildFeeInvoiceDrafts } = await import('./fee-tax-invoice')
     const r = await buildFeeInvoiceDrafts(DB, month)
-    extras.feeInvoices = { drafts: r.drafts, missingBizNo: r.missingBizNo }
+    extras.feeInvoices = { drafts: r.drafts, missingBizNo: r.missingBizNo, negatives: r.negatives?.length || 0 }
     // 🧾 팝빌 자동 발행 — 자격이 있고 `fee_invoice_auto_send = 'true'` 일 때만(기본 꺼짐). 실패분은 초안으로 남는다.
     const auto = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'fee_invoice_auto_send' LIMIT 1").first<{ value: string }>().catch(() => null)
+    const { resolvePopbillCreds, checkPopbill, popbillHealthWarnings } = await import('./popbill-invoice')
+    const creds = await resolvePopbillCreds(DB, env)
+    // 🔌 자격이 있으면 매달 연결·인증서 만료·포인트를 미리 본다(자동 발행 여부와 무관 — 실제 발행일 전에 알아야 한다).
+    if (creds) {
+      const chk = await checkPopbill(creds, {}).catch(() => null)
+      if (chk) extras.popbillWarnings = popbillHealthWarnings(chk, { drafts: r.drafts, autoSend: auto?.value === 'true', nowMs })
+    } else if (auto?.value === 'true') {
+      extras.popbillWarnings = ['자동 발행이 켜져 있지만 팝빌 연동 자격(LinkID·SecretKey)이 없음']
+    }
     if (auto?.value === 'true') {
-      const { resolvePopbillCreds } = await import('./popbill-invoice')
-      const creds = await resolvePopbillCreds(DB, env)
       if (creds) {
         const { sendFeeInvoicesViaPopbill } = await import('./fee-tax-invoice')
         const s = await sendFeeInvoicesViaPopbill(DB, creds, month)

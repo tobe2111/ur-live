@@ -118,7 +118,7 @@ async function postIssue(c: PopbillCreds, token: string, body: Record<string, un
   return { ok: false, error: msg, duplicate: /이미.*(사용|등록|발행)|중복/.test(msg) }
 }
 
-export interface PopbillCheckResult { test: boolean; auth: { ok: boolean; error?: string }; cert?: { ok: boolean; message: string }; point?: { remain: string | null; error?: string }; sample?: PopbillIssueResult }
+export interface PopbillCheckResult { test: boolean; auth: { ok: boolean; error?: string }; cert?: { ok: boolean; message: string; expiresAt?: string | null }; point?: { remain: string | null; error?: string }; unitCost?: number | null; sample?: PopbillIssueResult }
 
 /**
  * 🔌 연결 확인 — 실제 초안은 건드리지 않는다(2026-11-26 대표 *"다 넣었어"* 뒤 첫 시험).
@@ -136,6 +136,12 @@ export async function checkPopbill(c: PopbillCreds, opts: { sample?: boolean } =
     const cr = await fetchImpl(`https://${popbillHost(c)}/Taxinvoice/CertCheck`, { method: 'GET', headers: h })
     const cj = await cr.json().catch(() => ({})) as { code?: number; message?: string }
     out.cert = { ok: cr.ok && cj.code === 1, message: `${cj.message || `HTTP ${cr.status}`}${cj.code && cj.code !== 1 ? ` (${cj.code})` : ''}` }
+    // 공동인증서 만료일(cfg=CERT, yyyyMMddHHmmss) · 발행 단가(cfg=UNITCOST) — 월 요약이 미리 경고한다.
+    const ex = await fetchImpl(`https://${popbillHost(c)}/Taxinvoice?cfg=CERT`, { method: 'GET', headers: h }).then((r) => r.json()).catch(() => ({})) as { certificateExpiration?: string }
+    const e8 = String(ex.certificateExpiration || '').replace(/\D/g, '')
+    out.cert.expiresAt = e8.length >= 8 ? `${e8.slice(0, 4)}-${e8.slice(4, 6)}-${e8.slice(6, 8)}` : null
+    const uc = await fetchImpl(`https://${popbillHost(c)}/Taxinvoice?cfg=UNITCOST`, { method: 'GET', headers: h }).then((r) => r.json()).catch(() => ({})) as { unitCost?: string }
+    out.unitCost = Number.isFinite(Number(uc.unitCost)) && String(uc.unitCost ?? '') !== '' ? Number(uc.unitCost) : null
     const pr = await fetchImpl(`https://auth.linkhub.co.kr/${c.isTest ? 'POPBILL_TEST' : 'POPBILL'}/Point`, { method: 'GET', headers: h })
     const pj = await pr.json().catch(() => ({})) as { remainPoint?: string; message?: string }
     out.point = pr.ok ? { remain: pj.remainPoint ?? null } : { remain: null, error: pj.message || `HTTP ${pr.status}` }
@@ -170,4 +176,37 @@ export async function issueFeeInvoiceViaPopbill(c: PopbillCreds, r: FeeInvoiceRo
   } catch (e) {
     return { ok: false, error: `팝빌 연결 실패: ${(e as Error).message}` }
   }
+}
+
+/**
+ * 순수 — 오래 쓰면 조용히 멈추는 지점을 미리 알린다(2026-11-26 대표 *"안정적으로 영구적으로 설계했지?"*).
+ *   ① 인증 실패 ② 공동인증서 문제·만료 45일 전 ③ 포인트 < 이번 달 발행 예정 × 단가 ④ 자동 발행인데 테스트 서버.
+ */
+export function popbillHealthWarnings(chk: PopbillCheckResult, ctx: { drafts: number; autoSend: boolean; nowMs: number }): string[] {
+  const w: string[] = []
+  if (!chk.auth.ok) return [`팝빌 연결 실패 — ${chk.auth.error || '인증 오류'}`]
+  if (chk.cert && !chk.cert.ok) w.push(`팝빌 공동인증서 문제 — ${chk.cert.message}`)
+  if (chk.cert?.expiresAt) {
+    const days = Math.floor((Date.parse(`${chk.cert.expiresAt}T00:00:00+09:00`) - ctx.nowMs) / 86_400_000)
+    if (days <= 45) w.push(`팝빌 공동인증서 ${days < 0 ? '만료됨' : `${days}일 뒤 만료(${chk.cert.expiresAt})`} — 갱신 후 팝빌에 다시 등록`)
+  }
+  if (!chk.test && ctx.drafts > 0 && chk.unitCost && chk.point?.remain !== null && chk.point?.remain !== undefined) {
+    const need = ctx.drafts * chk.unitCost
+    if (Number(chk.point.remain) < need) w.push(`팝빌 포인트 부족 — 잔여 ${Number(chk.point.remain).toLocaleString('ko-KR')} < 필요 ${need.toLocaleString('ko-KR')}(${ctx.drafts}장 × ${chk.unitCost})`)
+  }
+  if (ctx.autoSend && chk.test) w.push('자동 발행이 켜져 있지만 팝빌 테스트 서버라 실제로는 발행되지 않음 — 운영 전환 후 "팝빌 테스트 서버" 끄기')
+  return w
+}
+
+/** 발행 상태(GetInfo) — `stateCode` 304 전송성공 · 305 전송실패 · 600 발행취소. 실패해도 던지지 않고 null. */
+export async function getPopbillInvoiceState(c: PopbillCreds, mgtKey: string, fetchImpl: typeof fetch = fetch, nowIso: string = linkhubDate()): Promise<{ stateCode: string; ntsErr: string | null } | null> {
+  if (!/^[A-Za-z0-9_-]{1,24}$/.test(mgtKey)) return null
+  const t = await getPopbillToken(c, fetchImpl, nowIso)
+  if (!t.token) return null
+  const h: Record<string, string> = { Authorization: `Bearer ${t.token}` }
+  if (c.userId) h['x-pb-userid'] = c.userId
+  const res = await fetchImpl(`https://${popbillHost(c)}/Taxinvoice/SELL/${encodeURIComponent(mgtKey)}`, { method: 'GET', headers: h })
+  if (!res.ok) return null
+  const j = await res.json().catch(() => ({})) as { stateCode?: number | string; ntssendErrCode?: string }
+  return j.stateCode === undefined ? null : { stateCode: String(j.stateCode), ntsErr: j.ntssendErrCode || null }
 }
