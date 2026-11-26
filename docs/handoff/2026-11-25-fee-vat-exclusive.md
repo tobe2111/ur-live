@@ -69,3 +69,8 @@
 - 즉시 발행(ISSUE) → 응답 승인번호로 바로 `issued`. 문서번호 `UD{yyyymm}-{매장id}` — 팝빌이 중복을 거부하므로 같은 달 두 번 발행되지 않는다(거부 문구면 issued 로 맞춤).
 - 자격: env `POPBILL_LINK_ID`/`POPBILL_SECRET_KEY` 또는 어드민 연동 자격 칸 · 서버 `popbill_is_test`(기본 true) · 자동 발행 `fee_invoice_auto_send`(기본 false) · 절차 `S-POPBILL`.
 - ⚠️ 값 표기(정과금·정발행·영수·과세·사업자)는 팝빌 표기 기억에 기댄 부분이 있다 — 테스트 서버 1장으로 확인(S-POPBILL 2).
+
+## 9단계 — 팝빌 문서 대조 보정 (2026-11-26 대표가 인증 문서 공유)
+- X-LH-Date 를 `yyyy-MM-ddTHH:mm:ssZ`(밀리초 없음)로 · 토큰 요청 Content-Type `application/json` · scope `["110","member"]`(문서 순서) · 품목 serialNum 문자열.
+- 팝빌 필수 칸(공급받는자 상호·대표자 성명)이 비면 보내기 전에 사유를 남기고 초안으로 둔다(`sellers.representative_name`).
+- 이번에 틀렸던 판단: SDK 의 `toISOString()`(밀리초 포함)을 그대로 옮겼다 — 문서 형식은 밀리초가 없다.

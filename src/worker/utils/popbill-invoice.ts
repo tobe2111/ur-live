@@ -8,11 +8,12 @@
  * 1. 토큰: `POST https://auth.linkhub.co.kr/{POPBILL|POPBILL_TEST}/Token`
  *    본문 `{"access_id": 유어딜 사업자번호, "scope": ["member","110"]}` · 서명 = HMAC-SHA256(base64 비밀키,
  *    `"POST\n" + base64(sha256(본문)) + "\n" + x-lh-date + "\n" + "*\n" + "2.0\n" + 경로`) ·
- *    헤더 `x-lh-date`(ISO) `x-lh-version: 2.0` `x-lh-forwarded: *` `Authorization: LINKHUB {LinkID} {서명}`.
+ *    헤더 `x-lh-date`(`yyyy-MM-ddTHH:mm:ssZ` — 밀리초 없음) `x-lh-version: 2.0` `x-lh-forwarded: *` `Authorization: LINKHUB {LinkID} {서명}`.
  *    `*` = IP 제한 끔(SDK `IPRestrictOnOff=false`) — Cloudflare 워커는 나가는 IP 가 고정이 아니다.
  * 2. 발행: `POST https://{popbill|popbill-test}.linkhub.co.kr/Taxinvoice` · `Authorization: Bearer {session_token}` ·
  *    `X-HTTP-Method-Override: ISSUE` · 본문 = Taxinvoice(빈 값은 뺀다 — SDK `_stringify` 와 같다).
  *    응답 `{code: 1, message, ntsConfirmNum}` / 실패 `{code: 음수, message}`.
+ * 2026-11-26 대표가 공유한 팝빌 인증 문서·팝빌 MCP(RegistIssue)로 대조: 시각 형식·Content-Type·serialNum(문자열)·scope 순서를 문서대로 맞췄다.
  * 3. 필드 이름은 Java SDK `Taxinvoice`·`TaxinvoiceDetail` 클래스에서 확인했다. 값(정과금·정발행·영수·과세·사업자)은 팝빌 표기.
  *
  * 문서번호(invoicerMgtKey) = `UD{yyyymm}-{매장id}` — 사업자별로 겹치면 팝빌이 거부한다 ⇒ 같은 달 두 번 발행되지 않는다(멱등).
@@ -46,7 +47,7 @@ const b64decode = (s: string) => Uint8Array.from(atob(s), (ch) => ch.charCodeAt(
 export async function linkhubTokenRequest(c: PopbillCreds, corpNum: string, xDate: string): Promise<{ url: string; body: string; headers: Record<string, string> }> {
   const service = c.isTest ? 'POPBILL_TEST' : 'POPBILL'
   const uri = `/${service}/Token`
-  const body = JSON.stringify({ access_id: corpNum, scope: ['member', '110'] })
+  const body = JSON.stringify({ access_id: corpNum, scope: ['110', 'member'] })
   const digest = b64(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body)))
   const target = `POST\n${digest}\n${xDate}\n*\n2.0\n${uri}`
   const key = await crypto.subtle.importKey('raw', b64decode(c.secretKey), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
@@ -54,7 +55,7 @@ export async function linkhubTokenRequest(c: PopbillCreds, corpNum: string, xDat
   return {
     url: `https://auth.linkhub.co.kr${uri}`,
     body,
-    headers: { 'x-lh-date': xDate, 'x-lh-version': '2.0', 'x-lh-forwarded': '*', Authorization: `LINKHUB ${c.linkId} ${sig}`, 'Content-Type': 'Application/json' },
+    headers: { 'x-lh-date': xDate, 'x-lh-version': '2.0', 'x-lh-forwarded': '*', Authorization: `LINKHUB ${c.linkId} ${sig}`, 'Content-Type': 'application/json' },
   }
 }
 
@@ -84,7 +85,7 @@ export function popbillTaxinvoice(r: FeeInvoiceRow): Record<string, unknown> {
     supplyCostTotal: String(r.supply_amount),
     taxTotal: String(r.vat_amount),
     totalAmount: String(r.total_amount),
-    detailList: [{ serialNum: 1, purchaseDT: ymd8(r.write_date), itemName: `유어딜 중개수수료 (${y}년 ${m}월)`, supplyCost: String(r.supply_amount), tax: String(r.vat_amount) }],
+    detailList: [{ serialNum: '1', purchaseDT: ymd8(r.write_date), itemName: `유어딜 중개수수료 (${y}년 ${m}월)`, supplyCost: String(r.supply_amount), tax: String(r.vat_amount) }],
   }
   for (const k of Object.keys(t)) if (t[k] === null || t[k] === undefined || t[k] === '') delete t[k]
   return t
@@ -93,8 +94,13 @@ export function popbillTaxinvoice(r: FeeInvoiceRow): Record<string, unknown> {
 export interface PopbillIssueResult { ok: boolean; ntsConfirmNum?: string | null; test?: boolean; error?: string; duplicate?: boolean }
 
 /** 한 장 즉시 발행. 실패해도 던지지 않는다(호출부가 초안으로 남긴다). 토큰은 호출마다 새로 받는다(월 1회 · 몇 장뿐). */
-export async function issueFeeInvoiceViaPopbill(c: PopbillCreds, r: FeeInvoiceRow, fetchImpl: typeof fetch = fetch, nowIso: string = new Date().toISOString()): Promise<PopbillIssueResult> {
+/** 팝빌 요청 시각 형식 `yyyy-MM-ddTHH:mm:ssZ`(UTC, 밀리초 없음 — 인증 문서 X-LH-Date). */
+export const linkhubDate = (d: Date = new Date()) => d.toISOString().replace(/\.\d{3}Z$/, 'Z')
+
+export async function issueFeeInvoiceViaPopbill(c: PopbillCreds, r: FeeInvoiceRow, fetchImpl: typeof fetch = fetch, nowIso: string = linkhubDate()): Promise<PopbillIssueResult> {
   if (!r.buyer_biz_no) return { ok: false, error: '매장 사업자번호가 없습니다' }
+  // 팝빌 필수(공급받는자 상호·대표자 성명) — 비면 팝빌이 거부하니 보내기 전에 사유를 남긴다.
+  if (!r.buyer_name || !r.buyer_ceo) return { ok: false, error: '매장 상호·대표자 성명이 없습니다(사업자 정보 확인)' }
   try {
     const tr = await linkhubTokenRequest(c, COMPANY.bizRegNoDigits, nowIso)
     const tres = await fetchImpl(tr.url, { method: 'POST', headers: tr.headers, body: tr.body })
