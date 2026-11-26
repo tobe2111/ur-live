@@ -10,6 +10,7 @@
  * ⚠️ 못 보는 것: 홈택스·발행 사업자로의 실제 발행 · 국세청 판매대행 명세 전자제출 형식(세무사 확인 대상).
  */
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { d1, openLiveSchema, insert, q1 } from '../helpers/live-d1'
 import { recordVoucherUsedLedger, reverseVoucherUsedLedger } from '@/worker/utils/ledger'
 import { buildFeeInvoiceDrafts, listFeeInvoices, markFeeInvoiceIssued, splitFee, invoiceDates, feeInvoicesCsv } from '@/worker/utils/fee-tax-invoice'
@@ -181,15 +182,39 @@ describe('⑤ 팝빌 즉시 발행', () => {
       if (url.includes('/Token')) return new Response(JSON.stringify({ session_token: 'tok' }), { status: 200 })
       if (url.endsWith('/CertCheck')) return new Response(JSON.stringify({ code: 1, message: '유효성 확인' }), { status: 200 })
       if (url.endsWith('/Point')) return new Response(JSON.stringify({ remainPoint: '1000' }), { status: 200 })
+      if (url.endsWith('?cfg=CERT')) return new Response(JSON.stringify({ certificateExpiration: '20271231235959' }), { status: 200 })
+      if (url.endsWith('?cfg=UNITCOST')) return new Response(JSON.stringify({ unitCost: '200' }), { status: 200 })
       expect(JSON.parse(String(init.body)).invoiceeCorpNum).toBe('8888888888')
       return new Response(JSON.stringify({ code: 1 }), { status: 200 })
     }) as unknown as typeof fetch
     const key = Buffer.from('k').toString('base64')
     const t = await checkPopbill({ linkId: 'U', secretKey: key, isTest: true }, { sample: true }, fake, '2026-11-26T05:00:00Z')
-    expect(t).toMatchObject({ test: true, auth: { ok: true }, cert: { ok: true }, point: { remain: '1000' }, sample: { ok: true } })
+    expect(t).toMatchObject({ test: true, auth: { ok: true }, cert: { ok: true, expiresAt: '2027-12-31' }, point: { remain: '1000' }, unitCost: 200, sample: { ok: true } })
     urls.length = 0
     const p = await checkPopbill({ linkId: 'U', secretKey: key, isTest: false }, { sample: true }, fake, '2026-11-26T05:00:00Z')
     expect(p.sample, '운영 서버에선 가짜 발행을 하지 않는다').toBeUndefined()
     expect(urls.some((u) => u.endsWith('/Taxinvoice'))).toBe(false)
   })
 })
+
+describe('⑥ 팝빌 미리 경고 — 오래 쓰면 조용히 멈추는 곳', () => {
+  it('인증 실패 · 인증서 만료 45일 전 · 포인트 부족 · 자동 발행인데 테스트 서버', async () => {
+    const { popbillHealthWarnings } = await import('@/worker/utils/popbill-invoice')
+    const now = Date.parse('2027-01-01T00:00:00+09:00')
+    const ok = { test: false, auth: { ok: true }, cert: { ok: true, message: '유효성 확인', expiresAt: '2027-12-31' }, point: { remain: '10000' }, unitCost: 200 }
+    expect(popbillHealthWarnings(ok, { drafts: 13, autoSend: true, nowMs: now })).toEqual([])
+    expect(popbillHealthWarnings({ ...ok, auth: { ok: false, error: 'x' } }, { drafts: 1, autoSend: true, nowMs: now })[0]).toMatch(/연결 실패/)
+    expect(popbillHealthWarnings({ ...ok, cert: { ok: true, message: '', expiresAt: '2027-01-20' } }, { drafts: 0, autoSend: false, nowMs: now })[0]).toMatch(/19일 뒤 만료/)
+    expect(popbillHealthWarnings({ ...ok, cert: { ok: true, message: '', expiresAt: '2026-12-01' } }, { drafts: 0, autoSend: false, nowMs: now })[0]).toMatch(/만료됨/)
+    expect(popbillHealthWarnings({ ...ok, point: { remain: '1000' } }, { drafts: 13, autoSend: true, nowMs: now })[0]).toMatch(/포인트 부족.*2,600/)
+    expect(popbillHealthWarnings({ ...ok, test: true }, { drafts: 13, autoSend: true, nowMs: now })).toEqual([expect.stringMatching(/테스트 서버라 실제로는 발행되지 않음/)])
+  })
+  it('월 마감 요약이 경고를 싣는다 · 자격 없이 자동 발행이면 경고', () => {
+    const acc = { month: '2027-01', sales: { gmv: 0, n: 0, commission: 0 }, refunds: { refunded: 0 }, payouts: [], wht: { withholding: 0 } } as unknown as MonthlyAccounting
+    const m = monthlyCloseMessage(acc, { n: 0, total: 0 }, { popbillWarnings: ['팝빌 공동인증서 10일 뒤 만료(2027-02-10) — 갱신 후 팝빌에 다시 등록'] })
+    expect(m.message).toContain('⚠️ 팝빌 공동인증서 10일 뒤 만료')
+    const src = readFileSync('src/worker/utils/monthly-accounting.ts', 'utf8')
+    expect(src).toMatch(/자동 발행이 켜져 있지만 팝빌 연동 자격/)
+  })
+})
+

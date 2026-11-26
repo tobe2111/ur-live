@@ -88,3 +88,8 @@
 ## 12단계 — 팝빌 테스트 서버 라이브 확인 (2026-11-26 KST 16:00 경)
 - 실측(`POST /api/admin/tax/popbill/check {sample:true}`, 라이브): 인증 정상 · 공동인증서 "유효성 확인" · 테스트 포인트 0 · 가짜 공급받는자 시험 발행 **성공**(승인번호 받음). ⇒ 서명·헤더·본문 형식이 팝빌과 맞는다(E4, 테스트 서버).
 - 남은 것(대표): 팝빌 운영전환 신청 → 운영 사이트 공동인증서·포인트 충전. 그 뒤 세션이 `popbill_is_test=false` → 운영 연결 확인 → `fee_invoice_auto_send=true`.
+
+## 13단계 — 오래 써도 조용히 멈추지 않게 (2026-11-26 대표 *"안정적으로 영구적으로 설계했지?"*)
+- `checkPopbill` 에 공동인증서 만료일(cfg=CERT)·발행 단가(cfg=UNITCOST) · `popbillHealthWarnings()` — 인증 실패 / 인증서 문제·만료 45일 전 / 포인트 < 발행 예정×단가 / 자동 발행인데 테스트 서버 / 자동 발행인데 자격 없음.
+- 매월 1일 회계 요약에 위 경고를 싣는다(자동 발행 여부와 무관하게 자격이 있으면 점검). 시험 `fee-tax-invoice` ⑥(만료 경고 끄면 빨간불 확인).
+- 세무사 질문지 `docs/business/tax-advisor-questions-2026-11.md`(7항목) · 결재 `docs/decisions/2026-11-26-partner-tax-invoice.md`(open — 위수탁 접고 직접 발행→역발행).
