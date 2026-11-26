@@ -85,15 +85,19 @@ export function separation(people: { x: number; y: number; fixed: boolean }[], R
   for (let i = 0; i < people.length; i++) {
     for (let j = i + 1; j < people.length; j++) {
       const a = people[i], b = people[j]
-      let dx = a.x - b.x, dy = a.y - b.y
-      let d = Math.hypot(dx, dy)
+      const dx = a.x - b.x, dy = a.y - b.y
+      const d = Math.hypot(dx, dy)
       if (d >= R) continue
-      if (d < 0.01) { dx = i % 2 ? 1 : -1; dy = 0.3; d = Math.hypot(dx, dy) } // 정확히 같은 점이면 좌우로 가른다
-      const push = (R - d) / d
+      // 옆으로 비켜 선다 — 복도·통로는 가로·세로 길이라, 마주 오는 두 사람을 서로 *길의 옆*으로 민다
+      //   (같은 줄 위에서 앞뒤로 밀면 계속 부딪친다 — 2026-11-26 라이브 사진에서 통로 마주침이 그대로 남았다).
+      const side = Math.abs(dy) >= Math.abs(dx)
+        ? { x: dx === 0 ? (i % 2 ? 1 : -1) : Math.sign(dx), y: 0 }
+        : { x: 0, y: dy === 0 ? (i % 2 ? 1 : -1) : Math.sign(dy) }
+      const need = R - d
       const sa = a.fixed ? 0 : b.fixed ? 1 : 0.5
       const sb = b.fixed ? 0 : a.fixed ? 1 : 0.5
-      out[i].x += dx * push * sa; out[i].y += dy * push * sa
-      out[j].x -= dx * push * sb; out[j].y -= dy * push * sb
+      out[i].x += side.x * need * sa; out[i].y += side.y * need * sa
+      out[j].x -= side.x * need * sb; out[j].y -= side.y * need * sb
     }
   }
   return out
