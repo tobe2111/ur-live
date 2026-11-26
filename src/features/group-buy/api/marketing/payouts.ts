@@ -13,6 +13,9 @@ import type { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { computeCashPayout, resolveCashFeePct } from '@/shared/influencer-payout-math'
 import { swallow } from '@/worker/utils/swallow'
+import { mapOverseasPayees, getOverseasPayee, loadOverseasWithholdingPct, recordOverseasPayout, revealOverseasDestination } from '@/worker/utils/overseas-payee'
+import { require2FA } from '@/worker/middleware/require-2fa'
+import { auditLog } from '@/worker/middleware/audit-log'
 
 type MarketingVars = {
   user?: { id: string | number; email?: string }
@@ -42,11 +45,24 @@ export function registerAdminPayoutRoutes(adminApp: Hono<{ Bindings: Env; Variab
     //   기본 0 = 안 걷음(설정 전에는 종전과 동일).
     const feeRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'influencer_payout_cash_fee_pct'").first<{ value: string }>().catch(() => null)
     const cashFeePct = resolveCashFeePct(feeRow?.value)
-    return c.json({ success: true, data: { payout_min: payoutMin, cash_fee_pct: cashFeePct, list: results || [] } })
+    // 🌍 2026-11-26 해외 거주 소개자 — 받는 곳(가린 값)과 해외 원천징수율을 같이 준다(화면이 국내 3.3% 로 계산하지 않게).
+    const rows = (results || []) as Array<Record<string, unknown> & { influencer_id: string }>
+    const ov = await mapOverseasPayees(DB, 'influencer', rows.map((r) => String(r.influencer_id))).catch(() => new Map())
+    const overseasPct = await loadOverseasWithholdingPct(DB)
+    const list = rows.map((r) => { const o = ov.get(String(r.influencer_id)); return o ? { ...r, overseas: { country: o.country, method: o.method, currency: o.currency, masked: o.masked, name_en: o.legalNameEn } } : r })
+    return c.json({ success: true, data: { payout_min: payoutMin, cash_fee_pct: cashFeePct, overseas_withholding_pct: overseasPct, list } })
+  })
+
+  // 🌍 해외 받는 곳 원문(계좌·이메일) — 2FA·감사 로그 뒤에서만 복호화한다.
+  adminApp.get('/payouts/:id/overseas-destination', require2FA(), auditLog('influencer.overseas_destination_view'), async (c) => {
+    const r = await revealOverseasDestination(c.env.DB, c.env.DATA_ENCRYPTION_KEY, 'influencer', String(c.req.param('id') || '')).catch(() => null)
+    if (!r) return c.json({ success: false, error: '해외 받는 곳이 등록되지 않았어요' }, 404)
+    c.header('Cache-Control', 'no-store')
+    return c.json({ success: true, data: { country: r.country, name_en: r.legalNameEn, method: r.method, currency: r.currency, destination: r.destination } })
   })
 
   adminApp.post('/payouts/process', async (c) => {
-    const body = await c.req.json<{ influencer_id: string; method: 'cash' | 'deal'; net_amount?: number }>().catch(() => ({ influencer_id: '', method: 'cash' as const, net_amount: undefined }))
+    const body = await c.req.json<{ influencer_id: string; method: 'cash' | 'deal'; net_amount?: number; reference?: string }>().catch(() => ({ influencer_id: '', method: 'cash' as const, net_amount: undefined, reference: undefined }))
     const influencerId = String(body.influencer_id || '').trim()
     if (!influencerId) return c.json({ success: false, error: 'invalid' }, 400)
     // 🔒 2026-11-25 — 방식이 안 왔거나 틀리면 현금으로 떨어지던 것을 막는다(잔액이 0 으로 밀린 뒤라 되돌릴 길이 없다).
@@ -56,13 +72,15 @@ export function registerAdminPayoutRoutes(adminApp: Hono<{ Bindings: Env; Variab
       "SELECT available_amount, bank_account FROM influencer_balances WHERE influencer_id = ?"
     ).bind(influencerId).first<{ available_amount: number; bank_account: string | null }>().catch(() => null)
     if (!balance || balance.available_amount <= 0) return c.json({ success: false, error: '잔액 없음' }, 400)
+    // 🌍 2026-11-26 해외 거주 소개자 — 국내 계좌·주민번호 대신 해외 받는 곳으로 판정한다(어드민이 Wise·은행 해외송금으로 보낸 뒤 누른다).
+    const overseas = body.method === 'cash' ? await getOverseasPayee(DB, 'influencer', influencerId).catch(() => ({ registered: false as const })) : { registered: false as const }
     // 🔒 2026-11-25 — 보낼 계좌가 없는데 '현금 지급 완료' 로 잔액을 0 으로 밀 수 있었다(시험 `payout-cycle-full`). 매장 지급의 `PAYOUT_NO_ACCOUNT` 와 같은 규칙.
-    if (body.method === 'cash' && !String(balance.bank_account || '').trim()) {
+    if (body.method === 'cash' && !overseas.registered && !String(balance.bank_account || '').trim()) {
       return c.json({ success: false, error: '받을 계좌가 등록되지 않았어요. 계좌 등록 뒤 지급해 주세요.', code: 'PAYOUT_NO_ACCOUNT' }, 409)
     }
     const amount = balance.available_amount
     // 🪪 2026-11-25 사업자번호 없는 개인(3.3%)인데 주민등록번호가 없으면 현금 지급을 막는다 — 간이지급명세서에 빈칸이 생긴다(cron 과 같은 규칙).
-    if (body.method === 'cash') {
+    if (body.method === 'cash' && !overseas.registered) {
       const pre = await DB.prepare('SELECT tax_type, business_number FROM influencer_balances WHERE influencer_id = ?')
         .bind(influencerId).first<{ tax_type: string | null; business_number: string | null }>().catch(() => null)
       if (!String(pre?.business_number || '').trim()) { // 사업자번호가 없는 개인 — 간이지급명세서 대상
@@ -108,15 +126,25 @@ export function registerAdminPayoutRoutes(adminApp: Hono<{ Bindings: Env; Variab
         'SELECT tax_type, business_number FROM influencer_balances WHERE influencer_id = ?'
       ).bind(influencerId).first<{ tax_type: string | null; business_number: string | null }>().catch(() => null)
       const feeRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'influencer_payout_cash_fee_pct'").first<{ value: string }>().catch(() => null)
+      const overseasPct = overseas.registered ? await loadOverseasWithholdingPct(DB) : null
       cashBreakdown = computeCashPayout({
         gross: amount,
         taxType: meta?.tax_type,
         businessNumber: meta?.business_number,
         feePct: resolveCashFeePct(feeRow?.value),
+        withholdingRateOverride: overseasPct === null ? undefined : overseasPct / 100,
       })
+      if (overseas.registered && overseasPct !== null) {
+        // 비거주자 — 간이지급명세서(거주자) 장부가 아니라 해외 지급 기록에 남긴다(비거주자 지급명세서 원장).
+        const admin = (c as unknown as { get: (k: string) => { id?: number } | undefined }).get('user')
+        await recordOverseasPayout(DB, {
+          kind: 'influencer', payeeId: influencerId, payee: overseas, gross: amount, fee: cashBreakdown.fee, withholdingPct: overseasPct,
+          withholding: cashBreakdown.withholding, net: cashBreakdown.net, reference: typeof body.reference === 'string' ? body.reference.trim() : null, adminId: Number(admin?.id) || null,
+        }).catch(swallow('marketing:influencer-payout:overseas-record'))
+      }
       // 🧾 2026-11-18 원천징수 장부에 남긴다(지급명세서·월 요약이 이걸 읽는다) — 위 CAS claim 이 한 번만 통과하므로
       //   source_id 는 이 지급 한 건(인플 id + 지급 직전 잔액 + 시각). 실패해도 지급은 막지 않는다.
-      if (cashBreakdown.withholding > 0) {
+      if (cashBreakdown.withholding > 0 && !overseas.registered) {
         const { logInfluencerWithholding } = await import('../../../../worker/utils/influencer-withholding-log')
         await logInfluencerWithholding(DB, {
           influencerId: String(influencerId), gross: cashBreakdown.taxableBase, withholdingPct: cashBreakdown.withholdingPct,

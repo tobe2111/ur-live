@@ -91,6 +91,8 @@ export function computeCashPayout(input: {
   taxType?: string | null
   businessNumber?: string | null
   feePct?: number
+  /** 🌍 2026-11-26 해외 거주 소득자 — 어드민 `overseas_withholding_pct` 를 분수로(예 0.22). 주면 국내 세율 판정을 건너뛴다. */
+  withholdingRateOverride?: number
 }): CashPayoutBreakdown {
   const gross = Math.max(0, Math.floor(input.gross || 0))
   const feePct = resolveCashFeePct(input.feePct)
@@ -99,7 +101,8 @@ export function computeCashPayout(input: {
   // ⚠️ **분수(0.088)로 곱한다.** 옛 코드는 `rate * 100` 한 %로 곱하고 100 으로 나눴는데,
   //   `0.088 * 100 = 8.799999999999999` 이라 100만원 기타소득에서 원천징수가 **87,999원**이 됐다
   //   (분수로 곱하면 88,000원). 1원이지만 그건 국가에 낼 세금이고, 매 건마다 난다.
-  const withholdingRate = resolveWithholdingRate(input.taxType, input.businessNumber)
+  const ov = input.withholdingRateOverride
+  const withholdingRate = typeof ov === 'number' && Number.isFinite(ov) && ov >= 0 && ov <= 0.45 ? ov : resolveWithholdingRate(input.taxType, input.businessNumber)
   const withholdingPct = withholdingRate * 100
   const withholding = Math.floor(taxableBase * withholdingRate)
   return { gross, feePct, fee, taxableBase, withholdingPct, withholding, net: taxableBase - withholding }

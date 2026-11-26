@@ -223,6 +223,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   fee_vat_exclusive_from: (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v.trim()) || ['off', ''].includes(v.trim().toLowerCase()) ? null : 'YYYY-MM-DD 또는 off 만 허용됩니다'), // shared/fee-vat.ts — 수수료 부가세 별도 시작일(2026-11-25)
   popbill_is_test: (v) => (['true', 'false'].includes(v.trim()) ? null : 'true 또는 false'), // worker/utils/popbill-invoice.ts — 테스트 서버(2026-11-26)
   fee_invoice_auto_send: (v) => (['true', 'false'].includes(v.trim()) ? null : 'true 또는 false'), // worker/utils/monthly-accounting.ts — 팝빌 자동 발행(2026-11-26)
+  overseas_withholding_pct: (v) => { const n = Number(v); return v.trim() !== '' && Number.isFinite(n) && n >= 0 && n <= 45 ? null : '0~45 사이 숫자' }, // worker/utils/overseas-payee.ts — 해외 거주 소득자 원천징수율(2026-11-26)
   payout_min_krw: intRange(0, 10000000), // shared/store-payout-min.ts — 주간 정산 최소 금액(미만 이월 · 월말 목요일엔 무관, 2026-11-25)
   payout_auto_approve_max_krw: intRange(0, 100000000), // worker/utils/payout-approve.ts — 주간 정산 소액 자동 승인 상한(0=꺼짐, 2026-11-25)
   curator_min_withdrawal: nonNegNum,

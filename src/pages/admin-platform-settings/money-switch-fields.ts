@@ -146,6 +146,11 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     key: 'payout_min_krw', label: '주간 정산 최소 금액 (원)', default: '10000',
     hint: '받을 돈이 이 금액보다 적은 주는 건너뛰고 다음 주로 쌓는다. 그달 마지막 목요일 회차는 이 값과 상관없이 1원 이상이면 정산(한 달 넘게 안 기다린다). 0 = 최소 없음. 매장 안내 문구(1만 원)는 partners-facts.ts 와 함께 바꿀 것',
   },
+  // 🌍 2026-11-26 대표 *"응 만들어줘"* — 해외 거주 소개자 원천징수율(세무사 확인 전 보수적 기본값).
+  {
+    key: 'overseas_withholding_pct', label: '해외 거주 소득자 원천징수율 (%)', default: '22',
+    hint: '🔴 머니 경로. 해외에 사는 개인 소개자에게 현금으로 보낼 때 떼는 비율(0~45). 기본 22 = 소득세 20% + 지방소득세 2%. 국외에서 한 활동이면 0, 조세조약이면 더 낮을 수 있다 — 세무사 확인 뒤 이 값만 바꾼다. SSOT worker/utils/overseas-payee.ts',
+  },
   // 🧾 2026-11-25 대표 *"1번 부가세 별도로 하자"* — 플랫폼 수수료 부가세 별도(수수료 × 10% 를 매장 몫에서 함께 뗀다).
   {
     key: 'fee_vat_exclusive_from', label: '수수료 부가세 별도 시작일 (KST)', default: '2027-01-01',
