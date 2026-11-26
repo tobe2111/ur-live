@@ -54,8 +54,15 @@ export interface SessionRow { session_id: string; title: string | null; branch: 
 /** 회의실 탁자 둘레 자리 — 지금 열린 작업실(세션)이 여기 앉는다(최대 6). */
 const MEETING_SEATS: Pt[] = [{ x: 85, y: 62 }, { x: 130, y: 58 }, { x: 175, y: 62 }, { x: 85, y: 130 }, { x: 130, y: 134 }, { x: 175, y: 130 }]
 
-export default function OfficeView({ status, tasksOf, onSelect, selected, sessions = [] }: {
+/** 🔁 다시 보기 한 건 — 오늘 실제로 끝낸 근무 기록(쉬운 한 줄로 다듬은 것). */
+export interface ReplayItem { id: number; team: string; text: string }
+const REPLAY_EVERY_S = 7
+const REPLAY_BUBBLE_MS = 9000
+
+export default function OfficeView({ status, tasksOf, onSelect, selected, sessions = [], replay = [] }: {
   sessions?: SessionRow[]
+  /** 2026-11-26 대표 "너무 정적인데 앉아만 있고" — 일하는 팀이 없을 때 오늘 한 일을 차례로 다시 보여 준다(실제 기록만). */
+  replay?: ReplayItem[]
   status: Record<string, TeamStatus>
   tasksOf: (k: string) => AiTeamTask[]
   onSelect: (k: string) => void
@@ -66,6 +73,9 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
   const statusRef = useRef(status)
   statusRef.current = status
   const [carry, setCarry] = useState<Record<string, boolean>>({})
+  const [replayBubble, setReplayBubble] = useState<{ key: string; text: string } | null>(null)
+  const replayRef = useRef(replay)
+  replayRef.current = replay
   const boxRef = useRef<HTMLDivElement | null>(null)
   // 다음 출근 시각(일하는 중이 아닐 때만) — 30초마다 부모가 다시 그리므로 그때 갱신된다
   const next: Record<string, string> = {}
@@ -89,6 +99,8 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
     if (reduce) return
     let raf = 0
     let last = performance.now()
+    let replayCool = 3
+    let replayIdx = 0
     // ⚡ 사무실이 화면 밖(아래로 스크롤)이거나 탭이 가려지면 멈춘다 — 안 보이는 그림을 그리지 않는다.
     let visible = true
     const start = () => { if (!raf && visible && document.visibilityState === 'visible') { last = performance.now(); raf = requestAnimationFrame(tick) } }
@@ -143,6 +155,29 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
       const dt = Math.min(0.1, (now - last) / 1000)
       last = now
       const list = Object.values(agents.current)
+      // 🔁 다시 보기 — 지금 일하는 팀이 없고 아무도 보고서를 들고 있지 않을 때만, 7초마다 한 건.
+      replayCool -= dt
+      if (replayCool <= 0) {
+        replayCool = REPLAY_EVERY_S
+        const items = replayRef.current
+        const busy = list.some(a => a.carrying || a.path.length) ||
+          Object.values(statusRef.current).some(st => st?.state === 'working')
+        if (!busy && items.length) {
+          const it = items[replayIdx++ % items.length]
+          const a = agents.current[it.team]
+          const drop = a && it.team !== 'ceo-office' ? claim(a, SPOTS.secretaryDrop) : null
+          if (a && drop) {
+            a.carrying = true
+            setCarry(c => ({ ...c, [a.key]: true }))
+            a.path = laneRoute(a.key, { x: a.x, y: a.y }, drop)
+            a.wait = 1.5
+          }
+          if (a) {
+            setReplayBubble({ key: it.team, text: it.text })
+            window.setTimeout(() => setReplayBubble(b => (b && b.key === it.team ? null : b)), REPLAY_BUBBLE_MS)
+          }
+        }
+      }
       for (const a of list) {
         if (a.path.length) {
           const t = a.path[0]
@@ -191,10 +226,12 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
         @keyframes aiBob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
         @keyframes aiType { 0%,100% { opacity: .25 } 50% { opacity: 1 } }
         .ai-walk .ai-body { animation: aiBob .35s ease-in-out infinite }
+        @keyframes aiBreath { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-1px) } }
+        .ai-body { animation: aiBreath 3.2s ease-in-out infinite }
         .ai-dot { animation: aiType 1s ease-in-out infinite }
         .ai-name { display: none }
         .ai-away .ai-name { display: inline }
-        @media (prefers-reduced-motion: reduce) { .ai-walk .ai-body, .ai-dot { animation: none } }
+        @media (prefers-reduced-motion: reduce) { .ai-body, .ai-walk .ai-body, .ai-dot { animation: none } }
       `}</style>
       <svg viewBox={`0 0 ${VIEW.w} ${VIEW.h}`} className="w-full min-w-[640px] h-auto select-none" role="img" aria-label="AI 팀 사무실">
         <rect x="0" y="0" width={VIEW.w} height={VIEW.h} fill="#F4F5F7" rx="12" />
@@ -268,6 +305,12 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
                 {carry[p.key] && <rect x="9" y="-2" width="10" height="13" rx="1" fill="#FFFFFF" stroke="#6B7280" strokeWidth="0.8" />}
               </g>
               <g className="ai-name"><rect x={-p.name.length * 6 - 4} y="19" width={p.name.length * 12 + 8} height="15" rx="7" fill="#FFFFFF" opacity=".92" /><text x="0" y="30" fontSize="11" fontWeight="600" fill="#111827" textAnchor="middle">{p.name}</text></g>
+              {!b && replayBubble?.key === p.key && (
+                <g transform="translate(0 -44)">
+                  <rect x={-Math.max(30, replayBubble.text.length * 5.6)} y="-13" width={Math.max(60, replayBubble.text.length * 11.2)} height="20" rx="10" fill="#FFFFFF" stroke="#1C69EF" />
+                  <text x="0" y="1" fontSize="10.5" fill="#111827" textAnchor="middle">{replayBubble.text}</text>
+                </g>
+              )}
               {b && (
                 <g transform="translate(0 -44)">
                   {b.tone === 'work' ? (

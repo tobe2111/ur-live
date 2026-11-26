@@ -9,6 +9,7 @@ import { STATE_LABEL, type TeamStatus } from './derive'
 import { SEV_DOT, type AiTeamTask } from './Desk'
 import { DEPT_COLOR } from './office-layout'
 import type { SessionRow } from './OfficeView'
+import { plainSummary } from './plain'
 
 const DEPTS: [string, string][] = [
   ['ceo-office', '비서실'], ['growth', '성장본부'], ['ops', '운영본부'], ['product', '제품본부'], ['support', '경영지원·품질'],
@@ -30,7 +31,7 @@ export default function NowPanel({ status, tasksOf, sessions, onPick }: {
     const all = [...TEAMS.map(t => ({ t, n: nextShift(t) })), { t: null, n: nextShift({ key: 'duty', name: '당번', initial: '', job: '', shifts: DUTY_SHIFTS }) }]
       .filter(x => x.n).sort((a, b) => a.n!.at.getTime() - b.n!.at.getTime())
     const f = all[0]
-    return f ? `${f.n!.label} ${f.t ? f.t.name : '일감 처리 당번'}(${f.n!.what})` : null
+    return f ? `${f.n!.label} ${f.t ? `${f.t.name}(${f.n!.what})` : f.n!.what}` : null
   })()
 
   return (
@@ -79,7 +80,7 @@ export default function NowPanel({ status, tasksOf, sessions, onPick }: {
             {liveSessions.slice(0, 6).map(x => (
               <li key={x.session_id} className="flex items-center gap-2 py-1.5 text-[13px]">
                 <span className="w-2 h-2 rounded-full shrink-0 bg-tone-ok" />
-                <span className="min-w-0 flex-1 truncate text-gray-700">{x.title ?? '제목 없는 작업'}</span>
+                <span className="min-w-0 flex-1 truncate text-gray-700">{plainSummary(x.title, 40) || '제목 없는 작업'}</span>
               </li>
             ))}
           </ul>

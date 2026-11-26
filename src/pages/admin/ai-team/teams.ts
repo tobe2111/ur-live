@@ -38,8 +38,9 @@ export const TEAMS: TeamInfo[] = [
   { key: 'legal', name: '법무', initial: '법', job: '손님 문구·약관·광고 표기 확인', shifts: [D([5], '14:43', '주간 문구·약관 점검')] },
 ]
 
-/** 일감 처리 당번 — 쌓인 일감을 담당 팀 역할로 처리(어느 팀이든 출근할 수 있다) */
-export const DUTY_SHIFTS: Shift[] = ['09:13', '11:13', '13:13', '16:13', '19:13'].map(hm => D(DAILY, hm, '일감 처리 당번'))
+/** 🔁 2026-11-26 대표 "끊임없이 … 내가 세션에다가 말을 하지 않아도" — 당번을 **상시 근무 조율기**로 바꿨다(08~22시 매시 13분).
+ *  결재함 답 → 급한 일감 → 상시 일감 목록(docs/design/ai-team-backlog.md) 순으로 집는다. */
+export const DUTY_SHIFTS: Shift[] = Array.from({ length: 15 }, (_, i) => D(DAILY, `${String(8 + i).padStart(2, '0')}:13`, '상시 근무 조율기'))
 
 const DAY = ['일', '월', '화', '수', '목', '금', '토']
 

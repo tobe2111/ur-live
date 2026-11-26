@@ -258,3 +258,27 @@ describe('⑩ 진짜 일만 움직인다 · 12팀 모두 근무 일정', () => {
     expect(read('src/pages/admin/AdminAiTeamPage.tsx')).toMatch(/history=\{rows \?\? \[\]\}/)
   })
 })
+
+// ⑪ 쉬운 한 줄 (2026-11-26 대표 "이런 문구들이 너무 복잡하지 않아?") · 다시 보기("너무 정적인데 앉아만 있고")
+describe('⑪ 쉬운 한 줄 · 다시 보기', () => {
+  it('등급·해시·PR 번호·마크다운을 빼고 첫 문장만', async () => {
+    const { plainSummary } = await import('@/pages/admin/ai-team/plain')
+    const raw = '[E4] 배포 실패 3건은 단위 시험 실패(#2525 무작위 실패 등)로 막힌 것 — 최신 main dd02f0fd8 전체 시험 통과·라이브 새 버전 배포 확인, 코드 수정 불필요. KT 충전 잔액 8,380원은 대표 충전 필요'
+    const s = plainSummary(raw, 200)
+    expect(s).not.toMatch(/E4|#2525|dd02f0fd8|—/)
+    expect(s).not.toMatch(/KT 충전/) // 둘째 문장은 뺀다
+    expect(plainSummary('[**인스타**](https://x.y) 새 DM 없음')).toBe('인스타 새 DM 없음')
+    expect(plainSummary('가'.repeat(100), 10)).toHaveLength(10)
+    expect(plainSummary(null)).toBe('')
+  })
+  it('사무실이 오늘 한 일을 다시 보여 주고(실제 기록만), 화면 글은 plainSummary 를 거친다', () => {
+    const v = read('src/pages/admin/ai-team/OfficeView.tsx')
+    expect(v).toMatch(/replayRef\.current/)
+    expect(v).toMatch(/Object\.values\(statusRef\.current\)\.some\(st => st\?\.state === 'working'\)/) // 일하는 중이면 다시 보기를 쉰다
+    const page = read('src/pages/admin/AdminAiTeamPage.tsx')
+    expect(page).toMatch(/r\.state === 'done' && Date\.now\(\) - parseUTCDate\(r\.created_at\)\.getTime\(\) < 24 \* 3600_000/)
+    for (const f of ['src/pages/admin/ai-team/Desk.tsx', 'src/pages/admin/AdminAiTeamPage.tsx']) {
+      expect(read(f), `${f} 가 원문 summary 를 그대로 그린다`).not.toMatch(/\{r\.summary \?\? r\.routine \?\? ''\}/)
+    }
+  })
+})
