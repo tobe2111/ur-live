@@ -10,11 +10,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Building2, ExternalLink } from 'lucide-react'
 import api from '@/lib/api'
+import AdminLayout from '@/components/AdminLayout'
 import { formatKSTShort, formatKSTDate, parseUTCDate, relativeFromNow } from '@/utils/date'
 import { FLOORS, TEAMS } from './ai-team/teams'
 import { deriveTeamStatus, type ActivityRow, type TeamStatus } from './ai-team/derive'
 import Desk, { SEV_DOT, type AiTeamTask } from './ai-team/Desk'
 import OfficeView, { type SessionRow } from './ai-team/OfficeView'
+import NowPanel from './ai-team/NowPanel'
 
 const REFRESH_MS = 30_000
 
@@ -62,41 +64,38 @@ export default function AdminAiTeamPage() {
   const doneToday = (rows ?? []).filter(r => r.state === 'done' && formatKSTDate(r.created_at) === today).length
   const urgent = (tasks ?? []).filter(x => x.severity === 'high').length
 
+  const stats: { label: string; value: number | string; alert?: boolean }[] = [
+    { label: '지금 일하는 팀', value: working },
+    { label: '남은 일감', value: tasks ? tasks.length : '—' },
+    { label: '급한 일감', value: tasks ? urgent : '—', alert: urgent > 0 },
+    { label: '오늘 끝낸 일', value: rows ? doneToday : '—' },
+    { label: '실패·응답 없음', value: trouble, alert: trouble > 0 },
+  ]
+  const liveSessions = (sessions ?? []).filter(x => x.state === 'working' || Date.now() - parseUTCDate(x.updated_at).getTime() < 3600_000)
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col gap-5">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Building2 className="w-5 h-5 text-gray-400" />
-          <h1 className="text-xl font-bold text-gray-900">AI 팀 본사</h1>
+    <AdminLayout title="AI 팀 본사">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <Building2 className="w-5 h-5 text-gray-400" />
+            <h1 className="text-xl font-bold text-gray-900">AI 팀 본사</h1>
+          </div>
+          <p className="text-[13px] text-gray-500">팀 12개가 일을 시작하고 끝낼 때마다 기록이 남고, 서버가 찾은 일감이 담당 팀 책상에 쌓입니다. 30초마다 새로 읽습니다.</p>
         </div>
-        <p className="text-[13px] text-gray-500">
-          대표 1 · 비서실장 1 · 4본부 · 품질·보안실, 팀 12. 팀이 일을 시작하고 끝낼 때마다 기록이 남고,
-          서버가 회사 전체를 훑어 찾은 일감이 담당 팀 책상에 쌓입니다. 이 화면은 30초마다 새로 읽습니다.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2 text-[13px]">
-          {[
-            ['지금 일하는 중', working],
-            ['남은 일감', tasks ? tasks.length : '—'],
-            ['급한 일감', tasks ? urgent : '—'],
-            ['오늘 끝낸 일', rows ? doneToday : '—'],
-            ['실패·응답 없음', trouble],
-          ].map(([label, v]) => (
-            <span key={String(label)} className="px-3 py-1.5 rounded-lg bg-white text-gray-600">
-              {label} <b className="text-gray-900 tabular-nums">{v}</b>
-            </span>
-          ))}
-        </div>
-        {error && <p className="mt-2 text-[13px] text-tone-bad">근무 기록을 불러오지 못했습니다. 조직도는 그대로 보입니다.</p>}
+        <a href="/admin/decisions" className="shrink-0 px-3 py-2 rounded-lg bg-brand text-white text-[13px] font-semibold">결재함 열기</a>
       </div>
 
-      <section className="rounded-xl bg-white p-4 flex flex-wrap items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-gray-900 text-white grid place-items-center text-[14px] font-bold">대</div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[15px] font-semibold text-gray-900">6F 대표실</h2>
-          <p className="text-[13px] text-gray-600">방향·가격·대외 약속을 정하고 현장 영업(전화·방문)을 합니다.</p>
-        </div>
-        <a href="/admin/decisions" className="text-[13px] font-semibold text-brand">결재함 열기</a>
-      </section>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        {stats.map(x => (
+          <div key={x.label} className={`rounded-xl p-3 ${x.alert ? 'bg-tone-bad-bg' : 'bg-white'}`}>
+            <div className={`text-[12px] ${x.alert ? 'text-tone-bad' : 'text-gray-500'}`}>{x.label}</div>
+            <div className={`mt-0.5 text-[24px] font-bold tabular-nums leading-tight ${x.alert ? 'text-tone-bad' : 'text-gray-900'}`}>{x.value}</div>
+          </div>
+        ))}
+      </div>
+      {error && <p className="text-[13px] text-tone-bad">근무 기록을 불러오지 못했습니다. 조직도는 그대로 보입니다.</p>}
 
       <div className="flex gap-1 self-start rounded-lg bg-white p-1 text-[13px] font-semibold">
         {([['office', '사무실'], ['org', '조직도']] as const).map(([k, label]) => (
@@ -106,16 +105,29 @@ export default function AdminAiTeamPage() {
       </div>
 
       {view === 'office' ? (
-        <>
-          <OfficeView sessions={(sessions ?? []).filter(x => x.state === 'working' || Date.now() - parseUTCDate(x.updated_at).getTime() < 3600_000)} status={status} tasksOf={tasksOf} selected={picked} onSelect={k => setPicked(p => (p === k ? null : k))} />
-          {picked && picked !== 'ceo' && (() => {
-            const t = TEAMS.find(x => x.key === picked)
-            return t ? <div className="max-w-sm"><Desk t={t} s={status[picked]} tasks={tasksOf(picked)} /></div> : null
-          })()}
-          {picked === 'ceo' && (
-            <p className="text-[13px] text-gray-600">대표실 — 방향·가격·대외 약속을 정하고 현장 영업을 합니다. <a href="/admin/decisions" className="text-brand font-semibold">결재함 열기</a></p>
-          )}
-        </>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px] items-start">
+          <OfficeView sessions={liveSessions} status={status} tasksOf={tasksOf} selected={picked} onSelect={k => setPicked(p => (p === k ? null : k))} />
+          <aside className="flex flex-col gap-3 min-w-0">
+            {picked && picked !== 'ceo' && (() => {
+              const t = TEAMS.find(x => x.key === picked)
+              return t ? (
+                <div className="flex flex-col gap-2">
+                  <button type="button" onClick={() => setPicked(null)} className="self-start text-[12px] text-gray-500 hover:text-gray-900">← 전체 상황으로</button>
+                  <Desk t={t} s={status[picked]} tasks={tasksOf(picked)} />
+                </div>
+              ) : null
+            })()}
+            {picked === 'ceo' && (
+              <div className="rounded-xl bg-white p-4">
+                <button type="button" onClick={() => setPicked(null)} className="text-[12px] text-gray-500 hover:text-gray-900">← 전체 상황으로</button>
+                <h3 className="mt-2 text-[15px] font-semibold text-gray-900">6F 대표실</h3>
+                <p className="mt-1 text-[13px] text-gray-600">방향·가격·대외 약속을 정하고 현장 영업(전화·방문)을 합니다.</p>
+                <a href="/admin/decisions" className="mt-2 inline-block text-[13px] font-semibold text-brand">결재함 열기</a>
+              </div>
+            )}
+            {!picked && <NowPanel status={status} tasksOf={tasksOf} sessions={liveSessions} onPick={setPicked} />}
+          </aside>
+        </div>
       ) : (
         <div className="flex flex-col gap-1.5 rounded-[var(--dash-radius,16px)] bg-gray-200 p-1.5">
           {FLOORS.map(f => (
@@ -135,6 +147,7 @@ export default function AdminAiTeamPage() {
         </div>
       )}
 
+      <div className="grid gap-4 xl:grid-cols-2 items-start">
       <section className="rounded-xl bg-white p-4">
         <h2 className="text-[15px] font-semibold text-gray-900 mb-1">열린 작업실 (Claude 세션)</h2>
         <p className="text-[12px] text-gray-400 mb-2">이 레포에서 열린 세션은 새로 만들어도 자동으로 여기 붙습니다(시작·질문·턴 끝마다 보고). 최근 48시간.</p>
@@ -174,6 +187,8 @@ export default function AdminAiTeamPage() {
           )}
       </section>
 
+      </div>
+
       <section className="rounded-xl bg-white p-4">
         <h2 className="text-[15px] font-semibold text-gray-900 mb-2">최근 근무 기록</h2>
         {!rows ? <p className="text-[13px] text-gray-400">불러오는 중</p>
@@ -197,5 +212,6 @@ export default function AdminAiTeamPage() {
           )}
       </section>
     </div>
+    </AdminLayout>
   )
 }

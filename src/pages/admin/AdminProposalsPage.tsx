@@ -35,6 +35,7 @@ import { useCallback, useState } from 'react'
 import { FileText, Download, Maximize2 } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 import { useProposalManifest, useAutoPdf, deckNameOf } from './proposals/useAutoProposal'
+import AdminLayout from '@/components/AdminLayout'
 
 /**
  * 🔢 `slides` 는 손으로 적는 숫자가 아니다 — `src/tests/unit/admin-proposals-asset.test.ts` 가
@@ -90,7 +91,7 @@ const PROPOSALS = [
 
 type Key = (typeof PROPOSALS)[number]['key']
 
-export default function AdminProposalsPage() {
+function AdminProposalsPageBody() {
   const [tab, setTab] = useState<Key>('store-owner')
   const active = PROPOSALS.find(p => p.key === tab) ?? PROPOSALS[0]
   // 📄 2026-11-02: 자동 생성 최신본(워크플로 proposals.yml → GitHub Release) 을 먼저 쓴다. 없으면 저장된 판.
@@ -202,4 +203,10 @@ export default function AdminProposalsPage() {
       </div>
     </div>
   )
+}
+
+// 🧱 2026-11-26 대표 "배경이 어둡네" — 이 화면은 어드민 공통 틀(흰 바탕·왼쪽 메뉴) 밖에 있어서
+//   PC·폰이 다크 모드면 바탕이 검게 나왔다. 틀로 감싼다(가드 admin-pages-in-layout-2026-11-26).
+export default function AdminProposalsPage() {
+  return <AdminLayout title="대외 소개서"><AdminProposalsPageBody /></AdminLayout>
 }

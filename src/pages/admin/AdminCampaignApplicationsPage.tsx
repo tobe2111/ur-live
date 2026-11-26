@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Select } from '@/components/ui/select'
+import AdminLayout from '@/components/AdminLayout'
 
 /**
  * 📣 캠페인 신청자 관리 (/admin/campaign-applications) — 캠페인 코드 필터 + CSV 내보내기.
@@ -19,7 +20,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   youtube: '유튜브', instagram: '인스타그램', naver_blog: '네이버 블로그', tistory: '티스토리', tiktok: '틱톡', etc: '기타',
 }
 
-export default function AdminCampaignApplicationsPage() {
+function AdminCampaignApplicationsPageBody() {
   const [rows, setRows] = useState<AppRow[]>([])
   const [campaigns, setCampaigns] = useState<CampaignCount[]>([])
   const [filter, setFilter] = useState('')
@@ -130,4 +131,10 @@ export default function AdminCampaignApplicationsPage() {
       )}
     </div>
   )
+}
+
+// 🧱 2026-11-26 대표 "배경이 어둡네" — 이 화면은 어드민 공통 틀(흰 바탕·왼쪽 메뉴) 밖에 있어서
+//   PC·폰이 다크 모드면 바탕이 검게 나왔다. 틀로 감싼다(가드 admin-pages-in-layout-2026-11-26).
+export default function AdminCampaignApplicationsPage() {
+  return <AdminLayout title="캠페인 신청자"><AdminCampaignApplicationsPageBody /></AdminLayout>
 }

@@ -128,6 +128,8 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
         @keyframes aiType { 0%,100% { opacity: .25 } 50% { opacity: 1 } }
         .ai-walk .ai-body { animation: aiBob .35s ease-in-out infinite }
         .ai-dot { animation: aiType 1s ease-in-out infinite }
+        .ai-name { display: none }
+        .ai-walk .ai-name { display: inline }
         @media (prefers-reduced-motion: reduce) { .ai-walk .ai-body, .ai-dot { animation: none } }
       `}</style>
       <svg viewBox={`0 0 ${VIEW.w} ${VIEW.h}`} className="w-full min-w-[640px] h-auto select-none" role="img" aria-label="AI 팀 사무실">
@@ -146,8 +148,11 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
           const s = seatOf(p.key)
           if (!s) return null
           const n = p.key === 'ceo' ? 0 : tasksOf(p.key).length
+          const sel = selected === p.key
           return (
-            <g key={`desk-${p.key}`}>
+            <g key={`desk-${p.key}`} onClick={() => onSelect(p.key)} style={{ cursor: 'pointer' }}>
+              {sel && <rect x={s.desk.x - 40} y={s.desk.y - 20} width="80" height="78" rx="8" fill="#1C69EF" opacity=".08" />}
+              <text x={s.seat.x} y={s.seat.y + 30} fontSize="11" fontWeight="600" fill="#6B7280" textAnchor="middle">{p.name}</text>
               <rect x={s.desk.x - 34} y={s.desk.y - 14} width="68" height="28" rx="4" fill="#FFFFFF" stroke="#C7CCD6" />
               <rect x={s.desk.x - 12} y={s.desk.y - 10} width="24" height="15" rx="2" fill="#1F2937" />
               {Array.from({ length: Math.min(n, 4) }).map((_, i) => (
@@ -195,7 +200,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
                 <text x="0" y="10" fontSize="9" fontWeight="700" fill="#FFFFFF" textAnchor="middle">{p.initial}</text>
                 {carry[p.key] && <rect x="9" y="-2" width="10" height="13" rx="1" fill="#FFFFFF" stroke="#6B7280" strokeWidth="0.8" />}
               </g>
-              <text x="0" y="30" fontSize="11" fontWeight="600" fill="#374151" textAnchor="middle">{p.name}</text>
+              <g className="ai-name"><rect x={-p.name.length * 6 - 4} y="19" width={p.name.length * 12 + 8} height="15" rx="7" fill="#FFFFFF" opacity=".92" /><text x="0" y="30" fontSize="11" fontWeight="600" fill="#111827" textAnchor="middle">{p.name}</text></g>
               {b && (
                 <g transform="translate(0 -44)">
                   {b.tone === 'work' ? (
@@ -216,9 +221,7 @@ export default function OfficeView({ status, tasksOf, onSelect, selected, sessio
           )
         })}
       </svg>
-      <p className="px-2 pt-1 text-[12px] text-gray-400">
-        사람을 누르면 그 팀 카드가 아래에 열립니다. 일하는 중이면 자리에서 타이핑하고, 일을 끝내면 보고서를 들고 비서실로 갑니다. 책상 위 숫자는 쌓인 일감입니다.
-      </p>
+      <p className="px-2 pt-1 text-[12px] text-gray-400">사람이나 책상을 누르면 오른쪽에 그 팀 카드가 열립니다.</p>
     </div>
   )
 }

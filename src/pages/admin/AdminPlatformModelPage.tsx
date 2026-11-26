@@ -11,6 +11,7 @@ import businessMd from '../../../docs/business/urdeal-business-plan.md?raw'
 import whitepaperMd from '../../../docs/business/urdeal-operations-whitepaper.md?raw'
 import MarkdownView from '@/components/MarkdownView'
 import { FileText } from 'lucide-react'
+import AdminLayout from '@/components/AdminLayout'
 
 const DOCS = [
   { key: 'platform', label: '플랫폼 모델 (전체)', src: platformMd },
@@ -19,7 +20,7 @@ const DOCS = [
   { key: 'whitepaper', label: '운영 백서', src: whitepaperMd },
 ] as const
 
-export default function AdminPlatformModelPage() {
+function AdminPlatformModelPageBody() {
   const [tab, setTab] = useState<(typeof DOCS)[number]['key']>('platform')
   const active = DOCS.find(d => d.key === tab) ?? DOCS[0]
 
@@ -55,4 +56,10 @@ export default function AdminPlatformModelPage() {
       </div>
     </div>
   )
+}
+
+// 🧱 2026-11-26 대표 "배경이 어둡네" — 이 화면은 어드민 공통 틀(흰 바탕·왼쪽 메뉴) 밖에 있어서
+//   PC·폰이 다크 모드면 바탕이 검게 나왔다. 틀로 감싼다(가드 admin-pages-in-layout-2026-11-26).
+export default function AdminPlatformModelPage() {
+  return <AdminLayout title="유어딜 플랫폼 모델"><AdminPlatformModelPageBody /></AdminLayout>
 }
