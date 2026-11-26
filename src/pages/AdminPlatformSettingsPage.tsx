@@ -297,6 +297,8 @@ export default function AdminPlatformSettingsPage() {
       const v = settings[f.key] ?? f.default
       if (f.options) {
         if (!f.options.some(o => o.value === v)) { toast.error(`${f.key}: 허용되지 않는 값`); return }
+      } else if (f.pattern) {
+        if (!f.pattern.re.test(String(v).trim())) { toast.error(`${f.label}: ${f.pattern.message}`); return }
       } else {
         const err = validateSetting(f.key, v)
         if (err) { toast.error(err); return }
