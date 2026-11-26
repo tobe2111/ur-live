@@ -8,7 +8,7 @@
  *   않는지**를 지킨다. 문서만 고치고 역할 파일을 안 고치면 여기서 빨간불이 난다.
  *
  * ■ 불변식
- *   ① 역할 파일 6개가 `.claude/agents/` 에 있고 프론트매터(name·description·tools)가 파일명과 일치한다
+ *   ① 역할 파일 12개(2026-11-26 개편)가 `.claude/agents/` 에 있고 프론트매터(name·description·tools)가 파일명과 일치한다
  *   ② 각 역할 파일에 "먼저 읽는다 · 결정권 · 금지 · 완료 판정 · 보고 형식" 절이 있고, 완료 판정이 E4 를 말한다
  *   ③ 역할 파일이 "먼저 읽는다"에서 가리키는 레포 경로가 실제로 존재한다(낡은 지도 방지)
  *   ④ 운영 SSOT 의 결정권 매트릭스에서 머니 경로·게이트 ON·발행·삭제는 C 등급이다(낮추면 빨강)
@@ -27,7 +27,11 @@ import { resolve } from 'node:path'
 const ROOT = resolve(__dirname, '../../..')
 const read = (p: string) => readFileSync(resolve(ROOT, p), 'utf-8')
 
-const ROLES = ['ceo-office', 'planning', 'marketing', 'design', 'dev', 'finance', 'ops'] as const
+const ROLES = [
+  'ceo-office', 'planning', 'marketing', 'design', 'dev', 'finance', 'ops',
+  // 2026-11-26 조직 개편(대표 "처음 제안한대로") — 성장·운영·검사·법무
+  'sales', 'partnerships', 'support', 'qa', 'legal',
+] as const
 const MODEL_DOC = 'docs/design/ai-team-operating-model.md'
 const REQUIRED_SECTIONS = ['## 먼저 읽는다', '## 결정권', '## 금지', '## 완료 판정', '## 보고 형식']
 
@@ -42,7 +46,7 @@ function frontmatter(src: string): Record<string, string> {
   return out
 }
 
-describe('① 역할 파일 7개 — 프론트매터', () => {
+describe('① 역할 파일 12개 — 프론트매터', () => {
   for (const role of ROLES) {
     it(`${role}.md 가 있고 name 이 파일명과 같다`, () => {
       const p = `.claude/agents/${role}.md`
@@ -73,6 +77,18 @@ describe('② 역할 파일 — 필수 절과 완료 판정', () => {
     expect(src).toMatch(/- B: \*\*없음\*\*/)
   })
 
+  it('qa 는 B·C 가 없다 — 검사와 수리를 섞지 않는다(2026-11-26)', () => {
+    const src = read('.claude/agents/qa.md')
+    expect(src).toMatch(/- B: \*\*없음\*\*/)
+    expect(src).toMatch(/- C: \*\*없음\*\*/)
+  })
+
+  it('운영 SSOT 조직도가 12역할을 전부 이름으로 부른다', () => {
+    const doc = read(MODEL_DOC)
+    const org = doc.slice(doc.indexOf('## 3. 역할'), doc.indexOf('## 4. 완료 판정 기준'))
+    for (const role of ROLES) expect(org, `조직도에 ${role} 없음`).toContain(role)
+  })
+
   it('ceo-office 는 C 등급 실행권이 없다', () => {
     const src = read('.claude/agents/ceo-office.md')
     expect(src).toMatch(/- C: \*\*없음\*\*/)
@@ -97,7 +113,7 @@ describe('③ 역할 파일이 가리키는 경로가 실제로 있다 (낡은 �
 
 describe('④ 결정권 매트릭스 — 머니·게이트·발행·삭제는 C', () => {
   const doc = read(MODEL_DOC)
-  const matrix = doc.slice(doc.indexOf('## 2. 결정권 매트릭스'), doc.indexOf('## 3. 역할 6개'))
+  const matrix = doc.slice(doc.indexOf('## 2. 결정권 매트릭스'), doc.indexOf('## 3. 역할'))
   const mustBeC = [
     '결제·정산·요율·환불·원장·커미션 코드',
     '게이트/플래그 ON',
@@ -164,7 +180,7 @@ describe('⑥ 결재함 docs/decisions/', () => {
       expect(s, `${f}: 등급이 C 가 아니다`).toMatch(/^등급: C$/m)
       expect(s, `${f}: 상태 값이 정의 밖`).toMatch(/^상태: (open|approved|rejected|expired)$/m)
       const role = s.match(/^역할: (\S+)$/m)?.[1]
-      expect(ROLES as readonly string[], `${f}: 역할 "${role}" 은 정의된 여섯 중 하나가 아니다`).toContain(role)
+      expect(ROLES as readonly string[], `${f}: 역할 "${role}" 은 정의된 역할이 아니다`).toContain(role)
     }
   })
 })
