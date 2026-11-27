@@ -80,6 +80,19 @@ describe('Sentry 노이즈 필터 (실제로 돌린다)', () => {
     expect(eventText({ exception: { values: [{ type: 'Error', value: 'boom' }] } } as SentryLikeEvent)).toBe('Error: boom')
   })
 
+  it('메일 보안 장치의 내장 브라우저가 내는 거절은 버린다 (2026-11-27 `UnhandledRejection /ads`)', () => {
+    const scanner = { exception: { values: [{ type: 'UnhandledRejection', value: 'Non-Error promise rejection captured with value: Object Not Found Matching Id:3, MethodName:update, ParamCount:4' }] } } as SentryLikeEvent
+    expect(isNoiseEvent(scanner)).toBe(true)
+    // 숫자·메서드 이름은 매번 다르다
+    expect(isNoiseEvent({ exception: { values: [{ type: 'UnhandledRejection', value: 'Non-Error promise rejection captured with value: Object Not Found Matching Id:12, MethodName:simulateEvent, ParamCount:1' }] } } as SentryLikeEvent)).toBe(true)
+  })
+
+  it('⚠️ 그 문장의 일부만 닮은 것은 올린다 — 우리 404 처리의 진짜 버그를 삼키면 안 된다', () => {
+    for (const value of ['Object Not Found', 'Non-Error promise rejection captured with value: Not Found', 'Product Not Found Matching Id:3']) {
+      expect(isNoiseEvent({ exception: { values: [{ type: 'UnhandledRejection', value }] } } as SentryLikeEvent)).toBe(false)
+    }
+  })
+
   it('평범한 에러는 그대로 올린다', () => {
     expect(isNoiseEvent({ exception: { values: [{ type: 'TypeError', value: "Cannot read properties of null (reading 'id')" }] } } as SentryLikeEvent)).toBe(false)
   })
