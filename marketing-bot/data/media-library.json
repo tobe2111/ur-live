@@ -602,7 +602,7 @@
   "topics_last": {
     "restaurant owner kitchen": "2026-11-22T17:59:19.130Z",
     "small restaurant counter": "2026-11-22T17:59:19.130Z",
-    "audio:upbeat acoustic": "2026-11-21T17:44:46.800Z",
+    "audio:upbeat acoustic": "2026-11-27T15:12:11.627Z",
     "cafe owner barista": "2026-11-23T16:07:39.814Z",
     "chef plating food": "2026-11-23T16:07:39.814Z",
     "audio:happy ukulele": "2026-11-22T17:59:19.130Z",
@@ -615,13 +615,13 @@
     "vlogger cafe": "2026-11-26T15:24:51.609Z",
     "korean food table": "2026-11-26T15:24:51.609Z",
     "audio:bright instrumental pop": "2026-11-25T15:43:21.115Z",
-    "korean street food night": "2026-11-20T18:44:26.705Z",
-    "friends eating restaurant": "2026-11-20T18:44:26.705Z",
+    "korean street food night": "2026-11-27T15:12:11.627Z",
+    "friends eating restaurant": "2026-11-27T15:12:11.627Z",
     "audio:warm piano": "2026-11-26T15:24:51.609Z",
     "seoul street night": "2026-11-21T17:44:46.800Z",
     "qr code payment phone": "2026-11-21T17:44:46.800Z"
   },
-  "updated_at": "2026-11-26T15:24:51.609Z",
+  "updated_at": "2026-11-27T15:12:11.627Z",
   "rejected": [
     "pixabay-img-5753302",
     "pixabay-img-4807317",
@@ -720,6 +720,10 @@
     "pixabay-vid-5129",
     "pixabay-vid-2339",
     "openverse-4bba409e-35a0-41ce-bdaf-a5a618e3ed9a",
-    "openverse-ba8e6f0a-f9c7-42e2-8925-1afa727019fd"
+    "openverse-ba8e6f0a-f9c7-42e2-8925-1afa727019fd",
+    "pixabay-vid-33256",
+    "pixabay-vid-120739",
+    "openverse-59b32381-28b7-4e32-82d5-d20c29756e70",
+    "openverse-d90eec48-1919-4b50-8beb-64fd8f0da5a8"
   ]
 }
