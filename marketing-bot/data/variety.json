@@ -633,5 +633,42 @@
     "topic_tag": "블로그체험단",
     "tformat": "contrast",
     "cta": "creator:try"
+  },
+  {
+    "id": "17886293418627522",
+    "platform": "instagram",
+    "track": "merchant",
+    "topic": "노쇼를 줄이는 예약 확인 문자 쓰는 법",
+    "hook": "headline",
+    "media_set": "gen-2026-11-27-merchant",
+    "series": "owner-note",
+    "date_kst": "2026-11-27",
+    "photo": "https://d2uja84sd90jmv.cloudfront.net/posts/AEzNmWt9X2wKP594rW2pfA/ms.jpg?updated=-62167392000",
+    "format": "1",
+    "slot": "21:30",
+    "media": "reel",
+    "cta": "merchant:draft"
+  },
+  {
+    "id": "18002217629822256",
+    "platform": "instagram_story",
+    "track": "merchant",
+    "series": "owner-note",
+    "date_kst": "2026-11-27"
+  },
+  {
+    "id": "18117752329856141",
+    "platform": "threads",
+    "track": "merchant",
+    "topic": "노쇼를 줄이는 예약 확인 문자 쓰는 법",
+    "hook": "headline",
+    "series": "owner-note",
+    "date_kst": "2026-11-27",
+    "len": "2",
+    "slot": "21:30",
+    "media": "image",
+    "topic_tag": "자영업",
+    "tformat": "myth",
+    "cta": "merchant:draft"
   }
 ]
