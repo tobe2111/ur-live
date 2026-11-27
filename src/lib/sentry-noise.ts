@@ -19,6 +19,9 @@
  *   그래서 [메시지 + 스택이 Sentry 자신의 web-vitals 리포터] **둘 다** 맞을 때만 버린다.
  */
 
+/** 내장 브라우저(CefSharp) 껍데기가 내는 거절 문장. 숫자·메서드 이름은 매번 다르다(`Id:3, MethodName:update, ParamCount:4`). */
+export const EMBEDDED_BROWSER_REJECTION = /Object Not Found Matching Id:\d+, MethodName:\w+, ParamCount:\d+/
+
 type SentryLikeFrame = { function?: string; filename?: string; module?: string }
 export type SentryLikeEvent = {
   message?: string
@@ -51,6 +54,11 @@ export function isNoiseEvent(event: SentryLikeEvent, originalException?: unknown
 
   // 🔇 Sentry 자신의 web-vitals 리포터가 던진 TypeError — 올리면 쿼터를 스스로 태운다.
   if (/reading '?startTime'?|undefined \(reading 'startTime'\)/.test(text) && isSentryOwnVitalsFrame(event, rawStack)) return true
+
+  // 🔇 2026-11-27 (대표 신고 — Sentry `UnhandledRejection /ads`): 메일 보안 장치·링크 미리보기가 내장 브라우저(CefSharp)로
+  //    페이지를 열 때 그 **껍데기가** 던지는 문장이다. Error 가 아니라 문자열이라 스택이 없고, 우리 코드엔 이 문장이 없다.
+  //    ⚠️ 세 조각이 **다 맞을 때만** 버린다 — "Not Found" 만 보고 거르면 우리 404 처리의 진짜 버그가 같이 사라진다.
+  if (EMBEDDED_BROWSER_REJECTION.test(text)) return true
 
   // ⬇️ 아래 둘은 2026-04-30 부터 있던 의도인데 `event.message` 만 봐서 **예외에는 한 번도 안 걸렸다**.
   //    이제 예외 텍스트까지 본다(원 의도대로 동작).
