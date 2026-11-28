@@ -330,6 +330,7 @@ describe('숙박 전체 흐름 — 사장님 · 유저 · 에이전시 (로컬 �
     const p0 = q<{ amount: number }>(raw, 'SELECT amount FROM payouts')
     R.check('보류 기간(기본 14일) 안에는 지급 대상이 만들어지지 않는다', p0.length === 0, `${JSON.stringify(g0)} payouts=${JSON.stringify(p0)}`)
     raw.exec("UPDATE ledger_entries SET created_at = datetime('now', '-20 days')")
+    raw.exec("UPDATE vouchers SET created_at = datetime('now', '-21 days')") // 이용권 사용분은 결제일+7일도 봐야 익는다(2026-11-28)
     const g1 = await handlePayoutsGenerate(env as never)
     const p1 = q<Record<string, unknown>>(raw, 'SELECT payee_type, payee_id, amount, status, bank_name, account_number FROM payouts')
     R.check('보류 기간이 지나면 주간 지급 대상이 사장님 몫만큼 만들어진다', p1.length === 1 && Number(p1[0].amount) === merchant, `${JSON.stringify(g1)} payouts=${JSON.stringify(p1)}`)
