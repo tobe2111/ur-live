@@ -214,6 +214,8 @@ describe('지급 한 주기 — 에이전시 몫 · 인플루언서 현금 · �
       R.note(`원장 순액 — 매장(seller) ${acctNet(`seller:${SELLER}`)} · 매장(merchant) ${acctNet(`merchant:${SELLER}`)} · 에이전시 ${acctNet(`agencyacct:${AGENCY}`)} · 유어딜 수입 ${acctNet('platform:revenue')} · 보관금 ${acctNet('platform:escrow')}`)
       // 실제 돈: 손님 180,000 결제 − 60,000 환불 = 120,000 이 유어딜 통장에 있다. 나갈 돈 = 매장 지급 + 에이전시 지급(이미 12,000 신청분).
       raw.exec("UPDATE ledger_entries SET created_at = datetime('now', '-20 days')")
+      // 2026-11-28: 이용권 사용분은 결제(발급)일 기준으로도 익는다(payout-hold.ts) — 시간 여행은 발급 시각도 같이 민다.
+      raw.exec("UPDATE vouchers SET created_at = datetime('now', '-21 days')")
       const gen = await handlePayoutsGenerate(env as never)
       const storePayout = q1<{ id: number; amount: number; status: string }>(raw, "SELECT id, amount, status FROM payouts WHERE payee_type IN ('store_owner','seller') AND payee_id = ?", String(SELLER))
       R.note(`주간 지급 생성: ${JSON.stringify(gen).slice(0, 200)} → 매장 지급 ${JSON.stringify(storePayout)}`)

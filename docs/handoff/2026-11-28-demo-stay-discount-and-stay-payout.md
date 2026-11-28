@@ -22,3 +22,11 @@
 - 토스는 카드 대금을 **결제일 기준 약 5영업일 뒤** 우리에게 준다(레포 기록, 계약서로 재확인 필요). 숙소는 대개 체크인보다 훨씬 먼저 결제한다
   ⇒ 체크인 시점엔 대부분 이미 입금돼 있다. 보류 기준을 "적립일 + 14일" 에서 "결제일 + 5영업일 이후 & 체크인 다음 날" 로 바꾸면 숙소는 다음 날 정산이 가능하다.
 - 결정은 결재 `docs/decisions/2026-11-28-stay-next-day-payout.md`.
+
+## 2026-11-28 후속 — 이용권 결제일 기준 유보(1단계)
+- `src/worker/utils/payout-hold.ts`: `voucher_used` 적립 = max(사용 다음 날, `vouchers.created_at`+7일) · 그 밖 적립은 14일 그대로 · 이용권 행 없으면 14일(fail-closed).
+  설정 `payout_voucher_paid_hold_days`(검증 등록). 컬럼을 `ledger_entries.` 로 한정(서브쿼리 안 오독 방지).
+- 가드 `payout-voucher-paid-hold-2026-11-28.test.ts`(8건, 실제 payoutCreditsSql·SQLite, 되돌려-검증 확인) · `payout-cycle-full` 시험의 시간 여행에 발급 시각도 함께 민다.
+- 효과 예: 미리 결제한 숙소 → 체크인 다음 날 이후 첫 월요일 생성 → 목요일 이체(최대 약 1주) · 당일 구매 식당 → 결제 7일 후.
+- 🩸 틀렸던 판단: 처음엔 "숙소만" 으로 설계했는데 규칙(토스 입금 후 + 사용 후)은 이용권 종류와 무관하다 — 대표 질문으로 일반화.
+- 남은 것(2단계): 월·목 생성·이체 + 안내 문구(`partners-facts.storePayoutDay` · `PayoutSheet` · FAQ · 입금 예정 알림) — 대표 이체 요일 확정 필요.

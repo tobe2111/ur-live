@@ -59,6 +59,8 @@ export interface PayoutHold {
   days: number
   /** 유보가 걸려 있는가 — 로그·진단용. */
   enabled: boolean
+  /** 이용권 사용분의 결제일 기준 유보(역일). 규칙이 꺼져 있으면 없음. */
+  voucherPaidDays?: number
 }
 
 /**
@@ -72,7 +74,28 @@ export interface PayoutHold {
  * ⚠️ `Number(days) || DEFAULT` 로 쓰지 말 것 — **0 이 falsy** 라 "유보 없음"이 조용히 기본값으로 바뀐다
  *   (CLAUDE.md 가 경고하는 그 함정, `payout-use-gate.ts` 가 실제로 밟았다).
  */
-export function buildPayoutHoldSql(days: number = DEFAULT_PAYOUT_HOLD_DAYS): PayoutHold {
+/**
+ * 🏨🍽️ **이용권 사용분은 결제일 기준으로 더 빨리 익힌다** (2026-11-28 대표 결재 `2026-11-28-stay-next-day-payout` 안 2,
+ * *"일단 2번으로 하는데"* → *"숙소 말고도 식당도 가능한거 아닌가?"*).
+ *
+ * 유보의 목적은 "토스가 주기 전에 먼저 주지 않기"다. 토스는 **결제일 기준** 약 5영업일 뒤에 준다.
+ * 그런데 위 기본 규칙은 **적립일(= 이용권 사용일)** 부터 14일을 센다 — 미리 산 숙소·식당 이용권은
+ * 사용할 때 이미 입금돼 있는데도 2주를 더 묶었다(숙소 사장님 신고 "체크인 후 길게는 일주일 뒤").
+ *
+ * 규칙: `voucher_used` 적립(`reference_id = 'voucher:N'`)은
+ *   **사용 다음 날 이후** 그리고 **이용권 발급(= 결제) 후 `voucherPaidDays`(기본 7일) 이후** 에 익는다.
+ *   발급 시각은 `vouchers.created_at` — 결제 확정 때 이용권이 만들어진다.
+ *   이용권 행을 못 찾으면 기본 규칙(적립 후 N일)을 그대로 쓴다(fail-closed).
+ * 그 밖의 적립(공구·소개비·에이전시 몫 등)은 종전 그대로.
+ *
+ * ⚠️ 7일은 "5영업일 + 주말" 근사다. 설·추석처럼 평일 공휴일이 길면 토스 입금보다 하루 이틀 먼저 익을 수 있다 —
+ *   그 기간엔 `platform_settings.payout_voucher_paid_hold_days` 를 한시적으로 올린다.
+ * ⚠️ 바깥 문장이 `FROM ledger_entries`(별칭 없음)라 컬럼을 `ledger_entries.` 로 **한정**한다 — 안 하면
+ *   상관 서브쿼리 안의 `created_at` 이 `vouchers.created_at` 로 읽힌다.
+ */
+export const DEFAULT_VOUCHER_PAID_HOLD_DAYS = 7
+
+export function buildPayoutHoldSql(days: number = DEFAULT_PAYOUT_HOLD_DAYS, voucherPaidDays?: number): PayoutHold {
   const raw = Number(days)
   const d = Number.isFinite(raw)
     ? Math.max(0, Math.min(365, Math.floor(raw)))
@@ -84,6 +107,15 @@ export function buildPayoutHoldSql(days: number = DEFAULT_PAYOUT_HOLD_DAYS): Pay
   //   집계에서 빼므로(= 유보) 화면도 '유보 중'이라고 말해야 둘이 같은 소리를 한다.
   //   (INSERT 가 created_at 을 안 넘겨 DEFAULT CURRENT_TIMESTAMP 가 늘 박히므로 실제로는 안 생기는
   //    경우지만, 둘이 갈리는 길을 애초에 안 만든다.)
+  if (voucherPaidDays !== undefined) {
+    const rv = Number(voucherPaidDays)
+    const vp = Number.isFinite(rv) ? Math.max(0, Math.min(d, Math.floor(rv))) : Math.min(d, DEFAULT_VOUCHER_PAID_HOLD_DAYS)
+    const L = 'ledger_entries'
+    const paidAt = `(SELECT v.created_at FROM vouchers v WHERE v.id = CAST(substr(${L}.reference_id, 9) AS INTEGER))`
+    const isVoucher = `${L}.event_type = 'voucher_used' AND ${L}.reference_id LIKE 'voucher:%' AND ${paidAt} IS NOT NULL`
+    const ripe = `(CASE WHEN ${isVoucher} THEN (${L}.created_at <= datetime('now', '-1 days') AND ${paidAt} <= datetime('now', '-${vp} days')) ELSE ${L}.created_at <= ${cutoff} END)`
+    return { sql: `AND COALESCE(${ripe}, 0) = 1`, heldSql: `AND COALESCE(${ripe}, 0) = 0`, days: d, enabled: true, voucherPaidDays: vp }
+  }
   return {
     sql: `AND created_at <= ${cutoff}`,
     heldSql: `AND (created_at > ${cutoff} OR created_at IS NULL)`,
@@ -110,5 +142,15 @@ export async function resolvePayoutHold(DB: D1Database): Promise<PayoutHold> {
   } catch {
     // 설정을 못 읽었다고 유보를 푸는 것은 "먼저 주는" 쪽 실패다 → 기본값을 유지한다.
   }
-  return buildPayoutHoldSql(days)
+  let voucherPaidDays = DEFAULT_VOUCHER_PAID_HOLD_DAYS
+  try {
+    const row = await DB.prepare(
+      "SELECT value FROM platform_settings WHERE key = 'payout_voucher_paid_hold_days'",
+    ).first<{ value: string }>()
+    if (row) {
+      const v = Number(row.value)
+      if (Number.isFinite(v) && v >= 0) voucherPaidDays = v
+    }
+  } catch { /* 기본 7일 유지 */ }
+  return buildPayoutHoldSql(days, voucherPaidDays)
 }
