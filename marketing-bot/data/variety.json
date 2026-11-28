@@ -670,5 +670,20 @@
     "topic_tag": "자영업",
     "tformat": "myth",
     "cta": "merchant:draft"
+  },
+  {
+    "id": "18110891984114341",
+    "platform": "threads",
+    "track": "creator",
+    "topic": "어떻게 버나: 매장이 소개 몫을 건 딜이 내 링크로 팔리면 판매액의 소개비가 적립. 소개비율은 매장이 딜마다 정하고, 고르기 전에 미리 보인다",
+    "hook": "udal",
+    "series": "by-numbers",
+    "date_kst": "2026-11-28",
+    "len": "2",
+    "slot": "19:30",
+    "media": "text",
+    "topic_tag": "블로그체험단",
+    "tformat": "operator",
+    "cta": "creator:guide"
   }
 ]
