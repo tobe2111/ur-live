@@ -43,6 +43,9 @@ describe('② 착공 희망일 여러 개', () => {
     }
   })
   it('달력에서 두 날을 고르면 쉼표로 넘긴다', () => {
+    // 월말엔 이번 달에 고를 수 있는 날이 2개 미만이라 깨졌다(2026-11-28 실측) — 시계를 월 중순에 고정한다.
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-11-10T03:00:00Z'))
+    try {
     const onDone = vi.fn()
     const f = { key: 'date', label: '착공 희망일', type: 'date', required: true, multiple: true }
     const { getAllByRole, getByText } = render(<DateSheet f={f as never} value="" onDone={onDone} onClose={() => {}} />)
@@ -52,6 +55,7 @@ describe('② 착공 희망일 여러 개', () => {
     const v = String(onDone.mock.calls[0][0])
     expect(v.split(', ')).toHaveLength(2)
     expect(v.split(', ')[0] < v.split(', ')[1]).toBe(true)
+    } finally { vi.useRealTimers() }
   })
   it('서버: 정렬·중복 제거 · 가장 늦은 날이 요청 날짜 · 최대 개수', () => {
     const def = categoryDef('store_interior')!
