@@ -221,6 +221,7 @@ describe('이용권·교환권 전체 흐름 — 유저 · 사장님 · 인플�
     const pay0 = await call('GET', '/api/seller/payouts', sTok)
     R.note(`사장님 정산 화면: ${JSON.stringify(pay0.data).slice(0, 220)}`)
     raw.exec("UPDATE ledger_entries SET created_at = datetime('now', '-20 days')")
+    raw.exec("UPDATE vouchers SET created_at = datetime('now', '-21 days')") // 이용권 사용분은 결제일+7일도 봐야 익는다(2026-11-28)
     const gen = await handlePayoutsGenerate(env as never)
     const payouts = () => q<{ id: number; payee_type: string; payee_id: string; amount: number; status: string }>(raw, 'SELECT id, payee_type, payee_id, amount, status FROM payouts ORDER BY id')
     const storePayout = payouts().find((p) => p.payee_type === 'store_owner' || p.payee_type === 'seller')
