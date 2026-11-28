@@ -17,7 +17,7 @@ import type { Env } from '@/worker/types/env'
 import { executeQuery, executeRun } from '@/worker/utils/database'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { rehostImageToR2 } from '@/worker/utils/rehost-image'
-import { healStayAmenities, healStayDescriptions } from './admin-stays/heal-stay-descriptions'; import { propertyTypeDesc } from '../../../shared/stay-property-type'; import { findExistingStay, mergeDuplicateDemoStays } from './admin-stays/dedupe-demo-stays' // 한 줄: 파일크기 래칫 안
+import { healStayAmenities, healStayDescriptions } from './admin-stays/heal-stay-descriptions'; import { propertyTypeDesc } from '../../../shared/stay-property-type'; import { findExistingStay, mergeDuplicateDemoStays } from './admin-stays/dedupe-demo-stays'; import { demoStayOriginalPrice, healDemoStayDiscounts } from './admin-stays/demo-stay-discount' // 한 줄: 파일크기 래칫 안
 
 // 🛡️ 2026-07-20: 데모 숙소 시드가 kakaoPlaceLookup / fetchNaverImageUrl(전체 Env 기대)를
 //   호출하는데 로컬 Bindings 가 { DB, JWT_SECRET } 로 좁아 c.env 타입 불일치(배포 차단 TS2345/2559).
@@ -321,7 +321,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
     const { DB } = c.env
     const body = (await c.req.json().catch(() => ({}))) as { region?: string; count?: number }
     const regionQ = String(body.region || '').trim()
-    const count = Math.max(1, Math.min(24, Number(body.count) || 6))
+    const count = body.count === 0 ? 0 : Math.max(1, Math.min(24, Number(body.count) || 6)) // 0 = 새 숙소 없이 치유 패스만(2026-11-28)
     // 지역 옵션: label/sido 부분일치 스팟만(예 "강원"→강릉·속초·양양·춘천, "해운대"→부산 해운대). 미매칭 시 전체.
     const spotsAll = regionQ
       ? STAY_SPOTS.filter((s) => s.label.includes(regionQ) || s.sido.includes(regionQ) || regionQ.includes(s.label) || regionQ.includes(s.sido))
@@ -364,7 +364,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       for (const h of (healRows.results || [])) {
         const minWd = Number(h.min_wd) || 0
         const offerName = h.room_name ? `평일 1박 숙박권 (${h.room_name})` : '평일 1박 숙박권'
-        const orig = minWd > 0 ? Math.round(minWd * 1.3 / 1000) * 1000 : 0
+        const orig = demoStayOriginalPrice(minWd, h.id)
         // 한 UPDATE 안의 컬럼 참조는 전부 갱신 전 값 → restaurant_name IS NULL(=아직 숙소명이 제목) 조건이 정확.
         const r = await DB.prepare(
           `UPDATE products SET
@@ -474,7 +474,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
       // 🏷️ v3 (동네딜 규칙 미러): 제목 = 오퍼만, 숙소명 = restaurant_name 전담. 가격 = 최저 객실 주중가.
       const offerName = `평일 1박 숙박권 (${rooms[0].name})`
       const price = rooms[0].wd
-      const origPrice = Math.round(price * 1.3 / 1000) * 1000
+      const origPrice = demoStayOriginalPrice(price, n)
       const stayPhone = place.phone || null  // 📞 2026-07-21 (대표 "다 넣어줘"): 카카오 실전화 캡처
       let ins
       try {
@@ -546,7 +546,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
     //   오퍼명 패턴('평일/주말 1박 숙박권…') 행 전체를 id%3 규칙으로 [스탠다드 평일권 / 프리미엄 평일권 /
     //   스탠다드 주말권] 고루 로테이션 + 가격을 해당 객실·요일가로 동기(멱등 수렴 — 목표명과 같으면 skip,
     //   수동 개명 행은 패턴 밖이라 불침범). 신규 생성분도 이 패스가 같은 요청 안에서 다양화.
-    let varied = 0
+    let varied = 0; const discountHealed = await healDemoStayDiscounts(DB).catch(() => 0) // 🏷️ 2026-11-28 옛 23% 일괄 → 숙소마다 다른 할인율
     try {
       const roomSub = (col: string, off: number) =>
         `(SELECT r.${col} FROM product_stay_rooms r WHERE r.product_id = p.id AND r.is_active = 1 ORDER BY r.display_order ASC LIMIT 1 OFFSET ${off})`
@@ -565,7 +565,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         const wantName = tmpl === 2 ? `주말 1박 숙박권 (${roomName})` : `평일 1박 숙박권 (${roomName})`
         const wantPrice = Number(tmpl === 2 ? v.r1_we : usePremium ? v.r2_wd : v.r1_wd) || 0
         if (v.name === wantName) continue
-        const orig = wantPrice > 0 ? Math.round(wantPrice * 1.3 / 1000) * 1000 : 0
+        const orig = demoStayOriginalPrice(wantPrice, v.id)
         const r = await DB.prepare(
           `UPDATE products SET name = ?,
              price = CASE WHEN ? > 0 THEN ? ELSE price END,
@@ -605,7 +605,7 @@ adminStaysRoutes.post('/stays/seed-demo', cors(), async (c) => {
         if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(run); else await run
       }
     } catch { /* best-effort — 리뷰 실패가 시드를 막지 않음 */ }
-    return c.json({ success: true, data: { created, skipped, realPhotos, skippedNoPhoto, healed, amenityHealed, merged, descHealed, photoHealed, varied, reviewed, requested: count, region: regionQ || null } })
+    return c.json({ success: true, data: { created, skipped, realPhotos, skippedNoPhoto, healed, amenityHealed, merged, descHealed, photoHealed, varied, discountHealed, reviewed, requested: count, region: regionQ || null } })
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500)
   }
